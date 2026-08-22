@@ -1100,6 +1100,10 @@ func diagnosticAllowedByteMask(input []byte) []bool {
 			lmu13Layout.Telemetry.Throttle, lmu13Layout.Telemetry.Brake,
 			lmu13Layout.Telemetry.Clutch, lmu13Layout.Telemetry.FuelLiters,
 			lmu13Layout.Telemetry.FuelCapacityLiters,
+			lmu13Layout.Telemetry.Overheating, lmu13Layout.Telemetry.Detached,
+			lmu13Layout.Telemetry.DentSeverity, lmu13Layout.Telemetry.WheelDetachedFL,
+			lmu13Layout.Telemetry.WheelDetachedFR, lmu13Layout.Telemetry.WheelDetachedRL,
+			lmu13Layout.Telemetry.WheelDetachedRR,
 		} {
 			mark(base+field.Offset, field.width())
 		}

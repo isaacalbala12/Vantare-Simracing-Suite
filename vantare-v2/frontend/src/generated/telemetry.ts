@@ -221,6 +221,7 @@ export interface OverlayFrameV2 {
   readonly capabilities: OverlayCapabilitiesV2;
   readonly contract: number;
   readonly controls: OverlayControlsV2;
+  readonly damage: Overlayv2DamageViewV2;
   readonly delta: OverlayDeltaViewV2;
   readonly epoch: number;
   readonly fuel: OverlayFuelViewV2;
@@ -458,6 +459,13 @@ export interface TelemetryMetadata {
   readonly epoch: number;
   readonly projectionVersion: number;
   readonly sequence: number;
+}
+
+export interface Overlayv2DamageViewV2 {
+  readonly dents: OverlayQValue<readonly number[]>;
+  readonly detached: OverlayQValue<boolean>;
+  readonly overheating: OverlayQValue<boolean>;
+  readonly wheelDetachedCount: OverlayQValue<number>;
 }
 
 export interface SpatialLocalVelocity {

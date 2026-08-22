@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/damage"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/energy"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/envelope"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/identity"
@@ -69,6 +70,7 @@ type VehicleState struct {
 	WorldPosition    schema.Field[spatial.Position]
 	LocalVelocity    schema.Field[spatial.LocalVelocity]
 	Orientation      schema.Field[spatial.Orientation]
+	Damage           schema.Field[damage.State]
 }
 
 // ObservedState is the complete state replaced by one atomic batch. The

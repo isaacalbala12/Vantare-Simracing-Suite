@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-696",
+  "type": "feature",
+  "summary": "Daño de LMU extremo a extremo en el canónico y en Overlay v2 (shadow).",
+  "technicalNotes": [
+    "El driver LMU mapea mDentSeverity[8], mOverheating, mDetached y conteo de ruedas desprendidas desde la fila de telemetría (offsets 541,542,544,1026,1286,1546,1806) con provenance observed y sanitizer que solo copia esos bytes del player.",
+    "El estado canónico lleva Damage en VehicleState y lo publica en FrameV2 damage (QValues) con capability damage disponible según frescura del player.",
+    "ViewModels v2 para car-damage en shadow detrás de flag apagada, con mapeo dents/2 y comparador gate solo en phase=live; no comparable con v1 por fuente distinta."
+  ],
+  "testing": [
+    "go test ./internal/telemetry/... con goldens v2 aditivos y tripwire de daño retirado; synthetic @104 36206 bytes <64KiB.",
+    "pnpm --dir frontend test car-damage-numbers-domain-free 6/6 y typecheck tsc -b --noEmit verde; contract-gen -check verde."
+  ],
+  "knownLimitations": [
+    "tyres permanece missing (gap declarado) porque la SM no expone 4 fracciones de daño de neumático.",
+    "Flag OVERLAY_V2_DAMAGE apagado por defecto; el widget productivo sigue leyendo snapshot.damage del camino Wails."
+  ]
+}

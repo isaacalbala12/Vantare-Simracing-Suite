@@ -204,6 +204,7 @@ function playerInstrumentsFrameV2(): OverlayFrameV2 {
     standings: [], relative: [], delta: { seconds: missing, available: [] },
     fuel: { remaining: missing, capacity: missing, perLap: missing, estimatedLaps: missing },
     spotter: { mode: "none", left: missing, right: missing },
+    damage: { dents: missing, overheating: missing, detached: missing, wheelDetachedCount: missing },
     capabilities: {
       supported: ["controls"], available: { controls: "fresh" },
       modes: { spatial: [], delta: [], standings: "none", gaps: "none" },

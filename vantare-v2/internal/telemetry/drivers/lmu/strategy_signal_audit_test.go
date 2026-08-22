@@ -298,10 +298,10 @@ func TestStrategySignalAuditV1HasExactReviewedProductionSurfaces(t *testing.T) {
 		fields []string
 	}{
 		{name: "lmu.Observation", typeOf: reflect.TypeOf(Observation{}), fields: []string{
-			"Source", "ReceivedUTC", "Compatibility", "Fingerprint", "ClockChange", "SourceTime", "EndTime", "MaximumLaps", "TrackName", "SessionType", "VehicleCount", "PlayerPresent", "VehicleName", "LapNumber", "Gear", "EngineRPM", "SpeedMPS", "Throttle", "Brake", "Clutch", "PlayerPosition", "CompletedLaps", "PitStopCount", "InPit", "Fuel", "Vehicles", "REST", "MatrixVersion", "Decisions", "Conflicts",
+			"Source", "ReceivedUTC", "Compatibility", "Fingerprint", "ClockChange", "SourceTime", "EndTime", "MaximumLaps", "TrackName", "SessionType", "VehicleCount", "PlayerPresent", "VehicleName", "LapNumber", "Gear", "EngineRPM", "SpeedMPS", "Throttle", "Brake", "Clutch", "PlayerPosition", "CompletedLaps", "PitStopCount", "InPit", "Fuel", "Damage", "Vehicles", "REST", "MatrixVersion", "Decisions", "Conflicts",
 		}},
 		{name: "core.VehicleState", typeOf: reflect.TypeOf(telemetrycore.VehicleState{}), fields: []string{
-			"Identity", "DriverName", "Name", "VehicleClass", "Player", "Sector", "LapDistance", "BestLapTime", "LastLapTime", "EstimatedLapTime", "LapNumber", "Gear", "EngineRPM", "SpeedMPS", "Throttle", "Brake", "Clutch", "Position", "CompletedLaps", "InPit", "PitStopCount", "PenaltyCount", "TimeBehindLeader", "LapsBehindLeader", "TimeBehindNext", "LapsBehindNext", "Fuel", "DeltaBest", "WorldPosition", "LocalVelocity", "Orientation",
+			"Identity", "DriverName", "Name", "VehicleClass", "Player", "Sector", "LapDistance", "BestLapTime", "LastLapTime", "EstimatedLapTime", "LapNumber", "Gear", "EngineRPM", "SpeedMPS", "Throttle", "Brake", "Clutch", "Position", "CompletedLaps", "InPit", "PitStopCount", "PenaltyCount", "TimeBehindLeader", "LapsBehindLeader", "TimeBehindNext", "LapsBehindNext", "Fuel", "DeltaBest", "WorldPosition", "LocalVelocity", "Orientation", "Damage",
 		}},
 		{name: "core.ObservedState", typeOf: reflect.TypeOf(telemetrycore.ObservedState{}), fields: []string{
 			"SourceTime", "EndTime", "MaximumLaps", "TrackName", "SessionType", "VehicleCount", "PlayerPresent", "Vehicles",

@@ -88,6 +88,9 @@ function syntheticFullUpdate(vehicles: number) {
         available: { session: "fresh", controls: "fresh", standings: "fresh", gaps: "fresh", fuel: "fresh", delta: "fresh", spotter: "fresh" },
         modes: { spatial: ["longitudinal", "lateral"], delta: ["best", "last"], standings: "official", gaps: "official" },
       },
+      damage: {
+        dents: fresh([0, 1, 0, 2, 0, 0, 3, 0]), overheating: fresh(false), detached: fresh(false), wheelDetachedCount: fresh(0),
+      },
     },
   };
 }

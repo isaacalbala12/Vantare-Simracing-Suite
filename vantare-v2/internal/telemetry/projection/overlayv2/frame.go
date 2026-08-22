@@ -111,6 +111,7 @@ type FrameV2 struct {
 	Delta            DeltaViewV2         `json:"delta"`
 	Fuel             FuelViewV2          `json:"fuel"`
 	Spotter          SpotterViewV2       `json:"spotter"`
+	Damage           DamageViewV2        `json:"damage"`
 	Capabilities     CapabilitiesV2      `json:"capabilities"`
 }
 
@@ -219,6 +220,13 @@ type SpotterViewV2 struct {
 	Mode  Mode         `json:"mode"`
 	Left  QValue[bool] `json:"left"`
 	Right QValue[bool] `json:"right"`
+}
+
+type DamageViewV2 struct {
+	Dents              QValue[[]uint16]  `json:"dents"`
+	Overheating        QValue[bool]     `json:"overheating"`
+	Detached           QValue[bool]     `json:"detached"`
+	WheelDetachedCount QValue[uint8]    `json:"wheelDetachedCount"`
 }
 
 type CapabilityModesV2 struct {

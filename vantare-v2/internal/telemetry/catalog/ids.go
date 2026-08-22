@@ -51,4 +51,8 @@ const (
 	SignalSpatialLocalVelocity
 	SignalSessionNativeDeltaBest
 	SignalSessionPreviousLapDelta
+	SignalDamageDents
+	SignalDamageOverheating
+	SignalDamageDetached
+	SignalDamageWheelDetachedCount
 )

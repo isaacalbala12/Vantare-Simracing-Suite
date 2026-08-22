@@ -25,6 +25,7 @@ func Capabilities() capability.Declaration {
 			capability.SpatialLongitudinal,
 			capability.SpatialLateral,
 			capability.Spotter,
+			capability.Damage,
 		},
 		Modes: capability.Modes{
 			Spatial:         capability.SpatialXYZ,

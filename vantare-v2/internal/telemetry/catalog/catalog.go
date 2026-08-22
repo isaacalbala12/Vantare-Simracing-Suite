@@ -102,6 +102,10 @@ var definitions = []Definition{
 	{ID: SignalSpatialLocalVelocity, Key: "spatial.local_velocity", Domain: schema.DomainSpatial, Unit: schema.UnitMetersPerSecond, Range: schema.UnknownRange(), Action: LedgerAppended, Notes: "Vehicle-local XYZ velocity in m/s; axes are +X left, +Y up and +Z rearward."},
 	{ID: SignalSessionNativeDeltaBest, Key: "session.native_delta_best", Domain: schema.DomainSession, Unit: schema.UnitSeconds, Range: schema.UnknownRange(), Action: LedgerAppended, Notes: "Signed simulator-provided player delta to the personal best lap; validity remains explicit."},
 	{ID: SignalSessionPreviousLapDelta, Key: "session.previous_lap_delta", Domain: schema.DomainSession, Unit: schema.UnitSeconds, Range: schema.UnknownRange(), Action: LedgerAppended, Notes: "Signed player delta against the most recent complete valid lap observed in the current session."},
+	{ID: SignalDamageDents, Key: "damage.dents", Domain: schema.DomainVehicle, Unit: schema.UnitCount, Range: schema.ClosedRange(0, 255), Action: LedgerAppended, Notes: "Eight dent severities (0=none) from LMU mDentSeverity[8]; observed on the player telemetry row."},
+	{ID: SignalDamageOverheating, Key: "damage.overheating", Domain: schema.DomainVehicle, Unit: schema.UnitBoolean, Range: schema.UnsupportedRange(), Action: LedgerAppended, Notes: "Whether the overheating icon is shown (LMU mOverheating)."},
+	{ID: SignalDamageDetached, Key: "damage.detached", Domain: schema.DomainVehicle, Unit: schema.UnitBoolean, Range: schema.UnsupportedRange(), Action: LedgerAppended, Notes: "Whether any non-wheel parts are detached (LMU mDetached)."},
+	{ID: SignalDamageWheelDetachedCount, Key: "damage.wheel_detached_count", Domain: schema.DomainVehicle, Unit: schema.UnitCount, Range: schema.ClosedRange(0, 4), Action: LedgerAppended, Notes: "Count of detached wheels (0..4) from LMU wheel mDetached."},
 }
 
 // Tombstones is intentionally empty until the first canonical ID is retired.

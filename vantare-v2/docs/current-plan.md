@@ -29,6 +29,12 @@ Nota ISA-677 / ISA-695 — dirty-signals finos para standings/relative (2026-08-
 - Defaults siguen en cero (sin regulación); activar exige cablear `CachedProjector` en `telemetry_core_runtime.go` y retirar `cadence.go` de `wiringGuardAllowed`. Goldens y `frame.go`/contrato TS intactos. Evidencia `docs/telemetry-core/evidence/isa-677-dirty-signals.md` + fragmento `ISA-695.json`.
 - Rama lista para PR a `nightly`; sin push previo, sin integración, promoción ni release. Gates: `go vet` solo dos `unsafe.Pointer` heredados en `drivers/lmu`, `go test ./internal/telemetry/... -count=1` verde, `git diff --check` limpio.
 
+Nota ISA-696 / ISA-677 (2026-08-21, implementada localmente, sin promoción):
+- El daño de LMU 1.4.1.3 queda extremo a extremo en el canónico: `mDentSeverity[8]` (544/8), `mOverheating` (541), `mDetached` (542) y `WheelDetachedCount` (ruedas 1026/1286/1546/1806) mapeados con provenance observed y sanitizer que solo copia esos bytes del player. `damage.State` validado (conteo 0..4).
+- `core.VehicleState.Damage` transporta el observado sin derivar; el reducer no inventa nada. BatchMapper conserva identidad de slots y el pipeline no toca daño.
+- Capability `damage` publicada según frescura del player; `BuildDamage` puebla `FrameV2.damage` (dents QValue[8] + overheating/detached/wheelDetachedCount) y `contract-gen` añade `Overlayv2DamageViewV2` en `generated/telemetry.ts`. Goldens v2 aditivos y sintético @104 = 36.206 B (<64KiB).
+- ViewModels v2 `car-damage-numbers`/`car-damage-visual` en shadow detrás de `OVERLAY_V2_DAMAGE` apagada por defecto: mapeo dents/2 clamp 1 (aero = max 0-1/2, suspension = max 2-3/2, body = max all/2, tyres = gap). Comparador gate solo `phase=live`; telemetría v1 `snapshot.damage` (Wails) no es comparable y queda como `not-comparable` en el shadow policy.
+- Evidencia: `docs/telemetry-core/evidence/isa-677-damage-canonico.md`. Rama `vantareapp/isa-696-damage-canonico` sobre `origin/nightly@418f26bc`; sin promoción.
 Nota ISA-372/F8 lote 2b (2026-08-20, implementada localmente, sin promoción):
 - Cierra los builders del contrato v2: todas las secciones del frame quedan
   pobladas o declaradas con evidencia.

@@ -558,9 +558,34 @@
         "q": "missing"
       }
     },
+    "damage": {
+      "dents": {
+        "v": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "q": "fresh"
+      },
+      "overheating": {
+        "q": "fresh"
+      },
+      "detached": {
+        "q": "fresh"
+      },
+      "wheelDetachedCount": {
+        "q": "fresh"
+      }
+    },
     "capabilities": {
       "supported": [
         "controls",
+        "damage",
         "delta",
         "fuel",
         "gaps",
@@ -572,6 +597,7 @@
       ],
       "available": {
         "controls": "fresh",
+        "damage": "fresh",
         "delta": "missing",
         "fuel": "fresh",
         "gaps": "fresh",

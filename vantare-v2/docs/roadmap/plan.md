@@ -406,6 +406,19 @@ se conservan aqui como hitos cumplidos; los demas siguen pendientes.
 - cuerpo.it: Impostazioni > Privacy consente di accettare una versione del consenso, ispezionare ogni bundle e la sua cronologia e mettere in pausa la coda. La pausa annulla ciò che non è ancora stato accettato; gli elementi accettati restano inviati. Revoca del consenso e cancellazione remota sono azioni separate. Gli invii partono disattivati finché non viene configurato un Worker verificato.
 - etiqueta: Feature
 
+### Ciclo editorial local de Strategy
+
+- id: strategy-local-editorial-cycle
+- tipo: feature
+- titulo.en: Local Strategy editorial cycle
+- titulo.pt: Ciclo editorial local de Strategy
+- titulo.it: Ciclo editoriale locale di Strategy
+- cuerpo: Un ciclo local predigiere los bundles, prepara para el LLM un informe sin datos crudos ni identificadores y deja a Isaac aprobar perfiles y estrategias antes de generar un catálogo sin firmar. La sincronización remota, la firma y la publicación siguen detrás de sus gates humanos.
+- cuerpo.en: A local cycle predigests bundles, prepares an LLM report without raw data or identifiers, and lets Isaac approve profiles and strategies before generating an unsigned catalogue. Remote synchronization, signing and publication remain behind their human gates.
+- cuerpo.pt: Um ciclo local pré-digere os bundles, prepara para o LLM um relatório sem dados brutos nem identificadores e deixa Isaac aprovar perfis e estratégias antes de gerar um catálogo sem assinatura. A sincronização remota, a assinatura e a publicação continuam atrás dos seus gates humanos.
+- cuerpo.it: Un ciclo locale predigerisce i bundle, prepara per l'LLM un rapporto senza dati grezzi né identificatori e lascia a Isaac l'approvazione di profili e strategie prima di generare un catalogo non firmato. Sincronizzazione remota, firma e pubblicazione restano dietro i rispettivi gate umani.
+- etiqueta: Feature
+
 ### Registros y últimos eventos en Diagnóstico
 
 - id: diagnostics-logs

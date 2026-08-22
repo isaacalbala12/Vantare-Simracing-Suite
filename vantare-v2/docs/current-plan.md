@@ -1,3 +1,17 @@
+Nota ISA-774 / ISA-694 F6-e (2026-08-22, implementada en rama de issue):
+- `scripts/Invoke-VantareEditorialCycle.ps1` encadena curador, informe
+  allowlisted, plantilla cerrada, validación de la decisión y builder sin firma
+  en una carpeta local fechada. El dry-run usa solo bundles sintéticos y no
+  abre red.
+- `cmd/vantare-editorial` omite del informe digests, identidades, rechazos
+  detallados y entornos no productivos. La decisión referencia rangos visibles;
+  el comando resuelve después los digests y emite
+  `vantare.catalog.selection.v1` solo para producción con `k>=3`.
+- Prompt y runbook fijan que el LLM solo cura/redacta y que Isaac decide. La
+  sincronización del Worker, firma offline y primera publicación siguen tras
+  sus gates humanos. Sin PR, integración, promoción ni release; pendiente
+  review de #774.
+
 Nota ISA-773 / ISA-694 F6-f (2026-08-22, implementada en rama de issue):
 - `cmd/vantare-catalog` compone un payload determinista desde el resumen v2
   del curador y una selección cerrada aprobada; solo admite

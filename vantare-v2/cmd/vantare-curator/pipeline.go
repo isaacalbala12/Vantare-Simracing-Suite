@@ -614,14 +614,22 @@ func normalizedRaceCase(combinationID string, strategy curation.ObservedStrategy
 	input := solver.SolverInputV2{
 		ContractVersion: solver.SolverContractVersionV2,
 		RaceLaps:        int64(raceLaps),
-		BaseLapSeconds:  baseLapSeconds,
+		BaseLapSeconds:  normalizedReferenceScalar(baseLapSeconds, "base-lap"),
 		PitCost: solver.PitCostModel{
-			TransitSeconds:  pitDuration,
-			RefuelRateLPerS: 1,
-			VERatePPerS:     1,
+			TransitSeconds:  normalizedReferenceScalar(pitDuration, "pit-transit"),
+			RefuelRateLPerS: normalizedReferenceScalar(1, "refuel-rate"),
+			VERatePPerS:     normalizedReferenceScalar(1, "ve-rate"),
+			TyreSeconds:     normalizedReferenceScalar(0, "tyre-service"),
 			ServiceMode:     manual.PitServiceSequential,
 		},
-		Budget: solver.ComputeBudget{P95Millis: 10_000},
+		Formation:          solver.Formation{Seconds: normalizedReferenceScalar(0, "formation"), Presence: string(sp.PresenceValid)},
+		Budget:             solver.ComputeBudget{P95Millis: 10_000},
+		FuelCapacityLiters: normalizedReferenceScalar(0, "fuel-capacity"),
+		VECapacityPercent:  normalizedReferenceScalar(0, "ve-capacity"),
+		TyreLifeLaps:       normalizedReferenceScalar(0, "tyre-life"),
+		FuelPerLapLiters:   normalizedReferenceScalar(0, "fuel-per-lap"),
+		VEPerLapPercent:    normalizedReferenceScalar(0, "ve-per-lap"),
+		DegradationPerLap:  normalizedReferenceScalar(0, "degradation"),
 	}
 	return backtest.RaceCase{
 		RaceID:              observed.SessionID,
@@ -632,6 +640,15 @@ func normalizedRaceCase(combinationID string, strategy curation.ObservedStrategy
 		RealizedInput:       input,
 		Observed:            observed,
 	}, nil
+}
+
+func normalizedReferenceScalar(value float64, field string) solver.ScalarInput {
+	return solver.NewSourcedScalar(
+		value,
+		sp.Provenance{Kind: sp.ProvenanceReference, SourceID: "vantare-curator:" + scoreBasis + ":" + field},
+		sp.Confidence{SampleSize: 0, ComputationVersion: summaryContractVersion},
+		solver.ScalarRoleFallback,
+	)
 }
 
 func sortedEnvironmentNames() []string {

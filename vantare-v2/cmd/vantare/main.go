@@ -36,6 +36,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/startup"
 	"github.com/vantare/overlays/v2/internal/storage"
 	strategyapplication "github.com/vantare/overlays/v2/internal/strategy/application"
+	strategycatalog "github.com/vantare/overlays/v2/internal/strategy/catalog"
 	"github.com/vantare/overlays/v2/internal/strategy/curation"
 	strategymanual "github.com/vantare/overlays/v2/internal/strategy/manual"
 	strategyrepository "github.com/vantare/overlays/v2/internal/strategy/repository"
@@ -77,6 +78,9 @@ var (
 	// build admission token later; normal builds contain neither and cannot send.
 	curationWorkerURL           = ""
 	curationBuildAdmissionToken = ""
+	// Empty by default: F5-e consumes the signed TEST fixture locally until
+	// Isaac explicitly publishes and configures the first real catalog.
+	strategyCatalogURL = ""
 )
 
 func protectedStoreTargets(channel, backendURL string) (clockTarget, authTarget string) {
@@ -1240,7 +1244,12 @@ func main() {
 	} else if repo, openErr := strategyrepository.Open[json.RawMessage](strategyRoot, strategyrepository.Options{}); openErr != nil {
 		log.Printf("warning: Strategy repository could not be opened: %v", openErr)
 	} else {
-		strategyBridge = strategyapplication.NewJSONBridge(strategyapplication.NewServiceWithSessionCatalog(repo, telemetryanalysis.NewSessionCatalog(nil)))
+		referenceCatalog := strategycatalog.NewConsumer(strategycatalog.ConsumerOptions{
+			StatePath: filepath.Join(strategyRoot, "reference-catalog-state.json"),
+			URL:       strategyCatalogURL, Fixture: strategycatalog.FixtureSignedV1,
+			TrustedKeys: strategycatalog.FixtureTrustedKeys(), MinEpoch: "2026-08-a", MinVersion: 1,
+		})
+		strategyBridge = strategyapplication.NewJSONBridge(strategyapplication.NewServiceWithSources(repo, telemetryanalysis.NewSessionCatalog(nil), nil, referenceCatalog))
 	}
 	app.NewStrategyApplicationBridge(ctx, strategyBridge, emitter).RegisterHandlers(wailsApp)
 	var curationUploadService *curation.UploadService

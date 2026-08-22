@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/vantare/overlays/v2/internal/strategy/backtest"
+	strategycatalog "github.com/vantare/overlays/v2/internal/strategy/catalog"
 	"github.com/vantare/overlays/v2/internal/strategy/contract"
 	strategydocument "github.com/vantare/overlays/v2/internal/strategy/document"
 	"github.com/vantare/overlays/v2/internal/strategy/packaging"
@@ -43,6 +44,7 @@ const (
 	OperationListSessionCombinations Operation = "list_session_combinations"
 	OperationGetEventPlanningInputs  Operation = "get_event_planning_inputs"
 	OperationGetValidatedExamples    Operation = "get_validated_examples"
+	OperationListReferenceCatalog    Operation = "list_reference_catalog"
 	OperationPreviewLegacyMigration  Operation = "preview_legacy_migration"
 	OperationMigrateLegacy           Operation = "migrate_legacy"
 	OperationRollbackLegacyMigration Operation = "rollback_legacy_migration"
@@ -135,6 +137,8 @@ type GetValidatedExamplesCommand struct {
 	CommandHeader
 	EventID strategydocument.EventID `json:"eventId"`
 }
+
+type ListReferenceCatalogCommand struct{ CommandHeader }
 
 type ValidatedExamplesStatus string
 
@@ -514,6 +518,7 @@ type Result[T any] struct {
 	PlanningInputStatus  PlanningInputStatus                  `json:"planningInputStatus,omitempty"`
 	PlanningInputs       *strategydocument.PlanningInputs     `json:"planningInputs,omitempty"`
 	ValidatedExamples    *ValidatedExamplesResult             `json:"validatedExamples,omitempty"`
+	ReferenceCatalog     *strategycatalog.ConsumerResult      `json:"referenceCatalog,omitempty"`
 	LegacyMigration      *LegacyMigrationPreview              `json:"legacyMigration,omitempty"`
 	// Package carries exported bytes. Import returns no package.
 	Package []byte `json:"package,omitempty"`

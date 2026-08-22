@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/vantare/overlays/v2/internal/strategy/backtest"
+	strategycatalog "github.com/vantare/overlays/v2/internal/strategy/catalog"
 	"github.com/vantare/overlays/v2/internal/strategy/contract"
 	"github.com/vantare/overlays/v2/internal/strategy/repository"
 	"github.com/vantare/overlays/v2/internal/telemetryanalysis"
@@ -32,13 +33,18 @@ type raceCasePort interface {
 	ListRaceCases(context.Context, string) ([]backtest.RaceCase, error)
 }
 
+type referenceCatalogPort interface {
+	Load(context.Context) (strategycatalog.ConsumerResult, error)
+}
+
 // Service is the only application facade for Strategy documents. The
 // repository remains the authority for persisted drafts/revisions; transient
 // editor history belongs to the frontend store.
 type Service[T any] struct {
-	repository     repositoryPort[T]
-	sessionCatalog sessionCatalogPort
-	raceCases      raceCasePort
+	repository       repositoryPort[T]
+	sessionCatalog   sessionCatalogPort
+	raceCases        raceCasePort
+	referenceCatalog referenceCatalogPort
 }
 
 func NewService[T any](repo repositoryPort[T]) *Service[T] {
@@ -46,11 +52,15 @@ func NewService[T any](repo repositoryPort[T]) *Service[T] {
 }
 
 func NewServiceWithSessionCatalog[T any](repo repositoryPort[T], catalog sessionCatalogPort) *Service[T] {
-	return &Service[T]{repository: repo, sessionCatalog: catalog}
+	return NewServiceWithSources(repo, catalog, nil, nil)
 }
 
 func NewServiceWithSessionCatalogAndRaceCases[T any](repo repositoryPort[T], catalog sessionCatalogPort, races raceCasePort) *Service[T] {
-	return &Service[T]{repository: repo, sessionCatalog: catalog, raceCases: races}
+	return NewServiceWithSources(repo, catalog, races, nil)
+}
+
+func NewServiceWithSources[T any](repo repositoryPort[T], sessions sessionCatalogPort, races raceCasePort, references referenceCatalogPort) *Service[T] {
+	return &Service[T]{repository: repo, sessionCatalog: sessions, raceCases: races, referenceCatalog: references}
 }
 
 func (service *Service[T]) Create(ctx context.Context, command CreateCommand[T]) (Result[T], error) {

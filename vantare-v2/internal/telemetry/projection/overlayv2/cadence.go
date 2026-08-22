@@ -26,6 +26,7 @@ const (
 	SectionStandings
 	SectionFuel
 	SectionDamage
+	SectionWeather
 	SectionCapabilities
 
 	sectionCount = 10
@@ -41,6 +42,7 @@ var sectionNames = [sectionCount]string{
 	SectionStandings:    "standings",
 	SectionFuel:         "fuel",
 	SectionDamage:       "damage",
+	SectionWeather:      "weather",
 	SectionCapabilities: "capabilities",
 }
 
@@ -57,6 +59,7 @@ func AllSections() []Section {
 	return []Section{
 		SectionPlayer, SectionControls, SectionDelta, SectionRelative, SectionSpotter,
 		SectionSession, SectionStandings, SectionFuel, SectionDamage, SectionCapabilities,
+		SectionSession, SectionStandings, SectionFuel, SectionWeather, SectionCapabilities,
 	}
 }
 
@@ -259,6 +262,7 @@ type SectionBuilders struct {
 	Standings    func(final derive.FinalState, preferences PreferencesV2, source SourceContextV2) []StandingRowV2
 	Fuel         func(final derive.FinalState, preferences PreferencesV2, source SourceContextV2) FuelViewV2
 	Damage       func(final derive.FinalState, preferences PreferencesV2, source SourceContextV2) DamageViewV2
+	Weather      func(final derive.FinalState, preferences PreferencesV2, source SourceContextV2) WeatherV2
 	Capabilities func(final derive.FinalState, preferences PreferencesV2, source SourceContextV2) CapabilitiesV2
 }
 
@@ -294,6 +298,8 @@ func DefaultSectionBuilders() SectionBuilders {
 		},
 		Damage: func(final derive.FinalState, _ PreferencesV2, _ SourceContextV2) DamageViewV2 {
 			return BuildDamage(final)
+		Weather: func(final derive.FinalState, _ PreferencesV2, _ SourceContextV2) WeatherV2 {
+			return BuildWeather(final)
 		},
 	}
 }
@@ -363,6 +369,8 @@ func NewCachedProjectorWithBuilders(cadence SectionCadence, builders SectionBuil
 	}
 	if builders.Damage == nil {
 		builders.Damage = defaults.Damage
+	if builders.Weather == nil {
+		builders.Weather = defaults.Weather
 	}
 	if builders.Capabilities == nil {
 		builders.Capabilities = defaults.Capabilities
@@ -464,6 +472,8 @@ func (projector *CachedProjector) Project(
 	}
 	if plan.Rebuild(SectionDamage) {
 		frame.Damage = projector.builders.Damage(final, preferences, source)
+	if plan.Rebuild(SectionWeather) {
+		frame.Weather = projector.builders.Weather(final, preferences, source)
 	}
 	if plan.Rebuild(SectionCapabilities) {
 		frame.Capabilities = projector.builders.Capabilities(final, preferences, source)

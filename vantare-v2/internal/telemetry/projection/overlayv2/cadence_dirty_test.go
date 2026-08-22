@@ -67,12 +67,16 @@ func TestStandingsDirtySignalIgnoresUnprojectedChanges(t *testing.T) {
 	}{
 		{name: "identical frame", mutate: func(*derive.FinalState) {}},
 		{
-			name:   "engine rpm is not projected",
-			mutate: func(state *derive.FinalState) { state.Observed.Vehicles[0].EngineRPM = builderPresent(vehicle.EngineRPM(9000)) },
+			name: "engine rpm is not projected",
+			mutate: func(state *derive.FinalState) {
+				state.Observed.Vehicles[0].EngineRPM = builderPresent(vehicle.EngineRPM(9000))
+			},
 		},
 		{
-			name:   "best lap time is not projected",
-			mutate: func(state *derive.FinalState) { state.Observed.Vehicles[1].BestLapTime = builderPresent(standings.LapTime(88.1)) },
+			name: "best lap time is not projected",
+			mutate: func(state *derive.FinalState) {
+				state.Observed.Vehicles[1].BestLapTime = builderPresent(standings.LapTime(88.1))
+			},
 		},
 		{
 			name: "order changes",
@@ -90,14 +94,18 @@ func TestStandingsDirtySignalIgnoresUnprojectedChanges(t *testing.T) {
 			dirty: true,
 		},
 		{
-			name:   "gap beyond the wire precision",
-			mutate: func(state *derive.FinalState) { state.Observed.Vehicles[1].TimeBehindLeader = builderPresent(standings.TimeGap(1.5000001)) },
-			dirty:  true,
+			name: "gap beyond the wire precision",
+			mutate: func(state *derive.FinalState) {
+				state.Observed.Vehicles[1].TimeBehindLeader = builderPresent(standings.TimeGap(1.5000001))
+			},
+			dirty: true,
 		},
 		{
-			name:   "class changes",
-			mutate: func(state *derive.FinalState) { state.Observed.Vehicles[1].VehicleClass = builderPresent(standings.VehicleClass("lmp2")) },
-			dirty:  true,
+			name: "class changes",
+			mutate: func(state *derive.FinalState) {
+				state.Observed.Vehicles[1].VehicleClass = builderPresent(standings.VehicleClass("lmp2"))
+			},
+			dirty: true,
 		},
 		{
 			name:   "pit state changes",
@@ -116,14 +124,18 @@ func TestStandingsDirtySignalIgnoresUnprojectedChanges(t *testing.T) {
 			dirty: true,
 		},
 		{
-			name:   "driver name changes",
-			mutate: func(state *derive.FinalState) { state.Observed.Vehicles[2].DriverName = builderPresent(identity.DriverName("Otra")) },
-			dirty:  true,
+			name: "driver name changes",
+			mutate: func(state *derive.FinalState) {
+				state.Observed.Vehicles[2].DriverName = builderPresent(identity.DriverName("Otra"))
+			},
+			dirty: true,
 		},
 		{
-			name:   "completed laps change",
-			mutate: func(state *derive.FinalState) { state.Observed.Vehicles[2].CompletedLaps = builderPresent(standings.CompletedLaps(11)) },
-			dirty:  true,
+			name: "completed laps change",
+			mutate: func(state *derive.FinalState) {
+				state.Observed.Vehicles[2].CompletedLaps = builderPresent(standings.CompletedLaps(11))
+			},
+			dirty: true,
 		},
 	}
 
@@ -147,10 +159,16 @@ func TestStandingsDirtySignalMatchesTheBuiltRows(t *testing.T) {
 
 	mutations := []func(state *derive.FinalState){
 		func(*derive.FinalState) {},
-		func(state *derive.FinalState) { state.Observed.Vehicles[0].EngineRPM = builderPresent(vehicle.EngineRPM(9000)) },
-		func(state *derive.FinalState) { state.Observed.Vehicles[1].Position = builderPresent(standings.Position(3)) },
+		func(state *derive.FinalState) {
+			state.Observed.Vehicles[0].EngineRPM = builderPresent(vehicle.EngineRPM(9000))
+		},
+		func(state *derive.FinalState) {
+			state.Observed.Vehicles[1].Position = builderPresent(standings.Position(3))
+		},
 		func(state *derive.FinalState) { state.Observed.Vehicles[1].InPit = builderPresent(pit.InPit(true)) },
-		func(state *derive.FinalState) { state.Observed.Vehicles[2].LastLapTime = builderPresent(standings.LapTime(90.0)) },
+		func(state *derive.FinalState) {
+			state.Observed.Vehicles[2].LastLapTime = builderPresent(standings.LapTime(90.0))
+		},
 		func(state *derive.FinalState) { state.Observed.Vehicles = state.Observed.Vehicles[:2] },
 	}
 	for index, mutate := range mutations {
@@ -198,8 +216,10 @@ func TestRelativeDirtySignalIgnoresUnprojectedChanges(t *testing.T) {
 	}{
 		{name: "identical frame", mutate: func(*derive.FinalState) {}},
 		{
-			name:   "engine rpm is not projected",
-			mutate: func(state *derive.FinalState) { state.Observed.Vehicles[0].EngineRPM = builderPresent(vehicle.EngineRPM(9000)) },
+			name: "engine rpm is not projected",
+			mutate: func(state *derive.FinalState) {
+				state.Observed.Vehicles[0].EngineRPM = builderPresent(vehicle.EngineRPM(9000))
+			},
 		},
 		{
 			name:   "world position is not projected",
@@ -324,7 +344,9 @@ func TestRelativeDirtySignalMatchesBuiltRows(t *testing.T) {
 	// Mutations that are unprojected should notDirty even if they touch gaps outside window? Check property: if rows change, dirty must be true.
 	mutations := []func(state *derive.FinalState){
 		func(*derive.FinalState) {},
-		func(state *derive.FinalState) { state.Observed.Vehicles[0].EngineRPM = builderPresent(vehicle.EngineRPM(9000)) },
+		func(state *derive.FinalState) {
+			state.Observed.Vehicles[0].EngineRPM = builderPresent(vehicle.EngineRPM(9000))
+		},
 		func(state *derive.FinalState) {
 			for index := range state.Derived.Gaps.Vehicles {
 				if string(state.Derived.Gaps.Vehicles[index].Vehicle) == "vehicle-001" {
@@ -420,7 +442,7 @@ func TestStandingsRelativeStayFreshUnderRegulatedCadence(t *testing.T) {
 	origin := time.Date(2026, 8, 20, 12, 0, 0, 0, time.UTC)
 	// Mutations that touch standings and relative window, each on a distinct tick.
 	type mutation struct {
-		name string
+		name  string
 		apply func(state *derive.FinalState)
 	}
 	mutations := []mutation{

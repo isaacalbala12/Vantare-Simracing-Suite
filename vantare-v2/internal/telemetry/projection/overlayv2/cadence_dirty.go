@@ -81,8 +81,8 @@ func hashFieldBool[T ~bool](sum uint64, field schema.Field[T]) uint64 {
 // hashStandingsVehicle folds one vehicle exactly as BuildStandings projects it:
 // identity, position (value and freshness, which decides the sort and the
 // index fallback), class, driver name, gap to the leader in time and laps, pit
-// state, completed laps and last lap time. Gaps are folded bit for bit because
-// the v2 frame publishes them unquantized.
+// state, completed laps, last lap time, lap distance and world position (X,Z).
+// Gaps are folded bit for bit because the v2 frame publishes them unquantized.
 func hashStandingsVehicle(sum uint64, vehicle *core.VehicleState) uint64 {
 	sum = hashString(sum, string(vehicle.Identity.Vehicle))
 	sum = hashFieldInt32(sum, vehicle.Position)
@@ -92,7 +92,14 @@ func hashStandingsVehicle(sum uint64, vehicle *core.VehicleState) uint64 {
 	sum = hashFieldInt32(sum, vehicle.LapsBehindLeader)
 	sum = hashFieldBool(sum, vehicle.InPit)
 	sum = hashFieldInt32(sum, vehicle.CompletedLaps)
-	return hashFieldFloat(sum, vehicle.LastLapTime)
+	sum = hashFieldFloat(sum, vehicle.LastLapTime)
+	sum = hashFieldFloat(sum, vehicle.LapDistance)
+	sum = hashQuality(sum, vehicle.WorldPosition)
+	if value, present := vehicle.WorldPosition.Value(); present {
+		sum = hashUint64(sum, math.Float64bits(value.X))
+		sum = hashUint64(sum, math.Float64bits(value.Z))
+	}
+	return sum
 }
 
 func hashProvenance(sum uint64, provenance schema.Provenance) uint64 {

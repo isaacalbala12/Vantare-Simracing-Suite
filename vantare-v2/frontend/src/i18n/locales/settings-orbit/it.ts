@@ -14,6 +14,8 @@ export const settingsOrbitIt: Record<string, string> = {
   "settings.nav.hotkeysSub": "Combinazioni globali",
   "settings.nav.diagnostics": "Diagnostica",
   "settings.nav.diagnosticsSub": "Sorgenti, dati e registri",
+  "settings.search.placeholder": "Cerca impostazioni…",
+  "settings.search.empty": "Nessuna impostazione corrisponde alla tua ricerca.",
 
   "settings.sec.account.title": "Account",
   "settings.sec.account.lead": "La tua sessione, il tuo piano e ciò che include.",
@@ -120,7 +122,6 @@ export const settingsOrbitIt: Record<string, string> = {
   "settings.hk.lead":
     "Funzionano anche con Vantare in secondo piano. Premi una riga e poi la combinazione per riassegnarla; i conflitti sono in ambra.",
   "settings.hk.reset": "Ripristina tutte",
-  "settings.hk.save": "Salva",
   "settings.hk.noConflicts": "Nessun conflitto",
   "settings.hk.conflicts": "{{n}} in conflitto",
   "settings.hk.recording": "Premi la combinazione · Esc annulla",
@@ -165,6 +166,7 @@ export const settingsOrbitIt: Record<string, string> = {
   "settings.diag.prepare": "Prepara",
   "settings.diag.preparing": "Preparazione…",
   "settings.diag.reportReady": "Rapporto pronto · {{bytes}} · {{date}}",
+  "settings.diag.reportDownload": "Scarica rapporto",
   "settings.diag.reportError": "Non è stato possibile preparare il rapporto.",
   "settings.diag.events": "Ultimi eventi",
   "settings.diag.eventsMeta": "sessione corrente",

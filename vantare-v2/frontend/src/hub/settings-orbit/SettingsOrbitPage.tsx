@@ -62,6 +62,7 @@ import {
   createDiagnosticsClient,
   type DiagnosticsEventTransport,
 } from "../settings/diagnostics/diagnostics-client";
+import { createBrowserDiagnosticsActions } from "../settings/diagnostics/diagnostics-actions";
 import type { PreparedDiagnostics } from "../settings/diagnostics/contracts";
 import { DowngradeModal } from "../settings/DowngradeModal";
 import {
@@ -74,6 +75,7 @@ import {
   persistReduceMotion,
   persistSettingsSection,
   resolveSettingsSection,
+  searchSettings,
 } from "./settings-orbit-model";
 import "../../styles/orbit-settings.css";
 
@@ -142,6 +144,14 @@ export function SettingsOrbitPage({ target }: SettingsOrbitPageProps) {
     persistSettingsSection(next);
   }, []);
 
+  // Búsqueda de ajustes: mientras hay consulta, la columna muestra resultados
+  // en vez de las secciones; elegir uno navega y limpia la búsqueda.
+  const [searchQuery, setSearchQuery] = useState("");
+  const searchResults = useMemo(
+    () => searchSettings(searchQuery, (key) => t(key)),
+    [searchQuery, t],
+  );
+
   return (
     <div className="orbit-set" data-section={section} data-testid="orbit-settings">
       <header className="orbit-set__head">
@@ -175,18 +185,50 @@ export function SettingsOrbitPage({ target }: SettingsOrbitPageProps) {
                 <div className="orbit-block__head">
                   <span className="orbit-eyebrow">{t("settings.nav.sections")}</span>
                 </div>
-                <div className="orbit-list" data-testid="orbit-settings-context" role="tablist">
-                  {SETTINGS_SECTIONS.map((id) => (
-                    <ListRow
-                      ariaSelected={id === section}
-                      key={id}
-                      onClick={() => selectSection(id)}
-                      selected={id === section}
-                      subtitle={t(`settings.nav.${id}Sub`)}
-                      title={t(`settings.nav.${id}`)}
-                    />
-                  ))}
-                </div>
+                <input
+                  aria-label={t("settings.search.placeholder")}
+                  className="orbit-set-search"
+                  data-testid="orbit-settings-search"
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  placeholder={t("settings.search.placeholder")}
+                  type="search"
+                  value={searchQuery}
+                />
+                {searchQuery.trim() ? (
+                  searchResults.length > 0 ? (
+                    <div
+                      className="orbit-list"
+                      data-testid="orbit-settings-search-results"
+                    >
+                      {searchResults.map((entry) => (
+                        <ListRow
+                          key={`${entry.section}:${entry.key}`}
+                          onClick={() => {
+                            selectSection(entry.section);
+                            setSearchQuery("");
+                          }}
+                          subtitle={t(`settings.nav.${entry.section}`)}
+                          title={t(entry.key)}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <Note>{t("settings.search.empty")}</Note>
+                  )
+                ) : (
+                  <div className="orbit-list" data-testid="orbit-settings-context" role="tablist">
+                    {SETTINGS_SECTIONS.map((id) => (
+                      <ListRow
+                        ariaSelected={id === section}
+                        key={id}
+                        onClick={() => selectSection(id)}
+                        selected={id === section}
+                        subtitle={t(`settings.nav.${id}Sub`)}
+                        title={t(`settings.nav.${id}`)}
+                      />
+                    ))}
+                  </div>
+                )}
               </section>
             </div>,
             contextSlot,
@@ -810,14 +852,6 @@ function HotkeysSection() {
           <Button data-testid="orbit-settings-hk-reset" onClick={app.resetHotkeys} size="sm">
             {t("settings.hk.reset")}
           </Button>
-          <Button
-            data-testid="orbit-settings-hk-save"
-            onClick={app.saveHotkeys}
-            size="sm"
-            variant="primary"
-          >
-            {t("settings.hk.save")}
-          </Button>
           <span data-testid="orbit-settings-hk-status">
             <SubtleStatus tone={conflicts.size > 0 ? "attn" : "ok"}>
               {conflicts.size > 0
@@ -995,6 +1029,7 @@ function DiagnosticsSection() {
       } satisfies DiagnosticsEventTransport),
     [],
   );
+  const diagnosticsActions = useMemo(() => createBrowserDiagnosticsActions(), []);
 
   // `ops:metrics` lo emite el backend cada pocos segundos (`internal/app/ops_bridge.go`).
   useEffect(() => {
@@ -1145,14 +1180,28 @@ function DiagnosticsSection() {
             />
           </div>
           {report.kind === "ready" ? (
-            <SubtleStatus tone="ok">
-              {formatMessage(t("settings.diag.reportReady"), {
-                bytes: formatBytes(report.prepared.byteSize),
-                date: new Intl.DateTimeFormat(locale, { timeStyle: "medium" }).format(
-                  new Date(report.prepared.generatedAtUtc),
-                ),
-              })}
-            </SubtleStatus>
+            <>
+              <SubtleStatus tone="ok">
+                {formatMessage(t("settings.diag.reportReady"), {
+                  bytes: formatBytes(report.prepared.byteSize),
+                  date: new Intl.DateTimeFormat(locale, { timeStyle: "medium" }).format(
+                    new Date(report.prepared.generatedAtUtc),
+                  ),
+                })}
+              </SubtleStatus>
+              {/* El informe solo sirve si puede salir de la app: la acción de
+                  descarga ya existía y estaba probada, esta fila es quien la
+                  ofrecía y había quedado sin dueño en el porte a Orbit. */}
+              <div>
+                <Button
+                  data-testid="orbit-settings-report-download"
+                  onClick={() => diagnosticsActions.download(report.prepared)}
+                  size="sm"
+                >
+                  {t("settings.diag.reportDownload")}
+                </Button>
+              </div>
+            </>
           ) : null}
           {report.kind === "error" ? (
             <SubtleStatus tone="attn">{t("settings.diag.reportError")}</SubtleStatus>

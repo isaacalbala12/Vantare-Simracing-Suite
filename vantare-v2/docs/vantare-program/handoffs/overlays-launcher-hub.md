@@ -10,6 +10,18 @@
 
 ## Estado
 
+- **Ajustes Orbit: autosave de atajos, descarga de informe y búsqueda
+  (2026-08-22, en rama):** tres mejoras de la pantalla Ajustes sobre
+  `origin/nightly@4ec98fea`, rama `vantareapp/isa-767-ajustes-orbit-autosave-informe-busqueda`,
+  PR draft **#768** hacia `nightly`: (1) los atajos se guardan al grabarlos sin
+  botón «Guardar»; (2) botón de descarga del informe de diagnóstico preparado
+  (la acción `download` existía testeada pero ninguna pantalla la ofrecía);
+  (3) búsqueda de ajustes en la columna de contexto con índice de filas reales,
+  matching sin diacríticos y navegación al resultado. Gates locales PASS:
+  frontend 2883/2883, typecheck, lint y build. Hallazgos diferidos documentados
+  como issues #762 (más hotkeys requieren backend Go), #763 (cerrar a bandeja,
+  no hay tray) y #764 (decidir telemetría de producto; no existe analytics).
+  Sin integración ni promoción; pendiente review de Isaac.
 - **Hub: porte Command Orbit completo en Nightly (2026-08-19).** El hub de
   escritorio migró a la shell **Command Orbit v0.3** (`docs/design/orbit-v03/`):
   integrado en `nightly` con el commit `af2c90d1` (PR #279) en la release

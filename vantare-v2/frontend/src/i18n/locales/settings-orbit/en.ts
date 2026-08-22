@@ -14,6 +14,8 @@ export const settingsOrbitEn: Record<string, string> = {
   "settings.nav.hotkeysSub": "Global combinations",
   "settings.nav.diagnostics": "Diagnostics",
   "settings.nav.diagnosticsSub": "Sources, data and logs",
+  "settings.search.placeholder": "Search settings…",
+  "settings.search.empty": "No settings match your search.",
 
   "settings.sec.account.title": "Account",
   "settings.sec.account.lead": "Your session, your plan and what it includes.",
@@ -120,7 +122,6 @@ export const settingsOrbitEn: Record<string, string> = {
   "settings.hk.lead":
     "They work while Vantare is in the background. Click a row and then press the combination to rebind it; conflicts are marked in amber.",
   "settings.hk.reset": "Reset all",
-  "settings.hk.save": "Save",
   "settings.hk.noConflicts": "No conflicts",
   "settings.hk.conflicts": "{{n}} in conflict",
   "settings.hk.recording": "Press the combination · Esc cancels",
@@ -165,6 +166,7 @@ export const settingsOrbitEn: Record<string, string> = {
   "settings.diag.prepare": "Prepare",
   "settings.diag.preparing": "Preparing…",
   "settings.diag.reportReady": "Report ready · {{bytes}} · {{date}}",
+  "settings.diag.reportDownload": "Download report",
   "settings.diag.reportError": "The report could not be prepared.",
   "settings.diag.events": "Latest events",
   "settings.diag.eventsMeta": "current session",

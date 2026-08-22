@@ -90,7 +90,129 @@ func calculateOrbit(input OrbitCalculationInput) (OrbitCalculationResult, error)
 			input.Drivers,
 		)
 	}
+	if len(input.WeatherScenarios) > 0 {
+		weatherResult, err := calculateOrbitWeather(input, drivers, variants[input.ActiveVariantID])
+		if err != nil {
+			return OrbitCalculationResult{}, err
+		}
+		result.Weather = &weatherResult
+	}
 	return result, nil
+}
+
+func calculateOrbitWeather(input OrbitCalculationInput, drivers map[string]OrbitCalculationDriver, variant OrbitCalculationVariant) (OrbitWeatherResult, error) {
+	if len(variant.Order) == 0 {
+		return OrbitWeatherResult{}, calculationApplicationError(ErrorCalculationInvalid, "input.activeVariantId", ErrCalculationInvalid)
+	}
+	dryPaceTotal, dryFuelTotal, wetPaceTotal, wetFuelTotal := 0.0, 0.0, 0.0, 0.0
+	for _, driverID := range variant.Order {
+		driver := drivers[driverID]
+		dry, err := orbitPace(driver, "dry")
+		if err != nil {
+			return OrbitWeatherResult{}, calculationApplicationError(ErrorCalculationInvalid, "input.weatherScenarios", err)
+		}
+		wet, err := orbitPace(driver, "wet")
+		if err != nil {
+			return OrbitWeatherResult{}, calculationApplicationError(ErrorCalculationInvalid, "input.weatherScenarios", err)
+		}
+		dryPaceTotal += dry.PaceSeconds
+		dryFuelTotal += dry.FuelLitersPerLap
+		wetPaceTotal += wet.PaceSeconds
+		wetFuelTotal += wet.FuelLitersPerLap
+	}
+	count := float64(len(variant.Order))
+	dryPace, dryFuel := dryPaceTotal/count, dryFuelTotal/count
+	wetPace, wetFuel := wetPaceTotal/count, wetFuelTotal/count
+	effectivePace := effectivePlanningValue(input.PlanningInputs, strategydocument.PlanningInputPace, dryPace)
+	effectiveFuel := effectivePlanningValue(input.PlanningInputs, strategydocument.PlanningInputFuelPerLap, dryFuel)
+
+	tracing := manual.Evidence{
+		Provenance: contract.Provenance{Kind: contract.ProvenanceManual, SourceID: "strategy.orbit.weather"},
+		Confidence: contract.Confidence{Level: contract.ConfidenceHigh, Basis: "validated Orbit weather input"},
+	}
+	duration, err := contract.NewDurationSeconds(input.Event.DurationMinutes * 60)
+	if err != nil {
+		return OrbitWeatherResult{}, calculationApplicationError(ErrorCalculationInvalid, "input.event.durationMinutes", err)
+	}
+	averageLap, err := contract.NewDurationSeconds(effectivePace)
+	if err != nil {
+		return OrbitWeatherResult{}, calculationApplicationError(ErrorCalculationInvalid, "input.weatherScenarios", err)
+	}
+	zeroDuration, _ := contract.NewDurationSeconds(0)
+	zeroLaps, _ := contract.NewLapCount(0)
+	race, err := manual.CalculateRace(manual.RaceInput{
+		Kind: manual.RaceByTime, Duration: manual.Sourced[contract.DurationSeconds]{Value: duration, Evidence: tracing},
+		AverageLap:    manual.Sourced[contract.DurationSeconds]{Value: averageLap, Evidence: tracing},
+		FormationLaps: manual.Sourced[contract.LapCount]{Value: zeroLaps, Evidence: tracing},
+		PitLoss:       manual.Sourced[contract.DurationSeconds]{Value: zeroDuration, Evidence: tracing}, TimedFinish: manual.TimedFinishCurrentLap, Selection: tracing,
+	})
+	if err != nil {
+		return OrbitWeatherResult{}, mapOrbitCalculationError(err, "input.event")
+	}
+
+	parameters := []solver.WeatherBucketParameter{
+		orbitWeatherBucketParameter(strategyprojection.ClimateBucketHumid, 0, dryFuel, input.PlanningInputs),
+		orbitWeatherBucketParameter(strategyprojection.ClimateBucketWet, wetPace-dryPace, wetFuel, input.PlanningInputs),
+	}
+	weighted := make([]solver.WeightedWeatherScenario, len(input.WeatherScenarios))
+	for index, scenario := range input.WeatherScenarios {
+		weighted[index] = solver.WeightedWeatherScenario{Scenario: scenario.Scenario, Weight: scenario.Weight}
+	}
+	solved, err := solver.SolveWeatherScenarios(
+		orbitSolverInput(race.CompetitiveLaps.Value(), input.Event, effectivePace, effectiveFuel, input.PlanningInputs),
+		solver.WeatherScenarioSet{Scenarios: weighted, BucketParameters: parameters},
+	)
+	if err != nil {
+		return OrbitWeatherResult{}, mapOrbitCalculationError(err, "input.weatherScenarios")
+	}
+	result := OrbitWeatherResult{Plans: make([]OrbitWeatherScenarioPlan, 0, len(solved.Plans))}
+	for _, plan := range solved.Plans {
+		result.Plans = append(result.Plans, OrbitWeatherScenarioPlan{
+			ScenarioID: plan.ScenarioID, Weight: plan.Weight, TotalSeconds: plan.Result.Expected.TotalSeconds,
+			Stops: len(plan.Result.Best.PitStops), Stints: orbitWeatherStints(plan.Result.Best.Stints), Timeline: orbitWeatherTimeline(plan.Timeline),
+		})
+	}
+	result.Robust = OrbitWeatherRobustRecommendation{
+		Method: solved.Robust.Method, MaxRegretSeconds: solved.Robust.MaxRegretSeconds,
+		WeightedExpectedLossSeconds: solved.Robust.WeightedExpectedLossSeconds, Stints: orbitWeatherStints(solved.Robust.Decision.Stints),
+	}
+	return result, nil
+}
+
+func orbitWeatherBucketParameter(bucket strategyprojection.ClimateBucket, paceDelta, fuel float64, planning *strategydocument.PlanningInputs) solver.WeatherBucketParameter {
+	parameter := solver.WeatherBucketParameter{
+		Bucket: bucket, PaceDeltaSeconds: paceDelta,
+		Provenance: strategyprojection.Provenance{Kind: strategyprojection.ProvenanceManual, SourceID: "strategy.orbit.weather." + string(bucket)},
+		Confidence: strategyprojection.Confidence{SampleSize: 1, ComputationVersion: "orbit-weather.v1"},
+	}
+	if !orbitHasDerivedWeatherFuel(planning, bucket) {
+		parameter.FuelPerLapLiters = &fuel
+	}
+	return parameter
+}
+
+func orbitHasDerivedWeatherFuel(planning *strategydocument.PlanningInputs, bucket strategyprojection.ClimateBucket) bool {
+	if planning == nil || planning.Projection == nil || planning.Projection.FuelConsumption.Presence != strategyprojection.PresenceValid {
+		return false
+	}
+	value, ok := planning.Projection.FuelConsumption.ByClimateBucket[bucket]
+	return ok && value > 0
+}
+
+func orbitWeatherStints(stints []solver.StintDecision) []OrbitWeatherStint {
+	result := make([]OrbitWeatherStint, 0, len(stints))
+	for _, stint := range stints {
+		result = append(result, OrbitWeatherStint{Index: stint.Index, Laps: stint.Laps, Compound: string(stint.Compound)})
+	}
+	return result
+}
+
+func orbitWeatherTimeline(timeline []solver.WeatherLapCondition) []OrbitWeatherLapCondition {
+	result := make([]OrbitWeatherLapCondition, 0, len(timeline))
+	for _, condition := range timeline {
+		result = append(result, OrbitWeatherLapCondition{Lap: condition.Lap, RainChance: condition.RainChance, Bucket: string(condition.Bucket)})
+	}
+	return result
 }
 
 func calculateOrbitPlan(event OrbitCalculationEvent, drivers map[string]OrbitCalculationDriver, variant OrbitCalculationVariant, variantIndex int, planning *strategydocument.PlanningInputs) (OrbitCalculationPlan, error) {

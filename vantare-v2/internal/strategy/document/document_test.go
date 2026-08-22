@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"testing"
 	"time"
+
+	"github.com/vantare/overlays/v2/internal/strategy/weather"
 )
 
 func TestStrategyDocumentV2_Validate_FullFromOrbit(t *testing.T) {
@@ -68,6 +70,40 @@ func TestStrategyDocumentV2CombinationReferenceIsAdditiveAndValidated(t *testing
 	reloaded.Events[0].Combination.Sessions = append(reloaded.Events[0].Combination.Sessions, SessionSelection{SessionID: "race-1"})
 	if err := reloaded.Validate(); err == nil {
 		t.Fatal("duplicate session accepted")
+	}
+}
+
+func TestStrategyDocumentV2WeatherScenariosPersistWithWeights(t *testing.T) {
+	doc := validDocumentV2(t)
+	doc.Events[0].Combination = &CombinationReference{CombinationID: "lmu:combination", Sessions: []SessionSelection{}}
+	now := doc.GeneratedAt
+	nodes := [5]weather.WeatherNode{}
+	progress := [5]weather.WeatherNodeProgress{weather.NodeStart, weather.Node25, weather.Node50, weather.Node75, weather.NodeFinish}
+	for index := range nodes {
+		nodes[index] = weather.WeatherNode{Progress: progress[index], RainChance: float64(index * 25), Sky: weather.SkyOvercast, AirTempC: 18, TrackTempC: 22}
+	}
+	doc.Events[0].WeatherScenarios = []WeightedWeatherScenario{{
+		Weight: 0.65,
+		Scenario: weather.WeatherScenarioV1{
+			ContractVersion: weather.ContractVersionWeatherScenarioV1,
+			ScenarioID:      "rain-late", CombinationID: "lmu:combination", GeneratedAt: now, Nodes: nodes,
+			Provenance: weather.CaptureProvenance{Source: "manual", CapturedAt: now, FreshUntil: now.Add(time.Nanosecond), SessionType: "manual", SignalFreshness: "manual"},
+		},
+	}}
+	if err := doc.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := json.Marshal(doc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var reloaded StrategyDocumentV2
+	if err := json.Unmarshal(raw, &reloaded); err != nil || len(reloaded.Events[0].WeatherScenarios) != 1 || reloaded.Events[0].WeatherScenarios[0].Weight != 0.65 {
+		t.Fatalf("reloaded weather = %+v, error = %v", reloaded.Events[0].WeatherScenarios, err)
+	}
+	reloaded.Events[0].WeatherScenarios[0].Weight = 0
+	if err := reloaded.Validate(); err == nil {
+		t.Fatal("zero weather weight accepted")
 	}
 }
 

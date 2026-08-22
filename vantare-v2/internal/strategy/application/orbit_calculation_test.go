@@ -9,11 +9,66 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
+	"time"
 
 	strategydocument "github.com/vantare/overlays/v2/internal/strategy/document"
 	"github.com/vantare/overlays/v2/internal/strategy/solver"
+	"github.com/vantare/overlays/v2/internal/strategy/weather"
 	"github.com/vantare/overlays/v2/internal/telemetryanalysis/strategyprojection"
 )
+
+func TestCalculateOrbitWeatherChangesPlanAndPublishesRobustMetrics(t *testing.T) {
+	now := time.Date(2026, 8, 22, 12, 0, 0, 0, time.UTC)
+	scenario := func(id string, rain [5]float64, weight float64) strategydocument.WeightedWeatherScenario {
+		progress := [5]weather.WeatherNodeProgress{weather.NodeStart, weather.Node25, weather.Node50, weather.Node75, weather.NodeFinish}
+		nodes := [5]weather.WeatherNode{}
+		for index := range nodes {
+			nodes[index] = weather.WeatherNode{Progress: progress[index], RainChance: rain[index], Sky: weather.SkyOvercast, AirTempC: 18, TrackTempC: 22}
+		}
+		return strategydocument.WeightedWeatherScenario{Weight: weight, Scenario: weather.WeatherScenarioV1{
+			ContractVersion: weather.ContractVersionWeatherScenarioV1,
+			ScenarioID:      id, CombinationID: "manual:event-1", GeneratedAt: now, Nodes: nodes,
+			Provenance: weather.CaptureProvenance{Source: "manual", CapturedAt: now, FreshUntil: now.Add(time.Nanosecond), SessionType: "manual", SignalFreshness: "manual"},
+		}}
+	}
+	result, err := calculateOrbit(OrbitCalculationInput{
+		Event: OrbitCalculationEvent{DurationMinutes: 10, TankLiters: 6, PitLossSeconds: 10},
+		Drivers: []OrbitCalculationDriver{{
+			ID: "driver-1", Name: "Driver",
+			Dry: OrbitCalculationPace{PaceSeconds: 60, FuelLitersPerLap: 1},
+			Wet: OrbitCalculationPace{PaceSeconds: 66, FuelLitersPerLap: 1},
+		}},
+		Variants:        []OrbitCalculationVariant{{ID: "s1", Mode: "dry", Order: []string{"driver-1"}, Overrides: map[int]OrbitCalculationOverride{}}},
+		ActiveVariantID: "s1",
+		WeatherScenarios: []strategydocument.WeightedWeatherScenario{
+			scenario("dry", [5]float64{}, 0.4),
+			scenario("rain-node-50", [5]float64{0, 0, 100, 100, 100}, 0.6),
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Weather == nil || len(result.Weather.Plans) != 2 {
+		t.Fatalf("weather result = %+v", result.Weather)
+	}
+	dry, rain := result.Weather.Plans[0], result.Weather.Plans[1]
+	if dry.TotalSeconds == rain.TotalSeconds && reflect.DeepEqual(dry.Stints, rain.Stints) {
+		t.Fatalf("rain at NODE_50 did not change the displayed plan: dry=%+v rain=%+v", dry, rain)
+	}
+	if result.Weather.Robust.Method != "minimax_regret" || result.Weather.Robust.MaxRegretSeconds < 0 || result.Weather.Robust.WeightedExpectedLossSeconds < 0 {
+		t.Fatalf("robust metrics = %+v", result.Weather.Robust)
+	}
+	firstWetLap := int64(0)
+	for _, condition := range rain.Timeline {
+		if condition.Bucket == "wet" {
+			firstWetLap = condition.Lap
+			break
+		}
+	}
+	if firstWetLap == 0 {
+		t.Fatalf("rain timeline did not publish an applied wet lap: %+v", rain.Timeline)
+	}
+}
 
 func TestCalculateOrbitUsesGoEngineForGoldenPlan(t *testing.T) {
 	t.Parallel()

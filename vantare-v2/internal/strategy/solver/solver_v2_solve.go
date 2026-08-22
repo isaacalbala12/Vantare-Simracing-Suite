@@ -18,6 +18,7 @@ const (
 	serviceScale        = int64(1_000_000)
 	defaultFuelStep     = 1.0
 	defaultVEStep       = 1.0
+	timeTieRelative     = 1e-12
 	maxServiceLevels    = int64(200)
 	maxRejectedDetails  = 8
 	maxRankedCandidates = 8
@@ -408,6 +409,12 @@ func SolveV2(input SolverInputV2) (SolverResultV2, error) {
 		reason := SolverReason{Code: "ranked_feasible", Message: fmt.Sprintf("candidato factible en posicion %d", index+1)}
 		if index == 0 {
 			reason = SolverReason{Code: "optimal_after_dominance_pruning", Message: "optimo exacto tras podar solo estados dominados"}
+			if len(rankedCompleted) > 1 && compareTotalSeconds(candidate.total(input.Formation.Seconds.Value), rankedCompleted[1].total(input.Formation.Seconds.Value)) == 0 {
+				reason = SolverReason{
+					Code:    "optimal_after_time_tie_break",
+					Message: "empate temporal dentro de tolerancia; ordenado por menos paradas, vueltas de parada, cantidades Fuel/VE e identidad canonica del plan",
+				}
+			}
 		}
 		expected := evaluationForNode(candidate, input.Formation.Seconds.Value)
 		worst, worstFeasible, risks, err := evaluateCandidateEnvelope(envelope, decision, expected)
@@ -799,30 +806,65 @@ func dominates(
 			return false
 		}
 	}
-	return left.fuel >= right.fuel && left.ve >= right.ve && left.total(formation) <= right.total(formation)
+	return left.fuel >= right.fuel && left.ve >= right.ve && compareNodes(left, right, formation) <= 0
 }
 
 func betterNode(left, right searchNode, formation float64) bool {
+	return compareNodes(left, right, formation) < 0
+}
+
+func compareNodes(left, right searchNode, formation float64) int {
 	leftTotal, rightTotal := left.total(formation), right.total(formation)
-	if leftTotal != rightTotal {
-		return leftTotal < rightTotal
+	if order := compareTotalSeconds(leftTotal, rightTotal); order != 0 {
+		return order
 	}
 	if len(left.decision.PitStops) != len(right.decision.PitStops) {
-		return len(left.decision.PitStops) < len(right.decision.PitStops)
+		if len(left.decision.PitStops) < len(right.decision.PitStops) {
+			return -1
+		}
+		return 1
 	}
 	for index := range left.decision.PitStops {
 		l, r := left.decision.PitStops[index], right.decision.PitStops[index]
 		if l.Lap != r.Lap {
-			return l.Lap < r.Lap
+			if l.Lap < r.Lap {
+				return -1
+			}
+			return 1
 		}
 		if l.FuelLiters != r.FuelLiters {
-			return l.FuelLiters < r.FuelLiters
+			if l.FuelLiters < r.FuelLiters {
+				return -1
+			}
+			return 1
 		}
 		if l.VEPercent != r.VEPercent {
-			return l.VEPercent < r.VEPercent
+			if l.VEPercent < r.VEPercent {
+				return -1
+			}
+			return 1
 		}
 	}
-	return false
+	leftKey, rightKey := decisionKey(left.decision), decisionKey(right.decision)
+	if leftKey < rightKey {
+		return -1
+	}
+	if leftKey > rightKey {
+		return 1
+	}
+	return 0
+}
+
+func compareTotalSeconds(left, right float64) int {
+	scale := math.Max(1, math.Max(math.Abs(left), math.Abs(right)))
+	tolerance := timeTieRelative * scale
+	if left < right-tolerance {
+		return -1
+	}
+	if left > right+tolerance {
+		return 1
+	}
+	return 0
 }
 
 func insertRanked(nodes []searchNode, candidate searchNode, formation float64) []searchNode {

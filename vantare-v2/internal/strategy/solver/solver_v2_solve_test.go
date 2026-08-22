@@ -853,6 +853,76 @@ func TestSolveV2RankingIsDeterministic(t *testing.T) {
 	}
 }
 
+func TestV2RankingTreatsFloatNoiseAsTieBeforeDocumentedRules(t *testing.T) {
+	preferred := searchNode{
+		fuel: 2 * serviceScale, ve: 2 * serviceScale,
+		decision: DecisionVector{
+			PitStops: []PitStopDecision{{Lap: 2, FuelLiters: 1}},
+			Stints:   []StintDecision{{Index: 0, Laps: 2}, {Index: 1, Laps: 3}},
+		},
+	}
+	laterPit := searchNode{
+		fuel: 2 * serviceScale, ve: 2 * serviceScale,
+		decision: DecisionVector{
+			PitStops: []PitStopDecision{{Lap: 3, FuelLiters: 1}},
+			Stints:   []StintDecision{{Index: 0, Laps: 3}, {Index: 1, Laps: 2}},
+		},
+	}
+
+	terms := []float64{14_456, 64, 64, 64, 64, 30.25e-12, 88e-12, 88e-12, 88e-12}
+	forward, reverse := 0.0, 0.0
+	for index := range terms {
+		forward += terms[index]
+		reverse += terms[len(terms)-1-index]
+	}
+	if forward == reverse {
+		t.Fatal("fixture must expose a float64 accumulation-order difference")
+	}
+
+	preferred.green, laterPit.green = forward, reverse
+	if !betterNode(preferred, laterPit, 0) {
+		t.Fatalf("earlier pit lost when totals were forward=%.15f reverse=%.15f", forward, reverse)
+	}
+	preferred.green, laterPit.green = reverse, forward
+	if !betterNode(preferred, laterPit, 0) {
+		t.Fatalf("earlier pit changed after reversing accumulation noise: forward=%.15f reverse=%.15f", forward, reverse)
+	}
+	if !dominates(preferred, laterPit, 0, false, false, false, false, false, false, false) {
+		t.Fatal("dominance did not preserve the documented tie-break inside the time tolerance")
+	}
+	for _, insertionOrder := range [][]searchNode{{preferred, laterPit}, {laterPit, preferred}} {
+		ranked := []searchNode{}
+		for _, candidate := range insertionOrder {
+			ranked = insertRanked(ranked, candidate, 0)
+		}
+		if ranked[0].decision.PitStops[0].Lap != 2 {
+			t.Fatalf("winner depends on insertion order: %+v", ranked)
+		}
+	}
+}
+
+func TestV2RankingUsesDecisionIdentityAsFinalStableTieBreaker(t *testing.T) {
+	left := searchNode{
+		green: 100,
+		decision: DecisionVector{
+			PitStops: []PitStopDecision{{Lap: 2, FuelLiters: 1}},
+			Stints:   []StintDecision{{Index: 0, Laps: 2, Driver: "driver-a"}, {Index: 1, Laps: 3, Driver: "driver-a"}},
+		},
+	}
+	right := left
+	right.decision = cloneDecision(left.decision)
+	for index := range right.decision.Stints {
+		right.decision.Stints[index].Driver = "driver-b"
+	}
+
+	if !(decisionKey(left.decision) < decisionKey(right.decision)) {
+		t.Fatal("fixture canonical order is not left before right")
+	}
+	if !betterNode(left, right, 0) || betterNode(right, left, 0) {
+		t.Fatal("exact tie did not use the final canonical decision identity")
+	}
+}
+
 func TestV2DominancePreservesStopCountStateRequiredByEventRules(t *testing.T) {
 	equalWithMoreStops := searchNode{
 		fuel: 2 * serviceScale, ve: 2 * serviceScale, green: 10,

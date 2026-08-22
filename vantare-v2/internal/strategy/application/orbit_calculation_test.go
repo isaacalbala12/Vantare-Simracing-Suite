@@ -90,14 +90,18 @@ func TestOrbitGoldenPartitionsUseTheSameSolveV2CostModel(t *testing.T) {
 	if got := replayedFuelLiters(shortFirst); got != 294.25 {
 		t.Fatalf("short-first refuel = %.12f L, want 294.25", got)
 	}
-	if !(shortFirst.Evaluation.TotalSeconds < balanced.Evaluation.TotalSeconds) {
-		t.Fatalf("short-first total=%.15f, want less than balanced=%.15f", shortFirst.Evaluation.TotalSeconds, balanced.Evaluation.TotalSeconds)
+	timeTolerance := 1e-12 * math.Max(1, math.Max(math.Abs(balanced.Evaluation.TotalSeconds), math.Abs(shortFirst.Evaluation.TotalSeconds)))
+	if delta := math.Abs(shortFirst.Evaluation.TotalSeconds - balanced.Evaluation.TotalSeconds); delta > timeTolerance {
+		t.Fatalf("partitions differ by %.15f s, outside tie tolerance %.15f s", delta, timeTolerance)
 	}
 	if !reflect.DeepEqual(solved.Best.Stints, shortFirst.Decision.Stints) || math.Abs(solved.Expected.TotalSeconds-shortFirst.Evaluation.TotalSeconds) > 1e-12 {
 		t.Fatalf("solver best=%+v total=%.15f, want replayed short-first=%+v total=%.15f", solved.Best.Stints, solved.Expected.TotalSeconds, shortFirst.Decision.Stints, shortFirst.Evaluation.TotalSeconds)
 	}
 	if delta := balanced.Evaluation.TotalSeconds - shortFirst.Evaluation.TotalSeconds; math.Abs(delta-13.75/orbitLegacyAllInServiceRate) > 2e-12 {
 		t.Fatalf("total delta = %.15f s, want %.15f s", delta, 13.75/orbitLegacyAllInServiceRate)
+	}
+	if len(solved.CandidateDetails) == 0 || len(solved.CandidateDetails[0].Reasons) == 0 || solved.CandidateDetails[0].Reasons[0].Code != "optimal_after_time_tie_break" {
+		t.Fatalf("solver did not expose the time tie-break: %+v", solved.CandidateDetails)
 	}
 	t.Logf("golden: balanced=%.15f s (308 L), short-first=%.15f s (294.25 L), delta=%.15f s", balanced.Evaluation.TotalSeconds, shortFirst.Evaluation.TotalSeconds, balanced.Evaluation.TotalSeconds-shortFirst.Evaluation.TotalSeconds)
 

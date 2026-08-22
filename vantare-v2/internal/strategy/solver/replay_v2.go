@@ -74,7 +74,7 @@ func ReplayDecisionV2(input SolverInputV2, decision DecisionVector) (ReplayResul
 
 	initialTyre, ok := replayInitialTyre(tyreModel, decision.Stints[0])
 	if !ok {
-		return infeasibleReplay(decision, input.Formation.Seconds, searchNode{}, "tyre_inventory_insufficient", "el compuesto o juego inicial observado no existe en el inventario"), nil
+		return infeasibleReplay(decision, input.Formation.Seconds.Value, searchNode{}, "tyre_inventory_insufficient", "el compuesto o juego inicial observado no existe en el inventario"), nil
 	}
 	node := searchNode{
 		fuel: fuel.capacity, ve: ve.capacity, tyre: initialTyre,
@@ -100,10 +100,10 @@ func ReplayDecisionV2(input SolverInputV2, decision DecisionVector) (ReplayResul
 			return ReplayResultV1{}, solveError(ErrorInvalidInput, fmt.Sprintf("decision.stints[%d].savingLevel", index), "saving level is not configured")
 		}
 		if allowed, condition := weather.compoundAllowed(node.tyre.compound, node.lap+1, requestedStint.Laps); !allowed {
-			return infeasibleReplay(decision, input.Formation.Seconds, node, "compound_not_allowed_for_climate", fmt.Sprintf("el compuesto %s no esta permitido en %s desde la vuelta %d", node.tyre.compound, condition.Bucket, condition.Lap)), nil
+			return infeasibleReplay(decision, input.Formation.Seconds.Value, node, "compound_not_allowed_for_climate", fmt.Sprintf("el compuesto %s no esta permitido en %s desde la vuelta %d", node.tyre.compound, condition.Bucket, condition.Lap)), nil
 		}
-		if weather.runnableLaps(input.RaceLaps-node.lap, node, fuel, ve, input.TyreLifeLaps, driver, savingLevel) < requestedStint.Laps {
-			return infeasibleReplay(decision, input.Formation.Seconds, node, "resource_exhausted", "el stint fijo supera los recursos o la vida de neumatico disponibles"), nil
+		if weather.runnableLaps(input.RaceLaps-node.lap, node, fuel, ve, input.tyreLifeLaps(), driver, savingLevel) < requestedStint.Laps {
+			return infeasibleReplay(decision, input.Formation.Seconds.Value, node, "resource_exhausted", "el stint fijo supera los recursos o la vida de neumatico disponibles"), nil
 		}
 
 		before := node
@@ -119,11 +119,11 @@ func ReplayDecisionV2(input SolverInputV2, decision DecisionVector) (ReplayResul
 		node.fuel -= fuelUsed
 		node.ve -= veUsed
 		if allowed, code, message := input.applyDriverConstraints(before, &node, driver); !allowed {
-			return infeasibleReplay(decision, input.Formation.Seconds, node, code, message), nil
+			return infeasibleReplay(decision, input.Formation.Seconds.Value, node, code, message), nil
 		}
 		formation := 0.0
 		if index == 0 {
-			formation = input.Formation.Seconds
+			formation = input.Formation.Seconds.Value
 		}
 		replayedStints = append(replayedStints, ReplayStintV1{
 			Index:      index,
@@ -133,7 +133,7 @@ func ReplayDecisionV2(input SolverInputV2, decision DecisionVector) (ReplayResul
 
 		if index == len(decision.Stints)-1 {
 			if allowed, code, message := input.completedAllowed(node, tyreModel); !allowed {
-				return infeasibleReplay(decision, input.Formation.Seconds, node, code, message), nil
+				return infeasibleReplay(decision, input.Formation.Seconds.Value, node, code, message), nil
 			}
 			continue
 		}
@@ -149,7 +149,7 @@ func ReplayDecisionV2(input SolverInputV2, decision DecisionVector) (ReplayResul
 		}
 		tyreOption, ok := replayNextTyre(tyreModel, node.tyre, decision.Stints[index+1], requestedPit.ChangeTyres)
 		if !ok {
-			return infeasibleReplay(decision, input.Formation.Seconds, node, "tyre_choice_invalid", "el cambio de neumaticos fijo no puede reproducirse con el inventario"), nil
+			return infeasibleReplay(decision, input.Formation.Seconds.Value, node, "tyre_choice_invalid", "el cambio de neumaticos fijo no puede reproducirse con el inventario"), nil
 		}
 		pitBefore := node.pit
 		node, err = appendPit(node, fuelAmount, veAmount, tyreOption, input)
@@ -166,7 +166,7 @@ func ReplayDecisionV2(input SolverInputV2, decision DecisionVector) (ReplayResul
 	return ReplayResultV1{
 		ContractVersion: ReplayContractVersionV1,
 		Decision:        cloneDecision(node.decision),
-		Evaluation:      evaluationForNode(node, input.Formation.Seconds),
+		Evaluation:      evaluationForNode(node, input.Formation.Seconds.Value),
 		Stints:          replayedStints,
 		Feasible:        true,
 		Reasons:         []SolverReason{},

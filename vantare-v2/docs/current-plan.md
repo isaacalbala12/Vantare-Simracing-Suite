@@ -1,3 +1,27 @@
+Nota ISA-771 / ISA-694 F5-b2 (2026-08-22, lista para review):
+
+- `SolverInputV2` transporta valor, procedencia, confianza y rol en sus
+  escalares de plan. La resolución queda fijada y testeada como override de
+  usuario > familia derivada válida > fallback manual/reference.
+- Orbit calcula con `SolveV2`; conserva sus ViewModels y el golden compartido
+  pasa de stints balanceados v1 a `11+32+32+32+32` del motor completo.
+- El replay con el mismo input da `14712.000000000307409 s` para
+  `28+28+28+28+27` y `14712.000000000294676 s` para
+  `11+32+32+32+32`: 12,733 ps son ruido y quedan empatados bajo la tolerancia
+  relativa `1e-12` (~14,7 ns aquí). El ranking y la poda aplican entonces, en
+  orden, menos paradas, vueltas de parada, cantidades Fuel/VE e identidad JSON
+  canónica. El golden recalculado permanece `11+32+32+32+32`, ahora porque su
+  primera parada en la vuelta 11 precede a la 28, no por el ruido float64; el
+  golden Go coincide byte a byte con el testdata frontend existente.
+- La carga inicial es siempre el depósito lleno. Con peso de prueba
+  `1 s/(L·vuelta)`, el balanceado suma 7.386,75 y el elegido 6.902,75
+  L·vuelta: ese contrafactual sí da 484 s físicos a favor del elegido.
+- El evento Wails del solver v1 se retiró. `Solve`/bridge v1 permanecen solo
+  para tests y paridad histórica; no hay llamadores productivos externos.
+- Gates locales verdes: solver x100, Strategy+app, frontend (381 archivos /
+  2.907 tests), typecheck, build, visual Orbit y compilación de `cmd/vantare`.
+- Pendiente de esta rama: review. No hay PR, integración, promoción ni release.
+
 Nota ISA-774 / ISA-694 F6-e (2026-08-22, implementada en rama de issue):
 - `scripts/Invoke-VantareEditorialCycle.ps1` encadena curador, informe
   allowlisted, plantilla cerrada, validación de la decisión y builder sin firma

@@ -2,11 +2,11 @@
   "plans": {
     "s1": {
       "stints": [
-        { "i": 0, "d": "isaac", "laps": 28, "fuel": 77, "pace": 104, "start": 0, "end": 2912, "lap0": 1, "lap1": 28, "pitWindowLap": 25, "pitWindowSeconds": 2496, "over": false, "manual": false },
-        { "i": 1, "d": "sol", "laps": 28, "fuel": 77, "pace": 104, "start": 2976, "end": 5888, "lap0": 29, "lap1": 56, "pitWindowLap": 53, "pitWindowSeconds": 5472, "over": false, "manual": false },
-        { "i": 2, "d": "diego", "laps": 28, "fuel": 77, "pace": 104, "start": 5952, "end": 8864, "lap0": 57, "lap1": 84, "pitWindowLap": 81, "pitWindowSeconds": 8448, "over": false, "manual": false },
-        { "i": 3, "d": "marta", "laps": 28, "fuel": 77, "pace": 104, "start": 8928, "end": 11840, "lap0": 85, "lap1": 112, "pitWindowLap": 109, "pitWindowSeconds": 11424, "over": false, "manual": false },
-        { "i": 4, "d": "isaac", "laps": 27, "fuel": 74.25, "pace": 104, "start": 11904, "end": 14712, "lap0": 113, "lap1": 139, "pitWindowLap": 136, "pitWindowSeconds": 14296, "over": false, "manual": false }
+        { "i": 0, "d": "isaac", "laps": 11, "fuel": 30.25, "pace": 104, "start": 0, "end": 1144, "lap0": 1, "lap1": 11, "pitWindowLap": 8, "pitWindowSeconds": 728, "over": false, "manual": false },
+        { "i": 1, "d": "sol", "laps": 32, "fuel": 88, "pace": 104, "start": 1208, "end": 4536, "lap0": 12, "lap1": 43, "pitWindowLap": 40, "pitWindowSeconds": 4120, "over": false, "manual": false },
+        { "i": 2, "d": "diego", "laps": 32, "fuel": 88, "pace": 104, "start": 4600, "end": 7928, "lap0": 44, "lap1": 75, "pitWindowLap": 72, "pitWindowSeconds": 7512, "over": false, "manual": false },
+        { "i": 3, "d": "marta", "laps": 32, "fuel": 88, "pace": 104, "start": 7992, "end": 11320, "lap0": 76, "lap1": 107, "pitWindowLap": 104, "pitWindowSeconds": 10904, "over": false, "manual": false },
+        { "i": 4, "d": "isaac", "laps": 32, "fuel": 88, "pace": 104, "start": 11384, "end": 14712, "lap0": 108, "lap1": 139, "pitWindowLap": 136, "pitWindowSeconds": 14296, "over": false, "manual": false }
       ],
       "totalLaps": 139,
       "total": 14712,
@@ -15,10 +15,10 @@
       "avgFuel": 2.75,
       "avgPace": 104,
       "distribution": [
-        { "driverId": "isaac", "laps": 55, "seconds": 5720 },
-        { "driverId": "sol", "laps": 28, "seconds": 2912 },
-        { "driverId": "diego", "laps": 28, "seconds": 2912 },
-        { "driverId": "marta", "laps": 28, "seconds": 2912 }
+        { "driverId": "isaac", "laps": 43, "seconds": 4472 },
+        { "driverId": "sol", "laps": 32, "seconds": 3328 },
+        { "driverId": "diego", "laps": 32, "seconds": 3328 },
+        { "driverId": "marta", "laps": 32, "seconds": 3328 }
       ]
     }
   },

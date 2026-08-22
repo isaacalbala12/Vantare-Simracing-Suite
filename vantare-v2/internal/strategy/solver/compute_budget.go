@@ -28,8 +28,8 @@ func effectiveInputForBudget(input SolverInputV2) (SolverInputV2, BudgetDegradat
 	if maxLevels > maximumBudgetServiceLevels {
 		maxLevels = maximumBudgetServiceLevels
 	}
-	effective.FuelLiters = coarsenedServiceStep(input.FuelCapacityLiters, requested.FuelLiters, maxLevels)
-	effective.VEPercent = coarsenedServiceStep(input.VECapacityPercent, requested.VEPercent, maxLevels)
+	effective.FuelLiters = coarsenedServiceStep(input.FuelCapacityLiters.Value, requested.FuelLiters, maxLevels)
+	effective.VEPercent = coarsenedServiceStep(input.VECapacityPercent.Value, requested.VEPercent, maxLevels)
 	degradation := BudgetDegradation{
 		Requested: requested,
 		Effective: effective,

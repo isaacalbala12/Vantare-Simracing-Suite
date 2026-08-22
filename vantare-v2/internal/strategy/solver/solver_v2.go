@@ -62,25 +62,37 @@ const (
 // tránsito + repostaje por cantidad (rate) + neumáticos + solape paralelo/secuencial.
 // El solver no duplica la fórmula: delega en manual.CalculatePitStop y expone tasas.
 type PitCostModel struct {
-	TransitSeconds  float64               `json:"transitSeconds"`
-	RefuelRateLPerS float64               `json:"refuelRateLPerS"`
-	VERatePPerS     float64               `json:"veRatePPerS"`
-	TyreSeconds     float64               `json:"tyreSeconds"`
+	TransitSeconds  ScalarInput           `json:"transitSeconds"`
+	RefuelRateLPerS ScalarInput           `json:"refuelRateLPerS"`
+	VERatePPerS     ScalarInput           `json:"veRatePPerS"`
+	TyreSeconds     ScalarInput           `json:"tyreSeconds"`
 	ServiceMode     manual.PitServiceMode `json:"serviceMode"`
 	// Por cantidad: el solver calcula refuelSeconds = fuelLiters / refuelRate etc.
 }
 
 func (m PitCostModel) Validate() error {
-	if m.TransitSeconds < 0 || math.IsNaN(m.TransitSeconds) || math.IsInf(m.TransitSeconds, 0) {
+	if err := m.TransitSeconds.validate("transitSeconds", true); err != nil {
+		return err
+	}
+	if m.TransitSeconds.Value < 0 {
 		return fmt.Errorf("transitSeconds invalid")
 	}
-	if m.RefuelRateLPerS <= 0 || math.IsNaN(m.RefuelRateLPerS) || math.IsInf(m.RefuelRateLPerS, 0) {
+	if err := m.RefuelRateLPerS.validate("refuelRateLPerS", false); err != nil {
+		return err
+	}
+	if m.RefuelRateLPerS.Value <= 0 {
 		return fmt.Errorf("refuelRateLPerS must be >0")
 	}
-	if m.VERatePPerS <= 0 || math.IsNaN(m.VERatePPerS) || math.IsInf(m.VERatePPerS, 0) {
+	if err := m.VERatePPerS.validate("veRatePPerS", false); err != nil {
+		return err
+	}
+	if m.VERatePPerS.Value <= 0 {
 		return fmt.Errorf("veRatePPerS must be >0")
 	}
-	if m.TyreSeconds < 0 || math.IsNaN(m.TyreSeconds) || math.IsInf(m.TyreSeconds, 0) {
+	if err := m.TyreSeconds.validate("tyreSeconds", true); err != nil {
+		return err
+	}
+	if m.TyreSeconds.Value < 0 {
 		return fmt.Errorf("tyreSeconds invalid")
 	}
 	if m.ServiceMode != manual.PitServiceParallel && m.ServiceMode != manual.PitServiceSequential {
@@ -91,8 +103,71 @@ func (m PitCostModel) Validate() error {
 
 // Formation es el coste de formación (grid/rolling start) antes de la vuelta 1.
 type Formation struct {
-	Seconds  float64 `json:"seconds"`
-	Presence string  `json:"presence"`
+	Seconds  ScalarInput `json:"seconds"`
+	Presence string      `json:"presence"`
+}
+
+type ScalarRole string
+
+const (
+	ScalarRoleFallback     ScalarRole = "fallback"
+	ScalarRoleUserOverride ScalarRole = "user_override"
+	ScalarRoleDerived      ScalarRole = "derived"
+)
+
+// ScalarInput keeps the numeric value and its evidence inseparable. Role is
+// deliberately independent from provenance: both a fallback and a user
+// override may be manual, but only the latter may beat a valid derived family.
+type ScalarInput struct {
+	Value      float64       `json:"value"`
+	Provenance sp.Provenance `json:"provenance"`
+	Confidence sp.Confidence `json:"confidence"`
+	Role       ScalarRole    `json:"role"`
+}
+
+func NewFallbackScalar(value float64, sourceID string) ScalarInput {
+	return ScalarInput{
+		Value:      value,
+		Provenance: sp.Provenance{Kind: sp.ProvenanceManual, SourceID: sourceID},
+		Confidence: sp.Confidence{SampleSize: 1, ComputationVersion: "solver-input.v2"},
+		Role:       ScalarRoleFallback,
+	}
+}
+
+func NewUserOverrideScalar(value float64, sourceID string) ScalarInput {
+	result := NewFallbackScalar(value, sourceID)
+	result.Role = ScalarRoleUserOverride
+	return result
+}
+
+func NewSourcedScalar(value float64, provenance sp.Provenance, confidence sp.Confidence, role ScalarRole) ScalarInput {
+	return ScalarInput{Value: value, Provenance: provenance, Confidence: confidence, Role: role}
+}
+
+func (input ScalarInput) validate(field string, zeroAllowed bool) error {
+	if math.IsNaN(input.Value) || math.IsInf(input.Value, 0) || input.Value < 0 || (!zeroAllowed && input.Value == 0) {
+		return fmt.Errorf("%s value invalid", field)
+	}
+	if input.Role != ScalarRoleFallback && input.Role != ScalarRoleUserOverride {
+		return fmt.Errorf("%s role must be fallback or user_override", field)
+	}
+	if input.Role == ScalarRoleUserOverride && input.Provenance.Kind != sp.ProvenanceManual && input.Provenance.Kind != sp.ProvenanceCorrected {
+		return fmt.Errorf("%s user_override provenance must be manual or corrected", field)
+	}
+	if input.Role == ScalarRoleFallback && input.Provenance.Kind != sp.ProvenanceManual && input.Provenance.Kind != sp.ProvenanceReference {
+		return fmt.Errorf("%s fallback provenance must be manual or reference", field)
+	}
+	if err := input.Provenance.Validate(); err != nil {
+		return fmt.Errorf("%s provenance: %w", field, err)
+	}
+	if err := input.Confidence.Validate(); err != nil {
+		return fmt.Errorf("%s confidence: %w", field, err)
+	}
+	return nil
+}
+
+func derivedScalar(value float64, provenance sp.Provenance, confidence sp.Confidence) ScalarInput {
+	return ScalarInput{Value: value, Provenance: provenance, Confidence: confidence, Role: ScalarRoleDerived}
 }
 
 // EventRules cubre reglas del evento y ventanas obligatorias (spec F1.3).
@@ -151,7 +226,7 @@ func (b ComputeBudget) Validate() error {
 type SolverInputV2 struct {
 	ContractVersion ContractVersion               `json:"contractVersion"`
 	RaceLaps        int64                         `json:"raceLaps"`
-	BaseLapSeconds  float64                       `json:"baseLapSeconds"`
+	BaseLapSeconds  ScalarInput                   `json:"baseLapSeconds"`
 	Projection      *sp.StrategyInputProjectionV2 `json:"projection"`
 	Observed        *sp.ObservedStrategyV1        `json:"observed,omitempty"`
 	PitCost         PitCostModel                  `json:"pitCost"`
@@ -159,14 +234,14 @@ type SolverInputV2 struct {
 	EventRules      EventRules                    `json:"eventRules"`
 	Budget          ComputeBudget                 `json:"budget"`
 	// Inputs manuales cuando projection está missing/unsupported
-	FuelCapacityLiters float64 `json:"fuelCapacityLiters"`
-	VECapacityPercent  float64 `json:"veCapacityPercent"`
-	TyreLifeLaps       int64   `json:"tyreLifeLaps"`
+	FuelCapacityLiters ScalarInput `json:"fuelCapacityLiters"`
+	VECapacityPercent  ScalarInput `json:"veCapacityPercent"`
+	TyreLifeLaps       ScalarInput `json:"tyreLifeLaps"`
 	// Consumos manuales usados cuando la familia correspondiente de Projection
 	// no esta disponible. Cero desactiva el recurso junto con capacidad cero.
-	FuelPerLapLiters  float64                 `json:"fuelPerLapLiters"`
-	VEPerLapPercent   float64                 `json:"vePerLapPercent"`
-	DegradationPerLap float64                 `json:"degradationPerLapSeconds"`
+	FuelPerLapLiters  ScalarInput             `json:"fuelPerLapLiters"`
+	VEPerLapPercent   ScalarInput             `json:"vePerLapPercent"`
+	DegradationPerLap ScalarInput             `json:"degradationPerLapSeconds"`
 	FuelWeight        *FuelWeightParameter    `json:"fuelWeight,omitempty"`
 	SavingCost        *SavingCostParameter    `json:"savingCost,omitempty"`
 	TyreInventory     *TyreInventoryInput     `json:"tyreInventory,omitempty"`
@@ -212,6 +287,7 @@ type SavingCostParameter struct {
 	Presence   sp.Presence         `json:"presence"`
 	Provenance sp.Provenance       `json:"provenance"`
 	Confidence sp.Confidence       `json:"confidence"`
+	Role       ScalarRole          `json:"role"`
 	Levels     []SavingLevelOption `json:"levels"`
 }
 
@@ -240,20 +316,65 @@ type ServiceDiscretization struct {
 	VEPercent  float64 `json:"vePercent"`
 }
 
-func (in SolverInputV2) resourcePerLap(kind ResourceKind) float64 {
+func (in SolverInputV2) resourcePerLapSource(kind ResourceKind) ScalarInput {
+	fallback := in.FuelPerLapLiters
+	if kind == ResourceVirtualEnergy {
+		fallback = in.VEPerLapPercent
+	}
+	if fallback.Role == ScalarRoleUserOverride {
+		return fallback
+	}
 	if in.Projection != nil {
 		family := in.Projection.FuelConsumption
 		if kind == ResourceVirtualEnergy {
 			family = in.Projection.VirtualEnergyConsumption
 		}
 		if family.Presence == sp.PresenceValid && family.MeanPerLap > 0 {
-			return family.MeanPerLap
+			return derivedScalar(family.MeanPerLap, family.Provenance, family.Confidence)
 		}
 	}
-	if kind == ResourceVirtualEnergy {
-		return in.VEPerLapPercent
+	return fallback
+}
+
+func (in SolverInputV2) resourcePerLap(kind ResourceKind) float64 {
+	return in.resourcePerLapSource(kind).Value
+}
+
+func (in SolverInputV2) tyreLifeSource() ScalarInput {
+	if in.TyreLifeLaps.Role == ScalarRoleUserOverride || in.Projection == nil {
+		return in.TyreLifeLaps
 	}
-	return in.FuelPerLapLiters
+	family := in.Projection.TyreDegradation
+	if family.Presence == sp.PresenceValid && family.LifeLapsEstimate != nil && *family.LifeLapsEstimate > 0 {
+		return derivedScalar(float64(*family.LifeLapsEstimate), family.Provenance, family.Confidence)
+	}
+	return in.TyreLifeLaps
+
+}
+
+func (in SolverInputV2) tyreLifeLaps() int64 {
+	return int64(in.tyreLifeSource().Value)
+}
+
+func (in SolverInputV2) resolvedPitCost() PitCostModel {
+	result := in.PitCost
+	if in.Projection == nil || in.Projection.Pit.Presence != sp.PresenceValid {
+		return result
+	}
+	family := in.Projection.Pit
+	if result.TransitSeconds.Role != ScalarRoleUserOverride && family.TransitSecondsManual != nil && *family.TransitSecondsManual >= 0 {
+		result.TransitSeconds = derivedScalar(*family.TransitSecondsManual, family.Provenance, family.Confidence)
+	}
+	if result.RefuelRateLPerS.Role != ScalarRoleUserOverride && family.FuelRate.Presence == sp.PresenceValid && family.FuelRate.Mean > 0 {
+		result.RefuelRateLPerS = derivedScalar(family.FuelRate.Mean, family.FuelRate.Provenance, family.FuelRate.Confidence)
+	}
+	if result.VERatePPerS.Role != ScalarRoleUserOverride && family.VERate.Presence == sp.PresenceValid && family.VERate.Mean > 0 {
+		result.VERatePPerS = derivedScalar(family.VERate.Mean, family.VERate.Provenance, family.VERate.Confidence)
+	}
+	if result.TyreSeconds.Role != ScalarRoleUserOverride && family.ServiceSecondsManual != nil && *family.ServiceSecondsManual >= 0 {
+		result.TyreSeconds = derivedScalar(*family.ServiceSecondsManual, family.Provenance, family.Confidence)
+	}
+	return result
 }
 
 type ContractVersion string
@@ -265,11 +386,11 @@ func (in SolverInputV2) Validate() error {
 	if in.RaceLaps <= 0 || in.RaceLaps > 100000 {
 		return fmt.Errorf("raceLaps out of range")
 	}
-	if in.BaseLapSeconds <= 0 || math.IsNaN(in.BaseLapSeconds) || math.IsInf(in.BaseLapSeconds, 0) {
-		return fmt.Errorf("baseLapSeconds invalid")
+	if err := in.BaseLapSeconds.validate("baseLapSeconds", false); err != nil {
+		return err
 	}
-	if in.Formation.Seconds < 0 || math.IsNaN(in.Formation.Seconds) || math.IsInf(in.Formation.Seconds, 0) {
-		return fmt.Errorf("formation.seconds invalid")
+	if err := in.Formation.Seconds.validate("formation.seconds", true); err != nil {
+		return err
 	}
 	if err := in.PitCost.Validate(); err != nil {
 		return fmt.Errorf("pitCost: %w", err)
@@ -277,13 +398,19 @@ func (in SolverInputV2) Validate() error {
 	if err := in.Budget.Validate(); err != nil {
 		return err
 	}
-	if in.FuelCapacityLiters < 0 || math.IsNaN(in.FuelCapacityLiters) || math.IsInf(in.FuelCapacityLiters, 0) {
-		return fmt.Errorf("fuelCapacityLiters invalid")
+	if err := in.FuelCapacityLiters.validate("fuelCapacityLiters", true); err != nil {
+		return err
 	}
-	if in.VECapacityPercent < 0 || in.VECapacityPercent > 100 || math.IsNaN(in.VECapacityPercent) || math.IsInf(in.VECapacityPercent, 0) {
+	if err := in.VECapacityPercent.validate("veCapacityPercent", true); err != nil {
+		return err
+	}
+	if in.VECapacityPercent.Value > 100 {
 		return fmt.Errorf("veCapacityPercent invalid")
 	}
-	if in.TyreLifeLaps < 0 || in.TyreLifeLaps > maxSupportedLaps {
+	if err := in.TyreLifeLaps.validate("tyreLifeLaps", true); err != nil {
+		return err
+	}
+	if in.TyreLifeLaps.Value > maxSupportedLaps || math.Trunc(in.TyreLifeLaps.Value) != in.TyreLifeLaps.Value {
 		return fmt.Errorf("tyreLifeLaps out of range")
 	}
 	if in.EventRules.MinPitStops != nil && *in.EventRules.MinPitStops < 0 {
@@ -295,10 +422,16 @@ func (in SolverInputV2) Validate() error {
 	if in.EventRules.MinPitStops != nil && in.EventRules.MaxPitStops != nil && *in.EventRules.MinPitStops > *in.EventRules.MaxPitStops {
 		return fmt.Errorf("eventRules pit stop range invalid")
 	}
+	for field, value := range map[string]ScalarInput{
+		"fuelPerLapLiters":         in.FuelPerLapLiters,
+		"vePerLapPercent":          in.VEPerLapPercent,
+		"degradationPerLapSeconds": in.DegradationPerLap,
+	} {
+		if err := value.validate(field, true); err != nil {
+			return err
+		}
+	}
 	for field, value := range map[string]float64{
-		"fuelPerLapLiters":           in.FuelPerLapLiters,
-		"vePerLapPercent":            in.VEPerLapPercent,
-		"degradationPerLapSeconds":   in.DegradationPerLap,
 		"serviceDiscretization.fuel": in.Discretization.FuelLiters,
 		"serviceDiscretization.ve":   in.Discretization.VEPercent,
 	} {
@@ -342,6 +475,12 @@ func (parameter SavingCostParameter) Validate() error {
 	if parameter.Provenance.Kind != sp.ProvenanceManual && parameter.Provenance.Kind != sp.ProvenanceReference {
 		return fmt.Errorf("provenance.kind must be manual or reference")
 	}
+	if parameter.Role != ScalarRoleFallback && parameter.Role != ScalarRoleUserOverride {
+		return fmt.Errorf("role must be fallback or user_override")
+	}
+	if parameter.Role == ScalarRoleUserOverride && parameter.Provenance.Kind != sp.ProvenanceManual {
+		return fmt.Errorf("user_override provenance must be manual")
+	}
 	if err := parameter.Provenance.Validate(); err != nil {
 		return err
 	}
@@ -374,6 +513,7 @@ func (parameter FuelWeightParameter) Validate() error {
 type SolverResultV2 struct {
 	ContractVersion   ContractVersion           `json:"contractVersion"`
 	InputHash         string                    `json:"inputHash"`
+	ResolvedInputs    ResolvedScalarInputs      `json:"resolvedInputs"`
 	StintPaceCost     StintPaceCostSource       `json:"stintPaceCost"`
 	FuelWeightCost    FuelWeightCostSource      `json:"fuelWeightCost"`
 	SavingCost        SavingCostSource          `json:"savingCost"`
@@ -394,6 +534,32 @@ type SolverResultV2 struct {
 	Reasons           []SolverReason            `json:"reasons,omitempty"`
 	Assumptions       []SolverReason            `json:"assumptions"`
 	ComputeStats      ComputeStats              `json:"computeStats"`
+}
+
+type ResolvedScalarInputs struct {
+	BaseLapSeconds     ScalarInput  `json:"baseLapSeconds"`
+	FuelCapacityLiters ScalarInput  `json:"fuelCapacityLiters"`
+	VECapacityPercent  ScalarInput  `json:"veCapacityPercent"`
+	TyreLifeLaps       ScalarInput  `json:"tyreLifeLaps"`
+	FuelPerLapLiters   ScalarInput  `json:"fuelPerLapLiters"`
+	VEPerLapPercent    ScalarInput  `json:"vePerLapPercent"`
+	DegradationPerLap  ScalarInput  `json:"degradationPerLapSeconds"`
+	FormationSeconds   ScalarInput  `json:"formationSeconds"`
+	PitCost            PitCostModel `json:"pitCost"`
+}
+
+func (in SolverInputV2) resolvedScalarInputs() ResolvedScalarInputs {
+	return ResolvedScalarInputs{
+		BaseLapSeconds:     in.BaseLapSeconds,
+		FuelCapacityLiters: in.FuelCapacityLiters,
+		VECapacityPercent:  in.VECapacityPercent,
+		TyreLifeLaps:       in.tyreLifeSource(),
+		FuelPerLapLiters:   in.resourcePerLapSource(ResourceFuel),
+		VEPerLapPercent:    in.resourcePerLapSource(ResourceVirtualEnergy),
+		DegradationPerLap:  in.DegradationPerLap,
+		FormationSeconds:   in.Formation.Seconds,
+		PitCost:            in.resolvedPitCost(),
+	}
 }
 
 type SavingCostSource struct {

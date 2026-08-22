@@ -117,7 +117,7 @@ func newWeatherCostModel(input SolverInputV2) (weatherCostModel, error) {
 		if len(parameter.CompoundPace) > 0 {
 			copyInput := input
 			copyInput.CompoundPace = parameter.CompoundPace
-			copyInput.DegradationPerLap = 0
+			copyInput.DegradationPerLap.Value = 0
 			copyInput.Projection = nil
 			cost.compounds, err = copyInput.compoundPaceCosts()
 			if err != nil {
@@ -629,7 +629,7 @@ func evaluateDecisionV2(input SolverInputV2, decision DecisionVector) (ScenarioE
 	if allowed, _, _ := input.completedAllowed(node, tires); !allowed {
 		return ScenarioEvaluation{}, false, nil
 	}
-	return evaluationForNode(node, input.Formation.Seconds), true, nil
+	return evaluationForNode(node, input.Formation.Seconds.Value), true, nil
 }
 
 func driverByID(model driverDecisionModel, id string) (driverCost, bool) {

@@ -17,6 +17,28 @@ son fases históricas.
 
 ## Estado
 
+Actualización ISA-771 / F5-b2 (2026-08-22, lista para review):
+
+- Los escalares del input F4 llevan valor, procedencia, confianza y rol. Un
+  override de usuario gana a la familia derivada; sin override, la derivada
+  válida gana al fallback manual/reference. El resultado expone la fuente
+  efectiva y los tests cubren Fuel, vida, degradación, pit y ahorro.
+- Orbit llama a `SolveV2` y mantiene el ViewModel existente. El golden de 139
+  vueltas usa cinco stints `11+32+32+32+32`, cuatro paradas y 14.712 s.
+- El gate numérico compara ambos repartos con `ReplayDecisionV2`: sus totales
+  difieren solo 12,733 ps y empatan bajo tolerancia relativa `1e-12`. Ranking y
+  dominancia usan el mismo orden: menos paradas, vueltas de parada, cantidades
+  Fuel/VE e identidad JSON del plan. El golden sigue `11+32+32+32+32` porque,
+  a cuatro paradas, la primera vuelta canónica es 11 frente a 28; Go y testdata
+  frontend siguen idénticos. El test invierte tanto el ruido de acumulación
+  como el orden de inserción y conserva ganador. Con peso real configurado, el
+  contrafactual anterior conserva 484 s a favor del elegido.
+- Se retiró el evento Wails productivo del solver v1. El código v1 queda para
+  tests/paridad histórica, sin consumidores productivos externos.
+- Gates locales verdes: solver x100, Strategy+app, frontend (381 archivos /
+  2.907 tests), typecheck, build, visual Orbit y compilación de `cmd/vantare`.
+- Sin PR, integración, promoción o release; falta review.
+
 Actualización ISA-774 / F6-e (2026-08-22, lista para review):
 
 - El runner PowerShell deja por fecha resumen, informe allowlisted, plantilla

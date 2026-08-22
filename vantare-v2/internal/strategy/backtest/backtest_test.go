@@ -130,7 +130,7 @@ func TestRunRaceSeparatesCalibrationFromCounterfactualRanking(t *testing.T) {
 		90,
 		10,
 	)
-	race.RealizedInput.DegradationPerLap = 8
+	race.RealizedInput.DegradationPerLap.Value = 8
 
 	result, err := RunRace(race, ProvisionalThresholds(1))
 	if err != nil {
@@ -153,11 +153,11 @@ func TestRunRaceFeasibilityUsesRealizedSessionConstraints(t *testing.T) {
 		90,
 		10,
 	)
-	race.PredictionInput.FuelCapacityLiters = 5
-	race.PredictionInput.FuelPerLapLiters = 1
+	race.PredictionInput.FuelCapacityLiters.Value = 5
+	race.PredictionInput.FuelPerLapLiters.Value = 1
 	race.PredictionInput.Discretization.FuelLiters = 1
-	race.RealizedInput.FuelCapacityLiters = 2
-	race.RealizedInput.FuelPerLapLiters = 1
+	race.RealizedInput.FuelCapacityLiters.Value = 2
+	race.RealizedInput.FuelPerLapLiters.Value = 1
 	race.RealizedInput.Discretization.FuelLiters = 1
 	fuelAdded := 2.0
 	race.Observed.PitStops[0].FuelAddedLiters = &fuelAdded
@@ -283,15 +283,23 @@ func fixtureRaceCase(raceID, combinationID string, occurredAt time.Time, stintLa
 	input := solver.SolverInputV2{
 		ContractVersion: solver.SolverContractVersionV2,
 		RaceLaps:        int64(raceLaps),
-		BaseLapSeconds:  baseLap,
+		BaseLapSeconds:  solver.NewFallbackScalar(baseLap, "backtest:base-lap"),
 		Projection:      &projection,
 		PitCost: solver.PitCostModel{
-			TransitSeconds:  pitSeconds,
-			RefuelRateLPerS: 1,
-			VERatePPerS:     1,
+			TransitSeconds:  solver.NewFallbackScalar(pitSeconds, "backtest:pit-transit"),
+			RefuelRateLPerS: solver.NewFallbackScalar(1, "backtest:refuel-rate"),
+			VERatePPerS:     solver.NewFallbackScalar(1, "backtest:ve-rate"),
+			TyreSeconds:     solver.NewFallbackScalar(0, "backtest:tyre-service"),
 			ServiceMode:     manual.PitServiceSequential,
 		},
-		Budget: solver.ComputeBudget{P95Millis: 10_000},
+		Formation:          solver.Formation{Seconds: solver.NewFallbackScalar(0, "backtest:formation"), Presence: "valid"},
+		Budget:             solver.ComputeBudget{P95Millis: 10_000},
+		FuelCapacityLiters: solver.NewFallbackScalar(0, "backtest:fuel-capacity"),
+		VECapacityPercent:  solver.NewFallbackScalar(0, "backtest:ve-capacity"),
+		TyreLifeLaps:       solver.NewFallbackScalar(0, "backtest:tyre-life"),
+		FuelPerLapLiters:   solver.NewFallbackScalar(0, "backtest:fuel-per-lap"),
+		VEPerLapPercent:    solver.NewFallbackScalar(0, "backtest:ve-per-lap"),
+		DegradationPerLap:  solver.NewFallbackScalar(0, "backtest:degradation"),
 	}
 	observed := fixtureObserved(raceID, occurredAt, stintLaps, baseLap, pitSeconds)
 	return RaceCase{

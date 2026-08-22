@@ -1259,15 +1259,6 @@ func main() {
 		}
 	}
 	app.NewCurationUploadBridge(ctx, curationUploadService, emitter).RegisterHandlers(wailsApp)
-	strategySolverBridge := strategysolver.JSONBridge{}
-	wailsApp.Event.On("strategy:solver:compare", func(event *application.CustomEvent) {
-		result, failure := executeStrategySolverCommand(ctx, strategySolverBridge, event.Data)
-		if failure != nil {
-			emitter.Emit("strategy:solver:error", failure)
-			return
-		}
-		emitter.Emit("strategy:solver:result", result)
-	})
 	strategyTyresBridge := strategytyres.JSONBridge{}
 	wailsApp.Event.On("strategy:tyres:validate", func(event *application.CustomEvent) {
 		result, failure := executeStrategyTyresCommand(ctx, strategyTyresBridge, event.Data)

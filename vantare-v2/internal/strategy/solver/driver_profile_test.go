@@ -40,10 +40,10 @@ func profiledDriver(driverID string, lapSeconds, fuelPerLap float64) DriverProfi
 func driverBusinessInput() SolverInputV2 {
 	input := baseInputV2()
 	input.RaceLaps = 8
-	input.BaseLapSeconds = 92
-	input.FuelCapacityLiters = 8
-	input.FuelPerLapLiters = 1
-	input.PitCost.TransitSeconds = 1
+	input.BaseLapSeconds.Value = 92
+	input.FuelCapacityLiters.Value = 8
+	input.FuelPerLapLiters.Value = 1
+	input.PitCost.TransitSeconds.Value = 1
 	input.DriverProfiles = []DriverProfileInput{
 		profiledDriver("rapido", 90, 1),
 		manualDriver("constante", 92, 1),
@@ -90,9 +90,9 @@ func TestSolveV2AssignsFastDriverWhereAvailableAndConstraintForcesSlowerStint(t 
 func TestSolveV2UsesConsumptionFromAssignedDriverProfile(t *testing.T) {
 	input := baseInputV2()
 	input.RaceLaps = 4
-	input.FuelCapacityLiters = 2
-	input.FuelPerLapLiters = 0
-	input.PitCost.TransitSeconds = 20
+	input.FuelCapacityLiters.Value = 2
+	input.FuelPerLapLiters.Value = 0
+	input.PitCost.TransitSeconds.Value = 20
 	input.DriverProfiles = []DriverProfileInput{
 		profiledDriver("rapido", 90, 1),
 		manualDriver("eficiente", 93, 0.5),
@@ -120,7 +120,7 @@ func TestSolveV2DriverHardLimitsAreExplained(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			input := baseInputV2()
 			input.RaceLaps = 2
-			input.FuelCapacityLiters = 2
+			input.FuelCapacityLiters.Value = 2
 			input.DriverProfiles = []DriverProfileInput{manualDriver("solo", 90, 1)}
 			input.EventRules.DriverLimits = map[string]DriverLimit{"solo": test.limit}
 			result, err := SolveV2(input)
@@ -137,7 +137,7 @@ func TestSolveV2DriverHardLimitsAreExplained(t *testing.T) {
 func TestSolveV2DriverOracleParityPruningProvenanceAndSensitivity(t *testing.T) {
 	input := baseInputV2()
 	input.RaceLaps = 5
-	input.FuelCapacityLiters = 2
+	input.FuelCapacityLiters.Value = 2
 	input.DriverProfiles = []DriverProfileInput{
 		profiledDriver("rapido", 89.5, 1),
 		manualDriver("constante", 90, 1),
@@ -172,7 +172,7 @@ func TestSolveV2ImplicitSingleDriverIsNumericallyIdentical(t *testing.T) {
 		t.Fatalf("SolveV2 implicit: %v", err)
 	}
 	explicit := input
-	explicit.DriverProfiles = []DriverProfileInput{manualDriver("solo", input.BaseLapSeconds, input.FuelPerLapLiters)}
+	explicit.DriverProfiles = []DriverProfileInput{manualDriver("solo", input.BaseLapSeconds.Value, input.FuelPerLapLiters.Value)}
 	configured, err := SolveV2(explicit)
 	if err != nil {
 		t.Fatalf("SolveV2 explicit: %v", err)

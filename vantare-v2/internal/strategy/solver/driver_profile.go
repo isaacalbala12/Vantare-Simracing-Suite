@@ -113,7 +113,7 @@ func newDriverDecisionModel(input SolverInputV2, saving savingCost) (driverDecis
 			return driverDecisionModel{}, fmt.Errorf("eventRules.driverLimits requires driverProfiles")
 		}
 		return driverDecisionModel{order: []driverCost{{
-			baseLap:    input.BaseLapSeconds,
+			baseLap:    input.BaseLapSeconds.Value,
 			fuelPerLap: mustServiceUnits(input.resourcePerLap(ResourceFuel)),
 			vePerLap:   mustServiceUnits(input.resourcePerLap(ResourceVirtualEnergy)),
 		}}}, nil

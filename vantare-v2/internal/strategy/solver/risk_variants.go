@@ -21,7 +21,7 @@ type uncertaintyEnvelope struct {
 func hardUncertaintyActive(expected, worst SolverInputV2) bool {
 	return expected.resourcePerLap(ResourceFuel) != worst.resourcePerLap(ResourceFuel) ||
 		expected.resourcePerLap(ResourceVirtualEnergy) != worst.resourcePerLap(ResourceVirtualEnergy) ||
-		expected.TyreLifeLaps != worst.TyreLifeLaps
+		expected.tyreLifeLaps() != worst.tyreLifeLaps()
 }
 
 func applyWorstTyreStint(after *searchNode, before searchNode, laps, life int64) {
@@ -52,8 +52,9 @@ func coherentWorstCase(input SolverInputV2) uncertaintyEnvelope {
 	if full.Projection != nil {
 		perturbProjection(full.Projection, true)
 		perturbProjection(cost.Projection, false)
-		if lower := full.Projection.TyreDegradation.LifeLapsRangeLower; full.Projection.TyreDegradation.Presence == sp.PresenceValid && lower != nil && *lower > 0 {
-			full.TyreLifeLaps = int64(math.Floor(*lower))
+		if lower := full.Projection.TyreDegradation.LifeLapsRangeLower; input.TyreLifeLaps.Role != ScalarRoleUserOverride && full.Projection.TyreDegradation.Presence == sp.PresenceValid && lower != nil && *lower > 0 {
+			value := int(math.Floor(*lower))
+			full.Projection.TyreDegradation.LifeLapsEstimate = &value
 		}
 	}
 	perturbDeclaredCosts(&full)
@@ -221,7 +222,7 @@ func hardResourceRisks(input SolverInputV2, decision DecisionVector) ([]SolverRi
 		if stint.TyreFitment != nil {
 			age = fitmentRiskAge(*stint.TyreFitment, tireUsage)
 		}
-		if input.TyreLifeLaps > 0 && age+stint.Laps > input.TyreLifeLaps && !seen["tire"] {
+		if input.tyreLifeLaps() > 0 && age+stint.Laps > input.tyreLifeLaps() && !seen["tire"] {
 			risks = append(risks, SolverRisk{Code: "worst_case_tyre_life_exceeded", Message: "la vida de neumatico del caso malo no cubre un stint"})
 			seen["tire"] = true
 		}

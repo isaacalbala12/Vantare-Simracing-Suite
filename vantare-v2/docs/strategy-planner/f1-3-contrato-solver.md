@@ -1,9 +1,9 @@
 # F1.3 — Contrato Vector de decisión e I/O del solver ampliado
 
-**Fecha:** 2026-08-21
-**Issue:** #726 (ISA-694 F1.3)
+**Fecha:** 2026-08-22
+**Issue:** #726 (ISA-694 F1.3), ampliado por #771 (F5-b2)
 **Owner:** Strategy Solver (`internal/strategy/solver`)
-**Estado:** ejecutable desde F4-1 como `strategy.solver.v2`
+**Estado:** ejecutable desde F4-1 como `strategy.solver.v2`; ampliado en F5-b2 (#771) con escalares con procedencia y cutover de Orbit
 
 ## Ubicación y justificación
 
@@ -18,13 +18,37 @@ Paquete `internal/strategy/solver` (no `contract`, porque el solver ya es el own
 
 `PitCostModel{TransitSeconds, RefuelRateLPerS, VERatePPerS, TyreSeconds, ServiceMode}` compatible con `internal/strategy/manual.CalculatePitStop`: `refuelSeconds = fuelLiters / rate`, `veSeconds = vePercent / rate`; el núcleo es `max(refuel, ve, tyres)` si `parallel` o la suma de los tres si `sequential`; `total = transit+core+repair+penalty`. El solver convierte cantidades a duraciones y delega tránsito, solape y suma final en `manual`.
 
+### Fuentes escalares y precedencia F5-b2
+
+Los escalares de entrada que representan datos del plan ya no viajan desnudos.
+`BaseLapSeconds`, capacidades Fuel/VE, vida de neumático, consumos Fuel/VE,
+degradación lineal, formación y cada cifra de `PitCostModel` usan
+`ScalarInput{value, provenance, confidence, role}`. `role` distingue dos casos
+que una procedencia `manual` por sí sola no puede distinguir:
+
+1. `user_override` gana siempre y conserva valor, procedencia y confianza;
+2. sin override, una familia `valid` de `Projection` gana al `fallback`;
+3. si la familia no es utilizable, queda el fallback `manual` o `reference`.
+
+La misma regla se aplica a `SavingCost`: un parámetro `user_override` gana a la
+familia; un parámetro fallback cede ante ella. Un override solo admite
+procedencia `manual`/`corrected`; un fallback solo `manual`/`reference`. Esto
+evita inferir prioridad desde `sourceId` o mutar la proyección. Presupuesto,
+discretización y reglas de evento quedan fuera: son controles operativos, no
+mediciones ni supuestos escalares del plan.
+
+`ResolvedInputs` publica los valores y fuentes efectivamente seleccionados para
+ritmo base, capacidades, vida, consumos, degradación, formación y pit. La curva
+de stint y el ahorro conservan además sus fuentes especializadas existentes.
+
 ### Ejecución y discretización F4-1
 
 `SolveV2` parte con Fuel/VE a capacidad y explora paradas tras cualquier vuelta,
 sin parada después de meta. En cada parada se cambian neumáticos y Fuel/VE son
 cantidades independientes del candidato. El consumo procede de la familia
 `valid` de `Projection`; si no existe, se usan los campos manuales
-`FuelPerLapLiters` y `VEPerLapPercent`. Estos dos campos completan un defecto del
+`FuelPerLapLiters` y `VEPerLapPercent`. Un `user_override` impide que la familia
+derivada lo reemplace. Estos dos campos completan un defecto del
 contrato compile-only: antes declaraba fallback manual sin transportar consumo.
 
 El espacio finito queda fijado por `ServiceDiscretization`:
@@ -40,8 +64,45 @@ El espacio finito queda fijado por `ServiceDiscretization`:
 El solver conserva exactitud mediante programación por vueltas y poda de
 dominancia: a igual vuelta, un estado de menor o igual coste con al menos el
 mismo Fuel y VE domina al otro. El oráculo de tests enumera sin poda exactamente
-las mismas vueltas y cantidades en carreras pequeñas. Los empates se ordenan
-por tiempo, menos paradas, vueltas de parada y cantidades Fuel/VE.
+las mismas vueltas y cantidades en carreras pequeñas. Dos tiempos se consideran
+empatados cuando `abs(a-b) <= 1e-12 * max(1, abs(a), abs(b))`. La tolerancia es
+relativa porque el error de acumulación crece con el total: en una carrera de
+14.712 s admite unos 14,7 ns, tres órdenes de magnitud por encima del ruido
+observado de 12,733 ps y muy por debajo de la resolución física de los inputs.
+El mismo comparador gobierna ranking y dominancia para que la poda no suprima
+el ganador del desempate. Los empatados se ordenan por menos paradas, vueltas
+de parada y cantidades Fuel/VE; si todo ello coincide, gana la identidad JSON
+lexicográficamente menor del `DecisionVector`, ya usada como clave observable y
+determinista por los escenarios meteorológicos.
+
+### Escalares con procedencia F5-b2 (#771)
+
+Cada escalar manual del contrato pasa de `float64` desnudo a `ScalarInput{value,
+provenance, confidence, role}`: el valor y su evidencia son inseparables. Los
+campos cubiertos son ritmo base, capacidades Fuel/VE, vida de neumatico,
+consumos por vuelta, degradacion manual, formacion y los cuatro componentes de
+`PitCostModel`. El rol es deliberadamente independiente de la procedencia: un
+`fallback` y un `user_override` pueden ser ambos `manual`, pero solo el
+`user_override` puede ganarle a una familia derivada valida.
+
+Regla de resolucion por campo, testeada y cerrada:
+
+1. **Override del usuario** (`role=user_override`, procedencia `manual` o
+   `corrected`): gana siempre. Una familia derivada nunca pisa un override.
+2. **Familia derivada valida** de `Projection` (consumo Fuel/VE, vida via
+   `TyreDegradation.LifeLapsEstimate`, pit via familia `Pit`): gana al
+   fallback cuando existe y es `valid`.
+3. **Fallback** (`role=fallback`, procedencia `manual` o `reference`): el valor
+   manual/reference declarado en el propio input.
+
+La misma regla se aplica al ahorro F4-4: un `SavingCostParameter` con rol
+`user_override` desplaza a la familia `valid`; con rol `fallback`, la familia
+sigue siendo la autoridad. En todos los casos la fuente efectiva queda expuesta
+en `SolverResultV2.ResolvedInputs` (`ResolvedScalarInputs`), asi que un cambio
+silencioso de autoridad es imposible de auditar y por tanto no ocurre. La
+validacion rechaza roles desconocidos y combinaciones rol/procedencia invalidas;
+el rol interno `derived` solo lo fabrica el solver desde familias y nunca entra
+por input.
 
 ### Curva de ritmo por stint F4-2
 
@@ -50,8 +111,10 @@ por tiempo, menos paradas, vueltas de parada y cantidades Fuel/VE.
 - si `Projection.CombinedStintPaceCurve` está `valid` y declara
   `identifiability=combined_only`, consume sus puntos y conserva en el resultado
   `model`, `provenance`, `confidence` e `identifiability`;
-- en cualquier otro estado usa `DegradationPerLap` como curva lineal manual,
-  con procedencia `manual`. Así el modo manual sigue siendo un caso particular,
+- salvo que `DegradationPerLap.role=user_override`, si
+  `Projection.CombinedStintPaceCurve` está `valid` usa la familia derivada;
+- en cualquier otro estado usa `DegradationPerLap` como curva lineal y conserva
+  su procedencia. Así el modo manual sigue siendo un caso particular,
   no un segundo solver.
 
 La edad de vuelta del stint empieza en 1. Entre dos edades observadas se hace
@@ -115,8 +178,9 @@ existe y cuesta cero. Los demás niveles llegan por una sola autoridad:
   procedencia es `derived`, el solver exige el método
   `derived_from_controlled_ab_protocol` emitido por F3-a4; una curva derivada
   no puede entrar por el fallback manual;
-- dos autoridades simultáneas, identificadores repetidos, valores no finitos o
-  negativos, o un ahorro mayor que el consumo base fallan cerrados.
+- si ambas autoridades existen, `user_override` gana; un fallback cede ante la
+  familia derivada. Identificadores repetidos, valores no finitos o negativos,
+  o un ahorro mayor que el consumo base fallan cerrados.
 
 La cifra de `manual.CalculateFuel/VirtualEnergy(...).Saving.PerLap` es una
 semilla útil para declarar un nivel manual, pero no fuerza el plan. El solver
@@ -451,7 +515,7 @@ se agota, el resultado declara busqueda incompleta y no afirma optimalidad.
 
 ## Resultado
 
-`SolverResultV2{StintPaceCost StintPaceCostSource, CompoundPaceCost[] CompoundPaceCostSource, FuelWeightCost FuelWeightCostSource, SavingCost SavingCostSource, SavingPlan, WeatherBucketCost[] WeatherBucketCostSource, WeatherTimeline[], Best DecisionVector, Binding BindingConstraint, Sensitivities[] SolverSensitivity, Expected/WorstCase ScenarioEvaluation, Candidates[], CandidateDetails[], Variants[], Feasible, Reasons[] SolverReason, Assumptions[] SolverReason, ComputeStats{PrunedStates, WithinBudget, Degradation}}`
+`SolverResultV2{ResolvedInputs ResolvedScalarInputs, StintPaceCost StintPaceCostSource, CompoundPaceCost[] CompoundPaceCostSource, FuelWeightCost FuelWeightCostSource, SavingCost SavingCostSource, SavingPlan, WeatherBucketCost[] WeatherBucketCostSource, WeatherTimeline[], Best DecisionVector, Binding BindingConstraint, Sensitivities[] SolverSensitivity, Expected/WorstCase ScenarioEvaluation, Candidates[], CandidateDetails[], Variants[], Feasible, Reasons[] SolverReason, Assumptions[] SolverReason, ComputeStats{PrunedStates, WithinBudget, Degradation}}`
 
 - **Restricción vinculante**: `binding.kind/message/laps` (qué límite — fuel/VE/tyreLife/driver/event — atasca el largo máximo de stint).
 - **Sensibilidades**: por parámetro, `delta` vs `impactSeconds`.
@@ -465,8 +529,35 @@ se agota, el resultado declara busqueda incompleta y no afirma optimalidad.
   ahorro, F4-5 añade compuesto/inventario/reglas, F4-6 asigna piloto y F4-7
   selecciona clima por vuelta y compara escenarios. Se mantiene
   `tiempo_total = Σ ritmo base + Σ delta compuesto + Σ curva stint + Σ peso Fuel + Σ coste ahorro + Σ delta_clima + Σ pit + formación`.
-- F4-4 añade el ahorro y su procedencia sin cambiar el wire de
-  Orbit, que sigue usando `Solve` v1 hasta disponer del contrato real de servicios.
+- F5-b2 corta Orbit a `SolveV2`. El adaptador conserva el resultado público de
+  Orbit y traduce su antiguo pit all-in a tránsito fijo; usa una tasa técnica de
+  `10^12` unidades/s para que el coste variable máximo del golden (88 L) sea
+  `8.8e-11 s`, sin alterar los 64 s visibles por parada. La discretización Fuel
+  es un consumo por vuelta, la precisión máxima que Orbit permite editar.
+- En el golden de 240 min, `ceil(14400/104)=139` vueltas y
+  `floor(90/2.75)=32` vueltas máximas exigen cinco stints/cuatro paradas.
+  `SolveV2` devuelve determinísticamente `11+32+32+32+32=139`; total visible
+  `139*104 + 4*64 = 14712 s`. El test de replay compara bajo exactamente el
+  mismo input el plan balanceado `28+28+28+28+27`: reposta 308 L y obtiene
+  `14712.000000000307409 s`; el elegido reposta 294,25 L y obtiene
+  `14712.000000000294676 s`. La diferencia float64 observada es 12,733 ps
+  (13,75 ps en la fórmula ideal de la tasa técnica), dentro de la tolerancia
+  relativa de ~14,7 ns: los planes empatan por tiempo.
+- La carga inicial del modelo es siempre la capacidad de 90 L. Una parada tras
+  11 vueltas conserva 59,75 L y solo reposta el hueco de 30,25 L; no reposta
+  las 128 vueltas restantes. Además, si se configura peso Fuel, cada stint de
+  `n` vueltas aporta `n*90 - 2,75*n*(n-1)/2` L·vuelta. Por eso una suma de
+  cuadrados mayor reduce, no aumenta, el fuel medio: con un coeficiente de
+  prueba de `1 s/(L·vuelta)`, el balanceado suma 7.386,75 L·vuelta y el elegido
+  6.902,75 L·vuelta, una ventaja adicional de 484 s. El golden real no
+  configura peso Fuel. Ambos planes tienen cuatro paradas; el golden
+  recalculado permanece `11+32+32+32+32` porque la siguiente regla compara las
+  vueltas de parada y `11 < 28`. `SolveV2` expone
+  `reason=optimal_after_time_tie_break`; el golden Go sigue coincidiendo byte a
+  byte con `frontend/src/hub/strategy-orbit/testdata/orbit-go-golden.json`.
+- `Solve` v1 y su bridge se conservan para tests/paridad histórica, pero ya no
+  se registra el evento Wails `strategy:solver:compare` ni existe llamador
+  productivo externo al paquete.
 - Si ADR vs spec: gana ADR rev.2 (sin conflicto; ADR §12 firma cubre envelope, no solver).
 
 ## Verificación
@@ -476,6 +567,7 @@ go vet ./internal/strategy/solver/...
 go test -count=100 ./internal/strategy/solver ./internal/strategy/tyres
 go test ./internal/strategy/... ./internal/app
 go test ./internal/strategy/application -run TestCalculateOrbitUsesGoEngineForGoldenPlan
+go test ./internal/strategy/application -run TestOrbitGoldenPartitionsUseTheSameSolveV2CostModel -v
 $goFiles = Get-ChildItem internal/strategy/solver,internal/strategy/tyres -Filter *.go
 gofmt -l $goFiles.FullName
 ```

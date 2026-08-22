@@ -53,13 +53,14 @@ func weatherBusinessInput(t *testing.T) (SolverInputV2, []WeatherBucketParameter
 	t.Helper()
 	input := baseInputV2()
 	input.RaceLaps = 8
-	input.Formation.Seconds = 0
-	input.FuelCapacityLiters = 0
-	input.FuelPerLapLiters = 0
-	input.TyreLifeLaps = 8
+	input.Formation.Seconds.Value = 0
+	input.FuelCapacityLiters.Value = 0
+	input.FuelPerLapLiters.Value = 0
+	input.TyreLifeLaps.Value = 8
 	input.PitCost = PitCostModel{
-		TransitSeconds: 2, RefuelRateLPerS: 100, VERatePPerS: 100,
-		TyreSeconds: 2, ServiceMode: manual.PitServiceParallel,
+		TransitSeconds: NewFallbackScalar(2, "test:pit-transit"), RefuelRateLPerS: NewFallbackScalar(100, "test:refuel-rate"),
+		VERatePPerS: NewFallbackScalar(100, "test:ve-rate"), TyreSeconds: NewFallbackScalar(2, "test:tyre-service"),
+		ServiceMode: manual.PitServiceParallel,
 	}
 	input.TyreInventory = physicalInventory(t, tyres.CompoundHard, tyres.CompoundWet)
 	input.CompoundPace = []CompoundPaceParameter{
@@ -118,11 +119,11 @@ func TestSolveWeatherSingleDryScenarioIsDegenerateSolveV2(t *testing.T) {
 func TestSolveV2SelectsBucketConsumptionOnEveryCrossingLap(t *testing.T) {
 	input := baseInputV2()
 	input.RaceLaps = 5
-	input.Formation.Seconds = 0
-	input.FuelCapacityLiters = 5
-	input.FuelPerLapLiters = 1
-	input.PitCost.TransitSeconds = 0
-	input.PitCost.RefuelRateLPerS = 100
+	input.Formation.Seconds.Value = 0
+	input.FuelCapacityLiters.Value = 5
+	input.FuelPerLapLiters.Value = 1
+	input.PitCost.TransitSeconds.Value = 0
+	input.PitCost.RefuelRateLPerS.Value = 100
 	wetFuel := 2.0
 	input.Weather = &WeatherPlanInput{
 		Scenario: weatherScenario("wet-half", [5]float64{0, 0, 100, 100, 100}),
@@ -157,11 +158,11 @@ func TestSolveV2SelectsBucketConsumptionOnEveryCrossingLap(t *testing.T) {
 func TestSolveV2ConsumesAnalysisClimateBucketPerLap(t *testing.T) {
 	input := baseInputV2()
 	input.RaceLaps = 5
-	input.Formation.Seconds = 0
-	input.FuelCapacityLiters = 5
-	input.FuelPerLapLiters = 0
-	input.PitCost.TransitSeconds = 0
-	input.PitCost.RefuelRateLPerS = 100
+	input.Formation.Seconds.Value = 0
+	input.FuelCapacityLiters.Value = 5
+	input.FuelPerLapLiters.Value = 0
+	input.PitCost.TransitSeconds.Value = 0
+	input.PitCost.RefuelRateLPerS.Value = 100
 	input.Projection = curveProjection([]sp.PacePoint{pacePoint(1, 0, 10)}, 10, 0, 0)
 	input.Projection.FuelConsumption = sp.ResourceConsumptionFamily{
 		Presence:   sp.PresenceValid,
@@ -242,7 +243,7 @@ func TestRainAtNode50PitsForWetsAndRobustBeatsDryPlanWhenRainArrivesEarly(t *tes
 func TestSolveV2WeatherScenarioMatchesExhaustiveOracle(t *testing.T) {
 	input, parameters := weatherBusinessInput(t)
 	input.RaceLaps = 5
-	input.TyreLifeLaps = 5
+	input.TyreLifeLaps.Value = 5
 	maximum := 1
 	input.EventRules.MaxPitStops = &maximum
 	input.Weather = &WeatherPlanInput{

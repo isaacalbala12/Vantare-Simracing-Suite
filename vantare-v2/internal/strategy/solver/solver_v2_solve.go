@@ -18,6 +18,7 @@ const (
 	serviceScale        = int64(1_000_000)
 	defaultFuelStep     = 1.0
 	defaultVEStep       = 1.0
+	timeTieRelative     = 1e-12
 	maxServiceLevels    = int64(200)
 	maxRejectedDetails  = 8
 	maxRankedCandidates = 8
@@ -143,6 +144,7 @@ func SolveV2(input SolverInputV2) (SolverResultV2, error) {
 	result := SolverResultV2{
 		ContractVersion:   SolverContractVersionV2,
 		InputHash:         inputHash,
+		ResolvedInputs:    input.resolvedScalarInputs(),
 		StintPaceCost:     paceCost.source,
 		FuelWeightCost:    fuelWeight.source,
 		SavingCost:        saving.source,
@@ -205,7 +207,7 @@ func SolveV2(input SolverInputV2) (SolverResultV2, error) {
 				for _, savingLevel := range saving.levels {
 					worstDriver, _ := driverByID(worstDrivers, driver.id)
 					worstSavingLevel, _ := savingByID(worstSaving, savingLevel.level)
-					maxLaps := weatherCost.runnableLaps(input.RaceLaps-lap, node, fuel, ve, input.TyreLifeLaps, driver, savingLevel)
+					maxLaps := weatherCost.runnableLaps(input.RaceLaps-lap, node, fuel, ve, input.tyreLifeLaps(), driver, savingLevel)
 					if maxLaps < 1 {
 						result.addRejected(node, input, "resource_exhausted", "los recursos disponibles no cubren otra vuelta")
 						continue
@@ -240,16 +242,16 @@ func SolveV2(input SolverInputV2) (SolverResultV2, error) {
 						if afterStint.worstFuel < 0 || afterStint.worstVE < 0 {
 							afterStint.worstFeasible = false
 						}
-						applyWorstTyreStint(&afterStint, node, stintLaps, envelope.full.TyreLifeLaps)
+						applyWorstTyreStint(&afterStint, node, stintLaps, envelope.full.tyreLifeLaps())
 						if allowed, code, message := input.applyDriverConstraints(node, &afterStint, driver); !allowed {
 							result.addRejected(afterStint, input, code, message)
 							continue
 						}
 						if afterStint.lap == input.RaceLaps {
 							if allowed, code, message := input.completedAllowed(afterStint, tyreModel); allowed {
-								completed = insertRanked(completed, afterStint, input.Formation.Seconds)
+								completed = insertRanked(completed, afterStint, input.Formation.Seconds.Value)
 								if afterStint.worstFeasible {
-									completedWorstFeasible = insertRanked(completedWorstFeasible, afterStint, input.Formation.Seconds)
+									completedWorstFeasible = insertRanked(completedWorstFeasible, afterStint, input.Formation.Seconds.Value)
 								}
 							} else {
 								result.addRejected(afterStint, input, code, message)
@@ -291,7 +293,7 @@ func SolveV2(input SolverInputV2) (SolverResultV2, error) {
 									byLap[next.lap], prunedNow = insertNondominated(
 										byLap[next.lap],
 										next,
-										input.Formation.Seconds,
+										input.Formation.Seconds.Value,
 										input.hasStopCountRules(),
 										fuelWeight.secondsPerLiter > 0,
 										tyreModel.enabled,
@@ -350,11 +352,11 @@ func SolveV2(input SolverInputV2) (SolverResultV2, error) {
 	}
 
 	best := completed[0]
-	rankedCompleted := mergeRankedCandidates(completed, completedWorstFeasible, input.Formation.Seconds)
+	rankedCompleted := mergeRankedCandidates(completed, completedWorstFeasible, input.Formation.Seconds.Value)
 	result.Feasible = true
 	result.Best = cloneDecision(best.decision)
 	result.SavingPlan = savingPlanForDecision(result.Best)
-	result.Expected = evaluationForNode(best, input.Formation.Seconds)
+	result.Expected = evaluationForNode(best, input.Formation.Seconds.Value)
 	result.WorstCase = result.Expected
 	perturbedDegradation := 0.0
 	baseDegradation := 0.0
@@ -407,8 +409,14 @@ func SolveV2(input SolverInputV2) (SolverResultV2, error) {
 		reason := SolverReason{Code: "ranked_feasible", Message: fmt.Sprintf("candidato factible en posicion %d", index+1)}
 		if index == 0 {
 			reason = SolverReason{Code: "optimal_after_dominance_pruning", Message: "optimo exacto tras podar solo estados dominados"}
+			if len(rankedCompleted) > 1 && compareTotalSeconds(candidate.total(input.Formation.Seconds.Value), rankedCompleted[1].total(input.Formation.Seconds.Value)) == 0 {
+				reason = SolverReason{
+					Code:    "optimal_after_time_tie_break",
+					Message: "empate temporal dentro de tolerancia; ordenado por menos paradas, vueltas de parada, cantidades Fuel/VE e identidad canonica del plan",
+				}
+			}
 		}
-		expected := evaluationForNode(candidate, input.Formation.Seconds)
+		expected := evaluationForNode(candidate, input.Formation.Seconds.Value)
 		worst, worstFeasible, risks, err := evaluateCandidateEnvelope(envelope, decision, expected)
 		if err != nil {
 			return SolverResultV2{}, err
@@ -487,11 +495,11 @@ func (input SolverInputV2) serviceResources() (serviceResource, serviceResource,
 		veStep = defaultVEStep
 	}
 	allowProfileConsumption := len(input.DriverProfiles) > 0
-	fuel, err := newServiceResource("fuel", input.FuelCapacityLiters, input.resourcePerLap(ResourceFuel), fuelStep, allowProfileConsumption)
+	fuel, err := newServiceResource("fuel", input.FuelCapacityLiters.Value, input.resourcePerLap(ResourceFuel), fuelStep, allowProfileConsumption)
 	if err != nil {
 		return serviceResource{}, serviceResource{}, err
 	}
-	ve, err := newServiceResource("virtualEnergy", input.VECapacityPercent, input.resourcePerLap(ResourceVirtualEnergy), veStep, allowProfileConsumption)
+	ve, err := newServiceResource("virtualEnergy", input.VECapacityPercent.Value, input.resourcePerLap(ResourceVirtualEnergy), veStep, allowProfileConsumption)
 	if err != nil {
 		return serviceResource{}, serviceResource{}, err
 	}
@@ -672,7 +680,7 @@ func appendPit(node searchNode, fuelAmount, veAmount int64, tyreOption pitTyreCh
 	inputCopy, breakdownCopy := pitInput, breakdown
 	decision := PitStopDecision{
 		Lap: node.lap, FuelLiters: serviceValue(fuelAmount), VEPercent: serviceValue(veAmount),
-		SavingLevel: SavingNone, ServiceMode: input.PitCost.ServiceMode,
+		SavingLevel: SavingNone, ServiceMode: input.resolvedPitCost().ServiceMode,
 		PitCostInput: &inputCopy, PitBreakdown: &breakdownCopy, ChangeTyres: tyreOption.change,
 	}
 	if input.TyreInventory != nil {
@@ -688,6 +696,7 @@ func solverPitInput(input SolverInputV2, fuelAmount, veAmount int64) (manual.Pit
 }
 
 func solverPitInputWithTyres(input SolverInputV2, fuelAmount, veAmount int64, changeTyres bool) (manual.PitStopInput, error) {
+	pitCost := input.resolvedPitCost()
 	evidence := manual.Evidence{
 		Provenance: contract.Provenance{Kind: contract.ProvenanceDerived, SourceID: "strategy.solver.v2"},
 		Confidence: contract.Confidence{Level: contract.ConfidenceHigh, Basis: "deterministic candidate service cost"},
@@ -703,21 +712,21 @@ func solverPitInputWithTyres(input SolverInputV2, fuelAmount, veAmount int64, ch
 	if err != nil {
 		return manual.PitStopInput{}, err
 	}
-	transit, err := sourced(input.PitCost.TransitSeconds)
+	transit, err := sourced(pitCost.TransitSeconds.Value)
 	if err != nil {
 		return manual.PitStopInput{}, err
 	}
-	refuel, err := sourced(serviceValue(fuelAmount) / input.PitCost.RefuelRateLPerS)
+	refuel, err := sourced(serviceValue(fuelAmount) / pitCost.RefuelRateLPerS.Value)
 	if err != nil {
 		return manual.PitStopInput{}, err
 	}
-	virtualEnergy, err := sourced(serviceValue(veAmount) / input.PitCost.VERatePPerS)
+	virtualEnergy, err := sourced(serviceValue(veAmount) / pitCost.VERatePPerS.Value)
 	if err != nil {
 		return manual.PitStopInput{}, err
 	}
 	tyreSeconds := 0.0
 	if changeTyres {
-		tyreSeconds = input.PitCost.TyreSeconds
+		tyreSeconds = pitCost.TyreSeconds.Value
 	}
 	tyres, err := sourced(tyreSeconds)
 	if err != nil {
@@ -725,7 +734,7 @@ func solverPitInputWithTyres(input SolverInputV2, fuelAmount, veAmount int64, ch
 	}
 	return manual.PitStopInput{
 		Entry: zero, Transit: transit, Exit: zero, Refuel: refuel, VirtualEnergy: &virtualEnergy, Tyres: tyres,
-		ServiceMode: input.PitCost.ServiceMode, ModeSelection: evidence,
+		ServiceMode: pitCost.ServiceMode, ModeSelection: evidence,
 	}, nil
 }
 
@@ -797,30 +806,65 @@ func dominates(
 			return false
 		}
 	}
-	return left.fuel >= right.fuel && left.ve >= right.ve && left.total(formation) <= right.total(formation)
+	return left.fuel >= right.fuel && left.ve >= right.ve && compareNodes(left, right, formation) <= 0
 }
 
 func betterNode(left, right searchNode, formation float64) bool {
+	return compareNodes(left, right, formation) < 0
+}
+
+func compareNodes(left, right searchNode, formation float64) int {
 	leftTotal, rightTotal := left.total(formation), right.total(formation)
-	if leftTotal != rightTotal {
-		return leftTotal < rightTotal
+	if order := compareTotalSeconds(leftTotal, rightTotal); order != 0 {
+		return order
 	}
 	if len(left.decision.PitStops) != len(right.decision.PitStops) {
-		return len(left.decision.PitStops) < len(right.decision.PitStops)
+		if len(left.decision.PitStops) < len(right.decision.PitStops) {
+			return -1
+		}
+		return 1
 	}
 	for index := range left.decision.PitStops {
 		l, r := left.decision.PitStops[index], right.decision.PitStops[index]
 		if l.Lap != r.Lap {
-			return l.Lap < r.Lap
+			if l.Lap < r.Lap {
+				return -1
+			}
+			return 1
 		}
 		if l.FuelLiters != r.FuelLiters {
-			return l.FuelLiters < r.FuelLiters
+			if l.FuelLiters < r.FuelLiters {
+				return -1
+			}
+			return 1
 		}
 		if l.VEPercent != r.VEPercent {
-			return l.VEPercent < r.VEPercent
+			if l.VEPercent < r.VEPercent {
+				return -1
+			}
+			return 1
 		}
 	}
-	return false
+	leftKey, rightKey := decisionKey(left.decision), decisionKey(right.decision)
+	if leftKey < rightKey {
+		return -1
+	}
+	if leftKey > rightKey {
+		return 1
+	}
+	return 0
+}
+
+func compareTotalSeconds(left, right float64) int {
+	scale := math.Max(1, math.Max(math.Abs(left), math.Abs(right)))
+	tolerance := timeTieRelative * scale
+	if left < right-tolerance {
+		return -1
+	}
+	if left > right+tolerance {
+		return 1
+	}
+	return 0
 }
 
 func insertRanked(nodes []searchNode, candidate searchNode, formation float64) []searchNode {
@@ -934,7 +978,7 @@ func (result *SolverResultV2) addRejected(node searchNode, input SolverInputV2, 
 		return
 	}
 	result.CandidateDetails = append(result.CandidateDetails, SolverCandidateV2{
-		Decision: cloneDecision(node.decision), Evaluation: evaluationForNode(node, input.Formation.Seconds), Feasible: false,
+		Decision: cloneDecision(node.decision), Evaluation: evaluationForNode(node, input.Formation.Seconds.Value), Feasible: false,
 		Reasons: []SolverReason{{Code: code, Message: message}},
 	})
 }
@@ -946,13 +990,13 @@ func (input SolverInputV2) bindingConstraint() BindingConstraint {
 	}
 	limits := make([]limit, 0, 3)
 	if perLap := input.resourcePerLap(ResourceFuel); perLap > 0 {
-		limits = append(limits, limit{kind: string(ResourceFuel), laps: int64(math.Floor(input.FuelCapacityLiters / perLap))})
+		limits = append(limits, limit{kind: string(ResourceFuel), laps: int64(math.Floor(input.FuelCapacityLiters.Value / perLap))})
 	}
 	if perLap := input.resourcePerLap(ResourceVirtualEnergy); perLap > 0 {
-		limits = append(limits, limit{kind: string(ResourceVirtualEnergy), laps: int64(math.Floor(input.VECapacityPercent / perLap))})
+		limits = append(limits, limit{kind: string(ResourceVirtualEnergy), laps: int64(math.Floor(input.VECapacityPercent.Value / perLap))})
 	}
-	if input.TyreLifeLaps > 0 {
-		limits = append(limits, limit{kind: string(ResourceTyreLife), laps: input.TyreLifeLaps})
+	if input.tyreLifeLaps() > 0 {
+		limits = append(limits, limit{kind: string(ResourceTyreLife), laps: input.tyreLifeLaps()})
 	}
 	if len(limits) == 0 {
 		return BindingConstraint{Kind: string(ResourceNone), Message: "ningun recurso limita la longitud del stint"}

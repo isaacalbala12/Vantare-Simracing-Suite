@@ -393,6 +393,19 @@ se conservan aqui como hitos cumplidos; los demas siguen pendientes.
 - etiqueta.pt: Plano
 - etiqueta.it: Piano
 
+### Cálculo Orbit sobre el motor completo
+
+- id: strategy-orbit-solve-v2
+- tipo: feature
+- titulo.en: Orbit calculation on the full engine
+- titulo.pt: Cálculo do Orbit no motor completo
+- titulo.it: Calcolo Orbit sul motore completo
+- cuerpo: Orbit ya envía los valores manuales, derivados y sus overrides al motor Strategy completo con su procedencia. Un override del usuario nunca queda sustituido en silencio por una derivada.
+- cuerpo.en: Orbit now sends manual and derived values, plus their overrides, to the full Strategy engine with provenance. A user override is never silently replaced by a derived value.
+- cuerpo.pt: O Orbit agora envia valores manuais e derivados, incluindo os overrides, para o motor Strategy completo com a respetiva procedência. Um override do utilizador nunca é substituído silenciosamente por um valor derivado.
+- cuerpo.it: Orbit ora invia valori manuali e derivati, inclusi gli override, al motore Strategy completo con la relativa provenienza. Un override dell'utente non viene mai sostituito silenziosamente da un valore derivato.
+- etiqueta: Feature
+
 ### Contribución seudonimizada de Strategy
 
 - id: strategy-pseudonymous-contribution

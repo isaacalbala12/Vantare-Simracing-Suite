@@ -14,18 +14,135 @@ func baseInputV2() SolverInputV2 {
 	return SolverInputV2{
 		ContractVersion: SolverContractVersionV2,
 		RaceLaps:        5,
-		BaseLapSeconds:  90,
+		BaseLapSeconds:  NewFallbackScalar(90, "test:base-lap"),
 		PitCost: PitCostModel{
-			TransitSeconds: 10, RefuelRateLPerS: 1, VERatePPerS: 2, TyreSeconds: 2,
+			TransitSeconds: NewFallbackScalar(10, "test:pit-transit"), RefuelRateLPerS: NewFallbackScalar(1, "test:refuel-rate"),
+			VERatePPerS: NewFallbackScalar(2, "test:ve-rate"), TyreSeconds: NewFallbackScalar(2, "test:tyre-service"),
 			ServiceMode: manual.PitServiceParallel,
 		},
-		Formation:          Formation{Seconds: 3, Presence: "valid"},
+		Formation:          Formation{Seconds: NewFallbackScalar(3, "test:formation"), Presence: "valid"},
 		Budget:             ComputeBudget{P95Millis: 10_000},
-		FuelCapacityLiters: 2,
-		FuelPerLapLiters:   1,
+		FuelCapacityLiters: NewFallbackScalar(2, "test:fuel-capacity"),
+		VECapacityPercent:  NewFallbackScalar(0, "test:ve-capacity"),
+		TyreLifeLaps:       NewFallbackScalar(0, "test:tyre-life"),
+		FuelPerLapLiters:   NewFallbackScalar(1, "test:fuel-per-lap"),
+		VEPerLapPercent:    NewFallbackScalar(0, "test:ve-per-lap"),
+		DegradationPerLap:  NewFallbackScalar(0, "test:degradation"),
 		Discretization:     ServiceDiscretization{FuelLiters: 1, VEPercent: 1},
 	}
 }
+
+func TestSolveV2UserOverrideBeatsValidDerivedResourceAndFallbackDoesNot(t *testing.T) {
+	input := baseInputV2()
+	input.FuelCapacityLiters = NewFallbackScalar(10, "test:capacity")
+	input.FuelPerLapLiters = NewFallbackScalar(1, "test:fallback")
+	input.Projection = &sp.StrategyInputProjectionV2{
+		ContractVersion:    sp.ContractVersionStrategyInputProjectionV2,
+		GeneratedAt:        time.Date(2026, 8, 22, 1, 0, 0, 0, time.UTC),
+		ComputationVersion: "test.v1",
+		CombinationID:      "combo-1",
+		FuelConsumption: sp.ResourceConsumptionFamily{
+			Presence:   sp.PresenceValid,
+			Provenance: sp.Provenance{Kind: sp.ProvenanceDerived, SourceID: "analysis:derived"},
+			Confidence: sp.Confidence{SampleSize: 20, ComputationVersion: "test.v1"},
+			MeanPerLap: 2,
+			RangeLower: 1.8,
+			RangeUpper: 2.2,
+		},
+		CombinedStintPaceCurve: sp.CombinedStintPaceCurve{
+			Presence:        sp.PresenceMissing,
+			Provenance:      sp.Provenance{Kind: sp.ProvenanceDerived, SourceID: "analysis:derived"},
+			Confidence:      sp.Confidence{ComputationVersion: "test.v1"},
+			Identifiability: sp.IdentifiabilityCombinedOnly,
+		},
+		Pit: sp.PitFamily{Presence: sp.PresenceMissing},
+	}
+
+	derived, err := SolveV2(input)
+	if err != nil {
+		t.Fatalf("SolveV2(derived): %v", err)
+	}
+	if got := derived.ResolvedInputs.FuelPerLapLiters; got.Value != 2 || got.Provenance.SourceID != "analysis:derived" {
+		t.Fatalf("derived fuel source = %+v", got)
+	}
+
+	input.FuelPerLapLiters = NewUserOverrideScalar(4, "orbit:event-1:fuel_per_lap_liters")
+	overridden, err := SolveV2(input)
+	if err != nil {
+		t.Fatalf("SolveV2(override): %v", err)
+	}
+	if got := overridden.ResolvedInputs.FuelPerLapLiters; got.Value != 4 || got.Role != ScalarRoleUserOverride {
+		t.Fatalf("override fuel source = %+v", got)
+	}
+	if derived.Binding.Laps == overridden.Binding.Laps {
+		t.Fatalf("override did not change binding: derived=%+v override=%+v", derived.Binding, overridden.Binding)
+	}
+
+	input.FuelPerLapLiters = NewFallbackScalar(1, "test:restored-fallback")
+	reverted, err := SolveV2(input)
+	if err != nil {
+		t.Fatalf("SolveV2(reverted): %v", err)
+	}
+	if reverted.Binding != derived.Binding || reverted.ResolvedInputs.FuelPerLapLiters.Provenance.SourceID != "analysis:derived" {
+		t.Fatalf("revert did not restore derived source: derived=%+v reverted=%+v", derived, reverted)
+	}
+}
+
+func TestSolveV2UserOverrideBeatsDerivedTyreLifeDegradationAndPit(t *testing.T) {
+	input := baseInputV2()
+	input.RaceLaps = 8
+	input.FuelCapacityLiters.Value = 8
+	input.Projection = &sp.StrategyInputProjectionV2{
+		ContractVersion:    sp.ContractVersionStrategyInputProjectionV2,
+		GeneratedAt:        time.Date(2026, 8, 22, 1, 0, 0, 0, time.UTC),
+		ComputationVersion: "test.v1",
+		CombinationID:      "combo-1",
+		CombinedStintPaceCurve: sp.CombinedStintPaceCurve{
+			Presence:        sp.PresenceValid,
+			Provenance:      sp.Provenance{Kind: sp.ProvenanceDerived, SourceID: "analysis:pace"},
+			Confidence:      sp.Confidence{SampleSize: 10, RangeLower: floatPointer(0), RangeUpper: floatPointer(1), ComputationVersion: "test.v1"},
+			Identifiability: sp.IdentifiabilityCombinedOnly,
+			Points:          []sp.PacePoint{{LapInStint: 1, DeltaSeconds: 0, SampleSize: 10}, {LapInStint: 4, DeltaSeconds: 1, SampleSize: 10}},
+		},
+		TyreDegradation: sp.TyreDegradationFamily{
+			Presence:         sp.PresenceValid,
+			Provenance:       sp.Provenance{Kind: sp.ProvenanceDerived, SourceID: "analysis:tyre-life"},
+			Confidence:       sp.Confidence{SampleSize: 10, ComputationVersion: "test.v1"},
+			LifeLapsEstimate: intPointer(4),
+		},
+		Pit: sp.PitFamily{
+			Presence:   sp.PresenceValid,
+			Provenance: sp.Provenance{Kind: sp.ProvenanceDerived, SourceID: "analysis:pit"},
+			Confidence: sp.Confidence{SampleSize: 3, ComputationVersion: "test.v1"},
+			FuelRate:   sp.ObservedRateFamily{Presence: sp.PresenceValid, Provenance: sp.Provenance{Kind: sp.ProvenanceDerived, SourceID: "analysis:refuel-rate"}, Confidence: sp.Confidence{SampleSize: 3, ComputationVersion: "test.v1"}, Mean: 4},
+		},
+	}
+
+	derived, err := SolveV2(input)
+	if err != nil {
+		t.Fatalf("SolveV2(derived): %v", err)
+	}
+	if derived.ResolvedInputs.TyreLifeLaps.Provenance.SourceID != "analysis:tyre-life" ||
+		derived.ResolvedInputs.PitCost.RefuelRateLPerS.Provenance.SourceID != "analysis:refuel-rate" ||
+		derived.StintPaceCost.Provenance.SourceID != "analysis:pace" {
+		t.Fatalf("derived sources = %+v", derived)
+	}
+
+	input.TyreLifeLaps = NewUserOverrideScalar(8, "orbit:event-1:tyre_life_laps")
+	input.DegradationPerLap = NewUserOverrideScalar(0, "orbit:event-1:degradation_per_lap_seconds")
+	input.PitCost.RefuelRateLPerS = NewUserOverrideScalar(2, "orbit:event-1:refuel_rate")
+	overridden, err := SolveV2(input)
+	if err != nil {
+		t.Fatalf("SolveV2(overrides): %v", err)
+	}
+	if overridden.ResolvedInputs.TyreLifeLaps.Role != ScalarRoleUserOverride ||
+		overridden.ResolvedInputs.PitCost.RefuelRateLPerS.Role != ScalarRoleUserOverride ||
+		overridden.StintPaceCost.Provenance.SourceID != "orbit:event-1:degradation_per_lap_seconds" {
+		t.Fatalf("override sources = %+v", overridden)
+	}
+}
+
+func intPointer(value int) *int { return &value }
 
 // exhaustiveV2Best enumera sin poda exactamente las vueltas de parada y los
 // multiplos discretizados de Fuel/VE que SolveV2 puede escoger. Solo usa casos
@@ -70,7 +187,7 @@ func exhaustiveV2Best(t *testing.T, input SolverInputV2) float64 {
 		}
 		for _, driver := range drivers.order {
 			for _, level := range saving.levels {
-				maxLaps := weatherCost.runnableLaps(input.RaceLaps-node.lap, node, fuel, ve, input.TyreLifeLaps, driver, level)
+				maxLaps := weatherCost.runnableLaps(input.RaceLaps-node.lap, node, fuel, ve, input.tyreLifeLaps(), driver, level)
 				for stintLaps := int64(1); stintLaps <= maxLaps; stintLaps++ {
 					if allowed, _ := weatherCost.compoundAllowed(node.tyre.compound, node.lap+1, stintLaps); !allowed {
 						continue
@@ -90,8 +207,8 @@ func exhaustiveV2Best(t *testing.T, input SolverInputV2) float64 {
 						continue
 					}
 					if next.lap == input.RaceLaps {
-						if allowed, _, _ := input.completedAllowed(next, tyreModel); allowed && next.total(input.Formation.Seconds) < best {
-							best = next.total(input.Formation.Seconds)
+						if allowed, _, _ := input.completedAllowed(next, tyreModel); allowed && next.total(input.Formation.Seconds.Value) < best {
+							best = next.total(input.Formation.Seconds.Value)
 						}
 						continue
 					}
@@ -132,6 +249,7 @@ func savingCostParameter(levels ...SavingLevelOption) *SavingCostParameter {
 		Presence:   sp.PresenceValid,
 		Provenance: sp.Provenance{Kind: sp.ProvenanceManual, SourceID: "solver-test:saving"},
 		Confidence: sp.Confidence{SampleSize: 1, ComputationVersion: "solver-test.v1"},
+		Role:       ScalarRoleFallback,
 		Levels:     levels,
 	}
 }
@@ -139,12 +257,12 @@ func savingCostParameter(levels ...SavingLevelOption) *SavingCostParameter {
 func TestSolveV2D6SavingEliminatesShortFinalStintOnlyWhenCheaper(t *testing.T) {
 	base := baseInputV2()
 	base.RaceLaps = 25
-	base.Formation.Seconds = 0
-	base.FuelCapacityLiters = 10
-	base.FuelPerLapLiters = 1
-	base.PitCost.TransitSeconds = 20
-	base.PitCost.RefuelRateLPerS = 100
-	base.PitCost.TyreSeconds = 0
+	base.Formation.Seconds.Value = 0
+	base.FuelCapacityLiters.Value = 10
+	base.FuelPerLapLiters.Value = 1
+	base.PitCost.TransitSeconds.Value = 20
+	base.PitCost.RefuelRateLPerS.Value = 100
+	base.PitCost.TyreSeconds.Value = 0
 	base.FuelWeight = fuelWeightParameter(0.02, sp.ProvenanceManual)
 
 	withoutSaving, err := SolveV2(base)
@@ -204,8 +322,8 @@ func TestSolveV2SavingMatchesExhaustiveOracleAndExposesSensitivity(t *testing.T)
 			if resource == ResourceFuel {
 				level.FuelSavedPerLap = 0.5
 			} else {
-				input.FuelCapacityLiters, input.FuelPerLapLiters = 0, 0
-				input.VECapacityPercent, input.VEPerLapPercent = 2, 1
+				input.FuelCapacityLiters.Value, input.FuelPerLapLiters.Value = 0, 0
+				input.VECapacityPercent.Value, input.VEPerLapPercent.Value = 2, 1
 				level.VESavedPerLap = 0.5
 			}
 			lower := level
@@ -292,7 +410,7 @@ func TestSolveV2SavingSourcesFailClosed(t *testing.T) {
 		}
 	})
 
-	t.Run("two authorities rejected", func(t *testing.T) {
+	t.Run("derived beats fallback", func(t *testing.T) {
 		input := baseInputV2()
 		input.SavingCost = savingCostParameter(SavingLevelOption{
 			Level: SavingLow, FuelSavedPerLap: 0.25, TimeCostPerLap: 0.1,
@@ -305,8 +423,31 @@ func TestSolveV2SavingSourcesFailClosed(t *testing.T) {
 			ManualNote: derivedABSavingMethod,
 			Levels:     []sp.SavingLevel{{MixtureCode: 1, FuelSavedPerLap: 0.25, TimeCostPerLap: 0.1}},
 		}
-		if _, err := SolveV2(input); err == nil || !HasErrorCode(err, ErrorInvalidInput) {
-			t.Fatalf("two-authority error = %v, want invalid_input", err)
+		result, err := SolveV2(input)
+		if err != nil {
+			t.Fatalf("SolveV2(derived plus fallback): %v", err)
+		}
+		if result.SavingCost.Provenance.SourceID != "session-ab" {
+			t.Fatalf("saving source = %+v", result.SavingCost)
+		}
+	})
+
+	t.Run("user override beats derived", func(t *testing.T) {
+		input := baseInputV2()
+		input.SavingCost = savingCostParameter(SavingLevelOption{Level: SavingLow, FuelSavedPerLap: 0.2, TimeCostPerLap: 0.1})
+		input.SavingCost.Role = ScalarRoleUserOverride
+		input.Projection = curveProjection([]sp.PacePoint{pacePoint(1, 0, 10)}, 10, 0, 0)
+		input.Projection.SavingCost = sp.SavingCostFamily{
+			Presence: sp.PresenceValid, Provenance: sp.Provenance{Kind: sp.ProvenanceDerived, SourceID: "session-ab"},
+			Confidence: sp.Confidence{SampleSize: 10, ComputationVersion: "derived-curves.v1"}, ManualNote: derivedABSavingMethod,
+			Levels: []sp.SavingLevel{{MixtureCode: 1, FuelSavedPerLap: 0.25, TimeCostPerLap: 0.2}},
+		}
+		result, err := SolveV2(input)
+		if err != nil {
+			t.Fatalf("SolveV2(user override): %v", err)
+		}
+		if result.SavingCost.Provenance.SourceID != "solver-test:saving" {
+			t.Fatalf("saving source = %+v", result.SavingCost)
 		}
 	})
 
@@ -405,9 +546,9 @@ func TestSolveV2RejectsInvalidSelectedCurve(t *testing.T) {
 func TestSolveV2UsesDerivedCurveAndPreservesProvenance(t *testing.T) {
 	input := baseInputV2()
 	input.RaceLaps = 4
-	input.FuelCapacityLiters = 0
-	input.FuelPerLapLiters = 0
-	input.PitCost.TransitSeconds = 100
+	input.FuelCapacityLiters.Value = 0
+	input.FuelPerLapLiters.Value = 0
+	input.PitCost.TransitSeconds.Value = 100
 	input.Projection = curveProjection([]sp.PacePoint{pacePoint(1, 0, 4), pacePoint(3, 2, 4)}, 4, 0, 4)
 
 	result, err := SolveV2(input)
@@ -428,12 +569,12 @@ func TestSolveV2UsesDerivedCurveAndPreservesProvenance(t *testing.T) {
 func TestSolveV2LateCliffChangesOptimalStopAgainstLinearApproximation(t *testing.T) {
 	linear := baseInputV2()
 	linear.RaceLaps = 8
-	linear.FuelCapacityLiters = 0
-	linear.FuelPerLapLiters = 0
-	linear.Formation.Seconds = 0
-	linear.PitCost.TransitSeconds = 1
-	linear.PitCost.TyreSeconds = 0
-	linear.DegradationPerLap = 0.05
+	linear.FuelCapacityLiters.Value = 0
+	linear.FuelPerLapLiters.Value = 0
+	linear.Formation.Seconds.Value = 0
+	linear.PitCost.TransitSeconds.Value = 1
+	linear.PitCost.TyreSeconds.Value = 0
+	linear.DegradationPerLap.Value = 0.05
 
 	linearResult, err := SolveV2(linear)
 	if err != nil {
@@ -502,12 +643,12 @@ func TestFuelWeightCostUsesFuelBeforeEachLap(t *testing.T) {
 func TestSolveV2FuelWeightChangesFillToSplash(t *testing.T) {
 	withoutWeight := baseInputV2()
 	withoutWeight.RaceLaps = 8
-	withoutWeight.FuelCapacityLiters = 4
-	withoutWeight.FuelPerLapLiters = 1
-	withoutWeight.Formation.Seconds = 0
-	withoutWeight.PitCost.TransitSeconds = 0.7
-	withoutWeight.PitCost.RefuelRateLPerS = 100
-	withoutWeight.PitCost.TyreSeconds = 0
+	withoutWeight.FuelCapacityLiters.Value = 4
+	withoutWeight.FuelPerLapLiters.Value = 1
+	withoutWeight.Formation.Seconds.Value = 0
+	withoutWeight.PitCost.TransitSeconds.Value = 0.7
+	withoutWeight.PitCost.RefuelRateLPerS.Value = 100
+	withoutWeight.PitCost.TyreSeconds.Value = 0
 
 	filled, err := SolveV2(withoutWeight)
 	if err != nil {
@@ -526,11 +667,11 @@ func TestSolveV2FuelWeightChangesFillToSplash(t *testing.T) {
 	if len(light.Best.PitStops) != 2 {
 		t.Fatalf("fuel weight did not move the optimum to splash stops: %+v", light.Best)
 	}
-	fuelLeft := withWeight.FuelCapacityLiters
+	fuelLeft := withWeight.FuelCapacityLiters.Value
 	for index, stop := range light.Best.PitStops {
-		fuelLeft -= float64(light.Best.Stints[index].Laps) * withWeight.FuelPerLapLiters
+		fuelLeft -= float64(light.Best.Stints[index].Laps) * withWeight.FuelPerLapLiters.Value
 		fuelLeft += stop.FuelLiters
-		if fuelLeft >= withWeight.FuelCapacityLiters {
+		if fuelLeft >= withWeight.FuelCapacityLiters.Value {
 			t.Fatalf("weighted plan filled instead of splashing: %+v", light.Best)
 		}
 	}
@@ -596,10 +737,10 @@ func TestSolveV2MatchesExhaustiveStopsAndServiceQuantities(t *testing.T) {
 			for _, mode := range []manual.PitServiceMode{manual.PitServiceParallel, manual.PitServiceSequential} {
 				input := baseInputV2()
 				input.RaceLaps = raceLaps
-				input.DegradationPerLap = degradation
+				input.DegradationPerLap.Value = degradation
 				input.PitCost.ServiceMode = mode
-				input.VECapacityPercent = 2
-				input.VEPerLapPercent = 1
+				input.VECapacityPercent.Value = 2
+				input.VEPerLapPercent.Value = 1
 
 				got, err := SolveV2(input)
 				if err != nil {
@@ -617,9 +758,9 @@ func TestSolveV2MatchesExhaustiveStopsAndServiceQuantities(t *testing.T) {
 func TestSolveV2ExposesPerStopBreakdownAndBinding(t *testing.T) {
 	input := baseInputV2()
 	input.RaceLaps = 4
-	input.VECapacityPercent = 2
-	input.VEPerLapPercent = 1
-	input.PitCost.VERatePPerS = 2
+	input.VECapacityPercent.Value = 2
+	input.VEPerLapPercent.Value = 1
+	input.PitCost.VERatePPerS.Value = 2
 
 	result, err := SolveV2(input)
 	if err != nil {
@@ -651,7 +792,7 @@ func TestSolveV2ExposesPerStopBreakdownAndBinding(t *testing.T) {
 
 func TestSolveV2KeepsInfeasibleCandidateReason(t *testing.T) {
 	input := baseInputV2()
-	input.FuelCapacityLiters = 0.5
+	input.FuelCapacityLiters.Value = 0.5
 	input.Discretization.FuelLiters = 0.5
 
 	result, err := SolveV2(input)
@@ -669,7 +810,7 @@ func TestSolveV2KeepsInfeasibleCandidateReason(t *testing.T) {
 func TestSolveV2AppliesPitStopCountRulesWithoutHidingRejections(t *testing.T) {
 	input := baseInputV2()
 	input.RaceLaps = 2
-	input.FuelCapacityLiters = 2
+	input.FuelCapacityLiters.Value = 2
 	minimum := 1
 	maximum := 1
 	input.EventRules.MinPitStops = &minimum
@@ -709,6 +850,76 @@ func TestSolveV2RankingIsDeterministic(t *testing.T) {
 		if first.InputHash != again.InputHash || !reflect.DeepEqual(first.Best, again.Best) || !reflect.DeepEqual(first.Candidates, again.Candidates) || !reflect.DeepEqual(first.CandidateDetails, again.CandidateDetails) || !reflect.DeepEqual(first.Variants, again.Variants) || !reflect.DeepEqual(first.Sensitivities, again.Sensitivities) {
 			t.Fatalf("ranking changed on attempt %d", attempt)
 		}
+	}
+}
+
+func TestV2RankingTreatsFloatNoiseAsTieBeforeDocumentedRules(t *testing.T) {
+	preferred := searchNode{
+		fuel: 2 * serviceScale, ve: 2 * serviceScale,
+		decision: DecisionVector{
+			PitStops: []PitStopDecision{{Lap: 2, FuelLiters: 1}},
+			Stints:   []StintDecision{{Index: 0, Laps: 2}, {Index: 1, Laps: 3}},
+		},
+	}
+	laterPit := searchNode{
+		fuel: 2 * serviceScale, ve: 2 * serviceScale,
+		decision: DecisionVector{
+			PitStops: []PitStopDecision{{Lap: 3, FuelLiters: 1}},
+			Stints:   []StintDecision{{Index: 0, Laps: 3}, {Index: 1, Laps: 2}},
+		},
+	}
+
+	terms := []float64{14_456, 64, 64, 64, 64, 30.25e-12, 88e-12, 88e-12, 88e-12}
+	forward, reverse := 0.0, 0.0
+	for index := range terms {
+		forward += terms[index]
+		reverse += terms[len(terms)-1-index]
+	}
+	if forward == reverse {
+		t.Fatal("fixture must expose a float64 accumulation-order difference")
+	}
+
+	preferred.green, laterPit.green = forward, reverse
+	if !betterNode(preferred, laterPit, 0) {
+		t.Fatalf("earlier pit lost when totals were forward=%.15f reverse=%.15f", forward, reverse)
+	}
+	preferred.green, laterPit.green = reverse, forward
+	if !betterNode(preferred, laterPit, 0) {
+		t.Fatalf("earlier pit changed after reversing accumulation noise: forward=%.15f reverse=%.15f", forward, reverse)
+	}
+	if !dominates(preferred, laterPit, 0, false, false, false, false, false, false, false) {
+		t.Fatal("dominance did not preserve the documented tie-break inside the time tolerance")
+	}
+	for _, insertionOrder := range [][]searchNode{{preferred, laterPit}, {laterPit, preferred}} {
+		ranked := []searchNode{}
+		for _, candidate := range insertionOrder {
+			ranked = insertRanked(ranked, candidate, 0)
+		}
+		if ranked[0].decision.PitStops[0].Lap != 2 {
+			t.Fatalf("winner depends on insertion order: %+v", ranked)
+		}
+	}
+}
+
+func TestV2RankingUsesDecisionIdentityAsFinalStableTieBreaker(t *testing.T) {
+	left := searchNode{
+		green: 100,
+		decision: DecisionVector{
+			PitStops: []PitStopDecision{{Lap: 2, FuelLiters: 1}},
+			Stints:   []StintDecision{{Index: 0, Laps: 2, Driver: "driver-a"}, {Index: 1, Laps: 3, Driver: "driver-a"}},
+		},
+	}
+	right := left
+	right.decision = cloneDecision(left.decision)
+	for index := range right.decision.Stints {
+		right.decision.Stints[index].Driver = "driver-b"
+	}
+
+	if !(decisionKey(left.decision) < decisionKey(right.decision)) {
+		t.Fatal("fixture canonical order is not left before right")
+	}
+	if !betterNode(left, right, 0) || betterNode(right, left, 0) {
+		t.Fatal("exact tie did not use the final canonical decision identity")
 	}
 }
 

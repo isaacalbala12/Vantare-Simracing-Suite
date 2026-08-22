@@ -170,7 +170,7 @@ describe("strategy-orbit-bridge application client", () => {
       activeVariantId: "s1",
     });
 
-    expect(result.plans.s1.stints.map((stint) => stint.laps)).toEqual([28, 28, 28, 28, 27]);
+    expect(result.plans.s1.stints.map((stint) => stint.laps)).toEqual([11, 32, 32, 32, 32]);
     expect(Object.isFrozen(result.plans.s1)).toBe(true);
   });
 

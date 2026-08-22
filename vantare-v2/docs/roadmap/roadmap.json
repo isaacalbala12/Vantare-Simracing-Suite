@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-22T18:54:48Z",
+  "generatedAt": "2026-08-22T19:25:32Z",
   "digest": {
-    "lastCommit": "d0ad2196f7981919928cf6bea2faa778c47cab99"
+    "lastCommit": "f97e79a5ad555fb6a52bacdff400cb76cff2656b"
   },
   "phases": [
     {
@@ -543,6 +543,28 @@
       }
     },
     {
+      "id": "strategy-orbit-solve-v2",
+      "type": "feature",
+      "title": {
+        "es": "Cálculo Orbit sobre el motor completo",
+        "en": "Orbit calculation on the full engine",
+        "pt": "Cálculo do Orbit no motor completo",
+        "it": "Calcolo Orbit sul motore completo"
+      },
+      "body": {
+        "es": "Orbit ya envía los valores manuales, derivados y sus overrides al motor Strategy completo con su procedencia. Un override del usuario nunca queda sustituido en silencio por una derivada.",
+        "en": "Orbit now sends manual and derived values, plus their overrides, to the full Strategy engine with provenance. A user override is never silently replaced by a derived value.",
+        "pt": "O Orbit agora envia valores manuais e derivados, incluindo os overrides, para o motor Strategy completo com a respetiva procedência. Um override do utilizador nunca é substituído silenciosamente por um valor derivado.",
+        "it": "Orbit ora invia valori manuali e derivati, inclusi gli override, al motore Strategy completo con la relativa provenienza. Un override dell'utente non viene mai sostituito silenziosamente da un valore derivato."
+      },
+      "label": {
+        "es": "Feature",
+        "en": "Feature",
+        "pt": "Feature",
+        "it": "Feature"
+      }
+    },
+    {
       "id": "strategy-pseudonymous-contribution",
       "type": "feature",
       "title": {
@@ -649,6 +671,51 @@
           "kind": "change",
           "scope": "",
           "text": "Fugas LMU 1-8, inversion 9d ExtendedReader y frame congelado"
+        },
+        {
+          "kind": "docs",
+          "scope": "strategy",
+          "text": "Documenta revisión y gates editoriales"
+        },
+        {
+          "kind": "feat",
+          "scope": "strategy",
+          "text": "Añade ciclo editorial local"
+        },
+        {
+          "kind": "docs",
+          "scope": "strategy",
+          "text": "Documentar cadena local del catálogo"
+        },
+        {
+          "kind": "feat",
+          "scope": "strategy",
+          "text": "Construir y firmar catálogo curado"
+        },
+        {
+          "kind": "docs",
+          "scope": "estrategia",
+          "text": "Documenta perfiles del curador"
+        },
+        {
+          "kind": "feat",
+          "scope": "estrategia",
+          "text": "Agrega perfiles de referencia robustos"
+        },
+        {
+          "kind": "docs",
+          "scope": "strategy",
+          "text": "Documenta bloqueo de procedencia en F4"
+        },
+        {
+          "kind": "docs",
+          "scope": "estrategia",
+          "text": "Registrar entrega F6-a"
+        },
+        {
+          "kind": "fix",
+          "scope": "ui",
+          "text": "Adaptar privacidad a cada tamaño"
         }
       ]
     },

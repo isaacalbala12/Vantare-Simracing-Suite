@@ -7,6 +7,11 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/vantare/overlays/v2/internal/strategy/backtest"
+	"github.com/vantare/overlays/v2/internal/strategy/curation"
+	"github.com/vantare/overlays/v2/internal/strategy/solver"
+	sp "github.com/vantare/overlays/v2/internal/telemetryanalysis/strategyprojection"
 )
 
 func TestBuildSummaryTableDriven(t *testing.T) {
@@ -152,6 +157,46 @@ func TestMetricAccumulatorUsesLapWeightedMedian(t *testing.T) {
 	got := accumulator.summary()
 	if got.MedianPerLap != 1 || got.RangeLower != 1 || got.RangeUpper != 10 || got.SampleLaps != 4 {
 		t.Fatalf("weighted median summary = %+v", got)
+	}
+}
+
+func TestNormalizedRaceCaseIsAcceptedByBacktest(t *testing.T) {
+	strategy := curation.ObservedStrategyRef{StintCount: 2, PitLaps: []int{5}, Compounds: []string{"hard", "soft"}}
+	race, err := normalizedRaceCase("spa-lmgt3", strategy, 10, 20.5)
+	if err != nil {
+		t.Fatalf("normalizedRaceCase: %v", err)
+	}
+	result, err := backtest.RunRace(race, backtest.ProvisionalThresholds(0))
+	if err != nil {
+		t.Fatalf("RunRace rejected normalized curator input: %v", err)
+	}
+	if result.Calibration.PredictedTotalSeconds != 30.5 || !result.Feasibility.Passed || !result.Ranking.Passed {
+		t.Fatalf("normalized backtest result = %+v", result)
+	}
+
+	scalars := []struct {
+		name  string
+		input solver.ScalarInput
+	}{
+		{name: "base lap", input: race.PredictionInput.BaseLapSeconds},
+		{name: "pit transit", input: race.PredictionInput.PitCost.TransitSeconds},
+		{name: "refuel rate", input: race.PredictionInput.PitCost.RefuelRateLPerS},
+		{name: "VE rate", input: race.PredictionInput.PitCost.VERatePPerS},
+		{name: "tyre service", input: race.PredictionInput.PitCost.TyreSeconds},
+		{name: "formation", input: race.PredictionInput.Formation.Seconds},
+		{name: "fuel capacity", input: race.PredictionInput.FuelCapacityLiters},
+		{name: "VE capacity", input: race.PredictionInput.VECapacityPercent},
+		{name: "tyre life", input: race.PredictionInput.TyreLifeLaps},
+		{name: "fuel per lap", input: race.PredictionInput.FuelPerLapLiters},
+		{name: "VE per lap", input: race.PredictionInput.VEPerLapPercent},
+		{name: "degradation", input: race.PredictionInput.DegradationPerLap},
+	}
+	for _, scalar := range scalars {
+		t.Run(scalar.name, func(t *testing.T) {
+			if scalar.input.Role != solver.ScalarRoleFallback || scalar.input.Provenance.Kind != sp.ProvenanceReference {
+				t.Fatalf("normalized scalar authority = %+v", scalar.input)
+			}
+		})
 	}
 }
 

@@ -4,8 +4,9 @@ import { Events } from "@wailsio/runtime";
 import { I18nProvider } from "../../i18n/I18nProvider";
 import { LicenseProvider } from "../../lib/license";
 import { SETTINGS_CONTEXT_SLOT_ID, SettingsOrbitPage } from "./SettingsOrbitPage";
-import { conflictingHotkeys, keycapsOf, maskEmail, resolveSettingsSection } from "./settings-orbit-model";
+import { conflictingHotkeys, keycapsOf, maskEmail, resolveSettingsSection, searchSettings } from "./settings-orbit-model";
 import { UPDATER_CHANNEL_EVENT } from "../settings/updater-channel";
+import { fixturePrepared } from "../settings/diagnostics/test-fixtures";
 
 /** La shell reserva el hueco de la columna; en los tests lo monta el propio test. */
 function mount(target?: string) {
@@ -61,6 +62,24 @@ describe("modelo de Ajustes", () => {
     expect(maskEmail("isaacalbala@gmail.com")).toBe("isaac•••@gmail.com");
     expect(maskEmail("")).toBe("");
   });
+
+  it("la búsqueda ignora mayúsculas y diacríticos y no inventa resultados", () => {
+    const dict: Record<string, string> = {
+      "settings.diag.core": "Telemetry Core",
+      "settings.app.theme": "Tema",
+    };
+    const t = (key: string) => dict[key] ?? key;
+
+    expect(searchSettings("TEMA", t)).toEqual([
+      { section: "application", key: "settings.app.theme" },
+    ]);
+    // «TELEMETR» con mayúsculas encuentra «Telemetry Core».
+    expect(searchSettings("TELEMETR", t)).toEqual([
+      { section: "diagnostics", key: "settings.diag.core" },
+    ]);
+    // Consulta vacía: ningún resultado, la columna vuelve a las secciones.
+    expect(searchSettings("   ", t)).toEqual([]);
+  });
 });
 
 describe("SettingsOrbitPage", () => {
@@ -93,6 +112,32 @@ describe("SettingsOrbitPage", () => {
     const { container, slot } = mount("account");
     expect(container.querySelectorAll("[title]")).toHaveLength(0);
     expect(slot.querySelectorAll("[title]")).toHaveLength(0);
+  });
+
+  it("buscar un ajuste ofrece resultados que navegan a su sección", () => {
+    mount("account");
+    fireEvent.change(screen.getByTestId("orbit-settings-search"), {
+      target: { value: "tema" },
+    });
+
+    const results = screen.getByTestId("orbit-settings-search-results");
+    const rows = within(results).getAllByRole("button");
+    expect(rows.length).toBeGreaterThan(0);
+
+    // Elegir un resultado navega y devuelve la columna a las secciones.
+    fireEvent.click(rows[0]);
+    expect(screen.getByTestId("orbit-settings-panel-application")).toBeTruthy();
+    expect(screen.queryByTestId("orbit-settings-search-results")).toBeNull();
+  });
+
+  it("una búsqueda sin resultados lo dice en vez de quedarse muda", () => {
+    mount("account");
+    fireEvent.change(screen.getByTestId("orbit-settings-search"), {
+      target: { value: "zzzznada" },
+    });
+
+    expect(screen.queryByTestId("orbit-settings-search-results")).toBeNull();
+    expect(screen.getByText("Ningún ajuste coincide con tu búsqueda.")).toBeTruthy();
   });
 
   it("cambiar la densidad la aplica al instante y la persiste", () => {
@@ -301,6 +346,22 @@ describe("SettingsOrbitPage", () => {
     });
   });
 
+  it("grabar una combinación la guarda al instante, sin botón de guardar", async () => {
+    const emit = vi.spyOn(Events, "Emit");
+    mount("hotkeys");
+    emit.mockClear();
+
+    fireEvent.click(screen.getAllByTestId("orbit-keycap-row")[0]);
+    fireEvent.keyDown(document, { key: "j", ctrlKey: true, shiftKey: true });
+
+    await waitFor(() => {
+      expect(emit.mock.calls.some(([name]) => name === "settings:save")).toBe(true);
+    });
+    // El guardado manual desapareció: la pantalla autoguarda como el resto
+    // de secciones y no puede quedar un botón muerto.
+    expect(screen.queryByTestId("orbit-settings-hk-save")).toBeNull();
+  });
+
   it("un conflicto marca las dos filas y el contador lo dice", async () => {
     mount("hotkeys");
     expect(screen.getByTestId("orbit-settings-hk-status").textContent).toBe("Sin conflictos");
@@ -463,5 +524,51 @@ describe("SettingsOrbitPage", () => {
       expect(within(row).queryByRole("button")).toBeNull();
       expect(row.textContent?.length).toBeGreaterThan(0);
     });
+  });
+
+  // El informe preparado tenía estado «listo» pero ninguna salida: la acción
+  // de descarga existía y estaba probada, la pantalla Orbit no la ofrecía.
+  it("un informe preparado se puede descargar como archivo JSON", async () => {
+    const handlers = new Map<string, (event: { data: unknown }) => void>();
+    vi.spyOn(Events, "On").mockImplementation(((name: string, cb: unknown) => {
+      handlers.set(name, cb as (event: { data: unknown }) => void);
+      return () => handlers.delete(name);
+    }) as never);
+    vi.spyOn(Events, "Emit").mockImplementation(((name: string, data: unknown) => {
+      if (name === "diagnostics:prepare") {
+        // Formato de cable: sin `report`, que el decoder reconstruye del payload.
+        const { report: _report, ...wire } = fixturePrepared;
+        void _report;
+        handlers.get("diagnostics:prepared")?.({
+          data: {
+            requestId: (data as { requestId: string }).requestId,
+            prepared: wire,
+          },
+        });
+      }
+      return Promise.resolve(true);
+    }) as never);
+
+    const originalCreate = URL.createObjectURL;
+    const originalRevoke = URL.revokeObjectURL;
+    URL.createObjectURL = vi.fn(() => "blob:test");
+    URL.revokeObjectURL = vi.fn();
+    const click = vi
+      .spyOn(HTMLAnchorElement.prototype, "click")
+      .mockImplementation(() => {});
+
+    try {
+      mount("diagnostics");
+      // El informe se prepara con un gesto del usuario, no al abrir la sección.
+      fireEvent.click(await screen.findByTestId("orbit-settings-prepare-report"));
+      fireEvent.click(await screen.findByTestId("orbit-settings-report-download"));
+
+      expect(click).toHaveBeenCalledTimes(1);
+      const anchor = click.mock.instances[0] as HTMLAnchorElement;
+      expect(anchor.download).toContain("vantare-diagnostics-");
+    } finally {
+      URL.createObjectURL = originalCreate;
+      URL.revokeObjectURL = originalRevoke;
+    }
   });
 });

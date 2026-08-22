@@ -18,6 +18,8 @@ export const settingsOrbitEs: Record<string, string> = {
   "settings.nav.hotkeysSub": "Combinaciones globales",
   "settings.nav.diagnostics": "Diagnóstico",
   "settings.nav.diagnosticsSub": "Fuentes, datos y registros",
+  "settings.search.placeholder": "Buscar ajustes…",
+  "settings.search.empty": "Ningún ajuste coincide con tu búsqueda.",
 
   "settings.sec.account.title": "Cuenta",
   "settings.sec.account.lead": "Tu sesión, tu plan y lo que incluye.",
@@ -129,7 +131,6 @@ export const settingsOrbitEs: Record<string, string> = {
   "settings.hk.lead":
     "Funcionan aunque Vantare esté en segundo plano. Pulsa una fila y después la combinación para reasignarla; los conflictos se marcan en ámbar.",
   "settings.hk.reset": "Restablecer todos",
-  "settings.hk.save": "Guardar",
   "settings.hk.noConflicts": "Sin conflictos",
   "settings.hk.conflicts": "{{n}} en conflicto",
   "settings.hk.recording": "Pulsa la combinación · Esc cancela",
@@ -175,6 +176,7 @@ export const settingsOrbitEs: Record<string, string> = {
   "settings.diag.prepare": "Preparar",
   "settings.diag.preparing": "Preparando…",
   "settings.diag.reportReady": "Informe listo · {{bytes}} · {{date}}",
+  "settings.diag.reportDownload": "Descargar informe",
   "settings.diag.reportError": "No se pudo preparar el informe.",
   "settings.diag.events": "Últimos eventos",
   "settings.diag.eventsMeta": "sesión actual",

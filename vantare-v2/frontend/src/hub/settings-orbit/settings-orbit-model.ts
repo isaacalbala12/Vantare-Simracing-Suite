@@ -103,6 +103,103 @@ export function conflictingHotkeys(hotkeys: Record<string, string>): Set<string>
   return conflicting;
 }
 
+/* ─────────────────────────────────────────────────────────── BÚSQUEDA ── */
+
+/** Una entrada buscable: la fila vive en una sección y su título es una clave i18n. */
+export interface SettingsSearchEntry {
+  section: SettingsSection;
+  key: string;
+}
+
+/**
+ * Índice de búsqueda de Ajustes.
+ *
+ * Solo contiene claves que la pantalla pinta de verdad: cada entrada es el
+ * título de una fila o superficie existente (o el nombre de la sección en la
+ * columna). Añadir aquí una clave que ninguna sección renderiza sería ofrecer
+ * un resultado que no lleva a ningún sitio.
+ */
+export const SETTINGS_SEARCH_INDEX: SettingsSearchEntry[] = [
+  // Secciones, para que «cuenta» o «datos» lleven al sitio aunque el ajuste
+  // buscado no tenga fila propia.
+  { section: "account", key: "settings.nav.account" },
+  { section: "application", key: "settings.nav.application" },
+  { section: "updates", key: "settings.nav.updates" },
+  { section: "hotkeys", key: "settings.nav.hotkeys" },
+  { section: "diagnostics", key: "settings.nav.diagnostics" },
+
+  // Cuenta
+  { section: "account", key: "settings.account.session" },
+  { section: "account", key: "settings.account.devices" },
+  { section: "account", key: "settings.account.planEyebrow" },
+
+  // Aplicación · interfaz
+  { section: "application", key: "settings.app.language" },
+  { section: "application", key: "settings.app.density" },
+  { section: "application", key: "settings.app.theme" },
+  { section: "application", key: "settings.app.reduceMotion" },
+
+  // Aplicación · sistema
+  { section: "application", key: "settings.app.startup" },
+  { section: "application", key: "settings.app.startupMinimised" },
+  { section: "application", key: "settings.app.notifyUpdates" },
+  { section: "application", key: "settings.app.notifyLauncher" },
+  { section: "application", key: "settings.app.notifySystem" },
+
+  // Actualizaciones
+  { section: "updates", key: "settings.upd.installed" },
+  { section: "updates", key: "settings.upd.channels" },
+  { section: "updates", key: "settings.upd.news" },
+
+  // Atajos
+  { section: "hotkeys", key: "settings.hotkeys.toggleOverlay" },
+  { section: "hotkeys", key: "settings.hotkeys.nextProfile" },
+  { section: "hotkeys", key: "settings.hotkeys.prevProfile" },
+  { section: "hotkeys", key: "settings.hotkeys.cycleDeltaReference" },
+
+  // Diagnóstico
+  { section: "diagnostics", key: "settings.diag.core" },
+  { section: "diagnostics", key: "settings.diag.overlay" },
+  { section: "diagnostics", key: "settings.diag.cpu" },
+  { section: "diagnostics", key: "settings.diag.storage" },
+  { section: "diagnostics", key: "settings.diag.folder" },
+  { section: "diagnostics", key: "settings.diag.logs" },
+  { section: "diagnostics", key: "settings.diag.sampling" },
+  { section: "diagnostics", key: "settings.diag.report" },
+  { section: "diagnostics", key: "settings.diag.events" },
+];
+
+/**
+ * Comparación tolerante: minúsculas y sin diacríticos, para que «telemetry»
+ * encuentre «Telemetría» y «version» encuentre «Versión instalada».
+ */
+export function normalizeForSearch(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/gu, "");
+}
+
+/**
+ * Resultados de búsqueda sobre el índice.
+ *
+ * El traductor entra como función para que el modelo siga siendo puro y
+ * probable sin montar React. Cada entrada se compara con su título y con su
+ * texto auxiliar (`<key>Sub`), que describe la fila mejor que el título.
+ */
+export function searchSettings(
+  query: string,
+  translateKey: (key: string) => string,
+): SettingsSearchEntry[] {
+  const needle = normalizeForSearch(query.trim());
+  if (!needle) return [];
+  return SETTINGS_SEARCH_INDEX.filter((entry) => {
+    const title = normalizeForSearch(translateKey(entry.key));
+    const hint = normalizeForSearch(translateKey(`${entry.key}Sub`));
+    return title.includes(needle) || hint.includes(needle);
+  });
+}
+
 /* ────────────────────────────────────────────────── REDUCIR ANIMACIONES ── */
 
 /**

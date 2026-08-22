@@ -14,6 +14,8 @@ export const settingsOrbitPt: Record<string, string> = {
   "settings.nav.hotkeysSub": "Combinações globais",
   "settings.nav.diagnostics": "Diagnóstico",
   "settings.nav.diagnosticsSub": "Fontes, dados e registos",
+  "settings.search.placeholder": "Pesquisar definições…",
+  "settings.search.empty": "Nenhuma definição corresponde à tua pesquisa.",
 
   "settings.sec.account.title": "Conta",
   "settings.sec.account.lead": "A tua sessão, o teu plano e o que inclui.",
@@ -120,7 +122,6 @@ export const settingsOrbitPt: Record<string, string> = {
   "settings.hk.lead":
     "Funcionam mesmo com o Vantare em segundo plano. Carrega numa linha e depois na combinação para a reatribuir; os conflitos ficam a âmbar.",
   "settings.hk.reset": "Repor todos",
-  "settings.hk.save": "Guardar",
   "settings.hk.noConflicts": "Sem conflitos",
   "settings.hk.conflicts": "{{n}} em conflito",
   "settings.hk.recording": "Carrega na combinação · Esc cancela",
@@ -165,6 +166,7 @@ export const settingsOrbitPt: Record<string, string> = {
   "settings.diag.prepare": "Preparar",
   "settings.diag.preparing": "A preparar…",
   "settings.diag.reportReady": "Relatório pronto · {{bytes}} · {{date}}",
+  "settings.diag.reportDownload": "Descarregar relatório",
   "settings.diag.reportError": "Não foi possível preparar o relatório.",
   "settings.diag.events": "Últimos eventos",
   "settings.diag.eventsMeta": "sessão atual",

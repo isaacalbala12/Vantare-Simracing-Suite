@@ -79,8 +79,9 @@ export function useAppSettings() {
     });
   }
 
-  // Hotkeys are edited locally and written only when the user saves, so this
-  // updates state without emitting.
+  // Grabar una combinación es una decisión completa, no una edición a medias:
+  // se guarda en el mismo gesto, igual que el resto de ajustes de la pantalla,
+  // que ya no tienen botón de guardar.
   const captureKeyDown = useCallback(
     (event: KeyboardEvent) => {
       if (!capturingKey) return;
@@ -94,7 +95,7 @@ export function useAppSettings() {
       }
       if (result.combo === null) return;
 
-      setAppSettings({
+      save({
         ...appSettings,
         hotkeys: { ...appSettings.hotkeys, [capturingKey]: result.combo },
       });
@@ -108,11 +109,6 @@ export function useAppSettings() {
     document.addEventListener("keydown", captureKeyDown, true);
     return () => document.removeEventListener("keydown", captureKeyDown, true);
   }, [capturingKey, captureKeyDown]);
-
-  function saveHotkeys() {
-    setSettingsStatus("saving");
-    Events.Emit("settings:save", appSettings);
-  }
 
   // Restablecer sí escribe: no es una edición a medias que el usuario todavía
   // esté componiendo, es una decisión completa sobre las cuatro teclas.
@@ -129,7 +125,6 @@ export function useAppSettings() {
     cancelCapture: () => setCapturingKey(null),
     toggleCpuSampling,
     setNotifications,
-    saveHotkeys,
     resetHotkeys,
   };
 }

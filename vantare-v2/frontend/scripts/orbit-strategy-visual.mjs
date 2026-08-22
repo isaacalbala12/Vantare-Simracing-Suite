@@ -103,7 +103,8 @@ try {
       if (!isWailsRuntimeNoise(error)) problems.push(`pageerror: ${error.message}`);
     });
 
-    await page.clock.install({ time: FROZEN_CLOCK });
+    // Fecha estable para la evidencia sin congelar los timers del transporte mock.
+    await page.clock.setFixedTime(FROZEN_CLOCK);
     await page.goto(url, { waitUntil: "networkidle" });
     await page.getByTestId("orbit-strategy").waitFor();
     const sessionPicker = page.getByTestId("orbit-strategy-session-picker");
@@ -154,6 +155,21 @@ try {
       await settle(page);
       await page.screenshot({
         path: path.join(output, `orbit-estrategia-procedencia-${viewport.name}.png`),
+        fullPage: false,
+      });
+
+      // F5-c: el vacío declara seco manual y la captura LMU permanece deshabilitada sin forecast simulado.
+      await page.getByRole("button", { name: "Clima", exact: true }).click();
+      await page.getByTestId("orbit-strategy-weather").waitFor();
+      const forecastCapture = page.getByRole("button", { name: "Capturar forecast", exact: true });
+      if (await forecastCapture.isEnabled()) {
+        throw new Error(`${viewport.name}: la captura de forecast LMU no está deshabilitada`);
+      }
+      await page.getByText("Sin escenarios: el cálculo usa seco declarado manualmente.").waitFor();
+      await page.getByText("Disponible cuando se valide la captura desde LMU.").waitFor();
+      await settle(page);
+      await page.screenshot({
+        path: path.join(output, `orbit-estrategia-clima-${viewport.name}.png`),
         fullPage: false,
       });
 

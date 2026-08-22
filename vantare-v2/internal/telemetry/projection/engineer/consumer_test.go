@@ -51,3 +51,23 @@ func TestConsumerSurfaceUsesOnlyEngineerTypes(t *testing.T) {
 	var _ uint64 = uint64(snapshot.Epoch)
 	var _ engineer.ObservationV1 = snapshot.ObservationV1
 }
+
+func TestCompleteContextIsSharedFailClosedProducerIdentity(t *testing.T) {
+	complete := engineer.Context{Epoch: 1, Identity: engineer.Identity{Event: "event", Session: "session", Vehicle: "vehicle", Driver: "driver"}}
+	if !complete.Complete() {
+		t.Fatal("complete producer identity was rejected")
+	}
+	for _, mutate := range []func(*engineer.Context){
+		func(value *engineer.Context) { value.Epoch = 0 },
+		func(value *engineer.Context) { value.Identity.Event = "" },
+		func(value *engineer.Context) { value.Identity.Session = "" },
+		func(value *engineer.Context) { value.Identity.Vehicle = "" },
+		func(value *engineer.Context) { value.Identity.Driver = "" },
+	} {
+		candidate := complete
+		mutate(&candidate)
+		if candidate.Complete() {
+			t.Fatalf("incomplete producer identity accepted: %+v", candidate)
+		}
+	}
+}

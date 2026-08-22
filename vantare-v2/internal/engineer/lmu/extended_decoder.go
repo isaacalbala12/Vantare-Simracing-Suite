@@ -6,11 +6,20 @@ import (
 	"math"
 )
 
+// ExtendedSource is the minimal interface consumed by Engineer monitors.
+// The concrete LMU decoder implements it, but monitors depend only on this
+// interface so the product layer does not depend on a concrete LMU reader.
+type ExtendedSource interface {
+	Read() (ExtendedData, error)
+}
+
 // ExtendedReader is a pure decoder retained for explicit monitor fixtures. It
 // cannot open shared memory and therefore cannot become a second LMU source.
 type ExtendedReader struct {
 	data []byte
 }
+
+var _ ExtendedSource = (*ExtendedReader)(nil)
 
 // NewExtendedReaderFromBuffer creates a fixture-backed decoder. Production
 // data must arrive through Telemetry Core projections, never through this type.

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-21T01:58:26Z",
+  "generatedAt": "2026-08-21T22:11:47Z",
   "digest": {
-    "lastCommit": "7735f098bb810559d12c48c5a1994cddaa335fc4"
+    "lastCommit": "f71a43aceef39df0aee3cd9f69ab52efeeac31c8"
   },
   "phases": [
     {
@@ -286,8 +286,8 @@
         "pt": "Engenheiro",
         "it": "Engineer"
       },
-      "progress": 25,
-      "status": "planned",
+      "progress": 50,
+      "status": "in-progress",
       "projects": [
         "engineer-spotter"
       ]
@@ -408,6 +408,50 @@
         "en": "In progress",
         "pt": "Em desenvolvimento",
         "it": "In corso"
+      }
+    },
+    {
+      "id": "engineer-radio-spotter",
+      "type": "feature",
+      "title": {
+        "es": "Radio bus, Spotter y motor de familias",
+        "en": "Radio bus, Spotter and family engine",
+        "pt": "Radio bus, Spotter e motor de famílias",
+        "it": "Radio bus, Spotter e motore di famiglie"
+      },
+      "body": {
+        "es": "Spotter y las familias fuel, sanciones, vueltas, tiempos y boxes consumen telemetría canónica y entregan avisos priorizados por el mismo bus, con rollback exclusivo del stack anterior.",
+        "en": "Spotter plus fuel, penalties, laps, timings and pit families consume canonical telemetry and deliver prioritized alerts through the same bus, with an exclusive rollback to the previous stack.",
+        "pt": "Spotter e as famílias de combustível, penalizações, voltas, tempos e boxes consomem telemetria canónica e entregam alertas priorizados pelo mesmo bus, com rollback exclusivo para o stack anterior.",
+        "it": "Spotter e le famiglie carburante, penalità, giri, tempi e box consumano telemetria canonica e consegnano avvisi prioritari sullo stesso bus, con rollback esclusivo allo stack precedente."
+      },
+      "label": {
+        "es": "En revisión",
+        "en": "In review",
+        "pt": "Em revisão",
+        "it": "In revisione"
+      }
+    },
+    {
+      "id": "engineer-voice-input-experimental",
+      "type": "feature",
+      "title": {
+        "es": "Carril experimental de voz de entrada",
+        "en": "Experimental voice-input lane",
+        "pt": "Carril experimental de entrada de voz",
+        "it": "Corsia sperimentale di input vocale"
+      },
+      "body": {
+        "es": "El flag experimental aísla PTT, revalida su reserva F24, usa un host hijo asíncrono y solo publica valores con formato cerrado; WASAPI, Whisper, wake acústico y validación física/humana siguen pendientes y fallan cerrados.",
+        "en": "The experimental flag isolates PTT, revalidates its F24 reservation, uses an asynchronous child host and only publishes closed-format values; WASAPI, Whisper, acoustic wake and physical/human validation remain pending and fail closed.",
+        "pt": "O flag experimental isola PTT, revalida a reserva F24, usa um host filho assíncrono e só publica valores de formato fechado; WASAPI, Whisper, wake acústico e validação física/humana continuam pendentes e falham de forma fechada.",
+        "it": "Il flag sperimentale isola PTT, rivalida la riserva F24, usa un processo figlio asincrono e pubblica solo valori dal formato chiuso; WASAPI, Whisper, wake acustico e validazione fisica/umana restano pendenti e falliscono in modo chiuso."
+      },
+      "label": {
+        "es": "En revisión",
+        "en": "In review",
+        "pt": "Em revisão",
+        "it": "In revisione"
       }
     },
     {
@@ -593,6 +637,41 @@
           "kind": "change",
           "scope": "",
           "text": "CapabilityModesV2 reales (spatial/delta/standings/gaps)"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Radio bus lean internal/radio (F1 rework Ingeniero)"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Catálogo v1 del Ingeniero (F0 rework)"
+        },
+        {
+          "kind": "fix",
+          "scope": "telemetry",
+          "text": "Endurece TestCoordinatorWithSQLiteDrainsAndReleasesAllHandles contra flaky de handles bajo carga"
+        },
+        {
+          "kind": "fix",
+          "scope": "tests",
+          "text": "Eliminar carrera del emitter en tests de perfiles"
+        },
+        {
+          "kind": "docs",
+          "scope": "",
+          "text": "Unificar gobernanza de planning en el roadmap"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Aislar discovery real en tests de handlers"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Spotter unificado sobre el radio bus (F3 rework Ingeniero)"
         }
       ]
     },

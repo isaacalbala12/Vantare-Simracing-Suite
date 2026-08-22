@@ -11,7 +11,7 @@ type Vector3 struct {
 type Position Vector3
 
 // LocalVelocity is velocity in meters per second in the vehicle-local frame.
-// The canonical LMU driver uses +X left, +Y up and +Z rearward.
+// Canonical axes are +X left, +Y up and +Z rearward (right-handed orthonormal frame).
 type LocalVelocity Vector3
 
 // Orientation contains the three stored rows of a right-handed orthonormal

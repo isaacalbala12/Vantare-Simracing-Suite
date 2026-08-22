@@ -5,6 +5,11 @@
 > la issue de GitHub y la continuidad técnica en el handoff correspondiente.
 > Este archivo se conserva para evidencia y contexto. No se deben añadir aquí
 > nuevas decisiones de planning ni usarlo como sustituto del roadmap.
+Nota ISA-709 / Deuda #677 Tanda 3 — fugas LMU y frame congelado (2026-08-21, rama `vantareapp/isa-709-fugas-lmu-y-frame-congelado` sobre `origin/nightly@217ba746`, 4 commits, sin promoción):
+- Fugas 1-8 neutralizadas sin tocar wire: `schema/spatial` LocalVelocity, `schema/pit` InPit, `schema/vehicle` Gear, `schema/weather` Temperature comentarios + `catalog` Notes de `standings.position`, `session.vehicle_count` y `spatial.local_velocity` pasan de `demonstrated LMU bound` a `canonical bound`; `docs/telemetry-core/signal-catalog.md` regenerado.
+- 9d: `internal/engineer/lmu` expone `ExtendedSource` interface; `engine/monitor.go` y `penalties/monitor.go` dependen de la interfaz (SetExtendedReader acepta `lmu.ExtendedSource` + alias `SetExtendedSource`), sin cambiar comportamiento.
+- Frame congelado: `drivers/lmu/driver.go` suprime publicación tras 1s (2*limit) con reloj parado y player=true cuando REST no es live; status queda stale/menu y overlays se apagan como con SM limpia. Test `TestFrozenRemnantIsNotPublishedAsFresh` rojo→verde documentado con fixtures 1.4.1.3.
+- Evidencia `docs/telemetry-core/evidence/isa-677-fugas-lmu.md` + fragmento `ISA-709.json`. Gates por commit: `go build`, `go vet` (solo unsafe heredados), `go test ./internal/telemetry/... ./internal/engineer/...`, `git diff --check`.
 
 Nota ISA-697 / Deuda #677 Tanda 2 (2026-08-21, implementada en rama, sin promoción):
 - `TelemetryEngine.Apply` baja de 650190 B/op y 344 allocs/op @104 a 168400 B/op y 327 allocs/op (-74% bytes, -5% allocs) mediante `NewSnapshotOwned` + `Peek` + `Commit` directo y validación sin map.

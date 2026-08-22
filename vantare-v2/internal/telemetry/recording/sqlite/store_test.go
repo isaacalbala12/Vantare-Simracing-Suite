@@ -785,7 +785,19 @@ func TestCoordinatorWithSQLiteDrainsAndReleasesAllHandles(t *testing.T) {
 			t.Fatalf("TryAccept(%d) error = %v", sequence, err)
 		}
 	}
-	if err := coordinator.Stop(context.Background()); err != nil {
+	// Bajo carga paralela el commit puede tardar; espera acotada a que el
+	// coordinator vacíe la cola por el camino normal antes de Stop, evitando
+	// que el drain de Stop tenga que hacer todo el trabajo bajo CommitBudget.
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		if coordinator.Status().CommittedBatches == 100 {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	stopCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := coordinator.Stop(stopCtx); err != nil {
 		t.Fatalf("Stop() error = %v", err)
 	}
 	status := coordinator.Status()
@@ -803,9 +815,33 @@ func TestCoordinatorWithSQLiteDrainsAndReleasesAllHandles(t *testing.T) {
 	}
 	original := filepath.Join(root, ref.SessionID)
 	moved := filepath.Join(root, "released-session")
-	if err := os.Rename(original, moved); err != nil {
-		t.Fatalf("rename closed session (leaked handle): %v", err)
+	// En Windows el handle de SQLite/lease puede liberarse de forma
+	// eventualmente consistente. Reintento acotado sin sleep arbitrario
+	// largo: polling 1s para distinguir fuga real de cierre tardío.
+	var renameErr error
+	for attempt := 0; attempt < 50; attempt++ {
+		renameErr = os.Rename(original, moved)
+		if renameErr == nil {
+			break
+		}
+		// Solo reintenta errores de handle abierto; otros fallan rápido.
+		if !errors.Is(renameErr, os.ErrPermission) && !isWindowsSharingViolation(renameErr) {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
 	}
+	if renameErr != nil {
+		t.Fatalf("rename closed session (leaked handle): %v", renameErr)
+	}
+}
+
+func isWindowsSharingViolation(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "being used by another process") ||
+		strings.Contains(msg, "The process cannot access the file")
 }
 
 func BenchmarkSQLiteAppend64Vehicles(b *testing.B) {

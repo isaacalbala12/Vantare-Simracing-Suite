@@ -37,6 +37,29 @@ func DefaultAudioConfig() *AudioConfig {
 	}
 }
 
+// DefaultAudioConfigForLocale builds the product configuration from the
+// canonical presentation locale. Both channels therefore resolve only clips
+// belonging to the same locale that produced the visual/voice text.
+func DefaultAudioConfigForLocale(locale string) (*AudioConfig, error) {
+	voice := ""
+	switch locale {
+	case "es":
+		voice = "ef_dora"
+	case "en":
+		voice = "af_bella"
+	case "it":
+		voice = "if_sara"
+	case "pt-BR":
+		voice = "pf_dora"
+	default:
+		return nil, fmt.Errorf("audio: unsupported product locale %q", locale)
+	}
+	return &AudioConfig{
+		spotterLang: locale, spotterVoice: voice,
+		engineerLang: locale, engineerVoice: voice,
+	}, nil
+}
+
 // SetSpotter sets the language and voice for the spotter channel.
 func (c *AudioConfig) SetSpotter(lang, voice string) {
 	if c == nil {

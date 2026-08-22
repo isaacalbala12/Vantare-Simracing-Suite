@@ -7,8 +7,10 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/vantare/overlays/v2/internal/app"
 	"github.com/vantare/overlays/v2/internal/app/launcher"
@@ -475,13 +477,50 @@ func (f *fakeWindowHandle) Fullscreen()                       { f.fullscreen = t
 func (f *fakeWindowHandle) UnFullscreen()                     { f.fullscreen = false }
 
 type spyMainEmitter struct {
+	mu     sync.Mutex
 	events []string
 	data   []any
 }
 
 func (s *spyMainEmitter) Emit(name string, data any) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.events = append(s.events, name)
 	s.data = append(s.data, data)
+}
+
+// Events devuelve una copia del slice de eventos bajo lock.
+func (s *spyMainEmitter) Events() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	out := make([]string, len(s.events))
+	copy(out, s.events)
+	return out
+}
+
+// Data devuelve una copia del slice de datos bajo lock.
+func (s *spyMainEmitter) Data() []any {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	out := make([]any, len(s.data))
+	copy(out, s.data)
+	return out
+}
+
+// waitForEmitterCondition espera de forma acotada a que el spy cumpla cond.
+func waitForEmitterCondition(t *testing.T, emitter *spyMainEmitter, timeout time.Duration, cond func([]string, []any) bool) ([]string, []any) {
+	t.Helper()
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		events := emitter.Events()
+		data := emitter.Data()
+		if cond(events, data) {
+			return events, data
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatalf("timeout (%s) esperando condición del emitter: events=%v", timeout, emitter.Events())
+	return nil, nil
 }
 
 func newTestStudioProfileService(t *testing.T, mode config.DisplayMode, emitter app.EventEmitter) *app.StudioProfileService {
@@ -1559,12 +1598,20 @@ func TestHandleProfileRetryFailed(t *testing.T) {
 	ctx := context.Background()
 	// Retry must not return an immediate error (the chain runs on a goroutine).
 	handleProfileRetryFailed("creator", svc, emitter, ctx)
-	// No error event must be emitted.
-	for _, e := range emitter.events {
+	// La cadena corre en una goroutine y emite de forma asíncrona a través de
+	// ChainRunner/serviceEmitter; esperamos de forma acotada a que el emitter
+	// registre al menos un evento de la cadena antes de verificar que no hubo
+	// error, evitando el sleep arbitrario y la carrera sin sincronizar.
+	events, _ := waitForEmitterCondition(t, emitter, 2*time.Second, func(events []string, _ []any) bool {
+		return len(events) > 0
+	})
+	for _, e := range events {
 		if e == "launcher:error" {
 			t.Fatal("retry failed must not emit launcher:error for a valid profile")
 		}
 	}
+	// Limpieza: cancela la cadena pendiente para no dejar goroutines huérfanas.
+	svc.CancelAll()
 }
 
 func TestHandleProfileStatsSave(t *testing.T) {
@@ -1627,7 +1674,7 @@ func TestHandleProfileHotkeySet(t *testing.T) {
 	emitter := &spyMainEmitter{}
 
 	// Empty combo = unregister; must succeed even if not registered.
-	handleProfileHotkeySet("test-profile", "", hkMgr, emitter)
+	handleProfileHotkeySet("test-profile", "", hkMgr, emitter, nil)
 	if len(emitter.events) != 1 || emitter.events[0] != "launcher:profile:hotkey:set" {
 		t.Fatalf("expected launcher:profile:hotkey:set on unregister, got %v", emitter.events)
 	}
@@ -1720,11 +1767,14 @@ func TestHandleLaunchFlag(t *testing.T) {
 	emitter := &spyMainEmitter{}
 	// Valid launch flag must not emit an error (chain runs on goroutine).
 	handleLaunchFlag([]string{"--launch=creator"}, nil, svc, emitter)
-	for _, e := range emitter.events {
+	for _, e := range emitter.Events() {
 		if e == "launcher:error" {
 			t.Fatal("launch flag must not emit error for a valid profile")
 		}
 	}
+	// La cadena usa el emitter del Service, no el de este test; no hay
+	// espera adicional necesaria, pero se lee vía copia thread-safe.
+	svc.CancelAll()
 }
 
 func TestHandleLaunchFlagIgnoresMissingFlag(t *testing.T) {

@@ -1,5 +1,5 @@
 // Package weather contains canonical weather values with source units recorded separately.
 package weather
 
-// Temperature has no physical-unit alias until the LMU source contract is demonstrated.
+// Temperature is a canonical physical temperature value (Celsius per catalog).
 type Temperature float64

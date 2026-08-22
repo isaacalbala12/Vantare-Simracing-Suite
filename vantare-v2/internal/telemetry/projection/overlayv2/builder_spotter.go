@@ -1,36 +1,30 @@
 package overlayv2
 
 import (
-	"math"
-
+	spottergeometry "github.com/vantare/overlays/v2/internal/spotter/geometry"
 	"github.com/vantare/overlays/v2/internal/telemetry/derive"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/spatial"
 )
 
-// Thresholds of the lateral overlap test, in metres. They are the same numbers
-// Engineer uses at its "normal" sensitivity (internal/engineer/spotter:
-// DefaultOverlapConfig and overlapConfigForSensitivity), duplicated here rather
-// than imported because the Engineer package classifies a product-specific
-// rF2 frame and this builder classifies the canonical state. F13 unifies them;
-// until then the numbers must not drift apart silently, which is what
-// TestSpotterThresholdsMatchEngineerNormalSensitivity checks.
+// Compatibility aliases keep the existing threshold tests readable while the
+// numeric authority lives only in internal/spotter/geometry.
 const (
 	// spotterTrackZoneM ignores anything farther sideways than a track width:
 	// a car on the other side of the circuit is not alongside.
-	spotterTrackZoneM = 20.0
+	spotterTrackZoneM = spottergeometry.TrackZoneToConsiderM
 	// spotterCarWidthM is the minimum lateral separation that counts as being
 	// beside the player instead of in front of or behind them.
-	spotterCarWidthM = 1.8
+	spotterCarWidthM = spottergeometry.CarWidthM
 	// spotterCarLengthM is how far forward an opponent can be and still
 	// overlap; spotterCarBehindExtraM extends it slightly for a car behind,
 	// which is the harder one to see.
-	spotterCarLengthM      = 4.5
-	spotterCarBehindExtraM = 0.4
+	spotterCarLengthM      = spottergeometry.CarLengthM
+	spotterCarBehindExtraM = spottergeometry.CarBehindExtraM
 	// spotterMinSpeedMPS silences the spotter when the player is barely
 	// moving: standing on the grid or crawling in the pit lane surrounds them
 	// with cars that are not racing them.
-	spotterMinSpeedMPS = 10.0
+	spotterMinSpeedMPS = spottergeometry.MinSpotterSpeedMPS
 )
 
 // BuildSpotter reports whether the player currently has a car alongside.
@@ -133,26 +127,14 @@ const (
 // alignedSide rotates the opponent into the player's frame and returns the
 // side it overlaps, if any. Positive X is left of the player.
 func alignedSide(yaw float64, player, opponent spatial.Position) spotterSide {
-	rawX := opponent.X - player.X
-	rawZ := opponent.Z - player.Z
-	cos, sin := math.Cos(yaw), math.Sin(yaw)
-	alignedX := cos*rawX + sin*rawZ
-	alignedZ := cos*rawZ - sin*rawX
-	if !finite(alignedX) || !finite(alignedZ) {
+	aligned := spottergeometry.AlignOpponentXZ(yaw,
+		spottergeometry.Vec3{X: player.X, Y: player.Y, Z: player.Z},
+		spottergeometry.Vec3{X: opponent.X, Y: opponent.Y, Z: opponent.Z})
+	overlap := spottergeometry.ClassifyAlignedOverlap(aligned, false, spottergeometry.DefaultOverlapConfig())
+	if !overlap.InOverlap {
 		return sideNone
 	}
-
-	lateral := math.Abs(alignedX)
-	if lateral <= spotterCarWidthM || lateral > spotterTrackZoneM {
-		return sideNone
-	}
-	// Negative aligned Z is ahead of the player, positive is behind.
-	ahead := alignedZ <= 0 && -alignedZ < spotterCarLengthM
-	behind := alignedZ > 0 && alignedZ < spotterCarLengthM+spotterCarBehindExtraM
-	if !ahead && !behind {
-		return sideNone
-	}
-	if alignedX > 0 {
+	if overlap.Side == spottergeometry.SideLeft {
 		return sideLeft
 	}
 	return sideRight
@@ -176,11 +158,7 @@ func playerYaw(field schema.Field[spatial.Orientation]) (float64, bool) {
 	if !finite(forward.X) || !finite(forward.Z) || (forward.X == 0 && forward.Z == 0) {
 		return 0, false
 	}
-	yaw := math.Atan2(forward.X, forward.Z)
-	if yaw < 0 {
-		yaw += 2 * math.Pi
-	}
-	return yaw, true
+	return spottergeometry.YawFromForward(spottergeometry.Vec3{X: forward.X, Y: forward.Y, Z: forward.Z})
 }
 
 // spotterWorldPosition accepts a present, finite position whose quality can be

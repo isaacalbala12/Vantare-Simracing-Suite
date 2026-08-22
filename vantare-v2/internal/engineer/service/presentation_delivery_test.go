@@ -89,6 +89,46 @@ func TestEngineerLocaleIsValidatedBeforeStart(t *testing.T) {
 	}
 }
 
+func TestSetLocaleBeforeStartRealignsAudioConfigAndRouter(t *testing.T) {
+	config, err := audio.DefaultAudioConfigForLocale("es")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cacheDir := t.TempDir()
+	router := audio.NewAudioRouter(config, nil, cacheDir)
+	service := NewEngineerService(nil)
+	service.SetAudioConfig(config)
+	service.SetAudioRouter(router)
+
+	if err := service.SetLocale("it"); err != nil {
+		t.Fatal(err)
+	}
+	if service.Locale() != presentation.LocaleItalian ||
+		service.audioConfig.Lang(audio.ChannelSpotter) != "it" ||
+		service.audioConfig.Lang(audio.ChannelEngineer) != "it" {
+		t.Fatalf("locale/config drifted: presentation=%s spotter=%s engineer=%s",
+			service.Locale(), service.audioConfig.Lang(audio.ChannelSpotter), service.audioConfig.Lang(audio.ChannelEngineer))
+	}
+
+	want := filepath.Join(cacheDir, "it", "if_sara", messagepolicy.IntentSpotterCarLeft+".mp3")
+	if err := os.MkdirAll(filepath.Dir(want), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(want, []byte("cached"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	got, err := router.ResolvePresentationCached(context.Background(), audio.PresentationRequest{
+		Locale: presentation.LocaleItalian, VoiceText: "Auto a sinistra",
+		Channel: audio.ChannelSpotter, LegacyIntent: messagepolicy.IntentSpotterCarLeft,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != want {
+		t.Fatalf("pre-Start locale audio path = %q, want %q", got, want)
+	}
+}
+
 func TestProductDeliveryPropagatesCanonicalLocaleAndVoiceToInjectedResolver(t *testing.T) {
 	presentationResolver, err := presentation.NewResolver()
 	if err != nil {

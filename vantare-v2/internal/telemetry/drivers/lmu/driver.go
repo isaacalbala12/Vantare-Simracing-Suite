@@ -311,6 +311,24 @@ func (driver *Driver) Run(ctx context.Context, sink drivercontract.ObservationSi
 			if gate.observe(elapsed, current) {
 				observation = withFreshness(observation, schema.FreshnessStale)
 			}
+			// Remanente congelado post-sesion (ISA-709): LMU 1.4.1.3 mantiene
+			// minutos el ultimo frame con reloj parado tras salir al menu.
+			// Tras limit*2 sin avance, no seguir sirviendo el ultimo frame
+			// vivo como si fuera fresco: suprimir la publicacion para que
+			// el status quede stale/menu y los overlays se apaguen como con
+			// la SM limpia. No suprimir en pausa (REST live) — distinguir
+			// menu remanente (REST vacio/offline) de pausa en pista.
+			if gate.stale && gate.unchangedSince.set && elapsed-gate.unchangedSince.elapsed >= gate.limit*2 {
+				if player, _ := observation.PlayerPresent.Value(); player {
+					driver.mu.RLock()
+					restStatus := driver.restStatus
+					driver.mu.RUnlock()
+					if restStatus != RESTStatusLive && restStatus != RESTStatusPartial {
+						driver.setSharedRuntime(drivercontract.StateStale)
+						return nil
+					}
+				}
+			}
 		}
 		state := runtimeState(observation)
 		if err := ctx.Err(); err != nil {

@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-709",
+  "type": "fix",
+  "summary": "Deuda #677 T3: fugas LMU 1-8 neutralizadas, 9d ExtendedReader invertido a interfaz y frame congelado post-sesion suprimido.",
+  "technicalNotes": [
+    "Schema/catalog/core 1-8 neutralizados sin tocar wire: spatial LocalVelocity, pit InPit, vehicle Gear, weather Temperature comentarios y catalog Notes de standings.position, session.vehicle_count y spatial.local_velocity pasan de 'demonstrated LMU bound' a 'canonical bound' (signal-catalog.md regenerado).",
+    "9d: internal/engineer/lmu define ExtendedSource interface Read() (ExtendedData,error); engine/monitor.go y penalties/monitor.go dependen de lmu.ExtendedSource en vez de *ExtendedReader (SetExtendedReader acepta interfaz + alias SetExtendedSource).",
+    "Frame congelado: drivers/lmu/driver.go suprime publicacion tras gate.limit*2 (1s) con source_time parado y player=true cuando REST no es live; status queda stale/menu y overlays se apagan como con SM limpia. En pausa (REST live) no suprime.",
+    "Sin cambios en frontend ni overlayv2; sin tocar internal/app/telemetry_core_runtime.go (propiedad ISA-707) — el fix vive solo en el driver y respeta contratos."
+  ],
+  "testing": [
+    "T1: go vet y go test ./internal/telemetry/... ./internal/engineer/... verdes; catalog golden mismatch regenerado y verificado.",
+    "T2: go test ./internal/engineer/engine y ./internal/engineer/penalties verdes con *ExtendedReader como ExtendedSource; grep confirma que engineer no importa drivers/lmu.",
+    "T3: TestFrozenRemnantIsNotPublishedAsFresh rojo antes (stale=2 player=true publicado) y verde tras el fix (suprimido); go test ./internal/telemetry/drivers/lmu -count=1 verde; fixtures 1.4.1.3 track vs menu usadas como referencia."
+  ],
+  "knownLimitations": [
+    "Weather UnitUnknown se mantiene por contrato estable; solo se neutralizo el comentario (cambiar unidad exigiria migracion de catálogo).",
+    "Supresion del remanente es solo en el driver LMU; un fix alternativo en telemetry_core_runtime.go (menu sintético en ObservedState) queda como diff propuesto en el PR sin aplicar."
+  ]
+}

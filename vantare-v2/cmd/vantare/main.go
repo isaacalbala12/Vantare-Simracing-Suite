@@ -28,7 +28,10 @@ import (
 	"github.com/vantare/overlays/v2/internal/authsession"
 	"github.com/vantare/overlays/v2/internal/calendar"
 	engineeraudio "github.com/vantare/overlays/v2/internal/engineer/audio"
+	"github.com/vantare/overlays/v2/internal/engineer/commands"
+	"github.com/vantare/overlays/v2/internal/engineer/ptt"
 	engineerservice "github.com/vantare/overlays/v2/internal/engineer/service"
+	"github.com/vantare/overlays/v2/internal/engineer/voiceinput"
 	"github.com/vantare/overlays/v2/internal/license"
 	"github.com/vantare/overlays/v2/internal/notify"
 	"github.com/vantare/overlays/v2/internal/ops"
@@ -57,6 +60,13 @@ var version = "v0.1.0.7"
 // buildChannel is injected by release builds. Local and public builds fail
 // closed as master so the internal Testing Center cannot appear accidentally.
 var buildChannel = "master"
+
+func engineerAudioConfigFor(service *engineerservice.EngineerService) (*engineeraudio.AudioConfig, error) {
+	if service == nil {
+		return nil, errors.New("engineer audio configuration requires a service")
+	}
+	return engineeraudio.DefaultAudioConfigForLocale(string(service.Locale()))
+}
 
 const (
 	telemetrySourceStatusEvent        = "telemetry-core:source-status"
@@ -1022,10 +1032,13 @@ func handleProfileStatsSave(profileID string, durationMs int64, settingsSvc *app
 // a profile. When combo is empty the existing hotkey (if any) is unregistered.
 // On registration failure (reserved combo, Windows conflict, or syscall error)
 // it emits launcher:profile:hotkey:error with the failure reason.
-func handleProfileHotkeySet(profileID, combo string, profileHkMgr *launcher.HotkeyManager, emitter app.EventEmitter) {
+func handleProfileHotkeySet(profileID, combo string, profileHkMgr *launcher.HotkeyManager, emitter app.EventEmitter, onChanged func(string, string)) {
 	if combo == "" {
 		profileHkMgr.Unregister(profileID)
 		emitter.Emit("launcher:profile:hotkey:set", map[string]any{"profileId": profileID, "combo": ""})
+		if onChanged != nil {
+			onChanged(profileID, combo)
+		}
 		return
 	}
 	if err := profileHkMgr.Register(profileID, combo); err != nil {
@@ -1034,6 +1047,9 @@ func handleProfileHotkeySet(profileID, combo string, profileHkMgr *launcher.Hotk
 		return
 	}
 	emitter.Emit("launcher:profile:hotkey:set", map[string]any{"profileId": profileID, "combo": combo})
+	if onChanged != nil {
+		onChanged(profileID, combo)
+	}
 }
 
 // handleAutostartToggle registers or unregisters a Windows Run key entry for
@@ -1084,6 +1100,12 @@ func handleLaunchFlag(args []string, settingsSvc *app.SettingsService, svc *laun
 }
 
 func main() {
+	if nonce, child := voiceinput.ChildNonceFromArgs(os.Args[1:]); child {
+		if err := voiceinput.RunUnavailableChild(nonce, os.Stdout); err != nil {
+			os.Exit(2)
+		}
+		return
+	}
 	// Set WebView2 user data folder to version-specific path to prevent cache issues across releases
 	if appData := os.Getenv("LOCALAPPDATA"); appData != "" {
 		udf := filepath.Join(appData, "Vantare", "webview_v0.1.0.5")
@@ -1118,6 +1140,9 @@ func main() {
 
 	live := flag.Bool("live", true, "use LMU shared memory (-live=false keeps telemetry disconnected)")
 	strategyPublicTransport := flag.Bool("strategy-public-transport", false, "temporarily expose Strategy telemetry over Wails/SSE")
+	legacyEngineerSpotter := flag.Bool("engineer-legacy-spotter", false, "rollback to the legacy Engineer Spotter projection instead of radio.v1")
+	legacyEngineerFamilies := flag.Bool("engineer-legacy-families", false, "rollback to the five legacy Engineer family monitors instead of radio.v1")
+	engineerVoiceInput := flag.Bool("engineer-voice-input", false, "enable the experimental memory-only Engineer voice-input lane")
 	profilePath := flag.String("profile", "configs/example-racing.json", "profile JSON path")
 	edit := flag.Bool("edit", false, "force edit mode (overrides profile displayMode)")
 	httpAddr := flag.String("http", "127.0.0.1:39261", "HTTP/SSE address for OBS Browser Source")
@@ -1175,6 +1200,7 @@ func main() {
 	var hkMgr *app.HotkeyManager
 	var engBridge *app.EngineerBridge
 	var engSvc *engineerservice.EngineerService
+	var engineerVoiceRuntime *engineerVoiceInputLane
 	var launcherSvc *launcher.Service
 	var profileHkMgr *launcher.HotkeyManager
 	var notifySvc *notify.Service
@@ -1235,6 +1261,12 @@ func main() {
 				{name: "engineer-bridge", stop: func(context.Context) error {
 					if engBridge != nil {
 						engBridge.Stop()
+					}
+					return nil
+				}},
+				{name: "engineer-voice-input", stop: func(ctx context.Context) error {
+					if engineerVoiceRuntime != nil {
+						return engineerVoiceRuntime.Stop(ctx)
 					}
 					return nil
 				}},
@@ -1731,20 +1763,59 @@ func main() {
 
 	// Engineer owns product behavior only. TelemetryCoreRuntime below is its
 	// sole production telemetry source.
+	appSettingsPath := filepath.Join(cfgDir, "app-settings.json")
+	settingsSvc := app.NewSettingsService(appSettingsPath, emitter, nil)
+	if err := settingsSvc.Load(); err != nil {
+		log.Printf("warning: could not load settings: %v (using defaults)", err)
+	}
 	engSvc = engineerservice.NewEngineerService(emitter)
-	engineerAudioConfig := engineeraudio.DefaultAudioConfig()
+	if err := engSvc.SetLegacySpotterRollback(*legacyEngineerSpotter); err != nil {
+		log.Printf("engineer legacy spotter rollback configuration error: %v", err)
+	}
+	if err := engSvc.SetLegacyFamiliesRollback(*legacyEngineerFamilies); err != nil {
+		log.Printf("engineer legacy families rollback configuration error: %v", err)
+	}
+	engineerAudioConfig, audioConfigErr := engineerAudioConfigFor(engSvc)
 	engSvc.SetAudioPlayer(engineeraudio.NewPlayer())
-	engSvc.SetAudioConfig(engineerAudioConfig)
+	if audioConfigErr != nil {
+		log.Printf("engineer audio locale configuration unavailable; using visual delivery only: %v", audioConfigErr)
+	} else {
+		engSvc.SetAudioConfig(engineerAudioConfig)
+	}
 	// ENG-06 is cache-only: a miss remains a visual notification. TTS
 	// synthesis stays outside the preemptible product delivery path.
 	engineerAudioCache, cacheErr := tts.NewCache(tts.DefaultCacheRoot(), "kokoro")
 	if cacheErr != nil {
 		log.Printf("engineer audio cache unavailable; using visual delivery only: %v", cacheErr)
-	} else {
+	} else if engineerAudioConfig != nil {
 		engSvc.SetAudioRouter(engineeraudio.NewCacheOnlyAudioRouter(engineerAudioConfig, engineerAudioCache))
+	}
+	if *engineerVoiceInput {
+		engineerVoiceRuntime, err = composeEngineerVoiceInput(true, settingsSvc.Settings(), commands.Locale(engSvc.Locale()), engineerVoiceInputDependencies{
+			readerFactory: func() ptt.Reader { return ptt.NewPlatformReader(0) },
+			hostFactory:   func() voiceinput.Host { return voiceinput.NewProcessHost(nil) },
+			queryPort:     voiceinput.UnavailableQueryPort{}, publisher: engSvc,
+			lifecycle: func() commands.DialogueLifecycle {
+				return commands.DialogueLifecycle{SessionID: "voice-experimental", DriverID: "local-driver", SourceID: "telemetry-core", Epoch: 1}
+			},
+		})
+		if err != nil {
+			log.Printf("engineer experimental voice-input unavailable: %v", err)
+			if healthErr := engSvc.SetVoiceInputHealth(unavailableEngineerVoiceHealth); healthErr != nil {
+				log.Printf("engineer experimental voice-input health error: %v", healthErr)
+			}
+			engineerVoiceRuntime = nil
+		} else if healthErr := engSvc.SetVoiceInputHealth(engineerVoiceRuntime.Health); healthErr != nil {
+			log.Printf("engineer experimental voice-input health error: %v", healthErr)
+		}
 	}
 	if err := engSvc.Start(ctx); err != nil {
 		log.Printf("engineer service start error: %v", err)
+	}
+	if engineerVoiceRuntime != nil {
+		if err := engineerVoiceRuntime.Start(ctx); err != nil && *engineerVoiceInput {
+			log.Printf("engineer experimental voice-input unavailable: %v", err)
+		}
 	}
 
 	// Register Wails bridge for Engineer events and commands
@@ -1844,9 +1915,8 @@ func main() {
 	})
 	log.Printf("OBS overlay: http://%s/overlay?profile=%s", *httpAddr, filepath.Base(*profilePath))
 
-	// App settings service (delta mode, hotkeys, cpu sampling toggle)
-	appSettingsPath := filepath.Join(cfgDir, "app-settings.json")
-	settingsSvc := app.NewSettingsService(appSettingsPath, emitter, nil)
+	// App settings service (delta mode, hotkeys, cpu sampling toggle) was loaded
+	// before Engineer so the experimental PTT binding can fail closed on conflicts.
 	notifySvc = notify.New(
 		wailsNotifier{service: notificationService},
 		func() bool { return settingsSvc.Snapshot().Notifications.SystemEnabled },
@@ -1854,9 +1924,6 @@ func main() {
 		// signal the window layer can give us.
 		func() bool { return hubW.IsMinimised() },
 	)
-	if err := settingsSvc.Load(); err != nil {
-		log.Printf("warning: could not load settings: %v (using defaults)", err)
-	}
 
 	// Calendar service for the local LMU race calendar (CALENDAR-02).
 	// Data is persisted to cfgDir/calendar-lmu.json, not app-settings.json.
@@ -2228,6 +2295,11 @@ func main() {
 		}
 		// Rebuild hotkeys with new combos
 		rebuildHotkeys()
+		if engineerVoiceRuntime != nil {
+			if err := revalidateEngineerVoiceSettings(engineerVoiceRuntime, settingsSvc.Settings()); err != nil {
+				log.Printf("engineer experimental voice-input PTT reservation unavailable after settings save: %v", err)
+			}
+		}
 		emitter.Emit("settings-saved", map[string]any{"ok": true})
 	})
 
@@ -2775,7 +2847,14 @@ func main() {
 				_ = json.Unmarshal(raw, &payload)
 			}
 		}
-		handleProfileHotkeySet(payload.ProfileID, payload.Combo, profileHkMgr, emitter)
+		handleProfileHotkeySet(payload.ProfileID, payload.Combo, profileHkMgr, emitter, func(profileID, combo string) {
+			if engineerVoiceRuntime == nil {
+				return
+			}
+			if err := revalidateEngineerVoiceProfile(engineerVoiceRuntime, settingsSvc.Settings(), profileID, combo); err != nil {
+				log.Printf("engineer experimental voice-input PTT reservation unavailable after launcher profile hotkey change: %v", err)
+			}
+		})
 	})
 
 	wailsApp.Event.On("launcher:autostart:toggle", func(event *application.CustomEvent) {

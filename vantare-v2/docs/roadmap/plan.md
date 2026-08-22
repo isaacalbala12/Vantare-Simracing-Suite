@@ -209,8 +209,8 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 ### Ingeniero
 
 - id: engineer
-- estado: planned
-- progreso: 25
+- estado: in-progress
+- progreso: 50
 - titulo.en: Engineer
 - titulo.pt: Engenheiro
 - titulo.it: Engineer
@@ -297,6 +297,38 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - etiqueta.en: In progress
 - etiqueta.pt: Em desenvolvimento
 - etiqueta.it: In corso
+
+### Radio bus, Spotter y motor de familias
+
+- id: engineer-radio-spotter
+- tipo: feature
+- titulo.en: Radio bus, Spotter and family engine
+- titulo.pt: Radio bus, Spotter e motor de famílias
+- titulo.it: Radio bus, Spotter e motore di famiglie
+- cuerpo: Spotter y las familias fuel, sanciones, vueltas, tiempos y boxes consumen telemetría canónica y entregan avisos priorizados por el mismo bus, con rollback exclusivo del stack anterior.
+- cuerpo.en: Spotter plus fuel, penalties, laps, timings and pit families consume canonical telemetry and deliver prioritized alerts through the same bus, with an exclusive rollback to the previous stack.
+- cuerpo.pt: Spotter e as famílias de combustível, penalizações, voltas, tempos e boxes consomem telemetria canónica e entregam alertas priorizados pelo mesmo bus, com rollback exclusivo para o stack anterior.
+- cuerpo.it: Spotter e le famiglie carburante, penalità, giri, tempi e box consumano telemetria canonica e consegnano avvisi prioritari sullo stesso bus, con rollback esclusivo allo stack precedente.
+- etiqueta: En revisión
+- etiqueta.en: In review
+- etiqueta.pt: Em revisão
+- etiqueta.it: In revisione
+
+### Carril experimental de voz de entrada
+
+- id: engineer-voice-input-experimental
+- tipo: feature
+- titulo.en: Experimental voice-input lane
+- titulo.pt: Carril experimental de entrada de voz
+- titulo.it: Corsia sperimentale di input vocale
+- cuerpo: El flag experimental aísla PTT, revalida su reserva F24, usa un host hijo asíncrono y solo publica valores con formato cerrado; WASAPI, Whisper, wake acústico y validación física/humana siguen pendientes y fallan cerrados.
+- cuerpo.en: The experimental flag isolates PTT, revalidates its F24 reservation, uses an asynchronous child host and only publishes closed-format values; WASAPI, Whisper, acoustic wake and physical/human validation remain pending and fail closed.
+- cuerpo.pt: O flag experimental isola PTT, revalida a reserva F24, usa um host filho assíncrono e só publica valores de formato fechado; WASAPI, Whisper, wake acústico e validação física/humana continuam pendentes e falham de forma fechada.
+- cuerpo.it: Il flag sperimentale isola PTT, rivalida la riserva F24, usa un processo figlio asincrono e pubblica solo valori dal formato chiuso; WASAPI, Whisper, wake acustico e validazione fisica/umana restano pendenti e falliscono in modo chiuso.
+- etiqueta: En revisión
+- etiqueta.en: In review
+- etiqueta.pt: Em revisão
+- etiqueta.it: In revisione
 
 ### Licencias con credencial offline
 

@@ -25,6 +25,12 @@ Actualización ISA-771 / F5-b2 (2026-08-22, lista para review):
   efectiva y los tests cubren Fuel, vida, degradación, pit y ahorro.
 - Orbit llama a `SolveV2` y mantiene el ViewModel existente. El golden de 139
   vueltas usa cinco stints `11+32+32+32+32`, cuatro paradas y 14.712 s.
+- El gate numérico compara ambos repartos con `ReplayDecisionV2`: el balanceado
+  reposta 308 L y cuesta `14712.000000000307409 s`; el elegido reposta 294,25 L
+  y cuesta `14712.000000000294676 s`. Con peso de prueba de 1 s/(L·vuelta),
+  son 7.386,75 frente a 6.902,75 L·vuelta, 484 s a favor del elegido. La carga
+  inicial es siempre 90 L y el solver coincide con el replay: golden aceptado,
+  sin defecto de capacidad inicial ni poda.
 - Se retiró el evento Wails productivo del solver v1. El código v1 queda para
   tests/paridad histórica, sin consumidores productivos externos.
 - Gates locales verdes: solver x100, Strategy+app, frontend (381 archivos /

@@ -5,6 +5,12 @@ Nota ISA-771 / ISA-694 F5-b2 (2026-08-22, lista para review):
   usuario > familia derivada válida > fallback manual/reference.
 - Orbit calcula con `SolveV2`; conserva sus ViewModels y el golden compartido
   pasa de stints balanceados v1 a `11+32+32+32+32` del motor completo.
+- El replay con el mismo input descarta un defecto: `28+28+28+28+27` reposta
+  308 L y cuesta `14712.000000000307409 s`; `11+32+32+32+32` reposta
+  294,25 L y cuesta `14712.000000000294676 s`. La carga inicial es siempre el
+  depósito lleno, no el primer stint. Con peso de prueba `1 s/(L·vuelta)`, la
+  suma es 7.386,75 frente a 6.902,75 L·vuelta: 484 s adicionales para el
+  balanceado. Solver y replay coinciden, por lo que no hay pérdida por poda.
 - El evento Wails del solver v1 se retiró. `Solve`/bridge v1 permanecen solo
   para tests y paridad histórica; no hay llamadores productivos externos.
 - Gates locales verdes: solver x100, Strategy+app, frontend (381 archivos /

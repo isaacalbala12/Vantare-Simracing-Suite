@@ -39,9 +39,10 @@ func TestCalculateOrbitUsesGoEngineForGoldenPlan(t *testing.T) {
 	if plan.TotalLaps != 139 || plan.Stops != 4 || len(plan.Stints) != 5 {
 		t.Fatalf("plan = %#v", plan)
 	}
-	// SolveV2 minimiza cinco stints bajo el limite de 32 vueltas. Sin coste por
-	// peso Fuel, las particiones factibles empatan y el orden determinista de
-	// busqueda conserva primero el stint corto: 11 + 4*32 = 139.
+	// SolveV2 minimiza cinco stints bajo el limite de 32 vueltas. El replay
+	// numerico de ambos repartos se fija debajo: aun sin peso Fuel, el stint
+	// final largo deja menos fuel sin usar y requiere 13,75e-12 s menos de
+	// servicio ideal bajo la tasa tecnica del adaptador.
 	want := []int64{11, 32, 32, 32, 32}
 	for index := range want {
 		if plan.Stints[index].Laps != want[index] {

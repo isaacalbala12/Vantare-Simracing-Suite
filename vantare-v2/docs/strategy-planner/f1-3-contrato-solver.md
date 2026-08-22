@@ -529,8 +529,20 @@ se agota, el resultado declara busqueda incompleta y no afirma optimalidad.
 - En el golden de 240 min, `ceil(14400/104)=139` vueltas y
   `floor(90/2.75)=32` vueltas máximas exigen cinco stints/cuatro paradas.
   `SolveV2` devuelve determinísticamente `11+32+32+32+32=139`; total visible
-  `139*104 + 4*64 = 14712 s`. El primer stint corto empata en coste con las
-  demás particiones factibles porque no hay peso Fuel ni degradación.
+  `139*104 + 4*64 = 14712 s`. El test de replay compara bajo exactamente el
+  mismo input el plan balanceado `28+28+28+28+27`: reposta 308 L y obtiene
+  `14712.000000000307409 s`; el elegido reposta 294,25 L y obtiene
+  `14712.000000000294676 s`. La diferencia float64 observada es 12,733 ps a
+  favor del elegido (13,75 ps en la fórmula ideal de la tasa técnica).
+- La carga inicial del modelo es siempre la capacidad de 90 L. Una parada tras
+  11 vueltas conserva 59,75 L y solo reposta el hueco de 30,25 L; no reposta
+  las 128 vueltas restantes. Además, si se configura peso Fuel, cada stint de
+  `n` vueltas aporta `n*90 - 2,75*n*(n-1)/2` L·vuelta. Por eso una suma de
+  cuadrados mayor reduce, no aumenta, el fuel medio: con un coeficiente de
+  prueba de `1 s/(L·vuelta)`, el balanceado suma 7.386,75 L·vuelta y el elegido
+  6.902,75 L·vuelta, una ventaja adicional de 484 s. El golden real no
+  configura peso Fuel. El resultado de `SolveV2` coincide con el replay del
+  elegido, descartando una poda que hubiese eliminado el balanceado.
 - `Solve` v1 y su bridge se conservan para tests/paridad histórica, pero ya no
   se registra el evento Wails `strategy:solver:compare` ni existe llamador
   productivo externo al paquete.
@@ -543,6 +555,7 @@ go vet ./internal/strategy/solver/...
 go test -count=100 ./internal/strategy/solver ./internal/strategy/tyres
 go test ./internal/strategy/... ./internal/app
 go test ./internal/strategy/application -run TestCalculateOrbitUsesGoEngineForGoldenPlan
+go test ./internal/strategy/application -run TestOrbitGoldenPartitionsUseTheSameSolveV2CostModel -v
 $goFiles = Get-ChildItem internal/strategy/solver,internal/strategy/tyres -Filter *.go
 gofmt -l $goFiles.FullName
 ```

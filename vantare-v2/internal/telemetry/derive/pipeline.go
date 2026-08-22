@@ -87,6 +87,13 @@ type FinalState struct {
 	Derived  DerivedState
 }
 
+const (
+	// DefaultFuelUsageWindowProduct es la ventana de producto para fuel.perLap.
+	// Ambos puntos de construcción del pipeline (runtime y shadow) deben usar
+	// este mismo valor explícito; no se lee de UI nueva.
+	DefaultFuelUsageWindowProduct = DefaultFuelUsageWindow
+)
+
 type Config struct {
 	// MaxControlsHistory can reduce the canonical budget for harnesses. Values
 	// outside 1..120 use the canonical maximum and can never widen it.
@@ -128,6 +135,17 @@ func NewPipeline(config Config) *Pipeline {
 		delta:      newSelfDeltaTracker(MaxSelfDeltaSamples),
 		fuel:       newFuelUsageTracker(config.FuelUsageWindow),
 	}
+}
+
+// FuelUsageWindow reports the effective window used by the pipeline's fuel
+// tracker. It is exposed for wiring assertions (ISA-707 T2).
+func (pipeline *Pipeline) FuelUsageWindow() int {
+	if pipeline == nil || pipeline.fuel == nil {
+		return DefaultFuelUsageWindow
+	}
+	pipeline.mu.RLock()
+	defer pipeline.mu.RUnlock()
+	return pipeline.fuel.window
 }
 
 // Apply runs the fixed chain synchronously. It performs no I/O and commits the

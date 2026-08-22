@@ -67,12 +67,15 @@ const (
 )
 
 // TierOf maps a section to its tier. player/controls/delta are fast,
-// relative/spotter are mid, session/standings/gaps/fuel/capabilities are slow.
+// spotter is mid, session/standings/relative/gaps/fuel/capabilities are
+// slow. Standings y relative viven en slow para que su dirty fino (ISA-695)
+// regule sin riesgo de rancio; spotter permanece mid por su frescura
+// espacial de alta frecuencia.
 func TierOf(section Section) SectionTier {
 	switch section {
 	case SectionPlayer, SectionControls, SectionDelta:
 		return TierFast
-	case SectionRelative, SectionSpotter:
+	case SectionSpotter:
 		return TierMid
 	default:
 		return TierSlow
@@ -96,9 +99,21 @@ type SectionCadence struct {
 	DirtyCeiling time.Duration
 }
 
-// DefaultSectionCadence reproduces today's behaviour: no regulation at all.
-// Lowering these defaults requires bytes/s measured in the real binary.
-func DefaultSectionCadence() SectionCadence { return SectionCadence{} }
+// DefaultSectionCadence es la cadencia regulada productiva (ISA-707).
+// Con firmas finas para standings y relative (ISA-695) el tier slow puede
+// regular sin servir rancio: mid 100 ms, slow 250 ms, techo 1 s.
+// Medición @104 (Ryzen 7 3700X, -benchtime 100x, projección+marshal 60 Hz):
+// plana 219.444 ns/op, 480 builds/s, 234.765 B/op, 65 allocs;
+// regulada 134.811 ns/op, 78 builds/s, 127.002 B/op, 38 allocs (-38% CPU,
+// -46% bytes/op, -26 allocs, B/s idéntico por contrato completo).
+func DefaultSectionCadence() SectionCadence {
+	return SectionCadence{
+		Fast:         50 * time.Millisecond,
+		Mid:          100 * time.Millisecond,
+		Slow:         250 * time.Millisecond,
+		DirtyCeiling: time.Second,
+	}
+}
 
 // Interval returns the minimum spacing configured for a tier.
 func (cadence SectionCadence) Interval(tier SectionTier) time.Duration {

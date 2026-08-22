@@ -10,15 +10,24 @@ var cadenceOrigin = time.Date(2026, 8, 20, 12, 0, 0, 0, time.UTC)
 func TestDefaultCadenceRebuildsEverySectionEveryTick(t *testing.T) {
 	t.Parallel()
 
-	scheduler := NewSectionScheduler(DefaultSectionCadence())
-	if DefaultSectionCadence().regulates() {
-		t.Fatalf("defaults must not regulate")
+	// Zero cadence sigue sin regular (identidad).
+	zero := SectionCadence{}
+	if zero.regulates() {
+		t.Fatalf("zero cadence must not regulate")
 	}
+	zeroScheduler := NewSectionScheduler(zero)
 	for tick := range 240 {
-		plan := scheduler.Plan(cadenceOrigin.Add(time.Duration(tick)*(time.Second/60)), 0)
+		plan := zeroScheduler.Plan(cadenceOrigin.Add(time.Duration(tick)*(time.Second/60)), 0)
 		if plan.Count() != sectionCount {
 			t.Fatalf("tick %d rebuilt %d sections, want %d", tick, plan.Count(), sectionCount)
 		}
+	}
+	// Defaults ahora sí regulan (ISA-707 activado).
+	if !DefaultSectionCadence().regulates() {
+		t.Fatalf("defaults must regulate after ISA-707")
+	}
+	if DefaultSectionCadence().Interval(TierSlow) == 0 || DefaultSectionCadence().DirtyCeiling == 0 {
+		t.Fatalf("regulated defaults must have Slow and DirtyCeiling")
 	}
 }
 
@@ -45,8 +54,8 @@ func TestSchedulerHonoursTierIntervals(t *testing.T) {
 	}{
 		{SectionPlayer, 49 * time.Millisecond, false},
 		{SectionPlayer, 50 * time.Millisecond, true},
-		{SectionRelative, 50 * time.Millisecond, false},
-		{SectionRelative, 200 * time.Millisecond, true},
+		{SectionRelative, 200 * time.Millisecond, false},
+		{SectionRelative, time.Second, true},
 		{SectionStandings, 200 * time.Millisecond, false},
 		{SectionStandings, time.Second, true},
 	}
@@ -152,8 +161,8 @@ func TestTierMapCoversEverySection(t *testing.T) {
 	}
 	want := map[Section]SectionTier{
 		SectionPlayer: TierFast, SectionControls: TierFast, SectionDelta: TierFast,
-		SectionRelative: TierMid, SectionSpotter: TierMid,
-		SectionSession: TierSlow, SectionStandings: TierSlow,
+		SectionSpotter: TierMid,
+		SectionSession: TierSlow, SectionStandings: TierSlow, SectionRelative: TierSlow,
 		SectionFuel: TierSlow, SectionCapabilities: TierSlow,
 	}
 	for _, section := range sections {

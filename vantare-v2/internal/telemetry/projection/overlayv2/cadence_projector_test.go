@@ -13,23 +13,26 @@ import (
 )
 
 // TestCachedProjectorMatchesProjectV2ByteForByte is the identity gate: with
-// the defaults the regulated path must be indistinguishable on the wire from
+// a zero cadence the regulated path must be indistinguishable on the wire from
 // the current one. It is also the tripwire that fires when F8 fills a builder
-// in ProjectV2 without teaching DefaultSectionBuilders about it.
+// in ProjectV2 without teaching DefaultSectionBuilders about it. Con defaults
+// regulados (ISA-707) la igualdad se mantiene vía memoización aunque no haya
+// FullRebuilds == Ticks.
 func TestCachedProjectorMatchesProjectV2ByteForByte(t *testing.T) {
 	t.Parallel()
 
 	for _, count := range []int{1, 20, 44, 104} {
 		final := builderFinalState(t, count)
 		source := builderSourceContext()
-		projector := NewCachedProjector(DefaultSectionCadence())
+		// Identidad con cadencia cero: debe ser byte-idéntico y FullRebuilds==Ticks.
+		zeroProjector := NewCachedProjector(SectionCadence{})
 		for tick := range 5 {
 			revision := uint64(tick + 1)
 			want, err := ProjectV2(final, source, DefaultPreferencesV2(), revision)
 			if err != nil {
 				t.Fatalf("ProjectV2(%d): %v", count, err)
 			}
-			got, err := projector.Project(final, source, DefaultPreferencesV2(), revision, cadenceOrigin.Add(time.Duration(tick)*(time.Second/60)))
+			got, err := zeroProjector.Project(final, source, DefaultPreferencesV2(), revision, cadenceOrigin.Add(time.Duration(tick)*(time.Second/60)))
 			if err != nil {
 				t.Fatalf("CachedProjector.Project(%d): %v", count, err)
 			}
@@ -45,9 +48,34 @@ func TestCachedProjectorMatchesProjectV2ByteForByte(t *testing.T) {
 				t.Fatalf("vehicles=%d tick=%d payload differs\n got: %s\nwant: %s", count, tick, gotJSON, wantJSON)
 			}
 		}
-		metrics := projector.Metrics()
+		metrics := zeroProjector.Metrics()
 		if metrics.FullRebuilds != metrics.Ticks {
-			t.Fatalf("defaults skipped work: %d full rebuilds out of %d ticks", metrics.FullRebuilds, metrics.Ticks)
+			t.Fatalf("zero cadence skipped work: %d full rebuilds out of %d ticks", metrics.FullRebuilds, metrics.Ticks)
+		}
+		// Con defaults regulados también debe ser byte-idéntico (memoización), pero
+		// no se exige FullRebuilds==Ticks porque ahora sí regula.
+		regulatedProjector := NewCachedProjector(DefaultSectionCadence())
+		for tick := range 5 {
+			revision := uint64(tick + 1)
+			want, err := ProjectV2(final, source, DefaultPreferencesV2(), revision)
+			if err != nil {
+				t.Fatalf("ProjectV2(%d): %v", count, err)
+			}
+			got, err := regulatedProjector.Project(final, source, DefaultPreferencesV2(), revision, cadenceOrigin.Add(time.Duration(tick)*(time.Second/60)))
+			if err != nil {
+				t.Fatalf("CachedProjector.Project regulated(%d): %v", count, err)
+			}
+			wantJSON, err := json.Marshal(want)
+			if err != nil {
+				t.Fatalf("marshal ProjectV2: %v", err)
+			}
+			gotJSON, err := json.Marshal(got)
+			if err != nil {
+				t.Fatalf("marshal CachedProjector: %v", err)
+			}
+			if string(gotJSON) != string(wantJSON) {
+				t.Fatalf("vehicles=%d tick=%d regulated payload differs\n got: %s\nwant: %s", count, tick, gotJSON, wantJSON)
+			}
 		}
 	}
 }
@@ -166,7 +194,8 @@ func TestRegulationHappensBeforeMarshal(t *testing.T) {
 		t.Fatalf("every tick still publishes a full frame, got %d marshals", marshals)
 	}
 	// One simulated second at 100 Hz: 20 Hz fast, 10 Hz mid, 4 Hz slow.
-	want := map[Section]int{SectionPlayer: 20, SectionRelative: 10, SectionStandings: 4, SectionSession: 4}
+	// Relative es slow desde ISA-707 (dirty fino), por eso 4 no 10.
+	want := map[Section]int{SectionPlayer: 20, SectionRelative: 4, SectionStandings: 4, SectionSession: 4}
 	for section, expected := range want {
 		if counters[section] != expected {
 			t.Fatalf("%s built %d times in one second, want %d", section, counters[section], expected)

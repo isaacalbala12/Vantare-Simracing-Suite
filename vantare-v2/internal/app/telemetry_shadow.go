@@ -56,7 +56,7 @@ func newTelemetryShadow(every uint64, budget time.Duration, now func() time.Time
 		budget:  budget,
 		reducer: telemetrycore.NewReducer(),
 		coord:   telemetrycore.NewSessionCoordinator(telemetrycore.SessionCoordinatorConfig{Now: now}),
-		derive:  derive.NewPipeline(derive.Config{}),
+		derive:  derive.NewPipeline(derive.Config{FuelUsageWindow: derive.DefaultFuelUsageWindowProduct}),
 	}
 }
 

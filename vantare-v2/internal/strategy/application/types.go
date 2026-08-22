@@ -6,6 +6,7 @@ import (
 
 	"github.com/vantare/overlays/v2/internal/strategy/backtest"
 	strategycatalog "github.com/vantare/overlays/v2/internal/strategy/catalog"
+	strategycoldstart "github.com/vantare/overlays/v2/internal/strategy/coldstart"
 	"github.com/vantare/overlays/v2/internal/strategy/contract"
 	strategydocument "github.com/vantare/overlays/v2/internal/strategy/document"
 	"github.com/vantare/overlays/v2/internal/strategy/packaging"
@@ -45,6 +46,9 @@ const (
 	OperationGetEventPlanningInputs  Operation = "get_event_planning_inputs"
 	OperationGetValidatedExamples    Operation = "get_validated_examples"
 	OperationListReferenceCatalog    Operation = "list_reference_catalog"
+	OperationGetColdStartStatus      Operation = "get_cold_start_status"
+	OperationImportColdStartNext     Operation = "import_cold_start_next"
+	OperationRejectColdStart         Operation = "reject_cold_start"
 	OperationPreviewLegacyMigration  Operation = "preview_legacy_migration"
 	OperationMigrateLegacy           Operation = "migrate_legacy"
 	OperationRollbackLegacyMigration Operation = "rollback_legacy_migration"
@@ -139,6 +143,7 @@ type GetValidatedExamplesCommand struct {
 }
 
 type ListReferenceCatalogCommand struct{ CommandHeader }
+type ColdStartCommand struct{ CommandHeader }
 
 type ValidatedExamplesStatus string
 
@@ -519,6 +524,8 @@ type Result[T any] struct {
 	PlanningInputs       *strategydocument.PlanningInputs     `json:"planningInputs,omitempty"`
 	ValidatedExamples    *ValidatedExamplesResult             `json:"validatedExamples,omitempty"`
 	ReferenceCatalog     *strategycatalog.ConsumerResult      `json:"referenceCatalog,omitempty"`
+	ColdStartStatus      *strategycoldstart.Status            `json:"coldStartStatus,omitempty"`
+	ColdStartProgress    *strategycoldstart.Progress          `json:"coldStartProgress,omitempty"`
 	LegacyMigration      *LegacyMigrationPreview              `json:"legacyMigration,omitempty"`
 	// Package carries exported bytes. Import returns no package.
 	Package []byte `json:"package,omitempty"`

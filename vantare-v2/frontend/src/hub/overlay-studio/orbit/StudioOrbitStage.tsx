@@ -23,6 +23,33 @@ function sortByZIndex(widgets: readonly WidgetInstanceV3[]): WidgetInstanceV3[] 
   return [...widgets].sort((left, right) => left.layout.zIndex - right.layout.zIndex);
 }
 
+/**
+ * Caja de seleccion REAL del widget seleccionado (la que `useSelectionFit`
+ * cine a lo pintado), leida del DOM en coordenadas del `stage`. Leerla del
+ * DOM es lo unico que sigue al widget durante un arrastre: `resolveLayout`
+ * devuelve el layout comprometido y el marco se mueve por estilo en linea.
+ */
+function readSelectionAnchor(
+  stage: HTMLElement,
+  selectedWidgetId: string,
+): TagAnchor | null {
+  const frame = stage.querySelector<HTMLElement>(
+    `[data-testid="studio-widget-frame-${CSS.escape(selectedWidgetId)}"]`,
+  );
+  const box = frame?.querySelector<HTMLElement>('[data-widget-selection]') ?? frame;
+  if (!box) {
+    return null;
+  }
+  const stageRect = stage.getBoundingClientRect();
+  const rect = box.getBoundingClientRect();
+  return {
+    left: rect.left - stageRect.left,
+    top: rect.top - stageRect.top,
+    width: rect.width,
+    height: rect.height,
+  };
+}
+
 export type StudioOrbitStageProps = {
   diagnostics?: WidgetDiagnosticCollector;
   onPointer(point: { x: number; y: number } | null): void;
@@ -145,22 +172,11 @@ export function StudioOrbitStage(props: StudioOrbitStageProps): React.ReactEleme
       setAnchor((current) => (current === null ? current : null));
       return;
     }
-    const frame = stage.querySelector<HTMLElement>(
-      `[data-testid="studio-widget-frame-${CSS.escape(selectedWidgetId)}"]`,
-    );
-    const box = frame?.querySelector<HTMLElement>('[data-widget-selection]') ?? frame;
-    if (!box) {
+    const next = readSelectionAnchor(stage, selectedWidgetId);
+    if (!next) {
       setAnchor((current) => (current === null ? current : null));
       return;
     }
-    const stageRect = stage.getBoundingClientRect();
-    const rect = box.getBoundingClientRect();
-    const next: TagAnchor = {
-      left: rect.left - stageRect.left,
-      top: rect.top - stageRect.top,
-      width: rect.width,
-      height: rect.height,
-    };
     setAnchor((current) =>
       current &&
       Math.abs(current.left - next.left) < 0.5 &&
@@ -177,17 +193,36 @@ export function StudioOrbitStage(props: StudioOrbitStageProps): React.ReactEleme
   }, [measureAnchor, selectedLayout, scale, stageWidth, preview.zoom]);
 
   // Durante el arrastre/redimensionado el marco se mueve por estilo en linea:
-  // la unica forma de que la etiqueta lo siga es remedir por frame.
+  // la etiqueta lo sigue con la MISMA tecnica (escritura directa en el mismo
+  // tick rAF), no con setState. Un `setState` por frame dejaria la etiqueta
+  // como minimo un pintado por detras del marco y re-renderizaria el stage
+  // entero en cada gesto. Posicion y lado del clamp (`data-place`) se escriben
+  // en el nodo; el estado concilia la posicion final al soltar (via
+  // `measureAnchor` en el efecto de layout sobre `selectedLayout`).
   useEffect(() => {
     if (!interacting || typeof requestAnimationFrame !== 'function') return;
     let raf = 0;
     const tick = () => {
-      measureAnchor();
+      const stage = stageRef.current;
+      const node = tagRef.current;
+      if (stage && node && selectedWidgetId && stageWidth > 0 && stageHeight > 0) {
+        const next = readSelectionAnchor(stage, selectedWidgetId);
+        if (next) {
+          const placement = placeSelectionTag({
+            anchor: next,
+            tag: tagSize,
+            stage: { width: stageWidth, height: stageHeight },
+          });
+          node.style.left = `${placement.left}px`;
+          node.style.top = `${placement.top}px`;
+          node.setAttribute('data-place', placement.side);
+        }
+      }
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [interacting, measureAnchor]);
+  }, [interacting, selectedWidgetId, tagSize, stageWidth, stageHeight]);
 
   // La etiqueta se mide a si misma: su ancho depende del nombre del widget y
   // de si lleva el boton "Mostrar", y el recorte contra los bordes lo necesita.

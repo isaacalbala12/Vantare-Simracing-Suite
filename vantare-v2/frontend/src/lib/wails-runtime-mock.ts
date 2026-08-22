@@ -260,6 +260,37 @@ async function handleHarnessStrategyCommand(command: Record<string, unknown>) {
     });
     return;
   }
+  if (operation === "get_validated_examples") {
+    broadcast("strategy:application:result", {
+      ...baseResult,
+      validatedExamples: {
+        status: "available",
+        combinationId: "lmu:imola-lmgt3",
+        races: [{
+          raceId: "imola-race",
+          occurredAt: "2026-07-05T18:00:00Z",
+          predictedTotalSeconds: 14_472,
+          observedTotalSeconds: 14_592,
+          absoluteErrorSeconds: 120,
+          absoluteErrorRatio: 120 / 14_592,
+          stints: [
+            { stintNumber: 1, laps: 11, predictedSeconds: 1_144, observedSeconds: 1_152, absoluteErrorSeconds: 8, absoluteErrorRatio: 8 / 1_152 },
+            { stintNumber: 2, laps: 32, predictedSeconds: 3_392, observedSeconds: 3_420, absoluteErrorSeconds: 28, absoluteErrorRatio: 28 / 3_420 },
+            { stintNumber: 3, laps: 32, predictedSeconds: 3_392, observedSeconds: 3_420, absoluteErrorSeconds: 28, absoluteErrorRatio: 28 / 3_420 },
+            { stintNumber: 4, laps: 32, predictedSeconds: 3_392, observedSeconds: 3_420, absoluteErrorSeconds: 28, absoluteErrorRatio: 28 / 3_420 },
+            { stintNumber: 5, laps: 32, predictedSeconds: 3_152, observedSeconds: 3_180, absoluteErrorSeconds: 28, absoluteErrorRatio: 28 / 3_180 },
+          ],
+          pitLaps: [11, 43, 75, 107],
+        }],
+        aggregate: {
+          raceCount: 1,
+          totalErrorRatio: { count: 1, mean: 120 / 14_592, lower: 120 / 14_592, upper: 120 / 14_592 },
+          stintErrorRatio: { count: 5, mean: 0.0082, lower: 0.0071, upper: 0.0093 },
+        },
+      },
+    });
+    return;
+  }
   if (operation === "create_event" || operation === "edit_event") {
     const event = readHarnessPayload(command.event);
     const eventId = typeof event.id === "string" ? event.id : "";

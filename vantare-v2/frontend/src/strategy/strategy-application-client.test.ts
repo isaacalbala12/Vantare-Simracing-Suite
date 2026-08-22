@@ -261,6 +261,42 @@ describe("createStrategyApplicationClient", () => {
     });
   });
 
+  it("parses neutral validated examples with total and per-stint errors", async () => {
+    const client = createStrategyApplicationClient<Payload>(transport);
+    const command: StrategyApplicationCommandV1<Payload> = {
+      protocolVersion: "strategy.application.v1", commandId: "validated-examples-1",
+      operation: "get_validated_examples", expectedRepositoryVersion: 4, eventId: "event-1",
+    };
+    const pending = client.execute(command);
+    emit(transport, "strategy:application:result", {
+      protocolVersion: "strategy.application.v1", commandId: command.commandId, repositoryVersion: 4,
+      validatedExamples: {
+        status: "available", combinationId: "lmu:imola",
+        races: [{
+          raceId: "race-1", occurredAt: "2026-08-20T18:00:00Z",
+          predictedTotalSeconds: 416, observedTotalSeconds: 420,
+          absoluteErrorSeconds: 4, absoluteErrorRatio: 4 / 420,
+          stints: [{ stintNumber: 1, laps: 4, predictedSeconds: 416, observedSeconds: 420, absoluteErrorSeconds: 4, absoluteErrorRatio: 4 / 420 }],
+          pitLaps: [],
+        }],
+        aggregate: {
+          raceCount: 1,
+          totalErrorRatio: { count: 1, mean: 4 / 420, lower: 4 / 420, upper: 4 / 420 },
+          stintErrorRatio: { count: 1, mean: 4 / 420, lower: 4 / 420, upper: 4 / 420 },
+        },
+      },
+      recoveredFromBackup: false, closed: false,
+    });
+
+    await expect(pending).resolves.toMatchObject({
+      validatedExamples: {
+        status: "available",
+        races: [{ raceId: "race-1", stints: [{ laps: 4 }] }],
+        aggregate: { raceCount: 1, totalErrorRatio: { count: 1 } },
+      },
+    });
+  });
+
   it("ignores another command and exposes stable application errors", async () => {
     const client = createStrategyApplicationClient<Payload>(transport);
     const pending = client.execute(openCommand());

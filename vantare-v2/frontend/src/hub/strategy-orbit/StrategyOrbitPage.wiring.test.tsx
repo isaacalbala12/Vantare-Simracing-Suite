@@ -232,6 +232,90 @@ describe("StrategyOrbitPage · cableado auditado", () => {
     expect(saved?.combination?.sessions).toEqual([{ sessionId: "race-1", included: false }]);
   });
 
+  it("muestra ejemplos validados ordenados con cifras neutrales del replay Go", async () => {
+    window.localStorage.clear();
+    let saved: StrategyEventV2 | undefined;
+    const client: StrategyApplicationClient<unknown> = {
+      async execute(command: StrategyApplicationCommandV1<unknown>): Promise<StrategyApplicationResultV1<unknown>> {
+        const base = { protocolVersion: "strategy.application.v1" as const, commandId: command.commandId, repositoryVersion: 0, recoveredFromBackup: false, closed: false };
+        if (command.operation === "list_session_combinations") return { ...base, sessionCatalogStatus: "available", sessionCombinations: [{
+          combinationId: "lmu:imola", simId: "lmu", trackName: "Imola", trackLayout: "GP", carName: "Mustang", carClass: "LMGT3",
+          sessionCount: 1, raceCount: 1, lastActivity: "2026-08-20T18:00:00Z", climateBuckets: [{ bucket: "dry", laps: 4 }],
+          sessions: [{ sessionId: "race-new", type: "race", status: "identified_usable", defaultIncluded: true, lastActivity: "2026-08-20T18:00:00Z", climateBuckets: [{ bucket: "dry", laps: 4 }] }],
+        }] };
+        if (command.operation === "list_events") return { ...base, events: saved ? [saved] : [] };
+        if (command.operation === "create_event" || command.operation === "edit_event") {
+          saved = command.event;
+          return { ...base, strategyDocument: { contractVersion: "strategy.v2", schemaVersion: "2.0.0", generatedAt: command.updatedAt, events: [saved] } };
+        }
+        if (command.operation === "get_event_planning_inputs") return { ...base, planningInputStatus: "available", planningInputs: derivedPlanning };
+        if (command.operation === "get_validated_examples") return { ...base, validatedExamples: {
+          status: "available", combinationId: "lmu:imola",
+          races: [{ raceId: "race-new", occurredAt: "2026-08-20T18:00:00Z", predictedTotalSeconds: 416, observedTotalSeconds: 420, absoluteErrorSeconds: 4, absoluteErrorRatio: 4 / 420,
+            stints: [
+              { stintNumber: 1, laps: 3, predictedSeconds: 315, observedSeconds: 318, absoluteErrorSeconds: 3, absoluteErrorRatio: 3 / 318 },
+              { stintNumber: 2, laps: 1, predictedSeconds: 101, observedSeconds: 102, absoluteErrorSeconds: 1, absoluteErrorRatio: 1 / 102 },
+            ], pitLaps: [3] }],
+          aggregate: { raceCount: 1, totalErrorRatio: { count: 1, mean: 4 / 420, lower: 4 / 420, upper: 4 / 420 }, stintErrorRatio: { count: 2, mean: 0.00962, lower: 0.00942, upper: 0.00982 } },
+        } };
+        if (command.operation === "calculate_orbit") return { ...base, orbitCalculation: orbitGolden as StrategyOrbitCalculationResultV1 };
+        if (command.operation === "list") return { ...base, plans: [] };
+        throw new Error(`unexpected ${command.operation}`);
+      },
+      cancel: () => false,
+      dispose: () => undefined,
+    };
+    const slot = document.createElement("div");
+    slot.id = STRATEGY_CONTEXT_SLOT_ID;
+    document.body.append(slot);
+    render(<I18nProvider><ToastProvider><StrategyOrbitPage applicationClient={client} roster={ROSTER} /></ToastProvider></I18nProvider>);
+
+    fireEvent.click((await screen.findByTestId("orbit-session-combination-lmu:imola")));
+    const examples = await screen.findByTestId("orbit-validated-examples");
+    expect(examples.textContent).toContain("Ejemplos validados");
+    expect(examples.textContent).toContain("3 + 1 vueltas");
+    expect(examples.textContent).toContain("6:56");
+    expect(examples.textContent).toContain("7:00");
+    expect(examples.textContent).toContain("1,0 %");
+    expect(examples.textContent).not.toMatch(/aprob|suspens|pass|fail/i);
+  });
+
+  it("muestra el vacío honesto cuando la combinación aún no tiene carreras", async () => {
+    window.localStorage.clear();
+    let saved: StrategyEventV2 | undefined;
+    const client: StrategyApplicationClient<unknown> = {
+      async execute(command: StrategyApplicationCommandV1<unknown>): Promise<StrategyApplicationResultV1<unknown>> {
+        const base = { protocolVersion: "strategy.application.v1" as const, commandId: command.commandId, repositoryVersion: 0, recoveredFromBackup: false, closed: false };
+        if (command.operation === "list_session_combinations") return { ...base, sessionCatalogStatus: "available", sessionCombinations: [{
+          combinationId: "lmu:imola", simId: "lmu", trackName: "Imola", trackLayout: "GP", carName: "Mustang", carClass: "LMGT3", sessionCount: 0, raceCount: 0,
+          lastActivity: "2026-08-20T18:00:00Z", climateBuckets: [], sessions: [],
+        }] };
+        if (command.operation === "list_events") return { ...base, events: saved ? [saved] : [] };
+        if (command.operation === "create_event" || command.operation === "edit_event") {
+          saved = command.event;
+          return { ...base, strategyDocument: { contractVersion: "strategy.v2", schemaVersion: "2.0.0", generatedAt: command.updatedAt, events: [saved] } };
+        }
+        if (command.operation === "get_event_planning_inputs") return { ...base, planningInputStatus: "no_included_sessions", planningInputs: { overrides: {} } };
+        if (command.operation === "get_validated_examples") return { ...base, validatedExamples: {
+          status: "no_races", combinationId: "lmu:imola", races: [],
+          aggregate: { raceCount: 0, totalErrorRatio: { count: 0, mean: 0, lower: 0, upper: 0 }, stintErrorRatio: { count: 0, mean: 0, lower: 0, upper: 0 } },
+        } };
+        if (command.operation === "calculate_orbit") return { ...base, orbitCalculation: orbitGolden as StrategyOrbitCalculationResultV1 };
+        if (command.operation === "list") return { ...base, plans: [] };
+        throw new Error(`unexpected ${command.operation}`);
+      },
+      cancel: () => false,
+      dispose: () => undefined,
+    };
+    const slot = document.createElement("div");
+    slot.id = STRATEGY_CONTEXT_SLOT_ID;
+    document.body.append(slot);
+    render(<I18nProvider><ToastProvider><StrategyOrbitPage applicationClient={client} roster={ROSTER} /></ToastProvider></I18nProvider>);
+
+    fireEvent.click((await screen.findByTestId("orbit-session-combination-lmu:imola")));
+    expect((await screen.findByTestId("orbit-validated-examples")).textContent).toContain("Aún no hay carreras de esta combinación");
+  });
+
   it("edita NODE_50 y muestra planes por escenario con recomendación robusta", async () => {
     window.localStorage.clear();
     let saved: StrategyEventV2 | undefined;

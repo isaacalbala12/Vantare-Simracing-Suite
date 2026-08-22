@@ -140,6 +140,8 @@ import {
 } from "./strategy-session-selection";
 import { strategyInputProvenance, type StrategyInputProvenanceView } from "./strategy-input-provenance";
 import { StrategyWeatherPanel } from "./StrategyWeatherPanel";
+import { StrategyValidatedExamplesPanel, type ValidatedExamplesViewState } from "./StrategyValidatedExamplesPanel";
+import { loadValidatedExamples } from "./strategy-validated-examples";
 import { EMPTY_WEATHER_SCENARIOS, persistStrategyWeatherScenarios, selectedWeatherScenarios } from "./strategy-weather-scenarios";
 import "../../styles/orbit-strategy.css";
 
@@ -447,6 +449,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
   const [sessionPickerDismissed, setSessionPickerDismissed] = useState<string | null>(null);
   const [sessionSave, setSessionSave] = useState<"idle" | "saving" | "error">("idle");
   const [weatherSave, setWeatherSave] = useState<"idle" | "saving" | "error">("idle");
+  const [validatedExamples, setValidatedExamples] = useState<ValidatedExamplesViewState>({ status: "idle" });
 
   useEffect(() => {
     let current = true;
@@ -528,6 +531,19 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
   const eventWeatherScenarios = eventRecord && catalogView
     ? selectedWeatherScenarios(catalogView, eventRecord.id)
     : EMPTY_WEATHER_SCENARIOS;
+  useEffect(() => {
+    if (!eventRecord || !eventCombination || !catalogView) {
+      setValidatedExamples({ status: "idle" });
+      return;
+    }
+    let current = true;
+    setValidatedExamples({ status: "loading" });
+    void loadValidatedExamples(applicationClient, catalogView.repositoryVersion, eventRecord.id).then(
+      (result) => { if (current) setValidatedExamples({ status: "success", result }); },
+      () => { if (current) setValidatedExamples({ status: "error" }); },
+    );
+    return () => { current = false; };
+  }, [applicationClient, catalogView?.repositoryVersion, eventCombination?.combinationId, eventRecord?.id]);
   const planningRequests = useRef(new Set<string>());
   useEffect(() => {
     if (!eventRecord || !catalogView || !eventCombination || eventPlanningInputs
@@ -2774,6 +2790,10 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
               value={plan.stops}
             />
           </StatRow>
+
+          {eventCombination ? (
+            <StrategyValidatedExamplesPanel locale={locale} state={validatedExamples} t={t} />
+          ) : null}
 
           <div className="orbit-strategy__grid">
             <Surface

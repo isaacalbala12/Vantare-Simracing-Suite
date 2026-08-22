@@ -38,14 +38,16 @@ export function createStudioHistory(document: ProfileDocumentV3, limit = DEFAULT
 }
 
 export function commitStudioCommand(history: StudioHistory, command: StudioCommand): StudioHistory {
-  const previous = cloneDocument(history.present);
+  // `applyStudioCommand` clones its input and never mutates the original, so
+  // the undo snapshot can share the `present` reference: readers (undo, redo
+  // and discard) already clone again when restoring.
   const present = applyStudioCommand(history.present, command);
-  if (documentsEqual(previous, present)) {
+  if (documentsEqual(history.present, present)) {
     return history;
   }
   return {
     ...history,
-    past: trimPast([...history.past, previous], history.limit),
+    past: trimPast([...history.past, history.present], history.limit),
     present,
     future: [],
   };

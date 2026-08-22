@@ -143,7 +143,9 @@ export function StudioProvider(props: {
   }, [client, initialFile]);
 
   const document = history?.present ?? null;
-  const dirty = history ? isStudioHistoryDirty(history) : false;
+  // `isStudioHistoryDirty` serializes present and saved: memoize on history
+  // identity so renders do not pay two full `JSON.stringify` passes.
+  const dirty = useMemo(() => (history ? isStudioHistoryDirty(history) : false), [history]);
   const canUndo = (history?.past.length ?? 0) > 0;
   const canRedo = (history?.future.length ?? 0) > 0;
 

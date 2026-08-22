@@ -141,6 +141,8 @@ import {
 import { strategyInputProvenance, type StrategyInputProvenanceView } from "./strategy-input-provenance";
 import { StrategyWeatherPanel } from "./StrategyWeatherPanel";
 import { StrategyValidatedExamplesPanel, type ValidatedExamplesViewState } from "./StrategyValidatedExamplesPanel";
+import { StrategyColdStartBanner } from "./StrategyColdStartBanner";
+import { StrategyReferencePanel } from "./StrategyReferencePanel";
 import { loadValidatedExamples } from "./strategy-validated-examples";
 import { EMPTY_WEATHER_SCENARIOS, persistStrategyWeatherScenarios, selectedWeatherScenarios } from "./strategy-weather-scenarios";
 import "../../styles/orbit-strategy.css";
@@ -2199,6 +2201,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
     return (
       <div className="orbit-strategy orbit-strategy--empty" data-testid="orbit-strategy">
         {contextSlot ? createPortal(context, contextSlot) : null}
+        <StrategyColdStartBanner client={applicationClient} onImported={() => setSessionCatalogRetry((value) => value + 1)} t={t} />
         {form ? eventForm : (wizardView ?? entryMenu)}
         {editorFailureView}
         {deleteDialog}
@@ -2211,6 +2214,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
     return (
       <div className="orbit-strategy orbit-strategy--empty" data-testid="orbit-strategy">
         {contextSlot ? createPortal(context, contextSlot) : null}
+        <StrategyColdStartBanner client={applicationClient} onImported={() => setSessionCatalogRetry((value) => value + 1)} t={t} />
         {sessionPickerView}
         {editorFailureView}
         {migrationDialog}
@@ -2461,6 +2465,8 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
     <div className="orbit-strategy" data-testid="orbit-strategy">
       {contextSlot ? createPortal(context, contextSlot) : null}
       {migrationDialog}
+
+      <StrategyColdStartBanner client={applicationClient} onImported={() => setSessionCatalogRetry((value) => value + 1)} t={t} />
 
       <header className="orbit-strategy__head">
         <Monogram
@@ -2791,8 +2797,26 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
             />
           </StatRow>
 
-          {eventCombination ? (
-            <StrategyValidatedExamplesPanel locale={locale} state={validatedExamples} t={t} />
+          {eventCombination || catalogView ? (
+            <div className="orbit-strategy__evidence">
+              {eventCombination ? (
+                <StrategyValidatedExamplesPanel locale={locale} state={validatedExamples} t={t} />
+              ) : null}
+              {catalogView ? (
+                <StrategyReferencePanel
+                  client={applicationClient}
+                  event={eventRecord}
+                  existing={catalogView.events.find((candidate) => candidate.id === eventRecord.id)}
+                  onSaved={(saved, repositoryVersion) => setSessionCatalog((current) => {
+                    if (current.status !== "ready") return current;
+                    const events = [...current.view.events.filter((candidate) => candidate.id !== saved.id), saved];
+                    return { status: "ready", view: { ...current.view, repositoryVersion, events, planningByEvent: saved.planningInputs ? { ...current.view.planningByEvent, [saved.id]: saved.planningInputs } : current.view.planningByEvent } };
+                  })}
+                  repositoryVersion={catalogView.repositoryVersion}
+                  t={t}
+                />
+              ) : null}
+            </div>
           ) : null}
 
           <div className="orbit-strategy__grid">

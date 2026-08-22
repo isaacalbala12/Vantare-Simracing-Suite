@@ -8,7 +8,8 @@ import { hideToasts, settle, stillPage } from "./lib/orbit-still.mjs";
 
 const frontend = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const output = path.resolve(frontend, "../docs/design/orbit-v03/evidence/porte/07-estrategia");
-const port = 5199;
+const port = Number.parseInt(process.env.ORBIT_STRATEGY_VISUAL_PORT ?? "5199", 10);
+if (!Number.isSafeInteger(port) || port < 1024 || port > 65535) throw new Error("invalid ORBIT_STRATEGY_VISUAL_PORT");
 const url = `http://127.0.0.1:${port}/orbit-strategy-harness.html?view=estrategia`;
 
 // Reloj congelado: la columna calcula las próximas salidas del calendario real.
@@ -150,6 +151,18 @@ try {
     });
 
     if (viewport.editor) {
+      // F5-e: captura nueva justificada para custodiar la sección separada, la etiqueta referencia y k>=3.
+      const reference = page.getByTestId("orbit-reference");
+      await reference.waitFor();
+      const referenceText = (await reference.textContent()) ?? "";
+      if (!referenceText.includes("Referencia") || !referenceText.includes("k=3")) {
+        throw new Error(`${viewport.name}: la referencia firmada no muestra etiqueta y muestra (${referenceText})`);
+      }
+      await page.screenshot({
+        path: path.join(output, `orbit-estrategia-referencia-${viewport.name}.png`),
+        fullPage: false,
+      });
+
       // F5-d: evidencia cuantitativa neutral; no debe aparecer ningún veredicto provisional.
       const validatedExamples = page.getByTestId("orbit-validated-examples");
       await validatedExamples.waitFor();

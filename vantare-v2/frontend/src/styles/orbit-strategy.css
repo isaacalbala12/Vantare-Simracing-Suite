@@ -108,6 +108,27 @@
   margin-top: 14px;
 }
 
+.orbit-strategy__evidence {
+  display: grid;
+  flex: none;
+  gap: var(--orbit-space);
+  height: clamp(180px, 20vh, 218px);
+  margin-top: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.orbit-strategy__evidence > .orbit-surface {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  margin-top: 0;
+}
+
+.orbit-strategy__evidence > .orbit-surface > .orbit-surface__body {
+  flex: 1;
+  overflow: auto;
+}
+
 .orbit-validated-examples__aggregate,
 .orbit-validated-examples__empty {
   margin: 0;
@@ -1225,6 +1246,74 @@
   border-color: color-mix(in srgb, var(--orbit-ember) 55%, var(--orbit-line));
 }
 
+.orbit-cold-start {
+  align-items: center;
+  background: color-mix(in srgb, var(--orbit-cyan) 9%, var(--orbit-surface-2));
+  border: 1px solid color-mix(in srgb, var(--orbit-cyan) 45%, var(--orbit-line));
+  border-radius: var(--orbit-radius-control);
+  display: flex;
+  gap: 18px;
+  justify-content: space-between;
+  padding: 14px 16px;
+}
+
+.orbit-cold-start p,
+.orbit-reference p {
+  color: var(--orbit-ink-3);
+  margin: 4px 0 0;
+}
+
+.orbit-cold-start__actions,
+.orbit-reference__item {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+.orbit-cold-start__error,
+.orbit-reference__warning {
+  color: var(--orbit-coral);
+  display: block;
+  margin-top: 5px;
+}
+
+.orbit-reference__combination {
+  border-top: 1px solid var(--orbit-line);
+  display: grid;
+  gap: 8px;
+  padding: 12px 0;
+}
+
+.orbit-reference__combination h4 {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  margin: 0;
+}
+
+.orbit-reference__item {
+  background: color-mix(in srgb, var(--orbit-surface-2) 72%, transparent);
+  border-radius: var(--orbit-radius-control);
+  justify-content: space-between;
+  padding: 10px;
+}
+
+.orbit-reference__item > div {
+  display: grid;
+  gap: 3px;
+}
+
+.orbit-reference__item b {
+  align-items: center;
+  display: flex;
+  gap: 6px;
+}
+
+.orbit-reference__item span {
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-micro);
+}
+
 @keyframes orbit-strategy-in {
   from {
     opacity: 0;
@@ -1263,6 +1352,16 @@
 }
 
 @media (width <= 760px) {
+
+  .orbit-strategy__evidence {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .orbit-cold-start,
+  .orbit-reference__item {
+    align-items: stretch;
+    flex-direction: column;
+  }
   .orbit-planning-inputs {
     grid-template-columns: minmax(0, 1fr);
   }

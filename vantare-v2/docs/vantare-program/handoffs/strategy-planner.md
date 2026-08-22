@@ -17,22 +17,28 @@ son fases históricas.
 
 ## Estado
 
-Actualización ISA-765 / F5-b (2026-08-22, lista para review):
+Actualización ISA-765 / F5-b (2026-08-22, bloqueada antes de review):
 
 - La query de aplicación pide a Analysis una `StrategyInputProjection v2`
   sobre el conjunto exacto de sesiones incluidas por F5-a. Strategy consume el
   puerto público y no toma ownership de modelos históricos ni de DuckDB.
-- `StrategyDocumentV2` conserva proyección y overrides juntos. Manual y
-  referencia son procedencias explícitas; el cálculo usa el override válido y
-  revertir borra solo ese override, dejando intacto el derivado.
+- `StrategyDocumentV2` conserva proyección y overrides juntos. Revertir borra
+  solo el override y deja intacto el derivado.
 - Orbit presenta nueve datos numéricos con chips Derivado/Manual/Referencia/
   Falta. El tooltip derivado incluye N y rango; Falta explica el motivo. El
   modo sin combinación sigue siendo manual puro y los cuatro idiomas están
   completos.
-- Gates verdes: Go focal de Analysis/Strategy, suite frontend completa,
+- Gates de lo implementado verdes: Go focal de Analysis/Strategy, suite frontend completa,
   typecheck, build y `visual:orbit-strategy`. La captura de procedencias queda
-  en la evidencia de Orbit. Sin PR, integración, promoción ni release; falta
-  review de #765 y F5-e continúa siendo quien conecta la fuente inicial.
+  en la evidencia de Orbit.
+- Bloqueo de aceptación: Orbit sigue usando `solver.Solve` v1. En F4,
+  `SolverInputV2` acepta la proyección con sus tres ejes, pero ritmo base,
+  capacidades, pit, vida, Fuel/VE y degradación manuales son escalares sin
+  procedencia, y una proyección válida gana al fallback. No existe una forma
+  contractual de transportar un override por campo tal cual. Resolverlo exige
+  ampliar F4 (y sus fuentes de resultado) o mutar/fabricar una proyección; no
+  se hizo ninguna de las dos sin nueva decisión. #765 continúa in-progress,
+  sin PR, integración, promoción ni release.
 
 Actualización ISA-758 / F5-a (2026-08-22, lista para review):
 

@@ -83,4 +83,7 @@ export const shellOrbitPt: Record<string, string> = {
   "shell.access.unavailable": "Acesso não disponível",
   "shell.access.requiresPlan": "Requer o plano {{plan}} · plano atual {{current}}",
   "shell.access.requiresPlanShort": "Requer {{plan}}",
+
+  "shell.pageError": "Não foi possível carregar esta tela.",
+  "shell.pageRetry": "Tentar novamente",
 };

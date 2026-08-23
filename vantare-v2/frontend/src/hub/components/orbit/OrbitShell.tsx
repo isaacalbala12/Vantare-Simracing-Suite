@@ -29,6 +29,7 @@ import {
   type ViewId,
 } from '../../orbit/views';
 import { CommandPalette, type PaletteItem } from './CommandPalette';
+import { OrbitPageBoundary } from './OrbitPageBoundary';
 import { ContextColumn, type ContextColumnBlock } from './ContextColumn';
 import { Rail, type RailItem } from './Rail';
 import { SideLauncher } from './SideLauncher';
@@ -573,6 +574,7 @@ function OrbitShellBody({
             ) : null}
           </Topbar>
           <div className="orbit-workspace">
+            <OrbitPageBoundary title={t('shell.pageError')} retry={t('shell.pageRetry')}>
             <Suspense fallback={<div className="orbit-page-loading" aria-busy="true" />}>
             {activeView === 'inicio' ? (
               <HomeOrbitPage
@@ -608,6 +610,7 @@ function OrbitShellBody({
               <StudioRoute target={target} />
             ) : null}
             </Suspense>
+            </OrbitPageBoundary>
           </div>
         </div>
       </div>

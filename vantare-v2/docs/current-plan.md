@@ -1,3 +1,24 @@
+Nota ISA-813 / ISA-694 F5-e (2026-08-23, implementada en rama de issue):
+
+- La importación en frío obtiene de las cuatro familias que consumen páginas
+  una unión de 13 canales y ya no lee los 98 canales completos. Un test AST
+  falla si validez, consumo/ritmo, curvas o pit piden un canal que su propia
+  familia no declaró; el importador consume directamente esa unión.
+- `ImportNext` lanza helpers en lotes acotados, conserva resultados y fallos en
+  orden y escribe después cada modelo secuencialmente. El límite es configurable
+  entre 1 y 4, con 4 por defecto; error o `panic` siguen convertidos en la
+  omisión informada de ISA-810 y el progreso conserva los contadores exactos.
+- Corpus real: el baseline de #813 era 13m40s para 337 sesiones. Con el runtime
+  firmado, 4 helpers importan 337/337 en 2m20,668s, sin omisiones; pico observado
+  de 939.487.232 bytes en Go y 138.452.992 bytes sumados en helpers. Tres helpers
+  tardan 2m52,766s y solo reducen el pico total unos 82 MB, por lo que dejan un
+  margen demasiado estrecho sobre el objetivo de 3 minutos.
+- Páginas de 65.536 filas se descartaron: el runtime firmado actual las rechaza.
+  Se conserva el contrato de 16.384. Gates pedidos de Analysis+Strategy verdes;
+  `go test ./...` solo queda bloqueado en setup de `frontend`/`cmd/vantare`
+  porque este worktree no contiene `frontend/dist`. Sin PR, integración,
+  promoción ni release.
+
 Nota ISA-810 / ISA-694 F5-e (2026-08-23, implementada en rama de issue):
 
 - El banner distingue búsqueda en curso, cero sesiones, sesiones pendientes y

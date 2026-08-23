@@ -8,6 +8,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetry/derive"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/pit"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/spatial"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/standings"
 )
 
@@ -48,6 +49,8 @@ func BuildStandings(final derive.FinalState) []StandingRowV2 {
 			PitState:       pitState(current.InPit),
 			CompletedLaps:  observedInt32(current.CompletedLaps),
 			LastLapSeconds: qualityValue(current.LastLapTime, func(value standings.LapTime) float64 { return float64(value) }),
+			LapDistance:    qualityValue(current.LapDistance, func(value standings.LapDistance) float64 { return float64(value) }),
+			GroundPosition: groundPositionValue(current.WorldPosition),
 		})
 	}
 	return rows
@@ -123,4 +126,16 @@ func observedInt32[T ~int32](field schema.Field[T]) int32 {
 		return 0
 	}
 	return int32(value)
+}
+
+func groundPositionValue(field schema.Field[spatial.Position]) QValue[GroundPositionV2] {
+	value, present := field.Value()
+	if !present {
+		return missingValue[GroundPositionV2]()
+	}
+	quality := qualityFromFreshness(field.Freshness())
+	if quality == QualityMissing {
+		return missingValue[GroundPositionV2]()
+	}
+	return QValue[GroundPositionV2]{V: GroundPositionV2{X: value.X, Z: value.Z}, Q: quality}
 }

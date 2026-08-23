@@ -99,6 +99,7 @@ func ProjectV2(
 		Fuel:         BuildFuel(final, preferences),
 		Spotter:      BuildSpotter(final),
 		Damage:       BuildDamage(final),
+		Weather:      BuildWeather(final),
 		Capabilities: BuildCapabilities(final, source),
 	}
 	return UpdateV2{

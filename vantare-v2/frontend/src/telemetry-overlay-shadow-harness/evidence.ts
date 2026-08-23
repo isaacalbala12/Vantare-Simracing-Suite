@@ -205,6 +205,7 @@ function playerInstrumentsFrameV2(): OverlayFrameV2 {
     fuel: { remaining: missing, capacity: missing, perLap: missing, estimatedLaps: missing },
     spotter: { mode: "none", left: missing, right: missing },
     damage: { dents: missing, overheating: missing, detached: missing, wheelDetachedCount: missing },
+    weather: { ambientC: missing, trackC: missing, rainPercent: missing, wetnessPct: missing, windKph: missing, windDir: missing, pressureHpa: missing },
     capabilities: {
       supported: ["controls"], available: { controls: "fresh" },
       modes: { spatial: [], delta: [], standings: "none", gaps: "none" },

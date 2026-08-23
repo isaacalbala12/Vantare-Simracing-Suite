@@ -98,6 +98,12 @@
         "lastLap": {
           "v": 91.234,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "q": "fresh"
         }
       },
       {
@@ -114,6 +120,17 @@
         "laps": 127,
         "lastLap": {
           "v": 91.28399999999999,
+          "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 42.5,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 1,
+            "z": -2
+          },
           "q": "fresh"
         }
       },
@@ -132,6 +149,17 @@
         "lastLap": {
           "v": 91.33399999999999,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 85,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 2,
+            "z": -4
+          },
+          "q": "fresh"
         }
       },
       {
@@ -148,6 +176,17 @@
         "laps": 127,
         "lastLap": {
           "v": 91.384,
+          "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 127.5,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 3,
+            "z": -6
+          },
           "q": "fresh"
         }
       },
@@ -166,6 +205,17 @@
         "lastLap": {
           "v": 91.434,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 170,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 4,
+            "z": -8
+          },
+          "q": "fresh"
         }
       },
       {
@@ -182,6 +232,17 @@
         "laps": 127,
         "lastLap": {
           "v": 91.484,
+          "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 212.5,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 5,
+            "z": -10
+          },
           "q": "fresh"
         }
       },
@@ -200,6 +261,17 @@
         "lastLap": {
           "v": 91.53399999999999,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 255,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 6,
+            "z": -12
+          },
+          "q": "fresh"
         }
       },
       {
@@ -216,6 +288,17 @@
         "laps": 127,
         "lastLap": {
           "v": 91.58399999999999,
+          "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 297.5,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 7,
+            "z": -14
+          },
           "q": "fresh"
         }
       },
@@ -234,6 +317,17 @@
         "lastLap": {
           "v": 91.634,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 340,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 8,
+            "z": -16
+          },
+          "q": "fresh"
         }
       },
       {
@@ -250,6 +344,17 @@
         "laps": 126,
         "lastLap": {
           "v": 91.684,
+          "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 382.5,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 9,
+            "z": -18
+          },
           "q": "fresh"
         }
       },
@@ -268,6 +373,17 @@
         "lastLap": {
           "v": 91.734,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 425,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 10,
+            "z": -20
+          },
+          "q": "fresh"
         }
       },
       {
@@ -284,6 +400,17 @@
         "laps": 126,
         "lastLap": {
           "v": 91.78399999999999,
+          "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 467.5,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 11,
+            "z": -22
+          },
           "q": "fresh"
         }
       },
@@ -302,6 +429,17 @@
         "lastLap": {
           "v": 91.83399999999999,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 510,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 12,
+            "z": -24
+          },
+          "q": "fresh"
         }
       },
       {
@@ -318,6 +456,17 @@
         "laps": 126,
         "lastLap": {
           "v": 91.884,
+          "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 552.5,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 13,
+            "z": -26
+          },
           "q": "fresh"
         }
       },
@@ -336,6 +485,17 @@
         "lastLap": {
           "v": 91.934,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 595,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 14,
+            "z": -28
+          },
+          "q": "fresh"
         }
       },
       {
@@ -352,6 +512,17 @@
         "laps": 126,
         "lastLap": {
           "v": 91.984,
+          "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 637.5,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 15,
+            "z": -30
+          },
           "q": "fresh"
         }
       },
@@ -370,6 +541,17 @@
         "lastLap": {
           "v": 92.03399999999999,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 680,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 16,
+            "z": -32
+          },
+          "q": "fresh"
         }
       },
       {
@@ -386,6 +568,17 @@
         "laps": 125,
         "lastLap": {
           "v": 92.08399999999999,
+          "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 722.5,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 17,
+            "z": -34
+          },
           "q": "fresh"
         }
       },
@@ -404,6 +597,17 @@
         "lastLap": {
           "v": 92.134,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 765,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 18,
+            "z": -36
+          },
+          "q": "fresh"
         }
       },
       {
@@ -420,6 +624,17 @@
         "laps": 125,
         "lastLap": {
           "v": 92.184,
+          "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 807.5,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 19,
+            "z": -38
+          },
           "q": "fresh"
         }
       },
@@ -438,6 +653,17 @@
         "lastLap": {
           "v": 92.234,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 850,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 20,
+            "z": -40
+          },
+          "q": "fresh"
         }
       },
       {
@@ -454,6 +680,17 @@
         "laps": 125,
         "lastLap": {
           "v": 92.28399999999999,
+          "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 892.5,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 21,
+            "z": -42
+          },
           "q": "fresh"
         }
       },
@@ -472,6 +709,17 @@
         "lastLap": {
           "v": 92.33399999999999,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 935,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 22,
+            "z": -44
+          },
+          "q": "fresh"
         }
       },
       {
@@ -488,6 +736,17 @@
         "laps": 125,
         "lastLap": {
           "v": 92.384,
+          "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 977.5,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 23,
+            "z": -46
+          },
           "q": "fresh"
         }
       },
@@ -506,6 +765,17 @@
         "lastLap": {
           "v": 92.434,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 1020,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 24,
+            "z": -48
+          },
+          "q": "fresh"
         }
       },
       {
@@ -522,6 +792,17 @@
         "laps": 124,
         "lastLap": {
           "v": 92.484,
+          "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 1062.5,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 25,
+            "z": -50
+          },
           "q": "fresh"
         }
       },
@@ -540,6 +821,17 @@
         "lastLap": {
           "v": 92.53399999999999,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 1105,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 26,
+            "z": -52
+          },
+          "q": "fresh"
         }
       },
       {
@@ -556,6 +848,17 @@
         "laps": 124,
         "lastLap": {
           "v": 92.58399999999999,
+          "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 1147.5,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 27,
+            "z": -54
+          },
           "q": "fresh"
         }
       },
@@ -574,6 +877,17 @@
         "lastLap": {
           "v": 92.634,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 1190,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 28,
+            "z": -56
+          },
+          "q": "fresh"
         }
       },
       {
@@ -590,6 +904,17 @@
         "laps": 124,
         "lastLap": {
           "v": 92.684,
+          "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 1232.5,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 29,
+            "z": -58
+          },
           "q": "fresh"
         }
       },
@@ -608,6 +933,17 @@
         "lastLap": {
           "v": 92.734,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 1275,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 30,
+            "z": -60
+          },
+          "q": "fresh"
         }
       },
       {
@@ -624,6 +960,17 @@
         "laps": 124,
         "lastLap": {
           "v": 92.78399999999999,
+          "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 1317.5,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 31,
+            "z": -62
+          },
           "q": "fresh"
         }
       },
@@ -642,6 +989,17 @@
         "lastLap": {
           "v": 92.83399999999999,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 1360,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 32,
+            "z": -64
+          },
+          "q": "fresh"
         }
       },
       {
@@ -658,6 +1016,17 @@
         "laps": 123,
         "lastLap": {
           "v": 92.884,
+          "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 1402.5,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 33,
+            "z": -66
+          },
           "q": "fresh"
         }
       },
@@ -676,6 +1045,17 @@
         "lastLap": {
           "v": 92.934,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 1445,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 34,
+            "z": -68
+          },
+          "q": "fresh"
         }
       },
       {
@@ -692,6 +1072,17 @@
         "laps": 123,
         "lastLap": {
           "v": 92.984,
+          "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 1487.5,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 35,
+            "z": -70
+          },
           "q": "fresh"
         }
       },
@@ -710,6 +1101,17 @@
         "lastLap": {
           "v": 93.03399999999999,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 1530,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 36,
+            "z": -72
+          },
+          "q": "fresh"
         }
       },
       {
@@ -726,6 +1128,17 @@
         "laps": 123,
         "lastLap": {
           "v": 93.08399999999999,
+          "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 1572.5,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 37,
+            "z": -74
+          },
           "q": "fresh"
         }
       },
@@ -744,6 +1157,17 @@
         "lastLap": {
           "v": 93.134,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 1615,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 38,
+            "z": -76
+          },
+          "q": "fresh"
         }
       },
       {
@@ -760,6 +1184,17 @@
         "laps": 123,
         "lastLap": {
           "v": 93.184,
+          "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 1657.5,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 39,
+            "z": -78
+          },
           "q": "fresh"
         }
       },
@@ -779,6 +1214,17 @@
         "lastLap": {
           "v": 93.234,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 1700,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 40,
+            "z": -80
+          },
+          "q": "fresh"
         }
       },
       {
@@ -796,6 +1242,17 @@
         "laps": 122,
         "lastLap": {
           "v": 93.28399999999999,
+          "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 1742.5,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 41,
+            "z": -82
+          },
           "q": "fresh"
         }
       },
@@ -815,6 +1272,17 @@
         "lastLap": {
           "v": 93.33399999999999,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 1785,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 42,
+            "z": -84
+          },
+          "q": "fresh"
         }
       },
       {
@@ -832,6 +1300,17 @@
         "laps": 122,
         "lastLap": {
           "v": 93.384,
+          "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 1827.5,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 43,
+            "z": -86
+          },
           "q": "fresh"
         }
       },
@@ -851,6 +1330,17 @@
         "lastLap": {
           "v": 93.434,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 1870,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 44,
+            "z": -88
+          },
+          "q": "fresh"
         }
       },
       {
@@ -868,6 +1358,17 @@
         "laps": 122,
         "lastLap": {
           "v": 93.484,
+          "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 1912.5,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 45,
+            "z": -90
+          },
           "q": "fresh"
         }
       },
@@ -887,6 +1388,17 @@
         "lastLap": {
           "v": 93.53399999999999,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 1955,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 46,
+            "z": -92
+          },
+          "q": "fresh"
         }
       },
       {
@@ -904,6 +1416,17 @@
         "laps": 122,
         "lastLap": {
           "v": 93.58399999999999,
+          "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 1997.5,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 47,
+            "z": -94
+          },
           "q": "fresh"
         }
       },
@@ -923,6 +1446,17 @@
         "lastLap": {
           "v": 93.634,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 2040,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 48,
+            "z": -96
+          },
+          "q": "fresh"
         }
       },
       {
@@ -940,6 +1474,17 @@
         "laps": 121,
         "lastLap": {
           "v": 93.684,
+          "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 2082.5,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 49,
+            "z": -98
+          },
           "q": "fresh"
         }
       },
@@ -959,6 +1504,17 @@
         "lastLap": {
           "v": 93.734,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 2125,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 50,
+            "z": -100
+          },
+          "q": "fresh"
         }
       },
       {
@@ -976,6 +1532,17 @@
         "laps": 121,
         "lastLap": {
           "v": 93.78399999999999,
+          "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 2167.5,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 51,
+            "z": -102
+          },
           "q": "fresh"
         }
       },
@@ -995,6 +1562,17 @@
         "lastLap": {
           "v": 93.83399999999999,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 2210,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 52,
+            "z": -104
+          },
+          "q": "fresh"
         }
       },
       {
@@ -1012,6 +1590,17 @@
         "laps": 121,
         "lastLap": {
           "v": 93.884,
+          "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 2252.5,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 53,
+            "z": -106
+          },
           "q": "fresh"
         }
       },
@@ -1031,6 +1620,17 @@
         "lastLap": {
           "v": 93.934,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 2295,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 54,
+            "z": -108
+          },
+          "q": "fresh"
         }
       },
       {
@@ -1048,6 +1648,17 @@
         "laps": 121,
         "lastLap": {
           "v": 93.984,
+          "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 2337.5,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 55,
+            "z": -110
+          },
           "q": "fresh"
         }
       },
@@ -1067,6 +1678,17 @@
         "lastLap": {
           "v": 94.03399999999999,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 2380,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 56,
+            "z": -112
+          },
+          "q": "fresh"
         }
       },
       {
@@ -1084,6 +1706,17 @@
         "laps": 120,
         "lastLap": {
           "v": 94.08399999999999,
+          "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 2422.5,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 57,
+            "z": -114
+          },
           "q": "fresh"
         }
       },
@@ -1103,6 +1736,17 @@
         "lastLap": {
           "v": 94.134,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 2465,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 58,
+            "z": -116
+          },
+          "q": "fresh"
         }
       },
       {
@@ -1120,6 +1764,17 @@
         "laps": 120,
         "lastLap": {
           "v": 94.184,
+          "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 2507.5,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 59,
+            "z": -118
+          },
           "q": "fresh"
         }
       },
@@ -1139,6 +1794,17 @@
         "lastLap": {
           "v": 94.234,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 2550,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 60,
+            "z": -120
+          },
+          "q": "fresh"
         }
       },
       {
@@ -1156,6 +1822,17 @@
         "laps": 120,
         "lastLap": {
           "v": 94.28399999999999,
+          "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 2592.5,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 61,
+            "z": -122
+          },
           "q": "fresh"
         }
       },
@@ -1175,6 +1852,17 @@
         "lastLap": {
           "v": 94.33399999999999,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 2635,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 62,
+            "z": -124
+          },
+          "q": "fresh"
         }
       },
       {
@@ -1192,6 +1880,17 @@
         "laps": 120,
         "lastLap": {
           "v": 94.384,
+          "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 2677.5,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 63,
+            "z": -126
+          },
           "q": "fresh"
         }
       },
@@ -1211,6 +1910,17 @@
         "lastLap": {
           "v": 94.434,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 2720,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 64,
+            "z": -128
+          },
+          "q": "fresh"
         }
       },
       {
@@ -1228,6 +1938,17 @@
         "laps": 119,
         "lastLap": {
           "v": 94.484,
+          "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 2762.5,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 65,
+            "z": -130
+          },
           "q": "fresh"
         }
       },
@@ -1247,6 +1968,17 @@
         "lastLap": {
           "v": 94.53399999999999,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 2805,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 66,
+            "z": -132
+          },
+          "q": "fresh"
         }
       },
       {
@@ -1264,6 +1996,17 @@
         "laps": 119,
         "lastLap": {
           "v": 94.58399999999999,
+          "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 2847.5,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 67,
+            "z": -134
+          },
           "q": "fresh"
         }
       },
@@ -1283,6 +2026,17 @@
         "lastLap": {
           "v": 94.634,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 2890,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 68,
+            "z": -136
+          },
+          "q": "fresh"
         }
       },
       {
@@ -1300,6 +2054,17 @@
         "laps": 119,
         "lastLap": {
           "v": 94.684,
+          "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 2932.5,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 69,
+            "z": -138
+          },
           "q": "fresh"
         }
       },
@@ -1319,6 +2084,17 @@
         "lastLap": {
           "v": 94.734,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 2975,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 70,
+            "z": -140
+          },
+          "q": "fresh"
         }
       },
       {
@@ -1336,6 +2112,17 @@
         "laps": 119,
         "lastLap": {
           "v": 94.78399999999999,
+          "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 3017.5,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 71,
+            "z": -142
+          },
           "q": "fresh"
         }
       },
@@ -1355,6 +2142,17 @@
         "lastLap": {
           "v": 94.83399999999999,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 3060,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 72,
+            "z": -144
+          },
+          "q": "fresh"
         }
       },
       {
@@ -1372,6 +2170,17 @@
         "laps": 118,
         "lastLap": {
           "v": 94.884,
+          "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 3102.5,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 73,
+            "z": -146
+          },
           "q": "fresh"
         }
       },
@@ -1391,6 +2200,17 @@
         "lastLap": {
           "v": 94.934,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 3145,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 74,
+            "z": -148
+          },
+          "q": "fresh"
         }
       },
       {
@@ -1408,6 +2228,17 @@
         "laps": 118,
         "lastLap": {
           "v": 94.984,
+          "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 3187.5,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 75,
+            "z": -150
+          },
           "q": "fresh"
         }
       },
@@ -1427,6 +2258,17 @@
         "lastLap": {
           "v": 95.03399999999999,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 3230,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 76,
+            "z": -152
+          },
+          "q": "fresh"
         }
       },
       {
@@ -1444,6 +2286,17 @@
         "laps": 118,
         "lastLap": {
           "v": 95.08399999999999,
+          "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 3272.5,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 77,
+            "z": -154
+          },
           "q": "fresh"
         }
       },
@@ -1463,6 +2316,17 @@
         "lastLap": {
           "v": 95.134,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 3315,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 78,
+            "z": -156
+          },
+          "q": "fresh"
         }
       },
       {
@@ -1480,6 +2344,17 @@
         "laps": 118,
         "lastLap": {
           "v": 95.184,
+          "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 3357.5,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 79,
+            "z": -158
+          },
           "q": "fresh"
         }
       },
@@ -1499,6 +2374,17 @@
         "lastLap": {
           "v": 95.234,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 3400,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 80,
+            "z": -160
+          },
+          "q": "fresh"
         }
       },
       {
@@ -1516,6 +2402,17 @@
         "laps": 117,
         "lastLap": {
           "v": 95.28399999999999,
+          "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 3442.5,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 81,
+            "z": -162
+          },
           "q": "fresh"
         }
       },
@@ -1535,6 +2432,17 @@
         "lastLap": {
           "v": 95.33399999999999,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 3485,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 82,
+            "z": -164
+          },
+          "q": "fresh"
         }
       },
       {
@@ -1552,6 +2460,17 @@
         "laps": 117,
         "lastLap": {
           "v": 95.384,
+          "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 3527.5,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 83,
+            "z": -166
+          },
           "q": "fresh"
         }
       },
@@ -1571,6 +2490,17 @@
         "lastLap": {
           "v": 95.434,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 3570,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 84,
+            "z": -168
+          },
+          "q": "fresh"
         }
       },
       {
@@ -1588,6 +2518,17 @@
         "laps": 117,
         "lastLap": {
           "v": 95.484,
+          "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 3612.5,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 85,
+            "z": -170
+          },
           "q": "fresh"
         }
       },
@@ -1607,6 +2548,17 @@
         "lastLap": {
           "v": 95.53399999999999,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 3655,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 86,
+            "z": -172
+          },
+          "q": "fresh"
         }
       },
       {
@@ -1624,6 +2576,17 @@
         "laps": 117,
         "lastLap": {
           "v": 95.58399999999999,
+          "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 3697.5,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 87,
+            "z": -174
+          },
           "q": "fresh"
         }
       },
@@ -1643,6 +2606,17 @@
         "lastLap": {
           "v": 95.634,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 3740,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 88,
+            "z": -176
+          },
+          "q": "fresh"
         }
       },
       {
@@ -1660,6 +2634,17 @@
         "laps": 116,
         "lastLap": {
           "v": 95.684,
+          "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 3782.5,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 89,
+            "z": -178
+          },
           "q": "fresh"
         }
       },
@@ -1679,6 +2664,17 @@
         "lastLap": {
           "v": 95.734,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 3825,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 90,
+            "z": -180
+          },
+          "q": "fresh"
         }
       },
       {
@@ -1696,6 +2692,17 @@
         "laps": 116,
         "lastLap": {
           "v": 95.78399999999999,
+          "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 3867.5,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 91,
+            "z": -182
+          },
           "q": "fresh"
         }
       },
@@ -1715,6 +2722,17 @@
         "lastLap": {
           "v": 95.83399999999999,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 3910,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 92,
+            "z": -184
+          },
+          "q": "fresh"
         }
       },
       {
@@ -1732,6 +2750,17 @@
         "laps": 116,
         "lastLap": {
           "v": 95.884,
+          "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 3952.5,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 93,
+            "z": -186
+          },
           "q": "fresh"
         }
       },
@@ -1751,6 +2780,17 @@
         "lastLap": {
           "v": 95.934,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 3995,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 94,
+            "z": -188
+          },
+          "q": "fresh"
         }
       },
       {
@@ -1768,6 +2808,17 @@
         "laps": 116,
         "lastLap": {
           "v": 95.984,
+          "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 4037.5,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 95,
+            "z": -190
+          },
           "q": "fresh"
         }
       },
@@ -1787,6 +2838,17 @@
         "lastLap": {
           "v": 96.03399999999999,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 4080,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 96,
+            "z": -192
+          },
+          "q": "fresh"
         }
       },
       {
@@ -1804,6 +2866,17 @@
         "laps": 115,
         "lastLap": {
           "v": 96.08399999999999,
+          "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 4122.5,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 97,
+            "z": -194
+          },
           "q": "fresh"
         }
       },
@@ -1823,6 +2896,17 @@
         "lastLap": {
           "v": 96.134,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 4165,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 98,
+            "z": -196
+          },
+          "q": "fresh"
         }
       },
       {
@@ -1840,6 +2924,17 @@
         "laps": 115,
         "lastLap": {
           "v": 96.184,
+          "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 4207.5,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 99,
+            "z": -198
+          },
           "q": "fresh"
         }
       },
@@ -1859,6 +2954,17 @@
         "lastLap": {
           "v": 96.234,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 4250,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 100,
+            "z": -200
+          },
+          "q": "fresh"
         }
       },
       {
@@ -1876,6 +2982,17 @@
         "laps": 115,
         "lastLap": {
           "v": 96.28399999999999,
+          "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 4292.5,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 101,
+            "z": -202
+          },
           "q": "fresh"
         }
       },
@@ -1895,6 +3012,17 @@
         "lastLap": {
           "v": 96.33399999999999,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 4335,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 102,
+            "z": -204
+          },
+          "q": "fresh"
         }
       },
       {
@@ -1912,6 +3040,17 @@
         "laps": 115,
         "lastLap": {
           "v": 96.384,
+          "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 4377.5,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 103,
+            "z": -206
+          },
           "q": "fresh"
         }
       }
@@ -2072,6 +3211,29 @@
       },
       "wheelDetachedCount": {
         "q": "fresh"
+      }
+    },
+    "weather": {
+      "ambientC": {
+        "q": "missing"
+      },
+      "trackC": {
+        "q": "missing"
+      },
+      "rainPercent": {
+        "q": "missing"
+      },
+      "wetnessPct": {
+        "q": "missing"
+      },
+      "windKph": {
+        "q": "missing"
+      },
+      "windDir": {
+        "q": "missing"
+      },
+      "pressureHpa": {
+        "q": "missing"
       }
     },
     "capabilities": {

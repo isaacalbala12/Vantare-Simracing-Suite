@@ -98,6 +98,12 @@
         "lastLap": {
           "v": 91.234,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "q": "fresh"
         }
       },
       {
@@ -114,6 +120,17 @@
         "laps": 127,
         "lastLap": {
           "v": 91.28399999999999,
+          "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 42.5,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 1,
+            "z": -2
+          },
           "q": "fresh"
         }
       },
@@ -132,6 +149,17 @@
         "lastLap": {
           "v": 91.33399999999999,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 85,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 2,
+            "z": -4
+          },
+          "q": "fresh"
         }
       },
       {
@@ -148,6 +176,17 @@
         "laps": 127,
         "lastLap": {
           "v": 91.384,
+          "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 127.5,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 3,
+            "z": -6
+          },
           "q": "fresh"
         }
       },
@@ -166,6 +205,17 @@
         "lastLap": {
           "v": 91.434,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 170,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 4,
+            "z": -8
+          },
+          "q": "fresh"
         }
       },
       {
@@ -182,6 +232,17 @@
         "laps": 127,
         "lastLap": {
           "v": 91.484,
+          "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 212.5,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 5,
+            "z": -10
+          },
           "q": "fresh"
         }
       },
@@ -200,6 +261,17 @@
         "lastLap": {
           "v": 91.53399999999999,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 255,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 6,
+            "z": -12
+          },
+          "q": "fresh"
         }
       },
       {
@@ -216,6 +288,17 @@
         "laps": 127,
         "lastLap": {
           "v": 91.58399999999999,
+          "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 297.5,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 7,
+            "z": -14
+          },
           "q": "fresh"
         }
       },
@@ -234,6 +317,17 @@
         "lastLap": {
           "v": 91.634,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 340,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 8,
+            "z": -16
+          },
+          "q": "fresh"
         }
       },
       {
@@ -250,6 +344,17 @@
         "laps": 126,
         "lastLap": {
           "v": 91.684,
+          "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 382.5,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 9,
+            "z": -18
+          },
           "q": "fresh"
         }
       },
@@ -268,6 +373,17 @@
         "lastLap": {
           "v": 91.734,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 425,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 10,
+            "z": -20
+          },
+          "q": "fresh"
         }
       },
       {
@@ -284,6 +400,17 @@
         "laps": 126,
         "lastLap": {
           "v": 91.78399999999999,
+          "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 467.5,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 11,
+            "z": -22
+          },
           "q": "fresh"
         }
       },
@@ -302,6 +429,17 @@
         "lastLap": {
           "v": 91.83399999999999,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 510,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 12,
+            "z": -24
+          },
+          "q": "fresh"
         }
       },
       {
@@ -318,6 +456,17 @@
         "laps": 126,
         "lastLap": {
           "v": 91.884,
+          "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 552.5,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 13,
+            "z": -26
+          },
           "q": "fresh"
         }
       },
@@ -336,6 +485,17 @@
         "lastLap": {
           "v": 91.934,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 595,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 14,
+            "z": -28
+          },
+          "q": "fresh"
         }
       },
       {
@@ -352,6 +512,17 @@
         "laps": 126,
         "lastLap": {
           "v": 91.984,
+          "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 637.5,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 15,
+            "z": -30
+          },
           "q": "fresh"
         }
       },
@@ -370,6 +541,17 @@
         "lastLap": {
           "v": 92.03399999999999,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 680,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 16,
+            "z": -32
+          },
+          "q": "fresh"
         }
       },
       {
@@ -386,6 +568,17 @@
         "laps": 125,
         "lastLap": {
           "v": 92.08399999999999,
+          "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 722.5,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 17,
+            "z": -34
+          },
           "q": "fresh"
         }
       },
@@ -404,6 +597,17 @@
         "lastLap": {
           "v": 92.134,
           "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 765,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 18,
+            "z": -36
+          },
+          "q": "fresh"
         }
       },
       {
@@ -420,6 +624,17 @@
         "laps": 125,
         "lastLap": {
           "v": 92.184,
+          "q": "fresh"
+        },
+        "lapDistance": {
+          "v": 807.5,
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "v": {
+            "x": 19,
+            "z": -38
+          },
           "q": "fresh"
         }
       }
@@ -580,6 +795,29 @@
       },
       "wheelDetachedCount": {
         "q": "fresh"
+      }
+    },
+    "weather": {
+      "ambientC": {
+        "q": "missing"
+      },
+      "trackC": {
+        "q": "missing"
+      },
+      "rainPercent": {
+        "q": "missing"
+      },
+      "wetnessPct": {
+        "q": "missing"
+      },
+      "windKph": {
+        "q": "missing"
+      },
+      "windDir": {
+        "q": "missing"
+      },
+      "pressureHpa": {
+        "q": "missing"
       }
     },
     "capabilities": {

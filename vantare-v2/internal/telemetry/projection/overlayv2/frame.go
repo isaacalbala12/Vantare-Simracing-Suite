@@ -21,7 +21,7 @@ const (
 // QValue is the compact wire representation of one quality-bearing value.
 // A fresh zero may omit v; q still distinguishes it from a missing value.
 type QValue[T any] struct {
-	V T       `json:"v,omitempty"`
+	V T       `json:"v,omitempty,omitzero"`
 	Q Quality `json:"q"`
 }
 
@@ -112,6 +112,7 @@ type FrameV2 struct {
 	Fuel             FuelViewV2          `json:"fuel"`
 	Spotter          SpotterViewV2       `json:"spotter"`
 	Damage           DamageViewV2        `json:"damage"`
+	Weather          WeatherV2           `json:"weather"`
 	Capabilities     CapabilitiesV2      `json:"capabilities"`
 }
 
@@ -165,18 +166,35 @@ type ControlsV2 struct {
 	History ControlsHistoryV2 `json:"history"`
 }
 
+type GroundPositionV2 struct {
+	X float64 `json:"x"`
+	Z float64 `json:"z"`
+}
+
+type WeatherV2 struct {
+	AmbientC    QValue[float64] `json:"ambientC"`
+	TrackC      QValue[float64] `json:"trackC"`
+	RainPercent QValue[float64] `json:"rainPercent"`
+	WetnessPct  QValue[float64] `json:"wetnessPct"`
+	WindKph     QValue[float64] `json:"windKph"`
+	WindDir     QValue[string]  `json:"windDir"`
+	PressureHpa QValue[float64] `json:"pressureHpa"`
+}
+
 type StandingRowV2 struct {
-	VehicleID      string          `json:"id"`
-	Position       int32           `json:"position"`
-	ClassPosition  int32           `json:"classPosition"`
-	ClassID        string          `json:"classId,omitempty"`
-	DriverName     string          `json:"driver,omitempty"`
-	CarNumber      string          `json:"number,omitempty"`
-	GapSeconds     QValue[float64] `json:"gap"`
-	GapLaps        int32           `json:"gapLaps,omitempty"`
-	PitState       string          `json:"pit,omitempty"`
-	CompletedLaps  int32           `json:"laps,omitempty"`
-	LastLapSeconds QValue[float64] `json:"lastLap"`
+	VehicleID      string                   `json:"id"`
+	Position       int32                    `json:"position"`
+	ClassPosition  int32                    `json:"classPosition"`
+	ClassID        string                   `json:"classId,omitempty"`
+	DriverName     string                   `json:"driver,omitempty"`
+	CarNumber      string                   `json:"number,omitempty"`
+	GapSeconds     QValue[float64]          `json:"gap"`
+	GapLaps        int32                    `json:"gapLaps,omitempty"`
+	PitState       string                   `json:"pit,omitempty"`
+	CompletedLaps  int32                    `json:"laps,omitempty"`
+	LastLapSeconds QValue[float64]          `json:"lastLap"`
+	LapDistance    QValue[float64]          `json:"lapDistance"`
+	GroundPosition QValue[GroundPositionV2] `json:"groundPosition"`
 }
 
 type RelativeRowV2 struct {

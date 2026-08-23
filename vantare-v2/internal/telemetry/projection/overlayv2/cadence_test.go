@@ -163,7 +163,7 @@ func TestTierMapCoversEverySection(t *testing.T) {
 		SectionPlayer: TierFast, SectionControls: TierFast, SectionDelta: TierFast,
 		SectionSpotter: TierMid,
 		SectionSession: TierSlow, SectionStandings: TierSlow, SectionRelative: TierSlow,
-		SectionFuel: TierSlow, SectionDamage: TierSlow, SectionCapabilities: TierSlow,
+		SectionFuel: TierSlow, SectionDamage: TierSlow, SectionWeather: TierSlow, SectionCapabilities: TierSlow,
 	}
 	for _, section := range sections {
 		if got := TierOf(section); got != want[section] {

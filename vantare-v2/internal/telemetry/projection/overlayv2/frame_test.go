@@ -83,6 +83,7 @@ func syntheticFullFrame(vehicles int) FrameV2 {
 			ClassID: "hypercar", DriverName: fmt.Sprintf("Driver %03d", index+1), CarNumber: fmt.Sprintf("%d", index+1),
 			GapSeconds: QValue[float64]{V: float64(index) * 1.234, Q: QualityFresh}, GapLaps: int32(index / 40),
 			PitState: "track", CompletedLaps: 127, LastLapSeconds: QValue[float64]{V: 91.234, Q: QualityFresh},
+			LapDistance: QValue[float64]{V: float64(index) * 42.5, Q: QualityFresh}, GroundPosition: QValue[GroundPositionV2]{V: GroundPositionV2{X: float64(index) * 10, Z: float64(index) * -5}, Q: QualityFresh},
 		}
 		relative[index] = RelativeRowV2{
 			VehicleID: id, GapSeconds: QValue[float64]{V: float64(index-52) * 0.314, Q: QualityFresh},
@@ -111,6 +112,12 @@ func syntheticFullFrame(vehicles int) FrameV2 {
 		Spotter: SpotterViewV2{Mode: "xy", Left: QValue[bool]{V: true, Q: QualityFresh}, Right: QValue[bool]{V: false, Q: QualityFresh}},
 		Damage: DamageViewV2{
 			Dents: QValue[[]uint16]{V: []uint16{1, 2, 3, 4, 5, 6, 7, 8}, Q: QualityFresh}, Overheating: QValue[bool]{V: false, Q: QualityFresh}, Detached: QValue[bool]{V: false, Q: QualityFresh}, WheelDetachedCount: QValue[uint8]{V: 0, Q: QualityFresh},
+		},
+		Weather: WeatherV2{
+			AmbientC: QValue[float64]{V: 22, Q: QualityFresh}, TrackC: QValue[float64]{V: 31, Q: QualityFresh},
+			RainPercent: QValue[float64]{V: 5, Q: QualityFresh}, WetnessPct: QValue[float64]{V: 12, Q: QualityFresh},
+			WindKph: QValue[float64]{V: 12, Q: QualityFresh}, WindDir: QValue[string]{V: "NW", Q: QualityFresh},
+			PressureHpa: QValue[float64]{V: 1012, Q: QualityFresh},
 		},
 		Capabilities: CapabilitiesV2{
 			Supported: []string{"damage", "session", "controls", "standings", "gaps", "fuel", "delta", "spatial.longitudinal", "spatial.lateral", "spotter"},

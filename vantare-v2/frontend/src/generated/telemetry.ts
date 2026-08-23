@@ -234,6 +234,7 @@ export interface OverlayFrameV2 {
   readonly spotter: OverlaySpotterViewV2;
   readonly standings: readonly OverlayStandingRowV2[];
   readonly units: OverlayUnitsV2;
+  readonly weather: Overlayv2WeatherV2;
 }
 
 export interface OverlayFuelViewV2 {
@@ -337,7 +338,9 @@ export interface OverlayStandingRowV2 {
   readonly driver?: string | undefined;
   readonly gap: OverlayQValue<number>;
   readonly gapLaps?: number | undefined;
+  readonly groundPosition: OverlayQValue<Overlayv2GroundPositionV2>;
   readonly id: string;
+  readonly lapDistance: OverlayQValue<number>;
   readonly laps?: number | undefined;
   readonly lastLap: OverlayQValue<number>;
   readonly number?: string | undefined;
@@ -466,6 +469,21 @@ export interface Overlayv2DamageViewV2 {
   readonly detached: OverlayQValue<boolean>;
   readonly overheating: OverlayQValue<boolean>;
   readonly wheelDetachedCount: OverlayQValue<number>;
+}
+
+export interface Overlayv2GroundPositionV2 {
+  readonly x: number;
+  readonly z: number;
+}
+
+export interface Overlayv2WeatherV2 {
+  readonly ambientC: OverlayQValue<number>;
+  readonly pressureHpa: OverlayQValue<number>;
+  readonly rainPercent: OverlayQValue<number>;
+  readonly trackC: OverlayQValue<number>;
+  readonly wetnessPct: OverlayQValue<number>;
+  readonly windDir: OverlayQValue<string>;
+  readonly windKph: OverlayQValue<number>;
 }
 
 export interface SpatialLocalVelocity {

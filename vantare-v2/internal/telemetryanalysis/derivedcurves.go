@@ -40,6 +40,10 @@ const (
 
 var ErrInvalidDerivedCurvesInput = errors.New("invalid derived curves input")
 
+func derivedCurvesHistoricalPageChannels() []string {
+	return []string{"fuel level", "fuelmixturemap", "tyres wear", "tyrescompound"}
+}
+
 // IdentifiabilityGateResult documents the numeric evidence used before
 // publishing separate fuel-weight and tyre-age curves. The gate requires at
 // least three stints and fifteen clean laps, three shared lap ages whose fuel

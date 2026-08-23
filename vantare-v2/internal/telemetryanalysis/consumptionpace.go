@@ -17,6 +17,10 @@ const resourceBoundaryToleranceSeconds = 0.1
 
 var ErrInvalidConsumptionPaceInput = errors.New("invalid consumption and pace input")
 
+func consumptionPaceHistoricalPageChannels() []string {
+	return []string{"fuel level", "minimum path wetness", "virtual energy"}
+}
+
 // DerivedMetric keeps presence, provenance and confidence attached to every
 // scalar derived by this package.
 type DerivedMetric struct {

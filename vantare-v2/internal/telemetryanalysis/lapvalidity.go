@@ -21,6 +21,19 @@ const (
 
 var ErrInvalidLapValidityInput = errors.New("invalid lap validity input")
 
+func lapValidityHistoricalPageChannels() []string {
+	return []string{
+		"fuel level",
+		"in pits",
+		"lap",
+		"lap dist",
+		"lap time",
+		"lastimpactmagnitude",
+		"time behind next",
+		"tyrescompound",
+	}
+}
+
 type LapLabel string
 
 const (

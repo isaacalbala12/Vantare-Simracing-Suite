@@ -439,7 +439,7 @@ func labelIncidentLaps(laps []AnalyzedLap, events []observedEvent) {
 		if !ok || !active {
 			continue
 		}
-		if index := lapIndexAt(laps, event.seconds); index >= 0 {
+		if index := lapIndexAt(laps, event.seconds); index >= 0 && index < len(laps) {
 			addLapLabel(&laps[index], LapLabelIncidentOfftrack)
 		}
 	}

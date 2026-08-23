@@ -37,3 +37,17 @@ func TestColdStartCommandsExposeStatusProgressAndRejection(t *testing.T) {
 		t.Fatalf("rejected=%v err=%v", stub.rejected, err)
 	}
 }
+
+func TestGetColdStartStatusTreatsTypedNilServiceAsPending(t *testing.T) {
+	repo := &sessionCatalogRepository[any]{}
+	var coldStart *strategycoldstart.Service
+	service := NewServiceWithSourcesAndColdStart[any](repo, nil, nil, nil, coldStart)
+
+	result, err := service.GetColdStartStatus(context.Background(), ColdStartCommand{CommandHeader: commandHeader("cold-status", OperationGetColdStartStatus, 0)})
+	if err != nil {
+		t.Fatalf("GetColdStartStatus() error = %v", err)
+	}
+	if result.ColdStartStatus == nil || result.ColdStartStatus.Decision != strategycoldstart.DecisionPending {
+		t.Fatalf("cold start status = %+v, want pending", result.ColdStartStatus)
+	}
+}

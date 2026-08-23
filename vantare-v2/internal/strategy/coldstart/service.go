@@ -70,6 +70,11 @@ func NewService(options ServiceOptions) *Service {
 }
 
 func (service *Service) Status(ctx context.Context) (Status, error) {
+	// Defensa ante un receptor nulo: si el arranque no pudo construir el
+	// servicio, el arranque en frío queda pendiente en vez de romper la app.
+	if service == nil {
+		return Status{Decision: DecisionPending}, nil
+	}
 	service.mu.Lock()
 	defer service.mu.Unlock()
 	state, err := service.readState()

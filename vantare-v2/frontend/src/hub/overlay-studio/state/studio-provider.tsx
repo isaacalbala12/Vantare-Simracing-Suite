@@ -29,6 +29,10 @@ import {
   undoStudioHistory,
   type StudioHistory,
 } from "./studio-history";
+import {
+  readCachedStudioDocument,
+  writeCachedStudioDocument,
+} from "./studio-doc-cache";
 import { resolveSessionLayout } from "./session-layouts";
 import { StudioCommandError, type StudioCommand } from "./studio-command";
 import type { StudioProfileClient, StudioSaveResult } from "./studio-profile-client";
@@ -86,18 +90,27 @@ export function StudioProvider(props: {
     access: accessOverride,
   } = props;
   const access = accessOverride ?? DEFAULT_STUDIO_ACCESS;
-  const [history, setHistory] = useState<StudioHistory | null>(null);
+  // Stale-while-revalidate: la cache local del ultimo documento conocido siembra
+  // el historial en el inicializador de estado (una vez por montaje), para que
+  // los widgets pinten al instante mientras el load fresco viaja por IPC.
+  const [seed] = useState(() => {
+    const cached = readCachedStudioDocument(initialFile);
+    return cached ? buildInitialHistory(cached) : null;
+  });
+  const [history, setHistory] = useState<StudioHistory | null>(seed?.history ?? null);
   const [revision, setRevision] = useState<string>("");
   const [activeSession, setActiveSession] = useState<SessionLayoutType>("general");
   const [selectedWidgetId, setSelectedWidgetId] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<StudioSaveState>("idle");
   const [accessNotice, setAccessNotice] = useState<string | null>(null);
-  const [visuallyMigratedWidgetIds, setVisuallyMigratedWidgetIds] = useState<readonly string[]>([]);
+  const [visuallyMigratedWidgetIds, setVisuallyMigratedWidgetIds] = useState<readonly string[]>(
+    seed?.migratedWidgetIds ?? [],
+  );
   const [preview, setPreviewState] = useState<StudioPreviewState>(DEFAULT_PREVIEW_STATE);
   const [loadError, setLoadError] = useState<string | null>(null);
   // Ref del presente para que save() lea siempre el documento mas reciente,
   // incluso si una edicion B ocurrio mientras una peticion A estaba en vuelo.
-  const historyRef = useRef<StudioHistory | null>(null);
+  const historyRef = useRef<StudioHistory | null>(seed?.history ?? null);
   const revisionRef = useRef<string>("");
   const recoveryStore = useMemo(
     () => (recoveryStorage ? createStudioRecoveryStore(recoveryStorage) : null),
@@ -116,18 +129,30 @@ export function StudioProvider(props: {
         setAccessNotice(null);
         setLoadError(null);
         const initial = buildInitialHistory(loaded.document);
-        setHistory(initial.history);
-        historyRef.current = initial.history;
+        // Si el usuario ya edito sobre la semilla cacheada, se conservan sus
+        // ediciones y solo se re-ancora el baseline `saved` al disco real.
+        const editedSinceCache =
+          seed !== null && historyRef.current !== seed.history;
+        if (editedSinceCache && historyRef.current) {
+          const rebased = markStudioHistorySaved(historyRef.current, loaded.document);
+          setHistory(rebased);
+          historyRef.current = rebased;
+        } else {
+          setHistory(initial.history);
+          historyRef.current = initial.history;
+        }
         setRevision(loaded.revision);
         revisionRef.current = loaded.revision;
         setVisuallyMigratedWidgetIds(initial.migratedWidgetIds);
         setActiveSession("general");
         setSelectedWidgetId(null);
+        writeCachedStudioDocument(initialFile, loaded.document);
       },
       (error: unknown) => {
         if (cancelled) {
           return;
         }
+        // Sin load fresco la semilla cacheada no es de fiar: estado de error.
         const message = error instanceof Error ? error.message : "failed to load studio profile";
         setSaveState("idle");
         setAccessNotice(null);
@@ -140,7 +165,7 @@ export function StudioProvider(props: {
     return () => {
       cancelled = true;
     };
-  }, [client, initialFile]);
+  }, [client, initialFile, seed]);
 
   const document = history?.present ?? null;
   const dirty = history ? isStudioHistoryDirty(history) : false;
@@ -308,6 +333,8 @@ export function StudioProvider(props: {
       revisionRef.current = result.revision;
       setSaveState("saved");
       setVisuallyMigratedWidgetIds([]);
+      // La cache local pasa a apuntar al documento recien guardado en disco.
+      writeCachedStudioDocument(initialFile, result.document);
       return result;
     }
     if (result.status === "conflict") {
@@ -318,7 +345,7 @@ export function StudioProvider(props: {
     setSaveState("error");
     setAccessNotice(result.message);
     return result;
-  }, [access, client, recoveryStore]);
+  }, [access, client, recoveryStore, initialFile]);
 
   const setPreview = useCallback((patch: Partial<StudioPreviewState>) => {
     setPreviewState((current) => ({ ...current, ...patch }));

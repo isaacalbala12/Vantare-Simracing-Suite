@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "../../i18n/I18nProvider";
 import { ToastProvider } from "../../ui/orbit/Toast";
 import { StrategyOrbitPage, STRATEGY_CONTEXT_SLOT_ID } from "./StrategyOrbitPage";
+import type { Calendar, RaceSeries } from "../../calendar/calendar-types";
 import type { StrategyRoster } from "./strategy-orbit-bridge";
 import { createStrategyEditorRuntime } from "../../strategy/strategy-editor-store";
 import type {
@@ -278,6 +279,66 @@ const USABLE_SESSION_COMBINATION: StrategySessionCombinationV1 = {
     climateBuckets: [{ bucket: "dry", laps: 27 }],
   }],
 };
+
+const LMGT3_SESSION_COMBINATION: StrategySessionCombinationV1 = {
+  ...USABLE_SESSION_COMBINATION,
+  combinationId: "lmu:spa:lmgt3-46",
+  carName: "BMW M4 LMGT3 #46",
+  carClass: "LMGT3",
+  sessions: [{
+    ...USABLE_SESSION_COMBINATION.sessions[0],
+    sessionId: "spa-lmgt3-race-1",
+  }],
+};
+
+function raceSeries(overrides: Partial<RaceSeries> = {}): RaceSeries {
+  return {
+    id: "spa-endurance",
+    name: "Spa Endurance",
+    tier: "advanced",
+    licenseLabel: "Gold",
+    track: USABLE_SESSION_COMBINATION.trackName,
+    vehicleClass: "LMP2",
+    classes: [{ name: "LMP2", qualifier: "full fuel tank" }],
+    setup: "fixed",
+    durationMin: 120,
+    raceDurationMin: 120,
+    splits: 2,
+    assists: "",
+    tyreWarmers: true,
+    tyres: 12,
+    veLimit: 75,
+    recurrence: { kind: "weekly", days: ["sat"], timesUTC: ["14:00"] },
+    ...overrides,
+  };
+}
+
+function loadedCalendar(series: readonly RaceSeries[]): Calendar {
+  return {
+    version: 1,
+    timezone: "Europe/Madrid",
+    reminderMinutes: [],
+    events: [],
+    series: [...series],
+    seriesPreviews: series.map((item) => ({
+      seriesId: item.id,
+      scheduleLabel: "",
+      nextStarts: ["2030-01-01T14:00:00Z"],
+    })),
+    updated: "2026-08-23T12:00:00Z",
+  };
+}
+
+function startOf(series: RaceSeries) {
+  return {
+    ...SPA_START,
+    seriesId: series.id,
+    name: series.name,
+    track: series.track,
+    vehicleClass: series.vehicleClass,
+    durationMin: series.raceDurationMin ?? series.durationMin,
+  };
+}
 
 const WIZARD_DERIVED_PLANNING: StrategyPlanningInputsV2 = {
   projection: {
@@ -700,8 +761,83 @@ describe("StrategyOrbitPage · estado inicial", () => {
     expect(screen.queryByTestId("orbit-strategy-wizard")).toBeNull();
   });
 
-  it("el asistente pregunta origen y equipo antes de dejar crear", async () => {
-    starts.push(SPA_START);
+  it("lista una carrera monoclase y salta directamente al coche con telemetría", async () => {
+    const series = raceSeries();
+    calendarRef.current = loadedCalendar([series]);
+    starts.push(startOf(series));
+    mount(null, wizardCatalogClient([USABLE_SESSION_COMBINATION]));
+
+    const calendar = await screen.findByTestId("orbit-strategy-calendar");
+    expect(calendar.textContent).toContain("Circuit de Spa-Francorchamps");
+    expect(calendar.textContent).toContain("LMP2 · full fuel tank");
+    expect(calendar.textContent).toContain("120 min");
+    expect(calendar.textContent).toContain("12 neumáticos");
+    expect(calendar.textContent).toContain("VE 75 %");
+    expect(calendar.textContent).toContain("Setup fijo");
+
+    fireEvent.click(within(calendar).getByTestId(`orbit-strategy-calendar-race-${series.id}`));
+    const cars = await screen.findByTestId("orbit-strategy-calendar-cars");
+    expect(screen.queryByTestId("orbit-strategy-calendar-classes")).toBeNull();
+    expect(cars.textContent).toContain(USABLE_SESSION_COMBINATION.carName);
+    fireEvent.click(within(cars).getByTestId(`orbit-strategy-calendar-car-${USABLE_SESSION_COMBINATION.combinationId}`));
+
+    await screen.findByTestId("orbit-strategy-overview");
+    fireEvent.click(screen.getByRole("button", { name: "Datos" }));
+    const fuel = await screen.findByTestId("orbit-planning-input-fuel_per_lap_liters");
+    expect(within(fuel).getByLabelText(/Derivado: Calculado con 27 muestras/)).toBeTruthy();
+  });
+
+  it("en una carrera multiclase pide primero clase y después ofrece solo sus coches con datos", async () => {
+    const series = raceSeries({
+      vehicleClass: "LMP2 / LMGT3",
+      classes: [
+        { name: "LMP2", qualifier: "full fuel tank" },
+        { name: "LMGT3", qualifier: "75% VE" },
+      ],
+    });
+    calendarRef.current = loadedCalendar([series]);
+    starts.push(startOf(series));
+    mount(null, wizardCatalogClient([USABLE_SESSION_COMBINATION, LMGT3_SESSION_COMBINATION]));
+
+    fireEvent.click(within(await screen.findByTestId("orbit-strategy-calendar"))
+      .getByTestId(`orbit-strategy-calendar-race-${series.id}`));
+    const classes = await screen.findByTestId("orbit-strategy-calendar-classes");
+    expect(screen.queryByTestId("orbit-strategy-calendar-cars")).toBeNull();
+    fireEvent.click(within(classes).getByTestId("orbit-strategy-calendar-class-LMGT3"));
+
+    const cars = await screen.findByTestId("orbit-strategy-calendar-cars");
+    expect(cars.textContent).toContain(LMGT3_SESSION_COMBINATION.carName);
+    expect(cars.textContent).not.toContain(USABLE_SESSION_COMBINATION.carName);
+  });
+
+  it("explica que no hay sesiones grabadas para el circuito y la clase y ofrece la vía manual", async () => {
+    const series = raceSeries({ track: "Fuji Speedway" });
+    calendarRef.current = loadedCalendar([series]);
+    starts.push(startOf(series));
+    mount(null, wizardCatalogClient([USABLE_SESSION_COMBINATION]));
+
+    fireEvent.click(within(await screen.findByTestId("orbit-strategy-calendar"))
+      .getByTestId(`orbit-strategy-calendar-race-${series.id}`));
+
+    const cars = await screen.findByTestId("orbit-strategy-calendar-cars");
+    expect(cars.textContent).toContain("No tienes sesiones grabadas en este circuito con esta clase");
+    expect(within(cars).getByTestId("orbit-strategy-calendar-manual")).toBeTruthy();
+    expect(within(cars).queryByTestId(/orbit-strategy-calendar-car-/)).toBeNull();
+  });
+
+  it("explica en el bloque inferior que el calendario no está disponible", async () => {
+    calendarRef.current = null;
+    mount(null, wizardCatalogClient([USABLE_SESSION_COMBINATION]));
+
+    expect((await screen.findByTestId("orbit-strategy-calendar")).textContent).toContain(
+      "El calendario de Le Mans Ultimate no está disponible",
+    );
+  });
+
+  it("la vía automática disponible abre las carreras y no una lista abstracta de combinaciones", async () => {
+    const series = raceSeries();
+    calendarRef.current = loadedCalendar([series]);
+    starts.push(startOf(series));
     mount(null, wizardCatalogClient([USABLE_SESSION_COMBINATION]));
     fireEvent.click(await screen.findByTestId("orbit-strategy-new-strategy"));
 
@@ -717,29 +853,8 @@ describe("StrategyOrbitPage · estado inicial", () => {
     );
 
     fireEvent.click(auto);
-    expect((await screen.findByTestId("orbit-strategy-wizard")).textContent).toContain(
-      "paso 2 de 3",
-    );
-
-    fireEvent.click(screen.getByTestId("orbit-strategy-wizard-team"));
-
-    await screen.findByTestId("orbit-strategy-paths");
-    expect(screen.getByTestId("orbit-strategy-path-own")).toBeTruthy();
-    expect(screen.getByTestId("orbit-strategy-path-series")).toBeTruthy();
-    // Las series solo se listan cuando el usuario elige ese camino.
-    expect(screen.queryByTestId("orbit-strategy-series")).toBeNull();
-    fireEvent.click(screen.getByTestId("orbit-strategy-path-series"));
-    fireEvent.click(within(await screen.findByTestId("orbit-strategy-series")).getByText("GT3 Sprint Series"));
-
-    const picker = await screen.findByTestId("orbit-strategy-session-picker");
-    expect(picker.textContent).toContain("Circuit de Spa-Francorchamps");
-    expect(picker.textContent).toContain("Seco 27");
-    fireEvent.click(within(picker).getByTestId(`orbit-session-combination-${USABLE_SESSION_COMBINATION.combinationId}`));
-
-    await screen.findByTestId("orbit-strategy-overview");
-    fireEvent.click(screen.getByRole("button", { name: "Datos" }));
-    const fuel = await screen.findByTestId("orbit-planning-input-fuel_per_lap_liters");
-    expect(within(fuel).getByLabelText(/Derivado: Calculado con 27 muestras/)).toBeTruthy();
+    expect(await screen.findByTestId("orbit-strategy-calendar")).toBeTruthy();
+    expect(screen.queryByTestId("orbit-strategy-session-picker")).toBeNull();
   });
 
   it("deshabilita la automática porque todavía no hay sesiones importadas", async () => {

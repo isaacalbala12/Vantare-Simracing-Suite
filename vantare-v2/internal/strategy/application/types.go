@@ -225,6 +225,11 @@ type SessionCombinationCatalogItem struct {
 	ClimateBuckets  []SessionClimateBucket `json:"climateBuckets"`
 }
 
+type SessionCatalogExclusion struct {
+	SessionID string `json:"sessionId"`
+	Reason    string `json:"reason"`
+}
+
 // PlanSummary is what "My plans" needs to find and choose a plan. It carries no
 // payload on purpose: a library view must not load the contents of every plan
 // to draw a list of them.
@@ -510,23 +515,24 @@ type Result[T any] struct {
 	ActivePlan        *contract.ActivePlan      `json:"activePlan,omitempty"`
 	// Activations is the audit trail, oldest first: what was activated, when,
 	// and what it replaced. It is append-only and never rewritten.
-	Activations          []contract.ActivePlan                `json:"activations,omitempty"`
-	Plans                []PlanSummary                        `json:"plans,omitempty"`
-	StrategyDocument     *strategydocument.StrategyDocumentV2 `json:"strategyDocument,omitempty"`
-	Events               []strategydocument.Event             `json:"events,omitempty"`
-	Drivers              []strategydocument.Driver            `json:"drivers,omitempty"`
-	Variants             []strategydocument.Variant           `json:"variants,omitempty"`
-	Comparison           *VariantComparison                   `json:"comparison,omitempty"`
-	OrbitCalculation     *OrbitCalculationResult              `json:"orbitCalculation,omitempty"`
-	SessionCatalogStatus SessionCatalogStatus                 `json:"sessionCatalogStatus,omitempty"`
-	SessionCombinations  []SessionCombination                 `json:"sessionCombinations,omitempty"`
-	PlanningInputStatus  PlanningInputStatus                  `json:"planningInputStatus,omitempty"`
-	PlanningInputs       *strategydocument.PlanningInputs     `json:"planningInputs,omitempty"`
-	ValidatedExamples    *ValidatedExamplesResult             `json:"validatedExamples,omitempty"`
-	ReferenceCatalog     *strategycatalog.ConsumerResult      `json:"referenceCatalog,omitempty"`
-	ColdStartStatus      *strategycoldstart.Status            `json:"coldStartStatus,omitempty"`
-	ColdStartProgress    *strategycoldstart.Progress          `json:"coldStartProgress,omitempty"`
-	LegacyMigration      *LegacyMigrationPreview              `json:"legacyMigration,omitempty"`
+	Activations              []contract.ActivePlan                `json:"activations,omitempty"`
+	Plans                    []PlanSummary                        `json:"plans,omitempty"`
+	StrategyDocument         *strategydocument.StrategyDocumentV2 `json:"strategyDocument,omitempty"`
+	Events                   []strategydocument.Event             `json:"events,omitempty"`
+	Drivers                  []strategydocument.Driver            `json:"drivers,omitempty"`
+	Variants                 []strategydocument.Variant           `json:"variants,omitempty"`
+	Comparison               *VariantComparison                   `json:"comparison,omitempty"`
+	OrbitCalculation         *OrbitCalculationResult              `json:"orbitCalculation,omitempty"`
+	SessionCatalogStatus     SessionCatalogStatus                 `json:"sessionCatalogStatus,omitempty"`
+	SessionCombinations      []SessionCombination                 `json:"sessionCombinations,omitempty"`
+	SessionCatalogExclusions []SessionCatalogExclusion            `json:"sessionCatalogExclusions,omitempty"`
+	PlanningInputStatus      PlanningInputStatus                  `json:"planningInputStatus,omitempty"`
+	PlanningInputs           *strategydocument.PlanningInputs     `json:"planningInputs,omitempty"`
+	ValidatedExamples        *ValidatedExamplesResult             `json:"validatedExamples,omitempty"`
+	ReferenceCatalog         *strategycatalog.ConsumerResult      `json:"referenceCatalog,omitempty"`
+	ColdStartStatus          *strategycoldstart.Status            `json:"coldStartStatus,omitempty"`
+	ColdStartProgress        *strategycoldstart.Progress          `json:"coldStartProgress,omitempty"`
+	LegacyMigration          *LegacyMigrationPreview              `json:"legacyMigration,omitempty"`
 	// Package carries exported bytes. Import returns no package.
 	Package []byte `json:"package,omitempty"`
 	// Preview is what an import would do. It is present on a dry run and on a

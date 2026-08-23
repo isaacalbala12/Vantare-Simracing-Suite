@@ -82,6 +82,9 @@ func (store *AuthorizedSessionStore) Add(ctx context.Context, model AuthorizedSe
 	if err := validateStoredModel(model); err != nil {
 		return err
 	}
+	if err := validateCatalogableStoredModel(model); err != nil {
+		return err
+	}
 	store.mu.Lock()
 	defer store.mu.Unlock()
 	for _, existing := range store.models {
@@ -99,6 +102,16 @@ func (store *AuthorizedSessionStore) Add(ctx context.Context, model AuthorizedSe
 	if err := store.persistLocked(); err != nil {
 		store.models = previous
 		return err
+	}
+	return nil
+}
+
+func validateCatalogableStoredModel(model AuthorizedSessionModel) error {
+	if model.Validity == nil {
+		return fmt.Errorf("%w: lap validity missing", ErrInvalidAuthorizedSession)
+	}
+	if _, err := ClassifyHistoricalSession(model.Session); err != nil {
+		return fmt.Errorf("catalog authorized session: %w", err)
 	}
 	return nil
 }

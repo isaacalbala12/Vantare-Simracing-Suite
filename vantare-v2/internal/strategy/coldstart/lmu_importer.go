@@ -132,15 +132,20 @@ func (importer *LMUImporter) Import(ctx context.Context, candidate telemetryanal
 		return telemetryanalysis.AuthorizedSessionModel{}, fmt.Errorf("read LMU DuckDB session pages: %w", err)
 	}
 	model := telemetryanalysis.AuthorizedSessionModel{Artifact: artifact, Session: session}
+	return enrichCatalogableModel(model, pages)
+}
+
+func enrichCatalogableModel(model telemetryanalysis.AuthorizedSessionModel, pages []telemetryanalysis.HistoricalPage) (telemetryanalysis.AuthorizedSessionModel, error) {
+	session := model.Session
 	validity, validityErr := telemetryanalysis.AnalyzeLapValidity(session, pages)
 	if validityErr != nil {
-		return model, nil
+		return telemetryanalysis.AuthorizedSessionModel{}, fmt.Errorf("analyze LMU lap validity: %w", validityErr)
 	}
 	model.Validity = &validity
 	model.Session.Laps = historicalLaps(validity)
 	classified, err := telemetryanalysis.ClassifyHistoricalSession(model.Session)
 	if err != nil {
-		return model, nil
+		return telemetryanalysis.AuthorizedSessionModel{}, fmt.Errorf("classify LMU historical session: %w", err)
 	}
 	if consumption, deriveErr := telemetryanalysis.DeriveSessionConsumptionPace(model.Session, pages, classified, validity); deriveErr == nil {
 		model.Consumption = &consumption

@@ -1,3 +1,20 @@
+Nota ISA-815 / ISA-694 F5-e (2026-08-23, implementada en rama de issue):
+
+- La importacion LMU falla con la causa concreta si el analisis de vueltas o la
+  clasificacion no pueden producir una sesion catalogable. El store aplica el
+  mismo cierre antes de autorizar una entrada nueva, por lo que una omision no
+  se persiste ni se cuenta como importada.
+- La lectura conserva compatibilidad con stores legados: cada registro invalido
+  queda excluido con su motivo y las sesiones sanas se agrupan normalmente. La
+  exclusion tambien viaja en el resultado de aplicacion sin fabricar metadata
+  ni una combinacion para la sesion defectuosa.
+- Regresiones cubren ambos errores del importador, omision con causa real, store
+  sin persistencia y reapertura de un store con dos entradas buenas y una mala.
+  Analysis+Strategy y su `vet` focal pasan. Build global y el tramo `cmd` del
+  `vet` quedan bloqueados por la ausencia previa de `frontend/dist`; el `vet`
+  global de `internal` conserva tres avisos `unsafe.Pointer` ajenos. Sin PR,
+  integracion, promocion ni release.
+
 Nota ISA-813 / ISA-694 F5-e (2026-08-23, implementada en rama de issue):
 
 - La importación en frío obtiene de las cuatro familias que consumen páginas

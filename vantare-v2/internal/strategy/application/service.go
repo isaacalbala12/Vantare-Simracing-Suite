@@ -26,7 +26,7 @@ type repositoryPort[T any] interface {
 }
 
 type sessionCatalogPort interface {
-	ListSessionCombinations(context.Context) ([]telemetryanalysis.CombinationCatalogEntry, error)
+	ListSessionCombinations(context.Context) (telemetryanalysis.SessionCatalogListing, error)
 	ProjectStrategyInputs(context.Context, string, []string, time.Time) (strategyprojection.StrategyInputProjectionV2, error)
 }
 

@@ -10,7 +10,7 @@ describe("overlay-v2 view model registry", () => {
     expect(DEFAULT_OVERLAY_V2_FEATURES).toEqual([]);
   });
 
-  it("registra exactamente los 7 widgets con VM v2 y cada uno con feature valida", () => {
+  it("registra exactamente los 18 widgets con VM v2 y cada uno con feature valida", () => {
     const expected = new Map([
       ["standings", "standings"],
       ["relative", "relative"],
@@ -19,6 +19,17 @@ describe("overlay-v2 view model registry", () => {
       ["pedals-telemetry", "player-instruments"],
       ["input-telemetry", "controls"],
       ["racing-flags", "session"],
+      ["delta-advanced", "delta"],
+      ["delta-trace", "delta"],
+      ["pedals", "player-instruments"],
+      ["pedals-telemetry-compact", "player-instruments"],
+      ["multiclass-relative", "relative"],
+      ["head-to-head", "relative"],
+      ["track-map", "standings"],
+      ["broadcast-tower", "standings"],
+      ["track-weather", "weather"],
+      ["car-damage-numbers", "damage"],
+      ["car-damage-visual", "damage"],
     ]);
     expect(overlayV2ViewModelRegistry.size).toBe(expected.size);
     for (const [widgetType, feature] of expected) {
@@ -40,8 +51,9 @@ describe("overlay-v2 view model registry", () => {
     }
   });
 
-  it("no registra widgets sin VM v2", () => {
-    expect(getOverlayV2ViewModelEntry("track-map" as never)).toBeUndefined();
-    expect(getOverlayV2ViewModelEntry("pedals" as never)).toBeUndefined();
+  it("no registra widgets que no leen telemetria canonica del frame", () => {
+    // race-schedule lee el canal auxiliar de calendario; engineer-radio lee el bus de Engineer.
+    expect(getOverlayV2ViewModelEntry("race-schedule" as never)).toBeUndefined();
+    expect(getOverlayV2ViewModelEntry("engineer-radio" as never)).toBeUndefined();
   });
 });

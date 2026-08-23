@@ -72,3 +72,22 @@ describe("buildTrackMapViewModelV2", () => {
     expect(model.synthetic).toBe(true);
   });
 });
+
+describe("track-map v2 markers desde groundPosition (ISA-805)", () => {
+  it("coloca un marcador por fila con posicion fresh/stale y omite missing", () => {
+    const fresh = <T,>(v: T) => ({ v, q: "fresh" as const });
+    const row = (id: string, ground: unknown) => ({
+      id, position: 1, classPosition: 1, gap: fresh(0), lastLap: fresh(90), lapDistance: fresh(0), groundPosition: ground,
+    });
+    const frame = {
+      session: { track: fresh("Autodromo Nazionale Monza") },
+      player: { id: "p1" },
+      standings: [row("p1", fresh({ x: 10, z: -5 })), row("r2", { v: { x: 20, z: 5 }, q: "stale" }), row("r3", { q: "missing" })],
+    } as never;
+    const model = buildTrackMapViewModelV2(frame, { state: "live" } as never, { showTrackLabel: true } as never);
+    expect(model.outlinePath).toBeTruthy();
+    expect(model.markers.map((m) => m.id)).toEqual(["p1", "r2"]);
+    expect(model.markers[0]?.isPlayer).toBe(true);
+    expect(model.markers[1]?.isPlayer).toBe(false);
+  });
+});

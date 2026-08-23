@@ -1273,7 +1273,14 @@ func main() {
 				}
 			}
 		}
-		strategyBridge = strategyapplication.NewJSONBridge(strategyapplication.NewServiceWithSourcesAndColdStart(repo, sessionCatalog, nil, referenceCatalog, coldStart))
+		// Un *Service nulo dentro de la interfaz coldStartPort no es nil como
+		// interfaz: pasarlo tal cual hace que Status() entre con receptor nulo y
+		// rompa la app al arrancar. Solo se inyecta cuando existe de verdad.
+		strategyService := strategyapplication.NewServiceWithSources(repo, sessionCatalog, nil, referenceCatalog)
+		if coldStart != nil {
+			strategyService = strategyapplication.NewServiceWithSourcesAndColdStart(repo, sessionCatalog, nil, referenceCatalog, coldStart)
+		}
+		strategyBridge = strategyapplication.NewJSONBridge(strategyService)
 	}
 	app.NewStrategyApplicationBridge(ctx, strategyBridge, emitter).RegisterHandlers(wailsApp)
 	var curationUploadService *curation.UploadService

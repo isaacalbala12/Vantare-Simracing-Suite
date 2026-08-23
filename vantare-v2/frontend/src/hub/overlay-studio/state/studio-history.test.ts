@@ -138,6 +138,29 @@ describe("commitStudioCommand", () => {
     expect(history.present.layouts.general.widgets[0].layout.x).toBe(101);
     expect(history.past[0].layouts.general.widgets[0].layout.x).toBe(1);
   });
+
+  it("shares the previous present by reference when committing (structural sharing)", () => {
+    const history = createStudioHistory(buildDocument());
+    const next = commitStudioCommand(history, {
+      type: "widget/layout",
+      session: "general",
+      widgetIds: ["delta-1"],
+      patch: { x: 120 },
+    });
+    expect(next.past[0]).toBe(history.present);
+  });
+
+  it("returns the same history object when the command changes nothing", () => {
+    const history = createStudioHistory(buildDocument(120));
+    const next = commitStudioCommand(history, {
+      type: "widget/layout",
+      session: "general",
+      widgetIds: ["delta-1"],
+      patch: { x: 120 },
+    });
+    expect(next).toBe(history);
+    expect(isStudioHistoryDirty(next)).toBe(false);
+  });
 });
 
 describe("undoStudioHistory", () => {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { requestCalendar, subscribeToCalendar } from "../../calendar/calendar-store";
 import type { Calendar } from "../../calendar/calendar-types";
 import { buildRaceStarts, dialTarget, type RaceStart } from "./race-starts";
@@ -33,28 +33,69 @@ export interface OrbitRacesState {
  * `followedSeriesIds`), así que seguir o dejar de seguir una serie mueve el
  * dial y la columna sin ninguna copia intermedia.
  */
+function computeState(calendar: Calendar | null): OrbitRacesState {
+  const starts = buildRaceStarts(calendar, new Date(), {
+    limit: POOL,
+    perSeries: PER_SERIES,
+  });
+  return { calendar, starts, target: dialTarget(starts) };
+}
+
+/** Igualdad por campos: `at` es `Date`, el resto son primitivas planas. */
+function sameStart(a: RaceStart, b: RaceStart): boolean {
+  return (
+    a.seriesId === b.seriesId &&
+    a.name === b.name &&
+    a.track === b.track &&
+    a.tier === b.tier &&
+    a.licenseTier === b.licenseTier &&
+    a.licenseLabel === b.licenseLabel &&
+    a.note === b.note &&
+    a.intervalMin === b.intervalMin &&
+    a.vehicleClass === b.vehicleClass &&
+    a.durationMin === b.durationMin &&
+    a.at.getTime() === b.at.getTime() &&
+    a.followed === b.followed
+  );
+}
+
+function sameState(a: OrbitRacesState, b: OrbitRacesState): boolean {
+  if (a.calendar !== b.calendar) return false;
+  if (a.starts.length !== b.starts.length) return false;
+  for (let index = 0; index < a.starts.length; index += 1) {
+    if (!sameStart(a.starts[index], b.starts[index])) return false;
+  }
+  if (a.target === null || b.target === null) return a.target === b.target;
+  return sameStart(a.target, b.target);
+}
+
 export function useCalendarStarts(): OrbitRacesState {
-  const [calendar, setCalendar] = useState<Calendar | null>(null);
-  const [tick, setTick] = useState(() => Date.now());
+  const [state, setState] = useState<OrbitRacesState>(() => computeState(null));
+  const stateRef = useRef(state);
+  const calendarRef = useRef<Calendar | null>(null);
+
+  // Solo publica cuando el resultado calculado difiere del vigente: sin
+  // cambios no hay setState y la shell entera deja de re-renderizar cada 15 s.
+  const apply = useCallback((next: OrbitRacesState) => {
+    if (sameState(stateRef.current, next)) return;
+    stateRef.current = next;
+    setState(next);
+  }, []);
 
   useEffect(() => {
-    const unsubscribe = subscribeToCalendar((state) => {
-      if (state.kind === "loaded") setCalendar(state.calendar);
+    const unsubscribe = subscribeToCalendar((entry) => {
+      if (entry.kind !== "loaded") return;
+      calendarRef.current = entry.calendar;
+      apply(computeState(entry.calendar));
     });
     requestCalendar();
     return unsubscribe;
-  }, []);
+  }, [apply]);
 
   useEffect(() => {
-    const id = window.setInterval(() => setTick(Date.now()), REFRESH_MS);
+    const id = window.setInterval(() => apply(computeState(calendarRef.current)), REFRESH_MS);
     return () => window.clearInterval(id);
-  }, []);
+  }, [apply]);
 
-  return useMemo(() => {
-    const starts = buildRaceStarts(calendar, new Date(tick), {
-      limit: POOL,
-      perSeries: PER_SERIES,
-    });
-    return { calendar, starts, target: dialTarget(starts) };
-  }, [calendar, tick]);
+  return state;
 }

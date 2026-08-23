@@ -137,6 +137,7 @@ import {
   selectedCombination,
   selectedSessions,
   type StrategySessionCatalogView,
+  usableSessionCombinations,
 } from "./strategy-session-selection";
 import { strategyInputProvenance, type StrategyInputProvenanceView } from "./strategy-input-provenance";
 import { StrategyWeatherPanel } from "./StrategyWeatherPanel";
@@ -521,6 +522,29 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
 
   const eventRecord = activeEventOf(store);
   const catalogView = sessionCatalog.status === "ready" ? sessionCatalog.view : null;
+  const automaticCombinations = catalogView ? usableSessionCombinations(catalogView) : [];
+  const automaticAvailable = sessionCatalog.status === "ready"
+    && sessionCatalog.view.status === "available"
+    && automaticCombinations.length > 0;
+  const automaticReason = sessionCatalog.status === "loading"
+    ? t("strategy.wizard.fill.autoChecking")
+    : sessionCatalog.status === "error"
+      ? t("strategy.wizard.fill.autoCatalogUnavailable")
+      : sessionCatalog.view.status === "no_authorized_telemetry"
+        ? t("strategy.wizard.fill.autoNoSessions")
+        : automaticCombinations.length === 0
+          ? t("strategy.wizard.fill.autoNoClassifiedLaps")
+          : formatMessage(
+              t(automaticCombinations.length === 1
+                ? "strategy.wizard.fill.autoReadyOne"
+                : "strategy.wizard.fill.autoReadyMany"),
+              { n: automaticCombinations.length },
+            );
+  const sessionPickerCombinations = catalogView
+    ? eventRecord?.fillMode === "telemetry"
+      ? automaticCombinations
+      : catalogView.combinations
+    : [];
   const eventCombination = eventRecord && catalogView
     ? selectedCombination(catalogView, eventRecord.id)
     : undefined;
@@ -1166,7 +1190,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
     }
     const created = createCustomEvent(
       store.events,
-      { ...shared, teamMode: form.teamMode },
+      { ...shared, teamMode: form.teamMode, fillMode: wizard?.fill ?? "manual" },
       {
         strategyName: formatMessage(t("strategy.cards.newName"), { n: 1 }),
         strategyNote: t("strategy.cards.newNote"),
@@ -1177,7 +1201,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
     setWizard(null);
     setTab("overview");
     toast.show(t("strategy.form.createdTitle"), formatMessage(t("strategy.form.createdHint"), { name }));
-  }, [commit, eventId, form, store.events, t, toast]);
+  }, [commit, eventId, form, store.events, t, toast, wizard?.fill]);
 
   const chooseSessionCombination = useCallback(async (combinationId: string) => {
     if (!eventRecord || !catalogView) return;
@@ -1269,6 +1293,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
           strategyNote: t("strategy.cards.newNote"),
         },
         teamMode,
+        wizard?.fill ?? "manual",
       );
       commit((current) => openEvent(upsertEvent(current, created), created.id));
       setWizard(null);
@@ -1278,7 +1303,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
         formatMessage(t("strategy.form.createdHint"), { name: created.name }),
       );
     },
-    [commit, me, store.events, t, toast],
+    [commit, me, store.events, t, toast, wizard?.fill],
   );
 
   /** Abrir es la única puerta al editor: aquí se sella `lastOpenedAt`. */
@@ -1962,21 +1987,24 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
               <span className="orbit-path__k">{t("strategy.wizard.fill.manual")}</span>
               <span className="orbit-path__d">{t("strategy.wizard.fill.manualHint")}</span>
             </Featured>
-            {/* Automática: la fuente de sesiones de telemetría (ADR 0005) aún no
-                llega al frontend, así que el control va deshabilitado y dice por qué. */}
             <Featured
-              className="orbit-strategy__opt--off"
+              className={automaticAvailable ? undefined : "orbit-strategy__opt--off"}
               data-testid="orbit-strategy-wizard-auto"
             >
               <span className="orbit-path__k">{t("strategy.wizard.fill.auto")}</span>
               <span className="orbit-path__d">{t("strategy.wizard.fill.autoHint")}</span>
+              <span className="orbit-path__d" data-testid="orbit-strategy-wizard-auto-reason" id="orbit-strategy-wizard-auto-reason">
+                {automaticReason}
+              </span>
               <Button
+                aria-describedby="orbit-strategy-wizard-auto-reason"
                 data-testid="orbit-strategy-wizard-auto-action"
-                data-tip={t("strategy.wizard.fill.autoTip")}
+                data-tip={automaticReason}
                 data-tip-side="top"
-                disabled
+                disabled={!automaticAvailable}
+                onClick={() => setWizard({ ...wizard, fill: "telemetry", step: "team" })}
                 size="sm"
-                variant="ghost"
+                variant={automaticAvailable ? "primary" : "ghost"}
               >
                 {t("strategy.wizard.fill.autoAction")}
               </Button>
@@ -2058,11 +2086,11 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
       <p className="orbit-strategy__empty-lead">{t("strategy.sessions.pickerLead")}</p>
       {sessionCatalog.status === "loading" ? (
         <p role="status">{t("strategy.sessions.loading")}</p>
-      ) : sessionCatalog.status === "ready" && sessionCatalog.view.combinations.length === 0 ? (
+      ) : sessionCatalog.status === "ready" && sessionPickerCombinations.length === 0 ? (
         <Note title={t("strategy.sessions.emptyTitle")}>{t("strategy.sessions.empty")}</Note>
       ) : sessionCatalog.status === "ready" ? (
         <div className="orbit-session-picker__list">
-          {sessionCatalog.view.combinations.map((combination) => (
+          {sessionPickerCombinations.map((combination) => (
             <Featured
               data-testid={`orbit-session-combination-${combination.combinationId}`}
               interactive

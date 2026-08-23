@@ -1,3 +1,21 @@
+Nota ISA-824 / ISA-694 entrada asistida (2026-08-23, implementada en rama de issue):
+
+- El paso Datos habilita `Automática con telemetría` solo cuando el catálogo
+  responde y contiene al menos una combinación con vueltas clasificadas por
+  clima. Cero sesiones importadas, catálogo no disponible y cero combinaciones
+  clasificadas conservan controles deshabilitados con causas distintas y
+  visibles.
+- La elección automática conserva ese modo al crear el evento y reutiliza el
+  selector F5-a: combinación y sesiones se persisten por el documento v2,
+  `get_event_planning_inputs` proyecta los derivados y el mismo cálculo Orbit
+  recibe las entradas, sin otro camino ni datos fabricados.
+- Regresiones de pantalla cubren disponibilidad end-to-end, cero sesiones,
+  fallo de catálogo y ausencia de clima clasificado. Strategy Orbit+cliente,
+  typecheck real y build pasan. El ESLint focal conserva tres errores
+  `react-hooks/set-state-in-effect` y tres warnings previos en
+  `StrategyOrbitPage.tsx`, fuera del diff funcional. Sin Go, PR, integración,
+  promoción ni release.
+
 Nota ISA-815 / ISA-694 F5-e (2026-08-23, implementada en rama de issue):
 
 - La importacion LMU falla con la causa concreta si el analisis de vueltas o la

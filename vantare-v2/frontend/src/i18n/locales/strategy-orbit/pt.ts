@@ -247,10 +247,16 @@ export const strategyOrbitPt: Record<string, string> = {
     "Escreves ritmo, consumo, depósito e paragem. É o que há hoje e funciona.",
   "strategy.wizard.fill.auto": "Automática com telemetria",
   "strategy.wizard.fill.autoHint":
-    "Tiraria ritmos e consumos reais das tuas sessões gravadas, sem escrever um número.",
-  "strategy.wizard.fill.autoAction": "Indisponível",
+    "Usa ritmos e consumos reais das tuas sessões gravadas, sem escrever um número.",
+  "strategy.wizard.fill.autoAction": "Escolher combinação",
   "strategy.wizard.fill.autoTip":
-    "A fonte de sessões de telemetria (ADR 0005) ainda não chegou ao frontend.",
+    "Escolhe uma combinação com voltas classificadas por clima.",
+  "strategy.wizard.fill.autoChecking": "A verificar o catálogo de sessões importadas.",
+  "strategy.wizard.fill.autoCatalogUnavailable": "O catálogo de sessões não está disponível. Tenta novamente quando Strategy o puder consultar.",
+  "strategy.wizard.fill.autoNoSessions": "Não há sessões importadas. Importa as tuas sessões de LMU para usar este caminho.",
+  "strategy.wizard.fill.autoNoClassifiedLaps": "Nenhuma combinação tem voltas classificadas por clima.",
+  "strategy.wizard.fill.autoReadyOne": "Há {{n}} combinação utilizável com voltas classificadas por clima.",
+  "strategy.wizard.fill.autoReadyMany": "Há {{n}} combinações utilizáveis com voltas classificadas por clima.",
   "strategy.wizard.team.lead": "Corres esta corrida sozinho ou a repartir turnos?",
   "strategy.wizard.team.solo": "Sozinho",
   "strategy.wizard.team.soloHint":

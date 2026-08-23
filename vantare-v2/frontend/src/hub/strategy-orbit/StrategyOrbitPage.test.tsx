@@ -9,6 +9,9 @@ import type {
   StrategyApplicationCommandV1,
   StrategyApplicationClient,
   StrategyApplicationResultV1,
+  StrategyEventV2,
+  StrategyPlanningInputsV2,
+  StrategySessionCombinationV1,
 } from "../../strategy/strategy-application-client";
 import { StrategyApplicationError } from "../../strategy/strategy-application-client";
 import {
@@ -253,6 +256,95 @@ async function openWizard(team: "solo" | "team" = "team") {
   fireEvent.click(await screen.findByTestId("orbit-strategy-wizard-manual"));
   fireEvent.click(await screen.findByTestId(`orbit-strategy-wizard-${team}`));
   await screen.findByTestId("orbit-strategy-paths");
+}
+
+const USABLE_SESSION_COMBINATION: StrategySessionCombinationV1 = {
+  combinationId: "lmu:spa:united-21",
+  simId: "lmu",
+  trackName: "Circuit de Spa-Francorchamps",
+  trackLayout: "GP",
+  carName: "United Autosports #21:ELMS25",
+  carClass: "LMP2",
+  sessionCount: 5,
+  raceCount: 2,
+  lastActivity: "2026-08-23T12:00:00Z",
+  climateBuckets: [{ bucket: "dry", laps: 27 }],
+  sessions: [{
+    sessionId: "spa-race-1",
+    type: "race",
+    status: "identified_usable",
+    defaultIncluded: true,
+    lastActivity: "2026-08-23T12:00:00Z",
+    climateBuckets: [{ bucket: "dry", laps: 27 }],
+  }],
+};
+
+const WIZARD_DERIVED_PLANNING: StrategyPlanningInputsV2 = {
+  projection: {
+    contractVersion: "strategyinputprojection.v2",
+    generatedAt: "2026-08-23T12:00:00.000Z",
+    computationVersion: "producer.v1",
+    sourceSessions: ["spa-race-1"],
+    combinationId: USABLE_SESSION_COMBINATION.combinationId,
+    fuelConsumption: { presence: "valid", provenance: { kind: "derived", sourceId: "aggregate:lmu:spa" }, confidence: { sampleSize: 27, rangeLower: 2.6, rangeUpper: 2.9, computationVersion: "producer.v1" }, meanPerLap: 2.75, rangeLower: 2.6, rangeUpper: 2.9 },
+    virtualEnergyConsumption: { presence: "missing", provenance: { kind: "derived" }, confidence: { sampleSize: 0, computationVersion: "producer.v1" }, reason: "missing_virtual_energy_consumption", meanPerLap: 0, rangeLower: 0, rangeUpper: 0 },
+    combinedStintPaceCurve: { presence: "missing", provenance: { kind: "derived" }, confidence: { sampleSize: 0, computationVersion: "producer.v1" }, reason: "missing_combined_stint_pace_curve", identifiability: "combined_only", points: [] },
+    tyreDegradation: { presence: "missing", provenance: { kind: "derived" }, confidence: { sampleSize: 0, computationVersion: "producer.v1" }, reason: "missing_tyre_degradation" },
+    pit: { presence: "missing", provenance: { kind: "derived" }, confidence: { sampleSize: 0, computationVersion: "producer.v1" } },
+    savingCost: { presence: "missing", provenance: { kind: "derived" }, confidence: { sampleSize: 0, computationVersion: "producer.v1" }, reason: "missing_saving_cost" },
+  },
+  overrides: {},
+};
+
+function wizardCatalogClient(
+  catalog: "error" | "no_sessions" | readonly StrategySessionCombinationV1[],
+): StrategyApplicationClient<unknown> {
+  const calculation = createOrbitCalculationTestClient();
+  let saved: StrategyEventV2 | undefined;
+  let repositoryVersion = 0;
+  return {
+    async execute(command) {
+      const base = {
+        protocolVersion: "strategy.application.v1" as const,
+        commandId: command.commandId,
+        repositoryVersion,
+        recoveredFromBackup: false,
+        closed: false,
+      };
+      if (command.operation === "get_cold_start_status") {
+        return { ...base, coldStartStatus: { shouldShow: false, checking: false, found: 0, imported: 0, skipped: 0, failures: [], decision: "pending" } };
+      }
+      if (command.operation === "list_session_combinations") {
+        if (catalog === "error") throw new Error("catalog transport unavailable");
+        if (catalog === "no_sessions") return { ...base, sessionCatalogStatus: "no_authorized_telemetry", sessionCombinations: [] };
+        return { ...base, sessionCatalogStatus: "available", sessionCombinations: catalog };
+      }
+      if (command.operation === "list_events") return { ...base, events: saved ? [saved] : [] };
+      if (command.operation === "create_event" || command.operation === "edit_event") {
+        saved = command.event;
+        repositoryVersion += 1;
+        return {
+          ...base,
+          repositoryVersion,
+          strategyDocument: {
+            contractVersion: "strategy.v2",
+            schemaVersion: "2.0.0",
+            generatedAt: command.updatedAt,
+            events: [saved],
+          },
+        };
+      }
+      if (command.operation === "get_event_planning_inputs") {
+        return { ...base, planningInputStatus: "available", planningInputs: WIZARD_DERIVED_PLANNING };
+      }
+      if (command.operation === "calculate_orbit" || command.operation === "list") {
+        return calculation.execute(command);
+      }
+      throw new Error(`unexpected ${command.operation}`);
+    },
+    cancel: () => false,
+    dispose: () => undefined,
+  };
 }
 
 beforeEach(() => {
@@ -609,7 +701,8 @@ describe("StrategyOrbitPage · estado inicial", () => {
   });
 
   it("el asistente pregunta origen y equipo antes de dejar crear", async () => {
-    mount(null);
+    starts.push(SPA_START);
+    mount(null, wizardCatalogClient([USABLE_SESSION_COMBINATION]));
     fireEvent.click(await screen.findByTestId("orbit-strategy-new-strategy"));
 
     const wizard = await screen.findByTestId("orbit-strategy-wizard");
@@ -617,15 +710,17 @@ describe("StrategyOrbitPage · estado inicial", () => {
     // Todavía no se puede elegir punto de partida: falta contestar.
     expect(screen.queryByTestId("orbit-strategy-paths")).toBeNull();
 
-    // La automática va deshabilitada y dice por qué (ADR 0005, sin fuente).
     const auto = screen.getByTestId("orbit-strategy-wizard-auto-action");
-    expect(auto.hasAttribute("disabled")).toBe(true);
-    expect(auto.getAttribute("data-tip")).toContain("ADR 0005");
+    await waitFor(() => expect(auto.hasAttribute("disabled")).toBe(false));
+    expect(screen.getByTestId("orbit-strategy-wizard-auto-reason").textContent).toContain(
+      "1 combinación",
+    );
 
-    fireEvent.click(screen.getByTestId("orbit-strategy-wizard-manual"));
+    fireEvent.click(auto);
     expect((await screen.findByTestId("orbit-strategy-wizard")).textContent).toContain(
       "paso 2 de 3",
     );
+
     fireEvent.click(screen.getByTestId("orbit-strategy-wizard-team"));
 
     await screen.findByTestId("orbit-strategy-paths");
@@ -633,6 +728,51 @@ describe("StrategyOrbitPage · estado inicial", () => {
     expect(screen.getByTestId("orbit-strategy-path-series")).toBeTruthy();
     // Las series solo se listan cuando el usuario elige ese camino.
     expect(screen.queryByTestId("orbit-strategy-series")).toBeNull();
+    fireEvent.click(screen.getByTestId("orbit-strategy-path-series"));
+    fireEvent.click(within(await screen.findByTestId("orbit-strategy-series")).getByText("GT3 Sprint Series"));
+
+    const picker = await screen.findByTestId("orbit-strategy-session-picker");
+    expect(picker.textContent).toContain("Circuit de Spa-Francorchamps");
+    expect(picker.textContent).toContain("Seco 27");
+    fireEvent.click(within(picker).getByTestId(`orbit-session-combination-${USABLE_SESSION_COMBINATION.combinationId}`));
+
+    await screen.findByTestId("orbit-strategy-overview");
+    fireEvent.click(screen.getByRole("button", { name: "Datos" }));
+    const fuel = await screen.findByTestId("orbit-planning-input-fuel_per_lap_liters");
+    expect(within(fuel).getByLabelText(/Derivado: Calculado con 27 muestras/)).toBeTruthy();
+  });
+
+  it("deshabilita la automática porque todavía no hay sesiones importadas", async () => {
+    mount(null, wizardCatalogClient("no_sessions"));
+    fireEvent.click(await screen.findByTestId("orbit-strategy-new-strategy"));
+
+    const auto = await screen.findByTestId("orbit-strategy-wizard-auto-action");
+    await waitFor(() => expect(auto.hasAttribute("disabled")).toBe(true));
+    expect(screen.getByTestId("orbit-strategy-wizard-auto-reason").textContent).toContain(
+      "No hay sesiones importadas",
+    );
+  });
+
+  it("deshabilita la automática porque el catálogo de sesiones no está disponible", async () => {
+    mount(null, wizardCatalogClient("error"));
+    fireEvent.click(await screen.findByTestId("orbit-strategy-new-strategy"));
+
+    const auto = await screen.findByTestId("orbit-strategy-wizard-auto-action");
+    await waitFor(() => expect(auto.hasAttribute("disabled")).toBe(true));
+    expect(screen.getByTestId("orbit-strategy-wizard-auto-reason").textContent).toContain(
+      "El catálogo de sesiones no está disponible",
+    );
+  });
+
+  it("deshabilita la automática cuando ninguna combinación tiene vueltas clasificadas por clima", async () => {
+    mount(null, wizardCatalogClient([{ ...USABLE_SESSION_COMBINATION, climateBuckets: [] }]));
+    fireEvent.click(await screen.findByTestId("orbit-strategy-new-strategy"));
+
+    const auto = await screen.findByTestId("orbit-strategy-wizard-auto-action");
+    await waitFor(() => expect(auto.hasAttribute("disabled")).toBe(true));
+    expect(screen.getByTestId("orbit-strategy-wizard-auto-reason").textContent).toContain(
+      "Ninguna combinación tiene vueltas clasificadas por clima",
+    );
   });
 
   it("«Solo» crea un evento de un piloto y quita la disponibilidad del tablero", async () => {

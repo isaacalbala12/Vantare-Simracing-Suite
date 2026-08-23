@@ -49,11 +49,7 @@ export type StrategyEventSource = "custom" | "series" | "roster";
  */
 export type StrategyTeamMode = "solo" | "team";
 
-/**
- * Cómo se rellena la estrategia. `telemetry` (ADR 0005) todavía no tiene
- * fuente en el frontend: el asistente lo ofrece deshabilitado y ningún evento
- * puede nacer con ese valor hasta que la fuente llegue.
- */
+/** Cómo se rellena la estrategia: manualmente o desde las sesiones elegidas. */
 export type StrategyFillMode = "manual" | "telemetry";
 
 export interface StrategyEventRecord {
@@ -79,7 +75,7 @@ export interface StrategyEventRecord {
   activeStrategyId?: string;
   /** Tablero completo o de un solo piloto (asistente, ISA-377). */
   teamMode?: StrategyTeamMode;
-  /** Cómo se rellenó: a mano o con telemetría (hoy siempre `manual`). */
+  /** Cómo se rellenó: a mano o con telemetría histórica. */
   fillMode?: StrategyFillMode;
   /**
    * Última vez que el usuario abrió este evento, en ISO. Es lo que ordena el
@@ -142,7 +138,7 @@ function parseEvent(value: unknown): StrategyEventRecord | null {
     activeStrategyId:
       typeof value.activeStrategyId === "string" ? value.activeStrategyId : undefined,
     teamMode: value.teamMode === "solo" || value.teamMode === "team" ? value.teamMode : undefined,
-    fillMode: value.fillMode === "manual" ? "manual" : undefined,
+    fillMode: value.fillMode === "manual" || value.fillMode === "telemetry" ? value.fillMode : undefined,
     lastOpenedAt: typeof value.lastOpenedAt === "string" ? value.lastOpenedAt : undefined,
   };
 }
@@ -337,6 +333,8 @@ export interface CustomEventInput {
   drivers: StrategyDriver[];
   /** Elección del asistente; sin ella el evento es de equipo, como siempre. */
   teamMode?: StrategyTeamMode;
+  /** Fuente elegida en el asistente. */
+  fillMode?: StrategyFillMode;
 }
 
 /** Evento propio: exactamente lo que el usuario ha escrito. */
@@ -360,7 +358,7 @@ export function createCustomEvent(
     strategies: [firstStrategy(input.drivers, labels.strategyName, labels.strategyNote)],
     activeStrategyId: "s1",
     teamMode: input.teamMode ?? "team",
-    fillMode: "manual",
+    fillMode: input.fillMode ?? "manual",
     lastOpenedAt: new Date().toISOString(),
   };
 }
@@ -381,6 +379,7 @@ export function createEventFromSeries(
   me: StrategyDriver,
   labels: { strategyName: string; strategyNote: string },
   teamMode: StrategyTeamMode = "team",
+  fillMode: StrategyFillMode = "manual",
 ): StrategyEventRecord {
   const drivers = [me];
   return {
@@ -398,7 +397,7 @@ export function createEventFromSeries(
     strategies: [firstStrategy(drivers, labels.strategyName, labels.strategyNote)],
     activeStrategyId: "s1",
     teamMode,
-    fillMode: "manual",
+    fillMode,
     lastOpenedAt: new Date().toISOString(),
   };
 }

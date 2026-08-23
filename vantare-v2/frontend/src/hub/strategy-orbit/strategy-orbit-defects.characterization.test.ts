@@ -8,7 +8,7 @@
  * 1) eliminar piloto deja ID colgante en order → el cálculo productivo debe rechazarlo tipado
  * 2) fallos silenciosos de guardado/activación/apertura (setItem/bridge)
  * 3) fixtures golden sparse/mixed/legacy → defaults sintéticos sin provenance
- * 4) fillMode='telemetry' se borra al leer
+ * 4) fillMode='telemetry' queda preservado para el flujo asistido
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { calculateStrategyOrbit } from "./strategy-orbit-bridge";
@@ -280,13 +280,14 @@ describe("defecto · fixtures golden producen defaults sintéticos sin provenanc
   });
 });
 
-// ── (4) fillMode telemetry se borra ───────────────────────────────────────
+// ── (4) fillMode telemetry se preserva ────────────────────────────────────
 
-describe("defecto · fillMode='telemetry' se borra al leer (solo sobrevive manual) — F2 debe preservar/mapear raw", () => {
-  it("F2(c): fillMode telemetry se preserva raw y no pasa por el parser legacy", () => {
+describe("fillMode='telemetry' se preserva para reanudar el selector asistido", () => {
+  it("conserva el valor tanto en el backup raw como en la lectura local", () => {
     const evt = makeEvent({ fillMode: "telemetry" as unknown as StrategyEventRecord["fillMode"] });
     writeStrategyEvents({ events: [evt], activeId: evt.id });
     expect(decodeSource(STRATEGY_EVENTS_KEY)).toContain('"fillMode":"telemetry"');
+    expect(readStrategyEvents().events[0].fillMode).toBe("telemetry");
   });
 
   it("fillMode manual sí sobrevive (control)", () => {

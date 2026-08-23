@@ -17,6 +17,23 @@ son fases históricas.
 
 ## Estado
 
+Actualización ISA-824 / entrada asistida (2026-08-23, implementada en rama de issue):
+
+- La puerta `Automática con telemetría` consulta el catálogo real y solo se
+  abre con combinaciones que tengan vueltas clasificadas por clima. Explica por
+  separado cero sesiones importadas, catálogo no disponible y ausencia de una
+  combinación utilizable; ya no existe el falso bloqueo de ADR 0005.
+- Elegirla conserva el modo automático al crear el evento y desemboca en el
+  selector F5-a ya existente. Ese selector persiste combinación/sesiones,
+  refresca `StrategyInputProjection v2` y alimenta el cálculo Orbit sin pedir
+  números ni duplicar la proyección.
+- Tests de pantalla recorren el camino disponible hasta un chip `Derivado` y
+  cubren cada cierre con motivo visible. Gates frontend focales, typecheck real
+  y build verdes. El lint focal conserva tres errores
+  `react-hooks/set-state-in-effect` y tres warnings previos de la página, no
+  introducidos por este corte. Sin cambios Go, PR, integración, promoción ni
+  release.
+
 Actualización ISA-815 / F5-e (2026-08-23, implementada en rama de issue):
 
 - `LMUImporter` ya no convierte fallos de validez o clasificación en éxito: la

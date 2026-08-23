@@ -247,10 +247,16 @@ export const strategyOrbitIt: Record<string, string> = {
     "Scrivi tu ritmo, consumo, serbatoio e sosta. È quello che c'è oggi e funziona.",
   "strategy.wizard.fill.auto": "Automatica con telemetria",
   "strategy.wizard.fill.autoHint":
-    "Prenderebbe ritmi e consumi reali dalle tue sessioni registrate, senza scrivere un numero.",
-  "strategy.wizard.fill.autoAction": "Non disponibile",
+    "Usa ritmi e consumi reali delle tue sessioni registrate, senza scrivere un numero.",
+  "strategy.wizard.fill.autoAction": "Scegli combinazione",
   "strategy.wizard.fill.autoTip":
-    "La sorgente delle sessioni di telemetria (ADR 0005) non è ancora arrivata al frontend.",
+    "Scegli una combinazione con giri classificati per meteo.",
+  "strategy.wizard.fill.autoChecking": "Controllo del catalogo delle sessioni importate.",
+  "strategy.wizard.fill.autoCatalogUnavailable": "Il catalogo delle sessioni non è disponibile. Riprova quando Strategy può consultarlo.",
+  "strategy.wizard.fill.autoNoSessions": "Non ci sono sessioni importate. Importa le sessioni LMU per usare questo percorso.",
+  "strategy.wizard.fill.autoNoClassifiedLaps": "Nessuna combinazione ha giri classificati per meteo.",
+  "strategy.wizard.fill.autoReadyOne": "C'è {{n}} combinazione utilizzabile con giri classificati per meteo.",
+  "strategy.wizard.fill.autoReadyMany": "Ci sono {{n}} combinazioni utilizzabili con giri classificati per meteo.",
   "strategy.wizard.team.lead": "Corri questa gara da solo o dividendo i turni?",
   "strategy.wizard.team.solo": "Da solo",
   "strategy.wizard.team.soloHint":

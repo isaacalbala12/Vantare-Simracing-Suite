@@ -44,6 +44,43 @@ func TestRealHelperParserEndToEnd(t *testing.T) {
 	}
 }
 
+func TestRealHelperParserReadsSecondFullEventPage(t *testing.T) {
+	reader, parser, staged := integrationParser(t)
+	defer staged.Cleanup()
+	defer reader.Close()
+	if err := reader.Handshake(context.Background()); err != nil {
+		t.Fatalf("Handshake() error = %v", err)
+	}
+	session, err := parser.Inspect(context.Background())
+	if err != nil {
+		t.Fatalf("Inspect() error = %v", err)
+	}
+	var eventChannel string
+	for _, channel := range session.Channels {
+		if channel.SourceName == "long_event" {
+			eventChannel = channel.ID
+			break
+		}
+	}
+	if eventChannel == "" {
+		t.Fatal("long_event channel with at least 16,385 rows not found")
+	}
+	first, err := parser.ReadPage(context.Background(), eventChannel, 0, telemetryanalysis.MaxLMUDuckDBPageRows)
+	if err != nil {
+		t.Fatalf("first ReadPage() error = %v", err)
+	}
+	if len(first.Samples) != telemetryanalysis.MaxLMUDuckDBPageRows {
+		t.Fatalf("first page rows = %d, want %d", len(first.Samples), telemetryanalysis.MaxLMUDuckDBPageRows)
+	}
+	second, err := parser.ReadPage(context.Background(), eventChannel, telemetryanalysis.MaxLMUDuckDBPageRows, telemetryanalysis.MaxLMUDuckDBPageRows)
+	if err != nil {
+		t.Fatalf("second ReadPage() error = %v", err)
+	}
+	if len(second.Samples) == 0 || second.Samples[0].Index != telemetryanalysis.MaxLMUDuckDBPageRows {
+		t.Fatalf("second page = %#v, want sample at index %d", second, telemetryanalysis.MaxLMUDuckDBPageRows)
+	}
+}
+
 func TestRealHelperCancellationKillsProcessAndAllowsRetry(t *testing.T) {
 	reader, _, staged := integrationParser(t)
 	defer staged.Cleanup()

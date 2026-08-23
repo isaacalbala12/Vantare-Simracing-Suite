@@ -1,3 +1,20 @@
+Nota ISA-818 / ISA-694 F5-e (2026-08-23, implementada en rama de issue):
+
+- Una cancelación del contexto mientras hay un lote de hasta cuatro sesiones
+  activo aborta el lote completo respecto a `cold-start.json`: no convierte
+  errores de cancelación en omisiones, no marca la decisión como aceptada y
+  deja esas sesiones pendientes para el siguiente arranque.
+- Las omisiones ya no se limpian como efecto implícito de `ImportNext`. La
+  operación `retry_cold_start_failures`, expuesta por la aplicación Strategy y
+  el cliente TypeScript, las limpia de forma explícita y el botón existente
+  `Reintentar omitidas` vuelve entonces a importarlas.
+- Las regresiones cubren cancelación y reanudación del lote, reintento explícito
+  de las omitidas y conservación del locator y motivo de un fallo real.
+- Strategy+Analysis, race de cold start, suite Go completa, 385 archivos/2924
+  tests frontend, typecheck y build pasan. El `go vet` focal de
+  Strategy+Analysis pasa; el gate global pedido conserva tres avisos heredados
+  de `unsafe.Pointer` en Launcher/LMU, cuyos archivos no difieren de la base.
+
 Nota ISA-813 / ISA-694 F5-e (2026-08-23, implementada en rama de issue):
 
 - La importación en frío obtiene de las cuatro familias que consumen páginas

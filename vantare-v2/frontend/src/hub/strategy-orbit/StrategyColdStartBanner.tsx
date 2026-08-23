@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { StrategyApplicationClient, StrategyColdStartProgressV1, StrategyColdStartStatusV1 } from "../../strategy/strategy-application-client";
 import { Button } from "../../ui/orbit";
 import { formatMessage } from "../orbit/format-message";
-import { importColdStartSessions, loadColdStartStatus, rejectColdStart } from "./strategy-cold-start";
+import { importColdStartSessions, loadColdStartStatus, rejectColdStart, retryColdStartFailures } from "./strategy-cold-start";
 
 export function StrategyColdStartBanner({ client, onImported, t }: { client: StrategyApplicationClient<unknown>; onImported: () => void; t: (key: string) => string }) {
   const [status, setStatus] = useState<StrategyColdStartStatusV1 | null>(null);
@@ -34,13 +34,14 @@ export function StrategyColdStartBanner({ client, onImported, t }: { client: Str
   }, [client, queryRevision]);
 
   if (status && !status.shouldShow && !queryFailed) return null;
-  const accept = async () => {
+  const accept = async (retryFailures = false) => {
     setBusy(true);
     setImportFailed(false);
     if (status) {
       setProgress({ imported: status.imported, skipped: status.skipped, total: status.found, done: false, failures: status.failures });
     }
     try {
+      if (retryFailures) setProgress(await retryColdStartFailures(client));
       let finalProgress: StrategyColdStartProgressV1 | null = null;
       await importColdStartSessions(client, (value) => { finalProgress = value; setProgress(value); });
       const completed = finalProgress as StrategyColdStartProgressV1 | null;
@@ -81,7 +82,7 @@ export function StrategyColdStartBanner({ client, onImported, t }: { client: Str
       <div className="orbit-cold-start__actions">
         {queryFailed ? <Button onClick={retryStatus} variant="primary">{t("strategy.coldStart.retryStatus")}</Button> : null}
         {!queryFailed && !checking ? <Button disabled={busy} onClick={() => void reject()} variant="ghost">{status?.skipped ? t("strategy.coldStart.dismiss") : t("strategy.coldStart.reject")}</Button> : null}
-        {!queryFailed && !checking ? <Button disabled={busy} onClick={() => void accept()} variant="primary">{busy ? t("strategy.coldStart.importing") : status?.skipped ? t("strategy.coldStart.retrySkipped") : t("strategy.coldStart.import")}</Button> : null}
+        {!queryFailed && !checking ? <Button disabled={busy} onClick={() => void accept((status?.skipped ?? 0) > 0)} variant="primary">{busy ? t("strategy.coldStart.importing") : status?.skipped ? t("strategy.coldStart.retrySkipped") : t("strategy.coldStart.import")}</Button> : null}
       </div>
     </section>
   );

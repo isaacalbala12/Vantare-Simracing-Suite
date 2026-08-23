@@ -44,6 +44,7 @@ var requiredOperationFields = map[Operation][]string{
 	OperationListReferenceCatalog:    {},
 	OperationGetColdStartStatus:      {},
 	OperationImportColdStartNext:     {},
+	OperationRetryColdStartFailures:  {},
 	OperationRejectColdStart:         {},
 	OperationPreviewLegacyMigration:  {"sources", "migratedAt"},
 	OperationMigrateLegacy:           {"sources", "confirmedFingerprint", "migratedAt"},
@@ -242,6 +243,11 @@ func (bridge *JSONBridge[T]) Execute(ctx context.Context, document []byte) ([]by
 		var command ColdStartCommand
 		if err = decodeStrict(document, &command); err == nil {
 			result, err = bridge.service.ImportColdStartNext(ctx, command)
+		}
+	case OperationRetryColdStartFailures:
+		var command ColdStartCommand
+		if err = decodeStrict(document, &command); err == nil {
+			result, err = bridge.service.RetryColdStartFailures(ctx, command)
 		}
 	case OperationRejectColdStart:
 		var command ColdStartCommand

@@ -17,6 +17,21 @@ son fases históricas.
 
 ## Estado
 
+Actualización ISA-818 / F5-e (2026-08-23, implementada en rama de issue):
+
+- Cancelar la app durante los cuatro imports activos ya no persiste esas
+  sesiones como fallidas ni cierra el cold start; el lote queda pendiente y se
+  reanuda en el siguiente arranque.
+- Reintentar omitidas es ahora una operación explícita de la aplicación y del
+  cliente TS. El banner solo la ofrece cuando hay omisiones, limpia sus fallos
+  y vuelve a encolarlas antes de continuar la importación.
+- Un fallo real sigue persistiendo su locator y motivo. Hay regresiones para
+  cancelación/reanudación, reintento y fallo real. Strategy+Analysis, race,
+  suite Go completa, 385 archivos/2924 tests frontend, typecheck y build pasan;
+  vet focal pasa y el vet global conserva tres avisos `unsafe.Pointer`
+  heredados en archivos Launcher/LMU sin cambios. Sin PR, integración,
+  promoción ni release.
+
 Actualización ISA-813 / F5-e (2026-08-23, implementada en rama de issue):
 
 - Las familias de validez, consumo/ritmo, curvas y pit declaran sus canales y

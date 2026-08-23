@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { StrategyApplicationClient, StrategyApplicationCommandV1, StrategyApplicationResultV1 } from "../../strategy/strategy-application-client";
-import { COLD_START_IMPORT_TIMEOUT_MS, importColdStartSessions, loadColdStartStatus, rejectColdStart } from "./strategy-cold-start";
+import { COLD_START_IMPORT_TIMEOUT_MS, importColdStartSessions, loadColdStartStatus, rejectColdStart, retryColdStartFailures } from "./strategy-cold-start";
 
 describe("Strategy cold start", () => {
   it("shows once, reports progress and respects rejection", async () => {
@@ -47,5 +47,24 @@ describe("Strategy cold start", () => {
     const seen: Array<[number, number]> = [];
     await importColdStartSessions(client, (progress) => seen.push([progress.imported, progress.skipped]));
     expect(seen).toEqual([[0, 1], [1, 1]]);
+  });
+
+  it("clears skipped sessions through an explicit retry operation", async () => {
+    const operations: string[] = [];
+    const client: StrategyApplicationClient<unknown> = {
+      async execute(command): Promise<StrategyApplicationResultV1<unknown>> {
+        operations.push(command.operation);
+        return {
+          protocolVersion: "strategy.application.v1", commandId: command.commandId, repositoryVersion: 0,
+          coldStartProgress: { imported: 2, skipped: 0, total: 3, done: false, failures: [] },
+          recoveredFromBackup: false, closed: false,
+        };
+      },
+      cancel: () => false,
+      dispose: () => undefined,
+    };
+
+    await expect(retryColdStartFailures(client)).resolves.toMatchObject({ imported: 2, skipped: 0, done: false });
+    expect(operations).toEqual(["retry_cold_start_failures"]);
   });
 });

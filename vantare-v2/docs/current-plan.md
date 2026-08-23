@@ -1,3 +1,19 @@
+Nota ISA-809 / ISA-694 F5-e (2026-08-23, implementada en rama de issue):
+
+- La importacion en frio ya ignora con seguridad un incidente posterior a la
+  ultima vuelta y conserva la asociacion del caso anterior a la primera vuelta;
+  ninguno puede indexar fuera del slice de vueltas.
+- El barrido de los siete `sort.Search` de Telemetry Analysis no encontro otro
+  acceso inseguro: trafico, stints, consumo y curvas validan sus indices antes
+  de usarlos, incluida la resta que puede producir `-1` en
+  `continuousLapEndValues`.
+- La regresion sintetica demostro el panic antes del arreglo y pasa despues. El
+  gate Analysis+Strategy esta verde; la importacion de los 337 DuckDB reales
+  queda como validacion del orquestador. El aislamiento general ante panics de
+  una sesion corrupta queda fuera de alcance y requiere una politica separada.
+- Entrega aislada lista para review; no hay PR, integracion, promocion ni
+  release.
+
 Nota ISA-796 / ISA-694 F5-e (2026-08-22, implementada en rama de issue):
 
 - Strategy consume un único catálogo: usa el fixture firmado TEST sin red por

@@ -17,6 +17,16 @@ visible es `Telemetría`.
 
 ## Estado
 
+ISA-809 / ISA-694 F5-e corrige en su rama aislada el panic al asociar un
+incidente posterior a la ultima vuelta. `labelIncidentLaps` valida ambos
+limites y una sesion sintetica cubre eventos antes de la primera vuelta y
+despues de la ultima. El barrido de los siete `sort.Search` del paquete confirma
+que los otros indices derivados se validan antes de acceder, incluida la resta
+de `continuousLapEndValues` que puede producir `-1`. Analysis+Strategy PASS; el
+corpus real de 337 DuckDB queda para el gate del orquestador. Un aislamiento
+general ante panics por sesion queda fuera de este arreglo y necesita una
+politica separada. Sin PR, integracion ni promocion.
+
 ISA-744 / ISA-694 F3-a5 está implementada en su rama aislada y cierra el
 desarrollo F3a pendiente de review. El pit degradado conserva intervalos de
 carril; Fuel/VE solo se asocian con reloj declarado común. Reloj desconocido o
@@ -260,12 +270,18 @@ la proyección histórica para Strategy sin exponer DuckDB o el almacenamiento.
 
 ## Última actualización
 
+2026-08-23, ISA-809 / ISA-694 F5-e implementada en rama propia: el etiquetado
+de incidentes valida ambos limites del indice de vuelta y queda cubierto antes
+de la primera vuelta y despues de la ultima. Barrido completo de `sort.Search`
+y gates Analysis+Strategy PASS; pendiente corpus real y review, sin PR ni
+promocion.
+
+Historial previo:
+
 2026-08-21, ISA-744 / ISA-694 F3-a5 implementada en rama propia: pit degradado,
 `ObservedStrategy v1`, agregación multi-sesión y productor final
 `StrategyInputProjection v2`; pendiente review, sin PR ni promoción. Evidencia:
 `docs/strategy-planner/isa-744-pit-observed-producer.md`.
-
-Historial previo:
 
 2026-08-02, ISA-168 / TA-03C cerrada técnicamente sobre ISA-135. Helper Windows x64
 fuera de proceso, módulo DuckDB separado, staging DACL privado, manifest

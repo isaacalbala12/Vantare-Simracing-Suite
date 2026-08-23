@@ -252,6 +252,35 @@ func TestServiceContinuesAfterErrorsAndPanicsAndRetriesOnlyFailures(t *testing.T
 	}
 }
 
+func TestServiceDoesNotPersistUncatalogableSessionAndReportsRealCause(t *testing.T) {
+	const locator = "lmu://uncatalogable"
+	analysisErr := errors.New("analyze LMU lap validity: invalid lap validity input: no lap event or lap distance reset")
+	importer := &selectiveImporterStub{
+		calls: map[string]int{},
+		fail:  map[string]error{locator: analysisErr},
+	}
+	store := &sessionStoreStub{}
+	service := NewService(ServiceOptions{
+		StatePath: filepath.Join(t.TempDir(), "cold-start.json"),
+		Discover: func(context.Context) ([]telemetryanalysis.Candidate, error) {
+			return []telemetryanalysis.Candidate{{Locator: locator}}, nil
+		},
+		Importer: importer,
+		Store:    store,
+	})
+
+	progress, err := service.ImportNext(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if progress.Imported != 0 || progress.Skipped != 1 || !progress.Done || len(store.models) != 0 {
+		t.Fatalf("progress = %+v, models = %+v", progress, store.models)
+	}
+	if len(progress.Failures) != 1 || progress.Failures[0].Reason != analysisErr.Error() || progress.Failures[0].Reason == string(telemetryanalysis.UnusableReasonNoCompletedLap) {
+		t.Fatalf("failures = %+v", progress.Failures)
+	}
+}
+
 func TestServiceReopensPendingStateAndContinuesAfterImportedLocator(t *testing.T) {
 	statePath := filepath.Join(t.TempDir(), "cold-start.json")
 	discover := func(context.Context) ([]telemetryanalysis.Candidate, error) {

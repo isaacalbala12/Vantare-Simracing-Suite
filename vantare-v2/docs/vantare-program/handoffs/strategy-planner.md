@@ -17,6 +17,21 @@ son fases históricas.
 
 ## Estado
 
+Actualización ISA-815 / F5-e (2026-08-23, implementada en rama de issue):
+
+- `LMUImporter` ya no convierte fallos de validez o clasificación en éxito: la
+  omisión conserva el error real y nunca llega al store como importada.
+- El store rechaza nuevas entradas sin validez o clasificación catalogable,
+  pero al abrir mantiene los registros legados para que el catálogo pueda
+  aislarlos. La consulta devuelve las combinaciones sanas y una lista separada
+  de exclusiones con sesión y causa, sin inventar una combinación incompleta.
+- Tests cubren análisis y clasificación, no persistencia, reporte de la omisión
+  y reapertura con dos sesiones buenas más una legada defectuosa. La suite
+  Analysis+Strategy y el `vet` focal pasan; build global y `vet ./cmd/...`
+  quedan bloqueados por el `frontend/dist` ausente, y `vet ./internal/...`
+  conserva tres avisos `unsafe.Pointer` previos y ajenos. Entrega local
+  committeada; sin PR, integración, promoción ni release.
+
 Actualización ISA-813 / F5-e (2026-08-23, implementada en rama de issue):
 
 - Las familias de validez, consumo/ritmo, curvas y pit declaran sus canales y

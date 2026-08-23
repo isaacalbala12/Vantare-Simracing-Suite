@@ -24,16 +24,20 @@ func (service *Service[T]) ListSessionCombinations(ctx context.Context, command 
 	if service.sessionCatalog == nil {
 		return result, nil
 	}
-	entries, err := service.sessionCatalog.ListSessionCombinations(ctx)
+	listing, err := service.sessionCatalog.ListSessionCombinations(ctx)
 	if err != nil {
 		return Result[T]{}, err
 	}
-	if len(entries) == 0 {
+	result.SessionCatalogExclusions = make([]SessionCatalogExclusion, 0, len(listing.Exclusions))
+	for _, exclusion := range listing.Exclusions {
+		result.SessionCatalogExclusions = append(result.SessionCatalogExclusions, SessionCatalogExclusion{SessionID: exclusion.SessionID, Reason: exclusion.Reason})
+	}
+	if len(listing.Combinations) == 0 {
 		return result, nil
 	}
 	result.SessionCatalogStatus = SessionCatalogAvailable
-	result.SessionCombinations = make([]SessionCombination, 0, len(entries))
-	for _, entry := range entries {
+	result.SessionCombinations = make([]SessionCombination, 0, len(listing.Combinations))
+	for _, entry := range listing.Combinations {
 		result.SessionCombinations = append(result.SessionCombinations, adaptSessionCombination(entry))
 	}
 	return result, nil

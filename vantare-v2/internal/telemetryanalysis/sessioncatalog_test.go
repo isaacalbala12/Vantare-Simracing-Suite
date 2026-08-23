@@ -2,6 +2,7 @@ package telemetryanalysis
 
 import (
 	"context"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -23,28 +24,65 @@ func TestListAuthorizedSessionCombinationsGroupsWithoutExposingStorage(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(got) != 1 || got[0].SessionCount != 2 || got[0].RaceCount != 1 {
+	if len(got.Combinations) != 1 || got.Combinations[0].SessionCount != 2 || got.Combinations[0].RaceCount != 1 {
 		t.Fatalf("catalog = %+v", got)
 	}
-	if !got[0].LastActivity.Equal(models[1].Artifact.Evidence().Metadata.ModTime) {
-		t.Fatalf("last activity = %s", got[0].LastActivity)
+	if !got.Combinations[0].LastActivity.Equal(models[1].Artifact.Evidence().Metadata.ModTime) {
+		t.Fatalf("last activity = %s", got.Combinations[0].LastActivity)
 	}
-	if len(got[0].Sessions) != 2 || got[0].Sessions[0].SessionID != "practice-1" || got[0].Sessions[0].DefaultIncluded {
-		t.Fatalf("sessions = %+v", got[0].Sessions)
+	if len(got.Combinations[0].Sessions) != 2 || got.Combinations[0].Sessions[0].SessionID != "practice-1" || got.Combinations[0].Sessions[0].DefaultIncluded {
+		t.Fatalf("sessions = %+v", got.Combinations[0].Sessions)
 	}
-	if got[0].Sessions[0].ExclusionReason != UnusableReasonNoCompletedLap {
-		t.Fatalf("reason = %q", got[0].Sessions[0].ExclusionReason)
+	if got.Combinations[0].Sessions[0].ExclusionReason != UnusableReasonNoCompletedLap {
+		t.Fatalf("reason = %q", got.Combinations[0].Sessions[0].ExclusionReason)
 	}
-	if len(got[0].ClimateBuckets) != 2 {
-		t.Fatalf("buckets = %+v", got[0].ClimateBuckets)
+	if len(got.Combinations[0].ClimateBuckets) != 2 {
+		t.Fatalf("buckets = %+v", got.Combinations[0].ClimateBuckets)
 	}
 }
 
-func TestListAuthorizedSessionCombinationsRejectsModelFromAnotherArtifact(t *testing.T) {
+func TestListAuthorizedSessionCombinationsExcludesModelFromAnotherArtifact(t *testing.T) {
 	model := catalogModel(t, "race-1", "Race", true, time.Now(), strategyprojection.ClimateBucketDry)
 	model.Session.Provenance.Parser.Version = "other"
-	if _, err := ListAuthorizedSessionCombinations(context.Background(), []AuthorizedSessionModel{model}); err != ErrInvalidAuthorizedSession {
+	if got, err := ListAuthorizedSessionCombinations(context.Background(), []AuthorizedSessionModel{model}); err != nil || len(got.Combinations) != 0 || len(got.Exclusions) != 1 {
 		t.Fatalf("error = %v", err)
+	}
+}
+
+func TestSessionCatalogExcludesLegacyUncatalogableModelAndSurvivesReopen(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "authorized-sessions.json")
+	store, err := OpenAuthorizedSessionStore(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	goodOne := catalogModel(t, "race-1", "Race", true, time.Date(2026, 8, 20, 12, 0, 0, 0, time.UTC), strategyprojection.ClimateBucketDry)
+	goodTwo := catalogModel(t, "race-2", "Race", true, time.Date(2026, 8, 21, 12, 0, 0, 0, time.UTC), strategyprojection.ClimateBucketWet)
+	bad := catalogModel(t, "legacy-bad", "Race", true, time.Date(2026, 8, 22, 12, 0, 0, 0, time.UTC), strategyprojection.ClimateBucketDry)
+	for index := range bad.Session.Metadata {
+		if bad.Session.Metadata[index].Key == "SessionType" {
+			bad.Session.Metadata[index].Value = "Warmup"
+		}
+	}
+
+	store.models = []AuthorizedSessionModel{goodOne, bad, goodTwo}
+	if err := store.persistLocked(); err != nil {
+		t.Fatal(err)
+	}
+	for reopen := 1; reopen <= 2; reopen++ {
+		reopened, err := OpenAuthorizedSessionStore(path)
+		if err != nil {
+			t.Fatalf("reopen %d: %v", reopen, err)
+		}
+		listing, err := NewSessionCatalog(reopened).ListSessionCombinations(context.Background())
+		if err != nil {
+			t.Fatalf("list after reopen %d: %v", reopen, err)
+		}
+		if len(listing.Combinations) != 1 || listing.Combinations[0].SessionCount != 2 {
+			t.Fatalf("combinations after reopen %d = %+v", reopen, listing.Combinations)
+		}
+		if len(listing.Exclusions) != 1 || listing.Exclusions[0].SessionID != "legacy-bad" || listing.Exclusions[0].Reason != `invalid historical session classification: unknown SessionType "Warmup"` {
+			t.Fatalf("exclusions after reopen %d = %+v", reopen, listing.Exclusions)
+		}
 	}
 }
 

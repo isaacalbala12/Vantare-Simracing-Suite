@@ -13,7 +13,7 @@ import (
 )
 
 type sessionCatalogStub struct {
-	entries    []telemetryanalysis.CombinationCatalogEntry
+	listing    telemetryanalysis.SessionCatalogListing
 	projection strategyprojection.StrategyInputProjectionV2
 	projected  *[]string
 }
@@ -32,8 +32,8 @@ func (repo *sessionCatalogRepository[T]) Commit(context.Context, uint64, reposit
 	return repository.CommitResult[T]{Snapshot: repo.snapshot}, nil
 }
 
-func (stub sessionCatalogStub) ListSessionCombinations(context.Context) ([]telemetryanalysis.CombinationCatalogEntry, error) {
-	return stub.entries, nil
+func (stub sessionCatalogStub) ListSessionCombinations(context.Context) (telemetryanalysis.SessionCatalogListing, error) {
+	return stub.listing, nil
 }
 
 func (stub sessionCatalogStub) ProjectStrategyInputs(_ context.Context, _ string, sessions []string, _ time.Time) (strategyprojection.StrategyInputProjectionV2, error) {
@@ -87,12 +87,15 @@ func TestGetEventPlanningInputsUsesOnlyIncludedSessionsAndPreservesOverride(t *t
 func TestListSessionCombinationsAdaptsAnalysisAndKeepsRepositoryReadOnly(t *testing.T) {
 	repo := &sessionCatalogRepository[any]{snapshot: repository.Snapshot[any]{Version: 7}}
 	activity := time.Date(2026, 8, 21, 12, 0, 0, 0, time.UTC)
-	catalog := sessionCatalogStub{entries: []telemetryanalysis.CombinationCatalogEntry{{
-		Combination:  telemetryanalysis.CombinationIdentity{ID: "lmu:combo", SimID: "lmu", TrackName: "Fuji", TrackLayout: "Classic", CarName: "499P", CarClass: "Hypercar"},
-		SessionCount: 1, RaceCount: 1, LastActivity: activity,
-		ClimateBuckets: []telemetryanalysis.ClimateBucketCount{{Bucket: strategyprojection.ClimateBucketDry, Laps: 12}},
-		Sessions:       []telemetryanalysis.SessionCatalogEntry{{SessionID: "race-1", Type: telemetryanalysis.SessionTypeRace, Status: telemetryanalysis.SessionStatusIdentifiedUsable, DefaultIncluded: true, LastActivity: activity}},
-	}}}
+	catalog := sessionCatalogStub{listing: telemetryanalysis.SessionCatalogListing{
+		Combinations: []telemetryanalysis.CombinationCatalogEntry{{
+			Combination:  telemetryanalysis.CombinationIdentity{ID: "lmu:combo", SimID: "lmu", TrackName: "Fuji", TrackLayout: "Classic", CarName: "499P", CarClass: "Hypercar"},
+			SessionCount: 1, RaceCount: 1, LastActivity: activity,
+			ClimateBuckets: []telemetryanalysis.ClimateBucketCount{{Bucket: strategyprojection.ClimateBucketDry, Laps: 12}},
+			Sessions:       []telemetryanalysis.SessionCatalogEntry{{SessionID: "race-1", Type: telemetryanalysis.SessionTypeRace, Status: telemetryanalysis.SessionStatusIdentifiedUsable, DefaultIncluded: true, LastActivity: activity}},
+		}},
+		Exclusions: []telemetryanalysis.SessionCatalogExclusion{{SessionID: "legacy-bad", Reason: "invalid historical session classification: missing SessionType"}},
+	}}
 	service := NewServiceWithSessionCatalog[any](repo, catalog)
 	result, err := service.ListSessionCombinations(context.Background(), ListSessionCombinationsCommand{CommandHeader: CommandHeader{
 		ProtocolVersion: ProtocolVersionV1, CommandID: "sessions", Operation: OperationListSessionCombinations, ExpectedRepositoryVersion: 7,
@@ -105,6 +108,9 @@ func TestListSessionCombinationsAdaptsAnalysisAndKeepsRepositoryReadOnly(t *test
 	}
 	if result.SessionCombinations[0].Sessions[0].SessionID != "race-1" || result.SessionCombinations[0].ClimateBuckets[0].Laps != 12 {
 		t.Fatalf("combination = %+v", result.SessionCombinations[0])
+	}
+	if len(result.SessionCatalogExclusions) != 1 || result.SessionCatalogExclusions[0].SessionID != "legacy-bad" || result.SessionCatalogExclusions[0].Reason != "invalid historical session classification: missing SessionType" {
+		t.Fatalf("exclusions = %+v", result.SessionCatalogExclusions)
 	}
 	if repo.commitCalls != 0 {
 		t.Fatalf("query committed %d times", repo.commitCalls)

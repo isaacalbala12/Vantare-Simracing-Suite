@@ -48,6 +48,16 @@ type CombinationCatalogEntry struct {
 	Sessions       []SessionCatalogEntry `json:"sessions"`
 }
 
+type SessionCatalogExclusion struct {
+	SessionID string `json:"sessionId"`
+	Reason    string `json:"reason"`
+}
+
+type SessionCatalogListing struct {
+	Combinations []CombinationCatalogEntry `json:"combinations"`
+	Exclusions   []SessionCatalogExclusion `json:"exclusions"`
+}
+
 type AuthorizedSessionSource interface {
 	ListAuthorizedSessions(context.Context) ([]AuthorizedSessionModel, error)
 }
@@ -63,13 +73,13 @@ func NewSessionCatalog(source AuthorizedSessionSource) *SessionCatalog {
 	return &SessionCatalog{source: source}
 }
 
-func (catalog *SessionCatalog) ListSessionCombinations(ctx context.Context) ([]CombinationCatalogEntry, error) {
+func (catalog *SessionCatalog) ListSessionCombinations(ctx context.Context) (SessionCatalogListing, error) {
 	if catalog == nil || catalog.source == nil {
-		return []CombinationCatalogEntry{}, nil
+		return SessionCatalogListing{Combinations: []CombinationCatalogEntry{}, Exclusions: []SessionCatalogExclusion{}}, nil
 	}
 	models, err := catalog.source.ListAuthorizedSessions(ctx)
 	if err != nil {
-		return nil, err
+		return SessionCatalogListing{}, err
 	}
 	return ListAuthorizedSessionCombinations(ctx, models)
 }
@@ -148,26 +158,30 @@ func (catalog *SessionCatalog) ProjectStrategyInputs(
 // ListAuthorizedSessionCombinations is the Analysis-owned application query.
 // It classifies and groups only models carrying an unforgeable authorization
 // token issued by BuildAuthorizedHistoricalArtifact.
-func ListAuthorizedSessionCombinations(ctx context.Context, models []AuthorizedSessionModel) ([]CombinationCatalogEntry, error) {
+func ListAuthorizedSessionCombinations(ctx context.Context, models []AuthorizedSessionModel) (SessionCatalogListing, error) {
 	classified := make([]ClassifiedSession, 0, len(models))
 	byID := make(map[string]AuthorizedSessionModel, len(models))
+	exclusions := make([]SessionCatalogExclusion, 0)
 	for _, model := range models {
 		if err := ctx.Err(); err != nil {
-			return nil, err
+			return SessionCatalogListing{}, err
 		}
 		manifest := model.Artifact.Manifest()
 		if !validAuthorizedHistoricalArtifact(model.Artifact) ||
 			model.Session.Provenance.Source != manifest.Source ||
 			model.Session.Provenance.Parser != manifest.Parser ||
 			strings.TrimSpace(model.Session.ID) == "" {
-			return nil, ErrInvalidAuthorizedSession
+			exclusions = append(exclusions, SessionCatalogExclusion{SessionID: model.Session.ID, Reason: ErrInvalidAuthorizedSession.Error()})
+			continue
 		}
 		item, err := ClassifyHistoricalSession(model.Session)
 		if err != nil {
-			return nil, err
+			exclusions = append(exclusions, SessionCatalogExclusion{SessionID: model.Session.ID, Reason: err.Error()})
+			continue
 		}
 		if _, duplicate := byID[item.SessionID]; duplicate {
-			return nil, ErrInvalidAuthorizedSession
+			exclusions = append(exclusions, SessionCatalogExclusion{SessionID: item.SessionID, Reason: ErrInvalidAuthorizedSession.Error() + ": duplicate session id"})
+			continue
 		}
 		classified = append(classified, item)
 		byID[item.SessionID] = model
@@ -208,7 +222,7 @@ func ListAuthorizedSessionCombinations(ctx context.Context, models []AuthorizedS
 		entry.ClimateBuckets = orderedBucketCounts(bucketTotals)
 		result = append(result, entry)
 	}
-	return result, nil
+	return SessionCatalogListing{Combinations: result, Exclusions: exclusions}, nil
 }
 
 func climateBucketCounts(consumption *SessionConsumptionPace, classified ClassifiedSession) []ClimateBucketCount {

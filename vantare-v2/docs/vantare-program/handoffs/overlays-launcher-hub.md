@@ -10,6 +10,16 @@
 
 ## Estado
 
+- **ISA-814 · Studio SWR (2026-08-22, misma rama que ISA-800):** los widgets
+  del Studio tardaban en montarse porque el documento llegaba por IPC antes de
+  pintar. Nueva \studio-doc-cache.ts\ (localStorage, 3 MB LRU) + semilla del
+  historial en el inicializador de estado del provider (patron conforme a las
+  reglas react-hooks v7: sin refs ni setState en effects) + guard de
+  ediciones sobre la semilla (conserva cambios, re-ancora saved al fresco) +
+  reescritura de cache al guardar. Launcher catalogo/iconos persistentes
+  queda como siguiente corte del mismo patron. Gates PASS: 377/2915,
+  typecheck, lint focal, build.
+
 - **ISA-800 · Navegacion instantanea (2026-08-22, rama
   \antareapp/isa-nav-perf-corte-1\ apilada sobre ISA-793):** (1) las 10
   paginas del hub pasan a React.lazy con ids de hueco extraidos a

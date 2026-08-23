@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Events } from '@wailsio/runtime';
 import { useAccess } from '../../../lib/access';
@@ -35,33 +35,80 @@ import { SideLauncher } from './SideLauncher';
 import { SideProfile } from './SideProfile';
 import { SideRaces } from './SideRaces';
 import { Topbar } from './Topbar';
-import { HomeOrbitPage } from '../../home-orbit/HomeOrbitPage';
 import {
-  LauncherOrbitPage,
   LAUNCHER_CONTEXT_SLOT_ID,
   LAUNCHER_TOPBAR_SLOT_ID,
-} from '../../launcher-orbit/LauncherOrbitPage';
-import {
-  RacesOrbitPage,
   RACES_CONTEXT_SLOT_ID,
   RACES_TOPBAR_SLOT_ID,
-} from '../../races-orbit/RacesOrbitPage';
-import {
-  StrategyOrbitPage,
-  STRATEGY_CONTEXT_SLOT_ID,
-} from '../../strategy-orbit/StrategyOrbitPage';
-import { EngineerOrbitPage } from '../../engineer-orbit/EngineerOrbitPage';
-import {
-  TelemetryOrbitPage,
-  TELEMETRY_CONTEXT_SLOT_ID,
-} from '../../telemetry-orbit/TelemetryOrbitPage';
-import { RoadmapOrbitPage, ROADMAP_CONTEXT_SLOT_ID } from '../../roadmap-orbit/RoadmapOrbitPage';
-import {
-  SettingsOrbitPage,
+  ROADMAP_CONTEXT_SLOT_ID,
   SETTINGS_CONTEXT_SLOT_ID,
-} from '../../settings-orbit/SettingsOrbitPage';
-import { TestingCenterOrbitPage } from '../../testing-center-orbit/TestingCenterOrbitPage';
-import { StudioRoute } from '../../overlay-studio/StudioRoute';
+  STRATEGY_CONTEXT_SLOT_ID,
+  TELEMETRY_CONTEXT_SLOT_ID,
+} from './orbit-slot-ids';
+/* Paginas en lazy: el chunk inicial solo lleva la shell; cada pantalla viaja en
+   su propio chunk y se descarga en idle tras el primer pintado, asi que el
+   primer open de cada pestaña ya sale de cache. */
+const HomeOrbitPage = lazy(() =>
+  import('../../home-orbit/HomeOrbitPage').then((m) => ({ default: m.HomeOrbitPage })),
+);
+const LauncherOrbitPage = lazy(() =>
+  import('../../launcher-orbit/LauncherOrbitPage').then((m) => ({ default: m.LauncherOrbitPage })),
+);
+const RacesOrbitPage = lazy(() =>
+  import('../../races-orbit/RacesOrbitPage').then((m) => ({ default: m.RacesOrbitPage })),
+);
+const StrategyOrbitPage = lazy(() =>
+  import('../../strategy-orbit/StrategyOrbitPage').then((m) => ({ default: m.StrategyOrbitPage })),
+);
+const EngineerOrbitPage = lazy(() =>
+  import('../../engineer-orbit/EngineerOrbitPage').then((m) => ({ default: m.EngineerOrbitPage })),
+);
+const TelemetryOrbitPage = lazy(() =>
+  import('../../telemetry-orbit/TelemetryOrbitPage').then((m) => ({ default: m.TelemetryOrbitPage })),
+);
+const RoadmapOrbitPage = lazy(() =>
+  import('../../roadmap-orbit/RoadmapOrbitPage').then((m) => ({ default: m.RoadmapOrbitPage })),
+);
+const SettingsOrbitPage = lazy(() =>
+  import('../../settings-orbit/SettingsOrbitPage').then((m) => ({ default: m.SettingsOrbitPage })),
+);
+const TestingCenterOrbitPage = lazy(() =>
+  import('../../testing-center-orbit/TestingCenterOrbitPage').then((m) => ({
+    default: m.TestingCenterOrbitPage,
+  })),
+);
+const StudioRoute = lazy(() =>
+  import('../../overlay-studio/StudioRoute').then((m) => ({ default: m.StudioRoute })),
+);
+
+/** Descarga los chunks de pagina en idle: navegacion instantanea sin pagar
+    su parseo antes del primer pintado. Secuencial para no saturar el disco. */
+function prefetchOrbitPages(): void {
+  const loaders = [
+    () => import('../../home-orbit/HomeOrbitPage'),
+    () => import('../../launcher-orbit/LauncherOrbitPage'),
+    () => import('../../races-orbit/RacesOrbitPage'),
+    () => import('../../strategy-orbit/StrategyOrbitPage'),
+    () => import('../../engineer-orbit/EngineerOrbitPage'),
+    () => import('../../telemetry-orbit/TelemetryOrbitPage'),
+    () => import('../../roadmap-orbit/RoadmapOrbitPage'),
+    () => import('../../settings-orbit/SettingsOrbitPage'),
+    () => import('../../testing-center-orbit/TestingCenterOrbitPage'),
+    () => import('../../overlay-studio/StudioRoute'),
+  ];
+  const runNext = (index: number): void => {
+    if (index >= loaders.length) return;
+    const idle =
+      typeof requestIdleCallback === 'function'
+        ? requestIdleCallback
+        : (cb: () => void) => window.setTimeout(cb, 150);
+    idle(() => {
+      void loaders[index]().finally(() => runNext(index + 1));
+    });
+  };
+  runNext(0);
+}
+
 import { ToastProvider } from '../../../ui/orbit/Toast';
 import { useToast } from '../../../ui/orbit/toast-context';
 import '../../../styles/orbit.tokens.css';
@@ -198,6 +245,12 @@ function OrbitShellBody({
     orbitStore.set(ORBIT_KEYS.view, 'inicio');
     onNavigate(viewToSection('inicio'));
   }, [activeView, onNavigate, t, testingCenterChannel, toast]);
+
+  // Prefetch de chunks de pagina en idle: el arranque pinta ya con la shell y
+  // las pestañas quedan calientes en cache para navegacion instantanea.
+  useEffect(() => {
+    prefetchOrbitPages();
+  }, []);
 
   const navigate = useCallback(
     (view: ViewId, target?: string) => {
@@ -520,6 +573,7 @@ function OrbitShellBody({
             ) : null}
           </Topbar>
           <div className="orbit-workspace">
+            <Suspense fallback={<div className="orbit-page-loading" aria-busy="true" />}>
             {activeView === 'inicio' ? (
               <HomeOrbitPage
                 onActivateProfile={(profile) =>
@@ -553,6 +607,7 @@ function OrbitShellBody({
             ) : activeView === 'studio' ? (
               <StudioRoute target={target} />
             ) : null}
+            </Suspense>
           </div>
         </div>
       </div>

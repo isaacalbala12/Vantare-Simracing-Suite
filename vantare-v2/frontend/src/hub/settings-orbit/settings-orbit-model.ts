@@ -210,9 +210,13 @@ export function searchSettings(
  * CSS de Orbit respeta, igual que la densidad. No se inventa ningún ajuste del
  * sistema: la casilla del sistema operativo sigue mandando por su cuenta con
  * `prefers-reduced-motion`.
+ *
+ * DEFAULT INVERTIDO (rendimiento primero): sin preferencia guardada se arranca
+ * con movimiento reducido — cero animaciones y cero blur mientras no exista el
+ * modo visual atractivo. Solo un "0" explícito lo apaga.
  */
 export function getStoredReduceMotion(): boolean {
-  return orbitStore.get(ORBIT_KEYS.reduceMotion) === "1";
+  return orbitStore.get(ORBIT_KEYS.reduceMotion) !== "0";
 }
 
 export function applyReduceMotion(reduce: boolean, body: HTMLElement = document.body): void {

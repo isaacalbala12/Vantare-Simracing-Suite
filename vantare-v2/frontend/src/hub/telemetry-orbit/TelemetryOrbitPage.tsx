@@ -33,7 +33,9 @@ import {
 import { isTelemetryDemoEnabled, resolveTelemetrySessions } from "./telemetry-orbit-source";
 import "../../styles/orbit-telemetry.css";
 
-export const TELEMETRY_CONTEXT_SLOT_ID = "orbit-telemetry-context-slot";
+import { TELEMETRY_CONTEXT_SLOT_ID } from "../components/orbit/orbit-slot-ids";
+
+export { TELEMETRY_CONTEXT_SLOT_ID };
 
 /** Alturas fijas de las cuatro trazas (`06 § Telemetría`). */
 const TRACE_HEIGHT = { speed: 150, pedals: 100, steer: 80, delta: 110 } as const;

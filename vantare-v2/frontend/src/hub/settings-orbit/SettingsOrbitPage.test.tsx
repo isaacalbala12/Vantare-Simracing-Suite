@@ -151,11 +151,17 @@ describe("SettingsOrbitPage", () => {
     expect(window.localStorage.getItem("vantare.v03orbit.density")).toBe("compact");
   });
 
-  it("reducir animaciones marca el body y se guarda", () => {
+  it("con rendimiento por defecto, el toggle apaga el movimiento reducido y se guarda", () => {
+    // DEFAULT INVERTIDO (rendimiento primero): sin preferencia guardada el
+    // movimiento ya llega reducido; el click explicito lo apaga ("0").
     mount("application");
     const row = screen.getByTestId("orbit-settings-reduce-motion");
     fireEvent.click(within(row).getByRole("button"));
 
+    expect(document.body.dataset.reduceMotion).toBeUndefined();
+    expect(window.localStorage.getItem("vantare.v03orbit.reduceMotion")).toBe("0");
+
+    fireEvent.click(within(screen.getByTestId("orbit-settings-reduce-motion")).getByRole("button"));
     expect(document.body.dataset.reduceMotion).toBe("true");
     expect(window.localStorage.getItem("vantare.v03orbit.reduceMotion")).toBe("1");
   });

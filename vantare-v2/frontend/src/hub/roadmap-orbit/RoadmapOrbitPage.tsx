@@ -18,7 +18,9 @@ import {
 } from "./roadmap-orbit-model";
 import "../../styles/orbit-roadmap.css";
 
-export const ROADMAP_CONTEXT_SLOT_ID = "orbit-roadmap-context-slot";
+import { ROADMAP_CONTEXT_SLOT_ID } from "../components/orbit/orbit-slot-ids";
+
+export { ROADMAP_CONTEXT_SLOT_ID };
 
 /** Canal de actualización activo. La shell solo conoce testers/nightly. */
 export type RoadmapChannel = "stable" | "testers" | "nightly";

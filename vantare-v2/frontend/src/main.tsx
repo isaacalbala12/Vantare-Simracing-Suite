@@ -6,6 +6,7 @@ import vantareV5 from "./themes/vantare-v5.json";
 import vantareLite from "./themes/vantare-lite.json";
 import vantareOrbit from "./themes/vantare-orbit.json";
 import { initializeDensity } from "./lib/density";
+import { applyReduceMotion, getStoredReduceMotion } from "./hub/settings-orbit/settings-orbit-model";
 import { AppBootFallback } from "./AppBootFallback";
 const OverlayWorkshopDevRoute = import.meta.env.DEV
   ? lazy(async () => ({ default: (await import("./overlay/authoring/OverlayWorkshopDevRoute")).OverlayWorkshopDevRoute }))
@@ -25,6 +26,10 @@ applyTheme(
       : v5Theme,
 );
 initializeDensity();
+// Rendimiento primero: sin preferencia guardada, movimiento reducido ON
+// (cero animaciones/blur). `applyReduceMotion` solo se aplicaba al togglear en
+// Ajustes; el arranque nunca lo habia restaurado.
+applyReduceMotion(getStoredReduceMotion());
 
 export function App() {
   const path = window.location.pathname;

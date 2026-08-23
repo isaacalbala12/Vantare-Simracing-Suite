@@ -25,8 +25,8 @@ firmado y 16.385 eventos reproduce el fallo anterior y pasa con el arreglo.
 Analysis, la suite real completa, el helper y el vet focal pasan. El gate vet
 exacto llega a Go tras restaurar `frontend/dist`, pero conserva tres avisos
 `unsafe.Pointer` previos y ajenos en LMU live y Launcher; el mismo gate con ese
-analizador desactivado pasa. Pendientes commit y review; sin PR, integracion
-ni promocion.
+analizador desactivado pasa. Commit de producto `3e88d21b`; pendiente review,
+sin PR, integracion ni promocion.
 
 ISA-809 / ISA-694 F5-e corrige en su rama aislada el panic al asociar un
 incidente posterior a la ultima vuelta. `labelIncidentLaps` valida ambos
@@ -283,9 +283,10 @@ la proyección histórica para Strategy sin exponer DuckDB o el almacenamiento.
 
 2026-08-23, ISA-816 implementada en rama propia: el contexto predecesor de una
 pagina de eventos se lee por separado sin superar 16.384 filas por peticion, y
-una regresion contra el adapter real cubre 16.385 eventos. Pendientes commit y
-review; sin PR ni promocion. Analysis, integracion real y vet focal
-pasan; el vet exacto conserva tres avisos `unsafe.Pointer` previos y ajenos.
+una regresion contra el adapter real cubre 16.385 eventos. Commit de producto
+`3e88d21b`; pendiente review, sin PR ni promocion. Analysis, integracion real
+y vet focal pasan; el vet exacto conserva tres avisos `unsafe.Pointer` previos
+y ajenos.
 
 Historial previo:
 

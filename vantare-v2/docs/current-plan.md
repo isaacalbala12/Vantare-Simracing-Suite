@@ -9,8 +9,9 @@ Nota ISA-816 (2026-08-23, implementada en rama de issue):
 - Gates: Analysis y la suite `duckdb_integration` completa con runtime firmado
   pasan; el test nuevo demostro rojo antes y verde despues. El vet focal y el
   vet global con `unsafeptr` desactivado pasan. El gate exacto conserva tres
-  avisos `unsafe.Pointer` previos y ajenos en LMU live y Launcher. Pendiente
-  commit y review de Isaac. Sin PR, integracion, promocion ni release.
+  avisos `unsafe.Pointer` previos y ajenos en LMU live y Launcher. Commit de
+  producto `3e88d21b`; pendiente review de Isaac. Sin PR, integracion,
+  promocion ni release.
 
 Nota ISA-813 / ISA-694 F5-e (2026-08-23, implementada en rama de issue):
 

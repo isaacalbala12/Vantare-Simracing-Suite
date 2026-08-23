@@ -11,12 +11,17 @@ type coldStartStub struct {
 	status   strategycoldstart.Status
 	progress strategycoldstart.Progress
 	rejected bool
+	retried  bool
 }
 
 func (stub *coldStartStub) Status(context.Context) (strategycoldstart.Status, error) {
 	return stub.status, nil
 }
 func (stub *coldStartStub) ImportNext(context.Context) (strategycoldstart.Progress, error) {
+	return stub.progress, nil
+}
+func (stub *coldStartStub) RetryFailures(context.Context) (strategycoldstart.Progress, error) {
+	stub.retried = true
 	return stub.progress, nil
 }
 func (stub *coldStartStub) Reject(context.Context) error { stub.rejected = true; return nil }
@@ -35,6 +40,14 @@ func TestColdStartCommandsExposeStatusProgressAndRejection(t *testing.T) {
 	}
 	if _, err := service.RejectColdStart(context.Background(), ColdStartCommand{CommandHeader: commandHeader("cold-reject", OperationRejectColdStart, 0)}); err != nil || !stub.rejected {
 		t.Fatalf("rejected=%v err=%v", stub.rejected, err)
+	}
+	retry, err := service.RetryColdStartFailures(context.Background(), ColdStartCommand{CommandHeader: commandHeader("cold-retry", OperationRetryColdStartFailures, 0)})
+	if err != nil || retry.ColdStartProgress == nil || !stub.retried {
+		t.Fatalf("retry=%+v retried=%v err=%v", retry, stub.retried, err)
+	}
+	stub.retried = false
+	if _, err := NewJSONBridge(service).Execute(context.Background(), []byte(`{"protocolVersion":"strategy.application.v1","commandId":"cold-retry-bridge","operation":"retry_cold_start_failures","expectedRepositoryVersion":0}`)); err != nil || !stub.retried {
+		t.Fatalf("retry bridge retried=%v err=%v", stub.retried, err)
 	}
 }
 

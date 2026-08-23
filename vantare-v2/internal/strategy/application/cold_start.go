@@ -34,6 +34,22 @@ func (service *Service[T]) ImportColdStartNext(ctx context.Context, command Cold
 	return result, nil
 }
 
+func (service *Service[T]) RetryColdStartFailures(ctx context.Context, command ColdStartCommand) (Result[T], error) {
+	if err := validateHeader(command.CommandHeader, OperationRetryColdStartFailures); err != nil {
+		return Result[T]{}, err
+	}
+	result, err := service.coldStartResult(ctx, command.CommandID)
+	if err != nil || service.coldStart == nil {
+		return result, err
+	}
+	progress, err := service.coldStart.RetryFailures(ctx)
+	if err != nil {
+		return Result[T]{}, err
+	}
+	result.ColdStartProgress = &progress
+	return result, nil
+}
+
 func (service *Service[T]) RejectColdStart(ctx context.Context, command ColdStartCommand) (Result[T], error) {
 	if err := validateHeader(command.CommandHeader, OperationRejectColdStart); err != nil {
 		return Result[T]{}, err

@@ -21,6 +21,12 @@ export async function rejectColdStart(client: StrategyApplicationClient<unknown>
   await client.execute({ protocolVersion: "strategy.application.v1", commandId: commandId("cold-reject"), operation: "reject_cold_start", expectedRepositoryVersion: 0 });
 }
 
+export async function retryColdStartFailures(client: StrategyApplicationClient<unknown>): Promise<StrategyColdStartProgressV1> {
+  const result = await client.execute({ protocolVersion: "strategy.application.v1", commandId: commandId("cold-retry"), operation: "retry_cold_start_failures", expectedRepositoryVersion: 0 });
+  if (!result.coldStartProgress) throw new Error("Cold start retry returned no progress");
+  return result.coldStartProgress;
+}
+
 export async function importColdStartSessions(
   client: StrategyApplicationClient<unknown>,
   onProgress: (progress: StrategyColdStartProgressV1) => void,

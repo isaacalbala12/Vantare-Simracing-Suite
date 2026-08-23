@@ -91,15 +91,19 @@ describe("StrategyColdStartBanner", () => {
   });
 
   it("muestra cada sesión omitida con su motivo y permite reintentarla", async () => {
+    const operations: string[] = [];
     const client: StrategyApplicationClient<unknown> = {
       async execute(command): Promise<StrategyApplicationResultV1<unknown>> {
+        operations.push(command.operation);
         return {
           protocolVersion: "strategy.application.v1", commandId: command.commandId, repositoryVersion: 0,
-          coldStartStatus: {
+          ...(command.operation === "get_cold_start_status" ? { coldStartStatus: {
             shouldShow: true, checking: false, found: 337, imported: 336, skipped: 1,
             failures: [{ locator: "lmu://session-25", reason: "inspect LMU DuckDB session: historical telemetry source error" }],
             decision: "accepted",
-          },
+          } } : { coldStartProgress: {
+            imported: 337, skipped: 0, total: 337, done: command.operation === "import_cold_start_next", failures: [],
+          } }),
           recoveredFromBackup: false, closed: false,
         };
       },
@@ -117,6 +121,8 @@ describe("StrategyColdStartBanner", () => {
 
     render(<StrategyColdStartBanner client={client} onImported={vi.fn()} t={t} />);
     expect(await screen.findByText("lmu://session-25: inspect LMU DuckDB session: historical telemetry source error")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Reintentar omitidas" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Reintentar omitidas" }));
+    await waitFor(() => expect(operations).toContain("retry_cold_start_failures"));
+    expect(operations.indexOf("retry_cold_start_failures")).toBeLessThan(operations.indexOf("import_cold_start_next"));
   });
 });

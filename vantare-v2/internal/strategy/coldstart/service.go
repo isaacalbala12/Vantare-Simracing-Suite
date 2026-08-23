@@ -135,12 +135,8 @@ func (service *Service) ImportNext(ctx context.Context) (Progress, error) {
 	if state.Decision == DecisionRejected {
 		return Progress{}, fmt.Errorf("cold start import was rejected")
 	}
-	if state.Decision == DecisionAccepted && len(state.Failures) > 0 {
-		state.Decision = DecisionPending
-		state.Failures = []Failure{}
-		if err := service.writeState(state); err != nil {
-			return Progress{}, err
-		}
+	if err := ctx.Err(); err != nil {
+		return progressFromState(state), err
 	}
 	if service.candidates == nil {
 		if service.options.Discover == nil {
@@ -185,10 +181,19 @@ func (service *Service) ImportNext(ctx context.Context) (Progress, error) {
 			}()
 		}
 		wait.Wait()
+		if err := ctx.Err(); err != nil {
+			return progressFromState(state), err
+		}
 		for index, candidate := range pending {
+			if err := ctx.Err(); err != nil {
+				return progressFromState(state), err
+			}
 			importErr := results[index].err
 			if importErr == nil {
 				importErr = storeCandidate(ctx, service.options.Store, results[index].model)
+			}
+			if err := ctx.Err(); err != nil {
+				return progressFromState(state), err
 			}
 			if importErr != nil {
 				state.Failures = append(state.Failures, Failure{Locator: candidate.Locator, Reason: failureReason(importErr)})
@@ -199,12 +204,42 @@ func (service *Service) ImportNext(ctx context.Context) (Progress, error) {
 		if len(state.ImportedLocators)+len(state.Failures) == len(service.candidates) {
 			state.Decision = DecisionAccepted
 		}
+		if err := ctx.Err(); err != nil {
+			return progressFromState(state), err
+		}
 		if err := service.writeState(state); err != nil {
 			return Progress{}, err
 		}
 		return progressFromState(state), nil
 	}
+	if err := ctx.Err(); err != nil {
+		return progressFromState(state), err
+	}
 	state.Decision = DecisionAccepted
+	if err := service.writeState(state); err != nil {
+		return Progress{}, err
+	}
+	return progressFromState(state), nil
+}
+
+func (service *Service) RetryFailures(ctx context.Context) (Progress, error) {
+	service.mu.Lock()
+	defer service.mu.Unlock()
+	state, err := service.readState()
+	if err != nil {
+		return Progress{}, err
+	}
+	if state.Decision == DecisionRejected {
+		return Progress{}, fmt.Errorf("cold start import was rejected")
+	}
+	if err := ctx.Err(); err != nil {
+		return progressFromState(state), err
+	}
+	if len(state.Failures) == 0 {
+		return progressFromState(state), nil
+	}
+	state.Decision = DecisionPending
+	state.Failures = []Failure{}
 	if err := service.writeState(state); err != nil {
 		return Progress{}, err
 	}

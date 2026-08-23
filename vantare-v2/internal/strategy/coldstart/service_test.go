@@ -113,15 +113,17 @@ func (stub *concurrentImporterStub) Import(ctx context.Context, candidate teleme
 		stub.maxActive = stub.active
 	}
 	stub.mu.Unlock()
+	defer func() {
+		stub.mu.Lock()
+		stub.active--
+		stub.mu.Unlock()
+	}()
 	stub.started <- struct{}{}
 	select {
 	case <-ctx.Done():
 		return telemetryanalysis.AuthorizedSessionModel{}, ctx.Err()
 	case <-stub.release:
 	}
-	stub.mu.Lock()
-	stub.active--
-	stub.mu.Unlock()
 	return telemetryanalysis.AuthorizedSessionModel{Session: telemetryanalysis.HistoricalSession{ID: candidate.Locator}}, nil
 }
 
@@ -172,6 +174,49 @@ func TestServiceImportsBoundedConcurrentBatchAndKeepsExactProgress(t *testing.T)
 	}
 }
 
+func TestServiceCancellationLeavesWholeBatchPendingAndResumeImportsIt(t *testing.T) {
+	statePath := filepath.Join(t.TempDir(), "cold-start.json")
+	importer := &concurrentImporterStub{started: make(chan struct{}, 4), release: make(chan struct{})}
+	store := &sessionStoreStub{}
+	discover := func(context.Context) ([]telemetryanalysis.Candidate, error) {
+		return []telemetryanalysis.Candidate{{Locator: "lmu://one"}, {Locator: "lmu://two"}, {Locator: "lmu://three"}, {Locator: "lmu://four"}}, nil
+	}
+	service := NewService(ServiceOptions{StatePath: statePath, Discover: discover, Importer: importer, Store: store})
+	ctx, cancel := context.WithCancel(context.Background())
+	result := make(chan Progress, 1)
+	errCh := make(chan error, 1)
+	go func() {
+		progress, err := service.ImportNext(ctx)
+		result <- progress
+		errCh <- err
+	}()
+	for range 4 {
+		select {
+		case <-importer.started:
+		case <-time.After(time.Second):
+			t.Fatal("concurrent import batch did not start")
+		}
+	}
+	cancel()
+	if err := <-errCh; !errors.Is(err, context.Canceled) {
+		t.Fatalf("ImportNext() error = %v, want context cancellation", err)
+	}
+	if progress := <-result; progress.Done || progress.Imported != 0 || progress.Skipped != 0 {
+		t.Fatalf("cancelled progress = %+v", progress)
+	}
+
+	reopened := NewService(ServiceOptions{StatePath: statePath, Discover: discover, Importer: importer, Store: store})
+	status, err := waitForStatus(reopened)
+	if err != nil || status.Decision != DecisionPending || status.Imported != 0 || status.Skipped != 0 || len(status.Failures) != 0 {
+		t.Fatalf("status after cancellation = %+v, error = %v", status, err)
+	}
+	close(importer.release)
+	resumed, err := reopened.ImportNext(context.Background())
+	if err != nil || !resumed.Done || resumed.Imported != 4 || resumed.Skipped != 0 || len(store.models) != 4 {
+		t.Fatalf("resumed progress = %+v, models = %d, error = %v", resumed, len(store.models), err)
+	}
+}
+
 func TestServiceShowsOnceImportsWithProgressAndPopulatesSessionSource(t *testing.T) {
 	discover := func(context.Context) ([]telemetryanalysis.Candidate, error) {
 		return []telemetryanalysis.Candidate{{Locator: "lmu://one"}, {Locator: "lmu://two"}}, nil
@@ -199,7 +244,7 @@ func TestServiceShowsOnceImportsWithProgressAndPopulatesSessionSource(t *testing
 	}
 }
 
-func TestServiceContinuesAfterErrorsAndPanicsAndRetriesOnlyFailures(t *testing.T) {
+func TestServiceContinuesAfterErrorsAndPanicsAndExplicitlyRetriesOnlyFailures(t *testing.T) {
 	statePath := filepath.Join(t.TempDir(), "cold-start.json")
 	discover := func(context.Context) ([]telemetryanalysis.Candidate, error) {
 		return []telemetryanalysis.Candidate{{Locator: "lmu://bad"}, {Locator: "lmu://good"}, {Locator: "lmu://panic"}}, nil
@@ -232,9 +277,23 @@ func TestServiceContinuesAfterErrorsAndPanicsAndRetriesOnlyFailures(t *testing.T
 	if importer.calls["lmu://good"] != 1 || importer.calls["lmu://bad"] != 1 || importer.calls["lmu://panic"] != 1 {
 		t.Fatalf("calls=%v", importer.calls)
 	}
+	if len(status.Failures) != 2 || status.Failures[0].Locator != "lmu://bad" || status.Failures[0].Reason != "invalid database" {
+		t.Fatalf("failures=%+v", status.Failures)
+	}
 
 	delete(importer.fail, "lmu://bad")
 	delete(importer.panics, "lmu://panic")
+	unchanged, err := reopened.ImportNext(context.Background())
+	if err != nil || !unchanged.Done || unchanged.Imported != 1 || unchanged.Skipped != 2 {
+		t.Fatalf("implicit retry progress=%+v err=%v", unchanged, err)
+	}
+	if importer.calls["lmu://bad"] != 1 || importer.calls["lmu://panic"] != 1 {
+		t.Fatalf("ImportNext retried failures without explicit request: calls=%v", importer.calls)
+	}
+	retrying, err := reopened.RetryFailures(context.Background())
+	if err != nil || retrying.Done || retrying.Imported != 1 || retrying.Skipped != 0 {
+		t.Fatalf("RetryFailures() progress=%+v err=%v", retrying, err)
+	}
 	for {
 		progress, err := reopened.ImportNext(context.Background())
 		if err != nil {

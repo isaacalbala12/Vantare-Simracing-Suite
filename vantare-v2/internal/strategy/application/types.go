@@ -48,6 +48,7 @@ const (
 	OperationListReferenceCatalog    Operation = "list_reference_catalog"
 	OperationGetColdStartStatus      Operation = "get_cold_start_status"
 	OperationImportColdStartNext     Operation = "import_cold_start_next"
+	OperationRetryColdStartFailures  Operation = "retry_cold_start_failures"
 	OperationRejectColdStart         Operation = "reject_cold_start"
 	OperationPreviewLegacyMigration  Operation = "preview_legacy_migration"
 	OperationMigrateLegacy           Operation = "migrate_legacy"

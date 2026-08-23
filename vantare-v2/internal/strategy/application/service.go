@@ -41,6 +41,7 @@ type referenceCatalogPort interface {
 type coldStartPort interface {
 	Status(context.Context) (strategycoldstart.Status, error)
 	ImportNext(context.Context) (strategycoldstart.Progress, error)
+	RetryFailures(context.Context) (strategycoldstart.Progress, error)
 	Reject(context.Context) error
 }
 

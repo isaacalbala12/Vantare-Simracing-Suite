@@ -44,6 +44,7 @@ export type StrategyApplicationOperation =
   | "list_reference_catalog"
   | "get_cold_start_status"
   | "import_cold_start_next"
+  | "retry_cold_start_failures"
   | "reject_cold_start"
   | "preview_legacy_migration"
   | "migrate_legacy"
@@ -507,7 +508,7 @@ export type StrategyApplicationCommandV1<TPayload> =
   | CommandHeader<"list_session_combinations">
   | (CommandHeader<"get_event_planning_inputs"> & { eventId: string; generatedAt: string })
   | (CommandHeader<"get_validated_examples"> & { eventId: string })
-  | CommandHeader<"list_reference_catalog" | "get_cold_start_status" | "import_cold_start_next" | "reject_cold_start">
+  | CommandHeader<"list_reference_catalog" | "get_cold_start_status" | "import_cold_start_next" | "retry_cold_start_failures" | "reject_cold_start">
   | (CommandHeader<"create_driver" | "edit_driver"> & {
       eventId: string;
       driver: StrategyDriverV2;

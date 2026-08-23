@@ -211,6 +211,54 @@ func TestAnalyzeLapValidityPreservesResetOnlyIncompleteLaps(t *testing.T) {
 	}
 }
 
+func TestAnalyzeLapValidityHandlesIncidentsOutsideLapRange(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name                   string
+		incidentSeconds        float64
+		expectedIncidentLabels int
+	}{
+		{name: "before first lap", incidentSeconds: 5, expectedIncidentLabels: 1},
+		{name: "after last lap", incidentSeconds: 35, expectedIncidentLabels: 0},
+	}
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			fixture := lapValidityFixture{
+				FixtureVersion: "lap-validity-fixture.v1",
+				FixtureID:      "synthetic-incident-outside-laps",
+				Pages: []lapValidityFixturePage{
+					{
+						Channel: "Lap", Sampling: SamplingEventTimestamped, SourceRowCount: 3,
+						Samples: []lapValidityFixtureSample{
+							{Index: 0, TS: floatPointer(10), Values: []any{float64(0)}},
+							{Index: 1, TS: floatPointer(20), Values: []any{float64(1)}},
+							{Index: 2, TS: floatPointer(30), Values: []any{float64(2)}},
+						},
+					},
+					{
+						Channel: "LastImpactMagnitude", Sampling: SamplingEventTimestamped, SourceRowCount: 1,
+						Samples: []lapValidityFixtureSample{
+							{Index: 0, TS: &test.incidentSeconds, Values: []any{true}},
+						},
+					},
+				},
+			}
+			session, pages := fixtureHistoricalInput(t, fixture)
+
+			analysis, err := AnalyzeLapValidity(session, pages)
+			if err != nil {
+				t.Fatalf("AnalyzeLapValidity() error = %v", err)
+			}
+			if got := countLapLabel(analysis.Laps, LapLabelIncidentOfftrack); got != test.expectedIncidentLabels {
+				t.Fatalf("incident labels = %d, expected %d", got, test.expectedIncidentLabels)
+			}
+		})
+	}
+}
+
 func loadLapValidityFixture(t *testing.T, name string) lapValidityFixture {
 	t.Helper()
 	data, err := os.ReadFile(filepath.Join("testdata", name))

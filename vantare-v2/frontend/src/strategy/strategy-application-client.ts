@@ -718,12 +718,16 @@ export type StrategyReferenceCatalogResultV1 = {
 
 export type StrategyColdStartStatusV1 = {
   readonly shouldShow: boolean;
+  readonly checking: boolean;
   readonly found: number;
   readonly imported: number;
+  readonly skipped: number;
+  readonly failures: readonly StrategyColdStartFailureV1[];
   readonly decision: "pending" | "accepted" | "rejected";
 };
 
-export type StrategyColdStartProgressV1 = { readonly imported: number; readonly total: number; readonly done: boolean };
+export type StrategyColdStartFailureV1 = { readonly locator: string; readonly reason: string };
+export type StrategyColdStartProgressV1 = { readonly imported: number; readonly skipped: number; readonly total: number; readonly done: boolean; readonly failures: readonly StrategyColdStartFailureV1[] };
 
 export type StrategyApplicationErrorCode =
   | "invalid_command"
@@ -778,6 +782,7 @@ export class StrategyApplicationError extends Error {
 export interface StrategyApplicationClient<TPayload> {
   execute(
     command: StrategyApplicationCommandV1<TPayload>,
+    options?: { readonly timeoutMs?: number },
   ): Promise<StrategyApplicationResultV1<TPayload>>;
   cancel(commandId: string): boolean;
   dispose(): void;
@@ -834,7 +839,7 @@ export function createStrategyApplicationClient<TPayload>(
   let disposed = false;
 
   const client: StrategyApplicationClient<TPayload> = {
-    execute(command) {
+    execute(command, options) {
       if (disposed) {
         return Promise.reject(new Error("Strategy application client is disposed"));
       }
@@ -857,9 +862,10 @@ export function createStrategyApplicationClient<TPayload>(
             cleanup();
             reject(error);
           };
+          const commandTimeoutMs = options?.timeoutMs ?? timeoutMs;
           const timeout = globalThis.setTimeout(() => {
             fail(new Error("Timeout waiting for Strategy application response"));
-          }, timeoutMs);
+          }, commandTimeoutMs);
 
           try {
             unsubs.push(transport.on(RESULT_EVENT, (event) => {
@@ -1363,8 +1369,11 @@ function parseSessionCatalogStatus(value: unknown): "available" | "no_authorized
 function parseColdStartStatus(value: unknown): StrategyColdStartStatusV1 {
   const status = strategyRecord(value, "coldStartStatus");
   if (typeof status.shouldShow !== "boolean") throw new Error("Invalid Strategy coldStartStatus.shouldShow");
+  if (typeof status.checking !== "boolean") throw new Error("Invalid Strategy coldStartStatus.checking");
   strategyInteger(status.found, "coldStartStatus.found");
   strategyInteger(status.imported, "coldStartStatus.imported");
+  strategyInteger(status.skipped, "coldStartStatus.skipped");
+  parseColdStartFailures(status.failures, "coldStartStatus.failures");
   strategyEnum(status.decision, "coldStartStatus.decision", ["pending", "accepted", "rejected"]);
   return status as StrategyColdStartStatusV1;
 }
@@ -1372,9 +1381,20 @@ function parseColdStartStatus(value: unknown): StrategyColdStartStatusV1 {
 function parseColdStartProgress(value: unknown): StrategyColdStartProgressV1 {
   const progress = strategyRecord(value, "coldStartProgress");
   strategyInteger(progress.imported, "coldStartProgress.imported");
+  strategyInteger(progress.skipped, "coldStartProgress.skipped");
   strategyInteger(progress.total, "coldStartProgress.total");
   if (typeof progress.done !== "boolean") throw new Error("Invalid Strategy coldStartProgress.done");
+  parseColdStartFailures(progress.failures, "coldStartProgress.failures");
   return progress as StrategyColdStartProgressV1;
+}
+
+function parseColdStartFailures(value: unknown, field: string): void {
+  if (!Array.isArray(value)) throw new Error(`Invalid Strategy ${field}`);
+  value.forEach((entry, index) => {
+    const failure = strategyRecord(entry, `${field}[${index}]`);
+    if (typeof failure.locator !== "string" || failure.locator.length === 0) throw new Error(`Invalid Strategy ${field}[${index}].locator`);
+    if (typeof failure.reason !== "string" || failure.reason.length === 0) throw new Error(`Invalid Strategy ${field}[${index}].reason`);
+  });
 }
 
 function parseReferenceCatalog(value: unknown): StrategyReferenceCatalogResultV1 {

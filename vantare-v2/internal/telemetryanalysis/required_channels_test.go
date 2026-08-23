@@ -1,7 +1,11 @@
 package telemetryanalysis
 
 import (
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"slices"
+	"strconv"
 	"testing"
 )
 
@@ -39,5 +43,46 @@ func TestRequiredHistoricalPageChannelsComeFromDerivationFamilies(t *testing.T) 
 		if _, ok := declared[channel]; !ok {
 			t.Fatalf("required channel %q is not declared by a derivation family", channel)
 		}
+	}
+}
+
+func TestDerivationSourceCannotRequestAnUndeclaredHistoricalChannel(t *testing.T) {
+	t.Parallel()
+
+	files := map[string][]string{
+		"consumptionpace.go": consumptionPaceHistoricalPageChannels(),
+		"derivedcurves.go":   derivedCurvesHistoricalPageChannels(),
+		"lapvalidity.go":     lapValidityHistoricalPageChannels(),
+		"pitobserved.go":     pitObservationHistoricalPageChannels(),
+	}
+	for filename, declaredChannels := range files {
+		declared := make(map[string]struct{}, len(declaredChannels))
+		for _, channel := range declaredChannels {
+			declared[channel] = struct{}{}
+		}
+		parsed, err := parser.ParseFile(token.NewFileSet(), filename, nil, 0)
+		if err != nil {
+			t.Fatalf("parse %s: %v", filename, err)
+		}
+		ast.Inspect(parsed, func(node ast.Node) bool {
+			indexed, ok := node.(*ast.IndexExpr)
+			if !ok {
+				return true
+			}
+			identifier, ok := indexed.X.(*ast.Ident)
+			literal, literalOK := indexed.Index.(*ast.BasicLit)
+			if !ok || identifier.Name != "grouped" || !literalOK || literal.Kind != token.STRING {
+				return true
+			}
+			channel, unquoteErr := strconv.Unquote(literal.Value)
+			if unquoteErr != nil {
+				t.Errorf("unquote %s channel %s: %v", filename, literal.Value, unquoteErr)
+				return true
+			}
+			if _, declaredByFamily := declared[channel]; !declaredByFamily {
+				t.Errorf("%s requests historical channel %q but its family does not declare it", filename, channel)
+			}
+			return true
+		})
 	}
 }

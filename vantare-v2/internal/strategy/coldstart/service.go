@@ -20,6 +20,11 @@ import (
 type Decision string
 
 const (
+	defaultImportConcurrency = 4
+	maximumImportConcurrency = 4
+)
+
+const (
 	DecisionPending  Decision = "pending"
 	DecisionAccepted Decision = "accepted"
 	DecisionRejected Decision = "rejected"
@@ -60,10 +65,11 @@ type SessionStore interface {
 type DiscoverFunc func(context.Context) ([]telemetryanalysis.Candidate, error)
 
 type ServiceOptions struct {
-	StatePath string
-	Discover  DiscoverFunc
-	Importer  SessionImporter
-	Store     SessionStore
+	StatePath         string
+	Discover          DiscoverFunc
+	Importer          SessionImporter
+	Store             SessionStore
+	ImportConcurrency int
 }
 
 type Service struct {
@@ -155,6 +161,7 @@ func (service *Service) ImportNext(ctx context.Context) (Progress, error) {
 	for _, failure := range state.Failures {
 		failed[failure.Locator] = struct{}{}
 	}
+	pending := make([]telemetryanalysis.Candidate, 0, service.importConcurrency())
 	for _, candidate := range service.candidates {
 		if _, exists := imported[candidate.Locator]; exists {
 			continue
@@ -162,11 +169,32 @@ func (service *Service) ImportNext(ctx context.Context) (Progress, error) {
 		if _, exists := failed[candidate.Locator]; exists {
 			continue
 		}
-		importErr := processCandidate(ctx, service.options.Importer, service.options.Store, candidate)
-		if importErr != nil {
-			state.Failures = append(state.Failures, Failure{Locator: candidate.Locator, Reason: failureReason(importErr)})
-		} else {
-			state.ImportedLocators = append(state.ImportedLocators, candidate.Locator)
+		pending = append(pending, candidate)
+		if len(pending) == cap(pending) {
+			break
+		}
+	}
+	if len(pending) > 0 {
+		results := make([]candidateImportResult, len(pending))
+		var wait sync.WaitGroup
+		wait.Add(len(pending))
+		for index, candidate := range pending {
+			go func() {
+				defer wait.Done()
+				results[index].model, results[index].err = importCandidate(ctx, service.options.Importer, candidate)
+			}()
+		}
+		wait.Wait()
+		for index, candidate := range pending {
+			importErr := results[index].err
+			if importErr == nil {
+				importErr = storeCandidate(ctx, service.options.Store, results[index].model)
+			}
+			if importErr != nil {
+				state.Failures = append(state.Failures, Failure{Locator: candidate.Locator, Reason: failureReason(importErr)})
+			} else {
+				state.ImportedLocators = append(state.ImportedLocators, candidate.Locator)
+			}
 		}
 		if len(state.ImportedLocators)+len(state.Failures) == len(service.candidates) {
 			state.Decision = DecisionAccepted
@@ -181,6 +209,40 @@ func (service *Service) ImportNext(ctx context.Context) (Progress, error) {
 		return Progress{}, err
 	}
 	return progressFromState(state), nil
+}
+
+func (service *Service) importConcurrency() int {
+	concurrency := service.options.ImportConcurrency
+	if concurrency <= 0 {
+		concurrency = defaultImportConcurrency
+	}
+	if concurrency > maximumImportConcurrency {
+		concurrency = maximumImportConcurrency
+	}
+	return concurrency
+}
+
+type candidateImportResult struct {
+	model telemetryanalysis.AuthorizedSessionModel
+	err   error
+}
+
+func importCandidate(ctx context.Context, importer SessionImporter, candidate telemetryanalysis.Candidate) (model telemetryanalysis.AuthorizedSessionModel, err error) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			err = fmt.Errorf("import session panic: %v", recovered)
+		}
+	}()
+	return importer.Import(ctx, candidate)
+}
+
+func storeCandidate(ctx context.Context, store SessionStore, model telemetryanalysis.AuthorizedSessionModel) (err error) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			err = fmt.Errorf("import session panic: %v", recovered)
+		}
+	}()
+	return store.Add(ctx, model)
 }
 
 func (service *Service) Reject(_ context.Context) error {
@@ -228,19 +290,6 @@ func progressFromState(state persistedState) Progress {
 
 func sortCandidates(candidates []telemetryanalysis.Candidate) {
 	sort.Slice(candidates, func(i, j int) bool { return candidates[i].Locator < candidates[j].Locator })
-}
-
-func processCandidate(ctx context.Context, importer SessionImporter, store SessionStore, candidate telemetryanalysis.Candidate) (err error) {
-	defer func() {
-		if recovered := recover(); recovered != nil {
-			err = fmt.Errorf("import session panic: %v", recovered)
-		}
-	}()
-	model, err := importer.Import(ctx, candidate)
-	if err != nil {
-		return err
-	}
-	return store.Add(ctx, model)
 }
 
 func failureReason(err error) string {

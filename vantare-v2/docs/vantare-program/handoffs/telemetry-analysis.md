@@ -17,6 +17,17 @@ visible es `Telemetría`.
 
 ## Estado
 
+ISA-816 corrige en su rama aislada la segunda pagina de eventos LMU: el parser
+ya no suma la predecesora al limite enviado al runtime, sino que la solicita en
+una lectura separada de una fila. La pagina publica sigue admitiendo 16.384
+eventos nuevos. Una regresion `duckdb_integration` con adapter real, helper
+firmado y 16.385 eventos reproduce el fallo anterior y pasa con el arreglo.
+Analysis, la suite real completa, el helper y el vet focal pasan. El gate vet
+exacto llega a Go tras restaurar `frontend/dist`, pero conserva tres avisos
+`unsafe.Pointer` previos y ajenos en LMU live y Launcher; el mismo gate con ese
+analizador desactivado pasa. Commit de producto `3e88d21b`; pendiente review,
+sin PR, integracion ni promocion.
+
 ISA-809 / ISA-694 F5-e corrige en su rama aislada el panic al asociar un
 incidente posterior a la ultima vuelta. `labelIncidentLaps` valida ambos
 limites y una sesion sintetica cubre eventos antes de la primera vuelta y
@@ -270,13 +281,20 @@ la proyección histórica para Strategy sin exponer DuckDB o el almacenamiento.
 
 ## Última actualización
 
+2026-08-23, ISA-816 implementada en rama propia: el contexto predecesor de una
+pagina de eventos se lee por separado sin superar 16.384 filas por peticion, y
+una regresion contra el adapter real cubre 16.385 eventos. Commit de producto
+`3e88d21b`; pendiente review, sin PR ni promocion. Analysis, integracion real
+y vet focal pasan; el vet exacto conserva tres avisos `unsafe.Pointer` previos
+y ajenos.
+
+Historial previo:
+
 2026-08-23, ISA-809 / ISA-694 F5-e implementada en rama propia: el etiquetado
 de incidentes valida ambos limites del indice de vuelta y queda cubierto antes
 de la primera vuelta y despues de la ultima. Barrido completo de `sort.Search`
 y gates Analysis+Strategy PASS; pendiente corpus real y review, sin PR ni
 promocion.
-
-Historial previo:
 
 2026-08-21, ISA-744 / ISA-694 F3-a5 implementada en rama propia: pit degradado,
 `ObservedStrategy v1`, agregación multi-sesión y productor final

@@ -409,15 +409,18 @@ func TestLMUDuckDBParserHonorsCancellationBeforeSource(t *testing.T) {
 }
 
 func TestLMUDuckDBParserChecksEventOrderAcrossPageBoundary(t *testing.T) {
+	predecessor := LMUDuckDBRow{
+		TimestampSeconds: numberPointer(10), Values: []LMUDuckDBValue{{Kind: ScalarInteger, Integer: 1}},
+	}
+	current := LMUDuckDBRow{
+		TimestampSeconds: numberPointer(9), Values: []LMUDuckDBValue{{Kind: ScalarInteger, Integer: 2}},
+	}
 	source := &historicalSourceStub{
 		catalog: LMUDuckDBCatalog{Events: []LMUDuckDBChannel{{
 			Name:    "Gear",
 			Columns: []LMUDuckDBColumn{{Name: "ts", Type: "DOUBLE"}, {Name: "value", Type: "TINYINT"}},
 		}}},
-		rows: []LMUDuckDBRow{
-			{TimestampSeconds: numberPointer(10), Values: []LMUDuckDBValue{{Kind: ScalarInteger, Integer: 1}}},
-			{TimestampSeconds: numberPointer(9), Values: []LMUDuckDBValue{{Kind: ScalarInteger, Integer: 2}}},
-		},
+		rowResults: [][]LMUDuckDBRow{{predecessor}, {current}},
 	}
 	parser, err := NewLMUDuckDBParser(historicalTestArtifact(), source, 2)
 	if err != nil {
@@ -432,8 +435,8 @@ func TestLMUDuckDBParserChecksEventOrderAcrossPageBoundary(t *testing.T) {
 	if !errors.Is(err, ErrHistoricalTimestampOrder) {
 		t.Fatalf("ReadPage() error = %v, want ErrHistoricalTimestampOrder", err)
 	}
-	if source.lastStart != 0 || source.lastLimit != 2 {
-		t.Fatalf("source boundary request = %d/%d, want 0/2", source.lastStart, source.lastLimit)
+	if !reflect.DeepEqual(source.readStarts, []int64{0, 1}) || !reflect.DeepEqual(source.readLimits, []int{1, 1}) {
+		t.Fatalf("source boundary requests = %v/%v, want [0 1]/[1 1]", source.readStarts, source.readLimits)
 	}
 }
 
@@ -510,13 +513,17 @@ func TestLMUDuckDBParserEventEOFRestoresRequestedStart(t *testing.T) {
 	if page.Start != 50 || len(page.Samples) != 0 {
 		t.Fatalf("EOF page = %#v, want requested start and no samples", page)
 	}
-	if source.lastStart != 49 || source.lastLimit != MaxLMUDuckDBPageRows+1 {
-		t.Fatalf("source request = %d/%d, want predecessor plus hard page", source.lastStart, source.lastLimit)
+	if !reflect.DeepEqual(source.readStarts, []int64{49, 50}) ||
+		!reflect.DeepEqual(source.readLimits, []int{1, MaxLMUDuckDBPageRows}) {
+		t.Fatalf("source requests = %v/%v, want predecessor and hard page separately", source.readStarts, source.readLimits)
 	}
 
-	source.rows = []LMUDuckDBRow{{
+	source.rowResults = [][]LMUDuckDBRow{{{
 		TimestampSeconds: numberPointer(49), Values: []LMUDuckDBValue{{Kind: ScalarInteger, Integer: 4}},
-	}}
+	}}, {}}
+	source.rowResultCalls = 0
+	source.readStarts = nil
+	source.readLimits = nil
 	page, err = parser.ReadPage(context.Background(), session.Channels[0].ID, 50, 1)
 	if err != nil {
 		t.Fatal(err)
@@ -689,17 +696,21 @@ func numberPointer(value float64) *float64 {
 }
 
 type historicalSourceStub struct {
-	catalog  LMUDuckDBCatalog
-	rows     []LMUDuckDBRow
-	err      error
-	evidence []HistoricalArtifactEvidence
+	catalog    LMUDuckDBCatalog
+	rows       []LMUDuckDBRow
+	rowResults [][]LMUDuckDBRow
+	err        error
+	evidence   []HistoricalArtifactEvidence
 
-	catalogCalls  int
-	readCalls     int
-	lastTable     string
-	lastStart     int64
-	lastLimit     int
-	evidenceCalls int
+	catalogCalls   int
+	readCalls      int
+	lastTable      string
+	lastStart      int64
+	lastLimit      int
+	readStarts     []int64
+	readLimits     []int
+	rowResultCalls int
+	evidenceCalls  int
 }
 
 func (s *historicalSourceStub) ArtifactEvidence(context.Context) (HistoricalArtifactEvidence, error) {
@@ -729,5 +740,15 @@ func (s *historicalSourceStub) ReadRows(
 	s.lastTable = table
 	s.lastStart = start
 	s.lastLimit = limit
+	s.readStarts = append(s.readStarts, start)
+	s.readLimits = append(s.readLimits, limit)
+	if len(s.rowResults) > 0 {
+		index := s.rowResultCalls
+		s.rowResultCalls++
+		if index >= len(s.rowResults) {
+			index = len(s.rowResults) - 1
+		}
+		return s.rowResults[index], s.err
+	}
 	return s.rows, s.err
 }

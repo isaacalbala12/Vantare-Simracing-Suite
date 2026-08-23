@@ -10,6 +10,20 @@
 
 ## Estado
 
+- **ISA-800 · Navegacion instantanea (2026-08-22, rama
+  \antareapp/isa-nav-perf-corte-1\ apilada sobre ISA-793):** (1) las 10
+  paginas del hub pasan a React.lazy con ids de hueco extraidos a
+  \orbit-slot-ids.ts\ y prefetch en idle tras el primer pintado; el chunk
+  inicial baja de ~1,65 MB a ~0,33 MB (AppShell 1651->128 KB). (2) Modo
+  rendimiento por defecto: \getStoredReduceMotion\ invertido (sin preferencia
+  => reducido), \pplyReduceMotion\ ahora se aplica en el arranque desde
+  main.tsx, y CSS bajo data-reduce-motion replica el congelado de resizing
+  sobre .orbit-root y quita backdrop-filter de surface/topbar/toolbar.
+  (3) RacesOrbitPage: solo las cuentas atras consumen segundos; el resto usa
+  el reloj de 30 s. Gates PASS: suite 376/2910, typecheck, lint focal, build;
+  test de Ajustes actualizado al nuevo default invertido. Fuera de alcance:
+  manualChunks vendor y fuentes (corte propio).
+
 - **ISA-799 · Movimiento Redline apagado en Studio (2026-08-22, en la misma
   rama que ISA-793):** bug reportado por Isaac: las filas del Relative
   Endurance saltaban al clickar cualquier widget. Causa: los motores FLIP de

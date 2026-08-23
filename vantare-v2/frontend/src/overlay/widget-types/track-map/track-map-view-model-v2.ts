@@ -2,6 +2,7 @@ import type { OverlayFrameV2, OverlayQValue, OverlaySourceStatusV2 } from "../..
 import {
   buildTrackOutlinePath,
   createTrackProjection,
+  projectTrackPoint,
   resolveTrackGeometry,
   type TrackGeometry,
   type TrackProjection,
@@ -18,11 +19,8 @@ const VIEW_BOX = `0 0 ${TRACK_MAP_VIEWPORT_V2.width} ${TRACK_MAP_VIEWPORT_V2.hei
  * Track-map view model over the Overlay v2 contract.
  *
  * Dibuja el trazado desde `frame.session.track` y el pack estatico igual que
- * el v1. Los marcadores requieren posicion por coche (x/z en el plano del
- * circuito): OverlayFrameV2 NO publica `groundPosition` ni `lapDistance` por
- * vehiculo (falta seccion `spatial` por coche). Se dejan vacios y se declara
- * el gap para que la futura ampliacion del frame los alimente sin cambiar el
- * VM.
+ * el v1, y coloca los marcadores desde `standings[].groundPosition` (x/z en
+ * metros, publicado por Go desde el spatial canonico; ISA-781).
  */
 export function buildTrackMapViewModelV2(
   frame: OverlayFrameV2,
@@ -63,13 +61,11 @@ export function trackMapDisplayedValues(model: TrackMapViewModel): Readonly<Reco
   });
 }
 
-/** Campos sin senal canonica; declarados. */
-export const OVERLAY_V2_TRACKMAP_DECLARED_GAPS: readonly string[] = Object.freeze([
-  "markers",
-]);
+/** Campos sin senal canonica; declarados. (markers ya se alimentan de groundPosition.) */
+export const OVERLAY_V2_TRACKMAP_DECLARED_GAPS: readonly string[] = Object.freeze([]);
 
 function draw(
-  _frame: OverlayFrameV2,
+  frame: OverlayFrameV2,
   source: OverlaySourceStatusV2,
   content: TrackMapContent,
   geometry: TrackGeometry,
@@ -85,7 +81,7 @@ function draw(
     synthetic: geometry.synthetic,
     viewBox: VIEW_BOX,
     showTrackLabel: content.showTrackLabel,
-    markers: buildMarkersV2(projection),
+    markers: buildMarkersV2(frame, projection),
   };
 }
 
@@ -108,12 +104,23 @@ function unavailable(
 }
 
 /**
- * Sin posiciones por coche en el frame v2, no hay marcadores que colocar.
- * Mantiene la transformacion del outline para futura compatibilidad.
+ * Coloca cada vehiculo cuya `groundPosition` (x/z en metros, plano de pista)
+ * llega con calidad fresh o stale; una fila sin posicion utilizable se omite,
+ * igual que hacia el v1: no saber donde esta un coche no es ponerlo en el
+ * origen. Reusa la transformacion que dibujo el outline.
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function buildMarkersV2(_projection: TrackProjection): readonly TrackMapMarker[] {
-  return [];
+function buildMarkersV2(frame: OverlayFrameV2, projection: TrackProjection): readonly TrackMapMarker[] {
+  const markers: TrackMapMarker[] = [];
+  const playerId = frame.player.id;
+  for (const row of frame.standings) {
+    const ground = row.groundPosition;
+    if (!ground || (ground.q !== "fresh" && ground.q !== "stale") || !ground.v) continue;
+    const { x, z } = ground.v;
+    if (!Number.isFinite(x) || !Number.isFinite(z)) continue;
+    const projected = projectTrackPoint({ x, z }, projection);
+    markers.push({ id: row.id, x: projected.x, y: projected.y, isPlayer: playerId !== undefined && row.id === playerId });
+  }
+  return markers;
 }
 
 function mapStatus(state: string): TrackMapViewModel["status"] {

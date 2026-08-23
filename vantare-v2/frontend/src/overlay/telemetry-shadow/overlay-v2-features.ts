@@ -6,6 +6,7 @@ export const OVERLAY_V2_RELATIVE = "relative" as const;
 export const OVERLAY_V2_FUEL = "fuel" as const;
 export const OVERLAY_V2_CONTROLS = "controls" as const;
 export const OVERLAY_V2_DAMAGE = "damage" as const;
+export const OVERLAY_V2_WEATHER = "weather" as const;
 
 export type OverlayV2Feature =
   | typeof OVERLAY_V2_PLAYER_INSTRUMENTS
@@ -15,7 +16,8 @@ export type OverlayV2Feature =
   | typeof OVERLAY_V2_RELATIVE
   | typeof OVERLAY_V2_FUEL
   | typeof OVERLAY_V2_CONTROLS
-  | typeof OVERLAY_V2_DAMAGE;
+  | typeof OVERLAY_V2_DAMAGE
+  | typeof OVERLAY_V2_WEATHER;
 
 export const DEFAULT_OVERLAY_V2_FEATURES: readonly OverlayV2Feature[] = Object.freeze([]);
 
@@ -52,6 +54,8 @@ const ALL_FEATURES = new Set<string>([
   OVERLAY_V2_RELATIVE,
   OVERLAY_V2_FUEL,
   OVERLAY_V2_CONTROLS,
+  OVERLAY_V2_DAMAGE,
+  OVERLAY_V2_WEATHER,
 ]);
 
 export function parseOverlayV2Features(input: unknown): OverlayV2Feature[] {

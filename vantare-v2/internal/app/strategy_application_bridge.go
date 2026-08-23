@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log"
 
 	strategyapplication "github.com/vantare/overlays/v2/internal/strategy/application"
 	"github.com/vantare/overlays/v2/internal/strategy/packaging"
@@ -90,6 +91,11 @@ func ExecuteStrategyApplicationCommand(
 	}
 	encoded, err := executor.Execute(ctx, document)
 	if err != nil {
+		// El codigo publico colapsa causas distintas en invalid_command. Sin
+		// esta traza local un fallo real queda indistinguible para quien
+		// depura: es lo que dejo ciega la importacion en frio.
+		log.Printf("strategy command failed: operation=%s commandId=%s err=%v",
+			strategyApplicationOperation(document), commandID, err)
 		return nil, strategyApplicationError(commandID, err)
 	}
 	var result any
@@ -111,6 +117,16 @@ func strategyApplicationCommandID(document []byte) string {
 		return invalidStrategyApplicationCommandID
 	}
 	return header.CommandID
+}
+
+func strategyApplicationOperation(document []byte) string {
+	var header struct {
+		Operation string `json:"operation"`
+	}
+	if json.Unmarshal(document, &header) != nil || header.Operation == "" {
+		return "unknown"
+	}
+	return header.Operation
 }
 
 func strategyApplicationError(commandID string, err error) *StrategyApplicationErrorResponse {

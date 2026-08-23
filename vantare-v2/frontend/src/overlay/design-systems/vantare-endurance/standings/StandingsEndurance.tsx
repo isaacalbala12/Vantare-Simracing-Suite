@@ -275,6 +275,7 @@ function templateBody(
   model: StandingsViewModel,
   settings: Readonly<Record<string, unknown>>,
   showSessionHeader: boolean,
+  motionEnabled: boolean,
 ) {
   switch (templateId) {
     case "standings-f1":
@@ -309,6 +310,7 @@ function templateBody(
           model={model}
           settings={settings}
           showSessionHeader={showSessionHeader}
+          motionEnabled={motionEnabled}
         />
       );
     case "standings-tower":
@@ -324,8 +326,14 @@ function templateBody(
   }
 }
 
-export function StandingsEndurance({ model, settings }: WidgetRendererProps<StandingsViewModel>) {
+export function StandingsEndurance({
+  model,
+  settings,
+  renderMode,
+}: WidgetRendererProps<StandingsViewModel>) {
   const parsed = parseStandingsEnduranceSettings(settings);
+  // El lienzo de Studio edita, no emite: el movimiento Redline es de carrera.
+  const motionEnabled = renderMode !== "studio";
 
   return (
     <section
@@ -336,7 +344,7 @@ export function StandingsEndurance({ model, settings }: WidgetRendererProps<Stan
       className="ven-root ven-standings"
       style={buildStandingsAppearanceStyle(settings)}
     >
-      {templateBody(parsed.templateId, model, settings, parsed.showSessionHeader)}
+      {templateBody(parsed.templateId, model, settings, parsed.showSessionHeader, motionEnabled)}
     </section>
   );
 }

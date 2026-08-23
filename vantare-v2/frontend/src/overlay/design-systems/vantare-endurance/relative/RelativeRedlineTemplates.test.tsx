@@ -1,5 +1,5 @@
 import { cleanup, render } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type {
   RelativeRowViewModel,
   RelativeViewModel,
@@ -7,6 +7,32 @@ import type {
 import { RelativeRedlineTemplate } from "./RelativeRedlineTemplates";
 
 afterEach(() => cleanup());
+
+/** happy-dom no implementa Element.animate: stub contable con restauracion. */
+function stubAnimate(): { calls: number; restore: () => void } {
+  const proto = HTMLElement.prototype as unknown as {
+    animate?: (...args: unknown[]) => unknown;
+  };
+  const original = proto.animate;
+  const state = { calls: 0 };
+  proto.animate = function stubAnimateImpl() {
+    state.calls += 1;
+    return { cancel() {}, finished: Promise.resolve() };
+  };
+  return {
+    get calls() {
+      return state.calls;
+    },
+    restore: () => {
+      if (original) {
+        proto.animate = original;
+      } else {
+        delete proto.animate;
+        vi.restoreAllMocks();
+      }
+    },
+  };
+}
 
 function row(
   id: string,
@@ -79,5 +105,63 @@ describe("RelativeRedlineTemplate", () => {
     expect(
       container.querySelector('[data-relative-row="behind-near"] .ven-rel-gapcell')?.getAttribute("data-side"),
     ).toBe("behind");
+  });
+
+  it("no programa animaciones en Studio (motionEnabled=false) ante una fila que entra", () => {
+    const animate = stubAnimate();
+    try {
+      const { rerender } = render(
+        <RelativeRedlineTemplate
+          model={neutralPitModel}
+          settings={{}}
+          variant="mirror"
+          showHeader={false}
+          motionEnabled={false}
+        />,
+      );
+      rerender(
+        <RelativeRedlineTemplate
+          model={{
+            ...neutralPitModel,
+            rows: [row("nuevo", "ahead"), ...neutralPitModel.rows],
+          }}
+          settings={{}}
+          variant="mirror"
+          showHeader={false}
+          motionEnabled={false}
+        />,
+      );
+      expect(animate.calls).toBe(0);
+    } finally {
+      animate.restore();
+    }
+  });
+
+  it("con emision (default) si anima la entrada de una fila nueva", () => {
+    const animate = stubAnimate();
+    try {
+      const { rerender } = render(
+        <RelativeRedlineTemplate
+          model={neutralPitModel}
+          settings={{}}
+          variant="mirror"
+          showHeader={false}
+        />,
+      );
+      rerender(
+        <RelativeRedlineTemplate
+          model={{
+            ...neutralPitModel,
+            rows: [row("nuevo", "ahead"), ...neutralPitModel.rows],
+          }}
+          settings={{}}
+          variant="mirror"
+          showHeader={false}
+        />,
+      );
+      expect(animate.calls).toBeGreaterThan(0);
+    } finally {
+      animate.restore();
+    }
   });
 });

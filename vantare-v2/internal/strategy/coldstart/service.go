@@ -10,7 +10,9 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"sync"
+	"time"
 
 	"github.com/vantare/overlays/v2/internal/telemetryanalysis"
 )
@@ -24,16 +26,26 @@ const (
 )
 
 type Status struct {
-	ShouldShow bool     `json:"shouldShow"`
-	Found      int      `json:"found"`
-	Imported   int      `json:"imported"`
-	Decision   Decision `json:"decision"`
+	ShouldShow bool      `json:"shouldShow"`
+	Checking   bool      `json:"checking"`
+	Found      int       `json:"found"`
+	Imported   int       `json:"imported"`
+	Skipped    int       `json:"skipped"`
+	Failures   []Failure `json:"failures"`
+	Decision   Decision  `json:"decision"`
 }
 
 type Progress struct {
-	Imported int  `json:"imported"`
-	Total    int  `json:"total"`
-	Done     bool `json:"done"`
+	Imported int       `json:"imported"`
+	Skipped  int       `json:"skipped"`
+	Total    int       `json:"total"`
+	Done     bool      `json:"done"`
+	Failures []Failure `json:"failures"`
+}
+
+type Failure struct {
+	Locator string `json:"locator"`
+	Reason  string `json:"reason"`
 }
 
 type SessionImporter interface {
@@ -55,14 +67,18 @@ type ServiceOptions struct {
 }
 
 type Service struct {
-	mu         sync.Mutex
-	options    ServiceOptions
-	candidates []telemetryanalysis.Candidate
+	mu           sync.Mutex
+	options      ServiceOptions
+	candidates   []telemetryanalysis.Candidate
+	discovering  bool
+	discoveryErr error
 }
 
 type persistedState struct {
-	Decision         Decision `json:"decision"`
-	ImportedLocators []string `json:"importedLocators"`
+	Decision         Decision  `json:"decision"`
+	ImportedLocators []string  `json:"importedLocators"`
+	Failures         []Failure `json:"failures"`
+	Total            int       `json:"total"`
 }
 
 func NewService(options ServiceOptions) *Service {
@@ -81,20 +97,26 @@ func (service *Service) Status(ctx context.Context) (Status, error) {
 	if err != nil {
 		return Status{}, err
 	}
-	if state.Decision == DecisionAccepted || state.Decision == DecisionRejected {
-		return Status{Decision: state.Decision, Imported: len(state.ImportedLocators)}, nil
+	if state.Decision == DecisionRejected {
+		return statusFromState(state, false, false), nil
+	}
+	if state.Decision == DecisionAccepted {
+		return statusFromState(state, len(state.Failures) > 0, false), nil
 	}
 	if service.options.Discover == nil || service.options.Importer == nil || service.options.Store == nil {
 		return Status{Decision: DecisionPending}, nil
 	}
 	if service.candidates == nil {
-		service.candidates, err = service.options.Discover(ctx)
-		if err != nil {
-			return Status{}, err
+		if service.discoveryErr != nil {
+			return Status{}, service.discoveryErr
 		}
-		sort.Slice(service.candidates, func(i, j int) bool { return service.candidates[i].Locator < service.candidates[j].Locator })
+		if !service.discovering {
+			service.startDiscovery()
+		}
+		return statusFromState(state, true, true), nil
 	}
-	return Status{ShouldShow: len(service.candidates) > 0, Found: len(service.candidates), Imported: len(state.ImportedLocators), Decision: DecisionPending}, nil
+	state.Total = len(service.candidates)
+	return statusFromState(state, len(service.candidates) > 0, false), nil
 }
 
 func (service *Service) ImportNext(ctx context.Context) (Progress, error) {
@@ -107,6 +129,13 @@ func (service *Service) ImportNext(ctx context.Context) (Progress, error) {
 	if state.Decision == DecisionRejected {
 		return Progress{}, fmt.Errorf("cold start import was rejected")
 	}
+	if state.Decision == DecisionAccepted && len(state.Failures) > 0 {
+		state.Decision = DecisionPending
+		state.Failures = []Failure{}
+		if err := service.writeState(state); err != nil {
+			return Progress{}, err
+		}
+	}
 	if service.candidates == nil {
 		if service.options.Discover == nil {
 			return Progress{}, fmt.Errorf("cold start discovery unavailable")
@@ -115,37 +144,43 @@ func (service *Service) ImportNext(ctx context.Context) (Progress, error) {
 		if err != nil {
 			return Progress{}, err
 		}
-		sort.Slice(service.candidates, func(i, j int) bool { return service.candidates[i].Locator < service.candidates[j].Locator })
+		sortCandidates(service.candidates)
 	}
+	state.Total = len(service.candidates)
 	imported := make(map[string]struct{}, len(state.ImportedLocators))
 	for _, locator := range state.ImportedLocators {
 		imported[locator] = struct{}{}
+	}
+	failed := make(map[string]struct{}, len(state.Failures))
+	for _, failure := range state.Failures {
+		failed[failure.Locator] = struct{}{}
 	}
 	for _, candidate := range service.candidates {
 		if _, exists := imported[candidate.Locator]; exists {
 			continue
 		}
-		model, importErr := service.options.Importer.Import(ctx, candidate)
+		if _, exists := failed[candidate.Locator]; exists {
+			continue
+		}
+		importErr := processCandidate(ctx, service.options.Importer, service.options.Store, candidate)
 		if importErr != nil {
-			return Progress{}, importErr
+			state.Failures = append(state.Failures, Failure{Locator: candidate.Locator, Reason: failureReason(importErr)})
+		} else {
+			state.ImportedLocators = append(state.ImportedLocators, candidate.Locator)
 		}
-		if err := service.options.Store.Add(ctx, model); err != nil {
-			return Progress{}, err
-		}
-		state.ImportedLocators = append(state.ImportedLocators, candidate.Locator)
-		if len(state.ImportedLocators) == len(service.candidates) {
+		if len(state.ImportedLocators)+len(state.Failures) == len(service.candidates) {
 			state.Decision = DecisionAccepted
 		}
 		if err := service.writeState(state); err != nil {
 			return Progress{}, err
 		}
-		return Progress{Imported: len(state.ImportedLocators), Total: len(service.candidates), Done: state.Decision == DecisionAccepted}, nil
+		return progressFromState(state), nil
 	}
 	state.Decision = DecisionAccepted
 	if err := service.writeState(state); err != nil {
 		return Progress{}, err
 	}
-	return Progress{Imported: len(state.ImportedLocators), Total: len(service.candidates), Done: true}, nil
+	return progressFromState(state), nil
 }
 
 func (service *Service) Reject(_ context.Context) error {
@@ -155,11 +190,66 @@ func (service *Service) Reject(_ context.Context) error {
 	if err != nil {
 		return err
 	}
-	if state.Decision == DecisionAccepted {
-		return nil
-	}
 	state.Decision = DecisionRejected
 	return service.writeState(state)
+}
+
+func (service *Service) startDiscovery() {
+	service.discovering = true
+	discover := service.options.Discover
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		candidates, err := discover(ctx)
+		if err == nil {
+			sortCandidates(candidates)
+		}
+		service.mu.Lock()
+		defer service.mu.Unlock()
+		service.discovering = false
+		service.discoveryErr = err
+		if err == nil {
+			service.candidates = candidates
+		}
+	}()
+}
+
+func statusFromState(state persistedState, shouldShow, checking bool) Status {
+	found := state.Total
+	if found == 0 {
+		found = len(state.ImportedLocators) + len(state.Failures)
+	}
+	return Status{ShouldShow: shouldShow, Checking: checking, Found: found, Imported: len(state.ImportedLocators), Skipped: len(state.Failures), Failures: append([]Failure(nil), state.Failures...), Decision: state.Decision}
+}
+
+func progressFromState(state persistedState) Progress {
+	return Progress{Imported: len(state.ImportedLocators), Skipped: len(state.Failures), Total: state.Total, Done: state.Decision == DecisionAccepted, Failures: append([]Failure(nil), state.Failures...)}
+}
+
+func sortCandidates(candidates []telemetryanalysis.Candidate) {
+	sort.Slice(candidates, func(i, j int) bool { return candidates[i].Locator < candidates[j].Locator })
+}
+
+func processCandidate(ctx context.Context, importer SessionImporter, store SessionStore, candidate telemetryanalysis.Candidate) (err error) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			err = fmt.Errorf("import session panic: %v", recovered)
+		}
+	}()
+	model, err := importer.Import(ctx, candidate)
+	if err != nil {
+		return err
+	}
+	return store.Add(ctx, model)
+}
+
+func failureReason(err error) string {
+	reason := strings.TrimSpace(err.Error())
+	const maxReasonBytes = 512
+	if len(reason) > maxReasonBytes {
+		reason = reason[:maxReasonBytes]
+	}
+	return reason
 }
 
 func (service *Service) readState() (persistedState, error) {
@@ -181,6 +271,14 @@ func (service *Service) readState() (persistedState, error) {
 	}
 	if state.ImportedLocators == nil {
 		state.ImportedLocators = []string{}
+	}
+	if state.Failures == nil {
+		state.Failures = []Failure{}
+	}
+	for _, failure := range state.Failures {
+		if failure.Locator == "" || failure.Reason == "" {
+			return persistedState{}, fmt.Errorf("invalid cold start failure")
+		}
 	}
 	return state, nil
 }

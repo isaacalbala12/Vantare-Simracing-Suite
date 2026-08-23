@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"log"
+	"time"
 
 	strategyapplication "github.com/vantare/overlays/v2/internal/strategy/application"
 	"github.com/vantare/overlays/v2/internal/strategy/packaging"
@@ -64,10 +65,16 @@ func (bridge *StrategyApplicationBridge) HandleCommand(data any) {
 	if bridge == nil || bridge.emitter == nil {
 		return
 	}
+	started := time.Now()
 	result, failure := ExecuteStrategyApplicationCommand(bridge.ctx, bridge.executor, data)
 	if failure != nil {
+		log.Printf("strategy command refused: commandId=%s code=%s field=%s after=%s",
+			failure.CommandID, failure.Code, failure.Field, time.Since(started).Round(time.Millisecond))
 		bridge.emitter.Emit(StrategyApplicationErrorEvent, *failure)
 		return
+	}
+	if elapsed := time.Since(started); elapsed > 2*time.Second {
+		log.Printf("strategy command slow: after=%s", elapsed.Round(time.Millisecond))
 	}
 	bridge.emitter.Emit(StrategyApplicationResultEvent, result)
 }

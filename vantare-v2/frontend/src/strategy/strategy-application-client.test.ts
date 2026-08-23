@@ -397,3 +397,37 @@ describe("createStrategyApplicationClient", () => {
     expect(transport.listeners.get("strategy:application:error")?.size ?? 0).toBe(0);
   });
 });
+
+describe("cold start failures", () => {
+  it("acepta una lista de omitidas ausente y la normaliza a vacia", async () => {
+    const transport = createTransport();
+    const client = createStrategyApplicationClient<Payload>(transport);
+    const command: StrategyApplicationCommandV1<Payload> = {
+      protocolVersion: "strategy.application.v1",
+      commandId: "cold-status-null",
+      operation: "get_cold_start_status",
+      expectedRepositoryVersion: 0,
+    };
+    const pending = client.execute(command);
+    emit(transport, "strategy:application:result", {
+      protocolVersion: "strategy.application.v1",
+      commandId: "cold-status-null",
+      repositoryVersion: 1,
+      recoveredFromBackup: false,
+      closed: false,
+      imported: false,
+      coldStartStatus: {
+        shouldShow: true,
+        checking: false,
+        found: 337,
+        imported: 224,
+        skipped: 0,
+        failures: null,
+        decision: "pending",
+      },
+    });
+    const result = await pending;
+    expect(result.coldStartStatus?.found).toBe(337);
+    expect(result.coldStartStatus?.failures).toEqual([]);
+  });
+});

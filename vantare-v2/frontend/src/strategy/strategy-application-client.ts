@@ -1374,9 +1374,9 @@ function parseColdStartStatus(value: unknown): StrategyColdStartStatusV1 {
   strategyInteger(status.found, "coldStartStatus.found");
   strategyInteger(status.imported, "coldStartStatus.imported");
   strategyInteger(status.skipped, "coldStartStatus.skipped");
-  parseColdStartFailures(status.failures, "coldStartStatus.failures");
+  const failures = parseColdStartFailures(status.failures, "coldStartStatus.failures");
   strategyEnum(status.decision, "coldStartStatus.decision", ["pending", "accepted", "rejected"]);
-  return status as StrategyColdStartStatusV1;
+  return { ...status, failures } as StrategyColdStartStatusV1;
 }
 
 function parseColdStartProgress(value: unknown): StrategyColdStartProgressV1 {
@@ -1385,16 +1385,23 @@ function parseColdStartProgress(value: unknown): StrategyColdStartProgressV1 {
   strategyInteger(progress.skipped, "coldStartProgress.skipped");
   strategyInteger(progress.total, "coldStartProgress.total");
   if (typeof progress.done !== "boolean") throw new Error("Invalid Strategy coldStartProgress.done");
-  parseColdStartFailures(progress.failures, "coldStartProgress.failures");
-  return progress as StrategyColdStartProgressV1;
+  const failures = parseColdStartFailures(progress.failures, "coldStartProgress.failures");
+  return { ...progress, failures } as StrategyColdStartProgressV1;
 }
 
-function parseColdStartFailures(value: unknown, field: string): void {
+// Una lista ausente no es una lista malformada: cuando no queda ninguna sesion
+// omitida el backend puede enviar el campo vacio o no enviarlo, y descartar la
+// respuesta entera por eso hacia parecer roto un arranque en frio que estaba
+// funcionando. Se normaliza siempre a un array para que la pantalla nunca
+// reciba null donde su tipo promete una lista.
+function parseColdStartFailures(value: unknown, field: string): readonly StrategyColdStartFailureV1[] {
+  if (value === undefined || value === null) return [];
   if (!Array.isArray(value)) throw new Error(`Invalid Strategy ${field}`);
-  value.forEach((entry, index) => {
+  return value.map((entry, index) => {
     const failure = strategyRecord(entry, `${field}[${index}]`);
     if (typeof failure.locator !== "string" || failure.locator.length === 0) throw new Error(`Invalid Strategy ${field}[${index}].locator`);
     if (typeof failure.reason !== "string" || failure.reason.length === 0) throw new Error(`Invalid Strategy ${field}[${index}].reason`);
+    return { locator: failure.locator, reason: failure.reason };
   });
 }
 

@@ -2,9 +2,11 @@ package coldstart
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -442,5 +444,30 @@ func TestServiceImportProgressesWhenStagingRootIsMissing(t *testing.T) {
 	}
 	if info, err := os.Stat(stagingRoot); err != nil || !info.IsDir() {
 		t.Fatalf("staging root was not created: info=%v error=%v", info, err)
+	}
+}
+
+// Una lista de omitidas vacia debe viajar como array, nunca como null: la
+// pantalla exige un array y descarta la respuesta entera si recibe null, con
+// lo que el arranque en frio parece roto aunque el backend importe bien.
+func TestEmptyFailuresSerializeAsArrayNotNull(t *testing.T) {
+	t.Parallel()
+
+	state := persistedState{Decision: DecisionPending, ImportedLocators: []string{"lmu://a"}, Failures: []Failure{}, Total: 2}
+
+	status, err := json.Marshal(statusFromState(state, true, false))
+	if err != nil {
+		t.Fatalf("marshal status: %v", err)
+	}
+	if !strings.Contains(string(status), `"failures":[]`) {
+		t.Fatalf("status = %s, want failures as an empty array", status)
+	}
+
+	progress, err := json.Marshal(progressFromState(state))
+	if err != nil {
+		t.Fatalf("marshal progress: %v", err)
+	}
+	if !strings.Contains(string(progress), `"failures":[]`) {
+		t.Fatalf("progress = %s, want failures as an empty array", progress)
 	}
 }

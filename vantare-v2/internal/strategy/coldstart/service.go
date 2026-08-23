@@ -311,16 +311,26 @@ func (service *Service) startDiscovery() {
 	}()
 }
 
+// copyFailures nunca devuelve nil. `append([]Failure(nil))` sin elementos
+// devuelve nil, y una lista nula viaja como `null` hasta la pantalla, que
+// exige un array y descarta la respuesta entera: el arranque en frio parecia
+// roto mientras el backend importaba correctamente.
+func copyFailures(failures []Failure) []Failure {
+	result := make([]Failure, len(failures))
+	copy(result, failures)
+	return result
+}
+
 func statusFromState(state persistedState, shouldShow, checking bool) Status {
 	found := state.Total
 	if found == 0 {
 		found = len(state.ImportedLocators) + len(state.Failures)
 	}
-	return Status{ShouldShow: shouldShow, Checking: checking, Found: found, Imported: len(state.ImportedLocators), Skipped: len(state.Failures), Failures: append([]Failure(nil), state.Failures...), Decision: state.Decision}
+	return Status{ShouldShow: shouldShow, Checking: checking, Found: found, Imported: len(state.ImportedLocators), Skipped: len(state.Failures), Failures: copyFailures(state.Failures), Decision: state.Decision}
 }
 
 func progressFromState(state persistedState) Progress {
-	return Progress{Imported: len(state.ImportedLocators), Skipped: len(state.Failures), Total: state.Total, Done: state.Decision == DecisionAccepted, Failures: append([]Failure(nil), state.Failures...)}
+	return Progress{Imported: len(state.ImportedLocators), Skipped: len(state.Failures), Total: state.Total, Done: state.Decision == DecisionAccepted, Failures: copyFailures(state.Failures)}
 }
 
 func sortCandidates(candidates []telemetryanalysis.Candidate) {

@@ -30,6 +30,18 @@ var (
 	ErrInvalidObservedStrategyInput = errors.New("invalid observed strategy input")
 )
 
+func pitObservationHistoricalPageChannels() []string {
+	return []string{
+		"finish status",
+		"fuel level",
+		"in pits",
+		"lap dist",
+		"tyres wear",
+		"tyrescompound",
+		"virtual energy",
+	}
+}
+
 // SessionPitObservation is the degraded A4 result for one session. Private
 // samples allow honest recomputation of combination-level rate confidence.
 type SessionPitObservation struct {

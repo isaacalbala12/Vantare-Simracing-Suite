@@ -17,6 +17,25 @@ son fases históricas.
 
 ## Estado
 
+Actualización ISA-813 / F5-e (2026-08-23, implementada en rama de issue):
+
+- Las familias de validez, consumo/ritmo, curvas y pit declaran sus canales y
+  el importador lee su unión de 17, no los 98 disponibles. Validez declara
+  además los cuatro relojes de 1 Hz que preservan el borde de cobertura. Un
+  guard AST impide que una familia acceda a un canal sin declararlo.
+- Las sesiones se importan con 1-4 helpers y 4 por defecto. La persistencia
+  sigue ordenada y secuencial; omisiones, reintento y progreso de ISA-810 se
+  conservan con errores y `panic` cubiertos por tests.
+- En el corpus real, el baseline de #813 era 13m40s/337. La corrida final con
+  el runtime firmado es 1m41,090s, 337/337 y cero omisiones; otra corrida con
+  cuatro quedó en 2m20,668s. El pico final fue 950.247.424 bytes en Go más
+  134.971.392 en cuatro helpers. Con tres fueron 2m52,766s y unos 82 MB menos
+  en total: se eligieron cuatro por el margen.
+- 65.536 filas por página no son compatibles con el helper firmado; se mantiene
+  16.384. Analysis+Strategy pasan. El gate Go global solo falla por la ausencia
+  previa de `frontend/dist` para los paquetes embed. Lista para review; sin PR,
+  integración, promoción ni release.
+
 Actualización ISA-810 / F5-e (2026-08-23, implementada en rama de issue):
 
 - El banner permanece visible si falla la consulta de estado, explica el fallo

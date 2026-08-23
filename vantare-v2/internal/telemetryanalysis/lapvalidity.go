@@ -21,6 +21,23 @@ const (
 
 var ErrInvalidLapValidityInput = errors.New("invalid lap validity input")
 
+func lapValidityHistoricalPageChannels() []string {
+	return []string{
+		"ambient temperature",
+		"fuel level",
+		"in pits",
+		"lap",
+		"lap dist",
+		"lap time",
+		"lastimpactmagnitude",
+		"time behind next",
+		"track temperature",
+		"tyrescompound",
+		"wind heading",
+		"wind speed",
+	}
+}
+
 type LapLabel string
 
 const (
@@ -115,7 +132,12 @@ func AnalyzeLapValidity(session HistoricalSession, pages []HistoricalPage) (LapV
 
 	lapEvents := readLapEvents(grouped["lap"])
 	resetIndices, lapDistFrequency, lapDistEnd := readLapDistResets(grouped["lap dist"])
-	continuousEnd := continuousCoverageEnd(grouped)
+	continuousEnd := continuousCoverageEnd(
+		grouped["ambient temperature"],
+		grouped["track temperature"],
+		grouped["wind heading"],
+		grouped["wind speed"],
+	)
 	if continuousEnd == 0 {
 		continuousEnd = lapDistEnd
 	}
@@ -280,10 +302,10 @@ func readLapDistResets(pages []HistoricalPage) ([]int64, int, float64) {
 	return resets, frequency, continuousEnd
 }
 
-func continuousCoverageEnd(grouped map[string][]HistoricalPage) float64 {
+func continuousCoverageEnd(channels ...[]HistoricalPage) float64 {
 	selectedFrequency := 0
 	selectedEnd := 0.0
-	for _, pages := range grouped {
+	for _, pages := range channels {
 		for _, page := range pages {
 			frequency := page.Sampling.FrequencyHz
 			if page.Sampling.Kind != SamplingContinuousImplicitFrequency || frequency <= 0 || len(page.Samples) == 0 {

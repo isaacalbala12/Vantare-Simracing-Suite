@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -19,20 +20,45 @@ func (stub *importerStub) Import(_ context.Context, candidate telemetryanalysis.
 }
 
 type selectiveImporterStub struct {
+	mu     sync.Mutex
 	calls  map[string]int
 	fail   map[string]error
 	panics map[string]any
 }
 
 func (stub *selectiveImporterStub) Import(_ context.Context, candidate telemetryanalysis.Candidate) (telemetryanalysis.AuthorizedSessionModel, error) {
+	stub.mu.Lock()
 	stub.calls[candidate.Locator]++
-	if value, ok := stub.panics[candidate.Locator]; ok {
-		panic(value)
+	panicValue, mustPanic := stub.panics[candidate.Locator]
+	importErr := stub.fail[candidate.Locator]
+	stub.mu.Unlock()
+	if mustPanic {
+		panic(panicValue)
 	}
-	if err := stub.fail[candidate.Locator]; err != nil {
-		return telemetryanalysis.AuthorizedSessionModel{}, err
+	if importErr != nil {
+		return telemetryanalysis.AuthorizedSessionModel{}, importErr
 	}
 	return telemetryanalysis.AuthorizedSessionModel{Session: telemetryanalysis.HistoricalSession{ID: candidate.Locator}}, nil
+}
+
+func TestServiceImportConcurrencyDefaultsAndCaps(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		configured int
+		want       int
+	}{
+		{configured: 0, want: defaultImportConcurrency},
+		{configured: -1, want: defaultImportConcurrency},
+		{configured: 3, want: 3},
+		{configured: 99, want: maximumImportConcurrency},
+	}
+	for _, test := range tests {
+		service := NewService(ServiceOptions{ImportConcurrency: test.configured})
+		if got := service.importConcurrency(); got != test.want {
+			t.Errorf("importConcurrency(%d) = %d, want %d", test.configured, got, test.want)
+		}
+	}
 }
 
 type stagingFixtureImporter struct{ root string }
@@ -55,16 +81,95 @@ func (importer stagingFixtureImporter) Import(ctx context.Context, candidate tel
 }
 
 type sessionStoreStub struct {
+	mu     sync.Mutex
 	models []telemetryanalysis.AuthorizedSessionModel
 }
 
 func (store *sessionStoreStub) Add(_ context.Context, model telemetryanalysis.AuthorizedSessionModel) error {
+	store.mu.Lock()
+	defer store.mu.Unlock()
 	store.models = append(store.models, model)
 	return nil
 }
 
 func (store *sessionStoreStub) ListAuthorizedSessions(context.Context) ([]telemetryanalysis.AuthorizedSessionModel, error) {
+	store.mu.Lock()
+	defer store.mu.Unlock()
 	return append([]telemetryanalysis.AuthorizedSessionModel(nil), store.models...), nil
+}
+
+type concurrentImporterStub struct {
+	mu        sync.Mutex
+	started   chan struct{}
+	release   chan struct{}
+	active    int
+	maxActive int
+}
+
+func (stub *concurrentImporterStub) Import(ctx context.Context, candidate telemetryanalysis.Candidate) (telemetryanalysis.AuthorizedSessionModel, error) {
+	stub.mu.Lock()
+	stub.active++
+	if stub.active > stub.maxActive {
+		stub.maxActive = stub.active
+	}
+	stub.mu.Unlock()
+	stub.started <- struct{}{}
+	select {
+	case <-ctx.Done():
+		return telemetryanalysis.AuthorizedSessionModel{}, ctx.Err()
+	case <-stub.release:
+	}
+	stub.mu.Lock()
+	stub.active--
+	stub.mu.Unlock()
+	return telemetryanalysis.AuthorizedSessionModel{Session: telemetryanalysis.HistoricalSession{ID: candidate.Locator}}, nil
+}
+
+func TestServiceImportsBoundedConcurrentBatchAndKeepsExactProgress(t *testing.T) {
+	importer := &concurrentImporterStub{started: make(chan struct{}, 4), release: make(chan struct{})}
+	service := NewService(ServiceOptions{
+		StatePath: filepath.Join(t.TempDir(), "cold-start.json"),
+		Discover: func(context.Context) ([]telemetryanalysis.Candidate, error) {
+			return []telemetryanalysis.Candidate{{Locator: "lmu://one"}, {Locator: "lmu://two"}, {Locator: "lmu://three"}, {Locator: "lmu://four"}}, nil
+		},
+		Importer:          importer,
+		Store:             &sessionStoreStub{},
+		ImportConcurrency: 3,
+	})
+
+	result := make(chan Progress, 1)
+	errors := make(chan error, 1)
+	go func() {
+		progress, err := service.ImportNext(context.Background())
+		result <- progress
+		errors <- err
+	}()
+	for range 3 {
+		select {
+		case <-importer.started:
+		case <-time.After(time.Second):
+			t.Fatal("concurrent import batch did not start")
+		}
+	}
+	close(importer.release)
+	if err := <-errors; err != nil {
+		t.Fatal(err)
+	}
+	first := <-result
+	if first.Imported != 3 || first.Skipped != 0 || first.Total != 4 || first.Done {
+		t.Fatalf("first progress = %+v", first)
+	}
+	importer.mu.Lock()
+	maxActive := importer.maxActive
+	importer.mu.Unlock()
+	if maxActive != 3 {
+		t.Fatalf("max concurrent imports = %d, want 3", maxActive)
+	}
+
+	second, err := service.ImportNext(context.Background())
+	if err != nil || second.Imported != 4 || second.Total != 4 || !second.Done {
+		t.Fatalf("second progress = %+v, error = %v", second, err)
+	}
 }
 
 func TestServiceShowsOnceImportsWithProgressAndPopulatesSessionSource(t *testing.T) {
@@ -73,7 +178,7 @@ func TestServiceShowsOnceImportsWithProgressAndPopulatesSessionSource(t *testing
 	}
 	importer := &importerStub{}
 	store := &sessionStoreStub{}
-	service := NewService(ServiceOptions{StatePath: filepath.Join(t.TempDir(), "cold-start.json"), Discover: discover, Importer: importer, Store: store})
+	service := NewService(ServiceOptions{StatePath: filepath.Join(t.TempDir(), "cold-start.json"), Discover: discover, Importer: importer, Store: store, ImportConcurrency: 1})
 
 	status, err := waitForStatus(service)
 	if err != nil || !status.ShouldShow || status.Found != 2 || status.Decision != DecisionPending {
@@ -154,7 +259,7 @@ func TestServiceReopensPendingStateAndContinuesAfterImportedLocator(t *testing.T
 	}
 	importer := &importerStub{}
 	store := &sessionStoreStub{}
-	firstService := NewService(ServiceOptions{StatePath: statePath, Discover: discover, Importer: importer, Store: store})
+	firstService := NewService(ServiceOptions{StatePath: statePath, Discover: discover, Importer: importer, Store: store, ImportConcurrency: 1})
 	first, err := firstService.ImportNext(context.Background())
 	if err != nil || first.Imported != 1 || first.Done {
 		t.Fatalf("first=%+v err=%v", first, err)

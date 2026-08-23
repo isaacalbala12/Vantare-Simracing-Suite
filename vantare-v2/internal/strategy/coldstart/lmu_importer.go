@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/vantare/overlays/v2/internal/telemetryanalysis"
@@ -155,7 +156,7 @@ func (importer *LMUImporter) Import(ctx context.Context, candidate telemetryanal
 
 func readAllPages(ctx context.Context, parser *telemetryanalysis.LMUDuckDBParser, session telemetryanalysis.HistoricalSession) ([]telemetryanalysis.HistoricalPage, error) {
 	pages := []telemetryanalysis.HistoricalPage{}
-	for _, channel := range session.Channels {
+	for _, channel := range requiredChannelsForSession(session) {
 		for start := int64(0); ; {
 			page, err := parser.ReadPage(ctx, channel.ID, start, telemetryanalysis.MaxLMUDuckDBPageRows)
 			if err != nil {
@@ -172,6 +173,22 @@ func readAllPages(ctx context.Context, parser *telemetryanalysis.LMUDuckDBParser
 		}
 	}
 	return pages, nil
+}
+
+func requiredChannelsForSession(session telemetryanalysis.HistoricalSession) []telemetryanalysis.HistoricalChannel {
+	required := telemetryanalysis.RequiredHistoricalPageChannels()
+	wanted := make(map[string]struct{}, len(required))
+	for _, sourceName := range required {
+		wanted[sourceName] = struct{}{}
+	}
+	channels := make([]telemetryanalysis.HistoricalChannel, 0, len(required))
+	for _, channel := range session.Channels {
+		key := strings.ToLower(strings.TrimSpace(channel.SourceName))
+		if _, ok := wanted[key]; ok {
+			channels = append(channels, channel)
+		}
+	}
+	return channels
 }
 
 func historicalLaps(validity telemetryanalysis.LapValidityAnalysis) []telemetryanalysis.HistoricalLap {

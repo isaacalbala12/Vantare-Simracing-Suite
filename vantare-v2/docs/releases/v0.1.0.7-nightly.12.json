@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "tag": "v0.1.0.7-nightly.12",
+  "channel": "nightly",
+  "title": "Vantare — núcleo de telemetría Go-first completo",
+  "summary": "Nightly con el rework de telemetría Go-first completo: motor de aplicación atómico con un 74% menos de asignaciones por frame, OverlayFrame v2 con todas las secciones (incluidos daño, clima y posición por coche), cadencias reguladas con señales finas, consumo de combustible canónico, driver LMU 1.4.1.3 con detección de versión sin ambigüedad y sin frame congelado al volver al menú. Incluye el rework del Ingeniero (radio bus, spotter unificado, motor de familias, voz Kokoro precacheada y voz de entrada experimental tras flag) y las correcciones del launcher.",
+  "issues": [
+    "ISA-372",
+    "ISA-678",
+    "ISA-679",
+    "ISA-680",
+    "ISA-681",
+    "ISA-695",
+    "ISA-696",
+    "ISA-697",
+    "ISA-707",
+    "ISA-709",
+    "ISA-717",
+    "ISA-719"
+  ]
+}

@@ -7,6 +7,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -57,6 +58,27 @@ func TestStageAuthorizedHistoricalArtifactCopiesExactBytesAndCleansUp(t *testing
 	}
 }
 
+func TestStageAuthorizedHistoricalArtifactCreatesMissingStagingRoot(t *testing.T) {
+	originalPath := filepath.Join(t.TempDir(), "synthetic.duckdb")
+	if err := os.WriteFile(originalPath, []byte("synthetic duckdb fixture"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	artifact, candidate := authorizedOSArtifact(t, originalPath)
+	stagingRoot := filepath.Join(t.TempDir(), "missing", "telemetry-staging")
+
+	staged, err := StageAuthorizedHistoricalArtifact(context.Background(), OSContentSource{}, candidate, artifact, stagingRoot)
+	if err != nil {
+		t.Fatalf("StageAuthorizedHistoricalArtifact() error = %v", err)
+	}
+	defer staged.Cleanup()
+	if info, err := os.Stat(stagingRoot); err != nil || !info.IsDir() {
+		t.Fatalf("staging root was not created: info=%v err=%v", info, err)
+	}
+	if _, err := os.Stat(staged.Path()); err != nil {
+		t.Fatalf("staged fixture is unavailable: %v", err)
+	}
+}
+
 func TestStageAuthorizedHistoricalArtifactRejectsUntrustedOrigins(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "synthetic.duckdb")
 	if err := os.WriteFile(path, []byte("synthetic"), 0o600); err != nil {
@@ -101,6 +123,54 @@ func TestStageAuthorizedHistoricalArtifactRejectsChangedEvidenceAndCleansPartial
 	}
 	if len(entries) != 0 {
 		t.Fatalf("partial staging directories = %v", entries)
+	}
+}
+
+func TestStageAuthorizedHistoricalArtifactReportsSafeRejectionContext(t *testing.T) {
+	tests := []struct {
+		name       string
+		prepare    func(t *testing.T, path string)
+		wantReason string
+	}{
+		{
+			name: "WAL present",
+			prepare: func(t *testing.T, path string) {
+				t.Helper()
+				if err := os.WriteFile(path+".wal", []byte("active"), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			},
+			wantReason: "source WAL present before staging",
+		},
+		{
+			name: "metadata changed",
+			prepare: func(t *testing.T, path string) {
+				t.Helper()
+				if err := os.WriteFile(path, []byte("changed after authorization"), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			},
+			wantReason: "source metadata changed before staging",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "private-session.duckdb")
+			if err := os.WriteFile(path, []byte("authorized fixture"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			artifact, candidate := authorizedOSArtifact(t, path)
+			test.prepare(t, path)
+
+			_, err := StageAuthorizedHistoricalArtifact(context.Background(), OSContentSource{}, candidate, artifact, filepath.Join(t.TempDir(), "staging"))
+			if !errors.Is(err, ErrStagingRejected) || !strings.Contains(err.Error(), test.wantReason) {
+				t.Fatalf("error = %v, want %q wrapping ErrStagingRejected", err, test.wantReason)
+			}
+			if strings.Contains(err.Error(), path) {
+				t.Fatalf("error leaked private source path: %v", err)
+			}
+		})
 	}
 }
 

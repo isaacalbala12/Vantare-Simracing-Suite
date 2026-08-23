@@ -10,6 +10,27 @@
 
 ## Estado
 
+- **ISA-799 · Movimiento Redline apagado en Studio (2026-08-22, en la misma
+  rama que ISA-793):** bug reportado por Isaac: las filas del Relative
+  Endurance saltaban al clickar cualquier widget. Causa: los motores FLIP de
+  Relative/Standings/Delta Redline quedaban activos en el lienzo de edicion y
+  el ciclo congelar/restaurar snapshot del gesto convertia la deriva acumulada
+  en cruces falsos. Fix: plumado de renderMode hasta los tres templates y gate
+  \motionEnabled = renderMode !== 'studio'\ — el movimiento es comportamiento
+  de emision (Desktop/OBS), no de edicion. Tests nuevos: sin motion no se
+  programa ningun animate ante fila nueva; con emision si. Gates PASS: suite
+  completa 376/2910, typecheck, lint, build.
+
+- **ISA-793 · Etiqueta hija del marco, movimiento atomico (2026-08-22, en rama):**
+  corte estructural que sustituye al parche ISA-789/PR #792. La etiqueta de
+  seleccion se monta via portal dentro del envoltorio de seleccion del marco
+  (selectionPortalRef opcional en StudioWidgetFrame), asi que el navegador
+  la mueve con el de forma atomica; el loop rAF solo corrige clamp/lado en
+  coords logicas locales y sin setState por frame. Gates locales PASS: suite
+  completa 376 archivos/2908 tests, typecheck, ESLint focal, build. Test A2 de
+  caracterizacion actualizado al nuevo invariante (dentro de la caja, sin
+  contra-escala). PR draft hacia nightly tras push; pendiente review de Isaac.
+
 - **Ajustes Orbit: autosave de atajos, descarga de informe y búsqueda
   (2026-08-22, en rama):** tres mejoras de la pantalla Ajustes sobre
   `origin/nightly@4ec98fea`, rama `vantareapp/isa-767-ajustes-orbit-autosave-informe-busqueda`,

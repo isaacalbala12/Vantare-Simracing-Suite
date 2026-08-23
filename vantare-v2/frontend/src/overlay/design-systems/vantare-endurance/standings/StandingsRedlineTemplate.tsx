@@ -138,13 +138,16 @@ function RedlineRow({
 export function StandingsRedlineTemplate({
   model,
   showSessionHeader,
+  motionEnabled = true,
 }: {
   model: StandingsViewModel;
   settings: Readonly<Record<string, unknown>>;
   showSessionHeader: boolean;
+  /** El lienzo de Studio no emite: el movimiento es comportamiento de Desktop/OBS. */
+  motionEnabled?: boolean;
 }) {
   const rootRef = useRef<HTMLDivElement | null>(null);
-  const motion = useStandingsMotion(model, model.status === "ready", rootRef);
+  const motion = useStandingsMotion(model, motionEnabled && model.status === "ready", rootRef);
   const sessionBest = findSessionBestLapSeconds(model.rows);
   const groups = groupRowsByClass(model.rows);
   const battleByAhead = new Map(motion.battles.map((battle) => [battle.aheadId, battle]));

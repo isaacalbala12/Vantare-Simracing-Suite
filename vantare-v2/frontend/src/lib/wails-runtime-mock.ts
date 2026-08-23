@@ -136,7 +136,7 @@ async function handleHarnessStrategyCommand(command: Record<string, unknown>) {
   if (operation === "get_cold_start_status") {
     broadcast("strategy:application:result", {
       ...baseResult,
-      coldStartStatus: { shouldShow: false, found: 0, imported: 0, decision: "pending" },
+      coldStartStatus: { shouldShow: false, checking: false, found: 0, imported: 0, skipped: 0, failures: [], decision: "pending" },
     });
     return;
   }

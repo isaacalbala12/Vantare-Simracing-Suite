@@ -341,6 +341,22 @@ describe("createStrategyApplicationClient", () => {
     expect(transport.listeners.get("strategy:application:error")?.size ?? 0).toBe(0);
   });
 
+  it("allows a long-running command to override the default timeout", async () => {
+    const client = createStrategyApplicationClient<Payload>(transport, 100);
+    const pending = client.execute(openCommand(), { timeoutMs: 1_000 });
+    await vi.advanceTimersByTimeAsync(101);
+    emit(transport, "strategy:application:result", {
+      protocolVersion: "strategy.application.v1",
+      commandId: "open-1",
+      repositoryVersion: 3,
+      draft: draft(),
+      savedDraft: draft(),
+      recoveredFromBackup: false,
+      closed: false,
+    });
+    await expect(pending).resolves.toMatchObject({ repositoryVersion: 3 });
+  });
+
   it("cleans up immediately when transport emit throws", async () => {
     transport.emit = () => { throw new Error("transport unavailable"); };
     const client = createStrategyApplicationClient<Payload>(transport);

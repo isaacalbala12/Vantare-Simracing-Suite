@@ -17,6 +17,23 @@ son fases históricas.
 
 ## Estado
 
+Actualización ISA-810 / F5-e (2026-08-23, implementada en rama de issue):
+
+- El banner permanece visible si falla la consulta de estado, explica el fallo
+  y deja reintentar. Durante el descubrimiento en segundo plano declara que
+  sigue buscando y no presenta cero sesiones como resultado provisional.
+- La importación secuencial conserva progreso por sesión y usa un timeout
+  específico de 30 minutos por archivo, independiente de los 10 segundos del
+  resto de comandos Strategy.
+- Error, fallo del store o `panic` de una sesión se registra con motivo y no
+  aborta las siguientes. El estado local recuerda importadas y omitidas; el
+  resumen permite reintentar explícitamente solo las omitidas.
+- #809 sigue siendo la autoridad del defecto de validez: esta rama no toca
+  `internal/telemetryanalysis/lapvalidity.go`; la recuperación defensiva vive
+  en el servicio de arranque en frío. Strategy+app, 385 archivos/2923 tests
+  frontend, typecheck, build y visual Orbit quedan verdes. Pendiente: push,
+  review y prueba real del corpus de 337 sesiones. Sin PR o promoción.
+
 Actualización ISA-796 / F5-e (2026-08-22, implementada en rama de issue):
 
 - El consumidor único acepta el fixture firmado TEST sin abrir red por

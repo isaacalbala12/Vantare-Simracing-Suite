@@ -1,3 +1,19 @@
+Nota ISA-810 / ISA-694 F5-e (2026-08-23, implementada en rama de issue):
+
+- El banner distingue búsqueda en curso, cero sesiones, sesiones pendientes y
+  fallo de consulta. Un fallo conserva el banner y ofrece reintento; no vuelve
+  a dejar al usuario sin salida.
+- La búsqueda inicial corre en segundo plano con límite de 30 segundos y la UI
+  solo muestra el recuento real al terminar. No se persiste una caché que pueda
+  fingir que el directorio LMU no ha cambiado.
+- Cada sesión se procesa con un timeout propio de 30 minutos. Error o `panic`
+  se convierten en una omisión persistida con motivo, se continúa con el resto
+  y el resumen permite reintentar solo las omitidas.
+- Gates verdes: Strategy+app, 385 archivos/2923 tests frontend, typecheck,
+  build y visual Orbit. La rama queda lista para review y para la prueba del
+  corpus real de 337 sesiones por el orquestador; sin PR, integración,
+  promoción ni release.
+
 Nota ISA-809 / ISA-694 F5-e (2026-08-23, implementada en rama de issue):
 
 - La importacion en frio ya ignora con seguridad un incidente posterior a la

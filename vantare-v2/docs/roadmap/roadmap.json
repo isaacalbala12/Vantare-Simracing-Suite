@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-22T21:17:51Z",
+  "generatedAt": "2026-08-23T15:39:39Z",
   "digest": {
-    "lastCommit": "ab5dedb5b6d838f3bb1ebd8419d7d416f7887135"
+    "lastCommit": "553a8ddc9bac138c5ca275383f66a3c70fb1a53e"
   },
   "phases": [
     {
@@ -530,10 +530,10 @@
         "it": "Strategia definitiva su telemetria reale"
       },
       "body": {
-        "es": "El planificador usa una única autoridad de cálculo y guardado sobre las sesiones DuckDB reales de LMU. Orbit vincula eventos y sesiones, aplica inputs y clima, muestra backtests neutrales, ofrece un catálogo firmado de referencias con procedencia y puede importar el histórico local en el primer arranque sin datos simulados.",
-        "en": "The planner uses one calculation and storage authority over real LMU DuckDB sessions. Orbit links events and sessions, applies inputs and weather, shows neutral backtests, offers a signed provenance-preserving reference catalogue, and can import local history on first launch without simulated data.",
-        "pt": "O planeador usa uma única autoridade de cálculo e gravação sobre as sessões DuckDB reais do LMU. O Orbit associa eventos e sessões, aplica inputs e meteorologia, mostra backtests neutros, oferece um catálogo assinado de referências com procedência e pode importar o histórico local no primeiro arranque sem dados simulados.",
-        "it": "Il pianificatore usa un'unica autorità di calcolo e salvataggio sulle sessioni DuckDB reali di LMU. Orbit collega eventi e sessioni, applica input e meteo, mostra backtest neutrali, offre un catalogo firmato di riferimenti con provenienza e può importare lo storico locale al primo avvio senza dati simulati."
+        "es": "El planificador usa una única autoridad de cálculo y guardado sobre las sesiones DuckDB reales de LMU. Orbit vincula eventos y sesiones, aplica inputs y clima, muestra backtests neutrales, ofrece referencias firmadas e importa el histórico local con progreso; una sesión mala se omite con motivo y puede reintentarse sin frenar las demás.",
+        "en": "The planner uses one calculation and storage authority over real LMU DuckDB sessions. Orbit links events and sessions, applies inputs and weather, shows neutral backtests, offers signed references, and imports local history with progress; a bad session is skipped with a reason and can be retried without stopping the rest.",
+        "pt": "O planeador usa uma única autoridade de cálculo e gravação sobre as sessões DuckDB reais do LMU. O Orbit associa eventos e sessões, aplica inputs e meteorologia, mostra backtests neutros, oferece referências assinadas e importa o histórico local com progresso; uma sessão inválida é omitida com motivo e pode ser repetida sem parar as restantes.",
+        "it": "Il pianificatore usa un'unica autorità di calcolo e salvataggio sulle sessioni DuckDB reali di LMU. Orbit collega eventi e sessioni, applica input e meteo, mostra backtest neutrali, offre riferimenti firmati e importa lo storico locale con avanzamento; una sessione non valida viene saltata con motivo e può essere riprovata senza fermare le altre."
       },
       "label": {
         "es": "Feature",
@@ -654,6 +654,16 @@
     }
   ],
   "delivered": [
+    {
+      "date": "2026-08-23",
+      "entries": [
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-781/782: track-weather, broadcast-tower y posicion para track-map sobre v2"
+        }
+      ]
+    },
     {
       "date": "2026-08-22",
       "entries": [

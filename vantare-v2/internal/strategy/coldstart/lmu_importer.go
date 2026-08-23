@@ -106,29 +106,29 @@ func (importer *LMUImporter) Import(ctx context.Context, candidate telemetryanal
 	}
 	artifact, err := telemetryanalysis.BuildAuthorizedHistoricalArtifact(ctx, telemetryanalysis.OSContentSource{}, candidate, telemetryanalysis.ImportOptions{Storage: telemetryanalysis.StorageManagedCopy, Access: telemetryanalysis.AccessUserApproved, MaxBytes: maxInitialFileBytes, ParserID: telemetryanalysis.LMUDuckDBParserID, ParserVersion: telemetryanalysis.LMUDuckDBParserVersion, Provenance: telemetryanalysis.Provenance{Kind: telemetryanalysis.ProvenanceUser, EvidenceID: "strategy-cold-start"}})
 	if err != nil {
-		return telemetryanalysis.AuthorizedSessionModel{}, err
+		return telemetryanalysis.AuthorizedSessionModel{}, fmt.Errorf("authorize LMU historical session: %w", err)
 	}
 	staged, err := telemetryanalysis.StageAuthorizedHistoricalArtifact(ctx, telemetryanalysis.OSContentSource{}, candidate, artifact, importer.stagingRoot)
 	if err != nil {
-		return telemetryanalysis.AuthorizedSessionModel{}, err
+		return telemetryanalysis.AuthorizedSessionModel{}, fmt.Errorf("stage LMU historical session: %w", err)
 	}
 	defer staged.Cleanup()
 	reader, err := duckdbadapter.NewReader(importer.runtime, artifact, staged)
 	if err != nil {
-		return telemetryanalysis.AuthorizedSessionModel{}, err
+		return telemetryanalysis.AuthorizedSessionModel{}, fmt.Errorf("open LMU DuckDB session: %w", err)
 	}
 	defer reader.Close()
 	parser, err := telemetryanalysis.NewLMUDuckDBParser(artifact, reader, telemetryanalysis.MaxLMUDuckDBPageRows)
 	if err != nil {
-		return telemetryanalysis.AuthorizedSessionModel{}, err
+		return telemetryanalysis.AuthorizedSessionModel{}, fmt.Errorf("create LMU DuckDB parser: %w", err)
 	}
 	session, err := parser.Inspect(ctx)
 	if err != nil {
-		return telemetryanalysis.AuthorizedSessionModel{}, err
+		return telemetryanalysis.AuthorizedSessionModel{}, fmt.Errorf("inspect LMU DuckDB session: %w", err)
 	}
 	pages, err := readAllPages(ctx, parser, session)
 	if err != nil {
-		return telemetryanalysis.AuthorizedSessionModel{}, err
+		return telemetryanalysis.AuthorizedSessionModel{}, fmt.Errorf("read LMU DuckDB session pages: %w", err)
 	}
 	model := telemetryanalysis.AuthorizedSessionModel{Artifact: artifact, Session: session}
 	validity, validityErr := telemetryanalysis.AnalyzeLapValidity(session, pages)

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { decodeOverlayUpdateV2 } from "./overlay-frame-v2-store";
 
 describe("OverlayFrame v2 parse budget", () => {
-  it("TestOverlayFrameV2ParsesUnderOneMillisecondP99", () => {
+  it("TestOverlayFrameV2ParsesUnderBudgetP99", () => {
     const encoded = JSON.stringify(syntheticFullUpdate(104));
     for (let index = 0; index < 100; index += 1) decodeOverlayUpdateV2(encoded);
     // Three trials isolate the decoder from transient work in the shared test
@@ -11,7 +11,11 @@ describe("OverlayFrame v2 parse budget", () => {
     const trials = Array.from({ length: 3 }, () => measureTrial(encoded, operationsPerSample));
     const selected = [...trials].sort((left, right) => left.cpuP99 - right.cpuP99)[0]!;
     console.info(`OverlayFrame v2 Node JSON.parse+decode best-of-3 CPU p99/op=${selected.cpuP99.toFixed(3)}ms wall=${selected.wallP99.toFixed(3)}ms bytes=${encoded.length}`);
-    expect(selected.cpuP99).toBeLessThan(1);
+    // Presupuesto: 1,5 ms por frame sintético completo @104 (~46 KB tras
+    // añadir weather, damage y posición por coche en ISA-696/ISA-781; antes
+    // ~36 KB y 1 ms). El runner de CI de Windows es ~1,5x más lento que un
+    // equipo de desarrollo. El frame real de LMU @104 ronda la mitad de bytes.
+    expect(selected.cpuP99).toBeLessThan(1.5);
   }, 60_000);
 });
 

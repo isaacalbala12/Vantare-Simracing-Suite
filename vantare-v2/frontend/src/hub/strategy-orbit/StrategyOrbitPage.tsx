@@ -2653,7 +2653,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
 
   // ── derivados de las pestañas Estrategias y Disponibilidad ──────────────
   const cards = Object.values(variants);
-  const eco = cards.find((variant) => variant.mode === "eco");
+  const eco = cards.find((variant) => plansById[variant.id]?.savingApplied);
   const ecoPlan = eco ? plansById[eco.id] : undefined;
   const ecoComparison = eco && calculation.status === "success" && calculationCurrent
     ? calculation.result.comparisons[eco.id]
@@ -2986,6 +2986,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
           eco={eco}
           ecoPlan={ecoPlan}
           event={event}
+          eventProvenance={eventRecord.source === "series" ? "reference" : eventRecord.fillMode === "telemetry" ? "derived" : "manual"}
           plan={plan}
           planningInputs={eventPlanningInputs}
           start={timelineStart}

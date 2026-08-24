@@ -1526,6 +1526,11 @@
   margin: 14px 0;
 }
 
+.orbit-analysis__stop .orbit-analysis__breakdown {
+  border-top: 1px solid var(--orbit-line);
+  padding-top: 10px;
+}
+
 .orbit-analysis__stop dl > div,
 .orbit-analysis__time-grid dl > div {
   align-items: baseline;

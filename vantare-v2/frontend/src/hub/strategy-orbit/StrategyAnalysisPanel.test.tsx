@@ -21,16 +21,18 @@ const eco: StrategyVariant = {
 };
 
 function plan(overrides: Partial<StrategyOrbitCalculatedPlanV1> = {}): StrategyOrbitCalculatedPlanV1 {
+  const savingApplied = overrides.savingApplied ?? false;
   return {
     stints: [
-      { i: 0, d: "isaac", laps: 30, fuel: 84, pace: 104, start: 0, end: 3120, lap0: 1, lap1: 30, pitWindowLap: 27, pitWindowSeconds: 2704, over: false, manual: false },
-      { i: 1, d: "isaac", laps: 30, fuel: 84, pace: 104, start: 3184, end: 6304, lap0: 31, lap1: 60, pitWindowLap: 57, pitWindowSeconds: 5888, over: false, manual: false },
+      { i: 0, d: "isaac", laps: 30, fuel: 84, pace: 104, start: 0, end: 3120, lap0: 1, lap1: 30, pitWindowLap: 27, pitWindowSeconds: 2704, over: false, manual: false, savingLevel: savingApplied ? "low" : "none", fuelSavedPerLap: savingApplied ? 0.2 : 0, savingCostSeconds: savingApplied ? 6 : 0 },
+      { i: 1, d: "isaac", laps: 30, fuel: 84, pace: 104, start: 3184, end: 6304, lap0: 31, lap1: 60, pitWindowLap: 57, pitWindowSeconds: 5888, over: false, manual: false, savingLevel: savingApplied ? "low" : "none", fuelSavedPerLap: savingApplied ? 0.2 : 0, savingCostSeconds: savingApplied ? 6 : 0 },
     ],
     totalLaps: 60, total: 6304, stops: 1, maxLaps: 32, avgFuel: 2.8, avgPace: 104,
     distribution: [{ driverId: "isaac", laps: 60, seconds: 6240 }],
     drivingSeconds: 6240, pitSeconds: 64, startFuelLiters: 84,
     finishFuelLiters: 0, reserveLaps: 0,
-    stopDetails: [{ index: 0, lap: 30, fuelInLiters: 0, fuelOutLiters: 84, pitLossSeconds: 64 }],
+    stopDetails: [{ index: 0, lap: 30, fuelInLiters: 0, fuelOutLiters: 84, pitLossSeconds: 64, pitTransitSeconds: 60, pitServiceSeconds: 6, pitOverlapSeconds: 2, pitBreakdownAvailable: true }],
+    savingApplied,
     ...overrides,
   };
 }
@@ -44,6 +46,7 @@ function renderPanel(options: { classes?: string[]; ecoPlan?: StrategyOrbitCalcu
     eco={ecoPlan ? eco : undefined}
     ecoPlan={ecoPlan}
     event={event}
+    eventProvenance="manual"
     plan={plan()}
     planningInputs={options.planningInputs}
     start={new Date("2030-01-01T14:00:00Z")}
@@ -67,7 +70,7 @@ const missingPlanning = {
 
 describe("StrategyAnalysisPanel", () => {
   it("compara el recomendado con D6 en las mismas columnas y superpone su reparto", () => {
-    renderPanel({ ecoPlan: plan({ total: 6352, drivingSeconds: 6288, avgPace: 104.8 }) });
+    renderPanel({ ecoPlan: plan({ total: 6352, drivingSeconds: 6288, avgPace: 104.8, savingApplied: true }) });
     expect(screen.getAllByText("Plan recomendado").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Plan con ahorro").length).toBeGreaterThan(0);
     expect(screen.getByText("+0:48 más lento que el recomendado")).toBeTruthy();

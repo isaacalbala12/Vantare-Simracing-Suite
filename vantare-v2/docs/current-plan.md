@@ -1,3 +1,20 @@
+Nota ISA-828 / rediseño de Análisis Strategy Orbit (2026-08-24, implementada en rama de issue):
+
+- La pestaña `Análisis` presenta cifras comparables del plan recomendado y del
+  D6 realmente elegido por SolverV2, timeline por clase, estado multiclase,
+  tarjetas de parada, comparativa temporal y log copiable. La entrada manual
+  permanece en sus pasos de edición y no aparece en esta vista.
+- El contrato de cálculo publica, sin aritmética de dominio en TypeScript,
+  combustible de salida/llegada, reserva, tiempos de conducción/boxes,
+  decisiones D6 por stint y el desglose de boxes existente. Si no hay D6 o no
+  existe ritmo por clase, la familia queda visible con su causa concreta.
+- Las pruebas de pantalla cubren con/sin ahorro, mono/multiclase y una familia
+  ausente. Los 243 tests Strategy/Orbit, ambos typechecks, el build y el test Go
+  focal pasan; el preview web no alcanza la pantalla porque el shell fuera de
+  Wails cae en `overlay-frame-v2:invalid-contract:disposed`. La infografía
+  descargable queda explícitamente fuera de ISA-828 y no se ha iniciado. Sin
+  PR, integración, promoción ni release.
+
 Nota ISA-824 / ISA-694 entrada asistida (2026-08-24, implementada en rama de issue):
 
 - El paso Datos habilita `Automática con telemetría` solo cuando el catálogo

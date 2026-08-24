@@ -89,6 +89,9 @@ function calculateForTest(input: StrategyOrbitCalculationInputV1): StrategyOrbit
         pitWindowSeconds: start + (pitWindowLap - lap0) * pace.paceSeconds,
         over: wanted > input.event.tankLiters + 0.01,
         manual: variant.overrides[index] !== undefined,
+        savingLevel: "none",
+        fuelSavedPerLap: 0,
+        savingCostSeconds: 0,
       };
       lap = lap1;
       if (index < count - 1) clock += input.event.pitLossSeconds;
@@ -119,7 +122,12 @@ function calculateForTest(input: StrategyOrbitCalculationInputV1): StrategyOrbit
         fuelInLiters: Math.max(0, stint.fuel - stint.laps * drivers.get(stint.d)![variant.mode].fuelLitersPerLap),
         fuelOutLiters: stints[index + 1].fuel,
         pitLossSeconds: input.event.pitLossSeconds,
+        pitTransitSeconds: input.event.pitLossSeconds,
+        pitServiceSeconds: 0,
+        pitOverlapSeconds: 0,
+        pitBreakdownAvailable: true,
       })),
+      savingApplied: false,
     };
   }
   const active = plans[input.activeVariantId];

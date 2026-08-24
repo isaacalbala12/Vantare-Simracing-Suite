@@ -27,6 +27,7 @@ interface StrategyAnalysisPanelProps {
   eco?: StrategyVariant;
   ecoPlan?: StrategyOrbitCalculatedPlanV1;
   event: StrategyEvent;
+  eventProvenance: "derived" | "manual" | "reference";
   plan: StrategyOrbitCalculatedPlanV1;
   planningInputs?: StrategyPlanningInputsV2;
   start: Date;
@@ -70,7 +71,7 @@ function sourceLine(label: string, unit: string, view: StrategyInputProvenanceVi
 }
 
 export function StrategyAnalysisPanel({
-  active, classes, comparison, eco, ecoPlan, event, plan, planningInputs, start, t,
+  active, classes, comparison, eco, ecoPlan, event, eventProvenance, plan, planningInputs, start, t,
 }: StrategyAnalysisPanelProps) {
   const [copied, setCopied] = useState(false);
   const ownClass = event.vehicleClass || t("strategy.analysis.ownClass");
@@ -117,7 +118,7 @@ export function StrategyAnalysisPanel({
     const lines = [
       t("strategy.analysis.logHeader"),
       `${t("strategy.analysis.plan")}: ${active.name} [${t("strategy.inputs.chip.derived")}]`,
-      `${t("strategy.analysis.duration")}: ${event.durationMin} min [${t("strategy.inputs.chip.manual")}]`,
+      `${t("strategy.analysis.duration")}: ${event.durationMin} min [${t(`strategy.inputs.chip.${eventProvenance}`)}]`,
       sourceLine(t("strategy.analysis.pace"), "s/v", pace, t),
       sourceLine(t("strategy.analysis.consumption"), "L/v", fuel, t),
       sourceLine(t("strategy.analysis.capacity"), "L", tank, t),
@@ -128,7 +129,7 @@ export function StrategyAnalysisPanel({
     ];
     if (ecoPlan) lines.push(`${t("strategy.analysis.savingPlan")}: ${ecoPlan.totalLaps} v · ${ecoPlan.stops} ${t("strategy.analysis.stops")} · ${clockTime(ecoPlan.total)} [${t("strategy.inputs.chip.derived")}]`);
     return lines.join("\n");
-  }, [active.name, ecoPlan, event.durationMin, fuel, pace, pit, plan, t, tank]);
+  }, [active.name, ecoPlan, event.durationMin, eventProvenance, fuel, pace, pit, plan, t, tank]);
 
   const delta = comparison?.totalDeltaSeconds;
   const deltaText = delta === undefined
@@ -188,15 +189,19 @@ export function StrategyAnalysisPanel({
               <div><dt>{t("strategy.analysis.levelOut")}</dt><dd>{stop.fuelOutLiters.toFixed(1)} L</dd></div>
               <div><dt>{t("strategy.analysis.pitTime")}</dt><dd>{stop.pitLossSeconds.toFixed(1)} s</dd></div>
             </dl>
-            <p>{t("strategy.analysis.pitBreakdownReason")}</p>
-            <footer><Chip caseNormal>{active.mode === "eco" ? t("strategy.analysis.savingYes") : t("strategy.analysis.savingNo")}</Chip><Chip caseNormal>{tyres ? `${tyres} ${t("strategy.analysis.tyres")}` : t("strategy.analysis.noTyreAdjustment")}</Chip></footer>
+            {stop.pitBreakdownAvailable ? <dl className="orbit-analysis__breakdown">
+              <div><dt>{t("strategy.analysis.pitTransit")}</dt><dd>{stop.pitTransitSeconds.toFixed(1)} s</dd></div>
+              <div><dt>{t("strategy.analysis.pitServices")}</dt><dd>{stop.pitServiceSeconds.toFixed(1)} s</dd></div>
+              <div><dt>{t("strategy.analysis.pitOverlap")}</dt><dd>−{stop.pitOverlapSeconds.toFixed(1)} s</dd></div>
+            </dl> : <p>{t("strategy.analysis.pitBreakdownReason")}</p>}
+            <footer><Chip caseNormal>{plan.stints[stop.index + 1]?.savingLevel && plan.stints[stop.index + 1].savingLevel !== "none" ? t("strategy.analysis.savingYes") : t("strategy.analysis.savingNo")}</Chip><Chip caseNormal>{tyres ? `${tyres} ${t("strategy.analysis.tyres")}` : t("strategy.analysis.noTyreAdjustment")}</Chip></footer>
           </article>;
         })}</div> : <Note title={t("strategy.analysis.noStopsTitle")}>{t("strategy.analysis.noStopsReason")}</Note>}
       </section>
 
       <Surface className="orbit-analysis__times" meta={deltaText} title={t("strategy.analysis.timesTitle")}>
         <div className="orbit-analysis__time-grid">
-          {[{ label: t("strategy.analysis.recommendedPlan"), value: plan }, ...(ecoPlan ? [{ label: t("strategy.analysis.savingPlan"), value: ecoPlan }] : [])].map((item) => <article key={item.label}><header><b>{item.label}</b><Provenance kind="derived" t={t} /></header><dl><div><dt>{t("strategy.analysis.drivingTime")}</dt><dd>{clockTime(item.value.drivingSeconds)}</dd></div><div><dt>{t("strategy.analysis.boxTime")}</dt><dd>{clockTime(item.value.pitSeconds)}</dd></div><div><dt>{t("strategy.analysis.totalTime")}</dt><dd>{clockTime(item.value.total)}</dd></div></dl></article>)}
+          {[{ label: t("strategy.analysis.recommendedPlan"), value: plan }, ...(ecoPlan && eco?.id !== active.id ? [{ label: t("strategy.analysis.savingPlan"), value: ecoPlan }] : [])].map((item) => <article key={item.label}><header><b>{item.label}</b><Provenance kind="derived" t={t} /></header><dl><div><dt>{t("strategy.analysis.drivingTime")}</dt><dd>{clockTime(item.value.drivingSeconds)}</dd></div><div><dt>{t("strategy.analysis.boxTime")}</dt><dd>{clockTime(item.value.pitSeconds)}</dd></div><div><dt>{t("strategy.analysis.totalTime")}</dt><dd>{clockTime(item.value.total)}</dd></div></dl></article>)}
         </div>
         {!ecoPlan ? <Note title={t("strategy.analysis.noEcoTitle")}>{t("strategy.analysis.noEcoReason")}</Note> : null}
       </Surface>

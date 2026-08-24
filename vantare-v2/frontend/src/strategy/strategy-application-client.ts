@@ -363,6 +363,9 @@ export type StrategyOrbitCalculatedStintV1 = {
   readonly pitWindowSeconds: number;
   readonly over: boolean;
   readonly manual: boolean;
+  readonly savingLevel: string;
+  readonly fuelSavedPerLap: number;
+  readonly savingCostSeconds: number;
 };
 
 export type StrategyOrbitCalculatedPlanV1 = {
@@ -389,7 +392,12 @@ export type StrategyOrbitCalculatedPlanV1 = {
     readonly fuelInLiters: number;
     readonly fuelOutLiters: number;
     readonly pitLossSeconds: number;
+    readonly pitTransitSeconds: number;
+    readonly pitServiceSeconds: number;
+    readonly pitOverlapSeconds: number;
+    readonly pitBreakdownAvailable: boolean;
   }[];
+  readonly savingApplied: boolean;
 };
 
 export type StrategyOrbitCalculationComparisonV1 = {
@@ -1530,10 +1538,11 @@ function parseStrategyOrbitCalculation(value: unknown): StrategyOrbitCalculation
     const stints = plan.stints.map((entry, index) => {
       const stint = strategyRecord(entry, `orbitCalculation.plans.${id}.stints.${index}`);
       strategyString(stint.d, `orbitCalculation.plans.${id}.stints.${index}.d`);
+      strategyString(stint.savingLevel, `orbitCalculation.plans.${id}.stints.${index}.savingLevel`);
       for (const field of ["i", "laps", "lap0", "lap1", "pitWindowLap"] as const) {
         strategyInteger(stint[field], `orbitCalculation.plans.${id}.stints.${index}.${field}`);
       }
-      for (const field of ["fuel", "pace", "start", "end", "pitWindowSeconds"] as const) {
+      for (const field of ["fuel", "pace", "start", "end", "pitWindowSeconds", "fuelSavedPerLap", "savingCostSeconds"] as const) {
         strategyNumber(stint[field], `orbitCalculation.plans.${id}.stints.${index}.${field}`);
       }
       if (typeof stint.over !== "boolean" || typeof stint.manual !== "boolean") {
@@ -1548,14 +1557,16 @@ function parseStrategyOrbitCalculation(value: unknown): StrategyOrbitCalculation
       strategyNumber(slice.seconds, `orbitCalculation.plans.${id}.distribution.${index}.seconds`);
       return slice as StrategyOrbitCalculatedPlanV1["distribution"][number];
     });
+    if (typeof plan.savingApplied !== "boolean") throw new Error(`Invalid Strategy orbitCalculation.plans.${id}.savingApplied`);
     const stopDetails = plan.stopDetails.map((entry, index) => {
       const stop = strategyRecord(entry, `orbitCalculation.plans.${id}.stopDetails.${index}`);
       for (const field of ["index", "lap"] as const) {
         strategyInteger(stop[field], `orbitCalculation.plans.${id}.stopDetails.${index}.${field}`);
       }
-      for (const field of ["fuelInLiters", "fuelOutLiters", "pitLossSeconds"] as const) {
+      for (const field of ["fuelInLiters", "fuelOutLiters", "pitLossSeconds", "pitTransitSeconds", "pitServiceSeconds", "pitOverlapSeconds"] as const) {
         strategyNumber(stop[field], `orbitCalculation.plans.${id}.stopDetails.${index}.${field}`);
       }
+      if (typeof stop.pitBreakdownAvailable !== "boolean") throw new Error(`Invalid Strategy orbitCalculation.plans.${id}.stopDetails.${index}.pitBreakdownAvailable`);
       return stop as StrategyOrbitCalculatedPlanV1["stopDetails"][number];
     });
     plans[id] = {
@@ -1573,6 +1584,7 @@ function parseStrategyOrbitCalculation(value: unknown): StrategyOrbitCalculation
       finishFuelLiters: plan.finishFuelLiters as number,
       reserveLaps: plan.reserveLaps as number,
       stopDetails,
+      savingApplied: plan.savingApplied as boolean,
     };
   }
   const comparisons: Record<string, StrategyOrbitCalculationComparisonV1> = {};

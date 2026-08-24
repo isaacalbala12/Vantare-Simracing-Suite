@@ -40,10 +40,13 @@ function Provenance({ kind, t }: { kind: StrategyInputProvenanceView["kind"] | "
   return <Chip caseNormal>{t(`strategy.inputs.chip.${kind}`)}</Chip>;
 }
 
-function PlanStats({ label, plan, t }: { label: string; plan?: StrategyOrbitCalculatedPlanV1; t: T }) {
+function PlanStats({ label, plan, t, variant }: { label: string; plan?: StrategyOrbitCalculatedPlanV1; t: T; variant: "main" | "eco" }) {
   const source = t("strategy.analysis.engineDerived");
+  // Menos de una vuelta de reserva es el aviso que la referencia pinta en rojo:
+  // llegar con el deposito exacto no es un plan, es una apuesta.
+  const tightFinish = plan !== undefined && plan.reserveLaps < 1;
   return (
-    <section className="orbit-analysis__plan-row" data-empty={plan ? undefined : "true"}>
+    <section className="orbit-analysis__plan-row" data-empty={plan ? undefined : "true"} data-plan={variant}>
       <header>
         <div><span>{label}</span>{plan ? <Provenance kind="derived" t={t} /> : null}</div>
         {!plan ? <small>{t("strategy.analysis.noEcoReason")}</small> : null}
@@ -56,6 +59,7 @@ function PlanStats({ label, plan, t }: { label: string; plan?: StrategyOrbitCalc
         <StatTile
           label={t("strategy.analysis.finishFuel")}
           sub={plan ? `${plan.reserveLaps.toFixed(2)} ${t("strategy.analysis.reserveLaps")} · ${source}` : t("strategy.analysis.noEcoShort")}
+          tone={tightFinish ? "hot" : "neutral"}
           unit={plan ? "L" : undefined}
           value={plan ? plan.finishFuelLiters.toFixed(1) : "—"}
         />
@@ -139,8 +143,8 @@ export function StrategyAnalysisPanel({
   return (
     <div className="orbit-analysis" data-testid="orbit-strategy-analysis">
       <Surface className="orbit-analysis__plans" meta={t("strategy.analysis.sameColumns")} title={t("strategy.analysis.keyFigures")}>
-        <PlanStats label={t("strategy.analysis.recommendedPlan")} plan={plan} t={t} />
-        <PlanStats label={eco?.id === active.id ? t("strategy.analysis.ecoIsRecommended") : t("strategy.analysis.savingPlan")} plan={ecoPlan} t={t} />
+        <PlanStats label={t("strategy.analysis.recommendedPlan")} plan={plan} t={t} variant="main" />
+        <PlanStats label={eco?.id === active.id ? t("strategy.analysis.ecoIsRecommended") : t("strategy.analysis.savingPlan")} plan={ecoPlan} t={t} variant="eco" />
       </Surface>
 
       <Surface meta={ecoPlan ? t("strategy.analysis.timelineHint") : t("strategy.analysis.timelineNoEco")} title={t("strategy.analysis.timelineTitle")}>

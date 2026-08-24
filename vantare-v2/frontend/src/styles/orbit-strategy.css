@@ -1322,14 +1322,32 @@
 
 /* ------------------------------------------------ ANÁLISIS DE ESTRATEGIA */
 
+/* ── Análisis de estrategia ────────────────────────────────────────────────
+   La distribución viene de la referencia que dio Isaac: cifras clave de dos
+   planes en las mismas columnas, línea de tiempo por clase, secuencia de
+   paradas y balance de tiempos. El acabado es Orbit: carmín para el plan
+   propio, cian para el contrafactual de ahorro, cifras en monoespaciada
+   tabular, y jerarquía por acento en vez de por marcos. */
+
+/* Columna flexible, no rejilla: las secciones llevan `overflow: hidden`, y como
+   items de rejilla su minimo automatico es cero, asi que en una ventana corta
+   se aplastaban hasta dejar solo la cabecera. Con `flex: none` conservan su
+   alto natural y quien desplaza es el contenedor. */
 .orbit-analysis {
-  display: grid;
-  gap: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--orbit-space);
   margin-top: 16px;
   min-height: 0;
   overflow-y: auto;
-  padding-bottom: 18px;
+  padding-bottom: 22px;
 }
+
+.orbit-analysis > * {
+  flex: none;
+}
+
+/* Cifras clave · dos planes, mismas columnas */
 
 .orbit-analysis__plans .orbit-surface__body {
   display: grid;
@@ -1337,66 +1355,126 @@
 }
 
 .orbit-analysis__plan-row {
+  --plan-accent: var(--orbit-carmine);
   display: grid;
-  gap: 10px;
-  padding: 14px 0;
+  gap: 12px;
+  padding: 18px 0 20px;
+}
+
+.orbit-analysis__plan-row[data-plan="eco"] {
+  --plan-accent: var(--orbit-cyan);
 }
 
 .orbit-analysis__plan-row + .orbit-analysis__plan-row {
   border-top: 1px solid var(--orbit-line);
 }
 
-.orbit-analysis__plan-row > header,
-.orbit-analysis__plan-row > header > div,
-.orbit-analysis__section > header,
-.orbit-analysis__stop > header,
-.orbit-analysis__time-grid article > header {
-  align-items: center;
+.orbit-analysis__plan-row > header {
+  align-items: baseline;
   display: flex;
-  gap: 9px;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: space-between;
 }
 
-.orbit-analysis__plan-row > header {
-  justify-content: space-between;
+.orbit-analysis__plan-row > header > div {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+}
+
+/* El marcador de color es la única marca de identidad del plan: sustituye a un
+   borde de caja y deja que respiren las cifras. */
+.orbit-analysis__plan-row > header > div::before {
+  background: var(--plan-accent);
+  border-radius: 2px;
+  content: "";
+  height: 15px;
+  width: 3px;
+}
+
+.orbit-analysis__plan-row[data-empty="true"] > header > div::before {
+  background: var(--orbit-line-strong);
 }
 
 .orbit-analysis__plan-row > header > div > span {
   color: var(--orbit-ink);
   font-size: var(--orbit-fs-panel);
   font-weight: 700;
+  letter-spacing: 0.01em;
 }
 
 .orbit-analysis__plan-row > header small {
   color: var(--orbit-ink-3);
+  flex: 1 1 320px;
+  font-size: var(--orbit-fs-secondary);
+  line-height: 1.5;
+  max-width: 62ch;
 }
 
 .orbit-analysis__plan-row .orbit-stat-row {
+  gap: 12px;
   grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
-.orbit-analysis__plan-row[data-empty="true"] .orbit-stat {
-  opacity: 0.62;
+/* Filo superior del color del plan, por dentro para no romper el radio. */
+.orbit-analysis__plan-row .orbit-stat {
+  box-shadow: inset 0 2px 0 var(--plan-accent), var(--orbit-inset-glass);
+  padding: 15px 16px 16px;
 }
 
-.orbit-tl__block[data-variant="outline"] {
-  background: transparent !important;
-  border: 2px dashed var(--orbit-cyan);
-  color: var(--orbit-cyan);
-  z-index: 3;
+.orbit-analysis__plan-row .orbit-stat__v {
+  font-family: var(--orbit-font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
 }
+
+/* La procedencia se lee entera: en cifras clave importa mas que quepa en una
+   linea. El titulo reserva dos lineas para que los valores queden alineados
+   aunque una etiqueta sea larga. */
+.orbit-analysis__plan-row .orbit-stat__s {
+  color: var(--orbit-ink-4);
+  font-size: var(--orbit-fs-micro);
+  line-height: 1.5;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.orbit-analysis__plan-row .orbit-stat__k {
+  align-content: start;
+  display: grid;
+  line-height: 1.35;
+  min-height: 2.7em;
+}
+
+.orbit-analysis__plan-row[data-empty="true"] .orbit-stat {
+  background: transparent;
+  border-style: dashed;
+  box-shadow: none;
+}
+
+.orbit-analysis__plan-row[data-empty="true"] .orbit-stat__v {
+  color: var(--orbit-ink-muted);
+}
+
+/* Línea de tiempo */
 
 .orbit-analysis__class {
   align-items: center;
   color: var(--orbit-ink-3);
   display: flex;
+  font-size: var(--orbit-fs-secondary);
   gap: 8px;
+  letter-spacing: 0.02em;
 }
 
 .orbit-analysis__class i {
   background: var(--orbit-line-strong);
   border-radius: 50%;
-  height: 7px;
-  width: 7px;
+  flex: none;
+  height: 6px;
+  width: 6px;
 }
 
 .orbit-analysis__class[data-own="true"] {
@@ -1406,195 +1484,303 @@
 
 .orbit-analysis__class[data-own="true"] i {
   background: var(--orbit-carmine);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--orbit-carmine) 18%, transparent);
+  box-shadow: 0 0 9px rgba(213, 47, 73, 0.55);
+}
+
+.orbit-tl__block[data-variant="outline"] {
+  background: transparent !important;
+  border: 1.5px dashed var(--orbit-cyan);
+  color: var(--orbit-cyan);
+  z-index: 3;
 }
 
 .orbit-analysis .orbit-note {
-  margin-top: 12px;
+  margin-top: 14px;
 }
 
+/* Lectura multiclase */
+
 .orbit-analysis__leader {
-  display: grid;
-  gap: 12px 24px;
-  grid-template-columns: repeat(2, minmax(0, 180px)) minmax(240px, 1fr);
-  margin-bottom: 14px;
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 28px;
+  padding-bottom: 14px;
 }
 
 .orbit-analysis__leader span {
+  align-items: baseline;
   color: var(--orbit-ink-3);
-  display: grid;
-  font-size: var(--orbit-fs-secondary);
-  gap: 4px;
+  display: flex;
+  font-size: var(--orbit-fs-eyebrow);
+  gap: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .orbit-analysis__leader b {
   color: var(--orbit-ink);
-  font: 650 24px var(--orbit-font-mono);
+  font-family: var(--orbit-font-mono);
+  font-size: var(--orbit-fs-kpi);
+  font-variant-numeric: tabular-nums;
 }
 
 .orbit-analysis__leader small {
-  align-self: end;
-  color: var(--orbit-ink-3);
+  color: var(--orbit-ink-4);
+  flex: 1 1 100%;
+  font-size: var(--orbit-fs-secondary);
   line-height: 1.5;
+  max-width: 74ch;
 }
 
 .orbit-analysis__table-wrap {
+  border-top: 1px solid var(--orbit-line);
   overflow-x: auto;
 }
 
 .orbit-analysis__table {
   border-collapse: collapse;
-  min-width: 660px;
+  min-width: 520px;
   width: 100%;
 }
 
 .orbit-analysis__table th,
 .orbit-analysis__table td {
-  border-bottom: 1px solid var(--orbit-line);
-  padding: 10px 12px;
+  padding: 11px 14px 11px 0;
   text-align: left;
 }
 
 .orbit-analysis__table thead th {
-  color: var(--orbit-ink-3);
+  color: var(--orbit-ink-4);
   font-size: var(--orbit-fs-micro);
-  font-weight: 650;
-  letter-spacing: 0.06em;
+  font-weight: 700;
+  letter-spacing: 0.09em;
   text-transform: uppercase;
+}
+
+.orbit-analysis__table tbody tr {
+  border-top: 1px solid var(--orbit-line-row);
 }
 
 .orbit-analysis__table tbody th {
   color: var(--orbit-ink);
-  font-size: var(--orbit-fs-secondary);
+  font-size: var(--orbit-fs-body);
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .orbit-analysis__table tbody td {
-  color: var(--orbit-ink-3);
+  color: var(--orbit-ink-4);
   font-size: var(--orbit-fs-secondary);
 }
 
+/* Secuencia de paradas */
+
 .orbit-analysis__section {
   display: grid;
-  gap: 12px;
+  gap: 14px;
 }
 
 .orbit-analysis__section > header {
+  align-items: flex-end;
+  display: flex;
+  gap: 12px;
   justify-content: space-between;
+}
+
+.orbit-analysis__section > header > div {
+  display: grid;
+  gap: 3px;
 }
 
 .orbit-analysis__section h3 {
   color: var(--orbit-ink);
-  font-size: 16px;
-  margin: 3px 0 0;
+  font-size: var(--orbit-fs-sect);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: 0;
 }
 
 .orbit-analysis__stops,
 .orbit-analysis__time-grid {
   display: grid;
   gap: 12px;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(268px, 1fr));
 }
 
 .orbit-analysis__stop,
 .orbit-analysis__time-grid article {
-  background: var(--orbit-surface-1);
+  background: var(--orbit-panel-bg);
   border: 1px solid var(--orbit-line);
   border-radius: var(--orbit-radius);
-  padding: 15px;
+  box-shadow: var(--orbit-inset-glass);
+  display: grid;
+  gap: 12px;
+  padding: 16px 18px 15px;
 }
 
+.orbit-analysis__stop > header,
+.orbit-analysis__time-grid article > header {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+/* El número de parada ancla la tarjeta, como en la referencia. */
 .orbit-analysis__stop > header > span {
-  color: var(--orbit-carmine);
-  font: 700 24px var(--orbit-font-mono);
+  align-items: center;
+  background: linear-gradient(150deg, rgba(213, 47, 73, 0.22), rgba(213, 47, 73, 0.06));
+  border: 1px solid rgba(213, 47, 73, 0.34);
+  border-radius: var(--orbit-radius-chip);
+  color: var(--orbit-coral);
+  display: flex;
+  flex: none;
+  font-family: var(--orbit-font-mono);
+  font-size: var(--orbit-fs-body);
+  font-weight: 700;
+  height: 30px;
+  justify-content: center;
+  width: 30px;
 }
 
 .orbit-analysis__stop > header > div {
   display: grid;
+  flex: 1 1 auto;
   gap: 2px;
 }
 
-.orbit-analysis__stop > header small,
-.orbit-analysis__stop > p {
+.orbit-analysis__stop > header b {
+  color: var(--orbit-ink);
+  font-size: var(--orbit-fs-panel);
+}
+
+.orbit-analysis__stop > header small {
   color: var(--orbit-ink-3);
-  font-size: var(--orbit-fs-micro);
+  font-size: var(--orbit-fs-secondary);
+}
+
+.orbit-analysis__time-grid article > header b {
+  color: var(--orbit-ink);
+  font-size: var(--orbit-fs-panel);
+  font-weight: 700;
 }
 
 .orbit-analysis__stop dl,
 .orbit-analysis__time-grid dl {
   display: grid;
-  gap: 8px;
-  margin: 14px 0;
+  gap: 9px 14px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0;
 }
 
 .orbit-analysis__stop .orbit-analysis__breakdown {
-  border-top: 1px solid var(--orbit-line);
-  padding-top: 10px;
+  border-top: 1px solid var(--orbit-line-row);
+  padding-top: 11px;
 }
 
 .orbit-analysis__stop dl > div,
 .orbit-analysis__time-grid dl > div {
-  align-items: baseline;
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  gap: 3px;
+  min-width: 0;
 }
 
 .orbit-analysis__stop dt,
 .orbit-analysis__time-grid dt {
-  color: var(--orbit-ink-3);
-  font-size: var(--orbit-fs-secondary);
+  color: var(--orbit-ink-4);
+  font-size: var(--orbit-fs-micro);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .orbit-analysis__stop dd,
 .orbit-analysis__time-grid dd {
   color: var(--orbit-ink);
-  font: 650 13px var(--orbit-font-mono);
+  font-family: var(--orbit-font-mono);
+  font-size: var(--orbit-fs-body);
+  font-variant-numeric: tabular-nums;
   margin: 0;
+}
+
+.orbit-analysis__stop .orbit-analysis__breakdown dd {
+  color: var(--orbit-ink-2);
 }
 
 .orbit-analysis__stop > p {
-  border-top: 1px solid var(--orbit-line);
-  line-height: 1.5;
+  color: var(--orbit-ink-4);
+  font-size: var(--orbit-fs-secondary);
+  line-height: 1.55;
   margin: 0;
-  padding-top: 10px;
 }
 
 .orbit-analysis__stop > footer {
+  border-top: 1px solid var(--orbit-line-row);
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 12px;
+  gap: 7px;
+  padding-top: 11px;
 }
 
+/* Balance de tiempos: el total es lo que se compara, así que se separa. */
+
 .orbit-analysis__time-grid {
+  grid-template-columns: repeat(auto-fit, minmax(288px, 1fr));
+}
+
+.orbit-analysis__time-grid dl {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.orbit-analysis__time-grid article > header {
-  justify-content: space-between;
+.orbit-analysis__time-grid dl > div:last-child {
+  border-top: 1px solid var(--orbit-line-row);
+  grid-column: 1 / -1;
+  padding-top: 10px;
+}
+
+.orbit-analysis__time-grid dl > div:last-child dd {
+  color: var(--orbit-ink);
+  font-size: var(--orbit-fs-kpi);
 }
 
 .orbit-analysis__times .orbit-surface__meta {
-  color: var(--orbit-cyan);
+  color: var(--orbit-ink-2);
   font-family: var(--orbit-font-mono);
+  font-variant-numeric: tabular-nums;
 }
+
+/* Log de cálculo */
 
 .orbit-analysis__log-actions {
   display: flex;
   justify-content: flex-end;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .orbit-analysis__log pre {
-  background: color-mix(in srgb, var(--orbit-surface-2) 78%, transparent);
+  background: color-mix(in srgb, var(--orbit-surface-1) 88%, transparent);
   border: 1px solid var(--orbit-line);
   border-radius: var(--orbit-radius-control);
   color: var(--orbit-ink-2);
-  font: 11px/1.7 var(--orbit-font-mono);
+  font: 11.5px/1.75 var(--orbit-font-mono);
   margin: 0;
-  max-height: 360px;
+  max-height: 380px;
   overflow: auto;
-  padding: 14px;
+  padding: 16px 18px;
   white-space: pre-wrap;
+}
+
+@media (max-width: 1180px) {
+  .orbit-analysis__plan-row .orbit-stat-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 820px) {
+  .orbit-analysis__plan-row .orbit-stat-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @keyframes orbit-strategy-in {

@@ -17,6 +17,33 @@ son fases históricas.
 
 ## Estado
 
+Actualización ISA-825 / cálculo acotado (2026-08-24, implementada en rama de issue):
+
+- La reproducción con los dos modelos autorizados de Spa confirmó que la
+  curva `missing` no se recorría. Fuel derivado (3,538 L/vuelta) y VE derivada
+  (4,866 %/vuelta) multiplicaban la frontera y `insertNondominated/dominates`
+  consumía CPU porque `P95Millis` solo se medía al terminar y las cotas
+  declaradas no se aplicaban.
+- El subespacio escalar sin beneficio posible por abrir otro stint usa la cota
+  de tránsito solo para demostrar el mínimo de stints. Dentro de él enumera sin
+  poda longitudes y cantidades discretizadas, con límite de 100.000 nodos y
+  retorno a la búsqueda general si lo supera. La paridad aleatorizada de 300
+  casos (semilla 825) encontró una divergencia previa en servicio paralelo:
+  cargar Fuel adicional puede ser gratis cuando VE domina; ya queda cubierta.
+- El evento real termina por este atajo exacto en un candidato, cero
+  comparaciones de dominancia, un stint de 18 vueltas y cero paradas; no agota
+  presupuesto ni devuelve un plan degradado. El golden largo conserva
+  `11+32+32+32+32` y su desempate observable.
+- La búsqueda general tiene límites efectivos de candidatos e iteraciones,
+  admite `context.Context` y comprueba cancelación dentro de dominancia. Orbit
+  comparte un deadline backend de ocho segundos entre variantes y clima; el
+  bridge expone `calculation_timeout` antes del timeout de 10 s del cliente.
+- `CombinedStintPaceCurve` y `SavingCost` ausentes o vacíos se excluyen con una
+  asunción y causa explícitas. No se crean puntos, niveles ni medidas.
+- Pendiente: integración y repetición manual del camino ELMS Sprint Trophy /
+  Spa (WEC) / LMGT3 / Logitech G Challenge #2:LGC. Sin PR, merge, promoción o
+  release.
+
 Actualización ISA-824 / entrada asistida (2026-08-24, implementada en rama de issue):
 
 - La puerta `Automática con telemetría` consulta el catálogo real y solo se

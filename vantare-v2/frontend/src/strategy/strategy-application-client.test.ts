@@ -320,6 +320,23 @@ describe("createStrategyApplicationClient", () => {
     } satisfies Partial<StrategyApplicationError>);
   });
 
+  it("exposes the typed backend calculation deadline", async () => {
+    const client = createStrategyApplicationClient<Payload>(transport);
+    const pending = client.execute(openCommand());
+    emit(transport, "strategy:application:error", {
+      commandId: "open-1",
+      code: "calculation_timeout",
+      field: "input.variants.0",
+      message: "The Strategy calculation reached its backend deadline. Adjust the inputs or retry.",
+    });
+
+    await expect(pending).rejects.toMatchObject({
+      name: "StrategyApplicationError",
+      code: "calculation_timeout",
+      field: "input.variants.0",
+    } satisfies Partial<StrategyApplicationError>);
+  });
+
   it("fails closed on a future result protocol", async () => {
     const client = createStrategyApplicationClient<Payload>(transport);
     const pending = client.execute(openCommand());

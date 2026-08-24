@@ -1,3 +1,22 @@
+Nota ISA-825 / bloqueo de CPU en `calculate_orbit` (2026-08-24, implementada en rama de issue):
+
+- La proyección real Spa/LMGT3 activaba Fuel y VE derivados y dejaba la curva
+  de stint ausente. La curva no entraba en cálculo: la explosión ocurría al
+  insertar estados Fuel×VE en la frontera de dominancia sin límite operativo.
+- El caso escalar usa ahora una solución exacta y acotada: la cota de tránsito
+  demuestra el mínimo de stints y una enumeración sin poda comprueba dentro de
+  él todas las longitudes y cantidades Fuel/VE. Una paridad de 300 entradas
+  (semilla 825) detectó y fijó que en servicio paralelo puede convenir cargar
+  Fuel adicional mientras VE domina el tiempo. Si el subespacio supera 100.000
+  nodos, el atajo se desactiva. Las 18 vueltas reales caben en Fuel, VE y vida:
+  un candidato, cero comparaciones de dominancia, un stint y cero paradas.
+- La búsqueda general aplica cotas explícitas de candidatos e iteraciones y
+  consulta cancelación dentro de dominancia.
+- `calculate_orbit` impone ocho segundos en backend y publica
+  `calculation_timeout`; curva o ahorro ausentes/vacíos se omiten con causa, sin
+  valores inventados. Pendiente: prueba de Isaac en la app real tras integrar;
+  sin PR, merge, promoción ni release.
+
 Nota ISA-824 / ISA-694 entrada asistida (2026-08-24, implementada en rama de issue):
 
 - El paso Datos habilita `Automática con telemetría` solo cuando el catálogo

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"strings"
+	"time"
 
 	"github.com/vantare/overlays/v2/internal/strategy/contract"
 	strategydocument "github.com/vantare/overlays/v2/internal/strategy/document"
@@ -17,11 +18,18 @@ import (
 // CalculateOrbit performs the historical Orbit use case through the Go
 // authorities. It is read-only, so repositoryVersion is only correlated back
 // to the caller and no snapshot is required.
-func (service *Service[T]) CalculateOrbit(_ context.Context, command CalculateOrbitCommand) (Result[T], error) {
+const orbitCalculationDeadline = 8 * time.Second
+
+func (service *Service[T]) CalculateOrbit(ctx context.Context, command CalculateOrbitCommand) (Result[T], error) {
 	if err := validateHeader(command.CommandHeader, OperationCalculateOrbit); err != nil {
 		return Result[T]{}, err
 	}
-	calculated, err := calculateOrbit(command.Input)
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	ctx, cancel := context.WithTimeout(ctx, orbitCalculationDeadline)
+	defer cancel()
+	calculated, err := calculateOrbitContext(ctx, command.Input)
 	if err != nil {
 		return Result[T]{}, err
 	}
@@ -34,6 +42,10 @@ func (service *Service[T]) CalculateOrbit(_ context.Context, command CalculateOr
 }
 
 func calculateOrbit(input OrbitCalculationInput) (OrbitCalculationResult, error) {
+	return calculateOrbitContext(context.Background(), input)
+}
+
+func calculateOrbitContext(ctx context.Context, input OrbitCalculationInput) (OrbitCalculationResult, error) {
 	if len(input.Drivers) == 0 {
 		return OrbitCalculationResult{}, calculationApplicationError(ErrorCalculationInvalid, "input.drivers", ErrCalculationInvalid)
 	}
@@ -65,7 +77,7 @@ func calculateOrbit(input OrbitCalculationInput) (OrbitCalculationResult, error)
 		if _, duplicate := variants[variant.ID]; duplicate {
 			return OrbitCalculationResult{}, calculationApplicationError(ErrorCalculationInvalid, fmt.Sprintf("input.variants.%d.id", index), ErrCalculationInvalid)
 		}
-		plan, err := calculateOrbitPlan(input.Event, drivers, variant, index, input.PlanningInputs)
+		plan, err := calculateOrbitPlan(ctx, input.Event, drivers, variant, index, input.PlanningInputs)
 		if err != nil {
 			return OrbitCalculationResult{}, err
 		}
@@ -91,7 +103,7 @@ func calculateOrbit(input OrbitCalculationInput) (OrbitCalculationResult, error)
 		)
 	}
 	if len(input.WeatherScenarios) > 0 {
-		weatherResult, err := calculateOrbitWeather(input, drivers, variants[input.ActiveVariantID])
+		weatherResult, err := calculateOrbitWeather(ctx, input, drivers, variants[input.ActiveVariantID])
 		if err != nil {
 			return OrbitCalculationResult{}, err
 		}
@@ -100,7 +112,7 @@ func calculateOrbit(input OrbitCalculationInput) (OrbitCalculationResult, error)
 	return result, nil
 }
 
-func calculateOrbitWeather(input OrbitCalculationInput, drivers map[string]OrbitCalculationDriver, variant OrbitCalculationVariant) (OrbitWeatherResult, error) {
+func calculateOrbitWeather(ctx context.Context, input OrbitCalculationInput, drivers map[string]OrbitCalculationDriver, variant OrbitCalculationVariant) (OrbitWeatherResult, error) {
 	if len(variant.Order) == 0 {
 		return OrbitWeatherResult{}, calculationApplicationError(ErrorCalculationInvalid, "input.activeVariantId", ErrCalculationInvalid)
 	}
@@ -158,7 +170,8 @@ func calculateOrbitWeather(input OrbitCalculationInput, drivers map[string]Orbit
 	for index, scenario := range input.WeatherScenarios {
 		weighted[index] = solver.WeightedWeatherScenario{Scenario: scenario.Scenario, Weight: scenario.Weight}
 	}
-	solved, err := solver.SolveWeatherScenarios(
+	solved, err := solver.SolveWeatherScenariosContext(
+		ctx,
 		orbitSolverInput(race.CompetitiveLaps.Value(), input.Event, effectivePace, effectiveFuel, input.PlanningInputs),
 		solver.WeatherScenarioSet{Scenarios: weighted, BucketParameters: parameters},
 	)
@@ -215,7 +228,7 @@ func orbitWeatherTimeline(timeline []solver.WeatherLapCondition) []OrbitWeatherL
 	return result
 }
 
-func calculateOrbitPlan(event OrbitCalculationEvent, drivers map[string]OrbitCalculationDriver, variant OrbitCalculationVariant, variantIndex int, planning *strategydocument.PlanningInputs) (OrbitCalculationPlan, error) {
+func calculateOrbitPlan(ctx context.Context, event OrbitCalculationEvent, drivers map[string]OrbitCalculationDriver, variant OrbitCalculationVariant, variantIndex int, planning *strategydocument.PlanningInputs) (OrbitCalculationPlan, error) {
 	if len(variant.Order) == 0 {
 		return OrbitCalculationPlan{}, calculationApplicationError(ErrorCalculationInvalid, fmt.Sprintf("input.variants.%d.order", variantIndex), ErrCalculationInvalid)
 	}
@@ -262,9 +275,19 @@ func calculateOrbitPlan(event OrbitCalculationEvent, drivers map[string]OrbitCal
 		return OrbitCalculationPlan{}, mapOrbitCalculationError(err, "input.event")
 	}
 
-	optimised, err := solver.SolveV2(orbitSolverInput(race.CompetitiveLaps.Value(), event, averagePace, averageFuel, planning))
+	optimised, err := solver.SolveV2Context(ctx, orbitSolverInput(race.CompetitiveLaps.Value(), event, averagePace, averageFuel, planning))
 	if err != nil {
 		return OrbitCalculationPlan{}, mapOrbitCalculationError(err, fmt.Sprintf("input.variants.%d", variantIndex))
+	}
+	if !optimised.Feasible {
+		code, cause := ErrorCalculationInfeasible, ErrCalculationInfeasible
+		for _, reason := range optimised.Reasons {
+			if reason.Code == "candidate_budget_exhausted" || reason.Code == "iteration_budget_exhausted" {
+				code, cause = ErrorCalculationOverflow, ErrCalculationOverflow
+				break
+			}
+		}
+		return OrbitCalculationPlan{}, calculationApplicationError(code, fmt.Sprintf("input.variants.%d", variantIndex), cause)
 	}
 
 	stintCount := len(optimised.Best.Stints)
@@ -589,6 +612,9 @@ func compareOrbitPlans(activeID string, active OrbitCalculationPlan, otherID str
 }
 
 func mapOrbitCalculationError(err error, field string) error {
+	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+		return calculationApplicationError(ErrorCalculationTimeout, field, errors.Join(ErrCalculationTimeout, err))
+	}
 	var manualErr *manual.CalculationError
 	if errors.As(err, &manualErr) {
 		code := ErrorCalculationInvalid

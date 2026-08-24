@@ -1,6 +1,7 @@
 package solver
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -418,6 +419,13 @@ func sortedUniqueCandidates(plans []WeatherScenarioPlan) []DecisionVector {
 // candidatos por minimax regret. La perdida esperada ponderada desempata; no
 // sustituye el criterio robusto ni oculta el coste del escenario peor.
 func SolveWeatherScenarios(input SolverInputV2, set WeatherScenarioSet) (WeatherScenarioResult, error) {
+	return SolveWeatherScenariosContext(context.Background(), input, set)
+}
+
+func SolveWeatherScenariosContext(ctx context.Context, input SolverInputV2, set WeatherScenarioSet) (WeatherScenarioResult, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	if len(set.Scenarios) == 0 || len(set.Scenarios) > 16 {
 		return WeatherScenarioResult{}, solveError(ErrorInvalidInput, "weatherScenarios", "must contain 1-16 scenarios")
 	}
@@ -446,7 +454,7 @@ func SolveWeatherScenarios(input SolverInputV2, set WeatherScenarioSet) (Weather
 			Scenario: weighted.Scenario, Thresholds: thresholds,
 			BucketParameters: append([]WeatherBucketParameter(nil), set.BucketParameters...),
 		}
-		plan, err := SolveV2(scenarioInput)
+		plan, err := SolveV2Context(ctx, scenarioInput)
 		if err != nil {
 			return WeatherScenarioResult{}, err
 		}
@@ -467,6 +475,9 @@ func SolveWeatherScenarios(input SolverInputV2, set WeatherScenarioSet) (Weather
 	bestExpectedLoss := math.Inf(1)
 	var bestEvaluations []ScenarioPlanEvaluation
 	for index, candidate := range candidates {
+		if err := ctx.Err(); err != nil {
+			return WeatherScenarioResult{}, err
+		}
 		maxRegret, expectedLoss := 0.0, 0.0
 		evaluations := make([]ScenarioPlanEvaluation, 0, len(inputs))
 		feasibleEverywhere := true

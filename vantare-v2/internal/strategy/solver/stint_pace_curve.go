@@ -40,7 +40,7 @@ type stintPaceCost struct {
 func (input SolverInputV2) stintPaceCost() (stintPaceCost, error) {
 	if input.DegradationPerLap.Role != ScalarRoleUserOverride && input.Projection != nil {
 		curve := input.Projection.CombinedStintPaceCurve
-		if curve.Presence == sp.PresenceValid && curve.Identifiability == sp.IdentifiabilityCombinedOnly {
+		if curve.Presence == sp.PresenceValid && curve.Identifiability == sp.IdentifiabilityCombinedOnly && len(curve.Points) > 0 {
 			return newCombinedStintPaceCost(curve)
 		}
 	}
@@ -52,6 +52,25 @@ func (input SolverInputV2) stintPaceCost() (stintPaceCost, error) {
 			Confidence: input.DegradationPerLap.Confidence,
 		},
 	}.withHorizon(input.RaceLaps), nil
+}
+
+func (input SolverInputV2) stintPaceDegradationAssumption(cost stintPaceCost) *SolverReason {
+	if input.Projection == nil || cost.source.Model == StintPaceModelCombinedCurve {
+		return nil
+	}
+	curve := input.Projection.CombinedStintPaceCurve
+	reason := curve.Reason
+	if curve.Presence == sp.PresenceValid && len(curve.Points) == 0 {
+		reason = "empty_combined_stint_pace_curve"
+	}
+	if reason == "" {
+		reason = string(curve.Presence)
+	}
+	result := SolverReason{
+		Code:    "combined_stint_pace_curve_degraded",
+		Message: fmt.Sprintf("la curva combinada no se usa (%s); el calculo continua sin esa familia", reason),
+	}
+	return &result
 }
 
 func newCombinedStintPaceCost(curve sp.CombinedStintPaceCurve) (stintPaceCost, error) {

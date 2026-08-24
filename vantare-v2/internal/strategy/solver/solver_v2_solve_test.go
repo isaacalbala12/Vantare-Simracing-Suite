@@ -1,6 +1,8 @@
 package solver
 
 import (
+	"context"
+	"errors"
 	"math"
 	"reflect"
 	"testing"
@@ -9,6 +11,52 @@ import (
 	"github.com/vantare/overlays/v2/internal/strategy/manual"
 	sp "github.com/vantare/overlays/v2/internal/telemetryanalysis/strategyprojection"
 )
+
+type cancelAfterErrChecks struct {
+	remaining int
+}
+
+func (ctx *cancelAfterErrChecks) Deadline() (time.Time, bool) { return time.Time{}, false }
+func (ctx *cancelAfterErrChecks) Done() <-chan struct{}       { return nil }
+func (ctx *cancelAfterErrChecks) Value(any) any               { return nil }
+func (ctx *cancelAfterErrChecks) Err() error {
+	ctx.remaining--
+	if ctx.remaining <= 0 {
+		return context.Canceled
+	}
+	return nil
+}
+
+func TestSolveV2ContextCancelsInsideDominanceSearch(t *testing.T) {
+	input := baseInputV2()
+	input.RaceLaps = 20
+	input.FuelCapacityLiters = NewFallbackScalar(20, "test:fuel-capacity")
+	input.VECapacityPercent = NewFallbackScalar(100, "test:ve-capacity")
+	input.VEPerLapPercent = NewFallbackScalar(5, "test:ve-per-lap")
+	input.DegradationPerLap = NewFallbackScalar(0.1, "test:degradation")
+	input.Budget.MaxCandidates = 1_000_000
+	input.Budget.MaxIterations = 1_000_000
+	ctx := &cancelAfterErrChecks{remaining: 100}
+	_, err := SolveV2Context(ctx, input)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("error = %v", err)
+	}
+}
+
+func TestSolveV2IterationBudgetBoundsDominanceSearch(t *testing.T) {
+	input := baseInputV2()
+	input.RaceLaps = 8
+	input.DegradationPerLap = NewFallbackScalar(0.1, "test:degradation")
+	input.Budget.MaxCandidates = 1_000_000
+	input.Budget.MaxIterations = 1
+	result, err := SolveV2(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Feasible || result.ComputeStats.Iterations != 2 || len(result.Reasons) != 1 || result.Reasons[0].Code != "iteration_budget_exhausted" {
+		t.Fatalf("result = %+v", result)
+	}
+}
 
 func baseInputV2() SolverInputV2 {
 	return SolverInputV2{
@@ -148,6 +196,10 @@ func intPointer(value int) *int { return &value }
 // multiplos discretizados de Fuel/VE que SolveV2 puede escoger. Solo usa casos
 // enteros pequenos porque su crecimiento es deliberadamente exponencial.
 func exhaustiveV2Best(t *testing.T, input SolverInputV2) float64 {
+	return exhaustiveV2BestNode(t, input).total(input.Formation.Seconds.Value)
+}
+
+func exhaustiveV2BestNode(t *testing.T, input SolverInputV2) searchNode {
 	t.Helper()
 	fuel, ve, err := input.serviceResources()
 	if err != nil {
@@ -178,7 +230,7 @@ func exhaustiveV2Best(t *testing.T, input SolverInputV2) float64 {
 		t.Fatalf("newWeatherCostModel: %v", err)
 	}
 	costs := lapCostModel{pace: paceCost, compounds: compoundPace, fuelWeight: fuelWeight, weather: weatherCost}
-	best := math.Inf(1)
+	var best *searchNode
 	var walk func(searchNode)
 	walk = func(node searchNode) {
 		drivers, err := newDriverDecisionModel(input, saving)
@@ -207,8 +259,9 @@ func exhaustiveV2Best(t *testing.T, input SolverInputV2) float64 {
 						continue
 					}
 					if next.lap == input.RaceLaps {
-						if allowed, _, _ := input.completedAllowed(next, tyreModel); allowed && next.total(input.Formation.Seconds.Value) < best {
-							best = next.total(input.Formation.Seconds.Value)
+						if allowed, _, _ := input.completedAllowed(next, tyreModel); allowed && (best == nil || betterNode(next, *best, input.Formation.Seconds.Value)) {
+							candidate := next
+							best = &candidate
 						}
 						continue
 					}
@@ -241,7 +294,10 @@ func exhaustiveV2Best(t *testing.T, input SolverInputV2) float64 {
 			decision: DecisionVector{PitStops: []PitStopDecision{}, Stints: []StintDecision{}},
 		})
 	}
-	return best
+	if best == nil {
+		return searchNode{green: math.Inf(1)}
+	}
+	return *best
 }
 
 func savingCostParameter(levels ...SavingLevelOption) *SavingCostParameter {
@@ -334,6 +390,9 @@ func TestSolveV2SavingMatchesExhaustiveOracleAndExposesSensitivity(t *testing.T)
 			input.SavingCost = savingCostParameter(lower, level)
 			if resource == ResourceFuel {
 				input.FuelWeight = fuelWeightParameter(0.03, sp.ProvenanceManual)
+			}
+			if _, active := preparedSimpleResourceDecisions(t, input); active {
+				t.Fatalf("saving oracle unexpectedly activated scalar shortcut: resource=%s laps=%d", resource, raceLaps)
 			}
 
 			got, err := SolveV2(input)
@@ -732,6 +791,7 @@ func TestSolveV2AcceptsDerivedFuelWeightOnlyFromIdentifiabilityGate(t *testing.T
 }
 
 func TestSolveV2MatchesExhaustiveStopsAndServiceQuantities(t *testing.T) {
+	shortcutCases := 0
 	for _, raceLaps := range []int64{2, 3, 4, 5, 6} {
 		for _, degradation := range []float64{0, 0.5} {
 			for _, mode := range []manual.PitServiceMode{manual.PitServiceParallel, manual.PitServiceSequential} {
@@ -741,6 +801,9 @@ func TestSolveV2MatchesExhaustiveStopsAndServiceQuantities(t *testing.T) {
 				input.PitCost.ServiceMode = mode
 				input.VECapacityPercent.Value = 2
 				input.VEPerLapPercent.Value = 1
+				if _, active := preparedSimpleResourceDecisions(t, input); active {
+					shortcutCases++
+				}
 
 				got, err := SolveV2(input)
 				if err != nil {
@@ -752,6 +815,9 @@ func TestSolveV2MatchesExhaustiveStopsAndServiceQuantities(t *testing.T) {
 				}
 			}
 		}
+	}
+	if shortcutCases != 10 {
+		t.Fatalf("existing exhaustive service matrix exercised shortcut in %d cases, want 10", shortcutCases)
 	}
 }
 

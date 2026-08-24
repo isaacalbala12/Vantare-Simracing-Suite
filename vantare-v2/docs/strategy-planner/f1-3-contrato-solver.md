@@ -558,6 +558,31 @@ se agota, el resultado declara busqueda incompleta y no afirma optimalidad.
 - `Solve` v1 y su bridge se conservan para tests/paridad histórica, pero ya no
   se registra el evento Wails `strategy:solver:compare` ni existe llamador
   productivo externo al paquete.
+- ISA-825 hace operativas las cotas de búsqueda. Cero en `MaxCandidates` o
+  `MaxIterations` ya no significa ilimitado: selecciona los defaults cerrados
+  de 10.000.000 candidatos y 100.000.000 comparaciones de dominancia. Un valor
+  explícito menor prevalece y el agotamiento devuelve
+  `candidate_budget_exhausted` o `iteration_budget_exhausted` sin afirmar
+  optimalidad. `ComputeStats.iterations` publica la segunda cuenta.
+- `SolveV2Context` comprueba cancelación entre vueltas y dentro de cada
+  comparación de dominancia. Orbit comparte un deadline duro de ocho segundos
+  entre todas las variantes y escenarios; al vencer publica el error de
+  aplicación tipado `calculation_timeout` y el cálculo deja de consumir CPU.
+- Cuando no hay curva ni degradación lineal, compuesto, peso, ahorro, clima o
+  regla que pueda premiar un stint extra, y el tránsito cuesta más que todo
+  servicio evitable, el mínimo
+  de stints se demuestra directamente con las cotas Fuel/VE/vida. Dentro de
+  ese número se enumeran sin poda todas las longitudes y cantidades Fuel/VE:
+  en modo paralelo una cantidad mayor puede ser gratuita mientras otro
+  servicio domina. El espacio reducido tiene una cota de 100.000 nodos; al
+  superarla se descarta entero y continúa la búsqueda general. Cada vector se
+  reevalúa con `ReplayDecisionV2`, así que no aparece una segunda fórmula de
+  costes. Una matriz de 300 entradas con semilla fija compara tiempo, paradas,
+  vueltas y cantidades contra el oráculo exhaustivo.
+- Una `CombinedStintPaceCurve` o `SavingCost` ausente o con lista vacía no se
+  enumera ni se rellena. El resultado añade `combined_stint_pace_curve_degraded`
+  o `saving_cost_degraded` con la razón original (o `empty_*`) y continúa sin
+  esa familia.
 - Si ADR vs spec: gana ADR rev.2 (sin conflicto; ADR §12 firma cubre envelope, no solver).
 
 ## Verificación

@@ -192,6 +192,7 @@ func knownStrategyApplicationError(code strategyapplication.ErrorCode) bool {
 		strategyapplication.ErrorCalculationInvalid,
 		strategyapplication.ErrorCalculationInfeasible,
 		strategyapplication.ErrorCalculationOverflow,
+		strategyapplication.ErrorCalculationTimeout,
 		strategyapplication.ErrorImportRefused:
 		return true
 	default:
@@ -239,6 +240,8 @@ func publicStrategyApplicationMessage(code strategyapplication.ErrorCode) string
 		return "The Strategy cannot be completed with the current limits."
 	case strategyapplication.ErrorCalculationOverflow:
 		return "The Strategy calculation exceeded its safe limits."
+	case strategyapplication.ErrorCalculationTimeout:
+		return "The Strategy calculation reached its backend deadline. Adjust the inputs or retry."
 	case strategyapplication.ErrorImportRefused:
 		return "The Strategy package was refused."
 	default:

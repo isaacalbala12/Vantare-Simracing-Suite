@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -16,6 +18,158 @@ import (
 	"github.com/vantare/overlays/v2/internal/strategy/weather"
 	"github.com/vantare/overlays/v2/internal/telemetryanalysis/strategyprojection"
 )
+
+func isa825OrbitInput() OrbitCalculationInput {
+	projection := &strategyprojection.StrategyInputProjectionV2{
+		ContractVersion:    strategyprojection.ContractVersionStrategyInputProjectionV2,
+		GeneratedAt:        time.Date(2026, 8, 24, 0, 0, 0, 0, time.UTC),
+		ComputationVersion: "strategy-projection.v2",
+		SourceSessions:     []string{"lmu:spa-logitech-g-challenge-2"},
+		CombinationID:      "lmu:0ea5d4d4614dde44e598009558f8470c1c19046d08b762e36a7ddd8b33785a4a",
+		FuelConsumption: strategyprojection.ResourceConsumptionFamily{
+			Presence: strategyprojection.PresenceValid, MeanPerLap: 3.538011074066162,
+			Provenance: strategyprojection.Provenance{Kind: strategyprojection.ProvenanceDerived, SourceID: "aggregate:lmu:0ea5d4d4614dde44e598009558f8470c1c19046d08b762e36a7ddd8b33785a4a"},
+			Confidence: strategyprojection.Confidence{SampleSize: 4, ComputationVersion: "consumption-pace.v1"},
+		},
+		VirtualEnergyConsumption: strategyprojection.ResourceConsumptionFamily{
+			Presence: strategyprojection.PresenceValid, MeanPerLap: 4.86563777923584,
+			Provenance: strategyprojection.Provenance{Kind: strategyprojection.ProvenanceDerived, SourceID: "aggregate:lmu:0ea5d4d4614dde44e598009558f8470c1c19046d08b762e36a7ddd8b33785a4a"},
+			Confidence: strategyprojection.Confidence{SampleSize: 4, ComputationVersion: "consumption-pace.v1"},
+		},
+		CombinedStintPaceCurve: strategyprojection.CombinedStintPaceCurve{
+			Presence:        strategyprojection.PresenceMissing,
+			Provenance:      strategyprojection.Provenance{Kind: strategyprojection.ProvenanceUnknown},
+			Confidence:      strategyprojection.Confidence{SampleSize: 0, ComputationVersion: "strategy-projection.v2"},
+			Identifiability: strategyprojection.IdentifiabilityCombinedOnly,
+			Reason:          "missing_combined_stint_pace_curve",
+			Points:          []strategyprojection.PacePoint{},
+		},
+		TyreDegradation: strategyprojection.TyreDegradationFamily{
+			Presence: strategyprojection.PresenceValid, LifeLapsEstimate: func() *int { value := 51; return &value }(),
+			Provenance: strategyprojection.Provenance{Kind: strategyprojection.ProvenanceDerived, SourceID: "aggregate:lmu:0ea5d4d4614dde44e598009558f8470c1c19046d08b762e36a7ddd8b33785a4a"},
+			Confidence: strategyprojection.Confidence{SampleSize: 4, ComputationVersion: "derived-curves.v1"},
+		},
+		Pit: strategyprojection.PitFamily{Presence: strategyprojection.PresenceUnknown},
+		SavingCost: strategyprojection.SavingCostFamily{
+			Presence:   strategyprojection.PresenceMissing,
+			Provenance: strategyprojection.Provenance{Kind: strategyprojection.ProvenanceDerived, SourceID: "aggregate:lmu:0ea5d4d4614dde44e598009558f8470c1c19046d08b762e36a7ddd8b33785a4a"},
+			Confidence: strategyprojection.Confidence{SampleSize: 0, ComputationVersion: "derived-curves.v1"},
+			Reason:     "missing_fuel_mixture_levels", ManualNote: "missing_fuel_mixture_levels",
+		},
+		ClimateBuckets: strategyprojection.ClimateBucketsFamily{
+			Presence:   strategyprojection.PresenceValid,
+			Provenance: strategyprojection.Provenance{Kind: strategyprojection.ProvenanceDerived, SourceID: "aggregate:lmu:spa-logitech-g-challenge-2"},
+			Confidence: strategyprojection.Confidence{SampleSize: 4, ComputationVersion: "strategy-projection.v2"},
+			Buckets: []strategyprojection.ClimateBucketPoint{{
+				Bucket: strategyprojection.ClimateBucketDry, SampleSize: 4,
+			}},
+		},
+	}
+	return OrbitCalculationInput{
+		Event: OrbitCalculationEvent{DurationMinutes: 30, PitLossSeconds: 60, TankLiters: 90},
+		Drivers: []OrbitCalculationDriver{{
+			ID: "Logitech G Challenge #2:LGC", Name: "Logitech G Challenge #2:LGC",
+			Dry: OrbitCalculationPace{PaceSeconds: 105, FuelLitersPerLap: 2.8},
+			Eco: OrbitCalculationPace{PaceSeconds: 106.1, FuelLitersPerLap: 2.6},
+			Wet: OrbitCalculationPace{PaceSeconds: 113, FuelLitersPerLap: 2.45},
+		}},
+		Variants: []OrbitCalculationVariant{{
+			ID: "strategy-1", Mode: "dry", Order: []string{"Logitech G Challenge #2:LGC"}, Overrides: map[int]OrbitCalculationOverride{},
+		}},
+		ActiveVariantID: "strategy-1",
+		PlanningInputs:  &strategydocument.PlanningInputs{Projection: projection, Overrides: map[strategydocument.PlanningInputField]strategydocument.NumericInputOverride{}},
+	}
+}
+
+func TestCalculateOrbitRealMissingDerivedFamilyTerminates(t *testing.T) {
+	t.Parallel()
+	input := isa825OrbitInput()
+
+	type outcome struct {
+		result OrbitCalculationResult
+		err    error
+	}
+	done := make(chan outcome, 1)
+	go func() {
+		result, err := calculateOrbit(input)
+		done <- outcome{result: result, err: err}
+	}()
+	select {
+	case got := <-done:
+		if got.err != nil {
+			t.Fatal(got.err)
+		}
+		plan := got.result.Plans["strategy-1"]
+		if plan.TotalLaps != 18 || plan.Stops != 0 || len(plan.Stints) != 1 {
+			t.Fatalf("plan = %+v", plan)
+		}
+		solved, err := solver.SolveV2(orbitSolverInput(18, input.Event, 105, 2.8, input.PlanningInputs))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if solved.ComputeStats.EvaluatedCandidates != 1 || solved.ComputeStats.Iterations != 0 ||
+			len(solved.CandidateDetails) == 0 || len(solved.CandidateDetails[0].Reasons) == 0 ||
+			solved.CandidateDetails[0].Reasons[0].Code != "optimal_after_scalar_resource_bound" {
+			t.Fatalf("ISA-825 did not use the exact scalar shortcut: stats=%+v candidates=%+v", solved.ComputeStats, solved.CandidateDetails)
+		}
+	case <-time.After(time.Second):
+		stack := make([]byte, 1<<20)
+		stack = stack[:runtime.Stack(stack, true)]
+		t.Fatalf("calculate_orbit did not terminate in 1s\n%s", stack)
+	}
+}
+
+func TestCalculateOrbitBackendDeadlineIsTyped(t *testing.T) {
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(-time.Second))
+	defer cancel()
+	_, err := NewService[json.RawMessage](nil).CalculateOrbit(ctx, CalculateOrbitCommand{
+		CommandHeader: CommandHeader{ProtocolVersion: ProtocolVersionV1, CommandID: "isa-825-timeout", Operation: OperationCalculateOrbit},
+		Input:         isa825OrbitInput(),
+	})
+	var applicationErr *ApplicationError
+	if !errors.As(err, &applicationErr) || applicationErr.Code != ErrorCalculationTimeout || !errors.Is(err, ErrCalculationTimeout) {
+		t.Fatalf("error = %#v", err)
+	}
+}
+
+func TestOrbitMissingOrEmptyDerivedFamiliesDegradeWithCause(t *testing.T) {
+	for _, test := range []struct {
+		name       string
+		mutate     func(*strategyprojection.StrategyInputProjectionV2)
+		wantReason string
+	}{
+		{name: "missing", wantReason: "missing_combined_stint_pace_curve"},
+		{name: "empty valid curve and saving", wantReason: "empty_combined_stint_pace_curve", mutate: func(projection *strategyprojection.StrategyInputProjectionV2) {
+			projection.CombinedStintPaceCurve.Presence = strategyprojection.PresenceValid
+			projection.CombinedStintPaceCurve.Provenance = strategyprojection.Provenance{Kind: strategyprojection.ProvenanceDerived, SourceID: "aggregate:isa-825"}
+			projection.CombinedStintPaceCurve.Confidence = strategyprojection.Confidence{SampleSize: 4, ComputationVersion: "strategy-projection.v2"}
+			projection.CombinedStintPaceCurve.Reason = ""
+			projection.SavingCost.Presence = strategyprojection.PresenceValid
+			projection.SavingCost.Reason = ""
+		}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			input := isa825OrbitInput()
+			if test.mutate != nil {
+				test.mutate(input.PlanningInputs.Projection)
+			}
+			result, err := solver.SolveV2(orbitSolverInput(18, input.Event, 105, 2.8, input.PlanningInputs))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !result.Feasible || result.StintPaceCost.Model != solver.StintPaceModelManualLinear {
+				t.Fatalf("result = %+v", result)
+			}
+			joined := ""
+			for _, assumption := range result.Assumptions {
+				joined += assumption.Code + ":" + assumption.Message + "\n"
+			}
+			if !strings.Contains(joined, test.wantReason) || !strings.Contains(joined, "saving_cost_degraded") {
+				t.Fatalf("assumptions = %s", joined)
+			}
+		})
+	}
+}
 
 func TestCalculateOrbitWeatherChangesPlanAndPublishesRobustMetrics(t *testing.T) {
 	now := time.Date(2026, 8, 22, 12, 0, 0, 0, time.UTC)

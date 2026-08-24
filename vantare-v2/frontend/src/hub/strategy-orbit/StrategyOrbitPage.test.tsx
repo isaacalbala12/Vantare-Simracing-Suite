@@ -786,7 +786,7 @@ describe("StrategyOrbitPage · estado inicial", () => {
 
     const calendar = await screen.findByTestId("orbit-strategy-calendar");
     expect(calendar.textContent).toContain("Spa (WEC)");
-    expect(calendar.textContent).toContain("LMP2 · full fuel tank");
+    expect(calendar.textContent).toContain("LMP2 (full fuel tank)");
     expect(calendar.textContent).toContain("120 min");
     expect(calendar.textContent).toContain("12 neumáticos");
     expect(calendar.textContent).toContain("VE 75 %");

@@ -2292,7 +2292,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
                   <span className="orbit-path__k">{series.track}</span>
                   <span className="orbit-path__d">
                     {classes.length > 0
-                      ? classes.map((item) => item.qualifier ? `${item.name} · ${item.qualifier}` : item.name).join(" · ")
+                      ? classes.map((item) => item.qualifier ? `${item.name} (${item.qualifier})` : item.name).join(" · ")
                       : t("strategy.calendar.classesMissing")}
                   </span>
                   {duration > 0 ? (

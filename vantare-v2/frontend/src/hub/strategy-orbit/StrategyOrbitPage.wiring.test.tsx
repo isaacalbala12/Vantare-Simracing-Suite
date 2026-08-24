@@ -71,13 +71,16 @@ const ROSTER: StrategyRoster = {
   ],
 };
 
-const projectionConfidence = { sampleSize: 20, rangeLower: 2.6, rangeUpper: 2.9, computationVersion: "producer.v1" };
+const projectionConfidence = { sampleSize: 4, rangeLower: 3.4, rangeUpper: 3.7, computationVersion: "consumption-pace.v2" };
 const derivedPlanning: StrategyPlanningInputsV2 = {
   projection: {
     contractVersion: "strategyinputprojection.v2", generatedAt: "2026-08-22T12:00:00.000Z", computationVersion: "producer.v1",
     sourceSessions: ["race-1"], combinationId: "lmu:imola",
-    fuelConsumption: { presence: "valid", provenance: { kind: "derived", sourceId: "aggregate:lmu:imola" }, confidence: projectionConfidence, meanPerLap: 2.75, rangeLower: 2.6, rangeUpper: 2.9 },
+    fuelConsumption: { presence: "valid", provenance: { kind: "derived", sourceId: "aggregate:lmu:imola" }, confidence: projectionConfidence, meanPerLap: 3.538, rangeLower: 3.4, rangeUpper: 3.7 },
     virtualEnergyConsumption: { presence: "missing", provenance: { kind: "derived" }, confidence: { sampleSize: 0, computationVersion: "producer.v1" }, reason: "missing_virtual_energy_consumption", meanPerLap: 0, rangeLower: 0, rangeUpper: 0 },
+    representativePaceByClimateBucket: {
+      dry: { presence: "valid", provenance: { kind: "derived", sourceId: "aggregate:lmu:imola" }, confidence: { sampleSize: 4, rangeLower: 141.55, rangeUpper: 142.25, computationVersion: "consumption-pace.v2" }, medianLapSeconds: 142.004 },
+    },
     combinedStintPaceCurve: { presence: "missing", provenance: { kind: "derived" }, confidence: { sampleSize: 0, computationVersion: "producer.v1" }, reason: "missing_combined_stint_pace_curve", identifiability: "combined_only", points: [] },
     tyreDegradation: { presence: "missing", provenance: { kind: "derived" }, confidence: { sampleSize: 0, computationVersion: "producer.v1" }, reason: "missing_tyre_degradation" },
     pit: { presence: "missing", provenance: { kind: "derived" }, confidence: { sampleSize: 0, computationVersion: "producer.v1" } },
@@ -208,22 +211,34 @@ describe("StrategyOrbitPage · cableado auditado", () => {
     fireEvent.click(screen.getByTestId("orbit-session-combination-lmu:imola"));
     expect(await screen.findByTestId("orbit-strategy-overview")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Datos" }));
+    expect(within(await screen.findByTestId("orbit-planning-input-fuel_per_lap_liters")).getByLabelText(/Derivado: Calculado con 4 muestras/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Pilotos" }));
+    const drivers = await screen.findByTestId("orbit-strategy-drivers");
+    expect(drivers.textContent).toContain("2:22.004");
+    expect(drivers.textContent).toContain("3.54 L/v");
+    expect(drivers.textContent).not.toContain("1:44.000");
+    expect(drivers.textContent).not.toContain("2.75 L/v");
+    expect(within(drivers).getAllByLabelText(/Derivado: Calculado con 4 muestras/).length).toBeGreaterThan(0);
+    await waitFor(() => expect(calculatedInputs.some((input) => {
+      const wire = JSON.stringify(input);
+      return wire.includes('"medianLapSeconds":142.004') && wire.includes('"meanPerLap":3.538');
+    })).toBe(true));
+    fireEvent.click(screen.getByRole("button", { name: "Datos" }));
     const fuel = await screen.findByTestId("orbit-planning-input-fuel_per_lap_liters");
-    expect(within(fuel).getByLabelText(/Derivado: Calculado con 20 muestras/)).toBeTruthy();
     const fuelInput = within(fuel).getByRole("textbox");
     fireEvent.change(fuelInput, { target: { value: "3.5" } });
     fireEvent.blur(fuelInput);
     await waitFor(() => expect(saved?.planningInputs?.overrides.fuel_per_lap_liters?.value).toBe(3.5));
     const overriddenFuel = await screen.findByTestId("orbit-planning-input-fuel_per_lap_liters");
     expect(await within(overriddenFuel).findByRole("button", { name: "Volver al derivado" })).toBeTruthy();
-    expect(saved?.planningInputs?.projection?.fuelConsumption.meanPerLap).toBe(2.75);
+    expect(saved?.planningInputs?.projection?.fuelConsumption.meanPerLap).toBe(3.538);
     expect(saved?.planningInputs?.overrides.fuel_per_lap_liters?.value).toBe(3.5);
     expect(calculatedInputs.some((input) => JSON.stringify(input).includes('"fuel_per_lap_liters":{"value":3.5'))).toBe(true);
     fireEvent.click(within(overriddenFuel).getByRole("button", { name: "Volver al derivado" }));
     await waitFor(() => expect(saved?.planningInputs?.overrides.fuel_per_lap_liters).toBeUndefined());
     const revertedFuel = await screen.findByTestId("orbit-planning-input-fuel_per_lap_liters");
-    await within(revertedFuel).findByLabelText(/Derivado: Calculado con 20 muestras/);
-    expect(saved?.planningInputs?.projection?.fuelConsumption.meanPerLap).toBe(2.75);
+    await within(revertedFuel).findByLabelText(/Derivado: Calculado con 4 muestras/);
+    expect(saved?.planningInputs?.projection?.fuelConsumption.meanPerLap).toBe(3.538);
     expect(saved?.planningInputs?.overrides.fuel_per_lap_liters).toBeUndefined();
     fireEvent.click(screen.getByRole("button", { name: "Sesiones" }));
     const sessions = await screen.findByTestId("orbit-strategy-sessions");

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { StrategyPlanningInputsV2 } from "../../strategy/strategy-application-client";
-import { strategyInputProvenance } from "./strategy-input-provenance";
+import { strategyEcoProvenance, strategyInputProvenance } from "./strategy-input-provenance";
 
 const confidence = { sampleSize: 18, rangeLower: 2.8, rangeUpper: 3.2, computationVersion: "producer.v1" };
 const planning = {
@@ -66,5 +66,38 @@ describe("Strategy input provenance", () => {
     expect(strategyInputProvenance(missingPace, "base_pace_seconds")).toMatchObject({
       kind: "missing", reason: "no_reliable_lap_time_for_representative_pace",
     });
+  });
+});
+
+describe("procedencia del modo Eco", () => {
+  const projectionSinAhorro = {
+    fuelConsumption: { presence: "valid", provenance: { kind: "derived" }, confidence: { sampleSize: 4 }, meanPerLap: 3.54 },
+    savingCost: { presence: "missing", provenance: { kind: "derived" }, confidence: { sampleSize: 0 }, reason: "missing_fuel_mixture_levels", levels: [] },
+    representativePaceByClimateBucket: {
+      dry: { presence: "valid", provenance: { kind: "derived" }, confidence: { sampleSize: 4 }, medianLapSeconds: 142 },
+    },
+    combinedStintPaceCurve: { presence: "missing", provenance: { kind: "derived" }, confidence: { sampleSize: 0 }, points: [] },
+  } as never;
+
+  it("no presenta el ritmo de seco como si fuera eco derivado", () => {
+    const view = strategyEcoProvenance({ overrides: {}, projection: projectionSinAhorro }, "base_pace_seconds", 106.1);
+    expect(view.kind).toBe("manual");
+    expect(view.value).toBe(106.1);
+  });
+
+  it("declara ausente el eco sin ahorro medido ni valor manual, con su causa", () => {
+    const view = strategyEcoProvenance({ overrides: {}, projection: projectionSinAhorro }, "base_pace_seconds");
+    expect(view.kind).toBe("missing");
+    expect(view.reason).toBe("missing_fuel_mixture_levels");
+  });
+
+  it("deriva el eco sumando el coste de tiempo del ahorro al ritmo seco", () => {
+    const conAhorro = {
+      ...projectionSinAhorro,
+      savingCost: { presence: "valid", provenance: { kind: "derived" }, confidence: { sampleSize: 6 }, levels: [{ timeCostPerLap: 1.2, fuelSavedPerLap: 0.3 }] },
+    } as never;
+    const view = strategyEcoProvenance({ overrides: {}, projection: conAhorro }, "base_pace_seconds", 106.1);
+    expect(view.kind).toBe("derived");
+    expect(view.value).toBeCloseTo(143.2, 5);
   });
 });

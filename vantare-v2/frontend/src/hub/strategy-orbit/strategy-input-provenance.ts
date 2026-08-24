@@ -37,6 +37,33 @@ export function strategyInputProvenance(
   return { kind: "missing", presence: "missing", reason: missingReason(planning, field), canRevert: false };
 }
 
+/**
+ * El modo Eco no es el modo Seco: su ritmo y su consumo solo se derivan si
+ * existe la familia de ahorro. Antes se pintaba el dato de seco con la
+ * etiqueta "Derivado", que es mentir dos veces: ni es eco ni se ha medido.
+ * Sin ahorro medido se cae al valor manual del documento, y si tampoco lo hay
+ * se declara ausente con la causa que da la familia.
+ */
+export function strategyEcoProvenance(
+  planning: StrategyPlanningInputsV2 | undefined,
+  field: "base_pace_seconds" | "fuel_per_lap_liters",
+  manualValue?: number,
+): StrategyInputProvenanceView {
+  const dry = strategyInputProvenance(planning, field, undefined, "dry");
+  const savingField = field === "base_pace_seconds" ? "saving_time_cost_per_lap" : "saving_fuel_per_lap";
+  const saving = strategyInputProvenance(planning, savingField, undefined);
+  if (dry.value !== undefined && saving.value !== undefined && dry.kind !== "missing" && saving.kind !== "missing") {
+    const value = field === "base_pace_seconds" ? dry.value + saving.value : dry.value - saving.value;
+    if (Number.isFinite(value) && value > 0) {
+      return { kind: "derived", presence: "valid", value, confidence: saving.confidence, canRevert: false };
+    }
+  }
+  if (manualValue !== undefined && Number.isFinite(manualValue)) {
+    return { kind: "manual", presence: "valid", value: manualValue, canRevert: false };
+  }
+  return { kind: "missing", presence: "missing", reason: saving.reason ?? dry.reason, canRevert: false };
+}
+
 function derivedInput(
   planning: StrategyPlanningInputsV2 | undefined,
   field: StrategyPlanningInputFieldV2,

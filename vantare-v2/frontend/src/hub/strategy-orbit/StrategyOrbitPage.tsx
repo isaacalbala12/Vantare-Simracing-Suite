@@ -140,7 +140,7 @@ import {
   type StrategySessionCatalogView,
   usableSessionCombinations,
 } from "./strategy-session-selection";
-import { strategyInputProvenance, type StrategyInputProvenanceView } from "./strategy-input-provenance";
+import { strategyEcoProvenance, strategyInputProvenance, type StrategyInputProvenanceView } from "./strategy-input-provenance";
 import {
   calendarSessionCombinations,
   calendarSessionLayouts,
@@ -3628,17 +3628,21 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
                             ["eco", t("strategy.drivers.eco"), "var(--orbit-green)"],
                           ] as const
                         ).map(([mode, label, color]) => {
-                          const paceView = strategyInputProvenance(
-                            eventPlanningInputs,
-                            "base_pace_seconds",
-                            driver[mode][0],
-                            mode === "wet" ? "wet" : "dry",
-                          );
-                          const fuelView = strategyInputProvenance(
-                            eventPlanningInputs,
-                            "fuel_per_lap_liters",
-                            driver[mode][1],
-                          );
+                          const paceView = mode === "eco"
+                            ? strategyEcoProvenance(eventPlanningInputs, "base_pace_seconds", driver[mode][0])
+                            : strategyInputProvenance(
+                                eventPlanningInputs,
+                                "base_pace_seconds",
+                                driver[mode][0],
+                                mode === "wet" ? "wet" : "dry",
+                              );
+                          const fuelView = mode === "eco"
+                            ? strategyEcoProvenance(eventPlanningInputs, "fuel_per_lap_liters", driver[mode][1])
+                            : strategyInputProvenance(
+                                eventPlanningInputs,
+                                "fuel_per_lap_liters",
+                                driver[mode][1],
+                              );
                           return (
                             <div className="orbit-driver__pace" key={mode}>
                               <span>

@@ -184,7 +184,9 @@ function inputReasonLabel(reason: string | undefined, t: (key: string) => string
   const known = new Set([
     "manual_input_required", "missing_fuel_consumption", "missing_virtual_energy_consumption",
     "missing_combined_stint_pace_curve", "missing_representative_pace", "missing_tyre_degradation",
-    "missing_saving_cost", "combined_only",
+    "missing_saving_cost", "combined_only", "no_classified_complete_laps_in_climate_bucket",
+    "no_clean_complete_laps_for_representative_pace", "no_completed_laps_for_representative_pace",
+    "no_reliable_lap_time_for_representative_pace", "no_stable_climate_bucket_for_representative_pace",
   ]);
   return known.has(reason) ? t(`strategy.inputs.reason.${reason}`) : reason.replaceAll("_", " ");
 }
@@ -3583,7 +3585,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
                             <b>{lapTime(driver[mode][0])}</b>
                             <InputProvenanceChip
                               t={t}
-                              view={strategyInputProvenance(eventPlanningInputs, "base_pace_seconds", driver[mode][0])}
+                              view={strategyInputProvenance(eventPlanningInputs, "base_pace_seconds", driver[mode][0], mode === "wet" ? "wet" : "dry")}
                             />
                             <em>{driver[mode][1].toFixed(2)} L/v</em>
                             <InputProvenanceChip
@@ -3645,7 +3647,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
                                   unit="s"
                                   value={String(driver[mode][0])}
                                 />
-                                <InputProvenanceChip t={t} view={strategyInputProvenance(eventPlanningInputs, "base_pace_seconds", driver[mode][0])} />
+                                <InputProvenanceChip t={t} view={strategyInputProvenance(eventPlanningInputs, "base_pace_seconds", driver[mode][0], mode === "wet" ? "wet" : "dry")} />
                               </label>
                               <label className="orbit-driver__field">
                                 <span>

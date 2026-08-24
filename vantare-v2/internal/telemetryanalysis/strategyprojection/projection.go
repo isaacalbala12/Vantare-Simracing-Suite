@@ -26,7 +26,10 @@ type StrategyInputProjectionV2 struct {
 	LapValidity              LapValidityFamily           `json:"lapValidity"`
 	FuelConsumption          ResourceConsumptionFamily   `json:"fuelConsumption"`
 	VirtualEnergyConsumption ResourceConsumptionFamily   `json:"virtualEnergyConsumption"`
-	CombinedStintPaceCurve   CombinedStintPaceCurve      `json:"combinedStintPaceCurve"`
+	// RepresentativePaceByClimateBucket conserva el ritmo base observado por
+	// condicion sin exigir la identificabilidad de una curva de stint.
+	RepresentativePaceByClimateBucket map[ClimateBucket]RepresentativePaceFamily `json:"representativePaceByClimateBucket"`
+	CombinedStintPaceCurve            CombinedStintPaceCurve                     `json:"combinedStintPaceCurve"`
 	// Curvas separadas solo si identifiability==separable.
 	FuelWeightCurve *SeparableCurve `json:"fuelWeightCurve,omitempty"`
 	TyreAgeCurve    *SeparableCurve `json:"tyreAgeCurve,omitempty"`
@@ -82,6 +85,17 @@ type ResourceConsumptionFamily struct {
 	RangeUpper      float64                   `json:"rangeUpper"`
 	ByClimateBucket map[ClimateBucket]float64 `json:"byClimateBucket,omitempty"`
 	ByMixture       map[int]float64           `json:"byMixture,omitempty"`
+}
+
+// RepresentativePaceFamily es la mediana de vueltas completas utilizables de
+// un bucket. No modela degradacion: esa responsabilidad sigue en
+// CombinedStintPaceCurve.
+type RepresentativePaceFamily struct {
+	Presence         Presence   `json:"presence"`
+	Provenance       Provenance `json:"provenance"`
+	Confidence       Confidence `json:"confidence"`
+	Reason           string     `json:"reason,omitempty"`
+	MedianLapSeconds float64    `json:"medianLapSeconds"`
 }
 
 // CombinedStintPaceCurve: curva combinada obligatoria. Identifiability por defecto combined_only.
@@ -217,6 +231,15 @@ const (
 	ClimateBucketWet   ClimateBucket = "wet"
 )
 
+func (b ClimateBucket) Valid() bool {
+	switch b {
+	case ClimateBucketDry, ClimateBucketHumid, ClimateBucketWet:
+		return true
+	default:
+		return false
+	}
+}
+
 type ClimateBucketPoint struct {
 	Bucket             ClimateBucket `json:"bucket"`
 	PathWetnessPercent float64       `json:"pathWetnessPercent"`
@@ -236,6 +259,14 @@ func (p StrategyInputProjectionV2) Validate() error {
 	}
 	if p.ComputationVersion == "" {
 		return contractError("invalid_document", "computationVersion", "is required")
+	}
+	for bucket, pace := range p.RepresentativePaceByClimateBucket {
+		if !bucket.Valid() {
+			return contractError("invalid_document", "representativePaceByClimateBucket", "unknown climate bucket")
+		}
+		if err := pace.Validate("representativePaceByClimateBucket." + string(bucket)); err != nil {
+			return err
+		}
 	}
 	if err := p.CombinedStintPaceCurve.Validate(); err != nil {
 		return err
@@ -280,6 +311,31 @@ func (p StrategyInputProjectionV2) Validate() error {
 		if !interval.HasVERise && interval.VERatePPerS != nil {
 			return contractError("invalid_document", "pit.observedIntervals", "VE rate requires observed rise")
 		}
+	}
+	return nil
+}
+
+func (p RepresentativePaceFamily) Validate(field string) error {
+	if !p.Presence.Valid() {
+		return contractError("invalid_document", field+".presence", "unknown presence")
+	}
+	if err := p.Provenance.Validate(); err != nil {
+		return err
+	}
+	if err := p.Confidence.Validate(); err != nil {
+		return err
+	}
+	if p.Presence == PresenceValid {
+		if math.IsNaN(p.MedianLapSeconds) || math.IsInf(p.MedianLapSeconds, 0) || p.MedianLapSeconds <= 0 {
+			return contractError("invalid_document", field+".medianLapSeconds", "must be positive and finite")
+		}
+		if p.Confidence.SampleSize <= 0 {
+			return contractError("invalid_document", field+".confidence.sampleSize", "must be positive when valid")
+		}
+		return nil
+	}
+	if p.Reason == "" {
+		return contractError("invalid_document", field+".reason", "is required when representative pace is unavailable")
 	}
 	return nil
 }

@@ -161,6 +161,9 @@ export type StrategyInputProjectionV2 = {
     readonly rangeLower: number;
     readonly rangeUpper: number;
   };
+  readonly representativePaceByClimateBucket?: Readonly<Partial<Record<"dry" | "humid" | "wet", StrategyProjectionFamilyV2 & {
+    readonly medianLapSeconds: number;
+  }>>>;
   readonly combinedStintPaceCurve: StrategyProjectionFamilyV2 & {
     readonly identifiability: "combined_only" | "separable";
     readonly points: readonly {
@@ -1295,6 +1298,14 @@ function parseInputProjection(value: unknown, field: string): StrategyInputProje
   for (const name of ["fuelConsumption", "virtualEnergyConsumption"] as const) {
     const family = parseProjectionFamily(projection[name], `${field}.${name}`);
     for (const numeric of ["meanPerLap", "rangeLower", "rangeUpper"] as const) strategyNumber(family[numeric], `${field}.${name}.${numeric}`);
+  }
+  if (projection.representativePaceByClimateBucket !== undefined) {
+    const byBucket = strategyRecord(projection.representativePaceByClimateBucket, `${field}.representativePaceByClimateBucket`);
+    for (const [bucket, candidate] of Object.entries(byBucket)) {
+      strategyEnum(bucket, `${field}.representativePaceByClimateBucket bucket`, ["dry", "humid", "wet"]);
+      const family = parseProjectionFamily(candidate, `${field}.representativePaceByClimateBucket.${bucket}`);
+      strategyNumber(family.medianLapSeconds, `${field}.representativePaceByClimateBucket.${bucket}.medianLapSeconds`);
+    }
   }
   const pace = parseProjectionFamily(projection.combinedStintPaceCurve, `${field}.combinedStintPaceCurve`);
   strategyEnum(pace.identifiability, `${field}.combinedStintPaceCurve.identifiability`, ["combined_only", "separable"]);

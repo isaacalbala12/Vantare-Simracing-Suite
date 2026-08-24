@@ -128,6 +128,28 @@ func TestCombinedStintPaceCurveIdentifiability(t *testing.T) {
 	}
 }
 
+func TestRepresentativePaceRequiresValueWhenValidAndReasonWhenMissing(t *testing.T) {
+	pace := RepresentativePaceFamily{
+		Presence:   PresenceMissing,
+		Provenance: Provenance{Kind: ProvenanceDerived, SourceID: "analysis:pace"},
+		Confidence: Confidence{ComputationVersion: "consumption-pace.v2"},
+	}
+	if err := pace.Validate("representativePaceByClimateBucket.dry"); err == nil {
+		t.Fatal("missing representative pace without cause must fail")
+	}
+	pace.Reason = "no_reliable_lap_time_for_representative_pace"
+	if err := pace.Validate("representativePaceByClimateBucket.dry"); err != nil {
+		t.Fatalf("missing representative pace with cause: %v", err)
+	}
+	pace.Presence = PresenceValid
+	pace.Reason = ""
+	pace.Confidence.SampleSize = 3
+	pace.MedianLapSeconds = 90.82
+	if err := pace.Validate("representativePaceByClimateBucket.dry"); err != nil {
+		t.Fatalf("valid representative pace: %v", err)
+	}
+}
+
 func TestPitWithoutResourceRiseMustBeAmbiguous(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Millisecond)
 	projection := StrategyInputProjectionV2{

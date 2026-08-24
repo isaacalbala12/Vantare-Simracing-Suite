@@ -11,7 +11,15 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetryanalysis/strategyprojection"
 )
 
-const consumptionPaceComputationVersion = "consumption-pace.v1"
+const consumptionPaceComputationVersion = "consumption-pace.v2"
+
+const reasonNoCleanCompleteLapsForRepresentativePace = "no_clean_complete_laps_for_representative_pace"
+
+const (
+	reasonNoCompletedLapsForRepresentativePace       = "no_completed_laps_for_representative_pace"
+	reasonNoReliableLapTimeForRepresentativePace     = "no_reliable_lap_time_for_representative_pace"
+	reasonNoStableClimateBucketForRepresentativePace = "no_stable_climate_bucket_for_representative_pace"
+)
 
 const resourceBoundaryToleranceSeconds = 0.1
 
@@ -35,6 +43,7 @@ type RepresentativePaceFamily struct {
 	Presence         strategyprojection.Presence   `json:"presence"`
 	Provenance       strategyprojection.Provenance `json:"provenance"`
 	Confidence       strategyprojection.Confidence `json:"confidence"`
+	Reason           string                        `json:"reason,omitempty"`
 	MedianLapSeconds float64                       `json:"medianLapSeconds"`
 }
 
@@ -69,17 +78,19 @@ type ClimateBucketConsumptionPace struct {
 // SessionConsumptionPace is a pure per-session result. It contains no reader
 // or Strategy-domain type and can be aggregated without reopening DuckDB.
 type SessionConsumptionPace struct {
-	SessionID       string                                                            `json:"sessionId"`
-	CombinationID   string                                                            `json:"combinationId"`
-	Laps            []LapConsumptionPace                                              `json:"laps"`
-	ByClimateBucket map[strategyprojection.ClimateBucket]ClimateBucketConsumptionPace `json:"byClimateBucket"`
+	SessionID                string                                                            `json:"sessionId"`
+	CombinationID            string                                                            `json:"combinationId"`
+	RepresentativePaceReason string                                                            `json:"representativePaceReason,omitempty"`
+	Laps                     []LapConsumptionPace                                              `json:"laps"`
+	ByClimateBucket          map[strategyprojection.ClimateBucket]ClimateBucketConsumptionPace `json:"byClimateBucket"`
 }
 
 // ConsumptionPaceAggregate combines the current session with matching history.
 type ConsumptionPaceAggregate struct {
-	CombinationID   string                                                            `json:"combinationId"`
-	SourceSessions  []string                                                          `json:"sourceSessions"`
-	ByClimateBucket map[strategyprojection.ClimateBucket]ClimateBucketConsumptionPace `json:"byClimateBucket"`
+	CombinationID            string                                                            `json:"combinationId"`
+	SourceSessions           []string                                                          `json:"sourceSessions"`
+	RepresentativePaceReason string                                                            `json:"representativePaceReason,omitempty"`
+	ByClimateBucket          map[strategyprojection.ClimateBucket]ClimateBucketConsumptionPace `json:"byClimateBucket"`
 }
 
 type metricSample struct {
@@ -123,12 +134,17 @@ func DeriveSessionConsumptionPace(
 		pace []metricSample
 	}
 	samplesByBucket := make(map[strategyprojection.ClimateBucket]*bucketSamples)
+	completeLaps, reliableLapTimes, stableClimateLaps, representativePaceLaps := 0, 0, 0, 0
 	for _, lap := range validity.Laps {
 		derivedLap := LapConsumptionPace{Number: lap.Number, Labels: append([]LapLabel(nil), lap.Labels...)}
+		if lap.Complete {
+			completeLaps++
+		}
 		if lap.Start == nil || !lap.Complete || lap.LapTimeSeconds == nil || *lap.LapTimeSeconds <= 0 {
 			result.Laps = append(result.Laps, derivedLap)
 			continue
 		}
+		reliableLapTimes++
 		segmentPresence, insideSegment := lapSegmentPresence(*lap.Start, lap.End, validity.Temporal.Segments, validity.Temporal.Gaps)
 		if !insideSegment {
 			result.Laps = append(result.Laps, derivedLap)
@@ -147,6 +163,7 @@ func DeriveSessionConsumptionPace(
 			continue
 		}
 		derivedLap.ClimateBucket = &bucket
+		stableClimateLaps++
 		bucketValues := samplesByBucket[bucket]
 		if bucketValues == nil {
 			bucketValues = &bucketSamples{}
@@ -176,10 +193,15 @@ func DeriveSessionConsumptionPace(
 				bucketValues.ve = append(bucketValues.ve, metricSample{value: metric.Value, presence: metric.Presence})
 			}
 		}
-		if familyIncluded(lap, FamilyCombinedStintPaceCurve) && !lap.HasLabel(LapLabelTraffic) {
+		// Traffic is an observational label, not an exclusion decision. F3-a2
+		// deliberately keeps traffic laps usable for every family; applying a
+		// second private gate here made fuel valid while dropping pace from the
+		// exact same complete laps.
+		if familyIncluded(lap, FamilyCombinedStintPaceCurve) {
 			metric := newDerivedMetric(session.ID, *lap.LapTimeSeconds, lapPresence)
 			derivedLap.RepresentativePace = &metric
 			bucketValues.pace = append(bucketValues.pace, metricSample{value: metric.Value, presence: metric.Presence})
+			representativePaceLaps++
 		}
 		result.Laps = append(result.Laps, derivedLap)
 	}
@@ -191,7 +213,90 @@ func DeriveSessionConsumptionPace(
 			RepresentativePace:       summarizePace(session.ID, samples.pace),
 		}
 	}
+	if representativePaceLaps == 0 {
+		switch {
+		case completeLaps == 0:
+			result.RepresentativePaceReason = reasonNoCompletedLapsForRepresentativePace
+		case reliableLapTimes == 0:
+			result.RepresentativePaceReason = reasonNoReliableLapTimeForRepresentativePace
+		case stableClimateLaps == 0:
+			result.RepresentativePaceReason = reasonNoStableClimateBucketForRepresentativePace
+		default:
+			result.RepresentativePaceReason = reasonNoCleanCompleteLapsForRepresentativePace
+		}
+	}
 	return result, nil
+}
+
+// repairLegacyRepresentativePace upgrades the in-memory projection of models
+// persisted before consumption-pace.v2. It never writes the authorized store
+// and only restores a pace when the store already contains every required
+// fact: climate bucket, reliable lap time, shared family inclusion and a
+// same-lap derived presence from Fuel or VE.
+func repairLegacyRepresentativePace(
+	validity *LapValidityAnalysis,
+	consumption SessionConsumptionPace,
+) SessionConsumptionPace {
+	if validity == nil || len(consumption.Laps) == 0 {
+		return consumption
+	}
+	byNumber := make(map[int]AnalyzedLap, len(validity.Laps))
+	for _, lap := range validity.Laps {
+		byNumber[lap.Number] = lap
+	}
+	result := consumption
+	result.Laps = append([]LapConsumptionPace(nil), consumption.Laps...)
+	repairedBuckets := make(map[strategyprojection.ClimateBucket]bool)
+	for index := range result.Laps {
+		derivedLap := &result.Laps[index]
+		if derivedLap.RepresentativePace != nil || derivedLap.ClimateBucket == nil {
+			continue
+		}
+		lap, ok := byNumber[derivedLap.Number]
+		if !ok || !lap.Complete || lap.LapTimeSeconds == nil || *lap.LapTimeSeconds <= 0 ||
+			!familyIncluded(lap, FamilyCombinedStintPaceCurve) {
+			continue
+		}
+		presence, ok := legacySameLapPresence(*derivedLap)
+		if !ok {
+			continue
+		}
+		metric := newDerivedMetric(consumption.SessionID, *lap.LapTimeSeconds, presence)
+		derivedLap.RepresentativePace = &metric
+		repairedBuckets[*derivedLap.ClimateBucket] = true
+	}
+	if len(repairedBuckets) == 0 {
+		return consumption
+	}
+	result.RepresentativePaceReason = ""
+	result.ByClimateBucket = make(map[strategyprojection.ClimateBucket]ClimateBucketConsumptionPace, len(consumption.ByClimateBucket))
+	for bucket, family := range consumption.ByClimateBucket {
+		if repairedBuckets[bucket] {
+			family.RepresentativePace = summarizePace(
+				consumption.SessionID,
+				resourceLapSamples(result.Laps, bucket, func(lap LapConsumptionPace) *DerivedMetric { return lap.RepresentativePace }),
+			)
+		}
+		result.ByClimateBucket[bucket] = family
+	}
+	return result
+}
+
+func legacySameLapPresence(lap LapConsumptionPace) (strategyprojection.Presence, bool) {
+	presence := strategyprojection.PresenceUnknown
+	found := false
+	for _, metric := range []*DerivedMetric{lap.FuelConsumption, lap.VirtualEnergyConsumption} {
+		if metric == nil || presenceWeight(metric.Presence) == 0 {
+			continue
+		}
+		if !found {
+			presence = metric.Presence
+			found = true
+			continue
+		}
+		presence = weakestPresence(presence, metric.Presence)
+	}
+	return presence, found
 }
 
 type timedMetricSample struct {
@@ -391,7 +496,14 @@ func summarizePace(sessionID string, samples []metricSample) RepresentativePaceF
 		median = weightedMedian(samples)
 		confidence.RangeLower, confidence.RangeUpper, confidence.Variance = floatPointer(lower), floatPointer(upper), floatPointer(variance)
 	}
-	return RepresentativePaceFamily{Presence: presence, Provenance: provenance, Confidence: confidence, MedianLapSeconds: median}
+	reason := ""
+	if len(samples) == 0 {
+		reason = reasonNoCleanCompleteLapsForRepresentativePace
+	}
+	return RepresentativePaceFamily{
+		Presence: presence, Provenance: provenance, Confidence: confidence,
+		Reason: reason, MedianLapSeconds: median,
+	}
 }
 
 func weightedSummary(samples []metricSample) (mean, lower, upper, variance float64, presence strategyprojection.Presence) {
@@ -556,7 +668,32 @@ func AggregateConsumptionPace(current SessionConsumptionPace, history []SessionC
 		}
 		result.ByClimateBucket[bucket] = aggregate
 	}
+	result.RepresentativePaceReason = aggregateRepresentativePaceReason(sessions, result.ByClimateBucket)
 	return result, nil
+}
+
+func aggregateRepresentativePaceReason(
+	sessions []SessionConsumptionPace,
+	buckets map[strategyprojection.ClimateBucket]ClimateBucketConsumptionPace,
+) string {
+	for _, bucket := range buckets {
+		if bucket.RepresentativePace.Presence == strategyprojection.PresenceValid && bucket.RepresentativePace.Confidence.SampleSize > 0 {
+			return ""
+		}
+	}
+	for _, reason := range []string{
+		reasonNoCleanCompleteLapsForRepresentativePace,
+		reasonNoStableClimateBucketForRepresentativePace,
+		reasonNoReliableLapTimeForRepresentativePace,
+		reasonNoCompletedLapsForRepresentativePace,
+	} {
+		for _, session := range sessions {
+			if session.RepresentativePaceReason == reason {
+				return reason
+			}
+		}
+	}
+	return reasonNoClassifiedPace
 }
 
 func aggregateResourceSamples(

@@ -9,6 +9,10 @@ const planning = {
     sourceSessions: ["race-1"], combinationId: "lmu:fuji",
     fuelConsumption: { presence: "valid", provenance: { kind: "derived", sourceId: "aggregate:lmu:fuji" }, confidence, meanPerLap: 3, rangeLower: 2.8, rangeUpper: 3.2 },
     virtualEnergyConsumption: { presence: "missing", provenance: { kind: "derived", sourceId: "aggregate:lmu:fuji" }, confidence: { sampleSize: 0, computationVersion: "producer.v1" }, reason: "missing_virtual_energy_consumption", meanPerLap: 0, rangeLower: 0, rangeUpper: 0 },
+    representativePaceByClimateBucket: {
+      dry: { presence: "valid", provenance: { kind: "derived", sourceId: "aggregate:lmu:fuji" }, confidence: { sampleSize: 3, rangeLower: 90, rangeUpper: 92, computationVersion: "producer.v1" }, medianLapSeconds: 90.82 },
+      wet: { presence: "valid", provenance: { kind: "derived", sourceId: "aggregate:lmu:fuji" }, confidence: { sampleSize: 2, rangeLower: 103, rangeUpper: 106, computationVersion: "producer.v1" }, medianLapSeconds: 104.5 },
+    },
     combinedStintPaceCurve: { presence: "missing", provenance: { kind: "derived", sourceId: "aggregate:lmu:fuji" }, confidence: { sampleSize: 0, computationVersion: "producer.v1" }, reason: "missing_combined_stint_pace_curve", identifiability: "combined_only", points: [] },
     tyreDegradation: { presence: "missing", provenance: { kind: "derived", sourceId: "aggregate:lmu:fuji" }, confidence: { sampleSize: 0, computationVersion: "producer.v1" }, reason: "missing_tyre_degradation" },
     pit: { presence: "missing", provenance: { kind: "derived", sourceId: "aggregate:lmu:fuji" }, confidence: { sampleSize: 0, computationVersion: "producer.v1" } },
@@ -33,6 +37,34 @@ describe("Strategy input provenance", () => {
   it("reports an honest missing reason without turning it into zero", () => {
     expect(strategyInputProvenance(planning, "ve_per_lap_percent")).toMatchObject({
       kind: "missing", presence: "missing", reason: "missing_virtual_energy_consumption",
+    });
+  });
+
+  it("uses the representative dry pace even when the stint curve is missing", () => {
+    expect(strategyInputProvenance(planning, "base_pace_seconds", 105)).toMatchObject({
+      kind: "derived", presence: "valid", value: 90.82, confidence: { sampleSize: 3 },
+    });
+    expect(strategyInputProvenance(planning, "base_pace_seconds", 115, "wet")).toMatchObject({
+      kind: "derived", presence: "valid", value: 104.5, confidence: { sampleSize: 2 },
+    });
+  });
+
+  it("explains why representative pace cannot be derived", () => {
+    const missingPace: StrategyPlanningInputsV2 = {
+      ...planning,
+      projection: {
+        ...planning.projection,
+        representativePaceByClimateBucket: {
+          dry: {
+            presence: "missing", provenance: { kind: "derived", sourceId: "aggregate:lmu:fuji" },
+            confidence: { sampleSize: 0, computationVersion: "consumption-pace.v2" },
+            reason: "no_reliable_lap_time_for_representative_pace", medianLapSeconds: 0,
+          },
+        },
+      },
+    };
+    expect(strategyInputProvenance(missingPace, "base_pace_seconds")).toMatchObject({
+      kind: "missing", reason: "no_reliable_lap_time_for_representative_pace",
     });
   });
 });

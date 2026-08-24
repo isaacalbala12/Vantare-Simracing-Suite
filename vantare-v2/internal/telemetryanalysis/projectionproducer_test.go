@@ -82,6 +82,15 @@ func TestProduceStrategyInputProjectionV2ComposesIndependentFamilies(t *testing.
 	if got.VirtualEnergyConsumption.ByClimateBucket[strategyprojection.ClimateBucketHumid] != 1.5 {
 		t.Fatalf("humid VE from independent session = %#v", got.VirtualEnergyConsumption.ByClimateBucket)
 	}
+	dryPace := got.RepresentativePaceByClimateBucket[strategyprojection.ClimateBucketDry]
+	if dryPace.Presence != strategyprojection.PresenceValid || dryPace.MedianLapSeconds != 100 ||
+		dryPace.Confidence.SampleSize != 4 || dryPace.Provenance.SourceID != "aggregate:"+got.CombinationID {
+		t.Fatalf("dry representative pace = %#v", dryPace)
+	}
+	humidPace := got.RepresentativePaceByClimateBucket[strategyprojection.ClimateBucketHumid]
+	if humidPace.Presence != strategyprojection.PresenceMissing || humidPace.Reason != reasonNoCleanCompleteLapsForRepresentativePace {
+		t.Fatalf("humid representative pace reason = %#v", humidPace)
+	}
 	if len(got.Pit.ObservedIntervals) != 1 || !got.Pit.ObservedIntervals[0].Ambiguous {
 		t.Fatalf("degraded pit not preserved: %#v", got.Pit)
 	}
@@ -235,7 +244,7 @@ func projectionProducerFixture() ProjectionProductionRequest {
 					RepresentativePace: RepresentativePaceFamily{
 						Presence:         strategyprojection.PresenceValid,
 						Provenance:       strategyprojection.Provenance{Kind: strategyprojection.ProvenanceDerived, SourceID: "race-1"},
-						Confidence:       strategyprojection.Confidence{SampleSize: 4, ComputationVersion: "consumption-pace.v1"},
+						Confidence:       strategyprojection.Confidence{SampleSize: 4, ComputationVersion: "consumption-pace.v2"},
 						MedianLapSeconds: 100,
 					},
 				},
@@ -296,7 +305,7 @@ func projectionProducerFixture() ProjectionProductionRequest {
 					RepresentativePace: RepresentativePaceFamily{
 						Presence:   strategyprojection.PresenceMissing,
 						Provenance: strategyprojection.Provenance{Kind: strategyprojection.ProvenanceDerived, SourceID: "practice-2"},
-						Confidence: strategyprojection.Confidence{ComputationVersion: "consumption-pace.v1"},
+						Confidence: strategyprojection.Confidence{ComputationVersion: "consumption-pace.v2"},
 					},
 				},
 			},
@@ -393,7 +402,7 @@ func resourceFamily(
 		Provenance: strategyprojection.Provenance{Kind: strategyprojection.ProvenanceDerived, SourceID: sourceID},
 		Confidence: strategyprojection.Confidence{
 			SampleSize: sampleSize, RangeLower: floatPointer(value), RangeUpper: floatPointer(value),
-			Variance: floatPointer(0), ComputationVersion: "consumption-pace.v1",
+			Variance: floatPointer(0), ComputationVersion: "consumption-pace.v2",
 		},
 		MeanPerLap: value, RangeLower: value, RangeUpper: value,
 		ByClimateBucket: map[strategyprojection.ClimateBucket]float64{bucket: value},
@@ -404,7 +413,7 @@ func missingResourceFamily(sourceID, reason string) strategyprojection.ResourceC
 	return strategyprojection.ResourceConsumptionFamily{
 		Presence:        strategyprojection.PresenceMissing,
 		Provenance:      strategyprojection.Provenance{Kind: strategyprojection.ProvenanceDerived, SourceID: sourceID},
-		Confidence:      strategyprojection.Confidence{ComputationVersion: "consumption-pace.v1"},
+		Confidence:      strategyprojection.Confidence{ComputationVersion: "consumption-pace.v2"},
 		Reason:          reason,
 		ByClimateBucket: map[strategyprojection.ClimateBucket]float64{},
 	}

@@ -16,6 +16,7 @@ const (
 	reasonMissingLapValidity = "missing_lap_validity_analysis"
 	reasonMissingFuel        = "missing_fuel_consumption"
 	reasonMissingVE          = "missing_virtual_energy_consumption"
+	reasonNoClassifiedPace   = "no_classified_complete_laps_in_climate_bucket"
 	reasonMissingCurves      = "missing_combined_stint_pace_curve"
 	reasonMissingTyres       = "missing_tyre_degradation"
 	reasonMissingPit         = "missing_pit_observation"
@@ -53,20 +54,21 @@ func ProduceStrategyInputProjectionV2(
 
 	sourceID := "aggregate:" + request.Combination.ID
 	projection := strategyprojection.StrategyInputProjectionV2{
-		ContractVersion:          strategyprojection.ContractVersionStrategyInputProjectionV2,
-		GeneratedAt:              request.GeneratedAt,
-		ComputationVersion:       strategyInputProducerComputationVersion,
-		SourceSessions:           projectionSourceSessions(request.Sessions),
-		CombinationID:            request.Combination.ID,
-		SessionClassification:    projectSessionClassification(request, sourceID),
-		LapValidity:              missingLapValidityFamily(sourceID),
-		FuelConsumption:          missingResourceProjection(sourceID, reasonMissingFuel),
-		VirtualEnergyConsumption: missingResourceProjection(sourceID, reasonMissingVE),
-		CombinedStintPaceCurve:   missingCombinedCurve(sourceID),
-		TyreDegradation:          missingTyreProjection(sourceID),
-		Pit:                      missingPitFamily(sourceID, reasonMissingPit),
-		SavingCost:               missingSavingProjection(sourceID),
-		ClimateBuckets:           missingClimateProjection(sourceID),
+		ContractVersion:                   strategyprojection.ContractVersionStrategyInputProjectionV2,
+		GeneratedAt:                       request.GeneratedAt,
+		ComputationVersion:                strategyInputProducerComputationVersion,
+		SourceSessions:                    projectionSourceSessions(request.Sessions),
+		CombinationID:                     request.Combination.ID,
+		SessionClassification:             projectSessionClassification(request, sourceID),
+		LapValidity:                       missingLapValidityFamily(sourceID),
+		FuelConsumption:                   missingResourceProjection(sourceID, reasonMissingFuel),
+		VirtualEnergyConsumption:          missingResourceProjection(sourceID, reasonMissingVE),
+		RepresentativePaceByClimateBucket: missingRepresentativePaceProjection(sourceID),
+		CombinedStintPaceCurve:            missingCombinedCurve(sourceID),
+		TyreDegradation:                   missingTyreProjection(sourceID),
+		Pit:                               missingPitFamily(sourceID, reasonMissingPit),
+		SavingCost:                        missingSavingProjection(sourceID),
+		ClimateBuckets:                    missingClimateProjection(sourceID),
 		Temporal: strategyprojection.TemporalSegmentsV1{
 			ContractVersion: strategyprojection.ContractVersionTemporalSegmentsV1,
 			Segments:        []strategyprojection.ContinuousSegment{},
@@ -98,6 +100,7 @@ func ProduceStrategyInputProjectionV2(
 			},
 			reasonMissingVE,
 		)
+		projection.RepresentativePaceByClimateBucket = projectRepresentativePace(consumption, sourceID)
 		projection.ClimateBuckets = projectClimateBuckets(consumption, sourceID)
 	}
 
@@ -302,7 +305,7 @@ func aggregateSelectedConsumption(
 			session.Consumption.CombinationID != session.Classified.Combination.ID {
 			return ConsumptionPaceAggregate{}, false, fmt.Errorf("%w: consumption identity", ErrInvalidProjectionProductionInput)
 		}
-		selected = append(selected, *session.Consumption)
+		selected = append(selected, repairLegacyRepresentativePace(session.Validity, *session.Consumption))
 	}
 	if len(selected) == 0 {
 		return ConsumptionPaceAggregate{}, false, nil
@@ -354,6 +357,37 @@ func projectResourceConsumption(
 	}
 	result.Provenance = strategyprojection.Provenance{Kind: strategyprojection.ProvenanceDerived, SourceID: sourceID}
 	result.Reason = ""
+	return result
+}
+
+func projectRepresentativePace(
+	aggregate ConsumptionPaceAggregate,
+	sourceID string,
+) map[strategyprojection.ClimateBucket]strategyprojection.RepresentativePaceFamily {
+	missingReason := reasonNoClassifiedPace
+	if aggregate.RepresentativePaceReason != "" {
+		missingReason = aggregate.RepresentativePaceReason
+	}
+	result := missingRepresentativePaceProjection(sourceID, missingReason)
+	for _, bucket := range orderedClimateBuckets() {
+		value, ok := aggregate.ByClimateBucket[bucket]
+		if !ok {
+			continue
+		}
+		candidate := value.RepresentativePace
+		reason := candidate.Reason
+		if reason == "" && candidate.Presence != strategyprojection.PresenceValid {
+			reason = reasonNoCleanCompleteLapsForRepresentativePace
+		}
+		result[bucket] = strategyprojection.RepresentativePaceFamily{
+			Presence: candidate.Presence,
+			Provenance: strategyprojection.Provenance{
+				Kind: strategyprojection.ProvenanceDerived, SourceID: sourceID,
+			},
+			Confidence: candidate.Confidence, Reason: reason,
+			MedianLapSeconds: candidate.MedianLapSeconds,
+		}
+	}
 	return result
 }
 
@@ -558,6 +592,26 @@ func missingResourceProjection(sourceID, reason string) strategyprojection.Resou
 		ByClimateBucket: map[strategyprojection.ClimateBucket]float64{},
 		ByMixture:       map[int]float64{},
 	}
+}
+
+func missingRepresentativePaceProjection(
+	sourceID string,
+	reason ...string,
+) map[strategyprojection.ClimateBucket]strategyprojection.RepresentativePaceFamily {
+	missingReason := reasonNoClassifiedPace
+	if len(reason) > 0 && reason[0] != "" {
+		missingReason = reason[0]
+	}
+	result := make(map[strategyprojection.ClimateBucket]strategyprojection.RepresentativePaceFamily, 3)
+	for _, bucket := range orderedClimateBuckets() {
+		result[bucket] = strategyprojection.RepresentativePaceFamily{
+			Presence:   strategyprojection.PresenceMissing,
+			Provenance: strategyprojection.Provenance{Kind: strategyprojection.ProvenanceDerived, SourceID: sourceID},
+			Confidence: strategyprojection.Confidence{ComputationVersion: strategyInputProducerComputationVersion},
+			Reason:     missingReason,
+		}
+	}
+	return result
 }
 
 func missingCombinedCurve(sourceID string) strategyprojection.CombinedStintPaceCurve {

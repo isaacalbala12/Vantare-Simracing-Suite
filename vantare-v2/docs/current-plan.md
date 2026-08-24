@@ -17,6 +17,35 @@ Nota ISA-825 / bloqueo de CPU en `calculate_orbit` (2026-08-24, implementada en 
   valores inventados. Pendiente: prueba de Isaac en la app real tras integrar;
   sin PR, merge, promoción ni release.
 
+Nota ISA-827 / ritmo representativo (2026-08-24, implementada en rama de issue):
+
+- `StrategyInputProjection v2` transporta ahora el ritmo representativo por
+  bucket `dry/humid/wet`, con mediana, presencia, procedencia, confianza y
+  causa explícita. Sigue siendo independiente de `CombinedStintPaceCurve`: el
+  plan usa el ritmo válido del bucket de su variante (seco/eco=`dry`,
+  mojado=`wet`) aunque la curva no supere su gate de identificabilidad, y un
+  override manual conserva prioridad.
+- El caso Fuel-sí/Pace-no era un defecto concreto: F3-a2 declaraba las mismas
+  vueltas utilizables para ambas familias, pero `consumptionpace.go` aplicaba
+  después un veto privado a la etiqueta observacional `traffic` solo para
+  Pace. En Spa LMGT3, la sesión `e124f80e...` tiene cuatro vueltas completas
+  (2, 4, 6 y 7), Fuel/Pace `included=true` y tiempos 141,55–142,25 s; se retiró
+  ese segundo gate y `consumption-pace.v2` comparte la decisión canónica.
+- Los stores existentes no requieren reimportación ni escritura. Analysis
+  repara en memoria un ritmo legado únicamente si el propio modelo demuestra
+  bucket, tiempo fiable, inclusión de Pace y presencia Fuel/VE en la misma
+  vuelta. Prueba real read-only: 336 modelos, 5 sesiones Spa LMGT3, seco válido
+  con 4 muestras y mediana 142,003814697266 s; curva missing/0 puntos; SHA-256
+  del store idéntico antes y después. En los 45 buckets originales, los 6
+  Fuel-válido/Pace-missing pasan a ambos válidos: queda 19 ambos válidos, 0
+  Fuel-válido/Pace-missing y 26 con ambas familias no válidas (los 24
+  unknown/unknown y 2 missing/missing ya observados).
+- Gates: Analysis+Strategy completos y vet focal verdes; build frontend verde y
+  68 tests focales verdes. El Vitest global deja 2938/2939 tests verdes y falla
+  solo el audit por la clave huérfana heredada `strategy.wizard.fill.autoTip`,
+  presente ya en la base. El vet global conserva los tres avisos heredados de
+  `unsafe.Pointer` en Launcher/LMU. Sin PR, integración, promoción ni release.
+
 Nota ISA-824 / ISA-694 entrada asistida (2026-08-24, implementada en rama de issue):
 
 - El paso Datos habilita `Automática con telemetría` solo cuando el catálogo

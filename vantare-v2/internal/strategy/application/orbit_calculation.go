@@ -172,7 +172,7 @@ func calculateOrbitWeather(ctx context.Context, input OrbitCalculationInput, dri
 	}
 	solved, err := solver.SolveWeatherScenariosContext(
 		ctx,
-		orbitSolverInput(race.CompetitiveLaps.Value(), input.Event, effectivePace, effectiveFuel, input.PlanningInputs),
+		orbitSolverInput(race.CompetitiveLaps.Value(), input.Event, effectivePace, effectiveFuel, strategyprojection.ClimateBucketDry, input.PlanningInputs),
 		solver.WeatherScenarioSet{Scenarios: weighted, BucketParameters: parameters},
 	)
 	if err != nil {
@@ -275,7 +275,9 @@ func calculateOrbitPlan(ctx context.Context, event OrbitCalculationEvent, driver
 		return OrbitCalculationPlan{}, mapOrbitCalculationError(err, "input.event")
 	}
 
-	optimised, err := solver.SolveV2Context(ctx, orbitSolverInput(race.CompetitiveLaps.Value(), event, averagePace, averageFuel, planning))
+	optimised, err := solver.SolveV2Context(ctx, orbitSolverInput(
+		race.CompetitiveLaps.Value(), event, averagePace, averageFuel, orbitClimateBucket(variant.Mode), planning,
+	))
 	if err != nil {
 		return OrbitCalculationPlan{}, mapOrbitCalculationError(err, fmt.Sprintf("input.variants.%d", variantIndex))
 	}
@@ -373,12 +375,19 @@ func calculateOrbitPlan(ctx context.Context, event OrbitCalculationEvent, driver
 
 const orbitLegacyAllInServiceRate = 1e12
 
-func orbitSolverInput(raceLaps int64, event OrbitCalculationEvent, averagePace, averageFuel float64, planning *strategydocument.PlanningInputs) solver.SolverInputV2 {
+func orbitSolverInput(
+	raceLaps int64,
+	event OrbitCalculationEvent,
+	averagePace, averageFuel float64,
+	paceBucket strategyprojection.ClimateBucket,
+	planning *strategydocument.PlanningInputs,
+) solver.SolverInputV2 {
 	input := solver.SolverInputV2{
-		ContractVersion: solver.SolverContractVersionV2,
-		RaceLaps:        raceLaps,
-		BaseLapSeconds:  orbitScalarInput(planning, strategydocument.PlanningInputPace, averagePace, "strategy.orbit.base-pace"),
-		Projection:      orbitProjection(planning),
+		ContractVersion:      solver.SolverContractVersionV2,
+		RaceLaps:             raceLaps,
+		BaseLapSeconds:       orbitScalarInput(planning, strategydocument.PlanningInputPace, averagePace, "strategy.orbit.base-pace"),
+		BaseLapClimateBucket: paceBucket,
+		Projection:           orbitProjection(planning),
 		PitCost: solver.PitCostModel{
 			TransitSeconds:  orbitScalarInput(planning, strategydocument.PlanningInputPitLoss, event.PitLossSeconds, "strategy.orbit.legacy-all-in-pit"),
 			RefuelRateLPerS: solver.NewFallbackScalar(orbitLegacyAllInServiceRate, "strategy.orbit.legacy-all-in-pit"),
@@ -401,6 +410,13 @@ func orbitSolverInput(raceLaps int64, event OrbitCalculationEvent, averagePace, 
 		Discretization: solver.ServiceDiscretization{FuelLiters: averageFuel, VEPercent: 1},
 	}
 	return input
+}
+
+func orbitClimateBucket(mode string) strategyprojection.ClimateBucket {
+	if mode == "wet" {
+		return strategyprojection.ClimateBucketWet
+	}
+	return strategyprojection.ClimateBucketDry
 }
 
 func orbitSavingCost(planning *strategydocument.PlanningInputs) *solver.SavingCostParameter {
@@ -543,12 +559,23 @@ func effectiveOrbitPace(driver OrbitCalculationDriver, mode string, planning *st
 	if err != nil {
 		return OrbitCalculationPace{}, err
 	}
-	pace.PaceSeconds = effectivePlanningValue(planning, strategydocument.PlanningInputPace, pace.PaceSeconds)
+	pace.PaceSeconds = effectivePlanningValueForBucket(
+		planning, strategydocument.PlanningInputPace, pace.PaceSeconds, orbitClimateBucket(mode),
+	)
 	pace.FuelLitersPerLap = effectivePlanningValue(planning, strategydocument.PlanningInputFuelPerLap, pace.FuelLitersPerLap)
 	return pace, nil
 }
 
 func effectivePlanningValue(planning *strategydocument.PlanningInputs, field strategydocument.PlanningInputField, fallback float64) float64 {
+	return effectivePlanningValueForBucket(planning, field, fallback, strategyprojection.ClimateBucketDry)
+}
+
+func effectivePlanningValueForBucket(
+	planning *strategydocument.PlanningInputs,
+	field strategydocument.PlanningInputField,
+	fallback float64,
+	bucket strategyprojection.ClimateBucket,
+) float64 {
 	if planning == nil {
 		return fallback
 	}
@@ -559,6 +586,11 @@ func effectivePlanningValue(planning *strategydocument.PlanningInputs, field str
 		return fallback
 	}
 	switch field {
+	case strategydocument.PlanningInputPace:
+		family, ok := planning.Projection.RepresentativePaceByClimateBucket[bucket]
+		if ok && family.Presence == strategyprojection.PresenceValid && family.MedianLapSeconds > 0 {
+			return family.MedianLapSeconds
+		}
 	case strategydocument.PlanningInputFuelPerLap:
 		family := planning.Projection.FuelConsumption
 		if family.Presence == strategyprojection.PresenceValid && family.MeanPerLap > 0 {

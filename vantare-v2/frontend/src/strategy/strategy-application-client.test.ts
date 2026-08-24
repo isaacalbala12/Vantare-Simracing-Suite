@@ -242,6 +242,9 @@ describe("createStrategyApplicationClient", () => {
           computationVersion: "producer.v1", sourceSessions: ["race-1"], combinationId: "lmu:imola",
           fuelConsumption: { presence: "valid", provenance: { kind: "derived", sourceId: "aggregate:lmu:imola" }, confidence: { sampleSize: 20, rangeLower: 2.6, rangeUpper: 2.9, computationVersion: "producer.v1" }, meanPerLap: 2.75, rangeLower: 2.6, rangeUpper: 2.9 },
           virtualEnergyConsumption: { ...missing, meanPerLap: 0, rangeLower: 0, rangeUpper: 0 },
+          representativePaceByClimateBucket: {
+            dry: { presence: "valid", provenance: { kind: "derived", sourceId: "aggregate:lmu:imola" }, confidence: { sampleSize: 4, rangeLower: 101, rangeUpper: 103, computationVersion: "producer.v1" }, medianLapSeconds: 102 },
+          },
           combinedStintPaceCurve: { ...missing, identifiability: "combined_only", points: [] },
           tyreDegradation: missing, pit: missing, savingCost: missing,
         },
@@ -255,7 +258,10 @@ describe("createStrategyApplicationClient", () => {
     await expect(pending).resolves.toMatchObject({
       planningInputStatus: "available",
       planningInputs: {
-        projection: { fuelConsumption: { meanPerLap: 2.75, confidence: { sampleSize: 20 } } },
+        projection: {
+          fuelConsumption: { meanPerLap: 2.75, confidence: { sampleSize: 20 } },
+          representativePaceByClimateBucket: { dry: { medianLapSeconds: 102, confidence: { sampleSize: 4 } } },
+        },
         overrides: { fuel_per_lap_liters: { value: 3.5, provenance: { kind: "manual" } } },
       },
     });

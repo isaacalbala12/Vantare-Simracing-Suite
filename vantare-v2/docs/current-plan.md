@@ -1,20 +1,25 @@
-Nota ISA-824 / ISA-694 entrada asistida (2026-08-23, implementada en rama de issue):
+Nota ISA-824 / ISA-694 entrada asistida (2026-08-24, implementada en rama de issue):
 
 - El paso Datos habilita `Automática con telemetría` solo cuando el catálogo
   responde y contiene al menos una combinación con vueltas clasificadas por
   clima. Cero sesiones importadas, catálogo no disponible y cero combinaciones
   clasificadas conservan controles deshabilitados con causas distintas y
   visibles.
-- La elección automática conserva ese modo al crear el evento y reutiliza el
-  selector F5-a: combinación y sesiones se persisten por el documento v2,
-  `get_event_planning_inputs` proyecta los derivados y el mismo cálculo Orbit
-  recibe las entradas, sin otro camino ni datos fabricados.
-- Regresiones de pantalla cubren disponibilidad end-to-end, cero sesiones,
-  fallo de catálogo y ausencia de clima clasificado. Strategy Orbit+cliente,
-  typecheck real y build pasan. El ESLint focal conserva tres errores
-  `react-hooks/set-state-in-effect` y tres warnings previos en
-  `StrategyOrbitPage.tsx`, fuera del diff funcional. Sin Go, PR, integración,
-  promoción ni release.
+- El bloque inferior lista las carreras LMU por el canal Calendar existente.
+  Calendar resuelve mediante tablas Go revisadas las diez sedes y las cinco
+  clases a los nombres del catálogo; el JSON publicado no puede redefinir esa
+  identidad. Una sede o clase desconocida queda visible por su nombre.
+- La selección sigue carrera, clase cuando es multiclase y coche. Entre clase y
+  coche solo aparece trazado cuando el catálogo real contiene más de uno para
+  esa sede y clase; muestra sus sesiones y nunca lo deduce del paréntesis del
+  calendario. Elegir coche reutiliza el selector F5-a, persiste las sesiones y
+  refresca `StrategyInputProjection v2`, sin otro cálculo ni datos fabricados.
+- Corpus local: las identidades cubren 10/10 sedes y 5/5 clases; 7/10 sedes
+  tienen sesiones coincidentes y 5/11 series ofrecen al menos un coche con
+  vueltas clasificadas por clima. Strategy Orbit+cliente, typecheck real,
+  build y `go test ./...` pasan. El lint global conserva 35 incidencias
+  heredadas (32 errores y 3 warnings), fuera del bloque nuevo. Sin PR,
+  integración, promoción ni release.
 
 Nota ISA-815 / ISA-694 F5-e (2026-08-23, implementada en rama de issue):
 

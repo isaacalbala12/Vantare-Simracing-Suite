@@ -1,16 +1,25 @@
 import { describe, expect, it } from "vitest";
-import type { RaceSeries } from "../../calendar/calendar-types";
+import type { RaceSeries, VehicleClass } from "../../calendar/calendar-types";
 import type { StrategySessionCombinationV1 } from "../../strategy/strategy-application-client";
-import { calendarSessionCombinations } from "./strategy-calendar-selection";
+import {
+  calendarSessionCombinations,
+  calendarSessionLayouts,
+} from "./strategy-calendar-selection";
+
+const lmp2: VehicleClass = {
+  name: "LMP2",
+  telemetryClassName: "LMP2_ELMS",
+};
 
 const series: RaceSeries = {
   id: "spa-endurance",
   name: "Spa Endurance",
   tier: "advanced",
   licenseLabel: "Gold",
-  track: "Circuit de Spa-Francorchamps",
+  track: "Spa (WEC)",
+  telemetryTrackName: "Circuit de Spa-Francorchamps",
   vehicleClass: "LMP2",
-  classes: [{ name: "LMP2" }],
+  classes: [lmp2],
   setup: "fixed",
   durationMin: 120,
   splits: 2,
@@ -20,28 +29,59 @@ const series: RaceSeries = {
   recurrence: { kind: "weekly" },
 };
 
-const combination: StrategySessionCombinationV1 = {
-  combinationId: "lmu:spa:lmp2",
-  simId: "lmu",
-  trackName: "Circuit de Spa-Francorchamps",
-  trackLayout: "GP",
-  carName: "United Autosports #21",
-  carClass: "LMP2",
-  sessionCount: 2,
-  raceCount: 1,
-  lastActivity: "2026-08-23T12:00:00Z",
-  climateBuckets: [{ bucket: "dry", laps: 20 }],
-  sessions: [],
-};
+function combination(
+  combinationId: string,
+  trackLayout: string,
+  sessionCount: number,
+): StrategySessionCombinationV1 {
+  return {
+    combinationId,
+    simId: "lmu",
+    trackName: "Circuit de Spa-Francorchamps",
+    trackLayout,
+    carName: combinationId,
+    carClass: "LMP2_ELMS",
+    sessionCount,
+    raceCount: 1,
+    lastActivity: "2026-08-23T12:00:00Z",
+    climateBuckets: [{ bucket: "dry", laps: 20 }],
+    sessions: [],
+  };
+}
 
-describe("calendarSessionCombinations", () => {
-  it("empareja únicamente nombres exactos de circuito y clase", () => {
-    expect(calendarSessionCombinations(series, "LMP2", [combination])).toEqual([combination]);
+describe("selección de telemetría desde calendario", () => {
+  it("usa únicamente las identidades declaradas por Go", () => {
+    const available = combination("united-21", "Circuit de Spa-Francorchamps", 5);
+
+    expect(calendarSessionCombinations(series, lmp2, [available])).toEqual([available]);
     expect(calendarSessionCombinations(
-      { ...series, track: "Spa (WEC)" },
-      "LMP2",
-      [combination],
+      { ...series, telemetryTrackName: undefined },
+      lmp2,
+      [available],
     )).toEqual([]);
-    expect(calendarSessionCombinations(series, "LMP2_ELMS", [combination])).toEqual([]);
+    expect(calendarSessionCombinations(
+      series,
+      { ...lmp2, telemetryClassName: undefined },
+      [available],
+    )).toEqual([]);
+  });
+
+  it("agrupa por trazado y suma las sesiones reales sin elegir uno", () => {
+    const combinations = [
+      combination("united-21", "Circuit de Spa-Francorchamps", 5),
+      combination("alpine-35", "Circuit de Spa-Francorchamps", 17),
+      combination("united-22", "Circuit de Spa-Francorchamps Endurance", 2),
+    ];
+
+    expect(calendarSessionLayouts(series, lmp2, combinations)).toEqual([
+      { trackLayout: "Circuit de Spa-Francorchamps", sessionCount: 22 },
+      { trackLayout: "Circuit de Spa-Francorchamps Endurance", sessionCount: 2 },
+    ]);
+    expect(calendarSessionCombinations(
+      series,
+      lmp2,
+      combinations,
+      "Circuit de Spa-Francorchamps Endurance",
+    )).toEqual([combinations[2]]);
   });
 });

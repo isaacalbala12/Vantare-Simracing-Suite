@@ -2,6 +2,90 @@ package calendar
 
 import "testing"
 
+func TestTelemetryVenueIdentityUsesDeclaredCalendarNames(t *testing.T) {
+	cases := map[string]string{
+		"Bahrain (Outer)":  "Bahrain International Circuit",
+		"Barcelona (ELMS)": "Circuit de Barcelona",
+		"COTA (WEC)":       "Circuit of the Americas",
+		"Daytona (RC)":     "Daytona International Speedway",
+		"Fuji (WEC)":       "Fuji Speedway",
+		"Laguna Seca (RC)": "WeatherTech Raceway Laguna Seca",
+		"Le Mans (WEC)":    "Circuit de la Sarthe",
+		"Qatar (Short)":    "Lusail International Circuit",
+		"Sebring (WEC)":    "Sebring International Raceway",
+		"Spa (WEC)":        "Circuit de Spa-Francorchamps",
+	}
+	for calendarTrack, want := range cases {
+		got, ok := TelemetryTrackName(calendarTrack)
+		if !ok || got != want {
+			t.Errorf("TelemetryTrackName(%q)=(%q,%v), want (%q,true)", calendarTrack, got, ok, want)
+		}
+	}
+	if got, ok := TelemetryTrackName("Spa"); ok || got != "" {
+		t.Fatalf("undeclared venue resolved as (%q,%v)", got, ok)
+	}
+}
+
+func TestTelemetryClassIdentityUsesDeclaredCalendarNames(t *testing.T) {
+	cases := map[string]string{
+		"Hypercar": "Hyper",
+		"LMGT3":    "GT3",
+		"LMGTE Am": "GTE",
+		"LMP2":     "LMP2_ELMS",
+		"LMP3":     "LMP3",
+	}
+	for calendarClass, want := range cases {
+		got, ok := TelemetryClassName(calendarClass)
+		if !ok || got != want {
+			t.Errorf("TelemetryClassName(%q)=(%q,%v), want (%q,true)", calendarClass, got, ok, want)
+		}
+	}
+	if got, ok := TelemetryClassName("LMH"); ok || got != "" {
+		t.Fatalf("undeclared class resolved as (%q,%v)", got, ok)
+	}
+}
+
+func TestWeeklyScheduleEveryVenueAndClassHasTelemetryIdentity(t *testing.T) {
+	sched, err := LoadWeeklySchedule()
+	if err != nil {
+		t.Fatalf("LoadWeeklySchedule: %v", err)
+	}
+	venues := map[string]struct{}{}
+	for _, series := range sched.Series {
+		venues[series.Track] = struct{}{}
+		if series.TelemetryTrackName == "" {
+			t.Errorf("series %q: calendar venue %q has no declared telemetry identity", series.ID, series.Track)
+		}
+		for _, class := range series.Classes {
+			if class.TelemetryClassName == "" {
+				t.Errorf("series %q: calendar class %q has no declared telemetry identity", series.ID, class.Name)
+			}
+		}
+	}
+	if len(venues) != 10 {
+		t.Fatalf("weekly schedule has %d venues, want 10", len(venues))
+	}
+}
+
+func TestResolveTelemetryIdentitiesRejectsValuesSuppliedBySchedule(t *testing.T) {
+	schedule := OfficialSchedule{Series: []RaceSeries{{
+		Track:              "Unknown (WEC)",
+		TelemetryTrackName: "untrusted track",
+		Classes: []VehicleClass{{
+			Name:               "Unknown class",
+			TelemetryClassName: "untrusted class",
+		}},
+	}}}
+
+	resolveTelemetryIdentities(&schedule)
+	if schedule.Series[0].TelemetryTrackName != "" {
+		t.Fatalf("unknown venue kept schedule-supplied identity %q", schedule.Series[0].TelemetryTrackName)
+	}
+	if schedule.Series[0].Classes[0].TelemetryClassName != "" {
+		t.Fatalf("unknown class kept schedule-supplied identity %q", schedule.Series[0].Classes[0].TelemetryClassName)
+	}
+}
+
 func TestCanonicalSeriesIDSurvivesRenames(t *testing.T) {
 	// The real renames between two consecutive published schedules.
 	cases := []struct {

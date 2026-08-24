@@ -141,7 +141,10 @@ import {
   usableSessionCombinations,
 } from "./strategy-session-selection";
 import { strategyInputProvenance, type StrategyInputProvenanceView } from "./strategy-input-provenance";
-import { calendarSessionCombinations } from "./strategy-calendar-selection";
+import {
+  calendarSessionCombinations,
+  calendarSessionLayouts,
+} from "./strategy-calendar-selection";
 import { StrategyWeatherPanel } from "./StrategyWeatherPanel";
 import { StrategyValidatedExamplesPanel, type ValidatedExamplesViewState } from "./StrategyValidatedExamplesPanel";
 import { StrategyColdStartBanner } from "./StrategyColdStartBanner";
@@ -271,6 +274,7 @@ interface WizardState {
 interface CalendarRaceSelection {
   readonly series: RaceSeries;
   readonly className?: string;
+  readonly trackLayout?: string;
 }
 type SidePanel = "inputs" | "drivers" | "tyres" | "sessions" | "weather";
 type DonutMode = "laps" | "time";
@@ -1423,21 +1427,43 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
 
   const calendarRaceSeries = calendar.calendar?.series ?? [];
   const calendarSelectionClasses = calendarSelection?.series.classes ?? [];
+  const selectedCalendarClass = calendarSelection?.className
+    ? calendarSelectionClasses.find((item) => item.name === calendarSelection.className)
+    : undefined;
   const selectedCalendarStart = calendarSelection
     ? calendar.starts.find((start) => start.seriesId === calendarSelection.series.id)
     : undefined;
-  const selectedCalendarAllCombinations = calendarSelection?.className && catalogView
+  const selectedCalendarVenueCombinations = calendarSelection && selectedCalendarClass && catalogView
     ? calendarSessionCombinations(
         calendarSelection.series,
-        calendarSelection.className,
+        selectedCalendarClass,
         catalogView.combinations,
       )
     : [];
-  const selectedCalendarCombinations = calendarSelection?.className
+  const selectedCalendarLayouts = calendarSelection && selectedCalendarClass && catalogView
+    ? calendarSessionLayouts(
+        calendarSelection.series,
+        selectedCalendarClass,
+        catalogView.combinations,
+      )
+    : [];
+  const selectedCalendarLayout = calendarSelection?.trackLayout
+    ?? (selectedCalendarLayouts.length === 1 ? selectedCalendarLayouts[0].trackLayout : undefined);
+  const selectedCalendarAllCombinations = calendarSelection && selectedCalendarClass && catalogView
+    && selectedCalendarLayout
     ? calendarSessionCombinations(
         calendarSelection.series,
-        calendarSelection.className,
+        selectedCalendarClass,
+        catalogView.combinations,
+        selectedCalendarLayout,
+      )
+    : [];
+  const selectedCalendarCombinations = calendarSelection && selectedCalendarClass && selectedCalendarLayout
+    ? calendarSessionCombinations(
+        calendarSelection.series,
+        selectedCalendarClass,
         automaticCombinations,
+        selectedCalendarLayout,
       )
     : [];
 
@@ -2282,6 +2308,22 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
             })}
           </div>
         )
+      ) : !calendarSelection.series.telemetryTrackName ? (
+        <div data-testid="orbit-strategy-calendar-identity-error">
+          <Note title={t("strategy.calendar.venueUnresolvedTitle")}>
+            {formatMessage(t("strategy.calendar.venueUnresolved"), {
+              track: calendarSelection.series.track,
+            })}
+          </Note>
+          <div className="orbit-strategy__wizard-acts">
+            <Button onClick={() => setCalendarSelection(null)} variant="ghost">
+              {t("strategy.calendar.back")}
+            </Button>
+            <Button data-testid="orbit-strategy-calendar-manual" onClick={startManualWizard} variant="ghost">
+              {t("strategy.calendar.manual")}
+            </Button>
+          </div>
+        </div>
       ) : calendarSelectionClasses.length === 0 ? (
         <div data-testid="orbit-strategy-calendar-classes">
           <Note title={t("strategy.calendar.classesMissingTitle")}>
@@ -2302,7 +2344,10 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
                 data-testid={`orbit-strategy-calendar-class-${item.name}`}
                 interactive
                 key={item.name}
-                onClick={() => setCalendarSelection({ ...calendarSelection, className: item.name })}
+                onClick={() => setCalendarSelection({
+                  series: calendarSelection.series,
+                  className: item.name,
+                })}
               >
                 <span className="orbit-path__k">{item.name}</span>
                 {item.qualifier ? <span className="orbit-path__d">{item.qualifier}</span> : null}
@@ -2313,12 +2358,66 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
             {t("strategy.calendar.back")}
           </Button>
         </div>
+      ) : !selectedCalendarClass?.telemetryClassName ? (
+        <div data-testid="orbit-strategy-calendar-identity-error">
+          <Note title={t("strategy.calendar.classUnresolvedTitle")}>
+            {formatMessage(t("strategy.calendar.classUnresolved"), {
+              class: calendarSelection.className,
+            })}
+          </Note>
+          <div className="orbit-strategy__wizard-acts">
+            <Button onClick={() => setCalendarSelection(null)} variant="ghost">
+              {t("strategy.calendar.back")}
+            </Button>
+            <Button data-testid="orbit-strategy-calendar-manual" onClick={startManualWizard} variant="ghost">
+              {t("strategy.calendar.manual")}
+            </Button>
+          </div>
+        </div>
+      ) : sessionCatalog.status === "ready"
+        && sessionCatalog.view.status === "available"
+        && selectedCalendarVenueCombinations.length > 0
+        && selectedCalendarLayouts.length > 1
+        && calendarSelection.trackLayout === undefined ? (
+        <div data-testid="orbit-strategy-calendar-layouts">
+          <p className="orbit-strategy__empty-lead">
+            {formatMessage(t("strategy.calendar.chooseLayout"), {
+              track: calendarSelection.series.track,
+            })}
+          </p>
+          <div className="orbit-session-picker__list">
+            {selectedCalendarLayouts.map((layout) => (
+              <Featured
+                data-testid={`orbit-strategy-calendar-layout-${layout.trackLayout}`}
+                interactive
+                key={layout.trackLayout}
+                onClick={() => setCalendarSelection({
+                  ...calendarSelection,
+                  trackLayout: layout.trackLayout,
+                })}
+              >
+                <span className="orbit-path__k">{layout.trackLayout}</span>
+                <span className="orbit-path__d">
+                  {formatMessage(t(layout.sessionCount === 1
+                    ? "strategy.calendar.layoutSessionOne"
+                    : "strategy.calendar.layoutSessionMany"), { n: layout.sessionCount })}
+                </span>
+              </Featured>
+            ))}
+          </div>
+          <div className="orbit-strategy__wizard-acts">
+            <Button onClick={() => setCalendarSelection(null)} variant="ghost">
+              {t("strategy.calendar.back")}
+            </Button>
+          </div>
+        </div>
       ) : (
         <div data-testid="orbit-strategy-calendar-cars">
           <p className="orbit-strategy__empty-lead">
             {formatMessage(t("strategy.calendar.chooseCar"), {
               track: calendarSelection.series.track,
               class: calendarSelection.className,
+              layout: selectedCalendarLayout ?? "",
             })}
           </p>
           {sessionCatalog.status === "loading" ? (
@@ -2331,9 +2430,15 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
             <Note title={t("strategy.calendar.noSessionsTitle")}>
               {t("strategy.wizard.fill.autoNoSessions")}
             </Note>
-          ) : selectedCalendarAllCombinations.length === 0 ? (
+          ) : selectedCalendarVenueCombinations.length === 0 ? (
             <Note title={t("strategy.calendar.noMatchTitle")}>
               {t("strategy.calendar.noMatch")}
+            </Note>
+          ) : selectedCalendarAllCombinations.length === 0 ? (
+            <Note title={t("strategy.calendar.noLayoutMatchTitle")}>
+              {formatMessage(t("strategy.calendar.noLayoutMatch"), {
+                layout: selectedCalendarLayout ?? "",
+              })}
             </Note>
           ) : selectedCalendarCombinations.length === 0 ? (
             <Note title={t("strategy.calendar.noClassifiedTitle")}>

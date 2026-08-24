@@ -17,22 +17,30 @@ son fases históricas.
 
 ## Estado
 
-Actualización ISA-824 / entrada asistida (2026-08-23, implementada en rama de issue):
+Actualización ISA-824 / entrada asistida (2026-08-24, implementada en rama de issue):
 
 - La puerta `Automática con telemetría` consulta el catálogo real y solo se
   abre con combinaciones que tengan vueltas clasificadas por clima. Explica por
   separado cero sesiones importadas, catálogo no disponible y ausencia de una
   combinación utilizable; ya no existe el falso bloqueo de ADR 0005.
-- Elegirla conserva el modo automático al crear el evento y desemboca en el
-  selector F5-a ya existente. Ese selector persiste combinación/sesiones,
-  refresca `StrategyInputProjection v2` y alimenta el cálculo Orbit sin pedir
-  números ni duplicar la proyección.
-- Tests de pantalla recorren el camino disponible hasta un chip `Derivado` y
-  cubren cada cierre con motivo visible. Gates frontend focales, typecheck real
-  y build verdes. El lint focal conserva tres errores
-  `react-hooks/set-state-in-effect` y tres warnings previos de la página, no
-  introducidos por este corte. Sin cambios Go, PR, integración, promoción ni
-  release.
+- El bloque inferior lista las carreras LMU por el bridge Calendar existente.
+  La identidad de series declara en Go las diez correspondencias de sede y las
+  cinco de clase; esas identidades viajan en el mismo payload y un calendario
+  publicado no puede sustituirlas. Los valores no declarados se muestran por
+  su nombre y conducen a la vía manual.
+- El orden es carrera, clase cuando sea multiclase y coche. Si la sede y clase
+  seleccionadas tienen varios trazados grabados, aparece antes una elección con
+  sus recuentos reales; con uno solo se omite. El trazado nunca se infiere del
+  sufijo del calendario. El coche desemboca en el selector F5-a existente, que
+  persiste sesiones, refresca `StrategyInputProjection v2` y alimenta Orbit sin
+  pedir números ni duplicar la proyección.
+- Tests cubren carrera monoclase, multiclase, trazado ambiguo, falta de sesiones,
+  catálogo caído e identidades desconocidas. En el corpus local, la identidad
+  cubre 10/10 sedes y 5/5 clases; 7/10 sedes tienen sesiones coincidentes y
+  5/11 series ofrecen coches con clima clasificado. Los gates pedidos,
+  typecheck real, build y `go test ./...` pasan. El lint global conserva 35
+  incidencias heredadas (32 errores y 3 warnings), anteriores al bloque nuevo.
+  Sin PR, integración, promoción ni release.
 
 Actualización ISA-815 / F5-e (2026-08-23, implementada en rama de issue):
 

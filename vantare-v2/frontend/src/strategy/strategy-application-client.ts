@@ -751,6 +751,7 @@ export type StrategyApplicationErrorCode =
   | "calculation_invalid"
   | "calculation_infeasible"
   | "calculation_overflow"
+  | "calculation_timeout"
   | "import_refused"
   // Refusals raised by the package format itself.
   | "invalid_package"
@@ -819,6 +820,7 @@ const applicationErrorCodes = new Set<StrategyApplicationErrorCode>([
   "calculation_invalid",
   "calculation_infeasible",
   "calculation_overflow",
+  "calculation_timeout",
   "import_refused",
   "invalid_package",
   "unsupported_package_version",

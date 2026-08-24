@@ -218,6 +218,9 @@ func (b ComputeBudget) Validate() error {
 	if b.MaxCandidates < 0 {
 		return fmt.Errorf("maxCandidates must be >=0")
 	}
+	if b.MaxIterations < 0 {
+		return fmt.Errorf("maxIterations must be >=0")
+	}
 	return nil
 }
 
@@ -680,6 +683,7 @@ type WeatherBucketCostSource struct {
 
 type ComputeStats struct {
 	EvaluatedCandidates int               `json:"evaluatedCandidates"`
+	Iterations          int               `json:"iterations"`
 	PrunedStates        int               `json:"prunedStates"`
 	Duration            time.Duration     `json:"duration"`
 	WithinBudget        bool              `json:"withinBudget"`

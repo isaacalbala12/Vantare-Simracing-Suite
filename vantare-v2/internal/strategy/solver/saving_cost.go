@@ -22,6 +22,7 @@ type savingLevelCost struct {
 type savingCost struct {
 	levels []savingLevelCost
 	source SavingCostSource
+	reason string
 }
 
 func (input SolverInputV2) savingCost() (savingCost, error) {
@@ -38,17 +39,18 @@ func (input SolverInputV2) savingCost() (savingCost, error) {
 		if err := family.Confidence.Validate(); err != nil {
 			return savingCost{}, err
 		}
+		if len(family.Levels) == 0 {
+			return savingCost{
+				levels: []savingLevelCost{{level: SavingNone}},
+				source: SavingCostSource{Presence: family.Presence, Provenance: family.Provenance, Confidence: family.Confidence, Levels: []SavingLevelOption{}},
+				reason: "empty_saving_cost_levels",
+			}, nil
+		}
 		if family.Provenance.Kind == sp.ProvenanceDerived && family.ManualNote != derivedABSavingMethod {
 			return savingCost{}, fmt.Errorf("derived saving cost requires the controlled A/B protocol")
 		}
 		if family.Provenance.Kind != sp.ProvenanceDerived && family.Provenance.Kind != sp.ProvenanceManual && family.Provenance.Kind != sp.ProvenanceReference {
 			return savingCost{}, fmt.Errorf("projection saving provenance must be manual, reference or derived")
-		}
-		if len(family.Levels) == 0 {
-			return savingCost{
-				levels: []savingLevelCost{{level: SavingNone}},
-				source: SavingCostSource{Presence: family.Presence, Provenance: family.Provenance, Confidence: family.Confidence, Levels: []SavingLevelOption{}},
-			}, nil
 		}
 		levels := make([]SavingLevelOption, 0, len(family.Levels))
 		for _, level := range family.Levels {
@@ -73,7 +75,7 @@ func (input SolverInputV2) savingCost() (savingCost, error) {
 		})
 	}
 
-	return savingCost{
+	result := savingCost{
 		levels: []savingLevelCost{{level: SavingNone}},
 		source: SavingCostSource{
 			Presence:   sp.PresenceMissing,
@@ -81,7 +83,13 @@ func (input SolverInputV2) savingCost() (savingCost, error) {
 			Confidence: sp.Confidence{ComputationVersion: "not-configured.v1"},
 			Levels:     []SavingLevelOption{},
 		},
-	}, nil
+	}
+	if input.Projection != nil {
+		family := input.Projection.SavingCost
+		result.source = SavingCostSource{Presence: family.Presence, Provenance: family.Provenance, Confidence: family.Confidence, Levels: []SavingLevelOption{}}
+		result.reason = family.Reason
+	}
+	return result, nil
 }
 
 func (input SolverInputV2) newSavingCost(options []SavingLevelOption, source SavingCostSource) (savingCost, error) {
@@ -154,7 +162,14 @@ func validateSavingLevelOptions(levels []SavingLevelOption) error {
 
 func (cost savingCost) assumption() SolverReason {
 	if cost.source.Presence != sp.PresenceValid {
-		return SolverReason{Code: "saving_cost_not_configured", Message: "el solver solo evalua el nivel de ahorro none"}
+		message := "el solver solo evalua el nivel de ahorro none"
+		if cost.reason != "" {
+			message = fmt.Sprintf("%s (%s)", message, cost.reason)
+		}
+		return SolverReason{Code: "saving_cost_degraded", Message: message}
+	}
+	if len(cost.source.Levels) == 0 {
+		return SolverReason{Code: "saving_cost_degraded", Message: "la familia de ahorro esta vacia; el solver solo evalua el nivel none (empty_saving_cost_levels)"}
 	}
 	return SolverReason{
 		Code: "saving_cost_source",

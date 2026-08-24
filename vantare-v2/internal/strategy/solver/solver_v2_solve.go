@@ -1,9 +1,11 @@
 package solver
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"time"
@@ -15,14 +17,18 @@ import (
 )
 
 const (
-	serviceScale        = int64(1_000_000)
-	defaultFuelStep     = 1.0
-	defaultVEStep       = 1.0
-	timeTieRelative     = 1e-12
-	maxServiceLevels    = int64(200)
-	maxRejectedDetails  = 8
-	maxRankedCandidates = 8
+	serviceScale         = int64(1_000_000)
+	defaultFuelStep      = 1.0
+	defaultVEStep        = 1.0
+	timeTieRelative      = 1e-12
+	maxServiceLevels     = int64(200)
+	maxRejectedDetails   = 8
+	maxRankedCandidates  = 8
+	defaultMaxCandidates = 10_000_000
+	defaultMaxIterations = 100_000_000
 )
+
+var errIterationBudgetExhausted = errors.New("solver iteration budget exhausted")
 
 type serviceResource struct {
 	capacity int64
@@ -73,7 +79,20 @@ type lapCostModel struct {
 // misma vuelta, un estado mas barato con al menos los mismos recursos nunca
 // puede producir una continuacion peor.
 func SolveV2(input SolverInputV2) (SolverResultV2, error) {
+	return SolveV2Context(context.Background(), input)
+}
+
+// SolveV2Context ejecuta la misma busqueda determinista, pero permite que la
+// frontera de aplicacion imponga un deadline duro. La cancelacion se consulta
+// tambien dentro de la comparacion de dominancia, el punto mas costoso.
+func SolveV2Context(ctx context.Context, input SolverInputV2) (SolverResultV2, error) {
 	started := time.Now()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if err := ctx.Err(); err != nil {
+		return SolverResultV2{}, err
+	}
 	if err := input.Validate(); err != nil {
 		return SolverResultV2{}, solveError(ErrorInvalidInput, "input", err.Error())
 	}
@@ -160,6 +179,9 @@ func SolveV2(input SolverInputV2) (SolverResultV2, error) {
 		Sensitivities:     []SolverSensitivity{},
 		ComputeStats:      ComputeStats{Degradation: budgetDegradation},
 	}
+	if assumption := input.stintPaceDegradationAssumption(paceCost); assumption != nil {
+		result.Assumptions = append(result.Assumptions, *assumption)
+	}
 	if budgetDegradation.Applied {
 		result.Assumptions = append(result.Assumptions, SolverReason{
 			Code:    "compute_budget_degraded",
@@ -189,6 +211,16 @@ func SolveV2(input SolverInputV2) (SolverResultV2, error) {
 	evaluated := 0
 	pruned := 0
 	budgetExhausted := false
+	budgetReason := ""
+	iterations := 0
+	maxCandidates := input.Budget.MaxCandidates
+	if maxCandidates == 0 {
+		maxCandidates = defaultMaxCandidates
+	}
+	maxIterations := input.Budget.MaxIterations
+	if maxIterations == 0 {
+		maxIterations = defaultMaxIterations
+	}
 	if len(initialChoices) == 0 {
 		result.Reasons = append(result.Reasons, SolverReason{Code: "tyre_inventory_insufficient", Message: "el inventario fisico no puede formar ningun juego declarado"})
 		result.addRejected(initial, input, "tyre_inventory_insufficient", "ningun compuesto declarado dispone de cuatro neumaticos compatibles")
@@ -201,7 +233,35 @@ func SolveV2(input SolverInputV2) (SolverResultV2, error) {
 		return result, nil
 	}
 
-	for lap := int64(0); lap < input.RaceLaps && !budgetExhausted; lap++ {
+	if decisions, ok := simpleResourceDecisions(input, fuel, ve, paceCost, compoundPace, fuelWeight, saving, drivers, weatherCost); ok {
+		for _, decision := range decisions {
+			replayed, replayErr := ReplayDecisionV2(input, decision)
+			if replayErr != nil {
+				return SolverResultV2{}, replayErr
+			}
+			if replayed.Feasible {
+				node := nodeFromEvaluation(replayed.Decision, replayed.Evaluation)
+				_, worstFeasible, _, envelopeErr := evaluateCandidateEnvelope(envelope, replayed.Decision, replayed.Evaluation)
+				if envelopeErr != nil {
+					return SolverResultV2{}, envelopeErr
+				}
+				if riskActive && !worstFeasible {
+					continue
+				}
+				completed = insertRanked(completed, node, input.Formation.Seconds.Value)
+				if worstFeasible {
+					completedWorstFeasible = insertRanked(completedWorstFeasible, node, input.Formation.Seconds.Value)
+				}
+				evaluated++
+			}
+		}
+	}
+	simpleSolved := len(completed) > 0
+
+	for lap := int64(0); lap < input.RaceLaps && !budgetExhausted && !simpleSolved; lap++ {
+		if err := ctx.Err(); err != nil {
+			return SolverResultV2{}, err
+		}
 		for _, node := range byLap[lap] {
 			for _, driver := range drivers.order {
 				for _, savingLevel := range saving.levels {
@@ -214,8 +274,9 @@ func SolveV2(input SolverInputV2) (SolverResultV2, error) {
 					}
 					for stintLaps := int64(1); stintLaps <= maxLaps; stintLaps++ {
 						evaluated++
-						if input.Budget.MaxCandidates > 0 && evaluated > input.Budget.MaxCandidates {
+						if evaluated > maxCandidates {
 							budgetExhausted = true
+							budgetReason = "candidate_budget_exhausted"
 							break
 						}
 						if allowed, condition := weatherCost.compoundAllowed(node.tyre.compound, lap+1, stintLaps); !allowed {
@@ -274,8 +335,9 @@ func SolveV2(input SolverInputV2) (SolverResultV2, error) {
 							for _, fuelAmount := range fuelAmounts {
 								for _, veAmount := range veAmounts {
 									evaluated++
-									if input.Budget.MaxCandidates > 0 && evaluated > input.Budget.MaxCandidates {
+									if evaluated > maxCandidates {
 										budgetExhausted = true
+										budgetReason = "candidate_budget_exhausted"
 										break
 									}
 									next, err := appendPit(afterStint, fuelAmount, veAmount, tyreOption, input)
@@ -290,7 +352,8 @@ func SolveV2(input SolverInputV2) (SolverResultV2, error) {
 										next.worstTyreAge = 0
 									}
 									var prunedNow int
-									byLap[next.lap], prunedNow = insertNondominated(
+									byLap[next.lap], prunedNow, err = insertNondominated(
+										ctx,
 										byLap[next.lap],
 										next,
 										input.Formation.Seconds.Value,
@@ -301,7 +364,17 @@ func SolveV2(input SolverInputV2) (SolverResultV2, error) {
 										len(input.EventRules.MandatoryCompounds) > 0,
 										drivers.enabled,
 										riskActive,
+										&iterations,
+										maxIterations,
 									)
+									if err != nil {
+										if errors.Is(err, errIterationBudgetExhausted) {
+											budgetExhausted = true
+											budgetReason = "iteration_budget_exhausted"
+											break
+										}
+										return SolverResultV2{}, err
+									}
 									pruned += prunedNow
 								}
 								if budgetExhausted {
@@ -333,14 +406,19 @@ func SolveV2(input SolverInputV2) (SolverResultV2, error) {
 	duration := time.Since(started)
 	result.ComputeStats = ComputeStats{
 		EvaluatedCandidates: evaluated,
+		Iterations:          iterations,
 		PrunedStates:        pruned,
 		Duration:            duration,
 		WithinBudget:        !budgetExhausted && duration <= time.Duration(input.Budget.P95Millis)*time.Millisecond,
 		Degradation:         budgetDegradation,
 	}
 	if budgetExhausted {
-		result.Reasons = append(result.Reasons, SolverReason{Code: "candidate_budget_exhausted", Message: "el limite de candidatos termino la busqueda antes de demostrar el optimo"})
-		result.addRejected(initial, input, "candidate_budget_exhausted", "la busqueda no cubrio todo el espacio de decision")
+		message := "el limite de candidatos termino la busqueda antes de demostrar el optimo"
+		if budgetReason == "iteration_budget_exhausted" {
+			message = "el limite de iteraciones termino la busqueda de dominancia antes de demostrar el optimo"
+		}
+		result.Reasons = append(result.Reasons, SolverReason{Code: budgetReason, Message: message})
+		result.addRejected(initial, input, budgetReason, "la busqueda no cubrio todo el espacio de decision")
 		return result, nil
 	}
 	if len(completed) == 0 {
@@ -408,7 +486,11 @@ func SolveV2(input SolverInputV2) (SolverResultV2, error) {
 		result.Candidates = append(result.Candidates, decision)
 		reason := SolverReason{Code: "ranked_feasible", Message: fmt.Sprintf("candidato factible en posicion %d", index+1)}
 		if index == 0 {
-			reason = SolverReason{Code: "optimal_after_dominance_pruning", Message: "optimo exacto tras podar solo estados dominados"}
+			if simpleSolved {
+				reason = SolverReason{Code: "optimal_after_scalar_resource_bound", Message: "optimo exacto por la cota escalar de Fuel, VE y vida de neumatico"}
+			} else {
+				reason = SolverReason{Code: "optimal_after_dominance_pruning", Message: "optimo exacto tras podar solo estados dominados"}
+			}
 			if len(rankedCompleted) > 1 && compareTotalSeconds(candidate.total(input.Formation.Seconds.Value), rankedCompleted[1].total(input.Formation.Seconds.Value)) == 0 {
 				reason = SolverReason{
 					Code:    "optimal_after_time_tie_break",
@@ -741,6 +823,7 @@ func solverPitInputWithTyres(input SolverInputV2, fuelAmount, veAmount int64, ch
 func serviceValue(units int64) float64 { return float64(units) / float64(serviceScale) }
 
 func insertNondominated(
+	ctx context.Context,
 	nodes []searchNode,
 	candidate searchNode,
 	formation float64,
@@ -751,22 +834,41 @@ func insertNondominated(
 	mandatoryCompoundsActive bool,
 	driversActive bool,
 	riskActive bool,
-) ([]searchNode, int) {
+	iterations *int,
+	maxIterations int,
+) ([]searchNode, int, error) {
 	for _, existing := range nodes {
+		if err := consumeSearchIteration(ctx, iterations, maxIterations); err != nil {
+			return nodes, 0, err
+		}
 		if dominates(existing, candidate, formation, stopRulesActive, fuelWeightActive, tyresActive, windowsActive, mandatoryCompoundsActive, driversActive, riskActive) {
-			return nodes, 1
+			return nodes, 1, nil
 		}
 	}
 	kept := nodes[:0]
 	pruned := 0
 	for _, existing := range nodes {
+		if err := consumeSearchIteration(ctx, iterations, maxIterations); err != nil {
+			return nodes, 0, err
+		}
 		if !dominates(candidate, existing, formation, stopRulesActive, fuelWeightActive, tyresActive, windowsActive, mandatoryCompoundsActive, driversActive, riskActive) {
 			kept = append(kept, existing)
 		} else {
 			pruned++
 		}
 	}
-	return append(kept, candidate), pruned
+	return append(kept, candidate), pruned, nil
+}
+
+func consumeSearchIteration(ctx context.Context, iterations *int, maxIterations int) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	*iterations = *iterations + 1
+	if *iterations > maxIterations {
+		return errIterationBudgetExhausted
+	}
+	return nil
 }
 
 func dominates(

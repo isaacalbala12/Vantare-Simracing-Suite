@@ -1,6 +1,8 @@
 package solver
 
 import (
+	"context"
+	"errors"
 	"math"
 	"reflect"
 	"testing"
@@ -9,6 +11,52 @@ import (
 	"github.com/vantare/overlays/v2/internal/strategy/manual"
 	sp "github.com/vantare/overlays/v2/internal/telemetryanalysis/strategyprojection"
 )
+
+type cancelAfterErrChecks struct {
+	remaining int
+}
+
+func (ctx *cancelAfterErrChecks) Deadline() (time.Time, bool) { return time.Time{}, false }
+func (ctx *cancelAfterErrChecks) Done() <-chan struct{}       { return nil }
+func (ctx *cancelAfterErrChecks) Value(any) any               { return nil }
+func (ctx *cancelAfterErrChecks) Err() error {
+	ctx.remaining--
+	if ctx.remaining <= 0 {
+		return context.Canceled
+	}
+	return nil
+}
+
+func TestSolveV2ContextCancelsInsideDominanceSearch(t *testing.T) {
+	input := baseInputV2()
+	input.RaceLaps = 20
+	input.FuelCapacityLiters = NewFallbackScalar(20, "test:fuel-capacity")
+	input.VECapacityPercent = NewFallbackScalar(100, "test:ve-capacity")
+	input.VEPerLapPercent = NewFallbackScalar(5, "test:ve-per-lap")
+	input.DegradationPerLap = NewFallbackScalar(0.1, "test:degradation")
+	input.Budget.MaxCandidates = 1_000_000
+	input.Budget.MaxIterations = 1_000_000
+	ctx := &cancelAfterErrChecks{remaining: 100}
+	_, err := SolveV2Context(ctx, input)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("error = %v", err)
+	}
+}
+
+func TestSolveV2IterationBudgetBoundsDominanceSearch(t *testing.T) {
+	input := baseInputV2()
+	input.RaceLaps = 8
+	input.DegradationPerLap = NewFallbackScalar(0.1, "test:degradation")
+	input.Budget.MaxCandidates = 1_000_000
+	input.Budget.MaxIterations = 1
+	result, err := SolveV2(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Feasible || result.ComputeStats.Iterations != 2 || len(result.Reasons) != 1 || result.Reasons[0].Code != "iteration_budget_exhausted" {
+		t.Fatalf("result = %+v", result)
+	}
+}
 
 func baseInputV2() SolverInputV2 {
 	return SolverInputV2{

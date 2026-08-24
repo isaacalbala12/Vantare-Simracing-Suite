@@ -364,7 +364,11 @@ body:not(.hub) #root {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    /* A non-zero duration activates the default `transition-property: all`
+       even on elements that never declared a transition. That briefly
+       interpolated the Studio scene from scale(0) and made its widgets jump. */
+    transition-delay: 0s !important;
+    transition-duration: 0s !important;
   }
 
   .login-spinner {

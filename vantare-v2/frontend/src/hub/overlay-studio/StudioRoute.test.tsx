@@ -1,3 +1,4 @@
+import { resetStudioStageGeometryCache } from './canvas/stage-geometry-cache';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Events } from '@wailsio/runtime';
@@ -105,6 +106,7 @@ describe('StudioRoute', () => {
   beforeEach(() => {
     listeners.clear();
     vi.clearAllMocks();
+    resetStudioStageGeometryCache();
   });
 
   afterEach(() => cleanup());

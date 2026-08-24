@@ -1417,16 +1417,60 @@
   grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
-/* Filo superior del color del plan, por dentro para no romper el radio. */
+/* Cada cifra es un instrumento, no una tarjeta: esquina corta, superficie casi
+   plana con un solo brillo superior, y como unico acento un tramo de regla bajo
+   el numero, del color del plan. Sin marcos de color ni sombras. */
 .orbit-analysis__plan-row .orbit-stat {
-  box-shadow: inset 0 2px 0 var(--plan-accent), var(--orbit-inset-glass);
-  padding: 15px 16px 16px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.028), rgba(255, 255, 255, 0.006));
+  border: 1px solid var(--orbit-line);
+  border-radius: 10px;
+  box-shadow: var(--orbit-inset-glass);
+  display: grid;
+  gap: 7px;
+  padding: 14px 15px 15px;
 }
 
 .orbit-analysis__plan-row .orbit-stat__v {
+  align-items: baseline;
+  color: var(--orbit-ink);
   font-family: var(--orbit-font-mono);
+  font-size: 25px;
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.01em;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  padding-bottom: 9px;
+  position: relative;
+}
+
+.orbit-analysis__plan-row .orbit-stat__v small {
+  color: var(--orbit-ink-4);
+  font-size: 12px;
+  font-weight: 500;
+  margin-left: 4px;
+}
+
+/* La regla es corta a proposito: marca el numero, no envuelve la caja. */
+.orbit-analysis__plan-row .orbit-stat__v::after {
+  background: var(--plan-accent);
+  border-radius: 1px;
+  bottom: 0;
+  content: "";
+  height: 2px;
+  left: 0;
+  position: absolute;
+  width: 26px;
+}
+
+.orbit-analysis__plan-row .orbit-stat--hot .orbit-stat__v {
+  color: var(--orbit-red);
+}
+
+.orbit-analysis__plan-row .orbit-stat--hot .orbit-stat__v::after {
+  background: var(--orbit-red);
+  box-shadow: 0 0 10px rgba(240, 71, 85, 0.45);
+  width: 100%;
 }
 
 /* La procedencia se lee entera: en cifras clave importa mas que quepa en una
@@ -1443,19 +1487,28 @@
 
 .orbit-analysis__plan-row .orbit-stat__k {
   align-content: start;
+  color: var(--orbit-ink-3);
   display: grid;
-  line-height: 1.35;
-  min-height: 2.7em;
+  font-size: 10.5px;
+  letter-spacing: 0.11em;
+  line-height: 1.4;
+  min-height: 2.8em;
 }
 
 .orbit-analysis__plan-row[data-empty="true"] .orbit-stat {
-  background: transparent;
+  background: none;
+  border-color: var(--orbit-line-row);
   border-style: dashed;
   box-shadow: none;
 }
 
 .orbit-analysis__plan-row[data-empty="true"] .orbit-stat__v {
   color: var(--orbit-ink-muted);
+  font-size: 20px;
+}
+
+.orbit-analysis__plan-row[data-empty="true"] .orbit-stat__v::after {
+  display: none;
 }
 
 /* Línea de tiempo */

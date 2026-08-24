@@ -521,6 +521,8 @@ export const strategyOrbitIt: Record<string, string> = {
   "strategy.inputs.reason.manual_input_required": "serve un valore manuale",
   "strategy.inputs.reason.missing_fuel_consumption": "manca il consumo carburante",
   "strategy.inputs.reason.missing_virtual_energy_consumption": "manca il consumo di energia virtuale",
+  "strategy.inputs.reason.missing_fuel_consumption_for_climate_bucket": "manca il consumo carburante per questo clima",
+  "strategy.inputs.reason.missing_virtual_energy_consumption_for_climate_bucket": "manca il consumo di energia virtuale per questo clima",
   "strategy.inputs.reason.missing_combined_stint_pace_curve": "manca la curva combinata dello stint",
   "strategy.inputs.reason.missing_representative_pace": "la proiezione non identifica un passo base unico",
   "strategy.inputs.reason.no_classified_complete_laps_in_climate_bucket": "non ci sono giri completi classificati come asciutti",

@@ -58,7 +58,7 @@ const missingPlanning = {
   projection: {
     contractVersion: "strategyinputprojection.v2", generatedAt: "2026-08-24T12:00:00.000Z", computationVersion: "producer.v1",
     sourceSessions: ["race-1"], combinationId: "lmu:spa:lmgt3",
-    fuelConsumption: { presence: "valid", provenance: { kind: "derived" }, confidence: { sampleSize: 8, computationVersion: "producer.v1" }, meanPerLap: 2.8, rangeLower: 2.7, rangeUpper: 2.9 },
+    fuelConsumption: { presence: "valid", provenance: { kind: "derived" }, confidence: { sampleSize: 8, computationVersion: "producer.v1" }, meanPerLap: 2.8, rangeLower: 2.7, rangeUpper: 2.9, byClimateBucket: { dry: 2.8 } },
     virtualEnergyConsumption: { presence: "missing", provenance: { kind: "derived" }, confidence: { sampleSize: 0, computationVersion: "producer.v1" }, reason: "missing_virtual_energy_consumption", meanPerLap: 0, rangeLower: 0, rangeUpper: 0 },
     combinedStintPaceCurve: { presence: "missing", provenance: { kind: "derived" }, confidence: { sampleSize: 0, computationVersion: "producer.v1" }, reason: "missing_combined_stint_pace_curve", identifiability: "combined_only", points: [] },
     tyreDegradation: { presence: "missing", provenance: { kind: "derived" }, confidence: { sampleSize: 0, computationVersion: "producer.v1" }, reason: "missing_tyre_degradation" },

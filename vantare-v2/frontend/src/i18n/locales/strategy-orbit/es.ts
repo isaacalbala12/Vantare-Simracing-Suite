@@ -520,6 +520,8 @@ export const strategyOrbitEs: Record<string, string> = {
   "strategy.inputs.reason.manual_input_required": "requiere entrada manual",
   "strategy.inputs.reason.missing_fuel_consumption": "falta consumo de combustible",
   "strategy.inputs.reason.missing_virtual_energy_consumption": "falta consumo de energía virtual",
+  "strategy.inputs.reason.missing_fuel_consumption_for_climate_bucket": "falta consumo de combustible para este clima",
+  "strategy.inputs.reason.missing_virtual_energy_consumption_for_climate_bucket": "falta consumo de energía virtual para este clima",
   "strategy.inputs.reason.missing_combined_stint_pace_curve": "falta la curva combinada del stint",
   "strategy.inputs.reason.missing_representative_pace": "la proyección no identifica un ritmo base único",
   "strategy.inputs.reason.no_classified_complete_laps_in_climate_bucket": "no hay vueltas completas clasificadas en seco",

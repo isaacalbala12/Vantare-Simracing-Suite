@@ -520,6 +520,8 @@ export const strategyOrbitEn: Record<string, string> = {
   "strategy.inputs.reason.manual_input_required": "manual input required",
   "strategy.inputs.reason.missing_fuel_consumption": "fuel consumption is missing",
   "strategy.inputs.reason.missing_virtual_energy_consumption": "virtual energy consumption is missing",
+  "strategy.inputs.reason.missing_fuel_consumption_for_climate_bucket": "fuel consumption is missing for this climate",
+  "strategy.inputs.reason.missing_virtual_energy_consumption_for_climate_bucket": "virtual energy consumption is missing for this climate",
   "strategy.inputs.reason.missing_combined_stint_pace_curve": "combined stint curve is missing",
   "strategy.inputs.reason.missing_representative_pace": "the projection does not identify one base pace",
   "strategy.inputs.reason.no_classified_complete_laps_in_climate_bucket": "there are no complete laps classified as dry",

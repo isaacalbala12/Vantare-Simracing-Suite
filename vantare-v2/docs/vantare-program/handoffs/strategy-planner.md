@@ -17,6 +17,19 @@ son fases históricas.
 
 ## Estado
 
+Actualización ISA-831 / consumo por clima (2026-08-24, implementada en rama de issue):
+
+- El contrato TypeScript de `StrategyInputProjection v2` ya conserva y valida
+  `byClimateBucket` para Fuel y VE. Su omisión sigue siendo compatible con
+  documentos v2 antiguos, pero el consumidor la trata como dato ausente.
+- La ficha pide combustible con el mismo bucket de la fila que ya usaba el
+  ritmo. Un bucket ausente conserva `missing`, muestra una causa traducida y
+  nunca cae a `meanPerLap` ni al dato de otro clima. La función común aplica el
+  mismo aislamiento a VE.
+- Regresiones de unidad y wiring cubren valor propio, ausencia visible y el
+  caso seco `3.538` sin lluvia. Pasan 253 tests focales, typecheck real y build;
+  queda pendiente la verificación de Isaac en la app real.
+
 Actualización ISA-830 / ficha y procedencia efectiva (2026-08-24, implementada en rama de issue):
 
 - La ficha de cada piloto renderiza ritmo y consumo desde la misma vista
@@ -969,12 +982,13 @@ posterior). Strategy permanece bloqueado para `testers` hasta el gate F7a.
 
 ## Siguiente acción exacta
 
-Revisar la entrega aislada de ISA-830 con la combinación Spa/LMGT3 del corpus
-real: confirmar `2:22.004`, `3.54 L/v` y sus chips derivados en la ficha. Isaac
-integra por el canal normal; no abrir PR, integrar ni promover desde esta rama.
+Revisar la entrega aislada de ISA-831 con la combinación Spa/LMGT3 del corpus
+real: confirmar que Seco mantiene `3.54 L/v` derivado y Lluvia muestra `—` con
+causa cuando `byClimateBucket` solo contiene `dry`. Isaac integra por el canal
+normal; no abrir PR, integrar ni promover desde esta rama.
 
 ## Última actualización
 
-2026-08-24, ISA-830: presentación efectiva y procedencia unificadas con
-regresión focal. Pendiente comprobación en la app real por Isaac; sin PR,
+2026-08-24, ISA-831: Fuel/VE transportados y consumidos por bucket climático,
+sin fallback cruzado. Pendiente comprobación en la app real por Isaac; sin PR,
 integración, promoción ni release.

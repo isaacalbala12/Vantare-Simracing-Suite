@@ -155,11 +155,13 @@ export type StrategyInputProjectionV2 = {
     readonly meanPerLap: number;
     readonly rangeLower: number;
     readonly rangeUpper: number;
+    readonly byClimateBucket?: Readonly<Partial<Record<"dry" | "humid" | "wet", number>>>;
   };
   readonly virtualEnergyConsumption: StrategyProjectionFamilyV2 & {
     readonly meanPerLap: number;
     readonly rangeLower: number;
     readonly rangeUpper: number;
+    readonly byClimateBucket?: Readonly<Partial<Record<"dry" | "humid" | "wet", number>>>;
   };
   readonly representativePaceByClimateBucket?: Readonly<Partial<Record<"dry" | "humid" | "wet", StrategyProjectionFamilyV2 & {
     readonly medianLapSeconds: number;
@@ -1319,6 +1321,13 @@ function parseInputProjection(value: unknown, field: string): StrategyInputProje
   for (const name of ["fuelConsumption", "virtualEnergyConsumption"] as const) {
     const family = parseProjectionFamily(projection[name], `${field}.${name}`);
     for (const numeric of ["meanPerLap", "rangeLower", "rangeUpper"] as const) strategyNumber(family[numeric], `${field}.${name}.${numeric}`);
+    if (family.byClimateBucket !== undefined) {
+      const byBucket = strategyRecord(family.byClimateBucket, `${field}.${name}.byClimateBucket`);
+      for (const [bucket, candidate] of Object.entries(byBucket)) {
+        strategyEnum(bucket, `${field}.${name}.byClimateBucket bucket`, ["dry", "humid", "wet"]);
+        strategyNumber(candidate, `${field}.${name}.byClimateBucket.${bucket}`);
+      }
+    }
   }
   if (projection.representativePaceByClimateBucket !== undefined) {
     const byBucket = strategyRecord(projection.representativePaceByClimateBucket, `${field}.representativePaceByClimateBucket`);

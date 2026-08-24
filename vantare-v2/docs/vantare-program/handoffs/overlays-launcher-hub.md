@@ -10,6 +10,21 @@
 
 ## Estado
 
+- **ISA-770 — salto inicial de widgets en Studio (2026-08-24, corregido en
+  rama):** la causa reproducida no era la preview imperativa, las fuentes ni
+  el documento SWR. Con `prefers-reduced-motion: reduce`, la regla global daba
+  `transition-duration: 0.01ms` a todos los nodos; como
+  `transition-property` vale `all` por defecto, el navegador creaba una
+  transición nueva de `scale(0)`/`visibility:hidden` a la geometría final del
+  stage. Los widgets nacían un frame a `0×0`. La regla usa ahora duración y
+  demora `0s`, con contrato de regresión. El navegador colaborativo confirmó
+  al volver Launcher → Studio: escala final directa, escena visible, cero
+  animaciones activas y tres marcos con dimensiones positivas. Evidencia local:
+  focal Studio 50/50, frontend 373 archivos/2879 tests, build, ESLint completo
+  y `visual:orbit-studio` PASS. Rama
+  `vantareapp/isa-770-onboarding-retencion`; sin PR, integración, promoción ni
+  release.
+
 - **Ajustes Orbit: autosave de atajos, descarga de informe y búsqueda
   (2026-08-22, en rama):** tres mejoras de la pantalla Ajustes sobre
   `origin/nightly@4ec98fea`, rama `vantareapp/isa-767-ajustes-orbit-autosave-informe-busqueda`,

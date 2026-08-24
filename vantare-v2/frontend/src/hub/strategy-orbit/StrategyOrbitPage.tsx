@@ -214,6 +214,29 @@ function InputProvenanceChip({ view, t }: { view: StrategyInputProvenanceView; t
   );
 }
 
+function manualInputView(value: number): StrategyInputProvenanceView {
+  return Number.isFinite(value)
+    ? { kind: "manual", presence: "valid", value, canRevert: false }
+    : { kind: "missing", presence: "missing", reason: "manual_input_required", canRevert: false };
+}
+
+function EffectiveInputDisplay({
+  as, format, t, view,
+}: {
+  as: "b" | "em";
+  format: (value: number) => string;
+  t: (key: string) => string;
+  view: StrategyInputProvenanceView;
+}) {
+  const value = view.value === undefined ? "—" : format(view.value);
+  return (
+    <>
+      {as === "b" ? <b>{value}</b> : <em>{value}</em>}
+      <InputProvenanceChip t={t} view={view} />
+    </>
+  );
+}
+
 function PlanningInputRow({
   field, label, unit, view, t, onCommit,
 }: {
@@ -1719,7 +1742,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
                 unit="min"
                 value={form.draft.durationMin}
               />
-              <InputProvenanceChip t={t} view={{ kind: "manual", presence: "valid", value: Number(form.draft.durationMin), canRevert: false }} />
+              <InputProvenanceChip t={t} view={manualInputView(Number(form.draft.durationMin))} />
             </div>
           </Field>
           <Field htmlFor="orbit-ev-tank" label={t("strategy.form.tank")}>
@@ -1731,7 +1754,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
               unit="L"
               value={form.draft.tankL}
             />
-            <InputProvenanceChip t={t} view={strategyInputProvenance(eventPlanningInputs, "tank_liters", Number(form.draft.tankL))} />
+            <InputProvenanceChip t={t} view={manualInputView(Number(form.draft.tankL))} />
           </Field>
           <Field htmlFor="orbit-ev-pit" label={t("strategy.form.pit")}>
             <Input
@@ -1742,7 +1765,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
               unit="s"
               value={form.draft.pitLossSec}
             />
-            <InputProvenanceChip t={t} view={strategyInputProvenance(eventPlanningInputs, "pit_loss_seconds", Number(form.draft.pitLossSec))} />
+            <InputProvenanceChip t={t} view={manualInputView(Number(form.draft.pitLossSec))} />
           </Field>
           <Field htmlFor="orbit-ev-team" label={t("strategy.form.team")}>
             <Input
@@ -1828,7 +1851,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
                 unit="s"
                 value={String(driver.dry[0])}
               />
-              <InputProvenanceChip t={t} view={strategyInputProvenance(eventPlanningInputs, "base_pace_seconds", driver.dry[0])} />
+              <InputProvenanceChip t={t} view={manualInputView(driver.dry[0])} />
               <Input
                 aria-label={formatMessage(t("strategy.form.driverFuel"), { n: index + 1 })}
                 inputMode="decimal"
@@ -1841,7 +1864,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
                 unit="L/v"
                 value={String(driver.dry[1])}
               />
-              <InputProvenanceChip t={t} view={strategyInputProvenance(eventPlanningInputs, "fuel_per_lap_liters", driver.dry[1])} />
+              <InputProvenanceChip t={t} view={manualInputView(driver.dry[1])} />
               <Button
                 aria-label={formatMessage(t("strategy.form.removeDriver"), { n: index + 1 })}
                 disabled={form.draft.drivers.length <= 1}
@@ -2716,6 +2739,10 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
     color: slice.driver.color,
   }));
   const totalTime = slices.reduce((sum, slice) => sum + slice.time, 0);
+  const tankInputView = strategyInputProvenance(eventPlanningInputs, "tank_liters", event.tankL);
+  const pitInputView = strategyInputProvenance(eventPlanningInputs, "pit_loss_seconds", event.pitS);
+  const effectiveTankLiters = tankInputView.value;
+  const effectivePitSeconds = pitInputView.value;
 
   const blocksOf = (driver: StrategyDriver): TimelineBlock[] => {
     const mine = plan.stints.filter((stint) => stint.d === driver.id);
@@ -2731,7 +2758,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
       .map((stint) => ({
         id: `pit-${stint.i}`,
         start: new Date(timelineStart.getTime() + stint.end * 1000),
-        durationMin: event.pitS / 60,
+        durationMin: (effectivePitSeconds ?? 0) / 60,
         color: "var(--orbit-ember)",
         label: t("strategy.pit.label"),
       }));
@@ -3193,13 +3220,13 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
               sub={`${formatMessage(t("strategy.kpi.tankHint"), {
                 laps: plan.maxLaps,
                 l: plan.avgFuel.toFixed(2),
-              })} · ${t("strategy.meta.manual")}`}
-              value={`${event.tankL} L`}
+              })} · ${t(`strategy.inputs.chip.${tankInputView.kind}`)}`}
+              value={effectiveTankLiters === undefined ? "—" : `${effectiveTankLiters} L`}
             />
             <StatTile
               label={t("strategy.kpi.pit")}
-              sub={`${t("strategy.kpi.pitHint")} · ${t("strategy.meta.manual")}`}
-              value={lapTime(event.pitS)}
+              sub={`${t("strategy.kpi.pitHint")} · ${t(`strategy.inputs.chip.${pitInputView.kind}`)}`}
+              value={effectivePitSeconds === undefined ? "—" : lapTime(effectivePitSeconds)}
             />
             <StatTile
               label={t("strategy.kpi.stops")}
@@ -3301,7 +3328,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
               <p className="orbit-strategy__edge">
                 {formatMessage(t("strategy.stints.start"), {
                   time: hhmm(event.startMin),
-                  fuel: Math.min(event.tankL, plan.stints[0]?.fuel ?? 0).toFixed(0),
+                  fuel: Math.min(effectiveTankLiters ?? 0, plan.stints[0]?.fuel ?? 0).toFixed(0),
                 })}
               </p>
 
@@ -3600,24 +3627,29 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
                             ["wet", t("strategy.drivers.wet"), "var(--orbit-cyan)"],
                             ["eco", t("strategy.drivers.eco"), "var(--orbit-green)"],
                           ] as const
-                        ).map(([mode, label, color]) => (
-                          <div className="orbit-driver__pace" key={mode}>
-                            <span>
-                              <i aria-hidden="true" style={{ background: color }} />
-                              {label}
-                            </span>
-                            <b>{lapTime(driver[mode][0])}</b>
-                            <InputProvenanceChip
-                              t={t}
-                              view={strategyInputProvenance(eventPlanningInputs, "base_pace_seconds", driver[mode][0], mode === "wet" ? "wet" : "dry")}
-                            />
-                            <em>{driver[mode][1].toFixed(2)} L/v</em>
-                            <InputProvenanceChip
-                              t={t}
-                              view={strategyInputProvenance(eventPlanningInputs, "fuel_per_lap_liters", driver[mode][1])}
-                            />
-                          </div>
-                        ))}
+                        ).map(([mode, label, color]) => {
+                          const paceView = strategyInputProvenance(
+                            eventPlanningInputs,
+                            "base_pace_seconds",
+                            driver[mode][0],
+                            mode === "wet" ? "wet" : "dry",
+                          );
+                          const fuelView = strategyInputProvenance(
+                            eventPlanningInputs,
+                            "fuel_per_lap_liters",
+                            driver[mode][1],
+                          );
+                          return (
+                            <div className="orbit-driver__pace" key={mode}>
+                              <span>
+                                <i aria-hidden="true" style={{ background: color }} />
+                                {label}
+                              </span>
+                              <EffectiveInputDisplay as="b" format={lapTime} t={t} view={paceView} />
+                              <EffectiveInputDisplay as="em" format={(value) => `${value.toFixed(2)} L/v`} t={t} view={fuelView} />
+                            </div>
+                          );
+                        })}
                       </div>
                       {/* Los pilotos son del evento local: sus ritmos y su
                           consumo se editan aquí y el plan se recalcula
@@ -3671,7 +3703,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
                                   unit="s"
                                   value={String(driver[mode][0])}
                                 />
-                                <InputProvenanceChip t={t} view={strategyInputProvenance(eventPlanningInputs, "base_pace_seconds", driver[mode][0], mode === "wet" ? "wet" : "dry")} />
+                                <InputProvenanceChip t={t} view={manualInputView(driver[mode][0])} />
                               </label>
                               <label className="orbit-driver__field">
                                 <span>
@@ -3691,7 +3723,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
                                   unit="L/v"
                                   value={String(driver[mode][1])}
                                 />
-                                <InputProvenanceChip t={t} view={strategyInputProvenance(eventPlanningInputs, "fuel_per_lap_liters", driver[mode][1])} />
+                                <InputProvenanceChip t={t} view={manualInputView(driver[mode][1])} />
                               </label>
                             </div>
                           ))}

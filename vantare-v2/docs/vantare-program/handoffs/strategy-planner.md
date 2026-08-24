@@ -17,6 +17,19 @@ son fases históricas.
 
 ## Estado
 
+Actualización ISA-830 / ficha y procedencia efectiva (2026-08-24, implementada en rama de issue):
+
+- La ficha de cada piloto renderiza ritmo y consumo desde la misma vista
+  efectiva que aporta presencia, procedencia y confianza. Con proyección Spa
+  LMGT3 muestra `2:22.004` y `3.54 L/v`, no los manuales persistidos.
+- Se corrigieron otros ocho puntos de presentación: seis chips junto a campos
+  manuales editables y los dos resúmenes de depósito/boxes. Los campos de
+  edición declaran ahora `manual`; los resúmenes, timeline de parada y
+  combustible de salida consumen el valor efectivo.
+- La regresión enlaza lo visible con los valores `142.004` y `3.538` presentes
+  en `planningInputs` del comando `calculate_orbit`. Suite focal, typecheck
+  real y build pasan; la prueba Wails/LMU real queda para Isaac tras integrar.
+
 Actualización ISA-825 / cálculo acotado (2026-08-24, implementada en rama de issue):
 
 - La reproducción con los dos modelos autorizados de Spa confirmó que la
@@ -956,13 +969,12 @@ posterior). Strategy permanece bloqueado para `testers` hasta el gate F7a.
 
 ## Siguiente acción exacta
 
-Revisar la entrega aislada de ISA-786 / F5-c: comprobar
-persistencia, cálculo con lluvia desde NODE_50, métricas robustas, los cuatro
-idiomas y el estado deshabilitado de captura LMU. No integrar ni promover esta
-rama sin la autorización de Isaac.
+Revisar la entrega aislada de ISA-830 con la combinación Spa/LMGT3 del corpus
+real: confirmar `2:22.004`, `3.54 L/v` y sus chips derivados en la ficha. Isaac
+integra por el canal normal; no abrir PR, integrar ni promover desde esta rama.
 
 ## Última actualización
 
-2026-08-22, ISA-786: F5-c implementada en rama propia con escenarios manuales,
-planes por escenario y recomendación robusta. Gates locales finales verdes;
-pendiente review, sin integración ni promoción.
+2026-08-24, ISA-830: presentación efectiva y procedencia unificadas con
+regresión focal. Pendiente comprobación en la app real por Isaac; sin PR,
+integración, promoción ni release.

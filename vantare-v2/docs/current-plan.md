@@ -1,3 +1,19 @@
+Nota ISA-830 / ficha de piloto y procedencia efectiva (2026-08-24, implementada en rama de issue):
+
+- La ficha de piloto ya no combina ritmo/consumo manuales del documento con
+  chips derivados. Cifra y procedencia reciben ahora la misma vista efectiva,
+  con la precedencia del motor: override válido, proyección válida y fallback
+  manual honesto.
+- El barrido de la pantalla corrigió además seis chips de formularios que
+  etiquetaban como efectivo un valor manual editable, y dos resúmenes de
+  depósito/boxes que ignoraban overrides. Timeline de boxes y combustible de
+  salida usan también el valor efectivo; no se sintetiza ningún dato.
+- La regresión reproduce `142.004 s`, `3.538 L/vuelta` y cuatro muestras,
+  comprueba `2:22.004`/`3.54 L/v` en la ficha y exige esos mismos escalares en
+  la proyección enviada a `calculate_orbit`. Suite focal, typecheck real y
+  build pasan. Pendiente: comprobación de Isaac en la app real tras integrar;
+  sin PR, merge, promoción ni release.
+
 Nota ISA-825 / bloqueo de CPU en `calculate_orbit` (2026-08-24, implementada en rama de issue):
 
 - La proyección real Spa/LMGT3 activaba Fuel y VE derivados y dejaba la curva

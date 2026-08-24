@@ -123,7 +123,7 @@ func TestCalculateOrbitUsesGoEngineForGoldenPlan(t *testing.T) {
 
 func TestOrbitGoldenPartitionsUseTheSameSolveV2CostModel(t *testing.T) {
 	event := OrbitCalculationEvent{DurationMinutes: 240, TankLiters: 90, PitLossSeconds: 64}
-	input := orbitSolverInput(139, event, 104, 2.75, nil)
+	input := orbitSolverInput(139, event, 104, 2.75, strategyprojection.ClimateBucketDry, nil)
 	balanced := replayOrbitPartition(t, input, []int64{28, 28, 28, 28, 27})
 	shortFirst := replayOrbitPartition(t, input, []int64{11, 32, 32, 32, 32})
 	solved, err := solver.SolveV2(input)
@@ -240,7 +240,7 @@ func TestCalculateOrbitDerivedOverrideRevertKeepsProjectionAndChangesPlan(t *tes
 	if got := derived.Plans["s1"].AveragePace; got != 90.82 {
 		t.Fatalf("representative pace did not reach plan: got %.3f", got)
 	}
-	derivedSolver, err := solver.SolveV2(orbitSolverInput(10, input.Event, 60, 2, input.PlanningInputs))
+	derivedSolver, err := solver.SolveV2(orbitSolverInput(10, input.Event, 60, 2, strategyprojection.ClimateBucketDry, input.PlanningInputs))
 	if err != nil {
 		t.Fatalf("SolveV2(derived pace adapter): %v", err)
 	}
@@ -259,7 +259,7 @@ func TestCalculateOrbitDerivedOverrideRevertKeepsProjectionAndChangesPlan(t *tes
 	if input.PlanningInputs.Projection.FuelConsumption.MeanPerLap != 3.047 {
 		t.Fatal("manual override destroyed the derived projection")
 	}
-	overriddenSolver, err := solver.SolveV2(orbitSolverInput(10, input.Event, 60, 2, input.PlanningInputs))
+	overriddenSolver, err := solver.SolveV2(orbitSolverInput(10, input.Event, 60, 2, strategyprojection.ClimateBucketDry, input.PlanningInputs))
 	if err != nil {
 		t.Fatalf("SolveV2(overridden adapter): %v", err)
 	}
@@ -274,12 +274,39 @@ func TestCalculateOrbitDerivedOverrideRevertKeepsProjectionAndChangesPlan(t *tes
 	if derived.Plans["s1"].MaxLaps == overridden.Plans["s1"].MaxLaps || reverted.Plans["s1"].MaxLaps != derived.Plans["s1"].MaxLaps {
 		t.Fatalf("max laps derived=%d override=%d reverted=%d", derived.Plans["s1"].MaxLaps, overridden.Plans["s1"].MaxLaps, reverted.Plans["s1"].MaxLaps)
 	}
-	revertedSolver, err := solver.SolveV2(orbitSolverInput(10, input.Event, 60, 2, input.PlanningInputs))
+	revertedSolver, err := solver.SolveV2(orbitSolverInput(10, input.Event, 60, 2, strategyprojection.ClimateBucketDry, input.PlanningInputs))
 	if err != nil {
 		t.Fatalf("SolveV2(reverted adapter): %v", err)
 	}
 	if got := revertedSolver.ResolvedInputs.FuelPerLapLiters; got.Value != projection.FuelConsumption.MeanPerLap || got.Provenance.SourceID != projection.FuelConsumption.Provenance.SourceID {
 		t.Fatalf("revert did not restore derived source: %+v", got)
+	}
+}
+
+func TestEffectiveOrbitPaceUsesTheVariantClimateBucket(t *testing.T) {
+	planning := &strategydocument.PlanningInputs{
+		Projection: &strategyprojection.StrategyInputProjectionV2{
+			RepresentativePaceByClimateBucket: map[strategyprojection.ClimateBucket]strategyprojection.RepresentativePaceFamily{
+				strategyprojection.ClimateBucketDry: {Presence: strategyprojection.PresenceValid, MedianLapSeconds: 90},
+				strategyprojection.ClimateBucketWet: {Presence: strategyprojection.PresenceValid, MedianLapSeconds: 105},
+			},
+		},
+		Overrides: map[strategydocument.PlanningInputField]strategydocument.NumericInputOverride{},
+	}
+	driver := OrbitCalculationDriver{
+		Dry: OrbitCalculationPace{PaceSeconds: 95},
+		Wet: OrbitCalculationPace{PaceSeconds: 115},
+	}
+	dry, err := effectiveOrbitPace(driver, "dry", planning)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wet, err := effectiveOrbitPace(driver, "wet", planning)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if dry.PaceSeconds != 90 || wet.PaceSeconds != 105 {
+		t.Fatalf("bucket pace dry=%.1f wet=%.1f", dry.PaceSeconds, wet.PaceSeconds)
 	}
 }
 

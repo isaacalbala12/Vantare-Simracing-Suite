@@ -11,6 +11,7 @@ const planning = {
     virtualEnergyConsumption: { presence: "missing", provenance: { kind: "derived", sourceId: "aggregate:lmu:fuji" }, confidence: { sampleSize: 0, computationVersion: "producer.v1" }, reason: "missing_virtual_energy_consumption", meanPerLap: 0, rangeLower: 0, rangeUpper: 0 },
     representativePaceByClimateBucket: {
       dry: { presence: "valid", provenance: { kind: "derived", sourceId: "aggregate:lmu:fuji" }, confidence: { sampleSize: 3, rangeLower: 90, rangeUpper: 92, computationVersion: "producer.v1" }, medianLapSeconds: 90.82 },
+      wet: { presence: "valid", provenance: { kind: "derived", sourceId: "aggregate:lmu:fuji" }, confidence: { sampleSize: 2, rangeLower: 103, rangeUpper: 106, computationVersion: "producer.v1" }, medianLapSeconds: 104.5 },
     },
     combinedStintPaceCurve: { presence: "missing", provenance: { kind: "derived", sourceId: "aggregate:lmu:fuji" }, confidence: { sampleSize: 0, computationVersion: "producer.v1" }, reason: "missing_combined_stint_pace_curve", identifiability: "combined_only", points: [] },
     tyreDegradation: { presence: "missing", provenance: { kind: "derived", sourceId: "aggregate:lmu:fuji" }, confidence: { sampleSize: 0, computationVersion: "producer.v1" }, reason: "missing_tyre_degradation" },
@@ -42,6 +43,9 @@ describe("Strategy input provenance", () => {
   it("uses the representative dry pace even when the stint curve is missing", () => {
     expect(strategyInputProvenance(planning, "base_pace_seconds", 105)).toMatchObject({
       kind: "derived", presence: "valid", value: 90.82, confidence: { sampleSize: 3 },
+    });
+    expect(strategyInputProvenance(planning, "base_pace_seconds", 115, "wet")).toMatchObject({
+      kind: "derived", presence: "valid", value: 104.5, confidence: { sampleSize: 2 },
     });
   });
 

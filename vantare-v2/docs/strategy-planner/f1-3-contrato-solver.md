@@ -41,6 +41,14 @@ mediciones ni supuestos escalares del plan.
 ritmo base, capacidades, vida, consumos, degradación, formación y pit. La curva
 de stint y el ahorro conservan además sus fuentes especializadas existentes.
 
+Desde ISA-827, `BaseLapClimateBucket` declara qué bucket representa el ritmo
+base de esa ejecución (`dry` por compatibilidad cuando se omite). Si no hay
+`user_override`, `BaseLapSeconds` cede ante
+`Projection.RepresentativePaceByClimateBucket[bucket]` solo cuando está
+`valid` y es positivo. Orbit pasa `dry` para seco/eco y `wet` para mojado; no
+usa el ritmo de otro clima como fallback. `CombinedStintPaceCurve` sigue siendo
+un coste adicional dentro del stint y no una fuente de ritmo base.
+
 ### Ejecución y discretización F4-1
 
 `SolveV2` parte con Fuel/VE a capacidad y explora paradas tras cualquier vuelta,

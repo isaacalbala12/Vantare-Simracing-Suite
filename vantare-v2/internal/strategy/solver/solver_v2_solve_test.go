@@ -101,6 +101,12 @@ func TestSolveV2UsesDryRepresentativePaceAndUserOverrideStillWins(t *testing.T) 
 				Confidence:       sp.Confidence{SampleSize: 4, ComputationVersion: "consumption-pace.v2"},
 				MedianLapSeconds: 142,
 			},
+			sp.ClimateBucketWet: {
+				Presence:         sp.PresenceValid,
+				Provenance:       sp.Provenance{Kind: sp.ProvenanceDerived, SourceID: "analysis:wet-pace"},
+				Confidence:       sp.Confidence{SampleSize: 3, ComputationVersion: "consumption-pace.v2"},
+				MedianLapSeconds: 155,
+			},
 		},
 		CombinedStintPaceCurve: sp.CombinedStintPaceCurve{
 			Presence:        sp.PresenceMissing,
@@ -117,6 +123,14 @@ func TestSolveV2UsesDryRepresentativePaceAndUserOverrideStillWins(t *testing.T) 
 	}
 	if got := derived.ResolvedInputs.BaseLapSeconds; got.Value != 142 || got.Role != ScalarRoleDerived || got.Provenance.SourceID != "analysis:dry-pace" {
 		t.Fatalf("derived base pace = %+v", got)
+	}
+	input.BaseLapClimateBucket = sp.ClimateBucketWet
+	wet, err := SolveV2(input)
+	if err != nil {
+		t.Fatalf("SolveV2(wet derived pace): %v", err)
+	}
+	if got := wet.ResolvedInputs.BaseLapSeconds; got.Value != 155 || got.Provenance.SourceID != "analysis:wet-pace" {
+		t.Fatalf("wet derived base pace = %+v", got)
 	}
 
 	input.BaseLapSeconds = NewUserOverrideScalar(140, "user:pace")

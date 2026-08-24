@@ -224,15 +224,16 @@ func (b ComputeBudget) Validate() error {
 // SolverInputV2 es el I/O ampliado del solver. Consume familias de Analysis
 // por referencia (no duplica tipos): Projection y ObservedStrategy.
 type SolverInputV2 struct {
-	ContractVersion ContractVersion               `json:"contractVersion"`
-	RaceLaps        int64                         `json:"raceLaps"`
-	BaseLapSeconds  ScalarInput                   `json:"baseLapSeconds"`
-	Projection      *sp.StrategyInputProjectionV2 `json:"projection"`
-	Observed        *sp.ObservedStrategyV1        `json:"observed,omitempty"`
-	PitCost         PitCostModel                  `json:"pitCost"`
-	Formation       Formation                     `json:"formation"`
-	EventRules      EventRules                    `json:"eventRules"`
-	Budget          ComputeBudget                 `json:"budget"`
+	ContractVersion      ContractVersion               `json:"contractVersion"`
+	RaceLaps             int64                         `json:"raceLaps"`
+	BaseLapSeconds       ScalarInput                   `json:"baseLapSeconds"`
+	BaseLapClimateBucket sp.ClimateBucket              `json:"baseLapClimateBucket,omitempty"`
+	Projection           *sp.StrategyInputProjectionV2 `json:"projection"`
+	Observed             *sp.ObservedStrategyV1        `json:"observed,omitempty"`
+	PitCost              PitCostModel                  `json:"pitCost"`
+	Formation            Formation                     `json:"formation"`
+	EventRules           EventRules                    `json:"eventRules"`
+	Budget               ComputeBudget                 `json:"budget"`
 	// Inputs manuales cuando projection está missing/unsupported
 	FuelCapacityLiters ScalarInput `json:"fuelCapacityLiters"`
 	VECapacityPercent  ScalarInput `json:"veCapacityPercent"`
@@ -340,7 +341,11 @@ func (in SolverInputV2) baseLapSource() ScalarInput {
 	if in.BaseLapSeconds.Role == ScalarRoleUserOverride || in.Projection == nil {
 		return in.BaseLapSeconds
 	}
-	pace, ok := in.Projection.RepresentativePaceByClimateBucket[sp.ClimateBucketDry]
+	bucket := in.BaseLapClimateBucket
+	if bucket == "" {
+		bucket = sp.ClimateBucketDry
+	}
+	pace, ok := in.Projection.RepresentativePaceByClimateBucket[bucket]
 	if ok && pace.Presence == sp.PresenceValid && pace.MedianLapSeconds > 0 {
 		return derivedScalar(pace.MedianLapSeconds, pace.Provenance, pace.Confidence)
 	}
@@ -396,6 +401,9 @@ func (in SolverInputV2) Validate() error {
 	}
 	if in.RaceLaps <= 0 || in.RaceLaps > 100000 {
 		return fmt.Errorf("raceLaps out of range")
+	}
+	if in.BaseLapClimateBucket != "" && !in.BaseLapClimateBucket.Valid() {
+		return fmt.Errorf("baseLapClimateBucket invalid")
 	}
 	if err := in.BaseLapSeconds.validate("baseLapSeconds", false); err != nil {
 		return err

@@ -3585,7 +3585,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
                             <b>{lapTime(driver[mode][0])}</b>
                             <InputProvenanceChip
                               t={t}
-                              view={strategyInputProvenance(eventPlanningInputs, "base_pace_seconds", driver[mode][0])}
+                              view={strategyInputProvenance(eventPlanningInputs, "base_pace_seconds", driver[mode][0], mode === "wet" ? "wet" : "dry")}
                             />
                             <em>{driver[mode][1].toFixed(2)} L/v</em>
                             <InputProvenanceChip
@@ -3647,7 +3647,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
                                   unit="s"
                                   value={String(driver[mode][0])}
                                 />
-                                <InputProvenanceChip t={t} view={strategyInputProvenance(eventPlanningInputs, "base_pace_seconds", driver[mode][0])} />
+                                <InputProvenanceChip t={t} view={strategyInputProvenance(eventPlanningInputs, "base_pace_seconds", driver[mode][0], mode === "wet" ? "wet" : "dry")} />
                               </label>
                               <label className="orbit-driver__field">
                                 <span>

@@ -17,6 +17,7 @@ export function strategyInputProvenance(
   planning: StrategyPlanningInputsV2 | undefined,
   field: StrategyPlanningInputFieldV2,
   manualValue?: number,
+  climateBucket: "dry" | "humid" | "wet" = "dry",
 ): StrategyInputProvenanceView {
   const override = planning?.overrides[field];
   if (override) {
@@ -28,7 +29,7 @@ export function strategyInputProvenance(
       canRevert: Boolean(planning?.projection),
     };
   }
-  const derived = derivedInput(planning, field);
+  const derived = derivedInput(planning, field, climateBucket);
   if (derived) return derived;
   if (manualValue !== undefined && Number.isFinite(manualValue)) {
     return { kind: "manual", presence: "valid", value: manualValue, canRevert: false };
@@ -39,6 +40,7 @@ export function strategyInputProvenance(
 function derivedInput(
   planning: StrategyPlanningInputsV2 | undefined,
   field: StrategyPlanningInputFieldV2,
+  climateBucket: "dry" | "humid" | "wet",
 ): StrategyInputProvenanceView | undefined {
   const projection = planning?.projection;
   if (!projection) return undefined;
@@ -57,10 +59,12 @@ function derivedInput(
       const curve = projection.tyreAgeCurve as { slopeSecondsPerUnit?: unknown } | undefined;
       return familyValue(projection.combinedStintPaceCurve, typeof curve?.slopeSecondsPerUnit === "number" ? curve.slopeSecondsPerUnit : undefined, "combined_only");
     }
-    case "base_pace_seconds":
-      return projection.representativePaceByClimateBucket?.dry
-        ? familyValue(projection.representativePaceByClimateBucket.dry, projection.representativePaceByClimateBucket.dry.medianLapSeconds)
+    case "base_pace_seconds": {
+      const pace = projection.representativePaceByClimateBucket?.[climateBucket];
+      return pace
+        ? familyValue(pace, pace.medianLapSeconds)
         : familyValue(projection.combinedStintPaceCurve, undefined, "missing_representative_pace");
+    }
     case "tank_liters":
     case "pit_loss_seconds":
       return undefined;

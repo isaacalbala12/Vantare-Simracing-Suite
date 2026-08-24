@@ -17,6 +17,34 @@ son fases históricas.
 
 ## Estado
 
+Actualización ISA-827 / ritmo representativo (2026-08-24, implementada en rama de issue):
+
+- Analysis publica `representativePaceByClimateBucket` en
+  `StrategyInputProjection v2`; cada bucket lleva mediana, presencia,
+  procedencia, confianza y una causa explícita cuando no es derivable. La
+  lectura sigue aceptando documentos v2 anteriores sin el campo, pero todo
+  productor nuevo emite los tres buckets.
+- El plan y `SolveV2` resuelven `baseLapSeconds` desde el bucket de la variante
+  (seco/eco=`dry`, mojado=`wet`) aunque `CombinedStintPaceCurve` esté ausente.
+  La curva sigue gobernando solo el coste dentro del stint y un valor
+  manual/corregido sigue ganando al derivado. Orbit muestra el chip Derivado
+  con muestra/rango o el motivo real
+  (`sin vueltas completas`, `sin tiempo fiable`, `sin clima estable` o `sin
+  vueltas limpias`) sin aritmética TypeScript.
+- Evidencia del defecto en el store real: Spa LMGT3, sesión `e124f80e...`,
+  vueltas 2/4/6/7 con 141,55–142,25 s, etiqueta `traffic` e inclusión Fuel/Pace
+  verdadera. Un veto posterior y exclusivo de Pace descartaba las cuatro. La
+  corrección usa la decisión común de F3-a2; una reparación in-memory permite
+  aprovechar modelos `consumption-pace.v1` solo con hechos ya persistidos y no
+  modifica el store.
+- Verificación real read-only: 336 modelos, 5 sesiones de la combinación, seco
+  válido con N=4 y mediana 142,003814697266 s mientras la curva permanece
+  missing/0 puntos; hash del fichero sin cambios. Analysis+Strategy, vet focal,
+  68 tests frontend focales y build pasan. El gate global conserva deuda previa:
+  tres avisos `unsafe.Pointer` en vet y una clave i18n huérfana
+  `strategy.wizard.fill.autoTip` (2938/2939 tests Vitest verdes), ambas presentes
+  en la base. Sin PR, integración, promoción ni release.
+
 Actualización ISA-824 / entrada asistida (2026-08-24, implementada en rama de issue):
 
 - La puerta `Automática con telemetría` consulta el catálogo real y solo se

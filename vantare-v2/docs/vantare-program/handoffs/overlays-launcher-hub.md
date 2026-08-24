@@ -10,6 +10,15 @@
 
 ## Estado
 
+- **Salto inicial de widgets resuelto (2026-08-22, misma rama):** causa raiz
+  era la carrera font-swap (14 @font-face con display:swap) contra el nuevo
+  pintado instantaneo SWR, mas el swap semilla/fresco re-renderizando el
+  lienzo. Fixes: font-display:block, gate useFontsReady en el lienzo Orbit
+  (timeout 1,5 s), cache del documento ya migrado y skip del swap cuando
+  fresco identico a la semilla. Evidencia objetiva Playwright: fonts loaded
+  en primer pintado y delta 0.00 px a +1,5 s. Gates PASS: 379/2920, TC, lint,
+  build.
+
 - **ISA-814 · Studio SWR (2026-08-22, misma rama que ISA-800):** los widgets
   del Studio tardaban en montarse porque el documento llegaba por IPC antes de
   pintar. Nueva \studio-doc-cache.ts\ (localStorage, 3 MB LRU) + semilla del

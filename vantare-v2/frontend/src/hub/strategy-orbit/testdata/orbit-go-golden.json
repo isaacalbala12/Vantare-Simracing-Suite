@@ -19,6 +19,17 @@
         { "driverId": "sol", "laps": 32, "seconds": 3328 },
         { "driverId": "diego", "laps": 32, "seconds": 3328 },
         { "driverId": "marta", "laps": 32, "seconds": 3328 }
+      ],
+      "drivingSeconds": 14456,
+      "pitSeconds": 256,
+      "startFuelLiters": 30.25,
+      "finishFuelLiters": 0,
+      "reserveLaps": 0,
+      "stopDetails": [
+        { "index": 0, "lap": 11, "fuelInLiters": 0, "fuelOutLiters": 88, "pitLossSeconds": 64 },
+        { "index": 1, "lap": 43, "fuelInLiters": 0, "fuelOutLiters": 88, "pitLossSeconds": 64 },
+        { "index": 2, "lap": 75, "fuelInLiters": 0, "fuelOutLiters": 88, "pitLossSeconds": 64 },
+        { "index": 3, "lap": 107, "fuelInLiters": 0, "fuelOutLiters": 88, "pitLossSeconds": 64 }
       ]
     }
   },

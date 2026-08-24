@@ -402,31 +402,46 @@ type OrbitCalculationDistribution struct {
 	Seconds  float64 `json:"seconds"`
 }
 
+type OrbitCalculationStop struct {
+	Index          int     `json:"index"`
+	Lap            int64   `json:"lap"`
+	FuelInLiters   float64 `json:"fuelInLiters"`
+	FuelOutLiters  float64 `json:"fuelOutLiters"`
+	PitLossSeconds float64 `json:"pitLossSeconds"`
+}
+
 type OrbitCalculationPlan struct {
-	Stints       []OrbitCalculationStint        `json:"stints"`
-	TotalLaps    int64                          `json:"totalLaps"`
-	TotalSeconds float64                        `json:"total"`
-	Stops        int64                          `json:"stops"`
-	MaxLaps      int64                          `json:"maxLaps"`
-	AverageFuel  float64                        `json:"avgFuel"`
-	AveragePace  float64                        `json:"avgPace"`
-	Distribution []OrbitCalculationDistribution `json:"distribution"`
+	Stints           []OrbitCalculationStint        `json:"stints"`
+	TotalLaps        int64                          `json:"totalLaps"`
+	TotalSeconds     float64                        `json:"total"`
+	Stops            int64                          `json:"stops"`
+	MaxLaps          int64                          `json:"maxLaps"`
+	AverageFuel      float64                        `json:"avgFuel"`
+	AveragePace      float64                        `json:"avgPace"`
+	Distribution     []OrbitCalculationDistribution `json:"distribution"`
+	DrivingSeconds   float64                        `json:"drivingSeconds"`
+	PitSeconds       float64                        `json:"pitSeconds"`
+	StartFuelLiters  float64                        `json:"startFuelLiters"`
+	FinishFuelLiters float64                        `json:"finishFuelLiters"`
+	ReserveLaps      float64                        `json:"reserveLaps"`
+	StopDetails      []OrbitCalculationStop         `json:"stopDetails"`
 }
 
 type OrbitCalculationComparison struct {
-	WinnerID    string   `json:"winnerId"`
-	LoserID     string   `json:"loserId"`
-	WinnerLaps  int64    `json:"winnerLaps"`
-	LoserLaps   int64    `json:"loserLaps"`
-	Difference  int64    `json:"diff"`
-	SavedStops  int64    `json:"savedStops"`
-	SavedSecs   float64  `json:"savedS"`
-	CostSecs    float64  `json:"costS"`
-	Pays        bool     `json:"pays"`
-	SameStops   bool     `json:"sameStops"`
-	Stints      int      `json:"stints"`
-	DriverCount int      `json:"driverCount"`
-	Doubles     []string `json:"doubles"`
+	WinnerID          string   `json:"winnerId"`
+	LoserID           string   `json:"loserId"`
+	WinnerLaps        int64    `json:"winnerLaps"`
+	LoserLaps         int64    `json:"loserLaps"`
+	Difference        int64    `json:"diff"`
+	SavedStops        int64    `json:"savedStops"`
+	SavedSecs         float64  `json:"savedS"`
+	CostSecs          float64  `json:"costS"`
+	TotalDeltaSeconds float64  `json:"totalDeltaSeconds"`
+	Pays              bool     `json:"pays"`
+	SameStops         bool     `json:"sameStops"`
+	Stints            int      `json:"stints"`
+	DriverCount       int      `json:"driverCount"`
+	Doubles           []string `json:"doubles"`
 }
 
 type OrbitCalculationResult struct {

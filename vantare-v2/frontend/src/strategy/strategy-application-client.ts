@@ -378,6 +378,18 @@ export type StrategyOrbitCalculatedPlanV1 = {
     readonly laps: number;
     readonly seconds: number;
   }[];
+  readonly drivingSeconds: number;
+  readonly pitSeconds: number;
+  readonly startFuelLiters: number;
+  readonly finishFuelLiters: number;
+  readonly reserveLaps: number;
+  readonly stopDetails: readonly {
+    readonly index: number;
+    readonly lap: number;
+    readonly fuelInLiters: number;
+    readonly fuelOutLiters: number;
+    readonly pitLossSeconds: number;
+  }[];
 };
 
 export type StrategyOrbitCalculationComparisonV1 = {
@@ -389,6 +401,7 @@ export type StrategyOrbitCalculationComparisonV1 = {
   readonly savedStops: number;
   readonly savedS: number;
   readonly costS: number;
+  readonly totalDeltaSeconds: number;
   readonly pays: boolean;
   readonly sameStops: boolean;
   readonly stints: number;
@@ -1502,13 +1515,16 @@ function parseStrategyOrbitCalculation(value: unknown): StrategyOrbitCalculation
   const plans: Record<string, StrategyOrbitCalculatedPlanV1> = {};
   for (const [id, candidate] of Object.entries(rawPlans)) {
     const plan = strategyRecord(candidate, `orbitCalculation.plans.${id}`);
-    for (const field of ["total", "avgFuel", "avgPace"] as const) {
+    for (const field of [
+      "total", "avgFuel", "avgPace", "drivingSeconds", "pitSeconds",
+      "startFuelLiters", "finishFuelLiters", "reserveLaps",
+    ] as const) {
       strategyNumber(plan[field], `orbitCalculation.plans.${id}.${field}`);
     }
     for (const field of ["totalLaps", "stops", "maxLaps"] as const) {
       strategyInteger(plan[field], `orbitCalculation.plans.${id}.${field}`);
     }
-    if (!Array.isArray(plan.stints) || !Array.isArray(plan.distribution)) {
+    if (!Array.isArray(plan.stints) || !Array.isArray(plan.distribution) || !Array.isArray(plan.stopDetails)) {
       throw new Error(`Invalid Strategy orbitCalculation.plans.${id}`);
     }
     const stints = plan.stints.map((entry, index) => {
@@ -1532,6 +1548,16 @@ function parseStrategyOrbitCalculation(value: unknown): StrategyOrbitCalculation
       strategyNumber(slice.seconds, `orbitCalculation.plans.${id}.distribution.${index}.seconds`);
       return slice as StrategyOrbitCalculatedPlanV1["distribution"][number];
     });
+    const stopDetails = plan.stopDetails.map((entry, index) => {
+      const stop = strategyRecord(entry, `orbitCalculation.plans.${id}.stopDetails.${index}`);
+      for (const field of ["index", "lap"] as const) {
+        strategyInteger(stop[field], `orbitCalculation.plans.${id}.stopDetails.${index}.${field}`);
+      }
+      for (const field of ["fuelInLiters", "fuelOutLiters", "pitLossSeconds"] as const) {
+        strategyNumber(stop[field], `orbitCalculation.plans.${id}.stopDetails.${index}.${field}`);
+      }
+      return stop as StrategyOrbitCalculatedPlanV1["stopDetails"][number];
+    });
     plans[id] = {
       stints,
       distribution,
@@ -1541,6 +1567,12 @@ function parseStrategyOrbitCalculation(value: unknown): StrategyOrbitCalculation
       maxLaps: plan.maxLaps as number,
       avgFuel: plan.avgFuel as number,
       avgPace: plan.avgPace as number,
+      drivingSeconds: plan.drivingSeconds as number,
+      pitSeconds: plan.pitSeconds as number,
+      startFuelLiters: plan.startFuelLiters as number,
+      finishFuelLiters: plan.finishFuelLiters as number,
+      reserveLaps: plan.reserveLaps as number,
+      stopDetails,
     };
   }
   const comparisons: Record<string, StrategyOrbitCalculationComparisonV1> = {};
@@ -1551,7 +1583,7 @@ function parseStrategyOrbitCalculation(value: unknown): StrategyOrbitCalculation
     for (const field of ["winnerLaps", "loserLaps", "diff", "savedStops", "stints", "driverCount"] as const) {
       strategyInteger(comparison[field], `orbitCalculation.comparisons.${id}.${field}`);
     }
-    for (const field of ["savedS", "costS"] as const) {
+    for (const field of ["savedS", "costS", "totalDeltaSeconds"] as const) {
       strategyNumber(comparison[field], `orbitCalculation.comparisons.${id}.${field}`);
     }
     if (typeof comparison.pays !== "boolean" || typeof comparison.sameStops !== "boolean") {

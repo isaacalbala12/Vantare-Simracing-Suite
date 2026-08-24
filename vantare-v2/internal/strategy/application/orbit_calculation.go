@@ -292,8 +292,9 @@ func calculateOrbitPlan(event OrbitCalculationEvent, drivers map[string]OrbitCal
 		AverageFuel:  optimised.ResolvedInputs.FuelPerLapLiters.Value,
 		AveragePace:  optimised.ResolvedInputs.BaseLapSeconds.Value,
 		Distribution: make([]OrbitCalculationDistribution, 0, len(drivers)),
+		StopDetails:  make([]OrbitCalculationStop, 0, len(laps)-1),
 	}
-	clock, lap := 0.0, int64(0)
+	clock, driving, lap := 0.0, 0.0, int64(0)
 	byDriver := make(map[string]*OrbitCalculationDistribution)
 	for index, count := range laps {
 		driverID := variant.Order[index%len(variant.Order)]
@@ -304,7 +305,9 @@ func calculateOrbitPlan(event OrbitCalculationEvent, drivers map[string]OrbitCal
 			wantedFuel = *override.Fuel
 		}
 		start := clock
-		clock += float64(count) * driverPace.PaceSeconds
+		stintSeconds := float64(count) * driverPace.PaceSeconds
+		clock += stintSeconds
+		driving += stintSeconds
 		lastLap := lap + count
 		pitWindowLap := lastLap - 3
 		if pitWindowLap < lap+1 {
@@ -339,6 +342,28 @@ func calculateOrbitPlan(event OrbitCalculationEvent, drivers map[string]OrbitCal
 		}
 	}
 	plan.TotalSeconds = clock
+	plan.DrivingSeconds = driving
+	plan.PitSeconds = float64(plan.Stops) * event.PitLossSeconds
+	if len(plan.Stints) > 0 {
+		plan.StartFuelLiters = plan.Stints[0].Fuel
+		last := plan.Stints[len(plan.Stints)-1]
+		lastPace, _ := effectiveOrbitPace(drivers[last.DriverID], variant.Mode, planning)
+		plan.FinishFuelLiters = math.Max(0, last.Fuel-float64(last.Laps)*lastPace.FuelLitersPerLap)
+		if lastPace.FuelLitersPerLap > 0 {
+			plan.ReserveLaps = plan.FinishFuelLiters / lastPace.FuelLitersPerLap
+		}
+	}
+	for index := 0; index+1 < len(plan.Stints); index++ {
+		current := plan.Stints[index]
+		currentPace, _ := effectiveOrbitPace(drivers[current.DriverID], variant.Mode, planning)
+		plan.StopDetails = append(plan.StopDetails, OrbitCalculationStop{
+			Index:          index,
+			Lap:            current.LastLap,
+			FuelInLiters:   math.Max(0, current.Fuel-float64(current.Laps)*currentPace.FuelLitersPerLap),
+			FuelOutLiters:  plan.Stints[index+1].Fuel,
+			PitLossSeconds: event.PitLossSeconds,
+		})
+	}
 	for _, driverID := range variant.Order {
 		if distribution := byDriver[driverID]; distribution != nil {
 			plan.Distribution = append(plan.Distribution, *distribution)
@@ -583,7 +608,8 @@ func compareOrbitPlans(activeID string, active OrbitCalculationPlan, otherID str
 	return OrbitCalculationComparison{
 		WinnerID: winnerID, LoserID: loserID, WinnerLaps: winnerLaps, LoserLaps: loserLaps,
 		Difference: winnerLaps - loserLaps, SavedStops: savedStops, SavedSecs: savedSeconds,
-		CostSecs: costSeconds, Pays: savedSeconds > costSeconds, SameStops: savedStops <= 0,
+		CostSecs: costSeconds, TotalDeltaSeconds: other.TotalSeconds - active.TotalSeconds,
+		Pays: savedSeconds > costSeconds, SameStops: savedStops <= 0,
 		Stints: len(active.Stints), DriverCount: len(drivers), Doubles: doubles,
 	}
 }

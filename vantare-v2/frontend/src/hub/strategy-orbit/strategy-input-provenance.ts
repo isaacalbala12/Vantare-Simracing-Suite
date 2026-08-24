@@ -58,7 +58,9 @@ function derivedInput(
       return familyValue(projection.combinedStintPaceCurve, typeof curve?.slopeSecondsPerUnit === "number" ? curve.slopeSecondsPerUnit : undefined, "combined_only");
     }
     case "base_pace_seconds":
-      return familyValue(projection.combinedStintPaceCurve, undefined, "missing_representative_pace");
+      return projection.representativePaceByClimateBucket?.dry
+        ? familyValue(projection.representativePaceByClimateBucket.dry, projection.representativePaceByClimateBucket.dry.medianLapSeconds)
+        : familyValue(projection.combinedStintPaceCurve, undefined, "missing_representative_pace");
     case "tank_liters":
     case "pit_loss_seconds":
       return undefined;

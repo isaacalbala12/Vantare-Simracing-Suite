@@ -40,6 +40,21 @@
     "rangeLower": 1.1,
     "rangeUpper": 1.3
   },
+  "representativePaceByClimateBucket": {
+    "dry": {
+      "presence": "valid",
+      "provenance": {"kind": "derived", "sourceId": "analysis:pace"},
+      "confidence": {"sampleSize": 12, "rangeLower": 90.82, "rangeUpper": 92.14, "variance": 0.21, "computationVersion": "consumption-pace.v2"},
+      "medianLapSeconds": 90.82
+    },
+    "humid": {
+      "presence": "missing",
+      "provenance": {"kind": "derived", "sourceId": "analysis:pace"},
+      "confidence": {"sampleSize": 0, "computationVersion": "consumption-pace.v2"},
+      "reason": "no_classified_complete_laps_in_climate_bucket",
+      "medianLapSeconds": 0
+    }
+  },
   "combinedStintPaceCurve": {
     "presence": "valid",
     "provenance": {"kind": "derived", "sourceId": "analysis:pace"},

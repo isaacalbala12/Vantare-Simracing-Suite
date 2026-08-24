@@ -18,9 +18,9 @@
     "veSampleSize": 3,
     "veMean": 1.3666666666666665,
     "veVariance": 0.02333333333333333,
-    "paceSampleSize": 2,
+    "paceSampleSize": 3,
     "paceMedian": 13,
-    "paceVariance": 2,
+    "paceVariance": 1,
     "trafficLap": 5
   }
 }

@@ -79,8 +79,8 @@ func TestDeriveSessionConsumptionPaceVersionedFixtures(t *testing.T) {
 			assertNear(t, *bucket.RepresentativePace.Confidence.Variance, fixture.Expected.PaceVariance)
 
 			traffic := findDerivedLap(t, got.Laps, fixture.Expected.TrafficLap)
-			if !traffic.HasLabel(LapLabelTraffic) || traffic.RepresentativePace != nil {
-				t.Fatalf("traffic lap must stay tagged and be excluded only from representative pace: %+v", traffic)
+			if !traffic.HasLabel(LapLabelTraffic) || traffic.RepresentativePace == nil {
+				t.Fatalf("traffic lap must stay tagged and follow the shared family-use decision: %+v", traffic)
 			}
 			if traffic.FuelConsumption == nil || traffic.VirtualEnergyConsumption == nil {
 				t.Fatalf("traffic lap must remain usable for consumption: %+v", traffic)
@@ -142,6 +142,45 @@ func TestDeriveSessionConsumptionPaceRejectsInvalidSegmentQuality(t *testing.T) 
 		if lap.FuelConsumption != nil || lap.VirtualEnergyConsumption != nil || lap.RepresentativePace != nil {
 			t.Fatalf("invalid segment quality produced values: %+v", lap)
 		}
+	}
+}
+
+func TestRepairLegacyRepresentativePaceUsesSharedFamilyDecisionForTrafficLaps(t *testing.T) {
+	dry := strategyprojection.ClimateBucketDry
+	times := []float64{141.548583984375, 142.11944580078125, 142.2540283203125, 141.88818359375}
+	validity := &LapValidityAnalysis{Laps: make([]AnalyzedLap, len(times))}
+	consumption := SessionConsumptionPace{
+		SessionID: "e124f80e", CombinationID: "lmu:spa-lmgt3",
+		Laps: make([]LapConsumptionPace, len(times)),
+		ByClimateBucket: map[strategyprojection.ClimateBucket]ClimateBucketConsumptionPace{
+			dry: {RepresentativePace: summarizePace("e124f80e", nil)},
+		},
+	}
+	for index, lapTime := range times {
+		number := []int{2, 4, 6, 7}[index]
+		validity.Laps[index] = AnalyzedLap{
+			Number: number, Complete: true, LapTimeSeconds: &lapTime, Labels: []LapLabel{LapLabelTraffic},
+			FamilyUse: []LapFamilyUse{{Family: FamilyCombinedStintPaceCurve, Included: true}},
+		}
+		fuel := newDerivedMetric(consumption.SessionID, 3.5, strategyprojection.PresenceValid)
+		consumption.Laps[index] = LapConsumptionPace{
+			Number: number, Labels: []LapLabel{LapLabelTraffic}, ClimateBucket: &dry, FuelConsumption: &fuel,
+		}
+	}
+
+	got := repairLegacyRepresentativePace(validity, consumption)
+	pace := got.ByClimateBucket[dry].RepresentativePace
+	if pace.Presence != strategyprojection.PresenceValid || pace.Confidence.SampleSize != 4 {
+		t.Fatalf("repaired pace axes = %+v", pace)
+	}
+	assertNear(t, pace.MedianLapSeconds, 142.00381469726562)
+	for _, lap := range got.Laps {
+		if lap.RepresentativePace == nil || !lap.HasLabel(LapLabelTraffic) {
+			t.Fatalf("shared family decision was not restored: %+v", lap)
+		}
+	}
+	if consumption.Laps[0].RepresentativePace != nil {
+		t.Fatal("repair mutated the authorized store model")
 	}
 }
 

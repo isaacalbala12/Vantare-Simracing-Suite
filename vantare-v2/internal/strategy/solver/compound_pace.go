@@ -91,7 +91,7 @@ func (input SolverInputV2) compoundPaceCosts() (compoundPaceCosts, error) {
 			return compoundPaceCosts{}, fmt.Errorf("compoundPace[%d]: %w", index, err)
 		}
 		for lap := int64(1); lap <= input.RaceLaps; lap++ {
-			if input.BaseLapSeconds.Value+parameter.PaceDeltaSeconds+curve.deltaAt(lap) <= 0 {
+			if input.baseLapSource().Value+parameter.PaceDeltaSeconds+curve.deltaAt(lap) <= 0 {
 				return compoundPaceCosts{}, fmt.Errorf("compoundPace[%d] produces a non-positive lap time", index)
 			}
 		}

@@ -24,6 +24,7 @@ importa `internal/strategy/*` (dominio privado). Tests de arquitectura en
 | **presencia/calidad** `Presence` | implícito en `Quality` (`valid/missing/...`) del modelo histórico | `Presence` explícito `valid\|missing\|invalid\|stale\|unsupported\|unknown` por familia y por punto | Spec §6: vocabulario congelado en F1 base `internal/strategy/contract` |
 | **procedencia** `ProvenanceKind` | `unknown/observed/corrected/manual/derived/estimated/range` | + `reference` para datos del catálogo comunitario | Spec §6 + matriz v1→v2 |
 | **confianza** `Confidence` | `ConfidenceLevel` (`unknown/low/medium/high` + `basis`) del contrato Strategy | `Confidence{sampleSize, rangeLower/rangeUpper, variance, computationVersion}` | Spec: muestra/rango/varianza/versión; el `basis` de Strategy sigue válido pero no suficiente para curvas |
+| Ritmo representativo | ritmo/rango prometido sin bucket transportable al consumidor | `representativePaceByClimateBucket[dry\|humid\|wet]` con mediana, presencia, procedencia, confianza y causa | ISA-827: el agregado no puede depender del gate de 3 stints/15 vueltas/3 edades de `CombinedStintPaceCurve` para conocer un ritmo base |
 | `CombinedStintPaceCurve` | curvas separadas peso-fuel / edad-neumático prometidas | solo `combined_only`; separadas condicionadas a gate `separable` | A1 DEGRADED, correlación -0.94, R² bajo |
 | Pit | `PitLossBreakdown` exacto (tránsito/servicio) | `ObservedPitLaneInterval` + tasas `1.9-4.0 L/s` / `~2.5 pp/s` degradado + inputs manuales | A4 INVALID, `In Pits` cubre carril completo sin marcadores |
 | Ahorro | derivable de corpus | procedencia `manual` obligatoria; derivable solo vía A/B | A5 INVALID, N=2 confundido |
@@ -38,6 +39,12 @@ importa `internal/strategy/*` (dominio privado). Tests de arquitectura en
   interpretarlo como v1. Un consumidor v2 que reciba `strategyinputprojection.v1`
   lo detecta por `contractVersion` y lo trata como `missing`/`unsupported` por
   familia, sin fallback sintético.
+- **v2 anterior a ISA-827:** `representativePaceByClimateBucket` es aditivo y
+  opcional al leer documentos persistidos. Un productor actualizado siempre lo
+  emite; si falta, el consumidor conserva el estado explícito de ritmo ausente.
+  Analysis puede reparar en memoria un modelo `consumption-pace.v1` solo cuando
+  el propio store ya demuestra bucket, tiempo fiable, inclusión de familia y
+  presencia Fuel/VE en esa misma vuelta; nunca escribe el store ni estima.
 - **Old → New:** consumidor nuevo puede leer fixture old como mapa
   (`TestOldFixtureCompatibility`): verifica que no contiene `reference` ni gaps
   y que su `contractVersion` es `strategyinputprojection.v1`. La migración a v2

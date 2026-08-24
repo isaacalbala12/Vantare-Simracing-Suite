@@ -536,6 +536,11 @@ func effectivePlanningValue(planning *strategydocument.PlanningInputs, field str
 		return fallback
 	}
 	switch field {
+	case strategydocument.PlanningInputPace:
+		family, ok := planning.Projection.RepresentativePaceByClimateBucket[strategyprojection.ClimateBucketDry]
+		if ok && family.Presence == strategyprojection.PresenceValid && family.MedianLapSeconds > 0 {
+			return family.MedianLapSeconds
+		}
 	case strategydocument.PlanningInputFuelPerLap:
 		family := planning.Projection.FuelConsumption
 		if family.Presence == strategyprojection.PresenceValid && family.MeanPerLap > 0 {

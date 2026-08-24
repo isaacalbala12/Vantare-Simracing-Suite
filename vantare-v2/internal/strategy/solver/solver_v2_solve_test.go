@@ -88,6 +88,47 @@ func TestSolveV2UserOverrideBeatsValidDerivedResourceAndFallbackDoesNot(t *testi
 	}
 }
 
+func TestSolveV2UsesDryRepresentativePaceAndUserOverrideStillWins(t *testing.T) {
+	input := baseInputV2()
+	input.Projection = &sp.StrategyInputProjectionV2{
+		ContractVersion:    sp.ContractVersionStrategyInputProjectionV2,
+		GeneratedAt:        time.Date(2026, 8, 24, 10, 0, 0, 0, time.UTC),
+		ComputationVersion: "test.v1",
+		RepresentativePaceByClimateBucket: map[sp.ClimateBucket]sp.RepresentativePaceFamily{
+			sp.ClimateBucketDry: {
+				Presence:         sp.PresenceValid,
+				Provenance:       sp.Provenance{Kind: sp.ProvenanceDerived, SourceID: "analysis:dry-pace"},
+				Confidence:       sp.Confidence{SampleSize: 4, ComputationVersion: "consumption-pace.v2"},
+				MedianLapSeconds: 142,
+			},
+		},
+		CombinedStintPaceCurve: sp.CombinedStintPaceCurve{
+			Presence:        sp.PresenceMissing,
+			Provenance:      sp.Provenance{Kind: sp.ProvenanceDerived, SourceID: "analysis:curve"},
+			Confidence:      sp.Confidence{ComputationVersion: "test.v1"},
+			Identifiability: sp.IdentifiabilityCombinedOnly,
+		},
+		Pit: sp.PitFamily{Presence: sp.PresenceMissing},
+	}
+
+	derived, err := SolveV2(input)
+	if err != nil {
+		t.Fatalf("SolveV2(derived pace): %v", err)
+	}
+	if got := derived.ResolvedInputs.BaseLapSeconds; got.Value != 142 || got.Role != ScalarRoleDerived || got.Provenance.SourceID != "analysis:dry-pace" {
+		t.Fatalf("derived base pace = %+v", got)
+	}
+
+	input.BaseLapSeconds = NewUserOverrideScalar(140, "user:pace")
+	overridden, err := SolveV2(input)
+	if err != nil {
+		t.Fatalf("SolveV2(overridden pace): %v", err)
+	}
+	if got := overridden.ResolvedInputs.BaseLapSeconds; got.Value != 140 || got.Role != ScalarRoleUserOverride {
+		t.Fatalf("overridden base pace = %+v", got)
+	}
+}
+
 func TestSolveV2UserOverrideBeatsDerivedTyreLifeDegradationAndPit(t *testing.T) {
 	input := baseInputV2()
 	input.RaceLaps = 8

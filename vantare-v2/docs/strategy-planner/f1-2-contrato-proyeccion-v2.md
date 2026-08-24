@@ -34,6 +34,7 @@ Basado en `isa-694-spec.md` §3 (A1 DEGRADED, A4 INVALID, A5 INVALID) e
 
 | Familia | Degradacion aplicada | Decisión simple donde el spec no fija |
 |---|---|---|
+| Ritmo representativo por clima | mediana de vueltas completas utilizables por `dry/humid/wet`, con presencia, procedencia, confianza y motivo por bucket; independiente de la curva | `dry` alimenta el ritmo base si está `valid`; la ausencia de curva de stint no invalida esta familia |
 | 4. `CombinedStintPaceCurve` | `identifiability=combined_only` por defecto; `FuelWeightCurve` / `TyreAgeCurve` solo si gate `separable` pasa | Gate = correlacion stint vs fuel no confundida + N>=30; si no pasa, no se publica curva separada (no se estima) |
 | 6. Pit | `ObservedPitLaneInterval` + tasas observadas (1.9-4.0 L/s fuel, ~2.5 pp/s VE) con calidad degradada; `transitSecondsManual` y `serviceSecondsManual` manuales | Tasas solo si el intervalo tiene `hasFuelRise`/`hasVERise`; si no, `nil` y `missing` — nunca se inventa un reparto transito/servicio |
 | 7. Ahorro | procedencia `manual` obligatoria; `SavingLevel` opcional solo via protocolo A/B (>=5 vueltas limpias alternadas por mezcla) | Si no hay protocolo A/B, `levels` vacio y `manualNote` explica el requisito |
@@ -51,6 +52,11 @@ sin `identifiability==separable`.
 ## Fixtures / contract tests
 
 - `testdata/strategyinputprojection_v2_new.json` — fixture new completo (incluye gaps, reference no usado aun, climate buckets).
+- `representativePaceByClimateBucket` es una ampliación aditiva de v2 para
+  documentos ya persistidos: puede faltar al leer una proyección anterior, pero
+  todo productor nuevo publica los tres buckets. Cada ausencia lleva una causa
+  explícita (`no_completed_laps...`, `no_reliable_lap_time...`,
+  `no_stable_climate_bucket...` o `no_clean_complete_laps...`).
 - `testdata/strategyinputprojection_v1_old.json` — fixture old (v1) sin `reference`, sin gaps, sin buckets; sigue decodificando como mapa y se declara incompatible como v2.
 - Test `TestFixturesDecode` y `TestCombinedStintPaceCurveIdentifiability` verifican old/new contra el validador.
 

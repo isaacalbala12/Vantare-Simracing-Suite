@@ -336,6 +336,17 @@ func (in SolverInputV2) resourcePerLapSource(kind ResourceKind) ScalarInput {
 	return fallback
 }
 
+func (in SolverInputV2) baseLapSource() ScalarInput {
+	if in.BaseLapSeconds.Role == ScalarRoleUserOverride || in.Projection == nil {
+		return in.BaseLapSeconds
+	}
+	pace, ok := in.Projection.RepresentativePaceByClimateBucket[sp.ClimateBucketDry]
+	if ok && pace.Presence == sp.PresenceValid && pace.MedianLapSeconds > 0 {
+		return derivedScalar(pace.MedianLapSeconds, pace.Provenance, pace.Confidence)
+	}
+	return in.BaseLapSeconds
+}
+
 func (in SolverInputV2) resourcePerLap(kind ResourceKind) float64 {
 	return in.resourcePerLapSource(kind).Value
 }
@@ -550,7 +561,7 @@ type ResolvedScalarInputs struct {
 
 func (in SolverInputV2) resolvedScalarInputs() ResolvedScalarInputs {
 	return ResolvedScalarInputs{
-		BaseLapSeconds:     in.BaseLapSeconds,
+		BaseLapSeconds:     in.baseLapSource(),
 		FuelCapacityLiters: in.FuelCapacityLiters,
 		VECapacityPercent:  in.VECapacityPercent,
 		TyreLifeLaps:       in.tyreLifeSource(),

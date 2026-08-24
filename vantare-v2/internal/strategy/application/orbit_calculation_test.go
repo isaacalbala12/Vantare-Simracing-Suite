@@ -237,6 +237,16 @@ func TestCalculateOrbitDerivedOverrideRevertKeepsProjectionAndChangesPlan(t *tes
 	if err != nil {
 		t.Fatal(err)
 	}
+	if got := derived.Plans["s1"].AveragePace; got != 90.82 {
+		t.Fatalf("representative pace did not reach plan: got %.3f", got)
+	}
+	derivedSolver, err := solver.SolveV2(orbitSolverInput(10, input.Event, 60, 2, input.PlanningInputs))
+	if err != nil {
+		t.Fatalf("SolveV2(derived pace adapter): %v", err)
+	}
+	if got := derivedSolver.ResolvedInputs.BaseLapSeconds; got.Value != 90.82 || got.Role != solver.ScalarRoleDerived {
+		t.Fatalf("representative pace did not reach solver: %+v", got)
+	}
 	input.PlanningInputs.Overrides[strategydocument.PlanningInputFuelPerLap] = strategydocument.NumericInputOverride{
 		Value: 5, Presence: strategyprojection.PresenceValid,
 		Provenance: strategyprojection.Provenance{Kind: strategyprojection.ProvenanceManual, SourceID: "orbit:event-1"},

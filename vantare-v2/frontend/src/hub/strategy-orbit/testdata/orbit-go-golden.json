@@ -2,11 +2,11 @@
   "plans": {
     "s1": {
       "stints": [
-        { "i": 0, "d": "isaac", "laps": 11, "fuel": 30.25, "pace": 104, "start": 0, "end": 1144, "lap0": 1, "lap1": 11, "pitWindowLap": 8, "pitWindowSeconds": 728, "over": false, "manual": false },
-        { "i": 1, "d": "sol", "laps": 32, "fuel": 88, "pace": 104, "start": 1208, "end": 4536, "lap0": 12, "lap1": 43, "pitWindowLap": 40, "pitWindowSeconds": 4120, "over": false, "manual": false },
-        { "i": 2, "d": "diego", "laps": 32, "fuel": 88, "pace": 104, "start": 4600, "end": 7928, "lap0": 44, "lap1": 75, "pitWindowLap": 72, "pitWindowSeconds": 7512, "over": false, "manual": false },
-        { "i": 3, "d": "marta", "laps": 32, "fuel": 88, "pace": 104, "start": 7992, "end": 11320, "lap0": 76, "lap1": 107, "pitWindowLap": 104, "pitWindowSeconds": 10904, "over": false, "manual": false },
-        { "i": 4, "d": "isaac", "laps": 32, "fuel": 88, "pace": 104, "start": 11384, "end": 14712, "lap0": 108, "lap1": 139, "pitWindowLap": 136, "pitWindowSeconds": 14296, "over": false, "manual": false }
+        { "i": 0, "d": "isaac", "laps": 11, "fuel": 30.25, "pace": 104, "start": 0, "end": 1144, "lap0": 1, "lap1": 11, "pitWindowLap": 8, "pitWindowSeconds": 728, "over": false, "manual": false, "savingLevel": "none", "fuelSavedPerLap": 0, "savingCostSeconds": 0 },
+        { "i": 1, "d": "sol", "laps": 32, "fuel": 88, "pace": 104, "start": 1208, "end": 4536, "lap0": 12, "lap1": 43, "pitWindowLap": 40, "pitWindowSeconds": 4120, "over": false, "manual": false, "savingLevel": "none", "fuelSavedPerLap": 0, "savingCostSeconds": 0 },
+        { "i": 2, "d": "diego", "laps": 32, "fuel": 88, "pace": 104, "start": 4600, "end": 7928, "lap0": 44, "lap1": 75, "pitWindowLap": 72, "pitWindowSeconds": 7512, "over": false, "manual": false, "savingLevel": "none", "fuelSavedPerLap": 0, "savingCostSeconds": 0 },
+        { "i": 3, "d": "marta", "laps": 32, "fuel": 88, "pace": 104, "start": 7992, "end": 11320, "lap0": 76, "lap1": 107, "pitWindowLap": 104, "pitWindowSeconds": 10904, "over": false, "manual": false, "savingLevel": "none", "fuelSavedPerLap": 0, "savingCostSeconds": 0 },
+        { "i": 4, "d": "isaac", "laps": 32, "fuel": 88, "pace": 104, "start": 11384, "end": 14712, "lap0": 108, "lap1": 139, "pitWindowLap": 136, "pitWindowSeconds": 14296, "over": false, "manual": false, "savingLevel": "none", "fuelSavedPerLap": 0, "savingCostSeconds": 0 }
       ],
       "totalLaps": 139,
       "total": 14712,
@@ -19,7 +19,19 @@
         { "driverId": "sol", "laps": 32, "seconds": 3328 },
         { "driverId": "diego", "laps": 32, "seconds": 3328 },
         { "driverId": "marta", "laps": 32, "seconds": 3328 }
-      ]
+      ],
+      "drivingSeconds": 14456,
+      "pitSeconds": 256,
+      "startFuelLiters": 30.25,
+      "finishFuelLiters": 0,
+      "reserveLaps": 0,
+      "stopDetails": [
+        { "index": 0, "lap": 11, "fuelInLiters": 0, "fuelOutLiters": 88, "pitLossSeconds": 64.00000000003025, "pitTransitSeconds": 64, "pitServiceSeconds": 3.025e-11, "pitOverlapSeconds": 0, "pitBreakdownAvailable": true },
+        { "index": 1, "lap": 43, "fuelInLiters": 0, "fuelOutLiters": 88, "pitLossSeconds": 64.000000000088, "pitTransitSeconds": 64, "pitServiceSeconds": 8.8e-11, "pitOverlapSeconds": 0, "pitBreakdownAvailable": true },
+        { "index": 2, "lap": 75, "fuelInLiters": 0, "fuelOutLiters": 88, "pitLossSeconds": 64.000000000088, "pitTransitSeconds": 64, "pitServiceSeconds": 8.8e-11, "pitOverlapSeconds": 0, "pitBreakdownAvailable": true },
+        { "index": 3, "lap": 107, "fuelInLiters": 0, "fuelOutLiters": 88, "pitLossSeconds": 64.000000000088, "pitTransitSeconds": 64, "pitServiceSeconds": 8.8e-11, "pitOverlapSeconds": 0, "pitBreakdownAvailable": true }
+      ],
+      "savingApplied": false
     }
   },
   "comparisons": {}

@@ -149,6 +149,7 @@ import { StrategyWeatherPanel } from "./StrategyWeatherPanel";
 import { StrategyValidatedExamplesPanel, type ValidatedExamplesViewState } from "./StrategyValidatedExamplesPanel";
 import { StrategyColdStartBanner } from "./StrategyColdStartBanner";
 import { StrategyReferencePanel } from "./StrategyReferencePanel";
+import { StrategyAnalysisPanel } from "./StrategyAnalysisPanel";
 import { loadValidatedExamples } from "./strategy-validated-examples";
 import { EMPTY_WEATHER_SCENARIOS, persistStrategyWeatherScenarios, selectedWeatherScenarios } from "./strategy-weather-scenarios";
 import "../../styles/orbit-strategy.css";
@@ -156,7 +157,7 @@ import "../../styles/orbit-strategy.css";
 /** Hueco que la shell reserva para la columna de Estrategia (briefing 07). */
 export const STRATEGY_CONTEXT_SLOT_ID = "orbit-strategy-context-slot";
 
-type StrategyTab = "overview" | "strategies" | "availability";
+type StrategyTab = "overview" | "analysis" | "strategies" | "availability";
 /** Camino elegido en el último paso del asistente (`00-decisiones.md`, D-W4-2). */
 type PickerPath = "none" | "series";
 
@@ -2654,6 +2655,14 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
 
   // ── derivados de las pestañas Estrategias y Disponibilidad ──────────────
   const cards = Object.values(variants);
+  const eco = cards.find((variant) => plansById[variant.id]?.savingApplied);
+  const ecoPlan = eco ? plansById[eco.id] : undefined;
+  const ecoComparison = eco && calculation.status === "success" && calculationCurrent
+    ? calculation.result.comparisons[eco.id]
+    : undefined;
+  const analysisClasses = calendar.calendar?.series
+    ?.find((series) => series.id === eventRecord.seriesId)
+    ?.classes?.map((item) => item.name) ?? [event.vehicleClass];
   const others = cards.filter((variant) => variant.id !== active.id);
   const compare = others.find((variant) => variant.id === compareId) ?? others[0];
   const verdict = compare && calculation.status === "success" && calculationCurrent
@@ -2963,6 +2972,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
         onChange={setTab}
         tabs={[
           { id: "overview", label: t("strategy.tabs.overview") },
+          { id: "analysis", label: t("strategy.tabs.analysis") },
           { id: "strategies", label: t("strategy.tabs.strategies") },
           // Un evento en solitario no reparte turnos: la pestaña sobraría.
           ...(soloBoard ? [] : [{ id: "availability" as const, label: t("strategy.tabs.availability") }]),
@@ -2970,7 +2980,21 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
         value={tab}
       />
 
-      {form ? eventForm : tab === "strategies" ? (
+      {form ? eventForm : tab === "analysis" ? (
+        <StrategyAnalysisPanel
+          active={active}
+          classes={analysisClasses}
+          comparison={ecoComparison}
+          eco={eco}
+          ecoPlan={ecoPlan}
+          event={event}
+          eventProvenance={eventRecord.source === "series" ? "reference" : eventRecord.fillMode === "telemetry" ? "derived" : "manual"}
+          plan={plan}
+          planningInputs={eventPlanningInputs}
+          start={timelineStart}
+          t={t}
+        />
+      ) : tab === "strategies" ? (
         <div className="orbit-strategy__pane" data-testid="orbit-strategy-strategies">
           <div className="orbit-strats-grid">
             {cards.map((variant) => {

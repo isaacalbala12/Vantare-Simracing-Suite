@@ -1320,6 +1320,283 @@
   font-size: var(--orbit-fs-micro);
 }
 
+/* ------------------------------------------------ ANÁLISIS DE ESTRATEGIA */
+
+.orbit-analysis {
+  display: grid;
+  gap: 18px;
+  margin-top: 16px;
+  min-height: 0;
+  overflow-y: auto;
+  padding-bottom: 18px;
+}
+
+.orbit-analysis__plans .orbit-surface__body {
+  display: grid;
+  gap: 0;
+}
+
+.orbit-analysis__plan-row {
+  display: grid;
+  gap: 10px;
+  padding: 14px 0;
+}
+
+.orbit-analysis__plan-row + .orbit-analysis__plan-row {
+  border-top: 1px solid var(--orbit-line);
+}
+
+.orbit-analysis__plan-row > header,
+.orbit-analysis__plan-row > header > div,
+.orbit-analysis__section > header,
+.orbit-analysis__stop > header,
+.orbit-analysis__time-grid article > header {
+  align-items: center;
+  display: flex;
+  gap: 9px;
+}
+
+.orbit-analysis__plan-row > header {
+  justify-content: space-between;
+}
+
+.orbit-analysis__plan-row > header > div > span {
+  color: var(--orbit-ink);
+  font-size: var(--orbit-fs-panel);
+  font-weight: 700;
+}
+
+.orbit-analysis__plan-row > header small {
+  color: var(--orbit-ink-3);
+}
+
+.orbit-analysis__plan-row .orbit-stat-row {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.orbit-analysis__plan-row[data-empty="true"] .orbit-stat {
+  opacity: 0.62;
+}
+
+.orbit-tl__block[data-variant="outline"] {
+  background: transparent !important;
+  border: 2px dashed var(--orbit-cyan);
+  color: var(--orbit-cyan);
+  z-index: 3;
+}
+
+.orbit-analysis__class {
+  align-items: center;
+  color: var(--orbit-ink-3);
+  display: flex;
+  gap: 8px;
+}
+
+.orbit-analysis__class i {
+  background: var(--orbit-line-strong);
+  border-radius: 50%;
+  height: 7px;
+  width: 7px;
+}
+
+.orbit-analysis__class[data-own="true"] {
+  color: var(--orbit-ink);
+  font-weight: 700;
+}
+
+.orbit-analysis__class[data-own="true"] i {
+  background: var(--orbit-carmine);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--orbit-carmine) 18%, transparent);
+}
+
+.orbit-analysis .orbit-note {
+  margin-top: 12px;
+}
+
+.orbit-analysis__leader {
+  display: grid;
+  gap: 12px 24px;
+  grid-template-columns: repeat(2, minmax(0, 180px)) minmax(240px, 1fr);
+  margin-bottom: 14px;
+}
+
+.orbit-analysis__leader span {
+  color: var(--orbit-ink-3);
+  display: grid;
+  font-size: var(--orbit-fs-secondary);
+  gap: 4px;
+}
+
+.orbit-analysis__leader b {
+  color: var(--orbit-ink);
+  font: 650 24px var(--orbit-font-mono);
+}
+
+.orbit-analysis__leader small {
+  align-self: end;
+  color: var(--orbit-ink-3);
+  line-height: 1.5;
+}
+
+.orbit-analysis__table-wrap {
+  overflow-x: auto;
+}
+
+.orbit-analysis__table {
+  border-collapse: collapse;
+  min-width: 660px;
+  width: 100%;
+}
+
+.orbit-analysis__table th,
+.orbit-analysis__table td {
+  border-bottom: 1px solid var(--orbit-line);
+  padding: 10px 12px;
+  text-align: left;
+}
+
+.orbit-analysis__table thead th {
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-micro);
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.orbit-analysis__table tbody th {
+  color: var(--orbit-ink);
+  font-size: var(--orbit-fs-secondary);
+}
+
+.orbit-analysis__table tbody td {
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-secondary);
+}
+
+.orbit-analysis__section {
+  display: grid;
+  gap: 12px;
+}
+
+.orbit-analysis__section > header {
+  justify-content: space-between;
+}
+
+.orbit-analysis__section h3 {
+  color: var(--orbit-ink);
+  font-size: 16px;
+  margin: 3px 0 0;
+}
+
+.orbit-analysis__stops,
+.orbit-analysis__time-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.orbit-analysis__stop,
+.orbit-analysis__time-grid article {
+  background: var(--orbit-surface-1);
+  border: 1px solid var(--orbit-line);
+  border-radius: var(--orbit-radius);
+  padding: 15px;
+}
+
+.orbit-analysis__stop > header > span {
+  color: var(--orbit-carmine);
+  font: 700 24px var(--orbit-font-mono);
+}
+
+.orbit-analysis__stop > header > div {
+  display: grid;
+  gap: 2px;
+}
+
+.orbit-analysis__stop > header small,
+.orbit-analysis__stop > p {
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-micro);
+}
+
+.orbit-analysis__stop dl,
+.orbit-analysis__time-grid dl {
+  display: grid;
+  gap: 8px;
+  margin: 14px 0;
+}
+
+.orbit-analysis__stop .orbit-analysis__breakdown {
+  border-top: 1px solid var(--orbit-line);
+  padding-top: 10px;
+}
+
+.orbit-analysis__stop dl > div,
+.orbit-analysis__time-grid dl > div {
+  align-items: baseline;
+  display: flex;
+  justify-content: space-between;
+}
+
+.orbit-analysis__stop dt,
+.orbit-analysis__time-grid dt {
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-secondary);
+}
+
+.orbit-analysis__stop dd,
+.orbit-analysis__time-grid dd {
+  color: var(--orbit-ink);
+  font: 650 13px var(--orbit-font-mono);
+  margin: 0;
+}
+
+.orbit-analysis__stop > p {
+  border-top: 1px solid var(--orbit-line);
+  line-height: 1.5;
+  margin: 0;
+  padding-top: 10px;
+}
+
+.orbit-analysis__stop > footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.orbit-analysis__time-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.orbit-analysis__time-grid article > header {
+  justify-content: space-between;
+}
+
+.orbit-analysis__times .orbit-surface__meta {
+  color: var(--orbit-cyan);
+  font-family: var(--orbit-font-mono);
+}
+
+.orbit-analysis__log-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+
+.orbit-analysis__log pre {
+  background: color-mix(in srgb, var(--orbit-surface-2) 78%, transparent);
+  border: 1px solid var(--orbit-line);
+  border-radius: var(--orbit-radius-control);
+  color: var(--orbit-ink-2);
+  font: 11px/1.7 var(--orbit-font-mono);
+  margin: 0;
+  max-height: 360px;
+  overflow: auto;
+  padding: 14px;
+  white-space: pre-wrap;
+}
+
 @keyframes orbit-strategy-in {
   from {
     opacity: 0;
@@ -1340,6 +1617,10 @@
 }
 
 @media (width <= 1400px) {
+
+  .orbit-analysis__stops {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
   .orbit-planning-inputs {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1358,6 +1639,13 @@
 }
 
 @media (width <= 760px) {
+
+  .orbit-analysis__plan-row .orbit-stat-row,
+  .orbit-analysis__stops,
+  .orbit-analysis__time-grid,
+  .orbit-analysis__leader {
+    grid-template-columns: minmax(0, 1fr);
+  }
 
   .orbit-strategy__evidence {
     grid-template-columns: minmax(0, 1fr);

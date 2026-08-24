@@ -89,11 +89,19 @@ function calculateForTest(input: StrategyOrbitCalculationInputV1): StrategyOrbit
         pitWindowSeconds: start + (pitWindowLap - lap0) * pace.paceSeconds,
         over: wanted > input.event.tankLiters + 0.01,
         manual: variant.overrides[index] !== undefined,
+        savingLevel: "none",
+        fuelSavedPerLap: 0,
+        savingCostSeconds: 0,
       };
       lap = lap1;
       if (index < count - 1) clock += input.event.pitLossSeconds;
       return stint;
     });
+    const drivingSeconds = stints.reduce((sum, stint) => sum + stint.end - stint.start, 0);
+    const finish = stints.at(-1);
+    const finishFuelLiters = finish
+      ? Math.max(0, finish.fuel - finish.laps * drivers.get(finish.d)![variant.mode].fuelLitersPerLap)
+      : 0;
     plans[variant.id] = {
       stints,
       totalLaps,
@@ -103,6 +111,23 @@ function calculateForTest(input: StrategyOrbitCalculationInputV1): StrategyOrbit
       avgFuel,
       avgPace,
       distribution: [...distribution.values()],
+      drivingSeconds,
+      pitSeconds: (count - 1) * input.event.pitLossSeconds,
+      startFuelLiters: stints[0]?.fuel ?? 0,
+      finishFuelLiters,
+      reserveLaps: avgFuel > 0 ? finishFuelLiters / avgFuel : 0,
+      stopDetails: stints.slice(0, -1).map((stint, index) => ({
+        index,
+        lap: stint.lap1,
+        fuelInLiters: Math.max(0, stint.fuel - stint.laps * drivers.get(stint.d)![variant.mode].fuelLitersPerLap),
+        fuelOutLiters: stints[index + 1].fuel,
+        pitLossSeconds: input.event.pitLossSeconds,
+        pitTransitSeconds: input.event.pitLossSeconds,
+        pitServiceSeconds: 0,
+        pitOverlapSeconds: 0,
+        pitBreakdownAvailable: true,
+      })),
+      savingApplied: false,
     };
   }
   const active = plans[input.activeVariantId];
@@ -123,6 +148,7 @@ function calculateForTest(input: StrategyOrbitCalculationInputV1): StrategyOrbit
       savedStops,
       savedS,
       costS,
+      totalDeltaSeconds: other.total - active.total,
       pays: savedS > costS,
       sameStops: savedStops <= 0,
       stints: active.stints.length,

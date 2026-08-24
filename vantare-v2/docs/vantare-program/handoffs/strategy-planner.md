@@ -74,6 +74,25 @@ Actualización ISA-827 / ritmo representativo (2026-08-24, implementada en rama 
   `strategy.wizard.fill.autoTip` (2938/2939 tests Vitest verdes), ambas presentes
   en la base. Sin PR, integración, promoción ni release.
 
+Actualización ISA-828 / pantalla Análisis (2026-08-24, implementada en rama de issue):
+
+- Strategy Orbit incorpora una pestaña `Análisis` sin columna de datos
+  manuales. Reutiliza `Surface`, `StatRow`/`StatTile`, `HorizontalTimeline`,
+  `Chip`, `Note`, `Accordion` y `Button` para ordenar cifras paralelas, carrera,
+  multiclase, paradas, tiempos y log de cálculo.
+- La UI consume una ampliación aditiva del resultado Go: combustible inicial y
+  final, reserva, tiempos, paradas y la decisión D6 exacta de SolverV2. Un modo
+  llamado eco no basta para presentarlo como ahorro; `savingApplied` solo se
+  activa con stints de ahorro realmente elegidos y su coste entra en el tiempo.
+- La ausencia de plan D6, ritmo de las otras clases o desglose legado conserva
+  la sección y explica la causa. Cada dato base del log declara procedencia
+  derivada, manual o de referencia. La infografía descargable no forma parte de
+  este cambio y no se ha empezado.
+- Pasan 243 tests Strategy/Orbit, los typechecks solicitado y real, el build y
+  el test Go focal. El preview en navegador queda bloqueado antes de Strategy
+  por `overlay-frame-v2:invalid-contract:disposed` al ejecutar sin Wails; no se
+  presenta como prueba de runtime real.
+
 Actualización ISA-824 / entrada asistida (2026-08-24, implementada en rama de issue):
 
 - La puerta `Automática con telemetría` consulta el catálogo real y solo se

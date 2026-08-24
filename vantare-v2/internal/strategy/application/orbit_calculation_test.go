@@ -502,6 +502,48 @@ func TestOrbitSavingOverridesReachSolveV2AsUserAuthority(t *testing.T) {
 	}
 }
 
+func TestCalculateOrbitPublishesOnlySavingAppliedBySolveV2(t *testing.T) {
+	override := func(value float64, field string) strategydocument.NumericInputOverride {
+		return strategydocument.NumericInputOverride{
+			Value: value, Presence: strategyprojection.PresenceValid,
+			Provenance: strategyprojection.Provenance{Kind: strategyprojection.ProvenanceManual, SourceID: "orbit:event-1:" + field},
+			Confidence: strategyprojection.Confidence{SampleSize: 1, ComputationVersion: "orbit-input.v1"},
+		}
+	}
+	input := OrbitCalculationInput{
+		Event: OrbitCalculationEvent{DurationMinutes: 25, TankLiters: 10, PitLossSeconds: 20},
+		Drivers: []OrbitCalculationDriver{{
+			ID: "driver-1", Name: "Driver", Dry: OrbitCalculationPace{PaceSeconds: 60, FuelLitersPerLap: 1},
+		}},
+		Variants:        []OrbitCalculationVariant{{ID: "s1", Mode: "dry", Order: []string{"driver-1"}}},
+		ActiveVariantID: "s1",
+		PlanningInputs: &strategydocument.PlanningInputs{Overrides: map[strategydocument.PlanningInputField]strategydocument.NumericInputOverride{
+			strategydocument.PlanningInputSavingFuel:     override(0.25, "saving_fuel_per_lap"),
+			strategydocument.PlanningInputSavingTimeCost: override(0.2, "saving_time_cost_per_lap"),
+		}},
+	}
+
+	calculation, err := calculateOrbit(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	plan := calculation.Plans["s1"]
+	if !plan.SavingApplied || len(plan.Stints) != 2 {
+		t.Fatalf("saving plan = %+v, want applied D6 in two stints", plan)
+	}
+	for _, stint := range plan.Stints {
+		if stint.SavingLevel != string(solver.SavingLow) || stint.FuelSavedPerLap != 0.25 || stint.SavingCostSeconds != float64(stint.Laps)*0.2 {
+			t.Fatalf("saving stint not projected from SolveV2: %+v", stint)
+		}
+	}
+	if plan.DrivingSeconds != float64(plan.TotalLaps)*60+5 {
+		t.Fatalf("driving seconds = %v, want pure laps plus 5 s saving cost", plan.DrivingSeconds)
+	}
+	if len(plan.StopDetails) != 1 || !plan.StopDetails[0].PitBreakdownAvailable {
+		t.Fatalf("pit breakdown not projected from SolveV2: %+v", plan.StopDetails)
+	}
+}
+
 func TestJSONBridgeDispatchesOrbitCalculation(t *testing.T) {
 	t.Parallel()
 	command := CalculateOrbitCommand{

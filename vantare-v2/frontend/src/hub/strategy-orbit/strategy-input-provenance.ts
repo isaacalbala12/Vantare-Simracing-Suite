@@ -73,9 +73,17 @@ function derivedInput(
   if (!projection) return undefined;
   switch (field) {
     case "fuel_per_lap_liters":
-      return familyValue(projection.fuelConsumption, projection.fuelConsumption.meanPerLap);
+      return familyValue(
+        projection.fuelConsumption,
+        projection.fuelConsumption.byClimateBucket?.[climateBucket],
+        "missing_fuel_consumption_for_climate_bucket",
+      );
     case "ve_per_lap_percent":
-      return familyValue(projection.virtualEnergyConsumption, projection.virtualEnergyConsumption.meanPerLap);
+      return familyValue(
+        projection.virtualEnergyConsumption,
+        projection.virtualEnergyConsumption.byClimateBucket?.[climateBucket],
+        "missing_virtual_energy_consumption_for_climate_bucket",
+      );
     case "tyre_life_laps":
       return familyValue(projection.tyreDegradation, projection.tyreDegradation.lifeLapsEstimate);
     case "saving_fuel_per_lap":
@@ -108,7 +116,7 @@ function familyValue(
     kind: usable && (family.provenance.kind === "reference" || family.provenance.kind === "manual")
       ? family.provenance.kind
       : usable ? "derived" : "missing",
-    presence: usable ? "valid" : family.presence,
+    presence: usable ? "valid" : family.presence === "valid" ? "missing" : family.presence,
     ...(usable ? { value } : {}),
     confidence: family.confidence,
     reason: usable ? undefined : (family.reason || absentReason),

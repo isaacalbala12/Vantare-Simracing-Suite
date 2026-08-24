@@ -184,6 +184,7 @@ function inputReasonLabel(reason: string | undefined, t: (key: string) => string
   if (!reason) return t("strategy.inputs.reason.unavailable");
   const known = new Set([
     "manual_input_required", "missing_fuel_consumption", "missing_virtual_energy_consumption",
+    "missing_fuel_consumption_for_climate_bucket", "missing_virtual_energy_consumption_for_climate_bucket",
     "missing_combined_stint_pace_curve", "missing_representative_pace", "missing_tyre_degradation",
     "missing_saving_cost", "combined_only", "no_classified_complete_laps_in_climate_bucket",
     "no_clean_complete_laps_for_representative_pace", "no_completed_laps_for_representative_pace",
@@ -3642,6 +3643,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
                                 eventPlanningInputs,
                                 "fuel_per_lap_liters",
                                 driver[mode][1],
+                                mode === "wet" ? "wet" : "dry",
                               );
                           return (
                             <div className="orbit-driver__pace" key={mode}>

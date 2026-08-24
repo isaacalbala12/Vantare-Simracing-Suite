@@ -76,7 +76,7 @@ const derivedPlanning: StrategyPlanningInputsV2 = {
   projection: {
     contractVersion: "strategyinputprojection.v2", generatedAt: "2026-08-22T12:00:00.000Z", computationVersion: "producer.v1",
     sourceSessions: ["race-1"], combinationId: "lmu:imola",
-    fuelConsumption: { presence: "valid", provenance: { kind: "derived", sourceId: "aggregate:lmu:imola" }, confidence: projectionConfidence, meanPerLap: 3.538, rangeLower: 3.4, rangeUpper: 3.7 },
+    fuelConsumption: { presence: "valid", provenance: { kind: "derived", sourceId: "aggregate:lmu:imola" }, confidence: projectionConfidence, meanPerLap: 3.538, rangeLower: 3.4, rangeUpper: 3.7, byClimateBucket: { dry: 3.538 } },
     virtualEnergyConsumption: { presence: "missing", provenance: { kind: "derived" }, confidence: { sampleSize: 0, computationVersion: "producer.v1" }, reason: "missing_virtual_energy_consumption", meanPerLap: 0, rangeLower: 0, rangeUpper: 0 },
     representativePaceByClimateBucket: {
       dry: { presence: "valid", provenance: { kind: "derived", sourceId: "aggregate:lmu:imola" }, confidence: { sampleSize: 4, rangeLower: 141.55, rangeUpper: 142.25, computationVersion: "consumption-pace.v2" }, medianLapSeconds: 142.004 },
@@ -216,6 +216,7 @@ describe("StrategyOrbitPage · cableado auditado", () => {
     const drivers = await screen.findByTestId("orbit-strategy-drivers");
     expect(drivers.textContent).toContain("2:22.004");
     expect(drivers.textContent).toContain("3.54 L/v");
+    expect(within(drivers).getAllByLabelText(/Falta:.*falta consumo de combustible para este clima/i).length).toBeGreaterThan(0);
     expect(drivers.textContent).not.toContain("1:44.000");
     expect(drivers.textContent).not.toContain("2.75 L/v");
     expect(within(drivers).getAllByLabelText(/Derivado: Calculado con 4 muestras/).length).toBeGreaterThan(0);

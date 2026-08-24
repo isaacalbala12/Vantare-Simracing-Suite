@@ -353,8 +353,24 @@ describe("strategy-events-store · lastOpenedAt (ISA-377)", () => {
       LABELS,
     );
     expect(solo.teamMode).toBe("solo");
-    // Hoy no hay fuente de telemetría: nada puede nacer automático.
     expect(solo.fillMode).toBe("manual");
+    const automatic = createCustomEvent(
+      [],
+      {
+        name: "Automática",
+        track: "Spa",
+        cls: "LMP2",
+        durationMin: 120,
+        startAt: "2030-01-01T14:00:00.000Z",
+        tankL: 90,
+        pitLossSec: 60,
+        drivers: [ISAAC],
+        fillMode: "telemetry",
+      },
+      LABELS,
+    );
+    writeStrategyEvents({ events: [automatic], activeId: automatic.id });
+    expect(readStrategyEvents().events[0].fillMode).toBe("telemetry");
     expect(own("Por defecto").teamMode).toBe("team");
   });
 });

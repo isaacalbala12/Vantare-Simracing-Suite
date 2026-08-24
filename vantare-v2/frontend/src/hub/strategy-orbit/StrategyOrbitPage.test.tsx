@@ -3,12 +3,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "../../i18n/I18nProvider";
 import { ToastProvider } from "../../ui/orbit/Toast";
 import { StrategyOrbitPage, STRATEGY_CONTEXT_SLOT_ID } from "./StrategyOrbitPage";
+import type { Calendar, RaceSeries } from "../../calendar/calendar-types";
 import type { StrategyRoster } from "./strategy-orbit-bridge";
 import { createStrategyEditorRuntime } from "../../strategy/strategy-editor-store";
 import type {
   StrategyApplicationCommandV1,
   StrategyApplicationClient,
   StrategyApplicationResultV1,
+  StrategyEventV2,
+  StrategyPlanningInputsV2,
+  StrategySessionCombinationV1,
 } from "../../strategy/strategy-application-client";
 import { StrategyApplicationError } from "../../strategy/strategy-application-client";
 import {
@@ -253,6 +257,172 @@ async function openWizard(team: "solo" | "team" = "team") {
   fireEvent.click(await screen.findByTestId("orbit-strategy-wizard-manual"));
   fireEvent.click(await screen.findByTestId(`orbit-strategy-wizard-${team}`));
   await screen.findByTestId("orbit-strategy-paths");
+}
+
+const USABLE_SESSION_COMBINATION: StrategySessionCombinationV1 = {
+  combinationId: "lmu:spa:united-21",
+  simId: "lmu",
+  trackName: "Circuit de Spa-Francorchamps",
+  trackLayout: "GP",
+  carName: "United Autosports #21:ELMS25",
+  carClass: "LMP2_ELMS",
+  sessionCount: 5,
+  raceCount: 2,
+  lastActivity: "2026-08-23T12:00:00Z",
+  climateBuckets: [{ bucket: "dry", laps: 27 }],
+  sessions: [{
+    sessionId: "spa-race-1",
+    type: "race",
+    status: "identified_usable",
+    defaultIncluded: true,
+    lastActivity: "2026-08-23T12:00:00Z",
+    climateBuckets: [{ bucket: "dry", laps: 27 }],
+  }],
+};
+
+const LMGT3_SESSION_COMBINATION: StrategySessionCombinationV1 = {
+  ...USABLE_SESSION_COMBINATION,
+  combinationId: "lmu:spa:lmgt3-46",
+  carName: "BMW M4 LMGT3 #46",
+  carClass: "GT3",
+  sessions: [{
+    ...USABLE_SESSION_COMBINATION.sessions[0],
+    sessionId: "spa-lmgt3-race-1",
+  }],
+};
+
+const SPA_ENDURANCE_SESSION_COMBINATION: StrategySessionCombinationV1 = {
+  ...USABLE_SESSION_COMBINATION,
+  combinationId: "lmu:spa-endurance:united-22",
+  trackLayout: "Circuit de Spa-Francorchamps Endurance",
+  carName: "United Autosports #22:ELMS25",
+  sessionCount: 2,
+  sessions: [{
+    ...USABLE_SESSION_COMBINATION.sessions[0],
+    sessionId: "spa-endurance-race-1",
+  }],
+};
+
+function raceSeries(overrides: Partial<RaceSeries> = {}): RaceSeries {
+  return {
+    id: "spa-endurance",
+    name: "Spa Endurance",
+    tier: "advanced",
+    licenseLabel: "Gold",
+    track: "Spa (WEC)",
+    telemetryTrackName: USABLE_SESSION_COMBINATION.trackName,
+    vehicleClass: "LMP2",
+    classes: [{
+      name: "LMP2",
+      qualifier: "full fuel tank",
+      telemetryClassName: "LMP2_ELMS",
+    }],
+    setup: "fixed",
+    durationMin: 120,
+    raceDurationMin: 120,
+    splits: 2,
+    assists: "",
+    tyreWarmers: true,
+    tyres: 12,
+    veLimit: 75,
+    recurrence: { kind: "weekly", days: ["sat"], timesUTC: ["14:00"] },
+    ...overrides,
+  };
+}
+
+function loadedCalendar(series: readonly RaceSeries[]): Calendar {
+  return {
+    version: 1,
+    timezone: "Europe/Madrid",
+    reminderMinutes: [],
+    events: [],
+    series: [...series],
+    seriesPreviews: series.map((item) => ({
+      seriesId: item.id,
+      scheduleLabel: "",
+      nextStarts: ["2030-01-01T14:00:00Z"],
+    })),
+    updated: "2026-08-23T12:00:00Z",
+  };
+}
+
+function startOf(series: RaceSeries) {
+  return {
+    ...SPA_START,
+    seriesId: series.id,
+    name: series.name,
+    track: series.track,
+    vehicleClass: series.vehicleClass,
+    durationMin: series.raceDurationMin ?? series.durationMin,
+  };
+}
+
+const WIZARD_DERIVED_PLANNING: StrategyPlanningInputsV2 = {
+  projection: {
+    contractVersion: "strategyinputprojection.v2",
+    generatedAt: "2026-08-23T12:00:00.000Z",
+    computationVersion: "producer.v1",
+    sourceSessions: ["spa-race-1"],
+    combinationId: USABLE_SESSION_COMBINATION.combinationId,
+    fuelConsumption: { presence: "valid", provenance: { kind: "derived", sourceId: "aggregate:lmu:spa" }, confidence: { sampleSize: 27, rangeLower: 2.6, rangeUpper: 2.9, computationVersion: "producer.v1" }, meanPerLap: 2.75, rangeLower: 2.6, rangeUpper: 2.9 },
+    virtualEnergyConsumption: { presence: "missing", provenance: { kind: "derived" }, confidence: { sampleSize: 0, computationVersion: "producer.v1" }, reason: "missing_virtual_energy_consumption", meanPerLap: 0, rangeLower: 0, rangeUpper: 0 },
+    combinedStintPaceCurve: { presence: "missing", provenance: { kind: "derived" }, confidence: { sampleSize: 0, computationVersion: "producer.v1" }, reason: "missing_combined_stint_pace_curve", identifiability: "combined_only", points: [] },
+    tyreDegradation: { presence: "missing", provenance: { kind: "derived" }, confidence: { sampleSize: 0, computationVersion: "producer.v1" }, reason: "missing_tyre_degradation" },
+    pit: { presence: "missing", provenance: { kind: "derived" }, confidence: { sampleSize: 0, computationVersion: "producer.v1" } },
+    savingCost: { presence: "missing", provenance: { kind: "derived" }, confidence: { sampleSize: 0, computationVersion: "producer.v1" }, reason: "missing_saving_cost" },
+  },
+  overrides: {},
+};
+
+function wizardCatalogClient(
+  catalog: "error" | "no_sessions" | readonly StrategySessionCombinationV1[],
+): StrategyApplicationClient<unknown> {
+  const calculation = createOrbitCalculationTestClient();
+  let saved: StrategyEventV2 | undefined;
+  let repositoryVersion = 0;
+  return {
+    async execute(command) {
+      const base = {
+        protocolVersion: "strategy.application.v1" as const,
+        commandId: command.commandId,
+        repositoryVersion,
+        recoveredFromBackup: false,
+        closed: false,
+      };
+      if (command.operation === "get_cold_start_status") {
+        return { ...base, coldStartStatus: { shouldShow: false, checking: false, found: 0, imported: 0, skipped: 0, failures: [], decision: "pending" } };
+      }
+      if (command.operation === "list_session_combinations") {
+        if (catalog === "error") throw new Error("catalog transport unavailable");
+        if (catalog === "no_sessions") return { ...base, sessionCatalogStatus: "no_authorized_telemetry", sessionCombinations: [] };
+        return { ...base, sessionCatalogStatus: "available", sessionCombinations: catalog };
+      }
+      if (command.operation === "list_events") return { ...base, events: saved ? [saved] : [] };
+      if (command.operation === "create_event" || command.operation === "edit_event") {
+        saved = command.event;
+        repositoryVersion += 1;
+        return {
+          ...base,
+          repositoryVersion,
+          strategyDocument: {
+            contractVersion: "strategy.v2",
+            schemaVersion: "2.0.0",
+            generatedAt: command.updatedAt,
+            events: [saved],
+          },
+        };
+      }
+      if (command.operation === "get_event_planning_inputs") {
+        return { ...base, planningInputStatus: "available", planningInputs: WIZARD_DERIVED_PLANNING };
+      }
+      if (command.operation === "calculate_orbit" || command.operation === "list") {
+        return calculation.execute(command);
+      }
+      throw new Error(`unexpected ${command.operation}`);
+    },
+    cancel: () => false,
+    dispose: () => undefined,
+  };
 }
 
 beforeEach(() => {
@@ -608,8 +778,144 @@ describe("StrategyOrbitPage · estado inicial", () => {
     expect(screen.queryByTestId("orbit-strategy-wizard")).toBeNull();
   });
 
-  it("el asistente pregunta origen y equipo antes de dejar crear", async () => {
-    mount(null);
+  it("lista una carrera monoclase y salta directamente al coche con telemetría", async () => {
+    const series = raceSeries();
+    calendarRef.current = loadedCalendar([series]);
+    starts.push(startOf(series));
+    mount(null, wizardCatalogClient([USABLE_SESSION_COMBINATION]));
+
+    const calendar = await screen.findByTestId("orbit-strategy-calendar");
+    expect(calendar.textContent).toContain("Spa (WEC)");
+    expect(calendar.textContent).toContain("LMP2 · full fuel tank");
+    expect(calendar.textContent).toContain("120 min");
+    expect(calendar.textContent).toContain("12 neumáticos");
+    expect(calendar.textContent).toContain("VE 75 %");
+    expect(calendar.textContent).toContain("Setup fijo");
+
+    fireEvent.click(within(calendar).getByTestId(`orbit-strategy-calendar-race-${series.id}`));
+    const cars = await screen.findByTestId("orbit-strategy-calendar-cars");
+    expect(screen.queryByTestId("orbit-strategy-calendar-classes")).toBeNull();
+    expect(cars.textContent).toContain(USABLE_SESSION_COMBINATION.carName);
+    fireEvent.click(within(cars).getByTestId(`orbit-strategy-calendar-car-${USABLE_SESSION_COMBINATION.combinationId}`));
+
+    await screen.findByTestId("orbit-strategy-overview");
+    fireEvent.click(screen.getByRole("button", { name: "Datos" }));
+    const fuel = await screen.findByTestId("orbit-planning-input-fuel_per_lap_liters");
+    expect(within(fuel).getByLabelText(/Derivado: Calculado con 27 muestras/)).toBeTruthy();
+  });
+
+  it("cuando la sede tiene varios trazados pide elegir uno y muestra sus sesiones", async () => {
+    const series = raceSeries();
+    calendarRef.current = loadedCalendar([series]);
+    starts.push(startOf(series));
+    mount(null, wizardCatalogClient([
+      USABLE_SESSION_COMBINATION,
+      SPA_ENDURANCE_SESSION_COMBINATION,
+    ]));
+
+    fireEvent.click(within(await screen.findByTestId("orbit-strategy-calendar"))
+      .getByTestId(`orbit-strategy-calendar-race-${series.id}`));
+
+    const layouts = await screen.findByTestId("orbit-strategy-calendar-layouts");
+    expect(layouts.textContent).toContain("Circuit de Spa-Francorchamps");
+    expect(layouts.textContent).toContain("5 sesiones");
+    expect(layouts.textContent).toContain("Circuit de Spa-Francorchamps Endurance");
+    expect(layouts.textContent).toContain("2 sesiones");
+    expect(screen.queryByTestId("orbit-strategy-calendar-cars")).toBeNull();
+
+    fireEvent.click(within(layouts).getByTestId(
+      `orbit-strategy-calendar-layout-${SPA_ENDURANCE_SESSION_COMBINATION.trackLayout}`,
+    ));
+    const cars = await screen.findByTestId("orbit-strategy-calendar-cars");
+    expect(cars.textContent).toContain(SPA_ENDURANCE_SESSION_COMBINATION.carName);
+    expect(cars.textContent).not.toContain(USABLE_SESSION_COMBINATION.carName);
+  });
+
+  it("en una carrera multiclase pide primero clase y después ofrece solo sus coches con datos", async () => {
+    const series = raceSeries({
+      vehicleClass: "LMP2 / LMGT3",
+      classes: [
+        { name: "LMP2", qualifier: "full fuel tank", telemetryClassName: "LMP2_ELMS" },
+        { name: "LMGT3", qualifier: "75% VE", telemetryClassName: "GT3" },
+      ],
+    });
+    calendarRef.current = loadedCalendar([series]);
+    starts.push(startOf(series));
+    mount(null, wizardCatalogClient([USABLE_SESSION_COMBINATION, LMGT3_SESSION_COMBINATION]));
+
+    fireEvent.click(within(await screen.findByTestId("orbit-strategy-calendar"))
+      .getByTestId(`orbit-strategy-calendar-race-${series.id}`));
+    const classes = await screen.findByTestId("orbit-strategy-calendar-classes");
+    expect(screen.queryByTestId("orbit-strategy-calendar-cars")).toBeNull();
+    fireEvent.click(within(classes).getByTestId("orbit-strategy-calendar-class-LMGT3"));
+
+    const cars = await screen.findByTestId("orbit-strategy-calendar-cars");
+    expect(cars.textContent).toContain(LMGT3_SESSION_COMBINATION.carName);
+    expect(cars.textContent).not.toContain(USABLE_SESSION_COMBINATION.carName);
+  });
+
+  it("explica que no hay sesiones grabadas para el circuito y la clase y ofrece la vía manual", async () => {
+    const series = raceSeries({ track: "Fuji (WEC)", telemetryTrackName: "Fuji Speedway" });
+    calendarRef.current = loadedCalendar([series]);
+    starts.push(startOf(series));
+    mount(null, wizardCatalogClient([USABLE_SESSION_COMBINATION]));
+
+    fireEvent.click(within(await screen.findByTestId("orbit-strategy-calendar"))
+      .getByTestId(`orbit-strategy-calendar-race-${series.id}`));
+
+    const cars = await screen.findByTestId("orbit-strategy-calendar-cars");
+    expect(cars.textContent).toContain("No tienes sesiones grabadas en este circuito con esta clase");
+    expect(within(cars).getByTestId("orbit-strategy-calendar-manual")).toBeTruthy();
+    expect(within(cars).queryByTestId(/orbit-strategy-calendar-car-/)).toBeNull();
+  });
+
+  it("nombra la sede o la clase del calendario que no tienen correspondencia declarada", async () => {
+    const unknownVenue = raceSeries({
+      id: "unknown-venue",
+      track: "Nueva sede (WEC)",
+      telemetryTrackName: undefined,
+    });
+    calendarRef.current = loadedCalendar([unknownVenue]);
+    starts.push(startOf(unknownVenue));
+    const view = mount(null, wizardCatalogClient([USABLE_SESSION_COMBINATION]));
+
+    fireEvent.click(within(await screen.findByTestId("orbit-strategy-calendar"))
+      .getByTestId("orbit-strategy-calendar-race-unknown-venue"));
+    expect((await screen.findByTestId("orbit-strategy-calendar-identity-error")).textContent)
+      .toContain("El calendario llama a este circuito «Nueva sede (WEC)» y no hay correspondencia declarada");
+
+    view.unmount();
+    cleanup();
+    document.body.replaceChildren();
+    const unknownClass = raceSeries({
+      id: "unknown-class",
+      classes: [{ name: "LMH" }],
+    });
+    calendarRef.current = loadedCalendar([unknownClass]);
+    starts.length = 0;
+    starts.push(startOf(unknownClass));
+    mount(null, wizardCatalogClient([USABLE_SESSION_COMBINATION]));
+
+    fireEvent.click(within(await screen.findByTestId("orbit-strategy-calendar"))
+      .getByTestId("orbit-strategy-calendar-race-unknown-class"));
+    expect((await screen.findByTestId("orbit-strategy-calendar-identity-error")).textContent)
+      .toContain("El calendario llama a esta clase «LMH» y no hay correspondencia declarada");
+  });
+
+  it("explica en el bloque inferior que el calendario no está disponible", async () => {
+    calendarRef.current = null;
+    mount(null, wizardCatalogClient([USABLE_SESSION_COMBINATION]));
+
+    expect((await screen.findByTestId("orbit-strategy-calendar")).textContent).toContain(
+      "El calendario de Le Mans Ultimate no está disponible",
+    );
+  });
+
+  it("la vía automática disponible abre las carreras y no una lista abstracta de combinaciones", async () => {
+    const series = raceSeries();
+    calendarRef.current = loadedCalendar([series]);
+    starts.push(startOf(series));
+    mount(null, wizardCatalogClient([USABLE_SESSION_COMBINATION]));
     fireEvent.click(await screen.findByTestId("orbit-strategy-new-strategy"));
 
     const wizard = await screen.findByTestId("orbit-strategy-wizard");
@@ -617,22 +923,48 @@ describe("StrategyOrbitPage · estado inicial", () => {
     // Todavía no se puede elegir punto de partida: falta contestar.
     expect(screen.queryByTestId("orbit-strategy-paths")).toBeNull();
 
-    // La automática va deshabilitada y dice por qué (ADR 0005, sin fuente).
     const auto = screen.getByTestId("orbit-strategy-wizard-auto-action");
-    expect(auto.hasAttribute("disabled")).toBe(true);
-    expect(auto.getAttribute("data-tip")).toContain("ADR 0005");
-
-    fireEvent.click(screen.getByTestId("orbit-strategy-wizard-manual"));
-    expect((await screen.findByTestId("orbit-strategy-wizard")).textContent).toContain(
-      "paso 2 de 3",
+    await waitFor(() => expect(auto.hasAttribute("disabled")).toBe(false));
+    expect(screen.getByTestId("orbit-strategy-wizard-auto-reason").textContent).toContain(
+      "1 combinación",
     );
-    fireEvent.click(screen.getByTestId("orbit-strategy-wizard-team"));
 
-    await screen.findByTestId("orbit-strategy-paths");
-    expect(screen.getByTestId("orbit-strategy-path-own")).toBeTruthy();
-    expect(screen.getByTestId("orbit-strategy-path-series")).toBeTruthy();
-    // Las series solo se listan cuando el usuario elige ese camino.
-    expect(screen.queryByTestId("orbit-strategy-series")).toBeNull();
+    fireEvent.click(auto);
+    expect(await screen.findByTestId("orbit-strategy-calendar")).toBeTruthy();
+    expect(screen.queryByTestId("orbit-strategy-session-picker")).toBeNull();
+  });
+
+  it("deshabilita la automática porque todavía no hay sesiones importadas", async () => {
+    mount(null, wizardCatalogClient("no_sessions"));
+    fireEvent.click(await screen.findByTestId("orbit-strategy-new-strategy"));
+
+    const auto = await screen.findByTestId("orbit-strategy-wizard-auto-action");
+    await waitFor(() => expect(auto.hasAttribute("disabled")).toBe(true));
+    expect(screen.getByTestId("orbit-strategy-wizard-auto-reason").textContent).toContain(
+      "No hay sesiones importadas",
+    );
+  });
+
+  it("deshabilita la automática porque el catálogo de sesiones no está disponible", async () => {
+    mount(null, wizardCatalogClient("error"));
+    fireEvent.click(await screen.findByTestId("orbit-strategy-new-strategy"));
+
+    const auto = await screen.findByTestId("orbit-strategy-wizard-auto-action");
+    await waitFor(() => expect(auto.hasAttribute("disabled")).toBe(true));
+    expect(screen.getByTestId("orbit-strategy-wizard-auto-reason").textContent).toContain(
+      "El catálogo de sesiones no está disponible",
+    );
+  });
+
+  it("deshabilita la automática cuando ninguna combinación tiene vueltas clasificadas por clima", async () => {
+    mount(null, wizardCatalogClient([{ ...USABLE_SESSION_COMBINATION, climateBuckets: [] }]));
+    fireEvent.click(await screen.findByTestId("orbit-strategy-new-strategy"));
+
+    const auto = await screen.findByTestId("orbit-strategy-wizard-auto-action");
+    await waitFor(() => expect(auto.hasAttribute("disabled")).toBe(true));
+    expect(screen.getByTestId("orbit-strategy-wizard-auto-reason").textContent).toContain(
+      "Ninguna combinación tiene vueltas clasificadas por clima",
+    );
   });
 
   it("«Solo» crea un evento de un piloto y quita la disponibilidad del tablero", async () => {

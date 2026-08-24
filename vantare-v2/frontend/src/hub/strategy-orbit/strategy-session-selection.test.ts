@@ -10,6 +10,7 @@ import {
   persistStrategySessionSelection,
   selectedCombination,
   selectedSessions,
+  usableSessionCombinations,
 } from "./strategy-session-selection";
 import type { StrategyEventRecord } from "./strategy-events-store";
 
@@ -34,6 +35,20 @@ const record: StrategyEventRecord = {
 };
 
 describe("Strategy session selection", () => {
+  it("offers automatic mode only for combinations with weather-classified laps", () => {
+    const view = {
+      status: "available" as const,
+      repositoryVersion: 0,
+      combinations: [combination, { ...combination, combinationId: "lmu:fuji:no-weather", climateBuckets: [] }],
+      events: [],
+      planningByEvent: {},
+      planningStatusByEvent: {},
+    };
+
+    expect(usableSessionCombinations(view).map((item) => item.combinationId)).toEqual(["lmu:fuji"]);
+    expect(usableSessionCombinations({ ...view, status: "no_authorized_telemetry" })).toEqual([]);
+  });
+
   it("persists a non-destructive exclusion in the canonical event", async () => {
     let saved: StrategyEventV2 | undefined;
     let version = 0;

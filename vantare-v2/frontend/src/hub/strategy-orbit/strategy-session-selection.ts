@@ -49,6 +49,19 @@ export async function loadStrategySessionCatalog(
   };
 }
 
+/**
+ * La vía automática solo puede prometer una proyección cuando la combinación
+ * ya contiene al menos una vuelta clasificada en un bucket de clima.
+ */
+export function usableSessionCombinations(
+  view: StrategySessionCatalogView,
+): readonly StrategySessionCombinationV1[] {
+  if (view.status !== "available") return [];
+  return view.combinations.filter((combination) =>
+    combination.climateBuckets.some((bucket) => bucket.laps > 0),
+  );
+}
+
 export async function refreshStrategyPlanningInputs(
   client: StrategyApplicationClient<unknown>,
   view: StrategySessionCatalogView,

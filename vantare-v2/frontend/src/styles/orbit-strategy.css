@@ -583,6 +583,12 @@
   text-align: left;
 }
 
+.orbit-strategy__calendar-list {
+  max-height: min(52vh, 620px);
+  overflow: auto;
+  padding-right: 4px;
+}
+
 .orbit-session-picker__buckets {
   color: var(--orbit-ink-3);
   font-size: 11px;
@@ -1007,15 +1013,15 @@
   color: var(--orbit-coral);
 }
 
-/* La opción sin backend no se pinta como clicable: no se puede pulsar. */
+/* Una opción bloqueada conserva la causa visible, sin prometer interacción. */
 .orbit-strategy__opt--off {
   display: flex;
   flex-direction: column;
   gap: 6px;
   align-items: flex-start;
   padding: 20px;
-  /* El carmín es la señal de «esto se puede pulsar»: apagarlo evita prometer
-     una vía que todavía no existe. */
+  /* El carmín es la señal de «esto se puede pulsar»: apagarlo distingue el
+     estado bloqueado mientras el texto explica su causa concreta. */
   opacity: 0.72;
   filter: grayscale(0.6);
   text-align: left;

@@ -43,6 +43,7 @@ import { useOrbitSlot } from "../orbit/use-orbit-slot";
 import { useCalendarStarts } from "../orbit/use-calendar-starts";
 import { formatStartTime } from "../orbit/next-starts";
 import type { RaceStart } from "../orbit/race-starts";
+import type { RaceSeries } from "../../calendar/calendar-types";
 import {
   createWailsStrategyEditorRuntime,
   openOrCreateStrategyEditor,
@@ -137,8 +138,13 @@ import {
   selectedCombination,
   selectedSessions,
   type StrategySessionCatalogView,
+  usableSessionCombinations,
 } from "./strategy-session-selection";
 import { strategyInputProvenance, type StrategyInputProvenanceView } from "./strategy-input-provenance";
+import {
+  calendarSessionCombinations,
+  calendarSessionLayouts,
+} from "./strategy-calendar-selection";
 import { StrategyWeatherPanel } from "./StrategyWeatherPanel";
 import { StrategyValidatedExamplesPanel, type ValidatedExamplesViewState } from "./StrategyValidatedExamplesPanel";
 import { StrategyColdStartBanner } from "./StrategyColdStartBanner";
@@ -264,6 +270,11 @@ interface WizardState {
   team: StrategyTeamMode;
   /** Dentro del paso `start`: si se está mirando la lista del calendario. */
   path: PickerPath;
+}
+interface CalendarRaceSelection {
+  readonly series: RaceSeries;
+  readonly className?: string;
+  readonly trackLayout?: string;
 }
 type SidePanel = "inputs" | "drivers" | "tyres" | "sessions" | "weather";
 type DonutMode = "laps" | "time";
@@ -521,6 +532,29 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
 
   const eventRecord = activeEventOf(store);
   const catalogView = sessionCatalog.status === "ready" ? sessionCatalog.view : null;
+  const automaticCombinations = catalogView ? usableSessionCombinations(catalogView) : [];
+  const automaticAvailable = sessionCatalog.status === "ready"
+    && sessionCatalog.view.status === "available"
+    && automaticCombinations.length > 0;
+  const automaticReason = sessionCatalog.status === "loading"
+    ? t("strategy.wizard.fill.autoChecking")
+    : sessionCatalog.status === "error"
+      ? t("strategy.wizard.fill.autoCatalogUnavailable")
+      : sessionCatalog.view.status === "no_authorized_telemetry"
+        ? t("strategy.wizard.fill.autoNoSessions")
+        : automaticCombinations.length === 0
+          ? t("strategy.wizard.fill.autoNoClassifiedLaps")
+          : formatMessage(
+              t(automaticCombinations.length === 1
+                ? "strategy.wizard.fill.autoReadyOne"
+                : "strategy.wizard.fill.autoReadyMany"),
+              { n: automaticCombinations.length },
+            );
+  const sessionPickerCombinations = catalogView
+    ? eventRecord?.fillMode === "telemetry"
+      ? automaticCombinations
+      : catalogView.combinations
+    : [];
   const eventCombination = eventRecord && catalogView
     ? selectedCombination(catalogView, eventRecord.id)
     : undefined;
@@ -1063,6 +1097,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
 
   // ── eventos: menú de entrada, asistente, formulario y edición ───────────
   const [wizard, setWizard] = useState<WizardState | null>(null);
+  const [calendarSelection, setCalendarSelection] = useState<CalendarRaceSelection | null>(null);
   const [form, setForm] = useState<{
     mode: "create" | "edit";
     /** Tablero elegido en el asistente; el formulario lo respeta. */
@@ -1166,7 +1201,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
     }
     const created = createCustomEvent(
       store.events,
-      { ...shared, teamMode: form.teamMode },
+      { ...shared, teamMode: form.teamMode, fillMode: wizard?.fill ?? "manual" },
       {
         strategyName: formatMessage(t("strategy.cards.newName"), { n: 1 }),
         strategyNote: t("strategy.cards.newNote"),
@@ -1177,7 +1212,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
     setWizard(null);
     setTab("overview");
     toast.show(t("strategy.form.createdTitle"), formatMessage(t("strategy.form.createdHint"), { name }));
-  }, [commit, eventId, form, store.events, t, toast]);
+  }, [commit, eventId, form, store.events, t, toast, wizard?.fill]);
 
   const chooseSessionCombination = useCallback(async (combinationId: string) => {
     if (!eventRecord || !catalogView) return;
@@ -1269,6 +1304,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
           strategyNote: t("strategy.cards.newNote"),
         },
         teamMode,
+        wizard?.fill ?? "manual",
       );
       commit((current) => openEvent(upsertEvent(current, created), created.id));
       setWizard(null);
@@ -1278,7 +1314,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
         formatMessage(t("strategy.form.createdHint"), { name: created.name }),
       );
     },
-    [commit, me, store.events, t, toast],
+    [commit, me, store.events, t, toast, wizard?.fill],
   );
 
   /** Abrir es la única puerta al editor: aquí se sella `lastOpenedAt`. */
@@ -1313,6 +1349,12 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
     setForm(null);
     setWizard({ step: "fill", fill: "manual", team: "team", path: "none" });
   }, []);
+
+  const startManualWizard = () => {
+    setCalendarSelection(null);
+    setForm(null);
+    setWizard({ step: "team", fill: "manual", team: "team", path: "none" });
+  };
 
   /** Copia un evento entero con sus estrategias; la copia nace sin abrir. */
   const duplicateEvent = useCallback(
@@ -1382,6 +1424,104 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
     const rest = calendar.starts.filter((start) => !start.followed);
     return [...followed, ...rest].slice(0, 10);
   }, [calendar.starts]);
+
+  const calendarRaceSeries = calendar.calendar?.series ?? [];
+  const calendarSelectionClasses = calendarSelection?.series.classes ?? [];
+  const selectedCalendarClass = calendarSelection?.className
+    ? calendarSelectionClasses.find((item) => item.name === calendarSelection.className)
+    : undefined;
+  const selectedCalendarStart = calendarSelection
+    ? calendar.starts.find((start) => start.seriesId === calendarSelection.series.id)
+    : undefined;
+  const selectedCalendarVenueCombinations = calendarSelection && selectedCalendarClass && catalogView
+    ? calendarSessionCombinations(
+        calendarSelection.series,
+        selectedCalendarClass,
+        catalogView.combinations,
+      )
+    : [];
+  const selectedCalendarLayouts = calendarSelection && selectedCalendarClass && catalogView
+    ? calendarSessionLayouts(
+        calendarSelection.series,
+        selectedCalendarClass,
+        catalogView.combinations,
+      )
+    : [];
+  const selectedCalendarLayout = calendarSelection?.trackLayout
+    ?? (selectedCalendarLayouts.length === 1 ? selectedCalendarLayouts[0].trackLayout : undefined);
+  const selectedCalendarAllCombinations = calendarSelection && selectedCalendarClass && catalogView
+    && selectedCalendarLayout
+    ? calendarSessionCombinations(
+        calendarSelection.series,
+        selectedCalendarClass,
+        catalogView.combinations,
+        selectedCalendarLayout,
+      )
+    : [];
+  const selectedCalendarCombinations = calendarSelection && selectedCalendarClass && selectedCalendarLayout
+    ? calendarSessionCombinations(
+        calendarSelection.series,
+        selectedCalendarClass,
+        automaticCombinations,
+        selectedCalendarLayout,
+      )
+    : [];
+
+  const selectCalendarRace = (series: RaceSeries) => {
+    const classes = series.classes ?? [];
+    setWizard(null);
+    setCalendarSelection({
+      series,
+      ...(classes.length === 1 ? { className: classes[0].name } : {}),
+    });
+  };
+
+  const createFromCalendarTelemetry = async (combinationId: string) => {
+    if (!calendarSelection?.className || !selectedCalendarStart || !catalogView) return;
+    const combination = selectedCalendarCombinations.find((item) => item.combinationId === combinationId);
+    if (!combination) return;
+    const created = createEventFromSeries(
+      store.events,
+      {
+        ...selectedCalendarStart,
+        vehicleClass: calendarSelection.className,
+        durationMin: calendarSelection.series.raceDurationMin ?? calendarSelection.series.durationMin,
+      },
+      me(),
+      {
+        strategyName: formatMessage(t("strategy.cards.newName"), { n: 1 }),
+        strategyNote: t("strategy.cards.newNote"),
+      },
+      "team",
+      "telemetry",
+    );
+    setSessionSave("saving");
+    try {
+      const saved = await persistStrategySessionSelection(
+        applicationClient,
+        catalogView,
+        created,
+        combination,
+        combination.sessions.map((session) => ({
+          sessionId: session.sessionId,
+          included: session.defaultIncluded,
+        })),
+      );
+      const view = await refreshStrategyPlanningInputs(applicationClient, saved, created.id);
+      setSessionCatalog({ status: "ready", view });
+      commit((current) => openEvent(upsertEvent(current, created), created.id));
+      setSessionPickerDismissed(created.id);
+      setCalendarSelection(null);
+      setSessionSave("idle");
+      setTab("overview");
+      toast.show(
+        t("strategy.form.createdTitle"),
+        formatMessage(t("strategy.form.createdHint"), { name: created.name }),
+      );
+    } catch {
+      setSessionSave("error");
+    }
+  };
 
   /**
    * Eventos recomendados del estado inicial: especiales del calendario y, si no
@@ -1962,21 +2102,27 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
               <span className="orbit-path__k">{t("strategy.wizard.fill.manual")}</span>
               <span className="orbit-path__d">{t("strategy.wizard.fill.manualHint")}</span>
             </Featured>
-            {/* Automática: la fuente de sesiones de telemetría (ADR 0005) aún no
-                llega al frontend, así que el control va deshabilitado y dice por qué. */}
             <Featured
-              className="orbit-strategy__opt--off"
+              className={automaticAvailable ? undefined : "orbit-strategy__opt--off"}
               data-testid="orbit-strategy-wizard-auto"
             >
               <span className="orbit-path__k">{t("strategy.wizard.fill.auto")}</span>
               <span className="orbit-path__d">{t("strategy.wizard.fill.autoHint")}</span>
+              <span className="orbit-path__d" data-testid="orbit-strategy-wizard-auto-reason" id="orbit-strategy-wizard-auto-reason">
+                {automaticReason}
+              </span>
               <Button
+                aria-describedby="orbit-strategy-wizard-auto-reason"
                 data-testid="orbit-strategy-wizard-auto-action"
-                data-tip={t("strategy.wizard.fill.autoTip")}
+                data-tip={automaticReason}
                 data-tip-side="top"
-                disabled
+                disabled={!automaticAvailable}
+                onClick={() => {
+                  setCalendarSelection(null);
+                  setWizard(null);
+                }}
                 size="sm"
-                variant="ghost"
+                variant={automaticAvailable ? "primary" : "ghost"}
               >
                 {t("strategy.wizard.fill.autoAction")}
               </Button>
@@ -2058,11 +2204,11 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
       <p className="orbit-strategy__empty-lead">{t("strategy.sessions.pickerLead")}</p>
       {sessionCatalog.status === "loading" ? (
         <p role="status">{t("strategy.sessions.loading")}</p>
-      ) : sessionCatalog.status === "ready" && sessionCatalog.view.combinations.length === 0 ? (
+      ) : sessionCatalog.status === "ready" && sessionPickerCombinations.length === 0 ? (
         <Note title={t("strategy.sessions.emptyTitle")}>{t("strategy.sessions.empty")}</Note>
       ) : sessionCatalog.status === "ready" ? (
         <div className="orbit-session-picker__list">
-          {sessionCatalog.view.combinations.map((combination) => (
+          {sessionPickerCombinations.map((combination) => (
             <Featured
               data-testid={`orbit-session-combination-${combination.combinationId}`}
               interactive
@@ -2101,6 +2247,246 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
     </Surface>
   ) : null;
 
+  const calendarRaceView = (
+    <Surface
+      aria-label={t("strategy.calendar.title")}
+      data-testid="orbit-strategy-calendar"
+      meta={calendar.calendar
+        ? formatMessage(t("strategy.calendar.meta"), { n: calendarRaceSeries.length })
+        : t("strategy.calendar.metaUnavailable")}
+      title={t("strategy.calendar.title")}
+    >
+      {calendar.calendar === null ? (
+        <Note title={t("strategy.calendar.unavailableTitle")}>
+          {t("strategy.calendar.unavailable")}
+        </Note>
+      ) : calendarSelection === null ? (
+        calendarRaceSeries.length === 0 ? (
+          <Note title={t("strategy.calendar.emptyTitle")}>{t("strategy.calendar.empty")}</Note>
+        ) : (
+          <div className="orbit-session-picker__list orbit-strategy__calendar-list">
+            {calendarRaceSeries.map((series) => {
+              const classes = series.classes ?? [];
+              const duration = series.raceDurationMin ?? series.durationMin;
+              const restrictions = [
+                series.tyres > 0
+                  ? formatMessage(t("strategy.calendar.tyres"), { n: series.tyres })
+                  : "",
+                series.veLimit && series.veLimit > 0
+                  ? formatMessage(t("strategy.calendar.veLimit"), { n: series.veLimit })
+                  : "",
+                series.setup === "fixed"
+                  ? t("strategy.calendar.setup.fixed")
+                  : series.setup === "open"
+                    ? t("strategy.calendar.setup.open")
+                    : "",
+              ].filter(Boolean);
+              return (
+                <Featured
+                  data-testid={`orbit-strategy-calendar-race-${series.id}`}
+                  interactive
+                  key={series.id}
+                  onClick={() => selectCalendarRace(series)}
+                >
+                  <span className="orbit-eyebrow">{series.name}</span>
+                  <span className="orbit-path__k">{series.track}</span>
+                  <span className="orbit-path__d">
+                    {classes.length > 0
+                      ? classes.map((item) => item.qualifier ? `${item.name} · ${item.qualifier}` : item.name).join(" · ")
+                      : t("strategy.calendar.classesMissing")}
+                  </span>
+                  {duration > 0 ? (
+                    <span className="orbit-path__d">
+                      {formatMessage(t("strategy.calendar.duration"), { n: duration })}
+                    </span>
+                  ) : null}
+                  {restrictions.length > 0 ? (
+                    <span className="orbit-session-picker__buckets">{restrictions.join(" · ")}</span>
+                  ) : null}
+                </Featured>
+              );
+            })}
+          </div>
+        )
+      ) : !calendarSelection.series.telemetryTrackName ? (
+        <div data-testid="orbit-strategy-calendar-identity-error">
+          <Note title={t("strategy.calendar.venueUnresolvedTitle")}>
+            {formatMessage(t("strategy.calendar.venueUnresolved"), {
+              track: calendarSelection.series.track,
+            })}
+          </Note>
+          <div className="orbit-strategy__wizard-acts">
+            <Button onClick={() => setCalendarSelection(null)} variant="ghost">
+              {t("strategy.calendar.back")}
+            </Button>
+            <Button data-testid="orbit-strategy-calendar-manual" onClick={startManualWizard} variant="ghost">
+              {t("strategy.calendar.manual")}
+            </Button>
+          </div>
+        </div>
+      ) : calendarSelectionClasses.length === 0 ? (
+        <div data-testid="orbit-strategy-calendar-classes">
+          <Note title={t("strategy.calendar.classesMissingTitle")}>
+            {t("strategy.calendar.classesMissingReason")}
+          </Note>
+          <Button data-testid="orbit-strategy-calendar-manual" onClick={startManualWizard} variant="ghost">
+            {t("strategy.calendar.manual")}
+          </Button>
+        </div>
+      ) : calendarSelection.className === undefined ? (
+        <div data-testid="orbit-strategy-calendar-classes">
+          <p className="orbit-strategy__empty-lead">
+            {formatMessage(t("strategy.calendar.chooseClass"), { track: calendarSelection.series.track })}
+          </p>
+          <div className="orbit-session-picker__list">
+            {calendarSelectionClasses.map((item) => (
+              <Featured
+                data-testid={`orbit-strategy-calendar-class-${item.name}`}
+                interactive
+                key={item.name}
+                onClick={() => setCalendarSelection({
+                  series: calendarSelection.series,
+                  className: item.name,
+                })}
+              >
+                <span className="orbit-path__k">{item.name}</span>
+                {item.qualifier ? <span className="orbit-path__d">{item.qualifier}</span> : null}
+              </Featured>
+            ))}
+          </div>
+          <Button onClick={() => setCalendarSelection(null)} variant="ghost">
+            {t("strategy.calendar.back")}
+          </Button>
+        </div>
+      ) : !selectedCalendarClass?.telemetryClassName ? (
+        <div data-testid="orbit-strategy-calendar-identity-error">
+          <Note title={t("strategy.calendar.classUnresolvedTitle")}>
+            {formatMessage(t("strategy.calendar.classUnresolved"), {
+              class: calendarSelection.className,
+            })}
+          </Note>
+          <div className="orbit-strategy__wizard-acts">
+            <Button onClick={() => setCalendarSelection(null)} variant="ghost">
+              {t("strategy.calendar.back")}
+            </Button>
+            <Button data-testid="orbit-strategy-calendar-manual" onClick={startManualWizard} variant="ghost">
+              {t("strategy.calendar.manual")}
+            </Button>
+          </div>
+        </div>
+      ) : sessionCatalog.status === "ready"
+        && sessionCatalog.view.status === "available"
+        && selectedCalendarVenueCombinations.length > 0
+        && selectedCalendarLayouts.length > 1
+        && calendarSelection.trackLayout === undefined ? (
+        <div data-testid="orbit-strategy-calendar-layouts">
+          <p className="orbit-strategy__empty-lead">
+            {formatMessage(t("strategy.calendar.chooseLayout"), {
+              track: calendarSelection.series.track,
+            })}
+          </p>
+          <div className="orbit-session-picker__list">
+            {selectedCalendarLayouts.map((layout) => (
+              <Featured
+                data-testid={`orbit-strategy-calendar-layout-${layout.trackLayout}`}
+                interactive
+                key={layout.trackLayout}
+                onClick={() => setCalendarSelection({
+                  ...calendarSelection,
+                  trackLayout: layout.trackLayout,
+                })}
+              >
+                <span className="orbit-path__k">{layout.trackLayout}</span>
+                <span className="orbit-path__d">
+                  {formatMessage(t(layout.sessionCount === 1
+                    ? "strategy.calendar.layoutSessionOne"
+                    : "strategy.calendar.layoutSessionMany"), { n: layout.sessionCount })}
+                </span>
+              </Featured>
+            ))}
+          </div>
+          <div className="orbit-strategy__wizard-acts">
+            <Button onClick={() => setCalendarSelection(null)} variant="ghost">
+              {t("strategy.calendar.back")}
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div data-testid="orbit-strategy-calendar-cars">
+          <p className="orbit-strategy__empty-lead">
+            {formatMessage(t("strategy.calendar.chooseCar"), {
+              track: calendarSelection.series.track,
+              class: calendarSelection.className,
+              layout: selectedCalendarLayout ?? "",
+            })}
+          </p>
+          {sessionCatalog.status === "loading" ? (
+            <p role="status">{t("strategy.wizard.fill.autoChecking")}</p>
+          ) : sessionCatalog.status === "error" ? (
+            <Note title={t("strategy.calendar.catalogUnavailableTitle")}>
+              {t("strategy.wizard.fill.autoCatalogUnavailable")}
+            </Note>
+          ) : sessionCatalog.view.status === "no_authorized_telemetry" ? (
+            <Note title={t("strategy.calendar.noSessionsTitle")}>
+              {t("strategy.wizard.fill.autoNoSessions")}
+            </Note>
+          ) : selectedCalendarVenueCombinations.length === 0 ? (
+            <Note title={t("strategy.calendar.noMatchTitle")}>
+              {t("strategy.calendar.noMatch")}
+            </Note>
+          ) : selectedCalendarAllCombinations.length === 0 ? (
+            <Note title={t("strategy.calendar.noLayoutMatchTitle")}>
+              {formatMessage(t("strategy.calendar.noLayoutMatch"), {
+                layout: selectedCalendarLayout ?? "",
+              })}
+            </Note>
+          ) : selectedCalendarCombinations.length === 0 ? (
+            <Note title={t("strategy.calendar.noClassifiedTitle")}>
+              {t("strategy.wizard.fill.autoNoClassifiedLaps")}
+            </Note>
+          ) : selectedCalendarStart === undefined ? (
+            <Note title={t("strategy.calendar.noStartTitle")}>
+              {t("strategy.calendar.noStart")}
+            </Note>
+          ) : (
+            <div className="orbit-session-picker__list">
+              {selectedCalendarCombinations.map((combination) => (
+                <Featured
+                  data-testid={`orbit-strategy-calendar-car-${combination.combinationId}`}
+                  interactive
+                  key={combination.combinationId}
+                  onClick={() => void createFromCalendarTelemetry(combination.combinationId)}
+                >
+                  <span className="orbit-path__k">{combination.carName}</span>
+                  <span className="orbit-path__d">{combination.trackLayout}</span>
+                  <span className="orbit-session-picker__buckets">
+                    {combination.climateBuckets.map((bucket) =>
+                      `${t(`strategy.sessions.bucket.${bucket.bucket}`)} ${bucket.laps}`,
+                    ).join(" · ")}
+                  </span>
+                </Featured>
+              ))}
+            </div>
+          )}
+          {sessionSave === "error" ? <p role="alert">{t("strategy.sessions.saveError")}</p> : null}
+          <div className="orbit-strategy__wizard-acts">
+            <Button onClick={() => setCalendarSelection(null)} variant="ghost">
+              {t("strategy.calendar.back")}
+            </Button>
+            {(sessionCatalog.status !== "ready"
+              || sessionCatalog.view.status !== "available"
+              || selectedCalendarCombinations.length === 0
+              || selectedCalendarStart === undefined) ? (
+              <Button data-testid="orbit-strategy-calendar-manual" onClick={startManualWizard} variant="ghost">
+                {t("strategy.calendar.manual")}
+              </Button>
+            ) : null}
+          </div>
+        </div>
+      )}
+    </Surface>
+  );
+
   const entryMenu = (
     <div className="orbit-strategy__empty-stack">
       <Surface
@@ -2136,6 +2522,8 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
           </Featured>
         </div>
       </Surface>
+
+      {calendarRaceView}
 
       <Surface
         aria-label={t("strategy.home.saved")}

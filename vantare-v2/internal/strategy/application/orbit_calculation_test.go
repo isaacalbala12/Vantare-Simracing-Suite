@@ -103,7 +103,7 @@ func TestCalculateOrbitRealMissingDerivedFamilyTerminates(t *testing.T) {
 		if plan.TotalLaps != 18 || plan.Stops != 0 || len(plan.Stints) != 1 {
 			t.Fatalf("plan = %+v", plan)
 		}
-		solved, err := solver.SolveV2(orbitSolverInput(18, input.Event, 105, 2.8, input.PlanningInputs))
+		solved, err := solver.SolveV2(orbitSolverInput(18, input.Event, 105, 2.8, strategyprojection.ClimateBucketDry, input.PlanningInputs))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -153,7 +153,7 @@ func TestOrbitMissingOrEmptyDerivedFamiliesDegradeWithCause(t *testing.T) {
 			if test.mutate != nil {
 				test.mutate(input.PlanningInputs.Projection)
 			}
-			result, err := solver.SolveV2(orbitSolverInput(18, input.Event, 105, 2.8, input.PlanningInputs))
+			result, err := solver.SolveV2(orbitSolverInput(18, input.Event, 105, 2.8, strategyprojection.ClimateBucketDry, input.PlanningInputs))
 			if err != nil {
 				t.Fatal(err)
 			}

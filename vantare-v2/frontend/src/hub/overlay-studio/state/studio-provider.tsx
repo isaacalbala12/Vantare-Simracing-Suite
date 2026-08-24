@@ -90,9 +90,9 @@ export function StudioProvider(props: {
     access: accessOverride,
   } = props;
   const access = accessOverride ?? DEFAULT_STUDIO_ACCESS;
-  // Stale-while-revalidate: la cache local del ultimo documento conocido siembra
-  // el historial en el inicializador de estado (una vez por montaje), para que
-  // los widgets pinten al instante mientras el load fresco viaja por IPC.
+  // Stale-while-revalidate: the local cache of the last known document seeds
+  // history in the state initializer (once per mount) so widgets paint
+  // instantly while the fresh load travels over IPC.
   const [seed] = useState(() => {
     const cached = readCachedStudioDocument(initialFile);
     return cached ? buildInitialHistory(cached) : null;
@@ -129,10 +129,22 @@ export function StudioProvider(props: {
         setAccessNotice(null);
         setLoadError(null);
         const initial = buildInitialHistory(loaded.document);
-        // Si el usuario ya edito sobre la semilla cacheada, se conservan sus
-        // ediciones y solo se re-ancora el baseline `saved` al disco real.
+        // If the user already edited on top of the cached seed, keep those
+        // edits and only re-anchor the `saved` baseline to the real disk doc.
         const editedSinceCache =
           seed !== null && historyRef.current !== seed.history;
+        // Fresh identical to the seed (common case: reopen unchanged): only
+        // update the revision — zero canvas re-render, zero jump.
+        const freshEqualsSeed =
+          seed !== null &&
+          !editedSinceCache &&
+          JSON.stringify(seed.history.present) === JSON.stringify(initial.history.present);
+        if (freshEqualsSeed) {
+          setRevision(loaded.revision);
+          revisionRef.current = loaded.revision;
+          writeCachedStudioDocument(initialFile, initial.history.present);
+          return;
+        }
         if (editedSinceCache && historyRef.current) {
           const rebased = markStudioHistorySaved(historyRef.current, loaded.document);
           setHistory(rebased);
@@ -146,7 +158,9 @@ export function StudioProvider(props: {
         setVisuallyMigratedWidgetIds(initial.migratedWidgetIds);
         setActiveSession("general");
         setSelectedWidgetId(null);
-        writeCachedStudioDocument(initialFile, loaded.document);
+        // Cache the ALREADY-mIGRATED document (what the canvas paints) so the
+        // next seed and the fresh load are identical by construction.
+        writeCachedStudioDocument(initialFile, initial.history.present);
       },
       (error: unknown) => {
         if (cancelled) {

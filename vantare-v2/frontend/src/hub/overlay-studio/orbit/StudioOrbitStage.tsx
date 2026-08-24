@@ -12,6 +12,7 @@ import { resolveCanvasBackground } from '../canvas/canvas-backgrounds';
 import { clientToLogical } from '../canvas/canvas-geometry';
 import { useCanvasInteraction } from '../canvas/useCanvasInteraction';
 import { useStudioTelemetrySnapshot } from '../canvas/studio-telemetry';
+import { useFontsReady } from '../canvas/use-fonts-ready';
 import { useStudioDocument, useStudioPreview } from '../state/studio-store';
 import { placeSelectionTag, type TagAnchor } from './selection-tag-placement';
 import { fill, widgetLabel } from './studio-orbit-model';
@@ -51,6 +52,10 @@ export function StudioOrbitStage(props: StudioOrbitStageProps): React.ReactEleme
   } = useStudioDocument();
   const { preview } = useStudioPreview();
   const liveSnapshot = useStudioTelemetrySnapshot();
+  // Los widgets pintan texto con metricas criticas: sin este gate, el swap de
+  // fuentes reflowea las filas justo tras el primer pintado (el 'salto
+  // inicial'). Con fuentes locales ready llega en milisegundos.
+  const fontsReady = useFontsReady();
   const stageRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<HTMLDivElement>(null);
   const [stageWidth, setStageWidth] = useState(0);
@@ -285,22 +290,24 @@ export function StudioOrbitStage(props: StudioOrbitStageProps): React.ReactEleme
           }}
         >
           <CanvasGuides guides={interaction.guides} />
-          {widgets.map((widget) => (
-            <StudioWidgetFrame
-              diagnostics={diagnostics}
-              key={widget.id}
-              layout={interaction.resolveLayout(widget)}
-              onFramePointerDown={interaction.onFramePointerDown}
-              onLostPointerCapture={interaction.onLostPointerCapture}
-              onResizePointerDown={interaction.onResizePointerDown}
-              onSelect={selectWidget}
-              previewActive={interaction.isWidgetPreviewActive(widget.id)}
-              selected={selectedWidgetId === widget.id}
-              snapshotOverride={snapshotOverride}
-              widget={widget}
-              fitSelectionToContent
-            />
-          ))}
+          {fontsReady
+            ? widgets.map((widget) => (
+                <StudioWidgetFrame
+                  diagnostics={diagnostics}
+                  key={widget.id}
+                  layout={interaction.resolveLayout(widget)}
+                  onFramePointerDown={interaction.onFramePointerDown}
+                  onLostPointerCapture={interaction.onLostPointerCapture}
+                  onResizePointerDown={interaction.onResizePointerDown}
+                  onSelect={selectWidget}
+                  previewActive={interaction.isWidgetPreviewActive(widget.id)}
+                  selected={selectedWidgetId === widget.id}
+                  snapshotOverride={snapshotOverride}
+                  widget={widget}
+                  fitSelectionToContent
+                />
+              ))
+            : null}
         </div>
 
         {/* Fuera del `scene`: la etiqueta se mide y se coloca en pixeles del

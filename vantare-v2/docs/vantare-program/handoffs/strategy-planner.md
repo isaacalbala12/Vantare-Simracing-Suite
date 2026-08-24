@@ -39,7 +39,9 @@ Actualización ISA-827 / ritmo representativo (2026-08-24, implementada en rama 
   modifica el store.
 - Verificación real read-only: 336 modelos, 5 sesiones de la combinación, seco
   válido con N=4 y mediana 142,003814697266 s mientras la curva permanece
-  missing/0 puntos; hash del fichero sin cambios. Analysis+Strategy, vet focal,
+  missing/0 puntos; hash del fichero sin cambios. El barrido de los 45 buckets
+  deja 19 Fuel/Pace válidos, 0 Fuel-válido/Pace-missing y conserva los 26 donde
+  ambas familias ya eran no válidas. Analysis+Strategy, vet focal,
   68 tests frontend focales y build pasan. El gate global conserva deuda previa:
   tres avisos `unsafe.Pointer` en vet y una clave i18n huérfana
   `strategy.wizard.fill.autoTip` (2938/2939 tests Vitest verdes), ambas presentes

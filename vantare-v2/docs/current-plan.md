@@ -17,7 +17,10 @@ Nota ISA-827 / ritmo representativo (2026-08-24, implementada en rama de issue):
   bucket, tiempo fiable, inclusión de Pace y presencia Fuel/VE en la misma
   vuelta. Prueba real read-only: 336 modelos, 5 sesiones Spa LMGT3, seco válido
   con 4 muestras y mediana 142,003814697266 s; curva missing/0 puntos; SHA-256
-  del store idéntico antes y después.
+  del store idéntico antes y después. En los 45 buckets originales, los 6
+  Fuel-válido/Pace-missing pasan a ambos válidos: queda 19 ambos válidos, 0
+  Fuel-válido/Pace-missing y 26 con ambas familias no válidas (los 24
+  unknown/unknown y 2 missing/missing ya observados).
 - Gates: Analysis+Strategy completos y vet focal verdes; build frontend verde y
   68 tests focales verdes. El Vitest global deja 2938/2939 tests verdes y falla
   solo el audit por la clave huérfana heredada `strategy.wizard.fill.autoTip`,

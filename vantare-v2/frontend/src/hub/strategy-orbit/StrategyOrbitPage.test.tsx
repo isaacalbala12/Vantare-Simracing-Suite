@@ -364,7 +364,7 @@ const WIZARD_DERIVED_PLANNING: StrategyPlanningInputsV2 = {
     computationVersion: "producer.v1",
     sourceSessions: ["spa-race-1"],
     combinationId: USABLE_SESSION_COMBINATION.combinationId,
-    fuelConsumption: { presence: "valid", provenance: { kind: "derived", sourceId: "aggregate:lmu:spa" }, confidence: { sampleSize: 27, rangeLower: 2.6, rangeUpper: 2.9, computationVersion: "producer.v1" }, meanPerLap: 2.75, rangeLower: 2.6, rangeUpper: 2.9 },
+    fuelConsumption: { presence: "valid", provenance: { kind: "derived", sourceId: "aggregate:lmu:spa" }, confidence: { sampleSize: 27, rangeLower: 2.6, rangeUpper: 2.9, computationVersion: "producer.v1" }, meanPerLap: 2.75, rangeLower: 2.6, rangeUpper: 2.9, byClimateBucket: { dry: 2.75 } },
     virtualEnergyConsumption: { presence: "missing", provenance: { kind: "derived" }, confidence: { sampleSize: 0, computationVersion: "producer.v1" }, reason: "missing_virtual_energy_consumption", meanPerLap: 0, rangeLower: 0, rangeUpper: 0 },
     combinedStintPaceCurve: { presence: "missing", provenance: { kind: "derived" }, confidence: { sampleSize: 0, computationVersion: "producer.v1" }, reason: "missing_combined_stint_pace_curve", identifiability: "combined_only", points: [] },
     tyreDegradation: { presence: "missing", provenance: { kind: "derived" }, confidence: { sampleSize: 0, computationVersion: "producer.v1" }, reason: "missing_tyre_degradation" },

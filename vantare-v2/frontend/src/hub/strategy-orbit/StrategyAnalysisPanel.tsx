@@ -17,6 +17,7 @@ import type {
 } from "../../strategy/strategy-application-client";
 import { clockTime, type StrategyEvent, type StrategyVariant } from "./strategy-orbit-model";
 import { strategyInputProvenance, type StrategyInputProvenanceView } from "./strategy-input-provenance";
+import { StrategyInfographicCard } from "./StrategyInfographicCard";
 
 type T = (key: string) => string;
 
@@ -209,6 +210,23 @@ export function StrategyAnalysisPanel({
         </div>
         {!ecoPlan ? <Note title={t("strategy.analysis.noEcoTitle")}>{t("strategy.analysis.noEcoReason")}</Note> : null}
       </Surface>
+
+      <StrategyInfographicCard
+        event={event}
+        inputs={[
+          { label: t("strategy.analysis.pace"), unit: "s/v", view: pace },
+          { label: t("strategy.analysis.consumption"), unit: "L", view: fuel },
+          { label: t("strategy.analysis.capacity"), unit: "L", view: tank },
+          { label: t("strategy.analysis.pitLoss"), unit: "s", view: pit },
+        ]}
+        plan={plan}
+        planName={active.name}
+        sessionCount={planningInputs?.projection?.sourceSessions?.length}
+        start={start}
+        subtitle={event.subtitle.includes(event.vehicleClass) ? event.subtitle : [event.vehicleClass, event.subtitle].filter(Boolean).join(" · ")}
+        t={t}
+        title={event.name}
+      />
 
       <Accordion className="orbit-analysis__log" summary={t("strategy.analysis.logSummary")} title={t("strategy.analysis.logTitle")}>
         <div className="orbit-analysis__log-actions"><Button onClick={() => void navigator.clipboard.writeText(log).then(() => setCopied(true))} size="sm" variant="ghost">{copied ? t("strategy.analysis.copied") : t("strategy.analysis.copy")}</Button></div>

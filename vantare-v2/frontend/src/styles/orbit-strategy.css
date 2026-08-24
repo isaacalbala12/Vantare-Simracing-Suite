@@ -1803,6 +1803,21 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Hoja de la estrategia: la vista previa es el mismo lienzo que se descarga,
+   así que lo único que hace falta es dejarla escalar sin deformarse. */
+
+.orbit-analysis__sheet .orbit-surface__body {
+  padding-top: 4px;
+}
+
+.orbit-analysis__sheet-canvas {
+  aspect-ratio: 1400 / 900;
+  border: 1px solid var(--orbit-line);
+  border-radius: var(--orbit-radius-control);
+  display: block;
+  width: 100%;
+}
+
 /* Log de cálculo */
 
 .orbit-analysis__log-actions {

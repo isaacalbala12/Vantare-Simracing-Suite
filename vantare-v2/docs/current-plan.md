@@ -1,3 +1,16 @@
+Nota ISA-831 / consumo climático honesto en ficha (2026-08-24, implementada en rama de issue):
+
+- El cliente TypeScript transporta y valida `byClimateBucket` tanto para
+  combustible como para energía virtual. Una proyección v2 antigua puede no
+  traer el mapa, pero esa ausencia no autoriza a reutilizar `meanPerLap`.
+- La ficha de piloto resuelve ritmo, combustible y la función común de energía
+  virtual con el bucket solicitado. Si falta, muestra `—` y la causa concreta;
+  seco nunca rellena lluvia ni otro clima.
+- Regresiones cubren bucket presente, bucket ausente con causa visible y
+  aislamiento entre buckets. Los 253 tests focales, typecheck real y build
+  pasan. Pendiente: comprobación de Isaac en la app real tras integrar; sin PR,
+  merge, promoción ni release.
+
 Nota ISA-830 / ficha de piloto y procedencia efectiva (2026-08-24, implementada en rama de issue):
 
 - La ficha de piloto ya no combina ritmo/consumo manuales del documento con

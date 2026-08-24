@@ -52,6 +52,11 @@ sin `identifiability==separable`.
 ## Fixtures / contract tests
 
 - `testdata/strategyinputprojection_v2_new.json` — fixture new completo (incluye gaps, reference no usado aun, climate buckets).
+- `fuelConsumption.byClimateBucket` y
+  `virtualEnergyConsumption.byClimateBucket` transportan exclusivamente los
+  escalares observados de cada clima. El mapa puede faltar en documentos v2
+  antiguos; un consumidor no puede sustituir un bucket ausente con
+  `meanPerLap` ni con otro bucket.
 - `representativePaceByClimateBucket` es una ampliación aditiva de v2 para
   documentos ya persistidos: puede faltar al leer una proyección anterior, pero
   todo productor nuevo publica los tres buckets. Cada ausencia lleva una causa

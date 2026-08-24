@@ -1,10 +1,14 @@
 package solver
 
+const maxSimpleResourceSearchNodes = 100_000
+
 // simpleResourceDecisions cierra el caso escalar sin dimensiones que puedan
 // beneficiarse de abrir un stint adicional. En ese espacio, el optimo probado
-// usa el minimo numero de stints: cada uno queda limitado solo por Fuel, VE o
-// vida de neumatico; el desempate canonico coloca la primera parada lo antes
-// posible y reposta la cantidad discretizada minima para el stint siguiente.
+// usa el minimo numero de stints: el coste de transito de una parada adicional
+// es mayor que todo el servicio que podria ahorrar. Dentro de ese numero minimo
+// se enumeran sin poda las longitudes y cantidades discretizadas, porque en
+// servicio paralelo cargar recurso adicional puede quedar oculto bajo otro.
+// Si el espacio reducido supera su cota explicita, se desactiva el atajo.
 func simpleResourceDecisions(
 	input SolverInputV2,
 	fuel, ve serviceResource,
@@ -52,81 +56,83 @@ func simpleResourceDecisions(
 	}
 
 	stintCount := (input.RaceLaps + maxStint - 1) / maxStint
-	lengths := make([]int64, stintCount)
-	remaining := input.RaceLaps
-	for index := int64(0); index < stintCount; index++ {
-		remainingStints := stintCount - index - 1
-		laps := remaining - remainingStints*maxStint
-		lengths[index] = laps
-		remaining -= laps
+	searchLimit := maxSimpleResourceSearchNodes
+	if input.Budget.MaxCandidates > 0 && input.Budget.MaxCandidates < searchLimit {
+		searchLimit = input.Budget.MaxCandidates
 	}
+	decisions, bounded := enumerateSimpleResourceDecisions(input, fuel, ve, maxStint, stintCount, driverID, searchLimit)
+	return decisions, bounded && len(decisions) > 0
+}
 
-	decisions := make([]DecisionVector, 0, 2)
-	canonical, ok := buildSimpleResourceDecision(input, fuel, ve, lengths, driverID)
-	if !ok {
-		return nil, false
+func enumerateSimpleResourceDecisions(
+	input SolverInputV2,
+	fuel, ve serviceResource,
+	maxStint, stintCount int64,
+	driverID string,
+	searchLimit int,
+) ([]DecisionVector, bool) {
+	decisions := make([]DecisionVector, 0, 16)
+	visited := 0
+	bounded := true
+	initial := DecisionVector{
+		PitStops: make([]PitStopDecision, 0, stintCount-1),
+		Stints:   make([]StintDecision, 0, stintCount),
 	}
-	decisions = append(decisions, canonical)
-	if stintCount > 1 {
-		balanced := make([]int64, stintCount)
-		base, extra := input.RaceLaps/stintCount, input.RaceLaps%stintCount
-		for index := range balanced {
-			balanced[index] = base
-			if int64(index) < extra {
-				balanced[index]++
+	var walk func(DecisionVector, int64, int64, int64, int64, int64)
+	walk = func(decision DecisionVector, remaining, stintsLeft, lap, fuelLevel, veLevel int64) {
+		if !bounded {
+			return
+		}
+		minimum := remaining - (stintsLeft-1)*maxStint
+		if minimum < 1 {
+			minimum = 1
+		}
+		maximum := maxStint
+		if lastPossible := remaining - (stintsLeft - 1); lastPossible < maximum {
+			maximum = lastPossible
+		}
+		for laps := minimum; laps <= maximum; laps++ {
+			visited++
+			if visited > searchLimit {
+				bounded = false
+				return
+			}
+			fuelAfter := fuelLevel - laps*fuel.perLap
+			veAfter := veLevel - laps*ve.perLap
+			if fuelAfter < 0 || veAfter < 0 {
+				continue
+			}
+			next := cloneDecision(decision)
+			next.Stints = append(next.Stints, StintDecision{
+				Index: len(next.Stints), Laps: laps, Driver: driverID, SavingLevel: SavingNone,
+			})
+			nextLap := lap + laps
+			if stintsLeft == 1 {
+				decisions = append(decisions, next)
+				continue
+			}
+			for _, fuelAmount := range serviceAmounts(fuelAfter, fuel) {
+				for _, veAmount := range serviceAmounts(veAfter, ve) {
+					visited++
+					if visited > searchLimit {
+						bounded = false
+						return
+					}
+					withPit := cloneDecision(next)
+					withPit.PitStops = append(withPit.PitStops, PitStopDecision{
+						Lap: nextLap, FuelLiters: serviceValue(fuelAmount), VEPercent: serviceValue(veAmount),
+						Driver: driverID, SavingLevel: SavingNone, ServiceMode: input.resolvedPitCost().ServiceMode, ChangeTyres: true,
+					})
+					walk(withPit, remaining-laps, stintsLeft-1, nextLap, fuelAfter+fuelAmount, veAfter+veAmount)
+				}
 			}
 		}
-		alternative, feasible := buildSimpleResourceDecision(input, fuel, ve, balanced, driverID)
-		if feasible && decisionKey(alternative) != decisionKey(canonical) {
-			decisions = append(decisions, alternative)
-		}
+	}
+	walk(initial, input.RaceLaps, stintCount, 0, fuel.capacity, ve.capacity)
+	if !bounded {
+		return nil, false
 	}
 	return decisions, true
-}
-
-func buildSimpleResourceDecision(input SolverInputV2, fuel, ve serviceResource, lengths []int64, driverID string) (DecisionVector, bool) {
-	decision := DecisionVector{
-		PitStops: make([]PitStopDecision, 0, len(lengths)-1),
-		Stints:   make([]StintDecision, 0, len(lengths)),
-	}
-	fuelLevel, veLevel := fuel.capacity, ve.capacity
-	lap := int64(0)
-	for index, laps := range lengths {
-		decision.Stints = append(decision.Stints, StintDecision{Index: index, Laps: laps, Driver: driverID, SavingLevel: SavingNone})
-		fuelLevel -= laps * fuel.perLap
-		veLevel -= laps * ve.perLap
-		lap += laps
-		if index == len(lengths)-1 {
-			break
-		}
-		fuelAmount, ok := minimumServiceForNextStint(fuelLevel, fuel, lengths[index+1])
-		if !ok {
-			return DecisionVector{}, false
-		}
-		veAmount, ok := minimumServiceForNextStint(veLevel, ve, lengths[index+1])
-		if !ok {
-			return DecisionVector{}, false
-		}
-		decision.PitStops = append(decision.PitStops, PitStopDecision{
-			Lap: lap, FuelLiters: serviceValue(fuelAmount), VEPercent: serviceValue(veAmount),
-			Driver: driverID, SavingLevel: SavingNone, ServiceMode: input.resolvedPitCost().ServiceMode, ChangeTyres: true,
-		})
-		fuelLevel += fuelAmount
-		veLevel += veAmount
-	}
-	return decision, true
-}
-
-func minimumServiceForNextStint(current int64, resource serviceResource, laps int64) (int64, bool) {
-	if resource.capacity == 0 {
-		return 0, true
-	}
-	needed := laps*resource.perLap - current
-	if needed <= 0 {
-		return 0, true
-	}
-	amount := ((needed + resource.step - 1) / resource.step) * resource.step
-	return amount, amount <= resource.capacity-current
 }
 
 func nodeFromEvaluation(decision DecisionVector, evaluation ScenarioEvaluation) searchNode {

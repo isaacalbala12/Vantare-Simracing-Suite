@@ -571,10 +571,14 @@ se agota, el resultado declara busqueda incompleta y no afirma optimalidad.
 - Cuando no hay curva ni degradación lineal, compuesto, peso, ahorro, clima o
   regla que pueda premiar un stint extra, y el tránsito cuesta más que todo
   servicio evitable, el mínimo
-  de stints se demuestra directamente con las cotas Fuel/VE/vida. La primera
-  parada queda tan pronto como permita completar los stints restantes y cada
-  servicio usa el mínimo múltiplo discretizado. Se reevalúa ese vector con
-  `ReplayDecisionV2`, así que no aparece una segunda fórmula de costes.
+  de stints se demuestra directamente con las cotas Fuel/VE/vida. Dentro de
+  ese número se enumeran sin poda todas las longitudes y cantidades Fuel/VE:
+  en modo paralelo una cantidad mayor puede ser gratuita mientras otro
+  servicio domina. El espacio reducido tiene una cota de 100.000 nodos; al
+  superarla se descarta entero y continúa la búsqueda general. Cada vector se
+  reevalúa con `ReplayDecisionV2`, así que no aparece una segunda fórmula de
+  costes. Una matriz de 300 entradas con semilla fija compara tiempo, paradas,
+  vueltas y cantidades contra el oráculo exhaustivo.
 - Una `CombinedStintPaceCurve` o `SavingCost` ausente o con lista vacía no se
   enumera ni se rellena. El resultado añade `combined_stint_pace_curve_degraded`
   o `saving_cost_degraded` con la razón original (o `empty_*`) y continúa sin

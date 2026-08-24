@@ -103,6 +103,15 @@ func TestCalculateOrbitRealMissingDerivedFamilyTerminates(t *testing.T) {
 		if plan.TotalLaps != 18 || plan.Stops != 0 || len(plan.Stints) != 1 {
 			t.Fatalf("plan = %+v", plan)
 		}
+		solved, err := solver.SolveV2(orbitSolverInput(18, input.Event, 105, 2.8, input.PlanningInputs))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if solved.ComputeStats.EvaluatedCandidates != 1 || solved.ComputeStats.Iterations != 0 ||
+			len(solved.CandidateDetails) == 0 || len(solved.CandidateDetails[0].Reasons) == 0 ||
+			solved.CandidateDetails[0].Reasons[0].Code != "optimal_after_scalar_resource_bound" {
+			t.Fatalf("ISA-825 did not use the exact scalar shortcut: stats=%+v candidates=%+v", solved.ComputeStats, solved.CandidateDetails)
+		}
 	case <-time.After(time.Second):
 		stack := make([]byte, 1<<20)
 		stack = stack[:runtime.Stack(stack, true)]

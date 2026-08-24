@@ -17,14 +17,17 @@ const FILL_OPACITY_SPAN = 0.55;
 export function DeltaRedlineTemplate({
   model,
   showReference,
+  motionEnabled = true,
 }: {
   model: DeltaViewModel;
   showReference: boolean;
+  /** El lienzo de Studio no emite: el movimiento es comportamiento de Desktop/OBS. */
+  motionEnabled?: boolean;
 }) {
   const magnitude = Math.min(1, Math.abs(model.progress));
   const direction = model.progress < 0 ? "gain" : model.progress > 0 ? "loss" : undefined;
   const rootRef = useRef<HTMLDivElement | null>(null);
-  useDeltaMotion(model, model.status === "ready", rootRef);
+  useDeltaMotion(model, motionEnabled && model.status === "ready", rootRef);
 
   return (
     <div className="ven-dred-root" ref={rootRef}>

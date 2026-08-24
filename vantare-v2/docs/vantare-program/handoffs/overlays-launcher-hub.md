@@ -10,6 +10,60 @@
 
 ## Estado
 
+- **Salto inicial de widgets resuelto (2026-08-22, misma rama):** causa raiz
+  era la carrera font-swap (14 @font-face con display:swap) contra el nuevo
+  pintado instantaneo SWR, mas el swap semilla/fresco re-renderizando el
+  lienzo. Fixes: font-display:block, gate useFontsReady en el lienzo Orbit
+  (timeout 1,5 s), cache del documento ya migrado y skip del swap cuando
+  fresco identico a la semilla. Evidencia objetiva Playwright: fonts loaded
+  en primer pintado y delta 0.00 px a +1,5 s. Gates PASS: 379/2920, TC, lint,
+  build.
+
+- **ISA-814 · Studio SWR (2026-08-22, misma rama que ISA-800):** los widgets
+  del Studio tardaban en montarse porque el documento llegaba por IPC antes de
+  pintar. Nueva \studio-doc-cache.ts\ (localStorage, 3 MB LRU) + semilla del
+  historial en el inicializador de estado del provider (patron conforme a las
+  reglas react-hooks v7: sin refs ni setState en effects) + guard de
+  ediciones sobre la semilla (conserva cambios, re-ancora saved al fresco) +
+  reescritura de cache al guardar. Launcher catalogo/iconos persistentes
+  queda como siguiente corte del mismo patron. Gates PASS: 377/2915,
+  typecheck, lint focal, build.
+
+- **ISA-800 · Navegacion instantanea (2026-08-22, rama
+  \antareapp/isa-nav-perf-corte-1\ apilada sobre ISA-793):** (1) las 10
+  paginas del hub pasan a React.lazy con ids de hueco extraidos a
+  \orbit-slot-ids.ts\ y prefetch en idle tras el primer pintado; el chunk
+  inicial baja de ~1,65 MB a ~0,33 MB (AppShell 1651->128 KB). (2) Modo
+  rendimiento por defecto: \getStoredReduceMotion\ invertido (sin preferencia
+  => reducido), \pplyReduceMotion\ ahora se aplica en el arranque desde
+  main.tsx, y CSS bajo data-reduce-motion replica el congelado de resizing
+  sobre .orbit-root y quita backdrop-filter de surface/topbar/toolbar.
+  (3) RacesOrbitPage: solo las cuentas atras consumen segundos; el resto usa
+  el reloj de 30 s. Gates PASS: suite 376/2910, typecheck, lint focal, build;
+  test de Ajustes actualizado al nuevo default invertido. Fuera de alcance:
+  manualChunks vendor y fuentes (corte propio).
+
+- **ISA-799 · Movimiento Redline apagado en Studio (2026-08-22, en la misma
+  rama que ISA-793):** bug reportado por Isaac: las filas del Relative
+  Endurance saltaban al clickar cualquier widget. Causa: los motores FLIP de
+  Relative/Standings/Delta Redline quedaban activos en el lienzo de edicion y
+  el ciclo congelar/restaurar snapshot del gesto convertia la deriva acumulada
+  en cruces falsos. Fix: plumado de renderMode hasta los tres templates y gate
+  \motionEnabled = renderMode !== 'studio'\ — el movimiento es comportamiento
+  de emision (Desktop/OBS), no de edicion. Tests nuevos: sin motion no se
+  programa ningun animate ante fila nueva; con emision si. Gates PASS: suite
+  completa 376/2910, typecheck, lint, build.
+
+- **ISA-793 · Etiqueta hija del marco, movimiento atomico (2026-08-22, en rama):**
+  corte estructural que sustituye al parche ISA-789/PR #792. La etiqueta de
+  seleccion se monta via portal dentro del envoltorio de seleccion del marco
+  (selectionPortalRef opcional en StudioWidgetFrame), asi que el navegador
+  la mueve con el de forma atomica; el loop rAF solo corrige clamp/lado en
+  coords logicas locales y sin setState por frame. Gates locales PASS: suite
+  completa 376 archivos/2908 tests, typecheck, ESLint focal, build. Test A2 de
+  caracterizacion actualizado al nuevo invariante (dentro de la caja, sin
+  contra-escala). PR draft hacia nightly tras push; pendiente review de Isaac.
+
 - **Ajustes Orbit: autosave de atajos, descarga de informe y búsqueda
   (2026-08-22, en rama):** tres mejoras de la pantalla Ajustes sobre
   `origin/nightly@4ec98fea`, rama `vantareapp/isa-767-ajustes-orbit-autosave-informe-busqueda`,

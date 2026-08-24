@@ -79,7 +79,9 @@ import {
 } from "./settings-orbit-model";
 import "../../styles/orbit-settings.css";
 
-export const SETTINGS_CONTEXT_SLOT_ID = "orbit-settings-context-slot";
+import { SETTINGS_CONTEXT_SLOT_ID } from "../components/orbit/orbit-slot-ids";
+
+export { SETTINGS_CONTEXT_SLOT_ID };
 
 const THEME_SWATCHES: { id: ThemeId; g1: string; g2: string }[] = [
   { id: "vantare-orbit", g1: "#0d0e11", g2: "#d52f49" },

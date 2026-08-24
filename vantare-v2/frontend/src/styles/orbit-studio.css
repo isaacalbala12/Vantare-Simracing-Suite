@@ -262,6 +262,13 @@
   white-space: nowrap;
   box-shadow: 0 8px 23px rgba(213, 47, 73, 0.35);
   pointer-events: none;
+  /* La posicion y la visibilidad las escribe el seguidor imperativo
+     (`data-ready`): React renderiza el contenido, nunca la geometria. */
+  visibility: hidden;
+}
+
+.orbit-studio-stage__tag[data-ready="true"] {
+  visibility: visible;
 }
 
 /* Un widget oculto se marca en la propia etiqueta y ofrece ahi mismo la salida:

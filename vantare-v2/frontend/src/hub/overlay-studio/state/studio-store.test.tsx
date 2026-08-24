@@ -1,5 +1,5 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { AccessContext } from "../../../lib/access-policy";
 import { deltaDefinition } from "../../../overlay/widget-types/delta/delta-definition";
 import type { ProfileDocumentV3, WidgetInstanceV3 } from "../../../overlay/core/profile-document";
@@ -106,6 +106,12 @@ function wrapper(
     );
   };
 }
+
+afterEach(() => {
+  for (const key of Object.keys(window.localStorage)) {
+    if (key.startsWith("vantare.studio.doc.")) window.localStorage.removeItem(key);
+  }
+});
 
 describe("StudioProvider", () => {
   it("loads the profile and exposes the active layout", async () => {

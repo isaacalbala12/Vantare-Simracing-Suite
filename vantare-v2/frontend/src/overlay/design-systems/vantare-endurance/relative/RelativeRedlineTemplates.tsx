@@ -292,14 +292,17 @@ export function RelativeRedlineTemplate({
   settings,
   variant,
   showHeader,
+  motionEnabled = true,
 }: {
   model: RelativeViewModel;
   settings: Readonly<Record<string, unknown>>;
   variant: RelativeRedlineVariant;
   showHeader: boolean;
+  /** El lienzo de Studio no emite: el movimiento es comportamiento de Desktop/OBS. */
+  motionEnabled?: boolean;
 }) {
   const rootRef = useRef<HTMLDivElement | null>(null);
-  const motion = useRelativeMotion(model, model.status === "ready", rootRef);
+  const motion = useRelativeMotion(model, motionEnabled && model.status === "ready", rootRef);
 
   // Departed rows are put back where they sat and marked, so the variants keep
   // rendering a plain list and the fold happens in the right place.

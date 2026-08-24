@@ -113,7 +113,9 @@ import {
 import "../../styles/orbit-strategy.css";
 
 /** Hueco que la shell reserva para la columna de Estrategia (briefing 07). */
-export const STRATEGY_CONTEXT_SLOT_ID = "orbit-strategy-context-slot";
+import { STRATEGY_CONTEXT_SLOT_ID } from "../components/orbit/orbit-slot-ids";
+
+export { STRATEGY_CONTEXT_SLOT_ID };
 
 type StrategyTab = "overview" | "strategies" | "availability";
 /** Camino elegido en el último paso del asistente (`00-decisiones.md`, D-W4-2). */

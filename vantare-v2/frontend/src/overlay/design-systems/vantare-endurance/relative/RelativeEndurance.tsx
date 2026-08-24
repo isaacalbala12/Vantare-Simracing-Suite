@@ -77,8 +77,10 @@ function NeoTemplate({
   );
 }
 
-export function RelativeEndurance({ model, settings }: WidgetRendererProps<RelativeViewModel>) {
+export function RelativeEndurance({ model, settings, renderMode }: WidgetRendererProps<RelativeViewModel>) {
   const parsed = parseRelativeEnduranceSettings(settings);
+  // El lienzo de Studio edita, no emite: el movimiento Redline es de carrera.
+  const motionEnabled = renderMode !== "studio";
 
   const redlineVariant = REDLINE_VARIANTS[parsed.templateId];
   if (redlineVariant) {
@@ -96,6 +98,7 @@ export function RelativeEndurance({ model, settings }: WidgetRendererProps<Relat
           settings={settings}
           variant={redlineVariant}
           showHeader={parsed.showHeader}
+          motionEnabled={motionEnabled}
         />
       </section>
     );

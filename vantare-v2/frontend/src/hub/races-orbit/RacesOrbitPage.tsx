@@ -51,8 +51,12 @@ import {
 import "../../styles/orbit-races.css";
 
 /** Huecos que la shell reserva para Carreras (briefing 06). */
-export const RACES_CONTEXT_SLOT_ID = "orbit-races-context-slot";
-export const RACES_TOPBAR_SLOT_ID = "orbit-races-topbar-slot";
+import {
+  RACES_CONTEXT_SLOT_ID,
+  RACES_TOPBAR_SLOT_ID,
+} from "../components/orbit/orbit-slot-ids";
+
+export { RACES_CONTEXT_SLOT_ID, RACES_TOPBAR_SLOT_ID };
 
 export type RacesView = "next" | "day" | "week" | "month" | "timeline";
 
@@ -133,6 +137,8 @@ export function RacesOrbitPage({ calendar, target, now }: RacesOrbitPageProps) {
   const topbarSlot = useOrbitSlot(RACES_TOPBAR_SLOT_ID);
 
   const clock = useClock(now, TICK_MS);
+  // Rendimiento: solo las cuentas atras consumen segundos; el resto de la
+  // pagina se recalcula con el reloj de 30 s (columnClock).
   const columnClock = useClock(now, COLUMN_MS);
 
   const [view, setView] = useState<RacesView>("next");
@@ -172,9 +178,9 @@ export function RacesOrbitPage({ calendar, target, now }: RacesOrbitPageProps) {
   const openDay = useCallback(
     (day: Date) => {
       setView("day");
-      setOffset(dayOffsetBetween(clock, day));
+      setOffset(dayOffsetBetween(columnClock, day));
     },
-    [clock],
+    [columnClock],
   );
 
   const refresh = useCallback(() => {
@@ -224,25 +230,25 @@ export function RacesOrbitPage({ calendar, target, now }: RacesOrbitPageProps) {
 
   // ── vistas ─────────────────────────────────────────────────────────────
   const nextGroups = useMemo(
-    () => (view === "next" ? groupByHour(upcomingRows(visible, clock, NEXT_ROWS)) : []),
-    [clock, view, visible],
+    () => (view === "next" ? groupByHour(upcomingRows(visible, columnClock, NEXT_ROWS)) : []),
+    [columnClock, view, visible],
   );
-  const dayBase = useMemo(() => dayAnchor(clock, offset), [clock, offset]);
+  const dayBase = useMemo(() => dayAnchor(columnClock, offset), [columnClock, offset]);
   const hours = useMemo(
-    () => (view === "day" ? dayRows(visible, dayBase, clock) : []),
-    [clock, dayBase, view, visible],
+    () => (view === "day" ? dayRows(visible, dayBase, columnClock) : []),
+    [columnClock, dayBase, view, visible],
   );
-  const monday = useMemo(() => weekAnchor(clock, offset), [clock, offset]);
+  const monday = useMemo(() => weekAnchor(columnClock, offset), [columnClock, offset]);
   const week = useMemo(
-    () => (view === "week" ? weekRows(visible, monday, clock) : []),
-    [clock, monday, view, visible],
+    () => (view === "week" ? weekRows(visible, monday, columnClock) : []),
+    [columnClock, monday, view, visible],
   );
-  const first = useMemo(() => monthAnchor(clock, offset), [clock, offset]);
+  const first = useMemo(() => monthAnchor(columnClock, offset), [columnClock, offset]);
   const month = useMemo(
-    () => (view === "month" ? monthDays(visible, first, clock, calendar?.events ?? []) : []),
-    [calendar?.events, clock, first, view, visible],
+    () => (view === "month" ? monthDays(visible, first, columnClock, calendar?.events ?? []) : []),
+    [calendar?.events, columnClock, first, view, visible],
   );
-  const tlStart = useMemo(() => timelineStart(clock), [clock]);
+  const tlStart = useMemo(() => timelineStart(columnClock), [columnClock]);
   const tlRows = useMemo(
     () => (view === "timeline" ? timelineRows(visible, tlStart) : []),
     [tlStart, view, visible],
@@ -305,8 +311,8 @@ export function RacesOrbitPage({ calendar, target, now }: RacesOrbitPageProps) {
   // El detalle pide las salidas directamente al motor: `upcoming` toma solo dos
   // por serie antes de ordenar (`13.3`) y aquí hacen falta las cuatro próximas.
   const detailStarts = useMemo(
-    () => (selected ? nextStarts(selected.engine, clock, DETAIL_STARTS) : []),
-    [clock, selected],
+    () => (selected ? nextStarts(selected.engine, columnClock, DETAIL_STARTS) : []),
+    [columnClock, selected],
   );
   /** Salida que manda en el detalle: la elegida a mano o la próxima. */
   const detailAt = pickedAt ?? detailStarts[0] ?? null;
@@ -521,7 +527,7 @@ export function RacesOrbitPage({ calendar, target, now }: RacesOrbitPageProps) {
           fill
           meta={
             <span className="orbit-races__clock">
-              {pad2(clock.getHours())}:{pad2(clock.getMinutes())} · {timeZone}
+              {pad2(columnClock.getHours())}:{pad2(columnClock.getMinutes())} · {timeZone}
             </span>
           }
           title={calendarTitle}
@@ -613,7 +619,7 @@ export function RacesOrbitPage({ calendar, target, now }: RacesOrbitPageProps) {
                       <button
                         className="orbit-races__chip"
                         data-followed={event.entry.followed ? "true" : undefined}
-                        data-past={event.at < clock ? "true" : undefined}
+                        data-past={event.at < columnClock ? "true" : undefined}
                         data-testid="orbit-races-ev-chip"
                         key={`${event.entry.id}-${event.at.getTime()}`}
                         onClick={() => select(event.entry.id, event.at)}
@@ -675,7 +681,7 @@ export function RacesOrbitPage({ calendar, target, now }: RacesOrbitPageProps) {
                             <button
                               className="orbit-races__slot"
                               data-followed={row.entry.followed ? "true" : undefined}
-                              data-past={slot < clock ? "true" : undefined}
+                              data-past={slot < columnClock ? "true" : undefined}
                               data-testid="orbit-races-week-slot"
                               key={slot.getTime()}
                               onClick={() => select(row.entry.id, slot)}
@@ -812,7 +818,7 @@ export function RacesOrbitPage({ calendar, target, now }: RacesOrbitPageProps) {
                 label={t("races.timelineTitle")}
                 maxPxPerHour={maxPxPerHour}
                 minPxPerHour={minPxPerHour}
-                now={clock}
+                now={columnClock}
                 onAxisWidth={onAxisWidth}
                 onBlock={(id) => {
                   const cut = id.lastIndexOf("-");
@@ -921,7 +927,7 @@ export function RacesOrbitPage({ calendar, target, now }: RacesOrbitPageProps) {
                 </Button>
                 <Button
                   data-testid="orbit-races-see-day"
-                  onClick={() => openDay(detailAt ?? clock)}
+                  onClick={() => openDay(detailAt ?? columnClock)}
                   size="sm"
                 >
                   {t("races.detail.seeDay")}

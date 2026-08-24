@@ -815,3 +815,27 @@ button.orbit-pill:hover { color: #fff; border-color: rgba(240, 71, 85, 0.25); }
 }
 
 /* Los toasts viven en el kit (`ui/orbit/Toast.tsx` + `orbit-kit.css`). */
+
+/* ======================================================= MODO RENDIMIENTO */
+
+/* \data-reduce-motion\ ya cero-ea todas las duraciones del kit y de body
+   (orbit-settings.css). Aqui se completa el modo rendimiento permanente:
+   replica para el uso diario el congelado que \data-orbit-resizing\ aplica
+   solo durante el arrastre del borde — sin blur (cada superficie con
+   backdrop-filter re-desenfoca lo de abajo en cada frame) y sin animaciones
+   en bucle (shimmer, pulsos). Isaac: rendimiento primero; el modo visual
+   atractivo llegara despues como opcion. */
+body[data-reduce-motion='true'] .orbit-surface,
+body[data-reduce-motion='true'] .orbit-topbar,
+body[data-reduce-motion='true'] .orbit-studio-toolbar {
+  backdrop-filter: none;
+}
+
+body[data-reduce-motion='true'] .orbit-root *,
+body[data-reduce-motion='true'] .orbit-root *::before,
+body[data-reduce-motion='true'] .orbit-root *::after {
+  animation: none !important;
+}
+
+/* Placeholder de carga de pagina lazy: sin spinner ni animacion. */
+.orbit-page-loading { min-height: 240px; }

@@ -30,6 +30,15 @@ export type StudioOrbitStageProps = {
 };
 
 /**
+ * Ultima geometria del stage, persistida entre montajes: al volver al Studio
+ * el primer render nace con la escala correcta en vez de la ventana
+ * cero->medicion (que con las transiciones a cero se ve como un salto). El
+ * effecto de medicion verifica contra el DOM real antes del pintado, asi que
+ * una cache desfasada nunca llega a verse.
+ */
+let lastStageGeometry: { width: number; height: number } | null = null;
+
+/**
  * Lienzo Orbit del Studio (`06 § Overlays Studio`).
  *
  * Cambia la caja —`stage-wrap` con scroll, `stage` 16:9 con
@@ -58,10 +67,11 @@ export function StudioOrbitStage(props: StudioOrbitStageProps): React.ReactEleme
   const fontsReady = useFontsReady();
   const stageRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<HTMLDivElement>(null);
-  const [stageWidth, setStageWidth] = useState(0);
+  // Arranque con la ultima geometria persistida (ver comentario de modulo).
+  const [stageWidth, setStageWidth] = useState(() => lastStageGeometry?.width ?? 0);
   // El alto medido lo necesita la etiqueta de seleccion para decidir si cabe
   // arriba del widget; el ancho ya mandaba la escala del plano logico.
-  const [stageHeight, setStageHeight] = useState(0);
+  const [stageHeight, setStageHeight] = useState(() => lastStageGeometry?.height ?? 0);
 
   const layoutViewport = resolveLayoutViewport(document ?? {});
 
@@ -73,6 +83,9 @@ export function StudioOrbitStage(props: StudioOrbitStageProps): React.ReactEleme
       const height = node.clientHeight;
       if (height > 0) setStageHeight((current) => (current === height ? current : height));
       if (width > 0) setStageWidth((current) => (current === width ? current : width));
+      if (width > 0 && height > 0) {
+        lastStageGeometry = { width, height };
+      }
     };
     update();
     if (typeof ResizeObserver === 'undefined') {

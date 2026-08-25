@@ -37,6 +37,12 @@ interface StrategyAnalysisPanelProps {
 
 type TimelineRow = { name: string; own: boolean };
 
+function classPaceReasonLabel(reason: string | undefined, t: T): string {
+  return reason === "no_class_pace_source"
+    ? t("strategy.inputs.reason.no_class_pace_source")
+    : t("strategy.inputs.reason.unavailable");
+}
+
 function Provenance({ kind, t }: { kind: StrategyInputProvenanceView["kind"] | "derived"; t: T }) {
   return <Chip caseNormal>{t(`strategy.inputs.chip.${kind}`)}</Chip>;
 }
@@ -83,6 +89,15 @@ export function StrategyAnalysisPanel({
   const classNames = classes.length ? [...new Set(classes)] : [ownClass];
   if (!classNames.includes(ownClass)) classNames.push(ownClass);
   const rows: TimelineRow[] = classNames.map((name) => ({ name, own: name === ownClass }));
+  const classPace = planningInputs?.projection?.classPace;
+  const classPaceSeconds = (className: string): number | undefined => {
+    if (classPace?.presence !== "valid") return undefined;
+    const value = classPace.byClassName[className];
+    return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : undefined;
+  };
+  const otherRows = rows.filter((row) => !row.own);
+  const missingClassPaceRows = otherRows.filter((row) => classPaceSeconds(row.name) === undefined);
+  const classPaceMissingReason = classPaceReasonLabel(classPace?.reason, t);
   const spanMin = Math.ceil(event.durationMin * 1.02);
   const timelineBlocks = (row: TimelineRow): TimelineBlock[] => {
     if (!row.own) return [];
@@ -154,13 +169,18 @@ export function StrategyAnalysisPanel({
           className="orbit-analysis__timeline"
           headWidth={150}
           label={t("strategy.analysis.timelineTitle")}
-          rowLabel={(row) => <span className="orbit-analysis__class" data-own={row.own ? "true" : undefined}><i aria-hidden="true" />{row.name}</span>}
+          rowLabel={(row) => <span
+            className="orbit-analysis__class"
+            data-class-name={row.name}
+            data-class-pace-seconds={classPaceSeconds(row.name)}
+            data-own={row.own ? "true" : undefined}
+          ><i aria-hidden="true" />{row.name}</span>}
           rows={rows}
           spanMin={spanMin}
           start={start}
           tickEveryMin={Math.max(15, Math.min(60, Math.round(event.durationMin / 6 / 15) * 15))}
         />
-        {rows.some((row) => !row.own) ? <Note title={t("strategy.analysis.classPaceMissingTitle")}>{t("strategy.analysis.classPaceMissingReason")}</Note> : null}
+        {missingClassPaceRows.length ? <Note title={t("strategy.analysis.classPaceMissingTitle")}>{classPaceMissingReason}</Note> : null}
       </Surface>
 
       <Surface title={t("strategy.analysis.multiclassTitle")}>
@@ -176,7 +196,12 @@ export function StrategyAnalysisPanel({
             <div className="orbit-analysis__table-wrap">
               <table className="orbit-analysis__table">
                 <thead><tr><th>{t("strategy.analysis.class")}</th><th>{t("strategy.analysis.firstCatch")}</th><th>{t("strategy.analysis.frequency")}</th><th>{t("strategy.analysis.totalPasses")}</th></tr></thead>
-                <tbody>{rows.filter((row) => !row.own).map((row) => <tr key={row.name}><th>{row.name}</th><td colSpan={3}>{t("strategy.analysis.classPaceMissingShort")}</td></tr>)}</tbody>
+                <tbody>{otherRows.map((row) => {
+                  const paceSeconds = classPaceSeconds(row.name);
+                  return <tr data-class-name={row.name} data-class-pace-seconds={paceSeconds} key={row.name}>
+                    <th>{row.name}</th><td colSpan={3}>{paceSeconds === undefined ? classPaceMissingReason : "—"}</td>
+                  </tr>;
+                })}</tbody>
               </table>
             </div>
           </>

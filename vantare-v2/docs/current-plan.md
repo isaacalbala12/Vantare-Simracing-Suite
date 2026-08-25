@@ -1,3 +1,10 @@
+Nota ISA-832 / reserva obligatoria del plan (2026-08-25, implementada en rama de issue):
+
+- Orbit configura por defecto 0,8 vueltas de reserva de Fuel y VE con procedencia `product-decision:isa-832`; el evento puede sustituirla mediante `reserve_laps` sin cambiar código.
+- SolverV2 trata la reserva como restricción dura en el plan normal, ahorro y escenarios de clima. Publica margen pedido, restante, vueltas efectivas, recurso limitante y cumplimiento; un caso imposible conserva `reserve_not_met` y no devuelve un plan factible.
+- El atajo escalar incorpora la reserva al mínimo de stints. Fuel escalar sin otro servicio usa un cierre exacto lineal; Fuel×VE conserva la enumeración acotada y la paridad aleatorizada contra el oráculo exhaustivo.
+- Tests focales de manual, solver, documento y aplicación pasan. Gate final `go test ./internal/strategy/... -count=1` verde; pendiente `go vet` y prueba de Isaac en Wails/LMU real tras integrar. Sin PR, merge, promoción ni release.
+
 Nota ISA-831 / consumo climático honesto en ficha (2026-08-24, implementada en rama de issue):
 
 - El cliente TypeScript transporta y valida `byClimateBucket` tanto para

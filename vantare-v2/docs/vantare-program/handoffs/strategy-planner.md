@@ -17,6 +17,14 @@ son fases históricas.
 
 ## Estado
 
+Actualización ISA-832 / reserva obligatoria (2026-08-25, implementada en rama de issue):
+
+- La decisión de producto vive en el adaptador Orbit como 0,8 vueltas con procedencia `product-decision:isa-832`. `PlanningInputReserveLaps` permite modificarla por evento y se proyecta a las reservas Fuel/VE existentes de `manual`.
+- SolverV2 rechaza cualquier candidato que termine por debajo del margen. El resultado publica cumplimiento, margen efectivo, cantidades y recurso limitante; `reserve_not_met` llega a `Reasons` y al error de aplicación cuando ninguna parada puede hacerlo factible.
+- La misma comprobación se ejecuta al reproducir decisiones, elegir ahorro, evaluar candidatos robustos y resolver cada escenario climático. Orbit publica el estado por plan y por escenario sin cálculo de dominio en TypeScript.
+- El atajo sigue activo con reserva: la cota incluye el recurso final y el caso Fuel escalar puro tiene cierre exacto lineal; Fuel×VE conserva enumeración acotada. La paridad usa 300 casos mixtos más 100 de Fuel escalar contra el oráculo exhaustivo.
+- Gate final `go test ./internal/strategy/... -count=1` verde. Pendiente `go vet` y prueba Wails/LMU real de Isaac tras integrar. Sin PR, merge, promoción ni release.
+
 Actualización ISA-831 / consumo por clima (2026-08-24, implementada en rama de issue):
 
 - El contrato TypeScript de `StrategyInputProjection v2` ya conserva y valida

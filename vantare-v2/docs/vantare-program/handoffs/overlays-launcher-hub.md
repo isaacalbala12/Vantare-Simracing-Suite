@@ -11,7 +11,7 @@
 ## Estado
 
 - **ISA-842 — autosave e historial productivo de Overlay Studio (2026-08-25,
-  implementado en rama):** rebasada sobre `origin/nightly@c7d25f94`, la rama
+  PR draft a nightly):** rebasada sobre `origin/nightly@c7d25f94`, la rama
   `vantareapp/isa-842-studio-autosave-undo` convierte cada cambio documental
   confirmado en autosave con debounce de 300 ms. `StudioProvider` mantiene un
   único save en vuelo y coalesce ediciones posteriores sobre la revisión
@@ -30,7 +30,9 @@
   `car-damage-numbers-view-model-v2.ts`, fuera de alcance. En el harness Orbit
   con Wails mock, X se guardó de 1560 a 1500; `Ctrl+Z` restauró 1560 y
   `Ctrl+Shift+Z` rehizo 1500, ambos con estado `saved`. Falta prueba manual en el
-  ejecutable Wails real. Sin PR, integración ni promoción.
+  ejecutable Wails real. Implementación en `2d71870f` y guard de revisión SWR
+  en `8810f2f4`; PR draft **#853** hacia `nightly`. Sin integración ni
+  promoción.
 
 - **ISA-770 — saltos de widgets en Studio (2026-08-25, PR a nightly):**
   la medición A/B en Wails/WebView2 separó dos caminos. En movimiento reducido,

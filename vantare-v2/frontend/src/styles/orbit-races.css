@@ -170,7 +170,9 @@
 .orbit-races__nrow {
   position: relative;
   display: grid;
-  grid-template-columns: 10px minmax(0, 1fr) auto auto auto;
+  /* Las columnas de datos comparten tracks estables entre filas. Con `auto`,
+     cada combinación 20/30/60 min + Bronze/Silver/Gold desplazaba la hora. */
+  grid-template-columns: 10px minmax(0, 1fr) 3.25rem 7.5rem 5.75rem;
   gap: 12px;
   align-items: center;
   height: 52px;
@@ -235,17 +237,25 @@
 }
 
 .orbit-races__nrow-at {
+  justify-self: center;
   font-family: var(--orbit-font-mono);
   font-size: 12px;
   font-weight: 700;
+  text-align: center;
   color: var(--orbit-ink-2);
 }
 
 .orbit-races__dur {
+  justify-self: center;
   white-space: nowrap;
   font-family: var(--orbit-font-mono);
   font-size: 11px;
+  text-align: center;
   color: var(--orbit-ink-4);
+}
+
+.orbit-races__nrow > .orbit-chip {
+  justify-self: center;
 }
 
 .orbit-races__follow-mark {

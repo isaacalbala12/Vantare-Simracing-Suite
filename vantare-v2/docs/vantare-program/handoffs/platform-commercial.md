@@ -1,5 +1,21 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+## ISA-843 — columnas de Próximas alineadas
+
+- Rama aislada `vantareapp/isa-843-centrar-columnas-proximas`, basada en
+  `origin/nightly@8a90c3a7837166ffec6943c839f7cb31cbf11b31`.
+- En Carreras → Próximas, hora, duración/setup y licencia usan tracks estables
+  y centran su contenido. Ya no cambian de eje según 20/30/60 minutos ni según
+  Bronze/Silver/Gold.
+- El harness real de Carreras midió nueve filas: antes la hora variaba entre
+  673,06 y 692,39 px; después todas coinciden en 641 px. A 768 × 700, las nueve
+  filas mantienen los tres ejes y `overflowX = 0`.
+- Evidencia local: test focal 18/18, suite frontend 385 archivos/2.953 tests,
+  typecheck, build, lint focal y design-system PASS. El harness visual pasa en
+  1920 × 1080 y 1920 × 900 con gates de ejes compartidos y cero desbordamiento
+  de fila; la inspección colaborativa adicional pasa a 768 × 700.
+- No hay merge, promoción, release ni publicación; el cambio sigue aislado.
+
 ## Decisión comercial vigente — ISA-315
 
 - Hito de agosto: Overlay Studio V1 estable en `testers` antes del 2026-08-31.

@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-843",
+  "type": "fix",
+  "summary": "Las próximas carreras mantienen centradas y alineadas las columnas de hora, duración y licencia.",
+  "technicalNotes": [
+    "Las filas comparten anchos estables para hora, duración/configuración y licencia, aunque cambien entre 20, 30 o 60 minutos y Bronze, Silver o Gold.",
+    "El nombre de la serie conserva el espacio flexible disponible y sigue truncándose de forma segura cuando la ventana se estrecha."
+  ],
+  "testing": [
+    "Abrir Carreras, dejar seleccionada la vista Próximas y comparar varias filas con duraciones y licencias diferentes.",
+    "Reducir el ancho de la ventana y confirmar que las tres columnas siguen sobre los mismos ejes, sin solapamiento ni desplazamiento horizontal."
+  ],
+  "knownLimitations": []
+}

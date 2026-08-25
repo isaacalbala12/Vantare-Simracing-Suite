@@ -15,7 +15,7 @@ export const STUDIO_AUTOSAVE_DELAY_MS = 300;
  */
 export function StudioAutosave(props: { delayMs?: number }): null {
   const { delayMs = STUDIO_AUTOSAVE_DELAY_MS } = props;
-  const { document, dirty, saveState, save, undo, redo } = useStudioDocument();
+  const { document, revision, dirty, saveState, save, undo, redo } = useStudioDocument();
   const lastAttemptedDocumentRef = useRef<ProfileDocumentV3 | null>(null);
   const conflictPausedRef = useRef(false);
 
@@ -31,6 +31,7 @@ export function StudioAutosave(props: { delayMs?: number }): null {
     if (
       !dirty ||
       !document ||
+      !revision ||
       saveState === "saving" ||
       conflictPausedRef.current ||
       lastAttemptedDocumentRef.current === document
@@ -43,7 +44,7 @@ export function StudioAutosave(props: { delayMs?: number }): null {
       void save();
     }, delayMs);
     return () => window.clearTimeout(timer);
-  }, [delayMs, dirty, document, save, saveState]);
+  }, [delayMs, dirty, document, revision, save, saveState]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {

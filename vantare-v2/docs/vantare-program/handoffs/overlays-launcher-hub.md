@@ -11,7 +11,7 @@
 ## Estado
 
 - **ISA-842 — autosave e historial productivo de Overlay Studio (2026-08-25,
-  implementado en rama):** sobre `origin/nightly@8a90c3a7`, la rama
+  implementado en rama):** rebasada sobre `origin/nightly@c7d25f94`, la rama
   `vantareapp/isa-842-studio-autosave-undo` convierte cada cambio documental
   confirmado en autosave con debounce de 300 ms. `StudioProvider` mantiene un
   único save en vuelo y coalesce ediciones posteriores sobre la revisión
@@ -21,9 +21,11 @@
   save incluye el archivo ligado a la sesión: cambiar el perfil activo global
   no puede escribir el documento abierto sobre otro perfil. Estado visible:
   pendiente, guardando, guardado automáticamente o reintento. ADR 0093 sustituye
-  solo el guardado explícito de ADR 0003. Evidencia fresca: frontend completo
-  386 archivos/2957 tests PASS, focal 6 archivos/58 tests PASS, typecheck y
-  build PASS, lint de los 14 TS/TSX modificados PASS y `go test ./...` PASS. El
+  solo el guardado explícito de ADR 0003. Evidencia fresca tras el rebase:
+  frontend completo 389 archivos/2978 tests PASS, focal final de autosave/store
+  2 archivos/25 tests PASS, typecheck y build PASS, lint de los 14 TS/TSX
+  modificados PASS y
+  `go test ./...` PASS. El
   lint global solo conserva el fallo previo `_damage` no usado en
   `car-damage-numbers-view-model-v2.ts`, fuera de alcance. En el harness Orbit
   con Wails mock, X se guardó de 1560 a 1500; `Ctrl+Z` restauró 1560 y

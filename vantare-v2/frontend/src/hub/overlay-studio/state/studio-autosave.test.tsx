@@ -5,6 +5,7 @@ import { deltaDefinition } from "../../../overlay/widget-types/delta/delta-defin
 import type { StudioProfileClient, StudioSaveResult } from "./studio-profile-client";
 import { StudioProvider, useStudioDocument } from "./studio-store";
 import { StudioAutosave } from "./studio-autosave";
+import { writeCachedStudioDocument } from "./studio-doc-cache";
 
 function buildDocument(): ProfileDocumentV3 {
   return {
@@ -60,6 +61,7 @@ function moveX(x: number) {
 
 afterEach(() => {
   vi.useRealTimers();
+  window.localStorage.clear();
 });
 
 describe("StudioAutosave", () => {
@@ -88,6 +90,38 @@ describe("StudioAutosave", () => {
         }),
       }),
     );
+    expect(result.current.dirty).toBe(false);
+  });
+
+  it("waits for the fresh revision before autosaving an edit made on a cached seed", async () => {
+    let resolveLoad: ((loaded: { document: ProfileDocumentV3; revision: string }) => void) | null =
+      null;
+    const client = createClient();
+    client.load = vi.fn(
+      () =>
+        new Promise((resolve) => {
+          resolveLoad = resolve;
+        }),
+    );
+    writeCachedStudioDocument("profile.json", buildDocument());
+    const { result } = renderHook(() => useStudioDocument(), { wrapper: wrapper(client) });
+    expect(result.current.document).not.toBeNull();
+    expect(result.current.revision).toBe("");
+    vi.useFakeTimers();
+
+    act(() => result.current.dispatch(moveX(210)));
+    await act(async () => vi.advanceTimersByTimeAsync(1_000));
+    expect(client.save).not.toHaveBeenCalled();
+
+    await act(async () => {
+      resolveLoad?.({ document: buildDocument(), revision: "rev-fresh" });
+      await Promise.resolve();
+    });
+    expect(result.current.revision).toBe("rev-fresh");
+    await act(async () => vi.advanceTimersByTimeAsync(300));
+
+    expect(client.save).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(client.save).mock.calls[0]?.[0].expectedRevision).toBe("rev-fresh");
     expect(result.current.dirty).toBe(false);
   });
 

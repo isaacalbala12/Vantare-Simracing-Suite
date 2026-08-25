@@ -460,6 +460,13 @@ func calculateFuelReserve(input FuelReserveInput, raceLaps contract.LapCount, co
 	}
 }
 
+// CalculateFuelReserveAmount exposes the manual resource authority to callers
+// that need to enforce the same reserve contract while evaluating a plan.
+func CalculateFuelReserveAmount(input FuelReserveInput, raceLaps contract.LapCount, consumption, formation float64) (float64, error) {
+	amount, _, err := calculateFuelReserve(input, raceLaps, consumption, formation)
+	return amount, err
+}
+
 func calculateEnergyReserve(input VirtualEnergyReserveInput, raceLaps contract.LapCount, consumption, formation float64) (float64, []Assumption, error) {
 	if err := validateEvidence("virtualEnergy.reserve.selection", input.Selection); err != nil {
 		return 0, nil, err
@@ -496,6 +503,13 @@ func calculateEnergyReserve(input VirtualEnergyReserveInput, raceLaps contract.L
 	default:
 		return 0, nil, calculationError(ErrorInvalidInput, "virtualEnergy.reserve.kind", "unsupported reserve kind")
 	}
+}
+
+// CalculateVirtualEnergyReserveAmount exposes the manual resource authority
+// to callers that enforce the same reserve contract during optimisation.
+func CalculateVirtualEnergyReserveAmount(input VirtualEnergyReserveInput, raceLaps contract.LapCount, consumption, formation float64) (float64, error) {
+	amount, _, err := calculateEnergyReserve(input, raceLaps, consumption, formation)
+	return amount, err
 }
 
 func validateSourcedFuel(field string, value Sourced[contract.FuelLiters]) error {

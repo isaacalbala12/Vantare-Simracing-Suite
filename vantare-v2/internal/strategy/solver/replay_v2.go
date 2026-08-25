@@ -15,6 +15,7 @@ type ReplayResultV1 struct {
 	Decision        DecisionVector     `json:"decision"`
 	Evaluation      ScenarioEvaluation `json:"evaluation"`
 	Stints          []ReplayStintV1    `json:"stints"`
+	Reserve         ReserveStatus      `json:"reserve"`
 	Feasible        bool               `json:"feasible"`
 	Reasons         []SolverReason     `json:"reasons,omitempty"`
 }
@@ -132,6 +133,16 @@ func ReplayDecisionV2(input SolverInputV2, decision DecisionVector) (ReplayResul
 		})
 
 		if index == len(decision.Stints)-1 {
+			reserveStatus, reserveErr := reserveStatusForNode(input, node, fuel, ve, weather, drivers, saving)
+			if reserveErr != nil {
+				return ReplayResultV1{}, reserveErr
+			}
+			if !reserveStatus.Satisfied {
+				code, message := reserveFailure(reserveStatus)
+				result := infeasibleReplay(decision, input.Formation.Seconds.Value, node, code, message)
+				result.Reserve = reserveStatus
+				return result, nil
+			}
 			if allowed, code, message := input.completedAllowed(node, tyreModel); !allowed {
 				return infeasibleReplay(decision, input.Formation.Seconds.Value, node, code, message), nil
 			}
@@ -163,11 +174,16 @@ func ReplayDecisionV2(input SolverInputV2, decision DecisionVector) (ReplayResul
 		replayedStints[index].Evaluation.TotalSeconds += pitSeconds
 	}
 
+	reserveStatus, err := reserveStatusForNode(input, node, fuel, ve, weather, drivers, saving)
+	if err != nil {
+		return ReplayResultV1{}, err
+	}
 	return ReplayResultV1{
 		ContractVersion: ReplayContractVersionV1,
 		Decision:        cloneDecision(node.decision),
 		Evaluation:      evaluationForNode(node, input.Formation.Seconds.Value),
 		Stints:          replayedStints,
+		Reserve:         reserveStatus,
 		Feasible:        true,
 		Reasons:         []SolverReason{},
 	}, nil

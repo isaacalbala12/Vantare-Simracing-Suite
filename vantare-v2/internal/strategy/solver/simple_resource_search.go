@@ -56,6 +56,13 @@ func simpleResourceDecisions(
 	}
 
 	stintCount := (input.RaceLaps + maxStint - 1) / maxStint
+	reserveStints, ok := minimumStintsForReserve(input, fuel, ve)
+	if !ok {
+		return nil, false
+	}
+	if reserveStints > stintCount {
+		stintCount = reserveStints
+	}
 	searchLimit := maxSimpleResourceSearchNodes
 	if input.Budget.MaxCandidates > 0 && input.Budget.MaxCandidates < searchLimit {
 		searchLimit = input.Budget.MaxCandidates

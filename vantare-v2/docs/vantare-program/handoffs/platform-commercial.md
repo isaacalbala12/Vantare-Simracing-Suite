@@ -113,6 +113,9 @@ El harness visual verificó 110% en 1920×1080 y scroll interno a 125% en
 1366×768. `wails3 dev` compiló el binario y conectó al frontend, pero otra
 instancia de Vantare ya abierta bloqueó la creación del controlador WebView2;
 no hay prueba de interacción Wails real.
+El PR draft #847 completó en verde sobre `75163926`: `Validate promotion
+path`, `Validate Vantare blocking gates` y GitGuardian. Sigue sin merge ni
+promoción a `nightly`.
 
 ## Roadmap/Discord
 

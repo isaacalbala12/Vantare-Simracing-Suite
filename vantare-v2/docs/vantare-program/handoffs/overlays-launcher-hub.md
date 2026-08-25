@@ -30,9 +30,9 @@
   `car-damage-numbers-view-model-v2.ts`, fuera de alcance. En el harness Orbit
   con Wails mock, X se guardó de 1560 a 1500; `Ctrl+Z` restauró 1560 y
   `Ctrl+Shift+Z` rehizo 1500, ambos con estado `saved`. Falta prueba manual en el
-  ejecutable Wails real. Implementación en `2d71870f` y guard de revisión SWR
-  en `8810f2f4`; PR draft **#853** hacia `nightly`. Sin integración ni
-  promoción.
+  ejecutable Wails real. Implementación rebasada en `a62c5035` y guard de
+  revisión SWR en `569c3dec`; PR **#853** hacia `nightly`, autorizado para merge
+  por Isaac el 2026-08-26. Sin promoción a `testers`/`master` ni release.
 
 - **ISA-770 — saltos de widgets en Studio (2026-08-25, PR a nightly):**
   la medición A/B en Wails/WebView2 separó dos caminos. En movimiento reducido,

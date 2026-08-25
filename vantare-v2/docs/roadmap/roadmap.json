@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-25T21:16:02Z",
+  "generatedAt": "2026-08-25T22:14:30Z",
   "digest": {
-    "lastCommit": "c7d25f94449f54c774628ee8b6297f2468f72b32"
+    "lastCommit": "91efbb8ec02fdf49128cf7454a512dbb6ed37977"
   },
   "phases": [
     {
@@ -617,6 +617,11 @@
           "kind": "feat",
           "scope": "studio",
           "text": "Rehacer el inspector de widgets — controles honestos y legibles"
+        },
+        {
+          "kind": "docs",
+          "scope": "release",
+          "text": "Manifiesto v0.1.0.7-nightly.13"
         }
       ]
     },

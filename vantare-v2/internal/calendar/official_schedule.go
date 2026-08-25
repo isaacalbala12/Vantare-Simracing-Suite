@@ -16,12 +16,13 @@ var weeklyScheduleData []byte
 // OfficialSchedule is the root document for the bundled weekly LMU schedule.
 // It contains recurrence definitions, not materialised race instances.
 type OfficialSchedule struct {
-	Version    int          `json:"version"`
-	Timezone   string       `json:"timezone"`
-	ValidFrom  time.Time    `json:"validFrom"`
-	ValidUntil time.Time    `json:"validUntil"`
-	Series     []RaceSeries `json:"series"`
-	Updated    time.Time    `json:"updated"`
+	Version     int          `json:"version"`
+	Timezone    string       `json:"timezone"`
+	ValidFrom   time.Time    `json:"validFrom"`
+	ValidUntil  time.Time    `json:"validUntil"`
+	Series      []RaceSeries `json:"series"`
+	SourceNotes []string     `json:"sourceNotes,omitempty"`
+	Updated     time.Time    `json:"updated"`
 }
 
 // Session models a single session within a race event (practice, qualifying, race).
@@ -52,9 +53,13 @@ type VehicleClass struct {
 // Sessions lists the individual sessions (practice, qualifying, race).
 // StartOffsetMinute is the minute offset within the hour for interval series.
 type RaceSeries struct {
-	ID           string `json:"id"`
-	Name         string `json:"name"`
-	Tier         string `json:"tier"`
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Tier string `json:"tier"`
+	// EventKind distinguishes the daily, weekly and special sections without
+	// changing the existing tier filter used by older calendar clients.
+	EventKind    string `json:"eventKind,omitempty"`
+	Format       string `json:"format,omitempty"`
 	LicenseLabel string `json:"licenseLabel"`
 	Track        string `json:"track"`
 	// VehicleClass is the schedule's own prose, kept verbatim. Classes is the
@@ -79,6 +84,11 @@ type RaceSeries struct {
 	// SafetyRating is the series' own requirement when it differs from the
 	// tier's, such as the "SR S2" the weekly races ask for.
 	SafetyRating string `json:"safetyRating,omitempty"`
+	// Team/special-event constraints are structured so the owner can review
+	// them without losing the original source prose in Notes.
+	FairShare       bool     `json:"fairShare,omitempty"`
+	ForbiddenBadges []string `json:"forbiddenBadges,omitempty"`
+	InGameStartTime string   `json:"inGameStartTime,omitempty"`
 	// Notes carries the advisories the schedule prints next to a series, like
 	// the hardware warning on the 2.4h Le Mans.
 	Notes      []string   `json:"notes,omitempty"`
@@ -106,6 +116,19 @@ var validTiers = map[string]bool{
 	"weekly":       true,
 }
 
+var validEventKinds = map[string]bool{
+	"":        true,
+	"daily":   true,
+	"weekly":  true,
+	"special": true,
+}
+
+var validSeriesFormats = map[string]bool{
+	"":     true,
+	"solo": true,
+	"team": true,
+}
+
 // validRecurrenceKinds is the allowlist of recognised recurrence kinds.
 var validRecurrenceKinds = map[string]bool{
 	"interval":     true,
@@ -130,10 +153,23 @@ func LoadWeeklySchedule() (OfficialSchedule, error) {
 	if err := json.Unmarshal(weeklyScheduleData, &sched); err != nil {
 		return OfficialSchedule{}, fmt.Errorf("weekly schedule: unmarshal: %w", err)
 	}
+	hydrateDerivedSeries(&sched)
 	if err := validateSchedule(sched); err != nil {
 		return OfficialSchedule{}, err
 	}
 	return sched, nil
+}
+
+// hydrateDerivedSeries keeps the bundled JSON compact while preserving the
+// review information that the importer calculates for every series. These
+// blocks are explicitly estimated; LMU only publishes the race duration.
+func hydrateDerivedSeries(sched *OfficialSchedule) {
+	for index := range sched.Series {
+		series := &sched.Series[index]
+		if len(series.Sessions) == 0 {
+			series.Sessions, series.EventDurationMin = estimateSessions(series.DurationMin)
+		}
+	}
 }
 
 // validateSchedule checks every field of the schedule document. It returns the
@@ -185,6 +221,12 @@ func validateSeries(s RaceSeries) error {
 	if !validTiers[s.Tier] {
 		return fmt.Errorf("invalid tier %q, must be one of: beginner, intermediate, advanced, weekly", s.Tier)
 	}
+	if !validEventKinds[s.EventKind] {
+		return fmt.Errorf("invalid eventKind %q, must be empty, daily, weekly or special", s.EventKind)
+	}
+	if !validSeriesFormats[s.Format] {
+		return fmt.Errorf("invalid format %q, must be empty, solo or team", s.Format)
+	}
 	if s.DurationMin <= 0 {
 		return fmt.Errorf("durationMin must be > 0, got %d", s.DurationMin)
 	}
@@ -197,9 +239,17 @@ func validateSeries(s RaceSeries) error {
 	if s.VELimit < 0 || s.VELimit > 100 {
 		return fmt.Errorf("veLimit must be between 0 and 100, got %d", s.VELimit)
 	}
+	if s.StartOffsetMinute < 0 || s.StartOffsetMinute > 59 {
+		return fmt.Errorf("startOffsetMinute must be between 0 and 59, got %d", s.StartOffsetMinute)
+	}
 	for i, c := range s.Classes {
 		if strings.TrimSpace(c.Name) == "" {
 			return fmt.Errorf("classes[%d]: name is required", i)
+		}
+	}
+	for i, badge := range s.ForbiddenBadges {
+		if strings.TrimSpace(badge) == "" {
+			return fmt.Errorf("forbiddenBadges[%d]: name is required", i)
 		}
 	}
 	if !validRecurrenceKinds[s.Recurrence.Kind] {
@@ -354,8 +404,34 @@ func makeSeriesEvent(s RaceSeries, start time.Time) RaceEvent {
 		EventDurationMin: eventDur,
 		Sessions:         sessions,
 		Source:           BundledSource,
-		Notes:            fmt.Sprintf("Tier: %s | License: %s | Setup: %s | Splits: %d | Assists: %s | Tyre warmers: %v | Tyres: %d", s.Tier, s.LicenseLabel, s.Setup, s.Splits, s.Assists, s.TyreWarmers, s.Tyres),
+		Notes:            seriesEventNotes(s),
 	}
+}
+
+func seriesEventNotes(s RaceSeries) string {
+	notes := fmt.Sprintf(
+		"Tier: %s | License: %s | Setup: %s | Splits: %d | Assists: %s | Tyre warmers: %v | Tyres: %d",
+		s.Tier, s.LicenseLabel, s.Setup, s.Splits, s.Assists, s.TyreWarmers, s.Tyres,
+	)
+	if s.EventKind != "" {
+		notes += " | Event: " + s.EventKind
+	}
+	if s.Format != "" {
+		notes += " | Format: " + s.Format
+	}
+	if s.FairShare {
+		notes += " | Fair share"
+	}
+	if len(s.ForbiddenBadges) > 0 {
+		notes += " | Forbidden badges: " + strings.Join(s.ForbiddenBadges, ", ")
+	}
+	if s.InGameStartTime != "" {
+		notes += " | In-game start: " + s.InGameStartTime
+	}
+	if len(s.Notes) > 0 {
+		notes += " | " + strings.Join(s.Notes, " | ")
+	}
+	return notes
 }
 
 // sortRaceEventsByStart sorts a slice of RaceEvent by StartTime ascending.

@@ -3,6 +3,7 @@ package calendar
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 	"time"
 )
@@ -10,6 +11,19 @@ import (
 func importFixture(t *testing.T) OfficialSchedule {
 	t.Helper()
 	data, err := os.ReadFile(filepath.Join("testdata", "daily-schedule-2026-08-04.txt"))
+	if err != nil {
+		t.Fatalf("read fixture: %v", err)
+	}
+	sched, err := ImportDailySchedule(string(data))
+	if err != nil {
+		t.Fatalf("import: %v", err)
+	}
+	return sched
+}
+
+func importAug25Fixture(t *testing.T) OfficialSchedule {
+	t.Helper()
+	data, err := os.ReadFile(filepath.Join("testdata", "daily-schedule-2026-08-25.txt"))
 	if err != nil {
 		t.Fatalf("read fixture: %v", err)
 	}
@@ -254,4 +268,75 @@ func TestImportDailyScheduleSplitsSpaceSeparatedClasses(t *testing.T) {
 			t.Fatalf("classes[%d]=%+v, want %+v", i, s.Classes[i], w)
 		}
 	}
+}
+
+func TestImportDailyScheduleAug25DiscordMessage(t *testing.T) {
+	sched := importAug25Fixture(t)
+	if got, want := len(sched.Series), 11; got != want {
+		t.Fatalf("series=%d, want %d", got, want)
+	}
+	if got, want := len(sched.SourceNotes), 1; got != want {
+		t.Fatalf("sourceNotes=%d, want %d", got, want)
+	}
+	for _, series := range sched.Series {
+		if series.EventKind == "daily" && series.StartOffsetMinute != 0 {
+			t.Errorf("daily series %q has an invented start offset %d", series.ID, series.StartOffsetMinute)
+		}
+	}
+
+	weekly := seriesByID(t, sched, "weekly-wec-weekly")
+	if weekly.EventKind != "weekly" || weekly.Format != "solo" {
+		t.Fatalf("weekly metadata=%q/%q, want weekly/solo", weekly.EventKind, weekly.Format)
+	}
+	if got, want := weekly.Recurrence.TimesUTC, []string{"00:00", "02:00", "04:00", "06:00", "08:00", "10:00", "12:00", "14:00", "16:00", "18:00", "20:00", "22:00"}; !equalStrings(got, want) {
+		t.Fatalf("weekly times=%v, want %v", got, want)
+	}
+	if weekly.RaceDurationMin != 90 {
+		t.Fatalf("weekly race=%d, want 90", weekly.RaceDurationMin)
+	}
+	special := seriesByID(t, sched, "weekly-8-hours-of-daytona")
+	if special.EventKind != "special" || special.Format != "team" {
+		t.Fatalf("special metadata=%q/%q, want special/team", special.EventKind, special.Format)
+	}
+	if special.SafetyRating != "SR B2" {
+		t.Fatalf("special safetyRating=%q, want SR B2", special.SafetyRating)
+	}
+	if !equalStrings(special.ForbiddenBadges, []string{"RookieDriver", "DangerousDriver"}) {
+		t.Fatalf("forbiddenBadges=%v", special.ForbiddenBadges)
+	}
+	if !special.FairShare || special.TyreWarmers {
+		t.Fatalf("special fairShare=%v tyreWarmers=%v, want true/false", special.FairShare, special.TyreWarmers)
+	}
+	if special.TimeScale != 3 || special.InGameStartTime != "1:00pm in-game time" {
+		t.Fatalf("special timeScale=%d inGameStartTime=%q", special.TimeScale, special.InGameStartTime)
+	}
+	if got, want := special.Recurrence.TimesUTC, []string{"03:00", "08:00", "13:00", "20:00"}; !equalStrings(got, want) {
+		t.Fatalf("special times=%v, want %v", got, want)
+	}
+	if len(special.Notes) != 1 {
+		t.Fatalf("special notes=%d, want 1", len(special.Notes))
+	}
+}
+
+func TestBundledSeedMatchesAug25DiscordMessage(t *testing.T) {
+	parsed := importAug25Fixture(t)
+	bundled, err := LoadWeeklySchedule()
+	if err != nil {
+		t.Fatalf("LoadWeeklySchedule: %v", err)
+	}
+	if !reflect.DeepEqual(bundled, parsed) {
+		t.Fatalf("bundled seed differs from the source parser output")
+	}
+}
+
+func equalStrings(got, want []string) bool {
+	if len(got) != len(want) {
+		return false
+	}
+	for i := range got {
+		if got[i] != want[i] {
+			return false
+		}
+	}
+	return true
 }

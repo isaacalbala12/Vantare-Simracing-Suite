@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-21T22:11:47Z",
+  "generatedAt": "2026-08-25T21:34:10Z",
   "digest": {
-    "lastCommit": "f71a43aceef39df0aee3cd9f69ab52efeeac31c8"
+    "lastCommit": "91efbb8ec02fdf49128cf7454a512dbb6ed37977"
   },
   "phases": [
     {
@@ -323,6 +323,28 @@
   ],
   "milestones": [
     {
+      "id": "calendar-discord-review",
+      "type": "feature",
+      "title": {
+        "es": "Calendario LMU desde Discord",
+        "en": "LMU calendar from Discord",
+        "pt": "Calendário LMU via Discord",
+        "it": "Calendario LMU da Discord"
+      },
+      "body": {
+        "es": "Un lector restringido al canal oficial deja el mensaje semanal de LMU en una bandeja local; el owner revisa la fuente y los cambios antes de guardar y publicar el borrador.",
+        "en": "A reader restricted to the official channel leaves the LMU weekly message in a local inbox; the owner reviews the source and changes before saving and publishing the draft.",
+        "pt": "Um leitor limitado ao canal oficial deixa a mensagem semanal do LMU numa caixa de entrada local; o owner revê a fonte e as alterações antes de guardar e publicar o rascunho.",
+        "it": "Un lettore limitato al canale ufficiale lascia il messaggio settimanale LMU in una inbox locale; l'owner rivede fonte e modifiche prima di salvare e pubblicare la bozza."
+      },
+      "label": {
+        "es": "En revisión",
+        "en": "In review",
+        "pt": "Em revisão",
+        "it": "In revisione"
+      }
+    },
+    {
       "id": "v0105",
       "type": "release",
       "title": {
@@ -610,6 +632,116 @@
     }
   ],
   "delivered": [
+    {
+      "date": "2026-08-25",
+      "entries": [
+        {
+          "kind": "feat",
+          "scope": "studio",
+          "text": "Rehacer el inspector de widgets — controles honestos y legibles"
+        },
+        {
+          "kind": "docs",
+          "scope": "release",
+          "text": "Manifiesto v0.1.0.7-nightly.13"
+        }
+      ]
+    },
+    {
+      "date": "2026-08-24",
+      "entries": [
+        {
+          "kind": "fix",
+          "scope": "studio",
+          "text": "Geometria del stage persistida entre montajes — sin ventana cero->medicion al volver (ISA-829 opcion 3)"
+        },
+        {
+          "kind": "fix",
+          "scope": "studio",
+          "text": "Salto inicial de widgets — fonts block + gate fontsReady + convergencia SWR"
+        },
+        {
+          "kind": "fix",
+          "scope": "studio",
+          "text": "Evitar salto con movimiento reducido"
+        }
+      ]
+    },
+    {
+      "date": "2026-08-23",
+      "entries": [
+        {
+          "kind": "perf",
+          "scope": "studio",
+          "text": "Cache SWR del documento — los widgets pintan al instante"
+        },
+        {
+          "kind": "docs",
+          "scope": "release",
+          "text": "Manifiesto v0.1.0.7-nightly.12 (núcleo de telemetría Go-first completo)"
+        },
+        {
+          "kind": "feat",
+          "scope": "overlay",
+          "text": "Registro v2 completo (18 widgets) y track-map con marcadores desde groundPosition"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-781/782: track-weather, broadcast-tower y posicion para track-map sobre v2"
+        }
+      ]
+    },
+    {
+      "date": "2026-08-22",
+      "entries": [
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Señal de daño en el canónico"
+        },
+        {
+          "kind": "docs",
+          "scope": "release",
+          "text": "Manifiesto v0.1.0.7-testers.1 (primera build de Testers) (#713)"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "VMs v2 multiclass-relative, head-to-head, track-map y race-schedule"
+        },
+        {
+          "kind": "feat",
+          "scope": "overlay",
+          "text": "Registro generico VM v2 por widget y cableado 7 widgets"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Activar cadencias reguladas + cablear FuelUsageWindow"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-778/779: VMs v2 para delta-advanced, delta-trace, pedals y pedals-telemetry-compact"
+        },
+        {
+          "kind": "feat",
+          "scope": "hub",
+          "text": "Ajustes Orbit - autosave de atajos, descarga de informe de diagnostico y busqueda"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Fugas LMU 1-8, inversion 9d ExtendedReader y frame congelado"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Carril experimental de voz de entrada tras flag (F5 rework Ingeniero)"
+        }
+      ]
+    },
     {
       "date": "2026-08-21",
       "entries": [
@@ -1337,76 +1469,6 @@
           "kind": "feat",
           "scope": "roadmap",
           "text": "Pestañas de proyectos y tareas Linear"
-        }
-      ]
-    },
-    {
-      "date": "2026-08-03",
-      "entries": [
-        {
-          "kind": "fix",
-          "scope": "discord",
-          "text": "Resolve routes from channel identity"
-        },
-        {
-          "kind": "fix",
-          "scope": "discord",
-          "text": "Validate destinations before release build"
-        },
-        {
-          "kind": "fix",
-          "scope": "release",
-          "text": "Accept four-part Vantare versions"
-        },
-        {
-          "kind": "fix",
-          "scope": "ci",
-          "text": "Preserve advisory gates for channel builds"
-        },
-        {
-          "kind": "fix",
-          "scope": "release",
-          "text": "Isolate binding generation flags"
-        },
-        {
-          "kind": "fix",
-          "scope": "overlay",
-          "text": "Unblock profile loading after hotkey"
-        },
-        {
-          "kind": "fix",
-          "scope": "hub",
-          "text": "Make topbar responsive without horizontal scroll"
-        },
-        {
-          "kind": "feat",
-          "scope": "billing",
-          "text": "Add revocable operational access"
-        },
-        {
-          "kind": "fix",
-          "scope": "auth",
-          "text": "Hydrate WebView session after OAuth callback"
-        },
-        {
-          "kind": "fix",
-          "scope": "ci",
-          "text": "Align offline license deploy guard"
-        }
-      ]
-    },
-    {
-      "date": "2026-08-02",
-      "entries": [
-        {
-          "kind": "feat",
-          "scope": "billing",
-          "text": "Add operational observability"
-        },
-        {
-          "kind": "feat",
-          "scope": "billing",
-          "text": "Add signed offline license credential"
         }
       ]
     }

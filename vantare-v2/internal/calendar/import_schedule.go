@@ -43,9 +43,10 @@ func ImportDailySchedule(text string) (OfficialSchedule, error) {
 	}
 
 	var (
-		tier     string
-		defaults tierDefaults
-		ids      = map[string]int{}
+		tier            string
+		defaults        tierDefaults
+		ids             = map[string]int{}
+		lastSeriesIndex = -1
 	)
 	for _, line := range lines[1:] {
 		switch {
@@ -70,12 +71,20 @@ func ImportDailySchedule(text string) (OfficialSchedule, error) {
 
 		case strings.HasPrefix(line, "IMPORTANT:"):
 			// The advisory trails the series it belongs to.
-			if len(sched.Series) > 0 {
-				last := &sched.Series[len(sched.Series)-1]
+			if lastSeriesIndex >= 0 {
+				last := &sched.Series[lastSeriesIndex]
 				last.Notes = append(last.Notes, strings.TrimSpace(strings.TrimPrefix(line, "IMPORTANT:")))
 			}
 
-		case strings.Contains(line, ":"):
+		case strings.HasPrefix(line, "Race start:"):
+			if lastSeriesIndex >= 0 {
+				sched.Series[lastSeriesIndex].InGameStartTime = strings.TrimSpace(strings.TrimPrefix(line, "Race start:"))
+			}
+
+		case isSourceNote(line):
+			sched.SourceNotes = append(sched.SourceNotes, line)
+
+		case hasSeriesSeparator(line):
 			if tier == "" {
 				return OfficialSchedule{}, fmt.Errorf("import schedule: series before any tier: %q", line)
 			}
@@ -88,6 +97,7 @@ func ImportDailySchedule(text string) (OfficialSchedule, error) {
 				s.ID = fmt.Sprintf("%s-%d", s.ID, n)
 			}
 			sched.Series = append(sched.Series, s)
+			lastSeriesIndex = len(sched.Series) - 1
 		}
 	}
 
@@ -102,6 +112,8 @@ func ImportDailySchedule(text string) (OfficialSchedule, error) {
 
 // tierDefaults holds the values a tier header states once for all its series.
 type tierDefaults struct {
+	eventKind    string
+	format       string
 	license      string
 	intervalMin  int
 	raceMin      int
@@ -141,16 +153,29 @@ func parseScheduleHeader(line string) (time.Time, error) {
 var tierHeaderRE = regexp.MustCompile(`^(Beginner|Intermediate|Advanced)\s*\[([^\]]+)\]$`)
 
 func isTierHeader(line string) bool {
-	return tierHeaderRE.MatchString(line) || strings.HasPrefix(line, "Weekly Races")
+	return tierHeaderRE.MatchString(line) ||
+		strings.HasPrefix(line, "Weekly Races") ||
+		strings.HasPrefix(line, "Special Events")
 }
 
 func parseTierHeader(line string) (string, tierDefaults) {
+	if strings.HasPrefix(line, "Special Events") {
+		return "weekly", tierDefaults{eventKind: "special", format: "team"}
+	}
 	if strings.HasPrefix(line, "Weekly Races") {
 		// Weekly series carry their own splits, duration and SR on each line.
-		return "weekly", tierDefaults{}
+		return "weekly", tierDefaults{eventKind: "weekly", format: "solo"}
 	}
 	m := tierHeaderRE.FindStringSubmatch(line)
-	return strings.ToLower(m[1]), tierDefaults{license: strings.TrimSpace(m[2])}
+	return strings.ToLower(m[1]), tierDefaults{
+		eventKind: "daily",
+		format:    "solo",
+		license:   strings.TrimSpace(m[2]),
+	}
+}
+
+func isSourceNote(line string) bool {
+	return strings.HasPrefix(line, "👀") || strings.HasPrefix(line, "Schedule testing continues")
 }
 
 // isTierDefaultsLine spots the settings line under a tier header. It has no
@@ -169,6 +194,7 @@ var (
 	veLimitRE   = regexp.MustCompile(`(\d+)%\s*VE\s*Limit`)
 	setupRE     = regexp.MustCompile(`(?i)\b(fixed|open) setup\b`)
 	srRE        = regexp.MustCompile(`\[([^\]]+)\]`)
+	badgeRE     = regexp.MustCompile(`:([^:]+):`)
 )
 
 func applyTierDefaults(d *tierDefaults, line string) {
@@ -187,22 +213,32 @@ func applyTierDefaults(d *tierDefaults, line string) {
 	if m := assistsRE.FindStringSubmatch(line); m != nil {
 		d.assists = capitaliseFirst(strings.TrimSpace(m[1]))
 	}
-	d.tyreWarmers = strings.Contains(line, "tyre warmers enabled")
+	if warmers, ok := parseTyreWarmers(line); ok {
+		d.tyreWarmers = warmers
+	}
 }
 
 // parseSeriesLine reads "Name: Track (Layout), Classes, 40m races, open setup".
 // Everything after the track is an unordered list of attributes, so each one is
 // matched by shape rather than by position.
 func parseSeriesLine(line, tier string, d tierDefaults) (RaceSeries, error) {
-	name, rest, ok := strings.Cut(line, ":")
+	name, rest, ok := cutSeriesHeader(line)
 	if !ok {
 		return RaceSeries{}, fmt.Errorf("import schedule: series line has no name: %q", line)
 	}
 	name = strings.TrimSpace(name)
 
 	safetyRating := d.safetyRating
+	var forbiddenBadges []string
 	if m := srRE.FindStringSubmatch(name); m != nil {
-		safetyRating = strings.TrimSpace(m[1])
+		bracket := strings.TrimSpace(m[1])
+		parts := strings.SplitN(bracket, ",", 2)
+		safetyRating = strings.TrimSpace(parts[0])
+		if len(parts) == 2 && strings.Contains(strings.ToLower(parts[1]), "badge") {
+			for _, badge := range badgeRE.FindAllStringSubmatch(parts[1], -1) {
+				forbiddenBadges = append(forbiddenBadges, strings.TrimSpace(badge[1]))
+			}
+		}
 		name = strings.TrimSpace(srRE.ReplaceAllString(name, ""))
 	}
 
@@ -217,17 +253,20 @@ func parseSeriesLine(line, tier string, d tierDefaults) (RaceSeries, error) {
 	id, _ := CanonicalSeriesID(tier, name)
 
 	s := RaceSeries{
-		ID:           id,
-		Name:         name,
-		Tier:         tier,
-		LicenseLabel: d.license,
-		Track:        fields[0],
-		Splits:       d.splits,
-		Assists:      d.assists,
-		TyreWarmers:  d.tyreWarmers,
-		Tyres:        d.tyres,
-		SafetyRating: safetyRating,
-		Recurrence:   Recurrence{Kind: "interval", IntervalMinutes: d.intervalMin},
+		ID:              id,
+		Name:            name,
+		Tier:            tier,
+		EventKind:       d.eventKind,
+		Format:          d.format,
+		LicenseLabel:    d.license,
+		Track:           fields[0],
+		Splits:          d.splits,
+		Assists:         d.assists,
+		TyreWarmers:     d.tyreWarmers,
+		Tyres:           d.tyres,
+		SafetyRating:    safetyRating,
+		ForbiddenBadges: forbiddenBadges,
+		Recurrence:      Recurrence{Kind: "interval", IntervalMinutes: d.intervalMin},
 	}
 	raceMin := d.raceMin
 
@@ -249,7 +288,11 @@ func parseSeriesLine(line, tier string, d tierDefaults) (RaceSeries, error) {
 		case assistsRE.MatchString(f):
 			s.Assists = capitaliseFirst(strings.TrimSpace(assistsRE.FindStringSubmatch(f)[1]))
 		case strings.Contains(f, "tyre warmers"):
-			s.TyreWarmers = !strings.HasPrefix(strings.ToLower(f), "no ")
+			if warmers, ok := parseTyreWarmers(f); ok {
+				s.TyreWarmers = warmers
+			}
+		case strings.Contains(strings.ToLower(f), "fair share"):
+			s.FairShare = true
 		default:
 			classFields = append(classFields, f)
 		}
@@ -274,6 +317,53 @@ func parseSeriesLine(line, tier string, d tierDefaults) (RaceSeries, error) {
 	s.RaceDurationMin = raceMin
 	s.Sessions, s.EventDurationMin = estimateSessions(raceMin)
 	return s, nil
+}
+
+func hasSeriesSeparator(line string) bool {
+	_, _, ok := cutSeriesHeader(line)
+	return ok
+}
+
+// cutSeriesHeader finds the colon separating "Series name" from its track.
+// Team badge restrictions also contain colons inside brackets, so a plain
+// strings.Cut would turn that source into a malformed series name.
+func cutSeriesHeader(line string) (string, string, bool) {
+	var squareDepth, parenDepth int
+	for i, r := range line {
+		switch r {
+		case '[':
+			squareDepth++
+		case ']':
+			if squareDepth > 0 {
+				squareDepth--
+			}
+		case '(':
+			parenDepth++
+		case ')':
+			if parenDepth > 0 {
+				parenDepth--
+			}
+		case ':':
+			if squareDepth == 0 && parenDepth == 0 {
+				return line[:i], line[i+1:], true
+			}
+		}
+	}
+	return "", "", false
+}
+
+func parseTyreWarmers(text string) (bool, bool) {
+	lower := strings.ToLower(text)
+	switch {
+	case strings.Contains(lower, "tyre warmers enabled"):
+		return true, true
+	case strings.Contains(lower, "tyre warmers disabled"):
+		return false, true
+	case strings.Contains(lower, "no tyre warmers"):
+		return false, true
+	default:
+		return false, false
+	}
 }
 
 // splitTopLevel splits on commas that are not inside parentheses, so
@@ -418,16 +508,22 @@ func isASCIILetter(r rune) bool {
 
 var (
 	weekdayTokenRE = regexp.MustCompile(`^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)$`)
-	everyNHoursRE  = regexp.MustCompile(`(?i)every\s+(\d+)h\s+from\s+midnight`)
+	everyNHoursRE  = regexp.MustCompile(`(?i)every\s+(\d+)\s*(?:h|hrs?|hours?)\s+from\s+midnight`)
 )
 
 // parseWeeklySlots reads "Tue Wed Thu Mon @ 02:00 06:00" and the shorthand
 // "Fri Sat Sun @ every 3h from midnight UTC", which is the same thing written
 // as a cadence.
 func parseWeeklySlots(spec string) (Recurrence, error) {
+	spec = strings.TrimSpace(spec)
 	daysPart, timesPart, ok := strings.Cut(spec, "@")
 	if !ok {
-		return Recurrence{}, fmt.Errorf("import schedule: schedule line has no '@': %q", spec)
+		// The current Discord message writes the cadence as
+		// "Tue Wed Thu Mon, starts every 2hrs from midnight".
+		daysPart, timesPart, ok = strings.Cut(spec, ",")
+	}
+	if !ok {
+		return Recurrence{}, fmt.Errorf("import schedule: schedule line has no time separator: %q", spec)
 	}
 
 	rec := Recurrence{Kind: "weekly-slots"}
@@ -453,15 +549,36 @@ func parseWeeklySlots(spec string) (Recurrence, error) {
 	}
 
 	for _, tok := range strings.Fields(timesPart) {
-		if _, err := time.Parse("15:04", tok); err != nil {
-			return Recurrence{}, fmt.Errorf("import schedule: invalid time %q", tok)
+		if strings.EqualFold(tok, "UTC") {
+			continue
 		}
-		rec.TimesUTC = append(rec.TimesUTC, tok)
+		normalized, err := normalizeUTCSlot(tok)
+		if err != nil {
+			return Recurrence{}, err
+		}
+		rec.TimesUTC = append(rec.TimesUTC, normalized)
 	}
 	if len(rec.TimesUTC) == 0 {
 		return Recurrence{}, fmt.Errorf("import schedule: schedule line lists no times: %q", spec)
 	}
 	return rec, nil
+}
+
+func normalizeUTCSlot(token string) (string, error) {
+	if len(token) == 4 {
+		if _, err := strconv.Atoi(token); err == nil {
+			hour, _ := strconv.Atoi(token[:2])
+			minute, _ := strconv.Atoi(token[2:])
+			if hour < 24 && minute < 60 {
+				return fmt.Sprintf("%02d:%02d", hour, minute), nil
+			}
+		}
+	}
+	parsed, err := time.Parse("15:04", token)
+	if err != nil {
+		return "", fmt.Errorf("import schedule: invalid time %q", token)
+	}
+	return parsed.Format("15:04"), nil
 }
 
 // estimateSessions derives the practice and qualifying blocks around a race.

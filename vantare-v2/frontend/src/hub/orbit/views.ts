@@ -101,6 +101,7 @@ export const SETTINGS_SECTIONS = [
   "updates",
   "hotkeys",
   "diagnostics",
+  "schedule",
 ] as const;
 
 export type SettingsSection = (typeof SETTINGS_SECTIONS)[number];
@@ -108,4 +109,3 @@ export type SettingsSection = (typeof SETTINGS_SECTIONS)[number];
 export function isSettingsSection(value: string | null | undefined): value is SettingsSection {
   return Boolean(value) && (SETTINGS_SECTIONS as readonly string[]).includes(value as string);
 }
-

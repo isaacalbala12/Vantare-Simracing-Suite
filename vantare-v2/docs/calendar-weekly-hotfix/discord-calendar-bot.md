@@ -1,0 +1,58 @@
+# Bot de calendario LMU desde Discord
+
+El lector está separado de Vantare Desktop y tiene un alcance deliberadamente
+pequeño:
+
+```text
+Discord (un canal) → allowlist guild/canal/autor o webhook → parser LMU
+→ calendar-discord-inbox.json → Ajustes > Calendario LMU (owner)
+→ guardar borrador → revisar → publicar
+```
+
+El proceso nunca publica por sí mismo y el token de Discord no entra en la
+app de escritorio ni en el frontend. El calendario publicado sigue usando los
+RPC existentes de Supabase, por lo que los demás clientes lo reciben al
+refrescar.
+
+## Configuración
+
+Crear un bot en Discord y darle únicamente `View Channel` y
+`Read Message History` en el canal de origen. Activar `Message Content Intent`
+si el horario llega como contenido o embed; Discord puede entregar esos campos
+vacíos sin ese intent.
+
+El bot necesita una identidad de origen explícita. Puede ser el usuario que
+publica el anuncio o el webhook que lo envía:
+
+```powershell
+$env:VANTARE_DISCORD_BOT_TOKEN = "<token-local-no-commitir>"
+$env:VANTARE_DISCORD_GUILD_ID = "<guild-id>"
+$env:VANTARE_DISCORD_CHANNEL_ID = "<channel-id>"
+$env:VANTARE_DISCORD_AUTHOR_IDS = "<official-author-id>"
+# Alternativa a AUTHOR_IDS:
+# $env:VANTARE_DISCORD_WEBHOOK_IDS = "<official-webhook-id>"
+$env:VANTARE_CALENDAR_INBOX = "<la-misma-ruta-que-la-configuracion-de-Vantare>\calendar-discord-inbox.json"
+$env:VANTARE_DISCORD_POLL_INTERVAL = "5m"
+go run ./cmd/lmu-calendar-bot
+```
+
+La ruta que usa Desktop es `cfgDir/calendar-discord-inbox.json`: en desarrollo
+normalmente es `vantare-v2/configs/calendar-discord-inbox.json`; en una
+instalación es la carpeta de configuración de Vantare que aparece en
+Diagnóstico. Si el bot usa otra ruta, la bandeja no aparecerá en Desktop.
+
+## Revisión owner
+
+En Ajustes aparece la sección `Calendario LMU` únicamente para el rol owner.
+Se puede seleccionar un candidato, revisar su fuente en solo lectura, comprobar
+fecha, número de series y cambios respecto al calendario cargado, y guardar un
+borrador. El botón final es una acción explícita: publicar sustituye el
+calendario oficial central y el backend vuelve a comprobar el rol owner.
+
+El lector usa la API REST de Discord para consultar mensajes nuevos, persiste
+un cursor y deduplica por `messageId` y por hash del texto. La bandeja local
+conserva como máximo los 32 candidatos más recientes para evitar crecimiento
+indefinido. Si el mensaje no coincide con la allowlist o no
+contiene el encabezado oficial, se ignora.
+
+Referencias oficiales: [permisos de lectura de mensajes](https://docs.discord.com/developers/resources/message), [Message Content Intent](https://docs.discord.com/developers/events/gateway) y [permisos de servidor y canal](https://docs.discord.com/developers/platform/server-and-channel-management).

@@ -61,6 +61,10 @@ export type RaceSeries = {
   id: string;
   name: string;
   tier: string;
+  // eventKind is additive to tier: older clients can keep filtering weekly
+  // while newer views distinguish daily, weekly and special team events.
+  eventKind?: "daily" | "weekly" | "special" | string;
+  format?: "solo" | "team" | string;
   licenseLabel: string;
   track: string;
   // vehicleClass is the schedule's own prose, kept verbatim; classes is the
@@ -85,6 +89,9 @@ export type RaceSeries = {
   // safetyRating is the series' own requirement when it differs from the
   // tier's, such as the "SR S2" the weekly races ask for.
   safetyRating?: string;
+  fairShare?: boolean;
+  forbiddenBadges?: string[];
+  inGameStartTime?: string;
   // notes carries the advisories printed next to a series, like the hardware
   // warning on the 2.4h Le Mans.
   notes?: string[];

@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-845",
+  "type": "feature",
+  "summary": "El calendario LMU admite el mensaje semanal real de Discord y deja una bandeja local para que un owner revise y publique el borrador.",
+  "technicalNotes": [
+    "El parser reconoce las 11 entradas del mensaje del 25 de agosto de 2026, incluidos daily, weekly, special/team, horas UTC compactas, restricciones de badges, fair share, escala temporal y el aviso de hardware.",
+    "El lector Discord usa una allowlist cerrada de guild, canal y autor o webhook, persiste cursor, deduplica por messageId y hash, y conserva como máximo 32 candidatos locales.",
+    "La app de escritorio solo lee la bandeja local; la fuente se revisa en solo lectura, el borrador se guarda mediante las RPC existentes y solo el owner puede publicar."
+  ],
+  "testing": [
+    "go test ./internal/calendar ./internal/app ./internal/calendar/discordbot ./cmd/lmu-calendar-bot",
+    "La prueba focal del mensaje real comprueba 11 series, slots UTC, metadatos del evento de equipo y deduplicación del worker.",
+    "Revisión de diff, formato JSON y git diff --check en la rama aislada."
+  ],
+  "knownLimitations": [
+    "El typecheck, tests y build del frontend requieren node_modules, que no está instalado en el worktree aislado; el binario Wails completo también queda bloqueado mientras falta frontend/dist.",
+    "El worker aún necesita ejecutarse con credenciales y IDs reales del canal oficial; no se ha desplegado ni conectado ningún secreto remoto."
+  ]
+}

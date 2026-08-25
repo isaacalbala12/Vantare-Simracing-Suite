@@ -73,6 +73,9 @@ func TestLoadWeeklySchedule_Valid(t *testing.T) {
 		}
 		seen[s.ID] = true
 		byTier[s.Tier]++
+		if len(s.Sessions) != 3 || s.EventDurationMin <= s.DurationMin {
+			t.Errorf("Series[%d] derived session shape = %+v eventDuration=%d", i, s.Sessions, s.EventDurationMin)
+		}
 	}
 	for _, tier := range []string{"beginner", "intermediate", "advanced", "weekly"} {
 		if byTier[tier] == 0 {

@@ -127,6 +127,7 @@ export const SETTINGS_SEARCH_INDEX: SettingsSearchEntry[] = [
   { section: "updates", key: "settings.nav.updates" },
   { section: "hotkeys", key: "settings.nav.hotkeys" },
   { section: "diagnostics", key: "settings.nav.diagnostics" },
+  { section: "schedule", key: "settings.nav.schedule" },
 
   // Cuenta
   { section: "account", key: "settings.account.session" },
@@ -167,6 +168,11 @@ export const SETTINGS_SEARCH_INDEX: SettingsSearchEntry[] = [
   { section: "diagnostics", key: "settings.diag.sampling" },
   { section: "diagnostics", key: "settings.diag.report" },
   { section: "diagnostics", key: "settings.diag.events" },
+
+  // Calendario LMU · revisión owner
+  { section: "schedule", key: "settings.schedule.inbox" },
+  { section: "schedule", key: "settings.schedule.source" },
+  { section: "schedule", key: "settings.schedule.preview" },
 ];
 
 /**

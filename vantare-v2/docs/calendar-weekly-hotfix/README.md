@@ -14,6 +14,11 @@ El flujo debe ser repetible cada semana:
 4. Actualizar changelog/notas.
 5. Preparar commit hotfix.
 
+Para evitar el pegado semanal, el lector opcional de Discord y su configuración
+están descritos en [discord-calendar-bot.md](discord-calendar-bot.md). El
+lector deja un candidato local; la revisión y publicación siguen siendo
+acciones explícitas del owner.
+
 ## Principios
 
 - No materializar miles de eventos en JSON.

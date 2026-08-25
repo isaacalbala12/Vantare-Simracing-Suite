@@ -14,14 +14,14 @@ import (
 
 // Remote schedule publication.
 //
-// LMU publishes the weekly schedule as plain text on Discord, so there is
-// nothing to fetch automatically. The owner pastes it into Vantare, the parser
-// here turns it into an OfficialSchedule, and it is stored centrally so every
-// client picks it up without waiting for a release.
+// LMU publishes the weekly schedule as plain text on Discord. The restricted
+// reader leaves an exact message in the local inbox; the owner reviews it, the
+// parser here turns it into an OfficialSchedule, and it is stored centrally so
+// every client picks it up without waiting for a release.
 //
-// Two steps: a paste becomes a draft only its author can see, and reaches users
-// when the owner publishes it. Authority lives in the database functions, not
-// here — hiding the button would not stop anyone calling the endpoint.
+// Two steps: a candidate becomes a draft only its author can see, and reaches
+// users when the owner publishes it. Authority lives in the database functions,
+// not here — hiding the button would not stop anyone calling the endpoint.
 
 // ErrNotOwner is returned when the signed in user may not import schedules.
 var ErrNotOwner = errors.New("owner role required")
@@ -68,8 +68,9 @@ func NewSchedulePublisher(baseURL, anonKey string) *SchedulePublisher {
 	}
 }
 
-// ParseAndValidate turns pasted schedule text into a schedule, without touching
-// the network. The app shows the result for review before anything is stored.
+// ParseAndValidate turns candidate schedule text into a schedule, without
+// touching the network. The app shows the result for review before anything is
+// stored.
 func ParseAndValidate(text string) (OfficialSchedule, error) {
 	return ImportDailySchedule(text)
 }

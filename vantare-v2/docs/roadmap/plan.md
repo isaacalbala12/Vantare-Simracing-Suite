@@ -240,6 +240,22 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 
 ## Hitos
 
+### Calendario LMU desde Discord
+
+- id: calendar-discord-review
+- tipo: feature
+- titulo.en: LMU calendar from Discord
+- titulo.pt: Calendário LMU via Discord
+- titulo.it: Calendario LMU da Discord
+- cuerpo: Un lector restringido al canal oficial deja el mensaje semanal de LMU en una bandeja local; el owner revisa la fuente y los cambios antes de guardar y publicar el borrador.
+- cuerpo.en: A reader restricted to the official channel leaves the LMU weekly message in a local inbox; the owner reviews the source and changes before saving and publishing the draft.
+- cuerpo.pt: Um leitor limitado ao canal oficial deixa a mensagem semanal do LMU numa caixa de entrada local; o owner revê a fonte e as alterações antes de guardar e publicar o rascunho.
+- cuerpo.it: Un lettore limitato al canale ufficiale lascia il messaggio settimanale LMU in una inbox locale; l'owner rivede fonte e modifiche prima di salvare e pubblicare la bozza.
+- etiqueta: En revisión
+- etiqueta.en: In review
+- etiqueta.pt: Em revisão
+- etiqueta.it: In revisione
+
 ### v0.1.0.5 en nightly
 
 - id: v0105

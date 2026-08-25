@@ -28,26 +28,40 @@ func NewScheduleImportService(publisher *calendar.SchedulePublisher, emitter Eve
 // SchedulePreview is what the owner reviews before publishing: enough of the
 // parse to tell at a glance whether the parser understood the text.
 type SchedulePreview struct {
-	ValidFrom   string          `json:"validFrom"`
-	ValidUntil  string          `json:"validUntil"`
-	SeriesCount int             `json:"seriesCount"`
-	Series      []PreviewSeries `json:"series"`
+	ValidFrom        string          `json:"validFrom"`
+	ValidUntil       string          `json:"validUntil"`
+	SeriesCount      int             `json:"seriesCount"`
+	SourceNotesCount int             `json:"sourceNotesCount"`
+	Series           []PreviewSeries `json:"series"`
 }
 
 // PreviewSeries is one row of the review table.
 type PreviewSeries struct {
-	ID           string   `json:"id"`
-	Name         string   `json:"name"`
-	Tier         string   `json:"tier"`
-	Track        string   `json:"track"`
-	Classes      []string `json:"classes"`
-	RaceMin      int      `json:"raceMin"`
-	Cadence      string   `json:"cadence"`
-	Setup        string   `json:"setup"`
-	TimeScale    int      `json:"timeScale,omitempty"`
-	VELimit      int      `json:"veLimit,omitempty"`
-	SafetyRating string   `json:"safetyRating,omitempty"`
-	NoteCount    int      `json:"noteCount"`
+	ID                string              `json:"id"`
+	Name              string              `json:"name"`
+	Tier              string              `json:"tier"`
+	EventKind         string              `json:"eventKind,omitempty"`
+	Format            string              `json:"format,omitempty"`
+	LicenseLabel      string              `json:"licenseLabel"`
+	Track             string              `json:"track"`
+	Classes           []string            `json:"classes"`
+	RaceMin           int                 `json:"raceMin"`
+	EventDurationMin  int                 `json:"eventDurationMin"`
+	Cadence           string              `json:"cadence"`
+	Recurrence        calendar.Recurrence `json:"recurrence"`
+	Setup             string              `json:"setup"`
+	StartOffsetMinute int                 `json:"startOffsetMinute,omitempty"`
+	Splits            int                 `json:"splits"`
+	Assists           string              `json:"assists"`
+	TyreWarmers       bool                `json:"tyreWarmers"`
+	Tyres             int                 `json:"tyres"`
+	TimeScale         int                 `json:"timeScale,omitempty"`
+	VELimit           int                 `json:"veLimit,omitempty"`
+	SafetyRating      string              `json:"safetyRating,omitempty"`
+	FairShare         bool                `json:"fairShare,omitempty"`
+	ForbiddenBadges   []string            `json:"forbiddenBadges,omitempty"`
+	InGameStartTime   string              `json:"inGameStartTime,omitempty"`
+	NoteCount         int                 `json:"noteCount"`
 }
 
 // Parse turns pasted text into a preview without touching the network, and
@@ -125,10 +139,11 @@ func (s *ScheduleImportService) emitError(err error) {
 
 func buildSchedulePreview(sched calendar.OfficialSchedule) SchedulePreview {
 	preview := SchedulePreview{
-		ValidFrom:   sched.ValidFrom.Format("2006-01-02"),
-		ValidUntil:  sched.ValidUntil.Format("2006-01-02"),
-		SeriesCount: len(sched.Series),
-		Series:      make([]PreviewSeries, 0, len(sched.Series)),
+		ValidFrom:        sched.ValidFrom.Format("2006-01-02"),
+		ValidUntil:       sched.ValidUntil.Format("2006-01-02"),
+		SeriesCount:      len(sched.Series),
+		SourceNotesCount: len(sched.SourceNotes),
+		Series:           make([]PreviewSeries, 0, len(sched.Series)),
 	}
 	for _, s := range sched.Series {
 		classes := make([]string, 0, len(s.Classes))
@@ -140,18 +155,31 @@ func buildSchedulePreview(sched calendar.OfficialSchedule) SchedulePreview {
 			classes = append(classes, c.Name)
 		}
 		preview.Series = append(preview.Series, PreviewSeries{
-			ID:           s.ID,
-			Name:         s.Name,
-			Tier:         s.Tier,
-			Track:        s.Track,
-			Classes:      classes,
-			RaceMin:      s.RaceDurationMin,
-			Cadence:      cadenceLabel(s),
-			Setup:        s.Setup,
-			TimeScale:    s.TimeScale,
-			VELimit:      s.VELimit,
-			SafetyRating: s.SafetyRating,
-			NoteCount:    len(s.Notes),
+			ID:                s.ID,
+			Name:              s.Name,
+			Tier:              s.Tier,
+			EventKind:         s.EventKind,
+			Format:            s.Format,
+			LicenseLabel:      s.LicenseLabel,
+			Track:             s.Track,
+			Classes:           classes,
+			RaceMin:           s.RaceDurationMin,
+			EventDurationMin:  s.EventDurationMin,
+			Cadence:           cadenceLabel(s),
+			Recurrence:        s.Recurrence,
+			Setup:             s.Setup,
+			StartOffsetMinute: s.StartOffsetMinute,
+			Splits:            s.Splits,
+			Assists:           s.Assists,
+			TyreWarmers:       s.TyreWarmers,
+			Tyres:             s.Tyres,
+			TimeScale:         s.TimeScale,
+			VELimit:           s.VELimit,
+			SafetyRating:      s.SafetyRating,
+			FairShare:         s.FairShare,
+			ForbiddenBadges:   append([]string(nil), s.ForbiddenBadges...),
+			InGameStartTime:   s.InGameStartTime,
+			NoteCount:         len(s.Notes),
 		})
 	}
 	return preview

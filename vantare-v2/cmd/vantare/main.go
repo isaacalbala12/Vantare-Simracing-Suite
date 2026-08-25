@@ -2225,7 +2225,14 @@ func main() {
 			// whole result lets the shell say what the update brings without
 			// asking for a second check, which would mean a network call for
 			// hovering a pill.
-			emitter.Emit("updater:available", map[string]any{"info": info})
+			//
+			// A throttled check is not an answer: it never looked, so its
+			// result carries no releases and no channels. Publishing it would
+			// make the UI state "nothing to update" on the strength of a
+			// cooldown.
+			if !info.Throttled {
+				emitter.Emit("updater:available", map[string]any{"info": info})
+			}
 		}()
 	}
 

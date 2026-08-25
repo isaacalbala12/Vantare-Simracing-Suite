@@ -140,9 +140,18 @@ func TestSolveV2ReportsImpossibleFinishReserve(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SolveV2: %v", err)
 	}
-	if result.Feasible || !candidateHasReason(result.CandidateDetails, "reserve_not_met") {
+	if result.Feasible || !candidateHasReason(result.CandidateDetails, "reserve_not_met") || !resultHasReason(result.Reasons, "reserve_not_met") {
 		t.Fatalf("impossible reserve result = %+v", result)
 	}
+}
+
+func resultHasReason(reasons []SolverReason, code string) bool {
+	for _, reason := range reasons {
+		if reason.Code == code {
+			return true
+		}
+	}
+	return false
 }
 
 func TestSolveV2AppliesFinishReserveToSavingPlan(t *testing.T) {

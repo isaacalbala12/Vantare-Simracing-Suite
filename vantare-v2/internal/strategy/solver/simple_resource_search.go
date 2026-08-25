@@ -68,6 +68,9 @@ func simpleResourceDecisions(
 	if reserveStints > stintCount {
 		stintCount = reserveStints
 	}
+	if stintCount > input.RaceLaps {
+		return nil, false
+	}
 	if ve.capacity == 0 && fuel.capacity > 0 && pitCost.TyreSeconds.Value == 0 {
 		decision, exact := simpleSingleFuelDecision(input, fuel, maxStint, stintCount, driverID)
 		if exact {

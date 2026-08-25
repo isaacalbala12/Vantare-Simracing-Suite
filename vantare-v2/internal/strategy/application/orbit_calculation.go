@@ -297,6 +297,9 @@ func calculateOrbitPlan(ctx context.Context, event OrbitCalculationEvent, driver
 				code, cause = ErrorCalculationOverflow, ErrCalculationOverflow
 				break
 			}
+			if reason.Code == "reserve_not_met" {
+				cause = fmt.Errorf("%s: %s: %w", reason.Code, reason.Message, cause)
+			}
 		}
 		return OrbitCalculationPlan{}, calculationApplicationError(code, fmt.Sprintf("input.variants.%d", variantIndex), cause)
 	}

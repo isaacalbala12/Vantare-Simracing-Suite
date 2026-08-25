@@ -90,6 +90,39 @@ func TestSimpleResourceDecisionsStaysActiveWithFractionalReserve(t *testing.T) {
 	}
 }
 
+func TestSimpleSingleFuelDecisionMatchesExhaustiveOracle(t *testing.T) {
+	random := rand.New(rand.NewSource(832))
+	shortcutCases := 0
+	for index := 0; index < 100; index++ {
+		input := baseInputV2()
+		input.RaceLaps = int64(2 + random.Intn(6))
+		input.FuelCapacityLiters.Value = float64(1 + random.Intn(5))
+		input.FuelPerLapLiters.Value = float64(1 + random.Intn(int(input.FuelCapacityLiters.Value)))
+		input.VECapacityPercent.Value = 0
+		input.VEPerLapPercent.Value = 0
+		input.TyreLifeLaps.Value = 0
+		input.PitCost.TyreSeconds.Value = 0
+		input.PitCost.TransitSeconds.Value = input.FuelCapacityLiters.Value/input.PitCost.RefuelRateLPerS.Value + 1
+		if index%2 == 0 {
+			input.FuelReserve = reserveLapsInput(0.8)
+		}
+
+		_, active := preparedSimpleResourceDecisions(t, input)
+		if active {
+			shortcutCases++
+		}
+		got, err := SolveV2(input)
+		if err != nil {
+			t.Fatalf("case=%d SolveV2: %v", index, err)
+		}
+		want := exhaustiveV2BestNode(t, input)
+		assertSimpleResourceParity(t, index, input, got, want)
+	}
+	if shortcutCases < 50 {
+		t.Fatalf("single-resource shortcut exercised only %d/100 cases", shortcutCases)
+	}
+}
+
 func TestSimpleResourceDecisionsRejectsEveryLiveDimension(t *testing.T) {
 	base := baseInputV2()
 	base.PitCost.TransitSeconds.Value = 100

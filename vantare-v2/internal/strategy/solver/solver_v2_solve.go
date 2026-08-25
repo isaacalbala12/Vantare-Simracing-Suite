@@ -437,6 +437,9 @@ func SolveV2Context(ctx context.Context, input SolverInputV2) (SolverResultV2, e
 		return result, nil
 	}
 	if len(completed) == 0 {
+		if reason, ok := result.firstCandidateReason("reserve_not_met"); ok {
+			result.Reasons = append(result.Reasons, reason)
+		}
 		result.Reasons = append(result.Reasons, SolverReason{Code: "no_feasible_plan", Message: "ninguna combinacion discretizada de paradas y servicios completa la carrera"})
 		if len(result.CandidateDetails) == 0 {
 			result.addRejected(initial, input, "no_feasible_plan", "los recursos no permiten completar la carrera")
@@ -542,6 +545,17 @@ func SolveV2Context(ctx context.Context, input SolverInputV2) (SolverResultV2, e
 	}
 	result.CandidateDetails = append(feasibleDetails, result.CandidateDetails...)
 	return result, nil
+}
+
+func (result SolverResultV2) firstCandidateReason(code string) (SolverReason, bool) {
+	for _, candidate := range result.CandidateDetails {
+		for _, reason := range candidate.Reasons {
+			if reason.Code == code {
+				return reason, true
+			}
+		}
+	}
+	return SolverReason{}, false
 }
 
 func (input SolverInputV2) stopCountAllowed(stops int) (bool, string, string) {

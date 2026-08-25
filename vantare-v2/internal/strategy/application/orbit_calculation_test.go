@@ -173,6 +173,21 @@ func TestCalculateOrbitAddsStopAndPublishesEffectiveReserve(t *testing.T) {
 	}
 }
 
+func TestCalculateOrbitReportsImpossibleReserveCause(t *testing.T) {
+	_, err := calculateOrbit(OrbitCalculationInput{
+		Event: OrbitCalculationEvent{DurationMinutes: 2, TankLiters: 1, PitLossSeconds: 10},
+		Drivers: []OrbitCalculationDriver{{
+			ID: "driver-1", Dry: OrbitCalculationPace{PaceSeconds: 60, FuelLitersPerLap: 1},
+		}},
+		Variants:        []OrbitCalculationVariant{{ID: "s1", Mode: "dry", Order: []string{"driver-1"}}},
+		ActiveVariantID: "s1",
+	})
+	var applicationErr *ApplicationError
+	if !errors.As(err, &applicationErr) || applicationErr.Code != ErrorCalculationInfeasible || !strings.Contains(err.Error(), "reserve_not_met") {
+		t.Fatalf("error = %#v", err)
+	}
+}
+
 func TestOrbitMissingOrEmptyDerivedFamiliesDegradeWithCause(t *testing.T) {
 	for _, test := range []struct {
 		name       string

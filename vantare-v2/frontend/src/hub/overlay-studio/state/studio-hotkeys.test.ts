@@ -19,15 +19,12 @@ describe("getStudioHotkey", () => {
     expect(getStudioHotkey(keyboardEvent({ key: "s", ctrlKey: true }))).toBe("save");
     expect(getStudioHotkey(keyboardEvent({ key: "z", ctrlKey: true }))).toBe("undo");
     expect(getStudioHotkey(keyboardEvent({ key: "z", ctrlKey: true, shiftKey: true }))).toBe("redo");
+    expect(getStudioHotkey(keyboardEvent({ key: "y", ctrlKey: true }))).toBe("redo");
     expect(getStudioHotkey(keyboardEvent({ key: "d", ctrlKey: true }))).toBe("duplicate");
     expect(getStudioHotkey(keyboardEvent({ key: "Delete" }))).toBe("delete");
     expect(getStudioHotkey(keyboardEvent({ key: "Escape" }))).toBe("escape");
     expect(getStudioHotkey(keyboardEvent({ key: "ArrowUp" }))).toBe("move-up");
     expect(getStudioHotkey(keyboardEvent({ key: "ArrowRight", shiftKey: true }))).toBe("move-right");
-  });
-
-  it("does not treat ctrl+y as redo", () => {
-    expect(getStudioHotkey(keyboardEvent({ key: "y", ctrlKey: true }))).toBeNull();
   });
 
   it("ignores hotkeys while typing in editable fields", () => {

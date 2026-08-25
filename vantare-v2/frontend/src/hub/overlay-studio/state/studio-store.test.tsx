@@ -176,6 +176,7 @@ describe("StudioProvider", () => {
       expect(saveResult.status).toBe("saved");
     });
     expect(client.save).toHaveBeenCalledWith({
+      file: "profiles/test.json",
       document: expect.objectContaining({ layoutViewport: { width: 3440, height: 1440 } }),
       expectedRevision: "rev-1",
     });
@@ -489,19 +490,20 @@ describe("StudioProvider", () => {
     expect(client.save).toHaveBeenCalled();
   });
 
-  it("preserves edit B when save A resolves and uses A revision for the next save", async () => {
+  it("serializes edit B behind save A and resolves after the latest document is persisted", async () => {
     const deferred: { resolve: (value: StudioSaveResult) => void } = { resolve: () => undefined };
     const client = createMockClient(buildDocument());
-    const originalSave = client.save;
-    let firstCall = true;
     client.save = vi.fn((input) => {
-      if (firstCall) {
-        firstCall = false;
+      if (vi.mocked(client.save).mock.calls.length === 1) {
         return new Promise<StudioSaveResult>((resolve) => {
           deferred.resolve = resolve;
         });
       }
-      return originalSave(input);
+      return Promise.resolve({
+        status: "saved",
+        document: structuredClone(input.document),
+        revision: "rev-3",
+      });
     }) as typeof client.save;
 
     const { result } = renderHook(() => useStudioDocument(), { wrapper: wrapper(client) });
@@ -544,18 +546,64 @@ describe("StudioProvider", () => {
       await saveAPromise;
     });
 
-    // El presente conserva B; solo saved y revision cambian.
+    // El presente conserva B y el mismo drenaje lo persiste con la revision A.
     expect(result.current.document?.layouts.general.widgets[0].layout.x).toBe(250);
-    expect(result.current.dirty).toBe(true);
-    expect(result.current.revision).toBe("rev-2");
+    expect(result.current.dirty).toBe(false);
+    expect(result.current.revision).toBe("rev-3");
+    expect(client.save).toHaveBeenCalledTimes(2);
+    const nextCall = vi.mocked(client.save).mock.calls[1];
+    expect(nextCall?.[0].document.layouts.general.widgets[0].layout.x).toBe(250);
+    expect(nextCall?.[0].expectedRevision).toBe("rev-2");
+  });
 
-    // El siguiente save usa B con la revision de A.
+  it("turns thrown save failures into a recoverable error state", async () => {
+    const client = createMockClient(buildDocument());
+    client.save = vi.fn(async () => {
+      throw new Error("transport timeout");
+    });
+    const { result } = renderHook(() => useStudioDocument(), { wrapper: wrapper(client) });
+    await waitFor(() => expect(result.current.document).not.toBeNull());
+
+    act(() => {
+      result.current.dispatch({
+        type: "widget/layout",
+        session: "general",
+        widgetIds: ["delta-main"],
+        patch: { x: 275 },
+      });
+    });
     await act(async () => {
       await result.current.save();
     });
-    const nextCall = vi.mocked(originalSave).mock.calls.at(-1);
-    expect(nextCall?.[0].document.layouts.general.widgets[0].layout.x).toBe(250);
-    expect(nextCall?.[0].expectedRevision).toBe("rev-2");
+
+    expect(result.current.saveState).toBe("error");
+    expect(result.current.accessNotice).toBe("transport timeout");
+    expect(result.current.dirty).toBe(true);
+  });
+
+  it("saves the recovered document held by the history ref", async () => {
+    const client = createMockClient(buildDocument());
+    const { result } = renderHook(() => useStudioDocument(), { wrapper: wrapper(client) });
+    await waitFor(() => expect(result.current.document).not.toBeNull());
+    const recovered = structuredClone(result.current.document!);
+    recovered.layouts.general.widgets[0].layout.x = 425;
+
+    act(() => result.current.acceptRecovery(recovered));
+    await act(async () => {
+      await result.current.save();
+    });
+
+    expect(client.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        document: expect.objectContaining({
+          layouts: expect.objectContaining({
+            general: expect.objectContaining({
+              widgets: [expect.objectContaining({ layout: expect.objectContaining({ x: 425 }) })],
+            }),
+          }),
+        }),
+      }),
+    );
   });
 
   it("dispatch returns true only when the command creates history", async () => {

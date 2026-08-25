@@ -10,6 +10,30 @@
 
 ## Estado
 
+- **ISA-842 — autosave e historial productivo de Overlay Studio (2026-08-25,
+  PR draft a nightly):** rebasada sobre `origin/nightly@c7d25f94`, la rama
+  `vantareapp/isa-842-studio-autosave-undo` convierte cada cambio documental
+  confirmado en autosave con debounce de 300 ms. `StudioProvider` mantiene un
+  único save en vuelo y coalesce ediciones posteriores sobre la revisión
+  confirmada; errores y timeouts dejan el documento recuperable. La ruta
+  productiva monta `Ctrl+Z`, `Ctrl+Shift+Z` y `Ctrl+Y`, conserva 100 pasos aunque
+  autosave ya haya confirmado el estado y persiste también cada undo/redo. El
+  save incluye el archivo ligado a la sesión: cambiar el perfil activo global
+  no puede escribir el documento abierto sobre otro perfil. Estado visible:
+  pendiente, guardando, guardado automáticamente o reintento. ADR 0093 sustituye
+  solo el guardado explícito de ADR 0003. Evidencia fresca tras el rebase:
+  frontend completo 389 archivos/2978 tests PASS, focal final de autosave/store
+  2 archivos/25 tests PASS, typecheck y build PASS, lint de los 14 TS/TSX
+  modificados PASS y
+  `go test ./...` PASS. El
+  lint global solo conserva el fallo previo `_damage` no usado en
+  `car-damage-numbers-view-model-v2.ts`, fuera de alcance. En el harness Orbit
+  con Wails mock, X se guardó de 1560 a 1500; `Ctrl+Z` restauró 1560 y
+  `Ctrl+Shift+Z` rehizo 1500, ambos con estado `saved`. Falta prueba manual en el
+  ejecutable Wails real. Implementación rebasada en `a62c5035` y guard de
+  revisión SWR en `569c3dec`; PR **#853** hacia `nightly`, autorizado para merge
+  por Isaac el 2026-08-26. Sin promoción a `testers`/`master` ni release.
+
 - **ISA-770 — saltos de widgets en Studio (2026-08-25, PR a nightly):**
   la medición A/B en Wails/WebView2 separó dos caminos. En movimiento reducido,
   el padre de `5a8de7ed` presentó un frame con escena oculta, escala cero,
@@ -42,7 +66,6 @@
   sección se explica al dejar el ratón encima. Los pasos de columna dicen
   «Estrecha»/«Izquierda» en vez de `SM`/`MD`/`LG`. Gates PASS: 2978 tests,
   typecheck, lint, auditoría i18n y evidencia visual regenerada. PR #844.
-
 - **Ajustes Orbit: autosave de atajos, descarga de informe y búsqueda
   (2026-08-22, en rama):** tres mejoras de la pantalla Ajustes sobre
   `origin/nightly@4ec98fea`, rama `vantareapp/isa-767-ajustes-orbit-autosave-informe-busqueda`,

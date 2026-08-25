@@ -39,6 +39,7 @@ import {
   type StudioProfileClient,
 } from './state/studio-profile-client';
 import { ConnectedStudioProvider, useStudioDocument } from './state/studio-store';
+import { StudioAutosave } from './state/studio-autosave';
 import type { StudioProfileEntry } from './studio-profile-entry';
 
 import { modeFromTarget, type StudioRouteMode } from './studio-route-target';
@@ -827,6 +828,7 @@ export function StudioRoute(props: StudioRouteProps): React.ReactElement {
   return (
     <>
       <ConnectedStudioProvider key={editorFile} client={client} initialFile={editorFile}>
+        <StudioAutosave />
         <StudioRouteNavigationBridge
           onDirtyChange={(dirty) => {
             dirtyRef.current = dirty;

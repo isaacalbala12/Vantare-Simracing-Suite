@@ -153,8 +153,10 @@ export const studioOrbitPt: Record<string, string> = {
   "studio.system.vantare-endurance": "Vantare Endurance",
 
   "studio.topbar.profile": "Perfil ativo",
-  "studio.topbar.save": "Guardar",
-  "studio.topbar.saved": "Guardado",
+  "studio.topbar.autoSaving": "A guardar…",
+  "studio.topbar.autoSaved": "Guardado automaticamente",
+  "studio.topbar.savePending": "Gravação pendente…",
+  "studio.topbar.retrySave": "Tentar guardar novamente",
   "studio.topbar.openOverlay": "Abrir overlay",
   "studio.topbar.stopOverlay": "Parar overlay",
 };

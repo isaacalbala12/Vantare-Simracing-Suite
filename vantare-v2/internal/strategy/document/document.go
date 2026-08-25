@@ -353,13 +353,15 @@ const (
 	PlanningInputDegradation    PlanningInputField = "degradation_per_lap_seconds"
 	PlanningInputSavingFuel     PlanningInputField = "saving_fuel_per_lap"
 	PlanningInputSavingTimeCost PlanningInputField = "saving_time_cost_per_lap"
+	PlanningInputReserveLaps    PlanningInputField = "reserve_laps"
 )
 
 func (field PlanningInputField) Valid() bool {
 	switch field {
 	case PlanningInputFuelPerLap, PlanningInputVEPerLap, PlanningInputPace,
 		PlanningInputTank, PlanningInputPitLoss, PlanningInputTyreLife,
-		PlanningInputDegradation, PlanningInputSavingFuel, PlanningInputSavingTimeCost:
+		PlanningInputDegradation, PlanningInputSavingFuel, PlanningInputSavingTimeCost,
+		PlanningInputReserveLaps:
 		return true
 	default:
 		return false

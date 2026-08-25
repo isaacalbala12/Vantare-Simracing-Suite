@@ -132,6 +132,47 @@ func TestCalculateOrbitBackendDeadlineIsTyped(t *testing.T) {
 	}
 }
 
+func TestOrbitReserveDefaultsToProductDecisionAndEventOverrideWins(t *testing.T) {
+	input := orbitSolverInput(4, OrbitCalculationEvent{TankLiters: 4, PitLossSeconds: 10}, 60, 1, strategyprojection.ClimateBucketDry, nil)
+	if input.FuelReserve.Laps.Value != orbitDefaultReserveLaps || input.VirtualEnergyReserve.Laps.Value != orbitDefaultReserveLaps ||
+		input.FuelReserve.Laps.Evidence.Provenance.SourceID != orbitDefaultReserveSourceID {
+		t.Fatalf("default reserve = fuel %+v VE %+v", input.FuelReserve, input.VirtualEnergyReserve)
+	}
+
+	override := strategydocument.NumericInputOverride{
+		Value: 0.5, Presence: strategyprojection.PresenceValid,
+		Provenance: strategyprojection.Provenance{Kind: strategyprojection.ProvenanceManual, SourceID: "orbit:event-1:reserve_laps"},
+		Confidence: strategyprojection.Confidence{SampleSize: 1, ComputationVersion: "orbit-input.v1"},
+	}
+	planning := &strategydocument.PlanningInputs{Overrides: map[strategydocument.PlanningInputField]strategydocument.NumericInputOverride{
+		strategydocument.PlanningInputReserveLaps: override,
+	}}
+	input = orbitSolverInput(4, OrbitCalculationEvent{TankLiters: 4, PitLossSeconds: 10}, 60, 1, strategyprojection.ClimateBucketDry, planning)
+	if input.FuelReserve.Laps.Value != 0.5 || input.VirtualEnergyReserve.Laps.Value != 0.5 ||
+		input.FuelReserve.Laps.Evidence.Provenance.SourceID != override.Provenance.SourceID {
+		t.Fatalf("overridden reserve = fuel %+v VE %+v", input.FuelReserve, input.VirtualEnergyReserve)
+	}
+}
+
+func TestCalculateOrbitAddsStopAndPublishesEffectiveReserve(t *testing.T) {
+	result, err := calculateOrbit(OrbitCalculationInput{
+		Event: OrbitCalculationEvent{DurationMinutes: 4, TankLiters: 4, PitLossSeconds: 10},
+		Drivers: []OrbitCalculationDriver{{
+			ID: "driver-1", Dry: OrbitCalculationPace{PaceSeconds: 60, FuelLitersPerLap: 1},
+		}},
+		Variants:        []OrbitCalculationVariant{{ID: "s1", Mode: "dry", Order: []string{"driver-1"}}},
+		ActiveVariantID: "s1",
+	})
+	if err != nil {
+		t.Fatalf("calculateOrbit: %v", err)
+	}
+	plan := result.Plans["s1"]
+	if plan.Stops != 1 || !plan.ReserveSatisfied || plan.ReserveRequiredLaps != orbitDefaultReserveLaps ||
+		plan.ReserveLaps < orbitDefaultReserveLaps || plan.FinishFuelLiters <= 0 {
+		t.Fatalf("reserve plan = %+v", plan)
+	}
+}
+
 func TestOrbitMissingOrEmptyDerivedFamiliesDegradeWithCause(t *testing.T) {
 	for _, test := range []struct {
 		name       string
@@ -222,6 +263,11 @@ func TestCalculateOrbitWeatherChangesPlanAndPublishesRobustMetrics(t *testing.T)
 	if firstWetLap == 0 {
 		t.Fatalf("rain timeline did not publish an applied wet lap: %+v", rain.Timeline)
 	}
+	for _, plan := range result.Weather.Plans {
+		if !plan.ReserveSatisfied || plan.ReserveRequiredLaps != orbitDefaultReserveLaps || plan.ReserveLaps < orbitDefaultReserveLaps {
+			t.Fatalf("weather reserve = %+v", plan)
+		}
+	}
 }
 
 func TestCalculateOrbitUsesGoEngineForGoldenPlan(t *testing.T) {
@@ -253,7 +299,7 @@ func TestCalculateOrbitUsesGoEngineForGoldenPlan(t *testing.T) {
 	// final largo deja menos fuel sin usar y produce 13,75e-12 s de diferencia
 	// ideal, muy dentro de la tolerancia temporal; gana por la primera vuelta de
 	// parada canonica (11 antes que 28), no por ese ruido.
-	want := []int64{11, 32, 32, 32, 32}
+	want := []int64{12, 32, 32, 32, 31}
 	for index := range want {
 		if plan.Stints[index].Laps != want[index] {
 			t.Fatalf("stint %d laps = %d, want %d", index, plan.Stints[index].Laps, want[index])
@@ -279,7 +325,7 @@ func TestOrbitGoldenPartitionsUseTheSameSolveV2CostModel(t *testing.T) {
 	event := OrbitCalculationEvent{DurationMinutes: 240, TankLiters: 90, PitLossSeconds: 64}
 	input := orbitSolverInput(139, event, 104, 2.75, strategyprojection.ClimateBucketDry, nil)
 	balanced := replayOrbitPartition(t, input, []int64{28, 28, 28, 28, 27})
-	shortFirst := replayOrbitPartition(t, input, []int64{11, 32, 32, 32, 32})
+	shortFirst := replayOrbitPartition(t, input, []int64{12, 32, 32, 32, 31})
 	solved, err := solver.SolveV2(input)
 	if err != nil {
 		t.Fatalf("SolveV2(golden): %v", err)
@@ -297,8 +343,8 @@ func TestOrbitGoldenPartitionsUseTheSameSolveV2CostModel(t *testing.T) {
 	if got := replayedFuelLiters(balanced); got != 308 {
 		t.Fatalf("balanced refuel = %.12f L, want 308", got)
 	}
-	if got := replayedFuelLiters(shortFirst); got != 294.25 {
-		t.Fatalf("short-first refuel = %.12f L, want 294.25", got)
+	if got := replayedFuelLiters(shortFirst); got != 297 {
+		t.Fatalf("short-first refuel = %.12f L, want 297", got)
 	}
 	timeTolerance := 1e-12 * math.Max(1, math.Max(math.Abs(balanced.Evaluation.TotalSeconds), math.Abs(shortFirst.Evaluation.TotalSeconds)))
 	if delta := math.Abs(shortFirst.Evaluation.TotalSeconds - balanced.Evaluation.TotalSeconds); delta > timeTolerance {
@@ -307,17 +353,17 @@ func TestOrbitGoldenPartitionsUseTheSameSolveV2CostModel(t *testing.T) {
 	if !reflect.DeepEqual(solved.Best.Stints, shortFirst.Decision.Stints) || math.Abs(solved.Expected.TotalSeconds-shortFirst.Evaluation.TotalSeconds) > 1e-12 {
 		t.Fatalf("solver best=%+v total=%.15f, want replayed short-first=%+v total=%.15f", solved.Best.Stints, solved.Expected.TotalSeconds, shortFirst.Decision.Stints, shortFirst.Evaluation.TotalSeconds)
 	}
-	if delta := balanced.Evaluation.TotalSeconds - shortFirst.Evaluation.TotalSeconds; math.Abs(delta-13.75/orbitLegacyAllInServiceRate) > 2e-12 {
-		t.Fatalf("total delta = %.15f s, want %.15f s", delta, 13.75/orbitLegacyAllInServiceRate)
+	if delta := balanced.Evaluation.TotalSeconds - shortFirst.Evaluation.TotalSeconds; math.Abs(delta-11/orbitLegacyAllInServiceRate) > 2e-12 {
+		t.Fatalf("total delta = %.15f s, want %.15f s", delta, 11/orbitLegacyAllInServiceRate)
 	}
-	if len(solved.CandidateDetails) == 0 || len(solved.CandidateDetails[0].Reasons) == 0 || solved.CandidateDetails[0].Reasons[0].Code != "optimal_after_time_tie_break" {
-		t.Fatalf("solver did not expose the time tie-break: %+v", solved.CandidateDetails)
+	if len(solved.CandidateDetails) == 0 || len(solved.CandidateDetails[0].Reasons) == 0 || solved.CandidateDetails[0].Reasons[0].Code != "optimal_after_scalar_resource_bound" {
+		t.Fatalf("solver did not expose the scalar resource proof: %+v", solved.CandidateDetails)
 	}
-	t.Logf("golden: balanced=%.15f s (308 L), short-first=%.15f s (294.25 L), delta=%.15f s", balanced.Evaluation.TotalSeconds, shortFirst.Evaluation.TotalSeconds, balanced.Evaluation.TotalSeconds-shortFirst.Evaluation.TotalSeconds)
+	t.Logf("golden: balanced=%.15f s (308 L), reserve-safe=%.15f s (297 L), delta=%.15f s", balanced.Evaluation.TotalSeconds, shortFirst.Evaluation.TotalSeconds, balanced.Evaluation.TotalSeconds-shortFirst.Evaluation.TotalSeconds)
 
 	// Contrafactual con peso configurado: al arrancar cada stint lleno, el
 	// termino es n*90 - 2,75*n*(n-1)/2. La suma de cuadrados mayor reduce el
-	// fuel medio; 6902,75 L*vuelta < 7386,75 L*vuelta por 484 L*vuelta.
+	// fuel medio; 6957,75 L*vuelta < 7386,75 L*vuelta por 429 L*vuelta.
 	input.FuelWeight = &solver.FuelWeightParameter{
 		Presence:        strategyprojection.PresenceValid,
 		SecondsPerLiter: 1,
@@ -325,12 +371,12 @@ func TestOrbitGoldenPartitionsUseTheSameSolveV2CostModel(t *testing.T) {
 		Confidence:      strategyprojection.Confidence{SampleSize: 1, ComputationVersion: "orbit-golden-proof.v1"},
 	}
 	balancedWeighted := replayOrbitPartition(t, input, []int64{28, 28, 28, 28, 27})
-	shortFirstWeighted := replayOrbitPartition(t, input, []int64{11, 32, 32, 32, 32})
-	if balancedWeighted.Evaluation.FuelWeightSeconds != 7386.75 || shortFirstWeighted.Evaluation.FuelWeightSeconds != 6902.75 {
+	shortFirstWeighted := replayOrbitPartition(t, input, []int64{12, 32, 32, 32, 31})
+	if balancedWeighted.Evaluation.FuelWeightSeconds != 7386.75 || shortFirstWeighted.Evaluation.FuelWeightSeconds != 6957.75 {
 		t.Fatalf("fuel-weight seconds balanced=%.2f short-first=%.2f", balancedWeighted.Evaluation.FuelWeightSeconds, shortFirstWeighted.Evaluation.FuelWeightSeconds)
 	}
-	if delta := balancedWeighted.Evaluation.TotalSeconds - shortFirstWeighted.Evaluation.TotalSeconds; math.Abs(delta-484) > 1e-9 {
-		t.Fatalf("weighted total delta = %.12f s, want 484 s", delta)
+	if delta := balancedWeighted.Evaluation.TotalSeconds - shortFirstWeighted.Evaluation.TotalSeconds; math.Abs(delta-429) > 1e-9 {
+		t.Fatalf("weighted total delta = %.12f s, want 429 s", delta)
 	}
 	t.Logf("fuel weight 1 s/L: balanced=%.2f L-lap, short-first=%.2f L-lap, delta=%.2f s", balancedWeighted.Evaluation.FuelWeightSeconds, shortFirstWeighted.Evaluation.FuelWeightSeconds, balancedWeighted.Evaluation.TotalSeconds-shortFirstWeighted.Evaluation.TotalSeconds)
 }

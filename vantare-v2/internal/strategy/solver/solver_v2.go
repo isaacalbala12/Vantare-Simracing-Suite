@@ -573,16 +573,17 @@ type ReserveStatus struct {
 }
 
 type ResourceReserveStatus struct {
-	Resource        ResourceKind       `json:"resource"`
-	Configured      bool               `json:"configured"`
-	Active          bool               `json:"active"`
-	Kind            manual.ReserveKind `json:"kind,omitempty"`
-	RequestedLaps   float64            `json:"requestedLaps"`
-	RequiredAmount  float64            `json:"requiredAmount"`
-	RemainingAmount float64            `json:"remainingAmount"`
-	EffectiveLaps   float64            `json:"effectiveLaps"`
-	Satisfied       bool               `json:"satisfied"`
-	Evidence        manual.Evidence    `json:"evidence"`
+	Resource               ResourceKind       `json:"resource"`
+	Configured             bool               `json:"configured"`
+	Active                 bool               `json:"active"`
+	Kind                   manual.ReserveKind `json:"kind,omitempty"`
+	RequestedLaps          float64            `json:"requestedLaps"`
+	RequiredAmount         float64            `json:"requiredAmount"`
+	RemainingAmount        float64            `json:"remainingAmount"`
+	EffectiveLaps          float64            `json:"effectiveLaps"`
+	EffectiveLapsAvailable bool               `json:"effectiveLapsAvailable"`
+	Satisfied              bool               `json:"satisfied"`
+	Evidence               manual.Evidence    `json:"evidence"`
 }
 
 type ResolvedScalarInputs struct {

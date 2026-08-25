@@ -2,7 +2,6 @@ package solver
 
 import (
 	"fmt"
-	"math"
 
 	"github.com/vantare/overlays/v2/internal/strategy/contract"
 	"github.com/vantare/overlays/v2/internal/strategy/manual"
@@ -55,8 +54,14 @@ func reserveStatusForNode(
 	if err != nil {
 		return ReserveStatus{}, err
 	}
-	fuelUsed := consumedResource(node, fuel, true)
-	veUsed := consumedResource(node, ve, false)
+	fuelUsed, err := consumedResource(node, fuel, true)
+	if err != nil {
+		return ReserveStatus{}, err
+	}
+	veUsed, err := consumedResource(node, ve, false)
+	if err != nil {
+		return ReserveStatus{}, err
+	}
 	status.Fuel, err = fuelReserveStatus(input.FuelReserve, raceLaps, node.fuel, terminalFuel, fuelUsed, fuel.capacity > 0)
 	if err != nil {
 		return ReserveStatus{}, err
@@ -72,7 +77,7 @@ func reserveStatusForNode(
 		if !resource.Satisfied {
 			status.Satisfied = false
 		}
-		if resource.EffectiveLapsAvailable() && (status.LimitingResource == "" || resource.EffectiveLaps < status.EffectiveLaps) {
+		if resource.EffectiveLapsAvailable && (status.LimitingResource == "" || resource.EffectiveLaps < status.EffectiveLaps) {
 			status.EffectiveLaps = resource.EffectiveLaps
 			status.LimitingResource = resource.Resource
 		}
@@ -84,7 +89,7 @@ func emptyReserveStatus(resource ResourceKind) ResourceReserveStatus {
 	return ResourceReserveStatus{Resource: resource, Satisfied: true}
 }
 
-func consumedResource(node searchNode, resource serviceResource, fuel bool) int64 {
+func consumedResource(node searchNode, resource serviceResource, fuel bool) (int64, error) {
 	remaining := node.ve
 	if fuel {
 		remaining = node.fuel
@@ -96,11 +101,12 @@ func consumedResource(node searchNode, resource serviceResource, fuel bool) int6
 			amount = stop.FuelLiters
 		}
 		units, err := serviceUnits("reserve.service", amount)
-		if err == nil {
-			total += units
+		if err != nil {
+			return 0, err
 		}
+		total += units
 	}
-	return total
+	return total, nil
 }
 
 func fuelReserveStatus(input manual.FuelReserveInput, raceLaps contract.LapCount, remaining, terminal, totalUsed int64, active bool) (ResourceReserveStatus, error) {
@@ -163,12 +169,9 @@ func completeReserveStatus(status ResourceReserveStatus, required float64, remai
 	status.Satisfied = remaining >= requiredUnits
 	if terminal > 0 {
 		status.EffectiveLaps = float64(remaining) / float64(terminal)
+		status.EffectiveLapsAvailable = true
 	}
 	return status, nil
-}
-
-func (status ResourceReserveStatus) EffectiveLapsAvailable() bool {
-	return status.Active && (status.EffectiveLaps > 0 || status.RemainingAmount == 0 && status.RequiredAmount > 0)
 }
 
 func reserveFailure(status ReserveStatus) (string, string) {
@@ -176,9 +179,15 @@ func reserveFailure(status ReserveStatus) (string, string) {
 	if status.VirtualEnergy.Active && !status.VirtualEnergy.Satisfied {
 		resource = status.VirtualEnergy
 	}
+	if resource.Kind == manual.ReserveLaps && resource.EffectiveLapsAvailable {
+		return "reserve_not_met", fmt.Sprintf(
+			"el plan llega con %.2f vueltas de %s, por debajo del margen de %.2f",
+			resource.EffectiveLaps, resource.Resource, resource.RequestedLaps,
+		)
+	}
 	return "reserve_not_met", fmt.Sprintf(
-		"el plan llega con %.2f vueltas de %s, por debajo del margen de %.2f",
-		resource.EffectiveLaps, resource.Resource, resource.RequestedLaps,
+		"el plan llega con %.2f de %s, por debajo del margen requerido de %.2f",
+		resource.RemainingAmount, resource.Resource, resource.RequiredAmount,
 	)
 }
 
@@ -219,7 +228,7 @@ func minimumStintsForReserve(input SolverInputV2, fuel, ve serviceResource) (int
 			return 0, false
 		}
 		need := input.RaceLaps*resource.perLap + reserveUnits
-		stints := int64(math.Ceil(float64(need) / float64(resource.capacity)))
+		stints := (need + resource.capacity - 1) / resource.capacity
 		if stints > minimum {
 			minimum = stints
 		}

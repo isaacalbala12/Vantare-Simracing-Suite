@@ -1,5 +1,10 @@
 package solver
 
+import (
+	"github.com/vantare/overlays/v2/internal/strategy/contract"
+	"github.com/vantare/overlays/v2/internal/strategy/manual"
+)
+
 const maxSimpleResourceSearchNodes = 100_000
 
 // simpleResourceDecisions cierra el caso escalar sin dimensiones que puedan
@@ -63,12 +68,109 @@ func simpleResourceDecisions(
 	if reserveStints > stintCount {
 		stintCount = reserveStints
 	}
+	if ve.capacity == 0 && fuel.capacity > 0 && pitCost.TyreSeconds.Value == 0 {
+		decision, exact := simpleSingleFuelDecision(input, fuel, maxStint, stintCount, driverID)
+		if exact {
+			return []DecisionVector{decision}, true
+		}
+	}
 	searchLimit := maxSimpleResourceSearchNodes
 	if input.Budget.MaxCandidates > 0 && input.Budget.MaxCandidates < searchLimit {
 		searchLimit = input.Budget.MaxCandidates
 	}
 	decisions, bounded := enumerateSimpleResourceDecisions(input, fuel, ve, maxStint, stintCount, driverID, searchLimit)
 	return decisions, bounded && len(decisions) > 0
+}
+
+func simpleSingleFuelDecision(input SolverInputV2, fuel serviceResource, maxStint, stintCount int64, driverID string) (DecisionVector, bool) {
+	raceLaps, err := contract.NewLapCount(input.RaceLaps)
+	if err != nil {
+		return DecisionVector{}, false
+	}
+	reserveAmount := 0.0
+	if input.FuelReserve.Kind != "" {
+		reserveAmount, err = manual.CalculateFuelReserveAmount(input.FuelReserve, raceLaps, serviceValue(fuel.perLap), 0)
+		if err != nil {
+			return DecisionVector{}, false
+		}
+	}
+	reserveUnits, err := serviceUnits("fuelReserve", reserveAmount)
+	if err != nil || reserveUnits > fuel.capacity {
+		return DecisionVector{}, false
+	}
+	finalMaxStint := maxStint
+	if fuel.perLap > 0 && (fuel.capacity-reserveUnits)/fuel.perLap < finalMaxStint {
+		finalMaxStint = (fuel.capacity - reserveUnits) / fuel.perLap
+	}
+	if finalMaxStint < 1 {
+		return DecisionVector{}, false
+	}
+
+	laps := make([]int64, stintCount)
+	remaining := input.RaceLaps
+	for index := int64(0); index < stintCount; index++ {
+		stintsAfter := stintCount - index - 1
+		maximumAfter := finalMaxStint
+		if stintsAfter > 0 {
+			maximumAfter += (stintsAfter - 1) * maxStint
+		} else {
+			maximumAfter = 0
+		}
+		count := remaining - maximumAfter
+		if count < 1 {
+			count = 1
+		}
+		maximum := maxStint
+		if index == stintCount-1 {
+			maximum = finalMaxStint
+		}
+		if count > maximum {
+			return DecisionVector{}, false
+		}
+		laps[index] = count
+		remaining -= count
+	}
+	if remaining != 0 {
+		return DecisionVector{}, false
+	}
+
+	decision := DecisionVector{PitStops: make([]PitStopDecision, 0, stintCount-1), Stints: make([]StintDecision, 0, stintCount)}
+	level := fuel.capacity
+	lap := int64(0)
+	for index, count := range laps {
+		level -= count * fuel.perLap
+		if level < 0 {
+			return DecisionVector{}, false
+		}
+		decision.Stints = append(decision.Stints, StintDecision{Index: index, Laps: count, Driver: driverID, SavingLevel: SavingNone})
+		lap += count
+		if index == len(laps)-1 {
+			if level < reserveUnits {
+				return DecisionVector{}, false
+			}
+			continue
+		}
+		required := laps[index+1] * fuel.perLap
+		if index+1 == len(laps)-1 {
+			required += reserveUnits
+		}
+		amount := required - level
+		if amount < 0 {
+			amount = 0
+		}
+		if remainder := amount % fuel.step; remainder != 0 {
+			amount += fuel.step - remainder
+		}
+		if amount > fuel.capacity-level {
+			return DecisionVector{}, false
+		}
+		decision.PitStops = append(decision.PitStops, PitStopDecision{
+			Lap: lap, FuelLiters: serviceValue(amount), Driver: driverID, SavingLevel: SavingNone,
+			ServiceMode: input.resolvedPitCost().ServiceMode, ChangeTyres: true,
+		})
+		level += amount
+	}
+	return decision, true
 }
 
 func enumerateSimpleResourceDecisions(

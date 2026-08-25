@@ -145,6 +145,39 @@ func TestSolveV2ReportsImpossibleFinishReserve(t *testing.T) {
 	}
 }
 
+func TestSolveV2AppliesFinishReserveToSavingPlan(t *testing.T) {
+	input := baseInputV2()
+	input.RaceLaps = 25
+	input.Formation.Seconds.Value = 0
+	input.FuelCapacityLiters.Value = 10
+	input.FuelPerLapLiters.Value = 1
+	input.PitCost.TransitSeconds.Value = 20
+	input.PitCost.RefuelRateLPerS.Value = 1e12
+	input.PitCost.TyreSeconds.Value = 0
+	input.FuelReserve = reserveLapsInput(0.8)
+	input.Discretization.FuelLiters = 0.25
+	input.SavingCost = savingCostParameter(SavingLevelOption{
+		Level: SavingLow, FuelSavedPerLap: 0.25, TimeCostPerLap: 0.2,
+	})
+
+	result, err := SolveV2(input)
+	if err != nil {
+		t.Fatalf("SolveV2: %v", err)
+	}
+	if !result.Feasible || len(result.Best.PitStops) != 1 || !result.Reserve.Satisfied || !decisionUsesSaving(result.Best) {
+		t.Fatalf("saving reserve result = %+v", result)
+	}
+}
+
+func decisionUsesSaving(decision DecisionVector) bool {
+	for _, stint := range decision.Stints {
+		if stint.SavingLevel != SavingNone {
+			return true
+		}
+	}
+	return false
+}
+
 func TestSolveV2UserOverrideBeatsValidDerivedResourceAndFallbackDoesNot(t *testing.T) {
 	input := baseInputV2()
 	input.FuelCapacityLiters = NewFallbackScalar(10, "test:capacity")

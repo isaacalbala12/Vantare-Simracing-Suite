@@ -425,9 +425,17 @@ func exhaustiveV2BestNode(t *testing.T, input SolverInputV2) searchNode {
 						if reserveErr != nil {
 							t.Fatalf("reserve status: %v", reserveErr)
 						}
-						if allowed, _, _ := input.completedAllowed(next, tyreModel); reserveStatus.Satisfied && allowed && (best == nil || betterNode(next, *best, input.Formation.Seconds.Value)) {
-							candidate := next
-							best = &candidate
+						if allowed, _, _ := input.completedAllowed(next, tyreModel); reserveStatus.Satisfied && allowed {
+							replayed, replayErr := ReplayDecisionV2(input, next.decision)
+							if replayErr != nil {
+								t.Fatalf("canonical replay: %v", replayErr)
+							}
+							if replayed.Feasible {
+								candidate := nodeFromEvaluation(replayed.Decision, replayed.Evaluation)
+								if best == nil || betterNode(candidate, *best, input.Formation.Seconds.Value) {
+									best = &candidate
+								}
+							}
 						}
 						continue
 					}

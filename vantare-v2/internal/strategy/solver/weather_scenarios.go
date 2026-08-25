@@ -569,7 +569,11 @@ func evaluateDecisionV2(input SolverInputV2, decision DecisionVector) (ScenarioE
 		return ScenarioEvaluation{}, false, err
 	}
 	costs := lapCostModel{pace: pace, compounds: compounds, fuelWeight: fuelWeight, weather: weatherCost}
-	node := searchNode{fuel: fuel.capacity, ve: ve.capacity, decision: DecisionVector{PitStops: []PitStopDecision{}, Stints: []StintDecision{}}}
+	resourcePlan, err := minimumResourcePlanForDecision(input, decision, fuel, ve, weatherCost, drivers, saving)
+	if err != nil {
+		return ScenarioEvaluation{}, false, err
+	}
+	node := searchNode{fuel: resourcePlan.fuelStart, ve: resourcePlan.veStart, decision: DecisionVector{PitStops: []PitStopDecision{}, Stints: []StintDecision{}}}
 	if compounds.enabled {
 		first := decision.Stints[0]
 		if first.TyreFitment == nil {

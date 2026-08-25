@@ -14,7 +14,11 @@ export type StudioSaveResult =
 
 export interface StudioProfileClient {
   load(file: string): Promise<LoadedProfileDocumentV3>;
-  save(input: { document: ProfileDocumentV3; expectedRevision: string }): Promise<StudioSaveResult>;
+  save(input: {
+    file?: string;
+    document: ProfileDocumentV3;
+    expectedRevision: string;
+  }): Promise<StudioSaveResult>;
 }
 
 export type StudioEventTransport = {
@@ -186,6 +190,7 @@ export function createStudioProfileClient(
         },
       ], "Timeout waiting for studio profile save response") as Promise<StudioSaveResult>;
       transport.emit(saveRequestEvent, {
+        file: input.file,
         document: input.document,
         expectedRevision: input.expectedRevision,
         requestId,

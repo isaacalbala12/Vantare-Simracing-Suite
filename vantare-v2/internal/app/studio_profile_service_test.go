@@ -340,6 +340,78 @@ func TestStudioProfileServiceHandleLoadMissingFileEmitsError(t *testing.T) {
 	}
 }
 
+func TestStudioProfileServiceHandleSaveTargetsLoadedEditorFileAfterActiveProfileChanges(t *testing.T) {
+	dir := t.TempDir()
+	writeDocument := func(file, id, name string) string {
+		t.Helper()
+		path := filepath.Join(dir, file)
+		doc := config.NormalizeProfileDocumentV3(&config.ProfileDocumentV3{
+			SchemaVersion: config.ProfileSchemaVersionV3,
+			ID:            id,
+			Name:          name,
+			DisplayMode:   config.ModeEdit,
+			MonitorIndex:  0,
+			Layouts: map[config.LayoutType]config.SessionLayoutV3{
+				config.LayoutGeneral: {Type: config.LayoutGeneral, Widgets: []config.WidgetInstanceV3{}},
+			},
+		})
+		data, err := json.Marshal(doc)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, data, 0644); err != nil {
+			t.Fatal(err)
+		}
+		return path
+	}
+
+	pathA := writeDocument("profile-a.json", "profile-a", "Profile A")
+	pathB := writeDocument("profile-b.json", "profile-b", "Profile B")
+	spy := &studioProfileSpy{}
+	var callback StudioProfileSaved
+	svc := NewStudioProfileService(spy, func(saved StudioProfileSaved) {
+		callback = saved
+	})
+	svc.SetProfilesDir(dir)
+	loadedA, err := svc.store.Load(pathA)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.Load(pathB); err != nil {
+		t.Fatal(err)
+	}
+
+	editedA := *loadedA.Document
+	editedA.Name = "Profile A autosaved"
+	svc.HandleSave(map[string]any{
+		"requestId":        "req-save-a",
+		"file":             "profile-a.json",
+		"expectedRevision": loadedA.Revision,
+		"document":         &editedA,
+	})
+
+	reloadedA, err := svc.store.Load(pathA)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reloadedB, err := svc.store.Load(pathB)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reloadedA.Document.Name != "Profile A autosaved" {
+		t.Fatalf("profile A name=%q", reloadedA.Document.Name)
+	}
+	if reloadedB.Document.Name != "Profile B" {
+		t.Fatalf("profile B was overwritten: name=%q", reloadedB.Document.Name)
+	}
+	if svc.Path() != pathB || svc.Document().ID != "profile-b" {
+		t.Fatalf("active runtime changed: path=%q id=%q", svc.Path(), svc.Document().ID)
+	}
+	if callback.Path != pathA || callback.Document == nil || callback.Document.ID != "profile-a" {
+		t.Fatalf("callback=%+v", callback)
+	}
+}
+
 func TestStudioProfileServiceSaveInPlacePersistsWithoutOnSaved(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "profile.json")

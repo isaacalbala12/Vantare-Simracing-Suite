@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-21T22:11:47Z",
+  "generatedAt": "2026-08-25T21:16:02Z",
   "digest": {
-    "lastCommit": "f71a43aceef39df0aee3cd9f69ab52efeeac31c8"
+    "lastCommit": "c7d25f94449f54c774628ee8b6297f2468f72b32"
   },
   "phases": [
     {
@@ -376,10 +376,10 @@
         "it": "Overlay Studio V3 in corso"
       },
       "body": {
-        "es": "Un único límite de render para estudio, runtime y previsualización, con los catálogos Crystal, Neo y Endurance.",
-        "en": "A single render boundary for studio, runtime and preview, with the Crystal, Neo and Endurance catalogues.",
-        "pt": "Um único limite de render para estúdio, runtime e pré-visualização, com os catálogos Crystal, Neo e Endurance.",
-        "it": "Un unico confine di render per studio, runtime e anteprima, con i cataloghi Crystal, Neo ed Endurance."
+        "es": "Un único límite de render para estudio, runtime y previsualización, con guardado automático, historial de deshacer/rehacer y los catálogos Crystal, Neo y Endurance.",
+        "en": "A single render boundary for studio, runtime and preview, with autosave, undo/redo history and the Crystal, Neo and Endurance catalogues.",
+        "pt": "Um único limite de render para estúdio, runtime e pré-visualização, com gravação automática, histórico de desfazer/refazer e os catálogos Crystal, Neo e Endurance.",
+        "it": "Un unico confine di render per studio, runtime e anteprima, con salvataggio automatico, cronologia annulla/ripristina e i cataloghi Crystal, Neo ed Endurance."
       },
       "label": {
         "es": "En desarrollo",
@@ -610,6 +610,111 @@
     }
   ],
   "delivered": [
+    {
+      "date": "2026-08-25",
+      "entries": [
+        {
+          "kind": "feat",
+          "scope": "studio",
+          "text": "Rehacer el inspector de widgets — controles honestos y legibles"
+        }
+      ]
+    },
+    {
+      "date": "2026-08-24",
+      "entries": [
+        {
+          "kind": "fix",
+          "scope": "studio",
+          "text": "Geometria del stage persistida entre montajes — sin ventana cero->medicion al volver (ISA-829 opcion 3)"
+        },
+        {
+          "kind": "fix",
+          "scope": "studio",
+          "text": "Salto inicial de widgets — fonts block + gate fontsReady + convergencia SWR"
+        },
+        {
+          "kind": "fix",
+          "scope": "studio",
+          "text": "Evitar salto con movimiento reducido"
+        }
+      ]
+    },
+    {
+      "date": "2026-08-23",
+      "entries": [
+        {
+          "kind": "docs",
+          "scope": "release",
+          "text": "Manifiesto v0.1.0.7-nightly.12 (núcleo de telemetría Go-first completo)"
+        },
+        {
+          "kind": "feat",
+          "scope": "overlay",
+          "text": "Registro v2 completo (18 widgets) y track-map con marcadores desde groundPosition"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-781/782: track-weather, broadcast-tower y posicion para track-map sobre v2"
+        },
+        {
+          "kind": "perf",
+          "scope": "studio",
+          "text": "Cache SWR del documento — los widgets pintan al instante"
+        }
+      ]
+    },
+    {
+      "date": "2026-08-22",
+      "entries": [
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Señal de daño en el canónico"
+        },
+        {
+          "kind": "docs",
+          "scope": "release",
+          "text": "Manifiesto v0.1.0.7-testers.1 (primera build de Testers) (#713)"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "VMs v2 multiclass-relative, head-to-head, track-map y race-schedule"
+        },
+        {
+          "kind": "feat",
+          "scope": "overlay",
+          "text": "Registro generico VM v2 por widget y cableado 7 widgets"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Activar cadencias reguladas + cablear FuelUsageWindow"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-778/779: VMs v2 para delta-advanced, delta-trace, pedals y pedals-telemetry-compact"
+        },
+        {
+          "kind": "feat",
+          "scope": "hub",
+          "text": "Ajustes Orbit - autosave de atajos, descarga de informe de diagnostico y busqueda"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Fugas LMU 1-8, inversion 9d ExtendedReader y frame congelado"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Carril experimental de voz de entrada tras flag (F5 rework Ingeniero)"
+        }
+      ]
+    },
     {
       "date": "2026-08-21",
       "entries": [
@@ -1337,76 +1442,6 @@
           "kind": "feat",
           "scope": "roadmap",
           "text": "Pestañas de proyectos y tareas Linear"
-        }
-      ]
-    },
-    {
-      "date": "2026-08-03",
-      "entries": [
-        {
-          "kind": "fix",
-          "scope": "discord",
-          "text": "Resolve routes from channel identity"
-        },
-        {
-          "kind": "fix",
-          "scope": "discord",
-          "text": "Validate destinations before release build"
-        },
-        {
-          "kind": "fix",
-          "scope": "release",
-          "text": "Accept four-part Vantare versions"
-        },
-        {
-          "kind": "fix",
-          "scope": "ci",
-          "text": "Preserve advisory gates for channel builds"
-        },
-        {
-          "kind": "fix",
-          "scope": "release",
-          "text": "Isolate binding generation flags"
-        },
-        {
-          "kind": "fix",
-          "scope": "overlay",
-          "text": "Unblock profile loading after hotkey"
-        },
-        {
-          "kind": "fix",
-          "scope": "hub",
-          "text": "Make topbar responsive without horizontal scroll"
-        },
-        {
-          "kind": "feat",
-          "scope": "billing",
-          "text": "Add revocable operational access"
-        },
-        {
-          "kind": "fix",
-          "scope": "auth",
-          "text": "Hydrate WebView session after OAuth callback"
-        },
-        {
-          "kind": "fix",
-          "scope": "ci",
-          "text": "Align offline license deploy guard"
-        }
-      ]
-    },
-    {
-      "date": "2026-08-02",
-      "entries": [
-        {
-          "kind": "feat",
-          "scope": "billing",
-          "text": "Add operational observability"
-        },
-        {
-          "kind": "feat",
-          "scope": "billing",
-          "text": "Add signed offline license credential"
         }
       ]
     }

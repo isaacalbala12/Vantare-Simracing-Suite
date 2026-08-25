@@ -28,6 +28,11 @@
 /* ============================================================ TOOLBAR */
 
 .orbit-studio-toolbar {
+  position: relative;
+  /* El `backdrop-filter` abre contexto de apilamiento: sin esta cota la banda
+     queda por debajo del lienzo en orden de pintado y cualquier desplegable
+     suyo (los fondos propios) se pierde detras del stage. */
+  z-index: 2;
   display: flex;
   flex: none;
   flex-wrap: nowrap;
@@ -943,4 +948,150 @@
 
 .orbit-studio-topbar__profile {
   flex: none;
+}
+
+/* ============================================ FONDOS PROPIOS (WALLPAPERS) */
+
+/* La captura manda: cubre el lienzo entero y se centra, y debajo queda un
+   negro casi puro para las proporciones que no encajan al pixel. */
+.orbit-studio-stage.osv3-bg-wallpaper {
+  background-color: #06070a;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
+.orbit-studio-wallpapers {
+  position: relative;
+  flex: none;
+}
+
+/* Mismo cuerpo que el `Menu` del kit; ancla a la izquierda porque el botón
+   vive al principio de la toolbar. */
+.orbit-studio-wallpapers__panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: var(--orbit-z-menu);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 288px;
+  padding: 12px;
+  border: 1px solid var(--orbit-line-strong);
+  border-radius: 14px;
+  background: var(--orbit-surface-2);
+  box-shadow: var(--orbit-shadow-menu);
+}
+
+.orbit-studio-wallpapers__title {
+  margin: 0;
+  color: var(--orbit-ink);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.orbit-studio-wallpapers__empty,
+.orbit-studio-wallpapers__hint {
+  margin: 0;
+  color: var(--orbit-ink-4);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.orbit-studio-wallpapers__error {
+  margin: 0;
+  color: var(--orbit-red);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.orbit-studio-wallpapers__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.orbit-studio-wallpapers__grid > li {
+  position: relative;
+}
+
+/* La miniatura ES la imagen: el nombre va encima en una banda legible, no en
+   una fila aparte que obligue a cruzar la vista. */
+.orbit-studio-wallpapers__item {
+  display: flex;
+  align-items: flex-end;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--orbit-line-strong);
+  border-radius: 9px;
+  background-color: #0a0b0d;
+  background-position: center;
+  background-size: cover;
+  cursor: pointer;
+}
+
+.orbit-studio-wallpapers__item > span {
+  width: 100%;
+  padding: 3px 6px;
+  background: linear-gradient(transparent, rgba(6, 7, 10, 0.85));
+  color: var(--orbit-ink-2);
+  font-size: 10px;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.orbit-studio-wallpapers__item:hover {
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+.orbit-studio-wallpapers__item[aria-pressed="true"] {
+  border-color: var(--orbit-carmine);
+  box-shadow: 0 0 0 1px var(--orbit-carmine);
+}
+
+.orbit-studio-wallpapers__remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(6, 7, 10, 0.78);
+  color: var(--orbit-ink-2);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.orbit-studio-wallpapers__grid > li:hover .orbit-studio-wallpapers__remove,
+.orbit-studio-wallpapers__remove:focus-visible {
+  opacity: 1;
+}
+
+.orbit-studio-wallpapers__remove:hover {
+  background: var(--orbit-carmine);
+  color: #fff;
+}
+
+/* El `input[type=file]` real nunca se ve: lo dispara el botón del panel. */
+.orbit-studio-wallpapers__input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
 }

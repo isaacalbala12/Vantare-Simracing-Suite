@@ -929,3 +929,26 @@ Evidencia Task 4 y cierre acumulado:
   y DOM en memoria para que las vueltas sean instantáneas. La primera apertura
   sigue pagando el montaje inicial; las afirmaciones de fluidez se limitan a
   cambios posteriores entre secciones ya visitadas.
+
+### Extensión ISA-838 — feedback inmediato del rail (2026-08-26)
+
+- Un probe Wails posterior separó el primer cambio del contenido del feedback
+  del rail: en 20 alternancias Studio↔Launcher el contenido empezaba a cambiar
+  con mediana de 1,40–1,43 ms, mientras el marcador activo aparecía con mediana
+  de 34,20–34,47 ms en ambos sentidos sobre un monitor de 60 Hz. La simetría
+  descarta la reactivación de Studio como causa dominante de esa sensación.
+- El rail esperaba a `onClick` y después interpolaba de forma genérica todas las
+  propiedades durante `--orbit-fast` (130 ms). Ahora acusa la pulsación nativa
+  de inmediato, deja el fondo fuera de la interpolación y limita color,
+  `box-shadow` y retorno de escala a 60–80 ms. No añade estado React optimista
+  ni altera la fuente de verdad de navegación.
+- Se añadió un contrato focal que protege el feedback de presión y evita
+  reintroducir la transición genérica. Gates frescos: focal 17/17 PASS, suite
+  completa 387 archivos y 2960/2960 tests PASS, typecheck PASS, lint focal PASS,
+  build frontend PASS y build Wails production con el `.env.local` autorizado
+  embebido PASS. El lint global conserva exclusivamente el error heredado
+  `_damage` no usado en `car-damage-numbers-view-model-v2.ts`.
+- Smoke Wails real aceptado por Isaac: el sidebar funciona «mucho mejor».
+  Captura posterior en
+  `C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\fotos\isa-838-sidebar-feedback-after.png`.
+  La imagen es evidencia local y no se versiona.

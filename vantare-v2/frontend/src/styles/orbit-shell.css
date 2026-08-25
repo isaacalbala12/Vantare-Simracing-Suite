@@ -82,12 +82,26 @@
   background: transparent;
   color: var(--orbit-ink-4);
   cursor: pointer;
-  transition: var(--orbit-fast) var(--orbit-ease);
+  transition:
+    color 80ms var(--orbit-ease),
+    box-shadow 80ms var(--orbit-ease),
+    transform 60ms var(--orbit-ease);
 }
 
 .orbit-rail__button:hover {
   color: var(--orbit-ink);
   background: var(--orbit-line-row);
+}
+
+/* El rail acusa la pulsación antes de que `onClick` confirme la nueva vista.
+   El fondo no se interpola: así el estado seleccionado tampoco espera los
+   130 ms del token global para resultar legible. */
+.orbit-rail__button:active:not([disabled]) {
+  background: rgba(213, 47, 73, 0.16);
+  color: #fff;
+  box-shadow: inset 0 0 0 1px rgba(240, 71, 85, 0.28);
+  transform: scale(0.94);
+  transition-duration: 0s;
 }
 
 .orbit-rail__button[aria-current="page"] {

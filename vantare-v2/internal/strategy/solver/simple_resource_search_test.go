@@ -90,6 +90,51 @@ func TestSimpleResourceDecisionsStaysActiveWithFractionalReserve(t *testing.T) {
 	}
 }
 
+func TestSimpleResourceDecisionPublishesOnlyRequiredEffectiveReserve(t *testing.T) {
+	input := baseInputV2()
+	input.RaceLaps = 13
+	input.FuelCapacityLiters.Value = 90
+	input.FuelPerLapLiters.Value = 3.54
+	input.VECapacityPercent.Value = 0
+	input.VEPerLapPercent.Value = 0
+	input.Discretization.FuelLiters = 0.01
+	input.PitCost.TransitSeconds.Value = 60
+	input.PitCost.TyreSeconds.Value = 0
+	input.FuelReserve = reserveLapsInput(0.8)
+
+	result, err := SolveV2(input)
+	if err != nil {
+		t.Fatalf("SolveV2: %v", err)
+	}
+	wantRemaining := 0.8 * 3.54
+	if math.Abs(result.Reserve.Fuel.RemainingAmount-wantRemaining) > 0.01 || math.Abs(result.Reserve.Fuel.EffectiveLaps-0.8) > 0.01 {
+		t.Fatalf("fuel reserve = %+v, want %.3f L / 0.80 laps", result.Reserve.Fuel, wantRemaining)
+	}
+}
+
+func TestSimpleResourceDecisionDoesNotStartVirtualEnergyAtCapacityWhenUnneeded(t *testing.T) {
+	input := baseInputV2()
+	input.RaceLaps = 13
+	input.FuelCapacityLiters.Value = 0
+	input.FuelPerLapLiters.Value = 0
+	input.VECapacityPercent.Value = 100
+	input.VEPerLapPercent.Value = 5
+	input.PitCost.TransitSeconds.Value = 60
+	input.PitCost.TyreSeconds.Value = 0
+	evidence := reserveLapsInput(0.8).Laps.Evidence
+	input.VirtualEnergyReserve = manual.VirtualEnergyReserveInput{
+		Kind: manual.ReserveLaps, Laps: manual.Sourced[float64]{Value: 0.8, Evidence: evidence}, Selection: evidence,
+	}
+
+	result, err := SolveV2(input)
+	if err != nil {
+		t.Fatalf("SolveV2: %v", err)
+	}
+	if math.Abs(result.Reserve.VirtualEnergy.RemainingAmount-4) > 0.01 || math.Abs(result.Reserve.VirtualEnergy.EffectiveLaps-0.8) > 0.01 {
+		t.Fatalf("virtual energy reserve = %+v, want 4.0 / 0.80 laps", result.Reserve.VirtualEnergy)
+	}
+}
+
 func TestSimpleSingleFuelDecisionMatchesExhaustiveOracle(t *testing.T) {
 	random := rand.New(rand.NewSource(832))
 	shortcutCases := 0

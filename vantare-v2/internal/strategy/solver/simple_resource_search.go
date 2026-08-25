@@ -138,7 +138,10 @@ func simpleSingleFuelDecision(input SolverInputV2, fuel serviceResource, maxStin
 	}
 
 	decision := DecisionVector{PitStops: make([]PitStopDecision, 0, stintCount-1), Stints: make([]StintDecision, 0, stintCount)}
-	level := fuel.capacity
+	level := input.RaceLaps*fuel.perLap + reserveUnits
+	if level > fuel.capacity {
+		level = fuel.capacity
+	}
 	lap := int64(0)
 	for index, count := range laps {
 		level -= count * fuel.perLap
@@ -183,6 +186,10 @@ func enumerateSimpleResourceDecisions(
 	driverID string,
 	searchLimit int,
 ) ([]DecisionVector, bool) {
+	fuelStart, veStart, ok := simpleInitialResourceLevels(input, fuel, ve)
+	if !ok {
+		return nil, false
+	}
 	decisions := make([]DecisionVector, 0, 16)
 	visited := 0
 	bounded := true
@@ -240,11 +247,35 @@ func enumerateSimpleResourceDecisions(
 			}
 		}
 	}
-	walk(initial, input.RaceLaps, stintCount, 0, fuel.capacity, ve.capacity)
+	walk(initial, input.RaceLaps, stintCount, 0, fuelStart, veStart)
 	if !bounded {
 		return nil, false
 	}
 	return decisions, true
+}
+
+func simpleInitialResourceLevels(input SolverInputV2, fuel, ve serviceResource) (int64, int64, bool) {
+	raceLaps, err := contract.NewLapCount(input.RaceLaps)
+	if err != nil {
+		return 0, 0, false
+	}
+	fuelReserve, err := reserveUnitsForFuel(input.FuelReserve, raceLaps, fuel.perLap, input.RaceLaps*fuel.perLap)
+	if err != nil {
+		return 0, 0, false
+	}
+	veReserve, err := reserveUnitsForVirtualEnergy(input.VirtualEnergyReserve, raceLaps, ve.perLap, input.RaceLaps*ve.perLap)
+	if err != nil {
+		return 0, 0, false
+	}
+	fuelStart := input.RaceLaps*fuel.perLap + fuelReserve
+	if fuelStart > fuel.capacity {
+		fuelStart = fuel.capacity
+	}
+	veStart := input.RaceLaps*ve.perLap + veReserve
+	if veStart > ve.capacity {
+		veStart = ve.capacity
+	}
+	return fuelStart, veStart, true
 }
 
 func nodeFromEvaluation(decision DecisionVector, evaluation ScenarioEvaluation) searchNode {

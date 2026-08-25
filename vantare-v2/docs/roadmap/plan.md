@@ -398,10 +398,10 @@ se conservan aqui como hitos cumplidos; los demas siguen pendientes.
 - titulo.en: Orbit calculation on the full engine
 - titulo.pt: Cálculo do Orbit no motor completo
 - titulo.it: Calcolo Orbit sul motore completo
-- cuerpo: Orbit ya envía los valores manuales, derivados y sus overrides al motor Strategy completo con su procedencia. El plan exige además la reserva configurable del evento, publica el margen efectivo y rechaza con causa un resultado imposible.
-- cuerpo.en: Orbit now sends manual and derived values, plus their overrides, to the full Strategy engine with provenance. The plan also enforces the event's configurable reserve, publishes the effective margin, and rejects an impossible result with a concrete reason.
-- cuerpo.pt: O Orbit agora envia valores manuais e derivados, incluindo os overrides, para o motor Strategy completo com a respetiva procedência. O plano também exige a reserva configurável do evento, publica a margem efetiva e rejeita com uma causa concreta um resultado impossível.
-- cuerpo.it: Orbit ora invia valori manuali e derivati, inclusi gli override, al motore Strategy completo con la relativa provenienza. Il piano applica anche la riserva configurabile dell'evento, pubblica il margine effettivo e rifiuta con una causa concreta un risultato impossibile.
+- cuerpo: Orbit ya envía los valores manuales, derivados y sus overrides al motor Strategy completo con su procedencia. El plan exige la reserva configurable, publica el margen efectivo, minimiza Fuel/VE inicial entre empates y rechaza con causa un resultado imposible.
+- cuerpo.en: Orbit now sends manual and derived values, plus their overrides, to the full Strategy engine with provenance. The plan enforces the configurable reserve, publishes the effective margin, minimizes initial Fuel/VE among ties, and rejects an impossible result with a concrete reason.
+- cuerpo.pt: O Orbit agora envia valores manuais e derivados, incluindo os overrides, para o motor Strategy completo com a respetiva procedência. O plano exige a reserva configurável, publica a margem efetiva, minimiza Fuel/VE inicial em empates e rejeita com uma causa concreta um resultado impossível.
+- cuerpo.it: Orbit ora invia valori manuali e derivati, inclusi gli override, al motore Strategy completo con la relativa provenienza. Il piano applica la riserva configurabile, pubblica il margine effettivo, minimizza Fuel/VE iniziale nei pareggi e rifiuta con una causa concreta un risultato impossibile.
 - etiqueta: Feature
 
 ### Contribución seudonimizada de Strategy

@@ -72,13 +72,17 @@ func ReplayDecisionV2(input SolverInputV2, decision DecisionVector) (ReplayResul
 		return ReplayResultV1{}, solveError(ErrorInvalidInput, "weather", err.Error())
 	}
 	costs := lapCostModel{pace: pace, compounds: compounds, fuelWeight: fuelWeight, weather: weather}
+	resourcePlan, err := minimumResourcePlanForDecision(input, decision, fuel, ve, weather, drivers, saving)
+	if err != nil {
+		return ReplayResultV1{}, err
+	}
 
 	initialTyre, ok := replayInitialTyre(tyreModel, decision.Stints[0])
 	if !ok {
 		return infeasibleReplay(decision, input.Formation.Seconds.Value, searchNode{}, "tyre_inventory_insufficient", "el compuesto o juego inicial observado no existe en el inventario"), nil
 	}
 	node := searchNode{
-		fuel: fuel.capacity, ve: ve.capacity, tyre: initialTyre,
+		fuel: resourcePlan.fuelStart, ve: resourcePlan.veStart, tyre: initialTyre,
 		decision: DecisionVector{PitStops: []PitStopDecision{}, Stints: []StintDecision{}},
 	}
 	replayedStints := make([]ReplayStintV1, 0, len(decision.Stints))

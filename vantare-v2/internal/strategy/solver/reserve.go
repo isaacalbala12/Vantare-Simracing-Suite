@@ -54,19 +54,15 @@ func reserveStatusForNode(
 	if err != nil {
 		return ReserveStatus{}, err
 	}
-	fuelUsed, err := consumedResource(node, fuel, true)
+	resourcePlan, err := minimumResourcePlanForDecision(input, node.decision, fuel, ve, weather, drivers, saving)
 	if err != nil {
 		return ReserveStatus{}, err
 	}
-	veUsed, err := consumedResource(node, ve, false)
+	status.Fuel, err = fuelReserveStatus(input.FuelReserve, raceLaps, node.fuel, terminalFuel, resourcePlan.fuelUsed, fuel.capacity > 0)
 	if err != nil {
 		return ReserveStatus{}, err
 	}
-	status.Fuel, err = fuelReserveStatus(input.FuelReserve, raceLaps, node.fuel, terminalFuel, fuelUsed, fuel.capacity > 0)
-	if err != nil {
-		return ReserveStatus{}, err
-	}
-	status.VirtualEnergy, err = virtualEnergyReserveStatus(input.VirtualEnergyReserve, raceLaps, node.ve, terminalVE, veUsed, ve.capacity > 0)
+	status.VirtualEnergy, err = virtualEnergyReserveStatus(input.VirtualEnergyReserve, raceLaps, node.ve, terminalVE, resourcePlan.veUsed, ve.capacity > 0)
 	if err != nil {
 		return ReserveStatus{}, err
 	}
@@ -89,24 +85,158 @@ func emptyReserveStatus(resource ResourceKind) ResourceReserveStatus {
 	return ResourceReserveStatus{Resource: resource, Satisfied: true}
 }
 
-func consumedResource(node searchNode, resource serviceResource, fuel bool) (int64, error) {
-	remaining := node.ve
-	if fuel {
-		remaining = node.fuel
+type decisionResourcePlan struct {
+	fuelStart int64
+	veStart   int64
+	fuelUsed  int64
+	veUsed    int64
+}
+
+type resourceBalance struct {
+	used         int64
+	serviced     int64
+	minimumStart int64
+}
+
+func (balance *resourceBalance) consume(amount int64) {
+	balance.used += amount
+	if required := balance.used - balance.serviced; required > balance.minimumStart {
+		balance.minimumStart = required
 	}
-	total := resource.capacity - remaining
-	for _, stop := range node.decision.PitStops {
-		amount := stop.VEPercent
-		if fuel {
-			amount = stop.FuelLiters
+}
+
+func (balance *resourceBalance) service(amount int64) {
+	balance.serviced += amount
+}
+
+func (balance *resourceBalance) requireFinish(reserve int64) {
+	if required := balance.used + reserve - balance.serviced; required > balance.minimumStart {
+		balance.minimumStart = required
+	}
+}
+
+func minimumResourcePlanForDecision(
+	input SolverInputV2,
+	decision DecisionVector,
+	fuel, ve serviceResource,
+	weather weatherCostModel,
+	drivers driverDecisionModel,
+	saving savingCost,
+) (decisionResourcePlan, error) {
+	fuelBalance, veBalance := resourceBalance{}, resourceBalance{}
+	lap := int64(0)
+	for index, stint := range decision.Stints {
+		driverID := stint.Driver
+		if driverID == "" && len(drivers.order) == 1 {
+			driverID = drivers.order[0].id
 		}
-		units, err := serviceUnits("reserve.service", amount)
+		driver, ok := driverByID(drivers, driverID)
+		if !ok {
+			return decisionResourcePlan{}, solveError(ErrorInvalidInput, "decision.start.driver", "stint driver is unavailable")
+		}
+		levelID := stint.SavingLevel
+		if levelID == "" {
+			levelID = SavingNone
+		}
+		level, ok := savingByID(saving, levelID)
+		if !ok {
+			return decisionResourcePlan{}, solveError(ErrorInvalidInput, "decision.start.savingLevel", "stint saving level is unavailable")
+		}
+		fuelUsed, veUsed, err := weather.usage(lap+1, stint.Laps, driver, level)
 		if err != nil {
-			return 0, err
+			return decisionResourcePlan{}, solveError(ErrorInvalidInput, "decision.start.weather", err.Error())
 		}
-		total += units
+		fuelBalance.consume(fuelUsed)
+		veBalance.consume(veUsed)
+		lap += stint.Laps
+		if index >= len(decision.PitStops) {
+			continue
+		}
+		fuelAmount, err := serviceUnits("decision.start.fuelService", decision.PitStops[index].FuelLiters)
+		if err != nil {
+			return decisionResourcePlan{}, err
+		}
+		veAmount, err := serviceUnits("decision.start.virtualEnergyService", decision.PitStops[index].VEPercent)
+		if err != nil {
+			return decisionResourcePlan{}, err
+		}
+		fuelBalance.service(fuelAmount)
+		veBalance.service(veAmount)
 	}
-	return total, nil
+	if len(decision.Stints) == 0 {
+		return decisionResourcePlan{}, nil
+	}
+	last := decision.Stints[len(decision.Stints)-1]
+	lastDriverID := last.Driver
+	if lastDriverID == "" && len(drivers.order) == 1 {
+		lastDriverID = drivers.order[0].id
+	}
+	lastDriver, ok := driverByID(drivers, lastDriverID)
+	if !ok {
+		return decisionResourcePlan{}, solveError(ErrorInvalidInput, "decision.start.driver", "last stint driver is unavailable")
+	}
+	lastLevelID := last.SavingLevel
+	if lastLevelID == "" {
+		lastLevelID = SavingNone
+	}
+	lastLevel, ok := savingByID(saving, lastLevelID)
+	if !ok {
+		return decisionResourcePlan{}, solveError(ErrorInvalidInput, "decision.start.savingLevel", "last stint saving level is unavailable")
+	}
+	terminalFuel, terminalVE, err := weather.usage(input.RaceLaps, 1, lastDriver, lastLevel)
+	if err != nil {
+		return decisionResourcePlan{}, solveError(ErrorInvalidInput, "decision.start.weather", err.Error())
+	}
+	raceLaps, err := contract.NewLapCount(input.RaceLaps)
+	if err != nil {
+		return decisionResourcePlan{}, err
+	}
+	fuelReserve, err := reserveUnitsForFuel(input.FuelReserve, raceLaps, terminalFuel, fuelBalance.used)
+	if err != nil {
+		return decisionResourcePlan{}, err
+	}
+	veReserve, err := reserveUnitsForVirtualEnergy(input.VirtualEnergyReserve, raceLaps, terminalVE, veBalance.used)
+	if err != nil {
+		return decisionResourcePlan{}, err
+	}
+	fuelBalance.requireFinish(fuelReserve)
+	veBalance.requireFinish(veReserve)
+	if fuelBalance.minimumStart > fuel.capacity {
+		fuelBalance.minimumStart = fuel.capacity
+	}
+	if veBalance.minimumStart > ve.capacity {
+		veBalance.minimumStart = ve.capacity
+	}
+	return decisionResourcePlan{
+		fuelStart: fuelBalance.minimumStart,
+		veStart:   veBalance.minimumStart,
+		fuelUsed:  fuelBalance.used,
+		veUsed:    veBalance.used,
+	}, nil
+}
+
+func reserveUnitsForFuel(input manual.FuelReserveInput, raceLaps contract.LapCount, terminal, totalUsed int64) (int64, error) {
+	if input.Kind == "" || input.Kind == manual.ReserveNone {
+		return 0, nil
+	}
+	perLap := reserveCalculationPerLap(input.Kind, terminal, totalUsed, raceLaps.Value())
+	amount, err := manual.CalculateFuelReserveAmount(input, raceLaps, perLap, 0)
+	if err != nil {
+		return 0, err
+	}
+	return serviceUnits("decision.start.fuelReserve", amount)
+}
+
+func reserveUnitsForVirtualEnergy(input manual.VirtualEnergyReserveInput, raceLaps contract.LapCount, terminal, totalUsed int64) (int64, error) {
+	if input.Kind == "" || input.Kind == manual.ReserveNone {
+		return 0, nil
+	}
+	perLap := reserveCalculationPerLap(input.Kind, terminal, totalUsed, raceLaps.Value())
+	amount, err := manual.CalculateVirtualEnergyReserveAmount(input, raceLaps, perLap, 0)
+	if err != nil {
+		return 0, err
+	}
+	return serviceUnits("decision.start.virtualEnergyReserve", amount)
 }
 
 func fuelReserveStatus(input manual.FuelReserveInput, raceLaps contract.LapCount, remaining, terminal, totalUsed int64, active bool) (ResourceReserveStatus, error) {

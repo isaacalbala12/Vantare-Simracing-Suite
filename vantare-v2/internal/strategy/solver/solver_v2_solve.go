@@ -436,6 +436,14 @@ func SolveV2Context(ctx context.Context, input SolverInputV2) (SolverResultV2, e
 		result.addRejected(initial, input, budgetReason, "la busqueda no cubrio todo el espacio de decision")
 		return result, nil
 	}
+	completed, err = canonicalizeCompletedResources(input, completed)
+	if err != nil {
+		return SolverResultV2{}, err
+	}
+	completedWorstFeasible, err = canonicalizeCompletedResources(input, completedWorstFeasible)
+	if err != nil {
+		return SolverResultV2{}, err
+	}
 	if len(completed) == 0 {
 		if reason, ok := result.firstCandidateReason("reserve_not_met"); ok {
 			result.Reasons = append(result.Reasons, reason)
@@ -545,6 +553,31 @@ func SolveV2Context(ctx context.Context, input SolverInputV2) (SolverResultV2, e
 	}
 	result.CandidateDetails = append(feasibleDetails, result.CandidateDetails...)
 	return result, nil
+}
+
+func canonicalizeCompletedResources(input SolverInputV2, candidates []searchNode) ([]searchNode, error) {
+	canonical := make([]searchNode, 0, len(candidates))
+	for _, candidate := range candidates {
+		replayed, err := ReplayDecisionV2(input, candidate.decision)
+		if err != nil {
+			return nil, err
+		}
+		if !replayed.Feasible {
+			continue
+		}
+		node := nodeFromEvaluation(replayed.Decision, replayed.Evaluation)
+		node.fuel, err = serviceUnits("canonical.reserve.fuelRemaining", replayed.Reserve.Fuel.RemainingAmount)
+		if err != nil {
+			return nil, err
+		}
+		node.ve, err = serviceUnits("canonical.reserve.virtualEnergyRemaining", replayed.Reserve.VirtualEnergy.RemainingAmount)
+		if err != nil {
+			return nil, err
+		}
+		node.worstFeasible = candidate.worstFeasible
+		canonical = insertRanked(canonical, node, input.Formation.Seconds.Value)
+	}
+	return canonical, nil
 }
 
 func (result SolverResultV2) firstCandidateReason(code string) (SolverReason, bool) {

@@ -176,6 +176,9 @@ func TestSolveV2AppliesFinishReserveToSavingPlan(t *testing.T) {
 	if !result.Feasible || len(result.Best.PitStops) != 1 || !result.Reserve.Satisfied || !decisionUsesSaving(result.Best) {
 		t.Fatalf("saving reserve result = %+v", result)
 	}
+	if math.Abs(result.Reserve.Fuel.EffectiveLaps-0.8) > 0.01 {
+		t.Fatalf("saving effective reserve = %.3f laps, want 0.80", result.Reserve.Fuel.EffectiveLaps)
+	}
 }
 
 func decisionUsesSaving(decision DecisionVector) bool {
@@ -425,9 +428,17 @@ func exhaustiveV2BestNode(t *testing.T, input SolverInputV2) searchNode {
 						if reserveErr != nil {
 							t.Fatalf("reserve status: %v", reserveErr)
 						}
-						if allowed, _, _ := input.completedAllowed(next, tyreModel); reserveStatus.Satisfied && allowed && (best == nil || betterNode(next, *best, input.Formation.Seconds.Value)) {
-							candidate := next
-							best = &candidate
+						if allowed, _, _ := input.completedAllowed(next, tyreModel); reserveStatus.Satisfied && allowed {
+							replayed, replayErr := ReplayDecisionV2(input, next.decision)
+							if replayErr != nil {
+								t.Fatalf("canonical replay: %v", replayErr)
+							}
+							if replayed.Feasible {
+								candidate := nodeFromEvaluation(replayed.Decision, replayed.Evaluation)
+								if best == nil || betterNode(candidate, *best, input.Formation.Seconds.Value) {
+									best = &candidate
+								}
+							}
 						}
 						continue
 					}

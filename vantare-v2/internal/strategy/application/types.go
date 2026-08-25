@@ -418,21 +418,24 @@ type OrbitCalculationStop struct {
 }
 
 type OrbitCalculationPlan struct {
-	Stints           []OrbitCalculationStint        `json:"stints"`
-	TotalLaps        int64                          `json:"totalLaps"`
-	TotalSeconds     float64                        `json:"total"`
-	Stops            int64                          `json:"stops"`
-	MaxLaps          int64                          `json:"maxLaps"`
-	AverageFuel      float64                        `json:"avgFuel"`
-	AveragePace      float64                        `json:"avgPace"`
-	Distribution     []OrbitCalculationDistribution `json:"distribution"`
-	DrivingSeconds   float64                        `json:"drivingSeconds"`
-	PitSeconds       float64                        `json:"pitSeconds"`
-	StartFuelLiters  float64                        `json:"startFuelLiters"`
-	FinishFuelLiters float64                        `json:"finishFuelLiters"`
-	ReserveLaps      float64                        `json:"reserveLaps"`
-	StopDetails      []OrbitCalculationStop         `json:"stopDetails"`
-	SavingApplied    bool                           `json:"savingApplied"`
+	Stints                  []OrbitCalculationStint        `json:"stints"`
+	TotalLaps               int64                          `json:"totalLaps"`
+	TotalSeconds            float64                        `json:"total"`
+	Stops                   int64                          `json:"stops"`
+	MaxLaps                 int64                          `json:"maxLaps"`
+	AverageFuel             float64                        `json:"avgFuel"`
+	AveragePace             float64                        `json:"avgPace"`
+	Distribution            []OrbitCalculationDistribution `json:"distribution"`
+	DrivingSeconds          float64                        `json:"drivingSeconds"`
+	PitSeconds              float64                        `json:"pitSeconds"`
+	StartFuelLiters         float64                        `json:"startFuelLiters"`
+	FinishFuelLiters        float64                        `json:"finishFuelLiters"`
+	ReserveLaps             float64                        `json:"reserveLaps"`
+	ReserveRequiredLaps     float64                        `json:"reserveRequiredLaps"`
+	ReserveSatisfied        bool                           `json:"reserveSatisfied"`
+	ReserveLimitingResource string                         `json:"reserveLimitingResource,omitempty"`
+	StopDetails             []OrbitCalculationStop         `json:"stopDetails"`
+	SavingApplied           bool                           `json:"savingApplied"`
 }
 
 type OrbitCalculationComparison struct {
@@ -471,12 +474,16 @@ type OrbitWeatherStint struct {
 }
 
 type OrbitWeatherScenarioPlan struct {
-	ScenarioID   string                     `json:"scenarioId"`
-	Weight       float64                    `json:"weight"`
-	TotalSeconds float64                    `json:"totalSeconds"`
-	Stops        int                        `json:"stops"`
-	Stints       []OrbitWeatherStint        `json:"stints"`
-	Timeline     []OrbitWeatherLapCondition `json:"timeline"`
+	ScenarioID              string                     `json:"scenarioId"`
+	Weight                  float64                    `json:"weight"`
+	TotalSeconds            float64                    `json:"totalSeconds"`
+	Stops                   int                        `json:"stops"`
+	Stints                  []OrbitWeatherStint        `json:"stints"`
+	Timeline                []OrbitWeatherLapCondition `json:"timeline"`
+	ReserveLaps             float64                    `json:"reserveLaps"`
+	ReserveRequiredLaps     float64                    `json:"reserveRequiredLaps"`
+	ReserveSatisfied        bool                       `json:"reserveSatisfied"`
+	ReserveLimitingResource string                     `json:"reserveLimitingResource,omitempty"`
 }
 
 type OrbitWeatherRobustRecommendation struct {

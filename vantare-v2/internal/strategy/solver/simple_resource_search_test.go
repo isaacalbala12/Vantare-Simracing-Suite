@@ -29,6 +29,9 @@ func TestSimpleResourceDecisionsMatchesRandomizedExhaustiveOracle(t *testing.T) 
 		input.PitCost.VERatePPerS.Value = []float64{0.5, 1, 2}[random.Intn(3)]
 		input.PitCost.TyreSeconds.Value = float64(random.Intn(5))
 		input.PitCost.ServiceMode = []manual.PitServiceMode{manual.PitServiceParallel, manual.PitServiceSequential}[random.Intn(2)]
+		if index%2 == 0 {
+			input.FuelReserve = reserveLapsInput(0.8)
+		}
 		threshold := input.FuelCapacityLiters.Value/input.PitCost.RefuelRateLPerS.Value +
 			input.VECapacityPercent.Value/input.PitCost.VERatePPerS.Value + input.PitCost.TyreSeconds.Value
 		offset := []float64{-0.5, 0, 0.5, 2}[index%4]
@@ -38,7 +41,8 @@ func TestSimpleResourceDecisionsMatchesRandomizedExhaustiveOracle(t *testing.T) 
 		if offset <= 0 && shortcut {
 			t.Fatalf("case=%d shortcut active at transit=%v threshold=%v input=%+v", index, input.PitCost.TransitSeconds.Value, threshold, input)
 		}
-		if offset > 0 && !shortcut {
+		reserveCanFitTerminalLap := input.FuelReserve.Kind == "" || input.FuelCapacityLiters.Value >= input.FuelPerLapLiters.Value*(1+input.FuelReserve.Laps.Value)
+		if offset > 0 && reserveCanFitTerminalLap && !shortcut {
 			t.Fatalf("case=%d shortcut inactive at transit=%v threshold=%v input=%+v", index, input.PitCost.TransitSeconds.Value, threshold, input)
 		}
 		if shortcut {
@@ -54,6 +58,68 @@ func TestSimpleResourceDecisionsMatchesRandomizedExhaustiveOracle(t *testing.T) 
 	}
 	if shortcutCases < 100 {
 		t.Fatalf("shortcut exercised only %d/%d cases", shortcutCases, cases)
+	}
+}
+
+func TestSimpleResourceDecisionsStaysActiveWithFractionalReserve(t *testing.T) {
+	input := baseInputV2()
+	input.RaceLaps = 139
+	input.FuelCapacityLiters.Value = 90
+	input.FuelPerLapLiters.Value = 2.75
+	input.Discretization.FuelLiters = 2.75
+	input.PitCost.TransitSeconds.Value = 64
+	input.PitCost.RefuelRateLPerS.Value = 1e12
+	input.PitCost.TyreSeconds.Value = 0
+	if decisions, active := preparedSimpleResourceDecisions(t, input); !active || len(decisions) == 0 {
+		t.Fatalf("baseline shortcut active=%v decisions=%d", active, len(decisions))
+	}
+	input.FuelReserve = reserveLapsInput(0.8)
+
+	decisions, active := preparedSimpleResourceDecisions(t, input)
+	if !active || len(decisions) == 0 {
+		t.Fatalf("shortcut active=%v decisions=%d", active, len(decisions))
+	}
+	result, err := SolveV2(input)
+	if err != nil {
+		t.Fatalf("SolveV2: %v", err)
+	}
+	if !result.Feasible || !result.Reserve.Satisfied || result.ComputeStats.Iterations != 0 ||
+		len(result.CandidateDetails) == 0 || len(result.CandidateDetails[0].Reasons) == 0 ||
+		result.CandidateDetails[0].Reasons[0].Code != "optimal_after_scalar_resource_bound" {
+		t.Fatalf("shortcut result = %+v", result)
+	}
+}
+
+func TestSimpleSingleFuelDecisionMatchesExhaustiveOracle(t *testing.T) {
+	random := rand.New(rand.NewSource(832))
+	shortcutCases := 0
+	for index := 0; index < 100; index++ {
+		input := baseInputV2()
+		input.RaceLaps = int64(2 + random.Intn(6))
+		input.FuelCapacityLiters.Value = float64(1 + random.Intn(5))
+		input.FuelPerLapLiters.Value = float64(1 + random.Intn(int(input.FuelCapacityLiters.Value)))
+		input.VECapacityPercent.Value = 0
+		input.VEPerLapPercent.Value = 0
+		input.TyreLifeLaps.Value = 0
+		input.PitCost.TyreSeconds.Value = 0
+		input.PitCost.TransitSeconds.Value = input.FuelCapacityLiters.Value/input.PitCost.RefuelRateLPerS.Value + 1
+		if index%2 == 0 {
+			input.FuelReserve = reserveLapsInput(0.8)
+		}
+
+		_, active := preparedSimpleResourceDecisions(t, input)
+		if active {
+			shortcutCases++
+		}
+		got, err := SolveV2(input)
+		if err != nil {
+			t.Fatalf("case=%d SolveV2: %v", index, err)
+		}
+		want := exhaustiveV2BestNode(t, input)
+		assertSimpleResourceParity(t, index, input, got, want)
+	}
+	if shortcutCases < 50 {
+		t.Fatalf("single-resource shortcut exercised only %d/100 cases", shortcutCases)
 	}
 }
 
@@ -159,6 +225,12 @@ func preparedSimpleResourceModels(t *testing.T, input SolverInputV2) (serviceRes
 
 func assertSimpleResourceParity(t *testing.T, index int, input SolverInputV2, got SolverResultV2, want searchNode) {
 	t.Helper()
+	if math.IsInf(want.total(input.Formation.Seconds.Value), 1) {
+		if got.Feasible {
+			t.Fatalf("case=%d got feasible plan for infeasible oracle input=%+v decision=%+v", index, input, got.Best)
+		}
+		return
+	}
 	if !got.Feasible || math.Abs(got.Expected.TotalSeconds-want.total(input.Formation.Seconds.Value)) > epsilon {
 		t.Fatalf("case=%d total mismatch got=%v want=%v input=%+v gotDecision=%+v wantDecision=%+v", index, got.Expected.TotalSeconds, want.total(input.Formation.Seconds.Value), input, got.Best, want.decision)
 	}

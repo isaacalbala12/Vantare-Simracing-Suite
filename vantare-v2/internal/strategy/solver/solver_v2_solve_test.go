@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/vantare/overlays/v2/internal/strategy/contract"
 	"github.com/vantare/overlays/v2/internal/strategy/manual"
 	sp "github.com/vantare/overlays/v2/internal/telemetryanalysis/strategyprojection"
 )
@@ -78,6 +79,112 @@ func baseInputV2() SolverInputV2 {
 		DegradationPerLap:  NewFallbackScalar(0, "test:degradation"),
 		Discretization:     ServiceDiscretization{FuelLiters: 1, VEPercent: 1},
 	}
+}
+
+func reserveLapsInput(value float64) manual.FuelReserveInput {
+	evidence := manual.Evidence{
+		Provenance: contract.Provenance{Kind: contract.ProvenanceManual, SourceID: "test:reserve-laps"},
+		Confidence: contract.Confidence{Level: contract.ConfidenceHigh, Basis: "test reserve decision"},
+	}
+	return manual.FuelReserveInput{
+		Kind: manual.ReserveLaps, Laps: manual.Sourced[float64]{Value: value, Evidence: evidence}, Selection: evidence,
+	}
+}
+
+func TestSolveV2EnforcesFinishReserve(t *testing.T) {
+	input := baseInputV2()
+	input.RaceLaps = 5
+	input.FuelCapacityLiters.Value = 3
+	input.FuelReserve = reserveLapsInput(0.8)
+
+	result, err := SolveV2(input)
+	if err != nil {
+		t.Fatalf("SolveV2: %v", err)
+	}
+	if !result.Feasible || !result.Reserve.Satisfied || result.Reserve.Fuel.EffectiveLaps < 0.8 {
+		t.Fatalf("reserve result = %+v", result)
+	}
+}
+
+func TestSolveV2AddsStopWhenFinishReserveRequiresIt(t *testing.T) {
+	withoutReserve := baseInputV2()
+	withoutReserve.RaceLaps = 4
+	withoutReserve.FuelCapacityLiters.Value = 4
+	baseline, err := SolveV2(withoutReserve)
+	if err != nil {
+		t.Fatalf("SolveV2(without reserve): %v", err)
+	}
+	if len(baseline.Best.PitStops) != 0 {
+		t.Fatalf("baseline stops = %+v", baseline.Best.PitStops)
+	}
+
+	withReserve := withoutReserve
+	withReserve.FuelReserve = reserveLapsInput(0.8)
+	reserved, err := SolveV2(withReserve)
+	if err != nil {
+		t.Fatalf("SolveV2(with reserve): %v", err)
+	}
+	if !reserved.Feasible || len(reserved.Best.PitStops) != 1 || !reserved.Reserve.Satisfied {
+		t.Fatalf("reserved plan = %+v", reserved)
+	}
+}
+
+func TestSolveV2ReportsImpossibleFinishReserve(t *testing.T) {
+	input := baseInputV2()
+	input.RaceLaps = 4
+	input.FuelCapacityLiters.Value = 4
+	input.FuelReserve = reserveLapsInput(0.8)
+	input.EventRules.MaxPitStops = intPointer(0)
+
+	result, err := SolveV2(input)
+	if err != nil {
+		t.Fatalf("SolveV2: %v", err)
+	}
+	if result.Feasible || !candidateHasReason(result.CandidateDetails, "reserve_not_met") || !resultHasReason(result.Reasons, "reserve_not_met") {
+		t.Fatalf("impossible reserve result = %+v", result)
+	}
+}
+
+func resultHasReason(reasons []SolverReason, code string) bool {
+	for _, reason := range reasons {
+		if reason.Code == code {
+			return true
+		}
+	}
+	return false
+}
+
+func TestSolveV2AppliesFinishReserveToSavingPlan(t *testing.T) {
+	input := baseInputV2()
+	input.RaceLaps = 25
+	input.Formation.Seconds.Value = 0
+	input.FuelCapacityLiters.Value = 10
+	input.FuelPerLapLiters.Value = 1
+	input.PitCost.TransitSeconds.Value = 20
+	input.PitCost.RefuelRateLPerS.Value = 1e12
+	input.PitCost.TyreSeconds.Value = 0
+	input.FuelReserve = reserveLapsInput(0.8)
+	input.Discretization.FuelLiters = 0.25
+	input.SavingCost = savingCostParameter(SavingLevelOption{
+		Level: SavingLow, FuelSavedPerLap: 0.25, TimeCostPerLap: 0.2,
+	})
+
+	result, err := SolveV2(input)
+	if err != nil {
+		t.Fatalf("SolveV2: %v", err)
+	}
+	if !result.Feasible || len(result.Best.PitStops) != 1 || !result.Reserve.Satisfied || !decisionUsesSaving(result.Best) {
+		t.Fatalf("saving reserve result = %+v", result)
+	}
+}
+
+func decisionUsesSaving(decision DecisionVector) bool {
+	for _, stint := range decision.Stints {
+		if stint.SavingLevel != SavingNone {
+			return true
+		}
+	}
+	return false
 }
 
 func TestSolveV2UserOverrideBeatsValidDerivedResourceAndFallbackDoesNot(t *testing.T) {
@@ -314,7 +421,11 @@ func exhaustiveV2BestNode(t *testing.T, input SolverInputV2) searchNode {
 						continue
 					}
 					if next.lap == input.RaceLaps {
-						if allowed, _, _ := input.completedAllowed(next, tyreModel); allowed && (best == nil || betterNode(next, *best, input.Formation.Seconds.Value)) {
+						reserveStatus, reserveErr := reserveStatusForNode(input, next, fuel, ve, weatherCost, drivers, saving)
+						if reserveErr != nil {
+							t.Fatalf("reserve status: %v", reserveErr)
+						}
+						if allowed, _, _ := input.completedAllowed(next, tyreModel); reserveStatus.Satisfied && allowed && (best == nil || betterNode(next, *best, input.Formation.Seconds.Value)) {
 							candidate := next
 							best = &candidate
 						}

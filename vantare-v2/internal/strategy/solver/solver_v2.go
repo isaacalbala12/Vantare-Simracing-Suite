@@ -243,16 +243,18 @@ type SolverInputV2 struct {
 	TyreLifeLaps       ScalarInput `json:"tyreLifeLaps"`
 	// Consumos manuales usados cuando la familia correspondiente de Projection
 	// no esta disponible. Cero desactiva el recurso junto con capacidad cero.
-	FuelPerLapLiters  ScalarInput             `json:"fuelPerLapLiters"`
-	VEPerLapPercent   ScalarInput             `json:"vePerLapPercent"`
-	DegradationPerLap ScalarInput             `json:"degradationPerLapSeconds"`
-	FuelWeight        *FuelWeightParameter    `json:"fuelWeight,omitempty"`
-	SavingCost        *SavingCostParameter    `json:"savingCost,omitempty"`
-	TyreInventory     *TyreInventoryInput     `json:"tyreInventory,omitempty"`
-	CompoundPace      []CompoundPaceParameter `json:"compoundPace,omitempty"`
-	DriverProfiles    []DriverProfileInput    `json:"driverProfiles,omitempty"`
-	Weather           *WeatherPlanInput       `json:"weather,omitempty"`
-	Discretization    ServiceDiscretization   `json:"serviceDiscretization"`
+	FuelPerLapLiters     ScalarInput                      `json:"fuelPerLapLiters"`
+	VEPerLapPercent      ScalarInput                      `json:"vePerLapPercent"`
+	FuelReserve          manual.FuelReserveInput          `json:"fuelReserve"`
+	VirtualEnergyReserve manual.VirtualEnergyReserveInput `json:"virtualEnergyReserve"`
+	DegradationPerLap    ScalarInput                      `json:"degradationPerLapSeconds"`
+	FuelWeight           *FuelWeightParameter             `json:"fuelWeight,omitempty"`
+	SavingCost           *SavingCostParameter             `json:"savingCost,omitempty"`
+	TyreInventory        *TyreInventoryInput              `json:"tyreInventory,omitempty"`
+	CompoundPace         []CompoundPaceParameter          `json:"compoundPace,omitempty"`
+	DriverProfiles       []DriverProfileInput             `json:"driverProfiles,omitempty"`
+	Weather              *WeatherPlanInput                `json:"weather,omitempty"`
+	Discretization       ServiceDiscretization            `json:"serviceDiscretization"`
 }
 
 // RainChanceThresholds traduce la probabilidad interpolada del forecast a los
@@ -471,6 +473,9 @@ func (in SolverInputV2) Validate() error {
 			return fmt.Errorf("savingCost: %w", err)
 		}
 	}
+	if err := in.validateReserves(); err != nil {
+		return err
+	}
 	compoundPace, err := in.compoundPaceCosts()
 	if err != nil {
 		return fmt.Errorf("compoundPace: %w", err)
@@ -544,6 +549,7 @@ type SolverResultV2 struct {
 	WeatherBucketCost []WeatherBucketCostSource `json:"weatherBucketCost,omitempty"`
 	WeatherTimeline   []WeatherLapCondition     `json:"weatherTimeline,omitempty"`
 	SavingPlan        SavingPlan                `json:"savingPlan"`
+	Reserve           ReserveStatus             `json:"reserve"`
 	Best              DecisionVector            `json:"best"`
 	Binding           BindingConstraint         `json:"binding"`
 	Sensitivities     []SolverSensitivity       `json:"sensitivities"`
@@ -556,6 +562,28 @@ type SolverResultV2 struct {
 	Reasons           []SolverReason            `json:"reasons,omitempty"`
 	Assumptions       []SolverReason            `json:"assumptions"`
 	ComputeStats      ComputeStats              `json:"computeStats"`
+}
+
+type ReserveStatus struct {
+	Satisfied        bool                  `json:"satisfied"`
+	EffectiveLaps    float64               `json:"effectiveLaps"`
+	LimitingResource ResourceKind          `json:"limitingResource,omitempty"`
+	Fuel             ResourceReserveStatus `json:"fuel"`
+	VirtualEnergy    ResourceReserveStatus `json:"virtualEnergy"`
+}
+
+type ResourceReserveStatus struct {
+	Resource               ResourceKind       `json:"resource"`
+	Configured             bool               `json:"configured"`
+	Active                 bool               `json:"active"`
+	Kind                   manual.ReserveKind `json:"kind,omitempty"`
+	RequestedLaps          float64            `json:"requestedLaps"`
+	RequiredAmount         float64            `json:"requiredAmount"`
+	RemainingAmount        float64            `json:"remainingAmount"`
+	EffectiveLaps          float64            `json:"effectiveLaps"`
+	EffectiveLapsAvailable bool               `json:"effectiveLapsAvailable"`
+	Satisfied              bool               `json:"satisfied"`
+	Evidence               manual.Evidence    `json:"evidence"`
 }
 
 type ResolvedScalarInputs struct {

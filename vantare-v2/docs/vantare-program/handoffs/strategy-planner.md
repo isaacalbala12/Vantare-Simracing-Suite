@@ -30,6 +30,14 @@ Actualización ISA-833 / contrato de ritmo por clase (2026-08-25, implementada e
   fixture válido de dos clases demuestra que la UI transporta los escalares
   sin convertirlos en bloques, alcances, frecuencias ni vueltas.
 
+Actualización ISA-832 / reserva obligatoria (2026-08-25, implementada en rama de issue):
+
+- La decisión de producto vive en el adaptador Orbit como 0,8 vueltas con procedencia `product-decision:isa-832`. `PlanningInputReserveLaps` permite modificarla por evento y se proyecta a las reservas Fuel/VE existentes de `manual`.
+- SolverV2 rechaza cualquier candidato que termine por debajo del margen. El resultado publica cumplimiento, margen efectivo, cantidades y recurso limitante; `reserve_not_met` llega a `Reasons` y al error de aplicación cuando ninguna parada puede hacerlo factible.
+- La misma comprobación se ejecuta al reproducir decisiones, elegir ahorro, evaluar candidatos robustos y resolver cada escenario climático. Orbit publica el estado por plan y por escenario sin cálculo de dominio en TypeScript.
+- El atajo sigue activo con reserva: la cota incluye el recurso final y el caso Fuel escalar puro tiene cierre exacto lineal; Fuel×VE conserva enumeración acotada. La paridad usa 300 casos mixtos más 100 de Fuel escalar contra el oráculo exhaustivo.
+- Gate `go test ./internal/strategy/... -count=1` y `go vet ./internal/strategy/...` verdes. `go vet ./internal/... ./cmd/...` sigue rojo por tres avisos `unsafe.Pointer` heredados en launcher/LMU; los ficheros señalados no cambian contra la base. Pendiente prueba Wails/LMU real de Isaac tras integrar. Sin PR, merge, promoción ni release.
+
 Actualización ISA-831 / consumo por clima (2026-08-24, implementada en rama de issue):
 
 - El contrato TypeScript de `StrategyInputProjection v2` ya conserva y valida

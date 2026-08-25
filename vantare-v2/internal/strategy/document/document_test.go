@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/vantare/overlays/v2/internal/strategy/weather"
+	"github.com/vantare/overlays/v2/internal/telemetryanalysis/strategyprojection"
 )
 
 func TestStrategyDocumentV2_Validate_FullFromOrbit(t *testing.T) {
@@ -104,6 +105,27 @@ func TestStrategyDocumentV2WeatherScenariosPersistWithWeights(t *testing.T) {
 	reloaded.Events[0].WeatherScenarios[0].Weight = 0
 	if err := reloaded.Validate(); err == nil {
 		t.Fatal("zero weather weight accepted")
+	}
+}
+
+func TestPlanningInputReserveLapsPersistsAsEventOverride(t *testing.T) {
+	input := PlanningInputs{Overrides: map[PlanningInputField]NumericInputOverride{
+		PlanningInputReserveLaps: {
+			Value: 0.8, Presence: strategyprojection.PresenceValid,
+			Provenance: strategyprojection.Provenance{Kind: strategyprojection.ProvenanceManual, SourceID: "event:test:reserve_laps"},
+			Confidence: strategyprojection.Confidence{SampleSize: 1, ComputationVersion: "event-input.v1"},
+		},
+	}}
+	raw, err := json.Marshal(input)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	var reloaded PlanningInputs
+	if err := json.Unmarshal(raw, &reloaded); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if !PlanningInputReserveLaps.Valid() || reloaded.Overrides[PlanningInputReserveLaps].Value != 0.8 {
+		t.Fatalf("reloaded reserve = %+v", reloaded.Overrides)
 	}
 }
 

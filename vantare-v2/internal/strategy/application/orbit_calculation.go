@@ -20,6 +20,11 @@ import (
 // to the caller and no snapshot is required.
 const orbitCalculationDeadline = 8 * time.Second
 
+const (
+	orbitDefaultReserveLaps     = 0.8
+	orbitDefaultReserveSourceID = "product-decision:isa-832"
+)
+
 func (service *Service[T]) CalculateOrbit(ctx context.Context, command CalculateOrbitCommand) (Result[T], error) {
 	if err := validateHeader(command.CommandHeader, OperationCalculateOrbit); err != nil {
 		return Result[T]{}, err
@@ -183,6 +188,10 @@ func calculateOrbitWeather(ctx context.Context, input OrbitCalculationInput, dri
 		result.Plans = append(result.Plans, OrbitWeatherScenarioPlan{
 			ScenarioID: plan.ScenarioID, Weight: plan.Weight, TotalSeconds: plan.Result.Expected.TotalSeconds,
 			Stops: len(plan.Result.Best.PitStops), Stints: orbitWeatherStints(plan.Result.Best.Stints), Timeline: orbitWeatherTimeline(plan.Timeline),
+			ReserveLaps:             plan.Result.Reserve.EffectiveLaps,
+			ReserveRequiredLaps:     requestedReserveLaps(plan.Result.Reserve),
+			ReserveSatisfied:        plan.Result.Reserve.Satisfied,
+			ReserveLimitingResource: string(plan.Result.Reserve.LimitingResource),
 		})
 	}
 	result.Robust = OrbitWeatherRobustRecommendation{
@@ -288,6 +297,9 @@ func calculateOrbitPlan(ctx context.Context, event OrbitCalculationEvent, driver
 				code, cause = ErrorCalculationOverflow, ErrCalculationOverflow
 				break
 			}
+			if reason.Code == "reserve_not_met" {
+				cause = fmt.Errorf("%s: %s: %w", reason.Code, reason.Message, cause)
+			}
 		}
 		return OrbitCalculationPlan{}, calculationApplicationError(code, fmt.Sprintf("input.variants.%d", variantIndex), cause)
 	}
@@ -310,14 +322,18 @@ func calculateOrbitPlan(ctx context.Context, event OrbitCalculationEvent, driver
 	}
 
 	plan := OrbitCalculationPlan{
-		Stints:       make([]OrbitCalculationStint, 0, len(laps)),
-		TotalLaps:    race.CompetitiveLaps.Value(),
-		Stops:        int64(len(laps) - 1),
-		MaxLaps:      orbitMaximumStintLaps(optimised, race.CompetitiveLaps.Value()),
-		AverageFuel:  optimised.ResolvedInputs.FuelPerLapLiters.Value,
-		AveragePace:  optimised.ResolvedInputs.BaseLapSeconds.Value,
-		Distribution: make([]OrbitCalculationDistribution, 0, len(drivers)),
-		StopDetails:  make([]OrbitCalculationStop, 0, len(laps)-1),
+		Stints:                  make([]OrbitCalculationStint, 0, len(laps)),
+		TotalLaps:               race.CompetitiveLaps.Value(),
+		Stops:                   int64(len(laps) - 1),
+		MaxLaps:                 orbitMaximumStintLaps(optimised, race.CompetitiveLaps.Value()),
+		AverageFuel:             optimised.ResolvedInputs.FuelPerLapLiters.Value,
+		AveragePace:             optimised.ResolvedInputs.BaseLapSeconds.Value,
+		Distribution:            make([]OrbitCalculationDistribution, 0, len(drivers)),
+		StopDetails:             make([]OrbitCalculationStop, 0, len(laps)-1),
+		ReserveLaps:             optimised.Reserve.EffectiveLaps,
+		ReserveRequiredLaps:     requestedReserveLaps(optimised.Reserve),
+		ReserveSatisfied:        optimised.Reserve.Satisfied,
+		ReserveLimitingResource: string(optimised.Reserve.LimitingResource),
 	}
 	clock, driving, lap := 0.0, 0.0, int64(0)
 	byDriver := make(map[string]*OrbitCalculationDistribution)
@@ -331,6 +347,9 @@ func calculateOrbitPlan(ctx context.Context, event OrbitCalculationEvent, driver
 		effectiveFuelPerLap := math.Max(0, driverPace.FuelLitersPerLap-saving.FuelSavedPerLap)
 		wantedFuel := float64(count) * effectiveFuelPerLap
 		override, manualOverride := variant.Overrides[index]
+		if index == len(laps)-1 {
+			wantedFuel += optimised.Reserve.Fuel.RemainingAmount
+		}
 		if override.Fuel != nil && *override.Fuel > 0 {
 			wantedFuel = *override.Fuel
 		}
@@ -389,6 +408,10 @@ func calculateOrbitPlan(ctx context.Context, event OrbitCalculationEvent, driver
 		if lastFuelPerLap > 0 {
 			plan.ReserveLaps = plan.FinishFuelLiters / lastFuelPerLap
 		}
+		if last.Manual {
+			plan.ReserveSatisfied = plan.ReserveLaps >= plan.ReserveRequiredLaps
+			plan.ReserveLimitingResource = string(solver.ResourceFuel)
+		}
 	}
 	for index := 0; index+1 < len(plan.Stints); index++ {
 		current := plan.Stints[index]
@@ -442,21 +465,71 @@ func orbitSolverInput(
 			TyreSeconds:     solver.NewFallbackScalar(0, "strategy.orbit.legacy-all-in-pit"),
 			ServiceMode:     manual.PitServiceParallel,
 		},
-		Formation:          solver.Formation{Seconds: solver.NewFallbackScalar(0, "strategy.orbit.no-formation"), Presence: string(strategyprojection.PresenceValid)},
-		Budget:             solver.ComputeBudget{P95Millis: 10_000},
-		FuelCapacityLiters: orbitScalarInput(planning, strategydocument.PlanningInputTank, event.TankLiters, "strategy.orbit.tank"),
-		VECapacityPercent:  orbitVECapacity(planning),
-		TyreLifeLaps:       orbitScalarInput(planning, strategydocument.PlanningInputTyreLife, 0, "strategy.orbit.tyre-life-not-configured"),
-		FuelPerLapLiters:   orbitScalarInput(planning, strategydocument.PlanningInputFuelPerLap, averageFuel, "strategy.orbit.fuel-per-lap"),
-		VEPerLapPercent:    orbitScalarInput(planning, strategydocument.PlanningInputVEPerLap, 0, "strategy.orbit.virtual-energy-not-configured"),
-		DegradationPerLap:  orbitScalarInput(planning, strategydocument.PlanningInputDegradation, 0, "strategy.orbit.degradation-not-configured"),
-		SavingCost:         orbitSavingCost(planning),
+		Formation:            solver.Formation{Seconds: solver.NewFallbackScalar(0, "strategy.orbit.no-formation"), Presence: string(strategyprojection.PresenceValid)},
+		Budget:               solver.ComputeBudget{P95Millis: 10_000},
+		FuelCapacityLiters:   orbitScalarInput(planning, strategydocument.PlanningInputTank, event.TankLiters, "strategy.orbit.tank"),
+		VECapacityPercent:    orbitVECapacity(planning),
+		TyreLifeLaps:         orbitScalarInput(planning, strategydocument.PlanningInputTyreLife, 0, "strategy.orbit.tyre-life-not-configured"),
+		FuelPerLapLiters:     orbitScalarInput(planning, strategydocument.PlanningInputFuelPerLap, averageFuel, "strategy.orbit.fuel-per-lap"),
+		VEPerLapPercent:      orbitScalarInput(planning, strategydocument.PlanningInputVEPerLap, 0, "strategy.orbit.virtual-energy-not-configured"),
+		FuelReserve:          orbitFuelReserve(planning),
+		VirtualEnergyReserve: orbitVirtualEnergyReserve(planning),
+		DegradationPerLap:    orbitScalarInput(planning, strategydocument.PlanningInputDegradation, 0, "strategy.orbit.degradation-not-configured"),
+		SavingCost:           orbitSavingCost(planning),
 		// Orbit expresa consumo por vuelta, no litros arbitrarios de servicio.
 		// Explorar multiplos de una vuelta conserva todas sus decisiones posibles
 		// y evita introducir precision que la pantalla no puede editar.
-		Discretization: solver.ServiceDiscretization{FuelLiters: averageFuel, VEPercent: 1},
+		Discretization: solver.ServiceDiscretization{FuelLiters: orbitFuelServiceStep(averageFuel, planning), VEPercent: 1},
 	}
 	return input
+}
+
+func orbitFuelServiceStep(fuelPerLap float64, planning *strategydocument.PlanningInputs) float64 {
+	step := fuelPerLap
+	if saving := orbitSavingCost(planning); saving != nil {
+		for _, level := range saving.Levels {
+			if level.FuelSavedPerLap > 0 && level.FuelSavedPerLap < step {
+				step = level.FuelSavedPerLap
+			}
+		}
+	}
+	return step
+}
+
+func orbitFuelReserve(planning *strategydocument.PlanningInputs) manual.FuelReserveInput {
+	laps, evidence := orbitReserveLaps(planning)
+	return manual.FuelReserveInput{Kind: manual.ReserveLaps, Laps: manual.Sourced[float64]{Value: laps, Evidence: evidence}, Selection: evidence}
+}
+
+func orbitVirtualEnergyReserve(planning *strategydocument.PlanningInputs) manual.VirtualEnergyReserveInput {
+	laps, evidence := orbitReserveLaps(planning)
+	return manual.VirtualEnergyReserveInput{Kind: manual.ReserveLaps, Laps: manual.Sourced[float64]{Value: laps, Evidence: evidence}, Selection: evidence}
+}
+
+func orbitReserveLaps(planning *strategydocument.PlanningInputs) (float64, manual.Evidence) {
+	value := orbitDefaultReserveLaps
+	sourceID := orbitDefaultReserveSourceID
+	basis := "Isaac product decision 2026-08-25"
+	if planning != nil {
+		if override, ok := planning.Overrides[strategydocument.PlanningInputReserveLaps]; ok && override.Presence == strategyprojection.PresenceValid {
+			value = override.Value
+			sourceID = override.Provenance.SourceID
+			basis = "validated event reserve input"
+		}
+	}
+	evidence := manual.Evidence{
+		Provenance: contract.Provenance{Kind: contract.ProvenanceManual, SourceID: sourceID},
+		Confidence: contract.Confidence{Level: contract.ConfidenceHigh, Basis: basis},
+	}
+	return value, evidence
+}
+
+func requestedReserveLaps(status solver.ReserveStatus) float64 {
+	requested := status.Fuel.RequestedLaps
+	if status.VirtualEnergy.RequestedLaps > requested {
+		requested = status.VirtualEnergy.RequestedLaps
+	}
+	return requested
 }
 
 func orbitClimateBucket(mode string) strategyprojection.ClimateBucket {

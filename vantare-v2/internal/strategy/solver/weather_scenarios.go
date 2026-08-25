@@ -637,6 +637,13 @@ func evaluateDecisionV2(input SolverInputV2, decision DecisionVector) (ScenarioE
 	if node.lap != input.RaceLaps {
 		return ScenarioEvaluation{}, false, nil
 	}
+	reserveStatus, err := reserveStatusForNode(input, node, fuel, ve, weatherCost, drivers, saving)
+	if err != nil {
+		return ScenarioEvaluation{}, false, err
+	}
+	if !reserveStatus.Satisfied {
+		return ScenarioEvaluation{}, false, nil
+	}
 	if allowed, _, _ := input.completedAllowed(node, tires); !allowed {
 		return ScenarioEvaluation{}, false, nil
 	}

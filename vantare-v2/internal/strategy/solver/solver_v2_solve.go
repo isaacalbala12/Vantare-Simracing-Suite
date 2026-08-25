@@ -241,6 +241,14 @@ func SolveV2Context(ctx context.Context, input SolverInputV2) (SolverResultV2, e
 			}
 			if replayed.Feasible {
 				node := nodeFromEvaluation(replayed.Decision, replayed.Evaluation)
+				node.fuel, err = serviceUnits("replay.reserve.fuelRemaining", replayed.Reserve.Fuel.RemainingAmount)
+				if err != nil {
+					return SolverResultV2{}, err
+				}
+				node.ve, err = serviceUnits("replay.reserve.virtualEnergyRemaining", replayed.Reserve.VirtualEnergy.RemainingAmount)
+				if err != nil {
+					return SolverResultV2{}, err
+				}
 				_, worstFeasible, _, envelopeErr := evaluateCandidateEnvelope(envelope, replayed.Decision, replayed.Evaluation)
 				if envelopeErr != nil {
 					return SolverResultV2{}, envelopeErr
@@ -309,7 +317,14 @@ func SolveV2Context(ctx context.Context, input SolverInputV2) (SolverResultV2, e
 							continue
 						}
 						if afterStint.lap == input.RaceLaps {
-							if allowed, code, message := input.completedAllowed(afterStint, tyreModel); allowed {
+							reserveStatus, reserveErr := reserveStatusForNode(input, afterStint, fuel, ve, weatherCost, drivers, saving)
+							if reserveErr != nil {
+								return SolverResultV2{}, reserveErr
+							}
+							if !reserveStatus.Satisfied {
+								code, message := reserveFailure(reserveStatus)
+								result.addRejected(afterStint, input, code, message)
+							} else if allowed, code, message := input.completedAllowed(afterStint, tyreModel); allowed {
 								completed = insertRanked(completed, afterStint, input.Formation.Seconds.Value)
 								if afterStint.worstFeasible {
 									completedWorstFeasible = insertRanked(completedWorstFeasible, afterStint, input.Formation.Seconds.Value)
@@ -422,6 +437,9 @@ func SolveV2Context(ctx context.Context, input SolverInputV2) (SolverResultV2, e
 		return result, nil
 	}
 	if len(completed) == 0 {
+		if reason, ok := result.firstCandidateReason("reserve_not_met"); ok {
+			result.Reasons = append(result.Reasons, reason)
+		}
 		result.Reasons = append(result.Reasons, SolverReason{Code: "no_feasible_plan", Message: "ninguna combinacion discretizada de paradas y servicios completa la carrera"})
 		if len(result.CandidateDetails) == 0 {
 			result.addRejected(initial, input, "no_feasible_plan", "los recursos no permiten completar la carrera")
@@ -433,6 +451,10 @@ func SolveV2Context(ctx context.Context, input SolverInputV2) (SolverResultV2, e
 	rankedCompleted := mergeRankedCandidates(completed, completedWorstFeasible, input.Formation.Seconds.Value)
 	result.Feasible = true
 	result.Best = cloneDecision(best.decision)
+	result.Reserve, err = reserveStatusForNode(input, best, fuel, ve, weatherCost, drivers, saving)
+	if err != nil {
+		return SolverResultV2{}, err
+	}
 	result.SavingPlan = savingPlanForDecision(result.Best)
 	result.Expected = evaluationForNode(best, input.Formation.Seconds.Value)
 	result.WorstCase = result.Expected
@@ -523,6 +545,17 @@ func SolveV2Context(ctx context.Context, input SolverInputV2) (SolverResultV2, e
 	}
 	result.CandidateDetails = append(feasibleDetails, result.CandidateDetails...)
 	return result, nil
+}
+
+func (result SolverResultV2) firstCandidateReason(code string) (SolverReason, bool) {
+	for _, candidate := range result.CandidateDetails {
+		for _, reason := range candidate.Reasons {
+			if reason.Code == code {
+				return reason, true
+			}
+		}
+	}
+	return SolverReason{}, false
 }
 
 func (input SolverInputV2) stopCountAllowed(stops int) (bool, string, string) {

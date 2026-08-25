@@ -100,6 +100,20 @@ Telemetría, Engineer/audio/voz, Strategy, Calendario, Hotkeys, Privacidad,
 Actualizaciones, Diagnóstico y Acerca de. Scope global/perfil explícito;
 import/export sin secretos; reset no borra datos sin selección.
 
+ISA-841 está implementada en la rama aislada
+`vantareapp/isa-841-zoom-global-interfaz`, sobre
+`nightly@8a90c3a7837166ffec6943c839f7cb31cbf11b31`, sin promoción. Ajustes →
+Aplicación ofrece zoom global 80/90/100/110/125/150%, restablecimiento y
+atajos Ctrl +/−/0. La preferencia local se compone con el zoom responsive
+automático y, cuando el suelo de la shell no cabe al ampliar, conserva acceso
+mediante desplazamiento interno. La suite frontend completa pasa 2.963/2.963,
+además de build, typecheck, lint focal e i18n; el lint global conserva un error
+ajeno a la rama (`car-damage-numbers-view-model-v2.ts:93`, `_damage` sin usar).
+El harness visual verificó 110% en 1920×1080 y scroll interno a 125% en
+1366×768. `wails3 dev` compiló el binario y conectó al frontend, pero otra
+instancia de Vantare ya abierta bloqueó la creación del controlador WebView2;
+no hay prueba de interacción Wails real.
+
 ## Roadmap/Discord
 
 Toda issue publicable incluye `Resumen público`. Flujo: Idea → Siguiente

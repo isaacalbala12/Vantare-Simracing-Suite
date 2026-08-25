@@ -444,6 +444,43 @@
   font-size: 12px;
 }
 
+.orbit-set-zoom {
+  display: grid;
+  flex: none;
+  grid-template-columns: 44px 68px 44px;
+  overflow: hidden;
+  border: 1px solid var(--orbit-line-strong);
+  border-radius: 12px;
+  background: var(--orbit-surface-2);
+}
+
+.orbit-set-zoom button {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--orbit-ink);
+  font: 700 16px var(--orbit-font-sans);
+  cursor: pointer;
+}
+
+.orbit-set-zoom button:hover:not(:disabled),
+.orbit-set-zoom button:focus-visible {
+  background: var(--orbit-line-row);
+}
+
+.orbit-set-zoom button:disabled {
+  color: var(--orbit-ink-muted);
+  cursor: default;
+}
+
+.orbit-set-zoom .orbit-set-zoom__value {
+  border-right: 1px solid var(--orbit-line-row);
+  border-left: 1px solid var(--orbit-line-row);
+  font-size: 13px;
+}
+
 .orbit-set-themes {
   display: flex;
   flex: none;

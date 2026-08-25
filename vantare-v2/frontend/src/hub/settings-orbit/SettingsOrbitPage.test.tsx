@@ -151,6 +151,21 @@ describe("SettingsOrbitPage", () => {
     expect(window.localStorage.getItem("vantare.v03orbit.density")).toBe("compact");
   });
 
+  it("el control de zoom cambia, persiste y restablece un único porcentaje", () => {
+    mount("application");
+    const value = screen.getByTestId("orbit-settings-zoom-value");
+    expect(value.textContent).toBe("100%");
+
+    fireEvent.click(screen.getByTestId("orbit-settings-zoom-plus"));
+    expect(value.textContent).toBe("110%");
+    expect(value.getAttribute("aria-label")).toContain("110%");
+    expect(window.localStorage.getItem("vantare.v03orbit.appZoom")).toBe("1.1");
+
+    fireEvent.click(value);
+    expect(value.textContent).toBe("100%");
+    expect(window.localStorage.getItem("vantare.v03orbit.appZoom")).toBe("1");
+  });
+
   it("reducir animaciones marca el body y se guarda", () => {
     mount("application");
     const row = screen.getByTestId("orbit-settings-reduce-motion");

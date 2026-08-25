@@ -45,6 +45,39 @@ describe("useOrbitResponsiveZoom", () => {
     expect(Number.parseFloat(zoomVar())).toBeCloseTo(1000 / 1180, 3);
   });
 
+  it("compone la preferencia guardada con el factor responsive", () => {
+    localStorage.setItem(ORBIT_KEYS.appZoom, "1.25");
+    resizeTo(1000, 700);
+    render(<Probe />);
+    expect(Number.parseFloat(zoomVar())).toBeCloseTo((1000 / 1180) * 1.25, 3);
+    expect(root().dataset.orbitZoomFloored).toBe("true");
+  });
+
+  it("los atajos cambian, restablecen y persisten el zoom", () => {
+    render(<Probe />);
+
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "+", ctrlKey: true }));
+    expect(Number.parseFloat(zoomVar())).toBeCloseTo(1.1, 3);
+    expect(localStorage.getItem(ORBIT_KEYS.appZoom)).toBe("1.1");
+
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "0", ctrlKey: true }));
+    expect(zoomVar()).toBe("1");
+    expect(localStorage.getItem(ORBIT_KEYS.appZoom)).toBe("1");
+  });
+
+  it("no roba atajos mientras el usuario escribe en un campo", () => {
+    render(<Probe />);
+    const input = document.createElement("input");
+    document.body.append(input);
+    input.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "+", ctrlKey: true, bubbles: true, cancelable: true }),
+    );
+
+    expect(zoomVar()).toBe("1");
+    expect(localStorage.getItem(ORBIT_KEYS.appZoom)).toBeNull();
+    input.remove();
+  });
+
   it("sigue cada paso del gesto: un escalado por evento, sin quedarse atras", () => {
     useImmediateFrames();
     render(<Probe />);

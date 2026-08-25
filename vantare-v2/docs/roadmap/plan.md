@@ -529,6 +529,19 @@ se conservan aqui como hitos cumplidos; los demas siguen pendientes.
 - cuerpo.it: L'app scrive un log rotante su disco, e Diagnostica apre la sua cartella ed elenca gli ultimi eventi con il loro livello.
 - etiqueta: Feature
 
+### Zoom global de la interfaz
+
+- id: global-interface-zoom
+- tipo: feature
+- titulo.en: Global interface zoom
+- titulo.pt: Zoom global da interface
+- titulo.it: Zoom globale dell'interfaccia
+- cuerpo: Ajustes permite ampliar o reducir toda la app en seis pasos, restablecer el tamaño predeterminado y usar Ctrl +, Ctrl − o Ctrl 0; la preferencia se recuerda en este equipo y convive con el ajuste responsive de la ventana.
+- cuerpo.en: Settings can zoom the whole app through six steps, restore the default size and use Ctrl +, Ctrl − or Ctrl 0; the preference is remembered on this device and works alongside responsive window scaling.
+- cuerpo.pt: As Definições permitem ampliar ou reduzir toda a app em seis passos, repor o tamanho predefinido e usar Ctrl +, Ctrl − ou Ctrl 0; a preferência fica guardada neste equipamento e convive com o ajuste responsivo da janela.
+- cuerpo.it: Le Impostazioni consentono di ingrandire o ridurre tutta l'app in sei passaggi, ripristinare la dimensione predefinita e usare Ctrl +, Ctrl − o Ctrl 0; la preferenza resta memorizzata su questo dispositivo e convive con l'adattamento responsive della finestra.
+- etiqueta: Feature
+
 ### Eje temporal en Telemetría y exportar radio
 
 - id: telemetry-timeline-export

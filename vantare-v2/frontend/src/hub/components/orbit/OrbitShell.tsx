@@ -30,6 +30,7 @@ import {
 } from '../../orbit/views';
 import { CommandPalette, type PaletteItem } from './CommandPalette';
 import { ContextColumn, type ContextColumnBlock } from './ContextColumn';
+import { OrbitKeepAlive } from './OrbitKeepAlive';
 import { Rail, type RailItem } from './Rail';
 import { SideLauncher } from './SideLauncher';
 import { SideProfile } from './SideProfile';
@@ -550,9 +551,10 @@ function OrbitShellBody({
               <SettingsOrbitPage target={navTarget} />
             ) : activeView === 'testing' && testingCenterChannel ? (
               <TestingCenterOrbitPage channel={testingCenterChannel} version={version} />
-            ) : activeView === 'studio' ? (
-              <StudioRoute target={target} />
             ) : null}
+            <OrbitKeepAlive active={activeView === 'studio'}>
+              <StudioRoute target={target} />
+            </OrbitKeepAlive>
           </div>
         </div>
       </div>

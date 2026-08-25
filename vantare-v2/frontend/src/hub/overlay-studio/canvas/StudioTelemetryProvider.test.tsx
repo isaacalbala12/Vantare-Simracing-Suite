@@ -12,6 +12,7 @@ import { createTelemetryRateCoordinator } from "../../../overlay/core/telemetry-
 import type { StudioProfileClient } from "../state/studio-profile-client";
 import { deltaDefinition } from "../../../overlay/widget-types/delta/delta-definition";
 import type { ProfileDocumentV3 } from "../../../overlay/core/profile-document";
+import { OrbitKeepAlive } from "../../components/orbit/OrbitKeepAlive";
 
 vi.mock("../state/studio-store", async () => {
   const actual = await vi.importActual("../state/studio-store");
@@ -95,6 +96,8 @@ describe("StudioTelemetryProvider - single merged effect", () => {
       }),
     };
   });
+
+  afterEach(() => cleanup());
 
   it("should start with mock snapshot", async () => {
     const mockSetPreview = vi.fn();
@@ -246,6 +249,126 @@ describe("StudioTelemetryProvider - single merged effect", () => {
     expect(finalSnapshot?.status).toBe("ready");
     expect(mockAdapter.start).toHaveBeenCalledTimes(2);
     expect(mockAdapter.stop).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps live transport running while an inactive Studio suspends visual subscriptions", async () => {
+    const unsubscribe = vi.fn();
+    const snapshot = buildMockTelemetry({
+      session: "practice",
+      location: "track",
+      state: "ready",
+    });
+    mockCoordinator.getSnapshot = vi.fn(() => snapshot);
+    mockCoordinator.subscribe = vi.fn(() => unsubscribe);
+    vi.mocked(useStudioPreview).mockReturnValue({
+      preview: {
+        source: "live",
+        mockSession: "practice",
+        mockLocation: "track",
+        zoom: "fit",
+        backgroundId: "grid",
+        safeArea: false,
+      },
+      setPreview: vi.fn(),
+    });
+
+    const view = render(
+      <StudioTelemetryProvider
+        active
+        coordinator={mockCoordinator}
+        liveAvailable
+        telemetryAdapter={mockAdapter}
+      >
+        <SnapshotProbe />
+      </StudioTelemetryProvider>,
+    );
+
+    await waitFor(() => expect(mockAdapter.start).toHaveBeenCalledTimes(1));
+    expect(mockCoordinator.subscribe).toHaveBeenCalledTimes(1);
+
+    view.rerender(
+      <StudioTelemetryProvider
+        active={false}
+        coordinator={mockCoordinator}
+        liveAvailable
+        telemetryAdapter={mockAdapter}
+      >
+        <SnapshotProbe />
+      </StudioTelemetryProvider>,
+    );
+
+    expect(unsubscribe).toHaveBeenCalledTimes(1);
+    expect(mockAdapter.stop).not.toHaveBeenCalled();
+
+    view.rerender(
+      <StudioTelemetryProvider
+        active
+        coordinator={mockCoordinator}
+        liveAvailable
+        telemetryAdapter={mockAdapter}
+      >
+        <SnapshotProbe />
+      </StudioTelemetryProvider>,
+    );
+
+    expect(mockCoordinator.subscribe).toHaveBeenCalledTimes(2);
+    expect(mockAdapter.start).toHaveBeenCalledTimes(1);
+  });
+
+  it("gates visual subscriptions from Orbit without rerendering the Studio provider", async () => {
+    const unsubscribe = vi.fn();
+    const snapshot = buildMockTelemetry({ session: "practice", location: "track", state: "ready" });
+    mockCoordinator.getSnapshot = vi.fn(() => snapshot);
+    mockCoordinator.subscribe = vi.fn(() => unsubscribe);
+    vi.mocked(useStudioPreview).mockReturnValue({
+      preview: {
+        source: "live",
+        mockSession: "practice",
+        mockLocation: "track",
+        zoom: "fit",
+        backgroundId: "grid",
+        safeArea: false,
+      },
+      setPreview: vi.fn(),
+    });
+
+    const PersistentProvider = React.memo(function PersistentProvider() {
+      return (
+        <StudioTelemetryProvider
+          coordinator={mockCoordinator}
+          liveAvailable
+          telemetryAdapter={mockAdapter}
+        >
+          <SnapshotProbe />
+        </StudioTelemetryProvider>
+      );
+    });
+    const view = render(
+      <OrbitKeepAlive active>
+        <PersistentProvider />
+      </OrbitKeepAlive>,
+    );
+
+    await waitFor(() => expect(mockCoordinator.subscribe).toHaveBeenCalledTimes(1));
+    expect(mockAdapter.start).toHaveBeenCalledTimes(1);
+
+    view.rerender(
+      <OrbitKeepAlive active={false}>
+        <PersistentProvider />
+      </OrbitKeepAlive>,
+    );
+
+    expect(unsubscribe).toHaveBeenCalledTimes(1);
+    expect(mockAdapter.stop).not.toHaveBeenCalled();
+
+    view.rerender(
+      <OrbitKeepAlive active>
+        <PersistentProvider />
+      </OrbitKeepAlive>,
+    );
+
+    expect(mockCoordinator.subscribe).toHaveBeenCalledTimes(2);
+    expect(mockAdapter.start).toHaveBeenCalledTimes(1);
   });
 
   it("should not publish after unmount", async () => {

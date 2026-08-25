@@ -888,3 +888,41 @@ Evidencia Task 4 y cierre acumulado:
 - Review propio en cinco ejes: Approve, sin Critical/Required pendientes. PR
   draft #279 abierto a `nightly`; `01-shell` permanece bloqueado hasta la
   aceptación de este briefing.
+
+## ISA-838 — cambio de sección de Studio sin remontaje (2026-08-25)
+
+- Rama `vantareapp/isa-838-studio-tab-fluidity`, worktree
+  `C:\tmp\vantare-isa838`, base limpia
+  `origin/nightly@8a90c3a7837166ffec6943c839f7cb31cbf11b31`. ISA-770 no era
+  autoridad para este bug de rendimiento; se abrió ISA-838 y se añadió al
+  Project Vantare en `In Progress` antes de editar.
+- Había dos desmontajes productivos: `StudioRouteEditor` sustituía
+  `OverlayStudioV3` al entrar en Perfiles/Recomendados/Comunidad/OBS y
+  `OrbitShell` eliminaba `StudioRoute` al entrar en Launcher u otra sección.
+- La ruta interna conserva el editor y lo vuelve inerte mientras pinta la vista
+  secundaria. La shell monta Studio de forma perezosa en la primera visita y
+  conserva después la misma instancia; la ruta memoizada no vuelve a renderizar
+  por un cambio ajeno de sección.
+- El keep-alive oculta globalmente con `display:none`, `aria-hidden` e `inert`.
+  Un gate de actividad estable desconecta los suscriptores visuales del
+  coordinador sin remontar React ni reiniciar el transporte live; al volver se
+  reconectan al último snapshot. Los `WidgetVisualHost` y el renderer productivo
+  siguen siendo únicos.
+- Regresiones: misma identidad DOM interna y global, lazy mount, inercia,
+  suspensión/reanudación de suscripciones y transporte live single-start.
+  Suite frontend completa: 386 archivos y 2958/2958 tests PASS. Typecheck PASS,
+  build frontend PASS y build Wails production con el `.env.local` autorizado
+  embebido PASS. ESLint focal PASS; el global conserva el error heredado
+  `_damage` no usado en `car-damage-numbers-view-model-v2.ts`.
+- A/B Wails sobre la misma base, tres tandas de 20 idas y vueltas
+  Studio↔Launcher por build: mediana de CPU del renderer 41,41 ms/roundtrip en
+  baseline y 33,59 ms/roundtrip en ISA-838 (-18,9 %). El tag production desactiva
+  CDP por contrato, por lo que no se presenta esta medida como traza
+  click-to-paint ni como garantía absoluta de ausencia de hitch.
+- Smoke Wails real PASS: sesión resuelta, Hub, Studio y Launcher visibles; cuatro
+  capturas A/B en
+  `C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\fotos\isa-838-{baseline,final}-{studio,launcher}.png`.
+- Riesgo residual aceptado: tras la primera visita, Studio retiene su documento
+  y DOM en memoria para que las vueltas sean instantáneas. La primera apertura
+  sigue pagando el montaje inicial; las afirmaciones de fluidez se limitan a
+  cambios posteriores entre secciones ya visitadas.

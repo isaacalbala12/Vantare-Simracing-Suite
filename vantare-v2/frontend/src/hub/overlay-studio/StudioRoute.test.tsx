@@ -174,6 +174,37 @@ describe('StudioRoute', () => {
     expect(client.load).toHaveBeenCalledWith('example-racing.json');
   });
 
+  it('keeps the editor mounted and inert while visiting another Studio section', async () => {
+    const client = createMockClient();
+    const coordinator = createTelemetryRateCoordinator();
+    const view = render(
+      <StudioRoute client={client} coordinator={coordinator} liveAvailable={false} />,
+    );
+    bootProfiles();
+
+    const editor = await screen.findByTestId('overlay-studio-v3');
+
+    view.rerender(
+      <StudioRoute
+        client={client}
+        coordinator={coordinator}
+        liveAvailable={false}
+        target="profiles"
+      />,
+    );
+
+    expect(await screen.findByTestId('orbit-profiles')).toBeTruthy();
+    expect(editor.isConnected).toBe(true);
+    expect(editor.closest('[data-studio-editor-view]')?.getAttribute('aria-hidden')).toBe('true');
+    expect(editor.closest('[data-studio-editor-view]')?.hasAttribute('inert')).toBe(true);
+
+    fireEvent.click(screen.getByTestId('orbit-profiles-back'));
+
+    expect(screen.getByTestId('overlay-studio-v3')).toBe(editor);
+    expect(editor.closest('[data-studio-editor-view]')?.getAttribute('aria-hidden')).toBe('false');
+    expect(editor.closest('[data-studio-editor-view]')?.hasAttribute('inert')).toBe(false);
+  });
+
   it('creates a profile from the in-app dialog and activates it in the editor', async () => {
     const client = createMockClient({
       'custom-race-hud.json': buildDocument('custom-race-hud'),

@@ -22,6 +22,7 @@ export type OverlayStudioV3Props = {
   coordinator: TelemetryRateCoordinator;
   telemetryAdapter?: TelemetryAdapter | null;
   liveAvailable?: boolean;
+  active?: boolean;
   recoveryStorage?: Storage | null;
   browserViewStudioPreview?: boolean;
 };
@@ -36,6 +37,7 @@ export function OverlayStudioV3(props: OverlayStudioV3Props): React.ReactElement
     coordinator,
     telemetryAdapter = null,
     liveAvailable = false,
+    active = true,
     recoveryStorage: recoveryStorageProp,
     browserViewStudioPreview = false,
     onRequestProfileChange,
@@ -43,7 +45,7 @@ export function OverlayStudioV3(props: OverlayStudioV3Props): React.ReactElement
     profiles,
   } = props;
   const { t } = useI18n();
-  const telemetryProps = { coordinator, telemetryAdapter, liveAvailable };
+  const telemetryProps = { coordinator, telemetryAdapter, liveAvailable, active };
   const recoveryStorage =
     recoveryStorageProp ?? (typeof window !== 'undefined' ? window.sessionStorage : null);
   const diagnostics = useMemo(() => createWidgetDiagnosticCollector(), []);

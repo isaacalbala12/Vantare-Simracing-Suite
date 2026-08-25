@@ -1,3 +1,28 @@
+.studio-route-views {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  min-height: 0;
+}
+
+.studio-route-editor-view {
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  min-height: 0;
+}
+
+/* Conserva canvas, widgets y telemetría entre secciones de Studio. La vista
+   inactiva permanece medida, pero no pinta, no recibe foco ni intercepta input. */
+.studio-route-editor-view[data-active='false'] {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .osv3-workbench {
   display: flex;
   flex-direction: column;

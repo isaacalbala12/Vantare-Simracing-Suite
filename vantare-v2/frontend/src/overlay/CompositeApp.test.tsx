@@ -1,4 +1,5 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { StrictMode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ProfileDocumentV3 } from "./core/profile-document";
 import { CompositeApp } from "./CompositeApp";
@@ -162,6 +163,20 @@ describe("CompositeApp", () => {
     tick(100);
 
     expect(screen.queryByText("Loading profile...")).toBeNull();
+    expect(screen.getByText("RELATIVE")).toBeTruthy();
+  });
+
+  // React remonta los efectos: StrictMode lo hace en cada montaje y en
+  // produccion basta un remontaje del arbol. El overlay creaba sus almacenes en
+  // `useMemo` y los destruia en la limpieza del efecto, asi que el segundo
+  // montaje se suscribia a un store ya desechado, `subscribe` lanzaba
+  // `overlay-frame-v2:invalid-contract:disposed`, nadie lo capturaba y la
+  // ventana se quedaba en blanco. Sin la ventana no hay overlay: esto no puede
+  // volver a pasar.
+  it("sobrevive al remontaje de efectos de StrictMode y sigue pintando", () => {
+    render(<CompositeApp />, { wrapper: StrictMode });
+    dispatch("overlay:profile-v3-loaded", buildProfilePayload(buildRelativeDocument()));
+    tick(100);
     expect(screen.getByText("RELATIVE")).toBeTruthy();
   });
 

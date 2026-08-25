@@ -113,17 +113,28 @@ export function CompositeApp() {
     });
     adapter.start();
     engineerAdapter.start();
+    // La limpieza deshace lo que hizo este efecto y nada mas. El store, el
+    // coordinador y el almacen del ingeniero nacen en `useMemo` y viven lo que
+    // viva el componente -- `overlayV2Store.subscribe` esta ademas cableado a
+    // un `useSyncExternalStore` de arriba --, asi que destruirlos aqui era usar
+    // memoria liberada: React remonta los efectos (StrictMode en desarrollo lo
+    // hace siempre) y en el segundo montaje `subscribe` lanzaba
+    // `overlay-frame-v2:invalid-contract:disposed`. Nadie lo capturaba, React
+    // tiraba el arbol entero y la ventana de overlay se quedaba en blanco.
+    //
+    // No se filtra nada: el reloj del watchdog se para solo al quedarse sin
+    // oyentes, y el bucle de repintado del coordinador se suelta cuando cae su
+    // ultimo `subscribe`. Eso ya lo cubren `unsubscribeOverlayV2Store` y
+    // `adapter.stop()`. Lo que quedaba de `dispose()` era el flag de un solo
+    // sentido, que es justo el que rompia el remontaje.
     return () => {
       delete diagnosticWindow.__vantareOverlayV2Diagnostics;
       detachOverlayV2();
       unsubscribeOverlayV2Store();
       adapter.stop();
       engineerAdapter.stop();
-      overlayV2Store.dispose();
-      engineerPresentations.dispose();
-      coordinator.dispose();
     };
-  }, [adapter, coordinator, engineerAdapter, engineerPresentations, overlayV2Shadow, overlayV2Store]);
+  }, [adapter, engineerAdapter, overlayV2Shadow, overlayV2Store]);
 
   useEffect(() => {
     const unsub = Events.On("overlay:profile-v3-loaded", (event: { data: unknown }) => {

@@ -20,8 +20,9 @@
   filas y `overflowX` continúa en cero. El harness impide volver a menos de
   32 px sin escalar, variar el ancho del chip o desalinear un eje.
 - Implementación inicial en `a99c3f46`; segunda pasada incluida en el HEAD de
-  la PR draft #846 hacia `nightly`. No hay merge, promoción, release ni
-  publicación y el cambio sigue aislado.
+  la PR #846 hacia `nightly`. Isaac aprobó expresamente la promoción el
+  2026-08-26; la issue #843 conserva el SHA integrado y los checks remotos del
+  cierre. Esta autorización no alcanza `testers`, `master` ni una release.
 
 ## Decisión comercial vigente — ISA-315
 

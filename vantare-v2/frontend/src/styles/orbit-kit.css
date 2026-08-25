@@ -156,6 +156,10 @@
 .orbit-menu__item:focus-visible,
 .orbit-utabs__tab:focus-visible,
 .orbit-acc > summary:focus-visible,
+.orbit-studio-ins__sub > summary:focus-visible,
+.orbit-color-row__hex:focus-visible,
+.orbit-color-row__reset:focus-visible,
+.orbit-color-row__swatch:focus-within,
 .orbit-featured:focus-visible {
   outline: 2px solid var(--orbit-coral);
   outline-offset: 2px;
@@ -1537,12 +1541,17 @@ button.orbit-pill {
   text-overflow: ellipsis;
 }
 
+/* Abierto, el resumen repite palabra por palabra lo que ya se ve dentro (y en
+   el inspector, tambien lo que pone la cabecera). Solo sirve plegado. */
 .orbit-acc[open] .orbit-acc__sum {
-  opacity: 0.55;
+  display: none;
 }
 
+/* `margin-left: auto` y no solo el `flex: 1` del resumen: abierto el resumen
+   no se pinta y sin esto el chevron se pega al titulo. */
 .orbit-acc__chev {
   flex: none;
+  margin-left: auto;
   color: var(--orbit-ink-4);
   transition: transform var(--orbit-med) var(--orbit-ease);
 }
@@ -1700,6 +1709,28 @@ button.orbit-pill {
   transform: translate(-50%, 6px);
 }
 
+.orbit-kit-scope [data-tip-side="bottom"]::after {
+  top: calc(100% + 10px);
+  left: 50%;
+  transform: translate(-50%, -6px);
+}
+
+/* Ayuda de seccion: es una frase, no un rotulo, asi que envuelve. Y solo
+   aparece si el raton se queda encima, para que no salte al pasar de largo. */
+.orbit-kit-scope [data-tip-hold]::after {
+  width: 232px;
+  line-height: 1.4;
+  white-space: normal;
+  text-align: left;
+  transition-delay: 0s;
+}
+
+.orbit-kit-scope [data-tip-hold]:hover::after,
+.orbit-kit-scope [data-tip-hold]:focus-visible::after,
+.orbit-kit-scope [data-tip-hold][data-tip-open="true"]::after {
+  transition-delay: 550ms;
+}
+
 .orbit-kit-scope [data-tip]:hover::after,
 .orbit-kit-scope [data-tip]:focus-visible::after,
 .orbit-kit-scope [data-tip][data-tip-open="true"]::after {
@@ -1715,6 +1746,12 @@ button.orbit-pill {
 .orbit-kit-scope [data-tip-side="top"]:hover::after,
 .orbit-kit-scope [data-tip-side="top"]:focus-visible::after,
 .orbit-kit-scope [data-tip-side="top"][data-tip-open="true"]::after {
+  transform: translate(-50%, 0);
+}
+
+.orbit-kit-scope [data-tip-side="bottom"]:hover::after,
+.orbit-kit-scope [data-tip-side="bottom"]:focus-visible::after,
+.orbit-kit-scope [data-tip-side="bottom"][data-tip-open="true"]::after {
   transform: translate(-50%, 0);
 }
 

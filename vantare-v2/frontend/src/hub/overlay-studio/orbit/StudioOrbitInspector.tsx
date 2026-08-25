@@ -14,6 +14,7 @@ import { WidgetPropertyInspectorView } from '../inspector/WidgetPropertyInspecto
 import { resolveInspectorSections } from '../inspector/inspector-sections';
 import { useStudioDocument } from '../state/studio-store';
 import {
+  appearanceSummary,
   behaviorSummary,
   designSummary,
   inspectorMeta,
@@ -21,19 +22,45 @@ import {
   widgetLabel,
 } from './studio-orbit-model';
 
-/** Grupos Orbit ↔ secciones reales de `inspector-sections.ts` (decision D-43). */
+type GroupId = 'design' | 'appearance' | 'behavior' | 'layout';
+
+/**
+ * Grupos Orbit ↔ secciones reales de `inspector-sections.ts` (decision D-43).
+ *
+ * `appearance` salio de `design`: juntas hacian que el primer acordeon fuera el
+ * mas largo del panel y todo lo demas quedara debajo del scroll.
+ */
 const GROUPS: readonly {
-  id: 'design' | 'behavior' | 'layout';
+  id: GroupId;
   titleKey: string;
+  /** Clave literal, no `${titleKey}.help`: el auditor de i18n no ve plantillas. */
+  helpKey: string;
   members: readonly InspectorSectionId[];
 }[] = [
-  { id: 'design', titleKey: 'studio.inspector.section.design', members: ['design', 'appearance'] },
+  {
+    id: 'design',
+    titleKey: 'studio.inspector.section.design',
+    helpKey: 'studio.inspector.section.design.help',
+    members: ['design'],
+  },
+  {
+    id: 'appearance',
+    titleKey: 'studio.inspector.section.appearance',
+    helpKey: 'studio.inspector.section.appearance.help',
+    members: ['appearance'],
+  },
   {
     id: 'behavior',
     titleKey: 'studio.inspector.section.behavior',
+    helpKey: 'studio.inspector.section.behavior.help',
     members: ['behavior', 'content'],
   },
-  { id: 'layout', titleKey: 'studio.inspector.section.layout', members: ['layout', 'actions'] },
+  {
+    id: 'layout',
+    titleKey: 'studio.inspector.section.layout',
+    helpKey: 'studio.inspector.section.layout.help',
+    members: ['layout', 'actions'],
+  },
 ];
 
 function HeaderAction(props: {
@@ -126,37 +153,36 @@ export function StudioOrbitInspector(): React.ReactElement {
     });
   };
 
-  const summaries: Record<string, string> = {
+  const summaries: Record<GroupId, string> = {
     design: designSummary(widget, t),
+    appearance: appearanceSummary(widget, t),
     behavior: behaviorSummary(widget, t),
     layout: layoutSummary(widget, t),
   };
 
-  const body = (id: 'design' | 'behavior' | 'layout') => {
+  const body = (id: GroupId) => {
     if (id === 'design') {
       return (
-        <>
-          {has('design') ? (
-            <DesignSection
-              access={access}
-              designClient={designClient}
-              dispatch={dispatch}
-              session={activeSession}
-              widget={widget}
-              widgets={activeLayout.widgets}
-            />
-          ) : null}
-          {has('appearance') ? (
-            <WidgetPropertyInspectorView
-              access={access}
-              dispatch={dispatch}
-              sectionId="appearance"
-              session={activeSession}
-              snapshot={snapshot}
-              widget={widget}
-            />
-          ) : null}
-        </>
+        <DesignSection
+          access={access}
+          designClient={designClient}
+          dispatch={dispatch}
+          session={activeSession}
+          widget={widget}
+          widgets={activeLayout.widgets}
+        />
+      );
+    }
+    if (id === 'appearance') {
+      return (
+        <WidgetPropertyInspectorView
+          access={access}
+          dispatch={dispatch}
+          sectionId="appearance"
+          session={activeSession}
+          snapshot={snapshot}
+          widget={widget}
+        />
       );
     }
     if (id === 'behavior') {
@@ -315,6 +341,7 @@ export function StudioOrbitInspector(): React.ReactElement {
             onToggle={(open) => setCollapsed((state) => ({ ...state, [group.id]: !open }))}
             open={!collapsed[group.id]}
             summary={summaries[group.id]}
+            tip={t(group.helpKey)}
             title={t(group.titleKey)}
           >
             <div data-testid={`orbit-studio-acc-${group.id}`}>{body(group.id)}</div>

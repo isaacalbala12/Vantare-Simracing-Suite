@@ -348,7 +348,7 @@ func calculateOrbitPlan(ctx context.Context, event OrbitCalculationEvent, driver
 		wantedFuel := float64(count) * effectiveFuelPerLap
 		override, manualOverride := variant.Overrides[index]
 		if index == len(laps)-1 {
-			wantedFuel += optimised.Reserve.Fuel.RemainingAmount
+			wantedFuel += optimised.Reserve.Fuel.RequiredAmount
 		}
 		if override.Fuel != nil && *override.Fuel > 0 {
 			wantedFuel = *override.Fuel

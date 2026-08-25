@@ -138,7 +138,10 @@ func simpleSingleFuelDecision(input SolverInputV2, fuel serviceResource, maxStin
 	}
 
 	decision := DecisionVector{PitStops: make([]PitStopDecision, 0, stintCount-1), Stints: make([]StintDecision, 0, stintCount)}
-	level := fuel.capacity
+	level := input.RaceLaps*fuel.perLap + reserveUnits
+	if level > fuel.capacity {
+		level = fuel.capacity
+	}
 	lap := int64(0)
 	for index, count := range laps {
 		level -= count * fuel.perLap

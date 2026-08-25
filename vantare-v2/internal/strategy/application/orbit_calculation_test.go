@@ -173,6 +173,29 @@ func TestCalculateOrbitAddsStopAndPublishesEffectiveReserve(t *testing.T) {
 	}
 }
 
+func TestCalculateOrbitStartsWithMinimumFuelForRaceAndReserve(t *testing.T) {
+	result, err := calculateOrbit(OrbitCalculationInput{
+		Event: OrbitCalculationEvent{DurationMinutes: 13, TankLiters: 90, PitLossSeconds: 60},
+		Drivers: []OrbitCalculationDriver{{
+			ID: "driver-1", Dry: OrbitCalculationPace{PaceSeconds: 60, FuelLitersPerLap: 3.54},
+		}},
+		Variants:        []OrbitCalculationVariant{{ID: "s1", Mode: "dry", Order: []string{"driver-1"}}},
+		ActiveVariantID: "s1",
+	})
+	if err != nil {
+		t.Fatalf("calculateOrbit: %v", err)
+	}
+	plan := result.Plans["s1"]
+	wantStart := (13 + orbitDefaultReserveLaps) * 3.54
+	if math.Abs(plan.StartFuelLiters-wantStart) > 0.01 || math.Abs(plan.FinishFuelLiters-orbitDefaultReserveLaps*3.54) > 0.01 {
+		t.Fatalf("start/finish fuel = %.3f/%.3f L, want %.3f/%.3f L (tank %.1f L)",
+			plan.StartFuelLiters, plan.FinishFuelLiters, wantStart, orbitDefaultReserveLaps*3.54, 90.0)
+	}
+	if math.Abs(plan.ReserveLaps-orbitDefaultReserveLaps) > 0.01 {
+		t.Fatalf("effective reserve = %.3f laps, want %.2f", plan.ReserveLaps, orbitDefaultReserveLaps)
+	}
+}
+
 func TestCalculateOrbitReportsImpossibleReserveCause(t *testing.T) {
 	_, err := calculateOrbit(OrbitCalculationInput{
 		Event: OrbitCalculationEvent{DurationMinutes: 2, TankLiters: 1, PitLossSeconds: 10},

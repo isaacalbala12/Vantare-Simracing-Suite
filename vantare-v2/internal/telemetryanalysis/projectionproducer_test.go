@@ -82,6 +82,11 @@ func TestProduceStrategyInputProjectionV2ComposesIndependentFamilies(t *testing.
 	if got.VirtualEnergyConsumption.ByClimateBucket[strategyprojection.ClimateBucketHumid] != 1.5 {
 		t.Fatalf("humid VE from independent session = %#v", got.VirtualEnergyConsumption.ByClimateBucket)
 	}
+	if got.ClassPace == nil || got.ClassPace.Presence != strategyprojection.PresenceMissing ||
+		got.ClassPace.Provenance.Kind != strategyprojection.ProvenanceReference ||
+		got.ClassPace.Reason != strategyprojection.ClassPaceReasonNoSource || len(got.ClassPace.ByClassName) != 0 {
+		t.Fatalf("class pace must stay explicitly unavailable: %#v", got.ClassPace)
+	}
 	dryPace := got.RepresentativePaceByClimateBucket[strategyprojection.ClimateBucketDry]
 	if dryPace.Presence != strategyprojection.PresenceValid || dryPace.MedianLapSeconds != 100 ||
 		dryPace.Confidence.SampleSize != 4 || dryPace.Provenance.SourceID != "aggregate:"+got.CombinationID {
@@ -343,6 +348,12 @@ func projectionFamilyAxes(projection strategyprojection.StrategyInputProjectionV
 			projection.VirtualEnergyConsumption.Provenance.Kind,
 			projection.VirtualEnergyConsumption.Confidence,
 			projection.VirtualEnergyConsumption.Reason,
+		),
+		"classPace": familyAxes(
+			projection.ClassPace.Presence,
+			projection.ClassPace.Provenance.Kind,
+			projection.ClassPace.Confidence,
+			string(projection.ClassPace.Reason),
 		),
 		"combinedStintPaceCurve": familyAxes(
 			projection.CombinedStintPaceCurve.Presence,

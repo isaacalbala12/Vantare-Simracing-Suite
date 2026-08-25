@@ -55,6 +55,13 @@
       "medianLapSeconds": 0
     }
   },
+  "classPace": {
+    "presence": "missing",
+    "provenance": {"kind": "reference", "sourceId": "shared-class-pace"},
+    "confidence": {"sampleSize": 0, "computationVersion": "class-pace.contract.v1"},
+    "reason": "no_class_pace_source",
+    "byClassName": {}
+  },
   "combinedStintPaceCurve": {
     "presence": "valid",
     "provenance": {"kind": "derived", "sourceId": "analysis:pace"},

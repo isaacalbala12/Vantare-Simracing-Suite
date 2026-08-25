@@ -150,6 +150,33 @@ func TestRepresentativePaceRequiresValueWhenValidAndReasonWhenMissing(t *testing
 	}
 }
 
+func TestClassPaceRequiresReferenceEvidenceAndTypedMissingReason(t *testing.T) {
+	missing := ClassPaceFamily{
+		Presence:    PresenceMissing,
+		Provenance:  Provenance{Kind: ProvenanceReference, SourceID: "shared-class-pace"},
+		Confidence:  Confidence{ComputationVersion: "class-pace.contract.v1"},
+		Reason:      ClassPaceReasonNoSource,
+		ByClassName: map[string]float64{},
+	}
+	if err := missing.Validate(); err != nil {
+		t.Fatalf("missing class pace with typed cause: %v", err)
+	}
+
+	present := missing
+	present.Presence = PresenceValid
+	present.Reason = ""
+	present.Confidence.SampleSize = 2
+	present.ByClassName = map[string]float64{"Hypercar": 102.4, "LMP2": 106.8}
+	if err := present.Validate(); err != nil {
+		t.Fatalf("valid reference class pace: %v", err)
+	}
+
+	present.Provenance = Provenance{Kind: ProvenanceDerived, SourceID: "analysis:pace"}
+	if err := present.Validate(); err == nil {
+		t.Fatal("class pace must not accept telemetry-derived provenance")
+	}
+}
+
 func TestPitWithoutResourceRiseMustBeAmbiguous(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Millisecond)
 	projection := StrategyInputProjectionV2{

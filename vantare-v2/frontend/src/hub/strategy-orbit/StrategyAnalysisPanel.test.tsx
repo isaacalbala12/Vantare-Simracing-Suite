@@ -60,6 +60,7 @@ const missingPlanning = {
     sourceSessions: ["race-1"], combinationId: "lmu:spa:lmgt3",
     fuelConsumption: { presence: "valid", provenance: { kind: "derived" }, confidence: { sampleSize: 8, computationVersion: "producer.v1" }, meanPerLap: 2.8, rangeLower: 2.7, rangeUpper: 2.9, byClimateBucket: { dry: 2.8 } },
     virtualEnergyConsumption: { presence: "missing", provenance: { kind: "derived" }, confidence: { sampleSize: 0, computationVersion: "producer.v1" }, reason: "missing_virtual_energy_consumption", meanPerLap: 0, rangeLower: 0, rangeUpper: 0 },
+    classPace: { presence: "missing", provenance: { kind: "reference", sourceId: "shared-class-pace" }, confidence: { sampleSize: 0, computationVersion: "class-pace.contract.v1" }, reason: "no_class_pace_source", byClassName: {} },
     combinedStintPaceCurve: { presence: "missing", provenance: { kind: "derived" }, confidence: { sampleSize: 0, computationVersion: "producer.v1" }, reason: "missing_combined_stint_pace_curve", identifiability: "combined_only", points: [] },
     tyreDegradation: { presence: "missing", provenance: { kind: "derived" }, confidence: { sampleSize: 0, computationVersion: "producer.v1" }, reason: "missing_tyre_degradation" },
     pit: { presence: "missing", provenance: { kind: "derived" }, confidence: { sampleSize: 0, computationVersion: "producer.v1" } },
@@ -84,11 +85,30 @@ describe("StrategyAnalysisPanel", () => {
   });
 
   it("muestra todas las clases reales y la causa concreta mientras falta ritmo por clase", () => {
-    renderPanel({ classes: ["Hypercar", "LMP2", "LMGT3"] });
+    renderPanel({ classes: ["Hypercar", "LMP2", "LMGT3"], planningInputs: missingPlanning });
     expect(screen.getAllByText("Hypercar").length).toBeGreaterThan(0);
     expect(screen.getAllByText("LMP2").length).toBeGreaterThan(0);
-    expect(screen.getByText(/la proyección que recibe Strategy aún no publica ritmo por clase/)).toBeTruthy();
-    expect(screen.getAllByText("Sin cálculo: falta ritmo proyectado para esta clase.")).toHaveLength(2);
+    expect(screen.getAllByText("No existe todavía una fuente compartida de ritmo por clase.")).toHaveLength(3);
+  });
+
+  it("consume una familia presente de dos clases sin calcular doblajes", () => {
+    const presentPlanning = {
+      ...missingPlanning,
+      projection: {
+        ...missingPlanning.projection,
+        classPace: {
+          presence: "valid", provenance: { kind: "reference", sourceId: "shared-class-pace:fixture" },
+          confidence: { sampleSize: 2, computationVersion: "class-pace.fixture.v1" },
+          byClassName: { Hypercar: 102.4, LMP2: 106.8 },
+        },
+      },
+    } satisfies StrategyPlanningInputsV2;
+
+    renderPanel({ classes: ["Hypercar", "LMP2", "LMGT3"], planningInputs: presentPlanning });
+    expect(screen.queryByText("No existe todavía una fuente compartida de ritmo por clase.")).toBeNull();
+    expect(document.querySelector('[data-class-name="Hypercar"]')?.getAttribute("data-class-pace-seconds")).toBe("102.4");
+    expect(document.querySelector('[data-class-name="LMP2"]')?.getAttribute("data-class-pace-seconds")).toBe("106.8");
+    expect(screen.queryByText(/Primer alcance.*\d/)).toBeNull();
   });
 
   it("explica por qué una carrera monoclase no tiene doblajes entre clases", () => {

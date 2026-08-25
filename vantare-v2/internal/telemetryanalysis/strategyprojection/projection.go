@@ -2,6 +2,7 @@ package strategyprojection
 
 import (
 	"math"
+	"strings"
 	"time"
 )
 
@@ -29,7 +30,11 @@ type StrategyInputProjectionV2 struct {
 	// RepresentativePaceByClimateBucket conserva el ritmo base observado por
 	// condicion sin exigir la identificabilidad de una curva de stint.
 	RepresentativePaceByClimateBucket map[ClimateBucket]RepresentativePaceFamily `json:"representativePaceByClimateBucket"`
-	CombinedStintPaceCurve            CombinedStintPaceCurve                     `json:"combinedStintPaceCurve"`
+	// ClassPace prepara la entrada de una fuente compartida futura. Analysis no
+	// la deriva de la telemetria del piloto: el productor actual siempre la
+	// publica ausente y con procedencia reference.
+	ClassPace              *ClassPaceFamily       `json:"classPace,omitempty"`
+	CombinedStintPaceCurve CombinedStintPaceCurve `json:"combinedStintPaceCurve"`
 	// Curvas separadas solo si identifiability==separable.
 	FuelWeightCurve *SeparableCurve `json:"fuelWeightCurve,omitempty"`
 	TyreAgeCurve    *SeparableCurve `json:"tyreAgeCurve,omitempty"`
@@ -96,6 +101,29 @@ type RepresentativePaceFamily struct {
 	Confidence       Confidence `json:"confidence"`
 	Reason           string     `json:"reason,omitempty"`
 	MedianLapSeconds float64    `json:"medianLapSeconds"`
+}
+
+// ClassPaceReason es el vocabulario cerrado de ausencia del ritmo por clase.
+// Se ampliara junto con el contrato cuando exista una fuente compartida real.
+type ClassPaceReason string
+
+const (
+	ClassPaceReasonNoSource ClassPaceReason = "no_class_pace_source"
+)
+
+func (r ClassPaceReason) Valid() bool {
+	return r == ClassPaceReasonNoSource
+}
+
+// ClassPaceFamily contiene un ritmo de vuelta por nombre de clase. Los valores
+// solo pueden proceder de la futura referencia compartida; no son telemetria
+// del piloto ni una estimacion de Analysis.
+type ClassPaceFamily struct {
+	Presence    Presence           `json:"presence"`
+	Provenance  Provenance         `json:"provenance"`
+	Confidence  Confidence         `json:"confidence"`
+	Reason      ClassPaceReason    `json:"reason,omitempty"`
+	ByClassName map[string]float64 `json:"byClassName"`
 }
 
 // CombinedStintPaceCurve: curva combinada obligatoria. Identifiability por defecto combined_only.
@@ -268,6 +296,11 @@ func (p StrategyInputProjectionV2) Validate() error {
 			return err
 		}
 	}
+	if p.ClassPace != nil {
+		if err := p.ClassPace.Validate(); err != nil {
+			return err
+		}
+	}
 	if err := p.CombinedStintPaceCurve.Validate(); err != nil {
 		return err
 	}
@@ -336,6 +369,49 @@ func (p RepresentativePaceFamily) Validate(field string) error {
 	}
 	if p.Reason == "" {
 		return contractError("invalid_document", field+".reason", "is required when representative pace is unavailable")
+	}
+	return nil
+}
+
+func (p ClassPaceFamily) Validate() error {
+	const field = "classPace"
+	if !p.Presence.Valid() {
+		return contractError("invalid_document", field+".presence", "unknown presence")
+	}
+	if err := p.Provenance.Validate(); err != nil {
+		return err
+	}
+	if p.Provenance.Kind != ProvenanceReference {
+		return contractError("invalid_provenance", field+".provenance.kind", "class pace requires reference provenance")
+	}
+	if err := p.Confidence.Validate(); err != nil {
+		return err
+	}
+	if p.Presence != PresenceValid {
+		if !p.Reason.Valid() {
+			return contractError("invalid_document", field+".reason", "typed reason is required when class pace is unavailable")
+		}
+		if len(p.ByClassName) != 0 {
+			return contractError("invalid_document", field+".byClassName", "unavailable class pace cannot contain values")
+		}
+		return nil
+	}
+	if p.Reason != "" {
+		return contractError("invalid_document", field+".reason", "valid class pace cannot declare a missing reason")
+	}
+	if len(p.ByClassName) == 0 {
+		return contractError("invalid_document", field+".byClassName", "valid class pace requires at least one class")
+	}
+	if p.Confidence.SampleSize <= 0 {
+		return contractError("invalid_document", field+".confidence.sampleSize", "must be positive when valid")
+	}
+	for className, paceSeconds := range p.ByClassName {
+		if strings.TrimSpace(className) == "" {
+			return contractError("invalid_document", field+".byClassName", "class name is required")
+		}
+		if math.IsNaN(paceSeconds) || math.IsInf(paceSeconds, 0) || paceSeconds <= 0 {
+			return contractError("invalid_document", field+".byClassName."+className, "pace must be positive and finite")
+		}
 	}
 	return nil
 }

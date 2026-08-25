@@ -6,6 +6,7 @@
   "technicalNotes": [
     "La reserva es una restricción de SolverV2 y puede añadir una parada; también se aplica al ahorro y a cada escenario climático.",
     "El evento puede cambiar el margen mediante reserve_laps y el resultado publica cumplimiento, margen efectivo y recurso limitante.",
+    "Entre planes temporalmente equivalentes, Fuel y energía virtual iniciales se reducen al mínimo que conserva la carrera, los servicios decididos y la reserva.",
     "Un margen imposible devuelve reserve_not_met y nunca se presenta como plan factible."
   ],
   "testing": [

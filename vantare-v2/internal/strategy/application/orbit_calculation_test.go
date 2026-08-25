@@ -168,7 +168,7 @@ func TestCalculateOrbitAddsStopAndPublishesEffectiveReserve(t *testing.T) {
 	}
 	plan := result.Plans["s1"]
 	if plan.Stops != 1 || !plan.ReserveSatisfied || plan.ReserveRequiredLaps != orbitDefaultReserveLaps ||
-		plan.ReserveLaps < orbitDefaultReserveLaps || plan.FinishFuelLiters <= 0 {
+		plan.ReserveLaps+0.01 < orbitDefaultReserveLaps || plan.FinishFuelLiters <= 0 {
 		t.Fatalf("reserve plan = %+v", plan)
 	}
 }
@@ -375,9 +375,9 @@ func TestOrbitGoldenPartitionsUseTheSameSolveV2CostModel(t *testing.T) {
 	if balanced.Evaluation.FuelWeightSeconds != 0 || shortFirst.Evaluation.FuelWeightSeconds != 0 {
 		t.Fatalf("golden must not invent fuel weight: balanced=%.12f short-first=%.12f", balanced.Evaluation.FuelWeightSeconds, shortFirst.Evaluation.FuelWeightSeconds)
 	}
-	// Ambos planes salen cuatro veces con el deposito lleno. El total repostado
-	// depende del fuel que queda al final, no de asumir que la carga inicial es
-	// exactamente la longitud del primer stint: 308 L frente a 294,25 L.
+	// Las cantidades de servicio pertenecen a la decision fija; Replay reduce
+	// la carga inicial hasta el minimo que mantiene factibles sus prefijos y la
+	// reserva. El total repostado de estas dos decisiones sigue siendo distinto.
 	if got := replayedFuelLiters(balanced); got != 308 {
 		t.Fatalf("balanced refuel = %.12f L, want 308", got)
 	}
@@ -399,9 +399,9 @@ func TestOrbitGoldenPartitionsUseTheSameSolveV2CostModel(t *testing.T) {
 	}
 	t.Logf("golden: balanced=%.15f s (308 L), reserve-safe=%.15f s (297 L), delta=%.15f s", balanced.Evaluation.TotalSeconds, shortFirst.Evaluation.TotalSeconds, balanced.Evaluation.TotalSeconds-shortFirst.Evaluation.TotalSeconds)
 
-	// Contrafactual con peso configurado: al arrancar cada stint lleno, el
-	// termino es n*90 - 2,75*n*(n-1)/2. La suma de cuadrados mayor reduce el
-	// fuel medio; 6957,75 L*vuelta < 7386,75 L*vuelta por 429 L*vuelta.
+	// Contrafactual con peso configurado: la carga inicial minima expone que los
+	// servicios de la decision short-first exigen mas recurso temprano. El
+	// reparto equilibrado consume 1100 L-vuelta menos en este replay fijo.
 	input.FuelWeight = &solver.FuelWeightParameter{
 		Presence:        strategyprojection.PresenceValid,
 		SecondsPerLiter: 1,
@@ -410,11 +410,11 @@ func TestOrbitGoldenPartitionsUseTheSameSolveV2CostModel(t *testing.T) {
 	}
 	balancedWeighted := replayOrbitPartition(t, input, []int64{28, 28, 28, 28, 27})
 	shortFirstWeighted := replayOrbitPartition(t, input, []int64{12, 32, 32, 32, 31})
-	if balancedWeighted.Evaluation.FuelWeightSeconds != 7386.75 || shortFirstWeighted.Evaluation.FuelWeightSeconds != 6957.75 {
+	if balancedWeighted.Evaluation.FuelWeightSeconds != 5579.75 || shortFirstWeighted.Evaluation.FuelWeightSeconds != 6679.75 {
 		t.Fatalf("fuel-weight seconds balanced=%.2f short-first=%.2f", balancedWeighted.Evaluation.FuelWeightSeconds, shortFirstWeighted.Evaluation.FuelWeightSeconds)
 	}
-	if delta := balancedWeighted.Evaluation.TotalSeconds - shortFirstWeighted.Evaluation.TotalSeconds; math.Abs(delta-429) > 1e-9 {
-		t.Fatalf("weighted total delta = %.12f s, want 429 s", delta)
+	if delta := balancedWeighted.Evaluation.TotalSeconds - shortFirstWeighted.Evaluation.TotalSeconds; math.Abs(delta+1100) > 1e-9 {
+		t.Fatalf("weighted total delta = %.12f s, want -1100 s", delta)
 	}
 	t.Logf("fuel weight 1 s/L: balanced=%.2f L-lap, short-first=%.2f L-lap, delta=%.2f s", balancedWeighted.Evaluation.FuelWeightSeconds, shortFirstWeighted.Evaluation.FuelWeightSeconds, balancedWeighted.Evaluation.TotalSeconds-shortFirstWeighted.Evaluation.TotalSeconds)
 }

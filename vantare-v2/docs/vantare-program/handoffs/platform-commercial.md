@@ -41,6 +41,9 @@
 - Root migration: auditoría ISA-14, bloqueada por worktrees activos.
 - `nightly` y `testers` existen; el flujo vigente es issue → `nightly` →
   `testers` → `master`.
+- ISA-837 aclara la entrada al flujo: el desarrollo ordinario crea cada rama y
+  worktree aislado desde el tip recién actualizado y verificado de
+  `origin/nightly`, nunca desde una referencia local asumida.
 - Base ISA-212: `nightly@b8ffd7c6c824f17ebcc09a5e44bf4ac12bafb7c5`.
 - Promoción vigente: ISA-212/BIL-N02 hacia `nightly`; `testers` y `master`
   quedan fuera.

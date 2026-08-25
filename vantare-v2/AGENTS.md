@@ -52,6 +52,12 @@ arquitectura. No uses la skill `vantare-core`: esta desactualizada.
   nunca se desarrolla directamente sobre el. Cada issue usa rama y worktree
   aislados. `develop` y `refactor` son referencias historicas, no canales
   actuales de integracion; preserva sus cambios locales y no los limpies.
+- Antes de iniciar el desarrollo ordinario de una issue, ejecuta
+  `git fetch origin nightly` y crea su rama y worktree aislado directamente
+  desde el tip verificado de `origin/nightly`. No uses una rama local
+  `nightly` como base sin demostrar que coincide exactamente con
+  `origin/nightly`. Antes de editar, verifica raiz Git, rama, HEAD, base
+  esperada y `git status --short` limpio en el worktree nuevo.
 - Ninguna rama de issue puede saltarse un canal o integrarse directamente en
   `testers` o `master`.
 - Terminado, integrado, promocionado y publicado son estados distintos. Nunca

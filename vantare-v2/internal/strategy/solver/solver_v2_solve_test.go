@@ -176,6 +176,9 @@ func TestSolveV2AppliesFinishReserveToSavingPlan(t *testing.T) {
 	if !result.Feasible || len(result.Best.PitStops) != 1 || !result.Reserve.Satisfied || !decisionUsesSaving(result.Best) {
 		t.Fatalf("saving reserve result = %+v", result)
 	}
+	if math.Abs(result.Reserve.Fuel.EffectiveLaps-0.8) > 0.01 {
+		t.Fatalf("saving effective reserve = %.3f laps, want 0.80", result.Reserve.Fuel.EffectiveLaps)
+	}
 }
 
 func decisionUsesSaving(decision DecisionVector) bool {

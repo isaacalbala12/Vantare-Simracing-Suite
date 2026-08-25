@@ -302,7 +302,7 @@ func TestCalculateOrbitWeatherChangesPlanAndPublishesRobustMetrics(t *testing.T)
 		t.Fatalf("rain timeline did not publish an applied wet lap: %+v", rain.Timeline)
 	}
 	for _, plan := range result.Weather.Plans {
-		if !plan.ReserveSatisfied || plan.ReserveRequiredLaps != orbitDefaultReserveLaps || plan.ReserveLaps < orbitDefaultReserveLaps {
+		if !plan.ReserveSatisfied || plan.ReserveRequiredLaps != orbitDefaultReserveLaps || math.Abs(plan.ReserveLaps-orbitDefaultReserveLaps) > 0.01 {
 			t.Fatalf("weather reserve = %+v", plan)
 		}
 	}
@@ -614,6 +614,9 @@ func TestCalculateOrbitPublishesOnlySavingAppliedBySolveV2(t *testing.T) {
 	plan := calculation.Plans["s1"]
 	if !plan.SavingApplied || len(plan.Stints) != 2 {
 		t.Fatalf("saving plan = %+v, want applied D6 in two stints", plan)
+	}
+	if math.Abs(plan.ReserveLaps-orbitDefaultReserveLaps) > 0.01 {
+		t.Fatalf("saving reserve = %.3f laps, want %.2f", plan.ReserveLaps, orbitDefaultReserveLaps)
 	}
 	for _, stint := range plan.Stints {
 		if stint.SavingLevel != string(solver.SavingLow) || stint.FuelSavedPerLap != 0.25 || stint.SavingCostSeconds != float64(stint.Laps)*0.2 {

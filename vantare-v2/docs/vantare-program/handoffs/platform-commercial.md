@@ -14,7 +14,8 @@
   typecheck, build, lint focal y design-system PASS. El harness visual pasa en
   1920 × 1080 y 1920 × 900 con gates de ejes compartidos y cero desbordamiento
   de fila; la inspección colaborativa adicional pasa a 768 × 700.
-- No hay merge, promoción, release ni publicación; el cambio sigue aislado.
+- Implementación en `a99c3f46`, pusheada. PR draft #846 hacia `nightly`; no hay
+  merge, promoción, release ni publicación y el cambio sigue aislado.
 
 ## Decisión comercial vigente — ISA-315
 

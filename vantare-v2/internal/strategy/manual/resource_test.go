@@ -19,7 +19,7 @@ func TestCalculateFuelIncludesFormationReserveRefillsAndSaving(t *testing.T) {
 		FormationConsumption: sourcedFuel(t, 2, manual),
 		Reserve: FuelReserveInput{
 			Kind:      ReserveLaps,
-			Laps:      sourcedLaps(t, 1, manual),
+			Laps:      sourcedReserveLaps(1, manual),
 			Selection: manual,
 		},
 	}
@@ -76,7 +76,7 @@ func TestCalculateVirtualEnergyKeepsSeparateUnitAndRechargeAmounts(t *testing.T)
 		FormationConsumption: sourcedEnergy(t, 1, manual),
 		Reserve: VirtualEnergyReserveInput{
 			Kind:      ReserveLaps,
-			Laps:      sourcedLaps(t, 2, manual),
+			Laps:      sourcedReserveLaps(2, manual),
 			Selection: manual,
 		},
 	}
@@ -191,7 +191,7 @@ func TestResourceReserveKindsAndLimits(t *testing.T) {
 	}{
 		{name: "none", reserve: FuelReserveInput{Kind: ReserveNone, Selection: manual}, want: 0},
 		{name: "amount", reserve: FuelReserveInput{Kind: ReserveAmount, Amount: sourcedFuel(t, 6, manual), Selection: manual}, want: 6},
-		{name: "laps", reserve: FuelReserveInput{Kind: ReserveLaps, Laps: sourcedLaps(t, 2, manual), Selection: manual}, want: 8},
+		{name: "laps", reserve: FuelReserveInput{Kind: ReserveLaps, Laps: sourcedReserveLaps(0.8, manual), Selection: manual}, want: 3.2},
 		{name: "percent", reserve: FuelReserveInput{Kind: ReservePercent, Percent: Sourced[float64]{Value: 10, Evidence: manual}, Selection: manual}, want: 12.2},
 	}
 	for _, test := range tests {

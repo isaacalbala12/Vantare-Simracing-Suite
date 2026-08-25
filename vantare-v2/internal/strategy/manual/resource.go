@@ -19,7 +19,7 @@ const (
 type FuelReserveInput struct {
 	Kind      ReserveKind                  `json:"kind"`
 	Amount    Sourced[contract.FuelLiters] `json:"amount"`
-	Laps      Sourced[contract.LapCount]   `json:"laps"`
+	Laps      Sourced[float64]             `json:"laps"`
 	Percent   Sourced[float64]             `json:"percent"`
 	Selection Evidence                     `json:"selection"`
 }
@@ -27,7 +27,7 @@ type FuelReserveInput struct {
 type VirtualEnergyReserveInput struct {
 	Kind      ReserveKind                            `json:"kind"`
 	Amount    Sourced[contract.VirtualEnergyPercent] `json:"amount"`
-	Laps      Sourced[contract.LapCount]             `json:"laps"`
+	Laps      Sourced[float64]                       `json:"laps"`
 	Percent   Sourced[float64]                       `json:"percent"`
 	Selection Evidence                               `json:"selection"`
 }
@@ -436,11 +436,11 @@ func calculateFuelReserve(input FuelReserveInput, raceLaps contract.LapCount, co
 		}
 		return input.Amount.Value.Value(), append(assumptions, assumption("fuel.reserve.amount", "fuel_liters", input.Amount.Value.Value(), input.Amount.Evidence)), nil
 	case ReserveLaps:
-		if err := validateSourcedLaps("fuel.reserve.laps", input.Laps); err != nil {
+		if err := validateSourcedReserveLaps("fuel.reserve.laps", input.Laps); err != nil {
 			return 0, nil, err
 		}
-		value, err := checkedMultiply("fuel.reserve.laps", float64(input.Laps.Value.Value()), consumption)
-		return value, append(assumptions, assumption("fuel.reserve.laps", "lap_count", input.Laps.Value.Value(), input.Laps.Evidence)), err
+		value, err := checkedMultiply("fuel.reserve.laps", input.Laps.Value, consumption)
+		return value, append(assumptions, assumption("fuel.reserve.laps", "laps", input.Laps.Value, input.Laps.Evidence)), err
 	case ReservePercent:
 		if err := validateSourcedPercent("fuel.reserve.percent", input.Percent); err != nil {
 			return 0, nil, err
@@ -474,11 +474,11 @@ func calculateEnergyReserve(input VirtualEnergyReserveInput, raceLaps contract.L
 		}
 		return input.Amount.Value.Value(), append(assumptions, assumption("virtualEnergy.reserve.amount", "virtual_energy_percent", input.Amount.Value.Value(), input.Amount.Evidence)), nil
 	case ReserveLaps:
-		if err := validateSourcedLaps("virtualEnergy.reserve.laps", input.Laps); err != nil {
+		if err := validateSourcedReserveLaps("virtualEnergy.reserve.laps", input.Laps); err != nil {
 			return 0, nil, err
 		}
-		value, err := checkedMultiply("virtualEnergy.reserve.laps", float64(input.Laps.Value.Value()), consumption)
-		return value, append(assumptions, assumption("virtualEnergy.reserve.laps", "lap_count", input.Laps.Value.Value(), input.Laps.Evidence)), err
+		value, err := checkedMultiply("virtualEnergy.reserve.laps", input.Laps.Value, consumption)
+		return value, append(assumptions, assumption("virtualEnergy.reserve.laps", "laps", input.Laps.Value, input.Laps.Evidence)), err
 	case ReservePercent:
 		if err := validateSourcedPercent("virtualEnergy.reserve.percent", input.Percent); err != nil {
 			return 0, nil, err
@@ -529,6 +529,19 @@ func validateSourcedPercent(field string, value Sourced[float64]) error {
 	}
 	if value.Value > 100 {
 		return calculationError(ErrorInvalidInput, field, "must be between zero and 100")
+	}
+	return nil
+}
+
+func validateSourcedReserveLaps(field string, value Sourced[float64]) error {
+	if err := validateEvidence(field, value.Evidence); err != nil {
+		return err
+	}
+	if err := validateFinite(field, value.Value); err != nil {
+		return err
+	}
+	if value.Value > float64(contract.ManifestV1().MaxSafeInteger) {
+		return calculationError(ErrorInvalidInput, field, "must be within the shared safe numeric range")
 	}
 	return nil
 }

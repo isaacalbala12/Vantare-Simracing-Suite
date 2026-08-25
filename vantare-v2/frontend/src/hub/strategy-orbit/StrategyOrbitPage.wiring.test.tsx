@@ -141,7 +141,8 @@ describe("StrategyOrbitPage · cableado auditado", () => {
     mount();
     const stints = await screen.findAllByTestId(/^orbit-stint-\d+$/);
     expect(stints).toHaveLength(5);
-    expect(stints.map((stint) => Number(stint.getAttribute("data-laps")))).toEqual([11, 32, 32, 32, 32]);
+    // Mismo motivo que en el puente: el margen de reserva acorta el ultimo stint.
+    expect(stints.map((stint) => Number(stint.getAttribute("data-laps")))).toEqual([12, 32, 32, 32, 31]);
     expect(stints.reduce((sum, stint) => sum + Number(stint.getAttribute("data-laps")), 0)).toBe(139);
 
     fireEvent.click(screen.getByRole("tab", { name: "Estrategias" }));

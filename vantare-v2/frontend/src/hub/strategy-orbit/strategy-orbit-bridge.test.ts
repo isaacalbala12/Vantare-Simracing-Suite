@@ -170,7 +170,10 @@ describe("strategy-orbit-bridge application client", () => {
       activeVariantId: "s1",
     });
 
-    expect(result.plans.s1.stints.map((stint) => stint.laps)).toEqual([11, 32, 32, 32, 32]);
+    // El reparto cambia con el margen de reserva de ISA-832: mismas 139 vueltas
+    // y mismas 4 paradas, pero el ultimo stint se acorta para llegar con margen
+    // (1,73 vueltas de reserva frente a las 0,80 exigidas).
+    expect(result.plans.s1.stints.map((stint) => stint.laps)).toEqual([12, 32, 32, 32, 31]);
     expect(Object.isFrozen(result.plans.s1)).toBe(true);
   });
 

@@ -397,6 +397,9 @@ export type StrategyOrbitCalculatedPlanV1 = {
   readonly startFuelLiters: number;
   readonly finishFuelLiters: number;
   readonly reserveLaps: number;
+  /** Margen exigido por producto y si el plan lo cumple (ISA-832). */
+  readonly reserveRequiredLaps: number;
+  readonly reserveSatisfied: boolean;
   readonly stopDetails: readonly {
     readonly index: number;
     readonly lap: number;
@@ -1572,7 +1575,7 @@ function parseStrategyOrbitCalculation(value: unknown): StrategyOrbitCalculation
     const plan = strategyRecord(candidate, `orbitCalculation.plans.${id}`);
     for (const field of [
       "total", "avgFuel", "avgPace", "drivingSeconds", "pitSeconds",
-      "startFuelLiters", "finishFuelLiters", "reserveLaps",
+      "startFuelLiters", "finishFuelLiters", "reserveLaps", "reserveRequiredLaps",
     ] as const) {
       strategyNumber(plan[field], `orbitCalculation.plans.${id}.${field}`);
     }
@@ -1630,6 +1633,8 @@ function parseStrategyOrbitCalculation(value: unknown): StrategyOrbitCalculation
       startFuelLiters: plan.startFuelLiters as number,
       finishFuelLiters: plan.finishFuelLiters as number,
       reserveLaps: plan.reserveLaps as number,
+      reserveRequiredLaps: plan.reserveRequiredLaps as number,
+      reserveSatisfied: plan.reserveSatisfied === true,
       stopDetails,
       savingApplied: plan.savingApplied as boolean,
     };

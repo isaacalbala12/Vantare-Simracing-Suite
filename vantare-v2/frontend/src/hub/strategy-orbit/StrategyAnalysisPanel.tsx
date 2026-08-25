@@ -15,6 +15,7 @@ import type {
   StrategyOrbitCalculationComparisonV1,
   StrategyPlanningInputsV2,
 } from "../../strategy/strategy-application-client";
+import { formatMessage } from "../orbit/format-message";
 import { clockTime, type StrategyEvent, type StrategyVariant } from "./strategy-orbit-model";
 import { strategyInputProvenance, type StrategyInputProvenanceView } from "./strategy-input-provenance";
 import { StrategyInfographicCard } from "./StrategyInfographicCard";
@@ -49,9 +50,10 @@ function Provenance({ kind, t }: { kind: StrategyInputProvenanceView["kind"] | "
 
 function PlanStats({ label, plan, t, variant }: { label: string; plan?: StrategyOrbitCalculatedPlanV1; t: T; variant: "main" | "eco" }) {
   const source = t("strategy.analysis.engineDerived");
-  // Menos de una vuelta de reserva es el aviso que la referencia pinta en rojo:
-  // llegar con el deposito exacto no es un plan, es una apuesta.
-  const tightFinish = plan !== undefined && plan.reserveLaps < 1;
+  // El aviso ya no es un umbral inventado aqui: el motor exige el margen de
+  // producto (ISA-832) y dice si el plan lo cumple. Llegar por debajo no es un
+  // plan, es una apuesta, y hay que decirlo con la cifra delante.
+  const tightFinish = plan !== undefined && !plan.reserveSatisfied;
   return (
     <section className="orbit-analysis__plan-row" data-empty={plan ? undefined : "true"} data-plan={variant}>
       <header>
@@ -65,12 +67,22 @@ function PlanStats({ label, plan, t, variant }: { label: string; plan?: Strategy
         <StatTile label={t("strategy.analysis.startFuel")} sub={plan ? source : t("strategy.analysis.noEcoShort")} unit={plan ? "L" : undefined} value={plan ? plan.startFuelLiters.toFixed(1) : "—"} />
         <StatTile
           label={t("strategy.analysis.finishFuel")}
-          sub={plan ? `${plan.reserveLaps.toFixed(2)} ${t("strategy.analysis.reserveLaps")} · ${source}` : t("strategy.analysis.noEcoShort")}
+          sub={plan
+            ? `${plan.reserveLaps.toFixed(2)} ${t("strategy.analysis.reserveLaps")} · ${formatMessage(t("strategy.analysis.reserveRequired"), { n: plan.reserveRequiredLaps.toFixed(2) })}`
+            : t("strategy.analysis.noEcoShort")}
           tone={tightFinish ? "hot" : "neutral"}
           unit={plan ? "L" : undefined}
           value={plan ? plan.finishFuelLiters.toFixed(1) : "—"}
         />
       </StatRow>
+      {tightFinish && plan ? (
+        <Note title={t("strategy.analysis.reserveShortTitle")}>
+          {formatMessage(t("strategy.analysis.reserveShortReason"), {
+            got: plan.reserveLaps.toFixed(2),
+            want: plan.reserveRequiredLaps.toFixed(2),
+          })}
+        </Note>
+      ) : null}
     </section>
   );
 }

@@ -30,7 +30,7 @@ function plan(overrides: Partial<StrategyOrbitCalculatedPlanV1> = {}): StrategyO
     totalLaps: 60, total: 6304, stops: 1, maxLaps: 32, avgFuel: 2.8, avgPace: 104,
     distribution: [{ driverId: "isaac", laps: 60, seconds: 6240 }],
     drivingSeconds: 6240, pitSeconds: 64, startFuelLiters: 84,
-    finishFuelLiters: 0, reserveLaps: 0,
+    finishFuelLiters: 0, reserveLaps: 0, reserveRequiredLaps: 0.8, reserveSatisfied: false,
     stopDetails: [{ index: 0, lap: 30, fuelInLiters: 0, fuelOutLiters: 84, pitLossSeconds: 64, pitTransitSeconds: 60, pitServiceSeconds: 6, pitOverlapSeconds: 2, pitBreakdownAvailable: true }],
     savingApplied,
     ...overrides,

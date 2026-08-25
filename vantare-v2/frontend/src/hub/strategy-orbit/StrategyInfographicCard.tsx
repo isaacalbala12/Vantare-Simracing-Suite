@@ -40,7 +40,7 @@ export function StrategyInfographicCard({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const data = useMemo<InfographicData>(() => {
-    const tight = plan.reserveLaps < 1;
+    const tight = !plan.reserveSatisfied;
     const axis = [0, 0.5, 1].map((fraction) => {
       const at = new Date(start.getTime() + fraction * event.durationMin * 60000);
       return `${String(at.getHours()).padStart(2, "0")}:${String(at.getMinutes()).padStart(2, "0")}`;
@@ -61,7 +61,7 @@ export function StrategyInfographicCard({
           label: t("strategy.analysis.finishFuel"),
           value: plan.finishFuelLiters.toFixed(1),
           unit: "L",
-          sub: `${plan.reserveLaps.toFixed(2)} ${t("strategy.analysis.reserveLaps")}`,
+          sub: `${plan.reserveLaps.toFixed(2)} / ${plan.reserveRequiredLaps.toFixed(2)} ${t("strategy.analysis.reserveLaps")}`,
           alert: tight,
         },
       ],

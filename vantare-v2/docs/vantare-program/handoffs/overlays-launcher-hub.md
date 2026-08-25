@@ -10,6 +10,18 @@
 
 ## Estado
 
+- **ISA-849 — columnas configurables en Standings Redline (2026-08-25, SDD):**
+  issue creada desde `origin/nightly@8a90c3a` para que solo la plantilla titular
+  `standings-redline` respete visibilidad, orden, anchura y alineación sin perder
+  sus animaciones. Isaac cerró alcance: Posición y Piloto son anclajes fijos;
+  las nueve métricas restantes son flexibles; al activar muchas se ensancha el
+  widget y Studio avisa, sin resize automático. Se rechazó un adaptador
+  específico por complejidad: la propuesta consume `model.columns` directamente
+  en el TSX/CSS productivo. Spec pendiente de revisión de Isaac:
+  `docs/superpowers/specs/2026-08-25-standings-redline-columnas-configurables-design.md`.
+  Rama `vantareapp/isa-849-standings-redline-columnas`, sin implementación,
+  push, PR ni promoción.
+
 - **ISA-842 — autosave e historial productivo de Overlay Studio (2026-08-25,
   PR draft a nightly):** rebasada sobre `origin/nightly@c7d25f94`, la rama
   `vantareapp/isa-842-studio-autosave-undo` convierte cada cambio documental

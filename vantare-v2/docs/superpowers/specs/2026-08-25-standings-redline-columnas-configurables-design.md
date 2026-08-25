@@ -1,6 +1,6 @@
 # Spec: Standings Redline con columnas configurables
 
-Estado: propuesta SDD para revisión de Isaac. Issue: ISA-849.
+Estado: aprobada por Isaac el 2026-08-26. Issue: ISA-849.
 
 ## Objetivo
 

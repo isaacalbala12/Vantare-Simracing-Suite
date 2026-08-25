@@ -16,8 +16,9 @@
   sus animaciones. Isaac cerró alcance: Posición y Piloto son anclajes fijos;
   las nueve métricas restantes son flexibles; al activar muchas se ensancha el
   widget y Studio avisa, sin resize automático. Se rechazó un adaptador
-  específico por complejidad: la propuesta consume `model.columns` directamente
-  en el TSX/CSS productivo. Spec pendiente de revisión de Isaac:
+  específico por complejidad: la propuesta consume las columnas directamente
+  en el TSX/CSS productivo. Spec aprobada por Isaac el 2026-08-26; PLAN/TASKS
+  quedan preparados y pendientes de su revisión antes de implementar:
   `docs/superpowers/specs/2026-08-25-standings-redline-columnas-configurables-design.md`.
   Rama `vantareapp/isa-849-standings-redline-columnas`, sin implementación,
   push, PR ni promoción.

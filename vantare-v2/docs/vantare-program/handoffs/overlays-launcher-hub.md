@@ -922,6 +922,9 @@ Evidencia Task 4 y cierre acumulado:
 - Smoke Wails real PASS: sesión resuelta, Hub, Studio y Launcher visibles; cuatro
   capturas A/B en
   `C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\fotos\isa-838-{baseline,final}-{studio,launcher}.png`.
+- Entrega funcional `b87fe14e`, rama publicada y PR draft #851 abierto hacia
+  `nightly`; issue, label y Project Vantare en `In Review`. Sin merge,
+  promoción, release ni cambio del roadmap público.
 - Riesgo residual aceptado: tras la primera visita, Studio retiene su documento
   y DOM en memoria para que las vueltas sean instantáneas. La primera apertura
   sigue pagando el montaje inicial; las afirmaciones de fluidez se limitan a

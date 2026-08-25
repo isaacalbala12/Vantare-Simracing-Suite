@@ -149,26 +149,12 @@ jobs:
         env:
           RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
-          # The Discord step reads these after the Windows build, so a missing
-          # manifest used to surface as a red run ~10 minutes in, with the
-          # release already published. Fail here instead, before anything builds.
-          manifest="vantare-v2/docs/releases/${RELEASE_TAG}.json"
-          test -f "$manifest" || { echo "::error::Missing canonical release manifest: $manifest"; exit 1; }
-          python - "$manifest" <<'PY'
-          import json, pathlib, sys
-
-          manifest = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
-          issues = manifest.get("issues")
-          if not issues:
-              sys.exit(f"::error::{sys.argv[1]} lists no issues")
-          missing = [
-              issue
-              for issue in issues
-              if not pathlib.Path(f"vantare-v2/docs/changelog/fragments/{issue}.json").is_file()
-          ]
-          if missing:
-              sys.exit(f"::error::Missing changelog fragments for: {', '.join(missing)}")
-          PY
+          # The release body is rendered from this manifest and its fragments,
+          # so no manifest means no release notes: the tester downloads a build
+          # nobody described. It also feeds the Discord card after the Windows
+          # build, where a missing file used to surface as a red run ~10 minutes
+          # in with the release already published. Fail here, before any build.
+          python .github/scripts/release_notes.py --tag "$RELEASE_TAG" --check
 
       - name: Verify pre-release Discord destinations
         if: (github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call') && inputs.publish_channel != 'none'
@@ -437,51 +423,24 @@ jobs:
           name: release-artifacts-${{ github.run_id }}
           path: ${{ env.VANTARE_DIR }}/bin
 
-      - name: Extract changelog section
+      - name: Render release notes from the manifest
         id: changelog
         env:
-          NOTES: ${{ inputs.release_notes }}
+          RELEASE_TAG: ${{ steps.contract.outputs.tag }}
+          SOURCE_SHA: ${{ env.SOURCE_SHA }}
         run: |
-          TAG="${{ steps.contract.outputs.tag }}"
-          export TAG NOTES
-          python3 - <<PY
-          import os
-          import re
-          import sys
-
-          tag = os.environ.get("TAG", "")
-          changelog_path = "vantare-v2/docs/changelog.md"
-          fallback = os.environ.get("NOTES", "").strip() or f"Release {tag}"
-          body = fallback
-
-          if os.path.exists(changelog_path):
-              with open(changelog_path, "r", encoding="utf-8") as fh:
-                  changelog = fh.read()
-              pattern = re.compile(
-                  rf"^##\s+{re.escape(tag)}\s*$([\s\S]*?)(?=^##\s+v|\Z)",
-                  re.MULTILINE,
-              )
-              match = pattern.search(changelog)
-              if match:
-                  section = match.group(1).strip()
-                  if section:
-                      body = section
-                  else:
-                      print(f"::warning::Changelog section for {tag} is empty")
-              else:
-                  print(f"::warning::Could not find changelog section for {tag}")
-          else:
-              print(f"::warning::Changelog not found at {changelog_path}")
-
-          with open("changelog_body.md", "w", encoding="utf-8") as fh:
-              fh.write(body)
-
-          output_path = os.environ.get("GITHUB_OUTPUT", "/dev/null")
-          with open(output_path, "a", encoding="utf-8") as fh:
-              fh.write("body<<EOF\n")
-              fh.write(body)
-              fh.write("\nEOF\n")
-          PY
+          # The body used to be scraped from a "## <tag>" heading in
+          # docs/changelog.md, and when it was missing the step only warned and
+          # published "Release <tag>". No nightly ever had that heading, so
+          # every pre-release shipped with a placeholder where its notes should
+          # be. It is rendered from the manifest instead, which is mandatory,
+          # written in plain Spanish and already reviewed.
+          python .github/scripts/release_notes.py \
+            --tag "$RELEASE_TAG" \
+            --revision "$SOURCE_SHA" \
+            --output changelog_body.md
+          test -s changelog_body.md || { echo "::error::Rendered release notes are empty"; exit 1; }
+          echo "Release notes for $RELEASE_TAG: $(wc -c < changelog_body.md) bytes"
 
       - name: Create or update and verify GitHub Release (idempotent)
         id: verify_release

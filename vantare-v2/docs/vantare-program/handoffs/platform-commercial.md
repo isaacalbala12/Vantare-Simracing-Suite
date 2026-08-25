@@ -14,8 +14,14 @@
   typecheck, build, lint focal y design-system PASS. El harness visual pasa en
   1920 × 1080 y 1920 × 900 con gates de ejes compartidos y cero desbordamiento
   de fila; la inspección colaborativa adicional pasa a 768 × 700.
-- Implementación en `a99c3f46`, pusheada. PR draft #846 hacia `nightly`; no hay
-  merge, promoción, release ni publicación y el cambio sigue aislado.
+- Segunda pasada tras feedback de Isaac: los chips comparten ancho y el track
+  de licencia gana aire propio. En 640/768 × 700, el mínimo visible entre
+  duración y licencia sube de 18,5 a 26,31 px; centros y anchos no varían entre
+  filas y `overflowX` continúa en cero. El harness impide volver a menos de
+  32 px sin escalar, variar el ancho del chip o desalinear un eje.
+- Implementación inicial en `a99c3f46`; segunda pasada incluida en el HEAD de
+  la PR draft #846 hacia `nightly`. No hay merge, promoción, release ni
+  publicación y el cambio sigue aislado.
 
 ## Decisión comercial vigente — ISA-315
 

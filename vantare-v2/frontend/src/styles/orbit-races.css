@@ -172,8 +172,8 @@
   display: grid;
   /* Las columnas de datos comparten tracks estables entre filas. Con `auto`,
      cada combinación 20/30/60 min + Bronze/Silver/Gold desplazaba la hora. */
-  grid-template-columns: 10px minmax(0, 1fr) 3.25rem 7.5rem 5.75rem;
-  gap: 12px;
+  grid-template-columns: 10px minmax(0, 1fr) 3.5rem 8rem 7.75rem;
+  column-gap: 1rem;
   align-items: center;
   height: 52px;
   padding: 0 12px;
@@ -256,6 +256,10 @@
 
 .orbit-races__nrow > .orbit-chip {
   justify-self: center;
+  justify-content: center;
+  /* Fondo uniforme y aire propio dentro del track de licencia: así los chips
+     alinean también por sus bordes sin pegarse a duración. */
+  width: 6.25rem;
 }
 
 .orbit-races__follow-mark {

@@ -125,6 +125,22 @@ try {
             .map((rect) => (rect.left + rect.right) / 2);
           return centers.length ? Math.max(...centers) - Math.min(...centers) : null;
         };
+        const widthSpread = (selector) => {
+          const widths = nextRows
+            .map((nextRow) => nextRow.querySelector(selector)?.getBoundingClientRect().width)
+            .filter((width) => width !== undefined);
+          return widths.length ? Math.max(...widths) - Math.min(...widths) : null;
+        };
+        const minimumGap = (leftSelector, rightSelector) => {
+          const gaps = nextRows
+            .map((nextRow) => {
+              const left = nextRow.querySelector(leftSelector)?.getBoundingClientRect();
+              const right = nextRow.querySelector(rightSelector)?.getBoundingClientRect();
+              return left && right ? right.left - left.right : null;
+            })
+            .filter((gap) => gap !== null);
+          return gaps.length ? Math.min(...gaps) : null;
+        };
         const root = document.querySelector(".orbit-races");
         const column = document.querySelector(".orbit-column");
         // El scroller horizontal es el propio componente del kit (`.orbit-tl`).
@@ -170,6 +186,15 @@ try {
                   license: centerSpread(".orbit-chip"),
                 }
               : null,
+          nextColumnGaps:
+            testId === "orbit-races-next"
+              ? {
+                  atToDuration: minimumGap(".orbit-races__nrow-at", ".orbit-races__dur"),
+                  durationToLicense: minimumGap(".orbit-races__dur", ".orbit-chip"),
+                }
+              : null,
+          nextChipWidthSpread:
+            testId === "orbit-races-next" ? widthSpread(".orbit-chip") : null,
           nextRowOverflow:
             testId === "orbit-races-next"
               ? Math.max(...nextRows.map((nextRow) => nextRow.scrollWidth - nextRow.clientWidth))
@@ -219,6 +244,16 @@ try {
           if (spread > 0.5) {
             throw new Error(`${viewport.name}/next: la columna ${column} varía ${spread.toFixed(2)}px entre filas`);
           }
+        }
+        for (const [columns, gap] of Object.entries(contract.nextColumnGaps)) {
+          if (gap < 32) {
+            throw new Error(`${viewport.name}/next: el espacio ${columns} es solo ${gap.toFixed(2)}px`);
+          }
+        }
+        if (contract.nextChipWidthSpread > 0.5) {
+          throw new Error(
+            `${viewport.name}/next: los chips varían ${contract.nextChipWidthSpread.toFixed(2)}px de ancho`,
+          );
         }
         if (contract.nextRowOverflow > 0.5) {
           throw new Error(`${viewport.name}/next: una fila desborda ${contract.nextRowOverflow}px en horizontal`);

@@ -711,7 +711,14 @@ button.orbit-pill:hover { color: #fff; border-color: rgba(240, 71, 85, 0.25); }
 
 .orbit-update-news__panel ul {
   margin: 0;
-  padding-left: 16px;
+  padding-left: 15px;
+  /* El reset global deja las listas sin marca; aquí sí hace falta, porque sin
+     ella dos cambios seguidos se leen como una sola frase partida. */
+  list-style: disc;
+}
+
+.orbit-update-news__panel li::marker {
+  color: var(--orbit-ink-muted);
 }
 
 .orbit-update-news__panel li + li {

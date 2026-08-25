@@ -492,7 +492,9 @@ function OrbitShellBody({
       ? t('shell.update.installing')
       : update === 'downloading'
         ? formatMessage(t('shell.update.downloading'), { pct: updatePercent })
-        : formatMessage(t('shell.update.available'), { v: updateTag });
+        // El tag ya viene con su «v» («v0.1.0.7-nightly.12») y la copia añade
+        // otra, así que el aviso llevaba leyéndose «vv0.1.0.7…».
+        : formatMessage(t('shell.update.available'), { v: updateTag.replace(/^v/i, '') });
   const updateNewsLabels = useMemo(
     () => ({
       title: t('shell.update.news.title'),

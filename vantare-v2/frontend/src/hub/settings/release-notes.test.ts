@@ -92,9 +92,25 @@ describe("parseReleaseBody", () => {
   });
 
   it("shows an old hand-written release rather than nothing", () => {
-    const note = parseReleaseBody("Correcciones varias\nY una segunda linea.");
-    expect(note.summary).toBe("Correcciones varias");
-    expect(note.sections).toEqual([{ heading: "", items: ["Y una segunda linea."] }]);
+    const note = parseReleaseBody("Correcciones varias\ny alguna mejora suelta.");
+    expect(note.summary).toBe("Correcciones varias y alguna mejora suelta.");
+    expect(note.sections).toEqual([]);
+  });
+
+  it("joins a paragraph split across lines instead of cutting it in half", () => {
+    const note = parseReleaseBody(
+      ["**Titular**", "", "Una frase larga", "que sigue en la linea de abajo.", ""].join("\n"),
+    );
+    expect(note.summary).toBe("Una frase larga que sigue en la linea de abajo.");
+  });
+
+  it("keeps a paragraph written under a heading inside that section", () => {
+    const { sections } = parseReleaseBody(
+      ["Resumen.", "", "## Novedades", "", "Un parrafo suelto.", "- Y una vineta."].join("\n"),
+    );
+    expect(sections).toEqual([
+      { heading: "Novedades", items: ["Un parrafo suelto.", "Y una vineta."] },
+    ]);
   });
 
   it("survives an empty body", () => {

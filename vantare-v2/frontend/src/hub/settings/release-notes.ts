@@ -46,11 +46,14 @@ function stripInlineMarkdown(value: string): string {
  * lineas caen en una seccion sin titulo y se muestran igual.
  */
 export function parseReleaseBody(body: string): Omit<ReleaseNote, "tag" | "publishedAt"> {
-  const lines = String(body ?? "").replace(/\r\n/g, "\n").split("\n");
+  const lines = String(body ?? "")
+    .replace(/\r\n/g, "\n")
+    .split("\n");
   const sections: ReleaseNoteSection[] = [];
   let headline = "";
   let summary = "";
   let folded = false;
+  let paragraph: string[] = [];
 
   const section = (): ReleaseNoteSection => {
     const last = sections[sections.length - 1];
@@ -60,6 +63,20 @@ export function parseReleaseBody(body: string): Omit<ReleaseNote, "tag" | "publi
     return opened;
   };
 
+  // Un parrafo puede venir repartido en varias lineas, que es como se escribe
+  // Markdown a mano: se junta antes de decidir si es el resumen o un punto mas
+  // de la seccion en curso. Tratar cada linea por separado partia la frase.
+  const flush = () => {
+    if (!paragraph.length) return;
+    const text = paragraph.join(" ");
+    paragraph = [];
+    if (!summary && !sections.length) {
+      summary = text;
+      return;
+    }
+    section().items.push(text);
+  };
+
   for (const raw of lines) {
     const line = raw.trim();
     if (folded) {
@@ -67,20 +84,26 @@ export function parseReleaseBody(body: string): Omit<ReleaseNote, "tag" | "publi
       continue;
     }
     if (/^<details/i.test(line)) {
+      flush();
       folded = true;
       continue;
     }
-    if (!line) continue;
+    if (!line) {
+      flush();
+      continue;
+    }
     if (/^-{3,}$/.test(line)) break;
 
     const heading = /^#{1,6}\s+(.*)$/.exec(line);
     if (heading) {
+      flush();
       sections.push({ heading: stripInlineMarkdown(heading[1]), items: [] });
       continue;
     }
 
     const bullet = /^[-*+]\s+(.*)$/.exec(line);
     if (bullet) {
+      flush();
       const text = stripInlineMarkdown(bullet[1]);
       if (text) section().items.push(text);
       continue;
@@ -88,16 +111,14 @@ export function parseReleaseBody(body: string): Omit<ReleaseNote, "tag" | "publi
 
     const text = stripInlineMarkdown(line);
     if (!text) continue;
-    if (!headline && !sections.length && /^\*\*.+\*\*$/.test(line)) {
+    const leading = !headline && !summary && !sections.length && !paragraph.length;
+    if (leading && /^\*\*.+\*\*$/.test(line)) {
       headline = text;
       continue;
     }
-    if (!summary && !sections.length) {
-      summary = text;
-      continue;
-    }
-    section().items.push(text);
+    paragraph.push(text);
   }
+  flush();
 
   return {
     headline,

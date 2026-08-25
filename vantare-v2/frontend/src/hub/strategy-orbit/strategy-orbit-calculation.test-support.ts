@@ -116,6 +116,10 @@ function calculateForTest(input: StrategyOrbitCalculationInputV1): StrategyOrbit
       startFuelLiters: stints[0]?.fuel ?? 0,
       finishFuelLiters,
       reserveLaps: avgFuel > 0 ? finishFuelLiters / avgFuel : 0,
+      // El apoyo de test refleja el contrato completo: margen exigido por
+      // producto (ISA-832) y si el plan lo cumple.
+      reserveRequiredLaps: 0.8,
+      reserveSatisfied: avgFuel > 0 ? finishFuelLiters / avgFuel >= 0.8 : false,
       stopDetails: stints.slice(0, -1).map((stint, index) => ({
         index,
         lap: stint.lap1,

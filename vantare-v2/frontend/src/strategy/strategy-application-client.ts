@@ -145,6 +145,8 @@ export type StrategyProjectionFamilyV2 = {
   readonly reason?: string;
 };
 
+export type StrategyClassPaceReasonV2 = "no_class_pace_source";
+
 export type StrategyInputProjectionV2 = {
   readonly contractVersion: "strategyinputprojection.v2";
   readonly generatedAt: string;
@@ -166,6 +168,10 @@ export type StrategyInputProjectionV2 = {
   readonly representativePaceByClimateBucket?: Readonly<Partial<Record<"dry" | "humid" | "wet", StrategyProjectionFamilyV2 & {
     readonly medianLapSeconds: number;
   }>>>;
+  readonly classPace?: StrategyProjectionFamilyV2 & {
+    readonly reason?: StrategyClassPaceReasonV2;
+    readonly byClassName: Readonly<Record<string, number>>;
+  };
   readonly combinedStintPaceCurve: StrategyProjectionFamilyV2 & {
     readonly identifiability: "combined_only" | "separable";
     readonly points: readonly {
@@ -1335,6 +1341,25 @@ function parseInputProjection(value: unknown, field: string): StrategyInputProje
       strategyEnum(bucket, `${field}.representativePaceByClimateBucket bucket`, ["dry", "humid", "wet"]);
       const family = parseProjectionFamily(candidate, `${field}.representativePaceByClimateBucket.${bucket}`);
       strategyNumber(family.medianLapSeconds, `${field}.representativePaceByClimateBucket.${bucket}.medianLapSeconds`);
+    }
+  }
+  if (projection.classPace !== undefined) {
+    const classPace = parseProjectionFamily(projection.classPace, `${field}.classPace`);
+    const provenance = strategyRecord(classPace.provenance, `${field}.classPace.provenance`);
+    strategyEnum(provenance.kind, `${field}.classPace.provenance.kind`, ["reference"]);
+    const byClassName = strategyRecord(classPace.byClassName, `${field}.classPace.byClassName`);
+    for (const [className, paceSeconds] of Object.entries(byClassName)) {
+      if (className.trim() === "") throw new Error(`Invalid Strategy ${field}.classPace.byClassName class`);
+      strategyNumber(paceSeconds, `${field}.classPace.byClassName.${className}`);
+      if (paceSeconds <= 0) throw new Error(`Invalid Strategy ${field}.classPace.byClassName.${className}`);
+    }
+    if (classPace.presence === "valid") {
+      if (Object.keys(byClassName).length === 0 || classPace.reason !== undefined) {
+        throw new Error(`Invalid Strategy ${field}.classPace`);
+      }
+    } else {
+      strategyEnum(classPace.reason, `${field}.classPace.reason`, ["no_class_pace_source"]);
+      if (Object.keys(byClassName).length !== 0) throw new Error(`Invalid Strategy ${field}.classPace.byClassName`);
     }
   }
   const pace = parseProjectionFamily(projection.combinedStintPaceCurve, `${field}.combinedStintPaceCurve`);

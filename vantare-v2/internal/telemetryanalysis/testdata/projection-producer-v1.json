@@ -7,6 +7,7 @@
     "lapValidity": {"presence": "valid", "provenance": "derived", "sampleSize": 2, "reason": ""},
     "fuelConsumption": {"presence": "valid", "provenance": "derived", "sampleSize": 4, "reason": ""},
     "virtualEnergyConsumption": {"presence": "valid", "provenance": "derived", "sampleSize": 3, "reason": ""},
+    "classPace": {"presence": "missing", "provenance": "reference", "sampleSize": 0, "reason": "no_class_pace_source"},
     "combinedStintPaceCurve": {"presence": "valid", "provenance": "derived", "sampleSize": 1, "reason": "insufficient_stints"},
     "tyreDegradation": {"presence": "valid", "provenance": "derived", "sampleSize": 2, "reason": ""},
     "pit": {"presence": "unknown", "provenance": "derived", "sampleSize": 1, "reason": "degraded_no_transit_service_breakdown"},

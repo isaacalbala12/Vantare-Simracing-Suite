@@ -64,6 +64,7 @@ func ProduceStrategyInputProjectionV2(
 		FuelConsumption:                   missingResourceProjection(sourceID, reasonMissingFuel),
 		VirtualEnergyConsumption:          missingResourceProjection(sourceID, reasonMissingVE),
 		RepresentativePaceByClimateBucket: missingRepresentativePaceProjection(sourceID),
+		ClassPace:                         missingClassPaceProjection(),
 		CombinedStintPaceCurve:            missingCombinedCurve(sourceID),
 		TyreDegradation:                   missingTyreProjection(sourceID),
 		Pit:                               missingPitFamily(sourceID, reasonMissingPit),
@@ -140,6 +141,16 @@ func ProduceStrategyInputProjectionV2(
 		)
 	}
 	return projection, nil
+}
+
+func missingClassPaceProjection() *strategyprojection.ClassPaceFamily {
+	return &strategyprojection.ClassPaceFamily{
+		Presence:    strategyprojection.PresenceMissing,
+		Provenance:  strategyprojection.Provenance{Kind: strategyprojection.ProvenanceReference, SourceID: "shared-class-pace"},
+		Confidence:  strategyprojection.Confidence{ComputationVersion: "class-pace.contract.v1"},
+		Reason:      strategyprojection.ClassPaceReasonNoSource,
+		ByClassName: map[string]float64{},
+	}
 }
 
 func validateProjectionRequest(request ProjectionProductionRequest) error {

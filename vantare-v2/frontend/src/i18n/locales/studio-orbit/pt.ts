@@ -50,8 +50,22 @@ export const studioOrbitPt: Record<string, string> = {
   "studio.inspector.duplicate": "Duplicar widget",
   "studio.inspector.delete": "Eliminar widget",
   "studio.inspector.section.design": "Design",
+  "studio.inspector.section.appearance": "Aparência",
   "studio.inspector.section.behavior": "Comportamento",
   "studio.inspector.section.layout": "Layout",
+  "studio.inspector.section.design.help":
+    "Escolhe o sistema visual e o design com que este widget é pintado.",
+  "studio.inspector.section.appearance.help":
+    "Retoques por cima do design: os interruptores e cores próprios deste widget.",
+  "studio.inspector.section.behavior.help":
+    "De quanto em quanto tempo atualiza e em que sessões aparece.",
+  "studio.inspector.section.layout.help":
+    "Posição e tamanho na tela, ordem e repor valores.",
+  "studio.inspector.appearance.colors": "Cores",
+  "studio.inspector.appearance.changedShort": "{{n}} alteradas",
+  "studio.inspector.appearance.changedShortOne": "1 alterada",
+  "studio.inspector.appearance.resetControl": "Voltar à cor do design",
+  "studio.inspector.appearance.resetAll": "Repor aparência",
   "studio.inspector.unsupported":
     "Este widget não tem um renderer compatível com o sistema visual selecionado.",
 
@@ -70,11 +84,17 @@ export const studioOrbitPt: Record<string, string> = {
   "studio.inspector.content.rows": "Linhas",
   "studio.inspector.content.width": "Largura",
   "studio.inspector.content.align": "Alinhamento",
-  "studio.inspector.content.align.left": "Esq.",
-  "studio.inspector.content.align.right": "Dir.",
+  "studio.inspector.content.align.left": "Esquerda",
+  "studio.inspector.content.align.right": "Direita",
+  "studio.inspector.content.width.sm": "Estreita",
+  "studio.inspector.content.width.md": "Média",
+  "studio.inspector.content.width.lg": "Larga",
   "studio.inspector.content.moveUp": "Subir",
   "studio.inspector.content.moveDown": "Descer",
   "studio.inspector.design.applyAll": "Aplicar a todos",
+  "studio.inspector.design.overridden":
+    "Este widget tem alterações de aparência por cima do design.",
+  "studio.inspector.design.applyAllAlone": "Não há outros widgets compatíveis com este design.",
   "studio.inspector.design.saveAs": "Guardar como design",
   "studio.inspector.layout.x": "X",
   "studio.inspector.layout.y": "Y",
@@ -122,7 +142,10 @@ export const studioOrbitPt: Record<string, string> = {
   "studio.summary.pit.inPit": "só nas boxes",
   "studio.summary.pit.onTrack": "só em pista",
   "studio.summary.sessions": "{{n}} sessões",
-  "studio.summary.sessionsAll": "todas as sessões",
+  "studio.summary.sessionsAll": "todas",
+  "studio.summary.appearanceDefault": "por omissão",
+  "studio.summary.appearanceChanged": "{{n}} alterações",
+  "studio.summary.appearanceChangedOne": "1 alteração",
   "studio.summary.layout": "{{x}}, {{y}} · {{w}} × {{h}}",
 
   "studio.system.vantare-original": "Vantare Original",

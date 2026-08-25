@@ -49,8 +49,22 @@ export const studioOrbitEn: Record<string, string> = {
   "studio.inspector.duplicate": "Duplicate widget",
   "studio.inspector.delete": "Delete widget",
   "studio.inspector.section.design": "Design",
+  "studio.inspector.section.appearance": "Appearance",
   "studio.inspector.section.behavior": "Behavior",
   "studio.inspector.section.layout": "Layout",
+  "studio.inspector.section.design.help":
+    "Pick the visual system and the design this widget is painted with.",
+  "studio.inspector.section.appearance.help":
+    "Tweaks on top of the design: this widget's own switches and colours.",
+  "studio.inspector.section.behavior.help":
+    "How often it refreshes and which sessions it shows in.",
+  "studio.inspector.section.layout.help":
+    "Position and size on the canvas, order and restore actions.",
+  "studio.inspector.appearance.colors": "Colours",
+  "studio.inspector.appearance.changedShort": "{{n}} changed",
+  "studio.inspector.appearance.changedShortOne": "1 changed",
+  "studio.inspector.appearance.resetControl": "Back to the design colour",
+  "studio.inspector.appearance.resetAll": "Reset appearance",
   "studio.inspector.unsupported":
     "This widget has no renderer compatible with the selected visual system.",
 
@@ -71,9 +85,15 @@ export const studioOrbitEn: Record<string, string> = {
   "studio.inspector.content.align": "Alignment",
   "studio.inspector.content.align.left": "Left",
   "studio.inspector.content.align.right": "Right",
+  "studio.inspector.content.width.sm": "Narrow",
+  "studio.inspector.content.width.md": "Medium",
+  "studio.inspector.content.width.lg": "Wide",
   "studio.inspector.content.moveUp": "Move up",
   "studio.inspector.content.moveDown": "Move down",
   "studio.inspector.design.applyAll": "Apply to all",
+  "studio.inspector.design.overridden":
+    "This widget has appearance changes on top of the design.",
+  "studio.inspector.design.applyAllAlone": "There are no other widgets compatible with this design.",
   "studio.inspector.design.saveAs": "Save as design",
   "studio.inspector.layout.x": "X",
   "studio.inspector.layout.y": "Y",
@@ -121,7 +141,10 @@ export const studioOrbitEn: Record<string, string> = {
   "studio.summary.pit.inPit": "pit only",
   "studio.summary.pit.onTrack": "track only",
   "studio.summary.sessions": "{{n}} sessions",
-  "studio.summary.sessionsAll": "all sessions",
+  "studio.summary.sessionsAll": "all",
+  "studio.summary.appearanceDefault": "default",
+  "studio.summary.appearanceChanged": "{{n}} changed",
+  "studio.summary.appearanceChangedOne": "1 change",
   "studio.summary.layout": "{{x}}, {{y}} · {{w}} × {{h}}",
 
   "studio.system.vantare-original": "Vantare Original",

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { InspectorControl } from "./inspector-control";
 import {
+  clearControlValue,
+  hasControlValue,
   readControlValue,
   validateInspectorControls,
   writeControlValue,
@@ -128,5 +130,43 @@ describe("writeControlValue", () => {
 
   it("rejects unsafe paths", () => {
     expect(() => writeControlValue({}, "constructor.x", 1)).toThrow(/unsafe/i);
+  });
+});
+describe("clearControlValue", () => {
+  it("removes the value without mutating the source root", () => {
+    const root = { accentColor: "#fff", classGt3Color: "#000" };
+    const next = clearControlValue(root, "accentColor");
+    expect(next).toEqual({ classGt3Color: "#000" });
+    expect(root.accentColor).toBe("#fff");
+  });
+
+  it("drops intermediate objects that end up empty", () => {
+    const root = { nested: { accent: "cyan" }, other: 1 };
+    expect(clearControlValue(root, "nested.accent")).toEqual({ other: 1 });
+  });
+
+  it("keeps intermediate objects that still hold siblings", () => {
+    const root = { nested: { accent: "cyan", size: 2 } };
+    expect(clearControlValue(root, "nested.accent")).toEqual({ nested: { size: 2 } });
+  });
+
+  it("returns the same root when the path is not there", () => {
+    const root = { accentColor: "#fff" };
+    expect(clearControlValue(root, "missing")).toBe(root);
+    expect(clearControlValue(root, "accentColor.deep")).toBe(root);
+  });
+
+  it("rejects unsafe paths", () => {
+    expect(() => clearControlValue({}, "__proto__.x")).toThrow(/unsafe/i);
+  });
+});
+
+describe("hasControlValue", () => {
+  it("only reports paths the root owns", () => {
+    const root = { accentColor: "#fff", nested: { accent: "cyan" } };
+    expect(hasControlValue(root, "accentColor")).toBe(true);
+    expect(hasControlValue(root, "nested.accent")).toBe(true);
+    expect(hasControlValue(root, "nested.missing")).toBe(false);
+    expect(hasControlValue(root, "toString")).toBe(false);
   });
 });

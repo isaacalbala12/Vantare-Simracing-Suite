@@ -10,7 +10,7 @@
 
 ## Estado
 
-- **ISA-770 — saltos de widgets en Studio (2026-08-25, corregidos en rama):**
+- **ISA-770 — saltos de widgets en Studio (2026-08-25, PR a nightly):**
   la medición A/B en Wails/WebView2 separó dos caminos. En movimiento reducido,
   el padre de `5a8de7ed` presentó un frame con escena oculta, escala cero,
   widgets `0×0` y un desplazamiento de 698 px; el commit actual dejó los cuatro
@@ -25,8 +25,23 @@
   el motor WebView2 fueron reales; el frontend se sirvió desde el harness mock
   aislado porque el perfil temporal de Wails no tenía sesión/licencia. El script
   reproducible queda en `frontend/scripts/studio-widget-jump-webview-ab.mjs`.
-  Rama `vantareapp/isa-770-onboarding-retencion`; sin PR, integración,
-  promoción ni release.
+  Rama `vantareapp/isa-770-onboarding-retencion`, **en PR #844 hacia
+  `nightly`** (2026-08-25). Sin release.
+
+- **Inspector de widgets del Studio rehecho (2026-08-25, PR a nightly):** el
+  panel lateral tenía tres controles que no hacían lo que aparentaban y una
+  columna dominada por seis selectores de color a ancho completo. Corregido:
+  «Color de acento» se retira del manifiesto de Vantare Endurance porque ese
+  sistema nunca lee `--vo-standings-accent` (en Vantare Original sigue, ahí sí
+  está cableado); el desplegable de sistema aplica el diseño por defecto del
+  destino en vez de solo filtrar la lista; cada color sobrescrito ofrece
+  restablecer al valor del diseño y la sección, «Restablecer apariencia»; el
+  selector de diseño avisa cuando hay apariencia por encima. En lo visual, los
+  colores pasan a filas compactas agrupadas, `appearance` se separa de `design`
+  como acordeón propio, los resúmenes dejan de repetir la cabecera y cada
+  sección se explica al dejar el ratón encima. Los pasos de columna dicen
+  «Estrecha»/«Izquierda» en vez de `SM`/`MD`/`LG`. Gates PASS: 2978 tests,
+  typecheck, lint, auditoría i18n y evidencia visual regenerada. PR #844.
 
 - **Ajustes Orbit: autosave de atajos, descarga de informe y búsqueda
   (2026-08-22, en rama):** tres mejoras de la pantalla Ajustes sobre

@@ -13,6 +13,7 @@ import { useStudioConfirm } from '../components/studio-confirm';
 import { SaveDesignDialog } from '../designs/SaveDesignDialog';
 import {
   buildUserDesignFromWidget,
+  getDefaultOfficialDesign,
   isDesignCompatibleWithWidget,
   partitionApplyAllTargets,
   resolveEffectiveDesign,
@@ -124,6 +125,24 @@ export function DesignSection(props: DesignSectionProps): React.ReactElement {
     });
   };
 
+  /**
+   * Cambiar de sistema aplica de verdad: hasta ahora el desplegable solo
+   * filtraba la lista de disenos y el widget se quedaba en el sistema viejo,
+   * asi que parecia un ajuste y era un filtro. Se aplica el diseno por defecto
+   * del sistema destino; `widget/apply-design` ya restaura la seleccion que el
+   * widget tuviera memorizada para ese sistema.
+   */
+  const selectAndApplySystem = (systemId: DesignSystemId) => {
+    selectSystem(systemId);
+    if (!canApply || systemId === widget.visual.systemId) {
+      return;
+    }
+    const fallback = getDefaultOfficialDesign(widget.type, systemId);
+    if (fallback) {
+      applyDesign(fallback, [widget.id]);
+    }
+  };
+
   const handleApply = (design: WidgetDesignV1) => {
     if (!canApply) {
       return;
@@ -211,6 +230,11 @@ export function DesignSection(props: DesignSectionProps): React.ReactElement {
     const applyAllTargets = activeDesign
       ? partitionApplyAllTargets(widgets, activeDesign).compatibleIds.length
       : 0;
+    // El nombre del diseno sale de `provenance.designId` y no mira los
+    // `appearanceOverrides`: sin este aviso el `Select` sigue diciendo
+    // "Endurance Redline" con seis colores cambiados encima.
+    const hasAppearanceOverrides =
+      Object.keys(widget.visual.appearanceOverrides ?? {}).length > 0;
 
     return (
       <div
@@ -235,7 +259,7 @@ export function DesignSection(props: DesignSectionProps): React.ReactElement {
               disabled={!canApply}
               id="orbit-design-system"
               label={t('studio.inspector.design.system')}
-              onChange={(next) => selectSystem(next as DesignSystemId)}
+              onChange={(next) => selectAndApplySystem(next as DesignSystemId)}
               options={VISUAL_SYSTEM_OPTIONS.map((option) => ({
                 value: option.id,
                 label: t(option.labelKey),
@@ -261,6 +285,11 @@ export function DesignSection(props: DesignSectionProps): React.ReactElement {
           </Field>
         </div>
 
+        {hasAppearanceOverrides ? (
+          <p className="orbit-studio-ins__hint" data-testid="studio-design-overridden-hint">
+            {t('studio.inspector.design.overridden')}
+          </p>
+        ) : null}
         {loading ? (
           <p className="orbit-studio-ins__hint" data-testid="studio-design-user-loading">
             {t('studio.v3.design.userSection.loading')}
@@ -296,6 +325,12 @@ export function DesignSection(props: DesignSectionProps): React.ReactElement {
             {t('studio.inspector.design.saveAs')}
           </Button>
         </div>
+
+        {canApplyAll && activeDesign && applyAllTargets <= 1 ? (
+          <p className="orbit-studio-ins__hint" data-testid="studio-design-apply-all-hint">
+            {t('studio.inspector.design.applyAllAlone')}
+          </p>
+        ) : null}
 
         <SaveDesignDialog
           onClose={() => setSaveOpen(false)}

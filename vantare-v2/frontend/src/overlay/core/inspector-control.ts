@@ -172,6 +172,55 @@ export function writeControlValue(
   return result;
 }
 
+/**
+ * Borra el valor de `path` y los objetos intermedios que queden vacios. Es lo
+ * contrario de `writeControlValue`: quitar el override devuelve el control al
+ * valor del diseno, que es justo lo que espera el boton de restablecer.
+ */
+export function clearControlValue(
+  root: Record<string, unknown>,
+  path: string,
+): Record<string, unknown> {
+  assertSafePath(path);
+  const segments = path.split(".");
+  const [head, ...rest] = segments as [string, ...string[]];
+  if (!Object.hasOwn(root, head)) {
+    return root;
+  }
+  const result = { ...root };
+  if (rest.length === 0) {
+    delete result[head];
+    return result;
+  }
+  const child = result[head];
+  if (!isRecord(child)) {
+    return root;
+  }
+  const cleaned = clearControlValue(child, rest.join("."));
+  if (Object.keys(cleaned).length === 0) {
+    delete result[head];
+  } else {
+    result[head] = cleaned;
+  }
+  return result;
+}
+
+/** `true` si el control tiene un override propio del usuario en `root`. */
+export function hasControlValue(root: Record<string, unknown>, path: string): boolean {
+  assertSafePath(path);
+  const segments = path.split(".");
+  let current: unknown = root;
+  for (const segment of segments) {
+    // Propiedad propia y no `in`: `toString` esta en el prototipo de cualquier
+    // objeto y diria que el usuario ha tocado un control que no existe.
+    if (!isRecord(current) || !Object.hasOwn(current, segment)) {
+      return false;
+    }
+    current = current[segment];
+  }
+  return true;
+}
+
 export const EMPTY_INSPECTOR_CAPABILITY: InspectorCapability = {
   appearance: [],
   content: [],

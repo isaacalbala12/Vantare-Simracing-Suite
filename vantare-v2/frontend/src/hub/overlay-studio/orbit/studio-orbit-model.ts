@@ -36,13 +36,20 @@ export function designSummary(widget: WidgetInstanceV3, t: Translate): string {
   return [systemLabel(widget, t), design].filter(Boolean).join(" · ");
 }
 
-/** "15 fps · siempre · 2 sesiones". */
+/**
+ * "15 fps · todas" / "30 fps · solo en pista · 2 sesiones".
+ *
+ * El resumen vive en una linea de ~180 px junto al titulo del acordeon: con el
+ * texto largo ("15 fps · siempre · todas las sesiones") siempre salia cortado
+ * con puntos suspensivos y no informaba de nada. Los valores por defecto —el
+ * filtro de boxes en "siempre"— no se nombran: solo se nombra lo que restringe.
+ */
 export function behaviorSummary(widget: WidgetInstanceV3, t: Translate): string {
   const fps = fill(t("studio.summary.fps"), { n: widget.behavior.updateHz });
   const inPit = widget.behavior.visibleWhen?.inPit;
   const pit =
     inPit === undefined
-      ? t("studio.summary.pit.any")
+      ? null
       : inPit
         ? t("studio.summary.pit.inPit")
         : t("studio.summary.pit.onTrack");
@@ -51,7 +58,21 @@ export function behaviorSummary(widget: WidgetInstanceV3, t: Translate): string 
     sessionTypes.length === 0
       ? t("studio.summary.sessionsAll")
       : fill(t("studio.summary.sessions"), { n: sessionTypes.length });
-  return `${fps} · ${pit} · ${sessions}`;
+  return [fps, pit, sessions].filter(Boolean).join(" · ");
+}
+
+/** "por defecto" / "2 cambios": lo que el usuario ha tocado sobre el diseno. */
+export function appearanceSummary(widget: WidgetInstanceV3, t: Translate): string {
+  const changed = Object.keys(widget.visual.appearanceOverrides ?? {}).length;
+  if (changed === 0) {
+    return t("studio.summary.appearanceDefault");
+  }
+  // Sin plurales en el catalogo: la forma de uno es su propia clave, o el
+  // resumen decia "1 cambios".
+  if (changed === 1) {
+    return t("studio.summary.appearanceChangedOne");
+  }
+  return fill(t("studio.summary.appearanceChanged"), { n: changed });
 }
 
 /** "820, 96 · 280 × 96". */
@@ -65,10 +86,19 @@ export function layoutSummary(widget: WidgetInstanceV3, t: Translate): string {
   });
 }
 
-/** Meta de la cabecera del inspector: "diseno · w × h". */
+/**
+ * Meta de la cabecera del inspector: "diseno · w × h".
+ *
+ * Solo el nombre del diseno, no `sistema · diseno`: el sistema ya sale en el
+ * acordeon de Diseno —plegado, en su resumen; abierto, en el desplegable— y
+ * repetirlo aqui hacia que la linea no cupiera y el tamano se perdiera en unos
+ * puntos suspensivos. Sin procedencia se cae al nombre del sistema, que es lo
+ * unico que se sabe del widget.
+ */
 export function inspectorMeta(widget: WidgetInstanceV3, t: Translate): string {
+  const design = widget.visual.provenance?.designName?.trim() || systemLabel(widget, t);
   return fill(t("studio.inspector.meta"), {
-    design: designSummary(widget, t),
+    design,
     w: Math.round(widget.layout.w),
     h: Math.round(widget.layout.h),
   });

@@ -17,6 +17,19 @@ son fases históricas.
 
 ## Estado
 
+Actualización ISA-833 / contrato de ritmo por clase (2026-08-25, implementada en rama de issue):
+
+- `StrategyInputProjection v2` declara la familia aditiva `classPace`, con
+  presencia, procedencia, confianza, motivo tipado y `byClassName` indexado por
+  nombre de clase. Una familia válida exige procedencia `reference` y valores
+  positivos; la futura base compartida será la única fuente autorizada.
+- El productor actual la publica siempre `missing`, con
+  `no_class_pace_source` y mapa vacío. No acepta un input de ritmo rival y no
+  calcula ningún doblaje.
+- Análisis lee esa causa tanto para las filas de clase como para la tabla. El
+  fixture válido de dos clases demuestra que la UI transporta los escalares
+  sin convertirlos en bloques, alcances, frecuencias ni vueltas.
+
 Actualización ISA-831 / consumo por clima (2026-08-24, implementada en rama de issue):
 
 - El contrato TypeScript de `StrategyInputProjection v2` ya conserva y valida

@@ -1,3 +1,15 @@
+Nota ISA-833 / contrato de ritmo por clase (2026-08-25, implementada en rama de issue):
+
+- `StrategyInputProjection v2` incorpora `classPace`: presencia, procedencia,
+  confianza, motivo tipado y `byClassName` con segundos por vuelta. Solo una
+  fuente `reference` puede publicar valores válidos.
+- Mientras no exista la base compartida, el productor emite `missing`,
+  `no_class_pace_source` y mapa vacío. Análisis muestra esa causa desde el dato
+  en la timeline y la tabla; no calcula ni una vuelta de doblaje.
+- Tests de contrato rechazan procedencia derivada y el fixture UI de dos clases
+  transporta sus ritmos sin crear bloques ni métricas de doblaje. Sin PR,
+  integración, promoción ni release.
+
 Nota ISA-831 / consumo climático honesto en ficha (2026-08-24, implementada en rama de issue):
 
 - El cliente TypeScript transporta y valida `byClimateBucket` tanto para

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-25T22:14:30Z",
+  "generatedAt": "2026-08-26T22:39:59Z",
   "digest": {
-    "lastCommit": "91efbb8ec02fdf49128cf7454a512dbb6ed37977"
+    "lastCommit": "1d3ab03dfd48efde264bec28b131faa24fcf6739"
   },
   "phases": [
     {
@@ -319,9 +319,45 @@
       "projects": [
         "billing"
       ]
+    },
+    {
+      "id": "platform",
+      "title": {
+        "es": "Plataforma",
+        "en": "Platform",
+        "pt": "Plataforma",
+        "it": "Piattaforma"
+      },
+      "progress": 25,
+      "status": "planned",
+      "projects": [
+        "roadmap-governance"
+      ]
     }
   ],
   "milestones": [
+    {
+      "id": "roadmap-issue-contract",
+      "type": "plan",
+      "title": {
+        "es": "Contrato de roadmap por issue",
+        "en": "Per-issue roadmap contract",
+        "pt": "Contrato de roadmap por issue",
+        "it": "Contratto roadmap per issue"
+      },
+      "body": {
+        "es": "El gate auditará la decisión, los IDs y el artefacto de cada issue; bloquear merges espera migrar las PR vivas, separar autor y reviewer, llegar a master y activar las protecciones remotas.",
+        "en": "The gate will audit each issue's decision, IDs and artefact; blocking merges awaits migrating live PRs, separating author and reviewer, reaching master and enabling remote protections.",
+        "pt": "O gate auditará a decisão, os IDs e o artefacto de cada issue; bloquear merges aguarda migrar os PR vivos, separar autor e reviewer, chegar a master e ativar as proteções remotas.",
+        "it": "Il gate verificherà la decisione, gli ID e l'artefatto di ogni issue; il blocco dei merge attende la migrazione delle PR attive, la separazione tra autore e reviewer, l'arrivo su master e l'attivazione delle protezioni remote."
+      },
+      "label": {
+        "es": "Plan",
+        "en": "Plan",
+        "pt": "Plano",
+        "it": "Piano"
+      }
+    },
     {
       "id": "v0105",
       "type": "release",
@@ -610,6 +646,31 @@
     }
   ],
   "delivered": [
+    {
+      "date": "2026-08-26",
+      "entries": [
+        {
+          "kind": "docs",
+          "scope": "release",
+          "text": "Manifiesto v0.1.0.7-testers.2 y expectativa de release-news"
+        },
+        {
+          "kind": "fix",
+          "scope": "studio",
+          "text": "Conservar editor y agilizar el rail"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-843 · Centrar columnas de Próximas"
+        },
+        {
+          "kind": "feat",
+          "scope": "studio",
+          "text": "Autosave y Ctrl+Z productivo"
+        }
+      ]
+    },
     {
       "date": "2026-08-25",
       "entries": [
@@ -1387,66 +1448,6 @@
           "kind": "docs",
           "scope": "overlay",
           "text": "Record Workshop host guard"
-        }
-      ]
-    },
-    {
-      "date": "2026-08-04",
-      "entries": [
-        {
-          "kind": "fix",
-          "scope": "overlay",
-          "text": "Validate workshop authoring controls"
-        },
-        {
-          "kind": "fix",
-          "scope": "overlay",
-          "text": "Isolate workshop from wails bootstrap"
-        },
-        {
-          "kind": "fix",
-          "scope": "overlay",
-          "text": "Complete workshop control contracts"
-        },
-        {
-          "kind": "docs",
-          "scope": "overlay",
-          "text": "Record workshop controls evidence"
-        },
-        {
-          "kind": "feat",
-          "scope": "overlay",
-          "text": "Add workshop authoring controls"
-        },
-        {
-          "kind": "fix",
-          "scope": "overlay",
-          "text": "Stabilize workshop fixture seeding"
-        },
-        {
-          "kind": "feat",
-          "scope": "overlay",
-          "text": "Add dev-only workshop MVP"
-        },
-        {
-          "kind": "docs",
-          "scope": "overlay",
-          "text": "Record verified app smoke procedure"
-        },
-        {
-          "kind": "docs",
-          "scope": "overlay",
-          "text": "Clarify local app startup failure"
-        },
-        {
-          "kind": "docs",
-          "scope": "overlay",
-          "text": "Define workshop contract"
-        },
-        {
-          "kind": "feat",
-          "scope": "roadmap",
-          "text": "Pestañas de proyectos y tareas Linear"
         }
       ]
     }

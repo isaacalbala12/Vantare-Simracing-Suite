@@ -1,0 +1,89 @@
+name: Trabajo con impacto en roadmap
+description: Cambio que modifica alcance, fase, area, hito o entrega publica.
+title: ""
+labels:
+  - roadmap:required
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Usa este formulario cuando el resultado de la issue deba cambiar el
+        roadmap publico. Las respuestas quedan en el cuerpo de la issue y son
+        el contrato que leen los agentes y valida CI.
+
+  - type: textarea
+    id: objective
+    attributes:
+      label: Objetivo
+      description: Resultado observable que debe quedar al cerrar la issue.
+      placeholder: Describe el resultado, no la implementacion interna.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: task_type
+    attributes:
+      label: Tipo de trabajo
+      options:
+        - feature
+        - fix
+        - performance
+        - documentation
+        - tooling
+        - architecture
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Alcance aprobado
+      description: Archivos, modulos y comportamiento incluidos y excluidos.
+    validations:
+      required: true
+
+  - type: textarea
+    id: roadmap_impact
+    attributes:
+      label: Impacto en roadmap
+      description: Explica por que cambia el estado publico.
+      value: "Requiere actualizar el roadmap publico en este mismo PR."
+    validations:
+      required: true
+
+  - type: input
+    id: roadmap_ids
+    attributes:
+      label: IDs de roadmap afectados
+      description: >-
+        Tokens exactos entre backticks, separados por coma. Formatos validos:
+        phases:id, areas:id y milestones:id.
+      placeholder: "`areas:overlays-studio`, `milestones:overlay-studio-v3`"
+    validations:
+      required: true
+
+  - type: textarea
+    id: public_change
+    attributes:
+      label: Cambio publico esperado
+      description: Como debe describir plan.md lo que existe o queda planeado.
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Criterios de aceptacion
+      description: Checks objetivos, evidencia y verificacion manual.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: contract
+    attributes:
+      label: Contrato
+      options:
+        - label: Actualizare plan.md y regenerare roadmap.json desde la base confiable.
+          required: true
+        - label: No presentare commits de la rama como ya entregados.
+          required: true

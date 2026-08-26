@@ -283,10 +283,13 @@ def _sentence(text: str) -> str:
     return text[0].upper() + text[1:]
 
 
-def read_commits(repo: Path, ref: str, since: str | None, limit: int) -> list[dict[str, str]]:
+def read_commits(repo: Path, ref: str, since: str | None, limit: int = 0) -> list[dict[str, str]]:
     """Commits alcanzables desde `ref` y posteriores a `since`, del mas nuevo al mas viejo."""
     span = f"{since}..{ref}" if since else ref
-    command = ["git", "-C", str(repo), "log", "--no-merges", f"--max-count={limit}", "--date=short", "--pretty=%H%x1f%ad%x1f%s", span]
+    command = ["git", "-C", str(repo), "log", "--no-merges"]
+    if limit > 0:
+        command.append(f"--max-count={limit}")
+    command.extend(["--date=short", "--pretty=%H%x1f%ad%x1f%s", span])
     completed = subprocess.run(command, capture_output=True, text=True, encoding="utf-8")
     if completed.returncode != 0:
         if since:
@@ -412,9 +415,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--plan", type=Path, default=None, help="plan manual (por defecto vantare-v2/docs/roadmap/plan.md)")
     parser.add_argument("--output", type=Path, default=None, help="artefacto generado (por defecto vantare-v2/docs/roadmap/roadmap.json)")
     parser.add_argument("--ref", default="HEAD", help="rama o SHA de la que leer los commits")
-    parser.add_argument("--limit", type=int, default=200, help="maximo de commits leidos en una pasada")
+    parser.add_argument("--limit", type=int, default=0, help="maximo de commits; 0 procesa toda la ventana")
     parser.add_argument("--check", action="store_true", help="no escribe; sale 1 si el artefacto quedaria distinto")
     args = parser.parse_args(argv)
+
+    if args.limit < 0 or (args.limit > 0 and not args.check):
+        print("--limit solo admite un entero positivo junto con --check", file=sys.stderr)
+        return 2
 
     repo = args.repo.resolve()
     plan_path = args.plan or repo / "vantare-v2" / "docs" / "roadmap" / "plan.md"

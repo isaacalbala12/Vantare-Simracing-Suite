@@ -42,6 +42,31 @@ aplicable. Solo Isaac puede autorizar `testers` a `master`.
 
 ## Automatización
 
+### Contrato de roadmap
+
+- Las ramas `vantareapp/isa-N-*` y los hotfix ISA validan la issue N y su
+  decision `roadmap:required`/`roadmap:not-required` antes del merge.
+- `bot/roadmap-digest` es una excepcion exacta hacia `nightly`: solo puede
+  cambiar `vantare-v2/docs/roadmap/roadmap.json`, derivado del plan y del
+  estado base confiable. No puede modificar `plan.md`, no se autoanuncia como
+  entrega y no tiene auto-merge.
+- En `merge_group` se revalida la coherencia del arbol sintetico; no se intenta
+  recuperar una rama ISA que el evento no expone.
+- La ruta usa `pull_request`, `push` y `merge_group` con permisos de lectura.
+  Nunca ejecuta el candidato con `pull_request_target` ni concede autoridad a
+  texto libre de la issue.
+
+La proteccion efectiva requiere que el check `Validate promotion path` siga
+siendo obligatorio y que los cambios en `.github/`, `AGENTS.md` y
+`docs/roadmap/` requieran Code Owner review. La existencia de `CODEOWNERS` no
+demuestra por si sola que la configuracion remota ya lo exija.
+
+ISA-860 versiona el gate inicialmente como auditoria. Activarlo como bloqueo
+requiere migrar las PR vivas y separar la identidad que abre PR de la que hace
+Code Owner review; con una unica cuenta se produciria un deadlock. La
+activacion es una issue posterior y no se resuelve con una excepcion permanente
+para ramas o numeros antiguos.
+
 ### Preautorización estrecha e inerte de la rama automática (ISA-318)
 
 La corrección automática del Testing Center usa exclusivamente la rama

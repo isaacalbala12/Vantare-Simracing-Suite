@@ -33,7 +33,11 @@
   escalados. La política ya está conectada en Studio, Desktop/OBS, edición
   in-place y Workshop, incluido el preview DOM imperativo durante resize para
   evitar escalado transitorio. Sus regresiones fallaron primero; gate T3 final
-  7 archivos/93 tests, typecheck y diff-check PASS. Sin push, PR ni promoción.
+  7 archivos/93 tests. T2 reemplaza la maqueta rígida por anclajes + delta +
+  nueve métricas flexibles en orden, con presets/alineación canónicos y el mismo
+  renderer para filas vivas y ghosts. Conserva 30 px, keys, clases semánticas y
+  datos de motion; focal Redline+contrato 20/20, typecheck y diff-check PASS.
+  Sin push, PR ni promoción.
 
 - **ISA-842 — autosave e historial productivo de Overlay Studio (2026-08-25,
   PR draft a nightly):** rebasada sobre `origin/nightly@c7d25f94`, la rama

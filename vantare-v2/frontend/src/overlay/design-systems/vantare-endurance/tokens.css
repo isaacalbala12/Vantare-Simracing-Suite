@@ -1592,6 +1592,7 @@
 
 [data-widget-system="vantare-endurance"] .ven-red-root {
   position: relative;
+  min-width: 420px;
 }
 
 [data-widget-system="vantare-endurance"] .ven-red-block {
@@ -1666,7 +1667,6 @@
 
 [data-widget-system="vantare-endurance"] .ven-red-row {
   display: grid;
-  grid-template-columns: 24px 1fr 44px 74px 58px;
   gap: 8px;
   align-items: center;
   height: 30px;
@@ -1690,8 +1690,51 @@
 [data-widget-system="vantare-endurance"] .ven-red-id {
   display: flex;
   align-items: baseline;
-  gap: 7px;
   overflow: hidden;
+}
+
+[data-widget-system="vantare-endurance"] .ven-red-metric {
+  min-width: 0;
+  overflow: hidden;
+  color: #9a9aa0;
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+[data-widget-system="vantare-endurance"] .ven-red-driverNumber {
+  color: #7a7a7a;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+[data-widget-system="vantare-endurance"] .ven-red-pit[data-pit="true"],
+[data-widget-system="vantare-endurance"] .ven-red-interval[data-pit="true"] {
+  color: #d8af0f;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+[data-widget-system="vantare-endurance"] .ven-red-tire-cell:not(.ven-red-tire) {
+  justify-self: center;
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+  color: #e8e8e8;
+  line-height: 15px;
+  text-align: center !important;
+}
+
+[data-widget-system="vantare-endurance"] .ven-red-tire-cell[data-compound="S"] {
+  color: #e63946;
+}
+
+[data-widget-system="vantare-endurance"] .ven-red-tire-cell[data-compound="M"] {
+  color: #d8af0f;
 }
 
 [data-widget-system="vantare-endurance"] .ven-red-num {
@@ -1819,7 +1862,8 @@
 }
 
 [data-widget-system="vantare-endurance"] .ven-red-row[data-class-leader="true"] .ven-red-num,
-[data-widget-system="vantare-endurance"] .ven-red-row[data-class-leader="true"] .ven-red-best {
+[data-widget-system="vantare-endurance"] .ven-red-row[data-class-leader="true"] .ven-red-best,
+[data-widget-system="vantare-endurance"] .ven-red-row[data-class-leader="true"] .ven-red-metric {
   color: #55555a;
 }
 

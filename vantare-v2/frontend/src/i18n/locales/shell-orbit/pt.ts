@@ -78,7 +78,7 @@ export const shellOrbitPt: Record<string, string> = {
 
   "shell.update.available": "v{{v}}",
   "shell.update.downloading": "A descarregar… {{pct}}%",
-  "shell.update.ready": "Instalar atualização",
+  "shell.update.installing": "A instalar atualização…",
 
   "shell.access.unavailable": "Acesso não disponível",
   "shell.access.requiresPlan": "Requer o plano {{plan}} · plano atual {{current}}",

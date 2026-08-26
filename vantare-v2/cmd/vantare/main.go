@@ -2300,19 +2300,30 @@ func main() {
 		})
 
 		wailsApp.Event.On("updater:install:verified", func(event *application.CustomEvent) {
-			var release updater.Release
+			// Del payload solo se toma el tag: la URL de descarga y el checksum
+			// los resuelve el backend contra la lista que el mismo se ha
+			// traido. Antes se descargaba y ejecutaba lo que dijera el
+			// renderer.
+			var payload struct {
+				TagName string `json:"tag_name"`
+				Tag     string `json:"tag"`
+			}
 			if event.Data != nil {
 				if raw, err := json.Marshal(event.Data); err == nil {
-					json.Unmarshal(raw, &release)
+					json.Unmarshal(raw, &payload)
 				}
 			}
-			if release.TagName == "" {
+			tag := payload.TagName
+			if tag == "" {
+				tag = payload.Tag
+			}
+			if tag == "" {
 				emitUpdaterError("release is required")
 				return
 			}
 			emitter.Emit("updater:progress", map[string]any{"percent": 0})
 			go func() {
-				if err := updaterSvc.InstallVerifiedVersionCtx(ctx, release); err != nil {
+				if err := updaterSvc.InstallVerifiedVersionCtx(ctx, tag); err != nil {
 					if ctx.Err() != nil {
 						log.Printf("updater:install:verified aborted: %v", ctx.Err())
 						return

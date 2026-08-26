@@ -140,6 +140,7 @@ function OrbitShellBody({
   const toastApi = useToast();
   const [update, setUpdate] = useState<UpdateState>('none');
   const [updateTag, setUpdateTag] = useState<string>('');
+  const [updatePercent, setUpdatePercent] = useState(0);
 
   // Escalado proporcional en ventanas por debajo del mínimo de diseño
   // (D-R4-3): primero pliegan las media queries, y solo lo que aún no cabe se
@@ -156,12 +157,28 @@ function OrbitShellBody({
       setUpdateTag(event.data?.tag ?? '');
       setUpdate('available');
     });
-    const unsubProgress = Events.On('updater:progress', () => setUpdate('downloading'));
-    const unsubReady = Events.On('updater:ready', () => setUpdate('ready'));
+    // El porcentaje llega en el evento y antes se tiraba: el pill anunciaba
+    // «Descargando… 0%» durante toda la descarga.
+    const unsubProgress = Events.On(
+      'updater:progress',
+      (event: { data?: { percent?: number } }) => {
+        setUpdatePercent(Math.max(0, Math.min(100, Math.round(event.data?.percent ?? 0))));
+        setUpdate('downloading');
+      },
+    );
+    // El instalador ya corre y va a cerrar la app. Nadie emitia `updater:ready`,
+    // asi que sin esto el pill se quedaba en «Descargando…» hasta el final.
+    const unsubInstalled = Events.On('updater:installed', () => setUpdate('installing'));
+    // Una descarga que falla no puede dejar el aviso descargando para siempre.
+    const unsubError = Events.On('updater:error', () => {
+      setUpdatePercent(0);
+      setUpdate((current) => (current === 'none' ? 'none' : 'available'));
+    });
     return () => {
       unsubNotify?.();
       unsubProgress?.();
-      unsubReady?.();
+      unsubInstalled?.();
+      unsubError?.();
     };
   }, []);
 
@@ -446,10 +463,10 @@ function OrbitShellBody({
   const simStatus = resolveSimStatus(sourceStatus);
   const accountLabel = formatMessage(t('shell.rail.account'), { plan: planLabel });
   const updateLabel =
-    update === 'ready'
-      ? t('shell.update.ready')
+    update === 'installing'
+      ? t('shell.update.installing')
       : update === 'downloading'
-        ? formatMessage(t('shell.update.downloading'), { pct: 0 })
+        ? formatMessage(t('shell.update.downloading'), { pct: updatePercent })
         : formatMessage(t('shell.update.available'), { v: updateTag });
 
   const shell = (

@@ -160,7 +160,10 @@ export function useUpdaterSettings(options?: UpdaterSettingsOptions) {
     setStatus(
       formatMessage(t("updater.status.preparingInstall"), { tag: release.tag_name }),
     );
-    Events.Emit("updater:install:verified", release);
+    // Solo el tag: el backend resuelve la release y sus URLs en su propia
+    // lista. Mandar el objeto entero era darle al front la ultima palabra
+    // sobre que ejecutable se descarga y se lanza.
+    Events.Emit("updater:install:verified", { tag_name: release.tag_name });
   }
 
   // A downgrade asks first; anything else installs straight away.

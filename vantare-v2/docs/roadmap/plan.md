@@ -236,9 +236,34 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - titulo.it: Licenze e account
 - proyectos: billing
 
+### Plataforma
+
+- id: platform
+- estado: planned
+- progreso: 25
+- titulo.en: Platform
+- titulo.pt: Plataforma
+- titulo.it: Piattaforma
+- proyectos: roadmap-governance
+
 ---
 
 ## Hitos
+
+### Contrato de roadmap por issue
+
+- id: roadmap-issue-contract
+- tipo: plan
+- titulo.en: Per-issue roadmap contract
+- titulo.pt: Contrato de roadmap por issue
+- titulo.it: Contratto roadmap per issue
+- cuerpo: El gate auditará la decisión, los IDs y el artefacto de cada issue; bloquear merges espera migrar las PR vivas, separar autor y reviewer, llegar a master y activar las protecciones remotas.
+- cuerpo.en: The gate will audit each issue's decision, IDs and artefact; blocking merges awaits migrating live PRs, separating author and reviewer, reaching master and enabling remote protections.
+- cuerpo.pt: O gate auditará a decisão, os IDs e o artefacto de cada issue; bloquear merges aguarda migrar os PR vivos, separar autor e reviewer, chegar a master e ativar as proteções remotas.
+- cuerpo.it: Il gate verificherà la decisione, gli ID e l'artefatto di ogni issue; il blocco dei merge attende la migrazione delle PR attive, la separazione tra autore e reviewer, l'arrivo su master e l'attivazione delle protezioni remote.
+- etiqueta: Plan
+- etiqueta.pt: Plano
+- etiqueta.it: Piano
 
 ### v0.1.0.5 en nightly
 

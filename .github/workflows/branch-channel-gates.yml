@@ -11,6 +11,7 @@ on:
 
 permissions:
   contents: read
+  issues: read
 
 concurrency:
   group: branch-channel-${{ github.workflow }}-${{ github.ref }}
@@ -21,6 +22,9 @@ env:
   PNPM_VERSION: "9.1.0"
   WAILS_VERSION: "v3.0.0-alpha.98-tui"
   VANTARE_DIR: "vantare-v2"
+  # ISA-860 se integra primero en auditoria. Cambiar a `enforce` requiere
+  # migrar las PR vivas y una identidad distinta para Code Owner review.
+  ROADMAP_CONTRACT_MODE: "audit"
 
 jobs:
   policy:
@@ -45,6 +49,27 @@ jobs:
             --ref "$EVENT_REF" \
             --base "$EVENT_BASE" \
             --head "$EVENT_HEAD"
+
+      - name: Validate roadmap contract
+        continue-on-error: ${{ env.ROADMAP_CONTRACT_MODE != 'enforce' }}
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_BASE: ${{ github.base_ref }}
+          EVENT_HEAD: ${{ github.head_ref }}
+          EVENT_SHA: ${{ github.sha }}
+          EVENT_PATH: ${{ github.event_path }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python .github/scripts/validate_roadmap_contract.py \
+            --repo . \
+            --event "$EVENT_NAME" \
+            --base "$EVENT_BASE" \
+            --head "$EVENT_HEAD" \
+            --event-sha "$EVENT_SHA" \
+            --event-path "$EVENT_PATH"
+
+      - name: Test roadmap contract
+        run: python .github/scripts/tests/test_validate_roadmap_contract.py
 
       - name: Test branch topology policy
         run: python .github/scripts/test_validate_branch_channels.py

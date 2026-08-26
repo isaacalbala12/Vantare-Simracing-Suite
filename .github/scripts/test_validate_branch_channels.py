@@ -115,6 +115,17 @@ class ValidateBranchChannelsTest(unittest.TestCase):
             with self.subTest(head=head), self.assertRaises(ValueError):
                 validate("pull_request", "refs/pull/218/merge", "nightly", head)
 
+    def test_accepts_only_the_exact_roadmap_digest_bot_branch(self) -> None:
+        self.assertEqual(
+            validate("pull_request", "refs/pull/673/merge", "nightly", "bot/roadmap-digest"),
+            "roadmap digest bot accepted: bot/roadmap-digest -> nightly",
+        )
+        for head in ("bot/roadmap", "bot/roadmap-digest-extra", "Bot/roadmap-digest"):
+            with self.subTest(head=head), self.assertRaisesRegex(
+                ValueError, "requires an ISA issue branch"
+            ):
+                validate("pull_request", "refs/pull/673/merge", "nightly", head)
+
     def test_accepts_only_nightly_into_testers(self) -> None:
         self.assertEqual(
             validate("pull_request", "refs/pull/2/merge", "testers", "nightly"),

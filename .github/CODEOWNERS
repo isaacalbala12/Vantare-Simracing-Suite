@@ -1,0 +1,6 @@
+# Superficies que definen lo que los agentes pueden hacer y que checks bloquean.
+# La proteccion remota debe exigir Code Owner review y aprobacion del ultimo
+# push antes de que este fichero sea una barrera efectiva.
+/.github/ @isaacalbala12
+/vantare-v2/AGENTS.md @isaacalbala12
+/vantare-v2/docs/roadmap/ @isaacalbala12

@@ -12,13 +12,9 @@ name: Roadmap digest
 # `nightly` es rama protegida: este workflow NUNCA hace push directo. Publica en
 # `bot/roadmap-digest` y abre la PR desde ahi.
 #
-# REQUISITO DE CONFIGURACION: hoy el repositorio tiene desactivado "Allow GitHub
-# Actions to create and approve pull requests" (Settings -> Actions -> General).
-# Mientras siga asi, el paso final falla al abrir la PR, pero la rama
-# `bot/roadmap-digest` queda igualmente publicada con el artefacto al dia: el
-# trabajo no se pierde y la PR se puede abrir a mano. Activando esa casilla, el
-# ciclo se cierra solo. La alternativa es sustituir `secrets.GITHUB_TOKEN` por
-# un PAT con permiso de `pull_request`.
+# Las PR creadas con GITHUB_TOKEN dejan sus workflows pendientes de aprobacion
+# humana. Un maintainer debe usar "Approve workflows to run"; no hay auto-merge
+# ni credencial alternativa.
 
 on:
   schedule:
@@ -48,7 +44,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out nightly with full history
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           # El generador lee `git log`, asi que necesita la historia completa.
           fetch-depth: 0
@@ -63,8 +59,7 @@ jobs:
         run: |
           python .github/scripts/roadmap_digest.py \
             --repo . \
-            --ref HEAD \
-            --limit 200
+            --ref HEAD
 
       - name: Decide whether anything changed
         id: diff
@@ -79,7 +74,7 @@ jobs:
 
       - name: Open a pull request against nightly
         if: steps.diff.outputs.changed == 'true'
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676
         with:
           # El token del job basta: la accion solo escribe en su propia rama y
           # abre la PR. Nunca toca `nightly`, que esta protegida.
@@ -92,11 +87,11 @@ jobs:
           delete-branch: true
           add-paths: vantare-v2/docs/roadmap/roadmap.json
           commit-message: |
-            docs(roadmap): actualizar el digest del roadmap (ISA-378)
+            chore(roadmap): actualizar el digest del roadmap (ISA-378)
 
             Regenerado por .github/workflows/roadmap-digest.yml a partir de
             vantare-v2/docs/roadmap/plan.md y los commits mergeados a nightly.
-          title: "docs(roadmap): actualizar el digest del roadmap (ISA-378)"
+          title: "chore(roadmap): actualizar el digest del roadmap (ISA-378)"
           body: |
             Actualizacion automatica de `vantare-v2/docs/roadmap/roadmap.json`.
 
@@ -109,3 +104,7 @@ jobs:
 
             Si el contenido del roadmap no es el que esperabas, corrige
             `plan.md`: este fichero no se edita a mano.
+
+            Los checks creados con `GITHUB_TOKEN` pueden quedar pendientes.
+            Un maintainer debe usar **Approve workflows to run**; esta PR no se
+            integra automaticamente.

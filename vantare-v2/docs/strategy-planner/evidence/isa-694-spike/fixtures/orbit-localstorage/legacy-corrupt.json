@@ -1,0 +1,7 @@
+{
+  "storageKey": "vantare.v03orbit.strategy",
+  "shape": "legacy-invalid-json",
+  "rawValue": "[broken",
+  "observedResult": {"variants": {}},
+  "warningShown": false
+}

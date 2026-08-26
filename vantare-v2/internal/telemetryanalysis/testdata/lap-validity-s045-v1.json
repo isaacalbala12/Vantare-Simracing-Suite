@@ -1,0 +1,579 @@
+{
+  "fixtureVersion": "lap-validity-fixture.v1",
+  "fixtureId": "baseline-s045",
+  "pages": [
+    {
+      "channel": "Ambient Temperature",
+      "sampling": "continuous_implicit_frequency",
+      "frequencyHz": 1,
+      "sourceRowCount": 1380,
+      "samples": [
+        {
+          "index": 1379,
+          "ts": null,
+          "values": [25.024974822998047]
+        }
+      ]
+    },
+    {
+      "channel": "Lap",
+      "sampling": "event_timestamped",
+      "sourceRowCount": 10,
+      "samples": [
+        {
+          "index": 0,
+          "ts": 22.6675,
+          "values": [
+            0
+          ]
+        },
+        {
+          "index": 1,
+          "ts": 264.22,
+          "values": [
+            1
+          ]
+        },
+        {
+          "index": 2,
+          "ts": 405.86,
+          "values": [
+            2
+          ]
+        },
+        {
+          "index": 3,
+          "ts": 547.38,
+          "values": [
+            3
+          ]
+        },
+        {
+          "index": 4,
+          "ts": 688.76,
+          "values": [
+            4
+          ]
+        },
+        {
+          "index": 5,
+          "ts": 830.98,
+          "values": [
+            5
+          ]
+        },
+        {
+          "index": 6,
+          "ts": 972.72,
+          "values": [
+            6
+          ]
+        },
+        {
+          "index": 7,
+          "ts": 1114.7,
+          "values": [
+            7
+          ]
+        },
+        {
+          "index": 8,
+          "ts": 1256.88,
+          "values": [
+            8
+          ]
+        },
+        {
+          "index": 9,
+          "ts": 1399.66,
+          "values": [
+            9
+          ]
+        }
+      ]
+    },
+    {
+      "channel": "Lap Time",
+      "sampling": "event_timestamped",
+      "sourceRowCount": 9,
+      "samples": [
+        {
+          "index": 0,
+          "ts": 22.6675,
+          "values": [
+            0.0
+          ]
+        },
+        {
+          "index": 1,
+          "ts": 264.22,
+          "values": [
+            145.7356414794922
+          ]
+        },
+        {
+          "index": 2,
+          "ts": 405.86,
+          "values": [
+            0.0
+          ]
+        },
+        {
+          "index": 3,
+          "ts": 547.38,
+          "values": [
+            141.51998901367188
+          ]
+        },
+        {
+          "index": 4,
+          "ts": 688.76,
+          "values": [
+            141.3746337890625
+          ]
+        },
+        {
+          "index": 5,
+          "ts": 830.98,
+          "values": [
+            0.0
+          ]
+        },
+        {
+          "index": 6,
+          "ts": 1114.7,
+          "values": [
+            141.98956298828125
+          ]
+        },
+        {
+          "index": 7,
+          "ts": 1256.88,
+          "values": [
+            142.16552734375
+          ]
+        },
+        {
+          "index": 8,
+          "ts": 1399.66,
+          "values": [
+            142.79150390625
+          ]
+        }
+      ]
+    },
+    {
+      "channel": "In Pits",
+      "sampling": "event_timestamped",
+      "sourceRowCount": 1,
+      "samples": [
+        {
+          "index": 0,
+          "ts": 22.6675,
+          "values": [
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "channel": "LastImpactMagnitude",
+      "sampling": "event_timestamped",
+      "sourceRowCount": 3,
+      "samples": [
+        {
+          "index": 0,
+          "ts": 22.6675,
+          "values": [
+            false
+          ]
+        },
+        {
+          "index": 1,
+          "ts": 129.68,
+          "values": [
+            true
+          ]
+        },
+        {
+          "index": 2,
+          "ts": 129.76,
+          "values": [
+            false
+          ]
+        }
+      ]
+    },
+    {
+      "channel": "TyresCompound",
+      "sampling": "event_timestamped",
+      "sourceRowCount": 1,
+      "samples": [
+        {
+          "index": 0,
+          "ts": 22.6675,
+          "values": [
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "channel": "Lap Dist",
+      "sampling": "continuous_implicit_frequency",
+      "frequencyHz": 10,
+      "sourceRowCount": 13799,
+      "samples": [
+        {
+          "index": 0,
+          "ts": null,
+          "values": [
+            0.0010000000474974513
+          ]
+        },
+        {
+          "index": 958,
+          "ts": null,
+          "values": [
+            6930.93115234375
+          ]
+        },
+        {
+          "index": 959,
+          "ts": null,
+          "values": [
+            0.0010000000474974513
+          ]
+        },
+        {
+          "index": 2415,
+          "ts": null,
+          "values": [
+            6976.37744140625
+          ]
+        },
+        {
+          "index": 2416,
+          "ts": null,
+          "values": [
+            0.02496814914047718
+          ]
+        },
+        {
+          "index": 3831,
+          "ts": null,
+          "values": [
+            6974.65673828125
+          ]
+        },
+        {
+          "index": 3832,
+          "ts": null,
+          "values": [
+            0.001664543291553855
+          ]
+        },
+        {
+          "index": 5247,
+          "ts": null,
+          "values": [
+            6978.8076171875
+          ]
+        },
+        {
+          "index": 5248,
+          "ts": null,
+          "values": [
+            2.470182180404663
+          ]
+        },
+        {
+          "index": 6660,
+          "ts": null,
+          "values": [
+            6974.9208984375
+          ]
+        },
+        {
+          "index": 6661,
+          "ts": null,
+          "values": [
+            0.0
+          ]
+        },
+        {
+          "index": 8083,
+          "ts": null,
+          "values": [
+            6978.9306640625
+          ]
+        },
+        {
+          "index": 8084,
+          "ts": null,
+          "values": [
+            2.5733840465545654
+          ]
+        },
+        {
+          "index": 9500,
+          "ts": null,
+          "values": [
+            6976.9599609375
+          ]
+        },
+        {
+          "index": 9501,
+          "ts": null,
+          "values": [
+            0.5992355942726135
+          ]
+        },
+        {
+          "index": 10920,
+          "ts": null,
+          "values": [
+            6977.505859375
+          ]
+        },
+        {
+          "index": 10921,
+          "ts": null,
+          "values": [
+            1.1452057361602783
+          ]
+        },
+        {
+          "index": 12342,
+          "ts": null,
+          "values": [
+            6979.3203125
+          ]
+        },
+        {
+          "index": 12343,
+          "ts": null,
+          "values": [
+            2.9628870487213135
+          ]
+        },
+        {
+          "index": 13769,
+          "ts": null,
+          "values": [
+            6974.59619140625
+          ]
+        },
+        {
+          "index": 13770,
+          "ts": null,
+          "values": [
+            0.0
+          ]
+        },
+        {
+          "index": 13798,
+          "ts": null,
+          "values": [
+            118.81510162353516
+          ]
+        }
+      ]
+    },
+    {
+      "channel": "Fuel Level",
+      "sampling": "continuous_implicit_frequency",
+      "frequencyHz": 20,
+      "sourceRowCount": 27598,
+      "samples": [
+        {
+          "index": 1918,
+          "ts": null,
+          "values": [
+            50.945892333984375
+          ]
+        },
+        {
+          "index": 4832,
+          "ts": null,
+          "values": [
+            47.373741149902344
+          ]
+        },
+        {
+          "index": 7664,
+          "ts": null,
+          "values": [
+            43.83880615234375
+          ]
+        },
+        {
+          "index": 10496,
+          "ts": null,
+          "values": [
+            40.299949645996094
+          ]
+        },
+        {
+          "index": 13322,
+          "ts": null,
+          "values": [
+            36.7385368347168
+          ]
+        },
+        {
+          "index": 16168,
+          "ts": null,
+          "values": [
+            33.163108825683594
+          ]
+        },
+        {
+          "index": 19002,
+          "ts": null,
+          "values": [
+            29.62142562866211
+          ]
+        },
+        {
+          "index": 21842,
+          "ts": null,
+          "values": [
+            26.091211318969727
+          ]
+        },
+        {
+          "index": 24686,
+          "ts": null,
+          "values": [
+            22.58221435546875
+          ]
+        },
+        {
+          "index": 27540,
+          "ts": null,
+          "values": [
+            19.14592933654785
+          ]
+        },
+        {
+          "index": 27596,
+          "ts": null,
+          "values": [
+            19.11516761779785
+          ]
+        }
+      ]
+    },
+    {
+      "channel": "Time Behind Next",
+      "sampling": "continuous_implicit_frequency",
+      "frequencyHz": 2,
+      "sourceRowCount": 2760,
+      "samples": [
+        {
+          "index": 132,
+          "ts": null,
+          "values": [
+            -0.05057525634765625
+          ]
+        },
+        {
+          "index": 215,
+          "ts": null,
+          "values": [
+            -0.05213308334350586
+          ]
+        },
+        {
+          "index": 561,
+          "ts": null,
+          "values": [
+            -0.0985107421875
+          ]
+        },
+        {
+          "index": 778,
+          "ts": null,
+          "values": [
+            -0.289215087890625
+          ]
+        },
+        {
+          "index": 1061,
+          "ts": null,
+          "values": [
+            -0.382415771484375
+          ]
+        },
+        {
+          "index": 1345,
+          "ts": null,
+          "values": [
+            -1.16595458984375
+          ]
+        },
+        {
+          "index": 1628,
+          "ts": null,
+          "values": [
+            -2.28204345703125
+          ]
+        },
+        {
+          "index": 1907,
+          "ts": null,
+          "values": [
+            -2.59088134765625
+          ]
+        },
+        {
+          "index": 2191,
+          "ts": null,
+          "values": [
+            -2.63311767578125
+          ]
+        },
+        {
+          "index": 2581,
+          "ts": null,
+          "values": [
+            -3.29150390625
+          ]
+        },
+        {
+          "index": 2755,
+          "ts": null,
+          "values": [
+            -4.353271484375
+          ]
+        }
+      ]
+    }
+  ],
+  "expectedSpikeCounts": {
+    "laps": 9,
+    "lapEventRows": 10,
+    "lapTimeUsableRows": 6,
+    "lapDistResets": 10,
+    "pitLaps": 0,
+    "apparentStints": 1,
+    "labels": {
+      "incomplete": 4,
+      "out_lap": 1,
+      "incident_offtrack": 1,
+      "traffic": 6
+    },
+    "boundarySources": {
+      "reconciled": 10
+    },
+    "boundaryQualities": {
+      "valid": 10
+    },
+    "stintCauses": {},
+    "coverageGapSeconds": 19.66
+  }
+}

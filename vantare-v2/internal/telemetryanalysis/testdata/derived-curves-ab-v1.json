@@ -1,0 +1,31 @@
+{
+  "fixtureVersion": "derived-curves-fixture.v1",
+  "fixtureId": "derived-ab-v1",
+  "combinationId": "lmu:ab-combination",
+  "bucket": "dry",
+  "stints": [
+    {
+      "laps": 10,
+      "startFuelLitres": 70,
+      "fuelPerLapLitres": 3,
+      "baseLapSeconds": 90,
+      "fuelSecondsPerLitre": 0,
+      "ageSecondsPerLap": 0,
+      "wearPerLapPercent": 0.2,
+      "mixtureCodes": [0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
+      "mixtureFuelDelta": 0.4,
+      "mixtureTimeDelta": 0.6
+    }
+  ],
+  "expected": {
+    "identifiability": "combined_only",
+    "gateReason": "insufficient_stints",
+    "stintCurves": 1,
+    "combinedPoints": 10,
+    "wearSlope": 0.2,
+    "savingPresence": "valid",
+    "savingReason": "",
+    "savingFuel": 0.4,
+    "savingTime": 0.6
+  }
+}

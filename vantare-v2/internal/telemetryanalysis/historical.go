@@ -302,19 +302,38 @@ func (p *LMUDuckDBParser) ReadPage(
 	sourceStart := start
 	sourceLimit := limit
 	includePredecessor := channel.Sampling.Kind == SamplingEventTimestamped && start > 0
-	if includePredecessor {
-		sourceStart--
-		sourceLimit++
-	}
 	if err := p.revalidateArtifact(ctx); err != nil {
 		return HistoricalPage{}, err
 	}
-	rows, err := p.reader.ReadRows(ctx, channel.SourceName, sourceStart, sourceLimit)
-	if err != nil {
-		if ctxErr := ctx.Err(); ctxErr != nil {
-			return HistoricalPage{}, ctxErr
+	readRows := func(start int64, limit int) ([]LMUDuckDBRow, error) {
+		rows, err := p.reader.ReadRows(ctx, channel.SourceName, start, limit)
+		if err != nil {
+			if ctxErr := ctx.Err(); ctxErr != nil {
+				return nil, ctxErr
+			}
+			return nil, ErrHistoricalSource
 		}
-		return HistoricalPage{}, ErrHistoricalSource
+		if len(rows) > limit {
+			return nil, ErrInvalidHistoricalPage
+		}
+		return rows, nil
+	}
+	var predecessor []LMUDuckDBRow
+	if includePredecessor {
+		var err error
+		predecessor, err = readRows(start-1, 1)
+		if err != nil {
+			return HistoricalPage{}, err
+		}
+	}
+	rows, err := readRows(start, limit)
+	if err != nil {
+		return HistoricalPage{}, err
+	}
+	if len(predecessor) > 0 {
+		sourceStart--
+		sourceLimit++
+		rows = append(predecessor, rows...)
 	}
 	if err := ctx.Err(); err != nil {
 		return HistoricalPage{}, err
@@ -322,15 +341,12 @@ func (p *LMUDuckDBParser) ReadPage(
 	if err := p.revalidateArtifact(ctx); err != nil {
 		return HistoricalPage{}, err
 	}
-	if len(rows) > sourceLimit {
-		return HistoricalPage{}, ErrInvalidHistoricalPage
-	}
 	page, err := normalizeLMUDuckDBPage(channel, sourceStart, rows, sourceLimit)
 	if err != nil {
 		return HistoricalPage{}, err
 	}
 	page.Start = start
-	if includePredecessor && len(page.Samples) > 0 {
+	if len(predecessor) > 0 {
 		page.Samples = page.Samples[1:]
 	}
 	return page, nil

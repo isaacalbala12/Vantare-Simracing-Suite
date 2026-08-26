@@ -24,8 +24,31 @@ var requiredOperationFields = map[Operation][]string{
 	// dryRun is deliberately not required: omitting it means a real import,
 	// and a caller that forgets the flag gets the explicit behaviour, not a
 	// silently skipped one.
-	OperationImport: {"package"},
-	OperationClose:  {"draft", "savedDraft", "discard"},
+	OperationImport:                  {"package"},
+	OperationClose:                   {"draft", "savedDraft", "discard"},
+	OperationCreateEvent:             {"event", "updatedAt"},
+	OperationEditEvent:               {"event", "updatedAt"},
+	OperationListEvents:              {},
+	OperationCreateDriver:            {"eventId", "driver", "updatedAt"},
+	OperationEditDriver:              {"eventId", "driver", "updatedAt"},
+	OperationDeleteDriver:            {"eventId", "driverId", "updatedAt"},
+	OperationListDrivers:             {"eventId"},
+	OperationCreateVariant:           {"eventId", "variant", "updatedAt"},
+	OperationEditVariant:             {"eventId", "variant", "updatedAt"},
+	OperationListVariants:            {"eventId"},
+	OperationCompareVariants:         {"eventId", "leftVariantId", "rightVariantId"},
+	OperationCalculateOrbit:          {"input"},
+	OperationListSessionCombinations: {},
+	OperationGetEventPlanningInputs:  {"eventId", "generatedAt"},
+	OperationGetValidatedExamples:    {"eventId"},
+	OperationListReferenceCatalog:    {},
+	OperationGetColdStartStatus:      {},
+	OperationImportColdStartNext:     {},
+	OperationRetryColdStartFailures:  {},
+	OperationRejectColdStart:         {},
+	OperationPreviewLegacyMigration:  {"sources", "migratedAt"},
+	OperationMigrateLegacy:           {"sources", "confirmedFingerprint", "migratedAt"},
+	OperationRollbackLegacyMigration: {"journalId", "rolledBackAt"},
 }
 
 // JSONBridge is transport-neutral. Wails or a future transport only forwards
@@ -130,6 +153,121 @@ func (bridge *JSONBridge[T]) Execute(ctx context.Context, document []byte) ([]by
 		var command CloseCommand[T]
 		if err = decodeStrict(document, &command); err == nil {
 			result, err = bridge.service.Close(ctx, command)
+		}
+	case OperationCreateEvent:
+		var command CreateEventCommand
+		if err = decodeStrict(document, &command); err == nil {
+			result, err = bridge.service.CreateEvent(ctx, command)
+		}
+	case OperationEditEvent:
+		var command EditEventCommand
+		if err = decodeStrict(document, &command); err == nil {
+			result, err = bridge.service.EditEvent(ctx, command)
+		}
+	case OperationListEvents:
+		var command ListEventsCommand
+		if err = decodeStrict(document, &command); err == nil {
+			result, err = bridge.service.ListEvents(ctx, command)
+		}
+	case OperationCreateDriver:
+		var command CreateDriverCommand
+		if err = decodeStrict(document, &command); err == nil {
+			result, err = bridge.service.CreateDriver(ctx, command)
+		}
+	case OperationEditDriver:
+		var command EditDriverCommand
+		if err = decodeStrict(document, &command); err == nil {
+			result, err = bridge.service.EditDriver(ctx, command)
+		}
+	case OperationDeleteDriver:
+		var command DeleteDriverCommand
+		if err = decodeStrict(document, &command); err == nil {
+			result, err = bridge.service.DeleteDriver(ctx, command)
+		}
+	case OperationListDrivers:
+		var command ListDriversCommand
+		if err = decodeStrict(document, &command); err == nil {
+			result, err = bridge.service.ListDrivers(ctx, command)
+		}
+	case OperationCreateVariant:
+		var command CreateVariantCommand
+		if err = decodeStrict(document, &command); err == nil {
+			result, err = bridge.service.CreateVariant(ctx, command)
+		}
+	case OperationEditVariant:
+		var command EditVariantCommand
+		if err = decodeStrict(document, &command); err == nil {
+			result, err = bridge.service.EditVariant(ctx, command)
+		}
+	case OperationListVariants:
+		var command ListVariantsCommand
+		if err = decodeStrict(document, &command); err == nil {
+			result, err = bridge.service.ListVariants(ctx, command)
+		}
+	case OperationCompareVariants:
+		var command CompareVariantsCommand
+		if err = decodeStrict(document, &command); err == nil {
+			result, err = bridge.service.CompareVariants(ctx, command)
+		}
+	case OperationCalculateOrbit:
+		var command CalculateOrbitCommand
+		if err = decodeStrict(document, &command); err == nil {
+			result, err = bridge.service.CalculateOrbit(ctx, command)
+		}
+	case OperationListSessionCombinations:
+		var command ListSessionCombinationsCommand
+		if err = decodeStrict(document, &command); err == nil {
+			result, err = bridge.service.ListSessionCombinations(ctx, command)
+		}
+	case OperationGetEventPlanningInputs:
+		var command GetEventPlanningInputsCommand
+		if err = decodeStrict(document, &command); err == nil {
+			result, err = bridge.service.GetEventPlanningInputs(ctx, command)
+		}
+	case OperationGetValidatedExamples:
+		var command GetValidatedExamplesCommand
+		if err = decodeStrict(document, &command); err == nil {
+			result, err = bridge.service.GetValidatedExamples(ctx, command)
+		}
+	case OperationListReferenceCatalog:
+		var command ListReferenceCatalogCommand
+		if err = decodeStrict(document, &command); err == nil {
+			result, err = bridge.service.ListReferenceCatalog(ctx, command)
+		}
+	case OperationGetColdStartStatus:
+		var command ColdStartCommand
+		if err = decodeStrict(document, &command); err == nil {
+			result, err = bridge.service.GetColdStartStatus(ctx, command)
+		}
+	case OperationImportColdStartNext:
+		var command ColdStartCommand
+		if err = decodeStrict(document, &command); err == nil {
+			result, err = bridge.service.ImportColdStartNext(ctx, command)
+		}
+	case OperationRetryColdStartFailures:
+		var command ColdStartCommand
+		if err = decodeStrict(document, &command); err == nil {
+			result, err = bridge.service.RetryColdStartFailures(ctx, command)
+		}
+	case OperationRejectColdStart:
+		var command ColdStartCommand
+		if err = decodeStrict(document, &command); err == nil {
+			result, err = bridge.service.RejectColdStart(ctx, command)
+		}
+	case OperationPreviewLegacyMigration:
+		var command LegacyMigrationCommand
+		if err = decodeStrict(document, &command); err == nil {
+			result, err = bridge.service.PreviewLegacyMigration(ctx, command)
+		}
+	case OperationMigrateLegacy:
+		var command LegacyMigrationCommand
+		if err = decodeStrict(document, &command); err == nil {
+			result, err = bridge.service.MigrateLegacy(ctx, command)
+		}
+	case OperationRollbackLegacyMigration:
+		var command RollbackLegacyMigrationCommand
+		if err = decodeStrict(document, &command); err == nil {
+			result, err = bridge.service.RollbackLegacyMigration(ctx, command)
 		}
 	default:
 		err = applicationError(ErrorInvalidCommand, "operation", ErrInvalidCommand)

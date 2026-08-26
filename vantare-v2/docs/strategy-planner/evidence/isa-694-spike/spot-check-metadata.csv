@@ -1,0 +1,9 @@
+﻿session_id,spot_check_reason,date_utc,track,layout,car,class,session_type,weatherconditions
+S049-56747c2a,track_layout_differs;zero_completed_laps;short_capture,2026-05-08T17:41:36Z,Circuit de la Sarthe,Circuit de la Sarthe Mulsanne,The Bend Team WRT 2025 #31:LM,GT3,Practice,Light Clouds
+S103-3a203f5f,track_layout_differs;zero_completed_laps;short_capture,2026-05-31T15:18:41Z,Bahrain International Circuit,Bahrain Outer Circuit,DKR Engineering #3:ELMS25,LMP2_ELMS,Practice,Light Clouds
+S218-367695ac,track_layout_differs;zero_completed_laps;short_capture,2026-06-15T10:42:24Z,Silverstone Circuit,Silverstone Grand Prix Circuit - ELMS,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Mostly Cloudy
+S234-db3ed372,track_layout_differs;zero_completed_laps;short_capture,2026-07-01T14:50:46Z,Fuji Speedway,Fuji Speedway Classic,DKR Engineering #4:ELMS25,LMP3,Practice,Partially Cloudy
+S237-b361cdf9,track_layout_differs;zero_completed_laps;short_capture,2026-07-01T15:12:59Z,Fuji Speedway,Fuji Speedway Classic,DKR Engineering #4:ELMS25,LMP3,Race,Partially Cloudy
+S249-f9146a4a,track_layout_differs;zero_completed_laps;short_capture,2026-07-02T17:17:23Z,Fuji Speedway,Fuji Speedway Classic,WTM by Rinaldi Racing 2025 #12:ELMS,LMP3,Practice,Partially Cloudy
+S251-fd010ea9,track_layout_differs;zero_completed_laps;short_capture,2026-07-02T17:28:09Z,Fuji Speedway,Fuji Speedway Classic,WTM by Rinaldi Racing 2025 #12:ELMS,LMP3,Race,Partially Cloudy
+S254-d173f8c9,track_layout_differs;zero_completed_laps;short_capture,2026-07-02T18:13:32Z,Circuit of the Americas,COTA National Circuit,Proton Competition 2025 #77:LM,GT3,Qualify,Partially Cloudy

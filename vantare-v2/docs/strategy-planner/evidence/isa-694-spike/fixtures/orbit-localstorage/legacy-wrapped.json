@@ -1,0 +1,21 @@
+{
+  "storageKey": "vantare.v03orbit.strategy",
+  "shape": "legacy-wrapped-variants",
+  "value": {
+    "variants": {
+      "s1": {
+        "state": "draft",
+        "order": ["driver-1"],
+        "overrides": {"0": {"laps": 20}},
+        "tyres": {}
+      },
+      "local-1": {
+        "name": "Copia",
+        "mode": "eco",
+        "order": ["driver-1"],
+        "state": "draft"
+      }
+    },
+    "availability": {"driver-1": [{"state": "no", "from": 900, "to": 960}]}
+  }
+}

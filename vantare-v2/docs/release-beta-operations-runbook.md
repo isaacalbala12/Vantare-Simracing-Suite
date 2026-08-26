@@ -120,51 +120,17 @@ La ruta de promoción es `rama de issue -> nightly -> testers -> master`.
 
 ## 4. Empaquetado y distribucion de builds
 
-> **R03.B**: la generacion de artefactos esta automatizada con `wails3 task release:artifacts` (alias de `windows:package:all` y `package:all`). Encadena `version:sync` -> `windows:build` -> instalador NSIS -> portable zip -> SHA256 sidecars -> verify de version. Detalle tecnico en `docs/release-artifacts.md`.
+> **R03.B**: la generacion de artefactos esta automatizada con `wails3 task release:artifacts` (alias de `windows:package:all` y `package:all`). Encadena preflight de configuracion -> `version:sync` -> `windows:build` -> instalador NSIS -> portable zip -> SHA256 sidecars -> verify de version. La receta unica vive en `docs/release-artifacts.md`.
 >
 > **R03.C**: `.github/workflows/release.yml` ejecuta el mismo pipeline en GitHub Actions y, sobre tags `v*`, crea la Release con los assets automaticamente.
 
 ### Opcion A: build local (validacion previa al tag)
 
-1. Asegurar que la build local tiene las variables publicas de Supabase para frontend y backend Go.
-   En local, `frontend\.env.local` suele contener `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY`; el binario Go necesita las equivalentes `VANTARE_SUPABASE_URL` y `VANTARE_SUPABASE_ANON_KEY` durante el build.
-
-   ```powershell
-   $envFile = Get-Content frontend\.env.local | Where-Object { $_ -match '^\s*VITE_SUPABASE_' }
-   foreach ($line in $envFile) {
-     $parts = $line -split '=', 2
-     if ($parts.Count -eq 2) {
-       if ($parts[0].Trim() -eq 'VITE_SUPABASE_URL') { $env:VANTARE_SUPABASE_URL = $parts[1].Trim() }
-       if ($parts[0].Trim() -eq 'VITE_SUPABASE_ANON_KEY') { $env:VANTARE_SUPABASE_ANON_KEY = $parts[1].Trim() }
-     }
-   }
-   if (-not $env:VANTARE_SUPABASE_URL -or -not $env:VANTARE_SUPABASE_ANON_KEY) {
-     throw 'Missing Supabase vars in frontend\.env.local'
-   }
-   ```
-
-2. Generar los artefactos oficiales desde `vantare-v2/`:
-   ```powershell
-   wails3 task release:clean
-   wails3 task release:artifacts
-   ```
-   Produce:
-   - `bin\vantare-amd64-installer.exe`
-   - `bin\vantare-portable-amd64.zip`
-   - `bin\vantare.exe`
-   - Sus 3 sidecars `*.sha256`.
-   El paso `verify` confirma que la cadena de version correcta esta embebida. Si falla, no publiques.
-
-3. Abrir la app para smoke manual:
-   ```powershell
-   Start-Process -FilePath .\bin\vantare.exe -WorkingDirectory .\bin
-   ```
-
-   Verificacion rapida del servidor local:
-   ```powershell
-   Invoke-WebRequest http://127.0.0.1:39261/health -UseBasicParsing
-   ```
-   Debe devolver `{"ok":true}`.
+Sigue de principio a fin la receta unica de
+`docs/release-artifacts.md`, seccion 2. Alli viven la carga autorizada de
+`.env.local` sin copiarlo ni imprimirlo, el mapeo Task/frontend/Go, el uso de
+`-f`, el preflight, los comandos y el smoke obligatorio de Google OAuth. Este
+runbook no mantiene una segunda receta.
 
 ### Smoke del icono de la app (Windows)
 
@@ -179,11 +145,8 @@ El icono que se ve en taskbar, ventana e instalador NSIS sale de `build\windows\
    El `.ico` resultante es multi-tamano (16, 32, 48, 64, 128, 256) a 32 bpp. El comando tambien regenera `build\darwin\icons.icns` y `build\appicon.icon\Assets\wails_icon_vector.svg`; **no commitear** cambios en `darwin\icons.icns` ni en `appicon.icon\**` si el alcance es Windows-only — restaurar con `git checkout -- build/darwin/icons.icns build/appicon.icon/`.
 
 2. Smoke de icono con el pipeline oficial (unico que incrusta `.syso`):
-   ```powershell
-   wails3 task release:clean
-   wails3 task release:artifacts
-   wails3 task release:verify
-   ```
+   ejecuta primero la receta de `docs/release-artifacts.md`, seccion 2.2, en
+   la misma consola autorizada.
    Inspeccionar el `.exe`:
    ```powershell
    magick identify .\bin\vantare.exe
@@ -202,41 +165,12 @@ Windows cachea iconos de `.exe` por ruta y hash. Aunque el binario cambie, el sh
 
 ### Opcion A2: build rapido de smoke local, no publicable
 
-Usar solo para probar cambios locales en la app cuando no necesitas installer/zip. Esta ruta genera `bin\vantare.exe` con Supabase embebido, pero **no** produce los 6 artefactos oficiales ni checksums.
-
-1. Recompilar frontend con la version de pnpm del repo:
-   ```powershell
-   corepack pnpm --dir frontend build
-   ```
-
-2. Mapear `.env.local`, generar `supabase_build.go`, compilar y limpiar el archivo temporal:
-   ```powershell
-   $envFile = Get-Content frontend\.env.local | Where-Object { $_ -match '^\s*VITE_SUPABASE_' }
-   foreach ($line in $envFile) {
-     $parts = $line -split '=', 2
-     if ($parts.Count -eq 2) {
-       if ($parts[0].Trim() -eq 'VITE_SUPABASE_URL') { $env:VANTARE_SUPABASE_URL = $parts[1].Trim() }
-       if ($parts[0].Trim() -eq 'VITE_SUPABASE_ANON_KEY') { $env:VANTARE_SUPABASE_ANON_KEY = $parts[1].Trim() }
-     }
-   }
-   if (-not $env:VANTARE_SUPABASE_URL -or -not $env:VANTARE_SUPABASE_ANON_KEY) {
-     throw 'Missing Supabase vars in frontend\.env.local'
-   }
-
-   powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\generate_supabase_config.ps1 -OutFile .\cmd\vantare\supabase_build.go
-   try {
-     go build -tags production -trimpath -buildvcs=false -ldflags "-w -s -H windowsgui -X main.version=v$(Get-Content VERSION)" -o .\bin\vantare.exe .\cmd\vantare
-   } finally {
-     Remove-Item .\cmd\vantare\supabase_build.go -ErrorAction SilentlyContinue
-   }
-   ```
-
-3. Abrir la app:
-   ```powershell
-   Start-Process -FilePath .\bin\vantare.exe -WorkingDirectory .\bin
-   ```
-
-Si aparece `Configuracion incompleta`, casi siempre se esta ejecutando un binario stale o se compilo sin `VANTARE_SUPABASE_*`. Cierra la app, reconstruye con los pasos anteriores y confirma que no estas abriendo `vantare.exe` en la raiz del repo ni un portable antiguo.
+Usar solo para desarrollo local cuando no hacen falta installer, portable ni
+checksums. Un `pnpm build`, `go build`, `wails3 task build` o empaquetado de un
+exe preconstruido **no es publicable**. Las diferencias de nombres de entorno
+y el procedimiento para reconstruir con `-f` se mantienen exclusivamente en
+`docs/release-artifacts.md`; si el resultado se va a distribuir, vuelve a la
+opcion A.
 
 ### Opcion B: build desde GitHub Actions (oficial)
 

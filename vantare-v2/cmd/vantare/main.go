@@ -39,11 +39,15 @@ import (
 	"github.com/vantare/overlays/v2/internal/startup"
 	"github.com/vantare/overlays/v2/internal/storage"
 	strategyapplication "github.com/vantare/overlays/v2/internal/strategy/application"
+	strategycatalog "github.com/vantare/overlays/v2/internal/strategy/catalog"
+	strategycoldstart "github.com/vantare/overlays/v2/internal/strategy/coldstart"
+	"github.com/vantare/overlays/v2/internal/strategy/curation"
 	strategymanual "github.com/vantare/overlays/v2/internal/strategy/manual"
 	strategyrepository "github.com/vantare/overlays/v2/internal/strategy/repository"
 	strategysolver "github.com/vantare/overlays/v2/internal/strategy/solver"
 	strategytyres "github.com/vantare/overlays/v2/internal/strategy/tyres"
 	"github.com/vantare/overlays/v2/internal/telemetry/driver"
+	"github.com/vantare/overlays/v2/internal/telemetryanalysis"
 	"github.com/vantare/overlays/v2/internal/testingcenter/reportdraft"
 	"github.com/vantare/overlays/v2/internal/tts"
 	"github.com/vantare/overlays/v2/internal/updater"
@@ -81,6 +85,13 @@ var (
 	supabaseURL       = ""
 	supabaseAnonKey   = ""
 	licensePublicKeys = ""
+	// F6-a remains fail-closed: release tooling may inject a reviewed URL and
+	// build admission token later; normal builds contain neither and cannot send.
+	curationWorkerURL           = ""
+	curationBuildAdmissionToken = ""
+	// Empty by default: F5-e consumes the signed TEST fixture locally until
+	// Isaac explicitly publishes and configures the first real catalog.
+	strategyCatalogURL = ""
 )
 
 func protectedStoreTargets(channel, backendURL string) (clockTarget, authTarget string) {
@@ -256,66 +267,88 @@ func resolveLogsRoot(cfgDir string, userConfigDir string, localDataDir string) (
 	return filepath.Join(filepath.Dir(cfgDir), "data", "logs"), nil
 }
 
+func telemetryAnalysisBackendConfig() (app.TelemetryAnalysisConfig, error) {
+	executablePath, err := os.Executable()
+	if err != nil {
+		return app.TelemetryAnalysisConfig{}, fmt.Errorf("resolve application executable: %w", err)
+	}
+	cacheDirectory, err := os.UserCacheDir()
+	if err != nil {
+		return app.TelemetryAnalysisConfig{}, fmt.Errorf("resolve application cache directory: %w", err)
+	}
+	return resolveTelemetryAnalysisBackendConfig(executablePath, cacheDirectory, launcher.Discover())
+}
+
+func resolveTelemetryAnalysisBackendConfig(
+	executablePath string,
+	cacheDirectory string,
+	discoveredApps map[string]app.LauncherAppEntry,
+) (app.TelemetryAnalysisConfig, error) {
+	if !filepath.IsAbs(executablePath) || filepath.Clean(executablePath) != executablePath ||
+		!filepath.IsAbs(cacheDirectory) || filepath.Clean(cacheDirectory) != cacheDirectory {
+		return app.TelemetryAnalysisConfig{}, fmt.Errorf("Telemetry Analysis backend directories must be absolute")
+	}
+	executableInfo, err := os.Lstat(executablePath)
+	if err != nil || !executableInfo.Mode().IsRegular() || executableInfo.Mode()&os.ModeSymlink != 0 {
+		return app.TelemetryAnalysisConfig{}, fmt.Errorf("Telemetry Analysis application executable is unavailable")
+	}
+	cacheInfo, err := os.Lstat(cacheDirectory)
+	if err != nil || !cacheInfo.IsDir() || cacheInfo.Mode()&os.ModeSymlink != 0 {
+		return app.TelemetryAnalysisConfig{}, fmt.Errorf("Telemetry Analysis cache directory is unavailable")
+	}
+	return app.TelemetryAnalysisConfig{
+		LMURoots:             resolveTelemetryAnalysisLMURoots(discoveredApps),
+		ApplicationDirectory: filepath.Dir(executablePath),
+		StagingRoot:          filepath.Join(cacheDirectory, "Vantare", "telemetry-analysis", "staging"),
+		StabilityWindow:      5 * time.Second,
+		MaxCandidates:        128,
+		MaxSourceBytes:       2 << 30,
+		MaxPageRows:          4096,
+	}, nil
+}
+
+// resolveTelemetryAnalysisLMURoots accepts only LMU discovered inside a Steam
+// library by the native launcher scanner. Persisted/manual paths and paths
+// supplied by a consumer never become telemetry read authority.
+func resolveTelemetryAnalysisLMURoots(discoveredApps map[string]app.LauncherAppEntry) []string {
+	lmu, ok := discoveredApps["lmu"]
+	if !ok || lmu.ID != "lmu" || lmu.PathSource != "steam" ||
+		!filepath.IsAbs(lmu.ExecutablePath) || filepath.Clean(lmu.ExecutablePath) != lmu.ExecutablePath {
+		return nil
+	}
+	executableName := filepath.Base(lmu.ExecutablePath)
+	if !strings.EqualFold(executableName, "Le Mans Ultimate.exe") && !strings.EqualFold(executableName, "LMU.exe") {
+		return nil
+	}
+	if !strings.EqualFold(filepath.Base(filepath.Dir(lmu.ExecutablePath)), "Le Mans Ultimate") {
+		return nil
+	}
+	executableInfo, err := os.Lstat(lmu.ExecutablePath)
+	if err != nil || !executableInfo.Mode().IsRegular() || executableInfo.Mode()&os.ModeSymlink != 0 {
+		return nil
+	}
+	root := filepath.Join(filepath.Dir(lmu.ExecutablePath), "UserData", "Telemetry")
+	rootInfo, err := os.Lstat(root)
+	if err != nil || !rootInfo.IsDir() || rootInfo.Mode()&os.ModeSymlink != 0 {
+		return nil
+	}
+	return []string{root}
+}
+
 type strategyCommandExecutor interface {
 	Execute(context.Context, []byte) ([]byte, error)
 }
 
 func executeStrategyApplicationCommand(ctx context.Context, executor strategyCommandExecutor, data any) (any, map[string]any) {
-	document, err := json.Marshal(data)
-	if err != nil {
-		return nil, map[string]any{"commandId": "invalid-command", "code": string(strategyapplication.ErrorInvalidCommand), "field": "", "message": "invalid Strategy command"}
+	result, failure := app.ExecuteStrategyApplicationCommand(ctx, executor, data)
+	if failure == nil {
+		return result, nil
 	}
-	var header struct {
-		CommandID string `json:"commandId"`
-	}
-	_ = json.Unmarshal(document, &header)
-	if header.CommandID == "" {
-		header.CommandID = "invalid-command"
-	}
-	encoded, err := executor.Execute(ctx, document)
-	if err != nil {
-		code := strategyapplication.ErrorInvalidCommand
-		field := ""
-		var applicationErr *strategyapplication.ApplicationError
-		if errors.As(err, &applicationErr) {
-			if _, known := publicStrategyApplicationMessage(applicationErr.Code); known {
-				code = applicationErr.Code
-				field = applicationErr.Field
-			}
-		}
-		message, _ := publicStrategyApplicationMessage(code)
-		return nil, map[string]any{
-			"commandId": header.CommandID,
-			"code":      string(code),
-			"field":     field,
-			"message":   message,
-		}
-	}
-	var result any
-	if err := json.Unmarshal(encoded, &result); err != nil {
-		return nil, map[string]any{"commandId": header.CommandID, "code": string(strategyapplication.ErrorInvalidCommand), "field": "", "message": "invalid Strategy result"}
-	}
-	return result, nil
-}
-
-func publicStrategyApplicationMessage(code strategyapplication.ErrorCode) (string, bool) {
-	switch code {
-	case strategyapplication.ErrorInvalidCommand:
-		return "The Strategy request could not be completed.", true
-	case strategyapplication.ErrorStaleCommand:
-		return "The Strategy document changed. Reopen it and try again.", true
-	case strategyapplication.ErrorDraftNotFound:
-		return "The Strategy draft was not found.", true
-	case strategyapplication.ErrorDraftConflict:
-		return "The Strategy draft conflicts with another saved document.", true
-	case strategyapplication.ErrorRevisionNotFound:
-		return "The Strategy revision was not found.", true
-	case strategyapplication.ErrorActiveConflict:
-		return "The active Strategy plan changed. Reopen it and try again.", true
-	case strategyapplication.ErrorUnsavedChanges:
-		return "The Strategy draft has unsaved changes.", true
-	default:
-		return "The Strategy request could not be completed.", false
+	return nil, map[string]any{
+		"commandId": failure.CommandID,
+		"code":      string(failure.Code),
+		"field":     failure.Field,
+		"message":   failure.Message,
 	}
 }
 
@@ -1209,6 +1242,7 @@ func main() {
 	var testingCenterDiagnosticBridge *app.TestingCenterDiagnosticBridge
 	var telemetryCoreRuntime *app.TelemetryCoreRuntime
 	telemetryStatusReplayCleanup := func() {}
+	var telemetryAnalysisSvc *app.TelemetryAnalysisService
 	cleanupApp := func() {
 		cleanup.Do(func() {
 			shutdownCtx, cancelShutdown := context.WithTimeout(context.Background(), 8*time.Second)
@@ -1229,6 +1263,12 @@ func main() {
 						return nil
 					}
 					return telemetryCoreRuntime.Stop(ctx)
+				}},
+				{name: "telemetry-analysis", stop: func(context.Context) error {
+					if telemetryAnalysisSvc == nil {
+						return nil
+					}
+					return telemetryAnalysisSvc.ServiceShutdown()
 				}},
 				{name: "http", stop: func(context.Context) error {
 					if httpSrv == nil {
@@ -1314,46 +1354,66 @@ func main() {
 		log.Printf("warning: configs directory not found — hub profile CRUD disabled")
 	}
 	var strategyBridge strategyCommandExecutor
-	if root, rootErr := strategyRepositoryRoot(cfgDir); rootErr != nil {
+	strategyRoot, strategyRootErr := strategyRepositoryRoot(cfgDir)
+	if strategyRootErr != nil {
 		log.Printf("warning: Strategy repository is unavailable")
-	} else if repo, openErr := strategyrepository.Open[json.RawMessage](root, strategyrepository.Options{}); openErr != nil {
+	} else if repo, openErr := strategyrepository.Open[json.RawMessage](strategyRoot, strategyrepository.Options{}); openErr != nil {
 		log.Printf("warning: Strategy repository could not be opened: %v", openErr)
 	} else {
-		strategyBridge = strategyapplication.NewJSONBridge(strategyapplication.NewService(repo))
-	}
-	wailsApp.Event.On("strategy:application:command", func(event *application.CustomEvent) {
-		if strategyBridge == nil {
-			commandID := "unavailable"
-			if document, marshalErr := json.Marshal(event.Data); marshalErr == nil {
-				var header struct {
-					CommandID string `json:"commandId"`
-				}
-				if json.Unmarshal(document, &header) == nil && header.CommandID != "" {
-					commandID = header.CommandID
+		referenceCatalog := strategycatalog.NewConsumer(strategycatalog.ConsumerOptions{
+			StatePath: filepath.Join(strategyRoot, "reference-catalog-state.json"),
+			URL:       strategyCatalogURL, Fixture: strategycatalog.FixtureSignedV1,
+			TrustedKeys: strategycatalog.FixtureTrustedKeys(), MinEpoch: "2026-08-a", MinVersion: 1,
+		})
+		var sessionCatalog *telemetryanalysis.SessionCatalog
+		var coldStart *strategycoldstart.Service
+		sessionStore, storeErr := telemetryanalysis.OpenAuthorizedSessionStore(filepath.Join(strategyRoot, "authorized-sessions.json"))
+		if storeErr != nil {
+			log.Printf("warning: authorized Strategy sessions are unavailable")
+			sessionCatalog = telemetryanalysis.NewSessionCatalog(nil)
+		} else {
+			sessionCatalog = telemetryanalysis.NewSessionCatalog(sessionStore)
+			if executable, executableErr := os.Executable(); executableErr == nil {
+				importer, importerErr := strategycoldstart.NewLMUImporter(filepath.Dir(executable), filepath.Join(strategyRoot, "telemetry-staging"))
+				if importerErr == nil {
+					coldStart = strategycoldstart.NewService(strategycoldstart.ServiceOptions{
+						StatePath: filepath.Join(strategyRoot, "cold-start.json"),
+						Discover: func(ctx context.Context) ([]telemetryanalysis.Candidate, error) {
+							return strategycoldstart.DiscoverStandardLMU(ctx, strategycoldstart.StandardLMUTelemetryRoot(), time.Second)
+						},
+						Importer: importer, Store: sessionStore,
+					})
+				} else {
+					log.Printf("warning: Strategy cold start importer is unavailable")
 				}
 			}
-			emitter.Emit("strategy:application:error", map[string]any{
-				"commandId": commandID, "code": string(strategyapplication.ErrorInvalidCommand),
-				"field": "", "message": "Strategy repository is unavailable",
-			})
-			return
 		}
-		result, failure := executeStrategyApplicationCommand(ctx, strategyBridge, event.Data)
-		if failure != nil {
-			emitter.Emit("strategy:application:error", failure)
-			return
+		// Un *Service nulo dentro de la interfaz coldStartPort no es nil como
+		// interfaz: pasarlo tal cual hace que Status() entre con receptor nulo y
+		// rompa la app al arrancar. Solo se inyecta cuando existe de verdad.
+		strategyService := strategyapplication.NewServiceWithSources(repo, sessionCatalog, nil, referenceCatalog)
+		if coldStart != nil {
+			strategyService = strategyapplication.NewServiceWithSourcesAndColdStart(repo, sessionCatalog, nil, referenceCatalog, coldStart)
 		}
-		emitter.Emit("strategy:application:result", result)
-	})
-	strategySolverBridge := strategysolver.JSONBridge{}
-	wailsApp.Event.On("strategy:solver:compare", func(event *application.CustomEvent) {
-		result, failure := executeStrategySolverCommand(ctx, strategySolverBridge, event.Data)
-		if failure != nil {
-			emitter.Emit("strategy:solver:error", failure)
-			return
+		strategyBridge = strategyapplication.NewJSONBridge(strategyService)
+	}
+	app.NewStrategyApplicationBridge(ctx, strategyBridge, emitter).RegisterHandlers(wailsApp)
+	var curationUploadService *curation.UploadService
+	if strategyRootErr == nil {
+		curationTarget := fmt.Sprintf("Vantare/%s/CurationCredentialsV1", buildChannel)
+		var curationOpenErr error
+		curationUploadService, curationOpenErr = curation.OpenUploadService(curation.UploadServiceOptions{
+			StatePath:   filepath.Join(strategyRoot, "curation-upload.json"),
+			Credentials: curation.NewProtectedCredentialStore(curationTarget),
+			Endpoint:    curationWorkerURL,
+			BuildToken:  curationBuildAdmissionToken,
+		})
+		if curationOpenErr != nil {
+			log.Printf("warning: Curation upload is unavailable")
+			curationUploadService = nil
 		}
-		emitter.Emit("strategy:solver:result", result)
-	})
+	}
+	app.NewCurationUploadBridge(ctx, curationUploadService, emitter).RegisterHandlers(wailsApp)
 	strategyTyresBridge := strategytyres.JSONBridge{}
 	wailsApp.Event.On("strategy:tyres:validate", func(event *application.CustomEvent) {
 		result, failure := executeStrategyTyresCommand(ctx, strategyTyresBridge, event.Data)
@@ -1556,6 +1616,21 @@ func main() {
 		licenseSvc.EmitCachedState()
 	})
 	wailsApp.RegisterService(application.NewService(licenseSvc))
+	telemetryAnalysisCfg, telemetryAnalysisCfgErr := telemetryAnalysisBackendConfig()
+	if telemetryAnalysisCfgErr != nil {
+		log.Printf("warning: Telemetry Analysis backend configuration is unavailable")
+	} else {
+		analysisService, analysisServiceErr := app.NewTelemetryAnalysisService(telemetryAnalysisCfg, licenseSvc)
+		if analysisServiceErr != nil {
+			log.Printf("warning: Telemetry Analysis service is unavailable")
+		} else {
+			telemetryAnalysisSvc = analysisService
+			wailsApp.RegisterService(application.NewService(telemetryAnalysisSvc))
+			if status := telemetryAnalysisSvc.Status(); !status.Available {
+				log.Printf("warning: Telemetry Analysis reader runtime is unavailable; the rest of Vantare will continue")
+			}
+		}
+	}
 	authManager := authsession.NewManager(authsession.NewStore(authSessionTarget))
 
 	// Forward UI license validation requests to the Go service. The frontend

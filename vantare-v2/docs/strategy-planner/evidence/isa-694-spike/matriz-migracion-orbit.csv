@@ -1,0 +1,29 @@
+clave,shape_o_campo,lectura_legacy,riesgo_actual,regla_migracion_F2
+vantare.v03orbit.strategy.events,raíz,JSON object; cualquier error devuelve estado vacío,"corrupción y causa se pierden sin aviso",conservar backup byte a byte; parsear en dry-run; cuarentena tipada si falla
+vantare.v03orbit.strategy.events,events,array o []; cada elemento pasa por parseEvent,"ausencia o tipo erróneo se convierte en lista vacía",distinguir ausente de vacío explícito y mostrarlo en preview
+vantare.v03orbit.strategy.events,activeId,string o null; queda null si el evento no sobrevivió,"referencia colgante se borra silenciosamente",validar referencia tras mapear IDs; cuarentena y decisión visible si cuelga
+vantare.v03orbit.strategy.events,event.id,string no vacía obligatoria,"evento entero descartado si falta",preservar registro inválido en cuarentena; resolver colisiones con fingerprint/journal
+vantare.v03orbit.strategy.events,event.name,string o event.id,"fallback no queda marcado",migrar el valor efectivo con procedencia legacy-default
+vantare.v03orbit.strategy.events,event.source,custom|series|roster o custom,"valor desconocido se reescribe como custom",no reescribir; cuarentena/preview del enum desconocido
+vantare.v03orbit.strategy.events,event.seriesId,string opcional,"tipos inválidos se borran",validar y mostrar descarte antes de commit
+vantare.v03orbit.strategy.events,event.track,string o vacío,"tipo inválido se vuelve vacío",missing explícito; nunca afirmar pista propia observada
+vantare.v03orbit.strategy.events,event.cls,string o vacío,"tipo inválido se vuelve vacío",missing explícito
+vantare.v03orbit.strategy.events,event.durationMin,número finito o 60,"60 min sintéticos indistinguibles del dato del usuario",si faltaba/era inválido marcar legacy_synthetic_default; no observed
+vantare.v03orbit.strategy.events,event.startAt,string o new Date().toISOString(),"default depende del instante de lectura y no es reproducible",no materializar now como dato; missing + raw backup
+vantare.v03orbit.strategy.events,event.team,string opcional,"tipo inválido se borra",validar y conservar missing explícito
+vantare.v03orbit.strategy.events,event.drivers,array filtrado por object con id string; al quedar vacío descarta evento,"solo id se valida; campos internos rotos pasan; descartes silenciosos",validación shape completa; cuarentena por piloto; no descartar evento sin preview
+vantare.v03orbit.strategy.events,event.tankL,número finito o 90,"90 L sintéticos indistinguibles del dato del usuario",marcar legacy_synthetic_default; exigir confirmación/manual antes de usar como capacidad real
+vantare.v03orbit.strategy.events,event.pitLossSec,número finito o 60,"60 s sintéticos indistinguibles del dato del usuario",marcar legacy_synthetic_default; no observed/derived
+vantare.v03orbit.strategy.events,event.strategies,array filtrado por object con id string; puede quedar vacío,"solo id se valida; resto de StrategyVariant pasa sin shape",validar variante completa y referencias a pilotos/neumáticos; cuarentena por variante
+vantare.v03orbit.strategy.events,event.availability,cualquier object casteado sin validar contenido,"segmentos/IDs/intervalos inválidos pasan",validar pilotos; estados; from<to; límites; solapes; preview de reparaciones
+vantare.v03orbit.strategy.events,event.activeStrategyId,string opcional sin comprobar que exista,"referencia interna puede quedar colgante",validar contra estrategias migradas y mostrar conflicto
+vantare.v03orbit.strategy.events,event.teamMode,solo|team o undefined,"valor desconocido se borra",missing explícito o cuarentena; no inventar team
+vantare.v03orbit.strategy.events,event.fillMode,solo manual; telemetry se borra,"un valor telemetry válido por el tipo declarado se descarta",preservar raw; mapear manual explícito; bloquear desconocido/telemetry hasta contrato v2
+vantare.v03orbit.strategy.events,event.lastOpenedAt,string opcional sin validar ISO,"timestamp inválido pasa",parsear ISO estricto; conservar raw inválido en cuarentena
+vantare.v03orbit.strategy.events,writeStrategyEvents,setItem dentro de catch vacío,"fallo de cuota/permisos deja solo memoria sin aviso",F2 debe confirmar persistencia; error visible; journal transaccional
+vantare.v03orbit.strategy,raíz,JSON object o variants vacío,"corrupción devuelve vacío sin aviso",backup byte a byte + cuarentena tipada
+vantare.v03orbit.strategy,wrapped.variants,si existe la clave variants se castea el objeto entero,"no valida que variants sea mapa ni las variantes",validar mapa/shape y conservar availability por separado
+vantare.v03orbit.strategy,flat variant map,si no existe variants toda la raíz se interpreta como mapa,"cualquier propiedad accidental se vuelve supuesto ID de variante",detectar shape por schema explícito y presentar entradas ambiguas
+vantare.v03orbit.strategy,availability,cualquier object casteado,"sin validación de piloto/segmento",mismas reglas estrictas que events.availability
+vantare.v03orbit.strategy,variant existente,superpone state/order/overrides/tyres sobre roster,"campos inválidos pasan o caen a defaults sin procedencia",migrar como override legacy con validación y provenance
+vantare.v03orbit.strategy,variant local,requisitos: order array no vacía; defaults name=id note='' mode=dry state=draft overrides={} tyres={},"entradas sin order se descartan; defaults no quedan marcados",cuarentena si falta order; defaults con procedencia legacy-default; conservar raw

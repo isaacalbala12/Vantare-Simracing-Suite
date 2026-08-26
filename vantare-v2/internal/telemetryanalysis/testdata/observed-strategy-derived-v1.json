@@ -1,0 +1,22 @@
+{
+  "contractVersion": "observedstrategy.v1",
+  "sessionId": "race-observed",
+  "generatedAt": "2026-08-21T12:00:00.000Z",
+  "presence": "unknown",
+  "provenance": {"kind": "derived", "sourceId": "race-observed"},
+  "confidence": {"sampleSize": 6, "computationVersion": "observed-strategy.v1"},
+  "stints": [
+    {"stintNumber": 1, "startLap": 1, "endLap": 2, "totalTimeSeconds": 200, "compoundRaw": 0, "compoundNote": "raw 0 without semantic mapping", "presence": "valid", "provenance": {"kind": "observed", "sourceId": "race-observed"}},
+    {"stintNumber": 2, "startLap": 3, "endLap": 4, "totalTimeSeconds": 200, "compoundRaw": 0, "compoundNote": "raw 0 without semantic mapping", "presence": "valid", "provenance": {"kind": "observed", "sourceId": "race-observed"}},
+    {"stintNumber": 3, "startLap": 5, "endLap": 6, "totalTimeSeconds": 200, "compoundRaw": 1, "compoundNote": "raw 1 without semantic mapping", "presence": "valid", "provenance": {"kind": "observed", "sourceId": "race-observed"}}
+  ],
+  "pitStops": [
+    {"lapNumber": 2, "pitLaneSeconds": 4, "fuelAddedLiters": 20, "presence": "unknown", "provenance": {"kind": "observed", "sourceId": "race-observed"}}
+  ],
+  "changes": [
+    {"lapNumber": 2, "kind": "fuel_rise", "delta": 20, "presence": "unknown", "provenance": {"kind": "derived", "sourceId": "race-observed"}},
+    {"lapNumber": 4, "kind": "tyre_change", "presence": "valid", "provenance": {"kind": "derived", "sourceId": "race-observed"}},
+    {"lapNumber": 4, "kind": "wear_rise", "delta": 8, "presence": "unknown", "provenance": {"kind": "derived", "sourceId": "race-observed"}}
+  ],
+  "result": {"completedLaps": 6, "totalTimeSeconds": 600, "completed": true}
+}

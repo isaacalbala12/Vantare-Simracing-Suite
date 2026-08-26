@@ -290,6 +290,44 @@ func TestSelectFitmentExplainsCornerLockedShortage(t *testing.T) {
 	}
 }
 
+func TestSelectFitmentExcludingRequiresAnotherPhysicalSet(t *testing.T) {
+	inventory := mustInventory(t,
+		mustAllocatedTyre(t, "hard-a-fl", CompoundHard),
+		mustAllocatedTyre(t, "hard-a-fr", CompoundHard),
+		mustAllocatedTyre(t, "hard-a-rl", CompoundHard),
+		mustAllocatedTyre(t, "hard-a-rr", CompoundHard),
+		mustAllocatedTyre(t, "hard-b-fl", CompoundHard),
+		mustAllocatedTyre(t, "hard-b-fr", CompoundHard),
+		mustAllocatedTyre(t, "hard-b-rl", CompoundHard),
+		mustAllocatedTyre(t, "hard-b-rr", CompoundHard),
+	)
+	request := FitmentRequest{
+		FrontLeft: CompoundHard, FrontRight: CompoundHard,
+		RearLeft: CompoundHard, RearRight: CompoundHard,
+	}
+	first, err := inventory.SelectFitment(request)
+	if err != nil {
+		t.Fatalf("select first fitment: %v", err)
+	}
+	second, err := inventory.SelectFitmentExcluding(request, []TyreID{
+		first.FrontLeft, first.FrontRight, first.RearLeft, first.RearRight,
+	})
+	if err != nil {
+		t.Fatalf("select second fitment: %v", err)
+	}
+	for _, id := range []TyreID{second.FrontLeft, second.FrontRight, second.RearLeft, second.RearRight} {
+		if id == first.FrontLeft || id == first.FrontRight || id == first.RearLeft || id == first.RearRight {
+			t.Fatalf("excluded tyre %s was reused: first=%+v second=%+v", id, first, second)
+		}
+	}
+
+	_, err = inventory.SelectFitmentExcluding(request, []TyreID{
+		first.FrontLeft, first.FrontRight, first.RearLeft, first.RearRight,
+		second.FrontLeft, second.FrontRight, second.RearLeft, second.RearRight,
+	})
+	assertInventoryError(t, err, ErrorInsufficientInventory)
+}
+
 func mustAllocatedTyre(t *testing.T, id TyreID, compound Compound) Tyre {
 	t.Helper()
 	condition, err := DefaultCondition(OriginEventAllocation)

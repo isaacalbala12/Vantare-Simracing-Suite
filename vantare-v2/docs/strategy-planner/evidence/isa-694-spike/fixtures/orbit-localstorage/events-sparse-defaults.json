@@ -1,0 +1,24 @@
+{
+  "storageKey": "vantare.v03orbit.strategy.events",
+  "shape": "events-state-sparse-defaults",
+  "value": {
+    "events": [
+      {
+        "id": "sparse-1",
+        "drivers": [{"id": "driver-1"}],
+        "strategies": [{"id": "s1"}]
+      }
+    ],
+    "activeId": "sparse-1"
+  },
+  "observedDefaults": {
+    "name": "sparse-1",
+    "source": "custom",
+    "track": "",
+    "cls": "",
+    "durationMin": 60,
+    "tankL": 90,
+    "pitLossSec": 60,
+    "startAt": "runtime-now-nondeterministic"
+  }
+}

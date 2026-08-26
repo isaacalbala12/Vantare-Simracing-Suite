@@ -100,6 +100,8 @@ export const studioOrbitEs: Record<string, string> = {
   "studio.inspector.content.width.sm": "Estrecha",
   "studio.inspector.content.width.md": "Media",
   "studio.inspector.content.width.lg": "Ancha",
+  "studio.inspector.content.redlineFixed": "Posición y Piloto son anclajes fijos de Redline.",
+  "studio.inspector.content.redlineWidthWarning": "Ensancha el widget a al menos {width} px para evitar recortes.",
   "studio.inspector.content.moveUp": "Subir",
   "studio.inspector.content.moveDown": "Bajar",
   "studio.inspector.design.applyAll": "Aplicar a todos",

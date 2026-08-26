@@ -872,6 +872,25 @@
   list-style: none;
 }
 
+.orbit-studio-cols__note,
+.orbit-studio-cols__warning {
+  margin: 10px 0 0;
+  font-size: var(--orbit-fs-secondary);
+  line-height: 1.4;
+}
+
+.orbit-studio-cols__note {
+  color: var(--orbit-text-muted);
+}
+
+.orbit-studio-cols__warning {
+  padding: 7px 9px;
+  border: 1px solid rgba(245, 158, 11, 0.38);
+  border-radius: var(--orbit-radius-chip, 8px);
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.08);
+}
+
 .orbit-studio-cols__item {
   display: flex;
   flex-direction: column;

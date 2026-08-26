@@ -100,6 +100,8 @@ export const studioOrbitIt: Record<string, string> = {
   "studio.inspector.content.width.sm": "Stretta",
   "studio.inspector.content.width.md": "Media",
   "studio.inspector.content.width.lg": "Larga",
+  "studio.inspector.content.redlineFixed": "Posizione e Pilota sono ancoraggi fissi di Redline.",
+  "studio.inspector.content.redlineWidthWarning": "Allarga il widget ad almeno {width} px per evitare tagli.",
   "studio.inspector.content.moveUp": "Su",
   "studio.inspector.content.moveDown": "Giu",
   "studio.inspector.design.applyAll": "Applica a tutti",

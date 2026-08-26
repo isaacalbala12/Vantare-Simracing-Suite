@@ -49,66 +49,19 @@ Tienes dos metodos:
 
 ### Metodo C: build local desde codigo fuente (desarrolladores)
 
-Si tienes el codigo fuente y quieres compilar localmente, sigue estos pasos. Necesitas: **Go 1.25+**, **Node 20+**, **pnpm**.
+Un build directo desde codigo (`pnpm`, `go build` o `wails3 task build`) sirve
+solo para desarrollo y **no es publicable ni distribuible**: no demuestra el
+preflight de configuracion, los seis artefactos, checksums, runtime confiado ni
+verify final.
 
-#### Paso 1: Configurar `.env.local`
+Para producir una build que vaya a recibir otra persona, sigue la receta unica
+`docs/release-artifacts.md` desde la carga autorizada del entorno hasta el
+smoke obligatorio de Google OAuth. Esa receta permite leer `.env.local` desde
+otro worktree sin copiarlo ni imprimirlo y explica la diferencia entre
+variables `VITE_*` (pnpm directo) y `VANTARE_*` (Task/Go directo).
 
-Copia `.env.example` a `frontend/.env.local` y rellena las credenciales de Supabase:
-
-```powershell
-Copy-Item frontend\.env.example frontend\.env.local
-# Edita frontend/.env.local con tus credenciales reales
-```
-
-El archivo debe contener al menos:
-```
-VITE_SUPABASE_URL=https://tu-proyecto.supabase.co
-VITE_SUPABASE_ANON_KEY=tu-anon-key
-```
-
-> [!WARNING]
-> Sin `.env.local` con credenciales reales, la app mostrara "Supabase no configurado" y no podras iniciar sesion.
-
-#### Paso 2: Instalar dependencias y compilar frontend
-
-```powershell
-cd vantare-v2
-corepack pnpm --dir frontend install
-corepack pnpm --dir frontend build
-```
-
-#### Paso 3: Compilar binario Go con Supabase embebido
-
-```powershell
-# Mapear variables de entorno desde .env.local
-$envFile = Get-Content frontend\.env.local | Where-Object { $_ -match '^\s*VITE_SUPABASE_' }
-foreach ($line in $envFile) {
-  $parts = $line -split '=', 2
-  if ($parts.Count -eq 2) {
-    if ($parts[0].Trim() -eq 'VITE_SUPABASE_URL') { $env:VANTARE_SUPABASE_URL = $parts[1].Trim() }
-    if ($parts[0].Trim() -eq 'VITE_SUPABASE_ANON_KEY') { $env:VANTARE_SUPABASE_ANON_KEY = $parts[1].Trim() }
-  }
-}
-
-# Generar archivo temporal con credenciales embebidas
-powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\generate_supabase_config.ps1 -OutFile .\cmd\vantare\supabase_build.go
-
-# Compilar
-try {
-  go build -tags production -trimpath -buildvcs=false -ldflags "-w -s -H windowsgui" -o .\bin\vantare.exe .\cmd\vantare
-} finally {
-  Remove-Item .\cmd\vantare\supabase_build.go -ErrorAction SilentlyContinue
-}
-```
-
-#### Paso 4: Ejecutar
-
-```powershell
-Start-Process -FilePath .\bin\vantare.exe -WorkingDirectory .\bin
-```
-
-> [!TIP]
-> Para modo mock (sin LMU): la app arranca en modo mock por defecto si Le Mans Ultimate no esta abierto.
+Para una prueba local no distribuible puede seguir usandose `wails3 task build`.
+El modo Mock permanece disponible cuando Le Mans Ultimate no esta abierto.
 
 ---
 

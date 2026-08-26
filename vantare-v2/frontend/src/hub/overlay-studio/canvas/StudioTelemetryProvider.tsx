@@ -4,17 +4,21 @@ import type { TelemetryRateCoordinator } from '../../../overlay/core/telemetry-r
 import type { TelemetryAdapter } from '../../../overlay/transports/telemetry-adapter';
 import { useStudioPreview } from '../state/studio-store';
 import { StudioTelemetryContext, type StudioTelemetryContextValue } from './studio-telemetry';
+import { useOrbitKeepAliveActivity } from '../../components/orbit/orbit-keep-alive-activity';
 
 export type StudioTelemetryProviderProps = {
   coordinator: TelemetryRateCoordinator;
   liveAvailable: boolean;
   telemetryAdapter?: TelemetryAdapter | null;
+  /** Suspends React paints without restarting transport or losing the latest snapshot. */
+  active?: boolean;
   children: ReactNode;
 };
 
 export function StudioTelemetryProvider(props: StudioTelemetryProviderProps): React.ReactElement {
-  const { coordinator, liveAvailable, telemetryAdapter = null, children } = props;
+  const { coordinator, liveAvailable, telemetryAdapter = null, active = true, children } = props;
   const { preview } = useStudioPreview();
+  const activityGate = useOrbitKeepAliveActivity();
 
   // Single layout effect handles both mock publishing and live adapter lifecycle.
   // Merged into one effect to eliminate race conditions between two independent
@@ -52,8 +56,8 @@ export function StudioTelemetryProvider(props: StudioTelemetryProviderProps): Re
   ]);
 
   const value = useMemo<StudioTelemetryContextValue>(
-    () => ({ coordinator, liveAvailable }),
-    [coordinator, liveAvailable],
+    () => ({ coordinator, liveAvailable, active, activityGate }),
+    [active, activityGate, coordinator, liveAvailable],
   );
 
   return (
@@ -65,6 +69,7 @@ export function ConnectedStudioTelemetryProvider(props: {
   coordinator: TelemetryRateCoordinator;
   liveAvailable?: boolean;
   telemetryAdapter?: TelemetryAdapter | null;
+  active?: boolean;
   children: ReactNode;
 }): React.ReactElement {
   return (
@@ -72,6 +77,7 @@ export function ConnectedStudioTelemetryProvider(props: {
       coordinator={props.coordinator}
       liveAvailable={props.liveAvailable ?? false}
       telemetryAdapter={props.telemetryAdapter ?? null}
+      active={props.active}
     >
       {props.children}
     </StudioTelemetryProvider>

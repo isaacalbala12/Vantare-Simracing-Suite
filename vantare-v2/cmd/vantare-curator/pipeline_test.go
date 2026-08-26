@@ -6,6 +6,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/vantare/overlays/v2/internal/strategy/backtest"
@@ -246,6 +247,19 @@ func TestRunRequiresOutputOutsideInput(t *testing.T) {
 	output := filepath.Join(input, "summary.json")
 	if err := run([]string{"--in", input, "--out", output}, &bytes.Buffer{}); err == nil {
 		t.Fatal("output inside input was accepted")
+	}
+}
+
+func TestPathInsideTreatsDifferentWindowsVolumesAsOutside(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("Windows volume semantics")
+	}
+	inside, err := pathInside(`C:\input`, `D:\output\summary.json`)
+	if err != nil {
+		t.Fatalf("pathInside: %v", err)
+	}
+	if inside {
+		t.Fatal("a path on another Windows volume was considered inside")
 	}
 }
 

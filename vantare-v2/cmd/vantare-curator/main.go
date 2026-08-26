@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 func main() {
@@ -56,6 +57,9 @@ func pathInside(parent, candidate string) (bool, error) {
 	candidateAbsolute, err := filepath.Abs(candidate)
 	if err != nil {
 		return false, fmt.Errorf("resolve --out: %w", err)
+	}
+	if !strings.EqualFold(filepath.VolumeName(parentAbsolute), filepath.VolumeName(candidateAbsolute)) {
+		return false, nil
 	}
 	relative, err := filepath.Rel(parentAbsolute, candidateAbsolute)
 	if err != nil {

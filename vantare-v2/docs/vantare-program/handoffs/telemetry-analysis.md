@@ -26,6 +26,84 @@ promover el conjunto aceptado a `nightly`.
 TA-03 / ISA-126 caracterizó DuckDB LMU mediante copia temporal read-only y
 añadió el modelo/parser histórico v1. TA-03C cierra su antiguo hueco operativo
 con un reader ligado al artefacto autorizado y un adaptador reproducible.
+TA-03E tiene una candidata local revisada sobre
+`work/ta03e-backend-reader-wiring`: añade la frontera backend no visual que
+conecta discovery, autorización, estabilidad/revalidación, staging privado,
+reader/parser, catálogo, paginación y teardown. Solo abre IDs opacos emitidos
+por el propio servicio; no acepta paths de consumidor. La raíz LMU procede de
+la detección nativa Steam, el runtime de `ProductionTrust(applicationDirectory)`
+y el staging de la caché backend. Runtime ausente degrada solo el módulo. La
+matriz comercial/operativa y la copia defensiva del estado están cubiertas por
+tests. Evidencia local: test/vet focal, build frontend, suite Go global con
+`CGO_ENABLED=0`, grafo raíz sin DuckDB/CGO y diff-check PASS. Las reviews de
+especificación y calidad terminaron `APPROVE` después de cerrar cleanup
+reintentable/acotado y bindings Wails accidentales. Race focal TA-03E x5 pasa
+con MSYS2 UCRT64; el paquete completo `cmd/vantare` conserva una carrera
+heredada en `spyMainEmitter`/`TestHandleProfileRetryFailed`, fuera del corte y
+pendiente de issue. Esa rama no hizo Linear, push, PR, promoción ni release.
+TA-03F tiene una candidata local verificada sobre
+`work/ta03f-windows-runtime-packaging`, base apilada exacta
+`559c3753a82071398ef1af3fbcc2d30c4dd3fe52`. Installer y portable empaquetan
+como unidad atómica el runtime TA-03C en
+`runtime/telemetry/duckdb-v1`; el updater hereda el cambio porque consume el
+installer. El pipeline falla antes del artefacto si falta un miembro, cambia
+un hash/manifest o aparece un extra. Tras el spec review, NSIS usa marcadores
+`pending`/`committed`: rollback reproduce la presencia o ausencia previa de exe
+y runtime, mientras una reentrada post-commit solo limpia backups y conserva el
+par nuevo. El modelo conductual cubre cuatro estados previos, interrupciones y
+fallos de cleanup; NSIS compila en scopes user/machine. Los flags CGO se validan
+con compilacion C/C++ real en paths con espacios. El runtime se reconstruyó con
+los hashes confiados, smoke x64 pasó y los artefactos locales pasaron
+version/layout verify. Pendientes los smokes reales de install/upgrade/rollback/uninstall en
+Windows 11 y Windows 10 si continúa soportado. Sin Linear, push, PR, CI remoto,
+merge, promoción ni release.
+
+La correccion local posterior de packaging añade un preflight de configuracion
+publica como primer comando serial de `release:artifacts`,
+`windows:package:all` y `release:portable`. Si falta URL o anon key de Supabase,
+falla antes de runtime, pnpm o Go; no imprime valores y no bloquea
+`windows:build`/dev/offline. `docs/release-artifacts.md` es la receta unica para
+cargar una ruta `.env.local` autorizada sin copiarla, reconstruir con `-f` y
+completar el smoke obligatorio de Google OAuth. El harness nuevo pasa 17 casos
+en Windows PowerShell 5.1 y PowerShell 7, con `-f` cubierto en los tres targets;
+el harness completo TA-03F tambien permanece verde en ambos hosts. La receta
+CI esta contrastada directamente con el workflow, `go.mod` y el
+`packageManager` actuales.
+
+El 2026-08-12 se reconstruyo un set local con la pareja Supabase autorizada y
+sin afirmar validacion de una licencia concreta. La configuracion quedo
+presente en frontend y exe segun checks booleanos que no expusieron valores;
+installer, portable y exe pasaron hashes, version e inventario DuckDB. El run
+descubrio que el hijo PowerShell 5 de `wails3 task` no resolvia el cmdlet
+autoloaded `Get-FileHash`, aunque el script directo si. `69a72a3` reemplaza esa
+dependencia en el verifier por SHA-256 puro .NET y añade una regresion que
+inutiliza deliberadamente el cmdlet. Harness PS5/PS7 y el alias oficial
+`release:verify` pasan. En ese punto OAuth, instalacion, upgrade y uninstall
+seguian siendo gates manuales; el build por si solo no demostraba paridad de
+licencia.
+
+Gate humano del 2026-08-12: con URL, anon key y un registro publico Ed25519
+valido embebidos, Isaac instalo/actualizo la candidata y confirmo arranque y
+Google OAuth correctos. El exe instalado coincide por SHA-256 con la build
+`dd953d08eb4c9d46eacb3559073529ac0e61b7bcb151af4496f5fe53f598e221`; el
+runtime instalado conserva el manifest confiado y sus cinco miembros exactos.
+Quedan rollback, uninstall y Windows 10 si sigue soportado. No hubo revision
+visual ni promocion.
+
+El segundo spec review cerró la ventana de mezcla durante extracción/rollback:
+runtime se verifica primero con el producto sin exe, el macro Wails extrae sólo
+en `.vantare-install-stage` y un rename atómico publica el exe justo antes del
+commit. Rollback retira producto/staging antes de tocar runtime y restaura el exe
+viejo al final desde staging; un fallo de runtime conserva exe ausente,
+marker/backups y reentrada segura. El modelo corta tras cada operación y sólo
+acepta pareja anterior/nueva o exe ausente.
+El tercer fix garantiza además que cleanup normal, rollback y reentrada cambian
+`OutDir` a `$INSTDIR` antes de cada una de las cinco eliminaciones del staging;
+NSIS no intenta ya borrar su directorio de salida actual.
+El quality fix posterior restringe `prepare-runtime` al `bin` canónico y bloquea
+junctions/reparse points en cada ancestro del destino antes de cualquier
+reemplazo; el sentinel externo del test real queda intacto. Los dos checks NSIS
+del exe rechazan 0, menos de 1024 y exactamente 1024 bytes.
 TA-03B / ISA-135 cerró el corte de decisión tras un primer review
 `REQUEST CHANGES`: recomienda un helper local fuera de proceso con
 `duckdb-go/v2` y `duckdb.dll` dinámico, descarta el CLI y el CGO dentro de Wails,
@@ -175,17 +253,33 @@ notas/correcciones, CSV/paquete/demo, tests/benchmarks/capturas.
 | Cerrada técnicamente | TA-03B / ISA-135, decisión, límite LMU local y SBOM reproducible |
 | Cerrada técnicamente / In Review | TA-03C / ISA-168, helper/adaptador productivo fuera de proceso; review `APPROVE` |
 | Backlog obligatorio antes de imports externos | TA-03D / ISA-164, sandbox real para contenido externo/comunitario |
-| Siguiente | TA-04, progreso/distancia y mapa con evidencia |
+| Candidata local | TA-03E, cableado backend no visual; identificador Linear pendiente |
+| Candidata local | TA-03F, packaging atómico Windows; identificador Linear pendiente |
+| Siguiente tras validación | TA-04, progreso/distancia y mapa con evidencia |
 | Implementación posterior | TA-05+ según `research/telemetry-analysis/plan-microcuts.md` |
 
 ## Siguiente acción exacta
 
-Validar TA-03C en Nightly/Pro Plus y continuar TA-04 para caracterizar
+Revisar TA-03E/TA-03F y ejecutar los gates manuales de packaging antes de una
+promoción autorizada a Nightly/Pro Plus. Después continuar TA-04 para caracterizar
 progreso/distancia y mapa con evidencia real. ISA-164 / TA-03D no bloquea la
 lectura LMU local, pero sí cualquier import externo o comunitario. TA-05 publica
 la proyección histórica para Strategy sin exponer DuckDB o el almacenamiento.
 
 ## Última actualización
+
+2026-08-11, TA-03F candidata local tras reviews de especificación y calidad: runtime TA-03C confiado integrado sin UI en
+portable e installer bajo `runtime/telemetry/duckdb-v1`. Build reproducible,
+manifest/hashes, smoke Windows x64, tests fail-closed, ZIP real, NSIS real en
+scope user/machine y verify local PASS. Upgrade/rollback persiste estados
+pending/committed, cubre estados previos parciales y no restaura backups tras
+commit; un harness conductual prueba interrupciones, cleanup fallido y reentrada.
+El segundo endurecimiento publica y restaura el exe mediante staging+rename sólo
+con el runtime ya consistente, y prueba cortes intra-rollback.
+El build CGO real pasa con paths temporales con espacios. Updater conserva su
+protocolo y consume el installer.
+Pendientes instalación/upgrade/rollback/uninstall reales en Windows 11 y el
+gate Windows 10 si aplica. Sin push, PR, CI remoto, merge, promoción o release.
 
 2026-08-02, ISA-168 / TA-03C cerrada técnicamente sobre ISA-135. Helper Windows x64
 fuera de proceso, módulo DuckDB separado, staging DACL privado, manifest

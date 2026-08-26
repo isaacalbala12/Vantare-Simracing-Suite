@@ -1,8 +1,11 @@
 # Release artifacts reproducibles (R03.B)
 
-Fuente operativa del flujo de empaquetado oficial de Vantare Simracing Suite para Windows. Documenta que artefactos se publican, que comandos los generan, donde se guardan y como se verifica que la version correcta esta embebida.
-
-Esta guia complementa a `docs/release-beta-operations-runbook.md` (operativa general de release) y a `docs/versioning-and-release-gates.md` (versionado). El detalle tecnico vive en los scripts `tools/build_nsis.ps1` y `tools/release_artifacts.ps1`.
+Esta es la **receta unica y autosuficiente** para construir artefactos
+distribuibles de Vantare en Windows. El runbook general y la guia de testers
+deben enlazar aqui, no duplicar la carga de entorno ni los comandos de build.
+El versionado se rige por `docs/versioning-and-release-gates.md`; el detalle
+tecnico vive en `tools/release_build_preflight.ps1`, `tools/build_nsis.ps1` y
+`tools/release_artifacts.ps1`.
 
 ---
 
@@ -10,9 +13,9 @@ Esta guia complementa a `docs/release-beta-operations-runbook.md` (operativa gen
 
 | Artefacto | Ruta | Tamanio tipico | Notas |
 |---|---|---|---|
-| Instalador NSIS | `bin/vantare-amd64-installer.exe` | ~6.7 MB | Ejecutable unico self-extracting. Genera atajo de escritorio, menu inicio, atajo de desinstalacion. |
-| Portable zip | `bin/vantare-portable-amd64.zip` | ~5.0 MB | Contiene `vantare.exe`, `configs/*.json` (perfiles embebidos) y `docs/README.txt` (copia de `tester-build-instructions.md`). Pensado para testers que no quieren un instalador. |
-| Binario base | `bin/vantare.exe` | ~13 MB | Empaquetado dentro del instalador. Tambien se publica como portable para que el updater pueda distribuirlo (futuro). |
+| Instalador NSIS | `bin/vantare-amd64-installer.exe` | ~25 MB | Ejecutable self-extracting con `vantare.exe` y la unidad DuckDB confiada. Genera atajos y desinstalador. |
+| Portable zip | `bin/vantare-portable-amd64.zip` | ~25 MB | Contiene `vantare.exe`, `configs/*.json`, `docs/README.txt` y la unidad exacta `runtime/telemetry/duckdb-v1`. |
+| Binario base | `bin/vantare.exe` | ~13 MB | Empaquetado dentro del instalador. El updater productivo descarga y ejecuta el installer, por lo que hereda la unidad DuckDB. |
 | Checksums SHA-256 | `bin/<artifact>.sha256` | ~90 B | Un archivo `<artifact>.sha256` por cada artefacto oficial. Formato `<hash>  <nombre>`. |
 | Suma global de checksums | `bin/SHA256SUMS.txt` | (futuro) | Se anade en R03.C si la publicacion a GitHub Releases lo necesita. |
 
@@ -22,7 +25,74 @@ Esta guia complementa a `docs/release-beta-operations-runbook.md` (operativa gen
 
 ## 2. Comandos oficiales
 
-Desde la raiz de `vantare-v2/`:
+### 2.1 Preparar una consola autorizada sin copiar ni imprimir `.env.local`
+
+Abre PowerShell desde la raiz de `vantare-v2/`. El archivo autorizado puede
+estar en este checkout o en otro worktree: indica su ruta original y leelo en
+memoria; no lo copies al worktree de release, no uses `Get-Content` a solas y
+no imprimas las variables. Este bloque solo admite los dos nombres publicos de
+Supabase y exporta los nombres `VANTARE_*` que consume Task:
+
+```powershell
+$releaseEnvPath = 'C:\ruta-autorizada\vantare-v2\frontend\.env.local'
+if (-not (Test-Path -LiteralPath $releaseEnvPath -PathType Leaf)) {
+  throw 'No existe la ruta .env.local autorizada.'
+}
+
+$releaseConfig = @{}
+foreach ($line in [System.IO.File]::ReadLines($releaseEnvPath)) {
+  if ($line -match '^\s*(VITE_SUPABASE_URL|VITE_SUPABASE_ANON_KEY)\s*=\s*(.*)\s*$') {
+    $value = $Matches[2].Trim()
+    if ($value.Length -ge 2 -and
+        (($value[0] -eq '"' -and $value[$value.Length - 1] -eq '"') -or
+         ($value[0] -eq "'" -and $value[$value.Length - 1] -eq "'"))) {
+      $value = $value.Substring(1, $value.Length - 2)
+    }
+    $releaseConfig[$Matches[1]] = $value
+  }
+}
+
+$env:VANTARE_SUPABASE_URL = $releaseConfig['VITE_SUPABASE_URL']
+$env:VANTARE_SUPABASE_ANON_KEY = $releaseConfig['VITE_SUPABASE_ANON_KEY']
+Remove-Variable releaseConfig, value -ErrorAction SilentlyContinue
+& .\tools\release_build_preflight.ps1
+if ($LASTEXITCODE -ne 0) { throw 'Configuracion publica de release incompleta.' }
+```
+
+El preflight solo muestra `SET`, `UNSET` y los nombres ausentes; nunca muestra
+valores. `release:artifacts`, `windows:package:all` y `release:portable` lo
+ejecutan como primera orden y fallan antes de dependencias, frontend, Go o
+runtime si falta cualquiera de los dos nombres. `windows:build`, desarrollo y
+los flujos offline no se bloquean.
+
+Task necesita `VANTARE_SUPABASE_URL` y `VANTARE_SUPABASE_ANON_KEY`; durante su
+build frontend deriva de ellas `VITE_SUPABASE_URL` y
+`VITE_SUPABASE_ANON_KEY`. Si se invoca `pnpm --dir frontend build` directamente,
+hay que proporcionar los nombres `VITE_*`. Si se invoca el generador y
+`go build` directamente, hay que proporcionar los nombres `VANTARE_*`.
+
+Una pareja Supabase local o de desarrollo basta para comprobar que el build
+queda configurado contra ese proyecto, pero **no demuestra paridad real de
+licencia**. La validacion real requiere ademas el registro autorizado
+`VANTARE_LICENSE_PUBLIC_KEYS` y la configuracion del canal/CI correspondiente.
+No inventes ni copies ese registro entre worktrees.
+
+### 2.2 Construir y verificar
+
+Tras cargar el entorno en la misma consola:
+
+```powershell
+wails3 task release:clean
+wails3 task -f release:artifacts
+wails3 task release:verify
+```
+
+Usa `-f` cuando corriges un build o cambias variables de entorno: obliga a Task
+a reconstruir pasos que de otro modo podria considerar actualizados. El
+preflight es un comando serial, no una precondition de Task, por lo que `-f` no
+puede omitirlo. No uses un artefacto previo para validar un entorno nuevo.
+
+Comandos disponibles desde la raiz:
 
 | Tarea | Comando | Equivalente Windows |
 |---|---|---|
@@ -36,6 +106,11 @@ Desde la raiz de `vantare-v2/`:
 
 `release:artifacts` es el alias canonico de R03.B y es lo que un orquestador o un humano debe correr para producir un set de release.
 
+Los scripts de bajo nivel pueden empaquetar un `vantare.exe` preconstruido y no
+repiten el preflight. Esa via solo sirve para diagnostico controlado de un exe
+ya validado; no convierte el resultado en publicable. Todo artefacto
+distribuible debe salir de `release:artifacts` o `release:portable` con el gate.
+
 **Pre-condicion Windows:** `makensis` accesible (real NSIS 3.x). Acepta cualquiera de estas fuentes:
 - en `PATH` (`where makensis` debe resolver),
 - en la ruta estandar `C:\Program Files (x86)\NSIS\Bin\makensis.exe`,
@@ -43,11 +118,21 @@ Desde la raiz de `vantare-v2/`:
 
 El script `tools/build_nsis.ps1` resuelve el NSIS real automaticamente en ese orden y cae al binario real aunque exista el shim de wails3 (que falla con 0x2 en algunos entornos).
 
+El runtime DuckDB requiere ademas PowerShell 7 (`pwsh`), Go 1.26.4 y GCC
+UCRT64. `windows:package:all` y `windows:release:portable` lo preparan antes de
+empaquetar. Para una ejecucion reproducible sin volver a descargar el ZIP
+DuckDB oficial, pasar
+`DUCKDB_ARCHIVE_PATH=C:\ruta\libduckdb-windows-amd64.zip`; el script valida su
+SHA-256 antes de usarlo.
+
 ---
 
 ## 3. Pipeline detallado (`wails3 task release:artifacts`)
 
 ```text
+0. release_build_preflight.ps1
+   Exige VANTARE_SUPABASE_URL y VANTARE_SUPABASE_ANON_KEY antes de build/deps.
+
 1. version:sync   (root)
    Lee VERSION (0.3.10.0) y sincroniza:
      - cmd/vantare/main.go              -> var version = "v0.3.10.0"
@@ -61,21 +146,27 @@ El script `tools/build_nsis.ps1` resuelve el NSIS real automaticamente en ese or
      -ldflags="-w -s -H windowsgui -X main.version=v0.3.10.0"
    -> bin/vantare.exe
 
-3. windows:package:all
-   3.1 tools/build_nsis.ps1
+3. windows:telemetry:runtime
+   build-runtime.ps1 + verify-runtime.ps1 + smoke-runtime.ps1
+   -> bin/runtime/telemetry/duckdb-v1 (5 miembros exactos)
+
+4. windows:package:all
+   4.1 tools/build_nsis.ps1
        wails3 generate webview2bootstrapper + makensis project.nsi
        -> bin/vantare-amd64-installer.exe
-   3.2 tools/release_artifacts.ps1 portable-zip
-       Comprime bin/vantare.exe + configs/*.json + tester README
+   4.2 tools/release_artifacts.ps1 portable-zip
+       Comprime exe, configs, tester README y el runtime confiado
        -> bin/vantare-portable-amd64.zip
-   3.3 tools/release_artifacts.ps1 sha256
+   4.3 tools/release_artifacts.ps1 sha256
        Escribe <artifact>.sha256 para installer, zip y exe
        usando certutil.exe (siempre disponible en Windows)
-   3.4 tools/release_artifacts.ps1 verify
+   4.4 tools/release_artifacts.ps1 verify
        Escanea el binario y el installer confirmando que la
        cadena 'v<VERSION>' (UTF-8) o '<VERSION>' (UTF-16 LE en
        el recurso de version PE del NSIS) esta presente.
-       Falla con exit code !=0 si la version no aparece.
+       Ademas abre el ZIP, extrae de forma acotada solo los cinco miembros del
+       runtime y revalida inventario, manifest trust, tamanos y hashes. Falla
+       con exit code !=0 ante ausencia, tamper o miembros extra.
 ```
 
 ---
@@ -93,28 +184,58 @@ El workflow `Release build` (R03.C) automatiza el pipeline de artefactos en GitH
 
 | Trigger | Comportamiento |
 |---|---|
-| Push de tag `v*` | Build + upload de artifacts + creacion automatica de GitHub Release con los 6 archivos oficiales. |
-| `workflow_dispatch` sobre un tag con `create_release: true` | Build + upload + creacion manual de GitHub Release. |
-| `workflow_dispatch` sobre una rama o tag sin `create_release` | Build + upload de artifacts; **no** crea release. |
+| Push de tag `v*` | Exige que el commit del tag pertenezca a `master`; construye, sube los seis assets y crea o actualiza una release estable. |
+| `workflow_dispatch` desde `nightly` o `testers`, `publish_channel: none` | Construye y sube el artifact interno de Actions; no crea GitHub Release. |
+| `workflow_dispatch` desde `nightly` o `testers`, canal homonimo | Exige `release_tag`, manifest y fragmentos; construye, crea o actualiza la pre-release y solo despues publica las comunicaciones configuradas. |
+
+Los inputs actuales del dispatch son `publish_channel` (`none`, `nightly` o
+`testers`), `release_tag` y `release_notes`. No existe un input
+`create_release`. El canal publicable debe coincidir con la rama y el tag debe
+seguir el sufijo de ese canal.
+
+El job Windows recibe estas variables sin imprimir sus valores:
+
+- `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` desde secrets para Vite;
+- `VANTARE_SUPABASE_URL` y `VANTARE_SUPABASE_ANON_KEY` desde los mismos
+  valores publicos para Task/Go y el preflight;
+- `VANTARE_LICENSE_PUBLIC_KEYS` para paridad de licencia;
+- `VANTARE_BUILD_CHANNEL` derivado de la rama o `master` para tags.
+
+El gate inicial comprueba los nombres `VITE_*` y
+`VANTARE_LICENSE_PUBLIC_KEYS`; el preflight de packaging comprueba despues la
+pareja `VANTARE_*`. La ausencia de cualquiera de esos contratos detiene el job.
 
 Pasos principales del job `build`:
 
 1. Checkout del repo en la raiz (`Vantare-Overlays/`).
-2. Setup de Go `1.25.0`, pnpm `10`, Node `22`.
-3. Instalacion de NSIS `3.12.0` via Chocolatey (pinned).
-4. Instalacion de Wails v3 CLI `v3.0.0-alpha.98-tui` via `go install` (pinned).
-5. Gate de tests/lint (antes de generar artefactos):
-   - `go test ./...` desde `vantare-v2/`.
-   - `pnpm install` + `pnpm test` + `pnpm lint` desde `vantare-v2/frontend/`.
-   - Si cualquier gate falla, el job se aborta y no se generan artefactos ni se publica release.
-6. En el directorio `vantare-v2/`:
+2. Verificacion de entorno Supabase/licencia y del deploy surface de Supabase.
+3. Setup de Go desde `vantare-v2/go.mod` (`1.25.0`), Node `22`, pnpm `9.1.0`
+   (tambien declarado en el `packageManager` raiz), NSIS `3.12.0` y Wails
+   `v3.0.0-alpha.98-tui`.
+4. Gates antes de generar artefactos:
+   - `pnpm install --frozen-lockfile` y `pnpm build` en
+     `vantare-v2/frontend/`;
+   - `go test ./...` en `vantare-v2/`;
+   - `pnpm test` y `pnpm lint` en `vantare-v2/frontend/`.
+   - Go, build y tests son bloqueantes. El lint solo es advisory en
+     `workflow_dispatch`; en un tag publico sigue siendo bloqueante.
+5. Sincronizacion de version desde `release_tag`/tag valido y export de
+   `VANTARE_VERSION`; un dispatch `none` sin tag conserva `VERSION`. La
+   sincronizacion puede modificar archivos generados dentro del runner, nunca
+   el repositorio remoto.
+6. En `vantare-v2/`, exactamente como esta escrito hoy en el workflow:
    - `wails3 task release:clean`
    - `wails3 task release:artifacts`
    - `wails3 task release:verify`
+   CI no usa `-f`: parte de un checkout limpio y ejecuta esos pasos una vez en
+   el mismo job. La receta local si usa `-f` al corregir un build o cambiar el
+   entorno para invalidar resultados que Task pudiera considerar actuales.
 7. Verificacion estricta de que existen los 6 archivos oficiales.
 8. Upload a GitHub Actions artifacts.
 
-El job `release` (solo en tags `v*`) corre en Ubuntu, descarga los artifacts y ejecuta `gh release create` subiendo:
+El job `release` corre para tags `v*` y para dispatch publicable. En Ubuntu,
+descarga los artifacts y crea o actualiza de forma idempotente la GitHub
+Release, resubiendo con `--clobber` cuando ya existe:
 
 - `vantare.exe` + `.sha256`
 - `vantare-amd64-installer.exe` + `.sha256`
@@ -125,8 +246,11 @@ El body del release se extrae de la seccion `## vX.X.X.X` de `docs/changelog.md`
 Seguridad:
 
 - Permisos minimos: el workflow usa `permissions: contents: read` por defecto; solo el job `release` solicita `permissions: contents: write`.
-- No se imprimen secretos; el unico token usado es `secrets.GITHUB_TOKEN` en el job de release.
-- No se modifican archivos de version en CI: `VERSION` se lee via `version:sync` pero nunca se escribe.
+- Supabase, claves publicas de licencia, webhooks y `GITHUB_TOKEN` se inyectan
+  mediante secrets en los jobs que los consumen; los gates muestran nombres o
+  destinos verificados, no valores.
+- La sincronizacion de version solo cambia el workspace efimero del runner; el
+  workflow no commitea ni empuja esos cambios.
 - Si falta algun artefacto o checksum, el job `build` falla antes de llegar al release.
 
 ---
@@ -201,10 +325,20 @@ Mientras tanto, el runbook `docs/release-beta-operations-runbook.md` ya document
 
 Despues de correr `wails3 task release:artifacts`, en este orden:
 
-1. `Get-ChildItem bin` debe listar exactamente los 6 archivos oficiales (3 artefactos + 3 checksums) y nada mas.
+1. `Get-ChildItem bin -File` debe listar exactamente los 6 archivos oficiales
+   (3 artefactos + 3 checksums). El directorio de trabajo verificado
+   `bin/runtime/telemetry/duckdb-v1` también existe localmente, pero no es un
+   artefacto publicable separado.
 2. `Get-Content bin\vantare-amd64-installer.exe.sha256` debe mostrar el mismo hash que `certutil.exe -hashfile bin\vantare-amd64-installer.exe SHA256`.
 3. `Expand-Archive bin\vantare-portable-amd64.zip -DestinationPath $env:TEMP\vantare-test` y confirmar que dentro hay `vantare.exe`, `configs\*.json` y `docs\README.txt`. Borrar `$env:TEMP\vantare-test` despues.
-4. (Opcional) Instalar el NSIS en una maquina limpia o VM y arrancar la app. Verificar que aparece la pantalla principal y que la version en Ajustes -> Acerca de coincide con `VERSION`.
+4. Instalar el NSIS en una maquina limpia o VM y arrancar la app. Verificar que
+   la version en Ajustes -> Acerca de coincide con `VERSION`.
+5. **Smoke obligatorio de autenticacion:** pulsar el login Google OAuth,
+   completar el retorno del navegador y comprobar que la app llega al Hub sin
+   `Configuracion incompleta`. Para paridad real de licencia, confirmar tambien
+   el entitlement esperado en una build de CI con
+   `VANTARE_LICENSE_PUBLIC_KEYS`; una pareja Supabase local por si sola no
+   demuestra ese gate.
 
 ---
 
@@ -214,3 +348,7 @@ Despues de correr `wails3 task release:artifacts`, en este orden:
 - **Reproducibilidad del binario Go.** Go embebe timestamps y paths en el binario. `-trimpath -buildvcs=false` ya esta aplicado, pero dos builds consecutivos del mismo commit daran SHA256 distintos para `vantare.exe`. Esto es esperado; lo importante es que `version:sync` se ejecuto antes. El checksum por si solo no es unico-identificador.
 - **NSIS comprime el exe.** El instalador no contiene el string `v0.3.10.0` en UTF-8 (NSIS comprime con zlib). Por eso `verify` busca `0.3.10.0` en UTF-16 LE dentro del recurso de version PE (que NSIS pone sin comprimir). Si NSIS cambia su representacion de version resources, este check se rompe. Mitigacion: test regresivo si se actualiza NSIS.
 - **Shim de wails3 `makensis.exe` local.** En algunos entornos (este host incluido) el shim de wails3 falla con error 0x2 porque no encuentra el NSIS real. `tools/build_nsis.ps1` lo evita llamando al binario real directamente. El task `windows:package` original sigue dependiendo del shim; se deja como esta porque arreglarlo es responsabilidad del entorno, no del codigo de Vantare.
+- **Toolchain del workflow remoto.** El runtime confiado de TA-03C se produjo
+  con Go 1.26.4, GCC UCRT64 16.1.0 y PowerShell 7. Un workflow que conserve Go
+  1.25 falla cerrado al preparar el manifest y no publica artefactos. Actualizar
+  ese workflow forma parte del futuro corte de release, fuera de TA-03F.

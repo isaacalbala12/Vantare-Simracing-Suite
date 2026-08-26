@@ -44,23 +44,27 @@ pnpm --dir frontend lint
 powershell -File tools\start-wails-dev.ps1
 ```
 
-Es el unico arranque que deja Supabase configurado. El script mata procesos
-`vantare`/`wails3` duplicados, mapea `VITE_SUPABASE_ANON_KEY` de
-`frontend\.env.local` a `VANTARE_SUPABASE_ANON_KEY`, genera
-`cmd\vantare\supabase_build.go` y lanza `wails3 dev` en el puerto 9245.
+Este helper es solo para desarrollo interactivo del checkout actual. Detiene
+procesos `vantare`/`wails3` duplicados, usa la configuracion local prevista por
+el script, genera `cmd\vantare\supabase_build.go` y lanza `wails3 dev` en el
+puerto 9245. No es una receta de release, no produce artefactos publicables y
+no sustituye el preflight de `docs/release-artifacts.md`.
 
 Requisitos previos:
 
 - `frontend\.env.local` debe existir con `VITE_SUPABASE_URL` y
-  `VITE_SUPABASE_ANON_KEY`. No esta versionado (`.gitignore`), asi que un
-  worktree recien creado no lo tiene: copialo de otro worktree.
+  `VITE_SUPABASE_ANON_KEY`. No esta versionado (`.gitignore`). En un worktree
+  nuevo, obten la ruta o los valores publicos por el canal autorizado y crea
+  su configuracion local; **no copies archivos `.env*` entre worktrees**. Para
+  un build de artefactos, la receta oficial puede leer la ruta autorizada en su
+  ubicacion original sin copiarla.
 - `pnpm --dir frontend install` si no hay `node_modules`.
 
-La validacion de licencia **no** funciona en local aunque Supabase este bien.
-Necesita `VANTARE_LICENSE_PUBLIC_KEYS`, que por diseno solo vive en GitHub
-secrets (ver `docs/billing/bil-08-offline-credential-runbook.md`). Sin ella el
-verifier es nil y el estado se queda en `unconfigured`. El log dice
-"supabase env vars missing", pero el que falta es el registro de claves.
+Una pareja Supabase local permite comprobar login contra ese proyecto, pero no
+demuestra paridad real de licencia. Para ella hace falta tambien el registro
+publico autorizado `VANTARE_LICENSE_PUBLIC_KEYS` y la configuracion de canal/CI
+(ver `docs/billing/bil-08-offline-credential-runbook.md`). Sin el registro, el
+verifier queda sin configurar y el estado puede permanecer `unconfigured`.
 
 ### Ruta minima: solo backend, sin ventana Wails
 
@@ -98,9 +102,10 @@ wails3 task run
 wails3 task dev
 ```
 
-`wails3 task dev` compila y abre la ventana, pero **no** inyecta el entorno de
-Supabase: para trastear con la app usa `tools\start-wails-dev.ps1` (ver
-"Ejecutar app").
+`wails3 task dev` compila y abre la ventana, pero no prepara por si solo la
+configuracion local que espera la sesion. Para el flujo interactivo concreto
+descrito arriba puede usarse `tools\start-wails-dev.ps1`. Para build
+distribuible, usa exclusivamente `docs/release-artifacts.md`.
 
 ## Commit pequeno
 

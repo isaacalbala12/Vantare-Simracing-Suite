@@ -774,6 +774,91 @@ Nota ISA-160 / TC-10A (2026-08-11, estado histórico supersedido por ISA-161):
   Después, ISA-161 puede
   publicar solo Fuel + sesión/progreso/pit de forma aditiva/optional con tests
   old/new, transporte, resync, replay y soak. VE/tyres/weather siguen fuera.
+Nota TA-03F (2026-08-11, candidata local verificada tras reviews de especificación y calidad):
+- La rama `work/ta03f-windows-runtime-packaging`, apilada exactamente sobre
+  TA-03E `559c3753a82071398ef1af3fbcc2d30c4dd3fe52`, integra la unidad confiada
+  DuckDB de TA-03C en installer y portable bajo la ruta productiva exacta
+  `runtime/telemetry/duckdb-v1`. El updater hereda el cambio mediante el
+  installer y no cambia de protocolo.
+- Portable y `release:verify` exigen manifest trust, hashes y el inventario
+  exacto de cinco miembros; ausencia, tamper o extras fallan antes de un
+  artefacto oficial. NSIS registra `pending` con el inventario anterior y
+  `committed` antes de limpiar backups: una reentrada restaura siempre el par
+  anterior o conserva siempre el par nuevo, incluso con estado previo parcial
+  o fallo de cleanup. Elimina la unidad al desinstalar y compila en scopes
+  user/machine.
+- El segundo spec review endureció las ventanas de crash: el runtime nuevo se
+  extrae y verifica con el exe productivo ausente; `wails.files` deja el exe en
+  staging privado del instalador y un `Rename` atómico lo publica justo antes
+  de `committed`. Rollback retira primero cualquier exe nuevo, restaura runtime
+  y publica el exe viejo al final también desde staging. Si falla runtime, el
+  producto queda sin exe y conserva marker/backups reintentables.
+- El tercer review corrigió el lifecycle NSIS de ese staging: las cinco rutas
+  de cleanup cambian primero el `OutDir` a `$INSTDIR`, porque NSIS no elimina su
+  directorio de salida actual. El modelo y guard estático exigen ese orden.
+- El quality review cerró dos bordes adicionales: `prepare-runtime.ps1` acepta
+  sólo el `bin` canónico nominal y rechaza reparse points en toda la cadena de
+  destino antes de build/borrado; una junction real preservó su sentinel
+  externo. Ambos checks NSIS del exe rechazan ahora tamaños `<=1024`.
+- Evidencia local: harness PowerShell, parser PS5, build reproducible con
+  PowerShell 7/Go 1.26.4/GCC UCRT64 16.1.0 y rutas temporales con espacios,
+  modelo transaccional de cuatro estados previos, smoke Windows x64, build
+  principal, portable real, NSIS real en ambos scopes y verify pasan. El ZIP
+  DuckDB oficial se descargó porque no había caché; el pipeline acepta
+  `DUCKDB_ARCHIVE_PATH` para reutilizarlo.
+- Una correccion acotada posterior añade el preflight fail-closed de
+  `VANTARE_SUPABASE_URL`/`VANTARE_SUPABASE_ANON_KEY` antes de build/runtime en
+  los tres entrypoints distribuibles. El gate no imprime valores, no se omite
+  con `-f` y deja `windows:build`/dev/offline intactos. La receta unica de
+  entorno, build y smoke OAuth vive en `docs/release-artifacts.md`.
+- Evidencia del preflight: RED reprodujo los tres entrypoints avanzando sin
+  gate y una mutacion controlada demostro que la regresion detecta trabajo
+  previo al gate; GREEN pasa 17 casos en Windows PowerShell 5.1 y PowerShell 7,
+  incluido unset/set sintetico, no exposicion, orden, `-f` en los tres targets
+  y build de desarrollo. El harness completo de packaging TA-03F tambien pasa
+  en ambos hosts. La seccion CI de la receta refleja el workflow, `go.mod` y
+  `packageManager` actuales sin modificar la automatizacion.
+- Smoke de build local del 2026-08-12: con la pareja Supabase autorizada y sin
+  afirmar paridad de licencia, frontend, exe, runtime, installer y portable se
+  reconstruyeron; comprobaciones booleanas confirmaron la configuracion en
+  `frontend/dist` y `vantare.exe` sin mostrar valores. Installer, portable y exe
+  pasaron version, hashes e inventario runtime. El runner `wails3 task` revelo
+  que su hijo PowerShell 5 no resolvia el cmdlet autoloaded `Get-FileHash`; el
+  verifier usa ahora SHA-256 puro .NET con recursos liberados en `finally`.
+  La regresion que inutiliza deliberadamente ese cmdlet, los harness PS5/PS7 y
+  el alias oficial `release:verify` pasan en `69a72a3`. Queda pendiente el
+  smoke manual OAuth/instalacion sobre estos artefactos.
+- Gate humano del 2026-08-12: tras embeber tambien un registro publico Ed25519
+  valido, Isaac instalo/actualizo el artefacto y confirmo arranque y Google
+  OAuth correctos. El exe instalado coincide con la build
+  `dd953d08eb4c9d46eacb3559073529ac0e61b7bcb151af4496f5fe53f598e221` y el
+  runtime instalado pasa manifest trust, inventario exacto de cinco miembros y
+  hashes. Es evidencia funcional de este host, no validacion visual.
+- Pendiente: smoke manual de rollback/uninstall en Windows 11 x64 y repeticion
+  completa en Windows 10 x64 si continúa soportado. No hay
+  Linear, push, PR, CI remoto, merge, promoción, release ni publicación.
+
+Nota TA-03E (2026-08-11, candidata local revisada):
+- La rama temporal `work/ta03e-backend-reader-wiring` expone el reader TA-03C
+  mediante un servicio backend no visual: discovery LMU metadata-only, IDs
+  opacos, aprobación explícita, estabilidad/WAL/revalidación TA-02, staging
+  privado, catálogo y páginas acotadas.
+- La autorización dedicada acepta solo `active`/`grace` con Pro/Launch V1 o
+  los roles operativos tester/nightly tester/owner; los roles no se convierten
+  en evidencia comercial. El estado actual se copia defensivamente bajo lock.
+- El composition root ancla runtime al directorio de la aplicación, staging a
+  la caché local y LMU solo a una instalación detectada por Steam. Runtime
+  ausente o alterado degrada el módulo sin abortar Vantare; shutdown cierra
+  readers y elimina staging.
+- Evidencia local: focales test/vet, build frontend, suite Go global con
+  `CGO_ENABLED=0`, grafo raíz sin DuckDB/CGO y `git diff --check` pasan. Las
+  reviews independientes de especificación y calidad terminaron `APPROVE` tras
+  corregir cleanup reintentable/acotado y retirar dos bindings Wails
+  accidentales. Race focal TA-03E x5 pasa con MSYS2 UCRT64. El race del paquete
+  completo `cmd/vantare` detecta una deuda heredada en `spyMainEmitter`/
+  `TestHandleProfileRetryFailed`, fuera de este corte y pendiente de issue al
+  recuperar capacidad de Linear. No hay push, PR, promoción, packaging TA-03F
+  ni release.
 
 Nota ISA-315 / OS-10 (2026-08-10, decisión de estabilización y venta):
 - Isaac fija como hito de agosto **Overlay Studio V1 estable en `testers`**;

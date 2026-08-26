@@ -256,6 +256,74 @@ func resolveLogsRoot(cfgDir string, userConfigDir string, localDataDir string) (
 	return filepath.Join(filepath.Dir(cfgDir), "data", "logs"), nil
 }
 
+func telemetryAnalysisBackendConfig() (app.TelemetryAnalysisConfig, error) {
+	executablePath, err := os.Executable()
+	if err != nil {
+		return app.TelemetryAnalysisConfig{}, fmt.Errorf("resolve application executable: %w", err)
+	}
+	cacheDirectory, err := os.UserCacheDir()
+	if err != nil {
+		return app.TelemetryAnalysisConfig{}, fmt.Errorf("resolve application cache directory: %w", err)
+	}
+	return resolveTelemetryAnalysisBackendConfig(executablePath, cacheDirectory, launcher.Discover())
+}
+
+func resolveTelemetryAnalysisBackendConfig(
+	executablePath string,
+	cacheDirectory string,
+	discoveredApps map[string]app.LauncherAppEntry,
+) (app.TelemetryAnalysisConfig, error) {
+	if !filepath.IsAbs(executablePath) || filepath.Clean(executablePath) != executablePath ||
+		!filepath.IsAbs(cacheDirectory) || filepath.Clean(cacheDirectory) != cacheDirectory {
+		return app.TelemetryAnalysisConfig{}, fmt.Errorf("Telemetry Analysis backend directories must be absolute")
+	}
+	executableInfo, err := os.Lstat(executablePath)
+	if err != nil || !executableInfo.Mode().IsRegular() || executableInfo.Mode()&os.ModeSymlink != 0 {
+		return app.TelemetryAnalysisConfig{}, fmt.Errorf("Telemetry Analysis application executable is unavailable")
+	}
+	cacheInfo, err := os.Lstat(cacheDirectory)
+	if err != nil || !cacheInfo.IsDir() || cacheInfo.Mode()&os.ModeSymlink != 0 {
+		return app.TelemetryAnalysisConfig{}, fmt.Errorf("Telemetry Analysis cache directory is unavailable")
+	}
+	return app.TelemetryAnalysisConfig{
+		LMURoots:             resolveTelemetryAnalysisLMURoots(discoveredApps),
+		ApplicationDirectory: filepath.Dir(executablePath),
+		StagingRoot:          filepath.Join(cacheDirectory, "Vantare", "telemetry-analysis", "staging"),
+		StabilityWindow:      5 * time.Second,
+		MaxCandidates:        128,
+		MaxSourceBytes:       2 << 30,
+		MaxPageRows:          4096,
+	}, nil
+}
+
+// resolveTelemetryAnalysisLMURoots accepts only LMU discovered inside a Steam
+// library by the native launcher scanner. Persisted/manual paths and paths
+// supplied by a consumer never become telemetry read authority.
+func resolveTelemetryAnalysisLMURoots(discoveredApps map[string]app.LauncherAppEntry) []string {
+	lmu, ok := discoveredApps["lmu"]
+	if !ok || lmu.ID != "lmu" || lmu.PathSource != "steam" ||
+		!filepath.IsAbs(lmu.ExecutablePath) || filepath.Clean(lmu.ExecutablePath) != lmu.ExecutablePath {
+		return nil
+	}
+	executableName := filepath.Base(lmu.ExecutablePath)
+	if !strings.EqualFold(executableName, "Le Mans Ultimate.exe") && !strings.EqualFold(executableName, "LMU.exe") {
+		return nil
+	}
+	if !strings.EqualFold(filepath.Base(filepath.Dir(lmu.ExecutablePath)), "Le Mans Ultimate") {
+		return nil
+	}
+	executableInfo, err := os.Lstat(lmu.ExecutablePath)
+	if err != nil || !executableInfo.Mode().IsRegular() || executableInfo.Mode()&os.ModeSymlink != 0 {
+		return nil
+	}
+	root := filepath.Join(filepath.Dir(lmu.ExecutablePath), "UserData", "Telemetry")
+	rootInfo, err := os.Lstat(root)
+	if err != nil || !rootInfo.IsDir() || rootInfo.Mode()&os.ModeSymlink != 0 {
+		return nil
+	}
+	return []string{root}
+}
+
 type strategyCommandExecutor interface {
 	Execute(context.Context, []byte) ([]byte, error)
 }
@@ -1209,6 +1277,7 @@ func main() {
 	var testingCenterDiagnosticBridge *app.TestingCenterDiagnosticBridge
 	var telemetryCoreRuntime *app.TelemetryCoreRuntime
 	telemetryStatusReplayCleanup := func() {}
+	var telemetryAnalysisSvc *app.TelemetryAnalysisService
 	cleanupApp := func() {
 		cleanup.Do(func() {
 			shutdownCtx, cancelShutdown := context.WithTimeout(context.Background(), 8*time.Second)
@@ -1229,6 +1298,12 @@ func main() {
 						return nil
 					}
 					return telemetryCoreRuntime.Stop(ctx)
+				}},
+				{name: "telemetry-analysis", stop: func(context.Context) error {
+					if telemetryAnalysisSvc == nil {
+						return nil
+					}
+					return telemetryAnalysisSvc.ServiceShutdown()
 				}},
 				{name: "http", stop: func(context.Context) error {
 					if httpSrv == nil {
@@ -1556,6 +1631,21 @@ func main() {
 		licenseSvc.EmitCachedState()
 	})
 	wailsApp.RegisterService(application.NewService(licenseSvc))
+	telemetryAnalysisCfg, telemetryAnalysisCfgErr := telemetryAnalysisBackendConfig()
+	if telemetryAnalysisCfgErr != nil {
+		log.Printf("warning: Telemetry Analysis backend configuration is unavailable")
+	} else {
+		analysisService, analysisServiceErr := app.NewTelemetryAnalysisService(telemetryAnalysisCfg, licenseSvc)
+		if analysisServiceErr != nil {
+			log.Printf("warning: Telemetry Analysis service is unavailable")
+		} else {
+			telemetryAnalysisSvc = analysisService
+			wailsApp.RegisterService(application.NewService(telemetryAnalysisSvc))
+			if status := telemetryAnalysisSvc.Status(); !status.Available {
+				log.Printf("warning: Telemetry Analysis reader runtime is unavailable; the rest of Vantare will continue")
+			}
+		}
+	}
 	authManager := authsession.NewManager(authsession.NewStore(authSessionTarget))
 
 	// Forward UI license validation requests to the Go service. The frontend

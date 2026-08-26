@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -58,7 +59,11 @@ func TestUpdaterServiceRejectsUnauthorizedProtectedChannel(t *testing.T) {
 	}
 }
 
-func TestUpdaterServiceRejectsDirectNightlyInstallForTester(t *testing.T) {
+// Un tag de Nightly no se ofrece a quien tiene Testers porque la lista se
+// filtra por el canal configurado, que loadSettings ya deja en uno autorizado.
+// La comprobacion de canal previa a instalar sigue ahi como segunda barrera y
+// se cubre en TestInstallRefusesAReleaseWhoseChannelStoppedBeingAllowed.
+func TestUpdaterServiceDoesNotOfferNightlyToATester(t *testing.T) {
 	server := releaseListServer(t, `[
 		{"tag_name":"v0.2.0-nightly.1","name":"nightly","prerelease":true,"assets":[{"name":"vantare-amd64-installer.exe","browser_download_url":"https://example.invalid/installer.exe"},{"name":"vantare-amd64-installer.exe.sha256","browser_download_url":"https://example.invalid/installer.exe.sha256"}]}
 	]`)
@@ -73,8 +78,12 @@ func TestUpdaterServiceRejectsDirectNightlyInstallForTester(t *testing.T) {
 	svc.SetChannelAuthorizer(func(channel updater.Channel) bool {
 		return channel == updater.ChannelStable || channel == updater.ChannelTesters
 	})
-	if err := svc.InstallVerifiedVersion("v0.2.0-nightly.1"); err == nil {
+	err = svc.InstallVerifiedVersion("v0.2.0-nightly.1")
+	if err == nil {
 		t.Fatal("direct Nightly install bypassed the channel gate")
+	}
+	if !strings.Contains(err.Error(), "not available") {
+		t.Fatalf("se esperaba que ni siquiera estuviera en la lista, y fallo con: %v", err)
 	}
 }
 

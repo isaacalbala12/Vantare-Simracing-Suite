@@ -8,10 +8,12 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/vantare/overlays/v2/internal/app"
+	"github.com/vantare/overlays/v2/internal/updater"
 )
 
 // installFixture serves a releases list plus the installer and its checksum, so
@@ -21,6 +23,12 @@ type installFixture struct {
 	installerHit chan struct{}
 	block        chan struct{}
 	unblockOnce  sync.Once
+	listHits     atomic.Int32
+}
+
+// releaseListHits counts how many times the catalogue was requested.
+func (f *installFixture) releaseListHits() int {
+	return int(f.listHits.Load())
 }
 
 // release lets the blocked installer download finish. Safe to call twice: the
@@ -39,11 +47,15 @@ func newInstallFixture(t *testing.T, tag string, blockInstaller bool) *installFi
 	fixture.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case strings.HasSuffix(r.URL.Path, "/releases"):
+			fixture.listHits.Add(1)
 			w.Header().Set("Content-Type", "application/json")
-			fmt.Fprintf(w, `[{"tag_name":%q,"name":"stable","prerelease":false,"assets":[
+			// El canal sale del propio tag, igual que en GitHub: una nightly
+			// se publica como prerelease y una estable no.
+			prerelease := strings.Contains(tag, "nightly") || strings.Contains(tag, "testers")
+			fmt.Fprintf(w, `[{"tag_name":%q,"name":%q,"prerelease":%t,"assets":[
 				{"name":"vantare-amd64-installer.exe","browser_download_url":%q},
 				{"name":"vantare-amd64-installer.exe.sha256","browser_download_url":%q}
-			]}]`, tag, base+"/installer.exe", base+"/installer.exe.sha256")
+			]}]`, tag, tag, prerelease, base+"/installer.exe", base+"/installer.exe.sha256")
 		case strings.HasSuffix(r.URL.Path, "/installer.exe"):
 			select {
 			case fixture.installerHit <- struct{}{}:
@@ -73,16 +85,21 @@ func newInstallFixture(t *testing.T, tag string, blockInstaller bool) *installFi
 
 func newInstallService(t *testing.T, fixture *installFixture) *app.UpdaterService {
 	t.Helper()
+	svc, _ := newInstallServiceAt(t, fixture)
+	return svc
+}
+
+// newInstallServiceAt also returns the settings path, so a test can build a
+// second service that shares the cooldown on disk but not the in-memory cache.
+func newInstallServiceAt(t *testing.T, fixture *installFixture) (*app.UpdaterService, string) {
+	t.Helper()
 	t.Setenv("VANTARE_RELEASES_URL", fixture.server.URL+"/releases")
-	svc, err := app.NewUpdaterService(
-		"v0.1.0.1",
-		filepath.Join(t.TempDir(), "updater-settings.json"),
-		&spyEmitter{},
-	)
+	settingsPath := filepath.Join(t.TempDir(), "updater-settings.json")
+	svc, err := app.NewUpdaterService("v0.1.0.1", settingsPath, &spyEmitter{})
 	if err != nil {
 		t.Fatalf("NewUpdaterService: %v", err)
 	}
-	return svc
+	return svc, settingsPath
 }
 
 func TestInstallResolvesTheReleaseFromTheBackendsOwnList(t *testing.T) {
@@ -179,5 +196,123 @@ func TestASecondInstallIsAllowedOnceTheFirstFinishes(t *testing.T) {
 		if strings.Contains(err.Error(), "already in progress") {
 			t.Fatalf("intento %d bloqueado: el cerrojo no se solto al terminar el anterior", attempt+1)
 		}
+	}
+}
+
+func TestInstallRefusesAReleaseWhoseChannelStoppedBeingAllowed(t *testing.T) {
+	fixture := newInstallFixture(t, "v0.1.0.2-nightly.1", false)
+	svc := newInstallService(t, fixture)
+
+	// Con Nightly autorizado, la comprobacion deja la release en cache.
+	svc.SetChannelAuthorizer(func(channel updater.Channel) bool { return true })
+	if err := svc.SaveSettings(&updater.Settings{Channel: updater.ChannelNightly}); err != nil {
+		t.Fatalf("SaveSettings: %v", err)
+	}
+	if _, err := svc.CheckUpdatesManual(); err != nil {
+		t.Fatalf("CheckUpdatesManual: %v", err)
+	}
+
+	// La licencia se estrecha: lo que ya estaba en cache no puede colarse.
+	svc.SetChannelAuthorizer(func(channel updater.Channel) bool {
+		return channel == updater.ChannelStable
+	})
+
+	err := svc.InstallVerifiedVersionCtx(context.Background(), "v0.1.0.2-nightly.1")
+	if err == nil {
+		t.Fatal("una release de un canal que ya no esta autorizado no puede instalarse")
+	}
+	if !strings.Contains(err.Error(), "not authorized") {
+		t.Fatalf("se esperaba el rechazo por canal, y fallo con: %v", err)
+	}
+}
+
+func TestInstallUsesTheListFromTheLastCheckInsteadOfFetchingAgain(t *testing.T) {
+	fixture := newInstallFixture(t, "v0.1.0.2", false)
+	svc := newInstallService(t, fixture)
+
+	if _, err := svc.CheckUpdatesManual(); err != nil {
+		t.Fatalf("CheckUpdatesManual: %v", err)
+	}
+	before := fixture.releaseListHits()
+
+	if err := svc.InstallVerifiedVersionCtx(context.Background(), "v0.1.0.2"); err == nil {
+		t.Fatal("el fixture no puede dar la instalacion por buena")
+	}
+	if after := fixture.releaseListHits(); after != before {
+		t.Fatalf(
+			"instalar volvio a pedir el catalogo entero (%d -> %d): en una linea lenta eso muere antes de bajar un solo byte del instalador",
+			before, after,
+		)
+	}
+}
+
+func TestAThrottledCheckAnswersWithWhatIsKnown(t *testing.T) {
+	fixture := newInstallFixture(t, "v0.1.0.2", false)
+	svc := newInstallService(t, fixture)
+
+	first, err := svc.CheckUpdatesManual()
+	if err != nil {
+		t.Fatalf("CheckUpdatesManual: %v", err)
+	}
+	if !first.HasUpdate || len(first.Releases) != 1 {
+		t.Fatalf("la primera comprobacion no vio la release: %+v", first)
+	}
+	hits := fixture.releaseListHits()
+
+	// Dentro del enfriamiento: no debe volver a preguntar, ni contestar que no
+	// hay nada solo porque no ha mirado.
+	second, err := svc.CheckUpdates()
+	if err != nil {
+		t.Fatalf("CheckUpdates: %v", err)
+	}
+	if fixture.releaseListHits() != hits {
+		t.Fatal("una comprobacion estrangulada no puede salir a la red")
+	}
+	if !second.Throttled {
+		t.Fatal("la respuesta debe seguir declarando que no se ha mirado")
+	}
+	if !second.HasUpdate || len(second.Releases) != 1 {
+		t.Fatalf("el enfriamiento borro lo que ya se sabia: %+v", second)
+	}
+}
+
+func TestAForcedCheckIgnoresTheCooldown(t *testing.T) {
+	fixture := newInstallFixture(t, "v0.1.0.2", false)
+	svc := newInstallService(t, fixture)
+
+	if _, err := svc.CheckUpdatesManual(); err != nil {
+		t.Fatalf("primera: %v", err)
+	}
+	hits := fixture.releaseListHits()
+	if _, err := svc.CheckUpdatesManual(); err != nil {
+		t.Fatalf("segunda: %v", err)
+	}
+	if fixture.releaseListHits() <= hits {
+		t.Fatal("el boton de comprobar tiene que preguntar de verdad")
+	}
+}
+
+func TestAThrottledCheckWithNothingKnownStillSaysSo(t *testing.T) {
+	fixture := newInstallFixture(t, "v0.1.0.2", false)
+	svc, settingsPath := newInstallServiceAt(t, fixture)
+
+	if _, err := svc.CheckUpdatesManual(); err != nil {
+		t.Fatalf("CheckUpdatesManual: %v", err)
+	}
+	// Un servicio nuevo sobre los mismos ajustes: hereda el enfriamiento del
+	// disco, pero no la cache en memoria.
+	fresh, err := app.NewUpdaterService("v0.1.0.1", settingsPath, &spyEmitter{})
+	if err != nil {
+		t.Fatalf("NewUpdaterService: %v", err)
+	}
+	info, err := fresh.CheckUpdates()
+	if err != nil {
+		t.Fatalf("CheckUpdates: %v", err)
+	}
+	if !info.Throttled {
+		t.Fatal("se esperaba una respuesta estrangulada")
+	}
+	if info.HasUpdate {
+		t.Fatal("sin nada en cache no se puede afirmar que haya actualizacion")
 	}
 }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Events } from '@wailsio/runtime';
 import { useAccess } from '../../../lib/access';
@@ -141,6 +141,9 @@ function OrbitShellBody({
   const [update, setUpdate] = useState<UpdateState>('none');
   const [updateTag, setUpdateTag] = useState<string>('');
   const [updatePercent, setUpdatePercent] = useState(0);
+  // Las suscripciones se montan una sola vez: la ref es como leen el tag sin
+  // volver a suscribirse cada vez que cambia.
+  const tagRef = useRef('');
 
   // Escalado proporcional en ventanas por debajo del mínimo de diseño
   // (D-R4-3): primero pliegan las media queries, y solo lo que aún no cabe se
@@ -154,7 +157,9 @@ function OrbitShellBody({
   // Actualización: misma señal que UpdateBanner, sin duplicar su UI.
   useEffect(() => {
     const unsubNotify = Events.On('updater:notify', (event: { data?: { tag?: string } }) => {
-      setUpdateTag(event.data?.tag ?? '');
+      const tag = event.data?.tag ?? '';
+      tagRef.current = tag;
+      setUpdateTag(tag);
       setUpdate('available');
     });
     // El porcentaje llega en el evento y antes se tiraba: el pill anunciaba
@@ -172,7 +177,9 @@ function OrbitShellBody({
     // Una descarga que falla no puede dejar el aviso descargando para siempre.
     const unsubError = Events.On('updater:error', () => {
       setUpdatePercent(0);
-      setUpdate((current) => (current === 'none' ? 'none' : 'available'));
+      // Se vuelve a «disponible» solo si sabemos que version anunciar: la
+      // etiqueta es «v{{v}}» y sin tag quedaba una «v» suelta.
+      setUpdate((current) => (current === 'none' || !tagRef.current ? 'none' : 'available'));
     });
     return () => {
       unsubNotify?.();

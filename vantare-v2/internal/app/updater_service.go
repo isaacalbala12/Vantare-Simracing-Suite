@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -19,7 +20,19 @@ type UpdaterService struct {
 	// `mu`: a download takes minutes and must not block reading settings.
 	installMu  sync.Mutex
 	installing bool
+	// lastInfo is the result of the last check that actually looked. Guarded
+	// by `mu`. It serves two purposes: installing does not have to fetch the
+	// whole catalogue again on a line that may barely manage the installer,
+	// and a throttled check can answer with what is known instead of an empty
+	// shell that reads as "there is nothing to update".
+	lastInfo *updater.UpdateInfo
 }
+
+// ErrInstallInProgress reports a second install attempted while one is running.
+// It is not a failure of the install that is running: callers must not turn it
+// into an error in front of the user, or a stray second click would report the
+// download that is going fine as broken.
+var ErrInstallInProgress = errors.New("an installation is already in progress")
 
 // NewUpdaterService creates an updater service for the given current version.
 func NewUpdaterService(currentVersion, settingsPath string, emitter EventEmitter) (*UpdaterService, error) {
@@ -122,12 +135,24 @@ func (s *UpdaterService) checkUpdates(ctx context.Context, manual bool) (*update
 	if err != nil {
 		return nil, err
 	}
-	// Persist LastCheckAt when a real check happened (not throttled).
-	if !info.Throttled {
-		if err := s.saveSettings(settings); err != nil {
-			return nil, err
+	// Un chequeo estrangulado no ha mirado: su resultado viene vacio, sin
+	// releases y sin canales. Devolverlo tal cual hacia que la UI afirmase que
+	// no hay nada que actualizar apoyandose en un enfriamiento. Se responde con
+	// lo ultimo que si se llego a ver, marcado como estrangulado.
+	if info.Throttled {
+		if s.lastInfo != nil {
+			cached := *s.lastInfo
+			cached.Throttled = true
+			return &cached, nil
 		}
+		return info, nil
 	}
+
+	if err := s.saveSettings(settings); err != nil {
+		return nil, err
+	}
+	snapshot := *info
+	s.lastInfo = &snapshot
 	return info, nil
 }
 
@@ -170,7 +195,7 @@ func (s *UpdaterService) InstallVerifiedVersionCtx(ctx context.Context, tag stri
 	s.installMu.Lock()
 	if s.installing {
 		s.installMu.Unlock()
-		return fmt.Errorf("an installation is already in progress")
+		return ErrInstallInProgress
 	}
 	s.installing = true
 	s.installMu.Unlock()
@@ -197,6 +222,21 @@ func (s *UpdaterService) InstallVerifiedVersionCtx(ctx context.Context, tag stri
 // resolveRelease finds the published release for a tag, using the backend's own
 // view of what exists rather than anything the caller supplied.
 func (s *UpdaterService) resolveRelease(ctx context.Context, tag string) (*updater.Release, error) {
+	// La lista del ultimo chequeo ya es del backend, que es lo unico que se
+	// pedia: la instalacion la dispara el usuario justo despues de verla. Ir a
+	// buscarla otra vez añadia una descarga del catalogo entero, con el reloj
+	// de 30 s de la API, delante de la descarga que este arreglo intenta
+	// salvar en lineas lentas.
+	s.mu.Lock()
+	var cached []updater.Release
+	if s.lastInfo != nil {
+		cached = s.lastInfo.Releases
+	}
+	s.mu.Unlock()
+	if release := findRelease(cached, tag); release != nil {
+		return release, nil
+	}
+
 	s.mu.Lock()
 	settings, err := s.loadSettings()
 	s.mu.Unlock()
@@ -208,10 +248,17 @@ func (s *UpdaterService) resolveRelease(ctx context.Context, tag string) (*updat
 	if err != nil {
 		return nil, err
 	}
-	for i := range releases {
-		if strings.EqualFold(releases[i].TagName, tag) {
-			return &releases[i], nil
-		}
+	if release := findRelease(releases, tag); release != nil {
+		return release, nil
 	}
 	return nil, fmt.Errorf("release %s is not available on the configured channel", tag)
+}
+
+func findRelease(releases []updater.Release, tag string) *updater.Release {
+	for i := range releases {
+		if strings.EqualFold(releases[i].TagName, tag) {
+			return &releases[i]
+		}
+	}
+	return nil
 }

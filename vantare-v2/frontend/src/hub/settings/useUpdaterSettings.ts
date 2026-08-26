@@ -97,7 +97,7 @@ export function useUpdaterSettings(options?: UpdaterSettingsOptions) {
             version: event.data.version ?? "",
           }),
         );
-        Events.Emit("updater:check");
+        Events.Emit("updater:check:force");
       }),
     );
 
@@ -107,7 +107,8 @@ export function useUpdaterSettings(options?: UpdaterSettingsOptions) {
         // El backend confirma con un `ok` pelado: sin volver a pedir los ajustes
         // nadie sabia si lo que se ve es lo que quedo guardado. Ahora se relee.
         Events.Emit("updater:settings:get");
-        Events.Emit("updater:check");
+        // El canal cambia la respuesta: lo cacheado ya no vale.
+        Events.Emit("updater:check:force");
         setLoading(true);
       }),
     );
@@ -183,7 +184,8 @@ export function useUpdaterSettings(options?: UpdaterSettingsOptions) {
   function refresh() {
     setError(null);
     setLoading(true);
-    Events.Emit("updater:check");
+    // Boton explicito: aqui si se salta el enfriamiento.
+    Events.Emit("updater:check:force");
   }
 
   return {

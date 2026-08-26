@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-26T22:39:59Z",
+  "generatedAt": "2026-08-26T23:13:09Z",
   "digest": {
-    "lastCommit": "1d3ab03dfd48efde264bec28b131faa24fcf6739"
+    "lastCommit": "9ad218cc45fc011e76eca881e6be0394c043fa8d"
   },
   "phases": [
     {
@@ -444,6 +444,28 @@
         "en": "In progress",
         "pt": "Em desenvolvimento",
         "it": "In corso"
+      }
+    },
+    {
+      "id": "telemetry-analysis-reader-runtime",
+      "type": "feature",
+      "title": {
+        "es": "Reader histórico LMU y runtime Windows",
+        "en": "LMU historical reader and Windows runtime",
+        "pt": "Reader histórico LMU e runtime Windows",
+        "it": "Reader storico LMU e runtime Windows"
+      },
+      "body": {
+        "es": "Analysis dispone de un reader LMU autorizado y fail-closed, compuesto en la app y empaquetado en Windows con runtime verificado; la pantalla post-sesión todavía no consume el catálogo real.",
+        "en": "Analysis has an authorized fail-closed LMU reader, composed in the app and packaged on Windows with a verified runtime; the post-session screen does not consume the real catalogue yet.",
+        "pt": "Analysis dispõe de um reader LMU autorizado e fail-closed, composto na app e empacotado no Windows com runtime verificado; o ecrã pós-sessão ainda não consome o catálogo real.",
+        "it": "Analysis dispone di un reader LMU autorizzato e fail-closed, composto nell'app e distribuito su Windows con runtime verificato; la schermata post-sessione non usa ancora il catalogo reale."
+      },
+      "label": {
+        "es": "Feature",
+        "en": "Feature",
+        "pt": "Feature",
+        "it": "Feature"
       }
     },
     {

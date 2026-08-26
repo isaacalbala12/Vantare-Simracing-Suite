@@ -28,8 +28,10 @@
   `vantareapp/isa-849-standings-redline-columnas`. T1 completó el contrato
   aditivo mínimo: V1 y V2 publican `configuredDriverName` sin alterar
   `columns` ni los campos vigentes. Las regresiones fallaron primero y pasan
-  17/17; `pnpm --dir frontend typecheck` y `git diff --check` PASS. Sin push,
-  PR ni promoción.
+  17/17. T3a fija además el contrato de viewport: solo Endurance Redline usa
+  `layout.w` como anchura base real; Original y otro Endurance conservan 520 px
+  escalados. Su regresión falló primero y pasa 3/3. Typecheck y diff-check PASS.
+  Sin push, PR ni promoción.
 
 - **ISA-842 — autosave e historial productivo de Overlay Studio (2026-08-25,
   PR draft a nightly):** rebasada sobre `origin/nightly@c7d25f94`, la rama

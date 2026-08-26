@@ -1,16 +1,34 @@
 import type { ReactNode } from "react";
-import type { WidgetLayoutV3, WidgetType } from "./profile-document";
-import { resolveWidgetVisualGeometryForType } from "./widget-visual-geometry";
+import type { WidgetLayoutV3, WidgetType, WidgetVisualV3 } from "./profile-document";
+import {
+  resolveWidgetVisualGeometry,
+  resolveWidgetVisualGeometryForType,
+} from "./widget-visual-geometry";
 
 type VisualLayoutSize = Pick<WidgetLayoutV3, "w" | "h">;
+type VisualSelection = Pick<WidgetVisualV3, "systemId" | "baseSettings" | "appearanceOverrides">;
+
+function isFluidRedlineStandings(
+  widgetType: WidgetType,
+  visual: VisualSelection | undefined,
+): boolean {
+  if (widgetType !== "standings" || visual?.systemId !== "vantare-endurance") {
+    return false;
+  }
+  const templateId = visual.appearanceOverrides.templateId ?? visual.baseSettings.templateId;
+  return templateId === undefined || templateId === "standings-redline";
+}
 
 export function WidgetVisualViewport(props: {
   widgetType: WidgetType;
+  visual?: VisualSelection;
   layout: VisualLayoutSize;
   testId: string;
   children: ReactNode;
 }): React.ReactElement {
-  const geometry = resolveWidgetVisualGeometryForType(props.layout, props.widgetType);
+  const geometry = isFluidRedlineStandings(props.widgetType, props.visual)
+    ? resolveWidgetVisualGeometry(props.layout, props.layout.w)
+    : resolveWidgetVisualGeometryForType(props.layout, props.widgetType);
   return (
     <div
       data-testid={props.testId}

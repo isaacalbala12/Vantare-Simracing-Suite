@@ -3,7 +3,16 @@
 - Fecha: 2026-08-02
 - Rama: `vantareapp/isa-168-ta-03c-adaptador-duckdb-productivo-y-packaging-windows`
 - Base exacta ISA-135: `8ddae9d9d6e33d42956c269c2fc51e6a6e4386e3`
-- Estado: cierre técnico aprobado por review independiente; entrega en review
+- Estado técnico histórico: cierre aprobado por review independiente en
+  ISA-168; la entrega quedó entonces en review
+- Integración verificada el 2026-08-10: ISA-204 / TA-N01 fue integrada en
+  `nightly` por PR #94, squash
+  `4e549bb59fd0b76398985cd28e5aa30aaaa85c32`; el contenido está presente en el
+  snapshot de `origin/nightly`
+  `08fcfc15dceb88b6a6b5c679d581d9de7b8ab698` y los tres checks del PR terminaron
+  `SUCCESS`
+- Pendiente: validación Nightly/Pro Plus y smoke físico Windows 10; no existe
+  integración demostrada en `testers` ni `master`
 
 ## Resultado
 

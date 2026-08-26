@@ -1470,7 +1470,7 @@ Nota ISA-203 / BIL-N01 (2026-08-02, promoción a `nightly`):
 - Estado: preparado para PR y CI de promoción técnica; venta pública continúa
   **NO-GO**, BIL-08 permanece fuera y `testers`/`master` no se tocan.
 
-Nota ISA-204 / TA-N01 (2026-08-02):
+Nota ISA-204 / TA-N01 (2026-08-02, promoción a `nightly`; verificada 2026-08-10):
 - Promoción acumulativa TA-01…TA-03C reconstruida sobre
   `nightly@c71959167ef0c96a5eaaef86ec0beb1dd0819ed6` desde el stack técnico
   aprobado `9c92836b90dacc5d82cc86569954cb11f0cf9460`.
@@ -1493,9 +1493,12 @@ Nota ISA-204 / TA-N01 (2026-08-02):
   identidad de SID: Windows representa cuentas well-known como `LA` en vez del
   SID numérico. El test enumera ahora las ACE y compara el SID binario exacto;
   conserva el rechazo de grupos amplios y la exigencia de DACL protegida.
-- Estado: preparado para repetir gates combinados y, si permanecen verdes,
-  validar el lector local con el grupo Nightly/Pro Plus. `testers` y `master`
-  permanecen fuera del alcance.
+- Estado verificado: PR #94 integrada con squash
+  `4e549bb59fd0b76398985cd28e5aa30aaaa85c32`; sus tres checks terminaron
+  `SUCCESS`. El contenido está presente en el snapshot de `origin/nightly`
+  `08fcfc15dceb88b6a6b5c679d581d9de7b8ab698`. Quedan pendientes la validación
+  Nightly/Pro Plus y el smoke físico Windows 10; no existe integración
+  demostrada en `testers` ni `master`, ni distribución en instalador o release.
 
 Nota ISA-202 / STR-N01 (2026-08-02):
 - Promoción acumulativa de Strategy Planner STR-00…STR-09 reconstruida sobre
@@ -1822,8 +1825,9 @@ Nota ISA-168 / TA-03C (2026-08-02):
   de TA-03B (ratio 0,5995×; gate <=2×). Smoke host Windows x64, fuzz, race y
   build principal PASS. Evidencia:
   `docs/vantare-program/research/telemetry-analysis/ta03c-duckdb-adapter-evidence.md`.
-- Review independiente `APPROVE`, cero P0/P1/P2/P3 razonables. Estado: cierre
-  técnico listo para `In Review`; sin promoción.
+- Review independiente `APPROVE`, cero P0/P1/P2/P3 razonables. Estado histórico
+  al cerrar ISA-168: cierre técnico listo para `In Review`, aún sin promoción;
+  la integración posterior en `nightly` corresponde a ISA-204 / PR #94.
   TA-04 continúa después de aceptar este corte. Imports externos/comunitarios
   siguen bloqueados por ISA-164 / TA-03D.
 

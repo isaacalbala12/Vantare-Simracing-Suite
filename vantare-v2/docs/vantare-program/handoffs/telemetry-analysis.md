@@ -21,8 +21,8 @@ TA-01 / ISA-122 completó la investigación documental, competitiva y de código
 TA-02 / ISA-124 está técnicamente cerrada en rama aislada tras review
 independiente `ACCEPT` sin P0/P1/P2/P3. Entrega el primer contrato compilable
 del producto: discovery metadata-only, estabilidad LMU, manifest sanitizado,
-corpus sintético y presupuestos. La aprobación inicial de Isaac se reserva para
-promover el conjunto aceptado a `nightly`.
+corpus sintético y presupuestos. La aprobación e integración posterior del
+conjunto aceptado en `nightly` se materializaron mediante ISA-204 / TA-N01.
 TA-03 / ISA-126 caracterizó DuckDB LMU mediante copia temporal read-only y
 añadió el modelo/parser histórico v1. TA-03C cierra su antiguo hueco operativo
 con un reader ligado al artefacto autorizado y un adaptador reproducible.
@@ -38,7 +38,12 @@ externos o comunitarios quedan bloqueados por ISA-164 / TA-03D.
 
 - Rama/base/SHA: `vantareapp/isa-122-ta-01-investigacion-competitiva-fuentes-lmu-y-producto` sobre GOV-01 `67e263392b2192ee11f2ef4ccb161331dda3c735`.
 - Promoción: TA-01…TA-03C integradas para validación Nightly/Pro Plus mediante
-  ISA-204 / TA-N01; `testers` y `master` permanecen fuera del alcance.
+  ISA-204 / TA-N01, PR #94, squash
+  `4e549bb59fd0b76398985cd28e5aa30aaaa85c32`. El contenido está verificado en
+  el snapshot de `origin/nightly`
+  `08fcfc15dceb88b6a6b5c679d581d9de7b8ab698`; los tres checks del PR terminaron
+  `SUCCESS`. La validación Nightly/Pro Plus sigue pendiente y no existe
+  integración demostrada en `testers` ni `master`.
 - Evidencia: fuentes primarias enlazadas con fecha 2026-07-27, auditoría de
   catálogo/fixtures/driver LMU, matriz, contrato propuesto, arquitectura, HTML
   propio y plan TDD. No hubo hands-on autenticado, compra, captura LMU nueva ni
@@ -133,32 +138,29 @@ notas/correcciones, CSV/paquete/demo, tests/benchmarks/capturas.
 - **P1 técnico:** el catálogo actual no demuestra progreso/longitud de vuelta,
   distancia o geometría suficientes para implementar comparación espacial LMU;
   delta/mapa deben degradar honestamente hasta TA-04 con evidencia real.
-- **P2 privacidad, reducido por TA-02/03:** ya existe contrato metadata-first,
-  locator/error sanitizados, valores sensibles redacted y un schema real
-  sanitizado sin valores. El reader productivo aún debe demostrar que nunca
-  expone rutas o metadatos sensibles.
-- **P1 integridad, reducido por TA-02/03:** WAL presente bloquea la apertura y se
-  revalida antes/después de leer. El gate exige ausencia + ventana estable y la
-  lectura verifica que path y handle siguen siendo el mismo archivo regular,
-  incluso si un reemplazo conserva tamaño/mtime. La caracterización usó una
-  copia autorizada read-only y verificó hash/metadata original antes/después;
-  el reader productivo y su empaquetado siguen pendientes.
-- **P2 dependencia/licencia, cerrado técnicamente en TA-03B:** el artefacto
-  exacto se inventarió con fuentes primarias y SBOM reproducible: cuatro módulos
-  Go, cinco extensiones estáticas y 26 componentes C/C++ vendorizados, todos
-  bajo opciones permisivas compatibles con uso comercial. Wails y el `go.mod`
-  principal permanecen sin DuckDB/CGO. Tras re-review limpia, la implementación
-  requiere aprobación humana de dependencia, DLL, ~44,32 MB, VC++ runtime y
-  packaging/notices/rollback.
-- **P1 toolchain, reducido por TA-03B:** el enlace estático oficial 1.5.5 falló
-  con MSYS2 GCC 16 por la transición de `emutls` a TLS nativo. El enlace
-  dinámico contra el paquete oficial con SHA publicado sí pasó y es la ruta
-  recomendada. CI debe fijar y repetir esa prueba.
-- **P1 aislamiento/TOCTOU, acotado por procedencia en TA-03B:** la v1 acepta
-  solo LMU local descubierto/indexado y el helper recibe una copia privada
-  producida desde el handle autorizado. Job Object, hashes, protocolo sin SQL y
-  límites son defensa en profundidad, no un sandbox. Imports externos y
-  comunitarios permanecen deshabilitados hasta ISA-164 / TA-03D.
+- **P2 privacidad, reducido por TA-02/03C:** el contrato metadata-first,
+  locator/error sanitizados y schema sin valores se mantienen. TA-03C demostró
+  staging desde el handle autorizado, copia privada y ausencia de la ruta
+  original en el helper. Queda pendiente validar el flujo local con el grupo
+  Nightly/Pro Plus.
+- **P1 integridad, reducido por TA-02/03C:** WAL, identidad, tamaño, mtime y hash
+  se revalidan antes/después; sustituciones coordinadas y bundles alterados
+  fallan cerrados. El reader y su bundle reproducible están cerrados
+  técnicamente, pero no hay evidencia de distribución en instalador o release.
+- **P2 dependencia/licencia, cerrado técnicamente en TA-03C:** el artefacto
+  exacto conserva el inventario/SBOM reproducible de 37 componentes, notices y
+  rollback confiado. Wails y el `go.mod` principal permanecen sin DuckDB/CGO.
+  La validación física Windows 10 y cualquier integración de distribución
+  siguen pendientes.
+- **P1 toolchain, reducido por TA-03C:** el enlace estático oficial 1.5.5 sigue
+  descartado por el fallo reproducido con GCC 16. La ruta dinámica fijada se
+  reconstruyó reproduciblemente y superó los gates de PR #94; queda pendiente
+  el smoke físico Windows 10.
+- **P1 aislamiento/TOCTOU, acotado por TA-03C:** la v1 acepta solo LMU local
+  descubierto/indexado y el helper recibe una copia privada producida desde el
+  handle autorizado. Job Object, hashes, protocolo sin SQL y límites son
+  defensa en profundidad, no un sandbox. Imports externos y comunitarios
+  permanecen deshabilitados hasta ISA-164 / TA-03D.
 - **P1 temporal, explicitado por TA-03:** el catálogo continuo no declara el
   origen que lo alinea con `ts`. `Lap Dist`, `Total Dist` y GPS aparecen en el
   schema, pero TA-04 debe demostrar su comportamiento antes de mapa/delta.
@@ -173,7 +175,7 @@ notas/correcciones, CSV/paquete/demo, tests/benchmarks/capturas.
 | Cerrada técnicamente | TA-02 / ISA-124, corpus sintético y contrato de importación; review independiente `ACCEPT` |
 | Cerrada técnicamente | TA-03 / ISA-126, modelo y capability endurecidos |
 | Cerrada técnicamente | TA-03B / ISA-135, decisión, límite LMU local y SBOM reproducible |
-| Cerrada técnicamente / In Review | TA-03C / ISA-168, helper/adaptador productivo fuera de proceso; review `APPROVE` |
+| Integrada en `nightly`; validación pendiente | TA-03C / ISA-168, helper/adaptador fuera de proceso; cierre técnico `APPROVE`, promoción ISA-204 / PR #94 |
 | Backlog obligatorio antes de imports externos | TA-03D / ISA-164, sandbox real para contenido externo/comunitario |
 | Siguiente | TA-04, progreso/distancia y mapa con evidencia |
 | Implementación posterior | TA-05+ según `research/telemetry-analysis/plan-microcuts.md` |
@@ -187,15 +189,23 @@ la proyección histórica para Strategy sin exponer DuckDB o el almacenamiento.
 
 ## Última actualización
 
-2026-08-02, ISA-168 / TA-03C cerrada técnicamente sobre ISA-135. Helper Windows x64
-fuera de proceso, módulo DuckDB separado, staging DACL privado, manifest
+2026-08-10, ISA-204 / TA-N01 verificada: PR #94 fue integrada en `nightly`
+mediante squash `4e549bb59fd0b76398985cd28e5aa30aaaa85c32`, ancestro del snapshot
+de `origin/nightly` `08fcfc15dceb88b6a6b5c679d581d9de7b8ab698`; sus tres checks
+terminaron `SUCCESS`. Esto demuestra integración en Nightly, no validación
+Nightly/Pro Plus ni distribución. El smoke físico Windows 10 sigue pendiente y
+TA-03C no está en `testers` ni `master`.
+
+Histórico previo a TA-N01 — 2026-08-02, ISA-168 / TA-03C cerrada técnicamente
+sobre ISA-135. Helper Windows x64 fuera de proceso, módulo DuckDB separado,
+staging DACL privado, manifest
 confiado, Job Object, protocolo tipado sin SQL y bundle reproducible. Parser
 end-to-end real, cancel/retry/close por PID y benchmark de 50 páginas PASS
 (mediana 27,154 ms/página bajo CPU 93–100 %, 0,5995× frente a TA-03B). Root
 Wails conserva `CGO_ENABLED=0` y cero dependencia DuckDB. Review independiente
 `APPROVE`, cero P0/P1/P2/P3 razonables. Evidencia completa:
-`research/telemetry-analysis/ta03c-duckdb-adapter-evidence.md`. Entrega en
-review, sin promoción. Historial TA-03B:
+`research/telemetry-analysis/ta03c-duckdb-adapter-evidence.md`. En ese momento,
+la entrega estaba en review y sin promoción. Historial TA-03B:
 
 2026-08-01, ISA-135 / TA-03B corregida tras `REQUEST CHANGES`. Recomendación:
 helper local corto fuera de proceso, `duckdb-go/v2` + DLL oficial dinámica, app

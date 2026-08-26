@@ -30,8 +30,10 @@
   `columns` ni los campos vigentes. Las regresiones fallaron primero y pasan
   17/17. T3a fija además el contrato de viewport: solo Endurance Redline usa
   `layout.w` como anchura base real; Original y otro Endurance conservan 520 px
-  escalados. Su regresión falló primero y pasa 3/3. Typecheck y diff-check PASS.
-  Sin push, PR ni promoción.
+  escalados. La política ya está conectada en Studio, Desktop/OBS, edición
+  in-place y Workshop, incluido el preview DOM imperativo durante resize para
+  evitar escalado transitorio. Sus regresiones fallaron primero; gate T3 final
+  7 archivos/93 tests, typecheck y diff-check PASS. Sin push, PR ni promoción.
 
 - **ISA-842 — autosave e historial productivo de Overlay Studio (2026-08-25,
   PR draft a nightly):** rebasada sobre `origin/nightly@c7d25f94`, la rama

@@ -138,7 +138,7 @@ function WorkshopSurface({ prepared, surface, query, comparison = false }: { pre
   return <div className="overlay-workshop-surface" data-overlay-workshop-surface={surface} data-overlay-workshop-comparison={comparison || undefined}>
     {surface !== "obs" && <span className="overlay-workshop-surface-label">{surface}</span>}
     <div className="overlay-workshop-widget-root" data-overlay-workshop-widget-root style={{ width, height, transform: `scale(${query.scale})`, transformOrigin: "center" }}>
-      <WidgetVisualViewport widgetType={prepared.widget.type} layout={{ ...prepared.widget.layout, w: width, h: height }} testId="overlay-workshop-viewport">
+      <WidgetVisualViewport widgetType={prepared.widget.type} visual={prepared.widget.visual} layout={{ ...prepared.widget.layout, w: width, h: height }} testId="overlay-workshop-viewport">
         <WidgetVisualHost widget={{ ...prepared.widget, layout: { ...prepared.widget.layout, w: width, h: height } }} snapshot={prepared.snapshot} renderMode={surface}
           runtime={prepared.widget.type === "engineer-radio" ? { engineerPresentation: query.state === "ready" ? buildEngineerPresentationFixture() : null } : undefined} />
       </WidgetVisualViewport>

@@ -20,12 +20,13 @@ afterEach(() => {
   clearInplaceFrameLayoutPreview("delta-main");
 });
 
-function mountFrame(): HTMLElement {
+function mountFrame(fluidWidth = false): HTMLElement {
   const frame = document.createElement("div");
   frame.dataset.testid = inplaceFrameTestId("delta-main");
   const viewport = document.createElement("div");
   viewport.dataset.widgetVisualViewport = "true";
   viewport.dataset.widgetVisualBaseWidth = "280";
+  if (fluidWidth) viewport.dataset.widgetVisualFluidWidth = "true";
   frame.append(viewport);
   document.body.append(frame);
   return frame;
@@ -64,6 +65,18 @@ describe("inplace-frame-preview", () => {
     expect(viewport?.style.width).toBe("280px");
     expect(viewport?.style.height).toBe("96px");
     expect(viewport?.style.transform).toBe("scale(2)");
+  });
+
+  it("keeps fluid Redline width real during imperative resize", () => {
+    const frame = mountFrame(true);
+    beginInplaceFramePreview("delta-main", "resize", layout);
+
+    applyInplaceFrameLayoutPreview("delta-main", { ...layout, w: 560, h: 192 });
+
+    const viewport = frame.querySelector<HTMLElement>("[data-widget-visual-viewport]");
+    expect(viewport?.style.width).toBe("560px");
+    expect(viewport?.style.height).toBe("192px");
+    expect(viewport?.style.transform).toBe("scale(1)");
   });
 
   it("keeps start geometry and applies transform delta on move", () => {

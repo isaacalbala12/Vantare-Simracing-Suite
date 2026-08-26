@@ -26,7 +26,8 @@ export function WidgetVisualViewport(props: {
   testId: string;
   children: ReactNode;
 }): React.ReactElement {
-  const geometry = isFluidRedlineStandings(props.widgetType, props.visual)
+  const fluidWidth = isFluidRedlineStandings(props.widgetType, props.visual);
+  const geometry = fluidWidth
     ? resolveWidgetVisualGeometry(props.layout, props.layout.w)
     : resolveWidgetVisualGeometryForType(props.layout, props.widgetType);
   return (
@@ -34,6 +35,7 @@ export function WidgetVisualViewport(props: {
       data-testid={props.testId}
       data-widget-visual-viewport="true"
       data-widget-visual-base-width={geometry.baseWidth}
+      data-widget-visual-fluid-width={fluidWidth ? "true" : undefined}
       style={{
         width: geometry.baseWidth,
         height: geometry.baseHeight,

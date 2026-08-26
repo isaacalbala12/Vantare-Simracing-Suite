@@ -34,6 +34,11 @@ func (compound Compound) valid() bool {
 	}
 }
 
+// Valid reports whether the compound belongs to the physical inventory
+// contract. Consumers such as the solver use this authority instead of
+// duplicating the supported-compound list.
+func (compound Compound) Valid() bool { return compound.valid() }
+
 type Corner string
 
 const (
@@ -406,7 +411,19 @@ func (request FitmentRequest) needs() []fitmentNeed {
 // compounds are intentionally valid. Persistent corners and discarded units
 // remain hard constraints.
 func (inventory Inventory) SelectFitment(request FitmentRequest) (Fitment, error) {
+	return inventory.SelectFitmentExcluding(request, nil)
+}
+
+// SelectFitmentExcluding selects a fitment while leaving the inventory
+// untouched and ignoring the supplied physical tyre identities. It is used
+// when a plan explicitly changes tyres: continuing with the current fitment is
+// represented separately and must not be charged as a tyre service.
+func (inventory Inventory) SelectFitmentExcluding(request FitmentRequest, excluded []TyreID) (Fitment, error) {
 	needs := request.needs()
+	excludedIDs := make(map[TyreID]struct{}, len(excluded))
+	for _, id := range excluded {
+		excludedIDs[id] = struct{}{}
+	}
 	requiredByCompound := make(map[Compound]int)
 	availableByCompound := make(map[Compound]int)
 	for _, need := range needs {
@@ -416,7 +433,7 @@ func (inventory Inventory) SelectFitment(request FitmentRequest) (Fitment, error
 		requiredByCompound[need.compound]++
 	}
 	for _, tyre := range inventory.tyres {
-		if tyre.State != StateDiscarded {
+		if _, excluded := excludedIDs[tyre.ID]; tyre.State != StateDiscarded && !excluded {
 			availableByCompound[tyre.Compound]++
 		}
 	}
@@ -434,11 +451,11 @@ func (inventory Inventory) SelectFitment(request FitmentRequest) (Fitment, error
 
 	assignment := make(map[Corner]TyreID, len(needs))
 	used := make(map[TyreID]bool, len(needs))
-	if !inventory.assign(needs, 0, assignment, used) {
+	if !inventory.assign(needs, 0, assignment, used, excludedIDs) {
 		for _, need := range needs {
 			available := 0
 			for _, tyre := range inventory.tyres {
-				if tyreAvailableFor(tyre, need) {
+				if _, excluded := excludedIDs[tyre.ID]; !excluded && tyreAvailableFor(tyre, need) {
 					available++
 				}
 			}
@@ -449,7 +466,7 @@ func (inventory Inventory) SelectFitment(request FitmentRequest) (Fitment, error
 		compatible := make(map[TyreID]struct{})
 		for _, need := range needs {
 			for _, tyre := range inventory.tyres {
-				if tyreAvailableFor(tyre, need) {
+				if _, excluded := excludedIDs[tyre.ID]; !excluded && tyreAvailableFor(tyre, need) {
 					compatible[tyre.ID] = struct{}{}
 				}
 			}
@@ -464,14 +481,15 @@ func (inventory Inventory) SelectFitment(request FitmentRequest) (Fitment, error
 	}, nil
 }
 
-func (inventory Inventory) assign(needs []fitmentNeed, index int, assignment map[Corner]TyreID, used map[TyreID]bool) bool {
+func (inventory Inventory) assign(needs []fitmentNeed, index int, assignment map[Corner]TyreID, used map[TyreID]bool, excluded map[TyreID]struct{}) bool {
 	if index == len(needs) {
 		return true
 	}
 	need := needs[index]
 	candidates := make([]Tyre, 0, len(inventory.tyres))
 	for _, tyre := range inventory.tyres {
-		if !used[tyre.ID] && tyreAvailableFor(tyre, need) {
+		_, isExcluded := excluded[tyre.ID]
+		if !isExcluded && !used[tyre.ID] && tyreAvailableFor(tyre, need) {
 			candidates = append(candidates, tyre)
 		}
 	}
@@ -486,7 +504,7 @@ func (inventory Inventory) assign(needs []fitmentNeed, index int, assignment map
 	for _, candidate := range candidates {
 		used[candidate.ID] = true
 		assignment[need.corner] = candidate.ID
-		if inventory.assign(needs, index+1, assignment, used) {
+		if inventory.assign(needs, index+1, assignment, used, excluded) {
 			return true
 		}
 		delete(assignment, need.corner)

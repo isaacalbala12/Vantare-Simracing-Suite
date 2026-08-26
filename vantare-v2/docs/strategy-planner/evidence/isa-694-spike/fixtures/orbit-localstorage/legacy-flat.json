@@ -1,0 +1,11 @@
+{
+  "storageKey": "vantare.v03orbit.strategy",
+  "shape": "legacy-flat-variant-map",
+  "value": {
+    "s1": {
+      "state": "draft",
+      "order": ["driver-1"],
+      "overrides": {"0": {"laps": 20}}
+    }
+  }
+}

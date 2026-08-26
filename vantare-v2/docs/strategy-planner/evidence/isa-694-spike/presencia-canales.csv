@@ -1,0 +1,18 @@
+﻿group,channel,present_sessions,total_sessions,presence_pct,kinds,frequencies_hz,column_counts
+fuel_level,Fuel Level,336,336,100.0,{'continuous': 336},[20],{1: 336}
+virtual_energy,Virtual Energy,336,336,100.0,{'continuous': 336},[20],{1: 336}
+tyres_wear,Tyres Wear,336,336,100.0,{'continuous': 336},[10],{4: 336}
+fuel_mixture,FuelMixtureMap,336,336,100.0,{'events': 336},[],{2: 336}
+minimum_path_wetness,Minimum Path Wetness,336,336,100.0,{'events': 336},[],{2: 336}
+offpath_wetness,OffpathWetness,336,336,100.0,{'events': 336},[],{2: 336}
+cloud_darkness,CloudDarkness,336,336,100.0,{'events': 336},[],{2: 336}
+tyres_pressure,TyresPressure,336,336,100.0,{'continuous': 336},[10],{4: 336}
+tyres_compound,TyresCompound,336,336,100.0,{'events': 336},[],{5: 336}
+temperatures,Ambient Temperature,336,336,100.0,{'continuous': 336},[1],{1: 336}
+temperatures,Track Temperature,336,336,100.0,{'continuous': 336},[1],{1: 336}
+temperatures,TyresCarcassTemp,336,336,100.0,{'continuous': 336},[5],{4: 336}
+temperatures,TyresRimTemp,336,336,100.0,{'continuous': 336},[50],{4: 336}
+temperatures,TyresRubberTemp,336,336,100.0,{'continuous': 336},[10],{4: 336}
+temperatures,TyresTempCentre,336,336,100.0,{'continuous': 336},[100],{4: 336}
+temperatures,TyresTempLeft,336,336,100.0,{'continuous': 336},[100],{4: 336}
+temperatures,TyresTempRight,336,336,100.0,{'continuous': 336},[100],{4: 336}

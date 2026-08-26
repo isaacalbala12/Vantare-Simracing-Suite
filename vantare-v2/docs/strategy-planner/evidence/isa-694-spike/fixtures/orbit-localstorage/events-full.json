@@ -1,0 +1,51 @@
+{
+  "storageKey": "vantare.v03orbit.strategy.events",
+  "shape": "events-state-full",
+  "value": {
+    "events": [
+      {
+        "id": "own-1",
+        "name": "Evento legacy completo",
+        "source": "custom",
+        "seriesId": "series-1",
+        "track": "Spa-Francorchamps",
+        "cls": "LMGT3",
+        "durationMin": 120,
+        "startAt": "2026-08-21T14:00:00.000Z",
+        "team": "Equipo ejemplo",
+        "drivers": [
+          {
+            "id": "driver-1",
+            "name": "Piloto ejemplo",
+            "ini": "PE",
+            "color": "#ffffff",
+            "cls": "Gold",
+            "dry": [105, 2.8],
+            "wet": [113, 2.45],
+            "eco": [106.1, 2.6]
+          }
+        ],
+        "tankL": 100,
+        "pitLossSec": 54,
+        "strategies": [
+          {
+            "id": "s1",
+            "name": "Base",
+            "note": "Ejemplo",
+            "mode": "dry",
+            "order": ["driver-1"],
+            "state": "ok",
+            "overrides": {"0": {"laps": 12}},
+            "tyres": {}
+          }
+        ],
+        "availability": {"driver-1": [{"state": "ok", "from": 780, "to": 1110}]},
+        "activeStrategyId": "s1",
+        "teamMode": "team",
+        "fillMode": "manual",
+        "lastOpenedAt": "2026-08-21T13:00:00.000Z"
+      }
+    ],
+    "activeId": "own-1"
+  }
+}

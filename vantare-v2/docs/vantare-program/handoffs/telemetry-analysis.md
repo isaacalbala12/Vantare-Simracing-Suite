@@ -17,6 +17,116 @@ visible es `Telemetría`.
 
 ## Estado
 
+Actualización ISA-861 (2026-08-27, corte final candidato sobre
+`origin/nightly@b1d5b15b`):
+
+- La rama de integración incorpora el servicio backend TA-03E completo, sus
+  correcciones de limpieza y límites, y el empaquetado Windows TA-03F con
+  verificación fail-closed del runtime firmado.
+- También incorpora el acumulado ISA-694: importación LMU autorizada, cold
+  start reanudable, paginación acotada, catálogo histórico y proyecciones
+  públicas consumidas por Strategy.
+- `TelemetryOrbitPage` continúa fuera de este corte: su fuente productiva aún
+  devuelve una lista vacía. La integración habilita backend e histórico para
+  las pruebas reales, pero no afirma que la pantalla post-sesión ya los lea.
+- TA03E/TA03F ya fue promovida mediante PR #866 a `nightly@b1d5b15b`. El
+  acumulado de Analysis/Strategy de este segundo corte mantiene push, PR, CI
+  y merge pendientes. `testers`, `master` y release quedan fuera.
+
+ISA-816 corrige en su rama aislada la segunda pagina de eventos LMU: el parser
+ya no suma la predecesora al limite enviado al runtime, sino que la solicita en
+una lectura separada de una fila. La pagina publica sigue admitiendo 16.384
+eventos nuevos. Una regresion `duckdb_integration` con adapter real, helper
+firmado y 16.385 eventos reproduce el fallo anterior y pasa con el arreglo.
+Analysis, la suite real completa, el helper y el vet focal pasan. El gate vet
+exacto llega a Go tras restaurar `frontend/dist`, pero conserva tres avisos
+`unsafe.Pointer` previos y ajenos en LMU live y Launcher; el mismo gate con ese
+analizador desactivado pasa. Commit de producto `3e88d21b`; pendiente review,
+sin PR, integracion ni promocion.
+
+ISA-809 / ISA-694 F5-e corrige en su rama aislada el panic al asociar un
+incidente posterior a la ultima vuelta. `labelIncidentLaps` valida ambos
+limites y una sesion sintetica cubre eventos antes de la primera vuelta y
+despues de la ultima. El barrido de los siete `sort.Search` del paquete confirma
+que los otros indices derivados se validan antes de acceder, incluida la resta
+de `continuousLapEndValues` que puede producir `-1`. Analysis+Strategy PASS; el
+corpus real de 337 DuckDB queda para el gate del orquestador. Un aislamiento
+general ante panics por sesion queda fuera de este arreglo y necesita una
+politica separada. Sin PR, integracion ni promocion.
+
+ISA-744 / ISA-694 F3-a5 está implementada en su rama aislada y cierra el
+desarrollo F3a pendiente de review. El pit degradado conserva intervalos de
+carril; Fuel/VE solo se asocian con reloj declarado común. Reloj desconocido o
+ausencia de subida quedan ambiguos con motivo y jamás producen desglose de
+tránsito/servicio. Las tasas observadas agregan N, rango, varianza y versión.
+
+`ObservedStrategy v1` publica stints, vueltas de parada, compuesto raw, cambios
+Fuel/neumático/desgaste y resultado observable de cada carrera. El productor
+multi-sesión compone F3-a1..a5 en `StrategyInputProjection v2`; todas las
+familias llevan presencia, procedencia, confianza y motivo, y las ausentes no
+bloquean las demostradas. El contract test cubre wire nuevo→consumidor v2 y
+rechazo fail-closed del fixture v1. Gates Analysis/Strategy, race, vet, gofmt y
+diff-check PASS; el gate Go global sigue no ejecutable sin el `frontend/dist`
+embebido. Sin PR, integración ni promoción.
+
+ISA-743 / ISA-694 F3-a4 está implementada en su rama aislada. La salida
+estándar es `CombinedStintPaceCurve`: cero local por mediana de las tres
+primeras vueltas limpias del stint y agregación por índice para la misma
+combinación+bucket, con rango y N. Un gate documentado exige diseño cruzado,
+3 stints, 15 vueltas, tres edades con rango de Fuel >=10 L, correlación máxima
+0,80 y varianza residual mínima de 25 % antes de publicar fuel/edad separados.
+La fixture cruzada pasa; la fixture sintética tipo corpus real no.
+
+`Tyres Wear` deriva pendiente por rueda/eje y vida al 20 % con rango y
+confianza; compuesto sigue `unsupported` por falta de mapping semántico. El
+coste del ahorro solo aparece con 5+5 vueltas limpias alternadas por nivel en
+el mismo stint, compuesto y clima; cualquier fallo queda `missing` con motivo.
+Contrato numérico en `docs/strategy-planner/isa-743-curvas-derivadas.md`.
+Suite focal, race, vet, gofmt y diff-check PASS. La suite Go global solo queda
+bloqueada en `frontend` y `cmd/vantare` por ausencia de `frontend/dist` en el
+worktree. Pendiente: review del orquestador; sin PR ni promoción.
+
+ISA-742 / ISA-694 F3-a3 está implementada en su rama aislada: Fuel y Virtual
+Energy por vuelta se calculan como delta entre fronteras válidas dentro del
+mismo `ContinuousSegment`, sin cruzar `CoverageGap` ni pit. El ritmo
+representativo usa mediana y varianza de vueltas limpias; tráfico conserva su
+etiqueta y consumo, pero no entra en ritmo. Los eventos `Minimum Path Wetness`
+producen buckets seco/húmedo/mojado; una vuelta que cambia de bucket no se
+atribuye entera a ninguno. No se usan `CloudDarkness` ni `OffpathWetness`.
+
+La agregación mezcla solo la misma combinación+bucket, pondera calidad y N, y
+calcula el percentil de la sesión actual contra el histórico suministrado del
+mismo piloto. Observaciones, familias y percentil llevan presencia,
+procedencia `derived` y confianza completas. Fixtures versionadas cubren seco
+y llovizna estilo S040. Gates focal, race, vet, gofmt y diff-check pasan; la
+suite global pasa salvo los dos paquetes bloqueados por `frontend/dist`
+ausente. Pendiente: review del orquestador de #742; no hay PR, integración ni
+promoción.
+
+ISA-740 / ISA-694 F3-a2 está implementada en su rama aislada: vueltas y
+fronteras se reconcilian desde `Lap` + resets de `Lap Dist` con calidad
+explícita; las vueltas incompletas permanecen visibles y las etiquetas
+out/in-lap, pit, impacto/offtrack, tráfico y outlier alimentan exclusiones
+explicadas por familia. Tráfico es solo etiqueta (D7). Stints aparentes usan
+únicamente pit, salto de Fuel o cambio observable de neumático, nunca identidad
+de piloto. La salida materializa `ContinuousSegment`, `CoverageGap`,
+`LapBoundary` y `StintBoundary` del contrato F1.2.
+
+Las fixtures reales mínimas y sanitizadas S045/S266 reproducen 9/70 vueltas,
+10/70 resets, 10/71 eventos, 6/66 tiempos utilizables, 0/3 vueltas de pit y
+1/4 stints aparentes; S266 conserva como gap sus 9.985,14 s de delta temporal.
+Los gates focal, race, vet, gofmt y diff-check pasan. Pendiente: review del
+orquestador de #740; no hay PR, integración ni promoción.
+
+ISA-737 / ISA-694 F3-a1 está implementada en su rama aislada: el modelo
+`HistoricalSession` se clasifica por combinación LMU, tipo y clima; las
+sesiones sin vuelta completa permanecen identificadas con usabilidad por
+familia; y cada carrera se agrupa con las prácticas de la misma combinación.
+Las fixtures sanitizadas cubren las seis candidatas de F0-1 y el spot-check
+8/8, sin DuckDB, fechas, hashes ni nombres de equipos reales. El gate
+`go test ./internal/telemetryanalysis/... -count=1`, vet, gofmt y diff-check
+pasa. Pendiente: review del orquestador; no hay PR ni promoción.
+
 TA-01 / ISA-122 completó la investigación documental, competitiva y de código.
 TA-02 / ISA-124 está técnicamente cerrada en rama aislada tras review
 independiente `ACCEPT` sin P0/P1/P2/P3. Entrega el primer contrato compilable
@@ -280,6 +390,26 @@ El build CGO real pasa con paths temporales con espacios. Updater conserva su
 protocolo y consume el installer.
 Pendientes instalación/upgrade/rollback/uninstall reales en Windows 11 y el
 gate Windows 10 si aplica. Sin push, PR, CI remoto, merge, promoción o release.
+
+2026-08-23, ISA-816 implementada en rama propia: el contexto predecesor de una
+pagina de eventos se lee por separado sin superar 16.384 filas por peticion, y
+una regresion contra el adapter real cubre 16.385 eventos. Commit de producto
+`3e88d21b`; pendiente review, sin PR ni promocion. Analysis, integracion real
+y vet focal pasan; el vet exacto conserva tres avisos `unsafe.Pointer` previos
+y ajenos.
+
+Historial previo:
+
+2026-08-23, ISA-809 / ISA-694 F5-e implementada en rama propia: el etiquetado
+de incidentes valida ambos limites del indice de vuelta y queda cubierto antes
+de la primera vuelta y despues de la ultima. Barrido completo de `sort.Search`
+y gates Analysis+Strategy PASS; pendiente corpus real y review, sin PR ni
+promocion.
+
+2026-08-21, ISA-744 / ISA-694 F3-a5 implementada en rama propia: pit degradado,
+`ObservedStrategy v1`, agregación multi-sesión y productor final
+`StrategyInputProjection v2`; pendiente review, sin PR ni promoción. Evidencia:
+`docs/strategy-planner/isa-744-pit-observed-producer.md`.
 
 2026-08-02, ISA-168 / TA-03C cerrada técnicamente sobre ISA-135. Helper Windows x64
 fuera de proceso, módulo DuckDB separado, staging DACL privado, manifest

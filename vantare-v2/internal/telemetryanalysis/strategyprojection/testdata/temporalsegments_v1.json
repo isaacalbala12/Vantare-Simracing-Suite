@@ -1,0 +1,45 @@
+{
+  "contractVersion": "temporalsegments.v1",
+  "segments": [
+    {
+      "segmentId": "seg-local-1",
+      "sessionStartTs": "2026-08-21T10:00:00.000Z",
+      "sessionEndTs": "2026-08-21T10:30:00.000Z",
+      "reason": "local_driver_window",
+      "presence": "valid",
+      "provenance": {"kind": "observed", "sourceId": "lmu:continuous"},
+      "confidence": {"sampleSize": 36000, "computationVersion": "1.0.0"}
+    }
+  ],
+  "gaps": [
+    {
+      "gapId": "gap-driver-swap",
+      "startTs": "2026-08-21T10:30:00.000Z",
+      "endTs": "2026-08-21T11:00:00.000Z",
+      "reason": "driver_not_in_car",
+      "presence": "missing",
+      "provenance": {"kind": "derived", "sourceId": "analysis:gap"}
+    }
+  ],
+  "lapBoundaries": [
+    {
+      "lapNumber": 1,
+      "timestamp": "2026-08-21T10:01:00.000Z",
+      "source": "reconciled",
+      "quality": "valid",
+      "provenance": {"kind": "derived", "sourceId": "analysis:lap"},
+      "confidence": {"sampleSize": 1, "computationVersion": "1.0.0"},
+      "location": {"normalizedDistance": 0.0, "presence": "valid"}
+    }
+  ],
+  "stintBoundaries": [
+    {
+      "stintNumber": 2,
+      "timestamp": "2026-08-21T10:15:00.000Z",
+      "cause": "fuel_jump",
+      "presence": "valid",
+      "provenance": {"kind": "derived", "sourceId": "analysis:stint"},
+      "confidence": {"sampleSize": 1, "rangeLower": 40, "rangeUpper": 45, "computationVersion": "1.0.0"}
+    }
+  ]
+}

@@ -1,0 +1,267 @@
+{
+  "channel_quality": {
+    "Ambient Temperature": {
+      "empirical_resolution": 0.0019702911376953125,
+      "maximum": 23.023019790649414,
+      "median_abs_step": 0.03752899169921875,
+      "minimum": 20.02008819580078,
+      "nulls": 0,
+      "p95_abs_step": 0.037540435791015625,
+      "samples": 6037
+    },
+    "CloudDarkness": {
+      "empirical_resolution": null,
+      "maximum": null,
+      "median_abs_step": null,
+      "minimum": null,
+      "nulls": 0,
+      "p95_abs_step": null,
+      "samples": 1
+    },
+    "Fuel Level": {
+      "empirical_resolution": 2.384185791015625e-07,
+      "maximum": 88.0,
+      "median_abs_step": 0.00165557861328125,
+      "minimum": 1.8498902320861816,
+      "nulls": 0,
+      "p95_abs_step": 0.201171875,
+      "samples": 6144
+    },
+    "FuelMixtureMap": {
+      "empirical_resolution": 1.0,
+      "maximum": 5.0,
+      "median_abs_step": 1.0,
+      "minimum": 2.0,
+      "nulls": 0,
+      "p95_abs_step": 1.0,
+      "samples": 7
+    },
+    "Minimum Path Wetness": {
+      "empirical_resolution": null,
+      "maximum": 0.0,
+      "median_abs_step": null,
+      "minimum": 0.0,
+      "nulls": 0,
+      "p95_abs_step": null,
+      "samples": 1
+    },
+    "OffpathWetness": {
+      "empirical_resolution": null,
+      "maximum": null,
+      "median_abs_step": null,
+      "minimum": null,
+      "nulls": 0,
+      "p95_abs_step": null,
+      "samples": 1
+    },
+    "Track Temperature": {
+      "empirical_resolution": 1.52587890625e-05,
+      "maximum": 42.339691162109375,
+      "median_abs_step": 0.012285232543945312,
+      "minimum": 40.00969696044922,
+      "nulls": 0,
+      "p95_abs_step": 0.10852375030517579,
+      "samples": 6037
+    },
+    "Tyres Wear": {
+      "empirical_resolution": 3.814697265625e-06,
+      "maximum": 100.0,
+      "median_abs_step": 0.00049591064453125,
+      "minimum": 52.772830963134766,
+      "nulls": 0,
+      "p95_abs_step": 0.0033876419067382785,
+      "samples": 24576
+    },
+    "TyresCarcassTemp": {
+      "empirical_resolution": 1.9073486328125e-06,
+      "maximum": 107.2826156616211,
+      "median_abs_step": 0.0218048095703125,
+      "minimum": 20.020498275756836,
+      "nulls": 0,
+      "p95_abs_step": 0.05994377136230464,
+      "samples": 24576
+    },
+    "TyresCompound": {
+      "empirical_resolution": null,
+      "maximum": 0.0,
+      "median_abs_step": null,
+      "minimum": 0.0,
+      "nulls": 0,
+      "p95_abs_step": null,
+      "samples": 4
+    },
+    "TyresPressure": {
+      "empirical_resolution": 7.62939453125e-06,
+      "maximum": 186.44488525390625,
+      "median_abs_step": 0.1289520263671875,
+      "minimum": 123.75419616699219,
+      "nulls": 0,
+      "p95_abs_step": 0.8381423950195312,
+      "samples": 24576
+    },
+    "TyresRimTemp": {
+      "empirical_resolution": 1.9073486328125e-06,
+      "maximum": 102.64132690429688,
+      "median_abs_step": 0.00177764892578125,
+      "minimum": 20.271724700927734,
+      "nulls": 0,
+      "p95_abs_step": 0.0070953369140625,
+      "samples": 24576
+    },
+    "TyresRubberTemp": {
+      "empirical_resolution": 1.9073486328125e-06,
+      "maximum": 93.1585693359375,
+      "median_abs_step": 0.009195327758789062,
+      "minimum": 20.025333404541016,
+      "nulls": 0,
+      "p95_abs_step": 0.027833271026611324,
+      "samples": 24576
+    },
+    "TyresTempCentre": {
+      "empirical_resolution": 1.9073486328125e-06,
+      "maximum": 81.98207092285156,
+      "median_abs_step": 0.00106048583984375,
+      "minimum": 20.020437240600586,
+      "nulls": 0,
+      "p95_abs_step": 0.00287628173828125,
+      "samples": 24576
+    },
+    "TyresTempLeft": {
+      "empirical_resolution": 1.9073486328125e-06,
+      "maximum": 79.70694732666016,
+      "median_abs_step": 0.000347137451171875,
+      "minimum": 20.020362854003906,
+      "nulls": 0,
+      "p95_abs_step": 0.003173828125,
+      "samples": 24576
+    },
+    "TyresTempRight": {
+      "empirical_resolution": 1.9073486328125e-06,
+      "maximum": 81.72885131835938,
+      "median_abs_step": 0.0003337860107421875,
+      "minimum": 20.02021026611328,
+      "nulls": 0,
+      "p95_abs_step": 0.0030364990234375,
+      "samples": 24576
+    },
+    "Virtual Energy": {
+      "empirical_resolution": 1.1920928955078125e-07,
+      "maximum": 100.0,
+      "median_abs_step": 0.0025707483291625977,
+      "minimum": 0.5106176137924194,
+      "nulls": 0,
+      "p95_abs_step": 0.12694931030273438,
+      "samples": 6144
+    }
+  },
+  "combination": {
+    "CarClass": "Hyper",
+    "CarName": "Genesis Custom Team 2026 #397",
+    "SessionType": "Race",
+    "TrackLayout": "Autodromo Nazionale Monza",
+    "TrackName": "Autodromo Nazionale Monza",
+    "WeatherConditions": "Light Clouds"
+  },
+  "duration_s": 12158.9,
+  "laps": 58,
+  "mixture_curve": [
+    {
+      "laps": 2,
+      "mean_fuel_per_lap_l": 2.8867874145507812,
+      "mean_lap_time_s": 145.37841796875,
+      "mixture": "2"
+    },
+    {
+      "laps": 54,
+      "mean_fuel_per_lap_l": 3.0467365629532757,
+      "mean_lap_time_s": 99.03988534432871,
+      "mixture": "3"
+    }
+  ],
+  "pit_aggregates": [
+    {
+      "duration_s": 54.902500000000146,
+      "fuel_delta_l": 0.0,
+      "fuel_service_lps": null,
+      "non_resource_time_s": 47.152500000000146,
+      "resource_service_duration_s": 7.75,
+      "virtual_energy_delta_pct": 19.33934783935547,
+      "virtual_energy_service_pctps": 2.4953997212071575
+    },
+    {
+      "duration_s": 69.55999999999949,
+      "fuel_delta_l": 72.55285930633545,
+      "fuel_service_lps": 3.9974027166025046,
+      "non_resource_time_s": 34.20999999999949,
+      "resource_service_duration_s": 35.35,
+      "virtual_energy_delta_pct": 88.29553508758545,
+      "virtual_energy_service_pctps": 2.497752053397042
+    }
+  ],
+  "schema": "isa-694-spike-derived-bundle.v0",
+  "session_id": "S026-08a1e626",
+  "stints": [
+    {
+      "compounds": [
+        "0"
+      ],
+      "fuel_end_l": 4.3236212730407715,
+      "fuel_start_l": 88.0,
+      "index": 0,
+      "laps": 28,
+      "mean_lap_time_s": 101.12062290736607,
+      "mixtures": [
+        "2",
+        "3",
+        "5"
+      ],
+      "tyres_end_pct": 80.33178901672363,
+      "tyres_start_pct": 99.99991226196289
+    },
+    {
+      "compounds": [
+        "0"
+      ],
+      "fuel_end_l": 36.2479248046875,
+      "fuel_start_l": 36.2479248046875,
+      "index": 1,
+      "laps": 1,
+      "mean_lap_time_s": 104.17578125,
+      "mixtures": [
+        "3"
+      ],
+      "tyres_end_pct": 79.82836532592773,
+      "tyres_start_pct": 79.82836532592773
+    },
+    {
+      "compounds": [
+        "0"
+      ],
+      "fuel_end_l": 3.8820321559906006,
+      "fuel_start_l": 84.56742858886719,
+      "index": 2,
+      "laps": 28,
+      "mean_lap_time_s": 100.21477399553571,
+      "mixtures": [
+        "3"
+      ],
+      "tyres_end_pct": 61.50782108306885,
+      "tyres_start_pct": 79.08340644836426
+    },
+    {
+      "compounds": [
+        "0"
+      ],
+      "fuel_end_l": 29.448144912719727,
+      "fuel_start_l": 29.448144912719727,
+      "index": 3,
+      "laps": 1,
+      "mean_lap_time_s": 105.7109375,
+      "mixtures": [
+        "3"
+      ],
+      "tyres_end_pct": 99.99999618530273,
+      "tyres_start_pct": 99.99999618530273
+    }
+  ]
+}

@@ -12,6 +12,8 @@ import (
 	_ "github.com/duckdb/duckdb-go/v2"
 )
 
+const longEventRows = 16_385
+
 func main() {
 	var output string
 	var rows int64
@@ -41,10 +43,11 @@ func create(path string, rowCount int64, slow bool) error {
 		`CREATE TABLE "eventsList" (eventName VARCHAR, unit VARCHAR)`,
 		`CREATE TABLE "metadata" (key VARCHAR, value VARCHAR)`,
 		`CREATE TABLE "speed" AS SELECT i::DOUBLE AS value FROM range(?) values(i)`,
+		`CREATE TABLE "long_event" AS SELECT i::DOUBLE AS ts, i::BIGINT AS value FROM range(?) values(i)`,
 		`CREATE TABLE "quote""table" (value BIGINT, active BOOLEAN, note VARCHAR, nullable DOUBLE)`,
 		`CREATE TABLE "pit" (ts DOUBLE, value BOOLEAN)`,
 		`INSERT INTO "channelsList" VALUES ('quote"table', 50, ''), ('speed', 100, 'km/h')`,
-		`INSERT INTO "eventsList" VALUES ('pit', '')`,
+		`INSERT INTO "eventsList" VALUES ('long_event', ''), ('pit', '')`,
 		`INSERT INTO "metadata" VALUES ('DriverName', 'Synthetic Private Driver'), ('TrackName', 'Synthetic Track')`,
 		`INSERT INTO "quote""table" VALUES (0, false, '', NULL), (2, true, 'ok', 1.5)`,
 		`INSERT INTO "pit" VALUES (1.0, false), (2.0, true)`,
@@ -53,6 +56,8 @@ func create(path string, rowCount int64, slow bool) error {
 		var execErr error
 		if index == 3 {
 			_, execErr = db.ExecContext(context.Background(), statement, rowCount)
+		} else if index == 4 {
+			_, execErr = db.ExecContext(context.Background(), statement, longEventRows)
 		} else {
 			_, execErr = db.ExecContext(context.Background(), statement)
 		}

@@ -2325,7 +2325,6 @@ func main() {
 			// renderer.
 			var payload struct {
 				TagName string `json:"tag_name"`
-				Tag     string `json:"tag"`
 			}
 			if event.Data != nil {
 				if raw, err := json.Marshal(event.Data); err == nil {
@@ -2334,13 +2333,12 @@ func main() {
 			}
 			tag := payload.TagName
 			if tag == "" {
-				tag = payload.Tag
-			}
-			if tag == "" {
 				emitUpdaterError("release is required")
 				return
 			}
-			emitter.Emit("updater:progress", map[string]any{"percent": 0})
+			// El 0% lo emite la propia descarga al arrancar. Anunciarlo aqui,
+			// antes de saber si la instalacion siquiera empieza, hacia que un
+			// segundo clic rebobinara la barra de la que si estaba en marcha.
 			go func() {
 				if err := updaterSvc.InstallVerifiedVersionCtx(ctx, tag); err != nil {
 					if ctx.Err() != nil {

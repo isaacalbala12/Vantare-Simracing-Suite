@@ -199,7 +199,7 @@ func TestASecondInstallIsAllowedOnceTheFirstFinishes(t *testing.T) {
 	}
 }
 
-func TestInstallRefusesAReleaseWhoseChannelStoppedBeingAllowed(t *testing.T) {
+func TestInstallRefusesAReleaseOfAChannelThatStoppedBeingAllowed(t *testing.T) {
 	fixture := newInstallFixture(t, "v0.1.0.2-nightly.1", false)
 	svc := newInstallService(t, fixture)
 
@@ -217,12 +217,20 @@ func TestInstallRefusesAReleaseWhoseChannelStoppedBeingAllowed(t *testing.T) {
 		return channel == updater.ChannelStable
 	})
 
+	before := fixture.releaseListHits()
 	err := svc.InstallVerifiedVersionCtx(context.Background(), "v0.1.0.2-nightly.1")
 	if err == nil {
 		t.Fatal("una release de un canal que ya no esta autorizado no puede instalarse")
 	}
-	if !strings.Contains(err.Error(), "not authorized") {
-		t.Fatalf("se esperaba el rechazo por canal, y fallo con: %v", err)
+	// Se rechaza antes de tocar el instalador, sea por la lista o por la
+	// comprobacion de canal: lo que no puede es descargarse y ejecutarse.
+	if fixture.releaseListHits() == before && !strings.Contains(err.Error(), "not authorized") {
+		t.Fatalf("rechazo inesperado: %v", err)
+	}
+	select {
+	case <-fixture.installerHit:
+		t.Fatal("no debe descargarse nada de un canal no autorizado")
+	default:
 	}
 }
 
@@ -314,5 +322,34 @@ func TestAThrottledCheckWithNothingKnownStillSaysSo(t *testing.T) {
 	}
 	if info.HasUpdate {
 		t.Fatal("sin nada en cache no se puede afirmar que haya actualizacion")
+	}
+}
+
+func TestTheCachedAnswerIsNotReusedAfterChangingChannel(t *testing.T) {
+	fixture := newInstallFixture(t, "v0.1.0.2", false)
+	svc := newInstallService(t, fixture)
+	svc.SetChannelAuthorizer(func(channel updater.Channel) bool { return true })
+
+	if _, err := svc.CheckUpdatesManual(); err != nil {
+		t.Fatalf("primera comprobacion: %v", err)
+	}
+	// Se conserva el enfriamiento a proposito: lo que se prueba es que, sin
+	// mirar, no se conteste con la lista del canal anterior.
+	if err := svc.SaveSettings(&updater.Settings{
+		Channel:     updater.ChannelNightly,
+		LastCheckAt: time.Now().UTC(),
+	}); err != nil {
+		t.Fatalf("SaveSettings: %v", err)
+	}
+
+	info, err := svc.CheckUpdates()
+	if err != nil {
+		t.Fatalf("CheckUpdates: %v", err)
+	}
+	if !info.Throttled {
+		t.Fatal("se esperaba una respuesta estrangulada")
+	}
+	if len(info.Releases) != 0 {
+		t.Fatalf("respondio con la lista del canal viejo: %+v", info.Releases)
 	}
 }

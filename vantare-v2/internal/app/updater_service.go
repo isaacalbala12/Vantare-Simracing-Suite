@@ -26,6 +26,11 @@ type UpdaterService struct {
 	// and a throttled check can answer with what is known instead of an empty
 	// shell that reads as "there is nothing to update".
 	lastInfo *updater.UpdateInfo
+	// lastChannel is the channel lastInfo was built for. The list is filtered
+	// by channel, so reusing it after the user switches would answer about the
+	// old one — and could hand `resolveRelease` a release the current channel
+	// no longer offers.
+	lastChannel updater.Channel
 }
 
 // ErrInstallInProgress reports a second install attempted while one is running.
@@ -140,7 +145,7 @@ func (s *UpdaterService) checkUpdates(ctx context.Context, manual bool) (*update
 	// no hay nada que actualizar apoyandose en un enfriamiento. Se responde con
 	// lo ultimo que si se llego a ver, marcado como estrangulado.
 	if info.Throttled {
-		if s.lastInfo != nil {
+		if s.lastInfo != nil && s.lastChannel == settings.Channel {
 			cached := *s.lastInfo
 			cached.Throttled = true
 			return &cached, nil
@@ -153,6 +158,7 @@ func (s *UpdaterService) checkUpdates(ctx context.Context, manual bool) (*update
 	}
 	snapshot := *info
 	s.lastInfo = &snapshot
+	s.lastChannel = settings.Channel
 	return info, nil
 }
 
@@ -210,6 +216,11 @@ func (s *UpdaterService) InstallVerifiedVersionCtx(ctx context.Context, tag stri
 		return err
 	}
 
+	// Segunda barrera, hoy inalcanzable: la lista de la que sale `release` ya
+	// esta filtrada por el canal configurado, y `loadSettings` deja ese canal
+	// dentro de lo que la licencia permite. Se queda porque es la ultima linea
+	// antes de ejecutar un instalador, y porque el dia que aquel filtro cambie
+	// esto no puede depender de que alguien se acuerde.
 	channel, known := updater.ReleaseChannel(*release)
 	if !known || !s.channelIsAllowed(channel) {
 		return fmt.Errorf("release channel is not authorized")
@@ -228,20 +239,17 @@ func (s *UpdaterService) resolveRelease(ctx context.Context, tag string) (*updat
 	// de 30 s de la API, delante de la descarga que este arreglo intenta
 	// salvar en lineas lentas.
 	s.mu.Lock()
+	settings, err := s.loadSettings()
 	var cached []updater.Release
-	if s.lastInfo != nil {
+	if err == nil && s.lastInfo != nil && s.lastChannel == settings.Channel {
 		cached = s.lastInfo.Releases
 	}
 	s.mu.Unlock()
-	if release := findRelease(cached, tag); release != nil {
-		return release, nil
-	}
-
-	s.mu.Lock()
-	settings, err := s.loadSettings()
-	s.mu.Unlock()
 	if err != nil {
 		return nil, err
+	}
+	if release := findRelease(cached, tag); release != nil {
+		return release, nil
 	}
 
 	releases, err := s.updater.ListAvailableCtx(ctx, settings)

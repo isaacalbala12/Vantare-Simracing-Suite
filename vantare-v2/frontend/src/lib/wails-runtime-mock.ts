@@ -826,7 +826,10 @@ export const Events = {
       return;
     }
 
-    if (name === "updater:check") {
+    // Dos eventos desde ISA-854: el montaje respeta el enfriamiento y el boton
+    // de comprobar lo salta. Al harness le da igual la diferencia, pero tiene
+    // que responder a los dos o la pantalla se queda sin datos.
+    if (name === "updater:check" || name === "updater:check:force") {
       setTimeout(() => broadcast("updater:available", { info: harnessUpdateInfo() }), 30);
       return;
     }

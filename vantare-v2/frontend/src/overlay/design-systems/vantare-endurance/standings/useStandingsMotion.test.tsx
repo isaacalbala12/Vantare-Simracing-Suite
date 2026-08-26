@@ -1,11 +1,18 @@
 import { createRef } from "react";
-import { renderHook } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { act, renderHook } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import type { WidgetColumnV3 } from "../../../widget-types/shared/widget-column";
 import type {
   StandingsRowViewModel,
   StandingsViewModel,
 } from "../../../widget-types/standings/standings-view-model";
 import { useStandingsMotion } from "./useStandingsMotion";
+
+afterEach(() => vi.useRealTimers());
+
+function column(metricId: string): WidgetColumnV3 {
+  return { id: metricId, metricId, enabled: true, widthPreset: "md" };
+}
 
 function row(partial: Partial<StandingsRowViewModel> & { id: string }): StandingsRowViewModel {
   return {
@@ -41,12 +48,14 @@ function model(interval: number): StandingsViewModel {
 function modelWithRows(
   rows: StandingsRowViewModel[],
   sessionLabel = "RACE",
+  visibleMetrics: readonly string[] = ["gap", "bestLap", "tireCompound", "pit"],
 ): StandingsViewModel {
   return {
     type: "standings",
     status: "ready",
     sessionLabel,
     remainingText: "10:00",
+    columns: visibleMetrics.map(column),
     rows,
   } as StandingsViewModel;
 }
@@ -167,5 +176,59 @@ describe("battle teardown", () => {
     expect(result.current.battles).toHaveLength(1);
     expect(result.current.battles[0]?.aheadId).toBe("player");
     expect(result.current.battles[0]?.stage).not.toBe("dissolve");
+  });
+
+  it("does not report battle state when Gap is hidden, even if Interval is visible", () => {
+    const rows = [
+      row({ id: "ahead", position: 1, gapText: "+0.0" }),
+      row({ id: "player", position: 2, gapText: "+0.4", intervalText: "+0.4", isPlayer: true }),
+    ];
+
+    const { result } = renderMotion(modelWithRows(rows, "RACE", ["interval"]));
+
+    expect(result.current.battles).toHaveLength(0);
+  });
+
+  it("does not heat the row for a session best when Best lap is hidden", () => {
+    vi.useFakeTimers();
+    const root = document.createElement("div");
+    root.innerHTML = '<div data-standings-row="a"></div><div data-standings-row="b"></div>';
+    const rootRef = createRef<HTMLElement>();
+    rootRef.current = root;
+    const prev = modelWithRows([
+      row({ id: "a", bestLapText: "1:40.000" }),
+      row({ id: "b", position: 2, bestLapText: "1:41.000", isPlayer: true }),
+    ], "RACE", ["gap"]);
+    const next = modelWithRows([
+      row({ id: "a", bestLapText: "1:40.000" }),
+      row({ id: "b", position: 2, bestLapText: "1:39.000", isPlayer: true }),
+    ], "RACE", ["gap"]);
+    const hook = renderHook(({ value }) => useStandingsMotion(value, true, rootRef), {
+      initialProps: { value: prev },
+    });
+
+    hook.rerender({ value: next });
+
+    expect(root.querySelector<HTMLElement>('[data-standings-row="b"]')?.dataset.hot).toBeUndefined();
+  });
+
+  it("does not reveal a changed tire when Tire compound is hidden", () => {
+    vi.useFakeTimers();
+    const rootRef = createRef<HTMLElement>();
+    rootRef.current = document.createElement("div");
+    const prev = modelWithRows([
+      row({ id: "player", pitText: "PIT", tireCompound: "M", isPlayer: true }),
+    ], "RACE", ["gap"]);
+    const next = modelWithRows([
+      row({ id: "player", pitText: "", tireCompound: "S", isPlayer: true }),
+    ], "RACE", ["gap"]);
+    const hook = renderHook(({ value }) => useStandingsMotion(value, true, rootRef), {
+      initialProps: { value: prev },
+    });
+
+    hook.rerender({ value: next });
+    act(() => vi.advanceTimersByTime(0));
+
+    expect(hook.result.current.tires.size).toBe(0);
   });
 });

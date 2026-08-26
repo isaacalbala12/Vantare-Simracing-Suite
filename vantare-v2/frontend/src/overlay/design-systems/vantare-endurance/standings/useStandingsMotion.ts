@@ -16,6 +16,14 @@ import {
 
 export const REDLINE_ROW_STRIDE_PX = 30;
 
+function hasVisibleMetric(model: StandingsViewModel, metricId: string): boolean {
+  return model.columns.some((column) => column.metricId === metricId);
+}
+
+function visibleBattlePairs(model: StandingsViewModel): BattlePair[] {
+  return hasVisibleMetric(model, "gap") ? deriveBattlePairs(model) : [];
+}
+
 /** Stable identity for a pair, used by both the box set and the dissolve map. */
 function battleKey(pair: BattlePair): string {
   return `${pair.aheadId}|${pair.behindId}`;
@@ -249,7 +257,7 @@ export function useStandingsMotion(
           }
         }
       }
-      if (event.kind === "session-best") {
+      if (event.kind === "session-best" && hasVisibleMetric(model, "bestLap")) {
         if (event.previousRowId && event.previousRowId !== event.rowId) {
           flyCrown(root, event.previousRowId, event.rowId);
         }
@@ -261,7 +269,12 @@ export function useStandingsMotion(
           });
         }
       }
-      if (event.kind === "pit-out" && event.tireChanged && event.tireCompound) {
+      if (
+        event.kind === "pit-out" &&
+        event.tireChanged &&
+        event.tireCompound &&
+        hasVisibleMetric(model, "tireCompound")
+      ) {
         const rowId = event.rowId;
         const compound = event.tireCompound;
         schedule(0, () => {
@@ -286,7 +299,7 @@ export function useStandingsMotion(
       }
     }
 
-    const pairs = deriveBattlePairs(model);
+    const pairs = visibleBattlePairs(model);
     const activeKeys = new Set(pairs.map((pair) => `${pair.aheadId}|${pair.behindId}`));
     for (const key of activeKeys) {
       if (!battleSeenRef.current.has(key)) {
@@ -341,12 +354,14 @@ export function useStandingsMotion(
   // the component and discards the in-progress output before touching the DOM,
   // so the intermediate tree never reaches the browser.
   const battleSessionActive =
-    model.status === "ready" && resolveStandingsSessionMode(model.sessionLabel) === "race";
+    model.status === "ready" &&
+    resolveStandingsSessionMode(model.sessionLabel) === "race" &&
+    hasVisibleMetric(model, "gap");
   if (renderedModel !== model) {
     setRenderedModel(model);
     if (enabled && battleSessionActive && renderedModel?.status === "ready") {
-      const stillActive = new Set(deriveBattlePairs(model).map(battleKey));
-      const justBroken = deriveBattlePairs(renderedModel).filter(
+      const stillActive = new Set(visibleBattlePairs(model).map(battleKey));
+      const justBroken = visibleBattlePairs(renderedModel).filter(
         (pair) => !stillActive.has(battleKey(pair)),
       );
       if (justBroken.length > 0) {
@@ -367,7 +382,7 @@ export function useStandingsMotion(
     return { positionDeltas: new Map(), tires: new Map(), battles: [], ghosts: [] };
   }
 
-  const battles: BattleState[] = deriveBattlePairs(model).map<BattleState>((pair) => ({
+  const battles: BattleState[] = visibleBattlePairs(model).map<BattleState>((pair) => ({
     ...pair,
     stage: boxKeys.has(`${pair.aheadId}|${pair.behindId}`) ? "box" : "seam",
   }));
@@ -386,7 +401,7 @@ export function useStandingsMotion(
 
   return {
     positionDeltas: displayDeltas,
-    tires,
+    tires: hasVisibleMetric(model, "tireCompound") ? tires : new Map(),
     battles,
     ghosts,
   };

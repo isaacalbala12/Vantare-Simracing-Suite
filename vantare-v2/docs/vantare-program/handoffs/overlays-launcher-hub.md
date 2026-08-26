@@ -36,8 +36,11 @@
   7 archivos/93 tests. T2 reemplaza la maqueta rígida por anclajes + delta +
   nueve métricas flexibles en orden, con presets/alineación canónicos y el mismo
   renderer para filas vivas y ghosts. Conserva 30 px, keys, clases semánticas y
-  datos de motion; focal Redline+contrato 20/20, typecheck y diff-check PASS.
-  Sin push, PR ni promoción.
+  datos de motion; focal Redline+contrato 20/20. T4 compuerta solo las señales
+  dependientes de celdas: sin Gap no hay batalla/presión; sin Best lap no hay
+  hot/corona; sin Neumático no hay reveal. PIT y FLIP/flash/delta/entrada/ghost
+  permanecen. Las tres regresiones fallaron primero; gate motion 27/27,
+  typecheck y diff-check PASS. Sin push, PR ni promoción.
 
 - **ISA-842 — autosave e historial productivo de Overlay Studio (2026-08-25,
   PR draft a nightly):** rebasada sobre `origin/nightly@c7d25f94`, la rama

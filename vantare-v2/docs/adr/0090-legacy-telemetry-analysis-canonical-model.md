@@ -4,6 +4,15 @@
 - Date: 2026-08-08
 - Deciders: Product (isaac); Advisors: Fable (Claude), Sol (GPT 5.6 Sol Pro)
 
+> **Nota de supersesión TA-04C (2026-08-12):** este ADR se conserva como
+> historia, no como autoridad para semántica espacial. Las afirmaciones
+> «GPS sintético», decodificación a metros y uso de `Path Lateral`/`Track Edge`
+> para centerline o anchura son hipótesis legacy. La investigación oficial
+> TA-04C no encontró datum/elipsoide o transformación LMU, ni origen, signo,
+> lado, unidad, fórmula o ambos bordes. Resultado vigente: datum GPS `NO-GO` y
+> fórmula de anchura `NO-GO`; véase
+> `docs/vantare-program/research/telemetry-analysis/ta04c-spatial-semantics-evidence.md`.
+
 ## Contexto
 
 Vantare incorpora una sección de **análisis de telemetría post-sesión** (clase MoTeC i2 / Coach Dave Delta): comparación de vueltas, análisis por zonas del trazado, y en fases futuras coaching con LLMs, algoritmos deterministas y recreación 3D básica del circuito. Objetivos del producto, en orden: estética (definitiva en el futuro, tokenizada desde ya) y rendimiento máximo (scrub a 60fps, carga instantánea).

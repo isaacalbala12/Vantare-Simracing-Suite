@@ -26,6 +26,22 @@ promover el conjunto aceptado a `nightly`.
 TA-03 / ISA-126 caracterizó DuckDB LMU mediante copia temporal read-only y
 añadió el modelo/parser histórico v1. TA-03C cierra su antiguo hueco operativo
 con un reader ligado al artefacto autorizado y un adaptador reproducible.
+TA-04 / ISA-132 cerró su investigación espacial local sin inventar una
+capability de mapa. TA-04C no encontró una fuente oficial que demuestre datum,
+CRS o la fórmula completa de anchura/bordes. TA-04E rechazó la repetibilidad
+rígida: solo 50/81 vueltas (61,73 %) cumplieron conjuntamente p95 `<= 5 m` y
+p99 `<= 10 m`, por debajo del 80 % pre-registrado.
+TA-04F7 agotó 319 candidatos existentes: 186 recordings canónicos, 183
+insuficientes, 3 elegibles y 48 grupos. Los grupos 1 y 37 dieron GO técnico
+local-only y el 36 NO-GO, siempre con un solo recording por grupo y confianza
+entre recordings `none`.
+TA-04F9 ejecutó una única vez el control de inventario vivo C1-C5: 49 grupos,
+prefijo 1-48 idéntico, grupo 49 estrictamente aditivo y deltas
+`+3/+3/+3/0` en candidatos/canónicos/insuficientes/inválidos. Manifest, shape
+export y SVG técnico quedaron congelados con cleanup y privacidad PASS. Esta
+evidencia sigue siendo descriptiva: `local_shape=unknown`,
+`product_map_authorization=false`; datum/CRS, anchura y bordes no están
+demostrados y TA-04B continúa bloqueada.
 TA-03B / ISA-135 cerró el corte de decisión tras un primer review
 `REQUEST CHANGES`: recomienda un helper local fuera de proceso con
 `duckdb-go/v2` y `duckdb.dll` dinámico, descarta el CLI y el CGO dentro de Wails,
@@ -175,15 +191,16 @@ notas/correcciones, CSV/paquete/demo, tests/benchmarks/capturas.
 | Cerrada técnicamente | TA-03B / ISA-135, decisión, límite LMU local y SBOM reproducible |
 | Cerrada técnicamente / In Review | TA-03C / ISA-168, helper/adaptador productivo fuera de proceso; review `APPROVE` |
 | Backlog obligatorio antes de imports externos | TA-03D / ISA-164, sandbox real para contenido externo/comunitario |
-| Siguiente | TA-04, progreso/distancia y mapa con evidencia |
-| Implementación posterior | TA-05+ según `research/telemetry-analysis/plan-microcuts.md` |
+| Entrega aislada en preparación | TA-04 / ISA-132, contrato espacial y evidencia local sin capability de mapa |
+| Bloqueada por ISA-132 | TA-05 / ISA-159, productor `StrategyInputProjection v1` |
 
 ## Siguiente acción exacta
 
-Validar TA-03C en Nightly/Pro Plus y continuar TA-04 para caracterizar
-progreso/distancia y mapa con evidencia real. ISA-164 / TA-03D no bloquea la
-lectura LMU local, pero sí cualquier import externo o comunitario. TA-05 publica
-la proyección histórica para Strategy sin exponer DuckDB o el almacenamiento.
+Preparar la entrega aislada de ISA-132 sobre su rama exacta, ejecutar sus gates
+y abrir PR draft sin promoción. Solo después de cerrar esa dependencia puede
+ISA-159 / TA-05 publicar la proyección histórica para Strategy sin exponer
+DuckDB o almacenamiento privado. ISA-164 / TA-03D no bloquea la lectura LMU
+local, pero sí cualquier import externo o comunitario.
 
 ## Última actualización
 

@@ -7,9 +7,15 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"time"
 
+	"github.com/vantare/overlays/v2/internal/strategy/backtest"
+	strategycatalog "github.com/vantare/overlays/v2/internal/strategy/catalog"
+	strategycoldstart "github.com/vantare/overlays/v2/internal/strategy/coldstart"
 	"github.com/vantare/overlays/v2/internal/strategy/contract"
 	"github.com/vantare/overlays/v2/internal/strategy/repository"
+	"github.com/vantare/overlays/v2/internal/telemetryanalysis"
+	"github.com/vantare/overlays/v2/internal/telemetryanalysis/strategyprojection"
 )
 
 const maxSafeRepositoryVersion = uint64(1<<53 - 1)
@@ -19,15 +25,55 @@ type repositoryPort[T any] interface {
 	Commit(context.Context, uint64, repository.ChangeSet[T]) (repository.CommitResult[T], error)
 }
 
+type sessionCatalogPort interface {
+	ListSessionCombinations(context.Context) (telemetryanalysis.SessionCatalogListing, error)
+	ProjectStrategyInputs(context.Context, string, []string, time.Time) (strategyprojection.StrategyInputProjectionV2, error)
+}
+
+type raceCasePort interface {
+	ListRaceCases(context.Context, string) ([]backtest.RaceCase, error)
+}
+
+type referenceCatalogPort interface {
+	Load(context.Context) (strategycatalog.ConsumerResult, error)
+}
+
+type coldStartPort interface {
+	Status(context.Context) (strategycoldstart.Status, error)
+	ImportNext(context.Context) (strategycoldstart.Progress, error)
+	RetryFailures(context.Context) (strategycoldstart.Progress, error)
+	Reject(context.Context) error
+}
+
 // Service is the only application facade for Strategy documents. The
 // repository remains the authority for persisted drafts/revisions; transient
 // editor history belongs to the frontend store.
 type Service[T any] struct {
-	repository repositoryPort[T]
+	repository       repositoryPort[T]
+	sessionCatalog   sessionCatalogPort
+	raceCases        raceCasePort
+	referenceCatalog referenceCatalogPort
+	coldStart        coldStartPort
 }
 
 func NewService[T any](repo repositoryPort[T]) *Service[T] {
-	return &Service[T]{repository: repo}
+	return NewServiceWithSessionCatalog(repo, nil)
+}
+
+func NewServiceWithSessionCatalog[T any](repo repositoryPort[T], catalog sessionCatalogPort) *Service[T] {
+	return NewServiceWithSources(repo, catalog, nil, nil)
+}
+
+func NewServiceWithSessionCatalogAndRaceCases[T any](repo repositoryPort[T], catalog sessionCatalogPort, races raceCasePort) *Service[T] {
+	return NewServiceWithSources(repo, catalog, races, nil)
+}
+
+func NewServiceWithSources[T any](repo repositoryPort[T], sessions sessionCatalogPort, races raceCasePort, references referenceCatalogPort) *Service[T] {
+	return NewServiceWithSourcesAndColdStart(repo, sessions, races, references, nil)
+}
+
+func NewServiceWithSourcesAndColdStart[T any](repo repositoryPort[T], sessions sessionCatalogPort, races raceCasePort, references referenceCatalogPort, coldStart coldStartPort) *Service[T] {
+	return &Service[T]{repository: repo, sessionCatalog: sessions, raceCases: races, referenceCatalog: references, coldStart: coldStart}
 }
 
 func (service *Service[T]) Create(ctx context.Context, command CreateCommand[T]) (Result[T], error) {

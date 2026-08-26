@@ -1,0 +1,115 @@
+{
+  "estimated_full_corpus_gzip_bytes": 445792.0,
+  "estimated_full_corpus_json_bytes": 1388944.0,
+  "median_gzip_bytes": 1279,
+  "median_json_bytes": 3959,
+  "p95_gzip_bytes": 1532.0,
+  "p95_json_bytes": 5003.0,
+  "sessions": [
+    {
+      "gzip_bytes": 1722,
+      "json_bytes": 5281,
+      "session_id": "S026-08a1e626"
+    },
+    {
+      "gzip_bytes": 1345,
+      "json_bytes": 4160,
+      "session_id": "S040-3ebe91db"
+    },
+    {
+      "gzip_bytes": 1237,
+      "json_bytes": 3909,
+      "session_id": "S045-ac539faa"
+    },
+    {
+      "gzip_bytes": 1265,
+      "json_bytes": 3908,
+      "session_id": "S048-808922ec"
+    },
+    {
+      "gzip_bytes": 1323,
+      "json_bytes": 3982,
+      "session_id": "S051-ab3eadcd"
+    },
+    {
+      "gzip_bytes": 1526,
+      "json_bytes": 4654,
+      "session_id": "S059-e4f6b210"
+    },
+    {
+      "gzip_bytes": 1262,
+      "json_bytes": 3932,
+      "session_id": "S062-0df9b303"
+    },
+    {
+      "gzip_bytes": 1262,
+      "json_bytes": 3950,
+      "session_id": "S067-3cbfa24b"
+    },
+    {
+      "gzip_bytes": 1236,
+      "json_bytes": 3945,
+      "session_id": "S070-b97f32fa"
+    },
+    {
+      "gzip_bytes": 1279,
+      "json_bytes": 3936,
+      "session_id": "S075-ee228328"
+    },
+    {
+      "gzip_bytes": 1261,
+      "json_bytes": 3959,
+      "session_id": "S078-a39e1a6b"
+    },
+    {
+      "gzip_bytes": 1314,
+      "json_bytes": 4007,
+      "session_id": "S084-95407bb3"
+    },
+    {
+      "gzip_bytes": 1249,
+      "json_bytes": 3854,
+      "session_id": "S093-824c67df"
+    },
+    {
+      "gzip_bytes": 1434,
+      "json_bytes": 4401,
+      "session_id": "S125-35438326"
+    },
+    {
+      "gzip_bytes": 1196,
+      "json_bytes": 3873,
+      "session_id": "S154-7707343d"
+    },
+    {
+      "gzip_bytes": 1200,
+      "json_bytes": 3881,
+      "session_id": "S195-50318b97"
+    },
+    {
+      "gzip_bytes": 1294,
+      "json_bytes": 3975,
+      "session_id": "S201-8daf968e"
+    },
+    {
+      "gzip_bytes": 1253,
+      "json_bytes": 3923,
+      "session_id": "S243-4bc4888e"
+    },
+    {
+      "gzip_bytes": 1330,
+      "json_bytes": 4128,
+      "session_id": "S252-3c43791c"
+    },
+    {
+      "gzip_bytes": 1532,
+      "json_bytes": 5003,
+      "session_id": "S266-6b912640"
+    },
+    {
+      "gzip_bytes": 1342,
+      "json_bytes": 4148,
+      "session_id": "S287-bda9a70a"
+    }
+  ]
+}

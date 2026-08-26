@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-758",
+  "type": "feature",
+  "summary": "Estrategia permite vincular un evento con una combinación histórica y decidir qué sesiones usar sin perder el modo manual.",
+  "technicalNotes": [
+    "Analysis clasifica y agrupa los modelos históricos ya autorizados; Strategy adapta esa salida sin acceder directamente a DuckDB.",
+    "La combinación y los toggles de sesión se guardan en el documento canónico v2 mediante campos aditivos compatibles.",
+    "Orbit incorpora un selector opcional, un panel de sesiones con motivos visibles y textos en español, inglés, italiano y portugués."
+  ],
+  "testing": [
+    "Crear o abrir un evento, elegir una combinación y comprobar las sesiones incluidas y excluidas.",
+    "Cambiar una sesión, recargar y confirmar que la decisión continúa guardada.",
+    "Saltar el selector y confirmar que el evento sigue funcionando en modo manual puro."
+  ],
+  "knownLimitations": [
+    "La conexión inicial con los archivos DuckDB autorizados y su banner de arranque en frío pertenecen a F5-e."
+  ]
+}

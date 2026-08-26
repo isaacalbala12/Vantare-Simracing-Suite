@@ -258,6 +258,12 @@ func (s *Service) ApplyOfficialSchedule(now time.Time) error {
 // applySchedule materialises a schedule into the calendar. The caller decides
 // where the schedule came from — the bundled seed or the published one.
 func (s *Service) applySchedule(sched OfficialSchedule, now time.Time) error {
+	// Published schedules are allowed to introduce an unknown venue or class,
+	// but they never get to provide their own telemetry join keys. Resolve only
+	// from the local, reviewed registry and leave unknown identities empty so
+	// consumers can explain the missing declaration.
+	resolveTelemetryIdentities(&sched)
+
 	// Generate a bounded window of events for compatibility.
 	from, to := DefaultScheduleWindow(now)
 	events, err := ExpandSchedule(sched, from, to)

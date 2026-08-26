@@ -1,0 +1,157 @@
+{
+  "contractVersion": "strategyinputprojection.v2",
+  "generatedAt": "2026-08-21T12:00:00.000Z",
+  "computationVersion": "1.0.0",
+  "sourceSessions": ["sess-026", "sess-125"],
+  "combinationId": "fuji-classic-hypercar",
+  "sessionClassification": {
+    "presence": "valid",
+    "provenance": {"kind": "observed", "sourceId": "analysis:classifier"},
+    "confidence": {"sampleSize": 336, "computationVersion": "1.0.0"},
+    "trackName": "Fuji",
+    "trackLayout": "Classic",
+    "carName": "Hypercar",
+    "carClass": "Hypercar",
+    "sessionType": "Race",
+    "weatherConditions": "Clear",
+    "usableForFamilies": ["fuel", "pace"]
+  },
+  "lapValidity": {
+    "presence": "valid",
+    "provenance": {"kind": "derived", "sourceId": "analysis:lapvalidity"},
+    "confidence": {"sampleSize": 60, "computationVersion": "1.0.0"},
+    "laps": [{"lapNumber": 1, "included": false, "reason": "out_lap", "tags": ["out_lap"]}]
+  },
+  "fuelConsumption": {
+    "presence": "valid",
+    "provenance": {"kind": "derived", "sourceId": "analysis:fuel"},
+    "confidence": {"sampleSize": 54, "rangeLower": 2.8, "rangeUpper": 3.2, "variance": 0.04, "computationVersion": "1.0.0"},
+    "meanPerLap": 3.047,
+    "rangeLower": 2.8,
+    "rangeUpper": 3.2,
+    "byClimateBucket": {"dry": 3.047},
+    "byMixture": {"3": 3.047}
+  },
+  "virtualEnergyConsumption": {
+    "presence": "valid",
+    "provenance": {"kind": "derived", "sourceId": "analysis:ve"},
+    "confidence": {"sampleSize": 54, "computationVersion": "1.0.0"},
+    "meanPerLap": 1.2,
+    "rangeLower": 1.1,
+    "rangeUpper": 1.3
+  },
+  "representativePaceByClimateBucket": {
+    "dry": {
+      "presence": "valid",
+      "provenance": {"kind": "derived", "sourceId": "analysis:pace"},
+      "confidence": {"sampleSize": 12, "rangeLower": 90.82, "rangeUpper": 92.14, "variance": 0.21, "computationVersion": "consumption-pace.v2"},
+      "medianLapSeconds": 90.82
+    },
+    "humid": {
+      "presence": "missing",
+      "provenance": {"kind": "derived", "sourceId": "analysis:pace"},
+      "confidence": {"sampleSize": 0, "computationVersion": "consumption-pace.v2"},
+      "reason": "no_classified_complete_laps_in_climate_bucket",
+      "medianLapSeconds": 0
+    }
+  },
+  "classPace": {
+    "presence": "missing",
+    "provenance": {"kind": "reference", "sourceId": "shared-class-pace"},
+    "confidence": {"sampleSize": 0, "computationVersion": "class-pace.contract.v1"},
+    "reason": "no_class_pace_source",
+    "byClassName": {}
+  },
+  "combinedStintPaceCurve": {
+    "presence": "valid",
+    "provenance": {"kind": "derived", "sourceId": "analysis:pace"},
+    "confidence": {"sampleSize": 14, "rangeLower": -1.2, "rangeUpper": 7.19, "computationVersion": "1.0.0"},
+    "identifiability": "combined_only",
+    "points": [
+      {"lapInStint": 1, "deltaSeconds": 7.19, "sampleSize": 14},
+      {"lapInStint": 3, "deltaSeconds": -0.07, "sampleSize": 14},
+      {"lapInStint": 9, "deltaSeconds": -1.2, "sampleSize": 14}
+    ]
+  },
+  "tyreDegradation": {
+    "presence": "valid",
+    "provenance": {"kind": "derived", "sourceId": "analysis:tyre"},
+    "confidence": {"sampleSize": 54, "computationVersion": "1.0.0"},
+    "byAxle": {"front": 0.02, "rear": 0.03},
+    "byWheel": {"FL": 0.01, "FR": 0.01, "RL": 0.02, "RR": 0.02},
+    "compoundMappingNote": "TyresCompound codes 0-2 without semantic mapping; curves per compound conditioned on mapping"
+  },
+  "pit": {
+    "presence": "valid",
+    "provenance": {"kind": "observed", "sourceId": "analysis:pit"},
+    "confidence": {"sampleSize": 10, "rangeLower": 1.85, "rangeUpper": 3.99, "computationVersion": "1.0.0"},
+    "observedIntervals": [
+      {"pitNumber": 1, "durationSeconds": 62.5, "fuelRateLPerS": 2.5, "hasFuelRise": true, "hasVERise": false},
+      {"pitNumber": 2, "durationSeconds": 58.0, "veRatePPerS": 2.49, "hasFuelRise": false, "hasVERise": true}
+    ],
+    "transitSecondsManual": 25.0,
+    "serviceSecondsManual": 12.0,
+    "ratesNote": "Observed 1.9-4.0 L/s fuel, ~2.5 pp/s VE; breakdown exacto condicionado a reloj comun y marcadores (futuro)"
+  },
+  "savingCost": {
+    "presence": "valid",
+    "provenance": {"kind": "manual", "sourceId": "user:isaac"},
+    "confidence": {"sampleSize": 0, "computationVersion": "1.0.0"},
+    "manualNote": "A5 INVALID: curva con procedencia manual; derivable solo via protocolo A/B >=5 vueltas limpias alternadas por nivel"
+  },
+  "climateBuckets": {
+    "presence": "valid",
+    "provenance": {"kind": "derived", "sourceId": "analysis:climate"},
+    "confidence": {"sampleSize": 2, "computationVersion": "1.0.0"},
+    "buckets": [
+      {"bucket": "dry", "pathWetnessPercent": 0, "sampleSize": 20},
+      {"bucket": "humid", "pathWetnessPercent": 5, "sampleSize": 1},
+      {"bucket": "wet", "pathWetnessPercent": 12.5, "sampleSize": 1}
+    ]
+  },
+  "temporal": {
+    "contractVersion": "temporalsegments.v1",
+    "segments": [
+      {
+        "segmentId": "seg-1",
+        "sessionStartTs": "2026-08-21T10:00:00.000Z",
+        "sessionEndTs": "2026-08-21T10:30:00.000Z",
+        "reason": "local_driver_window",
+        "presence": "valid",
+        "provenance": {"kind": "observed", "sourceId": "lmu:continuous"},
+        "confidence": {"sampleSize": 36000, "computationVersion": "1.0.0"}
+      }
+    ],
+    "gaps": [
+      {
+        "gapId": "gap-1",
+        "startTs": "2026-08-21T10:30:00.000Z",
+        "endTs": "2026-08-21T11:00:00.000Z",
+        "reason": "driver_not_in_car",
+        "presence": "missing",
+        "provenance": {"kind": "derived", "sourceId": "analysis:gap"}
+      }
+    ],
+    "lapBoundaries": [
+      {
+        "lapNumber": 1,
+        "timestamp": "2026-08-21T10:01:00.000Z",
+        "source": "reconciled",
+        "quality": "valid",
+        "provenance": {"kind": "derived", "sourceId": "analysis:lap"},
+        "confidence": {"sampleSize": 1, "computationVersion": "1.0.0"},
+        "location": {"normalizedDistance": 0.0, "presence": "valid"}
+      }
+    ],
+    "stintBoundaries": [
+      {
+        "stintNumber": 2,
+        "timestamp": "2026-08-21T10:15:00.000Z",
+        "cause": "pit",
+        "presence": "valid",
+        "provenance": {"kind": "observed", "sourceId": "lmu:in_pits"},
+        "confidence": {"sampleSize": 1, "computationVersion": "1.0.0"}
+      }
+    ]
+  }
+}

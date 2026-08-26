@@ -22,6 +22,8 @@ export interface TimelineBlock {
   ink?: "dark" | "light";
   /** Tooltip propio del kit (`data-tip`): el kit nunca usa `title` nativo. */
   tip?: string;
+  /** Contorno discontinuo para superponer un plan alternativo sin ocultar el principal. */
+  variant?: "solid" | "outline";
 }
 
 export interface HorizontalTimelineProps<Row> {
@@ -243,6 +245,7 @@ export function HorizontalTimeline<Row>({
                   "data-done": block.done ? "true" : undefined,
                   "data-ink": block.ink ?? "dark",
                   "data-label": block.label ? "true" : undefined,
+                  "data-variant": block.variant === "outline" ? "outline" : undefined,
                 };
                 const style = {
                   left: `${left}%`,

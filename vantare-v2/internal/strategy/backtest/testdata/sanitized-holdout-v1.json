@@ -1,0 +1,42 @@
+{
+  "fixtureVersion": "strategy.backtest.fixture.v1",
+  "sourceEvidence": "docs/strategy-planner/evidence/isa-694-spike/resultados-f0-1.json",
+  "cases": [
+    {
+      "raceId": "S026-08a1e626",
+      "combinationId": "monza-hyper-sanitized",
+      "occurredAt": "2026-05-02T18:05:21Z",
+      "stintLaps": [28, 1, 28, 1],
+      "baseLapSeconds": 100,
+      "pitSeconds": 10,
+      "expected": {"calibrationErrorRatio": 0, "dryPitStopsExact": false, "feasible": true, "rankingApplicable": true, "signCoherent": true, "internalRegretSeconds": 0}
+    },
+    {
+      "raceId": "S125-35438326",
+      "combinationId": "imola-lmp2-sanitized",
+      "occurredAt": "2026-06-06T19:28:21Z",
+      "stintLaps": [22, 9],
+      "baseLapSeconds": 95,
+      "pitSeconds": 10,
+      "expected": {"calibrationErrorRatio": 0, "dryPitStopsExact": false, "feasible": true, "rankingApplicable": true, "signCoherent": true, "internalRegretSeconds": 0}
+    },
+    {
+      "raceId": "S266-6b912640",
+      "combinationId": "algarve-lmp2-sanitized",
+      "occurredAt": "2026-07-11T12:10:37Z",
+      "stintLaps": [33, 1, 31, 1],
+      "baseLapSeconds": 96,
+      "pitSeconds": 10,
+      "expected": {"calibrationErrorRatio": 0, "dryPitStopsExact": false, "feasible": true, "rankingApplicable": true, "signCoherent": true, "internalRegretSeconds": 0}
+    },
+    {
+      "raceId": "S287-bda9a70a",
+      "combinationId": "cota-lmp2-sanitized",
+      "occurredAt": "2026-07-18T15:24:25Z",
+      "stintLaps": [22, 1],
+      "baseLapSeconds": 116,
+      "pitSeconds": 10,
+      "expected": {"calibrationErrorRatio": 0, "dryPitStopsExact": false, "feasible": true, "rankingApplicable": true, "signCoherent": true, "internalRegretSeconds": 0}
+    }
+  ]
+}

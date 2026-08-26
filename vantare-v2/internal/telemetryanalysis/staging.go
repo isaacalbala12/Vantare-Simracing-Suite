@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -52,27 +53,33 @@ func StageAuthorizedHistoricalArtifact(
 		return StagedHistoricalArtifact{}, err
 	}
 	if source == nil || !filepath.IsAbs(stagingRoot) || !validStagingAuthority(candidate, artifact) {
-		return StagedHistoricalArtifact{}, ErrStagingRejected
+		return StagedHistoricalArtifact{}, stagingRejected("invalid staging authority")
 	}
 	if present, err := walPresent(ctx, source, candidate.walPath); err != nil || present {
-		return StagedHistoricalArtifact{}, ErrStagingRejected
+		return StagedHistoricalArtifact{}, stagingRejected("source WAL present before staging")
 	}
 	beforePath, err := source.Metadata(ctx, candidate.sourcePath)
 	if err != nil || !historicalArtifactEvidenceMatches(artifact.evidence, HistoricalArtifactEvidence{ContentSHA256: artifact.evidence.ContentSHA256, Metadata: beforePath}) {
-		return StagedHistoricalArtifact{}, ErrStagingRejected
+		return StagedHistoricalArtifact{}, stagingRejected("source metadata changed before staging")
 	}
 	handle, err := source.OpenRead(ctx, candidate.sourcePath)
 	if err != nil {
-		return StagedHistoricalArtifact{}, ErrStagingRejected
+		return StagedHistoricalArtifact{}, stagingRejected("source could not be opened for staging")
 	}
 	defer handle.Close()
 	openedBefore, err := handle.Metadata()
 	if err != nil || !sameMetadata(beforePath, openedBefore) {
-		return StagedHistoricalArtifact{}, ErrStagingRejected
+		return StagedHistoricalArtifact{}, stagingRejected("opened source metadata changed before staging")
+	}
+	if err := os.MkdirAll(stagingRoot, 0o700); err != nil {
+		return StagedHistoricalArtifact{}, stagingRejected("staging root could not be created")
+	}
+	if err := securePrivateDirectory(stagingRoot); err != nil {
+		return StagedHistoricalArtifact{}, stagingRejected("staging root could not be secured")
 	}
 	directory, err := os.MkdirTemp(stagingRoot, "vantare-telemetry-")
 	if err != nil {
-		return StagedHistoricalArtifact{}, ErrStagingRejected
+		return StagedHistoricalArtifact{}, stagingRejected("private staging directory could not be created")
 	}
 	cleanup := true
 	defer func() {
@@ -81,12 +88,12 @@ func StageAuthorizedHistoricalArtifact(
 		}
 	}()
 	if err := securePrivateDirectory(directory); err != nil {
-		return StagedHistoricalArtifact{}, ErrStagingRejected
+		return StagedHistoricalArtifact{}, stagingRejected("private staging directory could not be secured")
 	}
 	destinationPath := filepath.Join(directory, stagedFilename)
 	destination, err := os.OpenFile(destinationPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
 	if err != nil {
-		return StagedHistoricalArtifact{}, ErrStagingRejected
+		return StagedHistoricalArtifact{}, stagingRejected("staged copy could not be created")
 	}
 	hash := sha256.New()
 	written, copyErr := copyWithContext(ctx, io.MultiWriter(destination, hash), handle, artifact.evidence.Metadata.Size)
@@ -95,22 +102,22 @@ func StageAuthorizedHistoricalArtifact(
 		return StagedHistoricalArtifact{}, copyErr
 	}
 	if closeErr != nil || written != artifact.evidence.Metadata.Size || hex.EncodeToString(hash.Sum(nil)) != artifact.evidence.ContentSHA256 {
-		return StagedHistoricalArtifact{}, ErrStagingRejected
+		return StagedHistoricalArtifact{}, stagingRejected("staged content did not match authorized evidence")
 	}
 	openedAfter, err := handle.Metadata()
 	if err != nil || !sameMetadata(openedBefore, openedAfter) {
-		return StagedHistoricalArtifact{}, ErrStagingRejected
+		return StagedHistoricalArtifact{}, stagingRejected("opened source metadata changed during staging")
 	}
 	afterPath, err := source.Metadata(ctx, candidate.sourcePath)
 	if err != nil || !sameMetadata(beforePath, afterPath) {
-		return StagedHistoricalArtifact{}, ErrStagingRejected
+		return StagedHistoricalArtifact{}, stagingRejected("source metadata changed during staging")
 	}
 	if present, err := walPresent(ctx, source, candidate.walPath); err != nil || present {
-		return StagedHistoricalArtifact{}, ErrStagingRejected
+		return StagedHistoricalArtifact{}, stagingRejected("source WAL appeared during staging")
 	}
 	destinationInfo, err := os.Lstat(destinationPath)
 	if err != nil || !destinationInfo.Mode().IsRegular() || destinationInfo.Mode()&os.ModeSymlink != 0 || destinationInfo.Size() != written {
-		return StagedHistoricalArtifact{}, ErrStagingRejected
+		return StagedHistoricalArtifact{}, stagingRejected("staged copy metadata was invalid")
 	}
 	cleanup = false
 	return StagedHistoricalArtifact{
@@ -118,6 +125,10 @@ func StageAuthorizedHistoricalArtifact(
 		directory: directory,
 		evidence:  HistoricalArtifactEvidence{ContentSHA256: artifact.evidence.ContentSHA256, Metadata: contentMetadata(destinationInfo)},
 	}, nil
+}
+
+func stagingRejected(reason string) error {
+	return fmt.Errorf("%s: %w", reason, ErrStagingRejected)
 }
 
 func validStagingAuthority(candidate Candidate, artifact AuthorizedHistoricalArtifact) bool {
@@ -139,17 +150,17 @@ func copyWithContext(ctx context.Context, destination io.Writer, source io.Reade
 		if read > 0 {
 			total += int64(read)
 			if total > maxBytes {
-				return total, ErrStagingRejected
+				return total, stagingRejected("source exceeded authorized size during staging")
 			}
 			if _, err := destination.Write(buffer[:read]); err != nil {
-				return total, ErrStagingRejected
+				return total, stagingRejected("staged copy could not be written")
 			}
 		}
 		if readErr == io.EOF {
 			return total, nil
 		}
 		if readErr != nil {
-			return total, ErrStagingRejected
+			return total, stagingRejected("source could not be read during staging")
 		}
 	}
 }

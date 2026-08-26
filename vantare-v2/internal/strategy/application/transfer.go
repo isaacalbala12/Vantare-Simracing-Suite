@@ -32,8 +32,17 @@ func (service *Service[T]) Export(ctx context.Context, command ExportCommand) (R
 	bundles := make([]packaging.Bundle[T], 0, len(command.Plans))
 	selected := make(map[packaging.RevisionKey]struct{})
 	for _, selector := range command.Plans {
+		if selector.Revision != nil {
+			if err := selector.Revision.Validate(); err != nil ||
+				selector.Revision.PlanID != selector.PlanID || selector.Revision.VariantID != selector.VariantID {
+				return Result[T]{}, applicationError(ErrorInvalidCommand, "plans.revision", ErrInvalidCommand)
+			}
+		}
 		bundle, found := collectBundle(snapshot, selector)
 		if !found {
+			if selector.Revision != nil {
+				return Result[T]{}, applicationError(ErrorRevisionNotFound, "plans.revision", ErrRevisionNotFound)
+			}
 			return Result[T]{}, applicationError(ErrorPlanNotFound, "plans", ErrPlanNotFound)
 		}
 		key := packaging.RevisionKey{PlanID: selector.PlanID, VariantID: selector.VariantID}
@@ -165,6 +174,15 @@ func applied(preview packaging.Preview) bool {
 
 func collectBundle[T any](snapshot repository.Snapshot[T], selector PlanSelector) (packaging.Bundle[T], bool) {
 	bundle := packaging.Bundle[T]{PlanID: selector.PlanID, VariantID: selector.VariantID}
+	if selector.Revision != nil {
+		for _, revision := range snapshot.Revisions {
+			if revision.Ref() == *selector.Revision {
+				bundle.Revisions = append(bundle.Revisions, revision)
+				return bundle, true
+			}
+		}
+		return packaging.Bundle[T]{}, false
+	}
 	for _, draft := range snapshot.Drafts {
 		if draft.PlanID == selector.PlanID && draft.VariantID == selector.VariantID {
 			clone, err := cloneDraft(draft)

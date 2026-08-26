@@ -18,6 +18,9 @@ import {
   telemetrySourceStatusEvent,
   telemetrySourceStatusRequestEvent,
 } from "../telemetry-transport/source-status";
+import { createOrbitCalculationTestClient } from "../hub/strategy-orbit/strategy-orbit-calculation.test-support";
+import type { StrategyApplicationCommandV1 } from "../strategy/strategy-application-client";
+import { canonicalizeAndHashStrategyJSONV1 } from "../strategy/strategy-contract-v1";
 
 setWailsRuntimeMockActive(true);
 licenseDebugWarn(
@@ -48,6 +51,9 @@ const strategyRepositoryKey = "vantare.strategy.harness.repository.v1";
 type HarnessStrategyRepository = {
   version: number;
   drafts: Record<string, Record<string, unknown>>;
+  revisions: Record<string, Record<string, unknown>>;
+  activePlan?: Record<string, unknown>;
+  events?: Record<string, Record<string, unknown>>;
 };
 
 
@@ -97,14 +103,14 @@ function readHarnessPayload(data: unknown): Record<string, unknown> {
 function loadHarnessStrategyRepository(): HarnessStrategyRepository {
   try {
     const raw = globalThis.localStorage?.getItem(strategyRepositoryKey);
-    if (!raw) return { version: 0, drafts: {} };
+    if (!raw) return { version: 0, drafts: {}, revisions: {}, events: {} };
     const parsed = JSON.parse(raw) as HarnessStrategyRepository;
     if (!Number.isSafeInteger(parsed.version) || parsed.version < 0 || !parsed.drafts || typeof parsed.drafts !== "object") {
       throw new Error("invalid harness Strategy repository");
     }
-    return parsed;
+    return { ...parsed, revisions: parsed.revisions ?? {}, events: parsed.events ?? {} };
   } catch {
-    return { version: 0, drafts: {} };
+    return { version: 0, drafts: {}, revisions: {}, events: {} };
   }
 }
 
@@ -112,7 +118,7 @@ function saveHarnessStrategyRepository(repository: HarnessStrategyRepository) {
   globalThis.localStorage?.setItem(strategyRepositoryKey, JSON.stringify(repository));
 }
 
-function handleHarnessStrategyCommand(command: Record<string, unknown>) {
+async function handleHarnessStrategyCommand(command: Record<string, unknown>) {
   const commandId = typeof command.commandId === "string" ? command.commandId : "invalid-command";
   const operation = command.operation;
   const repository = loadHarnessStrategyRepository();
@@ -126,6 +132,214 @@ function handleHarnessStrategyCommand(command: Record<string, unknown>) {
   const fail = (code: string, field: string, message: string) => {
     broadcast("strategy:application:error", { commandId, code, field, message });
   };
+
+  if (operation === "get_cold_start_status") {
+    broadcast("strategy:application:result", {
+      ...baseResult,
+      coldStartStatus: { shouldShow: false, checking: false, found: 0, imported: 0, skipped: 0, failures: [], decision: "pending" },
+    });
+    return;
+  }
+
+  if (operation === "list_reference_catalog") {
+    const sample = { semanticBundles: 3, contributors: 3, sessions: 6 };
+    const provenance = { kind: "reference", environment: "TEST" };
+    broadcast("strategy:application:result", {
+      ...baseResult,
+      referenceCatalog: {
+        source: "candidate",
+        catalog: {
+          contractVersion: "strategy.catalog.payload.v1",
+          source: { minimumCohort: 3 },
+          combinations: [{
+            combinationId: "lmu:imola-lmgt3",
+            referenceProfile: { targetContractVersion: "strategyinputprojection.v2", provenance, sample, quality: {}, fuel: { medianPerLap: 2.75, rangeLower: 2.6, rangeUpper: 2.9, sampleLaps: 54 } },
+            strategies: [{ rank: 1, clusterDigest: "visual-reference-cluster", representative: { stintCount: 4, pitLaps: [32, 64, 96], compounds: ["medium"] }, provenance, sample, quality: {}, score: {} }],
+          }],
+        },
+      },
+    });
+    return;
+  }
+
+  if (operation === "calculate_orbit") {
+    void createOrbitCalculationTestClient()
+      .execute(command as unknown as StrategyApplicationCommandV1<unknown>)
+      .then((result) => broadcast("strategy:application:result", result));
+    return;
+  }
+
+  if (operation === "list") {
+    const plans = Object.values(repository.drafts).map((draft) => {
+      const planId = typeof draft.planId === "string" ? draft.planId : "";
+      const variantId = typeof draft.variantId === "string" ? draft.variantId : "";
+      const revisions = Object.values(repository.revisions).filter(
+        (revision) => revision.planId === planId && revision.variantId === variantId,
+      );
+      const latest = revisions.at(-1);
+      return {
+        planId,
+        variantId,
+        draftId: draft.draftId,
+        name: draft.name,
+        mode: draft.mode,
+        updatedAt: latest?.createdAt ?? draft.updatedAt,
+        hasDraft: true,
+        revisionCount: revisions.length,
+        ...(latest ? {
+          latestRevision: revisionReference(latest),
+          latestRevisionAt: latest.createdAt,
+        } : {}),
+      };
+    });
+    broadcast("strategy:application:result", {
+      ...baseResult,
+      plans,
+      ...(repository.activePlan ? { activePlan: repository.activePlan } : {}),
+    });
+    return;
+  }
+
+  if (operation === "list_session_combinations") {
+    broadcast("strategy:application:result", {
+      ...baseResult,
+      sessionCatalogStatus: "available",
+      sessionCombinations: [{
+        combinationId: "lmu:imola-lmgt3",
+        simId: "lmu",
+        trackName: "Imola",
+        trackLayout: "GP",
+        carName: "Ford Mustang GT3",
+        carClass: "LMGT3",
+        sessionCount: 3,
+        raceCount: 1,
+        lastActivity: "2026-08-21T18:00:00Z",
+        climateBuckets: [{ bucket: "dry", laps: 54 }, { bucket: "humid", laps: 12 }],
+        sessions: [
+          { sessionId: "imola-race", type: "race", status: "identified_usable", defaultIncluded: true, lastActivity: "2026-08-21T18:00:00Z", climateBuckets: [{ bucket: "dry", laps: 32 }] },
+          { sessionId: "imola-practice", type: "practice", status: "identified_usable", defaultIncluded: true, lastActivity: "2026-08-20T18:00:00Z", climateBuckets: [{ bucket: "dry", laps: 22 }, { bucket: "humid", laps: 12 }] },
+          { sessionId: "imola-short", type: "practice", status: "identified_not_usable", defaultIncluded: false, exclusionReason: "no_completed_lap", lastActivity: "2026-08-19T18:00:00Z", climateBuckets: [] },
+        ],
+      }],
+    });
+    return;
+  }
+  if (operation === "list_events") {
+    broadcast("strategy:application:result", { ...baseResult, events: Object.values(repository.events ?? {}) });
+    return;
+  }
+  if (operation === "get_event_planning_inputs") {
+    const eventId = typeof command.eventId === "string" ? command.eventId : "";
+    const event = readHarnessPayload(repository.events?.[eventId]);
+    const combination = readHarnessPayload(event.combination);
+    const sessions = Array.isArray(combination.sessions)
+      ? combination.sessions.filter((session) => readHarnessPayload(session).included === true)
+      : [];
+    const savedPlanning = readHarnessPayload(event.planningInputs);
+    const overrides = readHarnessPayload(savedPlanning.overrides);
+    if (typeof combination.combinationId !== "string") {
+      broadcast("strategy:application:result", {
+        ...baseResult, planningInputStatus: "manual_only", planningInputs: { overrides },
+      });
+      return;
+    }
+    if (sessions.length === 0) {
+      broadcast("strategy:application:result", {
+        ...baseResult, planningInputStatus: "no_included_sessions", planningInputs: { overrides },
+      });
+      return;
+    }
+    const sourceSessions = sessions
+      .map((session) => readHarnessPayload(session).sessionId)
+      .filter((sessionId): sessionId is string => typeof sessionId === "string");
+    const emptyConfidence = { sampleSize: 0, computationVersion: "projection-producer.v1" };
+    const missing = { presence: "missing", provenance: { kind: "derived", sourceId: `aggregate:${combination.combinationId}` }, confidence: emptyConfidence };
+    broadcast("strategy:application:result", {
+      ...baseResult,
+      planningInputStatus: "available",
+      planningInputs: {
+        projection: {
+          contractVersion: "strategyinputprojection.v2",
+          generatedAt: typeof command.generatedAt === "string" ? command.generatedAt : "2026-08-22T12:00:00Z",
+          computationVersion: "projection-producer.v1",
+          sourceSessions,
+          combinationId: combination.combinationId,
+          fuelConsumption: {
+            presence: "valid", provenance: { kind: "derived", sourceId: `aggregate:${combination.combinationId}` },
+            confidence: { sampleSize: 54, rangeLower: 2.61, rangeUpper: 2.88, computationVersion: "projection-producer.v1" },
+            meanPerLap: 2.74, rangeLower: 2.61, rangeUpper: 2.88,
+          },
+          virtualEnergyConsumption: { ...missing, reason: "missing_virtual_energy_consumption", meanPerLap: 0, rangeLower: 0, rangeUpper: 0 },
+          combinedStintPaceCurve: {
+            presence: "valid", provenance: { kind: "derived", sourceId: `aggregate:${combination.combinationId}` },
+            confidence: { sampleSize: 26, rangeLower: 0, rangeUpper: 1.2, computationVersion: "projection-producer.v1" },
+            identifiability: "combined_only", reason: "combined_only",
+            points: [{ lapInStint: 1, deltaSeconds: 0, sampleSize: 26 }, { lapInStint: 25, deltaSeconds: 1.2, sampleSize: 18 }],
+          },
+          tyreDegradation: {
+            presence: "valid", provenance: { kind: "derived", sourceId: `aggregate:${combination.combinationId}` },
+            confidence: { sampleSize: 18, rangeLower: 28, rangeUpper: 34, computationVersion: "projection-producer.v1" },
+            lifeLapsEstimate: 31, lifeLapsRangeLower: 28, lifeLapsRangeUpper: 34,
+          },
+          pit: { ...missing, presence: "unknown", reason: "degraded_no_transit_service_breakdown" },
+          savingCost: { ...missing, reason: "missing_fuel_mixture_levels" },
+        },
+        overrides,
+      },
+    });
+    return;
+  }
+  if (operation === "get_validated_examples") {
+    broadcast("strategy:application:result", {
+      ...baseResult,
+      validatedExamples: {
+        status: "available",
+        combinationId: "lmu:imola-lmgt3",
+        races: [{
+          raceId: "imola-race",
+          occurredAt: "2026-07-05T18:00:00Z",
+          predictedTotalSeconds: 14_472,
+          observedTotalSeconds: 14_592,
+          absoluteErrorSeconds: 120,
+          absoluteErrorRatio: 120 / 14_592,
+          stints: [
+            { stintNumber: 1, laps: 11, predictedSeconds: 1_144, observedSeconds: 1_152, absoluteErrorSeconds: 8, absoluteErrorRatio: 8 / 1_152 },
+            { stintNumber: 2, laps: 32, predictedSeconds: 3_392, observedSeconds: 3_420, absoluteErrorSeconds: 28, absoluteErrorRatio: 28 / 3_420 },
+            { stintNumber: 3, laps: 32, predictedSeconds: 3_392, observedSeconds: 3_420, absoluteErrorSeconds: 28, absoluteErrorRatio: 28 / 3_420 },
+            { stintNumber: 4, laps: 32, predictedSeconds: 3_392, observedSeconds: 3_420, absoluteErrorSeconds: 28, absoluteErrorRatio: 28 / 3_420 },
+            { stintNumber: 5, laps: 32, predictedSeconds: 3_152, observedSeconds: 3_180, absoluteErrorSeconds: 28, absoluteErrorRatio: 28 / 3_180 },
+          ],
+          pitLaps: [11, 43, 75, 107],
+        }],
+        aggregate: {
+          raceCount: 1,
+          totalErrorRatio: { count: 1, mean: 120 / 14_592, lower: 120 / 14_592, upper: 120 / 14_592 },
+          stintErrorRatio: { count: 5, mean: 0.0082, lower: 0.0071, upper: 0.0093 },
+        },
+      },
+    });
+    return;
+  }
+  if (operation === "create_event" || operation === "edit_event") {
+    const event = readHarnessPayload(command.event);
+    const eventId = typeof event.id === "string" ? event.id : "";
+    if (!eventId) return fail("invalid_command", "event.id", "Invalid Strategy event");
+    repository.events ??= {};
+    repository.events[eventId] = structuredClone(event);
+    repository.version += 1;
+    saveHarnessStrategyRepository(repository);
+    broadcast("strategy:application:result", {
+      ...baseResult,
+      repositoryVersion: repository.version,
+      strategyDocument: {
+        contractVersion: "strategy.v2",
+        schemaVersion: "2.0.0",
+        generatedAt: command.updatedAt,
+        events: Object.values(repository.events),
+      },
+    });
+    return;
+  }
 
   if (operation === "open" || operation === "restore") {
     const draftId = typeof command.draftId === "string" ? command.draftId : "";
@@ -154,16 +368,28 @@ function handleHarnessStrategyCommand(command: Record<string, unknown>) {
     const draftId = typeof draft.draftId === "string" ? draft.draftId : "";
     const revisionId = typeof command.revisionId === "string" ? command.revisionId : "";
     if (!draftId || !revisionId) return fail("invalid_command", "draft", "Invalid Strategy save");
-    const stored = {
-      ...structuredClone(draft),
-      baseRevision: {
-        planId: draft.planId,
-        variantId: draft.variantId,
-        revisionId,
-        contentHash: "a".repeat(64),
-      },
+    const createdAt = typeof command.createdAt === "string" ? command.createdAt : "";
+    const revisionWithoutHash = {
+      contractVersion: "strategy.v1",
+      hashAlgorithm: "sha256:strategy-c14n-v1",
+      revisionId,
+      sourceDraftId: draft.draftId,
+      planId: draft.planId,
+      variantId: draft.variantId,
+      ...(draft.baseRevision ? { baseRevision: draft.baseRevision } : {}),
+      name: draft.name,
+      mode: draft.mode,
+      capabilities: draft.capabilities,
+      provenance: draft.provenance,
+      confidence: draft.confidence,
+      createdAt,
+      payload: draft.payload,
     };
+    const { sha256: contentHash } = await canonicalizeAndHashStrategyJSONV1(JSON.stringify(revisionWithoutHash));
+    const revision = { ...revisionWithoutHash, contentHash };
+    const stored = { ...structuredClone(draft), baseRevision: revisionReference(revision) };
     repository.drafts[draftId] = stored;
+    repository.revisions[revisionKey(revision)] = revision;
     repository.version += 1;
     saveHarnessStrategyRepository(repository);
     broadcast("strategy:application:result", {
@@ -171,7 +397,45 @@ function handleHarnessStrategyCommand(command: Record<string, unknown>) {
       repositoryVersion: repository.version,
       draft: stored,
       savedDraft: stored,
+      revision,
     });
+    return;
+  }
+  if (operation === "activate") {
+    const wanted = readHarnessPayload(command.revision);
+    const storedRevision = repository.revisions[revisionKey(wanted)];
+    if (!storedRevision || storedRevision.contentHash !== wanted.contentHash) {
+      return fail("revision_not_found", "revision", "Strategy revision not found");
+    }
+    const activationId = typeof command.activationId === "string" ? command.activationId : "";
+    const activatedAt = typeof command.activatedAt === "string" ? command.activatedAt : "";
+    repository.activePlan = {
+      contractVersion: "strategy.v1",
+      activationId,
+      revision: revisionReference(storedRevision),
+      activatedAt,
+    };
+    repository.version += 1;
+    saveHarnessStrategyRepository(repository);
+    broadcast("strategy:application:result", {
+      ...baseResult,
+      repositoryVersion: repository.version,
+      activePlan: repository.activePlan,
+    });
+    return;
+  }
+  if (operation === "export") {
+    const plans = Array.isArray(command.plans) ? command.plans : [];
+    const selector = plans.length === 1 ? readHarnessPayload(plans[0]) : {};
+    const wanted = readHarnessPayload(selector.revision);
+    const storedRevision = repository.revisions[revisionKey(wanted)];
+    if (!storedRevision || storedRevision.contentHash !== wanted.contentHash) {
+      return fail("revision_not_found", "plans.revision", "Strategy revision not found");
+    }
+    const bytes = new TextEncoder().encode(JSON.stringify({ revision: storedRevision }));
+    let binary = "";
+    for (const byte of bytes) binary += String.fromCharCode(byte);
+    broadcast("strategy:application:result", { ...baseResult, package: btoa(binary) });
     return;
   }
   if (operation === "close") {
@@ -179,6 +443,19 @@ function handleHarnessStrategyCommand(command: Record<string, unknown>) {
     return;
   }
   fail("invalid_command", "operation", "Unsupported harness Strategy operation");
+}
+
+function revisionKey(value: Record<string, unknown>): string {
+  return `${String(value.planId ?? "")}\u0000${String(value.variantId ?? "")}\u0000${String(value.revisionId ?? "")}`;
+}
+
+function revisionReference(value: Record<string, unknown>) {
+  return {
+    planId: value.planId,
+    variantId: value.variantId,
+    revisionId: value.revisionId,
+    contentHash: value.contentHash,
+  };
 }
 
 function handleHarnessStrategyManual(command: Record<string, unknown>) {
@@ -477,7 +754,7 @@ export const Events = {
   Emit(name: string, data: unknown) {
 
     if (name === "strategy:application:command") {
-      setTimeout(() => handleHarnessStrategyCommand(readHarnessPayload(data)), 0);
+      setTimeout(() => void handleHarnessStrategyCommand(readHarnessPayload(data)), 0);
       return;
     }
 

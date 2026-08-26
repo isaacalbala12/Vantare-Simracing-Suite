@@ -10,12 +10,21 @@
  */
 
 import { Events } from "@wailsio/runtime";
+import {
+  createStrategyApplicationClient,
+  createWailsStrategyApplicationTransport,
+  type StrategyApplicationClient,
+  type StrategyOrbitCalculationInputV1,
+  type StrategyOrbitCalculationResultV1,
+} from "../../strategy/strategy-application-client";
 import type {
   StrategyDriver,
   StrategyEvent,
   StrategyMode,
   StrategyPace,
 } from "./strategy-orbit-model";
+
+export * from "../../strategy/strategy-application-client";
 
 export const STRATEGY_ROSTER_REQUEST = "strategy:roster:get";
 export const STRATEGY_ROSTER_EVENT = "strategy:roster";
@@ -35,6 +44,33 @@ export interface StrategyRoster {
   strategies: RosterStrategy[];
   /** Ids de los juegos que el evento asigna, si el puente los conoce. */
   tyreIds?: string[];
+}
+
+/**
+ * Única entrada de Orbit al protocolo de aplicación de Strategy. El cliente
+ * solo correlaciona, valida y tipa el wire; las decisiones viven en Go.
+ */
+export function createStrategyOrbitApplicationClient<TPayload>(): StrategyApplicationClient<TPayload> {
+  return createStrategyApplicationClient<TPayload>(createWailsStrategyApplicationTransport());
+}
+
+/** Ejecuta el cálculo productivo de Orbit en manual+solver Go. */
+export async function calculateStrategyOrbit(
+  client: StrategyApplicationClient<unknown>,
+  commandId: string,
+  input: StrategyOrbitCalculationInputV1,
+): Promise<StrategyOrbitCalculationResultV1> {
+  const result = await client.execute({
+    protocolVersion: "strategy.application.v1",
+    commandId,
+    operation: "calculate_orbit",
+    expectedRepositoryVersion: 0,
+    input,
+  });
+  if (!result.orbitCalculation) {
+    throw new Error("Strategy calculation result is missing");
+  }
+  return result.orbitCalculation;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

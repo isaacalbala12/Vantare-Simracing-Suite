@@ -334,6 +334,102 @@ describe("StudioOrbitLayout", () => {
     expect(liveOption().disabled).toBe(true);
   });
 
+  it("el color del inspector se cambia y se restablece al valor del diseño", async () => {
+    renderStudio();
+    const row = await screen.findByTestId("orbit-studio-widget-item-standings-main");
+    fireEvent.click(within(row).getByRole("option"));
+    await screen.findByTestId("studio-inspector-section-appearance");
+
+    const gt3 = screen.getByTestId(
+      "studio-inspector-control-class-gt3-color",
+    ) as HTMLInputElement;
+    const original = gt3.value;
+    // Sin override no hay nada que restablecer: el boton no se pinta.
+    expect(screen.queryByTestId("studio-inspector-control-class-gt3-color-reset")).toBeNull();
+    expect(screen.queryByTestId("studio-appearance-reset-all")).toBeNull();
+
+    fireEvent.change(gt3, { target: { value: "#ff00aa" } });
+    await waitFor(() => {
+      expect(
+        (screen.getByTestId("studio-inspector-control-class-gt3-color") as HTMLInputElement).value,
+      ).toBe("#ff00aa");
+    });
+    // El aviso del acordeón de diseño deja de mentir sobre el diseño aplicado.
+    expect(screen.getByTestId("studio-design-overridden-hint")).toBeTruthy();
+
+    fireEvent.click(screen.getByTestId("studio-inspector-control-class-gt3-color-reset"));
+    await waitFor(() => {
+      expect(
+        (screen.getByTestId("studio-inspector-control-class-gt3-color") as HTMLInputElement).value,
+      ).toBe(original);
+    });
+    expect(screen.queryByTestId("studio-design-overridden-hint")).toBeNull();
+  });
+
+  it("cambiar de sistema visual aplica el diseño, no solo filtra la lista", async () => {
+    renderStudio();
+    const row = await screen.findByTestId("orbit-studio-widget-item-standings-main");
+    fireEvent.click(within(row).getByRole("option"));
+    const inspector = await screen.findByTestId("orbit-studio-inspector");
+
+    // El `Select` del kit no es un `<select>` nativo: se abre y se elige.
+    fireEvent.click(within(inspector).getByRole("combobox", { name: "Sistema" }));
+    fireEvent.click(
+      within(screen.getByRole("listbox", { name: "Sistema" })).getByRole("option", {
+        name: "Vantare Endurance",
+      }),
+    );
+
+    // El widget se lleva el diseño por defecto del sistema destino, no se queda
+    // en el suyo con la lista filtrada.
+    await waitFor(() => {
+      expect(screen.getByTestId("orbit-studio-inspector-meta").textContent).toContain(
+        "Endurance Redline",
+      );
+    });
+    expect(
+      within(screen.getByTestId("orbit-studio-widget-item-standings-main")).getByRole("option")
+        .textContent,
+    ).toContain("Vantare Endurance");
+  });
+
+  it("cada sección del inspector explica qué hace al dejar el ratón encima", async () => {
+    renderStudio();
+    const row = await screen.findByTestId("orbit-studio-widget-item-standings-main");
+    fireEvent.click(within(row).getByRole("option"));
+    const inspector = await screen.findByTestId("orbit-studio-inspector");
+
+    const heads = [...inspector.querySelectorAll(".orbit-studio-acc > summary")];
+    expect(heads).toHaveLength(4);
+    for (const head of heads) {
+      const tip = head.getAttribute("data-tip") ?? "";
+      // Una frase, no la clave sin traducir ni el propio título.
+      expect(tip.length).toBeGreaterThan(20);
+      expect(tip).not.toMatch(/^studio\./);
+      expect(head.getAttribute("data-tip-hold")).toBe("true");
+    }
+  });
+
+  it("los pasos de ancho y alineación de columna llevan su nombre completo", async () => {
+    renderStudio();
+    const row = await screen.findByTestId("orbit-studio-widget-item-standings-main");
+    fireEvent.click(within(row).getByRole("option"));
+    const columns = await screen.findByTestId("studio-standings-column-width-driverName");
+
+    // `SM`/`MD`/`LG` no le dicen nada a nadie fuera del código.
+    const labels = [...columns.querySelectorAll(".orbit-seg__option")].map((option) =>
+      option.textContent?.trim(),
+    );
+    expect(labels).toEqual(["Estrecha", "Media", "Ancha"]);
+    expect(
+      [
+        ...screen
+          .getByTestId("studio-standings-column-align-driverName")
+          .querySelectorAll(".orbit-seg__option"),
+      ].map((option) => option.textContent?.trim()),
+    ).toEqual(["Izquierda", "Derecha"]);
+  });
+
   it("no usa el `title` nativo en ninguno de sus controles", async () => {
     renderStudio();
     await screen.findByTestId("orbit-studio-toolbar");

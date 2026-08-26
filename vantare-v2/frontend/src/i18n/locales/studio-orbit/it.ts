@@ -50,8 +50,22 @@ export const studioOrbitIt: Record<string, string> = {
   "studio.inspector.duplicate": "Duplica widget",
   "studio.inspector.delete": "Elimina widget",
   "studio.inspector.section.design": "Design",
+  "studio.inspector.section.appearance": "Aspetto",
   "studio.inspector.section.behavior": "Comportamento",
   "studio.inspector.section.layout": "Layout",
+  "studio.inspector.section.design.help":
+    "Scegli il sistema visivo e il design con cui viene disegnato questo widget.",
+  "studio.inspector.section.appearance.help":
+    "Ritocchi sopra il design: interruttori e colori propri di questo widget.",
+  "studio.inspector.section.behavior.help":
+    "Ogni quanto si aggiorna e in quali sessioni si vede.",
+  "studio.inspector.section.layout.help":
+    "Posizione e dimensione sulla tela, ordine e ripristino dei valori.",
+  "studio.inspector.appearance.colors": "Colori",
+  "studio.inspector.appearance.changedShort": "{{n}} modificati",
+  "studio.inspector.appearance.changedShortOne": "1 modificato",
+  "studio.inspector.appearance.resetControl": "Torna al colore del design",
+  "studio.inspector.appearance.resetAll": "Ripristina aspetto",
   "studio.inspector.unsupported":
     "Questo widget non ha un renderer compatibile con il sistema visivo selezionato.",
 
@@ -70,11 +84,17 @@ export const studioOrbitIt: Record<string, string> = {
   "studio.inspector.content.rows": "Righe",
   "studio.inspector.content.width": "Larghezza",
   "studio.inspector.content.align": "Allineamento",
-  "studio.inspector.content.align.left": "Sin.",
-  "studio.inspector.content.align.right": "Des.",
+  "studio.inspector.content.align.left": "Sinistra",
+  "studio.inspector.content.align.right": "Destra",
+  "studio.inspector.content.width.sm": "Stretta",
+  "studio.inspector.content.width.md": "Media",
+  "studio.inspector.content.width.lg": "Larga",
   "studio.inspector.content.moveUp": "Su",
   "studio.inspector.content.moveDown": "Giu",
   "studio.inspector.design.applyAll": "Applica a tutti",
+  "studio.inspector.design.overridden":
+    "Questo widget ha modifiche di aspetto sopra il design.",
+  "studio.inspector.design.applyAllAlone": "Non ci sono altri widget compatibili con questo design.",
   "studio.inspector.design.saveAs": "Salva come design",
   "studio.inspector.layout.x": "X",
   "studio.inspector.layout.y": "Y",
@@ -122,7 +142,10 @@ export const studioOrbitIt: Record<string, string> = {
   "studio.summary.pit.inPit": "solo ai box",
   "studio.summary.pit.onTrack": "solo in pista",
   "studio.summary.sessions": "{{n}} sessioni",
-  "studio.summary.sessionsAll": "tutte le sessioni",
+  "studio.summary.sessionsAll": "tutte",
+  "studio.summary.appearanceDefault": "predefinito",
+  "studio.summary.appearanceChanged": "{{n}} modifiche",
+  "studio.summary.appearanceChangedOne": "1 modifica",
   "studio.summary.layout": "{{x}}, {{y}} · {{w}} × {{h}}",
 
   "studio.system.vantare-original": "Vantare Original",
@@ -130,8 +153,10 @@ export const studioOrbitIt: Record<string, string> = {
   "studio.system.vantare-endurance": "Vantare Endurance",
 
   "studio.topbar.profile": "Profilo attivo",
-  "studio.topbar.save": "Salva",
-  "studio.topbar.saved": "Salvato",
+  "studio.topbar.autoSaving": "Salvataggio…",
+  "studio.topbar.autoSaved": "Salvato automaticamente",
+  "studio.topbar.savePending": "Salvataggio in attesa…",
+  "studio.topbar.retrySave": "Riprova salvataggio",
   "studio.topbar.openOverlay": "Avvia overlay",
   "studio.topbar.stopOverlay": "Ferma overlay",
 };

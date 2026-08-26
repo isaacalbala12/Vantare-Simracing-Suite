@@ -273,10 +273,10 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - titulo.en: Overlay Studio V3 under way
 - titulo.pt: Overlay Studio V3 em curso
 - titulo.it: Overlay Studio V3 in corso
-- cuerpo: Un único límite de render para estudio, runtime y previsualización, con los catálogos Crystal, Neo y Endurance.
-- cuerpo.en: A single render boundary for studio, runtime and preview, with the Crystal, Neo and Endurance catalogues.
-- cuerpo.pt: Um único limite de render para estúdio, runtime e pré-visualização, com os catálogos Crystal, Neo e Endurance.
-- cuerpo.it: Un unico confine di render per studio, runtime e anteprima, con i cataloghi Crystal, Neo ed Endurance.
+- cuerpo: Un único límite de render para estudio, runtime y previsualización, con guardado automático, historial de deshacer/rehacer y los catálogos Crystal, Neo y Endurance.
+- cuerpo.en: A single render boundary for studio, runtime and preview, with autosave, undo/redo history and the Crystal, Neo and Endurance catalogues.
+- cuerpo.pt: Um único limite de render para estúdio, runtime e pré-visualização, com gravação automática, histórico de desfazer/refazer e os catálogos Crystal, Neo e Endurance.
+- cuerpo.it: Un unico confine di render per studio, runtime e anteprima, con salvataggio automatico, cronologia annulla/ripristina e i cataloghi Crystal, Neo ed Endurance.
 - etiqueta: En desarrollo
 - etiqueta.en: In progress
 - etiqueta.pt: Em desenvolvimento

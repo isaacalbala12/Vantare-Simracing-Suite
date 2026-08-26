@@ -69,13 +69,9 @@ const standingsAppearanceControls = [
     path: "showSessionHeader",
     defaultValue: true,
   },
-  {
-    kind: "color" as const,
-    id: "accent-color",
-    labelKey: "overlay.inspector.standings.accentColor",
-    path: "accentColor",
-    defaultValue: STANDINGS_DEFAULT_APPEARANCE.accentColor,
-  },
+  // El acento no esta cableado en este sistema: el CSS de Endurance pinta con
+  // `--ven-accent` y nunca lee `--vo-standings-accent`, asi que el control
+  // movia un valor que no se veia. Vuelve cuando el sistema lo consuma.
   {
     kind: "color" as const,
     id: "class-hypercar-color",

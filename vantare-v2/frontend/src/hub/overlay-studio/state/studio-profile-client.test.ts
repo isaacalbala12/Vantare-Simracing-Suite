@@ -135,8 +135,10 @@ describe("createStudioProfileClient", () => {
 
   it("resolves a saved profile response", async () => {
     const document = buildDocument();
-    const savePromise = client.save({ document, expectedRevision: "rev-1" });
-    const requestId = (transport.emitted[0].payload as { requestId: string }).requestId;
+    const savePromise = client.save({ file: "profile-a.json", document, expectedRevision: "rev-1" });
+    const request = transport.emitted[0].payload as { requestId: string; file: string };
+    expect(request.file).toBe("profile-a.json");
+    const requestId = request.requestId;
     transport.emit("studio:profile:saved", { requestId, document, revision: "rev-2" });
     await expect(savePromise).resolves.toMatchObject({
       status: "saved",

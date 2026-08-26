@@ -29,6 +29,10 @@ import {
   undoStudioHistory,
   type StudioHistory,
 } from "./studio-history";
+import {
+  readCachedStudioDocument,
+  writeCachedStudioDocument,
+} from "./studio-doc-cache";
 import { resolveSessionLayout } from "./session-layouts";
 import { StudioCommandError, type StudioCommand } from "./studio-command";
 import type { StudioProfileClient, StudioSaveResult } from "./studio-profile-client";
@@ -86,19 +90,29 @@ export function StudioProvider(props: {
     access: accessOverride,
   } = props;
   const access = accessOverride ?? DEFAULT_STUDIO_ACCESS;
-  const [history, setHistory] = useState<StudioHistory | null>(null);
+  // Stale-while-revalidate: the local cache of the last known document seeds
+  // history in the state initializer (once per mount) so widgets paint
+  // instantly while the fresh load travels over IPC.
+  const [seed] = useState(() => {
+    const cached = readCachedStudioDocument(initialFile);
+    return cached ? buildInitialHistory(cached) : null;
+  });
+  const [history, setHistory] = useState<StudioHistory | null>(seed?.history ?? null);
   const [revision, setRevision] = useState<string>("");
   const [activeSession, setActiveSession] = useState<SessionLayoutType>("general");
   const [selectedWidgetId, setSelectedWidgetId] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<StudioSaveState>("idle");
   const [accessNotice, setAccessNotice] = useState<string | null>(null);
-  const [visuallyMigratedWidgetIds, setVisuallyMigratedWidgetIds] = useState<readonly string[]>([]);
+  const [visuallyMigratedWidgetIds, setVisuallyMigratedWidgetIds] = useState<readonly string[]>(
+    seed?.migratedWidgetIds ?? [],
+  );
   const [preview, setPreviewState] = useState<StudioPreviewState>(DEFAULT_PREVIEW_STATE);
   const [loadError, setLoadError] = useState<string | null>(null);
   // Ref del presente para que save() lea siempre el documento mas reciente,
   // incluso si una edicion B ocurrio mientras una peticion A estaba en vuelo.
-  const historyRef = useRef<StudioHistory | null>(null);
+  const historyRef = useRef<StudioHistory | null>(seed?.history ?? null);
   const revisionRef = useRef<string>("");
+  const savePromiseRef = useRef<Promise<StudioSaveResult> | null>(null);
   const recoveryStore = useMemo(
     () => (recoveryStorage ? createStudioRecoveryStore(recoveryStorage) : null),
     [recoveryStorage],
@@ -116,31 +130,59 @@ export function StudioProvider(props: {
         setAccessNotice(null);
         setLoadError(null);
         const initial = buildInitialHistory(loaded.document);
-        setHistory(initial.history);
-        historyRef.current = initial.history;
+        // If the user already edited on top of the cached seed, keep those
+        // edits and only re-anchor the `saved` baseline to the real disk doc.
+        const editedSinceCache =
+          seed !== null && historyRef.current !== seed.history;
+        // Fresh identical to the seed (common case: reopen unchanged): only
+        // update the revision — zero canvas re-render, zero jump.
+        const freshEqualsSeed =
+          seed !== null &&
+          !editedSinceCache &&
+          JSON.stringify(seed.history.present) === JSON.stringify(initial.history.present);
+        if (freshEqualsSeed) {
+          setRevision(loaded.revision);
+          revisionRef.current = loaded.revision;
+          writeCachedStudioDocument(initialFile, initial.history.present);
+          return;
+        }
+        if (editedSinceCache && historyRef.current) {
+          const rebased = markStudioHistorySaved(historyRef.current, loaded.document);
+          setHistory(rebased);
+          historyRef.current = rebased;
+        } else {
+          setHistory(initial.history);
+          historyRef.current = initial.history;
+        }
         setRevision(loaded.revision);
         revisionRef.current = loaded.revision;
         setVisuallyMigratedWidgetIds(initial.migratedWidgetIds);
         setActiveSession("general");
         setSelectedWidgetId(null);
+        // Cache the ALREADY-mIGRATED document (what the canvas paints) so the
+        // next seed and the fresh load are identical by construction.
+        writeCachedStudioDocument(initialFile, initial.history.present);
       },
       (error: unknown) => {
         if (cancelled) {
           return;
         }
+        // Sin load fresco la semilla cacheada no es de fiar: estado de error.
         const message = error instanceof Error ? error.message : "failed to load studio profile";
         setSaveState("idle");
         setAccessNotice(null);
         setLoadError(message);
         setHistory(null);
         historyRef.current = null;
+        setRevision("");
+        revisionRef.current = "";
       },
     );
 
     return () => {
       cancelled = true;
     };
-  }, [client, initialFile]);
+  }, [client, initialFile, seed]);
 
   const document = history?.present ?? null;
   const dirty = history ? isStudioHistoryDirty(history) : false;
@@ -237,15 +279,16 @@ export function StudioProvider(props: {
   }, [history]);
 
   const discardAll = useCallback(() => {
-    setHistory((current) => {
-      if (!current) {
-        return current;
-      }
-      if (recoveryStore && current.saved) {
-        recoveryStore.clear(current.saved.id);
-      }
-      return discardStudioHistory(current);
-    });
+    const current = historyRef.current;
+    if (!current) {
+      return;
+    }
+    if (recoveryStore && current.saved) {
+      recoveryStore.clear(current.saved.id);
+    }
+    const next = discardStudioHistory(current);
+    historyRef.current = next;
+    setHistory(next);
     setSaveState("idle");
     setAccessNotice(null);
     setVisuallyMigratedWidgetIds([]);
@@ -261,64 +304,123 @@ export function StudioProvider(props: {
 
   const acceptRecovery = useCallback(
     (recoveredDocument: ProfileDocumentV3) => {
-      setHistory((current) => {
-        if (!current) {
-          return current;
-        }
-        return buildHistoryFromRecovery(current.saved, recoveredDocument);
-      });
+      const current = historyRef.current;
+      if (!current) {
+        return;
+      }
+      const next = buildHistoryFromRecovery(current.saved, recoveredDocument);
+      historyRef.current = next;
+      setHistory(next);
     },
     [],
   );
 
-  const save = useCallback(async (): Promise<StudioSaveResult> => {
-    // Se lee del ref para guardar siempre el documento mas reciente: una
-    // edicion B ocurrida mientras una peticion A estaba en vuelo se conserva
-    // en el presente y este save la incluye.
-    const currentHistory = historyRef.current;
-    const currentDocument = currentHistory?.present ?? null;
-    const currentRevision = revisionRef.current;
-    if (!currentHistory || !currentDocument || !currentHistory.saved) {
-      return { status: "error", message: "studio profile is not loaded" };
+  const save = useCallback((): Promise<StudioSaveResult> => {
+    // Todos los consumidores comparten el mismo drenaje: nunca hay dos saves
+    // en vuelo. Si el documento cambia mientras se guarda A, el bucle guarda B
+    // a continuacion con la revision confirmada por A y resuelve solo al final.
+    const currentPromise = savePromiseRef.current;
+    if (currentPromise) {
+      return currentPromise;
     }
-    const draftValidation = validateDraftAccess(access, currentHistory.saved, currentDocument);
-    if (!draftValidation.allowed) {
-      setSaveState("error");
-      setAccessNotice(draftValidation.reason);
-      return { status: "error", message: draftValidation.reason };
-    }
-    setSaveState("saving");
-    setAccessNotice(null);
-    const result = await client.save({ document: currentDocument, expectedRevision: currentRevision });
-    if (result.status === "saved") {
-      // Hardening: solo se actualizan saved y revision. El presente se
-      // conserva tal como exista al resolver la peticion: una edicion B
-      // realizada mientras A estaba en vuelo no desaparece.
-      setHistory((current) => {
-        const next = current ? markStudioHistorySaved(current, result.document) : current;
-        if (next) {
-          historyRef.current = next;
+
+    const savePromise = (async (): Promise<StudioSaveResult> => {
+      setSaveState("saving");
+      setAccessNotice(null);
+
+      while (true) {
+        const currentHistory = historyRef.current;
+        const currentDocument = currentHistory?.present ?? null;
+        const currentRevision = revisionRef.current;
+        if (!currentHistory || !currentDocument || !currentHistory.saved) {
+          const result: StudioSaveResult = {
+            status: "error",
+            message: "studio profile is not loaded",
+          };
+          setSaveState("error");
+          setAccessNotice(result.message);
+          return result;
         }
-        return next;
-      });
-      if (recoveryStore) {
-        recoveryStore.clear(result.document.id);
+
+        const draftValidation = validateDraftAccess(
+          access,
+          currentHistory.saved,
+          currentDocument,
+        );
+        if (!draftValidation.allowed) {
+          const result: StudioSaveResult = {
+            status: "error",
+            message: draftValidation.reason,
+          };
+          setSaveState("error");
+          setAccessNotice(draftValidation.reason);
+          return result;
+        }
+
+        let result: StudioSaveResult;
+        try {
+          result = await client.save({
+            file: initialFile,
+            document: currentDocument,
+            expectedRevision: currentRevision,
+          });
+        } catch (error: unknown) {
+          result = {
+            status: "error",
+            message: error instanceof Error ? error.message : "studio profile save failed",
+          };
+        }
+
+        if (result.status === "saved") {
+          // El presente nunca se sustituye por la respuesta. Solo avanza el
+          // snapshot guardado; asi una edicion B ocurrida durante A conserva
+          // su identidad, su historial y provoca exactamente el siguiente save.
+          const latestHistory = historyRef.current;
+          if (!latestHistory) {
+            const unloaded: StudioSaveResult = {
+              status: "error",
+              message: "studio profile is not loaded",
+            };
+            setSaveState("error");
+            setAccessNotice(unloaded.message);
+            return unloaded;
+          }
+          const hasNewerDocument = latestHistory.present !== currentDocument;
+          const next = markStudioHistorySaved(latestHistory, result.document);
+          historyRef.current = next;
+          setHistory(next);
+          setRevision(result.revision);
+          revisionRef.current = result.revision;
+
+          if (hasNewerDocument) {
+            continue;
+          }
+
+          if (recoveryStore) {
+            recoveryStore.clear(result.document.id);
+          }
+          // La cache SWR acompana al ultimo documento confirmado, no a una
+          // respuesta intermedia que aun tenga una edicion posterior en cola.
+          writeCachedStudioDocument(initialFile, result.document);
+          setSaveState("saved");
+          setVisuallyMigratedWidgetIds([]);
+          return result;
+        }
+
+        setSaveState(result.status === "conflict" ? "conflict" : "error");
+        setAccessNotice(result.message);
+        return result;
       }
-      setRevision(result.revision);
-      revisionRef.current = result.revision;
-      setSaveState("saved");
-      setVisuallyMigratedWidgetIds([]);
-      return result;
-    }
-    if (result.status === "conflict") {
-      setSaveState("conflict");
-      setAccessNotice(result.message);
-      return result;
-    }
-    setSaveState("error");
-    setAccessNotice(result.message);
-    return result;
-  }, [access, client, recoveryStore]);
+    })();
+
+    savePromiseRef.current = savePromise;
+    void savePromise.finally(() => {
+      if (savePromiseRef.current === savePromise) {
+        savePromiseRef.current = null;
+      }
+    });
+    return savePromise;
+  }, [access, client, initialFile, recoveryStore]);
 
   const setPreview = useCallback((patch: Partial<StudioPreviewState>) => {
     setPreviewState((current) => ({ ...current, ...patch }));

@@ -3,6 +3,9 @@
 - Estado: aceptada
 - Fecha: 2026-07-10
 
+> Enmienda 2026-08-25: ADR 0093 sustituye únicamente la decisión de guardado
+> explícito por autosave serializado con historial undo/redo productivo.
+
 ## Contexto
 
 Overlay Studio mantiene contratos duplicados entre editor, preview, Desktop y OBS. WidgetStudio fue eliminado y la edición de apariencia, contenido, comportamiento y layout pertenece ahora a un único editor. Los sistemas visuales completos son el pilar del producto.

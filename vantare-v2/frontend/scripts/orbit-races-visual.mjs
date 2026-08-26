@@ -117,6 +117,30 @@ try {
       await page.clock.setFixedTime(FROZEN_CLOCK);
 
       const contract = await page.evaluate((testId) => {
+        const nextRows = [...document.querySelectorAll('[data-testid="orbit-races-next-row"]')];
+        const centerSpread = (selector) => {
+          const centers = nextRows
+            .map((nextRow) => nextRow.querySelector(selector)?.getBoundingClientRect())
+            .filter(Boolean)
+            .map((rect) => (rect.left + rect.right) / 2);
+          return centers.length ? Math.max(...centers) - Math.min(...centers) : null;
+        };
+        const widthSpread = (selector) => {
+          const widths = nextRows
+            .map((nextRow) => nextRow.querySelector(selector)?.getBoundingClientRect().width)
+            .filter((width) => width !== undefined);
+          return widths.length ? Math.max(...widths) - Math.min(...widths) : null;
+        };
+        const minimumGap = (leftSelector, rightSelector) => {
+          const gaps = nextRows
+            .map((nextRow) => {
+              const left = nextRow.querySelector(leftSelector)?.getBoundingClientRect();
+              const right = nextRow.querySelector(rightSelector)?.getBoundingClientRect();
+              return left && right ? right.left - left.right : null;
+            })
+            .filter((gap) => gap !== null);
+          return gaps.length ? Math.min(...gaps) : null;
+        };
         const root = document.querySelector(".orbit-races");
         const column = document.querySelector(".orbit-column");
         // El scroller horizontal es el propio componente del kit (`.orbit-tl`).
@@ -154,6 +178,27 @@ try {
           filters: document.querySelectorAll('[data-testid="orbit-races-filters"] button').length,
           detail: document.querySelectorAll('[data-testid="orbit-races-detail"]').length,
           nativeTitles: root ? root.querySelectorAll("[title]").length : -1,
+          nextColumnSpreads:
+            testId === "orbit-races-next"
+              ? {
+                  at: centerSpread(".orbit-races__nrow-at"),
+                  duration: centerSpread(".orbit-races__dur"),
+                  license: centerSpread(".orbit-chip"),
+                }
+              : null,
+          nextColumnGaps:
+            testId === "orbit-races-next"
+              ? {
+                  atToDuration: minimumGap(".orbit-races__nrow-at", ".orbit-races__dur"),
+                  durationToLicense: minimumGap(".orbit-races__dur", ".orbit-chip"),
+                }
+              : null,
+          nextChipWidthSpread:
+            testId === "orbit-races-next" ? widthSpread(".orbit-chip") : null,
+          nextRowOverflow:
+            testId === "orbit-races-next"
+              ? Math.max(...nextRows.map((nextRow) => nextRow.scrollWidth - nextRow.clientWidth))
+              : null,
           timelineScrollX: timeline ? timeline.scrollWidth > timeline.clientWidth + 0.5 : null,
           nowVisible:
             nowRect && tlRect
@@ -193,6 +238,26 @@ try {
       }
       if (contract.nativeTitles !== 0) {
         throw new Error(`${viewport.name}/${view.id}: la vista usa \`title\` nativo (${contract.nativeTitles})`);
+      }
+      if (view.id === "next") {
+        for (const [column, spread] of Object.entries(contract.nextColumnSpreads)) {
+          if (spread > 0.5) {
+            throw new Error(`${viewport.name}/next: la columna ${column} varía ${spread.toFixed(2)}px entre filas`);
+          }
+        }
+        for (const [columns, gap] of Object.entries(contract.nextColumnGaps)) {
+          if (gap < 32) {
+            throw new Error(`${viewport.name}/next: el espacio ${columns} es solo ${gap.toFixed(2)}px`);
+          }
+        }
+        if (contract.nextChipWidthSpread > 0.5) {
+          throw new Error(
+            `${viewport.name}/next: los chips varían ${contract.nextChipWidthSpread.toFixed(2)}px de ancho`,
+          );
+        }
+        if (contract.nextRowOverflow > 0.5) {
+          throw new Error(`${viewport.name}/next: una fila desborda ${contract.nextRowOverflow}px en horizontal`);
+        }
       }
       if (view.id === "timeline") {
         if (contract.timelineScrollX !== true) {

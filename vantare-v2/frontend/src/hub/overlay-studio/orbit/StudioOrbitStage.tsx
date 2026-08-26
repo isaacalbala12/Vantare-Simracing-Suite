@@ -12,6 +12,11 @@ import { resolveCanvasBackground } from '../canvas/canvas-backgrounds';
 import { clientToLogical } from '../canvas/canvas-geometry';
 import { useCanvasInteraction } from '../canvas/useCanvasInteraction';
 import { useStudioTelemetrySnapshot } from '../canvas/studio-telemetry';
+import { useFontsReady } from '../canvas/use-fonts-ready';
+import {
+  readStageGeometryCache,
+  writeStageGeometryCache,
+} from '../canvas/stage-geometry-cache';
 import { useStudioDocument, useStudioPreview } from '../state/studio-store';
 import { placeSelectionTag, type TagAnchor } from './selection-tag-placement';
 import { fill, widgetLabel } from './studio-orbit-model';
@@ -27,6 +32,7 @@ export type StudioOrbitStageProps = {
   diagnostics?: WidgetDiagnosticCollector;
   onPointer(point: { x: number; y: number } | null): void;
 };
+
 
 /**
  * Lienzo Orbit del Studio (`06 § Overlays Studio`).
@@ -51,12 +57,17 @@ export function StudioOrbitStage(props: StudioOrbitStageProps): React.ReactEleme
   } = useStudioDocument();
   const { preview } = useStudioPreview();
   const liveSnapshot = useStudioTelemetrySnapshot();
+  // Los widgets pintan texto con metricas criticas: sin este gate, el swap de
+  // fuentes reflowea las filas justo tras el primer pintado (el 'salto
+  // inicial'). Con fuentes locales ready llega en milisegundos.
+  const fontsReady = useFontsReady();
   const stageRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<HTMLDivElement>(null);
-  const [stageWidth, setStageWidth] = useState(0);
+  // Arranque con la ultima geometria persistida (ver comentario de modulo).
+  const [stageWidth, setStageWidth] = useState(() => readStageGeometryCache()?.width ?? 0);
   // El alto medido lo necesita la etiqueta de seleccion para decidir si cabe
   // arriba del widget; el ancho ya mandaba la escala del plano logico.
-  const [stageHeight, setStageHeight] = useState(0);
+  const [stageHeight, setStageHeight] = useState(() => readStageGeometryCache()?.height ?? 0);
 
   const layoutViewport = resolveLayoutViewport(document ?? {});
 
@@ -68,6 +79,9 @@ export function StudioOrbitStage(props: StudioOrbitStageProps): React.ReactEleme
       const height = node.clientHeight;
       if (height > 0) setStageHeight((current) => (current === height ? current : height));
       if (width > 0) setStageWidth((current) => (current === width ? current : width));
+      if (width > 0 && height > 0) {
+        writeStageGeometryCache({ width, height });
+      }
     };
     update();
     if (typeof ResizeObserver === 'undefined') {
@@ -285,22 +299,24 @@ export function StudioOrbitStage(props: StudioOrbitStageProps): React.ReactEleme
           }}
         >
           <CanvasGuides guides={interaction.guides} />
-          {widgets.map((widget) => (
-            <StudioWidgetFrame
-              diagnostics={diagnostics}
-              key={widget.id}
-              layout={interaction.resolveLayout(widget)}
-              onFramePointerDown={interaction.onFramePointerDown}
-              onLostPointerCapture={interaction.onLostPointerCapture}
-              onResizePointerDown={interaction.onResizePointerDown}
-              onSelect={selectWidget}
-              previewActive={interaction.isWidgetPreviewActive(widget.id)}
-              selected={selectedWidgetId === widget.id}
-              snapshotOverride={snapshotOverride}
-              widget={widget}
-              fitSelectionToContent
-            />
-          ))}
+          {fontsReady
+            ? widgets.map((widget) => (
+                <StudioWidgetFrame
+                  diagnostics={diagnostics}
+                  key={widget.id}
+                  layout={interaction.resolveLayout(widget)}
+                  onFramePointerDown={interaction.onFramePointerDown}
+                  onLostPointerCapture={interaction.onLostPointerCapture}
+                  onResizePointerDown={interaction.onResizePointerDown}
+                  onSelect={selectWidget}
+                  previewActive={interaction.isWidgetPreviewActive(widget.id)}
+                  selected={selectedWidgetId === widget.id}
+                  snapshotOverride={snapshotOverride}
+                  widget={widget}
+                  fitSelectionToContent
+                />
+              ))
+            : null}
         </div>
 
         {/* Fuera del `scene`: la etiqueta se mide y se coloca en pixeles del

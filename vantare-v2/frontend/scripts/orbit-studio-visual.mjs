@@ -18,7 +18,7 @@ const shots = [
   { name: "1920x900", width: 1920, height: 900, query: "" },
   { name: "1920x1080-dock-cerrado", width: 1920, height: 1080, query: "&rightDock=closed" },
   { name: "1920x1080-estres", width: 1920, height: 1080, query: "&stress=1" },
-  // Selección real: el inspector con sus tres acordeones y la etiqueta
+  // Selección real: el inspector con sus cuatro acordeones y la etiqueta
   // `delta · w × h` sobre el widget del lienzo.
   { name: "1920x1080-seleccion", width: 1920, height: 1080, query: "", select: "delta" },
   // Standings seleccionado con el acordeón de contenido abierto: es la "zona
@@ -281,8 +281,10 @@ try {
             .querySelector('[data-testid="orbit-studio-topbar-controls"]')
             ?.getBoundingClientRect().left ?? -1,
         ),
+        // Solo los acordeones de primer nivel: dentro de Apariencia hay un
+        // sub-bloque `details` para los colores que no cuenta como seccion.
         accordions: document.querySelectorAll(
-          '[data-testid="orbit-studio-inspector"] details',
+          '[data-testid="orbit-studio-inspector"] details.orbit-acc',
         ).length,
         selectionTag:
           document.querySelector('[data-testid="orbit-studio-selection-tag"]')?.textContent?.trim() ??
@@ -407,8 +409,11 @@ try {
       );
     }
     if (shot.select) {
-      if (contract.accordions !== 3) {
-        throw new Error(`${shot.name}: ${contract.accordions} acordeones en el inspector, se esperaban 3`);
+      // Diseño · Apariencia · Comportamiento · Layout. `appearance` se separó
+      // de `design` para que el primer acordeón dejara de ser el más largo del
+      // panel y el resto no quedara bajo el scroll.
+      if (contract.accordions !== 4) {
+        throw new Error(`${shot.name}: ${contract.accordions} acordeones en el inspector, se esperaban 4`);
       }
       if (contract.selectedRows !== 1 || !contract.selectedRowIsTarget) {
         throw new Error(`${shot.name}: la fila de \`${shot.select}\` no está en estado seleccionado`);

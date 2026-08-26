@@ -10,6 +10,62 @@
 
 ## Estado
 
+- **ISA-842 — autosave e historial productivo de Overlay Studio (2026-08-25,
+  PR draft a nightly):** rebasada sobre `origin/nightly@c7d25f94`, la rama
+  `vantareapp/isa-842-studio-autosave-undo` convierte cada cambio documental
+  confirmado en autosave con debounce de 300 ms. `StudioProvider` mantiene un
+  único save en vuelo y coalesce ediciones posteriores sobre la revisión
+  confirmada; errores y timeouts dejan el documento recuperable. La ruta
+  productiva monta `Ctrl+Z`, `Ctrl+Shift+Z` y `Ctrl+Y`, conserva 100 pasos aunque
+  autosave ya haya confirmado el estado y persiste también cada undo/redo. El
+  save incluye el archivo ligado a la sesión: cambiar el perfil activo global
+  no puede escribir el documento abierto sobre otro perfil. Estado visible:
+  pendiente, guardando, guardado automáticamente o reintento. ADR 0093 sustituye
+  solo el guardado explícito de ADR 0003. Evidencia fresca tras el rebase:
+  frontend completo 389 archivos/2978 tests PASS, focal final de autosave/store
+  2 archivos/25 tests PASS, typecheck y build PASS, lint de los 14 TS/TSX
+  modificados PASS y
+  `go test ./...` PASS. El
+  lint global solo conserva el fallo previo `_damage` no usado en
+  `car-damage-numbers-view-model-v2.ts`, fuera de alcance. En el harness Orbit
+  con Wails mock, X se guardó de 1560 a 1500; `Ctrl+Z` restauró 1560 y
+  `Ctrl+Shift+Z` rehizo 1500, ambos con estado `saved`. Falta prueba manual en el
+  ejecutable Wails real. Implementación rebasada en `a62c5035` y guard de
+  revisión SWR en `569c3dec`; PR **#853** hacia `nightly`, autorizado para merge
+  por Isaac el 2026-08-26. Sin promoción a `testers`/`master` ni release.
+
+- **ISA-770 — saltos de widgets en Studio (2026-08-25, PR a nightly):**
+  la medición A/B en Wails/WebView2 separó dos caminos. En movimiento reducido,
+  el padre de `5a8de7ed` presentó un frame con escena oculta, escala cero,
+  widgets `0×0` y un desplazamiento de 698 px; el commit actual dejó los cuatro
+  contadores a cero. El Windows medido usa `prefers-reduced-motion: false`, así
+  que ese fix no explicaba por sí solo el salto normal. Para ese camino se
+  incorporaron los fixes ya validados de la rama de rendimiento: cache SWR del
+  documento, convergencia sin rerender si el documento fresco es idéntico,
+  bloqueo de fuentes locales antes de montar widgets y geometría del stage
+  persistida entre montajes. En el mismo WebView2, entrada fría y vuelta
+  Launcher → Studio terminaron con widgets positivos desde su primer frame,
+  cero transiciones activas y desplazamiento máximo de 0 px. La ventana Wails y
+  el motor WebView2 fueron reales; el frontend se sirvió desde el harness mock
+  aislado porque el perfil temporal de Wails no tenía sesión/licencia. El script
+  reproducible queda en `frontend/scripts/studio-widget-jump-webview-ab.mjs`.
+  Rama `vantareapp/isa-770-onboarding-retencion`, **en PR #844 hacia
+  `nightly`** (2026-08-25). Sin release.
+
+- **Inspector de widgets del Studio rehecho (2026-08-25, PR a nightly):** el
+  panel lateral tenía tres controles que no hacían lo que aparentaban y una
+  columna dominada por seis selectores de color a ancho completo. Corregido:
+  «Color de acento» se retira del manifiesto de Vantare Endurance porque ese
+  sistema nunca lee `--vo-standings-accent` (en Vantare Original sigue, ahí sí
+  está cableado); el desplegable de sistema aplica el diseño por defecto del
+  destino en vez de solo filtrar la lista; cada color sobrescrito ofrece
+  restablecer al valor del diseño y la sección, «Restablecer apariencia»; el
+  selector de diseño avisa cuando hay apariencia por encima. En lo visual, los
+  colores pasan a filas compactas agrupadas, `appearance` se separa de `design`
+  como acordeón propio, los resúmenes dejan de repetir la cabecera y cada
+  sección se explica al dejar el ratón encima. Los pasos de columna dicen
+  «Estrecha»/«Izquierda» en vez de `SM`/`MD`/`LG`. Gates PASS: 2978 tests,
+  typecheck, lint, auditoría i18n y evidencia visual regenerada. PR #844.
 - **Ajustes Orbit: autosave de atajos, descarga de informe y búsqueda
   (2026-08-22, en rama):** tres mejoras de la pantalla Ajustes sobre
   `origin/nightly@4ec98fea`, rama `vantareapp/isa-767-ajustes-orbit-autosave-informe-busqueda`,

@@ -1,6 +1,7 @@
 # Spec: Standings Redline con columnas configurables
 
-Estado: aprobada por Isaac el 2026-08-26. Issue: ISA-849.
+Estado: aprobada por Isaac el 2026-08-26 y enmendada tras review Fable con su
+acuerdo el 2026-08-27. Issue: ISA-849.
 
 ## Objetivo
 
@@ -32,10 +33,13 @@ Quedan fuera de alcance todos los demás diseños y plantillas.
    no comprime por debajo de esas anchuras para esconder un problema de espacio.
 7. La fila conserva 30 px de alto, el mismo `data-standings-row` y la misma key.
    El cambio de columnas es horizontal y no altera el stride del motor FLIP.
-8. Los ViewModels existentes conservan su salida para los demás renderizadores.
-   Si Redline necesita recuperar la configuración completa o el nombre fijo de
-   un perfil antiguo que tenga el anclaje desactivado, se añadirá únicamente un
-   campo de presentación aditivo; ningún renderer ajeno lo consumirá.
+8. `model.columns` continúa siendo la única lista de columnas habilitadas,
+   ordenadas y dimensionadas. Para recuperar el nombre fijo de un perfil antiguo
+   que tenga Piloto desactivado se añade solo `configuredDriverName`; ningún
+   renderer ajeno lo consume.
+9. Solo el par `standings + vantare-endurance/standings-redline` usa una anchura
+   CSS interna fluida igual a `layout.w`. Original, Crystal y los demás Endurance
+   conservan el viewport base de 520 px y su escalado actual.
 
 ## Comportamiento visual
 
@@ -49,8 +53,12 @@ Las métricas flexibles usan el formateo ya publicado por el ViewModel. Redline
 solo conserva tratamientos especiales donde existe semántica visual aprobada:
 
 - `bestLap`: tiempo y glifo morado del mejor registro de sesión;
-- `gap` o `interval`: celda de presión y lectura de batalla;
-- `pit`: estado PIT en su propia celda;
+- `gap`: celda de presión y lectura de batalla;
+- `interval`: lectura publicada, sin conducir la batalla porque no equivale de
+  forma general al intervalo entre filas adyacentes de la misma clase y no está
+  disponible en Overlay V2;
+- `pit`: celda configurable; el estado PIT de la fila y la sustitución de una
+  lectura temporal inválida permanecen aunque esta columna esté oculta;
 - `tireCompound`: badge y revelado temporal del compuesto;
 - el resto: texto compacto con la anchura y alineación configuradas.
 
@@ -59,10 +67,13 @@ agrupación estructural de Redline, pero no sustituye a esa columna ni participa
 en su orden.
 
 La rejilla se define directamente en la fila mediante sus tracks configurados.
-La anchura mínima recomendada se calcula con los dos anclajes, el badge de delta,
-las columnas flexibles, los gaps y el padding reales. Si `widget.layout.w` es
-menor, el inspector muestra una advertencia con la anchura recomendada. No hay
-resize automático, scroll dentro del overlay ni reducción silenciosa de fuente.
+Para Redline, la frontera `WidgetVisualViewport` usa `layout.w` como anchura base
+y escala 1: ensanchar concede espacio CSS real en Studio, Desktop, OBS, edición
+in-place y Workshop. La anchura mínima recomendada suma anclajes, delta,
+columnas flexibles, gaps y padding. Si `widget.layout.w` es menor, el inspector
+muestra la recomendación. No hay resize automático, scroll ni reducción de
+fuente. El nombre usa `minmax(preset, 1fr)` para conservar la jerarquía visual;
+el preset es su mínimo observable, no un truncado rígido a 90 px.
 
 ## Contrato de animaciones
 
@@ -77,20 +88,21 @@ motor Redline esté habilitado:
 
 Las animaciones que revelan una métrica respetan su visibilidad:
 
-- batalla y presión solo si `gap` o `interval` está visible;
-- si `interval` está visible y `gap` no, la batalla usa el intervalo directo;
+- batalla y presión solo si `gap` está visible;
 - corona y onda morada solo si `bestLap` está visible;
 - revelado de compuesto solo si `tireCompound` está visible;
-- etiqueta/transición PIT solo si `pit` está visible.
+- el estado PIT se conserva siempre; la columna PIT respeta su visibilidad.
 
 Los fantasmas reutilizan la misma función de fila y las mismas columnas
 configuradas. Solo cambian su posición a `—`, su estado a `OUT` cuando exista
 una celda adecuada y su animación de salida. No mantienen una segunda maqueta
 hardcodeada.
 
-Studio conserva el contrato vigente para los motores de movimiento: la edición
-no debe introducir animaciones live que dificulten manipular el documento. La
-paridad visual se valida en Workshop y la animación real en runtime.
+La desactivación de los motores Redline dentro del lienzo de Studio pertenece a
+ISA-799 y su PR draft #795. ISA-849 no absorbe ni duplica ese cambio: se construye
+sobre Nightly y resolverá el solape al integrar. La paridad visual se valida en
+Workshop y la animación real en runtime; Studio no se presenta como prueba de
+motion mientras ISA-799 siga pendiente.
 
 ## Tech stack
 
@@ -125,12 +137,12 @@ Archivos productivos esperados:
   — fila configurable y compuertas visuales.
 - `frontend/src/overlay/design-systems/vantare-endurance/standings/useStandingsMotion.ts`
   — habilitación de eventos ligada a las métricas visibles.
-- `frontend/src/overlay/design-systems/vantare-endurance/standings/standings-motion.ts`
-  — solo si hace falta aceptar el intervalo directo sin duplicar aritmética.
 - `frontend/src/overlay/design-systems/vantare-endurance/tokens.css`
   — rejilla y celdas Redline.
 - `frontend/src/overlay/widget-types/standings/StandingsContentInspector.tsx`
   — anclajes bloqueados y advertencia de anchura solo para Redline.
+- `frontend/src/overlay/core/WidgetVisualViewport.tsx` y sus consumidores
+  — anchura CSS fluida limitada al par Redline, sin cambiar otros renderers.
 
 Tests junto al código correspondiente. Cualquier extensión aditiva del ViewModel
 debe quedar caracterizada y no cambiar el DOM de los demás renderizadores.
@@ -140,8 +152,8 @@ debe quedar caracterizada y no cambiar el DOM de los demás renderizadores.
 La configuración se consume directamente, sin capa intermedia:
 
 ```tsx
-const flexibleColumns = configuredColumns.filter(
-  (column) => column.enabled && !REDLINE_FIXED_METRICS.has(column.metricId),
+const flexibleColumns = model.columns.filter(
+  (column) => !REDLINE_FIXED_METRICS.has(column.metricId),
 );
 
 {flexibleColumns.map((column) => (
@@ -177,8 +189,10 @@ la necesite.
 ### Movimiento
 
 - FLIP, flash, delta, entrada y retirada siguen pasando con distintas columnas.
-- Gap e Intervalo activan batalla por separado; ambos apagados la desactivan.
-- Best lap, PIT y neumático no generan señales visuales si su métrica está oculta.
+- Gap activa batalla y presión; ocultarlo las desactiva. Intervalo nunca conduce
+  la batalla.
+- Best lap y neumático no generan señales visuales si su métrica está oculta;
+  PIT conserva su estado de fila y su columna respeta visibilidad.
 - Las duraciones, máximo de una batalla, prioridad por cercanía al jugador y
   cancelación/cleanup existentes no cambian.
 - `prefers-reduced-motion` mantiene el comportamiento accesible vigente.

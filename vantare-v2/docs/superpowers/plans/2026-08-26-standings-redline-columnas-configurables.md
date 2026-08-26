@@ -1,6 +1,7 @@
 # Plan de implementación: columnas configurables en Standings Redline
 
-Estado: PLAN/TASKS SDD pendiente de revisión de Isaac. Issue: ISA-849.
+Estado: PLAN/TASKS aprobado y enmendado tras review Fable con acuerdo de Isaac
+el 2026-08-27. Issue: ISA-849.
 
 ## Resultado buscado
 
@@ -11,20 +12,20 @@ su comportamiento. Los demás renderizadores no cambiarán.
 
 ## Arquitectura mínima
 
-- Los builders V1 y V2 añaden dos datos de presentación aditivos al ViewModel:
-  `configuredColumns`, con la configuración completa, y
-  `configuredDriverName`, con el nombre formateado aunque Piloto estuviera
-  desactivado en un documento antiguo. `columns` y los campos actuales no
-  cambian, por lo que los demás renderizadores continúan viendo el contrato
-  vigente.
+- Los builders V1 y V2 añaden solo `configuredDriverName`, con el nombre
+  formateado aunque Piloto estuviera desactivado en un documento antiguo.
+  `columns` continúa siendo la única lista habilitada y ordenada; los demás
+  renderizadores ignoran el campo aditivo.
 - `StandingsRedlineTemplate.tsx` filtra y recorre esas columnas directamente.
   Un componente local pequeño resuelve las celdas especiales; no se crea una
   capa de adaptación ni una API reutilizable prematura.
 - Cada fila define sus tracks con los píxeles canónicos de
   `resolveColumnWidthPixels`. CSS conserva color, tipografía, altura y motion.
-- `deriveBattlePairs` acepta explícitamente la fuente `gap` o `interval`; el
-  hook elige una fuente solo cuando está visible y compuerta corona, PIT y
-  neumático con la misma configuración.
+- `deriveBattlePairs` no cambia. El hook solo habilita batalla/presión cuando
+  Gap está visible; Intervalo no es una fuente equivalente y V2 no lo publica.
+- `WidgetVisualViewport` recibe la selección visual y usa anchura base
+  `layout.w` únicamente para Endurance Redline. Los otros renderers conservan
+  la geometría actual de 520 px escalados.
 - El inspector reconoce el ajuste efectivo de Redline mediante las utilidades
   visuales existentes, bloquea únicamente check/orden de los anclajes y calcula
   localmente la anchura recomendada. No modifica `layout.w`.
@@ -32,9 +33,11 @@ su comportamiento. Los demás renderizadores no cambiarán.
 ## Grafo de dependencias
 
 ```text
-T1 contrato ViewModel ──> T2 fila Redline ──> T3 motor puro ──> T4 hook motion
-                                  │                                  │
-                                  └──────────────> T5 inspector <────┘
+T1 contrato ViewModel ──> T2 fila Redline ──> T4 hook motion
+           │                      │                   │
+           └────────> T3 viewport fluido ────────────┤
+                                                      v
+                                                T5 inspector
                                                        │
                                                        v
                                              T6 evidencia visual
@@ -57,13 +60,13 @@ Archivos (4):
 
 Pasos:
 
-1. Escribir regresiones V1 y V2 con Posición/Piloto desactivados.
-2. Comprobar primero que faltan configuración completa y nombre estable.
-3. Añadir `configuredColumns` y `configuredDriverName` en estados ready y no
-   disponibles, sin alterar `columns` ni los valores existentes.
+1. Escribir regresiones V1 y V2 con Piloto desactivado.
+2. Comprobar primero que falta el nombre estable.
+3. Añadir solo `configuredDriverName` en estados ready y no disponibles, sin
+   alterar `columns` ni los valores existentes.
 4. Verificar que V2 sigue presentando solo datos autorizados por Go.
 
-Aceptación: los campos aditivos sobreviven a perfiles antiguos; los assertions
+Aceptación: el campo aditivo sobrevive a perfiles antiguos; los assertions
 previos del ViewModel y la paridad de valores mostrados siguen pasando.
 
 Gate:
@@ -86,7 +89,8 @@ Pasos:
 2. Añadir tests de visibilidad, orden, SM/MD/LG, alineación, valores ausentes y
    anclajes desactivados en documentos antiguos.
 3. Sustituir las cinco celdas hardcodeadas por anclajes fijos, delta y map de
-   métricas flexibles. Conservar tratamientos de best lap, presión, PIT y goma.
+   métricas flexibles. Usar `minmax(preset, 1fr)` para Piloto. Conservar best
+   lap, presión, PIT como estado permanente y goma.
 4. Hacer que retiro llame a la misma función de fila con modo ghost; no mantener
    una segunda maqueta.
 5. Definir tracks inline y dejar en CSS solo estilos semánticos y de motion.
@@ -102,29 +106,52 @@ Gate:
 pnpm --dir frontend test -- src/overlay/design-systems/vantare-endurance/standings/StandingsRedlineTemplate.test.tsx src/overlay/design-systems/vantare-endurance/contract.test.tsx
 ```
 
-## T3 — Fuente de batalla Gap o Intervalo
+## T3 — Anchura CSS real únicamente para Redline
+
+### T3a — Contrato del viewport
 
 Archivos (2):
 
-- `frontend/src/overlay/design-systems/vantare-endurance/standings/standings-motion.ts`
-- `frontend/src/overlay/design-systems/vantare-endurance/standings/standings-motion.test.ts`
+- `frontend/src/overlay/core/WidgetVisualViewport.tsx`
+- `frontend/src/overlay/core/WidgetVisualViewport.test.tsx` (nuevo)
 
 Pasos:
 
-1. Añadir tests para batalla con Gap y con Intervalo directo.
-2. Mantener las pruebas de carrera, boxes, proximidad al jugador, desempate
-   estable y máximo de una pareja.
-3. Añadir un parámetro estrecho de fuente a `deriveBattlePairs`; con Intervalo
-   se lee el intervalo publicado de la fila perseguidora y no se reconstruye
-   aritmética de dominio.
-
-Aceptación: ambas fuentes producen el mismo contrato `BattlePair`; no hay
-batalla con señal ausente, fuera de carrera o en boxes.
+1. Escribir un test que pruebe anchura base `layout.w` y escala 1 para
+   `standings + vantare-endurance/standings-redline`.
+2. Probar que Original, Crystal y otro template Endurance conservan 520 px y
+   `scale(layout.w / 520)`.
+3. Añadir una prop visual estrecha y resolver el template efectivo directamente
+   en el viewport, sin registro, adaptador ni cambio de `resizeMode`.
 
 Gate:
 
 ```powershell
-pnpm --dir frontend test -- src/overlay/design-systems/vantare-endurance/standings/standings-motion.test.ts
+pnpm --dir frontend test -- src/overlay/core/WidgetVisualViewport.test.tsx
+```
+
+### T3b — Paridad de superficies
+
+Archivos (4):
+
+- `frontend/src/hub/overlay-studio/canvas/StudioWidgetFrame.tsx`
+- `frontend/src/overlay/runtime/RuntimeWidgetFrame.tsx`
+- `frontend/src/overlay/edit/InPlaceWidgetEditFrame.tsx`
+- `frontend/src/overlay/authoring/OverlayWorkshopDevRoute.tsx`
+
+Pasos:
+
+1. Pasar la misma selección visual al viewport en las cuatro superficies.
+2. Añadir o actualizar los tests de superficie existentes solo donde una
+   regresión no quede cubierta por el contrato T3a.
+
+Aceptación: ensanchar concede espacio real a Redline en Studio, Desktop, OBS,
+edición in-place y Workshop; ningún otro par visual cambia.
+
+Gate:
+
+```powershell
+pnpm --dir frontend test -- src/overlay/core/WidgetVisualViewport.test.tsx src/overlay/core/WidgetVisualHost.v2.test.tsx src/hub/overlay-studio/canvas/widget-content-box.test.ts
 ```
 
 ## T4 — Compuertas semánticas en el hook existente
@@ -136,13 +163,12 @@ Archivos (2):
 
 Pasos:
 
-1. Añadir tests que oculten de forma independiente Gap/Intervalo, Mejor vuelta,
-   PIT y Neumático.
-2. Elegir Gap, o Intervalo si Gap no está visible; sin ambas, vaciar batalla y
-   su estado de disolución.
+1. Actualizar las factorías de test para declarar explícitamente sus columnas y
+   añadir casos que oculten Gap, Mejor vuelta y Neumático.
+2. Sin Gap, vaciar batalla y su estado de disolución; Intervalo no la sustituye.
 3. No ejecutar vuelo/calentamiento de corona si Mejor vuelta está oculta, ni
-   revelado de goma si Neumático está oculto. PIT solo altera la celda si su
-   métrica está visible.
+   revelado de goma si Neumático está oculto. PIT conserva el estado de fila;
+   solo su celda depende de visibilidad.
 4. Mantener siempre FLIP, flash, delta, entrada y retiro, incluidos timers,
    cancelación y `prefers-reduced-motion` vigentes.
 
@@ -155,41 +181,14 @@ Gate:
 pnpm --dir frontend test -- src/overlay/design-systems/vantare-endurance/standings/useStandingsMotion.test.tsx src/overlay/design-systems/vantare-endurance/standings/standings-motion.test.ts
 ```
 
-## T5 — Inspector honesto y aviso de anchura
+## T5 — Inspector honesto, aviso de anchura e i18n atómicos
 
-Archivos (4):
+Archivos (7; excepción explícita porque separar locales deja claves ausentes u
+huérfanas y rompe la auditoría i18n):
 
 - `frontend/src/overlay/widget-types/standings/StandingsContentInspector.tsx`
 - `frontend/src/hub/overlay-studio/orbit/StudioOrbitFeedback.test.tsx`
 - `frontend/src/styles/orbit-studio.css`
-- `frontend/src/overlay/core/widget-visual-settings.ts` (solo consumo; modificar
-  únicamente si una prueba demuestra que falta una lectura pública segura)
-
-Pasos:
-
-1. Añadir integración para Redline y controles equivalentes en Original.
-2. Resolver los settings efectivos con la utilidad existente y detectar solo
-   `vantare-endurance/standings-redline`.
-3. En Redline, dejar activos ancho de ambos anclajes y alineación de Piloto;
-   bloquear únicamente check y flechas, con explicación visible.
-4. Sumar anclajes, delta, columnas flexibles, gaps y padding con
-   `resolveColumnWidthPixels`; mostrar aviso si `layout.w` es inferior.
-5. Verificar que el aviso desaparece al ensanchar y que nunca se emite un cambio
-   de layout desde el inspector de contenido.
-
-Aceptación: el usuario entiende qué está fijo y cuánto debe ensanchar; fuera de
-Redline, checks, orden y ausencia del aviso conservan el comportamiento actual.
-
-Gate:
-
-```powershell
-pnpm --dir frontend test -- src/hub/overlay-studio/orbit/StudioOrbitFeedback.test.tsx
-```
-
-## T5b — Copia traducida del inspector
-
-Archivos (4):
-
 - `frontend/src/i18n/locales/studio-orbit/es.ts`
 - `frontend/src/i18n/locales/studio-orbit/en.ts`
 - `frontend/src/i18n/locales/studio-orbit/pt.ts`
@@ -197,27 +196,38 @@ Archivos (4):
 
 Pasos:
 
-1. Añadir las mismas claves para anclaje fijo y anchura recomendada.
-2. Ejecutar el test de paridad de catálogos i18n que descubra el repo.
+1. Añadir integración para Redline y controles equivalentes en Original.
+2. Detectar el par visual directamente y sin importar el renderer Endurance.
+3. En Redline, dejar activos ancho de ambos anclajes y alineación de Piloto;
+   bloquear únicamente check y flechas, con explicación visible.
+4. Sumar anclajes, delta, columnas flexibles, gaps y padding con
+   `resolveColumnWidthPixels`; mostrar aviso si `layout.w` es inferior.
+5. Verificar que el aviso desaparece al ensanchar y que nunca se emite un cambio
+   de layout desde el inspector de contenido.
+6. Añadir en el mismo corte las copias de anclaje y anchura recomendada en los
+   cuatro catálogos; respetar los nombres Estrecha/Media/Ancha ya presentes en
+   Nightly.
 
-Aceptación: ninguna copia productiva queda hardcodeada y los cuatro catálogos
-mantienen las mismas claves.
+Aceptación: el usuario entiende qué está fijo y cuánto debe ensanchar; fuera de
+Redline, checks, orden y ausencia del aviso conservan el comportamiento actual.
 
 Gate:
 
 ```powershell
-pnpm --dir frontend test -- src/i18n
+pnpm --dir frontend test -- src/hub/overlay-studio/orbit/StudioOrbitFeedback.test.tsx src/i18n/i18n-audit.test.ts
 ```
 
 ## T6 — Evidencia visual y de movimiento
 
-Archivos previstos, máximo 5 y solo si el harness necesita escenarios nuevos:
+Archivos previstos; se dividen en microcortes si hacen falta más de 5:
 
 - `frontend/src/overlay/authoring/fixtures/authoring-fixtures.ts`
 - `frontend/src/overlay/authoring/fixtures/animation-scenes.ts`
 - `frontend/src/overlay/authoring/fixtures/animation-scenes.test.ts`
 - `frontend/src/overlay/authoring/OverlayWorkshopDevRoute.test.tsx`
-- evidencia bajo la ruta canónica ya usada por Workshop
+- `frontend/src/overlay/authoring/overlay-workshop-query.ts` y su test si se
+  añaden variantes
+- evidencia temporal en `frontend/.tmp/overlay-workshop-visual/`
 
 Pasos:
 
@@ -226,7 +236,9 @@ Pasos:
    expresarse mediante los parámetros actuales de Workshop.
 3. Capturar reposo predeterminado, mínimo y ancho; reproducir adelantamiento,
    batalla, best lap, pit-out y retiro.
-4. Inspeccionar que no hay recorte, solape, saltos horizontales ni reinicio de
+4. Ejecutar el protocolo estático con argumentos explícitos de Standings
+   Endurance Redline; las secuencias se reproducen manualmente en `/workshop`.
+5. Inspeccionar que no hay recorte, solape, saltos horizontales ni reinicio de
    animaciones al disolver batallas.
 
 Aceptación: Workshop prueba paridad visual usando `WidgetVisualHost`; la entrega
@@ -235,7 +247,7 @@ separa esta evidencia de una prueba Wails/WebView2 real.
 Gate:
 
 ```powershell
-pnpm --dir frontend visual:overlay-workshop
+pnpm --dir frontend visual:overlay-workshop -- --widget=standings --system=vantare-endurance --design=standings-endurance-redline
 ```
 
 Checkpoint humano: Isaac revisa las capturas y secuencias antes del cierre.
@@ -265,7 +277,7 @@ pnpm --dir frontend typecheck
 pnpm --dir frontend lint
 pnpm --dir frontend build
 pnpm --dir frontend visual:overlay-workshop
-python .github/scripts/roadmap_digest.py --repo . --ref origin/nightly
+python ..\.github\scripts\roadmap_digest.py --repo .. --ref origin/nightly
 git diff --check origin/nightly...HEAD
 ```
 
@@ -290,7 +302,9 @@ Parar antes de ampliar si aparece cualquiera de estos casos:
 ## Estado Git al redactar
 
 - Rama: `vantareapp/isa-849-standings-redline-columnas`
-- Base: `origin/nightly@8a90c3a7837166ffec6943c839f7cb31cbf11b31`
-- Spec aprobada: `55b732a146856d31bbec496c3f4614ef144c7e77`
+- Base actual tras rebase: `origin/nightly@b1d5b15bd06429fd81373d3e36fe742acbf1ef05`
+- Spec y plan aprobados; commits documentales reescritos por el rebase.
 - Implementación: no iniciada.
 - Push, PR, CI, merge, promoción y release: no realizados.
+- Dependencia de integración: PR draft #795/ISA-799 toca la habilitación motion
+  de `StandingsRedlineTemplate.tsx`; no se incorpora ni se duplica en ISA-849.

@@ -410,6 +410,58 @@ se conservan aqui como hitos cumplidos; los demas siguen pendientes.
 - etiqueta.pt: Plano
 - etiqueta.it: Piano
 
+### Estrategia definitiva sobre telemetría real
+
+- id: strategy-rework-ab
+- tipo: feature
+- titulo.en: Definitive strategy over real telemetry
+- titulo.pt: Estratégia definitiva sobre telemetria real
+- titulo.it: Strategia definitiva su telemetria reale
+- cuerpo: El planificador usa una única autoridad de cálculo y guardado sobre las sesiones DuckDB reales de LMU. La entrada asistida parte de las carreras del calendario, cruza sede y clase mediante identidades canónicas declaradas en Go y solo pide trazado cuando el histórico contiene varios; después Orbit aplica inputs y clima, muestra backtests neutrales, ofrece referencias firmadas e importa el histórico local con progreso.
+- cuerpo.en: The planner uses one calculation and storage authority over real LMU DuckDB sessions. Assisted entry starts from calendar races, joins venue and class through canonical identities declared in Go, and asks for a layout only when history contains several; Orbit then applies inputs and weather, shows neutral backtests, offers signed references, and imports local history with progress.
+- cuerpo.pt: O planeador usa uma única autoridade de cálculo e gravação sobre as sessões DuckDB reais do LMU. A entrada assistida começa nas corridas do calendário, cruza circuito e classe através de identidades canónicas declaradas em Go e só pede o traçado quando o histórico contém vários; depois o Orbit aplica inputs e meteorologia, mostra backtests neutros, oferece referências assinadas e importa o histórico local com progresso.
+- cuerpo.it: Il pianificatore usa un'unica autorità di calcolo e salvataggio sulle sessioni DuckDB reali di LMU. L'ingresso assistito parte dalle gare del calendario, collega sede e classe tramite identità canoniche dichiarate in Go e chiede il tracciato solo quando lo storico ne contiene più di uno; Orbit applica poi input e meteo, mostra backtest neutrali, offre riferimenti firmati e importa lo storico locale con avanzamento.
+- etiqueta: Feature
+
+### Cálculo Orbit sobre el motor completo
+
+- id: strategy-orbit-solve-v2
+- tipo: feature
+- titulo.en: Orbit calculation on the full engine
+- titulo.pt: Cálculo do Orbit no motor completo
+- titulo.it: Calcolo Orbit sul motore completo
+- cuerpo: Orbit ya envía los valores manuales, derivados y sus overrides al motor Strategy completo con su procedencia. El plan exige la reserva configurable, publica el margen efectivo, minimiza Fuel/VE inicial entre empates y rechaza con causa un resultado imposible.
+- cuerpo.en: Orbit now sends manual and derived values, plus their overrides, to the full Strategy engine with provenance. The plan enforces the configurable reserve, publishes the effective margin, minimizes initial Fuel/VE among ties, and rejects an impossible result with a concrete reason.
+- cuerpo.pt: O Orbit agora envia valores manuais e derivados, incluindo os overrides, para o motor Strategy completo com a respetiva procedência. O plano exige a reserva configurável, publica a margem efetiva, minimiza Fuel/VE inicial em empates e rejeita com uma causa concreta um resultado impossível.
+- cuerpo.it: Orbit ora invia valori manuali e derivati, inclusi gli override, al motore Strategy completo con la relativa provenienza. Il piano applica la riserva configurabile, pubblica il margine effettivo, minimizza Fuel/VE iniziale nei pareggi e rifiuta con una causa concreta un risultato impossibile.
+- etiqueta: Feature
+
+### Contribución seudonimizada de Strategy
+
+- id: strategy-pseudonymous-contribution
+- tipo: feature
+- titulo.en: Pseudonymous Strategy contribution
+- titulo.pt: Contribuição pseudonimizada de Strategy
+- titulo.it: Contributo pseudonimizzato di Strategy
+- cuerpo: Ajustes > Privacidad permite aceptar una versión del consentimiento, inspeccionar cada bundle y su historial, y pausar la cola. Pausar cancela lo aún no aceptado; lo ya aceptado queda enviado. Revocar el consentimiento y pedir el borrado remoto son acciones separadas. Los envíos nacen desactivados hasta configurar un Worker revisado.
+- cuerpo.en: Settings > Privacy lets users accept a consent-text version, inspect every bundle and its history, and pause the queue. Pausing cancels anything not yet accepted; accepted items remain sent. Revoking consent and requesting remote deletion are separate actions. Uploads start disabled until a reviewed Worker is configured.
+- cuerpo.pt: Ajustes > Privacidade permite aceitar uma versão do consentimento, inspecionar cada bundle e o seu histórico e pausar a fila. A pausa cancela o que ainda não foi aceite; o que já foi aceite permanece enviado. Revogar o consentimento e pedir a eliminação remota são ações separadas. Os envios começam desativados até configurar um Worker revisto.
+- cuerpo.it: Impostazioni > Privacy consente di accettare una versione del consenso, ispezionare ogni bundle e la sua cronologia e mettere in pausa la coda. La pausa annulla ciò che non è ancora stato accettato; gli elementi accettati restano inviati. Revoca del consenso e cancellazione remota sono azioni separate. Gli invii partono disattivati finché non viene configurato un Worker verificato.
+- etiqueta: Feature
+
+### Ciclo editorial local de Strategy
+
+- id: strategy-local-editorial-cycle
+- tipo: feature
+- titulo.en: Local Strategy editorial cycle
+- titulo.pt: Ciclo editorial local de Strategy
+- titulo.it: Ciclo editoriale locale di Strategy
+- cuerpo: Un ciclo local predigiere los bundles, prepara para el LLM un informe sin datos crudos ni identificadores y deja a Isaac aprobar perfiles y estrategias antes de generar un catálogo sin firmar. La sincronización remota, la firma y la publicación siguen detrás de sus gates humanos.
+- cuerpo.en: A local cycle predigests bundles, prepares an LLM report without raw data or identifiers, and lets Isaac approve profiles and strategies before generating an unsigned catalogue. Remote synchronization, signing and publication remain behind their human gates.
+- cuerpo.pt: Um ciclo local pré-digere os bundles, prepara para o LLM um relatório sem dados brutos nem identificadores e deixa Isaac aprovar perfis e estratégias antes de gerar um catálogo sem assinatura. A sincronização remota, a assinatura e a publicação continuam atrás dos seus gates humanos.
+- cuerpo.it: Un ciclo locale predigerisce i bundle, prepara per l'LLM un rapporto senza dati grezzi né identificatori e lascia a Isaac l'approvazione di profili e strategie prima di generare un catalogo non firmato. Sincronizzazione remota, firma e pubblicazione restano dietro i rispettivi gate umani.
+- etiqueta: Feature
+
 ### Registros y últimos eventos en Diagnóstico
 
 - id: diagnostics-logs

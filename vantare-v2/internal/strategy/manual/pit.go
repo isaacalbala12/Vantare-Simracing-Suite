@@ -9,8 +9,8 @@ import (
 type PitServiceMode string
 
 const (
-	// PitServiceParallel overlaps only refuelling and tyre work. Repair remains
-	// an explicit sequential addition; a served penalty never overlaps work.
+	// PitServiceParallel overlaps refuelling, virtual-energy charging and tyre
+	// work. Repair remains sequential; a served penalty never overlaps work.
 	PitServiceParallel   PitServiceMode = "parallel"
 	PitServiceSequential PitServiceMode = "sequential"
 )
@@ -20,6 +20,7 @@ type PitStopInput struct {
 	Transit       Sourced[contract.DurationSeconds]  `json:"transit"`
 	Exit          Sourced[contract.DurationSeconds]  `json:"exit"`
 	Refuel        Sourced[contract.DurationSeconds]  `json:"refuel"`
+	VirtualEnergy *Sourced[contract.DurationSeconds] `json:"virtualEnergy,omitempty"`
 	Tyres         Sourced[contract.DurationSeconds]  `json:"tyres"`
 	Repair        *Sourced[contract.DurationSeconds] `json:"repair,omitempty"`
 	Penalty       *Sourced[contract.DurationSeconds] `json:"penalty,omitempty"`
@@ -73,6 +74,11 @@ func CalculatePitStop(input PitStopInput) (PitBreakdown, error) {
 			return PitBreakdown{}, err
 		}
 	}
+	if input.VirtualEnergy != nil {
+		if err := validateSourcedDuration("pit.virtualEnergy", *input.VirtualEnergy); err != nil {
+			return PitBreakdown{}, err
+		}
+	}
 	if input.Penalty != nil {
 		if err := validateSourcedDuration("pit.penalty", *input.Penalty); err != nil {
 			return PitBreakdown{}, err
@@ -83,14 +89,18 @@ func CalculatePitStop(input PitStopInput) (PitBreakdown, error) {
 	if err != nil {
 		return PitBreakdown{}, err
 	}
-	sequentialCore, err := checkedAdd("pit.coreServiceSeconds", input.Refuel.Value.Value(), input.Tyres.Value.Value())
+	virtualEnergy := 0.0
+	if input.VirtualEnergy != nil {
+		virtualEnergy = input.VirtualEnergy.Value.Value()
+	}
+	sequentialCore, err := checkedAdd("pit.coreServiceSeconds", input.Refuel.Value.Value(), virtualEnergy, input.Tyres.Value.Value())
 	if err != nil {
 		return PitBreakdown{}, err
 	}
 	core := sequentialCore
 	overlap := 0.0
 	if input.ServiceMode == PitServiceParallel {
-		core = math.Max(input.Refuel.Value.Value(), input.Tyres.Value.Value())
+		core = math.Max(input.Refuel.Value.Value(), math.Max(virtualEnergy, input.Tyres.Value.Value()))
 		overlap = sequentialCore - core
 	}
 	repair := 0.0
@@ -149,6 +159,9 @@ func CalculatePitStop(input PitStopInput) (PitBreakdown, error) {
 	}
 	for _, field := range fields {
 		result.Assumptions = append(result.Assumptions, assumption(field.name, "duration_seconds", field.value.Value.Value(), field.value.Evidence))
+	}
+	if input.VirtualEnergy != nil {
+		result.Assumptions = append(result.Assumptions, assumption("pit.virtualEnergy", "duration_seconds", virtualEnergy, input.VirtualEnergy.Evidence))
 	}
 	result.Assumptions = append(result.Assumptions, assumption("pit.serviceMode", "pit_service_mode", input.ServiceMode, input.ModeSelection))
 	if input.Repair != nil {

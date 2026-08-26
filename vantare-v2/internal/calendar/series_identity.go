@@ -39,6 +39,68 @@ var canonicalSeries = map[string][]string{
 	"le-mans-24h-scaled": {"2.4h le mans", "24h le mans", "le mans 2.4h"},
 }
 
+// telemetryTrackNames is the reviewed identity boundary between the literal
+// venue names published in the LMU calendar and TrackName in imported LMU
+// telemetry. Keys are deliberately the complete calendar value: text in
+// parentheses is not parsed because it can mean either a layout or a ruleset.
+var telemetryTrackNames = map[string]string{
+	"Bahrain (Outer)":  "Bahrain International Circuit",
+	"Barcelona (ELMS)": "Circuit de Barcelona",
+	"COTA (WEC)":       "Circuit of the Americas",
+	"Daytona (RC)":     "Daytona International Speedway",
+	"Fuji (WEC)":       "Fuji Speedway",
+	"Laguna Seca (RC)": "WeatherTech Raceway Laguna Seca",
+	"Le Mans (WEC)":    "Circuit de la Sarthe",
+	"Qatar (Short)":    "Lusail International Circuit",
+	"Sebring (WEC)":    "Sebring International Raceway",
+	"Spa (WEC)":        "Circuit de Spa-Francorchamps",
+}
+
+// telemetryClassNames is the equivalent reviewed boundary for the structured
+// calendar class and CarClass in imported telemetry. No alias, case folding or
+// substring matching is admitted here.
+var telemetryClassNames = map[string]string{
+	"Hypercar": "Hyper",
+	"LMGT3":    "GT3",
+	"LMGTE Am": "GTE",
+	"LMP2":     "LMP2_ELMS",
+	"LMP3":     "LMP3",
+}
+
+// TelemetryTrackName returns the exact telemetry TrackName declared for a
+// complete calendar Track value. Unknown calendar names remain unresolved.
+func TelemetryTrackName(calendarTrack string) (string, bool) {
+	name, ok := telemetryTrackNames[calendarTrack]
+	return name, ok
+}
+
+// TelemetryClassName returns the exact telemetry CarClass declared for a
+// structured calendar class. Unknown classes remain unresolved.
+func TelemetryClassName(calendarClass string) (string, bool) {
+	name, ok := telemetryClassNames[calendarClass]
+	return name, ok
+}
+
+// resolveTelemetryIdentities attaches only locally reviewed identities. It
+// clears any values supplied by decoded JSON so a published schedule cannot
+// silently redefine the join between Calendar and Telemetry Analysis.
+func resolveTelemetryIdentities(schedule *OfficialSchedule) {
+	for i := range schedule.Series {
+		series := &schedule.Series[i]
+		series.TelemetryTrackName = ""
+		if name, ok := TelemetryTrackName(series.Track); ok {
+			series.TelemetryTrackName = name
+		}
+		for j := range series.Classes {
+			class := &series.Classes[j]
+			class.TelemetryClassName = ""
+			if name, ok := TelemetryClassName(class.Name); ok {
+				class.TelemetryClassName = name
+			}
+		}
+	}
+}
+
 // aliasIndex is the reverse of canonicalSeries, built once.
 var aliasIndex = func() map[string]string {
 	idx := make(map[string]string)

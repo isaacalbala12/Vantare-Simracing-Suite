@@ -1,0 +1,20 @@
+{
+  "fixtureVersion": "derived-curves-fixture.v1",
+  "fixtureId": "derived-corpus-v1",
+  "combinationId": "lmu:corpus-like-combination",
+  "bucket": "dry",
+  "stints": [
+    {"laps": 6, "startFuelLitres": 80, "fuelPerLapLitres": 2, "baseLapSeconds": 90, "fuelSecondsPerLitre": 0.04, "ageSecondsPerLap": 0.15, "wearPerLapPercent": 0.2},
+    {"laps": 6, "startFuelLitres": 80, "fuelPerLapLitres": 2, "baseLapSeconds": 90, "fuelSecondsPerLitre": 0.04, "ageSecondsPerLap": 0.15, "wearPerLapPercent": 0.2},
+    {"laps": 6, "startFuelLitres": 80, "fuelPerLapLitres": 2, "baseLapSeconds": 90, "fuelSecondsPerLitre": 0.04, "ageSecondsPerLap": 0.15, "wearPerLapPercent": 0.2}
+  ],
+  "expected": {
+    "identifiability": "combined_only",
+    "gateReason": "insufficient_crossed_fuel_variation",
+    "stintCurves": 3,
+    "combinedPoints": 6,
+    "wearSlope": 0.2,
+    "savingPresence": "missing",
+    "savingReason": "missing_fuel_mixture_levels"
+  }
+}

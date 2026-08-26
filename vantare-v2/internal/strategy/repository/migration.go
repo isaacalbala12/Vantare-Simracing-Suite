@@ -14,8 +14,9 @@ type MigrationStep struct {
 }
 
 // MigrateRepositoryJSON is the only version gate for repository envelopes.
-// Version one has no legacy predecessor, so the current migration is an exact
-// no-op. Future versions must add an explicit step and fixture here.
+// Version two keeps every v1 lifecycle document and adds the optional
+// event-oriented Strategy document. A migrated v1 repository has no event
+// document until the first event command writes one.
 func MigrateRepositoryJSON(document []byte) ([]byte, []MigrationStep, error) {
 	if err := rejectDuplicateJSONKeys(document); err != nil {
 		return nil, nil, fmt.Errorf("%w: %v", ErrCorruptRepository, err)
@@ -27,10 +28,52 @@ func MigrateRepositoryJSON(document []byte) ([]byte, []MigrationStep, error) {
 	if err := decoder.Decode(&header); err != nil {
 		return nil, nil, fmt.Errorf("%w: decode version: %v", ErrCorruptRepository, err)
 	}
-	if header.RepositoryVersion != RepositoryVersion {
+	switch header.RepositoryVersion {
+	case RepositoryVersion:
+		return document, nil, nil
+	case RepositoryVersionV1:
+		return migrateRepositoryV1(document)
+	default:
 		return nil, nil, fmt.Errorf("%w: %q", ErrUnsupportedRepositoryVersion, header.RepositoryVersion)
 	}
-	return document, nil, nil
+}
+
+func migrateRepositoryV1(document []byte) ([]byte, []MigrationStep, error) {
+	decoder := json.NewDecoder(bytes.NewReader(document))
+	decoder.DisallowUnknownFields()
+	var envelope diskEnvelope
+	if err := decoder.Decode(&envelope); err != nil {
+		return nil, nil, fmt.Errorf("%w: decode v1 envelope: %v", ErrCorruptRepository, err)
+	}
+	if err := ensureJSONEOF(decoder); err != nil {
+		return nil, nil, fmt.Errorf("%w: decode v1 envelope: %v", ErrCorruptRepository, err)
+	}
+	if envelope.HashAlgorithm != repositoryHashV1 {
+		return nil, nil, fmt.Errorf("%w: unsupported repository hash algorithm", ErrCorruptRepository)
+	}
+	if len(envelope.StrategyDocument) > 0 {
+		return nil, nil, fmt.Errorf("%w: v1 repository cannot contain strategyDocument", ErrCorruptRepository)
+	}
+	wantHash, err := hashEnvelope(envelope)
+	if err != nil {
+		return nil, nil, err
+	}
+	if envelope.ContentHash != wantHash {
+		return nil, nil, fmt.Errorf("%w: repository content hash mismatch", ErrCorruptRepository)
+	}
+
+	envelope.RepositoryVersion = RepositoryVersion
+	envelope.ContentHash, err = hashEnvelope(envelope)
+	if err != nil {
+		return nil, nil, err
+	}
+	migrated, err := json.MarshalIndent(envelope, "", "  ")
+	if err != nil {
+		return nil, nil, fmt.Errorf("encode migrated strategy repository: %w", err)
+	}
+	migrated = append(migrated, '\n')
+	steps := []MigrationStep{{From: RepositoryVersionV1, To: RepositoryVersion}}
+	return migrated, steps, nil
 }
 
 func rejectDuplicateJSONKeys(document []byte) error {

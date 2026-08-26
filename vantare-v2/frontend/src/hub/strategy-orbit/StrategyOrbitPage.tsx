@@ -1,8 +1,6 @@
 import {
   Fragment,
-  useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
   useSyncExternalStore,
@@ -43,14 +41,17 @@ import { useOrbitSlot } from "../orbit/use-orbit-slot";
 import { useCalendarStarts } from "../orbit/use-calendar-starts";
 import { formatStartTime } from "../orbit/next-starts";
 import type { RaceStart } from "../orbit/race-starts";
+import type { RaceSeries } from "../../calendar/calendar-types";
 import {
   createWailsStrategyEditorRuntime,
   openOrCreateStrategyEditor,
   type StrategyEditorRuntime,
 } from "../../strategy/strategy-editor-store";
-import type { StrategyEditorDocument, StrategyTyre } from "../../strategy/strategy-editor";
+import type { StrategyTyre } from "../../strategy/strategy-editor";
 import { assertPlannable, StrategyTyreError, type StrategyCorner } from "../../strategy/strategy-tyre";
 import {
+  calculateStrategyOrbit,
+  createStrategyOrbitApplicationClient,
   subscribeToStrategyRoster,
   type StrategyRoster,
 } from "./strategy-orbit-bridge";
@@ -62,6 +63,7 @@ import {
   eventsByRecency,
   freeEventId,
   initialsOf,
+  isStrategyEventsReadOnly,
   lastOpenedEventOf,
   newDriver,
   openEvent,
@@ -80,25 +82,43 @@ import {
   type StrategyTeamMode,
 } from "./strategy-events-store";
 import {
+  commitOrbitLegacyMigration,
+  previewOrbitLegacyMigration,
+  rollbackOrbitLegacyMigration,
+  type PreparedOrbitLegacyMigration,
+} from "./strategy-orbit-migration";
+import type {
+  StrategyApplicationClient,
+  StrategyLegacyMigrationPreviewV1,
+  StrategyOrbitCalculationResultV1,
+  StrategyPlanningInputFieldV2,
+} from "../../strategy/strategy-application-client";
+import { StrategyApplicationError } from "../../strategy/strategy-application-client";
+import {
   buildRecommendedEvents,
   type RecommendedEvent,
 } from "./strategy-recommended";
 import { exportStrategyPackage } from "../../strategy/strategy-transfer";
 import {
+  STRATEGY_ORBIT_REVISION_CONTRACT_V1,
+  activateOrbitRevision,
+  loadOrbitLifecycle,
+  orbitLifecycleIdentity,
+  sameRevision,
+  saveOrbitRevision,
+  type OrbitLifecycleState,
+  type StrategyOrbitRevisionPayloadV1,
+} from "./strategy-orbit-lifecycle";
+import {
   addAvailability,
   AVAILABILITY_FROM,
   AVAILABILITY_TO,
-  buildPlan,
   clockTime,
-  compareStrategies,
-  distribution,
+  distributionView,
   hhmm,
   lapTime,
-  ORBIT_CORNERS,
+  orbitCalculationInput,
   parseHhmm,
-  pitWindowClock,
-  pitWindowLap,
-  rotateOrder,
   stintClock,
   tyreCondition,
   tyreUses,
@@ -106,18 +126,168 @@ import {
   type AvailabilityState,
   type OrbitCorner,
   type StrategyDriver,
-  type StrategyPlan,
   type StrategyVariant,
-  type TyreAssignments,
 } from "./strategy-orbit-model";
+import {
+  loadStrategySessionCatalog,
+  persistStrategyPlanningOverride,
+  persistStrategySessionSelection,
+  refreshStrategyPlanningInputs,
+  selectedCombination,
+  selectedSessions,
+  type StrategySessionCatalogView,
+  usableSessionCombinations,
+} from "./strategy-session-selection";
+import { strategyEcoProvenance, strategyInputProvenance, type StrategyInputProvenanceView } from "./strategy-input-provenance";
+import {
+  calendarSessionCombinations,
+  calendarSessionLayouts,
+} from "./strategy-calendar-selection";
+import { StrategyWeatherPanel } from "./StrategyWeatherPanel";
+import { StrategyValidatedExamplesPanel, type ValidatedExamplesViewState } from "./StrategyValidatedExamplesPanel";
+import { StrategyColdStartBanner } from "./StrategyColdStartBanner";
+import { StrategyReferencePanel } from "./StrategyReferencePanel";
+import { StrategyAnalysisPanel } from "./StrategyAnalysisPanel";
+import { loadValidatedExamples } from "./strategy-validated-examples";
+import { EMPTY_WEATHER_SCENARIOS, persistStrategyWeatherScenarios, selectedWeatherScenarios } from "./strategy-weather-scenarios";
 import "../../styles/orbit-strategy.css";
 
 /** Hueco que la shell reserva para la columna de Estrategia (briefing 07). */
 export const STRATEGY_CONTEXT_SLOT_ID = "orbit-strategy-context-slot";
 
-type StrategyTab = "overview" | "strategies" | "availability";
+type StrategyTab = "overview" | "analysis" | "strategies" | "availability";
 /** Camino elegido en el último paso del asistente (`00-decisiones.md`, D-W4-2). */
 type PickerPath = "none" | "series";
+
+type VisibleApplicationFailure = {
+  readonly message: string;
+  readonly code?: string;
+  readonly field?: string;
+};
+
+type OrbitLifecycleView = {
+  readonly status: "idle" | "loading" | "ready" | "busy" | "error";
+  readonly state?: OrbitLifecycleState;
+  readonly failure?: VisibleApplicationFailure;
+};
+
+function visibleApplicationFailure(error: unknown): VisibleApplicationFailure {
+  if (error instanceof StrategyApplicationError) {
+    return { message: error.message, code: error.code, field: error.field };
+  }
+  return { message: error instanceof Error ? error.message : String(error) };
+}
+
+function inputReasonLabel(reason: string | undefined, t: (key: string) => string): string {
+  if (!reason) return t("strategy.inputs.reason.unavailable");
+  const known = new Set([
+    "manual_input_required", "missing_fuel_consumption", "missing_virtual_energy_consumption",
+    "missing_fuel_consumption_for_climate_bucket", "missing_virtual_energy_consumption_for_climate_bucket",
+    "missing_combined_stint_pace_curve", "missing_representative_pace", "missing_tyre_degradation",
+    "missing_saving_cost", "combined_only", "no_classified_complete_laps_in_climate_bucket",
+    "no_clean_complete_laps_for_representative_pace", "no_completed_laps_for_representative_pace",
+    "no_reliable_lap_time_for_representative_pace", "no_stable_climate_bucket_for_representative_pace",
+  ]);
+  return known.has(reason) ? t(`strategy.inputs.reason.${reason}`) : reason.replaceAll("_", " ");
+}
+
+function InputProvenanceChip({ view, t }: { view: StrategyInputProvenanceView; t: (key: string) => string }) {
+  const confidence = view.confidence;
+  const range = confidence?.rangeLower !== undefined && confidence.rangeUpper !== undefined
+    ? `${confidence.rangeLower}–${confidence.rangeUpper}`
+    : t("strategy.inputs.noRange");
+  const tooltip = view.kind === "derived"
+    ? formatMessage(t("strategy.inputs.tooltip.derived"), { n: confidence?.sampleSize ?? 0, range })
+    : view.kind === "missing"
+      ? formatMessage(t("strategy.inputs.tooltip.missing"), { reason: inputReasonLabel(view.reason, t) })
+      : t(`strategy.inputs.tooltip.${view.kind}`);
+  return (
+    <span
+      aria-label={`${t(`strategy.inputs.chip.${view.kind}`)}: ${tooltip}`}
+      className={`orbit-input-source orbit-input-source--${view.kind}`}
+      data-tip={tooltip}
+      data-tip-side="top"
+    >
+      <Chip caseNormal>{t(`strategy.inputs.chip.${view.kind}`)}</Chip>
+    </span>
+  );
+}
+
+function manualInputView(value: number): StrategyInputProvenanceView {
+  return Number.isFinite(value)
+    ? { kind: "manual", presence: "valid", value, canRevert: false }
+    : { kind: "missing", presence: "missing", reason: "manual_input_required", canRevert: false };
+}
+
+function EffectiveInputDisplay({
+  as, format, t, view,
+}: {
+  as: "b" | "em";
+  format: (value: number) => string;
+  t: (key: string) => string;
+  view: StrategyInputProvenanceView;
+}) {
+  const value = view.value === undefined ? "—" : format(view.value);
+  return (
+    <>
+      {as === "b" ? <b>{value}</b> : <em>{value}</em>}
+      <InputProvenanceChip t={t} view={view} />
+    </>
+  );
+}
+
+function PlanningInputRow({
+  field, label, unit, view, t, onCommit,
+}: {
+  field: StrategyPlanningInputFieldV2;
+  label: string;
+  unit: string;
+  view: StrategyInputProvenanceView;
+  t: (key: string) => string;
+  onCommit: (field: StrategyPlanningInputFieldV2, value?: number) => void;
+}) {
+  const [draft, setDraft] = useState(view.value === undefined ? "" : String(view.value));
+  useEffect(() => {
+    let current = true;
+    queueMicrotask(() => {
+      if (current) setDraft(view.value === undefined ? "" : String(view.value));
+    });
+    return () => {
+      current = false;
+    };
+  }, [view.value]);
+  const commitDraft = () => {
+    const value = Number(draft);
+    const acceptsZero = field === "degradation_per_lap_seconds"
+      || field === "saving_fuel_per_lap"
+      || field === "saving_time_cost_per_lap";
+    if (draft.trim() !== "" && Number.isFinite(value) && (acceptsZero ? value >= 0 : value > 0) && value !== view.value) {
+      onCommit(field, value);
+    }
+  };
+  return (
+    <div className="orbit-planning-input" data-testid={`orbit-planning-input-${field}`}>
+      <label>
+        <span>{label}</span>
+        <Input
+          aria-label={label}
+          inputMode="decimal"
+          numeric
+          onBlur={commitDraft}
+          onChange={(event) => setDraft(event.currentTarget.value)}
+          unit={unit}
+          value={draft}
+        />
+      </label>
+      <InputProvenanceChip t={t} view={view} />
+      {view.canRevert ? (
+        <Button onClick={() => onCommit(field, undefined)} size="sm" variant="ghost">
+          {t("strategy.inputs.revert")}
+        </Button>
+      ) : null}
+    </div>
+  );
+}
 
 /**
  * Pasos del asistente de creación (ISA-377): de dónde salen los datos, si se
@@ -134,7 +304,12 @@ interface WizardState {
   /** Dentro del paso `start`: si se está mirando la lista del calendario. */
   path: PickerPath;
 }
-type SidePanel = "drivers" | "tyres";
+interface CalendarRaceSelection {
+  readonly series: RaceSeries;
+  readonly className?: string;
+  readonly trackLayout?: string;
+}
+type SidePanel = "inputs" | "drivers" | "tyres" | "sessions" | "weather";
 type DonutMode = "laps" | "time";
 
 /** `FL|FR|RL|RR` → esquina del dominio real (`strategy-tyre`). */
@@ -150,18 +325,7 @@ function chipCompound(tyre: StrategyTyre): TyreView["compound"] {
   return tyre.compound === "wet" ? "soft" : tyre.compound;
 }
 
-/** Reparto inicial: cuatro juegos por stint en orden de inventario. */
-function defaultTyres(stints: number, tyres: readonly StrategyTyre[]): TyreAssignments {
-  if (tyres.length === 0) return {};
-  const map: Record<number, Partial<Record<OrbitCorner, string>>> = {};
-  for (let i = 0; i < stints; i += 1) {
-    map[i] = {};
-    ORBIT_CORNERS.forEach((corner, k) => {
-      map[i][corner] = tyres[(i * ORBIT_CORNERS.length + k) % tyres.length].id;
-    });
-  }
-  return map;
-}
+/** Reparto inicial retirado en F2-f: el inventario sale del documento v2 por evento. */
 
 /** Formulario del evento: todo texto, se valida al enviar. */
 interface EventForm {
@@ -229,21 +393,42 @@ export interface StrategyOrbitPageProps {
   runtimeFactory?: () => StrategyEditorRuntime;
   /** Evento y pilotos ya resueltos (tests y harness); si no, llega por el puente. */
   roster?: StrategyRoster | null;
+  /** Cliente inyectable para tests; producción usa siempre el cliente v2 Wails. */
+  applicationClient?: StrategyApplicationClient<unknown>;
 }
 
 /**
  * Estrategia de Command Orbit (`15-briefings/07-estrategia.md`, parte A).
  *
- * El inventario de neumáticos, su legalidad y su condición son del dominio
- * real (`strategy/strategy-editor.ts`, `strategy-tyre.ts`); el reparto de
- * vueltas y la rotación de pilotos, que el contrato no modela, viven en
- * `strategy-orbit-model.ts` con los casos a–d de `13.5`.
+ * El inventario de neumáticos y su legalidad son del dominio real
+ * (`strategy/strategy-editor.ts`, `strategy-tyre.ts`). Vueltas, stints,
+ * rotación, Fuel, ventanas y comparaciones llegan del motor Go por el cliente
+ * de aplicación v2; esta página solo conserva interacción y presentación.
  */
-export function StrategyOrbitPage({ runtimeFactory, roster: injected }: StrategyOrbitPageProps) {
+export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFactory, roster: injected }: StrategyOrbitPageProps) {
   const { t, locale } = useI18n();
   const toast = useToast();
   const contextSlot = useOrbitSlot(STRATEGY_CONTEXT_SLOT_ID);
   const calendar = useCalendarStarts();
+
+  const [applicationClient] = useState(() => injectedClient ?? createStrategyOrbitApplicationClient<unknown>());
+  const applicationMounted = useRef(false);
+  useEffect(() => {
+    applicationMounted.current = true;
+    return () => {
+      applicationMounted.current = false;
+      queueMicrotask(() => {
+        if (!injectedClient && !applicationMounted.current) applicationClient.dispose();
+      });
+    };
+  }, [applicationClient, injectedClient]);
+  const [migration, setMigration] = useState<
+    | { status: "idle" }
+    | { status: "loading"; message: string }
+    | { status: "preview"; prepared: PreparedOrbitLegacyMigration }
+    | { status: "success"; result: StrategyLegacyMigrationPreviewV1 }
+    | { status: "error"; message: string }
+  >({ status: "idle" });
 
   // ── evento activo ───────────────────────────────────────────────────────
   const [bridged, setBridged] = useState<StrategyRoster | null>(null);
@@ -257,13 +442,21 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
   const [runtime] = useState<StrategyEditorRuntime>(
     () => (runtimeFactory ?? createWailsStrategyEditorRuntime)(),
   );
+  const [editorOpenFailure, setEditorOpenFailure] = useState<VisibleApplicationFailure | null>(null);
   // StrictMode monta, desmonta y vuelve a montar: si el cierre del efecto
   // desechara el runtime en el acto, el segundo montaje encontraría un cliente
   // muerto y el inventario nunca llegaría (mismo patrón que el planificador).
   const mounted = useRef(false);
   useEffect(() => {
     mounted.current = true;
-    void openOrCreateStrategyEditor(runtime.store).catch(() => undefined);
+    void openOrCreateStrategyEditor(runtime.store).then(
+      () => {
+        if (mounted.current) setEditorOpenFailure(null);
+      },
+      (error: unknown) => {
+        if (mounted.current) setEditorOpenFailure(visibleApplicationFailure(error));
+      },
+    );
     return () => {
       mounted.current = false;
       queueMicrotask(() => {
@@ -272,22 +465,86 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
     };
   }, [runtime]);
   const snapshot = useSyncExternalStore(runtime.store.subscribe, runtime.store.getSnapshot);
-  const document_: StrategyEditorDocument | undefined = snapshot.draft?.payload;
-  const inventory = useMemo(() => document_?.tyres ?? [], [document_]);
+  // F2-f: inventario global sintético (Spa) retirado de rutas productivas.
+  // El inventario pertenece al documento v2 por evento (StrategyDocumentV2.TyreInventory,
+  // cliente API ya disponible). Mientras el evento no tenga inventario, vacío honesto.
+  void snapshot;
+  const inventory: StrategyTyre[] = [];
 
   // ── eventos locales ─────────────────────────────────────────────────────
   const [store, setStore] = useState<StrategyEventsState>(() => readStrategyEvents());
-  const commit = useCallback(
-    (change: (current: StrategyEventsState) => StrategyEventsState) => {
+  const [legacyReadOnly, setLegacyReadOnly] = useState(() => isStrategyEventsReadOnly());
+  const commit = (change: (current: StrategyEventsState) => StrategyEventsState) => {
       setStore((current) => {
+        if (legacyReadOnly) return current;
         const next = change(current);
         if (next === current) return current;
         writeStrategyEvents(next);
         return next;
       });
-    },
-    [],
-  );
+  };
+  const [sessionCatalog, setSessionCatalog] = useState<
+    | { status: "loading" }
+    | { status: "ready"; view: StrategySessionCatalogView }
+    | { status: "error"; message: string }
+  >({ status: "loading" });
+  const [sessionCatalogRetry, setSessionCatalogRetry] = useState(0);
+  const [sessionPickerDismissed, setSessionPickerDismissed] = useState<string | null>(null);
+  const [sessionSave, setSessionSave] = useState<"idle" | "saving" | "error">("idle");
+  const [weatherSave, setWeatherSave] = useState<"idle" | "saving" | "error">("idle");
+  const [validatedExamples, setValidatedExamples] = useState<ValidatedExamplesViewState>({ status: "idle" });
+
+  useEffect(() => {
+    let current = true;
+    queueMicrotask(() => {
+      if (current) setSessionCatalog({ status: "loading" });
+    });
+    void loadStrategySessionCatalog(applicationClient).then(
+      (view) => {
+        if (current) setSessionCatalog({ status: "ready", view });
+      },
+      (error: unknown) => {
+        if (current) setSessionCatalog({ status: "error", message: visibleApplicationFailure(error).message });
+      },
+    );
+    return () => {
+      current = false;
+    };
+  }, [applicationClient, sessionCatalogRetry]);
+
+  const previewMigration = async () => {
+    setMigration({ status: "loading", message: t("strategy.migration.reading") });
+    try {
+      const prepared = await previewOrbitLegacyMigration(applicationClient);
+      setMigration(prepared.preview.alreadyImported
+        ? { status: "success", result: prepared.preview }
+        : { status: "preview", prepared });
+    } catch (error) {
+      setMigration({ status: "error", message: error instanceof Error ? error.message : String(error) });
+    }
+  };
+
+  const confirmMigration = async (prepared: PreparedOrbitLegacyMigration) => {
+    setMigration({ status: "loading", message: t("strategy.migration.committing") });
+    try {
+      const result = await commitOrbitLegacyMigration(applicationClient, prepared);
+      setLegacyReadOnly(true);
+      setMigration({ status: "success", result });
+    } catch (error) {
+      setMigration({ status: "error", message: error instanceof Error ? error.message : String(error) });
+    }
+  };
+
+  const rollbackMigration = async (journalId: string) => {
+    setMigration({ status: "loading", message: t("strategy.migration.rollingBack") });
+    try {
+      const result = await rollbackOrbitLegacyMigration(applicationClient, journalId);
+      setLegacyReadOnly(false);
+      setMigration({ status: "success", result });
+    } catch (error) {
+      setMigration({ status: "error", message: error instanceof Error ? error.message : String(error) });
+    }
+  };
 
   // El roster del puente entra como un evento más y ya no manda sobre la vista.
   const imported = useRef<string | null>(null);
@@ -296,52 +553,281 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
     const id = rosterEventId(roster);
     if (imported.current === id) return;
     imported.current = id;
-    commit((current) => {
+    setStore((current) => {
+      if (legacyReadOnly) return current;
       if (current.events.some((event) => event.id === id)) return current;
       const next = upsertEvent(current, eventFromRoster(roster, readLegacyStrategyState()));
       // El roster es la sesión que el usuario tiene delante: si no había nada
       // abierto se abre él, y abrir sella `lastOpenedAt` como cualquier otro.
-      return current.activeId ? next : openEvent(next, id);
+      const opened = current.activeId ? next : openEvent(next, id);
+      writeStrategyEvents(opened);
+      return opened;
     });
-  }, [commit, roster]);
+  }, [legacyReadOnly, roster]);
 
   const eventRecord = activeEventOf(store);
-  const strategyEvent = useMemo(
-    () => (eventRecord ? toStrategyEvent(eventRecord, locale) : null),
-    [eventRecord, locale],
-  );
-
-  const driversById = useMemo(
-    () => Object.fromEntries((eventRecord?.drivers ?? []).map((driver) => [driver.id, driver])),
-    [eventRecord],
-  );
-
-  // ── estrategias (reparto, overrides y neumáticos) ───────────────────────
-  // El inventario llega después del evento: mientras una estrategia no tenga
-  // reparto propio se le calcula el de partida al vuelo, sin persistir nada
-  // (se guarda en cuanto el usuario toca una esquina).
-  const variants = useMemo<Record<string, StrategyVariant>>(() => {
-    const list = eventRecord?.strategies ?? [];
-    return Object.fromEntries(
-      list.map((item) => {
-        if (Object.keys(item.tyres).length > 0 || !strategyEvent || inventory.length === 0) {
-          return [item.id, item];
-        }
-        const stints = buildPlan(strategyEvent, driversById, item).stints.length;
-        return [item.id, { ...item, tyres: defaultTyres(stints, inventory) }];
-      }),
+  const catalogView = sessionCatalog.status === "ready" ? sessionCatalog.view : null;
+  const automaticCombinations = catalogView ? usableSessionCombinations(catalogView) : [];
+  const automaticAvailable = sessionCatalog.status === "ready"
+    && sessionCatalog.view.status === "available"
+    && automaticCombinations.length > 0;
+  const automaticReason = sessionCatalog.status === "loading"
+    ? t("strategy.wizard.fill.autoChecking")
+    : sessionCatalog.status === "error"
+      ? t("strategy.wizard.fill.autoCatalogUnavailable")
+      : sessionCatalog.view.status === "no_authorized_telemetry"
+        ? t("strategy.wizard.fill.autoNoSessions")
+        : automaticCombinations.length === 0
+          ? t("strategy.wizard.fill.autoNoClassifiedLaps")
+          : formatMessage(
+              t(automaticCombinations.length === 1
+                ? "strategy.wizard.fill.autoReadyOne"
+                : "strategy.wizard.fill.autoReadyMany"),
+              { n: automaticCombinations.length },
+            );
+  const sessionPickerCombinations = catalogView
+    ? eventRecord?.fillMode === "telemetry"
+      ? automaticCombinations
+      : catalogView.combinations
+    : [];
+  const eventCombination = eventRecord && catalogView
+    ? selectedCombination(catalogView, eventRecord.id)
+    : undefined;
+  const eventSessionDecisions = eventRecord && catalogView && eventCombination
+    ? selectedSessions(catalogView, eventRecord.id, eventCombination)
+    : [];
+  const eventPlanningInputs = eventRecord && catalogView
+    ? catalogView.planningByEvent[eventRecord.id]
+    : undefined;
+  const eventWeatherScenarios = eventRecord && catalogView
+    ? selectedWeatherScenarios(catalogView, eventRecord.id)
+    : EMPTY_WEATHER_SCENARIOS;
+  useEffect(() => {
+    let current = true;
+    if (!eventRecord || !eventCombination || !catalogView) {
+      queueMicrotask(() => {
+        if (current) setValidatedExamples({ status: "idle" });
+      });
+      return () => { current = false; };
+    }
+    queueMicrotask(() => {
+      if (current) setValidatedExamples({ status: "loading" });
+    });
+    void loadValidatedExamples(applicationClient, catalogView.repositoryVersion, eventRecord.id).then(
+      (result) => { if (current) setValidatedExamples({ status: "success", result }); },
+      () => { if (current) setValidatedExamples({ status: "error" }); },
     );
-  }, [driversById, eventRecord, inventory, strategyEvent]);
+    return () => { current = false; };
+  }, [applicationClient, catalogView, eventCombination, eventRecord]);
+  const planningRequests = useRef(new Set<string>());
+  useEffect(() => {
+    if (!eventRecord || !catalogView || !eventCombination || eventPlanningInputs
+      || planningRequests.current.has(eventRecord.id)) return;
+    planningRequests.current.add(eventRecord.id);
+    let current = true;
+    void refreshStrategyPlanningInputs(applicationClient, catalogView, eventRecord.id).then(
+      (view) => { if (current) setSessionCatalog({ status: "ready", view }); },
+      () => { if (current) setSessionSave("error"); },
+    );
+    return () => { current = false; };
+  }, [applicationClient, catalogView, eventCombination, eventPlanningInputs, eventRecord]);
+  const strategyEvent = eventRecord ? toStrategyEvent(eventRecord, locale) : null;
+
+  const driversById = Object.fromEntries(
+    (eventRecord?.drivers ?? []).map((driver) => [driver.id, driver]),
+  );
+
+  // ── estrategias editables ────────────────────────────────────────────────
+  const variants: Record<string, StrategyVariant> = Object.fromEntries(
+    (eventRecord?.strategies ?? []).map((item) => [item.id, item]),
+  );
   const activeId = eventRecord
     ? (eventRecord.activeStrategyId && variants[eventRecord.activeStrategyId]
         ? eventRecord.activeStrategyId
         : (eventRecord.strategies[0]?.id ?? null))
     : null;
-  const active = activeId ? variants[activeId] : undefined;
+  const storedActive = activeId ? variants[activeId] : undefined;
+
+  // ── cálculo Go (manual + solver) ─────────────────────────────────────────
+  const calculationSequence = useRef(0);
+  const [calculationRetry, setCalculationRetry] = useState(0);
+  const calculationInput = strategyEvent && eventRecord && activeId
+    ? orbitCalculationInput(strategyEvent, eventRecord.drivers, Object.values(variants), activeId, eventPlanningInputs, eventWeatherScenarios)
+    : null;
+  const calculationKey = calculationInput ? JSON.stringify(calculationInput) : "";
+  const [calculation, setCalculation] = useState<
+    | { status: "idle" | "loading" }
+    | { status: "success"; key: string; result: StrategyOrbitCalculationResultV1 }
+    | { status: "error"; key: string; message: string; code?: string; field?: string }
+  >({ status: "idle" });
+  useEffect(() => {
+    const sequence = ++calculationSequence.current;
+    if (!calculationKey) {
+      void Promise.resolve().then(() => {
+        if (sequence === calculationSequence.current) setCalculation({ status: "idle" });
+      });
+      return;
+    }
+    const currentCalculationInput = JSON.parse(calculationKey) as NonNullable<typeof calculationInput>;
+    const commandId = `orbit-calculate-${sequence}`;
+    let current = true;
+    void Promise.resolve().then(() => {
+      if (current) setCalculation({ status: "loading" });
+    });
+    void calculateStrategyOrbit(
+      applicationClient,
+      commandId,
+      currentCalculationInput,
+    ).then(
+      (result) => {
+        if (current) setCalculation({ status: "success", key: calculationKey, result });
+      },
+      (error: unknown) => {
+        if (!current) return;
+        const typed = error instanceof Error ? error : new Error(String(error));
+        const metadata = typed as Error & { code?: string; field?: string };
+        setCalculation({
+          status: "error",
+          key: calculationKey,
+          message: typed.message,
+          ...(typeof metadata.code === "string"
+            ? { code: metadata.code }
+            : {}),
+          ...(typeof metadata.field === "string"
+            ? { field: metadata.field }
+            : {}),
+        });
+      },
+    );
+    return () => {
+      current = false;
+      applicationClient.cancel(commandId);
+    };
+  }, [applicationClient, calculationKey, calculationRetry]);
+
+  const calculationCurrent = "key" in calculation && calculation.key === calculationKey;
+  const plansById = calculation.status === "success" && calculationCurrent ? calculation.result.plans : {};
+  const plan = activeId ? plansById[activeId] ?? null : null;
+  // F2-f: sin inventario sintético global. El reparto sale del documento v2 por evento;
+  // donde no hay inventario se muestra vacío honesto, sin fabricar asignación.
+  const active = storedActive;
+
+  // ── custodia canónica de la revisión visible ───────────────────────────
+  const lifecycleClient = applicationClient as StrategyApplicationClient<StrategyOrbitRevisionPayloadV1>;
+  const lifecyclePayload: StrategyOrbitRevisionPayloadV1 | null = (() => {
+    if (!eventRecord || !active || !plan) return null;
+    return {
+      contractVersion: STRATEGY_ORBIT_REVISION_CONTRACT_V1,
+      event: {
+        id: eventRecord.id,
+        name: eventRecord.name,
+        source: eventRecord.source,
+        ...(eventRecord.seriesId ? { seriesId: eventRecord.seriesId } : {}),
+        track: eventRecord.track,
+        cls: eventRecord.cls,
+        durationMin: eventRecord.durationMin,
+        startAt: eventRecord.startAt,
+        ...(eventRecord.team ? { team: eventRecord.team } : {}),
+        drivers: eventRecord.drivers,
+        tankL: eventRecord.tankL,
+        pitLossSec: eventRecord.pitLossSec,
+        availability: eventRecord.availability ?? {},
+        teamMode: eventRecord.teamMode ?? "team",
+        fillMode: eventRecord.fillMode ?? "manual",
+      },
+      variant: active,
+      calculatedPlan: plan,
+    };
+  })();
+  const lifecycleKey = lifecyclePayload ? JSON.stringify(lifecyclePayload) : "";
+  const lifecycleSequence = useRef(0);
+  const [lifecycleRetry, setLifecycleRetry] = useState(0);
+  const [lifecycle, setLifecycle] = useState<OrbitLifecycleView>({ status: "idle" });
+  useEffect(() => {
+    lifecycleSequence.current += 1;
+    const sequence = lifecycleSequence.current;
+    if (!lifecycleKey) {
+      void Promise.resolve().then(() => {
+        if (sequence === lifecycleSequence.current) setLifecycle({ status: "idle" });
+      });
+      return;
+    }
+    const currentLifecyclePayload = JSON.parse(lifecycleKey) as StrategyOrbitRevisionPayloadV1;
+    void Promise.resolve().then(() => {
+      if (sequence === lifecycleSequence.current) setLifecycle({ status: "loading" });
+    });
+    void loadOrbitLifecycle(lifecycleClient, currentLifecyclePayload, String(sequence)).then(
+      (state) => {
+        if (sequence !== lifecycleSequence.current) return;
+        setLifecycle({ status: "ready", state });
+      },
+      (error: unknown) => {
+        if (sequence !== lifecycleSequence.current) return;
+        setLifecycle({ status: "error", failure: visibleApplicationFailure(error) });
+      },
+    );
+  }, [lifecycleClient, lifecycleKey, lifecycleRetry]);
+
+  const saveVisibleRevision = async () => {
+    if (!lifecyclePayload || !active || !eventRecord) return;
+    lifecycleSequence.current += 1;
+    const sequence = lifecycleSequence.current;
+    setLifecycle({ status: "busy", state: lifecycle.state });
+    try {
+      const saved = await saveOrbitRevision(
+        lifecycleClient,
+        lifecyclePayload,
+        `${eventRecord.name} · ${active.name}`,
+      );
+      if (sequence !== lifecycleSequence.current) return;
+      setLifecycle({ status: "ready", state: saved });
+      toast.show(
+        t("strategy.lifecycle.saved"),
+        formatMessage(t("strategy.lifecycle.savedHint"), {
+          revision: saved.revision.revisionId,
+          hash: saved.revision.contentHash.slice(0, 12),
+        }),
+      );
+    } catch (error) {
+      if (sequence !== lifecycleSequence.current) return;
+      const failure = visibleApplicationFailure(error);
+      setLifecycle({ status: "error", state: lifecycle.state, failure });
+      toast.show(t("strategy.lifecycle.saveFailed"), failure.message);
+    }
+  };
+
+  const activateVisibleRevision = async () => {
+    if (!lifecycle.state?.savedRevision) return;
+    lifecycleSequence.current += 1;
+    const sequence = lifecycleSequence.current;
+    setLifecycle({ status: "busy", state: lifecycle.state });
+    try {
+      const activated = await activateOrbitRevision(lifecycleClient, lifecycle.state);
+      if (sequence !== lifecycleSequence.current) return;
+      setLifecycle({ status: "ready", state: activated });
+      toast.show(
+        t("strategy.lifecycle.activated"),
+        formatMessage(t("strategy.lifecycle.activatedHint"), {
+          revision: activated.activePlan?.revision.revisionId ?? "",
+        }),
+      );
+    } catch (error) {
+      if (sequence !== lifecycleSequence.current) return;
+      const failure = visibleApplicationFailure(error);
+      setLifecycle({ status: "error", state: lifecycle.state, failure });
+      toast.show(t("strategy.lifecycle.activateFailed"), failure.message);
+    }
+  };
+
+  const visibleRevisionIsActive = sameRevision(
+    lifecycle.state?.activePlan?.revision,
+    lifecycle.state?.savedRevision,
+  );
 
   const eventId = eventRecord?.id ?? null;
-  const patchStrategies = useCallback(
-    (change: (list: StrategyVariant[]) => StrategyVariant[], nextActive?: string) => {
+  const patchStrategies = (
+    change: (list: StrategyVariant[]) => StrategyVariant[], nextActive?: string,
+  ) => {
       if (!eventId) return;
       commit((current) =>
         patchEvent(current, eventId, (event) => ({
@@ -350,31 +836,20 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
           activeStrategyId: nextActive ?? event.activeStrategyId,
         })),
       );
-    },
-    [commit, eventId],
-  );
+  };
 
-  const update = useCallback(
-    (change: (variant: StrategyVariant) => StrategyVariant, dirty = true) => {
+  const update = (change: (variant: StrategyVariant) => StrategyVariant, dirty = true) => {
       if (!activeId) return;
       patchStrategies((list) =>
         list.map((item) => {
           if (item.id !== activeId) return item;
           // El reparto de neumáticos de partida se calcula al vuelo: al
           // escribir hay que partir de la estrategia efectiva, no de la guardada.
-          const patched = change(variants[item.id] ?? item);
+          const patched = change(item.id === activeId ? (active ?? item) : item);
           return dirty ? { ...patched, state: "draft" as const } : patched;
         }),
       );
-    },
-    [activeId, patchStrategies, variants],
-  );
-
-  // ── plan derivado ───────────────────────────────────────────────────────
-  const plan = useMemo(() => {
-    if (!strategyEvent || !active) return null;
-    return buildPlan(strategyEvent, driversById, active);
-  }, [active, driversById, strategyEvent]);
+  };
 
   // ── interacción ─────────────────────────────────────────────────────────
   const [tab, setTab] = useState<StrategyTab>("overview");
@@ -385,44 +860,36 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
   const [picked, setPicked] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
-  // ── estrategias: activar, duplicar, crear ───────────────────────────────
-  const activate = useCallback(
-    (id: string, silent = false) => {
+  // ── estrategias: seleccionar, duplicar, crear ───────────────────────────
+  const selectVariant = (id: string, silent = false) => {
       patchStrategies((list) => list, id);
       setEditing(-1);
       setSelected(-1);
       if (silent) return;
       const name = variants[id]?.name ?? "";
       toast.show(
-        t("strategy.cards.activated"),
-        formatMessage(t("strategy.cards.activatedHint"), { name }),
+        t("strategy.lifecycle.selected"),
+        formatMessage(t("strategy.lifecycle.selectedHint"), { name }),
       );
-    },
-    [patchStrategies, t, toast, variants],
-  );
+  };
 
-  const duplicate = useCallback(
-    (id: string) => {
+  const duplicate = (id: string) => {
       const source = variants[id];
       if (!source) return;
       const copyId = freeId(variants, "local");
       const name = formatMessage(t("strategy.cards.copyName"), { name: source.name });
       patchStrategies((list) => [...list, { ...source, id: copyId, name, state: "draft" as const }]);
       toast.show(t("strategy.cards.duplicated"), formatMessage(t("strategy.cards.duplicatedHint"), { name }));
-    },
-    [patchStrategies, t, toast, variants],
-  );
+  };
 
   /** La tarjeta «+ Nueva estrategia» avisa; la de la columna no (briefing 07). */
-  const createStrategy = useCallback(
-    (silent = false) => {
+  const createStrategy = (silent = false) => {
       if (!eventRecord || !strategyEvent) return;
       const newId = freeId(variants, "local");
       const base = eventRecord.strategies[0]?.order ?? eventRecord.drivers.map((driver) => driver.id);
       const name = formatMessage(t("strategy.cards.newName"), {
         n: Object.keys(variants).length + 1,
       });
-      const fresh = buildPlan(strategyEvent, driversById, { mode: "dry", order: base, overrides: {} });
       patchStrategies(
         (list) => [
           ...list,
@@ -434,7 +901,7 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
             order: base,
             state: "draft" as const,
             overrides: {},
-            tyres: defaultTyres(fresh.stints.length, inventory),
+            tyres: {},
           },
         ],
         newId,
@@ -444,9 +911,7 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
       if (!silent) {
         toast.show(t("strategy.cards.created"), formatMessage(t("strategy.cards.createdHint"), { name }));
       }
-    },
-    [driversById, eventRecord, inventory, patchStrategies, strategyEvent, t, toast, variants],
-  );
+  };
 
   // ── comparación ─────────────────────────────────────────────────────────
   const [compareId, setCompareId] = useState<string | null>(null);
@@ -460,8 +925,7 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
   const [avFrom, setAvFrom] = useState("14:00");
   const [avTo, setAvTo] = useState("16:00");
 
-  const addSlot = useCallback(
-    (driverId: string, state: AvailabilityState, from: string, to: string) => {
+  const addSlot = (driverId: string, state: AvailabilityState, from: string, to: string) => {
       const a = parseHhmm(from);
       const b = parseHhmm(to);
       if (a === null || b === null || b <= a) {
@@ -490,22 +954,24 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
           to,
         }),
       );
-    },
-    [commit, driversById, eventId, t, toast],
-  );
+  };
 
   // ── ⚙ Ajustes ───────────────────────────────────────────────────────────
-  const exportPlan = useCallback(async () => {
-    const draft = snapshot.draft;
-    if (!draft) {
-      toast.show(t("strategy.menu.exportFailed"), t("strategy.menu.soon"));
+  const exportPlan = async () => {
+    const revision = lifecycle.state?.savedRevision;
+    if (!revision || !lifecyclePayload) {
+      const failure = new StrategyApplicationError(
+        "revision_not_found",
+        "revision",
+        t("strategy.lifecycle.saveFirst"),
+      );
+      setLifecycle({ status: "error", state: lifecycle.state, failure: visibleApplicationFailure(failure) });
       return;
     }
     try {
-      // Exportación real del dominio (`strategy-transfer.ts`): el paquete lo
-      // arma el servicio, esta pantalla solo dice qué plan y cuánto pesa.
-      const pack = await exportStrategyPackage(runtime.client, `orbit-export-${draft.draftId}`, {
-        plans: [{ planId: draft.planId, variantId: draft.variantId }],
+      const identity = orbitLifecycleIdentity(lifecyclePayload.event.id);
+      const pack = await exportStrategyPackage(applicationClient, `orbit-export-${revision.revisionId}`, {
+        plans: [{ planId: identity.planId, variantId: identity.variantId, revision }],
         provenance: {
           application: "Vantare",
           applicationVersion: "orbit-v0.3",
@@ -520,25 +986,23 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
         }),
       );
     } catch (error) {
-      toast.show(
-        t("strategy.menu.exportFailed"),
-        error instanceof Error ? error.message : String(error),
-      );
+      const failure = visibleApplicationFailure(error);
+      setLifecycle({ status: "error", state: lifecycle.state, failure });
+      toast.show(t("strategy.menu.exportFailed"), failure.message);
     }
-  }, [runtime, snapshot.draft, t, toast]);
+  };
 
-  const scrollToStint = useCallback((index: number) => {
+  const scrollToStint = (index: number) => {
     window.requestAnimationFrame(() => {
       listRef.current
         ?.querySelector(`[data-stint="${index}"]`)
         ?.scrollIntoView({ block: "nearest" });
     });
-  }, []);
+  };
 
-  const uses = useMemo(() => tyreUses(active?.tyres ?? {}), [active]);
+  const uses = tyreUses(active?.tyres ?? {});
 
-  const assign = useCallback(
-    (stint: number, corner: OrbitCorner, tyreId: string) => {
+  const assign = (stint: number, corner: OrbitCorner, tyreId: string) => {
       const tyre = inventory.find((item) => item.id === tyreId);
       if (!tyre) return;
       try {
@@ -556,47 +1020,38 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
         tyres: { ...variant.tyres, [stint]: { ...variant.tyres[stint], [corner]: tyreId } },
       }));
       setPicked(null);
-    },
-    [inventory, t, toast, update],
-  );
+  };
 
-  const clear = useCallback(
-    (stint: number, corner: OrbitCorner) => {
+  const clear = (stint: number, corner: OrbitCorner) => {
       update((variant) => {
         const corners = { ...variant.tyres[stint] };
         delete corners[corner];
         return { ...variant, tyres: { ...variant.tyres, [stint]: corners } };
       });
-    },
-    [update],
-  );
+  };
 
   /**
    * Orden de partida de una estrategia: el que publicó el puente si el evento
    * viene del roster, y si no el de los pilotos del evento local.
    */
-  const baseOrder = useCallback(
-    (id: string): string[] => {
+  const baseOrder = (id: string): string[] => {
       const fromRoster =
         eventRecord?.source === "roster"
           ? roster?.strategies.find((item) => item.id === id)?.order
           : undefined;
       return fromRoster ?? eventRecord?.drivers.map((driver) => driver.id) ?? [];
-    },
-    [eventRecord, roster],
-  );
+  };
 
-  const reset = useCallback(() => {
+  const reset = () => {
     if (!strategyEvent || !activeId) return;
     const order = baseOrder(activeId);
     if (order.length === 0) return;
-    const fresh = buildPlan(strategyEvent, driversById, { mode: "dry", order, overrides: {} });
     update(
       (variant) => ({
         ...variant,
         order,
         overrides: {},
-        tyres: defaultTyres(fresh.stints.length, inventory),
+        tyres: {},
         state: "ok",
       }),
       false,
@@ -604,52 +1059,44 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
     setEditing(-1);
     setPicked(null);
     toast.show(t("strategy.reset"), t("strategy.resetHint"));
-  }, [activeId, baseOrder, driversById, inventory, strategyEvent, t, toast, update]);
+  };
 
-  const spread = useCallback(() => {
+  const spread = () => {
     if (!plan || !activeId) return;
     const order = baseOrder(activeId);
     if (order.length === 0) return;
-    update((variant) => ({ ...variant, order: rotateOrder(order, plan.stints.length) }));
-  }, [activeId, baseOrder, plan, update]);
+    update((variant) => ({ ...variant, order: plan.stints.map((stint) => stint.d) }));
+  };
 
-  const setDriver = useCallback(
-    (index: number, driverId: string) => {
+  const setDriver = (index: number, driverId: string) => {
       if (!plan) return;
       update((variant) => {
-        const order = rotateOrder(variant.order, plan.stints.length);
+        const order = plan.stints.map((stint) => stint.d);
         order[index] = driverId;
         return { ...variant, order };
       });
-    },
-    [plan, update],
-  );
+  };
 
-  const setOverride = useCallback(
-    (index: number, field: "laps" | "fuel", raw: string) => {
+  const setOverride = (index: number, field: "laps" | "fuel", raw: string) => {
       const value = Number(raw.replace(",", "."));
       if (!Number.isFinite(value) || value <= 0) return;
       update((variant) => ({
         ...variant,
         overrides: { ...variant.overrides, [index]: { ...variant.overrides[index], [field]: value } },
       }));
-    },
-    [update],
-  );
+  };
 
-  const clearOverride = useCallback(
-    (index: number) => {
+  const clearOverride = (index: number) => {
       update((variant) => {
         const overrides = { ...variant.overrides };
         delete overrides[index];
         return { ...variant, overrides };
       });
-    },
-    [update],
-  );
+  };
 
   // ── eventos: menú de entrada, asistente, formulario y edición ───────────
   const [wizard, setWizard] = useState<WizardState | null>(null);
+  const [calendarSelection, setCalendarSelection] = useState<CalendarRaceSelection | null>(null);
   const [form, setForm] = useState<{
     mode: "create" | "edit";
     /** Tablero elegido en el asistente; el formulario lo respeta. */
@@ -664,12 +1111,12 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
    * lo pone el usuario en el formulario: la pantalla no depende del proveedor
    * de licencia solo para rellenar una fila (D-W4-4).
    */
-  const me = useCallback((): StrategyDriver => {
+  const me = (): StrategyDriver => {
     const name = t("strategy.form.me");
     return { ...newDriver(name, 0), ini: initialsOf(name) };
-  }, [t]);
+  };
 
-  const openCreate = useCallback((teamMode: StrategyTeamMode = "team") => {
+  const openCreate = (teamMode: StrategyTeamMode = "team") => {
     const start = new Date();
     start.setMinutes(0, 0, 0);
     start.setHours(start.getHours() + 1);
@@ -688,19 +1135,18 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
         drivers: [me()],
       },
     });
-  }, [me]);
+  };
 
-  const openEdit = useCallback(() => {
+  const openEdit = () => {
     if (!eventRecord) return;
     setForm({ mode: "edit", teamMode: eventRecord.teamMode ?? "team", draft: formOf(eventRecord) });
-  }, [eventRecord]);
+  };
 
-  const patchForm = useCallback((change: Partial<EventForm>) => {
+  const patchForm = (change: Partial<EventForm>) => {
     setForm((current) => (current ? { ...current, draft: { ...current.draft, ...change } } : current));
-  }, []);
+  };
 
-  const patchFormDriver = useCallback(
-    (index: number, change: Partial<StrategyDriver>) => {
+  const patchFormDriver = (index: number, change: Partial<StrategyDriver>) => {
       setForm((current) => {
         if (!current) return current;
         const drivers = current.draft.drivers.map((driver, i) =>
@@ -708,11 +1154,9 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
         );
         return { ...current, draft: { ...current.draft, drivers } };
       });
-    },
-    [],
-  );
+  };
 
-  const submitForm = useCallback(() => {
+  const submitForm = () => {
     const draft = form?.draft;
     if (!draft) return;
     const name = draft.name.trim();
@@ -753,7 +1197,7 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
     }
     const created = createCustomEvent(
       store.events,
-      { ...shared, teamMode: form.teamMode },
+      { ...shared, teamMode: form.teamMode, fillMode: wizard?.fill ?? "manual" },
       {
         strategyName: formatMessage(t("strategy.cards.newName"), { n: 1 }),
         strategyNote: t("strategy.cards.newNote"),
@@ -764,15 +1208,82 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
     setWizard(null);
     setTab("overview");
     toast.show(t("strategy.form.createdTitle"), formatMessage(t("strategy.form.createdHint"), { name }));
-  }, [commit, eventId, form, store.events, t, toast]);
+  };
+
+  const chooseSessionCombination = async (combinationId: string) => {
+    if (!eventRecord || !catalogView) return;
+    const combination = catalogView.combinations.find((item) => item.combinationId === combinationId);
+    if (!combination) return;
+    setSessionSave("saving");
+    try {
+      const saved = await persistStrategySessionSelection(
+        applicationClient,
+        catalogView,
+        eventRecord,
+        combination,
+        combination.sessions.map((session) => ({ sessionId: session.sessionId, included: session.defaultIncluded })),
+      );
+      const view = await refreshStrategyPlanningInputs(applicationClient, saved, eventRecord.id);
+      setSessionCatalog({ status: "ready", view });
+      setSessionPickerDismissed(eventRecord.id);
+      setSessionSave("idle");
+    } catch {
+      setSessionSave("error");
+    }
+  };
+
+  const toggleSession = async (sessionId: string) => {
+    if (!eventRecord || !catalogView || !eventCombination) return;
+    const sessions = eventSessionDecisions.map((session) =>
+      session.sessionId === sessionId ? { ...session, included: !session.included } : session,
+    );
+    setSessionSave("saving");
+    try {
+      const saved = await persistStrategySessionSelection(
+        applicationClient,
+        catalogView,
+        eventRecord,
+        eventCombination,
+        sessions,
+      );
+      const view = await refreshStrategyPlanningInputs(applicationClient, saved, eventRecord.id);
+      setSessionCatalog({ status: "ready", view });
+      setSessionSave("idle");
+    } catch {
+      setSessionSave("error");
+    }
+  };
+
+  const commitPlanningInput = async (field: StrategyPlanningInputFieldV2, value?: number) => {
+    if (!eventRecord || !catalogView) return;
+    setSessionSave("saving");
+    try {
+      const view = await persistStrategyPlanningOverride(applicationClient, catalogView, eventRecord, field, value);
+      setSessionCatalog({ status: "ready", view });
+      setSessionSave("idle");
+    } catch {
+      setSessionSave("error");
+    }
+  };
+
+  const commitWeatherScenarios = async (scenarios: Parameters<typeof persistStrategyWeatherScenarios>[3]) => {
+    if (!eventRecord || !catalogView) return;
+    setWeatherSave("saving");
+    try {
+      const view = await persistStrategyWeatherScenarios(applicationClient, catalogView, eventRecord, scenarios);
+      setSessionCatalog({ status: "ready", view });
+      setWeatherSave("idle");
+    } catch {
+      setWeatherSave("error");
+    }
+  };
 
   /**
    * Crea el evento desde una salida del calendario. Acepta tanto una salida de
    * serie (`RaceStart`) como una fila recomendada: es la misma acción y el
    * mismo constructor del dominio, no una copia con otras reglas.
    */
-  const createFromSeries = useCallback(
-    (
+  const createFromSeries = (
       start: Pick<RaceStart, "seriesId" | "name" | "track" | "at"> & {
         vehicleClass?: string;
         durationMin?: number;
@@ -788,6 +1299,7 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
           strategyNote: t("strategy.cards.newNote"),
         },
         teamMode,
+        wizard?.fill ?? "manual",
       );
       commit((current) => openEvent(upsertEvent(current, created), created.id));
       setWizard(null);
@@ -796,13 +1308,10 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
         t("strategy.form.createdTitle"),
         formatMessage(t("strategy.form.createdHint"), { name: created.name }),
       );
-    },
-    [commit, me, store.events, t, toast],
-  );
+  };
 
   /** Abrir es la única puerta al editor: aquí se sella `lastOpenedAt`. */
-  const selectEvent = useCallback(
-    (id: string) => {
+  const selectEvent = (id: string) => {
       commit((current) => openEvent(current, id));
       setForm(null);
       setWizard(null);
@@ -810,9 +1319,7 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
       setSelected(-1);
       setCompareId(null);
       setTab("overview");
-    },
-    [commit],
-  );
+  };
 
   /**
    * Vuelve al menú de entrada sin tocar nada del evento.
@@ -822,20 +1329,25 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
    * las veces y un menú intermedio sería un peaje. El menú no desaparece: está
    * a un clic desde la cabecera y desde la columna contextual.
    */
-  const backToMenu = useCallback(() => {
+  const backToMenu = () => {
     commit((current) => ({ ...current, activeId: null }));
     setForm(null);
     setWizard(null);
-  }, [commit]);
+  };
 
-  const startWizard = useCallback(() => {
+  const startWizard = () => {
     setForm(null);
     setWizard({ step: "fill", fill: "manual", team: "team", path: "none" });
-  }, []);
+  };
+
+  const startManualWizard = () => {
+    setCalendarSelection(null);
+    setForm(null);
+    setWizard({ step: "team", fill: "manual", team: "team", path: "none" });
+  };
 
   /** Copia un evento entero con sus estrategias; la copia nace sin abrir. */
-  const duplicateEvent = useCallback(
-    (id: string) => {
+  const duplicateEvent = (id: string) => {
       const source = store.events.find((event) => event.id === id);
       if (!source) return;
       const name = formatMessage(t("strategy.home.copyName"), { name: source.name });
@@ -850,11 +1362,9 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
         t("strategy.home.duplicated"),
         formatMessage(t("strategy.home.duplicatedHint"), { name }),
       );
-    },
-    [commit, store.events, t, toast],
-  );
+  };
 
-  const confirmDelete = useCallback(() => {
+  const confirmDelete = () => {
     const target = store.events.find((event) => event.id === pendingDelete);
     if (!target) return;
     commit((current) => removeEvent(current, target.id));
@@ -863,13 +1373,12 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
       t("strategy.home.deleted"),
       formatMessage(t("strategy.home.deletedHint"), { name: target.name }),
     );
-  }, [commit, pendingDelete, store.events, t, toast]);
+  };
 
   // ── pilotos del evento (editables) ──────────────────────────────────────
   const [editDriver, setEditDriver] = useState<string | null>(null);
 
-  const patchDriver = useCallback(
-    (driverId: string, change: (driver: StrategyDriver) => StrategyDriver) => {
+  const patchDriver = (driverId: string, change: (driver: StrategyDriver) => StrategyDriver) => {
       if (!eventId) return;
       commit((current) =>
         patchEvent(current, eventId, (event) => ({
@@ -877,12 +1386,11 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
           drivers: event.drivers.map((driver) => (driver.id === driverId ? change(driver) : driver)),
         })),
       );
-    },
-    [commit, eventId],
-  );
+  };
 
-  const setDriverPace = useCallback(
-    (driverId: string, mode: "dry" | "wet" | "eco", slot: 0 | 1, raw: string) => {
+  const setDriverPace = (
+    driverId: string, mode: "dry" | "wet" | "eco", slot: 0 | 1, raw: string,
+  ) => {
       const value = Number(raw.replace(",", "."));
       if (!Number.isFinite(value) || value <= 0) return;
       patchDriver(driverId, (driver) => {
@@ -890,30 +1398,122 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
         pace[slot] = value;
         return { ...driver, [mode]: pace };
       });
-    },
-    [patchDriver],
-  );
+  };
 
   // ── columna contextual ──────────────────────────────────────────────────
   /** Series del calendario: primero las seguidas, luego el resto. */
-  const seriesOptions = useMemo(() => {
+  const seriesOptions = (() => {
     const followed = calendar.starts.filter((start) => start.followed);
     const rest = calendar.starts.filter((start) => !start.followed);
     return [...followed, ...rest].slice(0, 10);
-  }, [calendar.starts]);
+  })();
+
+  const calendarRaceSeries = calendar.calendar?.series ?? [];
+  const calendarSelectionClasses = calendarSelection?.series.classes ?? [];
+  const selectedCalendarClass = calendarSelection?.className
+    ? calendarSelectionClasses.find((item) => item.name === calendarSelection.className)
+    : undefined;
+  const selectedCalendarStart = calendarSelection
+    ? calendar.starts.find((start) => start.seriesId === calendarSelection.series.id)
+    : undefined;
+  const selectedCalendarVenueCombinations = calendarSelection && selectedCalendarClass && catalogView
+    ? calendarSessionCombinations(
+        calendarSelection.series,
+        selectedCalendarClass,
+        catalogView.combinations,
+      )
+    : [];
+  const selectedCalendarLayouts = calendarSelection && selectedCalendarClass && catalogView
+    ? calendarSessionLayouts(
+        calendarSelection.series,
+        selectedCalendarClass,
+        catalogView.combinations,
+      )
+    : [];
+  const selectedCalendarLayout = calendarSelection?.trackLayout
+    ?? (selectedCalendarLayouts.length === 1 ? selectedCalendarLayouts[0].trackLayout : undefined);
+  const selectedCalendarAllCombinations = calendarSelection && selectedCalendarClass && catalogView
+    && selectedCalendarLayout
+    ? calendarSessionCombinations(
+        calendarSelection.series,
+        selectedCalendarClass,
+        catalogView.combinations,
+        selectedCalendarLayout,
+      )
+    : [];
+  const selectedCalendarCombinations = calendarSelection && selectedCalendarClass && selectedCalendarLayout
+    ? calendarSessionCombinations(
+        calendarSelection.series,
+        selectedCalendarClass,
+        automaticCombinations,
+        selectedCalendarLayout,
+      )
+    : [];
+
+  const selectCalendarRace = (series: RaceSeries) => {
+    const classes = series.classes ?? [];
+    setWizard(null);
+    setCalendarSelection({
+      series,
+      ...(classes.length === 1 ? { className: classes[0].name } : {}),
+    });
+  };
+
+  const createFromCalendarTelemetry = async (combinationId: string) => {
+    if (!calendarSelection?.className || !selectedCalendarStart || !catalogView) return;
+    const combination = selectedCalendarCombinations.find((item) => item.combinationId === combinationId);
+    if (!combination) return;
+    const created = createEventFromSeries(
+      store.events,
+      {
+        ...selectedCalendarStart,
+        vehicleClass: calendarSelection.className,
+        durationMin: calendarSelection.series.raceDurationMin ?? calendarSelection.series.durationMin,
+      },
+      me(),
+      {
+        strategyName: formatMessage(t("strategy.cards.newName"), { n: 1 }),
+        strategyNote: t("strategy.cards.newNote"),
+      },
+      "team",
+      "telemetry",
+    );
+    setSessionSave("saving");
+    try {
+      const saved = await persistStrategySessionSelection(
+        applicationClient,
+        catalogView,
+        created,
+        combination,
+        combination.sessions.map((session) => ({
+          sessionId: session.sessionId,
+          included: session.defaultIncluded,
+        })),
+      );
+      const view = await refreshStrategyPlanningInputs(applicationClient, saved, created.id);
+      setSessionCatalog({ status: "ready", view });
+      commit((current) => openEvent(upsertEvent(current, created), created.id));
+      setSessionPickerDismissed(created.id);
+      setCalendarSelection(null);
+      setSessionSave("idle");
+      setTab("overview");
+      toast.show(
+        t("strategy.form.createdTitle"),
+        formatMessage(t("strategy.form.createdHint"), { name: created.name }),
+      );
+    } catch {
+      setSessionSave("error");
+    }
+  };
 
   /**
    * Eventos recomendados del estado inicial: especiales del calendario y, si no
    * hay ninguno, las series semanales con su próxima salida (`strategy-recommended`).
    */
-  const recommended = useMemo(
-    () => buildRecommendedEvents(calendar.calendar, calendar.starts, new Date()),
-    [calendar.calendar, calendar.starts],
-  );
+  const recommended = buildRecommendedEvents(calendar.calendar, calendar.starts, new Date());
 
   /** Subtítulo de una fila recomendada: solo lo que el calendario publica. */
-  const recommendedSubtitle = useCallback(
-    (row: RecommendedEvent) =>
+  const recommendedSubtitle = (row: RecommendedEvent) =>
       [
         row.track,
         row.vehicleClass || row.note,
@@ -922,9 +1522,7 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
           : "",
       ]
         .filter(Boolean)
-        .join(" · "),
-    [t],
-  );
+        .join(" · ");
 
   const context = (
     <div className="orbit-strategy__context">
@@ -967,7 +1565,7 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
             <ListRow
               ariaSelected={variant.id === activeId}
               key={variant.id}
-              onClick={() => activate(variant.id, true)}
+              onClick={() => selectVariant(variant.id, true)}
               selected={variant.id === activeId}
               subtitle={variant.note}
               title={variant.name}
@@ -982,6 +1580,14 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
       </section>
 
       <div className="orbit-strategy__context-acts">
+        <Button
+          data-testid="orbit-strategy-migrate"
+          disabled={migration.status === "loading"}
+          onClick={() => void previewMigration()}
+          variant="ghost"
+        >
+          {legacyReadOnly ? t("strategy.migration.done") : t("strategy.migration.open")}
+        </Button>
         <Button
           className="orbit-strategy__new"
           data-testid="orbit-strategy-new-column"
@@ -1087,6 +1693,7 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
                 unit="min"
                 value={form.draft.durationMin}
               />
+              <InputProvenanceChip t={t} view={manualInputView(Number(form.draft.durationMin))} />
             </div>
           </Field>
           <Field htmlFor="orbit-ev-tank" label={t("strategy.form.tank")}>
@@ -1098,6 +1705,7 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
               unit="L"
               value={form.draft.tankL}
             />
+            <InputProvenanceChip t={t} view={manualInputView(Number(form.draft.tankL))} />
           </Field>
           <Field htmlFor="orbit-ev-pit" label={t("strategy.form.pit")}>
             <Input
@@ -1108,6 +1716,7 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
               unit="s"
               value={form.draft.pitLossSec}
             />
+            <InputProvenanceChip t={t} view={manualInputView(Number(form.draft.pitLossSec))} />
           </Field>
           <Field htmlFor="orbit-ev-team" label={t("strategy.form.team")}>
             <Input
@@ -1193,6 +1802,7 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
                 unit="s"
                 value={String(driver.dry[0])}
               />
+              <InputProvenanceChip t={t} view={manualInputView(driver.dry[0])} />
               <Input
                 aria-label={formatMessage(t("strategy.form.driverFuel"), { n: index + 1 })}
                 inputMode="decimal"
@@ -1205,6 +1815,7 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
                 unit="L/v"
                 value={String(driver.dry[1])}
               />
+              <InputProvenanceChip t={t} view={manualInputView(driver.dry[1])} />
               <Button
                 aria-label={formatMessage(t("strategy.form.removeDriver"), { n: index + 1 })}
                 disabled={form.draft.drivers.length <= 1}
@@ -1285,6 +1896,79 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
       tone="danger"
     />
   );
+
+  const migrationPreview = migration.status === "preview" ? migration.prepared.preview : null;
+  const migrationResult = migration.status === "success" ? migration.result : null;
+  const migrationDialog = migration.status === "idle" ? null : (
+    <div className="orbit-migration" role="presentation">
+      <section
+        aria-labelledby="orbit-migration-title"
+        aria-modal="true"
+        autoFocus
+        className="orbit-migration__dialog"
+        data-testid="orbit-strategy-migration-dialog"
+        onKeyDown={(event) => {
+          if (event.key === "Escape" && migration.status !== "loading") setMigration({ status: "idle" });
+        }}
+        role="dialog"
+        tabIndex={-1}
+      >
+        <h3 id="orbit-migration-title">{t("strategy.migration.title")}</h3>
+        {migration.status === "loading" ? <p>{migration.message}</p> : null}
+        {migration.status === "error" ? <Note title={t("strategy.migration.error")}>{migration.message}</Note> : null}
+        {migrationPreview ? (
+          <>
+            <p>{formatMessage(t("strategy.migration.summary"), {
+              events: migrationPreview.document.events.length,
+              quarantine: migrationPreview.quarantine.length,
+            })}</p>
+            <code className="orbit-migration__fingerprint">{migrationPreview.fingerprint}</code>
+            {migrationPreview.document.events.length ? (
+              <ul>{migrationPreview.document.events.map((event) => <li key={event.id}>{event.id} · {event.name.value}</li>)}</ul>
+            ) : null}
+            {migrationPreview.quarantine.length ? (
+              <div>
+                <h4>{t("strategy.migration.quarantine")}</h4>
+                <ul>{migrationPreview.quarantine.map((item, index) => <li key={`${item.path}-${index}`}><code>{item.path}</code> — {item.message}</li>)}</ul>
+              </div>
+            ) : null}
+            {migrationPreview.warnings.length ? <ul>{migrationPreview.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul> : null}
+          </>
+        ) : null}
+        {migrationResult ? (
+          <Note title={migrationResult.rolledBack ? t("strategy.migration.rolledBack") : t("strategy.migration.done")}>{migrationResult.rolledBack ? t("strategy.migration.rolledBackResult") : formatMessage(t("strategy.migration.result"), {
+            events: migrationResult.document.events.length,
+            quarantine: migrationResult.quarantine.length,
+          })}</Note>
+        ) : null}
+        <div className="orbit-migration__actions">
+          {migration.status === "preview" ? (
+            <Button data-testid="orbit-strategy-migration-confirm" onClick={() => void confirmMigration(migration.prepared)} variant="primary">
+              {t("strategy.migration.confirm")}
+            </Button>
+          ) : null}
+          {migration.status === "error" ? <Button onClick={() => void previewMigration()} variant="primary">{t("strategy.migration.retry")}</Button> : null}
+          {migrationResult && !migrationResult.rolledBack ? (
+            <Button onClick={() => void rollbackMigration(migrationResult.journalId)} variant="danger">
+              {t("strategy.migration.rollback")}
+            </Button>
+          ) : null}
+          <Button disabled={migration.status === "loading"} onClick={() => setMigration({ status: "idle" })} variant="ghost">
+            {migrationResult ? t("strategy.migration.close") : t("strategy.migration.cancel")}
+          </Button>
+        </div>
+      </section>
+    </div>
+  );
+  const editorFailureView = editorOpenFailure ? (
+    <div className="orbit-note" data-testid="orbit-strategy-editor-open-error" role="alert">
+      <b>{t("strategy.lifecycle.openFailed")}</b>
+      <span>{editorOpenFailure.message}</span>
+      {[editorOpenFailure.code, editorOpenFailure.field].filter(Boolean).join(" · ") ? (
+        <small>{[editorOpenFailure.code, editorOpenFailure.field].filter(Boolean).join(" · ")}</small>
+      ) : null}
+    </div>
+  ) : null;
 
   /** Lista del calendario y recomendados: el punto de partida «desde evento». */
   const calendarStep = (
@@ -1395,21 +2079,27 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
               <span className="orbit-path__k">{t("strategy.wizard.fill.manual")}</span>
               <span className="orbit-path__d">{t("strategy.wizard.fill.manualHint")}</span>
             </Featured>
-            {/* Automática: la fuente de sesiones de telemetría (ADR 0005) aún no
-                llega al frontend, así que el control va deshabilitado y dice por qué. */}
             <Featured
-              className="orbit-strategy__opt--off"
+              className={automaticAvailable ? undefined : "orbit-strategy__opt--off"}
               data-testid="orbit-strategy-wizard-auto"
             >
               <span className="orbit-path__k">{t("strategy.wizard.fill.auto")}</span>
               <span className="orbit-path__d">{t("strategy.wizard.fill.autoHint")}</span>
+              <span className="orbit-path__d" data-testid="orbit-strategy-wizard-auto-reason" id="orbit-strategy-wizard-auto-reason">
+                {automaticReason}
+              </span>
               <Button
+                aria-describedby="orbit-strategy-wizard-auto-reason"
                 data-testid="orbit-strategy-wizard-auto-action"
-                data-tip={t("strategy.wizard.fill.autoTip")}
+                data-tip={automaticReason}
                 data-tip-side="top"
-                disabled
+                disabled={!automaticAvailable}
+                onClick={() => {
+                  setCalendarSelection(null);
+                  setWizard(null);
+                }}
                 size="sm"
-                variant="ghost"
+                variant={automaticAvailable ? "primary" : "ghost"}
               >
                 {t("strategy.wizard.fill.autoAction")}
               </Button>
@@ -1481,6 +2171,299 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
     </Surface>
   ) : null;
 
+  const sessionPickerView = eventRecord ? (
+    <Surface
+      aria-label={t("strategy.sessions.pickerTitle")}
+      data-testid="orbit-strategy-session-picker"
+      meta={t("strategy.sessions.optional")}
+      title={t("strategy.sessions.pickerTitle")}
+    >
+      <p className="orbit-strategy__empty-lead">{t("strategy.sessions.pickerLead")}</p>
+      {sessionCatalog.status === "loading" ? (
+        <p role="status">{t("strategy.sessions.loading")}</p>
+      ) : sessionCatalog.status === "ready" && sessionPickerCombinations.length === 0 ? (
+        <Note title={t("strategy.sessions.emptyTitle")}>{t("strategy.sessions.empty")}</Note>
+      ) : sessionCatalog.status === "ready" ? (
+        <div className="orbit-session-picker__list">
+          {sessionPickerCombinations.map((combination) => (
+            <Featured
+              data-testid={`orbit-session-combination-${combination.combinationId}`}
+              interactive
+              key={combination.combinationId}
+              onClick={() => void chooseSessionCombination(combination.combinationId)}
+            >
+              <span className="orbit-eyebrow">{combination.simId.toUpperCase()}</span>
+              <span className="orbit-path__k">{combination.trackName} · {combination.carName}</span>
+              <span className="orbit-path__d">
+                {formatMessage(t("strategy.sessions.summary"), {
+                  sessions: combination.sessionCount,
+                  races: combination.raceCount,
+                  activity: new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(combination.lastActivity)),
+                })}
+              </span>
+              <span className="orbit-session-picker__buckets">
+                {combination.climateBuckets.length > 0
+                  ? combination.climateBuckets.map((bucket) => `${t(`strategy.sessions.bucket.${bucket.bucket}`)} ${bucket.laps}`).join(" · ")
+                  : t("strategy.sessions.noBuckets")}
+              </span>
+            </Featured>
+          ))}
+        </div>
+      ) : null}
+      {sessionSave === "error" ? <p role="alert">{t("strategy.sessions.saveError")}</p> : null}
+      <div className="orbit-strategy__wizard-acts">
+        <Button
+          data-testid="orbit-strategy-session-skip"
+          disabled={sessionSave === "saving"}
+          onClick={() => setSessionPickerDismissed(eventRecord.id)}
+          variant="ghost"
+        >
+          {t("strategy.sessions.skip")}
+        </Button>
+      </div>
+    </Surface>
+  ) : null;
+
+  const calendarRaceView = (
+    <Surface
+      aria-label={t("strategy.calendar.title")}
+      data-testid="orbit-strategy-calendar"
+      meta={calendar.calendar
+        ? formatMessage(t("strategy.calendar.meta"), { n: calendarRaceSeries.length })
+        : t("strategy.calendar.metaUnavailable")}
+      title={t("strategy.calendar.title")}
+    >
+      {calendar.calendar === null ? (
+        <Note title={t("strategy.calendar.unavailableTitle")}>
+          {t("strategy.calendar.unavailable")}
+        </Note>
+      ) : calendarSelection === null ? (
+        calendarRaceSeries.length === 0 ? (
+          <Note title={t("strategy.calendar.emptyTitle")}>{t("strategy.calendar.empty")}</Note>
+        ) : (
+          <div className="orbit-session-picker__list orbit-strategy__calendar-list">
+            {calendarRaceSeries.map((series) => {
+              const classes = series.classes ?? [];
+              const duration = series.raceDurationMin ?? series.durationMin;
+              const restrictions = [
+                series.tyres > 0
+                  ? formatMessage(t("strategy.calendar.tyres"), { n: series.tyres })
+                  : "",
+                series.veLimit && series.veLimit > 0
+                  ? formatMessage(t("strategy.calendar.veLimit"), { n: series.veLimit })
+                  : "",
+                series.setup === "fixed"
+                  ? t("strategy.calendar.setup.fixed")
+                  : series.setup === "open"
+                    ? t("strategy.calendar.setup.open")
+                    : "",
+              ].filter(Boolean);
+              return (
+                <Featured
+                  data-testid={`orbit-strategy-calendar-race-${series.id}`}
+                  interactive
+                  key={series.id}
+                  onClick={() => selectCalendarRace(series)}
+                >
+                  <span className="orbit-eyebrow">{series.name}</span>
+                  <span className="orbit-path__k">{series.track}</span>
+                  <span className="orbit-path__d">
+                    {classes.length > 0
+                      ? classes.map((item) => item.qualifier ? `${item.name} (${item.qualifier})` : item.name).join(" · ")
+                      : t("strategy.calendar.classesMissing")}
+                  </span>
+                  {duration > 0 ? (
+                    <span className="orbit-path__d">
+                      {formatMessage(t("strategy.calendar.duration"), { n: duration })}
+                    </span>
+                  ) : null}
+                  {restrictions.length > 0 ? (
+                    <span className="orbit-session-picker__buckets">{restrictions.join(" · ")}</span>
+                  ) : null}
+                </Featured>
+              );
+            })}
+          </div>
+        )
+      ) : !calendarSelection.series.telemetryTrackName ? (
+        <div data-testid="orbit-strategy-calendar-identity-error">
+          <Note title={t("strategy.calendar.venueUnresolvedTitle")}>
+            {formatMessage(t("strategy.calendar.venueUnresolved"), {
+              track: calendarSelection.series.track,
+            })}
+          </Note>
+          <div className="orbit-strategy__wizard-acts">
+            <Button onClick={() => setCalendarSelection(null)} variant="ghost">
+              {t("strategy.calendar.back")}
+            </Button>
+            <Button data-testid="orbit-strategy-calendar-manual" onClick={startManualWizard} variant="ghost">
+              {t("strategy.calendar.manual")}
+            </Button>
+          </div>
+        </div>
+      ) : calendarSelectionClasses.length === 0 ? (
+        <div data-testid="orbit-strategy-calendar-classes">
+          <Note title={t("strategy.calendar.classesMissingTitle")}>
+            {t("strategy.calendar.classesMissingReason")}
+          </Note>
+          <Button data-testid="orbit-strategy-calendar-manual" onClick={startManualWizard} variant="ghost">
+            {t("strategy.calendar.manual")}
+          </Button>
+        </div>
+      ) : calendarSelection.className === undefined ? (
+        <div data-testid="orbit-strategy-calendar-classes">
+          <p className="orbit-strategy__empty-lead">
+            {formatMessage(t("strategy.calendar.chooseClass"), { track: calendarSelection.series.track })}
+          </p>
+          <div className="orbit-session-picker__list">
+            {calendarSelectionClasses.map((item) => (
+              <Featured
+                data-testid={`orbit-strategy-calendar-class-${item.name}`}
+                interactive
+                key={item.name}
+                onClick={() => setCalendarSelection({
+                  series: calendarSelection.series,
+                  className: item.name,
+                })}
+              >
+                <span className="orbit-path__k">{item.name}</span>
+                {item.qualifier ? <span className="orbit-path__d">{item.qualifier}</span> : null}
+              </Featured>
+            ))}
+          </div>
+          <Button onClick={() => setCalendarSelection(null)} variant="ghost">
+            {t("strategy.calendar.back")}
+          </Button>
+        </div>
+      ) : !selectedCalendarClass?.telemetryClassName ? (
+        <div data-testid="orbit-strategy-calendar-identity-error">
+          <Note title={t("strategy.calendar.classUnresolvedTitle")}>
+            {formatMessage(t("strategy.calendar.classUnresolved"), {
+              class: calendarSelection.className,
+            })}
+          </Note>
+          <div className="orbit-strategy__wizard-acts">
+            <Button onClick={() => setCalendarSelection(null)} variant="ghost">
+              {t("strategy.calendar.back")}
+            </Button>
+            <Button data-testid="orbit-strategy-calendar-manual" onClick={startManualWizard} variant="ghost">
+              {t("strategy.calendar.manual")}
+            </Button>
+          </div>
+        </div>
+      ) : sessionCatalog.status === "ready"
+        && sessionCatalog.view.status === "available"
+        && selectedCalendarVenueCombinations.length > 0
+        && selectedCalendarLayouts.length > 1
+        && calendarSelection.trackLayout === undefined ? (
+        <div data-testid="orbit-strategy-calendar-layouts">
+          <p className="orbit-strategy__empty-lead">
+            {formatMessage(t("strategy.calendar.chooseLayout"), {
+              track: calendarSelection.series.track,
+            })}
+          </p>
+          <div className="orbit-session-picker__list">
+            {selectedCalendarLayouts.map((layout) => (
+              <Featured
+                data-testid={`orbit-strategy-calendar-layout-${layout.trackLayout}`}
+                interactive
+                key={layout.trackLayout}
+                onClick={() => setCalendarSelection({
+                  ...calendarSelection,
+                  trackLayout: layout.trackLayout,
+                })}
+              >
+                <span className="orbit-path__k">{layout.trackLayout}</span>
+                <span className="orbit-path__d">
+                  {formatMessage(t(layout.sessionCount === 1
+                    ? "strategy.calendar.layoutSessionOne"
+                    : "strategy.calendar.layoutSessionMany"), { n: layout.sessionCount })}
+                </span>
+              </Featured>
+            ))}
+          </div>
+          <div className="orbit-strategy__wizard-acts">
+            <Button onClick={() => setCalendarSelection(null)} variant="ghost">
+              {t("strategy.calendar.back")}
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div data-testid="orbit-strategy-calendar-cars">
+          <p className="orbit-strategy__empty-lead">
+            {formatMessage(t("strategy.calendar.chooseCar"), {
+              track: calendarSelection.series.track,
+              class: calendarSelection.className,
+              layout: selectedCalendarLayout ?? "",
+            })}
+          </p>
+          {sessionCatalog.status === "loading" ? (
+            <p role="status">{t("strategy.wizard.fill.autoChecking")}</p>
+          ) : sessionCatalog.status === "error" ? (
+            <Note title={t("strategy.calendar.catalogUnavailableTitle")}>
+              {t("strategy.wizard.fill.autoCatalogUnavailable")}
+            </Note>
+          ) : sessionCatalog.view.status === "no_authorized_telemetry" ? (
+            <Note title={t("strategy.calendar.noSessionsTitle")}>
+              {t("strategy.wizard.fill.autoNoSessions")}
+            </Note>
+          ) : selectedCalendarVenueCombinations.length === 0 ? (
+            <Note title={t("strategy.calendar.noMatchTitle")}>
+              {t("strategy.calendar.noMatch")}
+            </Note>
+          ) : selectedCalendarAllCombinations.length === 0 ? (
+            <Note title={t("strategy.calendar.noLayoutMatchTitle")}>
+              {formatMessage(t("strategy.calendar.noLayoutMatch"), {
+                layout: selectedCalendarLayout ?? "",
+              })}
+            </Note>
+          ) : selectedCalendarCombinations.length === 0 ? (
+            <Note title={t("strategy.calendar.noClassifiedTitle")}>
+              {t("strategy.wizard.fill.autoNoClassifiedLaps")}
+            </Note>
+          ) : selectedCalendarStart === undefined ? (
+            <Note title={t("strategy.calendar.noStartTitle")}>
+              {t("strategy.calendar.noStart")}
+            </Note>
+          ) : (
+            <div className="orbit-session-picker__list">
+              {selectedCalendarCombinations.map((combination) => (
+                <Featured
+                  data-testid={`orbit-strategy-calendar-car-${combination.combinationId}`}
+                  interactive
+                  key={combination.combinationId}
+                  onClick={() => void createFromCalendarTelemetry(combination.combinationId)}
+                >
+                  <span className="orbit-path__k">{combination.carName}</span>
+                  <span className="orbit-path__d">{combination.trackLayout}</span>
+                  <span className="orbit-session-picker__buckets">
+                    {combination.climateBuckets.map((bucket) =>
+                      `${t(`strategy.sessions.bucket.${bucket.bucket}`)} ${bucket.laps}`,
+                    ).join(" · ")}
+                  </span>
+                </Featured>
+              ))}
+            </div>
+          )}
+          {sessionSave === "error" ? <p role="alert">{t("strategy.sessions.saveError")}</p> : null}
+          <div className="orbit-strategy__wizard-acts">
+            <Button onClick={() => setCalendarSelection(null)} variant="ghost">
+              {t("strategy.calendar.back")}
+            </Button>
+            {(sessionCatalog.status !== "ready"
+              || sessionCatalog.view.status !== "available"
+              || selectedCalendarCombinations.length === 0
+              || selectedCalendarStart === undefined) ? (
+              <Button data-testid="orbit-strategy-calendar-manual" onClick={startManualWizard} variant="ghost">
+                {t("strategy.calendar.manual")}
+              </Button>
+            ) : null}
+          </div>
+        </div>
+      )}
+    </Surface>
+  );
+
   const entryMenu = (
     <div className="orbit-strategy__empty-stack">
       <Surface
@@ -1516,6 +2499,8 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
           </Featured>
         </div>
       </Surface>
+
+      {calendarRaceView}
 
       <Surface
         aria-label={t("strategy.home.saved")}
@@ -1577,12 +2562,61 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
   );
 
   // ── entrada: menú, asistente o formulario ───────────────────────────────
-  if (!eventRecord || !strategyEvent || !active || !plan) {
+  if (!eventRecord || !strategyEvent || !storedActive) {
     return (
       <div className="orbit-strategy orbit-strategy--empty" data-testid="orbit-strategy">
         {contextSlot ? createPortal(context, contextSlot) : null}
+        <StrategyColdStartBanner client={applicationClient} onImported={() => setSessionCatalogRetry((value) => value + 1)} t={t} />
         {form ? eventForm : (wizardView ?? entryMenu)}
+        {editorFailureView}
         {deleteDialog}
+        {migrationDialog}
+      </div>
+    );
+  }
+
+  if (!eventCombination && sessionPickerDismissed !== eventRecord.id && sessionCatalog.status === "ready") {
+    return (
+      <div className="orbit-strategy orbit-strategy--empty" data-testid="orbit-strategy">
+        {contextSlot ? createPortal(context, contextSlot) : null}
+        <StrategyColdStartBanner client={applicationClient} onImported={() => setSessionCatalogRetry((value) => value + 1)} t={t} />
+        {sessionPickerView}
+        {editorFailureView}
+        {migrationDialog}
+      </div>
+    );
+  }
+
+  if (!calculationCurrent) {
+    return (
+      <div className="orbit-strategy orbit-strategy--empty" data-testid="orbit-strategy">
+        {contextSlot ? createPortal(context, contextSlot) : null}
+        <Surface data-testid="orbit-strategy-calculation-loading" title={t("strategy.calculation.loading")}>
+          <p role="status">{t("strategy.calculation.loadingHint")}</p>
+        </Surface>
+        {editorFailureView}
+        {migrationDialog}
+      </div>
+    );
+  }
+
+  if (calculation.status === "error" || !active || !plan) {
+    const message = calculation.status === "error" ? calculation.message : t("strategy.calculation.missing");
+    const detail = calculation.status === "error"
+      ? [calculation.code, calculation.field].filter(Boolean).join(" · ")
+      : "";
+    return (
+      <div className="orbit-strategy orbit-strategy--empty" data-testid="orbit-strategy">
+        {contextSlot ? createPortal(context, contextSlot) : null}
+        <Surface data-testid="orbit-strategy-calculation-error" title={t("strategy.calculation.error")}>
+          <p role="alert">{message}</p>
+          {detail ? <p className="orbit-strategy__meta">{detail}</p> : null}
+          <Button onClick={() => setCalculationRetry((value) => value + 1)} variant="primary">
+            {t("strategy.calculation.retry")}
+          </Button>
+        </Surface>
+        {editorFailureView}
+        {migrationDialog}
       </div>
     );
   }
@@ -1595,18 +2629,18 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
 
   // ── derivados de las pestañas Estrategias y Disponibilidad ──────────────
   const cards = Object.values(variants);
-  const plansById: Record<string, StrategyPlan> = Object.fromEntries(
-    cards.map((variant) => [variant.id, buildPlan(event, driversById, variant)]),
-  );
+  const eco = cards.find((variant) => plansById[variant.id]?.savingApplied);
+  const ecoPlan = eco ? plansById[eco.id] : undefined;
+  const ecoComparison = eco && calculation.status === "success" && calculationCurrent
+    ? calculation.result.comparisons[eco.id]
+    : undefined;
+  const analysisClasses = calendar.calendar?.series
+    ?.find((series) => series.id === eventRecord.seriesId)
+    ?.classes?.map((item) => item.name) ?? [event.vehicleClass];
   const others = cards.filter((variant) => variant.id !== active.id);
   const compare = others.find((variant) => variant.id === compareId) ?? others[0];
-  const verdict = compare
-    ? compareStrategies(
-        { id: active.id, plan },
-        { id: compare.id, plan: plansById[compare.id] },
-        event.pitS,
-        drivers,
-      )
+  const verdict = compare && calculation.status === "success" && calculationCurrent
+    ? calculation.result.comparisons[compare.id] ?? null
     : null;
   const verdictText = verdict
     ? formatMessage(t("strategy.cards.verdict"), {
@@ -1646,7 +2680,7 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
         return base;
       })();
   const spanMin = Math.ceil(event.durationMin * 1.02);
-  const slices = distribution(plan, drivers);
+  const slices = distributionView(plan, drivers);
   const donutSlices: DonutSlice[] = slices.map((slice) => ({
     id: slice.driver.id,
     label: `${slice.driver.name.split(" ")[0]} · ${
@@ -1656,6 +2690,10 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
     color: slice.driver.color,
   }));
   const totalTime = slices.reduce((sum, slice) => sum + slice.time, 0);
+  const tankInputView = strategyInputProvenance(eventPlanningInputs, "tank_liters", event.tankL);
+  const pitInputView = strategyInputProvenance(eventPlanningInputs, "pit_loss_seconds", event.pitS);
+  const effectiveTankLiters = tankInputView.value;
+  const effectivePitSeconds = pitInputView.value;
 
   const blocksOf = (driver: StrategyDriver): TimelineBlock[] => {
     const mine = plan.stints.filter((stint) => stint.d === driver.id);
@@ -1671,7 +2709,7 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
       .map((stint) => ({
         id: `pit-${stint.i}`,
         start: new Date(timelineStart.getTime() + stint.end * 1000),
-        durationMin: event.pitS / 60,
+        durationMin: (effectivePitSeconds ?? 0) / 60,
         color: "var(--orbit-ember)",
         label: t("strategy.pit.label"),
       }));
@@ -1694,10 +2732,118 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
       : active.mode === "eco"
         ? t("strategy.stints.eco")
         : t("strategy.stints.dry");
+  const lifecycleReference = lifecycle.state?.savedRevision ?? lifecycle.state?.activePlan?.revision;
+  const lifecycleStatus = lifecycle.status === "loading" || lifecycleReference || lifecycle.failure ? (
+    <div className="orbit-note" data-testid="orbit-strategy-revision-status">
+      {lifecycle.status === "loading" ? <span role="status">{t("strategy.lifecycle.loading")}</span> : null}
+      {lifecycleReference ? (
+        <>
+          <b>{visibleRevisionIsActive ? t("strategy.lifecycle.active") : t("strategy.lifecycle.saved")}</b>
+          <span>{lifecycleReference.revisionId} · {lifecycleReference.contentHash.slice(0, 12)}</span>
+        </>
+      ) : null}
+      {lifecycle.status === "error" && lifecycle.failure ? (
+        <div data-testid="orbit-strategy-lifecycle-error" role="alert">
+          <b>{t("strategy.lifecycle.error")}</b>
+          <span>{lifecycle.failure.message}</span>
+          {[lifecycle.failure.code, lifecycle.failure.field].filter(Boolean).join(" · ") ? (
+            <small>{[lifecycle.failure.code, lifecycle.failure.field].filter(Boolean).join(" · ")}</small>
+          ) : null}
+          <Button onClick={() => setLifecycleRetry((value) => value + 1)} size="sm" variant="ghost">
+            {t("strategy.lifecycle.retry")}
+          </Button>
+        </div>
+      ) : null}
+    </div>
+  ) : null;
+  const sessionDecisionByID = new Map(eventSessionDecisions.map((session) => [session.sessionId, session.included]));
+  const sessionsPanel = sessionCatalog.status === "error" ? (
+    <Note title={t("strategy.sessions.errorTitle")}>
+      {sessionCatalog.message}
+      <Button onClick={() => setSessionCatalogRetry((value) => value + 1)} size="sm" variant="ghost">
+        {t("strategy.sessions.retry")}
+      </Button>
+    </Note>
+  ) : !eventCombination ? (
+    <Note title={t("strategy.sessions.manualTitle")}>{t("strategy.sessions.manual")}</Note>
+  ) : (
+    <div className="orbit-strategy__sessions" data-testid="orbit-strategy-sessions">
+      <div className="orbit-strategy__sessions-head">
+        <b>{eventCombination.trackName} · {eventCombination.carName}</b>
+        <span>{eventCombination.carClass}</span>
+      </div>
+      {eventCombination.sessions.map((session) => {
+        const included = sessionDecisionByID.get(session.sessionId) ?? session.defaultIncluded;
+        const reason = included
+          ? t("strategy.sessions.included")
+          : session.defaultIncluded
+            ? t("strategy.sessions.userExcluded")
+            : t(`strategy.sessions.reason.${session.exclusionReason ?? "no_completed_lap"}`);
+        return (
+          <div className="orbit-strategy__session-row" data-included={included ? "true" : "false"} key={session.sessionId}>
+            <span>
+              <b>{t(`strategy.sessions.type.${session.type}`)}</b>
+              <small>{new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(session.lastActivity))}</small>
+            </span>
+            <span className="orbit-strategy__session-reason">{reason}</span>
+            <Button
+              aria-pressed={included}
+              disabled={sessionSave === "saving"}
+              onClick={() => void toggleSession(session.sessionId)}
+              size="sm"
+              variant={included ? "ghost" : "primary"}
+            >
+              {included ? t("strategy.sessions.exclude") : t("strategy.sessions.include")}
+            </Button>
+          </div>
+        );
+      })}
+      {sessionSave === "error" ? <p role="alert">{t("strategy.sessions.saveError")}</p> : null}
+    </div>
+  );
+  const planningInputsPanel = (
+    <div className="orbit-planning-inputs" data-testid="orbit-planning-inputs">
+      {([
+        ["fuel_per_lap_liters", t("strategy.inputs.field.fuel"), "L/v", drivers[0]?.dry[1]],
+        ["ve_per_lap_percent", t("strategy.inputs.field.ve"), "%/v", undefined],
+        ["base_pace_seconds", t("strategy.inputs.field.pace"), "s", drivers[0]?.dry[0]],
+        ["tank_liters", t("strategy.inputs.field.tank"), "L", event.tankL],
+        ["pit_loss_seconds", t("strategy.inputs.field.pit"), "s", event.pitS],
+        ["tyre_life_laps", t("strategy.inputs.field.tyreLife"), t("strategy.inputs.unit.laps"), undefined],
+        ["degradation_per_lap_seconds", t("strategy.inputs.field.degradation"), "s/v", undefined],
+        ["saving_fuel_per_lap", t("strategy.inputs.field.savingFuel"), "L/v", undefined],
+        ["saving_time_cost_per_lap", t("strategy.inputs.field.savingCost"), "s/v", undefined],
+      ] as const).map(([field, label, unit, fallback]) => (
+        <PlanningInputRow
+          field={field}
+          key={field}
+          label={label}
+          onCommit={(changedField, value) => void commitPlanningInput(changedField, value)}
+          t={t}
+          unit={unit}
+          view={strategyInputProvenance(eventPlanningInputs, field, fallback)}
+        />
+      ))}
+    </div>
+  );
+  const weatherPanel = (
+    <StrategyWeatherPanel
+      combinationId={eventCombination?.combinationId}
+      eventId={eventRecord.id}
+      onSave={(scenarios) => void commitWeatherScenarios(scenarios)}
+      result={calculation.status === "success" && calculationCurrent ? calculation.result.weather : undefined}
+      saving={weatherSave}
+      scenarios={eventWeatherScenarios}
+      t={t}
+    />
+  );
 
   return (
     <div className="orbit-strategy" data-testid="orbit-strategy">
       {contextSlot ? createPortal(context, contextSlot) : null}
+      {migrationDialog}
+
+      <StrategyColdStartBanner client={applicationClient} onImported={() => setSessionCatalogRetry((value) => value + 1)} t={t} />
 
       <header className="orbit-strategy__head">
         <Monogram
@@ -1739,6 +2885,22 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
           >
             {t("strategy.backToMenu")}
           </Button>
+          <Button
+            data-testid="orbit-strategy-save-revision"
+            disabled={lifecycle.status === "loading" || lifecycle.status === "busy"}
+            onClick={() => void saveVisibleRevision()}
+            variant="primary"
+          >
+            {t("strategy.lifecycle.save")}
+          </Button>
+          <Button
+            data-testid="orbit-strategy-activate-revision"
+            disabled={!lifecycle.state?.savedRevision || lifecycle.status === "busy" || visibleRevisionIsActive}
+            onClick={() => void activateVisibleRevision()}
+            variant="ghost"
+          >
+            {visibleRevisionIsActive ? t("strategy.lifecycle.active") : t("strategy.lifecycle.activate")}
+          </Button>
           <Menu
             items={[
               {
@@ -1779,12 +2941,16 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
         </div>
       </header>
 
+      {editorFailureView}
+      {lifecycleStatus}
+
       <UnderlineTabs<StrategyTab>
         className="orbit-strategy__tabs"
         label={t("strategy.tabs.label")}
         onChange={setTab}
         tabs={[
           { id: "overview", label: t("strategy.tabs.overview") },
+          { id: "analysis", label: t("strategy.tabs.analysis") },
           { id: "strategies", label: t("strategy.tabs.strategies") },
           // Un evento en solitario no reparte turnos: la pestaña sobraría.
           ...(soloBoard ? [] : [{ id: "availability" as const, label: t("strategy.tabs.availability") }]),
@@ -1792,7 +2958,21 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
         value={tab}
       />
 
-      {form ? eventForm : tab === "strategies" ? (
+      {form ? eventForm : tab === "analysis" ? (
+        <StrategyAnalysisPanel
+          active={active}
+          classes={analysisClasses}
+          comparison={ecoComparison}
+          eco={eco}
+          ecoPlan={ecoPlan}
+          event={event}
+          eventProvenance={eventRecord.source === "series" ? "reference" : eventRecord.fillMode === "telemetry" ? "derived" : "manual"}
+          plan={plan}
+          planningInputs={eventPlanningInputs}
+          start={timelineStart}
+          t={t}
+        />
+      ) : tab === "strategies" ? (
         <div className="orbit-strategy__pane" data-testid="orbit-strategy-strategies">
           <div className="orbit-strats-grid">
             {cards.map((variant) => {
@@ -1800,7 +2980,7 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
               return (
                 <article
                   className="orbit-strat-card"
-                  data-active={variant.id === active.id ? "true" : undefined}
+                  data-active={variant.id === active.id && visibleRevisionIsActive ? "true" : undefined}
                   data-testid={`orbit-strat-${variant.id}`}
                   key={variant.id}
                 >
@@ -1828,22 +3008,22 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
                   <div className="orbit-strat-card__acts">
                     {variant.id === active.id ? (
                       <Button
-                        data-tip={t("strategy.cards.activeTip")}
+                        data-tip={visibleRevisionIsActive ? t("strategy.cards.activeTip") : t("strategy.lifecycle.selectedTip")}
                         data-tip-side="top"
                         disabled
                         size="sm"
                         variant="ghost"
                       >
-                        {t("strategy.cards.active")}
+                        {visibleRevisionIsActive ? t("strategy.cards.active") : t("strategy.lifecycle.selected")}
                       </Button>
                     ) : (
                       <Button
-                        data-testid={`orbit-strat-activate-${variant.id}`}
-                        onClick={() => activate(variant.id)}
+                        data-testid={`orbit-strat-select-${variant.id}`}
+                        onClick={() => selectVariant(variant.id)}
                         size="sm"
                         variant="primary"
                       >
-                        {t("strategy.cards.activate")}
+                        {t("strategy.lifecycle.select")}
                       </Button>
                     )}
                     <Button
@@ -1988,16 +3168,16 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
             />
             <StatTile
               label={t("strategy.kpi.tank")}
-              sub={formatMessage(t("strategy.kpi.tankHint"), {
+              sub={`${formatMessage(t("strategy.kpi.tankHint"), {
                 laps: plan.maxLaps,
                 l: plan.avgFuel.toFixed(2),
-              })}
-              value={`${event.tankL} L`}
+              })} · ${t(`strategy.inputs.chip.${tankInputView.kind}`)}`}
+              value={effectiveTankLiters === undefined ? "—" : `${effectiveTankLiters} L`}
             />
             <StatTile
               label={t("strategy.kpi.pit")}
-              sub={t("strategy.kpi.pitHint")}
-              value={lapTime(event.pitS)}
+              sub={`${t("strategy.kpi.pitHint")} · ${t(`strategy.inputs.chip.${pitInputView.kind}`)}`}
+              value={effectivePitSeconds === undefined ? "—" : lapTime(effectivePitSeconds)}
             />
             <StatTile
               label={t("strategy.kpi.stops")}
@@ -2008,6 +3188,28 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
               value={plan.stops}
             />
           </StatRow>
+
+          {eventCombination || catalogView ? (
+            <div className="orbit-strategy__evidence">
+              {eventCombination ? (
+                <StrategyValidatedExamplesPanel locale={locale} state={validatedExamples} t={t} />
+              ) : null}
+              {catalogView ? (
+                <StrategyReferencePanel
+                  client={applicationClient}
+                  event={eventRecord}
+                  existing={catalogView.events.find((candidate) => candidate.id === eventRecord.id)}
+                  onSaved={(saved, repositoryVersion) => setSessionCatalog((current) => {
+                    if (current.status !== "ready") return current;
+                    const events = [...current.view.events.filter((candidate) => candidate.id !== saved.id), saved];
+                    return { status: "ready", view: { ...current.view, repositoryVersion, events, planningByEvent: saved.planningInputs ? { ...current.view.planningByEvent, [saved.id]: saved.planningInputs } : current.view.planningByEvent } };
+                  })}
+                  repositoryVersion={catalogView.repositoryVersion}
+                  t={t}
+                />
+              ) : null}
+            </div>
+          ) : null}
 
           <div className="orbit-strategy__grid">
             <Surface
@@ -2077,7 +3279,7 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
               <p className="orbit-strategy__edge">
                 {formatMessage(t("strategy.stints.start"), {
                   time: hhmm(event.startMin),
-                  fuel: Math.min(event.tankL, plan.stints[0]?.fuel ?? 0).toFixed(0),
+                  fuel: Math.min(effectiveTankLiters ?? 0, plan.stints[0]?.fuel ?? 0).toFixed(0),
                 })}
               </p>
 
@@ -2140,7 +3342,7 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
                           <span className="orbit-stint__k">{t("strategy.stints.pitWindow")}</span>
                           <span className="orbit-stint__v orbit-stint__v--num">
                             {index < plan.stints.length - 1
-                              ? `${hhmm(pitWindowClock(event, stint))} (~V${pitWindowLap(stint)})`
+                              ? `${hhmm(stintClock(event, stint.pitWindowSeconds))} (~V${stint.pitWindowLap})`
                               : "—"}
                           </span>
                         </span>
@@ -2213,6 +3415,7 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
                                 onBlur={(e) => setOverride(stint.i, "laps", e.currentTarget.value)}
                                 aria-label={t("strategy.editor.laps")}
                               />
+                              <InputProvenanceChip t={t} view={{ kind: "manual", presence: "valid", value: stint.laps, canRevert: false }} />
                             </label>
                             <label className="orbit-stint-editor__field">
                               <span>{t("strategy.editor.fuel")}</span>
@@ -2225,6 +3428,7 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
                                 unit="L"
                                 aria-label={t("strategy.editor.fuel")}
                               />
+                              <InputProvenanceChip t={t} view={{ kind: "manual", presence: "valid", value: stint.fuel, canRevert: false }} />
                             </label>
                             <span className="orbit-stint-editor__field">
                               <span>{t("strategy.editor.pace")}</span>
@@ -2322,8 +3526,11 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
                   label={t("strategy.drivers.title")}
                   onChange={setPanel}
                   options={[
+                    { value: "inputs", label: t("strategy.inputs.tab") },
                     { value: "drivers", label: t("strategy.drivers.title") },
                     { value: "tyres", label: t("strategy.drivers.tyres") },
+                    { value: "sessions", label: t("strategy.sessions.title") },
+                    { value: "weather", label: t("strategy.weather.tab") },
                   ]}
                   value={panel}
                 />
@@ -2332,15 +3539,20 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
               className="orbit-strategy__side"
               fill
               meta={
-                panel === "drivers"
+                panel === "inputs"
+                  ? (eventCombination ? t("strategy.inputs.combinedShort") : t("strategy.inputs.manualShort"))
+                  : panel === "drivers"
                   ? String(drivers.length)
-                  : formatMessage(t("strategy.drivers.inUse"), {
+                  : panel === "tyres" ? formatMessage(t("strategy.drivers.inUse"), {
                       n: inventory.length,
                       used: Object.keys(uses).length,
                     })
+                    : panel === "sessions"
+                      ? String(eventCombination?.sessions.length ?? 0)
+                      : String(eventWeatherScenarios.length)
               }
             >
-              {panel === "drivers" ? (
+              {panel === "inputs" ? planningInputsPanel : panel === "drivers" ? (
                 <div className="orbit-strategy__drivers" data-testid="orbit-strategy-drivers">
                   {drivers.map((driver) => (
                     <article
@@ -2366,16 +3578,34 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
                             ["wet", t("strategy.drivers.wet"), "var(--orbit-cyan)"],
                             ["eco", t("strategy.drivers.eco"), "var(--orbit-green)"],
                           ] as const
-                        ).map(([mode, label, color]) => (
-                          <div className="orbit-driver__pace" key={mode}>
-                            <span>
-                              <i aria-hidden="true" style={{ background: color }} />
-                              {label}
-                            </span>
-                            <b>{lapTime(driver[mode][0])}</b>
-                            <em>{driver[mode][1].toFixed(2)} L/v</em>
-                          </div>
-                        ))}
+                        ).map(([mode, label, color]) => {
+                          const paceView = mode === "eco"
+                            ? strategyEcoProvenance(eventPlanningInputs, "base_pace_seconds", driver[mode][0])
+                            : strategyInputProvenance(
+                                eventPlanningInputs,
+                                "base_pace_seconds",
+                                driver[mode][0],
+                                mode === "wet" ? "wet" : "dry",
+                              );
+                          const fuelView = mode === "eco"
+                            ? strategyEcoProvenance(eventPlanningInputs, "fuel_per_lap_liters", driver[mode][1])
+                            : strategyInputProvenance(
+                                eventPlanningInputs,
+                                "fuel_per_lap_liters",
+                                driver[mode][1],
+                                mode === "wet" ? "wet" : "dry",
+                              );
+                          return (
+                            <div className="orbit-driver__pace" key={mode}>
+                              <span>
+                                <i aria-hidden="true" style={{ background: color }} />
+                                {label}
+                              </span>
+                              <EffectiveInputDisplay as="b" format={lapTime} t={t} view={paceView} />
+                              <EffectiveInputDisplay as="em" format={(value) => `${value.toFixed(2)} L/v`} t={t} view={fuelView} />
+                            </div>
+                          );
+                        })}
                       </div>
                       {/* Los pilotos son del evento local: sus ritmos y su
                           consumo se editan aquí y el plan se recalcula
@@ -2429,6 +3659,7 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
                                   unit="s"
                                   value={String(driver[mode][0])}
                                 />
+                                <InputProvenanceChip t={t} view={manualInputView(driver[mode][0])} />
                               </label>
                               <label className="orbit-driver__field">
                                 <span>
@@ -2448,6 +3679,7 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
                                   unit="L/v"
                                   value={String(driver[mode][1])}
                                 />
+                                <InputProvenanceChip t={t} view={manualInputView(driver[mode][1])} />
                               </label>
                             </div>
                           ))}
@@ -2456,37 +3688,43 @@ export function StrategyOrbitPage({ runtimeFactory, roster: injected }: Strategy
                     </article>
                   ))}
                 </div>
-              ) : (
+              ) : panel === "tyres" ? (
                 <div className="orbit-strategy__tyres" data-testid="orbit-strategy-tyres">
-                  <p className="orbit-strategy__tyre-hint">{t("strategy.drivers.hint")}</p>
-                  <div className="orbit-strategy__tyre-list">
-                    {inventory.map((tyre) => {
-                      const used = uses[tyre.id] ?? [];
-                      const condition = tyreCondition(tyre, used.length);
-                      return (
-                        <TyreItem
-                          key={tyre.id}
-                          onPick={() => {
-                            const next = picked === tyre.id ? null : tyre.id;
-                            setPicked(next);
-                            if (next && editing < 0) {
-                              toast.show(t("strategy.drivers.picked"), t("strategy.drivers.pickedHint"));
-                            }
-                          }}
-                          picked={picked === tyre.id}
-                          tyre={{
-                            id: tyre.id,
-                            compound: chipCompound(tyre),
-                            condition: condition.max,
-                            label: t("strategy.tyres.free"),
-                          }}
-                          used={used.map((use) => ({ stint: use.stint + 1, corner: use.corner }))}
-                        />
-                      );
-                    })}
-                  </div>
+                  {inventory.length === 0 ? (
+                    <Note title={t("strategy.tyres.emptyTitle")}>{t("strategy.tyres.empty")}</Note>
+                  ) : (
+                    <>
+                      <p className="orbit-strategy__tyre-hint">{t("strategy.drivers.hint")}</p>
+                      <div className="orbit-strategy__tyre-list">
+                        {inventory.map((tyre) => {
+                          const used = uses[tyre.id] ?? [];
+                          const condition = tyreCondition(tyre, used.length);
+                          return (
+                            <TyreItem
+                              key={tyre.id}
+                              onPick={() => {
+                                const next = picked === tyre.id ? null : tyre.id;
+                                setPicked(next);
+                                if (next && editing < 0) {
+                                  toast.show(t("strategy.drivers.picked"), t("strategy.drivers.pickedHint"));
+                                }
+                              }}
+                              picked={picked === tyre.id}
+                              tyre={{
+                                id: tyre.id,
+                                compound: chipCompound(tyre),
+                                condition: condition.max,
+                                label: t("strategy.tyres.free"),
+                              }}
+                              used={used.map((use) => ({ stint: use.stint + 1, corner: use.corner }))}
+                            />
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
                 </div>
-              )}
+              ) : panel === "sessions" ? sessionsPanel : weatherPanel}
             </Surface>
           </div>
         </div>

@@ -1,0 +1,43 @@
+{
+  "cases": [
+    {
+      "name": "shared clock exposes observed rates",
+      "origin": "source_timestamp",
+      "fuelValues": [50, 50, 50, 50, 50, 52, 54, 56, 58, 58, 58, 58, 58],
+      "veValues": [30, 30, 30, 30, 30, 31.25, 32.5, 33.75, 35, 35, 35, 35, 35],
+      "presence": "unknown",
+      "ambiguous": false,
+      "ambiguityReason": "",
+      "fuelAddedLiters": 8,
+      "fuelRateLPerS": 4,
+      "veAddedPercent": 5,
+      "veRatePercentPerSec": 2.5
+    },
+    {
+      "name": "unknown clock never aligns resources",
+      "origin": "unknown",
+      "fuelValues": [50, 50, 50, 50, 50, 52, 54, 56, 58, 58, 58, 58, 58],
+      "veValues": [30, 30, 30, 30, 30, 31.25, 32.5, 33.75, 35, 35, 35, 35, 35],
+      "presence": "unknown",
+      "ambiguous": true,
+      "ambiguityReason": "resource_clock_unaligned",
+      "fuelAddedLiters": null,
+      "fuelRateLPerS": null,
+      "veAddedPercent": null,
+      "veRatePercentPerSec": null
+    },
+    {
+      "name": "pit without resource rise stays ambiguous",
+      "origin": "source_timestamp",
+      "fuelValues": [50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50],
+      "veValues": [30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30],
+      "presence": "unknown",
+      "ambiguous": true,
+      "ambiguityReason": "no_resource_rise_detected",
+      "fuelAddedLiters": null,
+      "fuelRateLPerS": null,
+      "veAddedPercent": null,
+      "veRatePercentPerSec": null
+    }
+  ]
+}

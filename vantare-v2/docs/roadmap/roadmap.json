@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-25T22:14:30Z",
+  "generatedAt": "2026-08-26T22:24:34Z",
   "digest": {
-    "lastCommit": "91efbb8ec02fdf49128cf7454a512dbb6ed37977"
+    "lastCommit": "1d3ab03dfd48efde264bec28b131faa24fcf6739"
   },
   "phases": [
     {
@@ -565,6 +565,94 @@
       }
     },
     {
+      "id": "strategy-rework-ab",
+      "type": "feature",
+      "title": {
+        "es": "Estrategia definitiva sobre telemetría real",
+        "en": "Definitive strategy over real telemetry",
+        "pt": "Estratégia definitiva sobre telemetria real",
+        "it": "Strategia definitiva su telemetria reale"
+      },
+      "body": {
+        "es": "El planificador usa una única autoridad de cálculo y guardado sobre las sesiones DuckDB reales de LMU. La entrada asistida parte de las carreras del calendario, cruza sede y clase mediante identidades canónicas declaradas en Go y solo pide trazado cuando el histórico contiene varios; después Orbit aplica inputs y clima, muestra backtests neutrales, ofrece referencias firmadas e importa el histórico local con progreso.",
+        "en": "The planner uses one calculation and storage authority over real LMU DuckDB sessions. Assisted entry starts from calendar races, joins venue and class through canonical identities declared in Go, and asks for a layout only when history contains several; Orbit then applies inputs and weather, shows neutral backtests, offers signed references, and imports local history with progress.",
+        "pt": "O planeador usa uma única autoridade de cálculo e gravação sobre as sessões DuckDB reais do LMU. A entrada assistida começa nas corridas do calendário, cruza circuito e classe através de identidades canónicas declaradas em Go e só pede o traçado quando o histórico contém vários; depois o Orbit aplica inputs e meteorologia, mostra backtests neutros, oferece referências assinadas e importa o histórico local com progresso.",
+        "it": "Il pianificatore usa un'unica autorità di calcolo e salvataggio sulle sessioni DuckDB reali di LMU. L'ingresso assistito parte dalle gare del calendario, collega sede e classe tramite identità canoniche dichiarate in Go e chiede il tracciato solo quando lo storico ne contiene più di uno; Orbit applica poi input e meteo, mostra backtest neutrali, offre riferimenti firmati e importa lo storico locale con avanzamento."
+      },
+      "label": {
+        "es": "Feature",
+        "en": "Feature",
+        "pt": "Feature",
+        "it": "Feature"
+      }
+    },
+    {
+      "id": "strategy-orbit-solve-v2",
+      "type": "feature",
+      "title": {
+        "es": "Cálculo Orbit sobre el motor completo",
+        "en": "Orbit calculation on the full engine",
+        "pt": "Cálculo do Orbit no motor completo",
+        "it": "Calcolo Orbit sul motore completo"
+      },
+      "body": {
+        "es": "Orbit ya envía los valores manuales, derivados y sus overrides al motor Strategy completo con su procedencia. El plan exige la reserva configurable, publica el margen efectivo, minimiza Fuel/VE inicial entre empates y rechaza con causa un resultado imposible.",
+        "en": "Orbit now sends manual and derived values, plus their overrides, to the full Strategy engine with provenance. The plan enforces the configurable reserve, publishes the effective margin, minimizes initial Fuel/VE among ties, and rejects an impossible result with a concrete reason.",
+        "pt": "O Orbit agora envia valores manuais e derivados, incluindo os overrides, para o motor Strategy completo com a respetiva procedência. O plano exige a reserva configurável, publica a margem efetiva, minimiza Fuel/VE inicial em empates e rejeita com uma causa concreta um resultado impossível.",
+        "it": "Orbit ora invia valori manuali e derivati, inclusi gli override, al motore Strategy completo con la relativa provenienza. Il piano applica la riserva configurabile, pubblica il margine effettivo, minimizza Fuel/VE iniziale nei pareggi e rifiuta con una causa concreta un risultato impossibile."
+      },
+      "label": {
+        "es": "Feature",
+        "en": "Feature",
+        "pt": "Feature",
+        "it": "Feature"
+      }
+    },
+    {
+      "id": "strategy-pseudonymous-contribution",
+      "type": "feature",
+      "title": {
+        "es": "Contribución seudonimizada de Strategy",
+        "en": "Pseudonymous Strategy contribution",
+        "pt": "Contribuição pseudonimizada de Strategy",
+        "it": "Contributo pseudonimizzato di Strategy"
+      },
+      "body": {
+        "es": "Ajustes > Privacidad permite aceptar una versión del consentimiento, inspeccionar cada bundle y su historial, y pausar la cola. Pausar cancela lo aún no aceptado; lo ya aceptado queda enviado. Revocar el consentimiento y pedir el borrado remoto son acciones separadas. Los envíos nacen desactivados hasta configurar un Worker revisado.",
+        "en": "Settings > Privacy lets users accept a consent-text version, inspect every bundle and its history, and pause the queue. Pausing cancels anything not yet accepted; accepted items remain sent. Revoking consent and requesting remote deletion are separate actions. Uploads start disabled until a reviewed Worker is configured.",
+        "pt": "Ajustes > Privacidade permite aceitar uma versão do consentimento, inspecionar cada bundle e o seu histórico e pausar a fila. A pausa cancela o que ainda não foi aceite; o que já foi aceite permanece enviado. Revogar o consentimento e pedir a eliminação remota são ações separadas. Os envios começam desativados até configurar um Worker revisto.",
+        "it": "Impostazioni > Privacy consente di accettare una versione del consenso, ispezionare ogni bundle e la sua cronologia e mettere in pausa la coda. La pausa annulla ciò che non è ancora stato accettato; gli elementi accettati restano inviati. Revoca del consenso e cancellazione remota sono azioni separate. Gli invii partono disattivati finché non viene configurato un Worker verificato."
+      },
+      "label": {
+        "es": "Feature",
+        "en": "Feature",
+        "pt": "Feature",
+        "it": "Feature"
+      }
+    },
+    {
+      "id": "strategy-local-editorial-cycle",
+      "type": "feature",
+      "title": {
+        "es": "Ciclo editorial local de Strategy",
+        "en": "Local Strategy editorial cycle",
+        "pt": "Ciclo editorial local de Strategy",
+        "it": "Ciclo editoriale locale di Strategy"
+      },
+      "body": {
+        "es": "Un ciclo local predigiere los bundles, prepara para el LLM un informe sin datos crudos ni identificadores y deja a Isaac aprobar perfiles y estrategias antes de generar un catálogo sin firmar. La sincronización remota, la firma y la publicación siguen detrás de sus gates humanos.",
+        "en": "A local cycle predigests bundles, prepares an LLM report without raw data or identifiers, and lets Isaac approve profiles and strategies before generating an unsigned catalogue. Remote synchronization, signing and publication remain behind their human gates.",
+        "pt": "Um ciclo local pré-digere os bundles, prepara para o LLM um relatório sem dados brutos nem identificadores e deixa Isaac aprovar perfis e estratégias antes de gerar um catálogo sem assinatura. A sincronização remota, a assinatura e a publicação continuam atrás dos seus gates humanos.",
+        "it": "Un ciclo locale predigerisce i bundle, prepara per l'LLM un rapporto senza dati grezzi né identificatori e lascia a Isaac l'approvazione di profili e strategie prima di generare un catalogo non firmato. Sincronizzazione remota, firma e pubblicazione restano dietro i rispettivi gate umani."
+      },
+      "label": {
+        "es": "Feature",
+        "en": "Feature",
+        "pt": "Feature",
+        "it": "Feature"
+      }
+    },
+    {
       "id": "diagnostics-logs",
       "type": "feature",
       "title": {
@@ -611,17 +699,42 @@
   ],
   "delivered": [
     {
-      "date": "2026-08-25",
+      "date": "2026-08-26",
       "entries": [
+        {
+          "kind": "docs",
+          "scope": "release",
+          "text": "Manifiesto v0.1.0.7-testers.2 y expectativa de release-news"
+        },
+        {
+          "kind": "fix",
+          "scope": "studio",
+          "text": "Conservar editor y agilizar el rail"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-843 · Centrar columnas de Próximas"
+        },
         {
           "kind": "feat",
           "scope": "studio",
-          "text": "Rehacer el inspector de widgets — controles honestos y legibles"
-        },
+          "text": "Autosave y Ctrl+Z productivo"
+        }
+      ]
+    },
+    {
+      "date": "2026-08-25",
+      "entries": [
         {
           "kind": "docs",
           "scope": "release",
           "text": "Manifiesto v0.1.0.7-nightly.13"
+        },
+        {
+          "kind": "feat",
+          "scope": "studio",
+          "text": "Rehacer el inspector de widgets — controles honestos y legibles"
         }
       ]
     },
@@ -649,6 +762,11 @@
       "date": "2026-08-23",
       "entries": [
         {
+          "kind": "perf",
+          "scope": "studio",
+          "text": "Cache SWR del documento — los widgets pintan al instante"
+        },
+        {
           "kind": "docs",
           "scope": "release",
           "text": "Manifiesto v0.1.0.7-nightly.12 (núcleo de telemetría Go-first completo)"
@@ -662,11 +780,6 @@
           "kind": "change",
           "scope": "",
           "text": "ISA-781/782: track-weather, broadcast-tower y posicion para track-map sobre v2"
-        },
-        {
-          "kind": "perf",
-          "scope": "studio",
-          "text": "Cache SWR del documento — los widgets pintan al instante"
         }
       ]
     },
@@ -725,28 +838,28 @@
       "entries": [
         {
           "kind": "feat",
-          "scope": "telemetry",
-          "text": "Señales finas de suciedad para standings y relative"
+          "scope": "voice-cache",
+          "text": "Sintesis Kokoro real y locks verificados (#716)"
         },
         {
           "kind": "change",
           "scope": "",
-          "text": "Reducir churn de asignaciones de Apply (-74% bytes/frame)"
+          "text": "Motor de familias sobre el radio bus (F4 rework Ingeniero)"
+        },
+        {
+          "kind": "fix",
+          "scope": "build",
+          "text": "Build/ios compila fuera de iOS con constraints (#722)"
         },
         {
           "kind": "change",
           "scope": "",
-          "text": "Fingerprint LMU sin ambiguedad y fallback de version no-Steam"
+          "text": "Spotter unificado sobre el radio bus (F3 rework Ingeniero)"
         },
         {
           "kind": "change",
           "scope": "",
-          "text": "Derivacion canonica de fuel.perLap y estimacion de vueltas"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "CapabilityModesV2 reales (spatial/delta/standings/gaps)"
+          "text": "Pipeline de precacheo de voz Kokoro (F2 rework Ingeniero)"
         },
         {
           "kind": "change",
@@ -779,9 +892,9 @@
           "text": "Aislar discovery real en tests de handlers"
         },
         {
-          "kind": "change",
-          "scope": "",
-          "text": "Spotter unificado sobre el radio bus (F3 rework Ingeniero)"
+          "kind": "feat",
+          "scope": "telemetry",
+          "text": "Señales finas de suciedad para standings y relative"
         }
       ]
     },
@@ -789,39 +902,29 @@
       "date": "2026-08-20",
       "entries": [
         {
+          "kind": "change",
+          "scope": "",
+          "text": "El launcher ya no revienta con mapa nil al cachear iconos"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Promocionar el rework de telemetría Go-first a nightly"
+        },
+        {
+          "kind": "docs",
+          "scope": "roadmap",
+          "text": "Reflejar lo entregado en plan.md y exigirlo en AGENTS.md"
+        },
+        {
           "kind": "fix",
-          "scope": "release",
-          "text": "Anuncios de Discord con copy humano desde el manifiesto"
+          "scope": "orbit",
+          "text": "Alinear el harness visual del roadmap con la pagina semiautomatica"
         },
         {
-          "kind": "change",
-          "scope": "",
-          "text": "Canales de Actualizaciones clasifican stable/testers/nightly"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "Tipo válido en el fragmento de changelog"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "Fix release.yml — bloque env vacío"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "Manifiesto de release v0.1.0.7-nightly.11 y changelog"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "Módulos muertos, fix de cascada de selección y baselines refrescadas"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "Fase 8 — retirar V52, Orbit única shell, y pase de calidad"
+          "kind": "fix",
+          "scope": "orbit",
+          "text": "Capturas visuales deterministas congelando el movimiento en el harness"
         },
         {
           "kind": "feat",
@@ -847,6 +950,16 @@
           "kind": "feat",
           "scope": "estrategia",
           "text": "Menu de entrada, asistente de creacion y pase de UI"
+        },
+        {
+          "kind": "fix",
+          "scope": "release",
+          "text": "Anuncios de Discord con copy humano desde el manifiesto"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Canales de Actualizaciones clasifican stable/testers/nightly"
         }
       ]
     },
@@ -1377,76 +1490,6 @@
           "kind": "docs",
           "scope": "overlay",
           "text": "Record reversible HMR helpers"
-        },
-        {
-          "kind": "docs",
-          "scope": "overlay",
-          "text": "Record catalog invariant gate"
-        },
-        {
-          "kind": "docs",
-          "scope": "overlay",
-          "text": "Record Workshop host guard"
-        }
-      ]
-    },
-    {
-      "date": "2026-08-04",
-      "entries": [
-        {
-          "kind": "fix",
-          "scope": "overlay",
-          "text": "Validate workshop authoring controls"
-        },
-        {
-          "kind": "fix",
-          "scope": "overlay",
-          "text": "Isolate workshop from wails bootstrap"
-        },
-        {
-          "kind": "fix",
-          "scope": "overlay",
-          "text": "Complete workshop control contracts"
-        },
-        {
-          "kind": "docs",
-          "scope": "overlay",
-          "text": "Record workshop controls evidence"
-        },
-        {
-          "kind": "feat",
-          "scope": "overlay",
-          "text": "Add workshop authoring controls"
-        },
-        {
-          "kind": "fix",
-          "scope": "overlay",
-          "text": "Stabilize workshop fixture seeding"
-        },
-        {
-          "kind": "feat",
-          "scope": "overlay",
-          "text": "Add dev-only workshop MVP"
-        },
-        {
-          "kind": "docs",
-          "scope": "overlay",
-          "text": "Record verified app smoke procedure"
-        },
-        {
-          "kind": "docs",
-          "scope": "overlay",
-          "text": "Clarify local app startup failure"
-        },
-        {
-          "kind": "docs",
-          "scope": "overlay",
-          "text": "Define workshop contract"
-        },
-        {
-          "kind": "feat",
-          "scope": "roadmap",
-          "text": "Pestañas de proyectos y tareas Linear"
         }
       ]
     }

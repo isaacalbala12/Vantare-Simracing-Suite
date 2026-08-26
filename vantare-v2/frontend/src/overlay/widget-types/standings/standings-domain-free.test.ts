@@ -60,6 +60,21 @@ describe("standings v2 view model", () => {
     }
   });
 
+  it("keeps the canonical driver name available when an old profile disabled the driver column", () => {
+    const update = golden(20);
+    if (!update.frame) throw new Error("golden frame missing");
+    const legacyContent = {
+      ...CONTENT,
+      columns: CONTENT.columns.map((column) =>
+        column.metricId === "driverName" ? { ...column, enabled: false } : column,
+      ),
+    };
+    const model = buildStandingsViewModelV2(update.frame, update.source, legacyContent);
+
+    expect(model.rows[0]?.configuredDriverName).toBe(model.rows[0]?.driverName);
+    expect(model.rows[0]?.configuredDriverName).not.toBe("—");
+  });
+
   it("scopes rows to the active class without reordering them", () => {
     const update = golden(44);
     if (!update.frame) throw new Error("golden frame missing");

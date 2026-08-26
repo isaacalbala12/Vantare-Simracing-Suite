@@ -25,8 +25,11 @@
   `docs/superpowers/specs/2026-08-25-standings-redline-columnas-configurables-design.md`.
   PR draft #795/ISA-799 solapa la habilitación de motion en Studio y queda como
   dependencia de integración, no absorbida. Rama
-  `vantareapp/isa-849-standings-redline-columnas`, implementación aún no
-  iniciada, sin push, PR ni promoción.
+  `vantareapp/isa-849-standings-redline-columnas`. T1 completó el contrato
+  aditivo mínimo: V1 y V2 publican `configuredDriverName` sin alterar
+  `columns` ni los campos vigentes. Las regresiones fallaron primero y pasan
+  17/17; `pnpm --dir frontend typecheck` y `git diff --check` PASS. Sin push,
+  PR ni promoción.
 
 - **ISA-842 — autosave e historial productivo de Overlay Studio (2026-08-25,
   PR draft a nightly):** rebasada sobre `origin/nightly@c7d25f94`, la rama

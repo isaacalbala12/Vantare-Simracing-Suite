@@ -1,0 +1,76 @@
+name: Trabajo interno sin impacto en roadmap
+description: Tests o evidencia interna dentro de la allowlist cerrada de CI.
+title: ""
+labels:
+  - roadmap:not-required
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Esta exencion no se concede solo por elegir el formulario. CI acepta
+        unicamente rutas internas de su allowlist cerrada y rechaza cualquier
+        cambio en plan.md, roadmap.json o codigo productivo.
+
+  - type: textarea
+    id: objective
+    attributes:
+      label: Objetivo
+      description: Resultado interno que debe quedar al cerrar la issue.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: task_type
+    attributes:
+      label: Tipo de trabajo
+      options:
+        - tests only
+        - test fixtures only
+        - internal analysis only
+    validations:
+      required: true
+
+  - type: textarea
+    id: roadmap_impact
+    attributes:
+      label: Impacto en roadmap
+      value: "No modifica alcance, fase, area, hito, entrega publica ni codigo productivo."
+    validations:
+      required: true
+
+  - type: textarea
+    id: exemption_reason
+    attributes:
+      label: Justificacion de la exencion
+      description: Por que el cambio no debe alterar el estado publico.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected_paths
+    attributes:
+      label: Rutas previstas
+      description: >-
+        Lista cerrada de tests, testdata o docs/analysis. Escribe cada ruta
+        exacta entre backticks y actualizala si cambia el diff.
+      placeholder: "`vantare-v2/internal/example/example_test.go`"
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Criterios de aceptacion
+      description: Checks objetivos y evidencia esperada.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: contract
+    attributes:
+      label: Contrato
+      options:
+        - label: Entiendo que la label no basta y que CI validara todas las rutas reales.
+          required: true
+        - label: Si aparece impacto publico, reclasificare la issue como roadmap:required.
+          required: true

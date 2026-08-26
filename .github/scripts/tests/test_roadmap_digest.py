@@ -2,6 +2,7 @@ import json
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -112,6 +113,9 @@ class InterpretTest(unittest.TestCase):
         for subject in ("chore(deps): bump vite", "ci: cachear pnpm", "test(overlay): mas casos", "refactor(hub): extraer helper", "build: subir go"):
             self.assertIsNone(digest.interpret(subject), subject)
 
+    def test_digest_bot_commit_is_not_published_as_delivery(self):
+        self.assertIsNone(digest.interpret("chore(roadmap): actualizar el digest del roadmap (ISA-378)"))
+
     def test_merges_reverts_and_promotions_are_dropped(self):
         for subject in ("Merge branch 'nightly'", "revert: feat(hub): algo", "promote: ISA-402 floating inspector to nightly", "fix(overlays): promote ISA-334 strip to nightly"):
             self.assertIsNone(digest.interpret(subject), subject)
@@ -149,6 +153,24 @@ class GroupAndMergeTest(unittest.TestCase):
         bucket = [{"date": "2026-08-01", "entries": [{"kind": "fix", "scope": "hub", "text": "uno"}]}]
         merged = digest.merge_delivered(bucket, bucket)
         self.assertEqual(len(merged[0]["entries"]), 1)
+
+
+class ReadCommitsTest(unittest.TestCase):
+    def test_default_reads_the_complete_unprocessed_window(self):
+        completed = digest.subprocess.CompletedProcess([], 0, stdout="", stderr="")
+        with patch.object(digest.subprocess, "run", return_value=completed) as runner:
+            digest.read_commits(Path("."), "HEAD", None)
+        command = runner.call_args.args[0]
+        self.assertFalse(any(argument.startswith("--max-count=") for argument in command))
+
+    def test_explicit_limit_remains_available_for_manual_diagnostics(self):
+        completed = digest.subprocess.CompletedProcess([], 0, stdout="", stderr="")
+        with patch.object(digest.subprocess, "run", return_value=completed) as runner:
+            digest.read_commits(Path("."), "HEAD", None, 25)
+        self.assertIn("--max-count=25", runner.call_args.args[0])
+
+    def test_cli_limit_cannot_write_a_truncated_digest(self):
+        self.assertEqual(digest.main(["--limit", "25"]), 2)
 
 
 class DocumentTest(unittest.TestCase):

@@ -97,6 +97,23 @@ actualización → En desarrollo → Testing → Por lanzar → Publicado. Progr
 ponderado, digest diario, tarjeta HTML y texto accesible. Releases, crisis y
 anuncios comerciales requieren aprobación.
 
+ISA-860 implementa en la rama aislada
+`vantareapp/isa-860-roadmap-contract`, nacida de `nightly@1d3ab03`, el contrato auditable preparado para bloqueo:
+Forms `required`/`not-required`, IDs semanticos, JSON derivado desde la base,
+allowlist cerrada para exenciones, excepcion exacta del bot y `CODEOWNERS`.
+Las labels remotas ya existen, pero el contrato no esta integrado ni activo en
+la rama predeterminada. Quedan pendientes review, PR/CI, promocion autorizada a
+`nightly`, paso posterior por `testers`/`master` y configurar Code Owner review
+y aprobacion del ultimo push. El workflow queda en `audit` hasta inventariar y
+retroclasificar las PR vivas y separar la identidad autora de la identidad
+Code Owner; activar review con la unica cuenta actual bloquearia sus propias
+PR. ISA-862 registra esa activacion posterior sin grandfather reutilizable.
+No hay auto-merge ni credencial nueva del bot.
+Evidencia local: contrato 21/21, topologia 44/44, digest 23/23 y discovers
+121/121 + 108/108 en verde; `roadmap_digest.py --check` y `git diff --check`
+sin errores. La revision independiente xhigh concluyo GO con P0=0, P1=0 y
+P2=0 para commit/push en modo `audit`.
+
 ## Releases
 
 Web/GitHub para instalador; app para updater. Stable para todos, Nightly para

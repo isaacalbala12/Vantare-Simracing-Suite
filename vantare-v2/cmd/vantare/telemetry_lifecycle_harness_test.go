@@ -143,6 +143,11 @@ func TestTelemetryLifecycleHarness(t *testing.T) {
 	}
 	cleanupStatusReplayHandlers := registerTelemetryStatusReplayHandlers(wailsApp.Event, emitter, telemetryRuntime)
 	defer cleanupStatusReplayHandlers()
+	pullTransport := telemetrytransport.NewOverlayPullTransport(
+		telemetryRuntime.Hub(),
+		telemetryRuntime.OverlayV2Publishers(),
+	)
+	defer pullTransport.CloseAll()
 	if err := telemetryRuntime.Start(appContext); err != nil {
 		t.Fatalf("TelemetryCoreRuntime.Start() error = %v", err)
 	}
@@ -190,10 +195,17 @@ func TestTelemetryLifecycleHarness(t *testing.T) {
 			sse[name] = data
 		}
 	}
-	wails := awaitWailsTelemetry(t, wailsTransport.events,
-		telemetrytransport.ProductOverlay,
-		telemetrytransport.ProductStrategy,
-	)
+	wails := awaitWailsTelemetry(t, wailsTransport.events, telemetrytransport.ProductStrategy)
+	pulled, deliver, err := pullTransport.Pull("overlay-window", telemetrytransport.OverlayPullRequest{
+		SessionID: "lifecycle-session",
+		Ack:       0,
+	})
+	if err != nil || !deliver {
+		t.Fatalf("Overlay pull response = %#v, deliver=%v, err=%v", pulled, deliver, err)
+	}
+	for _, event := range pulled.Events {
+		wails[event.Name] = event.Data
+	}
 	for name, wailsData := range wails {
 		sseData, ok := sse[name]
 		if !ok {
@@ -212,29 +224,19 @@ func TestTelemetryLifecycleHarness(t *testing.T) {
 		telemetrytransport.EventSnapshot,
 	)], strategySnapshot)
 
-	wailsApp.Event.Emit(telemetrytransport.StatusRequestEventName(telemetrytransport.ProductOverlay))
 	wailsApp.Event.Emit(telemetrytransport.StatusRequestEventName(telemetrytransport.ProductStrategy))
-	replayed := awaitWailsStatusReplayEvents(t, wailsTransport.events,
-		telemetrytransport.ProductOverlay,
-		telemetrytransport.ProductStrategy,
-	)
+	replayed := awaitWailsStatusReplayEvents(t, wailsTransport.events, telemetrytransport.ProductStrategy)
 	replayCounts := make(map[string]int, 2)
 	for _, event := range replayed {
 		replayCounts[event.name]++
-		product := telemetrytransport.ProductOverlay
-		if event.name == telemetrytransport.EventName(telemetrytransport.ProductStrategy, telemetrytransport.EventStatus) {
-			product = telemetrytransport.ProductStrategy
-		}
+		product := telemetrytransport.ProductStrategy
 		name := telemetrytransport.EventName(product, telemetrytransport.EventStatus)
 		if !bytes.Equal(event.data, wails[name]) {
 			t.Fatalf("%s status replay differs from hub status\noriginal: %s\nreplay:   %s", product, wails[name], event.data)
 		}
 		assertStatusProduct(t, event.name, event.data, product)
 	}
-	for _, product := range []telemetrytransport.ProductID{
-		telemetrytransport.ProductOverlay,
-		telemetrytransport.ProductStrategy,
-	} {
+	for _, product := range []telemetrytransport.ProductID{telemetrytransport.ProductStrategy} {
 		name := telemetrytransport.EventName(product, telemetrytransport.EventStatus)
 		if replayCounts[name] != 1 {
 			t.Fatalf("%s status replay count = %d, want 1; all=%v", product, replayCounts[name], replayCounts)
@@ -257,6 +259,7 @@ func TestTelemetryLifecycleHarness(t *testing.T) {
 	defer cancelShutdown()
 	results := runShutdown(shutdownContext, []shutdownStep{
 		observedStop(t, "recording", recorder.Stop),
+		observedStop(t, "overlay-pull", func(context.Context) error { pullTransport.CloseAll(); return nil }),
 		observedStop(t, "telemetry-core", telemetryRuntime.Stop),
 		observedStop(t, "http", func(context.Context) error { return httpServer.Stop() }),
 		observedStop(t, "ops", func(context.Context) error { opsBridge.Stop(); return nil }),
@@ -294,7 +297,9 @@ func TestTelemetryLifecycleHarness(t *testing.T) {
 }
 
 func TestTelemetryStatusReplayHandlerCleanupPreventsDuplicateDelivery(t *testing.T) {
-	runtime, err := app.NewTelemetryCoreRuntime(app.TelemetryCoreRuntimeConfig{Enabled: false})
+	runtime, err := app.NewTelemetryCoreRuntime(app.TelemetryCoreRuntimeConfig{
+		Enabled: false, StrategyPublicTransport: true,
+	})
 	if err != nil {
 		t.Fatalf("NewTelemetryCoreRuntime() error = %v", err)
 	}
@@ -343,7 +348,7 @@ func TestTelemetryStatusReplayHandlerCleanupPreventsDuplicateDelivery(t *testing
 			t.Fatalf("crossed replay event name=%q product=%q", event.name, envelope.Product)
 		}
 	}
-	for _, product := range []telemetrytransport.ProductID{telemetrytransport.ProductOverlay} {
+	for _, product := range []telemetrytransport.ProductID{telemetrytransport.ProductStrategy} {
 		name := telemetrytransport.EventName(product, telemetrytransport.EventStatus)
 		if counts[name] != 1 {
 			t.Fatalf("%s replay count = %d, want 1; all=%v", product, counts[name], counts)
@@ -383,7 +388,7 @@ func TestTelemetryStatusReplayHandlersIgnoreNilRuntime(t *testing.T) {
 	cleanup()
 }
 
-func TestTelemetryReplayHandlerServesOverlayV2LateJoin(t *testing.T) {
+func TestTelemetryReplayHandlerDoesNotBroadcastOverlayV2LateJoin(t *testing.T) {
 	runtime, err := app.NewTelemetryCoreRuntime(app.TelemetryCoreRuntimeConfig{})
 	if err != nil {
 		t.Fatal(err)
@@ -405,11 +410,58 @@ func TestTelemetryReplayHandlerServesOverlayV2LateJoin(t *testing.T) {
 
 	events.Emit(telemetrytransport.PublisherSnapshotRequestEventName(telemetrytransport.ProductOverlayV2))
 
-	replayed := emitter.snapshot()
-	if len(replayed) != 1 || replayed[0].name != telemetrytransport.PublisherEventName(
-		telemetrytransport.ProductOverlayV2, telemetrytransport.PublisherEventSnapshot,
-	) {
-		t.Fatalf("Overlay v2 replay = %#v", replayed)
+	if replayed := emitter.snapshot(); len(replayed) != 0 {
+		t.Fatalf("global Overlay v2 replay = %#v, want none", replayed)
+	}
+}
+
+func TestOverlayPullHandlerTargetsOnlyTheRequestingWindowAndClosesConsumer(t *testing.T) {
+	hub := telemetrytransport.NewHub(telemetrytransport.HubConfig{
+		Product: telemetrytransport.ProductOverlay,
+	})
+	registry, err := telemetrytransport.NewPublisherRegistry(telemetrytransport.PublisherConfig{
+		Product: telemetrytransport.ProductOverlayV2,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	pull := telemetrytransport.NewOverlayPullTransport(hub, registry)
+	events := newSynchronousTelemetryEvents()
+	target := newCaptureOverlayPullTarget()
+	cleanup := registerOverlayPullHandlers(events, target, pull)
+	defer cleanup()
+
+	events.EmitCustom(
+		telemetrytransport.OverlayPullRequestEvent,
+		"overlay-window",
+		map[string]any{"sessionId": "session-1", "ack": 0},
+	)
+	if calls := target.snapshot(); len(calls) != 1 ||
+		calls[0].window != "overlay-window" ||
+		calls[0].name != telemetrytransport.OverlayPullResponseEvent {
+		t.Fatalf("targeted calls = %#v", calls)
+	}
+	if _, active := registry.Lookup(telemetrytransport.ProductOverlayV2); !active {
+		t.Fatal("pull handler did not activate the overlay consumer")
+	}
+
+	// A duplicate request is not a second WebView delivery while response 1 is
+	// still unacknowledged.
+	events.EmitCustom(
+		telemetrytransport.OverlayPullRequestEvent,
+		"overlay-window",
+		map[string]any{"sessionId": "session-1", "ack": 0},
+	)
+	if calls := target.snapshot(); len(calls) != 1 {
+		t.Fatalf("duplicate request produced %d targeted calls, want 1", len(calls))
+	}
+
+	target.close("overlay-window")
+	if pull.ActiveSessions() != 0 {
+		t.Fatalf("active sessions after native close = %d", pull.ActiveSessions())
+	}
+	if _, active := registry.Lookup(telemetrytransport.ProductOverlayV2); active {
+		t.Fatal("native window close left the overlay publisher active")
 	}
 }
 
@@ -478,6 +530,63 @@ func (events *synchronousTelemetryEvents) Emit(name string) {
 	events.mu.Unlock()
 	for _, listener := range listeners {
 		listener.callback(&application.CustomEvent{Name: name})
+	}
+}
+
+func (events *synchronousTelemetryEvents) EmitCustom(name, sender string, data any) {
+	events.mu.Lock()
+	listeners := append([]*synchronousTelemetryListener{}, events.listeners[name]...)
+	events.mu.Unlock()
+	for _, listener := range listeners {
+		listener.callback(&application.CustomEvent{Name: name, Sender: sender, Data: data})
+	}
+}
+
+type overlayPullTargetCall struct {
+	window string
+	name   string
+	data   any
+}
+
+type captureOverlayPullTarget struct {
+	mu       sync.Mutex
+	calls    []overlayPullTargetCall
+	onClosed map[string]func()
+}
+
+func newCaptureOverlayPullTarget() *captureOverlayPullTarget {
+	return &captureOverlayPullTarget{onClosed: make(map[string]func())}
+}
+
+func (target *captureOverlayPullTarget) EmitTo(window, name string, data any) bool {
+	target.mu.Lock()
+	defer target.mu.Unlock()
+	target.calls = append(target.calls, overlayPullTargetCall{window: window, name: name, data: data})
+	return true
+}
+
+func (target *captureOverlayPullTarget) WatchClose(window string, callback func()) bool {
+	target.mu.Lock()
+	defer target.mu.Unlock()
+	if _, exists := target.onClosed[window]; !exists {
+		target.onClosed[window] = callback
+	}
+	return true
+}
+
+func (target *captureOverlayPullTarget) snapshot() []overlayPullTargetCall {
+	target.mu.Lock()
+	defer target.mu.Unlock()
+	return append([]overlayPullTargetCall(nil), target.calls...)
+}
+
+func (target *captureOverlayPullTarget) close(window string) {
+	target.mu.Lock()
+	callback := target.onClosed[window]
+	delete(target.onClosed, window)
+	target.mu.Unlock()
+	if callback != nil {
+		callback()
 	}
 }
 

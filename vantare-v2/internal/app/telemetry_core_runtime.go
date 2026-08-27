@@ -544,14 +544,12 @@ func (runtime *TelemetryCoreRuntime) Start(parent context.Context) error {
 		runtime.wg.Add(1)
 		go runtime.monitor(ctx)
 	}
-	if runtime.emitter != nil {
-		runtime.wg.Add(2)
-		go runtime.serveWails(ctx, telemetrytransport.ProductOverlay, runtime.hub)
-		go runtime.serveWailsOverlayV2(ctx)
-		if runtime.strategyHub != nil {
-			runtime.wg.Add(1)
-			go runtime.serveWails(ctx, telemetrytransport.ProductStrategy, runtime.strategyHub)
-		}
+	// Overlay delivery is pull-based and window-targeted at the Wails
+	// composition boundary. Starting a global bridge here broadcasts every
+	// frame to Hub and can queue unbounded ExecuteScript calls in WebView2.
+	if runtime.emitter != nil && runtime.strategyHub != nil {
+		runtime.wg.Add(1)
+		go runtime.serveWails(ctx, telemetrytransport.ProductStrategy, runtime.strategyHub)
 	}
 	runtime.lifecycleMu.Unlock()
 	return nil
@@ -824,18 +822,6 @@ func (runtime *TelemetryCoreRuntime) serveWails(
 		return
 	}
 	runtime.failStop(fmt.Errorf("serve %s telemetry: %w", productName(product), err))
-}
-
-func (runtime *TelemetryCoreRuntime) serveWailsOverlayV2(ctx context.Context) {
-	defer runtime.wg.Done()
-	err := telemetrytransport.ServeWailsPublisher(ctx, runtime.overlayV2Publishers, telemetrytransport.ProductOverlayV2, runtime.emitter)
-	if err == nil || ctx.Err() != nil || errors.Is(err, context.Canceled) || errors.Is(err, telemetrytransport.ErrClosed) {
-		return
-	}
-	// The v2 bridge is shadow-only and must never stop acquisition or v1.
-	runtime.metricStore.publishFailure(string(telemetrytransport.ProductOverlayV2))
-	runtime.metricStore.dropFrame("overlay-v2-wails")
-	log.Printf("telemetry Overlay v2 Wails failure is non-terminal: %v", err)
 }
 
 func productName(product telemetrytransport.ProductID) string {

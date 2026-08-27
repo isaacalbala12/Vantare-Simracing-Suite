@@ -1,6 +1,11 @@
 {
   "projectionVersion": 1,
   "maxPayloadBytes": 262144,
+  "overlayPull": {
+    "requestEvent": "telemetry:overlay:pull",
+    "responseEvent": "telemetry:overlay:pulled",
+    "closeEvent": "telemetry:overlay:pull:close"
+  },
   "statusStates": [
     "stopped",
     "detecting",

@@ -15,6 +15,24 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 
 ## Estado real
 
+- 2026-08-27, ISA-879 abierta sobre `origin/nightly@a02a1463` tras una
+  reproduccion LMU/Wails real: con solo Hub visible, el proceso browser de
+  WebView2 crecio de ~9,3 a 11,4 GB privados mientras el renderer React se
+  mantuvo en ~197 MB. Overlay v1 cruzaba ~2,68 MiB/s y el shadow v2 ~0,56
+  MiB/s. La auditoria confirma que `TelemetryCoreRuntime.Start` activa ambos
+  bridges aunque no exista ventana Overlay y que `wailsEmitter` usa el
+  `Event.Emit` global. Wails difunde cada frame a todas las ventanas y acaba en
+  `ExecuteScript(..., nil)`, despues del ultimo limite `latest-wins`; incluso
+  `WebviewWindow.EmitEvent` vuelve al bus global y solo rellena `Sender`. La
+  decision minima de ISA-879 es sustituir exclusivamente el push Wails de
+  Overlay por demanda/acuse dirigido: una respuesta agregada v1+v2, como
+  maximo una entrega pendiente, reemplazo por el ultimo estado y publisher v2
+  activo solo durante la sesion consumidora. Strategy, Engineer, OBS, el
+  driver y las proyecciones no cambian. Primero se escribira la regresion de
+  WebView lento; tests sinteticos no acreditaran el soak WebView2/LMU real.
+  Rama `vantareapp/isa-879-wails-telemetry-bounded`; sin commit, push, PR,
+  merge, promocion ni release.
+
 - 2026-08-21, ISA-697 / Deuda #677 Tanda 2: `TelemetryEngine.Apply` pasa de 650190 B/op 344 allocs/op @104 a 168400 B/op 327 allocs/op (-74% bytes, -5% allocs) en rama `vantareapp/isa-697-apply-churn` sobre `origin/nightly@f10b817d` (5 commits: 1 benchmark + 4 perf). Cambios: `envelope.NewSnapshotOwned` + `Peek` para no clonar donde se lee sin mutar, `Commit` directo en reducer/coordinator/pipeline, y `validateObservedState` sin map (sort). Goldens y replay parity verdes; snapshot sigue value-semantic. Evidencia `docs/telemetry-core/evidence/isa-677-apply-churn.md`, fragmento `ISA-697.json`. Queda techo ~150KB/B/op sin COW en envelope y gaps 104 por frame.
 
 - 2026-08-20, ISA-679: `CapabilityModesV2` deja de ser un hueco. Los modos se

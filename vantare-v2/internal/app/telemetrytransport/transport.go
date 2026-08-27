@@ -466,6 +466,29 @@ func (hub *Hub) ReplayStatus() (Event, bool, error) {
 	return event, true, nil
 }
 
+// ReplaySnapshot returns the retained full without creating a subscriber.
+// Pull-based local transports use it to read the same latest-wins authority as
+// SSE while keeping delivery pacing at the consumer boundary.
+func (hub *Hub) ReplaySnapshot() (Event, bool, error) {
+	if hub == nil {
+		return Event{}, false, nil
+	}
+	hub.mu.Lock()
+	if hub.closed || !hub.hasSnapshot || !hub.hasStatus ||
+		hub.latest.full.StatusRevision != hub.status.StatusRevision {
+		hub.mu.Unlock()
+		return Event{}, false, nil
+	}
+	frame := cloneEnvelope(hub.latest.full)
+	product := hub.product
+	hub.mu.Unlock()
+	event, err := marshalEvent(product, EventSnapshot, frame)
+	if err != nil {
+		return Event{}, false, err
+	}
+	return event, true, nil
+}
+
 func (subscription *Subscription) Close() error {
 	if subscription == nil || subscription.hub == nil || subscription.state == nil {
 		return nil

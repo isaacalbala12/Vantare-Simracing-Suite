@@ -199,7 +199,7 @@ func TestTelemetryCoreStrategyHubLateAndSlowSubscribersAlwaysReceiveFull(t *test
 	}
 }
 
-func TestTelemetryCoreRuntimeStartEmitsNamespacedEventsAndStopsBothAdapters(t *testing.T) {
+func TestTelemetryCoreRuntimeStartsOnlyTheExplicitStrategyWailsAdapter(t *testing.T) {
 	emitter := &recordingTelemetryEmitter{
 		seen:    make(map[string]int),
 		notices: make(chan string, 8),
@@ -214,16 +214,17 @@ func TestTelemetryCoreRuntimeStartEmitsNamespacedEventsAndStopsBothAdapters(t *t
 		t.Fatal(err)
 	}
 	emitter.waitFor(t,
-		telemetrytransport.EventName(telemetrytransport.ProductOverlay, telemetrytransport.EventStatus),
 		telemetrytransport.EventName(telemetrytransport.ProductStrategy, telemetrytransport.EventStatus),
 	)
 	if err := (runtimeBatchSink{runtime: runtime}).WriteBatch(context.Background(), engineerRuntimeBatch()); err != nil {
 		t.Fatal(err)
 	}
 	emitter.waitFor(t,
-		telemetrytransport.EventName(telemetrytransport.ProductOverlay, telemetrytransport.EventSnapshot),
 		telemetrytransport.EventName(telemetrytransport.ProductStrategy, telemetrytransport.EventSnapshot),
 	)
+	if got := runtime.Hub().Metrics().CurrentSubscribers; got != 0 {
+		t.Fatalf("global Overlay Wails subscribers = %d, want 0", got)
+	}
 
 	stopContext, stopCancel := context.WithTimeout(context.Background(), time.Second)
 	defer stopCancel()
@@ -413,52 +414,48 @@ func TestTelemetryCoreRuntimeFailedStartClosesBothHubsAndBecomesTerminal(t *test
 	}
 }
 
-func TestTelemetryCoreRuntimeUnexpectedWailsCloseIsAuditedAndFailsBothHubs(t *testing.T) {
-	tests := []struct {
-		name        string
-		close       func(*TelemetryCoreRuntime) error
-		wantContext string
-	}{
-		{
-			name:        "Overlay",
-			close:       func(runtime *TelemetryCoreRuntime) error { return runtime.Hub().Close() },
-			wantContext: "serve Overlay telemetry",
-		},
-		{
-			name:        "Strategy",
-			close:       func(runtime *TelemetryCoreRuntime) error { return runtime.StrategyHub().Close() },
-			wantContext: "serve Strategy telemetry",
-		},
+func TestTelemetryCoreRuntimeOverlayHubCloseDoesNotAffectWailsAdapter(t *testing.T) {
+	emitter := &recordingTelemetryEmitter{seen: make(map[string]int), notices: make(chan string, 8)}
+	runtime, err := newStrategyTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{Emitter: emitter})
+	if err != nil {
+		t.Fatal(err)
 	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			emitter := &recordingTelemetryEmitter{
-				seen:    make(map[string]int),
-				notices: make(chan string, 8),
-			}
-			runtime, err := newStrategyTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{Emitter: emitter})
-			if err != nil {
-				t.Fatal(err)
-			}
-			if err := runtime.Start(context.Background()); err != nil {
-				t.Fatal(err)
-			}
-			emitter.waitFor(t,
-				telemetrytransport.EventName(telemetrytransport.ProductOverlay, telemetrytransport.EventStatus),
-				telemetrytransport.EventName(telemetrytransport.ProductStrategy, telemetrytransport.EventStatus),
-			)
-			if err := test.close(runtime); err != nil {
-				t.Fatal(err)
-			}
-			waitForRuntimeError(t, runtime, test.wantContext)
-			assertRuntimeHubClosed(t, runtime.Hub())
-			assertRuntimeHubClosed(t, runtime.StrategyHub())
-			if err := runtime.Stop(context.Background()); err == nil ||
-				!strings.Contains(err.Error(), test.wantContext) ||
-				!errors.Is(err, telemetrytransport.ErrClosed) {
-				t.Fatalf("Stop() Wails audit error = %v", err)
-			}
-		})
+	if err := runtime.Start(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	emitter.waitFor(t, telemetrytransport.EventName(telemetrytransport.ProductStrategy, telemetrytransport.EventStatus))
+	if err := runtime.Hub().Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := runtime.currentRunError(); err != nil {
+		t.Fatalf("Overlay Hub close escaped into Wails lifecycle: %v", err)
+	}
+	if err := runtime.Stop(context.Background()); err != nil {
+		t.Fatalf("Stop() after isolated Overlay close = %v", err)
+	}
+}
+
+func TestTelemetryCoreRuntimeUnexpectedStrategyWailsCloseIsAuditedAndFailsBothHubs(t *testing.T) {
+	emitter := &recordingTelemetryEmitter{seen: make(map[string]int), notices: make(chan string, 8)}
+	runtime, err := newStrategyTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{Emitter: emitter})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := runtime.Start(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	emitter.waitFor(t, telemetrytransport.EventName(telemetrytransport.ProductStrategy, telemetrytransport.EventStatus))
+	if err := runtime.StrategyHub().Close(); err != nil {
+		t.Fatal(err)
+	}
+	wantContext := "serve Strategy telemetry"
+	waitForRuntimeError(t, runtime, wantContext)
+	assertRuntimeHubClosed(t, runtime.Hub())
+	assertRuntimeHubClosed(t, runtime.StrategyHub())
+	if err := runtime.Stop(context.Background()); err == nil ||
+		!strings.Contains(err.Error(), wantContext) ||
+		!errors.Is(err, telemetrytransport.ErrClosed) {
+		t.Fatalf("Stop() Wails audit error = %v", err)
 	}
 }
 
@@ -622,7 +619,6 @@ func TestTelemetryCoreRuntimeFailStopMarksEnabledSourceUnavailable(t *testing.T)
 		t.Fatal(err)
 	}
 	emitter.waitFor(t,
-		telemetrytransport.EventName(telemetrytransport.ProductOverlay, telemetrytransport.EventStatus),
 		telemetrytransport.EventName(telemetrytransport.ProductStrategy, telemetrytransport.EventStatus),
 	)
 	if err := runtime.setStatus(driver.StateLive, 7); err != nil {
@@ -662,7 +658,6 @@ func TestTelemetryCoreRuntimeNormalStopCancelsWorkersBeforeClosingHubs(t *testin
 		t.Fatal(err)
 	}
 	emitter.waitFor(t,
-		telemetrytransport.EventName(telemetrytransport.ProductOverlay, telemetrytransport.EventStatus),
 		telemetrytransport.EventName(telemetrytransport.ProductStrategy, telemetrytransport.EventStatus),
 	)
 	stopContext, cancel := context.WithTimeout(context.Background(), 2*time.Second)

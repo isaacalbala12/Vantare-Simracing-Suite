@@ -3,6 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ProfileDocumentV3 } from "./core/profile-document";
 import { CompositeApp } from "./CompositeApp";
 import { relativeDefinition } from "./widget-types/relative/relative-definition";
+import {
+  OVERLAY_PULL_REQUEST_EVENT,
+  OVERLAY_PULL_RESPONSE_EVENT,
+} from "../telemetry-transport/overlay-wails-pull";
 import goldenRaw from "../../../internal/telemetry/projection/overlay/testdata/overlay_v1.golden.json?raw";
 
 type Handler = (event: { data: unknown }) => void;
@@ -15,6 +19,7 @@ const runtimeMock = vi.hoisted(() => ({
 
 const originalResizeObserver = globalThis.ResizeObserver;
 let desktopOutput = { width: 1920, height: 1080 };
+let pullDelivery = 0;
 
 function installResizeObserver(): void {
   globalThis.ResizeObserver = class {
@@ -60,6 +65,21 @@ function dispatch(name: string, data: unknown) {
     for (const handler of runtimeMock.handlers.get(name) ?? []) {
       handler({ data });
     }
+  });
+}
+
+function dispatchTelemetry(events: ReadonlyArray<{name: string; data: unknown}>): void {
+  const request = [...runtimeMock.emit.mock.calls]
+    .reverse()
+    .find(([name]) => name === OVERLAY_PULL_REQUEST_EVENT)?.[1] as
+      | {sessionId: string; ack: number}
+      | undefined;
+  if (!request) throw new Error("overlay pull request not emitted");
+  pullDelivery += 1;
+  dispatch(OVERLAY_PULL_RESPONSE_EVENT, {
+    sessionId: request.sessionId,
+    delivery: pullDelivery,
+    events,
   });
 }
 
@@ -120,6 +140,7 @@ describe("CompositeApp", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-07-28T09:00:00Z"));
     desktopOutput = { width: 1920, height: 1080 };
+    pullDelivery = 0;
     installResizeObserver();
   });
 
@@ -135,8 +156,10 @@ describe("CompositeApp", () => {
     expect(runtimeMock.onCalls.filter((name) => name === "overlay:profile-v3-loaded")).toHaveLength(1);
     expect(runtimeMock.emit).toHaveBeenCalledWith("overlay:profile-v3:get");
     expect(runtimeMock.onCalls.filter((name) => name === "telemetry:update")).toHaveLength(0);
-    expect(runtimeMock.onCalls.filter((name) => name === "telemetry:overlay:status")).toHaveLength(1);
-    expect(runtimeMock.onCalls.filter((name) => name === "telemetry:overlay:projection")).toHaveLength(1);
+    expect(runtimeMock.onCalls.filter((name) => name === "telemetry:overlay:status")).toHaveLength(0);
+    expect(runtimeMock.onCalls.filter((name) => name === "telemetry:overlay:projection")).toHaveLength(0);
+    expect(runtimeMock.onCalls.filter((name) => name === OVERLAY_PULL_RESPONSE_EVENT)).toHaveLength(1);
+    expect(runtimeMock.emit.mock.calls.some(([name]) => name === OVERLAY_PULL_REQUEST_EVENT)).toBe(true);
   });
 
   it("paints nothing at all until the profile arrives", () => {
@@ -177,13 +200,18 @@ describe("CompositeApp", () => {
     dispatch("overlay:profile-v3-loaded", buildProfilePayload(buildRelativeDocument()));
     tick(100);
 
-    dispatch("telemetry:overlay:status", {
-      product: "overlay",
-      statusRevision: 1,
-      capturedAt: "2026-07-28T09:00:00Z",
-      payload: { state: "live", reconnectAttempt: 0 },
-    });
-    dispatch("telemetry:overlay:projection", canonicalEnvelope());
+    dispatchTelemetry([
+      {
+        name: "telemetry:overlay:status",
+        data: {
+          product: "overlay",
+          statusRevision: 1,
+          capturedAt: "2026-07-28T09:00:00Z",
+          payload: { state: "live", reconnectAttempt: 0 },
+        },
+      },
+      {name: "telemetry:overlay:projection", data: canonicalEnvelope()},
+    ]);
     tick(200);
 
     expect(screen.getByText("Player")).toBeTruthy();

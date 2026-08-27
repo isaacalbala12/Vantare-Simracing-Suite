@@ -58,7 +58,8 @@ Actualización ISA-869 (2026-08-27, rama
   listar el catálogo existente, pero la práctica activa no aporta todavía un
   artefacto estable nuevo. ISA-871 registra el refresco post-sesión explícito,
   seguro y sin watcher live; queda fuera de esta rama.
-- Pendientes push, PR y CI. No hay promoción ni release.
+- Rama publicada y PR draft #872 abierto contra `nightly`; CI pendiente. No
+  hay merge, promoción ni release.
 
 Actualización ISA-861 (2026-08-27, corte final candidato sobre
 `origin/nightly@b1d5b15b`):

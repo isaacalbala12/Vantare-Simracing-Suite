@@ -204,7 +204,8 @@ describe("SettingsOrbitPage", () => {
       return () => handlers.delete(name);
     }) as never);
     vi.spyOn(Events, "Emit").mockImplementation(((name: string) => {
-      if (name === "updater:check") handlers.get("updater:available")?.({ data: { info } });
+      if (name === "updater:check" || name === "updater:check:force")
+        handlers.get("updater:available")?.({ data: { info } });
       if (name === "updater:settings:get") {
         handlers.get("updater:settings")?.({ data: { settings: { channel: "stable" } } });
       }

@@ -772,7 +772,7 @@ button.orbit-pill {
   color: var(--orbit-ink-muted);
 }
 
-.orbit-pill[data-s="ready"] {
+.orbit-pill[data-s="installing"] {
   border-color: rgba(255, 155, 87, 0.28);
   color: var(--orbit-ember);
 }

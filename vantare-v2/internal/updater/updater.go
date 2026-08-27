@@ -19,9 +19,19 @@ import (
 // checkCooldown is the minimum time between automatic update checks.
 const checkCooldown = 15 * time.Minute
 
+// downloadStallTimeout is how long the installer download waits for the next
+// byte before giving up. It bounds a half-open connection without betting on
+// how fast the user's line is. A var, not a const, so the tests can shorten it.
+var downloadStallTimeout = 60 * time.Second
+
 // Updater checks, downloads and installs Vantare releases from GitHub.
 type Updater struct {
-	httpClient     *http.Client
+	// httpClient talks to the releases API and reads the .sha256 file: a few
+	// kilobytes each, where a total deadline is exactly the right guard.
+	httpClient *http.Client
+	// downloadClient fetches the installer, which is ~11 MB. A total deadline
+	// there is a bet on the user's bandwidth, not a timeout: see below.
+	downloadClient *http.Client
 	settingsPath   string
 	currentVersion string
 	releasesURL    string
@@ -34,7 +44,22 @@ func New(currentVersion, settingsPath string) (*Updater, error) {
 		return nil, err
 	}
 	return &Updater{
-		httpClient:     &http.Client{Timeout: 30 * time.Second},
+		httpClient: &http.Client{Timeout: 30 * time.Second},
+		// `http.Client.Timeout` cubre la peticion entera, incluida la lectura
+		// del cuerpo. Descargar los 11 MB del instalador con los mismos 30 s de
+		// la API exigia ~375 KB/s sostenidos: por debajo de eso la
+		// actualizacion no se podia instalar nunca, y el intento moria siempre
+		// en el mismo segundo. Aqui no hay tope total; lo que se acota es que
+		// el servidor deje de responder (cabeceras) o deje de mandar bytes
+		// (downloadStallTimeout, en downloadFile).
+		downloadClient: &http.Client{
+			Transport: &http.Transport{
+				Proxy:                 http.ProxyFromEnvironment,
+				TLSHandshakeTimeout:   15 * time.Second,
+				ResponseHeaderTimeout: 30 * time.Second,
+				ExpectContinueTimeout: time.Second,
+			},
+		},
 		settingsPath:   settingsPath,
 		currentVersion: currentVersion,
 		releasesURL:    releasesURL,
@@ -411,11 +436,20 @@ func (u *Updater) fetchChecksum(ctx context.Context, url string) (string, error)
 }
 
 func (u *Updater) downloadFile(ctx context.Context, url, dest string, progress func(int)) (err error) {
+	// El unico reloj que corre aqui es el de la inactividad: mientras lleguen
+	// bytes, la descarga sigue por lenta que sea la linea. Si dejan de llegar,
+	// se cancela la peticion en vez de dejar la instalacion colgada con la
+	// barra parada.
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	stalled := time.AfterFunc(downloadStallTimeout, cancel)
+	defer stalled.Stop()
+
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return err
 	}
-	resp, err := u.httpClient.Do(req)
+	resp, err := u.downloadClient.Do(req)
 	if err != nil {
 		return err
 	}
@@ -445,6 +479,7 @@ func (u *Updater) downloadFile(ctx context.Context, url, dest string, progress f
 	for {
 		n, err := resp.Body.Read(buf)
 		if n > 0 {
+			stalled.Reset(downloadStallTimeout)
 			if _, werr := f.Write(buf[:n]); werr != nil {
 				return werr
 			}

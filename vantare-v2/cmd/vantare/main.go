@@ -2268,14 +2268,33 @@ func main() {
 			emitter.Emit("updater:settings-saved", map[string]any{"ok": true})
 		})
 
-		wailsApp.Event.On("updater:check", func(event *application.CustomEvent) {
-			info, err := updaterSvc.CheckUpdatesManual()
+		// Dos comprobaciones, no una. `updater:check` respeta el enfriamiento y
+		// lo dispara cada montaje de Ajustes: abrir la pantalla tres veces
+		// seguidas no puede costar tres recorridos del catalogo contra el
+		// limite de peticiones de GitHub. `updater:check:force` es el boton de
+		// comprobar y todo aquello que cambia la respuesta (canal, ignorar).
+		emitCheck := func(manual bool) {
+			var info *updater.UpdateInfo
+			var err error
+			if manual {
+				info, err = updaterSvc.CheckUpdatesManualCtx(ctx)
+			} else {
+				info, err = updaterSvc.CheckUpdatesCtx(ctx)
+			}
 			if err != nil {
 				log.Printf("updater:check error: %v", err)
 				emitUpdaterError(err.Error())
 				return
 			}
 			emitter.Emit("updater:available", map[string]any{"info": info})
+		}
+
+		wailsApp.Event.On("updater:check", func(event *application.CustomEvent) {
+			emitCheck(false)
+		})
+
+		wailsApp.Event.On("updater:check:force", func(event *application.CustomEvent) {
+			emitCheck(true)
 		})
 
 		wailsApp.Event.On("updater:install", func(event *application.CustomEvent) {
@@ -2300,21 +2319,37 @@ func main() {
 		})
 
 		wailsApp.Event.On("updater:install:verified", func(event *application.CustomEvent) {
-			var release updater.Release
+			// Del payload solo se toma el tag: la URL de descarga y el checksum
+			// los resuelve el backend contra la lista que el mismo se ha
+			// traido. Antes se descargaba y ejecutaba lo que dijera el
+			// renderer.
+			var payload struct {
+				TagName string `json:"tag_name"`
+			}
 			if event.Data != nil {
 				if raw, err := json.Marshal(event.Data); err == nil {
-					json.Unmarshal(raw, &release)
+					json.Unmarshal(raw, &payload)
 				}
 			}
-			if release.TagName == "" {
+			tag := payload.TagName
+			if tag == "" {
 				emitUpdaterError("release is required")
 				return
 			}
-			emitter.Emit("updater:progress", map[string]any{"percent": 0})
+			// El 0% lo emite la propia descarga al arrancar. Anunciarlo aqui,
+			// antes de saber si la instalacion siquiera empieza, hacia que un
+			// segundo clic rebobinara la barra de la que si estaba en marcha.
 			go func() {
-				if err := updaterSvc.InstallVerifiedVersionCtx(ctx, release); err != nil {
+				if err := updaterSvc.InstallVerifiedVersionCtx(ctx, tag); err != nil {
 					if ctx.Err() != nil {
 						log.Printf("updater:install:verified aborted: %v", ctx.Err())
+						return
+					}
+					// Un segundo clic no es un fallo de la instalacion que si va:
+					// anunciarlo como error borraba la barra y decia que habia
+					// fallado justo lo que estaba descargandose bien.
+					if errors.Is(err, app.ErrInstallInProgress) {
+						log.Printf("updater:install:verified ignored: %v", err)
 						return
 					}
 					log.Printf("updater:install:verified error: %v", err)

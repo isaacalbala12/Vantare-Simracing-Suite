@@ -716,6 +716,9 @@ function UpdatesSection() {
           {latest && info?.hasUpdate ? (
             <Button
               data-testid="orbit-settings-install"
+              // Una instalacion a la vez: el backend rechaza la segunda, y ese
+              // rechazo se leia como «ha fallado» encima de la que si iba bien.
+              disabled={updater.installingTag !== null}
               onClick={() => updater.install(latest)}
               variant="primary"
             >

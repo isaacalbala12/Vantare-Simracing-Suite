@@ -42,7 +42,7 @@ export function Topbar({
       <div className="orbit-topbar__right">
         {update === "none" ? null : (
           <Pill
-            dot={update === "ready" ? "gold" : "ring-gold"}
+            dot={update === "installing" ? "gold" : "ring-gold"}
             onClick={onUpdate}
             pulse={update === "downloading"}
             state={update}

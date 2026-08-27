@@ -15,6 +15,23 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 
 ## Estado real
 
+- 2026-08-28, ISA-891 completa el lifecycle de Overlay V2 y lleva Studio al
+  mismo transporte dirigido que Desktop. `6bd72d37` publica y retiene un único
+  status V2 aunque no haya frames ni consumidores; un consumidor tardío recibe
+  el último estado sin activar el publisher de snapshots. El contrato generado
+  cierra los ocho estados canónicos y las fronteras Go/TypeScript rechazan
+  valores desconocidos. `f6269aaf` elimina de Studio las suscripciones globales
+  de proyección y compone V1+V2 sobre una única sesión HTTP pull, con listeners
+  registrados antes de iniciarla, lifecycle idempotente y estado V2 puro
+  entregado al `WidgetVisualHost` compartido detrás de las flags existentes.
+  Las regresiones cubren status sin frame, alta tardía, revisión monotónica,
+  reinicio/rollback, StrictMode y consumidor con una sola petición pendiente.
+  Rama `vantareapp/isa-891-overlay-v2-studio-lifecycle` sobre
+  `nightly@741d31bf`. `go test ./...`, 418 archivos/3.148 tests frontend,
+  typecheck, build frontend, contrato generado, ESLint del diff, 23 tests de
+  roadmap, 64 de comunicaciones y build Wails Windows están verdes. Pendiente
+  prueba LMU/Wails real y PR. No retira V1 ni cambia la autoridad visual.
+
 - 2026-08-27, ISA-889 corrige el bloqueo permanente del Overlay despues de un
   reconnect LMU. El transporte acotado de ISA-879 puede entregar como primer
   snapshot visible de un epoch nuevo una secuencia mayor que 1; el store
@@ -32,11 +49,11 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   observacion 2.290, avanzo a 4.203 en 30 s y continuo con Relative/Standings
   `ready`, 18 filas y el jugador en P10. Evidencia:
   `docs/telemetry-core/evidence/isa-889-overlay-epoch-resync.md`. Rama
-  `vantareapp/isa-889-overlay-epoch-resync` publicada; PR draft #890 a
-  `nightly`. El hito `telemetry-live` y su digest declaran la continuidad tras
-  reconnect; sus 21+23 tests pasan. Run oficial `33119149474` completamente
-  verde sobre `4635ded4`, incluida build Wails Windows. Sin merge, promocion
-  ni release.
+  `vantareapp/isa-889-overlay-epoch-resync`; PR #890 integrado en `nightly` el
+  2026-08-28 como `741d31bf`. El hito `telemetry-live` y su digest declaran la
+  continuidad tras reconnect. El gate post-merge oficial `33125373076` y el
+  digest `33125373082` terminaron en verde. ISA-889 está cerrada en estado
+  Nightly; no existe promoción a testers, master ni release.
 
 - 2026-08-27, ISA-879 elimina los bridges Overlay v1/v2 globales y los
   sustituye por una sesion pull/ack `single-in-flight`, `latest-wins` y ligada

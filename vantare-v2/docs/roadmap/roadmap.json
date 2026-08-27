@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-27T21:37:40Z",
+  "generatedAt": "2026-08-27T23:42:34Z",
   "digest": {
-    "lastCommit": "2672f21173fdd295c667b44f4903816561f6b3d5"
+    "lastCommit": "741d31bf76740a469b4d91ff21da6817e912db30"
   },
   "phases": [
     {
@@ -456,10 +456,10 @@
         "it": "Telemetria LMU dal vivo"
       },
       "body": {
-        "es": "Driver LMU con reconexión acotada, transporte Overlay dirigido con una sola entrega pendiente que se resincroniza tras reconexiones, y proyecciones de overlay, ingeniero y estrategia.",
-        "en": "LMU driver with bounded reconnects, targeted Overlay transport with one pending delivery that resynchronizes after reconnects, and overlay, engineer and strategy projections.",
-        "pt": "Driver LMU com reconexão limitada, transporte Overlay dirigido com uma única entrega pendente que se ressincroniza após reconexões, e projeções de overlay, engenheiro e estratégia.",
-        "it": "Driver LMU con riconnessione limitata, trasporto Overlay diretto con una sola consegna pendente che si risincronizza dopo le riconnessioni, e proiezioni di overlay, engineer e strategia."
+        "es": "Driver LMU con reconexión acotada, transporte Overlay dirigido con una sola entrega pendiente compartida por Desktop y Studio, lifecycle V2 recuperable sin frames y proyecciones de overlay, ingeniero y estrategia.",
+        "en": "LMU driver with bounded reconnects, targeted Overlay transport with one pending delivery shared by Desktop and Studio, a V2 lifecycle recoverable without frames, and overlay, engineer and strategy projections.",
+        "pt": "Driver LMU com reconexão limitada, transporte Overlay dirigido com uma única entrega pendente partilhada por Desktop e Studio, lifecycle V2 recuperável sem frames e projeções de overlay, engenheiro e estratégia.",
+        "it": "Driver LMU con riconnessione limitata, trasporto Overlay diretto con una sola consegna pendente condivisa da Desktop e Studio, lifecycle V2 recuperabile senza frame e proiezioni di overlay, engineer e strategia."
       },
       "label": {
         "es": "En desarrollo",
@@ -778,6 +778,16 @@
     }
   ],
   "delivered": [
+    {
+      "date": "2026-08-28",
+      "entries": [
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-889 · Resincronizar epochs saltados en Overlay"
+        }
+      ]
+    },
     {
       "date": "2026-08-27",
       "entries": [
@@ -1490,71 +1500,6 @@
           "kind": "feat",
           "scope": "roadmap",
           "text": "Publish the Linear projects snapshot where the app can read it"
-        }
-      ]
-    },
-    {
-      "date": "2026-08-06",
-      "entries": [
-        {
-          "kind": "feat",
-          "scope": "overlays",
-          "text": "Add the Redline motion engine and workshop replay"
-        },
-        {
-          "kind": "feat",
-          "scope": "overlays",
-          "text": "Land Redline flagship direction for vantare-endurance"
-        },
-        {
-          "kind": "feat",
-          "scope": "overlays",
-          "text": "Add vantare-endurance design system"
-        },
-        {
-          "kind": "fix",
-          "scope": "studio",
-          "text": "Make the locked aspect hold at the minimum and in previews"
-        },
-        {
-          "kind": "fix",
-          "scope": "telemetry",
-          "text": "Count consecutive reconnects, and let stale stay available"
-        },
-        {
-          "kind": "fix",
-          "scope": "license",
-          "text": "Start from cache and stop the gate tearing down the Hub"
-        },
-        {
-          "kind": "fix",
-          "scope": "studio",
-          "text": "Never paint the canvas before it knows what to paint"
-        },
-        {
-          "kind": "feat",
-          "scope": "studio",
-          "text": "Give the canvas a gradient background and the rail real icons"
-        },
-        {
-          "kind": "fix",
-          "scope": "overlay",
-          "text": "Conform locked aspects and paint nothing before the profile"
-        },
-        {
-          "kind": "feat",
-          "scope": "studio",
-          "text": "Retire Crystal Simple from the delta catalogue"
-        },
-        {
-          "kind": "fix",
-          "scope": "overlay",
-          "text": "Give mid-session consumers the transport status they need"
-        },
-        {
-          "kind": "fix",
-          "scope": "telemetry",
-          "text": "Stop a single garage frame from killing the LMU driver"
         }
       ]
     }

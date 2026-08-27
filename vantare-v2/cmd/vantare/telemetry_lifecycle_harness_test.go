@@ -176,6 +176,7 @@ func TestTelemetryLifecycleHarness(t *testing.T) {
 		EngineerSvc:             engineer,
 		Emitter:                 emitter,
 		OverlayProjection:       telemetryRuntime.Hub(),
+		OverlayV2Publishers:     telemetryRuntime.OverlayV2Publishers(),
 		StrategyProjection:      telemetryRuntime.StrategyHub(),
 		StrategyPublicTransport: true,
 	})
@@ -192,9 +193,29 @@ func TestTelemetryLifecycleHarness(t *testing.T) {
 		telemetrytransport.ProductOverlay,
 		telemetrytransport.ProductStrategy,
 	} {
-		for name, data := range captureSSE(t, appContext, client, httpServer.Addr(), product) {
+		wanted := []string{
+			telemetrytransport.EventName(product, telemetrytransport.EventStatus),
+			telemetrytransport.EventName(product, telemetrytransport.EventSnapshot),
+		}
+		for name, data := range captureSSE(
+			t, appContext, client, httpServer.Addr(), telemetrytransport.ProjectionRoute(product), wanted...,
+		) {
 			sse[name] = data
 		}
+	}
+	overlayV2StatusName := telemetrytransport.PublisherEventName(
+		telemetrytransport.ProductOverlayV2,
+		telemetrytransport.PublisherEventStatus,
+	)
+	for name, data := range captureSSE(
+		t,
+		appContext,
+		client,
+		httpServer.Addr(),
+		telemetrytransport.PublisherProjectionRoute(telemetrytransport.ProductOverlayV2),
+		overlayV2StatusName,
+	) {
+		sse[name] = data
 	}
 	wails := awaitWailsTelemetry(t, wailsTransport.events, telemetrytransport.ProductStrategy)
 	pulled, deliver, err := pullTransport.Pull("overlay-window", telemetrytransport.OverlayPullRequest{
@@ -562,13 +583,14 @@ func captureSSE(
 	ctx context.Context,
 	client *http.Client,
 	address string,
-	product telemetrytransport.ProductID,
+	route string,
+	wantedNames ...string,
 ) map[string][]byte {
 	t.Helper()
 	request, err := http.NewRequestWithContext(
 		ctx,
 		http.MethodGet,
-		"http://"+address+telemetrytransport.ProjectionRoute(product),
+		"http://"+address+route,
 		nil,
 	)
 	if err != nil {
@@ -583,13 +605,19 @@ func captureSSE(
 		t.Fatalf("SSE status = %d", response.StatusCode)
 	}
 	reader := bufio.NewReader(response.Body)
-	result := make(map[string][]byte, 2)
-	for len(result) < 2 {
+	wanted := make(map[string]struct{}, len(wantedNames))
+	for _, name := range wantedNames {
+		wanted[name] = struct{}{}
+	}
+	result := make(map[string][]byte, len(wanted))
+	for len(result) < len(wanted) {
 		event, readErr := readSSEEvent(reader)
 		if readErr != nil {
 			t.Fatalf("read SSE event: %v", readErr)
 		}
-		result[event.name] = event.data
+		if _, ok := wanted[event.name]; ok {
+			result[event.name] = event.data
+		}
 	}
 	return result
 }

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-27T03:15:09Z",
+  "generatedAt": "2026-08-27T03:51:41Z",
   "digest": {
-    "lastCommit": "ca39b40359fdcda0999e25a2b2308e84407c4e1d"
+    "lastCommit": "ca92605e9ed74c0e3974e85b4fc6ef91347e6372"
   },
   "phases": [
     {
@@ -800,6 +800,11 @@
           "kind": "change",
           "scope": "",
           "text": "ISA-861 · Promover reader LMU y runtime Windows a nightly"
+        },
+        {
+          "kind": "feat",
+          "scope": "release",
+          "text": "Notas de version legibles — exigir changelog para publicar y contarlo en el aviso"
         }
       ]
     },

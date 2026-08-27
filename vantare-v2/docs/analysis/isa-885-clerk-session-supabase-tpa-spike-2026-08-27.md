@@ -156,11 +156,12 @@ No se creó esta configuración, no se inició `supabase start`, no se abrió el
 proyecto Supabase activo y no se restauró staging. Docker Desktop tampoco se
 inició. No hubo schema, RLS, filas ni usuarios de Supabase.
 
-El dato observado refuerza el contrato de
-`docs/licensing-auth-architecture.md`: un `sub` externo de Clerk no es el
-`account_id` UUID interno. Incluso cuando TPA quede operativo, debe existir un
-mapping explícito y el UUID interno debe seguir siendo la autoridad de negocio;
-no se debe reutilizar `sub` como clave canónica.
+El dato observado expone una incompatibilidad con el esquema actual descrito
+en `docs/supabase-schema-release.md`: `profiles.id` es un UUID de
+`auth.users.id` y `user_entitlements.user_id` lo referencia, mientras que el
+`sub` observado de Clerk no es un UUID. Antes de producción habrá que definir y
+probar cómo reconciliar ambas identidades; este spike no decidió ese mapping y
+no permite reutilizar `sub` como si ya fuera la clave UUID del esquema.
 
 ## Seguridad y cleanup
 

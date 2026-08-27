@@ -89,10 +89,10 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - item.en: Overlay Studio V3 with the Crystal, Neo and Endurance catalogues
 - item.pt: Overlay Studio V3 com os catálogos Crystal, Neo e Endurance
 - item.it: Overlay Studio V3 con i cataloghi Crystal, Neo ed Endurance
-- item: Telemetría LMU en vivo con transporte compartido y proyecciones
-- item.en: Live LMU telemetry with a shared transport and projections
-- item.pt: Telemetria LMU ao vivo com transporte partilhado e projeções
-- item.it: Telemetria LMU dal vivo con trasporto condiviso e proiezioni
+- item: Telemetría LMU en vivo con transporte acotado dirigido a consumidores y proyecciones
+- item.en: Live LMU telemetry with bounded consumer-targeted transport and projections
+- item.pt: Telemetria LMU ao vivo com transporte limitado dirigido aos consumidores e projeções
+- item.it: Telemetria LMU dal vivo con trasporto limitato diretto ai consumatori e proiezioni
 - item: Licencias con credencial offline y arranque desde caché
 - item.en: Licensing with offline credentials and cache-first startup
 - item.pt: Licenças com credencial offline e arranque a partir da cache
@@ -330,10 +330,10 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - titulo.en: Live LMU telemetry
 - titulo.pt: Telemetria LMU ao vivo
 - titulo.it: Telemetria LMU dal vivo
-- cuerpo: Driver LMU con reconexión acotada, transporte compartido entre ventanas y proyecciones de overlay, ingeniero y estrategia.
-- cuerpo.en: LMU driver with bounded reconnects, a transport shared across windows and overlay, engineer and strategy projections.
-- cuerpo.pt: Driver LMU com reconexão limitada, transporte partilhado entre janelas e projeções de overlay, engenheiro e estratégia.
-- cuerpo.it: Driver LMU con riconnessione limitata, trasporto condiviso tra finestre e proiezioni di overlay, engineer e strategia.
+- cuerpo: Driver LMU con reconexión acotada, transporte Overlay dirigido con una sola entrega pendiente y proyecciones de overlay, ingeniero y estrategia.
+- cuerpo.en: LMU driver with bounded reconnects, targeted Overlay transport with one pending delivery, and overlay, engineer and strategy projections.
+- cuerpo.pt: Driver LMU com reconexão limitada, transporte Overlay dirigido com uma única entrega pendente e projeções de overlay, engenheiro e estratégia.
+- cuerpo.it: Driver LMU con riconnessione limitata, trasporto Overlay diretto con una sola consegna pendente e proiezioni di overlay, engineer e strategia.
 - etiqueta: En desarrollo
 - etiqueta.en: In progress
 - etiqueta.pt: Em desenvolvimento

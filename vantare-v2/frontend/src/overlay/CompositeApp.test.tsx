@@ -3,6 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ProfileDocumentV3 } from "./core/profile-document";
 import { CompositeApp } from "./CompositeApp";
 import { relativeDefinition } from "./widget-types/relative/relative-definition";
+import {
+  OVERLAY_PULL_REQUEST_ROUTE,
+} from "../telemetry-transport/overlay-wails-pull";
 import goldenRaw from "../../../internal/telemetry/projection/overlay/testdata/overlay_v1.golden.json?raw";
 
 type Handler = (event: { data: unknown }) => void;
@@ -15,6 +18,9 @@ const runtimeMock = vi.hoisted(() => ({
 
 const originalResizeObserver = globalThis.ResizeObserver;
 let desktopOutput = { width: 1920, height: 1080 };
+let pullDelivery = 0;
+let pullRequests: Array<{sessionId: string; ack: number}> = [];
+let resolvePull: ((response: Response) => void) | undefined;
 
 function installResizeObserver(): void {
   globalThis.ResizeObserver = class {
@@ -60,6 +66,23 @@ function dispatch(name: string, data: unknown) {
     for (const handler of runtimeMock.handlers.get(name) ?? []) {
       handler({ data });
     }
+  });
+}
+
+async function dispatchTelemetry(events: ReadonlyArray<{name: string; data: unknown}>): Promise<void> {
+  const request = pullRequests.at(-1);
+  if (!request) throw new Error("overlay pull request not emitted");
+  pullDelivery += 1;
+  const resolve = resolvePull;
+  if (!resolve) throw new Error("overlay pull response not pending");
+  resolvePull = undefined;
+  await act(async () => {
+    resolve({
+      ok: true,
+      status: 200,
+      json: async () => ({sessionId: request.sessionId, delivery: pullDelivery, events}),
+    } as Response);
+    await Promise.resolve();
   });
 }
 
@@ -120,6 +143,19 @@ describe("CompositeApp", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-07-28T09:00:00Z"));
     desktopOutput = { width: 1920, height: 1080 };
+    pullDelivery = 0;
+    pullRequests = [];
+    resolvePull = undefined;
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const route = typeof input === "string" ? input : input.toString();
+      if (route === OVERLAY_PULL_REQUEST_ROUTE) {
+        pullRequests.push(JSON.parse(String(init?.body)) as {sessionId: string; ack: number});
+        return new Promise<Response>((resolve) => {
+          resolvePull = resolve;
+        });
+      }
+      return {ok: true, status: 204} as Response;
+    }));
     installResizeObserver();
   });
 
@@ -135,8 +171,9 @@ describe("CompositeApp", () => {
     expect(runtimeMock.onCalls.filter((name) => name === "overlay:profile-v3-loaded")).toHaveLength(1);
     expect(runtimeMock.emit).toHaveBeenCalledWith("overlay:profile-v3:get");
     expect(runtimeMock.onCalls.filter((name) => name === "telemetry:update")).toHaveLength(0);
-    expect(runtimeMock.onCalls.filter((name) => name === "telemetry:overlay:status")).toHaveLength(1);
-    expect(runtimeMock.onCalls.filter((name) => name === "telemetry:overlay:projection")).toHaveLength(1);
+    expect(runtimeMock.onCalls.filter((name) => name === "telemetry:overlay:status")).toHaveLength(0);
+    expect(runtimeMock.onCalls.filter((name) => name === "telemetry:overlay:projection")).toHaveLength(0);
+    expect(pullRequests).toHaveLength(1);
   });
 
   it("paints nothing at all until the profile arrives", () => {
@@ -172,18 +209,23 @@ describe("CompositeApp", () => {
     expect(screen.getByText("RELATIVE")).toBeTruthy();
   });
 
-  it("applies canonical Overlay projections through Wails", () => {
+  it("applies canonical Overlay projections from the HTTP response", async () => {
     render(<CompositeApp />);
     dispatch("overlay:profile-v3-loaded", buildProfilePayload(buildRelativeDocument()));
     tick(100);
 
-    dispatch("telemetry:overlay:status", {
-      product: "overlay",
-      statusRevision: 1,
-      capturedAt: "2026-07-28T09:00:00Z",
-      payload: { state: "live", reconnectAttempt: 0 },
-    });
-    dispatch("telemetry:overlay:projection", canonicalEnvelope());
+    await dispatchTelemetry([
+      {
+        name: "telemetry:overlay:status",
+        data: {
+          product: "overlay",
+          statusRevision: 1,
+          capturedAt: "2026-07-28T09:00:00Z",
+          payload: { state: "live", reconnectAttempt: 0 },
+        },
+      },
+      {name: "telemetry:overlay:projection", data: canonicalEnvelope()},
+    ]);
     tick(200);
 
     expect(screen.getByText("Player")).toBeTruthy();

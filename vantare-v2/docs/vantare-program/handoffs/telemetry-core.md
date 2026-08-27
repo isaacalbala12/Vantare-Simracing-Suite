@@ -15,6 +15,46 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 
 ## Estado real
 
+- 2026-08-27, ISA-879 elimina los bridges Overlay v1/v2 globales y los
+  sustituye por una sesion pull/ack `single-in-flight`, `latest-wins` y ligada
+  al ciclo de vida de una ventana Overlay. `68ae7eae` introduce el limite,
+  `e1069c7f` retira el bridge sin caller y `dee06f34` saca solicitud/cierre del
+  bus global. La prueba LMU nativa descubrio una segunda frontera: aunque Hub
+  recibia cero frames, `DispatchWailsEvent` aun materializaba ~62 KB v1 + ~9,6
+  KB v2 por `ExecuteScript`; un renderer limpio crecio 538,3 -> 2.370,1 MiB en
+  2 min. Descartar V2 no cambio la pendiente y descartar todos los eventos justo
+  antes de listeners aun llevo el heap a 734,2 MiB; un GC completo lo redujo a
+  7,2 MiB. Era presion de asignacion por convertir el JSON en JavaScript, no
+  retencion React. `21af8511` devuelve el mismo `OverlayPullResponse` en el
+  cuerpo HTTP y elimina todo evento/`ExecuteScript` de frames, manteniendo ack,
+  latest-wins, una peticion pendiente y cierre nativo. En 10 min 01 s, browser
+  quedo 50,4 -> 64,1 MiB (max 69,8), renderer Overlay 101,5 -> 109,4 MiB (max
+  111,1) y Hub 61,1 -> 61,1 MiB. `Detener overlay` elimino target y renderer;
+  LMU siguio abierto. El reader opt-in y Strategy observaron LMU `live` con
+  jugador, pero la proyeccion Overlay permanecio `stale` por fast frame
+  detenido/pausado: falta una repeticion breve sin pausa para acreditar esa
+  fase exacta. Go serial completo, 415 archivos/3.139 tests frontend, 26
+  focales, typecheck, build y ESLint del diff estan verdes. Rama
+  `vantareapp/isa-879-wails-telemetry-bounded`, publicada en `fa9d39ae`; PR
+  draft #883 a `nightly`. Run `33082227091` completamente verde. Sin merge,
+  promocion ni release.
+
+- 2026-08-27, diagnostico inicial de ISA-879 sobre `origin/nightly@a02a1463` tras una
+  reproduccion LMU/Wails real: con solo Hub visible, el proceso browser de
+  WebView2 crecio de ~9,3 a 11,4 GB privados mientras el renderer React se
+  mantuvo en ~197 MB. Overlay v1 cruzaba ~2,68 MiB/s y el shadow v2 ~0,56
+  MiB/s. La auditoria confirma que `TelemetryCoreRuntime.Start` activa ambos
+  bridges aunque no exista ventana Overlay y que `wailsEmitter` usa el
+  `Event.Emit` global. Wails difunde cada frame a todas las ventanas y acaba en
+  `ExecuteScript(..., nil)`, despues del ultimo limite `latest-wins`; incluso
+  `WebviewWindow.EmitEvent` vuelve al bus global y solo rellena `Sender`. La
+  decision minima de ISA-879 es sustituir exclusivamente el push Wails de
+  Overlay por demanda/acuse dirigido: una respuesta agregada v1+v2, como
+  maximo una entrega pendiente, reemplazo por el ultimo estado y publisher v2
+  activo solo durante la sesion consumidora. Strategy, Engineer, OBS, el
+  driver y las proyecciones no cambian. Tests sinteticos no acreditan el soak
+  WebView2/LMU real.
+
 - 2026-08-21, ISA-697 / Deuda #677 Tanda 2: `TelemetryEngine.Apply` pasa de 650190 B/op 344 allocs/op @104 a 168400 B/op 327 allocs/op (-74% bytes, -5% allocs) en rama `vantareapp/isa-697-apply-churn` sobre `origin/nightly@f10b817d` (5 commits: 1 benchmark + 4 perf). Cambios: `envelope.NewSnapshotOwned` + `Peek` para no clonar donde se lee sin mutar, `Commit` directo en reducer/coordinator/pipeline, y `validateObservedState` sin map (sort). Goldens y replay parity verdes; snapshot sigue value-semantic. Evidencia `docs/telemetry-core/evidence/isa-677-apply-churn.md`, fragmento `ISA-697.json`. Queda techo ~150KB/B/op sin COW en envelope y gaps 104 por frame.
 
 - 2026-08-20, ISA-679: `CapabilityModesV2` deja de ser un hueco. Los modos se

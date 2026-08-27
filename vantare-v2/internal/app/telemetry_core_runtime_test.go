@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -11,6 +12,49 @@ import (
 	telemetrycore "github.com/vantare/overlays/v2/internal/telemetry/core"
 	"github.com/vantare/overlays/v2/internal/telemetry/driver"
 )
+
+type overlayWailsLeakProbe chan string
+
+func (probe overlayWailsLeakProbe) Emit(name string, _ any) {
+	if strings.HasPrefix(name, "telemetry:overlay") {
+		probe <- name
+	}
+}
+
+func TestTelemetryCoreRuntimeDoesNotPushOverlayFramesToGlobalWails(t *testing.T) {
+	probe := make(overlayWailsLeakProbe, 4)
+	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{
+		Enabled: false,
+		Emitter: probe,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	if err := runtime.Start(ctx); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		stopCtx, stopCancel := context.WithTimeout(context.Background(), time.Second)
+		defer stopCancel()
+		if err := runtime.Stop(stopCtx); err != nil {
+			t.Errorf("Stop() error = %v", err)
+		}
+	}()
+
+	select {
+	case name := <-probe:
+		t.Fatalf("global Wails received Overlay telemetry without an Overlay consumer: %s", name)
+	case <-time.After(100 * time.Millisecond):
+	}
+	if subscribers := runtime.Hub().Metrics().CurrentSubscribers; subscribers != 0 {
+		t.Fatalf("global Wails bridge subscribers = %d, want 0", subscribers)
+	}
+	if _, active := runtime.OverlayV2Publishers().Lookup(telemetrytransport.ProductOverlayV2); active {
+		t.Fatal("global Wails bridge activated Overlay v2 without a consumer")
+	}
+}
 
 func TestTelemetryCoreRuntimeSourceStatusIsCanonicalAndFailClosed(t *testing.T) {
 	disabled, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{Enabled: false})

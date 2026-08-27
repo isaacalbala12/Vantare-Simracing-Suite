@@ -13,6 +13,10 @@ import {
   TransportContractError,
   type ProductID,
 } from "./contracts";
+import {
+  OVERLAY_PULL_CLOSE_ROUTE,
+  OVERLAY_PULL_REQUEST_ROUTE,
+} from "./overlay-wails-pull";
 
 const capturedAt = "2026-07-30T00:00:00Z";
 
@@ -30,6 +34,10 @@ describe("telemetry transport contracts", () => {
       projectionVersion: number;
       maxPayloadBytes: number;
       statusStates: string[];
+      overlayPull: {
+        requestRoute: string;
+        closeRoute: string;
+      };
       products: Record<
         ProductID,
         {
@@ -44,6 +52,10 @@ describe("telemetry transport contracts", () => {
     expect(fixture.projectionVersion).toBe(PROJECTION_VERSION);
     expect(fixture.maxPayloadBytes).toBe(MAX_PAYLOAD_BYTES);
     expect(fixture.statusStates).toEqual(TELEMETRY_STATUS_STATES);
+    expect(fixture.overlayPull).toEqual({
+      requestRoute: OVERLAY_PULL_REQUEST_ROUTE,
+      closeRoute: OVERLAY_PULL_CLOSE_ROUTE,
+    });
     for (const product of TELEMETRY_PRODUCTS) {
       expect(fixture.products[product]).toEqual({
         projectionEvent: eventName(product, "projection"),

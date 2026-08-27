@@ -29,10 +29,6 @@ func PublisherEventName(product PublisherProduct, kind PublisherEventKind) strin
 	return "telemetry:" + string(product) + ":" + string(kind)
 }
 
-func PublisherSnapshotRequestEventName(product PublisherProduct) string {
-	return PublisherEventName(product, PublisherEventSnapshot) + ":get"
-}
-
 type EventEmitter interface {
 	Emit(name string, data any)
 }
@@ -54,36 +50,6 @@ func ServeWails(ctx context.Context, hub *Hub, emitter EventEmitter) error {
 			return err
 		}
 		emitter.Emit(EventName(event.Product, event.Kind), event.Data)
-	}
-}
-
-// ServeWailsPublisher registers one active v2 consumer for this bridge and
-// releases the lazily-created publisher when the bridge stops.
-func ServeWailsPublisher(
-	ctx context.Context,
-	registry *PublisherRegistry,
-	product PublisherProduct,
-	emitter EventEmitter,
-) error {
-	if emitter == nil {
-		return ErrInvalidEnvelope
-	}
-	publisher, release, err := registry.RegisterConsumer(product)
-	if err != nil {
-		return err
-	}
-	defer release()
-	subscription, err := publisher.Subscribe(ctx)
-	if err != nil {
-		return err
-	}
-	defer subscription.Close()
-	for {
-		event, nextErr := subscription.Next(ctx)
-		if nextErr != nil {
-			return nextErr
-		}
-		emitter.Emit(PublisherEventName(event.Product, event.Kind), event.Data)
 	}
 }
 

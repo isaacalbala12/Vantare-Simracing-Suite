@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-879",
+  "type": "fix",
+  "summary": "La telemetría LMU deja de acumular entregas globales en WebView2 cuando no hay un Overlay consumiéndola.",
+  "technicalNotes": [
+    "Overlay v1 y v2 se entregan juntos a la ventana solicitante y el siguiente envío solo se permite después de que el anterior haya sido procesado.",
+    "El estado intermedio no se encola: mientras el Overlay está ocupado se conserva únicamente el frame más reciente.",
+    "El publisher v2 permanece inactivo sin una sesión Overlay y se libera al desmontar o cerrar la ventana."
+  ],
+  "testing": [
+    "Con LMU en pista, dejar Vantare en Hub y comprobar que la memoria privada del proceso browser WebView2 permanece estable.",
+    "Abrir un Overlay, confirmar que recibe telemetría y verificar que cerrarlo libera la sesión sin afectar Hub, Strategy, Engineer u OBS."
+  ],
+  "knownLimitations": [
+    "Overlay v1 y el shadow v2 siguen coexistiendo hasta su cutover funcional; ahora comparten una única entrega acotada."
+  ]
+}

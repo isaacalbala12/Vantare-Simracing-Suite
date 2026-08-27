@@ -9,8 +9,14 @@ import (
 type browserContractFixture struct {
 	ProjectionVersion uint64                           `json:"projectionVersion"`
 	MaxPayloadBytes   int                              `json:"maxPayloadBytes"`
+	OverlayPull       browserOverlayPullWire           `json:"overlayPull"`
 	StatusStates      []string                         `json:"statusStates"`
 	Products          map[ProductID]browserProductWire `json:"products"`
+}
+
+type browserOverlayPullWire struct {
+	RequestRoute string `json:"requestRoute"`
+	CloseRoute   string `json:"closeRoute"`
 }
 
 type browserProductWire struct {
@@ -35,6 +41,12 @@ func TestBrowserContractFixtureMatchesGoTransport(t *testing.T) {
 	}
 	if fixture.MaxPayloadBytes != MaxPayloadBytes {
 		t.Fatalf("max payload = %d, want %d", fixture.MaxPayloadBytes, MaxPayloadBytes)
+	}
+	if fixture.OverlayPull != (browserOverlayPullWire{
+		RequestRoute: overlayPullRequestRoute,
+		CloseRoute:   overlayPullCloseRoute,
+	}) {
+		t.Fatalf("overlay pull fixture drift: %+v", fixture.OverlayPull)
 	}
 	products := []ProductID{
 		ProductOverlay,

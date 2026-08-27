@@ -7,7 +7,9 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"log"
+	"net/http"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -584,6 +586,145 @@ type telemetryStatusReplayEvents interface {
 	On(string, func(*application.CustomEvent)) func()
 }
 
+type overlayPullTarget interface {
+	WatchClose(window string, callback func()) bool
+}
+
+const (
+	overlayPullWindowNameHeader = "X-Wails-Window-Name"
+	maxOverlayPullRequestBytes  = 1024
+)
+
+type overlayPullHTTPService struct {
+	target    overlayPullTarget
+	transport *telemetrytransport.OverlayPullTransport
+	cleanup   sync.Once
+}
+
+type wailsOverlayPullTarget struct {
+	app     *application.App
+	mu      sync.Mutex
+	watched map[string]struct{}
+}
+
+func newWailsOverlayPullTarget(wailsApp *application.App) *wailsOverlayPullTarget {
+	return &wailsOverlayPullTarget{app: wailsApp, watched: make(map[string]struct{})}
+}
+
+func (target *wailsOverlayPullTarget) WatchClose(window string, callback func()) bool {
+	if target == nil || target.app == nil || target.app.Window == nil || window == "" {
+		return false
+	}
+	target.mu.Lock()
+	if _, exists := target.watched[window]; exists {
+		target.mu.Unlock()
+		return true
+	}
+	resolved, ok := target.app.Window.GetByName(window)
+	if !ok {
+		target.mu.Unlock()
+		return false
+	}
+	target.watched[window] = struct{}{}
+	target.mu.Unlock()
+	resolved.OnWindowEvent(events.Common.WindowClosing, func(_ *application.WindowEvent) {
+		target.mu.Lock()
+		delete(target.watched, window)
+		target.mu.Unlock()
+		if callback != nil {
+			callback()
+		}
+	})
+	return true
+}
+
+func newOverlayPullHTTPService(
+	target overlayPullTarget,
+	transport *telemetrytransport.OverlayPullTransport,
+) *overlayPullHTTPService {
+	return &overlayPullHTTPService{target: target, transport: transport}
+}
+
+// ServeHTTP exchanges pull acknowledgements and responses through Wails'
+// internal asset server. The response belongs to the calling WebView, so
+// telemetry never needs Event.Emit or ExecuteScript.
+func (service *overlayPullHTTPService) ServeHTTP(response http.ResponseWriter, request *http.Request) {
+	response.Header().Set("Cache-Control", "no-store")
+	if request.Method != http.MethodPost {
+		response.Header().Set("Allow", http.MethodPost)
+		http.Error(response, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if service == nil || service.target == nil || service.transport == nil {
+		http.Error(response, "overlay telemetry unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	sender := strings.TrimSpace(request.Header.Get(overlayPullWindowNameHeader))
+	if sender == "" {
+		http.Error(response, "missing Wails window", http.StatusBadRequest)
+		return
+	}
+	pullRequest, ok := decodeOverlayPullHTTPRequest(response, request)
+	if !ok {
+		return
+	}
+
+	switch request.URL.Path {
+	case "/pull":
+		pullResponse, deliver, err := service.transport.Pull(sender, pullRequest)
+		if err != nil {
+			log.Printf("overlay telemetry pull error: %v", err)
+			http.Error(response, "overlay telemetry unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		if !deliver {
+			response.WriteHeader(http.StatusNoContent)
+			return
+		}
+		if !service.target.WatchClose(sender, func() { service.transport.CloseSender(sender) }) {
+			service.transport.Close(sender, pullRequest.SessionID)
+			http.Error(response, "overlay window unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		response.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(response).Encode(pullResponse); err != nil {
+			log.Printf("overlay telemetry response error: %v", err)
+		}
+	case "/close":
+		service.transport.Close(sender, pullRequest.SessionID)
+		response.WriteHeader(http.StatusNoContent)
+	default:
+		http.NotFound(response, request)
+	}
+}
+
+func decodeOverlayPullHTTPRequest(
+	response http.ResponseWriter,
+	request *http.Request,
+) (telemetrytransport.OverlayPullRequest, bool) {
+	request.Body = http.MaxBytesReader(response, request.Body, maxOverlayPullRequestBytes)
+	decoder := json.NewDecoder(request.Body)
+	decoder.DisallowUnknownFields()
+	var pullRequest telemetrytransport.OverlayPullRequest
+	if err := decoder.Decode(&pullRequest); err != nil ||
+		pullRequest.SessionID == "" || len(pullRequest.SessionID) > 128 {
+		http.Error(response, "invalid pull request", http.StatusBadRequest)
+		return telemetrytransport.OverlayPullRequest{}, false
+	}
+	if err := decoder.Decode(&struct{}{}); err != io.EOF {
+		http.Error(response, "invalid pull request", http.StatusBadRequest)
+		return telemetrytransport.OverlayPullRequest{}, false
+	}
+	return pullRequest, true
+}
+
+func (service *overlayPullHTTPService) shutdown() {
+	if service == nil || service.transport == nil {
+		return
+	}
+	service.cleanup.Do(service.transport.CloseAll)
+}
+
 func registerTelemetryStatusReplayHandlers(
 	events telemetryStatusReplayEvents,
 	emitter telemetrytransport.EventEmitter,
@@ -596,7 +737,6 @@ func registerTelemetryStatusReplayHandlers(
 		product telemetrytransport.ProductID
 		hub     *telemetrytransport.Hub
 	}{
-		{product: telemetrytransport.ProductOverlay, hub: telemetryRuntime.Hub()},
 		{product: telemetrytransport.ProductStrategy, hub: telemetryRuntime.StrategyHub()},
 	}
 	unsubscribes := make([]func(), 0, len(registrations))
@@ -626,20 +766,6 @@ func registerTelemetryStatusReplayHandlers(
 		)
 		unsubscribes = append(unsubscribes, unsubscribe)
 	}
-	unsubscribes = append(unsubscribes, events.On(
-		telemetrytransport.PublisherSnapshotRequestEventName(telemetrytransport.ProductOverlayV2),
-		func(_ *application.CustomEvent) {
-			publisher, active := telemetryRuntime.OverlayV2Publishers().Lookup(telemetrytransport.ProductOverlayV2)
-			if !active {
-				return
-			}
-			replay, ok := publisher.ReplaySnapshot()
-			if !ok {
-				return
-			}
-			emitter.Emit(telemetrytransport.PublisherEventName(replay.Product, replay.Kind), replay.Data)
-		},
-	))
 	var cleanup sync.Once
 	return func() {
 		cleanup.Do(func() {
@@ -1243,6 +1369,7 @@ func main() {
 	var testingCenterDiagnosticBridge *app.TestingCenterDiagnosticBridge
 	var telemetryCoreRuntime *app.TelemetryCoreRuntime
 	telemetryStatusReplayCleanup := func() {}
+	overlayPullCleanup := func() {}
 	var telemetryAnalysisSvc *app.TelemetryAnalysisService
 	cleanupApp := func() {
 		cleanup.Do(func() {
@@ -1257,6 +1384,10 @@ func main() {
 				}},
 				{name: "telemetry-status-replay-handlers", stop: func(context.Context) error {
 					telemetryStatusReplayCleanup()
+					return nil
+				}},
+				{name: "overlay-telemetry-pull-handlers", stop: func(context.Context) error {
+					overlayPullCleanup()
 					return nil
 				}},
 				{name: "telemetry-core", stop: func(ctx context.Context) error {
@@ -2252,9 +2383,26 @@ func main() {
 		emitter.Emit(telemetrySourceStatusEvent, telemetrySourceStatus())
 	})
 
-	// Las ventanas que aparecen a mitad de sesion solicitan el estado actual de
-	// su producto. Overlay y Strategy comparten lifecycle, pero no hub ni canal.
+	// Strategy conserva su replay Wails bajo el rollback explicito. Overlay usa
+	// un pull dirigido para no difundir frames al Hub ni adelantar al WebView.
 	telemetryStatusReplayCleanup = registerTelemetryStatusReplayHandlers(wailsApp.Event, emitter, telemetryCoreRuntime)
+	if telemetryCoreRuntime != nil {
+		overlayPullService := newOverlayPullHTTPService(
+			newWailsOverlayPullTarget(wailsApp),
+			telemetrytransport.NewOverlayPullTransport(
+				telemetryCoreRuntime.Hub(),
+				telemetryCoreRuntime.OverlayV2Publishers(),
+			),
+		)
+		wailsApp.RegisterService(application.NewServiceWithOptions(
+			overlayPullService,
+			application.ServiceOptions{
+				Name:  "overlay-telemetry-pull",
+				Route: telemetrytransport.OverlayPullServiceRoute,
+			},
+		))
+		overlayPullCleanup = overlayPullService.shutdown
+	}
 
 	if updaterSvc != nil {
 		emitUpdaterError := func(message string) {

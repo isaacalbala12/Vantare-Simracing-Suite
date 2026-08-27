@@ -1,6 +1,10 @@
 {
   "projectionVersion": 1,
   "maxPayloadBytes": 262144,
+  "overlayPull": {
+    "requestRoute": "/_vantare/overlay-telemetry/pull",
+    "closeRoute": "/_vantare/overlay-telemetry/close"
+  },
   "statusStates": [
     "stopped",
     "detecting",

@@ -104,25 +104,31 @@ func TestPublisherAcceptsGreaterNonContiguousDeliveryRevision(t *testing.T) {
 	}
 }
 
-func TestPublisherWailsAndSSEUseIdenticalEventContract(t *testing.T) {
+func TestPublisherOverlayPullAndSSEUseIdenticalEventContract(t *testing.T) {
 	registry := mustPublisherRegistry(t, PublisherConfig{Product: ProductOverlayV2})
 	publisher, release, err := registry.RegisterConsumer(ProductOverlayV2)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer release()
-	emitter := &captureEmitter{events: make(chan capturedEvent, 2)}
-	wailsContext, cancelWails := context.WithCancel(context.Background())
-	wailsDone := make(chan error, 1)
-	go func() {
-		wailsDone <- ServeWailsPublisher(wailsContext, registry, ProductOverlayV2, emitter)
-	}()
 	if err := publisher.PublishSnapshot(5, map[string]any{"revision": 5, "frame": map[string]any{"contract": 2}}); err != nil {
 		t.Fatal(err)
 	}
-	wailsEvent := <-emitter.events
-	if wailsEvent.name != "telemetry:overlay-v2:snapshot" {
-		t.Fatalf("Wails event = %q", wailsEvent.name)
+	pull := NewOverlayPullTransport(NewHub(HubConfig{Product: ProductOverlay}), registry)
+	defer pull.CloseAll()
+	response, deliver, err := pull.Pull("overlay-window", OverlayPullRequest{SessionID: "contract", Ack: 0})
+	if err != nil || !deliver {
+		t.Fatalf("Overlay pull response = %#v, deliver=%v, err=%v", response, deliver, err)
+	}
+	var pullEvent OverlayPullEvent
+	for _, event := range response.Events {
+		if event.Name == PublisherEventName(ProductOverlayV2, PublisherEventSnapshot) {
+			pullEvent = event
+			break
+		}
+	}
+	if pullEvent.Name == "" {
+		t.Fatalf("Overlay pull events = %#v", response.Events)
 	}
 
 	requestContext, cancelRequest := context.WithCancel(context.Background())
@@ -136,18 +142,14 @@ func TestPublisherWailsAndSSEUseIdenticalEventContract(t *testing.T) {
 	}()
 	writer.waitEvents(t, 1)
 	sseEvent := writer.events()[0]
-	if sseEvent.name != wailsEvent.name || !bytes.Equal(sseEvent.data, wailsEvent.data) {
-		t.Fatalf("SSE=%q %s Wails=%q %s", sseEvent.name, sseEvent.data, wailsEvent.name, wailsEvent.data)
+	if sseEvent.name != pullEvent.Name || !bytes.Equal(sseEvent.data, pullEvent.Data) {
+		t.Fatalf("SSE=%q %s pull=%q %s", sseEvent.name, sseEvent.data, pullEvent.Name, pullEvent.Data)
 	}
 	cancelRequest()
 	select {
 	case <-sseDone:
 	case <-time.After(time.Second):
 		t.Fatal("Publisher SSE did not stop")
-	}
-	cancelWails()
-	if err := <-wailsDone; !errors.Is(err, context.Canceled) && !errors.Is(err, ErrClosed) {
-		t.Fatalf("ServeWailsPublisher error = %v", err)
 	}
 }
 

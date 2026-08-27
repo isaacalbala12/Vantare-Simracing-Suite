@@ -4,7 +4,6 @@ import type { CalendarReminderPayload } from "../calendar/calendar-types";
 import { parseProfileDocumentV3, type ProfileDocumentV3 } from "./core/profile-document";
 import { createTelemetryRateCoordinator } from "./core/telemetry-rate-coordinator";
 import { conformAspectLockedLayouts } from "./core/profile-layout-conform";
-import { statusRequestEventName } from "../telemetry-transport/contracts";
 import { applyOverlayDocumentMode } from "./overlay-document";
 import { OverlayCalendarReminderBanner } from "./OverlayCalendarReminderBanner";
 import { DesktopOverlayRuntime } from "./runtime/DesktopOverlayRuntime";
@@ -15,8 +14,8 @@ import { createWailsEngineerPresentationAdapter } from "../engineer/engineer-pre
 import {
   attachOverlayFrameV2Transport,
   createOverlayFrameV2Store,
-  OVERLAY_V2_SNAPSHOT_REQUEST_EVENT,
 } from "../telemetry-transport/overlay-frame-v2-store";
+import { createOverlayWailsPullClient } from "../telemetry-transport/overlay-wails-pull";
 import { createOverlayV2ShadowRuntime } from "./telemetry-shadow/overlay-v2-shadow-runtime";
 import { readDiagnosticOverlayV2Features, type OverlayV2Feature } from "./telemetry-shadow/overlay-v2-features";
 
@@ -46,6 +45,22 @@ export function CompositeApp() {
     overlayV2Store.getSnapshot,
   );
   const engineerPresentations = useMemo(() => createEngineerPresentationStore(), []);
+  const overlayPull = useMemo(() => createOverlayWailsPullClient({
+    post: async (route, data) => {
+      const response = await fetch(route, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(data),
+        cache: "no-store",
+      });
+      if (!response.ok) {
+        throw new Error(`overlay telemetry pull HTTP ${response.status}`);
+      }
+      if (response.status === 204) return undefined;
+      return response.json();
+    },
+    onError: (error) => console.error("overlay telemetry pull failed", error),
+  }), []);
   const engineerAdapter = useMemo(() => createWailsEngineerPresentationAdapter({
     store: engineerPresentations,
     subscribe: (event, handler) => {
@@ -56,22 +71,14 @@ export function CompositeApp() {
   }), [engineerPresentations]);
   const adapter = useMemo(
     () => {
-      const subscribe = (event: string, handler: (data: unknown) => void) => {
-        const unsub = Events.On(event, (evt: { data: unknown }) => handler(evt.data));
-        return () => unsub?.();
-      };
       return createWailsProjectionTelemetryAdapter({
         coordinator,
         runtime: "desktop",
-        subscribe,
+        subscribe: overlayPull.source.subscribe,
         onMappedSnapshot: overlayV2Shadow.acceptLegacy,
-        // Una ventana de overlay abierta a mitad de sesion no recibe estado,
-        // porque solo se publica al cambiar y el puente Wails no repite lo ya
-        // emitido. Sin estado el observador no pinta nada.
-        requestStatus: () => Events.Emit(statusRequestEventName("overlay")),
       });
     },
-    [coordinator, overlayV2Shadow],
+    [coordinator, overlayPull, overlayV2Shadow],
   );
 
   useEffect(() => applyOverlayDocumentMode(), []);
@@ -95,14 +102,8 @@ export function CompositeApp() {
     });
     const detachOverlayV2 = attachOverlayFrameV2Transport(
       overlayV2Store,
-      {
-        subscribe: (event, handler) => {
-          const unsubscribe = Events.On(event, (payload: { data: unknown }) => handler(payload.data));
-          return () => unsubscribe?.();
-        },
-      },
+      overlayPull.source,
       (error) => console.error("overlay-v2 shadow ingest failed", error),
-      () => Events.Emit(OVERLAY_V2_SNAPSHOT_REQUEST_EVENT),
     );
     const diagnosticWindow = window as Window & {
       __vantareOverlayV2Diagnostics?: () => unknown;
@@ -113,7 +114,9 @@ export function CompositeApp() {
     });
     adapter.start();
     engineerAdapter.start();
+    overlayPull.start();
     return () => {
+      overlayPull.stop();
       delete diagnosticWindow.__vantareOverlayV2Diagnostics;
       detachOverlayV2();
       unsubscribeOverlayV2Store();
@@ -123,7 +126,7 @@ export function CompositeApp() {
       engineerPresentations.dispose();
       coordinator.dispose();
     };
-  }, [adapter, coordinator, engineerAdapter, engineerPresentations, overlayV2Shadow, overlayV2Store]);
+  }, [adapter, coordinator, engineerAdapter, engineerPresentations, overlayPull, overlayV2Shadow, overlayV2Store]);
 
   useEffect(() => {
     const unsub = Events.On("overlay:profile-v3-loaded", (event: { data: unknown }) => {

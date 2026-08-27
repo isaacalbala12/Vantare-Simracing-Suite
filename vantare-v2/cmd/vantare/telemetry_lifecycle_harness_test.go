@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -143,6 +144,11 @@ func TestTelemetryLifecycleHarness(t *testing.T) {
 	}
 	cleanupStatusReplayHandlers := registerTelemetryStatusReplayHandlers(wailsApp.Event, emitter, telemetryRuntime)
 	defer cleanupStatusReplayHandlers()
+	pullTransport := telemetrytransport.NewOverlayPullTransport(
+		telemetryRuntime.Hub(),
+		telemetryRuntime.OverlayV2Publishers(),
+	)
+	defer pullTransport.CloseAll()
 	if err := telemetryRuntime.Start(appContext); err != nil {
 		t.Fatalf("TelemetryCoreRuntime.Start() error = %v", err)
 	}
@@ -190,10 +196,17 @@ func TestTelemetryLifecycleHarness(t *testing.T) {
 			sse[name] = data
 		}
 	}
-	wails := awaitWailsTelemetry(t, wailsTransport.events,
-		telemetrytransport.ProductOverlay,
-		telemetrytransport.ProductStrategy,
-	)
+	wails := awaitWailsTelemetry(t, wailsTransport.events, telemetrytransport.ProductStrategy)
+	pulled, deliver, err := pullTransport.Pull("overlay-window", telemetrytransport.OverlayPullRequest{
+		SessionID: "lifecycle-session",
+		Ack:       0,
+	})
+	if err != nil || !deliver {
+		t.Fatalf("Overlay pull response = %#v, deliver=%v, err=%v", pulled, deliver, err)
+	}
+	for _, event := range pulled.Events {
+		wails[event.Name] = event.Data
+	}
 	for name, wailsData := range wails {
 		sseData, ok := sse[name]
 		if !ok {
@@ -212,29 +225,19 @@ func TestTelemetryLifecycleHarness(t *testing.T) {
 		telemetrytransport.EventSnapshot,
 	)], strategySnapshot)
 
-	wailsApp.Event.Emit(telemetrytransport.StatusRequestEventName(telemetrytransport.ProductOverlay))
 	wailsApp.Event.Emit(telemetrytransport.StatusRequestEventName(telemetrytransport.ProductStrategy))
-	replayed := awaitWailsStatusReplayEvents(t, wailsTransport.events,
-		telemetrytransport.ProductOverlay,
-		telemetrytransport.ProductStrategy,
-	)
+	replayed := awaitWailsStatusReplayEvents(t, wailsTransport.events, telemetrytransport.ProductStrategy)
 	replayCounts := make(map[string]int, 2)
 	for _, event := range replayed {
 		replayCounts[event.name]++
-		product := telemetrytransport.ProductOverlay
-		if event.name == telemetrytransport.EventName(telemetrytransport.ProductStrategy, telemetrytransport.EventStatus) {
-			product = telemetrytransport.ProductStrategy
-		}
+		product := telemetrytransport.ProductStrategy
 		name := telemetrytransport.EventName(product, telemetrytransport.EventStatus)
 		if !bytes.Equal(event.data, wails[name]) {
 			t.Fatalf("%s status replay differs from hub status\noriginal: %s\nreplay:   %s", product, wails[name], event.data)
 		}
 		assertStatusProduct(t, event.name, event.data, product)
 	}
-	for _, product := range []telemetrytransport.ProductID{
-		telemetrytransport.ProductOverlay,
-		telemetrytransport.ProductStrategy,
-	} {
+	for _, product := range []telemetrytransport.ProductID{telemetrytransport.ProductStrategy} {
 		name := telemetrytransport.EventName(product, telemetrytransport.EventStatus)
 		if replayCounts[name] != 1 {
 			t.Fatalf("%s status replay count = %d, want 1; all=%v", product, replayCounts[name], replayCounts)
@@ -257,6 +260,7 @@ func TestTelemetryLifecycleHarness(t *testing.T) {
 	defer cancelShutdown()
 	results := runShutdown(shutdownContext, []shutdownStep{
 		observedStop(t, "recording", recorder.Stop),
+		observedStop(t, "overlay-pull", func(context.Context) error { pullTransport.CloseAll(); return nil }),
 		observedStop(t, "telemetry-core", telemetryRuntime.Stop),
 		observedStop(t, "http", func(context.Context) error { return httpServer.Stop() }),
 		observedStop(t, "ops", func(context.Context) error { opsBridge.Stop(); return nil }),
@@ -294,7 +298,9 @@ func TestTelemetryLifecycleHarness(t *testing.T) {
 }
 
 func TestTelemetryStatusReplayHandlerCleanupPreventsDuplicateDelivery(t *testing.T) {
-	runtime, err := app.NewTelemetryCoreRuntime(app.TelemetryCoreRuntimeConfig{Enabled: false})
+	runtime, err := app.NewTelemetryCoreRuntime(app.TelemetryCoreRuntimeConfig{
+		Enabled: false, StrategyPublicTransport: true,
+	})
 	if err != nil {
 		t.Fatalf("NewTelemetryCoreRuntime() error = %v", err)
 	}
@@ -343,7 +349,7 @@ func TestTelemetryStatusReplayHandlerCleanupPreventsDuplicateDelivery(t *testing
 			t.Fatalf("crossed replay event name=%q product=%q", event.name, envelope.Product)
 		}
 	}
-	for _, product := range []telemetrytransport.ProductID{telemetrytransport.ProductOverlay} {
+	for _, product := range []telemetrytransport.ProductID{telemetrytransport.ProductStrategy} {
 		name := telemetrytransport.EventName(product, telemetrytransport.EventStatus)
 		if counts[name] != 1 {
 			t.Fatalf("%s replay count = %d, want 1; all=%v", product, counts[name], counts)
@@ -383,33 +389,66 @@ func TestTelemetryStatusReplayHandlersIgnoreNilRuntime(t *testing.T) {
 	cleanup()
 }
 
-func TestTelemetryReplayHandlerServesOverlayV2LateJoin(t *testing.T) {
-	runtime, err := app.NewTelemetryCoreRuntime(app.TelemetryCoreRuntimeConfig{})
+func TestOverlayPullHTTPServiceRespondsOnlyToTheRequestingWindowAndClosesConsumer(t *testing.T) {
+	hub := telemetrytransport.NewHub(telemetrytransport.HubConfig{
+		Product: telemetrytransport.ProductOverlay,
+	})
+	registry, err := telemetrytransport.NewPublisherRegistry(telemetrytransport.PublisherConfig{
+		Product: telemetrytransport.ProductOverlayV2,
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	publisher, release, err := runtime.OverlayV2Publishers().RegisterConsumer(telemetrytransport.ProductOverlayV2)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer release()
-	if err := publisher.PublishSnapshot(7, map[string]any{
-		"revision": 7, "source": map[string]any{"state": "live"}, "frame": nil,
-	}); err != nil {
-		t.Fatal(err)
-	}
-	events := newSynchronousTelemetryEvents()
-	emitter := &countingTelemetryEmitter{}
-	cleanup := registerTelemetryStatusReplayHandlers(events, emitter, runtime)
-	defer cleanup()
+	pull := telemetrytransport.NewOverlayPullTransport(hub, registry)
+	target := newCaptureOverlayPullTarget()
+	service := newOverlayPullHTTPService(target, pull)
+	defer service.shutdown()
 
-	events.Emit(telemetrytransport.PublisherSnapshotRequestEventName(telemetrytransport.ProductOverlayV2))
+	request := httptest.NewRequest(http.MethodPost, "/pull", strings.NewReader(`{"sessionId":"session-1","ack":0}`))
+	request.Header.Set(overlayPullWindowNameHeader, "overlay-window")
+	response := httptest.NewRecorder()
+	service.ServeHTTP(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("pull status = %d, body=%q", response.Code, response.Body.String())
+	}
+	var pullResponse telemetrytransport.OverlayPullResponse
+	if err := json.Unmarshal(response.Body.Bytes(), &pullResponse); err != nil {
+		t.Fatalf("decode pull response: %v", err)
+	}
+	if pullResponse.SessionID != "session-1" || pullResponse.Delivery != 1 {
+		t.Fatalf("pull response = %#v", pullResponse)
+	}
+	if _, active := registry.Lookup(telemetrytransport.ProductOverlayV2); !active {
+		t.Fatal("pull handler did not activate the overlay consumer")
+	}
 
-	replayed := emitter.snapshot()
-	if len(replayed) != 1 || replayed[0].name != telemetrytransport.PublisherEventName(
-		telemetrytransport.ProductOverlayV2, telemetrytransport.PublisherEventSnapshot,
-	) {
-		t.Fatalf("Overlay v2 replay = %#v", replayed)
+	// A duplicate request is not a second WebView delivery while response 1 is
+	// still unacknowledged.
+	request = httptest.NewRequest(http.MethodPost, "/pull", strings.NewReader(`{"sessionId":"session-1","ack":0}`))
+	request.Header.Set(overlayPullWindowNameHeader, "overlay-window")
+	response = httptest.NewRecorder()
+	service.ServeHTTP(response, request)
+	if response.Code != http.StatusNoContent {
+		t.Fatalf("duplicate pull status = %d, want %d", response.Code, http.StatusNoContent)
+	}
+
+	request = httptest.NewRequest(http.MethodPost, "/close", strings.NewReader(`{"sessionId":"session-1","ack":1}`))
+	request.Header.Set(overlayPullWindowNameHeader, "overlay-window")
+	response = httptest.NewRecorder()
+	service.ServeHTTP(response, request)
+	if response.Code != http.StatusNoContent {
+		t.Fatalf("close status = %d, body=%q", response.Code, response.Body.String())
+	}
+	if _, active := registry.Lookup(telemetrytransport.ProductOverlayV2); active {
+		t.Fatal("HTTP close left the overlay publisher active")
+	}
+
+	request = httptest.NewRequest(http.MethodPost, "/pull", strings.NewReader(`{"sessionId":"session-2","ack":0}`))
+	request.Header.Set(overlayPullWindowNameHeader, "overlay-window")
+	service.ServeHTTP(httptest.NewRecorder(), request)
+	target.close("overlay-window")
+	if _, active := registry.Lookup(telemetrytransport.ProductOverlayV2); active {
+		t.Fatal("native window close left the overlay publisher active")
 	}
 }
 
@@ -478,6 +517,34 @@ func (events *synchronousTelemetryEvents) Emit(name string) {
 	events.mu.Unlock()
 	for _, listener := range listeners {
 		listener.callback(&application.CustomEvent{Name: name})
+	}
+}
+
+type captureOverlayPullTarget struct {
+	mu       sync.Mutex
+	onClosed map[string]func()
+}
+
+func newCaptureOverlayPullTarget() *captureOverlayPullTarget {
+	return &captureOverlayPullTarget{onClosed: make(map[string]func())}
+}
+
+func (target *captureOverlayPullTarget) WatchClose(window string, callback func()) bool {
+	target.mu.Lock()
+	defer target.mu.Unlock()
+	if _, exists := target.onClosed[window]; !exists {
+		target.onClosed[window] = callback
+	}
+	return true
+}
+
+func (target *captureOverlayPullTarget) close(window string) {
+	target.mu.Lock()
+	callback := target.onClosed[window]
+	delete(target.onClosed, window)
+	target.mu.Unlock()
+	if callback != nil {
+		callback()
 	}
 }
 

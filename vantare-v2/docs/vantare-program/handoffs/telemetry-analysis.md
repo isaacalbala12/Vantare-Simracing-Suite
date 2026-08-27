@@ -58,7 +58,10 @@ Actualización ISA-869 (2026-08-27, rama
   listar el catálogo existente, pero la práctica activa no aporta todavía un
   artefacto estable nuevo. ISA-871 registra el refresco post-sesión explícito,
   seguro y sin watcher live; queda fuera de esta rama.
-- Rama publicada y PR draft #872 abierto contra `nightly`; CI pendiente. No
+- Rama publicada y PR draft #872 abierto contra `nightly`. El gate de canal y
+  GitGuardian pasan; el job bloqueante conserva 3.067/3.068 tests frontend por
+  un flake ajeno en `StudioRoute.test.tsx` (dos PASS y un FAIL al reproducirlo
+  focalmente con la misma aserción). ISA-874 registra su arreglo separado. No
   hay merge, promoción ni release.
 
 Actualización ISA-861 (2026-08-27, corte final candidato sobre

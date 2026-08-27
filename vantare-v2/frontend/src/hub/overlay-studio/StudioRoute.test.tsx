@@ -1,5 +1,6 @@
 import { resetStudioStageGeometryCache } from './canvas/stage-geometry-cache';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { StrictMode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Events } from '@wailsio/runtime';
 import { deltaDefinition } from '../../overlay/widget-types/delta/delta-definition';
@@ -109,7 +110,10 @@ describe('StudioRoute', () => {
     resetStudioStageGeometryCache();
   });
 
-  afterEach(() => cleanup());
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
 
   it('requests profiles and settings on mount', () => {
     render(
@@ -174,6 +178,45 @@ describe('StudioRoute', () => {
     bootProfiles();
     await screen.findByTestId('overlay-studio-v3');
     expect(client.load).toHaveBeenCalledWith('example-racing.json');
+  });
+
+  it('uses one bounded pull session for live Studio without global telemetry events', async () => {
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      if (String(input).endsWith('/close')) {
+        return Promise.resolve({ ok: true, status: 204 } as Response);
+      }
+      return new Promise<Response>(() => undefined);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const view = render(
+      <StrictMode>
+        <StudioRoute
+          client={createMockClient()}
+          coordinator={createTelemetryRateCoordinator()}
+          liveAvailable
+        />
+      </StrictMode>,
+    );
+    bootProfiles();
+    await screen.findByTestId('overlay-studio-v3');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Live' }));
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe('/_vantare/overlay-telemetry/pull');
+    expect(vi.mocked(Events.On).mock.calls.map(([name]) => name)).not.toContain(
+      'telemetry:overlay:projection',
+    );
+    expect(vi.mocked(Events.On).mock.calls.map(([name]) => name)).not.toContain(
+      'telemetry:overlay-v2:snapshot',
+    );
+    expect(vi.mocked(Events.Emit).mock.calls.map(([name]) => name)).not.toContain(
+      'telemetry:overlay:status:get',
+    );
+
+    view.unmount();
+    expect(fetchMock.mock.calls.filter(([route]) => String(route).endsWith('/pull'))).toHaveLength(1);
+    expect(fetchMock.mock.calls.filter(([route]) => String(route).endsWith('/close'))).toHaveLength(1);
   });
 
   it('keeps the editor mounted and inert while visiting another Studio section', async () => {

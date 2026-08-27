@@ -2,6 +2,7 @@ import { useLayoutEffect, useMemo, type ReactNode } from 'react';
 import { buildMockTelemetry } from '../../../overlay/core/mock-scenarios';
 import type { TelemetryRateCoordinator } from '../../../overlay/core/telemetry-rate-coordinator';
 import type { TelemetryAdapter } from '../../../overlay/transports/telemetry-adapter';
+import type { WidgetRuntimeInput } from '../../../overlay/core/widget-definition';
 import { useStudioPreview } from '../state/studio-store';
 import { StudioTelemetryContext, type StudioTelemetryContextValue } from './studio-telemetry';
 import { useOrbitKeepAliveActivity } from '../../components/orbit/orbit-keep-alive-activity';
@@ -12,11 +13,12 @@ export type StudioTelemetryProviderProps = {
   telemetryAdapter?: TelemetryAdapter | null;
   /** Suspends React paints without restarting transport or losing the latest snapshot. */
   active?: boolean;
+  runtime?: WidgetRuntimeInput;
   children: ReactNode;
 };
 
 export function StudioTelemetryProvider(props: StudioTelemetryProviderProps): React.ReactElement {
-  const { coordinator, liveAvailable, telemetryAdapter = null, active = true, children } = props;
+  const { coordinator, liveAvailable, telemetryAdapter = null, active = true, runtime, children } = props;
   const { preview } = useStudioPreview();
   const activityGate = useOrbitKeepAliveActivity();
 
@@ -56,8 +58,8 @@ export function StudioTelemetryProvider(props: StudioTelemetryProviderProps): Re
   ]);
 
   const value = useMemo<StudioTelemetryContextValue>(
-    () => ({ coordinator, liveAvailable, active, activityGate }),
-    [active, activityGate, coordinator, liveAvailable],
+    () => ({ coordinator, liveAvailable, active, activityGate, runtime }),
+    [active, activityGate, coordinator, liveAvailable, runtime],
   );
 
   return (
@@ -70,6 +72,7 @@ export function ConnectedStudioTelemetryProvider(props: {
   liveAvailable?: boolean;
   telemetryAdapter?: TelemetryAdapter | null;
   active?: boolean;
+  runtime?: WidgetRuntimeInput;
   children: ReactNode;
 }): React.ReactElement {
   return (
@@ -78,6 +81,7 @@ export function ConnectedStudioTelemetryProvider(props: {
       liveAvailable={props.liveAvailable ?? false}
       telemetryAdapter={props.telemetryAdapter ?? null}
       active={props.active}
+      runtime={props.runtime}
     >
       {props.children}
     </StudioTelemetryProvider>

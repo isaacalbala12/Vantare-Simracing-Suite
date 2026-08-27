@@ -36,6 +36,10 @@ export type OverlayWailsPullClient = Readonly<{
   stop(): void;
 }>;
 
+export type BrowserOverlayWailsPullOptions = Readonly<{
+  onError?: (error: unknown) => void;
+}>;
+
 let sessionSequence = 0;
 
 function defaultSessionID(): string {
@@ -191,6 +195,27 @@ export function createOverlayWailsPullClient(
       }
     },
   };
+}
+
+export function createBrowserOverlayWailsPullClient(
+  options: BrowserOverlayWailsPullOptions = {},
+): OverlayWailsPullClient {
+  return createOverlayWailsPullClient({
+    post: async (route, data) => {
+      const response = await fetch(route, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(data),
+        cache: "no-store",
+      });
+      if (!response.ok) {
+        throw new Error(`overlay telemetry pull HTTP ${response.status}`);
+      }
+      if (response.status === 204) return undefined;
+      return response.json();
+    },
+    onError: options.onError,
+  });
 }
 
 function decodeResponse(input: unknown): PullResponse | undefined {

@@ -7,6 +7,7 @@ import { widgetTypeRegistry } from "../../../overlay/core/widget-registry";
 import { deltaDefinition } from "../../../overlay/widget-types/delta/delta-definition";
 import { broadcastTowerDefinition } from "../../../overlay/widget-types/broadcast-tower/broadcast-tower-definition";
 import { WidgetVisualHost } from "../../../overlay/core/WidgetVisualHost";
+import type { WidgetRuntimeInput } from "../../../overlay/core/widget-definition";
 import { StudioProvider } from "../state/studio-store";
 import type { StudioProfileClient } from "../state/studio-profile-client";
 import { StudioTelemetryProvider } from "./StudioTelemetryProvider";
@@ -52,13 +53,17 @@ function buildDocument() {
   };
 }
 
-function renderFrame(widget: WidgetInstanceV3, props: Partial<React.ComponentProps<typeof StudioWidgetFrame>> = {}) {
+function renderFrame(
+  widget: WidgetInstanceV3,
+  props: Partial<React.ComponentProps<typeof StudioWidgetFrame>> = {},
+  runtime?: WidgetRuntimeInput,
+) {
   const coordinator = createTelemetryRateCoordinator();
   coordinator.publish(buildMockTelemetry({ session: "race", location: "track", state: "ready" }));
 
   return render(
     <StudioProvider client={client} initialFile="profiles/a.json">
-      <StudioTelemetryProvider coordinator={coordinator} liveAvailable={false}>
+      <StudioTelemetryProvider coordinator={coordinator} liveAvailable={false} runtime={runtime}>
         <StudioWidgetFrame
           widget={widget}
           layout={widget.layout}
@@ -114,6 +119,20 @@ describe("StudioWidgetFrame", () => {
     );
     expect(screen.getByTestId("studio-widget-visual-delta-main")).toBeTruthy();
     expect(screen.getByTestId("widget-visual-host-mock")).toBeTruthy();
+  });
+
+  it("passes the pure Overlay V2 runtime through the shared visual host", () => {
+    const widget = buildWidget();
+    const runtime: WidgetRuntimeInput = {
+      overlayV2Features: ["delta"],
+      overlayV2Source: { state: "live" },
+    };
+    renderFrame(widget, {}, runtime);
+
+    expect(WidgetVisualHost).toHaveBeenCalledWith(
+      expect.objectContaining({ runtime }),
+      undefined,
+    );
   });
 
   it("keeps selection chrome outside the visual host surface", () => {

@@ -15,6 +15,32 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 
 ## Estado real
 
+- 2026-08-27, ISA-876 / Telemetry Remote B: implementado en su rama apilada
+  `internal/telemetry/projection/remote/v1` sobre la base apilada exacta de
+  ISA-870 (`5e30cf4418199417615140ec93c1b9d4fcaf5aef`). El contrato JSON V1 es
+  full, allowlisted y autosuficiente; copia únicamente sesión, jugador y grid
+  desde `envelope.Snapshot[derive.FinalState]`, conserva quality y ceros —con
+  delta/reference independientes— y aplica versión, epoch/revisión, máximo 104
+  vehículos y límite común de 128 KiB. Encoder/decoder estrictos; el preflight
+  rechaza claves duplicadas, casing/tag no exacto y cualquier `null`. Dos
+  goldens y un receptor sin snapshot,
+  goroutine ni reloj global cubren primer full, gaps latest-wins, sesión
+  estable dentro del epoch, reinicios que pueden cambiar sesión y liveness por
+  `receivedAt` monotónico local con `now < receivedAt` degradado a `Waiting`.
+  Payloads medidos: 1/44/104 =
+  1.871/33.345/77.667 bytes; @104, Project+Encode 202,242 µs/op y Decode
+  594,629 µs/op en Apple M5. Focal, todas las proyecciones, guard ADR/wiring,
+  vet focal y fuzz acotado tras correcciones de review (428.280 ejecuciones,
+  cero crash) pasan.
+  `go test ./...` se ejecutó: el paquete ISA-876 y `internal/telemetry` pasan;
+  la suite global conserva fallos fuera del diff por `frontend/dist` y
+  `node_modules` ausentes, un símbolo launcher no disponible en macOS y casos
+  heredados de app diagnostics, server, raw capture y SQLite/permisos. Un guard
+  recorre todo `.go` productivo fuera del propio paquete y rechaza imports de
+  remote/v1. La re-review independiente concluyó GO con P0/P1/P2/P3 en cero.
+  Sin runtime/app, red, pairing, dependencia nueva, merge, promoción ni
+  capacidad remota.
+
 - 2026-08-27, ISA-870 / Telemetry Remote A: la arquitectura documental fija
   que cualquier salida Windows → Mac nace después del commit único de
   `TelemetryEngine.Apply`. Windows conserva el único owner LMU; el publicador
@@ -23,8 +49,9 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   allowlisted para un único Mac en LAN. Facts, recording, replay,
   autodiscovery, Internet y cambios en el servidor loopback quedan fuera. ADR
   0010 y el threat model están en la rama
-  `vantareapp/isa-870-telemetry-remote-adr-threat-model`; no hay código,
-  listener, pairing, push, PR, merge ni promoción.
+  `vantareapp/isa-870-telemetry-remote-adr-threat-model`, publicada en el PR
+  draft abierto [#873](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/873);
+  no hay código, listener, pairing, merge ni promoción.
 
 - 2026-08-21, ISA-697 / Deuda #677 Tanda 2: `TelemetryEngine.Apply` pasa de 650190 B/op 344 allocs/op @104 a 168400 B/op 327 allocs/op (-74% bytes, -5% allocs) en rama `vantareapp/isa-697-apply-churn` sobre `origin/nightly@f10b817d` (5 commits: 1 benchmark + 4 perf). Cambios: `envelope.NewSnapshotOwned` + `Peek` para no clonar donde se lee sin mutar, `Commit` directo en reducer/coordinator/pipeline, y `validateObservedState` sin map (sort). Goldens y replay parity verdes; snapshot sigue value-semantic. Evidencia `docs/telemetry-core/evidence/isa-677-apply-churn.md`, fragmento `ISA-697.json`. Queda techo ~150KB/B/op sin COW en envelope y gaps 104 por frame.
 
@@ -609,7 +636,8 @@ ISA-131/ISA-94 poseen la deuda externa.
 | Completada | ISA-171 / TC-09G, promoción controlada a `nightly@c5eb3c9` |
 | Integrada en Nightly | ISA-160 / TC-10A en `nightly@8880a88` |
 | PR draft / CI verde en corte publicado | ISA-161 / TC-10B, PR draft [#212](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/212) OPEN/CLEAN/MERGEABLE a `nightly@b6df494`; [run 31639192366](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/31639192366) SUCCESS para `19dddea`; Linear pendiente, sin integración |
-| En ejecución | ISA-870 / Telemetry Remote A, ADR 0010 y threat model; solo documentación en rama de issue |
+| PR draft abierto | ISA-870 / Telemetry Remote A, ADR 0010 y threat model en [#873](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/873); sin integración |
+| Implementada / review GO | ISA-876 / Telemetry Remote B, contrato wire y tests aislados en rama apilada; sin wiring ni integración |
 
 ## Arquitectura objetivo (ISA-371 / ISA-372)
 
@@ -658,12 +686,10 @@ ISA-131/ISA-94 poseen la deuda externa.
 
 ## Siguiente acción exacta
 
-Cerrar ISA-870 mediante review independiente de ADR 0010, threat model,
-roadmap y este handoff. Después, crear la issue exacta **Telemetry Remote B —
-Definir `RemoteCanonicalUpdateV1` post-commit** para fijar allowlist, versión,
-epoch/revisión, reinicios, primer full, liveness monotónico local, límites,
-encoder/decoder y goldens, todavía sin listener LAN productivo. No implementar
-transporte, pairing o macOS Keychain dentro de ISA-870.
+Mantener ISA-876 como PR draft apilado sobre ISA-870/#873 y comprobar su CI.
+No integrar ni promover ISA-876 antes de resolver esa dependencia y recibir
+autorización explícita de Isaac. Listener, transporte, pairing, macOS Keychain
+y UI Mac continúan fuera de este corte.
 
 ## Gate final
 
@@ -672,6 +698,18 @@ de dos horas; sesión LMU real; reconexión; frecuencia/drops/latencia; teardown
 y evidencia para Isaac.
 
 ## Última actualización
+
+2026-08-27, ISA-876: `RemoteCanonicalUpdateV1` implementado y probado de forma
+aislada con DTO cerrado, proyección pura post-commit, codec estricto, 128 KiB,
+dos goldens, fuzz y receptor de continuidad/liveness local. @104 son 77.667
+bytes. Tras review, delta y referencia conservan qualities independientes y
+`Decode` rechaza antes del decode tipado claves duplicadas, casing/tag no
+exacto y cualquier `null`. El receptor fija `sessionId` dentro de cada epoch,
+permite cambiarlo en un epoch mayor aunque la primera revisión observada sea >1
+y devuelve `Waiting` si `now < receivedAt`. Ningún `.go` productivo fuera del
+paquete importa remote V1. No hay red, goroutine, pairing ni capacidad Windows
+→ Mac disponible. La re-review independiente concluyó GO con P0/P1/P2/P3 en
+cero; sin merge o promoción.
 
 2026-08-27, ISA-870: arquitectura de telemetría remota V1 documentada sobre la
 frontera post-commit de ADR 0008. ADR 0010 y el threat model limitan el corte a

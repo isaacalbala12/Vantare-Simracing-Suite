@@ -1,0 +1,83 @@
+{
+  "version": 1,
+  "kind": "full",
+  "canonicalVersion": 1,
+  "streamEpoch": 7,
+  "revision": 42,
+  "sessionId": "remote-session-1",
+  "capturedAt": "2026-08-27T02:03:04.567Z",
+  "session": {
+    "track": {"q": "fresh", "v": "Circuit de la Sarthe"},
+    "type": {"q": "fresh", "v": "endurance"},
+    "remainingSeconds": {"q": "fresh", "v": 1834.5},
+    "maximumLaps": {"q": "fresh", "v": 24}
+  },
+  "player": {
+    "vehicleId": "vehicle-001",
+    "speedMps": {"q": "fresh", "v": 72.25},
+    "rpm": {"q": "fresh", "v": 7450.5},
+    "gear": {"q": "fresh", "v": 4},
+    "throttle": {"q": "fresh", "v": 0.87},
+    "brake": {"q": "fresh", "v": 0},
+    "clutch": {"q": "fresh", "v": 0},
+    "lapNumber": {"q": "fresh", "v": 18},
+    "completedLaps": {"q": "fresh", "v": 17},
+    "sector": {"q": "fresh", "v": 2},
+    "lapDistanceMeters": {"q": "fresh", "v": 4321.25},
+    "inPit": {"q": "fresh", "v": false},
+    "pitStopCount": {"q": "fresh", "v": 1},
+    "fuelRemainingLiters": {"q": "fresh", "v": 42.5},
+    "fuelCapacityLiters": {"q": "fresh", "v": 100},
+    "fuelPerLapLiters": {"q": "fresh", "v": 3.25},
+    "deltaSeconds": {"q": "fresh", "v": -0.245},
+    "deltaReference": {"q": "fresh", "v": "best-completed-player-lap"},
+    "damage": {
+      "dents": {"q": "fresh", "v": [0, 1, 0, 2, 0, 0, 1, 0]},
+      "overheating": {"q": "fresh", "v": false},
+      "detached": {"q": "fresh", "v": false},
+      "wheelDetachedCount": {"q": "fresh", "v": 0}
+    }
+  },
+  "vehicles": [
+    {
+      "vehicleId": "vehicle-001",
+      "driverName": {"q": "fresh", "v": "Isaac Driver"},
+      "vehicleName": {"q": "fresh", "v": "Vantare Hypercar"},
+      "vehicleClass": {"q": "fresh", "v": "HYPERCAR"},
+      "position": {"q": "fresh", "v": 2},
+      "lapNumber": {"q": "fresh", "v": 18},
+      "completedLaps": {"q": "fresh", "v": 17},
+      "sector": {"q": "fresh", "v": 2},
+      "lapDistanceMeters": {"q": "fresh", "v": 4321.25},
+      "inPit": {"q": "fresh", "v": false},
+      "penaltyCount": {"q": "fresh", "v": 0},
+      "gapToLeaderSeconds": {"q": "fresh", "v": 2.75},
+      "lapsBehindLeader": {"q": "fresh", "v": 0},
+      "gapToNextSeconds": {"q": "fresh", "v": 1.1},
+      "lapsBehindNext": {"q": "fresh", "v": 0},
+      "gapToPlayerSeconds": {"q": "fresh", "v": 0},
+      "lapDeltaToPlayer": {"q": "fresh", "v": 0},
+      "groundPositionCm": {"q": "fresh", "v": {"x": 12346, "z": -7890}}
+    },
+    {
+      "vehicleId": "vehicle-002",
+      "driverName": {"q": "fresh", "v": "Rival Driver"},
+      "vehicleName": {"q": "fresh", "v": "Rival Hypercar"},
+      "vehicleClass": {"q": "fresh", "v": "HYPERCAR"},
+      "position": {"q": "fresh", "v": 3},
+      "lapNumber": {"q": "fresh", "v": 18},
+      "completedLaps": {"q": "fresh", "v": 17},
+      "sector": {"q": "fresh", "v": 3},
+      "lapDistanceMeters": {"q": "stale", "v": 4290.5},
+      "inPit": {"q": "fresh", "v": false},
+      "penaltyCount": {"q": "fresh", "v": 1},
+      "gapToLeaderSeconds": {"q": "fresh", "v": 4.5},
+      "lapsBehindLeader": {"q": "fresh", "v": 0},
+      "gapToNextSeconds": {"q": "fresh", "v": 1.75},
+      "lapsBehindNext": {"q": "fresh", "v": 0},
+      "gapToPlayerSeconds": {"q": "fresh", "v": -1.75},
+      "lapDeltaToPlayer": {"q": "fresh", "v": 0},
+      "groundPositionCm": {"q": "fresh", "v": {"x": 12000, "z": -7500}}
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "kind": "full",
+  "canonicalVersion": 1,
+  "streamEpoch": 1,
+  "revision": 1,
+  "sessionId": "remote-session-minimal",
+  "capturedAt": "2026-08-27T02:03:04.567Z",
+  "session": {
+    "track": {"q": "missing"},
+    "type": {"q": "missing"},
+    "remainingSeconds": {"q": "missing"},
+    "maximumLaps": {"q": "missing"}
+  },
+  "player": {
+    "speedMps": {"q": "missing"},
+    "rpm": {"q": "missing"},
+    "gear": {"q": "missing"},
+    "throttle": {"q": "missing"},
+    "brake": {"q": "missing"},
+    "clutch": {"q": "missing"},
+    "lapNumber": {"q": "missing"},
+    "completedLaps": {"q": "missing"},
+    "sector": {"q": "missing"},
+    "lapDistanceMeters": {"q": "missing"},
+    "inPit": {"q": "missing"},
+    "pitStopCount": {"q": "missing"},
+    "fuelRemainingLiters": {"q": "missing"},
+    "fuelCapacityLiters": {"q": "missing"},
+    "fuelPerLapLiters": {"q": "missing"},
+    "deltaSeconds": {"q": "missing"},
+    "deltaReference": {"q": "missing"},
+    "damage": {
+      "dents": {"q": "missing"},
+      "overheating": {"q": "missing"},
+      "detached": {"q": "missing"},
+      "wheelDetachedCount": {"q": "missing"}
+    }
+  },
+  "vehicles": []
+}

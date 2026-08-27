@@ -247,6 +247,13 @@ func wiringGuardAllowed(symbol exportedSymbol) bool {
 	if strings.HasPrefix(symbol.packagePath, "internal/telemetry/diagnostics") {
 		return true
 	}
+	// 2026-08-27, ISA-876: RemoteCanonicalUpdateV1 is deliberately an isolated
+	// wire contract. A later issue may connect it only behind the approved
+	// post-commit queue; any import from internal/app remains separately barred
+	// by the package architecture test.
+	if strings.HasPrefix(symbol.packagePath, "internal/telemetry/projection/remote/v1") {
+		return true
+	}
 	// 2026-08-19: recording's bounded write path is intentionally disconnected until F12.
 	if symbol.packagePath == "internal/telemetry/recording" ||
 		strings.HasPrefix(symbol.packagePath, "internal/telemetry/recording/sqlite") {

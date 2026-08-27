@@ -330,10 +330,10 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - titulo.en: Windows to Mac remote telemetry V1
 - titulo.pt: Telemetria remota Windows → Mac V1
 - titulo.it: Telemetria remota Windows → Mac V1
-- cuerpo: Plan para publicar por LAN, con opt-in, snapshots canónicos completos post-commit desde el único runtime Windows a un único cliente Mac. La V1 no incluye facts, grabación, replay, autodiscovery ni acceso por Internet y aún no está disponible.
-- cuerpo.en: Plan to publish opt-in, full post-commit canonical snapshots over the LAN from the single Windows runtime to one Mac client. V1 excludes facts, recording, replay, autodiscovery and Internet access and is not available yet.
-- cuerpo.pt: Plano para publicar pela LAN, com opt-in, snapshots canónicos completos pós-commit a partir do único runtime Windows para um único cliente Mac. A V1 não inclui facts, gravação, replay, descoberta automática nem acesso pela Internet e ainda não está disponível.
-- cuerpo.it: Piano per pubblicare sulla LAN, con opt-in, snapshot canonici completi post-commit dall'unico runtime Windows a un unico client Mac. La V1 esclude facts, registrazione, replay, rilevamento automatico e accesso a Internet e non è ancora disponibile.
+- cuerpo: El contrato allowlisted `RemoteCanonicalUpdateV1` está en desarrollo aislado para snapshots full post-commit. Listener LAN, seguridad, pairing y cliente Mac siguen pendientes; facts, grabación, replay, autodiscovery e Internet quedan fuera y la capacidad aún no está disponible.
+- cuerpo.en: The allowlisted `RemoteCanonicalUpdateV1` contract is under isolated development for full post-commit snapshots. The LAN listener, security, pairing and Mac client remain pending; facts, recording, replay, autodiscovery and Internet access stay out of scope, and the capability is not available yet.
+- cuerpo.pt: O contrato allowlisted `RemoteCanonicalUpdateV1` está em desenvolvimento isolado para snapshots full pós-commit. Listener LAN, segurança, pairing e cliente Mac continuam pendentes; facts, gravação, replay, descoberta automática e Internet ficam fora do âmbito e a capacidade ainda não está disponível.
+- cuerpo.it: Il contratto allowlisted `RemoteCanonicalUpdateV1` è in sviluppo isolato per snapshot full post-commit. Listener LAN, sicurezza, pairing e client Mac restano pendenti; facts, registrazione, replay, rilevamento automatico e Internet rimangono fuori ambito e la capacità non è ancora disponibile.
 - etiqueta: Plan
 - etiqueta.en: Plan
 - etiqueta.pt: Plano

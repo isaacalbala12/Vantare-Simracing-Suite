@@ -2,12 +2,15 @@ import { createContext, useContext } from 'react';
 import type { TelemetryRateCoordinator } from '../../../overlay/core/telemetry-rate-coordinator';
 import type { TelemetrySnapshot } from '../../../overlay/core/telemetry-snapshot';
 import { useRateLimitedTelemetry } from '../../../overlay/runtime/use-rate-limited-telemetry';
+import type { TelemetryActivityGate } from '../../../overlay/runtime/use-rate-limited-telemetry';
 
 const INSPECTOR_TELEMETRY_HZ = 30;
 
 export type StudioTelemetryContextValue = {
   coordinator: TelemetryRateCoordinator;
   liveAvailable: boolean;
+  active: boolean;
+  activityGate: TelemetryActivityGate;
 };
 
 export const StudioTelemetryContext = createContext<StudioTelemetryContextValue | null>(null);
@@ -27,5 +30,8 @@ export function useStudioTelemetryLiveAvailable(): boolean {
 }
 
 export function useStudioTelemetrySnapshot(hz = INSPECTOR_TELEMETRY_HZ): TelemetrySnapshot {
-  return useRateLimitedTelemetry(useStudioTelemetryCoordinator(), hz);
+  const context = useContext(StudioTelemetryContext);
+  if (!context)
+    throw new Error('useStudioTelemetrySnapshot must be used inside StudioTelemetryProvider');
+  return useRateLimitedTelemetry(context.coordinator, hz, context.active, context.activityGate);
 }

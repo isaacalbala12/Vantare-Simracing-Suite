@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-735",
+  "type": "fix",
+  "summary": "Command Orbit guarda revisiones reales, activa exactamente la revisión visible y exporta ese mismo contenido.",
+  "technicalNotes": [
+    "Guardar crea una revisión inmutable mediante el lifecycle canónico y muestra su identidad o un error tipado.",
+    "Activar confirma en el backend la misma referencia de revisión y el indicador activo ya no depende de un ID local.",
+    "Exportar selecciona una revisión concreta; el paquete conserva el round-trip sin sustituirla por el draft global."
+  ],
+  "testing": [
+    "Guardar una estrategia visible, comprobar la identidad de revisión y activarla.",
+    "Exportar la revisión guardada, importarla y confirmar que el paquete resultante es idéntico.",
+    "Recargar el runtime de prueba y confirmar que draft, revisión y plan activo siguen disponibles."
+  ],
+  "knownLimitations": [
+    "La validación manual dentro de una aplicación Wails instalada sigue siendo un gate posterior de ISA-694."
+  ]
+}

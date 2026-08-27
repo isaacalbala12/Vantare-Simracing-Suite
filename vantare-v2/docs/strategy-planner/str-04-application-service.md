@@ -119,3 +119,12 @@ El corte es aditivo salvo por exportar dos parsers ya canónicos del contrato
 TypeScript. Revertir el commit elimina `internal/strategy/application`, el
 cliente/store frontend y este documento sin migrar ni tocar los datos creados
 por STR-03.
+
+## Evolución F2(a) — API consumible por Orbit
+
+ISA-729 amplía la fachada transport-neutral y su bridge JSON con operaciones
+explícitas para `create/edit/list` de eventos, pilotos y variantes,
+`delete_driver` y `compare_variants`. Todas comparten generación optimista,
+decode estricto, commit atómico y errores tipados (`event_*`, `driver_*`,
+`variant_*`). El lifecycle draft→revisión→ActivePlan continúa en el mismo
+servicio y repositorio, sin una segunda persistencia.

@@ -28,6 +28,11 @@
 /* ============================================================ TOOLBAR */
 
 .orbit-studio-toolbar {
+  position: relative;
+  /* El `backdrop-filter` abre contexto de apilamiento: sin esta cota la banda
+     queda por debajo del lienzo en orden de pintado y cualquier desplegable
+     suyo (los fondos propios) se pierde detras del stage. */
+  z-index: 2;
   display: flex;
   flex: none;
   flex-wrap: nowrap;
@@ -391,7 +396,35 @@
 }
 
 .orbit-studio-acc > summary {
+  position: relative;
   min-height: 46px;
+}
+
+/* Ayuda de la seccion. El tooltip que gobierna la app es el de
+   `orbit-shell.css`: sale a la derecha y en una sola linea, y sobre una
+   cabecera que ocupa todo el dock eso cae fuera de la ventana. Aqui baja bajo
+   la cabecera, envuelve como el parrafo que es y espera medio segundo, para
+   que no salte al pasar el raton de largo. */
+.orbit-studio-acc > summary[data-tip]::after {
+  top: calc(100% + 8px);
+  right: 8px;
+  bottom: auto;
+  left: auto;
+  width: 244px;
+  color: var(--orbit-ink-2);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.45;
+  white-space: normal;
+  text-align: left;
+  transform: translateY(-6px);
+  transition-delay: 0s;
+}
+
+.orbit-studio-acc > summary[data-tip]:hover::after,
+.orbit-studio-acc > summary[data-tip]:focus-visible::after {
+  transform: translateY(0);
+  transition-delay: 550ms;
 }
 
 /* Cuerpo de cada seccion real dentro del acordeon: la pila de 14 px del
@@ -457,9 +490,176 @@
   font-size: 11.5px;
 }
 
-.orbit-studio-ins__color {
+/* ---------------------------------------------- apariencia: pila y colores */
+
+.orbit-studio-ins__stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Sub-bloque dentro de una seccion del inspector (los colores). Mas ligero que
+   `.orbit-acc`: fila de 34 px y sin la linea inferior del acordeon. */
+.orbit-studio-ins__sub {
+  border: 1px solid var(--orbit-line);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.014);
+}
+
+.orbit-studio-ins__sub > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 0 10px;
+  border-radius: 10px;
+  list-style: none;
+  cursor: pointer;
+}
+
+.orbit-studio-ins__sub > summary::-webkit-details-marker {
+  display: none;
+}
+
+.orbit-studio-ins__sub > summary:hover {
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.orbit-studio-ins__sub-title {
+  flex: none;
+  color: var(--orbit-ink-3);
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.orbit-studio-ins__sub-sum {
+  flex: 1;
+  overflow: hidden;
+  min-width: 0;
+  color: var(--orbit-ink-4);
+  font-family: var(--orbit-font-mono);
+  font-size: 11px;
+  white-space: nowrap;
+  text-align: right;
+  text-overflow: ellipsis;
+}
+
+.orbit-studio-ins__sub-chev {
+  flex: none;
+  color: var(--orbit-ink-4);
+  transition: transform var(--orbit-med) var(--orbit-ease);
+}
+
+.orbit-studio-ins__sub[open] .orbit-studio-ins__sub-chev {
+  transform: rotate(180deg);
+}
+
+.orbit-studio-ins__sub-body {
+  display: flex;
+  flex-direction: column;
+  padding: 0 10px 6px;
+}
+
+/* Fila de color: rotulo a la izquierda, muestra + hex + restablecer a la
+   derecha. La tercera columna se reserva siempre para que aparecer el boton de
+   restablecer no mueva el hex. */
+.orbit-color-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 34px;
+}
+
+.orbit-color-row + .orbit-color-row {
+  border-top: 1px solid var(--orbit-line-row);
+}
+
+.orbit-color-row__label {
+  overflow: hidden;
+  min-width: 0;
+  color: var(--orbit-ink-2);
+  font-size: 13px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.orbit-color-row__control {
+  display: grid;
+  flex: none;
+  grid-template-columns: 22px 72px 20px;
+  align-items: center;
+  gap: 6px;
+}
+
+.orbit-color-row__swatch {
+  position: relative;
+  overflow: hidden;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--orbit-line-strong);
+  border-radius: 6px;
+}
+
+/* El `input[type=color]` nativo se pinta distinto en cada motor: se deja
+   invisible encima y el color lo pone el `background` en linea de la muestra. */
+.orbit-color-row__swatch input[type="color"] {
+  position: absolute;
+  inset: -4px;
+  width: calc(100% + 8px);
+  height: calc(100% + 8px);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.orbit-color-row__hex {
   width: 100%;
-  padding: 2px 4px;
+  min-width: 0;
+  height: 24px;
+  padding: 0 6px;
+  border: 1px solid var(--orbit-line);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--orbit-ink-3);
+  font-family: var(--orbit-font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.orbit-color-row[data-modified="true"] .orbit-color-row__hex {
+  border-color: var(--orbit-line-strong);
+  color: var(--orbit-ink);
+}
+
+.orbit-color-row__reset {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--orbit-ink-4);
+  cursor: pointer;
+}
+
+.orbit-color-row__reset:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--orbit-ink);
+}
+
+/* Numero corto en fila: el campo no tiene por que ocupar media columna. */
+.orbit-studio-ins__body .orbit-studio-ins__field--num .orbit-input {
+  width: 84px;
+  text-align: right;
 }
 
 /* Los campos del kit ya traen su hueco; dentro del acordeon no llevan margen. */
@@ -468,11 +668,20 @@
 }
 
 /* El dock es estrecho: nada dentro del inspector puede crecer por su tamano
-   intrinseco, o el `select` mas largo empujaria la columna entera. */
+   intrinseco, o el `select` mas largo empujaria la columna entera. El
+   `fieldset` que envuelve las secciones con gate de plan trae ademas
+   `min-width: min-content` por defecto y hay que anularlo aparte. */
 .orbit-studio-inspector__body,
 .orbit-studio-ins__body,
 .orbit-studio-ins__body .orbit-field {
   min-width: 0;
+}
+
+.orbit-studio-inspector__body fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
 }
 
 .orbit-studio-ins__body .orbit-select,
@@ -699,6 +908,9 @@
   gap: 2px;
 }
 
+/* Ancho y alineacion, uno debajo del otro. En dos columnas los pasos con
+   nombre ("Estrecha", "Izquierda") no caben y el `Seg` parte en dos lineas: la
+   tarjeta acaba igual de alta y encima descuadrada. */
 .orbit-studio-cols__controls {
   display: grid;
   grid-template-columns: 1fr;
@@ -706,19 +918,17 @@
   min-width: 0;
 }
 
-.orbit-studio-cols__controls:has(> * + *) {
-  grid-template-columns: 1fr 1fr;
-}
-
 .orbit-studio-cols__seg {
   min-width: 0;
 }
 
+/* Los pasos llevan su nombre completo ("Estrecha", "Izquierda"), no `SM`/`MD`:
+   en caja alta y con `letter-spacing` no cabrian en media columna del dock. */
 .orbit-studio-cols__seg .orbit-seg__option {
-  padding-inline: 0;
-  font-size: 10.5px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  overflow: hidden;
+  padding-inline: 2px;
+  font-size: 11px;
+  text-overflow: ellipsis;
 }
 
 /* ============================================================ TOPBAR */
@@ -738,4 +948,150 @@
 
 .orbit-studio-topbar__profile {
   flex: none;
+}
+
+/* ============================================ FONDOS PROPIOS (WALLPAPERS) */
+
+/* La captura manda: cubre el lienzo entero y se centra, y debajo queda un
+   negro casi puro para las proporciones que no encajan al pixel. */
+.orbit-studio-stage.osv3-bg-wallpaper {
+  background-color: #06070a;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
+.orbit-studio-wallpapers {
+  position: relative;
+  flex: none;
+}
+
+/* Mismo cuerpo que el `Menu` del kit; ancla a la izquierda porque el botón
+   vive al principio de la toolbar. */
+.orbit-studio-wallpapers__panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: var(--orbit-z-menu);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 288px;
+  padding: 12px;
+  border: 1px solid var(--orbit-line-strong);
+  border-radius: 14px;
+  background: var(--orbit-surface-2);
+  box-shadow: var(--orbit-shadow-menu);
+}
+
+.orbit-studio-wallpapers__title {
+  margin: 0;
+  color: var(--orbit-ink);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.orbit-studio-wallpapers__empty,
+.orbit-studio-wallpapers__hint {
+  margin: 0;
+  color: var(--orbit-ink-4);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.orbit-studio-wallpapers__error {
+  margin: 0;
+  color: var(--orbit-red);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.orbit-studio-wallpapers__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.orbit-studio-wallpapers__grid > li {
+  position: relative;
+}
+
+/* La miniatura ES la imagen: el nombre va encima en una banda legible, no en
+   una fila aparte que obligue a cruzar la vista. */
+.orbit-studio-wallpapers__item {
+  display: flex;
+  align-items: flex-end;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--orbit-line-strong);
+  border-radius: 9px;
+  background-color: #0a0b0d;
+  background-position: center;
+  background-size: cover;
+  cursor: pointer;
+}
+
+.orbit-studio-wallpapers__item > span {
+  width: 100%;
+  padding: 3px 6px;
+  background: linear-gradient(transparent, rgba(6, 7, 10, 0.85));
+  color: var(--orbit-ink-2);
+  font-size: 10px;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.orbit-studio-wallpapers__item:hover {
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+.orbit-studio-wallpapers__item[aria-pressed="true"] {
+  border-color: var(--orbit-carmine);
+  box-shadow: 0 0 0 1px var(--orbit-carmine);
+}
+
+.orbit-studio-wallpapers__remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(6, 7, 10, 0.78);
+  color: var(--orbit-ink-2);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.orbit-studio-wallpapers__grid > li:hover .orbit-studio-wallpapers__remove,
+.orbit-studio-wallpapers__remove:focus-visible {
+  opacity: 1;
+}
+
+.orbit-studio-wallpapers__remove:hover {
+  background: var(--orbit-carmine);
+  color: #fff;
+}
+
+/* El `input[type=file]` real nunca se ve: lo dispara el botón del panel. */
+.orbit-studio-wallpapers__input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
 }

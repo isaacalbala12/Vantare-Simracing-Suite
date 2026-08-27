@@ -18,7 +18,12 @@ export type ViewId =
   | "testing";
 
 export type SimStatus = "connected" | "searching" | "disconnected";
-export type UpdateState = "none" | "available" | "downloading" | "ready";
+/**
+ * El aviso de actualizacion. `installing` es el momento en que el instalador ya
+ * corre y va a cerrar la app; sustituye a un `ready` que no emitia nadie y que
+ * dejaba el pill clavado en «Descargando…» hasta que la ventana desaparecia.
+ */
+export type UpdateState = "none" | "available" | "downloading" | "installing";
 export type SaveState = "saved" | "dirty";
 export type OverlayState = "stopped" | "running";
 
@@ -100,6 +105,7 @@ export const SETTINGS_SECTIONS = [
   "application",
   "updates",
   "hotkeys",
+  "privacy",
   "diagnostics",
   "schedule",
 ] as const;

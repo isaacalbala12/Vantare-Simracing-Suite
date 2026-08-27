@@ -59,7 +59,7 @@ func (s *StudioProfileService) Load(path string) (*config.LoadedProfileV3, error
 // Save persists the supplied document using optimistic revision checks and
 // notifies the runtime refresh callback (which recreates the desktop window).
 func (s *StudioProfileService) Save(requestID, expectedRevision string, doc *config.ProfileDocumentV3) error {
-	return s.save(requestID, expectedRevision, doc, true)
+	return s.savePath(requestID, s.path, expectedRevision, doc, true)
 }
 
 // SaveInPlace persists the supplied document using optimistic revision checks
@@ -67,20 +67,27 @@ func (s *StudioProfileService) Save(requestID, expectedRevision string, doc *con
 // without recreating its own window. The studio:profile:saved event is emitted
 // with the requestID so the overlay can update its local revision.
 func (s *StudioProfileService) SaveInPlace(requestID, expectedRevision string, doc *config.ProfileDocumentV3) error {
-	return s.save(requestID, expectedRevision, doc, false)
+	return s.savePath(requestID, s.path, expectedRevision, doc, false)
 }
 
-func (s *StudioProfileService) save(requestID, expectedRevision string, doc *config.ProfileDocumentV3, notifySaved bool) error {
-	if s.path == "" {
+func (s *StudioProfileService) savePath(requestID, path, expectedRevision string, doc *config.ProfileDocumentV3, notifySaved bool) error {
+	if path == "" {
 		err := fmt.Errorf("profile path not configured")
 		s.emitError(requestID, "save", err)
 		return err
 	}
 	migratedFrom := config.ProfileSchemaVersionV3
-	if s.loaded != nil {
+	if path == s.path && s.loaded != nil {
 		migratedFrom = s.loaded.MigratedFrom
+	} else {
+		loaded, err := s.store.Load(path)
+		if err != nil {
+			s.emitError(requestID, "save", err)
+			return err
+		}
+		migratedFrom = loaded.MigratedFrom
 	}
-	revision, err := s.store.Save(s.path, expectedRevision, doc, migratedFrom)
+	revision, err := s.store.Save(path, expectedRevision, doc, migratedFrom)
 	if err != nil {
 		if errors.Is(err, config.ErrProfileConflict) {
 			s.emitConflict(requestID, err)
@@ -89,14 +96,21 @@ func (s *StudioProfileService) save(requestID, expectedRevision string, doc *con
 		s.emitError(requestID, "save", err)
 		return err
 	}
-	s.loaded = &config.LoadedProfileV3{
+	savedDocument := config.NormalizeProfileDocumentV3(doc)
+	loaded := &config.LoadedProfileV3{
 		Document:     config.NormalizeProfileDocumentV3(doc),
 		Revision:     revision,
 		MigratedFrom: config.ProfileSchemaVersionV3,
 	}
+	// Un save del editor queda ligado al archivo que cargo esa sesion. Si el
+	// perfil activo global cambio entretanto, se persiste el archivo correcto
+	// sin reemplazar el documento runtime que ahora pertenece al otro perfil.
+	if path == s.path {
+		s.loaded = loaded
+	}
 	payload := map[string]any{
 		"requestId": requestID,
-		"document":  s.loaded.Document,
+		"document":  savedDocument,
 		"revision":  revision,
 	}
 	if s.emitter != nil {
@@ -104,8 +118,8 @@ func (s *StudioProfileService) save(requestID, expectedRevision string, doc *con
 	}
 	if notifySaved && s.onSaved != nil {
 		s.onSaved(StudioProfileSaved{
-			Path:     s.path,
-			Document: s.loaded.Document,
+			Path:     path,
+			Document: savedDocument,
 			Revision: revision,
 		})
 	}
@@ -171,18 +185,23 @@ func (s *StudioProfileService) resolveProfilePath(file string) (string, error) {
 
 // HandleSave decodes a correlated save request and emits saved/conflict/error.
 func (s *StudioProfileService) HandleSave(data any) {
-	requestID, expectedRevision, doc, err := decodeStudioProfileSavePayload(data)
+	requestID, file, expectedRevision, doc, err := decodeStudioProfileSavePayload(data)
 	if err != nil {
 		s.emitError(requestID, "save", err)
 		return
 	}
-	_ = s.Save(requestID, expectedRevision, doc)
+	path, err := s.resolveProfilePath(file)
+	if err != nil {
+		s.emitError(requestID, "save", err)
+		return
+	}
+	_ = s.savePath(requestID, path, expectedRevision, doc, true)
 }
 
 // HandleSaveInPlace decodes a correlated in-place save request (edit-mode
 // overlay) and persists without recreating the desktop window.
 func (s *StudioProfileService) HandleSaveInPlace(data any) {
-	requestID, expectedRevision, doc, err := decodeStudioProfileSavePayload(data)
+	requestID, _, expectedRevision, doc, err := decodeStudioProfileSavePayload(data)
 	if err != nil {
 		s.emitError(requestID, "save", err)
 		return
@@ -224,34 +243,35 @@ func decodeStudioProfileLoadPayload(data any) (requestID, file string, err error
 	return payload.RequestID, payload.File, nil
 }
 
-func decodeStudioProfileSavePayload(data any) (requestID, expectedRevision string, doc *config.ProfileDocumentV3, err error) {
+func decodeStudioProfileSavePayload(data any) (requestID, file, expectedRevision string, doc *config.ProfileDocumentV3, err error) {
 	if data == nil {
-		return "", "", nil, fmt.Errorf("missing save payload")
+		return "", "", "", nil, fmt.Errorf("missing save payload")
 	}
 	raw, err := json.Marshal(data)
 	if err != nil {
-		return "", "", nil, fmt.Errorf("encoding save payload: %w", err)
+		return "", "", "", nil, fmt.Errorf("encoding save payload: %w", err)
 	}
 	var payload struct {
 		RequestID        string          `json:"requestId"`
+		File             string          `json:"file"`
 		ExpectedRevision string          `json:"expectedRevision"`
 		Document         json.RawMessage `json:"document"`
 	}
 	if err := json.Unmarshal(raw, &payload); err != nil {
-		return "", "", nil, fmt.Errorf("decoding save payload: %w", err)
+		return "", "", "", nil, fmt.Errorf("decoding save payload: %w", err)
 	}
 	if len(payload.Document) == 0 || string(payload.Document) == "null" {
-		return payload.RequestID, "", nil, fmt.Errorf("document is required")
+		return payload.RequestID, payload.File, "", nil, fmt.Errorf("document is required")
 	}
 	var parsed config.ProfileDocumentV3
 	if err := json.Unmarshal(payload.Document, &parsed); err != nil {
-		return payload.RequestID, "", nil, fmt.Errorf("decoding document: %w", err)
+		return payload.RequestID, payload.File, "", nil, fmt.Errorf("decoding document: %w", err)
 	}
 	normalized := config.NormalizeProfileDocumentV3(&parsed)
 	if err := config.ValidateProfileDocumentV3(normalized); err != nil {
-		return payload.RequestID, "", nil, err
+		return payload.RequestID, payload.File, "", nil, err
 	}
-	return payload.RequestID, payload.ExpectedRevision, normalized, nil
+	return payload.RequestID, payload.File, payload.ExpectedRevision, normalized, nil
 }
 
 func (s *StudioProfileService) emitConflict(requestID string, err error) {

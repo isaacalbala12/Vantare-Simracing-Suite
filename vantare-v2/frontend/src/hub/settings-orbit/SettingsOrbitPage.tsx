@@ -66,6 +66,7 @@ import { createBrowserDiagnosticsActions } from "../settings/diagnostics/diagnos
 import type { PreparedDiagnostics } from "../settings/diagnostics/contracts";
 import { DowngradeModal } from "../settings/DowngradeModal";
 import { ScheduleImportSection } from "./ScheduleImportSection";
+import { CurationPrivacySection } from "./CurationPrivacySection";
 import {
   applyReduceMotion,
   conflictingHotkeys,
@@ -180,6 +181,7 @@ export function SettingsOrbitPage({ target }: SettingsOrbitPageProps) {
         ) : null}
         {section === "updates" ? <UpdatesSection /> : null}
         {section === "hotkeys" ? <HotkeysSection /> : null}
+        {section === "privacy" ? <CurationPrivacySection /> : null}
         {section === "diagnostics" ? <DiagnosticsSection /> : null}
         {section === "schedule" ? <ScheduleImportSection /> : null}
       </div>
@@ -722,6 +724,9 @@ function UpdatesSection() {
           {latest && info?.hasUpdate ? (
             <Button
               data-testid="orbit-settings-install"
+              // Una instalacion a la vez: el backend rechaza la segunda, y ese
+              // rechazo se leia como «ha fallado» encima de la que si iba bien.
+              disabled={updater.installingTag !== null}
               onClick={() => updater.install(latest)}
               variant="primary"
             >

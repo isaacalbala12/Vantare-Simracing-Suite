@@ -3,17 +3,26 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "../../i18n/I18nProvider";
 import { ToastProvider } from "../../ui/orbit/Toast";
 import { StrategyOrbitPage, STRATEGY_CONTEXT_SLOT_ID } from "./StrategyOrbitPage";
+import type { Calendar, RaceSeries } from "../../calendar/calendar-types";
 import type { StrategyRoster } from "./strategy-orbit-bridge";
 import { createStrategyEditorRuntime } from "../../strategy/strategy-editor-store";
 import type {
   StrategyApplicationCommandV1,
+  StrategyApplicationClient,
   StrategyApplicationResultV1,
+  StrategyEventV2,
+  StrategyPlanningInputsV2,
+  StrategySessionCombinationV1,
 } from "../../strategy/strategy-application-client";
+import { StrategyApplicationError } from "../../strategy/strategy-application-client";
 import {
   createDefaultStrategyEditorDocument,
   type StrategyEditorDocument,
 } from "../../strategy/strategy-editor";
 import { createStrategyEditorDraft } from "../../strategy/strategy-editor-store";
+import { createOrbitCalculationTestClient } from "./strategy-orbit-calculation.test-support";
+import type { PlanDraftV1, RevisionRefV1 } from "../../strategy/strategy-contract-v1";
+import type { StrategyOrbitRevisionPayloadV1 } from "./strategy-orbit-lifecycle";
 
 vi.mock("@wailsio/runtime", () => ({
   Events: { Emit: vi.fn(), On: () => () => undefined },
@@ -107,14 +116,22 @@ const ROSTER: StrategyRoster = {
   ],
 };
 
-function mount(roster: StrategyRoster | null = ROSTER) {
+function mount(
+  roster: StrategyRoster | null = ROSTER,
+  applicationClient: StrategyApplicationClient<unknown> = createOrbitCalculationTestClient(),
+  runtimeFactory: () => ReturnType<typeof memoryRuntime> = memoryRuntime,
+) {
   const slot = document.createElement("div");
   slot.id = STRATEGY_CONTEXT_SLOT_ID;
   document.body.append(slot);
   return render(
     <I18nProvider>
       <ToastProvider>
-        <StrategyOrbitPage roster={roster} runtimeFactory={memoryRuntime} />
+        <StrategyOrbitPage
+          applicationClient={applicationClient}
+          roster={roster}
+          runtimeFactory={runtimeFactory}
+        />
       </ToastProvider>
     </I18nProvider>,
   );
@@ -123,6 +140,112 @@ function mount(roster: StrategyRoster | null = ROSTER) {
 async function mounted() {
   mount();
   await screen.findByTestId("orbit-stint-0");
+}
+
+function lifecycleClient() {
+  const calculation = createOrbitCalculationTestClient();
+  const seen: StrategyApplicationCommandV1<unknown>[] = [];
+  let version = 0;
+  let draft: PlanDraftV1<StrategyOrbitRevisionPayloadV1> | undefined;
+  let revision: RevisionRefV1 | undefined;
+  let activePlan: StrategyApplicationResultV1<unknown>["activePlan"];
+  const client: StrategyApplicationClient<unknown> = {
+    async execute(command) {
+      seen.push(command);
+      if (command.operation === "calculate_orbit") return calculation.execute(command);
+      const base = {
+        protocolVersion: "strategy.application.v1" as const,
+        commandId: command.commandId,
+        repositoryVersion: version,
+        recoveredFromBackup: false,
+        closed: false,
+      };
+      if (command.operation === "list") {
+        return {
+          ...base,
+          activePlan,
+          plans: draft ? [{
+            planId: draft.planId,
+            variantId: draft.variantId,
+            draftId: draft.draftId,
+            name: draft.name,
+            mode: draft.mode,
+            updatedAt: draft.updatedAt,
+            hasDraft: true,
+            revisionCount: revision ? 1 : 0,
+            ...(revision ? { latestRevision: revision, latestRevisionAt: draft.updatedAt } : {}),
+          }] : [],
+        };
+      }
+      if (command.operation === "create") {
+        draft = structuredClone(command.draft) as PlanDraftV1<StrategyOrbitRevisionPayloadV1>;
+        version += 1;
+        return { ...base, repositoryVersion: version, draft, savedDraft: draft };
+      }
+      if (command.operation === "open") {
+        if (!draft) throw new StrategyApplicationError("draft_not_found", "draftId", "missing");
+        return { ...base, draft, savedDraft: draft };
+      }
+      if (command.operation === "save_revision") {
+        revision = {
+          planId: command.draft.planId,
+          variantId: command.draft.variantId,
+          revisionId: command.revisionId,
+          contentHash: "b".repeat(64),
+        };
+        draft = { ...command.draft, baseRevision: revision } as PlanDraftV1<StrategyOrbitRevisionPayloadV1>;
+        version += 1;
+        return {
+          ...base,
+          repositoryVersion: version,
+          draft,
+          savedDraft: draft,
+          revision: {
+            contractVersion: "strategy.v1",
+            hashAlgorithm: "sha256:strategy-c14n-v1",
+            revisionId: revision.revisionId,
+            sourceDraftId: draft.draftId,
+            planId: revision.planId,
+            variantId: revision.variantId,
+            name: draft.name,
+            mode: draft.mode,
+            capabilities: draft.capabilities,
+            provenance: draft.provenance,
+            confidence: draft.confidence,
+            createdAt: command.createdAt,
+            payload: draft.payload,
+            contentHash: revision.contentHash,
+          } as never,
+        };
+      }
+      if (command.operation === "activate") {
+        activePlan = {
+          contractVersion: "strategy.v1",
+          activationId: command.activationId,
+          revision: command.revision,
+          activatedAt: command.activatedAt,
+        };
+        version += 1;
+        return { ...base, repositoryVersion: version, activePlan };
+      }
+      if (command.operation === "export") {
+        return { ...base, package: btoa("exact revision") };
+      }
+      throw new Error(`unexpected ${command.operation}`);
+    },
+    cancel: () => false,
+    dispose: () => undefined,
+  };
+  return { client, seen };
+}
+
+function failingOpenRuntime() {
+  const client: StrategyApplicationClient<StrategyEditorDocument> = {
+    execute: async () => { throw new StrategyApplicationError("stale_command", "draftId", "bridge caído"); },
+    cancel: () => false,
+    dispose: () => undefined,
+  };
+  return createStrategyEditorRuntime(client);
 }
 
 /**
@@ -134,6 +257,172 @@ async function openWizard(team: "solo" | "team" = "team") {
   fireEvent.click(await screen.findByTestId("orbit-strategy-wizard-manual"));
   fireEvent.click(await screen.findByTestId(`orbit-strategy-wizard-${team}`));
   await screen.findByTestId("orbit-strategy-paths");
+}
+
+const USABLE_SESSION_COMBINATION: StrategySessionCombinationV1 = {
+  combinationId: "lmu:spa:united-21",
+  simId: "lmu",
+  trackName: "Circuit de Spa-Francorchamps",
+  trackLayout: "GP",
+  carName: "United Autosports #21:ELMS25",
+  carClass: "LMP2_ELMS",
+  sessionCount: 5,
+  raceCount: 2,
+  lastActivity: "2026-08-23T12:00:00Z",
+  climateBuckets: [{ bucket: "dry", laps: 27 }],
+  sessions: [{
+    sessionId: "spa-race-1",
+    type: "race",
+    status: "identified_usable",
+    defaultIncluded: true,
+    lastActivity: "2026-08-23T12:00:00Z",
+    climateBuckets: [{ bucket: "dry", laps: 27 }],
+  }],
+};
+
+const LMGT3_SESSION_COMBINATION: StrategySessionCombinationV1 = {
+  ...USABLE_SESSION_COMBINATION,
+  combinationId: "lmu:spa:lmgt3-46",
+  carName: "BMW M4 LMGT3 #46",
+  carClass: "GT3",
+  sessions: [{
+    ...USABLE_SESSION_COMBINATION.sessions[0],
+    sessionId: "spa-lmgt3-race-1",
+  }],
+};
+
+const SPA_ENDURANCE_SESSION_COMBINATION: StrategySessionCombinationV1 = {
+  ...USABLE_SESSION_COMBINATION,
+  combinationId: "lmu:spa-endurance:united-22",
+  trackLayout: "Circuit de Spa-Francorchamps Endurance",
+  carName: "United Autosports #22:ELMS25",
+  sessionCount: 2,
+  sessions: [{
+    ...USABLE_SESSION_COMBINATION.sessions[0],
+    sessionId: "spa-endurance-race-1",
+  }],
+};
+
+function raceSeries(overrides: Partial<RaceSeries> = {}): RaceSeries {
+  return {
+    id: "spa-endurance",
+    name: "Spa Endurance",
+    tier: "advanced",
+    licenseLabel: "Gold",
+    track: "Spa (WEC)",
+    telemetryTrackName: USABLE_SESSION_COMBINATION.trackName,
+    vehicleClass: "LMP2",
+    classes: [{
+      name: "LMP2",
+      qualifier: "full fuel tank",
+      telemetryClassName: "LMP2_ELMS",
+    }],
+    setup: "fixed",
+    durationMin: 120,
+    raceDurationMin: 120,
+    splits: 2,
+    assists: "",
+    tyreWarmers: true,
+    tyres: 12,
+    veLimit: 75,
+    recurrence: { kind: "weekly", days: ["sat"], timesUTC: ["14:00"] },
+    ...overrides,
+  };
+}
+
+function loadedCalendar(series: readonly RaceSeries[]): Calendar {
+  return {
+    version: 1,
+    timezone: "Europe/Madrid",
+    reminderMinutes: [],
+    events: [],
+    series: [...series],
+    seriesPreviews: series.map((item) => ({
+      seriesId: item.id,
+      scheduleLabel: "",
+      nextStarts: ["2030-01-01T14:00:00Z"],
+    })),
+    updated: "2026-08-23T12:00:00Z",
+  };
+}
+
+function startOf(series: RaceSeries) {
+  return {
+    ...SPA_START,
+    seriesId: series.id,
+    name: series.name,
+    track: series.track,
+    vehicleClass: series.vehicleClass,
+    durationMin: series.raceDurationMin ?? series.durationMin,
+  };
+}
+
+const WIZARD_DERIVED_PLANNING: StrategyPlanningInputsV2 = {
+  projection: {
+    contractVersion: "strategyinputprojection.v2",
+    generatedAt: "2026-08-23T12:00:00.000Z",
+    computationVersion: "producer.v1",
+    sourceSessions: ["spa-race-1"],
+    combinationId: USABLE_SESSION_COMBINATION.combinationId,
+    fuelConsumption: { presence: "valid", provenance: { kind: "derived", sourceId: "aggregate:lmu:spa" }, confidence: { sampleSize: 27, rangeLower: 2.6, rangeUpper: 2.9, computationVersion: "producer.v1" }, meanPerLap: 2.75, rangeLower: 2.6, rangeUpper: 2.9, byClimateBucket: { dry: 2.75 } },
+    virtualEnergyConsumption: { presence: "missing", provenance: { kind: "derived" }, confidence: { sampleSize: 0, computationVersion: "producer.v1" }, reason: "missing_virtual_energy_consumption", meanPerLap: 0, rangeLower: 0, rangeUpper: 0 },
+    combinedStintPaceCurve: { presence: "missing", provenance: { kind: "derived" }, confidence: { sampleSize: 0, computationVersion: "producer.v1" }, reason: "missing_combined_stint_pace_curve", identifiability: "combined_only", points: [] },
+    tyreDegradation: { presence: "missing", provenance: { kind: "derived" }, confidence: { sampleSize: 0, computationVersion: "producer.v1" }, reason: "missing_tyre_degradation" },
+    pit: { presence: "missing", provenance: { kind: "derived" }, confidence: { sampleSize: 0, computationVersion: "producer.v1" } },
+    savingCost: { presence: "missing", provenance: { kind: "derived" }, confidence: { sampleSize: 0, computationVersion: "producer.v1" }, reason: "missing_saving_cost" },
+  },
+  overrides: {},
+};
+
+function wizardCatalogClient(
+  catalog: "error" | "no_sessions" | readonly StrategySessionCombinationV1[],
+): StrategyApplicationClient<unknown> {
+  const calculation = createOrbitCalculationTestClient();
+  let saved: StrategyEventV2 | undefined;
+  let repositoryVersion = 0;
+  return {
+    async execute(command) {
+      const base = {
+        protocolVersion: "strategy.application.v1" as const,
+        commandId: command.commandId,
+        repositoryVersion,
+        recoveredFromBackup: false,
+        closed: false,
+      };
+      if (command.operation === "get_cold_start_status") {
+        return { ...base, coldStartStatus: { shouldShow: false, checking: false, found: 0, imported: 0, skipped: 0, failures: [], decision: "pending" } };
+      }
+      if (command.operation === "list_session_combinations") {
+        if (catalog === "error") throw new Error("catalog transport unavailable");
+        if (catalog === "no_sessions") return { ...base, sessionCatalogStatus: "no_authorized_telemetry", sessionCombinations: [] };
+        return { ...base, sessionCatalogStatus: "available", sessionCombinations: catalog };
+      }
+      if (command.operation === "list_events") return { ...base, events: saved ? [saved] : [] };
+      if (command.operation === "create_event" || command.operation === "edit_event") {
+        saved = command.event;
+        repositoryVersion += 1;
+        return {
+          ...base,
+          repositoryVersion,
+          strategyDocument: {
+            contractVersion: "strategy.v2",
+            schemaVersion: "2.0.0",
+            generatedAt: command.updatedAt,
+            events: [saved],
+          },
+        };
+      }
+      if (command.operation === "get_event_planning_inputs") {
+        return { ...base, planningInputStatus: "available", planningInputs: WIZARD_DERIVED_PLANNING };
+      }
+      if (command.operation === "calculate_orbit" || command.operation === "list") {
+        return calculation.execute(command);
+      }
+      throw new Error(`unexpected ${command.operation}`);
+    },
+    cancel: () => false,
+    dispose: () => undefined,
+  };
 }
 
 beforeEach(() => {
@@ -148,6 +437,28 @@ afterEach(() => {
 });
 
 describe("StrategyOrbitPage · Resumen", () => {
+  it("muestra loading y después el error tipado del motor sin cifras de fallback", async () => {
+    let rejectCalculation: (error: Error) => void = () => undefined;
+    const client: StrategyApplicationClient<unknown> = {
+      execute: () => new Promise((_resolve, reject) => { rejectCalculation = reject; }),
+      cancel: () => false,
+      dispose: () => undefined,
+    };
+    mount(ROSTER, client);
+    expect(await screen.findByTestId("orbit-strategy-calculation-loading")).toBeTruthy();
+    expect(screen.queryByTestId("orbit-stint-0")).toBeNull();
+
+    rejectCalculation(new StrategyApplicationError(
+      "calculation_invalid",
+      "input.variants.0.order.1",
+      "The Strategy calculation input is invalid.",
+    ));
+    const error = await screen.findByTestId("orbit-strategy-calculation-error");
+    expect(error.textContent).toContain("The Strategy calculation input is invalid.");
+    expect(error.textContent).toContain("calculation_invalid · input.variants.0.order.1");
+    expect(screen.queryByTestId("orbit-stint-0")).toBeNull();
+  });
+
   it("entra directa a la última estrategia con cabecera de evento y stints", async () => {
     await mounted();
 
@@ -225,33 +536,24 @@ describe("StrategyOrbitPage · neumáticos", () => {
     expect(screen.queryByTestId("orbit-strategy-drivers")).toBeNull();
   });
 
-  it("tocar-y-tocar con Enter monta el juego y el segundo uso baja la condición", async () => {
+  it("F2-f: inventario vacío honesto — sin Spa sintético, muestra estado vacío (no fabrica asignación)", async () => {
     await mounted();
 
     fireEvent.click(screen.getByRole("button", { name: "Neumáticos" }));
-    const condition = () => {
-      const text = screen.getByTestId("orbit-tyre-item-S-05").textContent ?? "";
-      return Number(/(\d+) %/.exec(text)?.[1]);
-    };
-    const before = condition();
-    fireEvent.click(await screen.findByTestId("orbit-tyre-item-S-05"));
+    const tyres = await screen.findByTestId("orbit-strategy-tyres");
+    // El inventario global Spa fue retirado: donde el evento no tiene inventario
+    // per-event (documento v2), se muestra vacío honesto con copy claro.
+    expect(tyres.textContent).toContain("Sin inventario");
+    expect(screen.queryByTestId("orbit-tyre-item-S-05")).toBeNull();
 
+    // Incluso intentando asignar, no se fabrica inventario sintético.
     fireEvent.click(screen.getByTestId("orbit-stint-edit-0"));
     const fr = await screen.findByTestId("orbit-corner-slot-FR");
     fireEvent.keyDown(fr, { key: "Enter" });
-
-    await waitFor(() => expect(fr.getAttribute("data-state")).toBe("filled"));
-    expect(fr.textContent).toContain("S-05");
-    // Un uso más: la condición baja 12 puntos (`13.5`).
-    await waitFor(() => expect(condition()).toBe(before - 12));
-
-    // Y otro uso más en la misma tarjeta vuelve a bajarla.
-    fireEvent.click(screen.getByTestId("orbit-tyre-item-S-05"));
-    fireEvent.keyDown(await screen.findByTestId("orbit-corner-slot-RR"), { key: "Enter" });
-    await waitFor(() => expect(condition()).toBe(before - 24));
+    expect(fr.getAttribute("data-state")).not.toBe("filled");
   });
 
-  it("arrastrar un juego a una esquina lo monta", async () => {
+  it("F2-f: arrastrar sin inventario no fabrica montaje", async () => {
     await mounted();
 
     fireEvent.click(screen.getByTestId("orbit-stint-edit-0"));
@@ -260,7 +562,9 @@ describe("StrategyOrbitPage · neumáticos", () => {
       dataTransfer: { getData: () => "S-06", types: ["text/plain"] },
     });
 
-    await waitFor(() => expect(rl.textContent).toContain("S-06"));
+    // Sin inventario per-event no hay neumático que montar: permanece vacío
+    expect(rl.getAttribute("data-state")).not.toBe("filled");
+    expect(rl.textContent).not.toContain("S-06");
   });
 });
 
@@ -284,6 +588,86 @@ describe("StrategyOrbitPage · ⚙ Ajustes", () => {
 });
 
 describe("StrategyOrbitPage · Estrategias", () => {
+
+  it("Guardar confirma la revisión visible y Activar usa exactamente esa identidad", async () => {
+    const backend = lifecycleClient();
+    mount(ROSTER, backend.client);
+    await screen.findByTestId("orbit-stint-0");
+
+    const save = await screen.findByTestId("orbit-strategy-save-revision");
+    await waitFor(() => expect(save.hasAttribute("disabled")).toBe(false));
+    fireEvent.click(save);
+
+    const saved = await screen.findByTestId("orbit-strategy-revision-status");
+    expect(saved.textContent).toContain("orbit-revision-");
+    const saveCommand = backend.seen.find((command) => command.operation === "save_revision");
+    expect(saveCommand).toMatchObject({ operation: "save_revision" });
+
+    const activate = screen.getByTestId("orbit-strategy-activate-revision");
+    fireEvent.click(activate);
+    await waitFor(() => expect(saved.textContent).toContain("Activa"));
+    const activation = backend.seen.find((command) => command.operation === "activate");
+    const savedCommand = saveCommand as Extract<StrategyApplicationCommandV1<unknown>, { operation: "save_revision" }>;
+    expect(activation).toMatchObject({
+      operation: "activate",
+      revision: {
+        planId: savedCommand.draft.planId,
+        variantId: savedCommand.draft.variantId,
+        revisionId: savedCommand.revisionId,
+        contentHash: "b".repeat(64),
+      },
+    });
+
+    fireEvent.click(screen.getByTestId("orbit-strategy-settings"));
+    fireEvent.click(await screen.findByRole("menuitem", { name: /Exportar plan/ }));
+    await waitFor(() => expect(backend.seen.some((command) => command.operation === "export")).toBe(true));
+    const exported = backend.seen.find((command) => command.operation === "export");
+    expect(exported).toMatchObject({
+      operation: "export",
+      plans: [{
+        planId: savedCommand.draft.planId,
+        variantId: savedCommand.draft.variantId,
+        revision: {
+          revisionId: savedCommand.revisionId,
+          contentHash: "b".repeat(64),
+        },
+      }],
+    });
+  });
+
+  it("muestra código y campo cuando Guardar falla", async () => {
+    const backend = lifecycleClient();
+    const failing: StrategyApplicationClient<unknown> = {
+      ...backend.client,
+      async execute(command) {
+        if (command.operation === "save_revision") {
+          throw new StrategyApplicationError(
+            "stale_command",
+            "expectedRepositoryVersion",
+            "El documento cambió",
+          );
+        }
+        return backend.client.execute(command);
+      },
+    };
+    mount(ROSTER, failing);
+    const save = await screen.findByTestId("orbit-strategy-save-revision");
+    await waitFor(() => expect(save.hasAttribute("disabled")).toBe(false));
+    fireEvent.click(save);
+
+    const error = await screen.findByTestId("orbit-strategy-lifecycle-error");
+    expect(error.textContent).toContain("El documento cambió");
+    expect(error.textContent).toContain("stale_command");
+    expect(error.textContent).toContain("expectedRepositoryVersion");
+  });
+
+  it("muestra el fallo tipado al abrir el borrador canónico", async () => {
+    mount(ROSTER, createOrbitCalculationTestClient(), failingOpenRuntime);
+    const error = await screen.findByTestId("orbit-strategy-editor-open-error");
+    expect(error.textContent).toContain("bridge caído");
+    expect(error.textContent).toContain("stale_command");
+    expect(error.textContent).toContain("draftId");
+  });
   async function strategiesTab() {
     await mounted();
     fireEvent.click(screen.getByRole("tab", { name: "Estrategias" }));
@@ -315,22 +699,22 @@ describe("StrategyOrbitPage · Estrategias", () => {
     expect(verdict).toContain("dobla turno");
   });
 
-  it("Activar cambia la estrategia del panel y del crumb", async () => {
+  it("Seleccionar cambia la estrategia visible sin fingir que está activa", async () => {
     await strategiesTab();
 
     fireEvent.click(screen.getByTestId("orbit-strat-duplicate-s1"));
-    fireEvent.click(await screen.findByTestId("orbit-strat-activate-local-1"));
+    fireEvent.click(await screen.findByTestId("orbit-strat-select-local-1"));
 
     await waitFor(() =>
       expect(screen.getByTestId("orbit-strategy-name").textContent).toBe("Estrategia #1 (copia)"),
     );
-    expect(screen.getByTestId("orbit-strat-local-1").getAttribute("data-active")).toBe("true");
+    expect(screen.getByTestId("orbit-strat-local-1").getAttribute("data-active")).toBeNull();
     expect(screen.getByTestId("orbit-strat-s1").getAttribute("data-active")).toBeNull();
-    // La activa ya no ofrece Activar, y la anterior sí.
-    expect(screen.getByTestId("orbit-strat-activate-s1")).toBeTruthy();
+    // La seleccionada no se llama activa; la anterior ofrece Seleccionar.
+    expect(screen.getByTestId("orbit-strat-select-s1")).toBeTruthy();
   });
 
-  it("«+ Nueva estrategia» la crea y la deja activa", async () => {
+  it("«+ Nueva estrategia» la crea y la deja seleccionada, no activa", async () => {
     await strategiesTab();
 
     fireEvent.click(screen.getByTestId("orbit-strategy-new-card"));
@@ -338,7 +722,7 @@ describe("StrategyOrbitPage · Estrategias", () => {
     await waitFor(() =>
       expect(screen.getByTestId("orbit-strategy-name").textContent).toBe("Estrategia #2"),
     );
-    expect(screen.getByTestId("orbit-strat-local-1").getAttribute("data-active")).toBe("true");
+    expect(screen.getByTestId("orbit-strat-local-1").getAttribute("data-active")).toBeNull();
   });
 });
 
@@ -394,8 +778,144 @@ describe("StrategyOrbitPage · estado inicial", () => {
     expect(screen.queryByTestId("orbit-strategy-wizard")).toBeNull();
   });
 
-  it("el asistente pregunta origen y equipo antes de dejar crear", async () => {
-    mount(null);
+  it("lista una carrera monoclase y salta directamente al coche con telemetría", async () => {
+    const series = raceSeries();
+    calendarRef.current = loadedCalendar([series]);
+    starts.push(startOf(series));
+    mount(null, wizardCatalogClient([USABLE_SESSION_COMBINATION]));
+
+    const calendar = await screen.findByTestId("orbit-strategy-calendar");
+    expect(calendar.textContent).toContain("Spa (WEC)");
+    expect(calendar.textContent).toContain("LMP2 (full fuel tank)");
+    expect(calendar.textContent).toContain("120 min");
+    expect(calendar.textContent).toContain("12 neumáticos");
+    expect(calendar.textContent).toContain("VE 75 %");
+    expect(calendar.textContent).toContain("Setup fijo");
+
+    fireEvent.click(within(calendar).getByTestId(`orbit-strategy-calendar-race-${series.id}`));
+    const cars = await screen.findByTestId("orbit-strategy-calendar-cars");
+    expect(screen.queryByTestId("orbit-strategy-calendar-classes")).toBeNull();
+    expect(cars.textContent).toContain(USABLE_SESSION_COMBINATION.carName);
+    fireEvent.click(within(cars).getByTestId(`orbit-strategy-calendar-car-${USABLE_SESSION_COMBINATION.combinationId}`));
+
+    await screen.findByTestId("orbit-strategy-overview");
+    fireEvent.click(screen.getByRole("button", { name: "Datos" }));
+    const fuel = await screen.findByTestId("orbit-planning-input-fuel_per_lap_liters");
+    expect(within(fuel).getByLabelText(/Derivado: Calculado con 27 muestras/)).toBeTruthy();
+  });
+
+  it("cuando la sede tiene varios trazados pide elegir uno y muestra sus sesiones", async () => {
+    const series = raceSeries();
+    calendarRef.current = loadedCalendar([series]);
+    starts.push(startOf(series));
+    mount(null, wizardCatalogClient([
+      USABLE_SESSION_COMBINATION,
+      SPA_ENDURANCE_SESSION_COMBINATION,
+    ]));
+
+    fireEvent.click(within(await screen.findByTestId("orbit-strategy-calendar"))
+      .getByTestId(`orbit-strategy-calendar-race-${series.id}`));
+
+    const layouts = await screen.findByTestId("orbit-strategy-calendar-layouts");
+    expect(layouts.textContent).toContain("Circuit de Spa-Francorchamps");
+    expect(layouts.textContent).toContain("5 sesiones");
+    expect(layouts.textContent).toContain("Circuit de Spa-Francorchamps Endurance");
+    expect(layouts.textContent).toContain("2 sesiones");
+    expect(screen.queryByTestId("orbit-strategy-calendar-cars")).toBeNull();
+
+    fireEvent.click(within(layouts).getByTestId(
+      `orbit-strategy-calendar-layout-${SPA_ENDURANCE_SESSION_COMBINATION.trackLayout}`,
+    ));
+    const cars = await screen.findByTestId("orbit-strategy-calendar-cars");
+    expect(cars.textContent).toContain(SPA_ENDURANCE_SESSION_COMBINATION.carName);
+    expect(cars.textContent).not.toContain(USABLE_SESSION_COMBINATION.carName);
+  });
+
+  it("en una carrera multiclase pide primero clase y después ofrece solo sus coches con datos", async () => {
+    const series = raceSeries({
+      vehicleClass: "LMP2 / LMGT3",
+      classes: [
+        { name: "LMP2", qualifier: "full fuel tank", telemetryClassName: "LMP2_ELMS" },
+        { name: "LMGT3", qualifier: "75% VE", telemetryClassName: "GT3" },
+      ],
+    });
+    calendarRef.current = loadedCalendar([series]);
+    starts.push(startOf(series));
+    mount(null, wizardCatalogClient([USABLE_SESSION_COMBINATION, LMGT3_SESSION_COMBINATION]));
+
+    fireEvent.click(within(await screen.findByTestId("orbit-strategy-calendar"))
+      .getByTestId(`orbit-strategy-calendar-race-${series.id}`));
+    const classes = await screen.findByTestId("orbit-strategy-calendar-classes");
+    expect(screen.queryByTestId("orbit-strategy-calendar-cars")).toBeNull();
+    fireEvent.click(within(classes).getByTestId("orbit-strategy-calendar-class-LMGT3"));
+
+    const cars = await screen.findByTestId("orbit-strategy-calendar-cars");
+    expect(cars.textContent).toContain(LMGT3_SESSION_COMBINATION.carName);
+    expect(cars.textContent).not.toContain(USABLE_SESSION_COMBINATION.carName);
+  });
+
+  it("explica que no hay sesiones grabadas para el circuito y la clase y ofrece la vía manual", async () => {
+    const series = raceSeries({ track: "Fuji (WEC)", telemetryTrackName: "Fuji Speedway" });
+    calendarRef.current = loadedCalendar([series]);
+    starts.push(startOf(series));
+    mount(null, wizardCatalogClient([USABLE_SESSION_COMBINATION]));
+
+    fireEvent.click(within(await screen.findByTestId("orbit-strategy-calendar"))
+      .getByTestId(`orbit-strategy-calendar-race-${series.id}`));
+
+    const cars = await screen.findByTestId("orbit-strategy-calendar-cars");
+    expect(cars.textContent).toContain("No tienes sesiones grabadas en este circuito con esta clase");
+    expect(within(cars).getByTestId("orbit-strategy-calendar-manual")).toBeTruthy();
+    expect(within(cars).queryByTestId(/orbit-strategy-calendar-car-/)).toBeNull();
+  });
+
+  it("nombra la sede o la clase del calendario que no tienen correspondencia declarada", async () => {
+    const unknownVenue = raceSeries({
+      id: "unknown-venue",
+      track: "Nueva sede (WEC)",
+      telemetryTrackName: undefined,
+    });
+    calendarRef.current = loadedCalendar([unknownVenue]);
+    starts.push(startOf(unknownVenue));
+    const view = mount(null, wizardCatalogClient([USABLE_SESSION_COMBINATION]));
+
+    fireEvent.click(within(await screen.findByTestId("orbit-strategy-calendar"))
+      .getByTestId("orbit-strategy-calendar-race-unknown-venue"));
+    expect((await screen.findByTestId("orbit-strategy-calendar-identity-error")).textContent)
+      .toContain("El calendario llama a este circuito «Nueva sede (WEC)» y no hay correspondencia declarada");
+
+    view.unmount();
+    cleanup();
+    document.body.replaceChildren();
+    const unknownClass = raceSeries({
+      id: "unknown-class",
+      classes: [{ name: "LMH" }],
+    });
+    calendarRef.current = loadedCalendar([unknownClass]);
+    starts.length = 0;
+    starts.push(startOf(unknownClass));
+    mount(null, wizardCatalogClient([USABLE_SESSION_COMBINATION]));
+
+    fireEvent.click(within(await screen.findByTestId("orbit-strategy-calendar"))
+      .getByTestId("orbit-strategy-calendar-race-unknown-class"));
+    expect((await screen.findByTestId("orbit-strategy-calendar-identity-error")).textContent)
+      .toContain("El calendario llama a esta clase «LMH» y no hay correspondencia declarada");
+  });
+
+  it("explica en el bloque inferior que el calendario no está disponible", async () => {
+    calendarRef.current = null;
+    mount(null, wizardCatalogClient([USABLE_SESSION_COMBINATION]));
+
+    expect((await screen.findByTestId("orbit-strategy-calendar")).textContent).toContain(
+      "El calendario de Le Mans Ultimate no está disponible",
+    );
+  });
+
+  it("la vía automática disponible abre las carreras y no una lista abstracta de combinaciones", async () => {
+    const series = raceSeries();
+    calendarRef.current = loadedCalendar([series]);
+    starts.push(startOf(series));
+    mount(null, wizardCatalogClient([USABLE_SESSION_COMBINATION]));
     fireEvent.click(await screen.findByTestId("orbit-strategy-new-strategy"));
 
     const wizard = await screen.findByTestId("orbit-strategy-wizard");
@@ -403,22 +923,48 @@ describe("StrategyOrbitPage · estado inicial", () => {
     // Todavía no se puede elegir punto de partida: falta contestar.
     expect(screen.queryByTestId("orbit-strategy-paths")).toBeNull();
 
-    // La automática va deshabilitada y dice por qué (ADR 0005, sin fuente).
     const auto = screen.getByTestId("orbit-strategy-wizard-auto-action");
-    expect(auto.hasAttribute("disabled")).toBe(true);
-    expect(auto.getAttribute("data-tip")).toContain("ADR 0005");
-
-    fireEvent.click(screen.getByTestId("orbit-strategy-wizard-manual"));
-    expect((await screen.findByTestId("orbit-strategy-wizard")).textContent).toContain(
-      "paso 2 de 3",
+    await waitFor(() => expect(auto.hasAttribute("disabled")).toBe(false));
+    expect(screen.getByTestId("orbit-strategy-wizard-auto-reason").textContent).toContain(
+      "1 combinación",
     );
-    fireEvent.click(screen.getByTestId("orbit-strategy-wizard-team"));
 
-    await screen.findByTestId("orbit-strategy-paths");
-    expect(screen.getByTestId("orbit-strategy-path-own")).toBeTruthy();
-    expect(screen.getByTestId("orbit-strategy-path-series")).toBeTruthy();
-    // Las series solo se listan cuando el usuario elige ese camino.
-    expect(screen.queryByTestId("orbit-strategy-series")).toBeNull();
+    fireEvent.click(auto);
+    expect(await screen.findByTestId("orbit-strategy-calendar")).toBeTruthy();
+    expect(screen.queryByTestId("orbit-strategy-session-picker")).toBeNull();
+  });
+
+  it("deshabilita la automática porque todavía no hay sesiones importadas", async () => {
+    mount(null, wizardCatalogClient("no_sessions"));
+    fireEvent.click(await screen.findByTestId("orbit-strategy-new-strategy"));
+
+    const auto = await screen.findByTestId("orbit-strategy-wizard-auto-action");
+    await waitFor(() => expect(auto.hasAttribute("disabled")).toBe(true));
+    expect(screen.getByTestId("orbit-strategy-wizard-auto-reason").textContent).toContain(
+      "No hay sesiones importadas",
+    );
+  });
+
+  it("deshabilita la automática porque el catálogo de sesiones no está disponible", async () => {
+    mount(null, wizardCatalogClient("error"));
+    fireEvent.click(await screen.findByTestId("orbit-strategy-new-strategy"));
+
+    const auto = await screen.findByTestId("orbit-strategy-wizard-auto-action");
+    await waitFor(() => expect(auto.hasAttribute("disabled")).toBe(true));
+    expect(screen.getByTestId("orbit-strategy-wizard-auto-reason").textContent).toContain(
+      "El catálogo de sesiones no está disponible",
+    );
+  });
+
+  it("deshabilita la automática cuando ninguna combinación tiene vueltas clasificadas por clima", async () => {
+    mount(null, wizardCatalogClient([{ ...USABLE_SESSION_COMBINATION, climateBuckets: [] }]));
+    fireEvent.click(await screen.findByTestId("orbit-strategy-new-strategy"));
+
+    const auto = await screen.findByTestId("orbit-strategy-wizard-auto-action");
+    await waitFor(() => expect(auto.hasAttribute("disabled")).toBe(true));
+    expect(screen.getByTestId("orbit-strategy-wizard-auto-reason").textContent).toContain(
+      "Ninguna combinación tiene vueltas clasificadas por clima",
+    );
   });
 
   it("«Solo» crea un evento de un piloto y quita la disponibilidad del tablero", async () => {

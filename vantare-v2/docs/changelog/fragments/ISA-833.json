@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-833",
+  "type": "change",
+  "summary": "Análisis explica la falta de ritmo por clase desde el contrato preparado para la futura base compartida.",
+  "technicalNotes": [
+    "StrategyInputProjection v2 añade classPace con presencia, procedencia reference, confianza, motivo tipado y ritmos indexados por nombre de clase.",
+    "El productor actual publica no_class_pace_source y un mapa vacío; no deriva datos de rivales desde la telemetría del piloto."
+  ],
+  "testing": [
+    "Abrir una carrera multiclase en Análisis y comprobar que las filas y la tabla muestran la causa de ausencia sin estimar doblajes."
+  ],
+  "knownLimitations": [
+    "La base compartida todavía no existe, por lo que no se calculan alcances, frecuencias ni vueltas dobladas."
+  ]
+}

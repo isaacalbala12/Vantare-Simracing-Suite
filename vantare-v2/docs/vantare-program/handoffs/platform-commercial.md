@@ -1,5 +1,29 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+## ISA-843 — columnas de Próximas alineadas
+
+- Rama aislada `vantareapp/isa-843-centrar-columnas-proximas`, basada en
+  `origin/nightly@8a90c3a7837166ffec6943c839f7cb31cbf11b31`.
+- En Carreras → Próximas, hora, duración/setup y licencia usan tracks estables
+  y centran su contenido. Ya no cambian de eje según 20/30/60 minutos ni según
+  Bronze/Silver/Gold.
+- El harness real de Carreras midió nueve filas: antes la hora variaba entre
+  673,06 y 692,39 px; después todas coinciden en 641 px. A 768 × 700, las nueve
+  filas mantienen los tres ejes y `overflowX = 0`.
+- Evidencia local: test focal 18/18, suite frontend 385 archivos/2.953 tests,
+  typecheck, build, lint focal y design-system PASS. El harness visual pasa en
+  1920 × 1080 y 1920 × 900 con gates de ejes compartidos y cero desbordamiento
+  de fila; la inspección colaborativa adicional pasa a 768 × 700.
+- Segunda pasada tras feedback de Isaac: los chips comparten ancho y el track
+  de licencia gana aire propio. En 640/768 × 700, el mínimo visible entre
+  duración y licencia sube de 18,5 a 26,31 px; centros y anchos no varían entre
+  filas y `overflowX` continúa en cero. El harness impide volver a menos de
+  32 px sin escalar, variar el ancho del chip o desalinear un eje.
+- Implementación inicial en `a99c3f46`; segunda pasada incluida en el HEAD de
+  la PR #846 hacia `nightly`. Isaac aprobó expresamente la promoción el
+  2026-08-26; la issue #843 conserva el SHA integrado y los checks remotos del
+  cierre. Esta autorización no alcanza `testers`, `master` ni una release.
+
 ## Decisión comercial vigente — ISA-315
 
 - Hito de agosto: Overlay Studio V1 estable en `testers` antes del 2026-08-31.
@@ -81,6 +105,23 @@ Toda issue publicable incluye `Resumen público`. Flujo: Idea → Siguiente
 actualización → En desarrollo → Testing → Por lanzar → Publicado. Progreso
 ponderado, digest diario, tarjeta HTML y texto accesible. Releases, crisis y
 anuncios comerciales requieren aprobación.
+
+ISA-860 implementa en la rama aislada
+`vantareapp/isa-860-roadmap-contract`, nacida de `nightly@1d3ab03`, el contrato auditable preparado para bloqueo:
+Forms `required`/`not-required`, IDs semanticos, JSON derivado desde la base,
+allowlist cerrada para exenciones, excepcion exacta del bot y `CODEOWNERS`.
+Las labels remotas ya existen, pero el contrato no esta integrado ni activo en
+la rama predeterminada. Quedan pendientes review, PR/CI, promocion autorizada a
+`nightly`, paso posterior por `testers`/`master` y configurar Code Owner review
+y aprobacion del ultimo push. El workflow queda en `audit` hasta inventariar y
+retroclasificar las PR vivas y separar la identidad autora de la identidad
+Code Owner; activar review con la unica cuenta actual bloquearia sus propias
+PR. ISA-862 registra esa activacion posterior sin grandfather reutilizable.
+No hay auto-merge ni credencial nueva del bot.
+Evidencia local: contrato 21/21, topologia 44/44, digest 23/23 y discovers
+121/121 + 108/108 en verde; `roadmap_digest.py --check` y `git diff --check`
+sin errores. La revision independiente xhigh concluyo GO con P0=0, P1=0 y
+P2=0 para commit/push en modo `audit`.
 
 ## Releases
 

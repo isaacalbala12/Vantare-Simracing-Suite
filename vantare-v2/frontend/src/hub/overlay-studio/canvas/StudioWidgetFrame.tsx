@@ -11,11 +11,10 @@ import type { WidgetDiagnosticCollector } from '../../../overlay/core/widget-dia
 import { WidgetVisualHost } from '../../../overlay/core/WidgetVisualHost';
 import { WidgetVisualViewport } from '../../../overlay/core/WidgetVisualViewport';
 import { widgetTypeRegistry } from '../../../overlay/core/widget-registry';
-import { useRateLimitedTelemetry } from '../../../overlay/runtime/use-rate-limited-telemetry';
 import { useI18n } from '../../../i18n/I18nProvider';
 import type { ResizeHandle } from './canvas-resize';
 import { useSelectionFit } from './useSelectionFit';
-import { useStudioTelemetryCoordinator } from './studio-telemetry';
+import { useStudioTelemetrySnapshot } from './studio-telemetry';
 
 const MemoWidgetVisualHost = memo(WidgetVisualHost);
 
@@ -70,8 +69,7 @@ function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactE
     fitSelectionToContent = false,
   } = props;
   const { t } = useI18n();
-  const coordinator = useStudioTelemetryCoordinator();
-  const rateLimitedSnapshot = useRateLimitedTelemetry(coordinator, widget.behavior.updateHz);
+  const rateLimitedSnapshot = useStudioTelemetrySnapshot(widget.behavior.updateHz);
   const snapshot = snapshotOverride ?? rateLimitedSnapshot;
   const frameRef = useRef<HTMLDivElement>(null);
   const selectionRef = useRef<HTMLDivElement>(null);

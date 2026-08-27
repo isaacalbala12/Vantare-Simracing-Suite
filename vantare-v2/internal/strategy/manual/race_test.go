@@ -203,3 +203,7 @@ func sourcedLaps(t testing.TB, value int64, source Evidence) Sourced[contract.La
 	}
 	return Sourced[contract.LapCount]{Value: quantity, Evidence: source}
 }
+
+func sourcedReserveLaps(value float64, source Evidence) Sourced[float64] {
+	return Sourced[float64]{Value: value, Evidence: source}
+}

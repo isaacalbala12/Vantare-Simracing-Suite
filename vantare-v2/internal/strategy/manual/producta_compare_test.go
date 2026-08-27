@@ -44,7 +44,7 @@ func TestCompatibleProductAOracles(t *testing.T) {
 			StartAmount:          sourcedFuel(t, 20, manual),
 			ConsumptionPerLap:    sourcedFuel(t, 4, manual),
 			FormationConsumption: sourcedFuel(t, 8, manual),
-			Reserve:              FuelReserveInput{Kind: ReserveLaps, Laps: sourcedLaps(t, 2, manual), Selection: manual},
+			Reserve:              FuelReserveInput{Kind: ReserveLaps, Laps: sourcedReserveLaps(2, manual), Selection: manual},
 		}, mustLaps(t, 30))
 		if err != nil {
 			t.Fatalf("manual fuel: %v", err)

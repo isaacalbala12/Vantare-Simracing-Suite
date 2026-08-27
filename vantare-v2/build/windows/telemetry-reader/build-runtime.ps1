@@ -6,12 +6,16 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+if ($PSVersionTable.PSVersion.Major -lt 7) {
+    throw "PowerShell 7 (pwsh) is required so generated JSON reproduces the trusted TA-03C runtime."
+}
 
 $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot "..\..\.."))
 $helperModule = Join-Path $repoRoot "tools\vantare-telemetry-reader"
 $componentsPath = Join-Path $repoRoot "docs\vantare-program\research\telemetry-analysis\spikes\ta03b\sbom-components.json"
 $approvedSBOM = Join-Path $repoRoot "docs\vantare-program\research\telemetry-analysis\evidence\duckdb-1.5.5-windows-amd64.spdx.json"
 $sbomTools = Join-Path $repoRoot "docs\vantare-program\research\telemetry-analysis\spikes\ta03b\sbom-tools.ps1"
+$cgoFlags = Join-Path $PSScriptRoot "cgo-flags.ps1"
 $trustSource = Join-Path $repoRoot "internal\telemetryanalysis\duckdbadapter\runtime_trust_generated.go"
 $components = Get-Content -Raw -LiteralPath $componentsPath | ConvertFrom-Json
 $output = [System.IO.Path]::GetFullPath($OutputDirectory)
@@ -19,7 +23,8 @@ if ((Test-Path -LiteralPath $output) -and @(Get-ChildItem -Force -LiteralPath $o
     throw "OutputDirectory must be absent or empty so the runtime cannot retain unmanifested files: $output"
 }
 . $sbomTools
-$work = Join-Path $env:TEMP ("vantare-telemetry-reader-build-" + [guid]::NewGuid().ToString("N"))
+. $cgoFlags
+$work = Join-Path $env:TEMP ("vantare telemetry reader build " + [guid]::NewGuid().ToString("N"))
 $extract = Join-Path $work "duckdb"
 $buildA = Join-Path $work "build-a\vantare-telemetry-reader.exe"
 $buildB = Join-Path $work "build-b\vantare-telemetry-reader.exe"
@@ -41,7 +46,7 @@ function Write-Utf8([string]$Path, [string]$Content) {
 
 function Add-License([System.Text.StringBuilder]$Builder, [string]$Name, [string]$License, [string]$Path, [string]$ExpectedHash) {
     Assert-Sha256 $Path $ExpectedHash
-    [void]$Builder.AppendLine("## $Name — $License")
+    [void]$Builder.AppendLine("## $Name $([char]0x2014) $License")
     [void]$Builder.AppendLine()
     [void]$Builder.AppendLine(([System.IO.File]::ReadAllText($Path)).TrimEnd())
     [void]$Builder.AppendLine()
@@ -66,12 +71,14 @@ if (-not (Test-Path (Join-Path $GccBin "gcc.exe"))) {
 $oldPath = $env:PATH
 $oldCGO = $env:CGO_ENABLED
 $oldFlags = $env:CGO_CFLAGS
+$oldCXXFlags = $env:CGO_CXXFLAGS
 $oldLinkerFlags = $env:CGO_LDFLAGS
 try {
     $env:PATH = "$GccBin;$extract;$oldPath"
     $env:CGO_ENABLED = "1"
-    $env:CGO_CFLAGS = "-I$extract"
-    $env:CGO_LDFLAGS = "-L$extract -lduckdb"
+    $env:CGO_CFLAGS = New-CgoIncludeFlags -Directory $extract
+    $env:CGO_CXXFLAGS = New-CgoIncludeFlags -Directory $extract
+    $env:CGO_LDFLAGS = New-CgoLinkerFlags -Directory $extract -LibraryName "duckdb"
     Push-Location $helperModule
     try {
         go build -trimpath -buildvcs=false -tags duckdb_use_lib -ldflags "-s -w -buildid=" -o $buildA .
@@ -85,6 +92,7 @@ try {
     $env:PATH = $oldPath
     $env:CGO_ENABLED = $oldCGO
     $env:CGO_CFLAGS = $oldFlags
+    $env:CGO_CXXFLAGS = $oldCXXFlags
     $env:CGO_LDFLAGS = $oldLinkerFlags
 }
 if ((Get-Sha256 $buildA) -ne (Get-Sha256 $buildB)) {
@@ -118,7 +126,7 @@ $sbom.creationInfo.creators = @("Tool: Vantare build/windows/telemetry-reader/bu
 $licenseDir = Join-Path $work "licenses"
 New-Item -ItemType Directory -Force -Path $licenseDir | Out-Null
 $notices = [System.Text.StringBuilder]::new()
-[void]$notices.AppendLine("# Vantare Telemetry Reader — third-party notices")
+[void]$notices.AppendLine("# Vantare Telemetry Reader $([char]0x2014) third-party notices")
 [void]$notices.AppendLine()
 [void]$notices.AppendLine("Runtime: DuckDB 1.5.5 Windows amd64; helper protocol 1.")
 [void]$notices.AppendLine("Mbed TLS is redistributed under Apache-2.0. Zstandard is redistributed under BSD-3-Clause.")

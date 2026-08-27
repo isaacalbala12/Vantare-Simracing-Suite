@@ -53,6 +53,8 @@ export type Recurrence = {
 export type VehicleClass = {
   name: string;
   qualifier?: string;
+  // Exact LMU telemetry CarClass resolved by the reviewed Go registry.
+  telemetryClassName?: string;
 };
 
 // RaceSeries models a single recurring race series. Mirrors the Go type in
@@ -67,6 +69,8 @@ export type RaceSeries = {
   format?: "solo" | "team" | string;
   licenseLabel: string;
   track: string;
+  // Exact LMU telemetry TrackName resolved by the reviewed Go registry.
+  telemetryTrackName?: string;
   // vehicleClass is the schedule's own prose, kept verbatim; classes is the
   // structured reading the UI renders as chips and filters on.
   vehicleClass: string;

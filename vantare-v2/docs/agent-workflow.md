@@ -37,6 +37,50 @@
 - `refactor` y `develop` se conservan como historia mientras tengan
   consumidores; no son bases nuevas ni se limpian para reutilizarlas.
 
+## Contrato de roadmap por issue
+
+- Toda issue ejecutable lleva exactamente una label:
+  `roadmap:required` o `roadmap:not-required`.
+- La rama canónica resuelve la autoridad: `vantareapp/isa-N-*` consulta la
+  issue N del mismo repositorio. Un enlace escrito en la PR no la sustituye.
+- Una issue `required` incluye `Objetivo`, `Impacto en roadmap`, `IDs de
+  roadmap afectados` y `Cambio publico esperado`. Los IDs usan los tokens
+  exactos `phases:id`, `areas:id` o `milestones:id`.
+- El gate compara el plan base y candidato ya parseados, exige igualdad entre
+  IDs declarados y modificados, y reconstruye `roadmap.json` usando como
+  estado anterior unicamente el JSON protegido de la base. Solo incorpora
+  commits alcanzables desde el SHA base.
+- Una issue `not-required` solo admite tests, `testdata/` y Markdown en
+  `docs/analysis/`; no admite codigo productivo, tooling ni ningun cambio de
+  roadmap. Esta allowlist cerrada evita que el mismo agente se autoexima.
+- Los Issue Forms ayudan a crear el contrato desde la interfaz de GitHub. La
+  API puede saltarselos, de modo que CI vuelve a validar campos y labels.
+- Las promociones `nightly -> testers` y `testers -> master` comprueban la
+  coherencia global. `bot/roadmap-digest -> nightly` solo puede cambiar el
+  artefacto derivado. Las ramas `tc-*` siguen inertes y sin autoridad de
+  roadmap.
+- El check se ejecuta sin filtros de rutas y con permisos de solo lectura. No
+  usa `pull_request_target`, secretos de producto ni codigo descargado fuera
+  del arbol revisado.
+
+Los Forms y la plantilla de PR se publican desde `master`, la rama
+predeterminada. `CODEOWNERS` solo bloquea de verdad cuando la proteccion remota
+exige Code Owner review y aprobacion del ultimo push; esa activacion se
+verifica separadamente y nunca se infiere de que el fichero exista.
+
+El despliegue de ISA-860 empieza en modo `audit`. Antes de cambiarlo a
+`enforce` se inventarian las PR abiertas, se cierran las obsoletas y se
+retroclasifican las que continuen. Tambien se separan las identidades de autor
+y Code Owner: GitHub no permite que el autor apruebe su propia PR. No se usa un
+grandfather por numero de issue o fecha porque una rama antigua podria
+reutilizarlo como bypass.
+
+La issue se consulta al ejecutar el check. Editar o cerrar despues la issue, o
+cambiar sus labels, exige volver a lanzar el check antes del merge; el evento
+de issue no invalida por si solo un resultado ya emitido sobre el SHA. Una
+automatizacion de reemision queda para la activacion si la operacion demuestra
+que el rerun manual no basta.
+
 ## Promoción
 
 ```text

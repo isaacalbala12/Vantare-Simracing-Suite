@@ -2,8 +2,13 @@ import type { ReactNode } from "react";
 
 export interface AccordionProps {
   title: string;
-  /** Resumen mono a la derecha; al abrir baja al 55 % de opacidad. */
+  /** Resumen mono a la derecha; solo se pinta con el acordeon plegado. */
   summary?: string;
+  /**
+   * Que hace la seccion, en una frase. Se muestra bajo la cabecera cuando el
+   * raton se queda encima; no es un rotulo, asi que envuelve en varias lineas.
+   */
+  tip?: string;
   open?: boolean;
   onToggle?(o: boolean): void;
   children: ReactNode;
@@ -31,14 +36,27 @@ function Chevron() {
 }
 
 /** `<details>/<summary>` nativos (`08`): teclado y `aria-expanded` gratis. */
-export function Accordion({ title, summary, open, onToggle, children, className }: AccordionProps) {
+export function Accordion({
+  title,
+  summary,
+  tip,
+  open,
+  onToggle,
+  children,
+  className,
+}: AccordionProps) {
   return (
     <details
       className={["orbit-acc", className].filter(Boolean).join(" ")}
       onToggle={(event) => onToggle?.((event.currentTarget as HTMLDetailsElement).open)}
       open={open}
     >
-      <summary aria-expanded={open ?? false}>
+      <summary
+        aria-expanded={open ?? false}
+        data-tip={tip}
+        data-tip-hold={tip ? "true" : undefined}
+        data-tip-side={tip ? "bottom" : undefined}
+      >
         <span className="orbit-acc__title">{title}</span>
         {summary ? <span className="orbit-acc__sum">{summary}</span> : null}
         <Chevron />

@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-832",
+  "type": "fix",
+  "summary": "Los planes de Strategy reservan combustible o energía para 0,8 vueltas al llegar en vez de terminar a cero.",
+  "technicalNotes": [
+    "La reserva es una restricción de SolverV2 y puede añadir una parada; también se aplica al ahorro y a cada escenario climático.",
+    "El evento puede cambiar el margen mediante reserve_laps y el resultado publica cumplimiento, margen efectivo y recurso limitante.",
+    "Entre planes temporalmente equivalentes, Fuel y energía virtual iniciales se reducen al mínimo que conserva la carrera, los servicios decididos y la reserva.",
+    "Un margen imposible devuelve reserve_not_met y nunca se presenta como plan factible."
+  ],
+  "testing": [
+    "Probar un evento cuya distancia cabe exactamente en el depósito: con el margen debe aparecer la parada adicional necesaria.",
+    "Cambiar reserve_laps en la entrada del evento y comprobar que el margen requerido y efectivo del resultado cambian juntos.",
+    "Verificar un plan con ahorro y otro con escenarios de lluvia; ambos deben conservar al menos el margen publicado."
+  ],
+  "knownLimitations": [
+    "La presentación visual del aviso queda para la integración posterior de Isaac; esta entrega publica el contrato y la causa."
+  ]
+}

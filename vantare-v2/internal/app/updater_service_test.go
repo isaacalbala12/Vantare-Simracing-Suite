@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -58,7 +59,17 @@ func TestUpdaterServiceRejectsUnauthorizedProtectedChannel(t *testing.T) {
 	}
 }
 
-func TestUpdaterServiceRejectsDirectNightlyInstallForTester(t *testing.T) {
+// Un tag de Nightly no se ofrece a quien tiene Testers porque la lista se
+// filtra por el canal configurado, que loadSettings ya deja en uno autorizado.
+// La comprobacion de canal previa a instalar sigue ahi como segunda barrera y
+// se cubre en TestInstallRefusesAReleaseWhoseChannelStoppedBeingAllowed.
+func TestUpdaterServiceDoesNotOfferNightlyToATester(t *testing.T) {
+	server := releaseListServer(t, `[
+		{"tag_name":"v0.2.0-nightly.1","name":"nightly","prerelease":true,"assets":[{"name":"vantare-amd64-installer.exe","browser_download_url":"https://example.invalid/installer.exe"},{"name":"vantare-amd64-installer.exe.sha256","browser_download_url":"https://example.invalid/installer.exe.sha256"}]}
+	]`)
+	defer server.Close()
+
+	t.Setenv("VANTARE_RELEASES_URL", server.URL+"/releases")
 	settingsPath := filepath.Join(t.TempDir(), "updater-settings.json")
 	svc, err := app.NewUpdaterService("v0.1.0", settingsPath, &spyEmitter{})
 	if err != nil {
@@ -67,11 +78,22 @@ func TestUpdaterServiceRejectsDirectNightlyInstallForTester(t *testing.T) {
 	svc.SetChannelAuthorizer(func(channel updater.Channel) bool {
 		return channel == updater.ChannelStable || channel == updater.ChannelTesters
 	})
-	release := appUpdaterRelease("https://example.invalid", "v0.2.0-nightly")
-	release.Prerelease = true
-	if err := svc.InstallVerifiedVersion(release); err == nil {
+	err = svc.InstallVerifiedVersion("v0.2.0-nightly.1")
+	if err == nil {
 		t.Fatal("direct Nightly install bypassed the channel gate")
 	}
+	if !strings.Contains(err.Error(), "not available") {
+		t.Fatalf("se esperaba que ni siquiera estuviera en la lista, y fallo con: %v", err)
+	}
+}
+
+// releaseListServer serves a fixed releases payload for every request.
+func releaseListServer(t *testing.T, payload string) *httptest.Server {
+	t.Helper()
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(payload))
+	}))
 }
 
 func TestUpdaterServiceConcurrentChecksAndIgnore(t *testing.T) {
@@ -138,14 +160,12 @@ func TestUpdaterServiceInstallVerifiedVersionCtxRespectsCancellation(t *testing.
 		t.Fatalf("NewUpdaterService error: %v", err)
 	}
 
-	release := appUpdaterRelease(server.URL, "v0.2.0")
-
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
 	done := make(chan error, 1)
 	go func() {
-		done <- svc.InstallVerifiedVersionCtx(ctx, release)
+		done <- svc.InstallVerifiedVersionCtx(ctx, "v0.2.0")
 	}()
 
 	select {
@@ -155,16 +175,5 @@ func TestUpdaterServiceInstallVerifiedVersionCtxRespectsCancellation(t *testing.
 		}
 	case <-time.After(5 * time.Second):
 		t.Fatal("InstallVerifiedVersionCtx did not return after context cancellation")
-	}
-}
-
-func appUpdaterRelease(baseURL, tag string) updater.Release {
-	return updater.Release{
-		TagName:    tag,
-		Prerelease: false,
-		Assets: []updater.Asset{
-			{Name: "vantare-amd64-installer.exe", DownloadURL: baseURL + "/installer.exe"},
-			{Name: "vantare-amd64-installer.exe.sha256", DownloadURL: baseURL + "/installer.exe.sha256"},
-		},
 	}
 }

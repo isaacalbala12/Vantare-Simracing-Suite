@@ -17,6 +17,116 @@ visible es `Telemetría`.
 
 ## Estado
 
+Actualización ISA-861 (2026-08-27, corte final candidato sobre
+`origin/nightly@b1d5b15b`):
+
+- La rama de integración incorpora el servicio backend TA-03E completo, sus
+  correcciones de limpieza y límites, y el empaquetado Windows TA-03F con
+  verificación fail-closed del runtime firmado.
+- También incorpora el acumulado ISA-694: importación LMU autorizada, cold
+  start reanudable, paginación acotada, catálogo histórico y proyecciones
+  públicas consumidas por Strategy.
+- `TelemetryOrbitPage` continúa fuera de este corte: su fuente productiva aún
+  devuelve una lista vacía. La integración habilita backend e histórico para
+  las pruebas reales, pero no afirma que la pantalla post-sesión ya los lea.
+- TA03E/TA03F ya fue promovida mediante PR #866 a `nightly@b1d5b15b`. El
+  acumulado de Analysis/Strategy de este segundo corte mantiene push, PR, CI
+  y merge pendientes. `testers`, `master` y release quedan fuera.
+
+ISA-816 corrige en su rama aislada la segunda pagina de eventos LMU: el parser
+ya no suma la predecesora al limite enviado al runtime, sino que la solicita en
+una lectura separada de una fila. La pagina publica sigue admitiendo 16.384
+eventos nuevos. Una regresion `duckdb_integration` con adapter real, helper
+firmado y 16.385 eventos reproduce el fallo anterior y pasa con el arreglo.
+Analysis, la suite real completa, el helper y el vet focal pasan. El gate vet
+exacto llega a Go tras restaurar `frontend/dist`, pero conserva tres avisos
+`unsafe.Pointer` previos y ajenos en LMU live y Launcher; el mismo gate con ese
+analizador desactivado pasa. Commit de producto `3e88d21b`; pendiente review,
+sin PR, integracion ni promocion.
+
+ISA-809 / ISA-694 F5-e corrige en su rama aislada el panic al asociar un
+incidente posterior a la ultima vuelta. `labelIncidentLaps` valida ambos
+limites y una sesion sintetica cubre eventos antes de la primera vuelta y
+despues de la ultima. El barrido de los siete `sort.Search` del paquete confirma
+que los otros indices derivados se validan antes de acceder, incluida la resta
+de `continuousLapEndValues` que puede producir `-1`. Analysis+Strategy PASS; el
+corpus real de 337 DuckDB queda para el gate del orquestador. Un aislamiento
+general ante panics por sesion queda fuera de este arreglo y necesita una
+politica separada. Sin PR, integracion ni promocion.
+
+ISA-744 / ISA-694 F3-a5 está implementada en su rama aislada y cierra el
+desarrollo F3a pendiente de review. El pit degradado conserva intervalos de
+carril; Fuel/VE solo se asocian con reloj declarado común. Reloj desconocido o
+ausencia de subida quedan ambiguos con motivo y jamás producen desglose de
+tránsito/servicio. Las tasas observadas agregan N, rango, varianza y versión.
+
+`ObservedStrategy v1` publica stints, vueltas de parada, compuesto raw, cambios
+Fuel/neumático/desgaste y resultado observable de cada carrera. El productor
+multi-sesión compone F3-a1..a5 en `StrategyInputProjection v2`; todas las
+familias llevan presencia, procedencia, confianza y motivo, y las ausentes no
+bloquean las demostradas. El contract test cubre wire nuevo→consumidor v2 y
+rechazo fail-closed del fixture v1. Gates Analysis/Strategy, race, vet, gofmt y
+diff-check PASS; el gate Go global sigue no ejecutable sin el `frontend/dist`
+embebido. Sin PR, integración ni promoción.
+
+ISA-743 / ISA-694 F3-a4 está implementada en su rama aislada. La salida
+estándar es `CombinedStintPaceCurve`: cero local por mediana de las tres
+primeras vueltas limpias del stint y agregación por índice para la misma
+combinación+bucket, con rango y N. Un gate documentado exige diseño cruzado,
+3 stints, 15 vueltas, tres edades con rango de Fuel >=10 L, correlación máxima
+0,80 y varianza residual mínima de 25 % antes de publicar fuel/edad separados.
+La fixture cruzada pasa; la fixture sintética tipo corpus real no.
+
+`Tyres Wear` deriva pendiente por rueda/eje y vida al 20 % con rango y
+confianza; compuesto sigue `unsupported` por falta de mapping semántico. El
+coste del ahorro solo aparece con 5+5 vueltas limpias alternadas por nivel en
+el mismo stint, compuesto y clima; cualquier fallo queda `missing` con motivo.
+Contrato numérico en `docs/strategy-planner/isa-743-curvas-derivadas.md`.
+Suite focal, race, vet, gofmt y diff-check PASS. La suite Go global solo queda
+bloqueada en `frontend` y `cmd/vantare` por ausencia de `frontend/dist` en el
+worktree. Pendiente: review del orquestador; sin PR ni promoción.
+
+ISA-742 / ISA-694 F3-a3 está implementada en su rama aislada: Fuel y Virtual
+Energy por vuelta se calculan como delta entre fronteras válidas dentro del
+mismo `ContinuousSegment`, sin cruzar `CoverageGap` ni pit. El ritmo
+representativo usa mediana y varianza de vueltas limpias; tráfico conserva su
+etiqueta y consumo, pero no entra en ritmo. Los eventos `Minimum Path Wetness`
+producen buckets seco/húmedo/mojado; una vuelta que cambia de bucket no se
+atribuye entera a ninguno. No se usan `CloudDarkness` ni `OffpathWetness`.
+
+La agregación mezcla solo la misma combinación+bucket, pondera calidad y N, y
+calcula el percentil de la sesión actual contra el histórico suministrado del
+mismo piloto. Observaciones, familias y percentil llevan presencia,
+procedencia `derived` y confianza completas. Fixtures versionadas cubren seco
+y llovizna estilo S040. Gates focal, race, vet, gofmt y diff-check pasan; la
+suite global pasa salvo los dos paquetes bloqueados por `frontend/dist`
+ausente. Pendiente: review del orquestador de #742; no hay PR, integración ni
+promoción.
+
+ISA-740 / ISA-694 F3-a2 está implementada en su rama aislada: vueltas y
+fronteras se reconcilian desde `Lap` + resets de `Lap Dist` con calidad
+explícita; las vueltas incompletas permanecen visibles y las etiquetas
+out/in-lap, pit, impacto/offtrack, tráfico y outlier alimentan exclusiones
+explicadas por familia. Tráfico es solo etiqueta (D7). Stints aparentes usan
+únicamente pit, salto de Fuel o cambio observable de neumático, nunca identidad
+de piloto. La salida materializa `ContinuousSegment`, `CoverageGap`,
+`LapBoundary` y `StintBoundary` del contrato F1.2.
+
+Las fixtures reales mínimas y sanitizadas S045/S266 reproducen 9/70 vueltas,
+10/70 resets, 10/71 eventos, 6/66 tiempos utilizables, 0/3 vueltas de pit y
+1/4 stints aparentes; S266 conserva como gap sus 9.985,14 s de delta temporal.
+Los gates focal, race, vet, gofmt y diff-check pasan. Pendiente: review del
+orquestador de #740; no hay PR, integración ni promoción.
+
+ISA-737 / ISA-694 F3-a1 está implementada en su rama aislada: el modelo
+`HistoricalSession` se clasifica por combinación LMU, tipo y clima; las
+sesiones sin vuelta completa permanecen identificadas con usabilidad por
+familia; y cada carrera se agrupa con las prácticas de la misma combinación.
+Las fixtures sanitizadas cubren las seis candidatas de F0-1 y el spot-check
+8/8, sin DuckDB, fechas, hashes ni nombres de equipos reales. El gate
+`go test ./internal/telemetryanalysis/... -count=1`, vet, gofmt y diff-check
+pasa. Pendiente: review del orquestador; no hay PR ni promoción.
+
 TA-01 / ISA-122 completó la investigación documental, competitiva y de código.
 TA-02 / ISA-124 está técnicamente cerrada en rama aislada tras review
 independiente `ACCEPT` sin P0/P1/P2/P3. Entrega el primer contrato compilable
@@ -26,6 +136,84 @@ promover el conjunto aceptado a `nightly`.
 TA-03 / ISA-126 caracterizó DuckDB LMU mediante copia temporal read-only y
 añadió el modelo/parser histórico v1. TA-03C cierra su antiguo hueco operativo
 con un reader ligado al artefacto autorizado y un adaptador reproducible.
+TA-03E tiene una candidata local revisada sobre
+`work/ta03e-backend-reader-wiring`: añade la frontera backend no visual que
+conecta discovery, autorización, estabilidad/revalidación, staging privado,
+reader/parser, catálogo, paginación y teardown. Solo abre IDs opacos emitidos
+por el propio servicio; no acepta paths de consumidor. La raíz LMU procede de
+la detección nativa Steam, el runtime de `ProductionTrust(applicationDirectory)`
+y el staging de la caché backend. Runtime ausente degrada solo el módulo. La
+matriz comercial/operativa y la copia defensiva del estado están cubiertas por
+tests. Evidencia local: test/vet focal, build frontend, suite Go global con
+`CGO_ENABLED=0`, grafo raíz sin DuckDB/CGO y diff-check PASS. Las reviews de
+especificación y calidad terminaron `APPROVE` después de cerrar cleanup
+reintentable/acotado y bindings Wails accidentales. Race focal TA-03E x5 pasa
+con MSYS2 UCRT64; el paquete completo `cmd/vantare` conserva una carrera
+heredada en `spyMainEmitter`/`TestHandleProfileRetryFailed`, fuera del corte y
+pendiente de issue. Esa rama no hizo Linear, push, PR, promoción ni release.
+TA-03F tiene una candidata local verificada sobre
+`work/ta03f-windows-runtime-packaging`, base apilada exacta
+`559c3753a82071398ef1af3fbcc2d30c4dd3fe52`. Installer y portable empaquetan
+como unidad atómica el runtime TA-03C en
+`runtime/telemetry/duckdb-v1`; el updater hereda el cambio porque consume el
+installer. El pipeline falla antes del artefacto si falta un miembro, cambia
+un hash/manifest o aparece un extra. Tras el spec review, NSIS usa marcadores
+`pending`/`committed`: rollback reproduce la presencia o ausencia previa de exe
+y runtime, mientras una reentrada post-commit solo limpia backups y conserva el
+par nuevo. El modelo conductual cubre cuatro estados previos, interrupciones y
+fallos de cleanup; NSIS compila en scopes user/machine. Los flags CGO se validan
+con compilacion C/C++ real en paths con espacios. El runtime se reconstruyó con
+los hashes confiados, smoke x64 pasó y los artefactos locales pasaron
+version/layout verify. Pendientes los smokes reales de install/upgrade/rollback/uninstall en
+Windows 11 y Windows 10 si continúa soportado. Sin Linear, push, PR, CI remoto,
+merge, promoción ni release.
+
+La correccion local posterior de packaging añade un preflight de configuracion
+publica como primer comando serial de `release:artifacts`,
+`windows:package:all` y `release:portable`. Si falta URL o anon key de Supabase,
+falla antes de runtime, pnpm o Go; no imprime valores y no bloquea
+`windows:build`/dev/offline. `docs/release-artifacts.md` es la receta unica para
+cargar una ruta `.env.local` autorizada sin copiarla, reconstruir con `-f` y
+completar el smoke obligatorio de Google OAuth. El harness nuevo pasa 17 casos
+en Windows PowerShell 5.1 y PowerShell 7, con `-f` cubierto en los tres targets;
+el harness completo TA-03F tambien permanece verde en ambos hosts. La receta
+CI esta contrastada directamente con el workflow, `go.mod` y el
+`packageManager` actuales.
+
+El 2026-08-12 se reconstruyo un set local con la pareja Supabase autorizada y
+sin afirmar validacion de una licencia concreta. La configuracion quedo
+presente en frontend y exe segun checks booleanos que no expusieron valores;
+installer, portable y exe pasaron hashes, version e inventario DuckDB. El run
+descubrio que el hijo PowerShell 5 de `wails3 task` no resolvia el cmdlet
+autoloaded `Get-FileHash`, aunque el script directo si. `69a72a3` reemplaza esa
+dependencia en el verifier por SHA-256 puro .NET y añade una regresion que
+inutiliza deliberadamente el cmdlet. Harness PS5/PS7 y el alias oficial
+`release:verify` pasan. En ese punto OAuth, instalacion, upgrade y uninstall
+seguian siendo gates manuales; el build por si solo no demostraba paridad de
+licencia.
+
+Gate humano del 2026-08-12: con URL, anon key y un registro publico Ed25519
+valido embebidos, Isaac instalo/actualizo la candidata y confirmo arranque y
+Google OAuth correctos. El exe instalado coincide por SHA-256 con la build
+`dd953d08eb4c9d46eacb3559073529ac0e61b7bcb151af4496f5fe53f598e221`; el
+runtime instalado conserva el manifest confiado y sus cinco miembros exactos.
+Quedan rollback, uninstall y Windows 10 si sigue soportado. No hubo revision
+visual ni promocion.
+
+El segundo spec review cerró la ventana de mezcla durante extracción/rollback:
+runtime se verifica primero con el producto sin exe, el macro Wails extrae sólo
+en `.vantare-install-stage` y un rename atómico publica el exe justo antes del
+commit. Rollback retira producto/staging antes de tocar runtime y restaura el exe
+viejo al final desde staging; un fallo de runtime conserva exe ausente,
+marker/backups y reentrada segura. El modelo corta tras cada operación y sólo
+acepta pareja anterior/nueva o exe ausente.
+El tercer fix garantiza además que cleanup normal, rollback y reentrada cambian
+`OutDir` a `$INSTDIR` antes de cada una de las cinco eliminaciones del staging;
+NSIS no intenta ya borrar su directorio de salida actual.
+El quality fix posterior restringe `prepare-runtime` al `bin` canónico y bloquea
+junctions/reparse points en cada ancestro del destino antes de cualquier
+reemplazo; el sentinel externo del test real queda intacto. Los dos checks NSIS
+del exe rechazan 0, menos de 1024 y exactamente 1024 bytes.
 TA-03B / ISA-135 cerró el corte de decisión tras un primer review
 `REQUEST CHANGES`: recomienda un helper local fuera de proceso con
 `duckdb-go/v2` y `duckdb.dll` dinámico, descarta el CLI y el CGO dentro de Wails,
@@ -175,17 +363,53 @@ notas/correcciones, CSV/paquete/demo, tests/benchmarks/capturas.
 | Cerrada técnicamente | TA-03B / ISA-135, decisión, límite LMU local y SBOM reproducible |
 | Cerrada técnicamente / In Review | TA-03C / ISA-168, helper/adaptador productivo fuera de proceso; review `APPROVE` |
 | Backlog obligatorio antes de imports externos | TA-03D / ISA-164, sandbox real para contenido externo/comunitario |
-| Siguiente | TA-04, progreso/distancia y mapa con evidencia |
+| Candidata local | TA-03E, cableado backend no visual; identificador Linear pendiente |
+| Candidata local | TA-03F, packaging atómico Windows; identificador Linear pendiente |
+| Siguiente tras validación | TA-04, progreso/distancia y mapa con evidencia |
 | Implementación posterior | TA-05+ según `research/telemetry-analysis/plan-microcuts.md` |
 
 ## Siguiente acción exacta
 
-Validar TA-03C en Nightly/Pro Plus y continuar TA-04 para caracterizar
+Revisar TA-03E/TA-03F y ejecutar los gates manuales de packaging antes de una
+promoción autorizada a Nightly/Pro Plus. Después continuar TA-04 para caracterizar
 progreso/distancia y mapa con evidencia real. ISA-164 / TA-03D no bloquea la
 lectura LMU local, pero sí cualquier import externo o comunitario. TA-05 publica
 la proyección histórica para Strategy sin exponer DuckDB o el almacenamiento.
 
 ## Última actualización
+
+2026-08-11, TA-03F candidata local tras reviews de especificación y calidad: runtime TA-03C confiado integrado sin UI en
+portable e installer bajo `runtime/telemetry/duckdb-v1`. Build reproducible,
+manifest/hashes, smoke Windows x64, tests fail-closed, ZIP real, NSIS real en
+scope user/machine y verify local PASS. Upgrade/rollback persiste estados
+pending/committed, cubre estados previos parciales y no restaura backups tras
+commit; un harness conductual prueba interrupciones, cleanup fallido y reentrada.
+El segundo endurecimiento publica y restaura el exe mediante staging+rename sólo
+con el runtime ya consistente, y prueba cortes intra-rollback.
+El build CGO real pasa con paths temporales con espacios. Updater conserva su
+protocolo y consume el installer.
+Pendientes instalación/upgrade/rollback/uninstall reales en Windows 11 y el
+gate Windows 10 si aplica. Sin push, PR, CI remoto, merge, promoción o release.
+
+2026-08-23, ISA-816 implementada en rama propia: el contexto predecesor de una
+pagina de eventos se lee por separado sin superar 16.384 filas por peticion, y
+una regresion contra el adapter real cubre 16.385 eventos. Commit de producto
+`3e88d21b`; pendiente review, sin PR ni promocion. Analysis, integracion real
+y vet focal pasan; el vet exacto conserva tres avisos `unsafe.Pointer` previos
+y ajenos.
+
+Historial previo:
+
+2026-08-23, ISA-809 / ISA-694 F5-e implementada en rama propia: el etiquetado
+de incidentes valida ambos limites del indice de vuelta y queda cubierto antes
+de la primera vuelta y despues de la ultima. Barrido completo de `sort.Search`
+y gates Analysis+Strategy PASS; pendiente corpus real y review, sin PR ni
+promocion.
+
+2026-08-21, ISA-744 / ISA-694 F3-a5 implementada en rama propia: pit degradado,
+`ObservedStrategy v1`, agregación multi-sesión y productor final
+`StrategyInputProjection v2`; pendiente review, sin PR ni promoción. Evidencia:
+`docs/strategy-planner/isa-744-pit-observed-producer.md`.
 
 2026-08-02, ISA-168 / TA-03C cerrada técnicamente sobre ISA-135. Helper Windows x64
 fuera de proceso, módulo DuckDB separado, staging DACL privado, manifest

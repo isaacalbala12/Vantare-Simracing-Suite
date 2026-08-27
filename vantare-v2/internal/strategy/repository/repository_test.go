@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"sync"
 	"testing"
@@ -470,7 +471,7 @@ func TestRepositoryCurrentMigrationFixtureAndFutureRejection(t *testing.T) {
 		fixture string
 		wantErr error
 	}{
-		{name: "current v1", fixture: "repository-v1.json"},
+		{name: "migrate v1", fixture: "repository-v1.json"},
 		{name: "future version", fixture: "repository-future.json", wantErr: ErrUnsupportedRepositoryVersion},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -486,16 +487,19 @@ func TestRepositoryCurrentMigrationFixtureAndFutureRejection(t *testing.T) {
 			if !errors.Is(migrationErr, test.wantErr) {
 				t.Fatalf("MigrateRepositoryJSON error = %v, want %v", migrationErr, test.wantErr)
 			}
-			if test.wantErr == nil && (string(migrated) != string(fixture) || len(steps) != 0) {
-				t.Fatalf("v1 migration must be a byte-exact no-op: steps=%v", steps)
+			if test.wantErr == nil {
+				wantSteps := []MigrationStep{{From: RepositoryVersionV1, To: RepositoryVersion}}
+				if !reflect.DeepEqual(steps, wantSteps) {
+					t.Fatalf("migration steps = %#v, want %#v", steps, wantSteps)
+				}
 			}
 			if test.wantErr == nil {
-				golden, err := os.ReadFile(filepath.Join("testdata", "repository-v1.golden.json"))
+				golden, err := os.ReadFile(filepath.Join("testdata", "repository-v2.golden.json"))
 				if err != nil {
 					t.Fatal(err)
 				}
 				if string(migrated) != string(golden) {
-					t.Fatal("v1 migration differs from its rollback-safe golden")
+					t.Fatal("v1 to v2 migration differs from its rollback-safe golden")
 				}
 			}
 			repository, err := Open[testPayload](root, Options{})
@@ -506,7 +510,7 @@ func TestRepositoryCurrentMigrationFixtureAndFutureRejection(t *testing.T) {
 			if !errors.Is(err, test.wantErr) {
 				t.Fatalf("Snapshot error = %v, want %v", err, test.wantErr)
 			}
-			if test.wantErr == nil && (snapshot.Version != 7 || len(snapshot.Drafts) != 1) {
+			if test.wantErr == nil && (snapshot.Version != 7 || len(snapshot.Drafts) != 1 || snapshot.StrategyDocument != nil) {
 				t.Fatalf("fixture snapshot = %#v", snapshot)
 			}
 		})
@@ -536,6 +540,26 @@ func TestRepositoryMigrationRejectsTrailingData(t *testing.T) {
 	_, _, err := MigrateRepositoryJSON(document)
 	if !errors.Is(err, ErrCorruptRepository) {
 		t.Fatalf("trailing data error = %v, want ErrCorruptRepository", err)
+	}
+}
+
+func TestRepositoryMigrationRejectsCorruptV1BeforeRehashing(t *testing.T) {
+	t.Parallel()
+	fixture, err := os.ReadFile(filepath.Join("testdata", "repository-v1.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var envelope map[string]any
+	if err := json.Unmarshal(fixture, &envelope); err != nil {
+		t.Fatal(err)
+	}
+	envelope["contentHash"] = strings.Repeat("0", 64)
+	corrupt, err := json.Marshal(envelope)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := MigrateRepositoryJSON(corrupt); !errors.Is(err, ErrCorruptRepository) {
+		t.Fatalf("migration error = %v, want ErrCorruptRepository", err)
 	}
 }
 

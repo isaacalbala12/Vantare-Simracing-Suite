@@ -1,0 +1,18 @@
+{
+  "contractVersion": "observedstrategy.v1",
+  "sessionId": "sess-026-08a1e626",
+  "generatedAt": "2026-08-21T12:00:00.000Z",
+  "presence": "valid",
+  "provenance": {"kind": "derived", "sourceId": "analysis:observed"},
+  "confidence": {"sampleSize": 60, "computationVersion": "1.0.0"},
+  "stints": [
+    {"stintNumber": 1, "startLap": 1, "endLap": 20, "compoundRaw": 0, "compoundNote": "raw 0 without semantic mapping", "presence": "valid", "provenance": {"kind": "observed", "sourceId": "lmu:compound"}},
+    {"stintNumber": 2, "startLap": 21, "endLap": 40, "compoundRaw": 1, "compoundNote": "raw 1", "presence": "valid", "provenance": {"kind": "observed", "sourceId": "lmu:compound"}},
+    {"stintNumber": 3, "startLap": 41, "endLap": 60, "compoundRaw": 0, "compoundNote": "raw 0", "presence": "valid", "provenance": {"kind": "observed", "sourceId": "lmu:compound"}}
+  ],
+  "pitStops": [
+    {"lapNumber": 20, "pitLaneSeconds": 62.5, "fuelAddedLiters": 45.0, "presence": "valid", "provenance": {"kind": "observed", "sourceId": "lmu:in_pits"}},
+    {"lapNumber": 40, "pitLaneSeconds": 58.0, "veAddedPercent": 30.0, "presence": "valid", "provenance": {"kind": "observed", "sourceId": "lmu:in_pits"}}
+  ],
+  "result": {"totalTimeSeconds": 5920.5, "position": 2, "completed": true}
+}

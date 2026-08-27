@@ -46,6 +46,9 @@ export function getStudioHotkey(
   if (primary && key === "z") {
     return "undo";
   }
+  if (primary && key === "y") {
+    return "redo";
+  }
   if (primary && key === "d") {
     return "duplicate";
   }

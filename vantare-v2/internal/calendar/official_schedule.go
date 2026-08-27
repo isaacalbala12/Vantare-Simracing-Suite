@@ -43,6 +43,9 @@ type VehicleClass struct {
 	// "ELMS, full fuel tank", "70L fuel tank", "75% VE". Empty when the class
 	// runs unrestricted.
 	Qualifier string `json:"qualifier,omitempty"`
+	// TelemetryClassName is the exact CarClass emitted by LMU telemetry. It is
+	// resolved from the declared calendar identity registry, never from JSON.
+	TelemetryClassName string `json:"telemetryClassName,omitempty"`
 }
 
 // RaceSeries models a single recurring race series in the official LMU
@@ -62,6 +65,10 @@ type RaceSeries struct {
 	Format       string `json:"format,omitempty"`
 	LicenseLabel string `json:"licenseLabel"`
 	Track        string `json:"track"`
+	// TelemetryTrackName is the exact TrackName emitted by LMU telemetry. The
+	// calendar keeps Track verbatim for display and publishes this separate,
+	// declared identity for consumers that need to join both contracts.
+	TelemetryTrackName string `json:"telemetryTrackName,omitempty"`
 	// VehicleClass is the schedule's own prose, kept verbatim. Classes is the
 	// structured reading of it.
 	VehicleClass      string         `json:"vehicleClass"`
@@ -157,6 +164,7 @@ func LoadWeeklySchedule() (OfficialSchedule, error) {
 	if err := validateSchedule(sched); err != nil {
 		return OfficialSchedule{}, err
 	}
+	resolveTelemetryIdentities(&sched)
 	return sched, nil
 }
 

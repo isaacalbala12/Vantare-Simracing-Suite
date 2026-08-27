@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Events } from '@wailsio/runtime';
 import { useI18n } from '../../i18n/I18nProvider';
 import { createTelemetryRateCoordinator } from '../../overlay/core/telemetry-rate-coordinator';
@@ -39,6 +39,7 @@ import {
   type StudioProfileClient,
 } from './state/studio-profile-client';
 import { ConnectedStudioProvider, useStudioDocument } from './state/studio-store';
+import { StudioAutosave } from './state/studio-autosave';
 import type { StudioProfileEntry } from './studio-profile-entry';
 
 import { modeFromTarget, type StudioRouteMode } from './studio-route-target';
@@ -207,107 +208,60 @@ function StudioRouteEditor(props: StudioRouteEditorProps): React.ReactElement {
     );
   }
 
+  let secondaryView: React.ReactElement | null = null;
   if (mode === 'ownProfiles') {
-    return (
-      <>
-        <DirtyChangesDialog
-          open={navigationDialogOpen}
-          saving={navigationSaving}
-          errorMessage={navigationError}
-          onSave={onNavigationSave}
-          onDiscard={onNavigationDiscard}
-          onCancel={onNavigationCancel}
-        />
-        <ProfilesOrbitPage
-          profiles={profileEntries}
-          overlayStatus={overlayStatus}
-          activeProfileId={activeProfileId}
-          onStartOverlay={onStartOverlay}
-          onStopOverlay={onStopOverlay}
-          onOpenProfile={onOpenProfile}
-          onCreateProfile={onCreateProfile}
-          onSetActiveProfile={onSetActiveProfile}
-          onOpenActiveOverlay={onOpenActiveOverlay}
+    secondaryView = (
+      <ProfilesOrbitPage
+        profiles={profileEntries}
+        overlayStatus={overlayStatus}
+        activeProfileId={activeProfileId}
+        onStartOverlay={onStartOverlay}
+        onStopOverlay={onStopOverlay}
+        onOpenProfile={onOpenProfile}
+        onCreateProfile={onCreateProfile}
+        onSetActiveProfile={onSetActiveProfile}
+        onOpenActiveOverlay={onOpenActiveOverlay}
+        onBack={() => onSetMode('editor')}
+      />
+    );
+  } else if (mode === 'recommended') {
+    secondaryView = (
+      <div>
+        {lastSuccessId ? (
+          <div className="mx-auto mt-4 max-w-[1800px] px-6">
+            <RecommendedSuccessBanner
+              profileId={lastSuccessId}
+              onGoToDashboard={onDismissSuccess}
+            />
+          </div>
+        ) : null}
+        {notice ? (
+          <div className="mx-auto mt-4 max-w-[1800px] px-6">
+            <div
+              data-testid="recommended-error-banner"
+              className="rounded-lg border border-vantare-red-500/30 bg-vantare-red-950/20 px-4 py-3 text-sm text-vantare-red-300"
+            >
+              {notice}
+            </div>
+          </div>
+        ) : null}
+        <RecommendedProfilesView
+          profiles={RECOMMENDED_PROFILES}
+          onSaveRecommended={onSaveRecommended}
           onBack={() => onSetMode('editor')}
+          autoActivateAndStart={autoActivateAndStart}
         />
-      </>
+      </div>
     );
-  }
-
-  if (mode === 'recommended') {
-    return (
-      <>
-        <DirtyChangesDialog
-          open={navigationDialogOpen}
-          saving={navigationSaving}
-          errorMessage={navigationError}
-          onSave={onNavigationSave}
-          onDiscard={onNavigationDiscard}
-          onCancel={onNavigationCancel}
-        />
-        <div>
-          {lastSuccessId ? (
-            <div className="mx-auto mt-4 max-w-[1800px] px-6">
-              <RecommendedSuccessBanner
-                profileId={lastSuccessId}
-                onGoToDashboard={onDismissSuccess}
-              />
-            </div>
-          ) : null}
-          {notice ? (
-            <div className="mx-auto mt-4 max-w-[1800px] px-6">
-              <div
-                data-testid="recommended-error-banner"
-                className="rounded-lg border border-vantare-red-500/30 bg-vantare-red-950/20 px-4 py-3 text-sm text-vantare-red-300"
-              >
-                {notice}
-              </div>
-            </div>
-          ) : null}
-          <RecommendedProfilesView
-            profiles={RECOMMENDED_PROFILES}
-            onSaveRecommended={onSaveRecommended}
-            onBack={() => onSetMode('editor')}
-            autoActivateAndStart={autoActivateAndStart}
-          />
-        </div>
-      </>
-    );
-  }
-
-  if (mode === 'community') {
-    return (
-      <>
-        <DirtyChangesDialog
-          open={navigationDialogOpen}
-          saving={navigationSaving}
-          errorMessage={navigationError}
-          onSave={onNavigationSave}
-          onDiscard={onNavigationDiscard}
-          onCancel={onNavigationCancel}
-        />
-        <CommunityComingSoonView onBack={() => onSetMode('editor')} />
-      </>
-    );
-  }
-
-  if (mode === 'obs') {
+  } else if (mode === 'community') {
+    secondaryView = <CommunityComingSoonView onBack={() => onSetMode('editor')} />;
+  } else if (mode === 'obs') {
     const obsProfileRef = activeProfileId ?? editorFile;
     const obsUrl = `${window.location.origin}/overlay?profile=${encodeURIComponent(obsProfileRef)}`;
-    return (
-      <>
-        <DirtyChangesDialog
-          open={navigationDialogOpen}
-          saving={navigationSaving}
-          errorMessage={navigationError}
-          onSave={onNavigationSave}
-          onDiscard={onNavigationDiscard}
-          onCancel={onNavigationCancel}
-        />
-        <ObsOverlaySetupView url={obsUrl} onBack={() => onSetMode('editor')} />
-      </>
-    );
+    secondaryView = <ObsOverlaySetupView url={obsUrl} onBack={() => onSetMode('editor')} />;
   }
+
+  const editorActive = mode === 'editor';
 
   return (
     <>
@@ -319,14 +273,26 @@ function StudioRouteEditor(props: StudioRouteEditorProps): React.ReactElement {
         onDiscard={onNavigationDiscard}
         onCancel={onNavigationCancel}
       />
-      <OverlayStudioV3
-        profiles={profiles}
-        activeFile={editorFile}
-        coordinator={coordinator}
-        telemetryAdapter={telemetryAdapter}
-        liveAvailable={liveAvailable}
-        onRequestProfileChange={onRequestProfileChange}
-      />
+      <div className="studio-route-views">
+        <div
+          aria-hidden={!editorActive}
+          className="studio-route-editor-view"
+          data-active={editorActive}
+          data-studio-editor-view
+          inert={!editorActive}
+        >
+          <OverlayStudioV3
+            active={editorActive}
+            profiles={profiles}
+            activeFile={editorFile}
+            coordinator={coordinator}
+            telemetryAdapter={telemetryAdapter}
+            liveAvailable={liveAvailable}
+            onRequestProfileChange={onRequestProfileChange}
+          />
+        </div>
+        {secondaryView}
+      </div>
     </>
   );
 }
@@ -354,7 +320,7 @@ function StudioRouteNavigationBridge(props: StudioRouteNavigationBridgeProps): n
   return null;
 }
 
-export function StudioRoute(props: StudioRouteProps): React.ReactElement {
+export const StudioRoute = memo(function StudioRoute(props: StudioRouteProps): React.ReactElement {
   const {
     client: clientProp,
     telemetryAdapter: telemetryAdapterProp = null,
@@ -827,6 +793,7 @@ export function StudioRoute(props: StudioRouteProps): React.ReactElement {
   return (
     <>
       <ConnectedStudioProvider key={editorFile} client={client} initialFile={editorFile}>
+        <StudioAutosave />
         <StudioRouteNavigationBridge
           onDirtyChange={(dirty) => {
             dirtyRef.current = dirty;
@@ -878,4 +845,4 @@ export function StudioRoute(props: StudioRouteProps): React.ReactElement {
       {profileDialogs}
     </>
   );
-}
+});

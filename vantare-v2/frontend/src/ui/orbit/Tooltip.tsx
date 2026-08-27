@@ -2,7 +2,7 @@ import { cloneElement, useState, type FocusEvent, type MouseEvent, type ReactEle
 
 export interface TooltipProps {
   text: string;
-  side?: "right" | "top";
+  side?: "right" | "top" | "bottom";
   children: ReactElement<{
     "data-tip"?: string;
     "data-tip-side"?: string;

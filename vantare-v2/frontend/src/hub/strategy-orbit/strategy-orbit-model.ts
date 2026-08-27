@@ -2,19 +2,22 @@
  * Modelo de la pantalla Estrategia de Command Orbit
  * (`15-briefings/07-estrategia.md`, `13-modelo-y-algoritmos.md § 13.5`).
  *
- * Dominio puro. Aquí vive **solo** lo que `strategy-contract-v1` no cubre:
- * el reparto de vueltas entre stints, la rotación de pilotos y los derivados
- * de reloj (hora de stint, ventana de boxes, distribución). El inventario de
- * neumáticos, su legalidad y su condición son del dominio real
- * (`strategy/strategy-tyre.ts`) y esta capa no los duplica: solo aplica el
- * desgaste por uso que describe `13.5` sobre la condición real de partida
- * (ver `00-decisiones.md`, D-61).
+ * Adaptador de presentación. El reparto de vueltas, la rotación, Fuel, las
+ * ventanas y la comparación llegan ya calculados por manual+solver Go. Esta
+ * capa solo tipa el estado editable, lo mapea al wire v2 y prepara ViewModels.
  */
 
 import {
   conditionMidpoint,
   type StrategyTyre,
 } from "../../strategy/strategy-editor";
+import type {
+  StrategyOrbitCalculatedPlanV1,
+  StrategyOrbitCalculatedStintV1,
+  StrategyOrbitCalculationInputV1,
+  StrategyPlanningInputsV2,
+  StrategyWeightedWeatherScenarioV1,
+} from "../../strategy/strategy-application-client";
 
 /** Modo de la estrategia: el ritmo y el consumo del piloto que se usan. */
 export type StrategyMode = "dry" | "wet" | "eco";
@@ -75,117 +78,42 @@ export interface StrategyVariant {
   tyres: TyreAssignments;
 }
 
-export interface StintPlan {
-  /** Índice del stint (0-based). */
-  i: number;
-  /** Id del piloto. */
-  d: string;
-  laps: number;
-  fuel: number;
-  /** Ritmo del piloto en el modo activo, en segundos. */
-  pace: number;
-  /** Segundos desde la salida. */
-  start: number;
-  end: number;
-  lap0: number;
-  lap1: number;
-  over: boolean;
-  manual: boolean;
-}
+export type StintPlan = StrategyOrbitCalculatedStintV1;
+export type StrategyPlan = StrategyOrbitCalculatedPlanV1;
 
-export interface StrategyPlan {
-  stints: StintPlan[];
-  totalLaps: number;
-  /** Tiempo total en pista + paradas, en segundos. */
-  total: number;
-  stops: number;
-  maxLaps: number;
-  avgFuel: number;
-  avgPace: number;
-}
-
-function average(values: number[]): number {
-  return values.reduce((sum, value) => sum + value, 0) / values.length;
-}
-
-/**
- * `13.5 · buildPlan`: reparte las vueltas totales en el mínimo de stints que
- * caben en el depósito, equilibrados, respetando los overrides y repitiendo la
- * rotación de pilotos cuando hay más stints que pilotos.
- */
-export function buildPlan(
+/** Mapea el estado editable al contrato fino; no calcula ningún valor. */
+export function orbitCalculationInput(
   event: StrategyEvent,
-  drivers: Record<string, StrategyDriver>,
-  strategy: Pick<StrategyVariant, "mode" | "order" | "overrides">,
-): StrategyPlan {
-  const order = strategy.order.slice();
-  if (order.length === 0) {
-    return {
-      stints: [],
-      totalLaps: 0,
-      total: 0,
-      stops: 0,
-      maxLaps: 0,
-      avgFuel: 0,
-      avgPace: 0,
-    };
-  }
-  const paceOf = (id: string) => drivers[id][strategy.mode][0];
-  const fuelOf = (id: string) => drivers[id][strategy.mode][1];
-  const avgPace = average(order.map(paceOf));
-  const avgFuel = average(order.map(fuelOf));
-  const maxLaps = Math.max(1, Math.floor(event.tankL / avgFuel));
-  // La última vuelta se completa: en carrera a tiempo la bandera cae con el
-  // coche en pista, así que se redondea hacia arriba.
-  const totalLaps = Math.ceil((event.durationMin * 60) / avgPace);
-  const n = Math.max(order.length, Math.ceil(totalLaps / maxLaps));
-  while (order.length < n) order.push(strategy.order[order.length % strategy.order.length]);
-
-  const overrides = strategy.overrides;
-  const fixed = Object.keys(overrides)
-    .map(Number)
-    .filter((index) => index < n && (overrides[index].laps ?? 0) > 0);
-  const fixedLaps = fixed.reduce((sum, index) => sum + (overrides[index].laps ?? 0), 0);
-  const free = n - fixed.length;
-  const freeLaps = Math.max(0, totalLaps - fixedLaps);
-  const base = free ? Math.floor(freeLaps / free) : 0;
-  const extra = free ? freeLaps % free : 0;
-
-  const stints: StintPlan[] = [];
-  let clock = 0;
-  let lap = 0;
-  let taken = 0;
-  for (let i = 0; i < n; i += 1) {
-    const id = order[i];
-    const pace = paceOf(id);
-    const laps = fixed.includes(i) ? (overrides[i].laps as number) : base + (taken++ < extra ? 1 : 0);
-    const wanted = (overrides[i]?.fuel ?? 0) > 0 ? (overrides[i].fuel as number) : laps * fuelOf(id);
-    const start = clock;
-    clock += laps * pace;
-    stints.push({
-      i,
-      d: id,
-      laps,
-      fuel: Math.min(wanted, event.tankL),
-      pace,
-      start,
-      end: clock,
-      lap0: lap + 1,
-      lap1: lap + laps,
-      over: wanted > event.tankL + 0.01,
-      manual: Boolean(overrides[i]),
-    });
-    lap += laps;
-    if (i < n - 1) clock += event.pitS;
-  }
-
-  return { stints, totalLaps, total: clock, stops: n - 1, maxLaps, avgFuel, avgPace };
-}
-
-/** Rotación por orden: `Repartir pilotos` vuelve al orden base repetido. */
-export function rotateOrder(base: string[], stints: number): string[] {
-  if (base.length === 0) return [];
-  return Array.from({ length: Math.max(base.length, stints) }, (_, i) => base[i % base.length]);
+  drivers: readonly StrategyDriver[],
+  variants: readonly StrategyVariant[],
+  activeVariantId: string,
+  planningInputs?: StrategyPlanningInputsV2,
+  weatherScenarios?: readonly StrategyWeightedWeatherScenarioV1[],
+): StrategyOrbitCalculationInputV1 {
+  const pace = (value: StrategyPace) => ({ paceSeconds: value[0], fuelLitersPerLap: value[1] });
+  return {
+    event: {
+      durationMinutes: event.durationMin,
+      tankLiters: event.tankL,
+      pitLossSeconds: event.pitS,
+    },
+    drivers: drivers.map((driver) => ({
+      id: driver.id,
+      name: driver.name,
+      dry: pace(driver.dry),
+      wet: pace(driver.wet),
+      eco: pace(driver.eco),
+    })),
+    variants: variants.map((variant) => ({
+      id: variant.id,
+      mode: variant.mode,
+      order: variant.order,
+      overrides: variant.overrides,
+    })),
+    activeVariantId,
+    ...(planningInputs ? { planningInputs } : {}),
+    ...(weatherScenarios?.length ? { weatherScenarios } : {}),
+  };
 }
 
 /** Minuto absoluto de un instante del plan (`startMin + segundos/60`). */
@@ -194,15 +122,6 @@ export function stintClock(event: StrategyEvent, seconds: number): number {
 }
 
 /** `13.5`: la ventana de boxes es la vuelta `max(lap0, lap1 − 3)`. */
-export function pitWindowLap(stint: StintPlan): number {
-  return Math.max(stint.lap0, stint.lap1 - 3);
-}
-
-/** Minuto absoluto en el que se abre la ventana de boxes de un stint. */
-export function pitWindowClock(event: StrategyEvent, stint: StintPlan): number {
-  const window = pitWindowLap(stint);
-  return stintClock(event, stint.start + (window - stint.lap0) * stint.pace);
-}
 
 /** Usos de cada neumático en la estrategia (stint · esquina). */
 export function tyreUses(tyres: TyreAssignments): Record<string, { stint: number; corner: OrbitCorner }[]> {
@@ -256,89 +175,12 @@ export interface DistributionSlice {
 }
 
 /** Distribución por piloto: vueltas o tiempo (`04 · Donut`). */
-export function distribution(plan: StrategyPlan, drivers: StrategyDriver[]): DistributionSlice[] {
-  return drivers
-    .map((driver) => {
-      const mine = plan.stints.filter((stint) => stint.d === driver.id);
-      return {
-        driver,
-        laps: mine.reduce((sum, stint) => sum + stint.laps, 0),
-        time: mine.reduce((sum, stint) => sum + (stint.end - stint.start), 0),
-      };
-    })
-    .filter((slice) => slice.laps > 0);
-}
-
-// ────────────────────────────────────────────────────────── COMPARACIÓN
-//
-// `13.5`: en carrera a tiempo gana quien completa **más vueltas**. El texto
-// explica el intercambio: el ahorro son las paradas que se quitan por el
-// tiempo de parada, el coste son los segundos de ritmo que se pierden en
-// pista a lo largo de las vueltas de la alternativa.
-
-export interface StrategyComparison {
-  /** Id de la estrategia que completa más vueltas (empate → la activa). */
-  winnerId: string;
-  loserId: string;
-  winnerLaps: number;
-  loserLaps: number;
-  /** Diferencia de vueltas (0 en empate). */
-  diff: number;
-  /** Paradas que la alternativa ahorra frente a la activa (0 o menos = ninguna). */
-  savedStops: number;
-  /** Segundos de boxes ahorrados. */
-  savedS: number;
-  /** Segundos de ritmo perdidos en pista. */
-  costS: number;
-  /** El ahorro supera al coste. */
-  pays: boolean;
-  /** Ninguna de las dos para menos que la otra. */
-  sameStops: boolean;
-  /** Stints de la estrategia activa. */
-  stints: number;
-  driverCount: number;
-  /** Nombres (primer nombre) de quien dobla turno en la activa. */
-  doubles: string[];
-}
-
-export interface ComparisonSide {
-  id: string;
-  plan: StrategyPlan;
-}
-
-/**
- * `13.5 · Comparación`. `a` es la estrategia activa y `b` la alternativa; el
- * ahorro y el coste se miden siempre de `a` hacia `b`, como en el prototipo.
- */
-export function compareStrategies(
-  a: ComparisonSide,
-  b: ComparisonSide,
-  pitS: number,
-  drivers: StrategyDriver[],
-): StrategyComparison {
-  const winnerIsA = a.plan.totalLaps >= b.plan.totalLaps;
-  const savedStops = a.plan.stops - b.plan.stops;
-  const savedS = savedStops * pitS;
-  const costS = (b.plan.avgPace - a.plan.avgPace) * b.plan.totalLaps;
-  const doubles = drivers
-    .filter((driver) => a.plan.stints.filter((stint) => stint.d === driver.id).length > 1)
-    .map((driver) => driver.name.split(" ")[0]);
-
-  return {
-    winnerId: winnerIsA ? a.id : b.id,
-    loserId: winnerIsA ? b.id : a.id,
-    winnerLaps: Math.max(a.plan.totalLaps, b.plan.totalLaps),
-    loserLaps: Math.min(a.plan.totalLaps, b.plan.totalLaps),
-    diff: Math.abs(a.plan.totalLaps - b.plan.totalLaps),
-    savedStops,
-    savedS,
-    costS,
-    pays: savedS > costS,
-    sameStops: savedStops <= 0,
-    stints: a.plan.stints.length,
-    driverCount: drivers.length,
-    doubles,
-  };
+export function distributionView(plan: StrategyPlan, drivers: readonly StrategyDriver[]): DistributionSlice[] {
+  const byId = new Map(drivers.map((driver) => [driver.id, driver]));
+  return plan.distribution.flatMap((slice) => {
+    const driver = byId.get(slice.driverId);
+    return driver ? [{ driver, laps: slice.laps, time: slice.seconds }] : [];
+  });
 }
 
 // ───────────────────────────────────────────────────────── DISPONIBILIDAD

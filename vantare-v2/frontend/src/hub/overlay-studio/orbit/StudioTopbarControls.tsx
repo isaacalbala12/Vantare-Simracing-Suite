@@ -30,6 +30,15 @@ export function StudioTopbarControls(props: StudioTopbarControlsProps): React.Re
   const { dirty, saveState, save } = useStudioDocument();
   const overlay = useOverlayState();
 
+  const saveLabel =
+    saveState === 'saving'
+      ? t('studio.topbar.autoSaving')
+      : saveState === 'error' || saveState === 'conflict'
+        ? t('studio.topbar.retrySave')
+        : dirty
+          ? t('studio.topbar.savePending')
+          : t('studio.topbar.autoSaved');
+
   const runSave = useCallback(() => {
     void save();
   }, [save]);
@@ -62,12 +71,13 @@ export function StudioTopbarControls(props: StudioTopbarControlsProps): React.Re
         width={PROFILE_SELECT_WIDTH}
       />
       <Button
+        data-save-state={saveState}
         data-testid="orbit-studio-save"
         onClick={runSave}
         state={dirty ? 'dirty' : 'saved'}
         variant="primary"
       >
-        {dirty || saveState === 'saving' ? t('studio.topbar.save') : t('studio.topbar.saved')}
+        {saveLabel}
       </Button>
       <Button
         data-testid="orbit-studio-overlay-toggle"

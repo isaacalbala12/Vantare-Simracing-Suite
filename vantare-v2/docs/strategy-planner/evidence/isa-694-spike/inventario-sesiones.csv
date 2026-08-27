@@ -1,0 +1,337 @@
+﻿session_id,date_utc,track,layout,car,class,session_type,weatherconditions,duration_s,continuous_span_s,laps,source_bytes,catalog_continuous,catalog_events
+S001-d607dc52,2026-04-28T19:47:19Z,Autodromo Nazionale Monza,Autodromo Nazionale Monza,Genesis Custom Team 2026 #397,Hyper,Practice,Light Clouds,1256.81,37.0,0,2273280,56,42
+S002-543e9667,2026-04-28T19:48:12Z,Autodromo Nazionale Monza,Autodromo Nazionale Monza,Genesis Custom Team 2026 #397,Hyper,Practice,Light Clouds,1309.388,42.0,0,2535424,56,42
+S003-9ce7fd47,2026-04-28T19:49:00Z,Autodromo Nazionale Monza,Autodromo Nazionale Monza,Genesis Custom Team 2026 #397,Hyper,Practice,Light Clouds,2194.22,888.0,8,21917696,56,42
+S004-d5e4a0ae,2026-04-28T20:04:11Z,Autodromo Nazionale Monza,Autodromo Nazionale Monza,Genesis Custom Team 2026 #397,Hyper,Practice,Light Clouds,4661.78,2631.0,26,87502848,56,42
+S005-ec9ddfa0,2026-04-28T20:49:28Z,Autodromo Nazionale Monza,Autodromo Nazionale Monza,Genesis Custom Team 2026 #397,Hyper,Practice,Clear,4985.32,82.0,0,3764224,56,42
+S006-3445803e,2026-04-28T20:51:02Z,Autodromo Nazionale Monza,Autodromo Nazionale Monza,Genesis Custom Team 2026 #397,Hyper,Practice,Clear,5603.66,548.0,5,14135296,56,42
+S007-c7e26fa9,2026-04-30T06:20:18Z,Autodromo Nazionale Monza,Autodromo Nazionale Monza,Genesis Custom Team 2026 #397,Hyper,Practice,Clear,6998.42,871.0,8,20688896,56,42
+S008-813645c1,2026-04-30T19:04:45Z,Autodromo Nazionale Monza,Autodromo Nazionale Monza,Genesis Custom Team 2026 #397,Hyper,Practice,Clear,4618.552,544.0,5,13692928,56,42
+S009-32ab946e,2026-04-30T19:15:37Z,Autodromo Nazionale Monza,Autodromo Nazionale Monza,Genesis Custom Team 2026 #397,Hyper,Practice,Clear,5814.74,702.0,6,16232448,56,42
+S010-f7ed7f18,2026-04-30T19:27:32Z,Autodromo Nazionale Monza,Autodromo Nazionale Monza,Genesis Custom Team 2026 #397,Hyper,Practice,Clear,5985.3,14.0,0,1683456,56,42
+S011-6d5a3e38,2026-04-30T19:30:10Z,Autodromo Nazionale Monza,Autodromo Nazionale Monza,Genesis Custom Team 2026 #397,Hyper,Practice,Clear,6474.06,633.0,5,15659008,56,42
+S012-382d87f0,2026-04-30T19:40:56Z,Autodromo Nazionale Monza,Autodromo Nazionale Monza,Genesis Custom Team 2026 #397,Hyper,Practice,Clear,7012.7,279.0,2,8744960,56,42
+S013-95b9af49,2026-04-30T19:47:57Z,Autodromo Nazionale Monza,Autodromo Nazionale Monza,Genesis Custom Team 2026 #397,Hyper,Practice,Light Clouds,2527.32,1150.0,11,26324992,56,42
+S014-ff10a95e,2026-05-02T12:26:08Z,Autodromo Nazionale Monza,Autodromo Nazionale Monza,Genesis Custom Team 2026 #397,Hyper,Practice,Clear,3939.34,276.0,2,8237056,56,42
+S015-b02e590c,2026-05-02T12:34:16Z,Autodromo Nazionale Monza,Autodromo Nazionale Monza,Genesis Custom Team 2026 #397,Hyper,Practice,Light Clouds,2779.52,852.0,8,20983808,56,42
+S016-ab73fbb7,2026-05-02T13:39:59Z,Autodromo Nazionale Monza,Autodromo Nazionale Monza,Genesis Custom Team 2026 #397,Hyper,Practice,Clear,8194.62,2338.0,23,54079488,56,42
+S017-5671517d,2026-05-02T14:21:52Z,Autodromo Nazionale Monza,Autodromo Nazionale Monza,Genesis Custom Team 2026 #397,Hyper,Practice,Light Clouds,1696.17,266.0,2,8286208,56,42
+S018-d95fd2bd,2026-05-02T14:28:57Z,Autodromo Nazionale Monza,Autodromo Nazionale Monza,Genesis Custom Team 2026 #397,Hyper,Practice,Light Clouds,2547.32,636.0,6,15282176,56,42
+S019-5af7583b,2026-05-02T14:39:59Z,Autodromo Nazionale Monza,Autodromo Nazionale Monza,Genesis Custom Team 2026 #397,Hyper,Practice,Light Clouds,3218.08,495.0,4,12988416,56,42
+S020-bac8632d,2026-05-02T14:48:41Z,Autodromo Nazionale Monza,Autodromo Nazionale Monza,Genesis Custom Team 2026 #397,Hyper,Practice,Light Clouds,3628.42,465.0,4,11988992,56,42
+S021-26196eaf,2026-05-02T14:56:41Z,Autodromo Nazionale Monza,Autodromo Nazionale Monza,Genesis Custom Team 2026 #397,Hyper,Practice,Clear,4305.0,531.0,5,13676544,56,42
+S022-bae9ee9e,2026-05-02T15:05:44Z,Autodromo Nazionale Monza,Autodromo Nazionale Monza,Genesis Custom Team 2026 #397,Hyper,Practice,Clear,4763.02,540.0,5,13824000,56,42
+S023-81015818,2026-05-02T15:45:03Z,Autodromo Nazionale Monza,Autodromo Nazionale Monza,Genesis Custom Team 2026 #397,Hyper,Practice,Light Clouds,2468.7,545.0,5,13791232,56,42
+S024-2fe4e6a1,2026-05-02T16:07:33Z,Autodromo Nazionale Monza,Autodromo Nazionale Monza,Genesis Custom Team 2026 #397,Hyper,Qualify,Mostly Cloudy,748.06,656.0,6,15724544,56,42
+S025-06d5144b,2026-05-02T17:37:55Z,Autodromo Nazionale Monza,Autodromo Nazionale Monza,Genesis Custom Team 2026 #397,Hyper,Practice,Mostly Cloudy,8598.58,738.0,7,16920576,56,42
+S026-08a1e626,2026-05-02T18:05:21Z,Autodromo Nazionale Monza,Autodromo Nazionale Monza,Genesis Custom Team 2026 #397,Hyper,Race,Light Clouds,12158.9,6037.0,60,166162432,56,42
+S027-7b4506d1,2026-05-02T23:13:04Z,Autodromo Nazionale Monza,Autodromo Nazionale Monza,Genesis Custom Team 2026 #397,Hyper,Practice,Light Clouds,609.43,81.0,0,3633152,56,42
+S028-95f14e69,2026-05-02T23:14:35Z,Autodromo Nazionale Monza,Autodromo Nazionale Monza,Genesis Custom Team 2026 #397,Hyper,Practice,Light Clouds,700.355,193.0,1,6811648,56,42
+S029-c16cac23,2026-05-06T19:41:46Z,Autódromo José Carlos Pace,Autódromo José Carlos Pace,Genesis Custom Team 2026 #397,Hyper,Practice,Mostly Cloudy,2277.85,4.0,0,1601536,56,42
+S030-e11b6ff2,2026-05-06T19:42:09Z,Autódromo José Carlos Pace,Autódromo José Carlos Pace,Genesis Custom Team 2026 #397,Hyper,Practice,Mostly Cloudy,2300.698,28.0,0,2043904,56,42
+S031-cabbb179,2026-05-06T19:43:49Z,Autódromo José Carlos Pace,Autódromo José Carlos Pace,Genesis Custom Team 2026 #397,Hyper,Practice,Mostly Cloudy,2403.495,664.0,7,15675392,56,42
+S032-4145309e,2026-05-06T20:00:46Z,Autódromo José Carlos Pace,Autódromo José Carlos Pace,Genesis Custom Team 2026 #397,Hyper,Practice,Overcast,3416.995,165.0,1,5369856,56,42
+S033-1f7a7aca,2026-05-06T20:03:42Z,Autódromo José Carlos Pace,Autódromo José Carlos Pace,Genesis Custom Team 2026 #397,Hyper,Practice,Overcast,4672.84,1130.0,11,28094464,56,42
+S034-ee577d60,2026-05-06T20:22:50Z,Autódromo José Carlos Pace,Autódromo José Carlos Pace,Genesis Custom Team 2026 #397,Hyper,Practice,Overcast,4741.128,26.0,0,1978368,56,42
+S035-2901ad7c,2026-05-07T19:04:43Z,Autódromo José Carlos Pace,Autódromo José Carlos Pace,Genesis Custom Team 2026 #397,Hyper,Practice,Overcast,3916.025,58.0,0,2928640,56,42
+S036-a52f7bfb,2026-05-07T19:05:48Z,Autódromo José Carlos Pace,Autódromo José Carlos Pace,Genesis Custom Team 2026 #397,Hyper,Practice,Overcast,3980.97,23.0,0,1961984,56,42
+S037-807b3e54,2026-05-07T19:06:17Z,Autódromo José Carlos Pace,Autódromo José Carlos Pace,Genesis Custom Team 2026 #397,Hyper,Practice,Overcast,4010.015,206.0,1,6483968,56,42
+S038-751e026d,2026-05-07T19:09:53Z,Autódromo José Carlos Pace,Autódromo José Carlos Pace,Genesis Custom Team 2026 #397,Hyper,Practice,Overcast,4226.253,63.0,0,3158016,56,42
+S039-8c2ccffd,2026-05-07T19:11:03Z,Autódromo José Carlos Pace,Autódromo José Carlos Pace,Genesis Custom Team 2026 #397,Hyper,Practice,Overcast,5867.4,1786.0,18,46739456,56,42
+S040-3ebe91db,2026-05-07T19:43:02Z,Autódromo José Carlos Pace,Autódromo José Carlos Pace,Genesis Custom Team 2026 #397,Hyper,Practice,Cloudy & Drizzle,7668.2,1464.0,15,33746944,56,42
+S041-5b86319c,2026-05-08T15:50:38Z,Circuit de Spa-Francorchamps,Circuit de Spa-Francorchamps,Logitech G Challenge #10:LGC,GT3,Practice,Clear,273.48,141.0,0,5206016,56,42
+S042-381eda74,2026-05-08T15:54:54Z,Circuit de Spa-Francorchamps,Circuit de Spa-Francorchamps,Logitech G Challenge #10:LGC,GT3,Practice,Light Clouds,529.17,341.0,2,8777728,56,42
+S043-3885c392,2026-05-08T16:03:55Z,Circuit de Spa-Francorchamps,Circuit de Spa-Francorchamps,Logitech G Challenge #10:LGC,GT3,Qualify,Clear,76.86,21.0,0,1896448,56,42
+S044-a4acffcf,2026-05-08T16:04:24Z,Circuit de Spa-Francorchamps,Circuit de Spa-Francorchamps,Logitech G Challenge #10:LGC,GT3,Qualify,Clear,399.22,326.0,2,8548352,56,42
+S045-ac539faa,2026-05-08T16:11:00Z,Circuit de Spa-Francorchamps,Circuit de Spa-Francorchamps,Logitech G Challenge #10:LGC,GT3,Race,Clear,1399.66,1380.0,9,29995008,56,42
+S046-9870f713,2026-05-08T16:37:54Z,Paul Ricard Circuit,Paul Ricard - 1A-V2,CLX Motorsport #47:ELMS25,LMP2_ELMS,Practice,Mostly Cloudy,1010.16,807.0,7,20246528,56,42
+S047-42e1ee37,2026-05-08T16:53:24Z,Paul Ricard Circuit,Paul Ricard - 1A-V2,CLX Motorsport #47:ELMS25,LMP2_ELMS,Qualify,Mostly Cloudy,610.66,582.0,5,14299136,56,42
+S048-808922ec,2026-05-08T17:03:57Z,Paul Ricard Circuit,Paul Ricard - 1A-V2,CLX Motorsport #47:ELMS25,LMP2_ELMS,Race,Mostly Cloudy,1983.38,1937.0,17,47263744,56,42
+S049-56747c2a,2026-05-08T17:41:36Z,Circuit de la Sarthe,Circuit de la Sarthe Mulsanne,The Bend Team WRT 2025 #31:LM,GT3,Practice,Light Clouds,93.802,65.0,0,3141632,56,42
+S050-47f4178d,2026-05-08T17:43:01Z,Circuit de la Sarthe,Circuit de la Sarthe Mulsanne,The Bend Team WRT 2025 #31:LM,GT3,Qualify,Light Clouds,496.88,492.0,2,11481088,56,42
+S051-ab3eadcd,2026-05-08T17:52:14Z,Circuit de la Sarthe,Circuit de la Sarthe Mulsanne,The Bend Team WRT 2025 #31:LM,GT3,Race,Light Clouds,1531.22,1483.0,6,30027776,56,42
+S052-ae213966,2026-05-08T18:21:00Z,Circuit de Spa-Francorchamps,Circuit de Spa-Francorchamps,United Autosports #22:ELMS25,LMP2_ELMS,Practice,Light Clouds,789.48,543.0,4,13348864,56,42
+S053-3ff82ac6,2026-05-08T18:33:10Z,Circuit de Spa-Francorchamps,Circuit de Spa-Francorchamps,United Autosports #22:ELMS25,LMP2_ELMS,Qualify,Partially Cloudy,539.0,539.0,4,13660160,56,42
+S054-18d4626a,2026-05-08T18:43:31Z,Circuit de Spa-Francorchamps,Circuit de Spa-Francorchamps,United Autosports #22:ELMS25,LMP2_ELMS,Race,Light Clouds,20.405,2.0,0,1388544,56,42
+S055-bfa2026d,2026-05-08T18:44:04Z,Circuit de Spa-Francorchamps,Circuit de Spa-Francorchamps,United Autosports #22:ELMS25,LMP2_ELMS,Race,Light Clouds,668.96,662.0,4,16297984,56,42
+S056-2220afec,2026-05-10T17:07:20Z,Autódromo José Carlos Pace,Autódromo José Carlos Pace,Genesis Custom Team 2026 #397,Hyper,Practice,Partially Cloudy,8935.82,513.0,5,12955648,56,42
+S057-1e36328a,2026-05-10T17:25:25Z,Autódromo José Carlos Pace,Autódromo José Carlos Pace,Genesis Custom Team 2026 #397,Hyper,Practice,Partially Cloudy,494.0,494.0,5,12644352,56,42
+S058-635a8fc5,2026-05-11T15:35:30Z,Circuit de Spa-Francorchamps,Circuit de Spa-Francorchamps,United Autosports #21:ELMS25,LMP2_ELMS,Qualify,Partially Cloudy,572.96,454.0,3,11563008,56,42
+S059-e4f6b210,2026-05-11T15:43:49Z,Circuit de Spa-Francorchamps,Circuit de Spa-Francorchamps,United Autosports #21:ELMS25,LMP2_ELMS,Race,Light Clouds,2099.9,2054.0,15,49721344,56,42
+S060-838b02e2,2026-05-11T16:21:22Z,Circuit de Spa-Francorchamps,Circuit de Spa-Francorchamps,United Autosports #21:ELMS25,LMP2_ELMS,Practice,Light Clouds,684.84,531.0,3,13053952,56,42
+S061-0c03a846,2026-05-11T16:33:21Z,Circuit de Spa-Francorchamps,Circuit de Spa-Francorchamps,United Autosports #21:ELMS25,LMP2_ELMS,Qualify,Partially Cloudy,442.76,418.0,3,10956800,56,42
+S062-0df9b303,2026-05-11T16:44:11Z,Circuit de Spa-Francorchamps,Circuit de Spa-Francorchamps,United Autosports #21:ELMS25,LMP2_ELMS,Race,Light Clouds,2058.54,2005.0,15,48345088,56,42
+S063-13479af0,2026-05-11T17:23:03Z,Circuit de Spa-Francorchamps,Circuit de Spa-Francorchamps,Logitech G Challenge #2:LGC,GT3,Qualify,Clear,94.0,94.0,0,4124672,56,42
+S064-6706227a,2026-05-11T17:24:42Z,Circuit de Spa-Francorchamps,Circuit de Spa-Francorchamps,Logitech G Challenge #2:LGC,GT3,Qualify,Clear,419.36,302.0,2,7925760,56,42
+S065-3a812691,2026-05-11T17:30:34Z,Circuit de Spa-Francorchamps,Circuit de Spa-Francorchamps,Logitech G Challenge #2:LGC,GT3,Race,Clear,5.99,2.0,0,1404928,56,42
+S066-c90d775c,2026-05-11T17:30:43Z,Circuit de Spa-Francorchamps,Circuit de Spa-Francorchamps,Logitech G Challenge #2:LGC,GT3,Race,Clear,14.98,1.0,0,1372160,56,42
+S067-3cbfa24b,2026-05-11T17:31:01Z,Circuit de Spa-Francorchamps,Circuit de Spa-Francorchamps,Logitech G Challenge #2:LGC,GT3,Race,Clear,1371.0,1371.0,9,30060544,56,42
+S068-84d6933e,2026-05-11T18:04:41Z,Silverstone Circuit,Silverstone International Circuit,Proton Competition 2025 #88:LM,GT3,Practice,Light Clouds,978.52,387.0,5,10547200,56,42
+S069-83cd6dca,2026-05-11T18:12:56Z,Silverstone Circuit,Silverstone International Circuit,Proton Competition 2025 #88:LM,GT3,Qualify,Partially Cloudy,558.0,558.0,8,14233600,56,42
+S070-b97f32fa,2026-05-11T18:22:58Z,Silverstone Circuit,Silverstone International Circuit,Proton Competition 2025 #88:LM,GT3,Race,Partially Cloudy,739.0,739.0,9,16871424,56,42
+S071-0042ac66,2026-05-13T15:31:12Z,Autodromo Enzo e Dino Ferrari,Autodromo Enzo e Dino Ferrari,IDEC Sport #28:ELMS25,LMP2_ELMS,Practice,Light Clouds,72.43,63.0,0,3125248,56,42
+S072-1ea37c8d,2026-05-13T15:32:21Z,Autodromo Enzo e Dino Ferrari,Autodromo Enzo e Dino Ferrari,IDEC Sport #28:ELMS25,LMP2_ELMS,Practice,Light Clouds,140.23,17.0,0,1716224,56,42
+S073-b4626405,2026-05-13T15:32:54Z,Autodromo Enzo e Dino Ferrari,Autodromo Enzo e Dino Ferrari,IDEC Sport #28:ELMS25,LMP2_ELMS,Qualify,Light Clouds,526.66,521.0,4,13627392,56,42
+S074-7e45d97a,2026-05-13T15:42:48Z,Autodromo Enzo e Dino Ferrari,Autodromo Enzo e Dino Ferrari,IDEC Sport #28:ELMS25,LMP2_ELMS,Race,Light Clouds,7.268,2.0,0,1372160,56,42
+S075-ee228328,2026-05-13T15:43:38Z,Autodromo Enzo e Dino Ferrari,Autodromo Enzo e Dino Ferrari,IDEC Sport #28:ELMS25,LMP2_ELMS,Race,Light Clouds,2025.94,1970.0,20,46886912,56,42
+S076-047f6b24,2026-05-13T16:22:08Z,Autodromo Enzo e Dino Ferrari,Autodromo Enzo e Dino Ferrari,IDEC Sport #28:ELMS25,LMP2_ELMS,Practice,Clear,766.54,457.0,4,11743232,56,42
+S077-e2d8253d,2026-05-13T16:33:12Z,Autodromo Enzo e Dino Ferrari,Autodromo Enzo e Dino Ferrari,IDEC Sport #28:ELMS25,LMP2_ELMS,Qualify,Light Clouds,537.64,522.0,5,13053952,56,42
+S078-a39e1a6b,2026-05-13T16:42:58Z,Autodromo Enzo e Dino Ferrari,Autodromo Enzo e Dino Ferrari,IDEC Sport #28:ELMS25,LMP2_ELMS,Race,Light Clouds,2012.62,1998.0,20,46657536,56,42
+S079-97bb0988,2026-05-13T17:25:00Z,Bahrain International Circuit,Bahrain International Circuit,Genesis Magma Racing 2026 #19:WEC,Hyper,Practice,Light Clouds,192.502,9.0,0,1617920,56,42
+S080-57ed742a,2026-05-13T17:25:18Z,Bahrain International Circuit,Bahrain International Circuit,Genesis Magma Racing 2026 #19:WEC,Hyper,Practice,Light Clouds,907.96,729.0,6,17002496,56,42
+S081-0071e8fa,2026-05-13T17:40:06Z,Bahrain International Circuit,Bahrain International Circuit,Genesis Magma Racing 2026 #19:WEC,Hyper,Practice,Light Clouds,1345.4,305.0,2,8564736,56,42
+S082-558b72df,2026-05-13T17:48:15Z,Bahrain International Circuit,Bahrain International Circuit,Genesis Magma Racing 2026 #19:WEC,Hyper,Qualify,Light Clouds,501.18,475.0,4,12578816,56,42
+S083-695e8e01,2026-05-13T17:58:23Z,Bahrain International Circuit,Bahrain International Circuit,Genesis Magma Racing 2026 #19:WEC,Hyper,Race,Light Clouds,24.745,4.0,0,1372160,56,42
+S084-95407bb3,2026-05-13T17:58:35Z,Bahrain International Circuit,Bahrain International Circuit,Genesis Magma Racing 2026 #19:WEC,Hyper,Race,Light Clouds,1522.0,1522.0,12,36122624,56,42
+S085-a17c91f1,2026-05-13T18:52:50Z,Autódromo José Carlos Pace,Autódromo José Carlos Pace,Genesis Custom Team 2026 #397,Hyper,Practice,Partially Cloudy,876.035,123.0,1,5173248,56,42
+S086-24abf4e9,2026-05-13T18:55:00Z,Autódromo José Carlos Pace,Autódromo José Carlos Pace,Genesis Custom Team 2026 #397,Hyper,Practice,Partially Cloudy,1006.062,107.0,0,4648960,56,42
+S087-5ddce207,2026-05-13T18:57:06Z,Autódromo José Carlos Pace,Autódromo José Carlos Pace,Genesis Custom Team 2026 #397,Hyper,Practice,Partially Cloudy,1611.64,669.0,7,15872000,56,42
+S088-75d3cdbc,2026-05-13T19:09:11Z,Autódromo José Carlos Pace,Autódromo José Carlos Pace,Genesis Custom Team 2026 #397,Hyper,Practice,Mostly Cloudy,2346.66,1217.0,13,27504640,56,42
+S089-38c40c50,2026-05-13T19:36:03Z,Autódromo José Carlos Pace,Autódromo José Carlos Pace,Genesis Custom Team 2026 #397,Hyper,Practice,Mostly Cloudy,3708.06,953.0,10,23326720,56,42
+S090-ee2b55cc,2026-05-15T20:15:01Z,Autódromo José Carlos Pace,Autódromo José Carlos Pace,Genesis Custom Team 2026 #397,Hyper,Practice,Overcast,3910.065,30.0,0,2125824,56,42
+S091-d00738d2,2026-05-15T20:15:45Z,Autódromo José Carlos Pace,Autódromo José Carlos Pace,Genesis Custom Team 2026 #397,Hyper,Practice,Overcast,4428.58,763.0,8,18149376,56,42
+S092-e54a72cc,2026-05-15T20:33:22Z,Autódromo José Carlos Pace,Autódromo José Carlos Pace,Genesis Custom Team 2026 #397,Hyper,Practice,Mostly Cloudy,4262.18,2339.0,25,51343360,56,42
+S093-824c67df,2026-05-15T21:14:26Z,Autódromo José Carlos Pace,Autódromo José Carlos Pace,Genesis Custom Team 2026 #397,Hyper,Practice,Cloudy & Drizzle,7476.475,282.0,2,8499200,56,42
+S094-66198ead,2026-05-15T22:40:36Z,Autódromo José Carlos Pace,Autódromo José Carlos Pace,Alpine Endurance Team 2025 #35:EC,Hyper,Race,Clear,25.0,25.0,0,1765376,56,42
+S095-ab836dc9,2026-05-31T11:23:08Z,Silverstone Circuit,Silverstone Grand Prix Circuit - ELMS,Alpine Endurance Team 2025 #35:EC,Hyper,Practice,Light Clouds,305.473,12.0,0,1650688,56,42
+S096-85318634,2026-05-31T11:23:34Z,Silverstone Circuit,Silverstone Grand Prix Circuit - ELMS,Alpine Endurance Team 2025 #35:EC,Hyper,Practice,Light Clouds,329.618,40.0,0,2502656,56,42
+S097-6aca2cb0,2026-05-31T11:24:47Z,Silverstone Circuit,Silverstone Grand Prix Circuit - ELMS,Alpine Endurance Team 2025 #35:EC,Hyper,Practice,Light Clouds,402.192,40.0,0,2453504,56,42
+S098-a522c501,2026-05-31T11:35:27Z,Silverstone Circuit,Silverstone Grand Prix Circuit - ELMS,Alpine Endurance Team 2025 #35:EC,Hyper,Practice,Light Clouds,1041.3,164.0,0,5304320,56,42
+S099-390d5066,2026-05-31T12:08:07Z,Algarve International Circuit,Algarve International Circuit,Akkodis ASP Team 2025 #78:LM,GT3,Practice,Light Clouds,317.915,57.0,0,2764800,56,42
+S100-b6bdbfa1,2026-05-31T13:29:47Z,Algarve International Circuit,Algarve International Circuit,Proton Competition 2025 #77:LM,GT3,Practice,Light Clouds,282.108,15.0,0,1814528,56,42
+S101-232f1b9b,2026-05-31T13:40:44Z,Autodromo Nazionale Monza,Autodromo Nazionale Monza,Proton Competition 2025 #77:LM,GT3,Practice,Clear,185.933,153.0,0,4894720,56,42
+S102-08c906e1,2026-05-31T14:17:43Z,Bahrain International Circuit,Bahrain Outer Circuit,DKR Engineering #3:ELMS25,LMP2_ELMS,Practice,Clear,121.0,121.0,1,4960256,56,42
+S103-3a203f5f,2026-05-31T15:18:41Z,Bahrain International Circuit,Bahrain Outer Circuit,DKR Engineering #3:ELMS25,LMP2_ELMS,Practice,Light Clouds,155.285,103.0,0,4222976,56,42
+S104-9c689a76,2026-05-31T15:30:03Z,Bahrain International Circuit,Bahrain Outer Circuit,DKR Engineering #3:ELMS25,LMP2_ELMS,Practice,Clear,836.123,64.0,0,3059712,56,42
+S105-be568146,2026-05-31T15:41:53Z,Circuit de Barcelona,Circuit de Barcelona,Alpine Endurance Team 2025 #35:EC,Hyper,Practice,Light Clouds,1145.855,120.0,0,4943872,56,42
+S106-07d10ce2,2026-06-05T19:38:51Z,Circuit de la Sarthe,Circuit de la Sarthe,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Light Clouds,159.0,159.0,0,5386240,56,42
+S107-ff4d511a,2026-06-05T19:43:35Z,Circuit de la Sarthe,Circuit de la Sarthe,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Light Clouds,281.0,281.0,1,8679424,56,42
+S108-40fdca20,2026-06-05T19:50:01Z,Circuit de Barcelona,Circuit de Barcelona,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Light Clouds,32.0,32.0,0,2076672,56,42
+S109-76f1c83e,2026-06-05T19:53:00Z,Circuit de Barcelona,Circuit de Barcelona,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Light Clouds,235.0,235.0,2,6746112,56,42
+S110-fa970d4a,2026-06-05T20:01:33Z,Circuit de Barcelona,Circuit de Barcelona,Team Virage #8:ELMS25,LMP3,Practice,Light Clouds,102.69,9.0,0,1650688,56,42
+S111-111ffb8d,2026-06-05T20:01:54Z,Circuit de Barcelona,Circuit de Barcelona,Team Virage #8:ELMS25,LMP3,Practice,Light Clouds,122.1,108.0,0,4403200,56,42
+S112-17c15015,2026-06-05T20:04:32Z,Circuit de Barcelona,Circuit de Barcelona,WTM by Rinaldi Racing 2025 #12:ELMS,LMP3,Practice,Light Clouds,123.0,123.0,1,5124096,56,42
+S113-21a0b09a,2026-06-05T20:11:59Z,Circuit de Barcelona,Circuit de Barcelona,DKR Engineering #4:ELMS25,LMP3,Practice,Light Clouds,308.0,308.0,3,7860224,56,42
+S114-6cb8c45b,2026-06-06T17:30:08Z,Fuji Speedway,Fuji Speedway,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Light Clouds,923.173,2.0,0,1617920,56,42
+S115-38869abe,2026-06-06T18:22:47Z,Fuji Speedway,Fuji Speedway,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Partially Cloudy,569.005,224.0,1,7204864,56,42
+S116-9e9274d9,2026-06-06T18:27:10Z,Fuji Speedway,Fuji Speedway,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Light Clouds,831.59,156.0,1,5500928,56,42
+S117-cf7780c1,2026-06-06T18:30:51Z,Fuji Speedway,Fuji Speedway,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Light Clouds,108.0,108.0,0,4272128,56,42
+S118-1bcd2a0c,2026-06-06T18:33:45Z,Fuji Speedway,Fuji Speedway,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Qualify,Light Clouds,572.26,517.0,5,13398016,56,42
+S119-d64fd9ef,2026-06-06T18:43:06Z,Fuji Speedway,Fuji Speedway,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Race,Light Clouds,29.725,2.0,0,1388544,56,42
+S120-7763be19,2026-06-06T18:43:25Z,Fuji Speedway,Fuji Speedway,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Race,Light Clouds,258.0,258.0,1,8204288,56,42
+S121-302f07b9,2026-06-06T18:53:25Z,Autodromo Enzo e Dino Ferrari,Autodromo Enzo e Dino Ferrari,United Autosports #21:ELMS25,LMP2_ELMS,Practice,Partially Cloudy,1451.16,1238.0,12,28585984,56,42
+S122-328beb17,2026-06-06T19:16:46Z,Autodromo Enzo e Dino Ferrari,Autodromo Enzo e Dino Ferrari,United Autosports #21:ELMS25,LMP2_ELMS,Practice,Partially Cloudy,104.18,52.0,0,2846720,56,42
+S123-4cb4073f,2026-06-06T19:19:04Z,Autodromo Enzo e Dino Ferrari,Autodromo Enzo e Dino Ferrari,United Autosports #21:ELMS25,LMP2_ELMS,Qualify,Partially Cloudy,484.86,450.0,4,11644928,56,42
+S124-1191cea2,2026-06-06T19:28:04Z,Autodromo Enzo e Dino Ferrari,Autodromo Enzo e Dino Ferrari,United Autosports #21:ELMS25,LMP2_ELMS,Race,Partially Cloudy,7.628,2.0,0,1388544,56,42
+S125-35438326,2026-06-06T19:28:21Z,Autodromo Enzo e Dino Ferrari,Autodromo Enzo e Dino Ferrari,United Autosports #21:ELMS25,LMP2_ELMS,Race,Partially Cloudy,3796.82,3772.0,38,97513472,56,42
+S126-cea02322,2026-06-07T00:36:07Z,Circuit de la Sarthe,Circuit de la Sarthe,Alpine Endurance Team 2026 #35:WEC,Hyper,Practice,Clear,844.525,50.0,0,2551808,56,42
+S127-872e518e,2026-06-07T00:54:12Z,Autodromo Enzo e Dino Ferrari,Autodromo Enzo e Dino Ferrari,DKR Engineering #4:ELMS25,LMP3,Practice,Partially Cloudy,427.03,28.0,0,1945600,56,42
+S128-a1d0fb35,2026-06-07T00:55:07Z,Autodromo Enzo e Dino Ferrari,Autodromo Enzo e Dino Ferrari,DKR Engineering #4:ELMS25,LMP3,Practice,Partially Cloudy,482.83,129.0,0,4927488,56,42
+S129-b0603ec8,2026-06-07T01:05:01Z,Autodromo Enzo e Dino Ferrari,Autodromo Enzo e Dino Ferrari,DKR Engineering #4:ELMS25,LMP3,Practice,Light Clouds,1076.132,49.0,0,2600960,56,42
+S130-5159e9ad,2026-06-07T01:08:55Z,Autodromo Enzo e Dino Ferrari,Autodromo Enzo e Dino Ferrari,DKR Engineering #4:ELMS25,LMP3,Practice,Light Clouds,1310.848,75.0,0,3338240,56,42
+S131-053740b9,2026-06-07T01:13:15Z,Autodromo Enzo e Dino Ferrari,Autodromo Enzo e Dino Ferrari,DKR Engineering #4:ELMS25,LMP3,Practice,Partially Cloudy,1570.87,72.0,0,3174400,56,42
+S132-6a039a87,2026-06-07T01:19:17Z,Fuji Speedway,Fuji Speedway,DKR Engineering #4:ELMS25,LMP3,Practice,Light Clouds,346.765,64.0,0,3125248,56,42
+S133-32a334ed,2026-06-07T01:25:08Z,Fuji Speedway,Fuji Speedway,DKR Engineering #4:ELMS25,LMP3,Practice,Light Clouds,697.508,64.0,0,3010560,56,42
+S134-c6124e7b,2026-06-07T01:32:35Z,Algarve International Circuit,Algarve International Circuit,Alpine Endurance Team 2026 #35:WEC,Hyper,Practice,Partially Cloudy,872.967,3.0,0,1388544,56,42
+S135-5d8c9eac,2026-06-07T01:33:55Z,Autodromo Nazionale Monza,Autodromo Nazionale Monza,DKR Engineering #4:ELMS25,LMP3,Practice,Partially Cloudy,655.99,73.0,0,3239936,56,42
+S136-b6102ca6,2026-06-07T01:51:51Z,Sebring International Raceway,Sebring International Raceway,Logitech G Challenge #1:LGC,GT3,Practice,Light Clouds,469.73,158.0,1,4796416,56,42
+S137-738a7a67,2026-06-07T11:19:35Z,Fuji Speedway,Fuji Speedway Classic,Heart of Racing Team 2026 #23:WEC,GT3,Practice,Mostly Cloudy,774.31,114.0,0,4141056,56,42
+S138-7c079353,2026-06-07T11:46:38Z,Circuit de Barcelona,Circuit de Barcelona,Alpine Endurance Team 2026 #35:WEC,Hyper,Practice,Light Clouds,68.0,68.0,0,3158016,56,42
+S139-5492848a,2026-06-07T11:50:40Z,Circuit de Barcelona,Circuit de Barcelona,Alpine Endurance Team 2026 #35:WEC,Hyper,Practice,Light Clouds,226.715,11.0,0,1748992,56,42
+S140-5f536dd0,2026-06-07T11:50:56Z,Circuit de Barcelona,Circuit de Barcelona,Alpine Endurance Team 2026 #35:WEC,Hyper,Practice,Light Clouds,241.273,13.0,0,1650688,56,42
+S141-23eeacf4,2026-06-07T11:55:05Z,Circuit de Barcelona,Circuit de Barcelona,Alpine Endurance Team 2026 #35:WEC,Hyper,Practice,Light Clouds,295.7,11.0,0,1634304,56,42
+S142-113cb5ee,2026-06-07T12:17:32Z,Circuit de Barcelona,Circuit de Barcelona,Alpine Endurance Team 2026 #35:WEC,Hyper,Practice,Partially Cloudy,1285.85,48.0,0,2666496,56,42
+S143-fab27790,2026-06-07T14:09:03Z,Circuit de Barcelona,Circuit de Barcelona,Alpine Endurance Team 2026 #35:WEC,Hyper,Practice,Light Clouds,76.0,76.0,0,3321856,56,42
+S144-ea5d9bc4,2026-06-07T19:25:10Z,Circuit de Barcelona,Circuit de Barcelona,Alpine Endurance Team 2026 #35:WEC,Hyper,Race,Light Clouds,102.0,102.0,0,4435968,56,42
+S145-04bd8978,2026-06-08T07:13:46Z,Circuit de Barcelona,Circuit de Barcelona,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Light Clouds,202.69,37.0,0,2256896,56,42
+S146-13d0913c,2026-06-08T07:14:53Z,Circuit de Barcelona,Circuit de Barcelona,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Light Clouds,244.135,7.0,0,1617920,56,42
+S147-eb308050,2026-06-08T07:15:26Z,Circuit de Barcelona,Circuit de Barcelona,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Light Clouds,270.375,139.0,0,4501504,56,42
+S148-36b1a3d1,2026-06-08T08:29:09Z,Circuit de Barcelona,Circuit de Barcelona,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Light Clouds,421.4,201.0,1,5681152,56,42
+S149-50eb1580,2026-06-08T16:32:44Z,Autodromo Nazionale Monza,Autodromo Nazionale Monza,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Partially Cloudy,287.843,156.0,0,5156864,56,42
+S150-725f7929,2026-06-08T16:35:27Z,Autodromo Nazionale Monza,Autodromo Nazionale Monza,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Partially Cloudy,451.343,38.0,0,2322432,56,42
+S151-c113aa95,2026-06-08T16:44:16Z,Autodromo Nazionale Monza,Autodromo Nazionale Monza,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Qualify,Partially Cloudy,514.6,482.0,4,11874304,56,42
+S152-b58725b5,2026-06-08T16:52:40Z,Autodromo Nazionale Monza,Autodromo Nazionale Monza,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Race,Partially Cloudy,22.058,1.0,0,1388544,56,42
+S153-94cb6b4e,2026-06-08T16:52:55Z,Autodromo Nazionale Monza,Autodromo Nazionale Monza,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Race,Partially Cloudy,37.35,3.0,0,1388544,56,42
+S154-7707343d,2026-06-08T16:53:03Z,Autodromo Nazionale Monza,Autodromo Nazionale Monza,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Race,Partially Cloudy,1417.86,1374.0,12,27209728,56,42
+S155-da634fc4,2026-06-08T17:24:58Z,Fuji Speedway,Fuji Speedway,Vector Sport #10:ELMS25,LMP2_ELMS,Practice,Partially Cloudy,828.4,316.0,3,8663040,56,42
+S156-41524907,2026-06-08T17:31:32Z,Fuji Speedway,Fuji Speedway,Vector Sport #10:ELMS25,LMP2_ELMS,Practice,Light Clouds,90.873,66.0,0,3256320,56,42
+S157-b8e5beb6,2026-06-08T17:33:09Z,Fuji Speedway,Fuji Speedway,Vector Sport #10:ELMS25,LMP2_ELMS,Qualify,Light Clouds,520.16,513.0,5,13791232,56,42
+S158-924d83bb,2026-06-08T17:43:03Z,Fuji Speedway,Fuji Speedway,Vector Sport #10:ELMS25,LMP2_ELMS,Race,Light Clouds,14.585,2.0,0,1388544,56,42
+S159-9efd021c,2026-06-08T18:35:54Z,Circuit de Barcelona,Circuit de Barcelona,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Light Clouds,314.0,314.0,1,8499200,56,42
+S160-dbd1a512,2026-06-08T20:35:49Z,Circuit de Barcelona,Circuit de Barcelona,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Light Clouds,329.082,248.0,1,6451200,56,42
+S161-3af87686,2026-06-08T21:27:16Z,Circuit de Barcelona,Circuit de Barcelona,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Partially Cloudy,582.53,105.0,0,3928064,56,42
+S162-90e6b602,2026-06-08T21:52:40Z,Circuit de Barcelona,Circuit de Barcelona,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Partially Cloudy,1420.345,196.0,1,5992448,56,42
+S163-b9637dcc,2026-06-09T10:28:10Z,Circuit de Barcelona,Circuit de Barcelona,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Light Clouds,1089.0,1089.0,0,18739200,56,42
+S164-78add50f,2026-06-09T10:46:49Z,Circuit de Barcelona,Circuit de Barcelona,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Partially Cloudy,1110.105,88.0,0,3682304,56,42
+S165-678e8640,2026-06-09T11:27:34Z,Circuit de Barcelona,Circuit de Barcelona,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Light Clouds,62.0,62.0,0,2994176,56,42
+S166-a7a238c3,2026-06-09T12:23:03Z,Circuit de Barcelona,Circuit de Barcelona,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Light Clouds,118.0,118.0,0,4091904,56,42
+S167-8275bf83,2026-06-09T14:46:51Z,Circuit de Barcelona,Circuit de Barcelona,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Light Clouds,163.26,44.0,0,2535424,56,42
+S168-02e9bb4a,2026-06-10T11:03:23Z,Circuit de Barcelona,Circuit de Barcelona,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Light Clouds,27.0,27.0,0,1912832,56,42
+S169-b5e15386,2026-06-10T15:00:58Z,Circuit de Barcelona,Circuit de Barcelona,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Partially Cloudy,1253.795,74.0,0,3420160,56,42
+S170-d1bb158f,2026-06-10T15:32:02Z,Circuit de Barcelona,Circuit de Barcelona,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Light Clouds,3084.075,97.0,0,3878912,56,42
+S171-43a414e0,2026-06-10T15:51:54Z,Circuit de Barcelona,Circuit de Barcelona,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Clear,3186.017,66.0,0,3141632,56,42
+S172-b6ce17f7,2026-06-10T15:55:35Z,Circuit de Barcelona,Circuit de Barcelona,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Clear,3272.66,43.0,0,2338816,56,42
+S173-ee728593,2026-06-10T16:07:19Z,Circuit de Barcelona,Circuit de Barcelona,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Clear,3324.98,59.0,0,2600960,56,42
+S174-f46d214a,2026-06-10T16:17:33Z,Circuit de Barcelona,Circuit de Barcelona,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Clear,3388.912,138.0,1,4452352,56,42
+S175-04fad4fb,2026-06-10T16:36:54Z,Circuit de Barcelona,Circuit de Barcelona,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Clear,3531.108,118.0,1,3993600,56,42
+S176-5967628f,2026-06-10T17:14:24Z,Circuit de Barcelona,Circuit de Barcelona,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Race,Light Clouds,4.0,4.0,0,1552384,56,42
+S177-21947779,2026-06-10T17:14:47Z,Circuit de Barcelona,Circuit de Barcelona,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Race,Light Clouds,19.0,19.0,0,1863680,56,42
+S178-6d1d98be,2026-06-10T17:53:16Z,Circuit de Barcelona,Circuit de Barcelona,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Race,Light Clouds,17.0,17.0,0,1863680,56,42
+S179-bdb6ebc6,2026-06-10T17:54:22Z,Circuit de Barcelona,Circuit de Barcelona,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Race,Light Clouds,21.0,21.0,0,1978368,56,42
+S180-ce2e638e,2026-06-10T17:56:09Z,Circuit de Barcelona,Circuit de Barcelona,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Light Clouds,49.0,49.0,0,2633728,56,42
+S181-274d12d0,2026-06-10T17:57:08Z,Circuit de Barcelona,Circuit de Barcelona,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Light Clouds,76.1,22.0,0,1863680,56,42
+S182-f4bb4b9e,2026-06-10T17:57:40Z,Circuit de Barcelona,Circuit de Barcelona,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Light Clouds,172.0,172.0,0,5042176,56,42
+S183-a2432b6a,2026-06-10T18:04:29Z,Circuit de Barcelona,Circuit de Barcelona,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Light Clouds,434.095,29.0,0,1929216,56,42
+S184-6132dfd8,2026-06-10T18:05:18Z,Circuit de Barcelona,Circuit de Barcelona,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Partially Cloudy,480.9,67.0,0,3010560,56,42
+S185-2237673f,2026-06-10T18:06:38Z,Circuit de Barcelona,Circuit de Barcelona,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Partially Cloudy,560.062,24.0,0,2027520,56,42
+S186-642cb709,2026-06-10T18:07:17Z,Circuit de Barcelona,Circuit de Barcelona,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Partially Cloudy,596.918,362.0,1,9515008,56,42
+S187-3a7b2872,2026-06-11T17:05:07Z,Circuit de la Sarthe,Circuit de la Sarthe,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Partially Cloudy,99.02,4.0,0,1683456,56,42
+S188-244d1ad6,2026-06-11T17:05:44Z,Circuit de la Sarthe,Circuit de la Sarthe,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Partially Cloudy,135.665,94.0,0,4009984,56,42
+S189-4f4bcf76,2026-06-11T17:08:15Z,Circuit de la Sarthe,Circuit de la Sarthe,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Partially Cloudy,286.457,119.0,0,4976640,56,42
+S190-62b37ffc,2026-06-11T17:10:20Z,Circuit de la Sarthe,Circuit de la Sarthe,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Light Clouds,411.235,269.0,1,7811072,56,42
+S191-00c2bc67,2026-06-11T17:15:49Z,Circuit de la Sarthe,Circuit de la Sarthe,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Mostly Cloudy,89.0,89.0,0,4059136,56,42
+S192-7f587115,2026-06-11T17:17:32Z,Circuit de la Sarthe,Circuit de la Sarthe,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Partially Cloudy,147.248,71.0,0,3387392,56,42
+S193-052a52c7,2026-06-11T17:19:23Z,Circuit de la Sarthe,Circuit de la Sarthe,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Qualify,Partially Cloudy,523.28,498.0,2,11415552,56,42
+S194-bf2aa370,2026-06-11T17:28:40Z,Circuit de la Sarthe,Circuit de la Sarthe,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Race,Partially Cloudy,18.23,2.0,0,1388544,56,42
+S195-50318b97,2026-06-11T17:28:50Z,Circuit de la Sarthe,Circuit de la Sarthe,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Race,Partially Cloudy,1559.0,1559.0,6,37761024,56,42
+S196-316a3224,2026-06-11T18:07:13Z,Sebring International Raceway,Sebring International Raceway,Logitech G Challenge #10:LGC,GT3,Practice,Light Clouds,432.14,205.0,2,6205440,56,42
+S197-5e8e32f9,2026-06-11T18:11:59Z,Sebring International Raceway,Sebring International Raceway,Logitech G Challenge #10:LGC,GT3,Practice,Light Clouds,715.92,250.0,2,7090176,56,42
+S198-8d0700dc,2026-06-11T18:17:37Z,Sebring International Raceway,Sebring International Raceway,Logitech G Challenge #10:LGC,GT3,Practice,Partially Cloudy,153.0,64.0,1,2928640,56,42
+S199-c8a215f6,2026-06-11T18:19:11Z,Sebring International Raceway,Sebring International Raceway,Logitech G Challenge #10:LGC,GT3,Qualify,Partially Cloudy,370.0,370.0,3,9187328,56,42
+S200-39c51b90,2026-06-11T18:28:24Z,Sebring International Raceway,Sebring International Raceway,Logitech G Challenge #10:LGC,GT3,Race,Light Clouds,4.555,2.0,0,1404928,56,42
+S201-8daf968e,2026-06-11T18:28:56Z,Sebring International Raceway,Sebring International Raceway,Logitech G Challenge #10:LGC,GT3,Race,Light Clouds,1373.82,1339.0,10,26718208,56,42
+S202-70e16d27,2026-06-11T18:58:49Z,Lusail International Circuit,Lusail Short Circuit,Heart of Racing Team 2026 #23:WEC,GT3,Practice,Light Clouds,412.195,53.0,0,2764800,56,42
+S203-69971fcf,2026-06-11T18:59:59Z,Lusail International Circuit,Lusail Short Circuit,Heart of Racing Team 2026 #23:WEC,GT3,Practice,Light Clouds,481.637,199.0,1,6336512,56,42
+S204-c5fe0a61,2026-06-13T16:57:04Z,Circuit de Barcelona,Circuit de Barcelona,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Light Clouds,100.47,1.0,0,1503232,56,42
+S205-30d172a6,2026-06-13T16:57:15Z,Circuit de Barcelona,Circuit de Barcelona,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Light Clouds,108.612,82.0,0,3158016,56,42
+S206-367aa7e9,2026-06-13T17:01:39Z,Circuit de Barcelona,Circuit de Barcelona,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Light Clouds,195.912,156.0,1,5173248,56,42
+S207-fb6988b8,2026-06-13T17:04:42Z,Circuit de Barcelona,Circuit de Barcelona,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Light Clouds,357.038,13.0,0,1748992,56,42
+S208-41484d47,2026-06-13T17:57:11Z,Circuit de Barcelona,Circuit de Barcelona,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Light Clouds,78.493,41.0,0,2256896,56,42
+S209-75b07ea8,2026-06-13T19:07:34Z,Circuit de Barcelona,Circuit de Barcelona,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Light Clouds,250.64,3.0,0,1601536,56,42
+S210-a7cfd232,2026-06-14T10:42:12Z,Circuit de Barcelona,Circuit de Barcelona,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Light Clouds,53.0,53.0,0,2617344,56,42
+S211-0ad21704,2026-06-15T07:17:39Z,Circuit de Spa-Francorchamps,Circuit de Spa-Francorchamps Endurance,Peugeot TotalEnergies 2026 #93:LM,Hyper,Practice,Overcast,1158.2,28.0,0,1961984,56,42
+S212-53de5f39,2026-06-15T07:18:51Z,Circuit de Spa-Francorchamps,Circuit de Spa-Francorchamps Endurance,Peugeot TotalEnergies 2026 #93:LM,Hyper,Practice,Overcast,1230.2,20.0,0,1830912,56,42
+S213-cfcea4f6,2026-06-15T07:41:27Z,Circuit de la Sarthe,Circuit de la Sarthe,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Light Clouds,822.613,30.0,0,1994752,56,42
+S214-7697b4dd,2026-06-15T07:47:30Z,Circuit de la Sarthe,Circuit de la Sarthe,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Partially Cloudy,1185.048,31.0,0,2142208,56,42
+S215-dcb563f0,2026-06-15T09:23:46Z,Paul Ricard Circuit,Paul Ricard - ELMS,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Light Clouds,657.26,45.0,0,2617344,56,42
+S216-4f180f99,2026-06-15T10:26:25Z,Circuit de la Sarthe,Circuit de la Sarthe,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Light Clouds,266.067,7.0,0,1650688,56,42
+S217-2a0ebf52,2026-06-15T10:26:37Z,Circuit de la Sarthe,Circuit de la Sarthe,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Light Clouds,278.385,83.0,0,3633152,56,42
+S218-367695ac,2026-06-15T10:42:24Z,Silverstone Circuit,Silverstone Grand Prix Circuit - ELMS,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Mostly Cloudy,246.76,50.0,0,2732032,56,42
+S219-4034769f,2026-06-15T10:43:39Z,Silverstone Circuit,Silverstone Grand Prix Circuit - ELMS,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Partially Cloudy,321.85,35.0,0,2174976,56,42
+S220-cb6f431c,2026-06-15T10:46:12Z,Silverstone Circuit,Silverstone Grand Prix Circuit - ELMS,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Partially Cloudy,474.993,48.0,0,2666496,56,42
+S221-686f7054,2026-06-15T11:07:05Z,Circuit de la Sarthe,Circuit de la Sarthe,Alpine Endurance Team 2026 #35:WEC,Hyper,Practice,Overcast,532.625,49.0,0,2797568,56,42
+S222-d71796bc,2026-06-15T11:15:42Z,Circuit de la Sarthe,Circuit de la Sarthe,Alpine Endurance Team 2026 #35:WEC,Hyper,Practice,Mostly Cloudy,1048.755,37.0,0,2289664,56,42
+S223-84fb7c7d,2026-06-15T11:40:05Z,Circuit de Barcelona,Circuit de Barcelona,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Partially Cloudy,1237.578,54.0,0,2666496,56,42
+S224-424f053c,2026-06-15T16:58:05Z,Circuit de Barcelona,Circuit de Barcelona,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Light Clouds,25.023,1.0,0,1208320,56,42
+S225-dd816a5c,2026-06-16T19:24:35Z,Circuit de Barcelona,Circuit de Barcelona,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Light Clouds,69.0,69.0,0,2879488,56,42
+S226-4f2f7391,2026-06-16T19:45:37Z,Circuit de Barcelona,Circuit de Barcelona,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Light Clouds,88.403,72.0,0,3026944,56,42
+S227-74bd32c2,2026-06-16T19:54:28Z,Circuit de Barcelona,Circuit de Barcelona,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Light Clouds,176.917,49.0,0,2437120,56,42
+S228-e86eb5ea,2026-06-16T20:05:07Z,Circuit de Barcelona,Circuit de Barcelona,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Light Clouds,229.928,3.0,0,1601536,56,42
+S229-bf67f2a4,2026-06-16T20:05:16Z,Circuit de Barcelona,Circuit de Barcelona,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Light Clouds,237.493,36.0,0,2093056,56,42
+S230-7390cac6,2026-06-18T10:57:09Z,Circuit de Barcelona,Circuit de Barcelona,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Light Clouds,102.0,102.0,0,3928064,56,42
+S231-05a2f9e8,2026-06-18T15:22:09Z,Circuit de Barcelona,Circuit de Barcelona,DKR Engineering #3:ELMS25,LMP2_ELMS,Practice,Light Clouds,66.0,66.0,0,3354624,56,42
+S232-d0c84a90,2026-06-18T16:48:27Z,Circuit de Barcelona,Circuit de Barcelona,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Light Clouds,75.0,75.0,0,3158016,56,42
+S233-9a68debb,2026-06-21T12:01:03Z,Circuit de Barcelona,Circuit de Barcelona,ADESS Factory Racing Team 2025 #46:ELMS,LMP3,Practice,Partially Cloudy,1553.653,39.0,0,2256896,56,42
+S234-db3ed372,2026-07-01T14:50:46Z,Fuji Speedway,Fuji Speedway Classic,DKR Engineering #4:ELMS25,LMP3,Practice,Partially Cloudy,114.312,80.0,0,3141632,56,42
+S235-209021f2,2026-07-01T14:52:58Z,Fuji Speedway,Fuji Speedway Classic,DKR Engineering #4:ELMS25,LMP3,Practice,Partially Cloudy,550.92,403.0,3,10219520,56,42
+S236-60b44a4d,2026-07-01T15:04:31Z,Fuji Speedway,Fuji Speedway Classic,DKR Engineering #4:ELMS25,LMP3,Qualify,Partially Cloudy,424.0,424.0,3,10940416,56,42
+S237-b361cdf9,2026-07-01T15:12:59Z,Fuji Speedway,Fuji Speedway Classic,DKR Engineering #4:ELMS25,LMP3,Race,Partially Cloudy,47.37,2.0,0,1372160,56,42
+S238-d582bd6b,2026-07-01T15:13:07Z,Fuji Speedway,Fuji Speedway Classic,DKR Engineering #4:ELMS25,LMP3,Race,Partially Cloudy,233.5,225.0,1,7024640,56,42
+S239-8d90e1c1,2026-07-01T15:24:33Z,Circuit de Barcelona,Circuit de Barcelona,Vector Sport #10:ELMS25,LMP2_ELMS,Practice,Light Clouds,1030.7,366.0,3,9777152,56,42
+S240-e6545178,2026-07-01T15:31:53Z,Circuit de Barcelona,Circuit de Barcelona,Vector Sport #10:ELMS25,LMP2_ELMS,Practice,Clear,115.188,41.0,0,2469888,56,42
+S241-b82e03db,2026-07-01T15:34:04Z,Circuit de Barcelona,Circuit de Barcelona,Vector Sport #10:ELMS25,LMP2_ELMS,Qualify,Clear,568.72,516.0,5,13168640,56,42
+S242-89454468,2026-07-01T15:43:03Z,Circuit de Barcelona,Circuit de Barcelona,Vector Sport #10:ELMS25,LMP2_ELMS,Race,Clear,24.15,2.0,0,1388544,56,42
+S243-4bc4888e,2026-07-01T15:43:37Z,Circuit de Barcelona,Circuit de Barcelona,Vector Sport #10:ELMS25,LMP2_ELMS,Race,Clear,1992.34,1938.0,20,43167744,56,42
+S244-20d2d4a9,2026-07-02T16:45:19Z,Algarve International Circuit,Algarve International Circuit,Vector Sport #10:ELMS25,LMP2_ELMS,Practice,Mostly Cloudy,485.978,30.0,0,2076672,56,42
+S245-3b7482d5,2026-07-02T16:52:03Z,Algarve International Circuit,Algarve International Circuit,Vector Sport #10:ELMS25,LMP2_ELMS,Practice,Mostly Cloudy,123.758,33.0,0,2207744,56,42
+S246-0fb24438,2026-07-02T16:56:10Z,Algarve International Circuit,Algarve International Circuit,Vector Sport #10:ELMS25,LMP2_ELMS,Qualify,Mostly Cloudy,212.743,91.0,0,4108288,56,42
+S247-753e11de,2026-07-02T17:09:06Z,Fuji Speedway,Fuji Speedway Classic,WTM by Rinaldi Racing 2025 #12:ELMS,LMP3,Practice,Partially Cloudy,177.0,177.0,1,5582848,56,42
+S248-778a2f86,2026-07-02T17:12:23Z,Fuji Speedway,Fuji Speedway Classic,WTM by Rinaldi Racing 2025 #12:ELMS,LMP3,Practice,Partially Cloudy,364.528,236.0,2,6844416,56,42
+S249-f9146a4a,2026-07-02T17:17:23Z,Fuji Speedway,Fuji Speedway Classic,WTM by Rinaldi Racing 2025 #12:ELMS,LMP3,Practice,Partially Cloudy,141.86,75.0,0,3469312,56,42
+S250-c9425152,2026-07-02T17:19:12Z,Fuji Speedway,Fuji Speedway Classic,WTM by Rinaldi Racing 2025 #12:ELMS,LMP3,Qualify,Partially Cloudy,475.0,455.0,4,10743808,56,42
+S251-fd010ea9,2026-07-02T17:28:09Z,Fuji Speedway,Fuji Speedway Classic,WTM by Rinaldi Racing 2025 #12:ELMS,LMP3,Race,Partially Cloudy,29.893,1.0,0,1372160,56,42
+S252-3c43791c,2026-07-02T17:28:23Z,Fuji Speedway,Fuji Speedway Classic,WTM by Rinaldi Racing 2025 #12:ELMS,LMP3,Race,Partially Cloudy,1402.12,1360.0,13,28536832,56,42
+S253-2713de05,2026-07-02T17:59:10Z,Circuit of the Americas,COTA National Circuit,Proton Competition 2025 #77:LM,GT3,Practice,Light Clouds,855.64,681.0,6,15953920,56,42
+S254-d173f8c9,2026-07-02T18:13:32Z,Circuit of the Americas,COTA National Circuit,Proton Competition 2025 #77:LM,GT3,Qualify,Partially Cloudy,56.13,6.0,0,1617920,56,42
+S255-ef04cd2f,2026-07-02T18:13:50Z,Circuit of the Americas,COTA National Circuit,Proton Competition 2025 #77:LM,GT3,Qualify,Partially Cloudy,565.14,518.0,5,13119488,56,42
+S256-ea514684,2026-07-02T18:23:20Z,Circuit of the Americas,COTA National Circuit,Proton Competition 2025 #77:LM,GT3,Race,Partially Cloudy,394.0,394.0,2,11202560,56,42
+S257-6abb7f8a,2026-07-10T23:39:52Z,Algarve International Circuit,Algarve International Circuit,Oreca 07 ELMS Custom Team 2025 #397,LMP2_ELMS,Practice,Clear,3639.105,47.0,0,2469888,56,42
+S258-b69e394f,2026-07-10T23:48:20Z,Algarve International Circuit,Algarve International Circuit,Oreca 07 ELMS Custom Team 2025 #397,LMP2_ELMS,Practice,Clear,4147.538,526.0,5,13201408,56,42
+S259-a73ab964,2026-07-11T00:02:19Z,Algarve International Circuit,Algarve International Circuit,Oreca 07 ELMS Custom Team 2025 #397,LMP2_ELMS,Practice,Clear,4986.307,30.0,0,2060288,56,42
+S260-b9a65506,2026-07-11T00:03:02Z,Algarve International Circuit,Algarve International Circuit,Oreca 07 ELMS Custom Team 2025 #397,LMP2_ELMS,Practice,Clear,6420.46,1406.0,14,30339072,56,42
+S261-8d92b206,2026-07-11T00:27:40Z,Algarve International Circuit,Algarve International Circuit,Oreca 07 ELMS Custom Team 2025 #397,LMP2_ELMS,Practice,Light Clouds,6724.2,477.0,4,11546624,56,42
+S262-14fb500c,2026-07-11T00:36:19Z,Algarve International Circuit,Algarve International Circuit,Oreca 07 ELMS Custom Team 2025 #397,LMP2_ELMS,Practice,Light Clouds,7026.703,247.0,2,7434240,56,42
+S263-cef18650,2026-07-11T11:35:41Z,Algarve International Circuit,Algarve International Circuit,Oreca 07 ELMS Custom Team 2025 #397,LMP2_ELMS,Practice,Partially Cloudy,715.115,55.0,0,2781184,56,42
+S264-594b8730,2026-07-11T11:37:35Z,Algarve International Circuit,Algarve International Circuit,Oreca 07 ELMS Custom Team 2025 #397,LMP2_ELMS,Practice,Partially Cloudy,828.3,215.0,1,6909952,56,42
+S265-d206b44e,2026-07-11T11:41:18Z,Algarve International Circuit,Algarve International Circuit,Oreca 07 ELMS Custom Team 2025 #397,LMP2_ELMS,Practice,Partially Cloudy,1744.76,861.0,8,21458944,56,42
+S266-6b912640,2026-07-11T12:10:37Z,Algarve International Circuit,Algarve International Circuit,Oreca 07 ELMS Custom Team 2025 #397,LMP2_ELMS,Race,Clear,16840.14,6855.0,70,187297792,56,42
+S267-ea534fc0,2026-07-16T14:48:19Z,Circuit of the Americas,Circuit of the Americas,Oreca 07 ELMS Custom Team 2025 #397,LMP2_ELMS,Practice,Light Clouds,4220.13,33.0,0,2093056,56,42
+S268-8afef1ce,2026-07-16T14:50:03Z,Circuit of the Americas,Circuit of the Americas,Oreca 07 ELMS Custom Team 2025 #397,LMP2_ELMS,Practice,Light Clouds,4323.738,354.0,2,9302016,56,42
+S269-b68f7ad0,2026-07-17T15:45:25Z,Circuit of the Americas,Circuit of the Americas,Oreca 07 ELMS Custom Team 2025 #397,LMP2_ELMS,Practice,Light Clouds,2226.097,35.0,0,2109440,56,42
+S270-cb044c73,2026-07-17T15:46:11Z,Circuit of the Americas,Circuit of the Americas,Oreca 07 ELMS Custom Team 2025 #397,LMP2_ELMS,Practice,Light Clouds,2540.18,719.0,5,17281024,56,42
+S271-bd9b316b,2026-07-17T15:58:33Z,Circuit of the Americas,Circuit of the Americas,Oreca 07 ELMS Custom Team 2025 #397,LMP2_ELMS,Practice,Light Clouds,3273.06,658.0,5,15708160,56,42
+S272-2a00fc3a,2026-07-17T16:09:48Z,Circuit of the Americas,Circuit of the Americas,Oreca 07 ELMS Custom Team 2025 #397,LMP2_ELMS,Practice,Light Clouds,4300.08,774.0,6,19083264,56,42
+S273-2df49c65,2026-07-17T16:23:39Z,Circuit of the Americas,Circuit of the Americas,Oreca 07 ELMS Custom Team 2025 #397,LMP2_ELMS,Practice,Light Clouds,4519.545,158.0,1,5124096,56,42
+S274-708c06bc,2026-07-17T16:26:24Z,Circuit of the Americas,Circuit of the Americas,Oreca 07 ELMS Custom Team 2025 #397,LMP2_ELMS,Practice,Light Clouds,6225.3,1892.0,15,39776256,56,42
+S275-d6f3f9ff,2026-07-17T17:00:28Z,Circuit of the Americas,Circuit of the Americas,Oreca 07 ELMS Custom Team 2025 #397,LMP2_ELMS,Practice,Clear,6729.158,737.0,5,17428480,56,42
+S276-4e2b5e8e,2026-07-17T17:14:23Z,Circuit of the Americas,Circuit of the Americas,Oreca 07 ELMS Custom Team 2025 #397,LMP2_ELMS,Practice,Clear,8053.96,824.0,6,19705856,56,42
+S277-160e9e30,2026-07-17T19:06:32Z,Circuit of the Americas,Circuit of the Americas,Oreca 07 ELMS Custom Team 2025 #397,LMP2_ELMS,Practice,Clear,0.0,0.0,0,831488,56,42
+S278-7da31387,2026-07-17T19:06:50Z,Circuit of the Americas,Circuit of the Americas,Oreca 07 ELMS Custom Team 2025 #397,LMP2_ELMS,Practice,Clear,7315.76,976.0,8,22933504,56,42
+S279-a433f852,2026-07-17T19:31:28Z,Circuit of the Americas,Circuit of the Americas,Oreca 07 ELMS Custom Team 2025 #397,LMP2_ELMS,Practice,Light Clouds,3944.758,13.0,0,1683456,56,42
+S280-d4c7bb38,2026-07-17T19:31:49Z,Circuit of the Americas,Circuit of the Americas,Oreca 07 ELMS Custom Team 2025 #397,LMP2_ELMS,Practice,Light Clouds,5377.32,1853.0,15,40939520,56,42
+S281-41fe826d,2026-07-17T20:23:13Z,Circuit of the Americas,Circuit of the Americas,Oreca 07 ELMS Custom Team 2025 #397,LMP2_ELMS,Practice,Light Clouds,2044.135,354.0,2,9318400,56,42
+S282-1b1ecec2,2026-07-17T20:32:11Z,Circuit of the Americas,Circuit of the Americas,Oreca 07 ELMS Custom Team 2025 #397,LMP2_ELMS,Practice,Light Clouds,3343.92,786.0,6,18935808,56,42
+S283-12f12d21,2026-07-17T20:46:52Z,Circuit of the Americas,Circuit of the Americas,Oreca 07 ELMS Custom Team 2025 #397,LMP2_ELMS,Practice,Light Clouds,3463.997,514.0,4,13217792,56,42
+S284-fe613559,2026-07-17T21:00:59Z,Circuit of the Americas,Circuit of the Americas,Oreca 07 ELMS Custom Team 2025 #397,LMP2_ELMS,Practice,Light Clouds,5382.56,1291.0,10,28356608,56,42
+S285-0a3bebe6,2026-07-17T21:23:12Z,Circuit of the Americas,Circuit of the Americas,Oreca 07 ELMS Custom Team 2025 #397,LMP2_ELMS,Practice,Light Clouds,5643.073,663.0,5,15413248,56,42
+S286-896cf401,2026-07-18T15:05:04Z,Circuit of the Americas,Circuit of the Americas,Oreca 07 ELMS Custom Team 2025 #397,LMP2_ELMS,Practice,Light Clouds,3817.9,344.0,2,9056256,56,42
+S287-bda9a70a,2026-07-18T15:24:25Z,Circuit of the Americas,Circuit of the Americas,Oreca 07 ELMS Custom Team 2025 #397,LMP2_ELMS,Race,Partially Cloudy,3653.82,3615.0,30,99610624,56,42
+S288-1a89ebd5,2026-07-28T17:38:12Z,Sebring International Raceway,Sebring International Raceway,Alpine Endurance Team 2026 #35:WEC,Hyper,Practice,Clear,1020.0,1020.0,0,17362944,56,42
+S289-b283ac11,2026-07-28T18:34:54Z,WeatherTech Raceway Laguna Seca,WeatherTech Raceway Laguna Seca,Cadillac Hertz Team Jota 2026 #12:LM,Hyper,Practice,Overcast,261.8,70.0,0,3387392,56,42
+S290-50b29cfb,2026-07-28T18:36:18Z,WeatherTech Raceway Laguna Seca,WeatherTech Raceway Laguna Seca,Cadillac Hertz Team Jota 2026 #12:LM,Hyper,Practice,Overcast,346.035,94.0,0,4157440,56,42
+S291-abeed2fe,2026-07-28T18:38:04Z,WeatherTech Raceway Laguna Seca,WeatherTech Raceway Laguna Seca,Cadillac Hertz Team Jota 2026 #12:LM,Hyper,Practice,Overcast,452.005,276.0,2,8024064,56,42
+S292-e7068d67,2026-07-28T18:44:44Z,Daytona International Speedway,Daytona International Speedway Road Course,Alpine Endurance Team 2026 #35:WEC,Hyper,Race,Clear,11.0,11.0,0,1650688,56,42
+S293-b75c85e2,2026-07-28T18:46:05Z,Daytona International Speedway,Daytona International Speedway Road Course,Alpine Endurance Team 2026 #35:WEC,Hyper,Practice,Light Clouds,63.0,63.0,0,3010560,56,42
+S294-7761945b,2026-07-28T18:47:46Z,Daytona International Speedway,Daytona International Speedway Road Course,Alpine Endurance Team 2026 #35:WEC,Hyper,Practice,Light Clouds,58.0,58.0,0,2781184,56,42
+S295-20dbad31,2026-07-28T18:48:50Z,Daytona International Speedway,Daytona International Speedway Road Course,Alpine Endurance Team 2026 #35:WEC,Hyper,Practice,Light Clouds,73.0,73.0,0,3387392,56,42
+S296-651878be,2026-07-28T18:50:07Z,Daytona International Speedway,Daytona International Speedway Road Course,Alpine Endurance Team 2026 #35:WEC,Hyper,Practice,Light Clouds,142.665,33.0,0,2207744,56,42
+S297-7673d5f4,2026-07-28T18:50:41Z,Daytona International Speedway,Daytona International Speedway Road Course,Alpine Endurance Team 2026 #35:WEC,Hyper,Practice,Light Clouds,228.0,228.0,1,7155712,56,42
+S298-cab0530b,2026-07-28T20:35:03Z,Daytona International Speedway,Daytona International Speedway Road Course,Genesis Magma Racing 2026 #17:LM,Hyper,Practice,Light Clouds,15.0,15.0,0,1585152,56,42
+S299-7ea0a7e0,2026-07-28T20:35:22Z,Daytona International Speedway,Daytona International Speedway Road Course,Genesis Magma Racing 2026 #17:LM,Hyper,Practice,Light Clouds,50.0,50.0,0,2469888,56,42
+S300-909d1a81,2026-07-28T20:37:09Z,Daytona International Speedway,Daytona International Speedway Road Course,Genesis Magma Racing 2026 #17:LM,Hyper,Practice,Light Clouds,21.0,21.0,0,1847296,56,42
+S301-ba80a6c8,2026-07-28T20:37:35Z,Daytona International Speedway,Daytona International Speedway Road Course,Genesis Magma Racing 2026 #17:LM,Hyper,Practice,Light Clouds,54.0,54.0,0,2666496,56,42
+S302-fe3d5c8e,2026-07-28T20:38:33Z,Daytona International Speedway,Daytona International Speedway Road Course,Genesis Magma Racing 2026 #17:LM,Hyper,Practice,Light Clouds,98.245,13.0,0,1748992,56,42
+S303-0d894638,2026-07-28T20:39:23Z,Daytona International Speedway,Daytona International Speedway Road Course,Genesis Magma Racing 2026 #17:LM,Hyper,Practice,Light Clouds,141.0,141.0,0,5599232,56,42
+S304-5fc5abbf,2026-07-28T20:42:18Z,Daytona International Speedway,Daytona International Speedway Road Course,Genesis Magma Racing 2026 #17:LM,Hyper,Practice,Light Clouds,776.3,704.0,6,17362944,56,42
+S305-78a35dd9,2026-07-28T20:55:20Z,WeatherTech Raceway Laguna Seca,WeatherTech Raceway Laguna Seca,Genesis Magma Racing 2026 #17:LM,Hyper,Practice,Light Clouds,607.8,607.0,7,15347712,56,42
+S306-0bc3f645,2026-07-31T18:04:40Z,WeatherTech Raceway Laguna Seca,WeatherTech Raceway Laguna Seca,Genesis Magma Racing 2026 #17:LM,Hyper,Practice,Light Clouds,7884.0,7884.0,4,108212224,56,42
+S307-3acd4737,2026-07-31T20:17:00Z,WeatherTech Raceway Laguna Seca,WeatherTech Raceway Laguna Seca,Genesis Magma Racing 2026 #17:LM,Hyper,Practice,Light Clouds,7896.99,33.0,0,2224128,56,42
+S308-48991eb8,2026-07-31T20:17:38Z,WeatherTech Raceway Laguna Seca,WeatherTech Raceway Laguna Seca,Genesis Magma Racing 2026 #17:LM,Hyper,Practice,Light Clouds,7933.673,60.0,0,3092480,56,42
+S309-08aec378,2026-07-31T20:18:42Z,WeatherTech Raceway Laguna Seca,WeatherTech Raceway Laguna Seca,Genesis Magma Racing 2026 #17:LM,Hyper,Practice,Light Clouds,8208.46,214.0,2,6582272,56,42
+S310-dee7d056,2026-07-31T23:17:47Z,WeatherTech Raceway Laguna Seca,WeatherTech Raceway Laguna Seca,Genesis Magma Racing 2026 #17:LM,Hyper,Practice,Light Clouds,185.0,185.0,0,5451776,56,42
+S311-a8df7b81,2026-08-05T22:32:22Z,Circuit de Spa-Francorchamps,Circuit de Spa-Francorchamps,Heart of Racing Team 2026 #23:WEC,GT3,Practice,Light Clouds,2685.17,20.0,0,1699840,56,42
+S312-4bf99f30,2026-08-05T22:39:29Z,Circuit de Spa-Francorchamps,Circuit de Spa-Francorchamps,Heart of Racing Team 2026 #23:WEC,GT3,Practice,Light Clouds,3111.847,16.0,0,1585152,56,42
+S313-7c046342,2026-08-05T22:41:02Z,Circuit de Spa-Francorchamps,Circuit de Spa-Francorchamps,Heart of Racing Team 2026 #23:WEC,GT3,Practice,Clear,3205.06,19.0,0,1699840,56,42
+S314-90be5bb1,2026-08-05T22:51:22Z,WeatherTech Raceway Laguna Seca,WeatherTech Raceway Laguna Seca,Genesis Magma Racing 2026 #17:LM,Hyper,Practice,Light Clouds,699.0,699.0,0,9990144,56,42
+S315-9975b5dc,2026-08-05T23:32:23Z,WeatherTech Raceway Laguna Seca,WeatherTech Raceway Laguna Seca,Genesis Magma Racing 2026 #17:LM,Hyper,Practice,Light Clouds,707.86,43.0,0,2174976,56,42
+S316-d21d076e,2026-08-05T23:33:09Z,WeatherTech Raceway Laguna Seca,WeatherTech Raceway Laguna Seca,Genesis Magma Racing 2026 #17:LM,Hyper,Practice,Light Clouds,1054.0,1054.0,0,15855616,56,42
+S317-2e59d0fe,2026-08-05T23:50:44Z,WeatherTech Raceway Laguna Seca,WeatherTech Raceway Laguna Seca,Genesis Magma Racing 2026 #17:LM,Hyper,Practice,Light Clouds,1806.01,927.0,0,12660736,56,42
+S318-39ed1c92,2026-08-09T17:31:05Z,WeatherTech Raceway Laguna Seca,WeatherTech Raceway Laguna Seca,Genesis Magma Racing 2026 #17:LM,Hyper,Practice,Light Clouds,91.59,20.0,0,1929216,56,42
+S319-88956bb7,2026-08-13T13:50:06Z,Autodromo Enzo e Dino Ferrari,Autodromo Enzo e Dino Ferrari,Genesis Magma Racing 2026 #17:LM,Hyper,Practice,Mostly Cloudy,30922.0,30922.0,0,276934656,56,42
+S320-1271ed2d,2026-08-14T04:20:33Z,Autodromo Enzo e Dino Ferrari,Autodromo Enzo e Dino Ferrari,Genesis Magma Racing 2026 #17:LM,Hyper,Practice,Mostly Cloudy,93.0,93.0,0,3846144,56,42
+S321-715f645c,2026-08-14T04:22:08Z,Autodromo Enzo e Dino Ferrari,Autodromo Enzo e Dino Ferrari,Genesis Magma Racing 2026 #17:LM,Hyper,Practice,Mostly Cloudy,171.0,171.0,0,4517888,56,42
+S322-bae3b80a,2026-08-14T04:51:28Z,Autodromo Enzo e Dino Ferrari,Autodromo Enzo e Dino Ferrari,Genesis Magma Racing 2026 #17:LM,Hyper,Practice,Mostly Cloudy,1521.0,1521.0,0,27471872,56,42
+S323-a1d16226,2026-08-14T20:41:13Z,Autodromo Enzo e Dino Ferrari,Autodromo Enzo e Dino Ferrari,Genesis Magma Racing 2026 #17:LM,Hyper,Practice,Mostly Cloudy,34.0,34.0,0,1765376,56,42
+S324-7e2e6647,2026-08-14T20:58:07Z,Autodromo Enzo e Dino Ferrari,Autodromo Enzo e Dino Ferrari,Genesis Magma Racing 2026 #17:LM,Hyper,Practice,Mostly Cloudy,1044.58,2.0,0,1355776,56,42
+S325-a00ca135,2026-08-15T14:59:09Z,Autodromo Enzo e Dino Ferrari,Autodromo Enzo e Dino Ferrari,Genesis Magma Racing 2026 #17:LM,Hyper,Practice,Mostly Cloudy,40.835,1.0,0,1323008,56,42
+S326-a5c6d0c3,2026-08-16T17:12:32Z,Autodromo Enzo e Dino Ferrari,Autodromo Enzo e Dino Ferrari,Genesis Magma Racing 2026 #17:LM,Hyper,Practice,Mostly Cloudy,13.0,13.0,0,1404928,56,42
+S327-79025392,2026-08-16T17:12:47Z,Autodromo Enzo e Dino Ferrari,Autodromo Enzo e Dino Ferrari,Genesis Magma Racing 2026 #17:LM,Hyper,Practice,Mostly Cloudy,10112.0,10112.0,0,112619520,56,42
+S328-d57e98d6,2026-08-16T20:24:00Z,Autodromo Enzo e Dino Ferrari,Autodromo Enzo e Dino Ferrari,Genesis Magma Racing 2026 #17:LM,Hyper,Practice,Mostly Cloudy,101.7,2.0,0,1339392,56,42
+S329-d0bb08d4,2026-08-16T20:28:22Z,Autodromo Enzo e Dino Ferrari,Autodromo Enzo e Dino Ferrari,Genesis Magma Racing 2026 #17:LM,Hyper,Practice,Mostly Cloudy,73.873,63.0,0,2764800,56,42
+S330-5d719881,2026-08-16T20:38:14Z,Autodromo Enzo e Dino Ferrari,Autodromo Enzo e Dino Ferrari,Genesis Magma Racing 2026 #17:LM,Hyper,Practice,Mostly Cloudy,39.0,39.0,0,1912832,56,42
+S331-7146fbe2,2026-08-17T16:14:06Z,Autodromo Enzo e Dino Ferrari,Autodromo Enzo e Dino Ferrari,Genesis Magma Racing 2026 #17:LM,Hyper,Practice,Mostly Cloudy,745.0,745.0,0,11579392,56,42
+S332-a69876fe,2026-08-20T00:19:51Z,Autodromo Enzo e Dino Ferrari,Autodromo Enzo e Dino Ferrari,Genesis Magma Racing 2026 #17:LM,Hyper,Practice,Mostly Cloudy,368.0,368.0,0,6926336,56,42
+S333-37f353b1,2026-08-20T00:26:03Z,Autodromo Enzo e Dino Ferrari,Autodromo Enzo e Dino Ferrari,Genesis Magma Racing 2026 #17:LM,Hyper,Practice,Mostly Cloudy,419.0,419.0,0,8138752,56,42
+S334-8c6a75d8,2026-08-20T00:41:31Z,Autodromo Enzo e Dino Ferrari,Autodromo Enzo e Dino Ferrari,Genesis Magma Racing 2026 #17:LM,Hyper,Practice,Mostly Cloudy,1304.382,53.0,0,2453504,56,42
+S335-f13ecde1,2026-08-20T00:43:23Z,Autodromo Enzo e Dino Ferrari,Autodromo Enzo e Dino Ferrari,Genesis Magma Racing 2026 #17:LM,Hyper,Practice,Mostly Cloudy,1362.94,89.0,0,3403776,56,42
+S336-5cb648f1,2026-08-21T00:18:54Z,Algarve International Circuit,Algarve International Circuit,ORT by TF #25:LM,GTE,Practice,Light Clouds,2255.645,14.0,0,1568768,56,42

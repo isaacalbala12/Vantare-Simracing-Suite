@@ -8,7 +8,8 @@ import { hideToasts, settle, stillPage } from "./lib/orbit-still.mjs";
 
 const frontend = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const output = path.resolve(frontend, "../docs/design/orbit-v03/evidence/porte/07-estrategia");
-const port = 5199;
+const port = Number.parseInt(process.env.ORBIT_STRATEGY_VISUAL_PORT ?? "5199", 10);
+if (!Number.isSafeInteger(port) || port < 1024 || port > 65535) throw new Error("invalid ORBIT_STRATEGY_VISUAL_PORT");
 const url = `http://127.0.0.1:${port}/orbit-strategy-harness.html?view=estrategia`;
 
 // Reloj congelado: la columna calcula las próximas salidas del calendario real.
@@ -103,9 +104,22 @@ try {
       if (!isWailsRuntimeNoise(error)) problems.push(`pageerror: ${error.message}`);
     });
 
-    await page.clock.install({ time: FROZEN_CLOCK });
+    // Fecha estable para la evidencia sin congelar los timers del transporte mock.
+    await page.clock.setFixedTime(FROZEN_CLOCK);
     await page.goto(url, { waitUntil: "networkidle" });
     await page.getByTestId("orbit-strategy").waitFor();
+    const sessionPicker = page.getByTestId("orbit-strategy-session-picker");
+    if ((await sessionPicker.count()) > 0) {
+      await sessionPicker.waitFor();
+      if (viewport.editor) {
+        await settle(page);
+        await page.screenshot({
+          path: path.join(output, `orbit-estrategia-selector-combinacion-${viewport.name}.png`),
+          fullPage: false,
+        });
+      }
+      await page.locator('[data-testid^="orbit-session-combination-"]').first().click();
+    }
     await page.getByTestId("orbit-strategy-overview").waitFor();
     await page.getByTestId("orbit-stint-0").waitFor();
     await hideToasts(page);
@@ -137,36 +151,93 @@ try {
     });
 
     if (viewport.editor) {
-      // Neumáticos → elegir un juego → abrir el stint 1 → soltarlo en FL.
+      // F5-e: captura nueva justificada para custodiar la sección separada, la etiqueta referencia y k>=3.
+      const reference = page.getByTestId("orbit-reference");
+      await reference.waitFor();
+      const referenceText = (await reference.textContent()) ?? "";
+      if (!referenceText.includes("Referencia") || !referenceText.includes("k=3")) {
+        throw new Error(`${viewport.name}: la referencia firmada no muestra etiqueta y muestra (${referenceText})`);
+      }
+      await page.screenshot({
+        path: path.join(output, `orbit-estrategia-referencia-${viewport.name}.png`),
+        fullPage: false,
+      });
+
+      // F5-d: evidencia cuantitativa neutral; no debe aparecer ningún veredicto provisional.
+      const validatedExamples = page.getByTestId("orbit-validated-examples");
+      await validatedExamples.waitFor();
+      const validatedText = (await validatedExamples.textContent()) ?? "";
+      if (!validatedText.includes("Predicho") || !validatedText.includes("Real") || !validatedText.includes("Desviación")) {
+        throw new Error(`${viewport.name}: faltan cifras de ejemplos validados (${validatedText})`);
+      }
+      if (/aprob|suspens|pass|fail/i.test(validatedText)) {
+        throw new Error(`${viewport.name}: los ejemplos muestran un veredicto provisional (${validatedText})`);
+      }
+      await page.screenshot({
+        path: path.join(output, `orbit-estrategia-ejemplos-validados-${viewport.name}.png`),
+        fullPage: false,
+      });
+
+      await page.getByRole("button", { name: "Datos", exact: true }).click();
+      await page.getByTestId("orbit-planning-inputs").waitFor();
+      await settle(page);
+      await page.screenshot({
+        path: path.join(output, `orbit-estrategia-procedencia-${viewport.name}.png`),
+        fullPage: false,
+      });
+
+      // F5-c: el vacío declara seco manual y la captura LMU permanece deshabilitada sin forecast simulado.
+      await page.getByRole("button", { name: "Clima", exact: true }).click();
+      await page.getByTestId("orbit-strategy-weather").waitFor();
+      const forecastCapture = page.getByRole("button", { name: "Capturar forecast", exact: true });
+      if (await forecastCapture.isEnabled()) {
+        throw new Error(`${viewport.name}: la captura de forecast LMU no está deshabilitada`);
+      }
+      await page.getByText("Sin escenarios: el cálculo usa seco declarado manualmente.").waitFor();
+      await page.getByText("Disponible cuando se valide la captura desde LMU.").waitFor();
+      await settle(page);
+      await page.screenshot({
+        path: path.join(output, `orbit-estrategia-clima-${viewport.name}.png`),
+        fullPage: false,
+      });
+
+      // F2-f: inventario global Spa sintético retirado — estado vacío honesto per-evento (documento v2). Captura refleja vacío.
       await page.getByRole("button", { name: "Neumáticos", exact: true }).click();
       await page.getByTestId("orbit-strategy-tyres").waitFor();
-      const tyre = page.locator('[data-testid^="orbit-tyre-item-"]').last();
-      const tyreId = await tyre.getAttribute("data-testid");
-      await tyre.click();
+      const tyreCount = await page.locator('[data-testid^="orbit-tyre-item-"]').count();
+      if (tyreCount === 0) {
+        // Vacío honesto: sin inventario sintético, muestra copy Manual/Missing (i18n 4 idiomas)
+        await page.getByText("Sin inventario").waitFor();
+      } else {
+        const tyre = page.locator('[data-testid^="orbit-tyre-item-"]').last();
+        const tyreId = await tyre.getAttribute("data-testid");
+        await tyre.click();
 
-      await page.getByTestId("orbit-stint-edit-0").click();
-      const slot = page.getByTestId("orbit-corner-slot-FL");
-      await slot.waitFor();
-      await slot.press("Enter");
+        await page.getByTestId("orbit-stint-edit-0").click();
+        const slot = page.getByTestId("orbit-corner-slot-FL");
+        await slot.waitFor();
+        await slot.press("Enter");
+        await page.getByTestId("orbit-stint-editor-0").waitFor();
 
-      const mounted = await page.evaluate(() => {
-        const node = document.querySelector('[data-testid="orbit-corner-slot-FL"]');
-        return {
-          state: node?.getAttribute("data-state") ?? null,
-          text: node?.textContent ?? "",
-          editorVisible: document.querySelectorAll('[data-testid="orbit-stint-editor-0"]').length,
-          nativeTitles: document.querySelector(".orbit-strategy")?.querySelectorAll("[title]").length ?? -1,
-        };
-      });
-      const wanted = (tyreId ?? "").replace("orbit-tyre-item-", "");
-      if (mounted.editorVisible !== 1) {
-        throw new Error(`${viewport.name}: el editor del stint 1 no está montado`);
-      }
-      if (mounted.state !== "filled" || !mounted.text.includes(wanted)) {
-        throw new Error(`${viewport.name}: FL no recibió ${wanted} (estado ${mounted.state})`);
-      }
-      if (mounted.nativeTitles !== 0) {
-        throw new Error(`${viewport.name}: el editor usa \`title\` nativo`);
+        const mounted = await page.evaluate(() => {
+          const node = document.querySelector('[data-testid="orbit-corner-slot-FL"]');
+          return {
+            state: node?.getAttribute("data-state") ?? null,
+            text: node?.textContent ?? "",
+            editorVisible: document.querySelectorAll('[data-testid="orbit-stint-editor-0"]').length,
+            nativeTitles: document.querySelector(".orbit-strategy")?.querySelectorAll("[title]").length ?? -1,
+          };
+        });
+        const wanted = (tyreId ?? "").replace("orbit-tyre-item-", "");
+        if (mounted.editorVisible !== 1) {
+          throw new Error(`${viewport.name}: el editor del stint 1 no está montado`);
+        }
+        if (mounted.state !== "filled" || !mounted.text.includes(wanted)) {
+          throw new Error(`${viewport.name}: FL no recibió ${wanted} (estado ${mounted.state})`);
+        }
+        if (mounted.nativeTitles !== 0) {
+          throw new Error(`${viewport.name}: el editor usa \`title\` nativo`);
+        }
       }
 
       await hideToasts(page);
@@ -232,6 +303,8 @@ try {
     await page.getByLabel("Desde").fill("15:00");
     await page.getByLabel("Hasta").fill("16:00");
     await page.getByRole("button", { name: "Añadir tramo" }).click();
+    // Añadir disponibilidad dispara un nuevo cálculo Go y sustituye brevemente el panel.
+    await page.getByTestId("orbit-strategy-availability").waitFor();
     const cells = await page.getByTestId("orbit-availability-cell").count();
     if (cells < 5) {
       throw new Error(`${viewport.name}: el recorte no partió el tramo (${cells} segmentos)`);
@@ -373,6 +446,11 @@ try {
     }
 
     await page.getByTestId("orbit-strategy-form-submit").click();
+    const createdSessionPicker = page.getByTestId("orbit-strategy-session-picker");
+    if ((await createdSessionPicker.count()) > 0) {
+      await createdSessionPicker.waitFor();
+      await page.locator('[data-testid^="orbit-session-combination-"]').first().click();
+    }
     await page.getByTestId("orbit-strategy-overview").waitFor();
     await page.getByTestId("orbit-stint-0").waitFor();
     const created = await page.evaluate(() => ({

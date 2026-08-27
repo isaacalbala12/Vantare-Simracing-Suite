@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-854",
+  "type": "fix",
+  "summary": "Instalar una actualización deja de depender de que tu conexión sea rápida: la descarga ya no se corta a los 30 segundos.",
+  "technicalNotes": [
+    "El updater usaba un único cliente HTTP con un tope total de 30 segundos para listar releases y para descargar el instalador; ese tope cubre también la lectura del cuerpo, así que los 11 MB del instalador exigían sostener unos 375 KB/s de principio a fin.",
+    "La descarga pasa a tener su propio cliente sin tope total, con límite de espera de cabeceras para que un servidor muerto falle rápido.",
+    "Un guardián de inactividad corta la descarga si dejan de llegar bytes, y se rearma con cada trozo recibido: una línea lenta termina, una conexión colgada no espera indefinidamente."
+  ],
+  "testing": [
+    "Con una conexión lenta o limitada, comprobar que la actualización termina de descargarse en vez de fallar siempre en el mismo punto.",
+    "Comprobar que la barra de progreso avanza hasta el 100% y que la instalación arranca después.",
+    "Interrumpir la red a mitad de descarga y comprobar que el error aparece en un minuto en vez de quedarse la barra parada."
+  ],
+  "knownLimitations": [
+    "El mensaje de error de una descarga fallida sigue siendo el texto técnico que devuelve la capa de red, sin traducir ni explicar que la causa suele ser la conexión.",
+    "No hay reanudación: una descarga cortada empieza de cero en el siguiente intento."
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-794",
+  "type": "feature",
+  "summary": "Orbit muestra backtests de las carreras reales de cada combinación con cifras neutrales de predicción y desviación.",
+  "technicalNotes": [
+    "La aplicación reutiliza el replay y las métricas versionadas de F4-9; TypeScript solo valida, ordena y presenta la salida.",
+    "Cada carrera incluye error total y por stint, agregado y un resumen de la estrategia observada.",
+    "Los umbrales siguen provisionales, por lo que la interfaz no muestra aprobado ni suspenso."
+  ],
+  "testing": [
+    "Abrir un evento vinculado a una combinación con carreras y comprobar fecha relativa, estrategia corrida, predicho, real y desviación.",
+    "Abrir una combinación sin carreras y comprobar el mensaje de vacío sin filas simuladas.",
+    "Confirmar que la sección no muestra etiquetas de aprobado o suspenso."
+  ],
+  "knownLimitations": [
+    "La conexión end-to-end con DuckDB reales y Wails depende de la importación inicial prevista en F5-e."
+  ]
+}

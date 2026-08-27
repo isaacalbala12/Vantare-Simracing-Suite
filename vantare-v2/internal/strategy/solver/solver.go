@@ -7,10 +7,10 @@
 //
 // The model it optimises is stated explicitly so a result can be argued with:
 //
-//   - Lap time grows linearly with tyre age inside a stint, so a stint of L laps
-//     on fresh tyres costs L*base + degradation*L*(L-1)/2. Degradation is
-//     therefore part of the total, and trading a pit stop against a longer,
-//     slower stint is a real decision rather than a fixed preset.
+//   - Solve keeps the original linear tyre-age model. SolveV2 can instead
+//     consume Analysis' combined piecewise stint curve, with the linear manual
+//     input as its special case. In both paths degradation is part of total
+//     time, so a pit stop is traded against a longer, slower stint.
 //   - Every stop fits fresh tyres and refills to usable capacity, so each stint
 //     starts from the same state and its cost depends only on its length.
 //   - Fuel and virtual energy are separate consumables in different units. They

@@ -79,10 +79,7 @@ func (s *Service) EmitChanged(res *Result) {
 	// purpose -- while the backend refused it as "not authorized". The two have
 	// to agree, and the authenticated answer is the true one.
 	if !inconclusiveAnonymous(res) || s.current == nil || s.current.State == StateAnonymous {
-		copyResult := *res
-		copyResult.Capabilities = append([]Capability(nil), res.Capabilities...)
-		copyResult.OperationalRoles = append([]OperationalRole(nil), res.OperationalRoles...)
-		s.current = &copyResult
+		s.current = cloneResult(res)
 	}
 	s.currentMu.Unlock()
 	if s.emitter == nil {

@@ -29,12 +29,28 @@ Unicode true
 ## !define PRODUCT_EXECUTABLE  "Application.exe"      # Default "${INFO_PROJECTNAME}.exe"
 ## !define UNINST_KEY_NAME     "UninstKeyInRegistry"  # Default "${INFO_COMPANYNAME}${INFO_PRODUCTNAME}"
 ####
-!define REQUEST_EXECUTION_LEVEL "user"
-!define WAILS_INSTALL_SCOPE     "user"
+!ifndef WAILS_INSTALL_SCOPE
+    !define WAILS_INSTALL_SCOPE "user"
+!endif
+!ifndef REQUEST_EXECUTION_LEVEL
+    !define REQUEST_EXECUTION_LEVEL "user"
+!endif
+!ifndef VANTARE_TELEMETRY_RUNTIME
+    !error "VANTARE_TELEMETRY_RUNTIME must point to the verified duckdb-v1 runtime."
+!endif
+!define TELEMETRY_RUNTIME_DIR "$INSTDIR\runtime\telemetry\duckdb-v1"
+!define TELEMETRY_RUNTIME_BACKUP "$INSTDIR\runtime\telemetry\duckdb-v1.bak"
+!define INSTALL_TX_PENDING "$INSTDIR\.vantare-install.pending"
+!define INSTALL_TX_PENDING_TEMP "$INSTDIR\.vantare-install.pending.tmp"
+!define INSTALL_TX_COMMITTED "$INSTDIR\.vantare-install.committed"
+!define INSTALL_TX_STAGE "$INSTDIR\.vantare-install-stage"
 ####
 ## Include the wails tools
 ####
 !include "wails_tools.nsh"
+
+Var TransactionPrior
+Var TransactionResult
 
 # The version information for this two must consist of 4 parts
 VIProductVersion "${INFO_PRODUCTVERSION}"
@@ -115,12 +131,166 @@ Function CloseVantareGracefully
 		DetailPrint "Vantare cerrado."
 FunctionEnd
 
-Function RestoreBackupIfNeeded
-	IfFileExists "$INSTDIR\${PRODUCT_EXECUTABLE}.bak" 0 restore_done
-	DetailPrint "Restaurando copia de seguridad..."
-	Delete "$INSTDIR\${PRODUCT_EXECUTABLE}"
-	Rename "$INSTDIR\${PRODUCT_EXECUTABLE}.bak" "$INSTDIR\${PRODUCT_EXECUTABLE}"
-	restore_done:
+Function WritePendingMarker
+	StrCpy $TransactionResult "error"
+	Delete "${INSTALL_TX_PENDING_TEMP}"
+	IfFileExists "${INSTALL_TX_PENDING_TEMP}" pending_write_done 0
+	ClearErrors
+	FileOpen $0 "${INSTALL_TX_PENDING_TEMP}" w
+	IfErrors pending_write_done
+	ClearErrors
+	FileWrite $0 "$TransactionPrior"
+	IfErrors pending_write_close
+	FileClose $0
+	ClearErrors
+	Rename "${INSTALL_TX_PENDING_TEMP}" "${INSTALL_TX_PENDING}"
+	IfErrors pending_write_cleanup
+	Call ReadPendingMarker
+	StrCmp $TransactionResult "ok" pending_write_done
+	Delete "${INSTALL_TX_PENDING}"
+	Goto pending_write_done
+	pending_write_close:
+		FileClose $0
+	pending_write_cleanup:
+		Delete "${INSTALL_TX_PENDING_TEMP}"
+	pending_write_done:
+FunctionEnd
+
+Function ReadPendingMarker
+	StrCpy $TransactionResult "error"
+	StrCpy $TransactionPrior ""
+	ClearErrors
+	FileOpen $0 "${INSTALL_TX_PENDING}" r
+	IfErrors pending_read_done
+	ClearErrors
+	FileRead $0 $TransactionPrior
+	FileClose $0
+	IfErrors pending_read_done
+	StrCmp $TransactionPrior "both" pending_read_ok
+	StrCmp $TransactionPrior "exe" pending_read_ok
+	StrCmp $TransactionPrior "runtime" pending_read_ok
+	StrCmp $TransactionPrior "none" pending_read_ok pending_read_done
+	pending_read_ok:
+		StrCpy $TransactionResult "ok"
+	pending_read_done:
+FunctionEnd
+
+Function WriteCommittedMarker
+	StrCpy $TransactionResult "error"
+	ClearErrors
+	FileOpen $0 "${INSTALL_TX_COMMITTED}" w
+	IfErrors committed_write_done
+	ClearErrors
+	FileWrite $0 "committed"
+	FileClose $0
+	# Presence is the commit point. Even a short/empty marker caused by a full
+	# disk means reentry must retain the already verified new pair, never roll
+	# back only one old backup.
+	IfFileExists "${INSTALL_TX_COMMITTED}" 0 committed_write_done
+	StrCpy $TransactionResult "ok"
+	committed_write_done:
+FunctionEnd
+
+Function CleanupCommittedTransaction
+	# The committed marker is the last item removed. Any cleanup failure therefore
+	# remains retryable and can never restore only one member of the old pair.
+	SetOutPath "$INSTDIR"
+	StrCpy $TransactionResult "error"
+	RMDir /r "${INSTALL_TX_STAGE}"
+	IfFileExists "${INSTALL_TX_STAGE}" committed_cleanup_done 0
+	Delete "$INSTDIR\${PRODUCT_EXECUTABLE}.bak"
+	IfFileExists "$INSTDIR\${PRODUCT_EXECUTABLE}.bak" committed_cleanup_done 0
+	RMDir /r "${TELEMETRY_RUNTIME_BACKUP}"
+	IfFileExists "${TELEMETRY_RUNTIME_BACKUP}" committed_cleanup_done 0
+	Delete "${INSTALL_TX_PENDING}"
+	IfFileExists "${INSTALL_TX_PENDING}" committed_cleanup_done 0
+	Delete "${INSTALL_TX_COMMITTED}"
+	IfFileExists "${INSTALL_TX_COMMITTED}" committed_cleanup_done 0
+	StrCpy $TransactionResult "ok"
+	committed_cleanup_done:
+FunctionEnd
+
+Function RollbackPendingTransaction
+	# Retire a published/staged new exe first. Restore the runtime next, then copy
+	# the old exe last while retaining its backup until the restored pair is
+	# committed. A runtime failure therefore leaves no new product exe exposed.
+	SetOutPath "$INSTDIR"
+	StrCpy $TransactionResult "error"
+	Call ReadPendingMarker
+	StrCmp $TransactionResult "ok" 0 rollback_done
+
+	StrCmp $TransactionPrior "both" rollback_prior_exe
+	StrCmp $TransactionPrior "exe" rollback_prior_exe rollback_no_prior_exe
+	rollback_prior_exe:
+		# A backup proves the product path no longer contains the untouched old exe.
+		IfFileExists "$INSTDIR\${PRODUCT_EXECUTABLE}.bak" rollback_retire_exe rollback_require_old_exe
+	rollback_retire_exe:
+		Delete "$INSTDIR\${PRODUCT_EXECUTABLE}"
+		IfFileExists "$INSTDIR\${PRODUCT_EXECUTABLE}" rollback_done 0
+		Goto rollback_stage
+	rollback_require_old_exe:
+		IfFileExists "$INSTDIR\${PRODUCT_EXECUTABLE}" rollback_stage rollback_done
+	rollback_no_prior_exe:
+		Delete "$INSTDIR\${PRODUCT_EXECUTABLE}"
+		IfFileExists "$INSTDIR\${PRODUCT_EXECUTABLE}" rollback_done 0
+		IfFileExists "$INSTDIR\${PRODUCT_EXECUTABLE}.bak" rollback_done 0
+
+	rollback_stage:
+		RMDir /r "${INSTALL_TX_STAGE}"
+		IfFileExists "${INSTALL_TX_STAGE}" rollback_done 0
+
+		StrCmp $TransactionPrior "both" rollback_prior_runtime
+		StrCmp $TransactionPrior "runtime" rollback_prior_runtime rollback_no_prior_runtime
+	rollback_prior_runtime:
+		IfFileExists "${TELEMETRY_RUNTIME_BACKUP}" rollback_restore_runtime rollback_require_old_runtime
+	rollback_restore_runtime:
+		RMDir /r "${TELEMETRY_RUNTIME_DIR}"
+		IfFileExists "${TELEMETRY_RUNTIME_DIR}" rollback_done 0
+		ClearErrors
+		Rename "${TELEMETRY_RUNTIME_BACKUP}" "${TELEMETRY_RUNTIME_DIR}"
+		IfErrors rollback_done
+		IfFileExists "${TELEMETRY_RUNTIME_DIR}" 0 rollback_done
+		IfFileExists "${TELEMETRY_RUNTIME_BACKUP}" rollback_done 0
+		Goto rollback_restore_exe
+	rollback_require_old_runtime:
+		IfFileExists "${TELEMETRY_RUNTIME_DIR}" rollback_restore_exe rollback_done
+	rollback_no_prior_runtime:
+		RMDir /r "${TELEMETRY_RUNTIME_DIR}"
+		IfFileExists "${TELEMETRY_RUNTIME_DIR}" rollback_done 0
+		IfFileExists "${TELEMETRY_RUNTIME_BACKUP}" rollback_done 0
+
+	rollback_restore_exe:
+		StrCmp $TransactionPrior "both" rollback_copy_old_exe
+		StrCmp $TransactionPrior "exe" rollback_copy_old_exe rollback_confirm_no_exe
+	rollback_copy_old_exe:
+		IfFileExists "$INSTDIR\${PRODUCT_EXECUTABLE}.bak" rollback_copy_backup rollback_require_restored_exe
+	rollback_copy_backup:
+		SetOutPath "${INSTALL_TX_STAGE}"
+		ClearErrors
+		CopyFiles /SILENT "$INSTDIR\${PRODUCT_EXECUTABLE}.bak" "${INSTALL_TX_STAGE}\${PRODUCT_EXECUTABLE}"
+		IfErrors rollback_done
+		IfFileExists "${INSTALL_TX_STAGE}\${PRODUCT_EXECUTABLE}" 0 rollback_done
+		IfFileExists "$INSTDIR\${PRODUCT_EXECUTABLE}" rollback_done 0
+		ClearErrors
+		Rename "${INSTALL_TX_STAGE}\${PRODUCT_EXECUTABLE}" "$INSTDIR\${PRODUCT_EXECUTABLE}"
+		IfErrors rollback_done
+		IfFileExists "$INSTDIR\${PRODUCT_EXECUTABLE}" 0 rollback_done
+		IfFileExists "${INSTALL_TX_STAGE}\${PRODUCT_EXECUTABLE}" rollback_done 0
+		SetOutPath "$INSTDIR"
+		RMDir "${INSTALL_TX_STAGE}"
+		IfFileExists "${INSTALL_TX_STAGE}" rollback_done rollback_finalize
+	rollback_require_restored_exe:
+		IfFileExists "$INSTDIR\${PRODUCT_EXECUTABLE}" rollback_finalize rollback_done
+	rollback_confirm_no_exe:
+		IfFileExists "$INSTDIR\${PRODUCT_EXECUTABLE}" rollback_done 0
+
+	rollback_finalize:
+		# The committed marker means the current pair (new install or restored old
+		# pair) is final. Cleanup can then remove backups without future rollback.
+		Call WriteCommittedMarker
+		StrCmp $TransactionResult "ok" 0 rollback_done
+		Call CleanupCommittedTransaction
+	rollback_done:
 FunctionEnd
 
 Function WaitWhileFileLocked
@@ -146,48 +316,151 @@ FunctionEnd
 Section
 	!insertmacro wails.setShellContext
 
+	# FileOpen in the close helper uses append mode and must never synthesize an
+	# executable in a fresh or runtime-only incomplete installation.
+	IfFileExists "$INSTDIR\${PRODUCT_EXECUTABLE}" 0 close_not_needed
 	Call CloseVantareGracefully
+	close_not_needed:
+	SetOutPath $INSTDIR
+	# A committed transaction is always cleaned, never rolled back. A pending
+	# transaction is always rolled back according to its recorded prior inventory.
+	IfFileExists "${INSTALL_TX_COMMITTED}" 0 recovery_pending
+	Call CleanupCommittedTransaction
+	StrCmp $TransactionResult "ok" recovery_pending
+	Abort "No se pudo completar la limpieza de una instalacion confirmada. Vuelve a ejecutar el instalador."
+	recovery_pending:
+	IfFileExists "${INSTALL_TX_PENDING}" 0 recovery_orphan_exe
+	Call RollbackPendingTransaction
+	StrCmp $TransactionResult "ok" recovery_orphan_exe
+	Abort "No se pudo restaurar la instalacion anterior. Los datos de recuperacion se conservaron."
+	recovery_orphan_exe:
+	IfFileExists "$INSTDIR\${PRODUCT_EXECUTABLE}.bak" 0 recovery_orphan_runtime
+	Abort "Se encontro una copia de seguridad sin estado de transaccion. No se modificaron mas archivos."
+	recovery_orphan_runtime:
+	IfFileExists "${TELEMETRY_RUNTIME_BACKUP}" 0 recovery_pending_temp
+	Abort "Se encontro un runtime de respaldo sin estado de transaccion. No se modificaron mas archivos."
+	recovery_pending_temp:
+	# A temporary pending marker is written before any mutation. It can only be
+	# debris from an interruption before the atomic rename to the real marker.
+	Delete "${INSTALL_TX_PENDING_TEMP}"
+	IfFileExists "${INSTALL_TX_PENDING_TEMP}" 0 recovery_done
+	Abort "No se pudo limpiar un marcador temporal anterior; no se reemplazo ningun archivo."
+	recovery_done:
 
 	!insertmacro wails.webview2runtime
 
-	SetOutPath $INSTDIR
+	# Persist the exact prior inventory before moving or extracting either member.
+	StrCpy $TransactionPrior "none"
+	IfFileExists "$INSTDIR\${PRODUCT_EXECUTABLE}" 0 inventory_runtime
+	StrCpy $TransactionPrior "exe"
+	inventory_runtime:
+	IfFileExists "${TELEMETRY_RUNTIME_DIR}" 0 inventory_done
+	StrCmp $TransactionPrior "exe" 0 inventory_runtime_only
+	StrCpy $TransactionPrior "both"
+	Goto inventory_done
+	inventory_runtime_only:
+	StrCpy $TransactionPrior "runtime"
+	inventory_done:
+	Call WritePendingMarker
+	StrCmp $TransactionResult "ok" transaction_started
+	Abort "No se pudo iniciar una transaccion recuperable; no se reemplazo ningun archivo."
+	transaction_started:
 
-	# If a previous executable exists, wait until it is not locked, then back it up.
-	IfFileExists "$INSTDIR\${PRODUCT_EXECUTABLE}" 0 install_files
+	# Back up the executable and the complete versioned runtime before replacing either.
+	StrCmp $TransactionPrior "both" backup_executable
+	StrCmp $TransactionPrior "exe" backup_executable backup_runtime
+	backup_executable:
 	Call WaitWhileFileLocked
 	DetailPrint "Creando copia de seguridad del ejecutable actual..."
-	Delete "$INSTDIR\${PRODUCT_EXECUTABLE}.bak"
-	Rename "$INSTDIR\${PRODUCT_EXECUTABLE}" "$INSTDIR\${PRODUCT_EXECUTABLE}.bak"
-
-	install_files:
-	!insertmacro wails.files
-
-	IfErrors 0 install_verify
-	DetailPrint "Error al extraer los archivos del instalador."
-	Call RestoreBackupIfNeeded
-	Abort "La instalacion fallo al extraer archivos. Se ha restaurado la version anterior."
-
-	install_verify:
-	# Verify that the new executable was actually extracted and is not empty.
-	IfFileExists "$INSTDIR\${PRODUCT_EXECUTABLE}" 0 restore_and_abort
 	ClearErrors
-	FileOpen $0 "$INSTDIR\${PRODUCT_EXECUTABLE}" r
-	IfErrors 0 file_opened
-	Goto restore_and_abort
-	file_opened:
+	Rename "$INSTDIR\${PRODUCT_EXECUTABLE}" "$INSTDIR\${PRODUCT_EXECUTABLE}.bak"
+	IfErrors transaction_failed
+	IfFileExists "$INSTDIR\${PRODUCT_EXECUTABLE}.bak" backup_runtime transaction_failed
+
+	backup_runtime:
+	StrCmp $TransactionPrior "both" backup_runtime_present
+	StrCmp $TransactionPrior "runtime" backup_runtime_present extract_files
+	backup_runtime_present:
+	ClearErrors
+	Rename "${TELEMETRY_RUNTIME_DIR}" "${TELEMETRY_RUNTIME_BACKUP}"
+	IfErrors transaction_failed
+	IfFileExists "${TELEMETRY_RUNTIME_BACKUP}" extract_files transaction_failed
+
+	extract_files:
+	# Always start from an empty destination, including after an incomplete old install.
+	RMDir /r "${TELEMETRY_RUNTIME_DIR}"
+	IfFileExists "${TELEMETRY_RUNTIME_DIR}" transaction_failed 0
+	SetOutPath "${TELEMETRY_RUNTIME_DIR}"
+	ClearErrors
+	File /oname=manifest.json "${VANTARE_TELEMETRY_RUNTIME}\manifest.json"
+	File /oname=duckdb.dll "${VANTARE_TELEMETRY_RUNTIME}\duckdb.dll"
+	File /oname=vantare-telemetry-reader.exe "${VANTARE_TELEMETRY_RUNTIME}\vantare-telemetry-reader.exe"
+	File /oname=sbom.spdx.json "${VANTARE_TELEMETRY_RUNTIME}\sbom.spdx.json"
+	File /oname=THIRD_PARTY_NOTICES.md "${VANTARE_TELEMETRY_RUNTIME}\THIRD_PARTY_NOTICES.md"
+
+	IfErrors transaction_failed
+
+	# Verify the complete new runtime before staging the executable.
+	IfFileExists "${TELEMETRY_RUNTIME_DIR}\manifest.json" 0 transaction_failed
+	IfFileExists "${TELEMETRY_RUNTIME_DIR}\duckdb.dll" 0 transaction_failed
+	IfFileExists "${TELEMETRY_RUNTIME_DIR}\vantare-telemetry-reader.exe" 0 transaction_failed
+	IfFileExists "${TELEMETRY_RUNTIME_DIR}\sbom.spdx.json" 0 transaction_failed
+	IfFileExists "${TELEMETRY_RUNTIME_DIR}\THIRD_PARTY_NOTICES.md" 0 transaction_failed
+
+	# wails.files contains only the architecture-selected executable. Extract it
+	# away from the product path so a crash can expose no exe, never a partial one.
+	SetOutPath "$INSTDIR"
+	RMDir /r "${INSTALL_TX_STAGE}"
+	IfFileExists "${INSTALL_TX_STAGE}" transaction_failed 0
+	SetOutPath "${INSTALL_TX_STAGE}"
+	ClearErrors
+	!insertmacro wails.files
+	IfErrors transaction_failed
+	IfFileExists "${INSTALL_TX_STAGE}\${PRODUCT_EXECUTABLE}" 0 transaction_failed
+	ClearErrors
+	FileOpen $0 "${INSTALL_TX_STAGE}\${PRODUCT_EXECUTABLE}" r
+	IfErrors 0 staged_file_opened
+	Goto transaction_failed
+	staged_file_opened:
 		FileSeek $0 0 END $1
 		FileClose $0
-		IntCmp $1 1024 restore_and_abort 0
-		Goto install_success
+		IntCmp $1 1024 transaction_failed transaction_failed 0
 
-	restore_and_abort:
-		DetailPrint "vantare.exe no se extrajo correctamente."
-		Call RestoreBackupIfNeeded
-		Abort "La instalacion fallo porque no se pudo copiar el nuevo ejecutable. Se ha restaurado la version anterior."
+	# Publish the verified exe atomically only after the runtime is complete.
+	IfFileExists "$INSTDIR\${PRODUCT_EXECUTABLE}" transaction_failed 0
+	ClearErrors
+	Rename "${INSTALL_TX_STAGE}\${PRODUCT_EXECUTABLE}" "$INSTDIR\${PRODUCT_EXECUTABLE}"
+	IfErrors transaction_failed
+	IfFileExists "$INSTDIR\${PRODUCT_EXECUTABLE}" 0 transaction_failed
+	IfFileExists "${INSTALL_TX_STAGE}\${PRODUCT_EXECUTABLE}" transaction_failed 0
+	SetOutPath "$INSTDIR"
+	RMDir "${INSTALL_TX_STAGE}"
+	IfFileExists "${INSTALL_TX_STAGE}" transaction_failed 0
+	ClearErrors
+	FileOpen $0 "$INSTDIR\${PRODUCT_EXECUTABLE}" r
+	IfErrors 0 published_file_opened
+	Goto transaction_failed
+	published_file_opened:
+		FileSeek $0 0 END $1
+		FileClose $0
+		IntCmp $1 1024 transaction_failed transaction_failed 0
+
+	Call WriteCommittedMarker
+	StrCmp $TransactionResult "ok" transaction_committed transaction_failed
+	transaction_committed:
+	Call CleanupCommittedTransaction
+	StrCmp $TransactionResult "ok" install_success
+	Abort "La instalacion nueva esta confirmada, pero no se pudieron limpiar los respaldos. Vuelve a ejecutar el instalador."
+
+	transaction_failed:
+		DetailPrint "La transaccion de instalacion fallo; restaurando el estado anterior completo..."
+		Call RollbackPendingTransaction
+		StrCmp $TransactionResult "ok" transaction_rolled_back
+		Abort "La instalacion fallo y la recuperacion no pudo completarse. Los datos de recuperacion se conservaron."
+	transaction_rolled_back:
+		Abort "La instalacion fallo. Se restauro el estado anterior del ejecutable y runtime."
 
 	install_success:
-	Delete "$INSTDIR\${PRODUCT_EXECUTABLE}.bak"
-
 	CreateShortcut "$SMPROGRAMS\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"
 	CreateShortCut "$DESKTOP\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"
 
@@ -200,6 +473,7 @@ Section "uninstall"
 	!insertmacro wails.setShellContext
 
 	RMDir /r "$AppData\${PRODUCT_EXECUTABLE}" # Remove the WebView2 DataPath
+	RMDir /r "${TELEMETRY_RUNTIME_DIR}"
 
 	RMDir /r $INSTDIR
 

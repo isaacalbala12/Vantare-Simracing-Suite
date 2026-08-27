@@ -10,6 +10,62 @@
 
 ## Estado
 
+- **ISA-842 — autosave e historial productivo de Overlay Studio (2026-08-25,
+  PR draft a nightly):** rebasada sobre `origin/nightly@c7d25f94`, la rama
+  `vantareapp/isa-842-studio-autosave-undo` convierte cada cambio documental
+  confirmado en autosave con debounce de 300 ms. `StudioProvider` mantiene un
+  único save en vuelo y coalesce ediciones posteriores sobre la revisión
+  confirmada; errores y timeouts dejan el documento recuperable. La ruta
+  productiva monta `Ctrl+Z`, `Ctrl+Shift+Z` y `Ctrl+Y`, conserva 100 pasos aunque
+  autosave ya haya confirmado el estado y persiste también cada undo/redo. El
+  save incluye el archivo ligado a la sesión: cambiar el perfil activo global
+  no puede escribir el documento abierto sobre otro perfil. Estado visible:
+  pendiente, guardando, guardado automáticamente o reintento. ADR 0093 sustituye
+  solo el guardado explícito de ADR 0003. Evidencia fresca tras el rebase:
+  frontend completo 389 archivos/2978 tests PASS, focal final de autosave/store
+  2 archivos/25 tests PASS, typecheck y build PASS, lint de los 14 TS/TSX
+  modificados PASS y
+  `go test ./...` PASS. El
+  lint global solo conserva el fallo previo `_damage` no usado en
+  `car-damage-numbers-view-model-v2.ts`, fuera de alcance. En el harness Orbit
+  con Wails mock, X se guardó de 1560 a 1500; `Ctrl+Z` restauró 1560 y
+  `Ctrl+Shift+Z` rehizo 1500, ambos con estado `saved`. Falta prueba manual en el
+  ejecutable Wails real. Implementación rebasada en `a62c5035` y guard de
+  revisión SWR en `569c3dec`; PR **#853** hacia `nightly`, autorizado para merge
+  por Isaac el 2026-08-26. Sin promoción a `testers`/`master` ni release.
+
+- **ISA-770 — saltos de widgets en Studio (2026-08-25, PR a nightly):**
+  la medición A/B en Wails/WebView2 separó dos caminos. En movimiento reducido,
+  el padre de `5a8de7ed` presentó un frame con escena oculta, escala cero,
+  widgets `0×0` y un desplazamiento de 698 px; el commit actual dejó los cuatro
+  contadores a cero. El Windows medido usa `prefers-reduced-motion: false`, así
+  que ese fix no explicaba por sí solo el salto normal. Para ese camino se
+  incorporaron los fixes ya validados de la rama de rendimiento: cache SWR del
+  documento, convergencia sin rerender si el documento fresco es idéntico,
+  bloqueo de fuentes locales antes de montar widgets y geometría del stage
+  persistida entre montajes. En el mismo WebView2, entrada fría y vuelta
+  Launcher → Studio terminaron con widgets positivos desde su primer frame,
+  cero transiciones activas y desplazamiento máximo de 0 px. La ventana Wails y
+  el motor WebView2 fueron reales; el frontend se sirvió desde el harness mock
+  aislado porque el perfil temporal de Wails no tenía sesión/licencia. El script
+  reproducible queda en `frontend/scripts/studio-widget-jump-webview-ab.mjs`.
+  Rama `vantareapp/isa-770-onboarding-retencion`, **en PR #844 hacia
+  `nightly`** (2026-08-25). Sin release.
+
+- **Inspector de widgets del Studio rehecho (2026-08-25, PR a nightly):** el
+  panel lateral tenía tres controles que no hacían lo que aparentaban y una
+  columna dominada por seis selectores de color a ancho completo. Corregido:
+  «Color de acento» se retira del manifiesto de Vantare Endurance porque ese
+  sistema nunca lee `--vo-standings-accent` (en Vantare Original sigue, ahí sí
+  está cableado); el desplegable de sistema aplica el diseño por defecto del
+  destino en vez de solo filtrar la lista; cada color sobrescrito ofrece
+  restablecer al valor del diseño y la sección, «Restablecer apariencia»; el
+  selector de diseño avisa cuando hay apariencia por encima. En lo visual, los
+  colores pasan a filas compactas agrupadas, `appearance` se separa de `design`
+  como acordeón propio, los resúmenes dejan de repetir la cabecera y cada
+  sección se explica al dejar el ratón encima. Los pasos de columna dicen
+  «Estrecha»/«Izquierda» en vez de `SM`/`MD`/`LG`. Gates PASS: 2978 tests,
+  typecheck, lint, auditoría i18n y evidencia visual regenerada. PR #844.
 - **Ajustes Orbit: autosave de atajos, descarga de informe y búsqueda
   (2026-08-22, en rama):** tres mejoras de la pantalla Ajustes sobre
   `origin/nightly@4ec98fea`, rama `vantareapp/isa-767-ajustes-orbit-autosave-informe-busqueda`,
@@ -888,3 +944,67 @@ Evidencia Task 4 y cierre acumulado:
 - Review propio en cinco ejes: Approve, sin Critical/Required pendientes. PR
   draft #279 abierto a `nightly`; `01-shell` permanece bloqueado hasta la
   aceptación de este briefing.
+
+## ISA-838 — cambio de sección de Studio sin remontaje (2026-08-25)
+
+- Rama `vantareapp/isa-838-studio-tab-fluidity`, worktree
+  `C:\tmp\vantare-isa838`, base limpia
+  `origin/nightly@8a90c3a7837166ffec6943c839f7cb31cbf11b31`. ISA-770 no era
+  autoridad para este bug de rendimiento; se abrió ISA-838 y se añadió al
+  Project Vantare en `In Progress` antes de editar.
+- Había dos desmontajes productivos: `StudioRouteEditor` sustituía
+  `OverlayStudioV3` al entrar en Perfiles/Recomendados/Comunidad/OBS y
+  `OrbitShell` eliminaba `StudioRoute` al entrar en Launcher u otra sección.
+- La ruta interna conserva el editor y lo vuelve inerte mientras pinta la vista
+  secundaria. La shell monta Studio de forma perezosa en la primera visita y
+  conserva después la misma instancia; la ruta memoizada no vuelve a renderizar
+  por un cambio ajeno de sección.
+- El keep-alive oculta globalmente con `display:none`, `aria-hidden` e `inert`.
+  Un gate de actividad estable desconecta los suscriptores visuales del
+  coordinador sin remontar React ni reiniciar el transporte live; al volver se
+  reconectan al último snapshot. Los `WidgetVisualHost` y el renderer productivo
+  siguen siendo únicos.
+- Regresiones: misma identidad DOM interna y global, lazy mount, inercia,
+  suspensión/reanudación de suscripciones y transporte live single-start.
+  Suite frontend completa: 386 archivos y 2958/2958 tests PASS. Typecheck PASS,
+  build frontend PASS y build Wails production con el `.env.local` autorizado
+  embebido PASS. ESLint focal PASS; el global conserva el error heredado
+  `_damage` no usado en `car-damage-numbers-view-model-v2.ts`.
+- A/B Wails sobre la misma base, tres tandas de 20 idas y vueltas
+  Studio↔Launcher por build: mediana de CPU del renderer 41,41 ms/roundtrip en
+  baseline y 33,59 ms/roundtrip en ISA-838 (-18,9 %). El tag production desactiva
+  CDP por contrato, por lo que no se presenta esta medida como traza
+  click-to-paint ni como garantía absoluta de ausencia de hitch.
+- Smoke Wails real PASS: sesión resuelta, Hub, Studio y Launcher visibles; cuatro
+  capturas A/B en
+  `C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\fotos\isa-838-{baseline,final}-{studio,launcher}.png`.
+- Entrega funcional `b87fe14e`, rama publicada y PR draft #851 abierto hacia
+  `nightly`; issue, label y Project Vantare en `In Review`. Sin merge,
+  promoción, release ni cambio del roadmap público.
+- Riesgo residual aceptado: tras la primera visita, Studio retiene su documento
+  y DOM en memoria para que las vueltas sean instantáneas. La primera apertura
+  sigue pagando el montaje inicial; las afirmaciones de fluidez se limitan a
+  cambios posteriores entre secciones ya visitadas.
+
+### Extensión ISA-838 — feedback inmediato del rail (2026-08-26)
+
+- Un probe Wails posterior separó el primer cambio del contenido del feedback
+  del rail: en 20 alternancias Studio↔Launcher el contenido empezaba a cambiar
+  con mediana de 1,40–1,43 ms, mientras el marcador activo aparecía con mediana
+  de 34,20–34,47 ms en ambos sentidos sobre un monitor de 60 Hz. La simetría
+  descarta la reactivación de Studio como causa dominante de esa sensación.
+- El rail esperaba a `onClick` y después interpolaba de forma genérica todas las
+  propiedades durante `--orbit-fast` (130 ms). Ahora acusa la pulsación nativa
+  de inmediato, deja el fondo fuera de la interpolación y limita color,
+  `box-shadow` y retorno de escala a 60–80 ms. No añade estado React optimista
+  ni altera la fuente de verdad de navegación.
+- Se añadió un contrato focal que protege el feedback de presión y evita
+  reintroducir la transición genérica. Gates frescos: focal 17/17 PASS, suite
+  completa 387 archivos y 2960/2960 tests PASS, typecheck PASS, lint focal PASS,
+  build frontend PASS y build Wails production con el `.env.local` autorizado
+  embebido PASS. El lint global conserva exclusivamente el error heredado
+  `_damage` no usado en `car-damage-numbers-view-model-v2.ts`.
+- Smoke Wails real aceptado por Isaac: el sidebar funciona «mucho mejor».
+  Captura posterior en
+  `C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\fotos\isa-838-sidebar-feedback-after.png`.
+  La imagen es evidencia local y no se versiona.

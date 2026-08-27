@@ -83,10 +83,10 @@ describe("modelo de Ajustes", () => {
 });
 
 describe("SettingsOrbitPage", () => {
-  it("la columna lista exactamente las cinco secciones y nada más", () => {
+  it("la columna lista exactamente las seis secciones y nada más", () => {
     mount("account");
     const rows = within(screen.getByTestId("orbit-settings-context")).getAllByRole("button");
-    expect(rows).toHaveLength(5);
+    expect(rows).toHaveLength(6);
     expect(rows.map((row) => row.textContent?.split("Sesión")[0])).toBeTruthy();
     expect(rows[0].getAttribute("aria-selected")).toBe("true");
   });
@@ -204,7 +204,8 @@ describe("SettingsOrbitPage", () => {
       return () => handlers.delete(name);
     }) as never);
     vi.spyOn(Events, "Emit").mockImplementation(((name: string) => {
-      if (name === "updater:check") handlers.get("updater:available")?.({ data: { info } });
+      if (name === "updater:check" || name === "updater:check:force")
+        handlers.get("updater:available")?.({ data: { info } });
       if (name === "updater:settings:get") {
         handlers.get("updater:settings")?.({ data: { settings: { channel: "stable" } } });
       }

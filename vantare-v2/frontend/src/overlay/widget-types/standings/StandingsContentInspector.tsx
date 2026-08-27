@@ -169,7 +169,7 @@ export function StandingsContentInspector(props: CustomInspectorProps): React.Re
                       }
                       options={ORBIT_WIDTH_OPTIONS.map((preset) => ({
                         value: preset,
-                        label: preset,
+                        label: t(`studio.inspector.content.width.${preset}`),
                         disabled,
                       }))}
                       value={

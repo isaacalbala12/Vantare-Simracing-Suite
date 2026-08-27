@@ -8,11 +8,13 @@ import { canMutateWidget } from '../access/studio-access';
 import { STUDIO_WIDGET_ACCESS_MESSAGE_KEY } from '../studio-v3-i18n';
 import { CanvasGuides } from '../canvas/CanvasGuides';
 import { StudioWidgetFrame } from '../canvas/StudioWidgetFrame';
-import { resolveCanvasBackground } from '../canvas/canvas-backgrounds';
+import { resolveStageBackground } from '../canvas/canvas-backgrounds';
 import { clientToLogical } from '../canvas/canvas-geometry';
 import { useCanvasInteraction } from '../canvas/useCanvasInteraction';
 import { useStudioTelemetrySnapshot } from '../canvas/studio-telemetry';
 import { useFontsReady } from '../canvas/use-fonts-ready';
+import { findWallpaper, wallpaperIdOf } from '../canvas/studio-wallpapers';
+import { useWallpapers } from '../canvas/use-wallpapers';
 import {
   readStageGeometryCache,
   writeStageGeometryCache,
@@ -101,7 +103,13 @@ export function StudioOrbitStage(props: StudioOrbitStageProps): React.ReactEleme
 
   const widgets = useMemo(() => sortByZIndex(activeLayout?.widgets ?? []), [activeLayout?.widgets]);
 
-  const background = resolveCanvasBackground(preview.backgroundId);
+  // `useWallpapers` no se usa por su valor: es la suscripcion que repinta el
+  // lienzo cuando se anade o se borra un fondo propio desde la toolbar.
+  useWallpapers();
+  const background = resolveStageBackground(
+    preview.backgroundId,
+    findWallpaper(wallpaperIdOf(preview.backgroundId)),
+  );
 
   const canMutateLayout = useCallback(
     (widget: WidgetInstanceV3) => canMutateWidget(access, widget),
@@ -269,6 +277,7 @@ export function StudioOrbitStage(props: StudioOrbitStageProps): React.ReactEleme
         data-zoom={String(preview.zoom)}
         ref={stageRef}
         style={{
+          ...background.style,
           aspectRatio: `${layoutViewport.width} / ${layoutViewport.height}`,
           width: preview.zoom === 'fit' ? undefined : `${(preview.zoom / 100) * 100}%`,
         }}

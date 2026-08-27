@@ -11,9 +11,27 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 - `docs/adr/0004-telemetry-core-modular-observation-architecture.md`.
 - `docs/telemetry-core/README.md` y su evidencia.
 - `docs/superpowers/plans/2026-07-19-telemetry-core-final-architecture-master.md`.
-- Microplan activo y Linear.
+- Issue y microplan activos en GitHub.
 
 ## Estado real
+
+- 2026-08-27, ISA-889 corrige el bloqueo permanente del Overlay despues de un
+  reconnect LMU. El transporte acotado de ISA-879 puede entregar como primer
+  snapshot visible de un epoch nuevo una secuencia mayor que 1; el store
+  frontend exigia exactamente `sequence=1`, conservaba el cursor anterior y
+  rechazaba despues todos los frames del nuevo epoch. `57c76109` acepta una
+  proyeccion completa de un epoch estrictamente mayor como nueva base y deja
+  `snapshot-resync` como diagnostico; regresiones de epoch, regresiones o
+  duplicados contradictorios dentro del mismo epoch y desajustes de status
+  siguen cerrados. Suite frontend completa (417 archivos, 3.143 tests), 26
+  focales, typecheck, build, ESLint del diff y `git diff --check` verdes. Una
+  build Wails aislada en 39263/9231 recibio LMU Live y pinto Practice, 18
+  participantes, Relative, Standings y pedales. Falta provocar un reconnect
+  real manteniendo esa ventana abierta para acreditar el cambio de epoch sin
+  reload. Evidencia:
+  `docs/telemetry-core/evidence/isa-889-overlay-epoch-resync.md`. Rama local
+  `vantareapp/isa-889-overlay-epoch-resync`; sin push, PR, CI remoto, merge,
+  promocion ni release.
 
 - 2026-08-27, ISA-879 elimina los bridges Overlay v1/v2 globales y los
   sustituye por una sesion pull/ack `single-in-flight`, `latest-wins` y ligada

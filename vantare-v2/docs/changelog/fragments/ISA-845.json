@@ -5,7 +5,7 @@
   "summary": "El calendario LMU admite el mensaje semanal real de Discord y deja una bandeja local para que un owner revise y publique el borrador.",
   "technicalNotes": [
     "El parser reconoce las 11 entradas del mensaje del 25 de agosto de 2026, incluidos daily, weekly, special/team, horas UTC compactas, restricciones de badges, fair share, escala temporal y el aviso de hardware.",
-    "El lector Discord usa una allowlist cerrada de guild, canal y autor o webhook, persiste cursor, deduplica por messageId y hash, y conserva como máximo 32 candidatos locales.",
+    "El lector Discord usa una allowlist cerrada de guild y canal; el autor o webhook son filtros opcionales para canales compartidos. Persiste cursor, deduplica por messageId y hash, y conserva como máximo 32 candidatos locales.",
     "La app de escritorio solo lee la bandeja local; la fuente se revisa en solo lectura, el borrador se guarda mediante las RPC existentes y solo el owner puede publicar."
   ],
   "testing": [

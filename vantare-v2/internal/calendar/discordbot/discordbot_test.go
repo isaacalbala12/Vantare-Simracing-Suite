@@ -28,10 +28,23 @@ func scheduleMessage(t *testing.T, id, channel string) Message {
 	}
 }
 
-func TestSourcePolicyRequiresAndAppliesAllowlist(t *testing.T) {
-	if err := (SourcePolicy{GuildID: "guild", ChannelID: "channel"}).Validate(); err == nil {
-		t.Fatal("expected an author or webhook allowlist requirement")
+func TestSourcePolicyUsesExactChannelAsTrustBoundary(t *testing.T) {
+	policy := SourcePolicy{GuildID: "guild-1", ChannelID: "channel-1"}
+	if err := policy.Validate(); err != nil {
+		t.Fatalf("channel-only policy should be valid: %v", err)
 	}
+	if !policy.Allows(Message{GuildID: "guild-1", ChannelID: "channel-1"}) {
+		t.Fatal("expected a message from the configured channel without an author id")
+	}
+	if policy.Allows(Message{GuildID: "guild-2", ChannelID: "channel-1"}) {
+		t.Fatal("wrong guild must be rejected")
+	}
+	if policy.Allows(Message{GuildID: "guild-1", ChannelID: "channel-2"}) {
+		t.Fatal("wrong channel must be rejected")
+	}
+}
+
+func TestSourcePolicyAppliesOptionalIdentityAllowlist(t *testing.T) {
 	policy := SourcePolicy{
 		GuildID:   "guild-1",
 		ChannelID: "channel-1",
@@ -48,6 +61,9 @@ func TestSourcePolicyRequiresAndAppliesAllowlist(t *testing.T) {
 	}
 	if policy.Allows(Message{GuildID: "guild-1", ChannelID: "channel-2", Author: Author{ID: "author-1"}}) {
 		t.Fatal("wrong channel must be rejected")
+	}
+	if policy.Allows(Message{GuildID: "guild-1", ChannelID: "channel-1", Author: Author{ID: "other-author"}}) {
+		t.Fatal("configured identity filter must reject another author")
 	}
 }
 

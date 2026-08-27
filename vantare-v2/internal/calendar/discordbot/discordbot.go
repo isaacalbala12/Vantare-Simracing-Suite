@@ -56,9 +56,11 @@ type EmbedField struct {
 	Value string `json:"value"`
 }
 
-// SourcePolicy is the allowlist applied before parsing any message.
-// At least one author or webhook identity is required; channel-only ingestion
-// would make a copied schedule from another user an accepted source.
+// SourcePolicy is the allowlist applied before parsing any message. The exact
+// guild/channel pair is the required trust boundary. Author and webhook
+// identities are optional refinements for channels that contain more than one
+// source; they are intentionally optional because Discord announcement
+// crossposts do not always expose a stable source identity in the destination.
 type SourcePolicy struct {
 	GuildID    string
 	ChannelID  string
@@ -73,9 +75,6 @@ func (p SourcePolicy) Validate() error {
 	if strings.TrimSpace(p.ChannelID) == "" {
 		return errors.New("discord policy: channel id is required")
 	}
-	if len(p.AuthorIDs) == 0 && len(p.WebhookIDs) == 0 {
-		return errors.New("discord policy: at least one author or webhook id is required")
-	}
 	return nil
 }
 
@@ -89,6 +88,12 @@ func (p SourcePolicy) Allows(message Message) bool {
 	// normal REST response because it omits guild_id.
 	if message.GuildID != "" && message.GuildID != p.GuildID {
 		return false
+	}
+	// A dedicated channel is sufficient for the LMU announcement crosspost
+	// case. Keep the identity filters available when a channel is shared by
+	// several sources.
+	if len(p.AuthorIDs) == 0 && len(p.WebhookIDs) == 0 {
+		return true
 	}
 	if _, ok := p.AuthorIDs[message.Author.ID]; ok {
 		return true

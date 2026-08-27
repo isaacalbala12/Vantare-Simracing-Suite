@@ -4,7 +4,7 @@ El lector está separado de Vantare Desktop y tiene un alcance deliberadamente
 pequeño:
 
 ```text
-Discord (un canal) → allowlist guild/canal/autor o webhook → parser LMU
+Discord (un canal) → guild/canal exactos (autor/webhook opcional) → parser LMU
 → calendar-discord-inbox.json → Ajustes > Calendario LMU (owner)
 → guardar borrador → revisar → publicar
 ```
@@ -21,15 +21,19 @@ Crear un bot en Discord y darle únicamente `View Channel` y
 si el horario llega como contenido o embed; Discord puede entregar esos campos
 vacíos sin ese intent.
 
-El bot necesita una identidad de origen explícita. Puede ser el usuario que
-publica el anuncio o el webhook que lo envía:
+El bot siempre queda limitado al `guild` y al canal configurados. Para el caso
+normal de este proyecto, el canal recibe un crosspost del anuncio oficial de
+LMU y esa pareja servidor/canal es suficiente; no hace falta conocer ni
+configurar el ID de un usuario del servidor oficial. El lector no necesita
+estar instalado en el servidor oficial, solo tener acceso de lectura al canal
+de destino.
 
 ```powershell
 $env:VANTARE_DISCORD_BOT_TOKEN = "<token-local-no-commitir>"
 $env:VANTARE_DISCORD_GUILD_ID = "<guild-id>"
 $env:VANTARE_DISCORD_CHANNEL_ID = "<channel-id>"
-$env:VANTARE_DISCORD_AUTHOR_IDS = "<official-author-id>"
-# Alternativa a AUTHOR_IDS:
+# Opcionales: solo si ese canal mezcla varias fuentes y quieres filtrar más.
+# $env:VANTARE_DISCORD_AUTHOR_IDS = "<official-author-id>"
 # $env:VANTARE_DISCORD_WEBHOOK_IDS = "<official-webhook-id>"
 $env:VANTARE_CALENDAR_INBOX = "<la-misma-ruta-que-la-configuracion-de-Vantare>\calendar-discord-inbox.json"
 $env:VANTARE_DISCORD_POLL_INTERVAL = "5m"
@@ -40,6 +44,13 @@ La ruta que usa Desktop es `cfgDir/calendar-discord-inbox.json`: en desarrollo
 normalmente es `vantare-v2/configs/calendar-discord-inbox.json`; en una
 instalación es la carpeta de configuración de Vantare que aparece en
 Diagnóstico. Si el bot usa otra ruta, la bandeja no aparecerá en Desktop.
+
+Con los valores de este servidor:
+
+```powershell
+$env:VANTARE_DISCORD_GUILD_ID = "731597245992009768"
+$env:VANTARE_DISCORD_CHANNEL_ID = "1529245213598552134"
+```
 
 ## Revisión owner
 

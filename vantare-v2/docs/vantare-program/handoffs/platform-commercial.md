@@ -60,7 +60,8 @@ Feed oficial versionado/firmado. Isaac pega RaceControl semanal y un agente lo
 estructura con validación. UTC interno; zona local visible. Carreras guardadas,
 recordatorios, Launcher/Overlay/Strategy y nota. Servicio ligero solo con
 recordatorios futuros y permiso. ISA-845 añade un lector Discord restringido a
-guild/canal/autor o webhook que deja candidatos locales para revisión owner;
+  guild/canal (con autor o webhook opcionales) que deja candidatos locales para
+  revisión owner;
 publicar sigue pasando por las RPC existentes y la comprobación server-side.
 
 ## Ajustes

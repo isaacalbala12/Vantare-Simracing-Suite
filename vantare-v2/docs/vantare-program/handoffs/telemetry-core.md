@@ -100,8 +100,9 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   arco temporal firmado más corto y conserva `relativeLapDelta` por separado.
   `BuildRelative` selecciona por topología circular de `LapDistance`, de modo
   que una fila física no desaparece si sus segundos están `missing`. V1 y V2
-  consumen la misma derivación; el comparador shadow vuelve a comparar
-  `gapText`, y el frontend no contiene lógica de simulador. SimX mapea su
+  consumen la misma derivación; la proyección orienta su signo por el lado
+  físico y no anula los segundos por estado pit. El comparador shadow vuelve a
+  comparar `gapText`, y el frontend no contiene lógica de simulador. SimX mapea su
   equivalente temporal exacto al mismo contrato; los drivers sin equivalente
   dejan la señal ausente. La fixture LMU 1.3/1.4 con cero uniforme
   contradictorio prueba fail-closed, mientras los tests admiten cero individual
@@ -110,9 +111,13 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   `vantareapp/isa-884-relative-time` rebasada sobre
   `origin/nightly@2672f211`; todavía sin push, PR, CI remoto, merge, promoción
   ni release. Gates locales: Go completo, telemetry, LMU x20, derive x20,
-  frontend 3.137 tests, typecheck, lint focal y build verdes; la ruta
-  LMU -> Go -> SSE real está acreditada y falta repetir la prueba visual Wails
-  sobre la build combinada.
+  frontend 3.144 tests, typecheck, lint focal y build verdes. La build combinada
+  acredita LMU -> Go -> SSE -> Wails nativo: Relative 2+jugador+2 con los cuatro
+  gaps presentes, incluidos rivales en pit; V1/V2 alineados en reconstrucción
+  dan `mismatch: []`. El soak final de 142 s termina en 585,8 MiB totales y
+  175,3 MiB para el WebView mayor, sin pendiente monotónica. #887 separa los
+  falsos positivos del shadow al emparejar una sección V2 memoizada a 4 Hz con
+  la cabecera global a 60 Hz.
 
 - 2026-08-27, ISA-879 elimina los bridges Overlay v1/v2 globales y los
   sustituye por una sesion pull/ack `single-in-flight`, `latest-wins` y ligada

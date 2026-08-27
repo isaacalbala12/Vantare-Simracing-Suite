@@ -28,7 +28,7 @@ por ventana. La cola sin limite quedaba despues de la ultima proteccion.
 
 ## Corte implementado
 
-El commit `68ae7eae` realiza un cambio local en esa frontera:
+Los commits `68ae7eae` y `e1069c7f` realizan un cambio local en esa frontera:
 
 1. `TelemetryCoreRuntime` deja de arrancar los bridges Wails globales de
    Overlay v1 y v2. Strategy conserva su adapter explicito sin cambios.
@@ -42,6 +42,8 @@ El commit `68ae7eae` realiza un cambio local en esa frontera:
 5. V1 y v2 viajan juntos en una unica respuesta. El publisher v2 solo existe
    mientras haya una sesion Overlay y se libera al desmontar o cerrar la
    ventana.
+6. Se eliminan el bridge publisher Wails y el request de replay v2 ya sin
+   consumidores productivos; no queda un camino global de compatibilidad.
 
 No se ha anadido dependencia, bus alternativo, fork de Wails ni cambio en el
 driver LMU o en los contratos de producto.
@@ -67,11 +69,18 @@ La integracion cubre ademas:
 
 ## Gates del corte funcional
 
-- `go test ./internal/app/telemetrytransport ./internal/app ./cmd/vantare -count=1 -timeout=120s`: PASS.
-- `pnpm --dir frontend exec vitest run src/telemetry-transport/overlay-wails-pull.test.ts src/telemetry-transport/contracts.test.ts src/overlay/CompositeApp.test.tsx`: PASS, 26 tests.
+- `go test -p 1 ./... -count=1 -timeout=180s`: PASS. Dos pasadas previas con
+  concurrencia maxima agotaron timeouts fijos en `voiceinput` y en una
+  integracion LMU mientras Solver consumia CPU; ambos pasaron aislados y la
+  suite serial completa confirma el arbol verde sin cambiar esos tests.
+- `pnpm --dir frontend test`: PASS, 411 archivos y 3095 tests.
+- `pnpm --dir frontend exec vitest run src/telemetry-transport/overlay-wails-pull.test.ts src/telemetry-transport/contracts.test.ts src/overlay/CompositeApp.test.tsx`: PASS, 26 tests focales.
 - `pnpm --dir frontend typecheck`: PASS.
 - `pnpm --dir frontend build`: PASS previo, necesario para materializar el
   `frontend/dist` embebido; conserva el aviso conocido de tamano de chunk.
+- ESLint sobre los cinco archivos frontend modificados: PASS. `pnpm --dir
+  frontend lint` global conserva un unico error ajeno a ISA-879 en
+  `car-damage-numbers-view-model-v2.ts:93` (`_damage` sin usar).
 - `git diff --check`: PASS.
 
 ## Evidencia real pendiente

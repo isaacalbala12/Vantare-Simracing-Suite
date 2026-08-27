@@ -22,12 +22,15 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   procesarla; Go conserva el ultimo estado v1/v2, agrupa los cambios en una
   respuesta y no acepta otra entrega hasta ese acuse. El publisher v2 solo se
   activa con una sesion Overlay y se libera por cleanup exacto o cierre nativo.
+  `e1069c7f` elimina 92 lineas del bridge publisher/replay ya sin caller, y el
+  gate de simbolos productivos queda verde sin una ruta de compatibilidad.
   La regresion de consumidor lento retiene la entrega 1 mientras se publican
   los frames 2 a 100 y recibe directamente el 100 tras el acuse; tests de
   runtime prueban cero suscriptores/emisiones Overlay globales y entrega a una
-  unica ventana. Suites focales Go y 26 tests frontend, contrato Go/TS y
-  typecheck estan verdes. Falta el soak Wails/LMU real: el commit no se presenta
-  como prueba de memoria WebView2. Rama
+  unica ventana. `go test -p 1 ./...`, 411 archivos/3095 tests frontend,
+  typecheck, build y ESLint del diff estan verdes. El lint global conserva un
+  error ajeno en `car-damage-numbers-view-model-v2.ts:93`. Falta el soak
+  Wails/LMU real: los commits no se presentan como prueba de memoria WebView2. Rama
   `vantareapp/isa-879-wails-telemetry-bounded`; sin push, PR, CI, merge,
   promocion ni release.
 

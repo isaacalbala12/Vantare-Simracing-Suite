@@ -109,7 +109,7 @@ describe("RelativeOriginal", () => {
     expect(behind.getAttribute("data-tone")).toBe("behind");
   });
 
-  it("renders five neutral rows while the player is in pit", () => {
+  it("keeps physical relative gaps while the player is in pit", () => {
     const content = createDefaultRelativeContent();
     const model = buildRelativeViewModel(
       {
@@ -119,10 +119,11 @@ describe("RelativeOriginal", () => {
       content,
     );
     const { root } = renderOriginal(model);
-    const rivals = [...root.querySelectorAll("[data-relative-row]:not([data-player='true'])")];
     expect(root.querySelectorAll("[data-relative-row]")).toHaveLength(5);
-    expect(rivals.every((row) => row.getAttribute("data-tone") === "neutral")).toBe(true);
-    expect(rivals.every((row) => row.textContent?.includes("—"))).toBe(true);
+    expect(root.querySelectorAll("[data-tone='ahead']")).toHaveLength(2);
+    expect(root.querySelectorAll("[data-tone='behind']")).toHaveLength(2);
+    expect(root.querySelector('[data-relative-row="2"]')?.textContent).toContain("+2.0");
+    expect(root.querySelector('[data-relative-row="5"]')?.textContent).toContain("-1.0");
   });
 
   it("applies class color bars from vehicle class", () => {

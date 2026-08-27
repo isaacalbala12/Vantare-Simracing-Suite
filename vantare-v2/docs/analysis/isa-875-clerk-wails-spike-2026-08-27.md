@@ -20,10 +20,21 @@ mantiene como autoridad un UUID interno. El cliente Wails persiste hoy un par
 de tokens de Supabase, el callback recibe esos tokens y la función de licencia
 valida una sesión Supabase antes de emitir la credencial offline.
 
-Una prueba real exige una aplicación Clerk de desarrollo, habilitar third-party
-auth en un Supabase no productivo y añadir un vínculo server-side entre
-`clerk_user_id` y el UUID interno. Esas acciones, y cualquier cambio de schema,
-RLS o código productivo, están fuera de este spike `roadmap:not-required`.
+La ruta Clerk evaluable es una sola: el navegador alojado completa el login,
+un mecanismo oficialmente soportado activa o recupera esa **sesión Clerk** en
+el cliente, `session.getToken()` obtiene su **Clerk session token** y el
+callback `accessToken` del cliente Supabase entrega ese JWT a TPA. El nombre
+`accessToken` de la opción Supabase no convierte un access token OAuth en un
+Clerk session token. Los access/refresh tokens de un authorization code grant
+son otro contrato y no se deben publicar al callback Wails como sustituto.
+
+No se encontró ni se probó un SDK o mecanismo oficial para activar, persistir y
+renovar esa sesión Clerk desde Windows/Wails después del navegador externo.
+Sin esa pieza la ruta queda **BLOCKED**; no se inventa un puente. Una prueba
+real también exige una aplicación Clerk de desarrollo, TPA en un Supabase no
+productivo y un vínculo server-side entre `clerk_user_id` y el UUID interno.
+Esas acciones, y cualquier cambio de schema, RLS o código productivo, están
+fuera de este spike `roadmap:not-required`.
 
 La decisión es **NO-GO ahora**, no una declaración de imposibilidad. No se
 añadió SDK de Clerk, otra capa de sesiones ni una arquitectura paralela. Polar
@@ -46,12 +57,12 @@ Clerk, Supabase ni Polar.
 
 | Criterio | Caracterización local | Prueba real Clerk | Evidencia |
 | --- | --- | --- | --- |
-| Navegador externo y retorno Wails | **FAIL** para reutilización directa | **BLOCKED** | El loopback espera tokens; el cliente público Clerk usa código y PKCE. Hace falta intercambio y verificación, no solo otra URL. |
-| Restauración tras reinicio | **FAIL** para tokens Clerk | **BLOCKED** | `authsession.Session` y `setSupabaseSession` restauran un par Supabase. Un par Clerk no es válido para `supabase.auth.setSession`. |
-| Refresh y revocación | **FAIL** para reutilización directa | **BLOCKED** | La rotación actual nace de `TOKEN_REFRESHED` de Supabase. No existe un ciclo Clerk probado en Vantare. |
-| Logout y cambio de cuenta | **PASS** para borrado local; **FAIL** para ciclo Clerk | **BLOCKED** | El store se limpia antes del logout remoto actual. Falta cierre, revocación y cambio de cuenta Clerk en Wails. |
-| Token aceptable por Go | **FAIL** con token Clerk estándar | **BLOCKED** | El test demuestra que `sub=user_...` se rechaza y que un claim `account_id` no sustituye silenciosamente al `sub` UUID. |
-| Token aceptable por Supabase | **FAIL** en endpoint/schema actuales | **BLOCKED** | Vantare usa `auth.getUser(token)` y `auth.uid()` UUID. Clerk no sincroniza usuarios con Supabase y su `sub` no es UUID. |
+| Navegador externo y retorno Wails | **FAIL** para reutilización directa | **BLOCKED** | El loopback actual recibe tokens Supabase. La ruta elegida debe culminar en una sesión Clerk activa y accesible desde Wails; no se verificó un mecanismo soportado para hacerlo. Tokens OAuth no sustituyen esa sesión. |
+| Restauración tras reinicio | **FAIL** para reutilización directa | **BLOCKED** | `authsession.Session` y `setSupabaseSession` restauran un par Supabase. Guardar solo un Clerk session token no restaura ni renueva la sesión Clerk que permite obtener el siguiente token. |
+| Refresh y revocación | **FAIL** para reutilización directa | **BLOCKED** | La rotación actual nace de `TOKEN_REFRESHED` de Supabase. Clerk exige su propio ciclo de sesión y volver a obtener `session.getToken()`; no hay ciclo Windows/Wails soportado y probado. |
+| Logout y cambio de cuenta | **PASS** para borrado local; **FAIL** para ciclo Clerk | **BLOCKED** | El store se limpia antes del logout remoto actual. Falta terminar la sesión Clerk, revocarla y activar otra cuenta mediante el mismo mecanismo soportado. |
+| Token aceptable por Go | **FAIL** como identidad Vantare directa | **BLOCKED** | Go no debe aceptar `sub=user_...` como UUID interno. Tras verificar la identidad Clerk, un mapping server-side debe resolver la cuenta UUID; el test impide el atajo de aceptar un claim auxiliar. |
+| Token aceptable por Supabase | **PASS documental para TPA; FAIL en endpoint/schema actuales** | **BLOCKED** | Supabase recibe el Clerk session token mediante `accessToken: async () => session.getToken()`. Aún faltan configuración real, verificación Edge compatible y mapping; Vantare usa hoy `auth.getUser(token)` y `auth.uid()` UUID. |
 | Licencia offline | **PASS** para el contrato firmado actual | **BLOCKED** para emisión desde Clerk | La credencial Ed25519 sigue ligada a UUID y fingerprint. Falta probar el mapeo online antes de emitirla. |
 
 ## Fronteras actuales que no se deben duplicar
@@ -89,18 +100,23 @@ ya vive en `internal/server`; no hace falta otro manager o provider genérico.
    indica que los usuarios Clerk no se sincronizan con Supabase; sus ejemplos
    de RLS comparan texto desde `auth.jwt()` en vez de reutilizar `auth.uid()`.
 3. Supabase documenta [Clerk como third-party auth](https://supabase.com/docs/guides/auth/third-party/clerk),
-   pero requiere configuración remota y que el cliente entregue un token Clerk
-   mediante un proveedor de access token. No equivale a
+   pero requiere configuración remota. La integración obtiene el Clerk session
+   token desde una sesión activa con
+   `accessToken: async () => session.getToken()`. Esa opción no equivale a
    `supabase.auth.setSession` ni crea el vínculo con la cuenta Vantare.
 4. El [OAuth de cliente público de Clerk](https://clerk.com/docs/guides/configure/auth-strategies/oauth/how-clerk-implements-oauth)
-   usa código de autorización y PKCE. El callback actual recibe directamente
-   el par Supabase, por lo que necesita código nuevo para aceptar ese retorno.
+   puede usar authorization code + PKCE y producir tokens OAuth. Esos tokens
+   sirven al grant OAuth y no son automáticamente el Clerk session token que
+   Supabase TPA espera de `session.getToken()`; esta no es la ruta elegida.
 5. Los redirects del [Account Portal](https://clerk.com/docs/guides/account-portal/direct-links)
-   exigen orígenes configurados. No se encontró una ruta oficial específica de
-   Windows/Wails que permita declarar probado el retorno sin ejecutar la app.
+   exigen orígenes configurados. Completar el login en el navegador no demuestra
+   que Wails pueda activar o recuperar la sesión Clerk. No se encontró una ruta
+   oficial específica de Windows/Wails para ese traspaso y renovación.
 
 La conclusión sobre el endpoint y RLS es una inferencia al combinar las fuentes
-oficiales con el código actual; no es evidencia de una prueba remota.
+oficiales con el código actual; no es evidencia de una prueba remota. La ruta
+seleccionada se detiene si no existe un mecanismo soportado de sesión Clerk para
+Windows/Wails; no reutiliza tokens OAuth ni inventa persistencia propia.
 
 ## Prueba mínima añadida
 
@@ -121,15 +137,23 @@ Debe abrirse como trabajo de alto riesgo y con roadmap, no ampliar ISA-875:
 
 1. Designar una instancia Clerk de desarrollo y un Supabase no productivo con
    TPA; nunca usar producción.
-2. Probar un solo login Wails mediante authorization code + PKCE y el callback
-   loopback existente, manteniendo sus defensas de intento único.
-3. Resolver server-side un vínculo único `clerk_user_id -> account UUID`; email
-   no puede ser clave primaria ni prueba de identidad.
-4. Verificar el token con el mecanismo TPA/JWKS soportado y entregar a Go el
-   UUID interno resuelto, sin cambiar `sub` por conveniencia.
-5. Probar reinicio, refresh, revocación, logout y cambio de cuenta.
-6. Emitir la misma credencial offline para ese UUID y dispositivo; desconectar,
-   reiniciar y demostrar continuidad y revocación online.
+2. Usar hosted/native browser auth de Clerk para crear una sesión Clerk y
+   activarla en Wails mediante un mecanismo oficialmente soportado. El primer
+   gate del experimento es encontrar y ejecutar ese mecanismo también para
+   persistencia y renovación en Windows. Si no existe, terminar **BLOCKED** sin
+   puente propio.
+3. Desde la sesión activa, obtener el Clerk session token con
+   `session.getToken()` y entregarlo al cliente Supabase mediante su callback
+   `accessToken`. No enviar tokens OAuth al TPA ni guardar el session token como
+   si fuera un refresh token durable.
+4. Verificar ese session token mediante TPA/JWKS soportado y resolver
+   server-side un vínculo único `clerk_user_id -> account UUID`; email no puede
+   ser clave primaria ni prueba de identidad. Go conserva el UUID interno y no
+   acepta directamente `sub=user_...`.
+5. Con la misma sesión soportada, probar reinicio, renovación, revocación,
+   logout y cambio de cuenta.
+6. Emitir la credencial offline existente para el UUID resuelto y dispositivo;
+   desconectar, reiniciar y demostrar continuidad y revocación online.
 
 Si el corte exige migración amplia de RLS o una segunda sesión completa, debe
 parar y volver a decisión arquitectónica. No se justifican providers, factories,
@@ -168,6 +192,27 @@ El primer intento de compilar `cmd/vantare` quedó bloqueado por no existir
 `frontend/dist` en el worktree limpio. No fue un fallo funcional. Se ejecutó
 `pnpm install --frozen-lockfile` sin cambiar el lockfile y después el build para
 generar el artefacto ignorado antes de repetir el gate.
+
+## Evidencia remota de la PR draft
+
+En la ejecución `33033227983` sobre `e60cb577`, los checks superiores
+`Validate promotion path`, `Validate Vantare blocking gates` y
+`GitGuardian Security Checks` terminaron en éxito. Dentro del blocking gate
+pasaron build frontend, contrato TypeScript de telemetría, tests Go, tests
+frontend, lint del diff y build Windows Wails.
+
+Ese éxito agregado no significa que todos los comandos fueran verdes. Dos pasos
+`human-channel advisory`, configurados como no bloqueantes, registraron fallos:
+
+- `Overlay Studio visual baselines`: `pnpm visual:overlay-studio` terminó con
+  `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL` porque el script no existe. El propio
+  log sugirió `visual:orbit-studio`.
+- `Global frontend lint debt`: `pnpm lint` encontró el error heredado
+  `_damage is defined but never used` en
+  `frontend/src/overlay/widget-types/car-damage-numbers/car-damage-numbers-view-model-v2.ts:93:39`.
+
+Ambos fallos son advisory/no bloqueantes y sus rutas son ajenas al diff de
+ISA-875. Se reportan; no se presentan como PASS ni se corrigen en este spike.
 
 ## Gobierno y cierre
 

@@ -17,6 +17,28 @@ visible es `Telemetría`.
 
 ## Estado
 
+Actualización ISA-869 (2026-08-27, rama
+`vantareapp/isa-869-telemetry-orbit-real` sobre `origin/nightly@a02a1463`):
+
+- `TelemetryOrbitPage` deja de usar una fuente productiva hardcodeada a vacío
+  y consulta `SessionCatalogListing`, el ViewModel Analysis-owned ya publicado
+  por el protocolo Wails existente de Strategy. El frontend no recibe rutas,
+  readers, páginas DuckDB ni muestras crudas.
+- La galería muestra pista, layout, coche, clase, fecha y las vueltas con
+  evidencia que el catálogo ya publica. Mejor vuelta continúa `missing`: el
+  catálogo actual no la incluye y la UI muestra `—`, nunca cero ni un valor
+  demo.
+- Los estados `loading`, `real`, `empty` y `error` son distintos. El error no
+  expone detalles internos y ofrece reintento. Demo sigue detrás de su flag y
+  siempre etiquetado como sintético.
+- TA-04 continúa bloqueada por evidencia real de distancia/geometría y TA-06
+  depende de ella. Por ello referencias, mapa, delta y trazas se deshabilitan
+  con causa cuando la sesión es real; no se sustituye distancia por tiempo ni
+  se conecta Analysis al stream live.
+- Commit funcional `c97a2f4a`; tests focales 12/12, typecheck, ESLint focal,
+  auditoría i18n y diff-check pasan. Pendientes el build completo, smoke Wails,
+  documentación final, push, PR y CI. No hay promoción ni release.
+
 Actualización ISA-861 (2026-08-27, corte final candidato sobre
 `origin/nightly@b1d5b15b`):
 

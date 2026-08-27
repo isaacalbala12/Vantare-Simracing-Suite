@@ -4,6 +4,14 @@ Fecha de corte: 2026-07-19. Base: `724158a262eaa5dbcc8ab89c98aa74847ffed06b` (`v
 
 Este documento caracteriza el sistema existente antes del runtime nuevo. No crea schema, cambia offsets, corrige unidades ni convierte consumidores. Cuando el código no permite distinguir “ausente” de un valor cero, se declara como deuda; cero, `false` y cadena vacía no se consideran ausentes por sí solos.
 
+Nota vigente ISA-884 (2026-08-27): el runtime posterior materializa el concepto
+inventariado como `TimeIntoLap` mediante la señal neutral al simulador
+`standings.lap_progress_time`. Cada driver solo puede mapear un equivalente
+nativo exacto; LMU usa `mTimeIntoLap` scoring `+464`. Go deriva desde ella el
+gap temporal físico de Relative y mantiene por separado el lap delta de
+clasificación. Los widgets consumen la proyección y no conocen esta señal ni el
+simulador. Véase `evidence/isa-884-relative-lap-progress-time.md`.
+
 ## Convenciones
 
 | Clase | Significado |

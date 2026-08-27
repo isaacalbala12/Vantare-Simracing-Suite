@@ -28,7 +28,7 @@ El registro canónico contiene cuatro derivaciones fijas:
 |---|---|---:|---|---|---:|---|
 | 1 | `controls.history` | 1 | throttle, brake y clutch observados del vehículo activo | historial de controles | 120 muestras | epoch, sesión, run y vehículo |
 | 2 | `session.remaining` | 1 | reloj actual y fin observado de sesión | segundos restantes | — | epoch y sesión |
-| 3 | `standings.relative-gaps` | 1 | tiempo y vueltas detrás del líder de jugador y rivales | gap temporal o delta de vueltas por vehículo | — | epoch, sesión, run y vehículo |
+| 3 | `standings.relative-gaps` | 2 | coordenada temporal de vuelta, vuelta estimada y vueltas detrás del líder de jugador y rivales | gap temporal físico y delta de vueltas independiente por vehículo | — | epoch, sesión, run y vehículo |
 | 4 | `session.self-delta` | 1 | delta best nativo o reloj, vuelta, distancia e InPit observados del jugador | delta, referencia y tendencia | 18.000 muestras privadas; 120 públicas | epoch, sesión, run y vehículo |
 
 `Registry` devuelve copias defensivas. `ValidateDefinitions` rechaza ID+versión
@@ -66,10 +66,18 @@ finitos, compatibles y estar ordenados. Cero sigue siendo un resultado válido;
 una sesión limitada por vueltas conserva `MaximumLaps` y no recibe un tiempo
 inventado.
 
-`standings.relative-gaps@1` usa
-`player.timeBehindLeader - vehicle.timeBehindLeader`. Positivo significa rival
-por delante y negativo rival por detrás. Si existe diferencia de vueltas, solo
-publica el delta de vueltas: nunca transforma una vuelta en segundos ficticios.
+`standings.relative-gaps@2` usa la coordenada temporal nativa dentro de la
+vuelta de jugador y rival. Calcula `vehicle.lapProgressTime -
+player.lapProgressTime` y lo normaliza al arco temporal firmado más corto con
+la vuelta estimada válida del jugador como periodo. Positivo significa tráfico
+físicamente por delante y negativo tráfico por detrás, incluido el cruce por
+meta. `relativeLapDelta` se deriva aparte de las vueltas detrás del líder y no
+anula el gap temporal: clasificación y tráfico son dimensiones distintas.
+
+La derivación no reconstruye la coordenada desde distancia, velocidad ni gaps
+de clasificación. Requiere valores observados compatibles y un periodo finito
+positivo; cuando el driver no dispone del equivalente nativo, publica
+`missing`. El jugador conserva gap cero con la calidad real de su señal.
 Player markers, procedencia observada, presencia, finitud y calidad deben ser
 demostrables.
 

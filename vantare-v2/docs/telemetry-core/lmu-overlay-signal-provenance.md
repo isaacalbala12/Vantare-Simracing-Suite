@@ -46,6 +46,16 @@ y calidad. La proyección conserva además, como campos independientes, la mejor
 vuelta válida de sesión y la vuelta anterior reconstruidas por Vantare; ninguna
 referencia ausente se disfraza con el valor de otra.
 
+Nota vigente ISA-884 (2026-08-27): el runtime admite `mTimeIntoLap` de cada
+fila scoring en `+464` como `standings.lap_progress_time`. Es una coordenada
+temporal nativa de vuelta y no un gap de clasificación. Todo `float64` finito,
+incluidos cero y negativos, conserva su valor observado. El patrón de fuente
+no disponible en el que toda una parrilla distribuida por `mLapDist` publica
+cero se normaliza a `missing`; no se sustituye con distancia, velocidad ni
+`mTimeBehindLeader`. `standings.relative-gaps@2` combina esa coordenada con la
+vuelta estimada del jugador para resolver el wrap de meta y mantiene el delta
+de vueltas como campo independiente.
+
 ## Evidencia real fijada
 
 | Fixture | Estado | Evidencia | SHA-256 |
@@ -128,10 +138,11 @@ evidencia D4B.
   permiten fallbacks por posición, orden o búsqueda en las 104 filas.
 - Velocidad canónica: m/s. El borde TypeScript convierte a km/h con
   `valor * 3.6`.
-- Gap relativo en la misma vuelta:
-  `player.timeBehindLeader - vehicle.timeBehindLeader`. Positivo significa que
-  el otro coche está delante; negativo, detrás. Coches doblados usan lap delta
-  y no reciben segundos inventados.
+- Gap relativo físico: arco temporal firmado más corto entre
+  `vehicle.lapProgressTime` y `player.lapProgressTime`, usando únicamente la
+  vuelta estimada observada del jugador para resolver el wrap. Positivo
+  significa que el otro coche está delante y negativo, detrás. El lap delta de
+  clasificación viaja aparte y no invalida estos segundos.
 - Delta: referencia `best-completed-player-lap`; positivo significa más lento,
   negativo más rápido. No se admite una referencia sintética a velocidad
   constante ni un `mDeltaBest` cero como evidencia.
@@ -156,6 +167,7 @@ Esta tabla es una allowlist. D3–D7 no pueden incorporar señales fuera de ella
 | Completed laps | `mTotalLaps`, fila `+100`, `int16` | count `>=0`; cero válido | Admitir. |
 | Scoring sector | `mSector`, fila `+102`, `int8` | `0=sector3`, `1=sector1`, `2=sector2` | Admitir únicamente este mapping. |
 | Lap distance | `mLapDist`, fila `+104`, `float64` | metros; un valor finito `>=0` está presente y cualquier sentinel finito negativo se normaliza a `missing` | Admitir; máximo 1.3 exacto `3982.366455078125` y probe live 1.4 D4B con sentinel negativo, nunca convertido a cero. |
+| Temporal lap coordinate | `mTimeIntoLap`, fila `+464`, `float64` | segundos firmados; todo finito, incluido cero, es valor de source | Admitir como `standings.lap_progress_time`; si todas las filas dicen cero mientras `mLapDist` demuestra posiciones distintas, el source carece de evidencia y el grid queda `missing`. |
 | Best lap | `mBestLapTime`, fila `+144`, `float64` | segundos; present solo si finito y `>0` | Admitir; `-1` real se normaliza a missing. |
 | Last lap | `mLastLapTime`, fila `+168`, `float64` | segundos; present solo si finito y `>0` | Admitir; cero real se normaliza a missing. |
 | Pit-stop count | `mNumPitstops`, fila `+192`, `int16` | count `>=0`; cero válido | Admitir. |
@@ -177,7 +189,7 @@ Esta tabla es una allowlist. D3–D7 no pueden incorporar señales fuera de ella
 | Player controls | telemetry `mFilteredThrottle/Brake/Clutch`, `+420/+428/+444`, `3×float64` | ratio cerrado `0..1`; cero válido | Admitir. |
 | Fuel / capacity | telemetry `mFuel/+524`, `mFuelCapacity/+608`, `2×float64` | litros; invariantes de fuel/capacidad | Admitir solo para jugador; fixture `99.586.../100`. |
 | Session remaining | derivado `end-current` | segundos; inputs fresh, finitos y ordenados; cero válido | Admitir derivado. `mSessionTimeRemaining` no es autoridad. |
-| Relative gap | derivado de leader/lap | signo documentado arriba; segundos solo en misma vuelta | Admitir derivado; doblados solo lap delta. |
+| Relative gap | derivado de coordenadas temporales de vuelta | positivo delante, negativo detrás; wrap por vuelta estimada válida | Admitir derivado; lap delta independiente, incluso para doblados. |
 | Player delta | derivado de muestras de vuelta completada | positivo más lento, negativo más rápido; referencia explícita | Admitido por D6 con traza LMU 1.4 real hash-pinned y oráculo independiente por distancia. |
 
 ## Matriz de autoridad Shared Memory / REST
@@ -197,7 +209,7 @@ la parrilla; REST solo complementa campos equivalentes de jugador/sesión.
 | Player pit-stop count | SHM fila player | REST fila player | Igualdad count no negativo; nunca se aplica a rivales. |
 | Rival position/laps/pit stops | SHM filas | ninguna | Missing/stale explícito; nunca replicar datos REST del jugador. |
 | Session end/max laps | SHM | ninguna | Invariantes de la matriz de admisión. |
-| Driver/vehicle/class/sector/distance/laps/gaps/penalties/InPit | SHM fila | ninguna | Calidad por slot ocupado; missing/stale se conserva. |
+| Driver/vehicle/class/sector/distance/temporal-lap-coordinate/laps/gaps/penalties/InPit | SHM fila | ninguna | Calidad por slot ocupado; missing/stale se conserva. |
 | Player lap/gear/RPM/speed/controls/fuel/capacity | SHM telemetry tras validar la biyección activa | ninguna | Seleccionar scoring `mIsPlayer` y unir por ID activo único. Sin jugador produce missing; biyección rota rechaza el frame. Nunca usar índice header, posición, orden REST ni cola inactiva. |
 | Remaining/gaps/delta | derivación canónica | ninguna | Hereda el input menos fresh y no se calcula con inputs incompatibles. |
 

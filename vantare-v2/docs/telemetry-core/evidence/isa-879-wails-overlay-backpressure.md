@@ -73,15 +73,20 @@ La integracion cubre ademas:
   concurrencia maxima agotaron timeouts fijos en `voiceinput` y en una
   integracion LMU mientras Solver consumia CPU; ambos pasaron aislados y la
   suite serial completa confirma el arbol verde sin cambiar esos tests.
-- `pnpm --dir frontend test`: PASS, 411 archivos y 3095 tests.
+- `pnpm --dir frontend test`: PASS, 415 archivos y 3139 tests. `happy-dom`
+  imprimio un `AbortError` durante teardown, pero Vitest termino en codigo 0;
+  los 26 tests focales no reproducen ese aviso.
 - `pnpm --dir frontend exec vitest run src/telemetry-transport/overlay-wails-pull.test.ts src/telemetry-transport/contracts.test.ts src/overlay/CompositeApp.test.tsx`: PASS, 26 tests focales.
 - `pnpm --dir frontend typecheck`: PASS.
-- `pnpm --dir frontend build`: PASS previo, necesario para materializar el
+- `pnpm --dir frontend build`: PASS, necesario para materializar el
   `frontend/dist` embebido; conserva el aviso conocido de tamano de chunk.
 - ESLint sobre los cinco archivos frontend modificados: PASS. `pnpm --dir
   frontend lint` global conserva un unico error ajeno a ISA-879 en
   `car-damage-numbers-view-model-v2.ts:93` (`_damage` sin usar).
 - `git diff --check`: PASS.
+- La guardia `TestExportedSymbolsHaveProductionCaller` detecto primero dos
+  rutas HTTP exportadas que solo usaba el fixture. `688ce4e0` las hizo privadas;
+  la guardia focal y la suite Go serial completa pasan despues del cambio.
 
 ## Evidencia Wails real
 

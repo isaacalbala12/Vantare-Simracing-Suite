@@ -27,7 +27,7 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   La regresion de consumidor lento retiene la entrega 1 mientras se publican
   los frames 2 a 100 y recibe directamente el 100 tras el acuse; tests de
   runtime prueban cero suscriptores/emisiones Overlay globales y entrega a una
-  unica ventana. `go test -p 1 ./...`, 411 archivos/3095 tests frontend,
+  unica ventana. `go test -p 1 ./...`, 415 archivos/3139 tests frontend,
   typecheck, build y ESLint del diff estan verdes. El lint global conserva un
   error ajeno en `car-damage-numbers-view-model-v2.ts:93`. Falta el soak
   Wails/LMU real con carga: en production, 21 muestras durante 10 min 12 s con

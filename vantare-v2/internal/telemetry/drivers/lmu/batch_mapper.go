@@ -361,6 +361,7 @@ func mapVehicle(source VehicleObservation, id identity.VehicleID, sessionID iden
 		Player:           source.Player,
 		Sector:           source.Sector,
 		LapDistance:      source.LapDistance,
+		LapProgressTime:  source.LapProgressTime,
 		BestLapTime:      source.BestLapTime,
 		LastLapTime:      source.LastLapTime,
 		EstimatedLapTime: source.EstimatedLapTime,

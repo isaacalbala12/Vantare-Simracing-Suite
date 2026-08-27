@@ -443,7 +443,7 @@ func (projector *CachedProjector) Project(
 	// would publish a stale cursor and break ordering downstream.
 	frame := projector.memo
 	frame.ContractVersion = ContractVersionV2
-	frame.AlgorithmVersion = AlgorithmVersionV1
+	frame.AlgorithmVersion = AlgorithmVersionV2
 	frame.StreamEpoch = uint64(header.Cursor.Epoch)
 	frame.SourceSequence = uint64(header.Cursor.Sequence)
 	frame.SessionID = string(header.Identity.Session)

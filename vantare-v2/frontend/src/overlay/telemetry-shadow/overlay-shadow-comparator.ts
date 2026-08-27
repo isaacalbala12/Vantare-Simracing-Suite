@@ -475,11 +475,9 @@ export function compareDeltaModels(
  * the order treated as significant: the window and its order are now resolved
  * in Go and a reordering is exactly the regression this gate must catch.
  *
- * Declared difference, accounted and not compared as a value: Overlay v1
- * ordered the window by lap distance and kept lapped cars with a blank gap,
- * while the v2 builder orders by the canonical relative gap and leaves a
- * vehicle without one out of the window. Rows present on one side only are
- * reported once as `rows[].identity` rather than as a field divergence.
+ * Both paths now preserve the physical lap-distance window and the canonical
+ * gap text, including a missing value without dropping the neighbour. Rows
+ * present on one side only are reported once as `rows[].identity`.
  */
 export function compareRelativeModels(
   legacy: RelativeViewModel,
@@ -520,6 +518,7 @@ const COMPARABLE_RELATIVE_FIELDS = [
   "side",
   "tone",
   "isPlayer",
+  "gapText",
 ] as const satisfies readonly (keyof RelativeRowViewModel)[];
 
 /**

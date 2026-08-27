@@ -40,7 +40,14 @@ describe("relative v2 view model", () => {
   );
 
   it("keeps the gap sign and tone the frame declares", () => {
-    const model = buildRelativeViewModelV2(goldenFrame(44), { state: "live" }, CONTENT);
+    const source = goldenFrame(44);
+    const frame: OverlayFrameV2 = {
+      ...source,
+      standings: source.standings.map((row) => (
+        row.id === source.player.id ? { ...row, pit: "track" } : row
+      )),
+    };
+    const model = buildRelativeViewModelV2(frame, { state: "live" }, CONTENT);
     for (const row of model.rows) {
       if (row.isPlayer) {
         expect(row.tone).toBe("player");
@@ -50,6 +57,14 @@ describe("relative v2 view model", () => {
       expect(row.tone).toBe((row.gapSeconds ?? 0) > 0 ? "ahead" : "behind");
       expect(row.side).toBe((row.gapSeconds ?? 0) > 0 ? "ahead" : "behind");
     }
+  });
+
+  it("keeps physical rows but hides rival gaps while the player is in pit", () => {
+    const model = buildRelativeViewModelV2(goldenFrame(44), { state: "live" }, CONTENT);
+    expect(model.rows.some((row) => row.isPlayer)).toBe(true);
+    expect(model.rows.filter((row) => !row.isPlayer).every((row) => (
+      row.gapSeconds === null && row.gapText === "—" && row.tone === "neutral"
+    ))).toBe(true);
   });
 
   it("drops the player anchor when the widget asks for it, without reordering", () => {

@@ -44,7 +44,7 @@ func TestDeriveSessionRemainingRequiresFreshFiniteOrderedInputsAndPreservesZero(
 	}
 }
 
-func TestDeriveRelativeGapsUsesDocumentedSignAndNeverInventsLappedSeconds(t *testing.T) {
+func TestDeriveRelativeGapsKeepsClassificationLapDeltaSeparateFromTime(t *testing.T) {
 	vehicles := []core.VehicleState{
 		gapVehicle("leader", 0, 0, schema.FreshnessFresh),
 		gapVehicle("player", 15, 0, schema.FreshnessFresh),
@@ -61,11 +61,24 @@ func TestDeriveRelativeGapsUsesDocumentedSignAndNeverInventsLappedSeconds(t *tes
 	if gaps.Freshness != schema.FreshnessFresh || len(gaps.Vehicles) != len(vehicles) {
 		t.Fatalf("gap set = %+v", gaps)
 	}
-	assertGap(t, gaps, "leader", 0, false, 1)
+	assertGap(t, gaps, "leader", 15, true, 1)
 	assertGap(t, gaps, "player", 0, true, 0)
 	assertGap(t, gaps, "behind", -7, true, 0)
-	assertGap(t, gaps, "lapped-ahead", 0, false, 1)
-	assertGap(t, gaps, "lapped-behind", 0, false, -1)
+	assertGap(t, gaps, "lapped-ahead", 12, true, 1)
+	assertGap(t, gaps, "lapped-behind", 15, true, -1)
+}
+
+func TestDeriveRelativeGapsUsesCanonicalLapProgressAcrossClassificationLaps(t *testing.T) {
+	vehicles := []core.VehicleState{
+		gapVehicleWithProgress("ahead", 6.75, 0, schema.FreshnessFresh),
+		gapVehicleWithProgress("player", 5.50, 7, schema.FreshnessFresh),
+		gapVehicleWithProgress("behind-finish", 89.25, 0, schema.FreshnessFresh),
+	}
+
+	gaps := deriveRelativeGaps("player", derivedInput(true, schema.FreshnessFresh), vehicles)
+	assertGap(t, gaps, "ahead", 1.25, true, 7)
+	assertGap(t, gaps, "player", 0, true, 0)
+	assertGap(t, gaps, "behind-finish", -6.25, true, 7)
 }
 
 func TestDeriveRelativeGapsRejectsIncompatibleQualityAndNonFiniteValues(t *testing.T) {
@@ -73,7 +86,7 @@ func TestDeriveRelativeGapsRejectsIncompatibleQualityAndNonFiniteValues(t *testi
 	stale := gapVehicle("stale", 12, 0, schema.FreshnessStale)
 	invalid := gapVehicle("invalid", standings.TimeGap(math.NaN()), 0, schema.FreshnessFresh)
 	missing := gapVehicle("missing", 0, 0, schema.FreshnessFresh)
-	missing.TimeBehindLeader = schema.MissingField[standings.TimeGap]()
+	missing.LapProgressTime = schema.MissingField[standings.LapProgressTime]()
 
 	gaps := deriveRelativeGaps("player", derivedInput(true, schema.FreshnessFresh), []core.VehicleState{player, stale, invalid, missing})
 	if gaps.Freshness != schema.FreshnessInvalid {
@@ -96,9 +109,18 @@ func gapVehicle(id identity.VehicleID, seconds standings.TimeGap, laps standings
 	return core.VehicleState{
 		Identity:         identity.RunIdentity{Event: "event", Session: "session", Vehicle: id},
 		Player:           derivedInput(isPlayer, freshness),
+		LapProgressTime:  derivedInput(standings.LapProgressTime(-seconds), freshness),
+		EstimatedLapTime: derivedInput(standings.LapTime(90), freshness),
 		TimeBehindLeader: derivedInput(seconds, freshness),
 		LapsBehindLeader: derivedInput(laps, freshness),
 	}
+}
+
+func gapVehicleWithProgress(id identity.VehicleID, progress standings.LapProgressTime, laps standings.LapGap, freshness schema.Freshness) core.VehicleState {
+	vehicle := gapVehicle(id, 999, laps, freshness)
+	vehicle.LapProgressTime = derivedInput(progress, freshness)
+	vehicle.EstimatedLapTime = derivedInput(standings.LapTime(90), freshness)
+	return vehicle
 }
 
 func derivedInput[T comparable](value T, freshness schema.Freshness) schema.Field[T] {
@@ -138,7 +160,7 @@ func assertGapQuality(t testing.TB, gaps GapSet, id identity.VehicleID, freshnes
 	t.Fatalf("gap %q not found", id)
 }
 
-func FuzzGapDerivationNeverInventsSeconds(f *testing.F) {
+func FuzzGapDerivationNeverPublishesUsableNonFiniteSeconds(f *testing.F) {
 	f.Add(10.0, 12.0, int32(0), int32(0))
 	f.Add(10.0, 12.0, int32(1), int32(0))
 	f.Fuzz(func(t *testing.T, playerSeconds, otherSeconds float64, playerLaps, otherLaps int32) {
@@ -152,10 +174,9 @@ func FuzzGapDerivationNeverInventsSeconds(f *testing.F) {
 			if gap.Vehicle != "other" {
 				continue
 			}
-			lapDelta := int64(playerLaps) - int64(otherLaps)
-			_, secondsPresent := gap.Time.Value()
-			if lapDelta != 0 && secondsPresent {
-				t.Fatalf("invented seconds for lap delta %d", lapDelta)
+			seconds, secondsPresent := gap.Time.Value()
+			if secondsPresent && (gap.Time.Freshness() == schema.FreshnessFresh || gap.Time.Freshness() == schema.FreshnessStale) && !isFinite(float64(seconds)) {
+				t.Fatalf("published non-finite usable seconds %v", seconds)
 			}
 		}
 	})

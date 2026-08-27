@@ -91,7 +91,7 @@ func syntheticFullFrame(vehicles int) FrameV2 {
 		}
 	}
 	return FrameV2{
-		ContractVersion: ContractVersionV2, AlgorithmVersion: AlgorithmVersionV1,
+		ContractVersion: ContractVersionV2, AlgorithmVersion: AlgorithmVersionV2,
 		StreamEpoch: 4, SourceSequence: 9001, SessionID: "session-2026-endurance", GeneratedAt: "2026-08-19T12:34:56.789Z",
 		Units: UnitsV2{Speed: SpeedUnitMPS, Temperature: TemperatureUnitCelsius, Pressure: PressureUnitKPA, Fuel: FuelUnitLiters},
 		Session: SessionV2{

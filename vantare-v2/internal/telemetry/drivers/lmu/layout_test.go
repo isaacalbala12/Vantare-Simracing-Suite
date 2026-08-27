@@ -66,6 +66,7 @@ func TestLMU13LayoutMatchesAuditedOffsetsAndSourceTypes(t *testing.T) {
 		{lmu13Layout.Scoring.LapsBehindNext, scopeScoringRow, 240, sourceInt32, 1},
 		{lmu13Layout.Scoring.TimeBehindLeader, scopeScoringRow, 244, sourceFloat64, 1},
 		{lmu13Layout.Scoring.LapsBehindLeader, scopeScoringRow, 252, sourceInt32, 1},
+		{lmu13Layout.Scoring.LapProgressTime, scopeScoringRow, 464, sourceFloat64, 1},
 		{lmu13Layout.Scoring.EstimatedLapTime, scopeScoringRow, 472, sourceFloat64, 1},
 		{lmu13Layout.Scoring.WorldPosition, scopeScoringRow, 264, sourceFloat64, 3},
 		{lmu13Layout.Scoring.LocalVelocity, scopeScoringRow, 288, sourceFloat64, 3},
@@ -154,6 +155,7 @@ func TestLMU13LayoutReadsPinnedTrackFixture(t *testing.T) {
 	assertLayoutInt64At(t, buf, scoringBase, lmu13Layout.Scoring.LapsBehindNext, 0)
 	assertLayoutFloatAt(t, buf, scoringBase, lmu13Layout.Scoring.TimeBehindLeader, 66.6352081298828)
 	assertLayoutInt64At(t, buf, scoringBase, lmu13Layout.Scoring.LapsBehindLeader, 0)
+	assertLayoutFloatAt(t, buf, scoringBase, lmu13Layout.Scoring.LapProgressTime, 0)
 	assertLayoutFloatAt(t, buf, scoringBase, lmu13Layout.Scoring.EstimatedLapTime, 98.6324920654297)
 	assertLayoutFloatElementAt(t, buf, scoringBase, lmu13Layout.Scoring.WorldPosition, 0, -485.3604736328125)
 	assertLayoutFloatElementAt(t, buf, scoringBase, lmu13Layout.Scoring.WorldPosition, 2, -481.41119384765625)

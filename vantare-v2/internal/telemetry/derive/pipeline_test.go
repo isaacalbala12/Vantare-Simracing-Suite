@@ -53,7 +53,7 @@ func TestPipelineGoldenReplayOrderQualityAndOwnership(t *testing.T) {
 	if !reflect.DeepEqual(got.Derived.Algorithms, []AlgorithmVersion{
 		{ID: DerivationControlsHistory, Version: 1},
 		{ID: DerivationSessionRemaining, Version: 1},
-		{ID: DerivationRelativeGaps, Version: 1},
+		{ID: DerivationRelativeGaps, Version: 2},
 		{ID: DerivationSelfDelta, Version: 1},
 		{ID: DerivationFuelUsage, Version: 1},
 	}) {

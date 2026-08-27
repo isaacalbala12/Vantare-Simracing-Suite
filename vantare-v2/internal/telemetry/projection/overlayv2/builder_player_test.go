@@ -192,8 +192,10 @@ func builderBatch(count int, sequence uint64) core.Batch {
 		vehicles[index] = core.VehicleState{
 			Identity: identity.RunIdentity{Event: run.Event, Session: run.Session, Vehicle: id},
 			Player:   builderPresent(index == 0), Position: builderPresent(standings.Position(index + 1)),
-			WorldPosition: builderPresent(spatial.Position{X: float64(index), Z: float64(index) * -2}),
-			LapDistance:   builderPresent(standings.LapDistance(float64(index) * 42.5)),
+			WorldPosition:    builderPresent(spatial.Position{X: float64(index), Z: float64(index) * -2}),
+			LapDistance:      builderPresent(standings.LapDistance(float64(index) * 42.5)),
+			LapProgressTime:  builderPresent(standings.LapProgressTime(float64(index) * 90 / float64(count))),
+			EstimatedLapTime: builderPresent(standings.LapTime(90)),
 			// Classification signals so the standings builder and its budget are
 			// exercised with populated rows, not with an empty slice.
 			DriverName:       builderPresent(identity.DriverName(fmt.Sprintf("Driver %03d", index))),

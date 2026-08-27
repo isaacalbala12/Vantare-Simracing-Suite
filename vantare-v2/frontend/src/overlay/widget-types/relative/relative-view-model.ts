@@ -57,14 +57,13 @@ function buildRowViewModel(
   }
   const isPlayer = readScoringBoolean(row, "isPlayer") ?? false;
   const rawGapSeconds = readScoringNumber(row, "timeGapToPlayer") ?? null;
-  const relativeLapDelta = readScoringNumber(row, "relativeLapDelta");
   const rivalInPit = readScoringBoolean(row, "inPit") ?? false;
   const gapMatchesSide =
     (side === "ahead" && rawGapSeconds != null && rawGapSeconds > 0) ||
     (side === "behind" && rawGapSeconds != null && rawGapSeconds < 0);
   const gapSeconds =
     isPlayer ||
-    (!playerInPit && !rivalInPit && (relativeLapDelta == null || relativeLapDelta === 0) && gapMatchesSide)
+    (!playerInPit && !rivalInPit && gapMatchesSide)
       ? rawGapSeconds
       : null;
   const columnValues = Object.fromEntries(

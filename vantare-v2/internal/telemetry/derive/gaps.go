@@ -71,7 +71,7 @@ func deriveRelativeGaps(
 	}
 
 	result := GapSet{
-		Freshness: singleQuality(player.LapsBehindLeader),
+		Freshness: worstGapFreshness(singleQuality(player.LapsBehindLeader), singleQuality(player.LapProgressTime)),
 		Vehicles:  make([]VehicleGap, len(vehicles)),
 	}
 	for index, current := range vehicles {
@@ -82,10 +82,6 @@ func deriveRelativeGaps(
 }
 
 func relevantGapFreshness(gap VehicleGap) schema.Freshness {
-	laps, present := gap.Laps.Value()
-	if !present || laps != 0 {
-		return gap.Laps.Freshness()
-	}
 	return worstGapFreshness(gap.Laps.Freshness(), gap.Time.Freshness())
 }
 
@@ -130,12 +126,8 @@ func deriveVehicleGap(player, current core.VehicleState) VehicleGap {
 		return result
 	}
 	result.Laps = mustDerived(standings.RelativeLaps(difference), lapQuality)
-	if difference != 0 {
-		result.Time = schema.MissingField[standings.RelativeTime]()
-		return result
-	}
 
-	timeQuality, timeUsable := exactFreshQuality(player.TimeBehindLeader, current.TimeBehindLeader)
+	timeQuality, timeUsable := exactFreshQuality(player.LapProgressTime, current.LapProgressTime)
 	if !timeUsable {
 		if timeQuality == schema.FreshnessInvalid {
 			result.Time = invalidDerived[standings.RelativeTime]()
@@ -144,10 +136,34 @@ func deriveVehicleGap(player, current core.VehicleState) VehicleGap {
 		}
 		return result
 	}
-	playerTime, _ := player.TimeBehindLeader.Value()
-	currentTime, _ := current.TimeBehindLeader.Value()
-	delta := float64(playerTime) - float64(currentTime)
-	if !isFinite(float64(playerTime)) || !isFinite(float64(currentTime)) || !isFinite(delta) {
+	playerTime, _ := player.LapProgressTime.Value()
+	currentTime, _ := current.LapProgressTime.Value()
+	if !isFinite(float64(playerTime)) || !isFinite(float64(currentTime)) {
+		result.Time = invalidDerived[standings.RelativeTime]()
+		return result
+	}
+	if player.Identity.Vehicle == current.Identity.Vehicle {
+		result.Time = mustDerived(standings.RelativeTime(0), timeQuality)
+		return result
+	}
+
+	periodQuality, periodUsable := exactFreshQuality(player.LapProgressTime, player.EstimatedLapTime)
+	if !periodUsable || periodQuality != timeQuality {
+		if periodQuality == schema.FreshnessInvalid {
+			result.Time = invalidDerived[standings.RelativeTime]()
+		} else {
+			result.Time = schema.MissingField[standings.RelativeTime]()
+		}
+		return result
+	}
+	period, _ := player.EstimatedLapTime.Value()
+	if !isFinite(float64(period)) || period <= 0 {
+		result.Time = invalidDerived[standings.RelativeTime]()
+		return result
+	}
+	delta := float64(currentTime) - float64(playerTime)
+	delta -= math.Round(delta/float64(period)) * float64(period)
+	if !isFinite(delta) {
 		result.Time = invalidDerived[standings.RelativeTime]()
 		return result
 	}

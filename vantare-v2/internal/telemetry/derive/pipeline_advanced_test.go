@@ -172,6 +172,8 @@ func TestPipelineOverlayTimingMatchesGolden(t *testing.T) {
 		state.EndTime = derivedInput(session.EndTime(1000), schema.FreshnessFresh)
 		state.Vehicles[0].TimeBehindLeader = derivedInput(standings.TimeGap(10), schema.FreshnessFresh)
 		state.Vehicles[0].LapsBehindLeader = derivedInput(standings.LapGap(0), schema.FreshnessFresh)
+		state.Vehicles[0].LapProgressTime = derivedInput(standings.LapProgressTime(-10), schema.FreshnessFresh)
+		state.Vehicles[0].EstimatedLapTime = derivedInput(standings.LapTime(90), schema.FreshnessFresh)
 		state.Vehicles = append(state.Vehicles, gapVehicle("other", 15, 0, schema.FreshnessFresh))
 		snapshot, err := envelope.NewSnapshot(deltaHeader(schema.Sequence(index+1)), state, cloneObservedForTest)
 		if err != nil {

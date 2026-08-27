@@ -10,6 +10,7 @@ import (
 	drivercontract "github.com/vantare/overlays/v2/internal/telemetry/driver"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/identity"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/standings"
 )
 
 var testEpoch = time.Date(2026, 8, 20, 12, 0, 0, 0, time.UTC)
@@ -78,8 +79,8 @@ func TestSourceTimeAdvancesMonotonicallyAtFiftyHertz(t *testing.T) {
 }
 
 // A driver must never fabricate a value for a signal its simulator does not
-// publish. SimX has no rival world positions, no orientation and no native
-// delta, and the mapped state must leave those fields missing.
+// publish. SimX has no rival world positions, no orientation or native delta,
+// and the mapped state must leave those fields missing.
 func TestUnsupportedSignalsStayMissing(t *testing.T) {
 	t.Parallel()
 
@@ -100,6 +101,25 @@ func TestUnsupportedSignalsStayMissing(t *testing.T) {
 		if vehicle.WorldPosition.Freshness() != schema.FreshnessMissing {
 			t.Fatalf("vehicle %d world position freshness = %v", index, vehicle.WorldPosition.Freshness())
 		}
+	}
+}
+
+func TestSyntheticSourceMapsItsExactTemporalLapCoordinate(t *testing.T) {
+	t.Parallel()
+
+	row := syntheticVehicle(0, 50)
+	progress, present := row.LapProgressTime.Value()
+	if !present || progress != standings.LapProgressTime(5) {
+		t.Fatalf("lap progress = (%v, %t), want (5, true)", progress, present)
+	}
+	estimated, present := row.EstimatedLapTime.Value()
+	if !present || estimated != standings.LapTime(45) {
+		t.Fatalf("estimated lap = (%v, %t), want (45, true)", estimated, present)
+	}
+
+	batch := mapFirstBatch(t, Config{Frames: 1})
+	if _, present := batch.State.Vehicles[0].LapProgressTime.Value(); !present {
+		t.Fatal("canonical batch dropped SimX temporal lap coordinate")
 	}
 }
 
@@ -224,7 +244,7 @@ func TestSingleSlotFusionDecidesEveryDeclaredSignal(t *testing.T) {
 		}
 	}
 	// Past the TTL the same retained frame is reported stale, not fresh.
-	_, aged := state.Merge(TickInterval+time.Second)
+	_, aged := state.Merge(TickInterval + time.Second)
 	for _, decision := range aged {
 		if decision.Freshness != schema.FreshnessStale {
 			t.Fatalf("aged decision = %#v", decision)

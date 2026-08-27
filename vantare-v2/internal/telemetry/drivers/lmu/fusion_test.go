@@ -14,7 +14,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/standings"
 )
 
-func TestAuthorityMatrixV5ReferencesEveryParsedCanonicalSignalExactlyOnce(t *testing.T) {
+func TestAuthorityMatrixV6ReferencesEveryParsedCanonicalSignalExactlyOnce(t *testing.T) {
 	want := []catalog.SignalID{
 		catalog.SignalSessionSourceTime, catalog.SignalSessionTrackName, catalog.SignalSessionType,
 		catalog.SignalSessionVehicleCount, catalog.SignalVehiclePlayerPresent,
@@ -24,6 +24,7 @@ func TestAuthorityMatrixV5ReferencesEveryParsedCanonicalSignalExactlyOnce(t *tes
 		catalog.SignalVehicleSpeedMPS, catalog.SignalControlsThrottle, catalog.SignalControlsBrake,
 		catalog.SignalControlsClutch, catalog.SignalSessionEndTime, catalog.SignalSessionMaximumLaps,
 		catalog.SignalVehicleClass, catalog.SignalStandingsSector, catalog.SignalStandingsLapDistance,
+		catalog.SignalStandingsLapProgressTime,
 		catalog.SignalStandingsBestLapTime, catalog.SignalStandingsLastLapTime,
 		catalog.SignalStandingsEstimatedLapTime, catalog.SignalStandingsPenaltyCount,
 		catalog.SignalStandingsTimeBehindLeader, catalog.SignalStandingsLapsBehindLeader,
@@ -34,7 +35,7 @@ func TestAuthorityMatrixV5ReferencesEveryParsedCanonicalSignalExactlyOnce(t *tes
 		catalog.SignalSessionNativeDeltaBest,
 	}
 	first, second := AuthorityMatrix(), AuthorityMatrix()
-	if MatrixVersion != 5 || len(first) != len(want) || !reflect.DeepEqual(first, second) {
+	if MatrixVersion != 6 || len(first) != len(want) || !reflect.DeepEqual(first, second) {
 		t.Fatalf("version=%d matrix=%#v", MatrixVersion, first)
 	}
 	overlaps := map[catalog.SignalID]bool{

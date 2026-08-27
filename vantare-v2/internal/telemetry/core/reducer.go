@@ -46,6 +46,7 @@ type VehicleState struct {
 	Player           schema.Field[bool]
 	Sector           schema.Field[standings.Sector]
 	LapDistance      schema.Field[standings.LapDistance]
+	LapProgressTime  schema.Field[standings.LapProgressTime]
 	BestLapTime      schema.Field[standings.LapTime]
 	LastLapTime      schema.Field[standings.LapTime]
 	EstimatedLapTime schema.Field[standings.LapTime]

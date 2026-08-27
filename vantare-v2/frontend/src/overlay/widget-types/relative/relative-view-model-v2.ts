@@ -18,7 +18,7 @@ const PLACEHOLDER = "—";
  * player over a lap-distance ordering inside relative-row-selection.ts (:9-48)
  * and produced [ahead far→near, player, behind near→far]. That selection is
  * domain and now lives in the Go builder, which publishes exactly that order
- * over the canonical relative gap.
+ * over canonical lap distance and attaches the canonical temporal gap.
  *
  * This module only presents: it trims the already ordered window to the range
  * the widget configured, optionally drops the player anchor, scopes by class
@@ -60,13 +60,14 @@ export function buildRelativeViewModelV2(
       ];
 
   const byId = new Map(frame.standings.map((row) => [row.id, row]));
+  const playerInPit = playerId !== undefined && byId.get(playerId)?.pit === "pit";
   return {
     type: "relative",
     status: "ready",
     statusMessage: source.reason || undefined,
     columns,
     rowHeightMode: content.rowHeightMode,
-    rows: window.map((row, index) => buildRow(row, index, playerId, byId)),
+    rows: window.map((row, index) => buildRow(row, index, playerId, playerInPit, byId)),
   };
 }
 
@@ -89,10 +90,6 @@ export function relativeDisplayedValues(
 export const OVERLAY_V2_RELATIVE_DECLARED_GAPS: readonly string[] = Object.freeze([
   "rows[].driverNumber",
   "rows[].bestLapText",
-  // Overlay v1 blanked the gap of a lapped car and kept the row; the v2 builder
-  // leaves a vehicle without a canonical relative gap out of the window, so the
-  // rendered gap text is a declared contract difference, not a divergence.
-  "rows[].gapText",
 ]);
 
 function unavailableStatus(state: string): RelativeViewModel["status"] {
@@ -117,11 +114,23 @@ function buildRow(
   row: OverlayRelativeRowV2,
   index: number,
   playerId: string | undefined,
-  standings: ReadonlyMap<string, { readonly position: number; readonly lastLap: OverlayQValue<number> }>,
+  playerInPit: boolean,
+  standings: ReadonlyMap<string, {
+    readonly position: number;
+    readonly lastLap: OverlayQValue<number>;
+    readonly pit?: string | undefined;
+  }>,
 ): RelativeRowViewModel {
   const isPlayer = playerId !== undefined && row.id === playerId;
-  const gapSeconds = displayedNumber(row.gap) ?? null;
   const classification = standings.get(row.id);
+  const rawGapSeconds = displayedNumber(row.gap) ?? null;
+  const gapMatchesSide =
+    (row.side === "ahead" && rawGapSeconds != null && rawGapSeconds > 0) ||
+    (row.side === "behind" && rawGapSeconds != null && rawGapSeconds < 0);
+  const rivalInPit = classification?.pit === "pit";
+  const gapSeconds = isPlayer || (!playerInPit && !rivalInPit && gapMatchesSide)
+    ? rawGapSeconds
+    : null;
   return {
     id: row.id,
     position: classification?.position ?? index + 1,

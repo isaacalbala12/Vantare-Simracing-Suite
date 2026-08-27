@@ -20,6 +20,12 @@ func (sector Sector) Known() bool { return sector >= SectorOne && sector <= Sect
 
 type LapDistance float64
 
+// LapProgressTime is the simulator-observed temporal coordinate of a vehicle
+// within the current circuit lap. Drivers map an exact native equivalent or
+// leave the field missing; the canonical derivation never infers it from
+// distance or speed.
+type LapProgressTime float64
+
 type LapTime float64
 
 type PenaltyCount int32

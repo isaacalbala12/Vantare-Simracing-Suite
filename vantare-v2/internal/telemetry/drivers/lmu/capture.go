@@ -1200,6 +1200,7 @@ func (sanitizer *FrameSanitizer) Sanitize(input []byte) ([]byte, error) {
 			lmu13Layout.Scoring.LapsBehindNext,
 			lmu13Layout.Scoring.TimeBehindLeader,
 			lmu13Layout.Scoring.LapsBehindLeader,
+			lmu13Layout.Scoring.LapProgressTime,
 			lmu13Layout.Scoring.EstimatedLapTime,
 			lmu13Layout.Scoring.WorldPosition,
 			lmu13Layout.Scoring.LocalVelocity,

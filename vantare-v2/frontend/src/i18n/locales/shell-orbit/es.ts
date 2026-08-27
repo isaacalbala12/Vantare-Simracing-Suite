@@ -79,6 +79,9 @@ export const shellOrbitEs: Record<string, string> = {
   "shell.update.available": "v{{v}}",
   "shell.update.downloading": "Descargando… {{pct}}%",
   "shell.update.installing": "Instalando actualización…",
+  "shell.update.news.title": "Qué trae esta actualización",
+  "shell.update.news.hint": "Pulsa para abrirla en Ajustes › Actualizaciones.",
+  "shell.update.news.more": "Y {{count}} versión(es) más sin describir aquí.",
 
   "shell.access.unavailable": "Acceso no disponible",
   "shell.access.requiresPlan": "Requiere el plan {{plan}} · plan actual {{current}}",

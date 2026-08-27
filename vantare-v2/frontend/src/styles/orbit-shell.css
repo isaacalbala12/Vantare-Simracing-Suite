@@ -617,6 +617,121 @@ button.orbit-pill:hover { color: #fff; border-color: rgba(240, 71, 85, 0.25); }
   margin-left: auto;
 }
 
+/* Qué trae la versión pendiente, al pasar el ratón por el aviso. El panel
+   cuelga del propio aviso, y el hueco de 8 px que los separa lo cubre un
+   puente invisible: sin él, el ratón deja de estar sobre el contenedor a
+   mitad de camino y el panel se cierra justo antes de poder leerlo. */
+.orbit-update-news {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.orbit-update-news__panel {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: var(--orbit-z-menu);
+  width: 380px;
+  max-height: min(60vh, 520px);
+  margin-top: 8px;
+  padding: 14px 15px 12px;
+  overflow-y: auto;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  background: var(--orbit-surface-2);
+  box-shadow: var(--orbit-shadow-menu);
+  color: var(--orbit-ink-2);
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: left;
+}
+
+.orbit-update-news__panel::before {
+  content: "";
+  position: absolute;
+  top: -8px;
+  right: 0;
+  left: 0;
+  height: 8px;
+}
+
+.orbit-update-news__title {
+  margin: 0 0 10px;
+  color: var(--orbit-ink-4);
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.orbit-update-news__release + .orbit-update-news__release {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--orbit-line);
+}
+
+.orbit-update-news__release header {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.orbit-update-news__tag {
+  color: var(--orbit-ink);
+  font-family: var(--orbit-font-mono);
+  font-size: 11px;
+}
+
+.orbit-update-news__date {
+  color: var(--orbit-ink-muted);
+  font-size: 10.5px;
+}
+
+.orbit-update-news__headline {
+  margin: 6px 0 0;
+  color: var(--orbit-ink);
+  font-weight: 600;
+}
+
+.orbit-update-news__lead {
+  margin: 4px 0 0;
+  color: var(--orbit-ink-3);
+}
+
+.orbit-update-news__heading {
+  margin: 12px 0 4px;
+  color: var(--orbit-ink-4);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.orbit-update-news__panel ul {
+  margin: 0;
+  padding-left: 15px;
+  /* El reset global deja las listas sin marca; aquí sí hace falta, porque sin
+     ella dos cambios seguidos se leen como una sola frase partida. */
+  list-style: disc;
+}
+
+.orbit-update-news__panel li::marker {
+  color: var(--orbit-ink-muted);
+}
+
+.orbit-update-news__panel li + li {
+  margin-top: 3px;
+}
+
+.orbit-update-news__more,
+.orbit-update-news__hint {
+  margin: 12px 0 0;
+  color: var(--orbit-ink-muted);
+  font-size: 10.5px;
+}
+
 .orbit-workspace {
   position: relative;
   flex: 1;

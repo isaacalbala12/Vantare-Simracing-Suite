@@ -633,11 +633,55 @@ function applyHarnessEngineerSetting(name: string, data: unknown) {
 /** El canal del actualizador que enseña el harness; por defecto el estable. */
 const harnessUpdaterSettings: { channel: string } = { channel: "stable" };
 
-function harnessRelease(tag: string, prerelease: boolean, publishedAt: string) {
+/**
+ * El cuerpo que publica `.github/scripts/release_notes.py`, en pequeño.
+ *
+ * Estaba vacío, así que en el harness no había forma de ver ni la lista de
+ * Ajustes ni el panel del aviso con contenido real. Se conserva la forma
+ * exacta —titular, resumen, encabezados, `<details>` y pie— porque es lo que
+ * el front tiene que saber leer.
+ */
+function harnessReleaseBody(tag: string, channel: string, headline: string): string {
+  return [
+    `**${headline}**`,
+    "",
+    "Este corte reordena el aviso de actualizacion para que cuente que trae la",
+    "version antes de descargarla, sin salir de la pantalla en la que estas.",
+    "",
+    "## Novedades",
+    "- El aviso de actualizacion despliega que cambia en cada version pendiente.",
+    "- Las notas salen del manifiesto del corte, las mismas que se leen en GitHub.",
+    "",
+    "## Corregido",
+    "- El panel de Ajustes ya no se queda en blanco al volver de otra pantalla.",
+    "",
+    "## Para testers",
+    "- Pasar el raton por el aviso y comprobar que el panel se puede recorrer.",
+    "- Comprobar que `Esc` lo cierra y que se abre tambien con el teclado.",
+    "",
+    "## Limitaciones conocidas",
+    "- Ninguna declarada para este corte.",
+    "",
+    "<details>",
+    "<summary>Notas tecnicas</summary>",
+    "",
+    "**ISA-0**",
+    "- El cuerpo se renderiza en CI desde el manifiesto y sus fragmentos.",
+    "",
+    "</details>",
+    "",
+    "---",
+    "",
+    `Canal ${channel} · \`${tag}\` · revisión \`0f1e2d3c4b5a\``,
+  ].join("\n");
+}
+
+function harnessRelease(tag: string, prerelease: boolean, publishedAt: string, headline: string,
+                        channel: string) {
   return {
     tag_name: tag,
     name: tag,
-    body: "",
+    body: harnessReleaseBody(tag, channel, headline),
     prerelease,
     published_at: publishedAt,
     html_url: `https://example.com/${tag}`,
@@ -645,9 +689,12 @@ function harnessRelease(tag: string, prerelease: boolean, publishedAt: string) {
   };
 }
 
-const harnessStableRelease = harnessRelease("v0.1.0.2", false, "2026-06-02T00:00:00Z");
-const harnessTestersRelease = harnessRelease("v0.1.0.7-testers.1", true, "2026-06-03T00:00:00Z");
-const harnessNightlyRelease = harnessRelease("v0.1.0.7-nightly.11", true, "2026-06-05T00:00:00Z");
+const harnessStableRelease = harnessRelease(
+  "v0.1.0.2", false, "2026-06-02T00:00:00Z", "Estable con el aviso legible", "Estable");
+const harnessTestersRelease = harnessRelease(
+  "v0.1.0.7-testers.1", true, "2026-06-03T00:00:00Z", "Candidata para testers", "Testers");
+const harnessNightlyRelease = harnessRelease(
+  "v0.1.0.7-nightly.11", true, "2026-06-05T00:00:00Z", "Notas de version legibles", "Nightly");
 
 /**
  * Espejo del backend: `releases` va filtrada por el canal configurado y
@@ -1138,3 +1185,26 @@ export const Browser = {
     // no-op in harness
   },
 };
+
+/**
+ * `?updater=pending` finge que hay versiones sin instalar.
+ *
+ * El aviso de actualizacion no aparece hasta que el backend anuncia una, asi
+ * que sin esto la unica forma de revisar como se ve —y como se lee su panel de
+ * novedades— era esperar a una release real. Va detras de un parametro para
+ * que las capturas del harness sigan saliendo sin el aviso.
+ */
+if (typeof window !== "undefined" && window.location.search.includes("updater=pending")) {
+  const info = harnessUpdateInfo();
+  // La shell se suscribe al montarse: el anuncio espera a que lo haya hecho,
+  // igual que el chequeo real espera cinco segundos tras el arranque.
+  setTimeout(() => {
+    broadcast("updater:notify", {
+      tag: info.latestRelease.tag_name,
+      name: info.latestRelease.name,
+      prerelease: info.latestRelease.prerelease,
+      downloadURL: info.latestRelease.html_url,
+    });
+    broadcast("updater:available", { info });
+  }, 800);
+}

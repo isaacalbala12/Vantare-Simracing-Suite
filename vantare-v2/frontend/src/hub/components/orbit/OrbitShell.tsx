@@ -28,6 +28,8 @@ import {
   type UpdateState,
   type ViewId,
 } from '../../orbit/views';
+import { pendingReleases } from '../../settings/release-notes';
+import type { UpdateInfo } from '../../settings/settings-contract';
 import { CommandPalette, type PaletteItem } from './CommandPalette';
 import { ContextColumn, type ContextColumnBlock } from './ContextColumn';
 import { OrbitKeepAlive } from './OrbitKeepAlive';
@@ -141,6 +143,7 @@ function OrbitShellBody({
   const [update, setUpdate] = useState<UpdateState>('none');
   const [updateTag, setUpdateTag] = useState<string>('');
   const [updatePercent, setUpdatePercent] = useState(0);
+  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
   // Las suscripciones se montan una sola vez: la ref es como leen el tag sin
   // volver a suscribirse cada vez que cambia.
   const tagRef = useRef('');
@@ -162,6 +165,16 @@ function OrbitShellBody({
       setUpdateTag(tag);
       setUpdate('available');
     });
+    // El mismo chequeo silencioso que dispara el aviso publica la información
+    // completa, que es donde vienen las notas de cada release pendiente. Sin
+    // esto habría que pedir otra comprobación solo para poder contar qué trae
+    // la versión, es decir, una llamada de red por pasar el ratón.
+    const unsubAvailable = Events.On(
+      'updater:available',
+      (event: { data?: { info?: UpdateInfo } }) => {
+        if (event.data?.info) setUpdateInfo(event.data.info);
+      },
+    );
     // El porcentaje llega en el evento y antes se tiraba: el pill anunciaba
     // «Descargando… 0%» durante toda la descarga.
     const unsubProgress = Events.On(
@@ -183,11 +196,16 @@ function OrbitShellBody({
     });
     return () => {
       unsubNotify?.();
+      unsubAvailable?.();
       unsubProgress?.();
       unsubInstalled?.();
       unsubError?.();
     };
   }, []);
+
+  // Parsear el cuerpo de varias releases no es gratis y el aviso se repinta con
+  // cada navegación: se rehace solo cuando cambia la información del updater.
+  const updateNews = useMemo(() => pendingReleases(updateInfo), [updateInfo]);
 
   // ≤ 1152 px la columna se pliega sola sin tocar la preferencia guardada.
   const [narrow, setNarrow] = useState(
@@ -474,7 +492,17 @@ function OrbitShellBody({
       ? t('shell.update.installing')
       : update === 'downloading'
         ? formatMessage(t('shell.update.downloading'), { pct: updatePercent })
-        : formatMessage(t('shell.update.available'), { v: updateTag });
+        // El tag ya viene con su «v» («v0.1.0.7-nightly.12») y la copia añade
+        // otra, así que el aviso llevaba leyéndose «vv0.1.0.7…».
+        : formatMessage(t('shell.update.available'), { v: updateTag.replace(/^v/i, '') });
+  const updateNewsLabels = useMemo(
+    () => ({
+      title: t('shell.update.news.title'),
+      hint: t('shell.update.news.hint'),
+      more: t('shell.update.news.more'),
+    }),
+    [t],
+  );
 
   const shell = (
     <div className="orbit-root" data-testid="orbit-shell">
@@ -534,6 +562,9 @@ function OrbitShellBody({
             title={t(RAIL_LABEL_KEY[activeView])}
             update={update}
             updateLabel={updateLabel}
+            updateNewsLabels={updateNewsLabels}
+            updateNotes={updateNews.notes}
+            updateNotesTotal={updateNews.total}
             view={activeView}
           >
             {activeView === 'studio' ? (

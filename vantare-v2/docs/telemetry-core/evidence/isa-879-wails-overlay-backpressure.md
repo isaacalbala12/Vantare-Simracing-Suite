@@ -83,17 +83,66 @@ La integracion cubre ademas:
   `car-damage-numbers-view-model-v2.ts:93` (`_damage` sin usar).
 - `git diff --check`: PASS.
 
+## Evidencia Wails real
+
+Se construyo `bin/vantare-isa879.exe` con el frontend productivo y los dos
+nombres publicos de Supabase cargados en memoria desde el `.env.local`
+autorizado. El preflight mostro solo `SET`; `supabase_build.go` se genero para
+el build y se elimino siempre al terminar. No se copio, imprimio ni versiono
+ningun `.env*`.
+
+Con LMU abierto y ambas aplicaciones mostrando `Vantare Hub`, se tomaron 21
+muestras cada 30 segundos durante 10 min 12 s:
+
+| Build | PID app | PID browser | Privada inicial | Minimo | Maximo | Privada final |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Nightly instalada, cola ya acumulada | 1408 | 5844 | 13.952,3 MiB | 13.952,3 MiB | 13.952,8 MiB | 13.952,8 MiB |
+| ISA-879 production, perfil WebView propio | 21080 | 33944 | 38,7 MiB | 37,4 MiB | 38,9 MiB | 37,9 MiB |
+
+El browser ISA-879 no presenta pendiente ascendente. A la tasa del incidente
+de 3,24 MiB/s, la ruta anterior habria anadido aproximadamente 1,9 GiB en el
+mismo intervalo. Esta medicion acredita **Hub sin consumidor**; no acredita
+todavia carga con Overlay activo porque durante la ventana tampoco crecio la
+Nightly instalada.
+
+Para inspeccionar sin clics ciegos se construyo ademas
+`vantare-isa879-debug.exe` con el gancho canonico
+`VANTARE_WEBVIEW_DEBUG_PORT=9229`. Desde el DOM de Hub se abrio el Overlay del
+perfil activo: WebView2 expuso dos targets (`#/hub` y `/`) y CompositeApp monto
+su diagnostico. Un pull de comprobacion desde la ventana Overlay devolvio HTTP
+200 y una sola respuesta dirigida `telemetry:overlay:pulled`, con la ruta
+`telemetry:overlay:status`. El status real era `stale`, revision 3 y sin
+snapshot; por eso no existe todavia una medicion honesta de payloads bajo
+carga. Los procesos de prueba propios se cerraron y relanzaron normalmente;
+Vantare instalada y LMU no se cerraron ni modificaron.
+
+La instrumentacion del cliente normal revelo una segunda frontera: en unos 21
+s se recibieron 719 respuestas `telemetry:overlay:pulled`, pero tambien 720
+ecos globales de la solicitud `telemetry:overlay:pull`. El payload de control
+era pequeno, pero `Events.Emit` seguia convirtiendo cada solicitud en
+`ExecuteScript` para todas las ventanas, incluido Hub. Por tanto la primera
+version acotaba los frames, pero todavia no aislaba por completo el transporte.
+
+El commit `a6842cef` mueve solo solicitud y cierre a `POST` sobre el asset
+server interno de Wails (`/_vantare/overlay-telemetry/{pull,close}`). Wails
+inyecta el nombre de la ventana solicitante; el backend conserva la respuesta
+dirigida, el ack y `latest-wins`. Los tests Go y frontend enfocados, typecheck y
+ESLint del diff pasan. La sesion del equipo se reinicio antes de repetir el
+runtime, asi que la ausencia de ecos globales y el soak con LMU `live` siguen
+siendo evidencia pendiente, no una afirmacion.
+
 ## Evidencia real pendiente
 
 Los tests anteriores demuestran el protocolo y su limite logico, pero no
 demuestran el comportamiento de memoria del proceso WebView2. Antes de aceptar
 la correccion hay que ejecutar una build Wails aislada con LMU real y registrar:
 
-1. Hub sin Overlay: cero payloads Overlay hacia WebView2 y memoria privada
-   estable.
-2. Overlay activo: una entrega maxima en vuelo y crecimiento de memoria
-   acotado bajo carga real.
+1. ~~Hub sin Overlay: memoria privada estable.~~ PASS en production durante
+   10 min 12 s. El cero broadcast queda probado por codigo/tests; WebView2 no
+   expone un contador directo de `ExecuteScript` en production.
+2. Overlay activo con LMU nuevamente `live`: cero solicitudes de control por el
+   bus global, una entrega maxima en vuelo y crecimiento de memoria acotado bajo
+   carga real.
 3. Cierre del Overlay: publisher v2 y sesion liberados.
 
-No se ha cerrado ni modificado la instancia de Vantare o LMU usada para el
-diagnostico. No hay todavia push, PR, CI remoto, merge, promocion o release.
+No hay todavia push, PR, CI remoto, merge, promocion o release.

@@ -30,7 +30,18 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   unica ventana. `go test -p 1 ./...`, 411 archivos/3095 tests frontend,
   typecheck, build y ESLint del diff estan verdes. El lint global conserva un
   error ajeno en `car-damage-numbers-view-model-v2.ts:93`. Falta el soak
-  Wails/LMU real: los commits no se presentan como prueba de memoria WebView2. Rama
+  Wails/LMU real con carga: en production, 21 muestras durante 10 min 12 s con
+  solo Hub dejaron el browser ISA-879 entre 37,4 y 38,9 MiB (38,7 -> 37,9),
+  frente a 13.952 MiB ya acumulados por la Nightly instalada. Una build debug
+  abrio el Overlay real por CDP y recibio una respuesta pull dirigida, pero el
+  status LMU era `stale` y no habia snapshot. Esa prueba descubrio que las
+  solicitudes del cliente aun usaban `Events.Emit`: 720 ecos globales en unos
+  21 s. `a6842cef` mueve solicitud/cierre al asset server HTTP interno y mantiene
+  la respuesta dirigida con ack/latest-wins; gates enfocados, typecheck y ESLint
+  del diff estan verdes. La sesion del equipo se reinicio antes de repetir el
+  runtime. Cero ecos globales, Overlay bajo carga y cierre real siguen pendientes
+  hasta relanzar la app y recuperar LMU `live`; los commits no se presentan como
+  prueba de esa fase. Rama
   `vantareapp/isa-879-wails-telemetry-bounded`; sin push, PR, CI, merge,
   promocion ni release.
 

@@ -1,6 +1,6 @@
 # Contrato de producto Vantare
 
-Estado: decisiones confirmadas por Isaac hasta 2026-07-27.
+Estado: decisiones confirmadas por Isaac hasta 2026-08-27.
 
 ## Definición y principios
 
@@ -16,6 +16,11 @@ Es una aplicación de escritorio local-first para Windows 10 y 11. Los módulos
 comparten shell, cuenta, configuración y Telemetry Core, pero conservan
 contratos y almacenamiento propios. No se convierten en microservicios ni en
 aplicaciones independientes.
+
+Un companion Mac podrá mostrar en el futuro un stream efímero y opt-in de
+telemetría live ya aceptada por el único runtime Windows. No será una segunda
+autoridad de Vantare: no adquiere LMU, no calcula estado de producto y no
+sincroniza ni exporta cuenta, ajustes, estrategias o datos persistidos.
 
 ## Usuarios y lanzamiento
 

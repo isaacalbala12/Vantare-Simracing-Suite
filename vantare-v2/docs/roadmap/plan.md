@@ -323,6 +323,22 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - etiqueta.pt: Em desenvolvimento
 - etiqueta.it: In corso
 
+### Telemetría remota Windows → Mac V1
+
+- id: telemetry-remote-v1
+- tipo: plan
+- titulo.en: Windows to Mac remote telemetry V1
+- titulo.pt: Telemetria remota Windows → Mac V1
+- titulo.it: Telemetria remota Windows → Mac V1
+- cuerpo: Plan para publicar por LAN, con opt-in, snapshots canónicos completos post-commit desde el único runtime Windows a un único cliente Mac. La V1 no incluye facts, grabación, replay, autodiscovery ni acceso por Internet y aún no está disponible.
+- cuerpo.en: Plan to publish opt-in, full post-commit canonical snapshots over the LAN from the single Windows runtime to one Mac client. V1 excludes facts, recording, replay, autodiscovery and Internet access and is not available yet.
+- cuerpo.pt: Plano para publicar pela LAN, com opt-in, snapshots canónicos completos pós-commit a partir do único runtime Windows para um único cliente Mac. A V1 não inclui facts, gravação, replay, descoberta automática nem acesso pela Internet e ainda não está disponível.
+- cuerpo.it: Piano per pubblicare sulla LAN, con opt-in, snapshot canonici completi post-commit dall'unico runtime Windows a un unico client Mac. La V1 esclude facts, registrazione, replay, rilevamento automatico e accesso a Internet e non è ancora disponibile.
+- etiqueta: Plan
+- etiqueta.en: Plan
+- etiqueta.pt: Plano
+- etiqueta.it: Piano
+
 ### Reader histórico LMU y runtime Windows
 
 - id: telemetry-analysis-reader-runtime

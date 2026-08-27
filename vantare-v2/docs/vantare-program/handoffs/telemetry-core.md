@@ -11,9 +11,20 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 - `docs/adr/0004-telemetry-core-modular-observation-architecture.md`.
 - `docs/telemetry-core/README.md` y su evidencia.
 - `docs/superpowers/plans/2026-07-19-telemetry-core-final-architecture-master.md`.
-- Microplan activo y Linear.
+- Microplan activo y GitHub issue.
 
 ## Estado real
+
+- 2026-08-27, ISA-870 / Telemetry Remote A: la arquitectura documental fija
+  que cualquier salida Windows → Mac nace después del commit único de
+  `TelemetryEngine.Apply`. Windows conserva el único owner LMU; el publicador
+  remoto será un consumidor in-process, opt-in, aislado y latest-wins con cola
+  de capacidad uno. V1 queda limitada a snapshots completos de un contrato
+  allowlisted para un único Mac en LAN. Facts, recording, replay,
+  autodiscovery, Internet y cambios en el servidor loopback quedan fuera. ADR
+  0010 y el threat model están en la rama
+  `vantareapp/isa-870-telemetry-remote-adr-threat-model`; no hay código,
+  listener, pairing, push, PR, merge ni promoción.
 
 - 2026-08-21, ISA-697 / Deuda #677 Tanda 2: `TelemetryEngine.Apply` pasa de 650190 B/op 344 allocs/op @104 a 168400 B/op 327 allocs/op (-74% bytes, -5% allocs) en rama `vantareapp/isa-697-apply-churn` sobre `origin/nightly@f10b817d` (5 commits: 1 benchmark + 4 perf). Cambios: `envelope.NewSnapshotOwned` + `Peek` para no clonar donde se lee sin mutar, `Commit` directo en reducer/coordinator/pipeline, y `validateObservedState` sin map (sort). Goldens y replay parity verdes; snapshot sigue value-semantic. Evidencia `docs/telemetry-core/evidence/isa-677-apply-churn.md`, fragmento `ISA-697.json`. Queda techo ~150KB/B/op sin COW en envelope y gaps 104 por frame.
 
@@ -425,9 +436,11 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 
 Existe wiring productivo canónico para Overlay y Engineer. Gaps, delta, pit y
 reconexión tienen inputs, algoritmo, fixtures reales y proyección demostrados.
-No queda otro corte de implementación de Telemetry Core. La siguiente acción
-es la validación integrada Nightly/Pro Plus y la recogida de feedback antes de
-considerar cualquier paso a `testers`; `master` permanece fuera de alcance.
+No queda otro corte pendiente del runtime local que cerró aquel programa. La
+telemetría remota de ISA-870 es una extensión futura, opt-in y post-commit, no
+una reapertura del pipeline local. La validación integrada Nightly/Pro Plus del
+runtime existente continúa antes de considerar cualquier paso a `testers`;
+`master` permanece fuera de alcance.
 `go vet` conserva tres avisos heredados de `unsafe.Pointer` Win32; ISA-118 e
 ISA-131/ISA-94 poseen la deuda externa.
 
@@ -440,6 +453,9 @@ ISA-131/ISA-94 poseen la deuda externa.
 - Reducer single-writer sin I/O; derivaciones lineales/versionadas/acotadas.
 - Replays raw, canónicos e históricos son niveles distintos.
 - Mocks/simulator solo en harness explícito.
+- Telemetría remota V1 consume únicamente snapshots post-commit allowlisted;
+  nunca abre otro reader ni replica mapping, identidad o derivaciones en Mac.
+  La función apagada no crea recursos y un fallo remoto no afecta al Core.
 
 ## Evidencia y riesgos
 
@@ -593,6 +609,7 @@ ISA-131/ISA-94 poseen la deuda externa.
 | Completada | ISA-171 / TC-09G, promoción controlada a `nightly@c5eb3c9` |
 | Integrada en Nightly | ISA-160 / TC-10A en `nightly@8880a88` |
 | PR draft / CI verde en corte publicado | ISA-161 / TC-10B, PR draft [#212](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/212) OPEN/CLEAN/MERGEABLE a `nightly@b6df494`; [run 31639192366](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/31639192366) SUCCESS para `19dddea`; Linear pendiente, sin integración |
+| En ejecución | ISA-870 / Telemetry Remote A, ADR 0010 y threat model; solo documentación en rama de issue |
 
 ## Arquitectura objetivo (ISA-371 / ISA-372)
 
@@ -641,18 +658,12 @@ ISA-131/ISA-94 poseen la deuda externa.
 
 ## Siguiente acción exacta
 
-El orquestador debe revisar los commits F1 y los cuatro commits F5, integrar el
-carril F2 sin sobrescribir sus archivos reservados y actualizar Linear cuando
-las issues propias existan. Isaac debe ejecutar la sesión LMU real de 60
-minutos y decidir si acepta la entrega aislada. No hacer push, PR, merge o
-promoción desde este worker. F6 sigue siendo el dueño del payload compacto de
-104 vehículos; F3 sigue siendo el dueño de la transacción única del engine.
-El orquestador debe revisar los cinco commits F2, actualizar Linear cuando la
-issue propia exista y decidir el siguiente corte de integración. Isaac debe
-ejecutar la verificación LMU/Wails/OBS descrita en la evidencia. No hacer push,
-PR, merge o promoción desde este worker. F6 sigue siendo el dueño del payload
-compacto de 104 vehículos; F3 sigue siendo el dueño de la transacción única
-del engine.
+Cerrar ISA-870 mediante review independiente de ADR 0010, threat model,
+roadmap y este handoff. Después, crear la issue exacta **Telemetry Remote B —
+Definir `RemoteCanonicalUpdateV1` post-commit** para fijar allowlist, versión,
+epoch/revisión, reinicios, primer full, liveness monotónico local, límites,
+encoder/decoder y goldens, todavía sin listener LAN productivo. No implementar
+transporte, pairing o macOS Keychain dentro de ISA-870.
 
 ## Gate final
 
@@ -661,6 +672,12 @@ de dos horas; sesión LMU real; reconexión; frecuencia/drops/latencia; teardown
 y evidencia para Isaac.
 
 ## Última actualización
+
+2026-08-27, ISA-870: arquitectura de telemetría remota V1 documentada sobre la
+frontera post-commit de ADR 0008. ADR 0010 y el threat model limitan el corte a
+un publicador in-process opt-in, un Mac, LAN, snapshots full latest-wins y
+seguridad TLS/pairing con stores protegidos. Sin código productivo ni capacidad
+remota entregada; siguiente issue: contrato wire post-commit.
 
 2026-08-19, ISA-372/F5: contrato TypeScript wire generado localmente desde Go,
 reexports en frontend, goldens compartidos y gate de regeneración local/CI.

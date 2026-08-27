@@ -61,7 +61,12 @@
   BIL-08 tras validación acumulativa. Venta pública continúa **NO-GO**.
 - Account/Profile: issue histórica ISA-12; proyecto pendiente.
 - Calendar/Settings/Installer/Roadmap/Migración: proyecto o reconciliación
-  pendientes.
+  pendientes. ISA-845 tiene implementados el parser del mensaje Discord
+  oficial, seed de 2026-08-25, revisión owner y lector REST separado; su vía
+  de integración inicial es el PR #881 contra nightly. El runtime local se
+  validó con el canal configurado: 1 candidato de 11 series en la bandeja
+  instalada y la tarea diaria terminó con código 0; no hay auto-publicación,
+  secretos en Desktop, deploy, testers/master ni release.
 - Root migration: auditoría ISA-14, bloqueada por worktrees activos.
 - `nightly` y `testers` existen; el flujo vigente es issue → `nightly` →
   `testers` → `master`.
@@ -81,7 +86,12 @@ auditoría clean-room de DoX/SimHub y fuente LMU+Steam.
 Feed oficial versionado/firmado. Isaac pega RaceControl semanal y un agente lo
 estructura con validación. UTC interno; zona local visible. Carreras guardadas,
 recordatorios, Launcher/Overlay/Strategy y nota. Servicio ligero solo con
-recordatorios futuros y permiso.
+recordatorios futuros y permiso. ISA-845 añade un lector Discord restringido a
+  guild/canal (con autor o webhook opcionales) que deja candidatos locales para
+  revisión owner. El comando admite ejecución única diaria y guarda el token
+  fuera del repositorio en el almacén protegido del usuario; la tarea local
+  está registrada a las 03:00 con la misma cuenta interactiva;
+publicar sigue pasando por las RPC existentes y la comprobación server-side.
 
 ## Ajustes
 

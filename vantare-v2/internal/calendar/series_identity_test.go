@@ -4,16 +4,22 @@ import "testing"
 
 func TestTelemetryVenueIdentityUsesDeclaredCalendarNames(t *testing.T) {
 	cases := map[string]string{
-		"Bahrain (Outer)":  "Bahrain International Circuit",
-		"Barcelona (ELMS)": "Circuit de Barcelona",
-		"COTA (WEC)":       "Circuit of the Americas",
-		"Daytona (RC)":     "Daytona International Speedway",
-		"Fuji (WEC)":       "Fuji Speedway",
-		"Laguna Seca (RC)": "WeatherTech Raceway Laguna Seca",
-		"Le Mans (WEC)":    "Circuit de la Sarthe",
-		"Qatar (Short)":    "Lusail International Circuit",
-		"Sebring (WEC)":    "Sebring International Raceway",
-		"Spa (WEC)":        "Circuit de Spa-Francorchamps",
+		"Bahrain (Outer)":               "Bahrain International Circuit",
+		"Bahrain (WEC)":                 "Bahrain International Circuit",
+		"Barcelona (ELMS)":              "Circuit de Barcelona",
+		"COTA (WEC)":                    "Circuit of the Americas",
+		"Daytona (RC)":                  "Daytona International Speedway",
+		"Fuji (WEC)":                    "Fuji Speedway",
+		"Laguna Seca (RC)":              "WeatherTech Raceway Laguna Seca",
+		"Le Mans (WEC)":                 "Circuit de la Sarthe",
+		"Portimao (ELMS)":               "Algarve International Circuit",
+		"Portimao (WEC)":                "Algarve International Circuit",
+		"Qatar (Short)":                 "Lusail International Circuit",
+		"Sebring (WEC)":                 "Sebring International Raceway",
+		"Spa (WEC)":                     "Circuit de Spa-Francorchamps",
+		"Spa-Francorchamps (ELMS)":      "Circuit de Spa-Francorchamps",
+		"Spa-Francorchamps (Endurance)": "Circuit de Spa-Francorchamps",
+		"Silverstone (ELMS)":            "Silverstone Circuit",
 	}
 	for calendarTrack, want := range cases {
 		got, ok := TelemetryTrackName(calendarTrack)

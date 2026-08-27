@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-26T23:25:59Z",
+  "generatedAt": "2026-08-27T17:11:20Z",
   "digest": {
-    "lastCommit": "b1d5b15bd06429fd81373d3e36fe742acbf1ef05"
+    "lastCommit": "ca92605e9ed74c0e3974e85b4fc6ef91347e6372"
   },
   "phases": [
     {
@@ -336,6 +336,28 @@
     }
   ],
   "milestones": [
+    {
+      "id": "calendar-discord-review",
+      "type": "feature",
+      "title": {
+        "es": "Calendario LMU desde Discord",
+        "en": "LMU calendar from Discord",
+        "pt": "Calendário LMU via Discord",
+        "it": "Calendario LMU da Discord"
+      },
+      "body": {
+        "es": "Un lector restringido al canal oficial deja el mensaje semanal de LMU en una bandeja local; el owner revisa la fuente y los cambios antes de guardar y publicar el borrador.",
+        "en": "A reader restricted to the official channel leaves the LMU weekly message in a local inbox; the owner reviews the source and changes before saving and publishing the draft.",
+        "pt": "Um leitor limitado ao canal oficial deixa a mensagem semanal do LMU numa caixa de entrada local; o owner revê a fonte e as alterações antes de guardar e publicar o rascunho.",
+        "it": "Un lettore limitato al canale ufficiale lascia il messaggio settimanale LMU in una inbox locale; l'owner rivede fonte e modifiche prima di salvare e pubblicare la bozza."
+      },
+      "label": {
+        "es": "En revisión",
+        "en": "In review",
+        "pt": "Em revisão",
+        "it": "In revisione"
+      }
+    },
     {
       "id": "roadmap-issue-contract",
       "type": "plan",
@@ -763,6 +785,26 @@
           "kind": "change",
           "scope": "",
           "text": "ISA-861 · Promover reader LMU y runtime Windows a nightly"
+        },
+        {
+          "kind": "feat",
+          "scope": "release",
+          "text": "Notas de version legibles — exigir changelog para publicar y contarlo en el aviso"
+        },
+        {
+          "kind": "fix",
+          "scope": "updater",
+          "text": "Revision del sistema de actualizaciones — 6 fallos corregidos"
+        },
+        {
+          "kind": "feat",
+          "scope": "studio",
+          "text": "Fondos propios en el lienzo del Studio"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-861 · Promover Analysis y Strategy asistida a nightly"
         }
       ]
     },

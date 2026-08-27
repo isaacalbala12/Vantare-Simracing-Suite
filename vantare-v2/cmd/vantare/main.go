@@ -27,6 +27,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/applog"
 	"github.com/vantare/overlays/v2/internal/authsession"
 	"github.com/vantare/overlays/v2/internal/calendar"
+	"github.com/vantare/overlays/v2/internal/calendar/discordbot"
 	engineeraudio "github.com/vantare/overlays/v2/internal/engineer/audio"
 	"github.com/vantare/overlays/v2/internal/engineer/commands"
 	"github.com/vantare/overlays/v2/internal/engineer/ptt"
@@ -2032,6 +2033,10 @@ func main() {
 	// already good enough to open with.
 	schedulePublisher := calendar.NewSchedulePublisher(supabaseURLResolved, supabaseAnonKeyResolved)
 	scheduleImportSvc := app.NewScheduleImportService(schedulePublisher, emitter)
+	calendarDiscordInbox, inboxErr := discordbot.NewInbox(filepath.Join(cfgDir, "calendar-discord-inbox.json"))
+	if inboxErr != nil {
+		log.Printf("warning: Discord calendar inbox unavailable: %v", inboxErr)
+	}
 	refreshPublishedSchedule := func() {
 		session, err := authManager.Restore()
 		if err != nil {
@@ -3066,6 +3071,19 @@ func main() {
 			return
 		}
 		go scheduleImportSvc.LoadDraft(context.Background(), session.AccessToken)
+	})
+
+	wailsApp.Event.On("schedule:discord:inbox:get", func(_ *application.CustomEvent) {
+		if calendarDiscordInbox == nil {
+			emitter.Emit("schedule:error", map[string]any{"message": "La bandeja de Discord no está disponible"})
+			return
+		}
+		candidates, err := calendarDiscordInbox.List()
+		if err != nil {
+			emitter.Emit("schedule:error", map[string]any{"message": err.Error()})
+			return
+		}
+		emitter.Emit("schedule:discord:inbox", map[string]any{"candidates": candidates})
 	})
 
 	wailsApp.Event.On("calendar:import", func(event *application.CustomEvent) {

@@ -107,6 +107,7 @@ export const SETTINGS_SECTIONS = [
   "hotkeys",
   "privacy",
   "diagnostics",
+  "schedule",
 ] as const;
 
 export type SettingsSection = (typeof SETTINGS_SECTIONS)[number];

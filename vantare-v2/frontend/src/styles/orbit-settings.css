@@ -60,6 +60,60 @@
   animation: orbit-tab-in var(--orbit-enter, 0.26s) var(--orbit-ease) both;
 }
 
+/* ------------------------------------------------------ CALENDARIO LMU */
+
+.orbit-set-schedule__candidates,
+.orbit-set-schedule__series {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.orbit-set-schedule__actions,
+.orbit-set-schedule__summary,
+.orbit-set-schedule__series-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.orbit-set-schedule__source {
+  min-height: 240px;
+}
+
+.orbit-set-schedule__series {
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.orbit-set-schedule__series > li {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-top: 1px solid var(--orbit-line);
+}
+
+.orbit-set-schedule__series-main {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.orbit-set-schedule__series-main > span {
+  color: var(--orbit-ink-2);
+  font-size: var(--orbit-fs-secondary);
+}
+
+.orbit-set-schedule__series-meta {
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
+
 @keyframes orbit-tab-in {
   from {
     opacity: 0;
@@ -881,5 +935,21 @@ body[data-reduce-motion="true"] * {
 @media (min-width: 1361px) {
   .orbit-set-privacy__columns {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .orbit-set-schedule__actions,
+  .orbit-set-schedule__series > li {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .orbit-set-schedule__actions .orbit-btn {
+    width: 100%;
+  }
+
+  .orbit-set-schedule__series-meta {
+    justify-content: flex-start;
   }
 }

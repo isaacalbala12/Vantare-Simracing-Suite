@@ -1322,7 +1322,7 @@ func TestService_CloneLocked_DeepCopiesNewSlices(t *testing.T) {
 	svc.mu.Unlock()
 }
 
-func TestService_ApplyOfficialSchedule_Applies10Series(t *testing.T) {
+func TestService_ApplyOfficialSchedule_AppliesOfficialSeries(t *testing.T) {
 	sched, err := LoadWeeklySchedule()
 	if err != nil {
 		t.Fatalf("LoadWeeklySchedule: %v", err)
@@ -1486,8 +1486,8 @@ func TestService_ApplyOfficialSchedule_WeeklyLabel(t *testing.T) {
 	if !strings.Contains(weeklyPreview.ScheduleLabel, "02:00") {
 		t.Errorf("weekly label = %q, want 02:00", weeklyPreview.ScheduleLabel)
 	}
-	if !strings.Contains(weeklyPreview.ScheduleLabel, "23:00") {
-		t.Errorf("weekly label = %q, want 23:00", weeklyPreview.ScheduleLabel)
+	if !strings.Contains(weeklyPreview.ScheduleLabel, "22:00") {
+		t.Errorf("weekly label = %q, want 22:00", weeklyPreview.ScheduleLabel)
 	}
 }
 

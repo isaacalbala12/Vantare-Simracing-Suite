@@ -65,6 +65,7 @@ import {
 import { createBrowserDiagnosticsActions } from "../settings/diagnostics/diagnostics-actions";
 import type { PreparedDiagnostics } from "../settings/diagnostics/contracts";
 import { DowngradeModal } from "../settings/DowngradeModal";
+import { ScheduleImportSection } from "./ScheduleImportSection";
 import { CurationPrivacySection } from "./CurationPrivacySection";
 import {
   applyReduceMotion,
@@ -121,6 +122,7 @@ export interface SettingsOrbitPageProps {
  */
 export function SettingsOrbitPage({ target }: SettingsOrbitPageProps) {
   const { t, locale, setLocale } = useI18n();
+  const access = useAccess();
   const contextSlot = useOrbitSlot(SETTINGS_CONTEXT_SLOT_ID);
 
   const [section, setSection] = useState<SettingsSection>(() =>
@@ -149,8 +151,11 @@ export function SettingsOrbitPage({ target }: SettingsOrbitPageProps) {
   // en vez de las secciones; elegir uno navega y limpia la búsqueda.
   const [searchQuery, setSearchQuery] = useState("");
   const searchResults = useMemo(
-    () => searchSettings(searchQuery, (key) => t(key)),
-    [searchQuery, t],
+    () =>
+      searchSettings(searchQuery, (key) => t(key)).filter(
+        (entry) => entry.section !== "schedule" || access.roles.includes("owner"),
+      ),
+    [access.roles, searchQuery, t],
   );
 
   return (
@@ -178,6 +183,7 @@ export function SettingsOrbitPage({ target }: SettingsOrbitPageProps) {
         {section === "hotkeys" ? <HotkeysSection /> : null}
         {section === "privacy" ? <CurationPrivacySection /> : null}
         {section === "diagnostics" ? <DiagnosticsSection /> : null}
+        {section === "schedule" ? <ScheduleImportSection /> : null}
       </div>
 
       {contextSlot
@@ -219,7 +225,9 @@ export function SettingsOrbitPage({ target }: SettingsOrbitPageProps) {
                   )
                 ) : (
                   <div className="orbit-list" data-testid="orbit-settings-context" role="tablist">
-                    {SETTINGS_SECTIONS.map((id) => (
+                    {SETTINGS_SECTIONS.filter(
+                      (id) => id !== "schedule" || access.roles.includes("owner"),
+                    ).map((id) => (
                       <ListRow
                         ariaSelected={id === section}
                         key={id}

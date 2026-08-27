@@ -1,0 +1,25 @@
+Daily Race Schedule from: 25th August 2026
+Beginner [Bronze SR]
+starts every 15min, 20m races, 20 car splits, high assists allowed, tyre warmers enabled, tyres: 8
+LMGT3 Fixed: Fuji (WEC), LMGT3 Class, fixed setup
+LMGTE Fixed: Bahrain (WEC), LMGTE Am Class, fixed setup
+LMP3 Fixed: Portimao (WEC), LMP3 Class, fixed setup
+Intermediate [Silver SR]
+starts every 20min, 30m races, 44 car splits, low assists allowed, no tyre warmers, tyres: 8
+LMGT3 Sprint Cup: Barcelona (ELMS), LMGT3 Class, open setup
+Prototype Classic: Spa-Francorchamps (ELMS), LMP2 (WEC) & LMGTE Am Classes, open setup
+ELMS Sprint Trophy: Silverstone (ELMS), LMP2 (ELMS) LMP3 & LMGT3 Classes, open setup
+Advanced [Gold SR]
+starts every 30min, 62 car splits, no assists allowed, no tyre warmers, tyres: 8
+One Stint Sprint: Le Mans (WEC), Hypercar & LMGT3 Classes, 40m races, open setup
+ELMS Super 60: Spa-Francorchamps (Endurance), LMP2 (ELMS, full fuel tank) LMP3 (70L fuel tank) & LMGT3 Classes (75% VE), 60m races, open setup
+WEC-Xperience: Daytona (RC), Hypercar LMP2 (WEC) & LMGT3 classes, 70% VE Limit, 60m races, open setup
+Weekly Races (Solo)
+WEC Weekly [SR S2]: Portimao (ELMS), Hypercar & LMGT3 Classes, 44 car splits, 90m races, open setup, no tyre warmers, tyres: 10
+UTC Days & Times: Tue Wed Thu Mon, starts every 2hrs from midnight
+Special Events (Team)
+8 Hours of Daytona [SR B2, No :RookieDriver: or :DangerousDriver: badges permitted]: Daytona (RC), Hypercar LMP2 (WEC) & LMGT3 classes, 44 car splits, 480m races, open setup, tyre warmers disabled, fair share applies, 3x time scale (24h in 8h), tyres: 30
+Race start: 1:00pm in-game time
+UTC Days & Times: Fri Sat Sun @ 0300 0800 1300 2000
+IMPORTANT: If you are running on a low/mid spec system, ensure you check you can run the larger grids smoothly (62 cars, the day to night to day transition, rain/wet track) in single player before registering to a race. You may need to significantly reduce your graphics settings (lowest), set FSR to ultra performance, increase your pagefile size in Windows to over 32GB. If you cannot run this event smoothly, do not register for it.
+👀 Schedule testing continues! Expect some different events for the foreseeable while we try new things out in daily/weekly 😄🔧

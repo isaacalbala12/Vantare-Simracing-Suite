@@ -22,6 +22,15 @@ func scheduleFixture(t *testing.T) string {
 	return string(data)
 }
 
+func scheduleAug25Fixture(t *testing.T) string {
+	t.Helper()
+	data, err := os.ReadFile(filepath.Join("..", "calendar", "testdata", "daily-schedule-2026-08-25.txt"))
+	if err != nil {
+		t.Fatalf("read schedule fixture: %v", err)
+	}
+	return string(data)
+}
+
 // lastEvent returns the payload of the most recent event with the given name.
 func lastEvent(t *testing.T, spy *spyEmitter, name string) map[string]any {
 	t.Helper()
@@ -87,6 +96,36 @@ func TestParseReportsUnreadableTextInsteadOfPublishingIt(t *testing.T) {
 		if name == "schedule:preview" {
 			t.Fatal("nothing should be previewed when the parse failed")
 		}
+	}
+}
+
+func TestParsePreviewCarriesSpecialEventConstraints(t *testing.T) {
+	spy := &spyEmitter{}
+	svc := app.NewScheduleImportService(nil, spy)
+
+	svc.Parse(scheduleAug25Fixture(t))
+
+	preview := lastEvent(t, spy, "schedule:preview")
+	if preview["sourceNotesCount"].(float64) != 1 {
+		t.Fatalf("sourceNotesCount=%v", preview["sourceNotesCount"])
+	}
+	series := preview["series"].([]any)
+	var special map[string]any
+	for _, item := range series {
+		row := item.(map[string]any)
+		if row["eventKind"] == "special" {
+			special = row
+			break
+		}
+	}
+	if special == nil {
+		t.Fatal("special event missing from preview")
+	}
+	if special["format"] != "team" || special["fairShare"] != true {
+		t.Fatalf("special metadata=%v", special)
+	}
+	if got := special["forbiddenBadges"].([]any); len(got) != 2 {
+		t.Fatalf("forbiddenBadges=%v", got)
 	}
 }
 

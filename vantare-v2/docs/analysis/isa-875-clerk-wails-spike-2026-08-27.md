@@ -1,8 +1,11 @@
 # ISA-875 — spike mínimo de Clerk en Wails
 
-Fecha: 2026-08-27  
-Estado: **NO-GO para sustituir hoy la identidad de Supabase por Clerk**  
-Rama: `vantareapp/isa-875-spike-clerk-wails`  
+Fecha: 2026-08-27
+
+Estado: **NO-GO para sustituir hoy la identidad de Supabase por Clerk**
+
+Rama: `vantareapp/isa-875-spike-clerk-wails`
+
 Base exacta: `a02a1463de59c64389c6815c859425af08133833`
 
 ## Resultado ejecutivo

@@ -84,6 +84,11 @@ ventana Overlay nativa. Su DOM mostro telemetria LMU activa:
 - pedales con freno al 100 % en la muestra;
 - backend `/health` en HTTP 200.
 
+El monitor CDP sobre las respuestas `POST /pull` observo 3.142 entregas y
+2.498 proyecciones en 45 segundos. El cursor avanzo de epoch 1 / secuencia
+24.140 a epoch 1 / secuencia 26.983, aproximadamente 63 proyecciones por
+segundo, mientras el DOM continuo en `ready` con 18 filas.
+
 Esto acredita build, Wails, pull dirigido, LMU Live y render actual. La prueba
 exacta de cambio de epoch sin recargar la ventana queda pendiente de salir y
 volver a entrar en sesion mientras esta misma instancia permanece abierta; no
@@ -91,5 +96,5 @@ se sustituye esa evidencia por un mock ni por el test unitario.
 
 Commit funcional: `57c7610900fa175979183c1d088a50cf72f69d2c`.
 
-No hay push, PR, CI remoto, merge, promocion ni release en el momento de esta
-captura.
+La rama esta publicada y el PR draft #890 apunta a `nightly`. CI remoto esta
+pendiente. No hay merge, promocion ni release.

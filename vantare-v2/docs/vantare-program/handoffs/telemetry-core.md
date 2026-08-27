@@ -29,9 +29,9 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   participantes, Relative, Standings y pedales. Falta provocar un reconnect
   real manteniendo esa ventana abierta para acreditar el cambio de epoch sin
   reload. Evidencia:
-  `docs/telemetry-core/evidence/isa-889-overlay-epoch-resync.md`. Rama local
-  `vantareapp/isa-889-overlay-epoch-resync`; sin push, PR, CI remoto, merge,
-  promocion ni release.
+  `docs/telemetry-core/evidence/isa-889-overlay-epoch-resync.md`. Rama
+  `vantareapp/isa-889-overlay-epoch-resync` publicada; PR draft #890 a
+  `nightly`, CI remoto pendiente. Sin merge, promocion ni release.
 
 - 2026-08-27, ISA-879 elimina los bridges Overlay v1/v2 globales y los
   sustituye por una sesion pull/ack `single-in-flight`, `latest-wins` y ligada

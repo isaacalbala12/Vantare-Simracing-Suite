@@ -35,8 +35,8 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   detenido/pausado: falta una repeticion breve sin pausa para acreditar esa
   fase exacta. Go serial completo, 415 archivos/3.139 tests frontend, 26
   focales, typecheck, build y ESLint del diff estan verdes. Rama
-  `vantareapp/isa-879-wails-telemetry-bounded`, PR draft
-  #883 a `nightly`; `21af8511` y esta evidencia aun no publicados. Sin merge,
+  `vantareapp/isa-879-wails-telemetry-bounded`, publicada en `fa9d39ae`; PR
+  draft #883 a `nightly`. Run `33082227091` completamente verde. Sin merge,
   promocion ni release.
 
 - 2026-08-27, diagnostico inicial de ISA-879 sobre `origin/nightly@a02a1463` tras una

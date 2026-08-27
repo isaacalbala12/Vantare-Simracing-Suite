@@ -234,10 +234,8 @@ la correccion hay que ejecutar una build Wails aislada con LMU real y registrar:
    PASS observable para target/renderer y PASS automatizado para
    sesion/publisher.
 
-La rama esta publicada y el PR draft #883 apunta a `nightly`. El commit local
-`21af8511` contiene la correccion HTTP final y aun debe publicarse con esta
-evidencia. El primer HEAD
-publicado `65f26ad0` termino `CLEAN` con `Validate promotion path`, `Validate
-Vantare blocking gates` y GitGuardian en verde (run `33071928618`). No hay
-merge, promocion ni release; la aceptacion sigue condicionada a la prueba LMU
-`live` descrita arriba.
+La rama esta publicada y el PR draft #883 apunta a `nightly`. `fa9d39ae`
+contiene la correccion HTTP y esta evidencia. El run `33082227091` termino con
+`Validate promotion path`, `Validate Vantare blocking gates` y GitGuardian en
+verde. No hay merge, promocion ni release; la aceptacion sigue condicionada a
+la prueba LMU `live` descrita arriba.

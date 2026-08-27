@@ -204,14 +204,14 @@ export function createProjectionTransportStore(
       throw contractFailure("snapshot-regression");
     }
     const epochChanged = frame.epoch > previous.epoch;
-    if (epochChanged && frame.sequence !== 1) {
-      throw contractFailure("snapshot-regression");
-    }
     const contiguous =
       !epochChanged && frame.sequence === previous.sequence + 1;
     lastSnapshot = frame;
     let next: ProjectionState = { ...state, snapshot: lastSnapshot };
-    if (!epochChanged && !contiguous) {
+    if (
+      (epochChanged && frame.sequence !== 1) ||
+      (!epochChanged && !contiguous)
+    ) {
       next = addDiagnostic(next, {
         code: "snapshot-resync",
         product,

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-27T18:02:34Z",
+  "generatedAt": "2026-08-27T21:37:40Z",
   "digest": {
-    "lastCommit": "0e41eb4fe91c84958a0a91947c2cee64bb0caa79"
+    "lastCommit": "2672f21173fdd295c667b44f4903816561f6b3d5"
   },
   "phases": [
     {
@@ -456,10 +456,10 @@
         "it": "Telemetria LMU dal vivo"
       },
       "body": {
-        "es": "Driver LMU con reconexión acotada, transporte Overlay dirigido con una sola entrega pendiente y proyecciones de overlay, ingeniero y estrategia.",
-        "en": "LMU driver with bounded reconnects, targeted Overlay transport with one pending delivery, and overlay, engineer and strategy projections.",
-        "pt": "Driver LMU com reconexão limitada, transporte Overlay dirigido com uma única entrega pendente e projeções de overlay, engenheiro e estratégia.",
-        "it": "Driver LMU con riconnessione limitata, trasporto Overlay diretto con una sola consegna pendente e proiezioni di overlay, engineer e strategia."
+        "es": "Driver LMU con reconexión acotada, transporte Overlay dirigido con una sola entrega pendiente que se resincroniza tras reconexiones, y proyecciones de overlay, ingeniero y estrategia.",
+        "en": "LMU driver with bounded reconnects, targeted Overlay transport with one pending delivery that resynchronizes after reconnects, and overlay, engineer and strategy projections.",
+        "pt": "Driver LMU com reconexão limitada, transporte Overlay dirigido com uma única entrega pendente que se ressincroniza após reconexões, e projeções de overlay, engenheiro e estratégia.",
+        "it": "Driver LMU con riconnessione limitata, trasporto Overlay diretto con una sola consegna pendente che si risincronizza dopo le riconnessioni, e proiezioni di overlay, engineer e strategia."
       },
       "label": {
         "es": "En desarrollo",
@@ -810,6 +810,11 @@
           "kind": "change",
           "scope": "",
           "text": "ISA-861 · Promover reader LMU y runtime Windows a nightly"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-879 · Acotar telemetría Overlay en Wails/WebView2"
         }
       ]
     },

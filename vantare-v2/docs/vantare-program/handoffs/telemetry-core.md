@@ -44,7 +44,8 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   Es evidencia Wails real con status `stale`, no una ventana Overlay nativa ni
   carga LMU. Falta repetir con LMU `live` y observar el cierre de esa ventana;
   los commits no se presentan como prueba de esa fase. Rama
-  `vantareapp/isa-879-wails-telemetry-bounded`; sin push, PR, CI, merge,
+  `vantareapp/isa-879-wails-telemetry-bounded` publicada; PR draft #883 a
+  `nightly`, primer HEAD `65f26ad0` CLEAN y run `33071928618` verde. Sin merge,
   promocion ni release.
 
 - 2026-08-27, diagnostico inicial de ISA-879 sobre `origin/nightly@a02a1463` tras una

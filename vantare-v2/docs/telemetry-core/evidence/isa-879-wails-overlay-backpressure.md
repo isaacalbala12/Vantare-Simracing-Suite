@@ -171,4 +171,8 @@ la correccion hay que ejecutar una build Wails aislada con LMU real y registrar:
 4. Cierre de la ventana Overlay nativa: publisher v2 y sesion liberados. El
    contrato automatizado y el cierre HTTP real pasan; falta observar la ventana.
 
-No hay todavia push, PR, CI remoto, merge, promocion o release.
+La rama esta publicada y el PR draft #883 apunta a `nightly`. El primer HEAD
+publicado `65f26ad0` termino `CLEAN` con `Validate promotion path`, `Validate
+Vantare blocking gates` y GitGuardian en verde (run `33071928618`). No hay
+merge, promocion ni release; la aceptacion sigue condicionada a la prueba LMU
+`live` descrita arriba.

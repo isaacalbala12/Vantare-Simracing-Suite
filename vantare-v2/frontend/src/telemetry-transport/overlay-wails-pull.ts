@@ -1,5 +1,4 @@
 export const OVERLAY_PULL_REQUEST_ROUTE = "/_vantare/overlay-telemetry/pull";
-export const OVERLAY_PULL_RESPONSE_EVENT = "telemetry:overlay:pulled";
 export const OVERLAY_PULL_CLOSE_ROUTE = "/_vantare/overlay-telemetry/close";
 
 const MAX_SESSION_ID_LENGTH = 128;
@@ -22,8 +21,7 @@ type PullResponse = Readonly<{
 type ScheduleHandle = unknown;
 
 export type OverlayWailsPullOptions = Readonly<{
-  onResponse(name: string, listener: (data: unknown) => void): () => void;
-  post(route: string, data: unknown): void | Promise<void>;
+  post(route: string, data: unknown): unknown | Promise<unknown>;
   schedule?: (callback: () => void) => ScheduleHandle;
   cancel?: (handle: ScheduleHandle) => void;
   createSessionID?: () => string;
@@ -74,7 +72,25 @@ export function createOverlayWailsPullClient(
   let sessionID = "";
   let acknowledged = 0;
   let scheduled: ScheduleHandle | undefined;
-  let unsubscribeResponse: (() => void) | undefined;
+
+  const scheduleNext = () => {
+    if (!active || scheduled !== undefined) return;
+    scheduled = schedule(request);
+  };
+
+  const handlePostedResponse = (
+    input: unknown,
+    requestSessionID: string,
+    requestAck: number,
+  ) => {
+    if (!active || sessionID !== requestSessionID || acknowledged !== requestAck) return;
+    if (input === undefined) {
+      awaiting = false;
+      scheduleNext();
+      return;
+    }
+    handleResponse(input);
+  };
 
   const request = () => {
     scheduled = undefined;
@@ -87,12 +103,19 @@ export function createOverlayWailsPullClient(
         sessionId: requestSessionID,
         ack: requestAck,
       });
-      void Promise.resolve(posted).catch((error) => {
-        if (active && sessionID === requestSessionID && acknowledged === requestAck) {
-          awaiting = false;
-        }
-        onError(error);
-      });
+      if (posted instanceof Promise) {
+        void posted.then(
+          (input) => handlePostedResponse(input, requestSessionID, requestAck),
+          (error) => {
+            if (active && sessionID === requestSessionID && acknowledged === requestAck) {
+              awaiting = false;
+            }
+            onError(error);
+          },
+        );
+      } else {
+        handlePostedResponse(posted, requestSessionID, requestAck);
+      }
     } catch (error) {
       awaiting = false;
       onError(error);
@@ -123,7 +146,7 @@ export function createOverlayWailsPullClient(
       }
     }
     acknowledged = response.delivery;
-    scheduled = schedule(request);
+    scheduleNext();
   };
 
   return {
@@ -147,7 +170,6 @@ export function createOverlayWailsPullClient(
       awaiting = false;
       acknowledged = 0;
       sessionID = createSessionID();
-      unsubscribeResponse = options.onResponse(OVERLAY_PULL_RESPONSE_EVENT, handleResponse);
       request();
     },
     stop() {
@@ -158,8 +180,6 @@ export function createOverlayWailsPullClient(
         cancel(scheduled);
         scheduled = undefined;
       }
-      unsubscribeResponse?.();
-      unsubscribeResponse = undefined;
       try {
         const posted = options.post(OVERLAY_PULL_CLOSE_ROUTE, {
           sessionId: sessionID,

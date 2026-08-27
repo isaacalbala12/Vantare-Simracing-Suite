@@ -15,9 +15,8 @@ type browserContractFixture struct {
 }
 
 type browserOverlayPullWire struct {
-	RequestRoute  string `json:"requestRoute"`
-	ResponseEvent string `json:"responseEvent"`
-	CloseRoute    string `json:"closeRoute"`
+	RequestRoute string `json:"requestRoute"`
+	CloseRoute   string `json:"closeRoute"`
 }
 
 type browserProductWire struct {
@@ -44,9 +43,8 @@ func TestBrowserContractFixtureMatchesGoTransport(t *testing.T) {
 		t.Fatalf("max payload = %d, want %d", fixture.MaxPayloadBytes, MaxPayloadBytes)
 	}
 	if fixture.OverlayPull != (browserOverlayPullWire{
-		RequestRoute:  overlayPullRequestRoute,
-		ResponseEvent: OverlayPullResponseEvent,
-		CloseRoute:    overlayPullCloseRoute,
+		RequestRoute: overlayPullRequestRoute,
+		CloseRoute:   overlayPullCloseRoute,
 	}) {
 		t.Fatalf("overlay pull fixture drift: %+v", fixture.OverlayPull)
 	}

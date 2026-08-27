@@ -7,11 +7,10 @@ import (
 )
 
 const (
-	OverlayPullServiceRoute  = "/_vantare/overlay-telemetry"
-	overlayPullRequestRoute  = OverlayPullServiceRoute + "/pull"
-	OverlayPullResponseEvent = "telemetry:overlay:pulled"
-	overlayPullCloseRoute    = OverlayPullServiceRoute + "/close"
-	maxOverlayPullSessionID  = 128
+	OverlayPullServiceRoute = "/_vantare/overlay-telemetry"
+	overlayPullRequestRoute = OverlayPullServiceRoute + "/pull"
+	overlayPullCloseRoute   = OverlayPullServiceRoute + "/close"
+	maxOverlayPullSessionID = 128
 )
 
 // OverlayPullRequest acknowledges the last response processed by the
@@ -44,7 +43,7 @@ type overlayPullSession struct {
 
 // OverlayPullTransport converts the retained v1/v2 projections into an
 // acknowledged, latest-wins exchange. It does not emit or start goroutines;
-// the Wails composition root targets the response to the requesting window.
+// the Wails asset server returns the response to the requesting window.
 type OverlayPullTransport struct {
 	mu       sync.Mutex
 	hub      *Hub

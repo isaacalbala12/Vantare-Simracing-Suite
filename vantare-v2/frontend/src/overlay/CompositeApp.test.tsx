@@ -5,7 +5,6 @@ import { CompositeApp } from "./CompositeApp";
 import { relativeDefinition } from "./widget-types/relative/relative-definition";
 import {
   OVERLAY_PULL_REQUEST_ROUTE,
-  OVERLAY_PULL_RESPONSE_EVENT,
 } from "../telemetry-transport/overlay-wails-pull";
 import goldenRaw from "../../../internal/telemetry/projection/overlay/testdata/overlay_v1.golden.json?raw";
 
@@ -21,6 +20,7 @@ const originalResizeObserver = globalThis.ResizeObserver;
 let desktopOutput = { width: 1920, height: 1080 };
 let pullDelivery = 0;
 let pullRequests: Array<{sessionId: string; ack: number}> = [];
+let resolvePull: ((response: Response) => void) | undefined;
 
 function installResizeObserver(): void {
   globalThis.ResizeObserver = class {
@@ -69,14 +69,20 @@ function dispatch(name: string, data: unknown) {
   });
 }
 
-function dispatchTelemetry(events: ReadonlyArray<{name: string; data: unknown}>): void {
+async function dispatchTelemetry(events: ReadonlyArray<{name: string; data: unknown}>): Promise<void> {
   const request = pullRequests.at(-1);
   if (!request) throw new Error("overlay pull request not emitted");
   pullDelivery += 1;
-  dispatch(OVERLAY_PULL_RESPONSE_EVENT, {
-    sessionId: request.sessionId,
-    delivery: pullDelivery,
-    events,
+  const resolve = resolvePull;
+  if (!resolve) throw new Error("overlay pull response not pending");
+  resolvePull = undefined;
+  await act(async () => {
+    resolve({
+      ok: true,
+      status: 200,
+      json: async () => ({sessionId: request.sessionId, delivery: pullDelivery, events}),
+    } as Response);
+    await Promise.resolve();
   });
 }
 
@@ -139,10 +145,14 @@ describe("CompositeApp", () => {
     desktopOutput = { width: 1920, height: 1080 };
     pullDelivery = 0;
     pullRequests = [];
+    resolvePull = undefined;
     vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       const route = typeof input === "string" ? input : input.toString();
       if (route === OVERLAY_PULL_REQUEST_ROUTE) {
         pullRequests.push(JSON.parse(String(init?.body)) as {sessionId: string; ack: number});
+        return new Promise<Response>((resolve) => {
+          resolvePull = resolve;
+        });
       }
       return {ok: true, status: 204} as Response;
     }));
@@ -163,7 +173,6 @@ describe("CompositeApp", () => {
     expect(runtimeMock.onCalls.filter((name) => name === "telemetry:update")).toHaveLength(0);
     expect(runtimeMock.onCalls.filter((name) => name === "telemetry:overlay:status")).toHaveLength(0);
     expect(runtimeMock.onCalls.filter((name) => name === "telemetry:overlay:projection")).toHaveLength(0);
-    expect(runtimeMock.onCalls.filter((name) => name === OVERLAY_PULL_RESPONSE_EVENT)).toHaveLength(1);
     expect(pullRequests).toHaveLength(1);
   });
 
@@ -200,12 +209,12 @@ describe("CompositeApp", () => {
     expect(screen.getByText("RELATIVE")).toBeTruthy();
   });
 
-  it("applies canonical Overlay projections through Wails", () => {
+  it("applies canonical Overlay projections from the HTTP response", async () => {
     render(<CompositeApp />);
     dispatch("overlay:profile-v3-loaded", buildProfilePayload(buildRelativeDocument()));
     tick(100);
 
-    dispatchTelemetry([
+    await dispatchTelemetry([
       {
         name: "telemetry:overlay:status",
         data: {

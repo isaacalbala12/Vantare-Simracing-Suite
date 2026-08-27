@@ -587,7 +587,6 @@ type telemetryStatusReplayEvents interface {
 }
 
 type overlayPullTarget interface {
-	EmitTo(window, name string, data any) bool
 	WatchClose(window string, callback func()) bool
 }
 
@@ -610,20 +609,6 @@ type wailsOverlayPullTarget struct {
 
 func newWailsOverlayPullTarget(wailsApp *application.App) *wailsOverlayPullTarget {
 	return &wailsOverlayPullTarget{app: wailsApp, watched: make(map[string]struct{})}
-}
-
-// EmitTo deliberately bypasses Event.Emit. DispatchWailsEvent on the resolved
-// window produces one ExecuteScript call for that window only.
-func (target *wailsOverlayPullTarget) EmitTo(window, name string, data any) bool {
-	if target == nil || target.app == nil || target.app.Window == nil || window == "" {
-		return false
-	}
-	resolved, ok := target.app.Window.GetByName(window)
-	if !ok {
-		return false
-	}
-	resolved.DispatchWailsEvent(&application.CustomEvent{Name: name, Data: data})
-	return true
 }
 
 func (target *wailsOverlayPullTarget) WatchClose(window string, callback func()) bool {
@@ -660,9 +645,9 @@ func newOverlayPullHTTPService(
 	return &overlayPullHTTPService{target: target, transport: transport}
 }
 
-// ServeHTTP receives pull acknowledgements through Wails' internal asset
-// server. Unlike Event.Emit, this request is local to its calling WebView and
-// therefore cannot enqueue an ExecuteScript delivery in the Hub.
+// ServeHTTP exchanges pull acknowledgements and responses through Wails'
+// internal asset server. The response belongs to the calling WebView, so
+// telemetry never needs Event.Emit or ExecuteScript.
 func (service *overlayPullHTTPService) ServeHTTP(response http.ResponseWriter, request *http.Request) {
 	response.Header().Set("Cache-Control", "no-store")
 	if request.Method != http.MethodPost {
@@ -696,13 +681,15 @@ func (service *overlayPullHTTPService) ServeHTTP(response http.ResponseWriter, r
 			response.WriteHeader(http.StatusNoContent)
 			return
 		}
-		if !service.target.WatchClose(sender, func() { service.transport.CloseSender(sender) }) ||
-			!service.target.EmitTo(sender, telemetrytransport.OverlayPullResponseEvent, pullResponse) {
+		if !service.target.WatchClose(sender, func() { service.transport.CloseSender(sender) }) {
 			service.transport.Close(sender, pullRequest.SessionID)
 			http.Error(response, "overlay window unavailable", http.StatusServiceUnavailable)
 			return
 		}
-		response.WriteHeader(http.StatusNoContent)
+		response.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(response).Encode(pullResponse); err != nil {
+			log.Printf("overlay telemetry response error: %v", err)
+		}
 	case "/close":
 		service.transport.Close(sender, pullRequest.SessionID)
 		response.WriteHeader(http.StatusNoContent)

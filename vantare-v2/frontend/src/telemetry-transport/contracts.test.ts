@@ -16,7 +16,6 @@ import {
 import {
   OVERLAY_PULL_CLOSE_ROUTE,
   OVERLAY_PULL_REQUEST_ROUTE,
-  OVERLAY_PULL_RESPONSE_EVENT,
 } from "./overlay-wails-pull";
 
 const capturedAt = "2026-07-30T00:00:00Z";
@@ -37,7 +36,6 @@ describe("telemetry transport contracts", () => {
       statusStates: string[];
       overlayPull: {
         requestRoute: string;
-        responseEvent: string;
         closeRoute: string;
       };
       products: Record<
@@ -56,7 +54,6 @@ describe("telemetry transport contracts", () => {
     expect(fixture.statusStates).toEqual(TELEMETRY_STATUS_STATES);
     expect(fixture.overlayPull).toEqual({
       requestRoute: OVERLAY_PULL_REQUEST_ROUTE,
-      responseEvent: OVERLAY_PULL_RESPONSE_EVENT,
       closeRoute: OVERLAY_PULL_CLOSE_ROUTE,
     });
     for (const product of TELEMETRY_PRODUCTS) {

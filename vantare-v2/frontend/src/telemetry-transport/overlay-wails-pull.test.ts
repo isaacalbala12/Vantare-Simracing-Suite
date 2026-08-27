@@ -3,25 +3,31 @@ import {
   createOverlayWailsPullClient,
   OVERLAY_PULL_CLOSE_ROUTE,
   OVERLAY_PULL_REQUEST_ROUTE,
-  OVERLAY_PULL_RESPONSE_EVENT,
 } from "./overlay-wails-pull";
 
-describe("overlay Wails pull client", () => {
-  it("acks only after processing and keeps one delivery in flight", () => {
+type PendingPull = {
+  resolve(input: unknown): void;
+};
+
+async function flushResponse(pending: PendingPull[], input: unknown): Promise<void> {
+  const current = pending.shift();
+  if (!current) throw new Error("missing pending pull");
+  current.resolve(input);
+  await Promise.resolve();
+  await Promise.resolve();
+}
+
+describe("overlay HTTP pull client", () => {
+  it("acks only after processing and keeps one request in flight", async () => {
     const posted: Array<{ route: string; data: unknown }> = [];
+    const pending: PendingPull[] = [];
     const scheduled: Array<() => void> = [];
-    let response: ((data: unknown) => void) | undefined;
     const onError = vi.fn();
     const client = createOverlayWailsPullClient({
-      onResponse(name, listener) {
-        expect(name).toBe(OVERLAY_PULL_RESPONSE_EVENT);
-        response = listener;
-        return () => {
-          response = undefined;
-        };
-      },
       post(route, data) {
-        posted.push({ route, data });
+        posted.push({route, data});
+        if (route === OVERLAY_PULL_CLOSE_ROUTE) return undefined;
+        return new Promise((resolve) => pending.push({resolve}));
       },
       schedule(callback) {
         scheduled.push(callback);
@@ -42,58 +48,59 @@ describe("overlay Wails pull client", () => {
     client.start();
     expect(posted).toEqual([{
       route: OVERLAY_PULL_REQUEST_ROUTE,
-      data: { sessionId: "session-1", ack: 0 },
+      data: {sessionId: "session-1", ack: 0},
     }]);
+    expect(pending).toHaveLength(1);
 
-    response?.({
+    await flushResponse(pending, {
       sessionId: "session-1",
       delivery: 1,
-      events: [{ name: "telemetry:overlay:projection", data: { sequence: 1 } }],
+      events: [{name: "telemetry:overlay:projection", data: {sequence: 1}}],
     });
-    expect(v1Snapshots).toEqual([{ sequence: 1 }]);
+    expect(v1Snapshots).toEqual([{sequence: 1}]);
     expect(posted).toHaveLength(1);
     expect(scheduled).toHaveLength(1);
 
     // The next request is the acknowledgement. It does not exist until the
-    // response callback has processed every event and the paced turn runs.
+    // response body has been processed and the paced turn runs.
     scheduled.shift()?.();
     expect(posted.at(-1)).toEqual({
       route: OVERLAY_PULL_REQUEST_ROUTE,
-      data: { sessionId: "session-1", ack: 1 },
+      data: {sessionId: "session-1", ack: 1},
     });
+    expect(pending).toHaveLength(1);
 
-    response?.({
+    await flushResponse(pending, {
       sessionId: "session-1",
       delivery: 2,
       events: [
-        { name: "telemetry:overlay:projection", data: { sequence: 100 } },
-        { name: "telemetry:overlay-v2:snapshot", data: { revision: 100 } },
+        {name: "telemetry:overlay:projection", data: {sequence: 100}},
+        {name: "telemetry:overlay-v2:snapshot", data: {revision: 100}},
       ],
     });
-    expect(v1Snapshots).toEqual([{ sequence: 1 }, { sequence: 100 }]);
-    expect(v2Snapshots).toEqual([{ revision: 100 }]);
+    expect(v1Snapshots).toEqual([{sequence: 1}, {sequence: 100}]);
+    expect(v2Snapshots).toEqual([{revision: 100}]);
     expect(onError).not.toHaveBeenCalled();
 
     client.stop();
     expect(posted.at(-1)).toEqual({
       route: OVERLAY_PULL_CLOSE_ROUTE,
-      data: { sessionId: "session-1", ack: 2 },
+      data: {sessionId: "session-1", ack: 2},
     });
-    expect(response).toBeUndefined();
     expect(scheduled).toHaveLength(0);
   });
 
-  it("ignores stale generations, duplicate deliveries and unknown event routes", () => {
-    const posted: Array<{ route: string; data: unknown }> = [];
+  it("ignores duplicate deliveries and rejects unknown event routes", async () => {
+    const posted: Array<{route: string; data: unknown}> = [];
+    const pending: PendingPull[] = [];
     const callbacks: Array<() => void> = [];
-    let response: ((data: unknown) => void) | undefined;
     const onError = vi.fn();
     const client = createOverlayWailsPullClient({
-      onResponse(_name, listener) {
-        response = listener;
-        return () => undefined;
+      post(route, data) {
+        posted.push({route, data});
+        if (route === OVERLAY_PULL_CLOSE_ROUTE) return undefined;
+        return new Promise((resolve) => pending.push({resolve}));
       },
-      post: (route, data) => posted.push({ route, data }),
       schedule(callback) {
         callbacks.push(callback);
         return callback;
@@ -106,8 +113,7 @@ describe("overlay Wails pull client", () => {
     client.source.subscribe("telemetry:overlay:projection", listener);
     client.start();
 
-    response?.({sessionId: "stale", delivery: 1, events: []});
-    response?.({
+    await flushResponse(pending, {
       sessionId: "current",
       delivery: 1,
       events: [{name: "hub:unrelated", data: {private: true}}],
@@ -115,16 +121,15 @@ describe("overlay Wails pull client", () => {
     expect(listener).not.toHaveBeenCalled();
     expect(onError).toHaveBeenCalledTimes(1);
 
-    // Delivery 1 was accepted once. Replaying it cannot schedule or dispatch
-    // another turn.
+    callbacks.shift()?.();
     const scheduledBeforeDuplicate = callbacks.length;
-    response?.({
+    await flushResponse(pending, {
       sessionId: "current",
       delivery: 1,
       events: [{name: "telemetry:overlay:projection", data: {sequence: 2}}],
     });
     expect(callbacks).toHaveLength(scheduledBeforeDuplicate);
     expect(listener).not.toHaveBeenCalled();
-    expect(posted).toHaveLength(1);
+    expect(posted.filter(({route}) => route === OVERLAY_PULL_REQUEST_ROUTE)).toHaveLength(2);
   });
 });

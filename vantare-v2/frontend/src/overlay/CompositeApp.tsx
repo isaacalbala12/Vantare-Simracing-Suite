@@ -46,10 +46,6 @@ export function CompositeApp() {
   );
   const engineerPresentations = useMemo(() => createEngineerPresentationStore(), []);
   const overlayPull = useMemo(() => createOverlayWailsPullClient({
-    onResponse: (event, handler) => {
-      const unsubscribe = Events.On(event, (payload: {data: unknown}) => handler(payload.data));
-      return () => unsubscribe?.();
-    },
     post: async (route, data) => {
       const response = await fetch(route, {
         method: "POST",
@@ -60,6 +56,8 @@ export function CompositeApp() {
       if (!response.ok) {
         throw new Error(`overlay telemetry pull HTTP ${response.status}`);
       }
+      if (response.status === 204) return undefined;
+      return response.json();
     },
     onError: (error) => console.error("overlay telemetry pull failed", error),
   }), []);

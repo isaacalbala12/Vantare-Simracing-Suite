@@ -155,6 +155,8 @@ añadió ninguna dependencia.
 - Repetición aislada de cada caso temporal, primero `-count=1` y después
   `-count=3`: 4/4 PASS por caso. No se modifica ni se atribuye ese flake a este
   spike.
+- Segunda ejecución de `go test ./...`: PASS completa, incluidos los dos
+  paquetes que habían agotado su límite temporal.
 - `git diff --check`: PASS antes de cerrar la evidencia.
 
 El primer intento de compilar `cmd/vantare` quedó bloqueado por no existir

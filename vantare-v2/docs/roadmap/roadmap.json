@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-26T23:25:59Z",
+  "generatedAt": "2026-08-27T00:50:39Z",
   "digest": {
-    "lastCommit": "b1d5b15bd06429fd81373d3e36fe742acbf1ef05"
+    "lastCommit": "a02a1463de59c64389c6815c859425af08133833"
   },
   "phases": [
     {
@@ -447,6 +447,28 @@
       }
     },
     {
+      "id": "telemetry-remote-v1",
+      "type": "plan",
+      "title": {
+        "es": "Telemetría remota Windows → Mac V1",
+        "en": "Windows to Mac remote telemetry V1",
+        "pt": "Telemetria remota Windows → Mac V1",
+        "it": "Telemetria remota Windows → Mac V1"
+      },
+      "body": {
+        "es": "Plan para publicar por LAN, con opt-in, snapshots canónicos completos post-commit desde el único runtime Windows a un único cliente Mac. La V1 no incluye facts, grabación, replay, autodiscovery ni acceso por Internet y aún no está disponible.",
+        "en": "Plan to publish opt-in, full post-commit canonical snapshots over the LAN from the single Windows runtime to one Mac client. V1 excludes facts, recording, replay, autodiscovery and Internet access and is not available yet.",
+        "pt": "Plano para publicar pela LAN, com opt-in, snapshots canónicos completos pós-commit a partir do único runtime Windows para um único cliente Mac. A V1 não inclui facts, gravação, replay, descoberta automática nem acesso pela Internet e ainda não está disponível.",
+        "it": "Piano per pubblicare sulla LAN, con opt-in, snapshot canonici completi post-commit dall'unico runtime Windows a un unico client Mac. La V1 esclude facts, registrazione, replay, rilevamento automatico e accesso a Internet e non è ancora disponibile."
+      },
+      "label": {
+        "es": "Plan",
+        "en": "Plan",
+        "pt": "Plano",
+        "it": "Piano"
+      }
+    },
+    {
       "id": "telemetry-analysis-reader-runtime",
       "type": "feature",
       "title": {
@@ -763,6 +785,11 @@
           "kind": "change",
           "scope": "",
           "text": "ISA-861 · Promover reader LMU y runtime Windows a nightly"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-861 · Promover Analysis y Strategy asistida a nightly"
         }
       ]
     },

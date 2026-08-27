@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Events } from "@wailsio/runtime";
 import { I18nProvider } from "../../i18n/I18nProvider";
@@ -82,6 +82,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  cleanup();
   vi.clearAllMocks();
 });
 
@@ -108,7 +109,7 @@ describe("ScheduleImportSection", () => {
 
     const candidate = await screen.findByRole("button", { name: /Mensaje Discord/ });
     fireEvent.click(candidate);
-    expect(screen.getByTestId("orbit-settings-schedule-source")).toHaveValue(
+    expect((screen.getByTestId("orbit-settings-schedule-source") as HTMLTextAreaElement).value).toBe(
       "Daily Race Schedule from: 25th August 2026",
     );
     expect(Events.Emit).toHaveBeenCalledWith("schedule:parse", {
@@ -133,9 +134,11 @@ describe("ScheduleImportSection", () => {
       },
     });
     fireEvent.click(await screen.findByRole("button", { name: /Mensaje Discord/ }));
-    listeners.get("schedule:preview")?.({ data: preview });
+    await act(async () => {
+      listeners.get("schedule:preview")?.({ data: preview });
+    });
 
-    expect(screen.getByTestId("orbit-settings-schedule-source")).toHaveAttribute("readonly");
+    expect((screen.getByTestId("orbit-settings-schedule-source") as HTMLTextAreaElement).readOnly).toBe(true);
     expect(screen.getByTestId("orbit-settings-schedule-summary").textContent).toContain("1 series");
     expect(screen.getByTestId("orbit-settings-schedule-preview").textContent).toContain(
       "8 Hours of Daytona",
@@ -146,10 +149,12 @@ describe("ScheduleImportSection", () => {
 
     fireEvent.click(screen.getByTestId("orbit-settings-schedule-save"));
     expect(Events.Emit).toHaveBeenCalledWith("schedule:draft:save", { text: "source" });
-    expect(screen.getByTestId("orbit-settings-schedule-publish")).toBeDisabled();
+    expect((screen.getByTestId("orbit-settings-schedule-publish") as HTMLButtonElement).disabled).toBe(true);
 
     listeners.get("schedule:draft-saved")?.({ data: { draftId: "draft-1" } });
-    await waitFor(() => expect(screen.getByTestId("orbit-settings-schedule-publish")).not.toBeDisabled());
+    await waitFor(() =>
+      expect((screen.getByTestId("orbit-settings-schedule-publish") as HTMLButtonElement).disabled).toBe(false),
+    );
     fireEvent.click(screen.getByTestId("orbit-settings-schedule-publish"));
     expect(Events.Emit).toHaveBeenCalledWith("schedule:publish", { draftId: "draft-1" });
     expect(within(screen.getByTestId("orbit-settings-schedule-preview")).getByText("reparto justo")).toBeTruthy();

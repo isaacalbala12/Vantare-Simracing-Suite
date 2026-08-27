@@ -28,17 +28,41 @@ configurar el ID de un usuario del servidor oficial. El lector no necesita
 estar instalado en el servidor oficial, solo tener acceso de lectura al canal
 de destino.
 
+Guardar el token una sola vez en el almacén protegido de credenciales de
+Windows. La entrada se hace localmente y no se guarda en el repositorio, un
+archivo de configuración ni los argumentos de la tarea:
+
 ```powershell
-$env:VANTARE_DISCORD_BOT_TOKEN = "<token-local-no-commitir>"
+$secureToken = Read-Host "Pega el token del bot (entrada oculta)" -AsSecureString
+$tokenPointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secureToken)
+try {
+  $tokenPlain = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($tokenPointer)
+  $tokenPlain | go run .\cmd\lmu-calendar-bot --configure-token
+} finally {
+  if ($tokenPointer -ne [IntPtr]::Zero) {
+    [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($tokenPointer)
+  }
+  Remove-Variable tokenPlain, secureToken -ErrorAction SilentlyContinue
+}
+```
+
+Después, configura solo los valores no sensibles:
+
+```powershell
 $env:VANTARE_DISCORD_GUILD_ID = "<guild-id>"
 $env:VANTARE_DISCORD_CHANNEL_ID = "<channel-id>"
 # Opcionales: solo si ese canal mezcla varias fuentes y quieres filtrar más.
 # $env:VANTARE_DISCORD_AUTHOR_IDS = "<official-author-id>"
 # $env:VANTARE_DISCORD_WEBHOOK_IDS = "<official-webhook-id>"
 $env:VANTARE_CALENDAR_INBOX = "<la-misma-ruta-que-la-configuracion-de-Vantare>\calendar-discord-inbox.json"
-$env:VANTARE_DISCORD_POLL_INTERVAL = "5m"
-go run ./cmd/lmu-calendar-bot
+go run ./cmd/lmu-calendar-bot --once
 ```
+
+`--once` verifica el canal, consulta los mensajes nuevos una vez, actualiza la
+bandeja y termina. Es el modo recomendado para programarlo una vez al día con
+el Programador de tareas de Windows. El Programador debe ejecutar la tarea con
+la misma cuenta de Windows que guardó el token. Sin `--once`, el proceso
+permanece activo y usa `VANTARE_DISCORD_POLL_INTERVAL` entre consultas.
 
 La ruta que usa Desktop es `cfgDir/calendar-discord-inbox.json`: en desarrollo
 normalmente es `vantare-v2/configs/calendar-discord-inbox.json`; en una

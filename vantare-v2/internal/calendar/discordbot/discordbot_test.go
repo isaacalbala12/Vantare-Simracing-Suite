@@ -240,3 +240,57 @@ func TestClientAndPollerVerifyChannelAndStoreCandidate(t *testing.T) {
 		t.Fatalf("requests=%d, want channel verification plus message poll", got)
 	}
 }
+
+func TestPollerRunOnceStopsAfterOnePoll(t *testing.T) {
+	var messageRequests int
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.Header.Get("Authorization") != "Bot test-token" {
+			http.Error(writer, "missing bot auth", http.StatusUnauthorized)
+			return
+		}
+		writer.Header().Set("Content-Type", "application/json")
+		switch request.URL.Path {
+		case "/channels/channel-1":
+			_ = json.NewEncoder(writer).Encode(Channel{ID: "channel-1", GuildID: "guild-1"})
+		case "/channels/channel-1/messages":
+			messageRequests++
+			message := scheduleMessage(t, "103", "channel-1")
+			message.GuildID = ""
+			_ = json.NewEncoder(writer).Encode([]Message{message})
+		default:
+			http.NotFound(writer, request)
+		}
+	}))
+	defer server.Close()
+
+	client, err := NewClientWithBaseURL("test-token", server.URL, server.Client())
+	if err != nil {
+		t.Fatalf("NewClient: %v", err)
+	}
+	inbox, err := NewInbox(filepath.Join(t.TempDir(), "calendar-discord-inbox.json"))
+	if err != nil {
+		t.Fatalf("NewInbox: %v", err)
+	}
+	policy := SourcePolicy{GuildID: "guild-1", ChannelID: "channel-1"}
+	ingestor, err := NewIngestor(policy, inbox, time.Now)
+	if err != nil {
+		t.Fatalf("NewIngestor: %v", err)
+	}
+	poller, err := NewPoller(client, "channel-1", policy, ingestor, time.Hour, nil)
+	if err != nil {
+		t.Fatalf("NewPoller: %v", err)
+	}
+	if err := poller.RunOnce(context.Background()); err != nil {
+		t.Fatalf("RunOnce: %v", err)
+	}
+	if messageRequests != 1 {
+		t.Fatalf("message requests=%d, want 1", messageRequests)
+	}
+	candidates, err := inbox.List()
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if len(candidates) != 1 || candidates[0].MessageID != "103" {
+		t.Fatalf("candidates=%+v, want message 103", candidates)
+	}
+}

@@ -508,18 +508,7 @@ func NewPoller(client *Client, channelID string, policy SourcePolicy, ingestor *
 }
 
 func (p *Poller) Run(ctx context.Context) error {
-	channel, err := p.client.GetChannel(ctx, p.channelID)
-	if err != nil {
-		return fmt.Errorf("discord poller: verify channel: %w", err)
-	}
-	if channel.ID != p.channelID {
-		return fmt.Errorf("discord poller: verified channel %q, want %q", channel.ID, p.channelID)
-	}
-	if channel.GuildID != p.policy.GuildID {
-		return fmt.Errorf("discord poller: channel guild %q is not the configured guild", channel.GuildID)
-	}
-
-	cursor, err := p.ingestor.inbox.LastMessageID()
+	cursor, err := p.prepare(ctx)
 	if err != nil {
 		return err
 	}
@@ -539,6 +528,35 @@ func (p *Poller) Run(ctx context.Context) error {
 			}
 		}
 	}
+}
+
+// RunOnce verifies the configured channel, polls available messages once, and
+// exits. It is intended for a daily scheduler such as Windows Task Scheduler.
+func (p *Poller) RunOnce(ctx context.Context) error {
+	cursor, err := p.prepare(ctx)
+	if err != nil {
+		return err
+	}
+	return p.poll(ctx, &cursor)
+}
+
+func (p *Poller) prepare(ctx context.Context) (string, error) {
+	channel, err := p.client.GetChannel(ctx, p.channelID)
+	if err != nil {
+		return "", fmt.Errorf("discord poller: verify channel: %w", err)
+	}
+	if channel.ID != p.channelID {
+		return "", fmt.Errorf("discord poller: verified channel %q, want %q", channel.ID, p.channelID)
+	}
+	if channel.GuildID != p.policy.GuildID {
+		return "", fmt.Errorf("discord poller: channel guild %q is not the configured guild", channel.GuildID)
+	}
+
+	cursor, err := p.ingestor.inbox.LastMessageID()
+	if err != nil {
+		return "", err
+	}
+	return cursor, nil
 }
 
 func (p *Poller) poll(ctx context.Context, cursor *string) error {

@@ -6,7 +6,8 @@
   "technicalNotes": [
     "El parser reconoce las 11 entradas del mensaje del 25 de agosto de 2026, incluidos daily, weekly, special/team, horas UTC compactas, restricciones de badges, fair share, escala temporal y el aviso de hardware.",
     "El lector Discord usa una allowlist cerrada de guild y canal; el autor o webhook son filtros opcionales para canales compartidos. Persiste cursor, deduplica por messageId y hash, y conserva como máximo 32 candidatos locales.",
-    "La app de escritorio solo lee la bandeja local; la fuente se revisa en solo lectura, el borrador se guarda mediante las RPC existentes y solo el owner puede publicar."
+    "La app de escritorio solo lee la bandeja local; la fuente se revisa en solo lectura, el borrador se guarda mediante las RPC existentes y solo el owner puede publicar.",
+    "El lector admite --once para una ejecución diaria y puede recuperar el token desde el almacén protegido de credenciales de Windows, sin dejarlo en archivos ni argumentos."
   ],
   "testing": [
     "go test ./internal/calendar ./internal/app ./internal/calendar/discordbot ./cmd/lmu-calendar-bot",

@@ -6,7 +6,9 @@ package main
 import (
 	"context"
 	"errors"
+	"flag"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -17,6 +19,7 @@ import (
 	"time"
 
 	"github.com/vantare/overlays/v2/internal/calendar/discordbot"
+	"github.com/vantare/overlays/v2/internal/protectedstore"
 )
 
 const (
@@ -27,9 +30,23 @@ const (
 	envDiscordWebhooks   = "VANTARE_DISCORD_WEBHOOK_IDS"
 	envCalendarInbox     = "VANTARE_CALENDAR_INBOX"
 	envDiscordPollPeriod = "VANTARE_DISCORD_POLL_INTERVAL"
+	discordBotTokenStore = "Vantare/Discord/LMUCalendarBot"
 )
 
 func main() {
+	runOnce := flag.Bool("once", false, "poll Discord once and exit")
+	configureToken := flag.Bool("configure-token", false, "read the token from stdin and save it in Windows Credential Manager")
+	flag.Parse()
+	if *configureToken {
+		if *runOnce {
+			log.Fatal("-once and -configure-token cannot be used together")
+		}
+		if err := saveDiscordTokenFromStdin(); err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
+
 	config, err := loadConfig()
 	if err != nil {
 		log.Fatal(err)
@@ -61,8 +78,12 @@ func main() {
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	log.Printf("LMU calendar Discord reader started; inbox=%s poll=%s", inbox.Path(), config.pollInterval)
-	if err := poller.Run(ctx); err != nil {
+	log.Printf("LMU calendar Discord reader started; inbox=%s poll=%s once=%t", inbox.Path(), config.pollInterval, *runOnce)
+	run := poller.Run
+	if *runOnce {
+		run = poller.RunOnce
+	}
+	if err := run(ctx); err != nil {
 		log.Fatal(err)
 	}
 	log.Print("LMU calendar Discord reader stopped")
@@ -76,7 +97,7 @@ type config struct {
 }
 
 func loadConfig() (config, error) {
-	token, err := requiredEnv(envDiscordToken)
+	token, err := loadDiscordToken()
 	if err != nil {
 		return config{}, err
 	}
@@ -117,6 +138,49 @@ func loadConfig() (config, error) {
 		inboxPath:    inboxPath,
 		pollInterval: pollInterval,
 	}, nil
+}
+
+func loadDiscordToken() (string, error) {
+	return resolveDiscordToken(os.Getenv(envDiscordToken), func() ([]byte, error) {
+		return protectedstore.New(discordBotTokenStore).Load()
+	})
+}
+
+func resolveDiscordToken(environmentValue string, loadStored func() ([]byte, error)) (string, error) {
+	if token := strings.TrimSpace(environmentValue); token != "" {
+		return token, nil
+	}
+	data, err := loadStored()
+	if err != nil {
+		if errors.Is(err, protectedstore.ErrNotFound) {
+			return "", fmt.Errorf("%s is required; set it locally or run --configure-token", envDiscordToken)
+		}
+		return "", fmt.Errorf("read Discord bot token from protected storage: %w", err)
+	}
+	token := strings.TrimSpace(string(data))
+	if token == "" {
+		return "", errors.New("stored Discord bot token is empty")
+	}
+	return token, nil
+}
+
+func saveDiscordTokenFromStdin() error {
+	data, err := io.ReadAll(io.LimitReader(os.Stdin, 4097))
+	if err != nil {
+		return fmt.Errorf("read Discord bot token from stdin: %w", err)
+	}
+	if len(data) > 4096 {
+		return errors.New("Discord bot token is too long")
+	}
+	token := strings.TrimSpace(string(data))
+	if token == "" {
+		return errors.New("Discord bot token cannot be empty")
+	}
+	if err := protectedstore.New(discordBotTokenStore).Save([]byte(token)); err != nil {
+		return fmt.Errorf("save Discord bot token in protected storage: %w", err)
+	}
+	fmt.Fprintln(os.Stderr, "Discord bot token saved in the current Windows user credential store")
+	return nil
 }
 
 func requiredEnv(name string) (string, error) {

@@ -243,8 +243,10 @@ export interface TelemetrySession {
   car: string;
   /** Fecha ya formateada por el origen ("Hoy 18:42"). */
   when: string;
-  laps: number;
-  best: string;
+  /** Vueltas con evidencia derivada; `null` cuando el catálogo no la aporta. */
+  laps: number | null;
+  /** Mejor vuelta observada; no está en el catálogo mínimo actual. */
+  best: string | null;
 }
 
 /** Sesiones del modo demo. No existen: son las tres del prototipo. */

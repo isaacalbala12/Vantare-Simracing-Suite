@@ -10,10 +10,13 @@ export const telemetryOrbitEs: Record<string, string> = {
   "telemetry.refs.best": "vs mejor propia",
   "telemetry.refs.session": "vs mejor sesión",
   "telemetry.refs.pro": "vs referencia Vantare",
+  "telemetry.refs.unavailable": "La comparación requiere distancia y una referencia compatibles.",
 
   "telemetry.status.synthetic": "Datos sintéticos",
-  "telemetry.status.real": "Sesión real",
+  "telemetry.status.real": "Datos reales",
   "telemetry.status.empty": "Sin sesiones",
+  "telemetry.status.loading": "Cargando sesiones",
+  "telemetry.status.error": "Catálogo no disponible",
 
   "telemetry.kpi.lap": "Vuelta analizada",
   "telemetry.kpi.lapSub": "vuelta {{lap}} de {{laps}} · óptima teórica {{optimal}}",
@@ -24,6 +27,7 @@ export const telemetryOrbitEs: Record<string, string> = {
   "telemetry.kpi.consistencySub": "{{good}} de {{laps}} vueltas a ±0.5 s",
   "telemetry.kpi.none": "—",
   "telemetry.kpi.noneSub": "sin datos de sesión",
+  "telemetry.kpi.pendingSub": "pendiente de evidencia de distancia y referencia",
 
   "telemetry.map.title": "Mapa",
   "telemetry.map.meta": "color = tiempo ganado / perdido",
@@ -63,11 +67,15 @@ export const telemetryOrbitEs: Record<string, string> = {
 
   "telemetry.empty.body":
     "No hay sesiones disponibles · importa archivos locales de LMU cuando el flujo esté disponible.",
+  "telemetry.analysis.pending":
+    "La sesión real está indexada, pero la distancia y la referencia aún no están demostradas; mapa, delta y trazas permanecen sin calcular.",
+  "telemetry.error.body": "No se pudo leer el catálogo local de sesiones. No se han sustituido los datos.",
+  "telemetry.error.retry": "Reintentar",
 
   "telemetry.context.title": "Sesiones",
   "telemetry.context.session": "{{when}} · {{laps}} vueltas · {{best}}",
   "telemetry.context.hint":
-    "Fuente: archivos locales de LMU indexados en DuckDB (ADR 0005). El puente todavía no publica sesiones.",
+    "Fuente: catálogo local autorizado de LMU publicado por Analysis. Los datos ausentes permanecen visibles.",
   "telemetry.context.empty": "Sin sesiones indexadas.",
 
   "telemetry.demo.note":

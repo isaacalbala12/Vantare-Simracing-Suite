@@ -1,7 +1,7 @@
 # Plan de implementación: columnas configurables en Standings Redline
 
-Estado: PLAN/TASKS aprobado y enmendado tras review Fable con acuerdo de Isaac
-el 2026-08-27. Issue: ISA-849.
+Estado: IMPLEMENT completado localmente tras PLAN/TASKS aprobado y enmendado
+por review Fable con acuerdo de Isaac el 2026-08-27. Issue: ISA-849.
 
 ## Resultado buscado
 
@@ -299,12 +299,12 @@ Parar antes de ampliar si aparece cualquiera de estos casos:
 - fallan pruebas por una causa no entendida o la evidencia visual no es
   verificable.
 
-## Estado Git al redactar
+## Estado Git al completar IMPLEMENT
 
 - Rama: `vantareapp/isa-849-standings-redline-columnas`
-- Base actual tras rebase: `origin/nightly@b1d5b15bd06429fd81373d3e36fe742acbf1ef05`
+- Base actual tras rebase: `origin/nightly@c1d4dfa4bcd233df3ea4e15aaa5cc23aeef31e9b`
 - Spec y plan aprobados; commits documentales reescritos por el rebase.
-- Implementación: no iniciada.
+- Implementación: T1–T6 completadas y commiteadas; T7 documentado en la rama.
 - Push, PR, CI, merge, promoción y release: no realizados.
 - Dependencia de integración: PR draft #795/ISA-799 toca la habilitación motion
   de `StandingsRedlineTemplate.tsx`; no se incorpora ni se duplica en ISA-849.

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-27T21:37:40Z",
+  "generatedAt": "2026-08-28T01:01:56Z",
   "digest": {
-    "lastCommit": "2672f21173fdd295c667b44f4903816561f6b3d5"
+    "lastCommit": "741d31bf76740a469b4d91ff21da6817e912db30"
   },
   "phases": [
     {
@@ -434,10 +434,10 @@
         "it": "Overlay Studio V3 in corso"
       },
       "body": {
-        "es": "Un único límite de render para estudio, runtime y previsualización, con guardado automático, historial de deshacer/rehacer y los catálogos Crystal, Neo y Endurance.",
-        "en": "A single render boundary for studio, runtime and preview, with autosave, undo/redo history and the Crystal, Neo and Endurance catalogues.",
-        "pt": "Um único limite de render para estúdio, runtime e pré-visualização, com gravação automática, histórico de desfazer/refazer e os catálogos Crystal, Neo e Endurance.",
-        "it": "Un unico confine di render per studio, runtime e anteprima, con salvataggio automatico, cronologia annulla/ripristina e i cataloghi Crystal, Neo ed Endurance."
+        "es": "Un único límite de render para estudio, runtime y previsualización, con guardado automático, historial de deshacer/rehacer y Standings Redline configurable y ampliable dentro de los catálogos Crystal, Neo y Endurance.",
+        "en": "A single render boundary for studio, runtime and preview, with autosave, undo/redo history and configurable, resizable Standings Redline within the Crystal, Neo and Endurance catalogues.",
+        "pt": "Um único limite de render para estúdio, runtime e pré-visualização, com gravação automática, histórico de desfazer/refazer e Standings Redline configurável e redimensionável nos catálogos Crystal, Neo e Endurance.",
+        "it": "Un unico confine di render per studio, runtime e anteprima, con salvataggio automatico, cronologia annulla/ripristina e Standings Redline configurabile e ridimensionabile nei cataloghi Crystal, Neo ed Endurance."
       },
       "label": {
         "es": "En desarrollo",
@@ -779,8 +779,23 @@
   ],
   "delivered": [
     {
+      "date": "2026-08-28",
+      "entries": [
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-889 · Resincronizar epochs saltados en Overlay"
+        }
+      ]
+    },
+    {
       "date": "2026-08-27",
       "entries": [
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-879 · Acotar telemetría Overlay en Wails/WebView2"
+        },
         {
           "kind": "feat",
           "scope": "calendar",
@@ -810,11 +825,6 @@
           "kind": "change",
           "scope": "",
           "text": "ISA-861 · Promover reader LMU y runtime Windows a nightly"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "ISA-879 · Acotar telemetría Overlay en Wails/WebView2"
         }
       ]
     },
@@ -1490,71 +1500,6 @@
           "kind": "feat",
           "scope": "roadmap",
           "text": "Publish the Linear projects snapshot where the app can read it"
-        }
-      ]
-    },
-    {
-      "date": "2026-08-06",
-      "entries": [
-        {
-          "kind": "feat",
-          "scope": "overlays",
-          "text": "Add the Redline motion engine and workshop replay"
-        },
-        {
-          "kind": "feat",
-          "scope": "overlays",
-          "text": "Land Redline flagship direction for vantare-endurance"
-        },
-        {
-          "kind": "feat",
-          "scope": "overlays",
-          "text": "Add vantare-endurance design system"
-        },
-        {
-          "kind": "fix",
-          "scope": "studio",
-          "text": "Make the locked aspect hold at the minimum and in previews"
-        },
-        {
-          "kind": "fix",
-          "scope": "telemetry",
-          "text": "Count consecutive reconnects, and let stale stay available"
-        },
-        {
-          "kind": "fix",
-          "scope": "license",
-          "text": "Start from cache and stop the gate tearing down the Hub"
-        },
-        {
-          "kind": "fix",
-          "scope": "studio",
-          "text": "Never paint the canvas before it knows what to paint"
-        },
-        {
-          "kind": "feat",
-          "scope": "studio",
-          "text": "Give the canvas a gradient background and the rail real icons"
-        },
-        {
-          "kind": "fix",
-          "scope": "overlay",
-          "text": "Conform locked aspects and paint nothing before the profile"
-        },
-        {
-          "kind": "feat",
-          "scope": "studio",
-          "text": "Retire Crystal Simple from the delta catalogue"
-        },
-        {
-          "kind": "fix",
-          "scope": "overlay",
-          "text": "Give mid-session consumers the transport status they need"
-        },
-        {
-          "kind": "fix",
-          "scope": "telemetry",
-          "text": "Stop a single garage frame from killing the LMU driver"
         }
       ]
     }

@@ -66,6 +66,8 @@ el frame inicial que `latest-wins` puede omitir. Antes del cambio fallaba con
   grande.
 - ESLint sobre los dos archivos TypeScript modificados: PASS.
 - `git diff --check`: PASS.
+- Contrato de roadmap: PASS, 21 tests.
+- Generador/digest de roadmap: PASS, 23 tests.
 
 ## Evidencia Wails y LMU real
 
@@ -96,5 +98,7 @@ se sustituye esa evidencia por un mock ni por el test unitario.
 
 Commit funcional: `57c7610900fa175979183c1d088a50cf72f69d2c`.
 
-La rama esta publicada y el PR draft #890 apunta a `nightly`. CI remoto esta
-pendiente. No hay merge, promocion ni release.
+La rama esta publicada y el PR draft #890 apunta a `nightly`. El run oficial
+`33119149474` termino completamente verde sobre `4635ded4`: topologia y
+roadmap, frontend build, contrato TypeScript, Go, frontend, lint del diff,
+visual gate y build Wails de Windows. No hay merge, promocion ni release.

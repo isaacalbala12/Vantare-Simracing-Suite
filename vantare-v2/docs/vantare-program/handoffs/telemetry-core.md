@@ -31,7 +31,10 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   reload. Evidencia:
   `docs/telemetry-core/evidence/isa-889-overlay-epoch-resync.md`. Rama
   `vantareapp/isa-889-overlay-epoch-resync` publicada; PR draft #890 a
-  `nightly`, CI remoto pendiente. Sin merge, promocion ni release.
+  `nightly`. El hito `telemetry-live` y su digest declaran la continuidad tras
+  reconnect; sus 21+23 tests pasan. Run oficial `33119149474` completamente
+  verde sobre `4635ded4`, incluida build Wails Windows. Sin merge, promocion
+  ni release.
 
 - 2026-08-27, ISA-879 elimina los bridges Overlay v1/v2 globales y los
   sustituye por una sesion pull/ack `single-in-flight`, `latest-wins` y ligada

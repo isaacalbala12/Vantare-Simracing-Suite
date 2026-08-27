@@ -8,9 +8,9 @@ import (
 
 const (
 	OverlayPullServiceRoute  = "/_vantare/overlay-telemetry"
-	OverlayPullRequestRoute  = OverlayPullServiceRoute + "/pull"
+	overlayPullRequestRoute  = OverlayPullServiceRoute + "/pull"
 	OverlayPullResponseEvent = "telemetry:overlay:pulled"
-	OverlayPullCloseRoute    = OverlayPullServiceRoute + "/close"
+	overlayPullCloseRoute    = OverlayPullServiceRoute + "/close"
 	maxOverlayPullSessionID  = 128
 )
 

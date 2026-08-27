@@ -44,9 +44,9 @@ func TestBrowserContractFixtureMatchesGoTransport(t *testing.T) {
 		t.Fatalf("max payload = %d, want %d", fixture.MaxPayloadBytes, MaxPayloadBytes)
 	}
 	if fixture.OverlayPull != (browserOverlayPullWire{
-		RequestRoute:  OverlayPullRequestRoute,
+		RequestRoute:  overlayPullRequestRoute,
 		ResponseEvent: OverlayPullResponseEvent,
-		CloseRoute:    OverlayPullCloseRoute,
+		CloseRoute:    overlayPullCloseRoute,
 	}) {
 		t.Fatalf("overlay pull fixture drift: %+v", fixture.OverlayPull)
 	}

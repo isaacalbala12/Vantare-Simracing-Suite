@@ -29,18 +29,33 @@ describe("projection transport store", () => {
     ).toThrow("delta-unsupported");
   });
 
-  it("requires sequence one after an epoch change", () => {
+  it("accepts the first observed full of a newer epoch after latest-wins skips sequence one", () => {
     const store = readyStore();
     store.ingest(
       eventName(product, "projection"),
-      projection("full", 1, 1, { value: 1 }),
+      projection("full", 1, 40, { value: 40 }),
     );
-    expect(() =>
-      store.ingest(
-        eventName(product, "projection"),
-        projection("full", 2, 2, { value: 2 }),
-      ),
-    ).toThrow("snapshot-regression");
+    store.ingest(eventName(product, "status"), status(2));
+
+    store.ingest(eventName(product, "projection"), {
+      ...projection("full", 2, 7, { value: 7 }),
+      statusRevision: 2,
+    });
+
+    expect(store.getSnapshot().snapshot).toEqual(
+      expect.objectContaining({
+        epoch: 2,
+        sequence: 7,
+        statusRevision: 2,
+        payload: { value: 7 },
+      }),
+    );
+    expect(store.getSnapshot().diagnostics.at(-1)).toEqual({
+      code: "snapshot-resync",
+      product,
+      epoch: 2,
+      sequence: 7,
+    });
   });
 
   it("accepts a full gap as explicit resync and rejects regressions", () => {

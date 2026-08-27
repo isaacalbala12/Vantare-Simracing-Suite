@@ -109,7 +109,9 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   y valores negativos reales. Evidencia:
   `docs/telemetry-core/evidence/isa-884-relative-lap-progress-time.md`. Rama
   `vantareapp/isa-884-relative-time` rebasada sobre
-  `origin/nightly@2672f211`; todavía sin push, PR, CI remoto, merge, promoción
+  `origin/nightly@2672f211`, publicada en el PR draft #888. Para
+  `9771592b`, el run remoto `33107781445` terminó completamente verde:
+  promotion path, blocking gates y GitGuardian pasaron. Sin merge, promoción
   ni release. Gates locales: Go completo, telemetry, LMU x20, derive x20,
   frontend 3.144 tests, typecheck, lint focal y build verdes. La build combinada
   acredita LMU -> Go -> SSE -> Wails nativo: Relative 2+jugador+2 con los cuatro

@@ -46,9 +46,12 @@
   la anchura mínima sin modificar el layout. T6 añade variantes reproducibles
   `standings-minimal` y `standings-all-columns` al Workshop. El primer protocolo
   visual detectó 10 px de overflow real porque la envolvente CSS seguía fija a
-  420 px; `width: 100%` lo corrige solo para Redline y el recheck OBS pasa sus
-  cuatro fondos sin overflow, errores ni contaminación; el recheck final usa
-  procedencia limpia `fbf61c53`. La secuencia productiva
+  420 px; `width: 100%` lo corrige solo para Redline. Con procedencia limpia
+  `c892eca6`, Desktop/OBS/Harness pasan 12/12 capturas; el arranque frío de Vite
+  dejó las dos primeras capturas Studio sin root y contaminó su grupo, pero el
+  rerun Studio caliente pasa 4/4. Las cuatro superficies quedan así verificadas
+  en transparent/solid/grid/context, sin overflow, errores ni contaminación.
+  La secuencia productiva
   observó rise/fall, batalla, PIT, hot, reveal de neumático y ghost; las capturas
   mínima (420 px) y completa (1200 px) no muestran recorte horizontal ni
   solape. El preview colaborativo T3 no llegó a adjuntar tab tras tres timeouts,

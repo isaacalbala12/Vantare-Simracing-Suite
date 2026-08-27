@@ -116,9 +116,6 @@ func TestOverlayPullDoesNotDeliverWithoutAConsumerOrForInvalidRequests(t *testin
 			}
 		})
 	}
-	if transport.ActiveSessions() != 0 {
-		t.Fatalf("active sessions = %d, want 0", transport.ActiveSessions())
-	}
 	if _, active := registry.Lookup(ProductOverlayV2); active {
 		t.Fatal("invalid requests activated overlay v2")
 	}

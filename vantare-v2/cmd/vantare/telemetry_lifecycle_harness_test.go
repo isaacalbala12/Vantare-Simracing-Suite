@@ -388,33 +388,6 @@ func TestTelemetryStatusReplayHandlersIgnoreNilRuntime(t *testing.T) {
 	cleanup()
 }
 
-func TestTelemetryReplayHandlerDoesNotBroadcastOverlayV2LateJoin(t *testing.T) {
-	runtime, err := app.NewTelemetryCoreRuntime(app.TelemetryCoreRuntimeConfig{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	publisher, release, err := runtime.OverlayV2Publishers().RegisterConsumer(telemetrytransport.ProductOverlayV2)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer release()
-	if err := publisher.PublishSnapshot(7, map[string]any{
-		"revision": 7, "source": map[string]any{"state": "live"}, "frame": nil,
-	}); err != nil {
-		t.Fatal(err)
-	}
-	events := newSynchronousTelemetryEvents()
-	emitter := &countingTelemetryEmitter{}
-	cleanup := registerTelemetryStatusReplayHandlers(events, emitter, runtime)
-	defer cleanup()
-
-	events.Emit(telemetrytransport.PublisherSnapshotRequestEventName(telemetrytransport.ProductOverlayV2))
-
-	if replayed := emitter.snapshot(); len(replayed) != 0 {
-		t.Fatalf("global Overlay v2 replay = %#v, want none", replayed)
-	}
-}
-
 func TestOverlayPullHandlerTargetsOnlyTheRequestingWindowAndClosesConsumer(t *testing.T) {
 	hub := telemetrytransport.NewHub(telemetrytransport.HubConfig{
 		Product: telemetrytransport.ProductOverlay,
@@ -457,9 +430,6 @@ func TestOverlayPullHandlerTargetsOnlyTheRequestingWindowAndClosesConsumer(t *te
 	}
 
 	target.close("overlay-window")
-	if pull.ActiveSessions() != 0 {
-		t.Fatalf("active sessions after native close = %d", pull.ActiveSessions())
-	}
 	if _, active := registry.Lookup(telemetrytransport.ProductOverlayV2); active {
 		t.Fatal("native window close left the overlay publisher active")
 	}

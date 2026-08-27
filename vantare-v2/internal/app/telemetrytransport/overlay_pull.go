@@ -179,15 +179,6 @@ func (transport *OverlayPullTransport) CloseSender(sender string) {
 	session.release()
 }
 
-func (transport *OverlayPullTransport) ActiveSessions() int {
-	if transport == nil {
-		return 0
-	}
-	transport.mu.Lock()
-	defer transport.mu.Unlock()
-	return len(transport.sessions)
-}
-
 // CloseAll releases all consumers during application shutdown.
 func (transport *OverlayPullTransport) CloseAll() {
 	if transport == nil {

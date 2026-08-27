@@ -36,12 +36,14 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   abrio el Overlay real por CDP y recibio una respuesta pull dirigida, pero el
   status LMU era `stale` y no habia snapshot. Esa prueba descubrio que las
   solicitudes del cliente aun usaban `Events.Emit`: 720 ecos globales en unos
-  21 s. `a6842cef` mueve solicitud/cierre al asset server HTTP interno y mantiene
-  la respuesta dirigida con ack/latest-wins; gates enfocados, typecheck y ESLint
-  del diff estan verdes. La sesion del equipo se reinicio antes de repetir el
-  runtime. Cero ecos globales, Overlay bajo carga y cierre real siguen pendientes
-  hasta relanzar la app y recuperar LMU `live`; los commits no se presentan como
-  prueba de esa fase. Rama
+  21 s. `dee06f34` mueve solicitud/cierre al asset server HTTP interno y mantiene
+  la respuesta dirigida con ack/latest-wins. Tras recompilar y navegar el WebView
+  real a `CompositeApp`, 10 s a 120 Hz dieron 1.200 respuestas dirigidas, cero
+  ecos globales y cero errores; el browser quedo en 42,7 -> 47,5 MiB privados
+  (maximo 49,6) durante 2 min. El cierre HTTP devolvio 204 y corto respuestas.
+  Es evidencia Wails real con status `stale`, no una ventana Overlay nativa ni
+  carga LMU. Falta repetir con LMU `live` y observar el cierre de esa ventana;
+  los commits no se presentan como prueba de esa fase. Rama
   `vantareapp/isa-879-wails-telemetry-bounded`; sin push, PR, CI, merge,
   promocion ni release.
 

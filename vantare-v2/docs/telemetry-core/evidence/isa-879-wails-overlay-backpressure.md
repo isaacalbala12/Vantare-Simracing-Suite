@@ -123,13 +123,31 @@ era pequeno, pero `Events.Emit` seguia convirtiendo cada solicitud en
 `ExecuteScript` para todas las ventanas, incluido Hub. Por tanto la primera
 version acotaba los frames, pero todavia no aislaba por completo el transporte.
 
-El commit `a6842cef` mueve solo solicitud y cierre a `POST` sobre el asset
+El commit `dee06f34` mueve solo solicitud y cierre a `POST` sobre el asset
 server interno de Wails (`/_vantare/overlay-telemetry/{pull,close}`). Wails
 inyecta el nombre de la ventana solicitante; el backend conserva la respuesta
 dirigida, el ack y `latest-wins`. Los tests Go y frontend enfocados, typecheck y
-ESLint del diff pasan. La sesion del equipo se reinicio antes de repetir el
-runtime, asi que la ausencia de ecos globales y el soak con LMU `live` siguen
-siendo evidencia pendiente, no una afirmacion.
+ESLint del diff pasan.
+
+Tras el reinicio de la sesion, una recompilacion productiva se abrio con CDP y
+se navego su WebView de Hub a `/`, que monta `CompositeApp`. Es la ruta Wails
+real, aunque no sustituye una prueba de ventana Overlay nativa. La sesion de
+usuario ya no estaba autenticada y LMU tampoco estaba abierto, por lo que el
+status permanecio `stale`. La medicion observable fue:
+
+- 10 s a 120 Hz: 1.200 respuestas dirigidas
+  `telemetry:overlay:pulled`, cero ecos globales
+  `telemetry:overlay:pull` y cero errores de consola.
+- Browser WebView2 PID 21372 durante 2 min: 42,7 MiB privados iniciales,
+  49,6 MiB maximos y 47,5 MiB finales. La ruta antigua habria acumulado unos
+  389 MiB a 3,24 MiB/s en ese intervalo.
+- `POST /close` con la sesion activa: HTTP 204 y cero respuestas posteriores
+  durante 1 s.
+
+La build propia oculta PID 984 se cerro al terminar. Como no exponia ventana
+principal, `CloseMainWindow` no pudo solicitar cierre normal y se termino solo
+ese PID exacto. No habia procesos de Vantare instalada ni LMU despues del
+reinicio del usuario.
 
 ## Evidencia real pendiente
 
@@ -140,9 +158,12 @@ la correccion hay que ejecutar una build Wails aislada con LMU real y registrar:
 1. ~~Hub sin Overlay: memoria privada estable.~~ PASS en production durante
    10 min 12 s. El cero broadcast queda probado por codigo/tests; WebView2 no
    expone un contador directo de `ExecuteScript` en production.
-2. Overlay activo con LMU nuevamente `live`: cero solicitudes de control por el
-   bus global, una entrega maxima en vuelo y crecimiento de memoria acotado bajo
-   carga real.
-3. Cierre del Overlay: publisher v2 y sesion liberados.
+2. ~~Composite Wails activo: cero solicitudes de control por el bus global,
+   memoria acotada a 120 Hz y cierre HTTP de la sesion.~~ PASS con status
+   `stale`; no equivale a payload LMU real ni a ventana Overlay nativa.
+3. Overlay nativo con LMU nuevamente `live`: una entrega maxima en vuelo y
+   crecimiento de memoria acotado bajo carga real.
+4. Cierre de la ventana Overlay nativa: publisher v2 y sesion liberados. El
+   contrato automatizado y el cierre HTTP real pasan; falta observar la ventana.
 
 No hay todavia push, PR, CI remoto, merge, promocion o release.

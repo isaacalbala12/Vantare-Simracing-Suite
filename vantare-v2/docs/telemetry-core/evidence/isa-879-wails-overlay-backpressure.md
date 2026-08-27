@@ -28,15 +28,16 @@ por ventana. La cola sin limite quedaba despues de la ultima proteccion.
 
 ## Corte implementado
 
-Los commits `68ae7eae` y `e1069c7f` realizan un cambio local en esa frontera:
+Los commits `68ae7eae`, `e1069c7f`, `dee06f34` y `21af8511` realizan un
+cambio local en esa frontera:
 
 1. `TelemetryCoreRuntime` deja de arrancar los bridges Wails globales de
    Overlay v1 y v2. Strategy conserva su adapter explicito sin cambios.
-2. La ventana Overlay abre una sesion de demanda/acuse. Go solo responde a la
-   ventana que hizo la peticion mediante `DispatchWailsEvent`, sin pasar la
-   respuesta por `Event.Emit`.
-3. El siguiente request nace en JavaScript despues de ejecutar y procesar la
-   respuesta anterior. Por tanto solo puede existir una entrega pendiente.
+2. La ventana Overlay abre una sesion de demanda/acuse por el asset server
+   interno. Go devuelve el JSON solo en la respuesta HTTP de esa ventana; no
+   usa `Event.Emit`, `DispatchWailsEvent` ni `ExecuteScript` para los frames.
+3. El siguiente request nace despues de recibir y procesar el cuerpo anterior.
+   Por tanto solo puede existir una peticion/entrega pendiente.
 4. Durante la espera, Go no encola frames: lee el ultimo status/snapshot
    retenido por v1/v2 y omite payloads que no cambiaron.
 5. V1 y v2 viajan juntos en una unica respuesta. El publisher v2 solo existe
@@ -61,7 +62,7 @@ acusar la entrega 1, publica secuencias/revisiones 2 a 100 y comprueba que:
 La integracion cubre ademas:
 
 - cero eventos y cero suscriptores Overlay en el emisor Wails global;
-- una sola llamada dirigida a la ventana solicitante;
+- una sola respuesta HTTP a la ventana solicitante;
 - cierre nativo como fallback de cleanup;
 - paridad byte a byte entre SSE y los eventos v1 obtenidos por pull;
 - nombres del protocolo compartidos por la fixture Go/TypeScript;
@@ -154,6 +155,66 @@ principal, `CloseMainWindow` no pudo solicitar cierre normal y se termino solo
 ese PID exacto. No habia procesos de Vantare instalada ni LMU despues del
 reinicio del usuario.
 
+## Prueba nativa con LMU y correccion de la frontera restante
+
+Con LMU 1.4130 abierto en practica y una ventana Overlay nativa, la primera
+version dirigida demostro que el aislamiento entre ventanas era correcto pero
+que `ExecuteScript` seguia siendo una frontera inadecuada para los payloads:
+
+- durante 106,65 s, Overlay recibio 6.590 frames v1 y 6.591 v2; la secuencia v1
+  avanzo de 8.907 a 15.725;
+- v1 midio 61.689--62.000 bytes y v2 9.422--9.607 bytes; Hub recibio cero
+  frames Overlay, cero respuestas pull y cero ecos globales;
+- en un renderer Overlay nuevo y sin instrumentacion, memoria privada paso de
+  538,3 MiB a 2.370,1 MiB en 2 min, mientras browser fue 51,6 -> 58,1 MiB y Hub
+  81,6 -> 82,0 MiB;
+- descartando v2 antes de sus consumidores, el renderer aun paso de 390,9 a
+  2.142,9 MiB en 2 min: el shadow no era la causa principal;
+- descartando todos los eventos justo antes de los listeners, pero dejando que
+  Wails construyera el mismo `ExecuteScript`, el heap usado alcanzo 734,2 MiB.
+  `HeapProfiler.collectGarbage` lo redujo a 7,2 MiB y el proceso a 70,6 MiB.
+
+No era una retencion permanente de React: era presion extrema de asignacion al
+compilar y materializar el JSON grande como JavaScript; WebView2 aplazaba el GC
+hasta que el proceso ya ocupaba gigabytes. El ack evitaba la cola asincrona,
+pero no eliminaba esa conversion.
+
+El commit `21af8511` mantiene el mismo endpoint, ack, `single-in-flight`,
+`latest-wins` y cierre por ventana, pero devuelve `OverlayPullResponse` en el
+cuerpo JSON del `POST /pull`. El cliente espera `fetch` y procesa ese cuerpo
+antes de pedir el siguiente turno. Ya no existe evento
+`telemetry:overlay:pulled`, `DispatchWailsEvent` ni `ExecuteScript` para frames.
+
+Una build diagnostica nueva, con frontend recompilado y la configuracion
+publica autorizada embebida, mantuvo una ventana Overlay nativa durante 10 min
+01 s, 21 muestras a intervalos de 30 s, sin wrapper ni GC forzado:
+
+| Proceso | PID | Inicial | Minimo | Maximo | Final |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Browser WebView2 | 22788 | 50,4 MiB | 50,4 MiB | 69,8 MiB | 64,1 MiB |
+| Renderer Overlay | 22584 | 101,5 MiB | 101,5 MiB | 111,1 MiB | 109,4 MiB |
+| Renderer Hub | 13796 | 61,1 MiB | 60,3 MiB | 62,7 MiB | 61,1 MiB |
+
+Los dos targets nativos permanecieron activos y LMU siguio abierto en todas
+las muestras. Al pulsar `Detener overlay`, el target `/` desaparecio, el
+renderer 22584 termino y LMU siguio abierto; el contrato automatizado confirma
+ademas que el cierre libera la sesion y el publisher v2.
+
+El gate opt-in del reader LMU paso con `runtime state="live"` y
+`player-present=true`, y Strategy observo fuente `live`, fuel 98/115. La
+proyeccion de la ventana Overlay permanecio honestamente `stale` porque el
+fast frame de la practica estaba detenido/pausado. Por tanto esta prueba
+acredita LMU real, jugador presente, payload completo y memoria acotada, pero
+no se presenta como una sesion Overlay en fase `live` sostenida.
+
+Gates frescos del commit HTTP:
+
+- `go test -p 1 ./... -count=1 -timeout=180s`: PASS;
+- `pnpm --dir frontend test`: PASS, 415 archivos y 3.139 tests; conserva el
+  `AbortError` conocido de teardown y termina con codigo 0;
+- 26 tests frontend focales, typecheck, build y ESLint del diff: PASS;
+- gates opt-in LMU reader y Strategy: PASS con fuente real y jugador presente.
+
 ## Evidencia real pendiente
 
 Los tests anteriores demuestran el protocolo y su limite logico, pero no
@@ -166,12 +227,16 @@ la correccion hay que ejecutar una build Wails aislada con LMU real y registrar:
 2. ~~Composite Wails activo: cero solicitudes de control por el bus global,
    memoria acotada a 120 Hz y cierre HTTP de la sesion.~~ PASS con status
    `stale`; no equivale a payload LMU real ni a ventana Overlay nativa.
-3. Overlay nativo con LMU nuevamente `live`: una entrega maxima en vuelo y
-   crecimiento de memoria acotado bajo carga real.
-4. Cierre de la ventana Overlay nativa: publisher v2 y sesion liberados. El
-   contrato automatizado y el cierre HTTP real pasan; falta observar la ventana.
+3. Overlay nativo con LMU real y payload completo: memoria acotada durante
+   10 min 01 s. Falta repetir con el fast frame sin pausar para que la propia
+   proyeccion Overlay permanezca en fase `live`.
+4. ~~Cierre de la ventana Overlay nativa: publisher v2 y sesion liberados.~~
+   PASS observable para target/renderer y PASS automatizado para
+   sesion/publisher.
 
-La rama esta publicada y el PR draft #883 apunta a `nightly`. El primer HEAD
+La rama esta publicada y el PR draft #883 apunta a `nightly`. El commit local
+`21af8511` contiene la correccion HTTP final y aun debe publicarse con esta
+evidencia. El primer HEAD
 publicado `65f26ad0` termino `CLEAN` con `Validate promotion path`, `Validate
 Vantare blocking gates` y GitGuardian en verde (run `33071928618`). No hay
 merge, promocion ni release; la aceptacion sigue condicionada a la prueba LMU

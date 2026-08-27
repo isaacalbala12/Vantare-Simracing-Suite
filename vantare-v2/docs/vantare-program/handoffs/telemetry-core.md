@@ -15,37 +15,28 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 
 ## Estado real
 
-- 2026-08-27, ISA-879 implementa sobre `origin/nightly@c1d4dfa4` el commit
-  `68ae7eae`: elimina los bridges Overlay v1/v2 que se suscribian y difundian
-  globalmente al arrancar, y los sustituye por una sesion pull dirigida a la
-  ventana solicitante. El frontend solo acusa una respuesta despues de
-  procesarla; Go conserva el ultimo estado v1/v2, agrupa los cambios en una
-  respuesta y no acepta otra entrega hasta ese acuse. El publisher v2 solo se
-  activa con una sesion Overlay y se libera por cleanup exacto o cierre nativo.
-  `e1069c7f` elimina 92 lineas del bridge publisher/replay ya sin caller, y el
-  gate de simbolos productivos queda verde sin una ruta de compatibilidad.
-  La regresion de consumidor lento retiene la entrega 1 mientras se publican
-  los frames 2 a 100 y recibe directamente el 100 tras el acuse; tests de
-  runtime prueban cero suscriptores/emisiones Overlay globales y entrega a una
-  unica ventana. `go test -p 1 ./...`, 415 archivos/3139 tests frontend,
-  typecheck, build y ESLint del diff estan verdes. El lint global conserva un
-  error ajeno en `car-damage-numbers-view-model-v2.ts:93`. Falta el soak
-  Wails/LMU real con carga: en production, 21 muestras durante 10 min 12 s con
-  solo Hub dejaron el browser ISA-879 entre 37,4 y 38,9 MiB (38,7 -> 37,9),
-  frente a 13.952 MiB ya acumulados por la Nightly instalada. Una build debug
-  abrio el Overlay real por CDP y recibio una respuesta pull dirigida, pero el
-  status LMU era `stale` y no habia snapshot. Esa prueba descubrio que las
-  solicitudes del cliente aun usaban `Events.Emit`: 720 ecos globales en unos
-  21 s. `dee06f34` mueve solicitud/cierre al asset server HTTP interno y mantiene
-  la respuesta dirigida con ack/latest-wins. Tras recompilar y navegar el WebView
-  real a `CompositeApp`, 10 s a 120 Hz dieron 1.200 respuestas dirigidas, cero
-  ecos globales y cero errores; el browser quedo en 42,7 -> 47,5 MiB privados
-  (maximo 49,6) durante 2 min. El cierre HTTP devolvio 204 y corto respuestas.
-  Es evidencia Wails real con status `stale`, no una ventana Overlay nativa ni
-  carga LMU. Falta repetir con LMU `live` y observar el cierre de esa ventana;
-  los commits no se presentan como prueba de esa fase. Rama
-  `vantareapp/isa-879-wails-telemetry-bounded` publicada; PR draft #883 a
-  `nightly`, primer HEAD `65f26ad0` CLEAN y run `33071928618` verde. Sin merge,
+- 2026-08-27, ISA-879 elimina los bridges Overlay v1/v2 globales y los
+  sustituye por una sesion pull/ack `single-in-flight`, `latest-wins` y ligada
+  al ciclo de vida de una ventana Overlay. `68ae7eae` introduce el limite,
+  `e1069c7f` retira el bridge sin caller y `dee06f34` saca solicitud/cierre del
+  bus global. La prueba LMU nativa descubrio una segunda frontera: aunque Hub
+  recibia cero frames, `DispatchWailsEvent` aun materializaba ~62 KB v1 + ~9,6
+  KB v2 por `ExecuteScript`; un renderer limpio crecio 538,3 -> 2.370,1 MiB en
+  2 min. Descartar V2 no cambio la pendiente y descartar todos los eventos justo
+  antes de listeners aun llevo el heap a 734,2 MiB; un GC completo lo redujo a
+  7,2 MiB. Era presion de asignacion por convertir el JSON en JavaScript, no
+  retencion React. `21af8511` devuelve el mismo `OverlayPullResponse` en el
+  cuerpo HTTP y elimina todo evento/`ExecuteScript` de frames, manteniendo ack,
+  latest-wins, una peticion pendiente y cierre nativo. En 10 min 01 s, browser
+  quedo 50,4 -> 64,1 MiB (max 69,8), renderer Overlay 101,5 -> 109,4 MiB (max
+  111,1) y Hub 61,1 -> 61,1 MiB. `Detener overlay` elimino target y renderer;
+  LMU siguio abierto. El reader opt-in y Strategy observaron LMU `live` con
+  jugador, pero la proyeccion Overlay permanecio `stale` por fast frame
+  detenido/pausado: falta una repeticion breve sin pausa para acreditar esa
+  fase exacta. Go serial completo, 415 archivos/3.139 tests frontend, 26
+  focales, typecheck, build y ESLint del diff estan verdes. Rama
+  `vantareapp/isa-879-wails-telemetry-bounded`, PR draft
+  #883 a `nightly`; `21af8511` y esta evidencia aun no publicados. Sin merge,
   promocion ni release.
 
 - 2026-08-27, diagnostico inicial de ISA-879 sobre `origin/nightly@a02a1463` tras una

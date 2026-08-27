@@ -180,8 +180,17 @@ func relativeRow(
 	side string,
 ) RelativeRowV2 {
 	return RelativeRowV2{
-		VehicleID:   string(vehicle.Identity.Vehicle),
-		GapSeconds:  qualityValue(gap, func(value standings.RelativeTime) float64 { return float64(value) }),
+		VehicleID: string(vehicle.Identity.Vehicle),
+		GapSeconds: qualityValue(gap, func(value standings.RelativeTime) float64 {
+			seconds := math.Abs(float64(value))
+			if side == RelativeSideBehind {
+				return -seconds
+			}
+			if side == RelativeSidePlayer {
+				return 0
+			}
+			return seconds
+		}),
 		Side:        side,
 		Authority:   relativeAuthority(gap),
 		DisplayName: observedString(vehicle.DriverName),

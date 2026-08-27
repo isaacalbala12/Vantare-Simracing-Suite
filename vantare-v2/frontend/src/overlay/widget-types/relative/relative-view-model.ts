@@ -4,7 +4,11 @@ import { readScoringBoolean, readScoringNumber, readScoringString } from "../sha
 import type { WidgetColumnV3 } from "../shared/widget-column";
 import type { RelativeContent } from "./relative-content";
 import { getEnabledRelativeColumns } from "./relative-content";
-import { formatRelativeColumnValue, type RelativeScoringRow } from "./relative-formatting";
+import {
+  formatRelativeColumnValue,
+  formatRelativeGap,
+  type RelativeScoringRow,
+} from "./relative-formatting";
 import { resolveRelativeTone, selectRelativeRows, type RelativeSide } from "./relative-row-selection";
 
 export type RelativeRowViewModel = {
@@ -56,10 +60,13 @@ function buildRowViewModel(
   }
   const isPlayer = readScoringBoolean(row, "isPlayer") ?? false;
   const rawGapSeconds = readScoringNumber(row, "timeGapToPlayer") ?? null;
-  const gapMatchesSide =
-    (side === "ahead" && rawGapSeconds != null && rawGapSeconds > 0) ||
-    (side === "behind" && rawGapSeconds != null && rawGapSeconds < 0);
-  const gapSeconds = isPlayer || gapMatchesSide ? rawGapSeconds : null;
+  const gapSeconds = rawGapSeconds == null
+    ? null
+    : isPlayer
+      ? 0
+      : side === "ahead"
+        ? Math.abs(rawGapSeconds)
+        : -Math.abs(rawGapSeconds);
   const columnValues = Object.fromEntries(
     columns.map((column) => [column.metricId, formatRelativeColumnValue(column.metricId, row, column)]),
   ) as Record<string, string>;
@@ -70,7 +77,7 @@ function buildRowViewModel(
     vehicleClass: columnValues.class ?? "",
     driverNumber: columnValues.carNumber ?? "",
     driverName: columnValues.driverName ?? "?",
-    gapText: !isPlayer && gapSeconds == null ? "—" : columnValues.gap ?? "—",
+    gapText: isPlayer || gapSeconds == null ? "—" : formatRelativeGap(gapSeconds),
     bestLapText: columnValues.bestLap ?? "-",
     lastLapText: columnValues.lastLap ?? "-",
     isPlayer,

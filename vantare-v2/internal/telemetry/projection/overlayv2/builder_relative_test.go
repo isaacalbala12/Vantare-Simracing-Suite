@@ -169,6 +169,12 @@ func TestBuildRelativeUsesLapDistanceInsteadOfGapForPhysicalOrder(t *testing.T) 
 		if rows[index].VehicleID != expected.id || rows[index].Side != expected.side {
 			t.Fatalf("row %d = %#v, want id=%s side=%s", index, rows[index], expected.id, expected.side)
 		}
+		if expected.side == RelativeSideAhead && rows[index].GapSeconds.V < 0 {
+			t.Fatalf("ahead row %d kept a contradictory negative gap: %#v", index, rows[index])
+		}
+		if expected.side == RelativeSideBehind && rows[index].GapSeconds.V > 0 {
+			t.Fatalf("behind row %d kept a contradictory positive gap: %#v", index, rows[index])
+		}
 	}
 }
 

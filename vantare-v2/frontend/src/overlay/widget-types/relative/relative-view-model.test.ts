@@ -226,7 +226,7 @@ describe("buildRelativeViewModel", () => {
     expect(trackRival).toMatchObject({ gapSeconds: 1, tone: "ahead" });
   });
 
-  it("keeps lap delta separate while rejecting a gap sign that contradicts the physical side", () => {
+  it("keeps lap delta separate and orients the gap sign by physical side", () => {
     const snapshot = buildMockTelemetry({ session: "race", location: "track", state: "ready" });
     const model = buildRelativeViewModel(
       {
@@ -246,9 +246,9 @@ describe("buildRelativeViewModel", () => {
 
     expect(model.rows.find((row) => row.driverName === "Ahead near")).toMatchObject({
       side: "ahead",
-      gapSeconds: null,
-      gapText: "—",
-      tone: "neutral",
+      gapSeconds: 2,
+      gapText: "+2.0",
+      tone: "ahead",
     });
     expect(model.rows.find((row) => row.driverName === "Behind near")).toMatchObject({
       side: "behind",

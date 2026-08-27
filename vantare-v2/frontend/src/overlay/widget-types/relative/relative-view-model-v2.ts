@@ -120,11 +120,7 @@ function buildRow(
 ): RelativeRowViewModel {
   const isPlayer = playerId !== undefined && row.id === playerId;
   const classification = standings.get(row.id);
-  const rawGapSeconds = displayedNumber(row.gap) ?? null;
-  const gapMatchesSide =
-    (row.side === "ahead" && rawGapSeconds != null && rawGapSeconds > 0) ||
-    (row.side === "behind" && rawGapSeconds != null && rawGapSeconds < 0);
-  const gapSeconds = isPlayer || gapMatchesSide ? rawGapSeconds : null;
+  const gapSeconds = displayedNumber(row.gap) ?? null;
   return {
     id: row.id,
     position: classification?.position ?? index + 1,

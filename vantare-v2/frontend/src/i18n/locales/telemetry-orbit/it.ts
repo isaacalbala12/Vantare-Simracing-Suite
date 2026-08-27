@@ -10,10 +10,13 @@ export const telemetryOrbitIt: Record<string, string> = {
   "telemetry.refs.best": "vs miglior personale",
   "telemetry.refs.session": "vs miglior sessione",
   "telemetry.refs.pro": "vs riferimento Vantare",
+  "telemetry.refs.unavailable": "Il confronto richiede prove compatibili di distanza e riferimento.",
 
   "telemetry.status.synthetic": "Dati sintetici",
-  "telemetry.status.real": "Sessione reale",
+  "telemetry.status.real": "Dati reali",
   "telemetry.status.empty": "Nessuna sessione",
+  "telemetry.status.loading": "Caricamento sessioni",
+  "telemetry.status.error": "Catalogo non disponibile",
 
   "telemetry.kpi.lap": "Giro analizzato",
   "telemetry.kpi.lapSub": "giro {{lap}} di {{laps}} · ottimale teorico {{optimal}}",
@@ -24,6 +27,7 @@ export const telemetryOrbitIt: Record<string, string> = {
   "telemetry.kpi.consistencySub": "{{good}} giri su {{laps}} entro ±0.5 s",
   "telemetry.kpi.none": "—",
   "telemetry.kpi.noneSub": "nessun dato di sessione",
+  "telemetry.kpi.pendingSub": "in attesa di prove di distanza e riferimento",
 
   "telemetry.map.title": "Mappa",
   "telemetry.map.meta": "colore = tempo guadagnato / perso",
@@ -63,11 +67,15 @@ export const telemetryOrbitIt: Record<string, string> = {
 
   "telemetry.empty.body":
     "Nessuna sessione disponibile · importa i file locali di LMU quando il flusso sarà disponibile.",
+  "telemetry.analysis.pending":
+    "La sessione reale è indicizzata, ma distanza e riferimento non sono ancora dimostrati; mappa, delta e tracce restano non calcolati.",
+  "telemetry.error.body": "Impossibile leggere il catalogo locale delle sessioni. Nessun dato è stato sostituito.",
+  "telemetry.error.retry": "Riprova",
 
   "telemetry.context.title": "Sessioni",
   "telemetry.context.session": "{{when}} · {{laps}} giri · {{best}}",
   "telemetry.context.hint":
-    "Fonte: file locali di LMU indicizzati in DuckDB (ADR 0005). Il ponte non pubblica ancora sessioni.",
+    "Fonte: catalogo LMU locale autorizzato pubblicato da Analysis. I dati mancanti restano visibili.",
   "telemetry.context.empty": "Nessuna sessione indicizzata.",
 
   "telemetry.demo.note":

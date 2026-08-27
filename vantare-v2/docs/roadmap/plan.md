@@ -330,10 +330,10 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - titulo.en: LMU historical reader and Windows runtime
 - titulo.pt: Reader histórico LMU e runtime Windows
 - titulo.it: Reader storico LMU e runtime Windows
-- cuerpo: Analysis dispone de un reader LMU autorizado y fail-closed, compuesto en la app y empaquetado en Windows con runtime verificado; la pantalla post-sesión todavía no consume el catálogo real.
-- cuerpo.en: Analysis has an authorized fail-closed LMU reader, composed in the app and packaged on Windows with a verified runtime; the post-session screen does not consume the real catalogue yet.
-- cuerpo.pt: Analysis dispõe de um reader LMU autorizado e fail-closed, composto na app e empacotado no Windows com runtime verificado; o ecrã pós-sessão ainda não consome o catálogo real.
-- cuerpo.it: Analysis dispone di un reader LMU autorizzato e fail-closed, composto nell'app e distribuito su Windows con runtime verificato; la schermata post-sessione non usa ancora il catalogo reale.
+- cuerpo: Analysis dispone de un reader LMU autorizado y fail-closed, empaquetado en Windows con runtime verificado. Telemetría Orbit ya lista el catálogo histórico real precocinado; mapa, delta y trazas permanecen ausentes hasta demostrar distancia y referencia compatibles.
+- cuerpo.en: Analysis has an authorized fail-closed LMU reader packaged on Windows with a verified runtime. Telemetry Orbit now lists the pre-cooked real historical catalogue; map, delta and traces remain unavailable until compatible distance and reference evidence is demonstrated.
+- cuerpo.pt: Analysis dispõe de um reader LMU autorizado e fail-closed, empacotado no Windows com runtime verificado. O Telemetry Orbit já lista o catálogo histórico real pré-processado; mapa, delta e traços permanecem indisponíveis até existir evidência compatível de distância e referência.
+- cuerpo.it: Analysis dispone di un reader LMU autorizzato e fail-closed, distribuito su Windows con runtime verificato. Telemetry Orbit ora elenca il catalogo storico reale pre-elaborato; mappa, delta e tracce restano indisponibili finché non vengono dimostrate distanza e riferimento compatibili.
 - etiqueta: Feature
 
 ### Radio bus, Spotter y motor de familias

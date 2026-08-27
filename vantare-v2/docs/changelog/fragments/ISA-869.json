@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-869",
+  "type": "fix",
+  "summary": "Telemetría Orbit muestra las sesiones históricas reales de LMU que Analysis ya tiene autorizadas.",
+  "technicalNotes": [
+    "La pantalla reutiliza el catálogo precocinado de Analysis publicado por el protocolo Wails existente y no recibe rutas, páginas DuckDB ni muestras crudas.",
+    "Carga, catálogo real, vacío y error son estados distintos; el fallo se sanitiza y se puede reintentar.",
+    "Mejor vuelta, mapa, delta y trazas permanecen ausentes cuando el catálogo o la evidencia de distancia y referencia no los demuestran."
+  ],
+  "testing": [
+    "Abrir Telemetría con sesiones LMU ya importadas y comprobar pista, layout, coche, clase, fecha y conteo de vueltas disponible.",
+    "Comprobar que una sesión real no activa los gráficos demo y explica por qué mapa, delta y trazas siguen pendientes.",
+    "Forzar temporalmente un fallo del catálogo, verificar el estado sanitizado y usar Reintentar."
+  ],
+  "knownLimitations": [
+    "La comparación por distancia y sus gráficos siguen bloqueados hasta completar los contratos TA-04 y TA-06 con evidencia real compatible.",
+    "Las sesiones nuevas deben pasar primero por el flujo de importación histórica autorizado existente."
+  ]
+}

@@ -10,10 +10,13 @@ export const telemetryOrbitEn: Record<string, string> = {
   "telemetry.refs.best": "vs personal best",
   "telemetry.refs.session": "vs session best",
   "telemetry.refs.pro": "vs Vantare reference",
+  "telemetry.refs.unavailable": "Comparison requires compatible distance and reference evidence.",
 
   "telemetry.status.synthetic": "Synthetic data",
-  "telemetry.status.real": "Real session",
+  "telemetry.status.real": "Real data",
   "telemetry.status.empty": "No sessions",
+  "telemetry.status.loading": "Loading sessions",
+  "telemetry.status.error": "Catalogue unavailable",
 
   "telemetry.kpi.lap": "Analysed lap",
   "telemetry.kpi.lapSub": "lap {{lap}} of {{laps}} · theoretical best {{optimal}}",
@@ -24,6 +27,7 @@ export const telemetryOrbitEn: Record<string, string> = {
   "telemetry.kpi.consistencySub": "{{good}} of {{laps}} laps within ±0.5 s",
   "telemetry.kpi.none": "—",
   "telemetry.kpi.noneSub": "no session data",
+  "telemetry.kpi.pendingSub": "waiting for distance and reference evidence",
 
   "telemetry.map.title": "Map",
   "telemetry.map.meta": "colour = time gained / lost",
@@ -63,11 +67,15 @@ export const telemetryOrbitEn: Record<string, string> = {
 
   "telemetry.empty.body":
     "No sessions available · import local LMU files once the flow is available.",
+  "telemetry.analysis.pending":
+    "The real session is indexed, but distance and reference evidence are not demonstrated yet; map, delta and traces remain uncomputed.",
+  "telemetry.error.body": "The local session catalogue could not be read. No data was substituted.",
+  "telemetry.error.retry": "Retry",
 
   "telemetry.context.title": "Sessions",
   "telemetry.context.session": "{{when}} · {{laps}} laps · {{best}}",
   "telemetry.context.hint":
-    "Source: local LMU files indexed in DuckDB (ADR 0005). The bridge does not publish sessions yet.",
+    "Source: the authorised local LMU catalogue published by Analysis. Missing data remains visible.",
   "telemetry.context.empty": "No indexed sessions.",
 
   "telemetry.demo.note":

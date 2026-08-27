@@ -1,5 +1,5 @@
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "../../i18n/I18nProvider";
 import { TelemetryOrbitPage } from "./TelemetryOrbitPage";
 import { readTelemetryDemoFromSearch, resolveTelemetrySessions } from "./telemetry-orbit-source";
@@ -7,7 +7,7 @@ import { readTelemetryDemoFromSearch, resolveTelemetrySessions } from "./telemet
 function mount(demo?: boolean) {
   return render(
     <I18nProvider>
-      <TelemetryOrbitPage demo={demo} />
+      <TelemetryOrbitPage demo={demo} loadSessions={() => Promise.resolve([])} />
     </I18nProvider>,
   );
 }
@@ -15,9 +15,11 @@ function mount(demo?: boolean) {
 afterEach(cleanup);
 
 describe("TelemetryOrbitPage", () => {
-  it("arranca en el vacío honesto: sin sesiones, sin mapa y sin trazas", () => {
+  it("arranca en el vacío honesto: sin sesiones, sin mapa y sin trazas", async () => {
     mount(false);
-    expect(screen.getByTestId("orbit-telemetry").dataset.mode).toBe("empty");
+    await waitFor(() =>
+      expect(screen.getByTestId("orbit-telemetry").dataset.mode).toBe("empty"),
+    );
     expect(screen.getByTestId("orbit-telemetry-title").textContent).toBe("Sin sesión analizada");
     expect(screen.getByTestId("orbit-telemetry-map-empty")).toBeTruthy();
     expect(screen.getByTestId("orbit-telemetry-traces-empty")).toBeTruthy();
@@ -30,10 +32,66 @@ describe("TelemetryOrbitPage", () => {
     expect(screen.getByText("Consistencia")).toBeTruthy();
   });
 
-  it("no etiqueta datos sintéticos en el estado vacío", () => {
+  it("no etiqueta datos sintéticos en el estado vacío", async () => {
     mount(false);
+    await waitFor(() =>
+      expect(screen.getByTestId("orbit-telemetry").dataset.mode).toBe("empty"),
+    );
     expect(screen.getByTestId("orbit-telemetry-status").textContent).toBe("Sin sesiones");
     expect(screen.queryByText("Datos sintéticos")).toBeNull();
+  });
+
+  it("publica sesiones reales del catálogo histórico sin inventar análisis espacial", async () => {
+    const loadSessions = vi.fn().mockResolvedValue([
+      {
+        id: "session-real-1",
+        track: "Sebring · 12h",
+        car: "Porsche 911 GT3 R · LMGT3",
+        when: "26 ago, 18:42",
+        laps: 7,
+        best: null,
+      },
+    ]);
+
+    render(
+      <I18nProvider>
+        <TelemetryOrbitPage demo={false} loadSessions={loadSessions} />
+      </I18nProvider>,
+    );
+
+    expect(screen.getByTestId("orbit-telemetry").dataset.mode).toBe("loading");
+    expect(await screen.findByText("Sebring · 12h · Porsche 911 GT3 R · LMGT3")).toBeTruthy();
+    expect(screen.getByTestId("orbit-telemetry").dataset.mode).toBe("real");
+    expect(screen.getByTestId("orbit-telemetry-status").textContent).toBe("Datos reales");
+    expect(screen.getByTestId("orbit-telemetry-map-empty")).toBeTruthy();
+    expect(screen.getByTestId("orbit-telemetry-traces-empty")).toBeTruthy();
+    expect(
+      screen.getAllByText(/la distancia y la referencia aún no están demostradas/i).length,
+    ).toBeGreaterThan(0);
+    expect(loadSessions).toHaveBeenCalledTimes(1);
+  });
+
+  it("distingue un fallo del catálogo y permite reintentar", async () => {
+    const loadSessions = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("private backend detail"))
+      .mockResolvedValueOnce([]);
+    render(
+      <I18nProvider>
+        <TelemetryOrbitPage demo={false} loadSessions={loadSessions} />
+      </I18nProvider>,
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId("orbit-telemetry").dataset.mode).toBe("error"),
+    );
+    expect(screen.getAllByText("Catálogo no disponible").length).toBeGreaterThan(0);
+    expect(screen.queryByText("private backend detail")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Reintentar" }));
+    await waitFor(() => expect(loadSessions).toHaveBeenCalledTimes(2));
+    await waitFor(() =>
+      expect(screen.getByTestId("orbit-telemetry").dataset.mode).toBe("empty"),
+    );
   });
 
   it("el modo demo solo entra con el flag y va etiquetado en cabecera y nota", () => {

@@ -1,7 +1,8 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useI18n } from "../../i18n/I18nProvider";
 import {
+  Button,
   ListRow,
   Note,
   Seg,
@@ -29,8 +30,13 @@ import {
   REFERENCE_SCALE,
   TELEMETRY_REFERENCES,
   type TelemetryReference,
+  type TelemetrySession,
 } from "./telemetry-orbit-model";
-import { isTelemetryDemoEnabled, resolveTelemetrySessions } from "./telemetry-orbit-source";
+import {
+  isTelemetryDemoEnabled,
+  loadWailsTelemetrySessions,
+  resolveTelemetrySessions,
+} from "./telemetry-orbit-source";
 import "../../styles/orbit-telemetry.css";
 
 export const TELEMETRY_CONTEXT_SLOT_ID = "orbit-telemetry-context-slot";
@@ -41,28 +47,89 @@ const TRACE_HEIGHT = { speed: 150, pedals: 100, steer: 80, delta: 110 } as const
 export interface TelemetryOrbitPageProps {
   /** Fuerza el modo demo en tests y harness; por defecto manda el flag. */
   demo?: boolean;
+  /** Inyección focal para tests; producción usa el catálogo Wails real. */
+  loadSessions?: () => Promise<TelemetrySession[]>;
 }
+
+type TelemetryCatalogResult = {
+  readonly attempt: number;
+  readonly loader: TelemetryOrbitPageProps["loadSessions"];
+  readonly locale: string;
+  readonly sessions: TelemetrySession[];
+  readonly state: "loading" | "ready" | "error";
+};
 
 /**
  * Telemetría de Command Orbit (`15-briefings/09-telemetria.md`).
  *
- * La fuente real de sesiones (DuckDB, ADR 0004 / 0005) no está expuesta al
- * frontend, así que la pantalla arranca **vacía** con la misma estructura y lo
- * dice. El generador sintético de `13.6` solo entra con el flag de demo
- * (`?telemetryDemo=1`) y va etiquetado «Datos sintéticos» en la cabecera y en
- * la nota (`00-decisiones.md`, D-73).
+ * El catálogo real llega precocinado desde Analysis por el query ya publicado
+ * en Wails. La pantalla no abre archivos ni recibe páginas DuckDB. Mapa,
+ * comparación y trazas permanecen ausentes hasta que TA-04/TA-06 demuestren
+ * distancia y referencia. El demo sigue siendo explícito y sintético.
  */
-export function TelemetryOrbitPage({ demo }: TelemetryOrbitPageProps) {
-  const { t } = useI18n();
+export function TelemetryOrbitPage({ demo, loadSessions }: TelemetryOrbitPageProps) {
+  const { locale, t } = useI18n();
   const contextSlot = useOrbitSlot(TELEMETRY_CONTEXT_SLOT_ID);
   const stackRef = useRef<HTMLDivElement | null>(null);
 
   const demoOn = demo ?? isTelemetryDemoEnabled();
-  const source = useMemo(() => resolveTelemetrySessions(demoOn), [demoOn]);
+  const [catalogAttempt, setCatalogAttempt] = useState(0);
+  const [catalogResult, setCatalogResult] = useState<TelemetryCatalogResult>({
+    attempt: 0,
+    loader: loadSessions,
+    locale,
+    sessions: [],
+    state: "loading",
+  });
+  useEffect(() => {
+    if (demoOn) return;
+    let current = true;
+    const load = loadSessions ?? (() => loadWailsTelemetrySessions(locale));
+    void load().then(
+      (sessions) => {
+        if (!current) return;
+        setCatalogResult({
+          attempt: catalogAttempt,
+          loader: loadSessions,
+          locale,
+          sessions,
+          state: "ready",
+        });
+      },
+      () => {
+        if (!current) return;
+        setCatalogResult({
+          attempt: catalogAttempt,
+          loader: loadSessions,
+          locale,
+          sessions: [],
+          state: "error",
+        });
+      },
+    );
+    return () => {
+      current = false;
+    };
+  }, [catalogAttempt, demoOn, loadSessions, locale]);
+  const resultIsCurrent = catalogResult.attempt === catalogAttempt
+    && catalogResult.loader === loadSessions
+    && catalogResult.locale === locale;
+  const catalogState = demoOn
+    ? "ready"
+    : resultIsCurrent
+      ? catalogResult.state
+      : "loading";
+  const source = useMemo(
+    () => resolveTelemetrySessions(
+      demoOn,
+      resultIsCurrent ? catalogResult.sessions : [],
+    ),
+    [catalogResult.sessions, demoOn, resultIsCurrent],
+  );
   const synthetic = source.synthetic;
 
   const [reference, setReference] = useState<TelemetryReference>("best");
-  const [sessionId, setSessionId] = useState<string | null>(source.sessions[0]?.id ?? null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const [cursor, setCursor] = useState<number | null>(null);
   const [selected, setSelected] = useState<string | undefined>(undefined);
   const [axis, setAxis] = useState<"distance" | "time">("distance");
@@ -80,6 +147,21 @@ export function TelemetryOrbitPage({ demo }: TelemetryOrbitPageProps) {
   const bands = useMemo(() => (synthetic ? demoBands() : []), [synthetic]);
 
   const session = source.sessions.find((item) => item.id === sessionId) ?? source.sessions[0];
+  const mode = synthetic
+    ? "demo"
+    : catalogState === "loading"
+      ? "loading"
+      : catalogState === "error"
+        ? "error"
+        : source.sessions.length > 0
+          ? "real"
+          : "empty";
+  const realCatalogSession = !synthetic && catalogState === "ready" && Boolean(session);
+  const unavailableBody = catalogState === "error"
+    ? t("telemetry.error.body")
+    : realCatalogSession
+      ? t("telemetry.analysis.pending")
+      : t("telemetry.empty.body");
 
   const focusCorner = useCallback(
     (id: string) => {
@@ -120,7 +202,7 @@ export function TelemetryOrbitPage({ demo }: TelemetryOrbitPageProps) {
   return (
     <div
       className="orbit-tel"
-      data-mode={synthetic ? "demo" : "empty"}
+      data-mode={mode}
       data-testid="orbit-telemetry"
     >
       <header className="orbit-tel__head">
@@ -140,6 +222,8 @@ export function TelemetryOrbitPage({ demo }: TelemetryOrbitPageProps) {
             options={TELEMETRY_REFERENCES.map((value) => ({
               value,
               label: t(`telemetry.refs.${value}`),
+              disabled: !synthetic,
+              title: !synthetic ? t("telemetry.refs.unavailable") : undefined,
             }))}
             value={reference}
           />
@@ -147,6 +231,10 @@ export function TelemetryOrbitPage({ demo }: TelemetryOrbitPageProps) {
             <SubtleStatus tone={synthetic ? "attn" : "neutral"}>
               {synthetic
                 ? t("telemetry.status.synthetic")
+                : catalogState === "loading"
+                  ? t("telemetry.status.loading")
+                  : catalogState === "error"
+                    ? t("telemetry.status.error")
                 : source.sessions.length > 0
                   ? t("telemetry.status.real")
                   : t("telemetry.status.empty")}
@@ -165,7 +253,9 @@ export function TelemetryOrbitPage({ demo }: TelemetryOrbitPageProps) {
                   laps: 12,
                   optimal: t("telemetry.demo.optimal"),
                 })
-              : t("telemetry.kpi.noneSub")
+              : realCatalogSession
+                ? t("telemetry.kpi.pendingSub")
+                : t("telemetry.kpi.noneSub")
           }
           value={synthetic ? t("telemetry.demo.lap") : none}
         />
@@ -177,7 +267,9 @@ export function TelemetryOrbitPage({ demo }: TelemetryOrbitPageProps) {
                   reference: t("telemetry.demo.reference"),
                   label: t("telemetry.demo.referenceLabel"),
                 })
-              : t("telemetry.kpi.noneSub")
+              : realCatalogSession
+                ? t("telemetry.kpi.pendingSub")
+                : t("telemetry.kpi.noneSub")
           }
           tone={synthetic ? "hot" : "neutral"}
           unit={synthetic ? t("telemetry.traces.deltaUnit") : undefined}
@@ -194,7 +286,9 @@ export function TelemetryOrbitPage({ demo }: TelemetryOrbitPageProps) {
           sub={
             synthetic
               ? sectors.map((sector) => formatDelta(sector.delta)).join(" · ")
-              : t("telemetry.kpi.noneSub")
+              : realCatalogSession
+                ? t("telemetry.kpi.pendingSub")
+                : t("telemetry.kpi.noneSub")
           }
           value={
             synthetic ? (
@@ -215,7 +309,9 @@ export function TelemetryOrbitPage({ demo }: TelemetryOrbitPageProps) {
           sub={
             synthetic
               ? formatMessage(t("telemetry.kpi.consistencySub"), { good: 8, laps: 12 })
-              : t("telemetry.kpi.noneSub")
+              : realCatalogSession
+                ? t("telemetry.kpi.pendingSub")
+                : t("telemetry.kpi.noneSub")
           }
           tone={synthetic ? "ok" : "neutral"}
           unit={synthetic ? "%" : undefined}
@@ -260,7 +356,7 @@ export function TelemetryOrbitPage({ demo }: TelemetryOrbitPageProps) {
             </>
           ) : (
             <p className="orbit-tel__empty" data-testid="orbit-telemetry-map-empty">
-              {t("telemetry.map.empty")}
+              {realCatalogSession ? unavailableBody : t("telemetry.map.empty")}
             </p>
           )}
         </Surface>
@@ -302,7 +398,7 @@ export function TelemetryOrbitPage({ demo }: TelemetryOrbitPageProps) {
             </div>
           ) : (
             <p className="orbit-tel__empty" data-testid="orbit-telemetry-insights-empty">
-              {synthetic ? t("telemetry.insights.empty") : t("telemetry.empty.body")}
+              {synthetic ? t("telemetry.insights.empty") : unavailableBody}
             </p>
           )}
         </Surface>
@@ -316,7 +412,12 @@ export function TelemetryOrbitPage({ demo }: TelemetryOrbitPageProps) {
               // motivo y el manejador es real, no un `undefined` mudo (D-94).
               onChange={setAxis}
               options={[
-                { value: "distance", label: t("telemetry.traces.distance") },
+                {
+                  value: "distance",
+                  label: t("telemetry.traces.distance"),
+                  disabled: !synthetic,
+                  title: !synthetic ? t("telemetry.refs.unavailable") : undefined,
+                },
                 {
                   value: "time",
                   label: t("telemetry.traces.time"),
@@ -402,7 +503,7 @@ export function TelemetryOrbitPage({ demo }: TelemetryOrbitPageProps) {
             </>
           ) : (
             <p className="orbit-tel__empty" data-testid="orbit-telemetry-traces-empty">
-              {t("telemetry.traces.empty")}
+              {realCatalogSession ? unavailableBody : t("telemetry.traces.empty")}
             </p>
           )}
         </Surface>
@@ -412,8 +513,15 @@ export function TelemetryOrbitPage({ demo }: TelemetryOrbitPageProps) {
         <Note className="orbit-tel__note" title={t("telemetry.status.synthetic")}>
           {t("telemetry.demo.note")}
         </Note>
+      ) : catalogState === "error" ? (
+        <Note className="orbit-tel__note" title={t("telemetry.status.error")}>
+          {t("telemetry.error.body")} {" "}
+          <Button onClick={() => setCatalogAttempt((attempt) => attempt + 1)} size="sm">
+            {t("telemetry.error.retry")}
+          </Button>
+        </Note>
       ) : (
-        <Note className="orbit-tel__note">{t("telemetry.empty.body")}</Note>
+        <Note className="orbit-tel__note">{unavailableBody}</Note>
       )}
 
       {contextSlot
@@ -432,8 +540,8 @@ export function TelemetryOrbitPage({ demo }: TelemetryOrbitPageProps) {
                       selected={item.id === session?.id}
                       subtitle={formatMessage(t("telemetry.context.session"), {
                         when: item.when,
-                        laps: item.laps,
-                        best: item.best,
+                        laps: item.laps ?? none,
+                        best: item.best ?? none,
                       })}
                       title={`${item.track} · ${item.car}`}
                     />

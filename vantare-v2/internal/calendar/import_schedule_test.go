@@ -109,9 +109,9 @@ func TestImportDailyScheduleStructuresVehicleClasses(t *testing.T) {
 
 	s := seriesByID(t, sched, "advanced-elms-super-60")
 	want := []VehicleClass{
-		{Name: "LMP2", Qualifier: "ELMS, full fuel tank"},
-		{Name: "LMP3", Qualifier: "70L fuel tank"},
-		{Name: "LMGT3", Qualifier: "75% VE"},
+		{Name: "LMP2", Qualifier: "ELMS, full fuel tank", TelemetryClassName: "LMP2_ELMS"},
+		{Name: "LMP3", Qualifier: "70L fuel tank", TelemetryClassName: "LMP3"},
+		{Name: "LMGT3", Qualifier: "75% VE", TelemetryClassName: "GT3"},
 	}
 	if len(s.Classes) != len(want) {
 		t.Fatalf("classes=%+v, want %d entries", s.Classes, len(want))
@@ -256,9 +256,9 @@ func TestImportDailyScheduleSplitsSpaceSeparatedClasses(t *testing.T) {
 
 	s := seriesByID(t, sched, "weekly-le-mans-24h-scaled")
 	want := []VehicleClass{
-		{Name: "Hypercar"},
-		{Name: "LMP2", Qualifier: "WEC"},
-		{Name: "LMGT3"},
+		{Name: "Hypercar", TelemetryClassName: "Hyper"},
+		{Name: "LMP2", Qualifier: "WEC", TelemetryClassName: "LMP2_ELMS"},
+		{Name: "LMGT3", TelemetryClassName: "GT3"},
 	}
 	if len(s.Classes) != len(want) {
 		t.Fatalf("classes=%+v, want %+v", s.Classes, want)

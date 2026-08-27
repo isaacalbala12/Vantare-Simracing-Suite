@@ -107,6 +107,7 @@ func ImportDailySchedule(text string) (OfficialSchedule, error) {
 	if err := validateSchedule(sched); err != nil {
 		return OfficialSchedule{}, fmt.Errorf("import schedule: %w", err)
 	}
+	resolveTelemetryIdentities(&sched)
 	return sched, nil
 }
 

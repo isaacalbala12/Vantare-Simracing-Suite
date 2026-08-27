@@ -6,7 +6,10 @@ Estado: **NO-GO para sustituir hoy la identidad de Supabase por Clerk**
 
 Rama: `vantareapp/isa-875-spike-clerk-wails`
 
-Base exacta: `a02a1463de59c64389c6815c859425af08133833`
+Base inicial exacta: `a02a1463de59c64389c6815c859425af08133833`
+
+Base viva antes de la PR: `c1d4dfa4bcd233df3ea4e15aaa5cc23aeef31e9b`
+(rebase limpio; el diff propio continuó limitado a dos rutas).
 
 ## Resultado ejecutivo
 
@@ -145,8 +148,8 @@ añadió ninguna dependencia.
 - `go test ./internal/license -run TestSessionSubjectRemainsInternalAccountUUID -count=1`: PASS.
 - `go test ./internal/authsession ./internal/license ./internal/server`: PASS.
 - `pnpm --dir frontend test -- src/lib/supabase-auth.test.ts src/lib/AuthSessionBridge.test.tsx src/hub/auth/LoginScreen.test.tsx`: 3 archivos, 49 tests PASS.
-- `pnpm --dir frontend build`: PASS; generó el `dist` ignorado necesario para
-  compilar `cmd/vantare` y mantuvo el warning heredado de chunks grandes.
+- `pnpm --dir frontend build`: PASS en la base inicial y tras el rebase; generó
+  el `dist` ignorado necesario para compilar `cmd/vantare`.
 - `go test ./cmd/vantare -run 'TestShouldPersistValidatedSessionRequiresCurrentOnlineValidation|TestResolveLicensePublicKeysCannotOverrideEmbeddedTrustRoot' -count=1`: PASS tras generar `dist`.
 - `go test ./...`: FAIL fuera del diff por un timeout en
   `internal/telemetry/drivers/lmu` y un límite temporal en
@@ -157,6 +160,8 @@ añadió ninguna dependencia.
   spike.
 - Segunda ejecución de `go test ./...`: PASS completa, incluidos los dos
   paquetes que habían agotado su límite temporal.
+- Tras rebasar sobre la base viva: build frontend, los 49 tests focales,
+  paquetes Go focales, `cmd/vantare` y `go test ./...`: PASS.
 - `git diff --check`: PASS antes de cerrar la evidencia.
 
 El primer intento de compilar `cmd/vantare` quedó bloqueado por no existir

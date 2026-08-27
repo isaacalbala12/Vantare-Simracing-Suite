@@ -59,12 +59,11 @@ describe("relative v2 view model", () => {
     }
   });
 
-  it("keeps physical rows but hides rival gaps while the player is in pit", () => {
+  it("keeps physical relative gaps while the player is in pit", () => {
     const model = buildRelativeViewModelV2(goldenFrame(44), { state: "live" }, CONTENT);
     expect(model.rows.some((row) => row.isPlayer)).toBe(true);
-    expect(model.rows.filter((row) => !row.isPlayer).every((row) => (
-      row.gapSeconds === null && row.gapText === "—" && row.tone === "neutral"
-    ))).toBe(true);
+    expect(model.rows.filter((row) => !row.isPlayer).every((row) => row.gapSeconds !== null)).toBe(true);
+    expect(model.rows.find((row) => row.isPlayer)?.gapText).toBe("—");
   });
 
   it("drops the player anchor when the widget asks for it, without reordering", () => {

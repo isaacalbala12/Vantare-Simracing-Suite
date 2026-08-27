@@ -60,14 +60,13 @@ export function buildRelativeViewModelV2(
       ];
 
   const byId = new Map(frame.standings.map((row) => [row.id, row]));
-  const playerInPit = playerId !== undefined && byId.get(playerId)?.pit === "pit";
   return {
     type: "relative",
     status: "ready",
     statusMessage: source.reason || undefined,
     columns,
     rowHeightMode: content.rowHeightMode,
-    rows: window.map((row, index) => buildRow(row, index, playerId, playerInPit, byId)),
+    rows: window.map((row, index) => buildRow(row, index, playerId, byId)),
   };
 }
 
@@ -114,11 +113,9 @@ function buildRow(
   row: OverlayRelativeRowV2,
   index: number,
   playerId: string | undefined,
-  playerInPit: boolean,
   standings: ReadonlyMap<string, {
     readonly position: number;
     readonly lastLap: OverlayQValue<number>;
-    readonly pit?: string | undefined;
   }>,
 ): RelativeRowViewModel {
   const isPlayer = playerId !== undefined && row.id === playerId;
@@ -127,17 +124,14 @@ function buildRow(
   const gapMatchesSide =
     (row.side === "ahead" && rawGapSeconds != null && rawGapSeconds > 0) ||
     (row.side === "behind" && rawGapSeconds != null && rawGapSeconds < 0);
-  const rivalInPit = classification?.pit === "pit";
-  const gapSeconds = isPlayer || (!playerInPit && !rivalInPit && gapMatchesSide)
-    ? rawGapSeconds
-    : null;
+  const gapSeconds = isPlayer || gapMatchesSide ? rawGapSeconds : null;
   return {
     id: row.id,
     position: classification?.position ?? index + 1,
     vehicleClass: row.classId ?? "",
     driverNumber: "",
     driverName: row.name || "?",
-    gapText: gapSeconds === null ? PLACEHOLDER : formatGap(gapSeconds),
+    gapText: isPlayer || gapSeconds === null ? PLACEHOLDER : formatGap(gapSeconds),
     bestLapText: PLACEHOLDER,
     lastLapText: formatLapTime(classification && displayedNumber(classification.lastLap)),
     isPlayer,

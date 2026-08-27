@@ -49,7 +49,6 @@ function buildRowViewModel(
   columns: readonly WidgetColumnV3[],
   index: number,
   side: RelativeSide,
-  playerInPit: boolean,
 ): RelativeRowViewModel | null {
   const id = readScoringString(row, "id") ?? String(readScoringNumber(row, "id") ?? index);
   if (!id) {
@@ -57,15 +56,10 @@ function buildRowViewModel(
   }
   const isPlayer = readScoringBoolean(row, "isPlayer") ?? false;
   const rawGapSeconds = readScoringNumber(row, "timeGapToPlayer") ?? null;
-  const rivalInPit = readScoringBoolean(row, "inPit") ?? false;
   const gapMatchesSide =
     (side === "ahead" && rawGapSeconds != null && rawGapSeconds > 0) ||
     (side === "behind" && rawGapSeconds != null && rawGapSeconds < 0);
-  const gapSeconds =
-    isPlayer ||
-    (!playerInPit && !rivalInPit && gapMatchesSide)
-      ? rawGapSeconds
-      : null;
+  const gapSeconds = isPlayer || gapMatchesSide ? rawGapSeconds : null;
   const columnValues = Object.fromEntries(
     columns.map((column) => [column.metricId, formatRelativeColumnValue(column.metricId, row, column)]),
   ) as Record<string, string>;
@@ -126,10 +120,8 @@ export function buildRelativeViewModel(
   }
 
   const selected = selectRelativeRows(snapshot.scoring, content);
-  const playerInPit =
-    readScoringBoolean(selected.find(({ side }) => side === "player")?.row ?? {}, "inPit") ?? false;
   const rows = selected
-    .map(({ row, side }, index) => buildRowViewModel(row, columns, index, side, playerInPit))
+    .map(({ row, side }, index) => buildRowViewModel(row, columns, index, side))
     .filter((row): row is RelativeRowViewModel => row !== null);
 
   return {

@@ -1,7 +1,9 @@
 # Auditoría de interferencias de telemetría y Nightly vigente
 
-Issue: #868  
-Fecha: 2026-08-27  
+Issue: #868
+
+Fecha: 2026-08-27
+
 Base auditada: `origin/nightly@a02a1463de59c64389c6815c859425af08133833`
 
 ## Resultado inicial

@@ -141,4 +141,40 @@ describe("OverlayWorkshopDevRoute", () => {
     // hold the crown for the handover to move.
     expect(document.querySelector(".ven-red-fastest")).toBeTruthy();
   });
+
+  it("exposes reproducible minimal and all-column Redline fixtures", async () => {
+    const { unmount } = render(
+      <OverlayWorkshopDevRoute search="?widget=standings&system=vantare-endurance&design=standings-endurance-redline&state=ready&surface=obs&variant=standings-minimal&width=420&height=620" />,
+    );
+    await waitFor(() => expect(document.querySelector("[data-standings-row]")).toBeTruthy());
+    expect(document.querySelector("[data-metric=position]")).toBeTruthy();
+    expect(document.querySelector("[data-metric=driverName]")).toBeTruthy();
+    expect(document.querySelector("[data-metric=gap]")).toBeNull();
+
+    unmount();
+    render(
+      <OverlayWorkshopDevRoute search="?widget=standings&system=vantare-endurance&design=standings-endurance-redline&state=ready&surface=obs&variant=standings-all-columns&width=1200&height=620" />,
+    );
+    await waitFor(() => expect(document.querySelector("[data-metric=tireCompound]")).toBeTruthy());
+    const metrics = new Set(
+      [...document.querySelectorAll("[data-standings-row]:not(.ven-red-ghost) [data-metric]")].map(
+        (cell) => cell.getAttribute("data-metric"),
+      ),
+    );
+    expect(metrics).toEqual(
+      new Set([
+        "position",
+        "driverName",
+        "driverNumber",
+        "vehicleClass",
+        "gap",
+        "interval",
+        "currentLap",
+        "lastLap",
+        "bestLap",
+        "pit",
+        "tireCompound",
+      ]),
+    );
+  });
 });

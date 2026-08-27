@@ -66,6 +66,8 @@ export type HarnessVariant =
   | "standings-stress60"
   | "standings-multiclass"
   | "standings-replay"
+  | "standings-minimal"
+  | "standings-all-columns"
   | "pedals-zero"
   | "pedals-full";
 
@@ -84,6 +86,8 @@ export function isHarnessVariant(value: string): value is HarnessVariant {
     || value === "standings-stress60"
     || value === "standings-multiclass"
     || value === "standings-replay"
+    || value === "standings-minimal"
+    || value === "standings-all-columns"
     || value === "pedals-zero"
     || value === "pedals-full"
   );
@@ -457,6 +461,22 @@ export function buildHarnessWidget(
         )
       : content.columns;
     widget.content = { ...content, classScope: "all-classes", columns };
+  }
+  if (
+    widgetType === "standings" &&
+    (variant === "standings-minimal" || variant === "standings-all-columns")
+  ) {
+    const content = widget.content as Record<string, unknown>;
+    const columns = Array.isArray(content.columns)
+      ? (content.columns as Record<string, unknown>[]).map((column) => ({
+          ...column,
+          enabled:
+            variant === "standings-all-columns" ||
+            column.metricId === "position" ||
+            column.metricId === "driverName",
+        }))
+      : content.columns;
+    widget.content = { ...content, columns };
   }
   const referenceDesign = designId ? getCrystalHarnessDesign(designId) : undefined;
   widget.layout = {

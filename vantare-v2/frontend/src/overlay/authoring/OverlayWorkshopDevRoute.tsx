@@ -36,6 +36,8 @@ const VARIANTS: readonly HarnessVariant[] = [
   "standings-stress60",
   "standings-multiclass",
   "standings-replay",
+  "standings-minimal",
+  "standings-all-columns",
   "pedals-zero",
   "pedals-full",
 ];

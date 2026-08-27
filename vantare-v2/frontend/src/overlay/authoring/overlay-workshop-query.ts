@@ -106,6 +106,12 @@ export function parseOverlayWorkshopQuery(search: string): OverlayWorkshopQuery 
   if (variant === "standings-replay" && widget !== "standings") {
     return { error: "standings-replay variant requires widget=standings" };
   }
+  if (
+    (variant === "standings-minimal" || variant === "standings-all-columns") &&
+    widget !== "standings"
+  ) {
+    return { error: `${variant} variant requires widget=standings` };
+  }
   if ((variant === "pedals-zero" || variant === "pedals-full") && widget !== "pedals") {
     return { error: `${variant} variant requires widget=pedals` };
   }

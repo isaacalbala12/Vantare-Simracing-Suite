@@ -6,16 +6,18 @@
   "technicalNotes": [
     "El parser reconoce las 11 entradas del mensaje del 25 de agosto de 2026, incluidos daily, weekly, special/team, horas UTC compactas, restricciones de badges, fair share, escala temporal y el aviso de hardware.",
     "El lector Discord usa una allowlist cerrada de guild y canal; el autor o webhook son filtros opcionales para canales compartidos. Persiste cursor, deduplica por messageId y hash, y conserva como máximo 32 candidatos locales.",
+    "El extractor normaliza el Markdown real del anuncio de Discord (encabezados y énfasis) antes de parsearlo, sin aceptar texto fuera del encabezado oficial.",
     "La app de escritorio solo lee la bandeja local; la fuente se revisa en solo lectura, el borrador se guarda mediante las RPC existentes y solo el owner puede publicar.",
     "El lector admite --once para una ejecución diaria y puede recuperar el token desde el almacén protegido de credenciales de Windows, sin dejarlo en archivos ni argumentos."
   ],
   "testing": [
     "go test ./internal/calendar ./internal/app ./internal/calendar/discordbot ./cmd/lmu-calendar-bot",
     "La prueba focal del mensaje real comprueba 11 series, slots UTC, metadatos del evento de equipo y deduplicación del worker.",
+    "Validación local del 2026-08-27: el bot real recibió el mensaje de Discord con Message Content Intent, creó 1 candidato de 11 series en la bandeja instalada y la tarea diaria terminó con código 0 al lanzarse manualmente.",
     "Revisión de diff, formato JSON y git diff --check en la rama aislada."
   ],
   "knownLimitations": [
     "El typecheck, tests y build del frontend requieren node_modules, que no está instalado en el worktree aislado; el binario Wails completo también queda bloqueado mientras falta frontend/dist.",
-    "El worker aún necesita ejecutarse con credenciales y IDs reales del canal oficial; no se ha desplegado ni conectado ningún secreto remoto."
+    "La tarea usa el modo Interactive del Programador de tareas de Windows: debe ejecutarse con la misma cuenta iniciada que contiene la credencial protegida. No hay servicio remoto ni auto-publicación."
   ]
 }

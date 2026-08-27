@@ -88,6 +88,9 @@ El lector usa la API REST de Discord para consultar mensajes nuevos, persiste
 un cursor y deduplica por `messageId` y por hash del texto. La bandeja local
 conserva como máximo los 32 candidatos más recientes para evitar crecimiento
 indefinido. Si el mensaje no coincide con la allowlist o no
-contiene el encabezado oficial, se ignora.
+contiene el encabezado oficial, se ignora. El extractor elimina únicamente el
+marcado de presentación que usa el anuncio (`##`, `**`, `__` y similares) antes
+de pasarlo al parser, manteniendo el texto de la fuente ya normalizado en la
+bandeja.
 
 Referencias oficiales: [permisos de lectura de mensajes](https://docs.discord.com/developers/resources/message), [Message Content Intent](https://docs.discord.com/developers/events/gateway) y [permisos de servidor y canal](https://docs.discord.com/developers/platform/server-and-channel-management).

@@ -38,7 +38,9 @@
 - Account/Profile: issue histórica ISA-12; proyecto pendiente.
 - Calendar/Settings/Installer/Roadmap/Migración: proyecto o reconciliación
   pendientes. ISA-845 queda en rama aislada con parser del mensaje Discord
-  oficial, seed de 2026-08-25, revisión owner y lector REST separado; no hay
+  oficial, seed de 2026-08-25, revisión owner y lector REST separado. El
+  runtime local se validó con el canal configurado: 1 candidato de 11 series
+  en la bandeja instalada y la tarea diaria terminó con código 0; no hay
   auto-publicación, secretos en Desktop, deploy ni promoción de canal.
 - Root migration: auditoría ISA-14, bloqueada por worktrees activos.
 - `nightly` y `testers` existen; el flujo vigente es issue → `nightly` →
@@ -62,7 +64,8 @@ recordatorios, Launcher/Overlay/Strategy y nota. Servicio ligero solo con
 recordatorios futuros y permiso. ISA-845 añade un lector Discord restringido a
   guild/canal (con autor o webhook opcionales) que deja candidatos locales para
   revisión owner. El comando admite ejecución única diaria y guarda el token
-  fuera del repositorio en el almacén protegido del usuario;
+  fuera del repositorio en el almacén protegido del usuario; la tarea local
+  está registrada a las 03:00 con la misma cuenta interactiva;
 publicar sigue pasando por las RPC existentes y la comprobación server-side.
 
 ## Ajustes

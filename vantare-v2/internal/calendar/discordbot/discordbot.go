@@ -220,9 +220,7 @@ func normalizeSchedulePart(part string) (string, bool) {
 	lines := strings.Split(strings.ReplaceAll(part, "\r\n", "\n"), "\n")
 	start := -1
 	for index, raw := range lines {
-		line := strings.TrimSpace(raw)
-		line = strings.TrimSpace(strings.TrimPrefix(line, ">"))
-		line = strings.TrimSpace(strings.TrimPrefix(line, "```"))
+		line := normalizeDiscordLine(raw)
 		lines[index] = line
 		if strings.HasPrefix(line, "Daily Race Schedule from:") && start < 0 {
 			start = index
@@ -232,6 +230,19 @@ func normalizeSchedulePart(part string) (string, bool) {
 		return "", false
 	}
 	return strings.TrimSpace(strings.Join(lines[start:], "\n")), true
+}
+
+func normalizeDiscordLine(raw string) string {
+	line := strings.TrimSpace(raw)
+	line = strings.TrimSpace(strings.TrimPrefix(line, ">"))
+	line = strings.TrimSpace(strings.TrimPrefix(line, "```"))
+	line = strings.TrimSpace(strings.TrimLeft(line, "#"))
+	for _, marker := range []string{"**", "__", "~~"} {
+		line = strings.TrimSpace(strings.TrimPrefix(line, marker))
+		line = strings.Replace(line, marker+":", ":", 1)
+		line = strings.TrimSpace(strings.TrimSuffix(line, marker))
+	}
+	return strings.TrimSpace(line)
 }
 
 type inboxDocument struct {

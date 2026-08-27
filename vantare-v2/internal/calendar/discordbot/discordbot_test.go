@@ -86,6 +86,49 @@ func TestExtractScheduleTextFromEmbedAndMarkdown(t *testing.T) {
 	}
 }
 
+func TestIngestParsesDiscordFormattedSchedule(t *testing.T) {
+	raw, err := os.ReadFile(filepath.Join("..", "testdata", "daily-schedule-2026-08-25.txt"))
+	if err != nil {
+		t.Fatalf("read schedule fixture: %v", err)
+	}
+	formatted := string(raw)
+	for _, heading := range []string{
+		"Daily Race Schedule from: 25th August 2026",
+		"Beginner [Bronze SR]",
+		"Intermediate [Silver SR]",
+		"Advanced [Gold SR]",
+		"Weekly Races (Solo)",
+		"Special Events (Team)",
+	} {
+		formatted = strings.Replace(formatted, heading, "## **"+heading+"**", 1)
+	}
+	formatted = strings.Replace(formatted, "LMGT3 Fixed:", "__LMGT3 Fixed__:", 1)
+
+	inbox, err := NewInbox(filepath.Join(t.TempDir(), "calendar-discord-inbox.json"))
+	if err != nil {
+		t.Fatalf("NewInbox: %v", err)
+	}
+	ingestor, err := NewIngestor(SourcePolicy{GuildID: "guild-1", ChannelID: "channel-1"}, inbox, time.Now)
+	if err != nil {
+		t.Fatalf("NewIngestor: %v", err)
+	}
+	result, err := ingestor.Ingest(Message{
+		ID:        "formatted-1",
+		GuildID:   "guild-1",
+		ChannelID: "channel-1",
+		Content:   formatted,
+	})
+	if err != nil {
+		t.Fatalf("Ingest: %v", err)
+	}
+	if !result.Accepted || result.Candidate == nil || len(result.Candidate.Schedule.Series) != 11 {
+		t.Fatalf("result=%+v, want one accepted 11-series candidate", result)
+	}
+	if result.Candidate.Schedule.Series[0].Name != "LMGT3 Fixed" {
+		t.Fatalf("first series name=%q, want cleaned Discord markup", result.Candidate.Schedule.Series[0].Name)
+	}
+}
+
 func TestIngestParsesAndDeduplicatesByMessageAndSource(t *testing.T) {
 	inbox, err := NewInbox(filepath.Join(t.TempDir(), "calendar-discord-inbox.json"))
 	if err != nil {

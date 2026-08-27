@@ -1,12 +1,36 @@
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot\..
 
-# Avoid duplicate dev stacks fighting over :9245 and restarting vantare.exe in a loop.
+$devPort = 9245
+
+# Avoid duplicate dev stacks fighting over the dev port and restarting
+# vantare.exe in a loop.
 $existing = Get-Process vantare, wails3 -ErrorAction SilentlyContinue
 if ($existing) {
   Write-Host "Stopping existing Vantare/Wails processes..."
   $existing | Stop-Process -Force
   Start-Sleep -Seconds 2
+}
+
+# `wails3 dev` sirve el frontend desde un hijo `node` con Vite, y ese hijo
+# sobrevive a la muerte de wails3: matar vantare/wails3 no libera el puerto. El
+# arranque siguiente moria con "bind: Only one usage of each socket address" y
+# habia que buscar el PID a mano. Solo se cierra si quien lo ocupa es parte de
+# este stack; cualquier otra cosa se nombra y se para, en vez de matar a ciegas
+# un proceso ajeno que resulte estar en el mismo puerto.
+$listener = Get-NetTCPConnection -LocalPort $devPort -State Listen -ErrorAction SilentlyContinue |
+  Select-Object -First 1
+if ($listener) {
+  $owner = Get-Process -Id $listener.OwningProcess -ErrorAction SilentlyContinue
+  if (-not $owner) {
+    Write-Host "Port $devPort was held by a process that is already gone."
+  } elseif ($owner.ProcessName -in @("node", "wails3", "vantare")) {
+    Write-Host "Freeing port $devPort held by $($owner.ProcessName) (PID $($owner.Id))..."
+    Stop-Process -Id $owner.Id -Force
+    Start-Sleep -Seconds 1
+  } else {
+    throw "Port $devPort is held by $($owner.ProcessName) (PID $($owner.Id)); close it before starting the dev stack."
+  }
 }
 
 $env:VANTARE_SUPABASE_URL = "https://ombjshwzqgeisazijduq.supabase.co"
@@ -28,4 +52,4 @@ if ($keysLine) {
 }
 
 & powershell -NoProfile -ExecutionPolicy Bypass -File "tools\generate_supabase_config.ps1"
-& wails3 dev -config ./build/config.yml -port 9245
+& wails3 dev -config ./build/config.yml -port $devPort

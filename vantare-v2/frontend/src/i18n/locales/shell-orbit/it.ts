@@ -79,6 +79,9 @@ export const shellOrbitIt: Record<string, string> = {
   "shell.update.available": "v{{v}}",
   "shell.update.downloading": "Download… {{pct}}%",
   "shell.update.installing": "Installazione aggiornamento…",
+  "shell.update.news.title": "Cosa porta questo aggiornamento",
+  "shell.update.news.hint": "Fai clic per aprirlo in Impostazioni › Aggiornamenti.",
+  "shell.update.news.more": "E altre {{count}} versione/i non descritte qui.",
 
   "shell.access.unavailable": "Accesso non disponibile",
   "shell.access.requiresPlan": "Richiede il piano {{plan}} · piano attuale {{current}}",

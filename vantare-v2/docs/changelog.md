@@ -6,6 +6,12 @@ Changelog publico para testers y Discord. Solo se publican versiones funcionales
 
 Cambios funcionales verificados en rama aislada; esta sección no representa una release ni autoriza despliegue.
 
+**Actualizaciones**
+
+- El aviso de actualización cuenta qué trae la versión antes de descargarla: al pasar el ratón (o al enfocarlo con el teclado) despliega el titular, el resumen y los cambios de cada versión pendiente, con las comprobaciones para testers y las limitaciones conocidas. Hacer clic sigue llevando a Ajustes › Actualizaciones. (ISA-835)
+- Las notas de la GitHub Release se generan desde el manifiesto del corte y sus fragmentos, y publicar sin ellas ya no es posible: antes, un tag sin sección propia en este archivo publicaba «Release \<tag\>» con un simple aviso, que es lo que ha ocurrido en todas las nightlies. El texto que se lee en GitHub y el que muestra la app son ahora el mismo.
+- El aviso ya no se lee «vv0.1.0.2»: el número de versión aparece una sola vez.
+
 **Estrategia**
 
 - La pestaña Estrategia abre con un menú propio: continúa la estrategia que dejaste a medias (con su evento, sus pilotos y la fecha de la última edición) o empieza una nueva. Las guardadas se listan aparte y se pueden abrir, duplicar o eliminar. (ISA-377)

@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-835",
+  "type": "feature",
+  "summary": "El aviso de actualización cuenta qué trae la versión antes de descargarla: al pasar el ratón despliega el titular, el resumen y los cambios de cada versión pendiente.",
+  "technicalNotes": [
+    "El cuerpo de la GitHub Release se genera desde el manifiesto del corte y sus fragmentos, en vez de buscar una sección '## <tag>' en docs/changelog.md que ninguna nightly ha tenido nunca.",
+    "La publicación falla si falta el manifiesto, falta el fragmento de algún issue del corte, el canal no es válido o el resumen es un texto de relleno.",
+    "El chequeo silencioso del arranque publica ahora la información completa del updater, así que el panel se pinta con datos que ya estaban en la app y no dispara ninguna llamada de red."
+  ],
+  "testing": [
+    "Pasar el ratón por el aviso de actualización y comprobar que aparecen el titular, el resumen y los cambios agrupados.",
+    "Comprobar que el panel se puede recorrer con el ratón dentro sin que se cierre, que Esc lo cierra y que también se abre enfocando el aviso con el teclado.",
+    "Comprobar que al hacer clic en el aviso se sigue abriendo Ajustes › Actualizaciones.",
+    "Revisar en GitHub que las notas de la release describen el corte en lenguaje normal, con las comprobaciones para testers y las limitaciones conocidas."
+  ],
+  "knownLimitations": [
+    "Las notas se escriben en castellano y se muestran tal cual sea cual sea el idioma de la app: el texto de la release no está traducido.",
+    "El panel describe como mucho cinco versiones pendientes; si hay más, lo declara y remite a Ajustes.",
+    "Las releases publicadas antes de este corte conservan su texto de relleno: el panel muestra lo que haya, no puede inventar lo que nunca se escribió."
+  ]
+}

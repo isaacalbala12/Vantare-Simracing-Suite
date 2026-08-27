@@ -85,6 +85,9 @@ jobs:
       - name: Test inert Testing Center merge queue policy
         run: python .github/scripts/test_testing_center_merge_queue.py
 
+      - name: Test release notes rendering and its gate
+        run: python .github/scripts/tests/test_release_notes.py
+
       - name: Test inert Testing Center Nightly closeout policies
         run: |
           python .github/scripts/test_testing_center_nightly_closeout.py -v

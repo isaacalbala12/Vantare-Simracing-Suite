@@ -45,10 +45,15 @@ powershell -File tools\start-wails-dev.ps1
 ```
 
 Este helper es solo para desarrollo interactivo del checkout actual. Detiene
-procesos `vantare`/`wails3` duplicados, usa la configuracion local prevista por
-el script, genera `cmd\vantare\supabase_build.go` y lanza `wails3 dev` en el
-puerto 9245. No es una receta de release, no produce artefactos publicables y
-no sustituye el preflight de `docs/release-artifacts.md`.
+procesos `vantare`/`wails3` duplicados, libera el puerto 9245 si lo sigue
+ocupando el `node` de Vite que deja atras el `wails3 dev` anterior, usa la
+configuracion local prevista por el script, genera
+`cmd\vantare\supabase_build.go` y lanza `wails3 dev` en ese mismo puerto. No es
+una receta de release, no produce artefactos publicables y no sustituye el
+preflight de `docs/release-artifacts.md`.
+
+Si el 9245 lo ocupa un proceso ajeno al stack, el script lo nombra y se para en
+vez de matarlo.
 
 Requisitos previos:
 

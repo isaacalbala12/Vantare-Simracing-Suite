@@ -24,6 +24,20 @@ Cada issue con comportamiento visible añade un JSON en `docs/changelog/fragment
 
 El enlace al commit no se inserta en el mensaje para impedir que el unfurl de Discord parezca una segunda publicación. El SHA corto sigue identificando el corte.
 
+## Notas de la release en GitHub
+
+El cuerpo de la GitHub Release no se escribe a mano: lo genera `.github/scripts/release_notes.py` a partir del mismo manifiesto y los mismos fragmentos. El orden es fijo y está pensado para que lo entienda quien no sabe qué es una build:
+
+1. titular y resumen del manifiesto;
+2. **Novedades**, **Mejorado**, **Corregido** y **Seguridad**, con el resumen en lenguaje normal de cada fragmento según su `type`;
+3. **Para testers**, con las comprobaciones solicitadas;
+4. **Limitaciones conocidas**, que declara explícitamente que no hay ninguna cuando la lista está vacía;
+5. las notas técnicas, plegadas en un `<details>` para que no sean lo primero que lee alguien que solo quiere saber si le conviene actualizar.
+
+El mismo texto es el que la app muestra al pasar el ratón por el aviso de actualización, así que es la única fuente: no hay una versión para GitHub y otra para el Hub.
+
+`release.yml` valida el manifiesto con `--check` antes de compilar nada y falla la publicación si falta el manifiesto, falta el fragmento de algún issue del corte, el canal no es válido o el resumen es un texto de relleno. Antes, un tag sin sección en `docs/changelog.md` solo producía un aviso y publicaba «Release <tag>».
+
 ## Desarrollo activo
 
 El digest diario resuelve su fuente en cascada, siempre en lectura:

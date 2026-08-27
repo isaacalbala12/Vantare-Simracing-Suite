@@ -75,6 +75,32 @@ const (
 	FuelUnitGallonsUS FuelUnit = "gallons-us"
 )
 
+// SourceStateV2 is the closed simulator-neutral lifecycle exposed to Overlay.
+// Keep it aligned with driver.State without importing a concrete driver into
+// the projection contract.
+type SourceStateV2 string
+
+const (
+	SourceStateStopped    SourceStateV2 = "stopped"
+	SourceStateDetecting  SourceStateV2 = "detecting"
+	SourceStateConnecting SourceStateV2 = "connecting"
+	SourceStateLive       SourceStateV2 = "live"
+	SourceStateDegraded   SourceStateV2 = "degraded"
+	SourceStateStale      SourceStateV2 = "stale"
+	SourceStateError      SourceStateV2 = "error"
+	SourceStateStopping   SourceStateV2 = "stopping"
+)
+
+func (state SourceStateV2) Known() bool {
+	switch state {
+	case SourceStateStopped, SourceStateDetecting, SourceStateConnecting, SourceStateLive,
+		SourceStateDegraded, SourceStateStale, SourceStateError, SourceStateStopping:
+		return true
+	default:
+		return false
+	}
+}
+
 type UnitsV2 struct {
 	Speed       SpeedUnit       `json:"speed"`
 	Temperature TemperatureUnit `json:"temperature"`
@@ -83,10 +109,10 @@ type UnitsV2 struct {
 }
 
 type SourceStatusV2 struct {
-	State            string `json:"state"`
-	ReconnectAttempt uint32 `json:"retry,omitempty"`
-	LastFrameAgeMS   int64  `json:"ageMs,omitempty"`
-	DegradedReason   string `json:"reason,omitempty"`
+	State            SourceStateV2 `json:"state"`
+	ReconnectAttempt uint32        `json:"retry,omitempty"`
+	LastFrameAgeMS   int64         `json:"ageMs,omitempty"`
+	DegradedReason   string        `json:"reason,omitempty"`
 }
 
 type UpdateV2 struct {
@@ -241,7 +267,7 @@ type SpotterViewV2 struct {
 }
 
 type DamageViewV2 struct {
-	Dents              QValue[[]uint16]  `json:"dents"`
+	Dents              QValue[[]uint16] `json:"dents"`
 	Overheating        QValue[bool]     `json:"overheating"`
 	Detached           QValue[bool]     `json:"detached"`
 	WheelDetachedCount QValue[uint8]    `json:"wheelDetachedCount"`

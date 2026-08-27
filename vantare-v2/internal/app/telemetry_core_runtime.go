@@ -1361,6 +1361,33 @@ func (runtime *TelemetryCoreRuntime) setStatusLocked(state driver.State, attempt
 			return fmt.Errorf("publish Strategy telemetry status: %w", err)
 		}
 	}
+	if runtime.overlayFrameV2Shadow {
+		runtime.overlayV2DeliveryRevision++
+		deliveryRevision := runtime.overlayV2DeliveryRevision
+		age := int64(0)
+		if !runtime.lastFrameAt.IsZero() {
+			age = runtime.now().Sub(runtime.lastFrameAt).Milliseconds()
+			if age < 0 {
+				age = 0
+			}
+		}
+		update := overlayv2.UpdateV2{
+			DeliveryRevision: deliveryRevision,
+			Source: overlayv2.SourceStatusV2{
+				State:            overlayv2.SourceStateV2(state.String()),
+				ReconnectAttempt: uint32(attempt),
+				LastFrameAgeMS:   age,
+			},
+			Frame: nil,
+		}
+		if err := runtime.overlayV2Publishers.PublishStatus(
+			telemetrytransport.ProductOverlayV2,
+			deliveryRevision,
+			update,
+		); err != nil {
+			runtime.handleOverlayV2Failure(fmt.Errorf("publish Overlay v2 status: %w", err))
+		}
+	}
 	runtime.statusRev = nextRevision
 	runtime.statusState = state
 	runtime.statusAttempt = attempt

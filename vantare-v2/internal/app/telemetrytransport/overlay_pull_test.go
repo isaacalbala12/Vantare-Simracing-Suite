@@ -127,6 +127,32 @@ func TestOverlayPullDoesNotDeliverWithoutAConsumerOrForInvalidRequests(t *testin
 	}
 }
 
+func TestOverlayPullLateConsumerReceivesV2StatusWithoutSnapshot(t *testing.T) {
+	t.Parallel()
+
+	hub := NewHub(HubConfig{Product: ProductOverlay})
+	registry := mustPublisherRegistry(t, PublisherConfig{Product: ProductOverlayV2})
+	if err := registry.PublishStatus(ProductOverlayV2, 3, map[string]any{
+		"revision": 3,
+		"source":   map[string]any{"state": "stopped"},
+		"frame":    nil,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	transport := NewOverlayPullTransport(hub, registry)
+	defer transport.CloseAll()
+
+	response, deliver, err := transport.Pull("studio-window", OverlayPullRequest{
+		SessionID: "late-studio",
+		Ack:       0,
+	})
+	if err != nil || !deliver {
+		t.Fatalf("late pull = %#v, deliver=%v, err=%v", response, deliver, err)
+	}
+	assertPullEventContains(t, response.Events, PublisherEventName(ProductOverlayV2, PublisherEventStatus), `"stopped"`)
+	assertPullEventNotContains(t, response.Events, `"contract":2`)
+}
+
 func assertPullEventContains(t *testing.T, events []OverlayPullEvent, name, fragment string) {
 	t.Helper()
 	for _, event := range events {

@@ -14,11 +14,11 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetry/projection"
 	overlayv1 "github.com/vantare/overlays/v2/internal/telemetry/projection/overlay"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/damage"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/energy"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/envelope"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/identity"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/pit"
-	"github.com/vantare/overlays/v2/internal/telemetry/schema/damage"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/session"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/spatial"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/standings"
@@ -97,6 +97,16 @@ func TestProjectV2AppliesSpeedPreferenceAndDefaultsToSI(t *testing.T) {
 	}
 	if kph.Frame.Units.Speed != SpeedUnitKPH || kph.Frame.Player.Speed.V != 180 {
 		t.Fatalf("kph speed = %v %q", kph.Frame.Player.Speed.V, kph.Frame.Units.Speed)
+	}
+}
+
+func TestProjectV2RejectsUnknownSourceState(t *testing.T) {
+	t.Parallel()
+
+	source := builderSourceContext()
+	source.State = "connected"
+	if _, err := ProjectV2(builderFinalState(t, 1), source, DefaultPreferencesV2(), 1); err == nil {
+		t.Fatal("ProjectV2 accepted an unknown source state")
 	}
 }
 

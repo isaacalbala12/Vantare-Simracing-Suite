@@ -229,7 +229,9 @@ export function decodeOverlayUpdateV2(input: unknown): OverlayUpdateV2 {
 
 function sourceStatus(value: unknown, path: string): void {
   objectWithKeys(value, path, ["state"], ["retry", "ageMs", "reason"]);
-  nonEmptyString(value.state, `${path}.state`);
+  enumValue(value.state, `${path}.state`, [
+    "stopped", "detecting", "connecting", "live", "degraded", "stale", "error", "stopping",
+  ]);
   optionalNonNegativeInteger(value.retry, `${path}.retry`);
   optionalNonNegativeInteger(value.ageMs, `${path}.ageMs`);
   optionalString(value.reason, `${path}.reason`);

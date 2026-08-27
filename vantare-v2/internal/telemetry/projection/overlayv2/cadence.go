@@ -1,6 +1,7 @@
 package overlayv2
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/vantare/overlays/v2/internal/telemetry/derive"
@@ -411,6 +412,10 @@ func (projector *CachedProjector) Project(
 	if !ok {
 		return UpdateV2{}, envelope.ErrCloneRequired
 	}
+	sourceState := SourceStateV2(source.State)
+	if !sourceState.Known() {
+		return UpdateV2{}, fmt.Errorf("overlay v2 source state %q is invalid", source.State)
+	}
 	preferences = normalizedPreferences(preferences)
 	header := snapshot.Header()
 
@@ -486,7 +491,7 @@ func (projector *CachedProjector) Project(
 	return UpdateV2{
 		DeliveryRevision: deliveryRevision,
 		Source: SourceStatusV2{
-			State: source.State, ReconnectAttempt: uint32(max(source.ReconnectAttempt, 0)),
+			State: sourceState, ReconnectAttempt: uint32(max(source.ReconnectAttempt, 0)),
 			LastFrameAgeMS: max(source.LastFrameAgeMS, 0), DegradedReason: source.DegradedReason,
 		},
 		Frame: &published,

@@ -27,7 +27,13 @@ export function buildTrackMapViewModelV2(
   source: OverlaySourceStatusV2,
   content: TrackMapContent,
 ): TrackMapViewModel {
-  if (source.state === "error" || source.state === "stopped" || source.state === "missing") {
+  if (
+    source.state === "error"
+    || source.state === "stopped"
+    || source.state === "stopping"
+    || source.state === "detecting"
+    || source.state === "connecting"
+  ) {
     const reason: TrackMapUnavailableReason = "no-telemetry";
     return unavailable(mapStatus(source.state), source.reason || undefined, content, reason);
   }
@@ -123,17 +129,20 @@ function buildMarkersV2(frame: OverlayFrameV2, projection: TrackProjection): rea
   return markers;
 }
 
-function mapStatus(state: string): TrackMapViewModel["status"] {
+function mapStatus(state: OverlaySourceStatusV2["state"]): TrackMapViewModel["status"] {
   switch (state) {
     case "live":
       return "ready";
+    case "degraded":
     case "stale":
       return "stale";
     case "error":
       return "error";
     case "stopped":
+    case "stopping":
       return "disconnected";
-    default:
+    case "detecting":
+    case "connecting":
       return "missing";
   }
 }

@@ -25,6 +25,10 @@ describe("OverlayFrame v2 store", () => {
     expect(() => decodeOverlayUpdateV2({ ...update, revision: 0 })).toThrow(
       "overlay-frame-v2:invalid-contract:revision",
     );
+    expect(() => decodeOverlayUpdateV2({
+      ...update,
+      source: { ...update.source, state: "connected" },
+    })).toThrow("overlay-frame-v2:invalid-contract:source.state");
   });
 
   it("accepts revision gaps and retains one stable immutable frame reference", () => {

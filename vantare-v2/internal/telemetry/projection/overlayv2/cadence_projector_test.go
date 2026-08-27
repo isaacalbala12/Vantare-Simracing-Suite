@@ -115,6 +115,20 @@ func TestCachedProjectorKeepsFullFrameWhenSlowSectionsAreSkipped(t *testing.T) {
 	}
 }
 
+func TestCachedProjectorRejectsUnknownSourceStateBeforeMutatingCache(t *testing.T) {
+	t.Parallel()
+
+	projector := NewCachedProjector(SectionCadence{})
+	source := builderSourceContext()
+	source.State = "connected"
+	if _, err := projector.Project(builderFinalState(t, 1), source, DefaultPreferencesV2(), 1, cadenceOrigin); err == nil {
+		t.Fatal("CachedProjector accepted an unknown source state")
+	}
+	if metrics := projector.Metrics(); metrics.Ticks != 0 {
+		t.Fatalf("invalid source mutated projector metrics: %#v", metrics)
+	}
+}
+
 func TestSkippedSectionReusesTheSameSliceBacking(t *testing.T) {
 	t.Parallel()
 

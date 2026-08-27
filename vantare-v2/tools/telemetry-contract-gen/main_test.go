@@ -79,6 +79,11 @@ func TestGeneratedOverlayV2ContractUsesCompactGenericQuality(t *testing.T) {
 	}, nil)
 	compareValues(t, "OverlayQualityV2", enumValues(t, generated, "OverlayQualityV2"),
 		[]string{"fresh", "invalid", "missing", "stale"})
+	compareValues(t, "OverlaySourceStateV2", enumValues(t, generated, "OverlaySourceStateV2"),
+		[]string{"connecting", "degraded", "detecting", "error", "live", "stale", "stopped", "stopping"})
+	if state := interfaceFields(t, generated, "OverlaySourceStatusV2")["state"]; state.typeName != "OverlaySourceStateV2" {
+		t.Fatalf("OverlaySourceStatusV2.state generated as %q; want OverlaySourceStateV2", state.typeName)
+	}
 	if strings.Contains(generated, "interface Overlayv2QValue") {
 		t.Fatal("generic QValue was emitted as a duplicated concrete interface")
 	}

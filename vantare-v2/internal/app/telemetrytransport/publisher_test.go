@@ -62,6 +62,57 @@ func TestPublisherReplaySnapshotServesLateJoiner(t *testing.T) {
 	}
 }
 
+func TestPublisherRegistryRetainsOnlyLatestStatusAcrossConsumerLifetimes(t *testing.T) {
+	t.Parallel()
+
+	registry := mustPublisherRegistry(t, PublisherConfig{Product: ProductOverlayV2})
+	if err := registry.PublishStatus(ProductOverlayV2, 4, map[string]any{
+		"revision": 4,
+		"source":   map[string]any{"state": "connecting"},
+		"frame":    nil,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, active := registry.Lookup(ProductOverlayV2); active {
+		t.Fatal("retaining status instantiated a publisher without a consumer")
+	}
+
+	publisher, release, err := registry.RegisterConsumer(ProductOverlayV2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	replay, ok := publisher.ReplayStatus()
+	if !ok || replay.Kind != PublisherEventStatus || !bytes.Contains(replay.Data, []byte(`"connecting"`)) {
+		t.Fatalf("late status replay = %#v, %v", replay, ok)
+	}
+	release()
+
+	if err := registry.PublishStatus(ProductOverlayV2, 9, map[string]any{
+		"revision": 9,
+		"source":   map[string]any{"state": "error"},
+		"frame":    nil,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := registry.PublishStatus(ProductOverlayV2, 8, map[string]any{
+		"revision": 8,
+		"source":   map[string]any{"state": "live"},
+		"frame":    nil,
+	}); !errors.Is(err, ErrDeliveryRevision) {
+		t.Fatalf("regressed retained status error = %v", err)
+	}
+
+	publisher, release, err = registry.RegisterConsumer(ProductOverlayV2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer release()
+	replay, ok = publisher.ReplayStatus()
+	if !ok || !bytes.Contains(replay.Data, []byte(`"revision":9`)) || !bytes.Contains(replay.Data, []byte(`"error"`)) {
+		t.Fatalf("recreated publisher status = %#v, %v", replay, ok)
+	}
+}
+
 func TestPublisherDropsAndCountsOversizedFrame(t *testing.T) {
 	t.Parallel()
 

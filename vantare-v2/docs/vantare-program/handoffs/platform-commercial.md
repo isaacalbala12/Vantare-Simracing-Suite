@@ -61,11 +61,12 @@
   BIL-08 tras validación acumulativa. Venta pública continúa **NO-GO**.
 - Account/Profile: issue histórica ISA-12; proyecto pendiente.
 - Calendar/Settings/Installer/Roadmap/Migración: proyecto o reconciliación
-  pendientes. ISA-845 queda en rama aislada con parser del mensaje Discord
-  oficial, seed de 2026-08-25, revisión owner y lector REST separado. El
-  runtime local se validó con el canal configurado: 1 candidato de 11 series
-  en la bandeja instalada y la tarea diaria terminó con código 0; no hay
-  auto-publicación, secretos en Desktop, deploy ni promoción de canal.
+  pendientes. ISA-845 tiene implementados el parser del mensaje Discord
+  oficial, seed de 2026-08-25, revisión owner y lector REST separado; su vía
+  de integración inicial es el PR #881 contra nightly. El runtime local se
+  validó con el canal configurado: 1 candidato de 11 series en la bandeja
+  instalada y la tarea diaria terminó con código 0; no hay auto-publicación,
+  secretos en Desktop, deploy, testers/master ni release.
 - Root migration: auditoría ISA-14, bloqueada por worktrees activos.
 - `nightly` y `testers` existen; el flujo vigente es issue → `nightly` →
   `testers` → `master`.

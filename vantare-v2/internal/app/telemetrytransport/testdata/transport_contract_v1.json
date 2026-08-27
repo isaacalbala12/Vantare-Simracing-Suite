@@ -2,9 +2,9 @@
   "projectionVersion": 1,
   "maxPayloadBytes": 262144,
   "overlayPull": {
-    "requestEvent": "telemetry:overlay:pull",
+    "requestRoute": "/_vantare/overlay-telemetry/pull",
     "responseEvent": "telemetry:overlay:pulled",
-    "closeEvent": "telemetry:overlay:pull:close"
+    "closeRoute": "/_vantare/overlay-telemetry/close"
   },
   "statusStates": [
     "stopped",

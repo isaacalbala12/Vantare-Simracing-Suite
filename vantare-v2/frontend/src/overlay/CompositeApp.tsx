@@ -50,7 +50,17 @@ export function CompositeApp() {
       const unsubscribe = Events.On(event, (payload: {data: unknown}) => handler(payload.data));
       return () => unsubscribe?.();
     },
-    emit: (event, data) => Events.Emit(event, data),
+    post: async (route, data) => {
+      const response = await fetch(route, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(data),
+        cache: "no-store",
+      });
+      if (!response.ok) {
+        throw new Error(`overlay telemetry pull HTTP ${response.status}`);
+      }
+    },
     onError: (error) => console.error("overlay telemetry pull failed", error),
   }), []);
   const engineerAdapter = useMemo(() => createWailsEngineerPresentationAdapter({

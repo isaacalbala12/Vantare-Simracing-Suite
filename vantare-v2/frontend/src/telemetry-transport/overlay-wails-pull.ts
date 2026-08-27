@@ -1,6 +1,6 @@
-export const OVERLAY_PULL_REQUEST_EVENT = "telemetry:overlay:pull";
+export const OVERLAY_PULL_REQUEST_ROUTE = "/_vantare/overlay-telemetry/pull";
 export const OVERLAY_PULL_RESPONSE_EVENT = "telemetry:overlay:pulled";
-export const OVERLAY_PULL_CLOSE_EVENT = "telemetry:overlay:pull:close";
+export const OVERLAY_PULL_CLOSE_ROUTE = "/_vantare/overlay-telemetry/close";
 
 const MAX_SESSION_ID_LENGTH = 128;
 
@@ -23,7 +23,7 @@ type ScheduleHandle = unknown;
 
 export type OverlayWailsPullOptions = Readonly<{
   onResponse(name: string, listener: (data: unknown) => void): () => void;
-  emit(name: string, data: unknown): void;
+  post(route: string, data: unknown): void | Promise<void>;
   schedule?: (callback: () => void) => ScheduleHandle;
   cancel?: (handle: ScheduleHandle) => void;
   createSessionID?: () => string;
@@ -80,8 +80,19 @@ export function createOverlayWailsPullClient(
     scheduled = undefined;
     if (!active || awaiting) return;
     awaiting = true;
+    const requestSessionID = sessionID;
+    const requestAck = acknowledged;
     try {
-      options.emit(OVERLAY_PULL_REQUEST_EVENT, {sessionId: sessionID, ack: acknowledged});
+      const posted = options.post(OVERLAY_PULL_REQUEST_ROUTE, {
+        sessionId: requestSessionID,
+        ack: requestAck,
+      });
+      void Promise.resolve(posted).catch((error) => {
+        if (active && sessionID === requestSessionID && acknowledged === requestAck) {
+          awaiting = false;
+        }
+        onError(error);
+      });
     } catch (error) {
       awaiting = false;
       onError(error);
@@ -150,7 +161,11 @@ export function createOverlayWailsPullClient(
       unsubscribeResponse?.();
       unsubscribeResponse = undefined;
       try {
-        options.emit(OVERLAY_PULL_CLOSE_EVENT, {sessionId: sessionID, ack: acknowledged});
+        const posted = options.post(OVERLAY_PULL_CLOSE_ROUTE, {
+          sessionId: sessionID,
+          ack: acknowledged,
+        });
+        void Promise.resolve(posted).catch(onError);
       } catch (error) {
         onError(error);
       }

@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -388,7 +389,7 @@ func TestTelemetryStatusReplayHandlersIgnoreNilRuntime(t *testing.T) {
 	cleanup()
 }
 
-func TestOverlayPullHandlerTargetsOnlyTheRequestingWindowAndClosesConsumer(t *testing.T) {
+func TestOverlayPullHTTPServiceTargetsOnlyTheRequestingWindowAndClosesConsumer(t *testing.T) {
 	hub := telemetrytransport.NewHub(telemetrytransport.HubConfig{
 		Product: telemetrytransport.ProductOverlay,
 	})
@@ -399,16 +400,17 @@ func TestOverlayPullHandlerTargetsOnlyTheRequestingWindowAndClosesConsumer(t *te
 		t.Fatal(err)
 	}
 	pull := telemetrytransport.NewOverlayPullTransport(hub, registry)
-	events := newSynchronousTelemetryEvents()
 	target := newCaptureOverlayPullTarget()
-	cleanup := registerOverlayPullHandlers(events, target, pull)
-	defer cleanup()
+	service := newOverlayPullHTTPService(target, pull)
+	defer service.shutdown()
 
-	events.EmitCustom(
-		telemetrytransport.OverlayPullRequestEvent,
-		"overlay-window",
-		map[string]any{"sessionId": "session-1", "ack": 0},
-	)
+	request := httptest.NewRequest(http.MethodPost, "/pull", strings.NewReader(`{"sessionId":"session-1","ack":0}`))
+	request.Header.Set(overlayPullWindowNameHeader, "overlay-window")
+	response := httptest.NewRecorder()
+	service.ServeHTTP(response, request)
+	if response.Code != http.StatusNoContent {
+		t.Fatalf("pull status = %d, body=%q", response.Code, response.Body.String())
+	}
 	if calls := target.snapshot(); len(calls) != 1 ||
 		calls[0].window != "overlay-window" ||
 		calls[0].name != telemetrytransport.OverlayPullResponseEvent {
@@ -420,15 +422,27 @@ func TestOverlayPullHandlerTargetsOnlyTheRequestingWindowAndClosesConsumer(t *te
 
 	// A duplicate request is not a second WebView delivery while response 1 is
 	// still unacknowledged.
-	events.EmitCustom(
-		telemetrytransport.OverlayPullRequestEvent,
-		"overlay-window",
-		map[string]any{"sessionId": "session-1", "ack": 0},
-	)
+	request = httptest.NewRequest(http.MethodPost, "/pull", strings.NewReader(`{"sessionId":"session-1","ack":0}`))
+	request.Header.Set(overlayPullWindowNameHeader, "overlay-window")
+	service.ServeHTTP(httptest.NewRecorder(), request)
 	if calls := target.snapshot(); len(calls) != 1 {
 		t.Fatalf("duplicate request produced %d targeted calls, want 1", len(calls))
 	}
 
+	request = httptest.NewRequest(http.MethodPost, "/close", strings.NewReader(`{"sessionId":"session-1","ack":1}`))
+	request.Header.Set(overlayPullWindowNameHeader, "overlay-window")
+	response = httptest.NewRecorder()
+	service.ServeHTTP(response, request)
+	if response.Code != http.StatusNoContent {
+		t.Fatalf("close status = %d, body=%q", response.Code, response.Body.String())
+	}
+	if _, active := registry.Lookup(telemetrytransport.ProductOverlayV2); active {
+		t.Fatal("HTTP close left the overlay publisher active")
+	}
+
+	request = httptest.NewRequest(http.MethodPost, "/pull", strings.NewReader(`{"sessionId":"session-2","ack":0}`))
+	request.Header.Set(overlayPullWindowNameHeader, "overlay-window")
+	service.ServeHTTP(httptest.NewRecorder(), request)
 	target.close("overlay-window")
 	if _, active := registry.Lookup(telemetrytransport.ProductOverlayV2); active {
 		t.Fatal("native window close left the overlay publisher active")
@@ -500,15 +514,6 @@ func (events *synchronousTelemetryEvents) Emit(name string) {
 	events.mu.Unlock()
 	for _, listener := range listeners {
 		listener.callback(&application.CustomEvent{Name: name})
-	}
-}
-
-func (events *synchronousTelemetryEvents) EmitCustom(name, sender string, data any) {
-	events.mu.Lock()
-	listeners := append([]*synchronousTelemetryListener{}, events.listeners[name]...)
-	events.mu.Unlock()
-	for _, listener := range listeners {
-		listener.callback(&application.CustomEvent{Name: name, Sender: sender, Data: data})
 	}
 }
 

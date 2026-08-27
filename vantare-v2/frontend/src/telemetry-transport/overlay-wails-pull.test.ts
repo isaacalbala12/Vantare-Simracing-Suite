@@ -1,14 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   createOverlayWailsPullClient,
-  OVERLAY_PULL_CLOSE_EVENT,
-  OVERLAY_PULL_REQUEST_EVENT,
+  OVERLAY_PULL_CLOSE_ROUTE,
+  OVERLAY_PULL_REQUEST_ROUTE,
   OVERLAY_PULL_RESPONSE_EVENT,
 } from "./overlay-wails-pull";
 
 describe("overlay Wails pull client", () => {
   it("acks only after processing and keeps one delivery in flight", () => {
-    const emitted: Array<{ name: string; data: unknown }> = [];
+    const posted: Array<{ route: string; data: unknown }> = [];
     const scheduled: Array<() => void> = [];
     let response: ((data: unknown) => void) | undefined;
     const onError = vi.fn();
@@ -20,8 +20,8 @@ describe("overlay Wails pull client", () => {
           response = undefined;
         };
       },
-      emit(name, data) {
-        emitted.push({ name, data });
+      post(route, data) {
+        posted.push({ route, data });
       },
       schedule(callback) {
         scheduled.push(callback);
@@ -40,8 +40,8 @@ describe("overlay Wails pull client", () => {
     client.source.subscribe("telemetry:overlay-v2:snapshot", (data) => v2Snapshots.push(data));
 
     client.start();
-    expect(emitted).toEqual([{
-      name: OVERLAY_PULL_REQUEST_EVENT,
+    expect(posted).toEqual([{
+      route: OVERLAY_PULL_REQUEST_ROUTE,
       data: { sessionId: "session-1", ack: 0 },
     }]);
 
@@ -51,14 +51,14 @@ describe("overlay Wails pull client", () => {
       events: [{ name: "telemetry:overlay:projection", data: { sequence: 1 } }],
     });
     expect(v1Snapshots).toEqual([{ sequence: 1 }]);
-    expect(emitted).toHaveLength(1);
+    expect(posted).toHaveLength(1);
     expect(scheduled).toHaveLength(1);
 
     // The next request is the acknowledgement. It does not exist until the
     // response callback has processed every event and the paced turn runs.
     scheduled.shift()?.();
-    expect(emitted.at(-1)).toEqual({
-      name: OVERLAY_PULL_REQUEST_EVENT,
+    expect(posted.at(-1)).toEqual({
+      route: OVERLAY_PULL_REQUEST_ROUTE,
       data: { sessionId: "session-1", ack: 1 },
     });
 
@@ -75,8 +75,8 @@ describe("overlay Wails pull client", () => {
     expect(onError).not.toHaveBeenCalled();
 
     client.stop();
-    expect(emitted.at(-1)).toEqual({
-      name: OVERLAY_PULL_CLOSE_EVENT,
+    expect(posted.at(-1)).toEqual({
+      route: OVERLAY_PULL_CLOSE_ROUTE,
       data: { sessionId: "session-1", ack: 2 },
     });
     expect(response).toBeUndefined();
@@ -84,7 +84,7 @@ describe("overlay Wails pull client", () => {
   });
 
   it("ignores stale generations, duplicate deliveries and unknown event routes", () => {
-    const emitted: Array<{ name: string; data: unknown }> = [];
+    const posted: Array<{ route: string; data: unknown }> = [];
     const callbacks: Array<() => void> = [];
     let response: ((data: unknown) => void) | undefined;
     const onError = vi.fn();
@@ -93,7 +93,7 @@ describe("overlay Wails pull client", () => {
         response = listener;
         return () => undefined;
       },
-      emit: (name, data) => emitted.push({ name, data }),
+      post: (route, data) => posted.push({ route, data }),
       schedule(callback) {
         callbacks.push(callback);
         return callback;
@@ -125,6 +125,6 @@ describe("overlay Wails pull client", () => {
     });
     expect(callbacks).toHaveLength(scheduledBeforeDuplicate);
     expect(listener).not.toHaveBeenCalled();
-    expect(emitted).toHaveLength(1);
+    expect(posted).toHaveLength(1);
   });
 });

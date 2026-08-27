@@ -14,8 +14,8 @@ import {
   type ProductID,
 } from "./contracts";
 import {
-  OVERLAY_PULL_CLOSE_EVENT,
-  OVERLAY_PULL_REQUEST_EVENT,
+  OVERLAY_PULL_CLOSE_ROUTE,
+  OVERLAY_PULL_REQUEST_ROUTE,
   OVERLAY_PULL_RESPONSE_EVENT,
 } from "./overlay-wails-pull";
 
@@ -36,9 +36,9 @@ describe("telemetry transport contracts", () => {
       maxPayloadBytes: number;
       statusStates: string[];
       overlayPull: {
-        requestEvent: string;
+        requestRoute: string;
         responseEvent: string;
-        closeEvent: string;
+        closeRoute: string;
       };
       products: Record<
         ProductID,
@@ -55,9 +55,9 @@ describe("telemetry transport contracts", () => {
     expect(fixture.maxPayloadBytes).toBe(MAX_PAYLOAD_BYTES);
     expect(fixture.statusStates).toEqual(TELEMETRY_STATUS_STATES);
     expect(fixture.overlayPull).toEqual({
-      requestEvent: OVERLAY_PULL_REQUEST_EVENT,
+      requestRoute: OVERLAY_PULL_REQUEST_ROUTE,
       responseEvent: OVERLAY_PULL_RESPONSE_EVENT,
-      closeEvent: OVERLAY_PULL_CLOSE_EVENT,
+      closeRoute: OVERLAY_PULL_CLOSE_ROUTE,
     });
     for (const product of TELEMETRY_PRODUCTS) {
       expect(fixture.products[product]).toEqual({

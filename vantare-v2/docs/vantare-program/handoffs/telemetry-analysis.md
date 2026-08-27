@@ -35,9 +35,30 @@ Actualización ISA-869 (2026-08-27, rama
   depende de ella. Por ello referencias, mapa, delta y trazas se deshabilitan
   con causa cuando la sesión es real; no se sustituye distancia por tiempo ni
   se conecta Analysis al stream live.
-- Commit funcional `c97a2f4a`; tests focales 12/12, typecheck, ESLint focal,
-  auditoría i18n y diff-check pasan. Pendientes el build completo, smoke Wails,
-  documentación final, push, PR y CI. No hay promoción ni release.
+- Commits `c97a2f4a` (producto) y `06cab32b` (expediente). Pasan tests
+  focales 12/12, frontend global 3.068/3.068, typecheck, build, ESLint focal,
+  auditoría i18n, paquetes Go de Analysis/app/cmd y diff-check. El lint global
+  conserva un error ajeno y preexistente en
+  `car-damage-numbers-view-model-v2.ts:93`; la rama no toca ese archivo.
+- La build Windows configurada se reconstruyó con el procedimiento canónico de
+  `docs/release-artifacts.md`: `.env.local` se leyó solo en memoria, el
+  preflight publicó únicamente ambos nombres Supabase como `SET`, Task generó
+  frontend y configuración Go embebida para canal `nightly`, y retiró
+  `supabase_build.go` al terminar. No se copió, imprimió ni versionó el archivo
+  autorizado; esta build local tampoco afirma paridad de licencia CI.
+- Smoke Wails real: la candidata configurada abrió `Vantare Hub`, respondió y
+  conectó con LMU en `127.0.0.1:6397` y con el backend remoto. Para no cerrar la
+  Nightly instalada se ejecutó con nombre único, por lo que WebView2 creó un
+  perfil nuevo y mostró onboarding; no se copiaron credenciales ni se presenta
+  ese arranque como prueba autenticada de la galería.
+- Evidencia local sanitizada: el store instalado contiene 336 modelos
+  autorizados, pero el cold start persistido está `rejected`. LMU llevaba unas
+  2,6 horas abierto y su directorio histórico no había cambiado en las últimas
+  2 horas; el último DuckDB/WAL tenía unas 13 horas. Por tanto ISA-869 puede
+  listar el catálogo existente, pero la práctica activa no aporta todavía un
+  artefacto estable nuevo. ISA-871 registra el refresco post-sesión explícito,
+  seguro y sin watcher live; queda fuera de esta rama.
+- Pendientes push, PR y CI. No hay promoción ni release.
 
 Actualización ISA-861 (2026-08-27, corte final candidato sobre
 `origin/nightly@b1d5b15b`):

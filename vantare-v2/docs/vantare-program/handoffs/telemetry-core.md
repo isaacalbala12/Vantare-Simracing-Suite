@@ -15,7 +15,23 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 
 ## Estado real
 
-- 2026-08-27, ISA-879 abierta sobre `origin/nightly@a02a1463` tras una
+- 2026-08-27, ISA-879 implementa sobre `origin/nightly@c1d4dfa4` el commit
+  `68ae7eae`: elimina los bridges Overlay v1/v2 que se suscribian y difundian
+  globalmente al arrancar, y los sustituye por una sesion pull dirigida a la
+  ventana solicitante. El frontend solo acusa una respuesta despues de
+  procesarla; Go conserva el ultimo estado v1/v2, agrupa los cambios en una
+  respuesta y no acepta otra entrega hasta ese acuse. El publisher v2 solo se
+  activa con una sesion Overlay y se libera por cleanup exacto o cierre nativo.
+  La regresion de consumidor lento retiene la entrega 1 mientras se publican
+  los frames 2 a 100 y recibe directamente el 100 tras el acuse; tests de
+  runtime prueban cero suscriptores/emisiones Overlay globales y entrega a una
+  unica ventana. Suites focales Go y 26 tests frontend, contrato Go/TS y
+  typecheck estan verdes. Falta el soak Wails/LMU real: el commit no se presenta
+  como prueba de memoria WebView2. Rama
+  `vantareapp/isa-879-wails-telemetry-bounded`; sin push, PR, CI, merge,
+  promocion ni release.
+
+- 2026-08-27, diagnostico inicial de ISA-879 sobre `origin/nightly@a02a1463` tras una
   reproduccion LMU/Wails real: con solo Hub visible, el proceso browser de
   WebView2 crecio de ~9,3 a 11,4 GB privados mientras el renderer React se
   mantuvo en ~197 MB. Overlay v1 cruzaba ~2,68 MiB/s y el shadow v2 ~0,56
@@ -28,10 +44,8 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   Overlay por demanda/acuse dirigido: una respuesta agregada v1+v2, como
   maximo una entrega pendiente, reemplazo por el ultimo estado y publisher v2
   activo solo durante la sesion consumidora. Strategy, Engineer, OBS, el
-  driver y las proyecciones no cambian. Primero se escribira la regresion de
-  WebView lento; tests sinteticos no acreditaran el soak WebView2/LMU real.
-  Rama `vantareapp/isa-879-wails-telemetry-bounded`; sin commit, push, PR,
-  merge, promocion ni release.
+  driver y las proyecciones no cambian. Tests sinteticos no acreditan el soak
+  WebView2/LMU real.
 
 - 2026-08-21, ISA-697 / Deuda #677 Tanda 2: `TelemetryEngine.Apply` pasa de 650190 B/op 344 allocs/op @104 a 168400 B/op 327 allocs/op (-74% bytes, -5% allocs) en rama `vantareapp/isa-697-apply-churn` sobre `origin/nightly@f10b817d` (5 commits: 1 benchmark + 4 perf). Cambios: `envelope.NewSnapshotOwned` + `Peek` para no clonar donde se lee sin mutar, `Commit` directo en reducer/coordinator/pipeline, y `validateObservedState` sin map (sort). Goldens y replay parity verdes; snapshot sigue value-semantic. Evidencia `docs/telemetry-core/evidence/isa-677-apply-churn.md`, fragmento `ISA-697.json`. Queda techo ~150KB/B/op sin COW en envelope y gaps 104 por frame.
 

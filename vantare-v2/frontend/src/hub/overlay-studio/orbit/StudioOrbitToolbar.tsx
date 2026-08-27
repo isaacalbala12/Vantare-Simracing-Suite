@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { useI18n } from "../../../i18n/I18nProvider";
 import { IconButton, Seg } from "../../../ui/orbit";
 import type { StudioPreviewState } from "../state/studio-store";
+import { StudioWallpaperPicker } from "./StudioWallpaperPicker";
 import {
   nextZoom,
   ORBIT_BACKGROUND_OPTIONS,
@@ -39,6 +40,9 @@ function ToolButton(props: {
   );
 }
 
+/** Fondo al que vuelve el lienzo si se borra el propio que estaba puesto. */
+const FALLBACK_BACKGROUND_ID = "gradient";
+
 export type StudioOrbitToolbarProps = {
   preview: StudioPreviewState;
   liveAvailable: boolean;
@@ -75,7 +79,15 @@ export function StudioOrbitToolbar(props: StudioOrbitToolbarProps): React.ReactE
           value: option.value,
           label: t(option.labelKey),
         }))}
+        // Con un fondo propio puesto no hay opcion de fabrica encendida: el
+        // grupo dice la verdad, y pulsar cualquiera de las tres vuelve a ella.
         value={(preview.backgroundId as OrbitBackgroundId) ?? "grid"}
+      />
+
+      <StudioWallpaperPicker
+        backgroundId={preview.backgroundId}
+        fallbackBackgroundId={FALLBACK_BACKGROUND_ID}
+        onSelect={(backgroundId) => onPreviewChange({ backgroundId })}
       />
 
       <Seg<"mock" | "live">

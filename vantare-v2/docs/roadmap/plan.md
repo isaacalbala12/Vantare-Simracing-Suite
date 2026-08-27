@@ -330,10 +330,10 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - titulo.en: Live LMU telemetry
 - titulo.pt: Telemetria LMU ao vivo
 - titulo.it: Telemetria LMU dal vivo
-- cuerpo: Driver LMU con reconexión acotada, transporte Overlay dirigido con una sola entrega pendiente y proyecciones de overlay, ingeniero y estrategia.
-- cuerpo.en: LMU driver with bounded reconnects, targeted Overlay transport with one pending delivery, and overlay, engineer and strategy projections.
-- cuerpo.pt: Driver LMU com reconexão limitada, transporte Overlay dirigido com uma única entrega pendente e projeções de overlay, engenheiro e estratégia.
-- cuerpo.it: Driver LMU con riconnessione limitata, trasporto Overlay diretto con una sola consegna pendente e proiezioni di overlay, engineer e strategia.
+- cuerpo: Driver LMU con reconexión acotada, transporte Overlay dirigido con una sola entrega pendiente que se resincroniza tras reconexiones, y proyecciones de overlay, ingeniero y estrategia.
+- cuerpo.en: LMU driver with bounded reconnects, targeted Overlay transport with one pending delivery that resynchronizes after reconnects, and overlay, engineer and strategy projections.
+- cuerpo.pt: Driver LMU com reconexão limitada, transporte Overlay dirigido com uma única entrega pendente que se ressincroniza após reconexões, e projeções de overlay, engenheiro e estratégia.
+- cuerpo.it: Driver LMU con riconnessione limitata, trasporto Overlay diretto con una sola consegna pendente che si risincronizza dopo le riconnessioni, e proiezioni di overlay, engineer e strategia.
 - etiqueta: En desarrollo
 - etiqueta.en: In progress
 - etiqueta.pt: Em desenvolvimento

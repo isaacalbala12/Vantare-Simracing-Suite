@@ -91,10 +91,31 @@ El monitor CDP sobre las respuestas `POST /pull` observo 3.142 entregas y
 24.140 a epoch 1 / secuencia 26.983, aproximadamente 63 proyecciones por
 segundo, mientras el DOM continuo en `ready` con 18 filas.
 
-Esto acredita build, Wails, pull dirigido, LMU Live y render actual. La prueba
-exacta de cambio de epoch sin recargar la ventana queda pendiente de salir y
-volver a entrar en sesion mientras esta misma instancia permanece abierta; no
-se sustituye esa evidencia por un mock ni por el test unitario.
+Esto acredita build, Wails, pull dirigido, LMU Live y render actual.
+
+## Reconnect real sin recargar
+
+La misma ventana Overlay permanecio abierta al cerrar y volver a arrancar LMU.
+Antes del reinicio, epoch 1 alcanzo la secuencia 166.097 y el status revision 4
+paso a `stale` con `reconnectAttempt=0`. LMU volvio como un proceso nuevo, PID
+980, iniciado el 2026-08-28 a las 00:20.
+
+Sin recargar ni reabrir Vantare, el mismo target Overlay empezo a recibir epoch
+2. La primera proyeccion observada por CDP fue la secuencia 2.290, no la 1, y en
+30 segundos avanzo hasta la 4.203: 1.656 proyecciones dentro de 1.943 entregas
+pull. Es exactamente la condicion que el store anterior rechazaba de forma
+permanente.
+
+El DOM adopto la nueva sesion y continuo pintando:
+
+- `PRACTICE` con 05:58:40 restantes;
+- Relative y Standings en estado `ready`;
+- 18 participantes y `Isaac Albala` en P10;
+- controles activos, con throttle al 100 % en la muestra.
+
+No se envio ningun reload a la WebView. La prueba acredita el recorrido real
+LMU -> Go -> pull Wails -> store -> ViewModels -> widgets despues de un salto
+de epoch cuyo primer snapshot visible tenia `sequence > 1`.
 
 Commit funcional: `57c7610900fa175979183c1d088a50cf72f69d2c`.
 

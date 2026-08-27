@@ -26,9 +26,11 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   siguen cerrados. Suite frontend completa (417 archivos, 3.143 tests), 26
   focales, typecheck, build, ESLint del diff y `git diff --check` verdes. Una
   build Wails aislada en 39263/9231 recibio LMU Live y pinto Practice, 18
-  participantes, Relative, Standings y pedales. Falta provocar un reconnect
-  real manteniendo esa ventana abierta para acreditar el cambio de epoch sin
-  reload. Evidencia:
+  participantes, Relative, Standings y pedales. El reconnect nativo tambien
+  queda acreditado sin reload: epoch 1 termino en secuencia 166.097 y, tras
+  reiniciar LMU, la misma ventana acepto epoch 2 empezando en la primera
+  observacion 2.290, avanzo a 4.203 en 30 s y continuo con Relative/Standings
+  `ready`, 18 filas y el jugador en P10. Evidencia:
   `docs/telemetry-core/evidence/isa-889-overlay-epoch-resync.md`. Rama
   `vantareapp/isa-889-overlay-epoch-resync` publicada; PR draft #890 a
   `nightly`. El hito `telemetry-live` y su digest declaran la continuidad tras

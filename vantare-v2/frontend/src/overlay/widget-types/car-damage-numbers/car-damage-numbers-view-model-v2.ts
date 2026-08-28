@@ -31,7 +31,7 @@ export function buildCarDamageNumbersViewModelV2(
   source: OverlaySourceStatusV2,
   content: CarDamageNumbersContent,
 ): CarDamageNumbersViewModel {
-  const status = resolveStatus(source.state, frame.damage);
+  const status = resolveStatus(source.state);
   const unavailable = status === "missing" || status === "disconnected" || status === "error";
   if (unavailable || frame.damage.dents.q === "missing" || frame.damage.dents.q === "invalid") {
     return {
@@ -90,7 +90,7 @@ export const OVERLAY_V2_DAMAGE_INTENTIONAL_DIFFERENCES: readonly string[] = Obje
   "suspension",
 ]);
 
-function resolveStatus(state: string, _damage: OverlayFrameV2["damage"]): CarDamageNumbersViewModel["status"] {
+function resolveStatus(state: string): CarDamageNumbersViewModel["status"] {
   switch (state) {
     case "live":
       return "ready";

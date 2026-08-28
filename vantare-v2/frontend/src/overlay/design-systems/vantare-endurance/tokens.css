@@ -1719,7 +1719,6 @@
 }
 
 [data-widget-system="vantare-endurance"] .ven-red-tire-cell:not(.ven-red-tire) {
-  justify-self: center;
   width: 18px;
   height: 18px;
   border: 1.5px solid currentColor;

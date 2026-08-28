@@ -50,6 +50,10 @@ function justifyForAlign(align: "left" | "center" | "right"): CSSProperties["jus
   return align === "right" ? "flex-end" : align === "center" ? "center" : "flex-start";
 }
 
+function justifySelfForAlign(align: "left" | "center" | "right"): CSSProperties["justifySelf"] {
+  return align === "right" ? "end" : align === "center" ? "center" : "start";
+}
+
 function initialSurname(driverName: string): string {
   const words = driverName
     .replace(/\(.*?\)/g, " ")
@@ -150,14 +154,18 @@ function RedlineRow({
       {flexibleColumns.map((column) => {
         const align = column.style?.align ?? "left";
         const cellStyle = { textAlign: align } as CSSProperties;
+        const flexCellStyle = {
+          ...cellStyle,
+          justifyContent: justifyForAlign(align),
+        } as CSSProperties;
         if (column.metricId === "bestLap") {
-          return <span key={column.id} className="ven-red-best" data-metric="bestLap" data-session-best={!ghost && isSessionBest ? "true" : undefined} style={cellStyle}>
+          return <span key={column.id} className="ven-red-best" data-metric="bestLap" data-session-best={!ghost && isSessionBest ? "true" : undefined} style={flexCellStyle}>
             {row.bestLapText || "—"}
             {!ghost && isSessionBest ? <FastestGlyph /> : null}
           </span>;
         }
         if (column.metricId === "gap") {
-          return <span key={column.id} className="ven-red-gap" data-metric="gap" data-pit={row.pitText ? "true" : undefined} data-charged={!ghost && chargedGap !== null ? "true" : undefined} data-leaving={!ghost && leavingBattle ? "true" : undefined}>
+          return <span key={column.id} className="ven-red-gap" data-metric="gap" data-pit={row.pitText ? "true" : undefined} data-charged={!ghost && chargedGap !== null ? "true" : undefined} data-leaving={!ghost && leavingBattle ? "true" : undefined} style={flexCellStyle}>
             {!ghost && chargedGap !== null ? <b style={{ width: `${Math.round(chargedGap * 100)}%` } as CSSProperties} /> : null}
             <span className="ven-red-gaptext">{ghost ? "OUT" : row.pitText ? "PIT" : isLead ? "INT" : gapOneDecimal(row.gapText)}</span>
           </span>;
@@ -168,7 +176,7 @@ function RedlineRow({
         if (column.metricId === "tireCompound") {
           const compound = tire?.compound || row.tireCompound;
           const letter = compound.trim()[0]?.toUpperCase() || "—";
-          return <span key={column.id} className={`ven-red-metric ven-red-tire-cell${!ghost && tire ? " ven-red-tire" : ""}`} data-metric="tireCompound" data-compound={letter === "—" ? undefined : letter} data-leaving={!ghost && tire?.leaving ? "true" : undefined} style={cellStyle}>{letter}</span>;
+          return <span key={column.id} className={`ven-red-metric ven-red-tire-cell${!ghost && tire ? " ven-red-tire" : ""}`} data-metric="tireCompound" data-compound={letter === "—" ? undefined : letter} data-leaving={!ghost && tire?.leaving ? "true" : undefined} style={{ textAlign: "center", justifySelf: justifySelfForAlign(align) }}>{letter}</span>;
         }
         const value = column.metricId === "driverNumber"
           ? row.driverNumber ? `#${row.driverNumber}` : "—"
@@ -222,7 +230,7 @@ export function StandingsRedlineTemplate({
   }
 
   return (
-    <div ref={rootRef} className="ven-red-root" style={{ width: requiredWidth }}>
+    <div ref={rootRef} className="ven-red-root" style={{ minWidth: requiredWidth }}>
       {model.statusMessage ? (
         <p className="ven-status-message" role="status">
           {model.statusMessage}

@@ -85,11 +85,20 @@ describe("StandingsRedlineTemplate", () => {
     expect(row.querySelectorAll('[data-metric="bestLap"]')).toHaveLength(1);
   });
 
-  it("uses canonical preset widths and configured alignment in the row tracks", () => {
-    const model = modelWithColumns(["position", "driverName", "lastLap", "gap"]);
+  it("uses canonical preset widths and configured alignment, including special cells", () => {
+    const model = modelWithColumns([
+      "position",
+      "driverName",
+      "lastLap",
+      "gap",
+      "bestLap",
+      "tireCompound",
+    ]);
     const columns = model.columns.map((column) =>
       column.metricId === "lastLap"
         ? { ...column, widthPreset: "lg" as const, style: { align: "left" as const } }
+        : ["gap", "bestLap", "tireCompound"].includes(column.metricId)
+          ? { ...column, style: { align: "left" as const } }
         : column,
     );
     const view = render(
@@ -105,6 +114,18 @@ describe("StandingsRedlineTemplate", () => {
     expect((row.querySelector('[data-metric="lastLap"]') as HTMLElement).style.textAlign).toBe(
       "left",
     );
+    expect((row.querySelector('[data-metric="gap"]') as HTMLElement).style.justifyContent).toBe(
+      "flex-start",
+    );
+    expect(
+      (row.querySelector('[data-metric="bestLap"]') as HTMLElement).style.justifyContent,
+    ).toBe("flex-start");
+    expect(
+      (row.querySelector('[data-metric="tireCompound"]') as HTMLElement).style.justifySelf,
+    ).toBe("start");
+    const root = view.container.querySelector<HTMLElement>(".ven-red-root");
+    expect(root?.style.width).toBe("");
+    expect(root?.style.minWidth).toMatch(/px$/);
   });
 
   it("renders retirement ghosts through the same configurable row", () => {

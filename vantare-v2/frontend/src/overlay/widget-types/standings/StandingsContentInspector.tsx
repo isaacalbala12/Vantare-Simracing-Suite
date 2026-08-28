@@ -89,7 +89,7 @@ function moveRedlineColumn(
   const target = flexibleIndexes[direction === 'up' ? index - 1 : index + 1];
   const source = flexibleIndexes[index];
   if (!source || !target) return content;
-  const columns = content.columns.map((column) => structuredClone(column));
+  const columns = [...content.columns];
   [columns[source.index], columns[target.index]] = [columns[target.index]!, columns[source.index]!];
   return { ...content, columns };
 }

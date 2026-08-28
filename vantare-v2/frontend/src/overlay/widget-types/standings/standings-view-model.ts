@@ -19,6 +19,7 @@ export type StandingsRowViewModel = {
   position: number;
   driverNumber: string;
   driverName: string;
+  configuredDriverName?: string;
   vehicleClass: string;
   teamCode: string;
   teamBrandColor: string;
@@ -81,6 +82,7 @@ function buildRowViewModel(
   classLeader: StandingsScoringRow | undefined,
   mode: ReturnType<typeof resolveStandingsSessionMode>,
   columns: readonly WidgetColumnV3[],
+  driverNameColumn: WidgetColumnV3 | undefined,
   index: number,
 ): StandingsRowViewModel | null {
   const id = readScoringString(row, "id") ?? String(readScoringNumber(row, "id") ?? index);
@@ -96,6 +98,9 @@ function buildRowViewModel(
     position: readScoringNumber(row, "place") ?? index + 1,
     driverNumber: columnValues.driverNumber ?? "",
     driverName: columnValues.driverName ?? PLACEHOLDER,
+    configuredDriverName: driverNameColumn
+      ? formatStandingsColumnValue("driverName", row, classLeader, mode, driverNameColumn)
+      : readScoringString(row, "driverName") ?? PLACEHOLDER,
     vehicleClass: readScoringString(row, "vehicleClass") ?? "",
     teamCode: readScoringString(row, "teamCode") ?? "",
     teamBrandColor: readScoringString(row, "teamBrandColor") ?? "",
@@ -148,6 +153,7 @@ export function buildStandingsViewModel(
   content: StandingsContent,
 ): StandingsViewModel {
   const columns = getEnabledStandingsColumns(content);
+  const driverNameColumn = content.columns.find((column) => column.metricId === "driverName");
   if (snapshot.status === "disconnected") {
     return buildUnavailableModel("disconnected", content);
   }
@@ -192,7 +198,7 @@ export function buildStandingsViewModel(
         content.classScope === "all-classes"
           ? classLeaders.get(String(row.vehicleClass ?? "").toUpperCase()) ?? leader
           : leader;
-      return buildRowViewModel(row, rowLeader, mode, columns, index);
+      return buildRowViewModel(row, rowLeader, mode, columns, driverNameColumn, index);
     })
     .filter((row): row is StandingsRowViewModel => row !== null);
 

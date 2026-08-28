@@ -10,6 +10,65 @@
 
 ## Estado
 
+- **ISA-849 — columnas configurables en Standings Redline (2026-08-25, SDD):**
+  rama rebasada el 2026-08-27 sobre `origin/nightly@b1d5b15b` para que solo la plantilla titular
+  `standings-redline` respete visibilidad, orden, anchura y alineación sin perder
+  sus animaciones. Isaac cerró alcance: Posición y Piloto son anclajes fijos;
+  las nueve métricas restantes son flexibles; al activar muchas se ensancha el
+  widget y Studio avisa, sin resize automático. Se rechazó un adaptador
+  específico por complejidad: la propuesta consume las columnas directamente
+  en el TSX/CSS productivo. Review Fable: APROBABLE CON CAMBIOS; Isaac aceptó
+  las enmiendas el 2026-08-27. Redline tendrá anchura CSS real sin cambiar la
+  geometría de Original/Crystal/otros Endurance; el único campo aditivo será
+  `configuredDriverName`; batalla continúa dependiendo de Gap y PIT conserva
+  su estado aunque su columna esté oculta. Spec y PLAN/TASKS vivos:
+  `docs/superpowers/specs/2026-08-25-standings-redline-columnas-configurables-design.md`.
+  PR draft #795/ISA-799 solapa la habilitación de motion en Studio y queda como
+  dependencia de integración, no absorbida. Rama
+  `vantareapp/isa-849-standings-redline-columnas`. T1 completó el contrato
+  aditivo mínimo: V1 y V2 publican `configuredDriverName` sin alterar
+  `columns` ni los campos vigentes. Las regresiones fallaron primero y pasan
+  17/17. T3a fija además el contrato de viewport: solo Endurance Redline usa
+  `layout.w` como anchura base real; Original y otro Endurance conservan 520 px
+  escalados. La política ya está conectada en Studio, Desktop/OBS, edición
+  in-place y Workshop, incluido el preview DOM imperativo durante resize para
+  evitar escalado transitorio. Sus regresiones fallaron primero; gate T3 final
+  7 archivos/93 tests. T2 reemplaza la maqueta rígida por anclajes + delta +
+  nueve métricas flexibles en orden, con presets/alineación canónicos y el mismo
+  renderer para filas vivas y ghosts. Conserva 30 px, keys, clases semánticas y
+  datos de motion; focal Redline+contrato 20/20. T4 compuerta solo las señales
+  dependientes de celdas: sin Gap no hay batalla/presión; sin Best lap no hay
+  hot/corona; sin Neumático no hay reveal. PIT y FLIP/flash/delta/entrada/ghost
+  permanecen. Las tres regresiones fallaron primero; gate motion 27/27,
+  typecheck y diff-check PASS. T5 adapta únicamente el inspector Redline:
+  Posición/Piloto quedan activados y sin check/orden, pero conservan ancho y
+  alineación; las métricas móviles saltan ambos anclajes y un aviso i18n indica
+  la anchura mínima sin modificar el layout. T6 añade variantes reproducibles
+  `standings-minimal` y `standings-all-columns` al Workshop. El primer protocolo
+  visual detectó 10 px de overflow real porque la envolvente CSS seguía fija a
+  420 px; `width: 100%` lo corrige solo para Redline. Con procedencia limpia
+  `c892eca6`, Desktop/OBS/Harness pasan 12/12 capturas; el arranque frío de Vite
+  dejó las dos primeras capturas Studio sin root y contaminó su grupo, pero el
+  rerun Studio caliente pasa 4/4. Las cuatro superficies quedan así verificadas
+  en transparent/solid/grid/context, sin overflow, errores ni contaminación.
+  La secuencia productiva
+  observó rise/fall, batalla, PIT, hot, reveal de neumático y ghost; las capturas
+  mínima (420 px) y completa (1200 px) no muestran recorte horizontal ni
+  solape. El preview colaborativo T3 no llegó a adjuntar tab tras tres timeouts,
+  así que esto es evidencia Chromium/Workshop, no Wails real. Rebase de
+  integración sobre `origin/nightly@741d31bf`; #795 sigue draft y abierto, sin
+  absorber su alcance. La revisión propia del 2026-08-28 cubrió corrección,
+  simplicidad, arquitectura, seguridad y rendimiento. Detectó y corrigió dos
+  hallazgos Required antes del PR: la anchura mínima inline anulaba el
+  `width: 100%` al ensanchar y Gap/Mejor vuelta/Neumático no respetaban toda la
+  alineación configurada. También simplificó el reorder a una copia de array,
+  sin adaptador ni abstracción nueva. Veredicto final: Approve, sin
+  Critical/Required pendientes. Sobre el SHA revisado: focal 33/33, suite
+  completa 419 archivos/3163 tests, typecheck, build, ESLint focal y protocolo
+  visual OBS 4/4 PASS, sin overflow ni errores. El lint global conserva solo el
+  `_damage` previo fuera de alcance. Push, PR, CI, merge, promoción y release
+  todavía no realizados en este punto del expediente.
+
 - **ISA-842 — autosave e historial productivo de Overlay Studio (2026-08-25,
   PR draft a nightly):** rebasada sobre `origin/nightly@c7d25f94`, la rama
   `vantareapp/isa-842-studio-autosave-undo` convierte cada cambio documental

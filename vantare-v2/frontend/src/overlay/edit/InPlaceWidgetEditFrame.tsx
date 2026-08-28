@@ -171,6 +171,7 @@ function InPlaceWidgetEditFrameComponent(props: InPlaceWidgetEditFrameProps): Re
       <div data-testid={`inplace-edit-visual-${widget.id}`} style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none" }}>
         <WidgetVisualViewport
           widgetType={widget.type}
+          visual={widget.visual}
           layout={frameGeometry}
           testId={`inplace-edit-viewport-${widget.id}`}
         >

@@ -99,6 +99,8 @@ export const studioOrbitEn: Record<string, string> = {
   "studio.inspector.content.width.sm": "Narrow",
   "studio.inspector.content.width.md": "Medium",
   "studio.inspector.content.width.lg": "Wide",
+  "studio.inspector.content.redlineFixed": "Position and Driver are fixed Redline anchors.",
+  "studio.inspector.content.redlineWidthWarning": "Widen the widget to at least {width} px to prevent clipping.",
   "studio.inspector.content.moveUp": "Move up",
   "studio.inspector.content.moveDown": "Move down",
   "studio.inspector.design.applyAll": "Apply to all",

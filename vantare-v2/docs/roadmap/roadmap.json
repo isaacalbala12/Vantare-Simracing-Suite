@@ -434,10 +434,10 @@
         "it": "Overlay Studio V3 in corso"
       },
       "body": {
-        "es": "Un único límite de render para estudio, runtime y previsualización, con guardado automático, historial de deshacer/rehacer y los catálogos Crystal, Neo y Endurance.",
-        "en": "A single render boundary for studio, runtime and preview, with autosave, undo/redo history and the Crystal, Neo and Endurance catalogues.",
-        "pt": "Um único limite de render para estúdio, runtime e pré-visualização, com gravação automática, histórico de desfazer/refazer e os catálogos Crystal, Neo e Endurance.",
-        "it": "Un unico confine di render per studio, runtime e anteprima, con salvataggio automatico, cronologia annulla/ripristina e i cataloghi Crystal, Neo ed Endurance."
+        "es": "Un único límite de render para estudio, runtime y previsualización, con guardado automático, historial de deshacer/rehacer y Standings Redline configurable y ampliable dentro de los catálogos Crystal, Neo y Endurance.",
+        "en": "A single render boundary for studio, runtime and preview, with autosave, undo/redo history and configurable, resizable Standings Redline within the Crystal, Neo and Endurance catalogues.",
+        "pt": "Um único limite de render para estúdio, runtime e pré-visualização, com gravação automática, histórico de desfazer/refazer e Standings Redline configurável e redimensionável nos catálogos Crystal, Neo e Endurance.",
+        "it": "Un unico confine di render per studio, runtime e anteprima, con salvataggio automatico, cronologia annulla/ripristina e Standings Redline configurabile e ridimensionabile nei cataloghi Crystal, Neo ed Endurance."
       },
       "label": {
         "es": "En desarrollo",
@@ -797,6 +797,11 @@
       "date": "2026-08-27",
       "entries": [
         {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-879 · Acotar telemetría Overlay en Wails/WebView2"
+        },
+        {
           "kind": "feat",
           "scope": "calendar",
           "text": "Automate LMU Discord schedule with owner review"
@@ -825,11 +830,6 @@
           "kind": "change",
           "scope": "",
           "text": "ISA-861 · Promover reader LMU y runtime Windows a nightly"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "ISA-879 · Acotar telemetría Overlay en Wails/WebView2"
         }
       ]
     },

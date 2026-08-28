@@ -46,7 +46,9 @@ function writeFrameGeometry(frame: HTMLElement, layout: WidgetLayoutV3): void {
   frame.style.width = `${layout.w}px`;
   frame.style.height = `${layout.h}px`;
   const viewport = frame.querySelector<HTMLElement>("[data-widget-visual-viewport]");
-  const baseWidth = Number(viewport?.dataset.widgetVisualBaseWidth);
+  const baseWidth = viewport?.dataset.widgetVisualFluidWidth === "true"
+    ? layout.w
+    : Number(viewport?.dataset.widgetVisualBaseWidth);
   if (viewport && Number.isFinite(baseWidth) && baseWidth > 0) {
     const geometry = resolveWidgetVisualGeometry(layout, baseWidth);
     viewport.style.width = `${geometry.baseWidth}px`;

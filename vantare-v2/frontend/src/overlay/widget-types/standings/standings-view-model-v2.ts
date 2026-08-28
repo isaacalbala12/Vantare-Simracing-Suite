@@ -97,11 +97,13 @@ function buildRow(
   index: number,
   playerId: string | undefined,
 ): StandingsRowViewModel {
+  const driverName = row.driver || PLACEHOLDER;
   return {
     id: row.id,
     position: row.position,
     driverNumber: "",
-    driverName: row.driver || PLACEHOLDER,
+    driverName,
+    configuredDriverName: driverName,
     vehicleClass: row.classId ?? "",
     teamCode: "",
     teamBrandColor: "",

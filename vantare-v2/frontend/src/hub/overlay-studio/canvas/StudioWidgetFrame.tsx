@@ -194,6 +194,7 @@ function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactE
       <div data-testid={`studio-widget-visual-${widget.id}`} className="osv3-widget-frame__visual">
         <WidgetVisualViewport
           widgetType={widget.type}
+          visual={widget.visual}
           layout={frameGeometry}
           testId={`studio-widget-viewport-${widget.id}`}
         >

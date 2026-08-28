@@ -268,6 +268,17 @@ describe("widget oculto", () => {
 
 /** A5 — la seccion de contenido de standings, sin controles nativos. */
 describe("contenido de standings en piel Orbit", () => {
+  function redlineStandings(width = 520) {
+    const standings = standingsDefinition.createDefault("standings-redline");
+    standings.layout = { ...standings.layout, w: width };
+    standings.visual = {
+      ...standings.visual,
+      systemId: "vantare-endurance",
+      baseSettings: { templateId: "standings-redline" },
+    };
+    return standings;
+  }
+
   it("no deja ni un checkbox ni un select nativo en la seccion", async () => {
     renderStudio(buildDocument([standingsDefinition.createDefault("standings-1")]));
     await select("standings-1");
@@ -345,5 +356,67 @@ describe("contenido de standings en piel Orbit", () => {
     expect(
       screen.getByTestId(`studio-standings-column-down-${last.id}`).hasAttribute("disabled"),
     ).toBe(true);
+  });
+
+  it("bloquea los anclajes Redline pero mantiene sus controles de presentación", async () => {
+    renderStudio(buildDocument([redlineStandings()]));
+    await select("standings-redline");
+
+    for (const metric of ["position", "driverName"]) {
+      expect(
+        screen.getByTestId(`studio-standings-column-toggle-${metric}`).hasAttribute("disabled"),
+      ).toBe(true);
+      expect(
+        screen.getByTestId(`studio-standings-column-up-${metric}`).hasAttribute("disabled"),
+      ).toBe(true);
+      expect(
+        screen.getByTestId(`studio-standings-column-width-${metric}`),
+      ).toBeTruthy();
+    }
+    expect(screen.getByTestId("studio-standings-redline-fixed-note")).toBeTruthy();
+  });
+
+  it("reordena las métricas flexibles saltando los anclajes Redline", async () => {
+    renderStudio(buildDocument([redlineStandings()]));
+    await select("standings-redline");
+
+    fireEvent.click(screen.getByTestId("studio-standings-column-down-driverNumber"));
+
+    await waitFor(() => {
+      const items = Array.from(
+        screen.getByTestId("studio-standings-columns").querySelectorAll("li"),
+      ).map((item) => item.getAttribute("data-testid"));
+      expect(items.indexOf("studio-standings-column-gap")).toBeLessThan(
+        items.indexOf("studio-standings-column-driverNumber"),
+      );
+    });
+  });
+
+  it("avisa cuando todas las métricas Redline necesitan más anchura", async () => {
+    const standings = redlineStandings();
+    const content = parseStandingsContent(standings.content);
+    standings.content = {
+      ...content,
+      columns: content.columns.map((column) => ({ ...column, enabled: true })),
+    };
+    renderStudio(buildDocument([standings]));
+    await select("standings-redline");
+
+    expect(screen.getByTestId("studio-standings-redline-width-warning").textContent).toContain(
+      "px",
+    );
+  });
+
+  it("retira el aviso Redline cuando el documento ya es suficientemente ancho", async () => {
+    const standings = redlineStandings(1400);
+    const content = parseStandingsContent(standings.content);
+    standings.content = {
+      ...content,
+      columns: content.columns.map((column) => ({ ...column, enabled: true })),
+    };
+    renderStudio(buildDocument([standings]));
+    await select("standings-redline");
+
+    expect(screen.queryByTestId("studio-standings-redline-width-warning")).toBeNull();
   });
 });

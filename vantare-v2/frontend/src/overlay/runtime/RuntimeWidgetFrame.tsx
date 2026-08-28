@@ -44,6 +44,7 @@ export function RuntimeWidgetFrame(props: RuntimeWidgetFrameProps): React.ReactE
     <div data-testid="runtime-widget-frame" data-widget-id={widget.id} style={frameStyle}>
       <WidgetVisualViewport
         widgetType={widget.type}
+        visual={widget.visual}
         layout={widget.layout}
         testId={`runtime-widget-viewport-${widget.id}`}
       >

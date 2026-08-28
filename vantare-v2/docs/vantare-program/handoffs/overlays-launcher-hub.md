@@ -12,7 +12,7 @@
 
 - **ISA-924 — banco de huella y baseline por hardware (2026-08-28):** rama
   `vantareapp/isa-924-huella-banco-baseline`, base
-  `origin/nightly@c59a7d64`. Se versionaron la spec autorizada, dos perfiles v3
+  `origin/nightly@5a7a413a`, PR #929. Se versionaron la spec autorizada, dos perfiles v3
   reproducibles, banco PowerShell 7, control/probe CDP y agregador de ruido.
   El árbol WebView2 se acota por `--user-data-dir=<exe>\EBWebView`; el renderer
   Hub se fija antes de abrir el overlay y el nuevo se atribuye al overlay.
@@ -20,9 +20,16 @@
   MSI de winget devolvió 1620; usa una sesión ETW propia y nunca
   `--stop_existing_session`. Smoke Wails real A0/A1 PASS: A1 abrió 3 widgets,
   separó ambos renderers, capturó frametime LMU y cerró con
-  `Application.Quit()`. Es prueba del banco, no baseline: quedan pendientes
-  180 s × 3 en A0/A1/HubVisible/HubMin, perfil completo, iGPU y VR. Sin PR,
-  merge ni promoción.
+  `Application.Quit()`. La review independiente REQUEST_CHANGES quedó
+  corregida: N < 3 no publica; `-Forzar` deja CSV/Markdown no publicables y el
+  agregador los rechaza; PresentMon v2 deriva pérdidas de `DisplayedTime=NA`;
+  CDP espera Hub y widgets; el árbol se redescubre cada 5 s; unidades MiB y
+  `PresentMon.exe`/PATH persistente. Smoke A1 de 30 muestras sobre LMU:
+  3/3 widgets, ambos renderers, 2.585 frames, 0 perdidos y cierre limpio. Fue
+  necesario `-Forzar` por SearchHost/Edge ajenos, así que queda correctamente
+  marcado NO PUBLICABLE. Es prueba del banco, no baseline: quedan pendientes
+  180 s × 3 en A0/A1/HubVisible/HubMin, perfil completo, iGPU y VR. Sin merge
+  ni promoción.
 
 - **ISA-849 — columnas configurables en Standings Redline (2026-08-25, SDD):**
   rama rebasada el 2026-08-27 sobre `origin/nightly@b1d5b15b` para que solo la plantilla titular

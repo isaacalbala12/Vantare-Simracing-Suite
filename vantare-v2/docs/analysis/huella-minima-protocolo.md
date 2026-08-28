@@ -28,15 +28,16 @@ tests o `-DryRun` no sustituyen una corrida Wails/LMU real.
 
    ```powershell
    winget install --id Intel.PresentMon -e
-   Get-Command PresentMon*
-   PresentMon --help
+   Get-Command PresentMon.exe
+   PresentMon.exe --help
    ```
 
    En el PC de referencia, el MSI 2.5.1 de `winget` devolvió código 1620. La
    alternativa usada fue el ejecutable x64 oficial del mismo release, con
    SHA-256 verificado, instalado como
    `%LOCALAPPDATA%\Programs\PresentMon\PresentMon.exe` y añadido al `PATH` de
-   usuario. `huella.ps1` reconoce tanto `PATH` como esa ruta standalone.
+   usuario. `huella.ps1` añade esa ruta al `PATH` de usuario de forma
+   persistente y resuelve exclusivamente `PresentMon.exe`.
 
 3. Preparar LMU: coche parado en pista, fuera de boxes, motor en marcha y la
    parrilla máxima de IA rodando. Mantener circuito, hora, clima, resolución,
@@ -44,7 +45,10 @@ tests o `-DryRun` no sustituyen una corrida Wails/LMU real.
 
 4. Cerrar manualmente Edge y WebView2 ajenos. El script los lista y aborta; no
    mata procesos. `-Forzar` solo sirve para un smoke consciente contaminado y
-   nunca para una corrida publicable.
+   nunca para una corrida publicable. Si se usa, el CSV conserva
+   `hygieneForced=true`, `publishable=false` y el inventario completo de
+   procesos ajenos; el Markdown muestra un banner y el agregador rechaza la
+   corrida para la tabla final.
 
 5. Usar un puerto CDP libre y distinto de 9222/9231. El script también asigna
    a su build un puerto HTTP/OBS derivado para no colisionar con otra Vantare.
@@ -85,7 +89,9 @@ El helper identifica el overlay por URL exacta `http://wails.localhost/` y
 marcadores runtime; el Hub usa `http://wails.localhost/#/hub`. Antes de abrir el
 overlay conserva el PID renderer del Hub; el renderer nuevo queda atribuido al
 overlay. Cuenta `[data-testid="runtime-widget-frame"]` y mide rAF/s y long tasks
-durante 10 s.
+durante 10 s. El banco espera primero al target Hub y, al arrancar el overlay,
+no inicia PresentMon ni el muestreo hasta ver exactamente los widgets
+habilitados por el perfil. Un timeout incluye las URLs de todos los targets.
 
 ## Ejecución
 
@@ -117,8 +123,10 @@ pwsh -File scripts/bench/huella.ps1 `
 
 Cada corrida conserva CSV combinado, CSV PresentMon, JSON CDP, logs y resumen
 Markdown. El CSV muestrea a 1 Hz Private Bytes, Working Set, CPU como porcentaje
-de máquina, GPU Engine y memoria GPU dedicada por proceso/rol. PresentMon aporta
-frametime. La build arranca desde `<corrida>-runtime/configs`, por lo que sus
+de máquina, GPU Engine y memoria GPU dedicada por proceso/rol; el árbol propio
+se redescubre cada 5 s sin perder los roles de renderer. PresentMon aporta
+frametime y considera perdido un frame v2 cuando `DisplayedTime` es `NA` (no
+llegó a pantalla), publicando recuento y porcentaje. La build arranca desde `<corrida>-runtime/configs`, por lo que sus
 refrescos y datos de desarrollo no escriben en `configs/` versionado ni en la
 configuración real del usuario. La aplicación se cierra mediante
 `Application.Quit()`; el kill
@@ -136,13 +144,15 @@ node scripts/bench/huella-resumen.mjs `
 ```
 
 El resumen calcula media, desviación muestral y ruido (`desv/media`) por rol y
-métrica; marca `✗` cuando supera 5 %. Para el juego muestra p50/p95/p99.
+métrica; con menos de tres corridas marca `INSUFICIENTE / NO PUBLICABLE` y con
+tres o más marca `✗` cuando supera 5 %. Para el juego muestra p50/p95/p99,
+frames perdidos y porcentaje.
 
 ## Tabla baseline (§8)
 
 Estado inicial: vacía hasta ejecutar 180 s × 3. No completar con smokes.
 
-| Hardware | SHA | Condición | Perfil | N | Go host CPU % / privada MB / WS MB | Browser CPU % / privada MB / WS MB | GPU process CPU % / privada MB / WS MB | Renderer Hub CPU % / privada MB / WS MB | Renderer Overlay CPU % / privada MB / WS MB | Utilities CPU % / privada MB / WS MB | GPU Engine % / dedicada MB | Juego frametime p50 / p95 / p99 ms | Frames perdidos | Ruido máx. | Gate |
+| Hardware | SHA | Condición | Perfil | N | Go host CPU % / privada MiB / WS MiB | Browser CPU % / privada MiB / WS MiB | GPU process CPU % / privada MiB / WS MiB | Renderer Hub CPU % / privada MiB / WS MiB | Renderer Overlay CPU % / privada MiB / WS MiB | Utilities CPU % / privada MiB / WS MiB | GPU Engine % / dedicada MiB | Juego frametime p50 / p95 / p99 ms | Frames perdidos | Ruido máx. | Gate |
 |---|---|---|---|---:|---|---|---|---|---|---|---|---|---:|---:|:---:|
 | PC principal · dGPU | — | A0 | Endurance 3 | 0/3 | — | — | — | — | n/a | — | — | — | — | — | pendiente |
 | PC principal · dGPU | — | A1 | Endurance 3 | 0/3 | — | — | — | — | — | — | — | — | — | — | pendiente |
@@ -158,6 +168,7 @@ estén disponibles. Sin iGPU no se aprueban niveles 4–5 ni composición.
 node --test scripts/bench
 pwsh -File scripts/bench/huella.ps1 -DryRun -Condicion A1 -Exe bin/vantare-isa924.exe -Perfil testdata/bench/huella-endurance-3.json -Duracion 180 -Puerto 9247 -Juego "Le Mans Ultimate" -Salida results/
 corepack pnpm --dir frontend test -- profile-document
+corepack pnpm --dir frontend typecheck
 git diff --check
 ```
 

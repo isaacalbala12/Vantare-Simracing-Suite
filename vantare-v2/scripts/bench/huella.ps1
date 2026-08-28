@@ -41,19 +41,17 @@ if ([IO.Path]::GetExtension($exePath) -ne '.exe') { throw '-Exe debe apuntar a u
 if ([IO.Path]::GetExtension($profilePath) -ne '.json') { throw '-Perfil debe apuntar a un perfil JSON.' }
 
 $presentMonDirectory = Join-Path $env:LOCALAPPDATA 'Programs\PresentMon'
-if (Test-Path -LiteralPath (Join-Path $presentMonDirectory 'PresentMon.exe')) {
-    $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
-    $userPathParts = @($userPath -split ';' | Where-Object { $_ })
-    if ($presentMonDirectory -notin $userPathParts) {
-        $updatedUserPath = (@($userPathParts) + $presentMonDirectory) -join ';'
-        [Environment]::SetEnvironmentVariable('Path', $updatedUserPath, 'User')
-    }
-    if ($presentMonDirectory -notin @($env:Path -split ';')) {
-        $env:Path = "$env:Path;$presentMonDirectory"
-    }
-}
+$standalonePresentMon = Join-Path $presentMonDirectory 'PresentMon.exe'
 $presentMonCommand = Get-Command PresentMon.exe -CommandType Application -ErrorAction SilentlyContinue
-$presentMonPath = if ($presentMonCommand) { $presentMonCommand.Source } else { $null }
+$presentMonPath = if ($presentMonCommand) {
+    $presentMonCommand.Source
+} elseif (Test-Path -LiteralPath $standalonePresentMon) {
+    $standalonePresentMon
+} else {
+    $null
+}
+$userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+$userPathParts = @($userPath -split ';' | Where-Object { $_ })
 
 $profileDocument = Get-Content -LiteralPath $profilePath -Raw | ConvertFrom-Json
 $expectedWidgetCount = @(
@@ -75,12 +73,22 @@ $plan = [ordered]@{
     game = $Juego
     outputDirectory = $outputDir
     presentMon = $presentMonPath
+    presentMonUserPathPersisted = $presentMonDirectory -in $userPathParts
     expectedWidgets = $expectedWidgetCount
     forceHygiene = [bool]$Forzar
 }
 if ($DryRun) {
     $plan | ConvertTo-Json -Depth 4
     exit 0
+}
+if (Test-Path -LiteralPath $standalonePresentMon) {
+    if ($presentMonDirectory -notin $userPathParts) {
+        $updatedUserPath = (@($userPathParts) + $presentMonDirectory) -join ';'
+        [Environment]::SetEnvironmentVariable('Path', $updatedUserPath, 'User')
+    }
+    if ($presentMonDirectory -notin @($env:Path -split ';')) {
+        $env:Path = "$env:Path;$presentMonDirectory"
+    }
 }
 if (-not $presentMonPath) {
     throw 'PresentMon 2.x no está en PATH ni en la ruta standalone documentada. Instala Intel.PresentMon antes de medir.'

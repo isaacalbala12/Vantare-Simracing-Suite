@@ -83,6 +83,87 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   El tramo se detuvo por decisión del usuario y no cumple el gate de cinco
   sesiones de 20 minutos de ISA-894.
 
+- 2026-08-28, ISA-912 arrancó desde `origin/nightly@73b86191` y la rama quedó
+  rebasada sobre `origin/nightly@42f2e368` para atribuir y reducir el coste del
+  host Go y del renderer sin cambiar la autoridad de
+  telemetría ni la frontera `WidgetVisualHost`. La auditoría read-only de
+  Opus 5 (`claude-opus-5`, thread
+  `b995e4c1-d11c-474e-8f10-8771a0c63ea1`) y la revisión adversarial de Fable 5
+  (`claude-fable-5`, thread `43c006ac-6b4a-495a-9583-93e9e8c5cc33`) quedaron
+  reconciliadas contra el código. Hechos: Shared Memory 60 Hz y REST 4 Hz
+  atraviesan el mismo fan-out; el shadow repite reducer/coordinator/derive por
+  lote; Strategy se proyecta aunque su transporte no exista; Overlay v1 se
+  proyecta, serializa y retiene sin comprobar consumidor; el pull vuelve a
+  recorrer/copiar los payloads; Desktop y OBS suscriben su raíz al store v2
+  con flags vacías; el coordinador visual ignora `updateHz`; histories y
+  settings visuales se reconstruyen en cada paint. No está atribuido todavía
+  el peso relativo de cada fase ni si los picos proceden de GC, JSON, commits
+  React o paint. El primer borrador de Opus fue rechazado al revisar el diff:
+  podía retornar de un segundo `stop` antes de terminar el flush, su test no
+  enfrentaba timer y shutdown y el benchmark comparaba tamaños distintos. El
+  commit corregido se integró como `87019bc0`: hook `runtime/pprof` a fichero,
+  opt-in, máximo dos minutos, sin listener y `noop` bajo `production`, más un
+  benchmark pull comparable `dual`/`v1-only`/`v2-only`. El orquestador verificó
+  el cierre concurrente con `-race`, el guard de producción, el benchmark y
+  `go test ./...`. El capturador CDP de renderer y este expediente quedan
+  incluidos en la rama; su cleanup detiene la sonda rAF incluso si CDP falla a
+  mitad de captura. No se cambió semántica, cadencia, V1/V2, shadow ni
+  apariencia. Un segundo microcorte integrado como `c834cebe` añade retardo
+  opt-in al perfil para separar startup y régimen caliente. La revisión del
+  worker corrigió además contratos que aún nombraban dos variables, amplió el
+  guard `production` a las tres y eliminó un test que afirmaba un vencimiento
+  temporal que no ejecutaba. Los checks focales normal/production, `gofmt`,
+  `vet` y `-race -count=3` pasaron de nuevo en el worktree canónico.
+  La primera captura emparejada Wails/LMU de 30 s midió el host en 18,74 % de un
+  core con Hub y 42,28 % con Overlay. `runtime.cgocall` quedó plano en 29,28 s
+  frente a 29,32 s; los deltas Go identificables aparecieron en JSON y pull:
+  `encoding/json.appendCompact` 1,30 s, `OverlayPullTransport.Pull` 0,70 s,
+  `Hub.ReplaySnapshot` 0,66 s y `json.Marshal` 1,62 s con Overlay frente a
+  0,54 s con Hub. Esas cifras se solapan y explican solo una fracción de los
+  7,06 core·s externos de incremento; servidor HTTP/Wails, segunda ventana, GC
+  y scheduler siguen sin atribuir. CDP observó 43,63 pulls/s, rAF p99 <=8,6 ms, cero frames >32
+  ms y cero long tasks. Su tracing infló transitoriamente la memoria del
+  renderer; una ventana posterior sin CDP la acotó en 143,6 -> 149,8 MiB y el
+  árbol en 95,36 % de un core. No autoriza retirar V1 antes de #893/#894. La
+  hipótesis de retener en el Hub el evento V1 ya codificado quedó rechazada
+  antes de integrar: habría movido el marshal desde 43,63 pulls/s a
+  aproximadamente 64 publicaciones/s, también con Hub solo, mientras el
+  benchmark excluía la publicación del reloj. El segundo candidato mantuvo la
+  codificación a demanda y eliminó solo la copia profunda previa al marshal. A
+  44 coches redujo B/op un 24,0 % en V1-only y un 21,5 % en dual, pero la matriz
+  Wails/LMU de tres repeticiones no superó el gate runtime. Las medianas fueron
+  host 37,65 -> 37,98 % de un core, árbol 141,16 -> 141,63 %, renderer p95
+  113,11 -> 118,93 % (+5,1 %) y máximo host 151,95 -> 166,15 % (+9,3 %).
+  `TaskDuration` bajó solo 2,0 %, `ScriptDuration` quedó igual, rAF p99 permaneció
+  en 8,5 ms y hubo cero frames >32 ms/long tasks. `ReplaySnapshot` bajó 9,7 %
+  en pprof, aún bajo el 10 %. El gate vinculante lo deja NO-GO; se retiró todo
+  el cambio productivo y sus tests. Los perfiles, traces y tres series a 100 ms
+  por variante quedan inventariados por nombre, tamaño y SHA-256 en el
+  expediente. La revisión adversarial final Fable 5 sobre `a163eafc` (thread
+  `3d850815-4ef3-4af6-9257-1a28fb4212f2`) no encontró bloqueos de lifecycle,
+  concurrencia, benchmark ni arquitectura. Sí detectó que la atribución textual
+  excedía los segundos explicados, que el test del entorno podía convertir una
+  regresión en `SKIP`, que el resumen CDP filtraba rutas absolutas y que CI no
+  ejecuta los guards `production`/`-race`. Los tres primeros quedan corregidos
+  en la rama; el hueco CI se separó como ISA-916. El capturador CDP dispone
+  además del schema v2 con modos `trace`, `metrics` y `profile`; el resumen de
+  CPU conserva basenames, rechaza perfiles ilegibles y el `.cpuprofile` crudo
+  queda ignorado y fuera del repo. Su test Node focal pasa 3/3. La revisión
+  independiente de PR terminó `REQUEST_CHANGES` por la base desactualizada y
+  este estado operativo obsoleto, no por un defecto del hook. Ambos quedan
+  corregidos: rama remota
+  `vantareapp/isa-912-overlay-webview2-performance`, quinto rebase lineal sobre
+  `origin/nightly@b2010ec3` tras avanzar Nightly y PR #927 listo para review;
+  ISA-912 está en
+  `state:in-review`. La punta validada previa a este cierre documental fue
+  `c0d6f467`, antes del quinto rebase; el run remoto previo `33204677737` terminó
+  verde, incluidos topología,
+  contrato de roadmap, build frontend, suites Go/frontend, lint del alcance y
+  build Wails de Windows. La anotación audit del contrato de roadmap
+  descubrió que el primer digest conservaba el orden del JSON candidato
+  intermedio; se regeneró desde el JSON protegido de esa base y el validador
+  base/candidato quedó paritario. No hubo merge, promoción ni release.
+
 - 2026-08-27, ISA-889 corrige el bloqueo permanente del Overlay despues de un
   reconnect LMU. El transporte acotado de ISA-879 puede entregar como primer
   snapshot visible de un epoch nuevo una secuencia mayor que 1; el store

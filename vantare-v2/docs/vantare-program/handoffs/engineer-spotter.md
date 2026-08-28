@@ -21,6 +21,13 @@ CrewChief, Pit Manager y wake word.
 
 ## Estado
 
+ISA-940 conecta el nivel efectivo publicado por la política de rendimiento con
+la salida de Ingeniero: en niveles 4–5 invalida y bloquea subtítulos y toda
+presentación visual, pero conserva sin cambios la decisión y reproducción de
+audio. El cambio tiene regresión explícita `cero visual + un audio` y vuelve a
+habilitar la presentación al subir a 1–3. La comprobación humana de audio Wails
+real sigue pendiente; no sustituirla con el test Go.
+
 ISA-719 / F5 añade tras `-engineer-voice-input` un carril experimental
 aislado. La corrección de la review adversarial cierra payloads por intent,
 clave y forma de valor, revalida F24 tras cambios de hotkeys,

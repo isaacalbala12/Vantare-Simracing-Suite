@@ -55,20 +55,23 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   `custom` y el fallback explícito de `auto`; la cadencia efectiva se aplica al
   `SectionScheduler` en el tick siguiente. OverlayFrame v2 publica
   `capabilities.performance`, su decoder TypeScript falla cerrado y el
-  coordinador visual implementa `rafCap`, techos por widget y dirty/event;
+  coordinador visual gobierna realmente `rafCap`, techos por widget y dirty/event;
   `event` queda exento del cap y el techo dirty se satisface una sola vez por
-  secuencia/firma. La superficie todavía recibe el frame crudo y evita que esos
-  límites gobiernen renders reales: P1.1 queda pendiente del rebase posterior a
-  #937. `session` y `spotter` mantienen su cadencia base; D8 se demuestra por la
+  secuencia/firma. Sobre las generaciones por efecto de #896, una única
+  suscripción imperativa lleva el store V2 al coordinador; la superficie no
+  recibe frames por props y cada widget memoizado se suscribe a su techo. La
+  integración de 60 frames/1 s mide Standings 2 renders en nivel 5 y 60 en
+  nivel 1; un layout nuevo repinta una vez de inmediato. `session` y `spotter`
+  mantienen su cadencia base; D8 se demuestra por la
   ruta canónica de spotter. V2 no tiene señal canónica de bandera y la verifica
   #893. Frames antiguos sin política se
   normalizan a paridad; Ajustes antiguos y nuevos usan inicialmente nivel 1.
   `sourceHz` mide frames del driver en una ventana móvil de dos segundos,
   `reason` es un enum cerrado y niveles 3–5 mantienen efectos completos con el
-  diagnóstico `variante no disponible`. Go build, suites Go acotadas, frontend 421/3198,
-  typecheck, lint, contrato generado, build frontend y Wails Windows pasan sobre
-  `origin/nightly@ae66720d`; no hay prueba física LMU/WebView2, CI remoto, merge
-  ni promoción. PR existente #936 permanece en revisión. Evidencia:
+  diagnóstico `variante no disponible`. Un smoke Wails propio en CDP 9242 pintó
+  cuatro widgets antes y después de stop/start, sin `disposed`, y cerró PID y
+  puerto propios. La rama está rebasada sobre `origin/nightly@f2e73d3a`; no hay
+  banco físico LMU, merge ni promoción. PR existente #936 permanece en revisión. Evidencia:
   `docs/telemetry-core/evidence/isa-926-performance-policy.md`. Roadmap:
   `milestones:performance-policy`.
 

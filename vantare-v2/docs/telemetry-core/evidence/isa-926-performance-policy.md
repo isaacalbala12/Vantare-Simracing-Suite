@@ -43,6 +43,34 @@ aviso real de spotter marca dirty de seguridad y fuerza su reconstrucción en el
 tick inmediatamente siguiente. El mecanismo equivalente para `session` queda
 preparado, pero no puede activarse hasta que exista la señal canónica de bandera.
 
+## Gobierno real de renders
+
+Cada setup de los efectos Desktop y OBS crea una generación completa, siguiendo
+el lifecycle de #896. Una única suscripción imperativa une el store V2 de esa
+generación con su coordinador; el frame crudo ya no se propaga por props ni
+provoca un render de la superficie por tick. Cada `RuntimeWidgetFrame` está
+memoizado con props estables y obtiene `snapshot`, frame V2 y estado de fuente
+desde su suscripción al coordinador. Presentaciones/subtítulos del ingeniero y
+diagnósticos conservan sus stores propios.
+
+La integración `store → RuntimeOverlaySurface → renderer` inyecta 60 frames en
+un segundo y cuenta ejecuciones reales del pipeline de Standings:
+
+- nivel 5 (`standings: 2`): 2 renders;
+- nivel 1 (paridad): 60 renders;
+- cambio de perfil/layout: 1 render inmediato, sin esperar un tick.
+
+## Smoke Wails real
+
+Se compiló `bin/vantare-isa926-smoke.exe` y se lanzó con user-data propio y
+`VANTARE_WEBVIEW_DEBUG_PORT=9242`. La primera ventana pintó cuatro
+`runtime-widget-frame`. `overlay:stop` retiró su target CDP y
+`overlay:start-active` creó el target nuevo
+`818D15F5429479E519E3D4B52E6D33C1`, que volvió a pintar cuatro widgets.
+`__vantareOverlayV2Diagnostics` estuvo presente y no contenía `disposed`.
+Finalmente se cerró solo el PID 40756 de esa build y el puerto 9242 dejó de
+escuchar. LMU no se abrió ni se tocó.
+
 ## Gates locales
 
 - `go build ./...`: PASS, sin salida.
@@ -56,5 +84,5 @@ preparado, pero no puede activarse hasta que exista la señal canónica de bande
 - `git diff --check`: PASS.
 - `git merge-base --is-ancestor origin/nightly HEAD`: PASS, código 0.
 
-No se ejecutó LMU ni se obtuvo evidencia física de WebView2. Esta entrega se
-verifica con contratos, goldens, tests y builds locales.
+No se ejecutó LMU. La prueba WebView2 es un smoke corto de lifecycle y pintado,
+no una medición física del banco #924.

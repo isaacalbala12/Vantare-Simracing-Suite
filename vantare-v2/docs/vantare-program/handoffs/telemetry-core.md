@@ -42,8 +42,9 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   independiente aprobó funcionalmente cinco ciclos Wails reales: sin fuga,
   generación vieja ni pérdida de eventos iniciales; dejó el rebase como único
   bloqueo operativo. La rama
-  `vantareapp/isa-896-overlay-v2-remount-lifecycle` quedó rebasada sobre
-  `origin/nightly@fa16c7b0`, con HEAD funcional `7fcde20f`. El mock Wails de
+  `vantareapp/isa-896-overlay-v2-remount-lifecycle` quedó rebasada de nuevo
+  sobre la base viva `origin/nightly@ae66720d`, con HEAD funcional
+  `ac6888b2`. El mock Wails de
   Studio retira ahora cada callback y la regresión exige un listener activo por
   evento y un scheduler activo después del doble setup. PR #937 permanece
   draft; sin merge, promoción ni release.

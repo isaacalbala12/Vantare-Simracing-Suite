@@ -15,6 +15,7 @@ import {
 import type { VantareBuildChannel } from './testing-center/contracts';
 import { type Section, isSection } from './navigation';
 import { LicenseProvider, useLicense } from '../lib/license';
+import { ClerkAuthProvider } from '../lib/clerk-auth';
 import { LoginScreen } from './auth/LoginScreen';
 import { PaywallScreen } from './auth/PaywallScreen';
 import { LicenseBanner } from './auth/LicenseBanner';
@@ -253,18 +254,20 @@ function HubShell() {
 
 export function HubApp() {
   return (
-    <LicenseProvider>
-      <I18nProvider>
-        <LicenseGate>
-          <HubErrorBoundary>
-            <ChainRunnerProvider>
-              <LauncherStoreProvider>
-                <HubShell />
-              </LauncherStoreProvider>
-            </ChainRunnerProvider>
-          </HubErrorBoundary>
-        </LicenseGate>
-      </I18nProvider>
-    </LicenseProvider>
+    <ClerkAuthProvider>
+      <LicenseProvider>
+        <I18nProvider>
+          <LicenseGate>
+            <HubErrorBoundary>
+              <ChainRunnerProvider>
+                <LauncherStoreProvider>
+                  <HubShell />
+                </LauncherStoreProvider>
+              </ChainRunnerProvider>
+            </HubErrorBoundary>
+          </LicenseGate>
+        </I18nProvider>
+      </LicenseProvider>
+    </ClerkAuthProvider>
   );
 }

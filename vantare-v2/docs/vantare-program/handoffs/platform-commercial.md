@@ -461,6 +461,16 @@ cambios monetarios reales y Master requieren Isaac.
 
 ## Última actualización
 
+2026-08-28, el corte T1 de ISA-915 añade únicamente `@clerk/react` 6.14.7 y un
+provider pequeño limitado al Hub. El bridge obtiene `session.getToken()` cuando
+hay sesión activa, emite `license:validate` sin refresh token, muestra el fallo
+como estado y cancela emisiones tardías al desmontar. `AppRuntime` deja de montar
+el bridge Supabase global, por lo que OBS y las ventanas de overlay no dependen
+de Clerk. El ciclo TDD dejó 7 pruebas nuevas; junto a AppShell y HubApp pasan 41
+tests y `pnpm --dir frontend typecheck`. Sigue pendiente sustituir LoginScreen,
+identidad, comprobación de acceso y logout; no hay token persistido, push, PR,
+deploy ni merge.
+
 2026-08-28, ISA-915 abre el corte UI apilado sobre ISA-909 `4751bfa5`, todavía
 sin integrar en `nightly`. La spec sustituye el formulario Supabase visible por
 el `SignIn` oficial de `@clerk/react`, obtiene un JWT vigente solo mediante

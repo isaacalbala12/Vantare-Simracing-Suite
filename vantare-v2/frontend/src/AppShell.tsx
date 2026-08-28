@@ -3,7 +3,6 @@ import { ObsOverlayApp } from "./overlay/ObsOverlayApp";
 import { HubApp } from "./hub/HubApp";
 import { OAuthCallbackHandler } from "./hub/auth/OAuthCallbackHandler";
 import { registerBuiltinDesignSystems } from "./hub/registry/builtin-systems";
-import { AuthSessionBridge } from "./lib/AuthSessionBridge";
 
 registerBuiltinDesignSystems();
 
@@ -24,5 +23,5 @@ export function AppShell(): React.ReactElement {
 }
 
 export function AppRuntime(): React.ReactElement {
-  return <AuthSessionBridge><AppShell /></AuthSessionBridge>;
+  return <AppShell />;
 }

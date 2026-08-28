@@ -1,6 +1,6 @@
 # Tareas ISA-915: login Clerk visible
 
-Estado: T0 en curso.
+Estado: T0 y T1 completadas; T2 en curso.
 
 ## T0 — SDD y baseline
 
@@ -10,15 +10,16 @@ Estado: T0 en curso.
 - [x] Actualizar roadmap y handoff; la issue se actualiza en cada checkpoint.
 - [x] Regenerar digest y ejecutar `git diff --check`.
 - [x] Ejecutar baseline focal: 5 archivos, 86 tests verdes.
-- [ ] Commit documental.
+- [x] Commit documental `fddc5c74`.
 
 ## T1 — SDK y sesión
 
-- [ ] Tests rojos del provider/bridge.
-- [ ] Añadir únicamente `@clerk/react`.
-- [ ] Implementar configuración, estados y `session.getToken()`.
-- [ ] Sustituir el bridge Supabase en AppShell.
-- [ ] Tests verdes y commit.
+- [x] Tests rojos del provider/bridge.
+- [x] Añadir únicamente `@clerk/react` 6.14.7.
+- [x] Implementar configuración, estados y `session.getToken()`.
+- [x] Sustituir el bridge Supabase en AppShell sin envolver overlays.
+- [x] 41 tests focales y typecheck verdes.
+- [ ] Commit del corte.
 
 ## T2 — UI y cuenta
 

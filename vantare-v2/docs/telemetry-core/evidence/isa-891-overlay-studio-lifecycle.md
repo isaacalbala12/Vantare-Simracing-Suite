@@ -188,11 +188,33 @@ osciló entre 146,6 y 226 MiB y volvió a ~154 MiB tras GC. Es una comprobación
 corta de acotación y continuidad, no el soak prolongado requerido para borrar
 V1.
 
+El 2026-08-28 se ejecutó además un tramo real de 14,5 minutos con LMU Live y
+86 muestras cada diez segundos. Los primeros 4,3 minutos conservaron solo el
+Hub; después se abrió la ventana Overlay y se midió esa topología durante 10,24
+minutos. En la fase Hub + Overlay, el browser terminó 56,9 -> 57,5 MiB, con
+mínimo 53,6 MiB, máximo transitorio 128,3 MiB durante el cambio de topología y
+pendiente lineal -0,142 MiB/min. No reapareció la acumulación del browser del
+incidente original. Vantare respondió y LMU permaneció activo en las 86
+muestras.
+
+El mismo tramo no acredita todavía memoria total acotada: la suma de renderers
+pasó 193,9 -> 463,8 MiB, alcanzó 520,6 MiB y tuvo una pendiente aproximada de
+22,2 MiB/min; el árbol completo terminó en 833,2 MiB y alcanzó 885,4 MiB. Una
+muestra posterior de cinco segundos atribuyó el consumo CPU principal al host
+Go (40,3 % de un core), renderer Overlay (35,3 %) y browser (18,4 %); el árbol
+ocupó 6,73 % de una máquina de 16 procesadores lógicos. El motor GPU estaba
+prácticamente ocioso en esa muestra (0,11 % medio, 0,33 % máximo), aunque el
+proceso GPU reservaba 122,6 MiB dedicados y 18,7 MiB compartidos. El usuario
+detuvo voluntariamente el tramo al considerar estable la experiencia visual;
+estos datos son evidencia diagnóstica parcial y no sustituyen las cinco sesiones
+de al menos 20 minutos exigidas por ISA-894.
+
 ## Límites de esta evidencia
 
 La prueba real acredita este corte y elimina el bloqueo de validación de
-ISA-891, pero dura 30 segundos y no acredita por sí sola estabilidad prolongada
-ni la retirada de V1. ISA-894 mantiene cinco sesiones LMU de al menos 20 minutos
+ISA-891, pero ni el tramo inicial de 30 segundos ni la repetición parcial de
+14,5 minutos acreditan por sí solos estabilidad prolongada o la retirada de V1.
+ISA-894 mantiene cinco sesiones LMU de al menos 20 minutos
 (una con más de 40 coches), memoria acotada y cero consumidores V1 como puertas
 de borrado. Promover V2 a autoridad y corregir Relative pertenecen a ISA-893 e
 ISA-892. La revisión también abrió ISA-896: Desktop, OBS y Studio deben corregir

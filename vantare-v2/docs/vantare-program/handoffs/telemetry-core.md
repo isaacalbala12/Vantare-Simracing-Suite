@@ -59,6 +59,13 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   vigente. El HEAD revisado `df629d3a` está publicado en el PR draft #897 y el
   run remoto `33134533397` terminó verde: gate bloqueante Vantare 11m02s, ruta
   de promoción y GitGuardian. No hubo merge ni promoción.
+  Una prueba adicional LMU Live de 14,5 minutos, con 10,24 minutos de Hub +
+  Overlay, mantuvo el browser WebView2 56,9 -> 57,5 MiB y pendiente -0,142
+  MiB/min, sin reproducir la fuga original. La suma de renderers sí creció
+  193,9 -> 463,8 MiB (máximo 520,6; ~22,2 MiB/min), por lo que el siguiente
+  trabajo debe perfilar host Go y paints/retención de UI en una issue separada.
+  El tramo se detuvo por decisión del usuario y no cumple el gate de cinco
+  sesiones de 20 minutos de ISA-894.
 
 - 2026-08-27, ISA-889 corrige el bloqueo permanente del Overlay despues de un
   reconnect LMU. El transporte acotado de ISA-879 puede entregar como primer

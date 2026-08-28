@@ -55,11 +55,19 @@
   observó rise/fall, batalla, PIT, hot, reveal de neumático y ghost; las capturas
   mínima (420 px) y completa (1200 px) no muestran recorte horizontal ni
   solape. El preview colaborativo T3 no llegó a adjuntar tab tras tres timeouts,
-  así que esto es evidencia Chromium/Workshop, no Wails real. Rebase final sobre
-  `origin/nightly@c1d4dfa4`; #795 sigue draft y abierto. Gate focal final 96/96,
-  suite completa 412 archivos/3113 tests, typecheck y build PASS; lint focal
-  PASS. El lint global conserva el `_damage` previo fuera de alcance. Sin push,
-  PR, CI, merge, promoción ni release.
+  así que esto es evidencia Chromium/Workshop, no Wails real. Rebase de
+  integración sobre `origin/nightly@741d31bf`; #795 sigue draft y abierto, sin
+  absorber su alcance. La revisión propia del 2026-08-28 cubrió corrección,
+  simplicidad, arquitectura, seguridad y rendimiento. Detectó y corrigió dos
+  hallazgos Required antes del PR: la anchura mínima inline anulaba el
+  `width: 100%` al ensanchar y Gap/Mejor vuelta/Neumático no respetaban toda la
+  alineación configurada. También simplificó el reorder a una copia de array,
+  sin adaptador ni abstracción nueva. Veredicto final: Approve, sin
+  Critical/Required pendientes. Sobre el SHA revisado: focal 33/33, suite
+  completa 419 archivos/3163 tests, typecheck, build, ESLint focal y protocolo
+  visual OBS 4/4 PASS, sin overflow ni errores. El lint global conserva solo el
+  `_damage` previo fuera de alcance. Push, PR, CI, merge, promoción y release
+  todavía no realizados en este punto del expediente.
 
 - **ISA-842 — autosave e historial productivo de Overlay Studio (2026-08-25,
   PR draft a nightly):** rebasada sobre `origin/nightly@c7d25f94`, la rama

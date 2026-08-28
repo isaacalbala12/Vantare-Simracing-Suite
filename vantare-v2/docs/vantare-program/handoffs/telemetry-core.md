@@ -153,8 +153,11 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   este estado operativo obsoleto, no por un defecto del hook. Ambos quedan
   corregidos: rama remota
   `vantareapp/isa-912-overlay-webview2-performance`, rebase lineal sobre
-  `origin/nightly@c59a7d64`, punta de implementación `95dc47e6` antes de este
-  cierre documental y PR draft #927. La anotación audit del contrato de roadmap
+  `origin/nightly@c59a7d64` y PR #927 listo para review; ISA-912 está en
+  `state:in-review`. La punta validada previa a este cierre documental fue
+  `7469443c`: el run remoto `33202606237` terminó verde, incluidos topología,
+  contrato de roadmap, build frontend, suites Go/frontend, lint del alcance y
+  build Wails de Windows. La anotación audit del contrato de roadmap
   descubrió que el primer digest conservaba el orden del JSON candidato
   intermedio; se regeneró desde el JSON protegido de esa base y el validador
   base/candidato quedó paritario. No hubo merge, promoción ni release.

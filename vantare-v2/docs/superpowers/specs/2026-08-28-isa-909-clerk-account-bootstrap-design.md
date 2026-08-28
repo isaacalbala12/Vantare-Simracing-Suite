@@ -1,6 +1,7 @@
 # Spec: bootstrap de cuenta interna desde Clerk
 
-Estado: propuesta inicial para revisión Fable. Issue: ISA-909.
+Estado: revisada por Fable medio el 2026-08-28; cambios P0/P1 incorporados.
+Issue: ISA-909.
 
 ## Objetivo
 
@@ -27,14 +28,16 @@ el inicio de sesión visible de Supabase Auth.
 5. La resolución y creación se ejecutan en una función privada con
    `security definer`, `search_path` vacío y claims leídos desde `auth.jwt()`.
    Las RPC públicas existentes continúan siendo la superficie de la app.
-6. Supabase valida el JWT antes de ejecutar `license-credential`. La Edge
-   Function no verifica ni decodifica por su cuenta el token Clerk y no añade
-   otra librería JWT.
+6. `license-credential` usa `verify_jwt = false`: el gateway de Edge no es la
+   autoridad de tokens Clerk. La única puerta es una RPC PostgREST ejecutada con
+   el bearer, donde Supabase TPA valida el JWT y `auth.jwt()` entrega los claims.
+   El handler no verifica ni decodifica el token y no añade otra librería JWT.
 7. La credencial Ed25519 firmada contiene el UUID interno. Ese `subject`, junto
    con la huella de dispositivo, pasa a ser la autoridad nativa online y
    offline; el `sub` externo nunca se compara con el UUID interno.
-8. Las sesiones Supabase Auth actuales conservan su UUID cuando su `sub` UUID
-   pertenece a `auth.users`. Esta compatibilidad no se generaliza a otros TPA.
+8. Las sesiones Supabase Auth actuales conservan su UUID solo cuando el `iss`
+   termina en `/auth/v1` y su `sub` UUID pertenece a `auth.users`. Cualquier
+   otro issuer, aunque use un subject con forma UUID, pasa por el mapping.
 9. Los entitlements valiosos de una cuenta anterior se reasignan únicamente por
    una operación administrativa revisada y autorizada sobre UUID internos. Este
    corte no expone un endpoint de remapeo ni crea un migrador genérico.
@@ -44,8 +47,8 @@ el inicio de sesión visible de Supabase Auth.
 
 ```text
 Clerk session token
-  -> Supabase TPA valida firma, issuer y audiencia
   -> license-credential recibe Authorization
+  -> RPC PostgREST valida el JWT mediante Supabase TPA
   -> RPC lee auth.jwt().iss + auth.jwt().sub
   -> mapping existente: devuelve account_id
      mapping ausente Clerk: crea profile UUID + mapping, una sola vez
@@ -55,8 +58,9 @@ Clerk session token
   -> Go verifica firma, account_id UUID y dispositivo
 ```
 
-Dos peticiones simultáneas de la misma identidad deben converger en el mismo
-UUID. Una fila creada por la petición perdedora no puede quedar huérfana.
+Dos peticiones simultáneas de la misma identidad toman un advisory transaction
+lock derivado de `(issuer, subject)`, vuelven a consultar el mapping y solo una
+crea profile+mapping. Deben converger en el mismo UUID sin fila perdedora.
 
 ## Contrato de datos
 
@@ -66,14 +70,13 @@ UUID. Una fila creada por la petición perdedora no puede quedar huérfana.
 - `subject text not null`;
 - `account_id uuid not null references public.profiles(id) on delete cascade`;
 - `created_at timestamptz not null default now()`;
-- clave primaria `(issuer, subject)`;
-- unicidad `(account_id, issuer)` para impedir dos identidades del mismo emisor
-  sobre una cuenta sin una decisión posterior explícita.
+- clave primaria `(issuer, subject)`.
 
 La tabla tiene RLS habilitado, cero policies de usuario y privilegios de tabla
 revocados a `anon` y `authenticated`. La función privada valida límites de
-longitud, claims vacíos y emisor. Nunca acepta `issuer`, `subject` o
-`account_id` como argumentos procedentes del cliente.
+longitud y claims vacíos. No duplica la allowlist TPA por entorno: el issuer
+completo forma parte de la clave. Nunca acepta `issuer`, `subject` o `account_id`
+como argumentos procedentes del cliente.
 
 La migración elimina solo la FK `profiles.id -> auth.users.id`. No modifica las
 tablas históricas ajenas a la cuenta comercial ni crea una tabla `accounts`
@@ -93,14 +96,18 @@ validación online aceptada:
 
 La caché offline conserva el contrato actual: solo se usa con la sesión exacta
 guardada en Credential Manager y una credencial firmada, ligada al dispositivo.
-No se degrada a aceptar cualquier sesión Clerk con el mismo `sub`.
+El token protegido solo se persiste después de una validación online aceptada y
+la caché se escribe en esa misma validación; esa pareja es el invariante que
+permite usar el UUID firmado como subject esperado offline. No se degrada a
+aceptar cualquier sesión Clerk con el mismo `sub`. El borrado de cache al cerrar
+sesión y la transición entre cuentas quedan inventariados en ISA-911.
 
 ## Estados observables
 
 - `created`: identidad nueva y cuenta interna creada;
 - `existing`: identidad ya vinculada, mismo UUID;
 - `legacy`: sesión Supabase Auth actual, mismo UUID;
-- `unauthorized`: JWT ausente/no validado, claims vacíos o issuer no aceptado;
+- `unauthorized`: JWT ausente/no validado o claims vacíos;
 - `conflict`: invariantes de mapping incompatibles; falla cerrado, sin mover
   grants ni sobrescribir mappings.
 
@@ -160,7 +167,7 @@ aplica schema remoto ni se leen archivos `.env*`.
   carrera concurrente real.
 - `supabase/functions/license-credential/index.ts` y test: resolver UUID interno
   antes de leer y firmar grants.
-- `supabase/config.toml`: `verify_jwt = true` explícito para
+- `supabase/config.toml`: `verify_jwt = false` explícito para
   `license-credential`.
 - `vantare-v2/internal/license/service.go`, `credential.go` y tests: separar
   `sub` externo de la cuenta firmada.
@@ -187,7 +194,10 @@ aplica schema remoto ni se leen archivos `.env*`.
 - dos subjects distintos obtienen UUID distintos.
 - un JWT no puede elegir `account_id` ni apropiarse de un UUID por email.
 - una sesión Supabase Auth existente conserva su UUID.
+- un issuer externo con subject UUID igual a un usuario Supabase no hereda esa
+  cuenta.
 - claim, lectura y reset de dispositivo operan sobre el UUID resuelto.
+- las cuatro RPC funcionan con claims Clerk y no evalúan `auth.uid()`.
 
 ### Edge Function
 
@@ -196,6 +206,7 @@ aplica schema remoto ni se leen archivos `.env*`.
 - el store usa el token de usuario para la RPC y el UUID resuelto para las
   lecturas admin.
 - UUID interno ausente o inválido falla con `invalid_account`.
+- un bearer rechazado por PostgREST se traduce a HTTP 401; nunca a 503.
 - firma, grants, roles, device-limit y errores existentes no regresionan.
 - el body no admite issuer, subject, email ni accountId.
 
@@ -205,13 +216,15 @@ aplica schema remoto ni se leen archivos `.env*`.
 - una credencial correctamente firmada fija `Result.UserID` al UUID interno.
 - firma inválida, subject firmado no UUID o dispositivo distinto fallan.
 - la ruta Supabase Auth UUID continúa pasando.
+- un 401 Edge produce `ErrCredentialRejected` y no activa gracia offline aunque
+  el token presentado coincida con el protegido.
 - el fallback offline exige token protegido exacto y conserva la cuenta firmada.
 
 ## Límites
 
 ### Siempre
 
-- Derivar identidad solo de claims validados por Supabase TPA.
+- Derivar identidad solo de claims que PostgREST validó mediante Supabase TPA.
 - Mantener el UUID interno y la firma como autoridad de licencia.
 - Escribir primero el test rojo de cada comportamiento.
 - Revisar permisos, RLS, rollback y carrera antes de considerar el schema listo.
@@ -228,7 +241,7 @@ aplica schema remoto ni se leen archivos `.env*`.
 ### Nunca
 
 - Confiar en email, `user_metadata` o campos enviados por el cliente.
-- Aceptar un JWT sin la validación TPA de la plataforma.
+- Firmar una credencial si la RPC TPA no devolvió un UUID interno válido.
 - Copiar secretos, tokens o `.env*` a logs, tests o documentación.
 - Crear sincronización Clerk -> Supabase Auth o doble fuente de usuarios.
 - Hacer merge, promoción, release o mutación de datos reales en esta entrega.
@@ -245,7 +258,23 @@ aplica schema remoto ni se leen archivos `.env*`.
 6. Tests SQL, Edge, Go, roadmap y diff pasan localmente.
 7. No se añade Clerk UI, dependencia nueva, deploy remoto ni migración real.
 
+## Limitaciones conocidas del corte
+
+Solo las cuatro RPC de licencia dejan de usar `auth.uid()`. Billing,
+Testing Center y otras tablas/policies todavía contienen casts UUID o FKs a
+`auth.users`, por lo que no se presentan como compatibles con Clerk. ISA-911
+inventaría y divide esas superficies antes de habilitar el login Clerk visible.
+
 ## Preguntas abiertas
 
 Ninguna para este corte. El SDK/UI Clerk, la persistencia de su sesión en Wails
 y cualquier herramienta repetible de remapeo pertenecen a SDD posteriores.
+
+## Revisión Fable
+
+Fable 5 con esfuerzo medio emitió `APROBADO_CON_CAMBIOS`. Se aceptaron el lock
+por identidad, la rama legacy por issuer, el shim `auth.jwt()` en tests, el 401
+cerrado y el inventario ISA-911. Su hipótesis de que el gateway Edge no acepta
+TPA no se tomó como hecho: la documentación oficial afirma soporte TPA para
+Functions, pero no especifica inequívocamente ese gateway. Para eliminar esa
+dependencia, este corte usa la ruta PostgREST TPA ya demostrada por ISA-885.

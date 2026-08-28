@@ -1366,6 +1366,12 @@ func main() {
 	if err := settingsSvc.Load(); err != nil {
 		log.Printf("warning: could not load settings: %v (using defaults)", err)
 	}
+	effectivePerformanceLevel := func() int {
+		return int(settingsSvc.EffectivePerformancePolicy().Level)
+	}
+	if err := app.ApplyProcessPowerPolicy(effectivePerformanceLevel()); err != nil {
+		log.Printf("warning: performance process policy unavailable: %v", err)
+	}
 	var cleanup sync.Once
 	var hotkeyMu sync.Mutex
 	var opsBridge *app.OpsBridge
@@ -1620,7 +1626,7 @@ func main() {
 			overlayRunning.Store(false)
 			resetOverlayProfileDisplayMode(studioProfileSvc)
 		})
-	}, func() int { return int(settingsSvc.EffectivePerformancePolicy().Level) }))
+	}, effectivePerformanceLevel))
 
 	hubProbe := newHubSuspendEventProbe(wailsApp, emitter)
 	var hubLifecycle *app.HubLifecycle
@@ -1641,7 +1647,7 @@ func main() {
 		})
 		return window
 	}
-	hubLifecycle = app.NewHubLifecycle(newHubWindow, settingsSvc.EffectiveLevel, hubProbe.Probe, func() {
+	hubLifecycle = app.NewHubLifecycle(newHubWindow, effectivePerformanceLevel, hubProbe.Probe, func() {
 		log.Printf("hub lifecycle: kept alive because Studio is dirty or hub:can-suspend timed out")
 	})
 	hubWindow, openedIn := hubLifecycle.Open()
@@ -2022,7 +2028,7 @@ func main() {
 	// Engineer owns product behavior only. TelemetryCoreRuntime below is its
 	// sole production telemetry source.
 	engSvc = engineerservice.NewEngineerService(emitter)
-	engSvc.SetVisualPresentationEnabled(settingsSvc.EffectiveLevel() < 4)
+	engSvc.SetVisualPresentationEnabled(effectivePerformanceLevel() < 4)
 	if err := engSvc.SetLegacySpotterRollback(*legacyEngineerSpotter); err != nil {
 		log.Printf("engineer legacy spotter rollback configuration error: %v", err)
 	}
@@ -2617,6 +2623,13 @@ func main() {
 			log.Printf("settings:save error: %v", err)
 			emitSettingsError(err.Error())
 			return
+		}
+		level := effectivePerformanceLevel()
+		if err := app.ApplyProcessPowerPolicy(level); err != nil {
+			log.Printf("warning: performance process policy update unavailable: %v", err)
+		}
+		if engSvc != nil {
+			engSvc.SetVisualPresentationEnabled(level < 4)
 		}
 		// Apply CPU sampling toggle if runtime sampler exists
 		if rtSampler != nil {

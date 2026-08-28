@@ -769,7 +769,6 @@ func (s *SettingsService) applyLoaded(loaded *AppSettings) {
 		CpuSampling:                 loaded.CpuSampling,
 		Performance:                 loaded.Performance,
 		Notifications:               loaded.Notifications,
-		Performance:                 loaded.Performance,
 		ActiveOverlayProfileID:      loaded.ActiveOverlayProfileID,
 		BetaWelcomeCompleted:        loaded.BetaWelcomeCompleted,
 		BetaUserRole:                loaded.BetaUserRole,

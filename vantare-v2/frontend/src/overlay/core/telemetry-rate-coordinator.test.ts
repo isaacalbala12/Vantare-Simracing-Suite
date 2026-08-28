@@ -203,6 +203,9 @@ describe("createTelemetryRateCoordinator", () => {
     expect(listener).toHaveBeenCalledTimes(1);
     currentTime = 2_000;
     harness.tick();
+    expect(listener).toHaveBeenCalledTimes(1);
+    coordinator.setOverlayFrame(performanceFrame(4, 40, { standings: "dirty" }, [{ id: "car-1" }]));
+    harness.tick();
     expect(listener).toHaveBeenCalledTimes(2);
     coordinator.dispose();
   });

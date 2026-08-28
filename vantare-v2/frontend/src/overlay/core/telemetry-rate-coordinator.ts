@@ -93,6 +93,8 @@ export function createTelemetryRateCoordinator(
     lastPaintAt: number | null;
     lastFrameSequence?: number;
     lastSignature?: string;
+    ceilingSequence?: number;
+    ceilingSignature?: string;
   };
   const listeners = new Map<TelemetryListener, Subscription>();
   let scheduler: TelemetryScheduler | null = null;
@@ -144,7 +146,14 @@ export function createTelemetryRateCoordinator(
         ? overlayFrame?.capabilities.performance.widgetHz[subscription.widgetType]
         : undefined;
       const elapsed = subscription.lastPaintAt === null ? Number.POSITIVE_INFINITY : currentTime - subscription.lastPaintAt;
-      const dirtyCeilingDue = widgetRate === "dirty" && elapsed >= 1_000;
+      const ceilingCandidate = widgetRate === "dirty" && elapsed >= 1_000;
+      const currentSequence = overlayFrame?.sequence;
+      const currentSignature = ceilingCandidate && subscription.widgetType
+        ? signature(subscription.widgetType)
+        : undefined;
+      const dirtyCeilingDue = ceilingCandidate && (
+        currentSequence !== subscription.ceilingSequence || currentSignature !== subscription.ceilingSignature
+      );
       if (subscription.seenVersion === version && !dirtyCeilingDue) continue;
       const interval = intervalFor(subscription);
       if (elapsed < interval) continue;
@@ -169,6 +178,10 @@ export function createTelemetryRateCoordinator(
 
       subscription.seenVersion = version;
       subscription.lastPaintAt = currentTime;
+      if (widgetRate === "dirty" && dirtyCeilingDue) {
+        subscription.ceilingSequence = currentSequence;
+        subscription.ceilingSignature = currentSignature;
+      }
       subscription.listener();
     }
   };

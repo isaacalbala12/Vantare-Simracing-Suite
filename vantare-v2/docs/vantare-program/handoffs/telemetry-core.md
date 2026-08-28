@@ -145,8 +145,16 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   excedía los segundos explicados, que el test del entorno podía convertir una
   regresión en `SKIP`, que el resumen CDP filtraba rutas absolutas y que CI no
   ejecuta los guards `production`/`-race`. Los tres primeros quedan corregidos
-  en la rama; el hueco CI se separó como ISA-916. No hay push, PR ni promoción
-  de ISA-912.
+  en la rama; el hueco CI se separó como ISA-916. El capturador CDP dispone
+  además del schema v2 con modos `trace`, `metrics` y `profile`; el resumen de
+  CPU conserva basenames, rechaza perfiles ilegibles y el `.cpuprofile` crudo
+  queda ignorado y fuera del repo. Su test Node focal pasa 3/3. La revisión
+  independiente de PR terminó `REQUEST_CHANGES` por la base desactualizada y
+  este estado operativo obsoleto, no por un defecto del hook. Ambos quedan
+  corregidos: rama remota
+  `vantareapp/isa-912-overlay-webview2-performance`, rebase lineal sobre
+  `origin/nightly@c59a7d64`, punta de implementación `95dc47e6` antes de este
+  cierre documental y PR draft #927. No hubo merge, promoción ni release.
 
 - 2026-08-27, ISA-889 corrige el bloqueo permanente del Overlay despues de un
   reconnect LMU. El transporte acotado de ISA-879 puede entregar como primer

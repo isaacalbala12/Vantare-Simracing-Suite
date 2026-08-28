@@ -1,8 +1,9 @@
 # ISA-884 — Relative sobre progreso temporal de vuelta
 
-Fecha: 2026-08-27. Base final: `origin/nightly@2672f211`. Rama:
-`vantareapp/isa-884-relative-time`. Implementación: `e929de03`, `8459101b`,
-`c8cb943f` y `b344ee44`.
+Fecha: 2026-08-27; revisión final 2026-08-28. Base final:
+`origin/nightly@c59a7d64`. Rama: `vantareapp/isa-884-relative-time`.
+Implementación rebasada: `f5a051a6`, `ed46cccd`, `dc6b6665`, `9bd4ee82` y
+corrección de review `c244b354`.
 
 ## Resultado contractual
 
@@ -82,6 +83,8 @@ y V2 ya comparten semántica física.
 
 - derivación temporal alrededor del wrap y con lap delta de clasificación no
   nulo;
+- independencia entre el hecho de vueltas de clasificación y el gap temporal;
+- sesión sin `lap_progress_time` explícitamente `missing`, nunca cero;
 - cero, negativo, no finito y patrón de cero uniforme contradictorio en LMU;
 - mapping SimX del mismo significado sin lógica específica sobre el driver;
 - selección circular física aun cuando los gaps sugieren otro orden;
@@ -94,6 +97,22 @@ y V2 ya comparten semántica física.
   `behind` aun bajo estado pit.
 
 ## Gates locales
+
+Repetición final de revisión sobre la punta rebasada:
+
+- `go build ./...`: PASS;
+- `go test ./... -count=1`: PASS;
+- frontend: 421 archivos y 3.192 tests PASS;
+- `pnpm typecheck`: PASS;
+- `pnpm build`: PASS;
+- `git diff --check origin/nightly...HEAD`: PASS;
+- `go vet ./...`: solo tres avisos Win32 `unsafe.Pointer` heredados e idénticos
+  a `origin/nightly`;
+- `pnpm lint`: FAIL por el error heredado `_damage` no usado en
+  `car-damage-numbers-view-model-v2.ts:93`, idéntico a `origin/nightly` y fuera
+  del diff ISA-884. El PR permanece draft por este gate rojo.
+
+Evidencia anterior al rebase:
 
 - `go test ./... -count=1`: PASS;
 - `go test ./internal/telemetry/... -count=1`: PASS;

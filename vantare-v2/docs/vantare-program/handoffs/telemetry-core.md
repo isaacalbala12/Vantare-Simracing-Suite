@@ -15,6 +15,18 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 
 ## Estado real
 
+- 2026-08-28, rebase y revisión adversarial ISA-884: los siete commits del PR
+  #888 quedaron lineales sobre `origin/nightly@c59a7d64`. La revisión encontró
+  un P1 en `deriveVehicleGap`: la ausencia o invalidez del hecho de vueltas de
+  clasificación anulaba también un progreso temporal válido. `c244b354` separa
+  ambas derivaciones y añade regresiones para clasificación ausente y sesión
+  completa sin `lap_progress_time`, que permanece `missing` y nunca cero. Go
+  completo, frontend 421 archivos/3.192 tests, typecheck, build y diff-check
+  pasan. `go vet` conserva solo tres avisos Win32 `unsafe.Pointer` idénticos a
+  Nightly. El lint global conserva el error heredado de `_damage` no usado en
+  `car-damage-numbers-view-model-v2.ts`, también idéntico a Nightly; por ello el
+  PR permanece draft y no se marca ready. Sin merge, promoción ni release.
+
 - 2026-08-28, ISA-891 completa el lifecycle de Overlay V2 y lleva Studio al
   mismo transporte dirigido que Desktop. `6bd72d37` publica y retiene un único
   status V2 aunque no haya frames ni consumidores; un consumidor tardío recibe

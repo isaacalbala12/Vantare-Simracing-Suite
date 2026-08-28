@@ -63,7 +63,11 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   Overlay, mantuvo el browser WebView2 56,9 -> 57,5 MiB y pendiente -0,142
   MiB/min, sin reproducir la fuga original. La suma de renderers sí creció
   193,9 -> 463,8 MiB (máximo 520,6; ~22,2 MiB/min), por lo que el siguiente
-  trabajo debe perfilar host Go y paints/retención de UI en una issue separada.
+  trabajo queda separado en #912 para perfilar host Go y paints/retención de
+  UI antes de optimizar. La primera lectura de código señala que el coordinador
+  visual ignora hoy `updateHz`, copia las histories derivadas en cada snapshot
+  y Desktop/OBS suscriben el árbol raíz al shadow V2 aun con features vacías;
+  son hipótesis de profiling, no cambios aprobados ni causas cerradas.
   El tramo se detuvo por decisión del usuario y no cumple el gate de cinco
   sesiones de 20 minutos de ISA-894.
 

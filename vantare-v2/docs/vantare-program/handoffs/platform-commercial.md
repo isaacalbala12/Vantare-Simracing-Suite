@@ -483,6 +483,11 @@ lock transaccional por identidad. Las cuatro RPC de licencia consumen el UUID
 interno; 30 pgTAP pasan en clean/upgrade y dos logins Clerk concurrentes producen
 exactamente un mapping, un profile y cero huérfanos. La migración sigue solo
 local, sin apply remoto.
+El corte Edge elimina `getUser()` solo de `license-credential`: conserva el
+bearer opaco, deja la validación Clerk a PostgREST TPA, firma el UUID que devuelve
+la RPC y traduce rechazo TPA a 401 en vez de disponibilidad. Su config declara
+`verify_jwt=false`; Billing y Testing Center mantienen sus fronteras actuales.
+La suite focal pasa 18/18. No hay deploy de función.
 
 2026-08-04, ISA-243/287 completaron el piloto remoto con un caso sintético
 nuevo. ISA-288 se creó exactamente una vez, el binding quedó `completed` sin

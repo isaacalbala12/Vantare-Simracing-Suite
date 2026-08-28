@@ -24,6 +24,9 @@ func TestDefaultAppSettings(t *testing.T) {
 	if !s.CpuSampling {
 		t.Errorf("expected cpuSampling=true")
 	}
+	if s.Performance.Mode != "level" || s.Performance.Level != 3 {
+		t.Errorf("expected balanced performance default, got %+v", s.Performance)
+	}
 	if len(s.Hotkeys) != 5 {
 		t.Errorf("expected 5 hotkeys, got %d", len(s.Hotkeys))
 	}
@@ -405,11 +408,32 @@ func TestLoadMigratesSchemaVersionAndAddsDeltaHotkey(t *testing.T) {
 	os.WriteFile(path, []byte(data), 0o644)
 	svc := app.NewSettingsService(path, nil, nil)
 	svc.Load()
-	if svc.Settings().SchemaVersion != 3 {
-		t.Errorf("expected SchemaVersion=3, got %d", svc.Settings().SchemaVersion)
+	if svc.Settings().SchemaVersion != 4 {
+		t.Errorf("expected SchemaVersion=4, got %d", svc.Settings().SchemaVersion)
 	}
 	if got := svc.Settings().Hotkeys["cycleDeltaReference"]; got != "ctrl+shift+d" {
 		t.Errorf("cycleDeltaReference=%q want ctrl+shift+d", got)
+	}
+}
+
+func TestLoadMigratesSettingsBeforePerformanceWithoutLosingExistingValues(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "app-settings.json")
+	legacy := `{"schemaVersion":3,"cpuSampling":false,"activeOverlayProfileId":"endurance","hotkeys":{},"launcherApps":{},"launcherProfiles":[]}`
+	if err := os.WriteFile(path, []byte(legacy), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	svc := app.NewSettingsService(path, nil, nil)
+	if err := svc.Load(); err != nil {
+		t.Fatal(err)
+	}
+	got := svc.Settings()
+	if got.SchemaVersion != 4 || got.Performance.Mode != "level" || got.Performance.Level != 3 {
+		t.Fatalf("migration result = %+v", got.Performance)
+	}
+	if got.CpuSampling || got.ActiveOverlayProfileID != "endurance" {
+		t.Fatalf("legacy values changed: cpuSampling=%v profile=%q", got.CpuSampling, got.ActiveOverlayProfileID)
 	}
 }
 
@@ -532,8 +556,8 @@ func TestLauncherPoliciesMigrateLegacyProfilesToSafeDefaults(t *testing.T) {
 
 func TestDefaultAppSettingsHasCurrentSchemaVersion(t *testing.T) {
 	s := app.DefaultAppSettings()
-	if s.SchemaVersion != 3 {
-		t.Fatalf("expected SchemaVersion=3, got %d", s.SchemaVersion)
+	if s.SchemaVersion != 4 {
+		t.Fatalf("expected SchemaVersion=4, got %d", s.SchemaVersion)
 	}
 }
 
@@ -603,8 +627,11 @@ func TestLoadMigratesLegacySettings(t *testing.T) {
 	if err := svc.Load(); err != nil {
 		t.Fatalf("load: %v", err)
 	}
-	if svc.Settings().SchemaVersion != 3 {
-		t.Errorf("expected SchemaVersion=3 after migration, got %d", svc.Settings().SchemaVersion)
+	if svc.Settings().SchemaVersion != 4 {
+		t.Errorf("expected SchemaVersion=4 after migration, got %d", svc.Settings().SchemaVersion)
+	}
+	if got := svc.Settings().Performance; got.Mode != "level" || got.Level != 3 {
+		t.Errorf("expected migrated performance level 3, got %+v", got)
 	}
 	if svc.Settings().LauncherApps == nil {
 		t.Error("LauncherApps should be initialized")
@@ -643,8 +670,8 @@ func TestLoadFallsBackToDefaultsOnTotalCorruption(t *testing.T) {
 	if err := svc.Load(); err != nil {
 		t.Fatalf("load should not panic: %v", err)
 	}
-	if svc.Settings().SchemaVersion != 3 {
-		t.Errorf("expected defaults with SchemaVersion=3")
+	if svc.Settings().SchemaVersion != 4 {
+		t.Errorf("expected defaults with SchemaVersion=4")
 	}
 	if svc.Settings().LauncherProfiles == nil {
 		t.Error("expected default profiles")
@@ -952,6 +979,10 @@ func fill(t *testing.T, field reflect.Value, name string) {
 		filled.SetMapIndex(key, item)
 		field.Set(filled)
 	case reflect.Slice:
+		if field.Type() == reflect.TypeOf(json.RawMessage{}) {
+			field.SetBytes([]byte(`20`))
+			return
+		}
 		item := reflect.New(field.Type().Elem()).Elem()
 		fill(t, item, name+"[0]")
 		field.Set(reflect.Append(reflect.MakeSlice(field.Type(), 0, 1), item))

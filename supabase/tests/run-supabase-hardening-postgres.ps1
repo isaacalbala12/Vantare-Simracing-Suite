@@ -60,8 +60,9 @@ do $$ begin create role authenticated noinherit; exception when duplicate_object
 do $$ begin create role service_role noinherit bypassrls; exception when duplicate_object then null; end $$;
 create schema if not exists auth;
 create schema if not exists extensions;
+create schema if not exists storage;
 create extension if not exists pgtap;
-create extension if not exists pgcrypto;
+create extension if not exists pgcrypto with schema extensions;
 create extension if not exists dblink with schema extensions;
 create table if not exists auth.users (
   id uuid primary key,
@@ -71,7 +72,26 @@ create table if not exists auth.users (
 create or replace function auth.uid() returns uuid language sql stable as $$
   select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid
 $$;
-grant usage on schema public, auth to anon, authenticated, service_role;
+create table if not exists storage.buckets (
+  id text primary key,
+  name text not null unique,
+  public boolean not null default false,
+  file_size_limit bigint,
+  allowed_mime_types text[]
+);
+create table if not exists storage.objects (
+  id uuid primary key default gen_random_uuid(),
+  bucket_id text not null references storage.buckets(id),
+  name text not null,
+  owner_id uuid,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique(bucket_id, name)
+);
+alter table storage.objects enable row level security;
+grant usage on schema public, auth, extensions, storage to anon, authenticated, service_role;
+grant insert on storage.objects to authenticated;
+grant select, insert, update, delete on storage.objects, storage.buckets to service_role;
 '@
   Write-Utf8NoBom $dblinkHelper @'
 drop function if exists extensions.vantare_test_dblink_connect(text, text);
@@ -384,7 +404,8 @@ select 'b', outcome from public.billing_apply_subscription_lifecycle(
   $subscriptionLifecycleMigration = "20260802110000_billing_subscription_lifecycle.sql"
   $orderRefundLedgerMigration = "20260802120000_billing_order_refund_ledger.sql"
   $operationalAccessMigration = "20260803140000_operational_access_assignments.sql"
-  foreach ($migration in $migrations | Where-Object Name -notin @($authHardeningMigration, $commercialProjectionMigration, $subscriptionLifecycleMigration, $orderRefundLedgerMigration, $operationalAccessMigration)) {
+  $raceScheduleMigration = "20260808000000_race_schedule_publications.sql"
+  foreach ($migration in $migrations | Where-Object Name -notin @($authHardeningMigration, $commercialProjectionMigration, $subscriptionLifecycleMigration, $orderRefundLedgerMigration, $operationalAccessMigration, $raceScheduleMigration)) {
     Invoke-Psql "upgrade" "/tmp/$($migration.Name)"
   }
   Invoke-Psql "upgrade" "/tmp/$authHardeningMigration"
@@ -398,6 +419,7 @@ select 'b', outcome from public.billing_apply_subscription_lifecycle(
   Invoke-Psql "upgrade" "/tmp/$subscriptionLifecycleMigration"
   Invoke-Psql "upgrade" "/tmp/$orderRefundLedgerMigration"
   Invoke-Psql "upgrade" "/tmp/$operationalAccessMigration"
+  Invoke-Psql "upgrade" "/tmp/$raceScheduleMigration"
   Assert-PgTap "upgrade" "/tmp/hardening-test.sql" "1\.\.48" "Upgrade hardening"
   Assert-PgTap "upgrade" "/tmp/inbox-test.sql" "1\.\.54" "Upgrade inbox"
   Assert-PgTap "upgrade" "/tmp/commercial-projection-test.sql" "1\.\.43" "Upgrade commercial projection"

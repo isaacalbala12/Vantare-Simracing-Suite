@@ -67,6 +67,10 @@ export function RuntimeOverlaySurface(props: RuntimeOverlaySurfaceProps): React.
   );
 
   useEffect(() => {
+    telemetry.setOverlayFrame(overlayV2Frame);
+  }, [overlayV2Frame, telemetry]);
+
+  useEffect(() => {
     const preserved = layout.preservedWidgets ?? [];
     if (preserved.length === 0 || preservedDiagnosticSent.current) {
       return;

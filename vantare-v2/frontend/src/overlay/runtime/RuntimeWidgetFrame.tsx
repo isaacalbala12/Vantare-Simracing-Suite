@@ -4,7 +4,7 @@ import type { TelemetryRateCoordinator } from "../core/telemetry-rate-coordinato
 import type { WidgetDiagnostic, WidgetDiagnosticCollector } from "../core/widget-diagnostics";
 import { WidgetVisualHost } from "../core/WidgetVisualHost";
 import { WidgetVisualViewport } from "../core/WidgetVisualViewport";
-import { useRateLimitedTelemetry } from "./use-rate-limited-telemetry";
+import { useRateLimitedWidgetTelemetry } from "./use-rate-limited-telemetry";
 import type { EngineerPresentation } from "../../engineer/engineer-presentation-store";
 import type { OverlayFrameV2, OverlaySourceStatusV2 } from "../../generated/telemetry";
 import type { OverlayV2Feature } from "../telemetry-shadow/overlay-v2-features";
@@ -25,7 +25,11 @@ export type RuntimeWidgetFrameProps = {
 
 export function RuntimeWidgetFrame(props: RuntimeWidgetFrameProps): React.ReactElement {
   const { widget, telemetry, renderMode, layoutOrigin, onDiagnostic, diagnostics, engineerPresentation, engineerSubtitlesEnabled, overlayV2Frame, overlayV2Source, overlayV2Features } = props;
-  const snapshot = useRateLimitedTelemetry(telemetry, widget.behavior.updateHz);
+  const { snapshot, overlayFrame: approvedOverlayV2Frame } = useRateLimitedWidgetTelemetry(
+    telemetry,
+    widget.type,
+    overlayV2Frame,
+  );
   const origin = layoutOrigin ?? { x: 0, y: 0 };
   const { x, y, w, h, zIndex } = widget.layout;
 
@@ -54,7 +58,7 @@ export function RuntimeWidgetFrame(props: RuntimeWidgetFrameProps): React.ReactE
           renderMode={renderMode}
           onDiagnostic={onDiagnostic}
           diagnostics={diagnostics}
-          runtime={{ engineerPresentation, engineerSubtitlesEnabled, overlayV2Frame, overlayV2Source, overlayV2Features }}
+          runtime={{ engineerPresentation, engineerSubtitlesEnabled, overlayV2Frame: approvedOverlayV2Frame, overlayV2Source, overlayV2Features }}
         />
       </WidgetVisualViewport>
     </div>

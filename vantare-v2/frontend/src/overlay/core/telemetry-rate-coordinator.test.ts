@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { buildMockTelemetry } from "./mock-scenarios";
 import { createTelemetryRateCoordinator } from "./telemetry-rate-coordinator";
+import type { OverlayFrameV2 } from "../../generated/telemetry";
 
 function controllableScheduler() {
   let frame: (() => void) | null = null;
@@ -21,6 +22,22 @@ function controllableScheduler() {
       },
     }),
   };
+}
+
+function performanceFrame(
+  sequence: number,
+  rafCap: number | null,
+  widgetHz: Record<string, number | "dirty" | "event">,
+  standings: readonly unknown[] = [],
+): OverlayFrameV2 {
+  return {
+    epoch: 1,
+    sequence,
+    standings,
+    capabilities: {
+      performance: { level: rafCap === null ? 1 : 3, mode: "manual", effects: "full", rafCap, widgetHz, sourceHz: 60 },
+    },
+  } as unknown as OverlayFrameV2;
 }
 
 describe("createTelemetryRateCoordinator", () => {
@@ -78,6 +95,84 @@ describe("createTelemetryRateCoordinator", () => {
     expect(slow).toHaveBeenCalledTimes(2);
     expect(fast).toHaveBeenCalledTimes(2);
     expect(harness.starts()).toBe(1);
+    coordinator.dispose();
+  });
+
+  it("applies the global rafCap published by Go", () => {
+    const harness = controllableScheduler();
+    let currentTime = 0;
+    const coordinator = createTelemetryRateCoordinator({ createScheduler: harness.create, now: () => currentTime });
+    coordinator.setOverlayFrame(performanceFrame(1, 20, { pedals: 20 }));
+    const listener = vi.fn();
+    coordinator.subscribe("pedals", listener);
+
+    coordinator.publish(buildMockTelemetry({ session: "race", location: "track" }));
+    harness.tick();
+    expect(listener).toHaveBeenCalledTimes(1);
+    coordinator.publish(buildMockTelemetry({ session: "race", location: "track" }));
+    currentTime = 49;
+    harness.tick();
+    expect(listener).toHaveBeenCalledTimes(1);
+    currentTime = 50;
+    harness.tick();
+    expect(listener).toHaveBeenCalledTimes(2);
+    coordinator.dispose();
+  });
+
+  it("never paints a widget faster than its widgetHz row", () => {
+    const harness = controllableScheduler();
+    let currentTime = 0;
+    const coordinator = createTelemetryRateCoordinator({ createScheduler: harness.create, now: () => currentTime });
+    coordinator.setOverlayFrame(performanceFrame(1, 60, { delta: 10 }));
+    const listener = vi.fn();
+    coordinator.subscribe("delta", listener);
+
+    coordinator.publish(buildMockTelemetry({ session: "race", location: "track" }));
+    harness.tick();
+    coordinator.publish(buildMockTelemetry({ session: "race", location: "track" }));
+    currentTime = 99;
+    harness.tick();
+    expect(listener).toHaveBeenCalledTimes(1);
+    currentTime = 100;
+    harness.tick();
+    expect(listener).toHaveBeenCalledTimes(2);
+    coordinator.dispose();
+  });
+
+  it("keeps level 1 monitor widgets at the existing one-paint-per-frame behavior", () => {
+    const harness = controllableScheduler();
+    const coordinator = createTelemetryRateCoordinator({ createScheduler: harness.create, now: () => 0 });
+    coordinator.setOverlayFrame(performanceFrame(1, null, {}));
+    const listener = vi.fn();
+    coordinator.subscribe("pedals", listener);
+
+    coordinator.publish(buildMockTelemetry({ session: "race", location: "track" }));
+    harness.tick();
+    coordinator.publish(buildMockTelemetry({ session: "race", location: "track" }));
+    harness.tick();
+    expect(listener).toHaveBeenCalledTimes(2);
+    coordinator.dispose();
+  });
+
+  it("uses frame.sequence and a one-second ceiling for dirty widgets", () => {
+    const harness = controllableScheduler();
+    let currentTime = 0;
+    const coordinator = createTelemetryRateCoordinator({ createScheduler: harness.create, now: () => currentTime });
+    coordinator.setOverlayFrame(performanceFrame(1, 40, { standings: "dirty" }, [{ id: "car-1" }]));
+    const listener = vi.fn();
+    coordinator.subscribe("standings", listener);
+
+    coordinator.setOverlayFrame(performanceFrame(2, 40, { standings: "dirty" }, [{ id: "car-1" }]));
+    currentTime = 500;
+    harness.tick();
+    expect(listener).not.toHaveBeenCalled();
+    coordinator.setOverlayFrame(performanceFrame(3, 40, { standings: "dirty" }, [{ id: "car-1" }]));
+    currentTime = 1_000;
+    harness.tick();
+    expect(listener).toHaveBeenCalledTimes(1);
+    currentTime = 2_000;
+    harness.tick();
+    expect(listener).toHaveBeenCalledTimes(2);
     coordinator.dispose();
   });
 

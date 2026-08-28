@@ -2,7 +2,7 @@
 
 Fecha: 2026-08-28. Issue: pendiente de crear (propuesta: `ISA-9xx · Huella mínima`). Base: `nightly` actual (`d717f732`).
 Autores: Isaac (decisión), Fable (redacción, orquestación).
-Estado SDD: **SPECIFY con las decisiones de Isaac incorporadas (2026-08-28, P1–P12 respondidas en §14).** Implementación **no autorizada**: se espera a que termine la optimización en curso de #912 y a su medida; después se decide si este plan sigue (Isaac: "probablemente lo acabemos haciendo porque es objetivamente mejor"). El spike de composición (§10) está entregado y queda aparcado hasta el A/B.
+Estado SDD: **SPECIFY aprobado e IMPLEMENT autorizado por Isaac el 2026-08-28** ("puedes continuar"; P1–P12 respondidas en §14). #912 cerró su ciclo sin cortes finos viables (NO-GO ×2) y con la atribución hecha (PR #927). Issues abiertas: #924 (F0 banco), #926 (F1 policy). **D19 queda superada** (ver nota en D19): los frames v2 ya viajan por pull HTTP dirigido y Wails no tiene emisión dirigida; #925 cerrada. **La cadena #896 → #893 → #894 (lifecycle, cutover V2, retirada V1) entra en este plan** por decisión de Isaac: es el mayor ahorro de CPU pendiente (pull dual 1,3–1,8 ms vs V2-only 17 µs). El spike de composición (§10) está entregado y aparcado hasta el A/B.
 
 Relación con trabajo en curso:
 - **#912** (reducir coste renderer/host con profiling real) sigue siendo la dueña de los cortes finos dentro del renderer y de Go. Este spec **no** los repite; se apoya en su protocolo y en sus números.
@@ -97,7 +97,7 @@ Principios:
 | D16 | Composición (WebView2 `CompositionController` + DirectComposition + `WS_EX_NOREDIRECTIONBITMAP`): **spike fuera del producto** (§10). Se adopta solo si gana en §12 en al menos dos de tres escenarios (dGPU, iGPU, VR). Nunca por arquitectura. |
 | D17 | Clústeres (N documentos): no se implementan en producto hasta que el spike mida 1 vs 3 vs 7 y 3 gane con margen en iGPU. Si no gana, se archiva la idea. |
 | D18 | **(Decisión Isaac, P7)** Widget "Coste de Vantare" **para todos** (RAM/CPU/GPU/nivel en vivo) e informe post-sesión. Ambos leen del sensor de Go, no miden en la web. Muestran la **comparación con el HUD de LMU** ("estás ahorrando X ms/frame frente al HUD del sim") **solo** si el gate 12.6 se ha superado en este hardware; si no, muestran el coste propio sin comparar. |
-| D19 | **(Decisión Isaac, P8)** El transporte dirigido por ventana (`window.EmitEvent` solo al overlay, hub solo `status` a 1 Hz, payload como string → `JSON.parse`, evaluar SSE local para el overlay) va en **issue propia**, fuera de #912 y de este spec; es dependencia de F1. |
+| D19 | **SUPERADA (2026-08-28, #925 cerrada).** Verificado por el worker: los frames v2 ya viajan por **pull HTTP dirigido** (`/telemetry/overlay-v2/projection`, ISA-879/#891) y en Wails alpha.98 `WebviewWindow.EmitEvent` termina en `globalApplication.Event.EmitEvent` (también difunde a todas las ventanas). Solo V1 y `status` siguen por eventos. El coste residual del transporte se elimina con la cadena **#896 → #893 → #894** (lifecycle → cutover V2 → retirada V1), que forma parte de este plan. |
 
 ## 5. Niveles
 

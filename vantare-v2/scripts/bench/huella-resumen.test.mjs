@@ -100,3 +100,10 @@ test("interpreta la disposición de display de PresentMon v2", async () => {
     { timestamp: "32.0885", frameTimeMs: 15.8422, dropped: 1 },
   ]);
 });
+
+test("la tabla de pérdidas etiqueta el total sin llamarlo presentado", () => {
+  const run = summarizeRun(parseCsv("timestamp,role,dropped\nt1,game,0\nt2,game,1\n"));
+  const markdown = renderMarkdown("A1", [], ["run.csv"], [run]);
+  assert.match(markdown, /\| Perdidos \| Frames totales \| Porcentaje \|/);
+  assert.doesNotMatch(markdown, /\| Perdidos \| Presentados \|/);
+});

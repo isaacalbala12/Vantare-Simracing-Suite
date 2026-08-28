@@ -188,7 +188,7 @@ export function renderMarkdown(condition, aggregate, files, runs = []) {
     ...(droppedRows.length ? [
       "## Frames perdidos",
       "",
-      "| Corrida | Perdidos | Presentados | Porcentaje |",
+      "| Corrida | Perdidos | Frames totales | Porcentaje |",
       "|---:|---:|---:|---:|",
       ...droppedRows,
       "",

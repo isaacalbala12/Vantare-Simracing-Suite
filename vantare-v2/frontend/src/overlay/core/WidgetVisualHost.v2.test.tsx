@@ -97,32 +97,18 @@ const cases: Case[] = [
 ];
 
 describe("WidgetVisualHost v2 generic registry", () => {
-  it.each(cases)("[$type] con feature off usa VM v1 y con feature on usa VM v2 (frame v2 fixture)", ({ definition, spyModule, spyName, feature }) => {
+  it.each(cases)("[$type] usa VM v2 por defecto cuando frame y source están presentes", ({ definition, spyModule, spyName, feature }) => {
     const widget = (definition.createDefault as (id: string) => { id: string; type: string })("v2-case-" + feature);
     const frame = makeFrame();
 
     const spy = vi.spyOn(spyModule as never, spyName as never);
 
-    // off: no feature -> v1, spy no llamado
     render(
       <WidgetVisualHost
         widget={widget as never}
         snapshot={snapshot}
         renderMode="harness"
         runtime={{ overlayV2Frame: frame, overlayV2Source: source } as never}
-      />,
-    );
-    expect(spy).not.toHaveBeenCalled();
-    cleanup();
-
-    // on: feature activa -> v2, spy llamado una vez con frame, source, content
-    spy.mockClear();
-    render(
-      <WidgetVisualHost
-        widget={widget as never}
-        snapshot={snapshot}
-        renderMode="harness"
-        runtime={{ overlayV2Frame: frame, overlayV2Source: source, overlayV2Features: [feature] } as never}
       />,
     );
     expect(spy).toHaveBeenCalledTimes(1);
@@ -154,7 +140,7 @@ describe("WidgetVisualHost v2 generic registry", () => {
     cleanup();
   });
 
-  it("sin frame v2 no usa v2 aunque feature este on", () => {
+  it("sin frame v2 todavía no ejecuta el builder v2", () => {
     const widget = standingsDefinition.createDefault("no-frame");
     const spy = vi.spyOn(standingsV2, "buildStandingsViewModelV2");
     render(
@@ -162,7 +148,7 @@ describe("WidgetVisualHost v2 generic registry", () => {
         widget={widget as never}
         snapshot={snapshot}
         renderMode="harness"
-        runtime={{ overlayV2Source: source, overlayV2Features: ["standings"] } as never}
+        runtime={{ overlayV2Source: source } as never}
       />,
     );
     expect(spy).not.toHaveBeenCalled();

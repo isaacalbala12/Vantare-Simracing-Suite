@@ -8,6 +8,7 @@ import { deltaDefinition } from "../widget-types/delta/delta-definition";
 import { WidgetVisualHost } from "./WidgetVisualHost";
 import { engineerRadioDefinition } from "../widget-types/engineer-radio/engineer-radio-definition";
 import { pedalsTelemetryDefinition } from "../widget-types/pedals-telemetry/pedals-telemetry-definition";
+import { raceScheduleDefinition } from "../widget-types/race-schedule/race-schedule-definition";
 import type { OverlayFrameV2 } from "../../generated/telemetry";
 
 afterEach(() => cleanup());
@@ -135,17 +136,36 @@ describe("WidgetVisualHost", () => {
     expect(desktop.container.querySelector("[data-engineer-radio-root]")).toBeNull();
   });
 
-  it("keeps Overlay v2 player instruments off by default and allows explicit diagnostics activation", () => {
+  it("recibe race-schedule exclusivamente por el canal auxiliar Calendar", () => {
+    const widget = raceScheduleDefinition.createDefault("calendar-auxiliary");
+    const view = render(
+      <WidgetVisualHost widget={widget} snapshot={snapshot} renderMode="desktop" runtime={{
+        raceScheduleStatus: "ready",
+        raceScheduleEvents: [{
+          id: "calendar-1",
+          title: "Le Mans Virtual Cup",
+          track: "Le Mans",
+          startAt: "2026-09-01T18:00:00Z",
+          durationMinutes: 60,
+          classes: ["Hypercar"],
+          status: "upcoming",
+        }],
+      }} />,
+    );
+    expect(view.getByText("Le Mans Virtual Cup")).toBeTruthy();
+  });
+
+  it("usa Overlay V2 por defecto y la antigua lista de features ya no cambia la selección", () => {
     const widget = pedalsTelemetryDefinition.createDefault("pedals-v2");
     widget.content = { showPosition: false, showClutch: true };
     const frame = playerFrameV2();
-    const legacy = render(
+    const defaultV2 = render(
       <WidgetVisualHost widget={widget} snapshot={snapshot} renderMode="harness" runtime={{
         overlayV2Frame: frame,
         overlayV2Source: { state: "live" },
       }} />,
     );
-    const legacySpeed = legacy.container.querySelector(".vo-pedals-telemetry-values strong")?.textContent;
+    const defaultSpeed = defaultV2.container.querySelector(".vo-pedals-telemetry-values strong")?.textContent;
     cleanup();
     const activated = render(
       <WidgetVisualHost widget={widget} snapshot={snapshot} renderMode="harness" runtime={{
@@ -155,7 +175,7 @@ describe("WidgetVisualHost", () => {
       }} />,
     );
     const v2Speed = activated.container.querySelector(".vo-pedals-telemetry-values strong")?.textContent;
-    expect(legacySpeed).not.toBe("180");
+    expect(defaultSpeed).toBe("180");
     expect(v2Speed).toBe("180");
   });
 });

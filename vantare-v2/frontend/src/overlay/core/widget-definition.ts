@@ -59,6 +59,17 @@ export type WidgetViewModelBase = {
 export type WidgetRuntimeInput = {
   engineerPresentation?: EngineerPresentation | null;
   engineerSubtitlesEnabled?: boolean;
+  raceScheduleEvents?: readonly {
+    id: string;
+    title: string;
+    track: string;
+    startAt: string;
+    durationMinutes: number;
+    classes: readonly string[];
+    status: string;
+    license?: string;
+  }[];
+  raceScheduleStatus?: WidgetRuntimeStatus;
   overlayV2Features?: readonly OverlayV2Feature[];
   overlayV2Frame?: OverlayFrameV2;
   overlayV2Source?: OverlaySourceStatusV2;

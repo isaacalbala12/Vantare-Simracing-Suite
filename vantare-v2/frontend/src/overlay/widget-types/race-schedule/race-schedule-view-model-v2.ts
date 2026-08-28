@@ -5,13 +5,12 @@ import type { RaceScheduleEvent, RaceScheduleViewModel } from "./race-schedule-v
 /**
  * Race-schedule view model over the Overlay v2 contract.
  *
- * El schedule es un dataset auxiliar inyectado en `TelemetrySnapshot.auxiliary`
- * y NO forma parte de `OverlayFrameV2` (no hay `session.scheduleEvents` ni
- * equivalente). El VM v2 mantiene la misma firma y filtra por limite, pero
- * declara el gap para que el frame futuro lo alimente sin cambiar el widget.
+ * El schedule es un dataset auxiliar de Calendar y NO forma parte de
+ * `OverlayFrameV2` (no hay `session.scheduleEvents` ni equivalente). El VM v2
+ * declara el gap sin inventar una señal telemétrica.
  *
- * Mientras tanto pinta vacio en `missing` — el host no inyectara datos hasta
- * que el contrato v2 los transporte.
+ * Este comparador pinta vacío en `missing`; el host productivo recibe los
+ * eventos únicamente por `WidgetRuntimeInput.raceScheduleEvents`.
  */
 export function buildRaceScheduleViewModelV2(
   _frame: OverlayFrameV2,

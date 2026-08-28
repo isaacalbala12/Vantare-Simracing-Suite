@@ -10,7 +10,6 @@ import { readInputTelemetryHistory, recordInputTelemetrySample } from "../widget
 import type { InputTelemetryViewModel } from "../widget-types/input-telemetry/input-telemetry-view-model";
 import type { WidgetRuntimeInput } from "./widget-definition";
 import { getOverlayV2ViewModelEntry } from "./overlay-v2-view-models";
-import { hasOverlayV2Feature } from "../telemetry-shadow/overlay-v2-features";
 
 export type { WidgetDiagnostic, WidgetDiagnosticCollector } from "./widget-diagnostics";
 
@@ -81,27 +80,31 @@ export function WidgetVisualHost(props: WidgetVisualHostProps): ReactNode {
     return <HostDiagnostic widget={widget} code="invalid-content" message={message} />;
   }
 
-  const previewMode = renderMode === "studio" || renderMode === "harness";
-  let model = previewMode && definition.buildPreviewViewModel
-    ? definition.buildPreviewViewModel(snapshot, content as never, props.runtime ?? {})
-    : definition.buildRuntimeViewModel
-      ? definition.buildRuntimeViewModel(snapshot, content as never, props.runtime ?? {})
-      : definition.buildViewModel(snapshot, content as never);
-
   const v2Entry = getOverlayV2ViewModelEntry(widget.type);
-  const useV2 =
-    !!v2Entry &&
-    !!props.runtime?.overlayV2Frame &&
-    !!props.runtime.overlayV2Source &&
-    hasOverlayV2Feature(props.runtime.overlayV2Features, v2Entry.feature);
-  if (useV2 && v2Entry && props.runtime?.overlayV2Frame && props.runtime.overlayV2Source) {
+  const frame = props.runtime?.overlayV2Frame;
+  const source = props.runtime?.overlayV2Source;
+  const previewMode = renderMode === "studio" || renderMode === "harness";
+  let model;
+  if (v2Entry && frame && source) {
+    // V2 se construye primero: el builder V1 no se ejecuta para luego
+    // sobrescribirlo. El renderer recibe únicamente la ViewModel pura.
     model = v2Entry.buildViewModelV2(
-      props.runtime.overlayV2Frame,
-      props.runtime.overlayV2Source,
+      frame,
+      source,
       content,
       props.runtime,
     );
-  } else if (widget.type === "input-telemetry") {
+  } else {
+    // Compatibilidad transitoria hasta que el siguiente hito convierta
+    // frame/source ausentes en estados V2 visibles, sin caer a V1.
+    model = previewMode && definition.buildPreviewViewModel
+      ? definition.buildPreviewViewModel(snapshot, content as never, props.runtime ?? {})
+      : definition.buildRuntimeViewModel
+        ? definition.buildRuntimeViewModel(snapshot, content as never, props.runtime ?? {})
+        : definition.buildViewModel(snapshot, content as never);
+  }
+
+  if (!(v2Entry && frame && source) && widget.type === "input-telemetry") {
     const inputContent = content as { historySeconds: number };
     recordInputTelemetrySample(widget.id, snapshot);
     model = {

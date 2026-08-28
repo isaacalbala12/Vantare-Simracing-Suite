@@ -55,3 +55,6 @@ supabase/.temp/
 smoke-jwt.txt
 *.jwt
 **/smoke-session.json
+
+# Local benchmark captures (raw CSV/logs can be large and machine-specific)
+/results/

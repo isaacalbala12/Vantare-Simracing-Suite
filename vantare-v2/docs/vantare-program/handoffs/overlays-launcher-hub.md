@@ -10,6 +10,32 @@
 
 ## Estado
 
+- **ISA-924 — banco de huella y baseline por hardware (2026-08-28):** rama
+  `vantareapp/isa-924-huella-banco-baseline`, base
+  `origin/nightly@ae66720d`, PR #929. Se versionaron la spec autorizada, dos perfiles v3
+  reproducibles, banco PowerShell 7, control/probe CDP y agregador de ruido.
+  El árbol WebView2 se acota por `--user-data-dir=<exe>\EBWebView`; el renderer
+  Hub se fija antes de abrir el overlay; un renderer nuevo sin relación
+  PID↔target demostrable queda `renderer-unassigned` y no se atribuye por
+  orden de aparición.
+  PresentMon 2.5.1 quedó disponible como binario standalone oficial porque el
+  MSI de winget devolvió 1620; usa una sesión ETW propia y nunca
+  `--stop_existing_session`. Smoke Wails real A0/A1 PASS: A1 abrió 3 widgets,
+  separó ambos renderers, capturó frametime LMU y cerró con
+  `Application.Quit()`. La review independiente REQUEST_CHANGES quedó
+  corregida: N < 3 no publica; `-Forzar` deja CSV/Markdown no publicables y el
+  agregador los rechaza; PresentMon v2 deriva pérdidas de `DisplayedTime=NA`;
+  CDP espera Hub y widgets; el árbol se redescubre cada 5 s; unidades MiB y
+  `PresentMon.exe`/PATH persistente. El protocolo permite y registra como
+  `systemWebView2` solo perfiles bajo `AppData\Local\Packages\Microsoft*`;
+  otros Edge/WebView2/Vantare siguen bloqueando. Smoke A1 sin `-Forzar`, 30
+  muestras sobre LMU: `publishable=True`, 6 procesos del shell/1 perfil
+  permitido, 3/3 widgets, ambos renderers, 3.097 frames, 0 perdidos, cierre
+  limpio y cero procesos propios residuales. Es prueba del banco, no baseline:
+  quedan pendientes
+  180 s × 3 en A0/A1/HubVisible/HubMin, perfil completo, iGPU y VR. Sin merge
+  ni promoción.
+
 - **ISA-849 — columnas configurables en Standings Redline (2026-08-25, SDD):**
   rama rebasada el 2026-08-27 sobre `origin/nightly@b1d5b15b` para que solo la plantilla titular
   `standings-redline` respete visibilidad, orden, anchura y alineación sin perder

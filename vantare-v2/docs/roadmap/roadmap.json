@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-28T18:45:12Z",
+  "generatedAt": "2026-08-28T20:37:07Z",
   "digest": {
-    "lastCommit": "c59a7d642b92375d92c81235d0498e0ce46b0597"
+    "lastCommit": "ae66720df91870a1e7b2aa9855356717f333fa1d"
   },
   "phases": [
     {
@@ -112,6 +112,12 @@
           "en": "Launcher with app detection and launch chains",
           "pt": "Launcher com deteção de apps e cadeias de lançamento",
           "it": "Launcher con rilevamento app e catene di avvio"
+        },
+        {
+          "es": "Banco reproducible de huella por hardware para Vantare y el overlay",
+          "en": "Reproducible hardware footprint bench for Vantare and the overlay",
+          "pt": "Banco reproduzível de impacto por hardware para Vantare e o overlay",
+          "it": "Banco riproducibile dell'impronta hardware per Vantare e l'overlay"
         }
       ]
     },
@@ -329,13 +335,36 @@
         "it": "Piattaforma"
       },
       "progress": 25,
-      "status": "planned",
+      "status": "in-progress",
       "projects": [
-        "roadmap-governance"
+        "roadmap-governance",
+        "huella-minima-banco"
       ]
     }
   ],
   "milestones": [
+    {
+      "id": "huella-minima-banco",
+      "type": "feature",
+      "title": {
+        "es": "Banco reproducible de huella por hardware",
+        "en": "Reproducible hardware footprint bench",
+        "pt": "Banco reproduzível de impacto por hardware",
+        "it": "Banco riproducibile dell'impronta hardware"
+      },
+      "body": {
+        "es": "Un banco Windows mide por proceso la RAM, CPU y GPU de Vantare, separa Hub y overlay mediante CDP, captura el frametime de LMU con PresentMon y rechaza corridas contaminadas o sin tres repeticiones estables.",
+        "en": "A Windows bench measures Vantare RAM, CPU and GPU per process, separates Hub and overlay through CDP, captures LMU frame time with PresentMon, and rejects contaminated runs or results without three stable repetitions.",
+        "pt": "Um banco Windows mede RAM, CPU e GPU do Vantare por processo, separa Hub e overlay por CDP, captura o tempo de frame do LMU com PresentMon e rejeita corridas contaminadas ou sem três repetições estáveis.",
+        "it": "Un banco Windows misura RAM, CPU e GPU di Vantare per processo, separa Hub e overlay tramite CDP, acquisisce il frame time di LMU con PresentMon e rifiuta sessioni contaminate o senza tre ripetizioni stabili."
+      },
+      "label": {
+        "es": "Feature",
+        "en": "Feature",
+        "pt": "Feature",
+        "it": "Feature"
+      }
+    },
     {
       "id": "notification-system",
       "type": "fix",
@@ -886,6 +915,21 @@
           "kind": "change",
           "scope": "",
           "text": "ISA-889 · Resincronizar epochs saltados en Overlay"
+        },
+        {
+          "kind": "fix",
+          "scope": "telemetry",
+          "text": "Actualizar trust de runtime tras MSYS2 UCRT64 + Go 1.25 (helper ccdab717 manifest 700201f9)"
+        },
+        {
+          "kind": "fix",
+          "scope": "lint",
+          "text": "Quitar el parámetro _damage sin usar del view-model de daños"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-884 · Relative físico desde progreso temporal canónico"
         }
       ]
     },

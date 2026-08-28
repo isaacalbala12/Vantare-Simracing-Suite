@@ -2,9 +2,11 @@ import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import goldenV0 from "../../../../pkg/config/testdata/profile-v3-core-widgets-from-v0.golden.json";
 import goldenV2 from "../../../../pkg/config/testdata/profile-v3-core-widgets-from-v2.golden.json";
+import huellaCompleto from "../../../../testdata/bench/huella-completo.json";
+import huellaEndurance3 from "../../../../testdata/bench/huella-endurance-3.json";
 import { buildMockTelemetry } from "./mock-scenarios";
 import { designSystemRegistry } from "./design-system-registry";
-import { parseProfileDocumentV3 } from "./profile-document";
+import { ALL_WIDGET_TYPES, parseProfileDocumentV3 } from "./profile-document";
 import { widgetTypeRegistry } from "./widget-registry";
 import { WidgetVisualHost } from "./WidgetVisualHost";
 
@@ -56,6 +58,24 @@ describe("profile v3 contract fixtures", () => {
         view.container.querySelector(`[data-widget-renderer="${widget.type}"]`),
       ).toBeTruthy();
       cleanup();
+    }
+  });
+
+  it.each([
+    ["Endurance 3", huellaEndurance3, ["standings", "relative", "delta"]],
+    ["catálogo completo", huellaCompleto, ALL_WIDGET_TYPES],
+  ])("validates benchmark profile %s with real widget contracts", (_label, fixture, expectedTypes) => {
+    const parsed = parseProfileDocumentV3(fixture);
+    expect(parsed.layouts.general.widgets.map((widget) => widget.type)).toEqual(expectedTypes);
+
+    for (const widget of parsed.layouts.general.widgets) {
+      const definition = widgetTypeRegistry.get(widget.type);
+      expect(() => definition.parseContent(widget.content)).not.toThrow();
+      expect(() =>
+        designSystemRegistry
+          .resolve(widget.visual.systemId, widget.visual.systemVersion, widget.type)
+          .parseSettings(widget.visual.baseSettings),
+      ).not.toThrow();
     }
   });
 });

@@ -14,8 +14,9 @@
 - Código en `17b690fd`; TDD focal 35/35, suite frontend 3.175/3.175,
   typecheck, build, lint focal y contratos de roadmap 23/23 + 21/21 en verde.
   El lint global conserva un error ajeno en
-  `car-damage-numbers-view-model-v2.ts:93`. Quedan la prueba manual Wails y el
-  PR draft; no hay integración en `nightly`, promoción, release ni anuncio.
+  `car-damage-numbers-view-model-v2.ts:93`. El PR draft #907 es la única ruta
+  hacia `nightly`; queda la prueba manual Wails. No hay integración en
+  `nightly`, promoción, release ni anuncio.
 
 ## ISA-843 — columnas de Próximas alineadas
 

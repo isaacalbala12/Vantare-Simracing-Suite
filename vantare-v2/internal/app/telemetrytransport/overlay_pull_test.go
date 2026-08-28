@@ -42,8 +42,8 @@ func TestOverlayPullSlowConsumerKeepsOneDeliveryInFlightAndLatestWins(t *testing
 	assertPullEventContains(t, first.Events, EventName(ProductOverlay, EventSnapshot), `"sequence":1`)
 
 	// The WebView has not acknowledged delivery 1. Publishing many newer
-	// frames must not create another response or queue every intermediate
-	// payload behind ExecuteScript.
+	// frames must not create another delivery or queue every intermediate
+	// payload behind the pending HTTP response.
 	for sequence := schema.Sequence(2); sequence <= 100; sequence++ {
 		if err := hub.PublishSnapshot(
 			mustSnapshot(t, 1, sequence, Full, 1, map[string]any{"sequence": sequence}),
@@ -58,11 +58,19 @@ func TestOverlayPullSlowConsumerKeepsOneDeliveryInFlightAndLatestWins(t *testing
 		if err := publisher.PublishSnapshot(uint64(sequence), map[string]any{"revision": sequence}); err != nil {
 			t.Fatal(err)
 		}
-		if response, duplicate, pullErr := transport.Pull("overlay-window", OverlayPullRequest{
-			SessionID: "session-1",
-			Ack:       0,
-		}); pullErr != nil || duplicate {
-			t.Fatalf("unacknowledged pull = %#v, deliver=%v, err=%v", response, duplicate, pullErr)
+	}
+	replayed, deliver, err := transport.Pull("overlay-window", OverlayPullRequest{
+		SessionID: "session-1",
+		Ack:       0,
+	})
+	if err != nil || !deliver || replayed.Delivery != first.Delivery ||
+		len(replayed.Events) != len(first.Events) {
+		t.Fatalf("lost response replay = %#v, deliver=%v, err=%v", replayed, deliver, err)
+	}
+	for index := range first.Events {
+		if replayed.Events[index].Name != first.Events[index].Name ||
+			!bytes.Equal(replayed.Events[index].Data, first.Events[index].Data) {
+			t.Fatalf("replayed event %d = %#v, want %#v", index, replayed.Events[index], first.Events[index])
 		}
 	}
 

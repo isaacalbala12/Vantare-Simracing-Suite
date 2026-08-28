@@ -450,14 +450,21 @@ func TestOverlayPullHTTPServiceRespondsOnlyToTheRequestingWindowAndClosesConsume
 		t.Fatal("pull handler did not activate the overlay consumer")
 	}
 
-	// A duplicate request is not a second WebView delivery while response 1 is
-	// still unacknowledged.
+	// A retry with the previous ack replays the one pending response. This is
+	// the recovery path when the first HTTP exchange never reached the WebView.
 	request = httptest.NewRequest(http.MethodPost, "/pull", strings.NewReader(`{"sessionId":"session-1","ack":0}`))
 	request.Header.Set(overlayPullWindowNameHeader, "overlay-window")
 	response = httptest.NewRecorder()
 	service.ServeHTTP(response, request)
-	if response.Code != http.StatusNoContent {
-		t.Fatalf("duplicate pull status = %d, want %d", response.Code, http.StatusNoContent)
+	if response.Code != http.StatusOK {
+		t.Fatalf("retried pull status = %d, want %d", response.Code, http.StatusOK)
+	}
+	var replayed telemetrytransport.OverlayPullResponse
+	if err := json.Unmarshal(response.Body.Bytes(), &replayed); err != nil {
+		t.Fatalf("decode replayed pull response: %v", err)
+	}
+	if replayed.SessionID != pullResponse.SessionID || replayed.Delivery != pullResponse.Delivery {
+		t.Fatalf("replayed pull response = %#v, want delivery %#v", replayed, pullResponse)
 	}
 
 	request = httptest.NewRequest(http.MethodPost, "/close", strings.NewReader(`{"sessionId":"session-1","ack":1}`))

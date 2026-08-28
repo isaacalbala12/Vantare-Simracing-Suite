@@ -1,5 +1,5 @@
 import { resetStudioStageGeometryCache } from './canvas/stage-geometry-cache';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { StrictMode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Events } from '@wailsio/runtime';
@@ -200,7 +200,9 @@ describe('StudioRoute', () => {
     );
     bootProfiles();
     await screen.findByTestId('overlay-studio-v3');
-    expect(client.load).toHaveBeenCalledWith('example-racing.json');
+    await waitFor(() => {
+      expect(client.load).toHaveBeenCalledWith('example-racing.json');
+    });
   });
 
   it('uses one bounded pull session for live Studio without global telemetry events', async () => {

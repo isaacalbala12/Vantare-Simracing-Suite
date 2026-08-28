@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-27T23:42:34Z",
+  "generatedAt": "2026-08-28T01:42:42Z",
   "digest": {
-    "lastCommit": "741d31bf76740a469b4d91ff21da6817e912db30"
+    "lastCommit": "d9909aef4b9f2de2b3e61ed79a3a0fd98a91b73c"
   },
   "phases": [
     {
@@ -456,10 +456,10 @@
         "it": "Telemetria LMU dal vivo"
       },
       "body": {
-        "es": "Driver LMU con reconexión acotada, transporte Overlay dirigido con una sola entrega pendiente compartida por Desktop y Studio, lifecycle V2 recuperable sin frames y proyecciones de overlay, ingeniero y estrategia.",
-        "en": "LMU driver with bounded reconnects, targeted Overlay transport with one pending delivery shared by Desktop and Studio, a V2 lifecycle recoverable without frames, and overlay, engineer and strategy projections.",
-        "pt": "Driver LMU com reconexão limitada, transporte Overlay dirigido com uma única entrega pendente partilhada por Desktop e Studio, lifecycle V2 recuperável sem frames e projeções de overlay, engenheiro e estratégia.",
-        "it": "Driver LMU con riconnessione limitata, trasporto Overlay diretto con una sola consegna pendente condivisa da Desktop e Studio, lifecycle V2 recuperabile senza frame e proiezioni di overlay, engineer e strategia."
+        "es": "Driver LMU con reconexión acotada, transporte Overlay dirigido con una sola entrega pendiente, generaciones retiradas y recuperación ante timeout compartido por Desktop y Studio, lifecycle V2 recuperable sin frames y proyecciones de overlay, ingeniero y estrategia.",
+        "en": "LMU driver with bounded reconnects, targeted Overlay transport with one pending delivery, bounded retired generations and timeout recovery shared by Desktop and Studio, a V2 lifecycle recoverable without frames, and overlay, engineer and strategy projections.",
+        "pt": "Driver LMU com reconexão limitada, transporte Overlay dirigido com uma única entrega pendente, gerações retiradas limitadas e recuperação após timeout partilhada por Desktop e Studio, lifecycle V2 recuperável sem frames e projeções de overlay, engenheiro e estratégia.",
+        "it": "Driver LMU con riconnessione limitata, trasporto Overlay diretto con una sola consegna pendente, generazioni ritirate limitate e recupero dopo timeout condiviso da Desktop e Studio, lifecycle V2 recuperabile senza frame e proiezioni di overlay, engineer e strategia."
       },
       "label": {
         "es": "En desarrollo",
@@ -785,6 +785,11 @@
           "kind": "change",
           "scope": "",
           "text": "ISA-889 · Resincronizar epochs saltados en Overlay"
+        },
+        {
+          "kind": "feat",
+          "scope": "overlays",
+          "text": "Columnas configurables en Standings Redline"
         }
       ]
     },

@@ -24,6 +24,12 @@ La auditoría previa a retirar Overlay V1 encontró cinco huecos concretos:
 - Si una respuesta HTTP se perdía después de preparar el delivery, el retry con
   el ack anterior recibía 204 indefinidamente: el servidor ya había avanzado su
   cursor pero no conservaba la entrega pendiente para retransmitirla.
+- Una generación Studio retirada podía enviar tarde otro `ack:0`, sustituir la
+  sesión actual y dejarla recibiendo 204; status y snapshot V2 también podían
+  reservar revisiones en un orden y publicarlas en el contrario.
+- JSON inválido, una excepción síncrona o un fetch local que nunca resolvía
+  dejaban `awaiting=true` sin retry. Studio además observaba el store V2 a toda
+  cadencia aunque todas las flags V2 siguieran apagadas.
 
 El segundo hueco también permitía cualquier string como `source.state` en la
 frontera TypeScript. Al cerrarla aparecieron dos literales inválidos que el
@@ -65,6 +71,15 @@ ack. Un retry con el ack anterior reproduce exactamente ese delivery; al
 confirmarlo, las observaciones intermedias siguen colapsándose al último estado.
 No se introduce una cola ni se duplica la revisión lógica.
 
+La revisión adversarial final cerró los cuatro huecos anteriores sin ampliar la
+arquitectura. Cada sender recuerda como máximo 32 ids retirados, de modo que una
+petición tardía no puede tomar la sesión actual y la memoria sigue fija. La
+proyección pesada queda fuera del lock, pero refresh de source, asignación de
+revisión y publicación se hacen en la misma frontera crítica. El cliente
+reintenta respuestas inválidas y excepciones a 250 ms y aborta un fetch local a
+los cinco segundos. Con flags V2 vacías, Studio sigue ingiriendo para el corte
+shadow pero no se suscribe al store ni propaga sus paints a React.
+
 ## Regresiones deterministas
 
 - status V2 sin consumidor no activa el publisher de frames;
@@ -83,6 +98,12 @@ No se introduce una cola ni se duplica la revisión lógica.
   segunda petición;
 - una respuesta HTTP perdida se retransmite con el mismo delivery y, tras el
   ack, el siguiente delivery contiene solo los snapshots más recientes;
+- una sesión retirada no puede sustituir ni cerrar la generación actual;
+- una transición de lifecycle durante una proyección bloqueada se publica antes
+  que el snapshot, y este recibe una revisión posterior y el source vigente;
+- respuesta inválida, excepción síncrona y fetch colgado recuperan el pull con
+  pacing y sin una segunda petición en vuelo;
+- Studio no se suscribe a paints V2 mientras su lista de features está vacía;
 - una sesión Studio nueva acepta su primera revisión aunque la anterior hubiese
   terminado con una revisión superior;
 - el runtime V2 puro llega al único `WidgetVisualHost` de Studio.
@@ -92,20 +113,23 @@ No se introduce una cola ni se duplica la revisión lógica.
 - Commits funcionales: `6bd72d37398dfb6eaed80fbfdfdbe57bc61ff47e`,
   `f6269aaf1a6b71b0ac3c17589d00ec0ea1b4e5c2` y
   `274b632d5e0ae4476a45059971599cb79cc977e3`; recuperación de
-  respuestas perdidas: `0966f44c29783eadb0e0ee2013ea80c41500b864`.
+  respuestas perdidas: `0966f44c29783eadb0e0ee2013ea80c41500b864`;
+  cierre de carreras final: `f652e67f`.
 - Paquetes Go `overlayv2`, `telemetrytransport` y `internal/app`: PASS.
 - Tests frontend enfocados: PASS, 6 archivos y 78 tests.
 - `go test ./...`: PASS.
-- Suite frontend completa: PASS, 418 archivos y 3.151 tests. `happy-dom`
+- Suite frontend completa: PASS, 418 archivos y 3.154 tests. `happy-dom`
   imprimió el `AbortError` conocido durante teardown; Vitest terminó con código
   0.
 - `pnpm --dir frontend typecheck`: PASS.
 - `pnpm --dir frontend build`: PASS.
-- ESLint sobre los 11 archivos del segundo corte: PASS.
+- ESLint sobre todos los TS/TSX del diff: PASS. El lint global conserva una
+  deuda ajena al diff (`_damage` sin usar en
+  `car-damage-numbers-view-model-v2.ts`, commit `a1785c8ea`).
 - `go run ./tools/telemetry-contract-gen -check`: PASS.
 - `go test -race ./internal/app/telemetrytransport`: PASS.
 - Tests de roadmap: PASS, 23.
-- Tests de comunicaciones/changelog: PASS, 64.
+- Tests de comunicaciones/changelog: PASS, 64; release notes: PASS, 26.
 - `wails3 task windows:build` con canal `nightly`: PASS. El generador temporal
   de configuración se ejecutó en la tarea canónica y eliminó
   `cmd/vantare/supabase_build.go` al finalizar; no quedó diff generado.
@@ -129,6 +153,12 @@ No se introduce una cola ni se duplica la revisión lógica.
    además el cleanup irreversible de StrictMode/remount en Desktop, OBS y
    Studio, registrado en #896. #892, #893 y #896 deben cerrarse antes del gate
    real y la retirada de #894.
+4. **Revisión independiente Fable 5:** thread T3 Code
+   `556f9ac3-513c-4bd7-a194-6064baaa615d`, modelo
+   `claude-fable-5`, veredicto `ACCEPT WITH FINDINGS`, sin P0/P1. Los cuatro P2
+   fueron reproducidos y corregidos; los P3 se repartieron entre los gates ya
+   existentes #893, #894 y #896. La revisión confirmó que este corte no está
+   sobreingenierado: no añade goroutines, channels, colas ni dependencias.
 
 ## Prueba LMU/Wails real
 

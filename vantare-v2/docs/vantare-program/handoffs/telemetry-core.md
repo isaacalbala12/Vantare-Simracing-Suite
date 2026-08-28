@@ -35,14 +35,24 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   La revisión de protocolo añadió `0966f44c`: una respuesta HTTP perdida se
   conserva como único delivery pendiente y se retransmite hasta su ack; después
   se entrega solo el último snapshot acumulado.
+  La auditoría independiente Fable 5 (`claude-fable-5`, thread
+  `556f9ac3-513c-4bd7-a194-6064baaa615d`) terminó `ACCEPT WITH FINDINGS`, sin
+  P0/P1. `f652e67f` corrige los cuatro P2 reproducidos: rechaza generaciones
+  retiradas con memoria fija por sender, serializa revisión y publicación V2,
+  recupera JSON/excepción/timeout del pull y evita suscribir Studio a paints V2
+  con flags vacías. No añade goroutines, channels, colas ni dependencias.
   Rama `vantareapp/isa-891-overlay-v2-studio-lifecycle` sobre
-  `nightly@741d31bf`. `go test ./...`, 418 archivos/3.148 tests frontend,
+  la base original `nightly@741d31bf`. `go test ./...`,
   typecheck, build frontend, contrato generado, ESLint del diff, race detector
-  del transporte, 23 tests de roadmap, 64 de comunicaciones y build Wails
+  del transporte, 23 tests de roadmap, 64 de comunicaciones, 26 de release
+  notes y build Wails
   Windows están verdes sobre HEAD; la suite frontend final cubre 418 archivos y
-  3.151 tests. La auditoría abrió ISA-896 para corregir Desktop+OBS+Studio bajo
+  3.154 tests. El lint global conserva una deuda ajena al diff en
+  `car-damage-numbers-view-model-v2.ts`; el gate del diff pasa. La auditoría
+  abrió ISA-896 para corregir Desktop+OBS+Studio bajo
   StrictMode/remount; el PR parcial #857 no está en Nightly. No retira V1 ni
-  cambia la autoridad visual. Pendiente PR y CI remoto.
+  cambia la autoridad visual. `origin/nightly` avanzó a `d9909aef`; queda
+  sincronizar la rama, regenerar el digest y verificar el CI del HEAD final.
 
 - 2026-08-27, ISA-889 corrige el bloqueo permanente del Overlay despues de un
   reconnect LMU. El transporte acotado de ISA-879 puede entregar como primer

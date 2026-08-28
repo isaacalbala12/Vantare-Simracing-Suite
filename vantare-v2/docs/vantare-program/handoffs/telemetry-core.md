@@ -38,9 +38,15 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   ventana WebView2 nueva y volvió a pintar cuatro, sin el error disposed. Esta
   prueba no afirma telemetría LMU live: LMU no se tocó y los widgets mostraron
   el perfil activo sin datos de sesión. Evidencia en
-  `docs/telemetry-core/evidence/isa-896/lifecycle-remount.md`. Rama
-  `vantareapp/isa-896-overlay-v2-remount-lifecycle`, base
-  `origin/nightly@c59a7d64`; sin PR, merge ni promoción.
+  `docs/telemetry-core/evidence/isa-896/lifecycle-remount.md`. La review
+  independiente aprobó funcionalmente cinco ciclos Wails reales: sin fuga,
+  generación vieja ni pérdida de eventos iniciales; dejó el rebase como único
+  bloqueo operativo. La rama
+  `vantareapp/isa-896-overlay-v2-remount-lifecycle` quedó rebasada sobre
+  `origin/nightly@fa16c7b0`, con HEAD funcional `7fcde20f`. El mock Wails de
+  Studio retira ahora cada callback y la regresión exige un listener activo por
+  evento y un scheduler activo después del doble setup. PR #937 permanece
+  draft; sin merge, promoción ni release.
 - 2026-08-28, ISA-891 completa el lifecycle de Overlay V2 y lleva Studio al
   mismo transporte dirigido que Desktop. `6bd72d37` publica y retiene un único
   status V2 aunque no haya frames ni consumidores; un consumidor tardío recibe

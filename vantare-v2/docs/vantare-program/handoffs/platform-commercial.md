@@ -2,8 +2,9 @@
 
 ## ISA-900 — preferencias y prueba de notificaciones
 
-- Rama aislada `vantareapp/isa-900-reparar-preferencias-notificaciones`, basada
-  en `origin/nightly@1c45cc827e47976ed41e1f28463529c04579e806`.
+- Rama aislada `vantareapp/isa-900-reparar-preferencias-notificaciones`, creada
+  desde `nightly@1c45cc82` y rebasada para integración sobre
+  `origin/nightly@73b8619114bf6309dced5e04f257762c83b428a5`.
 - Command Orbit ya aplica `updatesMuted` al pill del actualizador: silenciarlo
   lo oculta sin sustituir ni inventar el estado real del updater.
 - Ajustes → Aplicación recupera la prueba nativa de Windows y expone envío,
@@ -11,14 +12,16 @@
   Windows haya mostrado visualmente el toast.
 - Decisión de producto: Spotter sigue siendo overlay/audio de carrera y queda
   fuera de los canales de notificación, del centro y del historial.
-- Código en `17b690fd`; TDD focal 35/35, suite frontend 3.175/3.175,
+- Código rebasado en `fc5b33e9`; TDD focal 35/35, suite frontend 3.186/3.186,
   typecheck, build, lint focal y contratos de roadmap 23/23 + 21/21 en verde.
   El lint global conserva un error ajeno en
   `car-damage-numbers-view-model-v2.ts:93`. El PR draft #907 es la única ruta
-  hacia `nightly`; sus tres checks remotos pasaron en `f22643bc`, incluido el
-  build Wails de Windows. Queda la comprobación visual del toast en una app
-  Wails abierta. No hay integración en `nightly`, promoción, release ni
-  anuncio.
+  hacia `nightly`. La revisión adversarial autorizada para integración concluye
+  APPROVE con P0=0, P1=0 y P2=0; como riesgo residual quedan el smoke visual del
+  toast en Wails y que la regresión del mute prueba la política pura, no una
+  shell completa. Los checks remotos anteriores quedaron obsoletos al rebase y
+  deben repetirse sobre el nuevo HEAD antes del merge. No hay aún integración
+  en `nightly`, promoción posterior, release ni anuncio.
 
 ## ISA-843 — columnas de Próximas alineadas
 

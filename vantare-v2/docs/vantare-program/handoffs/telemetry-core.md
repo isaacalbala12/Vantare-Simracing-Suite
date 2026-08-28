@@ -25,10 +25,15 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   visibilidad con un contexto mínimo derivado de V2. Frame ausente, inválido,
   stale, source error y rollback diagnóstico son estados visibles sin fallback
   visual V1. El test de 60 frames conserva 2 renders de Standings en nivel 5 y
-  60 en nivel 1. Typecheck, lint y tests focalizados pasan; quedan la suite
-  global, los gates Go/Wails y la prueba Wails/CDP real con LMU antes de cerrar
-  la issue. Roadmap: `milestones:telemetry-live`. Sin PR, merge, promoción ni
-  release.
+  60 en nivel 1. La suite completa (424 ficheros, 3.227 tests), typecheck,
+  lint, build frontend, pruebas Go de telemetry/app, contrato generado,
+  roadmap y `wails3 task build` pasan. La prueba Wails/CDP real con LMU no se
+  lanzó: nueve corridas consecutivas `vantare-baseline*` ocuparon la ventana
+  completa de espera de 60 minutos y el protocolo prohibía solaparlas. La
+  sonda y el registro exacto quedan en
+  `docs/telemetry-core/evidence/isa-893/wails-runtime-pending.md`; la issue no
+  debe pasar a review hasta obtener la captura real. Roadmap:
+  `milestones:telemetry-live`. Sin PR, merge, promoción ni release.
 
 - 2026-08-28, rebase y revisión adversarial ISA-884: los siete commits del PR
   #888 quedaron lineales sobre `origin/nightly@c59a7d64`. La revisión encontró

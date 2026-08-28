@@ -1,4 +1,5 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { StrictMode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ProfileDocumentV3 } from "./core/profile-document";
 import { CompositeApp } from "./CompositeApp";
@@ -7,6 +8,7 @@ import {
   OVERLAY_PULL_REQUEST_ROUTE,
 } from "../telemetry-transport/overlay-wails-pull";
 import goldenRaw from "../../../internal/telemetry/projection/overlay/testdata/overlay_v1.golden.json?raw";
+import goldenV2Raw from "../../../internal/telemetry/projection/overlayv2/testdata/overlay_v2_1.golden.json?raw";
 
 type Handler = (event: { data: unknown }) => void;
 
@@ -20,6 +22,7 @@ const originalResizeObserver = globalThis.ResizeObserver;
 let desktopOutput = { width: 1920, height: 1080 };
 let pullDelivery = 0;
 let pullRequests: Array<{sessionId: string; ack: number}> = [];
+let pullClosedSessions = new Set<string>();
 let resolvePull: ((response: Response) => void) | undefined;
 
 function installResizeObserver(): void {
@@ -145,6 +148,7 @@ describe("CompositeApp", () => {
     desktopOutput = { width: 1920, height: 1080 };
     pullDelivery = 0;
     pullRequests = [];
+    pullClosedSessions = new Set();
     resolvePull = undefined;
     vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       const route = typeof input === "string" ? input : input.toString();
@@ -153,6 +157,10 @@ describe("CompositeApp", () => {
         return new Promise<Response>((resolve) => {
           resolvePull = resolve;
         });
+      }
+      if (route.endsWith("/close")) {
+        const close = JSON.parse(String(init?.body)) as { sessionId: string };
+        pullClosedSessions.add(close.sessionId);
       }
       return {ok: true, status: 204} as Response;
     }));
@@ -164,6 +172,42 @@ describe("CompositeApp", () => {
     vi.useRealTimers();
     vi.unstubAllGlobals();
     globalThis.ResizeObserver = originalResizeObserver;
+    delete window.__vantareOverlayV2Features;
+  });
+
+  it("crea una generacion limpia y acepta frames V2 tras el doble setup de StrictMode", async () => {
+    window.__vantareOverlayV2Features = ["relative"];
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    render(
+      <StrictMode>
+        <CompositeApp />
+      </StrictMode>,
+    );
+    dispatch("overlay:profile-v3-loaded", buildProfilePayload(buildRelativeDocument()));
+    await dispatchTelemetry([
+      { name: "telemetry:overlay:status", data: {
+        product: "overlay",
+        statusRevision: 1,
+        capturedAt: "2026-07-28T09:00:00Z",
+        payload: { state: "live", reconnectAttempt: 0 },
+      } },
+      { name: "telemetry:overlay:projection", data: canonicalEnvelope() },
+      { name: "telemetry:overlay-v2:snapshot", data: JSON.parse(goldenV2Raw) },
+    ]);
+    tick(100);
+
+    expect(screen.getAllByTestId("runtime-widget-frame")).toHaveLength(1);
+    expect(consoleError.mock.calls.flat().join(" ")).not.toContain("invalid-contract:disposed");
+    expect(window.__vantareOverlayV2Diagnostics?.()).toMatchObject({
+      overlay_v2_parse_duration: { count: 1 },
+    });
+    const activeSessions = new Set(
+      pullRequests
+        .map((request) => request.sessionId)
+        .filter((sessionId) => !pullClosedSessions.has(sessionId)),
+    );
+    expect(activeSessions.size).toBe(1);
   });
 
   it("subscribes once to the profile and canonical Overlay transport", () => {

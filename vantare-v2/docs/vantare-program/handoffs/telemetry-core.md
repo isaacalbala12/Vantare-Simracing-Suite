@@ -27,6 +27,28 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   `car-damage-numbers-view-model-v2.ts`, también idéntico a Nightly; por ello el
   PR permanece draft y no se marca ready. Sin merge, promoción ni release.
 
+- 2026-08-28, ISA-896 renueva por efecto la generación V2 completa de Desktop
+  y OBS, y la pareja coordinador/store derivado de Studio. El segundo setup de
+  StrictMode crea objetos nuevos; cada cleanup detiene, desuscribe y dispone
+  solo los recursos de su propia generación. Las regresiones con un frame V2
+  real cubren repintado, ausencia de `invalid-contract:disposed` y una sola
+  sesión pull/SSE activa tras el remount. La build propia
+  `bin/vantare-isa896.exe`, abierta con CDP en `9240`, pintó cuatro
+  `runtime-widget-frame`; tras `overlay:stop` y `overlay:start-active` creó una
+  ventana WebView2 nueva y volvió a pintar cuatro, sin el error disposed. Esta
+  prueba no afirma telemetría LMU live: LMU no se tocó y los widgets mostraron
+  el perfil activo sin datos de sesión. Evidencia en
+  `docs/telemetry-core/evidence/isa-896/lifecycle-remount.md`. La review
+  independiente aprobó funcionalmente cinco ciclos Wails reales: sin fuga,
+  generación vieja ni pérdida de eventos iniciales; dejó el rebase como único
+  bloqueo operativo. La rama
+  `vantareapp/isa-896-overlay-v2-remount-lifecycle` quedó rebasada de nuevo
+  sobre la base viva `origin/nightly@4aa8ac7f`, con HEAD funcional
+  `2cbe66da`. El mock Wails de
+  Studio retira ahora cada callback y la regresión exige un listener activo por
+  evento y un scheduler activo después del doble setup. PR #937 está ready con
+  auto-merge activo y pendiente de sus gates; sin merge, promoción ni release
+  en este corte.
 - 2026-08-28, ISA-891 completa el lifecycle de Overlay V2 y lleva Studio al
   mismo transporte dirigido que Desktop. `6bd72d37` publica y retiene un único
   status V2 aunque no haya frames ni consumidores; un consumidor tardío recibe

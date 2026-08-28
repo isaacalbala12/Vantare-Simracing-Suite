@@ -1,5 +1,5 @@
 import { resetStudioStageGeometryCache } from './canvas/stage-geometry-cache';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { StrictMode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Events } from '@wailsio/runtime';
@@ -9,16 +9,23 @@ import { createTelemetryRateCoordinator } from '../../overlay/core/telemetry-rat
 import { StudioRoute } from './StudioRoute';
 import type { StudioProfileClient } from './state/studio-profile-client';
 import * as overlayV2StoreModule from '../../telemetry-transport/overlay-frame-v2-store';
+import goldenRaw from '../../../../internal/telemetry/projection/overlay/testdata/overlay_v1.golden.json?raw';
+import goldenV2Raw from '../../../../internal/telemetry/projection/overlayv2/testdata/overlay_v2_1.golden.json?raw';
 
-const listeners = new Map<string, ((event: { data: unknown }) => void)[]>();
+type WailsListener = (event: { data: unknown }) => void;
+
+const listeners = new Map<string, Set<WailsListener>>();
 
 vi.mock('@wailsio/runtime', () => ({
   Events: {
     On: vi.fn((name: string, cb: (event: { data: unknown }) => void) => {
-      const existing = listeners.get(name) ?? [];
-      existing.push(cb);
+      const existing = listeners.get(name) ?? new Set<WailsListener>();
+      existing.add(cb);
       listeners.set(name, existing);
-      return vi.fn();
+      return vi.fn(() => {
+        existing.delete(cb);
+        if (existing.size === 0) listeners.delete(name);
+      });
     }),
     Emit: vi.fn(),
   },
@@ -53,6 +60,24 @@ function buildDocument(id = 'default-racing'): ProfileDocumentV3 {
         widgets: [deltaDefinition.createDefault('delta-main')],
       },
     },
+  };
+}
+
+function canonicalEnvelope() {
+  const snapshot = JSON.parse(goldenRaw) as Record<string, unknown>;
+  const payload = { ...snapshot };
+  for (const key of ['canonicalVersion', 'projectionVersion', 'epoch', 'sequence', 'capturedAt']) {
+    delete payload[key];
+  }
+  return {
+    product: 'overlay',
+    projectionVersion: snapshot.projectionVersion,
+    epoch: snapshot.epoch,
+    sequence: snapshot.sequence,
+    kind: 'full',
+    capturedAt: snapshot.capturedAt,
+    statusRevision: 1,
+    payload,
   };
 }
 
@@ -242,6 +267,94 @@ describe('StudioRoute', () => {
     view.unmount();
     expect(fetchMock.mock.calls.filter(([route]) => String(route).endsWith('/pull'))).toHaveLength(1);
     expect(fetchMock.mock.calls.filter(([route]) => String(route).endsWith('/close'))).toHaveLength(1);
+  });
+
+  it('acepta V2 y conserva histories derivadas tras el doble setup de StrictMode', async () => {
+    window.__vantareOverlayV2Features = ['delta'];
+    let resolvePull: ((response: Response) => void) | undefined;
+    const requests: Array<{ sessionId: string; ack: number }> = [];
+    vi.stubGlobal('fetch', vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).endsWith('/close')) {
+        return Promise.resolve({ ok: true, status: 204 } as Response);
+      }
+      requests.push(JSON.parse(String(init?.body)) as { sessionId: string; ack: number });
+      return new Promise<Response>((resolve) => {
+        resolvePull = resolve;
+      });
+    }));
+    let activeSchedulers = 0;
+    let runScheduledFrame: (() => void) | null = null;
+    const coordinator = createTelemetryRateCoordinator({
+      createScheduler: () => ({
+        start: (onFrame) => {
+          activeSchedulers += 1;
+          runScheduledFrame = onFrame;
+        },
+        stop: () => {
+          activeSchedulers -= 1;
+          runScheduledFrame = null;
+        },
+      }),
+    });
+    const stores: overlayV2StoreModule.OverlayFrameV2Store[] = [];
+    const createStore = overlayV2StoreModule.createOverlayFrameV2Store;
+    vi.spyOn(overlayV2StoreModule, 'createOverlayFrameV2Store').mockImplementation(() => {
+      const store = createStore();
+      stores.push(store);
+      return store;
+    });
+
+    render(
+      <StrictMode>
+        <StudioRoute client={createMockClient()} coordinator={coordinator} liveAvailable />
+      </StrictMode>,
+    );
+    bootProfiles();
+    await screen.findByTestId('overlay-studio-v3');
+    expect(listeners.size).toBeGreaterThan(0);
+    for (const [event, activeListeners] of listeners) {
+      expect(activeListeners.size, `listeners activos para ${event}`).toBe(1);
+    }
+    expect(activeSchedulers).toBe(1);
+    fireEvent.click(screen.getByRole('button', { name: 'Live' }));
+    const request = requests.at(-1);
+    expect(request).toBeDefined();
+    await act(async () => {
+      resolvePull?.({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          sessionId: request?.sessionId,
+          delivery: 1,
+          events: [
+            { name: 'telemetry:overlay:status', data: {
+              product: 'overlay', statusRevision: 1,
+              capturedAt: '2026-07-28T09:00:00Z',
+              payload: { state: 'live', reconnectAttempt: 0 },
+            } },
+            { name: 'telemetry:overlay:projection', data: canonicalEnvelope() },
+            { name: 'telemetry:overlay-v2:snapshot', data: JSON.parse(goldenV2Raw) },
+          ],
+        }),
+      } as Response);
+      await Promise.resolve();
+    });
+    const repaint = vi.fn();
+    const unsubscribe = coordinator.subscribe(undefined, repaint);
+    coordinator.publish({
+      status: 'ready',
+      capturedAt: 1,
+      session: { type: 'race', key: 'strict-mode', epoch: 1 },
+      player: { inPit: false, throttle: 0.5, brake: 0.25, clutch: 0 },
+      scoring: [],
+    });
+    act(() => runScheduledFrame?.());
+
+    expect(stores.some((store) => store.getSnapshot().revision === 1)).toBe(true);
+    expect(coordinator.getSnapshot().derived?.inputHistory.length).toBeGreaterThan(0);
+    expect(repaint).toHaveBeenCalled();
+    expect(screen.getByTestId('overlay-studio-v3')).toBeTruthy();
+    unsubscribe();
   });
 
   it('keeps the editor mounted and inert while visiting another Studio section', async () => {

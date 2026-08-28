@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { Events } from "@wailsio/runtime";
 import type { CalendarReminderPayload } from "../calendar/calendar-types";
 import { parseProfileDocumentV3, type ProfileDocumentV3 } from "./core/profile-document";
@@ -26,6 +26,12 @@ type ProfileV3LoadedPayload = {
   windowMode?: string;
 };
 
+type CompositeGeneration = Readonly<{
+  coordinator: ReturnType<typeof createTelemetryRateCoordinator>;
+  overlayV2Store: ReturnType<typeof createOverlayFrameV2Store>;
+  engineerPresentations: ReturnType<typeof createEngineerPresentationStore>;
+}>;
+
 export function CompositeApp() {
   const [document, setDocument] = useState<ProfileDocumentV3 | null>(null);
   const [revision, setRevision] = useState("");
@@ -33,39 +39,9 @@ export function CompositeApp() {
   const [editMode, setEditMode] = useState(false);
   const [reminder, setReminder] = useState<CalendarReminderPayload | null>(null);
 
-  const coordinator = useMemo(() => createTelemetryRateCoordinator(), []);
-  const overlayV2Store = useMemo(() => createOverlayFrameV2Store(), []);
-  const overlayV2Shadow = useMemo(() => createOverlayV2ShadowRuntime(), []);
+  const [generation, setGeneration] = useState<CompositeGeneration | null>(null);
   const [overlayV2Features, setOverlayV2Features] = useState<readonly OverlayV2Feature[]>(() =>
     readDiagnosticOverlayV2Features(),
-  );
-  const overlayV2State = useSyncExternalStore(
-    overlayV2Store.subscribe,
-    overlayV2Store.getSnapshot,
-    overlayV2Store.getSnapshot,
-  );
-  const engineerPresentations = useMemo(() => createEngineerPresentationStore(), []);
-  const overlayPull = useMemo(() => createBrowserOverlayWailsPullClient({
-    onError: (error) => console.error("overlay telemetry pull failed", error),
-  }), []);
-  const engineerAdapter = useMemo(() => createWailsEngineerPresentationAdapter({
-    store: engineerPresentations,
-    subscribe: (event, handler) => {
-      const unsubscribe = Events.On(event, (payload: { data: unknown }) => handler(payload.data));
-      return () => unsubscribe?.();
-    },
-    requestSnapshot: () => Events.Emit("engineer:stream:get"),
-  }), [engineerPresentations]);
-  const adapter = useMemo(
-    () => {
-      return createWailsProjectionTelemetryAdapter({
-        coordinator,
-        runtime: "desktop",
-        subscribe: overlayPull.source.subscribe,
-        onMappedSnapshot: overlayV2Shadow.acceptLegacy,
-      });
-    },
-    [coordinator, overlayPull, overlayV2Shadow],
   );
 
   useEffect(() => applyOverlayDocumentMode(), []);
@@ -81,6 +57,28 @@ export function CompositeApp() {
   }, []);
 
   useEffect(() => {
+    const coordinator = createTelemetryRateCoordinator();
+    const overlayV2Store = createOverlayFrameV2Store();
+    const overlayV2Shadow = createOverlayV2ShadowRuntime();
+    const engineerPresentations = createEngineerPresentationStore();
+    const overlayPull = createBrowserOverlayWailsPullClient({
+      onError: (error) => console.error("overlay telemetry pull failed", error),
+    });
+    const engineerAdapter = createWailsEngineerPresentationAdapter({
+      store: engineerPresentations,
+      subscribe: (event, handler) => {
+        const unsubscribe = Events.On(event, (payload: { data: unknown }) => handler(payload.data));
+        return () => unsubscribe?.();
+      },
+      requestSnapshot: () => Events.Emit("engineer:stream:get"),
+    });
+    const adapter = createWailsProjectionTelemetryAdapter({
+      coordinator,
+      runtime: "desktop",
+      subscribe: overlayPull.source.subscribe,
+      onMappedSnapshot: overlayV2Shadow.acceptLegacy,
+    });
+    overlayV2Store.reset();
     const unsubscribeOverlayV2Store = overlayV2Store.subscribe(() => {
       const state = overlayV2Store.getSnapshot();
       if (state.frame && state.source) {
@@ -102,6 +100,10 @@ export function CompositeApp() {
     adapter.start();
     engineerAdapter.start();
     overlayPull.start();
+    // Este efecto es la fabrica y el owner de la generacion; el render que la
+    // consume no puede montarse antes de que sus recursos externos existan.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setGeneration({ coordinator, overlayV2Store, engineerPresentations });
     return () => {
       overlayPull.stop();
       delete diagnosticWindow.__vantareOverlayV2Diagnostics;
@@ -113,7 +115,7 @@ export function CompositeApp() {
       engineerPresentations.dispose();
       coordinator.dispose();
     };
-  }, [adapter, coordinator, engineerAdapter, engineerPresentations, overlayPull, overlayV2Shadow, overlayV2Store]);
+  }, []);
 
   useEffect(() => {
     const unsub = Events.On("overlay:profile-v3-loaded", (event: { data: unknown }) => {
@@ -166,9 +168,51 @@ export function CompositeApp() {
   // WebView en arrancar y pedir el perfil, y desaparece de golpe cuando llega.
   // Ese era el "salto" al abrir un overlay. El vacio es invisible: los widgets
   // simplemente aparecen cuando hay algo que mostrar.
-  if (!document) {
+  if (!document || !generation) {
     return null;
   }
+
+  return (
+    <CompositeGenerationView
+      generation={generation}
+      document={document}
+      revision={revision}
+      layoutOrigin={layoutOrigin}
+      editMode={editMode}
+      reminder={reminder}
+      overlayV2Features={overlayV2Features}
+      onCloseReminder={() => setReminder(null)}
+    />
+  );
+}
+
+type CompositeGenerationViewProps = Readonly<{
+  generation: CompositeGeneration;
+  document: ProfileDocumentV3;
+  revision: string;
+  layoutOrigin: { x: number; y: number };
+  editMode: boolean;
+  reminder: CalendarReminderPayload | null;
+  overlayV2Features: readonly OverlayV2Feature[];
+  onCloseReminder(): void;
+}>;
+
+function CompositeGenerationView(props: CompositeGenerationViewProps) {
+  const {
+    generation,
+    document,
+    revision,
+    layoutOrigin,
+    editMode,
+    reminder,
+    overlayV2Features,
+    onCloseReminder,
+  } = props;
+  const overlayV2State = useSyncExternalStore(
+    generation.overlayV2Store.subscribe,
+    generation.overlayV2Store.getSnapshot,
+    generation.overlayV2Store.getSnapshot,
+  );
 
   return (
     <div className="relative w-full h-full overflow-hidden bg-transparent">
@@ -177,7 +221,7 @@ export function CompositeApp() {
           document={document}
           revision={revision}
           layoutOrigin={layoutOrigin}
-          telemetry={coordinator}
+          telemetry={generation.coordinator}
         />
       ) : (
         <DesktopOverlayRuntime
@@ -185,8 +229,8 @@ export function CompositeApp() {
           document={document}
           revision={revision}
           layoutOrigin={layoutOrigin}
-          telemetry={coordinator}
-          engineerPresentations={engineerPresentations}
+          telemetry={generation.coordinator}
+          engineerPresentations={generation.engineerPresentations}
           overlayV2Frame={overlayV2State.frame}
           overlayV2Source={overlayV2State.source}
           overlayV2Features={overlayV2Features}
@@ -195,7 +239,7 @@ export function CompositeApp() {
       {reminder && (
         <OverlayCalendarReminderBanner
           reminder={reminder}
-          onClose={() => setReminder(null)}
+          onClose={onCloseReminder}
           className="absolute top-4 right-4 z-50"
         />
       )}

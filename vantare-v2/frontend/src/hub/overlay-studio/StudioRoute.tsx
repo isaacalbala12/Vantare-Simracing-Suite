@@ -334,27 +334,71 @@ function StudioRouteNavigationBridge(props: StudioRouteNavigationBridgeProps): n
   return null;
 }
 
+type StudioTelemetryGeneration = Readonly<{
+  coordinator: ReturnType<typeof createTelemetryRateCoordinator>;
+  overlayV2Store: ReturnType<typeof createOverlayFrameV2Store>;
+  overlayPull: ReturnType<typeof createBrowserOverlayWailsPullClient>;
+  telemetryAdapter: TelemetryAdapter | null;
+}>;
+
 export const StudioRoute = memo(function StudioRoute(props: StudioRouteProps): React.ReactElement {
+  const { coordinator: coordinatorProp, telemetryAdapter: telemetryAdapterProp = null } = props;
+  const [generation, setGeneration] = useState<StudioTelemetryGeneration | null>(null);
+
+  useEffect(() => {
+    const coordinator = coordinatorProp ?? createTelemetryRateCoordinator();
+    const overlayV2Store = createOverlayFrameV2Store();
+    const overlayPull = createBrowserOverlayWailsPullClient({
+      onError: (error) => console.error('studio overlay telemetry pull failed', error),
+    });
+    const legacy = createWailsProjectionTelemetryAdapter({
+      coordinator,
+      runtime: 'studio',
+      subscribe: overlayPull.source.subscribe,
+    });
+    const telemetryAdapter = telemetryAdapterProp ?? createStudioOverlayTelemetryAdapter({
+      legacy,
+      pull: overlayPull,
+      overlayV2Store,
+      onOverlayV2Error: (error) => console.error('studio overlay-v2 ingest failed', error),
+    });
+    overlayV2Store.reset();
+    // Este efecto es la fabrica y el owner de la generacion; Studio no debe
+    // registrar listeners ni cargar perfiles contra recursos ya dispuestos.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setGeneration({ coordinator, overlayV2Store, overlayPull, telemetryAdapter });
+
+    return () => {
+      if (telemetryAdapterProp === null) telemetryAdapter.stop();
+      overlayPull.stop();
+      overlayV2Store.dispose();
+      if (coordinatorProp === undefined) coordinator.dispose();
+    };
+  }, [coordinatorProp, telemetryAdapterProp]);
+
+  return generation ? <StudioRouteGeneration {...props} generation={generation} /> : <></>;
+});
+
+type StudioRouteGenerationProps = StudioRouteProps & Readonly<{
+  generation: StudioTelemetryGeneration;
+}>;
+
+function StudioRouteGeneration(props: StudioRouteGenerationProps): React.ReactElement {
   const {
     client: clientProp,
-    telemetryAdapter: telemetryAdapterProp = null,
-    coordinator: coordinatorProp,
     liveAvailable: liveAvailableProp,
     pendingRecommendedAutoStart = null,
     onAutoStartHandled,
     target,
+    generation,
   } = props;
+  const { coordinator, overlayV2Store, telemetryAdapter } = generation;
   const { t } = useI18n();
 
   const client = useMemo(
     () => clientProp ?? createStudioProfileClient(createWailsStudioEventTransport()),
     [clientProp],
   );
-  const coordinator = useMemo(
-    () => coordinatorProp ?? createTelemetryRateCoordinator(),
-    [coordinatorProp],
-  );
-  const overlayV2Store = useMemo(() => createOverlayFrameV2Store(), []);
   const [overlayV2Features, setOverlayV2Features] = useState(() =>
     readDiagnosticOverlayV2Features(),
   );
@@ -364,25 +408,6 @@ export const StudioRoute = memo(function StudioRoute(props: StudioRouteProps): R
     overlayV2Enabled ? overlayV2Store.getSnapshot : getEmptyOverlayV2State,
     overlayV2Enabled ? overlayV2Store.getSnapshot : getEmptyOverlayV2State,
   );
-  const overlayPull = useMemo(() => createBrowserOverlayWailsPullClient({
-    onError: (error) => console.error('studio overlay telemetry pull failed', error),
-  }), []);
-  const telemetryAdapter = useMemo(() => {
-    if (telemetryAdapterProp !== null) {
-      return telemetryAdapterProp;
-    }
-    const legacy = createWailsProjectionTelemetryAdapter({
-      coordinator,
-      runtime: 'studio',
-      subscribe: overlayPull.source.subscribe,
-    });
-    return createStudioOverlayTelemetryAdapter({
-      legacy,
-      pull: overlayPull,
-      overlayV2Store,
-      onOverlayV2Error: (error) => console.error('studio overlay-v2 ingest failed', error),
-    });
-  }, [coordinator, overlayPull, overlayV2Store, telemetryAdapterProp]);
   const runtime = useMemo<WidgetRuntimeInput>(() => ({
     overlayV2Features,
     overlayV2Frame: overlayV2State.frame,
@@ -520,13 +545,6 @@ export const StudioRoute = memo(function StudioRoute(props: StudioRouteProps): R
     setEditorFile(created.file);
     setMode('editor');
   }, [profiles, profilesLoaded]);
-
-  useEffect(() => {
-    return () => {
-      telemetryAdapter?.stop();
-      coordinator.dispose();
-    };
-  }, [coordinator, telemetryAdapter]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -887,4 +905,4 @@ export const StudioRoute = memo(function StudioRoute(props: StudioRouteProps): R
       {profileDialogs}
     </>
   );
-});
+}

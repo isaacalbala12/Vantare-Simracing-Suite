@@ -83,6 +83,34 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   El tramo se detuvo por decisión del usuario y no cumple el gate de cinco
   sesiones de 20 minutos de ISA-894.
 
+- 2026-08-28, ISA-912 arrancó desde `origin/nightly@73b86191` y la rama quedó
+  rebasada sobre `origin/nightly@42f2e368` para atribuir y reducir el coste del
+  host Go y del renderer sin cambiar la autoridad de
+  telemetría ni la frontera `WidgetVisualHost`. La auditoría read-only de
+  Opus 5 (`claude-opus-5`, thread
+  `b995e4c1-d11c-474e-8f10-8771a0c63ea1`) y la revisión adversarial de Fable 5
+  (`claude-fable-5`, thread `43c006ac-6b4a-495a-9583-93e9e8c5cc33`) quedaron
+  reconciliadas contra el código. Hechos: Shared Memory 60 Hz y REST 4 Hz
+  atraviesan el mismo fan-out; el shadow repite reducer/coordinator/derive por
+  lote; Strategy se proyecta aunque su transporte no exista; Overlay v1 se
+  proyecta, serializa y retiene sin comprobar consumidor; el pull vuelve a
+  recorrer/copiar los payloads; Desktop y OBS suscriben su raíz al store v2
+  con flags vacías; el coordinador visual ignora `updateHz`; histories y
+  settings visuales se reconstruyen en cada paint. No está atribuido todavía
+  el peso relativo de cada fase ni si los picos proceden de GC, JSON, commits
+  React o paint. El primer borrador de Opus fue rechazado al revisar el diff:
+  podía retornar de un segundo `stop` antes de terminar el flush, su test no
+  enfrentaba timer y shutdown y el benchmark comparaba tamaños distintos. El
+  commit corregido se integró como `87019bc0`: hook `runtime/pprof` a fichero,
+  opt-in, máximo dos minutos, sin listener y `noop` bajo `production`, más un
+  benchmark pull comparable `dual`/`v1-only`/`v2-only`. El orquestador verificó
+  el cierre concurrente con `-race`, el guard de producción, el benchmark y
+  `go test ./...`. El capturador CDP de renderer y este expediente quedan
+  incluidos en la rama y validados de forma estática; su cleanup detiene la
+  sonda rAF incluso si CDP falla a mitad de captura. No se cambió semántica,
+  cadencia, V1/V2, shadow ni apariencia; falta ejecutar el perfil contra
+  Wails/LMU real. No hay push, PR ni promoción de ISA-912.
+
 - 2026-08-27, ISA-889 corrige el bloqueo permanente del Overlay despues de un
   reconnect LMU. El transporte acotado de ISA-879 puede entregar como primer
   snapshot visible de un epoch nuevo una secuencia mayor que 1; el store

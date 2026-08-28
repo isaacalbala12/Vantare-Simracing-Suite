@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
 	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -1620,29 +1622,48 @@ func main() {
 		})
 	}, func() int { return int(settingsSvc.EffectivePerformancePolicy().Level) }))
 
-	// Create hub window only (normal framed window).
-	hubW := wailsApp.Window.NewWithOptions(application.WebviewWindowOptions{
-		Title:          "Vantare Hub",
-		Width:          1280,
-		Height:         800,
-		Frameless:      false,
-		BackgroundType: application.BackgroundTypeSolid,
-		URL:            "/#/hub",
-		MinWidth:       900,
-		MinHeight:      600,
+	hubProbe := newHubSuspendEventProbe(wailsApp, emitter)
+	var hubLifecycle *app.HubLifecycle
+	newHubWindow := func() app.HubWindow {
+		window := &wailsHubWindow{w: wailsApp.Window.NewWithOptions(hubWindowOptions())}
+		window.w.RegisterHook(events.Common.WindowClosing, func(_ *application.WindowEvent) {
+			if window.intentionalClose.Load() {
+				return
+			}
+			go wailsApp.Quit()
+		})
+		window.w.OnWindowEvent(events.Common.WindowMinimise, func(_ *application.WindowEvent) {
+			go func() {
+				ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+				defer cancel()
+				hubLifecycle.HandleMinimise(ctx)
+			}()
+		})
+		return window
+	}
+	hubLifecycle = app.NewHubLifecycle(newHubWindow, settingsSvc.EffectiveLevel, hubProbe.Probe, func() {
+		log.Printf("hub lifecycle: kept alive because Studio is dirty or hub:can-suspend timed out")
 	})
-	hubW.Show()
+	hubWindow, openedIn := hubLifecycle.Open()
+	log.Printf("hub lifecycle: opened in %s", openedIn)
 	// Show first, then minimise: on Windows a window has to exist on screen
 	// before it can be minimised. Launched at sign-in with this flag, Vantare
 	// stays out of the way until the user asks for it.
 	if startup.WantsMinimised(os.Args) {
-		hubW.Minimise()
+		hubWindow.Minimise()
 	}
 
-	requestQuit := func(_ *application.WindowEvent) {
-		go wailsApp.Quit()
+	openHub := func() {
+		_, duration := hubLifecycle.Open()
+		log.Printf("hub lifecycle: reopened in %s", duration)
 	}
-	hubW.RegisterHook(events.Common.WindowClosing, requestQuit)
+	wailsApp.Event.On("hub:open", func(*application.CustomEvent) { openHub() })
+	trayMenu := application.NewMenu()
+	trayMenu.Add("Abrir Vantare").OnClick(func(*application.Context) { openHub() })
+	trayMenu.AddSeparator()
+	trayMenu.Add("Salir").OnClick(func(*application.Context) { go wailsApp.Quit() })
+	tray := wailsApp.SystemTray.New().SetMenu(trayMenu).OnClick(openHub)
+	tray.SetTooltip("Vantare")
 
 	// Desktop notifications. Wails talks to the platform -- Windows toasts --
 	// which is the only route that works: the browser Notification API is not
@@ -2165,7 +2186,7 @@ func main() {
 		func() bool { return settingsSvc.Snapshot().Notifications.SystemEnabled },
 		// A toast is for what you are not watching. Minimised is the honest
 		// signal the window layer can give us.
-		func() bool { return hubW.IsMinimised() },
+		func() bool { return hubLifecycle.IsMinimised() },
 	)
 
 	// Calendar service for the local LMU race calendar (CALENDAR-02).
@@ -3384,6 +3405,103 @@ func resolveLicensePublicKeys(embedded, developmentOverride string) string {
 		return embedded
 	}
 	return developmentOverride
+}
+
+type hubSuspendEventProbe struct {
+	emitter app.EventEmitter
+	mu      sync.Mutex
+	pending map[string]chan bool
+}
+
+func newHubSuspendEventProbe(wailsApp *application.App, emitter app.EventEmitter) *hubSuspendEventProbe {
+	probe := &hubSuspendEventProbe{emitter: emitter, pending: make(map[string]chan bool)}
+	if wailsApp != nil && wailsApp.Event != nil {
+		wailsApp.Event.On("hub:can-suspend:result", probe.handleResult)
+	}
+	return probe
+}
+
+func (p *hubSuspendEventProbe) Probe(ctx context.Context) bool {
+	if p == nil || p.emitter == nil {
+		return false
+	}
+	requestID := newHubSuspendRequestID()
+	result := make(chan bool, 1)
+	p.mu.Lock()
+	p.pending[requestID] = result
+	p.mu.Unlock()
+	defer func() {
+		p.mu.Lock()
+		delete(p.pending, requestID)
+		p.mu.Unlock()
+	}()
+	p.emitter.Emit("hub:can-suspend", map[string]any{"requestId": requestID})
+	select {
+	case canSuspend := <-result:
+		return canSuspend
+	case <-ctx.Done():
+		return false
+	}
+}
+
+func (p *hubSuspendEventProbe) handleResult(event *application.CustomEvent) {
+	var payload struct {
+		RequestID  string `json:"requestId"`
+		CanSuspend bool   `json:"canSuspend"`
+	}
+	if event == nil || event.Data == nil {
+		return
+	}
+	raw, err := json.Marshal(event.Data)
+	if err != nil || json.Unmarshal(raw, &payload) != nil || payload.RequestID == "" {
+		return
+	}
+	p.mu.Lock()
+	result := p.pending[payload.RequestID]
+	p.mu.Unlock()
+	if result != nil {
+		select {
+		case result <- payload.CanSuspend:
+		default:
+		}
+	}
+}
+
+func newHubSuspendRequestID() string {
+	var value [16]byte
+	if _, err := rand.Read(value[:]); err == nil {
+		return hex.EncodeToString(value[:])
+	}
+	return fmt.Sprintf("hub-%d", time.Now().UnixNano())
+}
+
+type wailsHubWindow struct {
+	w                *application.WebviewWindow
+	intentionalClose atomic.Bool
+}
+
+func (w *wailsHubWindow) Close() {
+	w.intentionalClose.Store(true)
+	w.w.Close()
+}
+func (w *wailsHubWindow) Hide()             { w.w.Hide() }
+func (w *wailsHubWindow) Show()             { w.w.Show() }
+func (w *wailsHubWindow) Focus()            { w.w.Focus() }
+func (w *wailsHubWindow) Minimise()         { w.w.Minimise() }
+func (w *wailsHubWindow) UnMinimise()       { w.w.UnMinimise() }
+func (w *wailsHubWindow) IsMinimised() bool { return w.w.IsMinimised() }
+
+func hubWindowOptions() application.WebviewWindowOptions {
+	return application.WebviewWindowOptions{
+		Title:          "Vantare Hub",
+		Width:          1280,
+		Height:         800,
+		Frameless:      false,
+		BackgroundType: application.BackgroundTypeSolid,
+		URL:            "/#/hub",
+		MinWidth:       900,
+		MinHeight:      600,
+	}
 }
 
 // wailsWindowHandle adapts *application.WebviewWindow to window.WindowHandle.

@@ -18,6 +18,7 @@ import {
 import { createOverlayV2FeaturesGeneration } from '../../overlay/telemetry-shadow/overlay-v2-features';
 import { createWailsRaceScheduleStore } from '../../overlay/core/race-schedule-store';
 import { ProfilesOrbitPage } from '../profiles-orbit/ProfilesOrbitPage';
+import { setHubStudioDirty } from '../hub-suspend-guard';
 import { RecommendedProfilesView } from '../overlays/RecommendedProfilesView';
 import { CommunityComingSoonView } from '../overlays/CommunityComingSoonView';
 import { ObsOverlaySetupView } from '../overlays/ObsOverlaySetupView';
@@ -859,6 +860,7 @@ function StudioRouteGeneration(props: StudioRouteGenerationProps): React.ReactEl
         <StudioRouteNavigationBridge
           onDirtyChange={(dirty) => {
             dirtyRef.current = dirty;
+            setHubStudioDirty(dirty);
           }}
           onBindActions={(actions) => {
             studioActionsRef.current = actions;

@@ -30,6 +30,7 @@ import {
   telemetrySourceStatusRequestEvent,
   type TelemetrySourceStatus,
 } from '../telemetry-transport/source-status';
+import { installHubSuspendGuard } from './hub-suspend-guard';
 
 // LicenseGate is the production blocker for the beta pública: no se permite
 // uso normal de la app sin sesión válida. Google OAuth es el acceso mínimo
@@ -129,6 +130,14 @@ function HubShell() {
     preferredChannel ?? buildChannel,
     licenseResult?.capabilities,
   );
+
+  useEffect(() => installHubSuspendGuard({
+    on: (event, handler) => {
+      const unsubscribe = Events.On(event, handler);
+      return () => unsubscribe?.();
+    },
+    emit: (event, payload) => Events.Emit(event, payload),
+  }), []);
 
   const visibleSection: Section =
     section === 'testing-center' && !testingCenterChannel ? 'dashboard' : section;

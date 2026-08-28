@@ -15,8 +15,15 @@ type EngineerBridge struct {
 	wailsApp *application.App
 	emitter  EventEmitter
 	service  *service.EngineerService
+	settings *SettingsService
 	mu       sync.Mutex
 	unsubs   []func()
+}
+
+// SetSettingsService enables persistence of accepted Engineer UI changes.
+// It must be installed before Start.
+func (b *EngineerBridge) SetSettingsService(settings *SettingsService) {
+	b.settings = settings
 }
 
 // NewEngineerBridge creates a new instance of EngineerBridge.
@@ -47,7 +54,9 @@ func (b *EngineerBridge) Start() {
 		}
 		if err := b.service.SetEnabled(enabled); err != nil {
 			log.Printf("EngineerBridge: error setting enabled: %v", err)
+			return
 		}
+		b.persistSettings()
 	}))
 
 	unsubs = append(unsubs, b.wailsApp.Event.On("engineer:spotter:set", func(event *application.CustomEvent) {
@@ -62,7 +71,9 @@ func (b *EngineerBridge) Start() {
 		}
 		if err := b.service.SetSpotterEnabled(enabled); err != nil {
 			log.Printf("EngineerBridge: error setting spotter enabled: %v", err)
+			return
 		}
+		b.persistSettings()
 	}))
 
 	unsubs = append(unsubs, b.wailsApp.Event.On("engineer:sensitivity:set", func(event *application.CustomEvent) {
@@ -73,7 +84,9 @@ func (b *EngineerBridge) Start() {
 		}
 		if err := b.service.SetSensitivity(sensitivity); err != nil {
 			log.Printf("EngineerBridge: error setting sensitivity: %v", err)
+			return
 		}
+		b.persistSettings()
 	}))
 
 	unsubs = append(unsubs, b.wailsApp.Event.On("engineer:output:set", func(event *application.CustomEvent) {
@@ -89,7 +102,9 @@ func (b *EngineerBridge) Start() {
 		}
 		if err := b.service.SetOutputMode(category, mode); err != nil {
 			log.Printf("EngineerBridge: error setting output mode: %v", err)
+			return
 		}
+		b.persistSettings()
 	}))
 
 	unsubs = append(unsubs, b.wailsApp.Event.On("engineer:subtitles:set", func(event *application.CustomEvent) {
@@ -99,11 +114,34 @@ func (b *EngineerBridge) Start() {
 			return
 		}
 		b.service.SetSubtitlesEnabled(enabled)
+		b.persistSettings()
 	}))
 
 	b.mu.Lock()
 	b.unsubs = unsubs
 	b.mu.Unlock()
+}
+
+func (b *EngineerBridge) persistSettings() {
+	if b.settings == nil {
+		return
+	}
+	status := b.service.Status()
+	outputModes := make(map[string]string, len(status.OutputModes))
+	for family, mode := range status.OutputModes {
+		outputModes[family] = string(mode)
+	}
+	if err := b.settings.SetEngineerSettings(&EngineerSettings{
+		Enabled: status.Enabled, SpotterEnabled: status.SpotterEnabled,
+		SubtitlesEnabled: status.SubtitlesEnabled, Sensitivity: status.Sensitivity,
+		OutputModes: outputModes,
+	}); err != nil {
+		log.Printf("EngineerBridge: error persisting settings: %v", err)
+		return
+	}
+	if b.emitter != nil {
+		b.emitter.Emit("settings", b.settings.Settings())
+	}
 }
 
 // Stop unregisters all event listeners.

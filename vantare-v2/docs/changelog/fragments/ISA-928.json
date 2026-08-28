@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-928",
+  "type": "fix",
+  "summary": "El Ingeniero guarda sus controles y avisa cuando el Spotter no dispone de telemetría espacial.",
+  "technicalNotes": [
+    "Módulos, subtítulos, sensibilidad y salidas por familia se restauran desde la configuración antes de arrancar el servicio.",
+    "La disponibilidad del Spotter se publica separada de la conexión general y usa únicamente motivos acotados.",
+    "El aviso vive dentro de Ingeniero Orbit y no entra en los canales globales de notificación."
+  ],
+  "testing": [
+    "Cambiar controles del Ingeniero, reiniciar Vantare y comprobar que conservan sus valores.",
+    "Con una sesión conectada sin geometría usable, comprobar el aviso Spotter no disponible.",
+    "Recuperar geometría o desactivar Spotter y comprobar que el aviso desaparece."
+  ],
+  "knownLimitations": [
+    "La prueba física Wails/LMU se ejecutará por los testers sobre el canal Nightly.",
+    "Voz, volumen y atenuación del juego siguen fuera del contrato productivo del Ingeniero."
+  ]
+}

@@ -16,6 +16,30 @@ var (
 	ErrDecisionObsolete    = errors.New("spotter decision is obsolete")
 )
 
+type UnavailableReason string
+
+const (
+	UnavailableContext    UnavailableReason = "context"
+	UnavailableCapability UnavailableReason = "capability"
+	UnavailablePlayer     UnavailableReason = "player"
+	UnavailableSpatial    UnavailableReason = "spatial"
+	UnavailablePitLane    UnavailableReason = "pit_lane"
+	UnavailableLowSpeed   UnavailableReason = "low_speed"
+)
+
+// ObservationNotReadyError carries only a bounded reason code. It never
+// exposes telemetry values, identities or raw simulator errors to the UI.
+type ObservationNotReadyError struct {
+	Reason UnavailableReason
+}
+
+func (err *ObservationNotReadyError) Error() string { return ErrObservationNotReady.Error() }
+func (err *ObservationNotReadyError) Unwrap() error { return ErrObservationNotReady }
+
+func observationNotReady(reason UnavailableReason) error {
+	return &ObservationNotReadyError{Reason: reason}
+}
+
 const messageTTL = 3 * time.Second
 
 type Clock interface{ NowMS() int64 }
@@ -72,13 +96,13 @@ func (producer *Producer) Evaluate(snapshot engineer.ObservationSnapshotV1) (rad
 	defer producer.mu.Unlock()
 	if !snapshot.Context.Complete() {
 		producer.policy.Reset()
-		return radio.RadioMessage{}, false, ErrObservationNotReady
+		return radio.RadioMessage{}, false, observationNotReady(UnavailableContext)
 	}
 	activeLeft, activeRight := producer.policy.ActiveSides()
-	left, right, ready := classify(snapshot, producer.sensitivity, activeLeft, activeRight)
-	if !ready {
+	left, right, unavailable := classify(snapshot, producer.sensitivity, activeLeft, activeRight)
+	if unavailable != "" {
 		producer.policy.Reset()
-		return radio.RadioMessage{}, false, ErrObservationNotReady
+		return radio.RadioMessage{}, false, observationNotReady(unavailable)
 	}
 	nowMS := producer.clock.NowMS()
 	intent, emit := producer.policy.Evaluate(nowMS, left, right)
@@ -105,24 +129,30 @@ func (producer *Producer) AcknowledgeStarted(message radio.RadioMessage, atMS in
 	return nil
 }
 
-func classify(snapshot engineer.ObservationSnapshotV1, sensitivity geometry.Sensitivity, activeLeft, activeRight bool) (bool, bool, bool) {
+func classify(snapshot engineer.ObservationSnapshotV1, sensitivity geometry.Sensitivity, activeLeft, activeRight bool) (bool, bool, UnavailableReason) {
 	if snapshot.Manifest.State(engineer.CapabilitySpatial) != engineer.CapabilitySupported {
-		return false, false, false
+		return false, false, UnavailableCapability
 	}
 	present, ok := usable(snapshot.PlayerPresent)
 	if !ok || !present {
-		return false, false, false
+		return false, false, UnavailablePlayer
 	}
 	position, positionOK := usable(snapshot.Player.WorldPosition)
 	orientation, orientationOK := usable(snapshot.Player.Orientation)
 	speed, speedOK := usable(snapshot.Player.Speed)
 	inPit, inPitOK := usable(snapshot.Player.InPit)
-	if !positionOK || !orientationOK || !speedOK || !inPitOK || inPit || speed < geometry.MinSpotterSpeedMPS {
-		return false, false, false
+	if !positionOK || !orientationOK || !speedOK || !inPitOK {
+		return false, false, UnavailableSpatial
+	}
+	if inPit {
+		return false, false, UnavailablePitLane
+	}
+	if speed < geometry.MinSpotterSpeedMPS {
+		return false, false, UnavailableLowSpeed
 	}
 	yaw, yawOK := geometry.YawFromForward(vector(orientation.Row2))
 	if !yawOK {
-		return false, false, false
+		return false, false, UnavailableSpatial
 	}
 	config := geometry.ConfigForSensitivity(sensitivity)
 	var left, right bool
@@ -151,7 +181,7 @@ func classify(snapshot engineer.ObservationSnapshotV1, sensitivity geometry.Sens
 			right = true
 		}
 	}
-	return left, right, true
+	return left, right, ""
 }
 
 func usable[T comparable](field engineer.Field[T]) (T, bool) {

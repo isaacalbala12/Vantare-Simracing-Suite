@@ -66,9 +66,18 @@ export type NotificationSettings = {
   systemEnabled?: boolean;
 };
 
+export type EngineerSettings = {
+  enabled: boolean;
+  spotterEnabled: boolean;
+  subtitlesEnabled: boolean;
+  sensitivity: "conservative" | "normal" | "aggressive";
+  outputModes: Record<string, "audio" | "visual" | "both" | "disabled">;
+};
+
 export type AppSettings = {
   cpuSampling: boolean;
   notifications?: NotificationSettings;
+  engineer?: EngineerSettings;
   hotkeys: Record<string, string>;
   activeOverlayProfileId?: string;
   betaWelcomeCompleted?: boolean;

@@ -21,6 +21,15 @@ CrewChief, Pit Manager y wake word.
 
 ## Estado
 
+ISA-928 completa las brechas de configuración de la UI de Orbit: módulos,
+subtítulos, sensibilidad y salidas por familia se guardan en `app-settings.json`
+y se restauran antes de arrancar Engineer. El estado público separa fuente
+conectada de disponibilidad Spotter; Orbit muestra «Spotter no disponible» con
+un motivo acotado solo si faltan capacidad, jugador o geometría, y lo retira al
+recuperarse o desactivarse. No entra en toasts, centro ni historial global. La
+validación física Wails/LMU pertenece a los testers cuando el corte llegue a
+Nightly; esta rama no autoriza ni ejecuta esa promoción.
+
 ISA-719 / F5 añade tras `-engineer-voice-input` un carril experimental
 aislado. La corrección de la review adversarial cierra payloads por intent,
 clave y forma de valor, revalida F24 tras cambios de hotkeys,
@@ -346,6 +355,7 @@ personalidades. Capabilities ausentes se documentan y no se simulan.
 
 | Estado | Issue |
 |---|---|
+| En revisión | ISA-928, persistencia de controles y aviso contextual de indisponibilidad; gate físico para testers de Nightly |
 | En revisión | ISA-719 / F5, carril experimental tras flag; backend WASAPI/Whisper y ENG-13 pendientes |
 | En revisión | ISA-718 / F4, PR draft #739, motor de cinco familias sobre radio.v1, rollback sin borrado hasta gate LMU humano |
 | En revisión | ISA-717 / F3, geometría única, productor Spotter P0 sobre radio.v1, cutover legacy reversible; gate LMU real pendiente de Isaac |
@@ -374,12 +384,20 @@ personalidades. Capabilities ausentes se documentan y no se simulan.
 
 ## Siguiente acción exacta
 
-Revisar de nuevo la corrección adversarial de ISA-718 y ejecutar el gate LMU descrito en
-`docs/engineer/families-radio-isa-718.md`, además del gate Spotter de ISA-717.
-Hasta esa evidencia no se borra el stack legacy ni se declara validación LMU,
-integración en `nightly` o promoción.
+Revisar ISA-928 y, tras autorización de integración, dejar que los testers de
+Nightly ejecuten el gate LMU descrito en `docs/engineer/families-radio-isa-718.md`
+y el gate Spotter de ISA-717. Hasta esa evidencia no se borra el stack legacy
+ni se declara validación física LMU o promoción.
 
 ## Última actualización
+
+2026-08-28, ISA-928 añade persistencia focal a la configuración Engineer y un
+estado Spotter independiente de `connected`. La UI localizada muestra la
+indisponibilidad espacial sin publicar una notificación global y se recupera
+al volver datos usables. Los checks automatizados cubren migración, no
+sobrescritura de otros ajustes, razones sanitizadas y `connected=true` con
+Spotter no disponible. El gate físico queda asignado a testers de Nightly; sin
+merge ni promoción.
 
 2026-08-22, ronda final de review de ISA-719 / PR #756: la frontera radio
 rechaza y degrada toda respuesta con un valor fuera del rango/enum declarado,

@@ -1976,6 +1976,9 @@ func main() {
 		log.Printf("warning: could not load settings: %v (using defaults)", err)
 	}
 	engSvc = engineerservice.NewEngineerService(emitter)
+	if err := app.ApplyEngineerSettings(engSvc, settingsSvc.EngineerSettings()); err != nil {
+		log.Printf("engineer settings restore error: %v", err)
+	}
 	if err := engSvc.SetLegacySpotterRollback(*legacyEngineerSpotter); err != nil {
 		log.Printf("engineer legacy spotter rollback configuration error: %v", err)
 	}
@@ -2027,6 +2030,7 @@ func main() {
 
 	// Register Wails bridge for Engineer events and commands
 	engBridge = app.NewEngineerBridge(wailsApp, emitter, engSvc)
+	engBridge.SetSettingsService(settingsSvc)
 	engBridge.Start()
 
 	telemetryCoreRuntime, err = app.NewTelemetryCoreRuntime(app.TelemetryCoreRuntimeConfig{

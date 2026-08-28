@@ -1,7 +1,8 @@
 # Spec: login visible y sesión mínima con Clerk
 
-Estado: aprobada para implementación por la instrucción de Isaac de continuar
-hasta las pruebas UI. Issue: ISA-915. Dependencia: ISA-909 / PR #913.
+Estado: implementada y verificada en tests/componentes y UI navegador; prueba
+Wails real pendiente de publishable key y backend remoto. Issue: ISA-915.
+Dependencia: ISA-909 / PR #913.
 
 ## Objetivo
 

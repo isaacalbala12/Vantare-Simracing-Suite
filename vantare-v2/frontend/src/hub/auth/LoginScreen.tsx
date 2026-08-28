@@ -29,48 +29,15 @@ function VantareMark() {
 }
 
 export function LoginScreen() {
-  const { t } = useI18n();
   const auth = useClerkAuth();
-
-  let content: React.ReactNode;
-  if (!auth.isConfigured) {
-    content = (
-      <div data-testid="login-configuration-error" className="space-y-3 text-center" role="alert">
-        <h2 className="text-base font-semibold text-white">{t("auth.clerkConfigTitle")}</h2>
-        <p className="text-sm leading-6 text-white/60">{t("auth.clerkConfigBody")}</p>
-        <code className="inline-block rounded-md border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/80">
-          VITE_CLERK_PUBLISHABLE_KEY
-        </code>
-      </div>
-    );
-  } else if (!auth.isLoaded) {
-    content = (
-      <div data-testid="login-clerk-loading" className="space-y-4 text-center" role="status">
-        <div className="mx-auto login-spinner" />
-        <p className="text-sm text-white/60">{t("auth.clerkLoading")}</p>
-      </div>
-    );
-  } else if (auth.isSignedIn) {
-    content = auth.validationError ? (
-      <div className="space-y-4 text-center" role="alert">
-        <p className="text-sm leading-6 text-vantare-red-400">{t("auth.clerkTokenError")}</p>
-        <button
-          type="button"
-          onClick={() => void auth.validateLicense()}
-          className="min-h-11 w-full rounded-lg border border-white/20 bg-white/5 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-vantare-red-400"
-        >
-          {t("auth.retry")}
-        </button>
-      </div>
-    ) : (
-      <div data-testid="login-clerk-validating" className="space-y-4 text-center" role="status">
-        <div className="mx-auto login-spinner" />
-        <p className="text-sm text-white/60">{t("auth.clerkValidating")}</p>
-      </div>
-    );
-  } else {
-    content = (
-      <div className="flex w-full justify-center">
+  return (
+    <LoginScreenView
+      isConfigured={auth.isConfigured}
+      isLoaded={auth.isLoaded}
+      isSignedIn={auth.isSignedIn}
+      validationError={auth.validationError}
+      onRetry={auth.validateLicense}
+      signIn={(
         <SignIn
           routing="path"
           path="/"
@@ -92,8 +59,68 @@ export function LoginScreen() {
             },
           }}
         />
+      )}
+    />
+  );
+}
+
+type LoginScreenViewProps = {
+  isConfigured: boolean;
+  isLoaded: boolean;
+  isSignedIn: boolean;
+  validationError: "token_unavailable" | null;
+  onRetry: () => Promise<boolean>;
+  signIn: React.ReactNode;
+};
+
+export function LoginScreenView({
+  isConfigured,
+  isLoaded,
+  isSignedIn,
+  validationError,
+  onRetry,
+  signIn,
+}: LoginScreenViewProps) {
+  const { t } = useI18n();
+
+  let content: React.ReactNode;
+  if (!isConfigured) {
+    content = (
+      <div data-testid="login-configuration-error" className="space-y-3 text-center" role="alert">
+        <h2 className="text-base font-semibold text-white">{t("auth.clerkConfigTitle")}</h2>
+        <p className="text-sm leading-6 text-white/60">{t("auth.clerkConfigBody")}</p>
+        <code className="inline-block rounded-md border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/80">
+          VITE_CLERK_PUBLISHABLE_KEY
+        </code>
       </div>
     );
+  } else if (!isLoaded) {
+    content = (
+      <div data-testid="login-clerk-loading" className="space-y-4 text-center" role="status">
+        <div className="mx-auto login-spinner" />
+        <p className="text-sm text-white/60">{t("auth.clerkLoading")}</p>
+      </div>
+    );
+  } else if (isSignedIn) {
+    content = validationError ? (
+      <div className="space-y-4 text-center" role="alert">
+        <p className="text-sm leading-6 text-vantare-red-400">{t("auth.clerkTokenError")}</p>
+        <button
+          type="button"
+          onClick={() => void onRetry()}
+          className="min-h-11 w-full rounded-lg border border-white/20 bg-white/5 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-vantare-red-400"
+        >
+          {t("auth.retry")}
+        </button>
+      </div>
+    ) : (
+      <div data-testid="login-clerk-validating" className="space-y-4 text-center" role="status">
+        <div className="mx-auto login-spinner" />
+        <p className="text-sm text-white/60">{t("auth.clerkValidating")}</p>
+      </div>
+    );
+  } else {
+    content = <div className="flex w-full justify-center">{signIn}</div>;
   }
 
   return (

@@ -1,6 +1,6 @@
 # Tareas ISA-915: login Clerk visible
 
-Estado: T0-T2 completadas; T3 en curso.
+Estado: T0-T4 completadas; T5 bloqueada para Wails real por configuración.
 
 ## T0 — SDD y baseline
 
@@ -33,24 +33,27 @@ Estado: T0-T2 completadas; T3 en curso.
 
 ## T3 — Gates frontend
 
-- [ ] Suite frontend.
-- [ ] Typecheck.
-- [ ] Lint.
-- [ ] Build.
-- [ ] `git diff --check` y revisión completa del diff.
+- [x] Suite frontend: 422 archivos, 3.185 tests verdes.
+- [x] Typecheck.
+- [x] Lint focal verde; lint completo conserva una deuda ajena en
+  `car-damage-numbers-view-model-v2.ts`.
+- [x] Build final después de extraer la vista reutilizada por el harness.
+- [x] `git diff --check` y revisión completa del diff final.
 
 ## T4 — Pruebas UI
 
-- [ ] Harness sin credenciales/tokens.
-- [ ] Playwright 375/414/768/1024/1440.
-- [ ] Teclado, foco, overflow, targets, consola y red.
-- [ ] Screenshots de loading, signed-out y error.
-- [ ] Commit de evidencia reproducible.
+- [x] Harness sin credenciales/tokens y sin duplicar el marco productivo.
+- [x] Playwright 375/414/768/1024/1440: 15/15 combinaciones.
+- [x] Teclado, foco, overflow, targets, consola y red.
+- [x] Screenshots de loading, signed-out y error.
+- [ ] Commit de evidencia reproducible (se completa al cerrar este corte).
 
 ## T5 — Wails y cierre
 
-- [ ] Wails real si configuración/backend están disponibles.
-- [ ] Actualizar spec, roadmap, handoff e issue con evidencia exacta.
+- [ ] Wails real: bloqueado porque el proceso no tiene
+  `VITE_CLERK_PUBLISHABLE_KEY`; no se leen ni generan `.env*`.
+- [x] Actualizar spec, roadmap y handoff con evidencia exacta.
+- [ ] Actualizar issue con el commit de evidencia exacto.
 - [ ] Push/PR draft solo con gates verdes.
 - [ ] Registrar por separado cualquier bloqueo de runtime real.
 

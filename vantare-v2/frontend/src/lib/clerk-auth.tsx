@@ -75,7 +75,6 @@ function ClerkSessionBridge({ children }: PropsWithChildren) {
   useEffect(() => {
     if (!isLoaded || !isSignedIn || !sessionId) return;
     let active = true;
-    setValidationError(null);
     void getToken()
       .then((token) => {
         if (!active) return;
@@ -83,6 +82,7 @@ function ClerkSessionBridge({ children }: PropsWithChildren) {
           setValidationError("token_unavailable");
           return;
         }
+        setValidationError(null);
         Events.Emit("license:validate", { sessionToken: token });
       })
       .catch(() => {
@@ -122,6 +122,9 @@ export function ClerkAuthProvider({ children }: PropsWithChildren) {
   );
 }
 
+// Provider and hook intentionally share this small boundary; splitting them
+// only for Fast Refresh would add a second auth module with no product value.
+// eslint-disable-next-line react-refresh/only-export-components
 export function useClerkAuth(): ClerkAuthContextValue {
   return useContext(ClerkAuthContext);
 }

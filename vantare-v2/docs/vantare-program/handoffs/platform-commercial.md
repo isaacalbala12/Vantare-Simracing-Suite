@@ -461,6 +461,20 @@ cambios monetarios reales y Master requieren Isaac.
 
 ## Última actualización
 
+2026-08-28, ISA-915 alcanza pruebas UI navegador. El harness reutiliza
+`LoginScreenView` productivo y solo sustituye el contenido remoto de SignIn por
+un fixture accesible sin credenciales: 15/15 estados/viewports pasan overflow,
+semántica, labels, targets 44 px, teclado, consola y red; capturas y JSON quedan
+en `docs/analysis/isa-915-clerk-login-ui/artifacts`. La revisión visual de móvil,
+tablet y escritorio no encontró recorte ni jerarquía rota. Esto no es prueba
+Clerk ni Wails real: Clerk CLI 3.2.0 y Wails están disponibles, pero el proceso
+no tiene `VITE_CLERK_PUBLISHABLE_KEY`; tampoco se tocó la app
+`vantare-isa912-delay` que ya estaba abierta. La suite frontend completa pasó
+422 archivos y 3.185 tests; lint focal está verde, mientras el lint global
+conserva una deuda ajena en car-damage. El build final y `git diff --check`
+también pasan; falta únicamente registrar este corte en un commit y en la issue.
+Sin push, PR, deploy, merge ni datos reales.
+
 2026-08-28, el corte T2 de ISA-915 sustituye el formulario Supabase de
 LoginScreen por el `SignIn` oficial de Clerk y reduce esa superficie a estados
 explícitos de configuración, carga, sesión activa y error reintentable. El SDK

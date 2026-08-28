@@ -1,0 +1,357 @@
+[
+  {
+    "viewport": "375x812",
+    "state": "loading",
+    "scrollWidth": 375,
+    "innerWidth": 375,
+    "scrollHeight": 812,
+    "innerHeight": 812,
+    "rootWidth": 375,
+    "h1": 1,
+    "main": 1,
+    "nativeTitles": 0,
+    "unlabeledInputs": 0,
+    "interactive": [],
+    "screenshot": "clerk-login-loading-375x812.png"
+  },
+  {
+    "viewport": "375x812",
+    "state": "signed-out",
+    "scrollWidth": 375,
+    "innerWidth": 375,
+    "scrollHeight": 812,
+    "innerHeight": 812,
+    "rootWidth": 375,
+    "h1": 1,
+    "main": 1,
+    "nativeTitles": 0,
+    "unlabeledInputs": 0,
+    "interactive": [
+      {
+        "tag": "button",
+        "width": 301,
+        "height": 44,
+        "name": "Continuar con Google"
+      },
+      {
+        "tag": "input",
+        "width": 301,
+        "height": 44,
+        "name": ""
+      },
+      {
+        "tag": "button",
+        "width": 301,
+        "height": 44,
+        "name": "Continuar"
+      }
+    ],
+    "screenshot": "clerk-login-signed-out-375x812.png"
+  },
+  {
+    "viewport": "375x812",
+    "state": "error",
+    "scrollWidth": 375,
+    "innerWidth": 375,
+    "scrollHeight": 812,
+    "innerHeight": 812,
+    "rootWidth": 375,
+    "h1": 1,
+    "main": 1,
+    "nativeTitles": 0,
+    "unlabeledInputs": 0,
+    "interactive": [
+      {
+        "tag": "button",
+        "width": 343,
+        "height": 44,
+        "name": "Reintentar"
+      }
+    ],
+    "screenshot": "clerk-login-error-375x812.png"
+  },
+  {
+    "viewport": "414x896",
+    "state": "loading",
+    "scrollWidth": 414,
+    "innerWidth": 414,
+    "scrollHeight": 896,
+    "innerHeight": 896,
+    "rootWidth": 414,
+    "h1": 1,
+    "main": 1,
+    "nativeTitles": 0,
+    "unlabeledInputs": 0,
+    "interactive": [],
+    "screenshot": "clerk-login-loading-414x896.png"
+  },
+  {
+    "viewport": "414x896",
+    "state": "signed-out",
+    "scrollWidth": 414,
+    "innerWidth": 414,
+    "scrollHeight": 896,
+    "innerHeight": 896,
+    "rootWidth": 414,
+    "h1": 1,
+    "main": 1,
+    "nativeTitles": 0,
+    "unlabeledInputs": 0,
+    "interactive": [
+      {
+        "tag": "button",
+        "width": 340,
+        "height": 44,
+        "name": "Continuar con Google"
+      },
+      {
+        "tag": "input",
+        "width": 340,
+        "height": 44,
+        "name": ""
+      },
+      {
+        "tag": "button",
+        "width": 340,
+        "height": 44,
+        "name": "Continuar"
+      }
+    ],
+    "screenshot": "clerk-login-signed-out-414x896.png"
+  },
+  {
+    "viewport": "414x896",
+    "state": "error",
+    "scrollWidth": 414,
+    "innerWidth": 414,
+    "scrollHeight": 896,
+    "innerHeight": 896,
+    "rootWidth": 414,
+    "h1": 1,
+    "main": 1,
+    "nativeTitles": 0,
+    "unlabeledInputs": 0,
+    "interactive": [
+      {
+        "tag": "button",
+        "width": 382,
+        "height": 44,
+        "name": "Reintentar"
+      }
+    ],
+    "screenshot": "clerk-login-error-414x896.png"
+  },
+  {
+    "viewport": "768x1024",
+    "state": "loading",
+    "scrollWidth": 768,
+    "innerWidth": 768,
+    "scrollHeight": 1024,
+    "innerHeight": 1024,
+    "rootWidth": 768,
+    "h1": 1,
+    "main": 1,
+    "nativeTitles": 0,
+    "unlabeledInputs": 0,
+    "interactive": [],
+    "screenshot": "clerk-login-loading-768x1024.png"
+  },
+  {
+    "viewport": "768x1024",
+    "state": "signed-out",
+    "scrollWidth": 768,
+    "innerWidth": 768,
+    "scrollHeight": 1024,
+    "innerHeight": 1024,
+    "rootWidth": 768,
+    "h1": 1,
+    "main": 1,
+    "nativeTitles": 0,
+    "unlabeledInputs": 0,
+    "interactive": [
+      {
+        "tag": "button",
+        "width": 398,
+        "height": 44,
+        "name": "Continuar con Google"
+      },
+      {
+        "tag": "input",
+        "width": 398,
+        "height": 44,
+        "name": ""
+      },
+      {
+        "tag": "button",
+        "width": 398,
+        "height": 44,
+        "name": "Continuar"
+      }
+    ],
+    "screenshot": "clerk-login-signed-out-768x1024.png"
+  },
+  {
+    "viewport": "768x1024",
+    "state": "error",
+    "scrollWidth": 768,
+    "innerWidth": 768,
+    "scrollHeight": 1024,
+    "innerHeight": 1024,
+    "rootWidth": 768,
+    "h1": 1,
+    "main": 1,
+    "nativeTitles": 0,
+    "unlabeledInputs": 0,
+    "interactive": [
+      {
+        "tag": "button",
+        "width": 448,
+        "height": 44,
+        "name": "Reintentar"
+      }
+    ],
+    "screenshot": "clerk-login-error-768x1024.png"
+  },
+  {
+    "viewport": "1024x768",
+    "state": "loading",
+    "scrollWidth": 1024,
+    "innerWidth": 1024,
+    "scrollHeight": 768,
+    "innerHeight": 768,
+    "rootWidth": 1024,
+    "h1": 1,
+    "main": 1,
+    "nativeTitles": 0,
+    "unlabeledInputs": 0,
+    "interactive": [],
+    "screenshot": "clerk-login-loading-1024x768.png"
+  },
+  {
+    "viewport": "1024x768",
+    "state": "signed-out",
+    "scrollWidth": 1024,
+    "innerWidth": 1024,
+    "scrollHeight": 768,
+    "innerHeight": 768,
+    "rootWidth": 1024,
+    "h1": 1,
+    "main": 1,
+    "nativeTitles": 0,
+    "unlabeledInputs": 0,
+    "interactive": [
+      {
+        "tag": "button",
+        "width": 398,
+        "height": 44,
+        "name": "Continuar con Google"
+      },
+      {
+        "tag": "input",
+        "width": 398,
+        "height": 44,
+        "name": ""
+      },
+      {
+        "tag": "button",
+        "width": 398,
+        "height": 44,
+        "name": "Continuar"
+      }
+    ],
+    "screenshot": "clerk-login-signed-out-1024x768.png"
+  },
+  {
+    "viewport": "1024x768",
+    "state": "error",
+    "scrollWidth": 1024,
+    "innerWidth": 1024,
+    "scrollHeight": 768,
+    "innerHeight": 768,
+    "rootWidth": 1024,
+    "h1": 1,
+    "main": 1,
+    "nativeTitles": 0,
+    "unlabeledInputs": 0,
+    "interactive": [
+      {
+        "tag": "button",
+        "width": 448,
+        "height": 44,
+        "name": "Reintentar"
+      }
+    ],
+    "screenshot": "clerk-login-error-1024x768.png"
+  },
+  {
+    "viewport": "1440x900",
+    "state": "loading",
+    "scrollWidth": 1440,
+    "innerWidth": 1440,
+    "scrollHeight": 900,
+    "innerHeight": 900,
+    "rootWidth": 1440,
+    "h1": 1,
+    "main": 1,
+    "nativeTitles": 0,
+    "unlabeledInputs": 0,
+    "interactive": [],
+    "screenshot": "clerk-login-loading-1440x900.png"
+  },
+  {
+    "viewport": "1440x900",
+    "state": "signed-out",
+    "scrollWidth": 1440,
+    "innerWidth": 1440,
+    "scrollHeight": 900,
+    "innerHeight": 900,
+    "rootWidth": 1440,
+    "h1": 1,
+    "main": 1,
+    "nativeTitles": 0,
+    "unlabeledInputs": 0,
+    "interactive": [
+      {
+        "tag": "button",
+        "width": 398,
+        "height": 44,
+        "name": "Continuar con Google"
+      },
+      {
+        "tag": "input",
+        "width": 398,
+        "height": 44,
+        "name": ""
+      },
+      {
+        "tag": "button",
+        "width": 398,
+        "height": 44,
+        "name": "Continuar"
+      }
+    ],
+    "screenshot": "clerk-login-signed-out-1440x900.png"
+  },
+  {
+    "viewport": "1440x900",
+    "state": "error",
+    "scrollWidth": 1440,
+    "innerWidth": 1440,
+    "scrollHeight": 900,
+    "innerHeight": 900,
+    "rootWidth": 1440,
+    "h1": 1,
+    "main": 1,
+    "nativeTitles": 0,
+    "unlabeledInputs": 0,
+    "interactive": [
+      {
+        "tag": "button",
+        "width": 448,
+        "height": 44,
+        "name": "Reintentar"
+      }
+    ],
+    "screenshot": "clerk-login-error-1440x900.png"
+  }
+]

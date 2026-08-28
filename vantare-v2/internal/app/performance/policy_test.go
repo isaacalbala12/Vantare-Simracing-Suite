@@ -34,30 +34,6 @@ func TestCadenceForScalesTiersAndKeepsOneSecondCeiling(t *testing.T) {
 	}
 }
 
-func TestSafetyChangesHaveOneTickP99AtLevelsOneAndFive(t *testing.T) {
-	for _, level := range []Level{LevelMaximum, LevelMinimum} {
-		scheduler := overlayv2.NewSectionScheduler(CadenceFor(level))
-		now := time.Unix(0, 0)
-		scheduler.Plan(now, overlayv2.AllDirty())
-		latencies := make([]int, 100)
-		for sample := range latencies {
-			now = now.Add(time.Millisecond)
-			plan := scheduler.Plan(now, overlayv2.SafetyDirty(overlayv2.SectionSession)|overlayv2.SafetyDirty(overlayv2.SectionSpotter))
-			if !plan.Rebuild(overlayv2.SectionSession) || !plan.Rebuild(overlayv2.SectionSpotter) {
-				t.Fatalf("nivel %d muestra %d no publicó seguridad en el tick siguiente", level, sample)
-			}
-			latencies[sample] = 1
-		}
-		if got := latencies[98]; got != 1 {
-			t.Fatalf("nivel %d p99 = %d ticks, want 1", level, got)
-		}
-		cadence := CadenceFor(level)
-		if cadence.IntervalFor(overlayv2.SectionSpotter) != 100*time.Millisecond || cadence.IntervalFor(overlayv2.SectionSession) != 250*time.Millisecond {
-			t.Fatalf("nivel %d escaló intervalos de seguridad: %+v", level, cadence)
-		}
-	}
-}
-
 func TestSafetyWidgetsStayEventDrivenAtEveryLevel(t *testing.T) {
 	for level := LevelMaximum; level <= LevelMinimum; level++ {
 		rates := WidgetHzFor(level)

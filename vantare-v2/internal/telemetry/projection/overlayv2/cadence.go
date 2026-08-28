@@ -202,9 +202,9 @@ func (set DirtySet) hasSafety(section Section) bool {
 	}
 }
 
-// SafetyDirty marca un cambio material que no puede esperar al intervalo de
+// safetyDirty marca un cambio material que no puede esperar al intervalo de
 // la sección. Solo session (bandera) y spotter admiten esta vía.
-func SafetyDirty(section Section) DirtySet {
+func safetyDirty(section Section) DirtySet {
 	return DirtySet(0).Mark(section).markSafety(section)
 }
 

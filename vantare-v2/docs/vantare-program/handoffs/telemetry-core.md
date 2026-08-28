@@ -152,11 +152,11 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   independiente de PR terminó `REQUEST_CHANGES` por la base desactualizada y
   este estado operativo obsoleto, no por un defecto del hook. Ambos quedan
   corregidos: rama remota
-  `vantareapp/isa-912-overlay-webview2-performance`, cuarto rebase lineal sobre
-  `origin/nightly@fa16c7b0` tras avanzar Nightly y PR #927 listo para review;
+  `vantareapp/isa-912-overlay-webview2-performance`, quinto rebase lineal sobre
+  `origin/nightly@b2010ec3` tras avanzar Nightly y PR #927 listo para review;
   ISA-912 está en
   `state:in-review`. La punta validada previa a este cierre documental fue
-  `d2900708`, antes del cuarto rebase: el run remoto `33204677737` terminó
+  `c0d6f467`, antes del quinto rebase; el run remoto previo `33204677737` terminó
   verde, incluidos topología,
   contrato de roadmap, build frontend, suites Go/frontend, lint del alcance y
   build Wails de Windows. La anotación audit del contrato de roadmap

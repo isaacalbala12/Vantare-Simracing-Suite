@@ -1325,6 +1325,16 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
+	// Gancho de diagnostico (ISA-912): `VANTARE_CPU_PROFILE_PATH` captura un
+	// perfil CPU del host a fichero para poder atribuir su coste real. No abre
+	// ningun puerto. Se detiene solo al agotar su duracion acotada; este defer
+	// cubre la salida normal de main y la rama de error de `wailsApp.Run` lo
+	// llama explicitamente, porque `log.Fatal` no ejecuta defers. El gancho
+	// solo se compila sin `-tags production` (ver cpu_profile.go); en release
+	// es un noop.
+	stopCPUProfile := startCPUProfile()
+	defer stopCPUProfile()
+
 	appOptions := application.Options{
 		Name: "Vantare Simracing Suite",
 		Assets: application.AssetOptions{
@@ -3332,6 +3342,9 @@ func main() {
 	})
 
 	if err := wailsApp.Run(); err != nil {
+		// log.Fatal exits without running defers, so the capture is flushed
+		// here explicitly. Stopping twice is safe.
+		stopCPUProfile()
 		log.Fatal(err)
 	}
 }

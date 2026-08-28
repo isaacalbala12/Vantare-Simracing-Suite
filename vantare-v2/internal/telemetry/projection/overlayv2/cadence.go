@@ -99,9 +99,13 @@ func TierOf(section Section) SectionTier {
 // rebuilds whenever its interval has elapsed. Fast and mid sections always
 // follow their plain interval.
 type SectionCadence struct {
-	Fast         time.Duration
-	Mid          time.Duration
-	Slow         time.Duration
+	Fast time.Duration
+	Mid  time.Duration
+	Slow time.Duration
+	// Spotter y Session son rutas de seguridad. Cero conserva el intervalo de
+	// su tier para cadencias antiguas; PerformancePolicy fija ambos explícitos.
+	Spotter      time.Duration
+	Session      time.Duration
 	DirtyCeiling time.Duration
 }
 
@@ -117,6 +121,8 @@ func DefaultSectionCadence() SectionCadence {
 		Fast:         50 * time.Millisecond,
 		Mid:          100 * time.Millisecond,
 		Slow:         250 * time.Millisecond,
+		Spotter:      100 * time.Millisecond,
+		Session:      250 * time.Millisecond,
 		DirtyCeiling: time.Second,
 	}
 }
@@ -138,6 +144,25 @@ func (cadence SectionCadence) Interval(tier SectionTier) time.Duration {
 	return value
 }
 
+// IntervalFor conserva los presupuestos de seguridad aunque otros tiers se
+// ralenticen. Las cadencias anteriores sin overrides siguen usando su tier.
+func (cadence SectionCadence) IntervalFor(section Section) time.Duration {
+	value := time.Duration(0)
+	switch section {
+	case SectionSpotter:
+		value = cadence.Spotter
+	case SectionSession:
+		value = cadence.Session
+	}
+	if value == 0 {
+		return cadence.Interval(TierOf(section))
+	}
+	if value < 0 {
+		return 0
+	}
+	return value
+}
+
 // regulates reports whether the cadence can ever skip a rebuild.
 func (cadence SectionCadence) regulates() bool {
 	return cadence.Interval(TierFast) > 0 || cadence.Interval(TierMid) > 0 || cadence.Interval(TierSlow) > 0
@@ -150,8 +175,42 @@ type DirtySet uint16
 func (set DirtySet) Mark(section Section) DirtySet { return set | (1 << section) }
 func (set DirtySet) Has(section Section) bool      { return set&(1<<section) != 0 }
 
-// AllDirty marks every section, which is what a stream discontinuity means.
-func AllDirty() DirtySet { return DirtySet(1<<sectionCount - 1) }
+const (
+	dirtySafetySession = sectionCount + iota
+	dirtySafetySpotter
+)
+
+func (set DirtySet) markSafety(section Section) DirtySet {
+	switch section {
+	case SectionSession:
+		return set | (1 << dirtySafetySession)
+	case SectionSpotter:
+		return set | (1 << dirtySafetySpotter)
+	default:
+		return set
+	}
+}
+
+func (set DirtySet) hasSafety(section Section) bool {
+	switch section {
+	case SectionSession:
+		return set&(1<<dirtySafetySession) != 0
+	case SectionSpotter:
+		return set&(1<<dirtySafetySpotter) != 0
+	default:
+		return false
+	}
+}
+
+// SafetyDirty marca un cambio material que no puede esperar al intervalo de
+// la sección. Solo session (bandera) y spotter admiten esta vía.
+func SafetyDirty(section Section) DirtySet {
+	return DirtySet(0).Mark(section).markSafety(section)
+}
+
+// AllDirty marks every section and both safety invalidations, which is what a
+// stream discontinuity means.
+func AllDirty() DirtySet { return DirtySet(1<<(sectionCount+2) - 1) }
 
 // SectionPlan is the scheduler decision for one tick.
 type SectionPlan uint16
@@ -233,7 +292,7 @@ func (scheduler *SectionScheduler) decide(section Section, now time.Time, dirty 
 	if !scheduler.built[section] {
 		return true
 	}
-	interval := scheduler.cadence.Interval(TierOf(section))
+	interval := scheduler.cadence.IntervalFor(section)
 	if interval <= 0 {
 		return true
 	}
@@ -244,6 +303,11 @@ func (scheduler *SectionScheduler) decide(section Section, now time.Time, dirty 
 	// Performance vive dentro de capabilities y debe llegar en el mismo tick
 	// que cambia la politica; el tier sigue siendo slow cuando permanece igual.
 	if section == SectionCapabilities && dirty.Has(section) {
+		return true
+	}
+	// Banderas y avisos laterales nunca esperan su intervalo: la siguiente
+	// proyección debe contener el cambio material observado.
+	if dirty.hasSafety(section) {
 		return true
 	}
 	// Dirty gating and the staleness ceiling only apply to the slow tier: fast
@@ -532,6 +596,8 @@ type dirtySignals struct {
 	degraded            string
 	capabilities        int
 	performanceRevision uint64
+	sessionFlag         QValue[string]
+	spotterView         SpotterViewV2
 
 	track       schema.Field[string]
 	sessionType schema.Field[session.Type]
@@ -560,6 +626,8 @@ func observeDirtySignals(header envelope.Header, final derive.FinalState, source
 		degraded:            source.DegradedReason,
 		capabilities:        len(source.DescriptorCapabilities),
 		performanceRevision: source.PerformanceRevision,
+		sessionFlag:         BuildSession(final).Flag,
+		spotterView:         BuildSpotter(final),
 		track:               final.Observed.TrackName,
 		sessionType:         final.Observed.SessionType,
 		maximumLaps:         final.Observed.MaximumLaps,
@@ -592,6 +660,9 @@ func (signals dirtySignals) diff(previous dirtySignals) DirtySet {
 		return AllDirty()
 	}
 	dirty := DirtySet(0)
+	if signals.sessionFlag != previous.sessionFlag {
+		dirty = dirty.Mark(SectionSession).markSafety(SectionSession)
+	}
 	if signals.track != previous.track || signals.sessionType != previous.sessionType ||
 		signals.maximumLaps != previous.maximumLaps || signals.remaining != previous.remaining {
 		dirty = dirty.Mark(SectionSession)
@@ -607,7 +678,9 @@ func (signals dirtySignals) diff(previous dirtySignals) DirtySet {
 	if signals.deltaFreshness != previous.deltaFreshness {
 		dirty = dirty.Mark(SectionDelta)
 	}
-	if signals.spatialMark != previous.spatialMark {
+	if signals.spotterView != previous.spotterView {
+		dirty = dirty.Mark(SectionSpotter).markSafety(SectionSpotter)
+	} else if signals.spatialMark != previous.spatialMark {
 		dirty = dirty.Mark(SectionSpotter)
 	}
 	if signals.playerFuel != previous.playerFuel || signals.fuelPerLap != previous.fuelPerLap {

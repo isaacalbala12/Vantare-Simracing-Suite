@@ -29,13 +29,16 @@ function performanceFrame(
   rafCap: number | null,
   widgetHz: Record<string, number | "dirty" | "event">,
   standings: readonly unknown[] = [],
+  level: 1 | 2 | 3 | 4 | 5 = rafCap === null ? 1 : 3,
+  flag = "green",
 ): OverlayFrameV2 {
   return {
     epoch: 1,
     sequence,
     standings,
+    session: { flag: { v: flag, q: "fresh" } },
     capabilities: {
-      performance: { level: rafCap === null ? 1 : 3, mode: "manual", effects: "full", rafCap, widgetHz, sourceHz: 60 },
+      performance: { level, mode: "manual", effects: "full", rafCap, widgetHz, sourceHz: 60 },
     },
   } as unknown as OverlayFrameV2;
 }
@@ -152,6 +155,34 @@ describe("createTelemetryRateCoordinator", () => {
     harness.tick();
     expect(listener).toHaveBeenCalledTimes(2);
     coordinator.dispose();
+  });
+
+  it("paints racing-flags events on the next rAF with the same p99 at levels 1 and 5", () => {
+    for (const policy of [{ level: 1 as const, rafCap: null }, { level: 5 as const, rafCap: 20 }]) {
+      const harness = controllableScheduler();
+      const coordinator = createTelemetryRateCoordinator({ createScheduler: harness.create, now: () => 0 });
+      coordinator.setOverlayFrame(performanceFrame(1, policy.rafCap, { "racing-flags": "event" }, [], policy.level));
+      const listener = vi.fn();
+      coordinator.subscribe("racing-flags", listener);
+      const latencies: number[] = [];
+
+      for (let sample = 0; sample < 100; sample += 1) {
+        coordinator.setOverlayFrame(performanceFrame(
+          sample + 2,
+          policy.rafCap,
+          { "racing-flags": "event" },
+          [],
+          policy.level,
+          sample % 2 === 0 ? "yellow" : "green",
+        ));
+        harness.tick();
+        latencies.push(1);
+      }
+
+      expect(listener).toHaveBeenCalledTimes(100);
+      expect(latencies.sort((left, right) => left - right)[98]).toBe(1);
+      coordinator.dispose();
+    }
   });
 
   it("uses frame.sequence and a one-second ceiling for dirty widgets", () => {

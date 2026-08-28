@@ -139,6 +139,8 @@ func scaledCadence(base overlayv2.SectionCadence, numerator, denominator int64) 
 		Fast:         scale(base.Fast),
 		Mid:          scale(base.Mid),
 		Slow:         scale(base.Slow),
+		Spotter:      base.Spotter,
+		Session:      base.Session,
 		DirtyCeiling: base.DirtyCeiling,
 	}
 }

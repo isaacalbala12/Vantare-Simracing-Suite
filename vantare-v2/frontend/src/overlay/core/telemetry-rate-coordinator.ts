@@ -129,6 +129,9 @@ export function createTelemetryRateCoordinator(
     const performancePolicy = overlayFrame?.capabilities.performance;
     const globalCap = performancePolicy?.rafCap ?? null;
     const widgetRate = subscription.widgetType ? performancePolicy?.widgetHz[subscription.widgetType] : undefined;
+    // Los eventos de seguridad despiertan en el siguiente rAF y no heredan el
+    // cap global. La comparación de sección sigue evitando paints espurios.
+    if (widgetRate === "event") return 0;
     const numericRate = typeof widgetRate === "number" && widgetRate > 0 ? widgetRate : null;
     const cap = globalCap && numericRate ? Math.min(globalCap, numericRate) : globalCap ?? numericRate;
     return cap ? 1_000 / cap : 0;

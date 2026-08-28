@@ -113,6 +113,23 @@ func TestDirtyTriggerHasCeiling(t *testing.T) {
 	}
 }
 
+func TestSafetyDirtyRebuildsOnNextTickBeforeInterval(t *testing.T) {
+	t.Parallel()
+
+	scheduler := NewSectionScheduler(SectionCadence{
+		Fast: time.Hour, Mid: time.Hour, Slow: time.Hour,
+		Spotter: time.Hour, Session: time.Hour, DirtyCeiling: 2 * time.Hour,
+	})
+	scheduler.Plan(cadenceOrigin, AllDirty())
+	plan := scheduler.Plan(
+		cadenceOrigin.Add(time.Millisecond),
+		SafetyDirty(SectionSession)|SafetyDirty(SectionSpotter),
+	)
+	if !plan.Rebuild(SectionSession) || !plan.Rebuild(SectionSpotter) {
+		t.Fatalf("cambio de seguridad no publicado en el tick siguiente: %v", plan)
+	}
+}
+
 func TestCeilingBoundsStalenessOverALongRun(t *testing.T) {
 	t.Parallel()
 

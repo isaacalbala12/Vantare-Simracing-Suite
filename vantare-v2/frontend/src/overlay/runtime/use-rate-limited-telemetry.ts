@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import type { TelemetryRateCoordinator } from '../core/telemetry-rate-coordinator';
 import type { TelemetrySnapshot } from '../core/telemetry-snapshot';
-import type { OverlayFrameV2 } from '../../generated/telemetry';
+import type { OverlayFrameV2, OverlaySourceStatusV2 } from '../../generated/telemetry';
 
 export type TelemetryActivityGate = {
   getActive(): boolean;
@@ -47,17 +47,18 @@ export function useRateLimitedTelemetry(
 export function useRateLimitedWidgetTelemetry(
   coordinator: TelemetryRateCoordinator,
   widgetType: string,
-  initialOverlayFrame?: OverlayFrameV2,
-): Readonly<{ snapshot: TelemetrySnapshot; overlayFrame?: OverlayFrameV2 }> {
+): Readonly<{ snapshot: TelemetrySnapshot; overlayFrame?: OverlayFrameV2; overlaySource?: OverlaySourceStatusV2 }> {
   const [state, setState] = useState(() => ({
     snapshot: coordinator.getSnapshot(widgetType),
-    overlayFrame: initialOverlayFrame ?? coordinator.getOverlayFrame(),
+    overlayFrame: coordinator.getOverlayFrame(),
+    overlaySource: coordinator.getOverlaySource(),
   }));
 
   useEffect(() => coordinator.subscribe(widgetType, () => {
     setState({
       snapshot: coordinator.getSnapshot(widgetType),
       overlayFrame: coordinator.getOverlayFrame(),
+      overlaySource: coordinator.getOverlaySource(),
     });
   }), [coordinator, widgetType]);
 

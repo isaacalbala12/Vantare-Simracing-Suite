@@ -1,6 +1,6 @@
 import type { TelemetrySnapshot } from "./telemetry-snapshot";
 import { createDerivedTelemetryStore } from "./derived-telemetry-store";
-import type { OverlayFrameV2 } from "../../generated/telemetry";
+import type { OverlayFrameV2, OverlaySourceStatusV2 } from "../../generated/telemetry";
 
 export type TelemetryListener = () => void;
 
@@ -16,9 +16,10 @@ export type TelemetryScheduler = {
 export type TelemetryRateCoordinator = {
   getSnapshot(rateKey?: number | string): TelemetrySnapshot;
   getOverlayFrame(): OverlayFrameV2 | undefined;
+  getOverlaySource(): OverlaySourceStatusV2 | undefined;
   subscribe(rateKey: number | string | undefined, listener: TelemetryListener): () => void;
   publish(snapshot: TelemetrySnapshot): void;
-  setOverlayFrame(frame: OverlayFrameV2 | undefined): void;
+  setOverlayFrame(frame: OverlayFrameV2 | undefined, source?: OverlaySourceStatusV2): void;
   dispose(): void;
 };
 
@@ -85,6 +86,7 @@ export function createTelemetryRateCoordinator(
   const now = options.now ?? (() => typeof performance === "undefined" ? Date.now() : performance.now());
   let latest = emptySnapshot();
   let overlayFrame: OverlayFrameV2 | undefined;
+  let overlaySource: OverlaySourceStatusV2 | undefined;
   const derived = createDerivedTelemetryStore();
   type Subscription = {
     listener: TelemetryListener;
@@ -209,6 +211,9 @@ export function createTelemetryRateCoordinator(
     getOverlayFrame() {
       return overlayFrame;
     },
+    getOverlaySource() {
+      return overlaySource;
+    },
     subscribe(rateKey, listener) {
       ensureScheduler();
       const widgetType = typeof rateKey === "string" ? rateKey : undefined;
@@ -240,9 +245,12 @@ export function createTelemetryRateCoordinator(
       };
       version += 1;
     },
-    setOverlayFrame(frame) {
-      if (frame?.sequence === overlayFrame?.sequence && frame?.epoch === overlayFrame?.epoch) return;
+    setOverlayFrame(frame, source) {
+      const sameFrame = frame?.sequence === overlayFrame?.sequence && frame?.epoch === overlayFrame?.epoch;
+      const sameSource = JSON.stringify(source) === JSON.stringify(overlaySource);
+      if (sameFrame && sameSource) return;
       overlayFrame = frame;
+      overlaySource = source;
       version += 1;
     },
     dispose() {

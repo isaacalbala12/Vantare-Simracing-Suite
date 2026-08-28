@@ -476,7 +476,13 @@ El baseline previo a código dejó Go license y Deno credential verdes. El runne
 Postgres heredado fallaba antes de ISA-909 porque su bootstrap no reproducía
 `extensions/storage` y el upgrade aplicaba calendario antes de acceso
 operacional; el fixture y orden mínimos quedaron corregidos y el contrato
-clean/upgrade/restore completo volvió a PASS. Aún no existe migración Clerk.
+clean/upgrade/restore completo volvió a PASS.
+El corte SQL posterior crea `account_identities`, retira únicamente la FK de
+`profiles` a `auth.users` y resuelve claims PostgREST en una función privada con
+lock transaccional por identidad. Las cuatro RPC de licencia consumen el UUID
+interno; 30 pgTAP pasan en clean/upgrade y dos logins Clerk concurrentes producen
+exactamente un mapping, un profile y cero huérfanos. La migración sigue solo
+local, sin apply remoto.
 
 2026-08-04, ISA-243/287 completaron el piloto remoto con un caso sintético
 nuevo. ISA-288 se creó exactamente una vez, el binding quedó `completed` sin

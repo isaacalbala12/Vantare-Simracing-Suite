@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-28T20:23:40Z",
+  "generatedAt": "2026-08-28T20:37:07Z",
   "digest": {
     "lastCommit": "ae66720df91870a1e7b2aa9855356717f333fa1d"
   },
@@ -334,7 +334,7 @@
         "pt": "Plataforma",
         "it": "Piattaforma"
       },
-      "progress": 35,
+      "progress": 25,
       "status": "in-progress",
       "projects": [
         "roadmap-governance",

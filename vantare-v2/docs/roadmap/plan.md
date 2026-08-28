@@ -244,7 +244,7 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 
 - id: platform
 - estado: in-progress
-- progreso: 35
+- progreso: 25
 - titulo.en: Platform
 - titulo.pt: Plataforma
 - titulo.it: Piattaforma

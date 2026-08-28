@@ -39,6 +39,7 @@
     "bench:overlay-studio-drag": "node scripts/overlay-studio-drag-bench.mjs",
     "bench:overlay-studio-drag:baseline": "node scripts/overlay-studio-drag-bench.mjs --update-baseline",
     "profile:isa912-webview": "node scripts/isa-912-webview-profile.mjs",
+    "test:isa912-cpuprofile": "node --test scripts/lib/isa-912-cpuprofile-summary.node-test.mjs",
     "design-system:check": "node scripts/check-design-system.mjs",
     "i18n:audit": "node scripts/i18n-audit.mjs"
   },

@@ -2,6 +2,10 @@ import { access, mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import { chromium } from "playwright";
+import {
+  assertReadableCpuProfile,
+  summarizeCpuProfile,
+} from "./lib/isa-912-cpuprofile-summary.mjs";
 
 function argument(name, fallback = "") {
   const index = process.argv.indexOf(`--${name}`);
@@ -15,6 +19,24 @@ function boundedInteger(name, fallback, minimum, maximum) {
     throw new Error(`--${name} must be an integer between ${minimum} and ${maximum}`);
   }
   return value;
+}
+
+function oneOf(name, fallback, values) {
+  const value = argument(name, fallback);
+  if (!values.includes(value)) {
+    throw new Error(`--${name} must be one of: ${values.join(", ")}`);
+  }
+  return value;
+}
+
+function withTimeout(promise, timeoutMs, label) {
+  let timeout;
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      timeout = setTimeout(() => reject(new Error(`${label} timed out after ${timeoutMs} ms`)), timeoutMs);
+    }),
+  ]).finally(() => clearTimeout(timeout));
 }
 
 async function assertMissing(file) {
@@ -124,20 +146,25 @@ async function stopRendererProbe(page) {
 const cdp = argument("cdp");
 const role = argument("role", "overlay");
 const output = path.resolve(argument("output"));
+const mode = oneOf("mode", "trace", ["trace", "metrics", "profile"]);
 const durationMs = boundedInteger("duration-ms", 30_000, 5_000, 120_000);
 const intervalMs = boundedInteger("interval-ms", 500, 100, 5_000);
+const samplingUs = boundedInteger("sampling-us", 1_000, 100, 10_000);
 
 if (!cdp || !argument("output") || !["overlay", "hub"].includes(role)) {
   throw new Error(
     "usage: node scripts/isa-912-webview-profile.mjs "
       + "--cdp http://127.0.0.1:9232 --role overlay|hub "
-      + "--duration-ms 30000 --interval-ms 500 --output <summary.json>",
+      + "--mode trace|metrics|profile --duration-ms 30000 --interval-ms 500 "
+      + "--sampling-us 1000 --output <summary.json>",
   );
 }
 
 const traceOutput = output.replace(/\.json$/i, "") + ".trace.json";
+const cpuProfileOutput = output.replace(/\.json$/i, "") + ".cpuprofile";
 await assertMissing(output);
-await assertMissing(traceOutput);
+if (mode === "trace") await assertMissing(traceOutput);
+if (mode === "profile") await assertMissing(cpuProfileOutput);
 await mkdir(path.dirname(output), { recursive: true });
 
 const browser = await chromium.connectOverCDP(cdp);
@@ -145,6 +172,8 @@ let page;
 let session;
 let tracingComplete;
 let tracingStarted = false;
+let profilerEnabled = false;
+let profilerStarted = false;
 let rendererProbeInstalled = false;
 const traceEvents = [];
 let pullRequests = 0;
@@ -161,18 +190,26 @@ try {
 
   await session.send("Performance.enable");
   await session.send("Network.enable");
-  tracingComplete = new Promise((resolve) => session.once("Tracing.tracingComplete", resolve));
-  await session.send("Tracing.start", {
-    transferMode: "ReportEvents",
-    categories: [
-      "devtools.timeline",
-      "v8.execute",
-      "blink.user_timing",
-      "disabled-by-default-v8.gc",
-      "disabled-by-default-devtools.timeline.frame",
-    ].join(","),
-  });
-  tracingStarted = true;
+  if (mode === "trace") {
+    tracingComplete = new Promise((resolve) => session.once("Tracing.tracingComplete", resolve));
+    await session.send("Tracing.start", {
+      transferMode: "ReportEvents",
+      categories: [
+        "devtools.timeline",
+        "v8.execute",
+        "blink.user_timing",
+        "disabled-by-default-v8.gc",
+        "disabled-by-default-devtools.timeline.frame",
+      ].join(","),
+    });
+    tracingStarted = true;
+  } else if (mode === "profile") {
+    await session.send("Profiler.enable");
+    profilerEnabled = true;
+    await session.send("Profiler.setSamplingInterval", { interval: samplingUs });
+    await session.send("Profiler.start");
+    profilerStarted = true;
+  }
 
   await page.evaluate(() => {
     const previous = window.__vantareIsa912Profile;
@@ -217,23 +254,37 @@ try {
     metrics: metricMap(await session.send("Performance.getMetrics")),
   });
 
+  let cpuProfileSummary = null;
+  if (profilerStarted) {
+    const { profile } = await session.send("Profiler.stop");
+    profilerStarted = false;
+    await session.send("Profiler.disable");
+    profilerEnabled = false;
+    await writeFile(cpuProfileOutput, JSON.stringify(profile), { encoding: "utf8", flag: "wx" });
+    cpuProfileSummary = summarizeCpuProfile(profile);
+    assertReadableCpuProfile(cpuProfileSummary);
+  }
+
   const renderer = await stopRendererProbe(page);
   rendererProbeInstalled = false;
   const rendererProbeRemoved = await page.evaluate(
     () => typeof window.__vantareIsa912Profile === "undefined",
   );
-  await session.send("Tracing.end");
-  await tracingComplete;
-  tracingStarted = false;
+  if (tracingStarted) {
+    await session.send("Tracing.end");
+    await withTimeout(tracingComplete, 10_000, "Tracing.tracingComplete");
+    tracingStarted = false;
+  }
 
   const first = performanceSamples[0].metrics;
   const last = performanceSamples.at(-1).metrics;
   const elapsedSeconds = (performanceSamples.at(-1).atMs - performanceSamples[0].atMs) / 1_000;
   const summary = {
-    schema: "vantare.isa-912.webview-profile.v1",
+    schema: "vantare.isa-912.webview-profile.v2",
     startedAt,
     completedAt: new Date().toISOString(),
     role,
+    mode,
     target: description,
     durationMs,
     intervalMs,
@@ -263,14 +314,18 @@ try {
         ? Math.max(...renderer.longTasks.map((entry) => entry.duration))
         : null,
     },
-    trace: summarizeTrace(traceEvents),
+    trace: mode === "trace" ? summarizeTrace(traceEvents) : null,
     traceEventCount: traceEvents.length,
     rendererProbeRemoved,
-    rawTrace: path.basename(traceOutput),
+    rawTrace: mode === "trace" ? path.basename(traceOutput) : null,
+    rawCpuProfile: mode === "profile" ? path.basename(cpuProfileOutput) : null,
+    cpuProfile: cpuProfileSummary,
     performanceSamples,
   };
 
-  await writeFile(traceOutput, JSON.stringify({ traceEvents }), { encoding: "utf8", flag: "wx" });
+  if (mode === "trace") {
+    await writeFile(traceOutput, JSON.stringify({ traceEvents }), { encoding: "utf8", flag: "wx" });
+  }
   await writeFile(output, JSON.stringify(summary, null, 2) + "\n", { encoding: "utf8", flag: "wx" });
   const consoleSummary = { ...summary };
   delete consoleSummary.performanceSamples;
@@ -281,6 +336,12 @@ try {
   }
   if (tracingStarted && session) {
     await session.send("Tracing.end").catch(() => {});
+  }
+  if (profilerStarted && session) {
+    await session.send("Profiler.stop").catch(() => {});
+  }
+  if (profilerEnabled && session) {
+    await session.send("Profiler.disable").catch(() => {});
   }
   if (session) {
     await session.detach().catch(() => {});

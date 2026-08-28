@@ -62,13 +62,38 @@ el coste de React/layout/paint siguen siendo hipótesis hasta obtener perfiles.
 - Go: `runtime/pprof` a fichero, solo en builds sin tag `production`, opt-in,
   con duración acotada y sin listener HTTP.
 - WebView2: el hook no productivo existente `VANTARE_WEBVIEW_DEBUG_PORT` y CDP
-  `Performance.getMetrics` + trace de timeline/GC.
+  `Performance.getMetrics`, trace de timeline/GC y perfil CPU V8 muestreado.
 - Procesos: CPU y Private Bytes por PID/rol con reloj común.
 - Datos crudos: perfil `.pprof`, trace CDP y series JSON. No contienen frames de
   telemetría; antes de versionar se revisan tamaño y contenido.
 
 No se añaden dependencias, endpoints, payloads productivos ni telemetría de
 producto.
+
+### Capturador WebView2 schema v2
+
+`frontend/scripts/isa-912-webview-profile.mjs` escribe resúmenes con schema
+`vantare.isa-912.webview-profile.v2` y separa tres modos para no atribuir al
+producto el coste del propio instrumento:
+
+- `--mode trace`: métricas, rAF/long tasks y trace de timeline/GC; conserva el
+  comportamiento completo del schema v1 y escribe también `.trace.json`;
+- `--mode metrics`: solo métricas y sonda de renderer, sin tracing ni profiler;
+- `--mode profile`: métricas y perfil CPU V8 mediante CDP `Profiler`, con
+  intervalo acotado por `--sampling-us`; escribe `.cpuprofile` y añade al
+  resumen las funciones con mayor self time.
+
+El resumen de CPU conserva únicamente el basename del script y elimina query,
+fragmento y directorios absolutos. Un guard rechaza perfiles sin funciones
+legibles o dominados por nombres minificados. El `.cpuprofile` crudo sí puede
+contener URLs o rutas del host: queda ignorado por Git, permanece fuera del
+repo y se revisa antes de compartir igual que los traces crudos.
+
+Gate focal del resumen sanitizado:
+
+```powershell
+corepack pnpm --dir frontend test:isa912-cpuprofile
+```
 
 ## Corte A implementado
 

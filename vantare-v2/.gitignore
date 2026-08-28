@@ -58,3 +58,6 @@ smoke-jwt.txt
 
 # Local benchmark captures (raw CSV/logs can be large and machine-specific)
 /results/
+
+# Raw diagnostic CPU profiles (local evidence only)
+*.cpuprofile

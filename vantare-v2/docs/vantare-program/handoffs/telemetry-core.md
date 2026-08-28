@@ -15,6 +15,21 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 
 ## Estado real
 
+- 2026-08-29, ISA-893 está rebasada sobre `origin/nightly@ca166b38` después
+  de integrar #936. El store V2 conserva una sola suscripción imperativa al
+  coordinador por generación; cada widget memoizado se suscribe a su sección
+  y Studio ya no se suscribe directamente al store. Los 18 widgets
+  telemétricos seleccionan ViewModels V2 puros en el `WidgetVisualHost`
+  compartido; `engineer-radio` y `race-schedule` usan exclusivamente sus
+  canales auxiliares. Surface, editor in-place e inspector resuelven layout y
+  visibilidad con un contexto mínimo derivado de V2. Frame ausente, inválido,
+  stale, source error y rollback diagnóstico son estados visibles sin fallback
+  visual V1. El test de 60 frames conserva 2 renders de Standings en nivel 5 y
+  60 en nivel 1. Typecheck, lint y tests focalizados pasan; quedan la suite
+  global, los gates Go/Wails y la prueba Wails/CDP real con LMU antes de cerrar
+  la issue. Roadmap: `milestones:telemetry-live`. Sin PR, merge, promoción ni
+  release.
+
 - 2026-08-28, rebase y revisión adversarial ISA-884: los siete commits del PR
   #888 quedaron lineales sobre `origin/nightly@c59a7d64`. La revisión encontró
   un P1 en `deriveVehicleGap`: la ausencia o invalidez del hecho de vueltas de

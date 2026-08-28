@@ -38,6 +38,8 @@ const (
 	EffectsFlat   Effects = "flat"
 )
 
+const DiagnosticEffectsVariantUnavailable = "variante no disponible"
+
 // Reason explica por qué se eligió la política efectiva. Es vocabulario de
 // contrato, no texto de interfaz.
 type Reason string
@@ -127,6 +129,11 @@ func Resolve(appDefault Policy, profileOverride *Policy) Policy {
 			base.WidgetHz = cloneWidgetRates(requested.WidgetHz)
 		}
 	}
+	if base.Level >= LevelBalanced {
+		// D9: Endurance todavía no dispone de las variantes diseñadas. Publicar
+		// otro valor prometería un efecto visual que el renderer no puede aplicar.
+		base.Effects = EffectsFull
+	}
 	return base
 }
 
@@ -193,16 +200,22 @@ func policyForLevel(level Level) Policy {
 	case LevelHigh:
 		policy.RafCap = intPointer(60)
 	case LevelBalanced:
-		policy.Effects = EffectsNoBlur
 		policy.RafCap = intPointer(40)
 	case LevelSaving:
-		policy.Effects = EffectsFlat
 		policy.RafCap = intPointer(30)
 	case LevelMinimum:
-		policy.Effects = EffectsFlat
 		policy.RafCap = intPointer(20)
 	}
 	return policy
+}
+
+// Diagnostics devuelve incidencias de política que no forman parte del wire.
+// El runtime las registra al activar una decisión explícita.
+func Diagnostics(policy Policy) []string {
+	if policy.Level >= LevelBalanced && policy.Level <= LevelMinimum && policy.Effects == EffectsFull {
+		return []string{DiagnosticEffectsVariantUnavailable}
+	}
+	return nil
 }
 
 func (level Level) valid() bool { return level >= LevelMaximum && level <= LevelMinimum }

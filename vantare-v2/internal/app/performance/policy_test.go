@@ -53,6 +53,23 @@ func TestStandingsLevelFiveKeepsNumericTwoHertzCeiling(t *testing.T) {
 	}
 }
 
+func TestLevelsThreeToFivePublishFullUntilEnduranceVariantsExist(t *testing.T) {
+	for level := LevelBalanced; level <= LevelMinimum; level++ {
+		resolved := Resolve(Policy{Mode: ModeLevel, Level: level}, nil)
+		if resolved.Effects != EffectsFull {
+			t.Errorf("nivel %d effects = %q; se esperaba full", level, resolved.Effects)
+		}
+		if got := Diagnostics(resolved); !reflect.DeepEqual(got, []string{DiagnosticEffectsVariantUnavailable}) {
+			t.Errorf("nivel %d diagnósticos = %v", level, got)
+		}
+	}
+
+	custom := Resolve(Policy{Mode: ModeCustom, Level: LevelMinimum, Effects: EffectsFlat}, nil)
+	if custom.Effects != EffectsFull {
+		t.Fatalf("custom nivel 5 publicó variante inexistente: %q", custom.Effects)
+	}
+}
+
 func TestResolveUsesProfileAndKeepsAutoInBalancedUntilSensorExists(t *testing.T) {
 	app := Policy{Mode: ModeLevel, Level: LevelSaving, SourceHz: 60}
 	profile := &Policy{Mode: ModeLevel, Level: LevelHigh, SourceHz: 50}

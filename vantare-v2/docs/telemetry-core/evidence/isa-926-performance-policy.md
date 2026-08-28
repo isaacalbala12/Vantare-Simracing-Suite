@@ -23,6 +23,10 @@ enum cerrado `cpu | frametime | user | vr | unavailable`. `sourceHz` se mide en
 el runtime sobre una ventana móvil de dos segundos de frames aceptados del
 driver; no procede de Ajustes.
 
+Hasta que Isaac entregue las variantes de Endurance, los niveles 3–5 publican
+`effects: "full"`. El runtime registra el diagnóstico `variante no disponible`
+cuando se activa explícitamente uno de esos niveles.
+
 ## Resolución y aplicación
 
 El ajuste de aplicación por defecto es `{mode: "level", level: 1}` hasta que

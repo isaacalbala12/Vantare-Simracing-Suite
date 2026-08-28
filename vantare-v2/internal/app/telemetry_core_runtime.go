@@ -326,6 +326,7 @@ func NewTelemetryCoreRuntime(config TelemetryCoreRuntimeConfig) (*TelemetryCoreR
 	}
 	overlayV2Project, overlayV2SetCadence := newCachedOverlayV2Project()
 	effectivePerformance := performancepolicy.Resolve(config.PerformancePolicy, nil)
+	logPerformanceDiagnostics(config.PerformancePolicy, effectivePerformance)
 	runtime := &TelemetryCoreRuntime{
 		enabled:                  config.Enabled,
 		telemetryFailurePolicyV2: failurePolicyV2,
@@ -402,8 +403,20 @@ func (runtime *TelemetryCoreRuntime) SetPerformancePolicy(policy performancepoli
 	if samePerformancePolicy(runtime.performancePolicy, resolved) {
 		return
 	}
+	logPerformanceDiagnostics(policy, resolved)
 	runtime.performancePolicy = resolved
 	runtime.performanceRevision++
+}
+
+func logPerformanceDiagnostics(requested, resolved performancepolicy.Policy) {
+	// Una configuración vacía es habitual en tests y significa fallback, no una
+	// elección explícita del usuario que merezca diagnóstico operativo.
+	if requested.Level < performancepolicy.LevelBalanced || requested.Level > performancepolicy.LevelMinimum {
+		return
+	}
+	for _, diagnostic := range performancepolicy.Diagnostics(resolved) {
+		log.Printf("performance diagnostic: %s", diagnostic)
+	}
 }
 
 func samePerformancePolicy(left, right performancepolicy.Policy) bool {

@@ -143,7 +143,7 @@ export function createTelemetryRateCoordinator(
     const currentTime = now();
     for (const subscription of listeners.values()) {
       const widgetRate = subscription.widgetType
-        ? overlayFrame?.capabilities.performance.widgetHz[subscription.widgetType]
+        ? overlayFrame?.capabilities.performance?.widgetHz[subscription.widgetType]
         : undefined;
       const elapsed = subscription.lastPaintAt === null ? Number.POSITIVE_INFINITY : currentTime - subscription.lastPaintAt;
       const ceilingCandidate = widgetRate === "dirty" && elapsed >= 1_000;
@@ -212,7 +212,7 @@ export function createTelemetryRateCoordinator(
     subscribe(rateKey, listener) {
       ensureScheduler();
       const widgetType = typeof rateKey === "string" ? rateKey : undefined;
-      const initialRate = widgetType ? overlayFrame?.capabilities.performance.widgetHz[widgetType] : undefined;
+      const initialRate = widgetType ? overlayFrame?.capabilities.performance?.widgetHz[widgetType] : undefined;
       listeners.set(listener, {
         listener,
         widgetType,

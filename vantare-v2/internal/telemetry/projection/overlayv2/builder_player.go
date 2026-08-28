@@ -177,11 +177,12 @@ func BuildCapabilities(final derive.FinalState, source SourceContextV2) Capabili
 			available[id] = QualityMissing
 		}
 	}
+	performance := normalizedPerformance(source.Performance)
 	return CapabilitiesV2{
 		Supported:   supported,
 		Available:   available,
 		Modes:       normalizedCapabilityModes(source.Modes),
-		Performance: normalizedPerformance(source.Performance),
+		Performance: &performance,
 	}
 }
 

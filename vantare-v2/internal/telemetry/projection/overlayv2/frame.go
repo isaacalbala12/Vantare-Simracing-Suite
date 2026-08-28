@@ -314,5 +314,5 @@ type CapabilitiesV2 struct {
 	Supported   []string           `json:"supported"`
 	Available   map[string]Quality `json:"available"`
 	Modes       CapabilityModesV2  `json:"modes"`
-	Performance PerformanceV2      `json:"performance"`
+	Performance *PerformanceV2     `json:"performance,omitempty"`
 }

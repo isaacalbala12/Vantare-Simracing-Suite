@@ -156,7 +156,7 @@ export interface EngineerSnapshotV1 {
 export interface OverlayCapabilitiesV2 {
   readonly available: { readonly [key: string]: OverlayQualityV2 };
   readonly modes: OverlayCapabilityModesV2;
-  readonly performance: OverlayPerformanceV2;
+  readonly performance?: OverlayPerformanceV2 | null | undefined;
   readonly supported: readonly string[];
 }
 

@@ -39,7 +39,7 @@ func TestOverlayV2AppliesHotPerformancePolicyOnNextTick(t *testing.T) {
 	if err := json.Unmarshal(firstEvent.Data, &first); err != nil {
 		t.Fatal(err)
 	}
-	if first.Frame == nil || first.Frame.Capabilities.Performance.Level != 1 || first.Frame.Capabilities.Performance.RafCap != nil {
+	if first.Frame == nil || first.Frame.Capabilities.Performance == nil || first.Frame.Capabilities.Performance.Level != 1 || first.Frame.Capabilities.Performance.RafCap != nil {
 		t.Fatalf("first performance = %+v", first.Frame.Capabilities.Performance)
 	}
 
@@ -56,6 +56,9 @@ func TestOverlayV2AppliesHotPerformancePolicyOnNextTick(t *testing.T) {
 		t.Fatal(err)
 	}
 	performance := second.Frame.Capabilities.Performance
+	if performance == nil {
+		t.Fatal("second performance is nil")
+	}
 	if performance.Level != 5 || performance.RafCap == nil || *performance.RafCap != 20 || performance.Mode != overlayv2.PerformanceModeManual {
 		t.Fatalf("next tick performance = %+v", performance)
 	}

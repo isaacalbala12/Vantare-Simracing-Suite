@@ -428,7 +428,7 @@ function spotter(value: unknown, path: string): void {
 }
 
 function capabilities(value: unknown, path: string): void {
-  objectWithKeys(value, path, ["supported", "available", "modes", "performance"]);
+  objectWithKeys(value, path, ["supported", "available", "modes"], ["performance"]);
   array(value.supported, `${path}.supported`, nonEmptyString);
   record(value.available, `${path}.available`, (entry, entryPath) => quality(entry, entryPath));
   objectWithKeys(value.modes, `${path}.modes`, ["spatial", "delta", "standings", "gaps"]);
@@ -436,6 +436,17 @@ function capabilities(value: unknown, path: string): void {
   array(value.modes.delta, `${path}.modes.delta`, nonEmptyString);
   enumValue<OverlayModeV2>(value.modes.standings, `${path}.modes.standings`, ["none", "official", "reconstructed", "estimated"]);
   enumValue<OverlayModeV2>(value.modes.gaps, `${path}.modes.gaps`, ["none", "official", "reconstructed", "estimated"]);
+  if (value.performance === undefined) {
+    value.performance = {
+      level: 1,
+      mode: "manual",
+      effects: "full",
+      rafCap: null,
+      widgetHz: {},
+      sourceHz: 0,
+      reason: "unavailable",
+    };
+  }
   performancePolicy(value.performance, `${path}.performance`);
   Object.freeze(value.modes);
   Object.freeze(value);

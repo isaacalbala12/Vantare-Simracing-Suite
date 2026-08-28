@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-28T13:39:24Z",
+  "generatedAt": "2026-08-28T13:46:17Z",
   "digest": {
     "lastCommit": "36ec5fdd7e9914638778ba946373b43a52fd3749"
   },
@@ -826,11 +826,6 @@
       "date": "2026-08-28",
       "entries": [
         {
-          "kind": "feat",
-          "scope": "settings",
-          "text": "Controlar zoom con Ctrl y rueda"
-        },
-        {
           "kind": "fix",
           "scope": "telemetry",
           "text": "Completar lifecycle y transporte dirigido de Studio"
@@ -849,6 +844,11 @@
           "kind": "change",
           "scope": "",
           "text": "ISA-889 · Resincronizar epochs saltados en Overlay"
+        },
+        {
+          "kind": "feat",
+          "scope": "settings",
+          "text": "Controlar zoom con Ctrl y rueda"
         }
       ]
     },

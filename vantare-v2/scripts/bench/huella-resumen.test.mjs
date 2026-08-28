@@ -1,0 +1,35 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { aggregateRuns, parseCsv, summarizeRun } from "./huella-resumen.mjs";
+
+test("agrega muestras por rol sin mezclar procesos", () => {
+  const rows = parseCsv([
+    "timestamp,role,privateBytes,cpuPct",
+    "t1,go-host,100,2",
+    "t2,go-host,120,4",
+    "t1,renderer-overlay,200,8",
+    "t2,renderer-overlay,220,10",
+  ].join("\n"));
+  const run = summarizeRun(rows);
+  assert.equal(run["go-host"].privateBytes.mean, 110);
+  assert.equal(run["renderer-overlay"].cpuPct.mean, 9);
+  assert.equal(run["renderer-overlay"].privateBytes.p95, 220);
+});
+
+test("marca ruido por encima de cinco por ciento", () => {
+  const runs = [100, 102, 98].map((value) => ({ "go-host": { cpuPct: { mean: value } } }));
+  const stable = aggregateRuns(runs)[0];
+  assert.equal(stable.pass, true);
+  assert.ok(stable.noisePct < 5);
+
+  const noisy = aggregateRuns([100, 120, 80].map((value) => ({ "go-host": { cpuPct: { mean: value } } })))[0];
+  assert.equal(noisy.pass, false);
+  assert.ok(noisy.noisePct > 5);
+});
+
+test("agrega frametime del juego con percentiles observables", () => {
+  const run = summarizeRun(parseCsv("timestamp,role,frameTimeMs\nt1,game,8\nt2,game,12\nt3,game,20\n"));
+  assert.equal(run.game.frameTimeMs.p50, 12);
+  assert.equal(run.game.frameTimeMs.p95, 20);
+  assert.equal(run.game.frameTimeMs.p99, 20);
+});

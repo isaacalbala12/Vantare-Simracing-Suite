@@ -23,6 +23,7 @@ import (
 const (
 	cpuProfilePathEnv     = "VANTARE_CPU_PROFILE_PATH"
 	cpuProfileDurationEnv = "VANTARE_CPU_PROFILE_DURATION"
+	cpuProfileDelayEnv    = "VANTARE_CPU_PROFILE_DELAY"
 
 	defaultCPUProfileDuration = 30 * time.Second
 	minCPUProfileDuration     = time.Second
@@ -31,20 +32,28 @@ const (
 	// soak in the ISA-912 protocol is measured per process from outside and
 	// must not become a continuous pprof capture.
 	maxCPUProfileDuration = 2 * time.Minute
+	// maxCPUProfileDelay bounds the warm-up wait the ISA-912 protocol asks for
+	// before a capture. It is enough to reach a steady Hub/Overlay topology and
+	// no more; the soak stays a separate measurement.
+	maxCPUProfileDelay = 5 * time.Minute
 )
 
 var (
-	errCPUProfileDurationUnparsable = errors.New("value is not a Go duration")
+	errCPUProfileUnparsable         = errors.New("value is not a Go duration")
 	errCPUProfileDurationOutOfRange = fmt.Errorf(
 		"value is outside %s..%s", minCPUProfileDuration, maxCPUProfileDuration,
 	)
+	errCPUProfileDelayOutOfRange = fmt.Errorf("value is outside 0..%s", maxCPUProfileDelay)
 )
 
-// cpuProfileControl isolates the process-wide profiler so the lifecycle can be
-// exercised without competing for the single global CPU profile.
+// cpuProfileControl isolates the process-wide profiler, and the wait the delay
+// depends on, so the lifecycle can be exercised without competing for the
+// single global CPU profile or waiting on wall-clock time. A nil after uses
+// time.After.
 type cpuProfileControl struct {
 	start func(io.Writer) error
 	stop  func()
+	after func(time.Duration) <-chan time.Time
 }
 
 // parseCPUProfileDuration validates the capture window. It returns a sentinel
@@ -56,12 +65,29 @@ func parseCPUProfileDuration(raw string) (time.Duration, error) {
 	}
 	duration, err := time.ParseDuration(trimmed)
 	if err != nil {
-		return 0, errCPUProfileDurationUnparsable
+		return 0, errCPUProfileUnparsable
 	}
 	if duration < minCPUProfileDuration || duration > maxCPUProfileDuration {
 		return 0, errCPUProfileDurationOutOfRange
 	}
 	return duration, nil
+}
+
+// parseCPUProfileDelay validates the warm-up wait. Unset or zero keeps the
+// undelayed behaviour: the capture starts with the process.
+func parseCPUProfileDelay(raw string) (time.Duration, error) {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return 0, nil
+	}
+	delay, err := time.ParseDuration(trimmed)
+	if err != nil {
+		return 0, errCPUProfileUnparsable
+	}
+	if delay < 0 || delay > maxCPUProfileDelay {
+		return 0, errCPUProfileDelayOutOfRange
+	}
+	return delay, nil
 }
 
 // createCPUProfileFile fails closed: O_EXCL never overwrites an earlier
@@ -86,17 +112,22 @@ func cpuProfileFileReason(err error) string {
 	}
 }
 
-// startCPUProfile reads the two environment variables and starts a capture. It
-// always returns a non-nil, idempotent stop function.
+// startCPUProfile reads the three environment variables and starts a capture.
+// VANTARE_CPU_PROFILE_PATH is the opt-in: unset, nothing happens at all.
+// VANTARE_CPU_PROFILE_DURATION bounds the capture, VANTARE_CPU_PROFILE_DELAY
+// postpones its start so it can begin from a warm topology; unset or zero, the
+// capture starts with the process. It always returns a non-nil, idempotent stop
+// function.
 func startCPUProfile() func() {
 	return startCPUProfileWith(
 		os.Getenv(cpuProfilePathEnv),
 		os.Getenv(cpuProfileDurationEnv),
+		os.Getenv(cpuProfileDelayEnv),
 		cpuProfileControl{start: pprof.StartCPUProfile, stop: pprof.StopCPUProfile},
 	)
 }
 
-func startCPUProfileWith(rawPath, rawDuration string, control cpuProfileControl) func() {
+func startCPUProfileWith(rawPath, rawDuration, rawDelay string, control cpuProfileControl) func() {
 	noop := func() {}
 	path := strings.TrimSpace(rawPath)
 	if path == "" {
@@ -107,21 +138,38 @@ func startCPUProfileWith(rawPath, rawDuration string, control cpuProfileControl)
 		log.Printf("cpu profile: disabled, %s %v", cpuProfileDurationEnv, err)
 		return noop
 	}
+	delay, err := parseCPUProfileDelay(rawDelay)
+	if err != nil {
+		log.Printf("cpu profile: disabled, %s %v", cpuProfileDelayEnv, err)
+		return noop
+	}
+	if delay == 0 {
+		session := beginCPUProfile(path, duration, control)
+		if session == nil {
+			return noop
+		}
+		return session.stop
+	}
+	return startDelayedCPUProfile(path, duration, delay, control)
+}
+
+// beginCPUProfile creates the file and starts the profiler. It returns nil and
+// explains the class of failure when the capture cannot begin.
+func beginCPUProfile(path string, duration time.Duration, control cpuProfileControl) *cpuProfileSession {
 	file, err := createCPUProfileFile(path)
 	if err != nil {
 		log.Printf("cpu profile: disabled, %s %s", cpuProfilePathEnv, cpuProfileFileReason(err))
-		return noop
+		return nil
 	}
 	if err := control.start(file); err != nil {
 		// Remove the empty file so the O_EXCL guard does not block a retry.
 		if cleanupErr := errors.Join(file.Close(), os.Remove(path)); cleanupErr != nil {
 			log.Printf("cpu profile: disabled, profiler unavailable and the empty file could not be removed")
-			return noop
+			return nil
 		}
 		log.Printf("cpu profile: disabled, profiler unavailable")
-		return noop
+		return nil
 	}
-
 	session := &cpuProfileSession{
 		control: control,
 		file:    file,
@@ -132,7 +180,61 @@ func startCPUProfileWith(rawPath, rawDuration string, control cpuProfileControl)
 	// fire on another goroutine before this assignment completes.
 	session.arm(time.AfterFunc(duration, session.stop))
 	log.Printf("cpu profile: capturing for %s, requested by %s", duration, cpuProfilePathEnv)
-	return session.stop
+	return session
+}
+
+// startDelayedCPUProfile waits before touching the filesystem or the profiler,
+// so a capture can begin from a warm, steady topology instead of from startup.
+// Nothing is created until the delay elapses.
+func startDelayedCPUProfile(
+	path string,
+	duration, delay time.Duration,
+	control cpuProfileControl,
+) func() {
+	after := control.after
+	if after == nil {
+		after = time.After
+	}
+	delayed := &delayedCPUProfile{
+		cancel:   make(chan struct{}),
+		finished: make(chan struct{}),
+	}
+	// Logged before the goroutine starts so the waiting line always precedes
+	// the capturing one.
+	log.Printf("cpu profile: waiting %s before capturing for %s, requested by %s",
+		delay, duration, cpuProfilePathEnv)
+	go func() {
+		defer close(delayed.finished)
+		select {
+		case <-after(delay):
+			delayed.session = beginCPUProfile(path, duration, control)
+		case <-delayed.cancel:
+			log.Printf("cpu profile: cancelled before the capture started")
+		}
+	}()
+	return delayed.stop
+}
+
+// delayedCPUProfile owns the waiting goroutine. session is written before
+// finished is closed and read only after it, so the channel provides the
+// happens-before edge and no lock is needed.
+type delayedCPUProfile struct {
+	cancel     chan struct{}
+	finished   chan struct{}
+	cancelOnce sync.Once
+	session    *cpuProfileSession
+}
+
+// stop cancels the wait and returns only once the waiting goroutine has
+// finished and any capture it managed to start has been fully stopped. A stop
+// that races the delay expiring therefore never returns mid-capture and never
+// leaves the goroutine behind.
+func (delayed *delayedCPUProfile) stop() {
+	delayed.cancelOnce.Do(func() { close(delayed.cancel) })
+	<-delayed.finished
+	if delayed.session != nil {
+		delayed.session.stop()
+	}
 }
 
 // cpuProfileSession owns one capture. The duration timer and the shutdown path

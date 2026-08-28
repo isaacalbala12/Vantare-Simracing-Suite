@@ -42,13 +42,16 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   recupera JSON/excepción/timeout del pull y evita suscribir Studio a paints V2
   con flags vacías. No añade goroutines, channels, colas ni dependencias.
   Rama `vantareapp/isa-891-overlay-v2-studio-lifecycle`, creada sobre la base
-  original `nightly@741d31bf` y sincronizada mediante `e0b6a18f` con
-  `origin/nightly@d9909aef`. `go test ./...`,
+  original `nightly@741d31bf`, sincronizada mediante `e0b6a18f` con
+  `nightly@d9909aef` y resincronizada mediante `ad1397d8` con la vigente
+  `origin/nightly@1c45cc82`. `9eb2535b` elimina una carrera del test Studio:
+  espera la carga asíncrona observable del perfil en vez de asumir que el mount
+  del canvas ya la completó. `go test ./...`,
   typecheck, build frontend, contrato generado, ESLint del diff, race detector
   del transporte, 23 tests de roadmap, 64 de comunicaciones, 26 de release
   notes y build Wails
   Windows están verdes sobre el HEAD sincronizado; la suite frontend final
-  cubre 420 archivos y 3.174 tests. El lint global conserva una deuda ajena al diff en
+  cubre 421 archivos y 3.184 tests. El lint global conserva una deuda ajena al diff en
   `car-damage-numbers-view-model-v2.ts`; el gate del diff pasa. La auditoría
   abrió ISA-896 para corregir Desktop+OBS+Studio bajo
   StrictMode/remount; el PR parcial #857 no está en Nightly. No retira V1 ni

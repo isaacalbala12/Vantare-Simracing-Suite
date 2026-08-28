@@ -11,7 +11,8 @@ Los valores numéricos de `widgetHz` son techos de repintado. `dirty` repinta al
 cambiar la sección y fuerza como máximo una entrega al alcanzar el techo de un
 segundo para una misma secuencia/firma; queda satisfecho hasta que exista un
 cambio nuevo. `event` solo repinta al cambiar su fuente y queda exento de
-`rafCap`, por lo que banderas y avisos se sirven en el siguiente rAF. Los
+`rafCap`. D8 está demostrado para spotter por su ruta canónica real. Banderas
+no tiene todavía señal canónica en OverlayFrame v2; se verificará en #893. Los
 monitores del nivel 1 no llevan entrada y `rafCap: null` conserva el
 comportamiento visual previo.
 
@@ -33,9 +34,10 @@ acepta, pero resuelve en nivel 3 con `reason: "unavailable"`.
 El runtime resuelve la política al arrancar y después de guardar ajustes. Antes
 de cada proyección entrega a `SectionScheduler` la cadencia del nivel vigente;
 un cambio caliente queda pendiente y se aplica al comienzo del siguiente tick.
-`session` y `spotter` conservan sus intervalos base en todos los niveles; un
-cambio de bandera o aviso marca dirty de seguridad y fuerza su reconstrucción
-en el tick inmediatamente siguiente.
+`session` y `spotter` conservan sus intervalos base en todos los niveles. Un
+aviso real de spotter marca dirty de seguridad y fuerza su reconstrucción en el
+tick inmediatamente siguiente. El mecanismo equivalente para `session` queda
+preparado, pero no puede activarse hasta que exista la señal canónica de bandera.
 
 ## Gates locales
 

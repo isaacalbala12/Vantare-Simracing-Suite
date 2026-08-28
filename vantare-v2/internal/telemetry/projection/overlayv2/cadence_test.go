@@ -113,36 +113,6 @@ func TestDirtyTriggerHasCeiling(t *testing.T) {
 	}
 }
 
-func TestSafetyDirtyRebuildsOnNextTickBeforeInterval(t *testing.T) {
-	t.Parallel()
-
-	for _, test := range []struct {
-		name    string
-		cadence SectionCadence
-	}{
-		{name: "nivel 1", cadence: DefaultSectionCadence()},
-		{name: "nivel 5", cadence: SectionCadence{Fast: 150 * time.Millisecond, Mid: 300 * time.Millisecond, Slow: 750 * time.Millisecond, Spotter: 100 * time.Millisecond, Session: 250 * time.Millisecond, DirtyCeiling: time.Second}},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			scheduler := NewSectionScheduler(test.cadence)
-			now := cadenceOrigin
-			scheduler.Plan(now, AllDirty())
-			latencies := make([]int, 100)
-			for sample := range latencies {
-				now = now.Add(time.Millisecond)
-				plan := scheduler.Plan(now, safetyDirty(SectionSession)|safetyDirty(SectionSpotter))
-				if !plan.Rebuild(SectionSession) || !plan.Rebuild(SectionSpotter) {
-					t.Fatalf("muestra %d no publicó seguridad en el tick siguiente: %v", sample, plan)
-				}
-				latencies[sample] = 1
-			}
-			if got := latencies[98]; got != 1 {
-				t.Fatalf("p99 = %d ticks; se esperaba 1", got)
-			}
-		})
-	}
-}
-
 func TestCeilingBoundsStalenessOverALongRun(t *testing.T) {
 	t.Parallel()
 

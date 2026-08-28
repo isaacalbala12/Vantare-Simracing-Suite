@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-28T20:52:23Z",
+  "generatedAt": "2026-08-28T21:10:36Z",
   "digest": {
-    "lastCommit": "b2010ec3d4f2f8e2117cc23a5d7dcbbe948e0677"
+    "lastCommit": "4aa8ac7f2f778563fca6113f7645764a2bfedb4b"
   },
   "phases": [
     {
@@ -529,10 +529,10 @@
         "it": "Telemetria LMU dal vivo"
       },
       "body": {
-        "es": "Driver LMU con reconexión acotada, transporte Overlay dirigido con una sola entrega pendiente, generaciones retiradas y recuperación ante timeout compartido por Desktop y Studio, lifecycle V2 recuperable sin frames, proyecciones de overlay, ingeniero y estrategia, y diagnóstico no productivo acotado para atribuir CPU del host y coste del renderer antes de optimizar el pipeline; Relative ordena el tráfico por topología física y muestra gaps temporales canónicos calculados en Go.",
-        "en": "LMU driver with bounded reconnects, targeted Overlay transport with one pending delivery, bounded retired generations and timeout recovery shared by Desktop and Studio, a V2 lifecycle recoverable without frames, overlay, engineer and strategy projections, and bounded non-production diagnostics to attribute host CPU and renderer cost before optimizing the pipeline; Relative orders traffic by physical topology and displays canonical time gaps calculated in Go.",
-        "pt": "Driver LMU com reconexão limitada, transporte Overlay dirigido com uma única entrega pendente, gerações retiradas limitadas e recuperação após timeout partilhada por Desktop e Studio, lifecycle V2 recuperável sem frames, projeções de overlay, engenheiro e estratégia, e diagnóstico não produtivo limitado para atribuir CPU do host e custo do renderer antes de otimizar o pipeline; o Relative ordena o tráfego pela topologia física e mostra gaps temporais canónicos calculados em Go.",
-        "it": "Driver LMU con riconnessione limitata, trasporto Overlay diretto con una sola consegna pendente, generazioni ritirate limitate e recupero dopo timeout condiviso da Desktop e Studio, lifecycle V2 recuperabile senza frame, proiezioni di overlay, engineer e strategia, e diagnostica non di produzione limitata per attribuire CPU dell'host e costo del renderer prima di ottimizzare la pipeline; Relative ordina il traffico per topologia fisica e mostra gap temporali canonici calcolati in Go."
+        "es": "Driver LMU con reconexión acotada, transporte Overlay dirigido con una sola entrega pendiente, generaciones retiradas y recuperación ante timeout compartido por Desktop y Studio, lifecycle V2 recuperable sin frames y renovado por montaje en Desktop, OBS y Studio sin reutilizar recursos dispuestos, proyecciones de overlay, ingeniero y estrategia, y diagnóstico no productivo acotado para atribuir CPU del host y coste del renderer antes de optimizar el pipeline; Relative ordena el tráfico por topología física y muestra gaps temporales canónicos calculados en Go.",
+        "en": "LMU driver with bounded reconnects, targeted Overlay transport with one pending delivery, bounded retired generations and timeout recovery shared by Desktop and Studio, a V2 lifecycle recoverable without frames and renewed per mount in Desktop, OBS and Studio without reusing disposed resources, overlay, engineer and strategy projections, and bounded non-production diagnostics to attribute host CPU and renderer cost before optimizing the pipeline; Relative orders traffic by physical topology and displays canonical time gaps calculated in Go.",
+        "pt": "Driver LMU com reconexão limitada, transporte Overlay dirigido com uma única entrega pendente, gerações retiradas limitadas e recuperação após timeout partilhada por Desktop e Studio, lifecycle V2 recuperável sem frames e renovado por montagem em Desktop, OBS e Studio sem reutilizar recursos descartados, projeções de overlay, engenheiro e estratégia, e diagnóstico não produtivo limitado para atribuir CPU do host e custo do renderer antes de otimizar o pipeline; o Relative ordena o tráfego pela topologia física e mostra gaps temporais canónicos calculados em Go.",
+        "it": "Driver LMU con riconnessione limitata, trasporto Overlay diretto con una sola consegna pendente, generazioni ritirate limitate e recupero dopo timeout condiviso da Desktop e Studio, lifecycle V2 recuperabile senza frame e rinnovato a ogni montaggio in Desktop, OBS e Studio senza riutilizzare risorse disposte, proiezioni di overlay, engineer e strategia, e diagnostica non di produzione limitata per attribuire CPU dell'host e costo del renderer prima di ottimizzare la pipeline; Relative ordina il traffico per topologia fisica e mostra gap temporali canonici calcolati in Go."
       },
       "label": {
         "es": "En desarrollo",

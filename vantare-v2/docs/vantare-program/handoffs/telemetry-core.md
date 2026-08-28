@@ -43,11 +43,12 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   generación vieja ni pérdida de eventos iniciales; dejó el rebase como único
   bloqueo operativo. La rama
   `vantareapp/isa-896-overlay-v2-remount-lifecycle` quedó rebasada de nuevo
-  sobre la base viva `origin/nightly@b2010ec3`, con HEAD funcional
-  `786fae03`. El mock Wails de
+  sobre la base viva `origin/nightly@4aa8ac7f`, con HEAD funcional
+  `2cbe66da`. El mock Wails de
   Studio retira ahora cada callback y la regresión exige un listener activo por
-  evento y un scheduler activo después del doble setup. PR #937 permanece
-  draft; sin merge, promoción ni release.
+  evento y un scheduler activo después del doble setup. PR #937 está ready con
+  auto-merge activo y pendiente de sus gates; sin merge, promoción ni release
+  en este corte.
 - 2026-08-28, ISA-891 completa el lifecycle de Overlay V2 y lleva Studio al
   mismo transporte dirigido que Desktop. `6bd72d37` publica y retiene un único
   status V2 aunque no haya frames ni consumidores; un consumidor tardío recibe

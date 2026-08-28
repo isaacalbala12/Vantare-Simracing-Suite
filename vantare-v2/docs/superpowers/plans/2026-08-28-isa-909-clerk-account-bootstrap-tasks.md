@@ -1,7 +1,7 @@
 # Tareas ISA-909: bootstrap de cuenta Clerk
 
-Estado: revisado por Fable medio; listo para ejecución. Se ejecutan en orden y
-con TDD. Cada tarea termina en un checkpoint antes de iniciar la siguiente.
+Estado: T0-T6 completadas y verificadas localmente; T7 pendiente de review
+final, push, PR draft y CI. Se ejecutaron en orden y con TDD.
 
 ## T0 — Aprobar SDD
 

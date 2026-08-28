@@ -1,7 +1,7 @@
 # Spec: bootstrap de cuenta interna desde Clerk
 
-Estado: revisada por Fable medio el 2026-08-28; cambios P0/P1 incorporados.
-Issue: ISA-909.
+Estado: implementada y verificada localmente el 2026-08-28. Revisión Fable
+medio inicial incorporada; pendiente review final del HEAD. Issue: ISA-909.
 
 ## Objetivo
 

@@ -1,6 +1,6 @@
 # Plan técnico ISA-909: bootstrap de cuenta Clerk
 
-Estado: revisado por Fable medio; listo para ejecución TDD. Base:
+Estado: ejecutado localmente por cortes TDD; pendiente review final. Base:
 `origin/nightly@1c45cc827e47976ed41e1f28463529c04579e806`.
 
 ## Resultado del corte

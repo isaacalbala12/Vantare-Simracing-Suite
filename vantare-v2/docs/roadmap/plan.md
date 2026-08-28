@@ -404,17 +404,15 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 ### Cuenta interna desde Clerk
 
 - id: clerk-account-bootstrap
-- tipo: plan
+- tipo: feature
 - titulo.en: Internal account from Clerk
 - titulo.pt: Conta interna via Clerk
 - titulo.it: Account interno da Clerk
-- cuerpo: El primer login Clerk resolverá o creará un UUID interno idempotente para licencias y dispositivos; los datos antiguos no se enlazarán por email y cualquier grant valioso requerirá una reasignación administrativa revisada.
-- cuerpo.en: The first Clerk login will resolve or create an idempotent internal UUID for licensing and devices; old data will not be linked by email and any valuable grant will require a reviewed administrative reassignment.
-- cuerpo.pt: O primeiro login Clerk irá resolver ou criar um UUID interno idempotente para licenças e dispositivos; os dados antigos não serão ligados por email e qualquer grant valioso exigirá uma reatribuição administrativa revista.
-- cuerpo.it: Il primo login Clerk risolverà o creerà un UUID interno idempotente per licenze e dispositivi; i vecchi dati non verranno collegati via email e ogni grant di valore richiederà una riassegnazione amministrativa verificata.
-- etiqueta: Plan
-- etiqueta.pt: Plano
-- etiqueta.it: Piano
+- cuerpo: La frontera de identidad acepta una sesión Clerk validada por Supabase TPA, crea o recupera un UUID interno idempotente y emite la credencial de licencia firmada con ese UUID. Email no enlaza cuentas; la UI Clerk y los demás servicios ligados a Supabase Auth siguen pendientes.
+- cuerpo.en: The identity boundary accepts a Clerk session validated by Supabase TPA, creates or retrieves an idempotent internal UUID and issues the signed licence credential with that UUID. Email does not link accounts; Clerk UI and other Supabase Auth-bound services remain pending.
+- cuerpo.pt: A fronteira de identidade aceita uma sessão Clerk validada pelo Supabase TPA, cria ou recupera um UUID interno idempotente e emite a credencial de licença assinada com esse UUID. O email não liga contas; a UI Clerk e os restantes serviços ligados ao Supabase Auth continuam pendentes.
+- cuerpo.it: Il confine di identità accetta una sessione Clerk validata da Supabase TPA, crea o recupera un UUID interno idempotente ed emette la credenziale di licenza firmata con tale UUID. L'email non collega gli account; la UI Clerk e gli altri servizi legati a Supabase Auth restano in sospeso.
+- etiqueta: Feature
 
 ### Canales nightly y testers
 

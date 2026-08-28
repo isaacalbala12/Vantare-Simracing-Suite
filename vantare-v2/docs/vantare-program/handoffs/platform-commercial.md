@@ -494,6 +494,11 @@ dispositivo coincidente. Un rechazo 401 no usa la caché aunque el token sea el
 protegido; el focal `internal/license` pasa. `go test ./...` recorrió el resto de
 paquetes verdes y falló únicamente en `cmd/vantare`/`frontend` porque aún no
 existía el artefacto generado `frontend/dist`; queda construirlo en el gate final.
+El gate final construyó `frontend/dist` y después `go test ./...` pasó completo;
+Deno quedó 18/18 y Postgres repitió clean/upgrade/restore, 30 pgTAP Clerk y la
+carrera de primer login. El roadmap ya describe la frontera entregada como
+feature sin afirmar que exista UI Clerk. Pendiente únicamente review final,
+push, PR draft y CI; schema/Edge remotos siguen intactos.
 
 2026-08-04, ISA-243/287 completaron el piloto remoto con un caso sintético
 nuevo. ISA-288 se creó exactamente una vez, el binding quedó `completed` sin

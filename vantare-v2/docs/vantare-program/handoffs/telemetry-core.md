@@ -109,7 +109,23 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   incluidos en la rama y validados de forma estática; su cleanup detiene la
   sonda rAF incluso si CDP falla a mitad de captura. No se cambió semántica,
   cadencia, V1/V2, shadow ni apariencia; falta ejecutar el perfil contra
-  Wails/LMU real. No hay push, PR ni promoción de ISA-912.
+  Wails/LMU real. Un segundo microcorte integrado como `c834cebe` añade retardo
+  opt-in al perfil para separar startup y régimen caliente. La revisión del
+  worker corrigió además contratos que aún nombraban dos variables, amplió el
+  guard `production` a las tres y eliminó un test que afirmaba un vencimiento
+  temporal que no ejecutaba. Los checks focales normal/production, `gofmt`,
+  `vet` y `-race -count=3` pasaron de nuevo en el worktree canónico.
+  La primera captura emparejada Wails/LMU de 30 s midió el host en 18,74 % de un
+  core con Hub y 42,28 % con Overlay. `runtime.cgocall` quedó plano en 29,28 s
+  frente a 29,32 s; el diferencial apareció en JSON y pull:
+  `encoding/json.appendCompact` 1,30 s, `OverlayPullTransport.Pull` 0,70 s,
+  `Hub.ReplaySnapshot` 0,66 s y `json.Marshal` 1,62 s con Overlay frente a
+  0,54 s con Hub. CDP observó 43,63 pulls/s, rAF p99 <=8,6 ms, cero frames >32
+  ms y cero long tasks. Su tracing infló transitoriamente la memoria del
+  renderer; una ventana posterior sin CDP la acotó en 143,6 -> 149,8 MiB y el
+  árbol en 95,36 % de un core. Es una repetición, no el gate de tres: no
+  autoriza aún retirar V1 antes de #893/#894. No hay push, PR ni promoción de
+  ISA-912.
 
 - 2026-08-27, ISA-889 corrige el bloqueo permanente del Overlay despues de un
   reconnect LMU. El transporte acotado de ISA-879 puede entregar como primer

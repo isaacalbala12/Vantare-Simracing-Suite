@@ -216,6 +216,9 @@ try {
 
   const renderer = await stopRendererProbe(page);
   rendererProbeInstalled = false;
+  const rendererProbeRemoved = await page.evaluate(
+    () => typeof window.__vantareIsa912Profile === "undefined",
+  );
   await session.send("Tracing.end");
   await tracingComplete;
   tracingStarted = false;
@@ -259,13 +262,16 @@ try {
     },
     trace: summarizeTrace(traceEvents),
     traceEventCount: traceEvents.length,
+    rendererProbeRemoved,
     rawTrace: traceOutput,
     performanceSamples,
   };
 
   await writeFile(traceOutput, JSON.stringify({ traceEvents }), { encoding: "utf8", flag: "wx" });
   await writeFile(output, JSON.stringify(summary, null, 2) + "\n", { encoding: "utf8", flag: "wx" });
-  console.log(JSON.stringify(summary));
+  const consoleSummary = { ...summary };
+  delete consoleSummary.performanceSamples;
+  console.log(JSON.stringify(consoleSummary));
 } finally {
   if (rendererProbeInstalled && page) {
     await stopRendererProbe(page).catch(() => {});

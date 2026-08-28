@@ -11,6 +11,9 @@ const (
 	overlayPullRequestRoute = OverlayPullServiceRoute + "/pull"
 	overlayPullCloseRoute   = OverlayPullServiceRoute + "/close"
 	maxOverlayPullSessionID = 128
+	// A stopped frontend generation can leave one request in flight. Remember
+	// a small fixed number so delayed traffic cannot replace the current one.
+	maxRetiredOverlayPullSessions = 32
 )
 
 // OverlayPullRequest acknowledges the last response processed by the
@@ -50,11 +53,13 @@ type OverlayPullTransport struct {
 	hub      *Hub
 	registry *PublisherRegistry
 	sessions map[string]*overlayPullSession
+	retired  map[string][]string
 }
 
 func NewOverlayPullTransport(hub *Hub, registry *PublisherRegistry) *OverlayPullTransport {
 	return &OverlayPullTransport{
 		hub: hub, registry: registry, sessions: make(map[string]*overlayPullSession),
+		retired: make(map[string][]string),
 	}
 }
 
@@ -78,7 +83,11 @@ func (transport *OverlayPullTransport) Pull(
 		if request.Ack != 0 {
 			return OverlayPullResponse{}, false, nil
 		}
+		if transport.isRetiredLocked(sender, request.SessionID) {
+			return OverlayPullResponse{}, false, nil
+		}
 		if session != nil {
+			transport.retireLocked(sender, session.id)
 			session.release()
 		}
 		publisher, release, err := transport.registry.RegisterConsumer(ProductOverlayV2)
@@ -170,9 +179,11 @@ func (transport *OverlayPullTransport) Close(sender, sessionID string) {
 	defer transport.mu.Unlock()
 	session := transport.sessions[sender]
 	if session == nil || session.id != sessionID {
+		transport.retireLocked(sender, sessionID)
 		return
 	}
 	delete(transport.sessions, sender)
+	transport.retireLocked(sender, sessionID)
 	session.release()
 }
 
@@ -184,6 +195,7 @@ func (transport *OverlayPullTransport) CloseSender(sender string) {
 	}
 	transport.mu.Lock()
 	defer transport.mu.Unlock()
+	delete(transport.retired, sender)
 	session := transport.sessions[sender]
 	if session == nil {
 		return
@@ -203,6 +215,28 @@ func (transport *OverlayPullTransport) CloseAll() {
 		delete(transport.sessions, sender)
 		session.release()
 	}
+	clear(transport.retired)
+}
+
+func (transport *OverlayPullTransport) isRetiredLocked(sender, sessionID string) bool {
+	for _, retired := range transport.retired[sender] {
+		if retired == sessionID {
+			return true
+		}
+	}
+	return false
+}
+
+func (transport *OverlayPullTransport) retireLocked(sender, sessionID string) {
+	if sessionID == "" || transport.isRetiredLocked(sender, sessionID) {
+		return
+	}
+	retired := append(transport.retired[sender], sessionID)
+	if len(retired) > maxRetiredOverlayPullSessions {
+		copy(retired, retired[len(retired)-maxRetiredOverlayPullSessions:])
+		retired = retired[:maxRetiredOverlayPullSessions]
+	}
+	transport.retired[sender] = retired
 }
 
 func cloneOverlayPullResponse(response OverlayPullResponse) OverlayPullResponse {

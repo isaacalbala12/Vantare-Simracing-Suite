@@ -207,6 +207,41 @@ func TestOverlayPullDoesNotDeliverEmptyEventsAndPicksUpTheNextChange(t *testing.
 	assertPullEventContains(t, next.Events, PublisherEventName(ProductOverlayV2, PublisherEventStatus), `"live"`)
 }
 
+func TestOverlayPullRetiredSessionCannotReplaceCurrentSession(t *testing.T) {
+	hub := NewHub(HubConfig{Product: ProductOverlay})
+	registry := mustPublisherRegistry(t, PublisherConfig{Product: ProductOverlayV2})
+	if err := registry.PublishStatus(ProductOverlayV2, 1, map[string]any{"revision": 1}); err != nil {
+		t.Fatal(err)
+	}
+	transport := NewOverlayPullTransport(hub, registry)
+	defer transport.CloseAll()
+
+	first, deliver, err := transport.Pull("studio-window", OverlayPullRequest{SessionID: "old", Ack: 0})
+	if err != nil || !deliver {
+		t.Fatalf("old session start = %#v, deliver=%v, err=%v", first, deliver, err)
+	}
+	current, deliver, err := transport.Pull("studio-window", OverlayPullRequest{SessionID: "current", Ack: 0})
+	if err != nil || !deliver {
+		t.Fatalf("current session start = %#v, deliver=%v, err=%v", current, deliver, err)
+	}
+
+	if late, deliver, err := transport.Pull("studio-window", OverlayPullRequest{SessionID: "old", Ack: 0}); err != nil || deliver {
+		t.Fatalf("retired pull replaced current session: %#v, deliver=%v, err=%v", late, deliver, err)
+	}
+	transport.Close("studio-window", "old")
+
+	if err := registry.PublishStatus(ProductOverlayV2, 2, map[string]any{"revision": 2}); err != nil {
+		t.Fatal(err)
+	}
+	next, deliver, err := transport.Pull("studio-window", OverlayPullRequest{
+		SessionID: "current",
+		Ack:       current.Delivery,
+	})
+	if err != nil || !deliver || next.SessionID != "current" {
+		t.Fatalf("current session stopped after stale traffic: %#v, deliver=%v, err=%v", next, deliver, err)
+	}
+}
+
 func assertPullEventContains(t *testing.T, events []OverlayPullEvent, name, fragment string) {
 	t.Helper()
 	for _, event := range events {

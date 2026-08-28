@@ -5,7 +5,10 @@ import { createTelemetryRateCoordinator } from '../../overlay/core/telemetry-rat
 import type { TelemetryAdapter } from '../../overlay/transports/telemetry-adapter';
 import type { WidgetRuntimeInput } from '../../overlay/core/widget-definition';
 import { createWailsProjectionTelemetryAdapter } from '../../overlay/transports/projection-telemetry-adapter';
-import { createOverlayFrameV2Store } from '../../telemetry-transport/overlay-frame-v2-store';
+import {
+  createOverlayFrameV2Store,
+  type OverlayFrameV2State,
+} from '../../telemetry-transport/overlay-frame-v2-store';
 import { createBrowserOverlayWailsPullClient } from '../../telemetry-transport/overlay-wails-pull';
 import {
   telemetrySourceStatusEvent,
@@ -47,6 +50,10 @@ import type { StudioProfileEntry } from './studio-profile-entry';
 
 import { modeFromTarget, type StudioRouteMode } from './studio-route-target';
 import { createStudioOverlayTelemetryAdapter } from './studio-overlay-telemetry';
+
+const EMPTY_OVERLAY_V2_STATE: OverlayFrameV2State = Object.freeze({revision: 0, ageMs: 0});
+const subscribeToNothing = () => () => undefined;
+const getEmptyOverlayV2State = () => EMPTY_OVERLAY_V2_STATE;
 
 type ProfilesListPayload = {
   profiles?: ProfileEntry[];
@@ -348,13 +355,14 @@ export const StudioRoute = memo(function StudioRoute(props: StudioRouteProps): R
     [coordinatorProp],
   );
   const overlayV2Store = useMemo(() => createOverlayFrameV2Store(), []);
-  const overlayV2State = useSyncExternalStore(
-    overlayV2Store.subscribe,
-    overlayV2Store.getSnapshot,
-    overlayV2Store.getSnapshot,
-  );
   const [overlayV2Features, setOverlayV2Features] = useState(() =>
     readDiagnosticOverlayV2Features(),
+  );
+  const overlayV2Enabled = overlayV2Features.length > 0;
+  const overlayV2State = useSyncExternalStore(
+    overlayV2Enabled ? overlayV2Store.subscribe : subscribeToNothing,
+    overlayV2Enabled ? overlayV2Store.getSnapshot : getEmptyOverlayV2State,
+    overlayV2Enabled ? overlayV2Store.getSnapshot : getEmptyOverlayV2State,
   );
   const overlayPull = useMemo(() => createBrowserOverlayWailsPullClient({
     onError: (error) => console.error('studio overlay telemetry pull failed', error),

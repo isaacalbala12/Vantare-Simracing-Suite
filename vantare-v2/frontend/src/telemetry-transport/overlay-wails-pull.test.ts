@@ -1,9 +1,15 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  createBrowserOverlayWailsPullClient,
   createOverlayWailsPullClient,
   OVERLAY_PULL_CLOSE_ROUTE,
   OVERLAY_PULL_REQUEST_ROUTE,
 } from "./overlay-wails-pull";
+
+afterEach(() => {
+  vi.useRealTimers();
+  vi.unstubAllGlobals();
+});
 
 type PendingPull = {
   resolve(input: unknown): void;
@@ -156,7 +162,61 @@ describe("overlay HTTP pull client", () => {
     client.stop();
   });
 
-  it("ignores duplicate deliveries and rejects unknown event routes", async () => {
+  it("retries invalid and synchronously failed responses", async () => {
+    const scheduled: Array<{callback: () => void; delayMs: number}> = [];
+    const onError = vi.fn();
+    let attempts = 0;
+    const client = createOverlayWailsPullClient({
+      post(route) {
+        if (route === OVERLAY_PULL_CLOSE_ROUTE) return undefined;
+        attempts += 1;
+        if (attempts === 1) return {invalid: true};
+        if (attempts === 2) throw new Error("sync failure");
+        return new Promise(() => undefined);
+      },
+      schedule(callback, delayMs) {
+        scheduled.push({callback, delayMs});
+        return callback;
+      },
+      cancel: () => undefined,
+      createSessionID: () => "recoverable",
+      onError,
+    });
+
+    client.start();
+    expect(scheduled.at(-1)?.delayMs).toBe(250);
+    scheduled.shift()?.callback();
+    expect(scheduled.at(-1)?.delayMs).toBe(250);
+    scheduled.shift()?.callback();
+    expect(attempts).toBe(3);
+    expect(onError).toHaveBeenCalledTimes(2);
+    client.stop();
+  });
+
+  it("aborts a browser pull that never resolves", async () => {
+    vi.useFakeTimers();
+    const onError = vi.fn();
+    const fetchMock = vi.fn((route: RequestInfo | URL, init?: RequestInit) => {
+      if (String(route).endsWith("/close")) {
+        return Promise.resolve({ok: true, status: 204} as Response);
+      }
+      return new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener("abort", () => reject(new Error("aborted")));
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const client = createBrowserOverlayWailsPullClient({onError});
+
+    client.start();
+    await vi.advanceTimersByTimeAsync(5_000);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect((fetchMock.mock.calls[0]?.[1] as RequestInit | undefined)?.signal?.aborted).toBe(true);
+    expect(onError).toHaveBeenCalledTimes(1);
+    client.stop();
+  });
+
+  it("retries duplicate deliveries and rejects unknown event routes", async () => {
     const posted: Array<{route: string; data: unknown}> = [];
     const pending: PendingPull[] = [];
     const callbacks: Array<() => void> = [];
@@ -188,14 +248,14 @@ describe("overlay HTTP pull client", () => {
     expect(onError).toHaveBeenCalledTimes(1);
 
     callbacks.shift()?.();
-    const scheduledBeforeDuplicate = callbacks.length;
     await flushResponse(pending, {
       sessionId: "current",
       delivery: 1,
       events: [{name: "telemetry:overlay:projection", data: {sequence: 2}}],
     });
-    expect(callbacks).toHaveLength(scheduledBeforeDuplicate);
+    expect(callbacks).toHaveLength(1);
     expect(listener).not.toHaveBeenCalled();
+    expect(onError).toHaveBeenCalledTimes(2);
     expect(posted.filter(({route}) => route === OVERLAY_PULL_REQUEST_ROUTE)).toHaveLength(2);
   });
 });

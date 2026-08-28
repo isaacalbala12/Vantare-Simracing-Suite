@@ -8,6 +8,7 @@ import type { ProfileDocumentV3 } from '../../overlay/core/profile-document';
 import { createTelemetryRateCoordinator } from '../../overlay/core/telemetry-rate-coordinator';
 import { StudioRoute } from './StudioRoute';
 import type { StudioProfileClient } from './state/studio-profile-client';
+import * as overlayV2StoreModule from '../../telemetry-transport/overlay-frame-v2-store';
 
 const listeners = new Map<string, ((event: { data: unknown }) => void)[]>();
 
@@ -108,10 +109,13 @@ describe('StudioRoute', () => {
     listeners.clear();
     vi.clearAllMocks();
     resetStudioStageGeometryCache();
+    delete window.__vantareOverlayV2Features;
+    window.localStorage.removeItem('vantare:overlay-v2-features');
   });
 
   afterEach(() => {
     cleanup();
+    vi.restoreAllMocks();
     vi.unstubAllGlobals();
   });
 
@@ -125,6 +129,25 @@ describe('StudioRoute', () => {
     );
     expect(Events.Emit).toHaveBeenCalledWith('hub:list');
     expect(Events.Emit).toHaveBeenCalledWith('settings:get');
+  });
+
+  it('does not subscribe Studio rendering to V2 frames while every V2 feature is off', () => {
+    const store = overlayV2StoreModule.createOverlayFrameV2Store();
+    const subscribe = vi.fn(store.subscribe);
+    vi.spyOn(overlayV2StoreModule, 'createOverlayFrameV2Store').mockReturnValue({
+      ...store,
+      subscribe,
+    });
+
+    render(
+      <StudioRoute
+        client={createMockClient()}
+        coordinator={createTelemetryRateCoordinator()}
+        liveAvailable={false}
+      />,
+    );
+
+    expect(subscribe).not.toHaveBeenCalled();
   });
 
   it('loads the active profile directly into Overlay Studio V3', async () => {

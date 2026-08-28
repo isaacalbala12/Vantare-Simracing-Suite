@@ -24,6 +24,7 @@ const ACTIVE_PULL_DELAY_MS = 16;
 const IDLE_PULL_DELAY_MS = 100;
 const ERROR_PULL_DELAY_MS = 250;
 const EMPTY_RESPONSES_BEFORE_IDLE = 3;
+const BROWSER_PULL_TIMEOUT_MS = 5_000;
 
 export type OverlayWailsPullOptions = Readonly<{
   post(route: string, data: unknown): unknown | Promise<unknown>;
@@ -127,6 +128,7 @@ export function createOverlayWailsPullClient(
       }
     } catch (error) {
       awaiting = false;
+      scheduleNext(ERROR_PULL_DELAY_MS);
       onError(error);
     }
   };
@@ -134,11 +136,18 @@ export function createOverlayWailsPullClient(
   const handleResponse = (input: unknown) => {
     const response = decodeResponse(input);
     if (!response) {
+      awaiting = false;
+      scheduleNext(ERROR_PULL_DELAY_MS);
       onError(new Error("overlay-wails-pull:invalid-response"));
       return;
     }
-    if (!active || response.sessionId !== sessionID) return;
-    if (!awaiting || response.delivery !== acknowledged + 1) return;
+    if (!active) return;
+    if (!awaiting || response.sessionId !== sessionID || response.delivery !== acknowledged + 1) {
+      awaiting = false;
+      scheduleNext(ERROR_PULL_DELAY_MS);
+      onError(new Error("overlay-wails-pull:unexpected-response"));
+      return;
+    }
 
     awaiting = false;
     for (const event of response.events) {
@@ -213,17 +222,24 @@ export function createBrowserOverlayWailsPullClient(
 ): OverlayWailsPullClient {
   return createOverlayWailsPullClient({
     post: async (route, data) => {
-      const response = await fetch(route, {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify(data),
-        cache: "no-store",
-      });
-      if (!response.ok) {
-        throw new Error(`overlay telemetry pull HTTP ${response.status}`);
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), BROWSER_PULL_TIMEOUT_MS);
+      try {
+        const response = await fetch(route, {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify(data),
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        if (!response.ok) {
+          throw new Error(`overlay telemetry pull HTTP ${response.status}`);
+        }
+        if (response.status === 204) return undefined;
+        return response.json();
+      } finally {
+        clearTimeout(timeout);
       }
-      if (response.status === 204) return undefined;
-      return response.json();
     },
     onError: options.onError,
   });

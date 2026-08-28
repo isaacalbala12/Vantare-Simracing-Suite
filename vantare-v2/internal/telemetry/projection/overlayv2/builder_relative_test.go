@@ -109,8 +109,8 @@ func TestBuildRelativeKeepsPhysicalNeighborWithoutAUsableCanonicalGap(t *testing
 	if before != 5 {
 		t.Fatalf("window = %d rows, want the whole grid", before)
 	}
-	// A vehicle on another lap has Laps set and Time missing in the canonical
-	// state: it leaves the window instead of showing a blank gap.
+	// Missing temporal data must not remove a physical neighbour from the
+	// window; the row stays present with an explicit blank gap.
 	for index := range final.Derived.Gaps.Vehicles {
 		if string(final.Derived.Gaps.Vehicles[index].Vehicle) == "vehicle-001" {
 			final.Derived.Gaps.Vehicles[index].Time = schema.MissingField[standings.RelativeTime]()

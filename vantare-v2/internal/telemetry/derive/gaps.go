@@ -113,19 +113,16 @@ func deriveVehicleGap(player, current core.VehicleState) VehicleGap {
 		} else {
 			result.Laps = schema.MissingField[standings.RelativeLaps]()
 		}
-		result.Time = schema.MissingField[standings.RelativeTime]()
-		return result
+	} else {
+		playerLaps, _ := player.LapsBehindLeader.Value()
+		currentLaps, _ := current.LapsBehindLeader.Value()
+		difference := int64(playerLaps) - int64(currentLaps)
+		if difference < math.MinInt32 || difference > math.MaxInt32 {
+			result.Laps = invalidDerived[standings.RelativeLaps]()
+		} else {
+			result.Laps = mustDerived(standings.RelativeLaps(difference), lapQuality)
+		}
 	}
-
-	playerLaps, _ := player.LapsBehindLeader.Value()
-	currentLaps, _ := current.LapsBehindLeader.Value()
-	difference := int64(playerLaps) - int64(currentLaps)
-	if difference < math.MinInt32 || difference > math.MaxInt32 {
-		result.Laps = invalidDerived[standings.RelativeLaps]()
-		result.Time = schema.MissingField[standings.RelativeTime]()
-		return result
-	}
-	result.Laps = mustDerived(standings.RelativeLaps(difference), lapQuality)
 
 	timeQuality, timeUsable := exactFreshQuality(player.LapProgressTime, current.LapProgressTime)
 	if !timeUsable {

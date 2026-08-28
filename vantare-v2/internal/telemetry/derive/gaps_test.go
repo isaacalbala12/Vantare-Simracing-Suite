@@ -68,6 +68,49 @@ func TestDeriveRelativeGapsKeepsClassificationLapDeltaSeparateFromTime(t *testin
 	assertGap(t, gaps, "lapped-behind", 15, true, -1)
 }
 
+func TestDeriveRelativeGapsDoesNotLetClassificationPresenceControlTime(t *testing.T) {
+	player := gapVehicleWithProgress("player", 5.5, 0, schema.FreshnessFresh)
+	ahead := gapVehicleWithProgress("ahead", 6.75, 0, schema.FreshnessFresh)
+	player.LapsBehindLeader = schema.MissingField[standings.LapGap]()
+	ahead.LapsBehindLeader = schema.MissingField[standings.LapGap]()
+
+	gaps := deriveRelativeGaps("player", derivedInput(true, schema.FreshnessFresh), []core.VehicleState{player, ahead})
+	if len(gaps.Vehicles) != 2 {
+		t.Fatalf("gaps = %+v", gaps)
+	}
+	for _, gap := range gaps.Vehicles {
+		if gap.Vehicle != "ahead" {
+			continue
+		}
+		seconds, secondsPresent := gap.Time.Value()
+		_, lapsPresent := gap.Laps.Value()
+		if !secondsPresent || seconds != 1.25 || lapsPresent || gap.Laps.Freshness() != schema.FreshnessMissing {
+			t.Fatalf("ahead gap = time(%v,%t) laps(%#v)", seconds, secondsPresent, gap.Laps)
+		}
+		return
+	}
+	t.Fatal("ahead gap not found")
+}
+
+func TestDeriveRelativeGapsWithoutLapProgressTimeStaysMissing(t *testing.T) {
+	player := gapVehicle("player", 0, 0, schema.FreshnessFresh)
+	ahead := gapVehicle("ahead", 0, 0, schema.FreshnessFresh)
+	player.LapProgressTime = schema.MissingField[standings.LapProgressTime]()
+	ahead.LapProgressTime = schema.MissingField[standings.LapProgressTime]()
+
+	gaps := deriveRelativeGaps("player", derivedInput(true, schema.FreshnessFresh), []core.VehicleState{player, ahead})
+	for _, gap := range gaps.Vehicles {
+		if gap.Vehicle != "ahead" {
+			continue
+		}
+		if value, present := gap.Time.Value(); present || gap.Time.Freshness() != schema.FreshnessMissing {
+			t.Fatalf("ahead time = (%v,%t,%v), want explicit missing", value, present, gap.Time.Freshness())
+		}
+		return
+	}
+	t.Fatal("ahead gap not found")
+}
+
 func TestDeriveRelativeGapsUsesCanonicalLapProgressAcrossClassificationLaps(t *testing.T) {
 	vehicles := []core.VehicleState{
 		gapVehicleWithProgress("ahead", 6.75, 0, schema.FreshnessFresh),

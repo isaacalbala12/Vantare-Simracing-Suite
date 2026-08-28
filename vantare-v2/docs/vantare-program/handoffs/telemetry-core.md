@@ -37,11 +37,12 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   se entrega solo el último snapshot acumulado.
   Rama `vantareapp/isa-891-overlay-v2-studio-lifecycle` sobre
   `nightly@741d31bf`. `go test ./...`, 418 archivos/3.148 tests frontend,
-  typecheck, build frontend, contrato generado, ESLint del diff, 23 tests de
-  roadmap, 64 de comunicaciones y build Wails Windows estaban verdes antes del
-  último corte; deben repetirse sobre HEAD antes del PR. La auditoría abrió
-  ISA-896 para corregir Desktop+OBS bajo StrictMode/remount; el PR parcial #857
-  no está en Nightly. No retira V1 ni cambia la autoridad visual. Pendiente PR.
+  typecheck, build frontend, contrato generado, ESLint del diff, race detector
+  del transporte, 23 tests de roadmap, 64 de comunicaciones y build Wails
+  Windows están verdes sobre HEAD; la suite frontend final cubre 418 archivos y
+  3.151 tests. La auditoría abrió ISA-896 para corregir Desktop+OBS+Studio bajo
+  StrictMode/remount; el PR parcial #857 no está en Nightly. No retira V1 ni
+  cambia la autoridad visual. Pendiente PR y CI remoto.
 
 - 2026-08-27, ISA-889 corrige el bloqueo permanente del Overlay despues de un
   reconnect LMU. El transporte acotado de ISA-879 puede entregar como primer

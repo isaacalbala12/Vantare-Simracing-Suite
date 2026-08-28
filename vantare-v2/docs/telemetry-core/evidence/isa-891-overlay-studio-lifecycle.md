@@ -96,19 +96,39 @@ No se introduce una cola ni se duplica la revisión lógica.
 - Paquetes Go `overlayv2`, `telemetrytransport` y `internal/app`: PASS.
 - Tests frontend enfocados: PASS, 6 archivos y 78 tests.
 - `go test ./...`: PASS.
-- Suite frontend completa: PASS, 418 archivos y 3.148 tests. `happy-dom`
+- Suite frontend completa: PASS, 418 archivos y 3.151 tests. `happy-dom`
   imprimió el `AbortError` conocido durante teardown; Vitest terminó con código
   0.
 - `pnpm --dir frontend typecheck`: PASS.
 - `pnpm --dir frontend build`: PASS.
 - ESLint sobre los 11 archivos del segundo corte: PASS.
 - `go run ./tools/telemetry-contract-gen -check`: PASS.
+- `go test -race ./internal/app/telemetrytransport`: PASS.
 - Tests de roadmap: PASS, 23.
 - Tests de comunicaciones/changelog: PASS, 64.
 - `wails3 task windows:build` con canal `nightly`: PASS. El generador temporal
   de configuración se ejecutó en la tarea canónica y eliminó
   `cmd/vantare/supabase_build.go` al finalizar; no quedó diff generado.
 - `git diff --check`: PASS.
+
+## Revisiones previas al PR
+
+1. **Concurrencia y rendimiento:** `OverlayPullTransport` mantiene un mapa
+   acotado por ventana, una única respuesta pendiente por sesión y no crea
+   goroutines. El orden de locks es transporte -> Hub/registry/publisher y no se
+   encontró un camino inverso. El race detector, pérdida/retry/ack,
+   latest-wins, cierre tardío y límite single-in-flight pasan.
+2. **Arquitectura y autoridad:** Studio, Desktop y OBS comparten el mismo
+   transporte dirigido; Studio entrega `WidgetRuntimeInput` puro al único
+   `WidgetVisualHost`. No hay acceso a Wails, persistencia ni tipos LMU en los
+   widgets añadidos. V1 sigue siendo la autoridad explícita detrás de las flags;
+   este PR no adelanta el cutover de #893.
+3. **Preparación para retirar V1:** la búsqueda estática confirma consumidores
+   V1 en visibilidad, layout, histories y varios view-models. Están dentro del
+   alcance ya registrado en #893 y no pueden borrarse aún. La revisión descubrió
+   además el cleanup irreversible de StrictMode/remount en Desktop, OBS y
+   Studio, registrado en #896. #892, #893 y #896 deben cerrarse antes del gate
+   real y la retirada de #894.
 
 ## Prueba LMU/Wails real
 
@@ -140,6 +160,6 @@ ISA-891, pero dura 30 segundos y no acredita por sí sola estabilidad prolongada
 ni la retirada de V1. ISA-894 mantiene cinco sesiones LMU de al menos 20 minutos
 (una con más de 40 coches), memoria acotada y cero consumidores V1 como puertas
 de borrado. Promover V2 a autoridad y corregir Relative pertenecen a ISA-893 e
-ISA-892. La revisión también abrió ISA-896: Desktop y OBS deben corregir su
-lifecycle irreversible bajo StrictMode/remount antes del cutover y de retirar
-V1; el PR parcial #857 no está integrado en Nightly.
+ISA-892. La revisión también abrió ISA-896: Desktop, OBS y Studio deben corregir
+su lifecycle irreversible bajo StrictMode/remount antes del cutover y de
+retirar V1; el PR parcial #857 no está integrado en Nightly.

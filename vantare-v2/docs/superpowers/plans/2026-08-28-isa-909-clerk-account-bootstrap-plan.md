@@ -156,8 +156,9 @@ redivide antes de seguir.
 - **Regresión offline:** firma, UUID, dispositivo, reloj y token protegido se
   conservan; solo cambia la relación con el `sub` externo en online.
 - **Borrado de usuario legacy:** retirar la FK elimina su cascade sobre profile.
-  La eliminación de cuenta queda fuera de alcance y se documenta como riesgo;
-  no se borra ningún usuario real.
+  La eliminación de cuenta queda fuera de alcance, el lifecycle sustitutivo y
+  su impacto sobre rollback se inventarían en ISA-911; no se borra ningún usuario
+  real. Un JWT legacy cuyo usuario ya no existe falla cerrado.
 - **Segundo TPA:** su issuer completo obtiene un namespace separado; habilitar
   sus superficies requiere una issue explícita.
 - **Superficies aún UUID:** Billing/Testing Center y otras quedan fuera y se

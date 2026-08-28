@@ -316,10 +316,21 @@ describe('StudioRoute', () => {
       } as Response);
       await Promise.resolve();
     });
+    const repaint = vi.fn();
+    const unsubscribe = coordinator.subscribe(undefined, repaint);
+    coordinator.publish({
+      status: 'ready',
+      capturedAt: 1,
+      session: { type: 'race', key: 'strict-mode', epoch: 1 },
+      player: { inPit: false, throttle: 0.5, brake: 0.25, clutch: 0 },
+      scoring: [],
+    });
 
     expect(stores.some((store) => store.getSnapshot().revision === 1)).toBe(true);
     expect(coordinator.getSnapshot().derived?.inputHistory.length).toBeGreaterThan(0);
+    await waitFor(() => expect(repaint).toHaveBeenCalled());
     expect(screen.getByTestId('overlay-studio-v3')).toBeTruthy();
+    unsubscribe();
   });
 
   it('keeps the editor mounted and inert while visiting another Studio section', async () => {

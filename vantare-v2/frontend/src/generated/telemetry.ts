@@ -11,6 +11,8 @@ export type OverlayAuthorityV2 = "derived" | "estimated" | "native";
 export type OverlayCapability = "controls" | "controls.history" | "pit" | "session" | "spatial" | "standings";
 export type OverlayFuelUnitV2 = "gallons-us" | "liters";
 export type OverlayModeV2 = "estimated" | "none" | "official" | "reconstructed" | "xyz";
+export type OverlayPerformanceEffectsV2 = "flat" | "full" | "noBlur";
+export type OverlayPerformanceModeV2 = "auto" | "custom" | "manual";
 export type OverlayPressureUnitV2 = "kpa" | "psi";
 export type OverlayQualityV2 = "fresh" | "invalid" | "missing" | "stale";
 export type OverlaySourceStateV2 = "connecting" | "degraded" | "detecting" | "error" | "live" | "stale" | "stopped" | "stopping";
@@ -154,6 +156,7 @@ export interface EngineerSnapshotV1 {
 export interface OverlayCapabilitiesV2 {
   readonly available: { readonly [key: string]: OverlayQualityV2 };
   readonly modes: OverlayCapabilityModesV2;
+  readonly performance: OverlayPerformanceV2;
   readonly supported: readonly string[];
 }
 
@@ -267,6 +270,16 @@ export interface OverlayPayloadV1 {
   readonly sessionType: TelemetryField<string>;
   readonly trackName: TelemetryField<string>;
   readonly vehicles: readonly OverlayVehicleV1[];
+}
+
+export interface OverlayPerformanceV2 {
+  readonly effects: OverlayPerformanceEffectsV2;
+  readonly level: 1 | 2 | 3 | 4 | 5;
+  readonly mode: OverlayPerformanceModeV2;
+  readonly rafCap: number | null;
+  readonly reason?: string | undefined;
+  readonly sourceHz: number;
+  readonly widgetHz: { readonly [widgetType: string]: number | "dirty" | "event" };
 }
 
 export interface OverlayPlayerInstrumentsV2 {

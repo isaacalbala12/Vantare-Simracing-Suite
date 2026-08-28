@@ -40,6 +40,22 @@ func TestSchedulerFirstPlanIsAlwaysComplete(t *testing.T) {
 	}
 }
 
+func TestSchedulerAppliesHotCadenceOnNextTick(t *testing.T) {
+	initial := DefaultSectionCadence()
+	next := SectionCadence{Fast: 150 * time.Millisecond, Mid: 300 * time.Millisecond, Slow: 750 * time.Millisecond, DirtyCeiling: time.Second}
+	scheduler := NewSectionScheduler(initial)
+	scheduler.Plan(cadenceOrigin, AllDirty())
+
+	scheduler.SetCadence(next)
+	if got := scheduler.Cadence(); got != initial {
+		t.Fatalf("SetCadence applied before next tick: %+v", got)
+	}
+	scheduler.Plan(cadenceOrigin.Add(10*time.Millisecond), 0)
+	if got := scheduler.Cadence(); got != next {
+		t.Fatalf("next tick cadence = %+v, want %+v", got, next)
+	}
+}
+
 func TestSchedulerHonoursTierIntervals(t *testing.T) {
 	t.Parallel()
 

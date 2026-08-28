@@ -2,6 +2,8 @@
 // Overlay v1 remains the production contract until the migration gate closes.
 package overlayv2
 
+import "encoding/json"
+
 const (
 	ContractVersionV2  uint16 = 2
 	AlgorithmVersionV2 uint16 = 2
@@ -280,8 +282,37 @@ type CapabilityModesV2 struct {
 	Gaps      Mode     `json:"gaps"`
 }
 
+type PerformanceModeV2 string
+
+const (
+	PerformanceModeManual PerformanceModeV2 = "manual"
+	PerformanceModeCustom PerformanceModeV2 = "custom"
+	PerformanceModeAuto   PerformanceModeV2 = "auto"
+)
+
+type PerformanceEffectsV2 string
+
+const (
+	PerformanceEffectsFull   PerformanceEffectsV2 = "full"
+	PerformanceEffectsNoBlur PerformanceEffectsV2 = "noBlur"
+	PerformanceEffectsFlat   PerformanceEffectsV2 = "flat"
+)
+
+// PerformanceV2 es la politica efectiva decidida por Go. WidgetHz usa JSON
+// crudo solo para conservar la union cerrada number | dirty | event en wire.
+type PerformanceV2 struct {
+	Level    uint8                      `json:"level"`
+	Mode     PerformanceModeV2          `json:"mode"`
+	Effects  PerformanceEffectsV2       `json:"effects"`
+	RafCap   *int                       `json:"rafCap"`
+	WidgetHz map[string]json.RawMessage `json:"widgetHz"`
+	Reason   string                     `json:"reason,omitempty"`
+	SourceHz float64                    `json:"sourceHz"`
+}
+
 type CapabilitiesV2 struct {
-	Supported []string           `json:"supported"`
-	Available map[string]Quality `json:"available"`
-	Modes     CapabilityModesV2  `json:"modes"`
+	Supported   []string           `json:"supported"`
+	Available   map[string]Quality `json:"available"`
+	Modes       CapabilityModesV2  `json:"modes"`
+	Performance PerformanceV2      `json:"performance"`
 }

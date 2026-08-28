@@ -1618,6 +1618,35 @@
         ],
         "standings": "official",
         "gaps": "official"
+      },
+      "performance": {
+        "level": 3,
+        "mode": "manual",
+        "effects": "noBlur",
+        "rafCap": 40,
+        "widgetHz": {
+          "broadcast-tower": 4,
+          "car-damage-numbers": 1,
+          "car-damage-visual": 1,
+          "delta": 20,
+          "delta-advanced": 20,
+          "delta-trace": 20,
+          "engineer-radio": "event",
+          "fuel-strategy": 1,
+          "head-to-head": 15,
+          "input-telemetry": 40,
+          "multiclass-relative": 15,
+          "pedals": 40,
+          "pedals-telemetry": 40,
+          "pedals-telemetry-compact": 40,
+          "race-schedule": "dirty",
+          "racing-flags": "event",
+          "relative": 15,
+          "standings": 5,
+          "track-map": 20,
+          "track-weather": "dirty"
+        },
+        "sourceHz": 60
       }
     }
   }

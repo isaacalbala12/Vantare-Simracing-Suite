@@ -10,6 +10,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	performancepolicy "github.com/vantare/overlays/v2/internal/app/performance"
 	"github.com/vantare/overlays/v2/internal/app/telemetrytransport"
 	"github.com/vantare/overlays/v2/internal/telemetry/capability"
 	telemetrycore "github.com/vantare/overlays/v2/internal/telemetry/core"
@@ -62,6 +63,8 @@ type EngineerProjectionConsumer interface {
 // TelemetryCoreRuntimeConfig configures the canonical product runtime.
 type TelemetryCoreRuntimeConfig struct {
 	Enabled bool
+	// PerformancePolicy es el nivel efectivo inicial decidido desde Ajustes.
+	PerformancePolicy performancepolicy.Policy
 	// Now is injectable for deterministic freshness tests. It defaults to
 	// time.Now and must preserve the monotonic component in production.
 	Now func() time.Time
@@ -231,7 +234,10 @@ type TelemetryCoreRuntime struct {
 	counters                  telemetryCoreCounters
 	metricStore               telemetryCoreMetricStore
 	overlayV2Project          func(envelope.Snapshot[derive.FinalState], overlayv2.SourceContextV2, overlayv2.PreferencesV2, uint64) (overlayv2.UpdateV2, error)
+	overlayV2SetCadence       func(overlayv2.SectionCadence)
 	overlayV2DeliveryRevision uint64
+	performancePolicy         performancepolicy.Policy
+	performanceRevision       uint64
 }
 
 // NewTelemetryCoreRuntime is side-effect free; Start owns all goroutines and
@@ -314,6 +320,8 @@ func NewTelemetryCoreRuntime(config TelemetryCoreRuntimeConfig) (*TelemetryCoreR
 			},
 		})
 	}
+	overlayV2Project, overlayV2SetCadence := newCachedOverlayV2Project()
+	effectivePerformance := performancepolicy.Resolve(config.PerformancePolicy, nil)
 	runtime := &TelemetryCoreRuntime{
 		enabled:                  config.Enabled,
 		telemetryFailurePolicyV2: failurePolicyV2,
@@ -344,7 +352,10 @@ func NewTelemetryCoreRuntime(config TelemetryCoreRuntimeConfig) (*TelemetryCoreR
 		now:                    now,
 		watchdogDelay:          watchdogDelay,
 		watchdogEnabled:        watchdogEnabled,
-		overlayV2Project:       newCachedOverlayV2Project(),
+		overlayV2Project:       overlayV2Project,
+		overlayV2SetCadence:    overlayV2SetCadence,
+		performancePolicy:      effectivePerformance,
+		performanceRevision:    1,
 	}
 	if engineerAsyncPort {
 		runtime.engineerPort = newEngineerPort(runtime, config.Engineer, config.EngineerConsumeTimeout, config.EngineerFactQueueCapacity)
@@ -373,6 +384,38 @@ func (runtime *TelemetryCoreRuntime) OverlayV2Publishers() *telemetrytransport.P
 		return nil
 	}
 	return runtime.overlayV2Publishers
+}
+
+// SetPerformancePolicy publica una nueva decisión de Go. El projector toma la
+// cadencia y el contrato juntos en el siguiente tick V2.
+func (runtime *TelemetryCoreRuntime) SetPerformancePolicy(policy performancepolicy.Policy) {
+	if runtime == nil {
+		return
+	}
+	resolved := performancepolicy.Resolve(policy, nil)
+	runtime.mu.Lock()
+	defer runtime.mu.Unlock()
+	if samePerformancePolicy(runtime.performancePolicy, resolved) {
+		return
+	}
+	runtime.performancePolicy = resolved
+	runtime.performanceRevision++
+}
+
+func samePerformancePolicy(left, right performancepolicy.Policy) bool {
+	if left.Level != right.Level || left.Mode != right.Mode || left.Effects != right.Effects ||
+		left.SourceHz != right.SourceHz || left.Reason != right.Reason || len(left.WidgetHz) != len(right.WidgetHz) {
+		return false
+	}
+	if (left.RafCap == nil) != (right.RafCap == nil) || left.RafCap != nil && *left.RafCap != *right.RafCap {
+		return false
+	}
+	for widget, rate := range left.WidgetHz {
+		if right.WidgetHz[widget] != rate {
+			return false
+		}
+	}
+	return true
 }
 
 func (runtime *TelemetryCoreRuntime) Metrics() TelemetryCoreMetrics {
@@ -983,13 +1026,47 @@ func (sink runtimeBatchSink) WriteBatch(ctx context.Context, batch telemetrycore
 	return nil
 }
 
-// newCachedOverlayV2Project regula por seccion (F11) antes de proyectar y
-// serializar: envuelve CachedProjector con las cadencias por defecto (hoy
-// inertes: 0 = cada tick) conservando la firma inyectable que usan los tests.
-func newCachedOverlayV2Project() func(envelope.Snapshot[derive.FinalState], overlayv2.SourceContextV2, overlayv2.PreferencesV2, uint64) (overlayv2.UpdateV2, error) {
+// newCachedOverlayV2Project regula por seccion antes de proyectar y serializar.
+// Devuelve también la entrada de cadencia para aplicarla en el tick siguiente.
+func newCachedOverlayV2Project() (
+	func(envelope.Snapshot[derive.FinalState], overlayv2.SourceContextV2, overlayv2.PreferencesV2, uint64) (overlayv2.UpdateV2, error),
+	func(overlayv2.SectionCadence),
+) {
 	projector := overlayv2.NewCachedProjector(overlayv2.DefaultSectionCadence())
-	return func(snapshot envelope.Snapshot[derive.FinalState], source overlayv2.SourceContextV2, preferences overlayv2.PreferencesV2, revision uint64) (overlayv2.UpdateV2, error) {
+	project := func(snapshot envelope.Snapshot[derive.FinalState], source overlayv2.SourceContextV2, preferences overlayv2.PreferencesV2, revision uint64) (overlayv2.UpdateV2, error) {
 		return projector.Project(snapshot, source, preferences, revision, time.Now())
+	}
+	return project, projector.SetCadence
+}
+
+func overlayPerformancePolicy(policy performancepolicy.Policy) overlayv2.PerformanceV2 {
+	mode := overlayv2.PerformanceModeManual
+	switch policy.Mode {
+	case performancepolicy.ModeCustom:
+		mode = overlayv2.PerformanceModeCustom
+	case performancepolicy.ModeAuto:
+		mode = overlayv2.PerformanceModeAuto
+	}
+	effects := overlayv2.PerformanceEffectsV2(policy.Effects)
+	rates := make(map[string]json.RawMessage, len(policy.WidgetHz))
+	for widget, rate := range policy.WidgetHz {
+		if rate.IsMonitor() {
+			continue
+		}
+		encoded, err := json.Marshal(rate)
+		if err != nil {
+			continue
+		}
+		rates[widget] = encoded
+	}
+	var rafCap *int
+	if policy.RafCap != nil {
+		value := *policy.RafCap
+		rafCap = &value
+	}
+	return overlayv2.PerformanceV2{
+		Level: uint8(policy.Level), Mode: mode, Effects: effects, RafCap: rafCap,
+		WidgetHz: rates, Reason: policy.Reason, SourceHz: policy.SourceHz,
 	}
 }
 
@@ -1007,6 +1084,8 @@ func (runtime *TelemetryCoreRuntime) publishOverlayV2(
 	}
 	runtime.mu.Lock()
 	lastFrameAt := runtime.lastFrameAt
+	policy := runtime.performancePolicy
+	performanceRevision := runtime.performanceRevision
 	runtime.mu.Unlock()
 	age := runtime.now().Sub(lastFrameAt).Milliseconds()
 	if age < 0 {
@@ -1017,10 +1096,13 @@ func (runtime *TelemetryCoreRuntime) publishOverlayV2(
 		return fmt.Errorf("%w: count Overlay v2 vehicles", telemetrytransport.ErrInvalidPayload)
 	}
 	started := time.Now()
+	runtime.overlayV2SetCadence(performancepolicy.CadenceFor(policy.Level))
 	update, err := runtime.overlayV2Project(final, overlayv2.SourceContextV2{
 		State: state.String(), ReconnectAttempt: attempt, LastFrameAgeMS: age,
 		DescriptorCapabilities: runtime.descriptorCapabilities,
 		Modes:                  overlayCapabilityModes(runtime.capabilityDeclaration, value),
+		PerformanceRevision:    performanceRevision,
+		Performance:            overlayPerformancePolicy(policy),
 	}, overlayv2.DefaultPreferencesV2(), 0)
 	runtime.metricStore.observeOverlayV2BuildDuration(time.Since(started))
 	if err != nil {

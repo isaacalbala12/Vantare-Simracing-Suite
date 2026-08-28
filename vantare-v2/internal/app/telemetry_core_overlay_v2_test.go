@@ -7,12 +7,59 @@ import (
 	"testing"
 	"time"
 
+	performancepolicy "github.com/vantare/overlays/v2/internal/app/performance"
 	"github.com/vantare/overlays/v2/internal/app/telemetrytransport"
 	"github.com/vantare/overlays/v2/internal/telemetry/derive"
 	"github.com/vantare/overlays/v2/internal/telemetry/driver"
 	overlayv2 "github.com/vantare/overlays/v2/internal/telemetry/projection/overlayv2"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/envelope"
 )
+
+func TestOverlayV2AppliesHotPerformancePolicyOnNextTick(t *testing.T) {
+	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{
+		PerformancePolicy: performancepolicy.Policy{Mode: performancepolicy.ModeLevel, Level: performancepolicy.LevelMaximum},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	publisher, release, err := runtime.OverlayV2Publishers().RegisterConsumer(telemetrytransport.ProductOverlayV2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer release()
+
+	if err := (runtimeBatchSink{runtime: runtime}).WriteBatch(context.Background(), hardeningBatch(1, 1)); err != nil {
+		t.Fatal(err)
+	}
+	firstEvent, ok := publisher.ReplaySnapshot()
+	if !ok {
+		t.Fatal("missing first snapshot")
+	}
+	var first overlayv2.UpdateV2
+	if err := json.Unmarshal(firstEvent.Data, &first); err != nil {
+		t.Fatal(err)
+	}
+	if first.Frame == nil || first.Frame.Capabilities.Performance.Level != 1 || first.Frame.Capabilities.Performance.RafCap != nil {
+		t.Fatalf("first performance = %+v", first.Frame.Capabilities.Performance)
+	}
+
+	runtime.SetPerformancePolicy(performancepolicy.Policy{Mode: performancepolicy.ModeLevel, Level: performancepolicy.LevelMinimum})
+	if err := (runtimeBatchSink{runtime: runtime}).WriteBatch(context.Background(), hardeningBatch(2, 1)); err != nil {
+		t.Fatal(err)
+	}
+	secondEvent, ok := publisher.ReplaySnapshot()
+	if !ok {
+		t.Fatal("missing second snapshot")
+	}
+	var second overlayv2.UpdateV2
+	if err := json.Unmarshal(secondEvent.Data, &second); err != nil {
+		t.Fatal(err)
+	}
+	performance := second.Frame.Capabilities.Performance
+	if performance.Level != 5 || performance.RafCap == nil || *performance.RafCap != 20 || performance.Mode != overlayv2.PerformanceModeManual {
+		t.Fatalf("next tick performance = %+v", performance)
+	}
+}
 
 func TestRuntimePublishesV1AndV2InShadow(t *testing.T) {
 	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{})

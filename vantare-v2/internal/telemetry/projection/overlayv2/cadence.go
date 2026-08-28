@@ -176,9 +176,11 @@ func (plan SectionPlan) Count() int {
 // concurrency; the caller injects `now`. Equal inputs always yield the same
 // plan.
 type SectionScheduler struct {
-	cadence SectionCadence
-	built   [sectionCount]bool
-	last    [sectionCount]time.Time
+	cadence    SectionCadence
+	pending    SectionCadence
+	hasPending bool
+	built      [sectionCount]bool
+	last       [sectionCount]time.Time
 }
 
 // NewSectionScheduler builds a scheduler that has never emitted a frame, so
@@ -189,6 +191,13 @@ func NewSectionScheduler(cadence SectionCadence) *SectionScheduler {
 
 // Cadence returns the configuration in use.
 func (scheduler *SectionScheduler) Cadence() SectionCadence { return scheduler.cadence }
+
+// SetCadence encola una politica nueva. Plan la aplica al inicio del siguiente
+// tick para que un cambio de Ajustes no parta una decision a mitad del frame.
+func (scheduler *SectionScheduler) SetCadence(cadence SectionCadence) {
+	scheduler.pending = cadence
+	scheduler.hasPending = true
+}
 
 // Plan decides the sections to rebuild at `now` and records the decision. A
 // section rebuilds when any of these holds:
@@ -204,6 +213,10 @@ func (scheduler *SectionScheduler) Cadence() SectionCadence { return scheduler.c
 // A non-monotonic clock (now before the last build) is treated as a
 // discontinuity and rebuilds the section.
 func (scheduler *SectionScheduler) Plan(now time.Time, dirty DirtySet) SectionPlan {
+	if scheduler.hasPending {
+		scheduler.cadence = scheduler.pending
+		scheduler.hasPending = false
+	}
 	var plan SectionPlan
 	ceiling := scheduler.cadence.DirtyCeiling
 	for _, section := range AllSections() {
@@ -226,6 +239,11 @@ func (scheduler *SectionScheduler) decide(section Section, now time.Time, dirty 
 	}
 	elapsed := now.Sub(scheduler.last[section])
 	if elapsed < 0 {
+		return true
+	}
+	// Performance vive dentro de capabilities y debe llegar en el mismo tick
+	// que cambia la politica; el tier sigue siendo slow cuando permanece igual.
+	if section == SectionCapabilities && dirty.Has(section) {
 		return true
 	}
 	// Dirty gating and the staleness ceiling only apply to the slow tier: fast
@@ -383,6 +401,11 @@ func NewCachedProjectorWithBuilders(cadence SectionCadence, builders SectionBuil
 // Cadence returns the configuration in use.
 func (projector *CachedProjector) Cadence() SectionCadence { return projector.scheduler.Cadence() }
 
+// SetCadence aplica la nueva politica al principio del proximo Project.
+func (projector *CachedProjector) SetCadence(cadence SectionCadence) {
+	projector.scheduler.SetCadence(cadence)
+}
+
 // Metrics returns a copy of the regulation counters.
 func (projector *CachedProjector) Metrics() CachedProjectorMetrics {
 	result := CachedProjectorMetrics{
@@ -502,12 +525,13 @@ func (projector *CachedProjector) Project(
 // whether a slow section changed materially. They deliberately avoid invoking
 // any builder: asking a builder would defeat the regulation.
 type dirtySignals struct {
-	session      string
-	epoch        int64
-	vehicles     int
-	sourceState  string
-	degraded     string
-	capabilities int
+	session             string
+	epoch               int64
+	vehicles            int
+	sourceState         string
+	degraded            string
+	capabilities        int
+	performanceRevision uint64
 
 	track       schema.Field[string]
 	sessionType schema.Field[session.Type]
@@ -529,21 +553,22 @@ type dirtySignals struct {
 
 func observeDirtySignals(header envelope.Header, final derive.FinalState, source SourceContextV2) dirtySignals {
 	signals := dirtySignals{
-		session:        string(header.Identity.Session),
-		epoch:          int64(header.Cursor.Epoch),
-		vehicles:       len(final.Observed.Vehicles),
-		sourceState:    source.State,
-		degraded:       source.DegradedReason,
-		capabilities:   len(source.DescriptorCapabilities),
-		track:          final.Observed.TrackName,
-		sessionType:    final.Observed.SessionType,
-		maximumLaps:    final.Observed.MaximumLaps,
-		remaining:      final.Derived.SessionRemaining,
-		gapsFreshness:  final.Derived.Gaps.Freshness,
-		deltaFreshness: final.Derived.Delta.Freshness,
-		fuelPerLap:     final.Derived.Fuel.PerLap,
-		spatialMark:    schema.FreshnessMissing,
-		standingsMark:  fnvOffset64,
+		session:             string(header.Identity.Session),
+		epoch:               int64(header.Cursor.Epoch),
+		vehicles:            len(final.Observed.Vehicles),
+		sourceState:         source.State,
+		degraded:            source.DegradedReason,
+		capabilities:        len(source.DescriptorCapabilities),
+		performanceRevision: source.PerformanceRevision,
+		track:               final.Observed.TrackName,
+		sessionType:         final.Observed.SessionType,
+		maximumLaps:         final.Observed.MaximumLaps,
+		remaining:           final.Derived.SessionRemaining,
+		gapsFreshness:       final.Derived.Gaps.Freshness,
+		deltaFreshness:      final.Derived.Delta.Freshness,
+		fuelPerLap:          final.Derived.Fuel.PerLap,
+		spatialMark:         schema.FreshnessMissing,
+		standingsMark:       fnvOffset64,
 	}
 	for index := range final.Observed.Vehicles {
 		current := &final.Observed.Vehicles[index]
@@ -592,7 +617,8 @@ func (signals dirtySignals) diff(previous dirtySignals) DirtySet {
 		dirty = dirty.Mark(SectionDamage)
 	}
 	if signals.sourceState != previous.sourceState || signals.degraded != previous.degraded ||
-		signals.capabilities != previous.capabilities || signals.vehicles != previous.vehicles {
+		signals.capabilities != previous.capabilities || signals.performanceRevision != previous.performanceRevision ||
+		signals.vehicles != previous.vehicles {
 		dirty = dirty.Mark(SectionCapabilities)
 	}
 	// Fast sections exist to move: they are never gated by dirtiness.

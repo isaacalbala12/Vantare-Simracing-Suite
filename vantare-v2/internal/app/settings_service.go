@@ -10,6 +10,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	performancepolicy "github.com/vantare/overlays/v2/internal/app/performance"
 )
 
 // ErrSettingsPathEmpty is returned when Save is called without a file path.
@@ -55,6 +57,47 @@ type PerformanceSettings struct {
 	Mode      string                    `json:"mode"`
 	Level     int                       `json:"level"`
 	Overrides map[string]WidgetOverride `json:"overrides,omitempty"`
+}
+
+// ResolvePerformancePolicy es el único paso de Ajustes a la política efectiva.
+// El perfil v4 todavía no existe, por lo que ISA-926 resuelve solo el defecto
+// de app y deja el override de perfil en nil.
+func ResolvePerformancePolicy(settings PerformanceSettings) performancepolicy.Policy {
+	requested := performancepolicy.Policy{
+		Mode:  performancepolicy.Mode(settings.Mode),
+		Level: performancepolicy.Level(settings.Level),
+	}
+	if requested.Mode == performancepolicy.ModeCustom {
+		requested.WidgetHz = performancepolicy.WidgetHzFor(requested.Level)
+		for widget, override := range settings.Overrides {
+			if rate, ok := performanceRateFromJSON(override.Hz); ok {
+				requested.WidgetHz[widget] = rate
+			}
+		}
+	}
+	return performancepolicy.Resolve(requested, nil)
+}
+
+func performanceRateFromJSON(raw json.RawMessage) (performancepolicy.WidgetRate, bool) {
+	if len(raw) == 0 {
+		return performancepolicy.WidgetRate{}, false
+	}
+	var hz int
+	if err := json.Unmarshal(raw, &hz); err == nil && hz > 0 {
+		return performancepolicy.Hertz(hz), true
+	}
+	var signal string
+	if err := json.Unmarshal(raw, &signal); err != nil {
+		return performancepolicy.WidgetRate{}, false
+	}
+	switch signal {
+	case "dirty":
+		return performancepolicy.Dirty(), true
+	case "event":
+		return performancepolicy.Event(), true
+	default:
+		return performancepolicy.WidgetRate{}, false
+	}
 }
 
 // AppSettings holds user-configurable global settings.

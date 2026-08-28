@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 3,
+  "id": "huella-endurance-3",
+  "name": "Huella · Endurance 3",
+  "displayMode": "racing",
+  "monitorIndex": 0,
+  "layoutViewport": { "width": 1920, "height": 1080 },
+  "defaultVisualSystemId": "vantare-endurance",
+  "layouts": {
+    "general": {
+      "type": "general",
+      "widgets": [
+        {
+          "id": "bench-standings",
+          "type": "standings",
+          "layout": { "x": 32, "y": 32, "w": 520, "h": 560, "zIndex": 1, "aspectLocked": true },
+          "behavior": { "enabled": true, "updateHz": 15 },
+          "content": {},
+          "visual": { "systemId": "vantare-endurance", "systemVersion": 1, "configVersion": 1, "baseSettings": { "templateId": "standings-redline", "showSessionHeader": true }, "appearanceOverrides": {} }
+        },
+        {
+          "id": "bench-relative",
+          "type": "relative",
+          "layout": { "x": 1458, "y": 32, "w": 430, "h": 300, "zIndex": 2, "aspectLocked": true },
+          "behavior": { "enabled": true, "updateHz": 15 },
+          "content": {},
+          "visual": { "systemId": "vantare-endurance", "systemVersion": 1, "configVersion": 1, "baseSettings": { "templateId": "relative-redline-mirror" }, "appearanceOverrides": {} }
+        },
+        {
+          "id": "bench-delta",
+          "type": "delta",
+          "layout": { "x": 710, "y": 900, "w": 500, "h": 118, "zIndex": 3, "aspectLocked": true },
+          "behavior": { "enabled": true, "updateHz": 30 },
+          "content": { "reference": "personal-best" },
+          "visual": { "systemId": "vantare-endurance", "systemVersion": 1, "configVersion": 1, "baseSettings": { "templateId": "delta-redline", "showHeader": true }, "appearanceOverrides": {} }
+        }
+      ]
+    }
+  }
+}

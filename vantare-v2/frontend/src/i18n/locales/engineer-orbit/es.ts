@@ -24,6 +24,11 @@ export const engineerOrbitEs: Record<string, string> = {
     "Ventana de boxes y objetivo de consumo desde el plan activo.",
   "engineer.modules.soon": "Próximamente",
 
+  "engineer.spotterUnavailable.title": "Spotter no disponible",
+  "engineer.spotterUnavailable.capability": "LMU no está entregando la telemetría espacial necesaria.",
+  "engineer.spotterUnavailable.player": "No se puede identificar el coche del jugador en la sesión.",
+  "engineer.spotterUnavailable.spatial": "Faltan datos de posición fiables para detectar coches alrededor.",
+
   "engineer.voice.title": "Voz",
   "engineer.voice.meta": "{{n}} voces del sistema · ajuste local",
   "engineer.voice.noneMeta": "sin motor de voz",

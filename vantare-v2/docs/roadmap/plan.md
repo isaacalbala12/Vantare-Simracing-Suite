@@ -391,10 +391,10 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - titulo.en: Radio bus, Spotter and family engine
 - titulo.pt: Radio bus, Spotter e motor de famílias
 - titulo.it: Radio bus, Spotter e motore di famiglie
-- cuerpo: Spotter y las familias fuel, sanciones, vueltas, tiempos y boxes consumen telemetría canónica y entregan avisos priorizados por el mismo bus, con rollback exclusivo del stack anterior.
-- cuerpo.en: Spotter plus fuel, penalties, laps, timings and pit families consume canonical telemetry and deliver prioritized alerts through the same bus, with an exclusive rollback to the previous stack.
-- cuerpo.pt: Spotter e as famílias de combustível, penalizações, voltas, tempos e boxes consomem telemetria canónica e entregam alertas priorizados pelo mesmo bus, com rollback exclusivo para o stack anterior.
-- cuerpo.it: Spotter e le famiglie carburante, penalità, giri, tempi e box consumano telemetria canonica e consegnano avvisi prioritari sullo stesso bus, con rollback esclusivo allo stack precedente.
+- cuerpo: Spotter y las familias fuel, sanciones, vueltas, tiempos y boxes consumen telemetría canónica y entregan avisos priorizados por el mismo bus. Orbit guarda módulos, sensibilidad y salidas, y avisa de forma contextual cuando faltan datos espaciales para Spotter.
+- cuerpo.en: Spotter plus fuel, penalties, laps, timings and pit families consume canonical telemetry and deliver prioritized alerts through the same bus. Orbit saves modules, sensitivity and outputs, and shows a contextual warning when Spotter lacks spatial data.
+- cuerpo.pt: Spotter e as famílias de combustível, penalizações, voltas, tempos e boxes consomem telemetria canónica e entregam alertas priorizados pelo mesmo bus. O Orbit guarda módulos, sensibilidade e saídas, e avisa quando faltam dados espaciais para o Spotter.
+- cuerpo.it: Spotter e le famiglie carburante, penalità, giri, tempi e box consumano telemetria canonica e consegnano avvisi prioritari sullo stesso bus. Orbit salva moduli, sensibilità e uscite e avvisa quando mancano dati spaziali per lo Spotter.
 - etiqueta: En revisión
 - etiqueta.en: In review
 - etiqueta.pt: Em revisão

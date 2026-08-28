@@ -409,6 +409,25 @@ func TestSpotterRejectsInvalidCanonicalIdentity(t *testing.T) {
 	}
 }
 
+func TestSpotterNotReadyCarriesOnlyBoundedReason(t *testing.T) {
+	t.Parallel()
+	_, producer, _ := newSpotterHarness(t, 4)
+	observation := benchmarkObservation(t, 2.8)
+	observation.Player.Orientation = engineer.Field[engineer.Orientation]{}
+
+	message, emit, err := producer.Evaluate(observation)
+	if !errors.Is(err, ErrObservationNotReady) || emit || message.ID != "" {
+		t.Fatalf("not-ready result = %+v/%t/%v", message, emit, err)
+	}
+	var notReady *ObservationNotReadyError
+	if !errors.As(err, &notReady) || notReady.Reason != UnavailableSpatial {
+		t.Fatalf("reason = %+v, want %q", notReady, UnavailableSpatial)
+	}
+	if err.Error() != ErrObservationNotReady.Error() {
+		t.Fatalf("error leaked detail: %q", err)
+	}
+}
+
 func TestSpotterRadioBoundaryResetsDeliveryBeforeNewStateAtAllCapacities(t *testing.T) {
 	t.Parallel()
 	tests := []struct {

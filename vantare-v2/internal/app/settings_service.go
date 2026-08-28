@@ -42,11 +42,34 @@ type NotificationSettings struct {
 	SystemEnabled bool `json:"systemEnabled,omitempty"`
 }
 
+// EngineerSettings persists the product controls exposed by Engineer Orbit.
+// Voice selection and volume are intentionally absent: they only configure the
+// local "test voice" WebView helper, not the race delivery runtime.
+type EngineerSettings struct {
+	Enabled          bool              `json:"enabled"`
+	SpotterEnabled   bool              `json:"spotterEnabled"`
+	SubtitlesEnabled bool              `json:"subtitlesEnabled"`
+	Sensitivity      string            `json:"sensitivity"`
+	OutputModes      map[string]string `json:"outputModes"`
+}
+
+func DefaultEngineerSettings() *EngineerSettings {
+	return &EngineerSettings{
+		Enabled: true, SpotterEnabled: true, SubtitlesEnabled: true,
+		Sensitivity: "normal",
+		OutputModes: map[string]string{
+			"spotter": "both", "fuel": "both", "penalties": "both",
+			"laps": "both", "timings": "both", "pitstops": "both",
+		},
+	}
+}
+
 // AppSettings holds user-configurable global settings.
 type AppSettings struct {
 	SchemaVersion               int                         `json:"schemaVersion"`
 	CpuSampling                 bool                        `json:"cpuSampling"`
 	Notifications               NotificationSettings        `json:"notifications"`
+	Engineer                    *EngineerSettings           `json:"engineer,omitempty"`
 	Hotkeys                     map[string]string           `json:"hotkeys"`
 	ActiveOverlayProfileID      string                      `json:"activeOverlayProfileId,omitempty"`
 	BetaWelcomeCompleted        bool                        `json:"betaWelcomeCompleted,omitempty"`
@@ -200,6 +223,7 @@ func DefaultAppSettings() *AppSettings {
 	return &AppSettings{
 		SchemaVersion: appSettingsSchemaVersion,
 		CpuSampling:   true,
+		Engineer:      DefaultEngineerSettings(),
 		Hotkeys: map[string]string{
 			"toggleOverlay":       "ctrl+shift+v",
 			"toggleEditMode":      "ctrl+shift+e",
@@ -268,11 +292,26 @@ func cloneAppSettings(settings *AppSettings) *AppSettings {
 	if settings.LauncherProfiles != nil {
 		copy.LauncherProfiles = cloneProfiles(settings.LauncherProfiles)
 	}
+	copy.Engineer = cloneEngineerSettings(settings.Engineer)
+	return &copy
+}
+
+func cloneEngineerSettings(settings *EngineerSettings) *EngineerSettings {
+	if settings == nil {
+		return nil
+	}
+	copy := *settings
+	if settings.OutputModes != nil {
+		copy.OutputModes = make(map[string]string, len(settings.OutputModes))
+		for family, mode := range settings.OutputModes {
+			copy.OutputModes[family] = mode
+		}
+	}
 	return &copy
 }
 
 // appSettingsSchemaVersion is the current shape of the persisted settings.
-const appSettingsSchemaVersion = 3
+const appSettingsSchemaVersion = 4
 
 // migrateSettings applies schema migrations in place.
 //
@@ -285,6 +324,8 @@ const appSettingsSchemaVersion = 3
 //	          sampler through SetCPUEnabled.
 //	v2 -> v3: add the configurable Delta reference hotkey without replacing any
 //	          user-defined combinations.
+//	v3 -> v4: persist Engineer/Spotter runtime controls. Older files receive the
+//	          shipping defaults instead of treating missing booleans as opt-outs.
 func (s *SettingsService) migrateSettings(settings *AppSettings) {
 	if settings.SchemaVersion == 0 {
 		settings.SchemaVersion = 1
@@ -307,6 +348,37 @@ func (s *SettingsService) migrateSettings(settings *AppSettings) {
 		}
 		settings.SchemaVersion = 3
 	}
+	if settings.SchemaVersion < 4 {
+		settings.Engineer = DefaultEngineerSettings()
+		settings.SchemaVersion = 4
+	}
+	settings.Engineer = normalizeEngineerSettings(settings.Engineer)
+}
+
+func normalizeEngineerSettings(settings *EngineerSettings) *EngineerSettings {
+	if settings == nil {
+		return DefaultEngineerSettings()
+	}
+	result := cloneEngineerSettings(settings)
+	if result.Sensitivity != "conservative" && result.Sensitivity != "normal" && result.Sensitivity != "aggressive" {
+		result.Sensitivity = "normal"
+	}
+	defaults := DefaultEngineerSettings()
+	if result.OutputModes == nil {
+		result.OutputModes = map[string]string{}
+	}
+	for family, fallback := range defaults.OutputModes {
+		mode := result.OutputModes[family]
+		if mode != "audio" && mode != "visual" && mode != "both" && mode != "disabled" {
+			result.OutputModes[family] = fallback
+		}
+	}
+	for family := range result.OutputModes {
+		if _, supported := defaults.OutputModes[family]; !supported {
+			delete(result.OutputModes, family)
+		}
+	}
+	return result
 }
 
 func defaultLauncherApps() map[string]LauncherAppEntry {
@@ -599,6 +671,7 @@ func (s *SettingsService) applyLoaded(loaded *AppSettings) {
 		SchemaVersion:               loaded.SchemaVersion,
 		CpuSampling:                 loaded.CpuSampling,
 		Notifications:               loaded.Notifications,
+		Engineer:                    cloneEngineerSettings(loaded.Engineer),
 		ActiveOverlayProfileID:      loaded.ActiveOverlayProfileID,
 		BetaWelcomeCompleted:        loaded.BetaWelcomeCompleted,
 		BetaUserRole:                loaded.BetaUserRole,
@@ -635,6 +708,36 @@ func (s *SettingsService) applyLoaded(loaded *AppSettings) {
 	}
 	s.migrateSettings(merged)
 	s.settings = merged
+}
+
+// EngineerSettings returns an owned, normalized snapshot of the persisted
+// Engineer controls.
+func (s *SettingsService) EngineerSettings() *EngineerSettings {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if s.settings == nil {
+		return DefaultEngineerSettings()
+	}
+	return normalizeEngineerSettings(s.settings.Engineer)
+}
+
+// SetEngineerSettings atomically persists only the Engineer controls without
+// replacing unrelated settings that another UI surface may have changed.
+func (s *SettingsService) SetEngineerSettings(settings *EngineerSettings) error {
+	normalized := normalizeEngineerSettings(settings)
+	s.mu.Lock()
+	if s.settings == nil {
+		s.settings = DefaultAppSettings()
+	}
+	s.settings.Engineer = normalized
+	data, err := json.MarshalIndent(s.settings, "", "  ")
+	if err != nil {
+		s.mu.Unlock()
+		return fmt.Errorf("marshal engineer settings: %w", err)
+	}
+	snapshot := cloneAppSettings(s.settings)
+	s.mu.Unlock()
+	return s.saveWithRetry(snapshot, data, 0)
 }
 
 // persistSidecarApplied writes the current settings to disk (via atomicWrite)

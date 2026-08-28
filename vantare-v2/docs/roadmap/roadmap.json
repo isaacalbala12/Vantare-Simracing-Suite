@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-28T18:45:12Z",
+  "generatedAt": "2026-08-28T19:38:21Z",
   "digest": {
-    "lastCommit": "c59a7d642b92375d92c81235d0498e0ce46b0597"
+    "lastCommit": "4b33183e22ad47d128c5d3ebb1f0d0af4fea3c61"
   },
   "phases": [
     {
@@ -544,10 +544,10 @@
         "it": "Radio bus, Spotter e motore di famiglie"
       },
       "body": {
-        "es": "Spotter y las familias fuel, sanciones, vueltas, tiempos y boxes consumen telemetría canónica y entregan avisos priorizados por el mismo bus, con rollback exclusivo del stack anterior.",
-        "en": "Spotter plus fuel, penalties, laps, timings and pit families consume canonical telemetry and deliver prioritized alerts through the same bus, with an exclusive rollback to the previous stack.",
-        "pt": "Spotter e as famílias de combustível, penalizações, voltas, tempos e boxes consomem telemetria canónica e entregam alertas priorizados pelo mesmo bus, com rollback exclusivo para o stack anterior.",
-        "it": "Spotter e le famiglie carburante, penalità, giri, tempi e box consumano telemetria canonica e consegnano avvisi prioritari sullo stesso bus, con rollback esclusivo allo stack precedente."
+        "es": "Spotter y las familias fuel, sanciones, vueltas, tiempos y boxes consumen telemetría canónica y entregan avisos priorizados por el mismo bus. Orbit guarda módulos, sensibilidad y salidas, y avisa de forma contextual cuando faltan datos espaciales para Spotter.",
+        "en": "Spotter plus fuel, penalties, laps, timings and pit families consume canonical telemetry and deliver prioritized alerts through the same bus. Orbit saves modules, sensitivity and outputs, and shows a contextual warning when Spotter lacks spatial data.",
+        "pt": "Spotter e as famílias de combustível, penalizações, voltas, tempos e boxes consomem telemetria canónica e entregam alertas priorizados pelo mesmo bus. O Orbit guarda módulos, sensibilidade e saídas, e avisa quando faltam dados espaciais para o Spotter.",
+        "it": "Spotter e le famiglie carburante, penalità, giri, tempi e box consumano telemetria canonica e consegnano avvisi prioritari sullo stesso bus. Orbit salva moduli, sensibilità e uscite e avvisa quando mancano dati spaziali per lo Spotter."
       },
       "label": {
         "es": "En revisión",
@@ -847,6 +847,11 @@
     {
       "date": "2026-08-28",
       "entries": [
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-884 · Relative físico desde progreso temporal canónico"
+        },
         {
           "kind": "change",
           "scope": "",

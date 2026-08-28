@@ -76,6 +76,7 @@ type EngineerService struct {
 	connected             bool
 	source                string
 	spotterEnabled        bool
+	spotterAvailability   SpotterAvailability
 	legacySpotter         bool
 	legacyFamilies        bool
 	sensitivity           string
@@ -255,6 +256,7 @@ func NewEngineerService(emitter EventEmitter) *EngineerService {
 		connected:            false,
 		source:               "telemetry-core",
 		spotterEnabled:       true,
+		spotterAvailability:  SpotterAvailability{State: SpotterAvailabilityWaiting, Reason: "source"},
 		sensitivity:          "normal",
 		outputModes:          defaultOutputModes(),
 		subtitlesEnabled:     true,
@@ -692,6 +694,7 @@ func (s *EngineerService) getStatusLocked() EngineerStatus {
 		Source:                s.source,
 		PresentationLifecycle: s.presentationLifecycle,
 		SpotterEnabled:        s.spotterEnabled,
+		SpotterAvailability:   s.spotterAvailability,
 		Sensitivity:           s.sensitivity,
 		OutputModes:           s.outputModesSnapshotLocked(),
 		SubtitlesEnabled:      s.subtitlesEnabled,
@@ -810,6 +813,11 @@ func (s *EngineerService) SetEnabled(enabled bool) error {
 	defer s.mu.Unlock()
 
 	s.enabled = enabled
+	if !enabled {
+		s.spotterAvailability = SpotterAvailability{State: SpotterAvailabilityDisabled}
+	} else if s.spotterEnabled {
+		s.spotterAvailability = SpotterAvailability{State: SpotterAvailabilityWaiting, Reason: "source"}
+	}
 	s.syncLegacyRuntimeLocked()
 	if !enabled {
 		s.connected = false
@@ -831,6 +839,11 @@ func (s *EngineerService) SetSpotterEnabled(enabled bool) error {
 	defer s.mu.Unlock()
 
 	s.spotterEnabled = enabled
+	if !enabled || !s.enabled {
+		s.spotterAvailability = SpotterAvailability{State: SpotterAvailabilityDisabled}
+	} else {
+		s.spotterAvailability = SpotterAvailability{State: SpotterAvailabilityWaiting, Reason: "source"}
+	}
 	s.syncLegacyRuntimeLocked()
 	if !enabled {
 		if s.activeDelivery != nil && s.activeDelivery.isSpotter() {
@@ -999,6 +1012,9 @@ func (s *EngineerService) ConsumeSourceStatus(status engineerprojection.SourceSt
 		return nil
 	}
 	if !status.State.Available() || reconnectBoundary {
+		if s.spotterEnabled {
+			s.spotterAvailability = SpotterAvailability{State: SpotterAvailabilityWaiting, Reason: "source"}
+		}
 		s.markReconnectBoundaryLocked()
 		s.connected = false
 		s.advancePresentationLifecycleLocked()
@@ -1083,6 +1099,7 @@ func (s *EngineerService) ConsumeObservation(snapshot engineerprojection.Observa
 	if s.spotterEnabled && !s.legacySpotter && s.spotterProducer != nil && s.radioBus != nil {
 		message, emit, err := s.spotterProducer.Evaluate(snapshot)
 		if err == nil {
+			s.spotterAvailability = SpotterAvailability{State: SpotterAvailabilityReady}
 			processed = true
 			if emit {
 				result, submitErr := s.radioBus.Submit(message)
@@ -1100,6 +1117,7 @@ func (s *EngineerService) ConsumeObservation(snapshot engineerprojection.Observa
 				}
 			}
 		} else if errors.Is(err, radiospotter.ErrObservationNotReady) {
+			s.setSpotterUnavailableLocked(err)
 			// Capability/identity loss invalidates both policy context and any
 			// already selected radio item. Keeping the bus would let old evidence
 			// reach started after the producer has failed closed.
@@ -1114,9 +1132,12 @@ func (s *EngineerService) ConsumeObservation(snapshot engineerprojection.Observa
 	if s.legacySpotter && s.spotterEnabled {
 		frame, err := s.input.FrameFor(projectioninput.FamilySpotter, snapshot)
 		if err == nil {
+			s.spotterAvailability = SpotterAvailability{State: SpotterAvailabilityReady}
 			s.runtime.ProcessSpotterFrame(frame.TimestampUnixMS, frame)
 			processed = true
-		} else if !errors.Is(err, projectioninput.ErrObservationNotReady) {
+		} else if errors.Is(err, projectioninput.ErrObservationNotReady) {
+			s.spotterAvailability = SpotterAvailability{State: SpotterAvailabilityUnavailable, Reason: "spatial"}
+		} else {
 			s.connected = false
 			s.lastError = err.Error()
 			s.emitStatusLocked()
@@ -1201,6 +1222,21 @@ func (s *EngineerService) ConsumeObservation(snapshot engineerprojection.Observa
 	s.signalDeliveryLocked()
 	s.emitStatusLocked()
 	return nil
+}
+
+func (s *EngineerService) setSpotterUnavailableLocked(err error) {
+	var notReady *radiospotter.ObservationNotReadyError
+	if !errors.As(err, &notReady) {
+		s.spotterAvailability = SpotterAvailability{State: SpotterAvailabilityUnavailable, Reason: "spatial"}
+		return
+	}
+	reason := string(notReady.Reason)
+	switch notReady.Reason {
+	case radiospotter.UnavailableContext, radiospotter.UnavailablePitLane, radiospotter.UnavailableLowSpeed:
+		s.spotterAvailability = SpotterAvailability{State: SpotterAvailabilityWaiting, Reason: reason}
+	default:
+		s.spotterAvailability = SpotterAvailability{State: SpotterAvailabilityUnavailable, Reason: reason}
+	}
 }
 
 // ConsumeFact applies ordered lifecycle facts without turning facts into

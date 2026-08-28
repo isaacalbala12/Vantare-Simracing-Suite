@@ -23,6 +23,11 @@ export const engineerOrbitPt: Record<string, string> = {
     "Janela de boxes e objetivo de consumo a partir do plano ativo.",
   "engineer.modules.soon": "Em breve",
 
+  "engineer.spotterUnavailable.title": "Spotter indisponível",
+  "engineer.spotterUnavailable.capability": "O LMU não está fornecendo a telemetria espacial necessária.",
+  "engineer.spotterUnavailable.player": "Não é possível identificar o carro do jogador na sessão.",
+  "engineer.spotterUnavailable.spatial": "Faltam dados de posição confiáveis para detectar carros próximos.",
+
   "engineer.voice.title": "Voz",
   "engineer.voice.meta": "{{n}} vozes do sistema · ajuste local",
   "engineer.voice.noneMeta": "sem motor de voz",

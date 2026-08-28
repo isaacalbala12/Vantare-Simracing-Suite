@@ -50,6 +50,7 @@ const INITIAL_STATUS: EngineerStatus = {
   source: "telemetry-core",
   presentationLifecycle: 0,
   spotterEnabled: false,
+  spotterAvailability: { state: "disabled" },
   sensitivity: "normal",
   ttsCacheCount: 0,
   recentMessages: [],
@@ -241,6 +242,11 @@ export function EngineerOrbitPage({ bridge, voices }: EngineerOrbitPageProps) {
       : sim === "searching"
         ? t("engineer.source.searching")
         : t("engineer.source.offline");
+  const spotterUnavailable =
+    status.enabled &&
+    status.spotterEnabled &&
+    status.spotterAvailability?.state === "unavailable";
+  const spotterUnavailableReason = status.spotterAvailability?.reason ?? "spatial";
 
   return (
     <div className="orbit-engineer" data-testid="orbit-engineer">
@@ -289,6 +295,20 @@ export function EngineerOrbitPage({ bridge, voices }: EngineerOrbitPageProps) {
           </article>
         ))}
       </div>
+
+      {spotterUnavailable ? (
+        <div
+          className="orbit-engineer__spotter-notice"
+          data-testid="orbit-engineer-spotter-unavailable"
+          role="status"
+        >
+          <span className="orbit-engineer__spotter-notice-icon"><SpotterGlyph /></span>
+          <span>
+            <b>{t("engineer.spotterUnavailable.title")}</b>
+            <span>{t(`engineer.spotterUnavailable.${spotterUnavailableReason}`)}</span>
+          </span>
+        </div>
+      ) : null}
 
       <div className="orbit-engineer__grid">
         <div className="orbit-engineer__left">

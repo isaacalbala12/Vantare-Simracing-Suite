@@ -405,8 +405,8 @@ func TestLoadMigratesSchemaVersionAndAddsDeltaHotkey(t *testing.T) {
 	os.WriteFile(path, []byte(data), 0o644)
 	svc := app.NewSettingsService(path, nil, nil)
 	svc.Load()
-	if svc.Settings().SchemaVersion != 3 {
-		t.Errorf("expected SchemaVersion=3, got %d", svc.Settings().SchemaVersion)
+	if svc.Settings().SchemaVersion != 4 {
+		t.Errorf("expected SchemaVersion=4, got %d", svc.Settings().SchemaVersion)
 	}
 	if got := svc.Settings().Hotkeys["cycleDeltaReference"]; got != "ctrl+shift+d" {
 		t.Errorf("cycleDeltaReference=%q want ctrl+shift+d", got)
@@ -532,8 +532,8 @@ func TestLauncherPoliciesMigrateLegacyProfilesToSafeDefaults(t *testing.T) {
 
 func TestDefaultAppSettingsHasCurrentSchemaVersion(t *testing.T) {
 	s := app.DefaultAppSettings()
-	if s.SchemaVersion != 3 {
-		t.Fatalf("expected SchemaVersion=3, got %d", s.SchemaVersion)
+	if s.SchemaVersion != 4 {
+		t.Fatalf("expected SchemaVersion=4, got %d", s.SchemaVersion)
 	}
 }
 
@@ -603,8 +603,8 @@ func TestLoadMigratesLegacySettings(t *testing.T) {
 	if err := svc.Load(); err != nil {
 		t.Fatalf("load: %v", err)
 	}
-	if svc.Settings().SchemaVersion != 3 {
-		t.Errorf("expected SchemaVersion=3 after migration, got %d", svc.Settings().SchemaVersion)
+	if svc.Settings().SchemaVersion != 4 {
+		t.Errorf("expected SchemaVersion=4 after migration, got %d", svc.Settings().SchemaVersion)
 	}
 	if svc.Settings().LauncherApps == nil {
 		t.Error("LauncherApps should be initialized")
@@ -643,8 +643,8 @@ func TestLoadFallsBackToDefaultsOnTotalCorruption(t *testing.T) {
 	if err := svc.Load(); err != nil {
 		t.Fatalf("load should not panic: %v", err)
 	}
-	if svc.Settings().SchemaVersion != 3 {
-		t.Errorf("expected defaults with SchemaVersion=3")
+	if svc.Settings().SchemaVersion != 4 {
+		t.Errorf("expected defaults with SchemaVersion=4")
 	}
 	if svc.Settings().LauncherProfiles == nil {
 		t.Error("expected default profiles")
@@ -879,6 +879,45 @@ func TestSettingsNotificationChoicesRoundTrip(t *testing.T) {
 	got := reloaded.Snapshot().Notifications
 	if !got.UpdatesMuted || got.LauncherMuted || !got.SystemEnabled {
 		t.Fatalf("round trip = %+v, want updates muted and desktop enabled", got)
+	}
+}
+
+func TestEngineerSettingsMigrateAndRoundTripWithoutClobberingOtherSettings(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "app-settings.json")
+	if err := os.WriteFile(path, []byte(`{"schemaVersion":3,"cpuSampling":false,"hotkeys":{"toggleOverlay":"custom"}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	svc := app.NewSettingsService(path, &spyEmitter{}, nil)
+	if err := svc.Load(); err != nil {
+		t.Fatal(err)
+	}
+	defaults := svc.EngineerSettings()
+	if !defaults.Enabled || !defaults.SpotterEnabled || !defaults.SubtitlesEnabled || defaults.Sensitivity != "normal" {
+		t.Fatalf("migrated Engineer defaults = %+v", defaults)
+	}
+
+	want := &app.EngineerSettings{
+		Enabled: false, SpotterEnabled: true, SubtitlesEnabled: false,
+		Sensitivity: "aggressive",
+		OutputModes: map[string]string{"spotter": "visual", "fuel": "disabled", "penalties": "audio", "laps": "both", "timings": "visual", "pitstops": "audio"},
+	}
+	if err := svc.SetEngineerSettings(want); err != nil {
+		t.Fatal(err)
+	}
+	want.OutputModes["spotter"] = "mutated"
+
+	reloaded := app.NewSettingsService(path, &spyEmitter{}, nil)
+	if err := reloaded.Load(); err != nil {
+		t.Fatal(err)
+	}
+	got := reloaded.EngineerSettings()
+	if got.Enabled || !got.SpotterEnabled || got.SubtitlesEnabled || got.Sensitivity != "aggressive" || got.OutputModes["spotter"] != "visual" {
+		t.Fatalf("round-trip Engineer settings = %+v", got)
+	}
+	if snapshot := reloaded.Settings(); snapshot.CpuSampling || snapshot.Hotkeys["toggleOverlay"] != "custom" {
+		t.Fatalf("unrelated settings were overwritten: %+v", snapshot)
 	}
 }
 

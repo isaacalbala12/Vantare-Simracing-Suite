@@ -408,10 +408,10 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - titulo.en: Internal account from Clerk
 - titulo.pt: Conta interna via Clerk
 - titulo.it: Account interno da Clerk
-- cuerpo: La frontera de identidad acepta una sesión Clerk validada por Supabase TPA, crea o recupera un UUID interno idempotente y emite la credencial de licencia firmada con ese UUID. Email no enlaza cuentas; la UI Clerk y los demás servicios ligados a Supabase Auth siguen pendientes.
-- cuerpo.en: The identity boundary accepts a Clerk session validated by Supabase TPA, creates or retrieves an idempotent internal UUID and issues the signed licence credential with that UUID. Email does not link accounts; Clerk UI and other Supabase Auth-bound services remain pending.
-- cuerpo.pt: A fronteira de identidade aceita uma sessão Clerk validada pelo Supabase TPA, cria ou recupera um UUID interno idempotente e emite a credencial de licença assinada com esse UUID. O email não liga contas; a UI Clerk e os restantes serviços ligados ao Supabase Auth continuam pendentes.
-- cuerpo.it: Il confine di identità accetta una sessione Clerk validata da Supabase TPA, crea o recupera un UUID interno idempotente ed emette la credenziale di licenza firmata con tale UUID. L'email non collega gli account; la UI Clerk e gli altri servizi legati a Supabase Auth restano in sospeso.
+- cuerpo: La frontera de identidad acepta una sesión Clerk validada por Supabase TPA, crea o recupera un UUID interno idempotente y emite la credencial de licencia firmada con ese UUID. ISA-915 implementa ahora el login visible; Billing, Testing Center y los demás servicios ligados a Supabase Auth siguen pendientes.
+- cuerpo.en: The identity boundary accepts a Clerk session validated by Supabase TPA, creates or retrieves an idempotent internal UUID and issues the signed licence credential with that UUID. ISA-915 is now implementing the visible sign-in; Billing, Testing Center and the other Supabase Auth-bound services remain pending.
+- cuerpo.pt: A fronteira de identidade aceita uma sessão Clerk validada pelo Supabase TPA, cria ou recupera um UUID interno idempotente e emite a credencial de licença assinada com esse UUID. A ISA-915 está agora a implementar o login visível; Billing, Testing Center e os restantes serviços ligados ao Supabase Auth continuam pendentes.
+- cuerpo.it: Il confine di identità accetta una sessione Clerk validata da Supabase TPA, crea o recupera un UUID interno idempotente ed emette la credenziale di licenza firmata con tale UUID. ISA-915 sta ora implementando il login visibile; Billing, Testing Center e gli altri servizi legati a Supabase Auth restano in sospeso.
 - etiqueta: Feature
 
 ### Canales nightly y testers

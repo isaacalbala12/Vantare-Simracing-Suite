@@ -443,21 +443,34 @@ reembolsar o habilitar venta. Los gates monetarios siguen pendientes.
 
 ## Issues y siguiente acción
 
-1. Revisar el PR draft #913 de ISA-909 y no hacer merge ni apply remoto sin
+1. Implementar ISA-915 sobre el HEAD revisado de ISA-909, manteniendo el login
+   Clerk, el token de licencia y el logout como un corte UI aislado.
+2. Revisar el PR draft #913 de ISA-909 y no hacer merge ni apply remoto sin
    autorización separada.
-2. Revisar ISA-911 antes de habilitar UI Clerk: lifecycle al borrar usuarios,
+3. Mantener ISA-911 como inventario de lifecycle al borrar usuarios,
    Billing, Testing Center, policies `auth.uid()` y logout/cache.
-3. Completar gates locales y review de BIL-10C / ISA-247.
-4. Presentar dry-run, backup y rollback antes de cualquier apply remoto.
-5. Recoger feedback Nightly de BIL-01..10C sin habilitar venta.
-6. Continuar gates monetarios y despliegue controlado sin venta pública.
-7. Crear proyectos Account, Calendar, Settings e Installer con handoffs propios.
-8. Reauditar ISA-14 cuando se cierren worktrees grandes.
+4. Completar gates locales y review de BIL-10C / ISA-247.
+5. Presentar dry-run, backup y rollback antes de cualquier apply remoto.
+6. Recoger feedback Nightly de BIL-01..10C sin habilitar venta.
+7. Continuar gates monetarios y despliegue controlado sin venta pública.
+8. Crear proyectos Account, Calendar, Settings e Installer con handoffs propios.
+9. Reauditar ISA-14 cuando se cierren worktrees grandes.
 
 Cada issue fija base limpia, archivos, checks y rollback antes de editar. Los
 cambios monetarios reales y Master requieren Isaac.
 
 ## Última actualización
+
+2026-08-28, ISA-915 abre el corte UI apilado sobre ISA-909 `4751bfa5`, todavía
+sin integrar en `nightly`. La spec sustituye el formulario Supabase visible por
+el `SignIn` oficial de `@clerk/react`, obtiene un JWT vigente solo mediante
+`session.getToken()`, conserva la credencial offline y evita persistir tokens
+Clerk en almacenamiento propio. El alcance incluye identidad visible, comprobar
+acceso, logout y pruebas responsive; excluye Billing, Testing Center, borrado,
+deploy, merge y datos reales. El protocolo separará Vitest, navegador, Wails
+real y backend remoto. La dependencia oficial queda autorizada por la instrucción
+previa de descargar lo necesario de Clerk y continuar el desarrollo; no se
+añadirá otro SDK ni una abstracción multi-proveedor.
 
 2026-08-28, ISA-909 abre el primer corte implementable de Clerk después del
 spike ISA-885. La decisión de producto permite crear un UUID interno nuevo en el

@@ -84,6 +84,28 @@ export function WidgetVisualHost(props: WidgetVisualHostProps): ReactNode {
   const frame = props.runtime?.overlayV2Frame;
   const source = props.runtime?.overlayV2Source;
   const previewMode = renderMode === "studio" || renderMode === "harness";
+  const v2Failure = props.runtime?.overlayV2Failure;
+  if (v2Entry && v2Failure) {
+    const code = `overlay-v2-${v2Failure.code}`;
+    reportDiagnostic(props, code, v2Failure.message);
+    return <HostDiagnostic widget={widget} code={code} message={v2Failure.message} />;
+  }
+  if (v2Entry && source?.state === "error") {
+    const message = source.reason ?? "Overlay V2 source error";
+    reportDiagnostic(props, "overlay-v2-source-error", message);
+    return <HostDiagnostic widget={widget} code="overlay-v2-source-error" message={message} />;
+  }
+  if (v2Entry && props.runtime?.overlayV2Authority && !frame) {
+    const message = "Overlay V2 frame unavailable";
+    reportDiagnostic(props, "overlay-v2-frame-missing", message);
+    return <HostDiagnostic widget={widget} code="overlay-v2-frame-missing" message={message} />;
+  }
+  if (v2Entry && props.runtime?.overlayV2Authority && !source) {
+    const message = "Overlay V2 source state unavailable";
+    reportDiagnostic(props, "overlay-v2-source-missing", message);
+    return <HostDiagnostic widget={widget} code="overlay-v2-source-missing" message={message} />;
+  }
+
   let model;
   if (v2Entry && frame && source) {
     // V2 se construye primero: el builder V1 no se ejecuta para luego
@@ -126,15 +148,26 @@ export function WidgetVisualHost(props: WidgetVisualHostProps): ReactNode {
   }
 
   const Renderer = registration.Renderer;
+  const staleMessage = v2Entry && frame && source?.state === "stale"
+    ? `Overlay V2 stale${source.ageMs !== undefined ? ` (${Math.round(source.ageMs)} ms)` : ""}`
+    : undefined;
+  if (staleMessage) {
+    reportDiagnostic(props, "overlay-v2-stale", staleMessage);
+  }
 
   return (
-    <WidgetRenderBoundary
-      widgetId={widget.id}
-      widgetType={widget.type}
-      systemId={widget.visual.systemId}
-      onError={(error) => reportDiagnostic(props, "renderer-exception", error.message)}
-    >
-      <Renderer model={model} settings={settings} renderMode={renderMode} />
-    </WidgetRenderBoundary>
+    <>
+      {staleMessage
+        ? <HostDiagnostic widget={widget} code="overlay-v2-stale" message={staleMessage} />
+        : null}
+      <WidgetRenderBoundary
+        widgetId={widget.id}
+        widgetType={widget.type}
+        systemId={widget.visual.systemId}
+        onError={(error) => reportDiagnostic(props, "renderer-exception", error.message)}
+      >
+        <Renderer model={model} settings={settings} renderMode={renderMode} />
+      </WidgetRenderBoundary>
+    </>
   );
 }

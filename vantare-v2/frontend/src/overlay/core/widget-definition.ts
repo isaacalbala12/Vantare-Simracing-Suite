@@ -71,6 +71,11 @@ export type WidgetRuntimeInput = {
   }[];
   raceScheduleStatus?: WidgetRuntimeStatus;
   overlayV2Features?: readonly OverlayV2Feature[];
+  overlayV2Authority?: boolean;
+  overlayV2Failure?: Readonly<{
+    code: "invalid-frame" | "transport-error";
+    message: string;
+  }>;
   overlayV2Frame?: OverlayFrameV2;
   overlayV2Source?: OverlaySourceStatusV2;
 };

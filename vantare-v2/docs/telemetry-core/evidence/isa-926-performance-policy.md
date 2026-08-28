@@ -75,12 +75,14 @@ escuchar. LMU no se abrió ni se tocó.
 
 - `go build ./...`: PASS, sin salida.
 - `go test ./internal/app/... ./internal/telemetry/... ./cmd/...`: PASS.
-- `corepack pnpm --dir frontend test`: PASS, 421 ficheros y 3198 tests.
+- `corepack pnpm --dir frontend test`: PASS, 422 ficheros y 3206 tests.
 - `corepack pnpm --dir frontend typecheck`: PASS.
 - `corepack pnpm --dir frontend lint`: PASS.
-- `corepack pnpm --dir frontend build`: PASS, 1091 módulos.
+- `corepack pnpm --dir frontend build`: PASS, 1092 módulos.
 - `wails3 task build`: PASS; generó `bin/vantare.exe` y limpió temporales.
 - `go run ./tools/telemetry-contract-gen -check`: PASS, sin salida.
+- `python ../.github/scripts/roadmap_digest.py --repo .. --ref origin/nightly --check`:
+  PASS, `sin cambios`.
 - `git diff --check`: PASS.
 - `git merge-base --is-ancestor origin/nightly HEAD`: PASS, código 0.
 

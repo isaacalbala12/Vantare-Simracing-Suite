@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-28T01:42:42Z",
+  "generatedAt": "2026-08-28T01:49:30Z",
   "digest": {
-    "lastCommit": "d9909aef4b9f2de2b3e61ed79a3a0fd98a91b73c"
+    "lastCommit": "1c45cc827e47976ed41e1f28463529c04579e806"
   },
   "phases": [
     {
@@ -790,6 +790,11 @@
           "kind": "feat",
           "scope": "overlays",
           "text": "Columnas configurables en Standings Redline"
+        },
+        {
+          "kind": "feat",
+          "scope": "settings",
+          "text": "Añadir zoom global configurable"
         }
       ]
     },

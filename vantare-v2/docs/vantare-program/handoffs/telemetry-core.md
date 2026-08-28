@@ -41,18 +41,19 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   retiradas con memoria fija por sender, serializa revisión y publicación V2,
   recupera JSON/excepción/timeout del pull y evita suscribir Studio a paints V2
   con flags vacías. No añade goroutines, channels, colas ni dependencias.
-  Rama `vantareapp/isa-891-overlay-v2-studio-lifecycle` sobre
-  la base original `nightly@741d31bf`. `go test ./...`,
+  Rama `vantareapp/isa-891-overlay-v2-studio-lifecycle`, creada sobre la base
+  original `nightly@741d31bf` y sincronizada mediante `e0b6a18f` con
+  `origin/nightly@d9909aef`. `go test ./...`,
   typecheck, build frontend, contrato generado, ESLint del diff, race detector
   del transporte, 23 tests de roadmap, 64 de comunicaciones, 26 de release
   notes y build Wails
-  Windows están verdes sobre HEAD; la suite frontend final cubre 418 archivos y
-  3.154 tests. El lint global conserva una deuda ajena al diff en
+  Windows están verdes sobre el HEAD sincronizado; la suite frontend final
+  cubre 420 archivos y 3.174 tests. El lint global conserva una deuda ajena al diff en
   `car-damage-numbers-view-model-v2.ts`; el gate del diff pasa. La auditoría
   abrió ISA-896 para corregir Desktop+OBS+Studio bajo
   StrictMode/remount; el PR parcial #857 no está en Nightly. No retira V1 ni
-  cambia la autoridad visual. `origin/nightly` avanzó a `d9909aef`; queda
-  sincronizar la rama, regenerar el digest y verificar el CI del HEAD final.
+  cambia la autoridad visual. El digest está regenerado contra la Nightly
+  vigente; queda subir el HEAD final y verificar su CI remoto.
 
 - 2026-08-27, ISA-889 corrige el bloqueo permanente del Overlay despues de un
   reconnect LMU. El transporte acotado de ISA-879 puede entregar como primer

@@ -114,11 +114,12 @@ shadow pero no se suscribe al store ni propaga sus paints a React.
   `f6269aaf1a6b71b0ac3c17589d00ec0ea1b4e5c2` y
   `274b632d5e0ae4476a45059971599cb79cc977e3`; recuperación de
   respuestas perdidas: `0966f44c29783eadb0e0ee2013ea80c41500b864`;
-  cierre de carreras final: `f652e67f`.
+  cierre de carreras final: `f652e67f`; sincronización de la base Nightly:
+  `e0b6a18f` sobre `origin/nightly@d9909aef`.
 - Paquetes Go `overlayv2`, `telemetrytransport` y `internal/app`: PASS.
 - Tests frontend enfocados: PASS, 6 archivos y 78 tests.
 - `go test ./...`: PASS.
-- Suite frontend completa: PASS, 418 archivos y 3.154 tests. `happy-dom`
+- Suite frontend completa final: PASS, 420 archivos y 3.174 tests. `happy-dom`
   imprimió el `AbortError` conocido durante teardown; Vitest terminó con código
   0.
 - `pnpm --dir frontend typecheck`: PASS.

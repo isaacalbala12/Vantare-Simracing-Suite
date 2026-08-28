@@ -1,7 +1,8 @@
 # Tareas ISA-909: bootstrap de cuenta Clerk
 
-Estado: T0-T6 completadas y verificadas localmente; T7 pendiente de review
-final, push, PR draft y CI. Se ejecutaron en orden y con TDD.
+Estado: T0-T6 completadas y verificadas localmente; T7 incorporó con TDD los
+dos hallazgos de la primera review final y espera la segunda review, push, PR
+draft y CI.
 
 ## T0 — Aprobar SDD
 

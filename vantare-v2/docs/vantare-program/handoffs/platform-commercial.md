@@ -443,10 +443,10 @@ reembolsar o habilitar venta. Los gates monetarios siguen pendientes.
 
 ## Issues y siguiente acción
 
-1. Revisar con Fable medio el SDD de ISA-909 y cerrar cualquier hallazgo P0/P1
-   antes de implementar.
-2. Implementar localmente el mapping Clerk `(issuer, subject)` a UUID interno,
-   sin SDK/UI Clerk ni apply remoto.
+1. Completar la segunda review Fable medio de ISA-909 y publicar un PR draft a
+   `nightly` sin merge ni apply remoto.
+2. Revisar ISA-911 antes de habilitar UI Clerk: lifecycle al borrar usuarios,
+   Billing, Testing Center, policies `auth.uid()` y logout/cache.
 3. Completar gates locales y review de BIL-10C / ISA-247.
 4. Presentar dry-run, backup y rollback antes de cualquier apply remoto.
 5. Recoger feedback Nightly de BIL-01..10C sin habilitar venta.
@@ -480,14 +480,14 @@ clean/upgrade/restore completo volvió a PASS.
 El corte SQL posterior crea `account_identities`, retira únicamente la FK de
 `profiles` a `auth.users` y resuelve claims PostgREST en una función privada con
 lock transaccional por identidad. Las cuatro RPC de licencia consumen el UUID
-interno; 30 pgTAP pasan en clean/upgrade y dos logins Clerk concurrentes producen
+  interno; 31 pgTAP pasan en clean/upgrade y dos logins Clerk concurrentes producen
 exactamente un mapping, un profile y cero huérfanos. La migración sigue solo
 local, sin apply remoto.
 El corte Edge elimina `getUser()` solo de `license-credential`: conserva el
 bearer opaco, deja la validación Clerk a PostgREST TPA, firma el UUID que devuelve
 la RPC y traduce rechazo TPA a 401 en vez de disponibilidad. Su config declara
 `verify_jwt=false`; Billing y Testing Center mantienen sus fronteras actuales.
-La suite focal pasa 18/18. No hay deploy de función.
+  La suite focal pasa 20/20. No hay deploy de función.
 El corte Go acepta un `sub` externo no vacío de hasta 255 caracteres, pero el
 `Result.UserID` nace solo de una credencial Ed25519 válida con subject UUID y
 dispositivo coincidente. Un rechazo 401 no usa la caché aunque el token sea el
@@ -495,10 +495,16 @@ protegido; el focal `internal/license` pasa. `go test ./...` recorrió el resto 
 paquetes verdes y falló únicamente en `cmd/vantare`/`frontend` porque aún no
 existía el artefacto generado `frontend/dist`; queda construirlo en el gate final.
 El gate final construyó `frontend/dist` y después `go test ./...` pasó completo;
-Deno quedó 18/18 y Postgres repitió clean/upgrade/restore, 30 pgTAP Clerk y la
+  Deno quedó 20/20 y Postgres repitió clean/upgrade/restore, 31 pgTAP Clerk y la
 carrera de primer login. El roadmap ya describe la frontera entregada como
-feature sin afirmar que exista UI Clerk. Pendiente únicamente review final,
-push, PR draft y CI; schema/Edge remotos siguen intactos.
+  feature sin afirmar que exista UI Clerk. La primera review final Fable medio
+  encontró dos fallos: status PostgREST 401/403 tratados como 503 y un usuario
+  legacy borrado remapeado como externo. Ambos tuvieron regresión roja y quedaron
+  corregidos: los rechazos ya impiden gracia offline y el issuer legacy falla
+  cerrado si `auth.users` no contiene el subject. También quedó explícito que al
+  retirar la FK desaparece el cascade de borrado; ISA-911 debe definir ese
+  lifecycle antes de habilitar Clerk. Pendiente segunda review final, push, PR
+  draft y CI; schema/Edge remotos siguen intactos.
 
 2026-08-04, ISA-243/287 completaron el piloto remoto con un caso sintético
 nuevo. ISA-288 se creó exactamente una vez, el binding quedó `completed` sin

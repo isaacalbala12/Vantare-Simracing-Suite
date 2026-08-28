@@ -107,9 +107,8 @@ sesión y la transición entre cuentas quedan inventariados en ISA-911.
 - `created`: identidad nueva y cuenta interna creada;
 - `existing`: identidad ya vinculada, mismo UUID;
 - `legacy`: sesión Supabase Auth actual, mismo UUID;
-- `unauthorized`: JWT ausente/no validado o claims vacíos;
-- `conflict`: invariantes de mapping incompatibles; falla cerrado, sin mover
-  grants ni sobrescribir mappings.
+- `unauthorized`: JWT ausente/no validado, claims vacíos o usuario legacy ya
+  eliminado.
 
 La respuesta pública de licencia no necesita publicar el nombre del estado. Los
 tests de base de datos lo observan mediante el resultado y las filas persistidas;
@@ -265,6 +264,18 @@ Testing Center y otras tablas/policies todavía contienen casts UUID o FKs a
 `auth.users`, por lo que no se presentan como compatibles con Clerk. ISA-911
 inventaría y divide esas superficies antes de habilitar el login Clerk visible.
 
+Retirar la FK `profiles -> auth.users` elimina también su antiguo
+`on delete cascade`: borrar un usuario Supabase Auth ya no elimina su profile,
+devices, grants ni assignments. Este corte no borra usuarios ni inventa una
+política de lifecycle sustitutiva; ISA-911 debe decidirla. El precheck de rollback
+falla si encuentra esos profiles sin `auth.users`, de modo que no se puede
+restaurar la FK ocultando datos huérfanos.
+
+El sufijo `/auth/v1` es exclusivamente el selector de compatibilidad legacy y
+falla cerrado si el subject UUID no existe en `auth.users`. La allowlist TPA de
+Supabase debe contener solo los issuers aprobados: un segundo proveedor no se
+habilita implícitamente por este resolver.
+
 ## Preguntas abiertas
 
 Ninguna para este corte. El SDK/UI Clerk, la persistencia de su sesión en Wails
@@ -278,3 +289,7 @@ cerrado y el inventario ISA-911. Su hipótesis de que el gateway Edge no acepta
 TPA no se tomó como hecho: la documentación oficial afirma soporte TPA para
 Functions, pero no especifica inequívocamente ese gateway. Para eliminar esa
 dependencia, este corte usa la ruta PostgREST TPA ya demostrada por ISA-885.
+La primera revisión final emitió `CHANGES_REQUIRED`: exigió clasificar también
+los status PostgREST 401/403 como rechazo de credencial y cerrar el caso de un
+usuario legacy borrado. Ambos hallazgos se convirtieron primero en regresiones
+rojas y después quedaron corregidos; la segunda revisión queda como gate T7.

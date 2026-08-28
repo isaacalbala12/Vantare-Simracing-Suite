@@ -55,13 +55,17 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   `custom` y el fallback explícito de `auto`; la cadencia efectiva se aplica al
   `SectionScheduler` en el tick siguiente. OverlayFrame v2 publica
   `capabilities.performance`, su decoder TypeScript falla cerrado y el
-  coordinador visual obedece `rafCap`, techos por widget y dirty/event; `event`
-  queda exento del cap y el techo dirty se satisface una sola vez por
-  secuencia/firma. `session` y `spotter` mantienen su cadencia base y sus cambios
-  de seguridad fuerzan el tick siguiente. Frames antiguos sin política se
+  coordinador visual implementa `rafCap`, techos por widget y dirty/event;
+  `event` queda exento del cap y el techo dirty se satisface una sola vez por
+  secuencia/firma. La superficie todavía recibe el frame crudo y evita que esos
+  límites gobiernen renders reales: P1.1 queda pendiente del rebase posterior a
+  #937. `session` y `spotter` mantienen su cadencia base; D8 se demuestra por la
+  ruta canónica de spotter. V2 no tiene señal canónica de bandera y la verifica
+  #893. Frames antiguos sin política se
   normalizan a paridad; Ajustes antiguos y nuevos usan inicialmente nivel 1.
-  `sourceHz` mide frames del driver en una ventana móvil de dos segundos y
-  `reason` es un enum cerrado. Go build, suites Go acotadas, frontend 421/3198,
+  `sourceHz` mide frames del driver en una ventana móvil de dos segundos,
+  `reason` es un enum cerrado y niveles 3–5 mantienen efectos completos con el
+  diagnóstico `variante no disponible`. Go build, suites Go acotadas, frontend 421/3198,
   typecheck, lint, contrato generado, build frontend y Wails Windows pasan sobre
   `origin/nightly@ae66720d`; no hay prueba física LMU/WebView2, CI remoto, merge
   ni promoción. PR existente #936 permanece en revisión. Evidencia:

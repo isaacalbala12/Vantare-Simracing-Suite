@@ -36,15 +36,15 @@ explícito `clerk_user_id -> account UUID`; el email no debe ser autoridad.
 | Autenticar la CLI | **PASS** | OAuth humano completado en el navegador compartido; la CLI quedó vinculada a una aplicación development. |
 | Configurar el claim requerido | **PASS** | El schema vivo de Clerk aceptó exactamente `session.claims.role = "authenticated"`. |
 | Compilar el harness temporal | **PASS** | Next.js 16.3.3 y TypeScript terminaron sin errores. |
-| Crear y activar sesión de prueba | **PASS** | El Backend SDK oficial creó un usuario reservado de test y una sesión development; ambos se eliminaron en `finally`. |
+| Crear y activar sesión de prueba | **PASS** | El Backend SDK oficial creó un usuario reservado de test y una sesión development. |
 | Obtener session token | **PASS** | `alg=RS256`, `kid` y `sid` presentes, `sub` en namespace Clerk, `role=authenticated`, TTL observado de 60 s. El JWT nunca se imprimió. |
 | Renovar session token | **PASS** | Una segunda acuñación posterior produjo otro JWT sin exponer su valor. |
 | Supabase TPA acepta el token | **PASS** | PostgREST respondió `201` al insert y `200` al select usando el JWT Clerk y la publishable key local. |
 | RLS conserva el sujeto | **PASS** | La fila insertada y leída tuvo `user_id = auth.jwt()->>'sub'`; una escritura con propietario diferente respondió `403`. |
 | Control anónimo | **PASS** | PostgREST respondió `200` con cero filas visibles sin bearer token. |
 | Caracterizar mapping interno | **PASS** | El `sub` Clerk no es UUID y la integración nativa no crea un usuario Supabase Auth. Se requiere mapping server-side al UUID interno existente. No se diseñó schema productivo. |
-| Revocación y limpieza de usuarios | **PASS** | Cada sesión se revocó y cada usuario de test se eliminó mediante el SDK oficial, incluso al fallar una aserción intermedia. |
-| Limpieza de runtime local | **PASS** | Cero contenedores `isa885-clerk-tpa`, puerto 5174 cerrado y `.env.local` temporal eliminado sin leerlo. |
+| Revocación y limpieza de usuarios | **PARTIAL** | El `finally` intentó revocar cada sesión y eliminar cada usuario, pero silenció errores de cleanup y no emitió confirmación posterior. No afecta al PASS TPA; deja un riesgo residual de recursos de test. |
+| Limpieza de runtime local | **PASS** | Cero contenedores `isa885-clerk-tpa`, puerto 5174 cerrado y `.env.local` temporal eliminado sin inspeccionar su contenido. |
 
 ## Procedimiento mínimo ejecutado
 
@@ -76,9 +76,10 @@ el starter temporal.
    `auth.jwt()->>'sub'` con `user_id`.
 6. Se hicieron las peticiones PostgREST positiva, de propietario incorrecto y
    anónima. El script solo devolvió códigos HTTP y booleanos.
-7. En `finally` se revocó la sesión y se eliminó el usuario Clerk. Después se
+7. En `finally` se solicitó revocar la sesión y eliminar el usuario Clerk. Esas
+   dos operaciones fueron best-effort y no emitieron confirmación. Después se
    detuvieron el servidor y los contenedores, se borraron los volúmenes del
-   proyecto local y se eliminó el archivo temporal de entorno sin abrirlo.
+   proyecto local y se eliminó el archivo temporal de entorno.
 
 La CLI `supabase db query --local --file` rechazó inicialmente el fichero por
 intentar preparar varias sentencias a la vez. Se aplicó el mismo SQL con
@@ -130,10 +131,13 @@ sido arquitectura prematura.
 
 ## Seguridad y cleanup
 
-- No se leyó, imprimió, copió ni versionó ningún `.env*`.
-- No se mostraron secret keys, publishable keys, cookies, códigos, emails,
-  IDs de usuario ni JWT.
-- Los usuarios y sesiones sintéticos se eliminaron después de cada ejecución.
+- Node cargó el `.env.local` como input del runtime; ningún agente inspeccionó,
+  copió, imprimió en el informe ni versionó su contenido.
+- No se publicaron secret keys, publishable keys, cookies, códigos, emails,
+  IDs de usuario ni JWT. La CLI sí mostró localmente la identidad usada para el
+  OAuth; ese dato no se repite ni se incorpora al repo o a la issue.
+- El script intentó revocar las sesiones y eliminar los usuarios sintéticos en
+  cada `finally`, pero no verificó el resultado de esas operaciones.
 - El proyecto Supabase fue estrictamente local y sus contenedores/volúmenes se
   detuvieron y borraron por `project_id` exacto.
 - Docker reanudó otros proyectos locales existentes al iniciar Desktop; no se
@@ -164,11 +168,12 @@ encontró un cambio incompatible específico de Clerk TPA.
 
 ## Decisión que habilita
 
-ISA-885 demuestra que Clerk puede sustituir la capa de login/sesión sin un
-puente propio de tokens y que Supabase puede seguir aplicando RLS. Una issue
-productiva posterior puede diseñar la migración mínima de identidad y cuentas,
-manteniendo el UUID interno como autoridad. Este PASS no autoriza todavía esa
-implementación ni la integración de este documento en `nightly`.
+ISA-885 demuestra que el session token de Clerk es interoperable con Supabase
+TPA/RLS sin un puente propio de tokens. No demuestra aún la sustitución completa
+del login/sesión de Vantare o Wails. Una issue productiva posterior puede
+diseñar la migración mínima de identidad y cuentas, manteniendo el UUID interno
+como autoridad. Este PASS no autoriza todavía esa implementación ni la
+integración de este documento en `nightly`.
 
 ## Influencia de la skill Supabase
 

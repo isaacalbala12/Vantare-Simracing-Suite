@@ -159,17 +159,6 @@ $logicalProcessors = [Environment]::ProcessorCount
 $exeName = [IO.Path]::GetFileName($exePath)
 $gameExeName = "$gameProcessName.exe"
 
-if (-not ('HuellaNativeWindow' -as [type])) {
-    Add-Type -TypeDefinition @'
-using System;
-using System.Runtime.InteropServices;
-public static class HuellaNativeWindow {
-    [DllImport("user32.dll")]
-    public static extern bool ShowWindowAsync(IntPtr hWnd, int nCmdShow);
-}
-'@
-}
-
 function Get-OwnCimProcesses {
     @(Get-CimInstance Win32_Process | Where-Object {
         $_.ProcessId -eq $app.Id -or ($_.Name -eq 'msedgewebview2.exe' -and $_.CommandLine -like "*$exeName*EBWebView*")
@@ -296,9 +285,11 @@ try {
 
     $app.Refresh()
     if ($Condicion -eq 'HubMin') {
-        if (-not [HuellaNativeWindow]::ShowWindowAsync($app.MainWindowHandle, 6)) { throw 'ShowWindowAsync(SW_MINIMIZE) rechazó la ventana Hub.' }
+        & node $cdpHelper --cdp "http://127.0.0.1:$Puerto" --action hub-minimise --duration 1 | Out-Host
+        if ($LASTEXITCODE -ne 0) { throw "No se pudo minimizar el Hub por su target Wails (código $LASTEXITCODE)." }
     } elseif ($Condicion -eq 'HubVisible') {
-        if (-not [HuellaNativeWindow]::ShowWindowAsync($app.MainWindowHandle, 9)) { throw 'ShowWindowAsync(SW_RESTORE) rechazó la ventana Hub.' }
+        & node $cdpHelper --cdp "http://127.0.0.1:$Puerto" --action hub-restore --duration 1 | Out-Host
+        if ($LASTEXITCODE -ne 0) { throw "No se pudo restaurar el Hub por su target Wails (código $LASTEXITCODE)." }
     }
 
     $ownCim = Get-OwnCimProcesses

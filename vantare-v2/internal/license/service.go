@@ -142,7 +142,7 @@ func (s *Service) validate(ctx context.Context, sessionToken, trustedSessionToke
 	if sessionToken == "" {
 		return &Result{State: StateAnonymous, Error: ErrMissingSession}, nil
 	}
-	subject, err := s.subjectFromJWT(sessionToken)
+	_, err := s.subjectFromJWT(sessionToken)
 	if err != nil {
 		return &Result{State: StateAnonymous, Error: fmt.Errorf("%w: invalid session subject", ErrValidationFailed)}, nil
 	}
@@ -160,18 +160,18 @@ func (s *Service) validate(ctx context.Context, sessionToken, trustedSessionToke
 	if s.client != nil {
 		response, callErr := s.client.FetchCredential(ctx, sessionToken, fingerprint)
 		if errors.Is(callErr, ErrDeviceLimit) {
-			return &Result{State: StateDeviceLimit, UserID: subject, DeviceOK: false, Error: ErrDeviceLimit}, nil
+			return &Result{State: StateDeviceLimit, DeviceOK: false, Error: ErrDeviceLimit}, nil
 		}
 		if callErr == nil && response == nil {
-			return &Result{State: StateAuthenticatedNoEntitlement, UserID: subject, Error: fmt.Errorf("%w: empty credential response", ErrValidationFailed)}, nil
+			return &Result{State: StateAuthenticatedNoEntitlement, Error: fmt.Errorf("%w: empty credential response", ErrValidationFailed)}, nil
 		}
 		if callErr == nil {
-			res, verifyErr := s.verifier.verifyOnline(&response.Credential, subject, fingerprint)
+			res, verifyErr := s.verifier.verifyOnline(&response.Credential, fingerprint)
 			if verifyErr != nil {
-				return &Result{State: StateAuthenticatedNoEntitlement, UserID: subject, Error: fmt.Errorf("%w: %w", ErrValidationFailed, verifyErr)}, nil
+				return &Result{State: StateAuthenticatedNoEntitlement, Error: fmt.Errorf("%w: %w", ErrValidationFailed, verifyErr)}, nil
 			}
 			if mergeErr := mergeOnlineCapabilities(res, response.OnlineCapabilities); mergeErr != nil {
-				return &Result{State: StateAuthenticatedNoEntitlement, UserID: subject, Error: fmt.Errorf("%w: %w", ErrValidationFailed, mergeErr)}, nil
+				return &Result{State: StateAuthenticatedNoEntitlement, Error: fmt.Errorf("%w: %w", ErrValidationFailed, mergeErr)}, nil
 			}
 			res.OnlineValidated = true
 			if s.cache != nil {
@@ -183,19 +183,19 @@ func (s *Service) validate(ctx context.Context, sessionToken, trustedSessionToke
 		}
 		if errors.Is(callErr, ErrCredentialRejected) {
 			return &Result{
-				State: StateAuthenticatedNoEntitlement, UserID: subject,
+				State: StateAuthenticatedNoEntitlement,
 				Error: fmt.Errorf("%w: %w", ErrValidationFailed, callErr),
 			}, nil
 		}
 		if !cacheAuthorized {
-			return &Result{State: StateAuthenticatedNoEntitlement, UserID: subject, Error: fmt.Errorf("%w: offline session is not trusted", ErrValidationFailed)}, nil
+			return &Result{State: StateAuthenticatedNoEntitlement, Error: fmt.Errorf("%w: offline session is not trusted", ErrValidationFailed)}, nil
 		}
-		return s.fromCacheOnFailure(callErr, subject, fingerprint, false)
+		return s.fromCacheOnFailure(callErr, fingerprint, false)
 	}
 	if !cacheAuthorized {
-		return &Result{State: StateUnconfigured, UserID: subject, Error: ErrUnconfigured}, nil
+		return &Result{State: StateUnconfigured, Error: ErrUnconfigured}, nil
 	}
-	return s.fromCacheOnFailure(ErrUnconfigured, subject, fingerprint, true)
+	return s.fromCacheOnFailure(ErrUnconfigured, fingerprint, true)
 }
 
 func mergeOnlineCapabilities(res *Result, online []Capability) error {
@@ -227,23 +227,23 @@ func mergeOnlineCapabilities(res *Result, online []Capability) error {
 	return nil
 }
 
-func (s *Service) fromCacheOnFailure(cause error, subject, fingerprint string, unconfigured bool) (*Result, error) {
+func (s *Service) fromCacheOnFailure(cause error, fingerprint string, unconfigured bool) (*Result, error) {
 	if s.cache == nil {
 		if unconfigured {
-			return &Result{State: StateUnconfigured, UserID: subject, Error: ErrUnconfigured}, nil
+			return &Result{State: StateUnconfigured, Error: ErrUnconfigured}, nil
 		}
-		return &Result{State: StateAuthenticatedNoEntitlement, UserID: subject, Error: fmt.Errorf("%w: %w", ErrValidationFailed, cause)}, nil
+		return &Result{State: StateAuthenticatedNoEntitlement, Error: fmt.Errorf("%w: %w", ErrValidationFailed, cause)}, nil
 	}
 	credential, cacheErr := s.cache.Read()
 	if cacheErr != nil {
 		if unconfigured && (errors.Is(cacheErr, os.ErrNotExist) || errors.Is(cacheErr, ErrLegacyCache)) {
-			return &Result{State: StateUnconfigured, UserID: subject, Error: fmt.Errorf("%w: %w", ErrUnconfigured, cacheErr)}, nil
+			return &Result{State: StateUnconfigured, Error: fmt.Errorf("%w: %w", ErrUnconfigured, cacheErr)}, nil
 		}
-		return &Result{State: StateAuthenticatedNoEntitlement, UserID: subject, Error: fmt.Errorf("%w: %w", ErrValidationFailed, cacheErr)}, nil
+		return &Result{State: StateAuthenticatedNoEntitlement, Error: fmt.Errorf("%w: %w", ErrValidationFailed, cacheErr)}, nil
 	}
-	res, verifyErr := s.verifier.verifyCached(credential, subject, fingerprint)
+	res, verifyErr := s.verifier.verifyCached(credential, credential.Claims.Subject, fingerprint)
 	if verifyErr != nil {
-		return &Result{State: StateAuthenticatedNoEntitlement, UserID: subject, Error: fmt.Errorf("%w: %w", ErrValidationFailed, verifyErr)}, nil
+		return &Result{State: StateAuthenticatedNoEntitlement, Error: fmt.Errorf("%w: %w", ErrValidationFailed, verifyErr)}, nil
 	}
 	res.Error = fmt.Errorf("%w: %w", ErrValidationFailed, cause)
 	if res.State == StateActive {
@@ -347,7 +347,8 @@ func subjectFromJWT(token string) (string, error) {
 	if err := json.Unmarshal(payload, &claims); err != nil {
 		return "", err
 	}
-	if !isUUID(claims.Subject) {
+	claims.Subject = strings.TrimSpace(claims.Subject)
+	if claims.Subject == "" || len(claims.Subject) > 255 {
 		return "", ErrMissingSession
 	}
 	return claims.Subject, nil

@@ -389,14 +389,14 @@ function createCredentialStore(): CredentialStore {
         auth: { autoRefreshToken: false, persistSession: false },
         global: { headers: { Authorization: `Bearer ${token}` } },
       });
-      const { data: accountId, error: claimError } = await userClient.rpc(
+      const { data: accountId, error: claimError, status: claimStatus } = await userClient.rpc(
         "claim_active_device",
         {
           device_fingerprint: fingerprint,
         },
       );
       if (claimError) {
-        if (isCredentialAuthFailure(claimError)) {
+        if (isCredentialAuthFailure(claimStatus, claimError)) {
           throw new CredentialAuthError();
         }
         throw claimError;
@@ -431,11 +431,12 @@ function createCredentialStore(): CredentialStore {
   };
 }
 
-function isCredentialAuthFailure(error: {
+export function isCredentialAuthFailure(status: number, error: {
   code?: string;
   message?: string;
 }): boolean {
-  return error.code === "PGRST301" || error.code === "PGRST302" ||
+  return status === 401 || status === 403 ||
+    error.code === "PGRST301" || error.code === "PGRST302" ||
     error.message === "not_authenticated" ||
     error.message === "invalid_identity";
 }

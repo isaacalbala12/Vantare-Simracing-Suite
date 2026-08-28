@@ -3,6 +3,7 @@ import {
   CREDENTIAL_ISSUER,
   CredentialAuthError,
   handleLicenseCredentialRequest,
+  isCredentialAuthFailure,
   normalizeGrants,
   normalizeOperationalAssignments,
   OPERATIONAL_LEASE_MS,
@@ -430,6 +431,31 @@ Deno.test("TPA rejection stays HTTP 401 instead of becoming availability failure
   );
   const body = await response.json();
   if (response.status !== 401 || body.error !== "unauthorized") {
+    throw new Error(JSON.stringify(body));
+  }
+});
+
+Deno.test("PostgREST auth status is classified as a credential rejection", () => {
+  if (!isCredentialAuthFailure(403, { code: "42501" })) {
+    throw new Error("a role rejection must stay an authentication failure");
+  }
+  if (!isCredentialAuthFailure(401, { message: "Invalid JWT" })) {
+    throw new Error("a gateway JWT rejection must stay an authentication failure");
+  }
+});
+
+Deno.test("generic credential store failure stays HTTP 503", async () => {
+  const response = await handleLicenseCredentialRequest(
+    credentialRequest({ deviceFingerprint: fingerprint }),
+    {
+      environment: "production",
+      store: {
+        load: () => Promise.reject(new Error("db down")),
+      },
+    },
+  );
+  const body = await response.json();
+  if (response.status !== 503 || body.error !== "credential_state_unavailable") {
     throw new Error(JSON.stringify(body));
   }
 });

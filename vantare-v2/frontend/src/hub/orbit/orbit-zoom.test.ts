@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  orbitZoomRequiresScroll,
   isOrbitZoomFloored,
   resolveOrbitContentMax,
   resolveOrbitZoom,
@@ -67,6 +68,18 @@ describe("isOrbitZoomFloored", () => {
 
   it("no marca suelo ante medidas no válidas", () => {
     expect(isOrbitZoomFloored({ width: 0, height: 0 })).toBe(false);
+  });
+});
+
+describe("orbitZoomRequiresScroll", () => {
+  it("activa desplazamiento cuando el zoom manual ya no deja caber el suelo", () => {
+    expect(orbitZoomRequiresScroll({ width: 1920, height: 1080 }, 1.25)).toBe(false);
+    expect(orbitZoomRequiresScroll({ width: 1366, height: 768 }, 1.25)).toBe(true);
+  });
+
+  it("no lo activa cuando alejar permite que la shell vuelva a caber", () => {
+    expect(orbitZoomRequiresScroll({ width: 600, height: 400 }, 0.48)).toBe(false);
+    expect(orbitZoomRequiresScroll({ width: 0, height: 0 }, 1)).toBe(false);
   });
 });
 

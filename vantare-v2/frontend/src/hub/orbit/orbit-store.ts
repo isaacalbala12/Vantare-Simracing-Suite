@@ -14,6 +14,8 @@ export const ORBIT_KEYS = {
   telemetryDemo: 'vantare.v03orbit.telemetryDemo',
   settingsSection: 'vantare.v03orbit.settings',
   reduceMotion: 'vantare.v03orbit.reduceMotion',
+  /** Preferencia manual del cliente; se compone con el escalado responsive. */
+  appZoom: 'vantare.v03orbit.appZoom',
   /** Interruptor de diagnostico: `1` desactiva el escalado proporcional. */
   zoomOff: 'vantare.v03orbit.zoomOff',
 } as const;

@@ -1,6 +1,15 @@
 import { useEffect } from "react";
 import { ORBIT_KEYS, orbitStore } from "./orbit-store";
-import { isOrbitZoomFloored, resolveOrbitZoom } from "./orbit-zoom";
+import {
+  appZoomShortcut,
+  DEFAULT_APP_ZOOM,
+  getStoredAppZoom,
+  nextAppZoom,
+  setAppZoom,
+  subscribeAppZoom,
+  type AppZoom,
+} from "./app-zoom";
+import { orbitZoomRequiresScroll, resolveOrbitZoom } from "./orbit-zoom";
 
 /**
  * Reposo tras el último `resize`: aquí se levanta el modo «redimensionando».
@@ -48,13 +57,14 @@ export function useOrbitResponsiveZoom(): void {
     let frame = 0;
     let settleTimer = 0;
     let resizing = false;
+    let userZoom: AppZoom = getStoredAppZoom();
 
     const write = () => {
       scheduled = false;
       const viewport = { width: window.innerWidth, height: window.innerHeight };
       // Cuantizado a milésimas: por debajo de 0.001 el cambio no se ve y solo
       // sirve para invalidar el estilo del árbol entero en cada paso.
-      const factor = Math.round(resolveOrbitZoom(viewport) * 1000) / 1000;
+      const factor = Math.round(resolveOrbitZoom(viewport) * userZoom * 1000) / 1000;
       if (factor !== lastFactor) {
         lastFactor = factor;
         // A factor 1 no se deja `zoom` escrito: así el modo normal es idéntico
@@ -62,13 +72,29 @@ export function useOrbitResponsiveZoom(): void {
         style.zoom = factor === 1 ? "" : String(factor);
         root.style.setProperty("--orbit-zoom", String(factor));
       }
-      const floored = isOrbitZoomFloored(viewport);
+      const floored = orbitZoomRequiresScroll(viewport, factor);
       if (floored) {
         if (root.dataset.orbitZoomFloored !== "true") root.dataset.orbitZoomFloored = "true";
       } else if (root.dataset.orbitZoomFloored) {
         delete root.dataset.orbitZoomFloored;
       }
     };
+
+    const onZoomShortcut = (event: KeyboardEvent) => {
+      const shortcut = appZoomShortcut(event);
+      if (!shortcut) return;
+      event.preventDefault();
+      const next =
+        shortcut === "reset"
+          ? DEFAULT_APP_ZOOM
+          : nextAppZoom(userZoom, shortcut === "increase" ? 1 : -1);
+      setAppZoom(next);
+    };
+
+    const unsubscribeZoom = subscribeAppZoom((next) => {
+      userZoom = next;
+      write();
+    });
 
     const settle = () => {
       settleTimer = 0;
@@ -96,10 +122,13 @@ export function useOrbitResponsiveZoom(): void {
 
     write();
     window.addEventListener("resize", onResize, { passive: true });
+    window.addEventListener("keydown", onZoomShortcut);
     return () => {
       if (frame) window.cancelAnimationFrame(frame);
       if (settleTimer) window.clearTimeout(settleTimer);
       window.removeEventListener("resize", onResize);
+      window.removeEventListener("keydown", onZoomShortcut);
+      unsubscribeZoom();
       style.zoom = "";
       root.style.removeProperty("--orbit-zoom");
       delete root.dataset.orbitZoomFloored;

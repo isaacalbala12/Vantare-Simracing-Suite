@@ -1,215 +1,178 @@
 # ISA-885 · sesión Clerk real y Supabase TPA local
 
-Fecha: 2026-08-27
+Fecha de cierre de evidencia: 2026-08-28
 
-Resultado: **BLOCKED en la precondición de compatibilidad Clerk → Supabase**
+Resultado: **PASS del contrato Clerk session token → Supabase TPA local**
 
 Alcance: spike no productivo, `roadmap:not-required`
 
 ## Conclusión
 
-Una instancia temporal **Clerk development** creada por la CLI oficial, sin
-cuenta ni login humano, sí permitió completar fuera de Vantare el ciclo mínimo
-de sesión:
+Una aplicación **Clerk development** reclamada mediante la CLI oficial emitió
+un session token RS256 con `role=authenticated`. Un Supabase local aislado,
+configurado con `[auth.third_party.clerk]`, aceptó ese JWT y lo convirtió en el
+rol Postgres `authenticated`.
 
-- alta con una identidad de prueba reservada por Clerk, sin enviar correo real;
-- activación de una sesión en T3 Preview;
-- obtención de un Clerk session token con `session.getToken()`;
-- renovación forzada con `session.getToken({ skipCache: true })`;
-- cierre con `Clerk.signOut()`.
+La prueba real sobre PostgREST y RLS demostró que la sesión Clerk pudo:
 
-El token observado era un JWT asimétrico de desarrollo válido en forma, pero
-**no contenía el claim `role`**. Supabase exige `role=authenticated` para que
-sus API acepten una sesión Clerk. La CLI confirmó que el esquema necesario
-para configurar ese claim solo está disponible después de reclamar la
-aplicación mediante `clerk auth login`. Ese paso requiere identidad e
-intervención humana, expresamente fuera de este spike.
+- insertar una fila cuyo propietario se derivó de `auth.jwt()->>'sub'`;
+- leer esa fila propia;
+- recibir `403` al intentar insertar para otro sujeto;
+- ocultar todas las filas a una petición anónima.
 
-Por ello no se arrancó Supabase local ni se envió un token incompatible. La
-aceptación TPA real queda **sin demostrar**, no rechazada. No hay base todavía
-para implementar la integración en Vantare.
+No se abrió Vantare, no se tocó Supabase remoto y no hubo código productivo,
+migración, deploy, billing, licencia, promoción ni release.
+
+El PASS no resuelve por sí solo la migración de cuentas. Clerk no sincroniza
+usuarios en Supabase Auth: su `sub` es un identificador textual de Clerk, no el
+UUID interno que hoy relaciona `profiles`, `user_entitlements` y `auth.users`.
+Una futura implementación de Vantare deberá mantener un mapping server-side
+explícito `clerk_user_id -> account UUID`; el email no debe ser autoridad.
 
 ## Matriz de evidencia
 
 | Prueba | Resultado | Evidencia sanitizada |
 | --- | --- | --- |
-| Crear Clerk development sin dashboard | **PASS** | Clerk CLI 3.2.0 generó una aplicación keyless temporal y no reclamada para un starter Next.js. |
-| Usar keyless en React o JavaScript plano | **FAIL** | La CLI respondió que `--keyless` no está soportado para esos dos frameworks y pidió `clerk auth login`; se eligió el único happy path soportado observado, Next.js. |
-| Compilar el harness temporal | **PASS** | Next.js 16.3.3 terminó build y TypeScript sin errores. |
-| Abrir y operar el harness con T3 Preview | **PASS** | Clerk cargado en un host `*.clerk.accounts.dev`; no se abrió Vantare ni otro navegador. |
-| Superar protección anti-bot de forma soportada | **PASS** | Se creó un Testing Token con el Backend API oficial y se aplicó solo a llamadas FAPI, sin imprimirlo ni persistirlo. `captcha_bypass=true`. |
-| Alta con identidad reservada | **PASS** | Se usó el subaddress de test documentado por Clerk y su OTP fijo de test. No se usó una identidad real ni se envió correo. |
-| Activar sesión | **PASS** | `Clerk.session` y `Clerk.user` quedaron presentes después de verificar la identidad de test. |
-| Obtener session token | **PASS** | Tres segmentos JWT, `alg=RS256`, `kid` presente, issuer HTTPS de desarrollo, `sub` presente, `sid` presente y TTL observado de 60 s. El token nunca salió del runtime. |
-| Renovar session token | **PASS** | Tras `skipCache: true`, se obtuvo otro JWT; cambió el valor y `iat`/`exp` no retrocedieron. |
-| Cerrar sesión | **PASS** | Tras `Clerk.signOut()`, sesión y usuario dejaron de estar activos; la identidad sintética se retiró de `sessionStorage`. |
-| Claim Supabase requerido | **BLOCKED** | El session token tenía `role=null`; no era compatible con las API Supabase. |
-| Configurar `role=authenticated` sin persona | **BLOCKED** | `clerk config schema --keys session` devolvió `auth_required` e indicó reclamar la aplicación con `clerk auth login`. No se adivinó un patch ni se abrió dashboard. |
-| Supabase TPA local acepta el token | **BLOCKED** | No se inició Docker/Supabase porque faltaba una precondición obligatoria del emisor. No existe request TPA que permita afirmar aceptación o rechazo. |
-| Mapping Clerk `sub` → UUID interno | **BLOCKED** | Se comprobó que el `sub` usa el namespace de Clerk y no es UUID. El mapping efímero no se ejecutó porque no hubo identidad aceptada por Supabase. El UUID interno sigue siendo la única autoridad prevista. |
-| Limpieza local | **PASS** | Servidor parado, cero procesos Node del harness y directorio temporal eliminado. La aplicación Clerk permanece no reclamada y sujeta a la caducidad temporal del proveedor. |
+| Autenticar la CLI | **PASS** | OAuth humano completado en el navegador compartido; la CLI quedó vinculada a una aplicación development. |
+| Configurar el claim requerido | **PASS** | El schema vivo de Clerk aceptó exactamente `session.claims.role = "authenticated"`. |
+| Compilar el harness temporal | **PASS** | Next.js 16.3.3 y TypeScript terminaron sin errores. |
+| Crear y activar sesión de prueba | **PASS** | El Backend SDK oficial creó un usuario reservado de test y una sesión development; ambos se eliminaron en `finally`. |
+| Obtener session token | **PASS** | `alg=RS256`, `kid` y `sid` presentes, `sub` en namespace Clerk, `role=authenticated`, TTL observado de 60 s. El JWT nunca se imprimió. |
+| Renovar session token | **PASS** | Una segunda acuñación posterior produjo otro JWT sin exponer su valor. |
+| Supabase TPA acepta el token | **PASS** | PostgREST respondió `201` al insert y `200` al select usando el JWT Clerk y la publishable key local. |
+| RLS conserva el sujeto | **PASS** | La fila insertada y leída tuvo `user_id = auth.jwt()->>'sub'`; una escritura con propietario diferente respondió `403`. |
+| Control anónimo | **PASS** | PostgREST respondió `200` con cero filas visibles sin bearer token. |
+| Caracterizar mapping interno | **PASS** | El `sub` Clerk no es UUID y la integración nativa no crea un usuario Supabase Auth. Se requiere mapping server-side al UUID interno existente. No se diseñó schema productivo. |
+| Revocación y limpieza de usuarios | **PASS** | Cada sesión se revocó y cada usuario de test se eliminó mediante el SDK oficial, incluso al fallar una aserción intermedia. |
+| Limpieza de runtime local | **PASS** | Cero contenedores `isa885-clerk-tpa`, puerto 5174 cerrado y `.env.local` temporal eliminado sin leerlo. |
 
-## Fuentes vivas consultadas
+## Procedimiento mínimo ejecutado
 
-Se consultó el changelog actual de Supabase y no se encontró un breaking change
-específico de Clerk TPA. También se consultó `search_docs` de Supabase antes de
-ejecutar. Las fuentes primarias vigentes establecen que:
+Todo el runtime se creó bajo `C:\tmp`, fuera del repo. Se usaron Clerk CLI
+3.2.0, Supabase CLI 2.105.0, Docker Desktop y los SDK oficiales ya incluidos en
+el starter temporal.
 
-- [Supabase: Clerk como third-party auth](https://supabase.com/docs/guides/auth/third-party/clerk)
-  requiere configurar la instancia Clerk para compatibilidad, añadir
-  `role=authenticated`, registrar localmente el dominio development y entregar
-  `session.getToken()` mediante `accessToken`.
-- [Supabase: third-party auth](https://supabase.com/docs/guides/auth/third-party/overview)
-  confía en los JWT asimétricos emitidos por el proveedor configurado.
-- [Clerk: integración con Supabase](https://clerk.com/docs/guides/development/integrations/databases/supabase)
-  confirma que las API Supabase requieren `role=authenticated` y que la
-  integración nativa añade ese claim.
-- [Clerk CLI](https://clerk.com/docs/cli) documenta que `clerk init` puede crear
-  claves development temporales sin cuenta.
-- [Clerk: Testing Tokens](https://clerk.com/docs/guides/development/testing/overview)
-  documenta el token efímero para evitar la detección de bots en pruebas y el
-  parámetro FAPI correspondiente.
-- [Clerk: identidades de prueba](https://clerk.com/docs/guides/development/testing/test-emails-and-phones)
-  reserva direcciones de test y un OTP fijo para development sin entrega real.
-- [Clerk: session tokens](https://clerk.com/docs/guides/sessions/session-tokens)
-  define el JWT corto y sus claims de sesión.
-- [Clerk: renovación forzada](https://clerk.com/docs/guides/sessions/force-token-refresh)
-  recomienda `getToken({ skipCache: true })` para acuñar un token nuevo.
-- [Clerk: personalizar session token](https://clerk.com/docs/guides/sessions/customize-session-tokens)
-  sitúa la edición de claims de instancia en el dashboard.
+1. Se reclamó una aplicación Clerk exclusivamente development mediante
+   `clerk auth login`.
+2. Se consultó el schema vivo y se aplicó el patch mínimo:
 
-## Procedimiento ejecutado
+   ```json
+   {"session":{"claims":{"role":"authenticated"}}}
+   ```
 
-Todos los comandos se ejecutaron en un directorio temporal fuera del repo. Los
-valores de identidad, claves, cookies, OTP y tokens se omitieron de comandos,
-salidas y archivos versionados.
+3. El SDK de backend creó una identidad reservada de test, creó una sesión y
+   obtuvo el session token en memoria.
+4. Se arrancó un Supabase local con puertos aislados y únicamente los servicios
+   necesarios. Su configuración relevante fue:
 
-```text
-npx --yes clerk@latest --help
-npx --yes clerk@latest init --help
-npx --yes clerk@latest --mode agent init --framework next --pm npm --keyless -y --no-skills
-npm run build
-npx --yes clerk@latest config --help
-npx --yes clerk@latest config patch --help
-npx --yes clerk@latest config schema --keys session
-```
+   ```toml
+   [auth.third_party.clerk]
+   enabled = true
+   domain = "<dominio-development-clerk>"
+   ```
 
-El primer `clerk init --starter --framework next --keyless` dejó de producir
-salida durante el scaffolding. Se validaron los PIDs y sus líneas de comando,
-se cancelaron solo esos procesos y se repitió la inicialización en modo agente
-sobre el starter ya creado. No se dejó un proceso colgado.
+5. En una tabla efímera se habilitó RLS, se concedió acceso explícito solo a
+   `authenticated` y se aplicaron policies que comparaban
+   `auth.jwt()->>'sub'` con `user_id`.
+6. Se hicieron las peticiones PostgREST positiva, de propietario incorrecto y
+   anónima. El script solo devolvió códigos HTTP y booleanos.
+7. En `finally` se revocó la sesión y se eliminó el usuario Clerk. Después se
+   detuvieron el servidor y los contenedores, se borraron los volúmenes del
+   proyecto local y se eliminó el archivo temporal de entorno sin abrirlo.
 
-El harness mínimo temporal contenía únicamente:
+La CLI `supabase db query --local --file` rechazó inicialmente el fichero por
+intentar preparar varias sentencias a la vez. Se aplicó el mismo SQL con
+`psql -v ON_ERROR_STOP=1` dentro del contenedor DB exacto del proyecto ISA-885;
+no se tocó ningún otro entorno local.
 
-1. `ClerkProvider`, `SignUp` y middleware generados por la CLI;
-2. un endpoint local que llamaba
-   `clerkClient().testingTokens.createTestingToken()`;
-3. un interceptor de FAPI equivalente al helper oficial de testing, que
-   conservaba el Testing Token en un closure;
-4. comprobaciones en T3 que parseaban el session token en memoria y devolvían
-   solo tipos, booleanos y claims no sensibles.
+## Evidencia sanitizada
 
-La UI se operó con T3 Preview. `preview_snapshot` falló dos veces en la
-infraestructura de preview, así que no hay captura visual y no se reclama esa
-evidencia. `preview_status`, `preview_navigate`, `preview_wait_for` y
-`preview_evaluate` sí respondieron y permitieron verificar el estado observable.
-
-## Evidencia del bloqueo
-
-El session token renovado mantuvo estas propiedades sanitizadas:
+La prueba de emisión y renovación devolvió:
 
 ```text
-alg=RS256
-kid_present=true
-issuer_is_https_development=true
-sub_present=true
-sub_uses_clerk_namespace=true
-sub_is_uuid=false
-sid_present=true
+ok=true
+role=authenticated
+algorithm=RS256
+has_key_id=true
+has_session_id=true
+subject_uses_clerk_namespace=true
 ttl_seconds=60
-role=null
+refreshed_token_is_different=true
 ```
 
-La CLI oficial devolvió, sin exponer datos de cuenta:
+La prueba real TPA/RLS devolvió:
 
 ```text
-code=auth_required
-Config schema is only available for a claimed application.
-Run `clerk auth login` to claim this application, then re-run `clerk config schema`.
+ok=true
+role=authenticated
+insert_status=201
+select_status=200
+owns_inserted_row=true
+reads_own_row=true
+wrong_owner_status=403
+wrong_owner_rejected=true
+anonymous_status=200
+anonymous_sees_no_rows=true
 ```
 
-No se ejecutó `config patch`: sin el esquema vivo y sin una aplicación
-reclamada habría sido un cambio adivinado, no el happy path oficial.
+## Identidad y autoridad del UUID
 
-## Supabase y autoridad del UUID
+La integración nativa resuelve autenticación y RLS con el JWT externo, pero no
+sincroniza el usuario en Supabase Auth. Por eso `auth.uid()` no representa a un
+usuario Clerk; la documentación usa `auth.jwt()->>'sub'`.
 
-La configuración local prevista por la documentación sería, solo después de
-que el emisor produzca el claim correcto:
-
-```toml
-[auth.third_party.clerk]
-enabled = true
-domain = "<dominio-development-clerk>"
-```
-
-No se creó esta configuración, no se inició `supabase start`, no se abrió el
-proyecto Supabase activo y no se restauró staging. Docker Desktop tampoco se
-inició. No hubo schema, RLS, filas ni usuarios de Supabase.
-
-El dato observado expone una incompatibilidad con el esquema actual descrito
-en `docs/supabase-schema-release.md`: `profiles.id` es un UUID de
-`auth.users.id` y `user_entitlements.user_id` lo referencia, mientras que el
-`sub` observado de Clerk no es un UUID. Antes de producción habrá que definir y
-probar cómo reconciliar ambas identidades; este spike no decidió ese mapping y
-no permite reutilizar `sub` como si ya fuera la clave UUID del esquema.
+El esquema actual de Vantare descrito en `docs/supabase-schema-release.md` usa
+UUID de `auth.users.id` en `profiles.id` y `user_entitlements.user_id`. La
+solución productiva mínima deberá resolver el `sub` externo en servidor contra
+un UUID interno estable antes de consultar cuenta, permisos o licencia. Este
+spike no elige tabla, endpoint ni estrategia de migración: hacerlo aquí habría
+sido arquitectura prematura.
 
 ## Seguridad y cleanup
 
-- Nunca se abrió, leyó, imprimió ni copió el `.env.local` generado por Clerk.
-- Ninguna publishable key, secret key, cookie, OTP, email, user ID, JWT o
-  Testing Token fue devuelto por las herramientas o escrito en el repo.
-- La identidad de prueba solo existió transitoriamente en el navegador y se
-  eliminó antes del cleanup.
-- `Clerk.signOut()` dejó la sesión inactiva.
-- El proceso de desarrollo se cerró y se verificó que quedaban cero procesos
-  Node asociados al harness.
-- Se validó la ruta absoluta `C:\tmp\vantare-isa885-clerk-harness` y se eliminó
-  por completo. Contenía también el `.env.local` temporal.
-- No se reclamó la aplicación Clerk, no se habilitó producción y no hubo
-  dashboard, billing, deploy, Supabase remoto ni datos reales.
-- La aplicación Clerk development y su usuario sintético no se borraron de
-  forma remota porque hacerlo requería reclamar/abrir la instancia. Quedan sin
-  reclamar y sujetos al ciclo de caducidad de los recursos temporales de Clerk.
+- No se leyó, imprimió, copió ni versionó ningún `.env*`.
+- No se mostraron secret keys, publishable keys, cookies, códigos, emails,
+  IDs de usuario ni JWT.
+- Los usuarios y sesiones sintéticos se eliminaron después de cada ejecución.
+- El proyecto Supabase fue estrictamente local y sus contenedores/volúmenes se
+  detuvieron y borraron por `project_id` exacto.
+- Docker reanudó otros proyectos locales existentes al iniciar Desktop; no se
+  detuvieron, modificaron ni inspeccionaron sus datos.
+- El borrado recursivo de las tres carpetas inertes bajo `C:\tmp` fue bloqueado
+  por la política local antes de ejecutarse. Permanecen sin procesos ni
+  contenedores; el único `.env.local` temporal sí se eliminó de forma segura.
+- La aplicación Clerk development permanece en la cuenta y la sesión global de
+  la CLI continúa autenticada. No se eliminó el recurso remoto ni se cerró la
+  sesión de la herramienta porque no eran necesarios para el spike.
 
-## Paso humano exacto para desbloquear
+## Fuentes vivas consultadas
 
-1. Reclamar **una instancia exclusivamente development** con una cuenta de
-   prueba autorizada mediante `npx clerk@latest auth login`; no usar una
-   identidad personal ni una instancia productiva.
-2. Volver a ejecutar `clerk config schema --keys session` y configurar con el
-   mecanismo oficial el claim de sesión `role=authenticated` (o activar Connect
-   with Supabase en esa instancia development).
-3. Generar una nueva sesión reservada y comprobar, sin imprimir el JWT, que el
-   claim ya está presente.
-4. Recién entonces crear un proyecto Supabase efímero local, habilitar
-   `[auth.third_party.clerk]`, enviar una request mínima y probar el mapping
-   `sub` externo → UUID interno con datos efímeros.
+- [Clerk: integración nativa con Supabase](https://clerk.com/docs/guides/development/integrations/databases/supabase)
+  exige `role=authenticated`, entrega `session.getToken()` a Supabase y aclara
+  que no sincroniza usuarios con Supabase Auth.
+- [Supabase: Clerk como third-party auth](https://supabase.com/docs/guides/auth/third-party/clerk)
+  documenta el dominio development y la configuración TPA.
+- [Supabase: third-party auth](https://supabase.com/docs/guides/auth/third-party/overview)
+  describe la validación de JWT asimétricos de proveedores externos.
+- [Clerk: identidades reservadas de test](https://clerk.com/docs/guides/development/testing/test-emails-and-phones)
+  permite probar development sin usar una identidad real.
+- [Clerk: session tokens](https://clerk.com/docs/guides/sessions/session-tokens)
+  define el JWT corto y sus claims.
 
-Este desbloqueo no requiere SDK propio, manager, provider alternativo ni cambio
-productivo. Requiere una única intervención humana sobre una instancia Clerk
-development y repetir el último tramo del spike.
+Se consultó también el changelog vigente de Supabase antes de ejecutar; no se
+encontró un cambio incompatible específico de Clerk TPA.
+
+## Decisión que habilita
+
+ISA-885 demuestra que Clerk puede sustituir la capa de login/sesión sin un
+puente propio de tokens y que Supabase puede seguir aplicando RLS. Una issue
+productiva posterior puede diseñar la migración mínima de identidad y cuentas,
+manteniendo el UUID interno como autoridad. Este PASS no autoriza todavía esa
+implementación ni la integración de este documento en `nightly`.
 
 ## Influencia de la skill Supabase
 
-La skill obligó a consultar documentación y changelog vivos antes de ejecutar,
-mantener el experimento local-first y separar autenticación externa de la
-autoridad interna. En concreto evitó:
-
-- enviar a Supabase un JWT que carecía del role Postgres requerido;
-- usar metadata controlable por el usuario como autorización;
-- tocar el proyecto remoto, schema o RLS para compensar un emisor mal
-  configurado;
-- presentar una comprobación de forma JWT como aceptación TPA real.
-
-El resultado queda deliberadamente **BLOCKED** hasta disponer del claim seguro
-y de una prueba local de aceptación.
+La skill exigió documentación viva, ejecución local-first, una query real y
+RLS con grants explícitos. También evitó usar metadata editable, `service_role`
+en cliente o una comprobación superficial del formato JWT como sustituto de la
+aceptación TPA real.

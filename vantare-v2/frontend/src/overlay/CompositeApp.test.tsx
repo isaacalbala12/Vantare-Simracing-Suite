@@ -22,7 +22,7 @@ const originalResizeObserver = globalThis.ResizeObserver;
 let desktopOutput = { width: 1920, height: 1080 };
 let pullDelivery = 0;
 let pullRequests: Array<{sessionId: string; ack: number}> = [];
-let pullCloses = 0;
+let pullClosedSessions = new Set<string>();
 let resolvePull: ((response: Response) => void) | undefined;
 
 function installResizeObserver(): void {
@@ -148,7 +148,7 @@ describe("CompositeApp", () => {
     desktopOutput = { width: 1920, height: 1080 };
     pullDelivery = 0;
     pullRequests = [];
-    pullCloses = 0;
+    pullClosedSessions = new Set();
     resolvePull = undefined;
     vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       const route = typeof input === "string" ? input : input.toString();
@@ -158,7 +158,10 @@ describe("CompositeApp", () => {
           resolvePull = resolve;
         });
       }
-      if (route.endsWith("/close")) pullCloses += 1;
+      if (route.endsWith("/close")) {
+        const close = JSON.parse(String(init?.body)) as { sessionId: string };
+        pullClosedSessions.add(close.sessionId);
+      }
       return {ok: true, status: 204} as Response;
     }));
     installResizeObserver();
@@ -199,7 +202,12 @@ describe("CompositeApp", () => {
     expect(window.__vantareOverlayV2Diagnostics?.()).toMatchObject({
       overlay_v2_parse_duration: { count: 1 },
     });
-    expect(pullRequests.length - pullCloses).toBe(1);
+    const activeSessions = new Set(
+      pullRequests
+        .map((request) => request.sessionId)
+        .filter((sessionId) => !pullClosedSessions.has(sessionId)),
+    );
+    expect(activeSessions.size).toBe(1);
   });
 
   it("subscribes once to the profile and canonical Overlay transport", () => {

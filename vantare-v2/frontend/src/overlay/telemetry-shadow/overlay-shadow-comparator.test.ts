@@ -11,6 +11,7 @@ import {
   OVERLAY_SHADOW_POLICIES,
   compareOverlayShadow,
 } from "./overlay-shadow-comparator";
+import { overlayV2ViewModelRegistry } from "../core/overlay-v2-view-models";
 
 const PII = {
   driver: "PII_DRIVER_ISAAC_105",
@@ -184,6 +185,7 @@ describe("overlay shadow comparator policies", () => {
     expect(policyTypes).toEqual(registered);
     expect(OVERLAY_SHADOW_POLICIES.pedals.coverage).toBe("exact");
     expect(OVERLAY_SHADOW_POLICIES["race-schedule"].coverage).toBe("external");
+    expect(OVERLAY_SHADOW_POLICIES["engineer-radio"].coverage).toBe("external");
     expect(
       Object.values(OVERLAY_SHADOW_POLICIES).reduce<Record<string, number>>(
         (counts, policy) => ({
@@ -212,6 +214,29 @@ describe("overlay shadow comparator policies", () => {
           expect(rule.tolerance).toBeGreaterThanOrEqual(0);
         }
       }
+    }
+
+    const telemetryPolicies = Object.values(OVERLAY_SHADOW_POLICIES)
+      .filter((policy) => policy.coverage !== "external")
+      .map((policy) => policy.widgetType)
+      .sort();
+    expect([...overlayV2ViewModelRegistry.keys()].sort()).toEqual(telemetryPolicies);
+    expect(OVERLAY_SHADOW_POLICIES["race-schedule"].rules).toEqual([
+      { kind: "external", path: "events" },
+    ]);
+    expect(OVERLAY_SHADOW_POLICIES["engineer-radio"].rules).toEqual([
+      { kind: "external", path: "engineerPresentation" },
+    ]);
+  });
+
+  it("conserva la ruta auxiliar exacta incluso si la proyección V1 está bloqueada", () => {
+    for (const [type, path] of [["race-schedule", "events"], ["engineer-radio", "engineerPresentation"]] as const) {
+      const result = resultFor(type, snapshot(), { kind: "blocked", reason: "invalid-contract" }).widget;
+      expect(result.outcome).toBe("external");
+      expect(result.entries).toContainEqual(expect.objectContaining({
+        path,
+        classification: "external-consumer",
+      }));
     }
   });
 

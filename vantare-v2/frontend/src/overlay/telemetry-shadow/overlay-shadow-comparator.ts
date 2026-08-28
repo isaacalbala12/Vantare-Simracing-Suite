@@ -1257,7 +1257,7 @@ function compareWidget(
   const policy = OVERLAY_SHADOW_POLICIES[widget.type];
   if (projection.kind === "blocked") {
     const entry = policy.coverage === "external"
-      ? makeEntry("events", "external-consumer", "external", [])
+      ? makeEntry(policy.rules[0]?.path ?? "external", "external-consumer", "external", [])
       : makeEntry("mapping", "shape-mismatch", "blocked", []);
     return finishWidget(policy, instance, [entry], policy.coverage === "external" ? "external" : "blocked");
   }

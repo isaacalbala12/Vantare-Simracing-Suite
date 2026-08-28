@@ -29,6 +29,7 @@ export type OverlayFrameV2Store = Readonly<{
   subscribe(listener: () => void): () => void;
   ingest(name: string, input: unknown): void;
   getDiagnostics(): OverlayFrameV2StoreDiagnostics;
+  reset(): void;
   dispose(): void;
 }>;
 
@@ -145,6 +146,13 @@ export function createOverlayFrameV2Store(
         }),
       });
     },
+    reset() {
+      if (disposed) throw new OverlayFrameV2ContractError("disposed");
+      currentStream = undefined;
+      parseDurations.length = 0;
+      nonLiveParseSamples = 0;
+      publish({ revision: 0, ageMs: 0 });
+    },
     dispose() {
       if (disposed) return;
       disposed = true;
@@ -229,7 +237,9 @@ export function decodeOverlayUpdateV2(input: unknown): OverlayUpdateV2 {
 
 function sourceStatus(value: unknown, path: string): void {
   objectWithKeys(value, path, ["state"], ["retry", "ageMs", "reason"]);
-  nonEmptyString(value.state, `${path}.state`);
+  enumValue(value.state, `${path}.state`, [
+    "stopped", "detecting", "connecting", "live", "degraded", "stale", "error", "stopping",
+  ]);
   optionalNonNegativeInteger(value.retry, `${path}.retry`);
   optionalNonNegativeInteger(value.ageMs, `${path}.ageMs`);
   optionalString(value.reason, `${path}.reason`);

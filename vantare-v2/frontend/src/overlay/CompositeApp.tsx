@@ -15,7 +15,7 @@ import {
   attachOverlayFrameV2Transport,
   createOverlayFrameV2Store,
 } from "../telemetry-transport/overlay-frame-v2-store";
-import { createOverlayWailsPullClient } from "../telemetry-transport/overlay-wails-pull";
+import { createBrowserOverlayWailsPullClient } from "../telemetry-transport/overlay-wails-pull";
 import { createOverlayV2ShadowRuntime } from "./telemetry-shadow/overlay-v2-shadow-runtime";
 import { readDiagnosticOverlayV2Features, type OverlayV2Feature } from "./telemetry-shadow/overlay-v2-features";
 
@@ -45,20 +45,7 @@ export function CompositeApp() {
     overlayV2Store.getSnapshot,
   );
   const engineerPresentations = useMemo(() => createEngineerPresentationStore(), []);
-  const overlayPull = useMemo(() => createOverlayWailsPullClient({
-    post: async (route, data) => {
-      const response = await fetch(route, {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify(data),
-        cache: "no-store",
-      });
-      if (!response.ok) {
-        throw new Error(`overlay telemetry pull HTTP ${response.status}`);
-      }
-      if (response.status === 204) return undefined;
-      return response.json();
-    },
+  const overlayPull = useMemo(() => createBrowserOverlayWailsPullClient({
     onError: (error) => console.error("overlay telemetry pull failed", error),
   }), []);
   const engineerAdapter = useMemo(() => createWailsEngineerPresentationAdapter({

@@ -1,15 +1,21 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { Events } from '@wailsio/runtime';
 import { useI18n } from '../../i18n/I18nProvider';
 import { createTelemetryRateCoordinator } from '../../overlay/core/telemetry-rate-coordinator';
 import type { TelemetryAdapter } from '../../overlay/transports/telemetry-adapter';
+import type { WidgetRuntimeInput } from '../../overlay/core/widget-definition';
 import { createWailsProjectionTelemetryAdapter } from '../../overlay/transports/projection-telemetry-adapter';
+import {
+  createOverlayFrameV2Store,
+  type OverlayFrameV2State,
+} from '../../telemetry-transport/overlay-frame-v2-store';
+import { createBrowserOverlayWailsPullClient } from '../../telemetry-transport/overlay-wails-pull';
 import {
   telemetrySourceStatusEvent,
   telemetrySourceStatusRequestEvent,
   type TelemetrySourceStatus,
 } from '../../telemetry-transport/source-status';
-import { statusRequestEventName } from '../../telemetry-transport/contracts';
+import { readDiagnosticOverlayV2Features } from '../../overlay/telemetry-shadow/overlay-v2-features';
 import { ProfilesOrbitPage } from '../profiles-orbit/ProfilesOrbitPage';
 import { RecommendedProfilesView } from '../overlays/RecommendedProfilesView';
 import { CommunityComingSoonView } from '../overlays/CommunityComingSoonView';
@@ -43,6 +49,11 @@ import { StudioAutosave } from './state/studio-autosave';
 import type { StudioProfileEntry } from './studio-profile-entry';
 
 import { modeFromTarget, type StudioRouteMode } from './studio-route-target';
+import { createStudioOverlayTelemetryAdapter } from './studio-overlay-telemetry';
+
+const EMPTY_OVERLAY_V2_STATE: OverlayFrameV2State = Object.freeze({revision: 0, ageMs: 0});
+const subscribeToNothing = () => () => undefined;
+const getEmptyOverlayV2State = () => EMPTY_OVERLAY_V2_STATE;
 
 type ProfilesListPayload = {
   profiles?: ProfileEntry[];
@@ -123,6 +134,7 @@ type StudioRouteEditorProps = {
   coordinator: ReturnType<typeof createTelemetryRateCoordinator>;
   telemetryAdapter: TelemetryAdapter | null;
   liveAvailable: boolean;
+  runtime?: WidgetRuntimeInput;
   mode: StudioRouteMode;
   overlayStatus: OverlayStatus | null;
   activeProfileId: string | null;
@@ -155,6 +167,7 @@ function StudioRouteEditor(props: StudioRouteEditorProps): React.ReactElement {
     coordinator,
     telemetryAdapter,
     liveAvailable,
+    runtime,
     mode,
     overlayStatus,
     activeProfileId,
@@ -288,6 +301,7 @@ function StudioRouteEditor(props: StudioRouteEditorProps): React.ReactElement {
             coordinator={coordinator}
             telemetryAdapter={telemetryAdapter}
             liveAvailable={liveAvailable}
+            runtime={runtime}
             onRequestProfileChange={onRequestProfileChange}
           />
         </div>
@@ -340,23 +354,40 @@ export const StudioRoute = memo(function StudioRoute(props: StudioRouteProps): R
     () => coordinatorProp ?? createTelemetryRateCoordinator(),
     [coordinatorProp],
   );
+  const overlayV2Store = useMemo(() => createOverlayFrameV2Store(), []);
+  const [overlayV2Features, setOverlayV2Features] = useState(() =>
+    readDiagnosticOverlayV2Features(),
+  );
+  const overlayV2Enabled = overlayV2Features.length > 0;
+  const overlayV2State = useSyncExternalStore(
+    overlayV2Enabled ? overlayV2Store.subscribe : subscribeToNothing,
+    overlayV2Enabled ? overlayV2Store.getSnapshot : getEmptyOverlayV2State,
+    overlayV2Enabled ? overlayV2Store.getSnapshot : getEmptyOverlayV2State,
+  );
+  const overlayPull = useMemo(() => createBrowserOverlayWailsPullClient({
+    onError: (error) => console.error('studio overlay telemetry pull failed', error),
+  }), []);
   const telemetryAdapter = useMemo(() => {
     if (telemetryAdapterProp !== null) {
       return telemetryAdapterProp;
     }
-    const subscribe = (event: string, handler: (data: unknown) => void) => {
-      const unsub = Events.On(event, (evt: { data: unknown }) => handler(evt.data));
-      return () => unsub?.();
-    };
-    return createWailsProjectionTelemetryAdapter({
+    const legacy = createWailsProjectionTelemetryAdapter({
       coordinator,
       runtime: 'studio',
-      subscribe,
-      // Igual que en los overlays: la preview tampoco recibe estado si entra
-      // entre dos transiciones, y sin estado no pinta.
-      requestStatus: () => Events.Emit(statusRequestEventName('overlay')),
+      subscribe: overlayPull.source.subscribe,
     });
-  }, [coordinator, telemetryAdapterProp]);
+    return createStudioOverlayTelemetryAdapter({
+      legacy,
+      pull: overlayPull,
+      overlayV2Store,
+      onOverlayV2Error: (error) => console.error('studio overlay-v2 ingest failed', error),
+    });
+  }, [coordinator, overlayPull, overlayV2Store, telemetryAdapterProp]);
+  const runtime = useMemo<WidgetRuntimeInput>(() => ({
+    overlayV2Features,
+    overlayV2Frame: overlayV2State.frame,
+    overlayV2Source: overlayV2State.source,
+  }), [overlayV2Features, overlayV2State.frame, overlayV2State.source]);
 
   const [profiles, setProfiles] = useState<ProfileEntry[]>([]);
   const [profilesLoaded, setProfilesLoaded] = useState(false);
@@ -402,6 +433,16 @@ export const StudioRoute = memo(function StudioRoute(props: StudioRouteProps): R
   const effectiveMode: StudioRouteMode = isAutoStart && mode === 'editor' ? 'recommended' : mode;
   const autoActivateAndStart = isAutoStart;
   const studioProfiles = useMemo(() => toStudioProfiles(profiles), [profiles]);
+
+  useEffect(() => {
+    const refresh = () => setOverlayV2Features(readDiagnosticOverlayV2Features());
+    window.addEventListener('vantare:overlay-v2-features-changed', refresh);
+    window.addEventListener('storage', refresh);
+    return () => {
+      window.removeEventListener('vantare:overlay-v2-features-changed', refresh);
+      window.removeEventListener('storage', refresh);
+    };
+  }, []);
 
   useEffect(() => {
     if (liveAvailableProp !== undefined) return;
@@ -808,6 +849,7 @@ export const StudioRoute = memo(function StudioRoute(props: StudioRouteProps): R
           coordinator={coordinator}
           telemetryAdapter={telemetryAdapter}
           liveAvailable={liveAvailable}
+          runtime={runtime}
           mode={effectiveMode}
           overlayStatus={overlayStatus}
           activeProfileId={activeProfileId}

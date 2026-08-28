@@ -32,7 +32,7 @@ export function buildBroadcastTowerViewModelV2(
   source: OverlaySourceStatusV2,
   content: BroadcastTowerContent,
 ): BroadcastTowerViewModel {
-  if (source.state === "error" || source.state === "stopped" || source.state === "detected" || source.state === "connecting") {
+  if (source.state === "error" || source.state === "stopped" || source.state === "detecting" || source.state === "connecting") {
     return unavailable(source.state === "error" ? "error" : "disconnected", content, source.reason || undefined);
   }
   if (source.state === "degraded" || source.state === "stale") {

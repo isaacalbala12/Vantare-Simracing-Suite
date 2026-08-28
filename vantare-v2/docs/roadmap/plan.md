@@ -330,10 +330,10 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - titulo.en: Live LMU telemetry
 - titulo.pt: Telemetria LMU ao vivo
 - titulo.it: Telemetria LMU dal vivo
-- cuerpo: Driver LMU con reconexión acotada, transporte Overlay dirigido con una sola entrega pendiente que se resincroniza tras reconexiones, y proyecciones de overlay, ingeniero y estrategia.
-- cuerpo.en: LMU driver with bounded reconnects, targeted Overlay transport with one pending delivery that resynchronizes after reconnects, and overlay, engineer and strategy projections.
-- cuerpo.pt: Driver LMU com reconexão limitada, transporte Overlay dirigido com uma única entrega pendente que se ressincroniza após reconexões, e projeções de overlay, engenheiro e estratégia.
-- cuerpo.it: Driver LMU con riconnessione limitata, trasporto Overlay diretto con una sola consegna pendente che si risincronizza dopo le riconnessioni, e proiezioni di overlay, engineer e strategia.
+- cuerpo: Driver LMU con reconexión acotada, transporte Overlay dirigido con una sola entrega pendiente, generaciones retiradas y recuperación ante timeout compartido por Desktop y Studio, lifecycle V2 recuperable sin frames y proyecciones de overlay, ingeniero y estrategia.
+- cuerpo.en: LMU driver with bounded reconnects, targeted Overlay transport with one pending delivery, bounded retired generations and timeout recovery shared by Desktop and Studio, a V2 lifecycle recoverable without frames, and overlay, engineer and strategy projections.
+- cuerpo.pt: Driver LMU com reconexão limitada, transporte Overlay dirigido com uma única entrega pendente, gerações retiradas limitadas e recuperação após timeout partilhada por Desktop e Studio, lifecycle V2 recuperável sem frames e projeções de overlay, engenheiro e estratégia.
+- cuerpo.it: Driver LMU con riconnessione limitata, trasporto Overlay diretto con una sola consegna pendente, generazioni ritirate limitate e recupero dopo timeout condiviso da Desktop e Studio, lifecycle V2 recuperabile senza frame e proiezioni di overlay, engineer e strategia.
 - etiqueta: En desarrollo
 - etiqueta.en: In progress
 - etiqueta.pt: Em desenvolvimento

@@ -362,12 +362,19 @@ type PublisherRegistry struct {
 	configs               map[PublisherProduct]PublisherConfig
 	publishers            map[PublisherProduct]*Publisher
 	consumers             map[PublisherProduct]int
+	retainedStatus        map[PublisherProduct]retainedPublisherStatus
 	releasedDroppedFrames map[PublisherProduct]uint64
+}
+
+type retainedPublisherStatus struct {
+	revision uint64
+	payload  json.RawMessage
 }
 
 func NewPublisherRegistry(configs ...PublisherConfig) (*PublisherRegistry, error) {
 	registry := &PublisherRegistry{
 		configs: make(map[PublisherProduct]PublisherConfig), publishers: make(map[PublisherProduct]*Publisher),
+		retainedStatus:        make(map[PublisherProduct]retainedPublisherStatus),
 		consumers:             make(map[PublisherProduct]int),
 		releasedDroppedFrames: make(map[PublisherProduct]uint64),
 	}
@@ -378,6 +385,51 @@ func NewPublisherRegistry(configs ...PublisherConfig) (*PublisherRegistry, error
 		registry.configs[config.Product] = config
 	}
 	return registry, nil
+}
+
+// PublishStatus retains one small lifecycle update independently from the
+// consumer-owned publisher. Frames still require an active consumer; status
+// must survive a late join so a stopped or reconnecting source is observable
+// even when no WriteBatch follows.
+func (registry *PublisherRegistry) PublishStatus(
+	product PublisherProduct,
+	deliveryRevision uint64,
+	payload any,
+) error {
+	if registry == nil {
+		return ErrPublisherConsumerAbsent
+	}
+	encoded, err := publisherPayload(payload)
+	if err != nil {
+		return err
+	}
+	registry.mu.Lock()
+	defer registry.mu.Unlock()
+	config, configured := registry.configs[product]
+	if !configured {
+		return ErrPublisherProduct
+	}
+	maximum := config.MaxPayloadBytes
+	if maximum <= 0 || maximum > MaxPayloadBytes {
+		maximum = DefaultPublisherMaxPayloadBytes
+	}
+	if len(encoded) > maximum {
+		return ErrPayloadTooLarge
+	}
+	previous := registry.retainedStatus[product]
+	if deliveryRevision == 0 || deliveryRevision <= previous.revision {
+		return fmt.Errorf("%w: got %d after %d", ErrDeliveryRevision, deliveryRevision, previous.revision)
+	}
+	if publisher := registry.publishers[product]; publisher != nil {
+		if err := publisher.PublishStatus(deliveryRevision, json.RawMessage(encoded)); err != nil {
+			return err
+		}
+	}
+	registry.retainedStatus[product] = retainedPublisherStatus{
+		revision: deliveryRevision,
+		payload:  append(json.RawMessage(nil), encoded...),
+	}
+	return nil
 }
 
 // DroppedFrames includes both the active publisher and publishers released by
@@ -412,6 +464,13 @@ func (registry *PublisherRegistry) RegisterConsumer(product PublisherProduct) (*
 		if err != nil {
 			registry.mu.Unlock()
 			return nil, nil, err
+		}
+		if retained := registry.retainedStatus[product]; retained.revision > 0 {
+			if err := publisher.PublishStatus(retained.revision, json.RawMessage(retained.payload)); err != nil {
+				registry.mu.Unlock()
+				_ = publisher.Close()
+				return nil, nil, fmt.Errorf("seed telemetry publisher status: %w", err)
+			}
 		}
 		registry.publishers[product] = publisher
 	}

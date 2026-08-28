@@ -52,10 +52,19 @@ describe("buildTrackMapViewModelV2", () => {
   });
 
   it("reporta no-telemetry ante estados no live", () => {
-    for (const state of ["error", "stopped", "missing"] as const) {
+    for (const state of ["error", "stopped", "stopping", "detecting", "connecting"] as const) {
       const { frame } = frameFixture(referenceLabel);
-      const model = buildTrackMapViewModelV2(frame, { state } as OverlaySourceStatusV2, content);
+      const model = buildTrackMapViewModelV2(frame, { state }, content);
       expect(model.unavailableReason).toBe("no-telemetry");
+    }
+  });
+
+  it("mantiene el ultimo mapa util en degraded/stale", () => {
+    for (const state of ["degraded", "stale"] as const) {
+      const { frame } = frameFixture(referenceLabel);
+      const model = buildTrackMapViewModelV2(frame, { state }, content);
+      expect(model.status).toBe("stale");
+      expect(model.outlinePath).toBeDefined();
     }
   });
 

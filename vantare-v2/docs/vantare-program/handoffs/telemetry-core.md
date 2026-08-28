@@ -15,6 +15,62 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 
 ## Estado real
 
+- 2026-08-28, ISA-891 completa el lifecycle de Overlay V2 y lleva Studio al
+  mismo transporte dirigido que Desktop. `6bd72d37` publica y retiene un único
+  status V2 aunque no haya frames ni consumidores; un consumidor tardío recibe
+  el último estado sin activar el publisher de snapshots. El contrato generado
+  cierra los ocho estados canónicos y las fronteras Go/TypeScript rechazan
+  valores desconocidos. `f6269aaf` elimina de Studio las suscripciones globales
+  de proyección y compone V1+V2 sobre una única sesión HTTP pull, con listeners
+  registrados antes de iniciarla, lifecycle idempotente y estado V2 puro
+  entregado al `WidgetVisualHost` compartido detrás de las flags existentes.
+  Las regresiones cubren status sin frame, alta tardía, revisión monotónica,
+  reinicio/rollback, StrictMode y consumidor con una sola petición pendiente.
+  `274b632d` evita deliveries vacíos, aplica pacing 16/100/250 ms y reinicia el
+  cursor V2 al abrir una nueva sesión Studio. La reproducción stale bajó del
+  busy-poll de 1.744 requests/15 s al backoff acotado; una prueba real LMU
+  Practice pintó 18 participantes y completó Mock -> Live sin errores de
+  revisión, siempre con `maxInFlight=1`. En 30 s el browser WebView2 se mantuvo
+  entre ~39,6 y 41,5 MiB; es evidencia corta, no el soak de retirada.
+  La revisión de protocolo añadió `0966f44c`: una respuesta HTTP perdida se
+  conserva como único delivery pendiente y se retransmite hasta su ack; después
+  se entrega solo el último snapshot acumulado.
+  La auditoría independiente Fable 5 (`claude-fable-5`, thread
+  `556f9ac3-513c-4bd7-a194-6064baaa615d`) terminó `ACCEPT WITH FINDINGS`, sin
+  P0/P1. `f652e67f` corrige los cuatro P2 reproducidos: rechaza generaciones
+  retiradas con memoria fija por sender, serializa revisión y publicación V2,
+  recupera JSON/excepción/timeout del pull y evita suscribir Studio a paints V2
+  con flags vacías. No añade goroutines, channels, colas ni dependencias.
+  Rama `vantareapp/isa-891-overlay-v2-studio-lifecycle`, creada sobre la base
+  original `nightly@741d31bf`, sincronizada mediante `e0b6a18f` con
+  `nightly@d9909aef` y resincronizada mediante `ad1397d8` con la vigente
+  `origin/nightly@1c45cc82`. `9eb2535b` elimina una carrera del test Studio:
+  espera la carga asíncrona observable del perfil en vez de asumir que el mount
+  del canvas ya la completó. `go test ./...`,
+  typecheck, build frontend, contrato generado, ESLint del diff, race detector
+  del transporte, 23 tests de roadmap, 64 de comunicaciones, 26 de release
+  notes y build Wails
+  Windows están verdes sobre el HEAD sincronizado; la suite frontend final
+  cubre 421 archivos y 3.184 tests. El lint global conserva una deuda ajena al diff en
+  `car-damage-numbers-view-model-v2.ts`; el gate del diff pasa. La auditoría
+  abrió ISA-896 para corregir Desktop+OBS+Studio bajo
+  StrictMode/remount; el PR parcial #857 no está en Nightly. No retira V1 ni
+  cambia la autoridad visual. El digest está regenerado contra la Nightly
+  vigente. El HEAD revisado `df629d3a` está publicado en el PR draft #897 y el
+  run remoto `33134533397` terminó verde: gate bloqueante Vantare 11m02s, ruta
+  de promoción y GitGuardian. No hubo merge ni promoción.
+  Una prueba adicional LMU Live de 14,5 minutos, con 10,24 minutos de Hub +
+  Overlay, mantuvo el browser WebView2 56,9 -> 57,5 MiB y pendiente -0,142
+  MiB/min, sin reproducir la fuga original. La suma de renderers sí creció
+  193,9 -> 463,8 MiB (máximo 520,6; ~22,2 MiB/min), por lo que el siguiente
+  trabajo queda separado en #912 para perfilar host Go y paints/retención de
+  UI antes de optimizar. La primera lectura de código señala que el coordinador
+  visual ignora hoy `updateHz`, copia las histories derivadas en cada snapshot
+  y Desktop/OBS suscriben el árbol raíz al shadow V2 aun con features vacías;
+  son hipótesis de profiling, no cambios aprobados ni causas cerradas.
+  El tramo se detuvo por decisión del usuario y no cumple el gate de cinco
+  sesiones de 20 minutos de ISA-894.
+
 - 2026-08-27, ISA-889 corrige el bloqueo permanente del Overlay despues de un
   reconnect LMU. El transporte acotado de ISA-879 puede entregar como primer
   snapshot visible de un epoch nuevo una secuencia mayor que 1; el store
@@ -32,11 +88,11 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   observacion 2.290, avanzo a 4.203 en 30 s y continuo con Relative/Standings
   `ready`, 18 filas y el jugador en P10. Evidencia:
   `docs/telemetry-core/evidence/isa-889-overlay-epoch-resync.md`. Rama
-  `vantareapp/isa-889-overlay-epoch-resync` publicada; PR draft #890 a
-  `nightly`. El hito `telemetry-live` y su digest declaran la continuidad tras
-  reconnect; sus 21+23 tests pasan. Run oficial `33119149474` completamente
-  verde sobre `4635ded4`, incluida build Wails Windows. Sin merge, promocion
-  ni release.
+  `vantareapp/isa-889-overlay-epoch-resync`; PR #890 integrado en `nightly` el
+  2026-08-28 como `741d31bf`. El hito `telemetry-live` y su digest declaran la
+  continuidad tras reconnect. El gate post-merge oficial `33125373076` y el
+  digest `33125373082` terminaron en verde. ISA-889 está cerrada en estado
+  Nightly; no existe promoción a testers, master ni release.
 
 - 2026-08-27, ISA-879 elimina los bridges Overlay v1/v2 globales y los
   sustituye por una sesion pull/ack `single-in-flight`, `latest-wins` y ligada

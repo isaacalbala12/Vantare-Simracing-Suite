@@ -176,6 +176,7 @@ func TestTelemetryLifecycleHarness(t *testing.T) {
 		EngineerSvc:             engineer,
 		Emitter:                 emitter,
 		OverlayProjection:       telemetryRuntime.Hub(),
+		OverlayV2Publishers:     telemetryRuntime.OverlayV2Publishers(),
 		StrategyProjection:      telemetryRuntime.StrategyHub(),
 		StrategyPublicTransport: true,
 	})
@@ -192,9 +193,29 @@ func TestTelemetryLifecycleHarness(t *testing.T) {
 		telemetrytransport.ProductOverlay,
 		telemetrytransport.ProductStrategy,
 	} {
-		for name, data := range captureSSE(t, appContext, client, httpServer.Addr(), product) {
+		wanted := []string{
+			telemetrytransport.EventName(product, telemetrytransport.EventStatus),
+			telemetrytransport.EventName(product, telemetrytransport.EventSnapshot),
+		}
+		for name, data := range captureSSE(
+			t, appContext, client, httpServer.Addr(), telemetrytransport.ProjectionRoute(product), wanted...,
+		) {
 			sse[name] = data
 		}
+	}
+	overlayV2StatusName := telemetrytransport.PublisherEventName(
+		telemetrytransport.ProductOverlayV2,
+		telemetrytransport.PublisherEventStatus,
+	)
+	for name, data := range captureSSE(
+		t,
+		appContext,
+		client,
+		httpServer.Addr(),
+		telemetrytransport.PublisherProjectionRoute(telemetrytransport.ProductOverlayV2),
+		overlayV2StatusName,
+	) {
+		sse[name] = data
 	}
 	wails := awaitWailsTelemetry(t, wailsTransport.events, telemetrytransport.ProductStrategy)
 	pulled, deliver, err := pullTransport.Pull("overlay-window", telemetrytransport.OverlayPullRequest{
@@ -399,6 +420,13 @@ func TestOverlayPullHTTPServiceRespondsOnlyToTheRequestingWindowAndClosesConsume
 	if err != nil {
 		t.Fatal(err)
 	}
+	if err := registry.PublishStatus(telemetrytransport.ProductOverlayV2, 1, map[string]any{
+		"revision": 1,
+		"source":   map[string]any{"state": "stopped"},
+		"frame":    nil,
+	}); err != nil {
+		t.Fatal(err)
+	}
 	pull := telemetrytransport.NewOverlayPullTransport(hub, registry)
 	target := newCaptureOverlayPullTarget()
 	service := newOverlayPullHTTPService(target, pull)
@@ -422,14 +450,21 @@ func TestOverlayPullHTTPServiceRespondsOnlyToTheRequestingWindowAndClosesConsume
 		t.Fatal("pull handler did not activate the overlay consumer")
 	}
 
-	// A duplicate request is not a second WebView delivery while response 1 is
-	// still unacknowledged.
+	// A retry with the previous ack replays the one pending response. This is
+	// the recovery path when the first HTTP exchange never reached the WebView.
 	request = httptest.NewRequest(http.MethodPost, "/pull", strings.NewReader(`{"sessionId":"session-1","ack":0}`))
 	request.Header.Set(overlayPullWindowNameHeader, "overlay-window")
 	response = httptest.NewRecorder()
 	service.ServeHTTP(response, request)
-	if response.Code != http.StatusNoContent {
-		t.Fatalf("duplicate pull status = %d, want %d", response.Code, http.StatusNoContent)
+	if response.Code != http.StatusOK {
+		t.Fatalf("retried pull status = %d, want %d", response.Code, http.StatusOK)
+	}
+	var replayed telemetrytransport.OverlayPullResponse
+	if err := json.Unmarshal(response.Body.Bytes(), &replayed); err != nil {
+		t.Fatalf("decode replayed pull response: %v", err)
+	}
+	if replayed.SessionID != pullResponse.SessionID || replayed.Delivery != pullResponse.Delivery {
+		t.Fatalf("replayed pull response = %#v, want delivery %#v", replayed, pullResponse)
 	}
 
 	request = httptest.NewRequest(http.MethodPost, "/close", strings.NewReader(`{"sessionId":"session-1","ack":1}`))
@@ -441,6 +476,13 @@ func TestOverlayPullHTTPServiceRespondsOnlyToTheRequestingWindowAndClosesConsume
 	}
 	if _, active := registry.Lookup(telemetrytransport.ProductOverlayV2); active {
 		t.Fatal("HTTP close left the overlay publisher active")
+	}
+	if err := registry.PublishStatus(telemetrytransport.ProductOverlayV2, 2, map[string]any{
+		"revision": 2,
+		"source":   map[string]any{"state": "stopped"},
+		"frame":    nil,
+	}); err != nil {
+		t.Fatal(err)
 	}
 
 	request = httptest.NewRequest(http.MethodPost, "/pull", strings.NewReader(`{"sessionId":"session-2","ack":0}`))
@@ -562,13 +604,14 @@ func captureSSE(
 	ctx context.Context,
 	client *http.Client,
 	address string,
-	product telemetrytransport.ProductID,
+	route string,
+	wantedNames ...string,
 ) map[string][]byte {
 	t.Helper()
 	request, err := http.NewRequestWithContext(
 		ctx,
 		http.MethodGet,
-		"http://"+address+telemetrytransport.ProjectionRoute(product),
+		"http://"+address+route,
 		nil,
 	)
 	if err != nil {
@@ -583,13 +626,19 @@ func captureSSE(
 		t.Fatalf("SSE status = %d", response.StatusCode)
 	}
 	reader := bufio.NewReader(response.Body)
-	result := make(map[string][]byte, 2)
-	for len(result) < 2 {
+	wanted := make(map[string]struct{}, len(wantedNames))
+	for _, name := range wantedNames {
+		wanted[name] = struct{}{}
+	}
+	result := make(map[string][]byte, len(wanted))
+	for len(result) < len(wanted) {
 		event, readErr := readSSEEvent(reader)
 		if readErr != nil {
 			t.Fatalf("read SSE event: %v", readErr)
 		}
-		result[event.name] = event.data
+		if _, ok := wanted[event.name]; ok {
+			result[event.name] = event.data
+		}
 	}
 	return result
 }

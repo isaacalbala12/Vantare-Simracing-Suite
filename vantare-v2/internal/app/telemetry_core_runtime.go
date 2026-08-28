@@ -1006,8 +1006,6 @@ func (runtime *TelemetryCoreRuntime) publishOverlayV2(
 		return nil
 	}
 	runtime.mu.Lock()
-	runtime.overlayV2DeliveryRevision++
-	revision := runtime.overlayV2DeliveryRevision
 	lastFrameAt := runtime.lastFrameAt
 	runtime.mu.Unlock()
 	age := runtime.now().Sub(lastFrameAt).Milliseconds()
@@ -1023,19 +1021,46 @@ func (runtime *TelemetryCoreRuntime) publishOverlayV2(
 		State: state.String(), ReconnectAttempt: attempt, LastFrameAgeMS: age,
 		DescriptorCapabilities: runtime.descriptorCapabilities,
 		Modes:                  overlayCapabilityModes(runtime.capabilityDeclaration, value),
-	}, overlayv2.DefaultPreferencesV2(), revision)
+	}, overlayv2.DefaultPreferencesV2(), 0)
 	runtime.metricStore.observeOverlayV2BuildDuration(time.Since(started))
 	if err != nil {
 		return fmt.Errorf("%w: project Overlay v2: %v", telemetrytransport.ErrInvalidPayload, err)
 	}
+
+	// Projection is intentionally outside runtime.mu. Revision assignment,
+	// source refresh and publication stay together so a concurrent lifecycle
+	// status can never overtake a snapshot with an older delivery revision.
+	runtime.mu.Lock()
+	currentState := runtime.statusState
+	currentAttempt := runtime.statusAttempt
+	if !currentState.Known() {
+		currentState = state
+		currentAttempt = attempt
+	}
+	currentAge := int64(0)
+	if !runtime.lastFrameAt.IsZero() {
+		currentAge = runtime.now().Sub(runtime.lastFrameAt).Milliseconds()
+		if currentAge < 0 {
+			currentAge = 0
+		}
+	}
+	runtime.overlayV2DeliveryRevision++
+	revision := runtime.overlayV2DeliveryRevision
+	update.DeliveryRevision = revision
+	update.Source.State = overlayv2.SourceStateV2(currentState.String())
+	update.Source.ReconnectAttempt = uint32(currentAttempt)
+	update.Source.LastFrameAgeMS = currentAge
 	encoded, err := json.Marshal(update)
 	if err != nil {
+		runtime.mu.Unlock()
 		return fmt.Errorf("%w: encode Overlay v2: %v", telemetrytransport.ErrInvalidPayload, err)
 	}
-	runtime.metricStore.observeOverlayV2Payload(len(value.Observed.Vehicles), uint64(len(encoded)))
 	if err := publisher.PublishSnapshot(revision, json.RawMessage(encoded)); err != nil {
+		runtime.mu.Unlock()
 		return fmt.Errorf("%w: publish Overlay v2: %v", telemetrytransport.ErrInvalidPayload, err)
 	}
+	runtime.mu.Unlock()
+	runtime.metricStore.observeOverlayV2Payload(len(value.Observed.Vehicles), uint64(len(encoded)))
 	return nil
 }
 
@@ -1359,6 +1384,33 @@ func (runtime *TelemetryCoreRuntime) setStatusLocked(state driver.State, attempt
 		}
 		if err := runtime.strategyHub.PublishStatus(strategyStatus); err != nil {
 			return fmt.Errorf("publish Strategy telemetry status: %w", err)
+		}
+	}
+	if runtime.overlayFrameV2Shadow {
+		runtime.overlayV2DeliveryRevision++
+		deliveryRevision := runtime.overlayV2DeliveryRevision
+		age := int64(0)
+		if !runtime.lastFrameAt.IsZero() {
+			age = runtime.now().Sub(runtime.lastFrameAt).Milliseconds()
+			if age < 0 {
+				age = 0
+			}
+		}
+		update := overlayv2.UpdateV2{
+			DeliveryRevision: deliveryRevision,
+			Source: overlayv2.SourceStatusV2{
+				State:            overlayv2.SourceStateV2(state.String()),
+				ReconnectAttempt: uint32(attempt),
+				LastFrameAgeMS:   age,
+			},
+			Frame: nil,
+		}
+		if err := runtime.overlayV2Publishers.PublishStatus(
+			telemetrytransport.ProductOverlayV2,
+			deliveryRevision,
+			update,
+		); err != nil {
+			runtime.handleOverlayV2Failure(fmt.Errorf("publish Overlay v2 status: %w", err))
 		}
 	}
 	runtime.statusRev = nextRevision

@@ -6,6 +6,7 @@ import { openBrowserView, type BrowserViewDecision } from './browser-view';
 import type { TelemetryRateCoordinator } from '../../overlay/core/telemetry-rate-coordinator';
 import { createWidgetDiagnosticCollector } from '../../overlay/core/widget-diagnostics';
 import type { TelemetryAdapter } from '../../overlay/transports/telemetry-adapter';
+import type { WidgetRuntimeInput } from '../../overlay/core/widget-definition';
 import { StudioTelemetryProvider } from './canvas/StudioTelemetryProvider';
 import { StudioConfirmProvider } from './components/StudioConfirmProvider';
 import { DirtyChangesDialog } from './components/DirtyChangesDialog';
@@ -23,6 +24,7 @@ export type OverlayStudioV3Props = {
   telemetryAdapter?: TelemetryAdapter | null;
   liveAvailable?: boolean;
   active?: boolean;
+  runtime?: WidgetRuntimeInput;
   recoveryStorage?: Storage | null;
   browserViewStudioPreview?: boolean;
 };
@@ -38,6 +40,7 @@ export function OverlayStudioV3(props: OverlayStudioV3Props): React.ReactElement
     telemetryAdapter = null,
     liveAvailable = false,
     active = true,
+    runtime,
     recoveryStorage: recoveryStorageProp,
     browserViewStudioPreview = false,
     onRequestProfileChange,
@@ -45,7 +48,7 @@ export function OverlayStudioV3(props: OverlayStudioV3Props): React.ReactElement
     profiles,
   } = props;
   const { t } = useI18n();
-  const telemetryProps = { coordinator, telemetryAdapter, liveAvailable, active };
+  const telemetryProps = { coordinator, telemetryAdapter, liveAvailable, active, runtime };
   const recoveryStorage =
     recoveryStorageProp ?? (typeof window !== 'undefined' ? window.sessionStorage : null);
   const diagnostics = useMemo(() => createWidgetDiagnosticCollector(), []);

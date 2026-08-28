@@ -42,8 +42,8 @@ func TestOverlayPullSlowConsumerKeepsOneDeliveryInFlightAndLatestWins(t *testing
 	assertPullEventContains(t, first.Events, EventName(ProductOverlay, EventSnapshot), `"sequence":1`)
 
 	// The WebView has not acknowledged delivery 1. Publishing many newer
-	// frames must not create another response or queue every intermediate
-	// payload behind ExecuteScript.
+	// frames must not create another delivery or queue every intermediate
+	// payload behind the pending HTTP response.
 	for sequence := schema.Sequence(2); sequence <= 100; sequence++ {
 		if err := hub.PublishSnapshot(
 			mustSnapshot(t, 1, sequence, Full, 1, map[string]any{"sequence": sequence}),
@@ -58,11 +58,19 @@ func TestOverlayPullSlowConsumerKeepsOneDeliveryInFlightAndLatestWins(t *testing
 		if err := publisher.PublishSnapshot(uint64(sequence), map[string]any{"revision": sequence}); err != nil {
 			t.Fatal(err)
 		}
-		if response, duplicate, pullErr := transport.Pull("overlay-window", OverlayPullRequest{
-			SessionID: "session-1",
-			Ack:       0,
-		}); pullErr != nil || duplicate {
-			t.Fatalf("unacknowledged pull = %#v, deliver=%v, err=%v", response, duplicate, pullErr)
+	}
+	replayed, deliver, err := transport.Pull("overlay-window", OverlayPullRequest{
+		SessionID: "session-1",
+		Ack:       0,
+	})
+	if err != nil || !deliver || replayed.Delivery != first.Delivery ||
+		len(replayed.Events) != len(first.Events) {
+		t.Fatalf("lost response replay = %#v, deliver=%v, err=%v", replayed, deliver, err)
+	}
+	for index := range first.Events {
+		if replayed.Events[index].Name != first.Events[index].Name ||
+			!bytes.Equal(replayed.Events[index].Data, first.Events[index].Data) {
+			t.Fatalf("replayed event %d = %#v, want %#v", index, replayed.Events[index], first.Events[index])
 		}
 	}
 
@@ -124,6 +132,113 @@ func TestOverlayPullDoesNotDeliverWithoutAConsumerOrForInvalidRequests(t *testin
 		OverlayPullRequest{SessionID: "session", Ack: 0},
 	); err != nil || deliver {
 		t.Fatalf("missing dependencies delivered=%v, err=%v", deliver, err)
+	}
+}
+
+func TestOverlayPullLateConsumerReceivesV2StatusWithoutSnapshot(t *testing.T) {
+	t.Parallel()
+
+	hub := NewHub(HubConfig{Product: ProductOverlay})
+	registry := mustPublisherRegistry(t, PublisherConfig{Product: ProductOverlayV2})
+	if err := registry.PublishStatus(ProductOverlayV2, 3, map[string]any{
+		"revision": 3,
+		"source":   map[string]any{"state": "stopped"},
+		"frame":    nil,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	transport := NewOverlayPullTransport(hub, registry)
+	defer transport.CloseAll()
+
+	response, deliver, err := transport.Pull("studio-window", OverlayPullRequest{
+		SessionID: "late-studio",
+		Ack:       0,
+	})
+	if err != nil || !deliver {
+		t.Fatalf("late pull = %#v, deliver=%v, err=%v", response, deliver, err)
+	}
+	assertPullEventContains(t, response.Events, PublisherEventName(ProductOverlayV2, PublisherEventStatus), `"stopped"`)
+	assertPullEventNotContains(t, response.Events, `"contract":2`)
+}
+
+func TestOverlayPullDoesNotDeliverEmptyEventsAndPicksUpTheNextChange(t *testing.T) {
+	hub := NewHub(HubConfig{Product: ProductOverlay})
+	registry := mustPublisherRegistry(t, PublisherConfig{Product: ProductOverlayV2})
+	if err := registry.PublishStatus(ProductOverlayV2, 1, map[string]any{
+		"revision": 1,
+		"source":   map[string]any{"state": "stale"},
+		"frame":    nil,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	transport := NewOverlayPullTransport(hub, registry)
+	defer transport.CloseAll()
+
+	first, deliver, err := transport.Pull("studio-window", OverlayPullRequest{
+		SessionID: "stale-studio",
+		Ack:       0,
+	})
+	if err != nil || !deliver || first.Delivery != 1 || len(first.Events) != 1 {
+		t.Fatalf("first pull = %#v, deliver=%v, err=%v", first, deliver, err)
+	}
+
+	empty, deliver, err := transport.Pull("studio-window", OverlayPullRequest{
+		SessionID: "stale-studio",
+		Ack:       first.Delivery,
+	})
+	if err != nil || deliver || empty.Delivery != 0 || len(empty.Events) != 0 {
+		t.Fatalf("unchanged pull = %#v, deliver=%v, err=%v", empty, deliver, err)
+	}
+
+	if err := registry.PublishStatus(ProductOverlayV2, 2, map[string]any{
+		"revision": 2,
+		"source":   map[string]any{"state": "live"},
+		"frame":    nil,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	next, deliver, err := transport.Pull("studio-window", OverlayPullRequest{
+		SessionID: "stale-studio",
+		Ack:       first.Delivery,
+	})
+	if err != nil || !deliver || next.Delivery != 2 {
+		t.Fatalf("changed pull = %#v, deliver=%v, err=%v", next, deliver, err)
+	}
+	assertPullEventContains(t, next.Events, PublisherEventName(ProductOverlayV2, PublisherEventStatus), `"live"`)
+}
+
+func TestOverlayPullRetiredSessionCannotReplaceCurrentSession(t *testing.T) {
+	hub := NewHub(HubConfig{Product: ProductOverlay})
+	registry := mustPublisherRegistry(t, PublisherConfig{Product: ProductOverlayV2})
+	if err := registry.PublishStatus(ProductOverlayV2, 1, map[string]any{"revision": 1}); err != nil {
+		t.Fatal(err)
+	}
+	transport := NewOverlayPullTransport(hub, registry)
+	defer transport.CloseAll()
+
+	first, deliver, err := transport.Pull("studio-window", OverlayPullRequest{SessionID: "old", Ack: 0})
+	if err != nil || !deliver {
+		t.Fatalf("old session start = %#v, deliver=%v, err=%v", first, deliver, err)
+	}
+	current, deliver, err := transport.Pull("studio-window", OverlayPullRequest{SessionID: "current", Ack: 0})
+	if err != nil || !deliver {
+		t.Fatalf("current session start = %#v, deliver=%v, err=%v", current, deliver, err)
+	}
+
+	if late, deliver, err := transport.Pull("studio-window", OverlayPullRequest{SessionID: "old", Ack: 0}); err != nil || deliver {
+		t.Fatalf("retired pull replaced current session: %#v, deliver=%v, err=%v", late, deliver, err)
+	}
+	transport.Close("studio-window", "old")
+
+	if err := registry.PublishStatus(ProductOverlayV2, 2, map[string]any{"revision": 2}); err != nil {
+		t.Fatal(err)
+	}
+	next, deliver, err := transport.Pull("studio-window", OverlayPullRequest{
+		SessionID: "current",
+		Ack:       current.Delivery,
+	})
+	if err != nil || !deliver || next.SessionID != "current" {
+		t.Fatalf("current session stopped after stale traffic: %#v, deliver=%v, err=%v", next, deliver, err)
 	}
 }
 

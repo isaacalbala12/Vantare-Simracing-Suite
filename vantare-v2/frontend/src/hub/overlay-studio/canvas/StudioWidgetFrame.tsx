@@ -14,7 +14,7 @@ import { widgetTypeRegistry } from '../../../overlay/core/widget-registry';
 import { useI18n } from '../../../i18n/I18nProvider';
 import type { ResizeHandle } from './canvas-resize';
 import { useSelectionFit } from './useSelectionFit';
-import { useStudioTelemetrySnapshot } from './studio-telemetry';
+import { useStudioTelemetryRuntime, useStudioTelemetrySnapshot } from './studio-telemetry';
 
 const MemoWidgetVisualHost = memo(WidgetVisualHost);
 
@@ -70,6 +70,7 @@ function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactE
   } = props;
   const { t } = useI18n();
   const rateLimitedSnapshot = useStudioTelemetrySnapshot(widget.behavior.updateHz);
+  const runtime = useStudioTelemetryRuntime();
   const snapshot = snapshotOverride ?? rateLimitedSnapshot;
   const frameRef = useRef<HTMLDivElement>(null);
   const selectionRef = useRef<HTMLDivElement>(null);
@@ -202,6 +203,7 @@ function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactE
             snapshot={snapshot}
             renderMode="studio"
             diagnostics={diagnostics}
+            runtime={runtime}
           />
         </WidgetVisualViewport>
       </div>

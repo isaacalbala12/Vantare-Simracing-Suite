@@ -51,10 +51,7 @@ func TestSimXStartsWithoutTouchingWidgets(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	event, err := subscription.Next(ctx)
-	if err != nil {
-		t.Fatalf("Next() error = %v", err)
-	}
+	event := nextOverlayV2Snapshot(t, subscription, ctx)
 	var update overlayv2.UpdateV2
 	if err := json.Unmarshal(event.Data, &update); err != nil {
 		t.Fatal(err)

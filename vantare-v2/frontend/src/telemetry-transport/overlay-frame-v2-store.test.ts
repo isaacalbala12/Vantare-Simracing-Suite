@@ -25,6 +25,10 @@ describe("OverlayFrame v2 store", () => {
     expect(() => decodeOverlayUpdateV2({ ...update, revision: 0 })).toThrow(
       "overlay-frame-v2:invalid-contract:revision",
     );
+    expect(() => decodeOverlayUpdateV2({
+      ...update,
+      source: { ...update.source, state: "connected" },
+    })).toThrow("overlay-frame-v2:invalid-contract:source.state");
   });
 
   it("accepts revision gaps and retains one stable immutable frame reference", () => {
@@ -69,6 +73,25 @@ describe("OverlayFrame v2 store", () => {
     expect(store.getSnapshot().frame).toBe(frame);
     unsubscribe();
     expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("resets the revision stream for a new directed consumer session", () => {
+    const store = createOverlayFrameV2Store();
+    store.ingest(OVERLAY_V2_STATUS_EVENT, {
+      revision: 50,
+      source: { state: "live" },
+      frame: null,
+    });
+
+    store.reset();
+
+    expect(store.getSnapshot()).toEqual({ revision: 0, ageMs: 0 });
+    expect(() => store.ingest(OVERLAY_V2_STATUS_EVENT, {
+      revision: 2,
+      source: { state: "connecting" },
+      frame: null,
+    })).not.toThrow();
+    expect(store.getSnapshot().revision).toBe(2);
   });
 
   it("attaches Wails listeners before requesting ReplaySnapshot", () => {

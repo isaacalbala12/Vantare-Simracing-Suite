@@ -200,6 +200,12 @@ func newGenerator() *generator {
 		string(overlayv2.QualityFresh), string(overlayv2.QualityStale),
 		string(overlayv2.QualityMissing), string(overlayv2.QualityInvalid),
 	})
+	g.addEnum(reflect.TypeFor[overlayv2.SourceStateV2](), "OverlaySourceStateV2", []string{
+		string(overlayv2.SourceStateStopped), string(overlayv2.SourceStateDetecting),
+		string(overlayv2.SourceStateConnecting), string(overlayv2.SourceStateLive),
+		string(overlayv2.SourceStateDegraded), string(overlayv2.SourceStateStale),
+		string(overlayv2.SourceStateError), string(overlayv2.SourceStateStopping),
+	})
 	g.addEnum(reflect.TypeFor[overlayv2.Authority](), "OverlayAuthorityV2", []string{
 		string(overlayv2.AuthorityNative), string(overlayv2.AuthorityDerived), string(overlayv2.AuthorityEstimated),
 	})

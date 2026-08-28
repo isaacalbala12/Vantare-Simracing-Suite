@@ -13,6 +13,7 @@ export type OverlayFuelUnitV2 = "gallons-us" | "liters";
 export type OverlayModeV2 = "estimated" | "none" | "official" | "reconstructed" | "xyz";
 export type OverlayPressureUnitV2 = "kpa" | "psi";
 export type OverlayQualityV2 = "fresh" | "invalid" | "missing" | "stale";
+export type OverlaySourceStateV2 = "connecting" | "degraded" | "detecting" | "error" | "live" | "stale" | "stopped" | "stopping";
 export type OverlaySpeedUnitV2 = "kph" | "mph" | "mps";
 export type OverlayTemperatureUnitV2 = "celsius" | "fahrenheit";
 export type ProductID = "analysis" | "engineer" | "overlay" | "strategy";
@@ -323,7 +324,7 @@ export interface OverlaySourceStatusV2 {
   readonly ageMs?: number | undefined;
   readonly reason?: string | undefined;
   readonly retry?: number | undefined;
-  readonly state: string;
+  readonly state: OverlaySourceStateV2;
 }
 
 export interface OverlaySpotterViewV2 {

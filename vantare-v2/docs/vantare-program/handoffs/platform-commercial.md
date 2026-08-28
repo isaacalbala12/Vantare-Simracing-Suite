@@ -443,7 +443,7 @@ reembolsar o habilitar venta. Los gates monetarios siguen pendientes.
 
 ## Issues y siguiente acción
 
-1. Observar CI del PR draft #913 de ISA-909 y no hacer merge ni apply remoto sin
+1. Revisar el PR draft #913 de ISA-909 y no hacer merge ni apply remoto sin
    autorización separada.
 2. Revisar ISA-911 antes de habilitar UI Clerk: lifecycle al borrar usuarios,
    Billing, Testing Center, policies `auth.uid()` y logout/cache.
@@ -505,8 +505,10 @@ carrera de primer login. El roadmap ya describe la frontera entregada como
   retirar la FK desaparece el cascade de borrado; ISA-911 debe definir ese
   lifecycle antes de habilitar Clerk. La segunda review Fable 5 con esfuerzo
   medio emitió `ACCEPT`, sin P0/P1/P2 ni simplificaciones necesarias antes de
-  integrar. La rama quedó publicada y el PR draft #913 abierto hacia `nightly`;
-  CI está pendiente. Schema/Edge remotos siguen intactos y no hubo merge.
+  integrar. La rama quedó publicada y el PR draft #913 abierto hacia `nightly`.
+  En el HEAD `6738902a`, GitGuardian, ruta de promoción y gates bloqueantes
+  terminaron verdes (run 33176001927; gate principal 11m01s). Schema/Edge remotos
+  siguen intactos y no hubo merge.
 
 2026-08-04, ISA-243/287 completaron el piloto remoto con un caso sintético
 nuevo. ISA-288 se creó exactamente una vez, el binding quedó `completed` sin

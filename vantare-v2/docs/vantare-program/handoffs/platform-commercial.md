@@ -117,6 +117,16 @@ y el contenido inferior sigue accesible mediante scroll vertical. La issue
 #841 registra el SHA integrado y los gates remotos vigentes; esta autorización
 no alcanza `testers`, `master` ni una release.
 
+ISA-908 extiende el mismo control en la rama aislada
+`vantareapp/isa-908-zoom-control-rueda`, nacida de
+`nightly@1c45cc827e47976ed41e1f28463529c04579e806`. Ctrl/Cmd + rueda arriba o
+abajo recorre los mismos seis pasos y bloquea el zoom nativo de WebView; la
+rueda sin modificador conserva su scroll normal. Los deltas pequeños de
+trackpad se acumulan hasta 50 px y se separan tras 180 ms de reposo. Los tests
+del hook cubren dirección, límites, rueda tradicional, trackpad, persistencia
+y limpieza del listener. La issue #908 y su PR registran la evidencia vigente;
+no hay integración, promoción ni release autorizadas para este corte.
+
 ## Roadmap/Discord
 
 Toda issue publicable incluye `Resumen público`. Flujo: Idea → Siguiente

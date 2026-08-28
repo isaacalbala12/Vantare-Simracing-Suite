@@ -17,6 +17,18 @@ function resizeTo(width: number, height: number) {
   window.dispatchEvent(new Event("resize"));
 }
 
+function wheelEvent(deltaY: number, ctrlKey = true, deltaMode = 0): WheelEvent {
+  const event = new Event("wheel", { cancelable: true }) as WheelEvent;
+  Object.defineProperties(event, {
+    altKey: { value: false },
+    ctrlKey: { value: ctrlKey },
+    deltaMode: { value: deltaMode },
+    deltaY: { value: deltaY },
+    metaKey: { value: false },
+  });
+  return event;
+}
+
 /** `requestAnimationFrame` sincrono: cada frame encolado se ejecuta al pedirlo. */
 function useImmediateFrames() {
   vi.spyOn(window, "requestAnimationFrame").mockImplementation((cb) => {
@@ -76,6 +88,86 @@ describe("useOrbitResponsiveZoom", () => {
     expect(zoomVar()).toBe("1");
     expect(localStorage.getItem(ORBIT_KEYS.appZoom)).toBeNull();
     input.remove();
+  });
+
+  it("sube y baja un paso con Ctrl y la rueda, sin delegar el zoom a WebView", () => {
+    render(<Probe />);
+
+    const up = wheelEvent(-100);
+    window.dispatchEvent(up);
+    expect(up.defaultPrevented).toBe(true);
+    expect(Number.parseFloat(zoomVar())).toBeCloseTo(1.1, 3);
+    expect(localStorage.getItem(ORBIT_KEYS.appZoom)).toBe("1.1");
+
+    const down = wheelEvent(100);
+    window.dispatchEvent(down);
+    expect(down.defaultPrevented).toBe(true);
+    expect(zoomVar()).toBe("1");
+    expect(localStorage.getItem(ORBIT_KEYS.appZoom)).toBe("1");
+  });
+
+  it("acumula deltas pequeños de trackpad antes de cambiar un paso", () => {
+    render(<Probe />);
+
+    for (let index = 0; index < 4; index += 1) {
+      const event = wheelEvent(-10);
+      window.dispatchEvent(event);
+      expect(event.defaultPrevented).toBe(true);
+    }
+
+    expect(zoomVar()).toBe("1");
+    expect(localStorage.getItem(ORBIT_KEYS.appZoom)).toBeNull();
+
+    window.dispatchEvent(wheelEvent(-10));
+    expect(Number.parseFloat(zoomVar())).toBeCloseTo(1.1, 3);
+    expect(localStorage.getItem(ORBIT_KEYS.appZoom)).toBe("1.1");
+  });
+
+  it("separa gestos pequeños tras el reposo y acepta una muesca en modo linea", () => {
+    render(<Probe />);
+
+    window.dispatchEvent(wheelEvent(-30));
+    vi.advanceTimersByTime(181);
+    window.dispatchEvent(wheelEvent(-30));
+    expect(zoomVar()).toBe("1");
+
+    const lineNotch = wheelEvent(-3, true, WheelEvent.DOM_DELTA_LINE);
+    window.dispatchEvent(lineNotch);
+    expect(lineNotch.defaultPrevented).toBe(true);
+    expect(Number.parseFloat(zoomVar())).toBeCloseTo(1.1, 3);
+  });
+
+  it("consume el gesto en el limite pero ignora un delta cero", () => {
+    localStorage.setItem(ORBIT_KEYS.appZoom, "1.5");
+    render(<Probe />);
+
+    const atMaximum = wheelEvent(-100);
+    window.dispatchEvent(atMaximum);
+    expect(atMaximum.defaultPrevented).toBe(true);
+    expect(Number.parseFloat(zoomVar())).toBeCloseTo(1.5, 3);
+    expect(localStorage.getItem(ORBIT_KEYS.appZoom)).toBe("1.5");
+
+    const zero = wheelEvent(0);
+    window.dispatchEvent(zero);
+    expect(zero.defaultPrevented).toBe(false);
+    expect(Number.parseFloat(zoomVar())).toBeCloseTo(1.5, 3);
+  });
+
+  it("conserva el scroll normal sin modificador y limpia la rueda al desmontar", () => {
+    const view = render(<Probe />);
+    const plain = wheelEvent(-100, false);
+    window.dispatchEvent(plain);
+
+    expect(plain.defaultPrevented).toBe(false);
+    expect(zoomVar()).toBe("1");
+    expect(localStorage.getItem(ORBIT_KEYS.appZoom)).toBeNull();
+
+    view.unmount();
+    const afterUnmount = wheelEvent(-100);
+    window.dispatchEvent(afterUnmount);
+
+    expect(afterUnmount.defaultPrevented).toBe(false);
+    expect(localStorage.getItem(ORBIT_KEYS.appZoom)).toBeNull();
   });
 
   it("sigue cada paso del gesto: un escalado por evento, sin quedarse atras", () => {

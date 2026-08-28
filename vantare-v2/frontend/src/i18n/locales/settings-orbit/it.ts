@@ -74,7 +74,7 @@ export const settingsOrbitIt: Record<string, string> = {
   "settings.app.density.balanced": "Equilibrata",
   "settings.app.density.comfortable": "Comoda",
   "settings.app.zoom": "Zoom dell'interfaccia",
-  "settings.app.zoomSub": "Ingrandisce o riduce tutta l'app. Scorciatoie: Ctrl +, Ctrl − e Ctrl 0.",
+  "settings.app.zoomSub": "Ingrandisce o riduce tutta l'app. Scorciatoie: Ctrl +, Ctrl −, Ctrl 0 o Ctrl + rotellina.",
   "settings.app.zoomDecrease": "Riduci zoom",
   "settings.app.zoomIncrease": "Aumenta zoom",
   "settings.app.zoomReset": "Zoom attuale: {{value}}%. Ripristina al 100%",

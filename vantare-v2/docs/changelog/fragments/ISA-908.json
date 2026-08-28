@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-908",
+  "type": "feature",
+  "summary": "El zoom global también se controla con Ctrl y la rueda del ratón, igual que en Chrome.",
+  "technicalNotes": [
+    "Ctrl/Cmd + rueda arriba aumenta un paso y rueda abajo lo reduce, reutilizando los porcentajes 80%, 90%, 100%, 110%, 125% y 150%.",
+    "Los deltas pequeños de trackpad se acumulan para producir un único cambio de paso y se separan después de una pausa breve.",
+    "El gesto modificado bloquea el zoom nativo de WebView; la rueda sin Ctrl/Cmd conserva su comportamiento normal."
+  ],
+  "testing": [
+    "En cualquier pantalla, mantener Ctrl y mover la rueda arriba y abajo para comprobar que el porcentaje recorre exactamente los seis pasos.",
+    "Probar una rueda tradicional y un trackpad; confirmar que pequeños movimientos se acumulan sin saltar varios porcentajes de golpe.",
+    "Comprobar los límites 80% y 150%, soltar Ctrl y verificar que la rueda vuelve a desplazar el contenido sin cambiar el zoom."
+  ],
+  "knownLimitations": [
+    "El gesto cambia únicamente la interfaz de Vantare; no modifica el tamaño independiente de los overlays emitidos."
+  ]
+}

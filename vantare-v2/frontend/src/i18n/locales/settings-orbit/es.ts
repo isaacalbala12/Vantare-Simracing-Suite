@@ -80,7 +80,7 @@ export const settingsOrbitEs: Record<string, string> = {
   "settings.app.density.balanced": "Equilibrada",
   "settings.app.density.comfortable": "Cómoda",
   "settings.app.zoom": "Zoom de la interfaz",
-  "settings.app.zoomSub": "Amplía o reduce toda la app. Atajos: Ctrl +, Ctrl − y Ctrl 0.",
+  "settings.app.zoomSub": "Amplía o reduce toda la app. Atajos: Ctrl +, Ctrl −, Ctrl 0 o Ctrl + rueda.",
   "settings.app.zoomDecrease": "Reducir zoom",
   "settings.app.zoomIncrease": "Aumentar zoom",
   "settings.app.zoomReset": "Zoom actual: {{value}}%. Restablecer al 100%",

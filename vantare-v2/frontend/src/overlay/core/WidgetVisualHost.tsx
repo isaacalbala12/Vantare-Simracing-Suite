@@ -85,29 +85,32 @@ export function WidgetVisualHost(props: WidgetVisualHostProps): ReactNode {
   const source = props.runtime?.overlayV2Source;
   const previewMode = renderMode === "studio" || renderMode === "harness";
   const v2Failure = props.runtime?.overlayV2Failure;
-  if (v2Entry && v2Failure) {
+  // Durante la coordinación con #936, sus callers transportan el único
+  // rollback booleano como catálogo completo (V2) o lista vacía (rollback).
+  const v2Rollback = props.runtime?.overlayV2Features?.length === 0;
+  if (v2Entry && !v2Rollback && v2Failure) {
     const code = `overlay-v2-${v2Failure.code}`;
     reportDiagnostic(props, code, v2Failure.message);
     return <HostDiagnostic widget={widget} code={code} message={v2Failure.message} />;
   }
-  if (v2Entry && source?.state === "error") {
+  if (v2Entry && !v2Rollback && source?.state === "error") {
     const message = source.reason ?? "Overlay V2 source error";
     reportDiagnostic(props, "overlay-v2-source-error", message);
     return <HostDiagnostic widget={widget} code="overlay-v2-source-error" message={message} />;
   }
-  if (v2Entry && props.runtime?.overlayV2Authority && !frame) {
+  if (v2Entry && !v2Rollback && props.runtime?.overlayV2Authority && !frame) {
     const message = "Overlay V2 frame unavailable";
     reportDiagnostic(props, "overlay-v2-frame-missing", message);
     return <HostDiagnostic widget={widget} code="overlay-v2-frame-missing" message={message} />;
   }
-  if (v2Entry && props.runtime?.overlayV2Authority && !source) {
+  if (v2Entry && !v2Rollback && props.runtime?.overlayV2Authority && !source) {
     const message = "Overlay V2 source state unavailable";
     reportDiagnostic(props, "overlay-v2-source-missing", message);
     return <HostDiagnostic widget={widget} code="overlay-v2-source-missing" message={message} />;
   }
 
   let model;
-  if (v2Entry && frame && source) {
+  if (v2Entry && !v2Rollback && frame && source) {
     // V2 se construye primero: el builder V1 no se ejecuta para luego
     // sobrescribirlo. El renderer recibe únicamente la ViewModel pura.
     model = v2Entry.buildViewModelV2(
@@ -126,7 +129,7 @@ export function WidgetVisualHost(props: WidgetVisualHostProps): ReactNode {
         : definition.buildViewModel(snapshot, content as never);
   }
 
-  if (!(v2Entry && frame && source) && widget.type === "input-telemetry") {
+  if (!(v2Entry && !v2Rollback && frame && source) && widget.type === "input-telemetry") {
     const inputContent = content as { historySeconds: number };
     recordInputTelemetrySample(widget.id, snapshot);
     model = {
@@ -148,7 +151,7 @@ export function WidgetVisualHost(props: WidgetVisualHostProps): ReactNode {
   }
 
   const Renderer = registration.Renderer;
-  const staleMessage = v2Entry && frame && source?.state === "stale"
+  const staleMessage = v2Entry && !v2Rollback && frame && source?.state === "stale"
     ? `Overlay V2 stale${source.ageMs !== undefined ? ` (${Math.round(source.ageMs)} ms)` : ""}`
     : undefined;
   if (staleMessage) {

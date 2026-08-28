@@ -19,34 +19,7 @@ export type OverlayV2Feature =
   | typeof OVERLAY_V2_DAMAGE
   | typeof OVERLAY_V2_WEATHER;
 
-export const DEFAULT_OVERLAY_V2_FEATURES: readonly OverlayV2Feature[] = Object.freeze([]);
-
-export function hasOverlayV2Feature(
-  features: readonly OverlayV2Feature[] | undefined,
-  feature: OverlayV2Feature,
-): boolean {
-  return (features ?? DEFAULT_OVERLAY_V2_FEATURES).includes(feature);
-}
-
-/**
- * Flag diagnóstico mínimo para el gate F9 (ISA-777).
- *
- * Hoy `overlayV2Features` no viene del perfil ni de un setting persistido:
- * es `WidgetRuntimeInput.overlayV2Features` que `CompositeApp`/`ObsOverlayApp`
- * inyectan al `RuntimeWidgetFrame`. Para el gate sin tocar backend, Fable
- * puede encender features en un overlay vivo sin recompilar:
- *
- *  1) Consola (preferido, memoria): `__vantareSetOverlayV2Features(["standings","relative","delta","fuel","player-instruments","controls","session"])`
- *     y `__vantareGetOverlayV2Features()` para verificar. El cambio dispara un
- *     evento `vantare:overlay-v2-features-changed` que los runtimes escuchan.
- *  2) Persistido: `localStorage.setItem("vantare:overlay-v2-features", JSON.stringify([...]))`.
- *     Se lee al montar y al recibir el evento anterior.
- *
- * `DEFAULT_OVERLAY_V2_FEATURES` sigue vacío (off) para no cambiar producción.
- */
-export const OVERLAY_V2_DIAGNOSTIC_STORAGE_KEY = "vantare:overlay-v2-features" as const;
-
-const ALL_FEATURES = new Set<string>([
+export const DEFAULT_OVERLAY_V2_FEATURES: readonly OverlayV2Feature[] = Object.freeze([
   OVERLAY_V2_PLAYER_INSTRUMENTS,
   OVERLAY_V2_SESSION,
   OVERLAY_V2_STANDINGS,
@@ -58,6 +31,15 @@ const ALL_FEATURES = new Set<string>([
   OVERLAY_V2_WEATHER,
 ]);
 
+const ALL_FEATURES = new Set<string>(DEFAULT_OVERLAY_V2_FEATURES);
+
+export function hasOverlayV2Feature(
+  features: readonly OverlayV2Feature[] | undefined,
+  feature: OverlayV2Feature,
+): boolean {
+  return (features ?? DEFAULT_OVERLAY_V2_FEATURES).includes(feature);
+}
+
 export function parseOverlayV2Features(input: unknown): OverlayV2Feature[] {
   if (!Array.isArray(input)) return [];
   const out: OverlayV2Feature[] = [];
@@ -67,55 +49,42 @@ export function parseOverlayV2Features(input: unknown): OverlayV2Feature[] {
   return out;
 }
 
+/**
+ * Compatibilidad transitoria con las surfaces reservadas a #936.
+ *
+ * V2 es autoridad por defecto y por eso se devuelve el catálogo completo.
+ * La única excepción es el rollback diagnóstico de esta ventana, que devuelve
+ * una lista vacía para detener la suscripción durante la inspección. No se lee
+ * ni escribe localStorage y recargar la ventana siempre restaura V2.
+ */
 export function readDiagnosticOverlayV2Features(): OverlayV2Feature[] {
-  if (typeof window !== "undefined") {
-    const w = window as unknown as Record<string, unknown>;
-    const winFlag = w.__vantareOverlayV2Features;
-    if (Array.isArray(winFlag)) {
-      const parsed = parseOverlayV2Features(winFlag);
-      if (parsed.length > 0 || winFlag.length === 0) return parsed;
-    }
-    try {
-      const raw = window.localStorage?.getItem(OVERLAY_V2_DIAGNOSTIC_STORAGE_KEY);
-      if (raw) return parseOverlayV2Features(JSON.parse(raw));
-    } catch {
-      // ignore storage parse errors
-    }
-  }
-  return [...DEFAULT_OVERLAY_V2_FEATURES];
+  return readOverlayV2Rollback() ? [] : [...DEFAULT_OVERLAY_V2_FEATURES];
 }
 
-export function writeDiagnosticOverlayV2Features(features: readonly OverlayV2Feature[]): void {
+export function readOverlayV2Rollback(): boolean {
+  return typeof window !== "undefined" && window.__vantareOverlayV2Rollback === true;
+}
+
+export function writeOverlayV2Rollback(enabled: boolean): void {
   if (typeof window === "undefined") return;
-  const parsed = parseOverlayV2Features(features);
-  const w = window as unknown as Record<string, unknown>;
-  w.__vantareOverlayV2Features = [...parsed];
-  try {
-    window.localStorage?.setItem(OVERLAY_V2_DIAGNOSTIC_STORAGE_KEY, JSON.stringify(parsed));
-  } catch {
-    // ignore quota
-  }
-  try {
-    window.dispatchEvent(new CustomEvent("vantare:overlay-v2-features-changed", { detail: parsed }));
-  } catch {
-    // ignore dispatch errors
-  }
+  window.__vantareOverlayV2Rollback = enabled === true;
+  const detail = Object.freeze({ enabled: window.__vantareOverlayV2Rollback });
+  window.dispatchEvent(new CustomEvent("vantare:overlay-v2-rollback-changed", { detail }));
+  // Los tres consumidores se migran al evento nuevo al integrar #936.
+  window.dispatchEvent(new CustomEvent("vantare:overlay-v2-features-changed", { detail }));
 }
 
 if (typeof window !== "undefined") {
-  const w = window as unknown as Record<string, unknown>;
-  if (typeof w.__vantareSetOverlayV2Features !== "function") {
-    w.__vantareSetOverlayV2Features = (features: unknown) => writeDiagnosticOverlayV2Features(features as OverlayV2Feature[]);
-  }
-  if (typeof w.__vantareGetOverlayV2Features !== "function") {
-    w.__vantareGetOverlayV2Features = () => readDiagnosticOverlayV2Features();
-  }
+  window.__vantareSetOverlayV2Rollback ??= writeOverlayV2Rollback;
+  window.__vantareGetOverlayV2Rollback ??= readOverlayV2Rollback;
 }
 
 declare global {
   interface Window {
+    __vantareOverlayV2Rollback?: boolean;
+    __vantareSetOverlayV2Rollback?: (enabled: boolean) => void;
+    __vantareGetOverlayV2Rollback?: () => boolean;
+    // Forma antigua inerte; se conserva solo hasta reescribir tests/callers de #936.
     __vantareOverlayV2Features?: OverlayV2Feature[];
-    __vantareSetOverlayV2Features?: (features: readonly OverlayV2Feature[] | unknown) => void;
-    __vantareGetOverlayV2Features?: () => OverlayV2Feature[];
   }
 }

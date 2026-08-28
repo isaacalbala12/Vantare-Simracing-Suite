@@ -6,8 +6,8 @@ import {
 } from "../telemetry-shadow/overlay-v2-features";
 
 describe("overlay-v2 view model registry", () => {
-  it("mantiene DEFAULT_OVERLAY_V2_FEATURES vacio (off por defecto)", () => {
-    expect(DEFAULT_OVERLAY_V2_FEATURES).toEqual([]);
+  it("mantiene todo el catálogo V2 activo por defecto", () => {
+    expect(DEFAULT_OVERLAY_V2_FEATURES).toHaveLength(9);
   });
 
   it("registra exactamente los 18 widgets con VM v2 y cada uno con feature valida", () => {
@@ -37,7 +37,7 @@ describe("overlay-v2 view model registry", () => {
       expect(entry, `entry missing for ${widgetType}`).toBeDefined();
       expect(entry?.feature).toBe(feature);
       expect(typeof entry?.buildViewModelV2).toBe("function");
-      expect(hasOverlayV2Feature(undefined, entry!.feature)).toBe(false);
+      expect(hasOverlayV2Feature(undefined, entry!.feature)).toBe(true);
     }
   });
 

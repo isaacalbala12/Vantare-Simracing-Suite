@@ -178,6 +178,19 @@ describe("WidgetVisualHost", () => {
     expect(defaultSpeed).toBe("180");
     expect(v2Speed).toBe("180");
   });
+
+  it("permite rollback diagnóstico total con una única señal no persistente", () => {
+    const widget = pedalsTelemetryDefinition.createDefault("pedals-rollback");
+    widget.content = { showPosition: false, showClutch: true };
+    const view = render(
+      <WidgetVisualHost widget={widget} snapshot={snapshot} renderMode="harness" runtime={{
+        overlayV2Features: [],
+        overlayV2Frame: playerFrameV2(),
+        overlayV2Source: { state: "live" },
+      }} />,
+    );
+    expect(view.container.querySelector(".vo-pedals-telemetry-values strong")?.textContent).not.toBe("180");
+  });
 });
 
 function playerFrameV2(): OverlayFrameV2 {

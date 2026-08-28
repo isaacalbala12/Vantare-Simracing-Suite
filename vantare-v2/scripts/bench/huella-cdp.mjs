@@ -36,6 +36,18 @@ async function pagesByRole(browser) {
   return described;
 }
 
+async function targetDiagnostics(browser) {
+  const targets = [];
+  for (const page of browser.contexts().flatMap((context) => context.pages())) {
+    try {
+      targets.push({ url: page.url(), ...(await describePage(page)) });
+    } catch (error) {
+      targets.push({ url: page.url(), error: error instanceof Error ? error.message : String(error) });
+    }
+  }
+  return targets;
+}
+
 async function waitForRole(browser, role, present, timeoutMs = 15_000) {
   const deadline = Date.now() + timeoutMs;
   do {
@@ -43,10 +55,23 @@ async function waitForRole(browser, role, present, timeoutMs = 15_000) {
     if (found === present) return;
     await new Promise((resolve) => setTimeout(resolve, 200));
   } while (Date.now() < deadline);
-  throw new Error(`${role} target did not become ${present ? "present" : "absent"} within ${timeoutMs} ms`);
+  throw new Error(`${role} target did not become ${present ? "present" : "absent"} within ${timeoutMs} ms; targets=${JSON.stringify(await targetDiagnostics(browser))}`);
+}
+
+async function waitForWidgets(browser, expectedWidgets, timeoutMs = 30_000) {
+  const deadline = Date.now() + timeoutMs;
+  let lastCount = null;
+  do {
+    const overlay = (await pagesByRole(browser)).find(({ description }) => description.overlay);
+    lastCount = overlay?.description.widgetCount ?? null;
+    if (lastCount > 0 && (!expectedWidgets || lastCount === expectedWidgets)) return lastCount;
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  } while (Date.now() < deadline);
+  throw new Error(`overlay did not render ${expectedWidgets || ">0"} runtime-widget-frame elements within ${timeoutMs} ms; lastCount=${lastCount}; targets=${JSON.stringify(await targetDiagnostics(browser))}`);
 }
 
 async function setOverlay(browser, shouldRun) {
+  await waitForRole(browser, "hub", true, 30_000);
   const pages = await pagesByRole(browser);
   const running = pages.some(({ description }) => description.overlay);
   if (running === shouldRun) return { changed: false, running };
@@ -107,11 +132,13 @@ const cdp = argument("cdp");
 const action = argument("action", "inspect");
 const output = argument("output");
 const durationSeconds = Number(argument("duration", "10"));
-if (!cdp || !["inspect", "overlay-start", "overlay-stop", "app-quit"].includes(action) || !Number.isFinite(durationSeconds) || durationSeconds < 1 || durationSeconds > 120) {
-  throw new Error("usage: node huella-cdp.mjs --cdp http://127.0.0.1:9247 --action inspect|overlay-start|overlay-stop|app-quit [--duration 10] [--output result.json]");
+const expectedWidgets = Number(argument("expected-widgets", "0"));
+if (!cdp || !["inspect", "overlay-start", "overlay-stop", "app-quit"].includes(action) || !Number.isFinite(durationSeconds) || durationSeconds < 1 || durationSeconds > 120 || !Number.isInteger(expectedWidgets) || expectedWidgets < 0) {
+  throw new Error("usage: node huella-cdp.mjs --cdp http://127.0.0.1:9247 --action inspect|overlay-start|overlay-stop|app-quit [--duration 10] [--expected-widgets 3] [--output result.json]");
 }
 
 const browser = await chromium.connectOverCDP(cdp);
+await waitForRole(browser, "hub", true, 30_000);
 if (action === "app-quit") {
   const hub = (await pagesByRole(browser)).find(({ description }) => description.hub)?.page;
   if (!hub) throw new Error("Hub target is not available for clean shutdown");
@@ -126,13 +153,14 @@ if (action === "app-quit") {
   process.exit(0);
 }
 const control = action === "inspect" ? null : await setOverlay(browser, action === "overlay-start");
+const renderedWidgets = action === "overlay-start" ? await waitForWidgets(browser, expectedWidgets) : 0;
 const pages = await pagesByRole(browser);
 const targets = await Promise.all(pages.filter(({ description }) => description.hub || description.overlay).map(async ({ page, description }) => ({
   role: description.overlay ? "overlay" : "hub",
   ...description,
   probe: await probe(page, durationSeconds * 1_000),
 })));
-const result = { schema: "vantare.huella.cdp.v1", capturedAt: new Date().toISOString(), action, control, durationSeconds, targets };
+const result = { schema: "vantare.huella.cdp.v1", capturedAt: new Date().toISOString(), action, control, durationSeconds, expectedWidgets, renderedWidgets, targets };
 const json = `${JSON.stringify(result, null, 2)}\n`;
 if (output) await writeFile(output, json, { encoding: "utf8", flag: "wx" });
 process.stdout.write(json);

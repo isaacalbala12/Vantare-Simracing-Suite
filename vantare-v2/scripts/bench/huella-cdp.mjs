@@ -2,8 +2,13 @@
 // conserva su detección por DOM, rAF y PerformanceObserver, y añade el control
 // reproducible del overlay a través del botón productivo del Hub.
 import { writeFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import process from "node:process";
-import { chromium } from "playwright";
+
+// Playwright pertenece al workspace frontend; resolver desde su package.json
+// evita exigir una segunda instalación en la raíz solo para este banco.
+const requireFromFrontend = createRequire(new URL("../../frontend/package.json", import.meta.url));
+const { chromium } = requireFromFrontend("playwright");
 
 function argument(name, fallback = "") {
   const index = process.argv.indexOf(`--${name}`);
@@ -49,10 +54,21 @@ async function setOverlay(browser, shouldRun) {
   if (!hub) throw new Error("Hub target is not available to control the overlay");
   await hub.evaluate(() => { if (window.location.hash !== "#/hub") window.location.hash = "#/hub"; });
   const toggle = hub.locator('[data-testid="orbit-home-overlay-toggle"], [data-testid="orbit-studio-overlay-toggle"]').first();
-  await toggle.waitFor({ state: "visible", timeout: 10_000 });
-  await toggle.click();
+  let mechanism;
+  try {
+    await toggle.waitFor({ state: "visible", timeout: 2_000 });
+    await toggle.click();
+    mechanism = { kind: "control", selector: await toggle.getAttribute("data-testid") };
+  } catch {
+    const eventName = shouldRun ? "overlay:start-active" : "overlay:stop";
+    await hub.evaluate(async (name) => {
+      const { Events } = await import("/wails/runtime.js");
+      await Events.Emit(name);
+    }, eventName);
+    mechanism = { kind: "wails-event", eventName };
+  }
   await waitForRole(browser, "overlay", shouldRun);
-  return { changed: true, running: shouldRun, selector: await toggle.getAttribute("data-testid") };
+  return { changed: true, running: shouldRun, mechanism };
 }
 
 async function probe(page, durationMs) {
@@ -91,11 +107,24 @@ const cdp = argument("cdp");
 const action = argument("action", "inspect");
 const output = argument("output");
 const durationSeconds = Number(argument("duration", "10"));
-if (!cdp || !["inspect", "overlay-start", "overlay-stop"].includes(action) || !Number.isFinite(durationSeconds) || durationSeconds < 1 || durationSeconds > 120) {
-  throw new Error("usage: node huella-cdp.mjs --cdp http://127.0.0.1:9247 --action inspect|overlay-start|overlay-stop [--duration 10] [--output result.json]");
+if (!cdp || !["inspect", "overlay-start", "overlay-stop", "app-quit"].includes(action) || !Number.isFinite(durationSeconds) || durationSeconds < 1 || durationSeconds > 120) {
+  throw new Error("usage: node huella-cdp.mjs --cdp http://127.0.0.1:9247 --action inspect|overlay-start|overlay-stop|app-quit [--duration 10] [--output result.json]");
 }
 
 const browser = await chromium.connectOverCDP(cdp);
+if (action === "app-quit") {
+  const hub = (await pagesByRole(browser)).find(({ description }) => description.hub)?.page;
+  if (!hub) throw new Error("Hub target is not available for clean shutdown");
+  await hub.evaluate(async () => {
+    const { Application } = await import("/wails/runtime.js");
+    await Application.Quit();
+  }).catch(() => {
+    // El transporte puede desaparecer antes de responder porque Quit cierra
+    // precisamente el WebView que ejecutó la petición.
+  });
+  process.stdout.write(`${JSON.stringify({ schema: "vantare.huella.cdp.v1", action, requested: true })}\n`);
+  process.exit(0);
+}
 const control = action === "inspect" ? null : await setOverlay(browser, action === "overlay-start");
 const pages = await pagesByRole(browser);
 const targets = await Promise.all(pages.filter(({ description }) => description.hub || description.overlay).map(async ({ page, description }) => ({

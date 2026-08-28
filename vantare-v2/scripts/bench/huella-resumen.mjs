@@ -46,9 +46,19 @@ export function parseCsv(text) {
 export function summarizeRun(rows) {
   const groups = Map.groupBy(rows, (row) => row.role);
   return Object.fromEntries([...groups].map(([role, roleRows]) => {
+    const samples = [...Map.groupBy(roleRows, (row) => row.timestamp).values()].map((sameTimestamp) =>
+      Object.fromEntries(METRICS.map((metric) => {
+      const values = sameTimestamp
+        .map((row) => String(row[metric] ?? "").trim())
+        .filter((value) => value !== "")
+        .map(Number)
+        .filter(Number.isFinite);
+        return [metric, values.length ? values.reduce((sum, value) => sum + value, 0) : null];
+      })),
+    );
     const metrics = {};
     for (const metric of METRICS) {
-      const values = roleRows.map((row) => Number(row[metric])).filter(Number.isFinite);
+      const values = samples.map((sample) => sample[metric]).filter(Number.isFinite);
       if (!values.length) continue;
       metrics[metric] = {
         mean: mean(values),
@@ -81,14 +91,27 @@ function displayValue(metric, value) {
   return value.toFixed(3);
 }
 
-export function renderMarkdown(condition, aggregate, files) {
+export function renderMarkdown(condition, aggregate, files, runs = []) {
   const rows = aggregate.map((entry) =>
     `| ${condition} | ${entry.role} | ${entry.metric} | ${entry.runs} | ${displayValue(entry.metric, entry.mean)} | ${displayValue(entry.metric, entry.deviation)} | ${Number.isFinite(entry.noisePct) ? entry.noisePct.toFixed(2) : "∞"} % | ${entry.pass ? "✓" : "✗"} |`,
   );
+  const runRows = runs.flatMap((run, index) => Object.entries(run).flatMap(([role, metrics]) =>
+    Object.entries(metrics).map(([metric, summary]) =>
+      `| ${index + 1} | ${role} | ${metric} | ${displayValue(metric, summary.mean)} | ${displayValue(metric, summary.p50)} | ${displayValue(metric, summary.p95)} | ${displayValue(metric, summary.p99)} | ${displayValue(metric, summary.max)} |`,
+    ),
+  ));
   return [
     `# Huella mínima · ${condition}`,
     "",
     `Corridas: ${files.map((file) => `\`${path.basename(file)}\``).join(", ")}. Ruido = desviación muestral / media; el gate falla por encima de 5 %.`,
+    "",
+    "## Resumen por corrida",
+    "",
+    "| Corrida | Rol | Métrica | Media | p50 | p95 | p99 | Máximo |",
+    "|---:|---|---|---:|---:|---:|---:|---:|",
+    ...runRows,
+    "",
+    "## Repetibilidad entre corridas",
     "",
     "| Condición | Rol | Métrica | N | Media | Desviación | Ruido | Gate |",
     "|---|---|---|---:|---:|---:|---:|:---:|",
@@ -110,7 +133,7 @@ async function main() {
   }
   const runs = await Promise.all(files.map(async (file) => summarizeRun(parseCsv(await readFile(file, "utf8")))));
   const aggregate = aggregateRuns(runs);
-  await writeFile(output, renderMarkdown(condition, aggregate, files), { encoding: "utf8", flag: "wx" });
+  await writeFile(output, renderMarkdown(condition, aggregate, files, runs), { encoding: "utf8", flag: "wx" });
   process.stdout.write(`${JSON.stringify({ condition, files, aggregate })}\n`);
 }
 

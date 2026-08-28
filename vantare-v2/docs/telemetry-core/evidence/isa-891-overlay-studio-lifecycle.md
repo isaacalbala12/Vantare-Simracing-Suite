@@ -137,6 +137,8 @@ shadow pero no se suscribe al store ni propaga sus paints a React.
   de configuración se ejecutó en la tarea canónica y eliminó
   `cmd/vantare/supabase_build.go` al finalizar; no quedó diff generado.
 - `git diff --check`: PASS.
+- CI remoto del HEAD revisado `df629d3a`: PASS, run `33134533397`; gate
+  bloqueante Vantare, ruta de promoción y GitGuardian terminaron verdes.
 
 ## Revisiones previas al PR
 

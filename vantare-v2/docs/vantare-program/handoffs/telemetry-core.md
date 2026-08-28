@@ -56,7 +56,9 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   abrió ISA-896 para corregir Desktop+OBS+Studio bajo
   StrictMode/remount; el PR parcial #857 no está en Nightly. No retira V1 ni
   cambia la autoridad visual. El digest está regenerado contra la Nightly
-  vigente; queda subir el HEAD final y verificar su CI remoto.
+  vigente. El HEAD revisado `df629d3a` está publicado en el PR draft #897 y el
+  run remoto `33134533397` terminó verde: gate bloqueante Vantare 11m02s, ruta
+  de promoción y GitGuardian. No hubo merge ni promoción.
 
 - 2026-08-27, ISA-889 corrige el bloqueo permanente del Overlay despues de un
   reconnect LMU. El transporte acotado de ISA-879 puede entregar como primer

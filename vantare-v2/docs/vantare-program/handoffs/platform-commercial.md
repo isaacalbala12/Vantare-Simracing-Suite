@@ -15,8 +15,10 @@
   typecheck, build, lint focal y contratos de roadmap 23/23 + 21/21 en verde.
   El lint global conserva un error ajeno en
   `car-damage-numbers-view-model-v2.ts:93`. El PR draft #907 es la única ruta
-  hacia `nightly`; queda la prueba manual Wails. No hay integración en
-  `nightly`, promoción, release ni anuncio.
+  hacia `nightly`; sus tres checks remotos pasaron en `f22643bc`, incluido el
+  build Wails de Windows. Queda la comprobación visual del toast en una app
+  Wails abierta. No hay integración en `nightly`, promoción, release ni
+  anuncio.
 
 ## ISA-843 — columnas de Próximas alineadas
 

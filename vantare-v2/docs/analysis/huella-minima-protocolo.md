@@ -86,16 +86,21 @@ con el mismo estado.
 | Condición | Overlay | Hub | Aplicación automática |
 |---|---|---|---|
 | `A0` | detenido | visible | CDP pide `overlay:stop` si estaba abierto |
-| `A1` | activo | visible | CDP pulsa el control real; si la pantalla anónima no lo monta, emite `overlay:start-active` por el runtime Wails |
+| `A1` | activo | visible | CDP emite `overlay:start-active` por el runtime Wails y registra el instante exacto |
 | `HubVisible` | activo | restaurado | `ShowWindowAsync(..., SW_RESTORE)` |
 | `HubMin` | activo | minimizado | `ShowWindowAsync(..., SW_MINIMIZE)` |
 
 El helper identifica el overlay por URL exacta `http://wails.localhost/` y
 marcadores runtime; el Hub usa `http://wails.localhost/#/hub`. Antes de abrir el
-overlay conserva los PID renderer ya observados del Hub. Cualquier renderer
-nuevo sin relación
-PID↔target demostrable queda como `renderer-unassigned`; nunca se infiere que
-pertenece al overlay por orden de aparición. Cuenta
+overlay conserva los PID renderer ya observados del Hub. Tras emitir
+`overlay:start-active` desde un estado inicial detenido, espera el target `/` y
+el número exacto de widgets del perfil. El renderer creado dentro de esa
+ventana y que no pertenece al Hub se
+marca `renderer-overlay`. Si aparecen varios, el endpoint browser de CDP
+(`/json/version`) y `SystemInfo.getProcessInfo` limitan los candidatos a PID de
+tipo renderer y se elige el de creación más reciente; empate o falta de prueba
+queda como `renderer-unassigned`. Sin arranque de overlay no se atribuye ningún
+renderer a ese rol. Cuenta
 `[data-testid="runtime-widget-frame"]` y mide rAF/s y long tasks
 durante 10 s. El banco espera primero al target Hub y, al arrancar el overlay,
 no inicia PresentMon ni el muestreo hasta ver exactamente los widgets
@@ -132,7 +137,10 @@ pwsh -File scripts/bench/huella.ps1 `
 Cada corrida conserva CSV combinado, CSV PresentMon, JSON CDP, logs y resumen
 Markdown. El CSV muestrea a 1 Hz Private Bytes, Working Set, CPU como porcentaje
 de máquina, GPU Engine y memoria GPU dedicada por proceso/rol; el árbol propio
-se redescubre cada 5 s sin perder los roles de renderer. PresentMon aporta
+se redescubre cada 5 s sin perder los roles de renderer. Cada fila registra
+`gpuSampleValid`; si Windows no entrega los contadores en una muestra, sus
+valores GPU quedan vacíos y el agregador la excluye de medias y percentiles en
+vez de convertirla en cero. PresentMon aporta
 frametime y considera perdido un frame v2 cuando `DisplayedTime` es `NA` (no
 llegó a pantalla), publicando recuento y porcentaje. La build arranca desde `<corrida>-runtime/configs`, por lo que sus
 refrescos y datos de desarrollo no escriben en `configs/` versionado ni en la

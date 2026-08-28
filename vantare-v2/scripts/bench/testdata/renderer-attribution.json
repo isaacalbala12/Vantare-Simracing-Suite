@@ -1,0 +1,31 @@
+{
+  "processes": [
+    {
+      "Name": "msedgewebview2.exe",
+      "ProcessId": 4400,
+      "ParentProcessId": 4200,
+      "CreationDate": "2026-08-28T20:59:55.000Z",
+      "CommandLine": "msedgewebview2.exe --user-data-dir=\"C:\\Users\\isaac\\AppData\\Roaming\\vantare-isa924.exe\\EBWebView\" --type=renderer --renderer-client-id=6"
+    },
+    {
+      "Name": "msedgewebview2.exe",
+      "ProcessId": 4450,
+      "ParentProcessId": 4200,
+      "CreationDate": "2026-08-28T21:00:01.100Z",
+      "CommandLine": "msedgewebview2.exe --user-data-dir=\"C:\\Users\\isaac\\AppData\\Roaming\\vantare-isa924.exe\\EBWebView\" --type=renderer --renderer-client-id=7"
+    },
+    {
+      "Name": "msedgewebview2.exe",
+      "ProcessId": 4460,
+      "ParentProcessId": 4200,
+      "CreationDate": "2026-08-28T21:00:01.800Z",
+      "CommandLine": "msedgewebview2.exe --user-data-dir=\"C:\\Users\\isaac\\AppData\\Roaming\\vantare-isa924.exe\\EBWebView\" --type=renderer --renderer-client-id=8"
+    }
+  ],
+  "window": {
+    "activationStartedAt": "2026-08-28T21:00:01.000Z",
+    "overlayReadyAt": "2026-08-28T21:00:02.000Z"
+  },
+  "hubRendererIds": [4400],
+  "cdpRendererPids": [4400, 4450, 4460]
+}

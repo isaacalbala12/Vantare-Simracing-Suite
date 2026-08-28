@@ -78,6 +78,56 @@ export function classifyProcesses(processes, options) {
   });
 }
 
+function processCreationMs(processInfo) {
+  const value = processInfo.CreationDate ?? processInfo.creationDate;
+  const milliseconds = Date.parse(String(value ?? ""));
+  return Number.isFinite(milliseconds) ? milliseconds : null;
+}
+
+export function assignRendererRoles(processes, options) {
+  const hubRendererIds = new Set((options.hubRendererIds ?? []).map(Number));
+  const roles = Object.fromEntries([...hubRendererIds].map((pid) => [pid, "renderer-hub"]));
+  const renderers = processes.filter((processInfo) =>
+    /^msedgewebview2\.exe$/i.test(String(processInfo.Name ?? processInfo.name ?? ""))
+      && commandLineSwitch(processInfo.CommandLine ?? processInfo.commandLine, "type") === "renderer");
+
+  for (const processInfo of renderers) {
+    const pid = Number(processInfo.ProcessId ?? processInfo.pid);
+    if (!hubRendererIds.has(pid)) roles[pid] = "renderer-unassigned";
+  }
+  if (!options.overlayStarted) return { roles, overlayRendererPid: null, reason: "overlay-not-started" };
+
+  const startedAt = Date.parse(String(options.activationStartedAt ?? ""));
+  const readyAt = Date.parse(String(options.overlayReadyAt ?? ""));
+  if (!Number.isFinite(startedAt) || !Number.isFinite(readyAt) || readyAt < startedAt) {
+    return { roles, overlayRendererPid: null, reason: "invalid-activation-window" };
+  }
+
+  const candidates = renderers.filter((processInfo) => {
+    const pid = Number(processInfo.ProcessId ?? processInfo.pid);
+    const createdAt = processCreationMs(processInfo);
+    return !hubRendererIds.has(pid) && createdAt !== null && createdAt >= startedAt && createdAt <= readyAt;
+  });
+  if (candidates.length === 0) return { roles, overlayRendererPid: null, reason: "no-renderer-in-window" };
+
+  let selected = null;
+  if (candidates.length === 1) {
+    selected = candidates[0];
+  } else {
+    const cdpRendererIds = new Set((options.cdpRendererPids ?? []).map(Number));
+    const confirmed = candidates.filter((processInfo) => cdpRendererIds.has(Number(processInfo.ProcessId ?? processInfo.pid)));
+    const newestFirst = confirmed.sort((left, right) => processCreationMs(right) - processCreationMs(left));
+    if (newestFirst.length === 1 || (newestFirst.length > 1 && processCreationMs(newestFirst[0]) > processCreationMs(newestFirst[1]))) {
+      [selected] = newestFirst;
+    }
+  }
+  if (!selected) return { roles, overlayRendererPid: null, reason: "ambiguous-renderers-in-window" };
+
+  const overlayRendererPid = Number(selected.ProcessId ?? selected.pid);
+  roles[overlayRendererPid] = "renderer-overlay";
+  return { roles, overlayRendererPid, reason: candidates.length === 1 ? "single-renderer-in-window" : "newest-cdp-renderer-in-window" };
+}
+
 async function main() {
   const argument = (name, fallback = "") => {
     const index = process.argv.indexOf(`--${name}`);
@@ -93,6 +143,19 @@ async function main() {
     for await (const chunk of process.stdin) input += chunk;
     const processes = JSON.parse(input);
     process.stdout.write(`${JSON.stringify(classifyHygieneProcesses(processes))}\n`);
+    return;
+  }
+  if (process.argv.includes("--assign-renderers")) {
+    if (!input) throw new Error("--assign-renderers requires --input processes.json");
+    const processes = JSON.parse(await readFile(input, "utf8"));
+    const result = assignRendererRoles(processes, {
+      hubRendererIds: JSON.parse(argument("hub-renderer-ids", "[]")),
+      activationStartedAt: argument("activation-started-at"),
+      overlayReadyAt: argument("overlay-ready-at"),
+      cdpRendererPids: JSON.parse(argument("cdp-renderer-pids", "[]")),
+      overlayStarted: argument("overlay-started", "false") === "true",
+    });
+    process.stdout.write(`${JSON.stringify(result)}\n`);
     return;
   }
   if (!input || !exeName || !Number.isInteger(hostPid)) {

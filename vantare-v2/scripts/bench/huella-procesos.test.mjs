@@ -3,7 +3,7 @@ import test from "node:test";
 import { spawnSync } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
-import { classifyHygieneProcesses, classifyProcesses, commandLineSwitch, isSystemWebViewProfile, ownsWebViewProfile } from "./huella-procesos.mjs";
+import { assignRendererRoles, classifyHygieneProcesses, classifyProcesses, commandLineSwitch, isSystemWebViewProfile, ownsWebViewProfile } from "./huella-procesos.mjs";
 
 const ownProfile = String.raw`C:\Users\isaac\AppData\Roaming\vantare-isa924.exe\EBWebView`;
 const browser = String.raw`"C:\Program Files (x86)\Microsoft\EdgeWebView\Application\151.0.4129.107\msedgewebview2.exe" --embedded-browser-webview=1 --webview-exe-name=vantare-isa924.exe --user-data-dir="${ownProfile}" --remote-debugging-port=9247`;
@@ -40,6 +40,60 @@ test("clasifica host y árbol WebView2, con roles renderer observados", () => {
       { pid: 4450, role: "renderer-unassigned" },
     ],
   );
+});
+
+test("atribuye el renderer único creado entre start-active y overlay listo", async () => {
+  const fixture = JSON.parse(await readFile(new URL("testdata/renderer-attribution.json", import.meta.url), "utf8"));
+  const result = assignRendererRoles(fixture.processes.filter(({ ProcessId }) => ProcessId !== 4460), {
+    ...fixture.window,
+    hubRendererIds: fixture.hubRendererIds,
+    cdpRendererPids: fixture.cdpRendererPids,
+    overlayStarted: true,
+  });
+  assert.equal(result.overlayRendererPid, 4450);
+  assert.equal(result.roles[4400], "renderer-hub");
+  assert.equal(result.roles[4450], "renderer-overlay");
+  assert.equal(result.reason, "single-renderer-in-window");
+});
+
+test("con varios renderers nuevos elige el más reciente confirmado por SystemInfo", async () => {
+  const fixture = JSON.parse(await readFile(new URL("testdata/renderer-attribution.json", import.meta.url), "utf8"));
+  const result = assignRendererRoles(fixture.processes, {
+    ...fixture.window,
+    hubRendererIds: fixture.hubRendererIds,
+    cdpRendererPids: fixture.cdpRendererPids,
+    overlayStarted: true,
+  });
+  assert.equal(result.overlayRendererPid, 4460);
+  assert.equal(result.roles[4450], "renderer-unassigned");
+  assert.equal(result.roles[4460], "renderer-overlay");
+  assert.equal(result.reason, "newest-cdp-renderer-in-window");
+});
+
+test("sin overlay o con empate no inventa atribución", async () => {
+  const fixture = JSON.parse(await readFile(new URL("testdata/renderer-attribution.json", import.meta.url), "utf8"));
+  const withoutOverlay = assignRendererRoles(fixture.processes, {
+    ...fixture.window,
+    hubRendererIds: fixture.hubRendererIds,
+    cdpRendererPids: fixture.cdpRendererPids,
+    overlayStarted: false,
+  });
+  assert.equal(withoutOverlay.overlayRendererPid, null);
+  assert.equal(withoutOverlay.roles[4450], "renderer-unassigned");
+
+  const tied = fixture.processes.map((processInfo) => processInfo.ProcessId === 4450
+    ? { ...processInfo, CreationDate: "2026-08-28T21:00:01.800Z" }
+    : processInfo);
+  const ambiguous = assignRendererRoles(tied, {
+    ...fixture.window,
+    hubRendererIds: fixture.hubRendererIds,
+    cdpRendererPids: fixture.cdpRendererPids,
+    overlayStarted: true,
+  });
+  assert.equal(ambiguous.overlayRendererPid, null);
+  assert.equal(ambiguous.reason, "ambiguous-renderers-in-window");
+  assert.equal(ambiguous.roles[4450], "renderer-unassigned");
+  assert.equal(ambiguous.roles[4460], "renderer-unassigned");
 });
 
 test("allow-list solo para perfiles WebView2 de paquetes Microsoft del sistema", async () => {

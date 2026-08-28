@@ -73,6 +73,8 @@ export function summarizeRun(rows) {
     const samples = [...Map.groupBy(roleRows, (row) => row.timestamp).values()].map((sameTimestamp) =>
       Object.fromEntries(METRICS.map((metric) => {
       const values = sameTimestamp
+        .filter((row) => !["gpuPct", "gpuDedicatedBytes"].includes(metric)
+          || String(row.gpuSampleValid ?? "true").toLowerCase() !== "false")
         .map((row) => String(row[metric] ?? "").trim())
         .filter((value) => value !== "")
         .map(Number)

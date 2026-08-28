@@ -183,10 +183,11 @@ function Get-GpuTotals {
             if ($sample.Path -like '*Utilization Percentage') { $totals[$processId].Engine += [double]$sample.CookedValue }
             elseif ($sample.Path -like '*Dedicated Usage') { $totals[$processId].Dedicated += [double]$sample.CookedValue }
         }
+        return [pscustomobject]@{ Valid = $true; Totals = $totals; Error = $null }
     } catch {
         Write-Warning "Contadores GPU no disponibles en esta muestra: $($_.Exception.Message)"
+        return [pscustomobject]@{ Valid = $false; Totals = @{}; Error = $_.Exception.Message }
     }
-    return $totals
 }
 
 function Format-Invariant([double]$Value) {
@@ -201,7 +202,7 @@ function Update-ProcessClassification {
             $rendererRoles[$rendererKey] = if ([int]$processInfo.ProcessId -in $hubRendererIds) { 'renderer-hub' } else { 'renderer-unassigned' }
         }
     }
-    $ownProcesses | Select-Object Name, ProcessId, ParentProcessId, CommandLine | ConvertTo-Json -Depth 4 -AsArray | Set-Content -LiteralPath $processJson -Encoding utf8
+    $ownProcesses | Select-Object Name, ProcessId, ParentProcessId, CreationDate, CommandLine | ConvertTo-Json -Depth 4 -AsArray | Set-Content -LiteralPath $processJson -Encoding utf8
     $roleJson = $rendererRoles | ConvertTo-Json -Compress
     $classifiedProcesses = @(& node $processHelper --input $processJson --exe-name $exeName --host-pid $app.Id --renderer-roles $roleJson | ConvertFrom-Json)
     if ($LASTEXITCODE -ne 0 -or -not $classifiedProcesses) { throw 'No se pudo clasificar el árbol de procesos propio.' }
@@ -229,11 +230,22 @@ try {
     } until ($cdpReady -or (Get-Date) -ge $deadline)
     if (-not $cdpReady) { throw "CDP no respondió en el puerto $Puerto dentro de 30 s." }
 
+    if ($Condicion -ne 'A0') {
+        & node $cdpHelper --cdp "http://127.0.0.1:$Puerto" --action overlay-stop --duration 1 --expected-widgets 0 | Out-Host
+        if ($LASTEXITCODE -ne 0) { throw 'No se pudo fijar el estado inicial con el overlay detenido.' }
+    }
     $beforeAction = Get-OwnCimProcesses
     $hubRendererIds = @($beforeAction | Where-Object { $_.CommandLine -match '--type=renderer(?:\s|$)' } | ForEach-Object { [int]$_.ProcessId })
     $action = if ($Condicion -eq 'A0') { 'overlay-stop' } else { 'overlay-start' }
     & node $cdpHelper --cdp "http://127.0.0.1:$Puerto" --action $action --duration 10 --expected-widgets $expectedWidgetCount --output $cdpJson | Out-Host
     if ($LASTEXITCODE -ne 0) { throw "El helper CDP falló con código $LASTEXITCODE." }
+    $cdpResult = Get-Content -LiteralPath $cdpJson -Raw | ConvertFrom-Json
+    if ($cdpResult.rendererProcessInfoError) {
+        Write-Warning "SystemInfo.getProcessInfo no estuvo disponible: $($cdpResult.rendererProcessInfoError)"
+    }
+    if ($Condicion -eq 'A0') {
+        $hubRendererIds = @(Get-OwnCimProcesses | Where-Object { $_.CommandLine -match '--type=renderer(?:\s|$)' } | ForEach-Object { [int]$_.ProcessId })
+    }
 
     $app.Refresh()
     if ($Condicion -eq 'HubMin') {
@@ -242,12 +254,17 @@ try {
         if (-not [HuellaNativeWindow]::ShowWindowAsync($app.MainWindowHandle, 9)) { throw 'ShowWindowAsync(SW_RESTORE) rechazó la ventana Hub.' }
     }
 
-    Start-Sleep -Seconds 2
     $ownCim = Get-OwnCimProcesses
+    $ownCim | Select-Object Name, ProcessId, ParentProcessId, CreationDate, CommandLine | ConvertTo-Json -Depth 4 -AsArray | Set-Content -LiteralPath $processJson -Encoding utf8
+    $hubRendererIdsJson = ConvertTo-Json -InputObject @($hubRendererIds) -Compress
+    $cdpRendererIdsJson = ConvertTo-Json -InputObject @($cdpResult.rendererProcessIds) -Compress
+    $overlayStarted = $action -eq 'overlay-start' -and [bool]$cdpResult.control.changed
+    $assignmentJson = & node $processHelper --assign-renderers --input $processJson --hub-renderer-ids $hubRendererIdsJson --activation-started-at ([string]$cdpResult.control.emittedAt) --overlay-ready-at ([string]$cdpResult.overlayReadyAt) --cdp-renderer-pids $cdpRendererIdsJson --overlay-started ([string]$overlayStarted).ToLowerInvariant()
+    if ($LASTEXITCODE -ne 0) { throw 'No se pudo atribuir el renderer del overlay.' }
+    $assignment = $assignmentJson | ConvertFrom-Json
     $rendererRoles = @{}
-    foreach ($processInfo in $ownCim | Where-Object { $_.CommandLine -match '--type=renderer(?:\s|$)' }) {
-        $rendererRoles[[string]$processInfo.ProcessId] = if ([int]$processInfo.ProcessId -in $hubRendererIds) { 'renderer-hub' } else { 'renderer-unassigned' }
-    }
+    foreach ($property in $assignment.roles.PSObject.Properties) { $rendererRoles[[string]$property.Name] = [string]$property.Value }
+    Write-Host "Atribución renderer overlay: $($assignment.reason); PID=$($assignment.overlayRendererPid)"
     $roleByPid = Update-ProcessClassification
 
     $sessionName = "VantareHuella-$($app.Id)-$stamp"
@@ -266,20 +283,22 @@ try {
         if ($sampleIndex % 5 -eq 0) {
             $roleByPid = Update-ProcessClassification
         }
-        $gpu = Get-GpuTotals
+        $gpuSample = Get-GpuTotals
         foreach ($processId in @($roleByPid.Keys)) {
             $process = Get-Process -Id $processId -ErrorAction SilentlyContinue
             if (-not $process) { continue }
             $cpuSeconds = $process.TotalProcessorTime.TotalSeconds
             $cpuPct = if ($previousCpu.ContainsKey($processId) -and $elapsed -gt 0) { (($cpuSeconds - $previousCpu[$processId]) / $elapsed / $logicalProcessors) * 100 } else { 0 }
             $previousCpu[$processId] = $cpuSeconds
-            $gpuValues = if ($gpu.ContainsKey($processId)) { $gpu[$processId] } else { @{ Engine = 0.0; Dedicated = 0.0 } }
+            $gpuValues = if ($gpuSample.Valid -and $gpuSample.Totals.ContainsKey($processId)) { $gpuSample.Totals[$processId] } else { @{ Engine = 0.0; Dedicated = 0.0 } }
             $rows.Add([pscustomobject][ordered]@{
                 timestamp = $now.ToString('o'); condition = $Condicion; pid = $processId; role = $roleByPid[$processId]
                 hygieneForced = $hygieneForced; foreignProcesses = $foreignProcessesJson; publishable = $publishable
                 systemWebView2Count = $systemWebView2.Count; systemWebView2Paths = $systemWebView2PathsJson
                 privateBytes = [int64]$process.PrivateMemorySize64; workingSetBytes = [int64]$process.WorkingSet64
-                cpuPct = Format-Invariant ([Math]::Max(0, $cpuPct)); gpuPct = Format-Invariant ([double]$gpuValues.Engine); gpuDedicatedBytes = Format-Invariant ([double]$gpuValues.Dedicated)
+                cpuPct = Format-Invariant ([Math]::Max(0, $cpuPct)); gpuSampleValid = [bool]$gpuSample.Valid
+                gpuPct = if ($gpuSample.Valid) { Format-Invariant ([double]$gpuValues.Engine) } else { $null }
+                gpuDedicatedBytes = if ($gpuSample.Valid) { Format-Invariant ([double]$gpuValues.Dedicated) } else { $null }
                 frameTimeMs = $null; dropped = $null
             })
         }
@@ -314,7 +333,7 @@ try {
                 condition = $Condicion; pid = $gameProcess.Id; role = 'game'; privateBytes = $null; workingSetBytes = $null
                 hygieneForced = $hygieneForced; foreignProcesses = $foreignProcessesJson; publishable = $publishable
                 systemWebView2Count = $systemWebView2.Count; systemWebView2Paths = $systemWebView2PathsJson
-                cpuPct = $null; gpuPct = $null; gpuDedicatedBytes = $null; frameTimeMs = Format-Invariant ([double]$frameValue)
+                cpuPct = $null; gpuSampleValid = $null; gpuPct = $null; gpuDedicatedBytes = $null; frameTimeMs = Format-Invariant ([double]$frameValue)
                 dropped = [string]$dropped
             })
         }

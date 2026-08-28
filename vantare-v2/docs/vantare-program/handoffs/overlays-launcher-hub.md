@@ -10,14 +10,18 @@
 
 ## Estado
 
-- **ISA-924 — banco de huella y baseline por hardware (2026-08-28):** rama
-  `vantareapp/isa-924-huella-banco-baseline`, base
-  `origin/nightly@ae66720d`, PR #929. Se versionaron la spec autorizada, dos perfiles v3
+- **ISA-924 — banco de huella y baseline por hardware (2026-08-28):** PR #929
+  integrado en `nightly`; corrección operativa en
+  `vantareapp/isa-924-atribucion-renderer-overlay`, base
+  `origin/nightly@f2e73d3a`. Se versionaron la spec autorizada, dos perfiles v3
   reproducibles, banco PowerShell 7, control/probe CDP y agregador de ruido.
   El árbol WebView2 se acota por `--user-data-dir=<exe>\EBWebView`; el renderer
-  Hub se fija antes de abrir el overlay; un renderer nuevo sin relación
-  PID↔target demostrable queda `renderer-unassigned` y no se atribuye por
-  orden de aparición.
+  Hub se fija antes de abrir el overlay. La corrida real con 37 coches reveló
+  que el renderer del overlay quedaba sin atribuir; la corrección abre una
+  ventana desde `overlay:start-active` hasta target `/` + widgets listos y usa
+  `SystemInfo.getProcessInfo` para desempatar por PID y creación más reciente.
+  Solo la ambigüedad residual queda `renderer-unassigned`. Las muestras donde
+  fallan los contadores GPU se marcan inválidas y no sesgan la media como cero.
   PresentMon 2.5.1 quedó disponible como binario standalone oficial porque el
   MSI de winget devolvió 1620; usa una sesión ETW propia y nunca
   `--stop_existing_session`. Smoke Wails real A0/A1 PASS: A1 abrió 3 widgets,

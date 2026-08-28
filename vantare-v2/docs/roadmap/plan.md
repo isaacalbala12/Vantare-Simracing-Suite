@@ -261,10 +261,10 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - titulo.en: Reproducible hardware footprint bench
 - titulo.pt: Banco reproduzível de impacto por hardware
 - titulo.it: Banco riproducibile dell'impronta hardware
-- cuerpo: Un banco Windows mide por proceso la RAM, CPU y GPU de Vantare, separa Hub y overlay mediante CDP, captura el frametime de LMU con PresentMon y rechaza corridas contaminadas o sin tres repeticiones estables.
-- cuerpo.en: A Windows bench measures Vantare RAM, CPU and GPU per process, separates Hub and overlay through CDP, captures LMU frame time with PresentMon, and rejects contaminated runs or results without three stable repetitions.
-- cuerpo.pt: Um banco Windows mede RAM, CPU e GPU do Vantare por processo, separa Hub e overlay por CDP, captura o tempo de frame do LMU com PresentMon e rejeita corridas contaminadas ou sem três repetições estáveis.
-- cuerpo.it: Un banco Windows misura RAM, CPU e GPU di Vantare per processo, separa Hub e overlay tramite CDP, acquisisce il frame time di LMU con PresentMon e rifiuta sessioni contaminate o senza tre ripetizioni stabili.
+- cuerpo: Un banco Windows mide por proceso la RAM, CPU y GPU de Vantare, atribuye Hub y overlay con una ventana de arranque y PID confirmados por CDP, excluye muestras GPU inválidas, captura el frametime de LMU con PresentMon y rechaza corridas contaminadas o sin tres repeticiones estables.
+- cuerpo.en: A Windows bench measures Vantare RAM, CPU and GPU per process, attributes Hub and overlay through a startup window and CDP-confirmed PIDs, excludes invalid GPU samples, captures LMU frame time with PresentMon, and rejects contaminated runs or results without three stable repetitions.
+- cuerpo.pt: Um banco Windows mede RAM, CPU e GPU do Vantare por processo, atribui Hub e overlay com uma janela de arranque e PIDs confirmados por CDP, exclui amostras GPU inválidas, captura o tempo de frame do LMU com PresentMon e rejeita corridas contaminadas ou sem três repetições estáveis.
+- cuerpo.it: Un banco Windows misura RAM, CPU e GPU di Vantare per processo, attribuisce Hub e overlay con una finestra di avvio e PID confermati da CDP, esclude i campioni GPU non validi, acquisisce il frame time di LMU con PresentMon e rifiuta sessioni contaminate o senza tre ripetizioni stabili.
 - etiqueta: Feature
 
 ### Preferencias y prueba de notificaciones

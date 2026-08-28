@@ -160,6 +160,8 @@ describe("ObsOverlayApp", () => {
     expect(window.__vantareOverlayV2Diagnostics?.()).toMatchObject({
       overlay_v2_parse_duration: { count: 1 },
     });
+    expect(MockEventSource.instances.filter((source) => !source.close.mock.calls.length)).toHaveLength(3);
+    expect(MockEventSource.instances.filter((source) => source.close.mock.calls.length)).toHaveLength(3);
   });
 
   it("loads profile-v3 and starts canonical v1 plus shadow v2 SSE adapters", async () => {

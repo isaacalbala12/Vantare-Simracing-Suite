@@ -61,13 +61,15 @@ begin
     raise exception 'invalid_identity';
   end if;
 
-  if v_issuer ~ '/auth/v1$'
-    and v_subject ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
-    and exists (
-      select 1 from auth.users user_row where user_row.id = v_subject::uuid
-    )
-  then
-    return v_subject::uuid;
+  if v_issuer ~ '/auth/v1$' then
+    if v_subject ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+      and exists (
+        select 1 from auth.users user_row where user_row.id = v_subject::uuid
+      )
+    then
+      return v_subject::uuid;
+    end if;
+    raise exception 'not_authenticated';
   end if;
 
   perform pg_catalog.pg_advisory_xact_lock(

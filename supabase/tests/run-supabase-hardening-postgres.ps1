@@ -150,7 +150,7 @@ grant execute on function extensions.vantare_test_dblink_connect(text, text) to 
   Assert-PgTap "clean" "/tmp/order-refund-ledger-test.sql" "1\.\.37" "Clean install order refund ledger"
   Assert-PgTap "clean" "/tmp/observability-test.sql" "1\.\.20" "Clean install billing observability"
   Assert-PgTap "clean" "/tmp/operational-access-test.sql" "1\.\.56" "Clean install operational access"
-  Assert-PgTap "clean" "/tmp/clerk-account-bootstrap-test.sql" "1\.\.30" "Clean install Clerk account bootstrap"
+  Assert-PgTap "clean" "/tmp/clerk-account-bootstrap-test.sql" "1\.\.31" "Clean install Clerk account bootstrap"
 
   docker exec $container psql -v ON_ERROR_STOP=1 -U postgres -d clean -c `
     "create table public.isa909_bootstrap_barrier (participant text primary key)" | Out-Null
@@ -488,7 +488,7 @@ select 'b', outcome from public.billing_apply_subscription_lifecycle(
   Assert-PgTap "upgrade" "/tmp/order-refund-ledger-test.sql" "1\.\.37" "Upgrade order refund ledger"
   Assert-PgTap "upgrade" "/tmp/observability-test.sql" "1\.\.20" "Upgrade billing observability"
   Assert-PgTap "upgrade" "/tmp/operational-access-test.sql" "1\.\.56" "Upgrade operational access"
-  Assert-PgTap "upgrade" "/tmp/clerk-account-bootstrap-test.sql" "1\.\.30" "Upgrade Clerk account bootstrap"
+  Assert-PgTap "upgrade" "/tmp/clerk-account-bootstrap-test.sql" "1\.\.31" "Upgrade Clerk account bootstrap"
 
   docker exec $container psql -v ON_ERROR_STOP=1 -U postgres -d clean -c `
     "insert into auth.users (id, email) values ('00000000-0000-4000-8000-000000000091', 'restore-sentinel@example.invalid'); insert into public.user_entitlements (user_id, product_key, status, source) values ('00000000-0000-4000-8000-000000000091', 'restore_sentinel', 'revoked', 'restore-test')" | Out-Null
@@ -532,7 +532,7 @@ select 'b', outcome from public.billing_apply_subscription_lifecycle(
     if ($failedRestoreExit -eq 0) { throw "$fixture restore unexpectedly passed" }
   }
   $elapsed = [math]::Round(((Get-Date) - $started).TotalSeconds, 2)
-  Write-Output "Supabase hardening: clean/upgrade/restore 48 hardening + 54 inbox + 43 commercial projection + 17 reconciliation + 51 subscription lifecycle + 37 order/refund ledger + 20 observability + 56 operational access + 30 Clerk account bootstrap pgTAP PASS; legacy upgrade 11 + 8 lifecycle pgTAP PASS; Clerk first-login, inbox, device, reconciliation, subscription lifecycle and first-seen order concurrency PASS; restore sentinel/RLS/grants plus truncated/corrupt fail-closed PASS (${elapsed}s)"
+  Write-Output "Supabase hardening: clean/upgrade/restore 48 hardening + 54 inbox + 43 commercial projection + 17 reconciliation + 51 subscription lifecycle + 37 order/refund ledger + 20 observability + 56 operational access + 31 Clerk account bootstrap pgTAP PASS; legacy upgrade 11 + 8 lifecycle pgTAP PASS; Clerk first-login, inbox, device, reconciliation, subscription lifecycle and first-seen order concurrency PASS; restore sentinel/RLS/grants plus truncated/corrupt fail-closed PASS (${elapsed}s)"
 } finally {
   docker rm -f $container 2>$null | Out-Null
   if (Test-Path $bootstrap) { Remove-Item -LiteralPath $bootstrap -Force }

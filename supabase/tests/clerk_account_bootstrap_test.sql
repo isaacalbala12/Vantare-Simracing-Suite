@@ -1,5 +1,5 @@
 begin;
-select plan(30);
+select plan(31);
 
 select has_table('public', 'account_identities',
   'external identities have one server-owned mapping table');
@@ -117,6 +117,19 @@ reset role;
 select isnt((select account_id from isa909_external_uuid),
   '00000000-0000-4000-8000-000000000901'::uuid,
   'a non-Supabase issuer cannot claim a legacy account with a colliding UUID subject');
+
+insert into auth.users (id, email)
+values ('00000000-0000-4000-8000-000000000902', 'deleted-isa909@example.invalid');
+delete from auth.users where id = '00000000-0000-4000-8000-000000000902';
+
+set role authenticated;
+select set_config('request.jwt.claims',
+  '{"iss":"https://local.supabase.test/auth/v1","sub":"00000000-0000-4000-8000-000000000902","role":"authenticated"}', true);
+select throws_ok(
+  $$ select public.claim_active_device('isa909-deleted-legacy') $$,
+  'P0001', 'not_authenticated',
+  'a deleted Supabase Auth user cannot be remapped as an external identity');
+reset role;
 
 set role authenticated;
 select set_config('request.jwt.claims',

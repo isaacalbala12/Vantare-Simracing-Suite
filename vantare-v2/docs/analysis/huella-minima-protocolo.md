@@ -43,9 +43,14 @@ tests o `-DryRun` no sustituyen una corrida Wails/LMU real.
    parrilla máxima de IA rodando. Mantener circuito, hora, clima, resolución,
    DPI, ajustes gráficos y HUD idénticos entre corridas.
 
-4. Cerrar manualmente Edge y WebView2 ajenos. El script los lista y aborta; no
-   mata procesos. `-Forzar` solo sirve para un smoke consciente contaminado y
-   nunca para una corrida publicable. Si se usa, el CSV conserva
+4. Cerrar manualmente Edge, WebView2 de aplicaciones y otras builds Vantare.
+   Los WebView2 del shell cuyo `--user-data-dir` vive bajo
+   `AppData\Local\Packages\Microsoft*` quedan permitidos: usan browser/GPU
+   process propios y el CSV/resumen registra su conteo y rutas como
+   `systemWebView2`. Cualquier otro Edge/WebView2/Vantare bloquea; el script lo
+   lista y aborta, sin matar procesos. `-Forzar` solo sirve para un smoke
+   consciente contaminado y nunca para una corrida publicable. Si se usa, el
+   CSV conserva
    `hygieneForced=true`, `publishable=false` y el inventario completo de
    procesos ajenos; el Markdown muestra un banner y el agregador rechaza la
    corrida para la tabla final.

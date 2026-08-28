@@ -89,18 +89,26 @@ if (Get-NetTCPConnection -LocalPort $Puerto -State Listen -ErrorAction SilentlyC
     throw "El puerto CDP $Puerto ya está escuchando."
 }
 
-$foreignBrowsers = @(Get-CimInstance Win32_Process | Where-Object {
-    $_.Name -in @('msedge.exe', 'msedgewebview2.exe')
-})
-$foreignProcessRecords = @($foreignBrowsers | Select-Object Name, ProcessId, ParentProcessId, CommandLine)
-$foreignProcessesJson = if ($foreignProcessRecords.Count) { $foreignProcessRecords | ConvertTo-Json -Compress -Depth 3 } else { '[]' }
+$hygieneCandidates = @(Get-CimInstance Win32_Process | Where-Object {
+    $_.Name -in @('msedge.exe', 'msedgewebview2.exe') -or $_.Name -like 'vantare*.exe'
+} | Select-Object Name, ProcessId, ParentProcessId, CommandLine)
+$hygieneInput = $hygieneCandidates | ConvertTo-Json -Compress -Depth 3 -AsArray
+$hygieneClassification = $hygieneInput | & node $processHelper --hygiene | ConvertFrom-Json
+if ($LASTEXITCODE -ne 0 -or -not $hygieneClassification) { throw 'No se pudo clasificar la higiene de procesos.' }
+$systemWebView2 = @($hygieneClassification.systemWebView2)
+$foreignBrowsers = @($hygieneClassification.foreign)
+$systemWebView2Paths = @($systemWebView2.userDataDir | Where-Object { $_ } | Sort-Object -Unique)
+$systemWebView2PathsJson = if ($systemWebView2Paths.Count) { $systemWebView2Paths | ConvertTo-Json -Compress -AsArray } else { '[]' }
+$foreignProcessesJson = if ($foreignBrowsers.Count) { $foreignBrowsers | ConvertTo-Json -Compress -Depth 3 } else { '[]' }
 $hygieneForced = [bool]$Forzar
 $publishable = -not $hygieneForced
+Write-Host "WebView2 del sistema permitidos: $($systemWebView2.Count)"
+$systemWebView2Paths | ForEach-Object { Write-Host "  $_" }
 if ($foreignBrowsers.Count -gt 0) {
-    Write-Warning 'Procesos Edge/WebView2 ajenos detectados (no se cerrará ninguno):'
+    Write-Warning 'Procesos Edge/WebView2/Vantare bloqueantes detectados (no se cerrará ninguno):'
     $foreignBrowsers | Select-Object ProcessId, ParentProcessId, Name | Format-Table -AutoSize | Out-Host
     if (-not $Forzar) {
-        throw 'Higiene fallida: cierra manualmente Edge/WebView2 ajenos o repite conscientemente con -Forzar.'
+        throw 'Higiene fallida: cierra manualmente Edge/WebView2/Vantare ajenos o repite conscientemente con -Forzar.'
     }
 }
 if ($Forzar) {
@@ -261,6 +269,7 @@ try {
             $rows.Add([pscustomobject][ordered]@{
                 timestamp = $now.ToString('o'); condition = $Condicion; pid = $processId; role = $roleByPid[$processId]
                 hygieneForced = $hygieneForced; foreignProcesses = $foreignProcessesJson; publishable = $publishable
+                systemWebView2Count = $systemWebView2.Count; systemWebView2Paths = $systemWebView2PathsJson
                 privateBytes = [int64]$process.PrivateMemorySize64; workingSetBytes = [int64]$process.WorkingSet64
                 cpuPct = Format-Invariant ([Math]::Max(0, $cpuPct)); gpuPct = Format-Invariant ([double]$gpuValues.Engine); gpuDedicatedBytes = Format-Invariant ([double]$gpuValues.Dedicated)
                 frameTimeMs = $null; dropped = $null
@@ -296,6 +305,7 @@ try {
                 timestamp = [string]$frame.CPUStartTime
                 condition = $Condicion; pid = $gameProcess.Id; role = 'game'; privateBytes = $null; workingSetBytes = $null
                 hygieneForced = $hygieneForced; foreignProcesses = $foreignProcessesJson; publishable = $publishable
+                systemWebView2Count = $systemWebView2.Count; systemWebView2Paths = $systemWebView2PathsJson
                 cpuPct = $null; gpuPct = $null; gpuDedicatedBytes = $null; frameTimeMs = Format-Invariant ([double]$frameValue)
                 dropped = [string]$dropped
             })

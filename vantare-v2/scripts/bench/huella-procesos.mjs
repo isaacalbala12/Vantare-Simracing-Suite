@@ -19,6 +19,38 @@ export function ownsWebViewProfile(commandLine, exeName) {
   return normalized.endsWith(expected);
 }
 
+export function isSystemWebViewProfile(commandLine) {
+  const userDataDir = commandLineSwitch(commandLine, "user-data-dir");
+  if (!userDataDir) return false;
+  const normalized = path.win32.normalize(userDataDir).toLowerCase();
+  return /\\appdata\\local\\packages\\microsoft[^\\]*\\/.test(normalized);
+}
+
+function hygieneRecord(processInfo) {
+  const commandLine = String(processInfo.CommandLine ?? processInfo.commandLine ?? "");
+  return {
+    Name: String(processInfo.Name ?? processInfo.name ?? ""),
+    ProcessId: Number(processInfo.ProcessId ?? processInfo.pid),
+    ParentProcessId: Number(processInfo.ParentProcessId ?? processInfo.parentPid ?? 0),
+    CommandLine: commandLine,
+    userDataDir: commandLineSwitch(commandLine, "user-data-dir"),
+  };
+}
+
+export function classifyHygieneProcesses(processes) {
+  const systemWebView2 = [];
+  const foreign = [];
+  for (const processInfo of processes) {
+    const record = hygieneRecord(processInfo);
+    if (/^msedgewebview2\.exe$/i.test(record.Name) && isSystemWebViewProfile(record.CommandLine)) {
+      systemWebView2.push(record);
+    } else if (/^(?:msedge|msedgewebview2)\.exe$/i.test(record.Name) || /^vantare.*\.exe$/i.test(record.Name)) {
+      foreign.push(record);
+    }
+  }
+  return { systemWebView2, foreign };
+}
+
 export function classifyProcess(processInfo, options) {
   const pid = Number(processInfo.ProcessId ?? processInfo.pid);
   if (pid === Number(options.hostPid)) return "go-host";
@@ -55,6 +87,14 @@ async function main() {
   const exeName = argument("exe-name");
   const hostPid = Number(argument("host-pid"));
   const rendererRolesRaw = argument("renderer-roles", "{}");
+  if (process.argv.includes("--hygiene")) {
+    process.stdin.setEncoding("utf8");
+    let input = "";
+    for await (const chunk of process.stdin) input += chunk;
+    const processes = JSON.parse(input);
+    process.stdout.write(`${JSON.stringify(classifyHygieneProcesses(processes))}\n`);
+    return;
+  }
   if (!input || !exeName || !Number.isInteger(hostPid)) {
     throw new Error("usage: node huella-procesos.mjs --input processes.json --exe-name app.exe --host-pid 123 [--renderer-roles JSON]");
   }

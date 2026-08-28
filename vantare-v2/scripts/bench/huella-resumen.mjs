@@ -65,6 +65,8 @@ export function summarizeRun(rows) {
     publishable: !rows.some((row) => String(row.publishable ?? "true").toLowerCase() === "false"),
     hygieneForced: rows.some((row) => String(row.hygieneForced ?? "false").toLowerCase() === "true"),
     foreignProcesses: [...new Set(rows.map((row) => String(row.foreignProcesses ?? "").trim()).filter(Boolean))],
+    systemWebView2Count: Math.max(0, ...rows.map((row) => Number(row.systemWebView2Count)).filter(Number.isFinite)),
+    systemWebView2Paths: [...new Set(rows.map((row) => String(row.systemWebView2Paths ?? "").trim()).filter(Boolean))],
   };
   const groups = Map.groupBy(rows.filter((row) => row.role), (row) => row.role);
   const run = Object.fromEntries([...groups].map(([role, roleRows]) => {
@@ -150,6 +152,14 @@ export function renderMarkdown(condition, aggregate, files, runs = []) {
       "",
     ]
     : [];
+  const systemRows = runs.flatMap((run, index) => {
+    const metadata = run.__metadata;
+    const paths = (metadata?.systemWebView2Paths ?? []).flatMap((value) => {
+      try { return JSON.parse(value); } catch { return [value]; }
+    });
+    const renderedPaths = paths.length ? paths.map((value) => `\`${value}\``).join("<br>") : "—";
+    return [`| ${index + 1} | ${metadata?.systemWebView2Count ?? 0} | ${renderedPaths} |`];
+  });
   const droppedRows = runs.flatMap((run, index) => {
     const metric = run.game?.dropped;
     if (!metric) return [];
@@ -161,6 +171,14 @@ export function renderMarkdown(condition, aggregate, files, runs = []) {
     `Corridas: ${files.map((file) => `\`${path.basename(file)}\``).join(", ")}. Ruido = desviación muestral / media; hacen falta al menos ${MIN_PUBLISHABLE_RUNS} corridas y el gate falla por encima de 5 %.`,
     "",
     ...publicationBanner,
+    "## WebView2 del sistema permitidos",
+    "",
+    "No invalidan la corrida porque cada perfil tiene browser y GPU process propios.",
+    "",
+    "| Corrida | Procesos | Perfiles `--user-data-dir` |",
+    "|---:|---:|---|",
+    ...systemRows,
+    "",
     "## Resumen por corrida",
     "",
     "| Corrida | Rol | Métrica | Media | p50 | p95 | p99 | Máximo |",

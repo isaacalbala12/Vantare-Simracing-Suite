@@ -70,6 +70,16 @@ test("rechaza una corrida marcada como no publicable", () => {
   assert.match(markdown, /msedge\.exe:42/);
 });
 
+test("publica conteo y rutas de WebView2 permitidos del sistema", () => {
+  const systemPath = String.raw`C:\Users\isaac\AppData\Local\Packages\MicrosoftWindows.Client.CBS_x\LocalState\EBWebView`;
+  const pathsCsv = JSON.stringify([systemPath]).replaceAll('"', '""');
+  const run = summarizeRun(parseCsv(`timestamp,role,cpuPct,publishable,systemWebView2Count,systemWebView2Paths\nt1,go-host,1,true,6,"${pathsCsv}"\n`));
+  const markdown = renderMarkdown("A1", aggregateRuns([run, run, run]), ["a.csv", "b.csv", "c.csv"], [run, run, run]);
+  assert.equal(run.__metadata.systemWebView2Count, 6);
+  assert.match(markdown, /WebView2 del sistema permitidos/);
+  assert.match(markdown, /MicrosoftWindows\.Client\.CBS_x/);
+});
+
 test("agrega frametime del juego con percentiles observables", () => {
   const run = summarizeRun(parseCsv("timestamp,role,frameTimeMs\nt1,game,8\nt2,game,12\nt3,game,20\n"));
   assert.equal(run.game.frameTimeMs.p50, 12);

@@ -1,8 +1,7 @@
 # Tareas ISA-909: bootstrap de cuenta Clerk
 
-Estado: T0-T6 completadas y verificadas localmente; T7 incorporó con TDD los
-dos hallazgos de la primera review final y espera la segunda review, push, PR
-draft y CI.
+Estado: T0-T7 completadas localmente. La segunda review Fable medio emitió
+`ACCEPT`; quedan push, PR draft y CI, sin merge ni deploy.
 
 ## T0 — Aprobar SDD
 

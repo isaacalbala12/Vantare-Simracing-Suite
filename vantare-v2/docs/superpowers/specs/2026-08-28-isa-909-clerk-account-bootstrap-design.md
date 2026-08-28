@@ -292,4 +292,6 @@ dependencia, este corte usa la ruta PostgREST TPA ya demostrada por ISA-885.
 La primera revisión final emitió `CHANGES_REQUIRED`: exigió clasificar también
 los status PostgREST 401/403 como rechazo de credencial y cerrar el caso de un
 usuario legacy borrado. Ambos hallazgos se convirtieron primero en regresiones
-rojas y después quedaron corregidos; la segunda revisión queda como gate T7.
+rojas y después quedaron corregidos. La segunda revisión Fable 5 con esfuerzo
+medio emitió `ACCEPT`, sin hallazgos P0/P1/P2 ni simplificaciones necesarias
+antes de integrar.

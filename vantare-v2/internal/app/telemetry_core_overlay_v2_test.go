@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"math"
 	"testing"
 	"time"
 
@@ -61,6 +62,53 @@ func TestOverlayV2AppliesHotPerformancePolicyOnNextTick(t *testing.T) {
 	}
 	if performance.Level != 5 || performance.RafCap == nil || *performance.RafCap != 20 || performance.Mode != overlayv2.PerformanceModeManual {
 		t.Fatalf("next tick performance = %+v", performance)
+	}
+}
+
+func TestOverlayV2PublishesObservedSourceHzOverTwoSeconds(t *testing.T) {
+	now := time.Date(2026, 8, 28, 12, 0, 0, 0, time.UTC)
+	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{
+		Now: func() time.Time { return now },
+		PerformancePolicy: performancepolicy.Policy{
+			Mode: performancepolicy.ModeLevel, Level: performancepolicy.LevelMaximum, SourceHz: 999,
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	publisher, release, err := runtime.OverlayV2Publishers().RegisterConsumer(telemetrytransport.ProductOverlayV2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer release()
+
+	for sequence := uint64(1); sequence <= 20; sequence++ {
+		now = time.Date(2026, 8, 28, 12, 0, 0, 0, time.UTC).Add(time.Duration(sequence-1) * 100 * time.Millisecond)
+		if err := (runtimeBatchSink{runtime: runtime}).WriteBatch(context.Background(), hardeningBatch(sequence, 1)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// Fuerza capabilities en el tick 21 para observar el valor actual de la
+	// ventana, no un valor memoizado antes de completarse los dos segundos.
+	runtime.SetPerformancePolicy(performancepolicy.Policy{Mode: performancepolicy.ModeLevel, Level: performancepolicy.LevelHigh})
+	now = time.Date(2026, 8, 28, 12, 0, 0, 0, time.UTC).Add(2 * time.Second)
+	if err := (runtimeBatchSink{runtime: runtime}).WriteBatch(context.Background(), hardeningBatch(21, 1)); err != nil {
+		t.Fatal(err)
+	}
+
+	event, ok := publisher.ReplaySnapshot()
+	if !ok {
+		t.Fatal("missing observed-rate snapshot")
+	}
+	var update overlayv2.UpdateV2
+	if err := json.Unmarshal(event.Data, &update); err != nil {
+		t.Fatal(err)
+	}
+	if update.Frame == nil || update.Frame.Capabilities.Performance == nil {
+		t.Fatal("missing performance capability")
+	}
+	if got := update.Frame.Capabilities.Performance.SourceHz; math.Abs(got-10) > 0.0001 {
+		t.Fatalf("sourceHz = %.4f, want observed 10 Hz", got)
 	}
 }
 

@@ -28,6 +28,8 @@ import (
 const (
 	telemetryCoreStatusInterval   = 100 * time.Millisecond
 	defaultTelemetryWatchdogDelay = time.Second
+	sourceRateWindow              = 2 * time.Second
+	sourceRateMaxSamples          = 2048
 )
 
 type telemetryRuntimeLifecycle uint8
@@ -220,6 +222,8 @@ type TelemetryCoreRuntime struct {
 	watchdogDelay   time.Duration
 	watchdogEnabled bool
 	lastFrameAt     time.Time
+	sourceFrameAt   []time.Time
+	sourceHz        float64
 	watchdogStale   bool
 	// Solo lo toca la goroutine monitor; sirve para no repetir la misma linea
 	// de error terminal en cada tick.
@@ -404,7 +408,7 @@ func (runtime *TelemetryCoreRuntime) SetPerformancePolicy(policy performancepoli
 
 func samePerformancePolicy(left, right performancepolicy.Policy) bool {
 	if left.Level != right.Level || left.Mode != right.Mode || left.Effects != right.Effects ||
-		left.SourceHz != right.SourceHz || left.Reason != right.Reason || len(left.WidgetHz) != len(right.WidgetHz) {
+		left.Reason != right.Reason || len(left.WidgetHz) != len(right.WidgetHz) {
 		return false
 	}
 	if (left.RafCap == nil) != (right.RafCap == nil) || left.RafCap != nil && *left.RafCap != *right.RafCap {
@@ -1039,7 +1043,7 @@ func newCachedOverlayV2Project() (
 	return project, projector.SetCadence
 }
 
-func overlayPerformancePolicy(policy performancepolicy.Policy) overlayv2.PerformanceV2 {
+func overlayPerformancePolicy(policy performancepolicy.Policy, sourceHz float64) overlayv2.PerformanceV2 {
 	mode := overlayv2.PerformanceModeManual
 	switch policy.Mode {
 	case performancepolicy.ModeCustom:
@@ -1066,7 +1070,7 @@ func overlayPerformancePolicy(policy performancepolicy.Policy) overlayv2.Perform
 	}
 	return overlayv2.PerformanceV2{
 		Level: uint8(policy.Level), Mode: mode, Effects: effects, RafCap: rafCap,
-		WidgetHz: rates, Reason: policy.Reason, SourceHz: policy.SourceHz,
+		WidgetHz: rates, Reason: policy.Reason, SourceHz: sourceHz,
 	}
 }
 
@@ -1086,6 +1090,7 @@ func (runtime *TelemetryCoreRuntime) publishOverlayV2(
 	lastFrameAt := runtime.lastFrameAt
 	policy := runtime.performancePolicy
 	performanceRevision := runtime.performanceRevision
+	sourceHz := runtime.sourceHz
 	runtime.mu.Unlock()
 	age := runtime.now().Sub(lastFrameAt).Milliseconds()
 	if age < 0 {
@@ -1102,7 +1107,7 @@ func (runtime *TelemetryCoreRuntime) publishOverlayV2(
 		DescriptorCapabilities: runtime.descriptorCapabilities,
 		Modes:                  overlayCapabilityModes(runtime.capabilityDeclaration, value),
 		PerformanceRevision:    performanceRevision,
-		Performance:            overlayPerformancePolicy(policy),
+		Performance:            overlayPerformancePolicy(policy, sourceHz),
 	}, overlayv2.DefaultPreferencesV2(), 0)
 	runtime.metricStore.observeOverlayV2BuildDuration(time.Since(started))
 	if err != nil {
@@ -1503,8 +1508,33 @@ func (runtime *TelemetryCoreRuntime) setStatusLocked(state driver.State, attempt
 
 func (runtime *TelemetryCoreRuntime) recordFrameArrival() {
 	runtime.mu.Lock()
-	runtime.lastFrameAt = runtime.now()
+	now := runtime.now()
+	runtime.lastFrameAt = now
 	runtime.watchdogStale = false
+	if count := len(runtime.sourceFrameAt); count > 0 && now.Before(runtime.sourceFrameAt[count-1]) {
+		runtime.sourceFrameAt = runtime.sourceFrameAt[:0]
+	}
+	cutoff := now.Add(-sourceRateWindow)
+	first := 0
+	for first < len(runtime.sourceFrameAt) && runtime.sourceFrameAt[first].Before(cutoff) {
+		first++
+	}
+	if first > 0 {
+		copy(runtime.sourceFrameAt, runtime.sourceFrameAt[first:])
+		runtime.sourceFrameAt = runtime.sourceFrameAt[:len(runtime.sourceFrameAt)-first]
+	}
+	runtime.sourceFrameAt = append(runtime.sourceFrameAt, now)
+	if len(runtime.sourceFrameAt) > sourceRateMaxSamples {
+		copy(runtime.sourceFrameAt, runtime.sourceFrameAt[len(runtime.sourceFrameAt)-sourceRateMaxSamples:])
+		runtime.sourceFrameAt = runtime.sourceFrameAt[:sourceRateMaxSamples]
+	}
+	runtime.sourceHz = 0
+	if len(runtime.sourceFrameAt) >= 2 {
+		span := now.Sub(runtime.sourceFrameAt[0])
+		if span > 0 {
+			runtime.sourceHz = float64(len(runtime.sourceFrameAt)-1) / span.Seconds()
+		}
+	}
 	runtime.mu.Unlock()
 }
 

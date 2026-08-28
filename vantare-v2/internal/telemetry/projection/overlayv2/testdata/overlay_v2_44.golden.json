@@ -5,7 +5,7 @@
   },
   "frame": {
     "contract": 2,
-    "algorithm": 1,
+    "algorithm": 2,
     "epoch": 3,
     "sequence": 2,
     "sessionId": "f6-session",
@@ -1317,6 +1317,94 @@
     ],
     "relative": [
       {
+        "id": "vehicle-008",
+        "gap": {
+          "v": 16.363636363636363,
+          "q": "fresh"
+        },
+        "side": "ahead",
+        "authority": "derived",
+        "name": "Driver 008",
+        "classId": "gte"
+      },
+      {
+        "id": "vehicle-007",
+        "gap": {
+          "v": 14.318181818181818,
+          "q": "fresh"
+        },
+        "side": "ahead",
+        "authority": "derived",
+        "name": "Driver 007",
+        "classId": "lmp2"
+      },
+      {
+        "id": "vehicle-006",
+        "gap": {
+          "v": 12.272727272727273,
+          "q": "fresh"
+        },
+        "side": "ahead",
+        "authority": "derived",
+        "name": "Driver 006",
+        "classId": "hypercar"
+      },
+      {
+        "id": "vehicle-005",
+        "gap": {
+          "v": 10.227272727272727,
+          "q": "fresh"
+        },
+        "side": "ahead",
+        "authority": "derived",
+        "name": "Driver 005",
+        "classId": "gte"
+      },
+      {
+        "id": "vehicle-004",
+        "gap": {
+          "v": 8.181818181818182,
+          "q": "fresh"
+        },
+        "side": "ahead",
+        "authority": "derived",
+        "name": "Driver 004",
+        "classId": "lmp2"
+      },
+      {
+        "id": "vehicle-003",
+        "gap": {
+          "v": 6.136363636363637,
+          "q": "fresh"
+        },
+        "side": "ahead",
+        "authority": "derived",
+        "name": "Driver 003",
+        "classId": "hypercar"
+      },
+      {
+        "id": "vehicle-002",
+        "gap": {
+          "v": 4.090909090909091,
+          "q": "fresh"
+        },
+        "side": "ahead",
+        "authority": "derived",
+        "name": "Driver 002",
+        "classId": "gte"
+      },
+      {
+        "id": "vehicle-001",
+        "gap": {
+          "v": 2.0454545454545454,
+          "q": "fresh"
+        },
+        "side": "ahead",
+        "authority": "derived",
+        "name": "Driver 001",
+        "classId": "lmp2"
+      },
+      {
         "id": "vehicle-000",
         "gap": {
           "q": "fresh"
@@ -1327,92 +1415,92 @@
         "classId": "hypercar"
       },
       {
-        "id": "vehicle-001",
+        "id": "vehicle-043",
         "gap": {
-          "v": -1.234,
+          "v": -2.0454545454545467,
           "q": "fresh"
         },
         "side": "behind",
         "authority": "derived",
-        "name": "Driver 001",
+        "name": "Driver 043",
         "classId": "lmp2"
       },
       {
-        "id": "vehicle-002",
+        "id": "vehicle-042",
         "gap": {
-          "v": -2.468,
+          "v": -4.0909090909090935,
           "q": "fresh"
         },
         "side": "behind",
         "authority": "derived",
-        "name": "Driver 002",
-        "classId": "gte"
-      },
-      {
-        "id": "vehicle-003",
-        "gap": {
-          "v": -3.702,
-          "q": "fresh"
-        },
-        "side": "behind",
-        "authority": "derived",
-        "name": "Driver 003",
+        "name": "Driver 042",
         "classId": "hypercar"
       },
       {
-        "id": "vehicle-004",
+        "id": "vehicle-041",
         "gap": {
-          "v": -4.936,
+          "v": -6.13636363636364,
           "q": "fresh"
         },
         "side": "behind",
         "authority": "derived",
-        "name": "Driver 004",
-        "classId": "lmp2"
-      },
-      {
-        "id": "vehicle-005",
-        "gap": {
-          "v": -6.17,
-          "q": "fresh"
-        },
-        "side": "behind",
-        "authority": "derived",
-        "name": "Driver 005",
+        "name": "Driver 041",
         "classId": "gte"
       },
       {
-        "id": "vehicle-006",
+        "id": "vehicle-040",
         "gap": {
-          "v": -7.404,
+          "v": -8.181818181818187,
           "q": "fresh"
         },
         "side": "behind",
         "authority": "derived",
-        "name": "Driver 006",
+        "name": "Driver 040",
+        "classId": "lmp2"
+      },
+      {
+        "id": "vehicle-039",
+        "gap": {
+          "v": -10.227272727272734,
+          "q": "fresh"
+        },
+        "side": "behind",
+        "authority": "derived",
+        "name": "Driver 039",
         "classId": "hypercar"
       },
       {
-        "id": "vehicle-007",
+        "id": "vehicle-038",
         "gap": {
-          "v": -8.638,
+          "v": -12.272727272727266,
           "q": "fresh"
         },
         "side": "behind",
         "authority": "derived",
-        "name": "Driver 007",
+        "name": "Driver 038",
+        "classId": "gte"
+      },
+      {
+        "id": "vehicle-037",
+        "gap": {
+          "v": -14.318181818181813,
+          "q": "fresh"
+        },
+        "side": "behind",
+        "authority": "derived",
+        "name": "Driver 037",
         "classId": "lmp2"
       },
       {
-        "id": "vehicle-008",
+        "id": "vehicle-036",
         "gap": {
-          "v": -9.872,
+          "v": -16.36363636363636,
           "q": "fresh"
         },
         "side": "behind",
         "authority": "derived",
-        "name": "Driver 008",
-        "classId": "gte"
+        "name": "Driver 036",
+        "classId": "hypercar"
       }
     ],
     "delta": {

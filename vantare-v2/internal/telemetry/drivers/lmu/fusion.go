@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	MatrixVersion          uint16 = 5
+	MatrixVersion          uint16 = 6
 	maxConflictDiagnostics        = 5
 )
 
@@ -53,6 +53,7 @@ var authorityMatrixV4 = [...]AuthorityRule{
 	{catalog.SignalVehicleClass, SourceSharedMemory, SourceUnknown, false, defaultFreshnessLimit, 0},
 	{catalog.SignalStandingsSector, SourceSharedMemory, SourceUnknown, false, defaultFreshnessLimit, 0},
 	{catalog.SignalStandingsLapDistance, SourceSharedMemory, SourceUnknown, false, defaultFreshnessLimit, 0},
+	{catalog.SignalStandingsLapProgressTime, SourceSharedMemory, SourceUnknown, false, defaultFreshnessLimit, 0},
 	{catalog.SignalStandingsBestLapTime, SourceSharedMemory, SourceUnknown, false, defaultFreshnessLimit, 0},
 	{catalog.SignalStandingsLastLapTime, SourceSharedMemory, SourceUnknown, false, defaultFreshnessLimit, 0},
 	{catalog.SignalStandingsEstimatedLapTime, SourceSharedMemory, SourceUnknown, false, defaultFreshnessLimit, 0},
@@ -298,6 +299,7 @@ func ageVehicleGrid(elapsed time.Duration, updated monotonicStamp, sourceTime sc
 		row.CompletedLaps = ageGridField(elapsed, updated, forceStale, row.CompletedLaps)
 		row.Sector = ageGridField(elapsed, updated, forceStale, row.Sector)
 		row.LapDistance = ageGridField(elapsed, updated, forceStale, row.LapDistance)
+		row.LapProgressTime = ageGridField(elapsed, updated, forceStale, row.LapProgressTime)
 		row.BestLapTime = ageGridField(elapsed, updated, forceStale, row.BestLapTime)
 		row.LastLapTime = ageGridField(elapsed, updated, forceStale, row.LastLapTime)
 		row.EstimatedLapTime = ageGridField(elapsed, updated, forceStale, row.EstimatedLapTime)
@@ -384,6 +386,8 @@ func inferredDecision(result Observation, rule AuthorityRule) FieldDecision {
 		return gridDecision(rule, result.Vehicles, func(row VehicleObservation) schema.Field[standings.Sector] { return row.Sector })
 	case catalog.SignalStandingsLapDistance:
 		return gridDecision(rule, result.Vehicles, func(row VehicleObservation) schema.Field[standings.LapDistance] { return row.LapDistance })
+	case catalog.SignalStandingsLapProgressTime:
+		return gridDecision(rule, result.Vehicles, func(row VehicleObservation) schema.Field[standings.LapProgressTime] { return row.LapProgressTime })
 	case catalog.SignalStandingsBestLapTime:
 		return gridDecision(rule, result.Vehicles, func(row VehicleObservation) schema.Field[standings.LapTime] { return row.BestLapTime })
 	case catalog.SignalStandingsLastLapTime:

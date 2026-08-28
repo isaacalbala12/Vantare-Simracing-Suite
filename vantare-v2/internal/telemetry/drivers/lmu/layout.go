@@ -102,6 +102,7 @@ type scoringLayout struct {
 	LapsBehindNext    layoutField
 	TimeBehindLeader  layoutField
 	LapsBehindLeader  layoutField
+	LapProgressTime   layoutField
 	EstimatedLapTime  layoutField
 	WorldPosition     layoutField
 	LocalVelocity     layoutField
@@ -188,6 +189,7 @@ var lmu13Layout = layoutContract{
 		LapsBehindNext:    scoringField("scoring.laps_behind_next", 240, sourceInt32, 1),
 		TimeBehindLeader:  scoringField("scoring.time_behind_leader", 244, sourceFloat64, 1),
 		LapsBehindLeader:  scoringField("scoring.laps_behind_leader", 252, sourceInt32, 1),
+		LapProgressTime:   scoringField("scoring.lap_progress_time", 464, sourceFloat64, 1),
 		EstimatedLapTime:  scoringField("scoring.estimated_lap_time", 472, sourceFloat64, 1),
 		WorldPosition:     scoringField("scoring.world_position", 264, sourceFloat64, 3),
 		LocalVelocity:     scoringField("scoring.local_velocity", 288, sourceFloat64, 3),
@@ -243,6 +245,7 @@ func (layout layoutContract) admittedFields() []layoutField {
 		layout.Scoring.LapsBehindNext,
 		layout.Scoring.TimeBehindLeader,
 		layout.Scoring.LapsBehindLeader,
+		layout.Scoring.LapProgressTime,
 		layout.Scoring.EstimatedLapTime,
 		layout.Scoring.WorldPosition,
 		layout.Scoring.LocalVelocity,

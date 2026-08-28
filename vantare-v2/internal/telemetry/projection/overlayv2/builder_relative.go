@@ -7,6 +7,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetry/core"
 	"github.com/vantare/overlays/v2/internal/telemetry/derive"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/identity"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/standings"
 )
 
@@ -34,23 +35,15 @@ const (
 // lap-distance ordering and produced [ahead far→near, player, behind
 // near→far]. That selection is domain, not presentation, so it lives here now.
 //
-// The canonical ordering signal is the derived relative gap
-// (derive.GapSet.Vehicles): positive means the vehicle is ahead of the player
-// on the same lap, negative means behind. A single descending sort by that gap
-// reproduces exactly the v1 output order, with the vehicle id as the
-// deterministic tie-break.
-//
-// Declared differences, never invented:
-//   - a vehicle on a different lap has no relative time gap in the canonical
-//     state (deriveVehicleGap publishes Laps and leaves Time missing), so it is
-//     not part of the window; Overlay v1 kept the row and blanked the gap;
-//   - CarNumber has no canonical signal and is absent from the row.
+// LapDistance is the physical ordering signal. RelativeTime is display data:
+// a missing time never removes a physical neighbour from the window. This
+// keeps classification laps independent from traffic around the player.
 //
 // With no player in the state the window is empty: it is a declared outcome,
 // not a fallback to the first vehicles of the grid.
 func BuildRelative(final derive.FinalState) []RelativeRowV2 {
 	rows := make([]RelativeRowV2, 0, MaxRelativeAhead+MaxRelativeBehind+1)
-	player, found := playerVehicle(final.Observed.Vehicles)
+	window, found := selectPhysicalRelativeWindow(final.Observed.Vehicles)
 	if !found {
 		return rows
 	}
@@ -59,59 +52,96 @@ func BuildRelative(final derive.FinalState) []RelativeRowV2 {
 		gaps[string(gap.Vehicle)] = gap.Time
 	}
 
-	type candidate struct {
-		row   RelativeRowV2
-		value float64
+	for _, current := range window.ahead {
+		rows = append(rows, relativeRow(current, gaps[string(current.Identity.Vehicle)], RelativeSideAhead))
 	}
-	candidates := make([]candidate, 0, len(final.Observed.Vehicles))
-	for _, current := range final.Observed.Vehicles {
-		id := string(current.Identity.Vehicle)
-		if id == string(player.Identity.Vehicle) {
-			continue
-		}
-		field, present := gaps[id]
-		if !present {
-			continue
-		}
-		value, usable := usableRelativeGap(field)
+	rows = append(rows, playerRelativeRow(window.player, gaps[string(window.player.Identity.Vehicle)]))
+	for _, current := range window.behind {
+		rows = append(rows, relativeRow(current, gaps[string(current.Identity.Vehicle)], RelativeSideBehind))
+	}
+	return rows
+}
+
+type physicalRelativeWindow struct {
+	ahead  []core.VehicleState
+	player core.VehicleState
+	behind []core.VehicleState
+}
+
+func selectPhysicalRelativeWindow(vehicles []core.VehicleState) (physicalRelativeWindow, bool) {
+	player, found := playerVehicle(vehicles)
+	if !found {
+		return physicalRelativeWindow{}, false
+	}
+	window := physicalRelativeWindow{player: player}
+	if _, usable := usableLapDistance(player.LapDistance); !usable {
+		return window, true
+	}
+	type candidate struct {
+		vehicle  core.VehicleState
+		distance float64
+	}
+	candidates := make([]candidate, 0, len(vehicles))
+	for _, current := range vehicles {
+		distance, usable := usableLapDistance(current.LapDistance)
 		if !usable {
 			continue
 		}
-		candidates = append(candidates, candidate{row: relativeRow(current, field, relativeSide(value)), value: value})
+		candidates = append(candidates, candidate{vehicle: current, distance: distance})
 	}
 	sort.SliceStable(candidates, func(left, right int) bool {
-		if candidates[left].value != candidates[right].value {
-			return candidates[left].value > candidates[right].value
+		if candidates[left].distance != candidates[right].distance {
+			return candidates[left].distance < candidates[right].distance
 		}
-		return candidates[left].row.VehicleID < candidates[right].row.VehicleID
+		return candidates[left].vehicle.Identity.Vehicle < candidates[right].vehicle.Identity.Vehicle
 	})
-
-	// The player splits the descending order: everything before it is ahead
-	// (far to near) and everything after it is behind (near to far).
-	split := len(candidates)
+	playerIndex := -1
 	for index := range candidates {
-		if candidates[index].value < 0 {
-			split = index
+		if candidates[index].vehicle.Identity.Vehicle == player.Identity.Vehicle {
+			playerIndex = index
 			break
 		}
 	}
-	ahead := candidates[:split]
-	behind := candidates[split:]
-	if len(ahead) > MaxRelativeAhead {
-		ahead = ahead[len(ahead)-MaxRelativeAhead:]
-	}
-	if len(behind) > MaxRelativeBehind {
-		behind = behind[:MaxRelativeBehind]
+	if playerIndex < 0 {
+		return window, true
 	}
 
-	for _, current := range ahead {
-		rows = append(rows, current.row)
+	selected := map[identity.VehicleID]struct{}{player.Identity.Vehicle: {}}
+	aheadNearToFar := make([]core.VehicleState, 0, MaxRelativeAhead)
+	window.behind = make([]core.VehicleState, 0, MaxRelativeBehind)
+	for offset := 1; offset < len(candidates) && (len(aheadNearToFar) < MaxRelativeAhead || len(window.behind) < MaxRelativeBehind); offset++ {
+		ahead := candidates[(playerIndex+offset)%len(candidates)].vehicle
+		if len(aheadNearToFar) < MaxRelativeAhead {
+			if _, exists := selected[ahead.Identity.Vehicle]; !exists {
+				selected[ahead.Identity.Vehicle] = struct{}{}
+				aheadNearToFar = append(aheadNearToFar, ahead)
+			}
+		}
+
+		behindIndex := (playerIndex - offset + len(candidates)) % len(candidates)
+		behindCandidate := candidates[behindIndex].vehicle
+		if len(window.behind) < MaxRelativeBehind {
+			if _, exists := selected[behindCandidate.Identity.Vehicle]; !exists {
+				selected[behindCandidate.Identity.Vehicle] = struct{}{}
+				window.behind = append(window.behind, behindCandidate)
+			}
+		}
 	}
-	rows = append(rows, playerRelativeRow(player, gaps[string(player.Identity.Vehicle)]))
-	for _, current := range behind {
-		rows = append(rows, current.row)
+
+	window.ahead = make([]core.VehicleState, 0, len(aheadNearToFar))
+	for index := len(aheadNearToFar) - 1; index >= 0; index-- {
+		window.ahead = append(window.ahead, aheadNearToFar[index])
 	}
-	return rows
+	return window, true
+}
+
+func usableLapDistance(field schema.Field[standings.LapDistance]) (float64, bool) {
+	value, present := field.Value()
+	if !present || (field.Freshness() != schema.FreshnessFresh && field.Freshness() != schema.FreshnessStale) {
+		return 0, false
+	}
+	number := float64(value)
+	return number, number >= 0 && !math.IsNaN(number) && !math.IsInf(number, 0)
 }
 
 func playerVehicle(vehicles []core.VehicleState) (core.VehicleState, bool) {
@@ -125,8 +155,8 @@ func playerVehicle(vehicles []core.VehicleState) (core.VehicleState, bool) {
 }
 
 // usableRelativeGap accepts only a present, finite gap whose quality can be
-// shown. A missing gap means the vehicle is on another lap or the pair of
-// observations was not comparable, and it keeps the vehicle out of the window.
+// shown. Physical membership in the window is independent from this display
+// value, so an unusable gap leaves the row present with explicit missing data.
 func usableRelativeGap(field schema.Field[standings.RelativeTime]) (float64, bool) {
 	value, present := field.Value()
 	if !present {
@@ -144,21 +174,23 @@ func usableRelativeGap(field schema.Field[standings.RelativeTime]) (float64, boo
 	return number, true
 }
 
-func relativeSide(gap float64) string {
-	if gap < 0 {
-		return RelativeSideBehind
-	}
-	return RelativeSideAhead
-}
-
 func relativeRow(
 	vehicle core.VehicleState,
 	gap schema.Field[standings.RelativeTime],
 	side string,
 ) RelativeRowV2 {
 	return RelativeRowV2{
-		VehicleID:   string(vehicle.Identity.Vehicle),
-		GapSeconds:  qualityValue(gap, func(value standings.RelativeTime) float64 { return float64(value) }),
+		VehicleID: string(vehicle.Identity.Vehicle),
+		GapSeconds: qualityValue(gap, func(value standings.RelativeTime) float64 {
+			seconds := math.Abs(float64(value))
+			if side == RelativeSideBehind {
+				return -seconds
+			}
+			if side == RelativeSidePlayer {
+				return 0
+			}
+			return seconds
+		}),
 		Side:        side,
 		Authority:   relativeAuthority(gap),
 		DisplayName: observedString(vehicle.DriverName),
@@ -179,9 +211,9 @@ func playerRelativeRow(player core.VehicleState, gap schema.Field[standings.Rela
 }
 
 // relativeAuthority reports where the gap came from. The canonical relative
-// gap is always reconstructed from the two observed times behind the leader,
-// so it is derived; the mapping stays explicit so a future observed gap from a
-// driver would publish itself as native without touching this builder.
+// gap is currently derived from each vehicle's observed temporal lap coordinate;
+// the mapping stays explicit so a future native equivalent can retain its
+// observed provenance without changing this builder.
 func relativeAuthority(gap schema.Field[standings.RelativeTime]) Authority {
 	if gap.Provenance() == schema.ProvenanceObserved {
 		return AuthorityNative

@@ -362,10 +362,10 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - titulo.en: Live LMU telemetry
 - titulo.pt: Telemetria LMU ao vivo
 - titulo.it: Telemetria LMU dal vivo
-- cuerpo: Driver LMU con reconexión acotada, transporte Overlay dirigido con una sola entrega pendiente, generaciones retiradas y recuperación ante timeout compartido por Desktop y Studio, lifecycle V2 recuperable sin frames y proyecciones de overlay, ingeniero y estrategia.
-- cuerpo.en: LMU driver with bounded reconnects, targeted Overlay transport with one pending delivery, bounded retired generations and timeout recovery shared by Desktop and Studio, a V2 lifecycle recoverable without frames, and overlay, engineer and strategy projections.
-- cuerpo.pt: Driver LMU com reconexão limitada, transporte Overlay dirigido com uma única entrega pendente, gerações retiradas limitadas e recuperação após timeout partilhada por Desktop e Studio, lifecycle V2 recuperável sem frames e projeções de overlay, engenheiro e estratégia.
-- cuerpo.it: Driver LMU con riconnessione limitata, trasporto Overlay diretto con una sola consegna pendente, generazioni ritirate limitate e recupero dopo timeout condiviso da Desktop e Studio, lifecycle V2 recuperabile senza frame e proiezioni di overlay, engineer e strategia.
+- cuerpo: Driver LMU con reconexión acotada, transporte Overlay dirigido con una sola entrega pendiente, generaciones retiradas y recuperación ante timeout compartido por Desktop y Studio, lifecycle V2 recuperable sin frames y proyecciones de overlay, ingeniero y estrategia; Relative ordena el tráfico por topología física y muestra gaps temporales canónicos calculados en Go.
+- cuerpo.en: LMU driver with bounded reconnects, targeted Overlay transport with one pending delivery, bounded retired generations and timeout recovery shared by Desktop and Studio, a V2 lifecycle recoverable without frames, and overlay, engineer and strategy projections; Relative orders traffic by physical topology and displays canonical time gaps calculated in Go.
+- cuerpo.pt: Driver LMU com reconexão limitada, transporte Overlay dirigido com uma única entrega pendente, gerações retiradas limitadas e recuperação após timeout partilhada por Desktop e Studio, lifecycle V2 recuperável sem frames e projeções de overlay, engenheiro e estratégia; o Relative ordena o tráfego pela topologia física e mostra gaps temporais canónicos calculados em Go.
+- cuerpo.it: Driver LMU con riconnessione limitata, trasporto Overlay diretto con una sola consegna pendente, generazioni ritirate limitate e recupero dopo timeout condiviso da Desktop e Studio, lifecycle V2 recuperabile senza frame e proiezioni di overlay, engineer e strategia; Relative ordina il traffico per topologia fisica e mostra gap temporali canonici calcolati in Go.
 - etiqueta: En desarrollo
 - etiqueta.en: In progress
 - etiqueta.pt: Em desenvolvimento

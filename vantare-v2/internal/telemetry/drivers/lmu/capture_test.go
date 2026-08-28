@@ -928,7 +928,7 @@ func assertDiagnosticPlayerScopeEqual(t testing.TB, original, sanitized Observat
 			left.Player != right.Player || left.Position != right.Position ||
 			left.CompletedLaps != right.CompletedLaps || left.Sector != right.Sector ||
 			left.LapDistance != right.LapDistance || left.BestLapTime != right.BestLapTime ||
-			left.LastLapTime != right.LastLapTime || left.EstimatedLapTime != right.EstimatedLapTime ||
+			left.LastLapTime != right.LastLapTime || left.LapProgressTime != right.LapProgressTime || left.EstimatedLapTime != right.EstimatedLapTime ||
 			left.InPit != right.InPit || left.PitStopCount != right.PitStopCount ||
 			left.PenaltyCount != right.PenaltyCount || left.TimeBehindLeader != right.TimeBehindLeader ||
 			left.LapsBehindLeader != right.LapsBehindLeader || left.TimeBehindNext != right.TimeBehindNext ||
@@ -1077,7 +1077,7 @@ func diagnosticAllowedByteMask(input []byte) []bool {
 			lmu13Layout.Scoring.Position, lmu13Layout.Scoring.VehicleClass,
 			lmu13Layout.Scoring.TimeBehindNext, lmu13Layout.Scoring.LapsBehindNext,
 			lmu13Layout.Scoring.TimeBehindLeader, lmu13Layout.Scoring.LapsBehindLeader,
-			lmu13Layout.Scoring.EstimatedLapTime,
+			lmu13Layout.Scoring.LapProgressTime, lmu13Layout.Scoring.EstimatedLapTime,
 			lmu13Layout.Scoring.WorldPosition, lmu13Layout.Scoring.LocalVelocity,
 			lmu13Layout.Scoring.Orientation,
 		} {

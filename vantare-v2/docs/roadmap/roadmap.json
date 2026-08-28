@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-28T17:29:52Z",
+  "generatedAt": "2026-08-28T18:45:12Z",
   "digest": {
-    "lastCommit": "17cb3ada41539d404743ddb407f54729c4809eac"
+    "lastCommit": "c59a7d642b92375d92c81235d0498e0ce46b0597"
   },
   "phases": [
     {
@@ -500,10 +500,10 @@
         "it": "Telemetria LMU dal vivo"
       },
       "body": {
-        "es": "Driver LMU con reconexión acotada, transporte Overlay dirigido con una sola entrega pendiente, generaciones retiradas y recuperación ante timeout compartido por Desktop y Studio, lifecycle V2 recuperable sin frames y proyecciones de overlay, ingeniero y estrategia.",
-        "en": "LMU driver with bounded reconnects, targeted Overlay transport with one pending delivery, bounded retired generations and timeout recovery shared by Desktop and Studio, a V2 lifecycle recoverable without frames, and overlay, engineer and strategy projections.",
-        "pt": "Driver LMU com reconexão limitada, transporte Overlay dirigido com uma única entrega pendente, gerações retiradas limitadas e recuperação após timeout partilhada por Desktop e Studio, lifecycle V2 recuperável sem frames e projeções de overlay, engenheiro e estratégia.",
-        "it": "Driver LMU con riconnessione limitata, trasporto Overlay diretto con una sola consegna pendente, generazioni ritirate limitate e recupero dopo timeout condiviso da Desktop e Studio, lifecycle V2 recuperabile senza frame e proiezioni di overlay, engineer e strategia."
+        "es": "Driver LMU con reconexión acotada, transporte Overlay dirigido con una sola entrega pendiente, generaciones retiradas y recuperación ante timeout compartido por Desktop y Studio, lifecycle V2 recuperable sin frames y proyecciones de overlay, ingeniero y estrategia; Relative ordena el tráfico por topología física y muestra gaps temporales canónicos calculados en Go.",
+        "en": "LMU driver with bounded reconnects, targeted Overlay transport with one pending delivery, bounded retired generations and timeout recovery shared by Desktop and Studio, a V2 lifecycle recoverable without frames, and overlay, engineer and strategy projections; Relative orders traffic by physical topology and displays canonical time gaps calculated in Go.",
+        "pt": "Driver LMU com reconexão limitada, transporte Overlay dirigido com uma única entrega pendente, gerações retiradas limitadas e recuperação após timeout partilhada por Desktop e Studio, lifecycle V2 recuperável sem frames e projeções de overlay, engenheiro e estratégia; o Relative ordena o tráfego pela topologia física e mostra gaps temporais canónicos calculados em Go.",
+        "it": "Driver LMU con riconnessione limitata, trasporto Overlay diretto con una sola consegna pendente, generazioni ritirate limitate e recupero dopo timeout condiviso da Desktop e Studio, lifecycle V2 recuperabile senza frame e proiezioni di overlay, engineer e strategia; Relative ordina il traffico per topologia fisica e mostra gap temporali canonici calcolati in Go."
       },
       "label": {
         "es": "En desarrollo",
@@ -848,6 +848,26 @@
       "date": "2026-08-28",
       "entries": [
         {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-921 · Fijar PowerShell para el runtime confiable de releases Windows"
+        },
+        {
+          "kind": "docs",
+          "scope": "release",
+          "text": "Preparar manifiesto de Nightly 14"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-900 · Reparar preferencias y prueba de notificaciones"
+        },
+        {
+          "kind": "feat",
+          "scope": "settings",
+          "text": "Controlar zoom con Ctrl y rueda"
+        },
+        {
           "kind": "fix",
           "scope": "telemetry",
           "text": "Completar lifecycle y transporte dirigido de Studio"
@@ -866,21 +886,6 @@
           "kind": "change",
           "scope": "",
           "text": "ISA-889 · Resincronizar epochs saltados en Overlay"
-        },
-        {
-          "kind": "feat",
-          "scope": "settings",
-          "text": "Controlar zoom con Ctrl y rueda"
-        },
-        {
-          "kind": "docs",
-          "scope": "release",
-          "text": "Preparar manifiesto de Nightly 14"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "ISA-900 · Reparar preferencias y prueba de notificaciones"
         }
       ]
     },

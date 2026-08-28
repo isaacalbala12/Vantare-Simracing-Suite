@@ -117,6 +117,7 @@ type VehicleObservation struct {
 	CompletedLaps    schema.Field[standings.CompletedLaps]
 	Sector           schema.Field[standings.Sector]
 	LapDistance      schema.Field[standings.LapDistance]
+	LapProgressTime  schema.Field[standings.LapProgressTime]
 	BestLapTime      schema.Field[standings.LapTime]
 	LastLapTime      schema.Field[standings.LapTime]
 	EstimatedLapTime schema.Field[standings.LapTime]
@@ -259,7 +260,43 @@ func parseActiveGrid(buf []byte, count int) ([]VehicleObservation, int, bool) {
 	if len(scoringIDs) != len(telemetryByID) {
 		return nil, -1, false
 	}
+	normalizeLapProgressEvidence(rows)
 	return rows, playerIndex, true
+}
+
+// normalizeLapProgressEvidence keeps zero valid for an individual vehicle, but
+// rejects the known unsupported-source pattern where every vehicle reports
+// zero while their lap distances prove that the grid occupies different points
+// of the circuit. Publishing those zeroes would manufacture zero relative gaps.
+func normalizeLapProgressEvidence(rows []VehicleObservation) {
+	if len(rows) < 2 {
+		return
+	}
+	var firstDistance standings.LapDistance
+	distanceObserved := false
+	distanceDiffers := false
+	for index := range rows {
+		progress, present := rows[index].LapProgressTime.Value()
+		if !present || rows[index].LapProgressTime.Freshness() != schema.FreshnessFresh || progress != 0 {
+			return
+		}
+		distance, present := rows[index].LapDistance.Value()
+		if !present {
+			continue
+		}
+		if !distanceObserved {
+			firstDistance = distance
+			distanceObserved = true
+		} else if distance != firstDistance {
+			distanceDiffers = true
+		}
+	}
+	if !distanceDiffers {
+		return
+	}
+	for index := range rows {
+		rows[index].LapProgressTime = schema.MissingField[standings.LapProgressTime]()
+	}
 }
 
 func parseScoringRow(buf []byte, base int) (VehicleObservation, bool) {
@@ -278,6 +315,7 @@ func parseScoringRow(buf []byte, base int) (VehicleObservation, bool) {
 	lapsNext := readInt32(buf, base+lmu13Layout.Scoring.LapsBehindNext.Offset)
 	timeLeader := readFloat64(buf, base+lmu13Layout.Scoring.TimeBehindLeader.Offset)
 	lapsLeader := readInt32(buf, base+lmu13Layout.Scoring.LapsBehindLeader.Offset)
+	lapProgress := readFloat64(buf, base+lmu13Layout.Scoring.LapProgressTime.Offset)
 	if !driverOK || !nameOK || !classOK || playerRaw > 1 || inPitRaw > 1 ||
 		completed < 0 || !sectorOK || !finite(lapDistance) ||
 		position < 1 || position > maxVehicles || pitStops < 0 || penalties < 0 ||
@@ -297,6 +335,12 @@ func parseScoringRow(buf []byte, base int) (VehicleObservation, bool) {
 	if lapDistance >= 0 {
 		lapDistanceField = observed(standings.LapDistance(lapDistance))
 	}
+	var lapProgressField schema.Field[standings.LapProgressTime]
+	if finite(lapProgress) {
+		lapProgressField = observed(standings.LapProgressTime(lapProgress))
+	} else {
+		lapProgressField = invalid[standings.LapProgressTime]()
+	}
 	best, bestOK := optionalPositiveLapTime(readFloat64(buf, base+lmu13Layout.Scoring.BestLapTime.Offset))
 	last, lastOK := optionalPositiveLapTime(readFloat64(buf, base+lmu13Layout.Scoring.LastLapTime.Offset))
 	estimated, estimatedOK := optionalPositiveLapTime(readFloat64(buf, base+lmu13Layout.Scoring.EstimatedLapTime.Offset))
@@ -311,7 +355,7 @@ func parseScoringRow(buf []byte, base int) (VehicleObservation, bool) {
 		DriverName: observed(identity.DriverName(driver)), VehicleName: observed(vehicle.VehicleName(name)),
 		VehicleClass: observed(standings.VehicleClass(class)), Player: observed(playerRaw == 1),
 		Position: observed(standings.Position(position)), CompletedLaps: observed(standings.CompletedLaps(completed)),
-		Sector: sector, LapDistance: lapDistanceField,
+		Sector: sector, LapDistance: lapDistanceField, LapProgressTime: lapProgressField,
 		BestLapTime: best, LastLapTime: last, EstimatedLapTime: estimated,
 		InPit: observed(pit.InPit(inPitRaw == 1)), PitStopCount: observed(pit.StopCount(pitStops)),
 		PenaltyCount:     observed(standings.PenaltyCount(penalties)),

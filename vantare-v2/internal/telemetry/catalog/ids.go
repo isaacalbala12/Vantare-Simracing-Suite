@@ -55,4 +55,5 @@ const (
 	SignalDamageOverheating
 	SignalDamageDetached
 	SignalDamageWheelDetachedCount
+	SignalStandingsLapProgressTime
 )

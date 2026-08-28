@@ -97,6 +97,8 @@ func syntheticVehicle(slot int, seconds float64) VehicleObservation {
 		Position:         fresh(standings.Position(slot + 1)),
 		CompletedLaps:    fresh(standings.CompletedLaps(laps)),
 		LapDistance:      fresh(standings.LapDistance(distance)),
+		LapProgressTime:  fresh(standings.LapProgressTime(seconds - laps*pace)),
+		EstimatedLapTime: fresh(standings.LapTime(pace)),
 		InPit:            fresh(pit.InPit(inPit)),
 		TimeBehindLeader: fresh(standings.TimeGap(behindLeader)),
 		LapsBehindLeader: fresh(standings.LapGap(0)),

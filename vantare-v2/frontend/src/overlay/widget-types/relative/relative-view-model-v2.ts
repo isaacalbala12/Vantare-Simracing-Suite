@@ -18,7 +18,7 @@ const PLACEHOLDER = "—";
  * player over a lap-distance ordering inside relative-row-selection.ts (:9-48)
  * and produced [ahead far→near, player, behind near→far]. That selection is
  * domain and now lives in the Go builder, which publishes exactly that order
- * over the canonical relative gap.
+ * over canonical lap distance and attaches the canonical temporal gap.
  *
  * This module only presents: it trims the already ordered window to the range
  * the widget configured, optionally drops the player anchor, scopes by class
@@ -89,10 +89,6 @@ export function relativeDisplayedValues(
 export const OVERLAY_V2_RELATIVE_DECLARED_GAPS: readonly string[] = Object.freeze([
   "rows[].driverNumber",
   "rows[].bestLapText",
-  // Overlay v1 blanked the gap of a lapped car and kept the row; the v2 builder
-  // leaves a vehicle without a canonical relative gap out of the window, so the
-  // rendered gap text is a declared contract difference, not a divergence.
-  "rows[].gapText",
 ]);
 
 function unavailableStatus(state: string): RelativeViewModel["status"] {
@@ -117,18 +113,21 @@ function buildRow(
   row: OverlayRelativeRowV2,
   index: number,
   playerId: string | undefined,
-  standings: ReadonlyMap<string, { readonly position: number; readonly lastLap: OverlayQValue<number> }>,
+  standings: ReadonlyMap<string, {
+    readonly position: number;
+    readonly lastLap: OverlayQValue<number>;
+  }>,
 ): RelativeRowViewModel {
   const isPlayer = playerId !== undefined && row.id === playerId;
-  const gapSeconds = displayedNumber(row.gap) ?? null;
   const classification = standings.get(row.id);
+  const gapSeconds = displayedNumber(row.gap) ?? null;
   return {
     id: row.id,
     position: classification?.position ?? index + 1,
     vehicleClass: row.classId ?? "",
     driverNumber: "",
     driverName: row.name || "?",
-    gapText: gapSeconds === null ? PLACEHOLDER : formatGap(gapSeconds),
+    gapText: isPlayer || gapSeconds === null ? PLACEHOLDER : formatGap(gapSeconds),
     bestLapText: PLACEHOLDER,
     lastLapText: formatLapTime(classification && displayedNumber(classification.lastLap)),
     isPlayer,

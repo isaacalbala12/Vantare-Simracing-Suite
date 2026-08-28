@@ -115,6 +115,7 @@ func TestCatalogCoversExplicitRuntimeContracts(t *testing.T) {
 		{SignalDamageOverheating, "damage.overheating", schema.DomainVehicle},
 		{SignalDamageDetached, "damage.detached", schema.DomainVehicle},
 		{SignalDamageWheelDetachedCount, "damage.wheel_detached_count", schema.DomainVehicle},
+		{SignalStandingsLapProgressTime, "standings.lap_progress_time", schema.DomainStandings},
 	}
 
 	got := All()
@@ -163,14 +164,15 @@ func TestCatalogISA129IDsAreStableAndAppendOnly(t *testing.T) {
 		SignalDamageOverheating,
 		SignalDamageDetached,
 		SignalDamageWheelDetachedCount,
+		SignalStandingsLapProgressTime,
 	}
 	for index, id := range appended {
 		if want := SignalID(25 + index); id != want {
 			t.Fatalf("appended ID at index %d = %d, want %d", index, id, want)
 		}
 	}
-	if got := len(All()); got != 50 {
-		t.Fatalf("catalog definitions = %d, want 50", got)
+	if got := len(All()); got != 51 {
+		t.Fatalf("catalog definitions = %d, want 51", got)
 	}
 }
 
@@ -233,6 +235,7 @@ func TestCatalogISA129ReuseHardenAppendMatrix(t *testing.T) {
 		{SignalDamageOverheating, LedgerAppended, schema.UnitBoolean, schema.UnsupportedRange()},
 		{SignalDamageDetached, LedgerAppended, schema.UnitBoolean, schema.UnsupportedRange()},
 		{SignalDamageWheelDetachedCount, LedgerAppended, schema.UnitCount, schema.ClosedRange(0, 4)},
+		{SignalStandingsLapProgressTime, LedgerAppended, schema.UnitSeconds, schema.UnknownRange()},
 	}
 
 	for _, tt := range tests {

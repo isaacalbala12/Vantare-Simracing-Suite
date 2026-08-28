@@ -54,6 +54,7 @@ Generated deterministically from the Go ledger. IDs are never reused.
 | 48 | `damage.overheating` | vehicle | boolean | unsupported | appended | Whether the overheating icon is shown (LMU mOverheating). |
 | 49 | `damage.detached` | vehicle | boolean | unsupported | appended | Whether any non-wheel parts are detached (LMU mDetached). |
 | 50 | `damage.wheel_detached_count` | vehicle | count | [0,4] | appended | Count of detached wheels (0..4) from LMU wheel mDetached. |
+| 51 | `standings.lap_progress_time` | standings | seconds | unknown | appended | Simulator-observed temporal coordinate of a vehicle within the current circuit lap; signed finite source values preserve explicit quality. |
 
 ## Tombstoned IDs
 

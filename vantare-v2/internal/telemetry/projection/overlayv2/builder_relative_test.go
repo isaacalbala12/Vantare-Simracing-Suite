@@ -1,6 +1,7 @@
 package overlayv2
 
 import (
+	"math"
 	"testing"
 
 	"github.com/vantare/overlays/v2/internal/telemetry/derive"
@@ -8,10 +9,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/standings"
 )
 
-// The fixture places the player at vehicle-000, which is the leader, so every
-// other vehicle is behind it: TimeBehindLeader grows with the index and the
-// derived gap is negative for everybody else.
-func TestBuildRelativeOrdersTheWindowAheadPlayerBehind(t *testing.T) {
+func TestBuildRelativeWrapsThePhysicalWindowAroundThePlayer(t *testing.T) {
 	t.Parallel()
 
 	final, ok := builderFinalState(t, 44).Value()
@@ -19,21 +17,21 @@ func TestBuildRelativeOrdersTheWindowAheadPlayerBehind(t *testing.T) {
 		t.Fatal("missing final state")
 	}
 	rows := BuildRelative(final)
-	if len(rows) != MaxRelativeBehind+1 {
-		t.Fatalf("window = %d rows, want the player plus %d behind", len(rows), MaxRelativeBehind)
+	if len(rows) != MaxRelativeAhead+MaxRelativeBehind+1 {
+		t.Fatalf("window = %d rows, want %d+player+%d", len(rows), MaxRelativeAhead, MaxRelativeBehind)
 	}
-	if rows[0].VehicleID != "vehicle-000" || rows[0].Side != RelativeSidePlayer {
-		t.Fatalf("the leader is the player and must anchor the window: %#v", rows[0])
+	if rows[MaxRelativeAhead].VehicleID != "vehicle-000" || rows[MaxRelativeAhead].Side != RelativeSidePlayer {
+		t.Fatalf("player must anchor the circular window: %#v", rows)
 	}
-	previous := 0.0
-	for index, row := range rows[1:] {
-		if row.Side != RelativeSideBehind {
-			t.Fatalf("row %d after the player must be behind: %#v", index, row)
+	for index, row := range rows[:MaxRelativeAhead] {
+		if row.Side != RelativeSideAhead || row.GapSeconds.Q != QualityFresh || row.GapSeconds.V <= 0 {
+			t.Fatalf("row %d before player must be a physical car ahead: %#v", index, row)
 		}
-		if row.GapSeconds.Q != QualityFresh || row.GapSeconds.V >= previous {
-			t.Fatalf("rows behind must run near to far: row %d = %#v after %v", index, row.GapSeconds, previous)
+	}
+	for index, row := range rows[MaxRelativeAhead+1:] {
+		if row.Side != RelativeSideBehind || row.GapSeconds.Q != QualityFresh || row.GapSeconds.V >= 0 {
+			t.Fatalf("row %d after player must be a physical car behind: %#v", index, row)
 		}
-		previous = row.GapSeconds.V
 		if row.Authority != AuthorityDerived {
 			t.Fatalf("the canonical relative gap is reconstructed: %#v", row)
 		}
@@ -97,7 +95,7 @@ func TestBuildRelativeWithoutAPlayerIsEmptyAndNeverNull(t *testing.T) {
 	}
 }
 
-func TestBuildRelativeExcludesVehiclesWithoutAUsableCanonicalGap(t *testing.T) {
+func TestBuildRelativeKeepsPhysicalNeighborWithoutAUsableCanonicalGap(t *testing.T) {
 	t.Parallel()
 
 	// A grid smaller than the window so dropping a vehicle really shortens it
@@ -106,24 +104,76 @@ func TestBuildRelativeExcludesVehiclesWithoutAUsableCanonicalGap(t *testing.T) {
 	if !ok {
 		t.Fatal("missing final state")
 	}
+	final.Derived.Gaps = rebuildGaps(t, final, "vehicle-000")
 	before := len(BuildRelative(final))
 	if before != 5 {
 		t.Fatalf("window = %d rows, want the whole grid", before)
 	}
-	// A vehicle on another lap has Laps set and Time missing in the canonical
-	// state: it leaves the window instead of showing a blank gap.
+	// Missing temporal data must not remove a physical neighbour from the
+	// window; the row stays present with an explicit blank gap.
 	for index := range final.Derived.Gaps.Vehicles {
 		if string(final.Derived.Gaps.Vehicles[index].Vehicle) == "vehicle-001" {
 			final.Derived.Gaps.Vehicles[index].Time = schema.MissingField[standings.RelativeTime]()
 		}
 	}
 	rows := BuildRelative(final)
-	if len(rows) != before-1 {
-		t.Fatalf("window = %d rows, want %d after dropping the lapped vehicle", len(rows), before-1)
+	if len(rows) != before {
+		t.Fatalf("window = %d rows, want the same %d physical neighbors", len(rows), before)
 	}
 	for _, row := range rows {
 		if row.VehicleID == "vehicle-001" {
-			t.Fatalf("a vehicle without a canonical gap must not be published: %#v", row)
+			if row.GapSeconds.Q != QualityMissing {
+				t.Fatalf("physical neighbor must remain with an explicit missing gap: %#v", row)
+			}
+			return
+		}
+	}
+	t.Fatal("physical neighbor vehicle-001 disappeared")
+}
+
+func TestBuildRelativeUsesLapDistanceInsteadOfGapForPhysicalOrder(t *testing.T) {
+	t.Parallel()
+
+	final, ok := builderFinalState(t, 5).Value()
+	if !ok {
+		t.Fatal("missing final state")
+	}
+	final.Observed.Vehicles[0].Player = builderField(t, false, schema.FreshnessFresh)
+	final.Observed.Vehicles[2].Player = builderField(t, true, schema.FreshnessFresh)
+	final.Derived.Gaps = rebuildGaps(t, final, "vehicle-002")
+	for index := range final.Derived.Gaps.Vehicles {
+		gap := &final.Derived.Gaps.Vehicles[index]
+		switch gap.Vehicle {
+		case "vehicle-001":
+			gap.Time = builderField(t, standings.RelativeTime(100), schema.FreshnessFresh)
+		case "vehicle-003":
+			gap.Time = builderField(t, standings.RelativeTime(-100), schema.FreshnessFresh)
+		}
+	}
+
+	rows := BuildRelative(final)
+	want := []struct {
+		id   string
+		side string
+	}{
+		{id: "vehicle-004", side: RelativeSideAhead},
+		{id: "vehicle-003", side: RelativeSideAhead},
+		{id: "vehicle-002", side: RelativeSidePlayer},
+		{id: "vehicle-001", side: RelativeSideBehind},
+		{id: "vehicle-000", side: RelativeSideBehind},
+	}
+	if len(rows) != len(want) {
+		t.Fatalf("window = %#v, want %d rows", rows, len(want))
+	}
+	for index, expected := range want {
+		if rows[index].VehicleID != expected.id || rows[index].Side != expected.side {
+			t.Fatalf("row %d = %#v, want id=%s side=%s", index, rows[index], expected.id, expected.side)
+		}
+		if expected.side == RelativeSideAhead && rows[index].GapSeconds.V < 0 {
+			t.Fatalf("ahead row %d kept a contradictory negative gap: %#v", index, rows[index])
+		}
+		if expected.side == RelativeSideBehind && rows[index].GapSeconds.V > 0 {
+			t.Fatalf("behind row %d kept a contradictory positive gap: %#v", index, rows[index])
 		}
 	}
 }
@@ -132,15 +182,20 @@ func rebuildGaps(tb testing.TB, final derive.FinalState, player string) derive.G
 	tb.Helper()
 	result := derive.GapSet{Freshness: schema.FreshnessFresh}
 	var anchor float64
+	var period float64
 	for _, current := range final.Observed.Vehicles {
 		if string(current.Identity.Vehicle) == player {
-			value, _ := current.TimeBehindLeader.Value()
+			value, _ := current.LapProgressTime.Value()
 			anchor = float64(value)
+			lapTime, _ := current.EstimatedLapTime.Value()
+			period = float64(lapTime)
 		}
 	}
 	for _, current := range final.Observed.Vehicles {
-		value, _ := current.TimeBehindLeader.Value()
-		field, err := schema.NewField(standings.RelativeTime(anchor-float64(value)), schema.ProvenanceDerived, schema.FreshnessFresh)
+		value, _ := current.LapProgressTime.Value()
+		delta := float64(value) - anchor
+		delta -= math.Round(delta/period) * period
+		field, err := schema.NewField(standings.RelativeTime(delta), schema.ProvenanceDerived, schema.FreshnessFresh)
 		if err != nil {
 			tb.Fatal(err)
 		}

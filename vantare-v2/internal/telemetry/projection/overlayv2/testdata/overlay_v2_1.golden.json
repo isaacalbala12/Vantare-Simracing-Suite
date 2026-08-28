@@ -5,7 +5,7 @@
   },
   "frame": {
     "contract": 2,
-    "algorithm": 1,
+    "algorithm": 2,
     "epoch": 3,
     "sequence": 2,
     "sessionId": "f6-session",

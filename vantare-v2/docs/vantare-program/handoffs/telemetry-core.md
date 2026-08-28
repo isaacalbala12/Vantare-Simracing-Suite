@@ -15,6 +15,18 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 
 ## Estado real
 
+- 2026-08-28, rebase y revisión adversarial ISA-884: los siete commits del PR
+  #888 quedaron lineales sobre `origin/nightly@c59a7d64`. La revisión encontró
+  un P1 en `deriveVehicleGap`: la ausencia o invalidez del hecho de vueltas de
+  clasificación anulaba también un progreso temporal válido. `c244b354` separa
+  ambas derivaciones y añade regresiones para clasificación ausente y sesión
+  completa sin `lap_progress_time`, que permanece `missing` y nunca cero. Go
+  completo, frontend 421 archivos/3.192 tests, typecheck, build y diff-check
+  pasan. `go vet` conserva solo tres avisos Win32 `unsafe.Pointer` idénticos a
+  Nightly. El lint global conserva el error heredado de `_damage` no usado en
+  `car-damage-numbers-view-model-v2.ts`, también idéntico a Nightly; por ello el
+  PR permanece draft y no se marca ready. Sin merge, promoción ni release.
+
 - 2026-08-28, ISA-891 completa el lifecycle de Overlay V2 y lleva Studio al
   mismo transporte dirigido que Desktop. `6bd72d37` publica y retiene un único
   status V2 aunque no haya frames ni consumidores; un consumidor tardío recibe
@@ -94,6 +106,33 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   digest `33125373082` terminaron en verde. ISA-889 está cerrada en estado
   Nightly; no existe promoción a testers, master ni release.
 
+- 2026-08-27, ISA-884: Relative pasa a significar tráfico físico alrededor del
+  jugador. El driver LMU admite `mTimeIntoLap` scoring `+464` como
+  `standings.lap_progress_time`; `standings.relative-gaps@2` calcula en Go el
+  arco temporal firmado más corto y conserva `relativeLapDelta` por separado.
+  `BuildRelative` selecciona por topología circular de `LapDistance`, de modo
+  que una fila física no desaparece si sus segundos están `missing`. V1 y V2
+  consumen la misma derivación; la proyección orienta su signo por el lado
+  físico y no anula los segundos por estado pit. El comparador shadow vuelve a
+  comparar `gapText`, y el frontend no contiene lógica de simulador. SimX mapea su
+  equivalente temporal exacto al mismo contrato; los drivers sin equivalente
+  dejan la señal ausente. La fixture LMU 1.3/1.4 con cero uniforme
+  contradictorio prueba fail-closed, mientras los tests admiten cero individual
+  y valores negativos reales. Evidencia:
+  `docs/telemetry-core/evidence/isa-884-relative-lap-progress-time.md`. Rama
+  `vantareapp/isa-884-relative-time` rebasada sobre
+  `origin/nightly@2672f211`, publicada en el PR draft #888. Para
+  `9771592b`, el run remoto `33107781445` terminó completamente verde:
+  promotion path, blocking gates y GitGuardian pasaron. Sin merge, promoción
+  ni release. Gates locales: Go completo, telemetry, LMU x20, derive x20,
+  frontend 3.144 tests, typecheck, lint focal y build verdes. La build combinada
+  acredita LMU -> Go -> SSE -> Wails nativo: Relative 2+jugador+2 con los cuatro
+  gaps presentes, incluidos rivales en pit; V1/V2 alineados en reconstrucción
+  dan `mismatch: []`. El soak final de 142 s termina en 585,8 MiB totales y
+  175,3 MiB para el WebView mayor, sin pendiente monotónica. #887 separa los
+  falsos positivos del shadow al emparejar una sección V2 memoizada a 4 Hz con
+  la cabecera global a 60 Hz.
+
 - 2026-08-27, ISA-879 elimina los bridges Overlay v1/v2 globales y los
   sustituye por una sesion pull/ack `single-in-flight`, `latest-wins` y ligada
   al ciclo de vida de una ventana Overlay. `68ae7eae` introduce el limite,
@@ -114,9 +153,9 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   detenido/pausado: falta una repeticion breve sin pausa para acreditar esa
   fase exacta. Go serial completo, 415 archivos/3.139 tests frontend, 26
   focales, typecheck, build y ESLint del diff estan verdes. Rama
-  `vantareapp/isa-879-wails-telemetry-bounded`, publicada en `fa9d39ae`; PR
-  draft #883 a `nightly`. Run `33082227091` completamente verde. Sin merge,
-  promocion ni release.
+  `vantareapp/isa-879-wails-telemetry-bounded`; PR #883 fusionada en
+  `origin/nightly@2672f211`. Run post-rebase `33101779769` completamente verde.
+  Sin promoción a `testers`/`master` ni release.
 
 - 2026-08-27, diagnostico inicial de ISA-879 sobre `origin/nightly@a02a1463` tras una
   reproduccion LMU/Wails real: con solo Hub visible, el proceso browser de

@@ -511,6 +511,7 @@ func withFreshness(value Observation, freshness schema.Freshness) Observation {
 		vehicle.CompletedLaps = copyFreshness(vehicle.CompletedLaps, freshness)
 		vehicle.Sector = copyFreshness(vehicle.Sector, freshness)
 		vehicle.LapDistance = copyFreshness(vehicle.LapDistance, freshness)
+		vehicle.LapProgressTime = copyFreshness(vehicle.LapProgressTime, freshness)
 		vehicle.BestLapTime = copyFreshness(vehicle.BestLapTime, freshness)
 		vehicle.LastLapTime = copyFreshness(vehicle.LastLapTime, freshness)
 		vehicle.EstimatedLapTime = copyFreshness(vehicle.EstimatedLapTime, freshness)

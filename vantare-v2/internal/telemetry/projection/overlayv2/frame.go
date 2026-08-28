@@ -4,7 +4,7 @@ package overlayv2
 
 const (
 	ContractVersionV2  uint16 = 2
-	AlgorithmVersionV1 uint16 = 1
+	AlgorithmVersionV2 uint16 = 2
 )
 
 // Quality preserves whether a compact value is usable without repeating the

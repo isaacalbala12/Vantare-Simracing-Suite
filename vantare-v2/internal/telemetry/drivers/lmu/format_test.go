@@ -635,6 +635,57 @@ func TestParseNormalizesFiniteNegativeOptionalScoringSentinelsToMissing(t *testi
 	assertFieldValue(t, got.Vehicles[0].LapsBehindNext, standings.LapGap(0))
 }
 
+func TestParsePreservesSignedFiniteLapProgressAndMarksNonFiniteInvalid(t *testing.T) {
+	buf := knownBuffer(t)
+	base, _ := lmu13Layout.ScoringRows.rowBase(0)
+	binary.LittleEndian.PutUint64(
+		buf[base+lmu13Layout.Scoring.LapProgressTime.Offset:],
+		math.Float64bits(-2.46),
+	)
+	got, err := parseSupported(buf, time.Unix(0, 0).UTC())
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertFieldValue(t, got.Vehicles[0].LapProgressTime, standings.LapProgressTime(-2.46))
+
+	binary.LittleEndian.PutUint64(
+		buf[base+lmu13Layout.Scoring.LapProgressTime.Offset:],
+		math.Float64bits(math.NaN()),
+	)
+	got, err = parseSupported(buf, time.Unix(0, 0).UTC())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Vehicles[0].LapProgressTime.Freshness() != schema.FreshnessInvalid {
+		t.Fatalf("lap progress = %#v, want invalid", got.Vehicles[0].LapProgressTime)
+	}
+}
+
+func TestParseScoringRowPreservesFiniteZeroLapProgress(t *testing.T) {
+	buf := knownBuffer(t)
+	base, _ := lmu13Layout.ScoringRows.rowBase(0)
+	row, valid := parseScoringRow(buf, base)
+	if !valid {
+		t.Fatal("scoring row rejected")
+	}
+	assertFieldValue(t, row.LapProgressTime, standings.LapProgressTime(0))
+}
+
+func TestParseMarksContradictoryUniformZeroLapProgressGridMissing(t *testing.T) {
+	got, err := parseSupported(knownBuffer(t), time.Unix(0, 0).UTC())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Vehicles) < 2 {
+		t.Fatalf("vehicles = %d, want a grid", len(got.Vehicles))
+	}
+	for index, row := range got.Vehicles {
+		if _, present := row.LapProgressTime.Value(); present || row.LapProgressTime.Freshness() != schema.FreshnessMissing {
+			t.Fatalf("vehicle %d lap progress = %#v, want missing", index, row.LapProgressTime)
+		}
+	}
+}
+
 func playerVehicle(t testing.TB, observation Observation) VehicleObservation {
 	t.Helper()
 	for _, row := range observation.Vehicles {

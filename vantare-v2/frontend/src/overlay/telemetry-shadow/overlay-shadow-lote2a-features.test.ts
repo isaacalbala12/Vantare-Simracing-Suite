@@ -135,7 +135,14 @@ describe("relative comparison rules", () => {
   });
 
   it("compares the gap with an absolute tolerance", () => {
-    const model = buildRelativeViewModelV2(goldenFrame(44), { state: "live" }, RELATIVE_CONTENT);
+    const source = goldenFrame(44);
+    const frame: OverlayFrameV2 = {
+      ...source,
+      standings: source.standings.map((row) => (
+        row.id === source.player.id ? { ...row, pit: "track" } : row
+      )),
+    };
+    const model = buildRelativeViewModelV2(frame, { state: "live" }, RELATIVE_CONTENT);
     const nudge = (delta: number) => ({
       ...model,
       rows: model.rows.map((row, index) =>
@@ -154,8 +161,8 @@ describe("relative comparison rules", () => {
         ...row, driverNumber: "42", bestLapText: "1:29.000", gapText: "n/a", lastLapText: "1:31.000",
       })),
     };
-    expect(compareRelativeModels(model, invented)).toEqual([]);
-    expect(OVERLAY_V2_RELATIVE_DECLARED_GAPS).toContain("rows[].gapText");
+    expect(compareRelativeModels(model, invented)).toContain("rows[].gapText");
+    expect(OVERLAY_V2_RELATIVE_DECLARED_GAPS).not.toContain("rows[].gapText");
   });
 });
 

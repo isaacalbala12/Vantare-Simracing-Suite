@@ -86,7 +86,7 @@ func ProjectV2(
 	header := snapshot.Header()
 	frame := FrameV2{
 		ContractVersion:  ContractVersionV2,
-		AlgorithmVersion: AlgorithmVersionV1,
+		AlgorithmVersion: AlgorithmVersionV2,
 		StreamEpoch:      uint64(header.Cursor.Epoch),
 		SourceSequence:   uint64(header.Cursor.Sequence),
 		SessionID:        string(header.Identity.Session),

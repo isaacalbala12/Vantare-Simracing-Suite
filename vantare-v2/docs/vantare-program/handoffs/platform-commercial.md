@@ -443,17 +443,31 @@ reembolsar o habilitar venta. Los gates monetarios siguen pendientes.
 
 ## Issues y siguiente acción
 
-1. Completar gates locales y review de BIL-10C / ISA-247.
-2. Presentar dry-run, backup y rollback antes de cualquier apply remoto.
-3. Recoger feedback Nightly de BIL-01..10C sin habilitar venta.
-4. Continuar gates monetarios y despliegue controlado sin venta pública.
-5. Crear proyectos Account, Calendar, Settings e Installer con handoffs propios.
-6. Reauditar ISA-14 cuando se cierren worktrees grandes.
+1. Revisar con Fable medio el SDD de ISA-909 y cerrar cualquier hallazgo P0/P1
+   antes de implementar.
+2. Implementar localmente el mapping Clerk `(issuer, subject)` a UUID interno,
+   sin SDK/UI Clerk ni apply remoto.
+3. Completar gates locales y review de BIL-10C / ISA-247.
+4. Presentar dry-run, backup y rollback antes de cualquier apply remoto.
+5. Recoger feedback Nightly de BIL-01..10C sin habilitar venta.
+6. Continuar gates monetarios y despliegue controlado sin venta pública.
+7. Crear proyectos Account, Calendar, Settings e Installer con handoffs propios.
+8. Reauditar ISA-14 cuando se cierren worktrees grandes.
 
 Cada issue fija base limpia, archivos, checks y rollback antes de editar. Los
 cambios monetarios reales y Master requieren Isaac.
 
 ## Última actualización
+
+2026-08-28, ISA-909 abre el primer corte implementable de Clerk después del
+spike ISA-885. La decisión de producto permite crear un UUID interno nuevo en el
+primer login: no se preservan automáticamente UUID ni perfil anteriores y email
+nunca autoriza un enlace. Solo los grants con valor justifican una reasignación
+administrativa posterior, con prueba, dry-run y autorización separada. El SDD
+inicial limita el cambio a una tabla de identidad, un resolver SQL privado, la
+Edge Function de credencial y la verificación Go; UI/SDK Clerk, deploy, datos
+reales, merge y promociones quedan fuera. Pendiente: review Fable medio antes de
+escribir código.
 
 2026-08-04, ISA-243/287 completaron el piloto remoto con un caso sintético
 nuevo. ISA-288 se creó exactamente una vez, el binding quedó `completed` sin

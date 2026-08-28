@@ -97,6 +97,10 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - item.en: Licensing with offline credentials and cache-first startup
 - item.pt: Licenças com credencial offline e arranque a partir da cache
 - item.it: Licenze con credenziale offline e avvio dalla cache
+- item: Identidad Clerk con bootstrap seguro hacia la cuenta interna de Vantare
+- item.en: Clerk identity with secure bootstrap into the internal Vantare account
+- item.pt: Identidade Clerk com bootstrap seguro para a conta interna da Vantare
+- item.it: Identità Clerk con bootstrap sicuro verso l'account interno Vantare
 - item: Launcher con detección de apps y cadenas de lanzamiento
 - item.en: Launcher with app detection and launch chains
 - item.pt: Launcher com deteção de apps e cadeias de lançamento
@@ -396,6 +400,21 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - cuerpo.pt: A app arranca a partir da credencial em cache e verifica sem rede, para que uma falha do serviço não encerre a sessão.
 - cuerpo.it: L'app parte dalla credenziale in cache e verifica offline, così un guasto del servizio non chiude la sessione.
 - etiqueta: Feature
+
+### Cuenta interna desde Clerk
+
+- id: clerk-account-bootstrap
+- tipo: plan
+- titulo.en: Internal account from Clerk
+- titulo.pt: Conta interna via Clerk
+- titulo.it: Account interno da Clerk
+- cuerpo: El primer login Clerk resolverá o creará un UUID interno idempotente para licencias y dispositivos; los datos antiguos no se enlazarán por email y cualquier grant valioso requerirá una reasignación administrativa revisada.
+- cuerpo.en: The first Clerk login will resolve or create an idempotent internal UUID for licensing and devices; old data will not be linked by email and any valuable grant will require a reviewed administrative reassignment.
+- cuerpo.pt: O primeiro login Clerk irá resolver ou criar um UUID interno idempotente para licenças e dispositivos; os dados antigos não serão ligados por email e qualquer grant valioso exigirá uma reatribuição administrativa revista.
+- cuerpo.it: Il primo login Clerk risolverà o creerà un UUID interno idempotente per licenze e dispositivi; i vecchi dati non verranno collegati via email e ogni grant di valore richiederà una riassegnazione amministrativa verificata.
+- etiqueta: Plan
+- etiqueta.pt: Plano
+- etiqueta.it: Piano
 
 ### Canales nightly y testers
 

@@ -29,6 +29,7 @@ export type OverlayFrameV2Store = Readonly<{
   subscribe(listener: () => void): () => void;
   ingest(name: string, input: unknown): void;
   getDiagnostics(): OverlayFrameV2StoreDiagnostics;
+  reset(): void;
   dispose(): void;
 }>;
 
@@ -144,6 +145,13 @@ export function createOverlayFrameV2Store(
           nonLiveSamples: nonLiveParseSamples,
         }),
       });
+    },
+    reset() {
+      if (disposed) throw new OverlayFrameV2ContractError("disposed");
+      currentStream = undefined;
+      parseDurations.length = 0;
+      nonLiveParseSamples = 0;
+      publish({ revision: 0, ageMs: 0 });
     },
     dispose() {
       if (disposed) return;

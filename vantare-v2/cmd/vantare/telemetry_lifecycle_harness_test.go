@@ -420,6 +420,13 @@ func TestOverlayPullHTTPServiceRespondsOnlyToTheRequestingWindowAndClosesConsume
 	if err != nil {
 		t.Fatal(err)
 	}
+	if err := registry.PublishStatus(telemetrytransport.ProductOverlayV2, 1, map[string]any{
+		"revision": 1,
+		"source":   map[string]any{"state": "stopped"},
+		"frame":    nil,
+	}); err != nil {
+		t.Fatal(err)
+	}
 	pull := telemetrytransport.NewOverlayPullTransport(hub, registry)
 	target := newCaptureOverlayPullTarget()
 	service := newOverlayPullHTTPService(target, pull)
@@ -462,6 +469,13 @@ func TestOverlayPullHTTPServiceRespondsOnlyToTheRequestingWindowAndClosesConsume
 	}
 	if _, active := registry.Lookup(telemetrytransport.ProductOverlayV2); active {
 		t.Fatal("HTTP close left the overlay publisher active")
+	}
+	if err := registry.PublishStatus(telemetrytransport.ProductOverlayV2, 2, map[string]any{
+		"revision": 2,
+		"source":   map[string]any{"state": "stopped"},
+		"frame":    nil,
+	}); err != nil {
+		t.Fatal(err)
 	}
 
 	request = httptest.NewRequest(http.MethodPost, "/pull", strings.NewReader(`{"sessionId":"session-2","ack":0}`))

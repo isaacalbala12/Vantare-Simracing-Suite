@@ -44,9 +44,10 @@ describe('Studio Overlay telemetry lifecycle', () => {
     ]);
 
     for (const listener of listeners.get('telemetry:overlay-v2:status') ?? []) {
-      listener({ revision: 1, source: { state: 'connecting' }, frame: null });
+      listener({ revision: 50, source: { state: 'connecting' }, frame: null });
     }
     expect(store.getSnapshot().source?.state).toBe('connecting');
+    expect(store.getSnapshot().revision).toBe(50);
 
     adapter.stop();
     adapter.stop();
@@ -58,6 +59,12 @@ describe('Studio Overlay telemetry lifecycle', () => {
     adapter.start();
     expect(pull.start).toHaveBeenCalledTimes(2);
     expect(legacy.start).toHaveBeenCalledTimes(2);
+    expect(store.getSnapshot()).toEqual({ revision: 0, ageMs: 0 });
+    for (const listener of listeners.get('telemetry:overlay-v2:status') ?? []) {
+      listener({ revision: 2, source: { state: 'live' }, frame: null });
+    }
+    expect(store.getSnapshot().revision).toBe(2);
+    expect(store.getSnapshot().source?.state).toBe('live');
     adapter.stop();
     store.dispose();
     coordinator.dispose();

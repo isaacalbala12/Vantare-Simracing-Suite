@@ -20,9 +20,14 @@ type PullResponse = Readonly<{
 
 type ScheduleHandle = unknown;
 
+const ACTIVE_PULL_DELAY_MS = 16;
+const IDLE_PULL_DELAY_MS = 100;
+const ERROR_PULL_DELAY_MS = 250;
+const EMPTY_RESPONSES_BEFORE_IDLE = 3;
+
 export type OverlayWailsPullOptions = Readonly<{
   post(route: string, data: unknown): unknown | Promise<unknown>;
-  schedule?: (callback: () => void) => ScheduleHandle;
+  schedule?: (callback: () => void, delayMs: number) => ScheduleHandle;
   cancel?: (handle: ScheduleHandle) => void;
   createSessionID?: () => string;
   onError?: (error: unknown) => void;
@@ -47,18 +52,11 @@ function defaultSessionID(): string {
   return `overlay-${Date.now().toString(36)}-${sessionSequence.toString(36)}`;
 }
 
-function defaultSchedule(callback: () => void): ScheduleHandle {
-  if (typeof requestAnimationFrame === "function") {
-    return requestAnimationFrame(callback);
-  }
-  return setTimeout(callback, 16);
+function defaultSchedule(callback: () => void, delayMs: number): ScheduleHandle {
+  return setTimeout(callback, delayMs);
 }
 
 function defaultCancel(handle: ScheduleHandle): void {
-  if (typeof cancelAnimationFrame === "function" && typeof handle === "number") {
-    cancelAnimationFrame(handle);
-    return;
-  }
   clearTimeout(handle as ReturnType<typeof setTimeout>);
 }
 
@@ -75,11 +73,12 @@ export function createOverlayWailsPullClient(
   let awaiting = false;
   let sessionID = "";
   let acknowledged = 0;
+  let emptyResponses = 0;
   let scheduled: ScheduleHandle | undefined;
 
-  const scheduleNext = () => {
+  const scheduleNext = (delayMs: number) => {
     if (!active || scheduled !== undefined) return;
-    scheduled = schedule(request);
+    scheduled = schedule(request, delayMs);
   };
 
   const handlePostedResponse = (
@@ -90,7 +89,12 @@ export function createOverlayWailsPullClient(
     if (!active || sessionID !== requestSessionID || acknowledged !== requestAck) return;
     if (input === undefined) {
       awaiting = false;
-      scheduleNext();
+      emptyResponses += 1;
+      scheduleNext(
+        emptyResponses >= EMPTY_RESPONSES_BEFORE_IDLE
+          ? IDLE_PULL_DELAY_MS
+          : ACTIVE_PULL_DELAY_MS,
+      );
       return;
     }
     handleResponse(input);
@@ -113,6 +117,7 @@ export function createOverlayWailsPullClient(
           (error) => {
             if (active && sessionID === requestSessionID && acknowledged === requestAck) {
               awaiting = false;
+              scheduleNext(ERROR_PULL_DELAY_MS);
             }
             onError(error);
           },
@@ -150,7 +155,12 @@ export function createOverlayWailsPullClient(
       }
     }
     acknowledged = response.delivery;
-    scheduleNext();
+    emptyResponses = response.events.length === 0 ? emptyResponses + 1 : 0;
+    scheduleNext(
+      emptyResponses >= EMPTY_RESPONSES_BEFORE_IDLE
+        ? IDLE_PULL_DELAY_MS
+        : ACTIVE_PULL_DELAY_MS,
+    );
   };
 
   return {
@@ -173,6 +183,7 @@ export function createOverlayWailsPullClient(
       active = true;
       awaiting = false;
       acknowledged = 0;
+      emptyResponses = 0;
       sessionID = createSessionID();
       request();
     },

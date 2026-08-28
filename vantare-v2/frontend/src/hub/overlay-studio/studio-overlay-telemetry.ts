@@ -46,6 +46,10 @@ export function createStudioOverlayTelemetryAdapter(
     coordinator: options.legacy.coordinator,
     start() {
       if (started) return;
+      // Studio can switch Mock -> Live without remounting this store. A new
+      // pull session may first replay an older retained lifecycle status, so
+      // its revision space must start clean together with the consumer.
+      options.overlayV2Store.reset();
       detachOverlayV2 = attachOverlayFrameV2Transport(
         options.overlayV2Store,
         options.pull.source,

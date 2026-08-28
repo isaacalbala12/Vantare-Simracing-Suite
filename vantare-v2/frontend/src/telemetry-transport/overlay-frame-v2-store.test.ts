@@ -75,6 +75,25 @@ describe("OverlayFrame v2 store", () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 
+  it("resets the revision stream for a new directed consumer session", () => {
+    const store = createOverlayFrameV2Store();
+    store.ingest(OVERLAY_V2_STATUS_EVENT, {
+      revision: 50,
+      source: { state: "live" },
+      frame: null,
+    });
+
+    store.reset();
+
+    expect(store.getSnapshot()).toEqual({ revision: 0, ageMs: 0 });
+    expect(() => store.ingest(OVERLAY_V2_STATUS_EVENT, {
+      revision: 2,
+      source: { state: "connecting" },
+      frame: null,
+    })).not.toThrow();
+    expect(store.getSnapshot().revision).toBe(2);
+  });
+
   it("attaches Wails listeners before requesting ReplaySnapshot", () => {
     const listeners = new Map<string, (data: unknown) => void>();
     const order: string[] = [];

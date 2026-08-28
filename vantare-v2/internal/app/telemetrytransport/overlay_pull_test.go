@@ -153,6 +153,52 @@ func TestOverlayPullLateConsumerReceivesV2StatusWithoutSnapshot(t *testing.T) {
 	assertPullEventNotContains(t, response.Events, `"contract":2`)
 }
 
+func TestOverlayPullDoesNotDeliverEmptyEventsAndPicksUpTheNextChange(t *testing.T) {
+	hub := NewHub(HubConfig{Product: ProductOverlay})
+	registry := mustPublisherRegistry(t, PublisherConfig{Product: ProductOverlayV2})
+	if err := registry.PublishStatus(ProductOverlayV2, 1, map[string]any{
+		"revision": 1,
+		"source":   map[string]any{"state": "stale"},
+		"frame":    nil,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	transport := NewOverlayPullTransport(hub, registry)
+	defer transport.CloseAll()
+
+	first, deliver, err := transport.Pull("studio-window", OverlayPullRequest{
+		SessionID: "stale-studio",
+		Ack:       0,
+	})
+	if err != nil || !deliver || first.Delivery != 1 || len(first.Events) != 1 {
+		t.Fatalf("first pull = %#v, deliver=%v, err=%v", first, deliver, err)
+	}
+
+	empty, deliver, err := transport.Pull("studio-window", OverlayPullRequest{
+		SessionID: "stale-studio",
+		Ack:       first.Delivery,
+	})
+	if err != nil || deliver || empty.Delivery != 0 || len(empty.Events) != 0 {
+		t.Fatalf("unchanged pull = %#v, deliver=%v, err=%v", empty, deliver, err)
+	}
+
+	if err := registry.PublishStatus(ProductOverlayV2, 2, map[string]any{
+		"revision": 2,
+		"source":   map[string]any{"state": "live"},
+		"frame":    nil,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	next, deliver, err := transport.Pull("studio-window", OverlayPullRequest{
+		SessionID: "stale-studio",
+		Ack:       first.Delivery,
+	})
+	if err != nil || !deliver || next.Delivery != 2 {
+		t.Fatalf("changed pull = %#v, deliver=%v, err=%v", next, deliver, err)
+	}
+	assertPullEventContains(t, next.Events, PublisherEventName(ProductOverlayV2, PublisherEventStatus), `"live"`)
+}
+
 func assertPullEventContains(t *testing.T, events []OverlayPullEvent, name, fragment string) {
 	t.Helper()
 	for _, event := range events {

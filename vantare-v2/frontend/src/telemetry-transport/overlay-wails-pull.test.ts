@@ -90,6 +90,72 @@ describe("overlay HTTP pull client", () => {
     expect(scheduled).toHaveLength(0);
   });
 
+  it("backs off empty responses and resumes active pacing when telemetry returns", async () => {
+    const pending: PendingPull[] = [];
+    const scheduled: Array<{callback: () => void; delayMs: number}> = [];
+    const client = createOverlayWailsPullClient({
+      post(route) {
+        if (route === OVERLAY_PULL_CLOSE_ROUTE) return undefined;
+        return new Promise((resolve) => pending.push({resolve}));
+      },
+      schedule(callback, delayMs) {
+        scheduled.push({callback, delayMs});
+        return callback;
+      },
+      cancel: () => undefined,
+      createSessionID: () => "paced",
+    });
+
+    client.start();
+    for (const expectedDelay of [16, 16, 100, 100]) {
+      await flushResponse(pending, undefined);
+      expect(scheduled.at(-1)?.delayMs).toBe(expectedDelay);
+      scheduled.shift()?.callback();
+    }
+
+    await flushResponse(pending, {
+      sessionId: "paced",
+      delivery: 1,
+      events: [{name: "telemetry:overlay-v2:status", data: {revision: 1}}],
+    });
+    expect(scheduled.at(-1)?.delayMs).toBe(16);
+    client.stop();
+  });
+
+  it("retries a rejected pull with bounded error pacing", async () => {
+    const scheduled: Array<{callback: () => void; delayMs: number}> = [];
+    const pending: PendingPull[] = [];
+    const onError = vi.fn();
+    let pullAttempts = 0;
+    const client = createOverlayWailsPullClient({
+      post(route) {
+        if (route === OVERLAY_PULL_CLOSE_ROUTE) return undefined;
+        pullAttempts += 1;
+        if (pullAttempts === 1) return Promise.reject(new Error("transport unavailable"));
+        return new Promise((resolve) => pending.push({resolve}));
+      },
+      schedule(callback, delayMs) {
+        scheduled.push({callback, delayMs});
+        return callback;
+      },
+      cancel: () => undefined,
+      createSessionID: () => "retry",
+      onError,
+    });
+
+    client.start();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(scheduled).toEqual([{callback: expect.any(Function), delayMs: 250}]);
+
+    scheduled.shift()?.callback();
+    expect(pullAttempts).toBe(2);
+    expect(pending).toHaveLength(1);
+    client.stop();
+  });
+
   it("ignores duplicate deliveries and rejects unknown event routes", async () => {
     const posted: Array<{route: string; data: unknown}> = [];
     const pending: PendingPull[] = [];

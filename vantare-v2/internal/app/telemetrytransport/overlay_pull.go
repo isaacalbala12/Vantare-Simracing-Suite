@@ -98,6 +98,9 @@ func (transport *OverlayPullTransport) Pull(
 	if err != nil {
 		return OverlayPullResponse{}, false, err
 	}
+	if len(events) == 0 {
+		return OverlayPullResponse{}, false, nil
+	}
 	session.next++
 	session.awaitingAck = session.next
 	return OverlayPullResponse{

@@ -8,7 +8,7 @@ Rama: `vantareapp/isa-891-overlay-v2-studio-lifecycle`.
 
 ## Problemas confirmados
 
-La auditoría previa a retirar Overlay V1 encontró cuatro huecos concretos:
+La auditoría previa a retirar Overlay V1 encontró cinco huecos concretos:
 
 - Desktop consumía V1 y V2 mediante el pull HTTP acotado de ISA-879, pero
   Studio seguía registrando la proyección V1 en el bus global de Wails.
@@ -21,6 +21,9 @@ La auditoría previa a retirar Overlay V1 encontró cuatro huecos concretos:
 - Al cambiar Mock -> Live sin remontar Studio, el store conservaba la revisión
   alta de la sesión anterior. El primer status retenido de la sesión nueva
   podía tener una revisión menor y era rechazado como contrato regresivo.
+- Si una respuesta HTTP se perdía después de preparar el delivery, el retry con
+  el ack anterior recibía 204 indefinidamente: el servidor ya había avanzado su
+  cursor pero no conservaba la entrega pendiente para retransmitirla.
 
 El segundo hueco también permitía cualquier string como `source.state` en la
 frontera TypeScript. Al cerrarla aparecieron dos literales inválidos que el
@@ -57,6 +60,11 @@ diagnósticos del store V2 antes de registrar listeners. Así una revisión de u
 sesión anterior no contamina la siguiente; el store y el contrato siguen siendo
 los mismos y no aparece una segunda fuente de verdad.
 
+El transporte conserva además una sola respuesta pendiente hasta recibir su
+ack. Un retry con el ack anterior reproduce exactamente ese delivery; al
+confirmarlo, las observaciones intermedias siguen colapsándose al último estado.
+No se introduce una cola ni se duplica la revisión lógica.
+
 ## Regresiones deterministas
 
 - status V2 sin consumidor no activa el publisher de frames;
@@ -73,6 +81,8 @@ los mismos y no aparece una segunda fuente de verdad.
   cambio se recoge con el mismo cursor;
 - el cliente aplica pacing activo, backoff idle y retry de error sin abrir una
   segunda petición;
+- una respuesta HTTP perdida se retransmite con el mismo delivery y, tras el
+  ack, el siguiente delivery contiene solo los snapshots más recientes;
 - una sesión Studio nueva acepta su primera revisión aunque la anterior hubiese
   terminado con una revisión superior;
 - el runtime V2 puro llega al único `WidgetVisualHost` de Studio.
@@ -81,7 +91,8 @@ los mismos y no aparece una segunda fuente de verdad.
 
 - Commits funcionales: `6bd72d37398dfb6eaed80fbfdfdbe57bc61ff47e`,
   `f6269aaf1a6b71b0ac3c17589d00ec0ea1b4e5c2` y
-  `274b632d5e0ae4476a45059971599cb79cc977e3`.
+  `274b632d5e0ae4476a45059971599cb79cc977e3`; recuperación de
+  respuestas perdidas: `0966f44c29783eadb0e0ee2013ea80c41500b864`.
 - Paquetes Go `overlayv2`, `telemetrytransport` y `internal/app`: PASS.
 - Tests frontend enfocados: PASS, 6 archivos y 78 tests.
 - `go test ./...`: PASS.

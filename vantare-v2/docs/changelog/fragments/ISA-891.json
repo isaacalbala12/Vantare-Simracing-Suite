@@ -8,7 +8,8 @@
     "Overlay V2 retiene solo el último estado de lifecycle; los frames siguen existiendo únicamente mientras hay un consumidor.",
     "El contrato Go y TypeScript limita el lifecycle a los ocho estados canónicos y rechaza valores desconocidos.",
     "Un pull sin cambios no crea delivery ni avanza el ack; Studio reduce el sondeo cuando queda idle y mantiene una sola petición en vuelo.",
-    "Cada nueva sesión Live reinicia el cursor V2 local para no rechazar el primer estado retenido después de cambiar desde Mock."
+    "Cada nueva sesión Live reinicia el cursor V2 local para no rechazar el primer estado retenido después de cambiar desde Mock.",
+    "Una respuesta HTTP perdida se retransmite con el mismo delivery hasta su ack, sin convertir el transporte acotado en una cola."
   ],
   "testing": [
     "Abrir Overlay Studio, seleccionar Live con LMU activo y comprobar que los widgets continúan actualizándose.",

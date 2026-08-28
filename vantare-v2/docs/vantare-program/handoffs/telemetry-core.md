@@ -32,6 +32,9 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   Practice pintó 18 participantes y completó Mock -> Live sin errores de
   revisión, siempre con `maxInFlight=1`. En 30 s el browser WebView2 se mantuvo
   entre ~39,6 y 41,5 MiB; es evidencia corta, no el soak de retirada.
+  La revisión de protocolo añadió `0966f44c`: una respuesta HTTP perdida se
+  conserva como único delivery pendiente y se retransmite hasta su ack; después
+  se entrega solo el último snapshot acumulado.
   Rama `vantareapp/isa-891-overlay-v2-studio-lifecycle` sobre
   `nightly@741d31bf`. `go test ./...`, 418 archivos/3.148 tests frontend,
   typecheck, build frontend, contrato generado, ESLint del diff, 23 tests de

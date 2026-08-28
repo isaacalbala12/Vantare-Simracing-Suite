@@ -69,6 +69,14 @@ func TestSafetyWidgetsStayEventDrivenAtEveryLevel(t *testing.T) {
 	}
 }
 
+func TestStandingsLevelFiveKeepsNumericTwoHertzCeiling(t *testing.T) {
+	rate := WidgetHzFor(LevelMinimum)["standings"]
+	hz, ok := rate.Hertz()
+	if rate.Signal() != "" || !ok || hz != 2 {
+		t.Fatalf("standings nivel 5 = %+v, want 2 Hz", rate)
+	}
+}
+
 func TestResolveUsesProfileAndKeepsAutoInBalancedUntilSensorExists(t *testing.T) {
 	app := Policy{Mode: ModeLevel, Level: LevelSaving, SourceHz: 60}
 	profile := &Policy{Mode: ModeLevel, Level: LevelHigh, SourceHz: 50}

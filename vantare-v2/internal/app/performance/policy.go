@@ -152,7 +152,7 @@ func WidgetHzFor(level Level) map[string]WidgetRate {
 		LevelHigh:     {Hertz(60), Hertz(60), Hertz(60), Hertz(60), Hertz(30), Hertz(30), Hertz(30), Hertz(30), Hertz(20), Hertz(20), Hertz(20), Hertz(10), Hertz(5), Hertz(2), Hertz(1), Hertz(2), Hertz(2), Hertz(1), Event(), Event()},
 		LevelBalanced: {Hertz(40), Hertz(40), Hertz(40), Hertz(40), Hertz(20), Hertz(20), Hertz(20), Hertz(20), Hertz(15), Hertz(15), Hertz(15), Hertz(5), Hertz(4), Hertz(1), Dirty(), Hertz(1), Hertz(1), Dirty(), Event(), Event()},
 		LevelSaving:   {Hertz(30), Hertz(30), Hertz(30), Hertz(30), Hertz(15), Hertz(15), Hertz(10), Hertz(10), Hertz(10), Hertz(10), Hertz(10), Hertz(4), Hertz(2), Dirty(), Dirty(), Dirty(), Dirty(), Dirty(), Event(), Event()},
-		LevelMinimum:  {Hertz(20), Hertz(20), Hertz(20), Hertz(20), Hertz(10), Hertz(10), Hertz(5), Hertz(5), Hertz(5), Hertz(5), Hertz(5), Dirty(), Dirty(), Dirty(), Dirty(), Dirty(), Dirty(), Dirty(), Event(), Event()},
+		LevelMinimum:  {Hertz(20), Hertz(20), Hertz(20), Hertz(20), Hertz(10), Hertz(10), Hertz(5), Hertz(5), Hertz(5), Hertz(5), Hertz(5), Hertz(2), Dirty(), Dirty(), Dirty(), Dirty(), Dirty(), Dirty(), Event(), Event()},
 	}
 	names := []string{
 		"pedals", "pedals-telemetry", "pedals-telemetry-compact", "input-telemetry",

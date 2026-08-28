@@ -80,7 +80,7 @@ describe('Studio Overlay telemetry lifecycle', () => {
     };
     const pull: OverlayWailsPullClient = {
       source: {
-        subscribe(_name, _listener) {
+        subscribe() {
           const remove = vi.fn();
           listeners.add(remove);
           return remove;

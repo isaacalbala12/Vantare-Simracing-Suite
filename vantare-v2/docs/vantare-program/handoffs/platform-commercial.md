@@ -466,8 +466,12 @@ nunca autoriza un enlace. Solo los grants con valor justifican una reasignación
 administrativa posterior, con prueba, dry-run y autorización separada. El SDD
 inicial limita el cambio a una tabla de identidad, un resolver SQL privado, la
 Edge Function de credencial y la verificación Go; UI/SDK Clerk, deploy, datos
-reales, merge y promociones quedan fuera. Pendiente: review Fable medio antes de
-escribir código.
+reales, merge y promociones quedan fuera. La revisión Fable medio previa al
+código terminó `APROBADO_CON_CAMBIOS`: el plan usa advisory lock por identidad,
+distingue el issuer legacy, hace de la RPC PostgREST TPA la única autoridad y
+separa rechazos 401 de indisponibilidad para impedir gracia offline tras un token
+rechazado. ISA-911 registra Billing, Testing Center, policies `auth.uid()` y
+logout/cache que aún no son compatibles con Clerk.
 
 2026-08-04, ISA-243/287 completaron el piloto remoto con un caso sintético
 nuevo. ISA-288 se creó exactamente una vez, el binding quedó `completed` sin

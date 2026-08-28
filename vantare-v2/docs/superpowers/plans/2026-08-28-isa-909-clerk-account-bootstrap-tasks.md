@@ -1,7 +1,7 @@
 # Tareas ISA-909: bootstrap de cuenta Clerk
 
-Estado: propuesta inicial. Se ejecutan en orden y con TDD. Cada tarea termina en
-un checkpoint antes de iniciar la siguiente.
+Estado: revisado por Fable medio; listo para ejecución. Se ejecutan en orden y
+con TDD. Cada tarea termina en un checkpoint antes de iniciar la siguiente.
 
 ## T0 — Aprobar SDD
 
@@ -39,10 +39,13 @@ Pasos:
 
 1. registrar `supabase --version` y consultar `supabase migration new --help`;
 2. correr el hardening actual;
-3. escribir pgTAP para permisos, legacy, Clerk nuevo/repetido/distinto, claims
+3. añadir al harness el shim `auth.jwt()` sobre `request.jwt.claims` y fijar
+   issuer, subject y role como JSON;
+4. escribir pgTAP para permisos, legacy, Clerk nuevo/repetido/distinto, claims
    inválidos y ausencia de selección de cuenta por el cliente;
-4. añadir una carrera PowerShell de dos sesiones con mismo issuer/subject;
-5. demostrar que los nuevos casos fallan por ausencia del resolver.
+5. incluir un issuer externo con subject UUID coincidente con `auth.users`;
+6. añadir una carrera PowerShell de dos sesiones con mismo issuer/subject;
+7. demostrar que los nuevos casos fallan por ausencia del resolver.
 
 Aceptación: rojo objetivo reproducible; baseline previo separado.
 
@@ -54,14 +57,14 @@ Mismos archivos que T1.
 
 Pasos:
 
-1. crear `account_identities` con RLS, PK y unique de cuenta/emisor;
+1. crear `account_identities` con RLS y PK `(issuer, subject)`;
 2. revocar acceso de tabla a `anon`/`authenticated`;
 3. retirar la FK de `profiles.id` a `auth.users.id` por nombre descubierto en
    catálogo, sin asumir un nombre inventado;
 4. crear esquema/helper privado y fijar owner/search_path/privilegios;
-5. resolver legacy solo para `sub` UUID existente en `auth.users`; resolver
-   externo por `(issuer, subject)`;
-6. hacer la creación concurrente sin profile huérfano;
+5. resolver legacy solo para issuer `/auth/v1` + `sub` UUID existente en
+   `auth.users`; resolver cualquier otro issuer por `(issuer, subject)`;
+6. tomar advisory transaction lock por identidad, reconsultar y crear una vez;
 7. pasar la cuenta resuelta a claim/read/reset/get de licencia;
 8. incluir precheck y SQL de rollback comentado.
 
@@ -89,7 +92,8 @@ Pasos:
 1. caracterizar el handler actual con UUID Supabase;
 2. añadir caso rojo Clerk `user_...` que espera subject UUID resuelto;
 3. añadir casos accountId vacío/no UUID, body con identidad y fallo RPC;
-4. añadir contrato que comprueba `verify_jwt=true`.
+4. añadir rechazo TPA/401 separado de indisponibilidad/503;
+5. añadir contrato de config `verify_jwt=false`.
 
 Aceptación: fallos nuevos explican exactamente la dependencia de `auth.userId`.
 
@@ -101,12 +105,13 @@ Mismos archivos que T3.
 
 Pasos:
 
-1. conservar bearer validado por plataforma, sin `getUser()` Clerk;
+1. extraer el bearer sin `getUser()` Clerk ni verificación JWT paralela;
 2. hacer que `CredentialStore.load` resuelva y devuelva `accountId` por RPC;
 3. consultar device/grants/roles admin solo con ese `accountId`;
 4. validar UUID y firmarlo como subject;
-5. mantener el request body cerrado y todos los normalizadores existentes;
-6. declarar config explícita.
+5. mapear rechazo PostgREST a error de auth HTTP 401;
+6. mantener el request body cerrado y todos los normalizadores existentes;
+7. declarar config explícita.
 
 Tests: suite Deno de la función.
 
@@ -128,7 +133,8 @@ Pasos:
 1. test de JWT Clerk + credencial UUID válida;
 2. tests de subject externo vacío/malformado;
 3. tests de subject firmado no UUID, firma inválida y cuenta devuelta;
-4. regresión offline con token protegido exacto.
+4. regresión offline con token protegido exacto;
+5. regresión de 401 Edge que no cae a caché aunque el token sea el protegido.
 
 Aceptación: rojo objetivo en el rechazo UUID del parser/comparación actual.
 
@@ -183,8 +189,7 @@ promoción, release ni modificación de datos reales.
 Parar y pedir revisión si:
 
 - la FK de profiles no puede retirarse sin ampliar el modelo de cuenta;
-- el gateway local no valida Clerk TPA antes de la función;
-- aparece un segundo issuer real que el contrato no distingue;
+- PostgREST no valida Clerk TPA o no expone `auth.jwt()` como demostró ISA-885;
 - la carrera deja profiles huérfanos o requiere locks globales;
 - la ruta offline necesita confiar en el `sub` externo sin firma;
 - hacen falta más de cinco archivos por corte, una dependencia, deploy remoto o

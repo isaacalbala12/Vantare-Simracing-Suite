@@ -1,6 +1,6 @@
 # Plan técnico ISA-909: bootstrap de cuenta Clerk
 
-Estado: propuesta inicial para revisión Fable. Base:
+Estado: revisado por Fable medio; listo para ejecución TDD. Base:
 `origin/nightly@1c45cc827e47976ed41e1f28463529c04579e806`.
 
 ## Resultado del corte
@@ -32,7 +32,9 @@ Acciones:
 1. registrar versión de Supabase CLI y ayuda de `migration new`;
 2. ejecutar tests actuales de hardening, Edge credential y Go license;
 3. confirmar que hoy un `sub` Clerk no UUID es rechazado por Edge y Go;
-4. crear la migración con la CLI, sin aplicar nada remoto.
+4. confirmar el contrato ya demostrado en ISA-885: PostgREST TPA acepta el
+   token Clerk y expone `auth.jwt()` sin crear `auth.users`;
+5. crear la migración con la CLI, sin aplicar nada remoto.
 
 Checkpoint: baseline documentado; cualquier deuda heredada se separa del fallo
 objetivo. Si Docker/Postgres local no está disponible, se registra el bloqueo y
@@ -47,14 +49,19 @@ Orden TDD:
 
 1. añadir pgTAP rojo para tabla cerrada, claims inválidos, identidad nueva,
    identidad repetida, identidad distinta y sesión legacy;
-2. crear `public.account_identities`, RLS y revocaciones;
-3. retirar únicamente la FK de `profiles.id` hacia `auth.users`;
-4. implementar `private.resolve_current_account()` leyendo `auth.jwt()`;
-5. sustituir `auth.uid()` por el resolver en `claim_active_device`,
+2. añadir al harness local un shim fiel de `auth.jwt()` y fijar claims JSON para
+   que los rojos fallen por contrato, no por función ausente;
+3. crear `public.account_identities`, RLS y revocaciones;
+4. retirar únicamente la FK de `profiles.id` hacia `auth.users`;
+5. implementar `private.resolve_current_account()` leyendo `auth.jwt()` y
+   serializando por advisory transaction lock de `(issuer, subject)`;
+6. conservar UUID legacy solo para issuer `/auth/v1`; cualquier otro issuer usa
+   mapping aunque su subject tenga forma UUID;
+7. sustituir `auth.uid()` por el resolver en `claim_active_device`,
    `read_account_entitlements`, `reset_active_device` y el wrapper compatible;
-6. añadir carrera real al runner PowerShell y comprobar una sola identidad,
+8. añadir carrera real al runner PowerShell y comprobar una sola identidad,
    mismo UUID y cero profiles huérfanos;
-7. documentar SQL de rollback sin ejecutarlo.
+9. documentar SQL de rollback sin ejecutarlo.
 
 Aceptación: todas las RPC operan por UUID interno; no existe escritura directa
 del mapping desde roles de usuario y el cliente no aporta identidad como input.
@@ -76,15 +83,17 @@ Orden TDD:
 3. separar presencia del bearer de resolución de cuenta; no usar
    `supabase.auth.getUser()` en esta función para tokens Clerk;
 4. validar el `accountId` antes de firmar;
-5. declarar `[functions.license-credential] verify_jwt = true` explícitamente;
-6. mantener el body cerrado a `deviceFingerprint`.
+5. traducir rechazo de PostgREST/TPA a un error tipado HTTP 401, no a 503;
+6. declarar `[functions.license-credential] verify_jwt = false` explícitamente;
+7. mantener el body cerrado a `deviceFingerprint`.
 
 Aceptación: `user_...` nunca se usa como FK ni como subject de credencial; todos
 los casos previos de grants, roles y dispositivo siguen pasando.
 
-Seguridad: el handler depende de la validación JWT de la plataforma y de una RPC
-que deriva claims desde `auth.jwt()`. Un test de config impide desactivar
-silenciosamente `verify_jwt`.
+Seguridad: el handler no firma nada hasta que PostgREST valida el bearer mediante
+TPA y la RPC devuelve un UUID derivado de `auth.jwt()`. `verify_jwt=false` evita
+depender de que el gateway Edge conozca las claves Clerk; no convierte la
+función en autoridad pública.
 
 ## P3 — Separar sesión externa y cuenta firmada en Go
 
@@ -98,10 +107,11 @@ Orden TDD:
 3. crear una ruta online del verifier que toma el subject de la credencial
    firmada y exige que sea UUID, sin compararlo con el `sub` externo;
 4. conservar `verifyCached` con subject esperado de la credencial/cache y token
-   protegido exacto;
+   protegido exacto, documentando que ambos se guardan tras el mismo online;
 5. ajustar resultados de error para no presentar el subject externo como
    `UserID` interno;
-6. ejecutar regresiones de firma, device mismatch, clock y offline grace.
+6. probar que HTTP 401 es rechazo definitivo y no offline grace;
+7. ejecutar regresiones de firma, device mismatch, clock y offline grace.
 
 Aceptación: ningún dato no firmado concede una cuenta. `Result.UserID` solo se
 publica desde una credencial válida o desde una caché válida.
@@ -126,7 +136,7 @@ No se hace deploy de schema/Edge, merge, promoción ni release.
 | Corte | Archivos máximos esperados | Verificación |
 | --- | --- | --- |
 | P1 | migración, pgTAP, runner SQL | pgTAP + carrera |
-| P2 | Edge index, Edge test, config | Deno tests + config contract |
+| P2 | Edge index, Edge test, config | Deno tests + auth contract |
 | P3 | service, credential y sus tests | Go focal + completo |
 | P4 | spec/plan/tasks, roadmap, digest, handoff | digest + diff |
 
@@ -135,10 +145,12 @@ redivide antes de seguir.
 
 ## Riesgos y mitigaciones
 
-- **Carrera de primer login:** unique key + transacción y test concurrente real.
-- **Profile huérfano:** limpiar la creación perdedora dentro de la misma función
-  y comprobar conteos.
-- **JWT no validado:** `verify_jwt=true` explícito + claims leídos en SQL.
+- **Carrera de primer login:** advisory transaction lock por identidad + unique
+  key + test concurrente real.
+- **Profile huérfano:** el lock impide crear un perdedor; se comprueban conteos.
+- **JWT no validado:** ninguna firma antes de RPC PostgREST TPA exitosa.
+- **JWT rechazado presentado como red:** error tipado 401 y regresión Go que
+  prohíbe fallback offline.
 - **Secuestro por email/metadata:** esos campos no aparecen en inputs ni reglas.
 - **Regresión Supabase Auth:** caso legacy mantiene UUID y suite existente.
 - **Regresión offline:** firma, UUID, dispositivo, reloj y token protegido se
@@ -146,8 +158,10 @@ redivide antes de seguir.
 - **Borrado de usuario legacy:** retirar la FK elimina su cascade sobre profile.
   La eliminación de cuenta queda fuera de alcance y se documenta como riesgo;
   no se borra ningún usuario real.
-- **Segundo TPA:** no se admite por accidente; requiere issue y extensión
-  explícita del contrato de emisores.
+- **Segundo TPA:** su issuer completo obtiene un namespace separado; habilitar
+  sus superficies requiere una issue explícita.
+- **Superficies aún UUID:** Billing/Testing Center y otras quedan fuera y se
+  inventarían en ISA-911.
 
 ## Definition of done
 

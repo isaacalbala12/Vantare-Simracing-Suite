@@ -104,8 +104,8 @@ func NewCredentialVerifier(keys map[string]ed25519.PublicKey, clock ClockStore) 
 	return &CredentialVerifier{keys: copyKeys, clock: clock, now: time.Now}
 }
 
-func (v *CredentialVerifier) verifyOnline(c *OfflineCredential, expectedSubject, expectedDevice string) (*Result, error) {
-	return v.verify(c, expectedSubject, expectedDevice, true)
+func (v *CredentialVerifier) verifyOnline(c *OfflineCredential, expectedDevice string) (*Result, error) {
+	return v.verify(c, "", expectedDevice, true)
 }
 
 func (v *CredentialVerifier) verifyCached(c *OfflineCredential, expectedSubject, expectedDevice string) (*Result, error) {
@@ -131,7 +131,10 @@ func (v *CredentialVerifier) verify(c *OfflineCredential, expectedSubject, expec
 	if err != nil || !ed25519.Verify(key, payload, signature) {
 		return nil, ErrInvalidCredential
 	}
-	if c.Claims.Issuer != CredentialIssuer || !isUUID(c.Claims.Subject) || c.Claims.Subject != expectedSubject {
+	if c.Claims.Issuer != CredentialIssuer || !isUUID(c.Claims.Subject) {
+		return nil, ErrCredentialAccountMismatch
+	}
+	if !online && c.Claims.Subject != expectedSubject {
 		return nil, ErrCredentialAccountMismatch
 	}
 	if c.Claims.DeviceFingerprint == "" || c.Claims.DeviceFingerprint != expectedDevice {

@@ -488,6 +488,12 @@ bearer opaco, deja la validación Clerk a PostgREST TPA, firma el UUID que devue
 la RPC y traduce rechazo TPA a 401 en vez de disponibilidad. Su config declara
 `verify_jwt=false`; Billing y Testing Center mantienen sus fronteras actuales.
 La suite focal pasa 18/18. No hay deploy de función.
+El corte Go acepta un `sub` externo no vacío de hasta 255 caracteres, pero el
+`Result.UserID` nace solo de una credencial Ed25519 válida con subject UUID y
+dispositivo coincidente. Un rechazo 401 no usa la caché aunque el token sea el
+protegido; el focal `internal/license` pasa. `go test ./...` recorrió el resto de
+paquetes verdes y falló únicamente en `cmd/vantare`/`frontend` porque aún no
+existía el artefacto generado `frontend/dist`; queda construirlo en el gate final.
 
 2026-08-04, ISA-243/287 completaron el piloto remoto con un caso sintético
 nuevo. ISA-288 se creó exactamente una vez, el binding quedó `completed` sin

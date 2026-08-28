@@ -8,6 +8,7 @@ import (
 	"errors"
 	"os"
 	"sort"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -128,6 +129,17 @@ func testJWT(subject string) string {
 	return header + "." + base64.RawURLEncoding.EncodeToString(payload) + ".signature"
 }
 
+func TestSubjectFromJWTAllowsExternalIdentityButRejectsInvalidSubjects(t *testing.T) {
+	if got, err := subjectFromJWT(testJWT("user_isa909_clerk")); err != nil || got != "user_isa909_clerk" {
+		t.Fatalf("external subject = %q, %v", got, err)
+	}
+	for _, subject := range []string{"", "   ", strings.Repeat("x", 256)} {
+		if _, err := subjectFromJWT(testJWT(subject)); err == nil {
+			t.Fatalf("invalid subject %q was accepted", subject)
+		}
+	}
+}
+
 func signTestCredential(
 	t *testing.T,
 	private ed25519.PrivateKey,
@@ -237,13 +249,60 @@ func TestValidateOnlineStates(t *testing.T) {
 	}
 }
 
+func TestValidateClerkSessionUsesSignedInternalAccount(t *testing.T) {
+	now := time.Date(2026, 8, 28, 12, 0, 0, 0, time.UTC)
+	client := &mockSupabaseClient{}
+	service, private := newTestService(t, now, client)
+	client.credential = signTestCredential(t, private, now, []OfflineCapability{{
+		Key: CapabilityPro, PaidThrough: now.Add(time.Hour).Format(time.RFC3339),
+	}}, testSubject, "device-1")
+
+	result, err := service.Validate(context.Background(), testJWT("user_isa909_clerk"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != StateActive || !result.OnlineValidated {
+		t.Fatalf("result = %#v", result)
+	}
+	if result.UserID != testSubject {
+		t.Fatalf("user ID = %q, want signed internal account %q", result.UserID, testSubject)
+	}
+}
+
+func TestRejectedClerkSessionNeverFallsBackToTrustedCache(t *testing.T) {
+	now := time.Date(2026, 8, 28, 12, 0, 0, 0, time.UTC)
+	client := &mockSupabaseClient{fetchErr: ErrCredentialRejected}
+	service, private := newTestService(t, now, client)
+	cache := NewLicenseCache(t.TempDir() + "/license.json")
+	credential := signTestCredential(t, private, now.Add(-time.Minute), []OfflineCapability{{
+		Key: CapabilityPro, PaidThrough: now.Add(time.Hour).Format(time.RFC3339),
+	}}, testSubject, "device-1")
+	if err := cache.Write(credential); err != nil {
+		t.Fatal(err)
+	}
+	service.WithCache(cache)
+	token := testJWT("user_isa909_clerk")
+
+	result, err := service.ValidateWithTrustedSession(context.Background(), token, token)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != StateAuthenticatedNoEntitlement ||
+		!errors.Is(result.Error, ErrCredentialRejected) {
+		t.Fatalf("rejected session used offline cache: %#v", result)
+	}
+	if result.UserID != "" {
+		t.Fatalf("external subject leaked as internal user ID: %q", result.UserID)
+	}
+}
+
 func TestValidateOfflineFallbackRequiresExactTrustedSession(t *testing.T) {
 	now := time.Date(2026, 8, 2, 12, 0, 0, 0, time.UTC)
 	client := &mockSupabaseClient{fetchErr: errors.New("network unavailable")}
 	service, private := newTestService(t, now, client)
 	cache := NewLicenseCache(t.TempDir() + "/license.json")
 	credential := signTestCredential(t, private, now.Add(-time.Minute), []OfflineCapability{{Key: CapabilityPro, PaidThrough: now.Add(time.Hour).Format(time.RFC3339)}}, testSubject, "device-1")
-	if _, err := service.verifier.verifyOnline(credential, testSubject, "device-1"); err != nil {
+	if _, err := service.verifier.verifyOnline(credential, "device-1"); err != nil {
 		t.Fatal(err)
 	}
 	if err := cache.Write(credential); err != nil {
@@ -278,7 +337,7 @@ func TestValidateOfflineExpiredCredentialStaysExpired(t *testing.T) {
 	service, private := newTestService(t, now, &mockSupabaseClient{fetchErr: errors.New("offline")})
 	cache := NewLicenseCache(t.TempDir() + "/license.json")
 	credential := signTestCredential(t, private, now.Add(-2*time.Hour), []OfflineCapability{{Key: CapabilityPro, PaidThrough: now.Add(-time.Hour).Format(time.RFC3339)}}, testSubject, "device-1")
-	if _, err := service.verifier.verifyOnline(credential, testSubject, "device-1"); err != nil {
+	if _, err := service.verifier.verifyOnline(credential, "device-1"); err != nil {
 		t.Fatal(err)
 	}
 	if err := cache.Write(credential); err != nil {

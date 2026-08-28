@@ -60,8 +60,9 @@ do $$ begin create role authenticated noinherit; exception when duplicate_object
 do $$ begin create role service_role noinherit bypassrls; exception when duplicate_object then null; end $$;
 create schema if not exists auth;
 create schema if not exists extensions;
+create schema if not exists storage;
 create extension if not exists pgtap;
-create extension if not exists pgcrypto;
+create extension if not exists pgcrypto with schema extensions;
 create extension if not exists dblink with schema extensions;
 create table if not exists auth.users (
   id uuid primary key,
@@ -71,7 +72,44 @@ create table if not exists auth.users (
 create or replace function auth.uid() returns uuid language sql stable as $$
   select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid
 $$;
-grant usage on schema public, auth to anon, authenticated, service_role;
+create or replace function auth.jwt() returns jsonb language sql stable as $$
+  select coalesce(
+    nullif(current_setting('request.jwt.claim', true), '')::jsonb,
+    nullif(current_setting('request.jwt.claims', true), '')::jsonb,
+    case
+      when nullif(current_setting('request.jwt.claim.sub', true), '') is not null
+      then jsonb_build_object(
+        'iss', coalesce(
+          nullif(current_setting('request.jwt.claim.iss', true), ''),
+          'https://local.supabase.test/auth/v1'
+        ),
+        'sub', current_setting('request.jwt.claim.sub', true),
+        'role', 'authenticated'
+      )
+      else '{}'::jsonb
+    end
+  )
+$$;
+create table if not exists storage.buckets (
+  id text primary key,
+  name text not null unique,
+  public boolean not null default false,
+  file_size_limit bigint,
+  allowed_mime_types text[]
+);
+create table if not exists storage.objects (
+  id uuid primary key default gen_random_uuid(),
+  bucket_id text not null references storage.buckets(id),
+  name text not null,
+  owner_id uuid,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique(bucket_id, name)
+);
+alter table storage.objects enable row level security;
+grant usage on schema public, auth, extensions, storage to anon, authenticated, service_role;
+grant insert on storage.objects to authenticated;
+grant select, insert, update, delete on storage.objects, storage.buckets to service_role;
 '@
   Write-Utf8NoBom $dblinkHelper @'
 drop function if exists extensions.vantare_test_dblink_connect(text, text);
@@ -98,6 +136,7 @@ grant execute on function extensions.vantare_test_dblink_connect(text, text) to 
   docker cp (Join-Path $root "supabase\tests\billing_order_refund_ledger.test.sql") "${container}:/tmp/order-refund-ledger-test.sql"
   docker cp (Join-Path $root "supabase\tests\billing_observability.test.sql") "${container}:/tmp/observability-test.sql"
   docker cp (Join-Path $root "supabase\tests\operational_access.test.sql") "${container}:/tmp/operational-access-test.sql"
+  docker cp (Join-Path $root "supabase\tests\clerk_account_bootstrap_test.sql") "${container}:/tmp/clerk-account-bootstrap-test.sql"
   $migrations = Get-ChildItem (Join-Path $root "supabase\migrations\*.sql") | Sort-Object Name
   foreach ($migration in $migrations) { docker cp $migration.FullName "${container}:/tmp/$($migration.Name)" }
 
@@ -111,6 +150,43 @@ grant execute on function extensions.vantare_test_dblink_connect(text, text) to 
   Assert-PgTap "clean" "/tmp/order-refund-ledger-test.sql" "1\.\.37" "Clean install order refund ledger"
   Assert-PgTap "clean" "/tmp/observability-test.sql" "1\.\.20" "Clean install billing observability"
   Assert-PgTap "clean" "/tmp/operational-access-test.sql" "1\.\.56" "Clean install operational access"
+  Assert-PgTap "clean" "/tmp/clerk-account-bootstrap-test.sql" "1\.\.31" "Clean install Clerk account bootstrap"
+
+  docker exec $container psql -v ON_ERROR_STOP=1 -U postgres -d clean -c `
+    "create table public.isa909_bootstrap_barrier (participant text primary key)" | Out-Null
+  Write-Utf8NoBom $claimAFile @'
+insert into public.isa909_bootstrap_barrier values ('a');
+do $$ begin
+  for i in 1..500 loop
+    exit when (select count(*) from public.isa909_bootstrap_barrier) = 2;
+    perform pg_sleep(0.01);
+  end loop;
+  if (select count(*) from public.isa909_bootstrap_barrier) <> 2 then raise exception 'barrier_timeout'; end if;
+end $$;
+set role authenticated;
+select set_config('request.jwt.claims', '{"iss":"https://clerk.isa909.test","sub":"user_isa909_concurrent","role":"authenticated"}', false);
+select public.claim_active_device('isa909-concurrent-device');
+'@
+  Write-Utf8NoBom $claimBFile @'
+insert into public.isa909_bootstrap_barrier values ('b');
+do $$ begin
+  for i in 1..500 loop
+    exit when (select count(*) from public.isa909_bootstrap_barrier) = 2;
+    perform pg_sleep(0.01);
+  end loop;
+  if (select count(*) from public.isa909_bootstrap_barrier) <> 2 then raise exception 'barrier_timeout'; end if;
+end $$;
+set role authenticated;
+select set_config('request.jwt.claims', '{"iss":"https://clerk.isa909.test","sub":"user_isa909_concurrent","role":"authenticated"}', false);
+select public.claim_active_device('isa909-concurrent-device');
+'@
+  docker cp $claimAFile "${container}:/tmp/isa909-bootstrap-a.sql"
+  docker cp $claimBFile "${container}:/tmp/isa909-bootstrap-b.sql"
+  docker exec $container sh -c 'psql -q -v ON_ERROR_STOP=1 -U postgres -d clean -f /tmp/isa909-bootstrap-a.sql & p1=$!; psql -q -v ON_ERROR_STOP=1 -U postgres -d clean -f /tmp/isa909-bootstrap-b.sql & p2=$!; wait $p1; s1=$?; wait $p2; s2=$?; test "$s1" -eq 0 -a "$s2" -eq 0'
+  if ($LASTEXITCODE -ne 0) { throw "Concurrent Clerk account bootstrap failed" }
+  $accountBootstrap = docker exec $container psql -At -U postgres -d clean -c `
+    "select (select count(*) from public.account_identities where issuer='https://clerk.isa909.test' and subject='user_isa909_concurrent') || ':' || (select count(*) from public.profiles p join public.account_identities i on i.account_id=p.id where i.issuer='https://clerk.isa909.test' and i.subject='user_isa909_concurrent') || ':' || (select count(*) from public.profiles p where not exists (select 1 from auth.users u where u.id=p.id) and not exists (select 1 from public.account_identities i where i.account_id=p.id))"
+  if ($accountBootstrap.Trim() -ne "1:1:0") { throw "Concurrent Clerk account bootstrap contract failed: $accountBootstrap" }
 
   docker exec $container psql -v ON_ERROR_STOP=1 -U postgres -d clean -c `
     "insert into auth.users (id, email) values ('00000000-0000-4000-8000-000000000089', 'concurrency@example.invalid')" | Out-Null
@@ -384,7 +460,9 @@ select 'b', outcome from public.billing_apply_subscription_lifecycle(
   $subscriptionLifecycleMigration = "20260802110000_billing_subscription_lifecycle.sql"
   $orderRefundLedgerMigration = "20260802120000_billing_order_refund_ledger.sql"
   $operationalAccessMigration = "20260803140000_operational_access_assignments.sql"
-  foreach ($migration in $migrations | Where-Object Name -notin @($authHardeningMigration, $commercialProjectionMigration, $subscriptionLifecycleMigration, $orderRefundLedgerMigration, $operationalAccessMigration)) {
+  $raceScheduleMigration = "20260808000000_race_schedule_publications.sql"
+  $accountBootstrapMigration = "20260828124540_clerk_account_bootstrap.sql"
+  foreach ($migration in $migrations | Where-Object Name -notin @($authHardeningMigration, $commercialProjectionMigration, $subscriptionLifecycleMigration, $orderRefundLedgerMigration, $operationalAccessMigration, $raceScheduleMigration, $accountBootstrapMigration)) {
     Invoke-Psql "upgrade" "/tmp/$($migration.Name)"
   }
   Invoke-Psql "upgrade" "/tmp/$authHardeningMigration"
@@ -398,6 +476,8 @@ select 'b', outcome from public.billing_apply_subscription_lifecycle(
   Invoke-Psql "upgrade" "/tmp/$subscriptionLifecycleMigration"
   Invoke-Psql "upgrade" "/tmp/$orderRefundLedgerMigration"
   Invoke-Psql "upgrade" "/tmp/$operationalAccessMigration"
+  Invoke-Psql "upgrade" "/tmp/$raceScheduleMigration"
+  Invoke-Psql "upgrade" "/tmp/$accountBootstrapMigration"
   Assert-PgTap "upgrade" "/tmp/hardening-test.sql" "1\.\.48" "Upgrade hardening"
   Assert-PgTap "upgrade" "/tmp/inbox-test.sql" "1\.\.54" "Upgrade inbox"
   Assert-PgTap "upgrade" "/tmp/commercial-projection-test.sql" "1\.\.43" "Upgrade commercial projection"
@@ -408,6 +488,7 @@ select 'b', outcome from public.billing_apply_subscription_lifecycle(
   Assert-PgTap "upgrade" "/tmp/order-refund-ledger-test.sql" "1\.\.37" "Upgrade order refund ledger"
   Assert-PgTap "upgrade" "/tmp/observability-test.sql" "1\.\.20" "Upgrade billing observability"
   Assert-PgTap "upgrade" "/tmp/operational-access-test.sql" "1\.\.56" "Upgrade operational access"
+  Assert-PgTap "upgrade" "/tmp/clerk-account-bootstrap-test.sql" "1\.\.31" "Upgrade Clerk account bootstrap"
 
   docker exec $container psql -v ON_ERROR_STOP=1 -U postgres -d clean -c `
     "insert into auth.users (id, email) values ('00000000-0000-4000-8000-000000000091', 'restore-sentinel@example.invalid'); insert into public.user_entitlements (user_id, product_key, status, source) values ('00000000-0000-4000-8000-000000000091', 'restore_sentinel', 'revoked', 'restore-test')" | Out-Null
@@ -451,7 +532,7 @@ select 'b', outcome from public.billing_apply_subscription_lifecycle(
     if ($failedRestoreExit -eq 0) { throw "$fixture restore unexpectedly passed" }
   }
   $elapsed = [math]::Round(((Get-Date) - $started).TotalSeconds, 2)
-  Write-Output "Supabase hardening: clean/upgrade/restore 48 hardening + 54 inbox + 43 commercial projection + 17 reconciliation + 51 subscription lifecycle + 37 order/refund ledger + 20 observability + 56 operational access pgTAP PASS; legacy upgrade 11 + 8 lifecycle pgTAP PASS; inbox, device, reconciliation, subscription lifecycle and first-seen order concurrency PASS; restore sentinel/RLS/grants plus truncated/corrupt fail-closed PASS (${elapsed}s)"
+  Write-Output "Supabase hardening: clean/upgrade/restore 48 hardening + 54 inbox + 43 commercial projection + 17 reconciliation + 51 subscription lifecycle + 37 order/refund ledger + 20 observability + 56 operational access + 31 Clerk account bootstrap pgTAP PASS; legacy upgrade 11 + 8 lifecycle pgTAP PASS; Clerk first-login, inbox, device, reconciliation, subscription lifecycle and first-seen order concurrency PASS; restore sentinel/RLS/grants plus truncated/corrupt fail-closed PASS (${elapsed}s)"
 } finally {
   docker rm -f $container 2>$null | Out-Null
   if (Test-Path $bootstrap) { Remove-Item -LiteralPath $bootstrap -Force }

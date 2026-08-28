@@ -13,6 +13,7 @@ export type OverlayFuelUnitV2 = "gallons-us" | "liters";
 export type OverlayModeV2 = "estimated" | "none" | "official" | "reconstructed" | "xyz";
 export type OverlayPerformanceEffectsV2 = "flat" | "full" | "noBlur";
 export type OverlayPerformanceModeV2 = "auto" | "custom" | "manual";
+export type OverlayPerformanceReasonV2 = "cpu" | "frametime" | "unavailable" | "user" | "vr";
 export type OverlayPressureUnitV2 = "kpa" | "psi";
 export type OverlayQualityV2 = "fresh" | "invalid" | "missing" | "stale";
 export type OverlaySourceStateV2 = "connecting" | "degraded" | "detecting" | "error" | "live" | "stale" | "stopped" | "stopping";
@@ -277,7 +278,7 @@ export interface OverlayPerformanceV2 {
   readonly level: 1 | 2 | 3 | 4 | 5;
   readonly mode: OverlayPerformanceModeV2;
   readonly rafCap: number | null;
-  readonly reason?: string | undefined;
+  readonly reason?: OverlayPerformanceReasonV2 | undefined;
   readonly sourceHz: number;
   readonly widgetHz: { readonly [widgetType: string]: number | "dirty" | "event" };
 }

@@ -200,6 +200,11 @@ func normalizedPerformance(value PerformanceV2) PerformanceV2 {
 	default:
 		value.Effects = PerformanceEffectsNoBlur
 	}
+	switch value.Reason {
+	case "", PerformanceReasonCPU, PerformanceReasonFrameTime, PerformanceReasonUser, PerformanceReasonVR, PerformanceReasonUnavailable:
+	default:
+		value.Reason = PerformanceReasonUnavailable
+	}
 	if value.WidgetHz == nil {
 		value.WidgetHz = make(map[string]json.RawMessage)
 	}

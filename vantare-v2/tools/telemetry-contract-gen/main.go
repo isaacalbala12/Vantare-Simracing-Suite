@@ -234,6 +234,10 @@ func newGenerator() *generator {
 	g.addEnum(reflect.TypeFor[overlayv2.PerformanceEffectsV2](), "OverlayPerformanceEffectsV2", []string{
 		string(overlayv2.PerformanceEffectsFull), string(overlayv2.PerformanceEffectsNoBlur), string(overlayv2.PerformanceEffectsFlat),
 	})
+	g.addEnum(reflect.TypeFor[overlayv2.PerformanceReasonV2](), "OverlayPerformanceReasonV2", []string{
+		string(overlayv2.PerformanceReasonCPU), string(overlayv2.PerformanceReasonFrameTime), string(overlayv2.PerformanceReasonUser),
+		string(overlayv2.PerformanceReasonVR), string(overlayv2.PerformanceReasonUnavailable),
+	})
 	g.addEnum(reflect.TypeFor[engineer.CapabilityGroup](), "EngineerCapability", []string{
 		string(engineer.GroupSession), string(engineer.GroupStandings),
 		string(engineer.GroupControls), string(engineer.GroupPit), string(engineer.GroupFuel),

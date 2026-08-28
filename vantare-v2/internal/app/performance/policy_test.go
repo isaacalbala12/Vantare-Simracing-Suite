@@ -86,8 +86,15 @@ func TestResolveUsesProfileAndKeepsAutoInBalancedUntilSensorExists(t *testing.T)
 	}
 
 	auto := Resolve(Policy{Mode: ModeAuto, Level: LevelMinimum}, nil)
-	if auto.Level != LevelBalanced || auto.Mode != ModeAuto || auto.Reason != "auto no disponible" {
+	if auto.Level != LevelBalanced || auto.Mode != ModeAuto || auto.Reason != ReasonUnavailable {
 		t.Fatalf("auto resuelto = %+v", auto)
+	}
+}
+
+func TestResolveNormalizesUnknownReason(t *testing.T) {
+	resolved := Resolve(Policy{Mode: ModeLevel, Level: LevelMaximum, Reason: Reason("texto-libre")}, nil)
+	if resolved.Reason != ReasonUnavailable {
+		t.Fatalf("reason resuelto = %q; se esperaba %q", resolved.Reason, ReasonUnavailable)
 	}
 }
 

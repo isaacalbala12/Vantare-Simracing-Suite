@@ -1070,7 +1070,7 @@ func overlayPerformancePolicy(policy performancepolicy.Policy, sourceHz float64)
 	}
 	return overlayv2.PerformanceV2{
 		Level: uint8(policy.Level), Mode: mode, Effects: effects, RafCap: rafCap,
-		WidgetHz: rates, Reason: policy.Reason, SourceHz: sourceHz,
+		WidgetHz: rates, Reason: overlayv2.PerformanceReasonV2(policy.Reason), SourceHz: sourceHz,
 	}
 }
 

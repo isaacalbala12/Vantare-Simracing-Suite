@@ -463,7 +463,7 @@ function performancePolicy(value: unknown, path: string): void {
     if (typeof rate !== "number" || !Number.isFinite(rate) || rate <= 0) invalid(ratePath);
   });
   if (typeof value.sourceHz !== "number" || !Number.isFinite(value.sourceHz) || value.sourceHz < 0) invalid(`${path}.sourceHz`);
-  optionalString(value.reason, `${path}.reason`);
+  if (value.reason !== undefined) enumValue(value.reason, `${path}.reason`, ["cpu", "frametime", "user", "vr", "unavailable"]);
   Object.freeze(value);
 }
 

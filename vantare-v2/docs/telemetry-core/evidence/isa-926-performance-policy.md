@@ -17,7 +17,7 @@ repinta al cambiar su fuente. Los monitores del nivel 1 no llevan entrada y
 El ajuste de aplicación por defecto es `{mode: "level", level: 3}`. Una
 preferencia de perfil puede reemplazarlo cuando exista ese contrato; ISA-926 no
 cambia todavía el perfil v3. `custom` conserva overrides válidos y `auto` se
-acepta, pero resuelve en nivel 3 con `reason: "auto no disponible"`.
+acepta, pero resuelve en nivel 3 con `reason: "unavailable"`.
 
 El runtime resuelve la política al arrancar y después de guardar ajustes. Antes
 de cada proyección entrega a `SectionScheduler` la cadencia del nivel vigente;

@@ -38,6 +38,18 @@ const (
 	EffectsFlat   Effects = "flat"
 )
 
+// Reason explica por qué se eligió la política efectiva. Es vocabulario de
+// contrato, no texto de interfaz.
+type Reason string
+
+const (
+	ReasonCPU         Reason = "cpu"
+	ReasonFrameTime   Reason = "frametime"
+	ReasonUser        Reason = "user"
+	ReasonVR          Reason = "vr"
+	ReasonUnavailable Reason = "unavailable"
+)
+
 // WidgetRate es un techo numerico o una politica dirigida por cambios/eventos.
 // El valor cero representa la tasa del monitor y se publica como null.
 type WidgetRate struct {
@@ -75,7 +87,7 @@ type Policy struct {
 	RafCap   *int                  `json:"rafCap"`
 	WidgetHz map[string]WidgetRate `json:"widgetHz"`
 	SourceHz float64               `json:"sourceHz"`
-	Reason   string                `json:"reason,omitempty"`
+	Reason   Reason                `json:"reason,omitempty"`
 }
 
 // Resolve aplica primero el override de perfil cuando existe y normaliza el
@@ -89,9 +101,12 @@ func Resolve(appDefault Policy, profileOverride *Policy) Policy {
 
 	if requested.Mode == ModeAuto {
 		requested.Level = LevelBalanced
-		requested.Reason = "auto no disponible"
+		requested.Reason = ReasonUnavailable
 	} else if requested.Mode != ModeCustom {
 		requested.Mode = ModeLevel
+	}
+	if requested.Reason != "" && !requested.Reason.valid() {
+		requested.Reason = ReasonUnavailable
 	}
 	if !requested.Level.valid() {
 		requested.Level = LevelBalanced
@@ -191,6 +206,15 @@ func policyForLevel(level Level) Policy {
 }
 
 func (level Level) valid() bool { return level >= LevelMaximum && level <= LevelMinimum }
+
+func (reason Reason) valid() bool {
+	switch reason {
+	case ReasonCPU, ReasonFrameTime, ReasonUser, ReasonVR, ReasonUnavailable:
+		return true
+	default:
+		return false
+	}
+}
 
 func intPointer(value int) *int { return &value }
 

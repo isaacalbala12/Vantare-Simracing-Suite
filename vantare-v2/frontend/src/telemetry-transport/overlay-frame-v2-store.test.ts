@@ -39,6 +39,16 @@ describe("OverlayFrame v2 store", () => {
         },
       },
     })).toThrow("overlay-frame-v2:invalid-contract:frame.capabilities.performance.level");
+    expect(() => decodeOverlayUpdateV2({
+      ...update,
+      frame: {
+        ...update.frame,
+        capabilities: {
+          ...update.frame?.capabilities,
+          performance: { ...update.frame?.capabilities.performance, reason: "free-text" },
+        },
+      },
+    })).toThrow("overlay-frame-v2:invalid-contract:frame.capabilities.performance.reason");
   });
 
   it("accepts revision gaps and retains one stable immutable frame reference", () => {

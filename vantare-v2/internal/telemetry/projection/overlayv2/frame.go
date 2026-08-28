@@ -298,6 +298,16 @@ const (
 	PerformanceEffectsFlat   PerformanceEffectsV2 = "flat"
 )
 
+type PerformanceReasonV2 string
+
+const (
+	PerformanceReasonCPU         PerformanceReasonV2 = "cpu"
+	PerformanceReasonFrameTime   PerformanceReasonV2 = "frametime"
+	PerformanceReasonUser        PerformanceReasonV2 = "user"
+	PerformanceReasonVR          PerformanceReasonV2 = "vr"
+	PerformanceReasonUnavailable PerformanceReasonV2 = "unavailable"
+)
+
 // PerformanceV2 es la politica efectiva decidida por Go. WidgetHz usa JSON
 // crudo solo para conservar la union cerrada number | dirty | event en wire.
 type PerformanceV2 struct {
@@ -306,7 +316,7 @@ type PerformanceV2 struct {
 	Effects  PerformanceEffectsV2       `json:"effects"`
 	RafCap   *int                       `json:"rafCap"`
 	WidgetHz map[string]json.RawMessage `json:"widgetHz"`
-	Reason   string                     `json:"reason,omitempty"`
+	Reason   PerformanceReasonV2        `json:"reason,omitempty"`
 	SourceHz float64                    `json:"sourceHz"`
 }
 

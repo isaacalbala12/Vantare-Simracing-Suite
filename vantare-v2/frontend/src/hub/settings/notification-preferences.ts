@@ -19,6 +19,11 @@ function samePreferences(a: NotificationSettings, b: NotificationSettings): bool
   );
 }
 
+/** The stored setting is an opt-out: an absent value keeps update alerts on. */
+export function allowsUpdateAlerts(preferences: NotificationSettings): boolean {
+  return !preferences.updatesMuted;
+}
+
 export function useNotificationPreferences(): NotificationSettings {
   const [preferences, setPreferences] = useState<NotificationSettings>({});
 

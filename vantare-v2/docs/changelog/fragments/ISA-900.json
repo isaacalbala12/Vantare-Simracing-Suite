@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-900",
+  "type": "fix",
+  "summary": "Los avisos de actualización respetan su interruptor y Ajustes permite comprobar las notificaciones de Windows.",
+  "technicalNotes": [
+    "Command Orbit oculta el aviso de actualización cuando updatesMuted está activo, incluso si el actualizador conserva un estado interno en curso.",
+    "La prueba de escritorio reutiliza el contrato nativo notifications:test y muestra los estados enviando, aceptado por Windows o error sin cambiar preferencias.",
+    "La copia distingue que Windows aceptó el envío de la confirmación visual del aviso."
+  ],
+  "testing": [
+    "Desactivar Avisos de actualización, provocar updater:notify y confirmar que no aparece el pill en la barra superior.",
+    "En Ajustes > Aplicación, pulsar Enviar prueba y comprobar los estados de envío y resultado.",
+    "Con la app Wails en Windows, confirmar manualmente que el aviso nativo aparece."
+  ],
+  "knownLimitations": [
+    "Los tests automatizados validan el contrato Wails y la UI, pero no demuestran que Windows haya mostrado visualmente el toast.",
+    "Las nuevas categorías de notificación e historial se entregan en las issues dependientes de ISA-899."
+  ]
+}

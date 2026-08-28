@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Events } from "@wailsio/runtime";
 import { I18nProvider } from "../../i18n/I18nProvider";
@@ -83,6 +83,39 @@ describe("modelo de Ajustes", () => {
 });
 
 describe("SettingsOrbitPage", () => {
+  it("permite probar una notificación de Windows y muestra el resultado real", () => {
+    const handlers = new Map<string, Array<(event: { data: unknown }) => void>>();
+    vi.mocked(Events.On).mockImplementation(((name: string, handler: (event: { data: unknown }) => void) => {
+      handlers.set(name, [...(handlers.get(name) ?? []), handler]);
+      return () => handlers.delete(name);
+    }) as typeof Events.On);
+
+    mount("application");
+    act(() => {
+      for (const handler of handlers.get("notifications:status") ?? []) {
+        handler({ data: { supported: true, authorized: true } });
+      }
+    });
+
+    fireEvent.click(screen.getByTestId("orbit-settings-notification-test"));
+    expect(Events.Emit).toHaveBeenCalledWith("notifications:test");
+    expect(screen.getByText("Enviando prueba…")).toBeTruthy();
+
+    act(() => {
+      for (const handler of handlers.get("notifications:test:result") ?? []) {
+        handler({ data: { ok: false, message: "toast rejected" } });
+      }
+    });
+    expect(screen.getByRole("alert").textContent).toContain("toast rejected");
+
+    act(() => {
+      for (const handler of handlers.get("notifications:test:result") ?? []) {
+        handler({ data: { ok: true } });
+      }
+    });
+    expect(screen.getByRole("status").textContent).toContain("Windows aceptó el envío");
+  });
+
   it("la columna lista exactamente las seis secciones y nada más", () => {
     mount("account");
     const rows = within(screen.getByTestId("orbit-settings-context")).getAllByRole("button");

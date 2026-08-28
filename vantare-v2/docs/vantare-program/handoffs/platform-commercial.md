@@ -1,5 +1,28 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+## ISA-900 — preferencias y prueba de notificaciones
+
+- Rama aislada `vantareapp/isa-900-reparar-preferencias-notificaciones`, creada
+  desde `nightly@1c45cc82` y rebasada de nuevo para integración sobre
+  `origin/nightly@36ec5fdd7e9914638778ba946373b43a52fd3749`.
+- Command Orbit ya aplica `updatesMuted` al pill del actualizador: silenciarlo
+  lo oculta sin sustituir ni inventar el estado real del updater.
+- Ajustes → Aplicación recupera la prueba nativa de Windows y expone envío,
+  aceptación del backend o error. «Aceptado» no se presenta como prueba de que
+  Windows haya mostrado visualmente el toast.
+- Decisión de producto: Spotter sigue siendo overlay/audio de carrera y queda
+  fuera de los canales de notificación, del centro y del historial.
+- Código rebasado en `2096fcef`; TDD focal 35/35, suite frontend 3.191/3.191,
+  typecheck, build, lint focal y contratos de roadmap 23/23 + 21/21 en verde.
+  El lint global conserva un error ajeno en
+  `car-damage-numbers-view-model-v2.ts:93`. El PR draft #907 es la única ruta
+  hacia `nightly`. La revisión adversarial autorizada para integración concluye
+  APPROVE con P0=0, P1=0 y P2=0; como riesgo residual quedan el smoke visual del
+  toast en Wails y que la regresión del mute prueba la política pura, no una
+  shell completa. Los checks remotos anteriores quedaron obsoletos al rebase y
+  deben repetirse sobre el nuevo HEAD antes del merge. No hay aún integración
+  en `nightly`, promoción posterior, release ni anuncio.
+
 ## ISA-843 — columnas de Próximas alineadas
 
 - Rama aislada `vantareapp/isa-843-centrar-columnas-proximas`, basada en

@@ -485,7 +485,7 @@ function SettingRow({
   testid,
 }: {
   title: string;
-  hint: string;
+  hint: ReactNode;
   control: ReactNode;
   testid?: string;
 }) {
@@ -536,6 +536,21 @@ function ApplicationSection({
   const changeAppZoom = useCallback((next: AppZoom) => {
     setAppZoomState(setAppZoom(next));
   }, []);
+
+  const notificationTestHint =
+    system.test.state === "failed" ? (
+      <span role="alert">
+        {formatMessage(t("settings.app.notifySystemTestFailed"), {
+          message: system.test.message || t("settings.app.notifySystemTestFailedUnknown"),
+        })}
+      </span>
+    ) : system.test.state === "sent" ? (
+      <span role="status">{t("settings.app.notifySystemTestSent")}</span>
+    ) : system.test.state === "sending" ? (
+      <span role="status">{t("settings.app.notifySystemTestSending")}</span>
+    ) : (
+      t("settings.app.notifySystemTestSub")
+    );
 
   return (
     <div className="orbit-set__grid2">
@@ -733,6 +748,23 @@ function ApplicationSection({
                 : t("settings.app.notifySystemUnsupported")
             }
             title={t("settings.app.notifySystem")}
+          />
+          <SettingRow
+            control={
+              <Button
+                data-testid="orbit-settings-notification-test"
+                disabled={!system.status.supported || system.test.state === "sending"}
+                loading={system.test.state === "sending"}
+                onClick={system.sendTest}
+                size="sm"
+              >
+                {system.test.state === "sending"
+                  ? t("settings.app.notifySystemTestSendingButton")
+                  : t("settings.app.notifySystemTestButton")}
+              </Button>
+            }
+            hint={notificationTestHint}
+            title={t("settings.app.notifySystemTest")}
           />
         </div>
         <Note>{t("settings.app.missingNote")}</Note>

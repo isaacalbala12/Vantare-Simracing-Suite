@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { act, cleanup, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { useNotificationPreferences } from "./notification-preferences";
+import { allowsUpdateAlerts, useNotificationPreferences } from "./notification-preferences";
 
 type Handler = (event: { data: unknown }) => void;
 
@@ -91,5 +91,13 @@ describe("useNotificationPreferences", () => {
     dispatch("settings", { notifications: { launcherMuted: true } });
 
     expect(renders).toBeGreaterThan(settled);
+  });
+});
+
+describe("allowsUpdateAlerts", () => {
+  it("mantiene el aviso activo por defecto y respeta el mute persistido", () => {
+    expect(allowsUpdateAlerts({})).toBe(true);
+    expect(allowsUpdateAlerts({ updatesMuted: false })).toBe(true);
+    expect(allowsUpdateAlerts({ updatesMuted: true })).toBe(false);
   });
 });

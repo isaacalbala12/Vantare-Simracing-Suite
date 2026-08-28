@@ -29,6 +29,10 @@ import {
   type ViewId,
 } from '../../orbit/views';
 import { pendingReleases } from '../../settings/release-notes';
+import {
+  allowsUpdateAlerts,
+  useNotificationPreferences,
+} from '../../settings/notification-preferences';
 import type { UpdateInfo } from '../../settings/settings-contract';
 import { CommandPalette, type PaletteItem } from './CommandPalette';
 import { ContextColumn, type ContextColumnBlock } from './ContextColumn';
@@ -126,6 +130,7 @@ function OrbitShellBody({
   const overlay = useOverlayState();
   const races = useCalendarStarts();
   const launcher = useLauncherSnapshot();
+  const notificationPreferences = useNotificationPreferences();
 
   const activeView = sectionToView(activeSection);
   const planLabel = planLabelOf(access);
@@ -206,6 +211,10 @@ function OrbitShellBody({
   // Parsear el cuerpo de varias releases no es gratis y el aviso se repinta con
   // cada navegación: se rehace solo cuando cambia la información del updater.
   const updateNews = useMemo(() => pendingReleases(updateInfo), [updateInfo]);
+  // The updater state keeps flowing while alerts are muted, but the shell must
+  // not expose it. This also hides an already-visible pill as soon as the user
+  // changes the persisted preference, without losing the real updater state.
+  const visibleUpdate = allowsUpdateAlerts(notificationPreferences) ? update : 'none';
 
   // ≤ 1152 px la columna se pliega sola sin tocar la preferencia guardada.
   const [narrow, setNarrow] = useState(
@@ -560,7 +569,7 @@ function OrbitShellBody({
             // donde vive el estado real, el canal y el botón de instalar (briefing 11).
             onUpdate={() => navigate('ajustes', 'updates')}
             title={t(RAIL_LABEL_KEY[activeView])}
-            update={update}
+            update={visibleUpdate}
             updateLabel={updateLabel}
             updateNewsLabels={updateNewsLabels}
             updateNotes={updateNews.notes}

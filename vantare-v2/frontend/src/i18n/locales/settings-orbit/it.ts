@@ -100,6 +100,14 @@ export const settingsOrbitIt: Record<string, string> = {
   "settings.app.notifySystem": "Notifiche di sistema",
   "settings.app.notifySystemSub": "Windows le mostra con la finestra ridotta a icona.",
   "settings.app.notifySystemUnsupported": "Questa piattaforma non supporta le notifiche desktop.",
+  "settings.app.notifySystemTest": "Prova notifica",
+  "settings.app.notifySystemTestSub": "Invia ora un avviso senza cambiare le preferenze.",
+  "settings.app.notifySystemTestButton": "Invia prova",
+  "settings.app.notifySystemTestSendingButton": "Invio…",
+  "settings.app.notifySystemTestSending": "Invio della prova…",
+  "settings.app.notifySystemTestSent": "Windows ha accettato l'invio; verifica che l'avviso sia apparso.",
+  "settings.app.notifySystemTestFailed": "Invio non riuscito: {{message}}",
+  "settings.app.notifySystemTestFailedUnknown": "Windows non ha indicato il motivo.",
   "settings.app.missingNote":
     "«Chiudi nella barra» e «Unità» non esistono ancora nella configurazione dell'app, quindi non vengono disegnati: dietro al controllo non ci sarebbe nulla da salvare.",
 

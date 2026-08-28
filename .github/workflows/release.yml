@@ -273,6 +273,18 @@ jobs:
       - name: Install NSIS
         run: choco install nsis --version=${{ env.NSIS_VERSION }} --no-progress --yes
 
+      - name: Install MSYS2 UCRT64 toolchain
+        shell: powershell
+        run: |
+          choco install msys2 --no-progress --yes
+          $bash = 'C:\msys64\usr\bin\bash.exe'
+          if (-not (Test-Path -LiteralPath $bash)) { throw "MSYS2 bash not found at $bash" }
+          & $bash -lc 'pacman -Sy --noconfirm mingw-w64-ucrt-x86_64-gcc'
+          if ($LASTEXITCODE -ne 0) { throw "MSYS2 UCRT64 GCC installation failed" }
+          if (-not (Test-Path -LiteralPath 'C:\msys64\ucrt64\bin\gcc.exe')) {
+            throw 'MSYS2 UCRT64 GCC not found after installation'
+          }
+
       - name: Install Wails v3 CLI
         run: |
           if (-not (Get-Command wails3 -ErrorAction SilentlyContinue)) {

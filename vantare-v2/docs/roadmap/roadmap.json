@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-28T13:46:17Z",
+  "generatedAt": "2026-08-28T16:54:38Z",
   "digest": {
-    "lastCommit": "36ec5fdd7e9914638778ba946373b43a52fd3749"
+    "lastCommit": "200c3d64971915b54564913e14821587ecf77ee6"
   },
   "phases": [
     {
@@ -447,6 +447,28 @@
       }
     },
     {
+      "id": "windows-release-toolchain",
+      "type": "fix",
+      "title": {
+        "es": "Builds Windows reproducibles del canal Nightly",
+        "en": "Reproducible Windows builds for the Nightly channel",
+        "pt": "Builds Windows reproduzíveis do canal Nightly",
+        "it": "Build Windows riproducibili del canale Nightly"
+      },
+      "body": {
+        "es": "El pipeline de releases instala y verifica el toolchain MSYS2 UCRT64 antes de compilar el reader de telemetría, y valida los seis artefactos oficiales del canal Nightly.",
+        "en": "The release pipeline installs and verifies the MSYS2 UCRT64 toolchain before compiling the telemetry reader and validates the six official Nightly channel artifacts.",
+        "pt": "O pipeline de releases instala e verifica o toolchain MSYS2 UCRT64 antes de compilar o reader de telemetria e valida os seis artefactos oficiais do canal Nightly.",
+        "it": "La pipeline delle release installa e verifica il toolchain MSYS2 UCRT64 prima di compilare il reader di telemetria e valida i sei artefatti ufficiali del canale Nightly."
+      },
+      "label": {
+        "es": "Corregido",
+        "en": "Fixed",
+        "pt": "Corrigido",
+        "it": "Corretto"
+      }
+    },
+    {
       "id": "overlay-studio-v3",
       "type": "feature",
       "title": {
@@ -849,6 +871,16 @@
           "kind": "feat",
           "scope": "settings",
           "text": "Controlar zoom con Ctrl y rueda"
+        },
+        {
+          "kind": "docs",
+          "scope": "release",
+          "text": "Preparar manifiesto de Nightly 14"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-900 · Reparar preferencias y prueba de notificaciones"
         }
       ]
     },

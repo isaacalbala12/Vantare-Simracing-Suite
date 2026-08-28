@@ -323,6 +323,22 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - cuerpo.it: Il porting completo della shell Orbit sostituisce la V5.2 e diventa l'unica shell dell'hub.
 - etiqueta: Release
 
+### Builds Windows reproducibles del canal Nightly
+
+- id: windows-release-toolchain
+- tipo: fix
+- titulo.en: Reproducible Windows builds for the Nightly channel
+- titulo.pt: Builds Windows reproduzíveis do canal Nightly
+- titulo.it: Build Windows riproducibili del canale Nightly
+- cuerpo: El pipeline de releases instala y verifica el toolchain MSYS2 UCRT64 antes de compilar el reader de telemetría, y valida los seis artefactos oficiales del canal Nightly.
+- cuerpo.en: The release pipeline installs and verifies the MSYS2 UCRT64 toolchain before compiling the telemetry reader and validates the six official Nightly channel artifacts.
+- cuerpo.pt: O pipeline de releases instala e verifica o toolchain MSYS2 UCRT64 antes de compilar o reader de telemetria e valida os seis artefactos oficiais do canal Nightly.
+- cuerpo.it: La pipeline delle release installa e verifica il toolchain MSYS2 UCRT64 prima di compilare il reader di telemetria e valida i sei artefatti ufficiali del canale Nightly.
+- etiqueta: Corregido
+- etiqueta.en: Fixed
+- etiqueta.pt: Corrigido
+- etiqueta.it: Corretto
+
 ### Overlay Studio V3 en marcha
 
 - id: overlay-studio-v3

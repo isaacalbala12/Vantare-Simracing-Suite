@@ -1,6 +1,7 @@
-import { useCallback, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import type { TelemetryRateCoordinator } from '../core/telemetry-rate-coordinator';
 import type { TelemetrySnapshot } from '../core/telemetry-snapshot';
+import type { OverlayFrameV2, OverlaySourceStatusV2 } from '../../generated/telemetry';
 
 export type TelemetryActivityGate = {
   getActive(): boolean;
@@ -14,7 +15,7 @@ const alwaysActiveGate: TelemetryActivityGate = {
 
 export function useRateLimitedTelemetry(
   coordinator: TelemetryRateCoordinator,
-  hz: number,
+  rateKey: number | string,
   active = true,
   activityGate: TelemetryActivityGate = alwaysActiveGate,
 ): TelemetrySnapshot {
@@ -25,7 +26,7 @@ export function useRateLimitedTelemetry(
         unsubscribeCoordinator();
         unsubscribeCoordinator = () => undefined;
         if (!active || !activityGate.getActive()) return;
-        unsubscribeCoordinator = coordinator.subscribe(hz, onStoreChange);
+        unsubscribeCoordinator = coordinator.subscribe(rateKey, onStoreChange);
         if (notify) onStoreChange();
       };
 
@@ -36,9 +37,30 @@ export function useRateLimitedTelemetry(
         unsubscribeCoordinator();
       };
     },
-    [active, activityGate, coordinator, hz],
+    [active, activityGate, coordinator, rateKey],
   );
-  const getSnapshot = useCallback(() => coordinator.getSnapshot(hz), [coordinator, hz]);
+  const getSnapshot = useCallback(() => coordinator.getSnapshot(rateKey), [coordinator, rateKey]);
 
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+}
+
+export function useRateLimitedWidgetTelemetry(
+  coordinator: TelemetryRateCoordinator,
+  widgetType: string,
+): Readonly<{ snapshot: TelemetrySnapshot; overlayFrame?: OverlayFrameV2; overlaySource?: OverlaySourceStatusV2 }> {
+  const [state, setState] = useState(() => ({
+    snapshot: coordinator.getSnapshot(widgetType),
+    overlayFrame: coordinator.getOverlayFrame(),
+    overlaySource: coordinator.getOverlaySource(),
+  }));
+
+  useEffect(() => coordinator.subscribe(widgetType, () => {
+    setState({
+      snapshot: coordinator.getSnapshot(widgetType),
+      overlayFrame: coordinator.getOverlayFrame(),
+      overlaySource: coordinator.getOverlaySource(),
+    });
+  }), [coordinator, widgetType]);
+
+  return state;
 }

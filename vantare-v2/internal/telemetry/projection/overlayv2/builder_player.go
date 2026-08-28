@@ -1,6 +1,7 @@
 package overlayv2
 
 import (
+	"encoding/json"
 	"fmt"
 	"slices"
 	"time"
@@ -54,6 +55,10 @@ type SourceContextV2 struct {
 	// capability or driver import. The builder publishes it verbatim and never
 	// learns which simulator produced it.
 	Modes CapabilityModesV2
+	// PerformanceRevision cambia solo cuando cambia la politica y permite que
+	// capabilities siga siendo una seccion slow + dirty sin comparar mapas.
+	PerformanceRevision uint64
+	Performance         PerformanceV2
 }
 
 func DefaultPreferencesV2() PreferencesV2 {
@@ -172,11 +177,38 @@ func BuildCapabilities(final derive.FinalState, source SourceContextV2) Capabili
 			available[id] = QualityMissing
 		}
 	}
+	performance := normalizedPerformance(source.Performance)
 	return CapabilitiesV2{
-		Supported: supported,
-		Available: available,
-		Modes:     normalizedCapabilityModes(source.Modes),
+		Supported:   supported,
+		Available:   available,
+		Modes:       normalizedCapabilityModes(source.Modes),
+		Performance: &performance,
 	}
+}
+
+func normalizedPerformance(value PerformanceV2) PerformanceV2 {
+	if value.Level < 1 || value.Level > 5 {
+		value.Level = 3
+	}
+	switch value.Mode {
+	case PerformanceModeManual, PerformanceModeCustom, PerformanceModeAuto:
+	default:
+		value.Mode = PerformanceModeManual
+	}
+	switch value.Effects {
+	case PerformanceEffectsFull, PerformanceEffectsNoBlur, PerformanceEffectsFlat:
+	default:
+		value.Effects = PerformanceEffectsNoBlur
+	}
+	switch value.Reason {
+	case "", PerformanceReasonCPU, PerformanceReasonFrameTime, PerformanceReasonUser, PerformanceReasonVR, PerformanceReasonUnavailable:
+	default:
+		value.Reason = PerformanceReasonUnavailable
+	}
+	if value.WidgetHz == nil {
+		value.WidgetHz = make(map[string]json.RawMessage)
+	}
+	return value
 }
 
 // normalizedCapabilityModes publishes the modes the composition root resolved,

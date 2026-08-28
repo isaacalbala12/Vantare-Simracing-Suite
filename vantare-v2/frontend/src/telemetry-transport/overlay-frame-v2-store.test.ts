@@ -29,6 +29,26 @@ describe("OverlayFrame v2 store", () => {
       ...update,
       source: { ...update.source, state: "connected" },
     })).toThrow("overlay-frame-v2:invalid-contract:source.state");
+    expect(() => decodeOverlayUpdateV2({
+      ...update,
+      frame: {
+        ...update.frame,
+        capabilities: {
+          ...update.frame?.capabilities,
+          performance: { ...update.frame?.capabilities.performance, level: 6 },
+        },
+      },
+    })).toThrow("overlay-frame-v2:invalid-contract:frame.capabilities.performance.level");
+    expect(() => decodeOverlayUpdateV2({
+      ...update,
+      frame: {
+        ...update.frame,
+        capabilities: {
+          ...update.frame?.capabilities,
+          performance: { ...update.frame?.capabilities.performance, reason: "free-text" },
+        },
+      },
+    })).toThrow("overlay-frame-v2:invalid-contract:frame.capabilities.performance.reason");
   });
 
   it("accepts revision gaps and retains one stable immutable frame reference", () => {
@@ -50,6 +70,23 @@ describe("OverlayFrame v2 store", () => {
       source: { state: "live" },
       frame: null,
     })).toThrow("overlay-frame-v2:invalid-contract:revision");
+  });
+
+  it("normalizes a rollout frame without performance to level 1 parity", () => {
+    const legacy = JSON.parse(JSON.stringify(golden())) as Record<string, unknown>;
+    const frame = legacy.frame as { capabilities: Record<string, unknown> };
+    delete frame.capabilities.performance;
+
+    const decoded = decodeOverlayUpdateV2(JSON.stringify(legacy));
+    expect(decoded.frame?.capabilities.performance).toEqual({
+      level: 1,
+      mode: "manual",
+      effects: "full",
+      rafCap: null,
+      widgetHz: {},
+      sourceHz: 0,
+      reason: "unavailable",
+    });
   });
 
   it("reuses the freshness watchdog without cloning the frame", () => {

@@ -24,7 +24,6 @@ import { resolveRuntimeLayout, selectRuntimeWidgets } from "./resolve-runtime-la
 import { useRateLimitedTelemetry } from "./use-rate-limited-telemetry";
 import type { EngineerPresentationStore } from "../../engineer/engineer-presentation-store";
 import { EngineerSubtitles } from "../../engineer/EngineerSubtitles";
-import type { OverlayFrameV2, OverlaySourceStatusV2 } from "../../generated/telemetry";
 import type { OverlayV2Feature } from "../telemetry-shadow/overlay-v2-features";
 
 export const RUNTIME_SURFACE_VISIBILITY_HZ = 15;
@@ -37,8 +36,6 @@ export type RuntimeOverlaySurfaceProps = {
   onDiagnostic?: (diagnostic: WidgetDiagnostic) => void;
   diagnostics?: WidgetDiagnosticCollector;
   engineerPresentations?: EngineerPresentationStore;
-  overlayV2Frame?: OverlayFrameV2;
-  overlayV2Source?: OverlaySourceStatusV2;
   overlayV2Features?: readonly OverlayV2Feature[];
 };
 
@@ -46,7 +43,7 @@ const subscribeToNothing = () => () => undefined;
 const noPresentation = () => null;
 
 export function RuntimeOverlaySurface(props: RuntimeOverlaySurfaceProps): React.ReactElement {
-  const { document, telemetry, renderMode, layoutOrigin, onDiagnostic, diagnostics: diagnosticsProp, engineerPresentations, overlayV2Frame, overlayV2Source, overlayV2Features } = props;
+  const { document, telemetry, renderMode, layoutOrigin, onDiagnostic, diagnostics: diagnosticsProp, engineerPresentations, overlayV2Features } = props;
   const diagnostics = useMemo(() => diagnosticsProp ?? createWidgetDiagnosticCollector(), [diagnosticsProp]);
   const snapshot = useRateLimitedTelemetry(telemetry, RUNTIME_SURFACE_VISIBILITY_HZ);
   const layout = resolveRuntimeLayout(document, snapshot);
@@ -184,8 +181,6 @@ export function RuntimeOverlaySurface(props: RuntimeOverlaySurfaceProps): React.
               diagnostics={diagnostics}
               engineerPresentation={engineerPresentation}
               engineerSubtitlesEnabled={subtitlesEnabled}
-              overlayV2Frame={overlayV2Frame}
-              overlayV2Source={overlayV2Source}
               overlayV2Features={overlayV2Features}
             />
           ))}

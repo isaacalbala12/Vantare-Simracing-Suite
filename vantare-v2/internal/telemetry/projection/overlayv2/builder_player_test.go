@@ -252,6 +252,7 @@ func builderField[T comparable](tb testing.TB, value T, freshness schema.Freshne
 // The modes arrive already resolved: ADR 0004 keeps this package free of any
 // capability or driver import, so the builder only ever republishes them.
 func builderSourceContext() SourceContextV2 {
+	rafCap := 40
 	return SourceContextV2{
 		State:                  "live",
 		DescriptorCapabilities: []string{"shared-memory", "rest"},
@@ -260,6 +261,19 @@ func builderSourceContext() SourceContextV2 {
 			Delta:     []string{DeltaReferencePersonalBest},
 			Standings: ModeOfficial,
 			Gaps:      ModeOfficial,
+		},
+		PerformanceRevision: 1,
+		Performance: PerformanceV2{
+			Level: 3, Mode: PerformanceModeManual, Effects: PerformanceEffectsNoBlur, RafCap: &rafCap,
+			WidgetHz: map[string]json.RawMessage{
+				"pedals": []byte("40"), "pedals-telemetry": []byte("40"), "pedals-telemetry-compact": []byte("40"), "input-telemetry": []byte("40"),
+				"delta": []byte("20"), "delta-advanced": []byte("20"), "delta-trace": []byte("20"), "track-map": []byte("20"),
+				"relative": []byte("15"), "multiclass-relative": []byte("15"), "head-to-head": []byte("15"), "standings": []byte("5"),
+				"broadcast-tower": []byte("4"), "fuel-strategy": []byte("1"), "race-schedule": []byte(`"dirty"`),
+				"car-damage-numbers": []byte("1"), "car-damage-visual": []byte("1"), "track-weather": []byte(`"dirty"`),
+				"racing-flags": []byte(`"event"`), "engineer-radio": []byte(`"event"`),
+			},
+			SourceHz: 60,
 		},
 	}
 }

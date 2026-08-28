@@ -177,8 +177,10 @@ func newGenerator() *generator {
 		structs: make(map[reflect.Type]structRoot),
 		enums:   make(map[reflect.Type]enumRoot),
 		fieldTypes: map[string]string{
-			"StatusEnvelope.payload": "StatusPayload",
-			"StatusPayload.state":    "StatusState",
+			"StatusEnvelope.payload":        "StatusPayload",
+			"StatusPayload.state":           "StatusState",
+			"OverlayPerformanceV2.level":    "1 | 2 | 3 | 4 | 5",
+			"OverlayPerformanceV2.widgetHz": `{ readonly [widgetType: string]: number | "dirty" | "event" }`,
 		},
 		reserved: make(map[string]reflect.Type),
 	}
@@ -225,6 +227,16 @@ func newGenerator() *generator {
 	})
 	g.addEnum(reflect.TypeFor[overlayv2.FuelUnit](), "OverlayFuelUnitV2", []string{
 		string(overlayv2.FuelUnitLiters), string(overlayv2.FuelUnitGallonsUS),
+	})
+	g.addEnum(reflect.TypeFor[overlayv2.PerformanceModeV2](), "OverlayPerformanceModeV2", []string{
+		string(overlayv2.PerformanceModeManual), string(overlayv2.PerformanceModeCustom), string(overlayv2.PerformanceModeAuto),
+	})
+	g.addEnum(reflect.TypeFor[overlayv2.PerformanceEffectsV2](), "OverlayPerformanceEffectsV2", []string{
+		string(overlayv2.PerformanceEffectsFull), string(overlayv2.PerformanceEffectsNoBlur), string(overlayv2.PerformanceEffectsFlat),
+	})
+	g.addEnum(reflect.TypeFor[overlayv2.PerformanceReasonV2](), "OverlayPerformanceReasonV2", []string{
+		string(overlayv2.PerformanceReasonCPU), string(overlayv2.PerformanceReasonFrameTime), string(overlayv2.PerformanceReasonUser),
+		string(overlayv2.PerformanceReasonVR), string(overlayv2.PerformanceReasonUnavailable),
 	})
 	g.addEnum(reflect.TypeFor[engineer.CapabilityGroup](), "EngineerCapability", []string{
 		string(engineer.GroupSession), string(engineer.GroupStandings),
@@ -286,6 +298,7 @@ func newGenerator() *generator {
 	g.addStruct(reflect.TypeFor[overlayv2.FuelViewV2](), "OverlayFuelViewV2")
 	g.addStruct(reflect.TypeFor[overlayv2.SpotterViewV2](), "OverlaySpotterViewV2")
 	g.addStruct(reflect.TypeFor[overlayv2.CapabilityModesV2](), "OverlayCapabilityModesV2")
+	g.addStruct(reflect.TypeFor[overlayv2.PerformanceV2](), "OverlayPerformanceV2")
 	g.addStruct(reflect.TypeFor[overlayv2.CapabilitiesV2](), "OverlayCapabilitiesV2")
 	g.addStruct(reflect.TypeFor[engineer.SnapshotV1](), "EngineerSnapshotV1")
 	g.addStruct(reflect.TypeFor[engineer.PayloadV1](), "EngineerPayloadV1")

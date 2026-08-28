@@ -10,6 +10,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	performancepolicy "github.com/vantare/overlays/v2/internal/app/performance"
 )
 
 // ErrSettingsPathEmpty is returned when Save is called without a file path.
@@ -42,10 +44,67 @@ type NotificationSettings struct {
 	SystemEnabled bool `json:"systemEnabled,omitempty"`
 }
 
+// WidgetOverride conserva el formato de Personalizado sin activar todavía su
+// UI. Hz es JSON porque el contrato admite un número o la cadena "dirty".
+type WidgetOverride struct {
+	Hz      json.RawMessage `json:"hz,omitempty"`
+	Effects string          `json:"effects,omitempty"`
+}
+
+// PerformanceSettings guarda el defecto global. Auto se acepta para que el
+// formato sea estable, aunque ISA-926 lo resuelve como nivel 3 hasta F3.
+type PerformanceSettings struct {
+	Mode      string                    `json:"mode"`
+	Level     int                       `json:"level"`
+	Overrides map[string]WidgetOverride `json:"overrides,omitempty"`
+}
+
+// ResolvePerformancePolicy es el único paso de Ajustes a la política efectiva.
+// El perfil v4 todavía no existe, por lo que ISA-926 resuelve solo el defecto
+// de app y deja el override de perfil en nil.
+func ResolvePerformancePolicy(settings PerformanceSettings) performancepolicy.Policy {
+	requested := performancepolicy.Policy{
+		Mode:  performancepolicy.Mode(settings.Mode),
+		Level: performancepolicy.Level(settings.Level),
+	}
+	if requested.Mode == performancepolicy.ModeCustom {
+		requested.WidgetHz = performancepolicy.WidgetHzFor(requested.Level)
+		for widget, override := range settings.Overrides {
+			if rate, ok := performanceRateFromJSON(override.Hz); ok {
+				requested.WidgetHz[widget] = rate
+			}
+		}
+	}
+	return performancepolicy.Resolve(requested, nil)
+}
+
+func performanceRateFromJSON(raw json.RawMessage) (performancepolicy.WidgetRate, bool) {
+	if len(raw) == 0 {
+		return performancepolicy.WidgetRate{}, false
+	}
+	var hz int
+	if err := json.Unmarshal(raw, &hz); err == nil && hz > 0 {
+		return performancepolicy.Hertz(hz), true
+	}
+	var signal string
+	if err := json.Unmarshal(raw, &signal); err != nil {
+		return performancepolicy.WidgetRate{}, false
+	}
+	switch signal {
+	case "dirty":
+		return performancepolicy.Dirty(), true
+	case "event":
+		return performancepolicy.Event(), true
+	default:
+		return performancepolicy.WidgetRate{}, false
+	}
+}
+
 // AppSettings holds user-configurable global settings.
 type AppSettings struct {
 	SchemaVersion               int                         `json:"schemaVersion"`
 	CpuSampling                 bool                        `json:"cpuSampling"`
+	Performance                 PerformanceSettings         `json:"performance"`
 	Notifications               NotificationSettings        `json:"notifications"`
 	Hotkeys                     map[string]string           `json:"hotkeys"`
 	ActiveOverlayProfileID      string                      `json:"activeOverlayProfileId,omitempty"`
@@ -200,6 +259,8 @@ func DefaultAppSettings() *AppSettings {
 	return &AppSettings{
 		SchemaVersion: appSettingsSchemaVersion,
 		CpuSampling:   true,
+		// TODO(#924): pasar a nivel 3 cuando el gate 12.2 esté superado
+		Performance: PerformanceSettings{Mode: "level", Level: 1},
 		Hotkeys: map[string]string{
 			"toggleOverlay":       "ctrl+shift+v",
 			"toggleEditMode":      "ctrl+shift+e",
@@ -268,11 +329,24 @@ func cloneAppSettings(settings *AppSettings) *AppSettings {
 	if settings.LauncherProfiles != nil {
 		copy.LauncherProfiles = cloneProfiles(settings.LauncherProfiles)
 	}
+	copy.Performance.Overrides = cloneWidgetOverrides(settings.Performance.Overrides)
 	return &copy
 }
 
+func cloneWidgetOverrides(source map[string]WidgetOverride) map[string]WidgetOverride {
+	if source == nil {
+		return nil
+	}
+	result := make(map[string]WidgetOverride, len(source))
+	for key, value := range source {
+		value.Hz = append(json.RawMessage(nil), value.Hz...)
+		result[key] = value
+	}
+	return result
+}
+
 // appSettingsSchemaVersion is the current shape of the persisted settings.
-const appSettingsSchemaVersion = 3
+const appSettingsSchemaVersion = 4
 
 // migrateSettings applies schema migrations in place.
 //
@@ -285,6 +359,7 @@ const appSettingsSchemaVersion = 3
 //	          sampler through SetCPUEnabled.
 //	v2 -> v3: add the configurable Delta reference hotkey without replacing any
 //	          user-defined combinations.
+//	v3 -> v4: add the global performance default at parity level.
 func (s *SettingsService) migrateSettings(settings *AppSettings) {
 	if settings.SchemaVersion == 0 {
 		settings.SchemaVersion = 1
@@ -306,6 +381,12 @@ func (s *SettingsService) migrateSettings(settings *AppSettings) {
 			settings.Hotkeys["cycleDeltaReference"] = "ctrl+shift+d"
 		}
 		settings.SchemaVersion = 3
+	}
+	if settings.SchemaVersion < 4 {
+		if settings.Performance.Mode == "" {
+			settings.Performance = PerformanceSettings{Mode: "level", Level: 1}
+		}
+		settings.SchemaVersion = 4
 	}
 }
 
@@ -598,6 +679,7 @@ func (s *SettingsService) applyLoaded(loaded *AppSettings) {
 	merged := &AppSettings{
 		SchemaVersion:               loaded.SchemaVersion,
 		CpuSampling:                 loaded.CpuSampling,
+		Performance:                 loaded.Performance,
 		Notifications:               loaded.Notifications,
 		ActiveOverlayProfileID:      loaded.ActiveOverlayProfileID,
 		BetaWelcomeCompleted:        loaded.BetaWelcomeCompleted,
@@ -606,6 +688,7 @@ func (s *SettingsService) applyLoaded(loaded *AppSettings) {
 		LauncherLMUTriggerProfileID: loaded.LauncherLMUTriggerProfileID,
 		LauncherOnboardingCompleted: loaded.LauncherOnboardingCompleted,
 	}
+	merged.Performance.Overrides = cloneWidgetOverrides(loaded.Performance.Overrides)
 	if loaded.Hotkeys != nil {
 		merged.Hotkeys = make(map[string]string, len(loaded.Hotkeys))
 		for k, v := range loaded.Hotkeys {

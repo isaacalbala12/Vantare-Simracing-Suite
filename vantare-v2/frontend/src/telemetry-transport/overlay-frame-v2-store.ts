@@ -428,7 +428,7 @@ function spotter(value: unknown, path: string): void {
 }
 
 function capabilities(value: unknown, path: string): void {
-  objectWithKeys(value, path, ["supported", "available", "modes"]);
+  objectWithKeys(value, path, ["supported", "available", "modes"], ["performance"]);
   array(value.supported, `${path}.supported`, nonEmptyString);
   record(value.available, `${path}.available`, (entry, entryPath) => quality(entry, entryPath));
   objectWithKeys(value.modes, `${path}.modes`, ["spatial", "delta", "standings", "gaps"]);
@@ -436,7 +436,34 @@ function capabilities(value: unknown, path: string): void {
   array(value.modes.delta, `${path}.modes.delta`, nonEmptyString);
   enumValue<OverlayModeV2>(value.modes.standings, `${path}.modes.standings`, ["none", "official", "reconstructed", "estimated"]);
   enumValue<OverlayModeV2>(value.modes.gaps, `${path}.modes.gaps`, ["none", "official", "reconstructed", "estimated"]);
+  if (value.performance === undefined) {
+    value.performance = {
+      level: 1,
+      mode: "manual",
+      effects: "full",
+      rafCap: null,
+      widgetHz: {},
+      sourceHz: 0,
+      reason: "unavailable",
+    };
+  }
+  performancePolicy(value.performance, `${path}.performance`);
   Object.freeze(value.modes);
+  Object.freeze(value);
+}
+
+function performancePolicy(value: unknown, path: string): void {
+  objectWithKeys(value, path, ["level", "mode", "effects", "rafCap", "widgetHz", "sourceHz"], ["reason"]);
+  if (!Number.isSafeInteger(value.level) || (value.level as number) < 1 || (value.level as number) > 5) invalid(`${path}.level`);
+  enumValue(value.mode, `${path}.mode`, ["manual", "custom", "auto"]);
+  enumValue(value.effects, `${path}.effects`, ["full", "noBlur", "flat"]);
+  if (value.rafCap !== null) positiveInteger(value.rafCap, `${path}.rafCap`);
+  record(value.widgetHz, `${path}.widgetHz`, (rate, ratePath) => {
+    if (rate === "dirty" || rate === "event") return;
+    if (typeof rate !== "number" || !Number.isFinite(rate) || rate <= 0) invalid(ratePath);
+  });
+  if (typeof value.sourceHz !== "number" || !Number.isFinite(value.sourceHz) || value.sourceHz < 0) invalid(`${path}.sourceHz`);
+  if (value.reason !== undefined) enumValue(value.reason, `${path}.reason`, ["cpu", "frametime", "user", "vr", "unavailable"]);
   Object.freeze(value);
 }
 

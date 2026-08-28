@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-28T21:10:36Z",
+  "generatedAt": "2026-08-28T21:31:46Z",
   "digest": {
-    "lastCommit": "4aa8ac7f2f778563fca6113f7645764a2bfedb4b"
+    "lastCommit": "f2e73d3aec1cadb47586cdea07fdbc54effea58f"
   },
   "phases": [
     {
@@ -542,6 +542,28 @@
       }
     },
     {
+      "id": "performance-policy",
+      "type": "feature",
+      "title": {
+        "es": "Política de rendimiento para overlays",
+        "en": "Overlay performance policy",
+        "pt": "Política de desempenho para overlays",
+        "it": "Politica prestazionale per gli overlay"
+      },
+      "body": {
+        "es": "Go decide uno de cinco niveles efectivos, publica `capabilities.performance` y aplica una cadencia común; cada widget obedece su techo de repintado. D8 está demostrado para spotter por ruta real; banderas no tiene señal canónica en v2 y se verifica en #893. El valor inicial conserva la paridad hasta superar el banco de rendimiento.",
+        "en": "Go selects one of five effective levels, publishes `capabilities.performance` and applies one shared cadence; each widget obeys its repaint ceiling. D8 is proven for spotter through the real path; flags have no canonical v2 signal and are verified in #893. The initial value preserves parity until the performance benchmark passes.",
+        "pt": "O Go decide um de cinco níveis efetivos, publica `capabilities.performance` e aplica uma cadência comum; cada widget respeita o seu limite de repintura. D8 está demonstrado para o spotter pela rota real; as bandeiras não têm sinal canónico em v2 e são verificadas em #893. O valor inicial preserva a paridade até o banco de desempenho ser aprovado.",
+        "it": "Go decide uno dei cinque livelli effettivi, pubblica `capabilities.performance` e applica una cadenza comune; ogni widget rispetta il proprio limite di ridisegno. D8 è dimostrato per lo spotter tramite il percorso reale; le bandiere non hanno un segnale canonico v2 e sono verificate in #893. Il valore iniziale mantiene la parità fino al superamento del benchmark prestazionale."
+      },
+      "label": {
+        "es": "Feature",
+        "en": "Feature",
+        "pt": "Feature",
+        "it": "Feature"
+      }
+    },
+    {
       "id": "telemetry-analysis-reader-runtime",
       "type": "feature",
       "title": {
@@ -879,6 +901,36 @@
         {
           "kind": "change",
           "scope": "",
+          "text": "ISA-896 · Lifecycle V2 seguro ante StrictMode y remount (Desktop, OBS, Studio)"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-912 · Instrumentación de perfil host Go y renderer Overlay (sin cambio de comportamiento)"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-924 · Banco de medida de huella mínima (F0) + protocolo + PresentMon"
+        },
+        {
+          "kind": "fix",
+          "scope": "telemetry",
+          "text": "Actualizar trust de runtime tras MSYS2 UCRT64 + Go 1.25 (helper ccdab717 manifest 700201f9)"
+        },
+        {
+          "kind": "fix",
+          "scope": "lint",
+          "text": "Quitar el parámetro _damage sin usar del view-model de daños"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-884 · Relative físico desde progreso temporal canónico"
+        },
+        {
+          "kind": "change",
+          "scope": "",
           "text": "ISA-921 · Fijar PowerShell para el runtime confiable de releases Windows"
         },
         {
@@ -905,36 +957,6 @@
           "kind": "feat",
           "scope": "settings",
           "text": "Añadir zoom global configurable"
-        },
-        {
-          "kind": "feat",
-          "scope": "overlays",
-          "text": "Columnas configurables en Standings Redline"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "ISA-889 · Resincronizar epochs saltados en Overlay"
-        },
-        {
-          "kind": "fix",
-          "scope": "telemetry",
-          "text": "Actualizar trust de runtime tras MSYS2 UCRT64 + Go 1.25 (helper ccdab717 manifest 700201f9)"
-        },
-        {
-          "kind": "fix",
-          "scope": "lint",
-          "text": "Quitar el parámetro _damage sin usar del view-model de daños"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "ISA-884 · Relative físico desde progreso temporal canónico"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "ISA-924 · Banco de medida de huella mínima (F0) + protocolo + PresentMon"
         }
       ]
     },

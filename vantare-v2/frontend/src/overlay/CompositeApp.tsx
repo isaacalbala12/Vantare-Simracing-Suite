@@ -1,8 +1,9 @@
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
 import { Events } from "@wailsio/runtime";
 import type { CalendarReminderPayload } from "../calendar/calendar-types";
 import { parseProfileDocumentV3, type ProfileDocumentV3 } from "./core/profile-document";
 import { createTelemetryRateCoordinator } from "./core/telemetry-rate-coordinator";
+import { bindOverlayV2Coordinator } from "./core/overlay-v2-coordinator-binding";
 import { conformAspectLockedLayouts } from "./core/profile-layout-conform";
 import { applyOverlayDocumentMode } from "./overlay-document";
 import { OverlayCalendarReminderBanner } from "./OverlayCalendarReminderBanner";
@@ -79,12 +80,11 @@ export function CompositeApp() {
       onMappedSnapshot: overlayV2Shadow.acceptLegacy,
     });
     overlayV2Store.reset();
-    const unsubscribeOverlayV2Store = overlayV2Store.subscribe(() => {
-      const state = overlayV2Store.getSnapshot();
-      if (state.frame && state.source) {
-        overlayV2Shadow.acceptOverlayV2(state.frame, state.source);
-      }
-    });
+    const unsubscribeOverlayV2Store = bindOverlayV2Coordinator(
+      overlayV2Store,
+      coordinator,
+      overlayV2Shadow.acceptOverlayV2,
+    );
     const detachOverlayV2 = attachOverlayFrameV2Transport(
       overlayV2Store,
       overlayPull.source,
@@ -208,12 +208,6 @@ function CompositeGenerationView(props: CompositeGenerationViewProps) {
     overlayV2Features,
     onCloseReminder,
   } = props;
-  const overlayV2State = useSyncExternalStore(
-    generation.overlayV2Store.subscribe,
-    generation.overlayV2Store.getSnapshot,
-    generation.overlayV2Store.getSnapshot,
-  );
-
   return (
     <div className="relative w-full h-full overflow-hidden bg-transparent">
       {editMode && document ? (
@@ -231,8 +225,6 @@ function CompositeGenerationView(props: CompositeGenerationViewProps) {
           layoutOrigin={layoutOrigin}
           telemetry={generation.coordinator}
           engineerPresentations={generation.engineerPresentations}
-          overlayV2Frame={overlayV2State.frame}
-          overlayV2Source={overlayV2State.source}
           overlayV2Features={overlayV2Features}
         />
       )}

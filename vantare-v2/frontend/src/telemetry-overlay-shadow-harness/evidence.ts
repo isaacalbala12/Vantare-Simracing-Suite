@@ -209,6 +209,7 @@ function playerInstrumentsFrameV2(): OverlayFrameV2 {
     capabilities: {
       supported: ["controls"], available: { controls: "fresh" },
       modes: { spatial: [], delta: [], standings: "none", gaps: "none" },
+      performance: { level: 3, mode: "manual", effects: "noBlur", rafCap: 40, widgetHz: {}, sourceHz: 0 },
     },
   };
 }

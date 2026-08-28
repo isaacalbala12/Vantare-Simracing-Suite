@@ -46,14 +46,14 @@ Estado: T0-T4 completadas; T5 bloqueada para Wails real por configuración.
 - [x] Playwright 375/414/768/1024/1440: 15/15 combinaciones.
 - [x] Teclado, foco, overflow, targets, consola y red.
 - [x] Screenshots de loading, signed-out y error.
-- [ ] Commit de evidencia reproducible (se completa al cerrar este corte).
+- [x] Commit de evidencia reproducible: `875d8a43`.
 
 ## T5 — Wails y cierre
 
 - [ ] Wails real: bloqueado porque el proceso no tiene
   `VITE_CLERK_PUBLISHABLE_KEY`; no se leen ni generan `.env*`.
 - [x] Actualizar spec, roadmap y handoff con evidencia exacta.
-- [ ] Actualizar issue con el commit de evidencia exacto.
+- [x] Actualizar issue con el commit de evidencia exacto.
 - [ ] Push/PR draft solo con gates verdes.
 - [ ] Registrar por separado cualquier bloqueo de runtime real.
 

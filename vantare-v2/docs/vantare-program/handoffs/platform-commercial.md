@@ -472,8 +472,8 @@ no tiene `VITE_CLERK_PUBLISHABLE_KEY`; tampoco se tocó la app
 `vantare-isa912-delay` que ya estaba abierta. La suite frontend completa pasó
 422 archivos y 3.185 tests; lint focal está verde, mientras el lint global
 conserva una deuda ajena en car-damage. El build final y `git diff --check`
-también pasan; falta únicamente registrar este corte en un commit y en la issue.
-Sin push, PR, deploy, merge ni datos reales.
+también pasan. Evidencia reproducible registrada en `875d8a43`; la issue refleja
+el mismo corte. Sin push, PR, deploy, merge ni datos reales.
 
 2026-08-28, el corte T2 de ISA-915 sustituye el formulario Supabase de
 LoginScreen por el `SignIn` oficial de Clerk y reduce esa superficie a estados

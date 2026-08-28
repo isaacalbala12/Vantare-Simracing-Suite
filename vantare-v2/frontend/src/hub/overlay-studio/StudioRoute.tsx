@@ -363,6 +363,9 @@ export const StudioRoute = memo(function StudioRoute(props: StudioRouteProps): R
       onOverlayV2Error: (error) => console.error('studio overlay-v2 ingest failed', error),
     });
     overlayV2Store.reset();
+    // Este efecto es la fabrica y el owner de la generacion; Studio no debe
+    // registrar listeners ni cargar perfiles contra recursos ya dispuestos.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setGeneration({ coordinator, overlayV2Store, overlayPull, telemetryAdapter });
 
     return () => {

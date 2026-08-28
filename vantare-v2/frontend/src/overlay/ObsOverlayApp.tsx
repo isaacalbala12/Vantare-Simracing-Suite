@@ -88,6 +88,9 @@ export function ObsOverlayApp() {
     });
     adapter.start();
     engineerAdapter.start();
+    // Este efecto es la fabrica y el owner de la generacion; el render que la
+    // consume no puede montarse antes de que sus recursos externos existan.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setGeneration({ coordinator, overlayV2Store, engineerPresentations });
     return () => {
       delete diagnosticWindow.__vantareOverlayV2Diagnostics;

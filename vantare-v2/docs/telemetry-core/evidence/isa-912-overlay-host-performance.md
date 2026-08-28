@@ -164,8 +164,11 @@ el diferencial. En Hub, `runtimeBatchSink.WriteBatch` acumuló 1,77 s,
 subieron a 2,32 s, 1,61 s y 1,09 s; además aparecieron
 `OverlayPullTransport.Pull` (0,70 s), `Hub.ReplaySnapshot` (0,66 s) y
 `encoding/json.appendCompact` (1,30 s). `json.Marshal` acumuló 0,54 s en Hub y
-1,62 s con Overlay. Esta primera repetición atribuye el incremento del host a la
-ruta pull y al sobre JSON V1+V2, no a `cgocall`.
+1,62 s con Overlay. Los deltas Go identificables se concentran en pull y JSON,
+pero se solapan y explican solo una fracción de los 7,06 core·s externos de
+incremento. El resto —incluidos servidor HTTP/Wails, segunda ventana, GC y
+scheduler— sigue sin atribuir; tampoco lo explica el `cgocall` prácticamente
+plano.
 
 La traza CDP elevó transitoriamente el renderer Overlay de 120,1 a 322,0 MiB.
 No se presenta como fuga de la app: al terminar el tracing el mismo proceso
@@ -176,9 +179,35 @@ Overlay 35,19 %, el browser 14,21 % y el árbol completo 95,36 %; el host pasó
 de timeline, pero no para juzgar retención de memoria.
 
 Es una sola repetición y no satisface todavía el gate de tres. Sí basta para
-priorizar la siguiente hipótesis: medir el mismo estado tras eliminar del pull
-el sobre V1 solo cuando #893 haya demostrado autoridad/paridad V2 y #894 haya
-acreditado consumidores V1 cero.
+priorizar una hipótesis compatible con el contrato actual: `Hub.ReplaySnapshot`
+reserializa en cada pull el `Envelope` cuyo `Payload` V1 ya es `json.RawMessage`,
+mientras el publisher V2 retiene el evento codificado. El siguiente corte puede
+retener también ese evento V1 ya codificado y repetir A/B sin cambiar datos,
+consumidores ni render. La retirada de V1 sigue bloqueada hasta que #893
+demuestre autoridad/paridad V2 y #894 acredite consumidores V1 cero.
+
+### Artefactos y método reproducible
+
+Los datos crudos permanecen fuera del repo en el directorio temporal de la
+sesión. Estos nombres y hashes permiten comprobar que resumen y perfiles
+corresponden a los mismos artefactos sin versionar traces grandes:
+
+| Artefacto | Bytes | SHA-256 |
+| --- | ---: | --- |
+| `host-hub-delay-02.pprof` | 29.368 | `0A0908A487CA6E948A3ECF2629EC1E971377BE7A04B4C83C370B40AF437C7549` |
+| `host-overlay-delay-01.pprof` | 40.653 | `76E08532726BF28E1CE9BACD83807CCFBF81785B7A391EBDDBCA5B8016E53150` |
+| `hub-delay-02.json` | 78.108 | `52662E765C0395C913EB3F5A693F8A6FD347BABBFF2B8BB447924DCE8C6BC411` |
+| `hub-delay-02.trace.json` | 19.560.003 | `E9DD515F8C5CD1FE8EEEDE72753E76B61A9E41000BD8D630B18CE1848DB33A4E` |
+| `overlay-delay-01.json` | 78.670 | `4024267CE3DD463F2F4FB534F071B22A2D89F36851993F943F280ADFC5C56A89` |
+| `overlay-delay-01.trace.json` | 33.879.444 | `A9A595494B8C40F185BC7DAD16C5A1F08853747D4121CC9C48F1F510A2BAA004` |
+
+Al aparecer el fichero pprof, el sampler enumeró el PID host y sus descendientes
+con `Win32_Process`, clasificó `browser`, `renderer`, `gpu-process`, `utility` y
+`crashpad-handler` desde `--type`, tomó `CPU` acumulada y Private Bytes mediante
+`Get-Process`, esperó 30 s y repitió sobre los mismos PID. El porcentaje de un
+core es `100 * (CPU_final - CPU_inicial) / segundos_reales`. En esta primera
+repetición solo se conservaron los extremos mostrados, no la serie a 100 ms; el
+gate de tres deberá persistir esa serie antes de aceptar el A/B.
 
 ## Matriz reproducible
 
@@ -229,7 +258,8 @@ complejidad.
 
 1. Instrumentación sin cambio de comportamiento.
 2. Baseline atribuible dual V1+V2.
-3. Optimización pequeña del hotspot demostrado.
+3. Evitar que el Hub reserialice el evento V1 ya codificado en cada pull, sin
+   cambiar su contrato, y medir el mismo estado.
 4. Regresión automatizada y repetición A/B.
 5. #893 promueve V2 con paridad de todos los widgets.
 6. #894 demuestra consumidores V1 cero y retira V1.

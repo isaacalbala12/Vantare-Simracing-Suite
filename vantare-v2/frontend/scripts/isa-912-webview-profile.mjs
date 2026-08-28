@@ -27,14 +27,17 @@ async function assertMissing(file) {
 }
 
 async function describePage(page) {
-  return page.evaluate(() => ({
-    url: window.location.href,
-    title: document.title,
-    overlay:
-      typeof window.__vantareOverlayV2Diagnostics === "function"
-      || document.querySelector('[data-testid="runtime-overlay-surface"]') !== null,
-    hub: document.querySelector(".orbit-root") !== null,
-  }));
+  return page.evaluate(() => {
+    const current = new URL(window.location.href);
+    return {
+      url: `${current.pathname}${current.hash}`,
+      title: document.title,
+      overlay:
+        typeof window.__vantareOverlayV2Diagnostics === "function"
+        || document.querySelector('[data-testid="runtime-overlay-surface"]') !== null,
+      hub: document.querySelector(".orbit-root") !== null,
+    };
+  });
 }
 
 async function findPage(browser, role, timeoutMs = 10_000) {
@@ -263,7 +266,7 @@ try {
     trace: summarizeTrace(traceEvents),
     traceEventCount: traceEvents.length,
     rendererProbeRemoved,
-    rawTrace: traceOutput,
+    rawTrace: path.basename(traceOutput),
     performanceSamples,
   };
 
@@ -284,7 +287,6 @@ try {
   }
 }
 
-// Do not call browser.close(): on a CDP attachment that can close the real
-// WebView2. Exiting only drops this diagnostic connection and leaves Vantare
-// and LMU untouched.
+// Do not ask a browser owned by the real app to close. Exiting only drops this
+// diagnostic connection and leaves Vantare and LMU untouched.
 process.exit(0);

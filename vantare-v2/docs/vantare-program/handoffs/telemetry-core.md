@@ -106,10 +106,9 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   benchmark pull comparable `dual`/`v1-only`/`v2-only`. El orquestador verificó
   el cierre concurrente con `-race`, el guard de producción, el benchmark y
   `go test ./...`. El capturador CDP de renderer y este expediente quedan
-  incluidos en la rama y validados de forma estática; su cleanup detiene la
-  sonda rAF incluso si CDP falla a mitad de captura. No se cambió semántica,
-  cadencia, V1/V2, shadow ni apariencia; falta ejecutar el perfil contra
-  Wails/LMU real. Un segundo microcorte integrado como `c834cebe` añade retardo
+  incluidos en la rama; su cleanup detiene la sonda rAF incluso si CDP falla a
+  mitad de captura. No se cambió semántica, cadencia, V1/V2, shadow ni
+  apariencia. Un segundo microcorte integrado como `c834cebe` añade retardo
   opt-in al perfil para separar startup y régimen caliente. La revisión del
   worker corrigió además contratos que aún nombraban dos variables, amplió el
   guard `production` a las tres y eliminó un test que afirmaba un vencimiento
@@ -117,15 +116,28 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   `vet` y `-race -count=3` pasaron de nuevo en el worktree canónico.
   La primera captura emparejada Wails/LMU de 30 s midió el host en 18,74 % de un
   core con Hub y 42,28 % con Overlay. `runtime.cgocall` quedó plano en 29,28 s
-  frente a 29,32 s; el diferencial apareció en JSON y pull:
+  frente a 29,32 s; los deltas Go identificables aparecieron en JSON y pull:
   `encoding/json.appendCompact` 1,30 s, `OverlayPullTransport.Pull` 0,70 s,
   `Hub.ReplaySnapshot` 0,66 s y `json.Marshal` 1,62 s con Overlay frente a
-  0,54 s con Hub. CDP observó 43,63 pulls/s, rAF p99 <=8,6 ms, cero frames >32
+  0,54 s con Hub. Esas cifras se solapan y explican solo una fracción de los
+  7,06 core·s externos de incremento; servidor HTTP/Wails, segunda ventana, GC
+  y scheduler siguen sin atribuir. CDP observó 43,63 pulls/s, rAF p99 <=8,6 ms, cero frames >32
   ms y cero long tasks. Su tracing infló transitoriamente la memoria del
   renderer; una ventana posterior sin CDP la acotó en 143,6 -> 149,8 MiB y el
   árbol en 95,36 % de un core. Es una repetición, no el gate de tres: no
-  autoriza aún retirar V1 antes de #893/#894. No hay push, PR ni promoción de
-  ISA-912.
+  autoriza aún retirar V1 antes de #893/#894. La siguiente hipótesis acotada es
+  retener en el Hub el evento V1 ya codificado para que cada pull no vuelva a
+  serializar el mismo `Envelope`; no cambia datos, consumidores ni render. Los
+  perfiles y traces locales quedan inventariados por nombre, tamaño y SHA-256 en
+  el expediente; la serie de proceso a 100 ms sigue pendiente para el gate de
+  tres. La revisión adversarial final Fable 5 sobre `a163eafc` (thread
+  `3d850815-4ef3-4af6-9257-1a28fb4212f2`) no encontró bloqueos de lifecycle,
+  concurrencia, benchmark ni arquitectura. Sí detectó que la atribución textual
+  excedía los segundos explicados, que el test del entorno podía convertir una
+  regresión en `SKIP`, que el resumen CDP filtraba rutas absolutas y que CI no
+  ejecuta los guards `production`/`-race`. Los tres primeros quedan corregidos
+  en la rama; el hueco CI se separó como ISA-916. No hay push, PR ni promoción
+  de ISA-912.
 
 - 2026-08-27, ISA-889 corrige el bloqueo permanente del Overlay despues de un
   reconnect LMU. El transporte acotado de ISA-879 puede entregar como primer

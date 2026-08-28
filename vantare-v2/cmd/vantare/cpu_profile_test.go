@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime/pprof"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -298,15 +299,21 @@ func TestStartCPUProfileStopsOnItsOwnWhenTheDurationElapses(t *testing.T) {
 }
 
 // TestStartCPUProfileReadsTheEnvironment covers the real runtime/pprof wiring
-// end to end. It is skipped rather than failed when the test binary already
-// holds the single process-wide CPU profile (`go test -cpuprofile`).
+// end to end. Probe the global profiler first so an unavailable profiler is a
+// legitimate skip, while a regression in the environment wiring still fails.
 func TestStartCPUProfileReadsTheEnvironment(t *testing.T) {
+	if err := pprof.StartCPUProfile(io.Discard); err != nil {
+		t.Skip("a CPU profile is already active in this test binary")
+	}
+	pprof.StopCPUProfile()
+
 	path := filepath.Join(t.TempDir(), "cpu.pprof")
 	t.Setenv(cpuProfilePathEnv, path)
 	t.Setenv(cpuProfileDurationEnv, "2m")
 	stop := startCPUProfile()
+	t.Cleanup(stop)
 	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
-		t.Skip("a CPU profile is already active in this test binary")
+		t.Fatal("startCPUProfile did not read the configured profile path")
 	} else if err != nil {
 		t.Fatal(err)
 	}

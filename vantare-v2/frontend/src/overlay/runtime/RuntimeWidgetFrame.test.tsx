@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { buildMockTelemetry } from "../core/mock-scenarios";
 import { createTelemetryRateCoordinator } from "../core/telemetry-rate-coordinator";
 import { deltaDefinition } from "../widget-types/delta/delta-definition";
+import { standingsDefinition } from "../widget-types/standings/standings-definition";
 import { RuntimeWidgetFrame } from "./RuntimeWidgetFrame";
 
 afterEach(() => cleanup());
@@ -60,6 +61,26 @@ describe("RuntimeWidgetFrame", () => {
     expect(viewport.style.width).toBe("280px");
     expect(viewport.style.height).toBe("96px");
     expect(viewport.style.transform).toBe("scale(2)");
+    coordinator.dispose();
+  });
+
+  it("passes the Redline visual selection so widening creates real runtime space", () => {
+    const coordinator = createTelemetryRateCoordinator();
+    const widget = standingsDefinition.createDefault("standings-redline-wide");
+    widget.layout = { ...widget.layout, w: 760 };
+    widget.visual = {
+      ...widget.visual,
+      systemId: "vantare-endurance",
+      baseSettings: { templateId: "standings-redline" },
+    };
+
+    const view = render(
+      <RuntimeWidgetFrame widget={widget} telemetry={coordinator} renderMode="desktop" />,
+    );
+
+    const viewport = view.getByTestId("runtime-widget-viewport-standings-redline-wide");
+    expect(viewport.style.width).toBe("760px");
+    expect(viewport.style.transform).toBe("scale(1)");
     coordinator.dispose();
   });
 });

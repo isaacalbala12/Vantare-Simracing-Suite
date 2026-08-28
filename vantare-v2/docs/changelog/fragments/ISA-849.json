@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-849",
+  "type": "feature",
+  "summary": "Standings Redline permite configurar sus métricas y aprovechar la anchura real del widget sin perder su diseño ni sus animaciones.",
+  "technicalNotes": [
+    "Posición y Piloto permanecen como anclajes visibles; las otras nueve métricas respetan visibilidad, orden, ancho y alineación.",
+    "Studio avisa de la anchura mínima necesaria y el usuario puede ensanchar el widget sin que el inspector modifique el layout automáticamente.",
+    "Batalla, vuelta rápida y revelado de neumático solo se animan cuando su métrica está visible; PIT y las animaciones estructurales se conservan.",
+    "Studio, Desktop, OBS, edición in-place y Workshop comparten el mismo renderer productivo y la anchura CSS real únicamente para Endurance Redline."
+  ],
+  "testing": [
+    "En Studio, activar, desactivar, ordenar, ensanchar y alinear las métricas flexibles de Endurance Redline; confirmar que Posición y Piloto siguen visibles.",
+    "Comprobar en Workshop los estados mínimo y todas las columnas, y reproducir adelantamiento, batalla, vuelta rápida, pit-out y retiro.",
+    "Comparar con Standings Original y otro template Endurance para confirmar que su geometría no cambia."
+  ],
+  "knownLimitations": [
+    "La evidencia automática usa Chromium y WidgetVisualHost; no sustituye una revisión manual en el ejecutable Wails/WebView2 real."
+  ]
+}

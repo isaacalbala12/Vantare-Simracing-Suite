@@ -45,6 +45,18 @@ describe("Overlay Workshop query", () => {
     });
   });
 
+  it("accepts the two reproducible Redline column variants only for standings", () => {
+    for (const variant of ["standings-minimal", "standings-all-columns"]) {
+      const parsed = parseOverlayWorkshopQuery(
+        `?widget=standings&system=vantare-endurance&variant=${variant}`,
+      );
+      expect("error" in parsed).toBe(false);
+      expect(parseOverlayWorkshopQuery(`?widget=delta&variant=${variant}`)).toEqual({
+        error: `${variant} variant requires widget=standings`,
+      });
+    }
+  });
+
   it("keeps the development route inaccessible outside development and serializes the full selection", () => {
     expect(isOverlayWorkshopPath("/workshop", false)).toBe(false);
     expect(isOverlayWorkshopPath("/hub", true)).toBe(false);

@@ -1,8 +1,14 @@
 import { useRef, type CSSProperties, type ReactNode } from "react";
+import { resolveColumnWidthPixels, type WidgetColumnV3 } from "../../../widget-types/shared/widget-column";
+import {
+  nearestWidthPreset,
+  STANDINGS_COLUMN_TEMPLATES,
+} from "../../../widget-types/standings/standings-content";
 import type {
   StandingsRowViewModel,
   StandingsViewModel,
 } from "../../../widget-types/standings/standings-view-model";
+import { resolveStandingsCellValue } from "../../../widget-types/standings/standings-view-model";
 import {
   findSessionBestLapSeconds,
   groupRowsByClass,
@@ -21,6 +27,32 @@ function remainingSecondsFromText(remainingText: string): number | null {
 }
 
 const FINAL_MINUTES_SECONDS = 5 * 60;
+const REDLINE_FIXED_METRICS = new Set(["position", "driverName"]);
+const DELTA_TRACK_PX = 44;
+const ROW_GAP_PX = 8;
+const ROW_HORIZONTAL_PADDING_PX = 16;
+const BLOCK_HORIZONTAL_PADDING_PX = 18;
+
+function columnFallbackWidth(metricId: string): number {
+  return STANDINGS_COLUMN_TEMPLATES.find((template) => template.metricId === metricId)?.defaultWidth ?? 60;
+}
+
+function columnWidth(column: WidgetColumnV3 | undefined, metricId: string): number {
+  const fallback = columnFallbackWidth(metricId);
+  if (column) return resolveColumnWidthPixels(column, fallback);
+  return resolveColumnWidthPixels(
+    { id: metricId, metricId, enabled: true, widthPreset: nearestWidthPreset(fallback) },
+    fallback,
+  );
+}
+
+function justifyForAlign(align: "left" | "center" | "right"): CSSProperties["justifyContent"] {
+  return align === "right" ? "flex-end" : align === "center" ? "center" : "flex-start";
+}
+
+function justifySelfForAlign(align: "left" | "center" | "right"): CSSProperties["justifySelf"] {
+  return align === "right" ? "end" : align === "center" ? "center" : "start";
+}
 
 function initialSurname(driverName: string): string {
   const words = driverName
@@ -52,19 +84,32 @@ function FastestGlyph() {
 function RedlineRow({
   row,
   classPosition,
+  columns,
   isSessionBest,
   positionDelta,
   tire,
   battle,
+  ghost = false,
 }: {
   row: StandingsRowViewModel;
   classPosition: number;
+  columns: readonly WidgetColumnV3[];
   isSessionBest: boolean;
   positionDelta: number;
   tire: TireReveal | undefined;
   battle: BattleState | undefined;
+  ghost?: boolean;
 }) {
-  const isLead = classPosition === 1;
+  const positionColumn = columns.find((column) => column.metricId === "position");
+  const driverColumn = columns.find((column) => column.metricId === "driverName");
+  const flexibleColumns = columns.filter((column) => !REDLINE_FIXED_METRICS.has(column.metricId));
+  const tracks = [
+    `${columnWidth(positionColumn, "position")}px`,
+    `minmax(${columnWidth(driverColumn, "driverName")}px, 1fr)`,
+    `${DELTA_TRACK_PX}px`,
+    ...flexibleColumns.map((column) => `${columnWidth(column, column.metricId)}px`),
+  ];
+  const isLead = !ghost && classPosition === 1;
   // A dissolving battle keeps its last interval, so the cell mounts at the
   // charge it had rather than at zero. The node is new — React rebuilds this
   // subtree when the battle wrapper goes — so the exit is a keyframe, which
@@ -78,26 +123,26 @@ function RedlineRow({
 
   return (
     <div
-      data-standings-row={row.id}
-      data-player={row.isPlayer ? "true" : undefined}
+      data-standings-row={ghost ? undefined : row.id}
+      data-player={!ghost && row.isPlayer ? "true" : undefined}
       data-class={row.vehicleClass || undefined}
       data-class-leader={isLead ? "true" : undefined}
       data-pit={row.pitText ? "true" : undefined}
-      className="ven-red-row"
+      className={`ven-red-row${ghost ? " ven-red-ghost" : ""}`}
+      style={{ gridTemplateColumns: tracks.join(" ") }}
     >
-      <span className="ven-red-pos">{classPosition}</span>
-      <span className="ven-red-id">
-        <span className="ven-red-num">#{row.driverNumber}</span>
-        <span className="ven-red-name">{initialSurname(row.driverName)}</span>
-        {tire ? (
-          <span
-            className="ven-red-tire"
-            data-compound={tire.compound.trim()[0]?.toUpperCase()}
-            data-leaving={tire.leaving ? "true" : undefined}
-          >
-            {tire.compound.trim()[0]?.toUpperCase()}
-          </span>
-        ) : null}
+      <span className="ven-red-pos" data-metric="position">{ghost ? "—" : classPosition}</span>
+      <span
+        className="ven-red-id"
+        data-metric="driverName"
+        style={{
+          justifyContent: justifyForAlign(driverColumn?.style?.align ?? "left"),
+          textAlign: driverColumn?.style?.align ?? "left",
+        }}
+      >
+        <span className="ven-red-name">
+          {initialSurname(row.configuredDriverName ?? row.driverName)}
+        </span>
       </span>
       <span
         key={positionDelta}
@@ -106,27 +151,40 @@ function RedlineRow({
       >
         {positionDelta > 0 ? `+${positionDelta}` : positionDelta < 0 ? String(positionDelta) : ""}
       </span>
-      <span className="ven-red-best" data-session-best={isSessionBest ? "true" : undefined}>
-        {row.bestLapText}
-        {isSessionBest ? <FastestGlyph /> : null}
-      </span>
-      {/* One element in every state. Swapping between a plain gap and a charged
-          cell moved the reading six pixels sideways and resized its box every
-          time a battle started or ended; the number now never moves, and only
-          the fill and the backing appear behind it. */}
-      <span
-        className="ven-red-gap"
-        data-pit={row.pitText ? "true" : undefined}
-        data-charged={chargedGap !== null ? "true" : undefined}
-        data-leaving={leavingBattle ? "true" : undefined}
-      >
-        {chargedGap !== null ? (
-          <b style={{ width: `${Math.round(chargedGap * 100)}%` } as CSSProperties} />
-        ) : null}
-        <span className="ven-red-gaptext">
-          {row.pitText ? "PIT" : isLead ? "INT" : gapOneDecimal(row.gapText)}
-        </span>
-      </span>
+      {flexibleColumns.map((column) => {
+        const align = column.style?.align ?? "left";
+        const cellStyle = { textAlign: align } as CSSProperties;
+        const flexCellStyle = {
+          ...cellStyle,
+          justifyContent: justifyForAlign(align),
+        } as CSSProperties;
+        if (column.metricId === "bestLap") {
+          return <span key={column.id} className="ven-red-best" data-metric="bestLap" data-session-best={!ghost && isSessionBest ? "true" : undefined} style={flexCellStyle}>
+            {row.bestLapText || "—"}
+            {!ghost && isSessionBest ? <FastestGlyph /> : null}
+          </span>;
+        }
+        if (column.metricId === "gap") {
+          return <span key={column.id} className="ven-red-gap" data-metric="gap" data-pit={row.pitText ? "true" : undefined} data-charged={!ghost && chargedGap !== null ? "true" : undefined} data-leaving={!ghost && leavingBattle ? "true" : undefined} style={flexCellStyle}>
+            {!ghost && chargedGap !== null ? <b style={{ width: `${Math.round(chargedGap * 100)}%` } as CSSProperties} /> : null}
+            <span className="ven-red-gaptext">{ghost ? "OUT" : row.pitText ? "PIT" : isLead ? "INT" : gapOneDecimal(row.gapText)}</span>
+          </span>;
+        }
+        if (column.metricId === "interval") {
+          return <span key={column.id} className="ven-red-metric ven-red-interval" data-metric="interval" data-pit={row.pitText ? "true" : undefined} style={cellStyle}>{ghost ? "OUT" : row.pitText ? "PIT" : row.intervalText || "—"}</span>;
+        }
+        if (column.metricId === "tireCompound") {
+          const compound = tire?.compound || row.tireCompound;
+          const letter = compound.trim()[0]?.toUpperCase() || "—";
+          return <span key={column.id} className={`ven-red-metric ven-red-tire-cell${!ghost && tire ? " ven-red-tire" : ""}`} data-metric="tireCompound" data-compound={letter === "—" ? undefined : letter} data-leaving={!ghost && tire?.leaving ? "true" : undefined} style={{ textAlign: "center", justifySelf: justifySelfForAlign(align) }}>{letter}</span>;
+        }
+        const value = column.metricId === "driverNumber"
+          ? row.driverNumber ? `#${row.driverNumber}` : "—"
+          : column.metricId === "pit" && ghost
+            ? "OUT"
+            : resolveStandingsCellValue(row, column.metricId) || "—";
+        return <span key={column.id} className={`ven-red-metric ven-red-${column.metricId}`} data-metric={column.metricId} data-pit={column.metricId === "pit" && row.pitText ? "true" : undefined} style={cellStyle}>{value}</span>;
+      })}
     </div>
   );
 }
@@ -147,6 +205,19 @@ export function StandingsRedlineTemplate({
   const motion = useStandingsMotion(model, model.status === "ready", rootRef);
   const sessionBest = findSessionBestLapSeconds(model.rows);
   const groups = groupRowsByClass(model.rows);
+  const flexibleColumns = model.columns.filter((column) => !REDLINE_FIXED_METRICS.has(column.metricId));
+  const positionColumn = model.columns.find((column) => column.metricId === "position");
+  const driverColumn = model.columns.find((column) => column.metricId === "driverName");
+  const requiredWidth = Math.max(
+    420,
+    columnWidth(positionColumn, "position") +
+      columnWidth(driverColumn, "driverName") +
+      DELTA_TRACK_PX +
+      flexibleColumns.reduce((sum, column) => sum + columnWidth(column, column.metricId), 0) +
+      ROW_GAP_PX * (2 + flexibleColumns.length) +
+      ROW_HORIZONTAL_PADDING_PX +
+      BLOCK_HORIZONTAL_PADDING_PX,
+  );
   const battleByAhead = new Map(motion.battles.map((battle) => [battle.aheadId, battle]));
   const remainingSeconds = remainingSecondsFromText(model.remainingText);
   const isFinalMinutes =
@@ -159,7 +230,7 @@ export function StandingsRedlineTemplate({
   }
 
   return (
-    <div ref={rootRef} className="ven-red-root">
+    <div ref={rootRef} className="ven-red-root" style={{ minWidth: requiredWidth }}>
       {model.statusMessage ? (
         <p className="ven-status-message" role="status">
           {model.statusMessage}
@@ -178,6 +249,7 @@ export function StandingsRedlineTemplate({
                 key={target.id}
                 row={target}
                 classPosition={position}
+                columns={model.columns}
                 isSessionBest={sessionBest !== null && bestSeconds === sessionBest}
                 positionDelta={motion.positionDeltas.get(target.id) ?? 0}
                 tire={motion.tires.get(target.id)}
@@ -204,20 +276,17 @@ export function StandingsRedlineTemplate({
           rendered.splice(
             Math.min(ghost.classIndex, rendered.length),
             0,
-            <div
+            <RedlineRow
               key={`ghost-${ghost.row.id}`}
-              className="ven-red-row ven-red-ghost"
-              data-class={ghost.row.vehicleClass || undefined}
-            >
-              <span className="ven-red-pos">—</span>
-              <span className="ven-red-id">
-                <span className="ven-red-num">#{ghost.row.driverNumber}</span>
-                <span className="ven-red-name">{initialSurname(ghost.row.driverName)}</span>
-              </span>
-              <span className="ven-red-delta" />
-              <span className="ven-red-best">{ghost.row.bestLapText}</span>
-              <span className="ven-red-gap">OUT</span>
-            </div>,
+              row={ghost.row}
+              classPosition={ghost.classIndex + 1}
+              columns={model.columns}
+              isSessionBest={false}
+              positionDelta={0}
+              tire={undefined}
+              battle={undefined}
+              ghost
+            />,
           );
         }
         return (

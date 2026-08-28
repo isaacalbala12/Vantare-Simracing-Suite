@@ -37,6 +37,23 @@ describe("buildStandingsViewModel", () => {
     expect(model.rows).toEqual([]);
   });
 
+  it("keeps a formatted driver name for Redline when an old profile disabled the driver column", () => {
+    const legacyContent = {
+      ...content,
+      columns: content.columns.map((column) =>
+        column.metricId === "driverName" ? { ...column, enabled: false } : column,
+      ),
+    };
+    const model = buildStandingsViewModel(
+      buildMockTelemetry({ session: "race", location: "track", state: "ready" }),
+      legacyContent,
+    );
+
+    expect(model.rows[0]?.driverName).toBe("—");
+    expect(model.rows[0]?.configuredDriverName).toBeTruthy();
+    expect(model.rows[0]?.configuredDriverName).not.toBe("—");
+  });
+
   it("handles malformed scoring rows and large inputs safely", () => {
     const snapshot = buildMockTelemetry({ session: "race", location: "track", state: "ready" });
     const manyRows = Array.from({ length: 60 }, (_, index) => ({

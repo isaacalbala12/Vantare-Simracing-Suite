@@ -154,7 +154,10 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   corregidos: rama remota
   `vantareapp/isa-912-overlay-webview2-performance`, rebase lineal sobre
   `origin/nightly@c59a7d64`, punta de implementación `95dc47e6` antes de este
-  cierre documental y PR draft #927. No hubo merge, promoción ni release.
+  cierre documental y PR draft #927. La anotación audit del contrato de roadmap
+  descubrió que el primer digest conservaba el orden del JSON candidato
+  intermedio; se regeneró desde el JSON protegido de esa base y el validador
+  base/candidato quedó paritario. No hubo merge, promoción ni release.
 
 - 2026-08-27, ISA-889 corrige el bloqueo permanente del Overlay despues de un
   reconnect LMU. El transporte acotado de ISA-879 puede entregar como primer

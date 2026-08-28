@@ -12,15 +12,20 @@ import * as overlayV2StoreModule from '../../telemetry-transport/overlay-frame-v
 import goldenRaw from '../../../../internal/telemetry/projection/overlay/testdata/overlay_v1.golden.json?raw';
 import goldenV2Raw from '../../../../internal/telemetry/projection/overlayv2/testdata/overlay_v2_1.golden.json?raw';
 
-const listeners = new Map<string, ((event: { data: unknown }) => void)[]>();
+type WailsListener = (event: { data: unknown }) => void;
+
+const listeners = new Map<string, Set<WailsListener>>();
 
 vi.mock('@wailsio/runtime', () => ({
   Events: {
     On: vi.fn((name: string, cb: (event: { data: unknown }) => void) => {
-      const existing = listeners.get(name) ?? [];
-      existing.push(cb);
+      const existing = listeners.get(name) ?? new Set<WailsListener>();
+      existing.add(cb);
       listeners.set(name, existing);
-      return vi.fn();
+      return vi.fn(() => {
+        existing.delete(cb);
+        if (existing.size === 0) listeners.delete(name);
+      });
     }),
     Emit: vi.fn(),
   },
@@ -277,7 +282,20 @@ describe('StudioRoute', () => {
         resolvePull = resolve;
       });
     }));
-    const coordinator = createTelemetryRateCoordinator();
+    let activeSchedulers = 0;
+    let runScheduledFrame: (() => void) | null = null;
+    const coordinator = createTelemetryRateCoordinator({
+      createScheduler: () => ({
+        start: (onFrame) => {
+          activeSchedulers += 1;
+          runScheduledFrame = onFrame;
+        },
+        stop: () => {
+          activeSchedulers -= 1;
+          runScheduledFrame = null;
+        },
+      }),
+    });
     const stores: overlayV2StoreModule.OverlayFrameV2Store[] = [];
     const createStore = overlayV2StoreModule.createOverlayFrameV2Store;
     vi.spyOn(overlayV2StoreModule, 'createOverlayFrameV2Store').mockImplementation(() => {
@@ -293,6 +311,11 @@ describe('StudioRoute', () => {
     );
     bootProfiles();
     await screen.findByTestId('overlay-studio-v3');
+    expect(listeners.size).toBeGreaterThan(0);
+    for (const [event, activeListeners] of listeners) {
+      expect(activeListeners.size, `listeners activos para ${event}`).toBe(1);
+    }
+    expect(activeSchedulers).toBe(1);
     fireEvent.click(screen.getByRole('button', { name: 'Live' }));
     const request = requests.at(-1);
     expect(request).toBeDefined();
@@ -325,10 +348,11 @@ describe('StudioRoute', () => {
       player: { inPit: false, throttle: 0.5, brake: 0.25, clutch: 0 },
       scoring: [],
     });
+    act(() => runScheduledFrame?.());
 
     expect(stores.some((store) => store.getSnapshot().revision === 1)).toBe(true);
     expect(coordinator.getSnapshot().derived?.inputHistory.length).toBeGreaterThan(0);
-    await waitFor(() => expect(repaint).toHaveBeenCalled());
+    expect(repaint).toHaveBeenCalled();
     expect(screen.getByTestId('overlay-studio-v3')).toBeTruthy();
     unsubscribe();
   });

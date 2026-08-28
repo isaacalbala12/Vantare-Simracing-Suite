@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-841",
+  "type": "feature",
+  "summary": "Ajustes permite ampliar o reducir toda la interfaz de Vantare y recuerda el porcentaje elegido.",
+  "technicalNotes": [
+    "El control global ofrece 80%, 90%, 100%, 110%, 125% y 150%, con cambio inmediato y restablecimiento al 100%.",
+    "Ctrl +, Ctrl - y Ctrl 0 recorren los mismos pasos sin interferir con campos editables ni con la captura de atajos.",
+    "La preferencia local se compone con el escalado responsive existente; menús, diálogos y demás portales conservan el mismo factor que la shell.",
+    "Un valor ausente o corrupto vuelve de forma segura a 100% y no requiere backend ni sincronización remota."
+  ],
+  "testing": [
+    "En Ajustes > Aplicación, probar los seis pasos, pulsar el porcentaje para volver a 100% y reiniciar la app para confirmar persistencia.",
+    "Probar Ctrl +, Ctrl - y Ctrl 0 desde Inicio y confirmar que no actúan mientras se escribe en un campo.",
+    "Revisar Inicio, Studio y un diálogo a 1920x1080, 1366x768 y una ventana compacta, comprobando que el contenido sigue accesible."
+  ],
+  "knownLimitations": [
+    "A 150% algunas ventanas, incluida 1920x1080, necesitan desplazamiento interno porque la shell conserva un suelo mínimo legible.",
+    "La preferencia pertenece a este equipo y no se sincroniza entre instalaciones."
+  ]
+}

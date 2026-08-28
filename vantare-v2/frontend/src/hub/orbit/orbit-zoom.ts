@@ -72,6 +72,25 @@ export function isOrbitZoomFloored(viewport: OrbitViewport): boolean {
 }
 
 /**
+ * El zoom manual puede hacer que el suelo de la shell deje de caber aunque el
+ * factor responsive no haya tocado su mínimo. En ese caso la shell conserva
+ * el zoom pedido y ofrece desplazamiento interno en vez de recortar contenido.
+ */
+export function orbitZoomRequiresScroll(viewport: OrbitViewport, effectiveZoom: number): boolean {
+  const { width, height } = viewport;
+  if (!finitePositive(width) || !finitePositive(height) || !finitePositive(effectiveZoom)) {
+    return false;
+  }
+  // El hook cuantiza el factor a milésimas. Un píxel de tolerancia evita
+  // declarar overflow por ese redondeo cuando el ajuste automático deja la
+  // shell exactamente sobre su suelo.
+  return (
+    width / effectiveZoom < ORBIT_REF_WIDTH - 1 ||
+    height / effectiveZoom < ORBIT_REF_HEIGHT - 1
+  );
+}
+
+/**
  * Tope de anchura del contenido del workspace. El valor calibrado es 1508 px;
  * en ultrapanorámicas (≥ 2200 px reales, o sea 21:9 en adelante) sube a 1760 px
  * para no desperdiciar el ancho, que es el mayor escalón que mantiene la

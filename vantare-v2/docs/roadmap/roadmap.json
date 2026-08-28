@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-28T01:01:56Z",
+  "generatedAt": "2026-08-28T01:33:44Z",
   "digest": {
-    "lastCommit": "741d31bf76740a469b4d91ff21da6817e912db30"
+    "lastCommit": "d9909aef4b9f2de2b3e61ed79a3a0fd98a91b73c"
   },
   "phases": [
     {
@@ -755,6 +755,28 @@
       }
     },
     {
+      "id": "global-interface-zoom",
+      "type": "feature",
+      "title": {
+        "es": "Zoom global de la interfaz",
+        "en": "Global interface zoom",
+        "pt": "Zoom global da interface",
+        "it": "Zoom globale dell'interfaccia"
+      },
+      "body": {
+        "es": "Ajustes permite ampliar o reducir toda la app en seis pasos, restablecer el tamaño predeterminado y usar Ctrl +, Ctrl − o Ctrl 0; la preferencia se recuerda en este equipo y convive con el ajuste responsive de la ventana.",
+        "en": "Settings can zoom the whole app through six steps, restore the default size and use Ctrl +, Ctrl − or Ctrl 0; the preference is remembered on this device and works alongside responsive window scaling.",
+        "pt": "As Definições permitem ampliar ou reduzir toda a app em seis passos, repor o tamanho predefinido e usar Ctrl +, Ctrl − ou Ctrl 0; a preferência fica guardada neste equipamento e convive com o ajuste responsivo da janela.",
+        "it": "Le Impostazioni consentono di ingrandire o ridurre tutta l'app in sei passaggi, ripristinare la dimensione predefinita e usare Ctrl +, Ctrl − o Ctrl 0; la preferenza resta memorizzata su questo dispositivo e convive con l'adattamento responsive della finestra."
+      },
+      "label": {
+        "es": "Feature",
+        "en": "Feature",
+        "pt": "Feature",
+        "it": "Feature"
+      }
+    },
+    {
       "id": "telemetry-timeline-export",
       "type": "plan",
       "title": {
@@ -781,6 +803,11 @@
     {
       "date": "2026-08-28",
       "entries": [
+        {
+          "kind": "feat",
+          "scope": "overlays",
+          "text": "Columnas configurables en Standings Redline"
+        },
         {
           "kind": "change",
           "scope": "",

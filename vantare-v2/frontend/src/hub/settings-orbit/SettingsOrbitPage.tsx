@@ -38,6 +38,15 @@ import {
 import { getStoredThemeId, persistThemeId, type ThemeId } from "../../lib/theme";
 import { isOpsMetrics, type OpsMetrics } from "../../lib/ops-metrics";
 import { formatMessage } from "../orbit/format-message";
+import {
+  appZoomPercent,
+  DEFAULT_APP_ZOOM,
+  getStoredAppZoom,
+  nextAppZoom,
+  setAppZoom,
+  subscribeAppZoom,
+  type AppZoom,
+} from "../orbit/app-zoom";
 import { accountInitial, useAccountIdentity } from "../orbit/use-account-identity";
 import { useOrbitSlot } from "../orbit/use-orbit-slot";
 import { useOverlayState } from "../orbit/use-overlay-state";
@@ -507,6 +516,9 @@ function ApplicationSection({
   const [density, setDensity] = useState<Density>(() => getStoredDensity());
   const [theme, setTheme] = useState<ThemeId>(() => getStoredThemeId());
   const [reduce, setReduce] = useState<boolean>(() => getStoredReduceMotion());
+  const [appZoom, setAppZoomState] = useState<AppZoom>(() => getStoredAppZoom());
+
+  useEffect(() => subscribeAppZoom(setAppZoomState), []);
 
   const changeDensity = useCallback((next: Density) => {
     setDensity(next);
@@ -521,10 +533,58 @@ function ApplicationSection({
     persistReduceMotion(next);
   }, []);
 
+  const changeAppZoom = useCallback((next: AppZoom) => {
+    setAppZoomState(setAppZoom(next));
+  }, []);
+
   return (
     <div className="orbit-set__grid2">
       <Surface aria-label={t("settings.app.interface")} fill title={t("settings.app.interface")}>
         <div className="orbit-set-group">
+          <SettingRow
+            control={
+              <div
+                aria-label={t("settings.app.zoom")}
+                className="orbit-set-zoom"
+                data-testid="orbit-settings-zoom"
+                role="group"
+              >
+                <button
+                  aria-label={t("settings.app.zoomDecrease")}
+                  data-testid="orbit-settings-zoom-minus"
+                  disabled={appZoom === 0.8}
+                  onClick={() => changeAppZoom(nextAppZoom(appZoom, -1))}
+                  type="button"
+                >
+                  −
+                </button>
+                <button
+                  aria-label={formatMessage(t("settings.app.zoomReset"), {
+                    value: appZoomPercent(appZoom),
+                  })}
+                  aria-live="polite"
+                  className="orbit-set-zoom__value"
+                  data-testid="orbit-settings-zoom-value"
+                  onClick={() => changeAppZoom(DEFAULT_APP_ZOOM)}
+                  type="button"
+                >
+                  {appZoomPercent(appZoom)}%
+                </button>
+                <button
+                  aria-label={t("settings.app.zoomIncrease")}
+                  data-testid="orbit-settings-zoom-plus"
+                  disabled={appZoom === 1.5}
+                  onClick={() => changeAppZoom(nextAppZoom(appZoom, 1))}
+                  type="button"
+                >
+                  +
+                </button>
+              </div>
+            }
+            hint={t("settings.app.zoomSub")}
+            testid="orbit-settings-app-zoom"
+            title={t("settings.app.zoom")}
+          />
           <SettingRow
             control={
               <Select

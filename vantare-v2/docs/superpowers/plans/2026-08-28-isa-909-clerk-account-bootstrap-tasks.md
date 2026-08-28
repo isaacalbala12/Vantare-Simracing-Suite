@@ -1,8 +1,8 @@
 # Tareas ISA-909: bootstrap de cuenta Clerk
 
 Estado: T0-T7 completadas localmente. La segunda review Fable medio emitió
-`ACCEPT`; rama publicada y PR draft #913 abierto a `nightly`. CI pendiente, sin
-merge ni deploy.
+`ACCEPT`; rama publicada y PR draft #913 abierto a `nightly`. CI del HEAD
+`6738902a` verde; sin merge ni deploy.
 
 ## T0 — Aprobar SDD
 

@@ -101,6 +101,10 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - item.en: Launcher with app detection and launch chains
 - item.pt: Launcher com deteção de apps e cadeias de lançamento
 - item.it: Launcher con rilevamento app e catene di avvio
+- item: Banco reproducible de huella por hardware para Vantare y el overlay
+- item.en: Reproducible hardware footprint bench for Vantare and the overlay
+- item.pt: Banco reproduzível de impacto por hardware para Vantare e o overlay
+- item.it: Banco riproducibile dell'impronta hardware per Vantare e l'overlay
 
 ### Ingeniero y estrategia
 
@@ -239,16 +243,29 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 ### Plataforma
 
 - id: platform
-- estado: planned
-- progreso: 25
+- estado: in-progress
+- progreso: 35
 - titulo.en: Platform
 - titulo.pt: Plataforma
 - titulo.it: Piattaforma
-- proyectos: roadmap-governance
+- proyectos: roadmap-governance, huella-minima-banco
 
 ---
 
 ## Hitos
+
+### Banco reproducible de huella por hardware
+
+- id: huella-minima-banco
+- tipo: feature
+- titulo.en: Reproducible hardware footprint bench
+- titulo.pt: Banco reproduzível de impacto por hardware
+- titulo.it: Banco riproducibile dell'impronta hardware
+- cuerpo: Un banco Windows mide por proceso la RAM, CPU y GPU de Vantare, separa Hub y overlay mediante CDP, captura el frametime de LMU con PresentMon y rechaza corridas contaminadas o sin tres repeticiones estables.
+- cuerpo.en: A Windows bench measures Vantare RAM, CPU and GPU per process, separates Hub and overlay through CDP, captures LMU frame time with PresentMon, and rejects contaminated runs or results without three stable repetitions.
+- cuerpo.pt: Um banco Windows mede RAM, CPU e GPU do Vantare por processo, separa Hub e overlay por CDP, captura o tempo de frame do LMU com PresentMon e rejeita corridas contaminadas ou sem três repetições estáveis.
+- cuerpo.it: Un banco Windows misura RAM, CPU e GPU di Vantare per processo, separa Hub e overlay tramite CDP, acquisisce il frame time di LMU con PresentMon e rifiuta sessioni contaminate o senza tre ripetizioni stabili.
+- etiqueta: Feature
 
 ### Preferencias y prueba de notificaciones
 

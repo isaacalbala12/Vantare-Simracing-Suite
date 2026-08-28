@@ -1359,6 +1359,11 @@ func main() {
 	wailsApp := application.New(appOptions)
 
 	emitter := &wailsEmitter{wailsApp: wailsApp}
+	appSettingsPath := filepath.Join(cfgDir, "app-settings.json")
+	settingsSvc := app.NewSettingsService(appSettingsPath, emitter, nil)
+	if err := settingsSvc.Load(); err != nil {
+		log.Printf("warning: could not load settings: %v (using defaults)", err)
+	}
 	var cleanup sync.Once
 	var hotkeyMu sync.Mutex
 	var opsBridge *app.OpsBridge
@@ -1613,7 +1618,7 @@ func main() {
 			overlayRunning.Store(false)
 			resetOverlayProfileDisplayMode(studioProfileSvc)
 		})
-	}))
+	}, func() int { return int(settingsSvc.EffectivePerformancePolicy().Level) }))
 
 	// Create hub window only (normal framed window).
 	hubW := wailsApp.Window.NewWithOptions(application.WebviewWindowOptions{
@@ -3447,20 +3452,26 @@ func (h *wailsWindowHandle) ensureTransparent() {
 type overlayScreenResolver func(int) *application.Screen
 
 type wailsOverlayFactory struct {
-	app          *application.App
-	screens      overlayScreenResolver
-	windowClosed func(app.OverlayWindow)
+	app            *application.App
+	screens        overlayScreenResolver
+	windowClosed   func(app.OverlayWindow)
+	effectiveLevel func() int
 }
 
-func newWailsOverlayFactory(wailsApp *application.App, windowClosed func(app.OverlayWindow)) *wailsOverlayFactory {
+func newWailsOverlayFactory(wailsApp *application.App, windowClosed func(app.OverlayWindow), effectiveLevel ...func() int) *wailsOverlayFactory {
 	var screens overlayScreenResolver
 	if wailsApp != nil && wailsApp.Screen != nil {
 		screens = wailsApp.Screen.GetByIndex
 	}
+	level := func() int { return 1 }
+	if len(effectiveLevel) > 0 && effectiveLevel[0] != nil {
+		level = effectiveLevel[0]
+	}
 	return &wailsOverlayFactory{
-		app:          wailsApp,
-		screens:      screens,
-		windowClosed: windowClosed,
+		app:            wailsApp,
+		screens:        screens,
+		windowClosed:   windowClosed,
+		effectiveLevel: level,
 	}
 }
 
@@ -3468,6 +3479,8 @@ type wailsOverlayWindow struct {
 	w      *application.WebviewWindow
 	handle *wailsWindowHandle
 	mgr    *window.Manager
+	screen *application.Screen
+	level  int
 }
 
 func (o *wailsOverlayWindow) Close() {
@@ -3479,10 +3492,41 @@ func (o *wailsOverlayWindow) ApplyProfileMode(document *config.ProfileDocumentV3
 		return fmt.Errorf("overlay window not ready for mode application")
 	}
 	o.mgr.ApplyProfileV3(document, false)
+	o.applyPerformanceGeometry(document)
 	return nil
 }
 
+func (o *wailsOverlayWindow) applyPerformanceGeometry(document *config.ProfileDocumentV3) {
+	if o == nil || o.w == nil || o.handle == nil || o.screen == nil || document == nil {
+		return
+	}
+	monitor := window.WailsRect{X: o.screen.Bounds.X, Y: o.screen.Bounds.Y, Width: o.screen.Bounds.Width, Height: o.screen.Bounds.Height}
+	geometry := window.ResolveOverlayGeometry(document, monitor, o.level, overlayBoundingMargin)
+	if !geometry.ShrinkWrapped {
+		o.w.ExecJS(resetOverlayGeometryScript)
+		return
+	}
+	o.w.UnFullscreen()
+	o.handle.SetBounds(geometry.Window)
+	o.w.ExecJS(overlayGeometryScript(geometry))
+}
+
+const (
+	overlayBoundingMargin      = 16
+	resetOverlayGeometryScript = `(() => { const root = document.getElementById("root"); if (!root) return; root.style.position = ""; root.style.left = ""; root.style.top = ""; root.style.width = "100%"; root.style.height = "100%"; root.style.transform = ""; })()`
+)
+
+func overlayGeometryScript(geometry window.OverlayGeometry) string {
+	localX := geometry.Window.X - geometry.Monitor.X
+	localY := geometry.Window.Y - geometry.Monitor.Y
+	return fmt.Sprintf(`(() => { const root = document.getElementById("root"); if (!root) return; root.style.position = "absolute"; root.style.left = "0"; root.style.top = "0"; root.style.width = "%dpx"; root.style.height = "%dpx"; root.style.transformOrigin = "top left"; root.style.transform = "translate(%dpx, %dpx)"; })()`, geometry.Monitor.Width, geometry.Monitor.Height, -localX, -localY)
+}
+
 func resolveOverlayWindowOptions(document *config.ProfileDocumentV3, screens overlayScreenResolver) (application.WebviewWindowOptions, error) {
+	return resolveOverlayWindowOptionsAtLevel(document, screens, 1)
+}
+
+func resolveOverlayWindowOptionsAtLevel(document *config.ProfileDocumentV3, screens overlayScreenResolver, level int) (application.WebviewWindowOptions, error) {
 	if document == nil {
 		return application.WebviewWindowOptions{}, fmt.Errorf("overlay profile document is required")
 	}
@@ -3501,10 +3545,15 @@ func resolveOverlayWindowOptions(document *config.ProfileDocumentV3, screens ove
 			screen.Bounds.Height,
 		)
 	}
-	return application.WebviewWindowOptions{
+	monitor := window.WailsRect{X: screen.Bounds.X, Y: screen.Bounds.Y, Width: screen.Bounds.Width, Height: screen.Bounds.Height}
+	geometry := window.ResolveOverlayGeometry(document, monitor, level, overlayBoundingMargin)
+	options := application.WebviewWindowOptions{
 		Title:             "Vantare Overlay",
-		Width:             screen.Bounds.Width,
-		Height:            screen.Bounds.Height,
+		Width:             geometry.Window.Width,
+		Height:            geometry.Window.Height,
+		InitialPosition:   application.WindowXY,
+		X:                 geometry.Window.X,
+		Y:                 geometry.Window.Y,
 		Frameless:         true,
 		BackgroundType:    application.BackgroundTypeTransparent,
 		BackgroundColour:  application.NewRGBA(0, 0, 0, 0),
@@ -3512,14 +3561,19 @@ func resolveOverlayWindowOptions(document *config.ProfileDocumentV3, screens ove
 		AlwaysOnTop:       true,
 		URL:               "/overlay.html",
 		Screen:            screen,
-	}, nil
+	}
+	if geometry.ShrinkWrapped {
+		options.JS = overlayGeometryScript(geometry)
+	}
+	return options, nil
 }
 
 func (f *wailsOverlayFactory) NewOverlayWindow(document *config.ProfileDocumentV3, origin config.Rect, bounds config.Rect) (app.OverlayWindow, error) {
 	if f == nil {
 		return nil, fmt.Errorf("overlay window factory is unavailable")
 	}
-	options, err := resolveOverlayWindowOptions(document, f.screens)
+	level := f.effectiveLevel()
+	options, err := resolveOverlayWindowOptionsAtLevel(document, f.screens, level)
 	if err != nil {
 		return nil, fmt.Errorf("create overlay window: %w", err)
 	}
@@ -3529,7 +3583,7 @@ func (f *wailsOverlayFactory) NewOverlayWindow(document *config.ProfileDocumentV
 	w := f.app.Window.NewWithOptions(options)
 	handle := &wailsWindowHandle{w: w}
 	mgr := window.NewManager(handle, 0)
-	overlayWindow := &wailsOverlayWindow{w: w, handle: handle, mgr: mgr}
+	overlayWindow := &wailsOverlayWindow{w: w, handle: handle, mgr: mgr, screen: f.screens(document.MonitorIndex), level: level}
 
 	// When the user (or Stop) closes the overlay window, we must stop treating
 	// it as the current window so StartOverlay can create a fresh one next time.
@@ -3544,6 +3598,7 @@ func (f *wailsOverlayFactory) NewOverlayWindow(document *config.ProfileDocumentV
 	// Apply the profile document display mode instead of hard-coding passthrough.
 	// ModeRacing starts click-through; ModeEdit starts interactive.
 	mgr.ApplyProfileV3(document, false)
+	overlayWindow.applyPerformanceGeometry(document)
 	return overlayWindow, nil
 }
 

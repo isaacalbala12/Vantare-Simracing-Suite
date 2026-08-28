@@ -769,6 +769,7 @@ func (s *SettingsService) applyLoaded(loaded *AppSettings) {
 		CpuSampling:                 loaded.CpuSampling,
 		Performance:                 loaded.Performance,
 		Notifications:               loaded.Notifications,
+		Performance:                 loaded.Performance,
 		ActiveOverlayProfileID:      loaded.ActiveOverlayProfileID,
 		BetaWelcomeCompleted:        loaded.BetaWelcomeCompleted,
 		BetaUserRole:                loaded.BetaUserRole,
@@ -805,7 +806,22 @@ func (s *SettingsService) applyLoaded(loaded *AppSettings) {
 		merged.LauncherProfiles = defaultLauncherProfiles()
 	}
 	s.migrateSettings(merged)
+	if merged.Performance.Level < 1 || merged.Performance.Level > 5 {
+		merged.Performance = PerformanceSettings{Mode: "level", Level: 1}
+	}
 	s.settings = merged
+}
+
+// EffectivePerformancePolicy resolves the same canonical policy published in
+// capabilities.performance. Diagnostic builds may force a nominal level for
+// reproducible lifecycle measurements without changing persisted settings.
+func (s *SettingsService) EffectivePerformancePolicy() performancepolicy.Policy {
+	settings := s.Snapshot().Performance
+	if override := diagnosticPerformanceLevel(); override != 0 {
+		settings.Mode = string(performancepolicy.ModeLevel)
+		settings.Level = override
+	}
+	return ResolvePerformancePolicy(settings)
 }
 
 // persistSidecarApplied writes the current settings to disk (via atomicWrite)

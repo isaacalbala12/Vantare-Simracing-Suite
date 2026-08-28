@@ -74,7 +74,7 @@ export const settingsOrbitEn: Record<string, string> = {
   "settings.app.density.balanced": "Balanced",
   "settings.app.density.comfortable": "Comfortable",
   "settings.app.zoom": "Interface zoom",
-  "settings.app.zoomSub": "Zoom the whole app in or out. Shortcuts: Ctrl +, Ctrl − and Ctrl 0.",
+  "settings.app.zoomSub": "Zoom the whole app in or out. Shortcuts: Ctrl +, Ctrl −, Ctrl 0 or Ctrl + wheel.",
   "settings.app.zoomDecrease": "Zoom out",
   "settings.app.zoomIncrease": "Zoom in",
   "settings.app.zoomReset": "Current zoom: {{value}}%. Reset to 100%",

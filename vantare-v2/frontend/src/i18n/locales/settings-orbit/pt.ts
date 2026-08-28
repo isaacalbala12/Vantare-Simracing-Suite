@@ -74,7 +74,7 @@ export const settingsOrbitPt: Record<string, string> = {
   "settings.app.density.balanced": "Equilibrada",
   "settings.app.density.comfortable": "Confortável",
   "settings.app.zoom": "Zoom da interface",
-  "settings.app.zoomSub": "Amplia ou reduz toda a aplicação. Atalhos: Ctrl +, Ctrl − e Ctrl 0.",
+  "settings.app.zoomSub": "Amplia ou reduz toda a aplicação. Atalhos: Ctrl +, Ctrl −, Ctrl 0 ou Ctrl + roda.",
   "settings.app.zoomDecrease": "Reduzir zoom",
   "settings.app.zoomIncrease": "Aumentar zoom",
   "settings.app.zoomReset": "Zoom atual: {{value}}%. Repor a 100%",

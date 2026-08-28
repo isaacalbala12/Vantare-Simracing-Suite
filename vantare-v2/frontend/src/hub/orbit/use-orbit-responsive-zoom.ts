@@ -17,6 +17,14 @@ import { orbitZoomRequiresScroll, resolveOrbitZoom } from "./orbit-zoom";
  * transiciones vuelvan a dispararse entre dos pasos del mismo gesto.
  */
 const ORBIT_RESIZE_SETTLE_MS = 120;
+const APP_ZOOM_WHEEL_THRESHOLD_PX = 50;
+const APP_ZOOM_WHEEL_IDLE_MS = 180;
+
+function normalizedWheelDelta(event: WheelEvent): number {
+  if (event.deltaMode === WheelEvent.DOM_DELTA_LINE) return event.deltaY * 20;
+  if (event.deltaMode === WheelEvent.DOM_DELTA_PAGE) return event.deltaY * window.innerHeight;
+  return event.deltaY;
+}
 
 /**
  * Aplica el escalado proporcional de Orbit mientras la shell está montada.
@@ -56,6 +64,8 @@ export function useOrbitResponsiveZoom(): void {
     let scheduled = false;
     let frame = 0;
     let settleTimer = 0;
+    let wheelIdleTimer = 0;
+    let wheelDelta = 0;
     let resizing = false;
     let userZoom: AppZoom = getStoredAppZoom();
 
@@ -91,6 +101,28 @@ export function useOrbitResponsiveZoom(): void {
       setAppZoom(next);
     };
 
+    const onZoomWheel = (event: WheelEvent) => {
+      if ((!event.ctrlKey && !event.metaKey) || event.altKey || event.deltaY === 0) return;
+      event.preventDefault();
+
+      const delta = normalizedWheelDelta(event);
+      if (Math.sign(wheelDelta) !== 0 && Math.sign(wheelDelta) !== Math.sign(delta)) {
+        wheelDelta = 0;
+      }
+      wheelDelta += delta;
+
+      if (wheelIdleTimer) window.clearTimeout(wheelIdleTimer);
+      wheelIdleTimer = window.setTimeout(() => {
+        wheelIdleTimer = 0;
+        wheelDelta = 0;
+      }, APP_ZOOM_WHEEL_IDLE_MS);
+
+      if (Math.abs(wheelDelta) < APP_ZOOM_WHEEL_THRESHOLD_PX) return;
+      const next = nextAppZoom(userZoom, wheelDelta < 0 ? 1 : -1);
+      wheelDelta = 0;
+      if (next !== userZoom) setAppZoom(next);
+    };
+
     const unsubscribeZoom = subscribeAppZoom((next) => {
       userZoom = next;
       write();
@@ -123,11 +155,14 @@ export function useOrbitResponsiveZoom(): void {
     write();
     window.addEventListener("resize", onResize, { passive: true });
     window.addEventListener("keydown", onZoomShortcut);
+    window.addEventListener("wheel", onZoomWheel, { passive: false });
     return () => {
       if (frame) window.cancelAnimationFrame(frame);
       if (settleTimer) window.clearTimeout(settleTimer);
+      if (wheelIdleTimer) window.clearTimeout(wheelIdleTimer);
       window.removeEventListener("resize", onResize);
       window.removeEventListener("keydown", onZoomShortcut);
+      window.removeEventListener("wheel", onZoomWheel);
       unsubscribeZoom();
       style.zoom = "";
       root.style.removeProperty("--orbit-zoom");

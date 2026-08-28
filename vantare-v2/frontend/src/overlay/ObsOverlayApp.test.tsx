@@ -1,8 +1,10 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { StrictMode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ProfileDocumentV3 } from "./core/profile-document";
 import { ObsOverlayApp } from "./ObsOverlayApp";
 import { deltaDefinition } from "./widget-types/delta/delta-definition";
+import goldenV2Raw from "../../../internal/telemetry/projection/overlayv2/testdata/overlay_v2_1.golden.json?raw";
 
 type Handler = (event: { data: unknown }) => void;
 
@@ -28,11 +30,18 @@ vi.mock("@wailsio/runtime", () => ({
 class MockEventSource {
   static instances: MockEventSource[] = [];
   readonly url: string;
-  addEventListener = vi.fn();
+  private readonly listeners = new Map<string, ((event: { data: unknown }) => void)[]>();
+  addEventListener = vi.fn((name: string, listener: (event: { data: unknown }) => void) => {
+    this.listeners.set(name, [...(this.listeners.get(name) ?? []), listener]);
+  });
   close = vi.fn();
   constructor(url: string) {
     this.url = url;
     MockEventSource.instances.push(this);
+  }
+
+  dispatch(name: string, data: unknown): void {
+    for (const listener of this.listeners.get(name) ?? []) listener({ data });
   }
 }
 
@@ -116,6 +125,41 @@ describe("ObsOverlayApp", () => {
     vi.useRealTimers();
     vi.unstubAllGlobals();
     globalThis.ResizeObserver = originalResizeObserver;
+    delete window.__vantareOverlayV2Features;
+  });
+
+  it("crea una generacion limpia y acepta frames V2 tras el doble setup de StrictMode", async () => {
+    window.__vantareOverlayV2Features = ["delta"];
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const delta = deltaDefinition.createDefault("delta-strict");
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(buildApiResponse({
+        schemaVersion: 3,
+        id: "obs-strict",
+        name: "OBS Strict",
+        displayMode: "streaming",
+        monitorIndex: 0,
+        layouts: { general: { type: "general", widgets: [delta] } },
+      })),
+    } as Response));
+
+    render(
+      <StrictMode>
+        <ObsOverlayApp />
+      </StrictMode>,
+    );
+    await flush();
+    const activeV2 = MockEventSource.instances
+      .filter((source) => source.url === "/telemetry/overlay-v2/projection")
+      .at(-1);
+    act(() => activeV2?.dispatch("telemetry:overlay-v2:snapshot", goldenV2Raw));
+
+    expect(screen.getAllByTestId("runtime-widget-frame")).toHaveLength(1);
+    expect(consoleError.mock.calls.flat().join(" ")).not.toContain("invalid-contract:disposed");
+    expect(window.__vantareOverlayV2Diagnostics?.()).toMatchObject({
+      overlay_v2_parse_duration: { count: 1 },
+    });
   });
 
   it("loads profile-v3 and starts canonical v1 plus shadow v2 SSE adapters", async () => {

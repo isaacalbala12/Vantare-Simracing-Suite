@@ -1104,3 +1104,33 @@ Evidencia Task 4 y cierre acumulado:
   Captura posterior en
   `C:\Users\isaac\Desktop\Vantare-Overlays\vantare-v2\fotos\isa-838-sidebar-feedback-after.png`.
   La imagen es evidencia local y no se versiona.
+
+## ISA-893 — checkpoint de autoridad Overlay V2 (2026-08-28)
+
+- Rama `vantareapp/isa-893-overlay-v2-autoridad-completa`, worktree
+  `C:\tmp\vantare-isa893\vantare-v2`, base exacta
+  `origin/nightly@f2e73d3aec1cadb47586cdea07fdbc54effea58f`.
+- Hitos 1–6 publicados: inventario 20/20; contexto runtime puro derivado de
+  V2; selección V2-first en el único `WidgetVisualHost`; fallos
+  inválido/ausente/error terminales y stale visible; rollback total solo en
+  memoria; gate cerrado catálogo 20 = políticas 20 y builders V2 no externos
+  18.
+- `engineer-radio` consume exclusivamente `engineerPresentation` y
+  `race-schedule` recibe `raceScheduleEvents` desde Calendar. Ninguno convierte
+  su fuente auxiliar en telemetría V2.
+- Evidencia focal acumulada: contexto/visibilidad/layout 19 tests PASS; host y
+  auxiliares 33 PASS; estados V2 22 PASS; rollback/registro/host 30 PASS;
+  comparador 28 PASS. `pnpm --dir frontend typecheck` PASS después de cada
+  hito de código. La suite completa y builds quedan para el cierre integrado.
+- Bloqueo de coordinación vigente: no editar `CompositeApp.tsx`,
+  `ObsOverlayApp.tsx`, `RuntimeOverlaySurface.tsx`, `RuntimeWidgetFrame.tsx` ni
+  `telemetry-rate-coordinator.ts` hasta que #936 llegue a `nightly`. Después se
+  debe rebasar y eliminar los adaptadores V1 transitorios de layout/visibilidad,
+  activar `overlayV2Authority` en Studio/Desktop/OBS y ejecutar los gates
+  completos más Wails/LMU real.
+- Riesgo operativo de la issue: #893 conserva simultáneamente las labels
+  `roadmap:required` y `roadmap:not-required` y todavía no enumera el token
+  exacto de roadmap. Debe resolverse antes del commit semántico de `plan.md` y
+  de los gates finales.
+- No hay PR, merge, promoción ni release. HEAD funcional antes de este
+  checkpoint: `0a25f4ad`.

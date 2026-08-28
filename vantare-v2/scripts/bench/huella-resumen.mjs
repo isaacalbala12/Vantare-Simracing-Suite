@@ -137,8 +137,18 @@ export function renderMarkdown(condition, aggregate, files, runs = []) {
     ),
   ));
   const forcedRuns = runs.flatMap((run, index) => run.__metadata?.publishable === false ? [index + 1] : []);
+  const foreignProcesses = runs.flatMap((run) => run.__metadata?.foreignProcesses ?? []).flatMap((value) => {
+    try { return JSON.parse(value); } catch { return [{ Name: "desconocido", ProcessId: "?", CommandLine: value }]; }
+  });
   const publicationBanner = forcedRuns.length
-    ? [`> **NO PUBLICABLE:** higiene forzada en las corridas ${forcedRuns.join(", ")}. Los procesos ajenos quedaron registrados en el CSV.`, ""]
+    ? [
+      `> **NO PUBLICABLE:** \`hygieneForced=true\`, \`publishable=false\` en las corridas ${forcedRuns.join(", ")}.`,
+      "",
+      "Procesos Edge/WebView2 ajenos detectados:",
+      "",
+      ...foreignProcesses.map((entry) => `- ${entry.Name ?? "desconocido"} PID ${entry.ProcessId ?? "?"}, padre ${entry.ParentProcessId ?? "?"}: \`${entry.CommandLine ?? "sin línea de comandos"}\``),
+      "",
+    ]
     : [];
   const droppedRows = runs.flatMap((run, index) => {
     const metric = run.game?.dropped;

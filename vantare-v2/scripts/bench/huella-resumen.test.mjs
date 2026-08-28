@@ -64,7 +64,10 @@ test("tres ceros son estables y no producen división inválida", () => {
 test("rechaza una corrida marcada como no publicable", () => {
   const run = summarizeRun(parseCsv("timestamp,role,cpuPct,publishable,hygieneForced,foreignProcesses\nt1,go-host,1,false,true,msedge.exe:42\n"));
   assert.throws(() => aggregateRuns([run, run, run]), /no publicables.*1, 2, 3/i);
-  assert.match(renderMarkdown("A1", [], ["run.csv"], [run]), /NO PUBLICABLE/);
+  const markdown = renderMarkdown("A1", [], ["run.csv"], [run]);
+  assert.match(markdown, /NO PUBLICABLE/);
+  assert.match(markdown, /hygieneForced=true/);
+  assert.match(markdown, /msedge\.exe:42/);
 });
 
 test("agrega frametime del juego con percentiles observables", () => {

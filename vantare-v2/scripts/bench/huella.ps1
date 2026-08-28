@@ -102,6 +102,8 @@ $stderrLog = Join-Path $outputDir "$stem-stderr.log"
 $presentMonLog = Join-Path $outputDir "$stem-presentmon.log"
 $presentMonErrorLog = Join-Path $outputDir "$stem-presentmon-error.log"
 $processJson = Join-Path $outputDir "$stem-processes.json"
+$runtimeDir = Join-Path $outputDir "$stem-runtime"
+New-Item -ItemType Directory -Force -Path (Join-Path $runtimeDir 'configs') | Out-Null
 
 $app = $null
 $presentMon = $null
@@ -157,7 +159,7 @@ try {
     try {
         $quotedProfilePath = '"{0}"' -f $profilePath.Replace('"', '\"')
         $httpPort = if ($Puerto -le 45535) { $Puerto + 20000 } else { $Puerto - 1000 }
-        $app = Start-Process -FilePath $exePath -ArgumentList @('-profile', $quotedProfilePath, '-http', "127.0.0.1:$httpPort") -WorkingDirectory $repoRoot -RedirectStandardOutput $stdoutLog -RedirectStandardError $stderrLog -WindowStyle Normal -PassThru
+        $app = Start-Process -FilePath $exePath -ArgumentList @('-profile', $quotedProfilePath, '-http', "127.0.0.1:$httpPort") -WorkingDirectory $runtimeDir -RedirectStandardOutput $stdoutLog -RedirectStandardError $stderrLog -WindowStyle Normal -PassThru
     } finally {
         $env:VANTARE_WEBVIEW_DEBUG_PORT = $oldDebugPort
     }

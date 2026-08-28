@@ -15,7 +15,9 @@
   `origin/nightly@ae66720d`, PR #929. Se versionaron la spec autorizada, dos perfiles v3
   reproducibles, banco PowerShell 7, control/probe CDP y agregador de ruido.
   El árbol WebView2 se acota por `--user-data-dir=<exe>\EBWebView`; el renderer
-  Hub se fija antes de abrir el overlay y el nuevo se atribuye al overlay.
+  Hub se fija antes de abrir el overlay; un renderer nuevo sin relación
+  PID↔target demostrable queda `renderer-unassigned` y no se atribuye por
+  orden de aparición.
   PresentMon 2.5.1 quedó disponible como binario standalone oficial porque el
   MSI de winget devolvió 1620; usa una sesión ETW propia y nunca
   `--stop_existing_session`. Smoke Wails real A0/A1 PASS: A1 abrió 3 widgets,

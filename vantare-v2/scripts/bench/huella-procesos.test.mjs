@@ -26,6 +26,7 @@ test("clasifica host y árbol WebView2, con roles renderer observados", () => {
     { Name: "msedgewebview2.exe", ProcessId: 4200, ParentProcessId: 4100, CommandLine: browser },
     { Name: "msedgewebview2.exe", ProcessId: 4300, ParentProcessId: 4200, CommandLine: `${browser} --type=gpu-process` },
     { Name: "msedgewebview2.exe", ProcessId: 4400, ParentProcessId: 4200, CommandLine: renderer },
+    { Name: "msedgewebview2.exe", ProcessId: 4450, ParentProcessId: 4200, CommandLine: `${browser} --type=renderer --renderer-client-id=7` },
     { Name: "msedgewebview2.exe", ProcessId: 4500, ParentProcessId: 4200, CommandLine: foreign },
   ];
   assert.deepEqual(
@@ -36,6 +37,7 @@ test("clasifica host y árbol WebView2, con roles renderer observados", () => {
       { pid: 4200, role: "browser" },
       { pid: 4300, role: "gpu-process" },
       { pid: 4400, role: "renderer-overlay" },
+      { pid: 4450, role: "renderer-unassigned" },
     ],
   );
 });

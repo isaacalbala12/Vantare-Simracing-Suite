@@ -92,8 +92,11 @@ con el mismo estado.
 
 El helper identifica el overlay por URL exacta `http://wails.localhost/` y
 marcadores runtime; el Hub usa `http://wails.localhost/#/hub`. Antes de abrir el
-overlay conserva el PID renderer del Hub; el renderer nuevo queda atribuido al
-overlay. Cuenta `[data-testid="runtime-widget-frame"]` y mide rAF/s y long tasks
+overlay conserva los PID renderer ya observados del Hub. Cualquier renderer
+nuevo sin relación
+PID↔target demostrable queda como `renderer-unassigned`; nunca se infiere que
+pertenece al overlay por orden de aparición. Cuenta
+`[data-testid="runtime-widget-frame"]` y mide rAF/s y long tasks
 durante 10 s. El banco espera primero al target Hub y, al arrancar el overlay,
 no inicia PresentMon ni el muestreo hasta ver exactamente los widgets
 habilitados por el perfil. Un timeout incluye las URLs de todos los targets.

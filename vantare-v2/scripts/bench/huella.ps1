@@ -190,7 +190,7 @@ function Update-ProcessClassification {
     foreach ($processInfo in $ownProcesses | Where-Object { $_.CommandLine -match '--type=renderer(?:\s|$)' }) {
         $rendererKey = [string]$processInfo.ProcessId
         if (-not $rendererRoles.ContainsKey($rendererKey)) {
-            $rendererRoles[$rendererKey] = if ($Condicion -eq 'A0' -or [int]$processInfo.ProcessId -in $hubRendererIds) { 'renderer-hub' } else { 'renderer-overlay' }
+            $rendererRoles[$rendererKey] = if ([int]$processInfo.ProcessId -in $hubRendererIds) { 'renderer-hub' } else { 'renderer-unassigned' }
         }
     }
     $ownProcesses | Select-Object Name, ProcessId, ParentProcessId, CommandLine | ConvertTo-Json -Depth 4 -AsArray | Set-Content -LiteralPath $processJson -Encoding utf8
@@ -238,7 +238,7 @@ try {
     $ownCim = Get-OwnCimProcesses
     $rendererRoles = @{}
     foreach ($processInfo in $ownCim | Where-Object { $_.CommandLine -match '--type=renderer(?:\s|$)' }) {
-        $rendererRoles[[string]$processInfo.ProcessId] = if ([int]$processInfo.ProcessId -in $hubRendererIds) { 'renderer-hub' } else { 'renderer-overlay' }
+        $rendererRoles[[string]$processInfo.ProcessId] = if ([int]$processInfo.ProcessId -in $hubRendererIds) { 'renderer-hub' } else { 'renderer-unassigned' }
     }
     $roleByPid = Update-ProcessClassification
 

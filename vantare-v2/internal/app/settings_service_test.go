@@ -631,7 +631,7 @@ func TestLoadMigratesLegacySettings(t *testing.T) {
 		t.Errorf("expected SchemaVersion=4 after migration, got %d", svc.Settings().SchemaVersion)
 	}
 	if got := svc.Settings().Performance; got.Mode != "level" || got.Level != 1 {
-		t.Errorf("expected migrated performance level 3, got %+v", got)
+		t.Errorf("expected migrated performance level 1, got %+v", got)
 	}
 	if svc.Settings().LauncherApps == nil {
 		t.Error("LauncherApps should be initialized")

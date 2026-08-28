@@ -93,6 +93,14 @@ function syntheticFullUpdate(vehicles: number) {
         supported: ["session", "controls", "standings", "gaps", "fuel", "delta", "spotter"],
         available: { session: "fresh", controls: "fresh", standings: "fresh", gaps: "fresh", fuel: "fresh", delta: "fresh", spotter: "fresh" },
         modes: { spatial: ["longitudinal", "lateral"], delta: ["best", "last"], standings: "official", gaps: "official" },
+        performance: {
+          level: 3,
+          mode: "manual",
+          effects: "noBlur",
+          rafCap: 40,
+          widgetHz: { standings: 10, relative: 10, delta: 20 },
+          sourceHz: 60,
+        },
       },
       damage: {
         dents: fresh([0, 1, 0, 2, 0, 0, 3, 0]), overheating: fresh(false), detached: fresh(false), wheelDetachedCount: fresh(0),

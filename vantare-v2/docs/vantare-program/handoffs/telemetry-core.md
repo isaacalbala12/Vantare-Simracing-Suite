@@ -49,6 +49,20 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   evento y un scheduler activo después del doble setup. PR #937 está ready con
   auto-merge activo y pendiente de sus gates; sin merge, promoción ni release
   en este corte.
+
+- 2026-08-28, ISA-926 implementa la política de rendimiento F1 en la rama
+  `vantareapp/isa-926-performance-policy-niveles`. Go resuelve niveles 1–5,
+  `custom` y el fallback explícito de `auto`; la cadencia efectiva se aplica al
+  `SectionScheduler` en el tick siguiente. OverlayFrame v2 publica
+  `capabilities.performance`, su decoder TypeScript falla cerrado y el
+  coordinador visual obedece `rafCap`, techos por widget y dirty/event con techo
+  dirty de un segundo. Ajustes antiguos migran al nivel 3 sin cambiar el perfil.
+  Go build, suites Go acotadas, frontend 421/3195, typecheck, build frontend y
+  Wails Windows pasan. El lint global conserva una deuda ajena al diff en
+  `car-damage-numbers-view-model-v2.ts:93`; no hay prueba física LMU/WebView2,
+  PR, CI remoto, merge ni promoción. Evidencia:
+  `docs/telemetry-core/evidence/isa-926-performance-policy.md`.
+
 - 2026-08-28, ISA-891 completa el lifecycle de Overlay V2 y lleva Studio al
   mismo transporte dirigido que Desktop. `6bd72d37` publica y retiene un único
   status V2 aunque no haya frames ni consumidores; un consumidor tardío recibe

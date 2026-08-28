@@ -29,6 +29,16 @@ describe("OverlayFrame v2 store", () => {
       ...update,
       source: { ...update.source, state: "connected" },
     })).toThrow("overlay-frame-v2:invalid-contract:source.state");
+    expect(() => decodeOverlayUpdateV2({
+      ...update,
+      frame: {
+        ...update.frame,
+        capabilities: {
+          ...update.frame?.capabilities,
+          performance: { ...update.frame?.capabilities.performance, level: 6 },
+        },
+      },
+    })).toThrow("overlay-frame-v2:invalid-contract:frame.capabilities.performance.level");
   });
 
   it("accepts revision gaps and retains one stable immutable frame reference", () => {

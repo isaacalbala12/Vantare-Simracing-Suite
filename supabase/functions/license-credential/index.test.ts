@@ -1,6 +1,7 @@
 import {
   CREDENTIAL_ALGORITHM,
   CREDENTIAL_ISSUER,
+  CredentialAuthError,
   handleLicenseCredentialRequest,
   normalizeGrants,
   normalizeOperationalAssignments,
@@ -8,10 +9,15 @@ import {
   signCredential,
 } from "./index.ts";
 
-const userId = "00000000-0000-4000-8000-000000000073";
+const accountId = "00000000-0000-4000-8000-000000000073";
 const fingerprint = "a".repeat(64);
-const auth =
-  async () => ({ ok: true, token: "jwt", userId, email: null } as const);
+const sessionToken = "clerk-session-token";
+const credentialRequest = (body: Record<string, unknown>) =>
+  new Request("http://local", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${sessionToken}` },
+    body: JSON.stringify(body),
+  });
 const productionGrant = (
   capability: string,
   validUntil: string | null,
@@ -30,26 +36,26 @@ Deno.test("credential request signs exact independent capabilities without PII",
     true,
     ["sign", "verify"],
   ) as CryptoKeyPair;
-  const request = new Request("http://local", {
-    method: "POST",
-    body: JSON.stringify({ deviceFingerprint: fingerprint }),
-  });
+  const request = credentialRequest({ deviceFingerprint: fingerprint });
   const response = await handleLicenseCredentialRequest(request, {
-    requireAuth: auth,
     environment: "production",
     now: () => new Date("2026-08-02T12:00:00.000Z"),
     store: {
-      load: async () => ({
-        deviceMatches: true,
-        grants: [
-          productionGrant(
-            "vantare.plan.pro",
-            "2026-09-02T12:00:00.000Z",
-          ),
-          productionGrant("vantare.edition.launch_v1", null, "order"),
-          productionGrant("vantare.channel.testers", null, "benefit_grant"),
-        ],
-      }),
+      load: async (token) => {
+        if (token !== sessionToken) throw new Error("session token changed");
+        return {
+          accountId,
+          deviceMatches: true,
+          grants: [
+            productionGrant(
+              "vantare.plan.pro",
+              "2026-09-02T12:00:00.000Z",
+            ),
+            productionGrant("vantare.edition.launch_v1", null, "order"),
+            productionGrant("vantare.channel.testers", null, "benefit_grant"),
+          ],
+        };
+      },
     },
     sign: (claims) => signCredential(claims, "test-key", keys.privateKey),
   });
@@ -62,7 +68,7 @@ Deno.test("credential request signs exact independent capabilities without PII",
     throw new Error(JSON.stringify(body));
   }
   if (
-    credential.claims.subject !== userId ||
+    credential.claims.subject !== accountId ||
     credential.claims.email !== undefined
   ) {
     throw new Error("credential leaked or lost identity");
@@ -97,14 +103,12 @@ Deno.test("credential request signs exact independent capabilities without PII",
 
 Deno.test("credential request rejects a different active device", async () => {
   const response = await handleLicenseCredentialRequest(
-    new Request("http://local", {
-      method: "POST",
-      body: JSON.stringify({ deviceFingerprint: fingerprint }),
-    }),
+    credentialRequest({ deviceFingerprint: fingerprint }),
     {
-      requireAuth: auth,
       environment: "production",
-      store: { load: async () => ({ deviceMatches: false, grants: [] }) },
+      store: {
+        load: async () => ({ accountId, deviceMatches: false, grants: [] }),
+      },
     },
   );
   const body = await response.json();
@@ -203,16 +207,13 @@ Deno.test("recovery capability is online-only and never enters the envelope", as
     ["sign", "verify"],
   ) as CryptoKeyPair;
   const response = await handleLicenseCredentialRequest(
-    new Request("http://local", {
-      method: "POST",
-      body: JSON.stringify({ deviceFingerprint: fingerprint }),
-    }),
+    credentialRequest({ deviceFingerprint: fingerprint }),
     {
-      requireAuth: auth,
       environment: "production",
       now: () => new Date("2026-08-02T12:00:00.000Z"),
       store: {
         load: async () => ({
+          accountId,
           deviceMatches: true,
           grants: [{
             ...productionGrant(
@@ -239,11 +240,7 @@ Deno.test("recovery capability is online-only and never enters the envelope", as
 
 Deno.test("credential request rejects arbitrary identity and device fields", async () => {
   const response = await handleLicenseCredentialRequest(
-    new Request("http://local", {
-      method: "POST",
-      body: JSON.stringify({ deviceFingerprint: fingerprint, userId }),
-    }),
-    { requireAuth: auth },
+    credentialRequest({ deviceFingerprint: fingerprint, accountId }),
   );
   if (response.status !== 400) throw new Error(`status=${response.status}`);
 });
@@ -351,16 +348,13 @@ Deno.test("credential request combines commercial and operational authorities wi
     ["sign", "verify"],
   ) as CryptoKeyPair;
   const response = await handleLicenseCredentialRequest(
-    new Request("http://local", {
-      method: "POST",
-      body: JSON.stringify({ deviceFingerprint: fingerprint }),
-    }),
+    credentialRequest({ deviceFingerprint: fingerprint }),
     {
-      requireAuth: auth,
       environment: "production",
       now: () => new Date("2026-08-03T12:00:00.000Z"),
       store: {
         load: async () => ({
+          accountId,
           deviceMatches: true,
           grants: [
             productionGrant(
@@ -388,5 +382,67 @@ Deno.test("credential request combines commercial and operational authorities wi
     throw new Error(
       `authorities were mixed incorrectly: ${JSON.stringify(body)}`,
     );
+  }
+});
+
+Deno.test("credential request requires a bearer before resolving an account", async () => {
+  const response = await handleLicenseCredentialRequest(
+    new Request("http://local", {
+      method: "POST",
+      body: JSON.stringify({ deviceFingerprint: fingerprint }),
+    }),
+  );
+  const body = await response.json();
+  if (response.status !== 401 || body.error !== "unauthorized") {
+    throw new Error(JSON.stringify(body));
+  }
+});
+
+Deno.test("credential request rejects a non-UUID account returned by the RPC", async () => {
+  const response = await handleLicenseCredentialRequest(
+    credentialRequest({ deviceFingerprint: fingerprint }),
+    {
+      environment: "production",
+      store: {
+        load: async () => ({
+          accountId: "user_external_subject",
+          deviceMatches: true,
+          grants: [],
+        }),
+      },
+    },
+  );
+  const body = await response.json();
+  if (response.status !== 401 || body.error !== "invalid_account") {
+    throw new Error(JSON.stringify(body));
+  }
+});
+
+Deno.test("TPA rejection stays HTTP 401 instead of becoming availability failure", async () => {
+  const response = await handleLicenseCredentialRequest(
+    credentialRequest({ deviceFingerprint: fingerprint }),
+    {
+      environment: "production",
+      store: {
+        load: () => Promise.reject(new CredentialAuthError()),
+      },
+    },
+  );
+  const body = await response.json();
+  if (response.status !== 401 || body.error !== "unauthorized") {
+    throw new Error(JSON.stringify(body));
+  }
+});
+
+Deno.test("license credential config delegates Clerk JWT validation to PostgREST TPA", async () => {
+  const config = await Deno.readTextFile(
+    new URL("../../config.toml", import.meta.url),
+  );
+  if (
+    !/\[functions\.license-credential\]\s+verify_jwt\s*=\s*false/.test(
+      config,
+    )
+  ) {
+    throw new Error("license-credential must use the PostgREST TPA boundary");
   }
 });

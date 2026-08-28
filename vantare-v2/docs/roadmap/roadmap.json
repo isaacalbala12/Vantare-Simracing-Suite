@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-28T13:12:24Z",
+  "generatedAt": "2026-08-28T13:39:24Z",
   "digest": {
-    "lastCommit": "73b8619114bf6309dced5e04f257762c83b428a5"
+    "lastCommit": "36ec5fdd7e9914638778ba946373b43a52fd3749"
   },
   "phases": [
     {
@@ -336,6 +336,28 @@
     }
   ],
   "milestones": [
+    {
+      "id": "notification-system",
+      "type": "fix",
+      "title": {
+        "es": "Preferencias y prueba de notificaciones",
+        "en": "Notification preferences and test",
+        "pt": "Preferências e teste de notificações",
+        "it": "Preferenze e prova delle notifiche"
+      },
+      "body": {
+        "es": "Los avisos de actualización respetan la preferencia guardada y Ajustes permite enviar una prueba de Windows con resultado visible; Spotter permanece en su overlay y audio de carrera, fuera de los canales de notificación del producto.",
+        "en": "Update alerts respect the saved preference and Settings can send a Windows test with a visible result; Spotter remains in its race overlay and audio, outside the product notification channels.",
+        "pt": "Os avisos de atualização respeitam a preferência guardada e as Definições permitem enviar um teste do Windows com resultado visível; o Spotter permanece no overlay e áudio de corrida, fora dos canais de notificação do produto.",
+        "it": "Gli avvisi di aggiornamento rispettano la preferenza salvata e le Impostazioni possono inviare una prova Windows con risultato visibile; Spotter resta nell'overlay e nell'audio di gara, fuori dai canali di notifica del prodotto."
+      },
+      "label": {
+        "es": "Corregido",
+        "en": "Fixed",
+        "pt": "Corrigido",
+        "it": "Corretto"
+      }
+    },
     {
       "id": "calendar-discord-review",
       "type": "feature",
@@ -803,6 +825,11 @@
     {
       "date": "2026-08-28",
       "entries": [
+        {
+          "kind": "feat",
+          "scope": "settings",
+          "text": "Controlar zoom con Ctrl y rueda"
+        },
         {
           "kind": "fix",
           "scope": "telemetry",

@@ -250,6 +250,22 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 
 ## Hitos
 
+### Preferencias y prueba de notificaciones
+
+- id: notification-system
+- tipo: fix
+- titulo.en: Notification preferences and test
+- titulo.pt: Preferências e teste de notificações
+- titulo.it: Preferenze e prova delle notifiche
+- cuerpo: Los avisos de actualización respetan la preferencia guardada y Ajustes permite enviar una prueba de Windows con resultado visible; Spotter permanece en su overlay y audio de carrera, fuera de los canales de notificación del producto.
+- cuerpo.en: Update alerts respect the saved preference and Settings can send a Windows test with a visible result; Spotter remains in its race overlay and audio, outside the product notification channels.
+- cuerpo.pt: Os avisos de atualização respeitam a preferência guardada e as Definições permitem enviar um teste do Windows com resultado visível; o Spotter permanece no overlay e áudio de corrida, fora dos canais de notificação do produto.
+- cuerpo.it: Gli avvisi di aggiornamento rispettano la preferenza salvata e le Impostazioni possono inviare una prova Windows con risultato visibile; Spotter resta nell'overlay e nell'audio di gara, fuori dai canali di notifica del prodotto.
+- etiqueta: Corregido
+- etiqueta.en: Fixed
+- etiqueta.pt: Corrigido
+- etiqueta.it: Corretto
+
 ### Calendario LMU desde Discord
 
 - id: calendar-discord-review

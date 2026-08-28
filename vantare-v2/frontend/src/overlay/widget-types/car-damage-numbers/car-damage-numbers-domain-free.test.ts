@@ -18,9 +18,9 @@ import {
 const CONTENT = carDamageNumbersDefinition.parseContent({});
 
 describe("car damage v2 view model", () => {
-  it("is off by default and only opts in through the feature flag", () => {
-    expect(DEFAULT_OVERLAY_V2_FEATURES).toEqual([]);
-    expect(hasOverlayV2Feature(undefined, OVERLAY_V2_DAMAGE)).toBe(false);
+  it("is authoritative by default and remains explicitly addressable", () => {
+    expect(DEFAULT_OVERLAY_V2_FEATURES).toContain(OVERLAY_V2_DAMAGE);
+    expect(hasOverlayV2Feature(undefined, OVERLAY_V2_DAMAGE)).toBe(true);
     expect(hasOverlayV2Feature([OVERLAY_V2_DAMAGE], OVERLAY_V2_DAMAGE)).toBe(true);
   });
 

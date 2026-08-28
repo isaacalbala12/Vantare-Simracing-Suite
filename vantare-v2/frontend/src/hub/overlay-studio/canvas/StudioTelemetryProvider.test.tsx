@@ -70,13 +70,14 @@ describe("StudioTelemetryProvider - single merged effect", () => {
     adapterStarted = false;
     vi.clearAllMocks();
 
+    const coordinator = createTelemetryRateCoordinator();
     mockCoordinator = {
+      ...coordinator,
       publish: vi.fn((snapshot) => {
         publishHistory.push(snapshot);
       }),
       getSnapshot: vi.fn(() => publishHistory[publishHistory.length - 1]),
       subscribe: vi.fn(() => () => {}),
-      dispose: vi.fn(),
     };
 
     mockAdapter = {

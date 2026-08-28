@@ -18,9 +18,9 @@ import {
 const CONTENT = fuelStrategyDefinition.parseContent({});
 
 describe("fuel strategy v2 view model", () => {
-  it("is off by default and only opts in through the feature flag", () => {
-    expect(DEFAULT_OVERLAY_V2_FEATURES).toEqual([]);
-    expect(hasOverlayV2Feature(undefined, OVERLAY_V2_FUEL)).toBe(false);
+  it("is authoritative by default and remains explicitly addressable", () => {
+    expect(DEFAULT_OVERLAY_V2_FEATURES).toContain(OVERLAY_V2_FUEL);
+    expect(hasOverlayV2Feature(undefined, OVERLAY_V2_FUEL)).toBe(true);
     expect(hasOverlayV2Feature([OVERLAY_V2_FUEL], OVERLAY_V2_FUEL)).toBe(true);
   });
 

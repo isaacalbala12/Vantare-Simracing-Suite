@@ -16,9 +16,9 @@ const CONTENT = standingsDefinition.parseContent({
 });
 
 describe("standings v2 view model", () => {
-  it("is off by default and only opts in through the feature flag", () => {
-    expect(DEFAULT_OVERLAY_V2_FEATURES).toEqual([]);
-    expect(hasOverlayV2Feature(undefined, OVERLAY_V2_STANDINGS)).toBe(false);
+  it("is authoritative by default and remains explicitly addressable", () => {
+    expect(DEFAULT_OVERLAY_V2_FEATURES).toContain(OVERLAY_V2_STANDINGS);
+    expect(hasOverlayV2Feature(undefined, OVERLAY_V2_STANDINGS)).toBe(true);
     expect(hasOverlayV2Feature([OVERLAY_V2_STANDINGS], OVERLAY_V2_STANDINGS)).toBe(true);
   });
 

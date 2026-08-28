@@ -687,6 +687,12 @@ export function buildHarnessViewModel(widget: WidgetInstanceV3, snapshot: Teleme
       engineerPresentation: buildEngineerPresentationFixture(),
     });
   }
+  if (widget.type === "race-schedule" && definition.buildAuxiliaryViewModel) {
+    return definition.buildAuxiliaryViewModel(content as never, {
+      raceScheduleEvents: snapshot.auxiliary?.scheduleEvents,
+      raceScheduleStatus: snapshot.status,
+    }, "harness");
+  }
   return definition.buildViewModel(snapshot, content as never);
 }
 

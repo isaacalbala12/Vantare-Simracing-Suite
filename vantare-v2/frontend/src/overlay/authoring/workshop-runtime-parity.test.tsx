@@ -8,6 +8,7 @@ import {
   buildAuthoringFixtureWidget,
 } from "./fixtures/authoring-fixtures";
 import type { AuthoringFixtureScenario } from "./fixtures/authoring-fixtures";
+import { buildAuthoringV2Runtime } from "./fixtures/authoring-v2-fixture";
 
 afterEach(cleanup);
 
@@ -58,6 +59,8 @@ async function runtimeMarkup(input: AuthoringFixtureScenario): Promise<string> {
   const snapshot = buildAuthoringFixtureTelemetry(input);
   const coordinator = createTelemetryRateCoordinator();
   coordinator.publish(snapshot);
+  const runtime = buildAuthoringV2Runtime(widget.type, snapshot);
+  coordinator.setOverlayFrame(runtime.overlayV2Frame, runtime.overlayV2Source);
   const { container } = render(
     <RuntimeWidgetFrame widget={widget} telemetry={coordinator} renderMode="obs" />,
   );

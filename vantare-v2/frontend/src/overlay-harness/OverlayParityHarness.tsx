@@ -7,6 +7,7 @@ import {
 } from "../overlay/authoring/fixtures/authoring-fixtures";
 import { buildEngineerPresentationFixture } from "../engineer/engineer-presentation-fixtures";
 import { parseHarnessQuery, type HarnessQuery } from "./overlay-parity-query";
+import { buildAuthoringV2Runtime } from "../overlay/authoring/fixtures/authoring-v2-fixture";
 
 export function OverlayParityHarness({ query }: { query: HarnessQuery }) {
   const snapshot = buildHarnessTelemetry({
@@ -20,6 +21,7 @@ export function OverlayParityHarness({ query }: { query: HarnessQuery }) {
   });
   const widget = buildHarnessWidget(query.widget, query.system, query.variant, query.designId);
   seedHarnessInputHistory(widget, snapshot);
+  const runtime = buildAuthoringV2Runtime(widget.type, snapshot);
 
   return (
     <div
@@ -53,10 +55,11 @@ export function OverlayParityHarness({ query }: { query: HarnessQuery }) {
           snapshot={snapshot}
           renderMode={query.surface}
           runtime={query.widget === "engineer-radio" ? {
+            ...runtime,
             engineerPresentation: query.state === "ready"
               ? buildEngineerPresentationFixture(query.engineerLocale ?? "es", query.engineerSeverity ?? "critical")
               : null,
-          } : undefined}
+          } : runtime}
         />
       </div>
     </div>

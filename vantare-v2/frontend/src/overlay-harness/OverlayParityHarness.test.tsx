@@ -12,6 +12,7 @@ import {
 } from "./OverlayParityHarness";
 import { parseHarnessQuery } from "./overlay-parity-query";
 import { readRendererMarkup } from "./parity-html";
+import { getOverlayV2ViewModelEntry } from "../overlay/core/overlay-v2-view-models";
 
 afterEach(() => cleanup());
 
@@ -128,12 +129,6 @@ describe("OverlayParityHarness", () => {
         expect(markups[0]).toContain('data-preview="true"');
         expect(markups[0]).toContain("PREVIEW");
         expect(markups[1]).not.toContain("data-preview");
-      } else if (widget === "track-map") {
-        // The harness fixtures name no circuit the pack ships, so authoring
-        // falls back to the reference outline to stay layout-able while runtime
-        // refuses to guess. The divergence is the point, not an accident.
-        expect(markups[0]).toContain("data-track-map-synthetic");
-        expect(markups[1]).toContain("data-track-map-empty");
       } else {
         expect(markups[0]).toBe(markups[1]);
       }
@@ -164,7 +159,7 @@ describe("OverlayParityHarness", () => {
         }
         render(<OverlayParityHarness query={parsed} />);
         const renderer = document.querySelector(`[data-widget-renderer="${widget}"]`);
-        if (widget === "engineer-radio") {
+        if (widget === "engineer-radio" || (state === "error" && getOverlayV2ViewModelEntry(widget))) {
           expect(renderer).toBeNull();
         } else {
           expect(renderer).toBeTruthy();

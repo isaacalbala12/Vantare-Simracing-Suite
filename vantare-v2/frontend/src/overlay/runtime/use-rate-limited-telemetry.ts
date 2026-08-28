@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
+import { useCallback, useLayoutEffect, useState, useSyncExternalStore } from 'react';
 import type { TelemetryRateCoordinator } from '../core/telemetry-rate-coordinator';
 import type { TelemetrySnapshot } from '../core/telemetry-snapshot';
 import type { OverlayFrameV2, OverlaySourceStatusV2 } from '../../generated/telemetry';
@@ -60,7 +60,7 @@ export function useRateLimitedWidgetTelemetry(
     overlayV2Failure: coordinator.getOverlayFailure(),
   }));
 
-  useEffect(() => coordinator.subscribe(widgetType, () => {
+  useLayoutEffect(() => coordinator.subscribe(widgetType, () => {
     setState({
       overlayV2Frame: coordinator.getOverlayFrame(),
       overlayV2Source: coordinator.getOverlaySource(),

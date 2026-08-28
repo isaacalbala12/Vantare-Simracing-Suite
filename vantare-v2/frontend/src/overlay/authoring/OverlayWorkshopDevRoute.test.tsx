@@ -137,9 +137,9 @@ describe("OverlayWorkshopDevRoute", () => {
     );
     expect(classes.size).toBeGreaterThan(1);
 
-    // Without the best-lap column there is no session best, so nothing can
-    // hold the crown for the handover to move.
-    expect(document.querySelector(".ven-red-fastest")).toBeTruthy();
+    // Overlay V2 no declara bestLap por coche: se conserva la columna sin
+    // inventar una corona desde la fixture V1.
+    expect(document.querySelector(".ven-red-fastest")).toBeNull();
   });
 
   it("exposes reproducible minimal and all-column Redline fixtures", async () => {

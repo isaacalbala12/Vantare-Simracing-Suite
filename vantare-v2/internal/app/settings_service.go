@@ -259,7 +259,8 @@ func DefaultAppSettings() *AppSettings {
 	return &AppSettings{
 		SchemaVersion: appSettingsSchemaVersion,
 		CpuSampling:   true,
-		Performance:   PerformanceSettings{Mode: "level", Level: 3},
+		// TODO(#924): pasar a nivel 3 cuando el gate 12.2 esté superado
+		Performance: PerformanceSettings{Mode: "level", Level: 1},
 		Hotkeys: map[string]string{
 			"toggleOverlay":       "ctrl+shift+v",
 			"toggleEditMode":      "ctrl+shift+e",
@@ -358,7 +359,7 @@ const appSettingsSchemaVersion = 4
 //	          sampler through SetCPUEnabled.
 //	v2 -> v3: add the configurable Delta reference hotkey without replacing any
 //	          user-defined combinations.
-//	v3 -> v4: add the global performance default at balanced level.
+//	v3 -> v4: add the global performance default at parity level.
 func (s *SettingsService) migrateSettings(settings *AppSettings) {
 	if settings.SchemaVersion == 0 {
 		settings.SchemaVersion = 1
@@ -383,7 +384,7 @@ func (s *SettingsService) migrateSettings(settings *AppSettings) {
 	}
 	if settings.SchemaVersion < 4 {
 		if settings.Performance.Mode == "" {
-			settings.Performance = PerformanceSettings{Mode: "level", Level: 3}
+			settings.Performance = PerformanceSettings{Mode: "level", Level: 1}
 		}
 		settings.SchemaVersion = 4
 	}

@@ -24,8 +24,8 @@ func TestDefaultAppSettings(t *testing.T) {
 	if !s.CpuSampling {
 		t.Errorf("expected cpuSampling=true")
 	}
-	if s.Performance.Mode != "level" || s.Performance.Level != 3 {
-		t.Errorf("expected balanced performance default, got %+v", s.Performance)
+	if s.Performance.Mode != "level" || s.Performance.Level != 1 {
+		t.Errorf("expected parity performance default, got %+v", s.Performance)
 	}
 	if len(s.Hotkeys) != 5 {
 		t.Errorf("expected 5 hotkeys, got %d", len(s.Hotkeys))
@@ -429,7 +429,7 @@ func TestLoadMigratesSettingsBeforePerformanceWithoutLosingExistingValues(t *tes
 		t.Fatal(err)
 	}
 	got := svc.Settings()
-	if got.SchemaVersion != 4 || got.Performance.Mode != "level" || got.Performance.Level != 3 {
+	if got.SchemaVersion != 4 || got.Performance.Mode != "level" || got.Performance.Level != 1 {
 		t.Fatalf("migration result = %+v", got.Performance)
 	}
 	if got.CpuSampling || got.ActiveOverlayProfileID != "endurance" {
@@ -630,7 +630,7 @@ func TestLoadMigratesLegacySettings(t *testing.T) {
 	if svc.Settings().SchemaVersion != 4 {
 		t.Errorf("expected SchemaVersion=4 after migration, got %d", svc.Settings().SchemaVersion)
 	}
-	if got := svc.Settings().Performance; got.Mode != "level" || got.Level != 3 {
+	if got := svc.Settings().Performance; got.Mode != "level" || got.Level != 1 {
 		t.Errorf("expected migrated performance level 3, got %+v", got)
 	}
 	if svc.Settings().LauncherApps == nil {

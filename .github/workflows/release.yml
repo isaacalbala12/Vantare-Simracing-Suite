@@ -69,6 +69,7 @@ permissions:
 
 env:
   GO_VERSION: "1.25.0"
+  POWERSHELL_VERSION: "7.6.5"
   WAILS_VERSION: "v3.0.0-alpha.98-tui"
   NODE_VERSION: "22"
   PNPM_VERSION: "9.1.0"
@@ -272,6 +273,21 @@ jobs:
 
       - name: Install NSIS
         run: choco install nsis --version=${{ env.NSIS_VERSION }} --no-progress --yes
+
+      - name: Set up pinned PowerShell
+        shell: powershell
+        run: |
+          $version = $env:POWERSHELL_VERSION
+          $install = Join-Path $env:RUNNER_TEMP "powershell-$version"
+          $archive = Join-Path $env:RUNNER_TEMP "PowerShell-$version-win-x64.zip"
+          $uri = "https://github.com/PowerShell/PowerShell/releases/download/v$version/PowerShell-$version-win-x64.zip"
+          Invoke-WebRequest -Uri $uri -OutFile $archive
+          Expand-Archive -LiteralPath $archive -DestinationPath $install -Force
+          $pwsh = Join-Path $install 'pwsh.exe'
+          if (-not (Test-Path -LiteralPath $pwsh)) { throw "Pinned PowerShell was not extracted to $pwsh" }
+          $install | Out-File -FilePath $env:GITHUB_PATH -Append
+          $actual = (& $pwsh -NoLogo -NoProfile -Command '$PSVersionTable.PSVersion.ToString()').Trim()
+          if ($actual -ne $version) { throw "Expected PowerShell $version but found $actual" }
 
       - name: Install MSYS2 UCRT64 toolchain
         shell: powershell

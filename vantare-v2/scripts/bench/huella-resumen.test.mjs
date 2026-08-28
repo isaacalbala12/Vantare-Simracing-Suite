@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { aggregateRuns, parseCsv, summarizeRun } from "./huella-resumen.mjs";
+import { readFile } from "node:fs/promises";
+import { aggregateRuns, parseCsv, presentMonV2Frame, renderMarkdown, summarizeRun } from "./huella-resumen.mjs";
 
 test("agrega muestras por rol sin mezclar procesos", () => {
   const rows = parseCsv([
@@ -39,6 +40,33 @@ test("marca ruido por encima de cinco por ciento", () => {
   assert.ok(noisy.noisePct > 5);
 });
 
+test("N=1 es insuficiente aunque el ruido calculado sea cero", () => {
+  const entry = aggregateRuns([{ "go-host": { cpuPct: { mean: 100 } } }])[0];
+  assert.equal(entry.noisePct, 0);
+  assert.equal(entry.pass, false);
+  assert.equal(entry.status, "INSUFICIENTE / NO PUBLICABLE");
+});
+
+test("N=3 habilita el gate y tres corridas iguales pasan", () => {
+  const entry = aggregateRuns([100, 100, 100].map((mean) => ({ "go-host": { cpuPct: { mean } } })))[0];
+  assert.equal(entry.runs, 3);
+  assert.equal(entry.noisePct, 0);
+  assert.equal(entry.pass, true);
+  assert.equal(entry.status, "✓");
+});
+
+test("tres ceros son estables y no producen división inválida", () => {
+  const entry = aggregateRuns([0, 0, 0].map((mean) => ({ "go-host": { gpuPct: { mean } } })))[0];
+  assert.equal(entry.noisePct, 0);
+  assert.equal(entry.pass, true);
+});
+
+test("rechaza una corrida marcada como no publicable", () => {
+  const run = summarizeRun(parseCsv("timestamp,role,cpuPct,publishable,hygieneForced,foreignProcesses\nt1,go-host,1,false,true,msedge.exe:42\n"));
+  assert.throws(() => aggregateRuns([run, run, run]), /no publicables.*1, 2, 3/i);
+  assert.match(renderMarkdown("A1", [], ["run.csv"], [run]), /NO PUBLICABLE/);
+});
+
 test("agrega frametime del juego con percentiles observables", () => {
   const run = summarizeRun(parseCsv("timestamp,role,frameTimeMs\nt1,game,8\nt2,game,12\nt3,game,20\n"));
   assert.equal(run.game.frameTimeMs.p50, 12);
@@ -50,4 +78,12 @@ test("ignora celdas vacías en vez de convertirlas en ceros", () => {
   const run = summarizeRun(parseCsv("timestamp,role,privateBytes,frameTimeMs\nt1,game,,8.2\n"));
   assert.equal(run.game.privateBytes, undefined);
   assert.equal(run.game.frameTimeMs.mean, 8.2);
+});
+
+test("interpreta la disposición de display de PresentMon v2", async () => {
+  const fixture = parseCsv(await readFile(new URL("testdata/presentmon-v2.csv", import.meta.url), "utf8"));
+  assert.deepEqual(fixture.map(presentMonV2Frame), [
+    { timestamp: "16.2337", frameTimeMs: 15.8548, dropped: 0 },
+    { timestamp: "32.0885", frameTimeMs: 15.8422, dropped: 1 },
+  ]);
 });

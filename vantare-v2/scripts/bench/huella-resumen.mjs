@@ -3,7 +3,8 @@ import path from "node:path";
 import process from "node:process";
 import { pathToFileURL } from "node:url";
 
-const METRICS = ["privateBytes", "workingSetBytes", "cpuPct", "gpuPct", "gpuDedicatedBytes", "frameTimeMs"];
+export const MIN_PUBLISHABLE_RUNS = 3;
+export const METRICS = ["privateBytes", "workingSetBytes", "cpuPct", "gpuPct", "gpuDedicatedBytes", "frameTimeMs", "dropped"];
 
 export function mean(values) {
   return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
@@ -43,9 +44,30 @@ export function parseCsv(text) {
   return lines.slice(1).map((line) => Object.fromEntries(headers.map((header, index) => [header, parseLine(line)[index] ?? ""])));
 }
 
+export function presentMonV2Frame(row) {
+  if (!("FrameTime" in row) || !("DisplayedTime" in row)) {
+    throw new Error("PresentMon v2 requiere las columnas FrameTime y DisplayedTime");
+  }
+  const frameTimeMs = Number(row.FrameTime);
+  if (!Number.isFinite(frameTimeMs)) return null;
+  const displayedTime = String(row.DisplayedTime ?? "").trim();
+  return {
+    timestamp: String(row.CPUStartTime ?? ""),
+    frameTimeMs,
+    // PresentMon v2 escribe NA en DisplayLatency y DisplayedTime cuando el
+    // frame presentado no alcanzó la pantalla (mMsDisplayedTime == 0).
+    dropped: displayedTime.toUpperCase() === "NA" ? 1 : 0,
+  };
+}
+
 export function summarizeRun(rows) {
-  const groups = Map.groupBy(rows, (row) => row.role);
-  return Object.fromEntries([...groups].map(([role, roleRows]) => {
+  const metadata = {
+    publishable: !rows.some((row) => String(row.publishable ?? "true").toLowerCase() === "false"),
+    hygieneForced: rows.some((row) => String(row.hygieneForced ?? "false").toLowerCase() === "true"),
+    foreignProcesses: [...new Set(rows.map((row) => String(row.foreignProcesses ?? "").trim()).filter(Boolean))],
+  };
+  const groups = Map.groupBy(rows.filter((row) => row.role), (row) => row.role);
+  const run = Object.fromEntries([...groups].map(([role, roleRows]) => {
     const samples = [...Map.groupBy(roleRows, (row) => row.timestamp).values()].map((sameTimestamp) =>
       Object.fromEntries(METRICS.map((metric) => {
       const values = sameTimestamp
@@ -62,6 +84,8 @@ export function summarizeRun(rows) {
       if (!values.length) continue;
       metrics[metric] = {
         mean: mean(values),
+        sum: values.reduce((sum, value) => sum + value, 0),
+        samples: values.length,
         p50: percentile(values, 0.50),
         p95: percentile(values, 0.95),
         p99: percentile(values, 0.99),
@@ -70,9 +94,15 @@ export function summarizeRun(rows) {
     }
     return [role, metrics];
   }));
+  Object.defineProperty(run, "__metadata", { value: metadata, enumerable: false });
+  return run;
 }
 
 export function aggregateRuns(runs) {
+  const rejected = runs.flatMap((run, index) => run.__metadata?.publishable === false ? [index + 1] : []);
+  if (rejected.length) {
+    throw new Error(`Corridas no publicables por higiene forzada: ${rejected.join(", ")}`);
+  }
   const roles = new Set(runs.flatMap((run) => Object.keys(run)));
   return [...roles].flatMap((role) => METRICS.flatMap((metric) => {
     const values = runs.map((run) => run[role]?.[metric]?.mean).filter(Number.isFinite);
@@ -80,37 +110,61 @@ export function aggregateRuns(runs) {
     const average = mean(values);
     const deviation = standardDeviation(values);
     const noisePct = average === 0 ? (deviation === 0 ? 0 : Infinity) : Math.abs(deviation / average) * 100;
-    return [{ role, metric, runs: values.length, mean: average, deviation, noisePct, pass: noisePct <= 5 }];
+    const enoughRuns = values.length >= MIN_PUBLISHABLE_RUNS;
+    return [{
+      role, metric, runs: values.length, mean: average, deviation, noisePct,
+      pass: enoughRuns && noisePct <= 5,
+      status: enoughRuns ? (noisePct <= 5 ? "✓" : "✗") : "INSUFICIENTE / NO PUBLICABLE",
+    }];
   }));
 }
 
 function displayValue(metric, value) {
   if (!Number.isFinite(value)) return "—";
-  if (/Bytes$/.test(metric)) return `${(value / 1024 / 1024).toFixed(2)} MB`;
+  if (/Bytes$/.test(metric)) return `${(value / 1024 / 1024).toFixed(2)} MiB`;
   if (metric === "frameTimeMs") return `${value.toFixed(3)} ms`;
+  if (metric === "dropped") return `${(value * 100).toFixed(3)} %`;
   return value.toFixed(3);
 }
 
 export function renderMarkdown(condition, aggregate, files, runs = []) {
   const rows = aggregate.map((entry) =>
-    `| ${condition} | ${entry.role} | ${entry.metric} | ${entry.runs} | ${displayValue(entry.metric, entry.mean)} | ${displayValue(entry.metric, entry.deviation)} | ${Number.isFinite(entry.noisePct) ? entry.noisePct.toFixed(2) : "∞"} % | ${entry.pass ? "✓" : "✗"} |`,
+    `| ${condition} | ${entry.role} | ${entry.metric} | ${entry.runs} | ${displayValue(entry.metric, entry.mean)} | ${displayValue(entry.metric, entry.deviation)} | ${Number.isFinite(entry.noisePct) ? entry.noisePct.toFixed(2) : "∞"} % | ${entry.status} |`,
   );
   const runRows = runs.flatMap((run, index) => Object.entries(run).flatMap(([role, metrics]) =>
     Object.entries(metrics).map(([metric, summary]) =>
       `| ${index + 1} | ${role} | ${metric} | ${displayValue(metric, summary.mean)} | ${displayValue(metric, summary.p50)} | ${displayValue(metric, summary.p95)} | ${displayValue(metric, summary.p99)} | ${displayValue(metric, summary.max)} |`,
     ),
   ));
+  const forcedRuns = runs.flatMap((run, index) => run.__metadata?.publishable === false ? [index + 1] : []);
+  const publicationBanner = forcedRuns.length
+    ? [`> **NO PUBLICABLE:** higiene forzada en las corridas ${forcedRuns.join(", ")}. Los procesos ajenos quedaron registrados en el CSV.`, ""]
+    : [];
+  const droppedRows = runs.flatMap((run, index) => {
+    const metric = run.game?.dropped;
+    if (!metric) return [];
+    return [`| ${index + 1} | ${metric.sum} | ${metric.samples} | ${(metric.mean * 100).toFixed(3)} % |`];
+  });
   return [
     `# Huella mínima · ${condition}`,
     "",
-    `Corridas: ${files.map((file) => `\`${path.basename(file)}\``).join(", ")}. Ruido = desviación muestral / media; el gate falla por encima de 5 %.`,
+    `Corridas: ${files.map((file) => `\`${path.basename(file)}\``).join(", ")}. Ruido = desviación muestral / media; hacen falta al menos ${MIN_PUBLISHABLE_RUNS} corridas y el gate falla por encima de 5 %.`,
     "",
+    ...publicationBanner,
     "## Resumen por corrida",
     "",
     "| Corrida | Rol | Métrica | Media | p50 | p95 | p99 | Máximo |",
     "|---:|---|---|---:|---:|---:|---:|---:|",
     ...runRows,
     "",
+    ...(droppedRows.length ? [
+      "## Frames perdidos",
+      "",
+      "| Corrida | Perdidos | Presentados | Porcentaje |",
+      "|---:|---:|---:|---:|",
+      ...droppedRows,
+      "",
+    ] : []),
     "## Repetibilidad entre corridas",
     "",
     "| Condición | Rol | Métrica | N | Media | Desviación | Ruido | Gate |",
@@ -128,11 +182,17 @@ async function main() {
   const condition = argument("condition");
   const output = argument("output");
   const files = process.argv.slice(2).filter((value, index, values) => value.endsWith(".csv") && values[index - 1] !== "--output");
+  const runSummary = process.argv.includes("--run-summary");
   if (!condition || !output || !files.length) {
     throw new Error("usage: node huella-resumen.mjs --condition A1 --output resumen.md run-1.csv [run-2.csv ...]");
   }
   const runs = await Promise.all(files.map(async (file) => summarizeRun(parseCsv(await readFile(file, "utf8")))));
-  const aggregate = aggregateRuns(runs);
+  let aggregate;
+  if (runSummary && runs.some((run) => run.__metadata?.publishable === false)) {
+    aggregate = [];
+  } else {
+    aggregate = aggregateRuns(runs);
+  }
   await writeFile(output, renderMarkdown(condition, aggregate, files, runs), { encoding: "utf8", flag: "wx" });
   process.stdout.write(`${JSON.stringify({ condition, files, aggregate })}\n`);
 }

@@ -409,7 +409,7 @@ func (port productDeliveryPort) Deliver(ctx context.Context, request delivery.Re
 	if mode == OutputDisabled {
 		return reporter.Acknowledge(delivery.StateCancelled, delivery.ReasonLifecycleBoundary)
 	}
-	visualEnabled = outputHasVisual(mode)
+	visualEnabled = outputHasVisual(mode) && port.service.visualPresentationAllowed()
 	audioEnabled = outputHasAudio(mode)
 	if visualEnabled {
 		port.service.publishDecisionIfEnabled(ctx, request.Decision, presented)
@@ -587,6 +587,9 @@ func (s *EngineerService) publishNotification(notification EngineerNotification)
 }
 
 func (s *EngineerService) publishNotificationLocked(notification EngineerNotification) {
+	if !s.visualPresentationEnabled {
+		return
+	}
 	s.store.Add(notification)
 	presentation := notification
 	s.activePresentation = &presentation

@@ -2022,6 +2022,7 @@ func main() {
 	// Engineer owns product behavior only. TelemetryCoreRuntime below is its
 	// sole production telemetry source.
 	engSvc = engineerservice.NewEngineerService(emitter)
+	engSvc.SetVisualPresentationEnabled(settingsSvc.EffectiveLevel() < 4)
 	if err := engSvc.SetLegacySpotterRollback(*legacyEngineerSpotter); err != nil {
 		log.Printf("engineer legacy spotter rollback configuration error: %v", err)
 	}

@@ -113,8 +113,8 @@ export const overlayV2ViewModelRegistry: ReadonlyMap<WidgetType, OverlayV2ViewMo
     },
   ],
   // Cutover v2 (ISA-805): variantes de presentacion y widgets restantes.
-  // race-schedule queda fuera a proposito: lee el canal auxiliar de calendario
-  // (snapshot.auxiliary.scheduleEvents), no telemetria canonica.
+  // race-schedule queda fuera a propósito: recibe el canal auxiliar Calendar
+  // por WidgetRuntimeInput, no telemetría canónica ni TelemetrySnapshot.
   ["delta-advanced", { feature: OVERLAY_V2_DELTA, buildViewModelV2: (frame, source, content) => buildDeltaAdvancedViewModelV2(frame, source, content as never) }],
   ["delta-trace", { feature: OVERLAY_V2_DELTA, buildViewModelV2: (frame, source, content) => buildDeltaTraceViewModelV2(frame, source, content as never) }],
   ["pedals", { feature: OVERLAY_V2_PLAYER_INSTRUMENTS, buildViewModelV2: (frame, source, content) => buildPedalsViewModelV2(frame, source, content as never) }],

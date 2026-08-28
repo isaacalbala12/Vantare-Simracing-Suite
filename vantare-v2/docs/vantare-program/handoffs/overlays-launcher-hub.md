@@ -12,7 +12,7 @@
 
 - **ISA-924 — banco de huella y baseline por hardware (2026-08-28):** rama
   `vantareapp/isa-924-huella-banco-baseline`, base
-  `nightly@4b33183e`, PR #929. Se versionaron la spec autorizada, dos perfiles v3
+  `origin/nightly@ae66720d`, PR #929. Se versionaron la spec autorizada, dos perfiles v3
   reproducibles, banco PowerShell 7, control/probe CDP y agregador de ruido.
   El árbol WebView2 se acota por `--user-data-dir=<exe>\EBWebView`; el renderer
   Hub se fija antes de abrir el overlay y el nuevo se atribuye al overlay.

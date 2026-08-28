@@ -319,6 +319,9 @@ func TestOverlayWindowOptionsUseExactSelectedScreenBounds(t *testing.T) {
 			if options.Width != tt.wantWidth || options.Height != tt.wantHeight {
 				t.Fatalf("initial size=%dx%d want selected screen bounds %dx%d", options.Width, options.Height, tt.wantWidth, tt.wantHeight)
 			}
+			if options.URL != "/overlay.html" {
+				t.Fatalf("URL=%q want dedicated overlay entry", options.URL)
+			}
 			if len(resolver.calls) != 1 || resolver.calls[0] != tt.monitorIndex {
 				t.Fatalf("GetByIndex calls=%v want [%d]", resolver.calls, tt.monitorIndex)
 			}

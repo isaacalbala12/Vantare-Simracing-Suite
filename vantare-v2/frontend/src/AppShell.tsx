@@ -1,11 +1,17 @@
-import { CompositeApp } from "./overlay/CompositeApp";
-import { ObsOverlayApp } from "./overlay/ObsOverlayApp";
+import { lazy } from "react";
 import { HubApp } from "./hub/HubApp";
 import { OAuthCallbackHandler } from "./hub/auth/OAuthCallbackHandler";
 import { registerBuiltinDesignSystems } from "./hub/registry/builtin-systems";
 import { AuthSessionBridge } from "./lib/AuthSessionBridge";
 
 registerBuiltinDesignSystems();
+
+const CompositeApp = lazy(async () => ({
+  default: (await import("./overlay/CompositeApp")).CompositeApp,
+}));
+const ObsOverlayApp = lazy(async () => ({
+  default: (await import("./overlay/ObsOverlayApp")).ObsOverlayApp,
+}));
 
 export function AppShell(): React.ReactElement {
   const path = window.location.pathname;

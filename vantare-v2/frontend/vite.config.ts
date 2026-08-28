@@ -28,7 +28,16 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react(), tailwindcss()],
     server: { strictPort: true, port: 5173 },
-    build: { outDir: "dist", emptyOutDir: true },
+    build: {
+      outDir: "dist",
+      emptyOutDir: true,
+      rollupOptions: {
+        input: {
+          index: path.resolve(fileURLToPath(import.meta.url), "../index.html"),
+          overlay: path.resolve(fileURLToPath(import.meta.url), "../overlay.html"),
+        },
+      },
+    },
     resolve: { alias },
     test: {
       setupFiles: ["./src/test-setup.ts"],

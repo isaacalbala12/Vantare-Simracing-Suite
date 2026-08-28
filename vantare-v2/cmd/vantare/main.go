@@ -3510,7 +3510,7 @@ func resolveOverlayWindowOptions(document *config.ProfileDocumentV3, screens ove
 		BackgroundColour:  application.NewRGBA(0, 0, 0, 0),
 		IgnoreMouseEvents: false,
 		AlwaysOnTop:       true,
-		URL:               "/",
+		URL:               "/overlay.html",
 		Screen:            screen,
 	}, nil
 }

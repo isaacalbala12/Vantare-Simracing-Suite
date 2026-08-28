@@ -16,7 +16,7 @@ import { CanvasToolbar } from './CanvasToolbar';
 import { PreviewSourceControls } from './PreviewSourceControls';
 import { CanvasGuides } from './CanvasGuides';
 import { StudioWidgetFrame } from './StudioWidgetFrame';
-import { useStudioTelemetryLiveAvailable, useStudioTelemetrySnapshot } from './studio-telemetry';
+import { useStudioTelemetryLiveAvailable } from './studio-telemetry';
 import { useCanvasInteraction } from './useCanvasInteraction';
 import {
   buildWidgetAction,
@@ -53,8 +53,6 @@ export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement 
   } = useStudioDocument();
   const { preview, setPreview } = useStudioPreview();
   const liveAvailable = useStudioTelemetryLiveAvailable();
-  const liveSnapshot = useStudioTelemetrySnapshot();
-  const [snapshotDuringInteraction, setSnapshotDuringInteraction] = useState(liveSnapshot);
   const viewportRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<HTMLDivElement>(null);
@@ -173,16 +171,6 @@ export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement 
     canMutateLayout,
     onLayoutBlocked,
   });
-
-  const isCanvasInteracting = interaction.interaction.kind !== 'idle';
-
-  useEffect(() => {
-    if (isCanvasInteracting) return;
-    const timer = window.setTimeout(() => setSnapshotDuringInteraction(liveSnapshot), 0);
-    return () => window.clearTimeout(timer);
-  }, [isCanvasInteracting, liveSnapshot]);
-
-  const snapshotOverride = isCanvasInteracting ? snapshotDuringInteraction : undefined;
 
   const deleteConfirm = useDeleteWidgetConfirm();
   const confirmDelete = useCallback((message: string) => window.confirm(message), []);
@@ -423,7 +411,6 @@ export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement 
                 layout={interaction.resolveLayout(widget)}
                 previewActive={interaction.isWidgetPreviewActive(widget.id)}
                 selected={selectedWidgetId === widget.id}
-                snapshotOverride={snapshotOverride}
                 onSelect={selectWidget}
                 onFramePointerDown={interaction.onFramePointerDown}
                 onResizePointerDown={interaction.onResizePointerDown}

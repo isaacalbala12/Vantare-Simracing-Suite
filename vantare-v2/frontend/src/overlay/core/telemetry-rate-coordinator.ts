@@ -1,6 +1,8 @@
 import type { TelemetrySnapshot } from "./telemetry-snapshot";
 import { createDerivedTelemetryStore } from "./derived-telemetry-store";
 import type { OverlayFrameV2, OverlaySourceStatusV2 } from "../../generated/telemetry";
+import { buildOverlayRuntimeContext, type OverlayRuntimeContext } from "./overlay-runtime-context";
+import type { WidgetRuntimeInput } from "./widget-definition";
 
 export type TelemetryListener = () => void;
 
@@ -17,9 +19,12 @@ export type TelemetryRateCoordinator = {
   getSnapshot(rateKey?: number | string): TelemetrySnapshot;
   getOverlayFrame(): OverlayFrameV2 | undefined;
   getOverlaySource(): OverlaySourceStatusV2 | undefined;
+  getOverlayRuntimeContext(): OverlayRuntimeContext;
+  getOverlayFailure(): WidgetRuntimeInput["overlayV2Failure"];
   subscribe(rateKey: number | string | undefined, listener: TelemetryListener): () => void;
   publish(snapshot: TelemetrySnapshot): void;
   setOverlayFrame(frame: OverlayFrameV2 | undefined, source?: OverlaySourceStatusV2): void;
+  setOverlayFailure(failure: WidgetRuntimeInput["overlayV2Failure"]): void;
   dispose(): void;
 };
 
@@ -87,6 +92,8 @@ export function createTelemetryRateCoordinator(
   let latest = emptySnapshot();
   let overlayFrame: OverlayFrameV2 | undefined;
   let overlaySource: OverlaySourceStatusV2 | undefined;
+  let overlayContext = buildOverlayRuntimeContext(undefined, undefined);
+  let overlayFailure: WidgetRuntimeInput["overlayV2Failure"];
   const derived = createDerivedTelemetryStore();
   type Subscription = {
     listener: TelemetryListener;
@@ -103,12 +110,13 @@ export function createTelemetryRateCoordinator(
   let version = 0;
 
   const sectionValue = (widgetType: string): unknown => {
+    if (widgetType === "runtime-context") return overlayContext;
     if (!overlayFrame) {
       switch (widgetType) {
-        case "race-schedule": return latest.auxiliary?.scheduleEvents ?? [];
-        case "racing-flags": return latest.session;
+        case "race-schedule": return "external-calendar-events";
+        case "racing-flags": return undefined;
         case "engineer-radio": return "external-engineer-event";
-        default: return latest;
+        default: return undefined;
       }
     }
     switch (widgetType) {
@@ -121,9 +129,9 @@ export function createTelemetryRateCoordinator(
       case "car-damage-numbers": case "car-damage-visual": return overlayFrame.damage;
       case "track-weather": return overlayFrame.weather;
       case "racing-flags": return overlayFrame.session;
-      case "race-schedule": return latest.auxiliary?.scheduleEvents ?? [];
+      case "race-schedule": return "external-calendar-events";
       case "engineer-radio": return "external-engineer-event";
-      default: return latest;
+      default: return undefined;
     }
   };
 
@@ -144,9 +152,11 @@ export function createTelemetryRateCoordinator(
   const paint = () => {
     const currentTime = now();
     for (const subscription of listeners.values()) {
-      const widgetRate = subscription.widgetType
-        ? overlayFrame?.capabilities.performance?.widgetHz[subscription.widgetType]
-        : undefined;
+      const widgetRate = subscription.widgetType === "runtime-context"
+        ? "dirty"
+        : subscription.widgetType
+          ? overlayFrame?.capabilities.performance?.widgetHz[subscription.widgetType]
+          : undefined;
       const elapsed = subscription.lastPaintAt === null ? Number.POSITIVE_INFINITY : currentTime - subscription.lastPaintAt;
       const ceilingCandidate = widgetRate === "dirty" && elapsed >= 1_000;
       const currentSequence = overlayFrame?.sequence;
@@ -214,10 +224,20 @@ export function createTelemetryRateCoordinator(
     getOverlaySource() {
       return overlaySource;
     },
+    getOverlayRuntimeContext() {
+      return overlayContext;
+    },
+    getOverlayFailure() {
+      return overlayFailure;
+    },
     subscribe(rateKey, listener) {
       ensureScheduler();
       const widgetType = typeof rateKey === "string" ? rateKey : undefined;
-      const initialRate = widgetType ? overlayFrame?.capabilities.performance?.widgetHz[widgetType] : undefined;
+      const initialRate = widgetType === "runtime-context"
+        ? "dirty"
+        : widgetType
+          ? overlayFrame?.capabilities.performance?.widgetHz[widgetType]
+          : undefined;
       listeners.set(listener, {
         listener,
         widgetType,
@@ -248,9 +268,16 @@ export function createTelemetryRateCoordinator(
     setOverlayFrame(frame, source) {
       const sameFrame = frame?.sequence === overlayFrame?.sequence && frame?.epoch === overlayFrame?.epoch;
       const sameSource = JSON.stringify(source) === JSON.stringify(overlaySource);
-      if (sameFrame && sameSource) return;
+      if (sameFrame && sameSource && overlayFailure === undefined) return;
       overlayFrame = frame;
       overlaySource = source;
+      overlayContext = buildOverlayRuntimeContext(frame, source);
+      if (frame && source) overlayFailure = undefined;
+      version += 1;
+    },
+    setOverlayFailure(failure) {
+      if (JSON.stringify(failure) === JSON.stringify(overlayFailure)) return;
+      overlayFailure = failure;
       version += 1;
     },
     dispose() {

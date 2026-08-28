@@ -7,8 +7,7 @@ import {
   type ViewportSize,
 } from "../core/layout-viewport";
 import type { TelemetryRateCoordinator } from "../core/telemetry-rate-coordinator";
-import type { TelemetrySnapshot } from "../core/telemetry-snapshot";
-import { useRateLimitedTelemetry } from "../runtime/use-rate-limited-telemetry";
+import { useOverlayRuntimeContext } from "../runtime/use-rate-limited-telemetry";
 import { resolveRuntimeLayout } from "../runtime/resolve-runtime-layout";
 import { StudioProvider, useStudioDocument } from "../../hub/overlay-studio/state/studio-store";
 import type { AccessContext } from "../../lib/access-policy";
@@ -18,7 +17,6 @@ import { useInplaceInteraction } from "./use-inplace-interaction";
 import { useInplaceAutosave } from "./use-inplace-autosave";
 import { createInPlaceProfileClient } from "./inplace-profile-client";
 import { createWailsStudioEventTransport } from "../../hub/overlay-studio/state/studio-profile-client";
-import { RUNTIME_SURFACE_VISIBILITY_HZ } from "../runtime/RuntimeOverlaySurface";
 import { useI18n } from "../../i18n/I18nProvider";
 import "./inplace-edit.css";
 
@@ -70,11 +68,10 @@ function InPlaceEditOverlayContent(props: Omit<InPlaceEditOverlayProps, "revisio
     saveState,
   } = useStudioDocument();
   const [selectedWidgetIdLocal, setSelectedWidgetIdLocal] = useState<string | null>(null);
-  const [frozenSnapshot, setFrozenSnapshot] = useState<TelemetrySnapshot | null>(null);
   const surfaceRef = useRef<HTMLDivElement>(null);
   const [outputViewport, setOutputViewport] = useState<ViewportSize | null>(null);
-  const snapshot = useRateLimitedTelemetry(telemetry, RUNTIME_SURFACE_VISIBILITY_HZ);
-  const layout = resolveRuntimeLayout(storeDocument ?? document, snapshot);
+  const runtimeContext = useOverlayRuntimeContext(telemetry);
+  const layout = resolveRuntimeLayout(storeDocument ?? document, runtimeContext);
   const layoutViewport = resolveLayoutViewport(storeDocument ?? document);
   const widgets = useMemo(
     () => [...layout.widgets].sort((left, right) => left.layout.zIndex - right.layout.zIndex),
@@ -110,15 +107,10 @@ function InPlaceEditOverlayContent(props: Omit<InPlaceEditOverlayProps, "revisio
       });
     },
     onSelect: (widgetId) => {
-      setFrozenSnapshot(snapshot);
       setSelectedWidgetIdLocal(widgetId);
       selectWidget(widgetId);
     },
   });
-
-  // Durante un gesto el snapshot queda congelado (capturado al seleccionar) para
-  // que los re-renders de telemetria no pisen la preview imperativa del frame.
-  const snapshotOverride = interaction.isInteractionActive ? frozenSnapshot ?? undefined : undefined;
 
   useLayoutEffect(() => {
     const surface = surfaceRef.current;
@@ -204,7 +196,6 @@ function InPlaceEditOverlayContent(props: Omit<InPlaceEditOverlayProps, "revisio
               selected={selectedWidgetIdLocal === widget.id}
               layoutOrigin={layoutOrigin}
               telemetry={telemetry}
-              snapshotOverride={snapshotOverride}
               onSelect={setSelectedWidgetIdLocal}
               onFramePointerDown={interaction.onFramePointerDown}
               onResizePointerDown={interaction.onResizePointerDown}

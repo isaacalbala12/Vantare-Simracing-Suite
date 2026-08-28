@@ -49,11 +49,9 @@ export function CompositeApp() {
 
   useEffect(() => {
     const onChange = () => setOverlayV2Features(readDiagnosticOverlayV2Features());
-    window.addEventListener("vantare:overlay-v2-features-changed", onChange);
-    window.addEventListener("storage", onChange);
+    window.addEventListener("vantare:overlay-v2-rollback-changed", onChange);
     return () => {
-      window.removeEventListener("vantare:overlay-v2-features-changed", onChange);
-      window.removeEventListener("storage", onChange);
+      window.removeEventListener("vantare:overlay-v2-rollback-changed", onChange);
     };
   }, []);
 
@@ -88,7 +86,11 @@ export function CompositeApp() {
     const detachOverlayV2 = attachOverlayFrameV2Transport(
       overlayV2Store,
       overlayPull.source,
-      (error) => console.error("overlay-v2 shadow ingest failed", error),
+      (error) => {
+        const message = error instanceof Error ? error.message : String(error);
+        coordinator.setOverlayFailure({ code: "invalid-frame", message });
+        console.error("overlay-v2 ingest failed", error);
+      },
     );
     const diagnosticWindow = window as Window & {
       __vantareOverlayV2Diagnostics?: () => unknown;

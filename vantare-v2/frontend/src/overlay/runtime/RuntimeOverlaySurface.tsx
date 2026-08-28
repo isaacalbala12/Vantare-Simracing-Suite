@@ -21,12 +21,10 @@ import type { TelemetryRateCoordinator } from "../core/telemetry-rate-coordinato
 import { createWidgetDiagnosticCollector, type WidgetDiagnostic, type WidgetDiagnosticCollector } from "../core/widget-diagnostics";
 import { RuntimeWidgetFrame } from "./RuntimeWidgetFrame";
 import { resolveRuntimeLayout, selectRuntimeWidgets } from "./resolve-runtime-layout";
-import { useRateLimitedTelemetry } from "./use-rate-limited-telemetry";
+import { useOverlayRuntimeContext } from "./use-rate-limited-telemetry";
 import type { EngineerPresentationStore } from "../../engineer/engineer-presentation-store";
 import { EngineerSubtitles } from "../../engineer/EngineerSubtitles";
 import type { OverlayV2Feature } from "../telemetry-shadow/overlay-v2-features";
-
-export const RUNTIME_SURFACE_VISIBILITY_HZ = 15;
 
 export type RuntimeOverlaySurfaceProps = {
   document: ProfileDocumentV3;
@@ -45,9 +43,9 @@ const noPresentation = () => null;
 export function RuntimeOverlaySurface(props: RuntimeOverlaySurfaceProps): React.ReactElement {
   const { document, telemetry, renderMode, layoutOrigin, onDiagnostic, diagnostics: diagnosticsProp, engineerPresentations, overlayV2Features } = props;
   const diagnostics = useMemo(() => diagnosticsProp ?? createWidgetDiagnosticCollector(), [diagnosticsProp]);
-  const snapshot = useRateLimitedTelemetry(telemetry, RUNTIME_SURFACE_VISIBILITY_HZ);
-  const layout = resolveRuntimeLayout(document, snapshot);
-  const widgets = selectRuntimeWidgets(layout, snapshot);
+  const runtimeContext = useOverlayRuntimeContext(telemetry);
+  const layout = resolveRuntimeLayout(document, runtimeContext);
+  const widgets = selectRuntimeWidgets(layout, runtimeContext);
   const layoutViewport = resolveLayoutViewport(document);
   const surfaceRef = useRef<HTMLDivElement>(null);
   const [outputViewport, setOutputViewport] = useState<ViewportSize | null>(null);

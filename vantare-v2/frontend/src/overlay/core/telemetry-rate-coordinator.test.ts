@@ -35,6 +35,7 @@ function performanceFrame(
   return {
     epoch: 1,
     sequence,
+    player: { id: "" },
     standings,
     session: { phase: { v: phase, q: "fresh" }, flag: { q: "missing" } },
     capabilities: {
@@ -61,6 +62,37 @@ describe("createTelemetryRateCoordinator", () => {
     expect(JSON.stringify(coordinator.getSnapshot())).not.toMatch(
       /TOYOTA|Spa|TestDriver|test@example\.com|mock-user/i,
     );
+    coordinator.dispose();
+  });
+
+  it("derives layout and visibility context exclusively from Overlay V2", () => {
+    const coordinator = createTelemetryRateCoordinator();
+    coordinator.publish(buildMockTelemetry({ session: "qualifying", location: "pit" }));
+    const frame = {
+      ...performanceFrame(1, null, {}, [{ id: "player", pit: "track" }], 1, "race"),
+      player: { id: "player" },
+    } as OverlayFrameV2;
+    coordinator.setOverlayFrame(frame, { state: "live" });
+
+    expect(coordinator.getOverlayRuntimeContext()).toMatchObject({
+      sourceState: "live",
+      sessionType: "race",
+      playerPresent: true,
+      playerInPit: false,
+      vehicleCount: 1,
+    });
+    coordinator.dispose();
+  });
+
+  it("keeps invalid V2 failures observable until a valid frame arrives", () => {
+    const coordinator = createTelemetryRateCoordinator();
+    coordinator.setOverlayFailure({ code: "invalid-frame", message: "invalid-contract:frame" });
+    expect(coordinator.getOverlayFailure()).toEqual({
+      code: "invalid-frame",
+      message: "invalid-contract:frame",
+    });
+    coordinator.setOverlayFrame(performanceFrame(1, null, {}), { state: "live" });
+    expect(coordinator.getOverlayFailure()).toBeUndefined();
     coordinator.dispose();
   });
 

@@ -2,13 +2,15 @@ import { act, cleanup, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { buildMockTelemetry } from "../core/mock-scenarios";
 import type { ProfileDocumentV3 } from "../core/profile-document";
-import { createTelemetryRateCoordinator } from "../core/telemetry-rate-coordinator";
+import { createTelemetryRateCoordinator as createBaseTelemetryRateCoordinator } from "../core/telemetry-rate-coordinator";
 import { createWidgetDiagnosticCollector } from "../core/widget-diagnostics";
 import { deltaDefinition } from "../widget-types/delta/delta-definition";
 import { standingsDefinition } from "../widget-types/standings/standings-definition";
 import { RuntimeOverlaySurface } from "./RuntimeOverlaySurface";
 import { createEngineerPresentationStore } from "../../engineer/engineer-presentation-store";
 import { buildEngineerPresentationFixture } from "../../engineer/engineer-presentation-fixtures";
+import goldenV2Raw from "../../../../internal/telemetry/projection/overlayv2/testdata/overlay_v2_1.golden.json?raw";
+import type { OverlayUpdateV2 } from "../../generated/telemetry";
 
 const originalResizeObserver = globalThis.ResizeObserver;
 
@@ -20,6 +22,13 @@ type ResizeObserverHarness = {
 let measuredWidth = 1920;
 let measuredHeight = 1080;
 let resizeObservers: ResizeObserverHarness[] = [];
+
+function createTelemetryRateCoordinator() {
+  const coordinator = createBaseTelemetryRateCoordinator();
+  const update = JSON.parse(goldenV2Raw) as OverlayUpdateV2;
+  coordinator.setOverlayFrame(update.frame ?? undefined, update.source);
+  return coordinator;
+}
 
 function installResizeObserver(): void {
   globalThis.ResizeObserver = class {

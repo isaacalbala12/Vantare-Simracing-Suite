@@ -1,10 +1,9 @@
 import { memo, useLayoutEffect, useRef, type CSSProperties } from "react";
 import type { WidgetInstanceV3, WidgetLayoutV3 } from "../core/profile-document";
-import type { TelemetrySnapshot } from "../core/telemetry-snapshot";
 import { WidgetVisualHost } from "../core/WidgetVisualHost";
 import { WidgetVisualViewport } from "../core/WidgetVisualViewport";
 import { widgetTypeRegistry } from "../core/widget-registry";
-import { useRateLimitedTelemetry } from "../runtime/use-rate-limited-telemetry";
+import { useRateLimitedWidgetTelemetry } from "../runtime/use-rate-limited-telemetry";
 import type { TelemetryRateCoordinator } from "../core/telemetry-rate-coordinator";
 import type { ResizeHandle } from "../../hub/overlay-studio/canvas/canvas-resize";
 import {
@@ -34,7 +33,6 @@ export type InPlaceWidgetEditFrameProps = {
   selected: boolean;
   layoutOrigin?: { x: number; y: number };
   telemetry: TelemetryRateCoordinator;
-  snapshotOverride?: TelemetrySnapshot;
   onSelect(widgetId: string): void;
   onFramePointerDown?(widgetId: string, event: React.PointerEvent<HTMLElement>): void;
   onResizePointerDown?(
@@ -53,7 +51,6 @@ function InPlaceWidgetEditFrameComponent(props: InPlaceWidgetEditFrameProps): Re
     selected,
     layoutOrigin,
     telemetry,
-    snapshotOverride,
     onSelect,
     onFramePointerDown,
     onResizePointerDown,
@@ -61,8 +58,7 @@ function InPlaceWidgetEditFrameComponent(props: InPlaceWidgetEditFrameProps): Re
   } = props;
   const frameRef = useRef<HTMLDivElement>(null);
   const origin = layoutOrigin ?? { x: 0, y: 0 };
-  const rateLimitedSnapshot = useRateLimitedTelemetry(telemetry, widget.behavior.updateHz);
-  const snapshot = snapshotOverride ?? rateLimitedSnapshot;
+  const runtime = useRateLimitedWidgetTelemetry(telemetry, widget.type);
   const frameGeometry = resolveInplaceFrameGeometry(widget.id, layout, previewActive);
   const definition = widgetTypeRegistry.get(widget.type);
   const resizeHandles = definition.capabilities.resizeMode === "horizontal-only"
@@ -177,8 +173,8 @@ function InPlaceWidgetEditFrameComponent(props: InPlaceWidgetEditFrameProps): Re
         >
           <WidgetVisualHost
             widget={widget}
-            snapshot={snapshot}
             renderMode="desktop"
+            runtime={runtime}
           />
         </WidgetVisualViewport>
       </div>

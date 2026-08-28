@@ -114,6 +114,7 @@ describe("WidgetVisualHost", () => {
           widget={buildWidget("vantare-original")}
           snapshot={snapshot}
           renderMode={renderMode}
+          runtime={{ overlayV2Frame: playerFrameV2(), overlayV2Source: { state: "live" } }}
         />,
       );
       expect(view.container.querySelector('[data-widget-renderer="delta"]')).toBeTruthy();
@@ -212,6 +213,6 @@ function playerFrameV2(): OverlayFrameV2 {
     delta: { seconds: missing, available: [] },
     fuel: { remaining: missing, capacity: missing, perLap: missing, estimatedLaps: missing },
     spotter: { mode: "none", left: missing, right: missing },
-    capabilities: { supported: ["controls"], available: { controls: "fresh" }, modes: { spatial: [], delta: [], standings: "none", gaps: "none" } },
+    capabilities: { supported: ["controls", "player-instruments"], available: { controls: "fresh", "player-instruments": "fresh" }, modes: { spatial: [], delta: [], standings: "none", gaps: "none" } },
   };
 }

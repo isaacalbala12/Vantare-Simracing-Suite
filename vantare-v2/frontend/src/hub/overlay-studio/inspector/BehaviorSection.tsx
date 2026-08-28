@@ -3,7 +3,7 @@ import type {
   WidgetInstanceV3,
   WidgetVisibilityV3,
 } from '../../../overlay/core/profile-document';
-import type { TelemetrySnapshot } from '../../../overlay/core/telemetry-snapshot';
+import type { OverlayRuntimeContext } from '../../../overlay/core/overlay-runtime-context';
 import { isWidgetVisibleV3 } from '../../../overlay/core/widget-visibility';
 import { useI18n } from '../../../i18n/I18nProvider';
 import { Field, Note, SegMulti, Select } from '../../../ui/orbit';
@@ -18,7 +18,7 @@ type PitOption = 'any' | 'in-pit' | 'on-track';
 export type BehaviorSectionProps = {
   widget: WidgetInstanceV3;
   session: SessionLayoutType;
-  snapshot: TelemetrySnapshot;
+  runtimeContext: OverlayRuntimeContext;
   dispatch(command: StudioCommand): void;
 };
 
@@ -37,9 +37,9 @@ function patchBehavior(
 }
 
 export function BehaviorSection(props: BehaviorSectionProps): React.ReactElement {
-  const { widget, session, snapshot, dispatch } = props;
+  const { widget, session, runtimeContext, dispatch } = props;
   const { t } = useI18n();
-  const runtimeVisible = isWidgetVisibleV3(widget, snapshot);
+  const runtimeVisible = isWidgetVisibleV3(widget, runtimeContext);
 
   const pitValue: PitOption =
     widget.behavior.visibleWhen?.inPit === undefined

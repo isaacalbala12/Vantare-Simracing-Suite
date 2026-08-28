@@ -70,8 +70,6 @@ export function writeOverlayV2Rollback(enabled: boolean): void {
   window.__vantareOverlayV2Rollback = enabled === true;
   const detail = Object.freeze({ enabled: window.__vantareOverlayV2Rollback });
   window.dispatchEvent(new CustomEvent("vantare:overlay-v2-rollback-changed", { detail }));
-  // Los tres consumidores se migran al evento nuevo al integrar #936.
-  window.dispatchEvent(new CustomEvent("vantare:overlay-v2-features-changed", { detail }));
 }
 
 if (typeof window !== "undefined") {
@@ -84,7 +82,5 @@ declare global {
     __vantareOverlayV2Rollback?: boolean;
     __vantareSetOverlayV2Rollback?: (enabled: boolean) => void;
     __vantareGetOverlayV2Rollback?: () => boolean;
-    // Forma antigua inerte; se conserva solo hasta reescribir tests/callers de #936.
-    __vantareOverlayV2Features?: OverlayV2Feature[];
   }
 }

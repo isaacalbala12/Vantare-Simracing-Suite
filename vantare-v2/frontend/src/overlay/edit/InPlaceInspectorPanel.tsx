@@ -1,7 +1,7 @@
 import { memo } from "react";
 import type { SessionLayoutType, WidgetInstanceV3 } from "../core/profile-document";
 import type { TelemetryRateCoordinator } from "../core/telemetry-rate-coordinator";
-import { useRateLimitedTelemetry } from "../runtime/use-rate-limited-telemetry";
+import { useOverlayRuntimeContext } from "../runtime/use-rate-limited-telemetry";
 import type { AccessContext } from "../../lib/access-policy";
 import { WidgetPropertyInspectorView, type WidgetPropertySectionId } from "../../hub/overlay-studio/inspector/WidgetPropertyInspectorView";
 import { useStudioDocument } from "../../hub/overlay-studio/state/studio-store";
@@ -9,7 +9,6 @@ import { useI18n } from "../../i18n/I18nProvider";
 import { useInplaceAutosave } from "./use-inplace-autosave";
 
 const PANEL_SECTIONS: readonly WidgetPropertySectionId[] = ["appearance", "content", "behavior"];
-const PANEL_TELEMETRY_HZ = 5;
 
 export type InPlaceInspectorPanelProps = {
   widget: WidgetInstanceV3 | null;
@@ -24,7 +23,7 @@ export function InPlaceInspectorPanel(props: InPlaceInspectorPanelProps): React.
   const { widget, session, telemetry, access, licenseLoading = false, autosave } = props;
   const { t } = useI18n();
   const { canUndo, canRedo, dirty, saveState } = useStudioDocument();
-  const snapshot = useRateLimitedTelemetry(telemetry, PANEL_TELEMETRY_HZ);
+  const runtimeContext = useOverlayRuntimeContext(telemetry);
   const disabled = licenseLoading || autosave.paused !== null;
 
   if (!widget) {
@@ -83,7 +82,7 @@ export function InPlaceInspectorPanel(props: InPlaceInspectorPanelProps): React.
               sectionId={sectionId}
               widget={widget}
               session={session}
-              snapshot={snapshot}
+              runtimeContext={runtimeContext}
               access={access ?? DEFAULT_ACCESS}
               disabled={disabled}
               dispatch={autosave.dispatch}

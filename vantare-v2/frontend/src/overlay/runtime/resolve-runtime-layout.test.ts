@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { buildMockTelemetry } from "../core/mock-scenarios";
 import type { OverlayRuntimeContext } from "../core/overlay-runtime-context";
 import type { ProfileDocumentV3 } from "../core/profile-document";
 import { deltaDefinition } from "../widget-types/delta/delta-definition";
@@ -9,6 +8,14 @@ import {
   resolveRuntimeLayout,
   selectRuntimeWidgets,
 } from "./resolve-runtime-layout";
+
+const liveRaceContext: OverlayRuntimeContext = {
+  sourceState: "live",
+  sessionType: "race",
+  playerPresent: true,
+  playerInPit: false,
+  vehicleCount: 20,
+};
 
 function buildDocument(): ProfileDocumentV3 {
   const deltaGeneral = deltaDefinition.createDefault("delta-general");
@@ -58,14 +65,6 @@ describe("mapTelemetrySessionToLayoutType", () => {
 });
 
 describe("resolveRuntimeLayout", () => {
-  const liveRaceContext: OverlayRuntimeContext = {
-    sourceState: "live",
-    sessionType: "race",
-    playerPresent: true,
-    playerInPit: false,
-    vehicleCount: 20,
-  };
-
   it("selecciona layout directamente desde el contexto V2 puro", () => {
     const layout = resolveRuntimeLayout(buildDocument(), liveRaceContext);
     expect(layout.type).toBe("race");
@@ -74,16 +73,14 @@ describe("resolveRuntimeLayout", () => {
 
   it("uses the exact session layout when it exists", () => {
     const document = buildDocument();
-    const snapshot = buildMockTelemetry({ session: "race", location: "track", state: "ready" });
-    const layout = resolveRuntimeLayout(document, snapshot);
+    const layout = resolveRuntimeLayout(document, liveRaceContext);
     expect(layout.type).toBe("race");
     expect(layout.widgets[0].id).toBe("delta-race");
   });
 
   it("falls back to general when practice qualifying or race layouts are missing", () => {
     const document = buildDocument();
-    const snapshot = buildMockTelemetry({ session: "qualifying", location: "track", state: "ready" });
-    const layout = resolveRuntimeLayout(document, snapshot);
+    const layout = resolveRuntimeLayout(document, { ...liveRaceContext, sessionType: "qualifying" });
     expect(layout.type).toBe("general");
     expect(layout.widgets[0].id).toBe("delta-general");
     expect(document.layouts.qualifying).toBeUndefined();
@@ -91,11 +88,7 @@ describe("resolveRuntimeLayout", () => {
 
   it("selects endurance when telemetry reports endurance and the layout exists", () => {
     const document = buildDocument();
-    const snapshot = {
-      ...buildMockTelemetry({ session: "race", location: "track", state: "ready" }),
-      session: { type: "endurance" as const, remainingSeconds: 7200 },
-    };
-    const layout = resolveRuntimeLayout(document, snapshot);
+    const layout = resolveRuntimeLayout(document, { ...liveRaceContext, sessionType: "endurance" });
     expect(layout.type).toBe("endurance");
     expect(layout.widgets[0].id).toBe("delta-endurance");
   });
@@ -105,7 +98,7 @@ describe("resolveRuntimeLayout", () => {
     const before = structuredClone(document);
     resolveRuntimeLayout(
       document,
-      buildMockTelemetry({ session: "practice", location: "track", state: "ready" }),
+      { ...liveRaceContext, sessionType: "practice" },
     );
     expect(document).toEqual(before);
   });
@@ -153,14 +146,13 @@ describe("selectRuntimeWidgets", () => {
       widgets: [standings, delta],
     };
 
-    const raceSnapshot = buildMockTelemetry({ session: "race", location: "track", state: "ready" });
-    const selected = selectRuntimeWidgets(layout, raceSnapshot);
+    const selected = selectRuntimeWidgets(layout, liveRaceContext);
     expect(selected.map((widget) => widget.id)).toEqual(["delta-low"]);
 
     standings.behavior.enabled = false;
     const withDisabled = selectRuntimeWidgets(
       { ...layout, widgets: [standings, delta] },
-      raceSnapshot,
+      liveRaceContext,
     );
     expect(withDisabled.map((widget) => widget.id)).toEqual(["delta-low"]);
   });

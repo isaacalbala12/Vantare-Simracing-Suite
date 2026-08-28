@@ -62,4 +62,11 @@ export const raceScheduleDefinition: WidgetTypeDefinition<RaceScheduleContent, R
       runtime.raceScheduleStatus,
     );
   },
+  buildAuxiliaryViewModel(content, runtime) {
+    return buildRaceScheduleViewModel(
+      runtime.raceScheduleEvents ?? [],
+      content,
+      runtime.raceScheduleStatus,
+    );
+  },
 };

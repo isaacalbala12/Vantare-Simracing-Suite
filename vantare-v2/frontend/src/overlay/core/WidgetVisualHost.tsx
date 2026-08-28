@@ -15,7 +15,7 @@ export type { WidgetDiagnostic, WidgetDiagnosticCollector } from "./widget-diagn
 
 export type WidgetVisualHostProps = {
   widget: WidgetInstanceV3;
-  snapshot: TelemetrySnapshot;
+  snapshot?: TelemetrySnapshot;
   renderMode: "studio" | "desktop" | "obs" | "harness";
   onDiagnostic?: (diagnostic: WidgetDiagnostic) => void;
   diagnostics?: WidgetDiagnosticCollector;
@@ -80,14 +80,31 @@ export function WidgetVisualHost(props: WidgetVisualHostProps): ReactNode {
     return <HostDiagnostic widget={widget} code="invalid-content" message={message} />;
   }
 
+  let registration;
+  let settings: Record<string, unknown>;
+  try {
+    ({ registration, settings } = prepareWidgetVisualSettings(widget));
+  } catch (error) {
+    const code =
+      error instanceof DesignSystemResolutionError ? "unsupported-visual-pair" : "invalid-settings";
+    const message = error instanceof Error ? error.message : "invalid widget settings";
+    reportDiagnostic(props, code, message);
+    return <HostDiagnostic widget={widget} code={code} message={message} />;
+  }
+
   const v2Entry = getOverlayV2ViewModelEntry(widget.type);
   const frame = props.runtime?.overlayV2Frame;
   const source = props.runtime?.overlayV2Source;
-  const previewMode = renderMode === "studio" || renderMode === "harness";
+  const harnessMode = renderMode === "harness";
   const v2Failure = props.runtime?.overlayV2Failure;
-  // Durante la coordinación con #936, sus callers transportan el único
-  // rollback booleano como catálogo completo (V2) o lista vacía (rollback).
+  // El único rollback diagnóstico se transporta como catálogo vacío; nunca
+  // persiste y en superficies productivas muestra un estado, no pinta V1.
   const v2Rollback = props.runtime?.overlayV2Features?.length === 0;
+  if (v2Entry && v2Rollback && !harnessMode) {
+    const message = "Overlay V2 diagnostic rollback active";
+    reportDiagnostic(props, "overlay-v2-rollback", message);
+    return <HostDiagnostic widget={widget} code="overlay-v2-rollback" message={message} />;
+  }
   if (v2Entry && !v2Rollback && v2Failure) {
     const code = `overlay-v2-${v2Failure.code}`;
     reportDiagnostic(props, code, v2Failure.message);
@@ -98,12 +115,12 @@ export function WidgetVisualHost(props: WidgetVisualHostProps): ReactNode {
     reportDiagnostic(props, "overlay-v2-source-error", message);
     return <HostDiagnostic widget={widget} code="overlay-v2-source-error" message={message} />;
   }
-  if (v2Entry && !v2Rollback && props.runtime?.overlayV2Authority && !frame) {
+  if (v2Entry && !v2Rollback && !harnessMode && !frame) {
     const message = "Overlay V2 frame unavailable";
     reportDiagnostic(props, "overlay-v2-frame-missing", message);
     return <HostDiagnostic widget={widget} code="overlay-v2-frame-missing" message={message} />;
   }
-  if (v2Entry && !v2Rollback && props.runtime?.overlayV2Authority && !source) {
+  if (v2Entry && !v2Rollback && !harnessMode && !source) {
     const message = "Overlay V2 source state unavailable";
     reportDiagnostic(props, "overlay-v2-source-missing", message);
     return <HostDiagnostic widget={widget} code="overlay-v2-source-missing" message={message} />;
@@ -119,35 +136,27 @@ export function WidgetVisualHost(props: WidgetVisualHostProps): ReactNode {
       content,
       props.runtime,
     );
-  } else {
-    // Compatibilidad transitoria hasta que el siguiente hito convierta
-    // frame/source ausentes en estados V2 visibles, sin caer a V1.
-    model = previewMode && definition.buildPreviewViewModel
+  } else if (!v2Entry && definition.buildAuxiliaryViewModel) {
+    model = definition.buildAuxiliaryViewModel(content as never, props.runtime ?? {}, renderMode);
+  } else if (harnessMode && snapshot) {
+    model = definition.buildPreviewViewModel
       ? definition.buildPreviewViewModel(snapshot, content as never, props.runtime ?? {})
       : definition.buildRuntimeViewModel
         ? definition.buildRuntimeViewModel(snapshot, content as never, props.runtime ?? {})
         : definition.buildViewModel(snapshot, content as never);
+  } else {
+    const message = `No V2 or auxiliary authority registered for ${widget.type}`;
+    reportDiagnostic(props, "widget-authority-missing", message);
+    return <HostDiagnostic widget={widget} code="widget-authority-missing" message={message} />;
   }
 
-  if (!(v2Entry && !v2Rollback && frame && source) && widget.type === "input-telemetry") {
+  if (harnessMode && snapshot && !(v2Entry && !v2Rollback && frame && source) && widget.type === "input-telemetry") {
     const inputContent = content as { historySeconds: number };
     recordInputTelemetrySample(widget.id, snapshot);
     model = {
       ...model,
       history: readInputTelemetryHistory(widget.id, snapshot, inputContent.historySeconds),
     } as InputTelemetryViewModel;
-  }
-
-  let registration;
-  let settings: Record<string, unknown>;
-  try {
-    ({ registration, settings } = prepareWidgetVisualSettings(widget));
-  } catch (error) {
-    const code =
-      error instanceof DesignSystemResolutionError ? "unsupported-visual-pair" : "invalid-settings";
-    const message = error instanceof Error ? error.message : "invalid widget settings";
-    reportDiagnostic(props, code, message);
-    return <HostDiagnostic widget={widget} code={code} message={message} />;
   }
 
   const Renderer = registration.Renderer;

@@ -164,7 +164,6 @@ describe("WidgetVisualHost v2 generic registry", () => {
         snapshot={snapshot}
         renderMode="desktop"
         runtime={{
-          overlayV2Authority: true,
           overlayV2Failure: { code: "invalid-frame", message: "overlay-frame-v2:invalid-contract:frame" },
         }}
       />,
@@ -182,7 +181,7 @@ describe("WidgetVisualHost v2 generic registry", () => {
         widget={widget}
         snapshot={snapshot}
         renderMode="obs"
-        runtime={{ overlayV2Authority: true, overlayV2Source: source }}
+        runtime={{ overlayV2Source: source }}
       />,
     );
 
@@ -198,7 +197,6 @@ describe("WidgetVisualHost v2 generic registry", () => {
         snapshot={snapshot}
         renderMode="studio"
         runtime={{
-          overlayV2Authority: true,
           overlayV2Frame: makeFrame(),
           overlayV2Source: { state: "stale", ageMs: 2_500 },
         }}
@@ -218,7 +216,6 @@ describe("WidgetVisualHost v2 generic registry", () => {
         snapshot={snapshot}
         renderMode="desktop"
         runtime={{
-          overlayV2Authority: true,
           overlayV2Frame: makeFrame(),
           overlayV2Source: { state: "error", reason: "LMU projection stopped" },
         }}

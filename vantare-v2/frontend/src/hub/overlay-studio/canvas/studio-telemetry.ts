@@ -2,7 +2,8 @@ import { createContext, useContext } from 'react';
 import type { TelemetryRateCoordinator } from '../../../overlay/core/telemetry-rate-coordinator';
 import type { TelemetrySnapshot } from '../../../overlay/core/telemetry-snapshot';
 import type { WidgetRuntimeInput } from '../../../overlay/core/widget-definition';
-import { useRateLimitedTelemetry } from '../../../overlay/runtime/use-rate-limited-telemetry';
+import { useOverlayRuntimeContext, useRateLimitedTelemetry, useRateLimitedWidgetTelemetry } from '../../../overlay/runtime/use-rate-limited-telemetry';
+import type { OverlayRuntimeContext } from '../../../overlay/core/overlay-runtime-context';
 import type { TelemetryActivityGate } from '../../../overlay/runtime/use-rate-limited-telemetry';
 
 const INSPECTOR_TELEMETRY_HZ = 30;
@@ -38,9 +39,22 @@ export function useStudioTelemetrySnapshot(hz = INSPECTOR_TELEMETRY_HZ): Telemet
   return useRateLimitedTelemetry(context.coordinator, hz, context.active, context.activityGate);
 }
 
-export function useStudioTelemetryRuntime(): WidgetRuntimeInput | undefined {
+export function useStudioTelemetryRuntime(widgetType: string): WidgetRuntimeInput {
   const context = useContext(StudioTelemetryContext);
   if (!context)
     throw new Error('useStudioTelemetryRuntime must be used inside StudioTelemetryProvider');
-  return context.runtime;
+  const overlay = useRateLimitedWidgetTelemetry(context.coordinator, widgetType);
+  return {
+    ...context.runtime,
+    overlayV2Frame: overlay.overlayV2Frame ?? context.runtime?.overlayV2Frame,
+    overlayV2Source: overlay.overlayV2Source ?? context.runtime?.overlayV2Source,
+    overlayV2Failure: overlay.overlayV2Failure ?? context.runtime?.overlayV2Failure,
+  };
+}
+
+export function useStudioOverlayRuntimeContext(): OverlayRuntimeContext {
+  const context = useContext(StudioTelemetryContext);
+  if (!context)
+    throw new Error('useStudioOverlayRuntimeContext must be used inside StudioTelemetryProvider');
+  return useOverlayRuntimeContext(context.coordinator);
 }

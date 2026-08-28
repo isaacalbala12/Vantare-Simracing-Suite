@@ -1,6 +1,6 @@
 import type { AccessContext } from "../../../lib/access-policy";
 import type { SessionLayoutType, WidgetInstanceV3 } from "../../../overlay/core/profile-document";
-import type { TelemetrySnapshot } from "../../../overlay/core/telemetry-snapshot";
+import type { OverlayRuntimeContext } from "../../../overlay/core/overlay-runtime-context";
 import type { StudioCommand } from "../state/studio-command";
 import { getStudioMutationGate, type StudioMutation } from "../access/studio-access";
 import { AppearanceSection } from "./AppearanceSection";
@@ -13,7 +13,7 @@ export type WidgetPropertyInspectorViewProps = {
   sectionId: WidgetPropertySectionId;
   widget: WidgetInstanceV3;
   session: SessionLayoutType;
-  snapshot: TelemetrySnapshot;
+  runtimeContext: OverlayRuntimeContext;
   access: AccessContext;
   disabled?: boolean;
   dispatch(command: StudioCommand): void;
@@ -32,7 +32,7 @@ const SECTION_MUTATION: Record<WidgetPropertySectionId, StudioMutation> = {
  * Compartida por StudioInspector (Hub) y el panel flotante del overlay.
  */
 export function WidgetPropertyInspectorView(props: WidgetPropertyInspectorViewProps): React.ReactElement {
-  const { sectionId, widget, session, snapshot, access, disabled = false, dispatch } = props;
+  const { sectionId, widget, session, runtimeContext, access, disabled = false, dispatch } = props;
   const mutation = SECTION_MUTATION[sectionId];
   const gate = getStudioMutationGate({ access, mutation, widget });
   const sectionDisabled = disabled || !gate.allowed;
@@ -54,7 +54,7 @@ export function WidgetPropertyInspectorView(props: WidgetPropertyInspectorViewPr
           <ContentSection widget={widget} session={session} dispatch={dispatchChecked} disabled={sectionDisabled} />
         ) : null}
         {sectionId === "behavior" ? (
-          <BehaviorSection widget={widget} session={session} snapshot={snapshot} dispatch={dispatchChecked} />
+          <BehaviorSection widget={widget} session={session} runtimeContext={runtimeContext} dispatch={dispatchChecked} />
         ) : null}
       </fieldset>
     </div>

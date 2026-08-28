@@ -51,11 +51,9 @@ export function ObsOverlayApp() {
 
   useEffect(() => {
     const onChange = () => setOverlayV2Features(readDiagnosticOverlayV2Features());
-    window.addEventListener("vantare:overlay-v2-features-changed", onChange);
-    window.addEventListener("storage", onChange);
+    window.addEventListener("vantare:overlay-v2-rollback-changed", onChange);
     return () => {
-      window.removeEventListener("vantare:overlay-v2-features-changed", onChange);
-      window.removeEventListener("storage", onChange);
+      window.removeEventListener("vantare:overlay-v2-rollback-changed", onChange);
     };
   }, []);
 
@@ -77,7 +75,11 @@ export function ObsOverlayApp() {
       overlayV2Shadow.acceptOverlayV2,
     );
     const detachOverlayV2 = attachOverlayFrameV2Sse(overlayV2Store, {
-      onError: (cause) => console.error("overlay-v2 shadow ingest failed", cause),
+      onError: (cause) => {
+        const message = cause instanceof Error ? cause.message : String(cause);
+        coordinator.setOverlayFailure({ code: "invalid-frame", message });
+        console.error("overlay-v2 ingest failed", cause);
+      },
     });
     const diagnosticWindow = window as Window & {
       __vantareOverlayV2Diagnostics?: () => unknown;

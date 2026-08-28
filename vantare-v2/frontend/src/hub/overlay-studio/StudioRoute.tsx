@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Events } from '@wailsio/runtime';
 import { useI18n } from '../../i18n/I18nProvider';
 import { createTelemetryRateCoordinator } from '../../overlay/core/telemetry-rate-coordinator';
@@ -7,8 +7,8 @@ import type { WidgetRuntimeInput } from '../../overlay/core/widget-definition';
 import { createWailsProjectionTelemetryAdapter } from '../../overlay/transports/projection-telemetry-adapter';
 import {
   createOverlayFrameV2Store,
-  type OverlayFrameV2State,
 } from '../../telemetry-transport/overlay-frame-v2-store';
+import { bindOverlayV2Coordinator } from '../../overlay/core/overlay-v2-coordinator-binding';
 import { createBrowserOverlayWailsPullClient } from '../../telemetry-transport/overlay-wails-pull';
 import {
   telemetrySourceStatusEvent,
@@ -51,9 +51,6 @@ import type { StudioProfileEntry } from './studio-profile-entry';
 import { modeFromTarget, type StudioRouteMode } from './studio-route-target';
 import { createStudioOverlayTelemetryAdapter } from './studio-overlay-telemetry';
 
-const EMPTY_OVERLAY_V2_STATE: OverlayFrameV2State = Object.freeze({revision: 0, ageMs: 0});
-const subscribeToNothing = () => () => undefined;
-const getEmptyOverlayV2State = () => EMPTY_OVERLAY_V2_STATE;
 
 type ProfilesListPayload = {
   profiles?: ProfileEntry[];
@@ -360,9 +357,14 @@ export const StudioRoute = memo(function StudioRoute(props: StudioRouteProps): R
       legacy,
       pull: overlayPull,
       overlayV2Store,
-      onOverlayV2Error: (error) => console.error('studio overlay-v2 ingest failed', error),
+      onOverlayV2Error: (error) => {
+        const message = error instanceof Error ? error.message : String(error);
+        coordinator.setOverlayFailure({ code: 'invalid-frame', message });
+        console.error('studio overlay-v2 ingest failed', error);
+      },
     });
     overlayV2Store.reset();
+    const unbindOverlayV2 = bindOverlayV2Coordinator(overlayV2Store, coordinator);
     // Este efecto es la fabrica y el owner de la generacion; Studio no debe
     // registrar listeners ni cargar perfiles contra recursos ya dispuestos.
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -371,6 +373,7 @@ export const StudioRoute = memo(function StudioRoute(props: StudioRouteProps): R
     return () => {
       if (telemetryAdapterProp === null) telemetryAdapter.stop();
       overlayPull.stop();
+      unbindOverlayV2();
       overlayV2Store.dispose();
       if (coordinatorProp === undefined) coordinator.dispose();
     };
@@ -392,7 +395,7 @@ function StudioRouteGeneration(props: StudioRouteGenerationProps): React.ReactEl
     target,
     generation,
   } = props;
-  const { coordinator, overlayV2Store, telemetryAdapter } = generation;
+  const { coordinator, telemetryAdapter } = generation;
   const { t } = useI18n();
 
   const client = useMemo(
@@ -402,17 +405,14 @@ function StudioRouteGeneration(props: StudioRouteGenerationProps): React.ReactEl
   const [overlayV2Features, setOverlayV2Features] = useState(() =>
     readDiagnosticOverlayV2Features(),
   );
-  const overlayV2Enabled = overlayV2Features.length > 0;
-  const overlayV2State = useSyncExternalStore(
-    overlayV2Enabled ? overlayV2Store.subscribe : subscribeToNothing,
-    overlayV2Enabled ? overlayV2Store.getSnapshot : getEmptyOverlayV2State,
-    overlayV2Enabled ? overlayV2Store.getSnapshot : getEmptyOverlayV2State,
-  );
+  useEffect(() => {
+    const onChange = () => setOverlayV2Features(readDiagnosticOverlayV2Features());
+    window.addEventListener('vantare:overlay-v2-rollback-changed', onChange);
+    return () => window.removeEventListener('vantare:overlay-v2-rollback-changed', onChange);
+  }, []);
   const runtime = useMemo<WidgetRuntimeInput>(() => ({
     overlayV2Features,
-    overlayV2Frame: overlayV2State.frame,
-    overlayV2Source: overlayV2State.source,
-  }), [overlayV2Features, overlayV2State.frame, overlayV2State.source]);
+  }), [overlayV2Features]);
 
   const [profiles, setProfiles] = useState<ProfileEntry[]>([]);
   const [profilesLoaded, setProfilesLoaded] = useState(false);

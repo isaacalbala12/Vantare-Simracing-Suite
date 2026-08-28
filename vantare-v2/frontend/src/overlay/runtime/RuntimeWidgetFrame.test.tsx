@@ -1,10 +1,19 @@
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { buildMockTelemetry } from "../core/mock-scenarios";
-import { createTelemetryRateCoordinator } from "../core/telemetry-rate-coordinator";
+import { createTelemetryRateCoordinator as createBaseTelemetryRateCoordinator } from "../core/telemetry-rate-coordinator";
 import { deltaDefinition } from "../widget-types/delta/delta-definition";
 import { standingsDefinition } from "../widget-types/standings/standings-definition";
 import { RuntimeWidgetFrame } from "./RuntimeWidgetFrame";
+import goldenV2Raw from "../../../../internal/telemetry/projection/overlayv2/testdata/overlay_v2_1.golden.json?raw";
+import type { OverlayUpdateV2 } from "../../generated/telemetry";
+
+function createTelemetryRateCoordinator() {
+  const coordinator = createBaseTelemetryRateCoordinator();
+  const update = JSON.parse(goldenV2Raw) as OverlayUpdateV2;
+  coordinator.setOverlayFrame(update.frame ?? undefined, update.source);
+  return coordinator;
+}
 
 afterEach(() => cleanup());
 

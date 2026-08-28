@@ -103,4 +103,9 @@ export const engineerRadioDefinition: WidgetTypeDefinition<EngineerRadioContent,
   buildPreviewViewModel(_snapshot, content, runtime) {
     return buildEngineerRadioPreviewViewModel(content, runtime);
   },
+  buildAuxiliaryViewModel(content, runtime, renderMode) {
+    return renderMode === "studio" || renderMode === "harness"
+      ? buildEngineerRadioPreviewViewModel(content, runtime)
+      : buildEngineerRadioViewModel(content, runtime);
+  },
 };

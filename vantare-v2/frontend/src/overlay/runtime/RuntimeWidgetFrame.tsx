@@ -22,7 +22,7 @@ export type RuntimeWidgetFrameProps = {
 
 function RuntimeWidgetFrameComponent(props: RuntimeWidgetFrameProps): React.ReactElement {
   const { widget, telemetry, renderMode, layoutOrigin, onDiagnostic, diagnostics, engineerPresentation, engineerSubtitlesEnabled, overlayV2Features } = props;
-  const { snapshot, overlayFrame: approvedOverlayV2Frame, overlaySource } = useRateLimitedWidgetTelemetry(
+  const runtimeTelemetry = useRateLimitedWidgetTelemetry(
     telemetry,
     widget.type,
   );
@@ -50,11 +50,10 @@ function RuntimeWidgetFrameComponent(props: RuntimeWidgetFrameProps): React.Reac
       >
         <WidgetVisualHost
           widget={widget}
-          snapshot={snapshot}
           renderMode={renderMode}
           onDiagnostic={onDiagnostic}
           diagnostics={diagnostics}
-          runtime={{ engineerPresentation, engineerSubtitlesEnabled, overlayV2Frame: approvedOverlayV2Frame, overlayV2Source: overlaySource, overlayV2Features }}
+          runtime={{ engineerPresentation, engineerSubtitlesEnabled, ...runtimeTelemetry, overlayV2Features }}
         />
       </WidgetVisualViewport>
     </div>

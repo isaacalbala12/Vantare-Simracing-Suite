@@ -56,12 +56,13 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   `SectionScheduler` en el tick siguiente. OverlayFrame v2 publica
   `capabilities.performance`, su decoder TypeScript falla cerrado y el
   coordinador visual obedece `rafCap`, techos por widget y dirty/event con techo
-  dirty de un segundo. Ajustes antiguos migran al nivel 3 sin cambiar el perfil.
+  dirty de un segundo. Ajustes antiguos migran al nivel 1 de paridad sin cambiar el perfil.
   Go build, suites Go acotadas, frontend 421/3195, typecheck, build frontend y
   Wails Windows pasan. El lint global conserva una deuda ajena al diff en
   `car-damage-numbers-view-model-v2.ts:93`; no hay prueba física LMU/WebView2,
   PR, CI remoto, merge ni promoción. Evidencia:
-  `docs/telemetry-core/evidence/isa-926-performance-policy.md`.
+  `docs/telemetry-core/evidence/isa-926-performance-policy.md`. Roadmap:
+  `milestones:performance-policy`.
 
 - 2026-08-28, ISA-891 completa el lifecycle de Overlay V2 y lleva Studio al
   mismo transporte dirigido que Desktop. `6bd72d37` publica y retiene un único

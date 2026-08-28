@@ -388,6 +388,19 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - etiqueta.pt: Em desenvolvimento
 - etiqueta.it: In corso
 
+### Política de rendimiento para overlays
+
+- id: performance-policy
+- tipo: feature
+- titulo.en: Overlay performance policy
+- titulo.pt: Política de desempenho para overlays
+- titulo.it: Politica prestazionale per gli overlay
+- cuerpo: Go decide uno de cinco niveles efectivos, publica `capabilities.performance` y aplica una cadencia común; cada widget obedece su techo de repintado, mientras banderas y avisos de seguridad llegan en el siguiente tick. El valor inicial conserva la paridad hasta superar el banco de rendimiento.
+- cuerpo.en: Go selects one of five effective levels, publishes `capabilities.performance` and applies one shared cadence; each widget obeys its repaint ceiling, while flags and safety alerts arrive on the next tick. The initial value preserves parity until the performance benchmark passes.
+- cuerpo.pt: O Go decide um de cinco níveis efetivos, publica `capabilities.performance` e aplica uma cadência comum; cada widget respeita o seu limite de repintura, enquanto bandeiras e avisos de segurança chegam no tick seguinte. O valor inicial preserva a paridade até o banco de desempenho ser aprovado.
+- cuerpo.it: Go decide uno dei cinque livelli effettivi, pubblica `capabilities.performance` e applica una cadenza comune; ogni widget rispetta il proprio limite di ridisegno, mentre bandiere e avvisi di sicurezza arrivano al tick successivo. Il valore iniziale mantiene la parità fino al superamento del benchmark prestazionale.
+- etiqueta: Feature
+
 ### Reader histórico LMU y runtime Windows
 
 - id: telemetry-analysis-reader-runtime

@@ -42,7 +42,8 @@ Aceptación: cero almacenamiento propio y una validación por activación.
 
 ## P2 — Superficies visibles
 
-- LoginScreen se reduce al marco, estados propios y `<SignIn routing="virtual">`.
+- LoginScreen se reduce al marco, estados propios y `<SignIn routing="path">`;
+  el hash `#/hub` queda reservado a la shell existente.
 - HubApp deja de pasar tokens Supabase desde el formulario eliminado.
 - `useAccountIdentity` usa `useUser` con fallback de licencia.
 - Settings pide token fresco para comprobar acceso y usa logout Clerk seguido de

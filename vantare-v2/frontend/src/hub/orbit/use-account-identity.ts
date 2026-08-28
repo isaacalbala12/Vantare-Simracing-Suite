@@ -1,16 +1,6 @@
-import { useEffect, useState } from "react";
-import type { Session } from "@supabase/supabase-js";
-
 import { useLicense } from "../../lib/license";
-import { getSession, onSupabaseAuthStateChange } from "../../lib/supabase-auth";
+import { useClerkAuth, type ClerkAccountUser } from "../../lib/clerk-auth";
 
-/**
- * Identidad de la cuenta tal y como la pinta la interfaz.
- *
- * Fuente única para el avatar del rail y para Ajustes › Cuenta: antes cada uno
- * inventaba lo suyo (el rail caía en la inicial del *plan*, que es de dónde
- * salía la ‘F’ de Free) y ninguno usaba la foto real de Google.
- */
 export interface AccountIdentity {
   displayName: string | null;
   email: string | null;
@@ -26,31 +16,20 @@ function firstString(...values: unknown[]): string | null {
   return null;
 }
 
-/**
- * Lee la identidad de una sesión de Supabase. Google OAuth deja el nombre y la
- * foto en `user_metadata` con dos nombres distintos según el flujo
- * (`full_name`/`name`, `avatar_url`/`picture`): se aceptan los cuatro.
- */
-export function identityFromSession(
-  session: Session | null,
+export function identityFromClerkUser(
+  user: ClerkAccountUser | null,
   fallbackEmail?: string | null,
 ): AccountIdentity {
-  const user = session?.user;
-  const meta = (user?.user_metadata ?? {}) as Record<string, unknown>;
-  const email = firstString(user?.email, meta.email, fallbackEmail);
   return {
-    displayName: firstString(meta.full_name, meta.name, meta.user_name),
-    email,
-    avatarUrl: firstString(meta.avatar_url, meta.picture),
+    displayName: firstString(user?.fullName, user?.username),
+    email: firstString(user?.primaryEmailAddress?.emailAddress, fallbackEmail),
+    avatarUrl: firstString(user?.imageUrl),
   };
 }
 
 let seeded: AccountIdentity | null = null;
 
-/**
- * Sólo para harnesses visuales y pruebas: sin runtime de Wails ni Supabase
- * configurado no hay sesión, y la captura saldría con el avatar vacío.
- */
+/** Solo para harnesses visuales y pruebas sin una sesión Clerk real. */
 export function seedAccountIdentity(identity: AccountIdentity | null): void {
   seeded = identity;
 }
@@ -59,29 +38,11 @@ function isEmpty(identity: AccountIdentity): boolean {
   return !identity.displayName && !identity.email && !identity.avatarUrl;
 }
 
-/** Identidad viva de la cuenta: sesión de Supabase, con la licencia de respaldo. */
+/** Identidad viva de Clerk, con el correo firmado de licencia como respaldo. */
 export function useAccountIdentity(): AccountIdentity {
   const { result: license } = useLicense();
-  const licenseEmail = license?.email ?? null;
-  const [session, setSession] = useState<Session | null>(null);
-
-  useEffect(() => {
-    let active = true;
-    void getSession()
-      .then((current) => {
-        if (active) setSession(current);
-      })
-      .catch(() => undefined);
-    const off = onSupabaseAuthStateChange((_event, next) => {
-      if (active) setSession(next);
-    });
-    return () => {
-      active = false;
-      off();
-    };
-  }, []);
-
-  const identity = identityFromSession(session, licenseEmail);
+  const { user } = useClerkAuth();
+  const identity = identityFromClerkUser(user, license?.email);
   if (isEmpty(identity)) return seeded ?? EMPTY;
   return identity;
 }

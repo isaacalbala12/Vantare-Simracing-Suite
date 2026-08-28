@@ -23,7 +23,8 @@ import { useAccess } from "../../lib/access";
 import { useLicense } from "../../lib/license";
 import { allowedUpdateChannels } from "../../lib/access-policy";
 import { buildSummary, PLAN_LABELS, PLAN_STATUS_LABELS } from "../../lib/plan";
-import { signOut } from "../../lib/supabase-auth";
+import { useClerkAuth } from "../../lib/clerk-auth";
+import { clearProtectedAuthSession } from "../../lib/supabase-auth";
 import {
   isPremiumUnlocked,
   refreshCurrentUserEntitlements,
@@ -264,6 +265,7 @@ type AccessFeedback = "idle" | "checking" | "ok" | "none" | "error";
 function AccountSection() {
   const { t } = useI18n();
   const { result: license, clearLicense } = useLicense();
+  const { getToken, signOut: signOutClerk } = useClerkAuth();
   const access = useAccess();
   const [checking, setChecking] = useState<AccessFeedback>("idle");
   const [resetting, setResetting] = useState(false);
@@ -300,29 +302,36 @@ function AccountSection() {
   const checkAccess = useCallback(async () => {
     setChecking("checking");
     setProblem(null);
-    const refreshed = await refreshCurrentUserEntitlements();
+    const refreshed = await refreshCurrentUserEntitlements({ getToken });
     if (!refreshed.ok) {
       setChecking("error");
       return;
     }
     setChecking(isPremiumUnlocked(refreshed.license) ? "ok" : "none");
-  }, []);
+  }, [getToken]);
 
   const doSignOut = useCallback(async () => {
-    const outcome = await signOut();
-    if (!outcome.localCleared) {
-      setProblem(outcome.localError ?? "");
+    setProblem(null);
+    try {
+      await signOutClerk();
+    } catch {
+      setProblem(t("settings.account.signOutError"));
+      return;
+    }
+    const local = await clearProtectedAuthSession();
+    if (!local.ok) {
+      setProblem(local.error || t("settings.account.signOutError"));
       return;
     }
     clearLicense();
-  }, [clearLicense]);
+  }, [clearLicense, signOutClerk, t]);
 
   const doResetDevice = useCallback(async () => {
     setResetting(true);
-    const reset = await resetActiveDevice();
+    const reset = await resetActiveDevice({ getToken });
     setResetting(false);
     if (!reset.ok) setProblem(t("account.resetError"));
-  }, [t]);
+  }, [getToken, t]);
 
   return (
     <>

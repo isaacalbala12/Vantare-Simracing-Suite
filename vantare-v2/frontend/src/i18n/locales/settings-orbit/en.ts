@@ -40,6 +40,7 @@ export const settingsOrbitEn: Record<string, string> = {
   "settings.account.check": "Check access",
   "settings.account.checking": "Checking…",
   "settings.account.signOut": "Sign out",
+  "settings.account.signOutError": "We could not sign you out completely. Try again.",
   "settings.account.planEyebrow": "Active plan",
   "settings.account.planSub": "{{modules}} of {{total}} modules included",
   "settings.account.planSoon": "coming soon",

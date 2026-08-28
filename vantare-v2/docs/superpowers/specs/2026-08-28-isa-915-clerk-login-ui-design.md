@@ -19,7 +19,8 @@ cuentas ni migra Billing o Testing Center.
 2. La única configuración frontend nueva es
    `VITE_CLERK_PUBLISHABLE_KEY`. Es pública por definición; ninguna secret key
    entra en el bundle, documentación o logs.
-3. El login usa el componente alojado `SignIn` con routing virtual. Vantare no
+3. El login usa el componente alojado `SignIn` con routing por path, único modo
+   soportado por la versión actual del SDK que no ocupa el hash `#/hub`. Vantare no
    reimplementa email, contraseñas, OAuth, MFA ni recuperación.
 4. `session.getToken()` se llama al activar/restaurar una sesión y cada vez que
    una acción necesita revalidar licencia. Nunca se usa el OAuth access token.

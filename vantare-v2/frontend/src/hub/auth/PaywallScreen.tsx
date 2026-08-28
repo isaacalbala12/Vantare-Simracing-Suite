@@ -18,6 +18,7 @@ import {
   type BillingProductKey,
 } from "../../lib/billing-client";
 import { refreshCurrentUserEntitlements } from "../../lib/entitlements-refresh";
+import { useClerkAuth } from "../../lib/clerk-auth";
 
 type PostCheckoutAccessState =
   | "idle"
@@ -44,6 +45,7 @@ function isBillingProductKey(key: string): key is BillingProductKey {
 
 export function PaywallScreen({ email, result, onContinueFree }: PaywallScreenProps) {
   const { t } = useI18n();
+  const { getToken } = useClerkAuth();
   const [pendingPlan, setPendingPlan] = useState<string | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [comingSoon, setComingSoon] = useState(false);
@@ -104,7 +106,7 @@ export function PaywallScreen({ email, result, onContinueFree }: PaywallScreenPr
 
   const handleCheckAccess = useCallback(async () => {
     setAccessCheckState("checking");
-    const refreshed = await refreshCurrentUserEntitlements();
+    const refreshed = await refreshCurrentUserEntitlements({ getToken });
     if (!refreshed.ok) {
       setAccessCheckState("error");
       return;
@@ -121,7 +123,7 @@ export function PaywallScreen({ email, result, onContinueFree }: PaywallScreenPr
       return;
     }
     setAccessCheckState("pending");
-  }, []);
+  }, [getToken]);
 
   return (
     <div

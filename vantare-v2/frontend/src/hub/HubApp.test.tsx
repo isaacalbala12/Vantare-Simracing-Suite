@@ -44,30 +44,9 @@ vi.mock('../lib/license', () => ({
 }));
 
 vi.mock('./auth/LoginScreen', () => ({
-  LoginScreen: ({
-    onLoggedIn,
-  }: {
-    onLoggedIn: (tokens?: { accessToken: string; refreshToken?: string }) => void;
-  }) => {
+  LoginScreen: () => {
     loginScreenMock();
-    return (
-      <div data-testid="login-screen">
-        <button
-          type="button"
-          data-testid="trigger-login"
-          onClick={() => onLoggedIn({ accessToken: 'tok-123', refreshToken: 'ref-1' })}
-        >
-          trigger
-        </button>
-        <button
-          type="button"
-          data-testid="trigger-login-bare"
-          onClick={() => onLoggedIn(undefined)}
-        >
-          bare
-        </button>
-      </div>
-    );
+    return <div data-testid="login-screen" />;
   },
 }));
 
@@ -311,39 +290,6 @@ describe('HubApp gate (production)', () => {
     expect(getSessionMock).not.toHaveBeenCalled();
     // refresh must NOT be called: the stub does not trigger a recovery.
     expect(refreshMock).not.toHaveBeenCalled();
-  });
-
-  it('LoginScreen onLoggedIn with token re-emits license:validate', async () => {
-    setLicense({
-      state: 'anonymous',
-      entitlements: [],
-      userId: '',
-      email: '',
-      deviceOK: true,
-    });
-    render(<HubApp />);
-    eventsEmit.mockClear();
-    screen.getByTestId('trigger-login').click();
-    await waitFor(() => {
-      expect(eventsEmit).toHaveBeenCalledWith('license:validate', {
-        sessionToken: 'tok-123',
-        refreshToken: 'ref-1',
-      });
-    });
-  });
-
-  it('LoginScreen onLoggedIn without token ignores emission (prevents immediate logout loop)', () => {
-    setLicense({
-      state: 'anonymous',
-      entitlements: [],
-      userId: '',
-      email: '',
-      deviceOK: true,
-    });
-    render(<HubApp />);
-    eventsEmit.mockClear();
-    screen.getByTestId('trigger-login-bare').click();
-    expect(eventsEmit).not.toHaveBeenCalledWith('license:validate', expect.anything());
   });
 
   it('shows BetaWelcome when betaWelcomeCompleted is false', async () => {

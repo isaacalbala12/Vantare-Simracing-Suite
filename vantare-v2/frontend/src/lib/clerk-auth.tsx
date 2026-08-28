@@ -28,6 +28,7 @@ type ClerkAuthContextValue = {
   isSignedIn: boolean;
   user: ClerkAccountUser | null;
   validationError: "token_unavailable" | null;
+  getToken: () => Promise<string | null>;
   validateLicense: () => Promise<boolean>;
   signOut: () => Promise<void>;
 };
@@ -38,6 +39,7 @@ const UNCONFIGURED: ClerkAuthContextValue = {
   isSignedIn: false,
   user: null,
   validationError: null,
+  getToken: async () => null,
   validateLicense: async () => false,
   signOut: async () => undefined,
 };
@@ -98,10 +100,11 @@ function ClerkSessionBridge({ children }: PropsWithChildren) {
       isSignedIn: isSignedIn === true,
       user: (user as ClerkAccountUser | null | undefined) ?? null,
       validationError,
+      getToken,
       validateLicense,
       signOut,
     }),
-    [isLoaded, isSignedIn, signOut, user, validateLicense, validationError],
+    [getToken, isLoaded, isSignedIn, signOut, user, validateLicense, validationError],
   );
 
   return <ClerkAuthContext.Provider value={value}>{children}</ClerkAuthContext.Provider>;

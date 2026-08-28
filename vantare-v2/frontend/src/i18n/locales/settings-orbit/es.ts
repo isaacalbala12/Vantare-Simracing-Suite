@@ -45,6 +45,7 @@ export const settingsOrbitEs: Record<string, string> = {
   "settings.account.check": "Comprobar acceso",
   "settings.account.checking": "Comprobando…",
   "settings.account.signOut": "Cerrar sesión",
+  "settings.account.signOutError": "No se pudo cerrar la sesión por completo. Inténtalo de nuevo.",
   "settings.account.planEyebrow": "Plan activo",
   "settings.account.planSub": "{{modules}} de {{total}} módulos incluidos",
   "settings.account.planSoon": "próximamente",

@@ -40,6 +40,7 @@ export const settingsOrbitPt: Record<string, string> = {
   "settings.account.check": "Verificar acesso",
   "settings.account.checking": "A verificar…",
   "settings.account.signOut": "Terminar sessão",
+  "settings.account.signOutError": "Não foi possível terminar a sessão por completo. Tente novamente.",
   "settings.account.planEyebrow": "Plano ativo",
   "settings.account.planSub": "{{modules}} de {{total}} módulos incluídos",
   "settings.account.planSoon": "brevemente",

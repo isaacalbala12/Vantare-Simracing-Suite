@@ -40,6 +40,7 @@ export const settingsOrbitIt: Record<string, string> = {
   "settings.account.check": "Verifica accesso",
   "settings.account.checking": "Verifica in corso…",
   "settings.account.signOut": "Esci",
+  "settings.account.signOutError": "Non è stato possibile uscire completamente. Riprova.",
   "settings.account.planEyebrow": "Piano attivo",
   "settings.account.planSub": "{{modules}} di {{total}} moduli inclusi",
   "settings.account.planSoon": "prossimamente",

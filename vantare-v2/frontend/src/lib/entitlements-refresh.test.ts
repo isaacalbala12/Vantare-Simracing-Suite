@@ -216,6 +216,20 @@ describe("entitlements-refresh", () => {
     });
   });
 
+  it("refreshCurrentUserEntitlements requests a fresh Clerk token when provided", async () => {
+    getSessionMock.mockResolvedValueOnce(null);
+    const getToken = vi.fn().mockResolvedValue("clerk-fresh-token");
+    const promise = refreshCurrentUserEntitlements({ getToken, timeoutMs: 5000 });
+    await flushPending();
+    expect(getToken).toHaveBeenCalledTimes(1);
+    expect(getSessionMock).not.toHaveBeenCalled();
+    expect(eventsEmit).toHaveBeenCalledWith("license:validate", {
+      sessionToken: "clerk-fresh-token",
+    });
+    emitChanged(freshLicense());
+    await expect(promise).resolves.toEqual(expect.objectContaining({ ok: true }));
+  });
+
   it("refreshCurrentUserEntitlements ignores stale license:changed events", async () => {
     getSessionMock.mockResolvedValueOnce({ access_token: "tok-1" });
     const promise = refreshCurrentUserEntitlements({ timeoutMs: 5000 });
@@ -276,6 +290,20 @@ describe("entitlements-refresh", () => {
     await flushPending();
     expect(eventsEmit).toHaveBeenCalledWith("license:reset-device", {
       sessionToken: "tok-1",
+    });
+    emitChanged(freshLicense());
+    await expect(promise).resolves.toEqual({ ok: true });
+  });
+
+  it("resetActiveDevice requests a fresh Clerk token when provided", async () => {
+    getSessionMock.mockResolvedValueOnce(null);
+    const getToken = vi.fn().mockResolvedValue("clerk-reset-token");
+    const promise = resetActiveDevice({ getToken, timeoutMs: 5000 });
+    await flushPending();
+    expect(getToken).toHaveBeenCalledTimes(1);
+    expect(getSessionMock).not.toHaveBeenCalled();
+    expect(eventsEmit).toHaveBeenCalledWith("license:reset-device", {
+      sessionToken: "clerk-reset-token",
     });
     emitChanged(freshLicense());
     await expect(promise).resolves.toEqual({ ok: true });

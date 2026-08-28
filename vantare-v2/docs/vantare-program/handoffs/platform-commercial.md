@@ -461,6 +461,18 @@ cambios monetarios reales y Master requieren Isaac.
 
 ## Última actualización
 
+2026-08-28, el corte T2 de ISA-915 sustituye el formulario Supabase de
+LoginScreen por el `SignIn` oficial de Clerk y reduce esa superficie a estados
+explícitos de configuración, carga, sesión activa y error reintentable. El SDK
+6.14.7 no acepta routing virtual: se usa `routing="path" path="/"` para reservar
+el hash `#/hub`, decisión que aún necesita prueba en navegador y WebView2. La
+identidad visible usa nombre, email y avatar Clerk; comprobar acceso y reset de
+dispositivo piden un token fresco; logout ejecuta Clerk antes de limpiar la
+sesión legacy protegida. Se retiraron 27 traducciones Supabase ya huérfanas en
+los cuatro idiomas. El focal afectado pasa 125/125, i18n audit y typecheck; el
+`AbortError` posterior de happy-dom sigue siendo ruido heredado con exit 0. No
+hay push, PR, deploy, merge ni datos reales.
+
 2026-08-28, el corte T1 de ISA-915 añade únicamente `@clerk/react` 6.14.7 y un
 provider pequeño limitado al Hub. El bridge obtiene `session.getToken()` cuando
 hay sesión activa, emite `license:validate` sin refresh token, muestra el fallo

@@ -101,17 +101,20 @@ function isRateLimitMessage(message: string): boolean {
 
 export async function refreshCurrentUserEntitlements(options?: {
   timeoutMs?: number;
+  getToken?: () => Promise<string | null>;
 }): Promise<EntitlementRefreshResult> {
-  const session = await getSession();
-  if (!session?.access_token) {
-    licenseDebugWarn("refresh", "sin sesión Supabase (getSession vacío)");
+  const sessionToken = options?.getToken
+    ? await options.getToken().catch(() => null)
+    : (await getSession())?.access_token;
+  if (!sessionToken) {
+    licenseDebugWarn("refresh", "sin sesión activa");
     return { ok: false, reason: "login_required" };
   }
 
   const timeoutMs = options?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const requestedAfterMs = Date.now();
   licenseDebug("refresh", "inicio", {
-    tokenLen: session.access_token.length,
+    tokenLen: sessionToken.length,
     timeoutMs,
   });
 
@@ -177,23 +180,26 @@ export async function refreshCurrentUserEntitlements(options?: {
     }, timeoutMs);
 
     licenseDebug("refresh", "emit license:validate");
-    Events.Emit("license:validate", { sessionToken: session.access_token });
+    Events.Emit("license:validate", { sessionToken });
   });
 }
 
 export async function resetActiveDevice(options?: {
   timeoutMs?: number;
+  getToken?: () => Promise<string | null>;
 }): Promise<DeviceResetResult> {
-  const session = await getSession();
-  if (!session?.access_token) {
-    licenseDebugWarn("reset-device", "sin sesión Supabase (getSession vacío)");
+  const sessionToken = options?.getToken
+    ? await options.getToken().catch(() => null)
+    : (await getSession())?.access_token;
+  if (!sessionToken) {
+    licenseDebugWarn("reset-device", "sin sesión activa");
     return { ok: false, reason: "login_required" };
   }
 
   const timeoutMs = options?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const requestedAfterMs = Date.now();
   licenseDebug("reset-device", "inicio", {
-    tokenLen: session.access_token.length,
+    tokenLen: sessionToken.length,
     timeoutMs,
   });
 
@@ -254,7 +260,7 @@ export async function resetActiveDevice(options?: {
 
     licenseDebug("reset-device", "emit license:reset-device");
     Events.Emit("license:reset-device", {
-      sessionToken: session.access_token,
+      sessionToken,
     });
   });
 }

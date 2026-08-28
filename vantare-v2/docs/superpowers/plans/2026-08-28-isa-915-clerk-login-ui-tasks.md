@@ -1,6 +1,6 @@
 # Tareas ISA-915: login Clerk visible
 
-Estado: T0 y T1 completadas; T2 en curso.
+Estado: T0-T2 completadas; T3 en curso.
 
 ## T0 — SDD y baseline
 
@@ -19,16 +19,17 @@ Estado: T0 y T1 completadas; T2 en curso.
 - [x] Implementar configuración, estados y `session.getToken()`.
 - [x] Sustituir el bridge Supabase en AppShell sin envolver overlays.
 - [x] 41 tests focales y typecheck verdes.
-- [ ] Commit del corte.
+- [x] Commit del corte `4720fb18`.
 
 ## T2 — UI y cuenta
 
-- [ ] Tests rojos de LoginScreen.
-- [ ] Montar `SignIn` oficial sin formulario duplicado.
-- [ ] Migrar identidad visible a `useUser`.
-- [ ] Migrar comprobación de acceso y logout.
-- [ ] Completar traducciones ES/EN/IT/PT.
-- [ ] Tests focales verdes y commit.
+- [x] Tests rojos de LoginScreen.
+- [x] Montar `SignIn` oficial sin formulario duplicado.
+- [x] Migrar identidad visible a Clerk.
+- [x] Migrar comprobación de acceso, reset de dispositivo y logout.
+- [x] Completar traducciones ES/EN/IT/PT y retirar 27 claves huérfanas.
+- [x] 125 tests focales, i18n audit y typecheck verdes.
+- [ ] Commit del corte.
 
 ## T3 — Gates frontend
 

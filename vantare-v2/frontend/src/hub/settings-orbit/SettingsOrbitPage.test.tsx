@@ -8,6 +8,30 @@ import { conflictingHotkeys, keycapsOf, maskEmail, resolveSettingsSection, searc
 import { UPDATER_CHANNEL_EVENT } from "../settings/updater-channel";
 import { fixturePrepared } from "../settings/diagnostics/test-fixtures";
 
+const auth = vi.hoisted(() => ({
+  getToken: vi.fn<() => Promise<string | null>>(),
+  signOut: vi.fn<() => Promise<void>>(),
+  clearProtected: vi.fn<() => Promise<{ ok: boolean; error?: string }>>(),
+}));
+
+vi.mock("../../lib/clerk-auth", () => ({
+  useClerkAuth: () => ({
+    isConfigured: true,
+    isLoaded: true,
+    isSignedIn: true,
+    user: null,
+    validationError: null,
+    getToken: auth.getToken,
+    validateLicense: vi.fn(),
+    signOut: auth.signOut,
+  }),
+}));
+
+vi.mock("../../lib/supabase-auth", () => ({
+  clearProtectedAuthSession: auth.clearProtected,
+  getSession: vi.fn().mockResolvedValue(null),
+}));
+
 /** La shell reserva el hueco de la columna; en los tests lo monta el propio test. */
 function mount(target?: string) {
   const slot = document.createElement("div");
@@ -25,6 +49,9 @@ function mount(target?: string) {
 
 beforeEach(() => {
   window.localStorage.clear();
+  auth.getToken.mockReset().mockResolvedValue("clerk-token");
+  auth.signOut.mockReset().mockResolvedValue(undefined);
+  auth.clearProtected.mockReset().mockResolvedValue({ ok: true });
 });
 
 afterEach(() => {
@@ -83,6 +110,18 @@ describe("modelo de Ajustes", () => {
 });
 
 describe("SettingsOrbitPage", () => {
+  it("closes Clerk remotely before clearing the protected legacy session", async () => {
+    mount("account");
+
+    fireEvent.click(screen.getByTestId("orbit-settings-sign-out"));
+
+    await waitFor(() => expect(auth.clearProtected).toHaveBeenCalledTimes(1));
+    expect(auth.signOut).toHaveBeenCalledTimes(1);
+    expect(auth.signOut.mock.invocationCallOrder[0]).toBeLessThan(
+      auth.clearProtected.mock.invocationCallOrder[0],
+    );
+  });
+
   it("la columna lista exactamente las seis secciones y nada más", () => {
     mount("account");
     const rows = within(screen.getByTestId("orbit-settings-context")).getAllByRole("button");

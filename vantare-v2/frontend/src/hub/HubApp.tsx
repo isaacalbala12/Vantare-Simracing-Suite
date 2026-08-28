@@ -49,15 +49,7 @@ function LicenseGate({ children }: { children: ReactNode }) {
   // Pantalla bloqueante que corresponde al estado actual, o null si se puede
   // usar la aplicacion.
   const blocking = loading ? null : !result || result.state === 'anonymous' ? (
-    <LoginScreen
-      onLoggedIn={(tokens) => {
-        if (!tokens?.accessToken) return;
-        Events.Emit('license:validate', {
-          sessionToken: tokens.accessToken,
-          refreshToken: tokens.refreshToken ?? '',
-        });
-      }}
-    />
+    <LoginScreen />
   ) : // Unconfigured is a backend configuration error (missing Supabase env
   // vars in the release build). It must never block the user behind a
   // paywall. Show an actionable message instead.

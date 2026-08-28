@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "tag": "v0.1.0.7-nightly.14",
+  "channel": "nightly",
+  "title": "Vantare — telemetría acotada, zoom global y controles de actualización",
+  "summary": "Nightly con el transporte de telemetría Live acotado también para Overlay Studio, controles de zoom global con teclado y rueda, columnas configurables en Standings Redline, calendario LMU con revisión de owner, descarga de actualizaciones resistente a conexiones lentas y preferencias de avisos con prueba nativa de Windows.",
+  "issues": [
+    "ISA-735",
+    "ISA-758",
+    "ISA-771",
+    "ISA-794",
+    "ISA-832",
+    "ISA-833",
+    "ISA-835",
+    "ISA-841",
+    "ISA-843",
+    "ISA-845",
+    "ISA-849",
+    "ISA-854",
+    "ISA-879",
+    "ISA-891",
+    "ISA-900",
+    "ISA-908"
+  ]
+}

@@ -472,6 +472,11 @@ distingue el issuer legacy, hace de la RPC PostgREST TPA la única autoridad y
 separa rechazos 401 de indisponibilidad para impedir gracia offline tras un token
 rechazado. ISA-911 registra Billing, Testing Center, policies `auth.uid()` y
 logout/cache que aún no son compatibles con Clerk.
+El baseline previo a código dejó Go license y Deno credential verdes. El runner
+Postgres heredado fallaba antes de ISA-909 porque su bootstrap no reproducía
+`extensions/storage` y el upgrade aplicaba calendario antes de acceso
+operacional; el fixture y orden mínimos quedaron corregidos y el contrato
+clean/upgrade/restore completo volvió a PASS. Aún no existe migración Clerk.
 
 2026-08-04, ISA-243/287 completaron el piloto remoto con un caso sintético
 nuevo. ISA-288 se creó exactamente una vez, el binding quedó `completed` sin

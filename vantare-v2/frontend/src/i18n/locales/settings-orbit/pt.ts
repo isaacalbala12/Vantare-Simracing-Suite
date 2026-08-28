@@ -100,6 +100,14 @@ export const settingsOrbitPt: Record<string, string> = {
   "settings.app.notifySystem": "Notificações do sistema",
   "settings.app.notifySystemSub": "O Windows mostra-as com a janela minimizada.",
   "settings.app.notifySystemUnsupported": "Esta plataforma não suporta notificações de ambiente de trabalho.",
+  "settings.app.notifySystemTest": "Testar notificação",
+  "settings.app.notifySystemTestSub": "Envia um aviso agora sem alterar as preferências.",
+  "settings.app.notifySystemTestButton": "Enviar teste",
+  "settings.app.notifySystemTestSendingButton": "A enviar…",
+  "settings.app.notifySystemTestSending": "A enviar teste…",
+  "settings.app.notifySystemTestSent": "O Windows aceitou o envio; confirma que o aviso apareceu.",
+  "settings.app.notifySystemTestFailed": "Não foi possível enviar: {{message}}",
+  "settings.app.notifySystemTestFailedUnknown": "O Windows não indicou o motivo.",
   "settings.app.missingNote":
     "«Fechar para o tabuleiro» e «Unidades» ainda não existem na configuração da aplicação, por isso não se desenham: não haveria nada para guardar por trás do controlo.",
 

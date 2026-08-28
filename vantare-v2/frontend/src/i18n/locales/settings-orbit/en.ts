@@ -100,6 +100,14 @@ export const settingsOrbitEn: Record<string, string> = {
   "settings.app.notifySystem": "System notifications",
   "settings.app.notifySystemSub": "Windows shows them while the window is minimised.",
   "settings.app.notifySystemUnsupported": "This platform does not support desktop notifications.",
+  "settings.app.notifySystemTest": "Test notification",
+  "settings.app.notifySystemTestSub": "Send an alert now without changing your preferences.",
+  "settings.app.notifySystemTestButton": "Send test",
+  "settings.app.notifySystemTestSendingButton": "Sending…",
+  "settings.app.notifySystemTestSending": "Sending test…",
+  "settings.app.notifySystemTestSent": "Windows accepted the send; check that the alert appeared.",
+  "settings.app.notifySystemTestFailed": "Could not send: {{message}}",
+  "settings.app.notifySystemTestFailedUnknown": "Windows did not provide a reason.",
   "settings.app.missingNote":
     "“Close to tray” and “Units” do not exist in the app settings yet, so they are not drawn: there would be nothing behind the control to save.",
 

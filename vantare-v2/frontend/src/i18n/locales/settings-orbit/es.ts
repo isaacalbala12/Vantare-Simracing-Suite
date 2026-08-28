@@ -107,6 +107,14 @@ export const settingsOrbitEs: Record<string, string> = {
   "settings.app.notifySystem": "Notificaciones del sistema",
   "settings.app.notifySystemSub": "Windows las muestra con la ventana minimizada.",
   "settings.app.notifySystemUnsupported": "Esta plataforma no admite notificaciones de escritorio.",
+  "settings.app.notifySystemTest": "Probar notificación",
+  "settings.app.notifySystemTestSub": "Envía un aviso ahora sin cambiar tus preferencias.",
+  "settings.app.notifySystemTestButton": "Enviar prueba",
+  "settings.app.notifySystemTestSendingButton": "Enviando…",
+  "settings.app.notifySystemTestSending": "Enviando prueba…",
+  "settings.app.notifySystemTestSent": "Windows aceptó el envío; comprueba que el aviso apareció.",
+  "settings.app.notifySystemTestFailed": "No se pudo enviar: {{message}}",
+  "settings.app.notifySystemTestFailedUnknown": "Windows no indicó el motivo.",
   "settings.app.missingNote":
     "«Cerrar a la bandeja» y «Unidades» no existen todavía en la configuración de la app, así que no se pintan: no habría nada que guardar detrás del control.",
 

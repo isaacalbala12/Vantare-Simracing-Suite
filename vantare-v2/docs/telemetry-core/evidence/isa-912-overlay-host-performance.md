@@ -1,7 +1,8 @@
 # ISA-912 — perfil del host Go y del renderer Overlay
 
-Estado: instrumentación implementada y smoke atribuible Wails/LMU ejecutado;
-faltan las tres repeticiones del gate antes de aceptar una optimización.
+Estado: instrumentación y matriz B de tres repeticiones completadas. Las dos
+primeras optimizaciones propuestas quedan NO-GO: una movía trabajo al publish
+y la otra reducía allocations, pero no superó el gate runtime sin regresiones.
 
 Base inicial: `origin/nightly@73b8619114bf6309dced5e04f257762c83b428a5`.
 
@@ -178,13 +179,83 @@ Overlay 35,19 %, el browser 14,21 % y el árbol completo 95,36 %; el host pasó
 71,3 -> 73,0 MiB y el browser 46,0 -> 45,7 MiB. El trace sirve para atribución
 de timeline, pero no para juzgar retención de memoria.
 
-Es una sola repetición y no satisface todavía el gate de tres. Sí basta para
-priorizar una hipótesis compatible con el contrato actual: `Hub.ReplaySnapshot`
-reserializa en cada pull el `Envelope` cuyo `Payload` V1 ya es `json.RawMessage`,
-mientras el publisher V2 retiene el evento codificado. El siguiente corte puede
-retener también ese evento V1 ya codificado y repetir A/B sin cambiar datos,
-consumidores ni render. La retirada de V1 sigue bloqueada hasta que #893
-demuestre autoridad/paridad V2 y #894 acredite consumidores V1 cero.
+Esa primera repetición priorizó `Hub.ReplaySnapshot`: reserializa en cada pull
+el `Envelope` cuyo `Payload` V1 ya es `json.RawMessage`, mientras el publisher
+V2 retiene el evento codificado. Las dos variantes mínimas se evaluaron después
+contra el gate completo y se rechazaron, como se documenta a continuación. La
+retirada de V1 sigue bloqueada hasta que #893 demuestre autoridad/paridad V2 y
+#894 acredite consumidores V1 cero.
+
+## Dos cortes descartados por el gate
+
+La implementación se detuvo antes de integrar la hipótesis anterior. Retener
+el evento codificado dentro de `Hub.PublishSnapshot` habría hecho parecer casi
+gratuito el benchmark del pull porque ese benchmark excluye deliberadamente la
+publicación del reloj. No habría demostrado menos trabajo del host:
+
+- LMU entrega aproximadamente 64 lotes/s;
+- la captura real observó 43,63 pulls/s;
+- codificar al publicar movería `json.Marshal` a la fase más frecuente;
+- además lo ejecutaría con Hub solo, donde el control registró cero pulls.
+
+Ese cache queda **NO-GO**. No se añadió contador, invalidación, consumidor
+especial ni segunda representación retenida.
+
+El segundo candidato mantenía exactamente una codificación a demanda por pull.
+`PublishSnapshot` seguía tomando ownership mediante una copia; al reproducir,
+el Hub copiaba por valor el `Envelope` inmutable bajo el mutex y dejaba que
+`json.Marshal` produjera los bytes independientes del caller. Así eliminaba la
+copia profunda inmediatamente anterior al marshal sin cambiar JSON, frecuencia,
+contrato, lifecycle ni V1/V2.
+
+En el mismo Ryzen 7 3700X y con el fixture de 44 coches, cinco repeticiones de
+300 iteraciones comparadas contra el worktree read-only revisado por Fable
+midieron:
+
+| Variante | Baseline mediana | Candidato mediana | Cambio estable |
+| --- | ---: | ---: | ---: |
+| dual, B/op | 670.005 | 525.970 | -21,5 % |
+| v1-only, B/op | 605.953 | 460.713 | -24,0 % |
+| dual, allocs/op | 17-18 | 15-16 | -2 allocations típicas |
+| v1-only, allocs/op | 13-14 | 12-13 | -1 allocation típica |
+
+El tiempo de benchmark fue ruidoso: V1-only mejoró alrededor de 8,7 % por
+mediana, por debajo del gate de 10 %, mientras dual osciló en sentido contrario.
+Los bytes acreditaban menos churn por pull, pero no bastaban para aceptar el
+cambio sin el A/B Wails/LMU equivalente.
+
+El control de Hub solo registró 0 pulls, host 20,72 % de un core y árbol 35,30 %.
+CDP observó rAF p99 8,5 ms, cero frames >32 ms y cero long tasks. Está en el
+rango anterior (18,74 % host; 38,06 % árbol) y confirma que el candidato no
+añadía marshal al publish sin consumidor.
+
+Después se alternaron builds diagnósticas del commit base `f52eaca7` y del
+candidato sobre la misma práctica LMU, perfil, dos widgets, WebView2 y ventanas.
+Cada variante conservó tres series de proceso a 100 ms, tres perfiles Go y tres
+capturas CDP de 30 s. Las medianas fueron:
+
+| Métrica B | Baseline | Candidato | Cambio |
+| --- | ---: | ---: | ---: |
+| Host medio, % de un core | 37,65 | 37,98 | +0,9 % |
+| Host p95, % de un core | 83,02 | 85,79 | +3,3 % |
+| Host máximo, % de un core | 151,95 | 166,15 | **+9,3 %** |
+| Árbol medio, % de un core | 141,16 | 141,63 | +0,3 % |
+| Árbol p95, % de un core | 223,91 | 226,64 | +1,2 % |
+| Renderer medio, % de un core | 56,81 | 57,96 | +2,0 % |
+| Renderer p95, % de un core | 113,11 | 118,93 | **+5,1 %** |
+| `TaskDuration` | 10,079 s | 9,873 s | -2,0 % |
+| `ScriptDuration` | 2,775 s | 2,777 s | +0,1 % |
+| Pulls/s | 43,49 | 44,00 | +1,2 % |
+| rAF p99 / máximo | 8,5 / 9,4 ms | 8,5 / 9,6 ms | estable |
+| Frames >32 ms / long tasks | 0 / 0 | 0 / 0 | igual |
+
+`pprof` tampoco acreditó la victoria de CPU: la mediana acumulada de
+`Hub.ReplaySnapshot` bajó 0,62 -> 0,56 s (-9,7 %, aún bajo el 10 %) y
+`json.Marshal` pasó 1,89 -> 1,94 s (+2,6 %). Los máximos de proceso son más
+ruidosos que la media y el p95, pero el gate era vinculante antes de medir. El
+candidato no mejoró la CPU del host y dos secundarios superaron 5 %. Por tanto
+queda **NO-GO**, se retiró completo de producción y tests, y no se presenta la
+reducción aislada de B/op como optimización entregada.
 
 ### Artefactos y método reproducible
 
@@ -200,14 +271,32 @@ corresponden a los mismos artefactos sin versionar traces grandes:
 | `hub-delay-02.trace.json` | 19.560.003 | `E9DD515F8C5CD1FE8EEEDE72753E76B61A9E41000BD8D630B18CE1848DB33A4E` |
 | `overlay-delay-01.json` | 78.670 | `4024267CE3DD463F2F4FB534F071B22A2D89F36851993F943F280ADFC5C56A89` |
 | `overlay-delay-01.trace.json` | 33.879.444 | `A9A595494B8C40F185BC7DAD16C5A1F08853747D4121CC9C48F1F510A2BAA004` |
+| `vantare-isa912-copy-overlay-20260828172054.pprof` | 45.923 | `E9299E4DCBACD246DDE47D354ACD6A37D06A2C455677D39F7FC397847CCC6C14` |
+| `vantare-isa912-copy-overlay-20260828172054.json` | 78.883 | `E2A8F235191A6F279E6E3DAB1EE844B74917AE55D38F67E9FDA779668E361B49` |
+| `vantare-isa912-copy-overlay-20260828172054.trace.json` | 53.827.101 | `83AF39656215EEC36478BE8A66E10CAC0B7105BBC67896C01F8E46B4400C06A4` |
+| `vantare-isa912-baseline-overlay-20260828172917.pprof` | 51.188 | `9DA937F95879567AD789C1CE1EC3774F4BB8265014EE7F500007B342406748AD` |
+| `vantare-isa912-baseline-overlay-20260828172917.json` | 79.149 | `1558949F3B08AFCCD3B4E94607D916DDB463983453DE2FE976E630780EC5F756` |
+| `vantare-isa912-baseline-overlay-20260828172917.trace.json` | 56.750.810 | `57AF3257B5CD6585BE768361CFCBD877CE111AF7BE413BF7F3B8FDFF10630617` |
+| `vantare-isa912-candidate2-overlay-20260828173122.pprof` | 44.892 | `3FEB55B18F23581914EC40AC3E8D7ECC9279A0C64335215F00104007E2E0C167` |
+| `vantare-isa912-candidate2-overlay-20260828173122.json` | 79.037 | `955C11C227A736C2B142E7DEC851E42B3CE43A777FCADCD567741B28E4F3EB52` |
+| `vantare-isa912-candidate2-overlay-20260828173122.trace.json` | 54.816.637 | `E0D03C69363A009264F65AEA701565B0D42A61E1324E42124B3B58FAAE33B072` |
+| `vantare-isa912-baseline3-overlay-20260828173307.pprof` | 47.085 | `B8883730886D4FB871E0B0F3081DFE07D44225F0F2A64CD153B240DE031155A0` |
+| `vantare-isa912-baseline3-overlay-20260828173307.json` | 79.023 | `40C4F0D561745D5E49E2FC2E9BF6D3CFD840F6349DB35FE82F55285F6A13A8CC` |
+| `vantare-isa912-baseline3-overlay-20260828173307.trace.json` | 53.564.951 | `1BE5136E8E4CBF360D6555A55E8C0C7926532739FFCE048F706D19996C03FEA1` |
+| `vantare-isa912-candidate3-overlay-20260828173455.pprof` | 47.870 | `7CDB2E6EAE89410B8A8B327EEBF1FB4A637BBE8C16968CFCD883C47DFC8DECAB` |
+| `vantare-isa912-candidate3-overlay-20260828173455.json` | 79.106 | `FEA4283FF9795D49BFADCC6F50301330795823F4CE09FA24BB234F19CEBDB5A5` |
+| `vantare-isa912-candidate3-overlay-20260828173455.trace.json` | 55.389.810 | `0E13165180A7C47F63263E307AC005B546EFC6AD2C8EAFFB58B065F9DE8637E5` |
+| `vantare-isa912-baseline4-overlay-20260828173845.pprof` | 48.274 | `3F5954B73EE1663E6405565B7B5BE378FF1981BFCCAE470E68713113353E7C0D` |
+| `vantare-isa912-baseline4-overlay-20260828173845.json` | 79.129 | `7022CA806B532A151046E946B270A6909C78A68762A3C5C7EC65A5902A6C7A51` |
+| `vantare-isa912-baseline4-overlay-20260828173845.trace.json` | 54.591.968 | `FAF6EF8952DEB4F8BA6FCA542B4EF750E8AD4F5B763F94583EB59F8DD84F5DE2` |
 
 Al aparecer el fichero pprof, el sampler enumeró el PID host y sus descendientes
 con `Win32_Process`, clasificó `browser`, `renderer`, `gpu-process`, `utility` y
-`crashpad-handler` desde `--type`, tomó `CPU` acumulada y Private Bytes mediante
-`Get-Process`, esperó 30 s y repitió sobre los mismos PID. El porcentaje de un
-core es `100 * (CPU_final - CPU_inicial) / segundos_reales`. En esta primera
-repetición solo se conservaron los extremos mostrados, no la serie a 100 ms; el
-gate de tres deberá persistir esa serie antes de aceptar el A/B.
+`crashpad-handler` desde `--type`, y tomó CPU acumulada y Private Bytes a 100 ms.
+El porcentaje medio de un core es
+`100 * (CPU_final - CPU_inicial) / segundos_reales`; p95 y máximo proceden de
+los deltas de cada intervalo. Las tres series actuales de cada variante
+conservaron 169-176 muestras, además de 61 muestras CDP por captura.
 
 ## Matriz reproducible
 
@@ -258,12 +347,12 @@ complejidad.
 
 1. Instrumentación sin cambio de comportamiento.
 2. Baseline atribuible dual V1+V2.
-3. Evitar que el Hub reserialice el evento V1 ya codificado en cada pull, sin
-   cambiar su contrato, y medir el mismo estado.
-4. Regresión automatizada y repetición A/B.
-5. #893 promueve V2 con paridad de todos los widgets.
-6. #894 demuestra consumidores V1 cero y retira V1.
-7. Perfil final sin V1 para cuantificar el beneficio real.
+3. Cache en publicación: NO-GO porque desplaza trabajo a una frecuencia mayor.
+4. Copia superficial previa al marshal: NO-GO tras el A/B de tres repeticiones.
+5. Elegir el siguiente corte solo desde un hotspot que pueda superar el gate.
+6. #893 promueve V2 con paridad de todos los widgets.
+7. #894 demuestra consumidores V1 cero y retira V1.
+8. Perfil final sin V1 para cuantificar el beneficio real.
 
 No se mezclan lifecycle #896, CSS/blur, flags GPU, rediseño visual, nueva
 arquitectura, dependencias ni cambios indiscriminados de cadencia.

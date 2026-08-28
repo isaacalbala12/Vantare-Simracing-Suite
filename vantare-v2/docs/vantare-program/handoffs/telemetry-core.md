@@ -124,13 +124,22 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   y scheduler siguen sin atribuir. CDP observó 43,63 pulls/s, rAF p99 <=8,6 ms, cero frames >32
   ms y cero long tasks. Su tracing infló transitoriamente la memoria del
   renderer; una ventana posterior sin CDP la acotó en 143,6 -> 149,8 MiB y el
-  árbol en 95,36 % de un core. Es una repetición, no el gate de tres: no
-  autoriza aún retirar V1 antes de #893/#894. La siguiente hipótesis acotada es
-  retener en el Hub el evento V1 ya codificado para que cada pull no vuelva a
-  serializar el mismo `Envelope`; no cambia datos, consumidores ni render. Los
-  perfiles y traces locales quedan inventariados por nombre, tamaño y SHA-256 en
-  el expediente; la serie de proceso a 100 ms sigue pendiente para el gate de
-  tres. La revisión adversarial final Fable 5 sobre `a163eafc` (thread
+  árbol en 95,36 % de un core. No autoriza retirar V1 antes de #893/#894. La
+  hipótesis de retener en el Hub el evento V1 ya codificado quedó rechazada
+  antes de integrar: habría movido el marshal desde 43,63 pulls/s a
+  aproximadamente 64 publicaciones/s, también con Hub solo, mientras el
+  benchmark excluía la publicación del reloj. El segundo candidato mantuvo la
+  codificación a demanda y eliminó solo la copia profunda previa al marshal. A
+  44 coches redujo B/op un 24,0 % en V1-only y un 21,5 % en dual, pero la matriz
+  Wails/LMU de tres repeticiones no superó el gate runtime. Las medianas fueron
+  host 37,65 -> 37,98 % de un core, árbol 141,16 -> 141,63 %, renderer p95
+  113,11 -> 118,93 % (+5,1 %) y máximo host 151,95 -> 166,15 % (+9,3 %).
+  `TaskDuration` bajó solo 2,0 %, `ScriptDuration` quedó igual, rAF p99 permaneció
+  en 8,5 ms y hubo cero frames >32 ms/long tasks. `ReplaySnapshot` bajó 9,7 %
+  en pprof, aún bajo el 10 %. El gate vinculante lo deja NO-GO; se retiró todo
+  el cambio productivo y sus tests. Los perfiles, traces y tres series a 100 ms
+  por variante quedan inventariados por nombre, tamaño y SHA-256 en el
+  expediente. La revisión adversarial final Fable 5 sobre `a163eafc` (thread
   `3d850815-4ef3-4af6-9257-1a28fb4212f2`) no encontró bloqueos de lifecycle,
   concurrencia, benchmark ni arquitectura. Sí detectó que la atribución textual
   excedía los segundos explicados, que el test del entorno podía convertir una

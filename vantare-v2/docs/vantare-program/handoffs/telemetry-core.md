@@ -26,11 +26,19 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   entregado al `WidgetVisualHost` compartido detrás de las flags existentes.
   Las regresiones cubren status sin frame, alta tardía, revisión monotónica,
   reinicio/rollback, StrictMode y consumidor con una sola petición pendiente.
+  `274b632d` evita deliveries vacíos, aplica pacing 16/100/250 ms y reinicia el
+  cursor V2 al abrir una nueva sesión Studio. La reproducción stale bajó del
+  busy-poll de 1.744 requests/15 s al backoff acotado; una prueba real LMU
+  Practice pintó 18 participantes y completó Mock -> Live sin errores de
+  revisión, siempre con `maxInFlight=1`. En 30 s el browser WebView2 se mantuvo
+  entre ~39,6 y 41,5 MiB; es evidencia corta, no el soak de retirada.
   Rama `vantareapp/isa-891-overlay-v2-studio-lifecycle` sobre
   `nightly@741d31bf`. `go test ./...`, 418 archivos/3.148 tests frontend,
   typecheck, build frontend, contrato generado, ESLint del diff, 23 tests de
-  roadmap, 64 de comunicaciones y build Wails Windows están verdes. Pendiente
-  prueba LMU/Wails real y PR. No retira V1 ni cambia la autoridad visual.
+  roadmap, 64 de comunicaciones y build Wails Windows estaban verdes antes del
+  último corte; deben repetirse sobre HEAD antes del PR. La auditoría abrió
+  ISA-896 para corregir Desktop+OBS bajo StrictMode/remount; el PR parcial #857
+  no está en Nightly. No retira V1 ni cambia la autoridad visual. Pendiente PR.
 
 - 2026-08-27, ISA-889 corrige el bloqueo permanente del Overlay despues de un
   reconnect LMU. El transporte acotado de ISA-879 puede entregar como primer

@@ -6,7 +6,9 @@
   "technicalNotes": [
     "Studio comparte una única sesión pull para las proyecciones V1 y V2 y deja de registrar frames en el bus global de Wails.",
     "Overlay V2 retiene solo el último estado de lifecycle; los frames siguen existiendo únicamente mientras hay un consumidor.",
-    "El contrato Go y TypeScript limita el lifecycle a los ocho estados canónicos y rechaza valores desconocidos."
+    "El contrato Go y TypeScript limita el lifecycle a los ocho estados canónicos y rechaza valores desconocidos.",
+    "Un pull sin cambios no crea delivery ni avanza el ack; Studio reduce el sondeo cuando queda idle y mantiene una sola petición en vuelo.",
+    "Cada nueva sesión Live reinicia el cursor V2 local para no rechazar el primer estado retenido después de cambiar desde Mock."
   ],
   "testing": [
     "Abrir Overlay Studio, seleccionar Live con LMU activo y comprobar que los widgets continúan actualizándose.",

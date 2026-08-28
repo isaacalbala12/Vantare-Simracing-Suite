@@ -8,13 +8,19 @@ Rama: `vantareapp/isa-891-overlay-v2-studio-lifecycle`.
 
 ## Problemas confirmados
 
-La auditoría previa a retirar Overlay V1 encontró dos huecos concretos:
+La auditoría previa a retirar Overlay V1 encontró cuatro huecos concretos:
 
 - Desktop consumía V1 y V2 mediante el pull HTTP acotado de ISA-879, pero
   Studio seguía registrando la proyección V1 en el bus global de Wails.
 - Overlay V2 solo publicaba desde `WriteBatch`. Una transición de lifecycle sin
   un frame posterior no llegaba y una ventana que se registraba tarde no podía
   recuperar el estado actual.
+- Un pull sin cambios respondía inmediatamente con `events: []`. Studio volvía
+  a pedir en el siguiente turno y alcanzó 1.744 requests en 15 segundos cuando
+  la fuente estaba stale, aunque seguía existiendo una única petición en vuelo.
+- Al cambiar Mock -> Live sin remontar Studio, el store conservaba la revisión
+  alta de la sesión anterior. El primer status retenido de la sesión nueva
+  podía tener una revisión menor y era rechazado como contrato regresivo.
 
 El segundo hueco también permitía cualquier string como `source.state` en la
 frontera TypeScript. Al cerrarla aparecieron dos literales inválidos que el
@@ -39,6 +45,18 @@ estado V2 cruza el provider de Studio como `WidgetRuntimeInput` puro hasta el
 `WidgetVisualHost` compartido. Las flags V2 siguen apagadas por defecto: este
 corte no cambia la autoridad visual ni retira V1.
 
+Cuando no hay eventos, Go responde sin crear una entrega ni avanzar el ack. El
+cliente mantiene `single-in-flight`, espera 16 ms durante actividad, pasa a
+100 ms tras tres respuestas vacías y reintenta errores a 250 ms. Se probó y
+descartó mantener abierta la petición hasta un cambio: el asset server Wails
+serializa esa ruta con otras llamadas de la ventana, por lo que el corte final
+no añade goroutines, channels ni requests retenidas.
+
+Cada nueva sesión dirigida de Studio reinicia exclusivamente el cursor y los
+diagnósticos del store V2 antes de registrar listeners. Así una revisión de una
+sesión anterior no contamina la siguiente; el store y el contrato siguen siendo
+los mismos y no aparece una segunda fuente de verdad.
+
 ## Regresiones deterministas
 
 - status V2 sin consumidor no activa el publisher de frames;
@@ -51,12 +69,19 @@ corte no cambia la autoridad visual ni retira V1.
 - un fallo al arrancar V1 revierte todos los listeners;
 - bajo StrictMode y una respuesta pull que nunca termina hay exactamente una
   petición en vuelo, un solo cierre y cero eventos globales de proyección;
+- una respuesta sin eventos no crea delivery ni avanza el ack, y el siguiente
+  cambio se recoge con el mismo cursor;
+- el cliente aplica pacing activo, backoff idle y retry de error sin abrir una
+  segunda petición;
+- una sesión Studio nueva acepta su primera revisión aunque la anterior hubiese
+  terminado con una revisión superior;
 - el runtime V2 puro llega al único `WidgetVisualHost` de Studio.
 
 ## Evidencia local del corte
 
-- Commits funcionales: `6bd72d37398dfb6eaed80fbfdfdbe57bc61ff47e`
-  y `f6269aaf1a6b71b0ac3c17589d00ec0ea1b4e5c2`.
+- Commits funcionales: `6bd72d37398dfb6eaed80fbfdfdbe57bc61ff47e`,
+  `f6269aaf1a6b71b0ac3c17589d00ec0ea1b4e5c2` y
+  `274b632d5e0ae4476a45059971599cb79cc977e3`.
 - Paquetes Go `overlayv2`, `telemetrytransport` y `internal/app`: PASS.
 - Tests frontend enfocados: PASS, 6 archivos y 78 tests.
 - `go test ./...`: PASS.
@@ -74,10 +99,36 @@ corte no cambia la autoridad visual ni retira V1.
   `cmd/vantare/supabase_build.go` al finalizar; no quedó diff generado.
 - `git diff --check`: PASS.
 
+## Prueba LMU/Wails real
+
+La build aislada `vantare-isa891-debug5.exe`, generada por la tarea canónica
+con canal Nightly y configuración pública embebida solo en memoria, se abrió en
+Studio Live contra LMU Practice. Pintó `PRACTICE`, 18 participantes, Isaac
+Albala P18 en boxes, Standings completo y el player en Relative. Delta se
+mantuvo explícitamente no disponible porque LMU no aportaba una referencia
+válida en ese momento; no se inventó un fallback.
+
+La ventana usó una sola fuente pull para V1 y V2. Una muestra Live de cinco
+segundos recibió 190 respuestas, todas con la proyección V1 y el snapshot V2,
+`source.state=live` y frame presente. Un ciclo Mock -> Live posterior recibió
+103 respuestas en tres segundos, siempre con máximo una petición en vuelo, sin
+`invalid-contract:revision` ni errores de consola. En Mock hubo cero requests
+pull, acreditando que el consumidor se cerró.
+
+En una observación continua de 30 segundos hubo 1.080 requests y 1.079
+respuestas, siempre `maxInFlight=1`. Los Private Bytes del proceso browser
+WebView2 se mantuvieron aproximadamente entre 39,6 y 41,5 MiB; el renderer
+osciló entre 146,6 y 226 MiB y volvió a ~154 MiB tras GC. Es una comprobación
+corta de acotación y continuidad, no el soak prolongado requerido para borrar
+V1.
+
 ## Límites de esta evidencia
 
-Los tests deterministas acreditan memoria y colas acotadas en la frontera que
-controla Vantare, pero no sustituyen una prueba Wails/WebView2 real. Antes de
-cerrar ISA-891 falta una sesión LMU real verificando Studio Live. Retirar V1,
-promover V2 a autoridad y corregir Relative pertenecen respectivamente a
-ISA-894, ISA-893 e ISA-892.
+La prueba real acredita este corte y elimina el bloqueo de validación de
+ISA-891, pero dura 30 segundos y no acredita por sí sola estabilidad prolongada
+ni la retirada de V1. ISA-894 mantiene cinco sesiones LMU de al menos 20 minutos
+(una con más de 40 coches), memoria acotada y cero consumidores V1 como puertas
+de borrado. Promover V2 a autoridad y corregir Relative pertenecen a ISA-893 e
+ISA-892. La revisión también abrió ISA-896: Desktop y OBS deben corregir su
+lifecycle irreversible bajo StrictMode/remount antes del cutover y de retirar
+V1; el PR parcial #857 no está integrado en Nightly.

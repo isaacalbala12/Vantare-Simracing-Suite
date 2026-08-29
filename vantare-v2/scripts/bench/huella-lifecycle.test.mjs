@@ -31,3 +31,11 @@ test("HubMin mide la reapertura después de finalizar las muestras", () => {
   assert.match(bench, /\$stem-hub-reopen\.json/);
   assert.match(cdpHelper, /await writeResult\(\{ schema: "vantare\.huella\.cdp\.v1", action, requested: true, reopenMs \}\)/);
 });
+
+test("el modo sin juego conserva RAM/CDP y omite solo PresentMon", () => {
+  assert.match(bench, /\[switch\]\$SinJuego/);
+  assert.match(bench, /measurementMode = if \(\$SinJuego\) \{ 'ram-only-no-game' \}/);
+  assert.match(bench, /\$publishable = -not \$hygieneForced -and -not \[bool\]\$SinJuego/);
+  assert.match(bench, /if \(-not \$SinJuego\) \{\s*\$presentMonArgs/);
+  assert.match(bench, /PresentMon omitido: corrida RAM-only sin juego/);
+});

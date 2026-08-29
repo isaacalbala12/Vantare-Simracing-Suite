@@ -10,6 +10,7 @@ param(
     [int]$Puerto = 9247,
     [string]$Juego = 'Le Mans Ultimate',
     [string]$Salida = 'results',
+    [switch]$SinJuego,
     [switch]$Forzar,
     [switch]$DryRun
 )
@@ -70,9 +71,11 @@ $plan = [ordered]@{
     profile = $profilePath
     durationSeconds = $Duracion
     cdpPort = $Puerto
-    game = $Juego
+    game = if ($SinJuego) { $null } else { $Juego }
+    gamePresent = -not [bool]$SinJuego
+    measurementMode = if ($SinJuego) { 'ram-only-no-game' } else { 'full' }
     outputDirectory = $outputDir
-    presentMon = $presentMonPath
+    presentMon = if ($SinJuego) { $null } else { $presentMonPath }
     presentMonUserPathPersisted = $presentMonDirectory -in $userPathParts
     expectedWidgets = $expectedWidgetCount
     forceHygiene = [bool]$Forzar
@@ -90,7 +93,7 @@ if (Test-Path -LiteralPath $standalonePresentMon) {
         $env:Path = "$env:Path;$presentMonDirectory"
     }
 }
-if (-not $presentMonPath) {
+if (-not $presentMonPath -and -not $SinJuego) {
     throw 'PresentMon 2.x no está en PATH ni en la ruta standalone documentada. Instala Intel.PresentMon antes de medir.'
 }
 if (Get-NetTCPConnection -LocalPort $Puerto -State Listen -ErrorAction SilentlyContinue) {
@@ -109,7 +112,8 @@ $systemWebView2Paths = @($systemWebView2.userDataDir | Where-Object { $_ } | Sor
 $systemWebView2PathsJson = if ($systemWebView2Paths.Count) { $systemWebView2Paths | ConvertTo-Json -Compress -AsArray } else { '[]' }
 $foreignProcessesJson = if ($foreignBrowsers.Count) { $foreignBrowsers | ConvertTo-Json -Compress -Depth 3 } else { '[]' }
 $hygieneForced = [bool]$Forzar
-$publishable = -not $hygieneForced
+$measurementMode = if ($SinJuego) { 'ram-only-no-game' } else { 'full' }
+$publishable = -not $hygieneForced -and -not [bool]$SinJuego
 Write-Host "WebView2 del sistema permitidos: $($systemWebView2.Count)"
 $systemWebView2Paths | ForEach-Object { Write-Host "  $_" }
 if ($foreignBrowsers.Count -gt 0) {
@@ -125,10 +129,13 @@ if ($Forzar) {
     Write-Host "Procesos ajenos registrados: $($foreignBrowsers.Count)" -ForegroundColor Red
     Write-Host '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!' -ForegroundColor Red
 }
+if ($SinJuego) {
+    Write-Host 'RAM-ONLY SIN JUEGO: sin PresentMon ni frametime; no publicable como protocolo completo.' -ForegroundColor Yellow
+}
 
-$gameProcessName = [IO.Path]::GetFileNameWithoutExtension($Juego)
-$gameProcess = Get-Process -Name $gameProcessName -ErrorAction SilentlyContinue | Select-Object -First 1
-if (-not $gameProcess) { throw "No se encontró el juego '$Juego'; PresentMon necesita un proceso vivo." }
+$gameProcessName = if ($SinJuego) { $null } else { [IO.Path]::GetFileNameWithoutExtension($Juego) }
+$gameProcess = if ($SinJuego) { $null } else { Get-Process -Name $gameProcessName -ErrorAction SilentlyContinue | Select-Object -First 1 }
+if (-not $SinJuego -and -not $gameProcess) { throw "No se encontró el juego '$Juego'; PresentMon necesita un proceso vivo." }
 
 New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
 $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
@@ -158,7 +165,7 @@ $previousCpu = @{}
 $previousAt = Get-Date
 $logicalProcessors = [Environment]::ProcessorCount
 $exeName = [IO.Path]::GetFileName($exePath)
-$gameExeName = "$gameProcessName.exe"
+$gameExeName = if ($SinJuego) { $null } else { "$gameProcessName.exe" }
 
 function Get-OwnCimProcesses {
     @(Get-CimInstance Win32_Process | Where-Object {
@@ -307,8 +314,10 @@ try {
     $roleByPid = Update-ProcessClassification
 
     $sessionName = "VantareHuella-$($app.Id)-$stamp"
-    $presentMonArgs = @('--process_name', ('"{0}"' -f $gameExeName), '--output_file', ('"{0}"' -f $presentMonCsv), '--v2_metrics', '--timed', [string]$Duracion, '--terminate_after_timed', '--session_name', $sessionName, '--no_console_stats')
-    $presentMon = Start-Process -FilePath $presentMonPath -ArgumentList $presentMonArgs -RedirectStandardOutput $presentMonLog -RedirectStandardError $presentMonErrorLog -WindowStyle Hidden -PassThru
+    if (-not $SinJuego) {
+        $presentMonArgs = @('--process_name', ('"{0}"' -f $gameExeName), '--output_file', ('"{0}"' -f $presentMonCsv), '--v2_metrics', '--timed', [string]$Duracion, '--terminate_after_timed', '--session_name', $sessionName, '--no_console_stats')
+        $presentMon = Start-Process -FilePath $presentMonPath -ArgumentList $presentMonArgs -RedirectStandardOutput $presentMonLog -RedirectStandardError $presentMonErrorLog -WindowStyle Hidden -PassThru
+    }
 
     foreach ($processId in $roleByPid.Keys) {
         $process = Get-Process -Id $processId -ErrorAction SilentlyContinue
@@ -332,7 +341,7 @@ try {
             $gpuValues = if ($gpuSample.Valid -and $gpuSample.Totals.ContainsKey($processId)) { $gpuSample.Totals[$processId] } else { @{ Engine = 0.0; Dedicated = 0.0 } }
             $rows.Add([pscustomobject][ordered]@{
                 timestamp = $now.ToString('o'); condition = $Condicion; pid = $processId; role = $roleByPid[$processId]
-                hygieneForced = $hygieneForced; foreignProcesses = $foreignProcessesJson; publishable = $publishable
+                hygieneForced = $hygieneForced; foreignProcesses = $foreignProcessesJson; publishable = $publishable; measurementMode = $measurementMode
                 systemWebView2Count = $systemWebView2.Count; systemWebView2Paths = $systemWebView2PathsJson
                 orphanEtwSessionsStopped = $orphanEtwSessionsStoppedJson; gameFrametimeValid = $false; frametimePublishable = $false
                 privateBytes = [int64]$process.PrivateMemorySize64; workingSetBytes = [int64]$process.WorkingSet64
@@ -378,7 +387,7 @@ try {
             $rows.Add([pscustomobject][ordered]@{
                 timestamp = [string]$frame.CPUStartTime
                 condition = $Condicion; pid = $gameProcess.Id; role = 'game'; privateBytes = $null; workingSetBytes = $null
-                hygieneForced = $hygieneForced; foreignProcesses = $foreignProcessesJson; publishable = $publishable
+                hygieneForced = $hygieneForced; foreignProcesses = $foreignProcessesJson; publishable = $publishable; measurementMode = $measurementMode
                 systemWebView2Count = $systemWebView2.Count; systemWebView2Paths = $systemWebView2PathsJson
                 orphanEtwSessionsStopped = $orphanEtwSessionsStoppedJson; gameFrametimeValid = $false; frametimePublishable = $false
                 cpuPct = $null; gpuSampleValid = $null; gpuPct = $null; gpuDedicatedBytes = $null; frameTimeMs = Format-Invariant ([double]$frameValue)
@@ -388,6 +397,8 @@ try {
         $gameFrametimeValid = $validPresentMonFrames -gt 0
         $droppedPercent = if ($validPresentMonFrames) { 100 * $droppedFrames / $validPresentMonFrames } else { 0 }
         Write-Host ("Frames perdidos: {0}/{1} ({2:N3} %)" -f $droppedFrames, $validPresentMonFrames, $droppedPercent)
+    } elseif ($SinJuego) {
+        Write-Host 'PresentMon omitido: corrida RAM-only sin juego.'
     } else {
         Write-Warning 'PresentMon no produjo CSV; el resumen conservará las métricas de Vantare y marcará frametime ausente.'
     }

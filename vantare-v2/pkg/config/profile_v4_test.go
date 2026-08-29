@@ -92,6 +92,38 @@ func TestProfileV4PerformanceRoundTrip(t *testing.T) {
 	}
 }
 
+func TestProfileV4StoreRejectsFutureSchemaWithoutChangingFile(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "future.json")
+	original := []byte(`{
+  "schemaVersion": 5,
+  "id": "future-profile",
+  "name": "Future profile",
+  "layouts": {
+    "general": {
+      "type": "general",
+      "widgets": [{"id":"future-widget","type":"delta"}]
+    }
+  }
+}`)
+	if err := os.WriteFile(path, original, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := (ProfileDocumentStore{}).LoadV4(path)
+	if err == nil || !strings.Contains(err.Error(), "schemaVersion 5 no soportado") {
+		t.Fatalf("LoadV4() error = %v, want unsupported future schema", err)
+	}
+
+	after, readErr := os.ReadFile(path)
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+	if string(after) != string(original) {
+		t.Fatal("future profile changed after rejected load")
+	}
+}
+
 func TestProfileV4ReaderAcceptsEveryRepositoryProfileFixture(t *testing.T) {
 	roots := []string{filepath.Join("..", "..", "configs"), filepath.Join("..", "..", "testdata")}
 	count := 0

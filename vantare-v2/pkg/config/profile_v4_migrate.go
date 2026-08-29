@@ -12,7 +12,8 @@ func MigrateProfileJSONToV4(data []byte) (*ProfileDocumentV4, int, []ProfileMigr
 	if err := json.Unmarshal(data, &envelope); err != nil {
 		return nil, 0, nil, fmt.Errorf("parse profile envelope: %w", err)
 	}
-	if envelope.SchemaVersion == ProfileSchemaVersionV4 {
+	switch envelope.SchemaVersion {
+	case ProfileSchemaVersionV4:
 		var doc ProfileDocumentV4
 		if err := json.Unmarshal(data, &doc); err != nil {
 			return nil, 0, nil, fmt.Errorf("parse profile v4: %w", err)
@@ -22,6 +23,10 @@ func MigrateProfileJSONToV4(data []byte) (*ProfileDocumentV4, int, []ProfileMigr
 			return nil, 0, nil, err
 		}
 		return normalized, ProfileSchemaVersionV4, nil, nil
+	case 0, 1, ProfileSchemaVersionV2, ProfileSchemaVersionV3:
+		// Accepted legacy versions are migrated through the V3 compatibility reader.
+	default:
+		return nil, 0, nil, fmt.Errorf("schemaVersion %d no soportado", envelope.SchemaVersion)
 	}
 
 	legacy, from, err := MigrateProfileJSONToV3(data)

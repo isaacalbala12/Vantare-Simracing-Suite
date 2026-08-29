@@ -1,6 +1,6 @@
 {
-  "schema": "vantare.isa-893.wails-v2.v1",
-  "capturedAt": "2026-08-29T23:17:47.721Z",
+  "schema": "vantare.isa-893.wails-v2.v2",
+  "capturedAt": "2026-08-29T23:49:58.922Z",
   "cdp": "http://127.0.0.1:9243",
   "expectedWidgetCount": 20,
   "url": "http://wails.localhost/",
@@ -9,7 +9,11 @@
     {
       "id": "bench-delta",
       "type": "delta",
-      "painted": true,
+      "mounted": true,
+      "rendered": true,
+      "hiddenBySource": false,
+      "classification": "rendered",
+      "rendererSelector": "[data-widget-renderer=\"delta\"]",
       "text": "DELTA——",
       "diagnosticCodes": [],
       "rendererError": null
@@ -17,15 +21,23 @@
     {
       "id": "bench-standings",
       "type": "standings",
-      "painted": true,
-      "text": "PRACTICE05:39:50PosiciónNúmeroPilotoGapÚltima vuelta1Robin FrijnsLeader—2Alessandro Pier Guidi—2:27.1493Jules Gounon+2L2:25.6824Mike Conway+2L2:27.1265Alex Ribe",
+      "mounted": true,
+      "rendered": true,
+      "hiddenBySource": false,
+      "classification": "rendered",
+      "rendererSelector": "[data-widget-renderer=\"standings\"]",
+      "text": "PRACTICE05:07:39PosiciónNúmeroPilotoGapÚltima vuelta1Mike ConwayLeader2:26.3402Antonio Fuoco+8L2:30.2193Tom Gamble—2:33.1414Dries Vanthoor+5L2:28.2385Robin Frij",
       "diagnosticCodes": [],
       "rendererError": null
     },
     {
       "id": "bench-relative",
       "type": "relative",
-      "painted": true,
+      "mounted": true,
+      "rendered": true,
+      "hiddenBySource": false,
+      "classification": "rendered",
+      "rendererSelector": "[data-widget-renderer=\"relative\"]",
       "text": "VANTARERELATIVE18Isaac Albala——",
       "diagnosticCodes": [],
       "rendererError": null
@@ -33,7 +45,11 @@
     {
       "id": "bench-pedals",
       "type": "pedals",
-      "painted": true,
+      "mounted": true,
+      "rendered": true,
+      "hiddenBySource": false,
+      "classification": "rendered",
+      "rendererSelector": "[data-widget-renderer=\"pedals\"]",
       "text": "C0%B100%T0%",
       "diagnosticCodes": [],
       "rendererError": null
@@ -41,15 +57,23 @@
     {
       "id": "bench-broadcast-tower",
       "type": "broadcast-tower",
-      "painted": true,
-      "text": "STANDINGSPRACTICE1—Robin FrijnsHyper0.0002—Alessandro Pier GuidiHyper0.0003—Jules GounonHyper0.0004—Mike ConwayHyper0.0005—Alex RiberasHyper47.401LAP —",
+      "mounted": true,
+      "rendered": true,
+      "hiddenBySource": false,
+      "classification": "rendered",
+      "rendererSelector": "[data-widget-renderer=\"broadcast-tower\"]",
+      "text": "STANDINGSPRACTICE1—Mike ConwayHyper0.0002—Antonio FuocoHyper0.0003—Tom GambleHyper0.0004—Dries VanthoorHyper0.0005—Robin FrijnsHyper—LAP —",
       "diagnosticCodes": [],
       "rendererError": null
     },
     {
       "id": "bench-fuel-strategy",
       "type": "fuel-strategy",
-      "painted": true,
+      "mounted": true,
+      "rendered": true,
+      "hiddenBySource": false,
+      "classification": "rendered",
+      "rendererSelector": "[data-widget-renderer=\"fuel-strategy\"]",
       "text": "FUEL STRATEGY97.0 LAVG —LAPS —NEEDED —",
       "diagnosticCodes": [],
       "rendererError": null
@@ -57,7 +81,11 @@
     {
       "id": "bench-pedals-telemetry",
       "type": "pedals-telemetry",
-      "painted": true,
+      "mounted": true,
+      "rendered": true,
+      "hiddenBySource": false,
+      "classification": "rendered",
+      "rendererSelector": "[data-widget-renderer=\"pedals-telemetry\"]",
       "text": "00KM/H0RPM—POSC0%B100%T0%",
       "diagnosticCodes": [],
       "rendererError": null
@@ -65,7 +93,11 @@
     {
       "id": "bench-pedals-telemetry-compact",
       "type": "pedals-telemetry-compact",
-      "painted": true,
+      "mounted": true,
+      "rendered": true,
+      "hiddenBySource": false,
+      "classification": "rendered",
+      "rendererSelector": "[data-widget-renderer=\"pedals-telemetry-compact\"]",
       "text": "0GEAR0KM/H0RPMBTC",
       "diagnosticCodes": [],
       "rendererError": null
@@ -73,7 +105,11 @@
     {
       "id": "bench-racing-flags",
       "type": "racing-flags",
-      "painted": true,
+      "mounted": true,
+      "rendered": true,
+      "hiddenBySource": false,
+      "classification": "rendered",
+      "rendererSelector": "[data-widget-renderer=\"racing-flags\"]",
       "text": "NO FLAG",
       "diagnosticCodes": [],
       "rendererError": null
@@ -81,7 +117,11 @@
     {
       "id": "bench-delta-trace",
       "type": "delta-trace",
-      "painted": true,
+      "mounted": true,
+      "rendered": true,
+      "hiddenBySource": false,
+      "classification": "rendered",
+      "rendererSelector": "[data-widget-renderer=\"delta-trace\"]",
       "text": "DELTA TRACE—unknown",
       "diagnosticCodes": [],
       "rendererError": null
@@ -89,23 +129,35 @@
     {
       "id": "bench-race-schedule",
       "type": "race-schedule",
-      "painted": true,
-      "text": "RACE SCHEDULELMGT3 Sprint CupBarcelona (ELMS)2026-08-28T23:20:00ZPrototype ClassicSpa-Francorchamps (ELMS)2026-08-28T23:20:00ZELMS Sprint TrophySilverstone (ELM",
+      "mounted": true,
+      "rendered": true,
+      "hiddenBySource": false,
+      "classification": "rendered",
+      "rendererSelector": "[data-widget-renderer=\"race-schedule\"]",
+      "text": "RACE SCHEDULELMGT3 FixedFuji (WEC)2026-08-29T00:00:00ZLMGTE FixedBahrain (WEC)2026-08-29T00:00:00ZLMP3 FixedPortimao (WEC)2026-08-29T00:00:00ZLMGT3 Sprint CupBa",
       "diagnosticCodes": [],
       "rendererError": null
     },
     {
       "id": "bench-head-to-head",
       "type": "head-to-head",
-      "painted": true,
-      "text": "HEAD TO HEAD AHEAD—Isaac Albala0.000s—Antonio Fuoco",
+      "mounted": true,
+      "rendered": true,
+      "hiddenBySource": false,
+      "classification": "rendered",
+      "rendererSelector": "[data-widget-renderer=\"head-to-head\"]",
+      "text": "HEAD TO HEAD AHEAD—Isaac Albala0.000s—Paul di Resta",
       "diagnosticCodes": [],
       "rendererError": null
     },
     {
       "id": "bench-delta-advanced",
       "type": "delta-advanced",
-      "painted": true,
+      "mounted": true,
+      "rendered": true,
+      "hiddenBySource": false,
+      "classification": "rendered",
+      "rendererSelector": "[data-widget-renderer=\"delta-advanced\"]",
       "text": "DELTA ADVANCED—BESTSECTOR —THEORETICAL —LAST —",
       "diagnosticCodes": [],
       "rendererError": null
@@ -113,7 +165,11 @@
     {
       "id": "bench-input-telemetry",
       "type": "input-telemetry",
-      "painted": true,
+      "mounted": true,
+      "rendered": true,
+      "hiddenBySource": false,
+      "classification": "rendered",
+      "rendererSelector": "[data-widget-renderer=\"input-telemetry\"]",
       "text": "INPUT TELEMETRY 4sTHRBRACLUSPD 0RPM 0G 0",
       "diagnosticCodes": [],
       "rendererError": null
@@ -121,15 +177,23 @@
     {
       "id": "bench-multiclass-relative",
       "type": "multiclass-relative",
-      "painted": true,
-      "text": "RELATIVE MULTICLASS14—Paul di Resta0.00015—Sébastien Buemi0.00016—Dries Vanthoor0.00017—Antonio Fuoco0.00018—Isaac Albala0.000",
+      "mounted": true,
+      "rendered": true,
+      "hiddenBySource": false,
+      "classification": "rendered",
+      "rendererSelector": "[data-widget-renderer=\"multiclass-relative\"]",
+      "text": "RELATIVE MULTICLASS14—António Félix da Costa—15—Paul-Loup Chatin0.00016—Loïc Duval0.00017—Paul di Resta0.00018—Isaac Albala0.000",
       "diagnosticCodes": [],
       "rendererError": null
     },
     {
       "id": "bench-track-weather",
       "type": "track-weather",
-      "painted": true,
+      "mounted": true,
+      "rendered": true,
+      "hiddenBySource": false,
+      "classification": "rendered",
+      "rendererSelector": "[data-widget-renderer=\"track-weather\"]",
       "text": "TRACK WEATHER—AMBIENT —RAIN —WIND —",
       "diagnosticCodes": [],
       "rendererError": null
@@ -137,7 +201,11 @@
     {
       "id": "bench-car-damage-visual",
       "type": "car-damage-visual",
-      "painted": true,
+      "mounted": true,
+      "rendered": true,
+      "hiddenBySource": false,
+      "classification": "rendered",
+      "rendererSelector": "[data-widget-renderer=\"car-damage-visual\"]",
       "text": "CAR DAMAGE—",
       "diagnosticCodes": [],
       "rendererError": null
@@ -145,7 +213,11 @@
     {
       "id": "bench-car-damage-numbers",
       "type": "car-damage-numbers",
-      "painted": true,
+      "mounted": true,
+      "rendered": true,
+      "hiddenBySource": false,
+      "classification": "rendered",
+      "rendererSelector": "[data-widget-renderer=\"car-damage-numbers\"]",
       "text": "DAMAGEAERO —BODY —SUSP —",
       "diagnosticCodes": [],
       "rendererError": null
@@ -153,7 +225,11 @@
     {
       "id": "bench-engineer-radio",
       "type": "engineer-radio",
-      "painted": true,
+      "mounted": true,
+      "rendered": false,
+      "hiddenBySource": true,
+      "classification": "hidden-by-source",
+      "rendererSelector": null,
       "text": "",
       "diagnosticCodes": [],
       "rendererError": null
@@ -161,7 +237,11 @@
     {
       "id": "bench-track-map",
       "type": "track-map",
-      "painted": true,
+      "mounted": true,
+      "rendered": true,
+      "hiddenBySource": false,
+      "classification": "rendered",
+      "rendererSelector": "[data-widget-renderer=\"track-map\"]",
       "text": "Circuit de Spa-Francorchamps",
       "diagnosticCodes": [],
       "rendererError": null
@@ -169,24 +249,24 @@
   ],
   "diagnostics": {
     "overlay_v2_parse_duration": {
-      "count": 512,
-      "p50": 0.3000000002793968,
-      "p99": 0.599999999627471,
+      "count": 246,
+      "p50": 0.39999999944120646,
+      "p99": 0.7000000001862645,
       "nonLiveSamples": 0
     },
     "shadow": {
-      "frames": 556,
-      "mismatches": 1617,
+      "frames": 232,
+      "mismatches": 685,
       "declaredDifferences": 0,
       "framesByPhase": {
-        "live": 556,
+        "live": 232,
         "stale": 0,
         "degraded": 0,
         "no-frame": 0,
         "transition": 0
       },
       "mismatchesByPhase": {
-        "live": 1617,
+        "live": 685,
         "stale": 0,
         "degraded": 0,
         "no-frame": 0,
@@ -194,10 +274,10 @@
       },
       "epochResets": 0,
       "metrics": {
-        "overlay_shadow_mismatches_total{feature=\"player-instruments\",field=\"speedKph\",phase=\"live\"}": 454,
-        "overlay_shadow_mismatches_total{feature=\"standings\",field=\"remainingText\",phase=\"live\"}": 51,
-        "overlay_shadow_mismatches_total{feature=\"standings\",field=\"rows[].currentLapText\",phase=\"live\"}": 556,
-        "overlay_shadow_mismatches_total{feature=\"standings\",field=\"rows[].lastLapText\",phase=\"live\"}": 556
+        "overlay_shadow_mismatches_total{feature=\"player-instruments\",field=\"speedKph\",phase=\"live\"}": 185,
+        "overlay_shadow_mismatches_total{feature=\"standings\",field=\"remainingText\",phase=\"live\"}": 36,
+        "overlay_shadow_mismatches_total{feature=\"standings\",field=\"rows[].currentLapText\",phase=\"live\"}": 232,
+        "overlay_shadow_mismatches_total{feature=\"standings\",field=\"rows[].lastLapText\",phase=\"live\"}": 232
       }
     }
   }

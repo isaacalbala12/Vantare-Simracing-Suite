@@ -26,6 +26,7 @@ const expected = [
   "track-weather", "car-damage-visual", "car-damage-numbers",
   "engineer-radio", "track-map",
 ];
+const sourceConditional = new Set(["engineer-radio"]);
 
 const browser = await chromium.connectOverCDP(cdp);
 const deadline = Date.now() + 30_000;
@@ -53,14 +54,31 @@ const observed = await overlay.evaluate((types) => {
   const widgets = frames.map((frame) => {
     const id = frame.getAttribute("data-widget-id") ?? "";
     const type = types.find((candidate) => id === `bench-${candidate}`) ?? "unknown";
+    const renderer = frame.querySelector(`[data-widget-renderer="${type}"]`);
+    const text = (frame.textContent ?? "").trim().replace(/\s+/g, " ").slice(0, 160);
+    const diagnosticCodes = [...frame.querySelectorAll("[data-diagnostic-code]")]
+      .map((node) => node.getAttribute("data-diagnostic-code"));
+    const mounted = frame.getBoundingClientRect().width > 0
+      && frame.getBoundingClientRect().height > 0;
+    const rendered = renderer !== null;
+    const hiddenBySource = !rendered
+      && type === "engineer-radio"
+      && diagnosticCodes.length === 0
+      && text.length === 0;
     return {
       id,
       type,
-      painted: frame.childElementCount > 0 && frame.getBoundingClientRect().width > 0
-        && frame.getBoundingClientRect().height > 0,
-      text: (frame.textContent ?? "").trim().replace(/\s+/g, " ").slice(0, 160),
-      diagnosticCodes: [...frame.querySelectorAll("[data-diagnostic-code]")]
-        .map((node) => node.getAttribute("data-diagnostic-code")),
+      mounted,
+      rendered,
+      hiddenBySource,
+      classification: rendered
+        ? "rendered"
+        : hiddenBySource
+          ? "hidden-by-source"
+          : "mounted-without-renderer",
+      rendererSelector: rendered ? `[data-widget-renderer="${type}"]` : null,
+      text,
+      diagnosticCodes,
       rendererError: frame.querySelector('[data-testid="widget-render-diagnostic"]')?.textContent ?? null,
     };
   });
@@ -79,8 +97,20 @@ const expectedTypes = [...expected].sort();
 if (JSON.stringify(actualTypes) !== JSON.stringify(expectedTypes)) {
   throw new Error(`unexpected widget catalogue: ${JSON.stringify(actualTypes)}`);
 }
-if (observed.widgets.some((widget) => !widget.painted || widget.rendererError)) {
-  throw new Error(`widget did not paint cleanly: ${JSON.stringify(observed.widgets)}`);
+if (observed.widgets.some((widget) => !widget.mounted || widget.rendererError)) {
+  throw new Error(`widget frame did not mount cleanly: ${JSON.stringify(observed.widgets)}`);
+}
+const missingRenderers = observed.widgets.filter((widget) =>
+  !widget.rendered && !widget.hiddenBySource
+);
+if (missingRenderers.length > 0) {
+  throw new Error(`widget renderer missing: ${JSON.stringify(missingRenderers)}`);
+}
+const unexpectedHidden = observed.widgets.filter((widget) =>
+  widget.hiddenBySource && !sourceConditional.has(widget.type)
+);
+if (unexpectedHidden.length > 0) {
+  throw new Error(`widget unexpectedly hidden by source: ${JSON.stringify(unexpectedHidden)}`);
 }
 const authorityFailures = observed.widgets.flatMap((widget) => widget.diagnosticCodes)
   .filter((code) => code?.startsWith("overlay-v2-") || code === "widget-authority-missing");
@@ -94,7 +124,7 @@ if (!observed.diagnostics
 
 await overlay.screenshot({ path: screenshot, fullPage: true });
 await writeFile(output, `${JSON.stringify({
-  schema: "vantare.isa-893.wails-v2.v1",
+  schema: "vantare.isa-893.wails-v2.v2",
   capturedAt: new Date().toISOString(),
   cdp,
   expectedWidgetCount: expected.length,

@@ -1,11 +1,11 @@
 {
   "schema": "vantare.huella.cdp.v1",
-  "capturedAt": "2026-08-29T23:17:40.332Z",
+  "capturedAt": "2026-08-29T23:49:49.788Z",
   "action": "overlay-start",
   "control": {
     "changed": true,
     "running": true,
-    "emittedAt": "2026-08-29T23:17:29.223Z",
+    "emittedAt": "2026-08-29T23:49:38.473Z",
     "mechanism": {
       "kind": "wails-event",
       "eventName": "overlay:start-active"
@@ -14,10 +14,10 @@
   "durationSeconds": 10,
   "expectedWidgets": 20,
   "renderedWidgets": 20,
-  "overlayReadyAt": "2026-08-29T23:17:30.261Z",
+  "overlayReadyAt": "2026-08-29T23:49:39.702Z",
   "rendererProcessIds": [
-    27184,
-    8892
+    22688,
+    28068
   ],
   "rendererProcessInfoError": null,
   "targets": [
@@ -29,7 +29,7 @@
       "hub": true,
       "widgetCount": 0,
       "probe": {
-        "rafPerSecond": 120.2,
+        "rafPerSecond": 119.9,
         "longTaskCount": 0,
         "longTaskTotalMs": 0,
         "longTaskMaxMs": 0,
@@ -44,7 +44,7 @@
       "hub": false,
       "widgetCount": 20,
       "probe": {
-        "rafPerSecond": 119.9,
+        "rafPerSecond": 118.4,
         "longTaskCount": 0,
         "longTaskTotalMs": 0,
         "longTaskMaxMs": 0,

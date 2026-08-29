@@ -32,10 +32,13 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   fallos ligados a revisión, Calendar productivo, rollback por generación,
   builders V2 de catálogo y diagnósticos productivos. La captura Wails/LMU
   histórica de `cbfb63b8` pintó 20/20, pero precedía esas correcciones. La
-  revalidación final pasó después sobre `4fa01639`: build propia, CDP 9243,
-  user-data separado, 512 frames V2 live, 20/20 tipos pintados y cero errores
-  de renderer o diagnósticos de autoridad. Se cerró limpiamente el PID propio
-  y LMU PID 16792 permaneció intacto. JSON, PNG, hashes y los 20 códigos quedan
+  segunda revalidación pasó sobre `68580bac`: build propia, CDP 9243,
+  user-data separado, 246 frames V2 live y 20/20 frames montados. La sonda
+  exigió el renderer productivo: 19/20 renderizaron; `engineer-radio` quedó
+  correctamente oculto porque no hubo presentación de Engineer, sin inyectar
+  ninguna. Hubo cero errores de renderer, diagnósticos de autoridad o frames
+  sin renderer injustificados. Se cerró limpiamente el PID propio y LMU PID
+  16792 permaneció intacto. JSON, PNG, hashes y los 20 códigos quedan
   en `docs/telemetry-core/evidence/isa-893/wails-runtime-pending.md`. Roadmap:
   `milestones:telemetry-live`. PR #941 sigue draft; sin merge, promoción ni
   release.

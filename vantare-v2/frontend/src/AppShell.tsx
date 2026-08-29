@@ -3,8 +3,17 @@ import { HubApp } from "./hub/HubApp";
 import { OAuthCallbackHandler } from "./hub/auth/OAuthCallbackHandler";
 import { registerBuiltinDesignSystems } from "./hub/registry/builtin-systems";
 import { AuthSessionBridge } from "./lib/AuthSessionBridge";
+import { Events } from "@wailsio/runtime";
+import { installHubSuspendGuard } from "./hub/hub-suspend-guard";
 
 registerBuiltinDesignSystems();
+installHubSuspendGuard({
+  on: (event, handler) => {
+    const unsubscribe = Events.On(event, handler);
+    return () => unsubscribe?.();
+  },
+  emit: (event, payload) => Events.Emit(event, payload),
+});
 
 const CompositeApp = lazy(async () => ({
   default: (await import("./overlay/CompositeApp")).CompositeApp,

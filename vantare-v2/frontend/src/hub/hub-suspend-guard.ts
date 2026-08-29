@@ -3,10 +3,37 @@ export type HubSuspendBridge = {
   emit(event: string, payload: unknown): void;
 };
 
-let studioDirty = false;
+type HubSuspendBlocker = { reason: string; token: symbol };
+
+const blockers = new Map<string, HubSuspendBlocker>();
+let releaseStudioBlocker: (() => void) | null = null;
+
+export function registerHubSuspendBlocker(id: string, reason: string): () => void {
+  const token = Symbol(id);
+  blockers.set(id, { reason, token });
+  return () => {
+    if (blockers.get(id)?.token === token) blockers.delete(id);
+  };
+}
+
+export function unregisterHubSuspendBlocker(id: string): void {
+  blockers.delete(id);
+}
+
+export function getHubSuspendBlockerReasons(): string[] {
+  return [...blockers.values()].map(({ reason }) => reason);
+}
 
 export function setHubStudioDirty(dirty: boolean): void {
-  studioDirty = dirty;
+  if (dirty && !releaseStudioBlocker) {
+    releaseStudioBlocker = registerHubSuspendBlocker(
+      "overlay-studio-dirty",
+      "Studio tiene cambios sin guardar",
+    );
+  } else if (!dirty && releaseStudioBlocker) {
+    releaseStudioBlocker();
+    releaseStudioBlocker = null;
+  }
 }
 
 export function installHubSuspendGuard(bridge: HubSuspendBridge): () => void {
@@ -18,6 +45,11 @@ export function installHubSuspendGuard(bridge: HubSuspendBridge): () => void {
       ? (data as { requestId: unknown }).requestId
       : undefined;
     if (typeof requestId !== "string" || requestId.length === 0) return;
-    bridge.emit("hub:can-suspend:result", { requestId, canSuspend: !studioDirty });
+    const reasons = getHubSuspendBlockerReasons();
+    bridge.emit("hub:can-suspend:result", {
+      requestId,
+      canSuspend: reasons.length === 0,
+      reasons,
+    });
   });
 }

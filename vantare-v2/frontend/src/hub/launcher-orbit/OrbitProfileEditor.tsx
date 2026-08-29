@@ -19,6 +19,7 @@ import {
   isProfileLaunchable,
 } from "../launcher/launcher-state";
 import { hotkeyKeys } from "./launcher-orbit-model";
+import { registerHubSuspendBlocker } from "../hub-suspend-guard";
 import "../../styles/orbit-launcher.css";
 
 export type OrbitProfileEditorProps = {
@@ -48,6 +49,15 @@ export function OrbitProfileEditor({
   const { t } = useI18n();
   const [draft, setDraft] = useState(profile);
   const [recording, setRecording] = useState(false);
+  const dirty = useMemo(() => JSON.stringify(draft) !== JSON.stringify(profile), [draft, profile]);
+
+  useEffect(() => {
+    if (!open || !dirty) return;
+    return registerHubSuspendBlocker(
+      "launcher-profile-draft",
+      "El editor de perfiles del Launcher tiene un borrador sin guardar",
+    );
+  }, [dirty, open]);
 
   const advanced = draft.advanced === true;
   const launchable = useMemo(() => isProfileLaunchable(draft, apps), [draft, apps]);

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-29T00:31:15Z",
+  "generatedAt": "2026-08-29T00:45:32Z",
   "digest": {
-    "lastCommit": "ca166b3829f31d28263ebbaf527b7960b55936ac"
+    "lastCommit": "c93d93bac573d50450760f7bacd7854f30f44999"
   },
   "phases": [
     {
@@ -353,10 +353,10 @@
         "it": "Banco riproducibile dell'impronta hardware"
       },
       "body": {
-        "es": "Un banco Windows mide por proceso la RAM, CPU y GPU de Vantare, separa Hub y overlay mediante CDP, captura el frametime de LMU con PresentMon y rechaza corridas contaminadas o sin tres repeticiones estables.",
-        "en": "A Windows bench measures Vantare RAM, CPU and GPU per process, separates Hub and overlay through CDP, captures LMU frame time with PresentMon, and rejects contaminated runs or results without three stable repetitions.",
-        "pt": "Um banco Windows mede RAM, CPU e GPU do Vantare por processo, separa Hub e overlay por CDP, captura o tempo de frame do LMU com PresentMon e rejeita corridas contaminadas ou sem três repetições estáveis.",
-        "it": "Un banco Windows misura RAM, CPU e GPU di Vantare per processo, separa Hub e overlay tramite CDP, acquisisce il frame time di LMU con PresentMon e rifiuta sessioni contaminate o senza tre ripetizioni stabili."
+        "es": "Un banco Windows mide RAM, CPU y GPU por proceso, atribuye Hub y overlay con PID confirmados por CDP, excluye muestras GPU inválidas, recupera sesiones ETW huérfanas y solo publica frametime de LMU cuando PresentMon entrega frames válidos.",
+        "en": "A Windows bench measures RAM, CPU and GPU per process, attributes Hub and overlay with CDP-confirmed PIDs, excludes invalid GPU samples, recovers orphaned ETW sessions, and only publishes LMU frame time when PresentMon provides valid frames.",
+        "pt": "Um banco Windows mede RAM, CPU e GPU por processo, atribui Hub e overlay com PIDs confirmados por CDP, exclui amostras GPU inválidas, recupera sessões ETW órfãs e só publica o tempo de frame do LMU quando o PresentMon fornece frames válidos.",
+        "it": "Un banco Windows misura RAM, CPU e GPU per processo, attribuisce Hub e overlay con PID confermati da CDP, esclude i campioni GPU non validi, recupera le sessioni ETW orfane e pubblica il frame time di LMU solo quando PresentMon fornisce frame validi."
       },
       "label": {
         "es": "Feature",
@@ -902,6 +902,11 @@
           "kind": "change",
           "scope": "",
           "text": "ISA-926 · PerformancePolicy en Go: niveles 1–5, ajustes v4 y capabilities.performance"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-924 · Baseline F0 de huella mínima (2026-08-29)"
         }
       ]
     },

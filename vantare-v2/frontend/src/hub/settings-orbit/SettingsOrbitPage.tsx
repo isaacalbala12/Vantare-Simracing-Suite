@@ -55,6 +55,9 @@ import { SETTINGS_SECTIONS, type SettingsSection } from "../orbit/views";
 import { RELEASE_NEWS } from "../release-news";
 import { channelRelease } from "../settings/release-channel";
 import type { Channel } from "../settings/settings-contract";
+import type { PerformanceSettings } from "../settings/settings-contract";
+import type { OverlayPerformanceV2 } from "../../generated/telemetry";
+import type { ProfilePerformanceEffectsV4, ProfilePerformanceV4 } from "../../overlay/core/profile-document";
 import { useAppSettings } from "../settings/useAppSettings";
 import { useUpdaterSettings } from "../settings/useUpdaterSettings";
 import { useStartupSettings } from "../settings/useStartupSettings";
@@ -188,6 +191,7 @@ export function SettingsOrbitPage({ target }: SettingsOrbitPageProps) {
         {section === "application" ? (
           <ApplicationSection locale={locale} setLocale={setLocale} />
         ) : null}
+        {section === "performance" ? <PerformanceSection /> : null}
         {section === "updates" ? <UpdatesSection /> : null}
         {section === "hotkeys" ? <HotkeysSection /> : null}
         {section === "privacy" ? <CurationPrivacySection /> : null}
@@ -769,6 +773,217 @@ function ApplicationSection({
         </div>
         <Note>{t("settings.app.missingNote")}</Note>
       </Surface>
+    </div>
+  );
+}
+
+type PerformanceChoice = "1" | "2" | "3" | "4" | "5" | "custom" | "auto";
+
+const PERFORMANCE_CHOICES: PerformanceChoice[] = ["1", "2", "3", "4", "5", "custom", "auto"];
+const PERFORMANCE_EFFECTS_BY_LEVEL: Record<number, ProfilePerformanceEffectsV4> = {
+  1: "full",
+  2: "full",
+  3: "noBlur",
+  4: "flat",
+  5: "flat",
+};
+
+function PerformanceSection() {
+  const { t } = useI18n();
+  const app = useAppSettings();
+  const overlay = useOverlayState();
+  const [effective, setEffective] = useState<OverlayPerformanceV2 | null>(null);
+  const [profilePerformance, setProfilePerformance] = useState<ProfilePerformanceV4 | undefined>(
+    overlay.active?.performance,
+  );
+
+  useEffect(() => {
+    setProfilePerformance(overlay.active?.performance);
+  }, [overlay.active]);
+
+  useEffect(() => {
+    const offLevel = Events.On("performance:level", (event: { data?: OverlayPerformanceV2 }) => {
+      if (event.data) setEffective(event.data);
+    });
+    const offSaved = Events.On("studio:profile:performance:saved", (event: { data?: { performance?: ProfilePerformanceV4 } }) => {
+      setProfilePerformance(event.data?.performance);
+      Events.Emit("hub:list");
+    });
+    const offRefresh = Events.On("hub:profiles:refresh", () => Events.Emit("hub:list"));
+    Events.Emit("settings:get");
+    return () => {
+      offLevel?.();
+      offSaved?.();
+      offRefresh?.();
+    };
+  }, []);
+
+  const appPerformance = app.appSettings.performance ?? { mode: "level", level: 1 };
+  const selected: PerformanceChoice =
+    profilePerformance?.mode === "custom"
+      ? "custom"
+      : appPerformance.mode === "auto"
+        ? "auto"
+        : String(appPerformance.level) as PerformanceChoice;
+  const level = effective?.level ?? profilePerformance?.level ?? appPerformance.level;
+
+  const saveProfilePerformance = useCallback((performance: ProfilePerformanceV4) => {
+    setProfilePerformance(performance);
+    Events.Emit("studio:profile:performance:save", {
+      requestId: `performance-${Date.now().toString(36)}`,
+      performance,
+    });
+  }, []);
+
+  const choose = (choice: PerformanceChoice) => {
+    if (choice === "auto") return;
+    if (choice === "custom") {
+      if (!overlay.active) return;
+      saveProfilePerformance({
+        mode: "custom",
+        level: level as 1 | 2 | 3 | 4 | 5,
+        overrides: profilePerformance?.overrides ?? {},
+      });
+      return;
+    }
+    app.setPerformance({ mode: "level", level: Number(choice) as PerformanceSettings["level"] });
+  };
+
+  const updateOverride = (
+    widgetId: string,
+    patch: { hz?: number | "dirty"; effects?: ProfilePerformanceEffectsV4 },
+  ) => {
+    const current = profilePerformance?.overrides?.[widgetId] ?? {};
+    const next = { ...current, ...patch };
+    if (patch.hz === undefined) delete next.hz;
+    if (patch.effects === undefined) delete next.effects;
+    const overrides = { ...(profilePerformance?.overrides ?? {}) };
+    if (next.hz === undefined && next.effects === undefined) delete overrides[widgetId];
+    else overrides[widgetId] = next;
+    saveProfilePerformance({
+      mode: "custom",
+      level: level as 1 | 2 | 3 | 4 | 5,
+      overrides,
+    });
+  };
+
+  const widgets = overlay.active?.previewDocument?.layouts.general.widgets ?? [];
+
+  return (
+    <div className="orbit-set__grid2" data-testid="orbit-settings-performance">
+      <Surface aria-label={t("settings.performance.title")} fill title={t("settings.performance.title")}>
+        <div
+          aria-label={t("settings.performance.title")}
+          className="orbit-set-channels"
+          data-testid="orbit-settings-performance-options"
+          role="radiogroup"
+        >
+          {PERFORMANCE_CHOICES.map((choice) => {
+            const disabled = choice === "auto" || (choice === "custom" && !overlay.active);
+            return (
+              <button
+                aria-checked={selected === choice}
+                aria-disabled={disabled || undefined}
+                className="orbit-set-channel"
+                data-state={selected === choice ? "on" : undefined}
+                data-testid={`orbit-settings-performance-${choice}`}
+                disabled={choice === "auto"}
+                key={choice}
+                onClick={() => choose(choice)}
+                role="radio"
+                type="button"
+              >
+                <span className="orbit-set-channel__top">
+                  <b>{t(`settings.performance.${choice}`)}</b>
+                  {selected === choice ? <Dot variant="ok" /> : <Dot variant="ring" />}
+                </span>
+                <span className="orbit-set-channel__copy">{t(`settings.performance.${choice}Sub`)}</span>
+                {choice === "auto" ? (
+                  <span className="orbit-set-channel__meta">{t("settings.performance.soon")}</span>
+                ) : null}
+              </button>
+            );
+          })}
+        </div>
+        <Note>{t("settings.performance.profileNote")}</Note>
+      </Surface>
+
+      {selected === "custom" ? (
+        <Surface
+          aria-label={t("settings.performance.table")}
+          fill
+          title={t("settings.performance.table")}
+        >
+          {overlay.active ? (
+            <table data-testid="orbit-settings-performance-table">
+              <thead>
+                <tr>
+                  <th>{t("settings.performance.widget")}</th>
+                  <th>{t("settings.performance.currentHz")}</th>
+                  <th>{t("settings.performance.overrideHz")}</th>
+                  <th>{t("settings.performance.effects")}</th>
+                  <th>{t("settings.performance.cost")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {widgets.map((widget) => {
+                  const baseline = effective?.widgetHz[widget.type];
+                  const override = profilePerformance?.overrides?.[widget.id];
+                  const cpuCost =
+                    typeof override?.hz === "number" && typeof baseline === "number" && override.hz > baseline;
+                  const baseEffect = PERFORMANCE_EFFECTS_BY_LEVEL[level] ?? "full";
+                  const effectRank = { full: 0, noBlur: 1, flat: 2 };
+                  const gpuCost = override?.effects !== undefined && effectRank[override.effects] < effectRank[baseEffect];
+                  return (
+                    <tr data-testid={`orbit-settings-performance-row-${widget.id}`} key={widget.id}>
+                      <th scope="row">{t(`studio.v3.widgetTypes.${widget.type}`)}</th>
+                      <td>{baseline === "dirty" || baseline === "event" ? baseline : baseline ?? "—"}</td>
+                      <td>
+                        <Select
+                          label={t("settings.performance.overrideHz")}
+                          onChange={(value) => updateOverride(widget.id, {
+                            hz: value === "" ? undefined : value === "dirty" ? "dirty" : Number(value),
+                          })}
+                          options={[
+                            { value: "", label: t("settings.performance.inherit") },
+                            { value: "dirty", label: t("settings.performance.dirty") },
+                            ...[1, 2, 4, 5, 10, 15, 20, 30, 40, 60].map((hz) => ({ value: String(hz), label: `${hz} Hz` })),
+                          ]}
+                          value={override?.hz === undefined ? "" : String(override.hz)}
+                          width={128}
+                        />
+                      </td>
+                      <td>
+                        <Select
+                          label={t("settings.performance.effects")}
+                          onChange={(value) => updateOverride(widget.id, {
+                            effects: value === "" ? undefined : value as ProfilePerformanceEffectsV4,
+                          })}
+                          options={[
+                            { value: "", label: t("settings.performance.inherit") },
+                            { value: "full", label: "full" },
+                            { value: "noBlur", label: "noBlur" },
+                            { value: "flat", label: "flat" },
+                          ]}
+                          value={override?.effects ?? ""}
+                          width={128}
+                        />
+                      </td>
+                      <td>
+                        {cpuCost ? <Chip>+CPU</Chip> : null}
+                        {gpuCost ? <Chip>+GPU</Chip> : null}
+                        {!cpuCost && !gpuCost ? "—" : null}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          ) : (
+            <Note>{t("settings.performance.noProfile")}</Note>
+          )}
+        </Surface>
+      ) : null}
     </div>
   );
 }

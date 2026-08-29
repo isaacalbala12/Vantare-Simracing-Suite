@@ -116,10 +116,10 @@ describe("SettingsOrbitPage", () => {
     expect(screen.getByRole("status").textContent).toContain("Windows aceptó el envío");
   });
 
-  it("la columna lista exactamente las seis secciones y nada más", () => {
+  it("la columna lista exactamente las siete secciones visibles y nada más", () => {
     mount("account");
     const rows = within(screen.getByTestId("orbit-settings-context")).getAllByRole("button");
-    expect(rows).toHaveLength(6);
+    expect(rows).toHaveLength(7);
     expect(rows.map((row) => row.textContent?.split("Sesión")[0])).toBeTruthy();
     expect(rows[0].getAttribute("aria-selected")).toBe("true");
   });
@@ -130,8 +130,8 @@ describe("SettingsOrbitPage", () => {
     const leadBefore = screen.getByTestId("orbit-settings-lead").textContent;
     expect(screen.getByTestId("orbit-settings-panel-account")).toBeTruthy();
 
-    const rows = within(screen.getByTestId("orbit-settings-context")).getAllByRole("button");
-    fireEvent.click(rows[3]);
+    const context = within(screen.getByTestId("orbit-settings-context"));
+    fireEvent.click(context.getByRole("button", { name: /Atajos/ }));
 
     expect(screen.getByTestId("orbit-settings-title").textContent).not.toBe(before);
     expect(screen.getByTestId("orbit-settings-lead").textContent).not.toBe(leadBefore);
@@ -206,6 +206,60 @@ describe("SettingsOrbitPage", () => {
 
     expect(document.body.dataset.reduceMotion).toBe("true");
     expect(window.localStorage.getItem("vantare.v03orbit.reduceMotion")).toBe("1");
+  });
+
+  it("Rendimiento ofrece siete opciones, deshabilita Automático y guarda un nivel", () => {
+    const emit = vi.spyOn(Events, "Emit");
+    mount("performance");
+    const options = within(screen.getByTestId("orbit-settings-performance-options")).getAllByRole("radio");
+    expect(options).toHaveLength(7);
+    expect(screen.getByTestId("orbit-settings-performance-auto").hasAttribute("disabled")).toBe(true);
+
+    emit.mockClear();
+    fireEvent.click(screen.getByTestId("orbit-settings-performance-4"));
+    expect(emit).toHaveBeenCalledWith(
+      "settings:save",
+      expect.objectContaining({ performance: { mode: "level", level: 4 } }),
+    );
+  });
+
+  it("Personalizado muestra los tres widgets activos, Hz efectivos y costes CPU/GPU", () => {
+    const handlers = new Map<string, Array<(event: { data: unknown }) => void>>();
+    vi.mocked(Events.On).mockImplementation(((name: string, handler: (event: { data: unknown }) => void) => {
+      handlers.set(name, [...(handlers.get(name) ?? []), handler]);
+      return () => handlers.set(name, (handlers.get(name) ?? []).filter((item) => item !== handler));
+    }) as typeof Events.On);
+    mount("performance");
+
+    const widgets = ["delta", "standings", "relative"].map((type, index) => ({
+      id: `${type}-main`,
+      type,
+      layout: { x: 0, y: index * 100, w: 200, h: 80, zIndex: index, aspectLocked: true },
+      behavior: { enabled: true, updateHz: 15 },
+      content: {},
+      visual: { systemId: "vantare-original", systemVersion: 1, configVersion: 1, baseSettings: {}, appearanceOverrides: {} },
+    }));
+    act(() => {
+      for (const handler of handlers.get("hub:profiles") ?? []) {
+        handler({ data: { profiles: [{
+          id: "triple", file: "triple.json", name: "Triple", displayMode: "racing", widgets: 3,
+          previewDocument: { schemaVersion: 3, id: "triple", name: "Triple", displayMode: "racing", monitorIndex: 0, layouts: { general: { type: "general", widgets } } },
+          performance: { mode: "custom", level: 3, overrides: { "delta-main": { hz: 60, effects: "full" } } },
+        }] } });
+      }
+      for (const handler of handlers.get("settings") ?? []) {
+        handler({ data: { ...{ cpuSampling: true, hotkeys: {}, performance: { mode: "level", level: 3 } }, activeOverlayProfileId: "triple" } });
+      }
+      for (const handler of handlers.get("performance:level") ?? []) {
+        handler({ data: { level: 3, mode: "custom", effects: "full", rafCap: 40, sourceHz: 60, widgetHz: { delta: 20, standings: 5, relative: 15 } } });
+      }
+    });
+
+    const table = screen.getByTestId("orbit-settings-performance-table");
+    expect(within(table).getAllByRole("row")).toHaveLength(4);
+    expect(screen.getByTestId("orbit-settings-performance-row-delta-main").textContent).toContain("20");
+    expect(screen.getByTestId("orbit-settings-performance-row-delta-main").textContent).toContain("+CPU");
+    expect(screen.getByTestId("orbit-settings-performance-row-delta-main").textContent).toContain("+GPU");
   });
 
   it("con licencia anónima los canales de testers y nightly llevan candado", () => {

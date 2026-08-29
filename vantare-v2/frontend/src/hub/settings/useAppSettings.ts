@@ -5,6 +5,7 @@ import {
   DEFAULT_APP_SETTINGS,
   type AppSettings,
   type NotificationSettings,
+  type PerformanceSettings,
 } from "./settings-contract";
 
 /**
@@ -40,6 +41,7 @@ export function useAppSettings() {
         // sobre atajos que el backend sigue registrando. Las que falten se
         // rellenan con el contrato; las que vengan mandan.
         setAppSettings({
+		  ...DEFAULT_APP_SETTINGS,
           ...event.data,
           hotkeys: { ...DEFAULT_APP_SETTINGS.hotkeys, ...(event.data.hotkeys ?? {}) },
         });
@@ -68,6 +70,10 @@ export function useAppSettings() {
 
   function toggleCpuSampling() {
     save({ ...appSettings, cpuSampling: !appSettings.cpuSampling });
+  }
+
+  function setPerformance(performance: PerformanceSettings) {
+    save({ ...appSettings, performance });
   }
 
   // Merged, not replaced: each switch writes only its own key, so turning one
@@ -124,6 +130,7 @@ export function useAppSettings() {
     startCapture: (name: string) => setCapturingKey(name),
     cancelCapture: () => setCapturingKey(null),
     toggleCpuSampling,
+    setPerformance,
     setNotifications,
     resetHotkeys,
   };

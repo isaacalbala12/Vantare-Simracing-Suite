@@ -21,6 +21,10 @@ func (s *StudioProfileService) SetWindowManager(mgr *window.Manager) {
 	s.mgr = mgr
 }
 
+func (s *StudioProfileService) SetOnPerformanceSaved(callback func(*config.ProfileDocumentV4)) {
+	s.onPerformanceSaved = callback
+}
+
 // Path returns the active profile file path.
 func (s *StudioProfileService) Path() string {
 	return s.path

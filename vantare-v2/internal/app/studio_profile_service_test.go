@@ -96,6 +96,75 @@ func TestStudioProfileServiceLoadEmitsLoaded(t *testing.T) {
 	}
 }
 
+func TestStudioProfileServiceSavesPerformanceInV4AndNotifiesRuntime(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "profile.json")
+	doc := config.NormalizeProfileDocumentV3(&config.ProfileDocumentV3{
+		SchemaVersion: config.ProfileSchemaVersionV3, ID: "performance-profile", Name: "Performance",
+		DisplayMode: config.ModeRacing, MonitorIndex: 0,
+		Layouts: map[config.LayoutType]config.SessionLayoutV3{
+			config.LayoutGeneral: {Type: config.LayoutGeneral, Widgets: []config.WidgetInstanceV3{}},
+		},
+	})
+	data, err := json.Marshal(doc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, data, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	spy := &studioProfileSpy{}
+	svc := NewStudioProfileService(spy, nil)
+	if _, err := svc.Load(path); err != nil {
+		t.Fatal(err)
+	}
+	callbackCount := 0
+	svc.SetOnPerformanceSaved(func(profile *config.ProfileDocumentV4) {
+		callbackCount++
+		if profile.Performance == nil || profile.Performance.Level != 4 {
+			t.Fatalf("callback profile=%+v", profile.Performance)
+		}
+	})
+	svc.HandlePerformanceSave(map[string]any{
+		"requestId":   "performance-save-1",
+		"performance": map[string]any{"mode": "level", "level": 4},
+	})
+
+	if callbackCount != 1 {
+		t.Fatalf("callback count=%d want 1", callbackCount)
+	}
+	loaded, err := (config.ProfileDocumentStore{}).LoadV4(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loaded.MigratedFrom != config.ProfileSchemaVersionV4 || loaded.Document.Performance == nil || loaded.Document.Performance.Level != 4 {
+		t.Fatalf("persisted=%+v from=%d", loaded.Document.Performance, loaded.MigratedFrom)
+	}
+	written, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(written), "updateHz") {
+		t.Fatal("performance save wrote a V3 cadence")
+	}
+	if _, err := os.Stat(filepath.Join(dir, "profile.v3.bak")); err != nil {
+		t.Fatalf("missing V3 backup: %v", err)
+	}
+	if !containsString(spy.events, "studio:profile:performance:saved") {
+		t.Fatalf("events=%v", spy.events)
+	}
+}
+
+func containsString(values []string, expected string) bool {
+	for _, value := range values {
+		if value == expected {
+			return true
+		}
+	}
+	return false
+}
+
 func TestStudioProfileServiceSaveEmitsSavedAndCallback(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "profile.json")

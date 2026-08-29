@@ -24,15 +24,16 @@ type StudioProfileSaved struct {
 
 // StudioProfileService manages Overlay Studio V3 profile documents in parallel to legacy ProfileService.
 type StudioProfileService struct {
-	deltaCycleMu sync.Mutex
-	path         string
-	loaded       *config.LoadedProfileV3
-	store        config.ProfileDocumentStore
-	emitter      EventEmitter
-	logger       *slog.Logger
-	onSaved      func(StudioProfileSaved)
-	profilesDir  string
-	mgr          *window.Manager
+	deltaCycleMu       sync.Mutex
+	path               string
+	loaded             *config.LoadedProfileV3
+	store              config.ProfileDocumentStore
+	emitter            EventEmitter
+	logger             *slog.Logger
+	onSaved            func(StudioProfileSaved)
+	onPerformanceSaved func(*config.ProfileDocumentV4)
+	profilesDir        string
+	mgr                *window.Manager
 }
 
 // NewStudioProfileService creates a parallel Studio profile service.
@@ -147,6 +148,59 @@ func (s *StudioProfileService) RegisterHandlers(app *application.App) {
 	app.Event.On("overlay:edit-layout:save", func(event *application.CustomEvent) {
 		s.HandleSaveInPlace(event.Data)
 	})
+	app.Event.On("studio:profile:performance:save", func(event *application.CustomEvent) {
+		s.HandlePerformanceSave(event.Data)
+	})
+}
+
+// HandlePerformanceSave updates only the active profile's V4 performance
+// policy. Layout/content remain byte-for-byte equivalent after normalization.
+func (s *StudioProfileService) HandlePerformanceSave(data any) {
+	var payload struct {
+		RequestID   string                       `json:"requestId"`
+		Performance *config.ProfilePerformanceV4 `json:"performance"`
+	}
+	raw, err := json.Marshal(data)
+	if err != nil || json.Unmarshal(raw, &payload) != nil {
+		s.emitError(payload.RequestID, "performance-save", fmt.Errorf("invalid performance payload"))
+		return
+	}
+	if s.loaded == nil || s.loaded.DocumentV4 == nil || s.path == "" {
+		s.emitError(payload.RequestID, "performance-save", fmt.Errorf("profile not loaded"))
+		return
+	}
+	doc := config.NormalizeProfileDocumentV4(s.loaded.DocumentV4)
+	doc.Performance = payload.Performance
+	if err := config.ValidateProfileDocumentV4(doc); err != nil {
+		s.emitError(payload.RequestID, "performance-save", err)
+		return
+	}
+	revision, err := s.store.SaveV4(s.path, s.loaded.Revision, doc, s.loaded.MigratedFrom)
+	if err != nil {
+		if errors.Is(err, config.ErrProfileConflict) {
+			s.emitConflict(payload.RequestID, err)
+		} else {
+			s.emitError(payload.RequestID, "performance-save", err)
+		}
+		return
+	}
+	legacy := config.ConvertProfileV4ToV3(doc)
+	s.loaded = &config.LoadedProfileV3{
+		Document: legacy, DocumentV4: doc, Revision: revision,
+		MigratedFrom: config.ProfileSchemaVersionV4,
+	}
+	if s.emitter != nil {
+		s.emitter.Emit("studio:profile:performance:saved", map[string]any{
+			"requestId": payload.RequestID, "performance": doc.Performance, "revision": revision,
+		})
+		s.emitter.Emit("hub:profiles:refresh", map[string]any{"ok": true})
+	}
+	if s.onPerformanceSaved != nil {
+		s.onPerformanceSaved(doc)
+	}
+	if s.onSaved != nil {
+		s.onSaved(StudioProfileSaved{Path: s.path, Document: legacy, Revision: revision})
+	}
 }
 
 // HandleLoad decodes a correlated load request and emits studio:profile:loaded or studio:profile:error.

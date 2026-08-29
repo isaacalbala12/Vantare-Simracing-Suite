@@ -66,8 +66,15 @@ export type NotificationSettings = {
   systemEnabled?: boolean;
 };
 
+export type PerformanceSettings = {
+  mode: "level" | "custom" | "auto";
+  level: 1 | 2 | 3 | 4 | 5;
+  overrides?: Record<string, { hz?: number | "dirty"; effects?: "full" | "noBlur" | "flat" }>;
+};
+
 export type AppSettings = {
   cpuSampling: boolean;
+  performance: PerformanceSettings;
   notifications?: NotificationSettings;
   hotkeys: Record<string, string>;
   activeOverlayProfileId?: string;
@@ -79,6 +86,7 @@ export type AppSettings = {
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {
   cpuSampling: true,
+  performance: { mode: "level", level: 1 },
   notifications: {},
   hotkeys: {
     toggleOverlay: "ctrl+shift+v",

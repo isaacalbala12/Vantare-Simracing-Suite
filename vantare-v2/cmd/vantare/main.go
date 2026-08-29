@@ -2050,6 +2050,12 @@ func main() {
 		log.Printf("telemetry core init error: %v", err)
 		telemetryCoreRuntime = nil
 	}
+	studioProfileSvc.SetOnPerformanceSaved(func(profile *config.ProfileDocumentV4) {
+		if telemetryCoreRuntime != nil {
+			telemetryCoreRuntime.SetPerformancePolicy(app.ResolvePerformancePolicy(settingsSvc.Settings().Performance, profile))
+		}
+		emitter.Emit("hub:profiles:refresh", map[string]any{"ok": true})
+	})
 	telemetrySourceStatus := func() driver.SourceStatus {
 		if telemetryCoreRuntime == nil {
 			return driver.UnknownSourceStatus()
@@ -2562,6 +2568,9 @@ func main() {
 
 	wailsApp.Event.On("settings:get", func(event *application.CustomEvent) {
 		emitter.Emit("settings", settingsSvc.Settings())
+		if telemetryCoreRuntime != nil {
+			telemetryCoreRuntime.EmitPerformanceLevel()
+		}
 	})
 
 	wailsApp.Event.On("settings:save", func(event *application.CustomEvent) {

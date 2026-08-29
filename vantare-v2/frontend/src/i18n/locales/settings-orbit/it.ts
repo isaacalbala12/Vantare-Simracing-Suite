@@ -21,6 +21,7 @@ export const settingsOrbitIt: Record<string, string> = {
   "settings.performance.autoSub": "Vantare misura il PC in gara e si regola da solo (tra Alto e Minimo).",
   "settings.performance.soon": "Prossimamente",
   "settings.performance.profileNote": "Personalizzato viene salvato nel profilo attivo; i cinque livelli sono il valore predefinito dell'app.",
+  "settings.performance.migrationNotice": "{{widget}} usava {{hz}} Hz nel profilo v3. La politica v4 lo sostituisce e l'originale viene conservato nella copia .v3.bak al salvataggio.",
   "settings.performance.table": "Widget del profilo attivo",
   "settings.performance.widget": "Widget",
   "settings.performance.currentHz": "Hz del livello",

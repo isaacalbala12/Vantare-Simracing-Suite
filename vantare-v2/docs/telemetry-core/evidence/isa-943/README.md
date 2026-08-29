@@ -62,6 +62,12 @@ La prueba exige cuatro filas contando la cabecera y verifica explícitamente
 `20`, `+CPU` y `+GPU` en Delta. No usa datos sintéticos en runtime: este dump es
 evidencia del contrato de UI bajo Vitest, separada del smoke Wails anterior.
 
+Los `updateHz` fast atípicos de un perfil v3 se conservan además como avisos
+estructurados (`path`, widget, tipo y valor). Ajustes › Rendimiento los muestra
+en el perfil activo y explica que la política v4 los sustituye; el log de Go
+registra los mismos campos y el primer guardado conserva el original en
+`<perfil>.v3.bak`.
+
 ## Alcance de la evidencia
 
 Esta prueba demuestra Wails/WebView2 real, el control productivo de Ajustes y la

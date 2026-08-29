@@ -915,6 +915,18 @@ function PerformanceSection() {
           })}
         </div>
         <Note>{t("settings.performance.profileNote")}</Note>
+        {overlay.active?.migrationNotices?.length ? (
+          <div data-testid="orbit-settings-performance-migration-notices">
+            {overlay.active.migrationNotices.map((notice) => (
+              <Note key={`${notice.path}:${notice.updateHz}`}>
+                {formatMessage(t("settings.performance.migrationNotice"), {
+                  widget: notice.widgetId,
+                  hz: notice.updateHz,
+                })}
+              </Note>
+            ))}
+          </div>
+        ) : null}
       </Surface>
 
       {selected === "custom" ? (

@@ -21,6 +21,7 @@ export const settingsOrbitPt: Record<string, string> = {
   "settings.performance.autoSub": "O Vantare mede o PC em corrida e ajusta-se sozinho (entre Alto e Mínimo).",
   "settings.performance.soon": "Em breve",
   "settings.performance.profileNote": "Personalizado é guardado no perfil ativo; os cinco níveis são o padrão da app.",
+  "settings.performance.migrationNotice": "{{widget}} usava {{hz}} Hz no perfil v3. A política v4 substitui-o e o original é preservado na cópia .v3.bak ao guardar.",
   "settings.performance.table": "Widgets do perfil ativo",
   "settings.performance.widget": "Widget",
   "settings.performance.currentHz": "Hz do nível",

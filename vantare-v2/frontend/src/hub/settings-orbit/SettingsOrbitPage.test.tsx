@@ -245,6 +245,7 @@ describe("SettingsOrbitPage", () => {
           id: "triple", file: "triple.json", name: "Triple", displayMode: "racing", widgets: 3,
           previewDocument: { schemaVersion: 3, id: "triple", name: "Triple", displayMode: "racing", monitorIndex: 0, layouts: { general: { type: "general", widgets } } },
           performance: { mode: "custom", level: 3, overrides: { "delta-main": { hz: 60, effects: "full" } } },
+          migrationNotices: [{ path: "layouts.general.widgets[0].behavior.updateHz", widgetId: "delta-main", widgetType: "delta", updateHz: 3, message: "discarded atypical updateHz" }],
         }] } });
       }
       for (const handler of handlers.get("settings") ?? []) {
@@ -260,6 +261,9 @@ describe("SettingsOrbitPage", () => {
     expect(screen.getByTestId("orbit-settings-performance-row-delta-main").textContent).toContain("20");
     expect(screen.getByTestId("orbit-settings-performance-row-delta-main").textContent).toContain("+CPU");
     expect(screen.getByTestId("orbit-settings-performance-row-delta-main").textContent).toContain("+GPU");
+    expect(screen.getByTestId("orbit-settings-performance-migration-notices").textContent).toContain(
+      "delta-main tenía 3 Hz",
+    );
   });
 
   it("con licencia anónima los canales de testers y nightly llevan candado", () => {

@@ -210,7 +210,10 @@ func (source *PresentMonSource) cleanOrphans(ctx context.Context) error {
 
 func isMissingSession(output []byte) bool {
 	text := strings.ToLower(string(output))
-	return strings.Contains(text, "not found") || strings.Contains(text, "no se encuentra")
+	return strings.Contains(text, "not found") ||
+		strings.Contains(text, "no se encuentra") ||
+		strings.Contains(text, "data collector set") ||
+		strings.Contains(text, "conjunto de recopiladores de datos")
 }
 
 func DefaultPresentMonPath() string {

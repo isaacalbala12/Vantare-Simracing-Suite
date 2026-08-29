@@ -2160,10 +2160,14 @@ func main() {
 				if sample.Game.Available {
 					frametime = fmt.Sprintf("%.3f", sample.Game.FrametimeMS)
 				}
+				gameError := ""
+				if sample.GameError != nil {
+					gameError = sample.GameError.Error()
+				}
 				log.Printf(
-					"performance sensor: cpuPct=%.2f vantareCpuPct=%.2f vantareRamMB=%.2f gpuPct=%.2f gameFrametimeMs=%s foreground=%t level=%d reason=%s",
+					"performance sensor: cpuPct=%.2f vantareCpuPct=%.2f vantareRamMB=%.2f gpuPct=%.2f gameFrametimeMs=%s gameError=%q foreground=%t level=%d reason=%s",
 					sample.Host.CPUPct, sample.Host.VantareCPUPct, sample.Host.VantareRAMMB, sample.Host.GPUPct,
-					frametime, sample.Game.Foreground, decision.Level, decision.Reason,
+					frametime, gameError, sample.Game.Foreground, decision.Level, decision.Reason,
 				)
 			})
 		}

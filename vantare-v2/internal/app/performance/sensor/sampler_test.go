@@ -2,6 +2,7 @@ package sensor
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 )
@@ -49,6 +50,8 @@ func TestSamplerDegradesGameWhenPresentMonCannotStart(t *testing.T) {
 	ticker.ticks <- time.Unix(3, 0)
 	if got := <-result; got.Game.Available {
 		t.Fatalf("game should be unavailable: %+v", got.Game)
+	} else if !errors.Is(got.GameError, ErrUnavailable) {
+		t.Fatalf("game start error = %v, want ErrUnavailable", got.GameError)
 	}
 }
 

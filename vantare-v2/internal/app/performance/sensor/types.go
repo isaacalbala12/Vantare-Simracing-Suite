@@ -24,9 +24,10 @@ type GameSample struct {
 }
 
 type Sample struct {
-	At   time.Time
-	Host HostSample
-	Game GameSample
+	At        time.Time
+	Host      HostSample
+	Game      GameSample
+	GameError error
 }
 
 type HostSampler interface {
@@ -139,7 +140,7 @@ func (sampler *Sampler) Run(ctx context.Context, publish func(Sample)) error {
 			if gameErr != nil {
 				game.Available = false
 			}
-			publish(Sample{At: at, Host: host, Game: game})
+			publish(Sample{At: at, Host: host, Game: game, GameError: gameErr})
 		}
 	}
 }

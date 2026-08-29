@@ -113,3 +113,10 @@ func TestPresentMonCleansOnlyVantareOrphansParsesV2AndStopsOwnSession(t *testing
 		t.Fatalf("shutdown order = %q, want %q", gotOrder, wantOrder)
 	}
 }
+
+func TestMissingSessionRecognisesSpanishLogmanCollectorMessage(t *testing.T) {
+	output := []byte("Error:\r\nNo se encontr\xa2 el Conjunto de recopiladores de datos.\r\n")
+	if !isMissingSession(output) {
+		t.Fatalf("Spanish missing-session output was not recognised: %q", output)
+	}
+}

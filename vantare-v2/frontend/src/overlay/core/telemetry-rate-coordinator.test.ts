@@ -86,12 +86,19 @@ describe("createTelemetryRateCoordinator", () => {
 
   it("keeps invalid V2 failures observable until a valid frame arrives", () => {
     const coordinator = createTelemetryRateCoordinator();
+    const retained = performanceFrame(1, null, { "racing-flags": "event" });
+    coordinator.setOverlayFrame(retained, { state: "live" }, 1, 1);
     coordinator.setOverlayFailure({ code: "invalid-frame", message: "invalid-contract:frame" });
     expect(coordinator.getOverlayFailure()).toEqual({
       code: "invalid-frame",
       message: "invalid-contract:frame",
     });
-    coordinator.setOverlayFrame(performanceFrame(1, null, {}), { state: "live" });
+    coordinator.setOverlayFrame(retained, { state: "stale", reason: "watchdog" }, 1, 1);
+    expect(coordinator.getOverlayFailure()).toEqual({
+      code: "invalid-frame",
+      message: "invalid-contract:frame",
+    });
+    coordinator.setOverlayFrame(performanceFrame(2, null, {}), { state: "live" }, 2, 2);
     expect(coordinator.getOverlayFailure()).toBeUndefined();
     coordinator.dispose();
   });
@@ -199,6 +206,26 @@ describe("createTelemetryRateCoordinator", () => {
 
     currentTime = 1;
     coordinator.setOverlayFrame(performanceFrame(2, 1, { "racing-flags": "event" }, [], 5, "qualifying"));
+    harness.tick();
+
+    expect(listener).toHaveBeenCalledTimes(1);
+    coordinator.dispose();
+  });
+
+  it.each([
+    ["stale source", () => ({ frame: performanceFrame(1, 1, { "racing-flags": "event" }, [], 5), source: { state: "stale" as const } })],
+    ["invalid failure", () => ({ failure: { code: "invalid-frame" as const, message: "invalid" } })],
+  ])("wakes event subscriptions for %s without a new frame sequence", (_label, change) => {
+    const harness = controllableScheduler();
+    const coordinator = createTelemetryRateCoordinator({ createScheduler: harness.create, now: () => 1 });
+    const frame = performanceFrame(1, 1, { "racing-flags": "event" }, [], 5);
+    coordinator.setOverlayFrame(frame, { state: "live" }, 1, 1);
+    const listener = vi.fn();
+    coordinator.subscribe("racing-flags", listener);
+
+    const next = change();
+    if ("failure" in next) coordinator.setOverlayFailure(next.failure);
+    else coordinator.setOverlayFrame(next.frame, next.source, 1, 1);
     harness.tick();
 
     expect(listener).toHaveBeenCalledTimes(1);

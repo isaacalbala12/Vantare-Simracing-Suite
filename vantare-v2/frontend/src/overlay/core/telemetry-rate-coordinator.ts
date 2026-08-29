@@ -23,7 +23,12 @@ export type TelemetryRateCoordinator = {
   getOverlayFailure(): WidgetRuntimeInput["overlayV2Failure"];
   subscribe(rateKey: number | string | undefined, listener: TelemetryListener): () => void;
   publish(snapshot: TelemetrySnapshot): void;
-  setOverlayFrame(frame: OverlayFrameV2 | undefined, source?: OverlaySourceStatusV2): void;
+  setOverlayFrame(
+    frame: OverlayFrameV2 | undefined,
+    source?: OverlaySourceStatusV2,
+    revision?: number,
+    frameRevision?: number,
+  ): void;
   setOverlayFailure(failure: WidgetRuntimeInput["overlayV2Failure"]): void;
   dispose(): void;
 };
@@ -94,6 +99,9 @@ export function createTelemetryRateCoordinator(
   let overlaySource: OverlaySourceStatusV2 | undefined;
   let overlayContext = buildOverlayRuntimeContext(undefined, undefined);
   let overlayFailure: WidgetRuntimeInput["overlayV2Failure"];
+  let overlayRevision = 0;
+  let overlayFrameRevision = 0;
+  let overlayFailureFrameRevision: number | undefined;
   const derived = createDerivedTelemetryStore();
   type Subscription = {
     listener: TelemetryListener;
@@ -135,7 +143,13 @@ export function createTelemetryRateCoordinator(
     }
   };
 
-  const signature = (widgetType: string): string => JSON.stringify(sectionValue(widgetType));
+  const signature = (widgetType: string): string => JSON.stringify({
+    section: sectionValue(widgetType),
+    source: overlaySource
+      ? { state: overlaySource.state, retry: overlaySource.retry, reason: overlaySource.reason }
+      : undefined,
+    failure: overlayFailure,
+  });
 
   const intervalFor = (subscription: Subscription): number => {
     const performancePolicy = overlayFrame?.capabilities.performance;
@@ -174,10 +188,6 @@ export function createTelemetryRateCoordinator(
         const frameSequence = subscription.widgetType === "race-schedule" || subscription.widgetType === "engineer-radio"
           ? undefined
           : overlayFrame?.sequence;
-        if (frameSequence !== undefined && frameSequence === subscription.lastFrameSequence && !dirtyCeilingDue) {
-          subscription.seenVersion = version;
-          continue;
-        }
         const nextSignature = subscription.widgetType ? signature(subscription.widgetType) : undefined;
         const changed = nextSignature !== subscription.lastSignature;
         subscription.lastFrameSequence = frameSequence;
@@ -265,19 +275,29 @@ export function createTelemetryRateCoordinator(
       };
       version += 1;
     },
-    setOverlayFrame(frame, source) {
+    setOverlayFrame(frame, source, revision, frameRevision) {
       const sameFrame = frame?.sequence === overlayFrame?.sequence && frame?.epoch === overlayFrame?.epoch;
       const sameSource = JSON.stringify(source) === JSON.stringify(overlaySource);
-      if (sameFrame && sameSource && overlayFailure === undefined) return;
+      const nextRevision = revision ?? (sameFrame && sameSource ? overlayRevision : overlayRevision + 1);
+      const nextFrameRevision = frameRevision ?? (frame && !sameFrame ? overlayFrameRevision + 1 : overlayFrameRevision);
+      const clearsFailure = overlayFailure !== undefined && frame !== undefined && source !== undefined &&
+        nextFrameRevision > (overlayFailureFrameRevision ?? overlayFrameRevision);
+      if (sameFrame && sameSource && !clearsFailure) return;
       overlayFrame = frame;
       overlaySource = source;
+      overlayRevision = Math.max(overlayRevision, nextRevision);
+      overlayFrameRevision = Math.max(overlayFrameRevision, nextFrameRevision);
       overlayContext = buildOverlayRuntimeContext(frame, source);
-      if (frame && source) overlayFailure = undefined;
+      if (clearsFailure) {
+        overlayFailure = undefined;
+        overlayFailureFrameRevision = undefined;
+      }
       version += 1;
     },
     setOverlayFailure(failure) {
       if (JSON.stringify(failure) === JSON.stringify(overlayFailure)) return;
       overlayFailure = failure;
+      overlayFailureFrameRevision = failure ? overlayFrameRevision : undefined;
       version += 1;
     },
     dispose() {

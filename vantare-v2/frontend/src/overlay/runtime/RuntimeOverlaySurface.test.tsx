@@ -100,6 +100,41 @@ function buildDocument(): ProfileDocumentV3 {
 }
 
 describe("RuntimeOverlaySurface", () => {
+  it.each([
+    ["desktop", "source-missing"],
+    ["obs", "source-missing"],
+    ["desktop", "rollback"],
+    ["obs", "rollback"],
+  ] as const)(
+    "shows the productive %s %s diagnostic with role=alert and a stable code",
+    (renderMode, failure) => {
+      const update = JSON.parse(goldenV2Raw) as OverlayUpdateV2;
+      if (!update.frame) throw new Error("golden V2 frame missing");
+      const coordinator = createBaseTelemetryRateCoordinator();
+      coordinator.setOverlayFrame(
+        update.frame,
+        failure === "source-missing" ? undefined : update.source,
+      );
+      const document = buildDocument();
+      document.layouts.general.widgets = [deltaDefinition.createDefault(`delta-${failure}`)];
+
+      const view = render(
+        <RuntimeOverlaySurface
+          document={document}
+          telemetry={coordinator}
+          renderMode={renderMode}
+          overlayV2Features={failure === "rollback" ? [] : undefined}
+        />,
+      );
+
+      const alert = view.getByRole("alert");
+      expect(alert.getAttribute("data-diagnostic-code")).toBe(
+        failure === "rollback" ? "overlay-v2-rollback" : "overlay-v2-source-missing",
+      );
+      coordinator.dispose();
+    },
+  );
+
   it.each(["desktop", "obs"] as const)(
     "passes the productive Engineer store through the %s surface",
     (renderMode) => {

@@ -2056,6 +2056,11 @@ func main() {
 		}
 		emitter.Emit("hub:profiles:refresh", map[string]any{"ok": true})
 	})
+	hubSvc.SetPerformancePolicyReconciler(func(profile *config.ProfileDocumentV4) {
+		if telemetryCoreRuntime != nil {
+			telemetryCoreRuntime.SetPerformancePolicy(app.ResolvePerformancePolicy(settingsSvc.Settings().Performance, profile))
+		}
+	})
 	telemetrySourceStatus := func() driver.SourceStatus {
 		if telemetryCoreRuntime == nil {
 			return driver.UnknownSourceStatus()
@@ -2237,16 +2242,8 @@ func main() {
 
 	// Load active profile from settings if present.
 	if activeID := settingsSvc.Settings().ActiveOverlayProfileID; activeID != "" {
-		if path, err := hubSvc.ResolveProfilePath(activeID); err == nil {
-			if err := profileSvc.LoadActiveProfile(path); err != nil {
-				log.Printf("warning: could not load active profile %s: %v", activeID, err)
-			} else if studioProfileSvc != nil {
-				if err := studioProfileSvc.LoadActiveProfile(path); err != nil {
-					log.Printf("warning: could not load active studio profile %s: %v", activeID, err)
-				}
-			}
-		} else {
-			log.Printf("warning: active profile %s not found: %v", activeID, err)
+		if err := hubSvc.ActivateProfile(activeID); err != nil {
+			log.Printf("warning: could not restore active profile %s: %v", activeID, err)
 		}
 	}
 
@@ -3760,6 +3757,10 @@ func buildHotkeyActionMap(
 				log.Printf("hotkey next profile error: %v", err)
 				return
 			}
+			if err := hubSvc.ActivateProfile(filepath.Base(studioProfileSvc.Path())); err != nil {
+				log.Printf("hotkey next profile activation error: %v", err)
+				return
+			}
 			if status, err := hubSvc.StartActiveOverlay(); err != nil {
 				log.Printf("hotkey next profile restart overlay error: %v", err)
 				if !status.Running {
@@ -3776,6 +3777,10 @@ func buildHotkeyActionMap(
 			}
 			if err := studioProfileSvc.PreviousProfile(); err != nil {
 				log.Printf("hotkey prev profile error: %v", err)
+				return
+			}
+			if err := hubSvc.ActivateProfile(filepath.Base(studioProfileSvc.Path())); err != nil {
+				log.Printf("hotkey previous profile activation error: %v", err)
 				return
 			}
 			if status, err := hubSvc.StartActiveOverlay(); err != nil {

@@ -107,6 +107,7 @@ type HubService struct {
 	profileSvc       *ProfileService
 	studioProfileSvc *StudioProfileService
 	settingsSvc      *SettingsService
+	reconcilePolicy  func(*config.ProfileDocumentV4)
 	emitter          EventEmitter
 	overlay          OverlayRuntime
 }
@@ -124,6 +125,29 @@ func NewHubService(profilesDir string, profileSvc *ProfileService, emitter Event
 // SetStudioProfileService wires the canonical V3 runtime profile service.
 func (s *HubService) SetStudioProfileService(svc *StudioProfileService) {
 	s.studioProfileSvc = svc
+}
+
+// SetPerformancePolicyReconciler applies the effective app+profile policy
+// after the active profile has been fully loaded by both profile services.
+func (s *HubService) SetPerformancePolicyReconciler(reconcile func(*config.ProfileDocumentV4)) {
+	s.reconcilePolicy = reconcile
+}
+
+func (s *HubService) loadActiveProfile(path string) error {
+	if err := s.profileSvc.LoadActiveProfile(path); err != nil {
+		return fmt.Errorf("loading active profile: %w", err)
+	}
+	var performanceProfile *config.ProfileDocumentV4
+	if s.studioProfileSvc != nil {
+		if err := s.studioProfileSvc.LoadActiveProfile(path); err != nil {
+			return fmt.Errorf("loading active studio profile: %w", err)
+		}
+		performanceProfile = s.studioProfileSvc.PerformanceProfile()
+	}
+	if s.reconcilePolicy != nil {
+		s.reconcilePolicy(performanceProfile)
+	}
+	return nil
 }
 
 func (s *HubService) activeOverlayDocument() (*config.ProfileDocumentV3, error) {
@@ -324,7 +348,7 @@ func (s *HubService) ActivateProfile(idOrFile string) error {
 	if err != nil {
 		return err
 	}
-	return s.profileSvc.LoadActiveProfile(path)
+	return s.loadActiveProfile(path)
 }
 
 // ResolveProfilePath resolves an id or file basename to an absolute profile path.
@@ -345,13 +369,8 @@ func (s *HubService) SetActiveProfile(idOrFile string) error {
 	if err != nil {
 		return err
 	}
-	if err := s.profileSvc.LoadActiveProfile(path); err != nil {
-		return fmt.Errorf("loading active profile: %w", err)
-	}
-	if s.studioProfileSvc != nil {
-		if err := s.studioProfileSvc.LoadActiveProfile(path); err != nil {
-			return fmt.Errorf("loading active studio profile: %w", err)
-		}
+	if err := s.loadActiveProfile(path); err != nil {
+		return err
 	}
 	profile := s.profileSvc.GetProfile()
 	if profile == nil || profile.ID == "" {

@@ -50,13 +50,22 @@ export function RuntimeOverlaySurface(props: RuntimeOverlaySurfaceProps): React.
   const { document, telemetry, renderMode, layoutOrigin, onDiagnostic, diagnostics: diagnosticsProp, engineerPresentations, overlayV2Features, raceSchedule } = props;
   const diagnostics = useMemo(() => diagnosticsProp ?? createWidgetDiagnosticCollector(), [diagnosticsProp]);
   const runtimeContext = useOverlayRuntimeContext(telemetry);
-  const lastUsefulContext = useRef<OverlayRuntimeContext | undefined>(undefined);
-  if (runtimeContext.sessionType) {
-    lastUsefulContext.current = runtimeContext;
+  const [contextMemory, setContextMemory] = useState<{
+    observed: OverlayRuntimeContext;
+    lastUseful?: OverlayRuntimeContext;
+  }>(() => ({
+    observed: runtimeContext,
+    lastUseful: runtimeContext.sessionType ? runtimeContext : undefined,
+  }));
+  if (contextMemory.observed !== runtimeContext) {
+    setContextMemory({
+      observed: runtimeContext,
+      lastUseful: runtimeContext.sessionType ? runtimeContext : contextMemory.lastUseful,
+    });
   }
   const layoutContext = runtimeContext.sessionType
     ? runtimeContext
-    : lastUsefulContext.current ?? runtimeContext;
+    : contextMemory.lastUseful ?? runtimeContext;
   const authorityUnavailable = telemetry.getOverlayFailure() !== undefined ||
     telemetry.getOverlayFrame() === undefined ||
     telemetry.getOverlaySource() === undefined ||

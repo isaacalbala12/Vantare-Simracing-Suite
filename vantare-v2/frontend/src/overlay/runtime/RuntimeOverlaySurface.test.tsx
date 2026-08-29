@@ -96,6 +96,34 @@ function buildDocument(): ProfileDocumentV3 {
 }
 
 describe("RuntimeOverlaySurface", () => {
+  it.each(["desktop", "obs"] as const)(
+    "keeps the last %s layout mounted with visible diagnostics after a V2 failure",
+    async (renderMode) => {
+      const coordinator = createTelemetryRateCoordinator();
+      const document = buildDocument();
+      const visibleOnlyInRace = deltaDefinition.createDefault("race-diagnostic");
+      visibleOnlyInRace.behavior.visibleWhen = { sessionTypes: ["race"] };
+      document.layouts.general.widgets = [];
+      document.layouts.race = { type: "race", widgets: [visibleOnlyInRace] };
+
+      const view = render(
+        <RuntimeOverlaySurface document={document} telemetry={coordinator} renderMode={renderMode} />,
+      );
+      expect(view.getByTestId("runtime-widget-frame").getAttribute("data-widget-id")).toBe("race-diagnostic");
+
+      act(() => {
+        coordinator.setOverlayFrame(undefined, { state: "error", reason: "invalid contract" });
+        coordinator.setOverlayFailure({ code: "invalid-frame", message: "invalid contract" });
+      });
+      await act(() => new Promise((resolve) => setTimeout(resolve, 20)));
+
+      expect(view.getByTestId("runtime-widget-frame").getAttribute("data-widget-id")).toBe("race-diagnostic");
+      const alert = view.getByRole("alert");
+      expect(alert.getAttribute("data-diagnostic-code")).toBe("overlay-v2-invalid-frame");
+      coordinator.dispose();
+    },
+  );
+
   it("does not expose a logical scene before the real CSS viewport is positive", () => {
     measuredWidth = 0;
     measuredHeight = 0;

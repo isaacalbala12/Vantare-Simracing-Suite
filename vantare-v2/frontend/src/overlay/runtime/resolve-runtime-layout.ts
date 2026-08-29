@@ -37,9 +37,10 @@ export function resolveRuntimeLayout(
 export function selectRuntimeWidgets(
   layout: SessionLayoutV3,
   context: OverlayRuntimeContext,
+  options: Readonly<{ bypassVisibility?: boolean }> = {},
 ): WidgetInstanceV3[] {
   return [...layout.widgets]
     .filter((widget) => widget.behavior.enabled)
-    .filter((widget) => isWidgetVisibleV3(widget, context))
+    .filter((widget) => options.bypassVisibility || isWidgetVisibleV3(widget, context))
     .sort((left, right) => left.layout.zIndex - right.layout.zIndex);
 }

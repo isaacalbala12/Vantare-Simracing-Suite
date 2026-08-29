@@ -25,6 +25,7 @@ import { useOverlayRuntimeContext } from "./use-rate-limited-telemetry";
 import type { EngineerPresentationStore } from "../../engineer/engineer-presentation-store";
 import { EngineerSubtitles } from "../../engineer/EngineerSubtitles";
 import type { OverlayV2Feature } from "../telemetry-shadow/overlay-v2-features";
+import type { OverlayRuntimeContext } from "../core/overlay-runtime-context";
 
 export type RuntimeOverlaySurfaceProps = {
   document: ProfileDocumentV3;
@@ -44,8 +45,25 @@ export function RuntimeOverlaySurface(props: RuntimeOverlaySurfaceProps): React.
   const { document, telemetry, renderMode, layoutOrigin, onDiagnostic, diagnostics: diagnosticsProp, engineerPresentations, overlayV2Features } = props;
   const diagnostics = useMemo(() => diagnosticsProp ?? createWidgetDiagnosticCollector(), [diagnosticsProp]);
   const runtimeContext = useOverlayRuntimeContext(telemetry);
-  const layout = resolveRuntimeLayout(document, runtimeContext);
-  const widgets = selectRuntimeWidgets(layout, runtimeContext);
+  const lastUsefulContext = useRef<OverlayRuntimeContext | undefined>(undefined);
+  if (runtimeContext.sessionType) {
+    lastUsefulContext.current = runtimeContext;
+  }
+  const layoutContext = runtimeContext.sessionType
+    ? runtimeContext
+    : lastUsefulContext.current ?? runtimeContext;
+  const authorityUnavailable = telemetry.getOverlayFailure() !== undefined ||
+    telemetry.getOverlayFrame() === undefined ||
+    telemetry.getOverlaySource() === undefined ||
+    runtimeContext.sourceState === "error" ||
+    runtimeContext.sourceState === "stale";
+  const layout = resolveRuntimeLayout(document, layoutContext);
+  // En ausencia/fallo de V2 los frames deben seguir montados: el host es quien
+  // convierte ese estado en un diagnostico visible. Filtrar aqui ocultaria el
+  // unico mensaje accionable para Desktop y OBS.
+  const widgets = selectRuntimeWidgets(layout, layoutContext, {
+    bypassVisibility: authorityUnavailable,
+  });
   const layoutViewport = resolveLayoutViewport(document);
   const surfaceRef = useRef<HTMLDivElement>(null);
   const [outputViewport, setOutputViewport] = useState<ViewportSize | null>(null);

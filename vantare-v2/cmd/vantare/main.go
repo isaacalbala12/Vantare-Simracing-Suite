@@ -2628,6 +2628,11 @@ func main() {
 		if err := app.ApplyProcessPowerPolicy(level); err != nil {
 			log.Printf("warning: performance process policy update unavailable: %v", err)
 		}
+		if overlayController != nil && studioProfileSvc != nil {
+			if err := overlayController.ApplyPerformanceLevel(level, studioProfileSvc.Document()); err != nil {
+				log.Printf("warning: overlay performance geometry update unavailable: %v", err)
+			}
+		}
 		if engSvc != nil {
 			engSvc.SetVisualPresentationEnabled(level < 4)
 		}
@@ -3608,6 +3613,7 @@ func newWailsOverlayFactory(wailsApp *application.App, windowClosed func(app.Ove
 }
 
 type wailsOverlayWindow struct {
+	mu     sync.Mutex
 	w      *application.WebviewWindow
 	handle *wailsWindowHandle
 	mgr    *window.Manager
@@ -3620,10 +3626,26 @@ func (o *wailsOverlayWindow) Close() {
 }
 
 func (o *wailsOverlayWindow) ApplyProfileMode(document *config.ProfileDocumentV3) error {
+	o.mu.Lock()
+	defer o.mu.Unlock()
 	if o.mgr == nil || document == nil {
 		return fmt.Errorf("overlay window not ready for mode application")
 	}
 	o.mgr.ApplyProfileV3(document, false)
+	o.applyPerformanceGeometry(document)
+	return nil
+}
+
+func (o *wailsOverlayWindow) ApplyPerformanceLevel(level int, document *config.ProfileDocumentV3) error {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	if document == nil {
+		return fmt.Errorf("overlay profile document is required for performance geometry")
+	}
+	if o.level == level {
+		return nil
+	}
+	o.level = level
 	o.applyPerformanceGeometry(document)
 	return nil
 }
@@ -3635,6 +3657,8 @@ func (o *wailsOverlayWindow) applyPerformanceGeometry(document *config.ProfileDo
 	monitor := window.WailsRect{X: o.screen.Bounds.X, Y: o.screen.Bounds.Y, Width: o.screen.Bounds.Width, Height: o.screen.Bounds.Height}
 	geometry := window.ResolveOverlayGeometry(document, monitor, o.level, overlayBoundingMargin)
 	if !geometry.ShrinkWrapped {
+		o.w.UnFullscreen()
+		o.handle.SetBounds(geometry.Window)
 		o.w.ExecJS(resetOverlayGeometryScript)
 		return
 	}

@@ -8,11 +8,22 @@ import (
 )
 
 type fakeOverlayWindow struct {
-	closed       bool
-	closeCalls   int
-	boundsSet    bool
-	ignoreMouse  bool
-	appliedModes []config.DisplayMode
+	closed        bool
+	closeCalls    int
+	boundsSet     bool
+	ignoreMouse   bool
+	appliedModes  []config.DisplayMode
+	appliedLevels []int
+	level         int
+}
+
+func (f *fakeOverlayWindow) ApplyPerformanceLevel(level int, _ *config.ProfileDocumentV3) error {
+	if level == f.level {
+		return nil
+	}
+	f.level = level
+	f.appliedLevels = append(f.appliedLevels, level)
+	return nil
 }
 
 func (f *fakeOverlayWindow) Close() {
@@ -52,13 +63,34 @@ type nonComparableOverlayWindow struct {
 func (nonComparableOverlayWindow) Close() {}
 
 func (nonComparableOverlayWindow) ApplyProfileMode(*config.ProfileDocumentV3) error { return nil }
+func (nonComparableOverlayWindow) ApplyPerformanceLevel(int, *config.ProfileDocumentV3) error {
+	return nil
+}
 
 func (f *fakeOverlayFactory) NewOverlayWindow(document *config.ProfileDocumentV3, origin config.Rect, bounds config.Rect) (app.OverlayWindow, error) {
 	f.created++
 	f.origin = origin
 	f.bounds = bounds
-	f.last = &fakeOverlayWindow{boundsSet: true, ignoreMouse: true}
+	f.last = &fakeOverlayWindow{boundsSet: true, ignoreMouse: true, level: 1}
 	return f.last, nil
+}
+
+func TestOverlayControllerAppliesPerformanceLevelTransitionsOnce(t *testing.T) {
+	factory := &fakeOverlayFactory{}
+	controller := app.NewOverlayController(factory)
+	document := racingDocument("performance-transition", config.ModeRacing)
+	if _, err := controller.Start(document); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, level := range []int{3, 3, 1, 1} {
+		if err := controller.ApplyPerformanceLevel(level, document); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if got := factory.last.appliedLevels; len(got) != 2 || got[0] != 3 || got[1] != 1 {
+		t.Fatalf("transiciones aplicadas=%v, want [3 1]", got)
+	}
 }
 
 func racingDocument(id string, mode config.DisplayMode) *config.ProfileDocumentV3 {

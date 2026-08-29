@@ -265,6 +265,10 @@ func (f *fakeOverlayWindow) ApplyProfileMode(document *config.ProfileDocumentV3)
 	return nil
 }
 
+func (f *fakeOverlayWindow) ApplyPerformanceLevel(int, *config.ProfileDocumentV3) error {
+	return nil
+}
+
 type fakeOverlayFactory struct {
 	created int
 	last    *fakeOverlayWindow

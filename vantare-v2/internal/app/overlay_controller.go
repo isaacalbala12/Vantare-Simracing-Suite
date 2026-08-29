@@ -18,6 +18,18 @@ type OverlayStatus struct {
 type OverlayWindow interface {
 	Close()
 	ApplyProfileMode(document *config.ProfileDocumentV3) error
+	ApplyPerformanceLevel(level int, document *config.ProfileDocumentV3) error
+}
+
+// ApplyPerformanceLevel updates the geometry policy of the running window.
+// The window implementation suppresses no-op saves at the same level.
+func (c *OverlayController) ApplyPerformanceLevel(level int, document *config.ProfileDocumentV3) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.current == nil {
+		return nil
+	}
+	return c.current.ApplyPerformanceLevel(level, document)
 }
 
 // OverlayWindowFactory creates a new desktop overlay window for a profile.

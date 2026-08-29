@@ -41,12 +41,15 @@ func TestResolveLicensePublicKeysCannotOverrideEmbeddedTrustRoot(t *testing.T) {
 }
 
 type recordingHubSuspendTarget struct {
-	events chan *application.CustomEvent
+	events             chan *application.CustomEvent
+	prepared, restored atomic.Int32
 }
 
 func (t *recordingHubSuspendTarget) DispatchWailsEvent(event *application.CustomEvent) {
 	t.events <- event
 }
+func (t *recordingHubSuspendTarget) PrepareSuspendProbe()      { t.prepared.Add(1) }
+func (t *recordingHubSuspendTarget) RestoreAfterSuspendProbe() { t.restored.Add(1) }
 
 func TestHubSuspendProbeTargetsCurrentHubAndReceivesAck(t *testing.T) {
 	probe := &hubSuspendEventProbe{pending: make(map[string]chan bool)}
@@ -75,6 +78,26 @@ func TestHubSuspendProbeTargetsCurrentHubAndReceivesAck(t *testing.T) {
 	}})
 	if !<-result {
 		t.Fatal("el ACK dirigido no llegó al probe")
+	}
+	if target.prepared.Load() != 1 || target.restored.Load() != 1 {
+		t.Fatalf("probe wake/restore = %d/%d", target.prepared.Load(), target.restored.Load())
+	}
+}
+
+func TestHubSuspendProbeDoesNotReminimiseAfterOpenCancelsIt(t *testing.T) {
+	probe := &hubSuspendEventProbe{pending: make(map[string]chan bool)}
+	target := &recordingHubSuspendTarget{events: make(chan *application.CustomEvent, 1)}
+	probe.SetTarget(target)
+	ctx, cancel := context.WithCancel(context.Background())
+	result := make(chan bool, 1)
+	go func() { result <- probe.Probe(ctx) }()
+	<-target.events
+	cancel()
+	if <-result {
+		t.Fatal("un probe cancelado aceptó la suspensión")
+	}
+	if target.prepared.Load() != 1 || target.restored.Load() != 0 {
+		t.Fatalf("probe cancelado wake/restore = %d/%d", target.prepared.Load(), target.restored.Load())
 	}
 }
 

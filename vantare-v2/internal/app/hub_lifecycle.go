@@ -30,6 +30,7 @@ type HubLifecycle struct {
 	effectiveLevel func() int
 	canSuspend     HubSuspendProbe
 	logBlocked     func()
+	pendingCancel  context.CancelFunc
 }
 
 func NewHubLifecycle(newWindow HubWindowFactory, effectiveLevel func() int, canSuspend HubSuspendProbe, logBlocked func()) *HubLifecycle {
@@ -44,6 +45,10 @@ func (l *HubLifecycle) Open() (HubWindow, time.Duration) {
 	started := time.Now()
 	l.mu.Lock()
 	// Invalida cualquier ACK de suspensión que estuviese esperando al frontend.
+	if l.pendingCancel != nil {
+		l.pendingCancel()
+		l.pendingCancel = nil
+	}
 	l.generation++
 	window := l.current
 	if window == nil && l.newWindow != nil {
@@ -73,7 +78,24 @@ func (l *HubLifecycle) HandleMinimise(ctx context.Context) bool {
 	if !minimised {
 		return false
 	}
-	if l.canSuspend == nil || !l.canSuspend(ctx) {
+	probeCtx, cancel := context.WithCancel(ctx)
+	l.mu.Lock()
+	if l.generation != generation || l.current != window || !window.IsMinimised() {
+		l.mu.Unlock()
+		cancel()
+		return false
+	}
+	l.pendingCancel = cancel
+	l.mu.Unlock()
+	canSuspend := l.canSuspend != nil && l.canSuspend(probeCtx)
+	cancel()
+
+	l.mu.Lock()
+	if l.generation == generation && l.current == window {
+		l.pendingCancel = nil
+	}
+	l.mu.Unlock()
+	if !canSuspend {
 		if l.logBlocked != nil {
 			l.logBlocked()
 		}

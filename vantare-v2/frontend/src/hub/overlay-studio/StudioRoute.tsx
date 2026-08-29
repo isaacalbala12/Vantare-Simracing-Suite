@@ -15,7 +15,7 @@ import {
   telemetrySourceStatusRequestEvent,
   type TelemetrySourceStatus,
 } from '../../telemetry-transport/source-status';
-import { readDiagnosticOverlayV2Features } from '../../overlay/telemetry-shadow/overlay-v2-features';
+import { createOverlayV2FeaturesGeneration } from '../../overlay/telemetry-shadow/overlay-v2-features';
 import { createWailsRaceScheduleStore } from '../../overlay/core/race-schedule-store';
 import { ProfilesOrbitPage } from '../profiles-orbit/ProfilesOrbitPage';
 import { RecommendedProfilesView } from '../overlays/RecommendedProfilesView';
@@ -338,6 +338,7 @@ type StudioTelemetryGeneration = Readonly<{
   overlayPull: ReturnType<typeof createBrowserOverlayWailsPullClient>;
   telemetryAdapter: TelemetryAdapter | null;
   raceSchedule: ReturnType<typeof createWailsRaceScheduleStore>;
+  overlayV2Features: ReturnType<typeof createOverlayV2FeaturesGeneration>;
 }>;
 
 export const StudioRoute = memo(function StudioRoute(props: StudioRouteProps): React.ReactElement {
@@ -351,6 +352,7 @@ export const StudioRoute = memo(function StudioRoute(props: StudioRouteProps): R
       onError: (error) => console.error('studio overlay telemetry pull failed', error),
     });
     const raceSchedule = createWailsRaceScheduleStore();
+    const overlayV2Features = createOverlayV2FeaturesGeneration();
     const legacy = createWailsProjectionTelemetryAdapter({
       coordinator,
       runtime: 'studio',
@@ -372,7 +374,7 @@ export const StudioRoute = memo(function StudioRoute(props: StudioRouteProps): R
     // registrar listeners ni cargar perfiles contra recursos ya dispuestos.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     raceSchedule.start();
-    setGeneration({ coordinator, overlayV2Store, overlayPull, telemetryAdapter, raceSchedule });
+    setGeneration({ coordinator, overlayV2Store, overlayPull, telemetryAdapter, raceSchedule, overlayV2Features });
 
     return () => {
       if (telemetryAdapterProp === null) telemetryAdapter.stop();
@@ -380,6 +382,7 @@ export const StudioRoute = memo(function StudioRoute(props: StudioRouteProps): R
       unbindOverlayV2();
       overlayV2Store.dispose();
       raceSchedule.dispose();
+      overlayV2Features.dispose();
       if (coordinatorProp === undefined) coordinator.dispose();
     };
   }, [coordinatorProp, telemetryAdapterProp]);
@@ -407,14 +410,11 @@ function StudioRouteGeneration(props: StudioRouteGenerationProps): React.ReactEl
     () => clientProp ?? createStudioProfileClient(createWailsStudioEventTransport()),
     [clientProp],
   );
-  const [overlayV2Features, setOverlayV2Features] = useState(() =>
-    readDiagnosticOverlayV2Features(),
+  const overlayV2Features = useSyncExternalStore(
+    generation.overlayV2Features.subscribe,
+    generation.overlayV2Features.getSnapshot,
+    generation.overlayV2Features.getSnapshot,
   );
-  useEffect(() => {
-    const onChange = () => setOverlayV2Features(readDiagnosticOverlayV2Features());
-    window.addEventListener('vantare:overlay-v2-rollback-changed', onChange);
-    return () => window.removeEventListener('vantare:overlay-v2-rollback-changed', onChange);
-  }, []);
   const raceSchedule = useSyncExternalStore(
     generation.raceSchedule.subscribe,
     generation.raceSchedule.getSnapshot,
@@ -470,16 +470,6 @@ function StudioRouteGeneration(props: StudioRouteGenerationProps): React.ReactEl
   const effectiveMode: StudioRouteMode = isAutoStart && mode === 'editor' ? 'recommended' : mode;
   const autoActivateAndStart = isAutoStart;
   const studioProfiles = useMemo(() => toStudioProfiles(profiles), [profiles]);
-
-  useEffect(() => {
-    const refresh = () => setOverlayV2Features(readDiagnosticOverlayV2Features());
-    window.addEventListener('vantare:overlay-v2-features-changed', refresh);
-    window.addEventListener('storage', refresh);
-    return () => {
-      window.removeEventListener('vantare:overlay-v2-features-changed', refresh);
-      window.removeEventListener('storage', refresh);
-    };
-  }, []);
 
   useEffect(() => {
     if (liveAvailableProp !== undefined) return;

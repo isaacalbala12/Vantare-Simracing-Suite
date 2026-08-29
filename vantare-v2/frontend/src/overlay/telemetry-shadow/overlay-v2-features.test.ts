@@ -1,13 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   DEFAULT_OVERLAY_V2_FEATURES,
+  createOverlayV2FeaturesGeneration,
   readDiagnosticOverlayV2Features,
   readOverlayV2Rollback,
   writeOverlayV2Rollback,
 } from "./overlay-v2-features";
 
 afterEach(() => {
-  writeOverlayV2Rollback(false);
   delete window.__vantareOverlayV2Features;
   vi.restoreAllMocks();
 });
@@ -19,6 +19,7 @@ describe("Overlay V2 rollback diagnóstico", () => {
   });
 
   it("desactiva V2 solo en memoria y emite el cambio", () => {
+    const generation = createOverlayV2FeaturesGeneration();
     const listener = vi.fn();
     window.addEventListener("vantare:overlay-v2-rollback-changed", listener);
 
@@ -28,9 +29,11 @@ describe("Overlay V2 rollback diagnóstico", () => {
     expect(readDiagnosticOverlayV2Features()).toEqual([]);
     expect(listener).toHaveBeenCalledTimes(1);
     window.removeEventListener("vantare:overlay-v2-rollback-changed", listener);
+    generation.dispose();
   });
 
   it("no consulta localStorage y la antigua lista por widget es inerte", () => {
+    const generation = createOverlayV2FeaturesGeneration();
     const getItem = vi.spyOn(Storage.prototype, "getItem");
     const setItem = vi.spyOn(Storage.prototype, "setItem");
     window.__vantareOverlayV2Features = [];
@@ -40,5 +43,18 @@ describe("Overlay V2 rollback diagnóstico", () => {
 
     expect(getItem).not.toHaveBeenCalled();
     expect(setItem).not.toHaveBeenCalled();
+    generation.dispose();
+  });
+
+  it("restaura V2 al desmontar y recrear la generación", () => {
+    const first = createOverlayV2FeaturesGeneration();
+    first.setRollback(true);
+    expect(first.getSnapshot()).toEqual([]);
+    first.dispose();
+
+    const second = createOverlayV2FeaturesGeneration();
+    expect(second.getSnapshot()).toEqual(DEFAULT_OVERLAY_V2_FEATURES);
+    expect(readOverlayV2Rollback()).toBe(false);
+    second.dispose();
   });
 });

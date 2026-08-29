@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { Events } from "@wailsio/runtime";
 import type { CalendarReminderPayload } from "../calendar/calendar-types";
 import { parseProfileDocumentV3, type ProfileDocumentV3 } from "./core/profile-document";
@@ -18,7 +18,7 @@ import {
 } from "../telemetry-transport/overlay-frame-v2-store";
 import { createBrowserOverlayWailsPullClient } from "../telemetry-transport/overlay-wails-pull";
 import { createOverlayV2ShadowRuntime } from "./telemetry-shadow/overlay-v2-shadow-runtime";
-import { readDiagnosticOverlayV2Features, type OverlayV2Feature } from "./telemetry-shadow/overlay-v2-features";
+import { createOverlayV2FeaturesGeneration } from "./telemetry-shadow/overlay-v2-features";
 import { createWailsRaceScheduleStore } from "./core/race-schedule-store";
 
 type ProfileV3LoadedPayload = {
@@ -33,6 +33,7 @@ type CompositeGeneration = Readonly<{
   overlayV2Store: ReturnType<typeof createOverlayFrameV2Store>;
   engineerPresentations: ReturnType<typeof createEngineerPresentationStore>;
   raceSchedule: ReturnType<typeof createWailsRaceScheduleStore>;
+  overlayV2Features: ReturnType<typeof createOverlayV2FeaturesGeneration>;
 }>;
 
 export function CompositeApp() {
@@ -43,19 +44,7 @@ export function CompositeApp() {
   const [reminder, setReminder] = useState<CalendarReminderPayload | null>(null);
 
   const [generation, setGeneration] = useState<CompositeGeneration | null>(null);
-  const [overlayV2Features, setOverlayV2Features] = useState<readonly OverlayV2Feature[]>(() =>
-    readDiagnosticOverlayV2Features(),
-  );
-
   useEffect(() => applyOverlayDocumentMode(), []);
-
-  useEffect(() => {
-    const onChange = () => setOverlayV2Features(readDiagnosticOverlayV2Features());
-    window.addEventListener("vantare:overlay-v2-rollback-changed", onChange);
-    return () => {
-      window.removeEventListener("vantare:overlay-v2-rollback-changed", onChange);
-    };
-  }, []);
 
   useEffect(() => {
     const coordinator = createTelemetryRateCoordinator();
@@ -63,6 +52,7 @@ export function CompositeApp() {
     const overlayV2Shadow = createOverlayV2ShadowRuntime();
     const engineerPresentations = createEngineerPresentationStore();
     const raceSchedule = createWailsRaceScheduleStore();
+    const overlayV2Features = createOverlayV2FeaturesGeneration();
     const overlayPull = createBrowserOverlayWailsPullClient({
       onError: (error) => console.error("overlay telemetry pull failed", error),
     });
@@ -109,7 +99,7 @@ export function CompositeApp() {
     // Este efecto es la fabrica y el owner de la generacion; el render que la
     // consume no puede montarse antes de que sus recursos externos existan.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setGeneration({ coordinator, overlayV2Store, engineerPresentations, raceSchedule });
+    setGeneration({ coordinator, overlayV2Store, engineerPresentations, raceSchedule, overlayV2Features });
     return () => {
       overlayPull.stop();
       delete diagnosticWindow.__vantareOverlayV2Diagnostics;
@@ -120,6 +110,7 @@ export function CompositeApp() {
       overlayV2Store.dispose();
       engineerPresentations.dispose();
       raceSchedule.dispose();
+      overlayV2Features.dispose();
       coordinator.dispose();
     };
   }, []);
@@ -187,7 +178,6 @@ export function CompositeApp() {
       layoutOrigin={layoutOrigin}
       editMode={editMode}
       reminder={reminder}
-      overlayV2Features={overlayV2Features}
       onCloseReminder={() => setReminder(null)}
     />
   );
@@ -200,7 +190,6 @@ type CompositeGenerationViewProps = Readonly<{
   layoutOrigin: { x: number; y: number };
   editMode: boolean;
   reminder: CalendarReminderPayload | null;
-  overlayV2Features: readonly OverlayV2Feature[];
   onCloseReminder(): void;
 }>;
 
@@ -212,9 +201,13 @@ function CompositeGenerationView(props: CompositeGenerationViewProps) {
     layoutOrigin,
     editMode,
     reminder,
-    overlayV2Features,
     onCloseReminder,
   } = props;
+  const overlayV2Features = useSyncExternalStore(
+    generation.overlayV2Features.subscribe,
+    generation.overlayV2Features.getSnapshot,
+    generation.overlayV2Features.getSnapshot,
+  );
   return (
     <div className="relative w-full h-full overflow-hidden bg-transparent">
       {editMode && document ? (
@@ -223,6 +216,8 @@ function CompositeGenerationView(props: CompositeGenerationViewProps) {
           revision={revision}
           layoutOrigin={layoutOrigin}
           telemetry={generation.coordinator}
+          overlayV2Features={overlayV2Features}
+          raceSchedule={generation.raceSchedule}
         />
       ) : (
         <DesktopOverlayRuntime

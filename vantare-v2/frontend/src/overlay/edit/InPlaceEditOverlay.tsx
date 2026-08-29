@@ -1,5 +1,6 @@
 ﻿import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import type { ProfileDocumentV3, SessionLayoutType, WidgetLayoutV3 } from "../core/profile-document";
+import { useSyncExternalStore } from "react";
 import {
   MAX_LAYOUT_VIEWPORT_DIMENSION,
   resolveLayoutViewport,
@@ -18,6 +19,8 @@ import { useInplaceAutosave } from "./use-inplace-autosave";
 import { createInPlaceProfileClient } from "./inplace-profile-client";
 import { createWailsStudioEventTransport } from "../../hub/overlay-studio/state/studio-profile-client";
 import { useI18n } from "../../i18n/I18nProvider";
+import type { OverlayV2Feature } from "../telemetry-shadow/overlay-v2-features";
+import { EMPTY_RACE_SCHEDULE_SNAPSHOT, type RaceScheduleStore } from "../core/race-schedule-store";
 import "./inplace-edit.css";
 
 export type InPlaceEditOverlayProps = {
@@ -27,10 +30,12 @@ export type InPlaceEditOverlayProps = {
   telemetry: TelemetryRateCoordinator;
   access?: AccessContext;
   licenseLoading?: boolean;
+  overlayV2Features?: readonly OverlayV2Feature[];
+  raceSchedule?: RaceScheduleStore;
 };
 
 export function InPlaceEditOverlay(props: InPlaceEditOverlayProps): React.ReactElement {
-  const { document, revision, layoutOrigin, telemetry, access, licenseLoading } = props;
+  const { document, revision, layoutOrigin, telemetry, access, licenseLoading, overlayV2Features, raceSchedule } = props;
   const transport = useMemo(() => createWailsStudioEventTransport(), []);
   const client = useMemo(
     () => createInPlaceProfileClient({ document, revision, transport }),
@@ -50,13 +55,15 @@ export function InPlaceEditOverlay(props: InPlaceEditOverlayProps): React.ReactE
         telemetry={telemetry}
         access={access}
         licenseLoading={licenseLoading ?? false}
+        overlayV2Features={overlayV2Features}
+        raceSchedule={raceSchedule}
       />
     </StudioProvider>
   );
 }
 
 function InPlaceEditOverlayContent(props: Omit<InPlaceEditOverlayProps, "revision">): React.ReactElement {
-  const { document, layoutOrigin, telemetry, access, licenseLoading } = props;
+  const { document, layoutOrigin, telemetry, access, licenseLoading, overlayV2Features, raceSchedule } = props;
   const { t } = useI18n();
   const {
     document: storeDocument,
@@ -71,6 +78,11 @@ function InPlaceEditOverlayContent(props: Omit<InPlaceEditOverlayProps, "revisio
   const surfaceRef = useRef<HTMLDivElement>(null);
   const [outputViewport, setOutputViewport] = useState<ViewportSize | null>(null);
   const runtimeContext = useOverlayRuntimeContext(telemetry);
+  const raceScheduleSnapshot = useSyncExternalStore(
+    raceSchedule?.subscribe ?? (() => () => undefined),
+    raceSchedule?.getSnapshot ?? (() => EMPTY_RACE_SCHEDULE_SNAPSHOT),
+    () => EMPTY_RACE_SCHEDULE_SNAPSHOT,
+  );
   const layout = resolveRuntimeLayout(storeDocument ?? document, runtimeContext);
   const layoutViewport = resolveLayoutViewport(storeDocument ?? document);
   const widgets = useMemo(
@@ -196,6 +208,8 @@ function InPlaceEditOverlayContent(props: Omit<InPlaceEditOverlayProps, "revisio
               selected={selectedWidgetIdLocal === widget.id}
               layoutOrigin={layoutOrigin}
               telemetry={telemetry}
+              overlayV2Features={overlayV2Features}
+              raceSchedule={raceScheduleSnapshot}
               onSelect={setSelectedWidgetIdLocal}
               onFramePointerDown={interaction.onFramePointerDown}
               onResizePointerDown={interaction.onResizePointerDown}

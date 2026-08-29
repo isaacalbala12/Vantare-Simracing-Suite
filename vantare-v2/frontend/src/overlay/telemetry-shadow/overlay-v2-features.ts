@@ -50,26 +50,66 @@ export function parseOverlayV2Features(input: unknown): OverlayV2Feature[] {
 }
 
 /**
- * Compatibilidad transitoria con las surfaces reservadas a #936.
- *
- * V2 es autoridad por defecto y por eso se devuelve el catálogo completo.
- * La única excepción es el rollback diagnóstico de esta ventana, que devuelve
- * una lista vacía para detener la suscripción durante la inspección. No se lee
- * ni escribe localStorage y recargar la ventana siempre restaura V2.
+ * V2 es autoridad por defecto. El rollback diagnóstico pertenece a la
+ * generación activa y se destruye con ella; nunca se persiste en window ni en
+ * localStorage. La función global sólo dirige la orden a esa generación.
  */
-export function readDiagnosticOverlayV2Features(): OverlayV2Feature[] {
-  return readOverlayV2Rollback() ? [] : [...DEFAULT_OVERLAY_V2_FEATURES];
+const ROLLBACK_FEATURES: readonly OverlayV2Feature[] = Object.freeze([]);
+
+export type OverlayV2FeaturesGeneration = Readonly<{
+  getSnapshot(): readonly OverlayV2Feature[];
+  subscribe(listener: () => void): () => void;
+  setRollback(enabled: boolean): void;
+  dispose(): void;
+}>;
+
+let activeGeneration: OverlayV2FeaturesGeneration | undefined;
+
+export function createOverlayV2FeaturesGeneration(): OverlayV2FeaturesGeneration {
+  let snapshot: readonly OverlayV2Feature[] = DEFAULT_OVERLAY_V2_FEATURES;
+  let disposed = false;
+  const listeners = new Set<() => void>();
+  const generation: OverlayV2FeaturesGeneration = {
+    getSnapshot: () => snapshot,
+    subscribe(listener) {
+      if (disposed) return () => undefined;
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    setRollback(enabled) {
+      if (disposed) return;
+      const next = enabled ? ROLLBACK_FEATURES : DEFAULT_OVERLAY_V2_FEATURES;
+      if (snapshot === next) return;
+      snapshot = next;
+      for (const listener of listeners) listener();
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("vantare:overlay-v2-rollback-changed", {
+          detail: Object.freeze({ enabled }),
+        }));
+      }
+    },
+    dispose() {
+      if (disposed) return;
+      disposed = true;
+      snapshot = DEFAULT_OVERLAY_V2_FEATURES;
+      listeners.clear();
+      if (activeGeneration === generation) activeGeneration = undefined;
+    },
+  };
+  activeGeneration = generation;
+  return generation;
+}
+
+export function readDiagnosticOverlayV2Features(): readonly OverlayV2Feature[] {
+  return activeGeneration?.getSnapshot() ?? DEFAULT_OVERLAY_V2_FEATURES;
 }
 
 export function readOverlayV2Rollback(): boolean {
-  return typeof window !== "undefined" && window.__vantareOverlayV2Rollback === true;
+  return readDiagnosticOverlayV2Features().length === 0;
 }
 
 export function writeOverlayV2Rollback(enabled: boolean): void {
-  if (typeof window === "undefined") return;
-  window.__vantareOverlayV2Rollback = enabled === true;
-  const detail = Object.freeze({ enabled: window.__vantareOverlayV2Rollback });
-  window.dispatchEvent(new CustomEvent("vantare:overlay-v2-rollback-changed", { detail }));
+  activeGeneration?.setRollback(enabled === true);
 }
 
 if (typeof window !== "undefined") {
@@ -79,7 +119,6 @@ if (typeof window !== "undefined") {
 
 declare global {
   interface Window {
-    __vantareOverlayV2Rollback?: boolean;
     __vantareSetOverlayV2Rollback?: (enabled: boolean) => void;
     __vantareGetOverlayV2Rollback?: () => boolean;
   }

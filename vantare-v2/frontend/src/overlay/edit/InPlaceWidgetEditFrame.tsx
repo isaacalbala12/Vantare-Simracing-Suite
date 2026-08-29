@@ -12,6 +12,8 @@ import {
   registerInplaceFrameElement,
   resolveInplaceFrameGeometry,
 } from "./inplace-frame-preview";
+import type { OverlayV2Feature } from "../telemetry-shadow/overlay-v2-features";
+import type { RaceScheduleSnapshot } from "../core/race-schedule-store";
 
 const RESIZE_HANDLES: readonly ResizeHandle[] = ["nw", "n", "ne", "e", "se", "s", "sw", "w"];
 
@@ -33,6 +35,8 @@ export type InPlaceWidgetEditFrameProps = {
   selected: boolean;
   layoutOrigin?: { x: number; y: number };
   telemetry: TelemetryRateCoordinator;
+  overlayV2Features?: readonly OverlayV2Feature[];
+  raceSchedule?: RaceScheduleSnapshot;
   onSelect(widgetId: string): void;
   onFramePointerDown?(widgetId: string, event: React.PointerEvent<HTMLElement>): void;
   onResizePointerDown?(
@@ -51,6 +55,8 @@ function InPlaceWidgetEditFrameComponent(props: InPlaceWidgetEditFrameProps): Re
     selected,
     layoutOrigin,
     telemetry,
+    overlayV2Features,
+    raceSchedule,
     onSelect,
     onFramePointerDown,
     onResizePointerDown,
@@ -58,7 +64,13 @@ function InPlaceWidgetEditFrameComponent(props: InPlaceWidgetEditFrameProps): Re
   } = props;
   const frameRef = useRef<HTMLDivElement>(null);
   const origin = layoutOrigin ?? { x: 0, y: 0 };
-  const runtime = useRateLimitedWidgetTelemetry(telemetry, widget.type);
+  const telemetryRuntime = useRateLimitedWidgetTelemetry(telemetry, widget.type);
+  const runtime = {
+    ...telemetryRuntime,
+    overlayV2Features,
+    raceScheduleEvents: raceSchedule?.events,
+    raceScheduleStatus: raceSchedule?.status,
+  };
   const frameGeometry = resolveInplaceFrameGeometry(widget.id, layout, previewActive);
   const definition = widgetTypeRegistry.get(widget.type);
   const resizeHandles = definition.capabilities.resizeMode === "horizontal-only"
@@ -190,6 +202,9 @@ export const InPlaceWidgetEditFrame = memo(
     && previous.previewActive === next.previewActive
     && previous.selected === next.selected
     && previous.layoutOrigin === next.layoutOrigin
+    && previous.telemetry === next.telemetry
+    && previous.overlayV2Features === next.overlayV2Features
+    && previous.raceSchedule === next.raceSchedule
     && previous.onSelect === next.onSelect
     && previous.onFramePointerDown === next.onFramePointerDown
     && previous.onResizePointerDown === next.onResizePointerDown

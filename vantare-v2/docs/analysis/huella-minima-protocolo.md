@@ -92,7 +92,9 @@ PresentMon propio y pide `logman stop <sesión> -ets`, también ante excepciones
 `finally`; por eso la siguiente corrida consulta `logman query -ets`, conserva
 sesiones cuyo PID aún corresponde a un proceso Vantare vivo y detiene las
 huérfanas antes de lanzar la app. Los nombres recuperados quedan en
-`orphanEtwSessionsStopped`.
+`orphanEtwSessionsStopped`. Si `logman query` falla por el proveedor WMI del
+host, el banco completa la enumeración con `Get-EtwTraceSession`; al detener,
+`Stop-EtwTraceSession` es también el fallback de `logman stop`.
 
 ## Condiciones
 

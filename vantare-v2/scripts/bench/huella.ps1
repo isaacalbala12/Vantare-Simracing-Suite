@@ -198,6 +198,10 @@ function Get-VantareEtwSessions {
     $queryOutput = & logman.exe query -ets 2>&1
     $queryExitCode = $LASTEXITCODE
     $queryText = ($queryOutput | ForEach-Object { [string]$_ }) -join [Environment]::NewLine
+    if ($queryExitCode -ne 0 -and (Get-Command Get-EtwTraceSession -ErrorAction SilentlyContinue)) {
+        $fallbackNames = @(Get-EtwTraceSession -Name 'VantareHuella-*' | ForEach-Object { $_.Name })
+        if ($fallbackNames.Count) { $queryText += [Environment]::NewLine + ($fallbackNames -join [Environment]::NewLine) }
+    }
     $sessions = @($queryText | & node $processHelper --etw-sessions | ConvertFrom-Json)
     if ($LASTEXITCODE -ne 0) { throw 'No se pudo interpretar la lista de sesiones ETW.' }
     if ($queryExitCode -ne 0) {
@@ -209,7 +213,14 @@ function Get-VantareEtwSessions {
 function Stop-HuellaEtwSession([string]$Name) {
     if (-not $Name) { return $true }
     $null = & logman.exe stop $Name -ets 2>&1
-    return $LASTEXITCODE -eq 0
+    if ($LASTEXITCODE -eq 0) { return $true }
+    if (Get-Command Stop-EtwTraceSession -ErrorAction SilentlyContinue) {
+        try {
+            Stop-EtwTraceSession -Name $Name -ErrorAction Stop
+            return $true
+        } catch { return $false }
+    }
+    return $false
 }
 
 function Format-Invariant([double]$Value) {

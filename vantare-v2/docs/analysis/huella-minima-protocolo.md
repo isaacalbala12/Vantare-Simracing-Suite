@@ -81,6 +81,19 @@ otra captura. Si el host rechaza sesiones ETW concurrentes, cerrar Radeon
 Software manualmente, registrar esa variante y repetir todas las condiciones
 con el mismo estado.
 
+PresentMon puede avisar que algunas métricas requieren privilegios elevados.
+Para este protocolo la elevación es opcional: la captura v2 de frametime puede
+funcionar en una consola normal. Se valida el resultado, no el texto del aviso:
+el CSV debe contener al menos un frame válido.
+
+Cada captura posee `VantareHuella-<pid>-<fecha>`. El bloque `finally` termina el
+PresentMon propio y pide `logman stop <sesión> -ets`, también ante excepciones o
+`Ctrl+C`. Un kill forzado del proceso PowerShell puede impedir ejecutar ese
+`finally`; por eso la siguiente corrida consulta `logman query -ets`, conserva
+sesiones cuyo PID aún corresponde a un proceso Vantare vivo y detiene las
+huérfanas antes de lanzar la app. Los nombres recuperados quedan en
+`orphanEtwSessionsStopped`.
+
 ## Condiciones
 
 | Condición | Overlay | Hub | Aplicación automática |
@@ -142,7 +155,10 @@ se redescubre cada 5 s sin perder los roles de renderer. Cada fila registra
 valores GPU quedan vacíos y el agregador la excluye de medias y percentiles en
 vez de convertirla en cero. PresentMon aporta
 frametime y considera perdido un frame v2 cuando `DisplayedTime` es `NA` (no
-llegó a pantalla), publicando recuento y porcentaje. La build arranca desde `<corrida>-runtime/configs`, por lo que sus
+llegó a pantalla), publicando recuento y porcentaje. Si no aparece ningún frame
+válido, el CSV combinado registra `gameFrametimeValid=false`, el Markdown marca
+el frametime como no publicable y conserva válidas las métricas RAM/CPU/GPU de
+Vantare. La build arranca desde `<corrida>-runtime/configs`, por lo que sus
 refrescos y datos de desarrollo no escriben en `configs/` versionado ni en la
 configuración real del usuario. La aplicación se cierra mediante
 `Application.Quit()`; el kill

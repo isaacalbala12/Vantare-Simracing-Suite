@@ -147,8 +147,12 @@ New-Item -ItemType Directory -Force -Path (Join-Path $runtimeDir 'configs') | Ou
 
 $app = $null
 $presentMon = $null
+$sessionName = $null
 $rows = [Collections.Generic.List[object]]::new()
 $shutdownClean = $false
+$gameFrametimeValid = $false
+$orphanEtwSessionsStopped = @()
+$orphanEtwSessionsStoppedJson = '[]'
 $previousCpu = @{}
 $previousAt = Get-Date
 $logicalProcessors = [Environment]::ProcessorCount
@@ -190,6 +194,24 @@ function Get-GpuTotals {
     }
 }
 
+function Get-VantareEtwSessions {
+    $queryOutput = & logman.exe query -ets 2>&1
+    $queryExitCode = $LASTEXITCODE
+    $queryText = ($queryOutput | ForEach-Object { [string]$_ }) -join [Environment]::NewLine
+    $sessions = @($queryText | & node $processHelper --etw-sessions | ConvertFrom-Json)
+    if ($LASTEXITCODE -ne 0) { throw 'No se pudo interpretar la lista de sesiones ETW.' }
+    if ($queryExitCode -ne 0) {
+        Write-Warning "logman query -ets terminó con código $queryExitCode; se conservaron las sesiones VantareHuella reconocibles de su salida."
+    }
+    return $sessions
+}
+
+function Stop-HuellaEtwSession([string]$Name) {
+    if (-not $Name) { return $true }
+    $null = & logman.exe stop $Name -ets 2>&1
+    return $LASTEXITCODE -eq 0
+}
+
 function Format-Invariant([double]$Value) {
     $Value.ToString('R', [Globalization.CultureInfo]::InvariantCulture)
 }
@@ -212,6 +234,20 @@ function Update-ProcessClassification {
 }
 
 try {
+    foreach ($etwSession in @(Get-VantareEtwSessions)) {
+        $owner = Get-Process -Id ([int]$etwSession.pid) -ErrorAction SilentlyContinue
+        if ($owner -and $owner.ProcessName -like 'vantare*') {
+            Write-Host "Sesión ETW activa conservada: $($etwSession.name) (Vantare PID $($etwSession.pid))."
+            continue
+        }
+        if (-not (Stop-HuellaEtwSession $etwSession.name)) {
+            throw "No se pudo detener la sesión ETW huérfana '$($etwSession.name)'."
+        }
+        $orphanEtwSessionsStopped += [string]$etwSession.name
+        Write-Warning "Sesión ETW huérfana detenida: $($etwSession.name)"
+    }
+    $orphanEtwSessionsStoppedJson = ConvertTo-Json -InputObject @($orphanEtwSessionsStopped) -Compress
+
     $oldDebugPort = $env:VANTARE_WEBVIEW_DEBUG_PORT
     $env:VANTARE_WEBVIEW_DEBUG_PORT = [string]$Puerto
     try {
@@ -295,6 +331,7 @@ try {
                 timestamp = $now.ToString('o'); condition = $Condicion; pid = $processId; role = $roleByPid[$processId]
                 hygieneForced = $hygieneForced; foreignProcesses = $foreignProcessesJson; publishable = $publishable
                 systemWebView2Count = $systemWebView2.Count; systemWebView2Paths = $systemWebView2PathsJson
+                orphanEtwSessionsStopped = $orphanEtwSessionsStoppedJson; gameFrametimeValid = $false; frametimePublishable = $false
                 privateBytes = [int64]$process.PrivateMemorySize64; workingSetBytes = [int64]$process.WorkingSet64
                 cpuPct = Format-Invariant ([Math]::Max(0, $cpuPct)); gpuSampleValid = [bool]$gpuSample.Valid
                 gpuPct = if ($gpuSample.Valid) { Format-Invariant ([double]$gpuValues.Engine) } else { $null }
@@ -315,6 +352,7 @@ try {
             }
         }
         $droppedFrames = 0
+        $validPresentMonFrames = 0
         foreach ($frame in $presentMonFrames) {
             [double]$frameValue = 0
             if (-not [double]::TryParse([string]$frame.FrameTime, [Globalization.NumberStyles]::Float, [Globalization.CultureInfo]::InvariantCulture, [ref]$frameValue)) { continue }
@@ -328,31 +366,49 @@ try {
                 throw "DisplayedTime inesperado en CSV PresentMon v2: '$displayedTime'."
             }
             $droppedFrames += $dropped
+            $validPresentMonFrames += 1
             $rows.Add([pscustomobject][ordered]@{
                 timestamp = [string]$frame.CPUStartTime
                 condition = $Condicion; pid = $gameProcess.Id; role = 'game'; privateBytes = $null; workingSetBytes = $null
                 hygieneForced = $hygieneForced; foreignProcesses = $foreignProcessesJson; publishable = $publishable
                 systemWebView2Count = $systemWebView2.Count; systemWebView2Paths = $systemWebView2PathsJson
+                orphanEtwSessionsStopped = $orphanEtwSessionsStoppedJson; gameFrametimeValid = $false; frametimePublishable = $false
                 cpuPct = $null; gpuSampleValid = $null; gpuPct = $null; gpuDedicatedBytes = $null; frameTimeMs = Format-Invariant ([double]$frameValue)
                 dropped = [string]$dropped
             })
         }
-        $droppedPercent = if ($presentMonFrames.Count) { 100 * $droppedFrames / $presentMonFrames.Count } else { 0 }
-        Write-Host ("Frames perdidos: {0}/{1} ({2:N3} %)" -f $droppedFrames, $presentMonFrames.Count, $droppedPercent)
+        $gameFrametimeValid = $validPresentMonFrames -gt 0
+        $droppedPercent = if ($validPresentMonFrames) { 100 * $droppedFrames / $validPresentMonFrames } else { 0 }
+        Write-Host ("Frames perdidos: {0}/{1} ({2:N3} %)" -f $droppedFrames, $validPresentMonFrames, $droppedPercent)
     } else {
         Write-Warning 'PresentMon no produjo CSV; el resumen conservará las métricas de Vantare y marcará frametime ausente.'
+    }
+
+    if (-not $gameFrametimeValid) {
+        Write-Warning 'FRAMETIME NO PUBLICABLE: PresentMon no produjo ningún frame válido; RAM/CPU/GPU de Vantare siguen siendo utilizables.'
+    }
+    foreach ($row in $rows) {
+        $row.gameFrametimeValid = $gameFrametimeValid
+        $row.frametimePublishable = $gameFrametimeValid
     }
 
     $rows | Export-Csv -LiteralPath $rawCsv -NoTypeInformation -Encoding utf8
     & node $summaryHelper --run-summary --condition $Condicion --output $summaryMd $rawCsv | Out-Host
     if ($LASTEXITCODE -ne 0) { throw "El resumen falló con código $LASTEXITCODE." }
 } finally {
-    if ($presentMon -and -not $presentMon.HasExited) {
-        if (-not $presentMon.WaitForExit(5000)) {
-            Write-Warning 'La captura PresentMon propia no terminó tras su ventana --timed; se termina solo ese proceso.'
-            Stop-Process -Id $presentMon.Id -Force
-            $presentMon.WaitForExit(5000) | Out-Null
+    try {
+        if ($presentMon -and -not $presentMon.HasExited) {
+            if (-not $presentMon.WaitForExit(5000)) {
+                Write-Warning 'La captura PresentMon propia no terminó tras su ventana --timed; se termina solo ese proceso.'
+                Stop-Process -Id $presentMon.Id -Force -ErrorAction SilentlyContinue
+                $presentMon.WaitForExit(5000) | Out-Null
+            }
         }
+    } catch {
+        Write-Warning "No se pudo cerrar el proceso PresentMon propio: $($_.Exception.Message)"
+    }
+    if ($sessionName) {
+        try { $null = Stop-HuellaEtwSession $sessionName } catch { Write-Verbose "La sesión ETW ya no existe o logman no pudo detenerla: $sessionName" }
     }
     if ($app -and -not $app.HasExited) {
         try { & node $cdpHelper --cdp "http://127.0.0.1:$Puerto" --action app-quit --duration 1 | Out-Host } catch { Write-Warning "No se pudo pedir Application.Quit por CDP: $($_.Exception.Message)" }

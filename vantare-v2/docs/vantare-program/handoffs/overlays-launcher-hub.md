@@ -22,6 +22,13 @@
   `SystemInfo.getProcessInfo` para desempatar por PID y creación más reciente.
   Solo la ambigüedad residual queda `renderer-unassigned`. Las muestras donde
   fallan los contadores GPU se marcan inválidas y no sesgan la media como cero.
+  El segundo hallazgo del baseline real fue que una interrupción podía dejar
+  `VantareHuella-*` viva y hacer que la siguiente captura produjera cero frames.
+  La rama ahora cierra PresentMon + sesión ETW en `finally`, recupera al inicio
+  sesiones huérfanas cuyo PID ya no pertenece a Vantare y las registra. Un CSV
+  sin frames queda `gameFrametimeValid=false`: frametime no publicable, recursos
+  de Vantare todavía válidos. La elevación de PresentMon es opcional mientras el
+  CSV v2 resulte válido.
   PresentMon 2.5.1 quedó disponible como binario standalone oficial porque el
   MSI de winget devolvió 1620; usa una sesión ETW propia y nunca
   `--stop_existing_session`. Smoke Wails real A0/A1 PASS: A1 abrió 3 widgets,

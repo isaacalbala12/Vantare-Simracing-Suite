@@ -3,7 +3,7 @@ import test from "node:test";
 import { spawnSync } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
-import { assignRendererRoles, classifyHygieneProcesses, classifyProcesses, commandLineSwitch, isSystemWebViewProfile, ownsWebViewProfile } from "./huella-procesos.mjs";
+import { assignRendererRoles, classifyHygieneProcesses, classifyProcesses, commandLineSwitch, isSystemWebViewProfile, ownsWebViewProfile, parseVantareEtwSessions } from "./huella-procesos.mjs";
 
 const ownProfile = String.raw`C:\Users\isaac\AppData\Roaming\vantare-isa924.exe\EBWebView`;
 const browser = String.raw`"C:\Program Files (x86)\Microsoft\EdgeWebView\Application\151.0.4129.107\msedgewebview2.exe" --embedded-browser-webview=1 --webview-exe-name=vantare-isa924.exe --user-data-dir="${ownProfile}" --remote-debugging-port=9247`;
@@ -120,4 +120,12 @@ test("la CLI de higiene consume los fixtures por stdin", async () => {
   const classified = JSON.parse(result.stdout);
   assert.equal(classified.systemWebView2.length, 1);
   assert.equal(classified.foreign.length, 3);
+});
+
+test("extrae y deduplica sesiones ETW VantareHuella de logman localizado", async () => {
+  const fixture = await readFile(new URL("testdata/logman-query-ets.txt", import.meta.url), "utf8");
+  assert.deepEqual(parseVantareEtwSessions(fixture), [
+    { name: "VantareHuella-18440-20260828-231501", pid: 18440, stamp: "20260828-231501" },
+    { name: "VantareHuella-20912-20260828-232044", pid: 20912, stamp: "20260828-232044" },
+  ]);
 });

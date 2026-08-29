@@ -51,6 +51,15 @@ export function classifyHygieneProcesses(processes) {
   return { systemWebView2, foreign };
 }
 
+export function parseVantareEtwSessions(text) {
+  const sessions = new Map();
+  for (const match of String(text ?? "").matchAll(/\b(VantareHuella-(\d+)-(\d{8}-\d{6}))\b/g)) {
+    const [, name, pid, stamp] = match;
+    sessions.set(name, { name, pid: Number(pid), stamp });
+  }
+  return [...sessions.values()];
+}
+
 export function classifyProcess(processInfo, options) {
   const pid = Number(processInfo.ProcessId ?? processInfo.pid);
   if (pid === Number(options.hostPid)) return "go-host";
@@ -143,6 +152,13 @@ async function main() {
     for await (const chunk of process.stdin) input += chunk;
     const processes = JSON.parse(input);
     process.stdout.write(`${JSON.stringify(classifyHygieneProcesses(processes))}\n`);
+    return;
+  }
+  if (process.argv.includes("--etw-sessions")) {
+    process.stdin.setEncoding("utf8");
+    let queryOutput = "";
+    for await (const chunk of process.stdin) queryOutput += chunk;
+    process.stdout.write(`${JSON.stringify(parseVantareEtwSessions(queryOutput))}\n`);
     return;
   }
   if (process.argv.includes("--assign-renderers")) {

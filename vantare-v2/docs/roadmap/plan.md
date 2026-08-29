@@ -261,10 +261,10 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - titulo.en: Reproducible hardware footprint bench
 - titulo.pt: Banco reproduzível de impacto por hardware
 - titulo.it: Banco riproducibile dell'impronta hardware
-- cuerpo: Un banco Windows mide por proceso la RAM, CPU y GPU de Vantare, atribuye Hub y overlay con una ventana de arranque y PID confirmados por CDP, excluye muestras GPU inválidas, captura el frametime de LMU con PresentMon y rechaza corridas contaminadas o sin tres repeticiones estables.
-- cuerpo.en: A Windows bench measures Vantare RAM, CPU and GPU per process, attributes Hub and overlay through a startup window and CDP-confirmed PIDs, excludes invalid GPU samples, captures LMU frame time with PresentMon, and rejects contaminated runs or results without three stable repetitions.
-- cuerpo.pt: Um banco Windows mede RAM, CPU e GPU do Vantare por processo, atribui Hub e overlay com uma janela de arranque e PIDs confirmados por CDP, exclui amostras GPU inválidas, captura o tempo de frame do LMU com PresentMon e rejeita corridas contaminadas ou sem três repetições estáveis.
-- cuerpo.it: Un banco Windows misura RAM, CPU e GPU di Vantare per processo, attribuisce Hub e overlay con una finestra di avvio e PID confermati da CDP, esclude i campioni GPU non validi, acquisisce il frame time di LMU con PresentMon e rifiuta sessioni contaminate o senza tre ripetizioni stabili.
+- cuerpo: Un banco Windows mide RAM, CPU y GPU por proceso, atribuye Hub y overlay con PID confirmados por CDP, excluye muestras GPU inválidas, recupera sesiones ETW huérfanas y solo publica frametime de LMU cuando PresentMon entrega frames válidos.
+- cuerpo.en: A Windows bench measures RAM, CPU and GPU per process, attributes Hub and overlay with CDP-confirmed PIDs, excludes invalid GPU samples, recovers orphaned ETW sessions, and only publishes LMU frame time when PresentMon provides valid frames.
+- cuerpo.pt: Um banco Windows mede RAM, CPU e GPU por processo, atribui Hub e overlay com PIDs confirmados por CDP, exclui amostras GPU inválidas, recupera sessões ETW órfãs e só publica o tempo de frame do LMU quando o PresentMon fornece frames válidos.
+- cuerpo.it: Un banco Windows misura RAM, CPU e GPU per processo, attribuisce Hub e overlay con PID confermati da CDP, esclude i campioni GPU non validi, recupera le sessioni ETW orfane e pubblica il frame time di LMU solo quando PresentMon fornisce frame validi.
 - etiqueta: Feature
 
 ### Preferencias y prueba de notificaciones

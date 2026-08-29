@@ -94,8 +94,7 @@ type Policy struct {
 }
 
 // Resolve aplica primero el override de perfil cuando existe y normaliza el
-// resultado. Auto queda aceptado pero fijo en nivel 3 hasta que F3 entregue el
-// sensor; Reason hace visible esa degradacion deliberada.
+// resultado. En automático el nivel y la razón proceden del controlador Go.
 func Resolve(appDefault Policy, profileOverride *Policy) Policy {
 	requested := appDefault
 	if profileOverride != nil && profileOverride.Mode != "" {
@@ -103,8 +102,9 @@ func Resolve(appDefault Policy, profileOverride *Policy) Policy {
 	}
 
 	if requested.Mode == ModeAuto {
-		requested.Level = LevelBalanced
-		requested.Reason = ReasonUnavailable
+		if requested.Level < LevelHigh || requested.Level > LevelMinimum {
+			requested.Level = LevelBalanced
+		}
 	} else if requested.Mode != ModeCustom {
 		requested.Mode = ModeLevel
 	}
@@ -139,6 +139,12 @@ func Resolve(appDefault Policy, profileOverride *Policy) Policy {
 		base.Effects = EffectsFull
 	}
 	return base
+}
+
+// ResolveAuto convierte una decisión del sensor en la política efectiva sin
+// permitir que el llamador publique el nivel 1, reservado al modo manual.
+func ResolveAuto(level Level, reason Reason) Policy {
+	return Resolve(Policy{Mode: ModeAuto, Level: level, Reason: reason}, nil)
 }
 
 // CadenceFor escala los tres tiers existentes y mantiene el techo de rancio

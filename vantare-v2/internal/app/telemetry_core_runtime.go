@@ -428,6 +428,27 @@ func (runtime *TelemetryCoreRuntime) emitPerformanceLevel(policy performancepoli
 	}
 }
 
+// PerformancePolicy devuelve el mismo snapshot que publica Overlay v2,
+// incluida la frecuencia real observada del driver.
+func (runtime *TelemetryCoreRuntime) PerformancePolicy() performancepolicy.Policy {
+	if runtime == nil {
+		return performancepolicy.Resolve(performancepolicy.Policy{}, nil)
+	}
+	runtime.mu.Lock()
+	defer runtime.mu.Unlock()
+	result := runtime.performancePolicy
+	result.SourceHz = runtime.sourceHz
+	result.WidgetHz = make(map[string]performancepolicy.WidgetRate, len(runtime.performancePolicy.WidgetHz))
+	for widget, rate := range runtime.performancePolicy.WidgetHz {
+		result.WidgetHz[widget] = rate
+	}
+	if runtime.performancePolicy.RafCap != nil {
+		value := *runtime.performancePolicy.RafCap
+		result.RafCap = &value
+	}
+	return result
+}
+
 func logPerformanceDiagnostics(requested, resolved performancepolicy.Policy) {
 	// Una configuración vacía es habitual en tests y significa fallback, no una
 	// elección explícita del usuario que merezca diagnóstico operativo.

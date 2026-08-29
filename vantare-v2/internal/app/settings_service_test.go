@@ -138,6 +138,20 @@ func TestSettingsServiceLoadSave(t *testing.T) {
 	}
 }
 
+func TestSettingsServiceForcesCPUSamplingInAutomaticMode(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "app-settings.json")
+	service := app.NewSettingsService(path, nil, nil)
+	settings := app.DefaultAppSettings()
+	settings.Performance.Mode = "auto"
+	settings.CpuSampling = false
+	if err := service.Save(settings); err != nil {
+		t.Fatal(err)
+	}
+	if !service.Settings().CpuSampling {
+		t.Fatal("automatic mode persisted with cpuSampling disabled")
+	}
+}
+
 func TestSettingsServiceLoadDefaultsOnCorruptFile(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "corrupt.json")

@@ -27,6 +27,7 @@ import (
 	"github.com/vantare/overlays/v2/frontend"
 	"github.com/vantare/overlays/v2/internal/app"
 	"github.com/vantare/overlays/v2/internal/app/launcher"
+	performancesensor "github.com/vantare/overlays/v2/internal/app/performance/sensor"
 	"github.com/vantare/overlays/v2/internal/app/telemetrytransport"
 	"github.com/vantare/overlays/v2/internal/applog"
 	"github.com/vantare/overlays/v2/internal/authsession"
@@ -1395,6 +1396,7 @@ func main() {
 	var testingCenterReportDraftBridge *app.TestingCenterReportDraftBridge
 	var testingCenterDiagnosticBridge *app.TestingCenterDiagnosticBridge
 	var telemetryCoreRuntime *app.TelemetryCoreRuntime
+	var performanceRuntime *app.PerformanceRuntime
 	telemetryStatusReplayCleanup := func() {}
 	overlayPullCleanup := func() {}
 	var telemetryAnalysisSvc *app.TelemetryAnalysisService
@@ -1416,6 +1418,12 @@ func main() {
 				{name: "overlay-telemetry-pull-handlers", stop: func(context.Context) error {
 					overlayPullCleanup()
 					return nil
+				}},
+				{name: "performance-sensor", stop: func(ctx context.Context) error {
+					if performanceRuntime == nil {
+						return nil
+					}
+					return performanceRuntime.Stop(ctx)
 				}},
 				{name: "telemetry-core", stop: func(ctx context.Context) error {
 					if telemetryCoreRuntime == nil {
@@ -2122,7 +2130,40 @@ func main() {
 		log.Printf("telemetry core init error: %v", err)
 		telemetryCoreRuntime = nil
 	}
+	if telemetryCoreRuntime != nil {
+		performanceRuntime = app.NewPerformanceRuntime(
+			func() app.PerformanceSampleRunner {
+				return performancesensor.New(
+					performancesensor.NewHostSampler(os.Getenv("WEBVIEW2_USER_DATA_FOLDER")),
+					performancesensor.NewPresentMonSource(performancesensor.DefaultPresentMonPath()),
+				)
+			},
+			settingsSvc.Settings().Performance,
+			telemetryCoreRuntime,
+			emitter,
+			func() bool { return !hubW.IsMinimised() },
+			engSvc,
+		)
+		performanceRuntime.SetGameForegroundHandler(func(foreground bool) {
+			if overlayController.Status().Mode != config.ModeRacing {
+				return
+			}
+			if current := overlayController.CurrentWindow(); current != nil {
+				if window, ok := current.(interface{ SetGameForeground(bool) }); ok {
+					window.SetGameForeground(foreground)
+				}
+			}
+		})
+		if err := performanceRuntime.Start(ctx); err != nil {
+			log.Printf("performance sensor start error: %v", err)
+			performanceRuntime = nil
+		}
+	}
 	reconcilePerformance := func(settings app.PerformanceSettings, profile *config.ProfileDocumentV4) {
+		if performanceRuntime != nil {
+			performanceRuntime.ApplySettings(settings)
+			return
+		}
 		if telemetryCoreRuntime != nil {
 			telemetryCoreRuntime.SetPerformancePolicy(app.ResolveEffectivePerformancePolicy(settings, profile))
 		}
@@ -2646,6 +2687,9 @@ func main() {
 					_ = json.Unmarshal(raw, &s)
 				}
 			}
+		}
+		if s.Performance.Mode == "auto" {
+			s.CpuSampling = true
 		}
 		confirmed, _, err := performanceSaves.Execute(func() error { return settingsSvc.Save(&s) })
 		if err != nil {
@@ -3690,6 +3734,17 @@ type wailsOverlayWindow struct {
 	mgr    *window.Manager
 	screen *application.Screen
 	level  int
+}
+
+func (o *wailsOverlayWindow) SetGameForeground(foreground bool) {
+	if o == nil || o.w == nil {
+		return
+	}
+	if foreground {
+		o.w.Show()
+		return
+	}
+	o.w.Hide()
 }
 
 func (o *wailsOverlayWindow) Close() {

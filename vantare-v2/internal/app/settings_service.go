@@ -52,8 +52,7 @@ type WidgetOverride struct {
 	Effects string          `json:"effects,omitempty"`
 }
 
-// PerformanceSettings guarda el defecto global. Auto se acepta para que el
-// formato sea estable, aunque ISA-926 lo resuelve como nivel 3 hasta F3.
+// PerformanceSettings guarda el defecto global.
 type PerformanceSettings struct {
 	Mode      string                    `json:"mode"`
 	Level     int                       `json:"level"`
@@ -177,6 +176,11 @@ func slowerWidgetRate(base, requested performancepolicy.WidgetRate) performancep
 		return requested
 	}
 	return base
+}
+
+// ResolveAutomaticPerformancePolicy incorpora la decisión viva del sensor.
+func ResolveAutomaticPerformancePolicy(level performancepolicy.Level, reason performancepolicy.Reason) performancepolicy.Policy {
+	return performancepolicy.ResolveAuto(level, reason)
 }
 
 func performanceRateFromJSON(raw json.RawMessage) (performancepolicy.WidgetRate, bool) {
@@ -864,6 +868,9 @@ func (s *SettingsService) Save(settings *AppSettings) error {
 		return ErrSettingsPathEmpty
 	}
 	snapshot := cloneAppSettings(settings)
+	if snapshot.Performance.Mode == string(performancepolicy.ModeAuto) {
+		snapshot.CpuSampling = true
+	}
 	data, err := json.MarshalIndent(snapshot, "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshal: %w", err)

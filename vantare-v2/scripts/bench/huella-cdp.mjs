@@ -139,13 +139,37 @@ async function probe(page, durationMs) {
   }, durationMs);
 }
 
+async function capturePerformance(page, timeoutMs) {
+  return page.evaluate(async (timeout) => {
+    const { Events } = await import("/wails/runtime.js");
+    return new Promise((resolve, reject) => {
+      const timer = window.setTimeout(() => {
+        unsubscribe();
+        reject(new Error(`performance:level was not emitted within ${timeout} ms`));
+      }, timeout);
+      const unsubscribe = Events.On("performance:level", (event) => {
+        const payload = event?.data;
+        if (!payload || typeof payload !== "object" || !payload.host) return;
+        window.clearTimeout(timer);
+        unsubscribe();
+        const { host, ...performance } = payload;
+        resolve({
+          event: "performance:level",
+          capabilities: { performance },
+          host,
+        });
+      });
+    });
+  }, timeoutMs);
+}
+
 const cdp = argument("cdp");
 const action = argument("action", "inspect");
 const output = argument("output");
 const durationSeconds = Number(argument("duration", "10"));
 const expectedWidgets = Number(argument("expected-widgets", "0"));
-if (!cdp || !["inspect", "overlay-start", "overlay-stop", "hub-minimise", "hub-restore", "hub-open", "app-quit"].includes(action) || !Number.isFinite(durationSeconds) || durationSeconds < 1 || durationSeconds > 120 || !Number.isInteger(expectedWidgets) || expectedWidgets < 0) {
-  throw new Error("usage: node huella-cdp.mjs --cdp http://127.0.0.1:9247 --action inspect|overlay-start|overlay-stop|hub-minimise|hub-restore|hub-open|app-quit [--duration 10] [--expected-widgets 3] [--output result.json]");
+if (!cdp || !["inspect", "overlay-start", "overlay-stop", "hub-minimise", "hub-restore", "hub-open", "performance", "app-quit"].includes(action) || !Number.isFinite(durationSeconds) || durationSeconds < 1 || durationSeconds > 120 || !Number.isInteger(expectedWidgets) || expectedWidgets < 0) {
+  throw new Error("usage: node huella-cdp.mjs --cdp http://127.0.0.1:9247 --action inspect|overlay-start|overlay-stop|hub-minimise|hub-restore|hub-open|performance|app-quit [--duration 10] [--expected-widgets 3] [--output result.json]");
 }
 
 const browser = await chromium.connectOverCDP(cdp);
@@ -195,6 +219,22 @@ if (action === "hub-minimise" || action === "hub-restore") {
     // request, so the transport can disappear before returning.
   });
   process.stdout.write(`${JSON.stringify({ schema: "vantare.huella.cdp.v1", action, requested: true })}\n`);
+  process.exit(0);
+}
+if (action === "performance") {
+  const hub = (await pagesByRole(browser)).find(({ description }) => description.hub);
+  if (!hub) throw new Error("Hub target is not available for performance capture");
+  const captured = await capturePerformance(hub.page, durationSeconds * 1_000);
+  const result = {
+    schema: "vantare.performance.cdp.v1",
+    capturedAt: new Date().toISOString(),
+    action,
+    target: hub.description,
+    ...captured,
+  };
+  const json = `${JSON.stringify(result, null, 2)}\n`;
+  if (output) await writeFile(output, json, { encoding: "utf8", flag: "wx" });
+  process.stdout.write(json);
   process.exit(0);
 }
 const control = action === "inspect" ? null : await setOverlay(browser, action === "overlay-start");

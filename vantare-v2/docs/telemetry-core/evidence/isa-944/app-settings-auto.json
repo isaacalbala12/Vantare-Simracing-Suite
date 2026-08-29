@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 4,
+  "cpuSampling": true,
+  "performance": {
+    "mode": "auto",
+    "level": 3
+  }
+}

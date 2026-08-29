@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-28T21:31:46Z",
+  "generatedAt": "2026-08-29T00:31:15Z",
   "digest": {
-    "lastCommit": "f2e73d3aec1cadb47586cdea07fdbc54effea58f"
+    "lastCommit": "ca166b3829f31d28263ebbaf527b7960b55936ac"
   },
   "phases": [
     {
@@ -896,6 +896,16 @@
   ],
   "delivered": [
     {
+      "date": "2026-08-29",
+      "entries": [
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-926 · PerformancePolicy en Go: niveles 1–5, ajustes v4 y capabilities.performance"
+        }
+      ]
+    },
+    {
       "date": "2026-08-28",
       "entries": [
         {
@@ -1607,71 +1617,6 @@
           "kind": "feat",
           "scope": "settings",
           "text": "Attach the section nav under the global nav"
-        }
-      ]
-    },
-    {
-      "date": "2026-08-07",
-      "entries": [
-        {
-          "kind": "feat",
-          "scope": "settings",
-          "text": "Retire the inert Advanced tab and translate what remains"
-        },
-        {
-          "kind": "fix",
-          "scope": "roadmap",
-          "text": "Call the calendar area Calendar, not Races"
-        },
-        {
-          "kind": "feat",
-          "scope": "roadmap",
-          "text": "Publish Launcher and Races, and let the catalog run ahead"
-        },
-        {
-          "kind": "feat",
-          "scope": "roadmap",
-          "text": "Retire the UI area and point Launcher and Races at Linear"
-        },
-        {
-          "kind": "feat",
-          "scope": "roadmap",
-          "text": "Count area percentages from Linear instead of by hand"
-        },
-        {
-          "kind": "fix",
-          "scope": "roadmap",
-          "text": "Refresh the bundled projects fallback from the exporter"
-        },
-        {
-          "kind": "feat",
-          "scope": "overlays",
-          "text": "Redline motion polish + studio access to vantare-endurance"
-        },
-        {
-          "kind": "fix",
-          "scope": "roadmap",
-          "text": "Count channel review states as done in the public snapshot"
-        },
-        {
-          "kind": "feat",
-          "scope": "roadmap",
-          "text": "Refresh the snapshot on every push to nightly"
-        },
-        {
-          "kind": "fix",
-          "scope": "release",
-          "text": "Stop the missing changelog webhook blocking every pre-release"
-        },
-        {
-          "kind": "fix",
-          "scope": "build",
-          "text": "Sync the version strings the app actually displays"
-        },
-        {
-          "kind": "feat",
-          "scope": "roadmap",
-          "text": "Publish the Linear projects snapshot where the app can read it"
         }
       ]
     }

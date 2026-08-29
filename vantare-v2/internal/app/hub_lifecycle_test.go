@@ -9,15 +9,16 @@ import (
 
 type fakeHubWindow struct {
 	closed, hidden, shown, focused, minimised, unminimised int
+	isMinimised                                            bool
 }
 
 func (w *fakeHubWindow) Close()            { w.closed++ }
 func (w *fakeHubWindow) Hide()             { w.hidden++ }
 func (w *fakeHubWindow) Show()             { w.shown++ }
 func (w *fakeHubWindow) Focus()            { w.focused++ }
-func (w *fakeHubWindow) Minimise()         { w.minimised++ }
-func (w *fakeHubWindow) UnMinimise()       { w.unminimised++ }
-func (w *fakeHubWindow) IsMinimised() bool { return w.minimised > w.unminimised }
+func (w *fakeHubWindow) Minimise()         { w.minimised++; w.isMinimised = true }
+func (w *fakeHubWindow) UnMinimise()       { w.unminimised++; w.isMinimised = false }
+func (w *fakeHubWindow) IsMinimised() bool { return w.isMinimised }
 
 func TestHubLifecycleStateMachine(t *testing.T) {
 	tests := []struct {
@@ -45,6 +46,7 @@ func TestHubLifecycleStateMachine(t *testing.T) {
 			}, func() int { return test.level }, func(context.Context) bool { return test.canSuspend }, func() { blocked++ })
 
 			first, _ := lifecycle.Open()
+			first.Minimise()
 			destroyed := lifecycle.HandleMinimise(context.Background())
 			if destroyed != test.wantDestroy {
 				t.Fatalf("destroyed=%v want %v", destroyed, test.wantDestroy)
@@ -65,5 +67,64 @@ func TestHubLifecycleStateMachine(t *testing.T) {
 				t.Fatalf("preserved state=%+v created=%d", firstWindow, len(created))
 			}
 		})
+	}
+}
+
+func TestHubLifecycleOpenInvalidatesPendingMinimise(t *testing.T) {
+	probeStarted := make(chan struct{})
+	releaseProbe := make(chan struct{})
+	lifecycle := app.NewHubLifecycle(func() app.HubWindow {
+		return &fakeHubWindow{}
+	}, func() int { return 3 }, func(context.Context) bool {
+		close(probeStarted)
+		<-releaseProbe
+		return true
+	}, nil)
+
+	first, _ := lifecycle.Open()
+	first.Minimise()
+	destroyed := make(chan bool, 1)
+	go func() { destroyed <- lifecycle.HandleMinimise(context.Background()) }()
+	<-probeStarted
+
+	reopened, _ := lifecycle.Open()
+	close(releaseProbe)
+	if <-destroyed {
+		t.Fatal("un ACK anterior destruyó el Hub reabierto")
+	}
+	if reopened != first {
+		t.Fatal("Open recreó una ventana que aún seguía viva")
+	}
+	window := first.(*fakeHubWindow)
+	if window.closed != 0 || window.hidden != 0 || window.unminimised != 2 {
+		t.Fatalf("estado tras reapertura concurrente=%+v", window)
+	}
+}
+
+func TestHubLifecycleKeepsWindowRestoredDuringProbe(t *testing.T) {
+	probeStarted := make(chan struct{})
+	releaseProbe := make(chan struct{})
+	lifecycle := app.NewHubLifecycle(func() app.HubWindow {
+		return &fakeHubWindow{}
+	}, func() int { return 3 }, func(context.Context) bool {
+		close(probeStarted)
+		<-releaseProbe
+		return true
+	}, nil)
+
+	first, _ := lifecycle.Open()
+	first.Minimise()
+	destroyed := make(chan bool, 1)
+	go func() { destroyed <- lifecycle.HandleMinimise(context.Background()) }()
+	<-probeStarted
+	first.UnMinimise()
+	close(releaseProbe)
+
+	if <-destroyed {
+		t.Fatal("el ACK destruyó una ventana que ya no estaba minimizada")
+	}
+	window := first.(*fakeHubWindow)
+	if window.closed != 0 || window.hidden != 0 {
+		t.Fatalf("ventana restaurada fue alterada: %+v", window)
 	}
 }

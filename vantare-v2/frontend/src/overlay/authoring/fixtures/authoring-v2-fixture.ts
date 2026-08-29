@@ -81,7 +81,7 @@ function buildFixtureFrame(snapshot: TelemetrySnapshot): OverlayFrameV2 | undefi
       number: stringValue(row.driverNumber),
       gap: qNumber(numberValue(row.gapSeconds), quality),
       pit: row.isPlayer === true ? (snapshot.player.inPit ? "pit" : "track") : "track",
-      laps: numberValue(row.completedLaps) ?? 0,
+      laps: numberValue(row.completedLaps) ?? numberValue(row.totalLaps) ?? 0,
       lastLap: qNumber(numberValue(row.lastLapSeconds), quality),
       bestLap: qNumber(numberValue(row.bestLapSeconds), quality),
       lapDistance: qNumber(numberValue(row.lapDistance), quality),

@@ -14,6 +14,7 @@ import type { OverlayUpdateV2 } from "../../generated/telemetry";
 import { raceScheduleDefinition } from "../widget-types/race-schedule/race-schedule-definition";
 import { createRaceScheduleStore } from "../core/race-schedule-store";
 import type { Calendar } from "../../calendar/calendar-types";
+import { engineerRadioDefinition } from "../widget-types/engineer-radio/engineer-radio-definition";
 
 const originalResizeObserver = globalThis.ResizeObserver;
 
@@ -99,6 +100,33 @@ function buildDocument(): ProfileDocumentV3 {
 }
 
 describe("RuntimeOverlaySurface", () => {
+  it.each(["desktop", "obs"] as const)(
+    "passes the productive Engineer store through the %s surface",
+    (renderMode) => {
+      const coordinator = createTelemetryRateCoordinator();
+      const document = buildDocument();
+      document.layouts.general.widgets = [engineerRadioDefinition.createDefault("radio-live")];
+      const presentations = createEngineerPresentationStore({ now: () => 1_000 });
+      const presentation = buildEngineerPresentationFixture("en", "warning");
+      presentations.publish(presentation);
+
+      const view = render(
+        <RuntimeOverlaySurface
+          document={document}
+          telemetry={coordinator}
+          renderMode={renderMode}
+          engineerPresentations={presentations}
+        />,
+      );
+
+      const renderer = view.container.querySelector('[data-widget-renderer="engineer-radio"]');
+      expect(renderer).toBeTruthy();
+      expect(renderer?.textContent).toContain(presentation.text);
+      presentations.dispose();
+      coordinator.dispose();
+    },
+  );
+
   it.each(["desktop", "obs"] as const)(
     "passes the productive Calendar store through the %s surface to race-schedule",
     (renderMode) => {

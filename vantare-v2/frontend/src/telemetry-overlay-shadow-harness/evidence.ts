@@ -107,6 +107,7 @@ export function buildShadowHarnessReport(
   return compareOverlayShadow({
     legacySnapshot: LEGACY_SNAPSHOT,
     projection: definition.projection,
+    overlayV2: { frame: playerInstrumentsFrameV2(), source: { state: "live" } },
     widgets: definition.widgets.map(createWidget),
   });
 }

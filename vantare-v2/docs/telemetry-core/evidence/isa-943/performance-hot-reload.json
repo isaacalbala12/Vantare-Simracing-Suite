@@ -1,0 +1,138 @@
+{
+  "schema": "vantare.isa943.performance-smoke.v1",
+  "capturedAt": "2026-08-29T00:49:51.582Z",
+  "cdp": "http://127.0.0.1:9245",
+  "targetBefore": "C73BD031CFCA6BBF007933B524151D40",
+  "targetAfter": "C73BD031CFCA6BBF007933B524151D40",
+  "sameOverlayTarget": true,
+  "before": {
+    "level": 1,
+    "mode": "manual",
+    "effects": "full",
+    "rafCap": null,
+    "widgetHz": {
+      "broadcast-tower": 10,
+      "car-damage-numbers": 5,
+      "car-damage-visual": 5,
+      "delta": 60,
+      "delta-advanced": 60,
+      "delta-trace": 60,
+      "engineer-radio": "event",
+      "fuel-strategy": 5,
+      "head-to-head": 30,
+      "multiclass-relative": 30,
+      "race-schedule": 2,
+      "racing-flags": "event",
+      "relative": 30,
+      "standings": 20,
+      "track-map": 60,
+      "track-weather": 1
+    },
+    "sourceHz": 53.51133673686016
+  },
+  "requestedLevel": 4,
+  "after": {
+    "level": 4,
+    "mode": "manual",
+    "effects": "full",
+    "rafCap": 30,
+    "widgetHz": {
+      "broadcast-tower": 2,
+      "car-damage-numbers": "dirty",
+      "car-damage-visual": "dirty",
+      "delta": 15,
+      "delta-advanced": 15,
+      "delta-trace": 10,
+      "engineer-radio": "event",
+      "fuel-strategy": "dirty",
+      "head-to-head": 10,
+      "input-telemetry": 30,
+      "multiclass-relative": 10,
+      "pedals": 30,
+      "pedals-telemetry": 30,
+      "pedals-telemetry-compact": 30,
+      "race-schedule": "dirty",
+      "racing-flags": "event",
+      "relative": 10,
+      "standings": 4,
+      "track-map": 10,
+      "track-weather": "dirty"
+    },
+    "sourceHz": 33.58111276105181
+  },
+  "diagnostics": {
+    "overlay_v2_parse_duration": {
+      "count": 10,
+      "p50": 0.6999999955296516,
+      "p99": 2.2999999970197678,
+      "nonLiveSamples": 0
+    },
+    "shadow": {
+      "frames": 8,
+      "mismatches": 28,
+      "declaredDifferences": 0,
+      "framesByPhase": {
+        "live": 8,
+        "stale": 0,
+        "degraded": 0,
+        "no-frame": 0,
+        "transition": 0
+      },
+      "mismatchesByPhase": {
+        "live": 28,
+        "stale": 0,
+        "degraded": 0,
+        "no-frame": 0,
+        "transition": 0
+      },
+      "epochResets": 0,
+      "metrics": {
+        "overlay_shadow_mismatches_total{feature=\"relative\",field=\"rows[].gapSeconds\",phase=\"live\"}": 6,
+        "overlay_shadow_mismatches_total{feature=\"relative\",field=\"rows[].gapText\",phase=\"live\"}": 6,
+        "overlay_shadow_mismatches_total{feature=\"standings\",field=\"rows[].currentLapText\",phase=\"live\"}": 8,
+        "overlay_shadow_mismatches_total{feature=\"standings\",field=\"rows[].lastLapText\",phase=\"live\"}": 8
+      }
+    }
+  },
+  "dom": {
+    "testId": "orbit-settings-performance",
+    "selected": "orbit-settings-performance-4",
+    "options": [
+      {
+        "testId": "orbit-settings-performance-1",
+        "text": "MáximoSin recortes. Todo a la tasa de tu monitor. Para PCs sobrados.",
+        "disabled": false
+      },
+      {
+        "testId": "orbit-settings-performance-2",
+        "text": "AltoFrescura máxima. Sin animaciones de adorno.",
+        "disabled": false
+      },
+      {
+        "testId": "orbit-settings-performance-3",
+        "text": "EquilibradoRecorta lo que el ojo no distingue. Recomendado.",
+        "disabled": false
+      },
+      {
+        "testId": "orbit-settings-performance-4",
+        "text": "AhorroSolo datos, sin efectos. Para portátiles y gráficas integradas.",
+        "disabled": false
+      },
+      {
+        "testId": "orbit-settings-performance-5",
+        "text": "MínimoVantare casi invisible para el sistema. Para VR, streaming en el mismo PC o PCs apurados.",
+        "disabled": false
+      },
+      {
+        "testId": "orbit-settings-performance-custom",
+        "text": "PersonalizadoElige cadencia y efectos widget a widget; cada control muestra su coste.",
+        "disabled": false
+      },
+      {
+        "testId": "orbit-settings-performance-auto",
+        "text": "AutomáticoVantare mide tu PC en carrera y se ajusta solo (entre Alto y Mínimo).Próximamente",
+        "disabled": true
+      }
+    ]
+  }
+}

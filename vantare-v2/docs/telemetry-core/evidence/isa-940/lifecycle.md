@@ -59,10 +59,23 @@ pwsh -NoProfile -File scripts/bench/huella.ps1 -Condicion HubMin -Duracion 120 -
 Remove-Item Env:VANTARE_PERF_LEVEL
 ```
 
-| Nivel | Go host privada MiB | Browser privada MiB | GPU process privada MiB | Renderer Hub privada MiB | Renderer nuevo privada MiB | Total árbol privado MiB |
-|---:|---:|---:|---:|---:|---:|---:|
-| 1 | pendiente | pendiente | pendiente | pendiente | pendiente | pendiente |
-| 3 | pendiente | pendiente | pendiente | esperado: 0 | pendiente | pendiente |
+El mismo 30 de agosto LMU volvió a estar disponible en Spa, práctica WEC 2026,
+jugador en garaje e IA rodando. Se ejecutó entonces una pareja completa
+HubMin de 120 muestras con PresentMon. Ambas corridas tuvieron higiene limpia,
+0 frames perdidos y cierre limpio, pero L3 conservó el renderer Hub porque el
+ACK agotó los 500 ms. La pareja es evidencia diagnóstica del fallo, no prueba de
+que el gate 12.2 se haya superado.
+
+| Nivel | Go host privada MiB | Browser privada MiB | GPU process privada MiB | Utility privada MiB | Crashpad privada MiB | Renderer Hub privada MiB | Renderer overlay privada MiB | Total árbol privado MiB |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 1 | 75,02 | 45,65 | 176,90 | 22,92 | 2,88 | 66,54 | 144,10 | 534,01 |
+| 3 | 104,23 | 44,83 | 174,17 | 22,40 | 2,87 | 62,49 | 104,26 | 515,25 |
+
+L3 quedó 18,76 MiB (-3,5 %) por debajo de L1, pero permanece 122,25 MiB por
+encima del objetivo ≤393 MiB y no representa el lifecycle deseado. Artefactos
+crudos: `results/isa-940-full-l3/hubmin-20260830-010413.csv` y
+`results/isa-940-full-l1/hubmin-20260830-011056.csv`. PresentMon observó 0/4168
+y 0/6494 frames perdidos respectivamente.
 
 El banco conserva `renderer-unassigned` para el renderer creado tras abrir el
 overlay: CDP prueba el target `overlay.html` y sus tres widgets, pero no aporta
@@ -79,8 +92,9 @@ una relación PID↔target suficiente para renombrarlo sin inferencia.
   minimizada; `Open()` invalida el intento pendiente.
 - `/overlay?profile=…` sirve `overlay.html`, conserva `ObsOverlayApp` y los
   contratos SSE, sin cargar la entrada principal.
-- La reapertura Wails real y su tiempo se medirán con el ingreso `hub:open` en
-  la corrida limpia de nivel 3.
+- En la corrida L3 fallida, CDP midió 10.389 ms desde `hub:open` hasta el target
+  y el log Go 8,846 s de recreación; no es un tiempo aceptable ni valida la
+  corrección posterior que dirige el probe al WebView Hub actual.
 - Bounding box: un clúster usa su unión más 16 px; widgets en esquinas opuestas
   saturan al monitor completo; DPI convierte primero a coordenadas lógicas de
   Wails; edición fuerza el monitor completo. Guardar Ajustes aplica 1↔3 a la
@@ -92,8 +106,8 @@ una relación PID↔target suficiente para renombrarlo sin inferencia.
 
 ## Límites de esta evidencia
 
-- Pendientes por higiene de Edge: valores RAM limpios, comprobación del objetivo
-  ≤393 MiB y reapertura Wails real. También quedan captura de paridad visual,
+- Pendientes tras el diagnóstico: repetir L3 con el ACK dirigido y comprobar
+  renderer Hub = 0, total ≤393 MiB y reapertura real. También quedan captura de paridad visual,
   escucha humana del audio, baseline N=3, iGPU y VR.
 - Un warning aislado de contador GPU en las corridas descartadas no se rellena
   con datos sintéticos; las corridas limpias deben conservar cualquier ausencia.

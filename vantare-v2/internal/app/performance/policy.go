@@ -83,13 +83,14 @@ func (rate WidgetRate) MarshalJSON() ([]byte, error) {
 
 // Policy es la unica decision que consumen el scheduler y el frontend.
 type Policy struct {
-	Level    Level                 `json:"level"`
-	Mode     Mode                  `json:"mode"`
-	Effects  Effects               `json:"effects"`
-	RafCap   *int                  `json:"rafCap"`
-	WidgetHz map[string]WidgetRate `json:"widgetHz"`
-	SourceHz float64               `json:"sourceHz"`
-	Reason   Reason                `json:"reason,omitempty"`
+	Level         Level                 `json:"level"`
+	Mode          Mode                  `json:"mode"`
+	Effects       Effects               `json:"effects"`
+	RafCap        *int                  `json:"rafCap"`
+	WidgetHz      map[string]WidgetRate `json:"widgetHz"`
+	WidgetEffects map[string]Effects    `json:"-"`
+	SourceHz      float64               `json:"sourceHz"`
+	Reason        Reason                `json:"reason,omitempty"`
 }
 
 // Resolve aplica primero el override de perfil cuando existe y normaliza el
@@ -127,6 +128,9 @@ func Resolve(appDefault Policy, profileOverride *Policy) Policy {
 		}
 		if requested.WidgetHz != nil {
 			base.WidgetHz = cloneWidgetRates(requested.WidgetHz)
+		}
+		if requested.WidgetEffects != nil {
+			base.WidgetEffects = cloneWidgetEffects(requested.WidgetEffects)
 		}
 	}
 	if base.Level >= LevelBalanced {
@@ -233,6 +237,14 @@ func intPointer(value int) *int { return &value }
 
 func cloneWidgetRates(source map[string]WidgetRate) map[string]WidgetRate {
 	result := make(map[string]WidgetRate, len(source))
+	for key, value := range source {
+		result[key] = value
+	}
+	return result
+}
+
+func cloneWidgetEffects(source map[string]Effects) map[string]Effects {
+	result := make(map[string]Effects, len(source))
 	for key, value := range source {
 		result[key] = value
 	}

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	performancepolicy "github.com/vantare/overlays/v2/internal/app/performance"
+	"github.com/vantare/overlays/v2/pkg/config"
 )
 
 // ErrSettingsPathEmpty is returned when Save is called without a file path.
@@ -59,10 +60,9 @@ type PerformanceSettings struct {
 	Overrides map[string]WidgetOverride `json:"overrides,omitempty"`
 }
 
-// ResolvePerformancePolicy es el único paso de Ajustes a la política efectiva.
-// El perfil v4 todavía no existe, por lo que ISA-926 resuelve solo el defecto
-// de app y deja el override de perfil en nil.
-func ResolvePerformancePolicy(settings PerformanceSettings) performancepolicy.Policy {
+// ResolvePerformancePolicy combina el defecto de la app con la preferencia
+// del perfil v4. Un perfil sin performance equivale exactamente a inherit.
+func ResolvePerformancePolicy(settings PerformanceSettings, profile *config.ProfileDocumentV4) performancepolicy.Policy {
 	requested := performancepolicy.Policy{
 		Mode:  performancepolicy.Mode(settings.Mode),
 		Level: performancepolicy.Level(settings.Level),
@@ -75,7 +75,95 @@ func ResolvePerformancePolicy(settings PerformanceSettings) performancepolicy.Po
 			}
 		}
 	}
-	return performancepolicy.Resolve(requested, nil)
+	appPolicy := performancepolicy.Resolve(requested, nil)
+	if profile == nil || profile.Performance == nil || profile.Performance.Mode == config.ProfilePerformanceInherit {
+		return appPolicy
+	}
+	preference := profile.Performance
+
+	profileLevel := performancepolicy.Level(preference.Level)
+	if profileLevel < performancepolicy.LevelMaximum || profileLevel > performancepolicy.LevelMinimum {
+		profileLevel = performancepolicy.LevelBalanced
+	}
+	profilePolicy := performancepolicy.Policy{Mode: performancepolicy.ModeLevel, Level: profileLevel}
+	if preference.Mode == config.ProfilePerformanceCustom {
+		profilePolicy.Mode = performancepolicy.ModeCustom
+		profilePolicy.WidgetHz = performancepolicy.WidgetHzFor(profileLevel)
+		profilePolicy.WidgetEffects = map[string]performancepolicy.Effects{}
+		for widgetID, override := range preference.Overrides {
+			if override.Hz != nil {
+				if override.Hz.Dirty {
+					profilePolicy.WidgetHz[widgetID] = performancepolicy.Dirty()
+				} else if override.Hz.Hertz > 0 {
+					profilePolicy.WidgetHz[widgetID] = performancepolicy.Hertz(override.Hz.Hertz)
+				}
+			}
+			if override.Effects != nil {
+				profilePolicy.WidgetEffects[widgetID] = performancepolicy.Effects(*override.Effects)
+			}
+		}
+	}
+	resolved := performancepolicy.Resolve(profilePolicy, nil)
+	if requested.Mode != performancepolicy.ModeAuto {
+		return resolved
+	}
+
+	// D4: el automático (fijo en 3 hasta F3) puede degradar lo pedido por el
+	// perfil, pero nunca elevar su calidad. En la escala 1..5 eso es max().
+	if appPolicy.Level > resolved.Level {
+		degraded := performancepolicy.Policy{Mode: profilePolicy.Mode, Level: appPolicy.Level}
+		if profilePolicy.Mode == performancepolicy.ModeCustom {
+			degraded.WidgetHz = performancepolicy.WidgetHzFor(appPolicy.Level)
+			degraded.WidgetEffects = profilePolicy.WidgetEffects
+			widgetTypes := profileWidgetTypes(profile)
+			for widgetID, rate := range profilePolicy.WidgetHz {
+				widgetType, ok := widgetTypes[widgetID]
+				if !ok {
+					continue
+				}
+				base := degraded.WidgetHz[widgetType]
+				degraded.WidgetHz[widgetID] = slowerWidgetRate(base, rate)
+			}
+		}
+		resolved = performancepolicy.Resolve(degraded, nil)
+	}
+	resolved.Mode = performancepolicy.ModeAuto
+	resolved.Reason = performancepolicy.ReasonUnavailable
+	return resolved
+}
+
+func profileWidgetTypes(profile *config.ProfileDocumentV4) map[string]string {
+	result := map[string]string{}
+	if profile == nil {
+		return result
+	}
+	for _, layout := range profile.Layouts {
+		for _, widget := range layout.Widgets {
+			result[widget.ID] = string(widget.Type)
+		}
+	}
+	return result
+}
+
+func slowerWidgetRate(base, requested performancepolicy.WidgetRate) performancepolicy.WidgetRate {
+	if base.Signal() == "dirty" || base.Signal() == "event" {
+		return base
+	}
+	if requested.Signal() == "dirty" || requested.Signal() == "event" {
+		return requested
+	}
+	if base.IsMonitor() {
+		return requested
+	}
+	if requested.IsMonitor() {
+		return base
+	}
+	baseHz, _ := base.Hertz()
+	requestedHz, _ := requested.Hertz()
+	if requestedHz < baseHz {
+		return requested
+	}
+	return base
 }
 
 func performanceRateFromJSON(raw json.RawMessage) (performancepolicy.WidgetRate, bool) {

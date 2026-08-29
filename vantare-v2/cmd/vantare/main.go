@@ -2044,7 +2044,7 @@ func main() {
 		Emitter:                 emitter,
 		Engineer:                engSvc,
 		StrategyPublicTransport: *strategyPublicTransport,
-		PerformancePolicy:       app.ResolvePerformancePolicy(settingsSvc.Settings().Performance),
+		PerformancePolicy:       app.ResolvePerformancePolicy(settingsSvc.Settings().Performance, studioProfileSvc.PerformanceProfile()),
 	})
 	if err != nil {
 		log.Printf("telemetry core init error: %v", err)
@@ -2581,7 +2581,7 @@ func main() {
 			rtSampler.SetCPUEnabled(s.CpuSampling)
 		}
 		if telemetryCoreRuntime != nil {
-			telemetryCoreRuntime.SetPerformancePolicy(app.ResolvePerformancePolicy(s.Performance))
+			telemetryCoreRuntime.SetPerformancePolicy(app.ResolvePerformancePolicy(s.Performance, studioProfileSvc.PerformanceProfile()))
 		}
 		// Rebuild hotkeys with new combos
 		rebuildHotkeys()

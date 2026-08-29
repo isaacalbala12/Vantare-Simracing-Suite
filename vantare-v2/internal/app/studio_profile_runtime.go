@@ -34,6 +34,15 @@ func (s *StudioProfileService) Document() *config.ProfileDocumentV3 {
 	return s.loaded.Document
 }
 
+// PerformanceProfile returns the canonical V4 document used to resolve the
+// active profile policy. Runtime layout consumers keep using the V3 adapter.
+func (s *StudioProfileService) PerformanceProfile() *config.ProfileDocumentV4 {
+	if s.loaded == nil {
+		return nil
+	}
+	return s.loaded.DocumentV4
+}
+
 // Revision returns the loaded profile revision hash.
 func (s *StudioProfileService) Revision() string {
 	if s.loaded == nil {

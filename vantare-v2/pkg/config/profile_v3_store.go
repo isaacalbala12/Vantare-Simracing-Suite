@@ -38,6 +38,7 @@ func (ProfileDocumentStore) Load(path string) (*LoadedProfileV3, error) {
 	}
 	return &LoadedProfileV3{
 		Document:         ConvertProfileV4ToV3(loaded.Document),
+		DocumentV4:       loaded.Document,
 		Revision:         loaded.Revision,
 		MigratedFrom:     loaded.MigratedFrom,
 		MigrationNotices: loaded.MigrationNotices,

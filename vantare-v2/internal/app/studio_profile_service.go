@@ -108,6 +108,7 @@ func (s *StudioProfileService) savePath(requestID, path, expectedRevision string
 	savedDocument := config.NormalizeProfileDocumentV3(doc)
 	loaded := &config.LoadedProfileV3{
 		Document:     config.NormalizeProfileDocumentV3(doc),
+		DocumentV4:   config.NormalizeProfileDocumentV4(config.ConvertProfileV3ToV4(doc)),
 		Revision:     revision,
 		MigratedFrom: config.ProfileSchemaVersionV3,
 	}

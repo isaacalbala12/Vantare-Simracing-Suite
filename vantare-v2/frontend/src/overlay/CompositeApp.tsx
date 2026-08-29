@@ -19,6 +19,7 @@ import {
 import { createBrowserOverlayWailsPullClient } from "../telemetry-transport/overlay-wails-pull";
 import { createOverlayV2ShadowRuntime } from "./telemetry-shadow/overlay-v2-shadow-runtime";
 import { readDiagnosticOverlayV2Features, type OverlayV2Feature } from "./telemetry-shadow/overlay-v2-features";
+import { createWailsRaceScheduleStore } from "./core/race-schedule-store";
 
 type ProfileV3LoadedPayload = {
   document: ProfileDocumentV3;
@@ -31,6 +32,7 @@ type CompositeGeneration = Readonly<{
   coordinator: ReturnType<typeof createTelemetryRateCoordinator>;
   overlayV2Store: ReturnType<typeof createOverlayFrameV2Store>;
   engineerPresentations: ReturnType<typeof createEngineerPresentationStore>;
+  raceSchedule: ReturnType<typeof createWailsRaceScheduleStore>;
 }>;
 
 export function CompositeApp() {
@@ -60,6 +62,7 @@ export function CompositeApp() {
     const overlayV2Store = createOverlayFrameV2Store();
     const overlayV2Shadow = createOverlayV2ShadowRuntime();
     const engineerPresentations = createEngineerPresentationStore();
+    const raceSchedule = createWailsRaceScheduleStore();
     const overlayPull = createBrowserOverlayWailsPullClient({
       onError: (error) => console.error("overlay telemetry pull failed", error),
     });
@@ -101,11 +104,12 @@ export function CompositeApp() {
     });
     adapter.start();
     engineerAdapter.start();
+    raceSchedule.start();
     overlayPull.start();
     // Este efecto es la fabrica y el owner de la generacion; el render que la
     // consume no puede montarse antes de que sus recursos externos existan.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setGeneration({ coordinator, overlayV2Store, engineerPresentations });
+    setGeneration({ coordinator, overlayV2Store, engineerPresentations, raceSchedule });
     return () => {
       overlayPull.stop();
       delete diagnosticWindow.__vantareOverlayV2Diagnostics;
@@ -115,6 +119,7 @@ export function CompositeApp() {
       engineerAdapter.stop();
       overlayV2Store.dispose();
       engineerPresentations.dispose();
+      raceSchedule.dispose();
       coordinator.dispose();
     };
   }, []);
@@ -227,6 +232,7 @@ function CompositeGenerationView(props: CompositeGenerationViewProps) {
           layoutOrigin={layoutOrigin}
           telemetry={generation.coordinator}
           engineerPresentations={generation.engineerPresentations}
+          raceSchedule={generation.raceSchedule}
           overlayV2Features={overlayV2Features}
         />
       )}

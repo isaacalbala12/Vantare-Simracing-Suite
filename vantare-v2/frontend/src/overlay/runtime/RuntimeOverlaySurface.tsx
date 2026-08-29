@@ -26,6 +26,10 @@ import type { EngineerPresentationStore } from "../../engineer/engineer-presenta
 import { EngineerSubtitles } from "../../engineer/EngineerSubtitles";
 import type { OverlayV2Feature } from "../telemetry-shadow/overlay-v2-features";
 import type { OverlayRuntimeContext } from "../core/overlay-runtime-context";
+import {
+  EMPTY_RACE_SCHEDULE_SNAPSHOT,
+  type RaceScheduleStore,
+} from "../core/race-schedule-store";
 
 export type RuntimeOverlaySurfaceProps = {
   document: ProfileDocumentV3;
@@ -36,13 +40,14 @@ export type RuntimeOverlaySurfaceProps = {
   diagnostics?: WidgetDiagnosticCollector;
   engineerPresentations?: EngineerPresentationStore;
   overlayV2Features?: readonly OverlayV2Feature[];
+  raceSchedule?: RaceScheduleStore;
 };
 
 const subscribeToNothing = () => () => undefined;
 const noPresentation = () => null;
 
 export function RuntimeOverlaySurface(props: RuntimeOverlaySurfaceProps): React.ReactElement {
-  const { document, telemetry, renderMode, layoutOrigin, onDiagnostic, diagnostics: diagnosticsProp, engineerPresentations, overlayV2Features } = props;
+  const { document, telemetry, renderMode, layoutOrigin, onDiagnostic, diagnostics: diagnosticsProp, engineerPresentations, overlayV2Features, raceSchedule } = props;
   const diagnostics = useMemo(() => diagnosticsProp ?? createWidgetDiagnosticCollector(), [diagnosticsProp]);
   const runtimeContext = useOverlayRuntimeContext(telemetry);
   const lastUsefulContext = useRef<OverlayRuntimeContext | undefined>(undefined);
@@ -77,6 +82,11 @@ export function RuntimeOverlaySurface(props: RuntimeOverlaySurfaceProps): React.
     engineerPresentations?.subscribe ?? subscribeToNothing,
     engineerPresentations?.getSubtitlesEnabled ?? (() => false),
     () => false,
+  );
+  const raceScheduleSnapshot = useSyncExternalStore(
+    raceSchedule?.subscribe ?? subscribeToNothing,
+    raceSchedule?.getSnapshot ?? (() => EMPTY_RACE_SCHEDULE_SNAPSHOT),
+    () => EMPTY_RACE_SCHEDULE_SNAPSHOT,
   );
 
   useEffect(() => {
@@ -198,6 +208,7 @@ export function RuntimeOverlaySurface(props: RuntimeOverlaySurfaceProps): React.
               engineerPresentation={engineerPresentation}
               engineerSubtitlesEnabled={subtitlesEnabled}
               overlayV2Features={overlayV2Features}
+              raceSchedule={raceScheduleSnapshot}
             />
           ))}
           {subtitlesEnabled && engineerPresentation

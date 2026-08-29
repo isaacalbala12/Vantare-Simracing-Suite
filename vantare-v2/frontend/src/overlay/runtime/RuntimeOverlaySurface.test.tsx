@@ -11,6 +11,9 @@ import { createEngineerPresentationStore } from "../../engineer/engineer-present
 import { buildEngineerPresentationFixture } from "../../engineer/engineer-presentation-fixtures";
 import goldenV2Raw from "../../../../internal/telemetry/projection/overlayv2/testdata/overlay_v2_1.golden.json?raw";
 import type { OverlayUpdateV2 } from "../../generated/telemetry";
+import { raceScheduleDefinition } from "../widget-types/race-schedule/race-schedule-definition";
+import { createRaceScheduleStore } from "../core/race-schedule-store";
+import type { Calendar } from "../../calendar/calendar-types";
 
 const originalResizeObserver = globalThis.ResizeObserver;
 
@@ -96,6 +99,75 @@ function buildDocument(): ProfileDocumentV3 {
 }
 
 describe("RuntimeOverlaySurface", () => {
+  it.each(["desktop", "obs"] as const)(
+    "passes the productive Calendar store through the %s surface to race-schedule",
+    (renderMode) => {
+      const coordinator = createTelemetryRateCoordinator();
+      const document = buildDocument();
+      document.layouts.general.widgets = [raceScheduleDefinition.createDefault("calendar-live")];
+      const calendar = {
+        version: 1,
+        timezone: "Europe/Madrid",
+        reminderMinutes: [],
+        followedEventIds: [],
+        followedSeriesIds: [],
+        updated: "2026-08-29T00:00:00Z",
+        series: [{
+          id: "daily",
+          name: "Daily",
+          tier: "silver",
+          licenseLabel: "SILVER",
+          track: "Spa",
+          vehicleClass: "Hypercar",
+          classes: [{ name: "Hypercar" }],
+          setup: "fixed",
+          durationMin: 45,
+          splits: 1,
+          assists: "none",
+          tyreWarmers: false,
+          tyres: 1,
+          recurrence: { kind: "daily" },
+        }],
+        events: [{
+          id: "spa-daily",
+          title: "Spa Daily",
+          sim: "LMU",
+          track: "Spa-Francorchamps",
+          series: "daily",
+          sessionLabel: "STARTS SOON",
+          startTime: "2026-08-29T03:00:00Z",
+          durationMin: 45,
+          registrationUrl: "",
+          source: "calendar",
+          notes: "",
+        }],
+      } satisfies Calendar;
+      const raceSchedule = createRaceScheduleStore({
+        start(onCalendar) {
+          onCalendar(calendar);
+          return () => undefined;
+        },
+      });
+      raceSchedule.start();
+
+      const view = render(
+        <RuntimeOverlaySurface
+          document={document}
+          telemetry={coordinator}
+          renderMode={renderMode}
+          raceSchedule={raceSchedule}
+        />,
+      );
+
+      const renderer = view.container.querySelector('[data-widget-renderer="race-schedule"]');
+      expect(renderer?.getAttribute("data-status")).toBe("ready");
+      expect(renderer?.textContent).toContain("Spa Daily");
+      expect(renderer?.textContent).toContain("Spa-Francorchamps");
+      raceSchedule.dispose();
+      coordinator.dispose();
+    },
+  );
+
   it.each(["desktop", "obs"] as const)(
     "keeps the last %s layout mounted with visible diagnostics after a V2 failure",
     async (renderMode) => {

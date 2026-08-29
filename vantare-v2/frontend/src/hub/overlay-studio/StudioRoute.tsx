@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { Events } from '@wailsio/runtime';
 import { useI18n } from '../../i18n/I18nProvider';
 import { createTelemetryRateCoordinator } from '../../overlay/core/telemetry-rate-coordinator';
@@ -16,6 +16,7 @@ import {
   type TelemetrySourceStatus,
 } from '../../telemetry-transport/source-status';
 import { readDiagnosticOverlayV2Features } from '../../overlay/telemetry-shadow/overlay-v2-features';
+import { createWailsRaceScheduleStore } from '../../overlay/core/race-schedule-store';
 import { ProfilesOrbitPage } from '../profiles-orbit/ProfilesOrbitPage';
 import { RecommendedProfilesView } from '../overlays/RecommendedProfilesView';
 import { CommunityComingSoonView } from '../overlays/CommunityComingSoonView';
@@ -336,6 +337,7 @@ type StudioTelemetryGeneration = Readonly<{
   overlayV2Store: ReturnType<typeof createOverlayFrameV2Store>;
   overlayPull: ReturnType<typeof createBrowserOverlayWailsPullClient>;
   telemetryAdapter: TelemetryAdapter | null;
+  raceSchedule: ReturnType<typeof createWailsRaceScheduleStore>;
 }>;
 
 export const StudioRoute = memo(function StudioRoute(props: StudioRouteProps): React.ReactElement {
@@ -348,6 +350,7 @@ export const StudioRoute = memo(function StudioRoute(props: StudioRouteProps): R
     const overlayPull = createBrowserOverlayWailsPullClient({
       onError: (error) => console.error('studio overlay telemetry pull failed', error),
     });
+    const raceSchedule = createWailsRaceScheduleStore();
     const legacy = createWailsProjectionTelemetryAdapter({
       coordinator,
       runtime: 'studio',
@@ -368,13 +371,15 @@ export const StudioRoute = memo(function StudioRoute(props: StudioRouteProps): R
     // Este efecto es la fabrica y el owner de la generacion; Studio no debe
     // registrar listeners ni cargar perfiles contra recursos ya dispuestos.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setGeneration({ coordinator, overlayV2Store, overlayPull, telemetryAdapter });
+    raceSchedule.start();
+    setGeneration({ coordinator, overlayV2Store, overlayPull, telemetryAdapter, raceSchedule });
 
     return () => {
       if (telemetryAdapterProp === null) telemetryAdapter.stop();
       overlayPull.stop();
       unbindOverlayV2();
       overlayV2Store.dispose();
+      raceSchedule.dispose();
       if (coordinatorProp === undefined) coordinator.dispose();
     };
   }, [coordinatorProp, telemetryAdapterProp]);
@@ -410,9 +415,16 @@ function StudioRouteGeneration(props: StudioRouteGenerationProps): React.ReactEl
     window.addEventListener('vantare:overlay-v2-rollback-changed', onChange);
     return () => window.removeEventListener('vantare:overlay-v2-rollback-changed', onChange);
   }, []);
+  const raceSchedule = useSyncExternalStore(
+    generation.raceSchedule.subscribe,
+    generation.raceSchedule.getSnapshot,
+    generation.raceSchedule.getSnapshot,
+  );
   const runtime = useMemo<WidgetRuntimeInput>(() => ({
     overlayV2Features,
-  }), [overlayV2Features]);
+    raceScheduleEvents: raceSchedule.events,
+    raceScheduleStatus: raceSchedule.status,
+  }), [overlayV2Features, raceSchedule]);
 
   const [profiles, setProfiles] = useState<ProfileEntry[]>([]);
   const [profilesLoaded, setProfilesLoaded] = useState(false);

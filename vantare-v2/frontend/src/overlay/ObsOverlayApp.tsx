@@ -19,6 +19,7 @@ import {
 } from "../telemetry-transport/overlay-frame-v2-store";
 import { createOverlayV2ShadowRuntime } from "./telemetry-shadow/overlay-v2-shadow-runtime";
 import { readDiagnosticOverlayV2Features, type OverlayV2Feature } from "./telemetry-shadow/overlay-v2-features";
+import { createHttpRaceScheduleStore } from "./core/race-schedule-store";
 
 type ProfileV3ApiResponse = {
   document: ProfileDocumentV3;
@@ -31,6 +32,7 @@ type ObsGeneration = Readonly<{
   coordinator: ReturnType<typeof createTelemetryRateCoordinator>;
   overlayV2Store: ReturnType<typeof createOverlayFrameV2Store>;
   engineerPresentations: ReturnType<typeof createEngineerPresentationStore>;
+  raceSchedule: ReturnType<typeof createHttpRaceScheduleStore>;
 }>;
 
 export function ObsOverlayApp() {
@@ -62,6 +64,7 @@ export function ObsOverlayApp() {
     const overlayV2Store = createOverlayFrameV2Store();
     const overlayV2Shadow = createOverlayV2ShadowRuntime();
     const engineerPresentations = createEngineerPresentationStore();
+    const raceSchedule = createHttpRaceScheduleStore();
     const engineerAdapter = createSseEngineerPresentationAdapter({ store: engineerPresentations });
     const adapter = createSseProjectionTelemetryAdapter({
       coordinator,
@@ -90,10 +93,11 @@ export function ObsOverlayApp() {
     });
     adapter.start();
     engineerAdapter.start();
+    raceSchedule.start();
     // Este efecto es la fabrica y el owner de la generacion; el render que la
     // consume no puede montarse antes de que sus recursos externos existan.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setGeneration({ coordinator, overlayV2Store, engineerPresentations });
+    setGeneration({ coordinator, overlayV2Store, engineerPresentations, raceSchedule });
     return () => {
       delete diagnosticWindow.__vantareOverlayV2Diagnostics;
       detachOverlayV2();
@@ -102,6 +106,7 @@ export function ObsOverlayApp() {
       engineerAdapter.stop();
       overlayV2Store.dispose();
       engineerPresentations.dispose();
+      raceSchedule.dispose();
       coordinator.dispose();
     };
   }, []);
@@ -196,6 +201,7 @@ function ObsGenerationView(props: ObsGenerationViewProps) {
       telemetry={generation.coordinator}
       engineerPresentations={generation.engineerPresentations}
       overlayV2Features={overlayV2Features}
+      raceSchedule={generation.raceSchedule}
     />
   );
 

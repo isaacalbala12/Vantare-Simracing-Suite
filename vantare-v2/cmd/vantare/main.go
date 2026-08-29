@@ -3476,6 +3476,7 @@ func (p *hubSuspendEventProbe) Probe(ctx context.Context) bool {
 	case canSuspend := <-result:
 		return canSuspend
 	case <-ctx.Done():
+		log.Printf("hub lifecycle: hub:can-suspend timed out: %v", ctx.Err())
 		return false
 	}
 }
@@ -3491,8 +3492,9 @@ func (p *hubSuspendEventProbe) SetTarget(target hubSuspendEventTarget) {
 
 func (p *hubSuspendEventProbe) handleResult(event *application.CustomEvent) {
 	var payload struct {
-		RequestID  string `json:"requestId"`
-		CanSuspend bool   `json:"canSuspend"`
+		RequestID  string   `json:"requestId"`
+		CanSuspend bool     `json:"canSuspend"`
+		Reasons    []string `json:"reasons"`
 	}
 	if event == nil || event.Data == nil {
 		return
@@ -3505,6 +3507,11 @@ func (p *hubSuspendEventProbe) handleResult(event *application.CustomEvent) {
 	result := p.pending[payload.RequestID]
 	p.mu.Unlock()
 	if result != nil {
+		if payload.CanSuspend {
+			log.Printf("hub lifecycle: hub:can-suspend acknowledged clean")
+		} else {
+			log.Printf("hub lifecycle: hub:can-suspend blocked: %s", strings.Join(payload.Reasons, "; "))
+		}
 		select {
 		case result <- payload.CanSuspend:
 		default:

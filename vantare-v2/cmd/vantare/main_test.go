@@ -40,6 +40,44 @@ func TestResolveLicensePublicKeysCannotOverrideEmbeddedTrustRoot(t *testing.T) {
 	}
 }
 
+type recordingHubSuspendTarget struct {
+	events chan *application.CustomEvent
+}
+
+func (t *recordingHubSuspendTarget) DispatchWailsEvent(event *application.CustomEvent) {
+	t.events <- event
+}
+
+func TestHubSuspendProbeTargetsCurrentHubAndReceivesAck(t *testing.T) {
+	probe := &hubSuspendEventProbe{pending: make(map[string]chan bool)}
+	target := &recordingHubSuspendTarget{events: make(chan *application.CustomEvent, 1)}
+	probe.SetTarget(target)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	result := make(chan bool, 1)
+	go func() { result <- probe.Probe(ctx) }()
+
+	request := <-target.events
+	if request.Name != "hub:can-suspend" {
+		t.Fatalf("event name=%q", request.Name)
+	}
+	payload, ok := request.Data.(map[string]any)
+	if !ok {
+		t.Fatalf("request data=%T", request.Data)
+	}
+	requestID, _ := payload["requestId"].(string)
+	if requestID == "" {
+		t.Fatal("requestId vacío")
+	}
+	probe.handleResult(&application.CustomEvent{Data: map[string]any{
+		"requestId":  requestID,
+		"canSuspend": true,
+	}})
+	if !<-result {
+		t.Fatal("el ACK dirigido no llegó al probe")
+	}
+}
+
 func TestProtectedStoreTargetsIsolateInternalChannelsByBackend(t *testing.T) {
 	legacyClock, legacyAuth := protectedStoreTargets("master", "https://production.invalid")
 	if legacyClock != "Vantare/LicenseClock" || legacyAuth != "Vantare/SupabaseAuth" {

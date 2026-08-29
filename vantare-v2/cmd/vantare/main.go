@@ -1632,6 +1632,7 @@ func main() {
 	var hubLifecycle *app.HubLifecycle
 	newHubWindow := func() app.HubWindow {
 		window := &wailsHubWindow{w: wailsApp.Window.NewWithOptions(hubWindowOptions())}
+		hubProbe.SetTarget(window.w)
 		window.w.RegisterHook(events.Common.WindowClosing, func(_ *application.WindowEvent) {
 			if window.intentionalClose.Load() {
 				return
@@ -3430,6 +3431,11 @@ type hubSuspendEventProbe struct {
 	emitter app.EventEmitter
 	mu      sync.Mutex
 	pending map[string]chan bool
+	target  hubSuspendEventTarget
+}
+
+type hubSuspendEventTarget interface {
+	DispatchWailsEvent(*application.CustomEvent)
 }
 
 func newHubSuspendEventProbe(wailsApp *application.App, emitter app.EventEmitter) *hubSuspendEventProbe {
@@ -3441,7 +3447,7 @@ func newHubSuspendEventProbe(wailsApp *application.App, emitter app.EventEmitter
 }
 
 func (p *hubSuspendEventProbe) Probe(ctx context.Context) bool {
-	if p == nil || p.emitter == nil {
+	if p == nil {
 		return false
 	}
 	requestID := newHubSuspendRequestID()
@@ -3454,13 +3460,33 @@ func (p *hubSuspendEventProbe) Probe(ctx context.Context) bool {
 		delete(p.pending, requestID)
 		p.mu.Unlock()
 	}()
-	p.emitter.Emit("hub:can-suspend", map[string]any{"requestId": requestID})
+	p.mu.Lock()
+	target := p.target
+	emitter := p.emitter
+	p.mu.Unlock()
+	payload := map[string]any{"requestId": requestID}
+	if target != nil {
+		target.DispatchWailsEvent(&application.CustomEvent{Name: "hub:can-suspend", Data: payload})
+	} else if emitter != nil {
+		emitter.Emit("hub:can-suspend", payload)
+	} else {
+		return false
+	}
 	select {
 	case canSuspend := <-result:
 		return canSuspend
 	case <-ctx.Done():
 		return false
 	}
+}
+
+func (p *hubSuspendEventProbe) SetTarget(target hubSuspendEventTarget) {
+	if p == nil {
+		return
+	}
+	p.mu.Lock()
+	p.target = target
+	p.mu.Unlock()
 }
 
 func (p *hubSuspendEventProbe) handleResult(event *application.CustomEvent) {

@@ -122,18 +122,18 @@ describe("TelemetryOverlayShadowHarness", () => {
     expect(coverage.widgets).toHaveLength(20);
     expect(report.summary).toEqual({
       widgets: 2,
-      fields: 31,
-      equal: 19,
+      fields: 20,
+      equal: 10,
       withinTolerance: 0,
-      mismatches: 12,
+      mismatches: 10,
       external: 0,
     });
     expect(report.widgets.map((widget) => widget.widgetType)).toEqual(["pedals", "standings"]);
     expect(report.widgets.find((widget) => widget.widgetType === "standings")?.entries)
       .toContainEqual(expect.objectContaining({
-        path: "rows[].id",
-        classification: "equal",
-        sourcePaths: ["vehicles[].id"],
+        path: "rows.length",
+        classification: "shape-mismatch",
+        observation: { kind: "number", legacy: 1, projection: 0 },
       }));
     expect(JSON.stringify({ coverage, report })).not.toMatch(
       /PRIVATE_(?:DRIVER|TEAM|VEHICLE_ID|TRACK)_SHADOW_105|C:\\Users\\|C:\/Users\//,

@@ -3,7 +3,7 @@
 ## Autoridad y alcance
 
 - Rama: `vantareapp/isa-940-lifecycle-coste-cero`.
-- Base rebasada antes del cierre: `origin/nightly@c93d93ba`.
+- Base rebasada antes del cierre: `origin/nightly@c4eb1168`.
 - Build diagnóstica propia: `bin/vantare-isa940.exe` (sin `-tags production`).
 - Perfil: `testdata/bench/huella-endurance-3.json`, tres widgets.
 - Puerto CDP propio: 9244. LMU y los procesos Vantare ajenos no se modifican.
@@ -31,8 +31,8 @@ La ruta dinámica aún necesita módulos compartidos de edición importados por
 
 ## Corridas HubMin
 
-Pendiente de ejecutar sin `-Forzar`. Las corridas contaminadas realizadas
-antes de la coordinación de máquina se descartaron y no se usan en esta tabla.
+Las corridas contaminadas realizadas antes de la coordinación de máquina se
+descartaron y no se usan en esta tabla. Ninguna corrida aceptada usó `-Forzar`.
 
 Tras aclarar que el `PresentMon-x64` permanente pertenece a Radeon
 `RSXTraceSession`, se esperó exclusivamente a `vantare-baseline*`. Entre las
@@ -70,12 +70,48 @@ que el gate 12.2 se haya superado.
 |---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | 1 | 75,02 | 45,65 | 176,90 | 22,92 | 2,88 | 66,54 | 144,10 | 534,01 |
 | 3 | 104,23 | 44,83 | 174,17 | 22,40 | 2,87 | 62,49 | 104,26 | 515,25 |
+| 3, repetición | 81,49 | 44,98 | 174,11 | 22,53 | 2,87 | 69,54 | 126,58 | 522,10 |
 
 L3 quedó 18,76 MiB (-3,5 %) por debajo de L1, pero permanece 122,25 MiB por
 encima del objetivo ≤393 MiB y no representa el lifecycle deseado. Artefactos
 crudos: `results/isa-940-full-l3/hubmin-20260830-010413.csv` y
 `results/isa-940-full-l1/hubmin-20260830-011056.csv`. PresentMon observó 0/4168
 y 0/6494 frames perdidos respectivamente.
+
+La repetición física posterior al probe dirigido tampoco destruyó el Hub:
+`hub:can-suspend` agotó dos veces los 500 ms y el renderer Hub siguió presente.
+CDP midió 2.199,51 ms al reabrir y el log Go 2,362 s. PresentMon observó
+0/5871 frames perdidos. Artefacto crudo:
+`results/isa-940-full-l3-repeat/hubmin-20260830-012549.csv`.
+
+El incremento inicial del host Go no se reprodujo como memoria estable. En L1
+su privada fue media 75,02, p50 72,81 y p95 76,67 MiB; en la primera L3 fue
+media 104,23, p50 78,07 y p95 298,56 MiB; en la repetición fue media 81,49,
+p50 74,19 y p95 109,46 MiB. La repetición comenzó en 74,88 y terminó en
+85,90 MiB, con un pico aislado de 191,97 MiB. Esto demuestra que los +29 MiB
+de media procedían de picos transitorios (GC/reservas del runtime), no de una
+retención estable específica de nivel 3. No se atribuye a heap Go mediante
+`VANTARE_CPU_PROFILE_PATH`: ese gancho produce perfil de CPU, no heap, y usarlo
+como prueba de memoria sería incorrecto.
+
+### Aritmética del límite
+
+La repetición suma 522,10 MiB privados. Incluso eliminando por completo el
+renderer Hub (69,54 MiB), el mismo árbol quedaría en aproximadamente
+452,56 MiB: todavía 59,56 MiB por encima del gate de 393 MiB. Por tanto el gate
+12.2 no es alcanzable con este corte aunque se arregle el ACK.
+
+| Coste L3 repetido | MiB | Lectura y siguiente palanca |
+|---|---:|---|
+| GPU process | 174,11 | Mayor coste; es infraestructura WebView2 compartida. Requiere medir y reducir superficies/rasterización/composición del overlay, no puede eliminarse mientras el overlay visual siga activo. |
+| Renderer overlay (`renderer-unassigned`) | 126,58 | Revisar el grafo runtime que aún entra por `CompositeApp` y desmontar módulos/estado no usados; esos archivos están reservados a #936 y no se tocaron aquí. |
+| Go host | 81,49 media; 74,19 p50 | No muestra la fuga de +29 MiB. Para bajar más habría que perfilar heap con un gancho específico y separar reservas de telemetría/sensor; el perfil CPU existente no sirve. |
+| Browser | 44,98 | Base del entorno WebView2; solo una decisión arquitectónica distinta o flags soportados podrían recortarlo. |
+| Utility | 22,53 | Dos servicios WebView2; coste estructural a validar junto con browser/GPU. |
+| Crashpad | 2,87 | Marginal. |
+
+La cifra realista de este hito, si el Hub llegase a cero sin mover los otros
+procesos, es ~453 MiB (-19,4 % frente a 562 MiB), no ≤393 MiB (-30 %).
 
 El banco conserva `renderer-unassigned` para el renderer creado tras abrir el
 overlay: CDP prueba el target `overlay.html` y sus tres widgets, pero no aporta
@@ -92,9 +128,10 @@ una relación PID↔target suficiente para renombrarlo sin inferencia.
   minimizada; `Open()` invalida el intento pendiente.
 - `/overlay?profile=…` sirve `overlay.html`, conserva `ObsOverlayApp` y los
   contratos SSE, sin cargar la entrada principal.
-- En la corrida L3 fallida, CDP midió 10.389 ms desde `hub:open` hasta el target
-  y el log Go 8,846 s de recreación; no es un tiempo aceptable ni valida la
-  corrección posterior que dirige el probe al WebView Hub actual.
+- En la primera corrida L3 fallida, CDP midió 10.389 ms desde `hub:open` hasta
+  el target y el log Go 8,846 s. La repetición con probe dirigido bajó a
+  2.199,51 ms / 2,362 s, pero siguió siendo una restauración del Hub conservado,
+  no una recreación validada.
 - Bounding box: un clúster usa su unión más 16 px; widgets en esquinas opuestas
   saturan al monitor completo; DPI convierte primero a coordenadas lógicas de
   Wails; edición fuerza el monitor completo. Guardar Ajustes aplica 1↔3 a la
@@ -106,8 +143,14 @@ una relación PID↔target suficiente para renombrarlo sin inferencia.
 
 ## Límites de esta evidencia
 
-- Pendientes tras el diagnóstico: repetir L3 con el ACK dirigido y comprobar
-  renderer Hub = 0, total ≤393 MiB y reapertura real. También quedan captura de paridad visual,
-  escucha humana del audio, baseline N=3, iGPU y VR.
+- El ACK dirigido queda sin resolver físicamente: tanto `DispatchWailsEvent`
+  como `WebviewWindow.EmitEvent` agotaron 500 ms una vez minimizado WebView2.
+  Se probó despertar el WebView oculto, pero los eventos duplicados de Wails
+  provocaron un bucle de probes; la corrida se abortó, la sesión ETW se cerró y
+  ese cambio fue revertido. Hace falta decidir un preflight anterior al
+  `WindowMinimise` o una autoridad de bloqueadores sincronizada con Go antes de
+  destruir con seguridad.
+- También quedan captura de paridad visual, escucha humana del audio, baseline
+  N=3, iGPU y VR.
 - Un warning aislado de contador GPU en las corridas descartadas no se rellena
   con datos sintéticos; las corridas limpias deben conservar cualquier ausencia.

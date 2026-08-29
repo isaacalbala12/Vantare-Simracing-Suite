@@ -27,6 +27,30 @@
   Nightly mantiene como autoridad la política v4 de ISA-943/ISA-947; ISA-940 no
   promociona el nivel 3 y conserva el nivel 1 como valor productivo inicial.
 
+- **ISA-944 — sensor de host y modo Automático F3 (2026-08-30, rama):**
+  `vantareapp/isa-944-sensor-automatico` incorpora el sensor Go a 1 Hz para CPU
+  total, CPU/RAM del proceso y sus WebView2 propios, detección de LMU en primer
+  plano y frametime por PresentMon streaming. La sesión ETW propia usa
+  `VantareSensor-<pid>`, limpia solo ese prefijo al arrancar y, al cerrar, mata
+  y espera el PID exacto de PresentMon entre dos paradas exactas de la sesión;
+  `RSXTraceSession` y `VantareHuella-*` quedan fuera. Automático empieza en 3,
+  opera entre 2 y 5, sube tras 30 s sanos, baja en dos muestras e impone 60 s
+  de histéresis; sin frametime sigue por CPU y publica `reason: unavailable`.
+  La política se aplica en caliente, emite `performance:level` solo con Hub
+  visible y anuncia cambios mediante texto i18n del Ingeniero. Esta rama
+  sustituye el automático provisional descrito por ISA-943; conserva íntegra
+  su resolución app+perfil y solo puede bajar la calidad solicitada. Los tests
+  Go del alcance pasan, incluido el orden de cierre y la sesión estable
+  simulada de diez minutos. En la prueba Wails real de 181 s, 182/183 muestras
+  llevaron frametime LMU y el nivel siguió 3→4→5 sin volver a oscilar; CDP
+  capturó el snapshot inicial y final de `capabilities.performance`. Vantare y
+  su PresentMon desaparecieron al cerrar, su ETW quedó limpia y
+  `RSXTraceSession` permaneció activa. Una prueba opt-in de la ruta Go fijó
+  además el mensaje OEM de `logman` español cuando la segunda parada encuentra
+  la sesión ya ausente. El guion reproducible queda en
+  `scripts/bench/isa944-auto-smoke.ps1`; falta la captura sin LMU. Sin PR,
+   merge ni promoción todavía.
+
 - **ISA-943 — perfil v4 y Ajustes › Rendimiento (2026-08-30):** rama
   `vantareapp/isa-943-perfil-v4-ajustes-rendimiento`, base inicial
   `origin/nightly@ca166b38`. El store acepta perfiles v3 indefinidamente y al

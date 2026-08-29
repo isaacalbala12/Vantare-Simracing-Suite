@@ -10,10 +10,20 @@ vi.mock("../designs/widget-design-client", () => ({
   }),
 }));
 
+const wails = vi.hoisted(() => ({
+  handlers: new Map<string, Array<(event: { data?: unknown }) => void>>(),
+  emit: vi.fn(),
+}));
+
 vi.mock("@wailsio/runtime", () => ({
   Events: {
-    On: vi.fn(() => () => undefined),
-    Emit: vi.fn(),
+    On: vi.fn((name: string, handler: (event: { data?: unknown }) => void) => {
+      const listeners = wails.handlers.get(name) ?? [];
+      listeners.push(handler);
+      wails.handlers.set(name, listeners);
+      return () => wails.handlers.set(name, listeners.filter((item) => item !== handler));
+    }),
+    Emit: wails.emit,
   },
 }));
 
@@ -109,6 +119,8 @@ afterEach(() => {
 });
 
 beforeEach(() => {
+  wails.handlers.clear();
+  wails.emit.mockClear();
   window.localStorage.clear();
   // Ventana ancha: por debajo de `STUDIO_AUTO_FOLD_INSPECTOR_WIDTH` el
   // inspector se pliega solo (D-R4-4) y estas pruebas van sobre el desplegado.
@@ -303,6 +315,30 @@ describe("StudioOrbitLayout", () => {
     await waitFor(() => {
       expect(screen.getByTestId("orbit-studio-save").getAttribute("data-s")).toBe("saved");
     });
+  });
+
+  it("guarda la política v4 del perfil y muestra el nivel efectivo", async () => {
+    renderStudio();
+
+    for (const handler of wails.handlers.get("performance:level") ?? []) {
+      handler({ data: { level: 3, hz: 30, sourceHz: 0, effects: "noBlur" } });
+    }
+    await waitFor(() => {
+      expect(screen.getByTestId("studio-performance-badge").textContent).toContain("Equilibrado");
+    });
+
+    fireEvent.click(screen.getByRole("combobox", { name: "Política del perfil" }));
+    fireEvent.click(screen.getByRole("option", { name: "Personalizado" }));
+
+    await waitFor(() => {
+      expect(wails.emit).toHaveBeenCalledWith(
+        "studio:profile:performance:save",
+        expect.objectContaining({
+          performance: { mode: "custom", level: 3, overrides: {} },
+        }),
+      );
+    });
+    expect(screen.getByTestId("studio-performance-level")).toBeTruthy();
   });
 
   it("habilita `Live` cuando la shell da el sim por conectado", async () => {

@@ -172,4 +172,8 @@ export const studioOrbitEs: Record<string, string> = {
   "studio.topbar.retrySave": "Reintentar guardado",
   "studio.topbar.openOverlay": "Abrir overlay",
   "studio.topbar.stopOverlay": "Detener overlay",
+  "studio.topbar.performanceMode": "Política del perfil",
+  "studio.topbar.performanceInherit": "Heredar de la aplicación",
+  "studio.topbar.performanceLevel": "Nivel del perfil",
+  "studio.topbar.performanceEffective": "Nivel efectivo",
 };

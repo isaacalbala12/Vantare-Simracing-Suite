@@ -1,7 +1,12 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Events } from '@wailsio/runtime';
+import type { OverlayPerformanceV2 } from '../../../generated/telemetry';
 import { useI18n } from '../../../i18n/I18nProvider';
-import { Button, Select } from '../../../ui/orbit';
+import type {
+  ProfilePerformanceModeV4,
+  ProfilePerformanceV4,
+} from '../../../overlay/core/profile-document';
+import { Button, Chip, Select } from '../../../ui/orbit';
 import { profileTarget } from '../../state/overlay-workbench';
 import { useOverlayState } from '../../orbit/use-overlay-state';
 import type { StudioProfileEntry } from '../studio-profile-entry';
@@ -29,6 +34,37 @@ export function StudioTopbarControls(props: StudioTopbarControlsProps): React.Re
   const { t } = useI18n();
   const { dirty, saveState, save } = useStudioDocument();
   const overlay = useOverlayState();
+  const activeProfile = useMemo(
+    () => profiles.find((profile) => profile.file === activeFile),
+    [activeFile, profiles],
+  );
+  const [profilePerformanceEdit, setProfilePerformanceEdit] = useState<{
+    file: string;
+    performance?: ProfilePerformanceV4;
+  } | null>(null);
+  const profilePerformance =
+    profilePerformanceEdit && profilePerformanceEdit.file === activeFile
+      ? profilePerformanceEdit.performance
+      : activeProfile?.performance;
+  const [effectiveLevel, setEffectiveLevel] = useState<1 | 2 | 3 | 4 | 5>(1);
+
+  useEffect(() => {
+    const offLevel = Events.On('performance:level', (event: { data?: OverlayPerformanceV2 }) => {
+      const level = event.data?.level;
+      if (level && level >= 1 && level <= 5) setEffectiveLevel(level as 1 | 2 | 3 | 4 | 5);
+    });
+    const offSaved = Events.On(
+      'studio:profile:performance:saved',
+      (event: { data?: { performance?: ProfilePerformanceV4 } }) => {
+        setProfilePerformanceEdit({ file: activeFile, performance: event.data?.performance });
+      },
+    );
+    Events.Emit('settings:get');
+    return () => {
+      offLevel?.();
+      offSaved?.();
+    };
+  }, [activeFile]);
 
   const saveLabel =
     saveState === 'saving'
@@ -60,6 +96,37 @@ export function StudioTopbarControls(props: StudioTopbarControlsProps): React.Re
     Events.Emit('overlay:start-active');
   }, [overlay.active, overlay.running]);
 
+  const savePerformance = useCallback((performance: ProfilePerformanceV4) => {
+    setProfilePerformanceEdit({ file: activeFile, performance });
+    Events.Emit('studio:profile:performance:save', {
+      requestId: `studio-performance-${Date.now().toString(36)}`,
+      performance,
+    });
+  }, [activeFile]);
+
+  const performanceMode = profilePerformance?.mode ?? 'inherit';
+  const selectedLevel = profilePerformance?.level ?? effectiveLevel;
+  const setPerformanceMode = (mode: ProfilePerformanceModeV4) => {
+    if (mode === 'inherit') {
+      savePerformance({ mode: 'inherit' });
+      return;
+    }
+    savePerformance({
+      mode,
+      level: selectedLevel,
+      ...(mode === 'custom' ? { overrides: profilePerformance?.overrides ?? {} } : {}),
+    });
+  };
+
+  const setPerformanceLevel = (value: string) => {
+    const level = Number(value) as 1 | 2 | 3 | 4 | 5;
+    savePerformance({
+      mode: performanceMode === 'custom' ? 'custom' : 'level',
+      level,
+      ...(performanceMode === 'custom' ? { overrides: profilePerformance?.overrides ?? {} } : {}),
+    });
+  };
+
   return (
     <div className="orbit-studio-topbar" data-testid="orbit-studio-topbar-controls">
       <Select
@@ -70,6 +137,36 @@ export function StudioTopbarControls(props: StudioTopbarControlsProps): React.Re
         value={activeFile}
         width={PROFILE_SELECT_WIDTH}
       />
+      <div data-testid="studio-performance-mode">
+        <Select
+          label={t('studio.topbar.performanceMode')}
+          onChange={setPerformanceMode}
+          options={[
+            { value: 'inherit', label: t('studio.topbar.performanceInherit') },
+            { value: 'level', label: t('studio.topbar.performanceLevel') },
+            { value: 'custom', label: t('settings.performance.custom') },
+          ]}
+          value={performanceMode}
+        />
+      </div>
+      {performanceMode !== 'inherit' ? (
+        <div data-testid="studio-performance-level">
+          <Select
+            label={t('studio.topbar.performanceLevel')}
+            onChange={setPerformanceLevel}
+            options={(['1', '2', '3', '4', '5'] as const).map((level) => ({
+              value: level,
+              label: t(`settings.performance.${level}`),
+            }))}
+            value={String(selectedLevel) as '1' | '2' | '3' | '4' | '5'}
+          />
+        </div>
+      ) : null}
+      <span data-testid="studio-performance-badge">
+        <Chip tone="reference">
+          {t('studio.topbar.performanceEffective')}: {t(`settings.performance.${effectiveLevel}`)}
+        </Chip>
+      </span>
       <Button
         data-save-state={saveState}
         data-testid="orbit-studio-save"

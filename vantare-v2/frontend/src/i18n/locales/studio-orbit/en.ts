@@ -171,4 +171,8 @@ export const studioOrbitEn: Record<string, string> = {
   "studio.topbar.retrySave": "Retry save",
   "studio.topbar.openOverlay": "Start overlay",
   "studio.topbar.stopOverlay": "Stop overlay",
+  "studio.topbar.performanceMode": "Profile policy",
+  "studio.topbar.performanceInherit": "Inherit from app",
+  "studio.topbar.performanceLevel": "Profile level",
+  "studio.topbar.performanceEffective": "Effective level",
 };

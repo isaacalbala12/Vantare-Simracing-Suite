@@ -172,4 +172,8 @@ export const studioOrbitIt: Record<string, string> = {
   "studio.topbar.retrySave": "Riprova salvataggio",
   "studio.topbar.openOverlay": "Avvia overlay",
   "studio.topbar.stopOverlay": "Ferma overlay",
+  "studio.topbar.performanceMode": "Politica del profilo",
+  "studio.topbar.performanceInherit": "Eredita dall'app",
+  "studio.topbar.performanceLevel": "Livello del profilo",
+  "studio.topbar.performanceEffective": "Livello effettivo",
 };

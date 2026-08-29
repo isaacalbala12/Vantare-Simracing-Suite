@@ -695,7 +695,12 @@ function parseProfilePerformanceV4(input: unknown, path: string): ProfilePerform
 }
 
 export function adaptWidgetDefinitionToV4(widget: WidgetInstanceV3): WidgetInstanceV4 {
-  const { updateHz: _discardedUpdateHz, ...behavior } = widget.behavior;
+  const behavior: WidgetBehaviorV4 = {
+    enabled: widget.behavior.enabled,
+    ...(widget.behavior.visibleWhen
+      ? { visibleWhen: structuredClone(widget.behavior.visibleWhen) }
+      : {}),
+  };
   return { ...structuredClone(widget), behavior };
 }
 

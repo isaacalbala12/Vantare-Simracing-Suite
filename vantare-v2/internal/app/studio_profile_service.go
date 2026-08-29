@@ -198,9 +198,6 @@ func (s *StudioProfileService) HandlePerformanceSave(data any) {
 	if s.onPerformanceSaved != nil {
 		s.onPerformanceSaved(doc)
 	}
-	if s.onSaved != nil {
-		s.onSaved(StudioProfileSaved{Path: s.path, Document: legacy, Revision: revision})
-	}
 }
 
 // HandleLoad decodes a correlated load request and emits studio:profile:loaded or studio:profile:error.

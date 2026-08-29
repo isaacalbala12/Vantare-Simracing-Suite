@@ -144,9 +144,12 @@ func TestProfileSuccess(t *testing.T) {
 	}
 }
 
-func TestOverlayServesHTML(t *testing.T) {
+func TestOverlayServesDedicatedEntry(t *testing.T) {
 	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, "index.html"), []byte("<html><body>OK</body></html>"), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "index.html"), []byte(`<script src="/assets/index-main.js"></script>`), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "overlay.html"), []byte(`<script src="/assets/overlay-entry.js"></script>`), 0644); err != nil {
 		t.Fatal(err)
 	}
 	distFS := os.DirFS(dir)
@@ -162,6 +165,13 @@ func TestOverlayServesHTML(t *testing.T) {
 	ct := rr.Header().Get("Content-Type")
 	if ct != "text/html; charset=utf-8" {
 		t.Fatalf("Content-Type = %s, want text/html", ct)
+	}
+	body := rr.Body.String()
+	if !strings.Contains(body, "/assets/overlay-entry.js") {
+		t.Fatalf("GET /overlay body lacks dedicated entry: %q", body)
+	}
+	if strings.Contains(body, "/assets/index-main.js") {
+		t.Fatalf("GET /overlay loaded the main entry: %q", body)
 	}
 }
 

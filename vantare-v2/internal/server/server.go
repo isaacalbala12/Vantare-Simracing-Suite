@@ -334,9 +334,9 @@ func (s *Server) handleOverlay(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "frontend dist not available", http.StatusInternalServerError)
 		return
 	}
-	data, err := fs.ReadFile(s.distFS, "index.html")
+	data, err := fs.ReadFile(s.distFS, "overlay.html")
 	if err != nil {
-		http.Error(w, "index.html not found", http.StatusInternalServerError)
+		http.Error(w, "overlay.html not found", http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")

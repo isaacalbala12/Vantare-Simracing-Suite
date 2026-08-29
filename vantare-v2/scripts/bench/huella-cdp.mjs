@@ -149,6 +149,11 @@ if (!cdp || !["inspect", "overlay-start", "overlay-stop", "hub-minimise", "hub-r
 }
 
 const browser = await chromium.connectOverCDP(cdp);
+async function writeResult(result) {
+  const json = `${JSON.stringify(result)}\n`;
+  if (output) await writeFile(output, json, { encoding: "utf8", flag: "wx" });
+  process.stdout.write(json);
+}
 if (action === "hub-open") {
   const appPage = (await pagesByRole(browser)).find(({ description }) => description.overlay)?.page;
   if (!appPage) throw new Error("Overlay target is not available to request Hub reopening");
@@ -159,7 +164,7 @@ if (action === "hub-open") {
   });
   await waitForRole(browser, "hub", true, 30_000);
   const reopenMs = performance.now() - startedAt;
-  process.stdout.write(`${JSON.stringify({ schema: "vantare.huella.cdp.v1", action, requested: true, reopenMs })}\n`);
+  await writeResult({ schema: "vantare.huella.cdp.v1", action, requested: true, reopenMs });
   process.exit(0);
 }
 if (action === "app-quit") {

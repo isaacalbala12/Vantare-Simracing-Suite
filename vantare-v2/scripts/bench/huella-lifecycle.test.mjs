@@ -22,3 +22,12 @@ test("el cierre limpio sobrevive a la destrucción del Hub", () => {
   assert.match(cdpHelper, /pages\.find\(\(\{ description \}\) => description\.overlay\)\?\.page/);
   assert.match(cdpHelper, /Events\.Emit\("hub:open"\)/);
 });
+
+test("HubMin mide la reapertura después de finalizar las muestras", () => {
+  const sampleLoop = bench.indexOf("for ($sampleIndex = 0; $sampleIndex -lt $Duracion; $sampleIndex++)");
+  const reopen = bench.indexOf("--action hub-open");
+  assert.ok(sampleLoop >= 0);
+  assert.ok(reopen > sampleLoop);
+  assert.match(bench, /\$stem-hub-reopen\.json/);
+  assert.match(cdpHelper, /await writeResult\(\{ schema: "vantare\.huella\.cdp\.v1", action, requested: true, reopenMs \}\)/);
+});

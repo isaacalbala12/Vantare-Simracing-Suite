@@ -137,6 +137,7 @@ $rawCsv = Join-Path $outputDir "$stem.csv"
 $presentMonCsv = Join-Path $outputDir "$stem-presentmon.csv"
 $summaryMd = Join-Path $outputDir "$stem.md"
 $cdpJson = Join-Path $outputDir "$stem-cdp.json"
+$hubReopenJson = Join-Path $outputDir "$stem-hub-reopen.json"
 $stdoutLog = Join-Path $outputDir "$stem-stdout.log"
 $stderrLog = Join-Path $outputDir "$stem-stderr.log"
 $presentMonLog = Join-Path $outputDir "$stem-presentmon.log"
@@ -344,6 +345,11 @@ try {
         $previousAt = $now
     }
 
+    if ($Condicion -eq 'HubMin') {
+        & node $cdpHelper --cdp "http://127.0.0.1:$Puerto" --action hub-open --duration 1 --output $hubReopenJson | Out-Host
+        if ($LASTEXITCODE -ne 0) { throw "No se pudo reabrir el Hub por CDP (código $LASTEXITCODE)." }
+    }
+
     if ($presentMon -and -not $presentMon.HasExited) { $presentMon.WaitForExit(($Duracion + 30) * 1000) | Out-Null }
     if (Test-Path -LiteralPath $presentMonCsv) {
         $presentMonFrames = @(Import-Csv -LiteralPath $presentMonCsv)
@@ -432,4 +438,5 @@ try {
 Write-Host "CSV: $rawCsv"
 Write-Host "Resumen: $summaryMd"
 Write-Host "CDP: $cdpJson"
+if ($Condicion -eq 'HubMin') { Write-Host "Reapertura Hub: $hubReopenJson" }
 Write-Host "Cierre limpio: $shutdownClean"

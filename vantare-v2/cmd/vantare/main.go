@@ -1632,7 +1632,7 @@ func main() {
 	var hubLifecycle *app.HubLifecycle
 	newHubWindow := func() app.HubWindow {
 		window := &wailsHubWindow{w: wailsApp.Window.NewWithOptions(hubWindowOptions())}
-		hubProbe.SetTarget(window)
+		hubProbe.SetTarget(window.w)
 		window.w.RegisterHook(events.Common.WindowClosing, func(_ *application.WindowEvent) {
 			if window.intentionalClose.Load() {
 				return
@@ -1640,9 +1640,6 @@ func main() {
 			go wailsApp.Quit()
 		})
 		window.w.OnWindowEvent(events.Common.WindowMinimise, func(_ *application.WindowEvent) {
-			if window.internalMinimise.Swap(false) {
-				return
-			}
 			go func() {
 				ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 				defer cancel()
@@ -3439,8 +3436,6 @@ type hubSuspendEventProbe struct {
 
 type hubSuspendEventTarget interface {
 	DispatchWailsEvent(*application.CustomEvent)
-	PrepareSuspendProbe()
-	RestoreAfterSuspendProbe()
 }
 
 func newHubSuspendEventProbe(wailsApp *application.App, emitter app.EventEmitter) *hubSuspendEventProbe {
@@ -3471,14 +3466,6 @@ func (p *hubSuspendEventProbe) Probe(ctx context.Context) bool {
 	p.mu.Unlock()
 	payload := map[string]any{"requestId": requestID}
 	if target != nil {
-		target.PrepareSuspendProbe()
-		defer func() {
-			// Open cancela el contexto y ya ha restaurado la ventana. Un timeout
-			// conserva la ventana minimizada, como exige el guard de seguridad.
-			if !errors.Is(ctx.Err(), context.Canceled) {
-				target.RestoreAfterSuspendProbe()
-			}
-		}()
 		target.DispatchWailsEvent(&application.CustomEvent{Name: "hub:can-suspend", Data: payload})
 	} else if emitter != nil {
 		emitter.Emit("hub:can-suspend", payload)
@@ -3536,7 +3523,6 @@ func newHubSuspendRequestID() string {
 type wailsHubWindow struct {
 	w                *application.WebviewWindow
 	intentionalClose atomic.Bool
-	internalMinimise atomic.Bool
 }
 
 func (w *wailsHubWindow) Close() {
@@ -3549,18 +3535,6 @@ func (w *wailsHubWindow) Focus()            { w.w.Focus() }
 func (w *wailsHubWindow) Minimise()         { w.w.Minimise() }
 func (w *wailsHubWindow) UnMinimise()       { w.w.UnMinimise() }
 func (w *wailsHubWindow) IsMinimised() bool { return w.w.IsMinimised() }
-func (w *wailsHubWindow) DispatchWailsEvent(event *application.CustomEvent) {
-	w.w.DispatchWailsEvent(event)
-}
-func (w *wailsHubWindow) PrepareSuspendProbe() {
-	w.w.Hide()
-	w.w.UnMinimise()
-}
-func (w *wailsHubWindow) RestoreAfterSuspendProbe() {
-	w.internalMinimise.Store(true)
-	w.w.Minimise()
-	w.w.Show()
-}
 
 func hubWindowOptions() application.WebviewWindowOptions {
 	return application.WebviewWindowOptions{

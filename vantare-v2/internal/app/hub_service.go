@@ -191,8 +191,9 @@ func (s *HubService) ListProfiles() ([]ProfileEntry, error) {
 			continue
 		}
 
-		previewDoc, migratedFrom, migrateErr := config.MigrateProfileJSONToV3(raw)
-		if migrateErr != nil || migratedFrom != config.ProfileSchemaVersionV3 || !isListableProfileDocument(previewDoc) {
+		profileV4, migratedFrom, _, migrateErr := config.MigrateProfileJSONToV4(raw)
+		previewDoc := config.ConvertProfileV4ToV3(profileV4)
+		if migrateErr != nil || (migratedFrom != config.ProfileSchemaVersionV3 && migratedFrom != config.ProfileSchemaVersionV4) || !isListableProfileDocument(previewDoc) {
 			continue
 		}
 

@@ -161,7 +161,8 @@ type WidgetDesignProvenanceV3 struct {
 }
 
 type LoadedProfileV3 struct {
-	Document     *ProfileDocumentV3
-	Revision     string
-	MigratedFrom int
+	Document         *ProfileDocumentV3
+	Revision         string
+	MigratedFrom     int
+	MigrationNotices []ProfileMigrationNoticeV4
 }

@@ -53,6 +53,15 @@ func (s *StudioProfileService) Load(path string) (*config.LoadedProfileV3, error
 	}
 	s.path = path
 	s.loaded = loaded
+	for _, notice := range loaded.MigrationNotices {
+		s.logger.Warn("studio profile v3 migration discarded atypical updateHz",
+			"profile", path,
+			"path", notice.Path,
+			"widgetId", notice.WidgetID,
+			"widgetType", notice.WidgetType,
+			"updateHz", notice.UpdateHz,
+		)
+	}
 	return loaded, nil
 }
 
@@ -215,10 +224,11 @@ func (s *StudioProfileService) EmitLoaded(requestID string) {
 		return
 	}
 	s.emitter.Emit("studio:profile:loaded", map[string]any{
-		"requestId":    requestID,
-		"document":     s.loaded.Document,
-		"revision":     s.loaded.Revision,
-		"migratedFrom": s.loaded.MigratedFrom,
+		"requestId":        requestID,
+		"document":         s.loaded.Document,
+		"revision":         s.loaded.Revision,
+		"migratedFrom":     s.loaded.MigratedFrom,
+		"migrationNotices": s.loaded.MigrationNotices,
 	})
 }
 

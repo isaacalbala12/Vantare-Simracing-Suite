@@ -3,6 +3,8 @@ import {
   ProfileDocumentValidationError,
   cloneProfileDocumentV3,
   getDefaultVisualSystemId,
+  migrateProfileDocumentToV4,
+  parseProfileDocumentV4,
   parseProfileDocumentV3,
   type ProfileDocumentV3,
 } from "./profile-document";
@@ -49,6 +51,47 @@ function expectPath(error: unknown, path: string) {
   expect(error).toBeInstanceOf(ProfileDocumentValidationError);
   expect((error as ProfileDocumentValidationError).path).toBe(path);
 }
+
+describe("profile document v4", () => {
+  it("drops updateHz, records an atypical fast-widget value and writes v4", () => {
+    const legacy = minimalDocument();
+    legacy.layouts.general.widgets = [
+      { ...validWidget("pedals-main", "pedals"), behavior: { enabled: true, updateHz: 3 } },
+    ];
+
+    const migrated = migrateProfileDocumentToV4(legacy);
+
+    expect(migrated.document.schemaVersion).toBe(4);
+    expect(migrated.document.layouts.general.widgets[0]?.behavior).toEqual({ enabled: true });
+    expect(migrated.notices).toEqual([
+      expect.objectContaining({
+        path: "layouts.general.widgets[0].behavior.updateHz",
+        widgetId: "pedals-main",
+        updateHz: 3,
+      }),
+    ]);
+    expect(JSON.stringify(migrated.document)).not.toContain("updateHz");
+  });
+
+  it("round-trips a custom profile performance policy", () => {
+    const document = migrateProfileDocumentToV4(minimalDocument()).document;
+    document.performance = {
+      mode: "custom",
+      level: 3,
+      overrides: { "delta-main": { hz: 24, effects: "noBlur" } },
+    };
+
+    expect(parseProfileDocumentV4(document)).toEqual(document);
+  });
+
+  it("rejects updateHz in a v4 widget", () => {
+    const document = migrateProfileDocumentToV4(minimalDocument()).document as unknown as Record<string, unknown>;
+    const layouts = document.layouts as { general: { widgets: unknown[] } };
+    layouts.general.widgets = [validWidget("delta-main", "delta")];
+
+    expect(() => parseProfileDocumentV4(document)).toThrowError(ProfileDocumentValidationError);
+  });
+});
 
 describe("parseProfileDocumentV3", () => {
   it("resolves a missing layout viewport to the legacy 1920x1080 surface", () => {

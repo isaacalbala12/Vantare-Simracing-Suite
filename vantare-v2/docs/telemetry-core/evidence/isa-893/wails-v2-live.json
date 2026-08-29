@@ -1,0 +1,204 @@
+{
+  "schema": "vantare.isa-893.wails-v2.v1",
+  "capturedAt": "2026-08-29T23:17:47.721Z",
+  "cdp": "http://127.0.0.1:9243",
+  "expectedWidgetCount": 20,
+  "url": "http://wails.localhost/",
+  "title": "Vantare",
+  "widgets": [
+    {
+      "id": "bench-delta",
+      "type": "delta",
+      "painted": true,
+      "text": "DELTA——",
+      "diagnosticCodes": [],
+      "rendererError": null
+    },
+    {
+      "id": "bench-standings",
+      "type": "standings",
+      "painted": true,
+      "text": "PRACTICE05:39:50PosiciónNúmeroPilotoGapÚltima vuelta1Robin FrijnsLeader—2Alessandro Pier Guidi—2:27.1493Jules Gounon+2L2:25.6824Mike Conway+2L2:27.1265Alex Ribe",
+      "diagnosticCodes": [],
+      "rendererError": null
+    },
+    {
+      "id": "bench-relative",
+      "type": "relative",
+      "painted": true,
+      "text": "VANTARERELATIVE18Isaac Albala——",
+      "diagnosticCodes": [],
+      "rendererError": null
+    },
+    {
+      "id": "bench-pedals",
+      "type": "pedals",
+      "painted": true,
+      "text": "C0%B100%T0%",
+      "diagnosticCodes": [],
+      "rendererError": null
+    },
+    {
+      "id": "bench-broadcast-tower",
+      "type": "broadcast-tower",
+      "painted": true,
+      "text": "STANDINGSPRACTICE1—Robin FrijnsHyper0.0002—Alessandro Pier GuidiHyper0.0003—Jules GounonHyper0.0004—Mike ConwayHyper0.0005—Alex RiberasHyper47.401LAP —",
+      "diagnosticCodes": [],
+      "rendererError": null
+    },
+    {
+      "id": "bench-fuel-strategy",
+      "type": "fuel-strategy",
+      "painted": true,
+      "text": "FUEL STRATEGY97.0 LAVG —LAPS —NEEDED —",
+      "diagnosticCodes": [],
+      "rendererError": null
+    },
+    {
+      "id": "bench-pedals-telemetry",
+      "type": "pedals-telemetry",
+      "painted": true,
+      "text": "00KM/H0RPM—POSC0%B100%T0%",
+      "diagnosticCodes": [],
+      "rendererError": null
+    },
+    {
+      "id": "bench-pedals-telemetry-compact",
+      "type": "pedals-telemetry-compact",
+      "painted": true,
+      "text": "0GEAR0KM/H0RPMBTC",
+      "diagnosticCodes": [],
+      "rendererError": null
+    },
+    {
+      "id": "bench-racing-flags",
+      "type": "racing-flags",
+      "painted": true,
+      "text": "NO FLAG",
+      "diagnosticCodes": [],
+      "rendererError": null
+    },
+    {
+      "id": "bench-delta-trace",
+      "type": "delta-trace",
+      "painted": true,
+      "text": "DELTA TRACE—unknown",
+      "diagnosticCodes": [],
+      "rendererError": null
+    },
+    {
+      "id": "bench-race-schedule",
+      "type": "race-schedule",
+      "painted": true,
+      "text": "RACE SCHEDULELMGT3 Sprint CupBarcelona (ELMS)2026-08-28T23:20:00ZPrototype ClassicSpa-Francorchamps (ELMS)2026-08-28T23:20:00ZELMS Sprint TrophySilverstone (ELM",
+      "diagnosticCodes": [],
+      "rendererError": null
+    },
+    {
+      "id": "bench-head-to-head",
+      "type": "head-to-head",
+      "painted": true,
+      "text": "HEAD TO HEAD AHEAD—Isaac Albala0.000s—Antonio Fuoco",
+      "diagnosticCodes": [],
+      "rendererError": null
+    },
+    {
+      "id": "bench-delta-advanced",
+      "type": "delta-advanced",
+      "painted": true,
+      "text": "DELTA ADVANCED—BESTSECTOR —THEORETICAL —LAST —",
+      "diagnosticCodes": [],
+      "rendererError": null
+    },
+    {
+      "id": "bench-input-telemetry",
+      "type": "input-telemetry",
+      "painted": true,
+      "text": "INPUT TELEMETRY 4sTHRBRACLUSPD 0RPM 0G 0",
+      "diagnosticCodes": [],
+      "rendererError": null
+    },
+    {
+      "id": "bench-multiclass-relative",
+      "type": "multiclass-relative",
+      "painted": true,
+      "text": "RELATIVE MULTICLASS14—Paul di Resta0.00015—Sébastien Buemi0.00016—Dries Vanthoor0.00017—Antonio Fuoco0.00018—Isaac Albala0.000",
+      "diagnosticCodes": [],
+      "rendererError": null
+    },
+    {
+      "id": "bench-track-weather",
+      "type": "track-weather",
+      "painted": true,
+      "text": "TRACK WEATHER—AMBIENT —RAIN —WIND —",
+      "diagnosticCodes": [],
+      "rendererError": null
+    },
+    {
+      "id": "bench-car-damage-visual",
+      "type": "car-damage-visual",
+      "painted": true,
+      "text": "CAR DAMAGE—",
+      "diagnosticCodes": [],
+      "rendererError": null
+    },
+    {
+      "id": "bench-car-damage-numbers",
+      "type": "car-damage-numbers",
+      "painted": true,
+      "text": "DAMAGEAERO —BODY —SUSP —",
+      "diagnosticCodes": [],
+      "rendererError": null
+    },
+    {
+      "id": "bench-engineer-radio",
+      "type": "engineer-radio",
+      "painted": true,
+      "text": "",
+      "diagnosticCodes": [],
+      "rendererError": null
+    },
+    {
+      "id": "bench-track-map",
+      "type": "track-map",
+      "painted": true,
+      "text": "Circuit de Spa-Francorchamps",
+      "diagnosticCodes": [],
+      "rendererError": null
+    }
+  ],
+  "diagnostics": {
+    "overlay_v2_parse_duration": {
+      "count": 512,
+      "p50": 0.3000000002793968,
+      "p99": 0.599999999627471,
+      "nonLiveSamples": 0
+    },
+    "shadow": {
+      "frames": 556,
+      "mismatches": 1617,
+      "declaredDifferences": 0,
+      "framesByPhase": {
+        "live": 556,
+        "stale": 0,
+        "degraded": 0,
+        "no-frame": 0,
+        "transition": 0
+      },
+      "mismatchesByPhase": {
+        "live": 1617,
+        "stale": 0,
+        "degraded": 0,
+        "no-frame": 0,
+        "transition": 0
+      },
+      "epochResets": 0,
+      "metrics": {
+        "overlay_shadow_mismatches_total{feature=\"player-instruments\",field=\"speedKph\",phase=\"live\"}": 454,
+        "overlay_shadow_mismatches_total{feature=\"standings\",field=\"remainingText\",phase=\"live\"}": 51,
+        "overlay_shadow_mismatches_total{feature=\"standings\",field=\"rows[].currentLapText\",phase=\"live\"}": 556,
+        "overlay_shadow_mismatches_total{feature=\"standings\",field=\"rows[].lastLapText\",phase=\"live\"}": 556
+      }
+    }
+  }
+}

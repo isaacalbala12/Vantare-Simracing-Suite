@@ -31,11 +31,12 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   P1.1–P1.5 y P2 tienen commits independientes: diagnóstico antes del filtro,
   fallos ligados a revisión, Calendar productivo, rollback por generación,
   builders V2 de catálogo y diagnósticos productivos. La captura Wails/LMU
-  histórica de `cbfb63b8` pintó 20/20, pero precede esas correcciones y no
-  acredita el HEAD actual. El 2026-08-30 LMU y Vantare estaban cerrados; no se
-  lanzó la app ni se usaron datos sintéticos. El guion exacto de revalidación
-  con CDP 9243, user-data propio, 20 códigos y cierre por PID queda en
-  `docs/telemetry-core/evidence/isa-893/wails-runtime-pending.md`. Roadmap:
+  histórica de `cbfb63b8` pintó 20/20, pero precedía esas correcciones. La
+  revalidación final pasó después sobre `4fa01639`: build propia, CDP 9243,
+  user-data separado, 512 frames V2 live, 20/20 tipos pintados y cero errores
+  de renderer o diagnósticos de autoridad. Se cerró limpiamente el PID propio
+  y LMU PID 16792 permaneció intacto. JSON, PNG, hashes y los 20 códigos quedan
+  en `docs/telemetry-core/evidence/isa-893/wails-runtime-pending.md`. Roadmap:
   `milestones:telemetry-live`. PR #941 sigue draft; sin merge, promoción ni
   release.
 

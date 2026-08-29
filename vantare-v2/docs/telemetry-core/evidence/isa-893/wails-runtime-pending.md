@@ -1,92 +1,53 @@
-# ISA-893 — revalidación Wails/LMU del catálogo completo
+# ISA-893 — prueba Wails/LMU real del catálogo completo
 
-## Estado
+## Resultado
 
-La aceptación física del HEAD corregido tras la review de PR #941 está
-pendiente. El 2026-08-30 LMU y Vantare estaban cerrados, por lo que no se lanzó
-la aplicación ni se sustituyó la telemetría real por fixtures, replay o datos
-sintéticos.
+La revalidación física del HEAD corregido tras la review de PR #941 pasó el
+2026-08-30 sobre `4fa01639`. LMU permaneció abierto como PID 16792 en la escena
+coordinada de Spa, práctica WEC 2026, con el jugador en el garaje y la IA
+rodando. La prueba no interactuó con el juego ni sustituyó su telemetría por
+fixtures, replay o datos sintéticos.
 
-Existe una captura histórica real obtenida el 2026-08-29 sobre `cbfb63b8`: LMU
-estaba en práctica en Spa con 37 coches, una build propia recibió 231 frames V2
-y pintó 20/20 widgets sin diagnósticos. Esa corrida permitió corregir el tipo
-`track-map`, pero es anterior a los arreglos P1.1–P1.5 y P2 de la review. Por
-tanto, no acredita el HEAD actual y sus JSON/PNG no se versionan como evidencia
-final.
+Antes de arrancar se esperó a que desapareciera `vantare-isa940.exe`. En el
+hueco libre se lanzó únicamente esta build:
 
-La sonda fail-closed está preparada en `capture-wails-v2.mjs`. Exige los 20
-tipos, dimensiones pintadas, cero errores de renderer, cero diagnósticos de
-autoridad y al menos un frame Overlay V2 live decodificado.
-
-## Precondiciones manuales
-
-1. Abrir LMU en una sesión real con el coche del jugador presente. No cerrar,
-   reiniciar ni interactuar con LMU desde la prueba.
-2. Confirmar que no hay otra medición Vantare. `PresentMon-x64` no bloquea la
-   prueba porque Radeon mantiene una instancia permanente.
-3. Ejecutar desde `C:\tmp\vantare-isa893\vantare-v2` con el worktree limpio y
-   el HEAD exacto ya publicado en PR #941.
-
-```powershell
-$competidores = Get-Process -ErrorAction SilentlyContinue |
-  Where-Object { $_.ProcessName -like 'vantare*' }
-$competidores | Select-Object ProcessName, Id, Path
-if ($competidores) { throw 'Hay otro vantare-*.exe activo; no iniciar la prueba.' }
+```text
+binario  C:\tmp\vantare-isa893\vantare-v2\bin\vantare-isa893.exe
+SHA-256  FF48984502D0A1E39A39F2B2594DA17A3EB62AD7761255FE8454A8E1A05D42A7
+PID      25212
+perfil   testdata/bench/huella-completo.json
+CDP      127.0.0.1:9243
+HTTP     127.0.0.1:29243
+runtime  C:\tmp\vantare-isa893-runtime-final-20260830
 ```
 
-## Build y arranque propios
+WebView2 confirmó `--webview-exe-name=vantare-isa893.exe`,
+`--remote-debugging-port=9243` y el user-data propio
+`C:\Users\isaac\AppData\Roaming\vantare-isa893.exe\EBWebView`.
 
-La build diagnóstica conserva CDP; su nombre proporciona un user-data WebView2
-separado bajo `%APPDATA%\vantare-isa893.exe\EBWebView`. El directorio de
-trabajo también es exclusivo de esta corrida.
+## Evidencia CDP
 
-```powershell
-corepack pnpm --dir frontend build
-go build -o bin/vantare-isa893.exe ./cmd/vantare
+`scripts/bench/huella-cdp.mjs` abrió el perfil por el evento productivo Wails
+`overlay:start-active`. `wails-overlay-start.json` registra un target Hub y un
+target Overlay, exactamente 20 frames, 0 long tasks durante la ventana de 10 s
+y los renderer PID 27184 y 8892.
 
-$runtimeIsa893 = 'C:\tmp\vantare-isa893-runtime-final'
-New-Item -ItemType Directory -Force -Path $runtimeIsa893 | Out-Null
-$env:VANTARE_WEBVIEW_DEBUG_PORT = '9243'
-$appIsa893 = Start-Process -FilePath '.\bin\vantare-isa893.exe' `
-  -ArgumentList @('-profile', 'C:\tmp\vantare-isa893\vantare-v2\testdata\bench\huella-completo.json', '-http', '127.0.0.1:29243') `
-  -WorkingDirectory $runtimeIsa893 -WindowStyle Normal -PassThru
-Remove-Item Env:VANTARE_WEBVIEW_DEBUG_PORT
+`capture-wails-v2.mjs` esperó el catálogo completo y falló cerrado ante frame
+sin pintar, error de renderer, diagnóstico de autoridad o ausencia de frames
+V2 live. El resultado versionado es:
 
-$deadlineIsa893 = (Get-Date).AddSeconds(30)
-do {
-  try {
-    $null = Invoke-RestMethod 'http://127.0.0.1:9243/json/version' -TimeoutSec 1
-    $cdpIsa893 = $true
-  } catch {
-    $cdpIsa893 = $false
-    Start-Sleep -Milliseconds 250
-  }
-} until ($cdpIsa893 -or (Get-Date) -ge $deadlineIsa893)
-if (-not $cdpIsa893) { throw 'CDP 9243 no respondió en 30 s.' }
+```text
+widgets esperados             20
+widgets observados            20
+widgets pintados              20
+errores de renderer            0
+diagnósticos de autoridad      0
+frames V2 live decodificados 512
+parse p50                  0,3 ms
+parse p99                  0,6 ms
 ```
 
-## Captura exigida
-
-El primer helper abre el perfil activo por el mismo evento Wails que usa el
-Hub. El segundo guarda la captura solo si pasa todas las aserciones de
-autoridad y pintado.
-
-```powershell
-node scripts/bench/huella-cdp.mjs `
-  --cdp http://127.0.0.1:9243 `
-  --action overlay-start `
-  --duration 10 `
-  --expected-widgets 20 `
-  --output docs/telemetry-core/evidence/isa-893/wails-overlay-start.json
-
-node docs/telemetry-core/evidence/isa-893/capture-wails-v2.mjs `
-  --cdp http://127.0.0.1:9243 `
-  --output docs/telemetry-core/evidence/isa-893/wails-v2-live.json `
-  --screenshot docs/telemetry-core/evidence/isa-893/wails-v2-live.png
-```
-
-La evidencia final debe registrar el SHA/commit exacto, hash SHA-256 del exe,
-PID, puerto CDP `9243`, HTTP `29243`, user-data observado y estos 20 códigos:
+Los 20 códigos observados, en el orden del perfil, fueron:
 
 ```text
 delta
@@ -111,34 +72,30 @@ engineer-radio
 track-map
 ```
 
-Además debe conservar el JSON de apertura, el JSON de autoridad, el PNG del
-overlay completo, el contador de frames V2 live y cualquier diagnóstico
-visible. Si aparece un `role="alert"`, un `data-diagnostic-code`, un error de
-renderer o menos de 20 tipos, la prueba falla y no se presenta como evidencia
-de aceptación.
+El diagnóstico conservó también 556 frames del comparador histórico y 1.617
+diferencias shadow. Esas métricas no fueron fallback ni autoridad visual: la
+sonda verificó que ningún widget presentó un diagnóstico de autoridad y que
+los 20 renderizaron desde sus fuentes V2/auxiliares.
+
+## Artefactos
+
+| Archivo | SHA-256 | Contenido |
+|---|---|---|
+| `wails-overlay-start.json` | `F1DB38E71F9F02B1E0D8940098ECB27AE86372DB7F5E099329FD680492191BD0` | Apertura Wails, targets y 20 frames. |
+| `wails-v2-live.json` | `FAF921FE3286EC4894D0DBC83311A3654ABA1BAEDD773305BF87434A7A6AFEB6` | Catálogo observado, pintado y diagnóstico V2. |
+| `wails-v2-live.png` | `4CCB878295E63D5DC8504AB01FC6B7E8521AEC702B5804D12A84AF562BD9733B` | Captura del overlay completo. |
+| `capture-wails-v2.mjs` | versionado junto a la evidencia | Sonda reproducible fail-closed. |
+
+![Los 20 widgets pintados por la build Wails propia](./wails-v2-live.png)
 
 ## Cierre e higiene
 
-Se cierra la build propia mediante Wails/CDP y se verifica el PID exacto. No se
-mata ningún proceso por patrón y no se toca LMU.
+El helper CDP devolvió literalmente:
 
-```powershell
-node scripts/bench/huella-cdp.mjs `
-  --cdp http://127.0.0.1:9243 `
-  --action app-quit `
-  --output docs/telemetry-core/evidence/isa-893/wails-app-quit.json
-
-Wait-Process -Id $appIsa893.Id -Timeout 15 -ErrorAction SilentlyContinue
-if (Get-Process -Id $appIsa893.Id -ErrorAction SilentlyContinue) {
-  throw "La build propia PID $($appIsa893.Id) no se cerró; revisar sin usar cierre por patrón."
-}
-if (Get-NetTCPConnection -LocalPort 9243 -State Listen -ErrorAction SilentlyContinue) {
-  throw 'El puerto CDP 9243 sigue escuchando.'
-}
+```json
+{"schema":"vantare.huella.cdp.v1","action":"app-quit","requested":true}
 ```
 
-## Qué queda por demostrar
-
-Solo falta ejecutar el procedimiento anterior con LMU real abierto sobre el
-HEAD corregido y versionar sus salidas. Los tests, builds y CDP sin juego no
-pueden sustituir esa prueba física.
+Después del cierre, PID 25212 no existía y el puerto 9243 no tenía listener.
+No quedó ningún proceso `vantare*`; LMU PID 16792 seguía vivo. No se esperó ni
+se cerró `PresentMon-x64`, y no se tocó ningún proceso ajeno.

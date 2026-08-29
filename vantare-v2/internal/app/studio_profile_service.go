@@ -87,17 +87,24 @@ func (s *StudioProfileService) savePath(requestID, path, expectedRevision string
 		return err
 	}
 	migratedFrom := config.ProfileSchemaVersionV3
+	var currentV4 *config.ProfileDocumentV4
 	if path == s.path && s.loaded != nil {
 		migratedFrom = s.loaded.MigratedFrom
+		currentV4 = s.loaded.DocumentV4
 	} else {
-		loaded, err := s.store.Load(path)
+		loaded, err := s.store.LoadV4(path)
 		if err != nil {
 			s.emitError(requestID, "save", err)
 			return err
 		}
 		migratedFrom = loaded.MigratedFrom
+		currentV4 = loaded.Document
 	}
-	revision, err := s.store.Save(path, expectedRevision, doc, migratedFrom)
+	updatedV4 := config.ConvertProfileV3ToV4(doc)
+	if currentV4 != nil {
+		updatedV4.Performance = config.NormalizeProfileDocumentV4(currentV4).Performance
+	}
+	revision, err := s.store.SaveV4(path, expectedRevision, updatedV4, migratedFrom)
 	if err != nil {
 		if errors.Is(err, config.ErrProfileConflict) {
 			s.emitConflict(requestID, err)
@@ -107,11 +114,12 @@ func (s *StudioProfileService) savePath(requestID, path, expectedRevision string
 		return err
 	}
 	savedDocument := config.NormalizeProfileDocumentV3(doc)
+	savedV4 := config.NormalizeProfileDocumentV4(updatedV4)
 	loaded := &config.LoadedProfileV3{
-		Document:     config.NormalizeProfileDocumentV3(doc),
-		DocumentV4:   config.NormalizeProfileDocumentV4(config.ConvertProfileV3ToV4(doc)),
+		Document:     savedDocument,
+		DocumentV4:   savedV4,
 		Revision:     revision,
-		MigratedFrom: config.ProfileSchemaVersionV3,
+		MigratedFrom: config.ProfileSchemaVersionV4,
 	}
 	// Un save del editor queda ligado al archivo que cargo esa sesion. Si el
 	// perfil activo global cambio entretanto, se persiste el archivo correcto

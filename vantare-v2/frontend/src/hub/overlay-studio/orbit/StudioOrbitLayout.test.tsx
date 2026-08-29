@@ -174,7 +174,7 @@ describe("StudioOrbitLayout", () => {
     expect(screen.getByTestId("studio-widget-hidden-badge-delta-main")).toBeTruthy();
   });
 
-  it("actualiza en vivo el resumen del acordeón de comportamiento", async () => {
+  it("marca la frecuencia heredada como sustituida por la política del perfil", async () => {
     renderStudio();
     fireEvent.click(
       within(await screen.findByTestId("orbit-studio-widget-item-delta-main")).getByRole("option"),
@@ -183,18 +183,11 @@ describe("StudioOrbitLayout", () => {
     const summaries = () =>
       [...inspector.querySelectorAll(".orbit-acc__sum")].map((node) => node.textContent ?? "");
 
-    await waitFor(() => expect(summaries().join(" ")).toContain("fps"));
-    const before = summaries().find((text) => text.includes("fps")) ?? "";
-
-    // La frecuencia es un `Select` del kit, no los chips del inspector legado.
-    fireEvent.click(screen.getByRole("combobox", { name: "Frecuencia" }));
-    fireEvent.click(screen.getByRole("option", { name: "10" }));
-
-    await waitFor(() => {
-      const after = summaries().find((text) => text.includes("fps")) ?? "";
-      expect(after).not.toBe(before);
-      expect(after).toContain("10");
-    });
+    await waitFor(() => expect(summaries().join(" ")).toContain("política del perfil"));
+    expect(screen.getByTestId("studio-behavior-performance-policy").textContent).toContain(
+      "Ajustes › Rendimiento",
+    );
+    expect(screen.queryByRole("combobox", { name: "Frecuencia" })).toBeNull();
   });
 
   it("pinta los campos del inspector con los controles del kit y rótulos humanos", async () => {

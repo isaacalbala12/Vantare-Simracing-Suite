@@ -79,7 +79,9 @@ export const studioOrbitEn: Record<string, string> = {
   "studio.inspector.unsupported":
     "This widget has no renderer compatible with the selected visual system.",
 
-  "studio.inspector.frequency": "Frequency",
+  "studio.inspector.frequencyManaged": "Cadence managed by Performance",
+  "studio.inspector.frequencyManagedBody":
+    "Frequency is no longer stored on the widget. Use the profile policy in the header or Settings › Performance.",
   "studio.inspector.session.practice": "Practice",
   "studio.inspector.session.qualifying": "Qualifying",
   "studio.inspector.session.race": "Race",
@@ -149,7 +151,7 @@ export const studioOrbitEn: Record<string, string> = {
   "overlay.inspector.pedals.pedalClutchColor": "Clutch color",
   "overlay.inspector.trackMap.showTrackLabel": "Show track name",
 
-  "studio.summary.fps": "{{n}} fps",
+  "studio.summary.performanceManaged": "profile policy",
   "studio.summary.pit.any": "always",
   "studio.summary.pit.inPit": "pit only",
   "studio.summary.pit.onTrack": "track only",

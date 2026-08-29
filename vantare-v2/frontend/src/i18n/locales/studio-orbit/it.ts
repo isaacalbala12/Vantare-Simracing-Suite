@@ -80,7 +80,9 @@ export const studioOrbitIt: Record<string, string> = {
   "studio.inspector.unsupported":
     "Questo widget non ha un renderer compatibile con il sistema visivo selezionato.",
 
-  "studio.inspector.frequency": "Frequenza",
+  "studio.inspector.frequencyManaged": "Cadenza gestita da Prestazioni",
+  "studio.inspector.frequencyManagedBody":
+    "La frequenza non viene più salvata nel widget. Usa la politica del profilo nell'intestazione o Impostazioni › Prestazioni.",
   "studio.inspector.session.practice": "Prove libere",
   "studio.inspector.session.qualifying": "Qualifiche",
   "studio.inspector.session.race": "Gara",
@@ -150,7 +152,7 @@ export const studioOrbitIt: Record<string, string> = {
   "overlay.inspector.pedals.pedalClutchColor": "Colore della frizione",
   "overlay.inspector.trackMap.showTrackLabel": "Mostra nome del circuito",
 
-  "studio.summary.fps": "{{n}} fps",
+  "studio.summary.performanceManaged": "politica del profilo",
   "studio.summary.pit.any": "sempre",
   "studio.summary.pit.inPit": "solo ai box",
   "studio.summary.pit.onTrack": "solo in pista",

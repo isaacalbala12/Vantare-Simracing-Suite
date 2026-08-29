@@ -154,6 +154,21 @@ func TestStudioProfileServiceSavesPerformanceInV4AndNotifiesRuntime(t *testing.T
 	if !containsString(spy.events, "studio:profile:performance:saved") {
 		t.Fatalf("events=%v", spy.events)
 	}
+
+	// Un guardado normal posterior de layout/contenido sigue llegando desde el
+	// editor V3 de compatibilidad, pero no puede borrar la política raíz V4.
+	edited := config.NormalizeProfileDocumentV3(svc.loaded.Document)
+	edited.Name = "Performance edited"
+	if err := svc.Save("document-save-1", svc.loaded.Revision, edited); err != nil {
+		t.Fatal(err)
+	}
+	afterDocumentSave, err := (config.ProfileDocumentStore{}).LoadV4(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if afterDocumentSave.Document.Performance == nil || afterDocumentSave.Document.Performance.Level != 4 {
+		t.Fatalf("document save lost performance: %+v", afterDocumentSave.Document.Performance)
+	}
 }
 
 func containsString(values []string, expected string) bool {

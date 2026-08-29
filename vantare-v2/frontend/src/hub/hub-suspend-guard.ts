@@ -4,20 +4,37 @@ export type HubSuspendBridge = {
 };
 
 type HubSuspendBlocker = { reason: string; token: symbol };
+type HubBlockerSnapshot = {
+  generation: string;
+  studioDirty: boolean;
+  launcherDraft: boolean;
+  oauthPending: boolean;
+  other: string[];
+  reasons: string[];
+};
 
 const blockers = new Map<string, HubSuspendBlocker>();
 let releaseStudioBlocker: (() => void) | null = null;
+let publishSnapshot: (() => void) | null = null;
+
+function notifyBlockersChanged(): void {
+  publishSnapshot?.();
+}
 
 export function registerHubSuspendBlocker(id: string, reason: string): () => void {
   const token = Symbol(id);
   blockers.set(id, { reason, token });
+  notifyBlockersChanged();
   return () => {
-    if (blockers.get(id)?.token === token) blockers.delete(id);
+    if (blockers.get(id)?.token === token) {
+      blockers.delete(id);
+      notifyBlockersChanged();
+    }
   };
 }
 
 export function unregisterHubSuspendBlocker(id: string): void {
-  blockers.delete(id);
+  if (blockers.delete(id)) notifyBlockersChanged();
 }
 
 export function getHubSuspendBlockerReasons(): string[] {
@@ -36,8 +53,29 @@ export function setHubStudioDirty(dirty: boolean): void {
   }
 }
 
-export function installHubSuspendGuard(bridge: HubSuspendBridge): () => void {
-  return bridge.on("hub:can-suspend", (payload) => {
+export function installHubSuspendGuard(bridge: HubSuspendBridge, generation: string): () => void {
+  const snapshot = (): HubBlockerSnapshot => {
+    const reasons = getHubSuspendBlockerReasons();
+    return {
+      generation,
+      studioDirty: blockers.has("overlay-studio-dirty"),
+      launcherDraft: blockers.has("launcher-profile-draft"),
+      oauthPending: blockers.has("oauth-pending"),
+      other: [...blockers.entries()]
+        .filter(([id]) => !["overlay-studio-dirty", "launcher-profile-draft", "oauth-pending"].includes(id))
+        .map(([, blocker]) => blocker.reason),
+      reasons,
+    };
+  };
+  const publish = () => bridge.emit("hub:blockers", snapshot());
+  publishSnapshot = publish;
+  publish();
+  const onVisible = () => {
+    if (document.visibilityState === "visible") publish();
+  };
+  document.addEventListener("visibilitychange", onVisible);
+  const offProbe = bridge.on("hub:can-suspend", (payload) => {
+    const receivedAtUnixMs = Date.now();
     const data = payload && typeof payload === "object" && "data" in payload
       ? (payload as { data: unknown }).data
       : payload;
@@ -50,6 +88,16 @@ export function installHubSuspendGuard(bridge: HubSuspendBridge): () => void {
       requestId,
       canSuspend: reasons.length === 0,
       reasons,
+      emittedAtUnixMs: data && typeof data === "object" && "emittedAtUnixMs" in data
+        ? (data as { emittedAtUnixMs: unknown }).emittedAtUnixMs
+        : undefined,
+      receivedAtUnixMs,
+      respondedAtUnixMs: Date.now(),
     });
   });
+  return () => {
+    offProbe();
+    document.removeEventListener("visibilitychange", onVisible);
+    if (publishSnapshot === publish) publishSnapshot = null;
+  };
 }

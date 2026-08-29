@@ -1629,9 +1629,33 @@ func main() {
 	}, effectivePerformanceLevel))
 
 	hubProbe := newHubSuspendEventProbe(wailsApp, emitter)
+	hubBlockers := app.NewHubBlockerRegistry()
+	wailsApp.Event.On("hub:blockers", func(event *application.CustomEvent) {
+		var payload struct {
+			Generation    string   `json:"generation"`
+			StudioDirty   bool     `json:"studioDirty"`
+			LauncherDraft bool     `json:"launcherDraft"`
+			OAuthPending  bool     `json:"oauthPending"`
+			Other         []string `json:"other"`
+			Reasons       []string `json:"reasons"`
+		}
+		raw, err := json.Marshal(event.Data)
+		if err != nil || json.Unmarshal(raw, &payload) != nil {
+			return
+		}
+		accepted := hubBlockers.Update(app.HubBlockerSnapshot{
+			Generation: payload.Generation, StudioDirty: payload.StudioDirty,
+			LauncherDraft: payload.LauncherDraft, OAuthPending: payload.OAuthPending,
+			Other: payload.Other, Reasons: payload.Reasons,
+		})
+		log.Printf("hub lifecycle: blockers pushed generation=%s accepted=%t blocked=%t reasons=%s",
+			payload.Generation, accepted, len(payload.Reasons) > 0, strings.Join(payload.Reasons, "; "))
+	})
 	var hubLifecycle *app.HubLifecycle
 	newHubWindow := func() app.HubWindow {
-		window := &wailsHubWindow{w: wailsApp.Window.NewWithOptions(hubWindowOptions())}
+		generation := newHubSuspendRequestID()
+		hubBlockers.Expect(generation)
+		window := &wailsHubWindow{w: wailsApp.Window.NewWithOptions(hubWindowOptions(generation))}
 		hubProbe.SetTarget(window.w)
 		window.w.RegisterHook(events.Common.WindowClosing, func(_ *application.WindowEvent) {
 			if window.intentionalClose.Load() {
@@ -1648,8 +1672,12 @@ func main() {
 		})
 		return window
 	}
-	hubLifecycle = app.NewHubLifecycle(newHubWindow, effectivePerformanceLevel, hubProbe.Probe, func() {
-		log.Printf("hub lifecycle: kept alive because Studio is dirty or hub:can-suspend timed out")
+	hubLifecycle = app.NewHubLifecycle(newHubWindow, effectivePerformanceLevel, func(context.Context) bool {
+		return hubBlockers.CanSuspend()
+	}, func() {
+		snapshot, received := hubBlockers.Snapshot()
+		log.Printf("hub lifecycle: kept alive from pushed blockers received=%t generation=%s reasons=%s",
+			received, snapshot.Generation, strings.Join(snapshot.Reasons, "; "))
 	})
 	hubWindow, openedIn := hubLifecycle.Open()
 	log.Printf("hub lifecycle: opened in %s", openedIn)
@@ -3464,7 +3492,9 @@ func (p *hubSuspendEventProbe) Probe(ctx context.Context) bool {
 	target := p.target
 	emitter := p.emitter
 	p.mu.Unlock()
-	payload := map[string]any{"requestId": requestID}
+	emittedAtUnixMs := time.Now().UnixMilli()
+	payload := map[string]any{"requestId": requestID, "emittedAtUnixMs": emittedAtUnixMs}
+	log.Printf("hub lifecycle: hub:can-suspend emitted request=%s go=%d", requestID, emittedAtUnixMs)
 	if target != nil {
 		target.DispatchWailsEvent(&application.CustomEvent{Name: "hub:can-suspend", Data: payload})
 	} else if emitter != nil {
@@ -3492,9 +3522,12 @@ func (p *hubSuspendEventProbe) SetTarget(target hubSuspendEventTarget) {
 
 func (p *hubSuspendEventProbe) handleResult(event *application.CustomEvent) {
 	var payload struct {
-		RequestID  string   `json:"requestId"`
-		CanSuspend bool     `json:"canSuspend"`
-		Reasons    []string `json:"reasons"`
+		RequestID         string   `json:"requestId"`
+		CanSuspend        bool     `json:"canSuspend"`
+		Reasons           []string `json:"reasons"`
+		EmittedAtUnixMs   int64    `json:"emittedAtUnixMs"`
+		ReceivedAtUnixMs  int64    `json:"receivedAtUnixMs"`
+		RespondedAtUnixMs int64    `json:"respondedAtUnixMs"`
 	}
 	if event == nil || event.Data == nil {
 		return
@@ -3506,6 +3539,11 @@ func (p *hubSuspendEventProbe) handleResult(event *application.CustomEvent) {
 	p.mu.Lock()
 	result := p.pending[payload.RequestID]
 	p.mu.Unlock()
+	log.Printf(
+		"hub lifecycle: hub:can-suspend response request=%s emitted-go=%d received-js=%d responded-js=%d arrived-go=%d pending=%t",
+		payload.RequestID, payload.EmittedAtUnixMs, payload.ReceivedAtUnixMs,
+		payload.RespondedAtUnixMs, time.Now().UnixMilli(), result != nil,
+	)
 	if result != nil {
 		if payload.CanSuspend {
 			log.Printf("hub lifecycle: hub:can-suspend acknowledged clean")
@@ -3543,14 +3581,14 @@ func (w *wailsHubWindow) Minimise()         { w.w.Minimise() }
 func (w *wailsHubWindow) UnMinimise()       { w.w.UnMinimise() }
 func (w *wailsHubWindow) IsMinimised() bool { return w.w.IsMinimised() }
 
-func hubWindowOptions() application.WebviewWindowOptions {
+func hubWindowOptions(generation string) application.WebviewWindowOptions {
 	return application.WebviewWindowOptions{
 		Title:          "Vantare Hub",
 		Width:          1280,
 		Height:         800,
 		Frameless:      false,
 		BackgroundType: application.BackgroundTypeSolid,
-		URL:            "/#/hub",
+		URL:            "/#/hub?hubGeneration=" + generation,
 		MinWidth:       900,
 		MinHeight:      600,
 	}

@@ -2,10 +2,37 @@ package app_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/vantare/overlays/v2/internal/app"
 )
+
+func TestHubLifecycleUsesPushedBlockersAcrossRecreation(t *testing.T) {
+	registry := app.NewHubBlockerRegistry()
+	generation := 0
+	lifecycle := app.NewHubLifecycle(func() app.HubWindow {
+		generation++
+		registry.Expect(fmt.Sprintf("hub-%d", generation))
+		return &fakeHubWindow{}
+	}, func() int { return 3 }, func(context.Context) bool {
+		return registry.CanSuspend()
+	}, nil)
+
+	first, _ := lifecycle.Open()
+	registry.Update(app.HubBlockerSnapshot{Generation: "hub-1"})
+	first.Minimise()
+	if !lifecycle.HandleMinimise(context.Background()) {
+		t.Fatal("visible → minimizado no destruyó con registro limpio")
+	}
+	second, _ := lifecycle.Open()
+	if second == first || generation != 2 {
+		t.Fatal("minimizado → reabrir no creó una generación nueva")
+	}
+	if registry.CanSuspend() {
+		t.Fatal("la ventana recreada heredó el estado limpio anterior")
+	}
+}
 
 type fakeHubWindow struct {
 	closed, hidden, shown, focused, minimised, unminimised int

@@ -61,18 +61,29 @@ export function presentMonV2Frame(row) {
 }
 
 export function summarizeRun(rows) {
+  const jsonArrayValues = (field) => [...new Set(rows.flatMap((row) => {
+    const value = String(row[field] ?? "").trim();
+    if (!value) return [];
+    try { return JSON.parse(value); } catch { return [value]; }
+  }))];
   const metadata = {
     publishable: !rows.some((row) => String(row.publishable ?? "true").toLowerCase() === "false"),
+    gameFrametimeValid: !rows.some((row) => String(row.gameFrametimeValid ?? "true").toLowerCase() === "false"),
     hygieneForced: rows.some((row) => String(row.hygieneForced ?? "false").toLowerCase() === "true"),
     foreignProcesses: [...new Set(rows.map((row) => String(row.foreignProcesses ?? "").trim()).filter(Boolean))],
     systemWebView2Count: Math.max(0, ...rows.map((row) => Number(row.systemWebView2Count)).filter(Number.isFinite)),
     systemWebView2Paths: [...new Set(rows.map((row) => String(row.systemWebView2Paths ?? "").trim()).filter(Boolean))],
+    orphanEtwSessionsStopped: jsonArrayValues("orphanEtwSessionsStopped"),
   };
   const groups = Map.groupBy(rows.filter((row) => row.role), (row) => row.role);
   const run = Object.fromEntries([...groups].map(([role, roleRows]) => {
     const samples = [...Map.groupBy(roleRows, (row) => row.timestamp).values()].map((sameTimestamp) =>
       Object.fromEntries(METRICS.map((metric) => {
       const values = sameTimestamp
+        .filter((row) => !["gpuPct", "gpuDedicatedBytes"].includes(metric)
+          || String(row.gpuSampleValid ?? "true").toLowerCase() !== "false")
+        .filter((row) => !["frameTimeMs", "dropped"].includes(metric)
+          || String(row.gameFrametimeValid ?? "true").toLowerCase() !== "false")
         .map((row) => String(row[metric] ?? "").trim())
         .filter((value) => value !== "")
         .map(Number)
@@ -152,6 +163,14 @@ export function renderMarkdown(condition, aggregate, files, runs = []) {
       "",
     ]
     : [];
+  const invalidFrametimeRuns = runs.flatMap((run, index) => run.__metadata?.gameFrametimeValid === false ? [index + 1] : []);
+  const frametimeBanner = invalidFrametimeRuns.length
+    ? [
+      `> **FRAMETIME NO PUBLICABLE:** PresentMon no produjo frames válidos en las corridas ${invalidFrametimeRuns.join(", ")}. Las métricas RAM/CPU/GPU de Vantare siguen siendo publicables si superan sus gates.`,
+      "",
+    ]
+    : [];
+  const stoppedEtwSessions = [...new Set(runs.flatMap((run) => run.__metadata?.orphanEtwSessionsStopped ?? []))];
   const systemRows = runs.flatMap((run, index) => {
     const metadata = run.__metadata;
     const paths = (metadata?.systemWebView2Paths ?? []).flatMap((value) => {
@@ -171,6 +190,13 @@ export function renderMarkdown(condition, aggregate, files, runs = []) {
     `Corridas: ${files.map((file) => `\`${path.basename(file)}\``).join(", ")}. Ruido = desviación muestral / media; hacen falta al menos ${MIN_PUBLISHABLE_RUNS} corridas y el gate falla por encima de 5 %.`,
     "",
     ...publicationBanner,
+    ...frametimeBanner,
+    "## Recuperación de sesiones ETW",
+    "",
+    stoppedEtwSessions.length
+      ? `Sesiones huérfanas detenidas antes de medir: ${stoppedEtwSessions.map((name) => `\`${name}\``).join(", ")}.`
+      : "No se detectaron sesiones huérfanas `VantareHuella-*`.",
+    "",
     "## WebView2 del sistema permitidos",
     "",
     "No invalidan la corrida porque cada perfil tiene browser y GPU process propios.",

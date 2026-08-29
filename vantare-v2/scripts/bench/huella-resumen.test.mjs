@@ -93,6 +93,35 @@ test("ignora celdas vacías en vez de convertirlas en ceros", () => {
   assert.equal(run.game.frameTimeMs.mean, 8.2);
 });
 
+test("excluye de las medias GPU las muestras marcadas como inválidas", () => {
+  const run = summarizeRun(parseCsv([
+    "timestamp,role,gpuPct,gpuDedicatedBytes,gpuSampleValid",
+    "t1,renderer-overlay,999,999999999,false",
+    "t2,renderer-overlay,12.5,104857600,true",
+  ].join("\n")));
+  assert.equal(run["renderer-overlay"].gpuPct.mean, 12.5);
+  assert.equal(run["renderer-overlay"].gpuPct.samples, 1);
+  assert.equal(run["renderer-overlay"].gpuDedicatedBytes.mean, 104857600);
+});
+
+test("un CSV sin frametime válido conserva recursos pero no publica juego", () => {
+  const stopped = JSON.stringify(["VantareHuella-18440-20260828-231501"]).replaceAll('"', '""');
+  const run = summarizeRun(parseCsv([
+    "timestamp,role,cpuPct,frameTimeMs,gameFrametimeValid,orphanEtwSessionsStopped",
+    `t1,go-host,2,,false,"${stopped}"`,
+    `t2,game,,16.6,false,"${stopped}"`,
+  ].join("\n")));
+  assert.equal(run["go-host"].cpuPct.mean, 2);
+  assert.equal(run.game.frameTimeMs, undefined);
+  assert.equal(run.__metadata.gameFrametimeValid, false);
+  assert.deepEqual(run.__metadata.orphanEtwSessionsStopped, ["VantareHuella-18440-20260828-231501"]);
+
+  const markdown = renderMarkdown("A1", [], ["run.csv"], [run]);
+  assert.match(markdown, /FRAMETIME NO PUBLICABLE/);
+  assert.match(markdown, /RAM\/CPU\/GPU.*siguen siendo publicables/);
+  assert.match(markdown, /VantareHuella-18440-20260828-231501/);
+});
+
 test("interpreta la disposición de display de PresentMon v2", async () => {
   const fixture = parseCsv(await readFile(new URL("testdata/presentmon-v2.csv", import.meta.url), "utf8"));
   assert.deepEqual(fixture.map(presentMonV2Frame), [

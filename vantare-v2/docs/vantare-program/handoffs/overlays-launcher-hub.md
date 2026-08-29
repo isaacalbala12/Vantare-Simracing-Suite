@@ -10,14 +10,25 @@
 
 ## Estado
 
-- **ISA-924 — banco de huella y baseline por hardware (2026-08-28):** rama
-  `vantareapp/isa-924-huella-banco-baseline`, base
-  `origin/nightly@ae66720d`, PR #929. Se versionaron la spec autorizada, dos perfiles v3
+- **ISA-924 — banco de huella y baseline por hardware (2026-08-28):** PR #929
+  integrado en `nightly`; corrección operativa en
+  `vantareapp/isa-924-atribucion-renderer-overlay`, base
+  `origin/nightly@ca166b38`. Se versionaron la spec autorizada, dos perfiles v3
   reproducibles, banco PowerShell 7, control/probe CDP y agregador de ruido.
   El árbol WebView2 se acota por `--user-data-dir=<exe>\EBWebView`; el renderer
-  Hub se fija antes de abrir el overlay; un renderer nuevo sin relación
-  PID↔target demostrable queda `renderer-unassigned` y no se atribuye por
-  orden de aparición.
+  Hub se fija antes de abrir el overlay. La corrida real con 37 coches reveló
+  que el renderer del overlay quedaba sin atribuir; la corrección abre una
+  ventana desde `overlay:start-active` hasta target `/` + widgets listos y usa
+  `SystemInfo.getProcessInfo` para desempatar por PID y creación más reciente.
+  Solo la ambigüedad residual queda `renderer-unassigned`. Las muestras donde
+  fallan los contadores GPU se marcan inválidas y no sesgan la media como cero.
+  El segundo hallazgo del baseline real fue que una interrupción podía dejar
+  `VantareHuella-*` viva y hacer que la siguiente captura produjera cero frames.
+  La rama ahora cierra PresentMon + sesión ETW en `finally`, recupera al inicio
+  sesiones huérfanas cuyo PID ya no pertenece a Vantare y las registra. Un CSV
+  sin frames queda `gameFrametimeValid=false`: frametime no publicable, recursos
+  de Vantare todavía válidos. La elevación de PresentMon es opcional mientras el
+  CSV v2 resulte válido.
   PresentMon 2.5.1 quedó disponible como binario standalone oficial porque el
   MSI de winget devolvió 1620; usa una sesión ETW propia y nunca
   `--stop_existing_session`. Smoke Wails real A0/A1 PASS: A1 abrió 3 widgets,

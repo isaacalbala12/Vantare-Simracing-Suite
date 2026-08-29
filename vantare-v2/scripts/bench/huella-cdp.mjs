@@ -78,22 +78,33 @@ async function setOverlay(browser, shouldRun) {
   const hub = pages.find(({ description }) => description.hub)?.page;
   if (!hub) throw new Error("Hub target is not available to control the overlay");
   await hub.evaluate(() => { if (window.location.hash !== "#/hub") window.location.hash = "#/hub"; });
-  const toggle = hub.locator('[data-testid="orbit-home-overlay-toggle"], [data-testid="orbit-studio-overlay-toggle"]').first();
-  let mechanism;
-  try {
-    await toggle.waitFor({ state: "visible", timeout: 2_000 });
-    await toggle.click();
-    mechanism = { kind: "control", selector: await toggle.getAttribute("data-testid") };
-  } catch {
-    const eventName = shouldRun ? "overlay:start-active" : "overlay:stop";
-    await hub.evaluate(async (name) => {
-      const { Events } = await import("/wails/runtime.js");
-      await Events.Emit(name);
-    }, eventName);
-    mechanism = { kind: "wails-event", eventName };
-  }
+  const eventName = shouldRun ? "overlay:start-active" : "overlay:stop";
+  const emittedAt = new Date().toISOString();
+  await hub.evaluate(async (name) => {
+    const { Events } = await import("/wails/runtime.js");
+    await Events.Emit(name);
+  }, eventName);
   await waitForRole(browser, "overlay", shouldRun);
-  return { changed: true, running: shouldRun, mechanism };
+  return { changed: true, running: shouldRun, emittedAt, mechanism: { kind: "wails-event", eventName } };
+}
+
+async function browserRendererProcessIds(browser, cdp) {
+  const versionUrl = new URL("/json/version", cdp);
+  const response = await fetch(versionUrl);
+  if (!response.ok) throw new Error(`CDP browser endpoint ${versionUrl} returned HTTP ${response.status}`);
+  const version = await response.json();
+  if (!version.webSocketDebuggerUrl) throw new Error(`CDP browser endpoint ${versionUrl} did not expose webSocketDebuggerUrl`);
+
+  const session = await browser.newBrowserCDPSession();
+  try {
+    const { processInfo = [] } = await session.send("SystemInfo.getProcessInfo");
+    return processInfo
+      .filter(({ type }) => type === "renderer")
+      .map(({ id }) => Number(id))
+      .filter(Number.isInteger);
+  } finally {
+    await session.detach();
+  }
 }
 
 async function probe(page, durationMs) {
@@ -154,13 +165,23 @@ if (action === "app-quit") {
 }
 const control = action === "inspect" ? null : await setOverlay(browser, action === "overlay-start");
 const renderedWidgets = action === "overlay-start" ? await waitForWidgets(browser, expectedWidgets) : 0;
+const overlayReadyAt = action === "overlay-start" ? new Date().toISOString() : null;
+let rendererProcessIds = [];
+let rendererProcessInfoError = null;
+if (action === "overlay-start") {
+  try {
+    rendererProcessIds = await browserRendererProcessIds(browser, cdp);
+  } catch (error) {
+    rendererProcessInfoError = error instanceof Error ? error.message : String(error);
+  }
+}
 const pages = await pagesByRole(browser);
 const targets = await Promise.all(pages.filter(({ description }) => description.hub || description.overlay).map(async ({ page, description }) => ({
   role: description.overlay ? "overlay" : "hub",
   ...description,
   probe: await probe(page, durationSeconds * 1_000),
 })));
-const result = { schema: "vantare.huella.cdp.v1", capturedAt: new Date().toISOString(), action, control, durationSeconds, expectedWidgets, renderedWidgets, targets };
+const result = { schema: "vantare.huella.cdp.v1", capturedAt: new Date().toISOString(), action, control, durationSeconds, expectedWidgets, renderedWidgets, overlayReadyAt, rendererProcessIds, rendererProcessInfoError, targets };
 const json = `${JSON.stringify(result, null, 2)}\n`;
 if (output) await writeFile(output, json, { encoding: "utf8", flag: "wx" });
 process.stdout.write(json);

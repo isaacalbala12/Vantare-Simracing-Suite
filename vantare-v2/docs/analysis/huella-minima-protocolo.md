@@ -81,21 +81,41 @@ otra captura. Si el host rechaza sesiones ETW concurrentes, cerrar Radeon
 Software manualmente, registrar esa variante y repetir todas las condiciones
 con el mismo estado.
 
+PresentMon puede avisar que algunas métricas requieren privilegios elevados.
+Para este protocolo la elevación es opcional: la captura v2 de frametime puede
+funcionar en una consola normal. Se valida el resultado, no el texto del aviso:
+el CSV debe contener al menos un frame válido.
+
+Cada captura posee `VantareHuella-<pid>-<fecha>`. El bloque `finally` termina el
+PresentMon propio y pide `logman stop <sesión> -ets`, también ante excepciones o
+`Ctrl+C`. Un kill forzado del proceso PowerShell puede impedir ejecutar ese
+`finally`; por eso la siguiente corrida consulta `logman query -ets`, conserva
+sesiones cuyo PID aún corresponde a un proceso Vantare vivo y detiene las
+huérfanas antes de lanzar la app. Los nombres recuperados quedan en
+`orphanEtwSessionsStopped`. Si `logman query` falla por el proveedor WMI del
+host, el banco completa la enumeración con `Get-EtwTraceSession`; al detener,
+`Stop-EtwTraceSession` es también el fallback de `logman stop`.
+
 ## Condiciones
 
 | Condición | Overlay | Hub | Aplicación automática |
 |---|---|---|---|
 | `A0` | detenido | visible | CDP pide `overlay:stop` si estaba abierto |
-| `A1` | activo | visible | CDP pulsa el control real; si la pantalla anónima no lo monta, emite `overlay:start-active` por el runtime Wails |
+| `A1` | activo | visible | CDP emite `overlay:start-active` por el runtime Wails y registra el instante exacto |
 | `HubVisible` | activo | restaurado | `ShowWindowAsync(..., SW_RESTORE)` |
 | `HubMin` | activo | minimizado | `ShowWindowAsync(..., SW_MINIMIZE)` |
 
 El helper identifica el overlay por URL exacta `http://wails.localhost/` y
 marcadores runtime; el Hub usa `http://wails.localhost/#/hub`. Antes de abrir el
-overlay conserva los PID renderer ya observados del Hub. Cualquier renderer
-nuevo sin relación
-PID↔target demostrable queda como `renderer-unassigned`; nunca se infiere que
-pertenece al overlay por orden de aparición. Cuenta
+overlay conserva los PID renderer ya observados del Hub. Tras emitir
+`overlay:start-active` desde un estado inicial detenido, espera el target `/` y
+el número exacto de widgets del perfil. El renderer creado dentro de esa
+ventana y que no pertenece al Hub se
+marca `renderer-overlay`. Si aparecen varios, el endpoint browser de CDP
+(`/json/version`) y `SystemInfo.getProcessInfo` limitan los candidatos a PID de
+tipo renderer y se elige el de creación más reciente; empate o falta de prueba
+queda como `renderer-unassigned`. Sin arranque de overlay no se atribuye ningún
+renderer a ese rol. Cuenta
 `[data-testid="runtime-widget-frame"]` y mide rAF/s y long tasks
 durante 10 s. El banco espera primero al target Hub y, al arrancar el overlay,
 no inicia PresentMon ni el muestreo hasta ver exactamente los widgets
@@ -132,9 +152,15 @@ pwsh -File scripts/bench/huella.ps1 `
 Cada corrida conserva CSV combinado, CSV PresentMon, JSON CDP, logs y resumen
 Markdown. El CSV muestrea a 1 Hz Private Bytes, Working Set, CPU como porcentaje
 de máquina, GPU Engine y memoria GPU dedicada por proceso/rol; el árbol propio
-se redescubre cada 5 s sin perder los roles de renderer. PresentMon aporta
+se redescubre cada 5 s sin perder los roles de renderer. Cada fila registra
+`gpuSampleValid`; si Windows no entrega los contadores en una muestra, sus
+valores GPU quedan vacíos y el agregador la excluye de medias y percentiles en
+vez de convertirla en cero. PresentMon aporta
 frametime y considera perdido un frame v2 cuando `DisplayedTime` es `NA` (no
-llegó a pantalla), publicando recuento y porcentaje. La build arranca desde `<corrida>-runtime/configs`, por lo que sus
+llegó a pantalla), publicando recuento y porcentaje. Si no aparece ningún frame
+válido, el CSV combinado registra `gameFrametimeValid=false`, el Markdown marca
+el frametime como no publicable y conserva válidas las métricas RAM/CPU/GPU de
+Vantare. La build arranca desde `<corrida>-runtime/configs`, por lo que sus
 refrescos y datos de desarrollo no escriben en `configs/` versionado ni en la
 configuración real del usuario. La aplicación se cierra mediante
 `Application.Quit()`; el kill

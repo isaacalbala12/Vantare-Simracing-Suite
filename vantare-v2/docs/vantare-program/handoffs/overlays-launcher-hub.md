@@ -13,7 +13,7 @@
 - **ISA-924 — banco de huella y baseline por hardware (2026-08-28):** PR #929
   integrado en `nightly`; corrección operativa en
   `vantareapp/isa-924-atribucion-renderer-overlay`, base
-  `origin/nightly@f2e73d3a`. Se versionaron la spec autorizada, dos perfiles v3
+  `origin/nightly@ca166b38`. Se versionaron la spec autorizada, dos perfiles v3
   reproducibles, banco PowerShell 7, control/probe CDP y agregador de ruido.
   El árbol WebView2 se acota por `--user-data-dir=<exe>\EBWebView`; el renderer
   Hub se fija antes de abrir el overlay. La corrida real con 37 coches reveló

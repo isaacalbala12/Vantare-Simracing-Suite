@@ -37,7 +37,7 @@ export function designSummary(widget: WidgetInstanceV3, t: Translate): string {
 }
 
 /**
- * "política del perfil · todas" / "política del perfil · solo en pista · 2 sesiones".
+ * Compact summary: translated profile policy followed by active visibility filters.
  *
  * El resumen vive en una linea de ~180 px junto al titulo del acordeon: con el
  * texto largo ("15 fps · siempre · todas las sesiones") siempre salia cortado

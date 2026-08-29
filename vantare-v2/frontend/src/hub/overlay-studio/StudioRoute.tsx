@@ -372,8 +372,8 @@ export const StudioRoute = memo(function StudioRoute(props: StudioRouteProps): R
     const unbindOverlayV2 = bindOverlayV2Coordinator(overlayV2Store, coordinator);
     // Este efecto es la fabrica y el owner de la generacion; Studio no debe
     // registrar listeners ni cargar perfiles contra recursos ya dispuestos.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     raceSchedule.start();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setGeneration({ coordinator, overlayV2Store, overlayPull, telemetryAdapter, raceSchedule, overlayV2Features });
 
     return () => {

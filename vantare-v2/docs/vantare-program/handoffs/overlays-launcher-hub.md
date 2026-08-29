@@ -48,8 +48,8 @@
   `RSXTraceSession` permaneció activa. Una prueba opt-in de la ruta Go fijó
   además el mensaje OEM de `logman` español cuando la segunda parada encuentra
   la sesión ya ausente. El guion reproducible queda en
-  `scripts/bench/isa944-auto-smoke.ps1`; falta la captura sin LMU. Sin PR,
-   merge ni promoción todavía.
+  `scripts/bench/isa944-auto-smoke.ps1`; falta la captura sin LMU. PR draft
+  **#948** hacia `nightly`; sin merge ni promoción.
 
 - **ISA-943 — perfil v4 y Ajustes › Rendimiento (2026-08-30):** rama
   `vantareapp/isa-943-perfil-v4-ajustes-rendimiento`, base inicial

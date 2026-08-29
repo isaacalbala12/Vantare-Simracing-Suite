@@ -115,7 +115,23 @@ func (sampler *Sampler) Run(ctx context.Context, publish func(Sample)) error {
 		case <-ctx.Done():
 			return nil
 		case at := <-ticker.C():
-			host, err := sampler.host.Sample(ctx)
+			type hostResult struct {
+				sample HostSample
+				err    error
+			}
+			result := make(chan hostResult, 1)
+			go func() {
+				host, err := sampler.host.Sample(ctx)
+				result <- hostResult{sample: host, err: err}
+			}()
+			var host HostSample
+			var err error
+			select {
+			case <-ctx.Done():
+				return nil
+			case sampled := <-result:
+				host, err = sampled.sample, sampled.err
+			}
 			if err != nil {
 				continue
 			}

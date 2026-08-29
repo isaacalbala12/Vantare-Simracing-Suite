@@ -1271,7 +1271,7 @@ func main() {
 	}
 	// Set WebView2 user data folder to version-specific path to prevent cache issues across releases
 	if appData := os.Getenv("LOCALAPPDATA"); appData != "" {
-		udf := filepath.Join(appData, "Vantare", "webview_v0.1.0.5")
+		udf := webviewUserDataFolder(filepath.Join(appData, "Vantare", "webview_v0.1.0.5"))
 		_ = os.Setenv("WEBVIEW2_USER_DATA_FOLDER", udf)
 	}
 
@@ -2154,6 +2154,19 @@ func main() {
 				}
 			}
 		})
+		if performanceSensorTraceEnabled() {
+			performanceRuntime.SetTrace(func(sample performancesensor.Sample, decision performancesensor.Decision) {
+				frametime := "unavailable"
+				if sample.Game.Available {
+					frametime = fmt.Sprintf("%.3f", sample.Game.FrametimeMS)
+				}
+				log.Printf(
+					"performance sensor: cpuPct=%.2f vantareCpuPct=%.2f vantareRamMB=%.2f gpuPct=%.2f gameFrametimeMs=%s foreground=%t level=%d reason=%s",
+					sample.Host.CPUPct, sample.Host.VantareCPUPct, sample.Host.VantareRAMMB, sample.Host.GPUPct,
+					frametime, sample.Game.Foreground, decision.Level, decision.Reason,
+				)
+			})
+		}
 		if err := performanceRuntime.Start(ctx); err != nil {
 			log.Printf("performance sensor start error: %v", err)
 			performanceRuntime = nil

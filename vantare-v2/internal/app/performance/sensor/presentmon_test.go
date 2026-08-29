@@ -9,39 +9,53 @@ import (
 	"time"
 )
 
-type fakeProcess struct{ killed bool }
+type fakeProcess struct {
+	pid        int
+	killed     bool
+	operations *[]string
+	exited     chan struct{}
+}
 
-func (*fakeProcess) Wait() error { return nil }
+func (process *fakeProcess) PID() int { return process.pid }
+func (process *fakeProcess) Wait() error {
+	<-process.exited
+	*process.operations = append(*process.operations, "wait:43125")
+	return nil
+}
 func (process *fakeProcess) Kill() error {
 	process.killed = true
+	*process.operations = append(*process.operations, "kill:43125")
+	close(process.exited)
 	return nil
 }
 
 type fakeRunner struct {
-	mu      sync.Mutex
-	queries []string
-	stream  string
-	process *fakeProcess
+	mu         sync.Mutex
+	queries    []string
+	stream     string
+	process    *fakeProcess
+	operations []string
 }
 
 func (runner *fakeRunner) Output(_ context.Context, name string, args ...string) ([]byte, error) {
 	runner.mu.Lock()
 	defer runner.mu.Unlock()
 	runner.queries = append(runner.queries, name+" "+strings.Join(args, " "))
+	if len(args) > 0 && args[0] == "stop" {
+		runner.operations = append(runner.operations, "stop:"+args[1])
+	}
 	if len(args) > 0 && args[0] == "query" {
-		return []byte("RSXTraceSession\nVantareSensor-111\nVantareSensor-222\n"), nil
+		return []byte("RSXTraceSession\nVantareHuella-isa940\nVantareSensor-111\nVantareSensor-222\n"), nil
 	}
 	return nil, nil
 }
-func (runner *fakeRunner) Start(_ context.Context, _ string, _ []string, stdout, _ io.Writer) (processHandle, error) {
-	runner.process = &fakeProcess{}
-	go func() {
-		_, _ = io.WriteString(stdout, runner.stream)
-		if closer, ok := stdout.(io.Closer); ok {
-			_ = closer.Close()
-		}
-	}()
-	return runner.process, nil
+func (runner *fakeRunner) Start(_ context.Context, _ string, _ []string) (processHandle, io.ReadCloser, error) {
+	runner.process = &fakeProcess{
+		pid:        43125,
+		operations: &runner.operations,
+		exited:     make(chan struct{}),
+	}
+	return runner.process, io.NopCloser(strings.NewReader(runner.stream)), nil
 }
 
 func TestPresentMonCleansOnlyVantareOrphansParsesV2AndStopsOwnSession(t *testing.T) {
@@ -76,7 +90,26 @@ func TestPresentMonCleansOnlyVantareOrphansParsesV2AndStopsOwnSession(t *testing
 	if strings.Contains(joined, "stop RSXTraceSession") {
 		t.Fatalf("Radeon session was stopped:\n%s", joined)
 	}
+	if strings.Contains(joined, "stop VantareHuella-isa940") {
+		t.Fatalf("another worker session was stopped:\n%s", joined)
+	}
+	if count := strings.Count(joined, "logman stop "+source.sessionName+" -ets"); count != 2 {
+		t.Fatalf("own session stop count = %d, want 2:\n%s", count, joined)
+	}
 	if !runner.process.killed {
 		t.Fatal("PresentMon process was not killed on close")
+	}
+	if source.processPID != 43125 {
+		t.Fatalf("owned PresentMon PID = %d, want 43125", source.processPID)
+	}
+	wantOrder := []string{
+		"kill:43125",
+		"stop:" + source.sessionName,
+		"wait:43125",
+		"stop:" + source.sessionName,
+	}
+	gotOrder := runner.operations[len(runner.operations)-len(wantOrder):]
+	if strings.Join(gotOrder, "\n") != strings.Join(wantOrder, "\n") {
+		t.Fatalf("shutdown order = %q, want %q", gotOrder, wantOrder)
 	}
 }

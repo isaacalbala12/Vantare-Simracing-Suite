@@ -35,6 +35,7 @@ type PerformanceRuntime struct {
 	visible    func() bool
 	announcer  performanceLevelAnnouncer
 	foreground func(bool)
+	trace      func(sensor.Sample, sensor.Decision)
 	settings   PerformanceSettings
 	controller *sensor.AutoController
 
@@ -51,6 +52,15 @@ func (runtime *PerformanceRuntime) SetGameForegroundHandler(handler func(bool)) 
 	}
 	runtime.mu.Lock()
 	runtime.foreground = handler
+	runtime.mu.Unlock()
+}
+
+func (runtime *PerformanceRuntime) SetTrace(handler func(sensor.Sample, sensor.Decision)) {
+	if runtime == nil {
+		return
+	}
+	runtime.mu.Lock()
+	runtime.trace = handler
 	runtime.mu.Unlock()
 }
 
@@ -185,11 +195,15 @@ func (runtime *PerformanceRuntime) Observe(sample sensor.Sample) {
 	visible := runtime.visible == nil || runtime.visible()
 	announcer := runtime.announcer
 	foreground := runtime.foreground
+	trace := runtime.trace
 	emitter := runtime.emitter
 	runtime.mu.Unlock()
 
 	if foreground != nil {
 		foreground(sample.Game.Foreground)
+	}
+	if trace != nil {
+		trace(sample, decision)
 	}
 	if visible && emitter != nil {
 		emitter.Emit("performance:level", PerformanceLevelEvent{Policy: snapshot, Host: decision.Host})
@@ -204,7 +218,7 @@ func (runtime *PerformanceRuntime) applyPolicyLocked() {
 		return
 	}
 	if runtime.settings.Mode == string(performancepolicy.ModeAuto) {
-		runtime.target.SetPerformancePolicy(ResolveAutomaticPerformancePolicy(runtime.controller.Level(), performancepolicy.ReasonUnavailable))
+		runtime.target.SetPerformancePolicy(ResolveAutomaticPerformancePolicy(runtime.controller.Level(), performancepolicy.ReasonUser))
 		return
 	}
 	runtime.target.SetPerformancePolicy(ResolvePerformancePolicy(runtime.settings))

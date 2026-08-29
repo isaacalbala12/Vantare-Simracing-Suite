@@ -54,7 +54,7 @@ func NewAutoController(requestedLevel performancepolicy.Level) *AutoController {
 	if requestedLevel > level {
 		level = requestedLevel
 	}
-	return &AutoController{level: level, requestedLevel: requestedLevel, reason: performancepolicy.ReasonUnavailable}
+	return &AutoController{level: level, requestedLevel: requestedLevel, reason: performancepolicy.ReasonUser}
 }
 
 func (controller *AutoController) Level() performancepolicy.Level {
@@ -141,11 +141,11 @@ func (controller *AutoController) Observe(sample Sample) Decision {
 	// La ausencia de PresentMon es un hecho más importante para el contrato que
 	// atribuir una decisión basada solo en CPU: Automático sigue activo, pero el
 	// Hub puede explicar que no está midiendo el juego.
-	if !sample.Game.Available {
-		controller.reason = performancepolicy.ReasonUnavailable
-	}
 	decision.Level = controller.level
 	decision.Reason = controller.reason
+	if !sample.Game.Available {
+		decision.Reason = performancepolicy.ReasonUnavailable
+	}
 	return decision
 }
 

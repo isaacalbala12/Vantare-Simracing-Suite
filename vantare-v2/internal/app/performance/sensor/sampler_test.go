@@ -51,3 +51,26 @@ func TestSamplerDegradesGameWhenPresentMonCannotStart(t *testing.T) {
 		t.Fatalf("game should be unavailable: %+v", got.Game)
 	}
 }
+
+func TestSamplerCancellationDoesNotWaitForBlockedHostCall(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	ticker := &fakeTicker{ticks: make(chan time.Time, 1)}
+	blocked := make(chan struct{})
+	sampler := NewWithClock(HostSamplerFunc(func(context.Context) (HostSample, error) {
+		<-blocked
+		return HostSample{}, nil
+	}), &FakeGameFrametimeSource{}, &fakeClock{ticker: ticker})
+	done := make(chan error, 1)
+	go func() { done <- sampler.Run(ctx, func(Sample) {}) }()
+	ticker.ticks <- time.Now()
+	cancel()
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(100 * time.Millisecond):
+		t.Fatal("sampler cancellation waited for blocked host call")
+	}
+	close(blocked)
+}

@@ -18,12 +18,16 @@ func autoSample(at time.Time, cpu, frametime float64, available bool) Sample {
 func TestAutoStartsBalancedAndPromotesAfterThirtyHealthySeconds(t *testing.T) {
 	controller := NewAutoController(performancepolicy.LevelHigh)
 	start := time.Unix(100, 0)
-	for second := 1; second <= 29; second++ {
+	initial := controller.Observe(autoSample(start, 50, 10, true))
+	if initial.Reason != performancepolicy.ReasonUser {
+		t.Fatalf("initial reason = %q", initial.Reason)
+	}
+	for second := 1; second <= 28; second++ {
 		if got := controller.Observe(autoSample(start.Add(time.Duration(second)*time.Second), 50, 10, true)); got.Changed {
 			t.Fatalf("changed early at second %d: %+v", second, got)
 		}
 	}
-	got := controller.Observe(autoSample(start.Add(30*time.Second), 50, 10.2, true))
+	got := controller.Observe(autoSample(start.Add(29*time.Second), 50, 10.2, true))
 	if !got.Changed || got.Level != performancepolicy.LevelHigh {
 		t.Fatalf("promotion = %+v", got)
 	}
@@ -100,6 +104,10 @@ func TestAutoWithoutPresentMonUsesCPUAndPublishesUnavailable(t *testing.T) {
 	}
 	if got.Host.GameFrametimeMS != nil {
 		t.Fatalf("unavailable frametime was published: %+v", got.Host)
+	}
+	recovered := controller.Observe(autoSample(start.Add(2*time.Second), 50, 10, true))
+	if recovered.Reason == performancepolicy.ReasonUnavailable {
+		t.Fatalf("recovered PresentMon kept unavailable: %+v", recovered)
 	}
 }
 

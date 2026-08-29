@@ -8,3 +8,7 @@ package main
 func webviewDebugArgs() string {
 	return ""
 }
+
+func webviewUserDataFolder(fallback string) string { return fallback }
+
+func performanceSensorTraceEnabled() bool { return false }

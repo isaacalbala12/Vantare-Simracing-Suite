@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/csv"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -12,14 +13,16 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 type commandRunner interface {
 	Output(context.Context, string, ...string) ([]byte, error)
-	Start(context.Context, string, []string, io.Writer, io.Writer) (processHandle, error)
+	Start(context.Context, string, []string) (processHandle, io.ReadCloser, error)
 }
 
 type processHandle interface {
+	PID() int
 	Wait() error
 	Kill() error
 }
@@ -30,15 +33,26 @@ type execHandle struct{ command *exec.Cmd }
 func (execRunner) Output(ctx context.Context, name string, args ...string) ([]byte, error) {
 	return exec.CommandContext(ctx, name, args...).CombinedOutput()
 }
-func (execRunner) Start(ctx context.Context, name string, args []string, stdout, stderr io.Writer) (processHandle, error) {
+func (execRunner) Start(ctx context.Context, name string, args []string) (processHandle, io.ReadCloser, error) {
 	command := exec.CommandContext(ctx, name, args...)
-	command.Stdout, command.Stderr = stdout, stderr
-	if err := command.Start(); err != nil {
-		return nil, err
+	stdout, err := command.StdoutPipe()
+	if err != nil {
+		return nil, nil, err
 	}
-	return execHandle{command}, nil
+	command.Stderr = io.Discard
+	if err := command.Start(); err != nil {
+		stdout.Close()
+		return nil, nil, err
+	}
+	return execHandle{command}, stdout, nil
 }
 func (handle execHandle) Wait() error { return handle.command.Wait() }
+func (handle execHandle) PID() int {
+	if handle.command.Process == nil {
+		return 0
+	}
+	return handle.command.Process.Pid
+}
 func (handle execHandle) Kill() error {
 	if handle.command.Process == nil {
 		return nil
@@ -55,6 +69,7 @@ type PresentMonSource struct {
 	foreground  func() bool
 	cancel      context.CancelFunc
 	process     processHandle
+	processPID  int
 	latest      GameSample
 	done        chan struct{}
 	closeOnce   sync.Once
@@ -78,32 +93,28 @@ func (source *PresentMonSource) Start(parent context.Context) error {
 		return fmt.Errorf("presentmon path: %w", ErrUnavailable)
 	}
 	ctx, cancel := context.WithCancel(parent)
-	reader, writer := io.Pipe()
-	process, err := source.runner.Start(ctx, source.executable, []string{
+	process, reader, err := source.runner.Start(ctx, source.executable, []string{
 		"--process_name", source.gameName,
 		"--v2_metrics",
 		"--session_name", source.sessionName,
 		"--no_console_stats",
 		"--output_stdout",
-	}, writer, writer)
+	})
 	if err != nil {
 		cancel()
-		reader.Close()
-		writer.Close()
 		return fmt.Errorf("start PresentMon: %w", err)
 	}
 	source.mu.Lock()
-	source.cancel, source.process, source.done = cancel, process, make(chan struct{})
+	source.cancel, source.process, source.processPID, source.done = cancel, process, process.PID(), make(chan struct{})
 	source.mu.Unlock()
-	go source.consume(reader, writer, process)
+	go source.consume(reader, process)
 	return nil
 }
 
-func (source *PresentMonSource) consume(reader *io.PipeReader, writer *io.PipeWriter, process processHandle) {
+func (source *PresentMonSource) consume(reader io.ReadCloser, process processHandle) {
 	defer close(source.done)
 	defer process.Wait()
 	defer reader.Close()
-	defer writer.Close()
 	csvReader := csv.NewReader(bufio.NewReader(reader))
 	csvReader.FieldsPerRecord = -1
 	frametimeColumn := -1
@@ -148,21 +159,35 @@ func (source *PresentMonSource) Close() error {
 		source.mu.RLock()
 		cancel, process, done := source.cancel, source.process, source.done
 		source.mu.RUnlock()
+		if process != nil {
+			if err := process.Kill(); err != nil && !errors.Is(err, os.ErrProcessDone) {
+				closeErr = errors.Join(closeErr, fmt.Errorf("kill owned PresentMon PID %d: %w", process.PID(), err))
+			}
+		}
 		if cancel != nil {
 			cancel()
 		}
-		if process != nil {
-			_ = process.Kill()
-		}
+		closeErr = source.stopOwnSession()
 		if done != nil {
-			<-done
+			select {
+			case <-done:
+			case <-time.After(2 * time.Second):
+				closeErr = errors.Join(closeErr, errors.New("PresentMon did not exit within two seconds"))
+			}
 		}
-		output, err := source.runner.Output(context.Background(), "logman", "stop", source.sessionName, "-ets")
-		if err != nil && !isMissingSession(output) {
-			closeErr = fmt.Errorf("stop ETW session %s: %w", source.sessionName, err)
-		}
+		// PresentMon puede volver a registrar la sesión durante sus últimos
+		// milisegundos. Tras Wait ya no queda ningún productor que pueda recrearla.
+		closeErr = errors.Join(closeErr, source.stopOwnSession())
 	})
 	return closeErr
+}
+
+func (source *PresentMonSource) stopOwnSession() error {
+	output, err := source.runner.Output(context.Background(), "logman", "stop", source.sessionName, "-ets")
+	if err != nil && !isMissingSession(output) {
+		return fmt.Errorf("stop ETW session %s: %w", source.sessionName, err)
+	}
+	return nil
 }
 
 func (source *PresentMonSource) cleanOrphans(ctx context.Context) error {

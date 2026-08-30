@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { installHubSuspendGuard } from "../hub-suspend-guard";
 import { createManualWeatherScenario } from "./strategy-weather-scenarios";
@@ -74,6 +74,68 @@ describe("StrategyWeatherPanel suspend blocker", () => {
       await deferred[1].promise;
     });
     expect(snapshots.at(-1)?.other).toHaveLength(0);
+    disposeGuard();
+  });
+
+  it.each([
+    ["strategy.weather.rain", "35"],
+    ["strategy.weather.air", "22"],
+    ["strategy.weather.track", "31"],
+  ])("Escape cancela y libera %s", (label, changedValue) => {
+    const snapshots: Array<{ other?: string[] }> = [];
+    const disposeGuard = installHubSuspendGuard({
+      on: () => () => undefined,
+      emit: (event, payload) => {
+        if (event === "hub:blockers") snapshots.push(payload as { other?: string[] });
+      },
+    }, "weather-generation");
+    render(
+      <StrategyWeatherPanel
+        eventId="event-1"
+        onSave={() => undefined}
+        saving="idle"
+        scenarios={[createManualWeatherScenario("event-1", "combo-1", "weather-1")]}
+        t={(key) => key}
+      />,
+    );
+    const input = screen.getAllByLabelText(label)[0] as HTMLInputElement;
+    const original = input.value;
+
+    fireEvent.input(input, { target: { value: changedValue } });
+    expect(snapshots.at(-1)?.other).toHaveLength(1);
+    fireEvent.keyDown(input, { key: "Escape" });
+
+    expect(input.value).toBe(original);
+    expect(snapshots.at(-1)?.other).toHaveLength(0);
+    disposeGuard();
+  });
+
+  it("confirmar lluvia libera solo después de persistir", async () => {
+    const snapshots: Array<{ other?: string[] }> = [];
+    const disposeGuard = installHubSuspendGuard({
+      on: () => () => undefined,
+      emit: (event, payload) => {
+        if (event === "hub:blockers") snapshots.push(payload as { other?: string[] });
+      },
+    }, "weather-generation");
+    const saved = Promise.withResolvers<void>();
+    render(
+      <StrategyWeatherPanel
+        eventId="event-1"
+        onSave={() => saved.promise}
+        saving="idle"
+        scenarios={[createManualWeatherScenario("event-1", "combo-1", "weather-1")]}
+        t={(key) => key}
+      />,
+    );
+    const rain = screen.getAllByLabelText("strategy.weather.rain")[0];
+
+    fireEvent.input(rain, { target: { value: "35" } });
+    fireEvent.blur(rain);
+    expect(snapshots.at(-1)?.other).toHaveLength(1);
+    saved.resolve();
+
+    await waitFor(() => expect(snapshots.at(-1)?.other).toHaveLength(0));
     disposeGuard();
   });
 });

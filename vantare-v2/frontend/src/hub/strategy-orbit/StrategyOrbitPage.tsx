@@ -3488,6 +3488,12 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
                                   endStintInput(`${stint.i}:laps`);
                                 }}
                                 onInput={() => beginStintInput(`${stint.i}:laps`)}
+                                onKeyDown={(event) => {
+                                  if (event.key === "Escape") {
+                                    event.currentTarget.value = String(stint.laps);
+                                    endStintInput(`${stint.i}:laps`);
+                                  }
+                                }}
                                 aria-label={t("strategy.editor.laps")}
                               />
                               <InputProvenanceChip t={t} view={{ kind: "manual", presence: "valid", value: stint.laps, canRevert: false }} />
@@ -3504,6 +3510,12 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
                                   endStintInput(`${stint.i}:fuel`);
                                 }}
                                 onInput={() => beginStintInput(`${stint.i}:fuel`)}
+                                onKeyDown={(event) => {
+                                  if (event.key === "Escape") {
+                                    event.currentTarget.value = stint.fuel.toFixed(1);
+                                    endStintInput(`${stint.i}:fuel`);
+                                  }
+                                }}
                                 unit="L"
                                 aria-label={t("strategy.editor.fuel")}
                               />

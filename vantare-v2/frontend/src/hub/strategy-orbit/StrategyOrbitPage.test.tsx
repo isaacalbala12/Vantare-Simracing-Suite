@@ -528,6 +528,54 @@ describe("StrategyOrbitPage · Resumen", () => {
     disposeGuard();
   });
 
+  it.each([
+    ["Vueltas", "20"],
+    ["Combustible", "50"],
+  ])("Escape cancela y libera el borrador de %s", async (label, changedValue) => {
+    const snapshots: Array<{ other?: string[] }> = [];
+    const disposeGuard = installHubSuspendGuard({
+      on: () => () => undefined,
+      emit: (event, payload) => {
+        if (event === "hub:blockers") snapshots.push(payload as { other?: string[] });
+      },
+    }, "stint-generation");
+    await mounted();
+    fireEvent.click(screen.getByTestId("orbit-stint-edit-0"));
+    const input = await screen.findByLabelText(label) as HTMLInputElement;
+    const original = input.value;
+
+    fireEvent.input(input, { target: { value: changedValue } });
+    expect(snapshots.at(-1)?.other).toHaveLength(1);
+    fireEvent.keyDown(input, { key: "Escape" });
+
+    expect(input.value).toBe(original);
+    expect(snapshots.at(-1)?.other).toHaveLength(0);
+    disposeGuard();
+  });
+
+  it.each([
+    ["Vueltas", "20"],
+    ["Combustible", "50"],
+  ])("confirmar %s libera el bloqueador", async (label, changedValue) => {
+    const snapshots: Array<{ other?: string[] }> = [];
+    const disposeGuard = installHubSuspendGuard({
+      on: () => () => undefined,
+      emit: (event, payload) => {
+        if (event === "hub:blockers") snapshots.push(payload as { other?: string[] });
+      },
+    }, "stint-generation");
+    await mounted();
+    fireEvent.click(screen.getByTestId("orbit-stint-edit-0"));
+    const input = await screen.findByLabelText(label);
+
+    fireEvent.input(input, { target: { value: changedValue } });
+    expect(snapshots.at(-1)?.other).toHaveLength(1);
+    fireEvent.blur(input);
+
+    await waitFor(() => expect(snapshots.at(-1)?.other).toHaveLength(0));
+    disposeGuard();
+  });
+
   it("Restablecer devuelve el estado a Al día", async () => {
     await mounted();
 

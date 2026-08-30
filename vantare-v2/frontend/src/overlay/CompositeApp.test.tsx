@@ -18,6 +18,16 @@ const runtimeMock = vi.hoisted(() => ({
   emit: vi.fn(),
 }));
 
+const shadowRuntimeMock = vi.hoisted(() => ({
+  acceptLegacy: vi.fn(),
+  acceptOverlayV2: vi.fn(),
+  create: vi.fn(),
+}));
+
+vi.mock("./telemetry-shadow/overlay-v2-shadow-runtime", () => ({
+  createOverlayV2ShadowRuntime: shadowRuntimeMock.create,
+}));
+
 const originalResizeObserver = globalThis.ResizeObserver;
 let desktopOutput = { width: 1920, height: 1080 };
 let pullDelivery = 0;
@@ -150,6 +160,13 @@ describe("CompositeApp", () => {
     pullRequests = [];
     pullClosedSessions = new Set();
     resolvePull = undefined;
+    shadowRuntimeMock.acceptLegacy.mockReset();
+    shadowRuntimeMock.acceptOverlayV2.mockReset();
+    shadowRuntimeMock.create.mockReset().mockReturnValue({
+      acceptLegacy: shadowRuntimeMock.acceptLegacy,
+      acceptOverlayV2: shadowRuntimeMock.acceptOverlayV2,
+      sessionSummary: () => ({ frames: 0, mismatches: 0 }),
+    });
     vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       const route = typeof input === "string" ? input : input.toString();
       if (route === OVERLAY_PULL_REQUEST_ROUTE) {
@@ -165,6 +182,17 @@ describe("CompositeApp", () => {
       return {ok: true, status: 204} as Response;
     }));
     installResizeObserver();
+  });
+
+  it("does not allocate or ingest shadow state while V1 emission is off", async () => {
+    render(<CompositeApp />);
+
+    await dispatchTelemetry([
+      { name: "telemetry:overlay-v2:snapshot", data: JSON.parse(goldenV2Raw) },
+    ]);
+
+    expect(shadowRuntimeMock.create).not.toHaveBeenCalled();
+    expect(shadowRuntimeMock.acceptOverlayV2).not.toHaveBeenCalled();
   });
 
   afterEach(() => {

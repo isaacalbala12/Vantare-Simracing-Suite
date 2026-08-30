@@ -25,6 +25,8 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+. (Join-Path $PSScriptRoot 'sesion-v1-state.ps1')
+
 if ($PSVersionTable.PSVersion.Major -lt 7) { throw 'sesion-v1.ps1 requiere PowerShell 7 o posterior.' }
 if ($Puerto -in @(9222, 9231)) { throw "El puerto $Puerto está reservado por otros bancos." }
 
@@ -204,10 +206,11 @@ function Invoke-Cdp([string]$Action, [string]$Label, [string]$ScreenshotDirector
 }
 
 function Register-State([object]$Capture) {
-    foreach ($target in @($Capture.targets)) {
-        $surface = if ($target.surface) { [string]$target.surface } else { [string]$target.role }
+    $capturedAt = [string](Get-SessionOptionalProperty -InputObject $Capture -Name 'capturedAt')
+    foreach ($target in @(ConvertTo-SessionCdpTargets -Capture $Capture)) {
+        $surface = $target.surface
         $key = '{0}|{1}|{2}|{3}' -f $surface, $target.role, $target.url, $target.title
-        $now = [string]$Capture.capturedAt
+        $now = $capturedAt
         if (-not $knownWindows.ContainsKey($key)) {
             $knownWindows[$key] = $true
             $transitions.Add([pscustomobject]@{ kind = 'window-first-seen'; surface = $surface; window = $key; timestamp = $now })
@@ -216,7 +219,7 @@ function Register-State([object]$Capture) {
             $widgetReady[$key] = $true
             $transitions.Add([pscustomobject]@{ kind = 'window-widget-ready'; surface = $surface; window = $key; timestamp = $now })
         }
-        $transport = $target.diagnostics.overlay_v2_transport
+        $transport = $target.transport
         if (-not $transport) { continue }
         $source = [string]$transport.sourceState
         if ($source -and $knownSource.ContainsKey($key) -and $knownSource[$key] -ne $source) {
@@ -244,7 +247,7 @@ function Add-Diagnostic([string]$Label, [string]$ScreenshotDirectory = '') {
     Register-State $capture
     if ($ScreenshotDirectory) {
         $destination = if ($ScreenshotDirectory -eq $initialScreenshotDirectory) { $initialScreenshots } else { $finalScreenshots }
-        foreach ($target in @($capture.targets)) {
+        foreach ($target in @(ConvertTo-SessionCdpTargets -Capture $capture)) {
             if ($target.screenshot) { $destination.Add([string]$target.screenshot) }
         }
     }
@@ -271,7 +274,9 @@ try {
         $opened = Invoke-Cdp -Action 'overlay-start' -Label '000-overlay-start' -ScreenshotDirectory $initialScreenshotDirectory
         $diagnostics.Add($opened)
         Register-State $opened
-        foreach ($target in @($opened.targets)) { if ($target.screenshot) { $initialScreenshots.Add([string]$target.screenshot) } }
+        foreach ($target in @(ConvertTo-SessionCdpTargets -Capture $opened)) {
+            if ($target.screenshot) { $initialScreenshots.Add([string]$target.screenshot) }
+        }
     } else {
         Add-Diagnostic -Label '000-initial' -ScreenshotDirectory $initialScreenshotDirectory
     }

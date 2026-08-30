@@ -15,6 +15,28 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 
 ## Estado real
 
+- 2026-08-30, ISA-894 corte 1 parte de `origin/nightly@8b4a7e4f`, que ya
+  contiene el cutover de autoridad V2 de #941. La app deja de construir y
+  publicar la proyección y status Overlay V1 por defecto. El rollback queda
+  explícito y temporal: ajuste persistente `overlayV1Emit=true` o override de
+  proceso `VANTARE_OVERLAY_V1_EMIT=1`; requiere reinicio y mantiene activo el
+  comparador shadow. El inventario estático y tres preflights por estado no
+  encuentran consumidores V1 con autoridad productiva: OFF completó 47 pulls,
+  recibió 0 V1 y 44 snapshots V2; ON recibió 8 V1 y el comparador volvió a
+  funcionar. El A/B real LMU Spa A1 (3 × 180 s por estado) midió Go host
+  2,420 % -> 1,657 % CPU (-31,52 %, ruido 0,66/2,56 %) y 73,00 -> 72,67 MiB;
+  `renderer-unassigned` 2,470 % -> 1,506 % CPU (-39,06 %, ruido 1,06/1,48 %).
+  Su aparente ahorro de RAM no es publicable porque OFF tuvo 9,58 % de ruido;
+  browser quedó esencialmente estable. Las seis corridas cerraron limpias y
+  perdieron 0/66.873 frames LMU. Guards Go/TypeScript impiden reintroducir
+  proyección/status V1 fuera del interruptor o pasar `TelemetrySnapshot` a los
+  frames productivos. El shadow ON conserva 14 diferencias en los mismos
+  campos ya vistos por #893 (`speedKph` y textos de vuelta): no son autoridad
+  visual, pero no hay paridad cero y el corte 2 sigue bloqueado y no se tocó.
+  Evidencia y guion humano de las cinco sesiones largas en
+  `docs/telemetry-core/evidence/isa-894/`. Issue `roadmap:not-required`: no se
+  modifica `plan.md`, no hay merge, promoción ni release.
+
 - 2026-08-30, ISA-893 parte de `origin/nightly@ca166b38` después
   de integrar #936. El store V2 conserva una sola suscripción imperativa al
   coordinador por generación; cada widget memoizado se suscribe a su sección

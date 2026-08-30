@@ -69,3 +69,50 @@ Por cada S1–S5: SHA, timestamps, escenario/coches, CSV de procesos, diagnósti
 JSON por ventana, screenshot inicial/final, resumen de mismatches y cierre
 limpio. Pregunta operativa: **¿qué ventana horaria coordinamos para S1 y quién
 confirma desde LMU cada transición garaje → pista → boxes?**
+
+## Colector ejecutable
+
+Cada fase se captura con `scripts/bench/sesion-v1.ps1`. No acepta `-Forzar`,
+aplica exactamente la allow-list de `huella.ps1` y no cierra procesos ajenos.
+Ejemplos desde `vantare-v2`:
+
+```powershell
+pwsh -File scripts/bench/sesion-v1.ps1 `
+  -Sesion S1 -Fase on -Duracion 20 `
+  -Exe bin/vantare-isa894.exe -Puerto 9294 `
+  -Escena 'Spa práctica, jugador en garaje' -Coches 20
+
+pwsh -File scripts/bench/sesion-v1.ps1 `
+  -Sesion S1 -Fase off -Duracion 20 `
+  -Exe bin/vantare-isa894.exe -Puerto 9294 `
+  -Escena 'Spa práctica, jugador en garaje' -Coches 20
+
+pwsh -File scripts/bench/sesion-v1.ps1 `
+  -Sesion S3 -Fase off -Duracion 60 `
+  -Exe bin/vantare-isa894.exe -Puerto 9294 `
+  -Escena 'Spa práctica, parrilla grande' -Coches 45
+```
+
+Antes de ocupar la máquina puede validarse el plan sin resolver ni lanzar el
+ejecutable:
+
+```powershell
+pwsh -File scripts/bench/sesion-v1.ps1 `
+  -Sesion S5 -Fase off -Duracion 20 `
+  -Exe C:\ruta\futura\vantare.exe -Puerto 9294 -DryRun
+```
+
+Durante la captura la consola muestra `marca de transición: <texto>`. Isaac
+escribe, por ejemplo, `salir de boxes`, `reanudar LMU` o `abrir Desktop tarde`
+y pulsa Enter en el instante real. El colector añade además marcas automáticas
+cuando cambia `sourceState`, el estado de pit o aparece una ventana/widget.
+
+La salida única `results/isa-894/sesiones/<sesion>-<fase>-<timestamp>/`
+contiene el JSON crudo, `procesos.csv`, checkpoints
+CDP, screenshots inicial/final, logs, `resumen.json` y `resumen.md`. El resumen
+falla cerrado si falta metadata/hash, duración, un rol, muestras, avance V2,
+captura visual o cierre limpio. El parser se prueba con:
+
+```powershell
+node --test scripts/bench/sesion-v1-resumen.test.mjs
+```

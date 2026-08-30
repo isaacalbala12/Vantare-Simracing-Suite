@@ -1,8 +1,9 @@
 // Probe reducido de ISA-912 (`frontend/scripts/isa-912-webview-profile.mjs`):
 // conserva su detección por DOM, rAF y PerformanceObserver, y añade el control
 // reproducible del overlay a través del botón productivo del Hub.
-import { writeFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
+import path from "node:path";
 import process from "node:process";
 
 // Playwright pertenece al workspace frontend; resolver desde su package.json
@@ -169,10 +170,11 @@ async function capturePerformance(page, timeoutMs) {
 const cdp = argument("cdp");
 const action = argument("action", "inspect");
 const output = argument("output");
+const screenshotDir = argument("screenshot-dir");
 const durationSeconds = Number(argument("duration", "10"));
 const expectedWidgets = Number(argument("expected-widgets", "0"));
-if (!cdp || !["inspect", "overlay-start", "overlay-stop", "hub-minimise", "hub-restore", "hub-open", "performance", "app-quit"].includes(action) || !Number.isFinite(durationSeconds) || durationSeconds < 1 || durationSeconds > 120 || !Number.isInteger(expectedWidgets) || expectedWidgets < 0) {
-  throw new Error("usage: node huella-cdp.mjs --cdp http://127.0.0.1:9247 --action inspect|overlay-start|overlay-stop|hub-minimise|hub-restore|hub-open|performance|app-quit [--duration 10] [--expected-widgets 3] [--output result.json]");
+if (!cdp || !["inspect", "state", "overlay-start", "overlay-stop", "hub-minimise", "hub-restore", "hub-open", "performance", "app-quit"].includes(action) || !Number.isFinite(durationSeconds) || durationSeconds < 1 || durationSeconds > 120 || !Number.isInteger(expectedWidgets) || expectedWidgets < 0) {
+  throw new Error("usage: node huella-cdp.mjs --cdp http://127.0.0.1:9247 --action inspect|state|overlay-start|overlay-stop|hub-minimise|hub-restore|hub-open|performance|app-quit [--duration 10] [--expected-widgets 3] [--output result.json] [--screenshot-dir directory]");
 }
 
 const browser = await chromium.connectOverCDP(cdp);
@@ -240,7 +242,7 @@ if (action === "performance") {
   process.stdout.write(json);
   process.exit(0);
 }
-const control = action === "inspect" ? null : await setOverlay(browser, action === "overlay-start");
+const control = action === "inspect" || action === "state" ? null : await setOverlay(browser, action === "overlay-start");
 const renderedWidgets = action === "overlay-start" ? await waitForWidgets(browser, expectedWidgets) : 0;
 const overlayReadyAt = action === "overlay-start" ? new Date().toISOString() : null;
 let rendererProcessIds = [];
@@ -253,11 +255,18 @@ if (action === "overlay-start") {
   }
 }
 const pages = await pagesByRole(browser);
-const targets = await Promise.all(pages.filter(({ description }) => description.hub || description.overlay).map(async ({ page, description }) => ({
-  role: description.overlay ? "overlay" : "hub",
-  ...description,
-  probe: await probe(page, durationSeconds * 1_000),
-})));
+if (screenshotDir) await mkdir(screenshotDir, {recursive: true});
+const targets = await Promise.all(pages.filter(({ description }) => description.hub || description.overlay).map(async ({ page, description }, index) => {
+  const role = description.overlay ? "overlay" : "hub";
+  const screenshot = screenshotDir ? path.join(screenshotDir, `${role}-${index + 1}.png`) : null;
+  if (screenshot) await page.screenshot({path: screenshot});
+  return {
+    role,
+    ...description,
+    probe: action === "state" ? null : await probe(page, durationSeconds * 1_000),
+    screenshot,
+  };
+}));
 const result = { schema: "vantare.huella.cdp.v1", capturedAt: new Date().toISOString(), action, control, durationSeconds, expectedWidgets, renderedWidgets, overlayReadyAt, rendererProcessIds, rendererProcessInfoError, targets };
 const json = `${JSON.stringify(result, null, 2)}\n`;
 if (output) await writeFile(output, json, { encoding: "utf8", flag: "wx" });

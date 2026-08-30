@@ -146,6 +146,14 @@ describe("OverlayFrame v2 store", () => {
     listeners.get(OVERLAY_V2_SNAPSHOT_EVENT)?.(JSON.stringify(golden()));
     expect(store.getSnapshot().frame?.contract).toBe(2);
     expect(store.getDiagnostics().overlay_v2_parse_duration.count).toBe(1);
+    expect(store.getDiagnostics().overlay_v2_transport).toMatchObject({
+      revision: 1,
+      sourceState: "live",
+      epoch: 3,
+      sequence: 2,
+      vehicleCount: 1,
+      playerPit: "pit",
+    });
     detach();
     expect(listeners.size).toBe(0);
   });

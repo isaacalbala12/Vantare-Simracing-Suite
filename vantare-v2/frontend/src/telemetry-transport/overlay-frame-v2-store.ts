@@ -38,6 +38,16 @@ export type OverlayFrameV2Store = Readonly<{
 export type OverlayFrameV2StoreDiagnostics = Readonly<{
   /** Percentiles over the current live window only; see `ingest`. */
   overlay_v2_parse_duration: Readonly<{ count: number; p50: number; p99: number; nonLiveSamples: number }>;
+  overlay_v2_transport: Readonly<{
+    revision: number;
+    frameRevision: number | null;
+    sourceState: OverlaySourceStatusV2["state"] | null;
+    epoch: number | null;
+    sequence: number | null;
+    sessionId: string | null;
+    vehicleCount: number;
+    playerPit: string | null;
+  }>;
 }>;
 
 export type OverlayFrameV2EventSource = Readonly<{
@@ -145,12 +155,23 @@ export function createOverlayFrameV2Store(
     },
     getDiagnostics() {
       const sorted = [...parseDurations].sort((left, right) => left - right);
+      const playerStanding = state.frame?.standings.find((row) => row.id === state.frame?.player.id);
       return Object.freeze({
         overlay_v2_parse_duration: Object.freeze({
           count: sorted.length,
           p50: percentile(sorted, 0.5),
           p99: percentile(sorted, 0.99),
           nonLiveSamples: nonLiveParseSamples,
+        }),
+        overlay_v2_transport: Object.freeze({
+          revision: state.revision,
+          frameRevision: state.frameRevision ?? null,
+          sourceState: state.source?.state ?? null,
+          epoch: state.frame?.epoch ?? null,
+          sequence: state.frame?.sequence ?? null,
+          sessionId: state.frame?.sessionId ?? null,
+          vehicleCount: state.frame?.standings.length ?? 0,
+          playerPit: playerStanding?.pit ?? null,
         }),
       });
     },

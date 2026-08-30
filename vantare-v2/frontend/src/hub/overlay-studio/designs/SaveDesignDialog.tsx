@@ -16,7 +16,7 @@ export function SaveDesignDialog(props: SaveDesignDialogProps): React.ReactEleme
   const [wasOpen, setWasOpen] = useState(open);
   useHubSuspendBlocker(
     'studio-design-draft',
-    'Studio tiene un diseño sin guardar',
+    t('studio.v3.design.saveDialog.suspendBlocker'),
     open && (name.trim() !== '' || includesContent),
   );
 

@@ -26,6 +26,7 @@ export const studioOrbitEs: Record<string, string> = {
   "studio.toolbar.wallpaper.errorSize": "La imagen pesa demasiado.",
   "studio.toolbar.wallpaper.errorDecode": "No se pudo leer la imagen.",
   "studio.toolbar.wallpaper.errorQuota": "No cabe: quita algún fondo y vuelve a probar.",
+  "studio.toolbar.wallpaper.suspendBlocker": "Studio está importando un fondo sin aplicar",
   "studio.toolbar.source": "Fuente de preview",
   "studio.toolbar.source.mock": "Mock",
   "studio.toolbar.source.live": "Live",

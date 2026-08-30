@@ -44,7 +44,7 @@ export function StudioWallpaperPicker(props: StudioWallpaperPickerProps): React.
   const [error, setError] = useState<string | null>(null);
   useHubSuspendBlocker(
     "studio-wallpaper-import",
-    "Studio está importando un fondo sin aplicar",
+    t("studio.toolbar.wallpaper.suspendBlocker"),
     busy,
   );
   const wrapRef = useRef<HTMLDivElement>(null);

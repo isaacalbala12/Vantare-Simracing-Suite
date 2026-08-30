@@ -109,7 +109,7 @@ function LayoutViewportControls(props: {
   const [heightDraft, setHeightDraft] = useState(String(layoutViewport.height));
   useHubSuspendBlocker(
     "studio-layout-viewport-draft",
-    "Studio tiene un tamaño de lienzo sin aplicar",
+    t("studio.v3.layoutViewport.suspendBlocker"),
     widthDraft !== String(layoutViewport.width) || heightDraft !== String(layoutViewport.height),
   );
   const width = parseDimension(widthDraft);

@@ -26,6 +26,7 @@ export const studioOrbitEn: Record<string, string> = {
   "studio.toolbar.wallpaper.errorSize": "The image is too heavy.",
   "studio.toolbar.wallpaper.errorDecode": "The image could not be read.",
   "studio.toolbar.wallpaper.errorQuota": "No room left: remove a background and try again.",
+  "studio.toolbar.wallpaper.suspendBlocker": "Studio is importing a background that has not been applied",
   "studio.toolbar.source": "Preview source",
   "studio.toolbar.source.mock": "Mock",
   "studio.toolbar.source.live": "Live",

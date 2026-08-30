@@ -25,6 +25,8 @@ const IDLE_PULL_DELAY_MS = 100;
 const ERROR_PULL_DELAY_MS = 250;
 const EMPTY_RESPONSES_BEFORE_IDLE = 3;
 const BROWSER_PULL_TIMEOUT_MS = 5_000;
+const REQUEST_DURATION_SAMPLE_LIMIT = 512;
+const REQUEST_DURATION_BUCKETS_MS = Object.freeze([1, 2, 4, 8, 16, 32, 64, 128, 250, 500, 1_000, 2_500, 5_000]);
 
 export type OverlayWailsPullOptions = Readonly<{
   post(route: string, data: unknown): unknown | Promise<unknown>;
@@ -40,7 +42,14 @@ export type OverlayWailsPullDiagnostics = Readonly<{
   requestsCompleted: number;
   receivedV1Projections: number;
   receivedV2Snapshots: number;
-  requestDurationMs: Readonly<{ count: number; mean: number; max: number }>;
+  requestDurationMs: Readonly<{
+    count: number;
+    sampleCount: number;
+    mean: number;
+    max: number;
+    p99: number;
+    histogram: readonly Readonly<{le: number | null; count: number}>[];
+  }>;
 }>;
 
 export type OverlayWailsPullClient = Readonly<{
@@ -92,6 +101,7 @@ export function createOverlayWailsPullClient(
   let receivedV2Snapshots = 0;
   let requestDurationTotalMs = 0;
   let requestDurationMaxMs = 0;
+  const requestDurationSamplesMs: number[] = [];
 
   const scheduleNext = (delayMs: number) => {
     if (!active || scheduled !== undefined) return;
@@ -109,6 +119,10 @@ export function createOverlayWailsPullClient(
     requestsCompleted += 1;
     requestDurationTotalMs += duration;
     requestDurationMaxMs = Math.max(requestDurationMaxMs, duration);
+    requestDurationSamplesMs.push(duration);
+    if (requestDurationSamplesMs.length > REQUEST_DURATION_SAMPLE_LIMIT) {
+      requestDurationSamplesMs.shift();
+    }
     if (input === undefined) {
       awaiting = false;
       emptyResponses += 1;
@@ -239,6 +253,7 @@ export function createOverlayWailsPullClient(
       }
     },
     getDiagnostics() {
+      const sortedDurations = [...requestDurationSamplesMs].sort((left, right) => left - right);
       return Object.freeze({
         active,
         requestsCompleted,
@@ -246,12 +261,33 @@ export function createOverlayWailsPullClient(
         receivedV2Snapshots,
         requestDurationMs: Object.freeze({
           count: requestsCompleted,
+          sampleCount: sortedDurations.length,
           mean: requestsCompleted === 0 ? 0 : requestDurationTotalMs / requestsCompleted,
           max: requestDurationMaxMs,
+          p99: percentile(sortedDurations, 0.99),
+          histogram: requestDurationHistogram(sortedDurations),
         }),
       });
     },
   };
+}
+
+function percentile(sorted: readonly number[], fraction: number): number {
+  if (sorted.length === 0) return 0;
+  return sorted[Math.ceil(sorted.length * fraction) - 1] ?? 0;
+}
+
+function requestDurationHistogram(sorted: readonly number[]) {
+  const histogram: Array<Readonly<{le: number | null; count: number}>> = [];
+  let offset = 0;
+  for (const upperBound of REQUEST_DURATION_BUCKETS_MS) {
+    let end = offset;
+    while (end < sorted.length && (sorted[end] ?? Infinity) <= upperBound) end += 1;
+    histogram.push(Object.freeze({le: upperBound, count: end - offset}));
+    offset = end;
+  }
+  histogram.push(Object.freeze({le: null, count: sorted.length - offset}));
+  return Object.freeze(histogram);
 }
 
 export function createBrowserOverlayWailsPullClient(

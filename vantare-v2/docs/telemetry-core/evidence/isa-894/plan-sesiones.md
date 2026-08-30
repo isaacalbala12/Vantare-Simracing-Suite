@@ -10,8 +10,10 @@ por fixtures, replay, REST o el banco corto A/B.
    sesión, número de coches y hora de inicio.
 2. Cerrar Edge/WebView2 y cualquier `vantare-*.exe` ajeno. Mantener una sola
    app, un solo medidor y el juego. No cerrar `PresentMon-x64.exe` de Radeon.
-3. Arrancar con V1 apagado (sin `VANTARE_OVERLAY_V1_EMIT`; ajuste
-   `overlayV1Emit=false`). Perfil con Standings, Relative y Delta visibles.
+3. Ejecutar **dos fases identificadas por escenario**, nunca mezcladas en un
+   mismo proceso: `on` con `VANTARE_OVERLAY_V1_EMIT=1` para paridad shadow y
+   `off` sin override, con `overlayV1Emit=false`, para soak V2-only. Perfil con
+   Standings, Relative y Delta visibles.
 4. Capturar al inicio y al final: diagnóstico V2 de cada ventana, contadores de
    pull V1/V2, métricas del host, árbol de procesos y screenshot de widgets.
 5. Cada 60 s registrar CPU y Private Bytes de Go host, browser, renderer(es) y
@@ -22,29 +24,40 @@ por fixtures, replay, REST o el banco corto A/B.
 
 ## Matriz obligatoria
 
-| Sesión | Duración mínima | Escenario y gesto humano | Evidencia específica |
-| --- | ---: | --- | --- |
-| S1 · práctica/garaje/pista | 20 min | Spa práctica: 5 min garaje, salir de boxes, vuelta lanzada y volver al box | Transiciones pit/track, Delta y Relative; cero V1 recibido; memoria inicial/final. |
-| S2 · carrera | 20 min | Carrera con salida, tráfico, al menos una vuelta y entrada a boxes | Orden/identidad Standings, tráfico Relative, banderas/eventos y p99 de entrega. |
-| S3 · parrilla grande | 20 min | Sesión con **más de 40 coches**; mantener tráfico real alrededor | Conteo de coches, payload/Hz, CPU/RAM por proceso y cero pérdida de autoridad. |
-| S4 · reconnect | 20 min | En sesión: detener/reanudar la fuente de telemetría o reiniciar LMU según coordine Isaac, sin reiniciar Vantare | `live -> stale/disconnected -> connecting -> live`, epoch/revisión monotónicos y recuperación sin V1. |
-| S5 · ventana tardía | 20 min | Mantener LMU/Vantare live ≥5 min y abrir después Desktop; repetir abriendo Studio Live u OBS tarde | Primer status/frame retenido, perfil completo, sin hueco visual ni listener V1. |
+| Sesión | Fase `on` | Fase `off` | Escenario y gesto humano | Evidencia específica |
+| --- | ---: | ---: | --- | --- |
+| S1 · práctica/garaje/pista | 20 min | 20 min | Spa práctica: 5 min garaje, salir de boxes, vuelta lanzada y volver al box | Transiciones pit/track, Delta y Relative; paridad exacta ON, cero V1 OFF y memoria inicial/final. |
+| S2 · carrera | 20 min | 20 min | Carrera con salida, tráfico, al menos una vuelta y entrada a boxes | Orden/identidad Standings, tráfico Relative, banderas/eventos e histograma/p99 de entrega. |
+| S3 · parrilla grande | 20 min | **60 min** | Sesión con **más de 40 coches**; mantener tráfico real alrededor | Conteo de coches, payload/Hz, CPU/RAM por proceso y soak prolongado OFF. |
+| S4 · reconnect | 20 min | 20 min | En sesión: detener/reanudar la fuente de telemetría o reiniciar LMU según coordine Isaac, sin reiniciar Vantare | `live -> stale/disconnected -> connecting -> live`, epoch/revisión monotónicos y recuperación en ambas fases. |
+| S5 · ventana tardía | 20 min | 20 min | Mantener LMU/Vantare live ≥5 min y abrir después Desktop; repetir abriendo Studio Live u OBS tarde | Primer status/frame retenido, perfil completo, sin hueco visual; shadow ON y cero listener V1 OFF. |
 
-Una de S1–S5 debe prolongarse lo suficiente para cubrir una observación de fuga
-representativa; ninguna puede durar menos de 20 minutos medidos. Si la sesión
-grande no cabe en S2, S3 es obligatoria además de las otras cuatro.
+La sesión prolongada queda fijada en **S3 OFF durante 60 minutos medidos**. Las
+otras nueve fases duran 20 minutos. Reiniciar Vantare entre ON y OFF es
+obligatorio para que el interruptor resuelto y los contadores nazcan limpios.
 
 ## Validación y criterio de parada
 
 - Campos `exact`: cero mismatch durante toda la ventana comparable.
 - Campos `partial`/`not-comparable`: veredicto explícito según
   `isa-893/comparador-catalogo.md`; no cuentan como paridad.
-- Cero `telemetry:overlay:projection` recibido en todas las ventanas con V1 OFF.
-- V2 continúa recibiéndose; cero `overlay-v2-*`, `widget-authority-missing`,
-  renderer exception o fallback visual V1.
-- Private Bytes no muestra pendiente monotónica sin explicación; reportar
-  browser, renderer y Go host por separado.
-- Reconnect y ventana tardía recuperan status/frame sin remount inseguro.
+- Fase ON: el shadow debe activarse, comparar frames y mantener **cero mismatch
+  en campos `exact`**; cada diferencia partial/not-comparable se conserva por
+  métrica. Fase OFF: `shadow` permanece inactivo y cada ventana recibe **cero**
+  `telemetry:overlay:projection`.
+- V2 aumenta entre checkpoints de cinco minutos. El pull publica histograma de
+  las últimas 512 entregas y su p99 empírico: **p99 ≤ 250 ms**, máximo ≤ 5.000 ms
+  y cero checkpoints consecutivos sin avance V2. La espera incluida en el POST
+  se declara; no se confunde con los 17 µs del encoder V2 medidos por #912.
+- Pendiente lineal de Private Bytes calculada sobre toda la fase: Go host,
+  browser y **cada renderer** ≤ **5 MiB/h**; GPU process ≤ **10 MiB/h**; suma
+  de procesos propios ≤ **15 MiB/h**. Cada rol necesita al menos 15 muestras en
+  una fase de 20 min y 45 en S3 OFF; un proceso reiniciado invalida su pendiente.
+- Cero `overlay-v2-*`, `widget-authority-missing`, renderer exception o fallback
+  visual V1.
+- Reconnect recupera `live` y un frame V2 nuevo en ≤ **30 s** desde la marca de
+  reanudación. Una ventana tardía recibe primer status/frame en ≤ **5 s** y
+  completa widgets en ≤ **10 s** desde su marca de apertura.
 
 Se detiene el gate y se entrega la evidencia si aparece cualquier consumidor
 V1 productivo, mismatch exacto no entendido, pérdida de V2, crecimiento de

@@ -24,6 +24,45 @@ async function flushResponse(pending: PendingPull[], input: unknown): Promise<vo
 }
 
 describe("overlay HTTP pull client", () => {
+  it("reports the empirical p99 and histogram of recent delivery durations", () => {
+    const durations = [1, 4, 8, 20, 70];
+    const scheduled: Array<() => void> = [];
+    let clock = 0;
+    let delivery = 0;
+    const client = createOverlayWailsPullClient({
+      now: () => clock,
+      post(route) {
+        if (route === OVERLAY_PULL_CLOSE_ROUTE) return undefined;
+        clock += durations[delivery] ?? 0;
+        delivery += 1;
+        return {sessionId: "duration", delivery, events: []};
+      },
+      schedule(callback) {
+        scheduled.push(callback);
+        return callback;
+      },
+      cancel: () => undefined,
+      createSessionID: () => "duration",
+    });
+
+    client.start();
+    for (let index = 1; index < durations.length; index += 1) scheduled.shift()?.();
+
+    expect(client.getDiagnostics().requestDurationMs).toMatchObject({
+      count: 5,
+      sampleCount: 5,
+      p99: 70,
+      histogram: expect.arrayContaining([
+        {le: 1, count: 1},
+        {le: 4, count: 1},
+        {le: 8, count: 1},
+        {le: 32, count: 1},
+        {le: 128, count: 1},
+      ]),
+    });
+    client.stop();
+  });
+
   it.each([
     { state: "V1 off", events: [{name: "telemetry:overlay-v2:snapshot", data: {revision: 1}}], wantV1: 0 },
     { state: "V1 diagnostic rollback", events: [

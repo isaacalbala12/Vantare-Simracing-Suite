@@ -54,7 +54,10 @@ try {
             throw 'generate_supabase_config.ps1 no produjo el fichero Go temporal.'
         }
         New-Item -ItemType Directory -Force -Path (Split-Path -Parent $outPath) | Out-Null
-        go build -tags production -trimpath -buildvcs=false -ldflags '-w -s -H windowsgui' -o $outPath .\cmd\vantare
+        # El banco necesita el puerto CDP, que está deliberadamente ausente de
+        # builds `production`; sigue siendo una build real con frontend y
+        # Supabase embebidos, pero conserva solo los ganchos de diagnóstico.
+        go build -trimpath -buildvcs=false -ldflags '-w -s -H windowsgui' -o $outPath .\cmd\vantare
         if ($LASTEXITCODE -ne 0) { throw "go build falló con código $LASTEXITCODE." }
         $hash = (Get-FileHash -LiteralPath $outPath -Algorithm SHA256).Hash.ToLowerInvariant()
         Write-Host "Build de medida creada: $outPath"

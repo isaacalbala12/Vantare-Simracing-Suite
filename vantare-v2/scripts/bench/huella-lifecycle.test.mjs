@@ -56,7 +56,8 @@ test("la build de medida embebe Supabase sin copiar ni mostrar env.local", () =>
   assert.match(buildMeasurement, /VITE_SUPABASE_URL/);
   assert.match(buildMeasurement, /VANTARE_SUPABASE_URL = \$values\['VITE_SUPABASE_URL'\]/);
   assert.match(buildMeasurement, /generate_supabase_config\.ps1/);
-  assert.match(buildMeasurement, /go build -tags production/);
+  assert.match(buildMeasurement, /go build -trimpath/);
+  assert.doesNotMatch(buildMeasurement, /go build -tags production/);
   assert.match(buildMeasurement, /Remove-Item -LiteralPath \$generatedPath/);
   assert.doesNotMatch(buildMeasurement, /Write-Host.*\$values/);
 });

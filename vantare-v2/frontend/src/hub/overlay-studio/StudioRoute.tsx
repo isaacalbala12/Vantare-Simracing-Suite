@@ -372,6 +372,11 @@ export const StudioRoute = memo(function StudioRoute(props: StudioRouteProps): R
     });
     overlayV2Store.reset();
     const unbindOverlayV2 = bindOverlayV2Coordinator(overlayV2Store, coordinator);
+    const diagnosticWindow = window as Window & { __vantareOverlayV2Diagnostics?: () => unknown };
+    diagnosticWindow.__vantareOverlayV2Diagnostics = () => Object.freeze({
+      ...overlayV2Store.getDiagnostics(),
+      pull: overlayPull.getDiagnostics(),
+    });
     // Este efecto es la fabrica y el owner de la generacion; Studio no debe
     // registrar listeners ni cargar perfiles contra recursos ya dispuestos.
     raceSchedule.start();
@@ -379,6 +384,7 @@ export const StudioRoute = memo(function StudioRoute(props: StudioRouteProps): R
     setGeneration({ coordinator, overlayV2Store, overlayPull, telemetryAdapter, raceSchedule, overlayV2Features });
 
     return () => {
+      delete diagnosticWindow.__vantareOverlayV2Diagnostics;
       if (telemetryAdapterProp === null) telemetryAdapter.stop();
       overlayPull.stop();
       unbindOverlayV2();

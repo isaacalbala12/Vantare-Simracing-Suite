@@ -24,6 +24,75 @@ async function flushResponse(pending: PendingPull[], input: unknown): Promise<vo
 }
 
 describe("overlay HTTP pull client", () => {
+  it("reports the empirical p99 and histogram of recent delivery durations", () => {
+    const durations = [1, 4, 8, 20, 70];
+    const scheduled: Array<() => void> = [];
+    let clock = 0;
+    let delivery = 0;
+    const client = createOverlayWailsPullClient({
+      now: () => clock,
+      post(route) {
+        if (route === OVERLAY_PULL_CLOSE_ROUTE) return undefined;
+        clock += durations[delivery] ?? 0;
+        delivery += 1;
+        return {sessionId: "duration", delivery, events: []};
+      },
+      schedule(callback) {
+        scheduled.push(callback);
+        return callback;
+      },
+      cancel: () => undefined,
+      createSessionID: () => "duration",
+    });
+
+    client.start();
+    for (let index = 1; index < durations.length; index += 1) scheduled.shift()?.();
+
+    expect(client.getDiagnostics().requestDurationMs).toMatchObject({
+      count: 5,
+      sampleCount: 5,
+      p99: 70,
+      histogram: expect.arrayContaining([
+        {le: 1, count: 1},
+        {le: 4, count: 1},
+        {le: 8, count: 1},
+        {le: 32, count: 1},
+        {le: 128, count: 1},
+      ]),
+    });
+    client.stop();
+  });
+
+  it.each([
+    { state: "V1 off", events: [{name: "telemetry:overlay-v2:snapshot", data: {revision: 1}}], wantV1: 0 },
+    { state: "V1 diagnostic rollback", events: [
+      {name: "telemetry:overlay:projection", data: {sequence: 1}},
+      {name: "telemetry:overlay-v2:snapshot", data: {revision: 1}},
+    ], wantV1: 1 },
+  ])("keeps V2 delivery authoritative with $state", async ({events, wantV1}) => {
+    const pending: PendingPull[] = [];
+    const v1Snapshots: unknown[] = [];
+    const v2Snapshots: unknown[] = [];
+    const client = createOverlayWailsPullClient({
+      post(route) {
+        if (route === OVERLAY_PULL_CLOSE_ROUTE) return undefined;
+        return new Promise((resolve) => pending.push({resolve}));
+      },
+      schedule: () => 1,
+      cancel: () => undefined,
+      createSessionID: () => "v1-switch",
+    });
+    client.source.subscribe("telemetry:overlay:projection", (data) => v1Snapshots.push(data));
+    client.source.subscribe("telemetry:overlay-v2:snapshot", (data) => v2Snapshots.push(data));
+
+    client.start();
+    await flushResponse(pending, {sessionId: "v1-switch", delivery: 1, events});
+
+    expect(v1Snapshots).toHaveLength(wantV1);
+    expect(v2Snapshots).toEqual([{revision: 1}]);
+    client.stop();
+  });
+
   it("acks only after processing and keeps one request in flight", async () => {
     const posted: Array<{ route: string; data: unknown }> = [];
     const pending: PendingPull[] = [];
@@ -86,6 +155,12 @@ describe("overlay HTTP pull client", () => {
     });
     expect(v1Snapshots).toEqual([{sequence: 1}, {sequence: 100}]);
     expect(v2Snapshots).toEqual([{revision: 100}]);
+    expect(client.getDiagnostics()).toMatchObject({
+      active: true,
+      requestsCompleted: 2,
+      receivedV1Projections: 2,
+      receivedV2Snapshots: 1,
+    });
     expect(onError).not.toHaveBeenCalled();
 
     client.stop();

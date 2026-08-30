@@ -137,7 +137,8 @@ func TestOverlayV2PublishesObservedSourceHzOverTwoSeconds(t *testing.T) {
 }
 
 func TestRuntimePublishesV1AndV2InShadow(t *testing.T) {
-	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{})
+	enabled := true
+	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{OverlayV1Emit: &enabled})
 	if err != nil {
 		t.Fatal(err)
 	}

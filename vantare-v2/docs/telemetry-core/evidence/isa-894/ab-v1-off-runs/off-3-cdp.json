@@ -1,0 +1,150 @@
+{
+  "schema": "vantare.huella.cdp.v1",
+  "capturedAt": "2026-08-30T16:23:38.426Z",
+  "action": "overlay-start",
+  "control": {
+    "changed": true,
+    "running": true,
+    "emittedAt": "2026-08-30T16:23:27.769Z",
+    "mechanism": {
+      "kind": "wails-event",
+      "eventName": "overlay:start-active"
+    }
+  },
+  "durationSeconds": 10,
+  "expectedWidgets": 3,
+  "renderedWidgets": 3,
+  "overlayReadyAt": "2026-08-30T16:23:28.365Z",
+  "rendererProcessIds": [
+    22452,
+    9300
+  ],
+  "rendererProcessInfoError": null,
+  "targets": [
+    {
+      "role": "hub",
+      "url": "http://wails.localhost/#/hub",
+      "title": "Vantare",
+      "overlay": false,
+      "hub": true,
+      "surface": "hub",
+      "widgetCount": 0,
+      "diagnostics": null,
+      "probe": {
+        "rafPerSecond": 120.2,
+        "longTaskCount": 0,
+        "longTaskTotalMs": 0,
+        "longTaskMaxMs": 0,
+        "widgetCount": 0
+      },
+      "screenshot": null
+    },
+    {
+      "role": "overlay",
+      "url": "http://wails.localhost/overlay.html",
+      "title": "Vantare Overlay",
+      "overlay": true,
+      "hub": false,
+      "surface": "desktop",
+      "widgetCount": 3,
+      "diagnostics": {
+        "overlay_v2_parse_duration": {
+          "count": 4,
+          "p50": 0.40000000037252903,
+          "p99": 1.5,
+          "nonLiveSamples": 0
+        },
+        "overlay_v2_transport": {
+          "revision": 13,
+          "frameRevision": 13,
+          "sourceState": "live",
+          "epoch": 1,
+          "sequence": 316,
+          "sessionId": "lmu-session-1",
+          "vehicleCount": 18,
+          "playerPit": "pit"
+        },
+        "pull": {
+          "active": true,
+          "requestsCompleted": 4,
+          "receivedV1Projections": 0,
+          "receivedV2Snapshots": 3,
+          "requestDurationMs": {
+            "count": 4,
+            "sampleCount": 4,
+            "mean": 25.274999999441206,
+            "max": 59.5,
+            "p99": 59.5,
+            "histogram": [
+              {
+                "le": 1,
+                "count": 0
+              },
+              {
+                "le": 2,
+                "count": 0
+              },
+              {
+                "le": 4,
+                "count": 0
+              },
+              {
+                "le": 8,
+                "count": 0
+              },
+              {
+                "le": 16,
+                "count": 2
+              },
+              {
+                "le": 32,
+                "count": 1
+              },
+              {
+                "le": 64,
+                "count": 1
+              },
+              {
+                "le": 128,
+                "count": 0
+              },
+              {
+                "le": 250,
+                "count": 0
+              },
+              {
+                "le": 500,
+                "count": 0
+              },
+              {
+                "le": 1000,
+                "count": 0
+              },
+              {
+                "le": 2500,
+                "count": 0
+              },
+              {
+                "le": 5000,
+                "count": 0
+              },
+              {
+                "le": null,
+                "count": 0
+              }
+            ]
+          }
+        },
+        "shadow": null
+      },
+      "probe": {
+        "rafPerSecond": 120.1,
+        "longTaskCount": 0,
+        "longTaskTotalMs": 0,
+        "longTaskMaxMs": 0,
+        "widgetCount": 3
+      },
+      "screenshot": null
+    }
+  ]
+}

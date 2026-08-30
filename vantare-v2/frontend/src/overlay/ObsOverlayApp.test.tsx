@@ -13,6 +13,16 @@ const runtimeMock = vi.hoisted(() => ({
   emit: vi.fn(),
 }));
 
+const shadowRuntimeMock = vi.hoisted(() => ({
+  acceptLegacy: vi.fn(),
+  acceptOverlayV2: vi.fn(),
+  create: vi.fn(),
+}));
+
+vi.mock("./telemetry-shadow/overlay-v2-shadow-runtime", () => ({
+  createOverlayV2ShadowRuntime: shadowRuntimeMock.create,
+}));
+
 vi.mock("@wailsio/runtime", () => ({
   Events: {
     On: (name: string, handler: Handler) => {
@@ -117,7 +127,38 @@ describe("ObsOverlayApp", () => {
     vi.stubGlobal("EventSource", MockEventSource);
     runtimeOutput = { width: 1600, height: 900 };
     previewOutput = { width: 1600, height: 900 };
+    shadowRuntimeMock.acceptLegacy.mockReset();
+    shadowRuntimeMock.acceptOverlayV2.mockReset();
+    shadowRuntimeMock.create.mockReset().mockReturnValue({
+      acceptLegacy: shadowRuntimeMock.acceptLegacy,
+      acceptOverlayV2: shadowRuntimeMock.acceptOverlayV2,
+      sessionSummary: () => ({ frames: 0, mismatches: 0 }),
+    });
     installResizeObserver();
+  });
+
+  it("does not allocate or ingest shadow state while V1 emission is off", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(buildApiResponse({
+        schemaVersion: 3,
+        id: "obs-shadow-off",
+        name: "OBS Shadow Off",
+        displayMode: "streaming",
+        monitorIndex: 0,
+        layouts: { general: { type: "general", widgets: [] } },
+      })),
+    } as Response));
+    render(<ObsOverlayApp />);
+    await flush();
+
+    const overlayV2 = MockEventSource.instances.find(
+      (source) => source.url === "/telemetry/overlay-v2/projection",
+    );
+    act(() => overlayV2?.dispatch("telemetry:overlay-v2:snapshot", goldenV2Raw));
+
+    expect(shadowRuntimeMock.create).not.toHaveBeenCalled();
+    expect(shadowRuntimeMock.acceptOverlayV2).not.toHaveBeenCalled();
   });
 
   afterEach(() => {

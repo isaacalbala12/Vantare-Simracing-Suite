@@ -2120,8 +2120,10 @@ func main() {
 	engBridge.Start()
 
 	effectivePerformance := settingsSvc.EffectivePerformancePolicy(studioProfileSvc.PerformanceProfile())
+	overlayV1Emit := app.ResolveOverlayV1Emit(settingsSvc.Settings().OverlayV1Emit, os.LookupEnv)
 	telemetryCoreRuntime, err = app.NewTelemetryCoreRuntime(app.TelemetryCoreRuntimeConfig{
 		Enabled:                 *live,
+		OverlayV1Emit:           &overlayV1Emit,
 		Emitter:                 emitter,
 		Engineer:                engSvc,
 		StrategyPublicTransport: *strategyPublicTransport,

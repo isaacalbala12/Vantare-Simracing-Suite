@@ -9,6 +9,10 @@ param(
     [ValidateRange(1024, 65535)]
     [int]$Puerto = 9247,
     [string]$Juego = 'Le Mans Ultimate',
+    [string]$Escena = '',
+    [string]$SesionLmu = '',
+    [ValidateRange(0, 200)]
+    [int]$Coches = 0,
     [string]$Salida = 'results',
     [switch]$SinJuego,
     [switch]$Forzar,
@@ -38,6 +42,7 @@ $outputDir = Resolve-BenchPath $Salida
 $processHelper = Resolve-BenchPath 'scripts/bench/huella-procesos.mjs' -MustExist
 $cdpHelper = Resolve-BenchPath 'scripts/bench/huella-cdp.mjs' -MustExist
 $summaryHelper = Resolve-BenchPath 'scripts/bench/huella-resumen.mjs' -MustExist
+$distPath = Resolve-BenchPath 'frontend/dist' -MustExist
 if ([IO.Path]::GetExtension($exePath) -ne '.exe') { throw '-Exe debe apuntar a un ejecutable .exe.' }
 if ([IO.Path]::GetExtension($profilePath) -ne '.json') { throw '-Perfil debe apuntar a un perfil JSON.' }
 
@@ -55,6 +60,24 @@ $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
 $userPathParts = @($userPath -split ';' | Where-Object { $_ })
 
 $profileDocument = Get-Content -LiteralPath $profilePath -Raw | ConvertFrom-Json
+
+function Get-DirectorySha256([string]$Directory) {
+    $lines = @(Get-ChildItem -LiteralPath $Directory -File -Recurse | Sort-Object FullName | ForEach-Object {
+        $relative = [IO.Path]::GetRelativePath($Directory, $_.FullName).Replace('\', '/')
+        '{0}  {1}' -f (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant(), $relative
+    })
+    $sha = [Security.Cryptography.SHA256]::Create()
+    try {
+        $bytes = [Text.Encoding]::UTF8.GetBytes(($lines -join "`n") + "`n")
+        return ([Convert]::ToHexString($sha.ComputeHash($bytes))).ToLowerInvariant()
+    } finally {
+        $sha.Dispose()
+    }
+}
+
+$buildSha256 = (Get-FileHash -LiteralPath $exePath -Algorithm SHA256).Hash.ToLowerInvariant()
+$distSha256 = Get-DirectorySha256 $distPath
+$gitHead = (git -C $repoRoot rev-parse HEAD).Trim()
 $expectedWidgetCount = @(
     $profileDocument.layouts.PSObject.Properties.Value |
         ForEach-Object { $_.widgets } |
@@ -74,6 +97,12 @@ $plan = [ordered]@{
     game = if ($SinJuego) { $null } else { $Juego }
     gamePresent = -not [bool]$SinJuego
     measurementMode = if ($SinJuego) { 'ram-only-no-game' } else { 'full' }
+    scene = $Escena
+    lmuSession = $SesionLmu
+    cars = $Coches
+    buildSha256 = $buildSha256
+    distSha256 = $distSha256
+    gitHead = $gitHead
     outputDirectory = $outputDir
     presentMon = if ($SinJuego) { $null } else { $presentMonPath }
     presentMonUserPathPersisted = $presentMonDirectory -in $userPathParts
@@ -144,6 +173,7 @@ $rawCsv = Join-Path $outputDir "$stem.csv"
 $presentMonCsv = Join-Path $outputDir "$stem-presentmon.csv"
 $summaryMd = Join-Path $outputDir "$stem.md"
 $cdpJson = Join-Path $outputDir "$stem-cdp.json"
+$licenseJson = Join-Path $outputDir "$stem-license.json"
 $hubReopenJson = Join-Path $outputDir "$stem-hub-reopen.json"
 $stdoutLog = Join-Path $outputDir "$stem-stdout.log"
 $stderrLog = Join-Path $outputDir "$stem-stderr.log"
@@ -159,6 +189,9 @@ $sessionName = $null
 $rows = [Collections.Generic.List[object]]::new()
 $shutdownClean = $false
 $gameFrametimeValid = $false
+$licenseState = $null
+$licenseAccount = $null
+$licenseConfigured = $false
 $orphanEtwSessionsStopped = @()
 $orphanEtwSessionsStoppedJson = '[]'
 $previousCpu = @{}
@@ -274,6 +307,17 @@ try {
     } until ($cdpReady -or (Get-Date) -ge $deadline)
     if (-not $cdpReady) { throw "CDP no respondió en el puerto $Puerto dentro de 30 s." }
 
+    & node $cdpHelper --cdp "http://127.0.0.1:$Puerto" --action license --duration 15 --output $licenseJson | Out-Host
+    if ($LASTEXITCODE -ne 0) { throw "No se pudo capturar el estado de licencia por CDP (código $LASTEXITCODE)." }
+    $licenseResult = Get-Content -LiteralPath $licenseJson -Raw | ConvertFrom-Json
+    if ($licenseResult.configured -ne $true -or [string]$licenseResult.state -eq 'unconfigured' -or [string]$licenseResult.account -ne 'authenticated') {
+        throw 'Prohibido medir una build sin licencia configurada: reconstruye con frontend/.env.local y tools/generate_supabase_config.ps1.'
+    }
+    $licenseState = [string]$licenseResult.state
+    $licenseAccount = [string]$licenseResult.account
+    $licenseConfigured = [bool]$licenseResult.configured
+    Write-Host "Licencia preflight: estado=$licenseState; cuenta=$licenseAccount; configurada=$licenseConfigured"
+
     if ($Condicion -ne 'A0') {
         & node $cdpHelper --cdp "http://127.0.0.1:$Puerto" --action overlay-stop --duration 1 --expected-widgets 0 | Out-Host
         if ($LASTEXITCODE -ne 0) { throw 'No se pudo fijar el estado inicial con el overlay detenido.' }
@@ -324,7 +368,9 @@ try {
         if ($process) { $previousCpu[$processId] = $process.TotalProcessorTime.TotalSeconds }
     }
     $previousAt = Get-Date
-    for ($sampleIndex = 0; $sampleIndex -lt $Duracion; $sampleIndex++) {
+    $sampleIndex = 0
+    $sampleDeadline = (Get-Date).AddSeconds($Duracion)
+    while ((Get-Date) -lt $sampleDeadline) {
         Start-Sleep -Seconds 1
         $now = Get-Date
         $elapsed = ($now - $previousAt).TotalSeconds
@@ -341,6 +387,9 @@ try {
             $gpuValues = if ($gpuSample.Valid -and $gpuSample.Totals.ContainsKey($processId)) { $gpuSample.Totals[$processId] } else { @{ Engine = 0.0; Dedicated = 0.0 } }
             $rows.Add([pscustomobject][ordered]@{
                 timestamp = $now.ToString('o'); condition = $Condicion; pid = $processId; role = $roleByPid[$processId]
+                buildSha256 = $buildSha256; distSha256 = $distSha256; buildStable = $true; gitHead = $gitHead
+                licenseState = $licenseState; licenseAccount = $licenseAccount; licenseConfigured = $licenseConfigured
+                scene = $Escena; lmuSession = $SesionLmu; cars = $Coches
                 hygieneForced = $hygieneForced; foreignProcesses = $foreignProcessesJson; publishable = $publishable; measurementMode = $measurementMode
                 systemWebView2Count = $systemWebView2.Count; systemWebView2Paths = $systemWebView2PathsJson
                 orphanEtwSessionsStopped = $orphanEtwSessionsStoppedJson; gameFrametimeValid = $false; frametimePublishable = $false
@@ -352,6 +401,7 @@ try {
             })
         }
         $previousAt = $now
+        $sampleIndex += 1
     }
 
     if ($Condicion -eq 'HubMin') {
@@ -387,6 +437,9 @@ try {
             $rows.Add([pscustomobject][ordered]@{
                 timestamp = [string]$frame.CPUStartTime
                 condition = $Condicion; pid = $gameProcess.Id; role = 'game'; privateBytes = $null; workingSetBytes = $null
+                buildSha256 = $buildSha256; distSha256 = $distSha256; buildStable = $true; gitHead = $gitHead
+                licenseState = $licenseState; licenseAccount = $licenseAccount; licenseConfigured = $licenseConfigured
+                scene = $Escena; lmuSession = $SesionLmu; cars = $Coches
                 hygieneForced = $hygieneForced; foreignProcesses = $foreignProcessesJson; publishable = $publishable; measurementMode = $measurementMode
                 systemWebView2Count = $systemWebView2.Count; systemWebView2Paths = $systemWebView2PathsJson
                 orphanEtwSessionsStopped = $orphanEtwSessionsStoppedJson; gameFrametimeValid = $false; frametimePublishable = $false
@@ -406,9 +459,14 @@ try {
     if (-not $gameFrametimeValid) {
         Write-Warning 'FRAMETIME NO PUBLICABLE: PresentMon no produjo ningún frame válido; RAM/CPU/GPU de Vantare siguen siendo utilizables.'
     }
+    $buildSha256End = (Get-FileHash -LiteralPath $exePath -Algorithm SHA256).Hash.ToLowerInvariant()
+    $distSha256End = Get-DirectorySha256 $distPath
+    $buildStable = $buildSha256 -eq $buildSha256End -and $distSha256 -eq $distSha256End
     foreach ($row in $rows) {
         $row.gameFrametimeValid = $gameFrametimeValid
         $row.frametimePublishable = $gameFrametimeValid
+        $row.buildStable = $buildStable
+        if (-not $buildStable) { $row.publishable = $false }
     }
 
     $rows | Export-Csv -LiteralPath $rawCsv -NoTypeInformation -Encoding utf8
@@ -449,5 +507,6 @@ try {
 Write-Host "CSV: $rawCsv"
 Write-Host "Resumen: $summaryMd"
 Write-Host "CDP: $cdpJson"
+Write-Host "Licencia: $licenseJson"
 if ($Condicion -eq 'HubMin') { Write-Host "Reapertura Hub: $hubReopenJson" }
 Write-Host "Cierre limpio: $shutdownClean"

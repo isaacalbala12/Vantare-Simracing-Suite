@@ -1,0 +1,1 @@
+{"schema":"vantare.license.cdp.v1","capturedAt":"2026-08-30T16:16:07.570Z","action":"license","event":"license:changed","state":"active","configured":true,"account":"authenticated","deviceOK":true,"transitions":[{"state":"anonymous","configured":true,"account":"anonymous","deviceOK":false},{"state":"active","configured":true,"account":"authenticated","deviceOK":true}]}

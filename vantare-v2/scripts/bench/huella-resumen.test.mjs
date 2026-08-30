@@ -70,6 +70,12 @@ test("rechaza una corrida marcada como no publicable", () => {
   assert.match(markdown, /msedge\.exe:42/);
 });
 
+test("rechaza agregar corridas producidas por builds distintos", () => {
+  const runA = summarizeRun(parseCsv("timestamp,role,cpuPct,buildSha256,distSha256,buildStable,scene,lmuSession,cars\nt1,go-host,1,aaaaaaaa,dist-1,true,Spa garage,practice,20\n"));
+  const runB = summarizeRun(parseCsv("timestamp,role,cpuPct,buildSha256,distSha256,buildStable,scene,lmuSession,cars\nt1,go-host,1,bbbbbbbb,dist-2,true,Spa garage,practice,20\n"));
+  assert.throws(() => aggregateRuns([runA, runA, runB]), /builds distintos/i);
+});
+
 test("publica conteo y rutas de WebView2 permitidos del sistema", () => {
   const systemPath = String.raw`C:\Users\isaac\AppData\Local\Packages\MicrosoftWindows.Client.CBS_x\LocalState\EBWebView`;
   const pathsCsv = JSON.stringify([systemPath]).replaceAll('"', '""');
@@ -135,4 +141,11 @@ test("la tabla de pérdidas etiqueta el total sin llamarlo presentado", () => {
   const markdown = renderMarkdown("A1", [], ["run.csv"], [run]);
   assert.match(markdown, /\| Perdidos \| Frames totales \| Porcentaje \|/);
   assert.doesNotMatch(markdown, /\| Perdidos \| Presentados \|/);
+});
+
+test("el banco limita el muestreo de procesos por tiempo de pared", async () => {
+  const script = await readFile(new URL("huella.ps1", import.meta.url), "utf8");
+  assert.match(script, /AddSeconds\(\$Duracion\)/);
+  assert.match(script, /while \(\(Get-Date\) -lt \$sampleDeadline\)/);
+  assert.doesNotMatch(script, /for \(\$sampleIndex = 0; \$sampleIndex -lt \$Duracion/);
 });

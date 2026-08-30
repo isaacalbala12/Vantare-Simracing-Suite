@@ -1,8 +1,9 @@
 // Probe reducido de ISA-912 (`frontend/scripts/isa-912-webview-profile.mjs`):
 // conserva su detección por DOM, rAF y PerformanceObserver, y añade el control
 // reproducible del overlay a través del botón productivo del Hub.
-import { writeFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
+import path from "node:path";
 import process from "node:process";
 
 // Playwright pertenece al workspace frontend; resolver desde su package.json
@@ -16,16 +17,29 @@ function argument(name, fallback = "") {
 }
 
 async function describePage(page) {
-  return page.evaluate(() => ({
-    url: window.location.href,
-    title: document.title,
-    overlay: window.location.href.startsWith("http://wails.localhost/overlay.html")
+  return page.evaluate(() => {
+    const current = new URL(window.location.href);
+    const overlayEntry = window.location.href.startsWith("http://wails.localhost/overlay.html")
+      || (current.origin === "http://wails.localhost" && current.pathname === "/overlay");
+    const overlay = overlayEntry
       && (typeof window.__vantareOverlayV2Diagnostics === "function"
-        || document.querySelector('[data-testid="runtime-overlay-surface"]') !== null),
-    hub: window.location.href.startsWith("http://wails.localhost/#/hub")
-      || document.querySelector(".orbit-root") !== null,
-    widgetCount: document.querySelectorAll('[data-testid="runtime-widget-frame"]').length,
-  }));
+        || document.querySelector('[data-testid="runtime-overlay-surface"]') !== null);
+    const hub = window.location.href.startsWith("http://wails.localhost/#/hub")
+      || document.querySelector(".orbit-root") !== null;
+    const studio = hub && document.querySelector(".studio-route-views") !== null;
+    const obs = overlay && (current.pathname !== "/overlay.html" || current.searchParams.get("obs") === "1");
+    return {
+      url: window.location.href,
+      title: document.title,
+      overlay,
+      hub,
+      surface: studio ? "studio" : overlay ? (obs ? "obs" : "desktop") : hub ? "hub" : "unknown",
+      widgetCount: document.querySelectorAll('[data-testid="runtime-widget-frame"]').length,
+      diagnostics: typeof window.__vantareOverlayV2Diagnostics === "function"
+        ? window.__vantareOverlayV2Diagnostics()
+        : null,
+    };
+  });
 }
 
 async function pagesByRole(browser) {
@@ -163,13 +177,48 @@ async function capturePerformance(page, timeoutMs) {
   }, timeoutMs);
 }
 
+async function captureLicense(page, timeoutMs) {
+  return page.evaluate(async (timeout) => {
+    const { Events } = await import("/wails/runtime.js");
+    return new Promise((resolve, reject) => {
+      const transitions = [];
+      const timer = window.setTimeout(() => {
+        unsubscribe();
+        const last = transitions.at(-1) ?? null;
+        reject(new Error(`authenticated license:changed was not emitted within ${timeout} ms; last=${JSON.stringify(last)}`));
+      }, timeout);
+      const unsubscribe = Events.On("license:changed", (event) => {
+        const payload = event?.data;
+        if (!payload || typeof payload !== "object" || typeof payload.state !== "string") return;
+        const sanitized = {
+          state: payload.state,
+          configured: payload.state !== "unconfigured",
+          account: payload.userId ? "authenticated" : "anonymous",
+          deviceOK: payload.deviceOK === true,
+        };
+        transitions.push(sanitized);
+        if (sanitized.account !== "authenticated" || !sanitized.configured) return;
+        window.clearTimeout(timer);
+        unsubscribe();
+        resolve({
+          event: "license:changed",
+          ...sanitized,
+          transitions,
+        });
+      });
+      Events.Emit("license:cached:get", {});
+    });
+  }, timeoutMs);
+}
+
 const cdp = argument("cdp");
 const action = argument("action", "inspect");
 const output = argument("output");
+const screenshotDir = argument("screenshot-dir");
 const durationSeconds = Number(argument("duration", "10"));
 const expectedWidgets = Number(argument("expected-widgets", "0"));
-if (!cdp || !["inspect", "overlay-start", "overlay-stop", "hub-minimise", "hub-restore", "hub-open", "performance", "app-quit"].includes(action) || !Number.isFinite(durationSeconds) || durationSeconds < 1 || durationSeconds > 120 || !Number.isInteger(expectedWidgets) || expectedWidgets < 0) {
-  throw new Error("usage: node huella-cdp.mjs --cdp http://127.0.0.1:9247 --action inspect|overlay-start|overlay-stop|hub-minimise|hub-restore|hub-open|performance|app-quit [--duration 10] [--expected-widgets 3] [--output result.json]");
+if (!cdp || !["inspect", "state", "overlay-start", "overlay-stop", "hub-minimise", "hub-restore", "hub-open", "performance", "license", "app-quit"].includes(action) || !Number.isFinite(durationSeconds) || durationSeconds < 1 || durationSeconds > 120 || !Number.isInteger(expectedWidgets) || expectedWidgets < 0) {
+  throw new Error("usage: node huella-cdp.mjs --cdp http://127.0.0.1:9247 --action inspect|state|overlay-start|overlay-stop|hub-minimise|hub-restore|hub-open|performance|license|app-quit [--duration 10] [--expected-widgets 3] [--output result.json] [--screenshot-dir directory]");
 }
 
 const browser = await chromium.connectOverCDP(cdp);
@@ -237,7 +286,19 @@ if (action === "performance") {
   process.stdout.write(json);
   process.exit(0);
 }
-const control = action === "inspect" ? null : await setOverlay(browser, action === "overlay-start");
+if (action === "license") {
+  const hub = (await pagesByRole(browser)).find(({ description }) => description.hub);
+  if (!hub) throw new Error("Hub target is not available for license capture");
+  const license = await captureLicense(hub.page, durationSeconds * 1_000);
+  await writeResult({
+    schema: "vantare.license.cdp.v1",
+    capturedAt: new Date().toISOString(),
+    action,
+    ...license,
+  });
+  process.exit(0);
+}
+const control = action === "inspect" || action === "state" ? null : await setOverlay(browser, action === "overlay-start");
 const renderedWidgets = action === "overlay-start" ? await waitForWidgets(browser, expectedWidgets) : 0;
 const overlayReadyAt = action === "overlay-start" ? new Date().toISOString() : null;
 let rendererProcessIds = [];
@@ -250,11 +311,18 @@ if (action === "overlay-start") {
   }
 }
 const pages = await pagesByRole(browser);
-const targets = await Promise.all(pages.filter(({ description }) => description.hub || description.overlay).map(async ({ page, description }) => ({
-  role: description.overlay ? "overlay" : "hub",
-  ...description,
-  probe: await probe(page, durationSeconds * 1_000),
-})));
+if (screenshotDir) await mkdir(screenshotDir, {recursive: true});
+const targets = await Promise.all(pages.filter(({ description }) => description.hub || description.overlay).map(async ({ page, description }, index) => {
+  const role = description.overlay ? "overlay" : "hub";
+  const screenshot = screenshotDir ? path.join(screenshotDir, `${role}-${index + 1}.png`) : null;
+  if (screenshot) await page.screenshot({path: screenshot});
+  return {
+    role,
+    ...description,
+    probe: action === "state" ? null : await probe(page, durationSeconds * 1_000),
+    screenshot,
+  };
+}));
 const result = { schema: "vantare.huella.cdp.v1", capturedAt: new Date().toISOString(), action, control, durationSeconds, expectedWidgets, renderedWidgets, overlayReadyAt, rendererProcessIds, rendererProcessInfoError, targets };
 const json = `${JSON.stringify(result, null, 2)}\n`;
 if (output) await writeFile(output, json, { encoding: "utf8", flag: "wx" });

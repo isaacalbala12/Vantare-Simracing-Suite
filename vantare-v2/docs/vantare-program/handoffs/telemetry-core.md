@@ -15,6 +15,47 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 
 ## Estado real
 
+- 2026-08-30, ISA-894 corte 1 y guardarraíles corte 3 están rebasados sobre
+  `origin/nightly@cd03518b` (#954, #942 y #948 incluidos). El schema persistido
+  v6 conserva Automático de #948 y añade el interruptor V1 apagado. La app no construye ni publica V1
+  por defecto; ajuste `overlayV1Emit=true` o
+  `VANTARE_OVERLAY_V1_EMIT=1` lo reactivan tras reinicio. La revisión del PR
+  #953 queda atendida: el shadow se crea al primer V1 y en OFF no registra el
+  callback V2 (`shadow=null` en 3/3 preflights); el guard Go usa AST para
+  resolver `Emit`/`EmitEvent`, constantes y asignaciones locales simples, y
+  rechaza la polaridad negada de `overlayV1Emit`; el guard TS recorre cada
+  `.ts/.tsx` de `frontend/src/overlay/**` con exclusiones estrechas y congela
+  por fichero/conteo el inventario V1 que solo puede retirar el corte 2. El A/B
+  final usó una build de diagnóstico con Supabase embebido desde el
+  `frontend/.env.local` autorizado: un solo exe SHA-256 `83cfc4cb…a40722`, un
+  solo dist `7e95fb08…9f12f`, Spa práctica, 18 coches, A1 y tres corridas
+  alternadas de 180 s por estado, sin `-Forzar`. Las seis alcanzaron por CDP
+  `license:changed=active`, cuenta autenticada, `configured=true` y
+  `deviceOK=true`. OFF recibió 0 V1/16 V2 y `shadow=null`; ON recibió 21 V1/18
+  V2 y conservó 48 mismatches diagnósticos. Apagar V1 bajó CPU Go 2,626 ->
+  1,707 %, CPU del renderer no asignado 2,256 -> 1,189 % y su RAM 134,70 ->
+  96,31 MiB. CPU Go/renderer fue repetible con ruido ≤5 %; RAM renderer tuvo
+  8,34 % de ruido OFF y limita la precisión. RAM Go bajó 2,5 %, pequeña y
+  repetible. Browser no mejoró y hubo 0/96.977 frames perdidos. El banco ahora
+  falla cerrado ante una build `unconfigured` o una sesión no autenticada y
+  publica manifiestos de licencia sanitizados. Una regresión adicional
+  fija el banco a 180 s de pared: antes hacía 180 iteraciones y prolongaba CPU/RAM.
+  El corte 2 sigue
+  bloqueado por paridad no exacta y no se tocó. Se añadió el colector autónomo
+  `scripts/bench/sesion-v1.ps1` para S1–S5: higiene, hashes, muestreo por PID,
+  checkpoints CDP, p99/histograma, screenshots, transiciones humanas/automáticas,
+  cierre limpio y veredicto JSON/Markdown. Declara ventanas esperadas, exige
+  `pull` y `shadow=null` en cada observación OFF, valida cada ciclo S4 con avance
+  V2 y empareja aperturas S5 por clave. Las sesiones las coordinarán Isaac y
+  el orquestador tras fusionar corte 1. Issue `roadmap:not-required`: no se
+  modifica roadmap. Se publican los seis CSV A/B sanitizados con SHA crudo y
+  publicado. Go build/test, vet acotado, contrato, 433 ficheros/3.287 tests
+  frontend, typecheck, lint y 38 tests del banco pasan. El digest local está
+  bloqueado por estado externo: `origin/nightly@cd03518b` conserva
+  `digest.lastCommit=9a9179aa`, anterior al merge #948. Esta rama no copia ni
+  regenera ese roadmap. Evidencia en `docs/telemetry-core/evidence/isa-894/`.
+  No hay merge, promoción ni release.
+
 - 2026-08-30, ISA-893 parte de `origin/nightly@ca166b38` después
   de integrar #936. El store V2 conserva una sola suscripción imperativa al
   coordinador por generación; cada widget memoizado se suscribe a su sección

@@ -62,11 +62,11 @@ func TestDefaultAppSettings(t *testing.T) {
 	if !s.CpuSampling {
 		t.Errorf("expected cpuSampling enabled by default")
 	}
-	if !s.CpuSampling {
-		t.Errorf("expected cpuSampling=true")
-	}
 	if s.Performance.Mode != "auto" || s.Performance.Level != 3 || s.Performance.Source != app.PerformanceSourceDefault {
 		t.Errorf("expected automatic performance default, got %+v", s.Performance)
+	}
+	if s.OverlayV1Emit {
+		t.Errorf("expected Overlay V1 emission disabled by default")
 	}
 	if len(s.Hotkeys) != 5 {
 		t.Errorf("expected 5 hotkeys, got %d", len(s.Hotkeys))
@@ -116,7 +116,7 @@ func TestSettingsServiceLoadSave(t *testing.T) {
 	custom := app.DefaultAppSettings()
 	custom.Performance = app.PerformanceSettings{Mode: "level", Level: 3, Source: app.PerformanceSourceUser}
 	custom.CpuSampling = false
-	custom.CpuSampling = false
+	custom.OverlayV1Emit = true
 	custom.Hotkeys["toggleOverlay"] = "alt+v"
 	if err := svc.Save(custom); err != nil {
 		t.Fatalf("Save: %v", err)
@@ -133,6 +133,9 @@ func TestSettingsServiceLoadSave(t *testing.T) {
 	}
 	if s2.CpuSampling {
 		t.Errorf("expected cpuSampling=false")
+	}
+	if !s2.OverlayV1Emit {
+		t.Errorf("expected Overlay V1 diagnostic rollback to persist")
 	}
 	if s2.Hotkeys["toggleOverlay"] != "alt+v" {
 		t.Errorf("expected toggleOverlay=alt+v, got %q", s2.Hotkeys["toggleOverlay"])
@@ -464,8 +467,8 @@ func TestLoadMigratesSchemaVersionAndAddsDeltaHotkey(t *testing.T) {
 	os.WriteFile(path, []byte(data), 0o644)
 	svc := app.NewSettingsService(path, nil, nil)
 	svc.Load()
-	if svc.Settings().SchemaVersion != 5 {
-		t.Errorf("expected SchemaVersion=5, got %d", svc.Settings().SchemaVersion)
+	if svc.Settings().SchemaVersion != 6 {
+		t.Errorf("expected SchemaVersion=6, got %d", svc.Settings().SchemaVersion)
 	}
 	if got := svc.Settings().Hotkeys["cycleDeltaReference"]; got != "ctrl+shift+d" {
 		t.Errorf("cycleDeltaReference=%q want ctrl+shift+d", got)
@@ -485,7 +488,7 @@ func TestLoadMigratesSettingsBeforePerformanceWithoutLosingExistingValues(t *tes
 		t.Fatal(err)
 	}
 	got := svc.Settings()
-	if got.SchemaVersion != 5 || got.Performance.Mode != "auto" || got.Performance.Level != 3 || got.Performance.Source != app.PerformanceSourceDefault || got.Performance.MigratedFrom != "" {
+	if got.SchemaVersion != 6 || got.Performance.Mode != "auto" || got.Performance.Level != 3 || got.Performance.Source != app.PerformanceSourceDefault || got.Performance.MigratedFrom != "" || got.OverlayV1Emit {
 		t.Fatalf("migration result = %+v", got.Performance)
 	}
 	if got.CpuSampling || got.ActiveOverlayProfileID != "endurance" {
@@ -612,8 +615,8 @@ func TestLauncherPoliciesMigrateLegacyProfilesToSafeDefaults(t *testing.T) {
 
 func TestDefaultAppSettingsHasCurrentSchemaVersion(t *testing.T) {
 	s := app.DefaultAppSettings()
-	if s.SchemaVersion != 5 {
-		t.Fatalf("expected SchemaVersion=5, got %d", s.SchemaVersion)
+	if s.SchemaVersion != 6 {
+		t.Fatalf("expected SchemaVersion=6, got %d", s.SchemaVersion)
 	}
 }
 
@@ -683,8 +686,8 @@ func TestLoadMigratesLegacySettings(t *testing.T) {
 	if err := svc.Load(); err != nil {
 		t.Fatalf("load: %v", err)
 	}
-	if svc.Settings().SchemaVersion != 5 {
-		t.Errorf("expected SchemaVersion=5 after migration, got %d", svc.Settings().SchemaVersion)
+	if svc.Settings().SchemaVersion != 6 {
+		t.Errorf("expected SchemaVersion=6 after migration, got %d", svc.Settings().SchemaVersion)
 	}
 	if got := svc.Settings().Performance; got.Mode != "auto" || got.Level != 3 || got.Source != app.PerformanceSourceDefault || got.MigratedFrom != "" {
 		t.Errorf("expected migrated automatic performance default, got %+v", got)
@@ -726,8 +729,8 @@ func TestLoadFallsBackToDefaultsOnTotalCorruption(t *testing.T) {
 	if err := svc.Load(); err != nil {
 		t.Fatalf("load should not panic: %v", err)
 	}
-	if svc.Settings().SchemaVersion != 5 {
-		t.Errorf("expected defaults with SchemaVersion=5")
+	if svc.Settings().SchemaVersion != 6 {
+		t.Errorf("expected defaults with SchemaVersion=6")
 	}
 	if svc.Settings().LauncherProfiles == nil {
 		t.Error("expected default profiles")

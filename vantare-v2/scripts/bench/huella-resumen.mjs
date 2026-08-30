@@ -74,6 +74,13 @@ export function summarizeRun(rows) {
     systemWebView2Count: Math.max(0, ...rows.map((row) => Number(row.systemWebView2Count)).filter(Number.isFinite)),
     systemWebView2Paths: [...new Set(rows.map((row) => String(row.systemWebView2Paths ?? "").trim()).filter(Boolean))],
     orphanEtwSessionsStopped: jsonArrayValues("orphanEtwSessionsStopped"),
+    buildSha256: String(rows[0]?.buildSha256 ?? "").trim(),
+    distSha256: String(rows[0]?.distSha256 ?? "").trim(),
+    buildStable: !rows.some((row) => String(row.buildStable ?? "true").toLowerCase() === "false"),
+    gitHead: String(rows[0]?.gitHead ?? "").trim(),
+    scene: String(rows[0]?.scene ?? "").trim(),
+    lmuSession: String(rows[0]?.lmuSession ?? "").trim(),
+    cars: Number(rows[0]?.cars ?? 0),
   };
   const groups = Map.groupBy(rows.filter((row) => row.role), (row) => row.role);
   const run = Object.fromEntries([...groups].map(([role, roleRows]) => {
@@ -115,6 +122,14 @@ export function aggregateRuns(runs) {
   const rejected = runs.flatMap((run, index) => run.__metadata?.publishable === false ? [index + 1] : []);
   if (rejected.length) {
     throw new Error(`Corridas no publicables por higiene forzada: ${rejected.join(", ")}`);
+  }
+  const hashes = runs.map((run) => run.__metadata?.buildSha256).filter(Boolean);
+  const distHashes = runs.map((run) => run.__metadata?.distSha256).filter(Boolean);
+  if (hashes.length && (hashes.length !== runs.length || new Set(hashes).size !== 1 || distHashes.length !== runs.length || new Set(distHashes).size !== 1)) {
+    throw new Error("Corridas producidas por builds distintos; el agregado no es publicable");
+  }
+  if (runs.some((run) => run.__metadata?.buildStable === false)) {
+    throw new Error("El ejecutable o frontend/dist cambió durante una corrida");
   }
   const roles = new Set(runs.flatMap((run) => Object.keys(run)));
   return [...roles].flatMap((role) => METRICS.flatMap((metric) => {

@@ -181,8 +181,6 @@ func isSupportedWidgetTypeV3(widgetType WidgetTypeV3) bool {
 		WidgetTypeCarDamageVisual, WidgetTypeCarDamageNumbers, WidgetTypeEngineerRadio,
 		WidgetTypeTrackMap:
 		return true
-	case WidgetTypeTrackMap:
-		return true
 	default:
 		return false
 	}

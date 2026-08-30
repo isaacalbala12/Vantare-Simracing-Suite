@@ -50,10 +50,12 @@ diferencia de valor entre los payloads V1 y V2 de un mismo estado canónico:
 
 ## Veredicto y stop condition
 
-La captura no autoriza el corte 2. Los campos siguen clasificados como exactos,
-pero el gate shadow actual no puede decidir su paridad real bajo la cadencia y
-presentación productivas. Antes de retirar físicamente V1 hay que corregir el
-comparador para asociar cada sección con el snapshot que la construyó y para
-comparar solo valores visibles con una ausencia normalizada; después hay que
-repetir S1 ON completa y obtener cero mismatch exacto por ventana. Esta entrega
-solo corrige el crash del colector y deja explícito el bloqueo.
+La captura no autoriza el corte 2. Los campos siguen clasificados como exactos.
+El seguimiento del PR #955 añade `sectionMask` al frame: cada bit declara qué
+sección se reconstruyó desde el `epoch/sequence` publicado y el shadow registra
+como `cached-section` no comparable cualquier sección memoizada. También omite
+`currentLapText` en ambos ViewModels cuando la columna está oculta y normaliza
+solo la ausencia de última vuelta (`""`, `"-"`, `"—"`); vueltas reales distintas
+siguen siendo mismatch exacto. Falta repetir S1 ON completa y obtener cero
+mismatch exacto real por ventana. Hasta esa evidencia el corte 2 permanece
+bloqueado.

@@ -24,8 +24,11 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   exactos y no se descuentan. El diagnóstico los atribuye al cursor de frame
   actualizado sobre secciones V2 cacheadas, a comparar `currentLap` aunque la
   columna shadow esté oculta y a los placeholders distintos para última vuelta
-  ausente. La captura abortada no prueba divergencia de payload ni paridad; el
-  corte 2 permanece bloqueado hasta reparar el comparador y repetir S1 ON.
+  ausente. El comparador ya publica/valida `sectionMask`, registra la caché como
+  no comparable, omite la columna oculta y normaliza solo placeholders ausentes;
+  valores exactos reales siguen fallando. La captura abortada no prueba
+  divergencia de payload ni paridad; el corte 2 permanece bloqueado hasta
+  repetir S1 ON completa con cero mismatch exacto real.
   Evidencia:
   `docs/telemetry-core/evidence/isa-894/diagnostico-s1-on-20260830.md`.
 - 2026-08-30, ISA-894 corte 1 y guardarraíles corte 3 están rebasados sobre

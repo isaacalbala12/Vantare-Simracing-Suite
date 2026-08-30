@@ -1,0 +1,96 @@
+{
+  "schema": "vantare.huella.cdp.v1",
+  "capturedAt": "2026-08-30T01:01:34.782Z",
+  "action": "overlay-start",
+  "control": {
+    "changed": true,
+    "running": true,
+    "emittedAt": "2026-08-30T01:01:21.911Z",
+    "mechanism": {
+      "kind": "wails-event",
+      "eventName": "overlay:start-active"
+    }
+  },
+  "durationSeconds": 10,
+  "expectedWidgets": 3,
+  "renderedWidgets": 3,
+  "overlayReadyAt": "2026-08-30T01:01:24.724Z",
+  "rendererProcessIds": [
+    9616,
+    2668
+  ],
+  "rendererProcessInfoError": null,
+  "targets": [
+    {
+      "role": "hub",
+      "url": "http://wails.localhost/#/hub",
+      "title": "Vantare",
+      "overlay": false,
+      "hub": true,
+      "widgetCount": 0,
+      "diagnostics": null,
+      "probe": {
+        "rafPerSecond": 120.2,
+        "longTaskCount": 0,
+        "longTaskTotalMs": 0,
+        "longTaskMaxMs": 0,
+        "widgetCount": 0
+      }
+    },
+    {
+      "role": "overlay",
+      "url": "http://wails.localhost/",
+      "title": "Vantare",
+      "overlay": true,
+      "hub": false,
+      "widgetCount": 3,
+      "diagnostics": {
+        "overlay_v2_parse_duration": {
+          "count": 34,
+          "p50": 0.40000000037252903,
+          "p99": 1.699999999254942,
+          "nonLiveSamples": 0
+        },
+        "pull": {
+          "active": true,
+          "requestsCompleted": 34,
+          "receivedV1Projections": 0,
+          "receivedV2Snapshots": 33,
+          "requestDurationMs": {
+            "count": 34,
+            "mean": 9.482352941296995,
+            "max": 114.40000000037253
+          }
+        },
+        "shadow": {
+          "frames": 0,
+          "mismatches": 0,
+          "declaredDifferences": 0,
+          "framesByPhase": {
+            "live": 0,
+            "stale": 0,
+            "degraded": 0,
+            "no-frame": 0,
+            "transition": 0
+          },
+          "mismatchesByPhase": {
+            "live": 0,
+            "stale": 0,
+            "degraded": 0,
+            "no-frame": 0,
+            "transition": 0
+          },
+          "epochResets": 0,
+          "metrics": {}
+        }
+      },
+      "probe": {
+        "rafPerSecond": 120.1,
+        "longTaskCount": 0,
+        "longTaskTotalMs": 0,
+        "longTaskMaxMs": 0,
+        "widgetCount": 3
+      }
+    }
+  ]
+}

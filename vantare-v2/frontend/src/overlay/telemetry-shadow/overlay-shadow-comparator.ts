@@ -190,7 +190,7 @@ export type OverlayV2ShadowSessionSummary = Readonly<{
 export type OverlayV2PlayerInstrumentsComparator = Readonly<{
   markNotComparable(
     feature: OverlayV2ShadowComparableFeature,
-    input: Readonly<{ legacySnapshot: TelemetrySnapshot; source: OverlaySourceStatusV2 }>,
+    input: OverlayV2ShadowPhaseInput,
   ): void;
   compare(input: Readonly<{
     legacySnapshot: TelemetrySnapshot;
@@ -253,6 +253,11 @@ export type OverlayV2ShadowComparableFeature =
   | "relative"
   | "fuel"
   | "controls";
+
+type OverlayV2ShadowPhaseInput = Readonly<{
+  legacySnapshot: TelemetrySnapshot;
+  source: OverlaySourceStatusV2;
+}>;
 
 /**
  * Resolves the effective phase from the legacy status and the v2 source state.
@@ -706,7 +711,7 @@ export function createOverlayV2PlayerInstrumentsComparator(): OverlayV2PlayerIns
 function record(
   accumulator: ShadowPhaseAccumulator,
   feature: string,
-  input: Readonly<{ legacySnapshot: TelemetrySnapshot; source: OverlaySourceStatusV2 }>,
+  input: OverlayV2ShadowPhaseInput,
   fields: readonly string[],
 ): OverlayV2FeatureComparison {
   const phase = resolveOverlayShadowPhase(input.legacySnapshot, input.source);

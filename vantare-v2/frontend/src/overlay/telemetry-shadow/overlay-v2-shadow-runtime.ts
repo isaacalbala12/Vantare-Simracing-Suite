@@ -134,7 +134,7 @@ export function createOverlayV2ShadowRuntime(): OverlayV2ShadowRuntime {
 
 function compareSection(
   comparator: OverlayV2PlayerInstrumentsComparator,
-  pair: Readonly<{ legacySnapshot: TelemetrySnapshot; frame: OverlayFrameV2; source: OverlaySourceStatusV2 }>,
+  pair: Pick<Parameters<OverlayV2PlayerInstrumentsComparator["compare"]>[0], "legacySnapshot" | "frame" | "source">,
   feature: OverlayV2ShadowComparableFeature,
   requiredMask: number,
   compare: () => unknown,

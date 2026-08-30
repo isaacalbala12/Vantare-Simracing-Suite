@@ -3,7 +3,7 @@
 ## Autoridad y alcance
 
 - Rama: `vantareapp/isa-940-lifecycle-coste-cero`.
-- Base rebasada antes del cierre: `origin/nightly@c4eb1168`.
+- Base rebasada antes del cierre: `origin/nightly@8b4a7e4f`.
 - Build diagnóstica propia: `bin/vantare-isa940.exe` (sin `-tags production`).
 - Perfil: `testdata/bench/huella-endurance-3.json`, tres widgets.
 - Puerto CDP propio: 9244. LMU y los procesos Vantare ajenos no se modifican.

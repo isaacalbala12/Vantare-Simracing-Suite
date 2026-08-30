@@ -20,7 +20,7 @@
   bloqueadores para Studio, Launcher, OAuth, Estrategia y demás borradores
   locales; sin primer snapshot o con cualquier bloqueador se conserva la
   ventana. La pareja efectiva L1/L3 desde el mismo HEAD/exe/dist publicó L3 al
-  runtime, dejó el renderer Hub en 0 MiB y midió 405,35 MiB privados: −27,87 %
+  runtime, dejó el renderer Hub en 0 MiB y midió 405,34 MiB privados: −27,88 %
   frente al baseline de 562 MiB, aceptado por P13 con gate RAM ≥20 %. CDP midió
   389,39 ms para reabrir el Hub destruido. El recorte restante de GPU process y renderer
   del overlay pertenece a [#951](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/951).

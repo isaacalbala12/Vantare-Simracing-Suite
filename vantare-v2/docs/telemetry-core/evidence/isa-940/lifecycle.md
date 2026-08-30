@@ -64,9 +64,9 @@ ETW `VantareHuella-*`. Los manifiestos versionados están junto a esta evidencia
 | Crashpad | 2,87 | 2,87 | 0,00 |
 | Renderer Hub | 51,08 | 0,00 | -51,08 |
 | Renderer overlay (`renderer-unassigned`) | 135,35 | 129,66 | -5,69 |
-| **Total árbol privado** | **467,69** | **405,35** | **-62,34** |
+| **Total árbol privado** | **467,67** | **405,34** | **-62,33** |
 
-L3 reduce 13,33 % frente al L1 del mismo binario y 27,87 % frente al baseline
+L3 reduce 13,33 % frente al L1 del mismo binario y 27,88 % frente al baseline
 contractual de 562 MiB. Cumple la decisión P13 de RAM ≥20 % frente al baseline;
 no promociona L3, por lo que el default productivo continúa en nivel 1. El
 renderer Hub no aparece en ninguna muestra L3 y la reapertura real tardó

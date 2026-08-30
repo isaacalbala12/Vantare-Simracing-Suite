@@ -4,6 +4,42 @@ import { describe, expect, it } from "vitest";
 
 const overlayRoot = resolve(process.cwd(), "src", "overlay");
 
+// Corte 2 no está autorizado: este inventario exacto conserva los artefactos
+// legacy ya existentes, pero cualquier referencia o fichero adicional falla.
+const legacyV1Baseline: Readonly<Record<string, readonly string[]>> = {
+  "core/derived-telemetry-store.ts": ["TelemetrySnapshot", "TelemetrySnapshot", "TelemetrySnapshot"],
+  "core/mock-scenarios.ts": ["TelemetrySnapshot", "TelemetrySnapshot", "TelemetrySnapshot"],
+  "core/overlay-v2-view-models.ts": ["TelemetrySnapshot"],
+  "core/telemetry-adapter.ts": Array(7).fill("TelemetrySnapshot"),
+  "core/telemetry-rate-coordinator.ts": Array(4).fill("TelemetrySnapshot"),
+  "core/telemetry-snapshot.ts": ["TelemetrySnapshot"],
+  "core/widget-definition.ts": Array(4).fill("TelemetrySnapshot"),
+  "core/WidgetVisualHost.tsx": ["TelemetrySnapshot", "TelemetrySnapshot", "legacy view-model builder"],
+  "projection/overlay-projection-adapter.ts": [...Array(8).fill("TelemetrySnapshot"), "projection adapter"],
+  "transports/projection-observer.ts": ["projection adapter"],
+  "transports/projection-telemetry-adapter.ts": Array(3).fill("TelemetrySnapshot"),
+  "widget-types/broadcast-tower/broadcast-tower-view-model.ts": ["TelemetrySnapshot", "TelemetrySnapshot", "snapshot.scoring"],
+  "widget-types/car-damage-numbers/car-damage-numbers-view-model.ts": ["TelemetrySnapshot", "TelemetrySnapshot"],
+  "widget-types/car-damage-visual/car-damage-visual-view-model.ts": ["TelemetrySnapshot", "TelemetrySnapshot"],
+  "widget-types/delta/delta-view-model.ts": ["TelemetrySnapshot", "TelemetrySnapshot", "TelemetrySnapshot", "snapshot.scoring"],
+  "widget-types/delta-advanced/delta-advanced-view-model.ts": ["TelemetrySnapshot", "TelemetrySnapshot"],
+  "widget-types/delta-trace/delta-trace-view-model.ts": ["TelemetrySnapshot", "TelemetrySnapshot"],
+  "widget-types/fuel-strategy/fuel-strategy-view-model.ts": ["TelemetrySnapshot", "TelemetrySnapshot"],
+  "widget-types/head-to-head/head-to-head-view-model.ts": ["TelemetrySnapshot", "TelemetrySnapshot", "snapshot.scoring"],
+  "widget-types/input-telemetry/input-telemetry-accumulator.ts": Array(5).fill("TelemetrySnapshot"),
+  "widget-types/input-telemetry/input-telemetry-view-model.ts": ["TelemetrySnapshot", "TelemetrySnapshot"],
+  "widget-types/multiclass-relative/multiclass-relative-view-model.ts": ["TelemetrySnapshot", "TelemetrySnapshot", "snapshot.scoring"],
+  "widget-types/pedals/pedals-view-model.ts": ["TelemetrySnapshot", "TelemetrySnapshot"],
+  "widget-types/pedals-telemetry/pedals-telemetry-view-model.ts": ["TelemetrySnapshot", "TelemetrySnapshot", "TelemetrySnapshot", "snapshot.scoring"],
+  "widget-types/pedals-telemetry-compact/pedals-telemetry-compact-view-model.ts": ["TelemetrySnapshot", "TelemetrySnapshot"],
+  "widget-types/racing-flags/racing-flags-view-model.ts": ["TelemetrySnapshot", "TelemetrySnapshot"],
+  "widget-types/relative/relative-view-model.ts": ["TelemetrySnapshot", "TelemetrySnapshot", "snapshot.scoring"],
+  "widget-types/shared/damage-reader.ts": ["TelemetrySnapshot", "TelemetrySnapshot"],
+  "widget-types/standings/standings-view-model.ts": ["TelemetrySnapshot", "TelemetrySnapshot", "TelemetrySnapshot", "snapshot.scoring"],
+  "widget-types/track-map/track-map-view-model.ts": [...Array(7).fill("TelemetrySnapshot"), "snapshot.scoring"],
+  "widget-types/track-weather/track-weather-view-model.ts": ["TelemetrySnapshot", "TelemetrySnapshot"],
+};
+
 function sourceFiles(directory: string): string[] {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
     const path = resolve(directory, entry.name);
@@ -21,11 +57,11 @@ describe("Overlay V1 authority guard", () => {
     expect(source.match(/definition\.buildViewModel\(/g)).toHaveLength(1);
   });
 
-  it("does not expose V1 authority in any productive Overlay surface", () => {
+  it("does not add V1 authority beyond the frozen cut 2 inventory", () => {
     for (const path of sourceFiles(overlayRoot)) {
-      const relative = path.slice(overlayRoot.length + 1);
+      const relative = path.slice(overlayRoot.length + 1).replaceAll("\\", "/");
       const source = readFileSync(path, "utf8");
-      expect(v1AuthorityViolations(relative, source), relative).toEqual([]);
+      expect(v1AuthorityViolations(relative, source), relative).toEqual(legacyV1Baseline[relative] ?? []);
     }
   });
 
@@ -36,6 +72,7 @@ describe("Overlay V1 authority guard", () => {
       ["edit/NewFrame.tsx", "adaptOverlayProjectionToSnapshot(input);"],
       ["runtime/NewFrame.tsx", "useRateLimitedTelemetry(coordinator, 10);"],
       ["core/NewHost.tsx", "definition.buildViewModel(snapshot, content);"],
+      ["core/nuevo-reader.ts", "const rows = snapshot.scoring;"],
     ] as const;
 
     for (const [relative, source] of mutants) {
@@ -68,15 +105,12 @@ function v1AuthorityViolations(relative: string, source: string): string[] {
   ) {
     return [];
   }
-  if (normalized === "core/WidgetVisualHost.tsx") return [];
-  const productiveSurface = normalized.endsWith(".tsx") ||
-    normalized.startsWith("runtime/") || normalized.startsWith("edit/");
-  if (!productiveSurface) return [];
-  const violations: string[] = [];
-  if (/\bTelemetrySnapshot\b/.test(source)) violations.push("TelemetrySnapshot");
-  if (/\bsnapshot\.scoring\b/.test(source)) violations.push("snapshot.scoring");
-  if (/\badaptOverlayProjectionToSnapshot\s*\(/.test(source)) violations.push("projection adapter");
-  if (/\buseRateLimitedTelemetry\s*\(/.test(source)) violations.push("legacy telemetry hook");
-  if (/\.buildViewModel\s*\(/.test(source)) violations.push("legacy view-model builder");
-  return violations;
+  if (!/\.(?:ts|tsx)$/.test(normalized)) return [];
+  return [
+    [/\bTelemetrySnapshot\b/g, "TelemetrySnapshot"],
+    [/\bsnapshot\.scoring\b/g, "snapshot.scoring"],
+    [/\badaptOverlayProjectionToSnapshot\s*\(/g, "projection adapter"],
+    [/\buseRateLimitedTelemetry\s*\(/g, "legacy telemetry hook"],
+    [/\.buildViewModel\s*\(/g, "legacy view-model builder"],
+  ].flatMap(([pattern, label]) => Array.from(source.matchAll(pattern as RegExp), () => label as string));
 }

@@ -140,6 +140,26 @@ describe("Overlay v2 shadow runtime", () => {
     runtime.acceptLegacy(nextEpoch.epoch, nextEpoch.sequence, legacySnapshot());
     expect(runtime.sessionSummary()).toMatchObject({ frames: 1, epochResets: 1 });
   });
+
+  it("keeps every retained shadow collection inside its explicit cap", () => {
+    const runtime = createOverlayV2ShadowRuntime();
+    const update = decodeOverlayUpdateV2(JSON.parse(readFileSync(path.resolve(
+      process.cwd(),
+      "../internal/telemetry/projection/overlayv2/testdata/overlay_v2_1.golden.json",
+    ), "utf8")));
+    const frame = update.frame as OverlayFrameV2;
+
+    for (let index = 0; index < 1_000; index += 1) {
+      runtime.acceptOverlayV2({ ...frame, sequence: frame.sequence + index }, update.source);
+    }
+
+    expect(runtime.sessionSummary().retained).toEqual({
+      pendingLegacy: 0,
+      pendingOverlayV2: 64,
+      comparedSequences: 0,
+      metricKeys: 0,
+    });
+  });
 });
 
 // The synthetic legacy snapshot carries no scoring, so the standings feature

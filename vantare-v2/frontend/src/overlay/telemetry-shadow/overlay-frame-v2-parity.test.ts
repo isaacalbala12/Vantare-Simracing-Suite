@@ -61,6 +61,7 @@ describe("OverlayFrame v2 player-instruments parity", () => {
         'overlay_shadow_mismatches_total{feature="player-instruments",field="display.speed",phase="live"}': 1,
         'overlay_shadow_mismatches_total{feature="player-instruments",field="speedKph",phase="live"}': 1,
       },
+      retained: { metricKeys: 2 },
     });
   });
 });

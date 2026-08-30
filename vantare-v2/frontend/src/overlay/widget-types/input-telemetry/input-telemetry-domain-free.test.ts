@@ -80,6 +80,21 @@ describe("input telemetry v2 view model", () => {
     expect(model.history).toEqual([]);
   });
 
+  it("can build the instantaneous shadow model without decoding the history", () => {
+    const frame = goldenFrame(20);
+    const controls = Object.create(frame.controls, {
+      history: { get: () => { throw new Error("history decoded"); } },
+    }) as OverlayFrameV2["controls"];
+    const model = buildInputTelemetryViewModelV2(
+      { ...frame, controls },
+      { state: "live" },
+      CONTENT,
+      { includeHistory: false },
+    );
+    expect(model.history).toEqual([]);
+    expect(model.throttle).toBeGreaterThanOrEqual(0);
+  });
+
   it("declares what the canonical series cannot carry instead of inventing it", () => {
     const model = buildInputTelemetryViewModelV2(goldenFrame(20), { state: "live" }, CONTENT);
     for (const sample of model.history) {

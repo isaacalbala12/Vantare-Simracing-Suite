@@ -189,6 +189,7 @@ export type OverlayV2ShadowSessionSummary = Readonly<{
   /** Times the accumulators were rotated because the stream epoch changed. */
   epochResets: number;
   metrics: Readonly<Record<string, number>>;
+  retained: Readonly<{ metricKeys: number }>;
 }>;
 
 export type OverlayV2PlayerInstrumentsComparator = Readonly<{
@@ -313,6 +314,8 @@ function overlayV2Phase(source: OverlaySourceStatusV2): Exclude<OverlayShadowPha
  * frames, not the number of features compared on each frame.
  */
 const ANCHOR_FEATURE = "player-instruments";
+export const OVERLAY_SHADOW_MAX_METRIC_KEYS = 128;
+const OVERLAY_SHADOW_METRICS_OVERFLOW = "overlay_shadow_metrics_overflow_total";
 
 type ShadowPhaseAccumulator = Readonly<{
   record(feature: string, phase: OverlayShadowPhase, fields: readonly string[]): void;
@@ -332,20 +335,31 @@ function createShadowPhaseAccumulator(): ShadowPhaseAccumulator {
   let epochResets = 0;
   let notComparable = 0;
   let byMetric = new Map<string, number>();
+  const incrementMetric = (key: string) => {
+    if (byMetric.has(key)) {
+      byMetric.set(key, (byMetric.get(key) ?? 0) + 1);
+      return;
+    }
+    if (byMetric.size < OVERLAY_SHADOW_MAX_METRIC_KEYS - 1) {
+      byMetric.set(key, 1);
+      return;
+    }
+    byMetric.set(OVERLAY_SHADOW_METRICS_OVERFLOW, (byMetric.get(OVERLAY_SHADOW_METRICS_OVERFLOW) ?? 0) + 1);
+  };
   return {
     record(feature, phase, fields) {
       if (feature === ANCHOR_FEATURE) framesByPhase[phase] += 1;
       mismatchesByPhase[phase] += fields.length;
       for (const field of fields) {
         const key = `overlay_shadow_mismatches_total{feature="${feature}",field="${field}",phase="${phase}"}`;
-        byMetric.set(key, (byMetric.get(key) ?? 0) + 1);
+        incrementMetric(key);
       }
     },
     markNotComparable(feature, phase, reason) {
       if (feature === ANCHOR_FEATURE && reason.endsWith("-phase")) framesByPhase[phase] += 1;
       notComparable += 1;
       const key = `overlay_shadow_not_comparable_total{feature="${feature}",reason="${reason}",phase="${phase}"}`;
-      byMetric.set(key, (byMetric.get(key) ?? 0) + 1);
+      incrementMetric(key);
     },
     reset() {
       framesByPhase = emptyPhaseCounts();
@@ -370,6 +384,7 @@ function createShadowPhaseAccumulator(): ShadowPhaseAccumulator {
         metrics: Object.freeze(Object.fromEntries(
           [...byMetric.entries()].sort(([left], [right]) => left.localeCompare(right)),
         )),
+        retained: Object.freeze({ metricKeys: byMetric.size }),
       });
     },
   };
@@ -671,7 +686,12 @@ export function createOverlayV2PlayerInstrumentsComparator(): OverlayV2PlayerIns
     },
     compareControls(input) {
       const legacy = buildInputTelemetryViewModel(input.legacySnapshot, input.content, input.legacyHistory);
-      const overlayV2 = buildInputTelemetryViewModelV2(input.frame, input.source, input.content);
+      const overlayV2 = buildInputTelemetryViewModelV2(
+        input.frame,
+        input.source,
+        input.content,
+        { includeHistory: false },
+      );
       return record(accumulator, "controls", input, compareControlsModels(legacy, overlayV2));
     },
     compare(input) {

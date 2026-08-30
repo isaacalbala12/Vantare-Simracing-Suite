@@ -67,6 +67,9 @@ obligatorio para que el interruptor resuelto y los contadores nazcan limpios.
   browser y **cada renderer** ≤ **5 MiB/h**; GPU process ≤ **10 MiB/h**; suma
   de procesos propios ≤ **15 MiB/h**. Cada rol necesita al menos 15 muestras en
   una fase de 20 min y 45 en S3 OFF; un proceso reiniciado invalida su pendiente.
+- En cada checkpoint CDP se capturan además, por target Hub/overlay, heap JS
+  usado/reservado, documentos, nodos y listeners, junto con los tamaños
+  retenidos del shadow. Un error CDP queda explícito y no se sustituye por cero.
 - Cero `overlay-v2-*`, `widget-authority-missing`, renderer exception o fallback
   visual V1.
 - Reconnect recupera `live` y un frame V2 nuevo en ≤ **30 s** desde la marca de

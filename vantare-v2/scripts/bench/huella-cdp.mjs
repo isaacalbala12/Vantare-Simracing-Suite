@@ -5,6 +5,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import path from "node:path";
 import process from "node:process";
+import { selectPageMemoryMetrics } from "./huella-cdp-metrics.mjs";
 
 // Playwright pertenece al workspace frontend; resolver desde su package.json
 // evita exigir una segunda instalación en la raíz solo para este banco.
@@ -40,6 +41,17 @@ async function describePage(page) {
         : null,
     };
   });
+}
+
+async function pageMemory(page) {
+  const session = await page.context().newCDPSession(page);
+  try {
+    await session.send("Performance.enable");
+    const { metrics = [] } = await session.send("Performance.getMetrics");
+    return selectPageMemoryMetrics(metrics);
+  } finally {
+    await session.detach();
+  }
 }
 
 async function pagesByRole(browser) {
@@ -316,10 +328,19 @@ const targets = await Promise.all(pages.filter(({ description }) => description.
   const role = description.overlay ? "overlay" : "hub";
   const screenshot = screenshotDir ? path.join(screenshotDir, `${role}-${index + 1}.png`) : null;
   if (screenshot) await page.screenshot({path: screenshot});
+  let memory = null;
+  let memoryError = null;
+  try {
+    memory = await pageMemory(page);
+  } catch (error) {
+    memoryError = error instanceof Error ? error.message : String(error);
+  }
   return {
     role,
     ...description,
     probe: action === "state" ? null : await probe(page, durationSeconds * 1_000),
+    memory,
+    memoryError,
     screenshot,
   };
 }));

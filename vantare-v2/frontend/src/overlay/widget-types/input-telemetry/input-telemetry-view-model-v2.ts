@@ -38,6 +38,7 @@ export function buildInputTelemetryViewModelV2(
   frame: OverlayFrameV2,
   source: OverlaySourceStatusV2,
   content: InputTelemetryContent,
+  options: Readonly<{ includeHistory?: boolean }> = {},
 ): InputTelemetryViewModel {
   const status = resolveStatus(source.state);
   const unavailable = status === "missing" || status === "disconnected" || status === "error";
@@ -51,7 +52,7 @@ export function buildInputTelemetryViewModelV2(
     speedKph: unavailable ? undefined : speedInKph(frame.player.speed, frame.units.speed),
     rpm: unavailable ? undefined : displayedNumber(frame.player.rpm),
     gear: unavailable ? undefined : displayedNumber(frame.player.gear),
-    history: unavailable
+    history: unavailable || options.includeHistory === false
       ? []
       : decodeControlsHistory(frame.controls.history, Date.parse(frame.generatedAt), content.historySeconds),
     historySeconds: content.historySeconds,

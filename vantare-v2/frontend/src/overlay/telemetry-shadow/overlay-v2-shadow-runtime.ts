@@ -2,11 +2,6 @@ import type { OverlayFrameV2, OverlaySourceStatusV2 } from "../../generated/tele
 import type { TelemetrySnapshot } from "../core/telemetry-snapshot";
 import { deltaDefinition } from "../widget-types/delta/delta-definition";
 import { inputTelemetryDefinition } from "../widget-types/input-telemetry/input-telemetry-definition";
-import {
-  clearInputTelemetryHistory,
-  readInputTelemetryHistory,
-  recordInputTelemetrySample,
-} from "../widget-types/input-telemetry/input-telemetry-accumulator";
 import { fuelStrategyDefinition } from "../widget-types/fuel-strategy/fuel-strategy-definition";
 import { racingFlagsDefinition } from "../widget-types/racing-flags/racing-flags-definition";
 import { relativeDefinition } from "../widget-types/relative/relative-definition";
@@ -16,6 +11,7 @@ import {
   resolveOverlayShadowPhase,
   type OverlayV2ShadowComparableFeature,
   type OverlayV2PlayerInstrumentsComparator,
+  type OverlayV2ShadowSessionSummary,
 } from "./overlay-shadow-comparator";
 
 /**
@@ -41,13 +37,10 @@ const FUEL_CONTENT = fuelStrategyDefinition.parseContent({});
 const CONTROLS_CONTENT = inputTelemetryDefinition.parseContent({});
 
 /**
- * The controls comparison has to feed Overlay v1 the history it would really
- * have drawn, and in v1 that history lives in the browser accumulator keyed by
- * widget id. The shadow uses its own id so it can never disturb — or be
- * disturbed by — a widget the user actually has on screen. The accumulator
- * itself is v1 machinery and is retired with the v1 path in F9.
+ * Pending pairs are bounded independently because either transport can run
+ * ahead. History is deliberately absent: its two cadences have no shared
+ * per-sample timestamp, so retaining or decoding it cannot produce parity.
  */
-const SHADOW_CONTROLS_WIDGET_ID = "overlay-v2-shadow:controls";
 
 const SECTION_BUILD = Object.freeze({
   player: 1 << 0,
@@ -59,10 +52,19 @@ const SECTION_BUILD = Object.freeze({
   fuel: 1 << 7,
 });
 
+export type OverlayV2ShadowRuntimeSummary = OverlayV2ShadowSessionSummary & Readonly<{
+  retained: Readonly<{
+    metricKeys: number;
+    pendingLegacy: number;
+    pendingOverlayV2: number;
+    comparedSequences: number;
+  }>;
+}>;
+
 export type OverlayV2ShadowRuntime = Readonly<{
   acceptLegacy(epoch: number, sequence: number, snapshot: TelemetrySnapshot): void;
   acceptOverlayV2(frame: OverlayFrameV2, source: OverlaySourceStatusV2): void;
-  sessionSummary: OverlayV2PlayerInstrumentsComparator["sessionSummary"];
+  sessionSummary(): OverlayV2ShadowRuntimeSummary;
 }>;
 
 export function createOverlayV2ShadowRuntime(): OverlayV2ShadowRuntime {
@@ -92,9 +94,7 @@ export function createOverlayV2ShadowRuntime(): OverlayV2ShadowRuntime {
     compareSection(comparator, pair, "fuel", SECTION_BUILD.fuel, () => comparator.compareFuel({ ...pair, content: FUEL_CONTENT }));
     compareSection(comparator, pair, "controls", SECTION_BUILD.player | SECTION_BUILD.controls, () => comparator.compareControls({
         ...pair,
-        legacyHistory: readInputTelemetryHistory(
-          SHADOW_CONTROLS_WIDGET_ID, legacySnapshot, CONTROLS_CONTENT.historySeconds,
-        ),
+        legacyHistory: [],
         content: CONTROLS_CONTENT,
       }));
     compared.add(key);
@@ -105,10 +105,6 @@ export function createOverlayV2ShadowRuntime(): OverlayV2ShadowRuntime {
 
   return {
     acceptLegacy(epoch, sequence, snapshot) {
-      // Recorded on arrival, exactly as an on-screen v1 widget would: the
-      // series compared later has to be the one v1 really accumulated, not a
-      // reconstruction made at comparison time.
-      recordInputTelemetrySample(SHADOW_CONTROLS_WIDGET_ID, snapshot);
       const key = frameKey(epoch, sequence);
       legacy.set(key, snapshot);
       trim(legacy);
@@ -120,7 +116,6 @@ export function createOverlayV2ShadowRuntime(): OverlayV2ShadowRuntime {
       const stream = `${frame.epoch}:${frame.sessionId}`;
       if (currentStream !== undefined && currentStream !== stream) {
         comparator.reset();
-        clearInputTelemetryHistory(SHADOW_CONTROLS_WIDGET_ID);
         legacy.clear();
         overlayV2.clear();
         compared.clear();
@@ -131,7 +126,18 @@ export function createOverlayV2ShadowRuntime(): OverlayV2ShadowRuntime {
       trim(overlayV2);
       compareIfReady(key);
     },
-    sessionSummary: comparator.sessionSummary,
+    sessionSummary() {
+      const summary = comparator.sessionSummary();
+      return Object.freeze({
+        ...summary,
+        retained: Object.freeze({
+          ...summary.retained,
+          pendingLegacy: legacy.size,
+          pendingOverlayV2: overlayV2.size,
+          comparedSequences: compared.size,
+        }),
+      });
+    },
   };
 }
 

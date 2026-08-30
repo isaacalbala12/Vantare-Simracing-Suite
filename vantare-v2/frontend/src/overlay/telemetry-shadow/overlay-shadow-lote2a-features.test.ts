@@ -46,7 +46,7 @@ describe("shadow comparator: delta, relative and fuel features", () => {
     }
   });
 
-  it("accounts a mismatch outside live as a declared difference, not as a gate failure", () => {
+  it("accounts every non-live feature as not comparable", () => {
     const frame = goldenFrame(20);
     const comparator = createOverlayV2PlayerInstrumentsComparator();
     // A stale->live sequence: v1 keeps the last known value while the v2 view
@@ -64,8 +64,9 @@ describe("shadow comparator: delta, relative and fuel features", () => {
       comparator.compareFuel({ legacySnapshot, frame, source, content: FUEL_CONTENT });
     }
     const summary = comparator.sessionSummary();
-    expect(summary.mismatchesByPhase.stale + summary.mismatchesByPhase.live)
-      .toBe(summary.mismatches + summary.declaredDifferences);
+    expect(summary.mismatchesByPhase.stale).toBe(0);
+    expect(summary.notComparable).toBe(6);
+    expect(summary.mismatchesByPhase.live).toBe(summary.mismatches);
     expect(summary.mismatchesByPhase.transition).toBe(0);
   });
 

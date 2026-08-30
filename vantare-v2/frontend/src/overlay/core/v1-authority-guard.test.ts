@@ -16,6 +16,13 @@ const legacyV1Baseline: Readonly<Record<string, readonly string[]>> = {
   "core/widget-definition.ts": Array(4).fill("TelemetrySnapshot"),
   "core/WidgetVisualHost.tsx": ["TelemetrySnapshot", "TelemetrySnapshot", "legacy view-model builder"],
   "projection/overlay-projection-adapter.ts": [...Array(8).fill("TelemetrySnapshot"), "projection adapter"],
+  "telemetry-shadow/overlay-shadow-comparator.ts": [
+    ...Array(23).fill("TelemetrySnapshot"),
+    ...Array(4).fill("snapshot.scoring"),
+    "legacy view-model builder",
+  ],
+  "telemetry-shadow/overlay-v2-shadow-activation.ts": Array(2).fill("TelemetrySnapshot"),
+  "telemetry-shadow/overlay-v2-shadow-runtime.ts": Array(3).fill("TelemetrySnapshot"),
   "transports/projection-observer.ts": ["projection adapter"],
   "transports/projection-telemetry-adapter.ts": Array(3).fill("TelemetrySnapshot"),
   "widget-types/broadcast-tower/broadcast-tower-view-model.ts": ["TelemetrySnapshot", "TelemetrySnapshot", "snapshot.scoring"],
@@ -73,6 +80,7 @@ describe("Overlay V1 authority guard", () => {
       ["runtime/NewFrame.tsx", "useRateLimitedTelemetry(coordinator, 10);"],
       ["core/NewHost.tsx", "definition.buildViewModel(snapshot, content);"],
       ["core/nuevo-reader.ts", "const rows = snapshot.scoring;"],
+      ["telemetry-shadow/overlay-v2-shadow-activation.ts", "const rows = snapshot.scoring;"],
     ] as const;
 
     for (const [relative, source] of mutants) {
@@ -80,12 +88,11 @@ describe("Overlay V1 authority guard", () => {
     }
   });
 
-  it("excludes only tests, fixtures, harness and shadow sources", () => {
+  it("excludes only tests, fixtures and harness sources", () => {
     for (const relative of [
       "runtime/NewFrame.test.tsx",
       "authoring/fixtures/sample.ts",
       "telemetry-cutover-runtime-harness/main.ts",
-      "telemetry-shadow/comparator.ts",
     ]) {
       expect(
         v1AuthorityViolations(relative, "snapshot.scoring; adaptOverlayProjectionToSnapshot(input);"),
@@ -100,7 +107,6 @@ function v1AuthorityViolations(relative: string, source: string): string[] {
   if (
     /(?:^|\/)fixtures(?:\/|$)/.test(normalized) ||
     /(?:^|\/)[^/]*harness[^/]*(?:\/|$)/.test(normalized) ||
-    normalized.startsWith("telemetry-shadow/") ||
     /\.(?:test|spec)\.(?:ts|tsx)$/.test(normalized)
   ) {
     return [];

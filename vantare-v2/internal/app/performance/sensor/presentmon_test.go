@@ -2,6 +2,7 @@ package sensor
 
 import (
 	"context"
+	"errors"
 	"io"
 	"strings"
 	"sync"
@@ -17,6 +18,7 @@ type fakeProcess struct {
 	stopped    chan struct{}
 	stopOnce   sync.Once
 	stream     io.Closer
+	killErr    error
 }
 
 func (process *fakeProcess) PID() int { return process.pid }
@@ -33,15 +35,19 @@ func (process *fakeProcess) Kill() error {
 		_ = process.stream.Close()
 	}
 	close(process.exited)
-	return nil
+	return process.killErr
 }
 
 type fakeRunner struct {
-	mu         sync.Mutex
-	queries    []string
-	stream     string
-	process    *fakeProcess
-	operations []string
+	mu          sync.Mutex
+	queries     []string
+	stream      string
+	process     *fakeProcess
+	operations  []string
+	queryOutput string
+	stopErrors  []error
+	stopCalls   int
+	killErr     error
 }
 
 func (runner *fakeRunner) Output(_ context.Context, name string, args ...string) ([]byte, error) {
@@ -53,8 +59,17 @@ func (runner *fakeRunner) Output(_ context.Context, name string, args ...string)
 		if runner.process != nil {
 			runner.process.stopOnce.Do(func() { close(runner.process.stopped) })
 		}
+		if runner.stopCalls < len(runner.stopErrors) {
+			err := runner.stopErrors[runner.stopCalls]
+			runner.stopCalls++
+			return []byte("operational stop failure"), err
+		}
+		runner.stopCalls++
 	}
 	if len(args) > 0 && args[0] == "query" {
+		if runner.queryOutput != "" {
+			return []byte(runner.queryOutput), nil
+		}
 		return []byte("RSXTraceSession\nVantareHuella-isa940\nVantareSensor-111\nVantareSensor-222\nVantareSensor-333\n"), nil
 	}
 	return nil, nil
@@ -67,6 +82,7 @@ func (runner *fakeRunner) Start(_ context.Context, _ string, _ []string) (proces
 		exited:     make(chan struct{}),
 		stopped:    make(chan struct{}),
 		stream:     writer,
+		killErr:    runner.killErr,
 	}
 	go func() { _, _ = io.WriteString(writer, runner.stream) }()
 	return runner.process, reader, nil
@@ -172,5 +188,25 @@ func TestPresentMonEOFInvalidatesLastFrame(t *testing.T) {
 	source.consume(io.NopCloser(strings.NewReader("Application,FrameTime\nLMU,9.5\n")), process)
 	if got := source.Sample(); got.Available || got.FrametimeMS != 0 {
 		t.Fatalf("sample after EOF = %+v, want unavailable", got)
+	}
+}
+
+func TestPresentMonCloseJoinsBothSessionStopErrors(t *testing.T) {
+	killErr := errors.New("kill")
+	firstStopErr := errors.New("first stop")
+	secondStopErr := errors.New("second stop")
+	runner := &fakeRunner{
+		queryOutput: "RSXTraceSession\n",
+		stopErrors:  []error{firstStopErr, secondStopErr},
+		killErr:     killErr,
+	}
+	source := NewPresentMonSource("PresentMon.exe")
+	source.runner = runner
+	if err := source.Start(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	err := source.Close()
+	if !errors.Is(err, killErr) || !errors.Is(err, firstStopErr) || !errors.Is(err, secondStopErr) {
+		t.Fatalf("Close error = %v, want kill and both stop errors", err)
 	}
 }

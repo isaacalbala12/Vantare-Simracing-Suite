@@ -197,7 +197,7 @@ func (source *PresentMonSource) Close() error {
 		if cancel != nil {
 			cancel()
 		}
-		closeErr = source.stopOwnSession()
+		closeErr = errors.Join(closeErr, source.stopOwnSession())
 		if done != nil {
 			select {
 			case <-done:

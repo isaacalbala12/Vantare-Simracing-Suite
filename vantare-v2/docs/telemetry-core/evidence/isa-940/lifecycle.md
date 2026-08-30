@@ -71,6 +71,7 @@ que el gate 12.2 se haya superado.
 | 1 | 75,02 | 45,65 | 176,90 | 22,92 | 2,88 | 66,54 | 144,10 | 534,01 |
 | 3 | 104,23 | 44,83 | 174,17 | 22,40 | 2,87 | 62,49 | 104,26 | 515,25 |
 | 3, repetición | 81,49 | 44,98 | 174,11 | 22,53 | 2,87 | 69,54 | 126,58 | 522,10 |
+| 3, registro empujado | 72,94 | 44,27 | 139,09 | 22,68 | 2,85 | 0,00 | 148,17 | 430,00 |
 
 L3 quedó 18,76 MiB (-3,5 %) por debajo de L1, pero permanece 122,25 MiB por
 encima del objetivo ≤393 MiB y no representa el lifecycle deseado. Artefactos
@@ -84,6 +85,23 @@ CDP midió 2.199,51 ms al reabrir y el log Go 2,362 s. PresentMon observó
 0/5871 frames perdidos. Artefacto crudo:
 `results/isa-940-full-l3-repeat/hubmin-20260830-012549.csv`.
 
+La corrida final sustituyó la consulta posterior a minimizar por un registro
+empujado y ligado a la generación de la ventana. El frontend publicó el estado
+limpio a las 23:56:54Z; el Hub se minimizó a las 23:57:09Z y no apareció ningún
+`renderer-hub` en las 120 muestras. CDP midió 328,89 ms hasta el nuevo target y
+Go 99,14 ms para crear/abrir la ventana. PresentMon observó 0/9.244 frames
+perdidos. Una muestra de contadores GPU fue inválida y quedó nula, no rellenada
+con cero. Artefacto crudo:
+`results/isa-940-full-l3-pushed/hubmin-20260830-015652.csv`.
+
+El total final es 430,00 MiB. Utility suma dos PID (13,79 + 8,89 = 22,68 MiB)
+y la tabla ya presenta ese coste conjunto; no debe duplicarse otra vez al sumar
+el árbol. El gate ≤393 MiB queda incumplido por 37,00 MiB. La proyección previa
+de ~453 MiB suponía que todos los procesos salvo el Hub conservarían la media
+de la repetición anterior; la corrida real bajó sobre todo GPU process de
+174,11 a 139,09 MiB, por eso el resultado observado es mejor, pero no alcanza
+el contrato.
+
 El incremento inicial del host Go no se reprodujo como memoria estable. En L1
 su privada fue media 75,02, p50 72,81 y p95 76,67 MiB; en la primera L3 fue
 media 104,23, p50 78,07 y p95 298,56 MiB; en la repetición fue media 81,49,
@@ -96,7 +114,7 @@ como prueba de memoria sería incorrecto.
 
 ### Aritmética del límite
 
-La repetición suma 522,10 MiB privados. Incluso eliminando por completo el
+La repetición anterior sumaba 522,10 MiB privados. Incluso eliminando por completo el
 renderer Hub (69,54 MiB), el mismo árbol quedaría en aproximadamente
 452,56 MiB: todavía 59,56 MiB por encima del gate de 393 MiB. Por tanto el gate
 12.2 no es alcanzable con este corte aunque se arregle el ACK.
@@ -110,8 +128,10 @@ renderer Hub (69,54 MiB), el mismo árbol quedaría en aproximadamente
 | Utility | 22,53 | Dos servicios WebView2; coste estructural a validar junto con browser/GPU. |
 | Crashpad | 2,87 | Marginal. |
 
-La cifra realista de este hito, si el Hub llegase a cero sin mover los otros
-procesos, es ~453 MiB (-19,4 % frente a 562 MiB), no ≤393 MiB (-30 %).
+La proyección conservadora de este hito, si el Hub llegaba a cero sin mover los
+otros procesos, era ~453 MiB (-19,4 % frente a 562 MiB). La corrida final con
+Hub a cero observó 430,00 MiB (-23,5 %), todavía no ≤393 MiB (-30 %). Cambiar
+el gate no forma parte de #940 y queda expresamente en manos de Isaac.
 
 El banco conserva `renderer-unassigned` para el renderer creado tras abrir el
 overlay: CDP prueba el target `overlay.html` y sus tres widgets, pero no aporta
@@ -123,7 +143,12 @@ una relación PID↔target suficiente para renombrarlo sin inferencia.
   CoreWebView2. Se usa destrucción fail-closed y recreación bajo demanda.
 - `hub:can-suspend` espera hasta 500 ms. Un registro central bloquea por Studio
   sucio, borrador del Launcher u OAuth pendiente y devuelve todas las razones.
-  `false` o timeout conserva el Hub.
+  El intento antiguo emitió desde Go a `1788047641790/1791` ms, venció a los
+  500 ms y no produjo recepción/respuesta JS ni siquiera tras restaurar el Hub
+  durante 5 s. Subir el timeout no arregla esa carrera. El camino efectivo
+  publica `hub:blockers` mientras el Hub está visible y en cada cambio; Go solo
+  destruye si recibió el snapshot limpio de la generación actual. Sin snapshot,
+  con generación vieja o con cualquier razón, conserva fail-closed el Hub.
 - Un ACK tardío solo destruye la misma ventana, de la misma generación y aún
   minimizada; `Open()` invalida el intento pendiente.
 - `/overlay?profile=…` sirve `overlay.html`, conserva `ObsOverlayApp` y los
@@ -143,13 +168,14 @@ una relación PID↔target suficiente para renombrarlo sin inferencia.
 
 ## Límites de esta evidencia
 
-- El ACK dirigido queda sin resolver físicamente: tanto `DispatchWailsEvent`
-  como `WebviewWindow.EmitEvent` agotaron 500 ms una vez minimizado WebView2.
-  Se probó despertar el WebView oculto, pero los eventos duplicados de Wails
-  provocaron un bucle de probes; la corrida se abortó, la sesión ETW se cerró y
-  ese cambio fue revertido. Hace falta decidir un preflight anterior al
-  `WindowMinimise` o una autoridad de bloqueadores sincronizada con Go antes de
-  destruir con seguridad.
+- El ACK dirigido posterior a minimizar se conserva solo como diagnóstico y no
+  participa en la decisión. `DispatchWailsEvent` y `WebviewWindow.EmitEvent`
+  agotaron 500 ms con WebView2 minimizado. Se probó despertar el WebView oculto,
+  pero eventos duplicados de Wails provocaron un bucle; la corrida se abortó,
+  la sesión ETW se cerró y ese cambio fue revertido.
+- El p95 de 298,56 MiB observado en el primer host L3 merece un gancho de heap
+  (`inuse_space`/`runtime.MemStats` detallado) en otra issue. #940 solo dispone
+  del gancho CPU y la repetición/final no reprodujeron retención estable.
 - También quedan captura de paridad visual, escucha humana del audio, baseline
   N=3, iGPU y VR.
 - Un warning aislado de contador GPU en las corridas descartadas no se rellena

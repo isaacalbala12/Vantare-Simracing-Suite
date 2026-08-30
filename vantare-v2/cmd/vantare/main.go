@@ -27,6 +27,7 @@ import (
 	"github.com/vantare/overlays/v2/frontend"
 	"github.com/vantare/overlays/v2/internal/app"
 	"github.com/vantare/overlays/v2/internal/app/launcher"
+	performancesensor "github.com/vantare/overlays/v2/internal/app/performance/sensor"
 	"github.com/vantare/overlays/v2/internal/app/telemetrytransport"
 	"github.com/vantare/overlays/v2/internal/applog"
 	"github.com/vantare/overlays/v2/internal/authsession"
@@ -1270,7 +1271,7 @@ func main() {
 	}
 	// Set WebView2 user data folder to version-specific path to prevent cache issues across releases
 	if appData := os.Getenv("LOCALAPPDATA"); appData != "" {
-		udf := filepath.Join(appData, "Vantare", "webview_v0.1.0.5")
+		udf := webviewUserDataFolder(filepath.Join(appData, "Vantare", "webview_v0.1.0.5"))
 		_ = os.Setenv("WEBVIEW2_USER_DATA_FOLDER", udf)
 	}
 
@@ -1395,6 +1396,7 @@ func main() {
 	var testingCenterReportDraftBridge *app.TestingCenterReportDraftBridge
 	var testingCenterDiagnosticBridge *app.TestingCenterDiagnosticBridge
 	var telemetryCoreRuntime *app.TelemetryCoreRuntime
+	var performanceRuntime *app.PerformanceRuntime
 	telemetryStatusReplayCleanup := func() {}
 	overlayPullCleanup := func() {}
 	var telemetryAnalysisSvc *app.TelemetryAnalysisService
@@ -1416,6 +1418,12 @@ func main() {
 				{name: "overlay-telemetry-pull-handlers", stop: func(context.Context) error {
 					overlayPullCleanup()
 					return nil
+				}},
+				{name: "performance-sensor", stop: func(ctx context.Context) error {
+					if performanceRuntime == nil {
+						return nil
+					}
+					return performanceRuntime.Stop(ctx)
 				}},
 				{name: "telemetry-core", stop: func(ctx context.Context) error {
 					if telemetryCoreRuntime == nil {
@@ -2111,20 +2119,74 @@ func main() {
 	engBridge = app.NewEngineerBridge(wailsApp, emitter, engSvc)
 	engBridge.Start()
 
+	effectivePerformance := settingsSvc.EffectivePerformancePolicy(studioProfileSvc.PerformanceProfile())
 	telemetryCoreRuntime, err = app.NewTelemetryCoreRuntime(app.TelemetryCoreRuntimeConfig{
 		Enabled:                 *live,
 		Emitter:                 emitter,
 		Engineer:                engSvc,
 		StrategyPublicTransport: *strategyPublicTransport,
-		PerformancePolicy:       settingsSvc.EffectivePerformancePolicy(studioProfileSvc.PerformanceProfile()),
+		PerformancePolicy:       effectivePerformance,
 	})
 	if err != nil {
 		log.Printf("telemetry core init error: %v", err)
 		telemetryCoreRuntime = nil
 	}
+	if telemetryCoreRuntime != nil && performanceSensorEnabled() {
+		performanceRuntime = app.NewPerformanceRuntime(
+			func() app.PerformanceSampleRunner {
+				return performancesensor.New(
+					performancesensor.NewHostSampler(),
+					performancesensor.NewPresentMonSource(performancesensor.DefaultPresentMonPath()),
+				)
+			},
+			settingsSvc.Settings().Performance,
+			effectivePerformance,
+			telemetryCoreRuntime,
+			emitter,
+			nil,
+			engSvc,
+		)
+		performanceRuntime.SetHubVisibleProvider(hubLifecycle.IsVisible)
+		performanceRuntime.SetGameForegroundHandler(func(foreground bool) {
+			if overlayController.Status().Mode != config.ModeRacing {
+				return
+			}
+			if current := overlayController.CurrentWindow(); current != nil {
+				if window, ok := current.(interface{ SetGameForeground(bool) }); ok {
+					window.SetGameForeground(foreground)
+				}
+			}
+		})
+		if performanceSensorTraceEnabled() {
+			performanceRuntime.SetTrace(func(sample performancesensor.Sample, decision performancesensor.Decision) {
+				frametime := "unavailable"
+				if sample.Game.Available {
+					frametime = fmt.Sprintf("%.3f", sample.Game.FrametimeMS)
+				}
+				gameError := ""
+				if sample.GameError != nil {
+					gameError = sample.GameError.Error()
+				}
+				log.Printf(
+					"performance sensor: cpuPct=%.2f vantareCpuPct=%.2f vantareRamMB=%.2f gpuPct=%.2f gameFrametimeMs=%s gameError=%q foreground=%t level=%d reason=%s",
+					sample.Host.CPUPct, sample.Host.VantareCPUPct, sample.Host.VantareRAMMB, sample.Host.GPUPct,
+					frametime, gameError, sample.Game.Foreground, decision.Level, decision.Reason,
+				)
+			})
+		}
+		if err := performanceRuntime.Start(ctx); err != nil {
+			log.Printf("performance sensor start error: %v", err)
+			performanceRuntime = nil
+		}
+	}
 	reconcilePerformance := func(settings app.PerformanceSettings, profile *config.ProfileDocumentV4) {
+		resolved := settingsSvc.EffectivePerformancePolicy(profile)
+		if performanceRuntime != nil {
+			performanceRuntime.ApplyResolvedSettings(settings, resolved)
+			return
+		}
 		if telemetryCoreRuntime != nil {
-			telemetryCoreRuntime.SetPerformancePolicy(app.ResolveEffectivePerformancePolicy(settings, profile))
+			telemetryCoreRuntime.SetPerformancePolicy(resolved)
 		}
 	}
 	performanceSaves := app.NewPerformanceSaveCoordinator(settingsSvc, studioProfileSvc, reconcilePerformance)
@@ -2647,6 +2709,11 @@ func main() {
 				}
 			}
 		}
+		if s.Performance.Mode == "auto" {
+			s.CpuSampling = true
+		}
+		s.Performance.Source = app.PerformanceSourceUser
+		s.Performance.MigratedFrom = ""
 		confirmed, _, err := performanceSaves.Execute(func() error { return settingsSvc.Save(&s) })
 		if err != nil {
 			log.Printf("settings:save error: %v", err)
@@ -3690,6 +3757,17 @@ type wailsOverlayWindow struct {
 	mgr    *window.Manager
 	screen *application.Screen
 	level  int
+}
+
+func (o *wailsOverlayWindow) SetGameForeground(foreground bool) {
+	if o == nil || o.w == nil {
+		return
+	}
+	if foreground {
+		o.w.Show()
+		return
+	}
+	o.w.Hide()
 }
 
 func (o *wailsOverlayWindow) Close() {

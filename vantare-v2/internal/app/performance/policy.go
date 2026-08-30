@@ -94,8 +94,7 @@ type Policy struct {
 }
 
 // Resolve aplica primero el override de perfil cuando existe y normaliza el
-// resultado. Auto queda aceptado pero fijo en nivel 3 hasta que F3 entregue el
-// sensor; Reason hace visible esa degradacion deliberada.
+// resultado. En automático el nivel y la razón proceden del controlador Go.
 func Resolve(appDefault Policy, profileOverride *Policy) Policy {
 	requested := appDefault
 	if profileOverride != nil && profileOverride.Mode != "" {
@@ -103,8 +102,9 @@ func Resolve(appDefault Policy, profileOverride *Policy) Policy {
 	}
 
 	if requested.Mode == ModeAuto {
-		requested.Level = LevelBalanced
-		requested.Reason = ReasonUnavailable
+		if requested.Level < LevelHigh || requested.Level > LevelMinimum {
+			requested.Level = LevelBalanced
+		}
 	} else if requested.Mode != ModeCustom {
 		requested.Mode = ModeLevel
 	}
@@ -119,7 +119,7 @@ func Resolve(appDefault Policy, profileOverride *Policy) Policy {
 	base.Mode = requested.Mode
 	base.SourceHz = requested.SourceHz
 	base.Reason = requested.Reason
-	if requested.Mode == ModeCustom {
+	if requested.Mode == ModeCustom || requested.Mode == ModeAuto {
 		if requested.Effects != "" {
 			base.Effects = requested.Effects
 		}
@@ -139,6 +139,38 @@ func Resolve(appDefault Policy, profileOverride *Policy) Policy {
 		base.Effects = EffectsFull
 	}
 	return base
+}
+
+// ResolveAuto convierte una decisión del sensor en la política efectiva sin
+// permitir que el llamador publique el nivel 1, reservado al modo manual.
+func ResolveAuto(level Level, reason Reason) Policy {
+	return Resolve(Policy{Mode: ModeAuto, Level: level, Reason: reason}, nil)
+}
+
+// ResolveAutoRequested mueve el nivel automático sin perder los overrides
+// explícitos de una política custom solicitada por el perfil.
+func ResolveAutoRequested(requested Policy, level Level, reason Reason) Policy {
+	automatic := ResolveAuto(level, reason)
+	requested = Resolve(requested, nil)
+	if requested.Mode != ModeCustom && requested.Mode != ModeAuto {
+		return automatic
+	}
+	baseline := policyForLevel(requested.Level)
+	for widget, rate := range requested.WidgetHz {
+		if baseRate, ok := baseline.WidgetHz[widget]; !ok || rate != baseRate {
+			automatic.WidgetHz[widget] = rate
+		}
+	}
+	if requested.WidgetEffects != nil {
+		automatic.WidgetEffects = cloneWidgetEffects(requested.WidgetEffects)
+	}
+	if !sameOptionalInt(requested.RafCap, baseline.RafCap) {
+		automatic.RafCap = cloneOptionalInt(requested.RafCap)
+	}
+	if requested.Effects != baseline.Effects {
+		automatic.Effects = requested.Effects
+	}
+	return automatic
 }
 
 // CadenceFor escala los tres tiers existentes y mantiene el techo de rancio
@@ -234,6 +266,20 @@ func (reason Reason) valid() bool {
 }
 
 func intPointer(value int) *int { return &value }
+
+func cloneOptionalInt(value *int) *int {
+	if value == nil {
+		return nil
+	}
+	return intPointer(*value)
+}
+
+func sameOptionalInt(left, right *int) bool {
+	if left == nil || right == nil {
+		return left == right
+	}
+	return *left == *right
+}
 
 func cloneWidgetRates(source map[string]WidgetRate) map[string]WidgetRate {
 	result := make(map[string]WidgetRate, len(source))

@@ -1,0 +1,51 @@
+{
+  "schema": "vantare.performance.cdp.v1",
+  "capturedAt": "2026-08-29T23:00:35.301Z",
+  "action": "performance",
+  "target": {
+    "url": "http://wails.localhost/#/hub",
+    "title": "Vantare",
+    "overlay": false,
+    "hub": true,
+    "widgetCount": 0
+  },
+  "event": "performance:level",
+  "capabilities": {
+    "performance": {
+      "level": 4,
+      "mode": "auto",
+      "effects": "full",
+      "rafCap": 30,
+      "widgetHz": {
+        "broadcast-tower": 2,
+        "car-damage-numbers": "dirty",
+        "car-damage-visual": "dirty",
+        "delta": 15,
+        "delta-advanced": 15,
+        "delta-trace": 10,
+        "engineer-radio": "event",
+        "fuel-strategy": "dirty",
+        "head-to-head": 10,
+        "input-telemetry": 30,
+        "multiclass-relative": 10,
+        "pedals": 30,
+        "pedals-telemetry": 30,
+        "pedals-telemetry-compact": 30,
+        "race-schedule": "dirty",
+        "racing-flags": "event",
+        "relative": 10,
+        "standings": 4,
+        "track-map": 10,
+        "track-weather": "dirty"
+      },
+      "sourceHz": 61.926135411916796,
+      "reason": "unavailable"
+    }
+  },
+  "host": {
+    "cpuPct": 100,
+    "vantareCpuPct": 1.888575787831225,
+    "vantareRamMB": 69.640625,
+    "gpuPct": 0
+  }
+}

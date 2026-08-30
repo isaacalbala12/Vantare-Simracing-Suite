@@ -52,12 +52,26 @@ type WidgetOverride struct {
 	Effects string          `json:"effects,omitempty"`
 }
 
-// PerformanceSettings guarda el defecto global. Auto se acepta para que el
-// formato sea estable, aunque ISA-926 lo resuelve como nivel 3 hasta F3.
+// PerformanceSettings guarda el defecto global.
 type PerformanceSettings struct {
-	Mode      string                    `json:"mode"`
-	Level     int                       `json:"level"`
-	Overrides map[string]WidgetOverride `json:"overrides,omitempty"`
+	Mode         string                    `json:"mode"`
+	Level        int                       `json:"level"`
+	Source       PerformanceSource         `json:"source"`
+	MigratedFrom string                    `json:"migratedFrom,omitempty"`
+	Overrides    map[string]WidgetOverride `json:"overrides,omitempty"`
+}
+
+type PerformanceSource string
+
+const (
+	PerformanceSourceDefault PerformanceSource = "default"
+	PerformanceSourceUser    PerformanceSource = "user"
+
+	PerformanceMigratedFromRolloutLevel1 = "rollout-level-1"
+)
+
+func performanceDefault() PerformanceSettings {
+	return PerformanceSettings{Mode: string(performancepolicy.ModeAuto), Level: int(performancepolicy.LevelBalanced), Source: PerformanceSourceDefault}
 }
 
 // ResolvePerformancePolicy combina el defecto de la app con la preferencia
@@ -77,6 +91,9 @@ func ResolvePerformancePolicy(settings PerformanceSettings, profile *config.Prof
 	}
 	appPolicy := performancepolicy.Resolve(requested, nil)
 	if profile == nil || profile.Performance == nil || profile.Performance.Mode == config.ProfilePerformanceInherit {
+		if requested.Mode == performancepolicy.ModeAuto {
+			return performancepolicy.ResolveAuto(performancepolicy.LevelHigh, performancepolicy.ReasonUnavailable)
+		}
 		return appPolicy
 	}
 	preference := profile.Performance
@@ -108,12 +125,12 @@ func ResolvePerformancePolicy(settings PerformanceSettings, profile *config.Prof
 		return resolved
 	}
 
-	// D4: el automático (fijo en 3 hasta F3) puede degradar lo pedido por el
-	// perfil, pero nunca elevar su calidad. En la escala 1..5 eso es max().
-	if appPolicy.Level > resolved.Level {
-		degraded := performancepolicy.Policy{Mode: profilePolicy.Mode, Level: appPolicy.Level}
+	// D4: Automático puede operar desde el nivel 2, pero nunca elevar la calidad
+	// pedida por el perfil. En la escala 1..5 el límite es max(2, perfil).
+	if performancepolicy.LevelHigh > resolved.Level {
+		degraded := performancepolicy.Policy{Mode: profilePolicy.Mode, Level: performancepolicy.LevelHigh}
 		if profilePolicy.Mode == performancepolicy.ModeCustom {
-			degraded.WidgetHz = performancepolicy.WidgetHzFor(appPolicy.Level)
+			degraded.WidgetHz = performancepolicy.WidgetHzFor(performancepolicy.LevelHigh)
 			degraded.WidgetEffects = profilePolicy.WidgetEffects
 			widgetTypes := profileWidgetTypes(profile)
 			for widgetID, rate := range profilePolicy.WidgetHz {
@@ -177,6 +194,11 @@ func slowerWidgetRate(base, requested performancepolicy.WidgetRate) performancep
 		return requested
 	}
 	return base
+}
+
+// ResolveAutomaticPerformancePolicy incorpora la decisión viva del sensor.
+func ResolveAutomaticPerformancePolicy(level performancepolicy.Level, reason performancepolicy.Reason) performancepolicy.Policy {
+	return performancepolicy.ResolveAuto(level, reason)
 }
 
 func performanceRateFromJSON(raw json.RawMessage) (performancepolicy.WidgetRate, bool) {
@@ -360,8 +382,7 @@ func DefaultAppSettings() *AppSettings {
 	return &AppSettings{
 		SchemaVersion: appSettingsSchemaVersion,
 		CpuSampling:   true,
-		// TODO(#924): pasar a nivel 3 cuando el gate 12.2 esté superado
-		Performance: PerformanceSettings{Mode: "level", Level: 1},
+		Performance:   performanceDefault(),
 		Hotkeys: map[string]string{
 			"toggleOverlay":       "ctrl+shift+v",
 			"toggleEditMode":      "ctrl+shift+e",
@@ -447,7 +468,7 @@ func cloneWidgetOverrides(source map[string]WidgetOverride) map[string]WidgetOve
 }
 
 // appSettingsSchemaVersion is the current shape of the persisted settings.
-const appSettingsSchemaVersion = 4
+const appSettingsSchemaVersion = 5
 
 // migrateSettings applies schema migrations in place.
 //
@@ -460,7 +481,11 @@ const appSettingsSchemaVersion = 4
 //	          sampler through SetCPUEnabled.
 //	v2 -> v3: add the configurable Delta reference hotkey without replacing any
 //	          user-defined combinations.
-//	v3 -> v4: add the global performance default at parity level.
+//	v3 -> v4: add the former temporary global performance default at level 1.
+//	v4 -> v5: make Automatic the default after gate 12.2. The exact unmarked
+//	          level-1 sentinel was written by the temporary rollout and migrates
+//	          with a visible marker; an explicit user source or any other choice
+//	          is preserved. The migration is never applied to schema v5+.
 func (s *SettingsService) migrateSettings(settings *AppSettings) {
 	if settings.SchemaVersion == 0 {
 		settings.SchemaVersion = 1
@@ -485,9 +510,26 @@ func (s *SettingsService) migrateSettings(settings *AppSettings) {
 	}
 	if settings.SchemaVersion < 4 {
 		if settings.Performance.Mode == "" {
-			settings.Performance = PerformanceSettings{Mode: "level", Level: 1}
+			// No persisted choice existed. Route it to today's default without the
+			// rollout marker, which is reserved for files that actually wrote level 1.
+			settings.Performance = performanceDefault()
 		}
 		settings.SchemaVersion = 4
+	}
+	if settings.SchemaVersion < 5 {
+		performance := settings.Performance
+		legacyDefault := performance.Source == "" &&
+			performance.Mode == string(performancepolicy.ModeLevel) &&
+			performance.Level == 1 && len(performance.Overrides) == 0
+		if performance.Mode == "" || performance.Source == PerformanceSourceDefault {
+			settings.Performance = performanceDefault()
+		} else if legacyDefault {
+			settings.Performance = performanceDefault()
+			settings.Performance.MigratedFrom = PerformanceMigratedFromRolloutLevel1
+		} else if performance.Source == "" {
+			settings.Performance.Source = PerformanceSourceUser
+		}
+		settings.SchemaVersion = 5
 	}
 }
 
@@ -864,6 +906,9 @@ func (s *SettingsService) Save(settings *AppSettings) error {
 		return ErrSettingsPathEmpty
 	}
 	snapshot := cloneAppSettings(settings)
+	if snapshot.Performance.Mode == string(performancepolicy.ModeAuto) {
+		snapshot.CpuSampling = true
+	}
 	data, err := json.MarshalIndent(snapshot, "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshal: %w", err)

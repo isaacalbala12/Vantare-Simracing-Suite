@@ -70,7 +70,7 @@ func TestLevelsThreeToFivePublishFullUntilEnduranceVariantsExist(t *testing.T) {
 	}
 }
 
-func TestResolveUsesProfileAndKeepsAutoInBalancedUntilSensorExists(t *testing.T) {
+func TestResolveUsesProfileAndAcceptsAutomaticControllerDecision(t *testing.T) {
 	app := Policy{Mode: ModeLevel, Level: LevelSaving, SourceHz: 60}
 	profile := &Policy{Mode: ModeLevel, Level: LevelHigh, SourceHz: 50}
 	got := Resolve(app, profile)
@@ -78,9 +78,13 @@ func TestResolveUsesProfileAndKeepsAutoInBalancedUntilSensorExists(t *testing.T)
 		t.Fatalf("override resuelto = %+v", got)
 	}
 
-	auto := Resolve(Policy{Mode: ModeAuto, Level: LevelMinimum}, nil)
-	if auto.Level != LevelBalanced || auto.Mode != ModeAuto || auto.Reason != ReasonUnavailable {
+	auto := ResolveAuto(LevelSaving, ReasonCPU)
+	if auto.Level != LevelSaving || auto.Mode != ModeAuto || auto.Reason != ReasonCPU {
 		t.Fatalf("auto resuelto = %+v", auto)
+	}
+	invalidAuto := ResolveAuto(LevelMaximum, "")
+	if invalidAuto.Level != LevelBalanced || invalidAuto.Reason != "" {
+		t.Fatalf("auto inválido = %+v", invalidAuto)
 	}
 }
 

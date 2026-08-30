@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-944",
+  "type": "feature",
+  "summary": "El modo Automático ajusta el rendimiento de Vantare según la carga real del PC y, cuando está disponible, el frametime de LMU.",
+  "technicalNotes": [
+    "El sensor Go mide a 1 Hz la CPU total y la CPU/RAM del proceso Vantare junto con sus WebView2 propios.",
+    "PresentMon usa una sesión ETW VantareSensor propia, conserva las sesiones de Radeon y de otros bancos, y limpia sus huérfanas al siguiente arranque.",
+    "El controlador trabaja entre los niveles 2 y 5 con promoción tras 30 segundos estables, descenso en dos segundos e histéresis de 60 segundos.",
+    "Automático es el defecto desde el schema v5; la migración reemplaza el sentinel temporal nivel 1 y conserva las elecciones marcadas como usuario."
+  ],
+  "testing": [
+    "Activar Automático con LMU cerrado y comprobar que el Hub publica reason unavailable mientras el nivel sigue respondiendo a CPU.",
+    "Con LMU en práctica y en primer plano, mantener una escena estable durante tres minutos y comprobar en el log que hay frametime, que el nivel no oscila y que no queda una sesión VantareSensor tras cerrar.",
+    "Cambiar a un nivel manual y confirmar que el muestreo automático se detiene y se aplica inmediatamente la elección del usuario."
+  ],
+  "knownLimitations": [
+    "El frametime queda no disponible cuando LMU no está abierto, no está produciendo frames o PresentMon no puede iniciarse; Automático continúa usando CPU.",
+    "La validación comparable de niveles en iGPU y VR pertenece al banco completo de huella y no a este sensor."
+  ]
+}

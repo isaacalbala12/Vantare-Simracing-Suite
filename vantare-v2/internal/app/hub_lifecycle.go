@@ -98,3 +98,13 @@ func (l *HubLifecycle) IsMinimised() bool {
 	defer l.mu.Unlock()
 	return l.current == nil || l.current.IsMinimised()
 }
+
+// IsVisible reports whether the current Hub generation exists and is not
+// minimised. It deliberately reads the lifecycle-owned window rather than a
+// window captured by the caller, because efficient levels destroy and recreate
+// that window.
+func (l *HubLifecycle) IsVisible() bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.current != nil && !l.current.IsMinimised()
+}

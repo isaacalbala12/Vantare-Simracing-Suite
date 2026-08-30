@@ -69,6 +69,8 @@ export type NotificationSettings = {
 export type PerformanceSettings = {
   mode: "level" | "custom" | "auto";
   level: 1 | 2 | 3 | 4 | 5;
+  source: "default" | "user";
+  migratedFrom?: "rollout-level-1";
   overrides?: Record<string, { hz?: number | "dirty"; effects?: "full" | "noBlur" | "flat" }>;
 };
 
@@ -86,7 +88,7 @@ export type AppSettings = {
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {
   cpuSampling: true,
-  performance: { mode: "level", level: 1 },
+  performance: { mode: "auto", level: 3, source: "default" },
   notifications: {},
   hotkeys: {
     toggleOverlay: "ctrl+shift+v",

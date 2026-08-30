@@ -35,7 +35,13 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   visual, pero no hay paridad cero y el corte 2 sigue bloqueado y no se tocó.
   Evidencia y guion humano de las cinco sesiones largas en
   `docs/telemetry-core/evidence/isa-894/`. Issue `roadmap:not-required`: no se
-  modifica `plan.md`, no hay merge, promoción ni release.
+  modifica `plan.md`. La rama quedó rebasada sobre
+  `origin/nightly@ade6f561fe97`; Go build/test/vet acotado, contrato generado,
+  frontend 428 ficheros/3.261 tests, typecheck, lint y build pasan. El check
+  local del digest queda bloqueado por estado ajeno: Nightly avanzó con #947,
+  pero `roadmap.json` aún apunta a `8b4a7e4f`; el artefacto canónico ya está en
+  el PR bot #673, bloqueado. Esta issue no copia ese cambio porque
+  `roadmap:not-required` lo prohíbe. No hay merge, promoción ni release.
 
 - 2026-08-30, ISA-893 parte de `origin/nightly@ca166b38` después
   de integrar #936. El store V2 conserva una sola suscripción imperativa al

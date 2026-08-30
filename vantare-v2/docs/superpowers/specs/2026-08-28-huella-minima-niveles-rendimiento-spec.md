@@ -163,12 +163,14 @@ performance: {
   effects: "full" | "noBlur" | "flat";
   rafCap: number | null;             // null = tasa del monitor
   widgetHz: { [widgetType: string]: number | "dirty" | "event" };
-  reason?: "cpu" | "frametime" | "user" | "vr";  // por qué está en este nivel (auto)
+  reason?: "cpu" | "frametime" | "user" | "vr" | "unavailable";  // por qué está en este nivel (auto)
   sourceHz: number;                  // tasa real del driver
 }
 ```
 
 Se publica dentro del frame para que el widget no necesite otra suscripción (regla #912: no más stores). Cambia solo cuando cambia el nivel; el `SectionScheduler` lo trata como sección slow con dirty.
+
+Sin sensor o juego disponible, Automático se mantiene en nivel 3 y publica `reason: "unavailable"`.
 
 ### 7.2 Evento `performance:level` (Go → hub)
 

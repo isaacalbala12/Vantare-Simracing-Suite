@@ -74,7 +74,7 @@ export function StrategyWeatherPanel({ eventId, combinationId, scenarios, result
     });
   };
   const updateNode = (scenarioIndex: number, nodeIndex: number, change: Partial<StrategyWeatherNodeV1>) => {
-    onSave(replaceScenario(scenarios, scenarioIndex, (weighted) => ({
+    return onSave(replaceScenario(scenarios, scenarioIndex, (weighted) => ({
       ...weighted,
       scenario: {
         ...weighted.scenario,

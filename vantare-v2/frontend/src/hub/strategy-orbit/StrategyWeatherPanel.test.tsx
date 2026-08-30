@@ -133,6 +133,12 @@ describe("StrategyWeatherPanel suspend blocker", () => {
     fireEvent.input(rain, { target: { value: "35" } });
     fireEvent.blur(rain);
     expect(snapshots.at(-1)?.other).toHaveLength(1);
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(snapshots.at(-1)?.other).toHaveLength(1);
+
     saved.resolve();
 
     await waitFor(() => expect(snapshots.at(-1)?.other).toHaveLength(0));

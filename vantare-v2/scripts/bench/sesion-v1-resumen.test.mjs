@@ -164,3 +164,45 @@ test("S5 exige Desktop y Studio u OBS y empareja first-seen y widget-ready por c
   ];
   assert.equal(summarizeSession(crossed).criteria.scenario.status, "fail");
 });
+
+test("ON exige paridad shadow independiente en cada ventana esperada", () => {
+  const input = fixture();
+  input.session = "S5";
+  input.phase = "on";
+  input.expectedWindows = ["desktop", "studio-or-obs"];
+  input.diagnostics.forEach((checkpoint, index) => {
+    checkpoint.targets[0].diagnostics.shadow = {frames: (index + 1) * 10, mismatches: 0, metrics: {standings: 0}};
+    checkpoint.targets.push({
+      role: "hub",
+      surface: "studio",
+      url: "http://wails.localhost/#/studio",
+      title: "Vantare Studio",
+      widgetCount: 3,
+      diagnostics: {
+        pull: {
+          receivedV1Projections: index * 100,
+          receivedV2Snapshots: index * 100,
+          requestDurationMs: {count: index * 100, sampleCount: index * 100, p99: 30, max: 50, histogram: []},
+        },
+        shadow: {frames: 0, mismatches: 0, metrics: {standings: 0}},
+      },
+    });
+  });
+  input.transitions = [
+    {kind: "human", text: "abrir Desktop tarde", timestamp: "2026-08-30T10:05:00Z"},
+    {kind: "window-first-seen", surface: "desktop", window: "desktop|overlay|one", timestamp: "2026-08-30T10:05:02Z"},
+    {kind: "window-widget-ready", surface: "desktop", window: "desktop|overlay|one", timestamp: "2026-08-30T10:05:04Z"},
+    {kind: "human", text: "abrir Studio tarde", timestamp: "2026-08-30T10:10:00Z"},
+    {kind: "window-first-seen", surface: "studio", window: "studio|hub|two", timestamp: "2026-08-30T10:10:02Z"},
+    {kind: "window-widget-ready", surface: "studio", window: "studio|hub|two", timestamp: "2026-08-30T10:10:04Z"},
+  ];
+
+  const summary = summarizeSession(input);
+  assert.equal(summary.criteria.shadowOn.status, "fail");
+
+  for (const checkpoint of input.diagnostics) checkpoint.targets[1].diagnostics.shadow = null;
+  assert.equal(summarizeSession(input).criteria.shadowOn.status, "fail");
+
+  for (const checkpoint of input.diagnostics) checkpoint.targets[1].diagnostics.shadow = {frames: 10, mismatches: 1, metrics: {standings: 1}};
+  assert.equal(summarizeSession(input).criteria.shadowOn.status, "fail");
+});

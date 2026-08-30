@@ -162,20 +162,36 @@ function phaseCriterion(input, windows) {
     const pass = complete && received === 0 && shadowViolations === 0;
     return {v1Off: result(pass ? "pass" : "fail", `${formatNumber(received)} proyecciones V1; ${shadowViolations} shadow activos o ausentes`), shadowOn: result("not-applicable", "fase OFF")};
   }
+  const byWindow = new Map();
+  for (const observation of evidence.observations) {
+    if (!byWindow.has(observation.key)) byWindow.set(observation.key, []);
+    byWindow.get(observation.key).push(observation);
+  }
+  let pass = evidence.declaredValid && evidence.missingKinds.length === 0 && evidence.missingPull === 0 && byWindow.size > 0;
   let frames = 0;
   let mismatches = 0;
   const metrics = {};
-  for (const checkpoint of input.diagnostics ?? []) {
-    for (const target of checkpoint.targets ?? []) {
-      const shadow = target.diagnostics?.shadow;
-      if (!shadow) continue;
-      frames = Math.max(frames, Number(shadow.frames ?? 0));
-      mismatches = Math.max(mismatches, Number(shadow.mismatches ?? 0));
-      for (const [name, value] of Object.entries(shadow.metrics ?? {})) metrics[name] = Math.max(metrics[name] ?? 0, Number(value));
+  const details = [];
+  for (const [window, observations] of byWindow) {
+    const shadows = observations.map(({shadow}) => shadow);
+    const shadowPresent = shadows.every((shadow) => shadow !== null && shadow !== undefined);
+    const windowFrames = Math.max(0, ...shadows.map((shadow) => Number(shadow?.frames ?? 0)));
+    const windowMismatches = Math.max(0, ...shadows.map((shadow) => Number(shadow?.mismatches ?? 0)));
+    const windowMetrics = {};
+    for (const shadow of shadows) {
+      for (const [name, value] of Object.entries(shadow?.metrics ?? {})) {
+        windowMetrics[name] = Math.max(windowMetrics[name] ?? 0, Number(value));
+        metrics[name] = Math.max(metrics[name] ?? 0, Number(value));
+      }
     }
+    const valid = shadowPresent && windowFrames > 0 && windowMismatches === 0;
+    pass &&= valid;
+    frames = Math.max(frames, windowFrames);
+    mismatches = Math.max(mismatches, windowMismatches);
+    details.push({window, surface: observations[0]?.surface, checkpoints: observations.length, shadowPresent, frames: windowFrames, mismatches: windowMismatches, metrics: windowMetrics, status: valid ? "pass" : "fail"});
   }
-  const pass = frames > 0 && mismatches === 0;
-  return {v1Off: result("not-applicable", "fase ON"), shadowOn: result(pass ? "pass" : "fail", `${frames} frames; ${mismatches} mismatches exactos`, {frames, mismatches, metrics})};
+  const validWindows = details.filter(({status}) => status === "pass").length;
+  return {v1Off: result("not-applicable", "fase ON"), shadowOn: result(pass ? "pass" : "fail", `${validWindows}/${details.length} ventanas con paridad; ${mismatches} mismatches exactos`, {frames, mismatches, metrics, windows: details})};
 }
 
 function scenarioCriterion(input) {

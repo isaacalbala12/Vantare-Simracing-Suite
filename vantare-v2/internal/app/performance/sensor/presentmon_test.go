@@ -19,14 +19,19 @@ type fakeProcess struct {
 	stopOnce   sync.Once
 	stream     io.Closer
 	killErr    error
+	waitErr    error
+	skipStop   bool
+	exitOnce   sync.Once
 }
 
 func (process *fakeProcess) PID() int { return process.pid }
 func (process *fakeProcess) Wait() error {
 	<-process.exited
-	<-process.stopped
+	if !process.skipStop {
+		<-process.stopped
+	}
 	*process.operations = append(*process.operations, "wait:43125")
-	return nil
+	return process.waitErr
 }
 func (process *fakeProcess) Kill() error {
 	process.killed = true
@@ -34,20 +39,22 @@ func (process *fakeProcess) Kill() error {
 	if process.stream != nil {
 		_ = process.stream.Close()
 	}
-	close(process.exited)
+	process.exitOnce.Do(func() { close(process.exited) })
 	return process.killErr
 }
 
 type fakeRunner struct {
-	mu          sync.Mutex
-	queries     []string
-	stream      string
-	process     *fakeProcess
-	operations  []string
-	queryOutput string
-	stopErrors  []error
-	stopCalls   int
-	killErr     error
+	mu              sync.Mutex
+	queries         []string
+	stream          string
+	process         *fakeProcess
+	operations      []string
+	queryOutput     string
+	stopErrors      []error
+	stopCalls       int
+	killErr         error
+	waitErr         error
+	exitAfterStream bool
 }
 
 func (runner *fakeRunner) Output(_ context.Context, name string, args ...string) ([]byte, error) {
@@ -83,8 +90,16 @@ func (runner *fakeRunner) Start(_ context.Context, _ string, _ []string) (proces
 		stopped:    make(chan struct{}),
 		stream:     writer,
 		killErr:    runner.killErr,
+		waitErr:    runner.waitErr,
+		skipStop:   runner.exitAfterStream,
 	}
-	go func() { _, _ = io.WriteString(writer, runner.stream) }()
+	go func() {
+		_, _ = io.WriteString(writer, runner.stream)
+		if runner.exitAfterStream {
+			_ = writer.Close()
+			runner.process.exitOnce.Do(func() { close(runner.process.exited) })
+		}
+	}()
 	return runner.process, reader, nil
 }
 
@@ -208,5 +223,47 @@ func TestPresentMonCloseJoinsBothSessionStopErrors(t *testing.T) {
 	err := source.Close()
 	if !errors.Is(err, killErr) || !errors.Is(err, firstStopErr) || !errors.Is(err, secondStopErr) {
 		t.Fatalf("Close error = %v, want kill and both stop errors", err)
+	}
+}
+
+func TestBoundedDiagnosticBufferRetainsOnlyTail(t *testing.T) {
+	buffer := newBoundedBuffer(8)
+	if _, err := buffer.Write([]byte("0123456789abcdef")); err != nil {
+		t.Fatal(err)
+	}
+	if got := buffer.String(); got != "89abcdef" {
+		t.Fatalf("bounded stderr = %q, want tail", got)
+	}
+	if err := presentMonWaitError(nil, buffer.String()); err == nil || !strings.Contains(err.Error(), "89abcdef") {
+		t.Fatalf("clean early exit lost bounded diagnostic: %v", err)
+	}
+}
+
+func TestPresentMonEarlyExitPublishesOperationalCauseAndUnavailable(t *testing.T) {
+	waitErr := errors.New("ETW permission denied")
+	runner := &fakeRunner{
+		queryOutput:     "RSXTraceSession\n",
+		stream:          "Application,FrameTime\nLMU,9.5\n",
+		waitErr:         waitErr,
+		exitAfterStream: true,
+	}
+	source := NewPresentMonSource("PresentMon.exe")
+	source.runner = runner
+	if err := source.Start(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-source.done:
+	case <-time.After(time.Second):
+		t.Fatal("early PresentMon exit was not observed")
+	}
+	if got := source.Sample(); got.Available {
+		t.Fatalf("sample after child exit = %+v", got)
+	}
+	if err := source.Err(); !errors.Is(err, waitErr) || !strings.Contains(err.Error(), "PresentMon exited") {
+		t.Fatalf("operational error = %v", err)
+	}
+	if err := source.Close(); err != nil {
+		t.Fatal(err)
 	}
 }

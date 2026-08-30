@@ -41,14 +41,16 @@ func (fn HostSamplerFunc) Sample(ctx context.Context) (HostSample, error) { retu
 type GameFrametimeSource interface {
 	Start(context.Context) error
 	Sample() GameSample
+	Err() error
 	Close() error
 }
 
 type FakeGameFrametimeSource struct {
-	mu       sync.RWMutex
-	Current  GameSample
-	StartErr error
-	CloseErr error
+	mu         sync.RWMutex
+	Current    GameSample
+	StartErr   error
+	CloseErr   error
+	RuntimeErr error
 }
 
 func (source *FakeGameFrametimeSource) Start(context.Context) error { return source.StartErr }
@@ -57,6 +59,11 @@ func (source *FakeGameFrametimeSource) Sample() GameSample {
 	source.mu.RLock()
 	defer source.mu.RUnlock()
 	return source.Current
+}
+func (source *FakeGameFrametimeSource) Err() error {
+	source.mu.RLock()
+	defer source.mu.RUnlock()
+	return source.RuntimeErr
 }
 func (source *FakeGameFrametimeSource) Set(sample GameSample) {
 	source.mu.Lock()
@@ -137,10 +144,11 @@ func (sampler *Sampler) Run(ctx context.Context, publish func(Sample)) error {
 				continue
 			}
 			game := sampler.game.Sample()
-			if gameErr != nil {
+			currentGameErr := errors.Join(gameErr, sampler.game.Err())
+			if currentGameErr != nil {
 				game.Available = false
 			}
-			publish(Sample{At: at, Host: host, Game: game, GameError: gameErr})
+			publish(Sample{At: at, Host: host, Game: game, GameError: currentGameErr})
 		}
 	}
 }

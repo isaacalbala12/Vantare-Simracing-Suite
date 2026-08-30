@@ -55,6 +55,25 @@ func TestSamplerDegradesGameWhenPresentMonCannotStart(t *testing.T) {
 	}
 }
 
+func TestSamplerDegradesGameWhenPresentMonFailsAfterPublishing(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ticker := &fakeTicker{ticks: make(chan time.Time, 1)}
+	runtimeErr := errors.New("PresentMon exited: ETW permission denied")
+	game := &FakeGameFrametimeSource{
+		Current:    GameSample{Available: true, FrametimeMS: 7},
+		RuntimeErr: runtimeErr,
+	}
+	sampler := NewWithClock(HostSamplerFunc(func(context.Context) (HostSample, error) { return HostSample{}, nil }), game, &fakeClock{ticker: ticker})
+	result := make(chan Sample, 1)
+	go func() { _ = sampler.Run(ctx, func(sample Sample) { result <- sample }) }()
+	ticker.ticks <- time.Unix(4, 0)
+	got := <-result
+	if got.Game.Available || !errors.Is(got.GameError, runtimeErr) {
+		t.Fatalf("sample after runtime failure = %+v error=%v", got.Game, got.GameError)
+	}
+}
+
 func TestSamplerCancellationDoesNotWaitForBlockedHostCall(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	ticker := &fakeTicker{ticks: make(chan time.Time, 1)}

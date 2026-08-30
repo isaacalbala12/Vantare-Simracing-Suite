@@ -31,6 +31,7 @@ type execRunner struct{}
 type execHandle struct {
 	command  *exec.Cmd
 	closeJob func() error
+	stderr   *boundedBuffer
 }
 
 func (execRunner) Output(ctx context.Context, name string, args ...string) ([]byte, error) {
@@ -42,16 +43,29 @@ func (execRunner) Start(ctx context.Context, name string, args []string) (proces
 	if err != nil {
 		return nil, nil, err
 	}
-	command.Stderr = io.Discard
+	stderr := newBoundedBuffer(4096)
+	command.Stderr = stderr
 	closeJob, err := startCommandInKillOnCloseJob(command)
 	if err != nil {
 		stdout.Close()
 		return nil, nil, err
 	}
-	return &execHandle{command: command, closeJob: closeJob}, stdout, nil
+	return &execHandle{command: command, closeJob: closeJob, stderr: stderr}, stdout, nil
 }
 func (handle *execHandle) Wait() error {
-	return errors.Join(handle.command.Wait(), handle.closeJob())
+	waitErr := presentMonWaitError(handle.command.Wait(), handle.stderr.String())
+	return errors.Join(waitErr, handle.closeJob())
+}
+
+func presentMonWaitError(waitErr error, diagnostic string) error {
+	diagnostic = strings.TrimSpace(diagnostic)
+	if diagnostic == "" {
+		return waitErr
+	}
+	if waitErr == nil {
+		return fmt.Errorf("PresentMon process stderr: %s", diagnostic)
+	}
+	return fmt.Errorf("PresentMon process: %w; stderr: %s", waitErr, diagnostic)
 }
 func (handle *execHandle) PID() int {
 	if handle.command.Process == nil {
@@ -81,6 +95,8 @@ type PresentMonSource struct {
 	processPID   int
 	latest       GameSample
 	latestAt     time.Time
+	runtimeErr   error
+	closing      bool
 	done         chan struct{}
 	closeOnce    sync.Once
 }
@@ -100,6 +116,10 @@ func NewPresentMonSource(executable string) *PresentMonSource {
 
 func (source *PresentMonSource) Start(parent context.Context) error {
 	source.invalidateFrame()
+	source.mu.Lock()
+	source.runtimeErr = nil
+	source.closing = false
+	source.mu.Unlock()
 	if err := source.cleanOrphans(parent); err != nil {
 		return err
 	}
@@ -127,8 +147,7 @@ func (source *PresentMonSource) Start(parent context.Context) error {
 
 func (source *PresentMonSource) consume(reader io.ReadCloser, process processHandle) {
 	defer close(source.done)
-	defer process.Wait()
-	defer source.invalidateFrame()
+	defer source.finishProcess(process)
 	defer reader.Close()
 	csvReader := csv.NewReader(bufio.NewReader(reader))
 	csvReader.FieldsPerRecord = -1
@@ -158,6 +177,21 @@ func (source *PresentMonSource) consume(reader io.ReadCloser, process processHan
 	}
 }
 
+func (source *PresentMonSource) finishProcess(process processHandle) {
+	source.invalidateFrame()
+	waitErr := process.Wait()
+	source.mu.Lock()
+	defer source.mu.Unlock()
+	if source.closing {
+		return
+	}
+	if waitErr != nil {
+		source.runtimeErr = fmt.Errorf("PresentMon exited: %w", errors.Join(ErrUnavailable, waitErr))
+		return
+	}
+	source.runtimeErr = fmt.Errorf("PresentMon exited: %w", ErrUnavailable)
+}
+
 func (source *PresentMonSource) Sample() GameSample {
 	source.mu.RLock()
 	defer source.mu.RUnlock()
@@ -167,6 +201,12 @@ func (source *PresentMonSource) Sample() GameSample {
 	}
 	result.Foreground = source.foreground()
 	return result
+}
+
+func (source *PresentMonSource) Err() error {
+	source.mu.RLock()
+	defer source.mu.RUnlock()
+	return source.runtimeErr
 }
 
 func (source *PresentMonSource) publishFrame(frametimeMS float64) {
@@ -186,9 +226,10 @@ func (source *PresentMonSource) invalidateFrame() {
 func (source *PresentMonSource) Close() error {
 	var closeErr error
 	source.closeOnce.Do(func() {
-		source.mu.RLock()
+		source.mu.Lock()
+		source.closing = true
 		cancel, process, done := source.cancel, source.process, source.done
-		source.mu.RUnlock()
+		source.mu.Unlock()
 		if process != nil {
 			if err := process.Kill(); err != nil && !errors.Is(err, os.ErrProcessDone) {
 				closeErr = errors.Join(closeErr, fmt.Errorf("kill owned PresentMon PID %d: %w", process.PID(), err))

@@ -1,7 +1,7 @@
 # ISA-944 — gates y resultado
 
-Fecha: 2026-08-30. Base rebasada: `origin/nightly@c4eb1168`.
-Revisión comprobada antes de añadir este acta: `e1147c3b`.
+Fecha: 2026-08-30. Base rebasada: `origin/nightly@9723148f`.
+Revisión comprobada antes de actualizar este acta: `6097f822`.
 
 ## Gates de código
 
@@ -10,21 +10,21 @@ Revisión comprobada antes de añadir este acta: `e1147c3b`.
 | `go build ./...` | PASS |
 | `go build -tags production ./cmd/vantare` | PASS |
 | `go test ./internal/app/... ./cmd/... -count=1` | PASS |
-| `go vet ./internal/app/... ./cmd/...` | FAIL heredado: `internal/app/launcher/icon_windows.go:553:8: possible misuse of unsafe.Pointer` |
-| `corepack pnpm --dir frontend test` | PASS: 422 archivos, 3206 tests |
+| `go test ./scripts/bench -count=1` | PASS |
+| `go vet ./internal/app/performance/... ./internal/app ./cmd/vantare ./scripts/bench` | PASS; alcance acotado por #950 |
+| `corepack pnpm --dir frontend exec vitest run --maxWorkers=2` | PASS: 427 archivos, 3258 tests, 200,58 s |
 | `corepack pnpm --dir frontend typecheck` | PASS |
 | `corepack pnpm --dir frontend lint` | PASS |
+| `corepack pnpm --dir frontend i18n:audit` | PASS: paridad, 0 ausentes, 0 huérfanas conservadoras |
 | `go run ./tools/telemetry-contract-gen -check` | PASS |
 | `python ../.github/scripts/roadmap_digest.py --repo .. --ref origin/nightly --check` | PASS: `sin cambios` |
-| `node --test scripts/bench/all.test.mjs` | PASS: 23 tests |
 | `git diff --check` | PASS |
 | `git merge-base --is-ancestor origin/nightly HEAD` | PASS (exit 0) |
 
-El único fallo de vet está también en `origin/nightly`: `git diff --numstat
-origin/nightly -- internal/app/launcher/icon_windows.go` no devuelve cambios.
-ISA-944 no modifica ese archivo. La primera ejecución completa de Vitest tuvo
-un timeout de 20 s en el escaneo de `legacy-retirement.test.ts` (3205/3206);
-el test aislado pasó 3/3 y la repetición completa posterior pasó 3206/3206.
+El vet global heredado se sigue por separado en #950; el alcance que ISA-944
+modifica y su ejecutable principal pasan vet. Vitest emitió un `AbortError` de
+teardown de Happy DOM durante la corrida, pero completó los 3258 tests y salió
+con código 0.
 
 ## Gates del sensor
 
@@ -40,6 +40,12 @@ el test aislado pasó 3/3 y la repetición completa posterior pasó 3206/3206.
 - Degradación: `game-20260830` capturó por CDP `reason: unavailable`, host sin
   `gameFrametimeMs` y control CPU-only 3→4→5. LMU estaba abierto, por lo que
   demuestra indisponibilidad de la fuente, no una corrida específica sin LMU.
+- A/A final desde árbol limpio `1940dfa0`: `sensor-cost-20260830-054516`, 60 s
+  OFF + 60 s ON a nivel 5, SHA-256 del ejecutable
+  `f8515d11db51f522d75985ce3e963ac6927c2fb7f88ccb86ef3983fbc16ff231`.
+  Delta ON−OFF: +0,1437 puntos de CPU media, +0,2516 puntos p95 y +4,66 MiB;
+  107 muestras sin deriva, 106 con frametime. Al cerrar quedaron cero Vantare
+  y cero sesiones `VantareSensor-*`.
 
 ## Pendiente externo
 

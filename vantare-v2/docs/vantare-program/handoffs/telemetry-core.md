@@ -16,34 +16,40 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 ## Estado real
 
 - 2026-08-30, ISA-894 corte 1 y guardarraíles corte 3 están rebasados sobre
-  `origin/nightly@9723148f` (#954 incluido). La app no construye ni publica V1
+  `origin/nightly@cd03518b` (#954, #942 y #948 incluidos). El schema persistido
+  v6 conserva Automático de #948 y añade el interruptor V1 apagado. La app no construye ni publica V1
   por defecto; ajuste `overlayV1Emit=true` o
   `VANTARE_OVERLAY_V1_EMIT=1` lo reactivan tras reinicio. La revisión del PR
   #953 queda atendida: el shadow se crea al primer V1 y en OFF no registra el
   callback V2 (`shadow=null` en 3/3 preflights); el guard Go usa AST para
-  resolver `Emit`/`EmitEvent` y nombres V1 literales, constantes o concatenados;
-  el guard TS recorre todo `frontend/src/overlay/**` con exclusiones estrechas
-  y mutaciones negativas. El A/B corregido usó un solo exe SHA-256
+  resolver `Emit`/`EmitEvent`, constantes y asignaciones locales simples, y
+  rechaza la polaridad negada de `overlayV1Emit`; el guard TS recorre cada
+  `.ts/.tsx` de `frontend/src/overlay/**` con exclusiones estrechas y congela
+  por fichero/conteo el inventario V1 que solo puede retirar el corte 2. El A/B corregido usó un solo exe SHA-256
   `844715b0…c46f5` y un solo dist `d088dfe6…22b59`, Spa `PRACTICE1`, 18 coches,
   A1, tres corridas alternadas de 180 s por estado, sin `-Forzar`. OFF recibió
   0 V1 y 16 V2; ON recibió 16 V1/13 V2 y reportó 35 mismatches diagnósticos. Go
-  CPU bajó 2,646 -> 1,609 %, pero no es concluyente por ruido 5,11/5,56 %;
-  renderer no asignado bajó 2,496 -> 1,482 %, tampoco concluyente por 8,95 %
-  OFF. Su RAM bajó 139,34 -> 108,46 MiB, pero ON queda en 5,82 % de ruido.
+  CPU bajó 2,646 -> 1,609 %, el renderer no asignado bajó 2,496 -> 1,482 %
+  y su RAM 139,34 -> 108,46 MiB. Las diferencias equivalen a 4,6×, 4,9×
+  y 2,4× la suma de sus desviaciones estándar; son efectos grandes observados,
+  aunque n=3 y hasta 9 % de ruido impiden la etiqueta estricta ≤5 %. La RAM Go
+  fue un ahorro pequeño y repetible (gate ≤5 %), con razón 1,6×.
   Browser no mejoró y hubo 0/74.141 frames perdidos. Una regresión adicional
   fija el banco a 180 s de pared: antes hacía 180 iteraciones y prolongaba CPU/RAM.
   El corte 2 sigue
   bloqueado por paridad no exacta y no se tocó. Se añadió el colector autónomo
   `scripts/bench/sesion-v1.ps1` para S1–S5: higiene, hashes, muestreo por PID,
   checkpoints CDP, p99/histograma, screenshots, transiciones humanas/automáticas,
-  cierre limpio y veredicto JSON/Markdown; las sesiones las coordinarán Isaac y
+  cierre limpio y veredicto JSON/Markdown. Declara ventanas esperadas, exige
+  `pull` y `shadow=null` en cada observación OFF, valida cada ciclo S4 con avance
+  V2 y empareja aperturas S5 por clave. Las sesiones las coordinarán Isaac y
   el orquestador tras fusionar corte 1. Issue `roadmap:not-required`: no se
-  modifica roadmap. Go build/test, vet acotado, contrato, 429 ficheros/3.267
-  tests frontend, typecheck, lint y banco pasan. El digest local está bloqueado
-  por estado externo: `origin/nightly@9723148f` conserva
-  `digest.lastCommit=ade6f561`; el workflow publicó la corrección `336f0e97`
-  en el PR bot #673, que sigue abierto y bloqueado. Esta rama no copia ni
-  fusiona ese roadmap. Evidencia en `docs/telemetry-core/evidence/isa-894/`.
+  modifica roadmap. Se publican los seis CSV A/B sanitizados con SHA crudo y
+  publicado. Go build/test, vet acotado, contrato, 433 ficheros/3.287 tests
+  frontend, typecheck, lint y 38 tests del banco pasan. El digest local está
+  bloqueado por estado externo: `origin/nightly@cd03518b` conserva
+  `digest.lastCommit=9a9179aa`, anterior al merge #948. Esta rama no copia ni
+  regenera ese roadmap. Evidencia en `docs/telemetry-core/evidence/isa-894/`.
   No hay merge, promoción ni release.
 
 - 2026-08-30, ISA-893 parte de `origin/nightly@ca166b38` después

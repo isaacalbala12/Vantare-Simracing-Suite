@@ -35,25 +35,24 @@ Ruido = desviación muestral / media; el gate de repetibilidad es ≤5 %. Los
 resúmenes completos están en [`on.md`](./ab-v1-off-runs/on.md) y
 [`off.md`](./ab-v1-off-runs/off.md).
 
-| Proceso / métrica | V1 ON | V1 OFF | Delta OFF vs ON | Ruido ON/OFF | Veredicto |
-| --- | ---: | ---: | ---: | ---: | --- |
-| Go host CPU | 2,646 % | 1,609 % | −39,19 % | **5,11 % / 5,56 %** | no concluyente: ambos superan ruido |
-| Go host RAM privada | 72,83 MiB | 70,77 MiB | −2,83 % | 0,68 % / 1,18 % | repetible, ahorro pequeño |
-| Renderer no asignado CPU | 2,496 % | 1,482 % | −40,63 % | 2,97 % / **8,95 %** | no concluyente: OFF supera ruido |
-| Renderer no asignado RAM privada | 139,34 MiB | 108,46 MiB | −22,16 % | **5,82 %** / 4,58 % | no concluyente: ON supera ruido |
-| Browser CPU | 1,000 % | 1,046 % | +4,60 % | 0,00 % / 1,56 % | pequeño aumento |
-| Browser RAM privada | 45,11 MiB | 45,37 MiB | +0,58 % | 0,34 % / 1,05 % | sin mejora |
-| GPU process CPU | 0,117 % | 0,119 % | +1,71 % | **52,54 % / 42,51 %** | no concluyente |
-| GPU process RAM privada | 141,99 MiB | 141,35 MiB | −0,45 % | 1,07 % / 0,86 % | sin mejora material |
-| Renderer Hub CPU | 0,014 % | 0,018 % | +28,57 % | 2,44 % / **86,66 %** | no concluyente |
-| Renderer Hub RAM privada | 54,50 MiB | 54,90 MiB | +0,73 % | 0,68 % / 0,77 % | sin mejora |
-| Frametime LMU | 15,262 ms | 14,137 ms | −7,37 % | **11,46 % / 10,89 %** | contexto, no causal |
-| Frames perdidos LMU | 0 / 35.667 | 0 / 38.474 | 0 | 0 % / 0 % | PASS |
+| Proceso / métrica | V1 ON | V1 OFF | Delta OFF vs ON | Ruido ON/OFF | Diferencia / suma SD | Veredicto |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| Go host CPU | 2,646 % | 1,609 % | −39,19 % | **5,11 % / 5,56 %** | **4,6×** | efecto grande observado; precisión limitada |
+| Go host RAM privada | 72,83 MiB | 70,77 MiB | −2,83 % | 0,68 % / 1,18 % | **1,6×** | pequeño y repetible (gate ≤5 %) |
+| Renderer no asignado CPU | 2,496 % | 1,482 % | −40,63 % | 2,97 % / **8,95 %** | **4,9×** | efecto grande observado; precisión limitada |
+| Renderer no asignado RAM privada | 139,34 MiB | 108,46 MiB | −22,16 % | **5,82 %** / 4,58 % | **2,4×** | efecto grande observado; precisión limitada |
+| Browser CPU | 1,000 % | 1,046 % | +4,60 % | 0,00 % / 1,56 % | — | pequeño aumento |
+| Browser RAM privada | 45,11 MiB | 45,37 MiB | +0,58 % | 0,34 % / 1,05 % | — | sin mejora |
+| GPU process CPU | 0,117 % | 0,119 % | +1,71 % | **52,54 % / 42,51 %** | — | ruido alto; sin inferencia |
+| GPU process RAM privada | 141,99 MiB | 141,35 MiB | −0,45 % | 1,07 % / 0,86 % | — | sin mejora material |
+| Renderer Hub CPU | 0,014 % | 0,018 % | +28,57 % | 2,44 % / **86,66 %** | — | ruido alto; sin inferencia |
+| Renderer Hub RAM privada | 54,50 MiB | 54,90 MiB | +0,73 % | 0,68 % / 0,77 % | — | sin mejora |
+| Frametime LMU | 15,262 ms | 14,137 ms | −7,37 % | **11,46 % / 10,89 %** | — | contexto, no causal |
+| Frames perdidos LMU | 0 / 35.667 | 0 / 38.474 | 0 | 0 % / 0 % | — | PASS |
 
-Conclusión acotada: apagar V1 elimina el coste shadow. Las bajadas de CPU Go,
-CPU renderer y RAM renderer son direccionales, pero **no publicables como
-efecto repetible** porque al menos una condición supera el gate de ruido. Solo
-el pequeño ahorro de RAM Go supera repetibilidad; browser no mejora.
+En este A/B de 3×180 s por estado, con el mismo binario, dist y escena, apagar V1 redujo la media de CPU del host Go un 39,2 %, la CPU del renderer no asignado un 40,6 % y su RAM privada un 22,2 %. Las seis observaciones quedaron separadas por estado. Son efectos grandes observados, aunque n=3 y un ruido entre corridas de hasta 9 % limitan la precisión; no cumplen la etiqueta estricta «repetible con ruido ≤5 %» y el renderer no puede atribuirse exclusivamente a la ventana overlay.
+
+El ahorro de RAM privada del host Go fue pequeño y repetible (gate ≤5 %).
 
 ## Pull, histograma y recepción por ventana
 

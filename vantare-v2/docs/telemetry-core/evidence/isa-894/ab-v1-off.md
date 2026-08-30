@@ -74,17 +74,29 @@ visual, pero mantienen bloqueado el corte 2.
 
 ## Corridas y artefactos
 
-Los CSV crudos permanecen bajo `results/isa-894/review-final-180s/` local. Sus hashes
-permiten relacionarlos de forma inequívoca con la metadata publicada.
+Los seis CSV están publicados en `ab-v1-off-runs/`. La sanitización fue una
+sustitución mecánica única de `C:\Users\<usuario>\AppData\Local` por
+`%LOCALAPPDATA%`; métricas, timestamps, PID, procedencia y columnas permanecen
+intactos. La tabla conserva el SHA-256 del crudo fuente para relacionarlo con
+la captura local; después se publica también el SHA-256 del fichero sanitizado.
 
 | Estado | Run | CSV | SHA-256 CSV | Go CPU | Go RAM | Renderer CPU | Renderer RAM |
 | --- | ---: | --- | --- | ---: | ---: | ---: | ---: |
-| ON | 1 | `a1-20260830-051723.csv` | `D409F9A88DB6DE4A9DA2FBF18E99224CDEC1CF059B842D86473ADD2A868B7E4F` | 2,671 % | 72,88 MiB | 2,548 % | 141,61 MiB |
-| ON | 2 | `a1-20260830-052436.csv` | `E3489066A3FE65A462D1E53A968CD82A29DAE0B1E1569C0DF5D4423CCE41DEAD` | 2,500 % | 73,30 MiB | 2,529 % | 130,35 MiB |
-| ON | 3 | `a1-20260830-053201.csv` | `C85C6044E86420D4702F3B1B07C2C4E4D0D5862BFBB9ACEB25322368AFD409FD` | 2,767 % | 72,32 MiB | 2,411 % | 146,07 MiB |
-| OFF | 1 | `a1-20260830-052101.csv` | `4DCD840CCB4006B8C199FABCEFB629CB1E23E4B873659FE1475F65AE45BAC68A` | 1,595 % | 71,65 MiB | 1,419 % | 110,92 MiB |
-| OFF | 2 | `a1-20260830-052816.csv` | `4606EBDE130A65423DE4D1443E58C011A8C5C7A843E4D9DA68AE42EEF5C34FE6` | 1,704 % | 69,99 MiB | 1,634 % | 111,72 MiB |
-| OFF | 3 | `a1-20260830-053543.csv` | `B4FA388799904ADEB52BECFD24BDB8E2EEE1938DD4F6774B2710638F5E4A476E` | 1,527 % | 70,67 MiB | 1,392 % | 102,74 MiB |
+| ON | 1 | [`on-1.csv`](./ab-v1-off-runs/on-1.csv) | `D409F9A88DB6DE4A9DA2FBF18E99224CDEC1CF059B842D86473ADD2A868B7E4F` | 2,671 % | 72,88 MiB | 2,548 % | 141,61 MiB |
+| ON | 2 | [`on-2.csv`](./ab-v1-off-runs/on-2.csv) | `E3489066A3FE65A462D1E53A968CD82A29DAE0B1E1569C0DF5D4423CCE41DEAD` | 2,500 % | 73,30 MiB | 2,529 % | 130,35 MiB |
+| ON | 3 | [`on-3.csv`](./ab-v1-off-runs/on-3.csv) | `C85C6044E86420D4702F3B1B07C2C4E4D0D5862BFBB9ACEB25322368AFD409FD` | 2,767 % | 72,32 MiB | 2,411 % | 146,07 MiB |
+| OFF | 1 | [`off-1.csv`](./ab-v1-off-runs/off-1.csv) | `4DCD840CCB4006B8C199FABCEFB629CB1E23E4B873659FE1475F65AE45BAC68A` | 1,595 % | 71,65 MiB | 1,419 % | 110,92 MiB |
+| OFF | 2 | [`off-2.csv`](./ab-v1-off-runs/off-2.csv) | `4606EBDE130A65423DE4D1443E58C011A8C5C7A843E4D9DA68AE42EEF5C34FE6` | 1,704 % | 69,99 MiB | 1,634 % | 111,72 MiB |
+| OFF | 3 | [`off-3.csv`](./ab-v1-off-runs/off-3.csv) | `B4FA388799904ADEB52BECFD24BDB8E2EEE1938DD4F6774B2710638F5E4A476E` | 1,527 % | 70,67 MiB | 1,392 % | 102,74 MiB |
+
+| CSV sanitizado | SHA-256 publicado |
+| --- | --- |
+| `on-1.csv` | `CD09AD5F6B40C6EAF085935E7607CA4DE63C8DD6D3D467A7BF2F6A98AFA2BFB7` |
+| `on-2.csv` | `CF399217EF60C55B3ADE05908A92D73E3FDA1B2D765AAC962534512384796EC9` |
+| `on-3.csv` | `B9718928610A4CB89127DD15310FD7B1FB5EA6D26BC96926C5CECB8B7F0BB67E` |
+| `off-1.csv` | `042E7C3AEED75C9F23A6CE0F43BAB63976CF5916755E8D59ED2F6906AF5BD6A5` |
+| `off-2.csv` | `8B70BCFC04BBD6C38589F0F98E101775F0838E24B3CF2164486477B77B7E6E0F` |
+| `off-3.csv` | `F911205001A8D0553C91CC0CCD1EB2CCAC9E8C811B817357C0DE58BFF4E405AD` |
 
 | Artefacto versionado | SHA-256 |
 | --- | --- |

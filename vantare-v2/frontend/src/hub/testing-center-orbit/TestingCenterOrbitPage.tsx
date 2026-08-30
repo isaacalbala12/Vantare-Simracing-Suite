@@ -144,6 +144,7 @@ export function TestingCenterOrbitPage({
   const [draftDirty, setDraftDirty] = useState(false);
 
   const draftReady = useRef(false);
+  const draftRevision = useRef(0);
   const saveChain = useRef<Promise<unknown>>(Promise.resolve());
   useHubSuspendBlocker(
     "testing-center-draft",
@@ -203,13 +204,16 @@ export function TestingCenterOrbitPage({
   useEffect(() => {
     if (!draftReady.current || !draftDirty || submitted || submitting) return;
     const timer = window.setTimeout(() => {
+      const revision = draftRevision.current;
       setDraftState("saving");
       saveDraftSequentially(fields)
         .then((draft) => {
           setIdempotencyKey(draft.idempotencyKey);
-          setDraftState("saved");
+          if (revision === draftRevision.current) setDraftState("saved");
         })
-        .catch(() => setDraftState("error"));
+        .catch(() => {
+          if (revision === draftRevision.current) setDraftState("error");
+        });
     }, 600);
     return () => window.clearTimeout(timer);
   }, [draftDirty, fields, saveDraftSequentially, submitted, submitting]);
@@ -240,6 +244,7 @@ export function TestingCenterOrbitPage({
 
   const changeField = useCallback(
     (field: keyof ReportDraftFields, value: string) => {
+      draftRevision.current += 1;
       setDraftDirty(true);
       setDraftState("idle");
       setSubmitted(null);
@@ -265,6 +270,7 @@ export function TestingCenterOrbitPage({
   }, []);
 
   const resetLocalState = useCallback(() => {
+    draftRevision.current += 1;
     setDraftDirty(false);
     setFields(EMPTY_FIELDS);
     setFieldErrors({});

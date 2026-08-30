@@ -45,7 +45,6 @@ type AutoController struct {
 	overloadSamples int
 	lastDrop        time.Time
 	referenceFrame  float64
-	vr              bool
 }
 
 func NewAutoController(requestedLevel performancepolicy.Level) *AutoController {
@@ -79,15 +78,6 @@ func (controller *AutoController) SetRequestedLevel(level performancepolicy.Leve
 	return Decision{Level: controller.level, Reason: controller.reason, Changed: changed}
 }
 
-func (controller *AutoController) SetVR(active bool) {
-	controller.mu.Lock()
-	controller.vr = active
-	if active {
-		controller.reason = performancepolicy.ReasonVR
-	}
-	controller.mu.Unlock()
-}
-
 func (controller *AutoController) Observe(sample Sample) Decision {
 	controller.mu.Lock()
 	defer controller.mu.Unlock()
@@ -98,12 +88,6 @@ func (controller *AutoController) Observe(sample Sample) Decision {
 		controller.healthySince = time.Time{}
 		return decision
 	}
-	if controller.vr {
-		controller.reason = performancepolicy.ReasonVR
-		decision.Reason = controller.reason
-		return decision
-	}
-
 	frameHealthy, frameOverloaded := controller.classifyFrametime(sample.Game)
 	cpuOverloaded := sample.Host.CPUPct > overloadedCPUThreshold
 	if cpuOverloaded || frameOverloaded {

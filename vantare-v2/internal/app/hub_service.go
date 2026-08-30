@@ -176,6 +176,19 @@ func (s *HubService) SetSettingsService(svc *SettingsService) {
 	s.settingsSvc = svc
 }
 
+// RestoreActiveProfile loads the persisted active profile during composition.
+// Call it before constructing consumers that need the initial profile policy.
+func (s *HubService) RestoreActiveProfile() error {
+	if s.settingsSvc == nil {
+		return fmt.Errorf("settings service not configured")
+	}
+	activeID := s.settingsSvc.Settings().ActiveOverlayProfileID
+	if activeID == "" {
+		return nil
+	}
+	return s.ActivateProfile(activeID)
+}
+
 // ListProfiles returns all profile JSON files in the configs directory.
 func (s *HubService) ListProfiles() ([]ProfileEntry, error) {
 	if s.profilesDir == "" {

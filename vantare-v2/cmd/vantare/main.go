@@ -1947,6 +1947,14 @@ func main() {
 		log.Printf("license:reset-device ok")
 	})
 
+	// Ajustes se cargan antes del perfil activo y del runtime para que la
+	// composición inicial use una única pareja confirmada.
+	appSettingsPath := filepath.Join(cfgDir, "app-settings.json")
+	settingsSvc := app.NewSettingsService(appSettingsPath, emitter, nil)
+	if err := settingsSvc.Load(); err != nil {
+		log.Printf("warning: could not load settings: %v (using defaults)", err)
+	}
+
 	// Overlay Studio V3 profile persistence (canonical runtime document owner)
 	studioProfileSvc = app.NewStudioProfileService(emitter, func(saved app.StudioProfileSaved) {
 		log.Printf("studio profile saved: %s revision=%s", saved.Path, saved.Revision)
@@ -1958,6 +1966,13 @@ func main() {
 	}
 	hubSvc.SetStudioProfileService(studioProfileSvc)
 	studioProfileSvc.RegisterHandlers(wailsApp)
+	// La política inicial debe usar la pareja confirmada ajustes+perfil. La
+	// restauración ocurre antes de construir TelemetryCoreRuntime y, como el
+	// reconciliador aún no está conectado, no emite performance:level.
+	hubSvc.SetSettingsService(settingsSvc)
+	if err := hubSvc.RestoreActiveProfile(); err != nil {
+		log.Printf("warning: could not restore active profile: %v", err)
+	}
 
 	// Widget design library for Overlay Studio V3
 	designSvc := app.NewWidgetDesignService(cfgDir, emitter)
@@ -1980,11 +1995,6 @@ func main() {
 
 	// Engineer owns product behavior only. TelemetryCoreRuntime below is its
 	// sole production telemetry source.
-	appSettingsPath := filepath.Join(cfgDir, "app-settings.json")
-	settingsSvc := app.NewSettingsService(appSettingsPath, emitter, nil)
-	if err := settingsSvc.Load(); err != nil {
-		log.Printf("warning: could not load settings: %v (using defaults)", err)
-	}
 	engSvc = engineerservice.NewEngineerService(emitter)
 	if err := engSvc.SetLegacySpotterRollback(*legacyEngineerSpotter); err != nil {
 		log.Printf("engineer legacy spotter rollback configuration error: %v", err)
@@ -2235,16 +2245,6 @@ func main() {
 		notifyingEmitter{downstream: emitter, notify: notifySvc, settings: settingsSvc},
 		exec.Command,
 	)
-
-	// Wire settings service into hub service for active profile persistence.
-	hubSvc.SetSettingsService(settingsSvc)
-
-	// Load active profile from settings if present.
-	if activeID := settingsSvc.Settings().ActiveOverlayProfileID; activeID != "" {
-		if err := hubSvc.ActivateProfile(activeID); err != nil {
-			log.Printf("warning: could not restore active profile %s: %v", activeID, err)
-		}
-	}
 
 	// Diagnostics service
 	diagSvc := app.NewDiagnosticsService(version, cfgDir, profileSvc, settingsSvc, telemetrySourceStatus)

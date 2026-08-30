@@ -66,6 +66,7 @@ func TestOverlayV1EmissionGuardRejectsEveryEmitterVariant(t *testing.T) {
 		{name: "EmitEvent status", source: `package sample; func f() { window.EmitEvent("telemetry:overlay:status", nil) }`, want: true},
 		{name: "constant alias", source: `package sample; const legacy = "telemetry:overlay:projection"; func f() { emitter.Emit(legacy, nil) }`, want: true},
 		{name: "local assignment alias", source: `package sample; func f() { projection := "telemetry:overlay:projection"; emitter.Emit(projection, nil) }`, want: true},
+		{name: "closure local assignment alias", source: `package sample; func f() { callback := func() { event := "telemetry:overlay:projection"; emitter.Emit(event, nil) }; _ = callback }`, want: true},
 		{name: "negated diagnostic switch", source: `package sample; func f() { if !runtime.overlayV1Emit { emitter.Emit("telemetry:overlay:projection", nil) } }`, want: true},
 		{name: "diagnostic switch", source: `package sample; func f() { if runtime.overlayV1Emit { emitter.Emit("telemetry:overlay:projection", nil) } }`},
 		{name: "v2 stays allowed", source: `package sample; func f() { emitter.Emit("telemetry:overlay-v2:snapshot", nil) }`},
@@ -131,7 +132,9 @@ func stringBindingsAt(file *ast.File, position token.Pos) map[string][]ast.Expr 
 			}
 			switch statement := node.(type) {
 			case *ast.FuncLit:
-				return false
+				// Only descend into the lexical closure that contains the call.
+				// Bindings from sibling callbacks must not leak into this scope.
+				return position >= statement.Body.Pos() && position <= statement.Body.End()
 			case *ast.AssignStmt:
 				if len(statement.Lhs) != len(statement.Rhs) {
 					return true

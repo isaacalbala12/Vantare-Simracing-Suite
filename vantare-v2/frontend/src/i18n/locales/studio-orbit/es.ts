@@ -80,7 +80,9 @@ export const studioOrbitEs: Record<string, string> = {
   "studio.inspector.unsupported":
     "Este widget no tiene un renderer compatible con el sistema visual seleccionado.",
 
-  "studio.inspector.frequency": "Frecuencia",
+  "studio.inspector.frequencyManaged": "Cadencia gestionada por Rendimiento",
+  "studio.inspector.frequencyManagedBody":
+    "La frecuencia ya no se guarda en el widget. Usa la política del perfil en la cabecera o Ajustes › Rendimiento.",
   "studio.inspector.session.practice": "Práctica",
   "studio.inspector.session.qualifying": "Clasificación",
   "studio.inspector.session.race": "Carrera",
@@ -150,7 +152,7 @@ export const studioOrbitEs: Record<string, string> = {
   "overlay.inspector.pedals.pedalClutchColor": "Color del embrague",
   "overlay.inspector.trackMap.showTrackLabel": "Mostrar nombre del circuito",
 
-  "studio.summary.fps": "{{n}} fps",
+  "studio.summary.performanceManaged": "política del perfil",
   "studio.summary.pit.any": "siempre",
   "studio.summary.pit.inPit": "solo en boxes",
   "studio.summary.pit.onTrack": "solo en pista",
@@ -172,4 +174,8 @@ export const studioOrbitEs: Record<string, string> = {
   "studio.topbar.retrySave": "Reintentar guardado",
   "studio.topbar.openOverlay": "Abrir overlay",
   "studio.topbar.stopOverlay": "Detener overlay",
+  "studio.topbar.performanceMode": "Política del perfil",
+  "studio.topbar.performanceInherit": "Heredar de la aplicación",
+  "studio.topbar.performanceLevel": "Nivel del perfil",
+  "studio.topbar.performanceEffective": "Nivel efectivo",
 };

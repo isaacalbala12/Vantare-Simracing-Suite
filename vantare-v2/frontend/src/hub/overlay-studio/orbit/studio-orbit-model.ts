@@ -37,7 +37,7 @@ export function designSummary(widget: WidgetInstanceV3, t: Translate): string {
 }
 
 /**
- * "15 fps · todas" / "30 fps · solo en pista · 2 sesiones".
+ * Compact summary: translated profile policy followed by active visibility filters.
  *
  * El resumen vive en una linea de ~180 px junto al titulo del acordeon: con el
  * texto largo ("15 fps · siempre · todas las sesiones") siempre salia cortado
@@ -45,7 +45,7 @@ export function designSummary(widget: WidgetInstanceV3, t: Translate): string {
  * filtro de boxes en "siempre"— no se nombran: solo se nombra lo que restringe.
  */
 export function behaviorSummary(widget: WidgetInstanceV3, t: Translate): string {
-  const fps = fill(t("studio.summary.fps"), { n: widget.behavior.updateHz });
+  const cadence = t("studio.summary.performanceManaged");
   const inPit = widget.behavior.visibleWhen?.inPit;
   const pit =
     inPit === undefined
@@ -58,7 +58,7 @@ export function behaviorSummary(widget: WidgetInstanceV3, t: Translate): string 
     sessionTypes.length === 0
       ? t("studio.summary.sessionsAll")
       : fill(t("studio.summary.sessions"), { n: sessionTypes.length });
-  return [fps, pit, sessions].filter(Boolean).join(" · ");
+  return [cadence, pit, sessions].filter(Boolean).join(" · ");
 }
 
 /** "por defecto" / "2 cambios": lo que el usuario ha tocado sobre el diseno. */

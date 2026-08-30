@@ -1947,6 +1947,14 @@ func main() {
 		log.Printf("license:reset-device ok")
 	})
 
+	// Ajustes se cargan antes del perfil activo y del runtime para que la
+	// composición inicial use una única pareja confirmada.
+	appSettingsPath := filepath.Join(cfgDir, "app-settings.json")
+	settingsSvc := app.NewSettingsService(appSettingsPath, emitter, nil)
+	if err := settingsSvc.Load(); err != nil {
+		log.Printf("warning: could not load settings: %v (using defaults)", err)
+	}
+
 	// Overlay Studio V3 profile persistence (canonical runtime document owner)
 	studioProfileSvc = app.NewStudioProfileService(emitter, func(saved app.StudioProfileSaved) {
 		log.Printf("studio profile saved: %s revision=%s", saved.Path, saved.Revision)
@@ -1958,6 +1966,13 @@ func main() {
 	}
 	hubSvc.SetStudioProfileService(studioProfileSvc)
 	studioProfileSvc.RegisterHandlers(wailsApp)
+	// La política inicial debe usar la pareja confirmada ajustes+perfil. La
+	// restauración ocurre antes de construir TelemetryCoreRuntime y, como el
+	// reconciliador aún no está conectado, no emite performance:level.
+	hubSvc.SetSettingsService(settingsSvc)
+	if err := hubSvc.RestoreActiveProfile(); err != nil {
+		log.Printf("warning: could not restore active profile: %v", err)
+	}
 
 	// Widget design library for Overlay Studio V3
 	designSvc := app.NewWidgetDesignService(cfgDir, emitter)
@@ -1980,11 +1995,6 @@ func main() {
 
 	// Engineer owns product behavior only. TelemetryCoreRuntime below is its
 	// sole production telemetry source.
-	appSettingsPath := filepath.Join(cfgDir, "app-settings.json")
-	settingsSvc := app.NewSettingsService(appSettingsPath, emitter, nil)
-	if err := settingsSvc.Load(); err != nil {
-		log.Printf("warning: could not load settings: %v (using defaults)", err)
-	}
 	engSvc = engineerservice.NewEngineerService(emitter)
 	if err := engSvc.SetLegacySpotterRollback(*legacyEngineerSpotter); err != nil {
 		log.Printf("engineer legacy spotter rollback configuration error: %v", err)
@@ -2044,12 +2054,22 @@ func main() {
 		Emitter:                 emitter,
 		Engineer:                engSvc,
 		StrategyPublicTransport: *strategyPublicTransport,
-		PerformancePolicy:       app.ResolvePerformancePolicy(settingsSvc.Settings().Performance),
+		PerformancePolicy:       app.ResolvePerformancePolicy(settingsSvc.Settings().Performance, studioProfileSvc.PerformanceProfile()),
 	})
 	if err != nil {
 		log.Printf("telemetry core init error: %v", err)
 		telemetryCoreRuntime = nil
 	}
+	reconcilePerformance := func(settings app.PerformanceSettings, profile *config.ProfileDocumentV4) {
+		if telemetryCoreRuntime != nil {
+			telemetryCoreRuntime.SetPerformancePolicy(app.ResolvePerformancePolicy(settings, profile))
+		}
+	}
+	performanceSaves := app.NewPerformanceSaveCoordinator(settingsSvc, studioProfileSvc, reconcilePerformance)
+	studioProfileSvc.SetPerformanceSaveCoordinator(performanceSaves)
+	hubSvc.SetPerformancePolicyReconciler(func(profile *config.ProfileDocumentV4) {
+		reconcilePerformance(settingsSvc.Settings().Performance, profile)
+	})
 	telemetrySourceStatus := func() driver.SourceStatus {
 		if telemetryCoreRuntime == nil {
 			return driver.UnknownSourceStatus()
@@ -2225,24 +2245,6 @@ func main() {
 		notifyingEmitter{downstream: emitter, notify: notifySvc, settings: settingsSvc},
 		exec.Command,
 	)
-
-	// Wire settings service into hub service for active profile persistence.
-	hubSvc.SetSettingsService(settingsSvc)
-
-	// Load active profile from settings if present.
-	if activeID := settingsSvc.Settings().ActiveOverlayProfileID; activeID != "" {
-		if path, err := hubSvc.ResolveProfilePath(activeID); err == nil {
-			if err := profileSvc.LoadActiveProfile(path); err != nil {
-				log.Printf("warning: could not load active profile %s: %v", activeID, err)
-			} else if studioProfileSvc != nil {
-				if err := studioProfileSvc.LoadActiveProfile(path); err != nil {
-					log.Printf("warning: could not load active studio profile %s: %v", activeID, err)
-				}
-			}
-		} else {
-			log.Printf("warning: active profile %s not found: %v", activeID, err)
-		}
-	}
 
 	// Diagnostics service
 	diagSvc := app.NewDiagnosticsService(version, cfgDir, profileSvc, settingsSvc, telemetrySourceStatus)
@@ -2562,26 +2564,36 @@ func main() {
 
 	wailsApp.Event.On("settings:get", func(event *application.CustomEvent) {
 		emitter.Emit("settings", settingsSvc.Settings())
+		if telemetryCoreRuntime != nil {
+			telemetryCoreRuntime.EmitPerformanceLevel()
+		}
 	})
 
 	wailsApp.Event.On("settings:save", func(event *application.CustomEvent) {
+		var request struct {
+			RequestID string           `json:"requestId"`
+			Settings  *app.AppSettings `json:"settings"`
+		}
 		var s app.AppSettings
 		if event.Data != nil {
 			if raw, err := json.Marshal(event.Data); err == nil {
-				json.Unmarshal(raw, &s)
+				_ = json.Unmarshal(raw, &request)
+				if request.Settings != nil {
+					s = *request.Settings
+				} else {
+					_ = json.Unmarshal(raw, &s)
+				}
 			}
 		}
-		if err := settingsSvc.Save(&s); err != nil {
+		confirmed, _, err := performanceSaves.Execute(func() error { return settingsSvc.Save(&s) })
+		if err != nil {
 			log.Printf("settings:save error: %v", err)
 			emitSettingsError(err.Error())
 			return
 		}
 		// Apply CPU sampling toggle if runtime sampler exists
 		if rtSampler != nil {
-			rtSampler.SetCPUEnabled(s.CpuSampling)
-		}
-		if telemetryCoreRuntime != nil {
-			telemetryCoreRuntime.SetPerformancePolicy(app.ResolvePerformancePolicy(s.Performance))
+			rtSampler.SetCPUEnabled(confirmed.CpuSampling)
 		}
 		// Rebuild hotkeys with new combos
 		rebuildHotkeys()
@@ -2590,7 +2602,9 @@ func main() {
 				log.Printf("engineer experimental voice-input PTT reservation unavailable after settings save: %v", err)
 			}
 		}
-		emitter.Emit("settings-saved", map[string]any{"ok": true})
+		emitter.Emit("settings-saved", map[string]any{
+			"ok": true, "requestId": request.RequestID, "settings": confirmed,
+		})
 	})
 
 	// Autostart lives in the Windows Run key and nowhere else. Keeping a copy
@@ -3751,6 +3765,10 @@ func buildHotkeyActionMap(
 				log.Printf("hotkey next profile error: %v", err)
 				return
 			}
+			if err := hubSvc.ActivateProfile(filepath.Base(studioProfileSvc.Path())); err != nil {
+				log.Printf("hotkey next profile activation error: %v", err)
+				return
+			}
 			if status, err := hubSvc.StartActiveOverlay(); err != nil {
 				log.Printf("hotkey next profile restart overlay error: %v", err)
 				if !status.Running {
@@ -3767,6 +3785,10 @@ func buildHotkeyActionMap(
 			}
 			if err := studioProfileSvc.PreviousProfile(); err != nil {
 				log.Printf("hotkey prev profile error: %v", err)
+				return
+			}
+			if err := hubSvc.ActivateProfile(filepath.Base(studioProfileSvc.Path())); err != nil {
+				log.Printf("hotkey previous profile activation error: %v", err)
 				return
 			}
 			if status, err := hubSvc.StartActiveOverlay(); err != nil {

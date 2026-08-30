@@ -24,15 +24,23 @@ type StudioProfileSaved struct {
 
 // StudioProfileService manages Overlay Studio V3 profile documents in parallel to legacy ProfileService.
 type StudioProfileService struct {
-	deltaCycleMu sync.Mutex
-	path         string
-	loaded       *config.LoadedProfileV3
-	store        config.ProfileDocumentStore
-	emitter      EventEmitter
-	logger       *slog.Logger
-	onSaved      func(StudioProfileSaved)
-	profilesDir  string
-	mgr          *window.Manager
+	deltaCycleMu         sync.Mutex
+	operationMu          sync.Mutex
+	stateMu              sync.RWMutex
+	path                 string
+	loaded               *config.LoadedProfileV3
+	autosaveBaseRevision string
+	store                config.ProfileDocumentStore
+	emitter              EventEmitter
+	logger               *slog.Logger
+	onSaved              func(StudioProfileSaved)
+	onPerformanceSaved   func(*config.ProfileDocumentV4)
+	performanceSaves     *PerformanceSaveCoordinator
+	// beforePersist is an internal synchronization seam for deterministic
+	// concurrency tests. Production constructors leave it nil.
+	beforePersist func(string)
+	profilesDir   string
+	mgr           *window.Manager
 }
 
 // NewStudioProfileService creates a parallel Studio profile service.
@@ -47,19 +55,33 @@ func NewStudioProfileService(emitter EventEmitter, onSaved func(StudioProfileSav
 
 // Load reads a profile from disk without emitting events.
 func (s *StudioProfileService) Load(path string) (*config.LoadedProfileV3, error) {
+	s.operationMu.Lock()
+	defer s.operationMu.Unlock()
 	loaded, err := s.store.Load(path)
 	if err != nil {
 		return nil, err
 	}
+	s.stateMu.Lock()
 	s.path = path
 	s.loaded = loaded
+	s.autosaveBaseRevision = ""
+	s.stateMu.Unlock()
+	for _, notice := range loaded.MigrationNotices {
+		s.logger.Warn("studio profile v3 migration discarded atypical updateHz",
+			"profile", path,
+			"path", notice.Path,
+			"widgetId", notice.WidgetID,
+			"widgetType", notice.WidgetType,
+			"updateHz", notice.UpdateHz,
+		)
+	}
 	return loaded, nil
 }
 
 // Save persists the supplied document using optimistic revision checks and
 // notifies the runtime refresh callback (which recreates the desktop window).
 func (s *StudioProfileService) Save(requestID, expectedRevision string, doc *config.ProfileDocumentV3) error {
-	return s.savePath(requestID, s.path, expectedRevision, doc, true)
+	return s.savePath(requestID, s.Path(), expectedRevision, doc, true)
 }
 
 // SaveInPlace persists the supplied document using optimistic revision checks
@@ -67,27 +89,50 @@ func (s *StudioProfileService) Save(requestID, expectedRevision string, doc *con
 // without recreating its own window. The studio:profile:saved event is emitted
 // with the requestID so the overlay can update its local revision.
 func (s *StudioProfileService) SaveInPlace(requestID, expectedRevision string, doc *config.ProfileDocumentV3) error {
-	return s.savePath(requestID, s.path, expectedRevision, doc, false)
+	return s.savePath(requestID, s.Path(), expectedRevision, doc, false)
 }
 
 func (s *StudioProfileService) savePath(requestID, path, expectedRevision string, doc *config.ProfileDocumentV3, notifySaved bool) error {
+	s.operationMu.Lock()
+	defer s.operationMu.Unlock()
 	if path == "" {
 		err := fmt.Errorf("profile path not configured")
 		s.emitError(requestID, "save", err)
 		return err
 	}
 	migratedFrom := config.ProfileSchemaVersionV3
-	if path == s.path && s.loaded != nil {
-		migratedFrom = s.loaded.MigratedFrom
+	var currentV4 *config.ProfileDocumentV4
+	saveRevision := expectedRevision
+	s.stateMu.RLock()
+	activePath := s.path
+	activeLoaded := s.loaded
+	autosaveBaseRevision := s.autosaveBaseRevision
+	onSaved := s.onSaved
+	s.stateMu.RUnlock()
+	if path == activePath && activeLoaded != nil {
+		migratedFrom = activeLoaded.MigratedFrom
+		currentV4 = activeLoaded.DocumentV4
+		// A confirmed in-process performance save may advance the revision while
+		// an autosave request is waiting on operationMu. Rebase that autosave on
+		// the current in-memory revision; an external disk edit still conflicts
+		// because activeLoaded keeps the caller's expected revision.
+		if expectedRevision != "" && expectedRevision == autosaveBaseRevision && expectedRevision != activeLoaded.Revision {
+			saveRevision = activeLoaded.Revision
+		}
 	} else {
-		loaded, err := s.store.Load(path)
+		loaded, err := s.store.LoadV4(path)
 		if err != nil {
 			s.emitError(requestID, "save", err)
 			return err
 		}
 		migratedFrom = loaded.MigratedFrom
+		currentV4 = loaded.Document
 	}
-	revision, err := s.store.Save(path, expectedRevision, doc, migratedFrom)
+	updatedV4 := config.ConvertProfileV3ToV4(doc)
+	if currentV4 != nil {
+		updatedV4.Performance = config.NormalizeProfileDocumentV4(currentV4).Performance
+	}
+	revision, err := s.store.SaveV4(path, saveRevision, updatedV4, migratedFrom)
 	if err != nil {
 		if errors.Is(err, config.ErrProfileConflict) {
 			s.emitConflict(requestID, err)
@@ -97,16 +142,21 @@ func (s *StudioProfileService) savePath(requestID, path, expectedRevision string
 		return err
 	}
 	savedDocument := config.NormalizeProfileDocumentV3(doc)
+	savedV4 := config.NormalizeProfileDocumentV4(updatedV4)
 	loaded := &config.LoadedProfileV3{
-		Document:     config.NormalizeProfileDocumentV3(doc),
+		Document:     savedDocument,
+		DocumentV4:   savedV4,
 		Revision:     revision,
-		MigratedFrom: config.ProfileSchemaVersionV3,
+		MigratedFrom: config.ProfileSchemaVersionV4,
 	}
 	// Un save del editor queda ligado al archivo que cargo esa sesion. Si el
 	// perfil activo global cambio entretanto, se persiste el archivo correcto
 	// sin reemplazar el documento runtime que ahora pertenece al otro perfil.
-	if path == s.path {
+	if path == activePath {
+		s.stateMu.Lock()
 		s.loaded = loaded
+		s.autosaveBaseRevision = ""
+		s.stateMu.Unlock()
 	}
 	payload := map[string]any{
 		"requestId": requestID,
@@ -116,8 +166,8 @@ func (s *StudioProfileService) savePath(requestID, path, expectedRevision string
 	if s.emitter != nil {
 		s.emitter.Emit("studio:profile:saved", payload)
 	}
-	if notifySaved && s.onSaved != nil {
-		s.onSaved(StudioProfileSaved{
+	if notifySaved && onSaved != nil {
+		onSaved(StudioProfileSaved{
 			Path:     path,
 			Document: savedDocument,
 			Revision: revision,
@@ -137,6 +187,92 @@ func (s *StudioProfileService) RegisterHandlers(app *application.App) {
 	app.Event.On("overlay:edit-layout:save", func(event *application.CustomEvent) {
 		s.HandleSaveInPlace(event.Data)
 	})
+	app.Event.On("studio:profile:performance:save", func(event *application.CustomEvent) {
+		s.HandlePerformanceSave(event.Data)
+	})
+}
+
+// HandlePerformanceSave updates only the active profile's V4 performance
+// policy. Layout/content remain byte-for-byte equivalent after normalization.
+func (s *StudioProfileService) HandlePerformanceSave(data any) {
+	var payload struct {
+		RequestID   string                       `json:"requestId"`
+		Performance *config.ProfilePerformanceV4 `json:"performance"`
+	}
+	raw, err := json.Marshal(data)
+	if err != nil || json.Unmarshal(raw, &payload) != nil {
+		s.emitError(payload.RequestID, "performance-save", fmt.Errorf("invalid performance payload"))
+		return
+	}
+	var doc *config.ProfileDocumentV4
+	var revision string
+	persist := func() error {
+		var persistErr error
+		doc, revision, persistErr = s.savePerformance(payload.Performance)
+		return persistErr
+	}
+	s.stateMu.RLock()
+	coordinator := s.performanceSaves
+	s.stateMu.RUnlock()
+	var saveErr error
+	if coordinator != nil {
+		_, _, saveErr = coordinator.Execute(persist)
+	} else {
+		saveErr = persist()
+	}
+	if saveErr != nil {
+		if errors.Is(saveErr, config.ErrProfileConflict) {
+			s.emitConflict(payload.RequestID, saveErr)
+		} else {
+			s.emitError(payload.RequestID, "performance-save", saveErr)
+		}
+		return
+	}
+	if s.emitter != nil {
+		s.emitter.Emit("studio:profile:performance:saved", map[string]any{
+			"requestId": payload.RequestID, "performance": doc.Performance, "revision": revision,
+		})
+		s.emitter.Emit("hub:profiles:refresh", map[string]any{"ok": true})
+	}
+	s.stateMu.RLock()
+	onPerformanceSaved := s.onPerformanceSaved
+	s.stateMu.RUnlock()
+	if onPerformanceSaved != nil {
+		onPerformanceSaved(doc)
+	}
+}
+
+func (s *StudioProfileService) savePerformance(performance *config.ProfilePerformanceV4) (*config.ProfileDocumentV4, string, error) {
+	s.operationMu.Lock()
+	defer s.operationMu.Unlock()
+	if s.beforePersist != nil {
+		s.beforePersist("performance")
+	}
+	s.stateMu.RLock()
+	path := s.path
+	loaded := s.loaded
+	s.stateMu.RUnlock()
+	if loaded == nil || loaded.DocumentV4 == nil || path == "" {
+		return nil, "", fmt.Errorf("profile not loaded")
+	}
+	doc := config.NormalizeProfileDocumentV4(loaded.DocumentV4)
+	doc.Performance = performance
+	if err := config.ValidateProfileDocumentV4(doc); err != nil {
+		return nil, "", err
+	}
+	revision, err := s.store.SaveV4(path, loaded.Revision, doc, loaded.MigratedFrom)
+	if err != nil {
+		return nil, "", err
+	}
+	legacy := config.ConvertProfileV4ToV3(doc)
+	s.stateMu.Lock()
+	s.autosaveBaseRevision = loaded.Revision
+	s.loaded = &config.LoadedProfileV3{
+		Document: legacy, DocumentV4: doc, Revision: revision,
+		MigratedFrom: config.ProfileSchemaVersionV4,
+	}
+	s.stateMu.Unlock()
+	return doc, revision, nil
 }
 
 // HandleLoad decodes a correlated load request and emits studio:profile:loaded or studio:profile:error.
@@ -166,7 +302,10 @@ func (s *StudioProfileService) resolveProfilePath(file string) (string, error) {
 	if filepath.IsAbs(file) {
 		return file, nil
 	}
-	if s.profilesDir == "" {
+	s.stateMu.RLock()
+	profilesDir := s.profilesDir
+	s.stateMu.RUnlock()
+	if profilesDir == "" {
 		return "", fmt.Errorf("profiles directory not configured")
 	}
 	basename := filepath.Base(file)
@@ -176,7 +315,7 @@ func (s *StudioProfileService) resolveProfilePath(file string) (string, error) {
 	if !strings.HasSuffix(basename, ".json") {
 		basename += ".json"
 	}
-	path := filepath.Join(s.profilesDir, basename)
+	path := filepath.Join(profilesDir, basename)
 	if _, err := os.Stat(path); err != nil {
 		return "", fmt.Errorf("profile not found: %s", basename)
 	}
@@ -211,14 +350,18 @@ func (s *StudioProfileService) HandleSaveInPlace(data any) {
 
 // EmitLoaded emits studio:profile:loaded for the current in-memory document.
 func (s *StudioProfileService) EmitLoaded(requestID string) {
-	if s.emitter == nil || s.loaded == nil {
+	s.stateMu.RLock()
+	loaded := s.loaded
+	s.stateMu.RUnlock()
+	if s.emitter == nil || loaded == nil {
 		return
 	}
 	s.emitter.Emit("studio:profile:loaded", map[string]any{
-		"requestId":    requestID,
-		"document":     s.loaded.Document,
-		"revision":     s.loaded.Revision,
-		"migratedFrom": s.loaded.MigratedFrom,
+		"requestId":        requestID,
+		"document":         loaded.Document,
+		"revision":         loaded.Revision,
+		"migratedFrom":     loaded.MigratedFrom,
+		"migrationNotices": loaded.MigrationNotices,
 	})
 }
 
@@ -303,9 +446,12 @@ func (s *StudioProfileService) logFailure(operation, requestID string, err error
 	}
 	profileID := ""
 	expectedRevisionSet := false
-	if s.loaded != nil && s.loaded.Document != nil {
-		profileID = s.loaded.Document.ID
-		expectedRevisionSet = s.loaded.Revision != ""
+	s.stateMu.RLock()
+	loaded := s.loaded
+	s.stateMu.RUnlock()
+	if loaded != nil && loaded.Document != nil {
+		profileID = loaded.Document.ID
+		expectedRevisionSet = loaded.Revision != ""
 	}
 	s.logger.Warn("studio profile operation failed",
 		"operation", operation,

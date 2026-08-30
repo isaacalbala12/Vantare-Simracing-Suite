@@ -1,6 +1,7 @@
 package app_test
 
 import (
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -236,13 +237,13 @@ func TestHubServiceListProfilesIncludesPureV3Profile(t *testing.T) {
 				Type: config.LayoutGeneral,
 				Widgets: []config.WidgetInstanceV3{
 					{
-						ID:   "delta",
-						Type: config.WidgetTypeDelta,
+						ID:   "pedals-main",
+						Type: config.WidgetTypePedals,
 						Layout: config.WidgetLayoutV3{
 							X: 100, Y: 100, W: 400, H: 48,
 							AspectLocked: true,
 						},
-						Behavior: config.WidgetBehaviorV3{Enabled: true, UpdateHz: 30},
+						Behavior: config.WidgetBehaviorV3{Enabled: true, UpdateHz: 3},
 						Content:  map[string]any{},
 						Visual: config.WidgetVisualV3{
 							SystemID:            config.DesignSystemVantareOriginal,
@@ -256,14 +257,12 @@ func TestHubServiceListProfilesIncludesPureV3Profile(t *testing.T) {
 			},
 		},
 	}
-	store := config.ProfileDocumentStore{}
-	if _, err := store.Save(
-		filepath.Join(dir, "custom-v3-only.json"),
-		"",
-		doc,
-		config.ProfileSchemaVersionV3,
-	); err != nil {
-		t.Fatalf("save V3 profile: %v", err)
+	raw, err := json.Marshal(doc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "custom-v3-only.json"), raw, 0644); err != nil {
+		t.Fatalf("write V3 profile: %v", err)
 	}
 
 	service := app.NewHubService(dir, nil, nil, nil)
@@ -286,6 +285,9 @@ func TestHubServiceListProfilesIncludesPureV3Profile(t *testing.T) {
 	}
 	if entry.PreviewDocument == nil || entry.PreviewDocument.SchemaVersion != config.ProfileSchemaVersionV3 {
 		t.Fatal("expected V3 preview document")
+	}
+	if len(entry.MigrationNotices) != 1 || entry.MigrationNotices[0].WidgetID != "pedals-main" || entry.MigrationNotices[0].UpdateHz != 3 {
+		t.Fatalf("migration notices=%+v, want pedals-main at 3 Hz", entry.MigrationNotices)
 	}
 	if err := service.CreateProfile("V3 Only"); err == nil {
 		t.Fatal("expected duplicate create error for existing V3 profile")

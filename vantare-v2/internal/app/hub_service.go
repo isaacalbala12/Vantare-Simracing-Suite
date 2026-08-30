@@ -83,13 +83,15 @@ var invalidProfileNameChars = regexp.MustCompile(`[<>:"/\\|?*\x00-\x1f]`)
 
 // ProfileEntry is a lightweight profile descriptor for hub listing.
 type ProfileEntry struct {
-	ID              string                    `json:"id"`
-	File            string                    `json:"file"` // basename on disk (e.g. example-racing.json)
-	Name            string                    `json:"name,omitempty"`
-	DisplayMode     config.DisplayMode        `json:"displayMode"`
-	Widgets         int                       `json:"widgets"`
-	Profile         *config.ProfileConfig     `json:"profile,omitempty"`
-	PreviewDocument *config.ProfileDocumentV3 `json:"previewDocument,omitempty"`
+	ID               string                            `json:"id"`
+	File             string                            `json:"file"` // basename on disk (e.g. example-racing.json)
+	Name             string                            `json:"name,omitempty"`
+	DisplayMode      config.DisplayMode                `json:"displayMode"`
+	Widgets          int                               `json:"widgets"`
+	Profile          *config.ProfileConfig             `json:"profile,omitempty"`
+	PreviewDocument  *config.ProfileDocumentV3         `json:"previewDocument,omitempty"`
+	Performance      *config.ProfilePerformanceV4      `json:"performance,omitempty"`
+	MigrationNotices []config.ProfileMigrationNoticeV4 `json:"migrationNotices,omitempty"`
 }
 
 // OverlayRuntime is the interface HubService uses to start/stop the desktop overlay.
@@ -105,6 +107,7 @@ type HubService struct {
 	profileSvc       *ProfileService
 	studioProfileSvc *StudioProfileService
 	settingsSvc      *SettingsService
+	reconcilePolicy  func(*config.ProfileDocumentV4)
 	emitter          EventEmitter
 	overlay          OverlayRuntime
 }
@@ -122,6 +125,29 @@ func NewHubService(profilesDir string, profileSvc *ProfileService, emitter Event
 // SetStudioProfileService wires the canonical V3 runtime profile service.
 func (s *HubService) SetStudioProfileService(svc *StudioProfileService) {
 	s.studioProfileSvc = svc
+}
+
+// SetPerformancePolicyReconciler applies the effective app+profile policy
+// after the active profile has been fully loaded by both profile services.
+func (s *HubService) SetPerformancePolicyReconciler(reconcile func(*config.ProfileDocumentV4)) {
+	s.reconcilePolicy = reconcile
+}
+
+func (s *HubService) loadActiveProfile(path string) error {
+	if err := s.profileSvc.LoadActiveProfile(path); err != nil {
+		return fmt.Errorf("loading active profile: %w", err)
+	}
+	var performanceProfile *config.ProfileDocumentV4
+	if s.studioProfileSvc != nil {
+		if err := s.studioProfileSvc.LoadActiveProfile(path); err != nil {
+			return fmt.Errorf("loading active studio profile: %w", err)
+		}
+		performanceProfile = s.studioProfileSvc.PerformanceProfile()
+	}
+	if s.reconcilePolicy != nil {
+		s.reconcilePolicy(performanceProfile)
+	}
+	return nil
 }
 
 func (s *HubService) activeOverlayDocument() (*config.ProfileDocumentV3, error) {
@@ -150,6 +176,19 @@ func (s *HubService) SetSettingsService(svc *SettingsService) {
 	s.settingsSvc = svc
 }
 
+// RestoreActiveProfile loads the persisted active profile during composition.
+// Call it before constructing consumers that need the initial profile policy.
+func (s *HubService) RestoreActiveProfile() error {
+	if s.settingsSvc == nil {
+		return fmt.Errorf("settings service not configured")
+	}
+	activeID := s.settingsSvc.Settings().ActiveOverlayProfileID
+	if activeID == "" {
+		return nil
+	}
+	return s.ActivateProfile(activeID)
+}
+
 // ListProfiles returns all profile JSON files in the configs directory.
 func (s *HubService) ListProfiles() ([]ProfileEntry, error) {
 	if s.profilesDir == "" {
@@ -170,6 +209,7 @@ func (s *HubService) ListProfiles() ([]ProfileEntry, error) {
 		if readErr != nil {
 			continue
 		}
+		profileV4, migratedFrom, migrationNotices, migrateErr := config.MigrateProfileJSONToV4(raw)
 		legacyProfile, loadErr := config.LoadFile(fullPath)
 		if loadErr == nil && isListableProfile(legacyProfile) {
 			id := legacyProfile.ID
@@ -187,12 +227,19 @@ func (s *HubService) ListProfiles() ([]ProfileEntry, error) {
 			if previewDoc, _, migrateErr := config.MigrateProfileJSONToV3(raw); migrateErr == nil {
 				entry.PreviewDocument = previewDoc
 			}
+			if migrateErr == nil {
+				entry.Performance = profileV4.Performance
+				entry.MigrationNotices = migrationNotices
+			}
 			profiles = append(profiles, entry)
 			continue
 		}
 
-		previewDoc, migratedFrom, migrateErr := config.MigrateProfileJSONToV3(raw)
-		if migrateErr != nil || migratedFrom != config.ProfileSchemaVersionV3 || !isListableProfileDocument(previewDoc) {
+		if migrateErr != nil || (migratedFrom != config.ProfileSchemaVersionV3 && migratedFrom != config.ProfileSchemaVersionV4) {
+			continue
+		}
+		previewDoc := config.ConvertProfileV4ToV3(profileV4)
+		if !isListableProfileDocument(previewDoc) {
 			continue
 		}
 
@@ -202,12 +249,14 @@ func (s *HubService) ListProfiles() ([]ProfileEntry, error) {
 		}
 		generalLayout := previewDoc.Layouts[config.LayoutGeneral]
 		entry := ProfileEntry{
-			ID:              id,
-			File:            e.Name(),
-			Name:            previewDoc.Name,
-			DisplayMode:     previewDoc.DisplayMode,
-			Widgets:         len(generalLayout.Widgets),
-			PreviewDocument: previewDoc,
+			ID:               id,
+			File:             e.Name(),
+			Name:             previewDoc.Name,
+			DisplayMode:      previewDoc.DisplayMode,
+			Widgets:          len(generalLayout.Widgets),
+			PreviewDocument:  previewDoc,
+			Performance:      profileV4.Performance,
+			MigrationNotices: migrationNotices,
 		}
 		profiles = append(profiles, entry)
 	}
@@ -312,7 +361,7 @@ func (s *HubService) ActivateProfile(idOrFile string) error {
 	if err != nil {
 		return err
 	}
-	return s.profileSvc.LoadActiveProfile(path)
+	return s.loadActiveProfile(path)
 }
 
 // ResolveProfilePath resolves an id or file basename to an absolute profile path.
@@ -333,13 +382,8 @@ func (s *HubService) SetActiveProfile(idOrFile string) error {
 	if err != nil {
 		return err
 	}
-	if err := s.profileSvc.LoadActiveProfile(path); err != nil {
-		return fmt.Errorf("loading active profile: %w", err)
-	}
-	if s.studioProfileSvc != nil {
-		if err := s.studioProfileSvc.LoadActiveProfile(path); err != nil {
-			return fmt.Errorf("loading active studio profile: %w", err)
-		}
+	if err := s.loadActiveProfile(path); err != nil {
+		return err
 	}
 	profile := s.profileSvc.GetProfile()
 	if profile == nil || profile.ID == "" {

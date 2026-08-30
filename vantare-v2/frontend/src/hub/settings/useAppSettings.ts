@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Events } from "@wailsio/runtime";
 import { parseKeyEvent } from "./hotkey-capture";
 import {
   DEFAULT_APP_SETTINGS,
   type AppSettings,
   type NotificationSettings,
+  type PerformanceSettings,
 } from "./settings-contract";
 
 /**
@@ -24,6 +25,8 @@ export function useAppSettings() {
   const [appSettings, setAppSettings] = useState<AppSettings>(DEFAULT_APP_SETTINGS);
   const [settingsStatus, setSettingsStatus] = useState<SettingsSaveStatus>(null);
   const [capturingKey, setCapturingKey] = useState<string | null>(null);
+  const requestSequence = useRef(0);
+  const pendingRequest = useRef<string | null>(null);
 
   useEffect(() => {
     const handlers: (() => void)[] = [];
@@ -40,6 +43,7 @@ export function useAppSettings() {
         // sobre atajos que el backend sigue registrando. Las que falten se
         // rellenan con el contrato; las que vengan mandan.
         setAppSettings({
+		  ...DEFAULT_APP_SETTINGS,
           ...event.data,
           hotkeys: { ...DEFAULT_APP_SETTINGS.hotkeys, ...(event.data.hotkeys ?? {}) },
         });
@@ -47,7 +51,16 @@ export function useAppSettings() {
     );
 
     handlers.push(
-      Events.On("settings-saved", () => {
+      Events.On("settings-saved", (event: { data?: { requestId?: string; settings?: AppSettings } }) => {
+        if (!event.data?.requestId || event.data.requestId !== pendingRequest.current) return;
+        pendingRequest.current = null;
+        if (event.data.settings) {
+          setAppSettings({
+            ...DEFAULT_APP_SETTINGS,
+            ...event.data.settings,
+            hotkeys: { ...DEFAULT_APP_SETTINGS.hotkeys, ...(event.data.settings.hotkeys ?? {}) },
+          });
+        }
         setSettingsStatus("saved");
         setTimeout(() => setSettingsStatus(null), 3000);
       }),
@@ -61,13 +74,20 @@ export function useAppSettings() {
   }, []);
 
   function save(next: AppSettings) {
+	requestSequence.current += 1;
+	const requestId = `settings-${requestSequence.current.toString(36)}`;
+	pendingRequest.current = requestId;
     setAppSettings(next);
     setSettingsStatus("saving");
-    Events.Emit("settings:save", next);
+    Events.Emit("settings:save", { requestId, settings: next });
   }
 
   function toggleCpuSampling() {
     save({ ...appSettings, cpuSampling: !appSettings.cpuSampling });
+  }
+
+  function setPerformance(performance: PerformanceSettings) {
+    save({ ...appSettings, performance });
   }
 
   // Merged, not replaced: each switch writes only its own key, so turning one
@@ -124,6 +144,7 @@ export function useAppSettings() {
     startCapture: (name: string) => setCapturingKey(name),
     cancelCapture: () => setCapturingKey(null),
     toggleCpuSampling,
+    setPerformance,
     setNotifications,
     resetHotkeys,
   };

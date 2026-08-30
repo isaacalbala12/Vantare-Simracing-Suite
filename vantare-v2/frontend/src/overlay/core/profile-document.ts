@@ -8,6 +8,7 @@ import {
 } from "./layout-viewport";
 
 export const PROFILE_SCHEMA_VERSION_V3 = 3 as const;
+export const PROFILE_SCHEMA_VERSION_V4 = 4 as const;
 
 export const STUDIO_CANVAS_WIDTH = DEFAULT_LAYOUT_VIEWPORT.width;
 export const STUDIO_CANVAS_HEIGHT = DEFAULT_LAYOUT_VIEWPORT.height;
@@ -163,6 +164,40 @@ export type LoadedProfileDocumentV3 = {
   document: ProfileDocumentV3;
   revision: string;
   migratedFrom?: 0 | 2 | 3;
+};
+
+export type ProfilePerformanceModeV4 = "inherit" | "level" | "custom";
+export type ProfilePerformanceEffectsV4 = "full" | "noBlur" | "flat";
+export type ProfilePerformanceOverrideV4 = {
+  hz?: number | "dirty";
+  /** Reserved for the dedicated Endurance noBlur/flat variants issue; C2 does not expose it in Settings. */
+  effects?: ProfilePerformanceEffectsV4;
+};
+export type ProfilePerformanceV4 = {
+  mode: ProfilePerformanceModeV4;
+  level?: 1 | 2 | 3 | 4 | 5;
+  overrides?: Record<string, ProfilePerformanceOverrideV4>;
+};
+export type WidgetBehaviorV4 = Omit<WidgetBehaviorV3, "updateHz">;
+export type WidgetInstanceV4 = Omit<WidgetInstanceV3, "behavior"> & { behavior: WidgetBehaviorV4 };
+export type SessionLayoutV4 = Omit<SessionLayoutV3, "widgets"> & { widgets: WidgetInstanceV4[] };
+export type ProfileDocumentV4 = Omit<ProfileDocumentV3, "schemaVersion" | "layouts"> & {
+  schemaVersion: typeof PROFILE_SCHEMA_VERSION_V4;
+  layouts: Partial<Record<SessionLayoutType, SessionLayoutV4>> & { general: SessionLayoutV4 };
+  performance?: ProfilePerformanceV4;
+};
+export type ProfileMigrationNoticeV4 = {
+  path: string;
+  widgetId: string;
+  widgetType: WidgetType;
+  updateHz: number;
+  message: string;
+};
+export type LoadedProfileDocumentV4 = {
+  document: ProfileDocumentV4;
+  revision: string;
+  migratedFrom?: 0 | 2 | 3 | 4;
+  migrationNotices?: ProfileMigrationNoticeV4[];
 };
 
 export class ProfileDocumentValidationError extends Error {
@@ -597,4 +632,162 @@ export function getDefaultVisualSystemId(document: ProfileDocumentV3): DesignSys
 
 export function cloneProfileDocumentV3(document: ProfileDocumentV3): ProfileDocumentV3 {
   return structuredClone(document);
+}
+
+function parseProfilePerformanceV4(input: unknown, path: string): ProfilePerformanceV4 {
+  const raw = readRecord(input, path);
+  const mode = readString(raw.mode, `${path}.mode`) as ProfilePerformanceModeV4;
+  if (mode !== "inherit" && mode !== "level" && mode !== "custom") {
+    validationError(`${path}.mode`, "must be inherit, level or custom");
+  }
+  const performance: ProfilePerformanceV4 = { mode };
+  if (raw.level !== undefined) {
+    const level = readNumber(raw.level, `${path}.level`);
+    if (!Number.isInteger(level) || level < 1 || level > 5) {
+      validationError(`${path}.level`, "must be an integer between 1 and 5");
+    }
+    performance.level = level as 1 | 2 | 3 | 4 | 5;
+  }
+  if (raw.overrides !== undefined) {
+    const overridesRaw = readRecord(raw.overrides, `${path}.overrides`);
+    const overrides: Record<string, ProfilePerformanceOverrideV4> = {};
+    for (const [widgetId, inputOverride] of Object.entries(overridesRaw)) {
+      if (widgetId === "") validationError(`${path}.overrides`, "widget id must not be empty");
+      const overrideRaw = readRecord(inputOverride, `${path}.overrides.${widgetId}`);
+      const override: ProfilePerformanceOverrideV4 = {};
+      if (overrideRaw.hz !== undefined) {
+        if (overrideRaw.hz === "dirty") {
+          override.hz = "dirty";
+        } else {
+          const hz = readNumber(overrideRaw.hz, `${path}.overrides.${widgetId}.hz`);
+          if (!Number.isInteger(hz) || hz < 1 || hz > 240) {
+            validationError(`${path}.overrides.${widgetId}.hz`, "must be an integer between 1 and 240 or dirty");
+          }
+          override.hz = hz;
+        }
+      }
+      if (overrideRaw.effects !== undefined) {
+        const effects = readString(
+          overrideRaw.effects,
+          `${path}.overrides.${widgetId}.effects`,
+        ) as ProfilePerformanceEffectsV4;
+        if (effects !== "full" && effects !== "noBlur" && effects !== "flat") {
+          validationError(`${path}.overrides.${widgetId}.effects`, "unsupported effects");
+        }
+        override.effects = effects;
+      }
+      if (override.hz === undefined && override.effects === undefined) {
+        validationError(`${path}.overrides.${widgetId}`, "must declare hz or effects");
+      }
+      overrides[widgetId] = override;
+    }
+    performance.overrides = overrides;
+  }
+  if (mode === "inherit" && (performance.level !== undefined || performance.overrides !== undefined)) {
+    validationError(path, "inherit must not declare level or overrides");
+  }
+  if ((mode === "level" || mode === "custom") && performance.level === undefined) {
+    validationError(`${path}.level`, "is required for level and custom modes");
+  }
+  if (mode !== "custom" && performance.overrides !== undefined) {
+    validationError(`${path}.overrides`, "is only allowed in custom mode");
+  }
+  return performance;
+}
+
+export function adaptWidgetDefinitionToV4(widget: WidgetInstanceV3): WidgetInstanceV4 {
+  const behavior: WidgetBehaviorV4 = {
+    enabled: widget.behavior.enabled,
+    ...(widget.behavior.visibleWhen
+      ? { visibleWhen: structuredClone(widget.behavior.visibleWhen) }
+      : {}),
+  };
+  return { ...structuredClone(widget), behavior };
+}
+
+export function migrateProfileDocumentToV4(input: unknown): {
+  document: ProfileDocumentV4;
+  notices: ProfileMigrationNoticeV4[];
+} {
+  const raw = readRecord(input, "document");
+  if (raw.schemaVersion === PROFILE_SCHEMA_VERSION_V4) {
+    return { document: parseProfileDocumentV4(raw), notices: [] };
+  }
+  const legacy = parseProfileDocumentV3(raw);
+  const notices: ProfileMigrationNoticeV4[] = [];
+  const fastTypes = new Set<WidgetType>([
+    "pedals",
+    "pedals-telemetry",
+    "pedals-telemetry-compact",
+    "input-telemetry",
+    "delta",
+    "delta-advanced",
+    "delta-trace",
+  ]);
+  const layouts = {} as ProfileDocumentV4["layouts"];
+  for (const [layoutType, layout] of Object.entries(legacy.layouts) as Array<
+    [SessionLayoutType, SessionLayoutV3]
+  >) {
+    layouts[layoutType] = {
+      ...layout,
+      widgets: layout.widgets.map((widget, index) => {
+        if (fastTypes.has(widget.type) && widget.behavior.updateHz >= 1 && widget.behavior.updateHz <= 4) {
+          notices.push({
+            path: `layouts.${layoutType}.widgets[${index}].behavior.updateHz`,
+            widgetId: widget.id,
+            widgetType: widget.type,
+            updateHz: widget.behavior.updateHz,
+            message: "cadencia atípica descartada al migrar el perfil v3 a v4",
+          });
+        }
+        return adaptWidgetDefinitionToV4(widget);
+      }),
+    };
+  }
+  return {
+    document: {
+      ...legacy,
+      schemaVersion: PROFILE_SCHEMA_VERSION_V4,
+      layouts,
+    },
+    notices,
+  };
+}
+
+export function parseProfileDocumentV4(input: unknown): ProfileDocumentV4 {
+  const raw = readRecord(input, "document");
+  if (readNumber(raw.schemaVersion, "schemaVersion") !== PROFILE_SCHEMA_VERSION_V4) {
+    validationError("schemaVersion", "must be 4");
+  }
+  const layoutsRaw = readRecord(raw.layouts, "layouts");
+  const compatibilityLayouts: Record<string, unknown> = {};
+  for (const [layoutType, layoutInput] of Object.entries(layoutsRaw)) {
+    const layout = readRecord(layoutInput, `layouts.${layoutType}`);
+    if (!Array.isArray(layout.widgets)) validationError(`layouts.${layoutType}.widgets`, "must be an array");
+    compatibilityLayouts[layoutType] = {
+      ...layout,
+      widgets: layout.widgets.map((widgetInput, index) => {
+        const widget = readRecord(widgetInput, `layouts.${layoutType}.widgets[${index}]`);
+        const behavior = readRecord(widget.behavior, `layouts.${layoutType}.widgets[${index}].behavior`);
+        if (behavior.updateHz !== undefined) {
+          validationError(`layouts.${layoutType}.widgets[${index}].behavior.updateHz`, "is not allowed in v4");
+        }
+        return { ...widget, behavior: { ...behavior, updateHz: 1 } };
+      }),
+    };
+  }
+  const compatibility = parseProfileDocumentV3({
+    ...raw,
+    schemaVersion: PROFILE_SCHEMA_VERSION_V3,
+    layouts: compatibilityLayouts,
+  });
+  const migrated = migrateProfileDocumentToV4({ ...compatibility, schemaVersion: PROFILE_SCHEMA_VERSION_V3 });
+  if (raw.performance !== undefined) {
+    migrated.document.performance = parseProfilePerformanceV4(raw.performance, "performance");
+  }
+  return migrated.document;
+}
+
+export function serializeProfileDocumentV4(document: ProfileDocumentV4): string {
+  return JSON.stringify(parseProfileDocumentV4(document));
 }

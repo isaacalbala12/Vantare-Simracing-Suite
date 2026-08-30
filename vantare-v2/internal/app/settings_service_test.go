@@ -11,7 +11,48 @@ import (
 	"time"
 
 	"github.com/vantare/overlays/v2/internal/app"
+	performancepolicy "github.com/vantare/overlays/v2/internal/app/performance"
+	"github.com/vantare/overlays/v2/pkg/config"
 )
+
+func TestResolvePerformancePolicyProfileParityAndD4AutoFloor(t *testing.T) {
+	appLevel := app.PerformanceSettings{Mode: "level", Level: 4}
+	withoutProfile := app.ResolvePerformancePolicy(appLevel, nil)
+	inheritProfile := &config.ProfileDocumentV4{Performance: &config.ProfilePerformanceV4{Mode: config.ProfilePerformanceInherit}}
+	if got := app.ResolvePerformancePolicy(appLevel, inheritProfile); !reflect.DeepEqual(got, withoutProfile) {
+		t.Fatalf("inherit=%+v want exact app parity %+v", got, withoutProfile)
+	}
+
+	profileMaximum := &config.ProfileDocumentV4{Performance: &config.ProfilePerformanceV4{Mode: config.ProfilePerformanceLevel, Level: 1}}
+	got := app.ResolvePerformancePolicy(app.PerformanceSettings{Mode: "auto", Level: 1}, profileMaximum)
+	if got.Level != performancepolicy.LevelBalanced || got.Mode != performancepolicy.ModeAuto {
+		t.Fatalf("auto should lower maximum profile to balanced while F3 is absent: %+v", got)
+	}
+
+	profileMinimum := &config.ProfileDocumentV4{Performance: &config.ProfilePerformanceV4{Mode: config.ProfilePerformanceLevel, Level: 5}}
+	got = app.ResolvePerformancePolicy(app.PerformanceSettings{Mode: "auto", Level: 1}, profileMinimum)
+	if got.Level != performancepolicy.LevelMinimum || got.Mode != performancepolicy.ModeAuto {
+		t.Fatalf("auto must never raise a minimum profile: %+v", got)
+	}
+}
+
+func TestResolvePerformancePolicyCapsCustomWidgetOverrideWhenAutoLowers(t *testing.T) {
+	rate := config.ProfileWidgetRateV4{Hertz: 60}
+	profile := &config.ProfileDocumentV4{
+		Layouts: map[config.LayoutType]config.SessionLayoutV4{
+			config.LayoutGeneral: {Type: config.LayoutGeneral, Widgets: []config.WidgetInstanceV4{{ID: "delta-main", Type: config.WidgetTypeDelta}}},
+		},
+		Performance: &config.ProfilePerformanceV4{
+			Mode: config.ProfilePerformanceCustom, Level: 1,
+			Overrides: map[string]config.ProfilePerformanceOverrideV4{"delta-main": {Hz: &rate}},
+		},
+	}
+	got := app.ResolvePerformancePolicy(app.PerformanceSettings{Mode: "auto", Level: 1}, profile)
+	hz, ok := got.WidgetHz["delta-main"].Hertz()
+	if !ok || hz != 20 {
+		t.Fatalf("delta-main=%+v want auto-balanced cap 20Hz", got.WidgetHz["delta-main"])
+	}
+}
 
 func TestDefaultAppSettings(t *testing.T) {
 	s := app.DefaultAppSettings()

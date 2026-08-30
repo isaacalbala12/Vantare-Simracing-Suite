@@ -1,5 +1,9 @@
 import type { ProfileConfig } from "../../lib/profile";
-import type { ProfileDocumentV3 } from "../../overlay/core/profile-document";
+import type {
+  ProfileDocumentV3,
+  ProfileMigrationNoticeV4,
+  ProfilePerformanceV4,
+} from "../../overlay/core/profile-document";
 
 export type ProfileEntry = {
   id: string;
@@ -9,6 +13,8 @@ export type ProfileEntry = {
   widgets: number;
   profile?: ProfileConfig;
   previewDocument?: ProfileDocumentV3;
+  performance?: ProfilePerformanceV4;
+  migrationNotices?: ProfileMigrationNoticeV4[];
 };
 
 export type ProfileTarget = {

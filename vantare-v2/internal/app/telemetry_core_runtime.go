@@ -399,13 +399,33 @@ func (runtime *TelemetryCoreRuntime) SetPerformancePolicy(policy performancepoli
 	}
 	resolved := performancepolicy.Resolve(policy, nil)
 	runtime.mu.Lock()
-	defer runtime.mu.Unlock()
 	if samePerformancePolicy(runtime.performancePolicy, resolved) {
+		runtime.mu.Unlock()
 		return
 	}
 	logPerformanceDiagnostics(policy, resolved)
 	runtime.performancePolicy = resolved
 	runtime.performanceRevision++
+	runtime.mu.Unlock()
+	runtime.emitPerformanceLevel(resolved)
+}
+
+// EmitPerformanceLevel refreshes the hub from the same Go authority carried
+// by OverlayFrame v2. It does not infer policy in the web layer.
+func (runtime *TelemetryCoreRuntime) EmitPerformanceLevel() {
+	if runtime == nil {
+		return
+	}
+	runtime.mu.Lock()
+	policy := runtime.performancePolicy
+	runtime.mu.Unlock()
+	runtime.emitPerformanceLevel(policy)
+}
+
+func (runtime *TelemetryCoreRuntime) emitPerformanceLevel(policy performancepolicy.Policy) {
+	if runtime.emitter != nil {
+		runtime.emitter.Emit("performance:level", overlayPerformancePolicy(policy, 0))
+	}
 }
 
 func logPerformanceDiagnostics(requested, resolved performancepolicy.Policy) {

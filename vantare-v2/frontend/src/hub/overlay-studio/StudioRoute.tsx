@@ -123,6 +123,7 @@ function toStudioProfiles(profiles: ProfileEntry[]): StudioProfileEntry[] {
     id: profile.id,
     name: profile.name?.trim() || profile.id,
     file: profile.file,
+    performance: profile.performance,
   }));
 }
 

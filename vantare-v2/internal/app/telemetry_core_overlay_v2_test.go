@@ -65,6 +65,30 @@ func TestOverlayV2AppliesHotPerformancePolicyOnNextTick(t *testing.T) {
 	}
 }
 
+func TestPerformanceLevelEventUsesResolvedGoPolicy(t *testing.T) {
+	spy := &studioProfileSpy{}
+	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{
+		Emitter:           spy,
+		PerformancePolicy: performancepolicy.Policy{Mode: performancepolicy.ModeLevel, Level: performancepolicy.LevelHigh},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	runtime.EmitPerformanceLevel()
+	runtime.SetPerformancePolicy(performancepolicy.Policy{Mode: performancepolicy.ModeLevel, Level: performancepolicy.LevelMinimum})
+	if len(spy.events) != 2 || spy.events[0] != "performance:level" || spy.events[1] != "performance:level" {
+		t.Fatalf("events=%v", spy.events)
+	}
+	first, ok := spy.data[0].(overlayv2.PerformanceV2)
+	if !ok || first.Level != 2 {
+		t.Fatalf("first payload=%T %+v", spy.data[0], spy.data[0])
+	}
+	second, ok := spy.data[1].(overlayv2.PerformanceV2)
+	if !ok || second.Level != 5 || second.RafCap == nil || *second.RafCap != 20 {
+		t.Fatalf("second payload=%T %+v", spy.data[1], spy.data[1])
+	}
+}
+
 func TestOverlayV2PublishesObservedSourceHzOverTwoSeconds(t *testing.T) {
 	now := time.Date(2026, 8, 28, 12, 0, 0, 0, time.UTC)
 	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{

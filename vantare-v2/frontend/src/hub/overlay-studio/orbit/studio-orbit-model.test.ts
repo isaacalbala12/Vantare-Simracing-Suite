@@ -14,7 +14,7 @@ import {
 } from "./studio-orbit-model";
 
 const T: Record<string, string> = {
-  "studio.summary.fps": "{{n}} fps",
+  "studio.summary.performanceManaged": "política del perfil",
   "studio.summary.pit.any": "siempre",
   "studio.summary.pit.inPit": "solo en boxes",
   "studio.summary.pit.onTrack": "solo en pista",
@@ -68,17 +68,19 @@ describe("studio-orbit-model", () => {
     expect(designSummary(withProvenance, t)).toBe("Vantare Crystal · Crystal Bar");
   });
 
-  it("resume el comportamiento con fps, boxes y sesiones", () => {
+  it("resume el comportamiento con política, boxes y sesiones", () => {
     // El filtro de boxes solo se nombra cuando restringe: en el resumen corto
     // "siempre" gastaba la mitad de la linea para decir "sin filtro".
-    expect(behaviorSummary(build(), t)).toBe("15 fps · todas");
+    expect(behaviorSummary(build(), t)).toBe("política del perfil · todas");
     const restricted = build();
     restricted.behavior = {
       ...restricted.behavior,
       updateHz: 30,
       visibleWhen: { inPit: false, sessionTypes: ["race", "practice"] },
     };
-    expect(behaviorSummary(restricted, t)).toBe("30 fps · solo en pista · 2 sesiones");
+    expect(behaviorSummary(restricted, t)).toBe(
+      "política del perfil · solo en pista · 2 sesiones",
+    );
   });
 
   it("resume la apariencia con los overrides del usuario", () => {

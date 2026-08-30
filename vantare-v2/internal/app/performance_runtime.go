@@ -37,6 +37,7 @@ type PerformanceRuntime struct {
 	foreground func(bool)
 	trace      func(sensor.Sample, sensor.Decision)
 	settings   PerformanceSettings
+	request    performancepolicy.Policy
 	controller *sensor.AutoController
 
 	rootCtx    context.Context
@@ -67,16 +68,19 @@ func (runtime *PerformanceRuntime) SetTrace(handler func(sensor.Sample, sensor.D
 func NewPerformanceRuntime(
 	factory PerformanceSamplerFactory,
 	settings PerformanceSettings,
+	requested performancepolicy.Policy,
 	target performancePolicyTarget,
 	emitter EventEmitter,
 	visible func() bool,
 	announcer performanceLevelAnnouncer,
 ) *PerformanceRuntime {
-	return &PerformanceRuntime{
+	runtime := &PerformanceRuntime{
 		factory: factory, settings: settings, target: target, emitter: emitter,
 		visible: visible, announcer: announcer,
-		controller: sensor.NewAutoController(performancepolicy.LevelHigh),
 	}
+	runtime.request = effectiveRequestedPolicy(settings, requested)
+	runtime.controller = sensor.NewAutoController(requestedAutomaticLevel(runtime.request))
+	return runtime
 }
 
 func (runtime *PerformanceRuntime) Start(parent context.Context) error {
@@ -98,6 +102,12 @@ func (runtime *PerformanceRuntime) Start(parent context.Context) error {
 }
 
 func (runtime *PerformanceRuntime) ApplySettings(settings PerformanceSettings) {
+	runtime.ApplyResolvedSettings(settings, ResolvePerformancePolicy(settings, nil))
+}
+
+// ApplyResolvedSettings aplica conjuntamente el ajuste persistido y la política
+// app+perfil confirmada. El llamador resuelve ambos bajo el coordinador de #947.
+func (runtime *PerformanceRuntime) ApplyResolvedSettings(settings PerformanceSettings, requested performancepolicy.Policy) {
 	if runtime == nil {
 		return
 	}
@@ -105,8 +115,11 @@ func (runtime *PerformanceRuntime) ApplySettings(settings PerformanceSettings) {
 	wasAuto := runtime.settings.Mode == string(performancepolicy.ModeAuto)
 	isAuto := settings.Mode == string(performancepolicy.ModeAuto)
 	runtime.settings = settings
+	runtime.request = effectiveRequestedPolicy(settings, requested)
 	if isAuto && !wasAuto {
-		runtime.controller = sensor.NewAutoController(performancepolicy.LevelHigh)
+		runtime.controller = sensor.NewAutoController(requestedAutomaticLevel(runtime.request))
+	} else if isAuto {
+		runtime.controller.SetRequestedLevel(requestedAutomaticLevel(runtime.request))
 	}
 	runtime.applyPolicyLocked()
 	var stopped <-chan struct{}
@@ -189,7 +202,7 @@ func (runtime *PerformanceRuntime) Observe(sample sensor.Sample) {
 		return
 	}
 	decision := runtime.controller.Observe(sample)
-	policy := ResolveAutomaticPerformancePolicy(decision.Level, decision.Reason)
+	policy := performancepolicy.ResolveAutoRequested(runtime.request, decision.Level, decision.Reason)
 	runtime.target.SetPerformancePolicy(policy)
 	snapshot := runtime.target.PerformancePolicy()
 	visible := runtime.visible == nil || runtime.visible()
@@ -218,10 +231,24 @@ func (runtime *PerformanceRuntime) applyPolicyLocked() {
 		return
 	}
 	if runtime.settings.Mode == string(performancepolicy.ModeAuto) {
-		runtime.target.SetPerformancePolicy(ResolveAutomaticPerformancePolicy(runtime.controller.Level(), performancepolicy.ReasonUser))
+		runtime.target.SetPerformancePolicy(performancepolicy.ResolveAutoRequested(runtime.request, runtime.controller.Level(), performancepolicy.ReasonUser))
 		return
 	}
-	runtime.target.SetPerformancePolicy(ResolvePerformancePolicy(runtime.settings))
+	runtime.target.SetPerformancePolicy(runtime.request)
+}
+
+func effectiveRequestedPolicy(settings PerformanceSettings, requested performancepolicy.Policy) performancepolicy.Policy {
+	if requested.Mode == "" {
+		return ResolvePerformancePolicy(settings, nil)
+	}
+	return performancepolicy.Resolve(requested, nil)
+}
+
+func requestedAutomaticLevel(policy performancepolicy.Policy) performancepolicy.Level {
+	if policy.Level < performancepolicy.LevelMaximum || policy.Level > performancepolicy.LevelMinimum {
+		return performancepolicy.LevelBalanced
+	}
+	return policy.Level
 }
 
 type PerformanceLevelEvent struct {

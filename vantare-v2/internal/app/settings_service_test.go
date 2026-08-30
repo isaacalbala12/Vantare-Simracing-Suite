@@ -25,8 +25,8 @@ func TestResolvePerformancePolicyProfileParityAndD4AutoFloor(t *testing.T) {
 
 	profileMaximum := &config.ProfileDocumentV4{Performance: &config.ProfilePerformanceV4{Mode: config.ProfilePerformanceLevel, Level: 1}}
 	got := app.ResolvePerformancePolicy(app.PerformanceSettings{Mode: "auto", Level: 1}, profileMaximum)
-	if got.Level != performancepolicy.LevelBalanced || got.Mode != performancepolicy.ModeAuto {
-		t.Fatalf("auto should lower maximum profile to balanced while F3 is absent: %+v", got)
+	if got.Level != performancepolicy.LevelHigh || got.Mode != performancepolicy.ModeAuto {
+		t.Fatalf("auto should respect its level 2 quality ceiling: %+v", got)
 	}
 
 	profileMinimum := &config.ProfileDocumentV4{Performance: &config.ProfilePerformanceV4{Mode: config.ProfilePerformanceLevel, Level: 5}}
@@ -49,8 +49,8 @@ func TestResolvePerformancePolicyCapsCustomWidgetOverrideWhenAutoLowers(t *testi
 	}
 	got := app.ResolvePerformancePolicy(app.PerformanceSettings{Mode: "auto", Level: 1}, profile)
 	hz, ok := got.WidgetHz["delta-main"].Hertz()
-	if !ok || hz != 20 {
-		t.Fatalf("delta-main=%+v want auto-balanced cap 20Hz", got.WidgetHz["delta-main"])
+	if !ok || hz != 30 {
+		t.Fatalf("delta-main=%+v want auto-high cap 30Hz", got.WidgetHz["delta-main"])
 	}
 }
 

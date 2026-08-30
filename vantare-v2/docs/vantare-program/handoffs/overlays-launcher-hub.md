@@ -54,6 +54,12 @@
   hasta cerrar el gate 12.2. `performanceRolloutDefault` es el único punto que
   alimenta instalaciones nuevas y la migración vigente; pasar a `auto`/nivel 3
   exige cambiar esa autoridad y añadir una nueva migración de esquema.
+  El tope D4 entra por la interfaz estrecha `RequestedLevelSource`, hoy
+  implementada por `SettingsService.EffectivePerformancePolicy` e incluyendo
+  `VANTARE_PERF_LEVEL` en builds de diagnóstico. #947 debe implementar esa
+  misma interfaz con la política efectiva del perfil y llamar
+  `RefreshRequestedLevel` cuando cambie; los overrides custom se conservan al
+  mover el nivel automático.
 
 - **ISA-943 — perfil v4 y Ajustes › Rendimiento (2026-08-30):** rama
   `vantareapp/isa-943-perfil-v4-ajustes-rendimiento`, base inicial

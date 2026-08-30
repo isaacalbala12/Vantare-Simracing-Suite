@@ -25,19 +25,20 @@ func TestEffectivePerformancePolicyDefaultsAndDiagnosticOverride(t *testing.T) {
 	if err := svc.Load(); err != nil {
 		t.Fatal(err)
 	}
-	if got := svc.EffectivePerformancePolicy(nil).Level; got != 1 {
-		t.Fatalf("default level=%d want 1", got)
+<<<<<<< HEAD
+	if got := svc.EffectivePerformancePolicy(nil); got.Level != 1 {
+		t.Fatalf("default level=%d want 1", got.Level)
 	}
 	t.Setenv("VANTARE_PERF_LEVEL", "4")
 	profile := &config.ProfileDocumentV4{
 		Performance: &config.ProfilePerformanceV4{Mode: config.ProfilePerformanceLevel, Level: 2},
 	}
-	if got := svc.EffectivePerformancePolicy(profile).Level; got != 4 {
-		t.Fatalf("diagnostic level=%d want 4", got)
+	if got := svc.EffectivePerformancePolicy(profile); got.Level != 4 || got.Mode != "level" {
+		t.Fatalf("diagnostic policy=%+v want level 4", got)
 	}
 	t.Setenv("VANTARE_PERF_LEVEL", "9")
-	if got := svc.EffectivePerformancePolicy(nil).Level; got != 1 {
-		t.Fatalf("invalid diagnostic level=%d want settings fallback 1", got)
+	if got := svc.EffectivePerformancePolicy(nil); got.Level != 1 {
+		t.Fatalf("invalid diagnostic level=%d want settings fallback 1", got.Level)
 	}
 }
 

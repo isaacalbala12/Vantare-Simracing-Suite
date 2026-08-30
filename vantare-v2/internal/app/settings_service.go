@@ -88,6 +88,9 @@ func ResolvePerformancePolicy(settings PerformanceSettings, profile *config.Prof
 	}
 	appPolicy := performancepolicy.Resolve(requested, nil)
 	if profile == nil || profile.Performance == nil || profile.Performance.Mode == config.ProfilePerformanceInherit {
+		if requested.Mode == performancepolicy.ModeAuto {
+			return performancepolicy.ResolveAuto(performancepolicy.LevelHigh, performancepolicy.ReasonUnavailable)
+		}
 		return appPolicy
 	}
 	preference := profile.Performance
@@ -119,12 +122,12 @@ func ResolvePerformancePolicy(settings PerformanceSettings, profile *config.Prof
 		return resolved
 	}
 
-	// D4: el automático (fijo en 3 hasta F3) puede degradar lo pedido por el
-	// perfil, pero nunca elevar su calidad. En la escala 1..5 eso es max().
-	if appPolicy.Level > resolved.Level {
-		degraded := performancepolicy.Policy{Mode: profilePolicy.Mode, Level: appPolicy.Level}
+	// D4: Automático puede operar desde el nivel 2, pero nunca elevar la calidad
+	// pedida por el perfil. En la escala 1..5 el límite es max(2, perfil).
+	if performancepolicy.LevelHigh > resolved.Level {
+		degraded := performancepolicy.Policy{Mode: profilePolicy.Mode, Level: performancepolicy.LevelHigh}
 		if profilePolicy.Mode == performancepolicy.ModeCustom {
-			degraded.WidgetHz = performancepolicy.WidgetHzFor(appPolicy.Level)
+			degraded.WidgetHz = performancepolicy.WidgetHzFor(performancepolicy.LevelHigh)
 			degraded.WidgetEffects = profilePolicy.WidgetEffects
 			widgetTypes := profileWidgetTypes(profile)
 			for widgetID, rate := range profilePolicy.WidgetHz {
@@ -193,6 +196,19 @@ func slowerWidgetRate(base, requested performancepolicy.WidgetRate) performancep
 // ResolveAutomaticPerformancePolicy incorpora la decisión viva del sensor.
 func ResolveAutomaticPerformancePolicy(level performancepolicy.Level, reason performancepolicy.Reason) performancepolicy.Policy {
 	return performancepolicy.ResolveAuto(level, reason)
+}
+
+// EffectivePerformancePolicy devuelve la misma política canónica que consume
+// el runtime. Las builds de diagnóstico pueden fijar un nivel reproducible sin
+// modificar los ajustes persistidos.
+func (s *SettingsService) EffectivePerformancePolicy(profile *config.ProfileDocumentV4) performancepolicy.Policy {
+	settings := s.Snapshot().Performance
+	if override := diagnosticPerformanceLevel(); override != 0 {
+		return performancepolicy.Resolve(performancepolicy.Policy{
+			Mode: performancepolicy.ModeLevel, Level: performancepolicy.Level(override),
+		}, nil)
+	}
+	return ResolvePerformancePolicy(settings, profile)
 }
 
 func performanceRateFromJSON(raw json.RawMessage) (performancepolicy.WidgetRate, bool) {

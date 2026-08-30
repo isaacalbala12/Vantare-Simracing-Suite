@@ -2119,12 +2119,13 @@ func main() {
 	engBridge = app.NewEngineerBridge(wailsApp, emitter, engSvc)
 	engBridge.Start()
 
+	effectivePerformance := settingsSvc.EffectivePerformancePolicy(studioProfileSvc.PerformanceProfile())
 	telemetryCoreRuntime, err = app.NewTelemetryCoreRuntime(app.TelemetryCoreRuntimeConfig{
 		Enabled:                 *live,
 		Emitter:                 emitter,
 		Engineer:                engSvc,
 		StrategyPublicTransport: *strategyPublicTransport,
-		PerformancePolicy:       settingsSvc.EffectivePerformancePolicy(studioProfileSvc.PerformanceProfile()),
+		PerformancePolicy:       effectivePerformance,
 	})
 	if err != nil {
 		log.Printf("telemetry core init error: %v", err)
@@ -2139,6 +2140,7 @@ func main() {
 				)
 			},
 			settingsSvc.Settings().Performance,
+			effectivePerformance,
 			telemetryCoreRuntime,
 			emitter,
 			func() bool { return !hubW.IsMinimised() },
@@ -2177,12 +2179,13 @@ func main() {
 		}
 	}
 	reconcilePerformance := func(settings app.PerformanceSettings, profile *config.ProfileDocumentV4) {
+		resolved := settingsSvc.EffectivePerformancePolicy(profile)
 		if performanceRuntime != nil {
-			performanceRuntime.ApplySettings(settings)
+			performanceRuntime.ApplyResolvedSettings(settings, resolved)
 			return
 		}
 		if telemetryCoreRuntime != nil {
-			telemetryCoreRuntime.SetPerformancePolicy(app.ResolveEffectivePerformancePolicy(settings, profile))
+			telemetryCoreRuntime.SetPerformancePolicy(resolved)
 		}
 	}
 	performanceSaves := app.NewPerformanceSaveCoordinator(settingsSvc, studioProfileSvc, reconcilePerformance)

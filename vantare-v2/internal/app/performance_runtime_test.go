@@ -8,6 +8,7 @@ import (
 
 	performancepolicy "github.com/vantare/overlays/v2/internal/app/performance"
 	"github.com/vantare/overlays/v2/internal/app/performance/sensor"
+	"github.com/vantare/overlays/v2/pkg/config"
 )
 
 type runtimePolicyTarget struct {
@@ -49,12 +50,99 @@ func (announcer *performanceAnnouncer) PublishPerformanceLevel(level performance
 	return nil
 }
 
+func customRequestedPolicy(level performancepolicy.Level, standingsHz int) performancepolicy.Policy {
+	policy := performancepolicy.Policy{Mode: performancepolicy.ModeCustom, Level: level, WidgetHz: performancepolicy.WidgetHzFor(level)}
+	policy.WidgetHz["standings"] = performancepolicy.Hertz(standingsHz)
+	return performancepolicy.Resolve(policy, nil)
+}
+
+func TestPerformanceRuntimeTracksProfileAToBWhileAutomaticIsActive(t *testing.T) {
+	settings := PerformanceSettings{Mode: "auto", Level: 1}
+	profileA := &config.ProfileDocumentV4{Performance: &config.ProfilePerformanceV4{
+		Mode: config.ProfilePerformanceLevel, Level: 2,
+	}}
+	profileB := &config.ProfileDocumentV4{Performance: &config.ProfilePerformanceV4{
+		Mode: config.ProfilePerformanceLevel, Level: 5,
+	}}
+	target := &runtimePolicyTarget{}
+	runtime := NewPerformanceRuntime(
+		func() PerformanceSampleRunner { return nil },
+		settings,
+		ResolvePerformancePolicy(settings, profileA),
+		target, nil, nil, nil,
+	)
+	runtime.ApplyResolvedSettings(settings, ResolvePerformancePolicy(settings, profileA))
+	if got := target.PerformancePolicy(); got.Mode != performancepolicy.ModeAuto || got.Level != performancepolicy.LevelBalanced {
+		t.Fatalf("automatic profile A policy = %+v, want balanced floor", got)
+	}
+
+	runtime.ApplyResolvedSettings(settings, ResolvePerformancePolicy(settings, profileB))
+	if got := target.PerformancePolicy(); got.Mode != performancepolicy.ModeAuto || got.Level != performancepolicy.LevelMinimum {
+		t.Fatalf("automatic profile B policy = %+v, want profile floor level 5", got)
+	}
+}
+
+func TestPerformanceRuntimeAppliesRequestedCapHotAndPreservesCustomOverrides(t *testing.T) {
+	target := &runtimePolicyTarget{}
+	settings := PerformanceSettings{Mode: "auto", Level: 3}
+	runtime := NewPerformanceRuntime(func() PerformanceSampleRunner { return nil }, settings, customRequestedPolicy(performancepolicy.LevelHigh, 1), target, nil, nil, nil)
+	start := time.Unix(1000, 0)
+	runtime.Observe(sensor.Sample{At: start, Host: sensor.HostSample{CPUPct: 95}, Game: sensor.GameSample{Available: false}})
+	runtime.Observe(sensor.Sample{At: start.Add(time.Second), Host: sensor.HostSample{CPUPct: 95}, Game: sensor.GameSample{Available: false}})
+	if got := target.PerformancePolicy(); got.Level != performancepolicy.LevelSaving || got.WidgetHz["standings"].Signal() != "" {
+		t.Fatalf("automatic drop policy = %+v", got)
+	} else if hz, ok := got.WidgetHz["standings"].Hertz(); !ok || hz != 1 {
+		t.Fatalf("custom standings override after drop = %+v", got.WidgetHz["standings"])
+	}
+
+	runtime.ApplyResolvedSettings(settings, customRequestedPolicy(performancepolicy.LevelMinimum, 1))
+	if got := target.PerformancePolicy(); got.Level != performancepolicy.LevelMinimum {
+		t.Fatalf("hot requested cap policy = %+v", got)
+	} else if hz, ok := got.WidgetHz["standings"].Hertz(); !ok || hz != 1 {
+		t.Fatalf("custom standings override after hot cap = %+v", got.WidgetHz["standings"])
+	}
+}
+
+func TestPerformanceRuntimePreservesResolvedProfileCustomOverrideWhileAutoDrops(t *testing.T) {
+	rate := config.ProfileWidgetRateV4{Hertz: 1}
+	profile := &config.ProfileDocumentV4{
+		Layouts: map[config.LayoutType]config.SessionLayoutV4{
+			config.LayoutGeneral: {
+				Type:    config.LayoutGeneral,
+				Widgets: []config.WidgetInstanceV4{{ID: "standings-main", Type: config.WidgetTypeStandings}},
+			},
+		},
+		Performance: &config.ProfilePerformanceV4{
+			Mode: config.ProfilePerformanceCustom, Level: 3,
+			Overrides: map[string]config.ProfilePerformanceOverrideV4{
+				"standings-main": {Hz: &rate},
+			},
+		},
+	}
+	settings := PerformanceSettings{Mode: "auto", Level: 3}
+	target := &runtimePolicyTarget{}
+	runtime := NewPerformanceRuntime(
+		func() PerformanceSampleRunner { return nil }, settings,
+		ResolvePerformancePolicy(settings, profile), target, nil, nil, nil,
+	)
+	start := time.Unix(1000, 0)
+	runtime.Observe(sensor.Sample{At: start, Host: sensor.HostSample{CPUPct: 95}})
+	runtime.Observe(sensor.Sample{At: start.Add(time.Second), Host: sensor.HostSample{CPUPct: 95}})
+	got := target.PerformancePolicy()
+	if got.Level != performancepolicy.LevelSaving {
+		t.Fatalf("automatic drop policy = %+v", got)
+	}
+	if hz, ok := got.WidgetHz["standings-main"].Hertz(); !ok || hz != 1 {
+		t.Fatalf("resolved profile custom override after drop = %+v", got.WidgetHz["standings-main"])
+	}
+}
+
 func TestPerformanceRuntimeFeedsAutoPolicyHotAndPublishesOnlyWhenVisible(t *testing.T) {
 	target := &runtimePolicyTarget{}
 	emitter := &performanceEventEmitter{}
 	announcer := &performanceAnnouncer{}
 	visible := false
-	runtime := NewPerformanceRuntime(func() PerformanceSampleRunner { return nil }, PerformanceSettings{Mode: "auto", Level: 3}, target, emitter, func() bool { return visible }, announcer)
+	runtime := NewPerformanceRuntime(func() PerformanceSampleRunner { return nil }, PerformanceSettings{Mode: "auto", Level: 3}, performancepolicy.Policy{}, target, emitter, func() bool { return visible }, announcer)
 	start := time.Unix(1000, 0)
 	for second := 1; second <= 30; second++ {
 		runtime.Observe(sensor.Sample{At: start.Add(time.Duration(second) * time.Second), Host: sensor.HostSample{CPUPct: 50}, Game: sensor.GameSample{Available: true, Foreground: true, FrametimeMS: 10}})
@@ -77,7 +165,7 @@ func TestPerformanceRuntimeFeedsAutoPolicyHotAndPublishesOnlyWhenVisible(t *test
 
 func TestPerformanceRuntimeManualSettingStopsAutomaticAuthority(t *testing.T) {
 	target := &runtimePolicyTarget{}
-	runtime := NewPerformanceRuntime(func() PerformanceSampleRunner { return nil }, PerformanceSettings{Mode: "auto"}, target, nil, nil, nil)
+	runtime := NewPerformanceRuntime(func() PerformanceSampleRunner { return nil }, PerformanceSettings{Mode: "auto"}, performancepolicy.Policy{}, target, nil, nil, nil)
 	runtime.ApplySettings(PerformanceSettings{Mode: "level", Level: 5})
 	runtime.Observe(sensor.Sample{At: time.Now(), Host: sensor.HostSample{CPUPct: 20}})
 	if got := target.PerformancePolicy(); got.Mode != performancepolicy.ModeLevel || got.Level != performancepolicy.LevelMinimum || got.Reason != "" {
@@ -93,7 +181,7 @@ func TestPerformanceRuntimeLifecycleStartsSamplerOnlyInAuto(t *testing.T) {
 		return nil
 	})
 	target := &runtimePolicyTarget{}
-	runtime := NewPerformanceRuntime(func() PerformanceSampleRunner { return runner }, PerformanceSettings{Mode: "level", Level: 2}, target, nil, nil, nil)
+	runtime := NewPerformanceRuntime(func() PerformanceSampleRunner { return runner }, PerformanceSettings{Mode: "level", Level: 2}, performancepolicy.Policy{}, target, nil, nil, nil)
 	if err := runtime.Start(context.Background()); err != nil {
 		t.Fatal(err)
 	}

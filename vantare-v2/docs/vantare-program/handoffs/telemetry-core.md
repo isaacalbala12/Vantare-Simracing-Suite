@@ -15,6 +15,21 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 
 ## Estado real
 
+- 2026-08-30, ISA-894/PR #955, S1 definitiva: ON y OFF usaron el mismo exe
+  `d02054e3…`/dist `5b8e388c…`, Spa práctica y 14 coches. El parser corregido
+  deja transporte/paridad en PASS: ON comparó 6.074 frames con cero mismatch
+  exacto; OFF recibió cero V1 y mantuvo `shadow=null`; delivery fue 67,6/49,1
+  ms p99 frente a 250 ms. El único FAIL común real es memoria: renderers
+  +732/+310 MiB/h ON y +314/+308 OFF. Una fase OFF diagnóstica de 10 min con
+  polling CDP periódico desactivado redujo la suma renderer post-warm-up de
+  +467,4 a +116,7 MiB/h (75 % observado), pero dejó un PID en +134,9 MiB/h.
+  Heap JS post-warm-up creció solo +1,7 MiB Hub y +3,8 MiB Overlay con nodos
+  estables; no hay retaining paths porque la captura no incluyó snapshots.
+  #956 separará PID/target, dominators y una lane `-tags production` sin CDP.
+  El gesto fue cruce a pista y escapatoria por teclado, sin vuelta lanzada
+  completa; puede requerir repetición estricta. Evidencia:
+  `docs/telemetry-core/evidence/isa-894/s1-definitiva-20260830.md`. Corte 2
+  sigue bloqueado; sin merge, promoción ni release.
 - 2026-08-30, seguimiento ISA-894/PR #955 después de S1 ON completa (20 min):
   el segundo fallo `StrictMode` del colector era la enumeración de una lista
   vacía de screenshots finales; el parser y el script toleran listas/targets y

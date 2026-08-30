@@ -101,6 +101,11 @@ conexión repetida altera memoria, S1–S3 pueden repetirse con `-EstadoCada 0`:
 se conservan inicio, checkpoints cada 5 min, final, heap y screenshots, pero
 las transiciones se marcan manualmente con Enter. S4/S5 no usan este modo
 porque necesitan observar reconnect y ventanas tardías entre checkpoints.
+Una repetición corta de 10 minutos solo se admite como diagnóstico explícito
+de S1 con `-DiagnosticoMemoria -EstadoCada 0`; queda marcada en el JSON, usa
+10 muestras como mínimo y **no sustituye** ninguna fase S1 de 20 minutos. Si el
+exe pertenece a otra worktree, `-Dist` debe apuntar al `frontend/dist` exacto
+embebido para que el hash de estabilidad sea válido.
 Ejemplos desde `vantare-v2`:
 
 ```powershell
@@ -118,6 +123,11 @@ pwsh -File scripts/bench/sesion-v1.ps1 `
   -Sesion S3 -Fase off -Duracion 60 `
   -Exe bin/vantare-isa894.exe -Puerto 9294 `
   -Escena 'Spa práctica, parrilla grande' -Coches 45
+
+pwsh -File scripts/bench/sesion-v1.ps1 `
+  -Sesion S1 -Fase off -Duracion 10 -DiagnosticoMemoria -EstadoCada 0 `
+  -Exe C:\ruta\vantare.exe -Dist C:\misma-build\frontend\dist -Puerto 9294 `
+  -Escena 'Spa práctica; sin gesto; aislamiento CDP' -Coches 20
 ```
 
 Antes de ocupar la máquina puede validarse el plan sin resolver ni lanzar el

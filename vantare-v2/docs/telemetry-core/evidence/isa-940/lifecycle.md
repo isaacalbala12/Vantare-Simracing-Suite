@@ -20,9 +20,9 @@ cambian entre builds equivalentes, por lo que la evidencia fija el tamaño.
 
 | Métrica de build Vite | Antes | Después | Cambio |
 |---|---:|---:|---:|
-| Mayor chunk JS cargado por overlay | 2.000,85 kB | 931,68 kB | -53,4 % |
+| Mayor chunk JS cargado por overlay | 2.000,85 kB | 936,48 kB | -53,2 % |
 | Entrada + preloads JS estáticos del HTML | 2.000,85 kB | 203,71 kB | -89,8 % |
-| gzip del mayor chunk | 542,49 kB | 253,39 kB | -53,3 % |
+| gzip del mayor chunk | 542,49 kB | 255,04 kB | -53,0 % |
 
 La ruta dinámica aún necesita módulos compartidos de edición importados por
 `CompositeApp`; ese archivo está reservado a #936 y no se modificó. No existe

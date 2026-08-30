@@ -859,7 +859,7 @@ function PerformanceSection() {
       });
       return;
     }
-    app.setPerformance({ mode: "level", level: Number(choice) as PerformanceSettings["level"] });
+    app.setPerformance({ mode: "level", level: Number(choice) as PerformanceSettings["level"], source: "user" });
   };
 
   const updateOverride = (widgetId: string, hz?: number | "dirty") => {

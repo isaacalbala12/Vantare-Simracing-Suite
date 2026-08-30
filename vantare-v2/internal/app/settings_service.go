@@ -71,7 +71,7 @@ const (
 )
 
 func performanceDefault() PerformanceSettings {
-	return PerformanceSettings{Mode: string(performancepolicy.ModeAuto), Source: PerformanceSourceDefault}
+	return PerformanceSettings{Mode: string(performancepolicy.ModeAuto), Level: int(performancepolicy.LevelBalanced), Source: PerformanceSourceDefault}
 }
 
 // ResolvePerformancePolicy combina el defecto de la app con la preferencia

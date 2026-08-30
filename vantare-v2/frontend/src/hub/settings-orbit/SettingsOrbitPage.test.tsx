@@ -221,7 +221,7 @@ describe("SettingsOrbitPage", () => {
       "settings:save",
       expect.objectContaining({
         requestId: expect.any(String),
-        settings: expect.objectContaining({ performance: { mode: "level", level: 4 } }),
+        settings: expect.objectContaining({ performance: { mode: "level", level: 4, source: "user" } }),
       }),
     );
   });
@@ -262,7 +262,7 @@ describe("SettingsOrbitPage", () => {
     expect(emit).toHaveBeenCalledWith(
       "settings:save",
       expect.objectContaining({
-        settings: expect.objectContaining({ performance: { mode: "level", level: 5 } }),
+        settings: expect.objectContaining({ performance: { mode: "level", level: 5, source: "user" } }),
       }),
     );
   });

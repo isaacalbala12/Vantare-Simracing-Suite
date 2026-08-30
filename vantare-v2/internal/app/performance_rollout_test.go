@@ -2,8 +2,10 @@ package app
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 )
 
@@ -13,8 +15,40 @@ func TestPerformanceDefaultIsAutomaticSingleAuthority(t *testing.T) {
 	if got.Mode != want.Mode || got.Level != want.Level || got.Source != want.Source || len(got.Overrides) != 0 {
 		t.Fatalf("new settings performance = %+v, want automatic default %+v", got, want)
 	}
-	if want.Mode != "auto" || want.Level != 0 || want.Source != PerformanceSourceDefault {
+	if want.Mode != "auto" || want.Level != 3 || want.Source != PerformanceSourceDefault {
 		t.Fatalf("performance default = %+v, want automatic default provenance", want)
+	}
+}
+
+func TestPerformanceDefaultFrontendFixtureMatchesPersistedGo(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "app-settings.json")
+	svc := NewSettingsService(path, nil, nil)
+	if err := svc.Save(DefaultAppSettings()); err != nil {
+		t.Fatal(err)
+	}
+	persisted, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var wire struct {
+		Performance json.RawMessage `json:"performance"`
+	}
+	if err := json.Unmarshal(persisted, &wire); err != nil {
+		t.Fatal(err)
+	}
+	fixture, err := os.ReadFile(filepath.Join("..", "..", "frontend", "src", "hub", "settings", "testdata", "settings-default-performance.go.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got, want any
+	if err := json.Unmarshal(wire.Performance, &got); err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(fixture, &want); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("persisted Go performance = %s, frontend fixture = %s", wire.Performance, fixture)
 	}
 }
 
@@ -55,6 +89,7 @@ func TestPerformanceDefaultMigrationFromPersistedFiles(t *testing.T) {
 			json: `{"schemaVersion":4,"performance":{"mode":"level","level":1}}`,
 			want: PerformanceSettings{
 				Mode:         "auto",
+				Level:        3,
 				Source:       PerformanceSourceDefault,
 				MigratedFrom: PerformanceMigratedFromRolloutLevel1,
 			},

@@ -24,19 +24,23 @@ type StudioProfileSaved struct {
 
 // StudioProfileService manages Overlay Studio V3 profile documents in parallel to legacy ProfileService.
 type StudioProfileService struct {
-	deltaCycleMu       sync.Mutex
-	operationMu        sync.Mutex
-	stateMu            sync.RWMutex
-	path               string
-	loaded             *config.LoadedProfileV3
-	store              config.ProfileDocumentStore
-	emitter            EventEmitter
-	logger             *slog.Logger
-	onSaved            func(StudioProfileSaved)
-	onPerformanceSaved func(*config.ProfileDocumentV4)
-	performanceSaves   *PerformanceSaveCoordinator
-	profilesDir        string
-	mgr                *window.Manager
+	deltaCycleMu         sync.Mutex
+	operationMu          sync.Mutex
+	stateMu              sync.RWMutex
+	path                 string
+	loaded               *config.LoadedProfileV3
+	autosaveBaseRevision string
+	store                config.ProfileDocumentStore
+	emitter              EventEmitter
+	logger               *slog.Logger
+	onSaved              func(StudioProfileSaved)
+	onPerformanceSaved   func(*config.ProfileDocumentV4)
+	performanceSaves     *PerformanceSaveCoordinator
+	// beforePersist is an internal synchronization seam for deterministic
+	// concurrency tests. Production constructors leave it nil.
+	beforePersist func(string)
+	profilesDir   string
+	mgr           *window.Manager
 }
 
 // NewStudioProfileService creates a parallel Studio profile service.
@@ -60,6 +64,7 @@ func (s *StudioProfileService) Load(path string) (*config.LoadedProfileV3, error
 	s.stateMu.Lock()
 	s.path = path
 	s.loaded = loaded
+	s.autosaveBaseRevision = ""
 	s.stateMu.Unlock()
 	for _, notice := range loaded.MigrationNotices {
 		s.logger.Warn("studio profile v3 migration discarded atypical updateHz",
@@ -97,14 +102,23 @@ func (s *StudioProfileService) savePath(requestID, path, expectedRevision string
 	}
 	migratedFrom := config.ProfileSchemaVersionV3
 	var currentV4 *config.ProfileDocumentV4
+	saveRevision := expectedRevision
 	s.stateMu.RLock()
 	activePath := s.path
 	activeLoaded := s.loaded
+	autosaveBaseRevision := s.autosaveBaseRevision
 	onSaved := s.onSaved
 	s.stateMu.RUnlock()
 	if path == activePath && activeLoaded != nil {
 		migratedFrom = activeLoaded.MigratedFrom
 		currentV4 = activeLoaded.DocumentV4
+		// A confirmed in-process performance save may advance the revision while
+		// an autosave request is waiting on operationMu. Rebase that autosave on
+		// the current in-memory revision; an external disk edit still conflicts
+		// because activeLoaded keeps the caller's expected revision.
+		if expectedRevision != "" && expectedRevision == autosaveBaseRevision && expectedRevision != activeLoaded.Revision {
+			saveRevision = activeLoaded.Revision
+		}
 	} else {
 		loaded, err := s.store.LoadV4(path)
 		if err != nil {
@@ -118,7 +132,7 @@ func (s *StudioProfileService) savePath(requestID, path, expectedRevision string
 	if currentV4 != nil {
 		updatedV4.Performance = config.NormalizeProfileDocumentV4(currentV4).Performance
 	}
-	revision, err := s.store.SaveV4(path, expectedRevision, updatedV4, migratedFrom)
+	revision, err := s.store.SaveV4(path, saveRevision, updatedV4, migratedFrom)
 	if err != nil {
 		if errors.Is(err, config.ErrProfileConflict) {
 			s.emitConflict(requestID, err)
@@ -141,6 +155,7 @@ func (s *StudioProfileService) savePath(requestID, path, expectedRevision string
 	if path == activePath {
 		s.stateMu.Lock()
 		s.loaded = loaded
+		s.autosaveBaseRevision = ""
 		s.stateMu.Unlock()
 	}
 	payload := map[string]any{
@@ -230,6 +245,9 @@ func (s *StudioProfileService) HandlePerformanceSave(data any) {
 func (s *StudioProfileService) savePerformance(performance *config.ProfilePerformanceV4) (*config.ProfileDocumentV4, string, error) {
 	s.operationMu.Lock()
 	defer s.operationMu.Unlock()
+	if s.beforePersist != nil {
+		s.beforePersist("performance")
+	}
 	s.stateMu.RLock()
 	path := s.path
 	loaded := s.loaded
@@ -248,6 +266,7 @@ func (s *StudioProfileService) savePerformance(performance *config.ProfilePerfor
 	}
 	legacy := config.ConvertProfileV4ToV3(doc)
 	s.stateMu.Lock()
+	s.autosaveBaseRevision = loaded.Revision
 	s.loaded = &config.LoadedProfileV3{
 		Document: legacy, DocumentV4: doc, Revision: revision,
 		MigratedFrom: config.ProfileSchemaVersionV4,

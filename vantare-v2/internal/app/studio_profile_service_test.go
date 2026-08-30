@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/vantare/overlays/v2/pkg/config"
 )
@@ -88,6 +89,86 @@ func TestStudioProfileServiceStateIsSafeDuringConfirmedPerformanceSaves(t *testi
 	done.Wait()
 	if got := svc.PerformanceProfile(); got == nil || got.Performance == nil || got.Performance.Level != 5 {
 		t.Fatalf("confirmed performance=%+v want level 5", got)
+	}
+}
+
+func TestStudioProfileServiceConcurrentAutosaveAndPerformancePreserveBoth(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "concurrent-autosave.json")
+	source, err := os.ReadFile(filepath.Join("..", "..", "pkg", "config", "testdata", "profile-v0-core-widgets.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, source, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	svc := NewStudioProfileService(nil, nil)
+	if _, err := svc.Load(path); err != nil {
+		t.Fatal(err)
+	}
+	expectedRevision := svc.Revision()
+	edited := svc.Document()
+	layout := edited.Layouts[config.LayoutGeneral]
+	if len(layout.Widgets) == 0 {
+		t.Fatal("fixture has no widgets")
+	}
+	layout.Widgets[0].Layout.X = 321
+	edited.Layouts[config.LayoutGeneral] = layout
+
+	performanceEntered := make(chan struct{})
+	releasePerformance := make(chan struct{})
+	svc.beforePersist = func(operation string) {
+		if operation == "performance" {
+			close(performanceEntered)
+			<-releasePerformance
+		}
+	}
+	performanceDone := make(chan struct{})
+	go func() {
+		defer close(performanceDone)
+		svc.HandlePerformanceSave(map[string]any{
+			"requestId":   "performance-concurrent",
+			"performance": map[string]any{"mode": "level", "level": 5},
+		})
+	}()
+	<-performanceEntered
+
+	layoutDone := make(chan error, 1)
+	go func() {
+		layoutDone <- svc.SaveInPlace("layout-concurrent", expectedRevision, edited)
+	}()
+	select {
+	case err := <-layoutDone:
+		t.Fatalf("autosave completed before the active performance save was released: %v", err)
+	default:
+	}
+	close(releasePerformance)
+
+	select {
+	case <-performanceDone:
+	case <-time.After(2 * time.Second):
+		t.Fatal("performance save did not terminate")
+	}
+	select {
+	case err := <-layoutDone:
+		if err != nil {
+			t.Fatalf("autosave failed after concurrent performance save: %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("autosave did not terminate")
+	}
+
+	stored, err := (config.ProfileDocumentStore{}).LoadV4(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gotLayout := stored.Document.Layouts[config.LayoutGeneral]
+	if len(gotLayout.Widgets) == 0 || gotLayout.Widgets[0].Layout.X != 321 {
+		t.Fatalf("layout x=%v want 321", gotLayout.Widgets)
+	}
+	if stored.Document.Performance == nil || stored.Document.Performance.Level != 5 {
+		t.Fatalf("performance=%+v want level 5", stored.Document.Performance)
 	}
 }
 

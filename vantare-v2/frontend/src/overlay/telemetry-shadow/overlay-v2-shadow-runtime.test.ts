@@ -7,6 +7,42 @@ import type { TelemetrySnapshot } from "../core/telemetry-snapshot";
 import { createOverlayV2ShadowRuntime } from "./overlay-v2-shadow-runtime";
 
 describe("Overlay v2 shadow runtime", () => {
+  it("marks cached sections from the aborted S1 cursor as not comparable", () => {
+    const evidence = JSON.parse(readFileSync(path.resolve(
+      process.cwd(),
+      "src/overlay/telemetry-shadow/testdata/s1-on-20260830-185729.json",
+    ), "utf8")) as {
+      transport: { epoch: number; sequence: number };
+      shadow: { metrics: Record<string, number> };
+    };
+    expect(Object.keys(evidence.shadow.metrics)).toContain(
+      'overlay_shadow_mismatches_total{feature="player-instruments",field="speedKph",phase="live"}',
+    );
+
+    const runtime = createOverlayV2ShadowRuntime();
+    const update = decodeOverlayUpdateV2(JSON.parse(readFileSync(path.resolve(
+      process.cwd(),
+      "../internal/telemetry/projection/overlayv2/testdata/overlay_v2_1.golden.json",
+    ), "utf8")));
+    const base = update.frame as OverlayFrameV2;
+    const sequence = evidence.transport.sequence;
+
+    runtime.acceptOverlayV2({ ...base, epoch: evidence.transport.epoch, sequence, sectionMask: 0 }, update.source);
+    runtime.acceptLegacy(evidence.transport.epoch, sequence, {
+      ...legacySnapshot(),
+      player: { ...legacySnapshot().player, speedKph: 200 },
+    });
+
+    const summary = runtime.sessionSummary();
+    expect(summary.frames).toBe(0);
+    expect(summary.mismatches).toBe(0);
+    expect(summary.notComparable).toBe(7);
+    expect(summary.metrics).toMatchObject({
+      'overlay_shadow_not_comparable_total{feature="player-instruments",reason="cached-section",phase="live"}': 1,
+      'overlay_shadow_not_comparable_total{feature="standings",reason="cached-section",phase="live"}': 1,
+    });
+  });
+
   it("compares only matching sequences regardless of arrival order", () => {
     const runtime = createOverlayV2ShadowRuntime();
     const update = decodeOverlayUpdateV2(JSON.parse(readFileSync(path.resolve(

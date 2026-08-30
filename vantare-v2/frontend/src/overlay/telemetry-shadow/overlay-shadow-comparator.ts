@@ -178,6 +178,8 @@ export type OverlayV2ShadowSessionSummary = Readonly<{
   mismatches: number;
   /** Mismatches observed outside `live`; an intentional contract difference. */
   declaredDifferences: number;
+  /** Feature comparisons skipped because their v2 section came from an older cursor. */
+  notComparable: number;
   framesByPhase: OverlayShadowPhaseCounts;
   mismatchesByPhase: OverlayShadowPhaseCounts;
   /** Times the accumulators were rotated because the stream epoch changed. */
@@ -186,6 +188,10 @@ export type OverlayV2ShadowSessionSummary = Readonly<{
 }>;
 
 export type OverlayV2PlayerInstrumentsComparator = Readonly<{
+  markNotComparable(
+    feature: OverlayV2ShadowComparableFeature,
+    input: Readonly<{ legacySnapshot: TelemetrySnapshot; source: OverlaySourceStatusV2 }>,
+  ): void;
   compare(input: Readonly<{
     legacySnapshot: TelemetrySnapshot;
     frame: OverlayFrameV2;
@@ -239,6 +245,15 @@ export type OverlayV2PlayerInstrumentsComparator = Readonly<{
   sessionSummary(): OverlayV2ShadowSessionSummary;
 }>;
 
+export type OverlayV2ShadowComparableFeature =
+  | "player-instruments"
+  | "session"
+  | "standings"
+  | "delta"
+  | "relative"
+  | "fuel"
+  | "controls";
+
 /**
  * Resolves the effective phase from the legacy status and the v2 source state.
  *
@@ -291,6 +306,7 @@ const ANCHOR_FEATURE = "player-instruments";
 
 type ShadowPhaseAccumulator = Readonly<{
   record(feature: string, phase: OverlayShadowPhase, fields: readonly string[]): void;
+  markNotComparable(feature: string, phase: OverlayShadowPhase): void;
   reset(): void;
   markEpochReset(): void;
   summary(): OverlayV2ShadowSessionSummary;
@@ -304,6 +320,7 @@ function createShadowPhaseAccumulator(): ShadowPhaseAccumulator {
   let framesByPhase = emptyPhaseCounts();
   let mismatchesByPhase = emptyPhaseCounts();
   let epochResets = 0;
+  let notComparable = 0;
   let byMetric = new Map<string, number>();
   return {
     record(feature, phase, fields) {
@@ -314,21 +331,28 @@ function createShadowPhaseAccumulator(): ShadowPhaseAccumulator {
         byMetric.set(key, (byMetric.get(key) ?? 0) + 1);
       }
     },
+    markNotComparable(feature, phase) {
+      notComparable += 1;
+      const key = `overlay_shadow_not_comparable_total{feature="${feature}",reason="cached-section",phase="${phase}"}`;
+      byMetric.set(key, (byMetric.get(key) ?? 0) + 1);
+    },
     reset() {
       framesByPhase = emptyPhaseCounts();
       mismatchesByPhase = emptyPhaseCounts();
+      notComparable = 0;
       byMetric = new Map();
     },
     markEpochReset() {
       epochResets += 1;
     },
     summary() {
-      const declaredDifferences = OVERLAY_SHADOW_PHASES.filter((phase) => phase !== "live")
+      const declaredDifferences = notComparable + OVERLAY_SHADOW_PHASES.filter((phase) => phase !== "live")
         .reduce((total, phase) => total + mismatchesByPhase[phase], 0);
       return Object.freeze({
         frames: framesByPhase.live,
         mismatches: mismatchesByPhase.live,
         declaredDifferences,
+        notComparable,
         framesByPhase: Object.freeze({ ...framesByPhase }),
         mismatchesByPhase: Object.freeze({ ...mismatchesByPhase }),
         epochResets,
@@ -613,6 +637,9 @@ export function compareControlsModels(
 export function createOverlayV2PlayerInstrumentsComparator(): OverlayV2PlayerInstrumentsComparator {
   const accumulator = createShadowPhaseAccumulator();
   return {
+    markNotComparable(feature, input) {
+      accumulator.markNotComparable(feature, resolveOverlayShadowPhase(input.legacySnapshot, input.source));
+    },
     compareSession(input) {
       const legacy = buildRacingFlagsViewModel(input.legacySnapshot, input.content);
       const overlayV2 = buildRacingFlagsViewModelV2(input.frame, input.source, input.content);

@@ -27,6 +27,10 @@ describe("OverlayFrame v2 store", () => {
     );
     expect(() => decodeOverlayUpdateV2({
       ...update,
+      frame: { ...update.frame, sectionMask: 0x800 },
+    })).toThrow("overlay-frame-v2:invalid-contract:frame.sectionMask");
+    expect(() => decodeOverlayUpdateV2({
+      ...update,
       source: { ...update.source, state: "connected" },
     })).toThrow("overlay-frame-v2:invalid-contract:source.state");
     expect(() => decodeOverlayUpdateV2({

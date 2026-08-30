@@ -14,7 +14,8 @@ import (
 
 // TestCachedProjectorMatchesProjectV2ByteForByte is the identity gate: with
 // a zero cadence the regulated path must be indistinguishable on the wire from
-// the current one. It is also the tripwire that fires when F8 fills a builder
+// the current one except for the section-origin mask, which intentionally
+// reports memoization. It is also the tripwire that fires when F8 fills a builder
 // in ProjectV2 without teaching DefaultSectionBuilders about it. Con defaults
 // regulados (ISA-707) la igualdad se mantiene vía memoización aunque no haya
 // FullRebuilds == Ticks.
@@ -52,8 +53,9 @@ func TestCachedProjectorMatchesProjectV2ByteForByte(t *testing.T) {
 		if metrics.FullRebuilds != metrics.Ticks {
 			t.Fatalf("zero cadence skipped work: %d full rebuilds out of %d ticks", metrics.FullRebuilds, metrics.Ticks)
 		}
-		// Con defaults regulados también debe ser byte-idéntico (memoización), pero
-		// no se exige FullRebuilds==Ticks porque ahora sí regula.
+		// Con defaults regulados el contenido debe seguir siendo byte-idéntico. El
+		// mask se iguala antes de comparar porque precisamente declara qué parte de
+		// ese contenido fue memoizada en este tick.
 		regulatedProjector := NewCachedProjector(DefaultSectionCadence())
 		for tick := range 5 {
 			revision := uint64(tick + 1)
@@ -65,6 +67,10 @@ func TestCachedProjectorMatchesProjectV2ByteForByte(t *testing.T) {
 			if err != nil {
 				t.Fatalf("CachedProjector.Project regulated(%d): %v", count, err)
 			}
+			if want.Frame == nil || got.Frame == nil {
+				t.Fatalf("regulated frame missing: got=%#v want=%#v", got.Frame, want.Frame)
+			}
+			want.Frame.SectionBuildMask = got.Frame.SectionBuildMask
 			wantJSON, err := json.Marshal(want)
 			if err != nil {
 				t.Fatalf("marshal ProjectV2: %v", err)
@@ -77,6 +83,28 @@ func TestCachedProjectorMatchesProjectV2ByteForByte(t *testing.T) {
 				t.Fatalf("vehicles=%d tick=%d regulated payload differs\n got: %s\nwant: %s", count, tick, gotJSON, wantJSON)
 			}
 		}
+	}
+}
+
+func TestCachedProjectorPublishesTheSourceCursorOfEverySection(t *testing.T) {
+	t.Parallel()
+
+	projector := NewCachedProjector(DefaultSectionCadence())
+	firstState := builderFinalState(t, 1)
+	first, err := projector.Project(firstState, builderSourceContext(), DefaultPreferencesV2(), 1, cadenceOrigin)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.Frame == nil || first.Frame.SectionBuildMask != AllSectionsMask() {
+		t.Fatalf("first frame section mask = %#v, want all sections", first.Frame)
+	}
+
+	second, err := projector.Project(firstState, builderSourceContext(), DefaultPreferencesV2(), 2, cadenceOrigin.Add(10*time.Millisecond))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if second.Frame == nil || second.Frame.SectionBuildMask != 0 {
+		t.Fatalf("cached frame section mask = %#v, want no rebuilt sections", second.Frame)
 	}
 }
 

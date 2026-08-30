@@ -94,6 +94,7 @@ func ProjectV2(
 		AlgorithmVersion: AlgorithmVersionV2,
 		StreamEpoch:      uint64(header.Cursor.Epoch),
 		SourceSequence:   uint64(header.Cursor.Sequence),
+		SectionBuildMask: AllSectionsMask(),
 		SessionID:        string(header.Identity.Session),
 		GeneratedAt:      header.Clock.ReceivedUTC.Round(0).UTC().Format(time.RFC3339Nano),
 		Units: UnitsV2{

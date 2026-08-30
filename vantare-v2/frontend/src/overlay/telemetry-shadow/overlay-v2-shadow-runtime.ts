@@ -13,6 +13,7 @@ import { relativeDefinition } from "../widget-types/relative/relative-definition
 import { standingsDefinition } from "../widget-types/standings/standings-definition";
 import {
   createOverlayV2PlayerInstrumentsComparator,
+  type OverlayV2ShadowComparableFeature,
   type OverlayV2PlayerInstrumentsComparator,
 } from "./overlay-shadow-comparator";
 
@@ -47,6 +48,16 @@ const CONTROLS_CONTENT = inputTelemetryDefinition.parseContent({});
  */
 const SHADOW_CONTROLS_WIDGET_ID = "overlay-v2-shadow:controls";
 
+const SECTION_BUILD = Object.freeze({
+  player: 1 << 0,
+  controls: 1 << 1,
+  delta: 1 << 2,
+  relative: 1 << 3,
+  session: 1 << 5,
+  standings: 1 << 6,
+  fuel: 1 << 7,
+});
+
 export type OverlayV2ShadowRuntime = Readonly<{
   acceptLegacy(epoch: number, sequence: number, snapshot: TelemetrySnapshot): void;
   acceptOverlayV2(frame: OverlayFrameV2, source: OverlaySourceStatusV2): void;
@@ -66,23 +77,23 @@ export function createOverlayV2ShadowRuntime(): OverlayV2ShadowRuntime {
     const current = overlayV2.get(key);
     if (!legacySnapshot || !current) return;
     const pair = { legacySnapshot, frame: current.frame, source: current.source };
-    comparator.compare({
-      ...pair,
-      // Position belongs to the standings slice, not to the player instruments.
-      content: { showPosition: false, showClutch: true },
-    });
-    comparator.compareSession({ ...pair, content: SESSION_CONTENT });
-    comparator.compareStandings({ ...pair, content: STANDINGS_CONTENT });
-    comparator.compareDelta({ ...pair, content: DELTA_CONTENT });
-    comparator.compareRelative({ ...pair, content: RELATIVE_CONTENT });
-    comparator.compareFuel({ ...pair, content: FUEL_CONTENT });
-    comparator.compareControls({
-      ...pair,
-      legacyHistory: readInputTelemetryHistory(
-        SHADOW_CONTROLS_WIDGET_ID, legacySnapshot, CONTROLS_CONTENT.historySeconds,
-      ),
-      content: CONTROLS_CONTENT,
-    });
+    compareSection(comparator, pair, "player-instruments", SECTION_BUILD.player, () => comparator.compare({
+        ...pair,
+        // Position belongs to the standings slice, not to the player instruments.
+        content: { showPosition: false, showClutch: true },
+      }));
+    compareSection(comparator, pair, "session", SECTION_BUILD.session, () => comparator.compareSession({ ...pair, content: SESSION_CONTENT }));
+    compareSection(comparator, pair, "standings", SECTION_BUILD.standings, () => comparator.compareStandings({ ...pair, content: STANDINGS_CONTENT }));
+    compareSection(comparator, pair, "delta", SECTION_BUILD.delta, () => comparator.compareDelta({ ...pair, content: DELTA_CONTENT }));
+    compareSection(comparator, pair, "relative", SECTION_BUILD.relative, () => comparator.compareRelative({ ...pair, content: RELATIVE_CONTENT }));
+    compareSection(comparator, pair, "fuel", SECTION_BUILD.fuel, () => comparator.compareFuel({ ...pair, content: FUEL_CONTENT }));
+    compareSection(comparator, pair, "controls", SECTION_BUILD.player | SECTION_BUILD.controls, () => comparator.compareControls({
+        ...pair,
+        legacyHistory: readInputTelemetryHistory(
+          SHADOW_CONTROLS_WIDGET_ID, legacySnapshot, CONTROLS_CONTENT.historySeconds,
+        ),
+        content: CONTROLS_CONTENT,
+      }));
     compared.add(key);
     legacy.delete(key);
     overlayV2.delete(key);
@@ -119,6 +130,20 @@ export function createOverlayV2ShadowRuntime(): OverlayV2ShadowRuntime {
     },
     sessionSummary: comparator.sessionSummary,
   };
+}
+
+function compareSection(
+  comparator: OverlayV2PlayerInstrumentsComparator,
+  pair: Readonly<{ legacySnapshot: TelemetrySnapshot; frame: OverlayFrameV2; source: OverlaySourceStatusV2 }>,
+  feature: OverlayV2ShadowComparableFeature,
+  requiredMask: number,
+  compare: () => unknown,
+): void {
+  if ((pair.frame.sectionMask & requiredMask) === requiredMask) {
+    compare();
+    return;
+  }
+  comparator.markNotComparable(feature, pair);
 }
 
 function frameKey(epoch: number, sequence: number): string {

@@ -124,10 +124,13 @@ type UpdateV2 struct {
 }
 
 type FrameV2 struct {
-	ContractVersion  uint16              `json:"contract"`
-	AlgorithmVersion uint16              `json:"algorithm"`
-	StreamEpoch      uint64              `json:"epoch"`
-	SourceSequence   uint64              `json:"sequence"`
+	ContractVersion  uint16 `json:"contract"`
+	AlgorithmVersion uint16 `json:"algorithm"`
+	StreamEpoch      uint64 `json:"epoch"`
+	SourceSequence   uint64 `json:"sequence"`
+	// SectionBuildMask marks the sections rebuilt from SourceSequence. A clear
+	// bit means that section is the memoized value from an earlier source tick.
+	SectionBuildMask uint16              `json:"sectionMask"`
 	SessionID        string              `json:"sessionId"`
 	GeneratedAt      string              `json:"generatedAt"`
 	Units            UnitsV2             `json:"units"`

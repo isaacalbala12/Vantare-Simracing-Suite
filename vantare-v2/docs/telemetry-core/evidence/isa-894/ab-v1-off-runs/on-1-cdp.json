@@ -1,11 +1,11 @@
 {
   "schema": "vantare.huella.cdp.v1",
-  "capturedAt": "2026-08-30T00:53:21.431Z",
+  "capturedAt": "2026-08-30T03:17:39.795Z",
   "action": "overlay-start",
   "control": {
     "changed": true,
     "running": true,
-    "emittedAt": "2026-08-30T00:53:10.553Z",
+    "emittedAt": "2026-08-30T03:17:28.983Z",
     "mechanism": {
       "kind": "wails-event",
       "eventName": "overlay:start-active"
@@ -14,10 +14,10 @@
   "durationSeconds": 10,
   "expectedWidgets": 3,
   "renderedWidgets": 3,
-  "overlayReadyAt": "2026-08-30T00:53:11.367Z",
+  "overlayReadyAt": "2026-08-30T03:17:29.727Z",
   "rendererProcessIds": [
-    27012,
-    28132
+    25944,
+    26872
   ],
   "rendererProcessInfoError": null,
   "targets": [
@@ -35,7 +35,8 @@
         "longTaskTotalMs": 0,
         "longTaskMaxMs": 0,
         "widgetCount": 0
-      }
+      },
+      "screenshot": null
     },
     {
       "role": "overlay",
@@ -47,9 +48,19 @@
       "diagnostics": {
         "overlay_v2_parse_duration": {
           "count": 4,
-          "p50": 0.40000000037252903,
-          "p99": 1.599999999627471,
+          "p50": 0.5,
+          "p99": 1.699999999254942,
           "nonLiveSamples": 0
+        },
+        "overlay_v2_transport": {
+          "revision": 13,
+          "frameRevision": 13,
+          "sourceState": "live",
+          "epoch": 1,
+          "sequence": 252,
+          "sessionId": "lmu-session-1",
+          "vehicleCount": 18,
+          "playerPit": "pit"
         },
         "pull": {
           "active": true,
@@ -58,13 +69,73 @@
           "receivedV2Snapshots": 3,
           "requestDurationMs": {
             "count": 4,
-            "mean": 28.175000000279397,
-            "max": 65.20000000111759
+            "sampleCount": 4,
+            "mean": 22.72499999869615,
+            "max": 54.099999997764826,
+            "p99": 54.099999997764826,
+            "histogram": [
+              {
+                "le": 1,
+                "count": 0
+              },
+              {
+                "le": 2,
+                "count": 0
+              },
+              {
+                "le": 4,
+                "count": 0
+              },
+              {
+                "le": 8,
+                "count": 1
+              },
+              {
+                "le": 16,
+                "count": 1
+              },
+              {
+                "le": 32,
+                "count": 1
+              },
+              {
+                "le": 64,
+                "count": 1
+              },
+              {
+                "le": 128,
+                "count": 0
+              },
+              {
+                "le": 250,
+                "count": 0
+              },
+              {
+                "le": 500,
+                "count": 0
+              },
+              {
+                "le": 1000,
+                "count": 0
+              },
+              {
+                "le": 2500,
+                "count": 0
+              },
+              {
+                "le": 5000,
+                "count": 0
+              },
+              {
+                "le": null,
+                "count": 0
+              }
+            ]
           }
         },
         "shadow": {
           "frames": 3,
-          "mismatches": 8,
+          "mismatches": 7,
           "declaredDifferences": 0,
           "framesByPhase": {
             "live": 3,
@@ -74,7 +145,7 @@
             "transition": 0
           },
           "mismatchesByPhase": {
-            "live": 8,
+            "live": 7,
             "stale": 0,
             "degraded": 0,
             "no-frame": 0,
@@ -82,7 +153,7 @@
           },
           "epochResets": 0,
           "metrics": {
-            "overlay_shadow_mismatches_total{feature=\"player-instruments\",field=\"speedKph\",phase=\"live\"}": 2,
+            "overlay_shadow_mismatches_total{feature=\"player-instruments\",field=\"speedKph\",phase=\"live\"}": 1,
             "overlay_shadow_mismatches_total{feature=\"standings\",field=\"rows[].currentLapText\",phase=\"live\"}": 3,
             "overlay_shadow_mismatches_total{feature=\"standings\",field=\"rows[].lastLapText\",phase=\"live\"}": 3
           }
@@ -94,7 +165,8 @@
         "longTaskTotalMs": 0,
         "longTaskMaxMs": 0,
         "widgetCount": 3
-      }
+      },
+      "screenshot": null
     }
   ]
 }

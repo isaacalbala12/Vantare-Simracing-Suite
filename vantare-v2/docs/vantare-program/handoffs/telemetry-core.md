@@ -15,33 +15,36 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 
 ## Estado real
 
-- 2026-08-30, ISA-894 corte 1 parte de `origin/nightly@8b4a7e4f`, que ya
-  contiene el cutover de autoridad V2 de #941. La app deja de construir y
-  publicar la proyección y status Overlay V1 por defecto. El rollback queda
-  explícito y temporal: ajuste persistente `overlayV1Emit=true` o override de
-  proceso `VANTARE_OVERLAY_V1_EMIT=1`; requiere reinicio y mantiene activo el
-  comparador shadow. El inventario estático y tres preflights por estado no
-  encuentran consumidores V1 con autoridad productiva: OFF completó 47 pulls,
-  recibió 0 V1 y 44 snapshots V2; ON recibió 8 V1 y el comparador volvió a
-  funcionar. El A/B real LMU Spa A1 (3 × 180 s por estado) midió Go host
-  2,420 % -> 1,657 % CPU (-31,52 %, ruido 0,66/2,56 %) y 73,00 -> 72,67 MiB;
-  `renderer-unassigned` 2,470 % -> 1,506 % CPU (-39,06 %, ruido 1,06/1,48 %).
-  Su aparente ahorro de RAM no es publicable porque OFF tuvo 9,58 % de ruido;
-  browser quedó esencialmente estable. Las seis corridas cerraron limpias y
-  perdieron 0/66.873 frames LMU. Guards Go/TypeScript impiden reintroducir
-  proyección/status V1 fuera del interruptor o pasar `TelemetrySnapshot` a los
-  frames productivos. El shadow ON conserva 14 diferencias en los mismos
-  campos ya vistos por #893 (`speedKph` y textos de vuelta): no son autoridad
-  visual, pero no hay paridad cero y el corte 2 sigue bloqueado y no se tocó.
-  Evidencia y guion humano de las cinco sesiones largas en
-  `docs/telemetry-core/evidence/isa-894/`. Issue `roadmap:not-required`: no se
-  modifica `plan.md`. La rama quedó rebasada sobre
-  `origin/nightly@ade6f561fe97`; Go build/test/vet acotado, contrato generado,
-  frontend 428 ficheros/3.261 tests, typecheck, lint y build pasan. El check
-  local del digest queda bloqueado por estado ajeno: Nightly avanzó con #947,
-  pero `roadmap.json` aún apunta a `8b4a7e4f`; el artefacto canónico ya está en
-  el PR bot #673, bloqueado. Esta issue no copia ese cambio porque
-  `roadmap:not-required` lo prohíbe. No hay merge, promoción ni release.
+- 2026-08-30, ISA-894 corte 1 y guardarraíles corte 3 están rebasados sobre
+  `origin/nightly@9723148f` (#954 incluido). La app no construye ni publica V1
+  por defecto; ajuste `overlayV1Emit=true` o
+  `VANTARE_OVERLAY_V1_EMIT=1` lo reactivan tras reinicio. La revisión del PR
+  #953 queda atendida: el shadow se crea al primer V1 y en OFF no registra el
+  callback V2 (`shadow=null` en 3/3 preflights); el guard Go usa AST para
+  resolver `Emit`/`EmitEvent` y nombres V1 literales, constantes o concatenados;
+  el guard TS recorre todo `frontend/src/overlay/**` con exclusiones estrechas
+  y mutaciones negativas. El A/B corregido usó un solo exe SHA-256
+  `844715b0…c46f5` y un solo dist `d088dfe6…22b59`, Spa `PRACTICE1`, 18 coches,
+  A1, tres corridas alternadas de 180 s por estado, sin `-Forzar`. OFF recibió
+  0 V1 y 16 V2; ON recibió 16 V1/13 V2 y reportó 35 mismatches diagnósticos. Go
+  CPU bajó 2,646 -> 1,609 %, pero no es concluyente por ruido 5,11/5,56 %;
+  renderer no asignado bajó 2,496 -> 1,482 %, tampoco concluyente por 8,95 %
+  OFF. Su RAM bajó 139,34 -> 108,46 MiB, pero ON queda en 5,82 % de ruido.
+  Browser no mejoró y hubo 0/74.141 frames perdidos. Una regresión adicional
+  fija el banco a 180 s de pared: antes hacía 180 iteraciones y prolongaba CPU/RAM.
+  El corte 2 sigue
+  bloqueado por paridad no exacta y no se tocó. Se añadió el colector autónomo
+  `scripts/bench/sesion-v1.ps1` para S1–S5: higiene, hashes, muestreo por PID,
+  checkpoints CDP, p99/histograma, screenshots, transiciones humanas/automáticas,
+  cierre limpio y veredicto JSON/Markdown; las sesiones las coordinarán Isaac y
+  el orquestador tras fusionar corte 1. Issue `roadmap:not-required`: no se
+  modifica roadmap. Go build/test, vet acotado, contrato, 429 ficheros/3.267
+  tests frontend, typecheck, lint y banco pasan. El digest local está bloqueado
+  por estado externo: `origin/nightly@9723148f` conserva
+  `digest.lastCommit=ade6f561`; el workflow publicó la corrección `336f0e97`
+  en el PR bot #673, que sigue abierto y bloqueado. Esta rama no copia ni
+  fusiona ese roadmap. Evidencia en `docs/telemetry-core/evidence/isa-894/`.
+  No hay merge, promoción ni release.
 
 - 2026-08-30, ISA-893 parte de `origin/nightly@ca166b38` después
   de integrar #936. El store V2 conserva una sola suscripción imperativa al

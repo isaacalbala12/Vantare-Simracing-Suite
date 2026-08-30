@@ -9,6 +9,10 @@ param(
     [ValidateRange(1024, 65535)]
     [int]$Puerto = 9247,
     [string]$Juego = 'Le Mans Ultimate',
+    [string]$Escena = '',
+    [string]$SesionLmu = '',
+    [ValidateRange(0, 200)]
+    [int]$Coches = 0,
     [string]$Salida = 'results',
     [switch]$SinJuego,
     [switch]$Forzar,
@@ -38,6 +42,7 @@ $outputDir = Resolve-BenchPath $Salida
 $processHelper = Resolve-BenchPath 'scripts/bench/huella-procesos.mjs' -MustExist
 $cdpHelper = Resolve-BenchPath 'scripts/bench/huella-cdp.mjs' -MustExist
 $summaryHelper = Resolve-BenchPath 'scripts/bench/huella-resumen.mjs' -MustExist
+$distPath = Resolve-BenchPath 'frontend/dist' -MustExist
 if ([IO.Path]::GetExtension($exePath) -ne '.exe') { throw '-Exe debe apuntar a un ejecutable .exe.' }
 if ([IO.Path]::GetExtension($profilePath) -ne '.json') { throw '-Perfil debe apuntar a un perfil JSON.' }
 
@@ -55,6 +60,24 @@ $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
 $userPathParts = @($userPath -split ';' | Where-Object { $_ })
 
 $profileDocument = Get-Content -LiteralPath $profilePath -Raw | ConvertFrom-Json
+
+function Get-DirectorySha256([string]$Directory) {
+    $lines = @(Get-ChildItem -LiteralPath $Directory -File -Recurse | Sort-Object FullName | ForEach-Object {
+        $relative = [IO.Path]::GetRelativePath($Directory, $_.FullName).Replace('\', '/')
+        '{0}  {1}' -f (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant(), $relative
+    })
+    $sha = [Security.Cryptography.SHA256]::Create()
+    try {
+        $bytes = [Text.Encoding]::UTF8.GetBytes(($lines -join "`n") + "`n")
+        return ([Convert]::ToHexString($sha.ComputeHash($bytes))).ToLowerInvariant()
+    } finally {
+        $sha.Dispose()
+    }
+}
+
+$buildSha256 = (Get-FileHash -LiteralPath $exePath -Algorithm SHA256).Hash.ToLowerInvariant()
+$distSha256 = Get-DirectorySha256 $distPath
+$gitHead = (git -C $repoRoot rev-parse HEAD).Trim()
 $expectedWidgetCount = @(
     $profileDocument.layouts.PSObject.Properties.Value |
         ForEach-Object { $_.widgets } |
@@ -74,6 +97,12 @@ $plan = [ordered]@{
     game = if ($SinJuego) { $null } else { $Juego }
     gamePresent = -not [bool]$SinJuego
     measurementMode = if ($SinJuego) { 'ram-only-no-game' } else { 'full' }
+    scene = $Escena
+    lmuSession = $SesionLmu
+    cars = $Coches
+    buildSha256 = $buildSha256
+    distSha256 = $distSha256
+    gitHead = $gitHead
     outputDirectory = $outputDir
     presentMon = if ($SinJuego) { $null } else { $presentMonPath }
     presentMonUserPathPersisted = $presentMonDirectory -in $userPathParts
@@ -324,7 +353,9 @@ try {
         if ($process) { $previousCpu[$processId] = $process.TotalProcessorTime.TotalSeconds }
     }
     $previousAt = Get-Date
-    for ($sampleIndex = 0; $sampleIndex -lt $Duracion; $sampleIndex++) {
+    $sampleIndex = 0
+    $sampleDeadline = (Get-Date).AddSeconds($Duracion)
+    while ((Get-Date) -lt $sampleDeadline) {
         Start-Sleep -Seconds 1
         $now = Get-Date
         $elapsed = ($now - $previousAt).TotalSeconds
@@ -341,6 +372,8 @@ try {
             $gpuValues = if ($gpuSample.Valid -and $gpuSample.Totals.ContainsKey($processId)) { $gpuSample.Totals[$processId] } else { @{ Engine = 0.0; Dedicated = 0.0 } }
             $rows.Add([pscustomobject][ordered]@{
                 timestamp = $now.ToString('o'); condition = $Condicion; pid = $processId; role = $roleByPid[$processId]
+                buildSha256 = $buildSha256; distSha256 = $distSha256; buildStable = $true; gitHead = $gitHead
+                scene = $Escena; lmuSession = $SesionLmu; cars = $Coches
                 hygieneForced = $hygieneForced; foreignProcesses = $foreignProcessesJson; publishable = $publishable; measurementMode = $measurementMode
                 systemWebView2Count = $systemWebView2.Count; systemWebView2Paths = $systemWebView2PathsJson
                 orphanEtwSessionsStopped = $orphanEtwSessionsStoppedJson; gameFrametimeValid = $false; frametimePublishable = $false
@@ -352,6 +385,7 @@ try {
             })
         }
         $previousAt = $now
+        $sampleIndex += 1
     }
 
     if ($Condicion -eq 'HubMin') {
@@ -387,6 +421,8 @@ try {
             $rows.Add([pscustomobject][ordered]@{
                 timestamp = [string]$frame.CPUStartTime
                 condition = $Condicion; pid = $gameProcess.Id; role = 'game'; privateBytes = $null; workingSetBytes = $null
+                buildSha256 = $buildSha256; distSha256 = $distSha256; buildStable = $true; gitHead = $gitHead
+                scene = $Escena; lmuSession = $SesionLmu; cars = $Coches
                 hygieneForced = $hygieneForced; foreignProcesses = $foreignProcessesJson; publishable = $publishable; measurementMode = $measurementMode
                 systemWebView2Count = $systemWebView2.Count; systemWebView2Paths = $systemWebView2PathsJson
                 orphanEtwSessionsStopped = $orphanEtwSessionsStoppedJson; gameFrametimeValid = $false; frametimePublishable = $false
@@ -406,9 +442,14 @@ try {
     if (-not $gameFrametimeValid) {
         Write-Warning 'FRAMETIME NO PUBLICABLE: PresentMon no produjo ningún frame válido; RAM/CPU/GPU de Vantare siguen siendo utilizables.'
     }
+    $buildSha256End = (Get-FileHash -LiteralPath $exePath -Algorithm SHA256).Hash.ToLowerInvariant()
+    $distSha256End = Get-DirectorySha256 $distPath
+    $buildStable = $buildSha256 -eq $buildSha256End -and $distSha256 -eq $distSha256End
     foreach ($row in $rows) {
         $row.gameFrametimeValid = $gameFrametimeValid
         $row.frametimePublishable = $gameFrametimeValid
+        $row.buildStable = $buildStable
+        if (-not $buildStable) { $row.publishable = $false }
     }
 
     $rows | Export-Csv -LiteralPath $rawCsv -NoTypeInformation -Encoding utf8

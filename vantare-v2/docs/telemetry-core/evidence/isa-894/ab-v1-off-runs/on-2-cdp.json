@@ -1,11 +1,11 @@
 {
   "schema": "vantare.huella.cdp.v1",
-  "capturedAt": "2026-08-30T01:10:13.931Z",
+  "capturedAt": "2026-08-30T03:24:52.393Z",
   "action": "overlay-start",
   "control": {
     "changed": true,
     "running": true,
-    "emittedAt": "2026-08-30T01:10:03.131Z",
+    "emittedAt": "2026-08-30T03:24:41.611Z",
     "mechanism": {
       "kind": "wails-event",
       "eventName": "overlay:start-active"
@@ -14,10 +14,10 @@
   "durationSeconds": 10,
   "expectedWidgets": 3,
   "renderedWidgets": 3,
-  "overlayReadyAt": "2026-08-30T01:10:03.873Z",
+  "overlayReadyAt": "2026-08-30T03:24:42.355Z",
   "rendererProcessIds": [
-    27684,
-    7464
+    4884,
+    8604
   ],
   "rendererProcessInfoError": null,
   "targets": [
@@ -35,7 +35,8 @@
         "longTaskTotalMs": 0,
         "longTaskMaxMs": 0,
         "widgetCount": 0
-      }
+      },
+      "screenshot": null
     },
     {
       "role": "overlay",
@@ -46,35 +47,105 @@
       "widgetCount": 3,
       "diagnostics": {
         "overlay_v2_parse_duration": {
-          "count": 3,
-          "p50": 0.7000000011175871,
-          "p99": 1.599999999627471,
+          "count": 7,
+          "p50": 0.4000000022351742,
+          "p99": 1.0999999977648258,
           "nonLiveSamples": 0
+        },
+        "overlay_v2_transport": {
+          "revision": 15,
+          "frameRevision": 15,
+          "sourceState": "live",
+          "epoch": 1,
+          "sequence": 245,
+          "sessionId": "lmu-session-1",
+          "vehicleCount": 18,
+          "playerPit": "pit"
         },
         "pull": {
           "active": true,
-          "requestsCompleted": 3,
-          "receivedV1Projections": 3,
-          "receivedV2Snapshots": 2,
+          "requestsCompleted": 7,
+          "receivedV1Projections": 7,
+          "receivedV2Snapshots": 6,
           "requestDurationMs": {
-            "count": 3,
-            "mean": 34.36666666654249,
-            "max": 75.59999999962747
+            "count": 7,
+            "sampleCount": 7,
+            "mean": 11.228571428252119,
+            "max": 32.69999999925494,
+            "p99": 32.69999999925494,
+            "histogram": [
+              {
+                "le": 1,
+                "count": 0
+              },
+              {
+                "le": 2,
+                "count": 0
+              },
+              {
+                "le": 4,
+                "count": 0
+              },
+              {
+                "le": 8,
+                "count": 5
+              },
+              {
+                "le": 16,
+                "count": 0
+              },
+              {
+                "le": 32,
+                "count": 1
+              },
+              {
+                "le": 64,
+                "count": 1
+              },
+              {
+                "le": 128,
+                "count": 0
+              },
+              {
+                "le": 250,
+                "count": 0
+              },
+              {
+                "le": 500,
+                "count": 0
+              },
+              {
+                "le": 1000,
+                "count": 0
+              },
+              {
+                "le": 2500,
+                "count": 0
+              },
+              {
+                "le": 5000,
+                "count": 0
+              },
+              {
+                "le": null,
+                "count": 0
+              }
+            ]
           }
         },
         "shadow": {
-          "frames": 2,
-          "mismatches": 6,
+          "frames": 6,
+          "mismatches": 16,
           "declaredDifferences": 0,
           "framesByPhase": {
-            "live": 2,
+            "live": 6,
             "stale": 0,
             "degraded": 0,
             "no-frame": 0,
             "transition": 0
           },
           "mismatchesByPhase": {
-            "live": 6,
+            "live": 16,
             "stale": 0,
             "degraded": 0,
             "no-frame": 0,
@@ -82,9 +153,9 @@
           },
           "epochResets": 0,
           "metrics": {
-            "overlay_shadow_mismatches_total{feature=\"player-instruments\",field=\"speedKph\",phase=\"live\"}": 2,
-            "overlay_shadow_mismatches_total{feature=\"standings\",field=\"rows[].currentLapText\",phase=\"live\"}": 2,
-            "overlay_shadow_mismatches_total{feature=\"standings\",field=\"rows[].lastLapText\",phase=\"live\"}": 2
+            "overlay_shadow_mismatches_total{feature=\"player-instruments\",field=\"speedKph\",phase=\"live\"}": 4,
+            "overlay_shadow_mismatches_total{feature=\"standings\",field=\"rows[].currentLapText\",phase=\"live\"}": 6,
+            "overlay_shadow_mismatches_total{feature=\"standings\",field=\"rows[].lastLapText\",phase=\"live\"}": 6
           }
         }
       },
@@ -94,7 +165,8 @@
         "longTaskTotalMs": 0,
         "longTaskMaxMs": 0,
         "widgetCount": 3
-      }
+      },
+      "screenshot": null
     }
   ]
 }

@@ -84,7 +84,9 @@ export function createOverlayV2ShadowRuntime(): OverlayV2ShadowRuntime {
         content: { showPosition: false, showClutch: true },
       }));
     compareSection(comparator, pair, "session", SECTION_BUILD.session, () => comparator.compareSession({ ...pair, content: SESSION_CONTENT }));
-    compareSection(comparator, pair, "standings", SECTION_BUILD.standings, () => comparator.compareStandings({ ...pair, content: STANDINGS_CONTENT }));
+    // remainingText is rendered by standings but sourced from the session
+    // clock, so both sections must have been rebuilt at this cursor.
+    compareSection(comparator, pair, "standings", SECTION_BUILD.session | SECTION_BUILD.standings, () => comparator.compareStandings({ ...pair, content: STANDINGS_CONTENT }));
     compareSection(comparator, pair, "delta", SECTION_BUILD.delta, () => comparator.compareDelta({ ...pair, content: DELTA_CONTENT }));
     compareSection(comparator, pair, "relative", SECTION_BUILD.relative, () => comparator.compareRelative({ ...pair, content: RELATIVE_CONTENT }));
     compareSection(comparator, pair, "fuel", SECTION_BUILD.fuel, () => comparator.compareFuel({ ...pair, content: FUEL_CONTENT }));

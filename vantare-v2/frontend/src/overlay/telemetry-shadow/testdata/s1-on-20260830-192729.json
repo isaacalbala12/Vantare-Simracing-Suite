@@ -1,0 +1,22 @@
+{
+  "schema": "vantare.huella.cdp.v1",
+  "capturedAt": "2026-08-30T17:47:34.568Z",
+  "transport": {
+    "epoch": 1,
+    "sequence": 74644,
+    "sourceState": "live",
+    "vehicleCount": 18,
+    "playerPit": "pit"
+  },
+  "shadow": {
+    "frames": 5426,
+    "mismatches": 554,
+    "metrics": {
+      "overlay_shadow_mismatches_total{feature=\"standings\",field=\"remainingText\",phase=\"live\"}": 138,
+      "overlay_shadow_mismatches_total{feature=\"controls\",field=\"history[].throttle\",phase=\"live\"}": 166,
+      "overlay_shadow_mismatches_total{feature=\"controls\",field=\"history[].clutch\",phase=\"live\"}": 166,
+      "overlay_shadow_mismatches_total{feature=\"controls\",field=\"history[].brake\",phase=\"live\"}": 84
+    }
+  },
+  "note": "Extracto sanitizado de S1 ON. La captura conserva contadores y cursor, no payloads de frames; los tests combinan esta evidencia con el golden canónico."
+}

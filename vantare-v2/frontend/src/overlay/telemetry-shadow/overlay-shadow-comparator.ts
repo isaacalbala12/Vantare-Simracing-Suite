@@ -599,14 +599,12 @@ export function compareFuelModels(
  * Compares the controls slice: the instantaneous pedals, and the series behind
  * them.
  *
- * The series is the interesting half. Overlay v1 builds it in the browser, one
- * accumulator per widget id, sampling whatever snapshots arrive; Overlay v2
- * reads a series Go derived once from the canonical stream. They cannot be
- * compared position by position from the start, because the two have different
- * beginnings — the browser accumulator starts when the widget mounts, the
- * canonical history when the run does — and different retention. What must
- * agree is the part they both cover, so the comparison walks both series
- * backwards from the newest sample and compares the overlap.
+ * Overlay v1 builds its series in the browser from arriving snapshots while
+ * Overlay v2 reads a series sampled once in Go. V2 does not carry the original
+ * timestamp for each sample, so an array index cannot identify the same
+ * observation across both histories. S1 ON proved that comparing their overlap
+ * by index creates false throttle/brake/clutch divergences. Only the
+ * instantaneous controls are comparable exactly.
  *
  * Declared differences, accounted and never compared as values:
  *   - `history.length`: warm-up and retention are not the same on both sides.
@@ -614,8 +612,6 @@ export function compareFuelModels(
  *   - `history[].speedKph`, `rpm`, `gear`: the canonical sample has pedals
  *     only, so the v2 series carries no such fields to compare.
  *
- * A side that has a series while the other has none is not a retention
- * difference: it is reported once as `history.presence`.
  */
 export function compareControlsModels(
   legacy: InputTelemetryViewModel,
@@ -639,20 +635,6 @@ export function compareControlsModels(
     }
   }
 
-  if ((legacy.history.length === 0) !== (overlayV2.history.length === 0)) {
-    mismatch.add("history.presence");
-    return [...mismatch].sort();
-  }
-  const overlap = Math.min(legacy.history.length, overlayV2.history.length);
-  for (let step = 1; step <= overlap; step += 1) {
-    const legacySample = legacy.history[legacy.history.length - step];
-    const overlayV2Sample = overlayV2.history[overlayV2.history.length - step];
-    for (const field of ["throttle", "brake", "clutch"] as const) {
-      if (!numbersWithin(legacySample[field], overlayV2Sample[field], OVERLAY_V2_CONTROLS_RATIO_TOLERANCE)) {
-        mismatch.add(`history[].${field}`);
-      }
-    }
-  }
   return [...mismatch].sort();
 }
 

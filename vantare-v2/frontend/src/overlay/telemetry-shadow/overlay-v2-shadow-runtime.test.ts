@@ -43,6 +43,35 @@ describe("Overlay v2 shadow runtime", () => {
     });
   });
 
+  it("does not compare the S1 remaining clock when only standings was rebuilt", () => {
+    const evidence = JSON.parse(readFileSync(path.resolve(
+      process.cwd(),
+      "src/overlay/telemetry-shadow/testdata/s1-on-20260830-192729.json",
+    ), "utf8")) as { shadow: { metrics: Record<string, number> } };
+    expect(evidence.shadow.metrics).toHaveProperty(
+      'overlay_shadow_mismatches_total{feature="standings",field="remainingText",phase="live"}',
+      138,
+    );
+    const runtime = createOverlayV2ShadowRuntime();
+    const update = decodeOverlayUpdateV2(JSON.parse(readFileSync(path.resolve(
+      process.cwd(),
+      "../internal/telemetry/projection/overlayv2/testdata/overlay_v2_1.golden.json",
+    ), "utf8")));
+    const frame = update.frame as OverlayFrameV2;
+    const legacy = { ...legacySnapshot(), session: { ...legacySnapshot().session, remainingSeconds: 1 } };
+
+    runtime.acceptOverlayV2({ ...frame, sectionMask: 1 << 6 }, update.source);
+    runtime.acceptLegacy(frame.epoch, frame.sequence, legacy);
+
+    const summary = runtime.sessionSummary();
+    expect(summary.metrics).not.toHaveProperty(
+      'overlay_shadow_mismatches_total{feature="standings",field="remainingText",phase="live"}',
+    );
+    expect(summary.metrics).toMatchObject({
+      'overlay_shadow_not_comparable_total{feature="standings",reason="cached-section",phase="live"}': 1,
+    });
+  });
+
   it("compares only matching sequences regardless of arrival order", () => {
     const runtime = createOverlayV2ShadowRuntime();
     const update = decodeOverlayUpdateV2(JSON.parse(readFileSync(path.resolve(

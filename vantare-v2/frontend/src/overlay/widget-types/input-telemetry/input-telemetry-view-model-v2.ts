@@ -109,12 +109,16 @@ export function inputTelemetryDisplayedValues(
 }
 
 /**
- * Fields the v2 path cannot reproduce from the canonical series; declared, not
- * compared. The sample timestamps are reconstructed from `windowMs` and the
- * per-sample speed/rpm/gear simply do not exist in the canonical history.
+ * Fields that cannot be paired sample-by-sample with v1; declared, not
+ * compared. V2 reconstructs timestamps from `windowMs`, so an array index is
+ * not a shared observation across the independently sampled histories.
  */
 export const OVERLAY_V2_CONTROLS_DECLARED_GAPS: readonly string[] = Object.freeze([
+  "history.length",
   "history[].capturedAt",
+  "history[].throttle",
+  "history[].brake",
+  "history[].clutch",
   "history[].speedKph",
   "history[].rpm",
   "history[].gear",

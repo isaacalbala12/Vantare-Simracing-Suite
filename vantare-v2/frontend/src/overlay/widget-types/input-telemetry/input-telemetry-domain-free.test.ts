@@ -88,7 +88,10 @@ describe("input telemetry v2 view model", () => {
       expect(sample.gear).toBeUndefined();
     }
     expect(OVERLAY_V2_CONTROLS_DECLARED_GAPS).toEqual(
-      expect.arrayContaining(["history[].capturedAt", "history[].speedKph", "history[].rpm", "history[].gear"]),
+      expect.arrayContaining([
+        "history.length", "history[].capturedAt", "history[].throttle", "history[].brake",
+        "history[].clutch", "history[].speedKph", "history[].rpm", "history[].gear",
+      ]),
     );
   });
 

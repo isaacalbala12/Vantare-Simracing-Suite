@@ -1,0 +1,155 @@
+{
+  "schema": "vantare.huella.cdp.v1",
+  "capturedAt": "2026-08-30T18:54:58.748Z",
+  "action": "inspect",
+  "control": null,
+  "durationSeconds": 1,
+  "expectedWidgets": 3,
+  "renderedWidgets": 0,
+  "overlayReadyAt": null,
+  "rendererProcessIds": [],
+  "rendererProcessInfoError": null,
+  "targets": [
+    {
+      "role": "overlay",
+      "url": "http://wails.localhost/overlay.html",
+      "title": "Vantare Overlay",
+      "overlay": true,
+      "hub": false,
+      "surface": "desktop",
+      "widgetCount": 3,
+      "diagnostics": {
+        "overlay_v2_parse_duration": {
+          "count": 512,
+          "p50": 0.29999999701976776,
+          "p99": 0.5,
+          "nonLiveSamples": 169
+        },
+        "overlay_v2_transport": {
+          "revision": 75401,
+          "frameRevision": 75401,
+          "sourceState": "live",
+          "epoch": 2,
+          "sequence": 34723,
+          "sessionId": "lmu-session-2",
+          "vehicleCount": 18,
+          "playerPit": "pit"
+        },
+        "pull": {
+          "active": true,
+          "requestsCompleted": 55747,
+          "receivedV1Projections": 0,
+          "receivedV2Snapshots": 55588,
+          "requestDurationMs": {
+            "count": 55747,
+            "sampleCount": 512,
+            "mean": 4.476493802349687,
+            "max": 871.8000000007451,
+            "p99": 34.30000000074506,
+            "histogram": [
+              {
+                "le": 1,
+                "count": 0
+              },
+              {
+                "le": 2,
+                "count": 0
+              },
+              {
+                "le": 4,
+                "count": 345
+              },
+              {
+                "le": 8,
+                "count": 125
+              },
+              {
+                "le": 16,
+                "count": 19
+              },
+              {
+                "le": 32,
+                "count": 17
+              },
+              {
+                "le": 64,
+                "count": 5
+              },
+              {
+                "le": 128,
+                "count": 1
+              },
+              {
+                "le": 250,
+                "count": 0
+              },
+              {
+                "le": 500,
+                "count": 0
+              },
+              {
+                "le": 1000,
+                "count": 0
+              },
+              {
+                "le": 2500,
+                "count": 0
+              },
+              {
+                "le": 5000,
+                "count": 0
+              },
+              {
+                "le": null,
+                "count": 0
+              }
+            ]
+          }
+        },
+        "shadow": null
+      },
+      "probe": {
+        "rafPerSecond": 120,
+        "longTaskCount": 0,
+        "longTaskTotalMs": 0,
+        "longTaskMaxMs": 0,
+        "widgetCount": 3
+      },
+      "memory": {
+        "jsHeapUsedBytes": 83602220,
+        "jsHeapTotalBytes": 89100288,
+        "documents": 1,
+        "nodes": 363,
+        "jsEventListeners": 190
+      },
+      "memoryError": null,
+      "screenshot": "<session-root>\\screenshots\\final\\overlay-1.png"
+    },
+    {
+      "role": "hub",
+      "url": "http://wails.localhost/#/hub",
+      "title": "Vantare",
+      "overlay": false,
+      "hub": true,
+      "surface": "hub",
+      "widgetCount": 0,
+      "diagnostics": null,
+      "probe": {
+        "rafPerSecond": 120,
+        "longTaskCount": 0,
+        "longTaskTotalMs": 0,
+        "longTaskMaxMs": 0,
+        "widgetCount": 0
+      },
+      "memory": {
+        "jsHeapUsedBytes": 89391396,
+        "jsHeapTotalBytes": 96149504,
+        "documents": 1,
+        "nodes": 100,
+        "jsEventListeners": 212
+      },
+      "memoryError": null,
+      "screenshot": "<session-root>\\screenshots\\final\\hub-2.png"
+    }
+  ]
+}

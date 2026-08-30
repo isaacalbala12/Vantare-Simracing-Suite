@@ -38,6 +38,7 @@ export function buildInputTelemetryViewModelV2(
   frame: OverlayFrameV2,
   source: OverlaySourceStatusV2,
   content: InputTelemetryContent,
+  options: Readonly<{ includeHistory?: boolean }> = {},
 ): InputTelemetryViewModel {
   const status = resolveStatus(source.state);
   const unavailable = status === "missing" || status === "disconnected" || status === "error";
@@ -51,7 +52,7 @@ export function buildInputTelemetryViewModelV2(
     speedKph: unavailable ? undefined : speedInKph(frame.player.speed, frame.units.speed),
     rpm: unavailable ? undefined : displayedNumber(frame.player.rpm),
     gear: unavailable ? undefined : displayedNumber(frame.player.gear),
-    history: unavailable
+    history: unavailable || options.includeHistory === false
       ? []
       : decodeControlsHistory(frame.controls.history, Date.parse(frame.generatedAt), content.historySeconds),
     historySeconds: content.historySeconds,
@@ -109,12 +110,16 @@ export function inputTelemetryDisplayedValues(
 }
 
 /**
- * Fields the v2 path cannot reproduce from the canonical series; declared, not
- * compared. The sample timestamps are reconstructed from `windowMs` and the
- * per-sample speed/rpm/gear simply do not exist in the canonical history.
+ * Fields that cannot be paired sample-by-sample with v1; declared, not
+ * compared. V2 reconstructs timestamps from `windowMs`, so an array index is
+ * not a shared observation across the independently sampled histories.
  */
 export const OVERLAY_V2_CONTROLS_DECLARED_GAPS: readonly string[] = Object.freeze([
+  "history.length",
   "history[].capturedAt",
+  "history[].throttle",
+  "history[].brake",
+  "history[].clutch",
   "history[].speedKph",
   "history[].rpm",
   "history[].gear",

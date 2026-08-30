@@ -233,6 +233,7 @@ export interface OverlayFrameV2 {
   readonly generatedAt: string;
   readonly player: OverlayPlayerInstrumentsV2;
   readonly relative: readonly OverlayRelativeRowV2[];
+  readonly sectionMask: number;
   readonly sequence: number;
   readonly session: OverlaySessionV2;
   readonly sessionId: string;

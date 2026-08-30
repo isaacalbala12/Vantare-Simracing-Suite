@@ -277,13 +277,17 @@ function sourceStatus(value: unknown, path: string): void {
 
 function frame(value: unknown, path: string): void {
   objectWithKeys(value, path, [
-    "contract", "algorithm", "epoch", "sequence", "sessionId", "generatedAt", "units",
+    "contract", "algorithm", "epoch", "sequence", "sectionMask", "sessionId", "generatedAt", "units",
     "session", "player", "controls", "standings", "relative", "delta", "fuel", "spotter", "capabilities", "damage", "weather",
   ]);
   if (value.contract !== 2) invalid(`${path}.contract`);
   positiveInteger(value.algorithm, `${path}.algorithm`);
   positiveInteger(value.epoch, `${path}.epoch`);
   positiveInteger(value.sequence, `${path}.sequence`);
+  const sectionMask = value.sectionMask;
+  if (typeof sectionMask !== "number" || !Number.isInteger(sectionMask) || sectionMask < 0 || sectionMask > 0x7ff) {
+    invalid(`${path}.sectionMask`);
+  }
   nonEmptyString(value.sessionId, `${path}.sessionId`);
   utcTimestamp(value.generatedAt, `${path}.generatedAt`);
   units(value.units, `${path}.units`);

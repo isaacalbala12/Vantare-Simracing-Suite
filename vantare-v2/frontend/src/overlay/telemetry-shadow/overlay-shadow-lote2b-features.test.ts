@@ -44,7 +44,7 @@ describe("shadow comparator: controls feature", () => {
     expect(summary.framesByPhase.live).toBe(0);
   });
 
-  it("accounts a controls mismatch outside live as a declared difference", () => {
+  it("accounts controls outside live as not comparable", () => {
     const comparator = createOverlayV2PlayerInstrumentsComparator();
     const sequence: readonly OverlaySourceStatusV2[] = [
       { state: "stale" }, { state: "stale" }, { state: "live" },
@@ -63,8 +63,9 @@ describe("shadow comparator: controls feature", () => {
       });
     }
     const summary = comparator.sessionSummary();
-    expect(summary.mismatchesByPhase.stale + summary.mismatchesByPhase.live)
-      .toBe(summary.mismatches + summary.declaredDifferences);
+    expect(summary.mismatchesByPhase.stale).toBe(0);
+    expect(summary.notComparable).toBe(2);
+    expect(summary.mismatchesByPhase.live).toBe(summary.mismatches);
     expect(summary.mismatchesByPhase.transition).toBe(0);
     expect(summary.declaredDifferences).toBeGreaterThan(0);
   });
@@ -107,24 +108,32 @@ describe("controls comparison rules", () => {
       .toEqual(expect.arrayContaining(["brake"]));
   });
 
-  it("compares the overlap of the two series and not their lengths", () => {
+  it("does not align the two series by array index without comparable timestamps", () => {
+    const evidence = JSON.parse(readFileSync(path.resolve(
+      process.cwd(),
+      "src/overlay/telemetry-shadow/testdata/s1-on-20260830-192729.json",
+    ), "utf8")) as { shadow: { metrics: Record<string, number> } };
+    expect(evidence.shadow.metrics).toHaveProperty(
+      'overlay_shadow_mismatches_total{feature="controls",field="history[].throttle",phase="live"}',
+      166,
+    );
     const model = buildInputTelemetryViewModelV2(goldenFrame(20), { state: "live" }, CONTROLS_CONTENT);
     const older = { capturedAt: 0, throttle: 0.5, brake: 0.5, clutch: 0 };
     // A longer v1 series that agrees on every sample both sides cover is not a
     // divergence: the extra samples are warm-up the v2 path never saw.
     expect(compareControlsModels({ ...model, history: [older, ...model.history] }, model)).toEqual([]);
-    // A disagreement inside the overlap is.
+    // S1 ON measured these values at different cadences/phases. Without a
+    // shared sample timestamp, the same index is not the same observation.
     const diverged = model.history.map((sample, index) =>
       index === model.history.length - 1 ? { ...sample, throttle: sample.throttle + 0.2 } : sample,
     );
-    expect(compareControlsModels({ ...model, history: diverged }, model))
-      .toEqual(expect.arrayContaining(["history[].throttle"]));
+    expect(compareControlsModels({ ...model, history: diverged }, model)).toEqual([]);
   });
 
-  it("reports a series present on one side only as a presence divergence", () => {
+  it("declares a series present on one side only instead of inventing parity", () => {
     const model = buildInputTelemetryViewModelV2(goldenFrame(20), { state: "live" }, CONTROLS_CONTENT);
     expect(model.history.length).toBeGreaterThan(0);
-    expect(compareControlsModels({ ...model, history: [] }, model)).toEqual(["history.presence"]);
+    expect(compareControlsModels({ ...model, history: [] }, model)).toEqual([]);
   });
 
   it("declares the per-sample fields the canonical series cannot carry", () => {
@@ -137,7 +146,8 @@ describe("controls comparison rules", () => {
     };
     expect(compareControlsModels(model, invented)).toEqual([]);
     expect(OVERLAY_V2_CONTROLS_DECLARED_GAPS).toEqual(expect.arrayContaining([
-      "history[].capturedAt", "history[].speedKph", "history[].rpm", "history[].gear",
+      "history.length", "history[].capturedAt", "history[].throttle", "history[].brake",
+      "history[].clutch", "history[].speedKph", "history[].rpm", "history[].gear",
     ]));
   });
 });

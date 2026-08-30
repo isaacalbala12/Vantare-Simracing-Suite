@@ -11,6 +11,7 @@ param(
     [int]$Duracion,
     [Parameter(Mandatory)]
     [string]$Exe,
+    [string]$Dist = 'frontend/dist',
     [Parameter(Mandatory)]
     [ValidateRange(1024, 65535)]
     [int]$Puerto,
@@ -19,22 +20,30 @@ param(
     [string]$Escena = '',
     [ValidateRange(0, 200)]
     [int]$Coches = 0,
+    [ValidateRange(0, 300)]
+    [int]$EstadoCada = 5,
+    [switch]$DiagnosticoMemoria,
     [switch]$DryRun
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+. (Join-Path $PSScriptRoot 'sesion-v1-state.ps1')
+
 if ($PSVersionTable.PSVersion.Major -lt 7) { throw 'sesion-v1.ps1 requiere PowerShell 7 o posterior.' }
 if ($Puerto -in @(9222, 9231)) { throw "El puerto $Puerto está reservado por otros bancos." }
 
 $repoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..\..')).Path
-$expectedWindows = if ($Sesion -eq 'S5') { @('desktop', 'studio-or-obs') } else { @('desktop') }
+[string[]]$expectedWindows = if ($Sesion -eq 'S5') { 'desktop', 'studio-or-obs' } else { 'desktop' }
 function Resolve-SessionPath([string]$Path, [switch]$MustExist) {
     $candidate = if ([IO.Path]::IsPathRooted($Path)) { $Path } else { Join-Path $repoRoot $Path }
     if ($MustExist) { return (Resolve-Path -LiteralPath $candidate).Path }
     return [IO.Path]::GetFullPath($candidate)
 }
+
+if ($DiagnosticoMemoria -and $Sesion -ne 'S1') { throw '-DiagnosticoMemoria solo admite S1.' }
+if ($DiagnosticoMemoria -and $EstadoCada -ne 0) { throw '-DiagnosticoMemoria exige -EstadoCada 0 para aislar el polling CDP.' }
 
 $plan = [ordered]@{
     schema = 'vantare.session.dry-run.v1'
@@ -42,13 +51,15 @@ $plan = [ordered]@{
     phase = $Fase
     durationMinutes = $Duracion
     executable = Resolve-SessionPath $Exe
+    dist = Resolve-SessionPath $Dist
     profile = Resolve-SessionPath $Perfil
     cdpPort = $Puerto
     outputRoot = Resolve-SessionPath $Salida
     v1Environment = if ($Fase -eq 'on') { '1' } else { $null }
     processSampleSeconds = 60
     cdpCheckpointSeconds = 300
-    statePollSeconds = 5
+    statePollSeconds = $EstadoCada
+    memoryDiagnostic = [bool]$DiagnosticoMemoria
     expectedWindows = $expectedWindows
     forceHygiene = $false
 }
@@ -57,7 +68,11 @@ if ($DryRun) {
     exit 0
 }
 
-if ($Duracion -lt 20) { throw 'Una sesión real no puede durar menos de 20 minutos.' }
+if ($DiagnosticoMemoria) {
+    if ($Duracion -lt 10) { throw 'El diagnóstico de memoria requiere al menos 10 minutos.' }
+} elseif ($Duracion -lt 20) {
+    throw 'Una sesión real no puede durar menos de 20 minutos.'
+}
 if ($Sesion -eq 'S3' -and $Fase -eq 'off' -and $Duracion -lt 60) { throw 'S3 OFF es el soak prolongado y requiere al menos 60 minutos.' }
 if ([string]::IsNullOrWhiteSpace($Escena)) {
     if ([Console]::IsInputRedirected) { throw '-Escena es obligatorio sin consola interactiva.' }
@@ -71,7 +86,7 @@ if ($Sesion -eq 'S3' -and $Coches -le 40) { throw 'S3 requiere más de 40 coches
 
 $exePath = Resolve-SessionPath $Exe -MustExist
 $profilePath = Resolve-SessionPath $Perfil -MustExist
-$distPath = Resolve-SessionPath 'frontend/dist' -MustExist
+$distPath = Resolve-SessionPath $Dist -MustExist
 $processHelper = Resolve-SessionPath 'scripts/bench/huella-procesos.mjs' -MustExist
 $cdpHelper = Resolve-SessionPath 'scripts/bench/huella-cdp.mjs' -MustExist
 $summaryHelper = Resolve-SessionPath 'scripts/bench/sesion-v1-resumen.mjs' -MustExist
@@ -84,7 +99,7 @@ $hygieneCandidates = @(Get-CimInstance Win32_Process | Where-Object {
 $hygieneInput = $hygieneCandidates | ConvertTo-Json -Compress -Depth 3 -AsArray
 $hygiene = $hygieneInput | & node $processHelper --hygiene | ConvertFrom-Json
 if ($LASTEXITCODE -ne 0 -or -not $hygiene) { throw 'No se pudo aplicar la allow-list de higiene de huella.ps1.' }
-$foreign = @($hygiene.foreign)
+$foreign = @(Get-SessionOptionalProperty -InputObject $hygiene -Name 'foreign')
 if ($foreign.Count -gt 0) {
     $foreign | Select-Object ProcessId, ParentProcessId, Name | Format-Table -AutoSize | Out-Host
     throw 'Higiene fallida: cierra manualmente los procesos bloqueantes. Este colector no admite -Forzar.'
@@ -125,10 +140,17 @@ $stdoutLog = Join-Path $runDirectory 'stdout.log'
 $stderrLog = Join-Path $runDirectory 'stderr.log'
 $processScratch = Join-Path $runDirectory 'processes.tmp.json'
 $exeName = [IO.Path]::GetFileName($exePath)
+$profileDocument = Get-Content -LiteralPath $profilePath -Raw | ConvertFrom-Json
+$profileLayouts = Get-SessionOptionalProperty -InputObject $profileDocument -Name 'layouts'
+if ($null -eq $profileLayouts) { throw 'El perfil de sesión no contiene layouts.' }
 $expectedWidgets = @(
-    (Get-Content -LiteralPath $profilePath -Raw | ConvertFrom-Json).layouts.PSObject.Properties.Value |
-        ForEach-Object { $_.widgets } |
-        Where-Object { $null -eq $_.behavior.enabled -or $_.behavior.enabled }
+    $profileLayouts.PSObject.Properties.Value |
+        ForEach-Object { @(Get-SessionOptionalProperty -InputObject $_ -Name 'widgets') } |
+        Where-Object {
+            $behavior = Get-SessionOptionalProperty -InputObject $_ -Name 'behavior'
+            $enabled = Get-SessionOptionalProperty -InputObject $behavior -Name 'enabled'
+            $null -eq $enabled -or [bool]$enabled
+        }
 ).Count
 
 $samples = [Collections.Generic.List[object]]::new()
@@ -204,10 +226,11 @@ function Invoke-Cdp([string]$Action, [string]$Label, [string]$ScreenshotDirector
 }
 
 function Register-State([object]$Capture) {
-    foreach ($target in @($Capture.targets)) {
-        $surface = if ($target.surface) { [string]$target.surface } else { [string]$target.role }
+    $capturedAt = [string](Get-SessionOptionalProperty -InputObject $Capture -Name 'capturedAt')
+    foreach ($target in @(ConvertTo-SessionCdpTargets -Capture $Capture)) {
+        $surface = $target.surface
         $key = '{0}|{1}|{2}|{3}' -f $surface, $target.role, $target.url, $target.title
-        $now = [string]$Capture.capturedAt
+        $now = $capturedAt
         if (-not $knownWindows.ContainsKey($key)) {
             $knownWindows[$key] = $true
             $transitions.Add([pscustomobject]@{ kind = 'window-first-seen'; surface = $surface; window = $key; timestamp = $now })
@@ -216,7 +239,7 @@ function Register-State([object]$Capture) {
             $widgetReady[$key] = $true
             $transitions.Add([pscustomobject]@{ kind = 'window-widget-ready'; surface = $surface; window = $key; timestamp = $now })
         }
-        $transport = $target.diagnostics.overlay_v2_transport
+        $transport = $target.transport
         if (-not $transport) { continue }
         $source = [string]$transport.sourceState
         if ($source -and $knownSource.ContainsKey($key) -and $knownSource[$key] -ne $source) {
@@ -243,9 +266,10 @@ function Add-Diagnostic([string]$Label, [string]$ScreenshotDirectory = '') {
     $diagnostics.Add($capture)
     Register-State $capture
     if ($ScreenshotDirectory) {
-        $destination = if ($ScreenshotDirectory -eq $initialScreenshotDirectory) { $initialScreenshots } else { $finalScreenshots }
-        foreach ($target in @($capture.targets)) {
-            if ($target.screenshot) { $destination.Add([string]$target.screenshot) }
+        if ($ScreenshotDirectory -eq $initialScreenshotDirectory) {
+            Add-SessionScreenshotPaths -Capture $capture -Destination $initialScreenshots
+        } else {
+            Add-SessionScreenshotPaths -Capture $capture -Destination $finalScreenshots
         }
     }
 }
@@ -271,7 +295,7 @@ try {
         $opened = Invoke-Cdp -Action 'overlay-start' -Label '000-overlay-start' -ScreenshotDirectory $initialScreenshotDirectory
         $diagnostics.Add($opened)
         Register-State $opened
-        foreach ($target in @($opened.targets)) { if ($target.screenshot) { $initialScreenshots.Add([string]$target.screenshot) } }
+        Add-SessionScreenshotPaths -Capture $opened -Destination $initialScreenshots
     } else {
         Add-Diagnostic -Label '000-initial' -ScreenshotDirectory $initialScreenshotDirectory
     }
@@ -281,14 +305,14 @@ try {
     Write-Host 'Escribe la transición y pulsa Enter; el muestreo continúa entre marcas.'
     $nextProcessSample = $startedAt.AddSeconds(60)
     $nextCheckpoint = $startedAt.AddMinutes(5)
-    $nextStatePoll = $startedAt
+    $nextStatePoll = if ($EstadoCada -gt 0) { $startedAt } else { [datetime]::MaxValue }
     $finishAt = $startedAt.AddMinutes($Duracion)
     while ((Get-Date) -lt $finishAt) {
         $now = Get-Date
-        if ($now -ge $nextStatePoll) {
+        if ($EstadoCada -gt 0 -and $now -ge $nextStatePoll) {
             $state = Invoke-Cdp -Action 'state' -Label ''
             Register-State $state
-            $nextStatePoll = $nextStatePoll.AddSeconds(5)
+            $nextStatePoll = $nextStatePoll.AddSeconds($EstadoCada)
         }
         if ($now -ge $nextProcessSample) {
             Add-ProcessSample $now
@@ -336,12 +360,17 @@ try {
 
 $exeShaEnd = (Get-FileHash -LiteralPath $exePath -Algorithm SHA256).Hash.ToLowerInvariant()
 $distShaEnd = Get-DirectorySha256 $distPath
+$gitHeadOutput = @(git -C $repoRoot rev-parse HEAD)
+if ($LASTEXITCODE -ne 0 -or $gitHeadOutput.Count -eq 0) { throw 'No se pudo resolver el HEAD Git de la sesión.' }
+$gitHead = ([string]::Join([Environment]::NewLine, $gitHeadOutput)).Trim()
 $raw = [ordered]@{
     schema = 'vantare.session.v1'
     session = $Sesion
     phase = $Fase
     expectedWindows = $expectedWindows
     durationMinutes = $Duracion
+    memoryDiagnostic = [bool]$DiagnosticoMemoria
+    statePollSeconds = $EstadoCada
     startedAt = if ($startedAt) { $startedAt.ToString('o') } else { $endedAt.ToString('o') }
     endedAt = $endedAt.ToString('o')
     executable = [ordered]@{
@@ -352,10 +381,13 @@ $raw = [ordered]@{
         distSha256 = $distShaStart
         distSha256End = $distShaEnd
         stable = $exeShaStart -eq $exeShaEnd -and $distShaStart -eq $distShaEnd
-        gitHead = (git -C $repoRoot rev-parse HEAD).Trim()
+        gitHead = $gitHead
     }
     scene = [ordered]@{ description = $Escena; cars = $Coches }
-    hygiene = [ordered]@{ foreign = @($foreign); systemWebView2 = @($hygiene.systemWebView2) }
+    hygiene = [ordered]@{
+        foreign = @($foreign)
+        systemWebView2 = @(Get-SessionOptionalProperty -InputObject $hygiene -Name 'systemWebView2')
+    }
     samples = @($samples)
     diagnostics = @($diagnostics)
     transitions = @($transitions)

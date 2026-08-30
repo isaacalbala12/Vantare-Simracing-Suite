@@ -5,7 +5,10 @@ import { widgetTypeRegistry } from "../core/widget-registry";
 import type { StandingsRowViewModel, StandingsViewModel } from "../widget-types/standings/standings-view-model";
 import { buildStandingsViewModel } from "../widget-types/standings/standings-view-model";
 import { buildStandingsViewModelV2 } from "../widget-types/standings/standings-view-model-v2";
-import type { StandingsContent } from "../widget-types/standings/standings-content";
+import {
+  getEnabledStandingsColumns,
+  type StandingsContent,
+} from "../widget-types/standings/standings-content";
 import type { RacingFlagsContent } from "../widget-types/racing-flags/racing-flags-definition";
 import type { RacingFlagsViewModel } from "../widget-types/racing-flags/racing-flags-view-model";
 import { buildRacingFlagsViewModel } from "../widget-types/racing-flags/racing-flags-view-model";
@@ -171,6 +174,10 @@ export const OVERLAY_SHADOW_PHASES: readonly OverlayShadowPhase[] = Object.freez
 
 export type OverlayShadowPhaseCounts = Readonly<Record<OverlayShadowPhase, number>>;
 
+export type OverlayShadowNotComparableReason =
+  | "cached-section"
+  | `${Exclude<OverlayShadowPhase, "live">}-phase`;
+
 export type OverlayV2ShadowSessionSummary = Readonly<{
   /** Frames compared in the `live` phase: the gate denominator. */
   frames: number;
@@ -178,14 +185,22 @@ export type OverlayV2ShadowSessionSummary = Readonly<{
   mismatches: number;
   /** Mismatches observed outside `live`; an intentional contract difference. */
   declaredDifferences: number;
+  /** Feature comparisons skipped because their v2 section came from an older cursor. */
+  notComparable: number;
   framesByPhase: OverlayShadowPhaseCounts;
   mismatchesByPhase: OverlayShadowPhaseCounts;
   /** Times the accumulators were rotated because the stream epoch changed. */
   epochResets: number;
   metrics: Readonly<Record<string, number>>;
+  retained: Readonly<{ metricKeys: number }>;
 }>;
 
 export type OverlayV2PlayerInstrumentsComparator = Readonly<{
+  markNotComparable(
+    feature: OverlayV2ShadowComparableFeature,
+    input: OverlayV2ShadowPhaseInput,
+    reason?: OverlayShadowNotComparableReason,
+  ): void;
   compare(input: Readonly<{
     legacySnapshot: TelemetrySnapshot;
     frame: OverlayFrameV2;
@@ -239,6 +254,20 @@ export type OverlayV2PlayerInstrumentsComparator = Readonly<{
   sessionSummary(): OverlayV2ShadowSessionSummary;
 }>;
 
+export type OverlayV2ShadowComparableFeature =
+  | "player-instruments"
+  | "session"
+  | "standings"
+  | "delta"
+  | "relative"
+  | "fuel"
+  | "controls";
+
+type OverlayV2ShadowPhaseInput = Readonly<{
+  legacySnapshot: TelemetrySnapshot;
+  source: OverlaySourceStatusV2;
+}>;
+
 /**
  * Resolves the effective phase from the legacy status and the v2 source state.
  *
@@ -288,9 +317,12 @@ function overlayV2Phase(source: OverlaySourceStatusV2): Exclude<OverlayShadowPha
  * frames, not the number of features compared on each frame.
  */
 const ANCHOR_FEATURE = "player-instruments";
+export const OVERLAY_SHADOW_MAX_METRIC_KEYS = 128;
+const OVERLAY_SHADOW_METRICS_OVERFLOW = "overlay_shadow_metrics_overflow_total";
 
 type ShadowPhaseAccumulator = Readonly<{
   record(feature: string, phase: OverlayShadowPhase, fields: readonly string[]): void;
+  markNotComparable(feature: string, phase: OverlayShadowPhase, reason: OverlayShadowNotComparableReason): void;
   reset(): void;
   markEpochReset(): void;
   summary(): OverlayV2ShadowSessionSummary;
@@ -304,37 +336,58 @@ function createShadowPhaseAccumulator(): ShadowPhaseAccumulator {
   let framesByPhase = emptyPhaseCounts();
   let mismatchesByPhase = emptyPhaseCounts();
   let epochResets = 0;
+  let notComparable = 0;
   let byMetric = new Map<string, number>();
+  const incrementMetric = (key: string) => {
+    if (byMetric.has(key)) {
+      byMetric.set(key, (byMetric.get(key) ?? 0) + 1);
+      return;
+    }
+    if (byMetric.size < OVERLAY_SHADOW_MAX_METRIC_KEYS - 1) {
+      byMetric.set(key, 1);
+      return;
+    }
+    byMetric.set(OVERLAY_SHADOW_METRICS_OVERFLOW, (byMetric.get(OVERLAY_SHADOW_METRICS_OVERFLOW) ?? 0) + 1);
+  };
   return {
     record(feature, phase, fields) {
       if (feature === ANCHOR_FEATURE) framesByPhase[phase] += 1;
       mismatchesByPhase[phase] += fields.length;
       for (const field of fields) {
         const key = `overlay_shadow_mismatches_total{feature="${feature}",field="${field}",phase="${phase}"}`;
-        byMetric.set(key, (byMetric.get(key) ?? 0) + 1);
+        incrementMetric(key);
       }
+    },
+    markNotComparable(feature, phase, reason) {
+      if (feature === ANCHOR_FEATURE && reason.endsWith("-phase")) framesByPhase[phase] += 1;
+      notComparable += 1;
+      const key = `overlay_shadow_not_comparable_total{feature="${feature}",reason="${reason}",phase="${phase}"}`;
+      incrementMetric(key);
     },
     reset() {
       framesByPhase = emptyPhaseCounts();
       mismatchesByPhase = emptyPhaseCounts();
+      notComparable = 0;
       byMetric = new Map();
     },
     markEpochReset() {
       epochResets += 1;
     },
     summary() {
-      const declaredDifferences = OVERLAY_SHADOW_PHASES.filter((phase) => phase !== "live")
+      const declaredDifferences = notComparable + OVERLAY_SHADOW_PHASES.filter((phase) => phase !== "live")
         .reduce((total, phase) => total + mismatchesByPhase[phase], 0);
       return Object.freeze({
         frames: framesByPhase.live,
         mismatches: mismatchesByPhase.live,
         declaredDifferences,
+        notComparable,
         framesByPhase: Object.freeze({ ...framesByPhase }),
         mismatchesByPhase: Object.freeze({ ...mismatchesByPhase }),
         epochResets,
         metrics: Object.freeze(Object.fromEntries(
           [...byMetric.entries()].sort(([left], [right]) => left.localeCompare(right)),
         )),
+        retained: Object.freeze({ metricKeys: byMetric.size }),
       });
     },
   };
@@ -403,6 +456,7 @@ export function compareSessionModels(
 export function compareStandingsModels(
   legacy: StandingsViewModel,
   overlayV2: StandingsViewModel,
+  options: Readonly<{ compareCurrentLap?: boolean }> = {},
 ): string[] {
   const mismatch = new Set<string>();
   for (const field of ["status", "sessionLabel", "activeClass", "remainingText"] as const) {
@@ -421,7 +475,14 @@ export function compareStandingsModels(
       continue;
     }
     for (const field of COMPARABLE_STANDINGS_FIELDS) {
-      if (legacyRow[field] !== overlayV2Row[field]) mismatch.add(`rows[].${field}`);
+      if (field === "currentLapText" && options.compareCurrentLap === false) continue;
+      const legacyValue = field === "lastLapText"
+        ? normalizeAbsentLapText(legacyRow[field])
+        : legacyRow[field];
+      const overlayV2Value = field === "lastLapText"
+        ? normalizeAbsentLapText(overlayV2Row[field])
+        : overlayV2Row[field];
+      if (legacyValue !== overlayV2Value) mismatch.add(`rows[].${field}`);
     }
   }
   return [...mismatch].sort();
@@ -437,6 +498,11 @@ const COMPARABLE_STANDINGS_FIELDS = [
   "isPlayer",
   "isLeader",
 ] as const satisfies readonly (keyof StandingsRowViewModel)[];
+
+function normalizeAbsentLapText(value: string): string {
+  const normalized = value.trim();
+  return normalized === "" || normalized === "-" || normalized === "—" ? "" : normalized;
+}
 
 /** Fields with no canonical signal behind them; declared, never compared. */
 export const OVERLAY_V2_STANDINGS_DECLARED_GAPS: readonly string[] = Object.freeze([
@@ -553,14 +619,12 @@ export function compareFuelModels(
  * Compares the controls slice: the instantaneous pedals, and the series behind
  * them.
  *
- * The series is the interesting half. Overlay v1 builds it in the browser, one
- * accumulator per widget id, sampling whatever snapshots arrive; Overlay v2
- * reads a series Go derived once from the canonical stream. They cannot be
- * compared position by position from the start, because the two have different
- * beginnings — the browser accumulator starts when the widget mounts, the
- * canonical history when the run does — and different retention. What must
- * agree is the part they both cover, so the comparison walks both series
- * backwards from the newest sample and compares the overlap.
+ * Overlay v1 builds its series in the browser from arriving snapshots while
+ * Overlay v2 reads a series sampled once in Go. V2 does not carry the original
+ * timestamp for each sample, so an array index cannot identify the same
+ * observation across both histories. S1 ON proved that comparing their overlap
+ * by index creates false throttle/brake/clutch divergences. Only the
+ * instantaneous controls are comparable exactly.
  *
  * Declared differences, accounted and never compared as values:
  *   - `history.length`: warm-up and retention are not the same on both sides.
@@ -568,8 +632,6 @@ export function compareFuelModels(
  *   - `history[].speedKph`, `rpm`, `gear`: the canonical sample has pedals
  *     only, so the v2 series carries no such fields to compare.
  *
- * A side that has a series while the other has none is not a retention
- * difference: it is reported once as `history.presence`.
  */
 export function compareControlsModels(
   legacy: InputTelemetryViewModel,
@@ -593,26 +655,15 @@ export function compareControlsModels(
     }
   }
 
-  if ((legacy.history.length === 0) !== (overlayV2.history.length === 0)) {
-    mismatch.add("history.presence");
-    return [...mismatch].sort();
-  }
-  const overlap = Math.min(legacy.history.length, overlayV2.history.length);
-  for (let step = 1; step <= overlap; step += 1) {
-    const legacySample = legacy.history[legacy.history.length - step];
-    const overlayV2Sample = overlayV2.history[overlayV2.history.length - step];
-    for (const field of ["throttle", "brake", "clutch"] as const) {
-      if (!numbersWithin(legacySample[field], overlayV2Sample[field], OVERLAY_V2_CONTROLS_RATIO_TOLERANCE)) {
-        mismatch.add(`history[].${field}`);
-      }
-    }
-  }
   return [...mismatch].sort();
 }
 
 export function createOverlayV2PlayerInstrumentsComparator(): OverlayV2PlayerInstrumentsComparator {
   const accumulator = createShadowPhaseAccumulator();
   return {
+    markNotComparable(feature, input, reason = "cached-section") {
+      accumulator.markNotComparable(feature, resolveOverlayShadowPhase(input.legacySnapshot, input.source), reason);
+    },
     compareSession(input) {
       const legacy = buildRacingFlagsViewModel(input.legacySnapshot, input.content);
       const overlayV2 = buildRacingFlagsViewModelV2(input.frame, input.source, input.content);
@@ -621,7 +672,14 @@ export function createOverlayV2PlayerInstrumentsComparator(): OverlayV2PlayerIns
     compareStandings(input) {
       const legacy = buildStandingsViewModel(input.legacySnapshot, input.content);
       const overlayV2 = buildStandingsViewModelV2(input.frame, input.source, input.content);
-      return record(accumulator, "standings", input, compareStandingsModels(legacy, overlayV2));
+      const compareCurrentLap = getEnabledStandingsColumns(input.content)
+        .some((column) => column.metricId === "currentLap");
+      return record(
+        accumulator,
+        "standings",
+        input,
+        compareStandingsModels(legacy, overlayV2, { compareCurrentLap }),
+      );
     },
     compareDelta(input) {
       const legacy = buildDeltaViewModel(input.legacySnapshot, input.content);
@@ -640,15 +698,24 @@ export function createOverlayV2PlayerInstrumentsComparator(): OverlayV2PlayerIns
     },
     compareControls(input) {
       const legacy = buildInputTelemetryViewModel(input.legacySnapshot, input.content, input.legacyHistory);
-      const overlayV2 = buildInputTelemetryViewModelV2(input.frame, input.source, input.content);
+      const overlayV2 = buildInputTelemetryViewModelV2(
+        input.frame,
+        input.source,
+        input.content,
+        { includeHistory: false },
+      );
       return record(accumulator, "controls", input, compareControlsModels(legacy, overlayV2));
     },
     compare(input) {
       const legacy = buildPedalsTelemetryViewModel(input.legacySnapshot, input.content);
       const overlayV2 = buildPedalsTelemetryViewModelV2(input.frame, input.source, input.content);
-      const fields = comparePlayerInstrumentModels(legacy, overlayV2);
       const phase = resolveOverlayShadowPhase(input.legacySnapshot, input.source);
-      accumulator.record(ANCHOR_FEATURE, phase, fields);
+      const fields = phase === "live" ? comparePlayerInstrumentModels(legacy, overlayV2) : [];
+      if (phase !== "live") {
+        accumulator.markNotComparable(ANCHOR_FEATURE, phase, `${phase}-phase`);
+      } else {
+        accumulator.record(ANCHOR_FEATURE, phase, fields);
+      }
       return Object.freeze({
         equal: fields.length === 0,
         phase,
@@ -668,10 +735,14 @@ export function createOverlayV2PlayerInstrumentsComparator(): OverlayV2PlayerIns
 function record(
   accumulator: ShadowPhaseAccumulator,
   feature: string,
-  input: Readonly<{ legacySnapshot: TelemetrySnapshot; source: OverlaySourceStatusV2 }>,
+  input: OverlayV2ShadowPhaseInput,
   fields: readonly string[],
 ): OverlayV2FeatureComparison {
   const phase = resolveOverlayShadowPhase(input.legacySnapshot, input.source);
+  if (phase !== "live") {
+    accumulator.markNotComparable(feature, phase, `${phase}-phase`);
+    return Object.freeze({ equal: true, phase, mismatches: Object.freeze([]) });
+  }
   accumulator.record(feature, phase, fields);
   return Object.freeze({ equal: fields.length === 0, phase, mismatches: Object.freeze(fields) });
 }
@@ -845,7 +916,7 @@ const standingsRows: ListRule = {
     { path: "driverName", read: (row) => (row as StandingsRowViewModel).driverName, quality: allOf(vehicle("driverName")), disclosure: redactedDisclosure },
     { path: "vehicleClass", read: (row) => (row as StandingsRowViewModel).vehicleClass, quality: allOf(vehicle("vehicleClass")), disclosure: redactedDisclosure },
     { path: "intervalText", read: (row) => (row as StandingsRowViewModel).intervalText, quality: allOf(vehicle("timeBehindNextSeconds")), disclosure: redactedDisclosure },
-    { path: "lastLapText", read: (row) => (row as StandingsRowViewModel).lastLapText, quality: allOf(vehicle("lastLapSeconds")), disclosure: redactedDisclosure },
+    { path: "lastLapText", read: (row) => normalizeAbsentLapText((row as StandingsRowViewModel).lastLapText), quality: allOf(vehicle("lastLapSeconds")), disclosure: redactedDisclosure },
     { path: "bestLapText", read: (row) => (row as StandingsRowViewModel).bestLapText, quality: allOf(vehicle("bestLapSeconds")), disclosure: redactedDisclosure },
   ],
 };

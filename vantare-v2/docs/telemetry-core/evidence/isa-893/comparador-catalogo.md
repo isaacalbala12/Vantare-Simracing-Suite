@@ -16,7 +16,7 @@ El gate enlaza tres conjuntos y falla si divergen:
 | --- | --- | --- |
 | `delta` | exact | Señales y semántica comparables campo a campo. |
 | `pedals` | exact | Controles instantáneos comparables campo a campo. |
-| `standings` | partial | Número, equipo/color, compuesto y parte de gaps no existen con igual semántica en V1. |
+| `standings` | partial | Número, equipo/color, compuesto y parte de gaps no existen con igual semántica en V1. Los campos comparables siguen siendo exactos cuando la columna los muestra; una `currentLap` oculta se omite en ambos ViewModels y no participa en paridad. |
 | `relative` | partial | El número de coche no es comparable en V1. |
 | `broadcast-tower` | partial | Número, equipo/color, temperatura y SOF no tienen par completo. |
 | `fuel-strategy` | partial | Historial/medias/requerido legacy no comparten autoridad con la derivación V2. |
@@ -24,7 +24,7 @@ El gate enlaza tres conjuntos y falla si divergen:
 | `pedals-telemetry-compact` | partial | Conserva el mismo mismatch declarado de unidad V1. |
 | `delta-trace` | partial | Puntos/current/trend se comparan; sectores, insight y mapa no tienen par. |
 | `delta-advanced` | partial | Solo best tiene señal equivalente; sector/theoretical/last quedan declarados. |
-| `input-telemetry` | partial | Instante comparable; V1 no conserva timestamp por muestra del historial. |
+| `input-telemetry` | partial | Los controles instantáneos son exactos. El historial no se compara por índice: V1 y V2 muestrean con cadencias distintas y no comparten timestamp de origen por muestra. |
 | `multiclass-relative` | partial | Color y número legacy no tienen par canónico completo. |
 | `track-map` | partial | Track/estado se comparan; geometría es un asset estático, no telemetría. |
 | `racing-flags` | not-comparable | La proyección V1 del comparador no contiene control de carrera equivalente. El builder V2 sigue siendo obligatorio. |
@@ -39,3 +39,29 @@ El gate enlaza tres conjuntos y falla si divergen:
 veredicto declarado. `external` tampoco se convierte en PASS telemétrico. La
 comparación bloqueada conserva la ruta auxiliar exacta para no disfrazar
 `engineerPresentation` como `events`.
+
+La paridad de valores solo existe cuando ambos contratos están en fase `live`.
+En `stale`, `degraded`, `no-frame` o durante una transición entre fases, el
+shadow no evalúa campos: contabiliza la sección como `not-comparable` con la
+razón explícita `<fase>-phase`. V1 conserva valores anteriores mientras V2
+puede ocultarlos, de modo que tratarlos como mismatches exactos produciría
+falsos positivos como los observados en S1 ON.
+
+Para campos exactos de tiempo de vuelta, `""`, `"-"` y `"—"` se normalizan como
+la misma ausencia antes de comparar. La normalización no redondea ni modifica
+tiempos reales: dos textos de vuelta presentes y distintos siguen produciendo
+un mismatch exacto.
+
+`standings.remainingText` sigue siendo exacto, pero solo se evalúa cuando las
+secciones `session` y `standings` fueron reconstruidas en el mismo cursor. El
+texto usa el reloj de `session`; comparar una tabla nueva contra un reloj V2
+cacheado produjo 138 falsos positivos en S1 ON. No se añadió tolerancia ni
+redondeo.
+
+En `input-telemetry`, `history.length`, timestamps y valores por muestra quedan
+declarados `partial`: el historial V1 se toma al llegar cada snapshot en el
+navegador y V2 deriva su ring en Go. Sin timestamps de origen comunes no existe
+una alineación elemento a elemento válida. S1 ON mostró precisamente 166/166/84
+falsos positivos de throttle/clutch/brake al emparejar por posición. Los valores
+instantáneos de throttle, brake y clutch conservan la comparación exacta y su
+tolerancia de cuantización existente.

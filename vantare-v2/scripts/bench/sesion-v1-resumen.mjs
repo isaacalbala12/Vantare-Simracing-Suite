@@ -60,7 +60,9 @@ function memoryCriterion(input) {
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push(sample);
   }
-  const minimumSamples = Number(input.durationMinutes) >= 60 ? 45 : 15;
+  const minimumSamples = input.memoryDiagnostic === true
+    ? 10
+    : Number(input.durationMinutes) >= 60 ? 45 : 15;
   const slopes = [];
   const foundRoles = new Set();
   let pass = true;
@@ -97,7 +99,10 @@ function transportEvidence(input) {
   const windows = new Map();
   const observations = [];
   const expected = EXPECTED_WINDOWS[input.session] ?? [];
-  const declared = input.expectedWindows ?? [];
+  const declaredEncoding = typeof input.expectedWindows === "string" ? "legacy-scalar" : "array";
+  const declared = typeof input.expectedWindows === "string"
+    ? [input.expectedWindows]
+    : Array.isArray(input.expectedWindows) ? input.expectedWindows : [];
   const declaredValid = declared.length === expected.length && expected.every((kind, index) => declared[index] === kind);
   const observedKinds = new Set();
   let missingPull = 0;
@@ -109,7 +114,15 @@ function transportEvidence(input) {
       observedKinds.add(kind);
       const pull = target.diagnostics?.pull;
       const key = targetKey(target);
-      observations.push({capturedAt: checkpoint.capturedAt, key, surface, pull, shadow: target.diagnostics?.shadow});
+      const hasShadow = target.diagnostics != null
+        && Object.prototype.hasOwnProperty.call(target.diagnostics, "shadow");
+      observations.push({
+        capturedAt: checkpoint.capturedAt,
+        key,
+        surface,
+        pull,
+        shadow: hasShadow ? target.diagnostics.shadow : undefined,
+      });
       if (!pull) {
         missingPull += 1;
       } else {
@@ -119,12 +132,25 @@ function transportEvidence(input) {
     }
   }
   const missingKinds = expected.filter((kind) => !observedKinds.has(kind));
-  return {windows, observations, expected, declaredValid, missingKinds, missingPull};
+  return {windows, observations, expected, declared, declaredEncoding, declaredValid, missingKinds, missingPull};
+}
+
+function transportCompletenessDetail(evidence) {
+  const declarations = evidence.declaredValid
+    ? `declaración ${evidence.declaredEncoding}${evidence.declaredEncoding === "legacy-scalar" ? " normalizada" : " válida"}`
+    : `declaradas [${evidence.declared.join(", ")}], esperadas [${evidence.expected.join(", ")}]`;
+  const classes = evidence.missingKinds.length === 0
+    ? `clases ${evidence.expected.length}/${evidence.expected.length}`
+    : `faltan clases [${evidence.missingKinds.join(", ")}]`;
+  const pulls = evidence.missingPull === 0
+    ? `pull presente en ${evidence.observations.length}/${evidence.observations.length} checkpoints`
+    : `pull ausente en ${evidence.missingPull} checkpoint${evidence.missingPull === 1 ? "" : "s"}`;
+  return `${declarations}; ${classes}; ${pulls}`;
 }
 
 function windowsCriterion(evidence) {
   const pass = evidence.declaredValid && evidence.missingKinds.length === 0 && evidence.missingPull === 0;
-  return result(pass ? "pass" : "fail", `${evidence.expected.length - evidence.missingKinds.length}/${evidence.expected.length} clases; ${evidence.missingPull} diagnósticos pull ausentes`, {
+  return result(pass ? "pass" : "fail", transportCompletenessDetail(evidence), {
     expected: evidence.expected,
     missing: evidence.missingKinds,
     declaredValid: evidence.declaredValid,
@@ -150,17 +176,28 @@ function deliveryCriterion(input, evidence) {
     pass &&= valid;
     details.push({window, checkpoints: series.length, progresses, p99Ms: windowP99, maxMs: windowMax, status: valid ? "pass" : "fail"});
   }
-  return result(pass ? "pass" : "fail", `p99 ${formatNumber(maxP99)} ms; max ${formatNumber(maxDuration)} ms`, {windows: details});
+  return result(
+    pass ? "pass" : "fail",
+    `p99 ${formatNumber(maxP99)} ms (límite p99 250 ms); max ${formatNumber(maxDuration)} ms (límite 5000 ms); precondiciones transporte ${evidence.declaredValid && evidence.missingKinds.length === 0 && evidence.missingPull === 0 ? "PASS" : "FAIL"}`,
+    {windows: details},
+  );
 }
 
 function phaseCriterion(input, windows) {
   const evidence = windows;
   if (input.phase === "off") {
     const received = Math.max(0, ...evidence.observations.map(({pull}) => Number(pull?.receivedV1Projections ?? Infinity)));
-    const shadowViolations = evidence.observations.filter(({shadow}) => shadow !== null).length;
+    const activeShadows = evidence.observations.filter(({shadow}) => shadow !== null && shadow !== undefined).length;
+    const missingShadows = evidence.observations.filter(({shadow}) => shadow === undefined).length;
     const complete = evidence.declaredValid && evidence.missingKinds.length === 0 && evidence.missingPull === 0 && evidence.observations.length > 0;
-    const pass = complete && received === 0 && shadowViolations === 0;
-    return {v1Off: result(pass ? "pass" : "fail", `${formatNumber(received)} proyecciones V1; ${shadowViolations} shadow activos o ausentes`), shadowOn: result("not-applicable", "fase OFF")};
+    const pass = complete && received === 0 && activeShadows === 0 && missingShadows === 0;
+    return {
+      v1Off: result(
+        pass ? "pass" : "fail",
+        `V1 máximo ${formatNumber(received)} (exige 0); shadow activos ${activeShadows}, ausentes ${missingShadows} (exige null en ${evidence.observations.length}/${evidence.observations.length}); precondiciones transporte ${complete ? "PASS" : "FAIL"}`,
+      ),
+      shadowOn: result("not-applicable", "fase OFF"),
+    };
   }
   const byWindow = new Map();
   for (const observation of evidence.observations) {

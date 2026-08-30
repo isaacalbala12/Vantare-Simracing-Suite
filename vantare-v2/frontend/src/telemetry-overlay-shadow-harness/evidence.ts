@@ -193,7 +193,7 @@ function createSnapshot(status: TelemetrySnapshot["status"]): TelemetrySnapshot 
 function playerInstrumentsFrameV2(): OverlayFrameV2 {
   const missing = { q: "missing" as const };
   return {
-    contract: 2, algorithm: 1, epoch: 1, sequence: 1,
+    contract: 2, algorithm: 1, epoch: 1, sequence: 1, sectionMask: 0x7ff,
     sessionId: "shadow-fixture", generatedAt: "2026-08-19T12:00:00Z",
     units: { speed: "kph", temperature: "celsius", pressure: "kpa", fuel: "liters" },
     session: { track: missing, phase: missing, flag: missing, remaining: missing, maxLaps: missing },

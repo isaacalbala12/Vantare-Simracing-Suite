@@ -42,10 +42,14 @@ describe("shadow phase segmentation", () => {
     expect(summary.framesByPhase.live).toBe(0);
     expect(summary.framesByPhase.transition).toBe(1);
     expect(summary.mismatches).toBe(0);
-    expect(summary.declaredDifferences).toBe(summary.mismatchesByPhase.transition);
+    expect(summary.mismatchesByPhase.transition).toBe(0);
+    expect(summary.notComparable).toBe(1);
+    expect(summary.metrics).toMatchObject({
+      'overlay_shadow_not_comparable_total{feature="player-instruments",reason="transition-phase",phase="transition"}': 1,
+    });
   });
 
-  it("counts a stale divergence as a declared difference and keeps the live gate clean", () => {
+  it("marks a real S1 stale divergence as not comparable and keeps the live gate clean", () => {
     const comparator = createOverlayV2PlayerInstrumentsComparator();
     const frame = goldenFrame();
     const content = { showPosition: false, showClutch: true } as const;
@@ -59,7 +63,8 @@ describe("shadow phase segmentation", () => {
       content,
     });
     expect(stale.phase).toBe("stale");
-    expect(stale.equal).toBe(false);
+    expect(stale.equal).toBe(true);
+    expect(stale.mismatches).toEqual([]);
 
     const live = comparator.compare({
       legacySnapshot: legacySnapshot("ready"),
@@ -73,8 +78,12 @@ describe("shadow phase segmentation", () => {
     expect(summary.framesByPhase).toMatchObject({ live: 1, stale: 1 });
     expect(summary.frames).toBe(1);
     expect(summary.mismatches).toBe(summary.mismatchesByPhase.live);
-    expect(summary.declaredDifferences).toBe(summary.mismatchesByPhase.stale);
-    expect(summary.declaredDifferences).toBeGreaterThan(0);
+    expect(summary.mismatchesByPhase.stale).toBe(0);
+    expect(summary.notComparable).toBe(1);
+    expect(summary.declaredDifferences).toBe(1);
+    expect(summary.metrics).toMatchObject({
+      'overlay_shadow_not_comparable_total{feature="player-instruments",reason="stale-phase",phase="stale"}': 1,
+    });
     expect(Object.keys(summary.metrics).every((key) => key.includes('phase="'))).toBe(true);
   });
 

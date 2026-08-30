@@ -62,6 +62,26 @@ test("resume una fase OFF completa con pendientes y transporte dentro del umbral
   assert.match(renderSessionMarkdown(summary), /Veredicto: PASS/);
 });
 
+test("normaliza la declaración singleton real de PowerShell sin falsos FAIL", () => {
+  const input = fixture();
+  input.expectedWindows = "desktop";
+  const summary = summarizeSession(input);
+  assert.equal(summary.criteria.windows.status, "pass");
+  assert.equal(summary.criteria.v1Off.status, "pass");
+  assert.equal(summary.criteria.delivery.status, "pass");
+  assert.match(summary.criteria.windows.detail, /legacy-scalar normalizada/);
+});
+
+test("explica exactamente una declaración de ventanas incorrecta", () => {
+  const input = fixture();
+  input.expectedWindows = ["studio-or-obs"];
+  const summary = summarizeSession(input);
+  assert.equal(summary.criteria.windows.status, "fail");
+  assert.match(summary.criteria.windows.detail, /declaradas \[studio-or-obs\], esperadas \[desktop\]/);
+  assert.match(summary.criteria.v1Off.detail, /precondiciones transporte FAIL/);
+  assert.match(summary.criteria.delivery.detail, /límite p99 250 ms/);
+});
+
 test("falla cerrado si una ventana recibe V1 durante OFF", () => {
   const input = fixture();
   input.diagnostics[2].targets[0].diagnostics.pull.receivedV1Projections = 1;
@@ -73,11 +93,19 @@ test("falla cerrado si una ventana recibe V1 durante OFF", () => {
 test("falla cerrado si falta pull o shadow no es null en cualquier ventana OFF", () => {
   const missingPull = fixture();
   missingPull.diagnostics[2].targets[0].diagnostics.pull = null;
-  assert.equal(summarizeSession(missingPull).verdict, "fail");
+  const missingPullSummary = summarizeSession(missingPull);
+  assert.equal(missingPullSummary.verdict, "fail");
+  assert.match(missingPullSummary.criteria.windows.detail, /pull ausente en 1 checkpoint/);
 
   const activeShadow = fixture();
   activeShadow.diagnostics[3].targets[0].diagnostics.shadow = {frames: 0, mismatches: 0};
-  assert.equal(summarizeSession(activeShadow).criteria.v1Off.status, "fail");
+  const activeShadowSummary = summarizeSession(activeShadow);
+  assert.equal(activeShadowSummary.criteria.v1Off.status, "fail");
+  assert.match(activeShadowSummary.criteria.v1Off.detail, /shadow activos 1, ausentes 0/);
+
+  const missingShadow = fixture();
+  delete missingShadow.diagnostics[3].targets[0].diagnostics.shadow;
+  assert.match(summarizeSession(missingShadow).criteria.v1Off.detail, /shadow activos 0, ausentes 1/);
 });
 
 test("falla si la sesión omite una clase de ventana esperada", () => {

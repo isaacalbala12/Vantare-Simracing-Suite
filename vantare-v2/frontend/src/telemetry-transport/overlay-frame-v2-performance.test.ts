@@ -75,6 +75,7 @@ function syntheticFullUpdate(vehicles: number) {
       algorithm: 1,
       epoch: 1,
       sequence: 1,
+      sectionMask: 0x7ff,
       sessionId: "synthetic-session",
       generatedAt: "2026-08-19T12:00:00Z",
       units: { speed: "mps", temperature: "celsius", pressure: "kpa", fuel: "liters" },

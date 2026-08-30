@@ -8,6 +8,7 @@
     "algorithm": 2,
     "epoch": 3,
     "sequence": 2,
+    "sectionMask": 2047,
     "sessionId": "f6-session",
     "generatedAt": "2026-08-19T12:00:02Z",
     "units": {

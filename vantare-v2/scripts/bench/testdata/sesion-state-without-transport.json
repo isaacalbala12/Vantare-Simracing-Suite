@@ -1,0 +1,22 @@
+{
+  "capturedAt": "2026-08-30T18:57:41.000+02:00",
+  "targets": [
+    {
+      "role": "hub",
+      "url": "http://localhost/",
+      "title": "Vantare",
+      "diagnostics": null
+    },
+    {
+      "role": "overlay",
+      "surface": "desktop",
+      "url": "http://localhost/overlay.html",
+      "diagnostics": {
+        "overlay_v2_pull": {
+          "v2Received": 2
+        }
+      }
+    },
+    {}
+  ]
+}

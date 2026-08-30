@@ -217,6 +217,10 @@ type SectionPlan uint16
 
 func (plan SectionPlan) Rebuild(section Section) bool { return plan&(1<<section) != 0 }
 
+// AllSectionsMask is the wire mask of a frame whose sections all originate
+// from its own source cursor.
+func AllSectionsMask() uint16 { return uint16(1<<sectionCount) - 1 }
+
 func (plan SectionPlan) with(section Section) SectionPlan { return plan | (1 << section) }
 
 // Count returns how many sections this plan rebuilds.
@@ -533,6 +537,7 @@ func (projector *CachedProjector) Project(
 	frame.AlgorithmVersion = AlgorithmVersionV2
 	frame.StreamEpoch = uint64(header.Cursor.Epoch)
 	frame.SourceSequence = uint64(header.Cursor.Sequence)
+	frame.SectionBuildMask = uint16(plan)
 	frame.SessionID = string(header.Identity.Session)
 	frame.GeneratedAt = header.Clock.ReceivedUTC.Round(0).UTC().Format(time.RFC3339Nano)
 	frame.Units = UnitsV2{

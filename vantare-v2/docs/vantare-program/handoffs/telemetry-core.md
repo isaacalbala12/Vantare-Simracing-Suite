@@ -15,6 +15,59 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 
 ## Estado real
 
+- 2026-08-30, ISA-894/PR #955, S1 definitiva: ON y OFF usaron el mismo exe
+  `d02054e3…`/dist `5b8e388c…`, Spa práctica y 14 coches. El parser corregido
+  deja transporte/paridad en PASS: ON comparó 6.074 frames con cero mismatch
+  exacto; OFF recibió cero V1 y mantuvo `shadow=null`; delivery fue 67,6/49,1
+  ms p99 frente a 250 ms. El único FAIL común real es memoria: renderers
+  +732/+310 MiB/h ON y +314/+308 OFF. Una fase OFF diagnóstica de 10 min con
+  polling CDP periódico desactivado redujo la suma renderer post-warm-up de
+  +467,4 a +116,7 MiB/h (75 % observado), pero dejó un PID en +134,9 MiB/h.
+  Heap JS post-warm-up creció solo +1,7 MiB Hub y +3,8 MiB Overlay con nodos
+  estables; no hay retaining paths porque la captura no incluyó snapshots.
+  #956 separará PID/target, dominators y una lane `-tags production` sin CDP.
+  El gesto fue cruce a pista y escapatoria por teclado, sin vuelta lanzada
+  completa; puede requerir repetición estricta. Evidencia:
+  `docs/telemetry-core/evidence/isa-894/s1-definitiva-20260830.md`; las tres
+  crudas sanitizadas, checkpoints, CSV, resúmenes, SHA-256 y recálculo
+  ejecutable están versionados bajo `s1-definitiva/`. Corte 2 sigue bloqueado;
+  sin merge, promoción ni release.
+- 2026-08-30, seguimiento ISA-894/PR #955 después de S1 ON completa (20 min):
+  el segundo fallo `StrictMode` del colector era la enumeración de una lista
+  vacía de screenshots finales; el parser y el script toleran listas/targets y
+  propiedades CDP opcionales. Los mismatches fuera de `live` ya son
+  `not-comparable` con razón de fase. En `live`, `standings.remainingText`
+  conserva exactitud pero exige `session|standings` reconstruidas en el mismo
+  cursor; el historial de controles pasa a `partial` porque V1/V2 no comparten
+  timestamp por muestra, mientras los controles instantáneos siguen exactos.
+  S1 observó pendientes de +825,8 y +311,5 MiB/h en renderer no asignados,
+  +119,7 GPU, +23,8 Go y +15,0 browser: el gate de memoria sigue FAIL. No hay
+  colección shadow ilimitada demostrada (pares/secuencias 64, historial 120,
+  35 claves observadas), pero sí hasta 651.120 objetos V2 de historial creados
+  sin valor de paridad. El shadow deja de retener/decodificar ese historial,
+  limita métricas a 128 claves y publica tamaños retenidos; el colector añade
+  heap JS/nodos/listeners por target CDP. La build antigua no asignó PID a
+  target, así que no se atribuye toda la pendiente al shadow: hace falta nueva
+  ON con esta instrumentación y el diferencial OFF. Evidencia:
+  `docs/telemetry-core/evidence/isa-894/diagnostico-s1-on.md`. Vitest completo
+  433/433 y 3.294/3.294, focal 98/98, banco Node 88/88, typecheck y lint pasan.
+  No hay merge, promoción ni release; corte 2 sigue bloqueado.
+- 2026-08-30, seguimiento ISA-894 tras la primera S1 ON real: el colector
+  abortó a los 0,20 min porque el target Hub no publica
+  `overlay_v2_transport`; el parser ahora normaliza todos los campos CDP
+  opcionales antes de aplicar `StrictMode`, con regresión para Hub, overlay sin
+  transporte y target vacío. Los 6 mismatches de los 2 frames previos al fallo
+  (`speedKph`, `currentLapText`, `lastLapText`, dos cada uno) siguen siendo
+  exactos y no se descuentan. El diagnóstico los atribuye al cursor de frame
+  actualizado sobre secciones V2 cacheadas, a comparar `currentLap` aunque la
+  columna shadow esté oculta y a los placeholders distintos para última vuelta
+  ausente. El comparador ya publica/valida `sectionMask`, registra la caché como
+  no comparable, omite la columna oculta y normaliza solo placeholders ausentes;
+  valores exactos reales siguen fallando. La captura abortada no prueba
+  divergencia de payload ni paridad; el corte 2 permanece bloqueado hasta
+  repetir S1 ON completa con cero mismatch exacto real.
+  Evidencia:
+  `docs/telemetry-core/evidence/isa-894/diagnostico-s1-on-20260830.md`.
 - 2026-08-30, ISA-894 corte 1 y guardarraíles corte 3 están rebasados sobre
   `origin/nightly@cd03518b` (#954, #942 y #948 incluidos). El schema persistido
   v6 conserva Automático de #948 y añade el interruptor V1 apagado. La app no construye ni publica V1

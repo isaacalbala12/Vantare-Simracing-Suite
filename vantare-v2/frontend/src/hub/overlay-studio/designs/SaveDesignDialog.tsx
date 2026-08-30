@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useI18n } from '../../../i18n/I18nProvider';
+import { useHubSuspendBlocker } from '../../hub-suspend-guard';
 
 export type SaveDesignDialogProps = {
   open: boolean;
@@ -13,6 +14,11 @@ export function SaveDesignDialog(props: SaveDesignDialogProps): React.ReactEleme
   const [name, setName] = useState('');
   const [includesContent, setIncludesContent] = useState(false);
   const [wasOpen, setWasOpen] = useState(open);
+  useHubSuspendBlocker(
+    'studio-design-draft',
+    'Studio tiene un diseño sin guardar',
+    open && (name.trim() !== '' || includesContent),
+  );
 
   if (open !== wasOpen) {
     setWasOpen(open);

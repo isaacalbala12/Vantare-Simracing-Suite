@@ -8,7 +8,7 @@ import {
 } from "../../lib/supabase-auth";
 import { Browser, Events } from "@wailsio/runtime";
 import { useI18n } from "../../i18n/I18nProvider";
-import { registerHubSuspendBlocker } from "../hub-suspend-guard";
+import { useHubSuspendBlocker } from "../hub-suspend-guard";
 
 export type LoginSessionTokens = {
   accessToken: string;
@@ -34,13 +34,16 @@ export function LoginScreen({ onLoggedIn }: LoginScreenProps) {
   const [resetEmail, setResetEmail] = useState("");
   const [resetSent, setResetSent] = useState(false);
 
-  useEffect(() => {
-    if (!oauthPending && !waitingExternal) return;
-    return registerHubSuspendBlocker(
-      "oauth-pending",
-      "Hay una autenticación OAuth pendiente",
-    );
-  }, [oauthPending, waitingExternal]);
+  useHubSuspendBlocker(
+    "oauth-pending",
+    "Hay una autenticación OAuth pendiente",
+    Boolean(oauthPending) || waitingExternal,
+  );
+  useHubSuspendBlocker(
+    "auth-form-draft",
+    "Hay credenciales de acceso sin enviar",
+    email.trim() !== "" || password !== "" || resetEmail.trim() !== "" || submitting,
+  );
 
   useEffect(() => {
     if (!waitingExternal) return;

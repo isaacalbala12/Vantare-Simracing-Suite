@@ -21,6 +21,7 @@ import type {
 } from "../testing-center/candidate-feedback-contracts";
 import type { TestingCenterFeedbackClient } from "../testing-center/candidate-feedback-client";
 import type { TestingCenterChannel } from "../testing-center/contracts";
+import { useHubSuspendBlocker } from "../hub-suspend-guard";
 
 /**
  * Pestaña **Validar** del Testing Center de Orbit (briefing 12, ampliación
@@ -82,6 +83,11 @@ export function ValidateOrbitPanel({ channel, client }: ValidateOrbitPanelProps)
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<"incomplete" | "submit" | null>(null);
   const [result, setResult] = useState<CandidateFeedbackResult | null>(null);
+  useHubSuspendBlocker(
+    "testing-center-rejection-draft",
+    "Testing Center tiene un rechazo sin enviar",
+    active !== null && JSON.stringify(rejection) !== JSON.stringify(emptyRejection()),
+  );
 
   const load = useCallback(async () => {
     setState("loading");

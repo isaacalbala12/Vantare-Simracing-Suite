@@ -166,6 +166,24 @@ una relación PID↔target suficiente para renombrarlo sin inferencia.
 - Windows: 4–5 aplica `PROCESS_POWER_THROTTLING_EXECUTION_SPEED` y prioridad
   below-normal; 1–3 revierte ambos.
 
+### Auditoría de estado local del Hub
+
+Se revisaron todas las secciones que monta `HubApp` y sus diálogos. El criterio
+fue bloquear solo trabajo del usuario que se perdería al destruir el WebView;
+filtros, pestañas, búsquedas y estados de carga reproducibles no son borradores.
+
+| Pantalla | Estado revisado | Veredicto |
+|---|---|---|
+| Estrategia | Asistente, crear/editar evento, selección de calendario, disponibilidad e inputs de planificación | Bloqueadores `strategy-event-draft`, `strategy-availability-draft` y uno por input hasta aplicar. El resto de cambios del plan usa `commit` inmediato. |
+| Launcher | Editor de perfiles, alta manual de aplicación, búsqueda y confirmación de borrado | El editor ya bloqueaba; se añade `launcher-add-app-draft` desde ruta/nombre/selector. Búsqueda y confirmación no contienen trabajo editable. |
+| Acceso y cuenta | Email/contraseña/reset, OAuth, checkout externo y paywall | Se añaden `auth-form-draft` y `billing-checkout-pending`; OAuth ya publica `oauth-pending`. Nunca se publica el contenido de una credencial. |
+| Onboarding | Rol de la bienvenida beta | `onboarding-role-draft` desde la primera selección hasta completar. |
+| Overlay Studio | Documento, crear/renombrar perfil, guardar diseño, dimensiones del lienzo, importación de fondo y diálogos de catálogo/confirmación | El documento ya bloqueaba por dirty; se cubren los campos locales y la lectura del fondo. Catálogo, recuperación y confirmaciones no contienen texto editable sin persistir. |
+| Testing Center | Informe con autosave y formulario de rechazo | Se bloquea el intervalo sucio/debounce/error hasta guardar y el rechazo hasta enviar o descartar. |
+| Ajustes | Apariencia, idioma, inicio, notificaciones, hotkeys, updater, almacenamiento, privacidad e importación de calendario | Sin borrador: los controles guardan en cada gesto; una combinación hotkey válida se guarda al capturarla. La importación se reconstruye desde inbox o borrador backend y su fuente es de solo lectura. |
+| Inicio, Carreras, Telemetría, Ingeniero y Roadmap | Filtros, selección, paneles, zoom y preferencias | Sin pérdida de datos: son navegación/visualización o preferencias persistidas inmediatamente. |
+| Operaciones largas | Diagnóstico, cold-start de Estrategia, actualización y procesos del Launcher | El trabajo vive en backend/proceso y se reconsulta; no depende del estado React para continuar. |
+
 ## Límites de esta evidencia
 
 - El ACK dirigido posterior a minimizar se conserva solo como diagnóstico y no

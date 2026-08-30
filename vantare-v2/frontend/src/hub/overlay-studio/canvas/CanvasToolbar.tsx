@@ -6,6 +6,7 @@ import {
   type LayoutViewport,
 } from "../../../overlay/core/layout-viewport";
 import { useI18n } from "../../../i18n/I18nProvider";
+import { useHubSuspendBlocker } from "../../hub-suspend-guard";
 import type { StudioPreviewState } from "../state/studio-store";
 import type { StudioMonitor } from "../state/studio-monitor-client";
 import { CANVAS_BACKGROUNDS } from "./canvas-backgrounds";
@@ -106,6 +107,11 @@ function LayoutViewportControls(props: {
   );
   const [widthDraft, setWidthDraft] = useState(String(layoutViewport.width));
   const [heightDraft, setHeightDraft] = useState(String(layoutViewport.height));
+  useHubSuspendBlocker(
+    "studio-layout-viewport-draft",
+    "Studio tiene un tamaño de lienzo sin aplicar",
+    widthDraft !== String(layoutViewport.width) || heightDraft !== String(layoutViewport.height),
+  );
   const width = parseDimension(widthDraft);
   const height = parseDimension(heightDraft);
   const draftViewport = width !== null && height !== null ? { width, height } : null;

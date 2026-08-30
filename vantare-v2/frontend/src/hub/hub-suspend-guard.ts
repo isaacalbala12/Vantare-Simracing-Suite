@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+
 export type HubSuspendBridge = {
   on(event: string, handler: (payload: unknown) => void): () => void;
   emit(event: string, payload: unknown): void;
@@ -31,6 +33,13 @@ export function registerHubSuspendBlocker(id: string, reason: string): () => voi
       notifyBlockersChanged();
     }
   };
+}
+
+export function useHubSuspendBlocker(id: string, reason: string, active: boolean): void {
+  useEffect(() => {
+    if (!active) return;
+    return registerHubSuspendBlocker(id, reason);
+  }, [active, id, reason]);
 }
 
 export function unregisterHubSuspendBlocker(id: string): void {

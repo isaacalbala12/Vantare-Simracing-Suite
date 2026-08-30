@@ -34,6 +34,32 @@ func TestHubLifecycleUsesPushedBlockersAcrossRecreation(t *testing.T) {
 	}
 }
 
+func TestHubLifecyclePreservesStrategyEventDraft(t *testing.T) {
+	registry := app.NewHubBlockerRegistry()
+	registry.Expect("hub-strategy")
+	registry.Update(app.HubBlockerSnapshot{
+		Generation: "hub-strategy",
+		Other:      []string{"Estrategia tiene un evento sin guardar"},
+		Reasons:    []string{"Estrategia tiene un evento sin guardar"},
+	})
+	window := &fakeHubWindow{}
+	lifecycle := app.NewHubLifecycle(func() app.HubWindow {
+		return window
+	}, func() int { return 3 }, func(context.Context) bool {
+		return registry.CanSuspend()
+	}, nil)
+
+	opened, _ := lifecycle.Open()
+	opened.Minimise()
+	if lifecycle.HandleMinimise(context.Background()) {
+		t.Fatal("el borrador de Estrategia permitió destruir el Hub")
+	}
+	reopened, _ := lifecycle.Open()
+	if reopened != opened || window.closed != 0 || window.hidden != 0 {
+		t.Fatalf("el Hub con borrador no se conservó: %+v", window)
+	}
+}
+
 type fakeHubWindow struct {
 	closed, hidden, shown, focused, minimised, unminimised int
 	isMinimised                                            bool

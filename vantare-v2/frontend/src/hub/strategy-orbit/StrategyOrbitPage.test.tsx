@@ -23,6 +23,7 @@ import { createStrategyEditorDraft } from "../../strategy/strategy-editor-store"
 import { createOrbitCalculationTestClient } from "./strategy-orbit-calculation.test-support";
 import type { PlanDraftV1, RevisionRefV1 } from "../../strategy/strategy-contract-v1";
 import type { StrategyOrbitRevisionPayloadV1 } from "./strategy-orbit-lifecycle";
+import { installHubSuspendGuard } from "../hub-suspend-guard";
 
 vi.mock("@wailsio/runtime", () => ({
   Events: { Emit: vi.fn(), On: () => () => undefined },
@@ -763,6 +764,33 @@ describe("StrategyOrbitPage · Disponibilidad", () => {
 });
 
 describe("StrategyOrbitPage · estado inicial", () => {
+  it("publica el borrador del asistente y lo libera al descartarlo", async () => {
+    const snapshots: unknown[] = [];
+    const disposeGuard = installHubSuspendGuard({
+      on: () => () => undefined,
+      emit: (event, payload) => {
+        if (event === "hub:blockers") snapshots.push(payload);
+      },
+    }, "strategy-generation");
+    mount(null);
+
+    fireEvent.click(await screen.findByTestId("orbit-strategy-new-strategy"));
+    expect(snapshots.at(-1)).toEqual(expect.objectContaining({ other: [] }));
+    fireEvent.click(await screen.findByTestId("orbit-strategy-wizard-manual"));
+    await waitFor(() => expect(snapshots.at(-1)).toEqual(expect.objectContaining({
+      generation: "strategy-generation",
+      other: ["Estrategia tiene un evento sin guardar"],
+      reasons: ["Estrategia tiene un evento sin guardar"],
+    })));
+
+    fireEvent.click(screen.getByTestId("orbit-strategy-wizard-back"));
+    await waitFor(() => expect(snapshots.at(-1)).toEqual(expect.objectContaining({
+      other: [],
+      reasons: [],
+    })));
+    disposeGuard();
+  });
+
   it("sin nada guardado el menú ofrece crear y lo dice, no una lista muerta", async () => {
     mount(null);
 

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useHubSuspendBlocker } from "../hub-suspend-guard";
 
 export type BetaUserRole =
   | "beginner"
@@ -28,6 +29,11 @@ const OBS_HINTS: Partial<Record<BetaUserRole, string>> = {
 
 export function BetaWelcome({ onComplete }: BetaWelcomeProps) {
   const [role, setRole] = useState<BetaUserRole | "">("");
+  useHubSuspendBlocker(
+    "onboarding-role-draft",
+    "La bienvenida tiene una selección sin guardar",
+    role !== "",
+  );
 
   const obsHint = role !== "" ? OBS_HINTS[role] : undefined;
 

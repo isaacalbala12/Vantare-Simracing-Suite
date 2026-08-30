@@ -31,7 +31,13 @@ describe("shadow comparator: session and standings features", () => {
     const update = golden(1);
     if (!update.frame) throw new Error("golden frame missing");
     const hidden = buildStandingsViewModelV2(update.frame, update.source, STANDINGS_CONTENT);
-    expect(hidden.rows[0]?.currentLapText).toBe("");
+    expect(hidden.rows[0]?.currentLapText).toBe("127");
+    const changedWhileHidden = {
+      ...hidden,
+      rows: hidden.rows.map((row, index) => index === 0 ? { ...row, currentLapText: "126" } : row),
+    };
+    expect(compareStandingsModels(hidden, changedWhileHidden, { compareCurrentLap: false }))
+      .not.toContain("rows[].currentLapText");
 
     const visibleContent = {
       ...STANDINGS_CONTENT,

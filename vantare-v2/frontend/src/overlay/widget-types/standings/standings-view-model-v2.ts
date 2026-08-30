@@ -54,7 +54,6 @@ export function buildStandingsViewModelV2(
         return rowClass === "" || rowClass === activeClass;
       });
   const limited = scoped.slice(0, content.rowCount ?? 20);
-  const visibleMetrics = new Set(columns.map((column) => column.metricId));
 
   return {
     type: "standings",
@@ -64,7 +63,7 @@ export function buildStandingsViewModelV2(
     sessionLabel: displayedText(frame.session.phase)?.toUpperCase() ?? PLACEHOLDER,
     remainingText: formatRemainingTime(displayedNumber(frame.session.remaining)),
     columns,
-    rows: limited.map((row, index) => buildRow(row, index, playerId, visibleMetrics)),
+    rows: limited.map((row, index) => buildRow(row, index, playerId)),
   };
 }
 
@@ -97,7 +96,6 @@ function buildRow(
   row: OverlayStandingRowV2,
   index: number,
   playerId: string | undefined,
-  visibleMetrics: ReadonlySet<string>,
 ): StandingsRowViewModel {
   const driverName = row.driver || PLACEHOLDER;
   return {
@@ -111,7 +109,7 @@ function buildRow(
     teamBrandColor: "",
     gapText: formatGap(row, index),
     intervalText: PLACEHOLDER,
-    currentLapText: visibleMetrics.has("currentLap") && row.laps !== undefined ? String(row.laps) : "",
+    currentLapText: row.laps === undefined ? "" : String(row.laps),
     lastLapText: formatLapTime(displayedNumber(row.lastLap)),
     bestLapText: PLACEHOLDER,
     pitText: row.pit === "pit" ? "PIT" : "",

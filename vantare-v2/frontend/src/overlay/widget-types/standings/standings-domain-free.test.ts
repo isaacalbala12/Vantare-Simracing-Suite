@@ -16,6 +16,17 @@ const CONTENT = standingsDefinition.parseContent({
 });
 
 describe("standings v2 view model", () => {
+  it("matches nightly byte-for-byte for the one-car fixture", () => {
+    const update = golden(1);
+    if (!update.frame) throw new Error("golden frame missing");
+    const expected = readFileSync(path.resolve(
+      process.cwd(),
+      "src/overlay/widget-types/standings/testdata/standings-v2-nightly-one-car.json",
+    ), "utf8").trim();
+
+    expect(JSON.stringify(buildStandingsViewModelV2(update.frame, update.source, CONTENT)))
+      .toBe(expected);
+  });
   it("is authoritative by default and remains explicitly addressable", () => {
     expect(DEFAULT_OVERLAY_V2_FEATURES).toContain(OVERLAY_V2_STANDINGS);
     expect(hasOverlayV2Feature(undefined, OVERLAY_V2_STANDINGS)).toBe(true);

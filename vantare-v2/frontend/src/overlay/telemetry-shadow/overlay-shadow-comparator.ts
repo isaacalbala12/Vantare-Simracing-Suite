@@ -5,7 +5,10 @@ import { widgetTypeRegistry } from "../core/widget-registry";
 import type { StandingsRowViewModel, StandingsViewModel } from "../widget-types/standings/standings-view-model";
 import { buildStandingsViewModel } from "../widget-types/standings/standings-view-model";
 import { buildStandingsViewModelV2 } from "../widget-types/standings/standings-view-model-v2";
-import type { StandingsContent } from "../widget-types/standings/standings-content";
+import {
+  getEnabledStandingsColumns,
+  type StandingsContent,
+} from "../widget-types/standings/standings-content";
 import type { RacingFlagsContent } from "../widget-types/racing-flags/racing-flags-definition";
 import type { RacingFlagsViewModel } from "../widget-types/racing-flags/racing-flags-view-model";
 import { buildRacingFlagsViewModel } from "../widget-types/racing-flags/racing-flags-view-model";
@@ -453,6 +456,7 @@ export function compareSessionModels(
 export function compareStandingsModels(
   legacy: StandingsViewModel,
   overlayV2: StandingsViewModel,
+  options: Readonly<{ compareCurrentLap?: boolean }> = {},
 ): string[] {
   const mismatch = new Set<string>();
   for (const field of ["status", "sessionLabel", "activeClass", "remainingText"] as const) {
@@ -471,6 +475,7 @@ export function compareStandingsModels(
       continue;
     }
     for (const field of COMPARABLE_STANDINGS_FIELDS) {
+      if (field === "currentLapText" && options.compareCurrentLap === false) continue;
       const legacyValue = field === "lastLapText"
         ? normalizeAbsentLapText(legacyRow[field])
         : legacyRow[field];
@@ -667,7 +672,14 @@ export function createOverlayV2PlayerInstrumentsComparator(): OverlayV2PlayerIns
     compareStandings(input) {
       const legacy = buildStandingsViewModel(input.legacySnapshot, input.content);
       const overlayV2 = buildStandingsViewModelV2(input.frame, input.source, input.content);
-      return record(accumulator, "standings", input, compareStandingsModels(legacy, overlayV2));
+      const compareCurrentLap = getEnabledStandingsColumns(input.content)
+        .some((column) => column.metricId === "currentLap");
+      return record(
+        accumulator,
+        "standings",
+        input,
+        compareStandingsModels(legacy, overlayV2, { compareCurrentLap }),
+      );
     },
     compareDelta(input) {
       const legacy = buildDeltaViewModel(input.legacySnapshot, input.content);

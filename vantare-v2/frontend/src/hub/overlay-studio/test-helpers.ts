@@ -3,6 +3,8 @@ import {
   createTelemetryRateCoordinator,
   type TelemetryRateCoordinator,
 } from "../../overlay/core/telemetry-rate-coordinator";
+import goldenV2Raw from "../../../../internal/telemetry/projection/overlayv2/testdata/overlay_v2_1.golden.json?raw";
+import type { OverlayUpdateV2 } from "../../generated/telemetry";
 
 /**
  * El coordinador real reparte los snapshots con un setInterval por frecuencia:
@@ -20,7 +22,9 @@ import {
  */
 export function createTestTelemetryCoordinator(): TelemetryRateCoordinator {
   const ticks = new Set<() => void>();
+  let nowMs = 0;
   const coordinator = createTelemetryRateCoordinator({
+    now: () => nowMs,
     createScheduler: () => {
       let registered: (() => void) | null = null;
       return {
@@ -42,6 +46,14 @@ export function createTestTelemetryCoordinator(): TelemetryRateCoordinator {
     ...coordinator,
     publish(snapshot) {
       coordinator.publish(snapshot);
+      nowMs += 1_000;
+      for (const tick of [...ticks]) {
+        tick();
+      }
+    },
+    setOverlayFrame(frame, source) {
+      coordinator.setOverlayFrame(frame, source);
+      nowMs += 1_000;
       for (const tick of [...ticks]) {
         tick();
       }
@@ -51,5 +63,7 @@ export function createTestTelemetryCoordinator(): TelemetryRateCoordinator {
   flushing.publish(
     buildMockTelemetry({ session: "race", location: "track", state: "ready" }),
   );
+  const update = JSON.parse(goldenV2Raw) as OverlayUpdateV2;
+  coordinator.setOverlayFrame(update.frame ?? undefined, update.source);
   return flushing;
 }

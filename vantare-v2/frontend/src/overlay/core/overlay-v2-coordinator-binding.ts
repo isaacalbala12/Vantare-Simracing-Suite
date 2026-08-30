@@ -16,7 +16,7 @@ export function bindOverlayV2Coordinator(
 ): () => void {
   const sync = () => {
     const state = store.getSnapshot();
-    coordinator.setOverlayFrame(state.frame, state.source);
+    coordinator.setOverlayFrame(state.frame, state.source, state.revision, state.frameRevision);
     if (state.frame && state.source) observe?.(state.frame, state.source);
   };
   sync();

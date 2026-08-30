@@ -6,6 +6,7 @@ import type { WidgetRuntimeInput } from '../../../overlay/core/widget-definition
 import { useStudioPreview } from '../state/studio-store';
 import { StudioTelemetryContext, type StudioTelemetryContextValue } from './studio-telemetry';
 import { useOrbitKeepAliveActivity } from '../../components/orbit/orbit-keep-alive-activity';
+import { buildAuthoringV2Runtime } from '../../../overlay/authoring/fixtures/authoring-v2-fixture';
 
 export type StudioTelemetryProviderProps = {
   coordinator: TelemetryRateCoordinator;
@@ -33,13 +34,14 @@ export function StudioTelemetryProvider(props: StudioTelemetryProviderProps): Re
   useLayoutEffect(() => {
     if (preview.source === 'mock') {
       // Publish mock snapshot when in mock mode
-      coordinator.publish(
-        buildMockTelemetry({
-          session: preview.mockSession,
-          location: preview.mockLocation,
-          state: 'ready',
-        }),
-      );
+      const snapshot = buildMockTelemetry({
+        session: preview.mockSession,
+        location: preview.mockLocation,
+        state: 'ready',
+      });
+      coordinator.publish(snapshot);
+      const mockV2 = buildAuthoringV2Runtime('delta', snapshot);
+      coordinator.setOverlayFrame(mockV2.overlayV2Frame, mockV2.overlayV2Source);
     } else if (preview.source === 'live' && liveAvailable && telemetryAdapter) {
       // Start live adapter when in live mode
       telemetryAdapter.start();

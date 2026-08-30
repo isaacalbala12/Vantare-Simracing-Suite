@@ -156,7 +156,7 @@ describe('StudioRoute', () => {
     expect(Events.Emit).toHaveBeenCalledWith('settings:get');
   });
 
-  it('does not subscribe Studio rendering to V2 frames while every V2 feature is off', () => {
+  it('keeps one coordinator binding active during diagnostic rollback', () => {
     const store = overlayV2StoreModule.createOverlayFrameV2Store();
     const subscribe = vi.fn(store.subscribe);
     vi.spyOn(overlayV2StoreModule, 'createOverlayFrameV2Store').mockReturnValue({
@@ -172,7 +172,7 @@ describe('StudioRoute', () => {
       />,
     );
 
-    expect(subscribe).not.toHaveBeenCalled();
+    expect(subscribe).toHaveBeenCalledTimes(1);
   });
 
   it('loads the active profile directly into Overlay Studio V3', async () => {

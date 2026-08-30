@@ -59,10 +59,27 @@ export type WidgetViewModelBase = {
 export type WidgetRuntimeInput = {
   engineerPresentation?: EngineerPresentation | null;
   engineerSubtitlesEnabled?: boolean;
+  raceScheduleEvents?: readonly {
+    id: string;
+    title: string;
+    track: string;
+    startAt: string;
+    durationMinutes: number;
+    classes: readonly string[];
+    status: string;
+    license?: string;
+  }[];
+  raceScheduleStatus?: WidgetRuntimeStatus;
   overlayV2Features?: readonly OverlayV2Feature[];
+  overlayV2Failure?: Readonly<{
+    code: "invalid-frame" | "transport-error";
+    message: string;
+  }>;
   overlayV2Frame?: OverlayFrameV2;
   overlayV2Source?: OverlaySourceStatusV2;
 };
+
+export type WidgetRenderMode = "studio" | "desktop" | "obs" | "harness";
 
 export type WidgetCapabilities = {
   inspectorSections: readonly InspectorSectionId[];
@@ -98,5 +115,10 @@ export type WidgetTypeDefinition<
     snapshot: TelemetrySnapshot,
     content: TContent,
     runtime: WidgetRuntimeInput,
+  ): TModel;
+  buildAuxiliaryViewModel?(
+    content: TContent,
+    runtime: WidgetRuntimeInput,
+    renderMode: WidgetRenderMode,
   ): TModel;
 };

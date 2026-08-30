@@ -542,9 +542,9 @@ describe("StudioCanvas", () => {
     );
 
     await waitFor(() => expect(screen.getByTestId("studio-widget-frame-delta-back")).toBeTruthy());
-    expect(
+    await waitFor(() => expect(
       screen.getByTestId("studio-widget-frame-delta-back").querySelector(".vo-delta-value")?.textContent,
-    ).toBe("-0.150");
+    ).toBe("-0.150"));
   });
 
   it("applies the selected background and safe area inside an arbitrary scene", async () => {
@@ -610,6 +610,7 @@ describe("StudioCanvas", () => {
         coordinator.publish(
           buildMockTelemetry({ session: "race", location: "track", state: "disconnected" }),
         );
+        coordinator.setOverlayFrame(coordinator.getOverlayFrame(), { state: "stopped" });
       },
       stop() {
         return undefined;

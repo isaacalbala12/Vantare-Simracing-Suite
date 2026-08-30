@@ -24,6 +24,7 @@ import {
 } from "../widget-types/input-telemetry/input-telemetry-view-model-v2";
 export { OVERLAY_V2_CONTROLS_DECLARED_GAPS } from "../widget-types/input-telemetry/input-telemetry-view-model-v2";
 import type { OverlayFrameV2, OverlaySourceStatusV2 } from "../../generated/telemetry";
+import { overlayV2ViewModelRegistry } from "../core/overlay-v2-view-models";
 import type { PedalsTelemetryContent } from "../widget-types/pedals-telemetry/pedals-telemetry-definition";
 import {
   buildPedalsTelemetryViewModel,
@@ -1165,6 +1166,7 @@ export const OVERLAY_SHADOW_POLICIES = {
 export function compareOverlayShadow(input: Readonly<{
   legacySnapshot: TelemetrySnapshot;
   projection: OverlayProjectionAdaptation;
+  overlayV2: Readonly<{ frame: OverlayFrameV2; source: OverlaySourceStatusV2 }>;
   widgets: readonly WidgetInstanceV3[];
   maxEntries?: number;
 }>): OverlayShadowReport {
@@ -1178,7 +1180,7 @@ export function compareOverlayShadow(input: Readonly<{
   const fullResults = sorted.map(({ widget }) => {
     const instance = instanceCounts.get(widget.type) ?? 0;
     instanceCounts.set(widget.type, instance + 1);
-    return compareWidget(widget, instance, input.legacySnapshot, input.projection);
+    return compareWidget(widget, instance, input.legacySnapshot, input.projection, input.overlayV2);
   });
   const mismatchResults = selectEntries(fullResults, true);
   const sampleResults = selectEntries(fullResults, false);
@@ -1253,18 +1255,25 @@ function compareWidget(
   instance: number,
   legacySnapshot: TelemetrySnapshot,
   projection: OverlayProjectionAdaptation,
+  overlayV2: Readonly<{ frame: OverlayFrameV2; source: OverlaySourceStatusV2 }>,
 ): OverlayShadowWidgetResult {
   const policy = OVERLAY_SHADOW_POLICIES[widget.type];
+  if (policy.coverage === "external") {
+    return finishWidget(
+      policy,
+      instance,
+      [makeEntry(policy.rules[0]?.path ?? "external", "external-consumer", "external", [])],
+      "external",
+    );
+  }
   if (projection.kind === "blocked") {
-    const entry = policy.coverage === "external"
-      ? makeEntry("events", "external-consumer", "external", [])
-      : makeEntry("mapping", "shape-mismatch", "blocked", []);
-    return finishWidget(policy, instance, [entry], policy.coverage === "external" ? "external" : "blocked");
+    const entry = makeEntry("mapping", "shape-mismatch", "blocked", []);
+    return finishWidget(policy, instance, [entry], "blocked");
   }
 
   let models: Readonly<{ legacy: WidgetViewModelBase; projection: WidgetViewModelBase }>;
   try {
-    models = buildViewModelPair(widget, legacySnapshot, projection.snapshot);
+    models = buildViewModelPair(widget, legacySnapshot, overlayV2.frame, overlayV2.source);
   } catch {
     return finishWidget(
       policy,
@@ -1284,9 +1293,7 @@ function compareWidget(
     ),
   );
   entries.sort(compareEntries);
-  const outcome = policy.coverage === "external"
-    ? "external"
-    : policy.coverage === "not-comparable"
+  const outcome = policy.coverage === "not-comparable"
       ? "not-comparable"
       : policy.coverage === "partial" || entries.some((entry) => isMismatch(entry.classification))
         ? "mismatch"
@@ -1297,20 +1304,23 @@ function compareWidget(
 function buildViewModelPair(
   widget: WidgetInstanceV3,
   legacySnapshot: TelemetrySnapshot,
-  projectionSnapshot: TelemetrySnapshot,
+  frame: OverlayFrameV2,
+  source: OverlaySourceStatusV2,
 ): Readonly<{ legacy: WidgetViewModelBase; projection: WidgetViewModelBase }> {
   const definition = widgetTypeRegistry.get(widget.type);
   const parsedContent = definition.parseContent(widget.content);
+  const v2 = overlayV2ViewModelRegistry.get(widget.type);
+  if (!v2) throw new Error(`missing Overlay V2 builder for ${widget.type}`);
   if (widget.type === "input-telemetry") {
     const content = parsedContent as InputTelemetryContent;
     return {
       legacy: buildInputTelemetryViewModel(legacySnapshot, content, inputHistory(legacySnapshot)),
-      projection: buildInputTelemetryViewModel(projectionSnapshot, content, []),
+      projection: v2.buildViewModelV2(frame, source, parsedContent),
     };
   }
   return {
     legacy: definition.buildViewModel(legacySnapshot, parsedContent),
-    projection: definition.buildViewModel(projectionSnapshot, parsedContent),
+    projection: v2.buildViewModelV2(frame, source, parsedContent),
   };
 }
 

@@ -3,7 +3,6 @@ import { buildEngineerVisualViewModel } from "../../../engineer/engineer-visual-
 import type { WidgetInstanceV3 } from "../../core/profile-document";
 import type { WidgetRuntimeInput, WidgetTypeDefinition, WidgetViewModelBase } from "../../core/widget-definition";
 import { getWidgetRequiredFeature } from "../../core/widget-definition";
-import type { TelemetrySnapshot } from "../../core/telemetry-snapshot";
 
 export type EngineerRadioContent = Record<string, never>;
 
@@ -21,7 +20,6 @@ export type EngineerRadioViewModel = WidgetViewModelBase & {
 };
 
 export function buildEngineerRadioViewModel(
-  _snapshot: TelemetrySnapshot,
   _content: EngineerRadioContent,
   runtime: WidgetRuntimeInput = {},
 ): EngineerRadioViewModel {
@@ -38,13 +36,12 @@ export function buildEngineerRadioViewModel(
 }
 
 function buildEngineerRadioPreviewViewModel(
-  snapshot: TelemetrySnapshot,
   content: EngineerRadioContent,
   runtime: WidgetRuntimeInput = {},
 ): EngineerRadioViewModel {
   if (runtime.engineerPresentation) {
     return {
-      ...buildEngineerRadioViewModel(snapshot, content, {
+      ...buildEngineerRadioViewModel(content, {
         engineerPresentation: runtime.engineerPresentation,
         engineerSubtitlesEnabled: true,
       }),
@@ -97,9 +94,18 @@ export const engineerRadioDefinition: WidgetTypeDefinition<EngineerRadioContent,
     }
     return {};
   },
-  buildViewModel(snapshot, content) {
-    return buildEngineerRadioViewModel(snapshot, content);
+  buildViewModel(_snapshot, content) {
+    return buildEngineerRadioViewModel(content);
   },
-  buildRuntimeViewModel: buildEngineerRadioViewModel,
-  buildPreviewViewModel: buildEngineerRadioPreviewViewModel,
+  buildRuntimeViewModel(_snapshot, content, runtime) {
+    return buildEngineerRadioViewModel(content, runtime);
+  },
+  buildPreviewViewModel(_snapshot, content, runtime) {
+    return buildEngineerRadioPreviewViewModel(content, runtime);
+  },
+  buildAuxiliaryViewModel(content, runtime, renderMode) {
+    return renderMode === "studio" || renderMode === "harness"
+      ? buildEngineerRadioPreviewViewModel(content, runtime)
+      : buildEngineerRadioViewModel(content, runtime);
+  },
 };

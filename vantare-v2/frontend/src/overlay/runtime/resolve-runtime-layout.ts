@@ -4,7 +4,7 @@ import type {
   SessionLayoutV3,
   WidgetInstanceV3,
 } from "../core/profile-document";
-import type { TelemetrySnapshot } from "../core/telemetry-snapshot";
+import type { OverlayRuntimeContext } from "../core/overlay-runtime-context";
 import { isWidgetVisibleV3 } from "../core/widget-visibility";
 
 const EXACT_SESSION_LAYOUT_TYPES = new Set<SessionLayoutType>([
@@ -15,7 +15,7 @@ const EXACT_SESSION_LAYOUT_TYPES = new Set<SessionLayoutType>([
 ]);
 
 export function mapTelemetrySessionToLayoutType(
-  sessionType: TelemetrySnapshot["session"]["type"],
+  sessionType: OverlayRuntimeContext["sessionType"],
 ): SessionLayoutType {
   if (sessionType === "warmup") {
     return "general";
@@ -28,18 +28,19 @@ export function mapTelemetrySessionToLayoutType(
 
 export function resolveRuntimeLayout(
   document: ProfileDocumentV3,
-  snapshot: TelemetrySnapshot,
+  context: OverlayRuntimeContext,
 ): SessionLayoutV3 {
-  const layoutType = mapTelemetrySessionToLayoutType(snapshot.session.type);
+  const layoutType = mapTelemetrySessionToLayoutType(context.sessionType);
   return document.layouts[layoutType] ?? document.layouts.general;
 }
 
 export function selectRuntimeWidgets(
   layout: SessionLayoutV3,
-  snapshot: TelemetrySnapshot,
+  context: OverlayRuntimeContext,
+  options: Readonly<{ bypassVisibility?: boolean }> = {},
 ): WidgetInstanceV3[] {
   return [...layout.widgets]
     .filter((widget) => widget.behavior.enabled)
-    .filter((widget) => isWidgetVisibleV3(widget, snapshot))
+    .filter((widget) => options.bypassVisibility || isWidgetVisibleV3(widget, context))
     .sort((left, right) => left.layout.zIndex - right.layout.zIndex);
 }

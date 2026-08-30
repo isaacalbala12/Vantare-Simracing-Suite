@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
+import { useCallback, useLayoutEffect, useState, useSyncExternalStore } from 'react';
 import type { TelemetryRateCoordinator } from '../core/telemetry-rate-coordinator';
 import type { TelemetrySnapshot } from '../core/telemetry-snapshot';
 import type { OverlayFrameV2, OverlaySourceStatusV2 } from '../../generated/telemetry';
+import type { OverlayRuntimeContext } from '../core/overlay-runtime-context';
+import type { WidgetRuntimeInput } from '../core/widget-definition';
 
 export type TelemetryActivityGate = {
   getActive(): boolean;
@@ -47,20 +49,35 @@ export function useRateLimitedTelemetry(
 export function useRateLimitedWidgetTelemetry(
   coordinator: TelemetryRateCoordinator,
   widgetType: string,
-): Readonly<{ snapshot: TelemetrySnapshot; overlayFrame?: OverlayFrameV2; overlaySource?: OverlaySourceStatusV2 }> {
+): Readonly<{
+  overlayV2Frame?: OverlayFrameV2;
+  overlayV2Source?: OverlaySourceStatusV2;
+  overlayV2Failure?: WidgetRuntimeInput['overlayV2Failure'];
+}> {
   const [state, setState] = useState(() => ({
-    snapshot: coordinator.getSnapshot(widgetType),
-    overlayFrame: coordinator.getOverlayFrame(),
-    overlaySource: coordinator.getOverlaySource(),
+    overlayV2Frame: coordinator.getOverlayFrame(),
+    overlayV2Source: coordinator.getOverlaySource(),
+    overlayV2Failure: coordinator.getOverlayFailure(),
   }));
 
-  useEffect(() => coordinator.subscribe(widgetType, () => {
+  useLayoutEffect(() => coordinator.subscribe(widgetType, () => {
     setState({
-      snapshot: coordinator.getSnapshot(widgetType),
-      overlayFrame: coordinator.getOverlayFrame(),
-      overlaySource: coordinator.getOverlaySource(),
+      overlayV2Frame: coordinator.getOverlayFrame(),
+      overlayV2Source: coordinator.getOverlaySource(),
+      overlayV2Failure: coordinator.getOverlayFailure(),
     });
   }), [coordinator, widgetType]);
 
   return state;
+}
+
+export function useOverlayRuntimeContext(
+  coordinator: TelemetryRateCoordinator,
+): OverlayRuntimeContext {
+  const subscribe = useCallback(
+    (listener: () => void) => coordinator.subscribe('runtime-context', listener),
+    [coordinator],
+  );
+  const getSnapshot = useCallback(() => coordinator.getOverlayRuntimeContext(), [coordinator]);
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 }

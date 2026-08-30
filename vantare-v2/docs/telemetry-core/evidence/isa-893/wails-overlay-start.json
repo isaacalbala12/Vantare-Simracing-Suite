@@ -1,0 +1,55 @@
+{
+  "schema": "vantare.huella.cdp.v1",
+  "capturedAt": "2026-08-29T23:49:49.788Z",
+  "action": "overlay-start",
+  "control": {
+    "changed": true,
+    "running": true,
+    "emittedAt": "2026-08-29T23:49:38.473Z",
+    "mechanism": {
+      "kind": "wails-event",
+      "eventName": "overlay:start-active"
+    }
+  },
+  "durationSeconds": 10,
+  "expectedWidgets": 20,
+  "renderedWidgets": 20,
+  "overlayReadyAt": "2026-08-29T23:49:39.702Z",
+  "rendererProcessIds": [
+    22688,
+    28068
+  ],
+  "rendererProcessInfoError": null,
+  "targets": [
+    {
+      "role": "hub",
+      "url": "http://wails.localhost/#/hub",
+      "title": "Vantare",
+      "overlay": false,
+      "hub": true,
+      "widgetCount": 0,
+      "probe": {
+        "rafPerSecond": 119.9,
+        "longTaskCount": 0,
+        "longTaskTotalMs": 0,
+        "longTaskMaxMs": 0,
+        "widgetCount": 0
+      }
+    },
+    {
+      "role": "overlay",
+      "url": "http://wails.localhost/",
+      "title": "Vantare",
+      "overlay": true,
+      "hub": false,
+      "widgetCount": 20,
+      "probe": {
+        "rafPerSecond": 118.4,
+        "longTaskCount": 0,
+        "longTaskTotalMs": 0,
+        "longTaskMaxMs": 0,
+        "widgetCount": 20
+      }
+    }
+  ]
+}

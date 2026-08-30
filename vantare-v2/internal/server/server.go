@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/vantare/overlays/v2/internal/app/telemetrytransport"
+	"github.com/vantare/overlays/v2/internal/calendar"
 	engineerservice "github.com/vantare/overlays/v2/internal/engineer/service"
 )
 
@@ -227,6 +228,7 @@ func New(cfg ServerConfig) *Server {
 	mux.HandleFunc("GET /overlay", s.handleOverlay)
 	mux.HandleFunc("GET /api/profile", s.handleProfile)
 	mux.HandleFunc("GET /api/profile-v3", s.handleProfileV3)
+	mux.HandleFunc("GET /api/calendar", s.handleCalendar)
 	mux.HandleFunc("GET /api/engineer/health", s.handleEngineerHealth)
 	if cfg.OverlayProjection != nil {
 		mux.Handle(
@@ -262,6 +264,19 @@ func New(cfg ServerConfig) *Server {
 	}
 
 	return s
+}
+
+func (s *Server) handleCalendar(w http.ResponseWriter, _ *http.Request) {
+	service := calendar.NewService(s.cfgDir, time.Now)
+	if err := service.Load(); err != nil {
+		http.Error(w, "calendar unavailable", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(service.Calendar()); err != nil {
+		log.Printf("calendar response: %v", err)
+	}
 }
 
 func (s *Server) Handler() http.Handler {

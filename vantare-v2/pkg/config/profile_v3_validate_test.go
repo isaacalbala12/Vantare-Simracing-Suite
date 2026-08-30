@@ -278,7 +278,7 @@ func TestWidgetTypeV3Vocabulary(t *testing.T) {
 		"pedals-telemetry", "pedals-telemetry-compact", "racing-flags", "delta-trace",
 		"race-schedule", "head-to-head", "delta-advanced", "input-telemetry",
 		"multiclass-relative", "track-weather", "car-damage-visual", "car-damage-numbers",
-		"engineer-radio",
+		"engineer-radio", "track-map",
 	}
 	for _, widgetType := range supported {
 		t.Run(widgetType, func(t *testing.T) {

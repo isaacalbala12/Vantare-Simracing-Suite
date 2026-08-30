@@ -97,32 +97,18 @@ const cases: Case[] = [
 ];
 
 describe("WidgetVisualHost v2 generic registry", () => {
-  it.each(cases)("[$type] con feature off usa VM v1 y con feature on usa VM v2 (frame v2 fixture)", ({ definition, spyModule, spyName, feature }) => {
+  it.each(cases)("[$type] usa VM v2 por defecto cuando frame y source están presentes", ({ definition, spyModule, spyName, feature }) => {
     const widget = (definition.createDefault as (id: string) => { id: string; type: string })("v2-case-" + feature);
     const frame = makeFrame();
 
     const spy = vi.spyOn(spyModule as never, spyName as never);
 
-    // off: no feature -> v1, spy no llamado
     render(
       <WidgetVisualHost
         widget={widget as never}
         snapshot={snapshot}
         renderMode="harness"
         runtime={{ overlayV2Frame: frame, overlayV2Source: source } as never}
-      />,
-    );
-    expect(spy).not.toHaveBeenCalled();
-    cleanup();
-
-    // on: feature activa -> v2, spy llamado una vez con frame, source, content
-    spy.mockClear();
-    render(
-      <WidgetVisualHost
-        widget={widget as never}
-        snapshot={snapshot}
-        renderMode="harness"
-        runtime={{ overlayV2Frame: frame, overlayV2Source: source, overlayV2Features: [feature] } as never}
       />,
     );
     expect(spy).toHaveBeenCalledTimes(1);
@@ -154,7 +140,7 @@ describe("WidgetVisualHost v2 generic registry", () => {
     cleanup();
   });
 
-  it("sin frame v2 no usa v2 aunque feature este on", () => {
+  it("sin frame v2 todavía no ejecuta el builder v2", () => {
     const widget = standingsDefinition.createDefault("no-frame");
     const spy = vi.spyOn(standingsV2, "buildStandingsViewModelV2");
     render(
@@ -162,11 +148,82 @@ describe("WidgetVisualHost v2 generic registry", () => {
         widget={widget as never}
         snapshot={snapshot}
         renderMode="harness"
-        runtime={{ overlayV2Source: source, overlayV2Features: ["standings"] } as never}
+        runtime={{ overlayV2Source: source } as never}
       />,
     );
     expect(spy).not.toHaveBeenCalled();
     spy.mockRestore();
     cleanup();
+  });
+
+  it("hace visible y terminal un frame inválido sin ejecutar V1 ni el renderer", () => {
+    const widget = standingsDefinition.createDefault("invalid-frame");
+    const view = render(
+      <WidgetVisualHost
+        widget={widget}
+        snapshot={snapshot}
+        renderMode="desktop"
+        runtime={{
+          overlayV2Failure: { code: "invalid-frame", message: "overlay-frame-v2:invalid-contract:frame" },
+        }}
+      />,
+    );
+
+    expect(view.getByRole("alert").textContent).toContain("invalid-contract:frame");
+    expect(view.getByRole("alert").getAttribute("data-diagnostic-code")).toBe("overlay-v2-invalid-frame");
+    expect(view.container.querySelector('[data-widget-renderer="standings"]')).toBeNull();
+  });
+
+  it("hace visible y terminal la ausencia de frame cuando V2 es autoridad", () => {
+    const widget = standingsDefinition.createDefault("missing-frame");
+    const view = render(
+      <WidgetVisualHost
+        widget={widget}
+        snapshot={snapshot}
+        renderMode="obs"
+        runtime={{ overlayV2Source: source }}
+      />,
+    );
+
+    expect(view.getByRole("alert").textContent).toBe("Overlay V2 frame unavailable");
+    expect(view.getByRole("alert").getAttribute("data-diagnostic-code")).toBe("overlay-v2-frame-missing");
+  });
+
+  it("mantiene el widget stale renderizado y añade un diagnóstico visible", () => {
+    const widget = standingsDefinition.createDefault("stale-frame");
+    const view = render(
+      <WidgetVisualHost
+        widget={widget}
+        snapshot={snapshot}
+        renderMode="studio"
+        runtime={{
+          overlayV2Frame: makeFrame(),
+          overlayV2Source: { state: "stale", ageMs: 2_500 },
+        }}
+      />,
+    );
+
+    expect(view.getByRole("alert").textContent).toBe("Overlay V2 stale (2500 ms)");
+    expect(view.getByRole("alert").getAttribute("data-diagnostic-code")).toBe("overlay-v2-stale");
+    expect(view.container.querySelector('[data-widget-renderer="standings"]')).toBeTruthy();
+  });
+
+  it("hace visible y terminal el error de source aunque conserve el último frame", () => {
+    const widget = standingsDefinition.createDefault("source-error");
+    const view = render(
+      <WidgetVisualHost
+        widget={widget}
+        snapshot={snapshot}
+        renderMode="desktop"
+        runtime={{
+          overlayV2Frame: makeFrame(),
+          overlayV2Source: { state: "error", reason: "LMU projection stopped" },
+        }}
+      />,
+    );
+
+    expect(view.getByRole("alert").textContent).toBe("LMU projection stopped");
+    expect(view.getByRole("alert").getAttribute("data-diagnostic-code")).toBe("overlay-v2-source-error");
+    expect(view.container.querySelector('[data-widget-renderer="standings"]')).toBeNull();
   });
 });

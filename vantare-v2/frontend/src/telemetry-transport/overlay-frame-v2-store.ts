@@ -19,6 +19,8 @@ export const OVERLAY_V2_PROJECTION_ROUTE = "/telemetry/overlay-v2/projection";
 
 export type OverlayFrameV2State = Readonly<{
   revision: number;
+  /** Revision of the last decoded snapshot, unchanged by status/watchdog republishes. */
+  frameRevision?: number;
   ageMs: number;
   source?: OverlaySourceStatusV2;
   frame?: OverlayFrameV2;
@@ -133,7 +135,13 @@ export function createOverlayFrameV2Store(
       }
       const frame = update.frame ?? state.frame;
       const ageMs = frame ? watchdog.measure(frame.generatedAt).ageMs : update.source.ageMs ?? 0;
-      publish({ revision: update.revision, source: update.source, frame, ageMs });
+      publish({
+        revision: update.revision,
+        frameRevision: update.frame ? update.revision : state.frameRevision,
+        source: update.source,
+        frame,
+        ageMs,
+      });
     },
     getDiagnostics() {
       const sorted = [...parseDurations].sort((left, right) => left - right);

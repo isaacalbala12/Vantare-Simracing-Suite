@@ -2,13 +2,19 @@ import { act, cleanup, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { buildMockTelemetry } from "../core/mock-scenarios";
 import type { ProfileDocumentV3 } from "../core/profile-document";
-import { createTelemetryRateCoordinator } from "../core/telemetry-rate-coordinator";
+import { createTelemetryRateCoordinator as createBaseTelemetryRateCoordinator } from "../core/telemetry-rate-coordinator";
 import { createWidgetDiagnosticCollector } from "../core/widget-diagnostics";
 import { deltaDefinition } from "../widget-types/delta/delta-definition";
 import { standingsDefinition } from "../widget-types/standings/standings-definition";
 import { RuntimeOverlaySurface } from "./RuntimeOverlaySurface";
 import { createEngineerPresentationStore } from "../../engineer/engineer-presentation-store";
 import { buildEngineerPresentationFixture } from "../../engineer/engineer-presentation-fixtures";
+import goldenV2Raw from "../../../../internal/telemetry/projection/overlayv2/testdata/overlay_v2_1.golden.json?raw";
+import type { OverlayUpdateV2 } from "../../generated/telemetry";
+import { raceScheduleDefinition } from "../widget-types/race-schedule/race-schedule-definition";
+import { createRaceScheduleStore } from "../core/race-schedule-store";
+import type { Calendar } from "../../calendar/calendar-types";
+import { engineerRadioDefinition } from "../widget-types/engineer-radio/engineer-radio-definition";
 
 const originalResizeObserver = globalThis.ResizeObserver;
 
@@ -20,6 +26,13 @@ type ResizeObserverHarness = {
 let measuredWidth = 1920;
 let measuredHeight = 1080;
 let resizeObservers: ResizeObserverHarness[] = [];
+
+function createTelemetryRateCoordinator() {
+  const coordinator = createBaseTelemetryRateCoordinator();
+  const update = JSON.parse(goldenV2Raw) as OverlayUpdateV2;
+  coordinator.setOverlayFrame(update.frame ?? undefined, update.source);
+  return coordinator;
+}
 
 function installResizeObserver(): void {
   globalThis.ResizeObserver = class {
@@ -87,6 +100,165 @@ function buildDocument(): ProfileDocumentV3 {
 }
 
 describe("RuntimeOverlaySurface", () => {
+  it.each([
+    ["desktop", "source-missing"],
+    ["obs", "source-missing"],
+    ["desktop", "rollback"],
+    ["obs", "rollback"],
+  ] as const)(
+    "shows the productive %s %s diagnostic with role=alert and a stable code",
+    (renderMode, failure) => {
+      const update = JSON.parse(goldenV2Raw) as OverlayUpdateV2;
+      if (!update.frame) throw new Error("golden V2 frame missing");
+      const coordinator = createBaseTelemetryRateCoordinator();
+      coordinator.setOverlayFrame(
+        update.frame,
+        failure === "source-missing" ? undefined : update.source,
+      );
+      const document = buildDocument();
+      document.layouts.general.widgets = [deltaDefinition.createDefault(`delta-${failure}`)];
+
+      const view = render(
+        <RuntimeOverlaySurface
+          document={document}
+          telemetry={coordinator}
+          renderMode={renderMode}
+          overlayV2Features={failure === "rollback" ? [] : undefined}
+        />,
+      );
+
+      const alert = view.getByRole("alert");
+      expect(alert.getAttribute("data-diagnostic-code")).toBe(
+        failure === "rollback" ? "overlay-v2-rollback" : "overlay-v2-source-missing",
+      );
+      coordinator.dispose();
+    },
+  );
+
+  it.each(["desktop", "obs"] as const)(
+    "passes the productive Engineer store through the %s surface",
+    (renderMode) => {
+      const coordinator = createTelemetryRateCoordinator();
+      const document = buildDocument();
+      document.layouts.general.widgets = [engineerRadioDefinition.createDefault("radio-live")];
+      const presentations = createEngineerPresentationStore({ now: () => 1_000 });
+      const presentation = buildEngineerPresentationFixture("en", "warning");
+      presentations.publish(presentation);
+
+      const view = render(
+        <RuntimeOverlaySurface
+          document={document}
+          telemetry={coordinator}
+          renderMode={renderMode}
+          engineerPresentations={presentations}
+        />,
+      );
+
+      const renderer = view.container.querySelector('[data-widget-renderer="engineer-radio"]');
+      expect(renderer).toBeTruthy();
+      expect(renderer?.textContent).toContain(presentation.text);
+      presentations.dispose();
+      coordinator.dispose();
+    },
+  );
+
+  it.each(["desktop", "obs"] as const)(
+    "passes the productive Calendar store through the %s surface to race-schedule",
+    (renderMode) => {
+      const coordinator = createTelemetryRateCoordinator();
+      const document = buildDocument();
+      document.layouts.general.widgets = [raceScheduleDefinition.createDefault("calendar-live")];
+      const calendar = {
+        version: 1,
+        timezone: "Europe/Madrid",
+        reminderMinutes: [],
+        followedEventIds: [],
+        followedSeriesIds: [],
+        updated: "2026-08-29T00:00:00Z",
+        series: [{
+          id: "daily",
+          name: "Daily",
+          tier: "silver",
+          licenseLabel: "SILVER",
+          track: "Spa",
+          vehicleClass: "Hypercar",
+          classes: [{ name: "Hypercar" }],
+          setup: "fixed",
+          durationMin: 45,
+          splits: 1,
+          assists: "none",
+          tyreWarmers: false,
+          tyres: 1,
+          recurrence: { kind: "daily" },
+        }],
+        events: [{
+          id: "spa-daily",
+          title: "Spa Daily",
+          sim: "LMU",
+          track: "Spa-Francorchamps",
+          series: "daily",
+          sessionLabel: "STARTS SOON",
+          startTime: "2026-08-29T03:00:00Z",
+          durationMin: 45,
+          registrationUrl: "",
+          source: "calendar",
+          notes: "",
+        }],
+      } satisfies Calendar;
+      const raceSchedule = createRaceScheduleStore({
+        start(onCalendar) {
+          onCalendar(calendar);
+          return () => undefined;
+        },
+      });
+      raceSchedule.start();
+
+      const view = render(
+        <RuntimeOverlaySurface
+          document={document}
+          telemetry={coordinator}
+          renderMode={renderMode}
+          raceSchedule={raceSchedule}
+        />,
+      );
+
+      const renderer = view.container.querySelector('[data-widget-renderer="race-schedule"]');
+      expect(renderer?.getAttribute("data-status")).toBe("ready");
+      expect(renderer?.textContent).toContain("Spa Daily");
+      expect(renderer?.textContent).toContain("Spa-Francorchamps");
+      raceSchedule.dispose();
+      coordinator.dispose();
+    },
+  );
+
+  it.each(["desktop", "obs"] as const)(
+    "keeps the last %s layout mounted with visible diagnostics after a V2 failure",
+    async (renderMode) => {
+      const coordinator = createTelemetryRateCoordinator();
+      const document = buildDocument();
+      const visibleOnlyInRace = deltaDefinition.createDefault("race-diagnostic");
+      visibleOnlyInRace.behavior.visibleWhen = { sessionTypes: ["race"] };
+      document.layouts.general.widgets = [];
+      document.layouts.race = { type: "race", widgets: [visibleOnlyInRace] };
+
+      const view = render(
+        <RuntimeOverlaySurface document={document} telemetry={coordinator} renderMode={renderMode} />,
+      );
+      expect(view.getByTestId("runtime-widget-frame").getAttribute("data-widget-id")).toBe("race-diagnostic");
+
+      act(() => {
+        coordinator.setOverlayFrame(undefined, { state: "error", reason: "invalid contract" });
+        coordinator.setOverlayFailure({ code: "invalid-frame", message: "invalid contract" });
+      });
+      await act(() => new Promise((resolve) => setTimeout(resolve, 20)));
+
+      expect(view.getByTestId("runtime-widget-frame").getAttribute("data-widget-id")).toBe("race-diagnostic");
+      const alert = view.getByRole("alert");
+      expect(alert.getAttribute("data-diagnostic-code")).toBe("overlay-v2-invalid-frame");
+      coordinator.dispose();
+    },
+  );
+
   it("does not expose a logical scene before the real CSS viewport is positive", () => {
     measuredWidth = 0;
     measuredHeight = 0;

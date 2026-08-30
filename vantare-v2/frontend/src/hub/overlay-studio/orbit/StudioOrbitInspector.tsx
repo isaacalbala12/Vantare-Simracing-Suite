@@ -4,7 +4,7 @@ import { resolveLayoutViewport } from '../../../overlay/core/layout-viewport';
 import type { InspectorSectionId } from '../../../overlay/core/widget-definition';
 import { Accordion } from '../../../ui/orbit';
 import { executeWidgetAction } from '../canvas/widget-actions';
-import { useStudioTelemetrySnapshot } from '../canvas/studio-telemetry';
+import { useStudioOverlayRuntimeContext } from '../canvas/studio-telemetry';
 import { useDeleteWidgetConfirm } from '../components/studio-confirm';
 import { createWailsWidgetDesignClient } from '../designs/widget-design-client';
 import { ActionsSection } from '../inspector/ActionsSection';
@@ -109,7 +109,7 @@ export function StudioOrbitInspector(): React.ReactElement {
     discardAll,
   } = useStudioDocument();
   const { t } = useI18n();
-  const snapshot = useStudioTelemetrySnapshot();
+  const runtimeContext = useStudioOverlayRuntimeContext();
   const deleteConfirm = useDeleteWidgetConfirm();
   const designClient = useMemo(() => createWailsWidgetDesignClient(), []);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
@@ -180,7 +180,7 @@ export function StudioOrbitInspector(): React.ReactElement {
           dispatch={dispatch}
           sectionId="appearance"
           session={activeSession}
-          snapshot={snapshot}
+          runtimeContext={runtimeContext}
           widget={widget}
         />
       );
@@ -194,7 +194,7 @@ export function StudioOrbitInspector(): React.ReactElement {
               dispatch={dispatch}
               sectionId="behavior"
               session={activeSession}
-              snapshot={snapshot}
+              runtimeContext={runtimeContext}
               widget={widget}
             />
           ) : null}
@@ -204,7 +204,7 @@ export function StudioOrbitInspector(): React.ReactElement {
               dispatch={dispatch}
               sectionId="content"
               session={activeSession}
-              snapshot={snapshot}
+              runtimeContext={runtimeContext}
               widget={widget}
             />
           ) : null}

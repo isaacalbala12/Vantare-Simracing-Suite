@@ -7,15 +7,16 @@ import type { WidgetRuntimeInput } from '../../overlay/core/widget-definition';
 import { createWailsProjectionTelemetryAdapter } from '../../overlay/transports/projection-telemetry-adapter';
 import {
   createOverlayFrameV2Store,
-  type OverlayFrameV2State,
 } from '../../telemetry-transport/overlay-frame-v2-store';
+import { bindOverlayV2Coordinator } from '../../overlay/core/overlay-v2-coordinator-binding';
 import { createBrowserOverlayWailsPullClient } from '../../telemetry-transport/overlay-wails-pull';
 import {
   telemetrySourceStatusEvent,
   telemetrySourceStatusRequestEvent,
   type TelemetrySourceStatus,
 } from '../../telemetry-transport/source-status';
-import { readDiagnosticOverlayV2Features } from '../../overlay/telemetry-shadow/overlay-v2-features';
+import { createOverlayV2FeaturesGeneration } from '../../overlay/telemetry-shadow/overlay-v2-features';
+import { createWailsRaceScheduleStore } from '../../overlay/core/race-schedule-store';
 import { ProfilesOrbitPage } from '../profiles-orbit/ProfilesOrbitPage';
 import { RecommendedProfilesView } from '../overlays/RecommendedProfilesView';
 import { CommunityComingSoonView } from '../overlays/CommunityComingSoonView';
@@ -51,9 +52,6 @@ import type { StudioProfileEntry } from './studio-profile-entry';
 import { modeFromTarget, type StudioRouteMode } from './studio-route-target';
 import { createStudioOverlayTelemetryAdapter } from './studio-overlay-telemetry';
 
-const EMPTY_OVERLAY_V2_STATE: OverlayFrameV2State = Object.freeze({revision: 0, ageMs: 0});
-const subscribeToNothing = () => () => undefined;
-const getEmptyOverlayV2State = () => EMPTY_OVERLAY_V2_STATE;
 
 type ProfilesListPayload = {
   profiles?: ProfileEntry[];
@@ -339,6 +337,8 @@ type StudioTelemetryGeneration = Readonly<{
   overlayV2Store: ReturnType<typeof createOverlayFrameV2Store>;
   overlayPull: ReturnType<typeof createBrowserOverlayWailsPullClient>;
   telemetryAdapter: TelemetryAdapter | null;
+  raceSchedule: ReturnType<typeof createWailsRaceScheduleStore>;
+  overlayV2Features: ReturnType<typeof createOverlayV2FeaturesGeneration>;
 }>;
 
 export const StudioRoute = memo(function StudioRoute(props: StudioRouteProps): React.ReactElement {
@@ -351,6 +351,8 @@ export const StudioRoute = memo(function StudioRoute(props: StudioRouteProps): R
     const overlayPull = createBrowserOverlayWailsPullClient({
       onError: (error) => console.error('studio overlay telemetry pull failed', error),
     });
+    const raceSchedule = createWailsRaceScheduleStore();
+    const overlayV2Features = createOverlayV2FeaturesGeneration();
     const legacy = createWailsProjectionTelemetryAdapter({
       coordinator,
       runtime: 'studio',
@@ -360,18 +362,27 @@ export const StudioRoute = memo(function StudioRoute(props: StudioRouteProps): R
       legacy,
       pull: overlayPull,
       overlayV2Store,
-      onOverlayV2Error: (error) => console.error('studio overlay-v2 ingest failed', error),
+      onOverlayV2Error: (error) => {
+        const message = error instanceof Error ? error.message : String(error);
+        coordinator.setOverlayFailure({ code: 'invalid-frame', message });
+        console.error('studio overlay-v2 ingest failed', error);
+      },
     });
     overlayV2Store.reset();
+    const unbindOverlayV2 = bindOverlayV2Coordinator(overlayV2Store, coordinator);
     // Este efecto es la fabrica y el owner de la generacion; Studio no debe
     // registrar listeners ni cargar perfiles contra recursos ya dispuestos.
+    raceSchedule.start();
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setGeneration({ coordinator, overlayV2Store, overlayPull, telemetryAdapter });
+    setGeneration({ coordinator, overlayV2Store, overlayPull, telemetryAdapter, raceSchedule, overlayV2Features });
 
     return () => {
       if (telemetryAdapterProp === null) telemetryAdapter.stop();
       overlayPull.stop();
+      unbindOverlayV2();
       overlayV2Store.dispose();
+      raceSchedule.dispose();
+      overlayV2Features.dispose();
       if (coordinatorProp === undefined) coordinator.dispose();
     };
   }, [coordinatorProp, telemetryAdapterProp]);
@@ -392,27 +403,28 @@ function StudioRouteGeneration(props: StudioRouteGenerationProps): React.ReactEl
     target,
     generation,
   } = props;
-  const { coordinator, overlayV2Store, telemetryAdapter } = generation;
+  const { coordinator, telemetryAdapter } = generation;
   const { t } = useI18n();
 
   const client = useMemo(
     () => clientProp ?? createStudioProfileClient(createWailsStudioEventTransport()),
     [clientProp],
   );
-  const [overlayV2Features, setOverlayV2Features] = useState(() =>
-    readDiagnosticOverlayV2Features(),
+  const overlayV2Features = useSyncExternalStore(
+    generation.overlayV2Features.subscribe,
+    generation.overlayV2Features.getSnapshot,
+    generation.overlayV2Features.getSnapshot,
   );
-  const overlayV2Enabled = overlayV2Features.length > 0;
-  const overlayV2State = useSyncExternalStore(
-    overlayV2Enabled ? overlayV2Store.subscribe : subscribeToNothing,
-    overlayV2Enabled ? overlayV2Store.getSnapshot : getEmptyOverlayV2State,
-    overlayV2Enabled ? overlayV2Store.getSnapshot : getEmptyOverlayV2State,
+  const raceSchedule = useSyncExternalStore(
+    generation.raceSchedule.subscribe,
+    generation.raceSchedule.getSnapshot,
+    generation.raceSchedule.getSnapshot,
   );
   const runtime = useMemo<WidgetRuntimeInput>(() => ({
     overlayV2Features,
-    overlayV2Frame: overlayV2State.frame,
-    overlayV2Source: overlayV2State.source,
-  }), [overlayV2Features, overlayV2State.frame, overlayV2State.source]);
+    raceScheduleEvents: raceSchedule.events,
+    raceScheduleStatus: raceSchedule.status,
+  }), [overlayV2Features, raceSchedule]);
 
   const [profiles, setProfiles] = useState<ProfileEntry[]>([]);
   const [profilesLoaded, setProfilesLoaded] = useState(false);
@@ -458,16 +470,6 @@ function StudioRouteGeneration(props: StudioRouteGenerationProps): React.ReactEl
   const effectiveMode: StudioRouteMode = isAutoStart && mode === 'editor' ? 'recommended' : mode;
   const autoActivateAndStart = isAutoStart;
   const studioProfiles = useMemo(() => toStudioProfiles(profiles), [profiles]);
-
-  useEffect(() => {
-    const refresh = () => setOverlayV2Features(readDiagnosticOverlayV2Features());
-    window.addEventListener('vantare:overlay-v2-features-changed', refresh);
-    window.addEventListener('storage', refresh);
-    return () => {
-      window.removeEventListener('vantare:overlay-v2-features-changed', refresh);
-      window.removeEventListener('storage', refresh);
-    };
-  }, []);
 
   useEffect(() => {
     if (liveAvailableProp !== undefined) return;

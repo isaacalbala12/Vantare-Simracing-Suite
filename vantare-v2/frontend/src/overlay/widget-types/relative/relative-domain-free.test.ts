@@ -17,9 +17,9 @@ import {
 const CONTENT = relativeDefinition.parseContent({});
 
 describe("relative v2 view model", () => {
-  it("is off by default and only opts in through the feature flag", () => {
-    expect(DEFAULT_OVERLAY_V2_FEATURES).toEqual([]);
-    expect(hasOverlayV2Feature(undefined, OVERLAY_V2_RELATIVE)).toBe(false);
+  it("is authoritative by default and remains explicitly addressable", () => {
+    expect(DEFAULT_OVERLAY_V2_FEATURES).toContain(OVERLAY_V2_RELATIVE);
+    expect(hasOverlayV2Feature(undefined, OVERLAY_V2_RELATIVE)).toBe(true);
     expect(hasOverlayV2Feature([OVERLAY_V2_RELATIVE], OVERLAY_V2_RELATIVE)).toBe(true);
   });
 

@@ -6,7 +6,6 @@ import {
   resolveStudioFrameGeometry,
 } from './canvas-frame-preview';
 import type { WidgetInstanceV3, WidgetLayoutV3 } from '../../../overlay/core/profile-document';
-import type { TelemetrySnapshot } from '../../../overlay/core/telemetry-snapshot';
 import type { WidgetDiagnosticCollector } from '../../../overlay/core/widget-diagnostics';
 import { WidgetVisualHost } from '../../../overlay/core/WidgetVisualHost';
 import { WidgetVisualViewport } from '../../../overlay/core/WidgetVisualViewport';
@@ -14,7 +13,7 @@ import { widgetTypeRegistry } from '../../../overlay/core/widget-registry';
 import { useI18n } from '../../../i18n/I18nProvider';
 import type { ResizeHandle } from './canvas-resize';
 import { useSelectionFit } from './useSelectionFit';
-import { useStudioTelemetryRuntime, useStudioTelemetrySnapshot } from './studio-telemetry';
+import { useStudioTelemetryRuntime } from './studio-telemetry';
 
 const MemoWidgetVisualHost = memo(WidgetVisualHost);
 
@@ -36,7 +35,6 @@ export type StudioWidgetFrameProps = {
   layout: WidgetLayoutV3;
   previewActive?: boolean;
   selected: boolean;
-  snapshotOverride?: TelemetrySnapshot;
   onSelect(widgetId: string): void;
   onFramePointerDown?(widgetId: string, event: React.PointerEvent<HTMLElement>): void;
   onResizePointerDown?(
@@ -60,7 +58,6 @@ function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactE
     layout,
     previewActive = false,
     selected,
-    snapshotOverride,
     onSelect,
     onFramePointerDown,
     onResizePointerDown,
@@ -69,9 +66,7 @@ function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactE
     fitSelectionToContent = false,
   } = props;
   const { t } = useI18n();
-  const rateLimitedSnapshot = useStudioTelemetrySnapshot(widget.behavior.updateHz);
-  const runtime = useStudioTelemetryRuntime();
-  const snapshot = snapshotOverride ?? rateLimitedSnapshot;
+  const runtime = useStudioTelemetryRuntime(widget.type);
   const frameRef = useRef<HTMLDivElement>(null);
   const selectionRef = useRef<HTMLDivElement>(null);
   const frameGeometry = resolveStudioFrameGeometry(widget.id, layout, previewActive);
@@ -200,7 +195,6 @@ function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactE
         >
           <MemoWidgetVisualHost
             widget={widget}
-            snapshot={snapshot}
             renderMode="studio"
             diagnostics={diagnostics}
             runtime={runtime}
@@ -218,7 +212,6 @@ export const StudioWidgetFrame = memo(
     layoutsEqual(previous.layout, next.layout) &&
     previous.previewActive === next.previewActive &&
     previous.selected === next.selected &&
-    previous.snapshotOverride === next.snapshotOverride &&
     previous.onSelect === next.onSelect &&
     previous.onFramePointerDown === next.onFramePointerDown &&
     previous.onResizePointerDown === next.onResizePointerDown &&

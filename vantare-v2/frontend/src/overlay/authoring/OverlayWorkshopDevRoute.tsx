@@ -18,6 +18,7 @@ import { interpolateSceneAt, sampleAtRate, sceneDurationMs } from "./fixtures/sc
 import { projectionGapsFor } from "./fixtures/projection-gaps";
 import { listOfficialDesigns } from "../design-systems/official-designs";
 import { clearInputTelemetryHistory } from "../widget-types/input-telemetry/input-telemetry-accumulator";
+import { buildAuthoringV2Runtime } from "./fixtures/authoring-v2-fixture";
 import {
   parseOverlayWorkshopQuery,
   serializeOverlayWorkshopQuery,
@@ -137,12 +138,13 @@ function defaultSystem(widget: WidgetType): DesignSystemId {
 function WorkshopSurface({ prepared, surface, query, comparison = false }: { prepared: PreparedFixture; surface: OverlayWorkshopQuery["surface"]; query: OverlayWorkshopQuery; comparison?: boolean }): React.ReactElement {
   const width = query.width ?? prepared.widget.layout.w;
   const height = query.height ?? prepared.widget.layout.h;
+  const runtime = buildAuthoringV2Runtime(prepared.widget.type, prepared.snapshot);
   return <div className="overlay-workshop-surface" data-overlay-workshop-surface={surface} data-overlay-workshop-comparison={comparison || undefined}>
     {surface !== "obs" && <span className="overlay-workshop-surface-label">{surface}</span>}
     <div className="overlay-workshop-widget-root" data-overlay-workshop-widget-root style={{ width, height, transform: `scale(${query.scale})`, transformOrigin: "center" }}>
       <WidgetVisualViewport widgetType={prepared.widget.type} visual={prepared.widget.visual} layout={{ ...prepared.widget.layout, w: width, h: height }} testId="overlay-workshop-viewport">
         <WidgetVisualHost widget={{ ...prepared.widget, layout: { ...prepared.widget.layout, w: width, h: height } }} snapshot={prepared.snapshot} renderMode={surface}
-          runtime={prepared.widget.type === "engineer-radio" ? { engineerPresentation: query.state === "ready" ? buildEngineerPresentationFixture() : null } : undefined} />
+          runtime={prepared.widget.type === "engineer-radio" ? { ...runtime, engineerPresentation: query.state === "ready" ? buildEngineerPresentationFixture() : null } : runtime} />
       </WidgetVisualViewport>
     </div>
   </div>;

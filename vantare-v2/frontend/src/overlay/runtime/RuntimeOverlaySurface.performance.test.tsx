@@ -15,6 +15,7 @@ import {
   type TelemetryScheduler,
 } from "../core/telemetry-rate-coordinator";
 import { standingsDefinition } from "../widget-types/standings/standings-definition";
+import { getOverlayV2ViewModelEntry } from "../core/overlay-v2-view-models";
 import { RuntimeOverlaySurface } from "./RuntimeOverlaySurface";
 
 const originalResizeObserver = globalThis.ResizeObserver;
@@ -112,7 +113,7 @@ describe("store → RuntimeOverlaySurface → renderer", () => {
     coordinator.publish(buildMockTelemetry({ session: "race", location: "track", state: "ready" }));
     const store = createOverlayFrameV2Store();
     const unbind = bindOverlayV2Coordinator(store, coordinator);
-    const renderStandings = vi.spyOn(standingsDefinition, "buildViewModel");
+    const renderStandings = vi.spyOn(getOverlayV2ViewModelEntry("standings")!, "buildViewModelV2");
     const view = render(
       <RuntimeOverlaySurface
         document={documentWithStandings()}
@@ -141,7 +142,9 @@ describe("store → RuntimeOverlaySurface → renderer", () => {
     const harness = schedulerHarness();
     const coordinator = createTelemetryRateCoordinator({ createScheduler: harness.create });
     coordinator.publish(buildMockTelemetry({ session: "race", location: "track", state: "ready" }));
-    const renderStandings = vi.spyOn(standingsDefinition, "buildViewModel");
+    const update = golden();
+    coordinator.setOverlayFrame(update.frame ?? undefined, update.source);
+    const renderStandings = vi.spyOn(getOverlayV2ViewModelEntry("standings")!, "buildViewModelV2");
     const view = render(
       <RuntimeOverlaySurface
         document={documentWithStandings(64)}

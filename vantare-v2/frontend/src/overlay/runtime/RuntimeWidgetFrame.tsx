@@ -7,6 +7,7 @@ import { WidgetVisualViewport } from "../core/WidgetVisualViewport";
 import { useRateLimitedWidgetTelemetry } from "./use-rate-limited-telemetry";
 import type { EngineerPresentation } from "../../engineer/engineer-presentation-store";
 import type { OverlayV2Feature } from "../telemetry-shadow/overlay-v2-features";
+import type { RaceScheduleSnapshot } from "../core/race-schedule-store";
 
 export type RuntimeWidgetFrameProps = {
   widget: WidgetInstanceV3;
@@ -18,11 +19,12 @@ export type RuntimeWidgetFrameProps = {
   engineerPresentation?: EngineerPresentation | null;
   engineerSubtitlesEnabled?: boolean;
   overlayV2Features?: readonly OverlayV2Feature[];
+  raceSchedule?: RaceScheduleSnapshot;
 };
 
 function RuntimeWidgetFrameComponent(props: RuntimeWidgetFrameProps): React.ReactElement {
-  const { widget, telemetry, renderMode, layoutOrigin, onDiagnostic, diagnostics, engineerPresentation, engineerSubtitlesEnabled, overlayV2Features } = props;
-  const { snapshot, overlayFrame: approvedOverlayV2Frame, overlaySource } = useRateLimitedWidgetTelemetry(
+  const { widget, telemetry, renderMode, layoutOrigin, onDiagnostic, diagnostics, engineerPresentation, engineerSubtitlesEnabled, overlayV2Features, raceSchedule } = props;
+  const runtimeTelemetry = useRateLimitedWidgetTelemetry(
     telemetry,
     widget.type,
   );
@@ -50,11 +52,17 @@ function RuntimeWidgetFrameComponent(props: RuntimeWidgetFrameProps): React.Reac
       >
         <WidgetVisualHost
           widget={widget}
-          snapshot={snapshot}
           renderMode={renderMode}
           onDiagnostic={onDiagnostic}
           diagnostics={diagnostics}
-          runtime={{ engineerPresentation, engineerSubtitlesEnabled, overlayV2Frame: approvedOverlayV2Frame, overlayV2Source: overlaySource, overlayV2Features }}
+          runtime={{
+            engineerPresentation,
+            engineerSubtitlesEnabled,
+            raceScheduleEvents: raceSchedule?.events,
+            raceScheduleStatus: raceSchedule?.status,
+            ...runtimeTelemetry,
+            overlayV2Features,
+          }}
         />
       </WidgetVisualViewport>
     </div>
@@ -94,5 +102,6 @@ export const RuntimeWidgetFrame = memo(RuntimeWidgetFrameComponent, (left, right
   left.diagnostics === right.diagnostics &&
   left.engineerPresentation === right.engineerPresentation &&
   left.engineerSubtitlesEnabled === right.engineerSubtitlesEnabled &&
-  left.overlayV2Features === right.overlayV2Features,
+  left.overlayV2Features === right.overlayV2Features &&
+  left.raceSchedule === right.raceSchedule,
 );

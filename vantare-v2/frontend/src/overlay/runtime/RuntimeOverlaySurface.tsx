@@ -21,12 +21,15 @@ import type { TelemetryRateCoordinator } from "../core/telemetry-rate-coordinato
 import { createWidgetDiagnosticCollector, type WidgetDiagnostic, type WidgetDiagnosticCollector } from "../core/widget-diagnostics";
 import { RuntimeWidgetFrame } from "./RuntimeWidgetFrame";
 import { resolveRuntimeLayout, selectRuntimeWidgets } from "./resolve-runtime-layout";
-import { useRateLimitedTelemetry } from "./use-rate-limited-telemetry";
+import { useOverlayRuntimeContext } from "./use-rate-limited-telemetry";
 import type { EngineerPresentationStore } from "../../engineer/engineer-presentation-store";
 import { EngineerSubtitles } from "../../engineer/EngineerSubtitles";
 import type { OverlayV2Feature } from "../telemetry-shadow/overlay-v2-features";
-
-export const RUNTIME_SURFACE_VISIBILITY_HZ = 15;
+import type { OverlayRuntimeContext } from "../core/overlay-runtime-context";
+import {
+  EMPTY_RACE_SCHEDULE_SNAPSHOT,
+  type RaceScheduleStore,
+} from "../core/race-schedule-store";
 
 export type RuntimeOverlaySurfaceProps = {
   document: ProfileDocumentV3;
@@ -37,17 +40,44 @@ export type RuntimeOverlaySurfaceProps = {
   diagnostics?: WidgetDiagnosticCollector;
   engineerPresentations?: EngineerPresentationStore;
   overlayV2Features?: readonly OverlayV2Feature[];
+  raceSchedule?: RaceScheduleStore;
 };
 
 const subscribeToNothing = () => () => undefined;
 const noPresentation = () => null;
 
 export function RuntimeOverlaySurface(props: RuntimeOverlaySurfaceProps): React.ReactElement {
-  const { document, telemetry, renderMode, layoutOrigin, onDiagnostic, diagnostics: diagnosticsProp, engineerPresentations, overlayV2Features } = props;
+  const { document, telemetry, renderMode, layoutOrigin, onDiagnostic, diagnostics: diagnosticsProp, engineerPresentations, overlayV2Features, raceSchedule } = props;
   const diagnostics = useMemo(() => diagnosticsProp ?? createWidgetDiagnosticCollector(), [diagnosticsProp]);
-  const snapshot = useRateLimitedTelemetry(telemetry, RUNTIME_SURFACE_VISIBILITY_HZ);
-  const layout = resolveRuntimeLayout(document, snapshot);
-  const widgets = selectRuntimeWidgets(layout, snapshot);
+  const runtimeContext = useOverlayRuntimeContext(telemetry);
+  const [contextMemory, setContextMemory] = useState<{
+    observed: OverlayRuntimeContext;
+    lastUseful?: OverlayRuntimeContext;
+  }>(() => ({
+    observed: runtimeContext,
+    lastUseful: runtimeContext.sessionType ? runtimeContext : undefined,
+  }));
+  if (contextMemory.observed !== runtimeContext) {
+    setContextMemory({
+      observed: runtimeContext,
+      lastUseful: runtimeContext.sessionType ? runtimeContext : contextMemory.lastUseful,
+    });
+  }
+  const layoutContext = runtimeContext.sessionType
+    ? runtimeContext
+    : contextMemory.lastUseful ?? runtimeContext;
+  const authorityUnavailable = telemetry.getOverlayFailure() !== undefined ||
+    telemetry.getOverlayFrame() === undefined ||
+    telemetry.getOverlaySource() === undefined ||
+    runtimeContext.sourceState === "error" ||
+    runtimeContext.sourceState === "stale";
+  const layout = resolveRuntimeLayout(document, layoutContext);
+  // En ausencia/fallo de V2 los frames deben seguir montados: el host es quien
+  // convierte ese estado en un diagnostico visible. Filtrar aqui ocultaria el
+  // unico mensaje accionable para Desktop y OBS.
+  const widgets = selectRuntimeWidgets(layout, layoutContext, {
+    bypassVisibility: authorityUnavailable,
+  });
   const layoutViewport = resolveLayoutViewport(document);
   const surfaceRef = useRef<HTMLDivElement>(null);
   const [outputViewport, setOutputViewport] = useState<ViewportSize | null>(null);
@@ -61,6 +91,11 @@ export function RuntimeOverlaySurface(props: RuntimeOverlaySurfaceProps): React.
     engineerPresentations?.subscribe ?? subscribeToNothing,
     engineerPresentations?.getSubtitlesEnabled ?? (() => false),
     () => false,
+  );
+  const raceScheduleSnapshot = useSyncExternalStore(
+    raceSchedule?.subscribe ?? subscribeToNothing,
+    raceSchedule?.getSnapshot ?? (() => EMPTY_RACE_SCHEDULE_SNAPSHOT),
+    () => EMPTY_RACE_SCHEDULE_SNAPSHOT,
   );
 
   useEffect(() => {
@@ -182,6 +217,7 @@ export function RuntimeOverlaySurface(props: RuntimeOverlaySurfaceProps): React.
               engineerPresentation={engineerPresentation}
               engineerSubtitlesEnabled={subtitlesEnabled}
               overlayV2Features={overlayV2Features}
+              raceSchedule={raceScheduleSnapshot}
             />
           ))}
           {subtitlesEnabled && engineerPresentation

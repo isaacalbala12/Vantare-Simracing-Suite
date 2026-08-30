@@ -2,7 +2,6 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { useI18n } from '../../../i18n/I18nProvider';
 import { resolveLayoutViewport } from '../../../overlay/core/layout-viewport';
 import type { WidgetInstanceV3 } from '../../../overlay/core/profile-document';
-import type { TelemetrySnapshot } from '../../../overlay/core/telemetry-snapshot';
 import type { WidgetDiagnosticCollector } from '../../../overlay/core/widget-diagnostics';
 import { canMutateWidget } from '../access/studio-access';
 import { STUDIO_WIDGET_ACCESS_MESSAGE_KEY } from '../studio-v3-i18n';
@@ -11,7 +10,6 @@ import { StudioWidgetFrame } from '../canvas/StudioWidgetFrame';
 import { resolveStageBackground } from '../canvas/canvas-backgrounds';
 import { clientToLogical } from '../canvas/canvas-geometry';
 import { useCanvasInteraction } from '../canvas/useCanvasInteraction';
-import { useStudioTelemetrySnapshot } from '../canvas/studio-telemetry';
 import { useFontsReady } from '../canvas/use-fonts-ready';
 import { findWallpaper, wallpaperIdOf } from '../canvas/studio-wallpapers';
 import { useWallpapers } from '../canvas/use-wallpapers';
@@ -58,7 +56,6 @@ export function StudioOrbitStage(props: StudioOrbitStageProps): React.ReactEleme
     notifyAccessDenied,
   } = useStudioDocument();
   const { preview } = useStudioPreview();
-  const liveSnapshot = useStudioTelemetrySnapshot();
   // Los widgets pintan texto con metricas criticas: sin este gate, el swap de
   // fuentes reflowea las filas justo tras el primer pintado (el 'salto
   // inicial'). Con fuentes locales ready llega en milisegundos.
@@ -131,22 +128,7 @@ export function StudioOrbitStage(props: StudioOrbitStageProps): React.ReactEleme
     canMutateLayout,
     onLayoutBlocked,
   });
-
-  // Durante un arrastre los widgets se congelan en el ultimo snapshot: repintar
-  // su contenido a 30 Hz mientras se mueve el marco es trabajo tirado. La foto
-  // se toma en el efecto de transicion, no en render, para no leer una ref
-  // mientras se pinta (`react-hooks/refs`).
   const interacting = interaction.interaction.kind !== 'idle';
-  const latestSnapshotRef = useRef(liveSnapshot);
-  const [snapshotOverride, setSnapshotOverride] = useState<TelemetrySnapshot | undefined>(
-    undefined,
-  );
-  useEffect(() => {
-    latestSnapshotRef.current = liveSnapshot;
-  }, [liveSnapshot]);
-  useEffect(() => {
-    setSnapshotOverride(interacting ? latestSnapshotRef.current : undefined);
-  }, [interacting]);
 
   const selected = widgets.find((widget) => widget.id === selectedWidgetId) ?? null;
   const selectedLayout = selected ? interaction.resolveLayout(selected) : null;
@@ -320,7 +302,6 @@ export function StudioOrbitStage(props: StudioOrbitStageProps): React.ReactEleme
                   onSelect={selectWidget}
                   previewActive={interaction.isWidgetPreviewActive(widget.id)}
                   selected={selectedWidgetId === widget.id}
-                  snapshotOverride={snapshotOverride}
                   widget={widget}
                   fitSelectionToContent
                 />

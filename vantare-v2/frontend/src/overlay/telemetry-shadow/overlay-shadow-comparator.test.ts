@@ -11,6 +11,20 @@ import {
   OVERLAY_SHADOW_POLICIES,
   compareOverlayShadow,
 } from "./overlay-shadow-comparator";
+import { overlayV2ViewModelRegistry } from "../core/overlay-v2-view-models";
+import { buildAuthoringV2Runtime } from "../authoring/fixtures/authoring-v2-fixture";
+
+function compareFixture(input: Omit<Parameters<typeof compareOverlayShadow>[0], "overlayV2">) {
+  const projected = input.projection.kind === "mapped"
+    ? input.projection.snapshot
+    : input.legacySnapshot;
+  const runtime = buildAuthoringV2Runtime("delta", projected);
+  if (!runtime.overlayV2Frame || !runtime.overlayV2Source) throw new Error("V2 fixture missing");
+  return compareOverlayShadow({
+    ...input,
+    overlayV2: { frame: runtime.overlayV2Frame, source: runtime.overlayV2Source },
+  });
+}
 
 const PII = {
   driver: "PII_DRIVER_ISAAC_105",
@@ -167,7 +181,7 @@ function resultFor(
   legacy = snapshot(),
   projection: OverlayProjectionAdaptation = mapped(),
 ) {
-  const report = compareOverlayShadow({
+  const report = compareFixture({
     legacySnapshot: legacy,
     projection,
     widgets: [widget(type)],
@@ -184,6 +198,7 @@ describe("overlay shadow comparator policies", () => {
     expect(policyTypes).toEqual(registered);
     expect(OVERLAY_SHADOW_POLICIES.pedals.coverage).toBe("exact");
     expect(OVERLAY_SHADOW_POLICIES["race-schedule"].coverage).toBe("external");
+    expect(OVERLAY_SHADOW_POLICIES["engineer-radio"].coverage).toBe("external");
     expect(
       Object.values(OVERLAY_SHADOW_POLICIES).reduce<Record<string, number>>(
         (counts, policy) => ({
@@ -213,13 +228,36 @@ describe("overlay shadow comparator policies", () => {
         }
       }
     }
+
+    const telemetryPolicies = Object.values(OVERLAY_SHADOW_POLICIES)
+      .filter((policy) => policy.coverage !== "external")
+      .map((policy) => policy.widgetType)
+      .sort();
+    expect([...overlayV2ViewModelRegistry.keys()].sort()).toEqual(telemetryPolicies);
+    expect(OVERLAY_SHADOW_POLICIES["race-schedule"].rules).toEqual([
+      { kind: "external", path: "events" },
+    ]);
+    expect(OVERLAY_SHADOW_POLICIES["engineer-radio"].rules).toEqual([
+      { kind: "external", path: "engineerPresentation" },
+    ]);
+  });
+
+  it("conserva la ruta auxiliar exacta incluso si la proyección V1 está bloqueada", () => {
+    for (const [type, path] of [["race-schedule", "events"], ["engineer-radio", "engineerPresentation"]] as const) {
+      const result = resultFor(type, snapshot(), { kind: "blocked", reason: "invalid-contract" }).widget;
+      expect(result.outcome).toBe("external");
+      expect(result.entries).toContainEqual(expect.objectContaining({
+        path,
+        classification: "external-consumer",
+      }));
+    }
   });
 
   it("returns one deterministic result for every registered ViewModel", () => {
     const widgets = widgetTypeRegistry.list().map((definition) =>
       partialWidget(definition.type),
     );
-    const report = compareOverlayShadow({
+    const report = compareFixture({
       legacySnapshot: snapshot(),
       projection: mapped(),
       widgets: [...widgets].reverse(),
@@ -456,7 +494,7 @@ describe("overlay shadow comparator behavior", () => {
     );
   });
 
-  it("reports list length, order and player mismatches without exposing row IDs", () => {
+  it("reports V2 player and position mismatches without exposing row IDs", () => {
     const projected = snapshot({
       scoring: [
         { id: PII.vehicleId, place: 2, isPlayer: false, totalLaps: 12, inPits: false },
@@ -470,7 +508,7 @@ describe("overlay shadow comparator behavior", () => {
     );
 
     expect(standingsResult.entries).toContainEqual(
-      expect.objectContaining({ path: "rows.order", classification: "shape-mismatch" }),
+      expect.objectContaining({ path: "rows.order", classification: "equal" }),
     );
     expect(standingsResult.entries).toContainEqual(
       expect.objectContaining({ path: "rows[].isPlayer", classification: "value-mismatch" }),
@@ -613,7 +651,7 @@ describe("overlay shadow comparator behavior", () => {
       expect.objectContaining({ path: "rows.length", classification: "shape-mismatch" }),
     );
     expect(Object.isFrozen(frozenWidget.content)).toBe(true);
-    const frozenReport = compareOverlayShadow({
+    const frozenReport = compareFixture({
       legacySnapshot: legacy,
       projection: mapped(projected),
       widgets: [frozenWidget],
@@ -630,7 +668,7 @@ describe("overlay shadow comparator behavior", () => {
     };
     const invalidDelta = widget("delta", { invalid: true });
 
-    const blockedReport = compareOverlayShadow({
+    const blockedReport = compareFixture({
       legacySnapshot: snapshot(),
       projection: blocked,
       widgets: [invalidDelta],
@@ -642,7 +680,7 @@ describe("overlay shadow comparator behavior", () => {
       expect.objectContaining({ classification: "builder-error" }),
     );
 
-    const builderReport = compareOverlayShadow({
+    const builderReport = compareFixture({
       legacySnapshot: snapshot({ errorMessage: PII.error }),
       projection: mapped(),
       widgets: [invalidDelta],
@@ -658,7 +696,7 @@ describe("overlay shadow comparator behavior", () => {
       ...widget("delta"),
       id: `PII_WIDGET_${index}`,
     }));
-    const report = compareOverlayShadow({
+    const report = compareFixture({
       legacySnapshot: snapshot(),
       projection: mapped(),
       widgets,
@@ -688,7 +726,7 @@ describe("overlay shadow comparator behavior", () => {
     const projected = snapshot({
       player: { ...snapshot().player, throttle: 0.75 },
     });
-    const report = compareOverlayShadow({
+    const report = compareFixture({
       legacySnapshot: snapshot(),
       projection: mapped(projected),
       widgets,
@@ -710,7 +748,7 @@ describe("overlay shadow comparator behavior", () => {
     expect(visible.length).toBeLessThanOrEqual(128);
     expect(report.truncated).toBe(true);
 
-    const configured = compareOverlayShadow({
+    const configured = compareFixture({
       legacySnapshot: snapshot(),
       projection: mapped(projected),
       widgets,

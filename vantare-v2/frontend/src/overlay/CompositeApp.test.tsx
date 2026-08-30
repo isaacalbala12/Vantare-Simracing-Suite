@@ -243,14 +243,14 @@ describe("CompositeApp", () => {
     tick(100);
 
     expect(screen.queryByText("Loading profile...")).toBeNull();
-    expect(screen.getByText("RELATIVE")).toBeTruthy();
+    expect(screen.getByText("Overlay V2 frame unavailable")).toBeTruthy();
   });
 
   it("renders runtime widgets after overlay:profile-v3-loaded", () => {
     render(<CompositeApp />);
     dispatch("overlay:profile-v3-loaded", buildProfilePayload(buildRelativeDocument()));
     tick(100);
-    expect(screen.getByText("RELATIVE")).toBeTruthy();
+    expect(screen.getByText("Overlay V2 frame unavailable")).toBeTruthy();
   });
 
   it("applies canonical Overlay projections from the HTTP response", async () => {
@@ -269,10 +269,11 @@ describe("CompositeApp", () => {
         },
       },
       {name: "telemetry:overlay:projection", data: canonicalEnvelope()},
+      {name: "telemetry:overlay-v2:snapshot", data: JSON.parse(goldenV2Raw)},
     ]);
     tick(200);
 
-    expect(screen.getByText("Player")).toBeTruthy();
+    expect(screen.getByText("Driver 000")).toBeTruthy();
   });
 
   it("renders a transparent empty surface for an empty profile", () => {

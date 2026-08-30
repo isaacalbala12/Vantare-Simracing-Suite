@@ -177,14 +177,40 @@ async function capturePerformance(page, timeoutMs) {
   }, timeoutMs);
 }
 
+async function captureLicense(page, timeoutMs) {
+  return page.evaluate(async (timeout) => {
+    const { Events } = await import("/wails/runtime.js");
+    return new Promise((resolve, reject) => {
+      const timer = window.setTimeout(() => {
+        unsubscribe();
+        reject(new Error(`license:changed was not emitted within ${timeout} ms`));
+      }, timeout);
+      const unsubscribe = Events.On("license:changed", (event) => {
+        const payload = event?.data;
+        if (!payload || typeof payload !== "object" || typeof payload.state !== "string") return;
+        window.clearTimeout(timer);
+        unsubscribe();
+        resolve({
+          event: "license:changed",
+          state: payload.state,
+          configured: payload.state !== "unconfigured",
+          account: payload.userId ? "authenticated" : "anonymous",
+          deviceOK: payload.deviceOK === true,
+        });
+      });
+      Events.Emit("license:cached:get", {});
+    });
+  }, timeoutMs);
+}
+
 const cdp = argument("cdp");
 const action = argument("action", "inspect");
 const output = argument("output");
 const screenshotDir = argument("screenshot-dir");
 const durationSeconds = Number(argument("duration", "10"));
 const expectedWidgets = Number(argument("expected-widgets", "0"));
-if (!cdp || !["inspect", "state", "overlay-start", "overlay-stop", "hub-minimise", "hub-restore", "hub-open", "performance", "app-quit"].includes(action) || !Number.isFinite(durationSeconds) || durationSeconds < 1 || durationSeconds > 120 || !Number.isInteger(expectedWidgets) || expectedWidgets < 0) {
-  throw new Error("usage: node huella-cdp.mjs --cdp http://127.0.0.1:9247 --action inspect|state|overlay-start|overlay-stop|hub-minimise|hub-restore|hub-open|performance|app-quit [--duration 10] [--expected-widgets 3] [--output result.json] [--screenshot-dir directory]");
+if (!cdp || !["inspect", "state", "overlay-start", "overlay-stop", "hub-minimise", "hub-restore", "hub-open", "performance", "license", "app-quit"].includes(action) || !Number.isFinite(durationSeconds) || durationSeconds < 1 || durationSeconds > 120 || !Number.isInteger(expectedWidgets) || expectedWidgets < 0) {
+  throw new Error("usage: node huella-cdp.mjs --cdp http://127.0.0.1:9247 --action inspect|state|overlay-start|overlay-stop|hub-minimise|hub-restore|hub-open|performance|license|app-quit [--duration 10] [--expected-widgets 3] [--output result.json] [--screenshot-dir directory]");
 }
 
 const browser = await chromium.connectOverCDP(cdp);
@@ -250,6 +276,18 @@ if (action === "performance") {
   const json = `${JSON.stringify(result, null, 2)}\n`;
   if (output) await writeFile(output, json, { encoding: "utf8", flag: "wx" });
   process.stdout.write(json);
+  process.exit(0);
+}
+if (action === "license") {
+  const hub = (await pagesByRole(browser)).find(({ description }) => description.hub);
+  if (!hub) throw new Error("Hub target is not available for license capture");
+  const license = await captureLicense(hub.page, durationSeconds * 1_000);
+  await writeResult({
+    schema: "vantare.license.cdp.v1",
+    capturedAt: new Date().toISOString(),
+    action,
+    ...license,
+  });
   process.exit(0);
 }
 const control = action === "inspect" || action === "state" ? null : await setOverlay(browser, action === "overlay-start");

@@ -39,3 +39,14 @@ test("el modo sin juego conserva RAM/CDP y omite solo PresentMon", () => {
   assert.match(bench, /if \(-not \$SinJuego\) \{\s*\$presentMonArgs/);
   assert.match(bench, /PresentMon omitido: corrida RAM-only sin juego/);
 });
+
+test("la medida falla cerrada si la build arranca sin licencia configurada", () => {
+  assert.match(cdpHelper, /Events\.On\("license:changed"/);
+  assert.match(cdpHelper, /Events\.Emit\("license:cached:get"/);
+  assert.match(cdpHelper, /account: payload\.userId \? "authenticated" : "anonymous"/);
+  assert.match(bench, /--action license/);
+  assert.match(bench, /\$licenseResult\.configured -ne \$true/);
+  assert.match(bench, /Prohibido medir una build sin licencia configurada/);
+  assert.match(bench, /licenseState = \$licenseState/);
+  assert.match(bench, /licenseAccount = \$licenseAccount/);
+});

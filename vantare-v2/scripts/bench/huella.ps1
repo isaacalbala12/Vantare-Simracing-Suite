@@ -173,6 +173,7 @@ $rawCsv = Join-Path $outputDir "$stem.csv"
 $presentMonCsv = Join-Path $outputDir "$stem-presentmon.csv"
 $summaryMd = Join-Path $outputDir "$stem.md"
 $cdpJson = Join-Path $outputDir "$stem-cdp.json"
+$licenseJson = Join-Path $outputDir "$stem-license.json"
 $hubReopenJson = Join-Path $outputDir "$stem-hub-reopen.json"
 $stdoutLog = Join-Path $outputDir "$stem-stdout.log"
 $stderrLog = Join-Path $outputDir "$stem-stderr.log"
@@ -188,6 +189,9 @@ $sessionName = $null
 $rows = [Collections.Generic.List[object]]::new()
 $shutdownClean = $false
 $gameFrametimeValid = $false
+$licenseState = $null
+$licenseAccount = $null
+$licenseConfigured = $false
 $orphanEtwSessionsStopped = @()
 $orphanEtwSessionsStoppedJson = '[]'
 $previousCpu = @{}
@@ -303,6 +307,17 @@ try {
     } until ($cdpReady -or (Get-Date) -ge $deadline)
     if (-not $cdpReady) { throw "CDP no respondió en el puerto $Puerto dentro de 30 s." }
 
+    & node $cdpHelper --cdp "http://127.0.0.1:$Puerto" --action license --duration 15 --output $licenseJson | Out-Host
+    if ($LASTEXITCODE -ne 0) { throw "No se pudo capturar el estado de licencia por CDP (código $LASTEXITCODE)." }
+    $licenseResult = Get-Content -LiteralPath $licenseJson -Raw | ConvertFrom-Json
+    if ($licenseResult.configured -ne $true -or [string]$licenseResult.state -eq 'unconfigured') {
+        throw 'Prohibido medir una build sin licencia configurada: reconstruye con frontend/.env.local y tools/generate_supabase_config.ps1.'
+    }
+    $licenseState = [string]$licenseResult.state
+    $licenseAccount = [string]$licenseResult.account
+    $licenseConfigured = [bool]$licenseResult.configured
+    Write-Host "Licencia preflight: estado=$licenseState; cuenta=$licenseAccount; configurada=$licenseConfigured"
+
     if ($Condicion -ne 'A0') {
         & node $cdpHelper --cdp "http://127.0.0.1:$Puerto" --action overlay-stop --duration 1 --expected-widgets 0 | Out-Host
         if ($LASTEXITCODE -ne 0) { throw 'No se pudo fijar el estado inicial con el overlay detenido.' }
@@ -373,6 +388,7 @@ try {
             $rows.Add([pscustomobject][ordered]@{
                 timestamp = $now.ToString('o'); condition = $Condicion; pid = $processId; role = $roleByPid[$processId]
                 buildSha256 = $buildSha256; distSha256 = $distSha256; buildStable = $true; gitHead = $gitHead
+                licenseState = $licenseState; licenseAccount = $licenseAccount; licenseConfigured = $licenseConfigured
                 scene = $Escena; lmuSession = $SesionLmu; cars = $Coches
                 hygieneForced = $hygieneForced; foreignProcesses = $foreignProcessesJson; publishable = $publishable; measurementMode = $measurementMode
                 systemWebView2Count = $systemWebView2.Count; systemWebView2Paths = $systemWebView2PathsJson
@@ -422,6 +438,7 @@ try {
                 timestamp = [string]$frame.CPUStartTime
                 condition = $Condicion; pid = $gameProcess.Id; role = 'game'; privateBytes = $null; workingSetBytes = $null
                 buildSha256 = $buildSha256; distSha256 = $distSha256; buildStable = $true; gitHead = $gitHead
+                licenseState = $licenseState; licenseAccount = $licenseAccount; licenseConfigured = $licenseConfigured
                 scene = $Escena; lmuSession = $SesionLmu; cars = $Coches
                 hygieneForced = $hygieneForced; foreignProcesses = $foreignProcessesJson; publishable = $publishable; measurementMode = $measurementMode
                 systemWebView2Count = $systemWebView2.Count; systemWebView2Paths = $systemWebView2PathsJson
@@ -490,5 +507,6 @@ try {
 Write-Host "CSV: $rawCsv"
 Write-Host "Resumen: $summaryMd"
 Write-Host "CDP: $cdpJson"
+Write-Host "Licencia: $licenseJson"
 if ($Condicion -eq 'HubMin') { Write-Host "Reapertura Hub: $hubReopenJson" }
 Write-Host "Cierre limpio: $shutdownClean"

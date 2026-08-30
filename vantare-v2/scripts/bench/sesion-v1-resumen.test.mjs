@@ -20,6 +20,7 @@ function fixture() {
     capturedAt: new Date(started + minute * 60_000).toISOString(),
     targets: [{
       role: "overlay",
+      surface: "desktop",
       url: "http://wails.localhost/",
       title: "Vantare",
       widgetCount: 3,
@@ -37,6 +38,7 @@ function fixture() {
     schema: "vantare.session.v1",
     session: "S1",
     phase: "off",
+    expectedWindows: ["desktop"],
     durationMinutes: 20,
     startedAt: new Date(started).toISOString(),
     endedAt: new Date(started + 20 * 60_000).toISOString(),
@@ -68,6 +70,24 @@ test("falla cerrado si una ventana recibe V1 durante OFF", () => {
   assert.equal(summary.criteria.v1Off.status, "fail");
 });
 
+test("falla cerrado si falta pull o shadow no es null en cualquier ventana OFF", () => {
+  const missingPull = fixture();
+  missingPull.diagnostics[2].targets[0].diagnostics.pull = null;
+  assert.equal(summarizeSession(missingPull).verdict, "fail");
+
+  const activeShadow = fixture();
+  activeShadow.diagnostics[3].targets[0].diagnostics.shadow = {frames: 0, mismatches: 0};
+  assert.equal(summarizeSession(activeShadow).criteria.v1Off.status, "fail");
+});
+
+test("falla si la sesión omite una clase de ventana esperada", () => {
+  const input = fixture();
+  input.expectedWindows = [];
+  const summary = summarizeSession(input);
+  assert.equal(summary.verdict, "fail");
+  assert.equal(summary.criteria.windows.status, "fail");
+});
+
 test("falla una pendiente renderer superior a cinco MiB por hora", () => {
   const input = fixture();
   const started = Date.parse(input.startedAt);
@@ -84,17 +104,63 @@ test("valida reconnect y apertura tardía contra sus timestamps", () => {
   const reconnect = fixture();
   reconnect.session = "S4";
   reconnect.transitions = [
-    {kind: "source-state", from: "live", to: "stale", timestamp: "2026-08-30T10:05:00Z"},
-    {kind: "source-state", from: "stale", to: "live", timestamp: "2026-08-30T10:05:20Z"},
+    {kind: "source-state", window: "desktop|overlay|one", from: "live", to: "stale", frameRevision: 100, timestamp: "2026-08-30T10:05:00Z"},
+    {kind: "human", text: "reanudar LMU", timestamp: "2026-08-30T10:05:05Z"},
+    {kind: "source-state", window: "desktop|overlay|one", from: "stale", to: "live", frameRevision: 101, timestamp: "2026-08-30T10:05:20Z"},
+    {kind: "v2-progress", window: "desktop|overlay|one", frameRevision: 101, timestamp: "2026-08-30T10:05:20Z"},
   ];
   assert.equal(summarizeSession(reconnect).criteria.scenario.status, "pass");
 
   const late = fixture();
   late.session = "S5";
+  late.expectedWindows = ["desktop", "studio-or-obs"];
   late.transitions = [
     {kind: "human", text: "abrir Desktop tarde", timestamp: "2026-08-30T10:05:00Z"},
-    {kind: "window-first-seen", window: "overlay", timestamp: "2026-08-30T10:05:03Z"},
-    {kind: "window-widget-ready", window: "overlay", timestamp: "2026-08-30T10:05:08Z"},
+    {kind: "window-first-seen", surface: "desktop", window: "desktop|overlay|one", timestamp: "2026-08-30T10:05:03Z"},
+    {kind: "window-widget-ready", surface: "desktop", window: "desktop|overlay|one", timestamp: "2026-08-30T10:05:08Z"},
+    {kind: "human", text: "abrir Studio Live tarde", timestamp: "2026-08-30T10:10:00Z"},
+    {kind: "window-first-seen", surface: "studio", window: "studio|hub|two", timestamp: "2026-08-30T10:10:03Z"},
+    {kind: "window-widget-ready", surface: "studio", window: "studio|hub|two", timestamp: "2026-08-30T10:10:08Z"},
   ];
   assert.equal(summarizeSession(late).criteria.scenario.status, "pass");
+});
+
+test("S4 falla cada ciclo sin avance V2 posterior a su propia marca", () => {
+  const input = fixture();
+  input.session = "S4";
+  input.transitions = [
+    {kind: "source-state", window: "desktop|overlay|one", from: "live", to: "stale", frameRevision: 100, timestamp: "2026-08-30T10:04:55Z"},
+    {kind: "human", text: "reanudar LMU ciclo 1", timestamp: "2026-08-30T10:05:00Z"},
+    {kind: "source-state", window: "desktop|overlay|one", from: "stale", to: "live", frameRevision: 101, timestamp: "2026-08-30T10:05:10Z"},
+    {kind: "v2-progress", window: "desktop|overlay|one", frameRevision: 101, timestamp: "2026-08-30T10:05:10Z"},
+    {kind: "source-state", window: "desktop|overlay|one", from: "live", to: "disconnected", frameRevision: 200, timestamp: "2026-08-30T10:09:55Z"},
+    {kind: "human", text: "reanudar LMU ciclo 2", timestamp: "2026-08-30T10:10:00Z"},
+    {kind: "source-state", window: "desktop|overlay|one", from: "disconnected", to: "live", frameRevision: 200, timestamp: "2026-08-30T10:10:10Z"},
+  ];
+  assert.equal(summarizeSession(input).criteria.scenario.status, "fail");
+});
+
+test("S5 exige Desktop y Studio u OBS y empareja first-seen y widget-ready por clave", () => {
+  const missingStudio = fixture();
+  missingStudio.session = "S5";
+  missingStudio.expectedWindows = ["desktop", "studio-or-obs"];
+  missingStudio.transitions = [
+    {kind: "human", text: "abrir Desktop tarde", timestamp: "2026-08-30T10:05:00Z"},
+    {kind: "window-first-seen", surface: "desktop", window: "desktop|one", timestamp: "2026-08-30T10:05:02Z"},
+    {kind: "window-widget-ready", surface: "desktop", window: "desktop|one", timestamp: "2026-08-30T10:05:04Z"},
+  ];
+  assert.equal(summarizeSession(missingStudio).criteria.scenario.status, "fail");
+
+  const crossed = fixture();
+  crossed.session = "S5";
+  crossed.expectedWindows = ["desktop", "studio-or-obs"];
+  crossed.transitions = [
+    {kind: "human", text: "abrir Desktop tarde", timestamp: "2026-08-30T10:05:00Z"},
+    {kind: "window-first-seen", surface: "desktop", window: "desktop|one", timestamp: "2026-08-30T10:05:02Z"},
+    {kind: "window-widget-ready", surface: "desktop", window: "studio|two", timestamp: "2026-08-30T10:05:04Z"},
+    {kind: "human", text: "abrir OBS tarde", timestamp: "2026-08-30T10:10:00Z"},
+    {kind: "window-first-seen", surface: "obs", window: "obs|three", timestamp: "2026-08-30T10:10:02Z"},
+    {kind: "window-widget-ready", surface: "obs", window: "desktop|one", timestamp: "2026-08-30T10:10:04Z"},
+  ];
+  assert.equal(summarizeSession(crossed).criteria.scenario.status, "fail");
 });

@@ -24,7 +24,7 @@ test("el cierre limpio sobrevive a la destrucción del Hub", () => {
 });
 
 test("HubMin mide la reapertura después de finalizar las muestras", () => {
-  const sampleLoop = bench.indexOf("for ($sampleIndex = 0; $sampleIndex -lt $Duracion; $sampleIndex++)");
+  const sampleLoop = bench.indexOf("while ((Get-Date) -lt $sampleDeadline)");
   const reopen = bench.indexOf("--action hub-open");
   assert.ok(sampleLoop >= 0);
   assert.ok(reopen > sampleLoop);

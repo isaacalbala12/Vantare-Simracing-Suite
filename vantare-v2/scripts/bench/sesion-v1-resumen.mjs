@@ -4,13 +4,37 @@ import { pathToFileURL } from "node:url";
 
 const MIB = 1024 * 1024;
 const REQUIRED_SAMPLE_ROLES = new Set(["go-host", "browser", "gpu-process"]);
+const EXPECTED_WINDOWS = Object.freeze({
+  S1: Object.freeze(["desktop"]),
+  S2: Object.freeze(["desktop"]),
+  S3: Object.freeze(["desktop"]),
+  S4: Object.freeze(["desktop"]),
+  S5: Object.freeze(["desktop", "studio-or-obs"]),
+});
 
 function result(status, detail, evidence = {}) {
   return {status, detail, ...evidence};
 }
 
 function targetKey(target) {
-  return `${target.role ?? "unknown"}|${target.url ?? ""}|${target.title ?? ""}`;
+  return `${targetSurface(target)}|${target.role ?? "unknown"}|${target.url ?? ""}|${target.title ?? ""}`;
+}
+
+function targetSurface(target) {
+  if (target.surface) return String(target.surface);
+  if (target.role === "overlay") {
+    try {
+      const url = new URL(target.url);
+      return url.pathname !== "/overlay.html" || url.searchParams.get("obs") === "1" ? "obs" : "desktop";
+    } catch {
+      return "desktop";
+    }
+  }
+  return target.role === "hub" && target.diagnostics?.pull ? "studio" : String(target.role ?? "unknown");
+}
+
+function expectedKind(surface) {
+  return surface === "studio" || surface === "obs" ? "studio-or-obs" : surface;
 }
 
 function linearSlopeMiBPerHour(samples) {
@@ -71,20 +95,45 @@ function memoryCriterion(input) {
 
 function transportEvidence(input) {
   const windows = new Map();
+  const observations = [];
+  const expected = EXPECTED_WINDOWS[input.session] ?? [];
+  const declared = input.expectedWindows ?? [];
+  const declaredValid = declared.length === expected.length && expected.every((kind, index) => declared[index] === kind);
+  const observedKinds = new Set();
+  let missingPull = 0;
   for (const checkpoint of input.diagnostics ?? []) {
     for (const target of checkpoint.targets ?? []) {
+      const surface = targetSurface(target);
+      const kind = expectedKind(surface);
+      if (!expected.includes(kind)) continue;
+      observedKinds.add(kind);
       const pull = target.diagnostics?.pull;
-      if (!pull) continue;
       const key = targetKey(target);
-      if (!windows.has(key)) windows.set(key, []);
-      windows.get(key).push({capturedAt: checkpoint.capturedAt, ...pull});
+      observations.push({capturedAt: checkpoint.capturedAt, key, surface, pull, shadow: target.diagnostics?.shadow});
+      if (!pull) {
+        missingPull += 1;
+      } else {
+        if (!windows.has(key)) windows.set(key, []);
+        windows.get(key).push({capturedAt: checkpoint.capturedAt, ...pull});
+      }
     }
   }
-  return windows;
+  const missingKinds = expected.filter((kind) => !observedKinds.has(kind));
+  return {windows, observations, expected, declaredValid, missingKinds, missingPull};
 }
 
-function deliveryCriterion(input, windows) {
-  let pass = windows.size > 0;
+function windowsCriterion(evidence) {
+  const pass = evidence.declaredValid && evidence.missingKinds.length === 0 && evidence.missingPull === 0;
+  return result(pass ? "pass" : "fail", `${evidence.expected.length - evidence.missingKinds.length}/${evidence.expected.length} clases; ${evidence.missingPull} diagnósticos pull ausentes`, {
+    expected: evidence.expected,
+    missing: evidence.missingKinds,
+    declaredValid: evidence.declaredValid,
+  });
+}
+
+function deliveryCriterion(input, evidence) {
+  const {windows} = evidence;
+  let pass = evidence.declaredValid && evidence.missingKinds.length === 0 && evidence.missingPull === 0 && windows.size > 0;
   let maxP99 = 0;
   let maxDuration = 0;
   const details = [];
@@ -105,9 +154,13 @@ function deliveryCriterion(input, windows) {
 }
 
 function phaseCriterion(input, windows) {
+  const evidence = windows;
   if (input.phase === "off") {
-    const received = Math.max(0, ...[...windows.values()].flatMap((series) => series.map(({receivedV1Projections}) => Number(receivedV1Projections ?? 0))));
-    return {v1Off: result(received === 0 ? "pass" : "fail", `${received} proyecciones V1 recibidas`), shadowOn: result("not-applicable", "fase OFF")};
+    const received = Math.max(0, ...evidence.observations.map(({pull}) => Number(pull?.receivedV1Projections ?? Infinity)));
+    const shadowViolations = evidence.observations.filter(({shadow}) => shadow !== null).length;
+    const complete = evidence.declaredValid && evidence.missingKinds.length === 0 && evidence.missingPull === 0 && evidence.observations.length > 0;
+    const pass = complete && received === 0 && shadowViolations === 0;
+    return {v1Off: result(pass ? "pass" : "fail", `${formatNumber(received)} proyecciones V1; ${shadowViolations} shadow activos o ausentes`), shadowOn: result("not-applicable", "fase OFF")};
   }
   let frames = 0;
   let mismatches = 0;
@@ -128,45 +181,53 @@ function phaseCriterion(input, windows) {
 function scenarioCriterion(input) {
   const transitions = input.transitions ?? [];
   if (input.session === "S4") {
-    const recovered = transitions.filter(({kind, to}) => kind === "source-state" && to === "live");
-    const nonLive = transitions.filter(({kind, to}) => kind === "source-state" && to !== "live");
-    let recoverySeconds = Infinity;
-    for (const lost of nonLive) {
-      const next = recovered.find((entry) => Date.parse(entry.timestamp) > Date.parse(lost.timestamp));
-      if (next) recoverySeconds = Math.min(recoverySeconds, (Date.parse(next.timestamp) - Date.parse(lost.timestamp)) / 1_000);
-    }
-    return result(Number.isFinite(recoverySeconds) && recoverySeconds <= 30 ? "pass" : "fail", `recovery ${formatNumber(recoverySeconds)} s`);
+    const cycleStarts = transitions.filter(({kind, from, to}) => kind === "source-state" && from === "live" && to !== "live");
+    const cycles = cycleStarts.map((lost) => {
+      const recovered = transitions.find((entry) => entry.kind === "source-state" && entry.window === lost.window && entry.to === "live" && Date.parse(entry.timestamp) > Date.parse(lost.timestamp));
+      const mark = transitions.find((entry) => entry.kind === "human" && /reanudar|reiniciar|reconectar/i.test(String(entry.text ?? "")) && Date.parse(entry.timestamp) >= Date.parse(lost.timestamp) - 15_000 && (!recovered || Date.parse(entry.timestamp) <= Date.parse(recovered.timestamp)));
+      const progress = mark ? transitions.find((entry) => entry.kind === "v2-progress" && entry.window === lost.window && Date.parse(entry.timestamp) >= Date.parse(mark.timestamp) && Number(entry.frameRevision) > Number(lost.frameRevision)) : undefined;
+      const recoverySeconds = recovered && mark ? (Date.parse(recovered.timestamp) - Date.parse(mark.timestamp)) / 1_000 : Infinity;
+      const progressSeconds = progress && mark ? (Date.parse(progress.timestamp) - Date.parse(mark.timestamp)) / 1_000 : Infinity;
+      const valid = Boolean(mark && recovered && progress) && recoverySeconds >= 0 && recoverySeconds <= 30 && progressSeconds <= 30;
+      return {window: lost.window, lostAt: lost.timestamp, markAt: mark?.timestamp, recoveredAt: recovered?.timestamp, progressAt: progress?.timestamp, recoverySeconds, progressSeconds, status: valid ? "pass" : "fail"};
+    });
+    const pass = cycles.length > 0 && cycles.every(({status}) => status === "pass");
+    return result(pass ? "pass" : "fail", `${cycles.filter(({status}) => status === "pass").length}/${cycles.length} ciclos recuperados con avance V2`, {cycles});
   }
   if (input.session === "S5") {
-    const openings = transitions.filter((entry) => entry.kind === "human" && /abrir|apertura/i.test(String(entry.text ?? "")));
+    const openings = transitions.filter((entry) => entry.kind === "human" && /abrir|apertura/i.test(String(entry.text ?? ""))).map((entry) => ({
+      ...entry,
+      expected: /desktop/i.test(String(entry.text ?? "")) ? "desktop" : /studio|obs/i.test(String(entry.text ?? "")) ? "studio-or-obs" : "unknown",
+    }));
     const firstSeen = transitions.filter(({kind}) => kind === "window-first-seen");
     const ready = transitions.filter(({kind}) => kind === "window-widget-ready");
-    let pass = openings.length > 0;
+    let pass = ["desktop", "studio-or-obs"].every((kind) => openings.some(({expected}) => expected === kind));
     const latencies = openings.map((opening) => {
-      const seen = firstSeen.find((entry) => Date.parse(entry.timestamp) >= Date.parse(opening.timestamp));
-      const widget = ready.find((entry) => Date.parse(entry.timestamp) >= Date.parse(opening.timestamp));
+      const seen = firstSeen.find((entry) => expectedKind(entry.surface) === opening.expected && Date.parse(entry.timestamp) >= Date.parse(opening.timestamp));
+      const widget = seen ? ready.find((entry) => entry.window === seen.window && expectedKind(entry.surface) === opening.expected && Date.parse(entry.timestamp) >= Date.parse(seen.timestamp)) : undefined;
       const firstSeenSeconds = seen ? (Date.parse(seen.timestamp) - Date.parse(opening.timestamp)) / 1_000 : Infinity;
       const widgetReadySeconds = widget ? (Date.parse(widget.timestamp) - Date.parse(opening.timestamp)) / 1_000 : Infinity;
       pass &&= firstSeenSeconds <= 5 && widgetReadySeconds <= 10;
-      return {text: opening.text, firstSeenSeconds, widgetReadySeconds};
+      return {text: opening.text, expected: opening.expected, window: seen?.window, firstSeenSeconds, widgetReadySeconds};
     });
-    return result(pass ? "pass" : "fail", `${openings.length} aperturas tardías`, {latencies});
+    return result(pass ? "pass" : "fail", `${openings.filter(({expected}) => expected !== "unknown").length}/2 aperturas previstas`, {latencies});
   }
   return result("not-applicable", "sin criterio de transición específico");
 }
 
 export function summarizeSession(input) {
-  const windows = transportEvidence(input);
-  const phase = phaseCriterion(input, windows);
+  const transport = transportEvidence(input);
+  const phase = phaseCriterion(input, transport);
   const elapsedMinutes = (Date.parse(input.endedAt) - Date.parse(input.startedAt)) / 60_000;
   const criteria = {
     capture: result(input.failure ? "fail" : "pass", input.failure ?? "captura completada"),
     metadata: result(/^[a-f\d]{64}$/i.test(input.executable?.sha256 ?? "") && /^[a-f\d]{64}$/i.test(input.executable?.distSha256 ?? "") && input.executable?.stable === true && input.executable.sha256 === input.executable.sha256End && input.executable.distSha256 === input.executable.distSha256End && Number(input.scene?.cars) > 0 ? "pass" : "fail", `${input.scene?.description ?? "sin escena"}; ${input.scene?.cars ?? 0} coches; build ${input.executable?.stable === true ? "estable" : "cambió"}`),
     duration: result(elapsedMinutes >= Number(input.durationMinutes) - 0.1 ? "pass" : "fail", `${formatNumber(elapsedMinutes)} min medidos`),
     hygiene: result((input.hygiene?.foreign ?? []).length === 0 ? "pass" : "fail", `${input.hygiene?.foreign?.length ?? 0} procesos bloqueantes`),
+    windows: windowsCriterion(transport),
     v1Off: phase.v1Off,
     shadowOn: phase.shadowOn,
-    delivery: deliveryCriterion(input, windows),
+    delivery: deliveryCriterion(input, transport),
     memory: memoryCriterion(input),
     scenario: scenarioCriterion(input),
     screenshots: result((input.screenshots?.initial?.length ?? 0) > 0 && (input.screenshots?.final?.length ?? 0) > 0 ? "pass" : "fail", `${input.screenshots?.initial?.length ?? 0} iniciales; ${input.screenshots?.final?.length ?? 0} finales`),

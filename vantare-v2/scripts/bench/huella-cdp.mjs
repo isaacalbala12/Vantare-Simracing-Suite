@@ -17,19 +17,29 @@ function argument(name, fallback = "") {
 }
 
 async function describePage(page) {
-  return page.evaluate(() => ({
-    url: window.location.href,
-    title: document.title,
-    overlay: window.location.href.startsWith("http://wails.localhost/overlay.html")
+  return page.evaluate(() => {
+    const current = new URL(window.location.href);
+    const overlayEntry = window.location.href.startsWith("http://wails.localhost/overlay.html")
+      || (current.origin === "http://wails.localhost" && current.pathname === "/overlay");
+    const overlay = overlayEntry
       && (typeof window.__vantareOverlayV2Diagnostics === "function"
-        || document.querySelector('[data-testid="runtime-overlay-surface"]') !== null),
-    hub: window.location.href.startsWith("http://wails.localhost/#/hub")
-      || document.querySelector(".orbit-root") !== null,
-    widgetCount: document.querySelectorAll('[data-testid="runtime-widget-frame"]').length,
-    diagnostics: typeof window.__vantareOverlayV2Diagnostics === "function"
-      ? window.__vantareOverlayV2Diagnostics()
-      : null,
-  }));
+        || document.querySelector('[data-testid="runtime-overlay-surface"]') !== null);
+    const hub = window.location.href.startsWith("http://wails.localhost/#/hub")
+      || document.querySelector(".orbit-root") !== null;
+    const studio = hub && document.querySelector(".studio-route-views") !== null;
+    const obs = overlay && (current.pathname !== "/overlay.html" || current.searchParams.get("obs") === "1");
+    return {
+      url: window.location.href,
+      title: document.title,
+      overlay,
+      hub,
+      surface: studio ? "studio" : overlay ? (obs ? "obs" : "desktop") : hub ? "hub" : "unknown",
+      widgetCount: document.querySelectorAll('[data-testid="runtime-widget-frame"]').length,
+      diagnostics: typeof window.__vantareOverlayV2Diagnostics === "function"
+        ? window.__vantareOverlayV2Diagnostics()
+        : null,
+    };
+  });
 }
 
 async function pagesByRole(browser) {

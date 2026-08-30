@@ -22,6 +22,12 @@ por fixtures, replay, REST o el banco corto A/B.
    conserva con feature, epoch, sequence, estado LMU y explicación; nunca se
    redondea a PASS por ser `partial` o `not-comparable`.
 
+El colector declara `expectedWindows` en el dry-run y en `sesion.json`: S1–S4
+exigen `desktop`; S5 exige `desktop` y una segunda superficie `studio-or-obs`.
+Cada aparición de esas superficies debe incluir diagnóstico `pull`; una
+ventana esperada ausente o un único checkpoint sin `pull` hace fallar el
+resumen.
+
 ## Matriz obligatoria
 
 | Sesión | Fase `on` | Fase `off` | Escenario y gesto humano | Evidencia específica |
@@ -45,6 +51,8 @@ obligatorio para que el interruptor resuelto y los contadores nazcan limpios.
   en campos `exact`**; cada diferencia partial/not-comparable se conserva por
   métrica. Fase OFF: `shadow` permanece inactivo y cada ventana recibe **cero**
   `telemetry:overlay:projection`.
+- En OFF, cada checkpoint de cada ventana esperada debe registrar a la vez
+  `receivedV1Projections=0` y `shadow=null`; campo ausente también es fallo.
 - V2 aumenta entre checkpoints de cinco minutos. El pull publica histograma de
   las últimas 512 entregas y su p99 empírico: **p99 ≤ 250 ms**, máximo ≤ 5.000 ms
   y cero checkpoints consecutivos sin avance V2. La espera incluida en el POST
@@ -58,6 +66,11 @@ obligatorio para que el interruptor resuelto y los contadores nazcan limpios.
 - Reconnect recupera `live` y un frame V2 nuevo en ≤ **30 s** desde la marca de
   reanudación. Una ventana tardía recibe primer status/frame en ≤ **5 s** y
   completa widgets en ≤ **10 s** desde su marca de apertura.
+- S4 evalúa por separado cada ciclo `live → no-live → live`: cada uno necesita
+  su marca humana y un `frameRevision` V2 posterior en la misma clave de
+  ventana. S5 necesita marcas separadas para Desktop y Studio Live/OBS; sus
+  eventos `window-first-seen` y `window-widget-ready` deben compartir la misma
+  clave, por lo que no se puede completar una apertura con eventos de otra.
 
 Se detiene el gate y se entrega la evidencia si aparece cualquier consumidor
 V1 productivo, mismatch exacto no entendido, pérdida de V2, crecimiento de

@@ -29,6 +29,7 @@ if ($PSVersionTable.PSVersion.Major -lt 7) { throw 'sesion-v1.ps1 requiere Power
 if ($Puerto -in @(9222, 9231)) { throw "El puerto $Puerto está reservado por otros bancos." }
 
 $repoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..\..')).Path
+$expectedWindows = if ($Sesion -eq 'S5') { @('desktop', 'studio-or-obs') } else { @('desktop') }
 function Resolve-SessionPath([string]$Path, [switch]$MustExist) {
     $candidate = if ([IO.Path]::IsPathRooted($Path)) { $Path } else { Join-Path $repoRoot $Path }
     if ($MustExist) { return (Resolve-Path -LiteralPath $candidate).Path }
@@ -48,6 +49,7 @@ $plan = [ordered]@{
     processSampleSeconds = 60
     cdpCheckpointSeconds = 300
     statePollSeconds = 5
+    expectedWindows = $expectedWindows
     forceHygiene = $false
 }
 if ($DryRun) {
@@ -139,6 +141,7 @@ $knownSource = @{}
 $knownPit = @{}
 $knownWindows = @{}
 $widgetReady = @{}
+$knownV2Revision = @{}
 $logicalProcessors = [Environment]::ProcessorCount
 $app = $null
 $startedAt = $null
@@ -202,23 +205,31 @@ function Invoke-Cdp([string]$Action, [string]$Label, [string]$ScreenshotDirector
 
 function Register-State([object]$Capture) {
     foreach ($target in @($Capture.targets)) {
-        $key = '{0}|{1}|{2}' -f $target.role, $target.url, $target.title
+        $surface = if ($target.surface) { [string]$target.surface } else { [string]$target.role }
+        $key = '{0}|{1}|{2}|{3}' -f $surface, $target.role, $target.url, $target.title
         $now = [string]$Capture.capturedAt
         if (-not $knownWindows.ContainsKey($key)) {
             $knownWindows[$key] = $true
-            $transitions.Add([pscustomobject]@{ kind = 'window-first-seen'; window = $key; timestamp = $now })
+            $transitions.Add([pscustomobject]@{ kind = 'window-first-seen'; surface = $surface; window = $key; timestamp = $now })
         }
         if ([int]$target.widgetCount -gt 0 -and -not $widgetReady.ContainsKey($key)) {
             $widgetReady[$key] = $true
-            $transitions.Add([pscustomobject]@{ kind = 'window-widget-ready'; window = $key; timestamp = $now })
+            $transitions.Add([pscustomobject]@{ kind = 'window-widget-ready'; surface = $surface; window = $key; timestamp = $now })
         }
         $transport = $target.diagnostics.overlay_v2_transport
         if (-not $transport) { continue }
         $source = [string]$transport.sourceState
         if ($source -and $knownSource.ContainsKey($key) -and $knownSource[$key] -ne $source) {
-            $transitions.Add([pscustomobject]@{ kind = 'source-state'; window = $key; from = $knownSource[$key]; to = $source; timestamp = $now })
+            $transitions.Add([pscustomobject]@{ kind = 'source-state'; surface = $surface; window = $key; from = $knownSource[$key]; to = $source; frameRevision = $transport.frameRevision; sequence = $transport.sequence; timestamp = $now })
         }
         if ($source) { $knownSource[$key] = $source }
+        if ($null -ne $transport.frameRevision) {
+            $revision = [long]$transport.frameRevision
+            if ($knownV2Revision.ContainsKey($key) -and $revision -gt [long]$knownV2Revision[$key]) {
+                $transitions.Add([pscustomobject]@{ kind = 'v2-progress'; surface = $surface; window = $key; frameRevision = $revision; sequence = $transport.sequence; timestamp = $now })
+            }
+            $knownV2Revision[$key] = $revision
+        }
         $pit = [string]$transport.playerPit
         if ($pit -and $knownPit.ContainsKey($key) -and $knownPit[$key] -ne $pit) {
             $transitions.Add([pscustomobject]@{ kind = 'pit-state'; window = $key; from = $knownPit[$key]; to = $pit; timestamp = $now })
@@ -329,6 +340,7 @@ $raw = [ordered]@{
     schema = 'vantare.session.v1'
     session = $Sesion
     phase = $Fase
+    expectedWindows = $expectedWindows
     durationMinutes = $Duracion
     startedAt = if ($startedAt) { $startedAt.ToString('o') } else { $endedAt.ToString('o') }
     endedAt = $endedAt.ToString('o')

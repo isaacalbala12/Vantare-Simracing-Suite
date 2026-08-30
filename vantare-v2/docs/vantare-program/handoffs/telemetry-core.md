@@ -15,6 +15,19 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 
 ## Estado real
 
+- 2026-08-30, seguimiento ISA-894 tras la primera S1 ON real: el colector
+  abortó a los 0,20 min porque el target Hub no publica
+  `overlay_v2_transport`; el parser ahora normaliza todos los campos CDP
+  opcionales antes de aplicar `StrictMode`, con regresión para Hub, overlay sin
+  transporte y target vacío. Los 6 mismatches de los 2 frames previos al fallo
+  (`speedKph`, `currentLapText`, `lastLapText`, dos cada uno) siguen siendo
+  exactos y no se descuentan. El diagnóstico los atribuye al cursor de frame
+  actualizado sobre secciones V2 cacheadas, a comparar `currentLap` aunque la
+  columna shadow esté oculta y a los placeholders distintos para última vuelta
+  ausente. La captura abortada no prueba divergencia de payload ni paridad; el
+  corte 2 permanece bloqueado hasta reparar el comparador y repetir S1 ON.
+  Evidencia:
+  `docs/telemetry-core/evidence/isa-894/diagnostico-s1-on-20260830.md`.
 - 2026-08-30, ISA-894 corte 1 y guardarraíles corte 3 están rebasados sobre
   `origin/nightly@cd03518b` (#954, #942 y #948 incluidos). El schema persistido
   v6 conserva Automático de #948 y añade el interruptor V1 apagado. La app no construye ni publica V1

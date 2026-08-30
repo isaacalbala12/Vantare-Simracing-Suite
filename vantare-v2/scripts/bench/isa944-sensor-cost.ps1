@@ -3,13 +3,43 @@ param(
     [ValidateRange(15, 300)]
     [int]$DurationSeconds = 60,
 
-    [string]$OutputDir
+    [string]$OutputDir,
+
+    [switch]$GuardOnly
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+
+function Assert-CleanRelevantTree {
+    $relevantPaths = @(
+        'cmd/vantare',
+        'internal/app/performance',
+        'internal/app/performance_runtime.go',
+        'internal/app/settings_service.go',
+        'internal/app/telemetry_core_runtime.go',
+        'pkg/config',
+        'go.mod',
+        'go.sum',
+        'scripts/bench/isa944-sensor-cost.ps1'
+    )
+    $dirty = @(& git -C $repoRoot status --porcelain -- @relevantPaths 2>&1)
+    if ($LASTEXITCODE -ne 0) {
+        throw "No se pudo comprobar el árbol de trabajo: $($dirty -join [Environment]::NewLine)"
+    }
+    if ($dirty.Count -gt 0) {
+        throw "El árbol de trabajo relevante no está limpio:`n$($dirty -join [Environment]::NewLine)"
+    }
+}
+
+Assert-CleanRelevantTree
+if ($GuardOnly) {
+    Write-Output 'PASS clean relevant worktree'
+    return
+}
+
 $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
 if ([string]::IsNullOrWhiteSpace($OutputDir)) {
     $OutputDir = Join-Path $repoRoot "docs\telemetry-core\evidence\isa-944\sensor-cost-$stamp"
@@ -75,6 +105,7 @@ try {
 } finally {
     Pop-Location
 }
+$exeSha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $exePath).Hash.ToLowerInvariant()
 
 $allSamples = [System.Collections.Generic.List[object]]::new()
 $summaries = [System.Collections.Generic.List[object]]::new()
@@ -160,6 +191,7 @@ foreach ($condition in @('off', 'on')) {
         $summaries.Add([pscustomobject]@{
             condition = $condition
             durationSeconds = $DurationSeconds
+            executableSha256 = $exeSha256
             cpuPctMean = ($cpuValues | Measure-Object -Average).Average
             cpuPctP95 = Get-Percentile95 -Values $cpuValues
             privateMBMean = (@($conditionSamples.privateMB) | Measure-Object -Average).Average
@@ -201,6 +233,7 @@ $markdown = @"
 # ISA-944 · coste marginal del sensor
 
 - SHA: $(git -C $repoRoot rev-parse HEAD)
+- SHA-256 del ejecutable: $exeSha256
 - Escena: LMU abierto; misma sesión durante OFF y ON.
 - Nivel fijo: 5 mediante `VANTARE_PERF_LEVEL`; el log ON se valida sin niveles 1/2/3/4.
 - Muestras: $DurationSeconds ventanas de CPU de 1 s por condición, tras 10 s de calentamiento; el tiempo de pared incluye el inventario del árbol entre ventanas.

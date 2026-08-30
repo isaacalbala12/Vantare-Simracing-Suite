@@ -36,18 +36,22 @@ binario, perfil, nivel 5 y sesión LMU para OFF y ON; mide el árbol completo de
 la app durante 60 s por condición e incluye el PresentMon propio en ON. Valida
 que Automático no abandona el nivel 5 fijado y limpia únicamente su PID/sesión.
 
-La ejecución física `sensor-cost-20260830-034626` se realizó con LMU en Spa,
+La ejecución física final `sensor-cost-20260830-054516` se realizó desde el
+commit limpio `1940dfa0` con LMU en Spa,
 práctica WEC 2026, jugador en el garaje e IA rodando, sin otro Vantare ni Vitest
-activo. Cada condición tuvo 10 s de calentamiento y 60 ventanas de CPU de 1 s:
+activo. El ejecutable medido tuvo SHA-256
+`f8515d11db51f522d75985ce3e963ac6927c2fb7f88ccb86ef3983fbc16ff231`,
+registrado también en `summary.json`. Cada condición tuvo 10 s de calentamiento
+y 60 ventanas de CPU de 1 s:
 
 | Condición | CPU media (%) | CPU p95 (%) | Private MB media |
 | --- | ---: | ---: | ---: |
-| Sensor OFF | 1,8917 | 2,7364 | 267,36 |
-| Sensor ON | 2,0637 | 2,8979 | 275,32 |
+| Sensor OFF | 1,9459 | 2,6849 | 272,28 |
+| Sensor ON | 2,0896 | 2,9365 | 276,94 |
 
-El coste marginal observado fue +0,1720 puntos de CPU media (+9,09 % relativo),
-+0,1615 puntos de CPU p95 (+5,90 %) y +7,96 MiB privados (+2,98 %). El log ON
-contiene 109 decisiones, todas en nivel 5; 108 llevan frametime real de LMU y
+El coste marginal observado fue +0,1437 puntos de CPU media (+7,39 % relativo),
++0,2516 puntos de CPU p95 (+9,37 %) y +4,66 MiB privados (+1,71 %). El log ON
+contiene 107 muestras, todas en nivel 5; 106 llevan frametime real de LMU y
 la primera queda `unavailable` mientras arranca PresentMon. Tras cerrar no quedó
 ningún `vantare-*.exe` ni `VantareSensor-*`; permaneció únicamente el
 PresentMon de Radeon asociado a `RSXTraceSession`.

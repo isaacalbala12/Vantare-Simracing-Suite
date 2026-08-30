@@ -445,7 +445,13 @@ export function compareStandingsModels(
       continue;
     }
     for (const field of COMPARABLE_STANDINGS_FIELDS) {
-      if (legacyRow[field] !== overlayV2Row[field]) mismatch.add(`rows[].${field}`);
+      const legacyValue = field === "lastLapText"
+        ? normalizeAbsentLapText(legacyRow[field])
+        : legacyRow[field];
+      const overlayV2Value = field === "lastLapText"
+        ? normalizeAbsentLapText(overlayV2Row[field])
+        : overlayV2Row[field];
+      if (legacyValue !== overlayV2Value) mismatch.add(`rows[].${field}`);
     }
   }
   return [...mismatch].sort();
@@ -461,6 +467,11 @@ const COMPARABLE_STANDINGS_FIELDS = [
   "isPlayer",
   "isLeader",
 ] as const satisfies readonly (keyof StandingsRowViewModel)[];
+
+function normalizeAbsentLapText(value: string): string {
+  const normalized = value.trim();
+  return normalized === "" || normalized === "-" || normalized === "—" ? "" : normalized;
+}
 
 /** Fields with no canonical signal behind them; declared, never compared. */
 export const OVERLAY_V2_STANDINGS_DECLARED_GAPS: readonly string[] = Object.freeze([
@@ -872,7 +883,7 @@ const standingsRows: ListRule = {
     { path: "driverName", read: (row) => (row as StandingsRowViewModel).driverName, quality: allOf(vehicle("driverName")), disclosure: redactedDisclosure },
     { path: "vehicleClass", read: (row) => (row as StandingsRowViewModel).vehicleClass, quality: allOf(vehicle("vehicleClass")), disclosure: redactedDisclosure },
     { path: "intervalText", read: (row) => (row as StandingsRowViewModel).intervalText, quality: allOf(vehicle("timeBehindNextSeconds")), disclosure: redactedDisclosure },
-    { path: "lastLapText", read: (row) => (row as StandingsRowViewModel).lastLapText, quality: allOf(vehicle("lastLapSeconds")), disclosure: redactedDisclosure },
+    { path: "lastLapText", read: (row) => normalizeAbsentLapText((row as StandingsRowViewModel).lastLapText), quality: allOf(vehicle("lastLapSeconds")), disclosure: redactedDisclosure },
     { path: "bestLapText", read: (row) => (row as StandingsRowViewModel).bestLapText, quality: allOf(vehicle("bestLapSeconds")), disclosure: redactedDisclosure },
   ],
 };

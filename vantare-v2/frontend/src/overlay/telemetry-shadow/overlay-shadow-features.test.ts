@@ -48,6 +48,30 @@ describe("shadow comparator: session and standings features", () => {
     expect(compareStandingsModels(visible, changed)).toContain("rows[].currentLapText");
   });
 
+  it("normalizes only absent last-lap placeholders from S1 and keeps real times exact", () => {
+    const evidence = JSON.parse(readFileSync(path.resolve(
+      process.cwd(),
+      "src/overlay/telemetry-shadow/testdata/s1-on-20260830-185729.json",
+    ), "utf8")) as { shadow: { metrics: Record<string, number> } };
+    expect(evidence.shadow.metrics[
+      'overlay_shadow_mismatches_total{feature="standings",field="rows[].lastLapText",phase="live"}'
+    ]).toBe(2);
+
+    const update = golden(1);
+    if (!update.frame) throw new Error("golden frame missing");
+    const model = buildStandingsViewModelV2(update.frame, update.source, STANDINGS_CONTENT);
+    const withLap = (lastLapText: string) => ({
+      ...model,
+      rows: model.rows.map((row, index) => index === 0 ? { ...row, lastLapText } : row),
+    });
+
+    expect(compareStandingsModels(withLap("—"), withLap("-"))).toEqual([]);
+    expect(compareStandingsModels(withLap(""), withLap("—"))).toEqual([]);
+    expect(compareStandingsModels(withLap("1:31.234"), withLap("1:31.235")))
+      .toContain("rows[].lastLapText");
+  });
+
+
   it("labels every metric with its feature and phase", () => {
     const update = golden(20);
     if (!update.frame) throw new Error("golden frame missing");

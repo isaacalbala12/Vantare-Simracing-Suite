@@ -39,3 +39,8 @@ El gate enlaza tres conjuntos y falla si divergen:
 veredicto declarado. `external` tampoco se convierte en PASS telemétrico. La
 comparación bloqueada conserva la ruta auxiliar exacta para no disfrazar
 `engineerPresentation` como `events`.
+
+Para campos exactos de tiempo de vuelta, `""`, `"-"` y `"—"` se normalizan como
+la misma ausencia antes de comparar. La normalización no redondea ni modifica
+tiempos reales: dos textos de vuelta presentes y distintos siguen produciendo
+un mismatch exacto.

@@ -6,8 +6,14 @@ por fixtures, replay, REST o el banco corto A/B.
 
 ## Preparación común
 
-1. Instalar/abrir la build exacta del PR y anotar SHA, versión de LMU, circuito,
-   sesión, número de coches y hora de inicio.
+1. Construir la build exacta del PR embebiendo la configuración autorizada de
+   `frontend/.env.local`: mapear `VITE_SUPABASE_*` a `VANTARE_SUPABASE_*`,
+   ejecutar `corepack pnpm --dir frontend build`,
+   `tools/generate_supabase_config.ps1` y después `go build`. Verificar por CDP
+   que `license:changed` no sea `unconfigured`, y anotar estado/tipo de cuenta
+   sanitizados junto con SHA, versión de LMU, circuito, sesión, coches y hora.
+   Está prohibido medir con una build sin licencia configurada; nunca se
+   imprimen, copian ni versionan los valores de `.env.local`.
 2. Cerrar Edge/WebView2 y cualquier `vantare-*.exe` ajeno. Mantener una sola
    app, un solo medidor y el juego. No cerrar `PresentMon-x64.exe` de Radeon.
 3. Ejecutar **dos fases identificadas por escenario**, nunca mezcladas en un

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Events } from '@wailsio/runtime';
 import type { OverlayPerformanceV2 } from '../../../generated/telemetry';
 import { useI18n } from '../../../i18n/I18nProvider';
@@ -42,6 +42,12 @@ export function StudioTopbarControls(props: StudioTopbarControlsProps): React.Re
     file: string;
     performance?: ProfilePerformanceV4;
   } | null>(null);
+  const profileSaveSequence = useRef(0);
+  const pendingPerformanceSave = useRef<{
+    requestId: string;
+    file: string;
+    previous?: ProfilePerformanceV4;
+  } | null>(null);
   const profilePerformance =
     profilePerformanceEdit && profilePerformanceEdit.file === activeFile
       ? profilePerformanceEdit.performance
@@ -55,14 +61,28 @@ export function StudioTopbarControls(props: StudioTopbarControlsProps): React.Re
     });
     const offSaved = Events.On(
       'studio:profile:performance:saved',
-      (event: { data?: { performance?: ProfilePerformanceV4 } }) => {
+      (event: { data?: { requestId?: string; performance?: ProfilePerformanceV4 } }) => {
+        const pending = pendingPerformanceSave.current;
+        if (!pending || event.data?.requestId !== pending.requestId || pending.file !== activeFile) return;
+        pendingPerformanceSave.current = null;
         setProfilePerformanceEdit({ file: activeFile, performance: event.data?.performance });
       },
     );
+    const revertPendingSave = (event: { data?: { requestId?: string } }) => {
+      const pending = pendingPerformanceSave.current;
+      if (!pending || event.data?.requestId !== pending.requestId || pending.file !== activeFile) return;
+      pendingPerformanceSave.current = null;
+      setProfilePerformanceEdit({ file: pending.file, performance: pending.previous });
+    };
+    const offError = Events.On('studio:profile:error', revertPendingSave);
+    const offConflict = Events.On('studio:profile:conflict', revertPendingSave);
     Events.Emit('settings:get');
     return () => {
+      pendingPerformanceSave.current = null;
       offLevel?.();
       offSaved?.();
+      offError?.();
+      offConflict?.();
     };
   }, [activeFile]);
 
@@ -97,12 +117,18 @@ export function StudioTopbarControls(props: StudioTopbarControlsProps): React.Re
   }, [overlay.active, overlay.running]);
 
   const savePerformance = useCallback((performance: ProfilePerformanceV4) => {
-    setProfilePerformanceEdit({ file: activeFile, performance });
+    profileSaveSequence.current += 1;
+    const requestId = `studio-performance-${profileSaveSequence.current.toString(36)}`;
+    pendingPerformanceSave.current = {
+      requestId,
+      file: activeFile,
+      previous: profilePerformance,
+    };
     Events.Emit('studio:profile:performance:save', {
-      requestId: `studio-performance-${Date.now().toString(36)}`,
+      requestId,
       performance,
     });
-  }, [activeFile]);
+  }, [activeFile, profilePerformance]);
 
   const performanceMode = profilePerformance?.mode ?? 'inherit';
   const selectedLevel = profilePerformance?.level ?? effectiveLevel;

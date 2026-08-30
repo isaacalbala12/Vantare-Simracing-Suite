@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../designs/widget-design-client", () => ({
@@ -331,7 +331,74 @@ describe("StudioOrbitLayout", () => {
         }),
       );
     });
+    const saveCall = wails.emit.mock.calls.find(([name]) => name === "studio:profile:performance:save");
+    const payload = saveCall?.[1] as { requestId?: string } | undefined;
+    act(() => {
+      for (const handler of wails.handlers.get("studio:profile:performance:saved") ?? []) {
+        handler({ data: { requestId: payload?.requestId, performance: { mode: "custom", level: 3, overrides: {} } } });
+      }
+    });
     expect(screen.getByTestId("studio-performance-level")).toBeTruthy();
+  });
+
+  it("solo confirma la política con el requestId pendiente", async () => {
+    renderStudio();
+    fireEvent.click(screen.getByRole("combobox", { name: "Política del perfil" }));
+    fireEvent.click(screen.getByRole("option", { name: "Personalizado" }));
+    const saveCall = wails.emit.mock.calls.find(([name]) => name === "studio:profile:performance:save");
+    const payload = saveCall?.[1] as { requestId?: string } | undefined;
+    expect(payload?.requestId).toBeTruthy();
+    expect(screen.queryByTestId("studio-performance-level")).toBeNull();
+
+    act(() => {
+      for (const handler of wails.handlers.get("studio:profile:performance:saved") ?? []) {
+        handler({ data: { requestId: "foreign", performance: { mode: "custom", level: 5, overrides: {} } } });
+      }
+    });
+    expect(screen.queryByTestId("studio-performance-level")).toBeNull();
+
+    act(() => {
+      for (const handler of wails.handlers.get("studio:profile:performance:saved") ?? []) {
+        handler({ data: { requestId: payload?.requestId, performance: { mode: "custom", level: 3, overrides: {} } } });
+      }
+    });
+    expect(screen.getByTestId("studio-performance-level")).toBeTruthy();
+  });
+
+  it("revierte la política cuando falla el guardado correlacionado", () => {
+    renderStudio();
+    fireEvent.click(screen.getByRole("combobox", { name: "Política del perfil" }));
+    fireEvent.click(screen.getByRole("option", { name: "Personalizado" }));
+    const saveCall = wails.emit.mock.calls.find(([name]) => name === "studio:profile:performance:save");
+    const payload = saveCall?.[1] as { requestId?: string } | undefined;
+
+    act(() => {
+      for (const handler of wails.handlers.get("studio:profile:error") ?? []) {
+        handler({ data: { requestId: payload?.requestId, operation: "performance-save", message: "disk full" } });
+      }
+      for (const handler of wails.handlers.get("studio:profile:performance:saved") ?? []) {
+        handler({ data: { requestId: payload?.requestId, performance: { mode: "custom", level: 3, overrides: {} } } });
+      }
+    });
+    expect(screen.queryByTestId("studio-performance-level")).toBeNull();
+  });
+
+  it("revierte la política ante conflicto de revisión correlacionado", () => {
+    renderStudio();
+    fireEvent.click(screen.getByRole("combobox", { name: "Política del perfil" }));
+    fireEvent.click(screen.getByRole("option", { name: "Personalizado" }));
+    const saveCall = wails.emit.mock.calls.find(([name]) => name === "studio:profile:performance:save");
+    const payload = saveCall?.[1] as { requestId?: string } | undefined;
+
+    act(() => {
+      for (const handler of wails.handlers.get("studio:profile:conflict") ?? []) {
+        handler({ data: { requestId: payload?.requestId, message: "revision conflict" } });
+      }
+      for (const handler of wails.handlers.get("studio:profile:performance:saved") ?? []) {
+        handler({ data: { requestId: payload?.requestId, performance: { mode: "custom", level: 3, overrides: {} } } });
+      }
+    });
+    expect(screen.queryByTestId("studio-performance-level")).toBeNull();
   });
 
   it("habilita `Live` cuando la shell da el sim por conectado", async () => {

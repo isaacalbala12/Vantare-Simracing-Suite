@@ -28,6 +28,9 @@ de las dos worktrees y del perfil Windows por `<measurement-worktree>`,
 `<collector-worktree>`, `<session-root>` y `<user-profile>`. No cambia
 timestamps, PID, contadores, muestras, diagnósticos, hashes de exe/dist ni
 valores de telemetría. Los CSV se publican byte a byte sin modificación.
+JSON, CSV y `SHA256SUMS` se marcan `-text -diff` en el `.gitattributes` local:
+siguen siendo formatos legibles y recalculables, pero Git los trata como
+binarios para conservar sus bytes/CRLF originales y no alterar sus SHA-256.
 
 ## Verificación
 

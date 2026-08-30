@@ -14,11 +14,14 @@ type fakeProcess struct {
 	killed     bool
 	operations *[]string
 	exited     chan struct{}
+	stopped    chan struct{}
+	stopOnce   sync.Once
 }
 
 func (process *fakeProcess) PID() int { return process.pid }
 func (process *fakeProcess) Wait() error {
 	<-process.exited
+	<-process.stopped
 	*process.operations = append(*process.operations, "wait:43125")
 	return nil
 }
@@ -43,9 +46,12 @@ func (runner *fakeRunner) Output(_ context.Context, name string, args ...string)
 	runner.queries = append(runner.queries, name+" "+strings.Join(args, " "))
 	if len(args) > 0 && args[0] == "stop" {
 		runner.operations = append(runner.operations, "stop:"+args[1])
+		if runner.process != nil {
+			runner.process.stopOnce.Do(func() { close(runner.process.stopped) })
+		}
 	}
 	if len(args) > 0 && args[0] == "query" {
-		return []byte("RSXTraceSession\nVantareHuella-isa940\nVantareSensor-111\nVantareSensor-222\n"), nil
+		return []byte("RSXTraceSession\nVantareHuella-isa940\nVantareSensor-111\nVantareSensor-222\nVantareSensor-333\n"), nil
 	}
 	return nil, nil
 }
@@ -54,15 +60,17 @@ func (runner *fakeRunner) Start(_ context.Context, _ string, _ []string) (proces
 		pid:        43125,
 		operations: &runner.operations,
 		exited:     make(chan struct{}),
+		stopped:    make(chan struct{}),
 	}
 	return runner.process, io.NopCloser(strings.NewReader(runner.stream)), nil
 }
 
-func TestPresentMonCleansOnlyVantareOrphansParsesV2AndStopsOwnSession(t *testing.T) {
+func TestPresentMonLeavesLiveVantareSessionsAndCleansOnlyOrphan(t *testing.T) {
 	runner := &fakeRunner{stream: "Application,FrameTime,DisplayedTime\nLMU,8.25,1\n"}
 	source := NewPresentMonSource("PresentMon.exe")
 	source.runner = runner
 	source.foreground = func() bool { return true }
+	source.processAlive = func(pid int) bool { return pid == 111 || pid == 222 }
 	if err := source.Start(context.Background()); err != nil {
 		t.Fatal(err)
 	}
@@ -79,12 +87,16 @@ func TestPresentMonCleansOnlyVantareOrphansParsesV2AndStopsOwnSession(t *testing
 	joined := strings.Join(runner.queries, "\n")
 	for _, want := range []string{
 		"logman query -ets",
-		"logman stop VantareSensor-111 -ets",
-		"logman stop VantareSensor-222 -ets",
+		"logman stop VantareSensor-333 -ets",
 		"logman stop " + source.sessionName + " -ets",
 	} {
 		if !strings.Contains(joined, want) {
 			t.Errorf("missing %q in\n%s", want, joined)
+		}
+	}
+	for _, live := range []string{"VantareSensor-111", "VantareSensor-222"} {
+		if strings.Contains(joined, "logman stop "+live+" -ets") {
+			t.Fatalf("live session %s was stopped:\n%s", live, joined)
 		}
 	}
 	if strings.Contains(joined, "stop RSXTraceSession") {

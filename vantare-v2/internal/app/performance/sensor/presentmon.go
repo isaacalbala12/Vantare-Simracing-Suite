@@ -61,27 +61,29 @@ func (handle execHandle) Kill() error {
 }
 
 type PresentMonSource struct {
-	mu          sync.RWMutex
-	runner      commandRunner
-	executable  string
-	gameName    string
-	sessionName string
-	foreground  func() bool
-	cancel      context.CancelFunc
-	process     processHandle
-	processPID  int
-	latest      GameSample
-	done        chan struct{}
-	closeOnce   sync.Once
+	mu           sync.RWMutex
+	runner       commandRunner
+	executable   string
+	gameName     string
+	sessionName  string
+	foreground   func() bool
+	processAlive func(int) bool
+	cancel       context.CancelFunc
+	process      processHandle
+	processPID   int
+	latest       GameSample
+	done         chan struct{}
+	closeOnce    sync.Once
 }
 
 func NewPresentMonSource(executable string) *PresentMonSource {
 	return &PresentMonSource{
-		runner:      execRunner{},
-		executable:  executable,
-		gameName:    "Le Mans Ultimate.exe",
-		sessionName: fmt.Sprintf("VantareSensor-%d", os.Getpid()),
-		foreground:  isLMUForeground,
+		runner:       execRunner{},
+		executable:   executable,
+		gameName:     "Le Mans Ultimate.exe",
+		sessionName:  fmt.Sprintf("VantareSensor-%d", os.Getpid()),
+		foreground:   isLMUForeground,
+		processAlive: processIsAlive,
 	}
 }
 
@@ -197,7 +199,8 @@ func (source *PresentMonSource) cleanOrphans(ctx context.Context) error {
 	}
 	for _, field := range strings.Fields(string(output)) {
 		name := strings.TrimSpace(field)
-		if !strings.HasPrefix(name, "VantareSensor-") {
+		pid, ok := vantareSensorPID(name)
+		if !ok || source.processAlive(pid) {
 			continue
 		}
 		stopped, stopErr := source.runner.Output(ctx, "logman", "stop", name, "-ets")
@@ -206,6 +209,15 @@ func (source *PresentMonSource) cleanOrphans(ctx context.Context) error {
 		}
 	}
 	return nil
+}
+
+func vantareSensorPID(sessionName string) (int, bool) {
+	const prefix = "VantareSensor-"
+	if !strings.HasPrefix(sessionName, prefix) {
+		return 0, false
+	}
+	pid, err := strconv.Atoi(strings.TrimPrefix(sessionName, prefix))
+	return pid, err == nil && pid > 0
 }
 
 func isMissingSession(output []byte) bool {

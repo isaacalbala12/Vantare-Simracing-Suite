@@ -1,11 +1,11 @@
 {
   "schema": "vantare.huella.cdp.v1",
-  "capturedAt": "2026-08-30T03:32:19.488Z",
+  "capturedAt": "2026-08-30T16:19:59.447Z",
   "action": "overlay-start",
   "control": {
     "changed": true,
     "running": true,
-    "emittedAt": "2026-08-30T03:32:08.606Z",
+    "emittedAt": "2026-08-30T16:19:48.867Z",
     "mechanism": {
       "kind": "wails-event",
       "eventName": "overlay:start-active"
@@ -14,10 +14,10 @@
   "durationSeconds": 10,
   "expectedWidgets": 3,
   "renderedWidgets": 3,
-  "overlayReadyAt": "2026-08-30T03:32:09.430Z",
+  "overlayReadyAt": "2026-08-30T16:19:49.411Z",
   "rendererProcessIds": [
-    27472,
-    26388
+    14672,
+    20156
   ],
   "rendererProcessInfoError": null,
   "targets": [
@@ -27,10 +27,11 @@
       "title": "Vantare",
       "overlay": false,
       "hub": true,
+      "surface": "hub",
       "widgetCount": 0,
       "diagnostics": null,
       "probe": {
-        "rafPerSecond": 120.2,
+        "rafPerSecond": 120.1,
         "longTaskCount": 0,
         "longTaskTotalMs": 0,
         "longTaskMaxMs": 0,
@@ -40,39 +41,40 @@
     },
     {
       "role": "overlay",
-      "url": "http://wails.localhost/",
-      "title": "Vantare",
+      "url": "http://wails.localhost/overlay.html",
+      "title": "Vantare Overlay",
       "overlay": true,
       "hub": false,
+      "surface": "desktop",
       "widgetCount": 3,
       "diagnostics": {
         "overlay_v2_parse_duration": {
-          "count": 5,
-          "p50": 0.8000000007450581,
-          "p99": 2,
+          "count": 8,
+          "p50": 0.30000000074505806,
+          "p99": 1.1000000014901161,
           "nonLiveSamples": 0
         },
         "overlay_v2_transport": {
-          "revision": 17,
-          "frameRevision": 17,
+          "revision": 18,
+          "frameRevision": 18,
           "sourceState": "live",
           "epoch": 1,
-          "sequence": 262,
+          "sequence": 265,
           "sessionId": "lmu-session-1",
           "vehicleCount": 18,
           "playerPit": "pit"
         },
         "pull": {
           "active": true,
-          "requestsCompleted": 5,
-          "receivedV1Projections": 5,
-          "receivedV2Snapshots": 4,
+          "requestsCompleted": 8,
+          "receivedV1Projections": 8,
+          "receivedV2Snapshots": 7,
           "requestDurationMs": {
-            "count": 5,
-            "sampleCount": 5,
-            "mean": 25.13999999985099,
-            "max": 73.30000000074506,
-            "p99": 73.30000000074506,
+            "count": 8,
+            "sampleCount": 8,
+            "mean": 11.925000000046566,
+            "max": 28.799999998882413,
+            "p99": 28.799999998882413,
             "histogram": [
               {
                 "le": 1,
@@ -88,11 +90,11 @@
               },
               {
                 "le": 8,
-                "count": 0
+                "count": 3
               },
               {
                 "le": 16,
-                "count": 3
+                "count": 4
               },
               {
                 "le": 32,
@@ -104,7 +106,7 @@
               },
               {
                 "le": 128,
-                "count": 1
+                "count": 0
               },
               {
                 "le": 250,
@@ -134,18 +136,18 @@
           }
         },
         "shadow": {
-          "frames": 4,
-          "mismatches": 12,
+          "frames": 7,
+          "mismatches": 19,
           "declaredDifferences": 0,
           "framesByPhase": {
-            "live": 4,
+            "live": 7,
             "stale": 0,
             "degraded": 0,
             "no-frame": 0,
             "transition": 0
           },
           "mismatchesByPhase": {
-            "live": 12,
+            "live": 19,
             "stale": 0,
             "degraded": 0,
             "no-frame": 0,
@@ -153,15 +155,14 @@
           },
           "epochResets": 0,
           "metrics": {
-            "overlay_shadow_mismatches_total{feature=\"player-instruments\",field=\"speedKph\",phase=\"live\"}": 3,
-            "overlay_shadow_mismatches_total{feature=\"standings\",field=\"remainingText\",phase=\"live\"}": 1,
-            "overlay_shadow_mismatches_total{feature=\"standings\",field=\"rows[].currentLapText\",phase=\"live\"}": 4,
-            "overlay_shadow_mismatches_total{feature=\"standings\",field=\"rows[].lastLapText\",phase=\"live\"}": 4
+            "overlay_shadow_mismatches_total{feature=\"player-instruments\",field=\"speedKph\",phase=\"live\"}": 5,
+            "overlay_shadow_mismatches_total{feature=\"standings\",field=\"rows[].currentLapText\",phase=\"live\"}": 7,
+            "overlay_shadow_mismatches_total{feature=\"standings\",field=\"rows[].lastLapText\",phase=\"live\"}": 7
           }
         }
       },
       "probe": {
-        "rafPerSecond": 120.1,
+        "rafPerSecond": 120,
         "longTaskCount": 0,
         "longTaskTotalMs": 0,
         "longTaskMaxMs": 0,

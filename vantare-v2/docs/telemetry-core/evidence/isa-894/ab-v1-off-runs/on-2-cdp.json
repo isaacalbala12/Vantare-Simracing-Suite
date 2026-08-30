@@ -1,11 +1,11 @@
 {
   "schema": "vantare.huella.cdp.v1",
-  "capturedAt": "2026-08-30T03:24:52.393Z",
+  "capturedAt": "2026-08-30T16:12:45.343Z",
   "action": "overlay-start",
   "control": {
     "changed": true,
     "running": true,
-    "emittedAt": "2026-08-30T03:24:41.611Z",
+    "emittedAt": "2026-08-30T16:12:34.493Z",
     "mechanism": {
       "kind": "wails-event",
       "eventName": "overlay:start-active"
@@ -14,10 +14,10 @@
   "durationSeconds": 10,
   "expectedWidgets": 3,
   "renderedWidgets": 3,
-  "overlayReadyAt": "2026-08-30T03:24:42.355Z",
+  "overlayReadyAt": "2026-08-30T16:12:35.279Z",
   "rendererProcessIds": [
-    4884,
-    8604
+    18780,
+    300
   ],
   "rendererProcessInfoError": null,
   "targets": [
@@ -27,10 +27,11 @@
       "title": "Vantare",
       "overlay": false,
       "hub": true,
+      "surface": "hub",
       "widgetCount": 0,
       "diagnostics": null,
       "probe": {
-        "rafPerSecond": 120.1,
+        "rafPerSecond": 120.2,
         "longTaskCount": 0,
         "longTaskTotalMs": 0,
         "longTaskMaxMs": 0,
@@ -40,24 +41,25 @@
     },
     {
       "role": "overlay",
-      "url": "http://wails.localhost/",
-      "title": "Vantare",
+      "url": "http://wails.localhost/overlay.html",
+      "title": "Vantare Overlay",
       "overlay": true,
       "hub": false,
+      "surface": "desktop",
       "widgetCount": 3,
       "diagnostics": {
         "overlay_v2_parse_duration": {
           "count": 7,
-          "p50": 0.4000000022351742,
-          "p99": 1.0999999977648258,
+          "p50": 0.5,
+          "p99": 1.300000000745058,
           "nonLiveSamples": 0
         },
         "overlay_v2_transport": {
-          "revision": 15,
-          "frameRevision": 15,
+          "revision": 17,
+          "frameRevision": 17,
           "sourceState": "live",
           "epoch": 1,
-          "sequence": 245,
+          "sequence": 317,
           "sessionId": "lmu-session-1",
           "vehicleCount": 18,
           "playerPit": "pit"
@@ -70,9 +72,9 @@
           "requestDurationMs": {
             "count": 7,
             "sampleCount": 7,
-            "mean": 11.228571428252119,
-            "max": 32.69999999925494,
-            "p99": 32.69999999925494,
+            "mean": 12.699999999787126,
+            "max": 32.40000000037253,
+            "p99": 32.40000000037253,
             "histogram": [
               {
                 "le": 1,
@@ -88,11 +90,11 @@
               },
               {
                 "le": 8,
-                "count": 5
+                "count": 4
               },
               {
                 "le": 16,
-                "count": 0
+                "count": 1
               },
               {
                 "le": 32,
@@ -134,18 +136,18 @@
           }
         },
         "shadow": {
-          "frames": 6,
-          "mismatches": 16,
+          "frames": 5,
+          "mismatches": 14,
           "declaredDifferences": 0,
           "framesByPhase": {
-            "live": 6,
+            "live": 5,
             "stale": 0,
             "degraded": 0,
             "no-frame": 0,
             "transition": 0
           },
           "mismatchesByPhase": {
-            "live": 16,
+            "live": 14,
             "stale": 0,
             "degraded": 0,
             "no-frame": 0,
@@ -154,13 +156,13 @@
           "epochResets": 0,
           "metrics": {
             "overlay_shadow_mismatches_total{feature=\"player-instruments\",field=\"speedKph\",phase=\"live\"}": 4,
-            "overlay_shadow_mismatches_total{feature=\"standings\",field=\"rows[].currentLapText\",phase=\"live\"}": 6,
-            "overlay_shadow_mismatches_total{feature=\"standings\",field=\"rows[].lastLapText\",phase=\"live\"}": 6
+            "overlay_shadow_mismatches_total{feature=\"standings\",field=\"rows[].currentLapText\",phase=\"live\"}": 5,
+            "overlay_shadow_mismatches_total{feature=\"standings\",field=\"rows[].lastLapText\",phase=\"live\"}": 5
           }
         }
       },
       "probe": {
-        "rafPerSecond": 120,
+        "rafPerSecond": 120.1,
         "longTaskCount": 0,
         "longTaskTotalMs": 0,
         "longTaskMaxMs": 0,

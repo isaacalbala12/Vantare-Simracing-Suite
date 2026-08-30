@@ -1,11 +1,11 @@
 {
   "schema": "vantare.huella.cdp.v1",
-  "capturedAt": "2026-08-30T03:28:36.847Z",
+  "capturedAt": "2026-08-30T16:16:20.624Z",
   "action": "overlay-start",
   "control": {
     "changed": true,
     "running": true,
-    "emittedAt": "2026-08-30T03:28:24.660Z",
+    "emittedAt": "2026-08-30T16:16:10.076Z",
     "mechanism": {
       "kind": "wails-event",
       "eventName": "overlay:start-active"
@@ -14,10 +14,10 @@
   "durationSeconds": 10,
   "expectedWidgets": 3,
   "renderedWidgets": 3,
-  "overlayReadyAt": "2026-08-30T03:28:26.737Z",
+  "overlayReadyAt": "2026-08-30T16:16:10.582Z",
   "rendererProcessIds": [
-    25440,
-    24988
+    8896,
+    25932
   ],
   "rendererProcessInfoError": null,
   "targets": [
@@ -27,6 +27,7 @@
       "title": "Vantare",
       "overlay": false,
       "hub": true,
+      "surface": "hub",
       "widgetCount": 0,
       "diagnostics": null,
       "probe": {
@@ -40,39 +41,40 @@
     },
     {
       "role": "overlay",
-      "url": "http://wails.localhost/",
-      "title": "Vantare",
+      "url": "http://wails.localhost/overlay.html",
+      "title": "Vantare Overlay",
       "overlay": true,
       "hub": false,
+      "surface": "desktop",
       "widgetCount": 3,
       "diagnostics": {
         "overlay_v2_parse_duration": {
-          "count": 6,
-          "p50": 0.6000000014901161,
-          "p99": 1.5999999977648258,
+          "count": 9,
+          "p50": 0.5,
+          "p99": 1.6000000014901161,
           "nonLiveSamples": 0
         },
         "overlay_v2_transport": {
-          "revision": 20,
-          "frameRevision": 20,
+          "revision": 16,
+          "frameRevision": 16,
           "sourceState": "live",
           "epoch": 1,
-          "sequence": 403,
+          "sequence": 308,
           "sessionId": "lmu-session-1",
           "vehicleCount": 18,
           "playerPit": "pit"
         },
         "pull": {
           "active": true,
-          "requestsCompleted": 6,
+          "requestsCompleted": 9,
           "receivedV1Projections": 0,
-          "receivedV2Snapshots": 5,
+          "receivedV2Snapshots": 8,
           "requestDurationMs": {
-            "count": 6,
-            "sampleCount": 6,
-            "mean": 27.75,
-            "max": 40.600000001490116,
-            "p99": 40.600000001490116,
+            "count": 9,
+            "sampleCount": 9,
+            "mean": 8.066666666832235,
+            "max": 34.29999999888241,
+            "p99": 34.29999999888241,
             "histogram": [
               {
                 "le": 1,
@@ -84,23 +86,23 @@
               },
               {
                 "le": 4,
-                "count": 0
-              },
-              {
-                "le": 8,
-                "count": 0
-              },
-              {
-                "le": 16,
-                "count": 0
-              },
-              {
-                "le": 32,
                 "count": 4
               },
               {
+                "le": 8,
+                "count": 3
+              },
+              {
+                "le": 16,
+                "count": 1
+              },
+              {
+                "le": 32,
+                "count": 0
+              },
+              {
                 "le": 64,
-                "count": 2
+                "count": 1
               },
               {
                 "le": 128,

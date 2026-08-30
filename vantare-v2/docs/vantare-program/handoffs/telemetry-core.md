@@ -25,16 +25,20 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   resolver `Emit`/`EmitEvent`, constantes y asignaciones locales simples, y
   rechaza la polaridad negada de `overlayV1Emit`; el guard TS recorre cada
   `.ts/.tsx` de `frontend/src/overlay/**` con exclusiones estrechas y congela
-  por fichero/conteo el inventario V1 que solo puede retirar el corte 2. El A/B corregido usó un solo exe SHA-256
-  `844715b0…c46f5` y un solo dist `d088dfe6…22b59`, Spa `PRACTICE1`, 18 coches,
-  A1, tres corridas alternadas de 180 s por estado, sin `-Forzar`. OFF recibió
-  0 V1 y 16 V2; ON recibió 16 V1/13 V2 y reportó 35 mismatches diagnósticos. Go
-  CPU bajó 2,646 -> 1,609 %, el renderer no asignado bajó 2,496 -> 1,482 %
-  y su RAM 139,34 -> 108,46 MiB. Las diferencias equivalen a 4,6×, 4,9×
-  y 2,4× la suma de sus desviaciones estándar; son efectos grandes observados,
-  aunque n=3 y hasta 9 % de ruido impiden la etiqueta estricta ≤5 %. La RAM Go
-  fue un ahorro pequeño y repetible (gate ≤5 %), con razón 1,6×.
-  Browser no mejoró y hubo 0/74.141 frames perdidos. Una regresión adicional
+  por fichero/conteo el inventario V1 que solo puede retirar el corte 2. El A/B
+  final usó una build de diagnóstico con Supabase embebido desde el
+  `frontend/.env.local` autorizado: un solo exe SHA-256 `83cfc4cb…a40722`, un
+  solo dist `7e95fb08…9f12f`, Spa práctica, 18 coches, A1 y tres corridas
+  alternadas de 180 s por estado, sin `-Forzar`. Las seis alcanzaron por CDP
+  `license:changed=active`, cuenta autenticada, `configured=true` y
+  `deviceOK=true`. OFF recibió 0 V1/16 V2 y `shadow=null`; ON recibió 21 V1/18
+  V2 y conservó 48 mismatches diagnósticos. Apagar V1 bajó CPU Go 2,626 ->
+  1,707 %, CPU del renderer no asignado 2,256 -> 1,189 % y su RAM 134,70 ->
+  96,31 MiB. CPU Go/renderer fue repetible con ruido ≤5 %; RAM renderer tuvo
+  8,34 % de ruido OFF y limita la precisión. RAM Go bajó 2,5 %, pequeña y
+  repetible. Browser no mejoró y hubo 0/96.977 frames perdidos. El banco ahora
+  falla cerrado ante una build `unconfigured` o una sesión no autenticada y
+  publica manifiestos de licencia sanitizados. Una regresión adicional
   fija el banco a 180 s de pared: antes hacía 180 iteraciones y prolongaba CPU/RAM.
   El corte 2 sigue
   bloqueado por paridad no exacta y no se tocó. Se añadió el colector autónomo

@@ -1,131 +1,113 @@
 # ISA-894 — A/B Overlay V1 encendido frente a apagado
 
-## Protocolo corregido tras revisión adversarial
+## Protocolo final
 
-- Fuente de aplicación final: `2f6eef139fb3d48439c9e137005691b55a3ac992`,
-  rebasada sobre `origin/nightly@9723148f` (#954 incluido).
-- Un solo `bin/vantare-isa894.exe` para las seis corridas: SHA-256
-  `844715b0bbedfdbfa026dcb3fb2c244ce03363ea8e08a844d94e2c9ea32c46f5`.
-- Un solo `frontend/dist`: SHA-256 de manifiesto ordenado
-  `d088dfe6921ead67d22122707b897e8ae3e7e144dd4098b788cc6c7e14622b59`.
-- LMU real: Circuit de Spa-Francorchamps, `PRACTICE1`, 18 coches, jugador en
-  garaje (`playerPit=pit`); `Le Mans Ultimate.exe` PID 16792 permaneció vivo.
-- Perfil `testdata/bench/huella-endurance-3.json`, condición A1, 180 segundos,
-  tres repeticiones alternadas por estado.
+- Fuente: `5b8cfd5b2ff61f537a23eb91015fb15aa8afb1ac`.
+- Un único `bin/vantare-isa894.exe`: SHA-256
+  `83cfc4cbe25c176887bff4b19001f53f1fef12088c36fcd8bdae2f7b51a40722`.
+- Un único `frontend/dist`: SHA-256 del manifiesto ordenado
+  `7e95fb08f9f55d14835ffb681ef9aa02377b0bc9becf992c550fc217eb09f12f`.
+- La build de diagnóstico se creó con `scripts/bench/build-measurement.ps1`:
+  cargó el `frontend/.env.local` autorizado sin copiarlo ni imprimirlo,
+  ejecutó el build frontend, `tools/generate_supabase_config.ps1` y `go build`,
+  y eliminó el Go temporal.
+- El preflight CDP de las seis corridas terminó en `license:changed=active`,
+  `account=authenticated`, `configured=true`, `deviceOK=true`. Los manifiestos
+  sanitizados `*-license.json` conservan también la transición inicial cuando
+  existió; no contienen usuario, correo, token ni valores de configuración.
+- LMU real: Spa, práctica WEC 2026, jugador en boxes/monitor e IA rodando, 18
+  coches. Perfil `testdata/bench/huella-endurance-3.json`, condición A1,
+  180 s, tres repeticiones alternadas por estado.
 - ON: `VANTARE_OVERLAY_V1_EMIT=1`. OFF: variable ausente y ajuste persistido
   `overlayV1Emit=false`.
-- Un solo `scripts/bench/huella.ps1`, sin `-Forzar`. Antes de cada corrida no
-  existía ningún `vantare-*.exe`; las seis apps cerraron con `Application.Quit`.
-- El `PresentMon-x64.exe` permanente de Radeon (`RSXTraceSession`) no fue una
-  condición de espera ni se cerró.
+- Antes de cada corrida no existía otro `vantare-*.exe`; no se usó `-Forzar`.
+  Las seis apps cerraron con `Application.Quit`. El `PresentMon-x64.exe`
+  permanente de Radeon no se esperó ni se cerró.
 
-Cada CSV crudo contiene `buildSha256`, `distSha256`, `buildStable`, `gitHead`,
-`scene`, `lmuSession` y `cars`. Los seis declaran exactamente los valores
-anteriores, `buildStable=True` y `publishable=True`. El agregador tiene una
-regresión que rechaza builds distintos o un binario/dist cambiado durante la
-corrida.
-
-El banco normaliza `cpuPct` contra 16 procesadores lógicos. RAM es Private
-Bytes. CDP observó dos renderers, pero no pudo atribuir uno exclusivamente a la
-ventana overlay; se publica literalmente `renderer-unassigned`.
+Cada CSV declara el mismo exe, dist, HEAD, escena y coches, junto con
+`buildStable=True`, `publishable=True` y el estado de licencia autenticado. CPU
+está normalizada contra 16 procesadores lógicos y RAM es Private Bytes. CDP
+observó dos renderers, pero no pudo atribuir uno exclusivamente al overlay; se
+publica literalmente `renderer-unassigned`.
 
 ## Resultado agregado (n=3 por estado)
 
-Ruido = desviación muestral / media; el gate de repetibilidad es ≤5 %. Los
-resúmenes completos están en [`on.md`](./ab-v1-off-runs/on.md) y
+Ruido = desviación muestral / media; el gate estricto de repetibilidad es ≤5 %.
+Los agregados completos están en [`on.md`](./ab-v1-off-runs/on.md) y
 [`off.md`](./ab-v1-off-runs/off.md).
 
 | Proceso / métrica | V1 ON | V1 OFF | Delta OFF vs ON | Ruido ON/OFF | Diferencia / suma SD | Veredicto |
 | --- | ---: | ---: | ---: | ---: | ---: | --- |
-| Go host CPU | 2,646 % | 1,609 % | −39,19 % | **5,11 % / 5,56 %** | **4,6×** | efecto grande observado; precisión limitada |
-| Go host RAM privada | 72,83 MiB | 70,77 MiB | −2,83 % | 0,68 % / 1,18 % | **1,6×** | pequeño y repetible (gate ≤5 %) |
-| Renderer no asignado CPU | 2,496 % | 1,482 % | −40,63 % | 2,97 % / **8,95 %** | **4,9×** | efecto grande observado; precisión limitada |
-| Renderer no asignado RAM privada | 139,34 MiB | 108,46 MiB | −22,16 % | **5,82 %** / 4,58 % | **2,4×** | efecto grande observado; precisión limitada |
-| Browser CPU | 1,000 % | 1,046 % | +4,60 % | 0,00 % / 1,56 % | — | pequeño aumento |
-| Browser RAM privada | 45,11 MiB | 45,37 MiB | +0,58 % | 0,34 % / 1,05 % | — | sin mejora |
-| GPU process CPU | 0,117 % | 0,119 % | +1,71 % | **52,54 % / 42,51 %** | — | ruido alto; sin inferencia |
-| GPU process RAM privada | 141,99 MiB | 141,35 MiB | −0,45 % | 1,07 % / 0,86 % | — | sin mejora material |
-| Renderer Hub CPU | 0,014 % | 0,018 % | +28,57 % | 2,44 % / **86,66 %** | — | ruido alto; sin inferencia |
-| Renderer Hub RAM privada | 54,50 MiB | 54,90 MiB | +0,73 % | 0,68 % / 0,77 % | — | sin mejora |
-| Frametime LMU | 15,262 ms | 14,137 ms | −7,37 % | **11,46 % / 10,89 %** | — | contexto, no causal |
-| Frames perdidos LMU | 0 / 35.667 | 0 / 38.474 | 0 | 0 % / 0 % | — | PASS |
+| Go host CPU | 2,626 % | 1,707 % | −34,98 % | 3,47 % / 1,83 % | 7,5× | grande y repetible |
+| Go host RAM privada | 72,85 MiB | 71,03 MiB | −2,50 % | 0,86 % / 0,70 % | 1,6× | pequeño y repetible (gate ≤5 %) |
+| Renderer no asignado CPU | 2,256 % | 1,189 % | −47,28 % | 2,53 % / 4,10 % | 10,1× | grande y repetible; atribución no exclusiva |
+| Renderer no asignado RAM privada | 134,70 MiB | 96,31 MiB | −28,50 % | 3,56 % / **8,34 %** | 3,0× | efecto grande; precisión limitada |
+| Browser CPU | 0,968 % | 1,005 % | +3,77 % | 4,55 % / 0,78 % | — | sin mejora |
+| Browser RAM privada | 44,88 MiB | 45,13 MiB | +0,55 % | 0,18 % / 0,66 % | — | sin mejora |
+| GPU process CPU | 0,082 % | 0,126 % | +53,46 % | **50,00 % / 43,30 %** | — | ruido alto; sin inferencia |
+| GPU process RAM privada | 155,68 MiB | 158,55 MiB | +1,84 % | **16,92 % / 17,30 %** | — | ruido alto; sin inferencia |
+| Renderer Hub CPU | 0,041 % | 0,032 % | −23,27 % | **115,47 % / 98,97 %** | — | ruido alto; sin inferencia |
+| Renderer Hub RAM privada | 62,52 MiB | 62,53 MiB | +0,01 % | **15,68 % / 17,43 %** | — | ruido alto; sin inferencia |
+| Frametime LMU | 11,321 ms | 10,957 ms | −3,21 % | 1,98 % / 1,38 % | — | contexto, no causal |
+| Frames perdidos LMU | 0 / 47.700 | 0 / 49.277 | 0 | 0 % / 0 % | — | PASS |
 
-En este A/B de 3×180 s por estado, con el mismo binario, dist y escena, apagar V1 redujo la media de CPU del host Go un 39,2 %, la CPU del renderer no asignado un 40,6 % y su RAM privada un 22,2 %. Las seis observaciones quedaron separadas por estado. Son efectos grandes observados, aunque n=3 y un ruido entre corridas de hasta 9 % limitan la precisión; no cumplen la etiqueta estricta «repetible con ruido ≤5 %» y el renderer no puede atribuirse exclusivamente a la ventana overlay.
+En este A/B de 3×180 s por estado, con el mismo binario, dist, escena y sesión
+autenticada, apagar V1 redujo la media de CPU del host Go un 35,0 %, la CPU del
+renderer no asignado un 47,3 % y su RAM privada un 28,5 %. CPU Go y renderer
+quedaron separados con ruido ≤5 %; la RAM del renderer tuvo 8,34 % de ruido en
+OFF y no cumple la etiqueta estricta. El renderer no puede atribuirse
+exclusivamente a la ventana overlay. El ahorro de RAM Go fue pequeño y
+repetible (gate ≤5 %).
 
-El ahorro de RAM privada del host Go fue pequeño y repetible (gate ≤5 %).
+## Pull y recepción por ventana
 
-## Pull, histograma y recepción por ventana
-
-`requestDurationMs` mide el round-trip del POST pull hasta procesar la
-respuesta e incluye la espera del long-poll; no es el microbenchmark puro de
-proyección de #912. El diagnóstico conserva las últimas 512 duraciones y
-publica histograma no acumulativo, p99 empírico y máximo.
+`requestDurationMs` mide el round-trip del POST pull, incluida la espera del
+long-poll; no es el microbenchmark puro de proyección de #912.
 
 | Estado | Medias por preflight | Media | Ruido | p99 máximo | V1 / V2 recibidos | Shadow |
 | --- | --- | ---: | ---: | ---: | ---: | --- |
-| ON | 22,72 / 11,23 / 25,14 ms | 19,70 ms | **37,74 %** | 73,30 ms | 16 / 13 | 13 frames; 35 mismatches |
-| OFF | 15,33 / 27,75 / 17,53 ms | 20,20 ms | **32,80 %** | 68,00 ms | **0 / 16** | `null` en 3/3 ventanas |
+| ON | 11,78 / 12,70 / 11,93 ms | 12,14 ms | 3,99 % | 32,40 ms | 21 / 18 | 17 frames; 48 mismatches |
+| OFF | 13,23 / 8,07 / 25,27 ms | 15,52 ms | **56,6 %** | 59,50 ms | **0 / 16** | `null` en 3/3 ventanas |
 
-OFF pasa el gate funcional: cero V1 recibido, V2 sigue avanzando y no se crea
-ni ingiere el runtime shadow. El tiempo de pull no muestra una mejora causal.
-ON reproduce divergencias live en `speedKph`, `remainingText`,
-`rows[].currentLapText` y `rows[].lastLapText`; son diagnósticas, no autoridad
-visual, pero mantienen bloqueado el corte 2.
+OFF pasa el gate funcional: cero V1 recibido, V2 avanza y no se crea ni ingiere
+el runtime shadow. El pull tiene alta variación OFF y no se usa para atribuir
+una mejora causal. ON conserva divergencias diagnósticas live en `speedKph` y
+textos de vuelta; no son autoridad visual, pero mantienen bloqueado el corte 2.
 
-## Corridas y artefactos
+## Corridas publicadas
 
-Los seis CSV están publicados en `ab-v1-off-runs/`. La sanitización fue una
-sustitución mecánica única de `C:\Users\<usuario>\AppData\Local` por
-`%LOCALAPPDATA%`; métricas, timestamps, PID, procedencia y columnas permanecen
-intactos. La tabla conserva el SHA-256 del crudo fuente para relacionarlo con
-la captura local; después se publica también el SHA-256 del fichero sanitizado.
+Los seis CSV se publican completos y sanitizados bajo `ab-v1-off-runs/`. Se
+conservan por separado el SHA del crudo local y el SHA del fichero publicado
+tras normalizar rutas personales y finales de línea.
 
-| Estado | Run | CSV | SHA-256 CSV | Go CPU | Go RAM | Renderer CPU | Renderer RAM |
-| --- | ---: | --- | --- | ---: | ---: | ---: | ---: |
-| ON | 1 | [`on-1.csv`](./ab-v1-off-runs/on-1.csv) | `D409F9A88DB6DE4A9DA2FBF18E99224CDEC1CF059B842D86473ADD2A868B7E4F` | 2,671 % | 72,88 MiB | 2,548 % | 141,61 MiB |
-| ON | 2 | [`on-2.csv`](./ab-v1-off-runs/on-2.csv) | `E3489066A3FE65A462D1E53A968CD82A29DAE0B1E1569C0DF5D4423CCE41DEAD` | 2,500 % | 73,30 MiB | 2,529 % | 130,35 MiB |
-| ON | 3 | [`on-3.csv`](./ab-v1-off-runs/on-3.csv) | `C85C6044E86420D4702F3B1B07C2C4E4D0D5862BFBB9ACEB25322368AFD409FD` | 2,767 % | 72,32 MiB | 2,411 % | 146,07 MiB |
-| OFF | 1 | [`off-1.csv`](./ab-v1-off-runs/off-1.csv) | `4DCD840CCB4006B8C199FABCEFB629CB1E23E4B873659FE1475F65AE45BAC68A` | 1,595 % | 71,65 MiB | 1,419 % | 110,92 MiB |
-| OFF | 2 | [`off-2.csv`](./ab-v1-off-runs/off-2.csv) | `4606EBDE130A65423DE4D1443E58C011A8C5C7A843E4D9DA68AE42EEF5C34FE6` | 1,704 % | 69,99 MiB | 1,634 % | 111,72 MiB |
-| OFF | 3 | [`off-3.csv`](./ab-v1-off-runs/off-3.csv) | `B4FA388799904ADEB52BECFD24BDB8E2EEE1938DD4F6774B2710638F5E4A476E` | 1,527 % | 70,67 MiB | 1,392 % | 102,74 MiB |
+| Estado | Run | CSV | SHA crudo | SHA publicado | Go CPU | Go RAM | Renderer CPU | Renderer RAM |
+| --- | ---: | --- | --- | --- | ---: | ---: | ---: | ---: |
+| ON | 1 | [`on-1.csv`](./ab-v1-off-runs/on-1.csv) | `5A73A156B3A77E5B84DEA24FD4A179900DE31B577DCEE44BA02E90D0D1894DE1` | `63EFA44B1326A58E3DC6F6E350A90D14C3E3A4811A7811B9A011E56F35B57C3C` | 2,521 % | 72,34 MiB | 2,274 % | 137,12 MiB |
+| ON | 2 | [`on-2.csv`](./ab-v1-off-runs/on-2.csv) | `3FB7B8ADE5EDB2ED155724A080DAA0C89F100F9D92C7DCCAEBB0C18F8492E74F` | `5E32580A7D35C896A5D9B383FC1DC19D9368B35F19CD59999521D2E7D1C5350C` | 2,685 % | 72,65 MiB | 2,192 % | 129,18 MiB |
+| ON | 3 | [`on-3.csv`](./ab-v1-off-runs/on-3.csv) | `F09D15CAAD00E1DAA8537FC32D334D79CE7F3FC0428C232873B4DB5C592ED7BD` | `3770BA7C03D2A0BE041311B74C7254B33B6378C814EF6337DDBBA320A005909E` | 2,671 % | 73,55 MiB | 2,301 % | 137,80 MiB |
+| OFF | 1 | [`off-1.csv`](./ab-v1-off-runs/off-1.csv) | `794BF9E95A35D832B718CC4F161AE24B7B3E4833B6A907B62AB3D18E85693C56` | `3318F7CD317473AD45E217B3C61DBD5421A47EAFEBFB32B102465ABADE9205DC` | 1,689 % | 71,19 MiB | 1,149 % | 100,65 MiB |
+| OFF | 2 | [`off-2.csv`](./ab-v1-off-runs/off-2.csv) | `7A9A405F03644F4EFDAB126D71283EE05830E1BC9F1D4272AAA386D41D1AA435` | `A53EB58F925096F4EF2C2E42CF51DF75BC797617700CE842F6001739EAD3414B` | 1,743 % | 70,47 MiB | 1,243 % | 101,24 MiB |
+| OFF | 3 | [`off-3.csv`](./ab-v1-off-runs/off-3.csv) | `7AE662C2960809DFF28C9F0BC2D5AE7E5FBA678199273C84555A6E67CE075F41` | `4370AF0E915D0C2146543A713C419659AD739C79DDA5DC03D477F2811468A4F6` | 1,689 % | 71,43 MiB | 1,176 % | 87,04 MiB |
 
-| CSV sanitizado | SHA-256 publicado |
-| --- | --- |
-| `on-1.csv` | `CD09AD5F6B40C6EAF085935E7607CA4DE63C8DD6D3D467A7BF2F6A98AFA2BFB7` |
-| `on-2.csv` | `CF399217EF60C55B3ADE05908A92D73E3FDA1B2D765AAC962534512384796EC9` |
-| `on-3.csv` | `B9718928610A4CB89127DD15310FD7B1FB5EA6D26BC96926C5CECB8B7F0BB67E` |
-| `off-1.csv` | `042E7C3AEED75C9F23A6CE0F43BAB63976CF5916755E8D59ED2F6906AF5BD6A5` |
-| `off-2.csv` | `8B70BCFC04BBD6C38589F0F98E101775F0838E24B3CF2164486477B77B7E6E0F` |
-| `off-3.csv` | `F911205001A8D0553C91CC0CCD1EB2CCAC9E8C811B817357C0DE58BFF4E405AD` |
-
-| Artefacto versionado | SHA-256 |
-| --- | --- |
-| `on.md` | `8500E3A74A9D755C8F6050294A50D6749891B574EA8388836CF5AA08B3D1E754` |
-| `off.md` | `C2664A7B2AF2EA4CE444E20F4F7928D77CCECB5A302AA34AA62DB382220BF6C9` |
-| `on-1-cdp.json` | `C5990348D89AAFC1E715669FE3C03C5A788A09FB7267F125BA0339760C899B7D` |
-| `on-2-cdp.json` | `E2B468930DB1B0017A2AB9861B15419FC91454E753E317DBB3E0F4DA6FFB26AB` |
-| `on-3-cdp.json` | `1387C84E3F8A18BC705603E31EF5AFAD44C5E4D388E307FE7CCCD67973DF8ADC` |
-| `off-1-cdp.json` | `67E858FAD56150B61F0E602BA34EAC9D334C114280004E9D7A0D174BB917E0B6` |
-| `off-2-cdp.json` | `BE12F424C69D7D73596314894DBAB6F240E5B4D244F16A5D68AC1645EBC923CE` |
-| `off-3-cdp.json` | `48A2631204787B3784B0C25669FA9F590B308782967AA175094016976779A95B` |
+Los `*-cdp.json` conservan V1/V2, pull, p99/histograma y shadow; los nuevos
+`*-license.json` prueban el preflight autenticado. SHA-256 de agregados:
+`on.md=C3B53D41BAD01EB80AC00DFD6D1AD506438317D5FBDFC60F0F6142CA19226238` y
+`off.md=036327A48186B4EA0034CC51B63A9FA70429871BDECEE7603C49FA23FF543AB2`.
 
 ## Reproducción
 
 ```powershell
+pwsh -File scripts/bench/build-measurement.ps1 `
+  -EnvFile C:\ruta\autorizada\frontend\.env.local `
+  -OutFile bin\vantare-isa894.exe
+
 $env:VANTARE_OVERLAY_V1_EMIT = '1'
 pwsh -NoProfile -File scripts/bench/huella.ps1 -Condicion A1 `
   -Exe bin/vantare-isa894.exe -Perfil testdata/bench/huella-endurance-3.json `
-  -Duracion 180 -Puerto 9294 -Salida results/isa-894/review-final-180s/on-1 `
-  -Escena 'Circuit de Spa-Francorchamps / jugador en garaje' `
-  -SesionLmu PRACTICE1 -Coches 18
-
-Remove-Item Env:VANTARE_OVERLAY_V1_EMIT -ErrorAction SilentlyContinue
-pwsh -NoProfile -File scripts/bench/huella.ps1 -Condicion A1 `
-  -Exe bin/vantare-isa894.exe -Perfil testdata/bench/huella-endurance-3.json `
-  -Duracion 180 -Puerto 9294 -Salida results/isa-894/review-final-180s/off-1 `
-  -Escena 'Circuit de Spa-Francorchamps / jugador en garaje' `
-  -SesionLmu PRACTICE1 -Coches 18
+  -Duracion 180 -Puerto 9294 -Salida results/isa-894/on-1 `
+  -Escena 'Spa práctica WEC 2026, jugador en boxes, IA rodando' `
+  -SesionLmu 'Práctica' -Coches 18
 ```
 
-Los agregados se regeneran con `node scripts/bench/huella-resumen.mjs` sobre
-los tres CSV del mismo estado; el comando falla si los hashes no coinciden.
+El banco falla cerrado si el preflight no alcanza una sesión configurada y
+autenticada, si cambia exe/dist/HEAD o si la higiene requiere `-Forzar`.

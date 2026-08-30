@@ -1,11 +1,11 @@
 {
   "schema": "vantare.huella.cdp.v1",
-  "capturedAt": "2026-08-30T03:21:17.319Z",
+  "capturedAt": "2026-08-30T16:08:29.403Z",
   "action": "overlay-start",
   "control": {
     "changed": true,
     "running": true,
-    "emittedAt": "2026-08-30T03:21:06.505Z",
+    "emittedAt": "2026-08-30T16:08:18.843Z",
     "mechanism": {
       "kind": "wails-event",
       "eventName": "overlay:start-active"
@@ -14,10 +14,10 @@
   "durationSeconds": 10,
   "expectedWidgets": 3,
   "renderedWidgets": 3,
-  "overlayReadyAt": "2026-08-30T03:21:07.261Z",
+  "overlayReadyAt": "2026-08-30T16:08:19.349Z",
   "rendererProcessIds": [
-    20148,
-    22728
+    19040,
+    15976
   ],
   "rendererProcessInfoError": null,
   "targets": [
@@ -27,10 +27,11 @@
       "title": "Vantare",
       "overlay": false,
       "hub": true,
+      "surface": "hub",
       "widgetCount": 0,
       "diagnostics": null,
       "probe": {
-        "rafPerSecond": 120.1,
+        "rafPerSecond": 120.2,
         "longTaskCount": 0,
         "longTaskTotalMs": 0,
         "longTaskMaxMs": 0,
@@ -40,39 +41,40 @@
     },
     {
       "role": "overlay",
-      "url": "http://wails.localhost/",
-      "title": "Vantare",
+      "url": "http://wails.localhost/overlay.html",
+      "title": "Vantare Overlay",
       "overlay": true,
       "hub": false,
+      "surface": "desktop",
       "widgetCount": 3,
       "diagnostics": {
         "overlay_v2_parse_duration": {
-          "count": 7,
+          "count": 6,
           "p50": 0.5,
-          "p99": 1.6000000014901161,
+          "p99": 1.400000000372529,
           "nonLiveSamples": 0
         },
         "overlay_v2_transport": {
-          "revision": 16,
-          "frameRevision": 16,
+          "revision": 12,
+          "frameRevision": 12,
           "sourceState": "live",
           "epoch": 1,
-          "sequence": 253,
+          "sequence": 305,
           "sessionId": "lmu-session-1",
           "vehicleCount": 18,
           "playerPit": "pit"
         },
         "pull": {
           "active": true,
-          "requestsCompleted": 7,
+          "requestsCompleted": 6,
           "receivedV1Projections": 0,
-          "receivedV2Snapshots": 6,
+          "receivedV2Snapshots": 5,
           "requestDurationMs": {
-            "count": 7,
-            "sampleCount": 7,
-            "mean": 15.328571429210049,
-            "max": 68,
-            "p99": 68,
+            "count": 6,
+            "sampleCount": 6,
+            "mean": 13.233333333395422,
+            "max": 50.100000001490116,
+            "p99": 50.100000001490116,
             "histogram": [
               {
                 "le": 1,
@@ -88,11 +90,11 @@
               },
               {
                 "le": 8,
-                "count": 4
+                "count": 5
               },
               {
                 "le": 16,
-                "count": 2
+                "count": 0
               },
               {
                 "le": 32,
@@ -100,11 +102,11 @@
               },
               {
                 "le": 64,
-                "count": 0
+                "count": 1
               },
               {
                 "le": 128,
-                "count": 1
+                "count": 0
               },
               {
                 "le": 250,
@@ -136,7 +138,7 @@
         "shadow": null
       },
       "probe": {
-        "rafPerSecond": 120.1,
+        "rafPerSecond": 120.2,
         "longTaskCount": 0,
         "longTaskTotalMs": 0,
         "longTaskMaxMs": 0,

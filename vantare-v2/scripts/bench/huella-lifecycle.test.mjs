@@ -47,6 +47,7 @@ test("la medida falla cerrada si la build arranca sin licencia configurada", () 
   assert.match(cdpHelper, /account: payload\.userId \? "authenticated" : "anonymous"/);
   assert.match(bench, /--action license/);
   assert.match(bench, /\$licenseResult\.configured -ne \$true/);
+  assert.match(bench, /\$licenseResult\.account -ne 'authenticated'/);
   assert.match(bench, /Prohibido medir una build sin licencia configurada/);
   assert.match(bench, /licenseState = \$licenseState/);
   assert.match(bench, /licenseAccount = \$licenseAccount/);

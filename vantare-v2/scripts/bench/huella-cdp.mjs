@@ -181,21 +181,29 @@ async function captureLicense(page, timeoutMs) {
   return page.evaluate(async (timeout) => {
     const { Events } = await import("/wails/runtime.js");
     return new Promise((resolve, reject) => {
+      const transitions = [];
       const timer = window.setTimeout(() => {
         unsubscribe();
-        reject(new Error(`license:changed was not emitted within ${timeout} ms`));
+        const last = transitions.at(-1) ?? null;
+        reject(new Error(`authenticated license:changed was not emitted within ${timeout} ms; last=${JSON.stringify(last)}`));
       }, timeout);
       const unsubscribe = Events.On("license:changed", (event) => {
         const payload = event?.data;
         if (!payload || typeof payload !== "object" || typeof payload.state !== "string") return;
-        window.clearTimeout(timer);
-        unsubscribe();
-        resolve({
-          event: "license:changed",
+        const sanitized = {
           state: payload.state,
           configured: payload.state !== "unconfigured",
           account: payload.userId ? "authenticated" : "anonymous",
           deviceOK: payload.deviceOK === true,
+        };
+        transitions.push(sanitized);
+        if (sanitized.account !== "authenticated" || !sanitized.configured) return;
+        window.clearTimeout(timer);
+        unsubscribe();
+        resolve({
+          event: "license:changed",
+          ...sanitized,
+          transitions,
         });
       });
       Events.Emit("license:cached:get", {});

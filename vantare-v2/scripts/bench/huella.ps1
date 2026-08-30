@@ -310,7 +310,7 @@ try {
     & node $cdpHelper --cdp "http://127.0.0.1:$Puerto" --action license --duration 15 --output $licenseJson | Out-Host
     if ($LASTEXITCODE -ne 0) { throw "No se pudo capturar el estado de licencia por CDP (código $LASTEXITCODE)." }
     $licenseResult = Get-Content -LiteralPath $licenseJson -Raw | ConvertFrom-Json
-    if ($licenseResult.configured -ne $true -or [string]$licenseResult.state -eq 'unconfigured') {
+    if ($licenseResult.configured -ne $true -or [string]$licenseResult.state -eq 'unconfigured' -or [string]$licenseResult.account -ne 'authenticated') {
         throw 'Prohibido medir una build sin licencia configurada: reconstruye con frontend/.env.local y tools/generate_supabase_config.ps1.'
     }
     $licenseState = [string]$licenseResult.state

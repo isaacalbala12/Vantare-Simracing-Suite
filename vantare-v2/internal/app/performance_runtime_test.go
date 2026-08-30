@@ -58,11 +58,19 @@ func customRequestedPolicy(level performancepolicy.Level, standingsHz int) perfo
 
 func TestPerformanceRuntimeTracksProfileAToBWhileAutomaticIsActive(t *testing.T) {
 	settings := PerformanceSettings{Mode: "auto", Level: 1}
+	effectsA := config.ProfileEffectsNoBlur
+	effectsB := config.ProfileEffectsFlat
 	profileA := &config.ProfileDocumentV4{Performance: &config.ProfilePerformanceV4{
-		Mode: config.ProfilePerformanceLevel, Level: 2,
+		Mode: config.ProfilePerformanceCustom, Level: 2,
+		Overrides: map[string]config.ProfilePerformanceOverrideV4{
+			"delta-main": {Effects: &effectsA},
+		},
 	}}
 	profileB := &config.ProfileDocumentV4{Performance: &config.ProfilePerformanceV4{
-		Mode: config.ProfilePerformanceLevel, Level: 5,
+		Mode: config.ProfilePerformanceCustom, Level: 5,
+		Overrides: map[string]config.ProfilePerformanceOverrideV4{
+			"delta-main": {Effects: &effectsB},
+		},
 	}}
 	target := &runtimePolicyTarget{}
 	runtime := NewPerformanceRuntime(
@@ -72,12 +80,12 @@ func TestPerformanceRuntimeTracksProfileAToBWhileAutomaticIsActive(t *testing.T)
 		target, nil, nil, nil,
 	)
 	runtime.ApplyResolvedSettings(settings, ResolvePerformancePolicy(settings, profileA))
-	if got := target.PerformancePolicy(); got.Mode != performancepolicy.ModeAuto || got.Level != performancepolicy.LevelBalanced {
+	if got := target.PerformancePolicy(); got.Mode != performancepolicy.ModeAuto || got.Level != performancepolicy.LevelBalanced || got.WidgetEffects["delta-main"] != performancepolicy.EffectsNoBlur {
 		t.Fatalf("automatic profile A policy = %+v, want balanced floor", got)
 	}
 
 	runtime.ApplyResolvedSettings(settings, ResolvePerformancePolicy(settings, profileB))
-	if got := target.PerformancePolicy(); got.Mode != performancepolicy.ModeAuto || got.Level != performancepolicy.LevelMinimum {
+	if got := target.PerformancePolicy(); got.Mode != performancepolicy.ModeAuto || got.Level != performancepolicy.LevelMinimum || got.WidgetEffects["delta-main"] != performancepolicy.EffectsFlat {
 		t.Fatalf("automatic profile B policy = %+v, want profile floor level 5", got)
 	}
 }
@@ -105,6 +113,7 @@ func TestPerformanceRuntimeAppliesRequestedCapHotAndPreservesCustomOverrides(t *
 
 func TestPerformanceRuntimePreservesResolvedProfileCustomOverrideWhileAutoDrops(t *testing.T) {
 	rate := config.ProfileWidgetRateV4{Hertz: 1}
+	effects := config.ProfileEffectsNoBlur
 	profile := &config.ProfileDocumentV4{
 		Layouts: map[config.LayoutType]config.SessionLayoutV4{
 			config.LayoutGeneral: {
@@ -115,7 +124,7 @@ func TestPerformanceRuntimePreservesResolvedProfileCustomOverrideWhileAutoDrops(
 		Performance: &config.ProfilePerformanceV4{
 			Mode: config.ProfilePerformanceCustom, Level: 3,
 			Overrides: map[string]config.ProfilePerformanceOverrideV4{
-				"standings-main": {Hz: &rate},
+				"standings-main": {Hz: &rate, Effects: &effects},
 			},
 		},
 	}
@@ -134,6 +143,9 @@ func TestPerformanceRuntimePreservesResolvedProfileCustomOverrideWhileAutoDrops(
 	}
 	if hz, ok := got.WidgetHz["standings-main"].Hertz(); !ok || hz != 1 {
 		t.Fatalf("resolved profile custom override after drop = %+v", got.WidgetHz["standings-main"])
+	}
+	if got.WidgetEffects["standings-main"] != performancepolicy.EffectsNoBlur {
+		t.Fatalf("resolved profile custom effects after drop = %+v", got.WidgetEffects)
 	}
 }
 

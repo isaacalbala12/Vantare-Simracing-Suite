@@ -161,6 +161,9 @@ func ResolveAutoRequested(requested Policy, level Level, reason Reason) Policy {
 			automatic.WidgetHz[widget] = rate
 		}
 	}
+	if requested.WidgetEffects != nil {
+		automatic.WidgetEffects = cloneWidgetEffects(requested.WidgetEffects)
+	}
 	if !sameOptionalInt(requested.RafCap, baseline.RafCap) {
 		automatic.RafCap = cloneOptionalInt(requested.RafCap)
 	}

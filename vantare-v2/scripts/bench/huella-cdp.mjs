@@ -25,6 +25,9 @@ async function describePage(page) {
     hub: window.location.href.startsWith("http://wails.localhost/#/hub")
       || document.querySelector(".orbit-root") !== null,
     widgetCount: document.querySelectorAll('[data-testid="runtime-widget-frame"]').length,
+    diagnostics: typeof window.__vantareOverlayV2Diagnostics === "function"
+      ? window.__vantareOverlayV2Diagnostics()
+      : null,
   }));
 }
 

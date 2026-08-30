@@ -90,6 +90,7 @@ export function CompositeApp() {
     };
     diagnosticWindow.__vantareOverlayV2Diagnostics = () => Object.freeze({
       ...overlayV2Store.getDiagnostics(),
+      pull: overlayPull.getDiagnostics(),
       shadow: overlayV2Shadow.sessionSummary(),
     });
     adapter.start();

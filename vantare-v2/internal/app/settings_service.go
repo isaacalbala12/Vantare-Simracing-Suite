@@ -227,6 +227,7 @@ func performanceRateFromJSON(raw json.RawMessage) (performancepolicy.WidgetRate,
 type AppSettings struct {
 	SchemaVersion               int                         `json:"schemaVersion"`
 	CpuSampling                 bool                        `json:"cpuSampling"`
+	OverlayV1Emit               bool                        `json:"overlayV1Emit,omitempty"`
 	Performance                 PerformanceSettings         `json:"performance"`
 	Notifications               NotificationSettings        `json:"notifications"`
 	Hotkeys                     map[string]string           `json:"hotkeys"`
@@ -468,7 +469,7 @@ func cloneWidgetOverrides(source map[string]WidgetOverride) map[string]WidgetOve
 }
 
 // appSettingsSchemaVersion is the current shape of the persisted settings.
-const appSettingsSchemaVersion = 5
+const appSettingsSchemaVersion = 6
 
 // migrateSettings applies schema migrations in place.
 //
@@ -486,6 +487,7 @@ const appSettingsSchemaVersion = 5
 //	          level-1 sentinel was written by the temporary rollout and migrates
 //	          with a visible marker; an explicit user source or any other choice
 //	          is preserved. The migration is never applied to schema v5+.
+//	v5 -> v6: persist the diagnostic Overlay V1 emission switch, off by default.
 func (s *SettingsService) migrateSettings(settings *AppSettings) {
 	if settings.SchemaVersion == 0 {
 		settings.SchemaVersion = 1
@@ -530,6 +532,10 @@ func (s *SettingsService) migrateSettings(settings *AppSettings) {
 			settings.Performance.Source = PerformanceSourceUser
 		}
 		settings.SchemaVersion = 5
+	}
+	if settings.SchemaVersion < 6 {
+		settings.OverlayV1Emit = false
+		settings.SchemaVersion = 6
 	}
 }
 
@@ -822,6 +828,7 @@ func (s *SettingsService) applyLoaded(loaded *AppSettings) {
 	merged := &AppSettings{
 		SchemaVersion:               loaded.SchemaVersion,
 		CpuSampling:                 loaded.CpuSampling,
+		OverlayV1Emit:               loaded.OverlayV1Emit,
 		Performance:                 loaded.Performance,
 		Notifications:               loaded.Notifications,
 		ActiveOverlayProfileID:      loaded.ActiveOverlayProfileID,

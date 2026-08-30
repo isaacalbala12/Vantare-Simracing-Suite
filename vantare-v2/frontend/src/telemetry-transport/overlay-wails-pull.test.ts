@@ -24,6 +24,36 @@ async function flushResponse(pending: PendingPull[], input: unknown): Promise<vo
 }
 
 describe("overlay HTTP pull client", () => {
+  it.each([
+    { state: "V1 off", events: [{name: "telemetry:overlay-v2:snapshot", data: {revision: 1}}], wantV1: 0 },
+    { state: "V1 diagnostic rollback", events: [
+      {name: "telemetry:overlay:projection", data: {sequence: 1}},
+      {name: "telemetry:overlay-v2:snapshot", data: {revision: 1}},
+    ], wantV1: 1 },
+  ])("keeps V2 delivery authoritative with $state", async ({events, wantV1}) => {
+    const pending: PendingPull[] = [];
+    const v1Snapshots: unknown[] = [];
+    const v2Snapshots: unknown[] = [];
+    const client = createOverlayWailsPullClient({
+      post(route) {
+        if (route === OVERLAY_PULL_CLOSE_ROUTE) return undefined;
+        return new Promise((resolve) => pending.push({resolve}));
+      },
+      schedule: () => 1,
+      cancel: () => undefined,
+      createSessionID: () => "v1-switch",
+    });
+    client.source.subscribe("telemetry:overlay:projection", (data) => v1Snapshots.push(data));
+    client.source.subscribe("telemetry:overlay-v2:snapshot", (data) => v2Snapshots.push(data));
+
+    client.start();
+    await flushResponse(pending, {sessionId: "v1-switch", delivery: 1, events});
+
+    expect(v1Snapshots).toHaveLength(wantV1);
+    expect(v2Snapshots).toEqual([{revision: 1}]);
+    client.stop();
+  });
+
   it("acks only after processing and keeps one request in flight", async () => {
     const posted: Array<{ route: string; data: unknown }> = [];
     const pending: PendingPull[] = [];
@@ -86,6 +116,12 @@ describe("overlay HTTP pull client", () => {
     });
     expect(v1Snapshots).toEqual([{sequence: 1}, {sequence: 100}]);
     expect(v2Snapshots).toEqual([{revision: 100}]);
+    expect(client.getDiagnostics()).toMatchObject({
+      active: true,
+      requestsCompleted: 2,
+      receivedV1Projections: 2,
+      receivedV2Snapshots: 1,
+    });
     expect(onError).not.toHaveBeenCalled();
 
     client.stop();

@@ -32,6 +32,15 @@ export type OverlayWailsPullOptions = Readonly<{
   cancel?: (handle: ScheduleHandle) => void;
   createSessionID?: () => string;
   onError?: (error: unknown) => void;
+  now?: () => number;
+}>;
+
+export type OverlayWailsPullDiagnostics = Readonly<{
+  active: boolean;
+  requestsCompleted: number;
+  receivedV1Projections: number;
+  receivedV2Snapshots: number;
+  requestDurationMs: Readonly<{ count: number; mean: number; max: number }>;
 }>;
 
 export type OverlayWailsPullClient = Readonly<{
@@ -40,6 +49,7 @@ export type OverlayWailsPullClient = Readonly<{
   }>;
   start(): void;
   stop(): void;
+  getDiagnostics(): OverlayWailsPullDiagnostics;
 }>;
 
 export type BrowserOverlayWailsPullOptions = Readonly<{
@@ -68,6 +78,7 @@ export function createOverlayWailsPullClient(
   const cancel = options.cancel ?? defaultCancel;
   const createSessionID = options.createSessionID ?? defaultSessionID;
   const onError = options.onError ?? (() => undefined);
+  const now = options.now ?? (() => typeof performance === "undefined" ? Date.now() : performance.now());
   const listeners = new Map<string, Set<(data: unknown) => void>>();
 
   let active = false;
@@ -76,6 +87,11 @@ export function createOverlayWailsPullClient(
   let acknowledged = 0;
   let emptyResponses = 0;
   let scheduled: ScheduleHandle | undefined;
+  let requestsCompleted = 0;
+  let receivedV1Projections = 0;
+  let receivedV2Snapshots = 0;
+  let requestDurationTotalMs = 0;
+  let requestDurationMaxMs = 0;
 
   const scheduleNext = (delayMs: number) => {
     if (!active || scheduled !== undefined) return;
@@ -86,8 +102,13 @@ export function createOverlayWailsPullClient(
     input: unknown,
     requestSessionID: string,
     requestAck: number,
+    startedAt: number,
   ) => {
     if (!active || sessionID !== requestSessionID || acknowledged !== requestAck) return;
+    const duration = Math.max(0, now() - startedAt);
+    requestsCompleted += 1;
+    requestDurationTotalMs += duration;
+    requestDurationMaxMs = Math.max(requestDurationMaxMs, duration);
     if (input === undefined) {
       awaiting = false;
       emptyResponses += 1;
@@ -107,6 +128,7 @@ export function createOverlayWailsPullClient(
     awaiting = true;
     const requestSessionID = sessionID;
     const requestAck = acknowledged;
+    const startedAt = now();
     try {
       const posted = options.post(OVERLAY_PULL_REQUEST_ROUTE, {
         sessionId: requestSessionID,
@@ -114,7 +136,7 @@ export function createOverlayWailsPullClient(
       });
       if (posted instanceof Promise) {
         void posted.then(
-          (input) => handlePostedResponse(input, requestSessionID, requestAck),
+          (input) => handlePostedResponse(input, requestSessionID, requestAck, startedAt),
           (error) => {
             if (active && sessionID === requestSessionID && acknowledged === requestAck) {
               awaiting = false;
@@ -124,7 +146,7 @@ export function createOverlayWailsPullClient(
           },
         );
       } else {
-        handlePostedResponse(posted, requestSessionID, requestAck);
+        handlePostedResponse(posted, requestSessionID, requestAck, startedAt);
       }
     } catch (error) {
       awaiting = false;
@@ -155,6 +177,8 @@ export function createOverlayWailsPullClient(
         onError(new Error("overlay-wails-pull:invalid-event-name"));
         continue;
       }
+      if (event.name === "telemetry:overlay:projection") receivedV1Projections += 1;
+      if (event.name === "telemetry:overlay-v2:snapshot") receivedV2Snapshots += 1;
       for (const listener of listeners.get(event.name) ?? []) {
         try {
           listener(event.data);
@@ -213,6 +237,19 @@ export function createOverlayWailsPullClient(
       } catch (error) {
         onError(error);
       }
+    },
+    getDiagnostics() {
+      return Object.freeze({
+        active,
+        requestsCompleted,
+        receivedV1Projections,
+        receivedV2Snapshots,
+        requestDurationMs: Object.freeze({
+          count: requestsCompleted,
+          mean: requestsCompleted === 0 ? 0 : requestDurationTotalMs / requestsCompleted,
+          max: requestDurationMaxMs,
+        }),
+      });
     },
   };
 }

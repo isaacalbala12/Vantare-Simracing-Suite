@@ -77,6 +77,7 @@ describe('Studio Overlay telemetry lifecycle', () => {
       coordinator,
       start: () => { throw new Error('v1 failed'); },
       stop: vi.fn(),
+      getDiagnostics: () => ({ active: false, requestsCompleted: 0, receivedV1Projections: 0, receivedV2Snapshots: 0, requestDurationMs: { count: 0, mean: 0, max: 0 } }),
     };
     const pull: OverlayWailsPullClient = {
       source: {
@@ -88,6 +89,7 @@ describe('Studio Overlay telemetry lifecycle', () => {
       },
       start: vi.fn(),
       stop: vi.fn(),
+      getDiagnostics: () => ({ active: false, requestsCompleted: 0, receivedV1Projections: 0, receivedV2Snapshots: 0, requestDurationMs: { count: 0, mean: 0, max: 0 } }),
     };
     const store = createOverlayFrameV2Store();
     const adapter = createStudioOverlayTelemetryAdapter({ legacy, pull, overlayV2Store: store });

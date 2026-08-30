@@ -65,6 +65,9 @@ type EngineerProjectionConsumer interface {
 // TelemetryCoreRuntimeConfig configures the canonical product runtime.
 type TelemetryCoreRuntimeConfig struct {
 	Enabled bool
+	// OverlayV1Emit keeps the legacy Overlay projection available for one
+	// diagnostic rollback cycle. Product composition leaves it off by default.
+	OverlayV1Emit *bool
 	// PerformancePolicy es el nivel efectivo inicial decidido desde Ajustes.
 	PerformancePolicy performancepolicy.Policy
 	// Now is injectable for deterministic freshness tests. It defaults to
@@ -198,6 +201,7 @@ type TelemetryCoreRuntime struct {
 	telemetryFailurePolicyV2 bool
 	telemetryEngineApply     bool
 	overlayFrameV2Shadow     bool
+	overlayV1Emit            bool
 	engineerAsyncPort        bool
 	emitter                  telemetrytransport.EventEmitter
 	hub                      *telemetrytransport.Hub
@@ -271,6 +275,10 @@ func NewTelemetryCoreRuntime(config TelemetryCoreRuntimeConfig) (*TelemetryCoreR
 	if config.OverlayFrameV2Shadow != nil {
 		overlayFrameV2Shadow = *config.OverlayFrameV2Shadow
 	}
+	overlayV1Emit := true
+	if config.OverlayV1Emit != nil {
+		overlayV1Emit = *config.OverlayV1Emit
+	}
 	engineerAsyncPort := true
 	if config.EngineerAsyncPort != nil {
 		engineerAsyncPort = *config.EngineerAsyncPort
@@ -332,6 +340,7 @@ func NewTelemetryCoreRuntime(config TelemetryCoreRuntimeConfig) (*TelemetryCoreR
 		telemetryFailurePolicyV2: failurePolicyV2,
 		telemetryEngineApply:     engineApply,
 		overlayFrameV2Shadow:     overlayFrameV2Shadow,
+		overlayV1Emit:            overlayV1Emit,
 		engineerAsyncPort:        engineerAsyncPort,
 		emitter:                  config.Emitter,
 		hub: telemetrytransport.NewHub(telemetrytransport.HubConfig{
@@ -1023,15 +1032,20 @@ func (sink runtimeBatchSink) WriteBatch(ctx context.Context, batch telemetrycore
 	}
 	sink.runtime.recordFrameArrival()
 	sink.runtime.counters.batchesApplied.Add(1)
-	overlayProjected, err := overlayprojection.ProjectV1(final)
-	overlayReady := err == nil
-	if err != nil {
-		if failureErr := sink.runtime.handlePostCommitFailure(
-			telemetrytransport.ProductOverlay,
-			"projection",
-			fmt.Errorf("project Overlay telemetry: %w", err),
-		); failureErr != nil {
-			return failureErr
+	var overlayProjected overlayprojection.SnapshotV1
+	overlayReady := false
+	if sink.runtime.overlayV1Emit {
+		var err error
+		overlayProjected, err = overlayprojection.ProjectV1(final)
+		overlayReady = err == nil
+		if err != nil {
+			if failureErr := sink.runtime.handlePostCommitFailure(
+				telemetrytransport.ProductOverlay,
+				"projection",
+				fmt.Errorf("project Overlay telemetry: %w", err),
+			); failureErr != nil {
+				return failureErr
+			}
 		}
 	}
 	strategyProjected, err := strategyprojection.ProjectV1(final)
@@ -1501,17 +1515,19 @@ func (runtime *TelemetryCoreRuntime) setStatusLocked(state driver.State, attempt
 	nextRevision := runtime.statusRev + 1
 	capturedAt := runtime.now().UTC()
 	payload := telemetrytransport.StatusPayload{State: state.String(), ReconnectAttempt: attempt}
-	overlayStatus, err := telemetrytransport.NewStatus(
-		telemetrytransport.ProductOverlay,
-		nextRevision,
-		capturedAt,
-		payload,
-	)
-	if err != nil {
-		return fmt.Errorf("build Overlay telemetry status: %w", err)
-	}
-	if err := runtime.hub.PublishStatus(overlayStatus); err != nil {
-		return fmt.Errorf("publish Overlay telemetry status: %w", err)
+	if runtime.overlayV1Emit {
+		overlayStatus, err := telemetrytransport.NewStatus(
+			telemetrytransport.ProductOverlay,
+			nextRevision,
+			capturedAt,
+			payload,
+		)
+		if err != nil {
+			return fmt.Errorf("build Overlay telemetry status: %w", err)
+		}
+		if err := runtime.hub.PublishStatus(overlayStatus); err != nil {
+			return fmt.Errorf("publish Overlay telemetry status: %w", err)
+		}
 	}
 	if runtime.strategyHub != nil {
 		strategyStatus, err := telemetrytransport.NewStatus(

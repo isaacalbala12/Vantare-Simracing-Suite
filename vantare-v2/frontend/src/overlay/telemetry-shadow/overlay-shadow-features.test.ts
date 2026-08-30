@@ -19,6 +19,35 @@ const STANDINGS_CONTENT = standingsDefinition.parseContent({
 const FLAGS_CONTENT = racingFlagsDefinition.parseContent({});
 
 describe("shadow comparator: session and standings features", () => {
+  it("omits currentLapText when the S1 shadow column is hidden but keeps visible laps exact", () => {
+    const evidence = JSON.parse(readFileSync(path.resolve(
+      process.cwd(),
+      "src/overlay/telemetry-shadow/testdata/s1-on-20260830-185729.json",
+    ), "utf8")) as { shadow: { metrics: Record<string, number> } };
+    expect(evidence.shadow.metrics[
+      'overlay_shadow_mismatches_total{feature="standings",field="rows[].currentLapText",phase="live"}'
+    ]).toBe(2);
+
+    const update = golden(1);
+    if (!update.frame) throw new Error("golden frame missing");
+    const hidden = buildStandingsViewModelV2(update.frame, update.source, STANDINGS_CONTENT);
+    expect(hidden.rows[0]?.currentLapText).toBe("");
+
+    const visibleContent = {
+      ...STANDINGS_CONTENT,
+      columns: STANDINGS_CONTENT.columns.map((column) =>
+        column.metricId === "currentLap" ? { ...column, enabled: true } : column,
+      ),
+    };
+    const visible = buildStandingsViewModelV2(update.frame, update.source, visibleContent);
+    expect(visible.rows[0]?.currentLapText).toBe("127");
+    const changed = {
+      ...visible,
+      rows: visible.rows.map((row, index) => index === 0 ? { ...row, currentLapText: "126" } : row),
+    };
+    expect(compareStandingsModels(visible, changed)).toContain("rows[].currentLapText");
+  });
+
   it("labels every metric with its feature and phase", () => {
     const update = golden(20);
     if (!update.frame) throw new Error("golden frame missing");

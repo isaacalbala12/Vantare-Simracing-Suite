@@ -16,7 +16,7 @@ El gate enlaza tres conjuntos y falla si divergen:
 | --- | --- | --- |
 | `delta` | exact | Señales y semántica comparables campo a campo. |
 | `pedals` | exact | Controles instantáneos comparables campo a campo. |
-| `standings` | partial | Número, equipo/color, compuesto y parte de gaps no existen con igual semántica en V1. |
+| `standings` | partial | Número, equipo/color, compuesto y parte de gaps no existen con igual semántica en V1. Los campos comparables siguen siendo exactos cuando la columna los muestra; una `currentLap` oculta se omite en ambos ViewModels y no participa en paridad. |
 | `relative` | partial | El número de coche no es comparable en V1. |
 | `broadcast-tower` | partial | Número, equipo/color, temperatura y SOF no tienen par completo. |
 | `fuel-strategy` | partial | Historial/medias/requerido legacy no comparten autoridad con la derivación V2. |

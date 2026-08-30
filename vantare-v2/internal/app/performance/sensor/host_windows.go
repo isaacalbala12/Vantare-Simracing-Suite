@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
@@ -51,13 +50,12 @@ type cpuSnapshot struct {
 
 type WindowsHostSampler struct {
 	mu       sync.Mutex
-	profile  string
 	previous cpuSnapshot
 	now      func() time.Time
 }
 
-func NewHostSampler(userDataDir string) *WindowsHostSampler {
-	return &WindowsHostSampler{profile: filepath.Clean(userDataDir), now: time.Now}
+func NewHostSampler() *WindowsHostSampler {
+	return &WindowsHostSampler{now: time.Now}
 }
 
 func (sampler *WindowsHostSampler) Sample(ctx context.Context) (HostSample, error) {
@@ -109,48 +107,52 @@ func (sampler *WindowsHostSampler) ownProcessIDs(ctx context.Context) ([]uint32,
 	if err != nil {
 		return nil, fmt.Errorf("enumerate processes: %w", err)
 	}
-	result := []uint32{uint32(os.Getpid())}
+	records := make([]processRecord, 0, len(all))
 	for _, candidate := range all {
 		name, nameErr := candidate.NameWithContext(ctx)
-		if nameErr != nil || !strings.EqualFold(name, "msedgewebview2.exe") {
+		parentPID, parentErr := candidate.PpidWithContext(ctx)
+		if nameErr != nil || parentErr != nil {
 			continue
 		}
-		commandLine, commandErr := candidate.CmdlineWithContext(ctx)
-		if commandErr == nil && ownsWebViewCommandLine(commandLine, sampler.profile) {
-			result = append(result, uint32(candidate.Pid))
-		}
+		records = append(records, processRecord{pid: candidate.Pid, parentPID: parentPID, name: name})
 	}
-	return result, nil
+	return ownProcessTreeIDs(int32(os.Getpid()), records), nil
 }
 
-func ownsWebViewCommandLine(commandLine, expectedProfile string) bool {
-	actual := commandLineSwitch(commandLine, "user-data-dir")
-	return actual != "" && expectedProfile != "" && strings.EqualFold(filepath.Clean(actual), filepath.Clean(expectedProfile))
+type processRecord struct {
+	pid         int32
+	parentPID   int32
+	name        string
+	commandLine string
 }
 
-func commandLineSwitch(commandLine, name string) string {
-	prefix := "--" + strings.ToLower(name) + "="
-	for index := 0; index < len(commandLine); index++ {
-		if index > 0 && commandLine[index-1] != ' ' && commandLine[index-1] != '\t' {
-			continue
-		}
-		remaining := commandLine[index:]
-		if len(remaining) < len(prefix) || !strings.EqualFold(remaining[:len(prefix)], prefix) {
-			continue
-		}
-		value := remaining[len(prefix):]
-		if strings.HasPrefix(value, "\"") {
-			value = value[1:]
-			if end := strings.IndexByte(value, '"'); end >= 0 {
-				return value[:end]
-			}
-		}
-		if end := strings.IndexAny(value, " \t"); end >= 0 {
-			value = value[:end]
-		}
-		return value
+func ownProcessTreeIDs(rootPID int32, records []processRecord) []uint32 {
+	parents := make(map[int32]int32, len(records))
+	for _, record := range records {
+		parents[record.pid] = record.parentPID
 	}
-	return ""
+	result := []uint32{uint32(rootPID)}
+	for _, record := range records {
+		if !strings.EqualFold(record.name, "msedgewebview2.exe") || !descendsFrom(record.pid, rootPID, parents) {
+			continue
+		}
+		result = append(result, uint32(record.pid))
+	}
+	return result
+}
+
+func descendsFrom(pid, rootPID int32, parents map[int32]int32) bool {
+	for visited := 0; pid > 0 && visited <= len(parents); visited++ {
+		parentPID, ok := parents[pid]
+		if !ok {
+			return false
+		}
+		if parentPID == rootPID {
+			return true
+		}
+		pid = parentPID
+	}
+	return false
 }
 
 func systemTimes() (idle, kernel, user uint64, err error) {

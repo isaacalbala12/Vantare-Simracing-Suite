@@ -2134,7 +2134,7 @@ func main() {
 		performanceRuntime = app.NewPerformanceRuntime(
 			func() app.PerformanceSampleRunner {
 				return performancesensor.New(
-					performancesensor.NewHostSampler(os.Getenv("WEBVIEW2_USER_DATA_FOLDER")),
+					performancesensor.NewHostSampler(),
 					performancesensor.NewPresentMonSource(performancesensor.DefaultPresentMonPath()),
 				)
 			},

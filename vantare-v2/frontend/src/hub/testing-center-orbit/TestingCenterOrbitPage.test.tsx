@@ -1,9 +1,10 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "../../i18n/I18nProvider";
 import { LicenseProvider } from "../../lib/license";
 import { LauncherStoreProvider } from "../launcher/launcher-store";
 import { OrbitShell } from "../components/orbit/OrbitShell";
+import { getHubSuspendBlockerReasons } from "../hub-suspend-guard";
 import type { ReportDraft, ReportDraftFields, SubmittedReport } from "../testing-center/contracts";
 import type { TestingCenterClient } from "../testing-center/testing-center-client";
 import type { TestingCenterFeedbackClient } from "../testing-center/candidate-feedback-client";
@@ -105,6 +106,7 @@ function fill() {
 
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
   vi.restoreAllMocks();
 });
 
@@ -186,6 +188,34 @@ describe("TestingCenterOrbitPage", () => {
     });
     // El `Select` del kit es un combobox propio: el valor se lee en su etiqueta.
     expect(document.getElementById("orbit-tc-module")?.textContent).toContain("Telemetry");
+  });
+
+  it("mantiene el bloqueador si termina un autosave de una revisión anterior", async () => {
+    let resolveFirstSave!: (draft: ReportDraft) => void;
+    const firstSave = new Promise<ReportDraft>((resolve) => {
+      resolveFirstSave = resolve;
+    });
+    const deferredSave = vi.fn(() => firstSave);
+    const { client } = stubClient({ saveDraft: deferredSave });
+    mount(client);
+    await screen.findByTestId("orbit-testing");
+    await waitFor(() => expect(client.loadDraft).toHaveBeenCalledTimes(1));
+
+    vi.useFakeTimers();
+    const action = document.getElementById("orbit-tc-action") as HTMLTextAreaElement;
+    fireEvent.change(action, { target: { value: "edición A" } });
+    await act(async () => vi.advanceTimersByTime(600));
+    expect(deferredSave).toHaveBeenCalledTimes(1);
+
+    fireEvent.change(action, { target: { value: "edición B" } });
+    expect(getHubSuspendBlockerReasons()).toContain(
+      "Testing Center tiene un borrador pendiente de guardar",
+    );
+    await act(async () => resolveFirstSave(draftOf(deferredSave.mock.calls[0][0])));
+
+    expect(getHubSuspendBlockerReasons()).toContain(
+      "Testing Center tiene un borrador pendiente de guardar",
+    );
   });
 
   it("la pantalla no usa el atributo `title` nativo", async () => {

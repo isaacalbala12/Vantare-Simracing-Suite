@@ -102,10 +102,11 @@ host, el banco completa la enumeración con `Get-EtwTraceSession`; al detener,
 |---|---|---|---|
 | `A0` | detenido | visible | CDP pide `overlay:stop` si estaba abierto |
 | `A1` | activo | visible | CDP emite `overlay:start-active` por el runtime Wails y registra el instante exacto |
-| `HubVisible` | activo | restaurado | `ShowWindowAsync(..., SW_RESTORE)` |
-| `HubMin` | activo | minimizado | `ShowWindowAsync(..., SW_MINIMIZE)` |
+| `HubVisible` | activo | restaurado | El target CDP del Hub invoca `Window.UnMinimise()` |
+| `HubMin` | activo | minimizado o destruido según nivel | El target CDP del Hub invoca `Window.Minimise()` |
 
-El helper identifica el overlay por URL exacta `http://wails.localhost/` y
+El helper identifica el overlay por la entrada dedicada
+`http://wails.localhost/overlay.html` y
 marcadores runtime; el Hub usa `http://wails.localhost/#/hub`. Antes de abrir el
 overlay conserva los PID renderer ya observados del Hub. Tras emitir
 `overlay:start-active` desde un estado inicial detenido, espera el target `/` y

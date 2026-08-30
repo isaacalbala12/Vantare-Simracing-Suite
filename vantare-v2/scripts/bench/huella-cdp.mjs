@@ -19,7 +19,7 @@ async function describePage(page) {
   return page.evaluate(() => ({
     url: window.location.href,
     title: document.title,
-    overlay: window.location.href === "http://wails.localhost/"
+    overlay: window.location.href.startsWith("http://wails.localhost/overlay.html")
       && (typeof window.__vantareOverlayV2Diagnostics === "function"
         || document.querySelector('[data-testid="runtime-overlay-surface"]') !== null),
     hub: window.location.href.startsWith("http://wails.localhost/#/hub")
@@ -144,21 +144,55 @@ const action = argument("action", "inspect");
 const output = argument("output");
 const durationSeconds = Number(argument("duration", "10"));
 const expectedWidgets = Number(argument("expected-widgets", "0"));
-if (!cdp || !["inspect", "overlay-start", "overlay-stop", "app-quit"].includes(action) || !Number.isFinite(durationSeconds) || durationSeconds < 1 || durationSeconds > 120 || !Number.isInteger(expectedWidgets) || expectedWidgets < 0) {
-  throw new Error("usage: node huella-cdp.mjs --cdp http://127.0.0.1:9247 --action inspect|overlay-start|overlay-stop|app-quit [--duration 10] [--expected-widgets 3] [--output result.json]");
+if (!cdp || !["inspect", "overlay-start", "overlay-stop", "hub-minimise", "hub-restore", "hub-open", "app-quit"].includes(action) || !Number.isFinite(durationSeconds) || durationSeconds < 1 || durationSeconds > 120 || !Number.isInteger(expectedWidgets) || expectedWidgets < 0) {
+  throw new Error("usage: node huella-cdp.mjs --cdp http://127.0.0.1:9247 --action inspect|overlay-start|overlay-stop|hub-minimise|hub-restore|hub-open|app-quit [--duration 10] [--expected-widgets 3] [--output result.json]");
 }
 
 const browser = await chromium.connectOverCDP(cdp);
-await waitForRole(browser, "hub", true, 30_000);
+async function writeResult(result) {
+  const json = `${JSON.stringify(result)}\n`;
+  if (output) await writeFile(output, json, { encoding: "utf8", flag: "wx" });
+  process.stdout.write(json);
+}
+if (action === "hub-open") {
+  const appPage = (await pagesByRole(browser)).find(({ description }) => description.overlay)?.page;
+  if (!appPage) throw new Error("Overlay target is not available to request Hub reopening");
+  const startedAt = performance.now();
+  await appPage.evaluate(async () => {
+    const { Events } = await import("/wails/runtime.js");
+    await Events.Emit("hub:open");
+  });
+  await waitForRole(browser, "hub", true, 30_000);
+  const reopenMs = performance.now() - startedAt;
+  await writeResult({ schema: "vantare.huella.cdp.v1", action, requested: true, reopenMs });
+  process.exit(0);
+}
 if (action === "app-quit") {
-  const hub = (await pagesByRole(browser)).find(({ description }) => description.hub)?.page;
-  if (!hub) throw new Error("Hub target is not available for clean shutdown");
-  await hub.evaluate(async () => {
+  const pages = await pagesByRole(browser);
+  const appPage = pages.find(({ description }) => description.hub)?.page
+    ?? pages.find(({ description }) => description.overlay)?.page;
+  if (!appPage) throw new Error("No Wails target is available for clean shutdown");
+  await appPage.evaluate(async () => {
     const { Application } = await import("/wails/runtime.js");
     await Application.Quit();
   }).catch(() => {
     // El transporte puede desaparecer antes de responder porque Quit cierra
     // precisamente el WebView que ejecutó la petición.
+  });
+  process.stdout.write(`${JSON.stringify({ schema: "vantare.huella.cdp.v1", action, requested: true })}\n`);
+  process.exit(0);
+}
+await waitForRole(browser, "hub", true, 30_000);
+if (action === "hub-minimise" || action === "hub-restore") {
+  const hub = (await pagesByRole(browser)).find(({ description }) => description.hub)?.page;
+  if (!hub) throw new Error("Hub target is not available for its window action");
+  await hub.evaluate(async (requestedAction) => {
+    const { Window } = await import("/wails/runtime.js");
+    if (requestedAction === "hub-minimise") await Window.Minimise();
+    else await Window.UnMinimise();
+  }, action).catch(() => {
+    // At efficient levels minimising destroys the Hub target that made the
+    // request, so the transport can disappear before returning.
   });
   process.stdout.write(`${JSON.stringify({ schema: "vantare.huella.cdp.v1", action, requested: true })}\n`);
   process.exit(0);

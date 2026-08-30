@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-940",
+  "type": "change",
+  "summary": "Los niveles de rendimiento eficientes eliminan el coste del Hub oculto y reducen la superficie nativa del overlay sin perder audio ni cambios de Studio.",
+  "technicalNotes": [
+    "El overlay carga una entrada dedicada y su ventana se limita a la unión de los widgets habilitados en niveles 3 a 5.",
+    "Al minimizar, el Hub se destruye y recrea bajo demanda porque la versión actual de Wails no expone suspensión WebView2; un Studio sucio o sin respuesta bloquea la destrucción.",
+    "Los niveles 4 y 5 mantienen el audio de Ingeniero sin presentación visual y aplican EcoQoS reversible al proceso Go."
+  ],
+  "testing": [
+    "Con nivel 3, abrir un perfil de carrera, minimizar el Hub y confirmar que desaparece su renderer mientras el overlay continúa visible.",
+    "Volver a abrir Vantare desde la bandeja y comprobar que el Hub se recrea; repetir con cambios de Studio sin guardar y confirmar que se conserva.",
+    "Comparar un perfil agrupado, otro con widgets en esquinas opuestas y el modo edición para verificar la caja pequeña o el monitor completo."
+  ],
+  "knownLimitations": [
+    "CascadiaCode continúa como TTF hasta incorporar tooling aprobado para generar un subset woff2.",
+    "La validación publicable de tres repeticiones, iGPU y VR permanece en el banco de huella por hardware."
+  ]
+}

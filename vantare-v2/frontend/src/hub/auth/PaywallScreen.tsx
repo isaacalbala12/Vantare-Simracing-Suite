@@ -18,6 +18,7 @@ import {
   type BillingProductKey,
 } from "../../lib/billing-client";
 import { refreshCurrentUserEntitlements } from "../../lib/entitlements-refresh";
+import { useHubSuspendBlocker } from "../hub-suspend-guard";
 
 type PostCheckoutAccessState =
   | "idle"
@@ -51,6 +52,11 @@ export function PaywallScreen({ email, result, onContinueFree }: PaywallScreenPr
 
   const [accessCheckState, setAccessCheckState] =
     useState<PostCheckoutAccessState>("idle");
+  useHubSuspendBlocker(
+    "billing-checkout-pending",
+    "Hay un checkout externo pendiente",
+    pendingPlan !== null || (checkoutOpened && accessCheckState !== "success"),
+  );
 
   const summary = useMemo(
     () =>

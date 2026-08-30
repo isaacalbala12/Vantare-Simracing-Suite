@@ -23,6 +23,7 @@ import { createStrategyEditorDraft } from "../../strategy/strategy-editor-store"
 import { createOrbitCalculationTestClient } from "./strategy-orbit-calculation.test-support";
 import type { PlanDraftV1, RevisionRefV1 } from "../../strategy/strategy-contract-v1";
 import type { StrategyOrbitRevisionPayloadV1 } from "./strategy-orbit-lifecycle";
+import { installHubSuspendGuard } from "../hub-suspend-guard";
 
 vi.mock("@wailsio/runtime", () => ({
   Events: { Emit: vi.fn(), On: () => () => undefined },
@@ -510,6 +511,71 @@ describe("StrategyOrbitPage · Resumen", () => {
     expect(next[1]).toBeGreaterThan(original[1]);
   });
 
+  it("bloquea al escribir un override de stint antes del blur", async () => {
+    const snapshots: Array<{ other?: string[] }> = [];
+    const disposeGuard = installHubSuspendGuard({
+      on: () => () => undefined,
+      emit: (event, payload) => {
+        if (event === "hub:blockers") snapshots.push(payload as { other?: string[] });
+      },
+    }, "stint-generation");
+    await mounted();
+
+    fireEvent.click(screen.getByTestId("orbit-stint-edit-0"));
+    fireEvent.input(await screen.findByLabelText("Vueltas"), { target: { value: "20" } });
+
+    expect(snapshots.at(-1)?.other).toHaveLength(1);
+    disposeGuard();
+  });
+
+  it.each([
+    ["Vueltas", "20"],
+    ["Combustible", "50"],
+  ])("Escape cancela y libera el borrador de %s", async (label, changedValue) => {
+    const snapshots: Array<{ other?: string[] }> = [];
+    const disposeGuard = installHubSuspendGuard({
+      on: () => () => undefined,
+      emit: (event, payload) => {
+        if (event === "hub:blockers") snapshots.push(payload as { other?: string[] });
+      },
+    }, "stint-generation");
+    await mounted();
+    fireEvent.click(screen.getByTestId("orbit-stint-edit-0"));
+    const input = await screen.findByLabelText(label) as HTMLInputElement;
+    const original = input.value;
+
+    fireEvent.input(input, { target: { value: changedValue } });
+    expect(snapshots.at(-1)?.other).toHaveLength(1);
+    fireEvent.keyDown(input, { key: "Escape" });
+
+    expect(input.value).toBe(original);
+    expect(snapshots.at(-1)?.other).toHaveLength(0);
+    disposeGuard();
+  });
+
+  it.each([
+    ["Vueltas", "20"],
+    ["Combustible", "50"],
+  ])("confirmar %s libera el bloqueador", async (label, changedValue) => {
+    const snapshots: Array<{ other?: string[] }> = [];
+    const disposeGuard = installHubSuspendGuard({
+      on: () => () => undefined,
+      emit: (event, payload) => {
+        if (event === "hub:blockers") snapshots.push(payload as { other?: string[] });
+      },
+    }, "stint-generation");
+    await mounted();
+    fireEvent.click(screen.getByTestId("orbit-stint-edit-0"));
+    const input = await screen.findByLabelText(label);
+
+    fireEvent.input(input, { target: { value: changedValue } });
+    expect(snapshots.at(-1)?.other).toHaveLength(1);
+    fireEvent.blur(input);
+
+    await waitFor(() => expect(snapshots.at(-1)?.other).toHaveLength(0));
+    disposeGuard();
+  });
+
   it("Restablecer devuelve el estado a Al día", async () => {
     await mounted();
 
@@ -763,6 +829,33 @@ describe("StrategyOrbitPage · Disponibilidad", () => {
 });
 
 describe("StrategyOrbitPage · estado inicial", () => {
+  it("publica el borrador del asistente y lo libera al descartarlo", async () => {
+    const snapshots: unknown[] = [];
+    const disposeGuard = installHubSuspendGuard({
+      on: () => () => undefined,
+      emit: (event, payload) => {
+        if (event === "hub:blockers") snapshots.push(payload);
+      },
+    }, "strategy-generation");
+    mount(null);
+
+    fireEvent.click(await screen.findByTestId("orbit-strategy-new-strategy"));
+    expect(snapshots.at(-1)).toEqual(expect.objectContaining({ other: [] }));
+    fireEvent.click(await screen.findByTestId("orbit-strategy-wizard-manual"));
+    await waitFor(() => expect(snapshots.at(-1)).toEqual(expect.objectContaining({
+      generation: "strategy-generation",
+      other: ["Estrategia tiene un evento sin guardar"],
+      reasons: ["Estrategia tiene un evento sin guardar"],
+    })));
+
+    fireEvent.click(screen.getByTestId("orbit-strategy-wizard-back"));
+    await waitFor(() => expect(snapshots.at(-1)).toEqual(expect.objectContaining({
+      other: [],
+      reasons: [],
+    })));
+    disposeGuard();
+  });
+
   it("sin nada guardado el menú ofrece crear y lo dice, no una lista muerta", async () => {
     mount(null);
 

@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "../../i18n/I18nProvider";
 import type { LaunchProfile, LauncherAppEntry } from "../launcher/launcher-state";
 import { OrbitProfileEditor } from "./OrbitProfileEditor";
+import { getHubSuspendBlockerReasons } from "../hub-suspend-guard";
 
 afterEach(() => {
   cleanup();
@@ -83,6 +84,17 @@ describe("OrbitProfileEditor", () => {
       name: "Retransmisión",
       steps: [{ appId: "lmu", delay: 4 }],
     });
+  });
+
+  it("bloquea la suspensión mientras conserva un borrador local sin guardar", async () => {
+    setup();
+    expect(getHubSuspendBlockerReasons()).toEqual([]);
+    fireEvent.change(screen.getByTestId("orbit-profile-editor-name"), {
+      target: { value: "Borrador local" },
+    });
+    await vi.waitFor(() => expect(getHubSuspendBlockerReasons()).toEqual([
+      "El editor de perfiles del Launcher tiene un borrador sin guardar",
+    ]));
   });
 
   it("bloquea Guardar mientras un paso no tiene aplicación", () => {

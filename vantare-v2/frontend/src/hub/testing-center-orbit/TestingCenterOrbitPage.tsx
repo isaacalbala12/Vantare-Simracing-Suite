@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useI18n } from "../../i18n/I18nProvider";
+import { useHubSuspendBlocker } from "../hub-suspend-guard";
 import {
   Accordion,
   Button,
@@ -140,10 +141,16 @@ export function TestingCenterOrbitPage({
    */
   const [sent, setSent] = useState<SubmittedReport[]>([]);
   const [discardWarning, setDiscardWarning] = useState(false);
+  const [draftDirty, setDraftDirty] = useState(false);
 
-  const edited = useRef(false);
   const draftReady = useRef(false);
+  const draftRevision = useRef(0);
   const saveChain = useRef<Promise<unknown>>(Promise.resolve());
+  useHubSuspendBlocker(
+    "testing-center-draft",
+    "Testing Center tiene un borrador pendiente de guardar",
+    draftDirty && (draftState !== "saved" || submitting),
+  );
 
   const saveDraftSequentially = useCallback(
     (next: ReportDraftFields) => {
@@ -195,18 +202,21 @@ export function TestingCenterOrbitPage({
   }, [client]);
 
   useEffect(() => {
-    if (!draftReady.current || !edited.current || submitted || submitting) return;
+    if (!draftReady.current || !draftDirty || submitted || submitting) return;
     const timer = window.setTimeout(() => {
+      const revision = draftRevision.current;
       setDraftState("saving");
       saveDraftSequentially(fields)
         .then((draft) => {
           setIdempotencyKey(draft.idempotencyKey);
-          setDraftState("saved");
+          if (revision === draftRevision.current) setDraftState("saved");
         })
-        .catch(() => setDraftState("error"));
+        .catch(() => {
+          if (revision === draftRevision.current) setDraftState("error");
+        });
     }, 600);
     return () => window.clearTimeout(timer);
-  }, [fields, saveDraftSequentially, submitted, submitting]);
+  }, [draftDirty, fields, saveDraftSequentially, submitted, submitting]);
 
   // Vista previa del diagnóstico: solo se pide cuando el usuario lo marca.
   useEffect(() => {
@@ -234,7 +244,9 @@ export function TestingCenterOrbitPage({
 
   const changeField = useCallback(
     (field: keyof ReportDraftFields, value: string) => {
-      edited.current = true;
+      draftRevision.current += 1;
+      setDraftDirty(true);
+      setDraftState("idle");
       setSubmitted(null);
       setSubmitError("");
       if (field === "module" && includeDiagnostic) {
@@ -258,7 +270,8 @@ export function TestingCenterOrbitPage({
   }, []);
 
   const resetLocalState = useCallback(() => {
-    edited.current = false;
+    draftRevision.current += 1;
+    setDraftDirty(false);
     setFields(EMPTY_FIELDS);
     setFieldErrors({});
     setIdempotencyKey("");

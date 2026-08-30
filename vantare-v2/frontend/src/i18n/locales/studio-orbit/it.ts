@@ -26,6 +26,7 @@ export const studioOrbitIt: Record<string, string> = {
   "studio.toolbar.wallpaper.errorSize": "L'immagine è troppo pesante.",
   "studio.toolbar.wallpaper.errorDecode": "Impossibile leggere l'immagine.",
   "studio.toolbar.wallpaper.errorQuota": "Non c'è spazio: rimuovi uno sfondo e riprova.",
+  "studio.toolbar.wallpaper.suspendBlocker": "Studio sta importando uno sfondo non ancora applicato",
   "studio.toolbar.source": "Sorgente anteprima",
   "studio.toolbar.source.mock": "Mock",
   "studio.toolbar.source.live": "Live",
@@ -122,6 +123,7 @@ export const studioOrbitIt: Record<string, string> = {
   "studio.inspector.layout.aspectHint": "Mantiene il rapporto durante il ridimensionamento.",
   "studio.inspector.layout.order": "Ordine e allineamento",
   "studio.inspector.layout.reset": "Ripristina",
+  "studio.inspector.layout.suspendBlocker": "Studio ha una posizione o dimensione non applicata",
   "studio.inspector.actions.restoreDefaults": "Ripristina valori",
   "studio.inspector.actions.discardAll": "Scarta tutto",
   "studio.inspector.actions.restoreHint":

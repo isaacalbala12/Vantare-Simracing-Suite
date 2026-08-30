@@ -26,6 +26,7 @@ export const studioOrbitEn: Record<string, string> = {
   "studio.toolbar.wallpaper.errorSize": "The image is too heavy.",
   "studio.toolbar.wallpaper.errorDecode": "The image could not be read.",
   "studio.toolbar.wallpaper.errorQuota": "No room left: remove a background and try again.",
+  "studio.toolbar.wallpaper.suspendBlocker": "Studio is importing a background that has not been applied",
   "studio.toolbar.source": "Preview source",
   "studio.toolbar.source.mock": "Mock",
   "studio.toolbar.source.live": "Live",
@@ -121,6 +122,7 @@ export const studioOrbitEn: Record<string, string> = {
   "studio.inspector.layout.aspectHint": "Keeps the ratio while resizing.",
   "studio.inspector.layout.order": "Order and alignment",
   "studio.inspector.layout.reset": "Reset",
+  "studio.inspector.layout.suspendBlocker": "Studio has an unapplied position or size",
   "studio.inspector.actions.restoreDefaults": "Restore defaults",
   "studio.inspector.actions.discardAll": "Discard all",
   "studio.inspector.actions.restoreHint":

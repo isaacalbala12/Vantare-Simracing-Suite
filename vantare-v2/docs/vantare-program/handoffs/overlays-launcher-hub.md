@@ -10,6 +10,23 @@
 
 ## Estado
 
+- **ISA-940 — lifecycle a coste cero (2026-08-30):** rama
+  `vantareapp/isa-940-lifecycle-coste-cero`, rebasada sobre
+  `origin/nightly@9723148f`. El overlay navega a `overlay.html`, deja fuera del
+  entry Hub/Supabase/motion y, en niveles 3–5, limita su ventana a la unión de
+  widgets con 16 px de margen; edición y niveles 1–2 conservan el monitor
+  completo. Wails alpha.98 no expone suspensión WebView2, por lo que el Hub se
+  destruye y recrea. El frontend empuja a Go un registro generacional de
+  bloqueadores para Studio, Launcher, OAuth, Estrategia y demás borradores
+  locales; sin primer snapshot o con cualquier bloqueador se conserva la
+  ventana. La pareja efectiva L1/L3 desde el mismo HEAD/exe/dist publicó L3 al
+  runtime, dejó el renderer Hub en 0 MiB y midió 405,34 MiB privados: −27,88 %
+  frente al baseline de 562 MiB, aceptado por P13 con gate RAM ≥20 %. CDP midió
+  389,39 ms para reabrir el Hub destruido. El recorte restante de GPU process y renderer
+  del overlay pertenece a [#951](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/951).
+  Nightly mantiene como autoridad la política v4 de ISA-943/ISA-947; ISA-940 no
+  promociona el nivel 3 y conserva el nivel 1 como valor productivo inicial.
+
 - **ISA-943 — perfil v4 y Ajustes › Rendimiento (2026-08-30):** rama
   `vantareapp/isa-943-perfil-v4-ajustes-rendimiento`, base inicial
   `origin/nightly@ca166b38`. El store acepta perfiles v3 indefinidamente y al

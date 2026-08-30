@@ -37,6 +37,7 @@ import {
   type TyreView,
 } from "../../ui/orbit";
 import { formatMessage } from "../orbit/format-message";
+import { useHubSuspendBlocker } from "../hub-suspend-guard";
 import { useOrbitSlot } from "../orbit/use-orbit-slot";
 import { useCalendarStarts } from "../orbit/use-calendar-starts";
 import { formatStartTime } from "../orbit/next-starts";
@@ -247,6 +248,12 @@ function PlanningInputRow({
   onCommit: (field: StrategyPlanningInputFieldV2, value?: number) => void;
 }) {
   const [draft, setDraft] = useState(view.value === undefined ? "" : String(view.value));
+  const persistedValue = view.value === undefined ? "" : String(view.value);
+  useHubSuspendBlocker(
+    `strategy-planning-input-${field}`,
+    "Estrategia tiene un dato de planificación sin aplicar",
+    draft !== persistedValue,
+  );
   useEffect(() => {
     let current = true;
     queueMicrotask(() => {
@@ -857,6 +864,24 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
   const [panel, setPanel] = useState<SidePanel>("drivers");
   const [selected, setSelected] = useState(-1);
   const [editing, setEditing] = useState(-1);
+  const [stintInputDrafts, setStintInputDrafts] = useState<Set<string>>(() => new Set());
+  useHubSuspendBlocker(
+    "strategy-stint-input-draft",
+    t("strategy.editor.suspendBlocker"),
+    stintInputDrafts.size > 0,
+  );
+  const beginStintInput = (key: string) => setStintInputDrafts((current) => {
+    if (current.has(key)) return current;
+    const next = new Set(current);
+    next.add(key);
+    return next;
+  });
+  const endStintInput = (key: string) => setStintInputDrafts((current) => {
+    if (!current.has(key)) return current;
+    const next = new Set(current);
+    next.delete(key);
+    return next;
+  });
   const [picked, setPicked] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
@@ -924,6 +949,12 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
   const [avState, setAvState] = useState<AvailabilityState>("ok");
   const [avFrom, setAvFrom] = useState("14:00");
   const [avTo, setAvTo] = useState("16:00");
+  const [availabilityDirty, setAvailabilityDirty] = useState(false);
+  useHubSuspendBlocker(
+    "strategy-availability-draft",
+    "Estrategia tiene disponibilidad sin guardar",
+    availabilityDirty,
+  );
 
   const addSlot = (driverId: string, state: AvailabilityState, from: string, to: string) => {
       const a = parseHhmm(from);
@@ -946,6 +977,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
           },
         })),
       );
+      setAvailabilityDirty(false);
       toast.show(
         t("strategy.availability.added"),
         formatMessage(t("strategy.availability.addedHint"), {
@@ -1103,8 +1135,16 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
     teamMode: StrategyTeamMode;
     draft: EventForm;
   } | null>(null);
+  const [formDirty, setFormDirty] = useState(false);
   /** Evento que espera confirmación de borrado (diálogo del kit, nunca `confirm`). */
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
+  const wizardHasRecoverableWork = wizard !== null &&
+    (wizard.step !== "fill" || wizard.path !== "none");
+  useHubSuspendBlocker(
+    "strategy-event-draft",
+    "Estrategia tiene un evento sin guardar",
+    formDirty || wizardHasRecoverableWork || calendarSelection !== null,
+  );
 
   /**
    * El piloto por defecto de un evento nuevo es quien lo crea. El nombre real
@@ -1120,6 +1160,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
     const start = new Date();
     start.setMinutes(0, 0, 0);
     start.setHours(start.getHours() + 1);
+    setFormDirty(false);
     setForm({
       mode: "create",
       teamMode,
@@ -1139,14 +1180,17 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
 
   const openEdit = () => {
     if (!eventRecord) return;
+    setFormDirty(false);
     setForm({ mode: "edit", teamMode: eventRecord.teamMode ?? "team", draft: formOf(eventRecord) });
   };
 
   const patchForm = (change: Partial<EventForm>) => {
+    setFormDirty(true);
     setForm((current) => (current ? { ...current, draft: { ...current.draft, ...change } } : current));
   };
 
   const patchFormDriver = (index: number, change: Partial<StrategyDriver>) => {
+      setFormDirty(true);
       setForm((current) => {
         if (!current) return current;
         const drivers = current.draft.drivers.map((driver, i) =>
@@ -1154,6 +1198,11 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
         );
         return { ...current, draft: { ...current.draft, drivers } };
       });
+  };
+
+  const discardForm = () => {
+    setForm(null);
+    setFormDirty(false);
   };
 
   const submitForm = () => {
@@ -1192,6 +1241,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
         })),
       );
       setForm(null);
+      setFormDirty(false);
       toast.show(t("strategy.form.savedTitle"), formatMessage(t("strategy.form.savedHint"), { name }));
       return;
     }
@@ -1205,6 +1255,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
     );
     commit((current) => openEvent(upsertEvent(current, created), created.id));
     setForm(null);
+    setFormDirty(false);
     setWizard(null);
     setTab("overview");
     toast.show(t("strategy.form.createdTitle"), formatMessage(t("strategy.form.createdHint"), { name }));
@@ -1267,14 +1318,16 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
   };
 
   const commitWeatherScenarios = async (scenarios: Parameters<typeof persistStrategyWeatherScenarios>[3]) => {
-    if (!eventRecord || !catalogView) return;
+    if (!eventRecord || !catalogView) return false;
     setWeatherSave("saving");
     try {
       const view = await persistStrategyWeatherScenarios(applicationClient, catalogView, eventRecord, scenarios);
       setSessionCatalog({ status: "ready", view });
       setWeatherSave("idle");
+      return true;
     } catch {
       setWeatherSave("error");
+      return false;
     }
   };
 
@@ -1314,6 +1367,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
   const selectEvent = (id: string) => {
       commit((current) => openEvent(current, id));
       setForm(null);
+      setFormDirty(false);
       setWizard(null);
       setEditing(-1);
       setSelected(-1);
@@ -1332,17 +1386,20 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
   const backToMenu = () => {
     commit((current) => ({ ...current, activeId: null }));
     setForm(null);
+    setFormDirty(false);
     setWizard(null);
   };
 
   const startWizard = () => {
     setForm(null);
+    setFormDirty(false);
     setWizard({ step: "fill", fill: "manual", team: "team", path: "none" });
   };
 
   const startManualWizard = () => {
     setCalendarSelection(null);
     setForm(null);
+    setFormDirty(false);
     setWizard({ step: "team", fill: "manual", team: "team", path: "none" });
   };
 
@@ -1735,7 +1792,8 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
               data-tip={form.teamMode === "solo" ? t("strategy.form.soloTip") : undefined}
               data-tip-side="left"
               disabled={form.teamMode === "solo"}
-              onClick={() =>
+              onClick={() => {
+                setFormDirty(true);
                 setForm((current) =>
                   current
                     ? {
@@ -1754,8 +1812,8 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
                         },
                       }
                     : current,
-                )
-              }
+                );
+              }}
               size="sm"
               type="button"
               variant="ghost"
@@ -1819,7 +1877,8 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
               <Button
                 aria-label={formatMessage(t("strategy.form.removeDriver"), { n: index + 1 })}
                 disabled={form.draft.drivers.length <= 1}
-                onClick={() =>
+                onClick={() => {
+                  setFormDirty(true);
                   setForm((current) =>
                     current
                       ? {
@@ -1830,8 +1889,8 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
                           },
                         }
                       : current,
-                  )
-                }
+                  );
+                }}
                 size="sm"
                 type="button"
                 variant="ghost"
@@ -1846,7 +1905,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
           <Button data-testid="orbit-strategy-form-submit" type="submit" variant="primary">
             {form.mode === "edit" ? t("strategy.form.save") : t("strategy.form.submit")}
           </Button>
-          <Button onClick={() => setForm(null)} type="button" variant="ghost">
+          <Button onClick={discardForm} type="button" variant="ghost">
             {t("strategy.form.cancel")}
           </Button>
         </div>
@@ -2830,7 +2889,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
     <StrategyWeatherPanel
       combinationId={eventCombination?.combinationId}
       eventId={eventRecord.id}
-      onSave={(scenarios) => void commitWeatherScenarios(scenarios)}
+      onSave={commitWeatherScenarios}
       result={calculation.status === "success" && calculationCurrent ? calculation.result.weather : undefined}
       saving={weatherSave}
       scenarios={eventWeatherScenarios}
@@ -3109,7 +3168,10 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
                 <Select
                   id="orbit-av-driver"
                   label={t("strategy.availability.driver")}
-                  onChange={setAvDriver}
+                  onChange={(value) => {
+                    setAvailabilityDirty(true);
+                    setAvDriver(value);
+                  }}
                   options={drivers.map((driver) => ({ value: driver.id, label: driver.name }))}
                   value={avDriverId}
                 />
@@ -3118,7 +3180,10 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
                 <Select<AvailabilityState>
                   id="orbit-av-state"
                   label={t("strategy.availability.status")}
-                  onChange={setAvState}
+                  onChange={(value) => {
+                    setAvailabilityDirty(true);
+                    setAvState(value);
+                  }}
                   options={[
                     { value: "ok", label: t("strategy.availability.ok") },
                     { value: "maybe", label: t("strategy.availability.maybe") },
@@ -3132,7 +3197,10 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
                   aria-label={t("strategy.availability.from")}
                   id="orbit-av-from"
                   numeric
-                  onChange={(changed) => setAvFrom(changed.currentTarget.value)}
+                  onChange={(changed) => {
+                    setAvailabilityDirty(true);
+                    setAvFrom(changed.currentTarget.value);
+                  }}
                   step={300}
                   type="time"
                   value={avFrom}
@@ -3143,7 +3211,10 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
                   aria-label={t("strategy.availability.to")}
                   id="orbit-av-to"
                   numeric
-                  onChange={(changed) => setAvTo(changed.currentTarget.value)}
+                  onChange={(changed) => {
+                    setAvailabilityDirty(true);
+                    setAvTo(changed.currentTarget.value);
+                  }}
                   step={300}
                   type="time"
                   value={avTo}
@@ -3412,7 +3483,17 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
                                 inputMode="numeric"
                                 key={`laps-${stint.i}-${stint.laps}`}
                                 numeric
-                                onBlur={(e) => setOverride(stint.i, "laps", e.currentTarget.value)}
+                                onBlur={(e) => {
+                                  setOverride(stint.i, "laps", e.currentTarget.value);
+                                  endStintInput(`${stint.i}:laps`);
+                                }}
+                                onInput={() => beginStintInput(`${stint.i}:laps`)}
+                                onKeyDown={(event) => {
+                                  if (event.key === "Escape") {
+                                    event.currentTarget.value = String(stint.laps);
+                                    endStintInput(`${stint.i}:laps`);
+                                  }
+                                }}
                                 aria-label={t("strategy.editor.laps")}
                               />
                               <InputProvenanceChip t={t} view={{ kind: "manual", presence: "valid", value: stint.laps, canRevert: false }} />
@@ -3424,7 +3505,17 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
                                 inputMode="decimal"
                                 key={`fuel-${stint.i}-${stint.fuel.toFixed(1)}`}
                                 numeric
-                                onBlur={(e) => setOverride(stint.i, "fuel", e.currentTarget.value)}
+                                onBlur={(e) => {
+                                  setOverride(stint.i, "fuel", e.currentTarget.value);
+                                  endStintInput(`${stint.i}:fuel`);
+                                }}
+                                onInput={() => beginStintInput(`${stint.i}:fuel`)}
+                                onKeyDown={(event) => {
+                                  if (event.key === "Escape") {
+                                    event.currentTarget.value = stint.fuel.toFixed(1);
+                                    endStintInput(`${stint.i}:fuel`);
+                                  }
+                                }}
                                 unit="L"
                                 aria-label={t("strategy.editor.fuel")}
                               />

@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
 	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -1359,12 +1361,27 @@ func main() {
 	wailsApp := application.New(appOptions)
 
 	emitter := &wailsEmitter{wailsApp: wailsApp}
+	appSettingsPath := filepath.Join(cfgDir, "app-settings.json")
+	settingsSvc := app.NewSettingsService(appSettingsPath, emitter, nil)
+	if err := settingsSvc.Load(); err != nil {
+		log.Printf("warning: could not load settings: %v (using defaults)", err)
+	}
+	var studioProfileSvc *app.StudioProfileService
+	effectivePerformanceLevel := func() int {
+		var profile *config.ProfileDocumentV4
+		if studioProfileSvc != nil {
+			profile = studioProfileSvc.PerformanceProfile()
+		}
+		return int(settingsSvc.EffectivePerformancePolicy(profile).Level)
+	}
+	if err := app.ApplyProcessPowerPolicy(effectivePerformanceLevel()); err != nil {
+		log.Printf("warning: performance process policy unavailable: %v", err)
+	}
 	var cleanup sync.Once
 	var hotkeyMu sync.Mutex
 	var opsBridge *app.OpsBridge
 	var httpSrv *server.Server
 	var overlayController *app.OverlayController
-	var studioProfileSvc *app.StudioProfileService
 	var rtSampler *ops.RuntimeSampler
 	var overlayRunning atomic.Bool
 	var hkMgr *app.HotkeyManager
@@ -1613,31 +1630,79 @@ func main() {
 			overlayRunning.Store(false)
 			resetOverlayProfileDisplayMode(studioProfileSvc)
 		})
-	}))
+	}, effectivePerformanceLevel))
 
-	// Create hub window only (normal framed window).
-	hubW := wailsApp.Window.NewWithOptions(application.WebviewWindowOptions{
-		Title:          "Vantare Hub",
-		Width:          1280,
-		Height:         800,
-		Frameless:      false,
-		BackgroundType: application.BackgroundTypeSolid,
-		URL:            "/#/hub",
-		MinWidth:       900,
-		MinHeight:      600,
+	hubProbe := newHubSuspendEventProbe(wailsApp, emitter)
+	hubBlockers := app.NewHubBlockerRegistry()
+	wailsApp.Event.On("hub:blockers", func(event *application.CustomEvent) {
+		var payload struct {
+			Generation    string   `json:"generation"`
+			StudioDirty   bool     `json:"studioDirty"`
+			LauncherDraft bool     `json:"launcherDraft"`
+			OAuthPending  bool     `json:"oauthPending"`
+			Other         []string `json:"other"`
+			Reasons       []string `json:"reasons"`
+		}
+		raw, err := json.Marshal(event.Data)
+		if err != nil || json.Unmarshal(raw, &payload) != nil {
+			return
+		}
+		accepted := hubBlockers.Update(app.HubBlockerSnapshot{
+			Generation: payload.Generation, StudioDirty: payload.StudioDirty,
+			LauncherDraft: payload.LauncherDraft, OAuthPending: payload.OAuthPending,
+			Other: payload.Other, Reasons: payload.Reasons,
+		})
+		log.Printf("hub lifecycle: blockers pushed generation=%s accepted=%t blocked=%t reasons=%s",
+			payload.Generation, accepted, len(payload.Reasons) > 0, strings.Join(payload.Reasons, "; "))
 	})
-	hubW.Show()
+	var hubLifecycle *app.HubLifecycle
+	newHubWindow := func() app.HubWindow {
+		generation := newHubSuspendRequestID()
+		hubBlockers.Expect(generation)
+		window := &wailsHubWindow{w: wailsApp.Window.NewWithOptions(hubWindowOptions(generation))}
+		hubProbe.SetTarget(window.w)
+		window.w.RegisterHook(events.Common.WindowClosing, func(_ *application.WindowEvent) {
+			if window.intentionalClose.Load() {
+				return
+			}
+			go wailsApp.Quit()
+		})
+		window.w.OnWindowEvent(events.Common.WindowMinimise, func(_ *application.WindowEvent) {
+			go func() {
+				ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+				defer cancel()
+				hubLifecycle.HandleMinimise(ctx)
+			}()
+		})
+		return window
+	}
+	hubLifecycle = app.NewHubLifecycle(newHubWindow, effectivePerformanceLevel, func(context.Context) bool {
+		return hubBlockers.CanSuspend()
+	}, func() {
+		snapshot, received := hubBlockers.Snapshot()
+		log.Printf("hub lifecycle: kept alive from pushed blockers received=%t generation=%s reasons=%s",
+			received, snapshot.Generation, strings.Join(snapshot.Reasons, "; "))
+	})
+	hubWindow, openedIn := hubLifecycle.Open()
+	log.Printf("hub lifecycle: opened in %s", openedIn)
 	// Show first, then minimise: on Windows a window has to exist on screen
 	// before it can be minimised. Launched at sign-in with this flag, Vantare
 	// stays out of the way until the user asks for it.
 	if startup.WantsMinimised(os.Args) {
-		hubW.Minimise()
+		hubWindow.Minimise()
 	}
 
-	requestQuit := func(_ *application.WindowEvent) {
-		go wailsApp.Quit()
+	openHub := func() {
+		_, duration := hubLifecycle.Open()
+		log.Printf("hub lifecycle: reopened in %s", duration)
 	}
-	hubW.RegisterHook(events.Common.WindowClosing, requestQuit)
+	wailsApp.Event.On("hub:open", func(*application.CustomEvent) { openHub() })
+	trayMenu := application.NewMenu()
+	trayMenu.Add("Abrir Vantare").OnClick(func(*application.Context) { openHub() })
+	trayMenu.AddSeparator()
+	trayMenu.Add("Salir").OnClick(func(*application.Context) { go wailsApp.Quit() })
+	tray := wailsApp.SystemTray.New().SetMenu(trayMenu).OnClick(openHub)
+	tray.SetTooltip("Vantare")
 
 	// Desktop notifications. Wails talks to the platform -- Windows toasts --
 	// which is the only route that works: the browser Notification API is not
@@ -1947,13 +2012,9 @@ func main() {
 		log.Printf("license:reset-device ok")
 	})
 
-	// Ajustes se cargan antes del perfil activo y del runtime para que la
-	// composición inicial use una única pareja confirmada.
-	appSettingsPath := filepath.Join(cfgDir, "app-settings.json")
-	settingsSvc := app.NewSettingsService(appSettingsPath, emitter, nil)
-	if err := settingsSvc.Load(); err != nil {
-		log.Printf("warning: could not load settings: %v (using defaults)", err)
-	}
+	// Ajustes ya se cargaron antes de componer las ventanas. El perfil activo
+	// se carga ahora, todavía antes del runtime, para resolver una única pareja
+	// confirmada sin crear un segundo SettingsService.
 
 	// Overlay Studio V3 profile persistence (canonical runtime document owner)
 	studioProfileSvc = app.NewStudioProfileService(emitter, func(saved app.StudioProfileSaved) {
@@ -1996,6 +2057,7 @@ func main() {
 	// Engineer owns product behavior only. TelemetryCoreRuntime below is its
 	// sole production telemetry source.
 	engSvc = engineerservice.NewEngineerService(emitter)
+	engSvc.SetVisualPresentationEnabled(effectivePerformanceLevel() < 4)
 	if err := engSvc.SetLegacySpotterRollback(*legacyEngineerSpotter); err != nil {
 		log.Printf("engineer legacy spotter rollback configuration error: %v", err)
 	}
@@ -2054,7 +2116,7 @@ func main() {
 		Emitter:                 emitter,
 		Engineer:                engSvc,
 		StrategyPublicTransport: *strategyPublicTransport,
-		PerformancePolicy:       app.ResolvePerformancePolicy(settingsSvc.Settings().Performance, studioProfileSvc.PerformanceProfile()),
+		PerformancePolicy:       settingsSvc.EffectivePerformancePolicy(studioProfileSvc.PerformanceProfile()),
 	})
 	if err != nil {
 		log.Printf("telemetry core init error: %v", err)
@@ -2062,7 +2124,7 @@ func main() {
 	}
 	reconcilePerformance := func(settings app.PerformanceSettings, profile *config.ProfileDocumentV4) {
 		if telemetryCoreRuntime != nil {
-			telemetryCoreRuntime.SetPerformancePolicy(app.ResolvePerformancePolicy(settings, profile))
+			telemetryCoreRuntime.SetPerformancePolicy(app.ResolveEffectivePerformancePolicy(settings, profile))
 		}
 	}
 	performanceSaves := app.NewPerformanceSaveCoordinator(settingsSvc, studioProfileSvc, reconcilePerformance)
@@ -2160,7 +2222,7 @@ func main() {
 		func() bool { return settingsSvc.Snapshot().Notifications.SystemEnabled },
 		// A toast is for what you are not watching. Minimised is the honest
 		// signal the window layer can give us.
-		func() bool { return hubW.IsMinimised() },
+		func() bool { return hubLifecycle.IsMinimised() },
 	)
 
 	// Calendar service for the local LMU race calendar (CALENDAR-02).
@@ -2590,6 +2652,18 @@ func main() {
 			log.Printf("settings:save error: %v", err)
 			emitSettingsError(err.Error())
 			return
+		}
+		level := effectivePerformanceLevel()
+		if err := app.ApplyProcessPowerPolicy(level); err != nil {
+			log.Printf("warning: performance process policy update unavailable: %v", err)
+		}
+		if overlayController != nil && studioProfileSvc != nil {
+			if err := overlayController.ApplyPerformanceLevel(level, studioProfileSvc.Document()); err != nil {
+				log.Printf("warning: overlay performance geometry update unavailable: %v", err)
+			}
+		}
+		if engSvc != nil {
+			engSvc.SetVisualPresentationEnabled(level < 4)
 		}
 		// Apply CPU sampling toggle if runtime sampler exists
 		if rtSampler != nil {
@@ -3381,6 +3455,145 @@ func resolveLicensePublicKeys(embedded, developmentOverride string) string {
 	return developmentOverride
 }
 
+type hubSuspendEventProbe struct {
+	emitter app.EventEmitter
+	mu      sync.Mutex
+	pending map[string]chan bool
+	target  hubSuspendEventTarget
+}
+
+type hubSuspendEventTarget interface {
+	DispatchWailsEvent(*application.CustomEvent)
+}
+
+func newHubSuspendEventProbe(wailsApp *application.App, emitter app.EventEmitter) *hubSuspendEventProbe {
+	probe := &hubSuspendEventProbe{emitter: emitter, pending: make(map[string]chan bool)}
+	if wailsApp != nil && wailsApp.Event != nil {
+		wailsApp.Event.On("hub:can-suspend:result", probe.handleResult)
+	}
+	return probe
+}
+
+func (p *hubSuspendEventProbe) Probe(ctx context.Context) bool {
+	if p == nil {
+		return false
+	}
+	requestID := newHubSuspendRequestID()
+	result := make(chan bool, 1)
+	p.mu.Lock()
+	p.pending[requestID] = result
+	p.mu.Unlock()
+	defer func() {
+		p.mu.Lock()
+		delete(p.pending, requestID)
+		p.mu.Unlock()
+	}()
+	p.mu.Lock()
+	target := p.target
+	emitter := p.emitter
+	p.mu.Unlock()
+	emittedAtUnixMs := time.Now().UnixMilli()
+	payload := map[string]any{"requestId": requestID, "emittedAtUnixMs": emittedAtUnixMs}
+	log.Printf("hub lifecycle: hub:can-suspend emitted request=%s go=%d", requestID, emittedAtUnixMs)
+	if target != nil {
+		target.DispatchWailsEvent(&application.CustomEvent{Name: "hub:can-suspend", Data: payload})
+	} else if emitter != nil {
+		emitter.Emit("hub:can-suspend", payload)
+	} else {
+		return false
+	}
+	select {
+	case canSuspend := <-result:
+		return canSuspend
+	case <-ctx.Done():
+		log.Printf("hub lifecycle: hub:can-suspend timed out: %v", ctx.Err())
+		return false
+	}
+}
+
+func (p *hubSuspendEventProbe) SetTarget(target hubSuspendEventTarget) {
+	if p == nil {
+		return
+	}
+	p.mu.Lock()
+	p.target = target
+	p.mu.Unlock()
+}
+
+func (p *hubSuspendEventProbe) handleResult(event *application.CustomEvent) {
+	var payload struct {
+		RequestID         string   `json:"requestId"`
+		CanSuspend        bool     `json:"canSuspend"`
+		Reasons           []string `json:"reasons"`
+		EmittedAtUnixMs   int64    `json:"emittedAtUnixMs"`
+		ReceivedAtUnixMs  int64    `json:"receivedAtUnixMs"`
+		RespondedAtUnixMs int64    `json:"respondedAtUnixMs"`
+	}
+	if event == nil || event.Data == nil {
+		return
+	}
+	raw, err := json.Marshal(event.Data)
+	if err != nil || json.Unmarshal(raw, &payload) != nil || payload.RequestID == "" {
+		return
+	}
+	p.mu.Lock()
+	result := p.pending[payload.RequestID]
+	p.mu.Unlock()
+	log.Printf(
+		"hub lifecycle: hub:can-suspend response request=%s emitted-go=%d received-js=%d responded-js=%d arrived-go=%d pending=%t",
+		payload.RequestID, payload.EmittedAtUnixMs, payload.ReceivedAtUnixMs,
+		payload.RespondedAtUnixMs, time.Now().UnixMilli(), result != nil,
+	)
+	if result != nil {
+		if payload.CanSuspend {
+			log.Printf("hub lifecycle: hub:can-suspend acknowledged clean")
+		} else {
+			log.Printf("hub lifecycle: hub:can-suspend blocked: %s", strings.Join(payload.Reasons, "; "))
+		}
+		select {
+		case result <- payload.CanSuspend:
+		default:
+		}
+	}
+}
+
+func newHubSuspendRequestID() string {
+	var value [16]byte
+	if _, err := rand.Read(value[:]); err == nil {
+		return hex.EncodeToString(value[:])
+	}
+	return fmt.Sprintf("hub-%d", time.Now().UnixNano())
+}
+
+type wailsHubWindow struct {
+	w                *application.WebviewWindow
+	intentionalClose atomic.Bool
+}
+
+func (w *wailsHubWindow) Close() {
+	w.intentionalClose.Store(true)
+	w.w.Close()
+}
+func (w *wailsHubWindow) Hide()             { w.w.Hide() }
+func (w *wailsHubWindow) Show()             { w.w.Show() }
+func (w *wailsHubWindow) Focus()            { w.w.Focus() }
+func (w *wailsHubWindow) Minimise()         { w.w.Minimise() }
+func (w *wailsHubWindow) UnMinimise()       { w.w.UnMinimise() }
+func (w *wailsHubWindow) IsMinimised() bool { return w.w.IsMinimised() }
+
+func hubWindowOptions(generation string) application.WebviewWindowOptions {
+	return application.WebviewWindowOptions{
+		Title:          "Vantare Hub",
+		Width:          1280,
+		Height:         800,
+		Frameless:      false,
+		BackgroundType: application.BackgroundTypeSolid,
+		URL:            "/#/hub?hubGeneration=" + generation,
+		MinWidth:       900,
+		MinHeight:      600,
+	}
+}
+
 // wailsWindowHandle adapts *application.WebviewWindow to window.WindowHandle.
 type wailsWindowHandle struct {
 	w *application.WebviewWindow
@@ -3447,27 +3660,36 @@ func (h *wailsWindowHandle) ensureTransparent() {
 type overlayScreenResolver func(int) *application.Screen
 
 type wailsOverlayFactory struct {
-	app          *application.App
-	screens      overlayScreenResolver
-	windowClosed func(app.OverlayWindow)
+	app            *application.App
+	screens        overlayScreenResolver
+	windowClosed   func(app.OverlayWindow)
+	effectiveLevel func() int
 }
 
-func newWailsOverlayFactory(wailsApp *application.App, windowClosed func(app.OverlayWindow)) *wailsOverlayFactory {
+func newWailsOverlayFactory(wailsApp *application.App, windowClosed func(app.OverlayWindow), effectiveLevel ...func() int) *wailsOverlayFactory {
 	var screens overlayScreenResolver
 	if wailsApp != nil && wailsApp.Screen != nil {
 		screens = wailsApp.Screen.GetByIndex
 	}
+	level := func() int { return 1 }
+	if len(effectiveLevel) > 0 && effectiveLevel[0] != nil {
+		level = effectiveLevel[0]
+	}
 	return &wailsOverlayFactory{
-		app:          wailsApp,
-		screens:      screens,
-		windowClosed: windowClosed,
+		app:            wailsApp,
+		screens:        screens,
+		windowClosed:   windowClosed,
+		effectiveLevel: level,
 	}
 }
 
 type wailsOverlayWindow struct {
+	mu     sync.Mutex
 	w      *application.WebviewWindow
 	handle *wailsWindowHandle
 	mgr    *window.Manager
+	screen *application.Screen
+	level  int
 }
 
 func (o *wailsOverlayWindow) Close() {
@@ -3475,14 +3697,63 @@ func (o *wailsOverlayWindow) Close() {
 }
 
 func (o *wailsOverlayWindow) ApplyProfileMode(document *config.ProfileDocumentV3) error {
+	o.mu.Lock()
+	defer o.mu.Unlock()
 	if o.mgr == nil || document == nil {
 		return fmt.Errorf("overlay window not ready for mode application")
 	}
 	o.mgr.ApplyProfileV3(document, false)
+	o.applyPerformanceGeometry(document)
 	return nil
 }
 
+func (o *wailsOverlayWindow) ApplyPerformanceLevel(level int, document *config.ProfileDocumentV3) error {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	if document == nil {
+		return fmt.Errorf("overlay profile document is required for performance geometry")
+	}
+	if o.level == level {
+		return nil
+	}
+	o.level = level
+	o.applyPerformanceGeometry(document)
+	return nil
+}
+
+func (o *wailsOverlayWindow) applyPerformanceGeometry(document *config.ProfileDocumentV3) {
+	if o == nil || o.w == nil || o.handle == nil || o.screen == nil || document == nil {
+		return
+	}
+	monitor := window.WailsRect{X: o.screen.Bounds.X, Y: o.screen.Bounds.Y, Width: o.screen.Bounds.Width, Height: o.screen.Bounds.Height}
+	geometry := window.ResolveOverlayGeometry(document, monitor, o.level, overlayBoundingMargin)
+	if !geometry.ShrinkWrapped {
+		o.w.UnFullscreen()
+		o.handle.SetBounds(geometry.Window)
+		o.w.ExecJS(resetOverlayGeometryScript)
+		return
+	}
+	o.w.UnFullscreen()
+	o.handle.SetBounds(geometry.Window)
+	o.w.ExecJS(overlayGeometryScript(geometry))
+}
+
+const (
+	overlayBoundingMargin      = 16
+	resetOverlayGeometryScript = `(() => { const root = document.getElementById("root"); if (!root) return; root.style.position = ""; root.style.left = ""; root.style.top = ""; root.style.width = "100%"; root.style.height = "100%"; root.style.transform = ""; })()`
+)
+
+func overlayGeometryScript(geometry window.OverlayGeometry) string {
+	localX := geometry.Window.X - geometry.Monitor.X
+	localY := geometry.Window.Y - geometry.Monitor.Y
+	return fmt.Sprintf(`(() => { const root = document.getElementById("root"); if (!root) return; root.style.position = "absolute"; root.style.left = "0"; root.style.top = "0"; root.style.width = "%dpx"; root.style.height = "%dpx"; root.style.transformOrigin = "top left"; root.style.transform = "translate(%dpx, %dpx)"; })()`, geometry.Monitor.Width, geometry.Monitor.Height, -localX, -localY)
+}
+
 func resolveOverlayWindowOptions(document *config.ProfileDocumentV3, screens overlayScreenResolver) (application.WebviewWindowOptions, error) {
+	return resolveOverlayWindowOptionsAtLevel(document, screens, 1)
+}
+
+func resolveOverlayWindowOptionsAtLevel(document *config.ProfileDocumentV3, screens overlayScreenResolver, level int) (application.WebviewWindowOptions, error) {
 	if document == nil {
 		return application.WebviewWindowOptions{}, fmt.Errorf("overlay profile document is required")
 	}
@@ -3501,25 +3772,35 @@ func resolveOverlayWindowOptions(document *config.ProfileDocumentV3, screens ove
 			screen.Bounds.Height,
 		)
 	}
-	return application.WebviewWindowOptions{
+	monitor := window.WailsRect{X: screen.Bounds.X, Y: screen.Bounds.Y, Width: screen.Bounds.Width, Height: screen.Bounds.Height}
+	geometry := window.ResolveOverlayGeometry(document, monitor, level, overlayBoundingMargin)
+	options := application.WebviewWindowOptions{
 		Title:             "Vantare Overlay",
-		Width:             screen.Bounds.Width,
-		Height:            screen.Bounds.Height,
+		Width:             geometry.Window.Width,
+		Height:            geometry.Window.Height,
+		InitialPosition:   application.WindowXY,
+		X:                 geometry.Window.X,
+		Y:                 geometry.Window.Y,
 		Frameless:         true,
 		BackgroundType:    application.BackgroundTypeTransparent,
 		BackgroundColour:  application.NewRGBA(0, 0, 0, 0),
 		IgnoreMouseEvents: false,
 		AlwaysOnTop:       true,
-		URL:               "/",
+		URL:               "/overlay.html",
 		Screen:            screen,
-	}, nil
+	}
+	if geometry.ShrinkWrapped {
+		options.JS = overlayGeometryScript(geometry)
+	}
+	return options, nil
 }
 
 func (f *wailsOverlayFactory) NewOverlayWindow(document *config.ProfileDocumentV3, origin config.Rect, bounds config.Rect) (app.OverlayWindow, error) {
 	if f == nil {
 		return nil, fmt.Errorf("overlay window factory is unavailable")
 	}
-	options, err := resolveOverlayWindowOptions(document, f.screens)
+	level := f.effectiveLevel()
+	options, err := resolveOverlayWindowOptionsAtLevel(document, f.screens, level)
 	if err != nil {
 		return nil, fmt.Errorf("create overlay window: %w", err)
 	}
@@ -3529,7 +3810,7 @@ func (f *wailsOverlayFactory) NewOverlayWindow(document *config.ProfileDocumentV
 	w := f.app.Window.NewWithOptions(options)
 	handle := &wailsWindowHandle{w: w}
 	mgr := window.NewManager(handle, 0)
-	overlayWindow := &wailsOverlayWindow{w: w, handle: handle, mgr: mgr}
+	overlayWindow := &wailsOverlayWindow{w: w, handle: handle, mgr: mgr, screen: f.screens(document.MonitorIndex), level: level}
 
 	// When the user (or Stop) closes the overlay window, we must stop treating
 	// it as the current window so StartOverlay can create a fresh one next time.
@@ -3544,6 +3825,7 @@ func (f *wailsOverlayFactory) NewOverlayWindow(document *config.ProfileDocumentV
 	// Apply the profile document display mode instead of hard-coding passthrough.
 	// ModeRacing starts click-through; ModeEdit starts interactive.
 	mgr.ApplyProfileV3(document, false)
+	overlayWindow.applyPerformanceGeometry(document)
 	return overlayWindow, nil
 }
 

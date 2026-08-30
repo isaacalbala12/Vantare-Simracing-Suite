@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useHubSuspendBlocker } from '../../hub-suspend-guard';
 
 export type ProfileNameDialogProps = {
   open: boolean;
@@ -32,6 +33,11 @@ export function ProfileNameDialog(props: ProfileNameDialogProps): React.ReactEle
   const [name, setName] = useState(defaultName);
   const [renderedDefaults, setRenderedDefaults] = useState({ open, defaultName });
   const inputRef = useRef<HTMLInputElement>(null);
+  useHubSuspendBlocker(
+    'studio-profile-name-draft',
+    'Studio tiene un nombre de perfil sin guardar',
+    open && name !== defaultName,
+  );
 
   if (renderedDefaults.open !== open || renderedDefaults.defaultName !== defaultName) {
     setRenderedDefaults({ open, defaultName });

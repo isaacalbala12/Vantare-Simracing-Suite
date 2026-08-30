@@ -40,6 +40,44 @@ func TestResolveLicensePublicKeysCannotOverrideEmbeddedTrustRoot(t *testing.T) {
 	}
 }
 
+type recordingHubSuspendTarget struct {
+	events chan *application.CustomEvent
+}
+
+func (t *recordingHubSuspendTarget) DispatchWailsEvent(event *application.CustomEvent) {
+	t.events <- event
+}
+
+func TestHubSuspendProbeTargetsCurrentHubAndReceivesAck(t *testing.T) {
+	probe := &hubSuspendEventProbe{pending: make(map[string]chan bool)}
+	target := &recordingHubSuspendTarget{events: make(chan *application.CustomEvent, 1)}
+	probe.SetTarget(target)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	result := make(chan bool, 1)
+	go func() { result <- probe.Probe(ctx) }()
+
+	request := <-target.events
+	if request.Name != "hub:can-suspend" {
+		t.Fatalf("event name=%q", request.Name)
+	}
+	payload, ok := request.Data.(map[string]any)
+	if !ok {
+		t.Fatalf("request data=%T", request.Data)
+	}
+	requestID, _ := payload["requestId"].(string)
+	if requestID == "" {
+		t.Fatal("requestId vacío")
+	}
+	probe.handleResult(&application.CustomEvent{Data: map[string]any{
+		"requestId":  requestID,
+		"canSuspend": true,
+	}})
+	if !<-result {
+		t.Fatal("el ACK dirigido no llegó al probe")
+	}
+}
+
 func TestProtectedStoreTargetsIsolateInternalChannelsByBackend(t *testing.T) {
 	legacyClock, legacyAuth := protectedStoreTargets("master", "https://production.invalid")
 	if legacyClock != "Vantare/LicenseClock" || legacyAuth != "Vantare/SupabaseAuth" {
@@ -265,6 +303,10 @@ func (f *fakeOverlayWindow) ApplyProfileMode(document *config.ProfileDocumentV3)
 	return nil
 }
 
+func (f *fakeOverlayWindow) ApplyPerformanceLevel(int, *config.ProfileDocumentV3) error {
+	return nil
+}
+
 type fakeOverlayFactory struct {
 	created int
 	last    *fakeOverlayWindow
@@ -318,6 +360,9 @@ func TestOverlayWindowOptionsUseExactSelectedScreenBounds(t *testing.T) {
 			}
 			if options.Width != tt.wantWidth || options.Height != tt.wantHeight {
 				t.Fatalf("initial size=%dx%d want selected screen bounds %dx%d", options.Width, options.Height, tt.wantWidth, tt.wantHeight)
+			}
+			if options.URL != "/overlay.html" {
+				t.Fatalf("URL=%q want dedicated overlay entry", options.URL)
 			}
 			if len(resolver.calls) != 1 || resolver.calls[0] != tt.monitorIndex {
 				t.Fatalf("GetByIndex calls=%v want [%d]", resolver.calls, tt.monitorIndex)

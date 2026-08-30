@@ -22,6 +22,7 @@ vi.mock("../../lib/supabase-auth", () => ({
 
 import { Events } from "@wailsio/runtime";
 import { LoginScreen } from "./LoginScreen";
+import { getHubSuspendBlockerReasons } from "../hub-suspend-guard";
 import {
   signInWithEmail,
   signInWithOAuth,
@@ -107,6 +108,9 @@ describe("LoginScreen", () => {
     );
     expect(screen.getByText(/completa el inicio de sesión/i)).toBeTruthy();
     expect(screen.getByTestId("login-cancel-waiting")).toBeTruthy();
+    expect(getHubSuspendBlockerReasons()).toEqual([
+      "Hay una autenticación OAuth pendiente",
+    ]);
   });
 
   it("does NOT navigate window.location for OAuth (no WebView redirect)", async () => {

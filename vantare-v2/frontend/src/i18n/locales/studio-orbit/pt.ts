@@ -26,6 +26,7 @@ export const studioOrbitPt: Record<string, string> = {
   "studio.toolbar.wallpaper.errorSize": "A imagem é demasiado pesada.",
   "studio.toolbar.wallpaper.errorDecode": "Não foi possível ler a imagem.",
   "studio.toolbar.wallpaper.errorQuota": "Não cabe: remove um fundo e tenta outra vez.",
+  "studio.toolbar.wallpaper.suspendBlocker": "O Studio está a importar um fundo ainda não aplicado",
   "studio.toolbar.source": "Fonte da pré-visualização",
   "studio.toolbar.source.mock": "Mock",
   "studio.toolbar.source.live": "Live",
@@ -122,6 +123,7 @@ export const studioOrbitPt: Record<string, string> = {
   "studio.inspector.layout.aspectHint": "Mantém o rácio ao redimensionar.",
   "studio.inspector.layout.order": "Ordem e alinhamento",
   "studio.inspector.layout.reset": "Repor",
+  "studio.inspector.layout.suspendBlocker": "O Studio tem uma posição ou tamanho por aplicar",
   "studio.inspector.actions.restoreDefaults": "Repor valores",
   "studio.inspector.actions.discardAll": "Descartar tudo",
   "studio.inspector.actions.restoreHint":

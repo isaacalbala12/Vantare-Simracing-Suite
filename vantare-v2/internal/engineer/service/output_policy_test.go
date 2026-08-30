@@ -230,6 +230,39 @@ func TestDisabledOutputCannotAcknowledgeAtDeliveryBoundary(t *testing.T) {
 	}
 }
 
+func TestPerformancePolicyDisablesVisualPresentationButKeepsAudio(t *testing.T) {
+	resolver, err := presentation.NewResolver()
+	if err != nil {
+		t.Fatal(err)
+	}
+	service := NewEngineerService(nil)
+	service.SetVisualPresentationEnabled(false)
+	player := &recordingPresentationPlayer{}
+	port := productDeliveryPort{
+		service: service, player: player, resolver: cachedAudioResolver{},
+		presentationResolver: resolver, locale: presentation.LocaleEnglish,
+	}
+	decision := messagepolicy.Decision{
+		Version: messagepolicy.ContractVersionV1, CandidateID: "efficient-lap", Family: messagepolicy.FamilyLaps,
+		Intent: messagepolicy.IntentLapCompleted, Priority: messagepolicy.PriorityInformation,
+		CreatedAtMS: 100, ExpiresAtMS: 200,
+	}
+	if err := port.Deliver(context.Background(), delivery.Request{
+		Version: delivery.ContractVersionV1, DeliveryID: "efficient-delivery", Decision: decision,
+	}, &presentationAckRecorder{}); err != nil {
+		t.Fatal(err)
+	}
+	if got := service.RecentNotifications(); len(got) != 0 {
+		t.Fatalf("visual notifications = %+v, want none", got)
+	}
+	if got := len(player.paths); got != 1 {
+		t.Fatalf("audio plays = %d, want 1", got)
+	}
+	if service.Status().SubtitlesEnabled {
+		t.Fatal("subtitles must be reported disabled by the performance policy")
+	}
+}
+
 func TestDisablingOutputDuringStartedAckCannotPublishOrPlay(t *testing.T) {
 	resolver, err := presentation.NewResolver()
 	if err != nil {

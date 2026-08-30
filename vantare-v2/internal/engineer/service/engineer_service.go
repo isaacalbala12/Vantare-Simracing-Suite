@@ -65,26 +65,27 @@ func (cursor observationCursor) strictlyAfter(boundary observationCursor) bool {
 
 // EngineerService coordinates the telemetry input, runtime spotter engine, and notification store.
 type EngineerService struct {
-	mu                    sync.Mutex
-	store                 *NotificationStore
-	queue                 *audio.Queue
-	runtime               *core.Runtime
-	input                 *projectioninput.Adapter
-	emitter               EventEmitter
-	running               bool
-	enabled               bool
-	connected             bool
-	source                string
-	spotterEnabled        bool
-	legacySpotter         bool
-	legacyFamilies        bool
-	sensitivity           string
-	outputModes           map[messagepolicy.Family]OutputMode
-	subtitlesEnabled      bool
-	lastError             string
-	presentationLifecycle uint64
-	streamSequence        uint64
-	activePresentation    *EngineerNotification
+	mu                        sync.Mutex
+	store                     *NotificationStore
+	queue                     *audio.Queue
+	runtime                   *core.Runtime
+	input                     *projectioninput.Adapter
+	emitter                   EventEmitter
+	running                   bool
+	enabled                   bool
+	connected                 bool
+	source                    string
+	spotterEnabled            bool
+	legacySpotter             bool
+	legacyFamilies            bool
+	sensitivity               string
+	outputModes               map[messagepolicy.Family]OutputMode
+	subtitlesEnabled          bool
+	visualPresentationEnabled bool
+	lastError                 string
+	presentationLifecycle     uint64
+	streamSequence            uint64
+	activePresentation        *EngineerNotification
 
 	lastContext            engineerprojection.Context
 	lastObservation        *observationCursor
@@ -246,31 +247,32 @@ func NewEngineerService(emitter EventEmitter) *EngineerService {
 	spotterProducer, spotterProducerErr := radiospotter.NewProducer(clock, radio.LocaleES)
 	familyEngine, familyEngineErr := families.New(clock, radio.LocaleES)
 	s := &EngineerService{
-		store:                NewNotificationStore(50),
-		queue:                queue,
-		runtime:              core.NewRuntime(queue, legacyspotter.SensitivityNormal, true),
-		input:                projectioninput.NewAdapter(),
-		emitter:              emitter,
-		enabled:              true,
-		connected:            false,
-		source:               "telemetry-core",
-		spotterEnabled:       true,
-		sensitivity:          "normal",
-		outputModes:          defaultOutputModes(),
-		subtitlesEnabled:     true,
-		audioResolver:        NoopAudioResolver{},
-		scheduler:            scheduler,
-		policyClock:          clock,
-		deliveryMetrics:      delivery.NewMetrics(128),
-		deliveryWake:         make(chan struct{}, 1),
-		deliveryDone:         make(chan deliveryResult, 1),
-		radioBus:             radioBus,
-		radioResolver:        radioResolver,
-		radioMetrics:         radio.NewMetrics(128),
-		spotterProducer:      spotterProducer,
-		familyEngine:         familyEngine,
-		presentationResolver: presentationResolver,
-		presentationLocale:   presentation.LocaleSpanish,
+		store:                     NewNotificationStore(50),
+		queue:                     queue,
+		runtime:                   core.NewRuntime(queue, legacyspotter.SensitivityNormal, true),
+		input:                     projectioninput.NewAdapter(),
+		emitter:                   emitter,
+		enabled:                   true,
+		connected:                 false,
+		source:                    "telemetry-core",
+		spotterEnabled:            true,
+		sensitivity:               "normal",
+		outputModes:               defaultOutputModes(),
+		subtitlesEnabled:          true,
+		visualPresentationEnabled: true,
+		audioResolver:             NoopAudioResolver{},
+		scheduler:                 scheduler,
+		policyClock:               clock,
+		deliveryMetrics:           delivery.NewMetrics(128),
+		deliveryWake:              make(chan struct{}, 1),
+		deliveryDone:              make(chan deliveryResult, 1),
+		radioBus:                  radioBus,
+		radioResolver:             radioResolver,
+		radioMetrics:              radio.NewMetrics(128),
+		spotterProducer:           spotterProducer,
+		familyEngine:              familyEngine,
+		presentationResolver:      presentationResolver,
+		presentationLocale:        presentation.LocaleSpanish,
 	}
 	if schedulerErr != nil {
 		s.enabled = false
@@ -694,11 +696,32 @@ func (s *EngineerService) getStatusLocked() EngineerStatus {
 		SpotterEnabled:        s.spotterEnabled,
 		Sensitivity:           s.sensitivity,
 		OutputModes:           s.outputModesSnapshotLocked(),
-		SubtitlesEnabled:      s.subtitlesEnabled,
+		SubtitlesEnabled:      s.subtitlesEnabled && s.visualPresentationEnabled,
 		TTSCacheCount:         0, // TTS audio is disabled in this checkpoint
 		RecentMessages:        s.store.GetAll(),
 		LastError:             s.lastError,
 	}
+}
+
+// SetVisualPresentationEnabled applies the performance policy to every visual
+// Engineer transport. Audio output remains governed solely by OutputMode.
+func (s *EngineerService) SetVisualPresentationEnabled(enabled bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.visualPresentationEnabled == enabled {
+		return
+	}
+	s.visualPresentationEnabled = enabled
+	if !enabled {
+		s.advancePresentationLifecycleLocked()
+	}
+	s.emitStatusLocked()
+}
+
+func (s *EngineerService) visualPresentationAllowed() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.visualPresentationEnabled
 }
 
 func (s *EngineerService) SetSubtitlesEnabled(enabled bool) {

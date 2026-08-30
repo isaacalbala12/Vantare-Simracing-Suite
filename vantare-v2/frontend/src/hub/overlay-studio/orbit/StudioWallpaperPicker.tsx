@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useI18n } from "../../../i18n/I18nProvider";
+import { useHubSuspendBlocker } from "../../hub-suspend-guard";
 import {
   addWallpaper,
   MAX_WALLPAPERS,
@@ -41,6 +42,11 @@ export function StudioWallpaperPicker(props: StudioWallpaperPickerProps): React.
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  useHubSuspendBlocker(
+    "studio-wallpaper-import",
+    t("studio.toolbar.wallpaper.suspendBlocker"),
+    busy,
+  );
   const wrapRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const panelId = useId();

@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/vantare/overlays/v2/pkg/config"
@@ -33,6 +34,60 @@ func TestStudioProfileServiceFailureLogUsesSafeMetadata(t *testing.T) {
 		if strings.Contains(output, forbidden) {
 			t.Fatalf("log output=%q leaked %q", output, forbidden)
 		}
+	}
+}
+
+func TestStudioProfileServiceStateIsSafeDuringConfirmedPerformanceSaves(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "concurrent-performance.json")
+	doc := config.NormalizeProfileDocumentV3(&config.ProfileDocumentV3{
+		SchemaVersion: config.ProfileSchemaVersionV3,
+		ID:            "concurrent-performance",
+		Name:          "Concurrent performance",
+		DisplayMode:   config.ModeRacing,
+		Layouts: map[config.LayoutType]config.SessionLayoutV3{
+			config.LayoutGeneral: {Type: config.LayoutGeneral},
+		},
+	})
+	data, err := json.Marshal(doc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, data, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	svc := NewStudioProfileService(nil, nil)
+	if _, err := svc.Load(path); err != nil {
+		t.Fatal(err)
+	}
+	start := make(chan struct{})
+	var ready sync.WaitGroup
+	var done sync.WaitGroup
+	for worker := 0; worker < 8; worker++ {
+		ready.Add(1)
+		done.Add(1)
+		go func() {
+			defer done.Done()
+			ready.Done()
+			<-start
+			for index := 0; index < 25; index++ {
+				_ = svc.Path()
+				_ = svc.Document()
+				_ = svc.PerformanceProfile()
+				_ = svc.Revision()
+			}
+		}()
+	}
+	ready.Wait()
+	close(start)
+	svc.HandlePerformanceSave(map[string]any{
+		"requestId":   "confirmed-performance",
+		"performance": map[string]any{"mode": "level", "level": 5},
+	})
+	done.Wait()
+	if got := svc.PerformanceProfile(); got == nil || got.Performance == nil || got.Performance.Level != 5 {
+		t.Fatalf("confirmed performance=%+v want level 5", got)
 	}
 }
 

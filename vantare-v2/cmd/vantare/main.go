@@ -2050,16 +2050,15 @@ func main() {
 		log.Printf("telemetry core init error: %v", err)
 		telemetryCoreRuntime = nil
 	}
-	studioProfileSvc.SetOnPerformanceSaved(func(profile *config.ProfileDocumentV4) {
+	reconcilePerformance := func(settings app.PerformanceSettings, profile *config.ProfileDocumentV4) {
 		if telemetryCoreRuntime != nil {
-			telemetryCoreRuntime.SetPerformancePolicy(app.ResolvePerformancePolicy(settingsSvc.Settings().Performance, profile))
+			telemetryCoreRuntime.SetPerformancePolicy(app.ResolvePerformancePolicy(settings, profile))
 		}
-		emitter.Emit("hub:profiles:refresh", map[string]any{"ok": true})
-	})
+	}
+	performanceSaves := app.NewPerformanceSaveCoordinator(settingsSvc, studioProfileSvc, reconcilePerformance)
+	studioProfileSvc.SetPerformanceSaveCoordinator(performanceSaves)
 	hubSvc.SetPerformancePolicyReconciler(func(profile *config.ProfileDocumentV4) {
-		if telemetryCoreRuntime != nil {
-			telemetryCoreRuntime.SetPerformancePolicy(app.ResolvePerformancePolicy(settingsSvc.Settings().Performance, profile))
-		}
+		reconcilePerformance(settingsSvc.Settings().Performance, profile)
 	})
 	telemetrySourceStatus := func() driver.SourceStatus {
 		if telemetryCoreRuntime == nil {
@@ -2571,23 +2570,30 @@ func main() {
 	})
 
 	wailsApp.Event.On("settings:save", func(event *application.CustomEvent) {
+		var request struct {
+			RequestID string           `json:"requestId"`
+			Settings  *app.AppSettings `json:"settings"`
+		}
 		var s app.AppSettings
 		if event.Data != nil {
 			if raw, err := json.Marshal(event.Data); err == nil {
-				json.Unmarshal(raw, &s)
+				_ = json.Unmarshal(raw, &request)
+				if request.Settings != nil {
+					s = *request.Settings
+				} else {
+					_ = json.Unmarshal(raw, &s)
+				}
 			}
 		}
-		if err := settingsSvc.Save(&s); err != nil {
+		confirmed, _, err := performanceSaves.Execute(func() error { return settingsSvc.Save(&s) })
+		if err != nil {
 			log.Printf("settings:save error: %v", err)
 			emitSettingsError(err.Error())
 			return
 		}
 		// Apply CPU sampling toggle if runtime sampler exists
 		if rtSampler != nil {
-			rtSampler.SetCPUEnabled(s.CpuSampling)
-		}
-		if telemetryCoreRuntime != nil {
-			telemetryCoreRuntime.SetPerformancePolicy(app.ResolvePerformancePolicy(s.Performance, studioProfileSvc.PerformanceProfile()))
+			rtSampler.SetCPUEnabled(confirmed.CpuSampling)
 		}
 		// Rebuild hotkeys with new combos
 		rebuildHotkeys()
@@ -2596,7 +2602,9 @@ func main() {
 				log.Printf("engineer experimental voice-input PTT reservation unavailable after settings save: %v", err)
 			}
 		}
-		emitter.Emit("settings-saved", map[string]any{"ok": true})
+		emitter.Emit("settings-saved", map[string]any{
+			"ok": true, "requestId": request.RequestID, "settings": confirmed,
+		})
 	})
 
 	// Autostart lives in the Windows Run key and nowhere else. Keeping a copy

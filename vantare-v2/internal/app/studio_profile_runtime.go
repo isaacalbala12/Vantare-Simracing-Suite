@@ -13,42 +13,62 @@ import (
 
 // SetProfilesDir sets the directory used to discover profiles for cycling.
 func (s *StudioProfileService) SetProfilesDir(dir string) {
+	s.stateMu.Lock()
+	defer s.stateMu.Unlock()
 	s.profilesDir = dir
 }
 
 // SetWindowManager binds the desktop window manager used for runtime display modes.
 func (s *StudioProfileService) SetWindowManager(mgr *window.Manager) {
+	s.stateMu.Lock()
+	defer s.stateMu.Unlock()
 	s.mgr = mgr
 }
 
 func (s *StudioProfileService) SetOnPerformanceSaved(callback func(*config.ProfileDocumentV4)) {
+	s.stateMu.Lock()
+	defer s.stateMu.Unlock()
 	s.onPerformanceSaved = callback
+}
+
+func (s *StudioProfileService) SetPerformanceSaveCoordinator(coordinator *PerformanceSaveCoordinator) {
+	s.stateMu.Lock()
+	defer s.stateMu.Unlock()
+	s.performanceSaves = coordinator
 }
 
 // Path returns the active profile file path.
 func (s *StudioProfileService) Path() string {
+	s.stateMu.RLock()
+	defer s.stateMu.RUnlock()
 	return s.path
 }
 
 // Document returns the loaded V3 profile document.
 func (s *StudioProfileService) Document() *config.ProfileDocumentV3 {
-	if s.loaded == nil {
+	s.stateMu.RLock()
+	defer s.stateMu.RUnlock()
+	if s.loaded == nil || s.loaded.Document == nil {
 		return nil
 	}
-	return s.loaded.Document
+	return config.NormalizeProfileDocumentV3(s.loaded.Document)
 }
 
 // PerformanceProfile returns the canonical V4 document used to resolve the
 // active profile policy. Runtime layout consumers keep using the V3 adapter.
 func (s *StudioProfileService) PerformanceProfile() *config.ProfileDocumentV4 {
-	if s.loaded == nil {
+	s.stateMu.RLock()
+	defer s.stateMu.RUnlock()
+	if s.loaded == nil || s.loaded.DocumentV4 == nil {
 		return nil
 	}
-	return s.loaded.DocumentV4
+	return config.NormalizeProfileDocumentV4(s.loaded.DocumentV4)
 }
 
 // Revision returns the loaded profile revision hash.
 func (s *StudioProfileService) Revision() string {
+	s.stateMu.RLock()
+	defer s.stateMu.RUnlock()
 	if s.loaded == nil {
 		return ""
 	}
@@ -63,38 +83,56 @@ func (s *StudioProfileService) LoadActiveProfile(path string) error {
 
 // SetDisplayMode changes the active document mode and applies it to the window.
 func (s *StudioProfileService) SetDisplayMode(mode config.DisplayMode) error {
+	s.operationMu.Lock()
+	defer s.operationMu.Unlock()
+	s.stateMu.Lock()
 	if s.loaded == nil || s.loaded.Document == nil {
+		s.stateMu.Unlock()
 		return fmt.Errorf("profile not loaded")
 	}
 	s.loaded.Document.DisplayMode = mode
-	if s.mgr != nil {
-		s.mgr.ApplyProfileV3(s.loaded.Document, false)
+	document := config.NormalizeProfileDocumentV3(s.loaded.Document)
+	mgr := s.mgr
+	s.stateMu.Unlock()
+	if mgr != nil {
+		mgr.ApplyProfileV3(document, false)
 	}
 	return nil
 }
 
 // ApplyToWindow applies the current document to the window manager.
 func (s *StudioProfileService) ApplyToWindow(skipRefresh bool) {
+	s.stateMu.RLock()
 	if s.loaded == nil || s.loaded.Document == nil || s.mgr == nil {
+		s.stateMu.RUnlock()
 		return
 	}
-	s.mgr.ApplyProfileV3(s.loaded.Document, skipRefresh)
+	document := config.NormalizeProfileDocumentV3(s.loaded.Document)
+	mgr := s.mgr
+	s.stateMu.RUnlock()
+	mgr.ApplyProfileV3(document, skipRefresh)
 }
 
 // EmitRuntimeLoaded broadcasts overlay:profile-v3-loaded for desktop/OBS runtimes.
 func (s *StudioProfileService) EmitRuntimeLoaded() {
+	s.stateMu.RLock()
 	if s.emitter == nil || s.loaded == nil || s.loaded.Document == nil {
+		s.stateMu.RUnlock()
 		return
 	}
+	document := config.NormalizeProfileDocumentV3(s.loaded.Document)
+	revision := s.loaded.Revision
+	mgr := s.mgr
+	s.stateMu.RUnlock()
 	var origin config.Rect
-	if s.mgr != nil {
-		origin = s.mgr.LayoutOriginV3(s.loaded.Document)
+	if mgr != nil {
+		origin = mgr.LayoutOriginV3(document)
 	}
 	s.emitter.Emit("overlay:profile-v3-loaded", map[string]any{
-		"document":     s.loaded.Document,
-		"revision":     s.loaded.Revision,
+		"document":     document,
+		"revision":     revision,
 		"layoutOrigin": origin,
-		"windowMode":   string(s.loaded.Document.DisplayMode),
+		"windowMode":   string(document.DisplayMode),
 	})
 }
 
@@ -109,17 +147,20 @@ func (s *StudioProfileService) PreviousProfile() error {
 }
 
 func (s *StudioProfileService) listProfileFiles() []string {
-	if s.profilesDir == "" {
+	s.stateMu.RLock()
+	profilesDir := s.profilesDir
+	s.stateMu.RUnlock()
+	if profilesDir == "" {
 		return nil
 	}
-	entries, err := os.ReadDir(s.profilesDir)
+	entries, err := os.ReadDir(profilesDir)
 	if err != nil {
 		return nil
 	}
 	var files []string
 	for _, entry := range entries {
 		if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".json") && !strings.Contains(entry.Name(), "app-settings") {
-			files = append(files, filepath.Join(s.profilesDir, entry.Name()))
+			files = append(files, filepath.Join(profilesDir, entry.Name()))
 		}
 	}
 	sort.Strings(files)
@@ -132,9 +173,10 @@ func (s *StudioProfileService) cycleProfile(direction int) error {
 		return fmt.Errorf("no profiles available")
 	}
 
+	currentPath := s.Path()
 	currentIdx := -1
 	for i, file := range files {
-		if file == s.path || filepath.Base(file) == filepath.Base(s.path) {
+		if file == currentPath || filepath.Base(file) == filepath.Base(currentPath) {
 			currentIdx = i
 			break
 		}

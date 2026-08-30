@@ -791,6 +791,8 @@ function PerformanceSection() {
     file: string;
     performance?: ProfilePerformanceV4;
   } | null>(null);
+  const profileSaveSequence = useRef(0);
+  const pendingProfileSave = useRef<string | null>(null);
   const profilePerformance =
     profilePerformanceEdit && profilePerformanceEdit.file === activeProfileFile
       ? profilePerformanceEdit.performance
@@ -800,7 +802,9 @@ function PerformanceSection() {
     const offLevel = Events.On("performance:level", (event: { data?: OverlayPerformanceV2 }) => {
       if (event.data) setEffective(event.data);
     });
-    const offSaved = Events.On("studio:profile:performance:saved", (event: { data?: { performance?: ProfilePerformanceV4 } }) => {
+    const offSaved = Events.On("studio:profile:performance:saved", (event: { data?: { requestId?: string; performance?: ProfilePerformanceV4 } }) => {
+      if (!event.data?.requestId || event.data.requestId !== pendingProfileSave.current) return;
+      pendingProfileSave.current = null;
       if (activeProfileFile) {
         setProfilePerformanceEdit({
           file: activeProfileFile,
@@ -828,14 +832,14 @@ function PerformanceSection() {
   const level = effective?.level ?? profilePerformance?.level ?? appPerformance.level;
 
   const saveProfilePerformance = useCallback((performance: ProfilePerformanceV4) => {
-    if (activeProfileFile) {
-      setProfilePerformanceEdit({ file: activeProfileFile, performance });
-    }
+    profileSaveSequence.current += 1;
+    const requestId = `performance-${profileSaveSequence.current.toString(36)}`;
+    pendingProfileSave.current = requestId;
     Events.Emit("studio:profile:performance:save", {
-      requestId: `performance-${Date.now().toString(36)}`,
+      requestId,
       performance,
     });
-  }, [activeProfileFile]);
+  }, []);
 
   const choose = (choice: PerformanceChoice) => {
     if (choice === "auto") return;

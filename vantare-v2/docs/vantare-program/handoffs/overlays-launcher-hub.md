@@ -28,7 +28,10 @@
   `docs/telemetry-core/evidence/isa-943/`. Quedan para Isaac únicamente el pase
   visual de los controles existentes; las variantes `noBlur`/`flat` y su
   control/coste GPU pertenecen a su issue dedicada. El sensor
-  real de Automático sigue fuera de C2.
+  real de Automático sigue fuera de C2. Los guardados de Ajustes y política de
+  perfil comparten un coordinador: serializa la persistencia, relee ambos
+  estados confirmados y reconcilia esa pareja; Studio protege ruta/documento/
+  revisión con un mutex y ambas UIs esperan una confirmación correlacionada.
 
 - **ISA-924 — banco de huella y baseline por hardware (2026-08-28):** PR #929
   integrado en `nightly`; corrección operativa en

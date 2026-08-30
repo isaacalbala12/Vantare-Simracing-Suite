@@ -219,11 +219,15 @@ describe("SettingsOrbitPage", () => {
     fireEvent.click(screen.getByTestId("orbit-settings-performance-4"));
     expect(emit).toHaveBeenCalledWith(
       "settings:save",
-      expect.objectContaining({ performance: { mode: "level", level: 4 } }),
+      expect.objectContaining({
+        requestId: expect.any(String),
+        settings: expect.objectContaining({ performance: { mode: "level", level: 4 } }),
+      }),
     );
   });
 
   it("Personalizado ofrece solo Hz por widget y no promete overrides de efectos", () => {
+    const emit = vi.spyOn(Events, "Emit");
     const handlers = new Map<string, Array<(event: { data: unknown }) => void>>();
     vi.mocked(Events.On).mockImplementation(((name: string, handler: (event: { data: unknown }) => void) => {
       handlers.set(name, [...(handlers.get(name) ?? []), handler]);
@@ -266,6 +270,30 @@ describe("SettingsOrbitPage", () => {
     expect(screen.getByTestId("orbit-settings-performance-migration-notices").textContent).toContain(
       "delta-main tenía 3 Hz",
     );
+
+    const cadence = within(screen.getByTestId("orbit-settings-performance-row-delta-main"))
+      .getByRole("combobox", { name: "Cadencia" });
+    emit.mockClear();
+    fireEvent.click(cadence);
+    fireEvent.click(screen.getByRole("option", { name: "30 Hz" }));
+    const saveCall = emit.mock.calls.find(([name]) => name === "studio:profile:performance:save");
+    const savePayload = saveCall?.[1] as { requestId?: string } | undefined;
+    expect(savePayload?.requestId).toBeTruthy();
+    expect(cadence.textContent).toContain("60 Hz");
+
+    act(() => {
+      for (const handler of handlers.get("studio:profile:performance:saved") ?? []) {
+        handler({ data: { requestId: "foreign", performance: { mode: "custom", level: 3, overrides: { "delta-main": { hz: 10 } } } } });
+      }
+    });
+    expect(cadence.textContent).toContain("60 Hz");
+
+    act(() => {
+      for (const handler of handlers.get("studio:profile:performance:saved") ?? []) {
+        handler({ data: { requestId: savePayload?.requestId, performance: { mode: "custom", level: 3, overrides: { "delta-main": { hz: 30 } } } } });
+      }
+    });
+    expect(cadence.textContent).toContain("30 Hz");
   });
 
   it("con licencia anónima los canales de testers y nightly llevan candado", () => {

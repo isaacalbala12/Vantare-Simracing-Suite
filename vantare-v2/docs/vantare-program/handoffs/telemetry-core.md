@@ -15,6 +15,26 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 
 ## Estado real
 
+- 2026-08-30, seguimiento ISA-894/PR #955 después de S1 ON completa (20 min):
+  el segundo fallo `StrictMode` del colector era la enumeración de una lista
+  vacía de screenshots finales; el parser y el script toleran listas/targets y
+  propiedades CDP opcionales. Los mismatches fuera de `live` ya son
+  `not-comparable` con razón de fase. En `live`, `standings.remainingText`
+  conserva exactitud pero exige `session|standings` reconstruidas en el mismo
+  cursor; el historial de controles pasa a `partial` porque V1/V2 no comparten
+  timestamp por muestra, mientras los controles instantáneos siguen exactos.
+  S1 observó pendientes de +825,8 y +311,5 MiB/h en renderer no asignados,
+  +119,7 GPU, +23,8 Go y +15,0 browser: el gate de memoria sigue FAIL. No hay
+  colección shadow ilimitada demostrada (pares/secuencias 64, historial 120,
+  35 claves observadas), pero sí hasta 651.120 objetos V2 de historial creados
+  sin valor de paridad. El shadow deja de retener/decodificar ese historial,
+  limita métricas a 128 claves y publica tamaños retenidos; el colector añade
+  heap JS/nodos/listeners por target CDP. La build antigua no asignó PID a
+  target, así que no se atribuye toda la pendiente al shadow: hace falta nueva
+  ON con esta instrumentación y el diferencial OFF. Evidencia:
+  `docs/telemetry-core/evidence/isa-894/diagnostico-s1-on.md`. Vitest completo
+  433/433 y 3.294/3.294, focal 98/98, banco Node 88/88, typecheck y lint pasan.
+  No hay merge, promoción ni release; corte 2 sigue bloqueado.
 - 2026-08-30, seguimiento ISA-894 tras la primera S1 ON real: el colector
   abortó a los 0,20 min porque el target Hub no publica
   `overlay_v2_transport`; el parser ahora normaliza todos los campos CDP

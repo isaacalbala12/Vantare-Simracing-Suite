@@ -284,7 +284,8 @@ function frame(value: unknown, path: string): void {
   positiveInteger(value.algorithm, `${path}.algorithm`);
   positiveInteger(value.epoch, `${path}.epoch`);
   positiveInteger(value.sequence, `${path}.sequence`);
-  if (!Number.isInteger(value.sectionMask) || value.sectionMask < 0 || value.sectionMask > 0x7ff) {
+  const sectionMask = value.sectionMask;
+  if (typeof sectionMask !== "number" || !Number.isInteger(sectionMask) || sectionMask < 0 || sectionMask > 0x7ff) {
     invalid(`${path}.sectionMask`);
   }
   nonEmptyString(value.sessionId, `${path}.sessionId`);

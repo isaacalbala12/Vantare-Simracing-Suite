@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-30T00:13:31Z",
+  "generatedAt": "2026-08-30T01:36:40Z",
   "digest": {
-    "lastCommit": "8b4a7e4f2bdb7c5e498051bb21a3e290f382a2bd"
+    "lastCommit": "ade6f561fe97d87aadf4c4873cbd79e342f36b25"
   },
   "phases": [
     {
@@ -907,6 +907,11 @@
           "kind": "change",
           "scope": "",
           "text": "ISA-893 · OverlayFrame V2 autoridad completa en Studio, Desktop y OBS (cutover)"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-943 · Perfil v4 + Ajustes › Rendimiento (C2)"
         }
       ]
     },

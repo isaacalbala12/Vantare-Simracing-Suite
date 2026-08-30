@@ -781,6 +781,13 @@ type PerformanceChoice = "1" | "2" | "3" | "4" | "5" | "custom" | "auto";
 
 const PERFORMANCE_CHOICES: PerformanceChoice[] = ["1", "2", "3", "4", "5", "custom", "auto"];
 
+/** Las etiquetas del catálogo viven en `studio.v3.widgetTypes.<camelCase>`
+ *  (`pedals-telemetry` → `pedalsTelemetry`). */
+function widgetTypeLabelKey(type: string): string {
+  const [head, ...rest] = type.split("-");
+  return `studio.v3.widgetTypes.${head}${rest.map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join("")}`;
+}
+
 function PerformanceSection() {
   const { t } = useI18n();
   const app = useAppSettings();
@@ -872,22 +879,45 @@ function PerformanceSection() {
   const widgets = overlay.active?.previewDocument?.layouts.general.widgets ?? [];
 
   return (
-    <div className="orbit-set__grid2" data-testid="orbit-settings-performance">
-      <Surface aria-label={t("settings.performance.title")} fill title={t("settings.performance.title")}>
+    <div className="orbit-set-perf" data-testid="orbit-settings-performance">
+      <Surface
+        aria-label={t("settings.performance.title")}
+        fill
+        meta={
+          effective ? (
+            <SubtleStatus tone="ok">
+              {t("settings.performance.effective")} · {t(`settings.performance.${effective.level}`)} ·{" "}
+              {effective.rafCap ? `${effective.rafCap} fps` : t("settings.performance.rate1")}
+              {effective.reason ? ` · ${t(`settings.performance.reason.${effective.reason}`)}` : ""}
+            </SubtleStatus>
+          ) : null
+        }
+        title={t("settings.performance.title")}
+      >
         <div
           aria-label={t("settings.performance.title")}
-          className="orbit-set-channels"
+          className="orbit-set-perf__ladder"
           data-testid="orbit-settings-performance-options"
           role="radiogroup"
         >
           {PERFORMANCE_CHOICES.map((choice) => {
+            const isLevel = choice !== "custom" && choice !== "auto";
             const disabled = choice === "auto" || (choice === "custom" && !overlay.active);
+            const on = selected === choice;
+            const rate = isLevel
+              ? t(`settings.performance.rate${choice}`)
+              : choice === "auto"
+                ? t("settings.performance.soon")
+                : overlay.active
+                  ? formatMessage(t("settings.performance.customActive"), { name: overlay.active.name ?? "" })
+                  : t("settings.performance.customNoProfile");
             return (
               <button
-                aria-checked={selected === choice}
+                aria-checked={on}
                 aria-disabled={disabled || undefined}
-                className="orbit-set-channel"
-                data-state={selected === choice ? "on" : undefined}
+                className={`orbit-set-perf__card orbit-set-perf__card--${isLevel ? "level" : "mode"}`}
+                data-level={isLevel ? choice : undefined}
+                data-state={on ? "on" : undefined}
                 data-testid={`orbit-settings-performance-${choice}`}
                 disabled={choice === "auto"}
                 key={choice}
@@ -895,21 +925,26 @@ function PerformanceSection() {
                 role="radio"
                 type="button"
               >
-                <span className="orbit-set-channel__top">
+                <span className="orbit-set-perf__top">
                   <b>{t(`settings.performance.${choice}`)}</b>
-                  {selected === choice ? <Dot variant="ok" /> : <Dot variant="ring" />}
+                  {on ? <Dot variant="ok" /> : <Dot variant="ring" />}
                 </span>
-                <span className="orbit-set-channel__copy">{t(`settings.performance.${choice}Sub`)}</span>
-                {choice === "auto" ? (
-                  <span className="orbit-set-channel__meta">{t("settings.performance.soon")}</span>
+                {isLevel ? (
+                  <span aria-hidden="true" className="orbit-set-perf__meter">
+                    {[1, 2, 3, 4, 5].map((step) => (
+                      <i data-on={step <= 6 - Number(choice) ? "true" : undefined} key={step} />
+                    ))}
+                  </span>
                 ) : null}
+                <span className="orbit-set-perf__rate">{rate}</span>
+                <span className="orbit-set-perf__copy">{t(`settings.performance.${choice}Sub`)}</span>
               </button>
             );
           })}
         </div>
-        <Note>{t("settings.performance.profileNote")}</Note>
+        <p className="orbit-set-perf__hint">{t("settings.performance.profileNote")}</p>
         {overlay.active?.migrationNotices?.length ? (
-          <div data-testid="orbit-settings-performance-migration-notices">
+          <div className="orbit-set-perf__notices" data-testid="orbit-settings-performance-migration-notices">
             {overlay.active.migrationNotices.map((notice) => (
               <Note key={`${notice.path}:${notice.updateHz}`}>
                 {formatMessage(t("settings.performance.migrationNotice"), {
@@ -926,10 +961,17 @@ function PerformanceSection() {
         <Surface
           aria-label={t("settings.performance.table")}
           fill
+          meta={overlay.active ? <SubtleStatus>{overlay.active.name}</SubtleStatus> : null}
           title={t("settings.performance.table")}
         >
           {overlay.active ? (
-            <table data-testid="orbit-settings-performance-table">
+            <table className="orbit-set-perf__table" data-testid="orbit-settings-performance-table">
+              <colgroup>
+                <col />
+                <col />
+                <col />
+                <col />
+              </colgroup>
               <thead>
                 <tr>
                   <th>{t("settings.performance.widget")}</th>
@@ -946,8 +988,14 @@ function PerformanceSection() {
                     typeof override?.hz === "number" && typeof baseline === "number" && override.hz > baseline;
                   return (
                     <tr data-testid={`orbit-settings-performance-row-${widget.id}`} key={widget.id}>
-                      <th scope="row">{t(`studio.v3.widgetTypes.${widget.type}`)}</th>
-                      <td>{baseline === "dirty" || baseline === "event" ? baseline : baseline ?? "—"}</td>
+                      <th scope="row">{t(widgetTypeLabelKey(widget.type))}</th>
+                      <td className="orbit-set-perf__hz">
+                        {baseline === "dirty" || baseline === "event"
+                          ? t(`settings.performance.${baseline}`)
+                          : typeof baseline === "number"
+                            ? `${baseline} Hz`
+                            : "—"}
+                      </td>
                       <td>
                         <Select
                           label={t("settings.performance.overrideHz")}
@@ -964,9 +1012,8 @@ function PerformanceSection() {
                           width={128}
                         />
                       </td>
-                      <td>
-                        {cpuCost ? <Chip>+CPU</Chip> : null}
-                        {!cpuCost ? "—" : null}
+                      <td className="orbit-set-perf__cost">
+                        {cpuCost ? <Chip tone="warn">+CPU</Chip> : <span className="orbit-set-perf__none">—</span>}
                       </td>
                     </tr>
                   );

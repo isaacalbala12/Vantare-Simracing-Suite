@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/vantare/overlays/v2/internal/app"
+	"github.com/vantare/overlays/v2/pkg/config"
 )
 
 func TestEffectivePerformancePolicyDefaultsAndDiagnosticOverride(t *testing.T) {
@@ -13,15 +14,18 @@ func TestEffectivePerformancePolicyDefaultsAndDiagnosticOverride(t *testing.T) {
 	if err := svc.Load(); err != nil {
 		t.Fatal(err)
 	}
-	if got := svc.EffectivePerformancePolicy().Level; got != 1 {
+	if got := svc.EffectivePerformancePolicy(nil).Level; got != 1 {
 		t.Fatalf("default level=%d want 1", got)
 	}
 	t.Setenv("VANTARE_PERF_LEVEL", "4")
-	if got := svc.EffectivePerformancePolicy().Level; got != 4 {
+	profile := &config.ProfileDocumentV4{
+		Performance: &config.ProfilePerformanceV4{Mode: config.ProfilePerformanceLevel, Level: 2},
+	}
+	if got := svc.EffectivePerformancePolicy(profile).Level; got != 4 {
 		t.Fatalf("diagnostic level=%d want 4", got)
 	}
 	t.Setenv("VANTARE_PERF_LEVEL", "9")
-	if got := svc.EffectivePerformancePolicy().Level; got != 1 {
+	if got := svc.EffectivePerformancePolicy(nil).Level; got != 1 {
 		t.Fatalf("invalid diagnostic level=%d want settings fallback 1", got)
 	}
 }

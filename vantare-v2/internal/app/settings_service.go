@@ -814,13 +814,15 @@ func (s *SettingsService) applyLoaded(loaded *AppSettings) {
 // EffectivePerformancePolicy resolves the same canonical policy published in
 // capabilities.performance. Diagnostic builds may force a nominal level for
 // reproducible lifecycle measurements without changing persisted settings.
-func (s *SettingsService) EffectivePerformancePolicy() performancepolicy.Policy {
+func (s *SettingsService) EffectivePerformancePolicy(profile *config.ProfileDocumentV4) performancepolicy.Policy {
 	settings := s.Snapshot().Performance
 	if override := diagnosticPerformanceLevel(); override != 0 {
-		settings.Mode = string(performancepolicy.ModeLevel)
-		settings.Level = override
+		return performancepolicy.Resolve(performancepolicy.Policy{
+			Mode:  performancepolicy.ModeLevel,
+			Level: performancepolicy.Level(override),
+		}, nil)
 	}
-	return ResolvePerformancePolicy(settings)
+	return ResolvePerformancePolicy(settings, profile)
 }
 
 // persistSidecarApplied writes the current settings to disk (via atomicWrite)

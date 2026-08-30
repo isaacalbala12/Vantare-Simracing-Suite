@@ -14,7 +14,7 @@ func TestProductionEffectivePerformancePolicyIgnoresDiagnosticEnvironment(t *tes
 	if err := svc.Load(); err != nil {
 		t.Fatal(err)
 	}
-	if got := svc.EffectivePerformancePolicy().Level; got != 1 {
+	if got := svc.EffectivePerformancePolicy(nil).Level; got != 1 {
 		t.Fatalf("production level=%d want persisted default 1", got)
 	}
 }

@@ -1366,8 +1366,13 @@ func main() {
 	if err := settingsSvc.Load(); err != nil {
 		log.Printf("warning: could not load settings: %v (using defaults)", err)
 	}
+	var studioProfileSvc *app.StudioProfileService
 	effectivePerformanceLevel := func() int {
-		return int(settingsSvc.EffectivePerformancePolicy().Level)
+		var profile *config.ProfileDocumentV4
+		if studioProfileSvc != nil {
+			profile = studioProfileSvc.PerformanceProfile()
+		}
+		return int(settingsSvc.EffectivePerformancePolicy(profile).Level)
 	}
 	if err := app.ApplyProcessPowerPolicy(effectivePerformanceLevel()); err != nil {
 		log.Printf("warning: performance process policy unavailable: %v", err)
@@ -1377,7 +1382,6 @@ func main() {
 	var opsBridge *app.OpsBridge
 	var httpSrv *server.Server
 	var overlayController *app.OverlayController
-	var studioProfileSvc *app.StudioProfileService
 	var rtSampler *ops.RuntimeSampler
 	var overlayRunning atomic.Bool
 	var hkMgr *app.HotkeyManager
@@ -2008,13 +2012,9 @@ func main() {
 		log.Printf("license:reset-device ok")
 	})
 
-	// Ajustes se cargan antes del perfil activo y del runtime para que la
-	// composición inicial use una única pareja confirmada.
-	appSettingsPath := filepath.Join(cfgDir, "app-settings.json")
-	settingsSvc := app.NewSettingsService(appSettingsPath, emitter, nil)
-	if err := settingsSvc.Load(); err != nil {
-		log.Printf("warning: could not load settings: %v (using defaults)", err)
-	}
+	// Ajustes ya se cargaron antes de componer las ventanas. El perfil activo
+	// se carga ahora, todavía antes del runtime, para resolver una única pareja
+	// confirmada sin crear un segundo SettingsService.
 
 	// Overlay Studio V3 profile persistence (canonical runtime document owner)
 	studioProfileSvc = app.NewStudioProfileService(emitter, func(saved app.StudioProfileSaved) {

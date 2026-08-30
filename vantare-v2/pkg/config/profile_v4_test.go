@@ -64,6 +64,55 @@ func TestProfileV3ToV4DropsAtypicalUpdateHzAndCreatesBackup(t *testing.T) {
 	}
 }
 
+func TestProfileV3BackupCollisionCreatesDigestMatchingVersionedBackup(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "collision.json")
+	backupPath := filepath.Join(dir, "collision.v3.bak")
+	doc := validProfileV3(validWidget("delta-main", WidgetTypeDelta))
+	original, err := marshalProfileDocumentV3(doc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	foreign := []byte(`{"schemaVersion":3,"id":"other-profile"}`)
+	if err := os.WriteFile(path, original, 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(backupPath, foreign, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	store := ProfileDocumentStore{}
+	loaded, err := store.LoadV4(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.SaveV4(path, loaded.Revision, loaded.Document, loaded.MigratedFrom); err != nil {
+		t.Fatal(err)
+	}
+
+	fixed, err := os.ReadFile(backupPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(fixed) != string(foreign) {
+		t.Fatal("preexisting backup was overwritten")
+	}
+	versioned, err := filepath.Glob(filepath.Join(dir, "collision.v3.*.bak"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(versioned) != 1 {
+		t.Fatalf("versioned backups=%v want one digest-matching collision backup", versioned)
+	}
+	versionedData, err := os.ReadFile(versioned[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if profileRevision(versionedData) != profileRevision(original) {
+		t.Fatal("versioned backup digest does not match migrated v3 source")
+	}
+}
+
 func TestProfileV4PerformanceRoundTrip(t *testing.T) {
 	doc := ConvertProfileV3ToV4(validProfileV3(validWidget("delta-main", WidgetTypeDelta)))
 	rate := ProfileWidgetRateV4{Hertz: 24}

@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 const maxProfileFileBytes = 5 * 1024 * 1024
@@ -120,13 +121,23 @@ func (ProfileDocumentStore) SaveV4(path, expectedRevision string, doc *ProfileDo
 func ensureV3Backup(path string) error {
 	extension := filepath.Ext(path)
 	backupPath := strings.TrimSuffix(path, extension) + ".v3.bak"
-	if _, err := os.Stat(backupPath); err == nil {
-		return nil
-	} else if !os.IsNotExist(err) {
-		return err
-	}
 	data, err := os.ReadFile(path)
 	if err != nil {
+		return err
+	}
+	backup, err := os.ReadFile(backupPath)
+	if err == nil {
+		if profileRevision(backup) == profileRevision(data) {
+			return nil
+		}
+		timestamp := time.Now().UTC().Format("20060102T150405.000000000Z")
+		versionedPath := strings.TrimSuffix(path, extension) + ".v3." + timestamp + ".bak"
+		if err := atomicWriteFile(versionedPath, data, 0644); err != nil {
+			return fmt.Errorf("write versioned backup %s: %w", versionedPath, err)
+		}
+		return nil
+	}
+	if !os.IsNotExist(err) {
 		return err
 	}
 	if err := atomicWriteFile(backupPath, data, 0644); err != nil {

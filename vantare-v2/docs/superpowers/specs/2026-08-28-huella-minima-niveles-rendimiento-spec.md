@@ -233,7 +233,7 @@ Fuera: cortes finos de renderer/Go (#912); cutover/retirada V1 (#893/#894); life
 ## 12. Gates
 
 1. Ningún nivel se publica sin la tabla de §8 en las tres condiciones de hardware (o dos si VR no está disponible, indicándolo).
-2. Nivel 3 (defecto) debe ser ≥ 25 % mejor que hoy en CPU total de Vantare y ≥ 30 % en RAM privada con hub minimizado, sin empeorar frametime del juego. Si no, no es el defecto.
+2. Nivel 3 debe ser ≥ 25 % mejor que hoy en CPU total de Vantare y ≥ 20 % en RAM privada con hub minimizado (medido 423,13 MiB, −24,71 % vs 562 MiB, 2026-08-30), sin empeorar frametime del juego. Este gate no promociona el nivel 3: el default productivo sigue en nivel 1 mientras esa decisión permanezca abierta.
 3. Nivel 5 debe dejar Vantare ≤ 0,5 cores y ≤ 250 MB privados con overlay activo.
 4. Automático no puede oscilar: ≤ 2 cambios de nivel en 10 minutos de sesión estable.
 5. Ningún evento de seguridad (banderas, spotter, avisos) aumenta su latencia p99 en ningún nivel (> 50 ms sobre nivel 1 es fallo).
@@ -265,6 +265,7 @@ Fuera: cortes finos de renderer/Go (#912); cutover/retirada V1 (#893/#894); life
 | P10 | ¿Instalo PresentMon? | **Sí**, al arrancar F0. | §8 |
 | P11 | ¿Cerrar Edge/WebView2 ajenos al medir? | **Sí, cerrar todo.** | §8 |
 | P12 | ¿Escena del A/B? | **Coche en pista parado.** | §8 |
+| P13 | ¿Se acepta el gate RAM de F2 con el resultado de #940? | **Sí, ≥ 20 %.** El −30 % original requería el Hub a cero y además recortar GPU process/renderer del overlay; ese trabajo continúa en [#951](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/951). | §12.2, #951 |
 
 Pendiente de Isaac: elegir el juego de nombres de §5.1 y diseñar las variantes `noBlur`/`flat` de Endurance (D9).
 

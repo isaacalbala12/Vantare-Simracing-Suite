@@ -3,12 +3,19 @@
 ## Autoridad y alcance
 
 - Rama: `vantareapp/isa-940-lifecycle-coste-cero`.
-- Base rebasada antes del cierre: `origin/nightly@8b4a7e4f`.
-- Build diagnóstica propia: `bin/vantare-isa940.exe` (sin `-tags production`).
+- Base final de la medida: `origin/nightly@ade6f561`.
+- HEAD medido: `cd5a1dcbf314141828a01ce7dc392427e02343c1`.
+- Build diagnóstica propia: `bin/vantare-isa940.exe` (sin `-tags production`),
+  SHA-256 `668E183D1FCF632CC3B20F5D0F041966F2D78BB4285503E994E7E327508FB1BA`.
+- Dist final: 47 ficheros, SHA-256
+  `79BADA433763767A91C0D4919FFBDF81253D241649388D0600C6CA74DBF01A08`.
+  El digest concatena por LF las filas ordenadas
+  `ruta-relativa<TAB>sha256-del-fichero-en-minúsculas` y aplica SHA-256.
 - Perfil: `testdata/bench/huella-endurance-3.json`, tres widgets.
 - Puerto CDP propio: 9244. LMU y los procesos Vantare ajenos no se modifican.
-- Una corrida RAM-only de 120 muestras por nivel solo compara el corte: no es el baseline
-  publicable de 180 s × 3 ni demuestra iGPU, VR o paridad visual humana.
+- La pareja final son dos corridas completas HubMin de 120 s con LMU y
+  PresentMon desde el mismo HEAD/exe/dist. N=1 compara el corte y no sustituye
+  el baseline publicable de 180 s × 3 ni demuestra iGPU, VR o paridad visual.
 
 ## Entrada overlay
 
@@ -20,9 +27,9 @@ cambian entre builds equivalentes, por lo que la evidencia fija el tamaño.
 
 | Métrica de build Vite | Antes | Después | Cambio |
 |---|---:|---:|---:|
-| Mayor chunk JS cargado por overlay | 2.000,85 kB | 936,48 kB | -53,2 % |
-| Entrada + preloads JS estáticos del HTML | 2.000,85 kB | 203,71 kB | -89,8 % |
-| gzip del mayor chunk | 542,49 kB | 255,04 kB | -53,0 % |
+| Mayor chunk JS cargado por overlay | 2.000,85 kB | 947,13 kB | -52,7 % |
+| Entrada + preloads JS estáticos del HTML | 2.000,85 kB | 203,72 kB | -89,8 % |
+| gzip del mayor chunk | 542,49 kB | 258,41 kB | -52,4 % |
 
 La ruta dinámica aún necesita módulos compartidos de edición importados por
 `CompositeApp`; ese archivo está reservado a #936 y no se modificó. No existe
@@ -33,6 +40,45 @@ La ruta dinámica aún necesita módulos compartidos de edición importados por
 
 Las corridas contaminadas realizadas antes de la coordinación de máquina se
 descartaron y no se usan en esta tabla. Ninguna corrida aceptada usó `-Forzar`.
+
+### Pareja final atestada · mismo HEAD/exe/dist
+
+El 30 de agosto, con LMU en Spa-Francorchamps, `PRACTICE1`, 18 coches,
+jugador en garaje e IA rodando, se ejecutaron L1 y L3 desde el artefacto fijado
+arriba. Antes de cada lanzamiento la higiene confirmó cero procesos
+`vantare-*.exe`; después de cada cierre confirmó cero Vantare y cero sesiones
+ETW `VantareHuella-*`. Los manifiestos versionados están junto a esta evidencia:
+`hubmin-20260830-031521-scene.json` y
+`hubmin-20260830-032129-scene.json`; cada directorio crudo contiene además
+`scene-manifest.json`.
+
+| Rol (privada media) | L1 MiB | L3 MiB | Delta MiB |
+|---|---:|---:|---:|
+| Go host | 74,83 | 72,98 | -1,85 |
+| Browser | 45,20 | 44,02 | -1,18 |
+| GPU process | 141,26 | 134,30 | -6,96 |
+| Utility | 22,19 | 22,26 | +0,07 |
+| Crashpad | 2,86 | 2,86 | 0,00 |
+| Renderer Hub | 54,01 | 0,00 | -54,01 |
+| Renderer overlay (`renderer-unassigned`) | 154,98 | 146,70 | -8,28 |
+| **Total árbol privado** | **495,33** | **423,13** | **-72,20** |
+
+L3 reduce 14,58 % frente al L1 del mismo binario y 24,71 % frente al baseline
+contractual de 562 MiB. Cumple la decisión P13 de RAM ≥20 %; no promociona L3,
+por lo que el default productivo continúa en nivel 1. El renderer Hub no aparece
+en ninguna muestra L3 y la reapertura real tardó 838,20 ms por CDP (L1:
+254,51 ms). PresentMon perdió 0/5.314 frames en L1 y 0/6.957 en L3; el frametime
+medio del juego fue 22,57 ms y 17,24 ms respectivamente. L1 registró una
+muestra inválida del contador GPU de Windows y la mantuvo ausente, sin rellenar
+con cero; RAM y PresentMon siguieron válidos.
+
+Artefactos crudos:
+`results/isa-940-same-final-l1/hubmin-20260830-031521.csv` y
+`results/isa-940-same-final-l3/hubmin-20260830-032129.csv`. El banco no pudo
+resolver la relación PID↔target del overlay dentro de su ventana CDP y conservó
+honestamente ambos renderers de esa superficie como `renderer-unassigned`.
+
+### Diagnóstico histórico anterior a la pareja final
 
 Tras aclarar que el `PresentMon-x64` permanente pertenece a Radeon
 `RSXTraceSession`, se esperó exclusivamente a `vantare-baseline*`. Entre las
@@ -128,10 +174,11 @@ renderer Hub (69,54 MiB), el mismo árbol quedaría en aproximadamente
 | Utility | 22,53 | Dos servicios WebView2; coste estructural a validar junto con browser/GPU. |
 | Crashpad | 2,87 | Marginal. |
 
-La proyección conservadora de este hito, si el Hub llegaba a cero sin mover los
+La proyección conservadora anterior de este hito, si el Hub llegaba a cero sin mover los
 otros procesos, era ~453 MiB (-19,4 % frente a 562 MiB). La corrida final con
 Hub a cero observó 430,00 MiB (-23,5 %), todavía no ≤393 MiB (-30 %). Cambiar
-el gate no forma parte de #940 y queda expresamente en manos de Isaac.
+el gate no formaba parte de la implementación. Isaac aceptó después el umbral
+RAM ≥20 % mediante P13; la pareja final anterior es la autoridad de cierre.
 
 El banco conserva `renderer-unassigned` para el renderer creado tras abrir el
 overlay: CDP prueba el target `overlay.html` y sus tres widgets, pero no aporta
@@ -196,5 +243,7 @@ filtros, pestañas, búsquedas y estados de carga reproducibles no son borradore
   del gancho CPU y la repetición/final no reprodujeron retención estable.
 - También quedan captura de paridad visual, escucha humana del audio, baseline
   N=3, iGPU y VR.
+- El recorte adicional de GPU process y renderer del overlay queda separado en
+  [#951](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/951).
 - Un warning aislado de contador GPU en las corridas descartadas no se rellena
   con datos sintéticos; las corridas limpias deben conservar cualquier ausencia.

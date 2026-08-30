@@ -19,9 +19,10 @@
   destruye y recrea. El frontend empuja a Go un registro generacional de
   bloqueadores para Studio, Launcher, OAuth, Estrategia y demás borradores
   locales; sin primer snapshot o con cualquier bloqueador se conserva la
-  ventana. La última corrida válida dejó el renderer Hub en 0 MiB y 430 MiB
-  privados totales; la pareja final L1/L3 desde un único binario sigue
-  pendiente del turno de máquina. El recorte restante de GPU process y renderer
+  ventana. La pareja final L1/L3 desde el mismo HEAD/exe/dist dejó el renderer
+  Hub en 0 MiB y L3 en 423,13 MiB privados: −24,71 % frente al baseline de
+  562 MiB, aceptado por P13 con gate RAM ≥20 %. CDP midió 838,20 ms para
+  reabrir el Hub destruido. El recorte restante de GPU process y renderer
   del overlay pertenece a [#951](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/951).
   Nightly mantiene como autoridad la política v4 de ISA-943/ISA-947; ISA-940 no
   promociona el nivel 3 y conserva el nivel 1 como valor productivo inicial.

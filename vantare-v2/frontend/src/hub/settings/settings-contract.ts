@@ -69,6 +69,7 @@ export type NotificationSettings = {
 export type PerformanceSettings = {
   mode: "level" | "custom" | "auto";
   level: 1 | 2 | 3 | 4 | 5;
+  migratedFrom?: "rollout-level-1";
   overrides?: Record<string, { hz?: number | "dirty"; effects?: "full" | "noBlur" | "flat" }>;
 };
 

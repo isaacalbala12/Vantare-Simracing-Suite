@@ -943,6 +943,11 @@ function PerformanceSection() {
           })}
         </div>
         <p className="orbit-set-perf__hint">{t("settings.performance.profileNote")}</p>
+        {appPerformance.migratedFrom === "rollout-level-1" ? (
+          <div data-testid="orbit-settings-performance-rollout-notice">
+            <Note>{t("settings.performance.rolloutMigrationNotice")}</Note>
+          </div>
+        ) : null}
         {overlay.active?.migrationNotices?.length ? (
           <div className="orbit-set-perf__notices" data-testid="orbit-settings-performance-migration-notices">
             {overlay.active.migrationNotices.map((notice) => (

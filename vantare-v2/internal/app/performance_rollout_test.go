@@ -46,9 +46,18 @@ func TestPerformanceDefaultMigrationFromPersistedFiles(t *testing.T) {
 			want: performanceDefault(),
 		},
 		{
+			name: "pre-v4 file without performance field",
+			json: `{"schemaVersion":3}`,
+			want: performanceDefault(),
+		},
+		{
 			name: "temporary rollout default",
 			json: `{"schemaVersion":4,"performance":{"mode":"level","level":1}}`,
-			want: performanceDefault(),
+			want: PerformanceSettings{
+				Mode:         "auto",
+				Source:       PerformanceSourceDefault,
+				MigratedFrom: PerformanceMigratedFromRolloutLevel1,
+			},
 		},
 		{
 			name: "explicit level one choice",
@@ -73,12 +82,48 @@ func TestPerformanceDefaultMigrationFromPersistedFiles(t *testing.T) {
 				t.Fatal(err)
 			}
 			got := svc.Settings().Performance
-			if got.Mode != tt.want.Mode || got.Level != tt.want.Level || got.Source != tt.want.Source {
+			if got.Mode != tt.want.Mode || got.Level != tt.want.Level || got.Source != tt.want.Source || got.MigratedFrom != tt.want.MigratedFrom {
 				t.Fatalf("migrated performance = %+v, want %+v", got, tt.want)
 			}
 			if svc.Settings().SchemaVersion != appSettingsSchemaVersion {
 				t.Fatalf("schema = %d, want %d", svc.Settings().SchemaVersion, appSettingsSchemaVersion)
 			}
 		})
+	}
+}
+
+func TestPerformanceMigrationLoadsRealV4RolloutFile(t *testing.T) {
+	fixture, err := os.ReadFile(filepath.Join("testdata", "settings-v4-rollout-level-1.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "app-settings.json")
+	if err := os.WriteFile(path, fixture, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	svc := NewSettingsService(path, nil, nil)
+	if err := svc.Load(); err != nil {
+		t.Fatal(err)
+	}
+	got := svc.Settings().Performance
+	if got.Mode != "auto" || got.Source != PerformanceSourceDefault || got.MigratedFrom != PerformanceMigratedFromRolloutLevel1 {
+		t.Fatalf("real v4 rollout performance = %+v, want marked automatic migration", got)
+	}
+}
+
+func TestPerformanceMigrationDoesNotRewriteUnmarkedLevelOneAfterV4(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "app-settings.json")
+	if err := os.WriteFile(path, []byte(`{"schemaVersion":5,"performance":{"mode":"level","level":1}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	svc := NewSettingsService(path, nil, nil)
+	if err := svc.Load(); err != nil {
+		t.Fatal(err)
+	}
+	got := svc.Settings().Performance
+	if got.Mode != "level" || got.Level != 1 || got.MigratedFrom != "" {
+		t.Fatalf("schema v5 performance = %+v, want unchanged level one", got)
 	}
 }

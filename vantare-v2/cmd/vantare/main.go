@@ -2714,6 +2714,7 @@ func main() {
 			s.CpuSampling = true
 		}
 		s.Performance.Source = app.PerformanceSourceUser
+		s.Performance.MigratedFrom = ""
 		confirmed, _, err := performanceSaves.Execute(func() error { return settingsSvc.Save(&s) })
 		if err != nil {
 			log.Printf("settings:save error: %v", err)

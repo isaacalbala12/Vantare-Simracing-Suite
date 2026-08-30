@@ -21,6 +21,7 @@ export const settingsOrbitEn: Record<string, string> = {
   "settings.performance.autoSub": "Vantare measures your PC during a race and adjusts itself (between High and Minimum).",
   "settings.performance.soon": "Coming soon",
   "settings.performance.profileNote": "Custom is saved in the active profile; the five levels are the app default.",
+  "settings.performance.rolloutMigrationNotice": "Performance switched to Automatic in this version; choose Maximum if you prefer the previous level.",
   "settings.performance.migrationNotice": "{{widget}} used {{hz}} Hz in the v3 profile. The v4 policy replaces it and the original is preserved in the .v3.bak copy when saved.",
   "settings.performance.table": "Active profile widgets",
   "settings.performance.widget": "Widget",

@@ -226,6 +226,47 @@ describe("SettingsOrbitPage", () => {
     );
   });
 
+  it("avisa de la migración del rollout y retira el aviso al elegir un nivel", () => {
+    const emit = vi.spyOn(Events, "Emit");
+    const handlers = new Map<string, Array<(event: { data: unknown }) => void>>();
+    vi.mocked(Events.On).mockImplementation(((name: string, handler: (event: { data: unknown }) => void) => {
+      handlers.set(name, [...(handlers.get(name) ?? []), handler]);
+      return () => handlers.set(name, (handlers.get(name) ?? []).filter((item) => item !== handler));
+    }) as typeof Events.On);
+    mount("performance");
+
+    act(() => {
+      for (const handler of handlers.get("settings") ?? []) {
+        handler({
+          data: {
+            cpuSampling: true,
+            hotkeys: {},
+            performance: {
+              mode: "auto",
+              level: 3,
+              source: "default",
+              migratedFrom: "rollout-level-1",
+            },
+          },
+        });
+      }
+    });
+
+    expect(screen.getByTestId("orbit-settings-performance-rollout-notice").textContent).toContain(
+      "Rendimiento pasó a Automático en esta versión; elige Máximo si prefieres el nivel anterior",
+    );
+
+    emit.mockClear();
+    fireEvent.click(screen.getByTestId("orbit-settings-performance-5"));
+    expect(screen.queryByTestId("orbit-settings-performance-rollout-notice")).toBeNull();
+    expect(emit).toHaveBeenCalledWith(
+      "settings:save",
+      expect.objectContaining({
+        settings: expect.objectContaining({ performance: { mode: "level", level: 5 } }),
+      }),
+    );
+  });
+
   it("Personalizado ofrece solo Hz por widget y no promete overrides de efectos", () => {
     const emit = vi.spyOn(Events, "Emit");
     const handlers = new Map<string, Array<(event: { data: unknown }) => void>>();

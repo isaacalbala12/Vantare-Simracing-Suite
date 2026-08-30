@@ -54,10 +54,11 @@ type WidgetOverride struct {
 
 // PerformanceSettings guarda el defecto global.
 type PerformanceSettings struct {
-	Mode      string                    `json:"mode"`
-	Level     int                       `json:"level"`
-	Source    PerformanceSource         `json:"source"`
-	Overrides map[string]WidgetOverride `json:"overrides,omitempty"`
+	Mode         string                    `json:"mode"`
+	Level        int                       `json:"level"`
+	Source       PerformanceSource         `json:"source"`
+	MigratedFrom string                    `json:"migratedFrom,omitempty"`
+	Overrides    map[string]WidgetOverride `json:"overrides,omitempty"`
 }
 
 type PerformanceSource string
@@ -65,6 +66,8 @@ type PerformanceSource string
 const (
 	PerformanceSourceDefault PerformanceSource = "default"
 	PerformanceSourceUser    PerformanceSource = "user"
+
+	PerformanceMigratedFromRolloutLevel1 = "rollout-level-1"
 )
 
 func performanceDefault() PerformanceSettings {
@@ -493,8 +496,9 @@ const appSettingsSchemaVersion = 5
 //	          user-defined combinations.
 //	v3 -> v4: add the former temporary global performance default at level 1.
 //	v4 -> v5: make Automatic the default after gate 12.2. The exact unmarked
-//	          level-1 sentinel was written by the temporary rollout and migrates;
-//	          an explicit user source or any other choice is preserved.
+//	          level-1 sentinel was written by the temporary rollout and migrates
+//	          with a visible marker; an explicit user source or any other choice
+//	          is preserved. The migration is never applied to schema v5+.
 func (s *SettingsService) migrateSettings(settings *AppSettings) {
 	if settings.SchemaVersion == 0 {
 		settings.SchemaVersion = 1
@@ -519,7 +523,9 @@ func (s *SettingsService) migrateSettings(settings *AppSettings) {
 	}
 	if settings.SchemaVersion < 4 {
 		if settings.Performance.Mode == "" {
-			settings.Performance = PerformanceSettings{Mode: string(performancepolicy.ModeLevel), Level: 1}
+			// No persisted choice existed. Route it to today's default without the
+			// rollout marker, which is reserved for files that actually wrote level 1.
+			settings.Performance = performanceDefault()
 		}
 		settings.SchemaVersion = 4
 	}
@@ -528,8 +534,11 @@ func (s *SettingsService) migrateSettings(settings *AppSettings) {
 		legacyDefault := performance.Source == "" &&
 			performance.Mode == string(performancepolicy.ModeLevel) &&
 			performance.Level == 1 && len(performance.Overrides) == 0
-		if performance.Source == PerformanceSourceDefault || performance.Mode == "" || legacyDefault {
+		if performance.Mode == "" || performance.Source == PerformanceSourceDefault {
 			settings.Performance = performanceDefault()
+		} else if legacyDefault {
+			settings.Performance = performanceDefault()
+			settings.Performance.MigratedFrom = PerformanceMigratedFromRolloutLevel1
 		} else if performance.Source == "" {
 			settings.Performance.Source = PerformanceSourceUser
 		}

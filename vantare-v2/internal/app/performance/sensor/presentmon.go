@@ -28,7 +28,10 @@ type processHandle interface {
 }
 
 type execRunner struct{}
-type execHandle struct{ command *exec.Cmd }
+type execHandle struct {
+	command  *exec.Cmd
+	closeJob func() error
+}
 
 func (execRunner) Output(ctx context.Context, name string, args ...string) ([]byte, error) {
 	return exec.CommandContext(ctx, name, args...).CombinedOutput()
@@ -40,20 +43,23 @@ func (execRunner) Start(ctx context.Context, name string, args []string) (proces
 		return nil, nil, err
 	}
 	command.Stderr = io.Discard
-	if err := command.Start(); err != nil {
+	closeJob, err := startCommandInKillOnCloseJob(command)
+	if err != nil {
 		stdout.Close()
 		return nil, nil, err
 	}
-	return execHandle{command}, stdout, nil
+	return &execHandle{command: command, closeJob: closeJob}, stdout, nil
 }
-func (handle execHandle) Wait() error { return handle.command.Wait() }
-func (handle execHandle) PID() int {
+func (handle *execHandle) Wait() error {
+	return errors.Join(handle.command.Wait(), handle.closeJob())
+}
+func (handle *execHandle) PID() int {
 	if handle.command.Process == nil {
 		return 0
 	}
 	return handle.command.Process.Pid
 }
-func (handle execHandle) Kill() error {
+func (handle *execHandle) Kill() error {
 	if handle.command.Process == nil {
 		return nil
 	}

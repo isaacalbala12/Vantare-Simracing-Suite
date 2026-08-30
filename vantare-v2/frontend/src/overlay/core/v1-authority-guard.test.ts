@@ -21,17 +21,62 @@ describe("Overlay V1 authority guard", () => {
     expect(source.match(/definition\.buildViewModel\(/g)).toHaveLength(1);
   });
 
-  it("does not pass TelemetrySnapshot into productive runtime or edit frames", () => {
-    for (const directory of ["runtime", "edit"]) {
-      for (const path of sourceFiles(resolve(overlayRoot, directory))) {
-        const relative = path.slice(overlayRoot.length + 1);
-        const source = readFileSync(path, "utf8");
-        expect(source, relative).not.toMatch(/\bsnapshot\s*=/);
-        if (relative !== "runtime\\use-rate-limited-telemetry.ts" && relative !== "runtime/use-rate-limited-telemetry.ts") {
-          expect(source, relative).not.toContain("telemetry-snapshot");
-          expect(source, relative).not.toMatch(/\buseRateLimitedTelemetry\b/);
-        }
-      }
+  it("does not expose V1 authority in any productive Overlay surface", () => {
+    for (const path of sourceFiles(overlayRoot)) {
+      const relative = path.slice(overlayRoot.length + 1);
+      const source = readFileSync(path, "utf8");
+      expect(v1AuthorityViolations(relative, source), relative).toEqual([]);
+    }
+  });
+
+  it("rejects V1 authority mutants across every productive surface", () => {
+    const mutants = [
+      ["CompositeNext.tsx", "const snapshot: TelemetrySnapshot = input;"],
+      ["runtime/NewFrame.tsx", "const rows = snapshot.scoring;"],
+      ["edit/NewFrame.tsx", "adaptOverlayProjectionToSnapshot(input);"],
+      ["runtime/NewFrame.tsx", "useRateLimitedTelemetry(coordinator, 10);"],
+      ["core/NewHost.tsx", "definition.buildViewModel(snapshot, content);"],
+    ] as const;
+
+    for (const [relative, source] of mutants) {
+      expect(v1AuthorityViolations(relative, source), relative).not.toHaveLength(0);
+    }
+  });
+
+  it("excludes only tests, fixtures, harness and shadow sources", () => {
+    for (const relative of [
+      "runtime/NewFrame.test.tsx",
+      "authoring/fixtures/sample.ts",
+      "telemetry-cutover-runtime-harness/main.ts",
+      "telemetry-shadow/comparator.ts",
+    ]) {
+      expect(
+        v1AuthorityViolations(relative, "snapshot.scoring; adaptOverlayProjectionToSnapshot(input);"),
+        relative,
+      ).toEqual([]);
     }
   });
 });
+
+function v1AuthorityViolations(relative: string, source: string): string[] {
+  const normalized = relative.replaceAll("\\", "/");
+  if (
+    /(?:^|\/)fixtures(?:\/|$)/.test(normalized) ||
+    /(?:^|\/)[^/]*harness[^/]*(?:\/|$)/.test(normalized) ||
+    normalized.startsWith("telemetry-shadow/") ||
+    /\.(?:test|spec)\.(?:ts|tsx)$/.test(normalized)
+  ) {
+    return [];
+  }
+  if (normalized === "core/WidgetVisualHost.tsx") return [];
+  const productiveSurface = normalized.endsWith(".tsx") ||
+    normalized.startsWith("runtime/") || normalized.startsWith("edit/");
+  if (!productiveSurface) return [];
+  const violations: string[] = [];
+  if (/\bTelemetrySnapshot\b/.test(source)) violations.push("TelemetrySnapshot");
+  if (/\bsnapshot\.scoring\b/.test(source)) violations.push("snapshot.scoring");
+  if (/\badaptOverlayProjectionToSnapshot\s*\(/.test(source)) violations.push("projection adapter");
+  if (/\buseRateLimitedTelemetry\s*\(/.test(source)) violations.push("legacy telemetry hook");
+  if (/\.buildViewModel\s*\(/.test(source)) violations.push("legacy view-model builder");
+  return violations;
+}

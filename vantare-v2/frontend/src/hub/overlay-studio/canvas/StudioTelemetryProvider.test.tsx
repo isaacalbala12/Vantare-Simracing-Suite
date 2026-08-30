@@ -5,7 +5,7 @@ import type { TelemetryRateCoordinator } from "../../../overlay/core/telemetry-r
 import type { TelemetrySnapshot } from "../../../overlay/core/telemetry-snapshot";
 import type { TelemetryAdapter } from "../../../overlay/transports/wails-telemetry-adapter";
 import { StudioTelemetryProvider, ConnectedStudioTelemetryProvider } from "./StudioTelemetryProvider";
-import { useStudioTelemetrySnapshot } from "./studio-telemetry";
+import { useStudioV1SnapshotTestHarness } from "./fixtures/studio-v1-snapshot-test-harness";
 import { useStudioPreview, StudioProvider } from "../state/studio-store";
 import { buildMockTelemetry } from "../../../overlay/core/mock-scenarios";
 import { createTelemetryRateCoordinator } from "../../../overlay/core/telemetry-rate-coordinator";
@@ -44,7 +44,7 @@ const client: StudioProfileClient = {
 };
 
 function SnapshotProbe(): React.ReactElement {
-  const snapshot = useStudioTelemetrySnapshot();
+  const snapshot = useStudioV1SnapshotTestHarness();
   return <div data-testid="telemetry-probe">{snapshot.session.type}</div>;
 }
 

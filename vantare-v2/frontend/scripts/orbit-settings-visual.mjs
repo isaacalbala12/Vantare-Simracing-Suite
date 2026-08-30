@@ -12,7 +12,7 @@ const port = 5201;
 const base = `http://127.0.0.1:${port}/orbit-settings-harness.html?view=ajustes`;
 const url = (section) => `${base}&settings=${section}`;
 
-const SECTIONS = ["account", "application", "updates", "hotkeys", "diagnostics", "privacy"];
+const SECTIONS = ["account", "application", "performance", "updates", "hotkeys", "diagnostics", "privacy"];
 
 const shots = [
   { name: "1920x1080", width: 1920, height: 1080, sections: SECTIONS, noPageScroll: true },
@@ -175,7 +175,7 @@ try {
 
       // ── Navegación por la columna: la cabecera y el panel cambian juntos.
       if (shot.noPageScroll && section === "account") {
-        await page.getByTestId("orbit-settings-context").locator(".orbit-row").nth(3).click();
+        await page.getByTestId("orbit-settings-context").locator(".orbit-row").nth(4).click();
         await page.getByTestId("orbit-settings-panel-hotkeys").waitFor();
         const moved = await page.evaluate(contractOf);
         if (moved.section !== "hotkeys") {

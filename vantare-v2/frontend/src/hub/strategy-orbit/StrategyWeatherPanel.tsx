@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Button, Input, Note, Select } from "../../ui/orbit";
 import { useHubSuspendBlocker } from "../hub-suspend-guard";
 import type {
@@ -15,7 +15,7 @@ type StrategyWeatherPanelProps = {
   scenarios: readonly StrategyWeightedWeatherScenarioV1[];
   result?: StrategyOrbitWeatherResultV1;
   saving: "idle" | "saving" | "error";
-  onSave(scenarios: readonly StrategyWeightedWeatherScenarioV1[]): void;
+  onSave(scenarios: readonly StrategyWeightedWeatherScenarioV1[]): boolean | void | Promise<boolean | void>;
   t(key: string): string;
 };
 
@@ -37,26 +37,11 @@ function replaceScenario(
 export function StrategyWeatherPanel({ eventId, combinationId, scenarios, result, saving, onSave, t }: StrategyWeatherPanelProps) {
   const [dirtyInputs, setDirtyInputs] = useState<Set<string>>(() => new Set());
   const revisions = useRef(new Map<string, number>());
-  const pending = useRef(new Map<string, number>());
-  const previousSaving = useRef(saving);
   useHubSuspendBlocker(
     "strategy-weather-input-draft",
     t("strategy.weather.suspendBlocker"),
     dirtyInputs.size > 0 || saving === "saving",
   );
-  useEffect(() => {
-    if (previousSaving.current === "saving" && saving === "idle") {
-      setDirtyInputs((current) => {
-        const next = new Set(current);
-        for (const [key, revision] of pending.current) {
-          if (revisions.current.get(key) === revision) next.delete(key);
-        }
-        pending.current.clear();
-        return next;
-      });
-    }
-    previousSaving.current = saving;
-  }, [saving]);
   const beginInput = (key: string) => {
     revisions.current.set(key, (revisions.current.get(key) ?? 0) + 1);
     setDirtyInputs((current) => {
@@ -66,12 +51,21 @@ export function StrategyWeatherPanel({ eventId, combinationId, scenarios, result
       return next;
     });
   };
-  const commitInput = (key: string, save: () => void) => {
-    pending.current.set(key, revisions.current.get(key) ?? 0);
-    save();
+  const commitInput = (key: string, save: () => boolean | void | Promise<boolean | void>) => {
+    const revision = revisions.current.get(key) ?? 0;
+    void Promise.resolve(save())
+      .then((persisted) => {
+        if (persisted === false || revisions.current.get(key) !== revision) return;
+        setDirtyInputs((current) => {
+          if (!current.has(key)) return current;
+          const next = new Set(current);
+          next.delete(key);
+          return next;
+        });
+      })
+      .catch(() => undefined);
   };
   const cancelInput = (key: string) => {
-    pending.current.delete(key);
     setDirtyInputs((current) => {
       if (!current.has(key)) return current;
       const next = new Set(current);

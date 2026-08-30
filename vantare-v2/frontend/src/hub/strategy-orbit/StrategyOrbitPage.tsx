@@ -1318,14 +1318,16 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
   };
 
   const commitWeatherScenarios = async (scenarios: Parameters<typeof persistStrategyWeatherScenarios>[3]) => {
-    if (!eventRecord || !catalogView) return;
+    if (!eventRecord || !catalogView) return false;
     setWeatherSave("saving");
     try {
       const view = await persistStrategyWeatherScenarios(applicationClient, catalogView, eventRecord, scenarios);
       setSessionCatalog({ status: "ready", view });
       setWeatherSave("idle");
+      return true;
     } catch {
       setWeatherSave("error");
+      return false;
     }
   };
 
@@ -2887,7 +2889,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
     <StrategyWeatherPanel
       combinationId={eventCombination?.combinationId}
       eventId={eventRecord.id}
-      onSave={(scenarios) => void commitWeatherScenarios(scenarios)}
+      onSave={commitWeatherScenarios}
       result={calculation.status === "success" && calculationCurrent ? calculation.result.weather : undefined}
       saving={weatherSave}
       scenarios={eventWeatherScenarios}

@@ -73,3 +73,16 @@ test("el dry-run conserva expectedWindows como array aunque S1 tenga una sola cl
 
   assert.deepEqual(JSON.parse(output).expectedWindows, ["desktop"]);
 });
+
+test("el dry-run permite aislar el coste del polling CDP sin quitar checkpoints", () => {
+  const collectorPath = fileURLToPath(new URL("./sesion-v1.ps1", import.meta.url));
+  const output = execFileSync("pwsh", [
+    "-NoProfile", "-File", collectorPath,
+    "-Sesion", "S1", "-Fase", "off", "-Duracion", "20",
+    "-Exe", "bin/dry-run.exe", "-Puerto", "19456", "-EstadoCada", "0", "-DryRun",
+  ], {cwd: benchDirectory, encoding: "utf8"});
+
+  const plan = JSON.parse(output);
+  assert.equal(plan.statePollSeconds, 0);
+  assert.equal(plan.cdpCheckpointSeconds, 300);
+});

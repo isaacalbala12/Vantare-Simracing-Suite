@@ -19,6 +19,8 @@ param(
     [string]$Escena = '',
     [ValidateRange(0, 200)]
     [int]$Coches = 0,
+    [ValidateRange(0, 300)]
+    [int]$EstadoCada = 5,
     [switch]$DryRun
 )
 
@@ -50,7 +52,7 @@ $plan = [ordered]@{
     v1Environment = if ($Fase -eq 'on') { '1' } else { $null }
     processSampleSeconds = 60
     cdpCheckpointSeconds = 300
-    statePollSeconds = 5
+    statePollSeconds = $EstadoCada
     expectedWindows = $expectedWindows
     forceHygiene = $false
 }
@@ -292,14 +294,14 @@ try {
     Write-Host 'Escribe la transición y pulsa Enter; el muestreo continúa entre marcas.'
     $nextProcessSample = $startedAt.AddSeconds(60)
     $nextCheckpoint = $startedAt.AddMinutes(5)
-    $nextStatePoll = $startedAt
+    $nextStatePoll = if ($EstadoCada -gt 0) { $startedAt } else { [datetime]::MaxValue }
     $finishAt = $startedAt.AddMinutes($Duracion)
     while ((Get-Date) -lt $finishAt) {
         $now = Get-Date
-        if ($now -ge $nextStatePoll) {
+        if ($EstadoCada -gt 0 -and $now -ge $nextStatePoll) {
             $state = Invoke-Cdp -Action 'state' -Label ''
             Register-State $state
-            $nextStatePoll = $nextStatePoll.AddSeconds(5)
+            $nextStatePoll = $nextStatePoll.AddSeconds($EstadoCada)
         }
         if ($now -ge $nextProcessSample) {
             Add-ProcessSample $now

@@ -96,6 +96,11 @@ confirma desde LMU cada transición garaje → pista → boxes?**
 
 Cada fase se captura con `scripts/bench/sesion-v1.ps1`. No acepta `-Forzar`,
 aplica exactamente la allow-list de `huella.ps1` y no cierra procesos ajenos.
+El polling de transiciones conecta CDP cada 5 s por defecto. Para aislar si esa
+conexión repetida altera memoria, S1–S3 pueden repetirse con `-EstadoCada 0`:
+se conservan inicio, checkpoints cada 5 min, final, heap y screenshots, pero
+las transiciones se marcan manualmente con Enter. S4/S5 no usan este modo
+porque necesitan observar reconnect y ventanas tardías entre checkpoints.
 Ejemplos desde `vantare-v2`:
 
 ```powershell

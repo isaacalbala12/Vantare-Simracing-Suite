@@ -74,10 +74,13 @@ type PresentMonSource struct {
 	sessionName  string
 	foreground   func() bool
 	processAlive func(int) bool
+	now          func() time.Time
+	maxFrameAge  time.Duration
 	cancel       context.CancelFunc
 	process      processHandle
 	processPID   int
 	latest       GameSample
+	latestAt     time.Time
 	done         chan struct{}
 	closeOnce    sync.Once
 }
@@ -90,10 +93,13 @@ func NewPresentMonSource(executable string) *PresentMonSource {
 		sessionName:  fmt.Sprintf("VantareSensor-%d", os.Getpid()),
 		foreground:   isLMUForeground,
 		processAlive: processIsAlive,
+		now:          time.Now,
+		maxFrameAge:  2 * time.Second,
 	}
 }
 
 func (source *PresentMonSource) Start(parent context.Context) error {
+	source.invalidateFrame()
 	if err := source.cleanOrphans(parent); err != nil {
 		return err
 	}
@@ -122,6 +128,7 @@ func (source *PresentMonSource) Start(parent context.Context) error {
 func (source *PresentMonSource) consume(reader io.ReadCloser, process processHandle) {
 	defer close(source.done)
 	defer process.Wait()
+	defer source.invalidateFrame()
 	defer reader.Close()
 	csvReader := csv.NewReader(bufio.NewReader(reader))
 	csvReader.FieldsPerRecord = -1
@@ -147,9 +154,7 @@ func (source *PresentMonSource) consume(reader io.ReadCloser, process processHan
 		if err != nil || value <= 0 {
 			continue
 		}
-		source.mu.Lock()
-		source.latest = GameSample{FrametimeMS: value, Available: true, Foreground: source.foreground()}
-		source.mu.Unlock()
+		source.publishFrame(value)
 	}
 }
 
@@ -157,8 +162,25 @@ func (source *PresentMonSource) Sample() GameSample {
 	source.mu.RLock()
 	defer source.mu.RUnlock()
 	result := source.latest
+	if !result.Available || source.latestAt.IsZero() || source.now().Sub(source.latestAt) > source.maxFrameAge {
+		return GameSample{Foreground: source.foreground()}
+	}
 	result.Foreground = source.foreground()
 	return result
+}
+
+func (source *PresentMonSource) publishFrame(frametimeMS float64) {
+	source.mu.Lock()
+	source.latest = GameSample{FrametimeMS: frametimeMS, Available: true, Foreground: source.foreground()}
+	source.latestAt = source.now()
+	source.mu.Unlock()
+}
+
+func (source *PresentMonSource) invalidateFrame() {
+	source.mu.Lock()
+	source.latest = GameSample{}
+	source.latestAt = time.Time{}
+	source.mu.Unlock()
 }
 
 func (source *PresentMonSource) Close() error {

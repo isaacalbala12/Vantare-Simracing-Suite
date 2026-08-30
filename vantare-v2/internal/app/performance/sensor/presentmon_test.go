@@ -16,6 +16,7 @@ type fakeProcess struct {
 	exited     chan struct{}
 	stopped    chan struct{}
 	stopOnce   sync.Once
+	stream     io.Closer
 }
 
 func (process *fakeProcess) PID() int { return process.pid }
@@ -28,6 +29,9 @@ func (process *fakeProcess) Wait() error {
 func (process *fakeProcess) Kill() error {
 	process.killed = true
 	*process.operations = append(*process.operations, "kill:43125")
+	if process.stream != nil {
+		_ = process.stream.Close()
+	}
 	close(process.exited)
 	return nil
 }
@@ -56,13 +60,16 @@ func (runner *fakeRunner) Output(_ context.Context, name string, args ...string)
 	return nil, nil
 }
 func (runner *fakeRunner) Start(_ context.Context, _ string, _ []string) (processHandle, io.ReadCloser, error) {
+	reader, writer := io.Pipe()
 	runner.process = &fakeProcess{
 		pid:        43125,
 		operations: &runner.operations,
 		exited:     make(chan struct{}),
 		stopped:    make(chan struct{}),
+		stream:     writer,
 	}
-	return runner.process, io.NopCloser(strings.NewReader(runner.stream)), nil
+	go func() { _, _ = io.WriteString(writer, runner.stream) }()
+	return runner.process, reader, nil
 }
 
 func TestPresentMonLeavesLiveVantareSessionsAndCleansOnlyOrphan(t *testing.T) {
@@ -130,5 +137,40 @@ func TestMissingSessionRecognisesSpanishLogmanCollectorMessage(t *testing.T) {
 	output := []byte("Error:\r\nNo se encontr\xa2 el Conjunto de recopiladores de datos.\r\n")
 	if !isMissingSession(output) {
 		t.Fatalf("Spanish missing-session output was not recognised: %q", output)
+	}
+}
+
+func TestPresentMonFrametimeTransitionsClosedOpenClosedByFreshness(t *testing.T) {
+	now := time.Unix(1000, 0)
+	source := NewPresentMonSource("PresentMon.exe")
+	source.now = func() time.Time { return now }
+	source.maxFrameAge = 2 * time.Second
+	source.foreground = func() bool { return true }
+
+	if got := source.Sample(); got.Available {
+		t.Fatalf("initial sample = %+v, want unavailable", got)
+	}
+	source.publishFrame(12.5)
+	if got := source.Sample(); !got.Available || got.FrametimeMS != 12.5 {
+		t.Fatalf("fresh sample = %+v", got)
+	}
+	now = now.Add(2*time.Second + time.Nanosecond)
+	if got := source.Sample(); got.Available || got.FrametimeMS != 0 {
+		t.Fatalf("stale sample = %+v, want unavailable", got)
+	}
+}
+
+func TestPresentMonEOFInvalidatesLastFrame(t *testing.T) {
+	exited := make(chan struct{})
+	stopped := make(chan struct{})
+	close(exited)
+	close(stopped)
+	process := &fakeProcess{pid: 9, operations: &[]string{}, exited: exited, stopped: stopped}
+	source := NewPresentMonSource("PresentMon.exe")
+	source.foreground = func() bool { return true }
+	source.done = make(chan struct{})
+	source.consume(io.NopCloser(strings.NewReader("Application,FrameTime\nLMU,9.5\n")), process)
+	if got := source.Sample(); got.Available || got.FrametimeMS != 0 {
+		t.Fatalf("sample after EOF = %+v, want unavailable", got)
 	}
 }

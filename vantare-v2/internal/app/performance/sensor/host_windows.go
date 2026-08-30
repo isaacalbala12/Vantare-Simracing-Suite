@@ -49,13 +49,17 @@ type cpuSnapshot struct {
 }
 
 type WindowsHostSampler struct {
-	mu       sync.Mutex
-	previous cpuSnapshot
-	now      func() time.Time
+	mu            sync.Mutex
+	previous      cpuSnapshot
+	now           func() time.Time
+	inventory     func(context.Context) ([]processRecord, error)
+	inventoryTTL  time.Duration
+	inventoryAt   time.Time
+	inventoryPIDs []uint32
 }
 
 func NewHostSampler() *WindowsHostSampler {
-	return &WindowsHostSampler{now: time.Now}
+	return &WindowsHostSampler{now: time.Now, inventory: enumerateProcessRecords, inventoryTTL: 5 * time.Second}
 }
 
 func (sampler *WindowsHostSampler) Sample(ctx context.Context) (HostSample, error) {
@@ -103,6 +107,28 @@ func (sampler *WindowsHostSampler) Sample(ctx context.Context) (HostSample, erro
 }
 
 func (sampler *WindowsHostSampler) ownProcessIDs(ctx context.Context) ([]uint32, error) {
+	now := sampler.now()
+	sampler.mu.Lock()
+	if !sampler.inventoryAt.IsZero() && now.Sub(sampler.inventoryAt) >= 0 && now.Sub(sampler.inventoryAt) < sampler.inventoryTTL {
+		cached := sampler.inventoryPIDs
+		sampler.mu.Unlock()
+		return cached, nil
+	}
+	sampler.mu.Unlock()
+
+	records, err := sampler.inventory(ctx)
+	if err != nil {
+		return nil, err
+	}
+	result := ownProcessTreeIDs(int32(os.Getpid()), records)
+	sampler.mu.Lock()
+	sampler.inventoryAt = now
+	sampler.inventoryPIDs = result
+	sampler.mu.Unlock()
+	return result, nil
+}
+
+func enumerateProcessRecords(ctx context.Context) ([]processRecord, error) {
 	all, err := process.ProcessesWithContext(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("enumerate processes: %w", err)
@@ -116,7 +142,7 @@ func (sampler *WindowsHostSampler) ownProcessIDs(ctx context.Context) ([]uint32,
 		}
 		records = append(records, processRecord{pid: candidate.Pid, parentPID: parentPID, name: name})
 	}
-	return ownProcessTreeIDs(int32(os.Getpid()), records), nil
+	return records, nil
 }
 
 type processRecord struct {

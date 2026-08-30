@@ -2131,7 +2131,7 @@ func main() {
 		log.Printf("telemetry core init error: %v", err)
 		telemetryCoreRuntime = nil
 	}
-	if telemetryCoreRuntime != nil {
+	if telemetryCoreRuntime != nil && performanceSensorEnabled() {
 		hubVisible := func() bool { return !hubW.IsMinimised() }
 		performanceRuntime = app.NewPerformanceRuntime(
 			func() app.PerformanceSampleRunner {

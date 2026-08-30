@@ -12,3 +12,5 @@ func webviewDebugArgs() string {
 func webviewUserDataFolder(fallback string) string { return fallback }
 
 func performanceSensorTraceEnabled() bool { return false }
+
+func performanceSensorEnabled() bool { return true }

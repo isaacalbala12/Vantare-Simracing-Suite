@@ -34,3 +34,7 @@ func webviewUserDataFolder(fallback string) string {
 func performanceSensorTraceEnabled() bool {
 	return strings.TrimSpace(os.Getenv("VANTARE_PERFORMANCE_SENSOR_TRACE")) == "1"
 }
+
+func performanceSensorEnabled() bool {
+	return strings.TrimSpace(os.Getenv("VANTARE_PERFORMANCE_SENSOR")) != "off"
+}

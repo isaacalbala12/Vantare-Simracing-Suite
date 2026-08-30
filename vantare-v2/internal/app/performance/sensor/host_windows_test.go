@@ -3,8 +3,11 @@
 package sensor
 
 import (
+	"context"
+	"os"
 	"reflect"
 	"testing"
+	"time"
 )
 
 func TestOwnProcessTreeIgnoresAnotherVantareWithSharedWebViewProfile(t *testing.T) {
@@ -20,5 +23,33 @@ func TestOwnProcessTreeIgnoresAnotherVantareWithSharedWebViewProfile(t *testing.
 
 	if got, want := ownProcessTreeIDs(100, processes), []uint32{100, 110, 111}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("own process tree = %v, want %v", got, want)
+	}
+}
+
+func TestHostSamplerCachesProcessInventoryUntilTTL(t *testing.T) {
+	now := time.Unix(1000, 0)
+	calls := 0
+	sampler := NewHostSampler()
+	sampler.now = func() time.Time { return now }
+	sampler.inventoryTTL = 5 * time.Second
+	sampler.inventory = func(context.Context) ([]processRecord, error) {
+		calls++
+		return []processRecord{{pid: 110, parentPID: int32(os.Getpid()), name: "msedgewebview2.exe"}}, nil
+	}
+
+	for attempt := 0; attempt < 2; attempt++ {
+		if _, err := sampler.ownProcessIDs(context.Background()); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if calls != 1 {
+		t.Fatalf("inventory calls inside TTL = %d, want 1", calls)
+	}
+	now = now.Add(5 * time.Second)
+	if _, err := sampler.ownProcessIDs(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if calls != 2 {
+		t.Fatalf("inventory calls after TTL = %d, want 2", calls)
 	}
 }

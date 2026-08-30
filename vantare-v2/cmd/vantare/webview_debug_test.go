@@ -53,3 +53,14 @@ func TestPerformanceSensorTraceRequiresExplicitOne(t *testing.T) {
 		t.Fatal("non-canonical sensor trace value was accepted")
 	}
 }
+
+func TestPerformanceSensorDiagnosticDisableRequiresExplicitOff(t *testing.T) {
+	t.Setenv("VANTARE_PERFORMANCE_SENSOR", "off")
+	if performanceSensorEnabled() {
+		t.Fatal("diagnostic sensor off was ignored")
+	}
+	t.Setenv("VANTARE_PERFORMANCE_SENSOR", "false")
+	if !performanceSensorEnabled() {
+		t.Fatal("non-canonical sensor disable value was accepted")
+	}
+}

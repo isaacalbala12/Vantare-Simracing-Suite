@@ -86,3 +86,32 @@ test("el dry-run permite aislar el coste del polling CDP sin quitar checkpoints"
   assert.equal(plan.statePollSeconds, 0);
   assert.equal(plan.cdpCheckpointSeconds, 300);
 });
+
+test("el diagnostico de memoria admite 10 minutos solo en S1 sin polling y declara el dist", () => {
+  const collectorPath = fileURLToPath(new URL("./sesion-v1.ps1", import.meta.url));
+  const output = execFileSync("pwsh", [
+    "-NoProfile", "-File", collectorPath,
+    "-Sesion", "S1", "-Fase", "off", "-Duracion", "10",
+    "-Exe", "bin/dry-run.exe", "-Dist", "frontend/dist-external",
+    "-Puerto", "19457", "-EstadoCada", "0", "-DiagnosticoMemoria", "-DryRun",
+  ], {cwd: benchDirectory, encoding: "utf8"});
+
+  const plan = JSON.parse(output);
+  assert.equal(plan.memoryDiagnostic, true);
+  assert.equal(plan.statePollSeconds, 0);
+  assert.match(plan.dist, /frontend[\\/]dist-external$/);
+});
+
+test("el diagnostico de memoria falla cerrado fuera de S1 o con polling de estado", () => {
+  const collectorPath = fileURLToPath(new URL("./sesion-v1.ps1", import.meta.url));
+  for (const args of [
+    ["-Sesion", "S2", "-EstadoCada", "0"],
+    ["-Sesion", "S1", "-EstadoCada", "5"],
+  ]) {
+    assert.throws(() => execFileSync("pwsh", [
+      "-NoProfile", "-File", collectorPath,
+      ...args, "-Fase", "off", "-Duracion", "10",
+      "-Exe", "bin/dry-run.exe", "-Puerto", "19458", "-DiagnosticoMemoria", "-DryRun",
+    ], {cwd: benchDirectory, encoding: "utf8", stdio: "pipe"}));
+  }
+});

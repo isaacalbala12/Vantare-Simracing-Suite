@@ -11,6 +11,7 @@ param(
     [int]$Duracion,
     [Parameter(Mandatory)]
     [string]$Exe,
+    [string]$Dist = 'frontend/dist',
     [Parameter(Mandatory)]
     [ValidateRange(1024, 65535)]
     [int]$Puerto,
@@ -21,6 +22,7 @@ param(
     [int]$Coches = 0,
     [ValidateRange(0, 300)]
     [int]$EstadoCada = 5,
+    [switch]$DiagnosticoMemoria,
     [switch]$DryRun
 )
 
@@ -40,12 +42,16 @@ function Resolve-SessionPath([string]$Path, [switch]$MustExist) {
     return [IO.Path]::GetFullPath($candidate)
 }
 
+if ($DiagnosticoMemoria -and $Sesion -ne 'S1') { throw '-DiagnosticoMemoria solo admite S1.' }
+if ($DiagnosticoMemoria -and $EstadoCada -ne 0) { throw '-DiagnosticoMemoria exige -EstadoCada 0 para aislar el polling CDP.' }
+
 $plan = [ordered]@{
     schema = 'vantare.session.dry-run.v1'
     session = $Sesion
     phase = $Fase
     durationMinutes = $Duracion
     executable = Resolve-SessionPath $Exe
+    dist = Resolve-SessionPath $Dist
     profile = Resolve-SessionPath $Perfil
     cdpPort = $Puerto
     outputRoot = Resolve-SessionPath $Salida
@@ -53,6 +59,7 @@ $plan = [ordered]@{
     processSampleSeconds = 60
     cdpCheckpointSeconds = 300
     statePollSeconds = $EstadoCada
+    memoryDiagnostic = [bool]$DiagnosticoMemoria
     expectedWindows = $expectedWindows
     forceHygiene = $false
 }
@@ -61,7 +68,11 @@ if ($DryRun) {
     exit 0
 }
 
-if ($Duracion -lt 20) { throw 'Una sesión real no puede durar menos de 20 minutos.' }
+if ($DiagnosticoMemoria) {
+    if ($Duracion -lt 10) { throw 'El diagnóstico de memoria requiere al menos 10 minutos.' }
+} elseif ($Duracion -lt 20) {
+    throw 'Una sesión real no puede durar menos de 20 minutos.'
+}
 if ($Sesion -eq 'S3' -and $Fase -eq 'off' -and $Duracion -lt 60) { throw 'S3 OFF es el soak prolongado y requiere al menos 60 minutos.' }
 if ([string]::IsNullOrWhiteSpace($Escena)) {
     if ([Console]::IsInputRedirected) { throw '-Escena es obligatorio sin consola interactiva.' }
@@ -75,7 +86,7 @@ if ($Sesion -eq 'S3' -and $Coches -le 40) { throw 'S3 requiere más de 40 coches
 
 $exePath = Resolve-SessionPath $Exe -MustExist
 $profilePath = Resolve-SessionPath $Perfil -MustExist
-$distPath = Resolve-SessionPath 'frontend/dist' -MustExist
+$distPath = Resolve-SessionPath $Dist -MustExist
 $processHelper = Resolve-SessionPath 'scripts/bench/huella-procesos.mjs' -MustExist
 $cdpHelper = Resolve-SessionPath 'scripts/bench/huella-cdp.mjs' -MustExist
 $summaryHelper = Resolve-SessionPath 'scripts/bench/sesion-v1-resumen.mjs' -MustExist
@@ -358,6 +369,8 @@ $raw = [ordered]@{
     phase = $Fase
     expectedWindows = $expectedWindows
     durationMinutes = $Duracion
+    memoryDiagnostic = [bool]$DiagnosticoMemoria
+    statePollSeconds = $EstadoCada
     startedAt = if ($startedAt) { $startedAt.ToString('o') } else { $endedAt.ToString('o') }
     endedAt = $endedAt.ToString('o')
     executable = [ordered]@{

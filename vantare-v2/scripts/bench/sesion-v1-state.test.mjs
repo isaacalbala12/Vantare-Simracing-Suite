@@ -44,3 +44,21 @@ test("tolera targets CDP sin overlay_v2_transport ni propiedades opcionales", ()
     transport: null,
   });
 });
+
+test("añade screenshots finales aunque la lista de destino empiece vacía", () => {
+  const script = [
+    `. '${parserPath.replaceAll("'", "''")}'`,
+    `$capture = [pscustomobject]@{ targets = @([pscustomobject]@{ screenshot = 'final/overlay.png' }, [pscustomobject]@{}) }`,
+    `$initial = [Collections.Generic.List[string]]::new()`,
+    `$final = [Collections.Generic.List[string]]::new()`,
+    `Add-SessionScreenshotPaths -Capture $capture -Destination $final`,
+    `[pscustomobject]@{ initial = @($initial); final = @($final) } | ConvertTo-Json -Compress`,
+  ].join("; ");
+
+  const output = execFileSync("pwsh", ["-NoProfile", "-Command", script], {
+    cwd: benchDirectory,
+    encoding: "utf8",
+  });
+
+  assert.deepEqual(JSON.parse(output), { initial: [], final: ["final/overlay.png"] });
+});

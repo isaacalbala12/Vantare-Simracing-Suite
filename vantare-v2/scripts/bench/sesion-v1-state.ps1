@@ -45,3 +45,16 @@ function ConvertTo-SessionCdpTargets {
         }
     }
 }
+
+function Add-SessionScreenshotPaths {
+    param(
+        [AllowNull()][object]$Capture,
+        [Parameter(Mandatory)][System.Collections.IList]$Destination
+    )
+
+    foreach ($target in @(ConvertTo-SessionCdpTargets -Capture $Capture)) {
+        if ($null -ne $target.screenshot -and -not [string]::IsNullOrWhiteSpace([string]$target.screenshot)) {
+            [void]$Destination.Add([string]$target.screenshot)
+        }
+    }
+}

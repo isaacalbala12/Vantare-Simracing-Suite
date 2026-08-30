@@ -86,7 +86,7 @@ $hygieneCandidates = @(Get-CimInstance Win32_Process | Where-Object {
 $hygieneInput = $hygieneCandidates | ConvertTo-Json -Compress -Depth 3 -AsArray
 $hygiene = $hygieneInput | & node $processHelper --hygiene | ConvertFrom-Json
 if ($LASTEXITCODE -ne 0 -or -not $hygiene) { throw 'No se pudo aplicar la allow-list de higiene de huella.ps1.' }
-$foreign = @($hygiene.foreign)
+$foreign = @(Get-SessionOptionalProperty -InputObject $hygiene -Name 'foreign')
 if ($foreign.Count -gt 0) {
     $foreign | Select-Object ProcessId, ParentProcessId, Name | Format-Table -AutoSize | Out-Host
     throw 'Higiene fallida: cierra manualmente los procesos bloqueantes. Este colector no admite -Forzar.'
@@ -127,10 +127,17 @@ $stdoutLog = Join-Path $runDirectory 'stdout.log'
 $stderrLog = Join-Path $runDirectory 'stderr.log'
 $processScratch = Join-Path $runDirectory 'processes.tmp.json'
 $exeName = [IO.Path]::GetFileName($exePath)
+$profileDocument = Get-Content -LiteralPath $profilePath -Raw | ConvertFrom-Json
+$profileLayouts = Get-SessionOptionalProperty -InputObject $profileDocument -Name 'layouts'
+if ($null -eq $profileLayouts) { throw 'El perfil de sesión no contiene layouts.' }
 $expectedWidgets = @(
-    (Get-Content -LiteralPath $profilePath -Raw | ConvertFrom-Json).layouts.PSObject.Properties.Value |
-        ForEach-Object { $_.widgets } |
-        Where-Object { $null -eq $_.behavior.enabled -or $_.behavior.enabled }
+    $profileLayouts.PSObject.Properties.Value |
+        ForEach-Object { @(Get-SessionOptionalProperty -InputObject $_ -Name 'widgets') } |
+        Where-Object {
+            $behavior = Get-SessionOptionalProperty -InputObject $_ -Name 'behavior'
+            $enabled = Get-SessionOptionalProperty -InputObject $behavior -Name 'enabled'
+            $null -eq $enabled -or [bool]$enabled
+        }
 ).Count
 
 $samples = [Collections.Generic.List[object]]::new()
@@ -246,9 +253,10 @@ function Add-Diagnostic([string]$Label, [string]$ScreenshotDirectory = '') {
     $diagnostics.Add($capture)
     Register-State $capture
     if ($ScreenshotDirectory) {
-        $destination = if ($ScreenshotDirectory -eq $initialScreenshotDirectory) { $initialScreenshots } else { $finalScreenshots }
-        foreach ($target in @(ConvertTo-SessionCdpTargets -Capture $capture)) {
-            if ($target.screenshot) { $destination.Add([string]$target.screenshot) }
+        if ($ScreenshotDirectory -eq $initialScreenshotDirectory) {
+            Add-SessionScreenshotPaths -Capture $capture -Destination $initialScreenshots
+        } else {
+            Add-SessionScreenshotPaths -Capture $capture -Destination $finalScreenshots
         }
     }
 }
@@ -274,9 +282,7 @@ try {
         $opened = Invoke-Cdp -Action 'overlay-start' -Label '000-overlay-start' -ScreenshotDirectory $initialScreenshotDirectory
         $diagnostics.Add($opened)
         Register-State $opened
-        foreach ($target in @(ConvertTo-SessionCdpTargets -Capture $opened)) {
-            if ($target.screenshot) { $initialScreenshots.Add([string]$target.screenshot) }
-        }
+        Add-SessionScreenshotPaths -Capture $opened -Destination $initialScreenshots
     } else {
         Add-Diagnostic -Label '000-initial' -ScreenshotDirectory $initialScreenshotDirectory
     }
@@ -341,6 +347,9 @@ try {
 
 $exeShaEnd = (Get-FileHash -LiteralPath $exePath -Algorithm SHA256).Hash.ToLowerInvariant()
 $distShaEnd = Get-DirectorySha256 $distPath
+$gitHeadOutput = @(git -C $repoRoot rev-parse HEAD)
+if ($LASTEXITCODE -ne 0 -or $gitHeadOutput.Count -eq 0) { throw 'No se pudo resolver el HEAD Git de la sesión.' }
+$gitHead = ([string]::Join([Environment]::NewLine, $gitHeadOutput)).Trim()
 $raw = [ordered]@{
     schema = 'vantare.session.v1'
     session = $Sesion
@@ -357,10 +366,13 @@ $raw = [ordered]@{
         distSha256 = $distShaStart
         distSha256End = $distShaEnd
         stable = $exeShaStart -eq $exeShaEnd -and $distShaStart -eq $distShaEnd
-        gitHead = (git -C $repoRoot rev-parse HEAD).Trim()
+        gitHead = $gitHead
     }
     scene = [ordered]@{ description = $Escena; cars = $Coches }
-    hygiene = [ordered]@{ foreign = @($foreign); systemWebView2 = @($hygiene.systemWebView2) }
+    hygiene = [ordered]@{
+        foreign = @($foreign)
+        systemWebView2 = @(Get-SessionOptionalProperty -InputObject $hygiene -Name 'systemWebView2')
+    }
     samples = @($samples)
     diagnostics = @($diagnostics)
     transitions = @($transitions)

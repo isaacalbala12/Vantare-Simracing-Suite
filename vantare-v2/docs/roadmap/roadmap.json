@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-30T01:36:40Z",
+  "generatedAt": "2026-08-30T02:19:26Z",
   "digest": {
-    "lastCommit": "ade6f561fe97d87aadf4c4873cbd79e342f36b25"
+    "lastCommit": "9723148f064f80987d9e900ecedab209d1b67387"
   },
   "phases": [
     {
@@ -551,10 +551,10 @@
         "it": "Politica prestazionale per gli overlay"
       },
       "body": {
-        "es": "Go decide uno de cinco niveles efectivos, publica `capabilities.performance` y aplica una cadencia común; Ajustes permite elegirlos y cada perfil v4 puede heredar, fijar un nivel o personalizar Hz por widget con su coste de CPU visible. Studio guarda esa política y deja `updateHz` como dato exclusivo del lector legado. Los efectos por widget quedan reservados para la issue dedicada a las variantes Endurance `noBlur`/`flat`. D8 está demostrado para spotter por ruta real; banderas no tiene señal canónica en v2 y se verifica en #893. El valor inicial conserva la paridad hasta superar el banco de rendimiento.",
-        "en": "Go selects one of five effective levels, publishes `capabilities.performance` and applies one shared cadence; Settings exposes those levels and each v4 profile can inherit, select a level, or customise per-widget Hz with visible CPU cost. Studio saves that policy and keeps `updateHz` exclusively in the legacy reader. Per-widget effects remain reserved for the dedicated Endurance noBlur/flat variants issue. D8 is proven for spotter through the real path; flags have no canonical v2 signal and are verified in #893. The initial value preserves parity until the performance benchmark passes.",
-        "pt": "O Go decide um de cinco níveis efetivos, publica `capabilities.performance` e aplica uma cadência comum; as Definições permitem escolhê-los e cada perfil v4 pode herdar, fixar um nível ou personalizar Hz por widget com o custo de CPU visível. O Studio guarda essa política e mantém `updateHz` apenas no leitor legado. Os efeitos por widget ficam reservados para a issue dedicada às variantes Endurance `noBlur`/`flat`. D8 está demonstrado para o spotter pela rota real; as bandeiras não têm sinal canónico em v2 e são verificadas em #893. O valor inicial preserva a paridade até o banco de desempenho ser aprovado.",
-        "it": "Go decide uno dei cinque livelli effettivi, pubblica `capabilities.performance` e applica una cadenza comune; le Impostazioni permettono di sceglierli e ogni profilo v4 può ereditare, fissare un livello o personalizzare gli Hz per widget mostrando il costo CPU. Studio salva questa politica e mantiene `updateHz` solo nel lettore legacy. Gli effetti per widget restano riservati alla issue dedicata alle varianti Endurance `noBlur`/`flat`. D8 è dimostrato per lo spotter tramite il percorso reale; le bandiere non hanno un segnale canonico v2 e sono verificate in #893. Il valore iniziale mantiene la parità fino al superamento del benchmark prestazionale."
+        "es": "Go decide uno de cinco niveles efectivos, publica `capabilities.performance` y aplica una cadencia común; Ajustes permite elegirlos y cada perfil v4 puede heredar, fijar un nivel o personalizar Hz por widget con su coste de CPU visible. Studio guarda esa política y deja `updateHz` como dato exclusivo del lector legado. En los niveles eficientes, el overlay usa una entrada propia y una ventana limitada a sus widgets, el Hub se destruye al minimizar solo cuando su registro empujado confirma que no hay borradores, Ingeniero conserva el audio sin presentación visual y Windows aplica una política de energía reversible. Los efectos por widget quedan reservados para la issue dedicada a las variantes Endurance `noBlur`/`flat`. D8 está demostrado para spotter por ruta real; banderas no tiene señal canónica en v2 y se verifica en #893. El nivel inicial sigue siendo 1 y conserva la paridad.",
+        "en": "Go selects one of five effective levels, publishes `capabilities.performance` and applies one shared cadence; Settings exposes those levels and each v4 profile can inherit, select a level, or customise per-widget Hz with visible CPU cost. Studio saves that policy and keeps `updateHz` exclusively in the legacy reader. At efficient levels, the overlay uses its own entry and a window bounded to its widgets, the Hub is destroyed on minimise only when its pushed registry confirms that no drafts exist, Engineer keeps audio without visual presentation, and Windows applies a reversible power policy. Per-widget effects remain reserved for the dedicated Endurance noBlur/flat variants issue. D8 is proven for spotter through the real path; flags have no canonical v2 signal and are verified in #893. The initial level remains 1 and preserves parity.",
+        "pt": "O Go decide um de cinco níveis efetivos, publica `capabilities.performance` e aplica uma cadência comum; as Definições permitem escolhê-los e cada perfil v4 pode herdar, fixar um nível ou personalizar Hz por widget com o custo de CPU visível. O Studio guarda essa política e mantém `updateHz` apenas no leitor legado. Nos níveis eficientes, o overlay usa uma entrada própria e uma janela limitada aos seus widgets, o Hub é destruído ao minimizar apenas quando o seu registo enviado confirma que não existem rascunhos, o Engenheiro mantém o áudio sem apresentação visual e o Windows aplica uma política de energia reversível. Os efeitos por widget ficam reservados para a issue dedicada às variantes Endurance `noBlur`/`flat`. D8 está demonstrado para o spotter pela rota real; as bandeiras não têm sinal canónico em v2 e são verificadas em #893. O nível inicial continua a ser 1 e preserva a paridade.",
+        "it": "Go decide uno dei cinque livelli effettivi, pubblica `capabilities.performance` e applica una cadenza comune; le Impostazioni permettono di sceglierli e ogni profilo v4 può ereditare, fissare un livello o personalizzare gli Hz per widget mostrando il costo CPU. Studio salva questa politica e mantiene `updateHz` solo nel lettore legacy. Nei livelli efficienti, l'overlay usa un entry dedicato e una finestra limitata ai suoi widget, l'Hub viene distrutto alla minimizzazione solo quando il registro inviato conferma che non esistono bozze, Engineer mantiene l'audio senza presentazione visiva e Windows applica una politica energetica reversibile. Gli effetti per widget restano riservati alla issue dedicata alle varianti Endurance `noBlur`/`flat`. D8 è dimostrato per lo spotter tramite il percorso reale; le bandiere non hanno un segnale canonico v2 e sono verificate in #893. Il livello iniziale resta 1 e conserva la parità."
       },
       "label": {
         "es": "Feature",
@@ -912,6 +912,11 @@
           "kind": "change",
           "scope": "",
           "text": "ISA-943 · Perfil v4 + Ajustes › Rendimiento (C2)"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-943 · Pase visual de Ajustes › Rendimiento"
         }
       ]
     },

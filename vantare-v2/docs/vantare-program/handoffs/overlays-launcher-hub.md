@@ -50,6 +50,10 @@
   la sesión ya ausente. El guion reproducible queda en
   `scripts/bench/isa944-auto-smoke.ps1`; falta la captura sin LMU. PR draft
   **#948** hacia `nightly`; sin merge ni promoción.
+  El defecto continúa temporalmente en nivel 1 manual por decisión de rollout
+  hasta cerrar el gate 12.2. `performanceRolloutDefault` es el único punto que
+  alimenta instalaciones nuevas y la migración vigente; pasar a `auto`/nivel 3
+  exige cambiar esa autoridad y añadir una nueva migración de esquema.
 
 - **ISA-943 — perfil v4 y Ajustes › Rendimiento (2026-08-30):** rama
   `vantareapp/isa-943-perfil-v4-ajustes-rendimiento`, base inicial

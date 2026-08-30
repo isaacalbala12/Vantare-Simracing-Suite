@@ -59,6 +59,18 @@ type PerformanceSettings struct {
 	Overrides map[string]WidgetOverride `json:"overrides,omitempty"`
 }
 
+const (
+	performanceRolloutMode  = "level"
+	performanceRolloutLevel = 1
+)
+
+// performanceRolloutDefault mantiene el rollout conservador en un único punto.
+// Cuando el gate 12.2 autorice Automático por defecto, se cambia esta autoridad
+// y se añade la migración de esquema correspondiente.
+func performanceRolloutDefault() PerformanceSettings {
+	return PerformanceSettings{Mode: performanceRolloutMode, Level: performanceRolloutLevel}
+}
+
 // ResolvePerformancePolicy combina el defecto de la app con la preferencia
 // del perfil v4. Un perfil sin performance equivale exactamente a inherit.
 func ResolvePerformancePolicy(settings PerformanceSettings, profile *config.ProfileDocumentV4) performancepolicy.Policy {
@@ -364,8 +376,7 @@ func DefaultAppSettings() *AppSettings {
 	return &AppSettings{
 		SchemaVersion: appSettingsSchemaVersion,
 		CpuSampling:   true,
-		// TODO(#924): pasar a nivel 3 cuando el gate 12.2 esté superado
-		Performance: PerformanceSettings{Mode: "level", Level: 1},
+		Performance:   performanceRolloutDefault(),
 		Hotkeys: map[string]string{
 			"toggleOverlay":       "ctrl+shift+v",
 			"toggleEditMode":      "ctrl+shift+e",
@@ -489,7 +500,7 @@ func (s *SettingsService) migrateSettings(settings *AppSettings) {
 	}
 	if settings.SchemaVersion < 4 {
 		if settings.Performance.Mode == "" {
-			settings.Performance = PerformanceSettings{Mode: "level", Level: 1}
+			settings.Performance = performanceRolloutDefault()
 		}
 		settings.SchemaVersion = 4
 	}

@@ -30,7 +30,7 @@ export const settingsOrbitIt: Record<string, string> = {
   "settings.performance.inherit": "Usa livello",
   "settings.performance.dirty": "Solo al cambiamento",
   "settings.performance.noProfile": "Attiva un profilo per modificarne gli override.",
-  "settings.performance.effective": "Effettivo ora",
+  "settings.performance.effective": "Attivo ora",
   "settings.performance.rate1": "Frequenza del monitor",
   "settings.performance.rate2": "60 fps",
   "settings.performance.rate3": "40 fps",

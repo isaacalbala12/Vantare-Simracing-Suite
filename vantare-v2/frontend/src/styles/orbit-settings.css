@@ -625,7 +625,9 @@
 /* ---------------------------------------------------------- RENDIMIENTO */
 /* Escalera de niveles (`Máximo → Mínimo`) en una sola fila con su medidor de
    coste; Personalizado y Automático ocupan la fila siguiente a media anchura.
-   El estado efectivo vive en la cabecera de la superficie, no en un aviso. */
+   El estado efectivo vive en la cabecera de la superficie, no en un aviso.
+   Todo el color deriva de tokens: los tintes carmín se obtienen con
+   `color-mix` sobre `--orbit-carmine`/`--orbit-coral`. */
 
 .orbit-set-perf {
   display: flex;
@@ -635,6 +637,8 @@
   min-height: 0;
 }
 
+/* La primera superficie mide lo que miden sus tarjetas; la tabla de
+   Personalizado se queda con el resto y hace scroll dentro. */
 .orbit-set-perf > .orbit-surface:first-child {
   flex: none;
 }
@@ -650,9 +654,9 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 7px;
   min-width: 0;
-  padding: 15px 16px 14px;
+  padding: 14px 15px 13px;
   border: 1px solid var(--orbit-line);
   border-radius: var(--orbit-radius);
   background: var(--orbit-panel-bg);
@@ -677,10 +681,17 @@
   transform: translateY(-1px);
 }
 
+/* Foco Orbit (`08 · a11y`): mismo contorno coral que el kit. */
+.orbit-set-perf__card:focus-visible {
+  outline: 2px solid var(--orbit-coral);
+  outline-offset: 2px;
+}
+
 .orbit-set-perf__card[data-state="on"] {
-  border-color: rgba(240, 71, 85, 0.35);
-  background: linear-gradient(160deg, rgba(213, 47, 73, 0.1), var(--orbit-panel-bg) 70%);
-  box-shadow: 0 0 28px rgba(213, 47, 73, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  border-color: color-mix(in srgb, var(--orbit-coral) 35%, transparent);
+  background: linear-gradient(160deg, color-mix(in srgb, var(--orbit-carmine) 10%, transparent), transparent 70%),
+    var(--orbit-panel-bg);
+  box-shadow: 0 0 28px color-mix(in srgb, var(--orbit-carmine) 8%, transparent);
 }
 
 .orbit-set-perf__card[aria-disabled="true"] {
@@ -710,23 +721,22 @@
   display: flex;
   gap: 4px;
   height: 5px;
-  margin-top: 2px;
+  margin-top: 1px;
 }
 
 .orbit-set-perf__meter i {
   flex: 1;
   border-radius: 3px;
-  background: rgba(255, 255, 255, 0.07);
+  background: var(--orbit-line);
 }
 
 .orbit-set-perf__meter i[data-on] {
-  background: linear-gradient(90deg, var(--orbit-coral), var(--orbit-carmine));
-  box-shadow: 0 0 10px rgba(213, 47, 73, 0.28);
+  background: var(--orbit-ink-4);
 }
 
-.orbit-set-perf__card:not([data-state="on"]) .orbit-set-perf__meter i[data-on] {
-  background: rgba(255, 255, 255, 0.22);
-  box-shadow: none;
+.orbit-set-perf__card[data-state="on"] .orbit-set-perf__meter i[data-on] {
+  background: linear-gradient(90deg, var(--orbit-coral), var(--orbit-carmine));
+  box-shadow: 0 0 10px color-mix(in srgb, var(--orbit-carmine) 28%, transparent);
 }
 
 .orbit-set-perf__rate {
@@ -742,7 +752,7 @@
 }
 
 .orbit-set-perf__copy {
-  color: #9a9598;
+  color: var(--orbit-ink-3);
   font-size: 12px;
   line-height: 1.5;
 }
@@ -775,8 +785,8 @@
 .orbit-set-perf__table thead th {
   padding: 0 0 10px;
   border-bottom: 1px solid var(--orbit-line);
-  color: var(--orbit-ink-4);
-  font-size: 10px;
+  color: var(--orbit-ink-3);
+  font-size: 10.5px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-align: left;
@@ -815,7 +825,22 @@
   font-size: 12px;
 }
 
+/* Anchos medios: las tarjetas pasan a dos filas y la vista deja de repartir la
+   altura entre superficies; el panel entero hace scroll y la tabla conserva su
+   altura natural en vez de colapsar. */
 @media (max-width: 1280px) {
+  .orbit-set-perf {
+    flex: none;
+  }
+
+  .orbit-set-perf > .orbit-surface {
+    flex: none;
+  }
+
+  .orbit-set-perf > .orbit-surface--fill > .orbit-surface__body {
+    overflow: visible;
+  }
+
   .orbit-set-perf__card--level {
     grid-column: span 5;
   }

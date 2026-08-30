@@ -10,7 +10,9 @@ const frontend = path.resolve(path.dirname(fileURLToPath(import.meta.url)), ".."
 const output = path.resolve(frontend, "../docs/design/orbit-v03/evidence/porte/11-ajustes");
 const port = 5201;
 const base = `http://127.0.0.1:${port}/orbit-settings-harness.html?view=ajustes`;
-const url = (section) => `${base}&settings=${section}`;
+// Rendimiento se captura con un perfil activo sembrado para poder abrir
+// Personalizado y su tabla (el mock confirma el guardado por `requestId`).
+const url = (section) => `${base}&settings=${section}${section === "performance" ? "&seed=active" : ""}`;
 
 const SECTIONS = ["account", "application", "performance", "updates", "hotkeys", "diagnostics", "privacy"];
 
@@ -19,8 +21,9 @@ const shots = [
   { name: "1920x900", width: 1920, height: 900, sections: ["account", "hotkeys"], noPageScroll: false },
   { name: "375x812", width: 375, height: 812, sections: ["privacy"], noPageScroll: false },
   { name: "768x1024", width: 768, height: 1024, sections: ["privacy"], noPageScroll: false },
-  { name: "1024x768", width: 1024, height: 768, sections: ["privacy"], noPageScroll: false },
-  { name: "1440x900", width: 1440, height: 900, sections: ["privacy"], noPageScroll: false },
+  { name: "1024x768", width: 1024, height: 768, sections: ["privacy", "performance"], noPageScroll: false },
+  { name: "1440x900", width: 1440, height: 900, sections: ["privacy", "performance"], noPageScroll: false },
+  { name: "1280x900", width: 1280, height: 900, sections: ["performance"], noPageScroll: false },
 ];
 
 fs.mkdirSync(output, { recursive: true });
@@ -190,6 +193,41 @@ try {
         if (moved.scrollHeight > moved.innerHeight) {
           throw new Error(`${label}: la página hace scroll tras navegar`);
         }
+      }
+
+      // ── Rendimiento: Personalizado abre la tabla del perfil activo y ésta
+      // tiene que quedar utilizable (no colapsada) en todos los anchos.
+      if (section === "performance") {
+        await page.getByTestId("orbit-settings-performance-custom").click();
+        await page.getByTestId("orbit-settings-performance-table").waitFor();
+        await hideToasts(page);
+        await settle(page);
+        const table = await page.evaluate(() => {
+          const node = document.querySelector('[data-testid="orbit-settings-performance-table"]');
+          const body = node?.closest(".orbit-surface__body");
+          // En anchos medios el panel entero hace scroll: se lleva la tabla a la
+          // vista antes de medir cuánto de ella cabe realmente en pantalla.
+          body?.scrollIntoView({ block: "start" });
+          const rect = body?.getBoundingClientRect();
+          return {
+            visible: rect ? Math.max(0, Math.min(rect.bottom, window.innerHeight) - Math.max(rect.top, 0)) : 0,
+            rows: node ? node.querySelectorAll("tbody tr").length : 0,
+            hscroll: document.documentElement.scrollWidth > window.innerWidth,
+          };
+        });
+        if (table.rows < 3) {
+          throw new Error(`${label}: la tabla de Personalizado pinta ${table.rows} widgets`);
+        }
+        if (table.visible < 120) {
+          throw new Error(`${label}: la tabla de Personalizado solo deja ${Math.round(table.visible)}px visibles`);
+        }
+        if (table.hscroll) {
+          throw new Error(`${label}: Personalizado provoca scroll horizontal`);
+        }
+        await page.screenshot({
+          path: path.join(output, `orbit-ajustes-personalizado-${label}.png`),
+          fullPage: false,
+        });
       }
 
       // ── Actualizaciones: cada tarjeta de canal enseña la versión de SU canal.

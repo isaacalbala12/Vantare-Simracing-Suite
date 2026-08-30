@@ -132,6 +132,19 @@ func ResolvePerformancePolicy(settings PerformanceSettings, profile *config.Prof
 	return resolved
 }
 
+// ResolveEffectivePerformancePolicy is the single composition boundary for
+// native lifecycle consumers and TelemetryCore. Diagnostic builds force the
+// complete policy, including the capability published to the overlay.
+func ResolveEffectivePerformancePolicy(settings PerformanceSettings, profile *config.ProfileDocumentV4) performancepolicy.Policy {
+	if override := diagnosticPerformanceLevel(); override != 0 {
+		return performancepolicy.Resolve(performancepolicy.Policy{
+			Mode:  performancepolicy.ModeLevel,
+			Level: performancepolicy.Level(override),
+		}, nil)
+	}
+	return ResolvePerformancePolicy(settings, profile)
+}
+
 func profileWidgetTypes(profile *config.ProfileDocumentV4) map[string]string {
 	result := map[string]string{}
 	if profile == nil {
@@ -815,14 +828,7 @@ func (s *SettingsService) applyLoaded(loaded *AppSettings) {
 // capabilities.performance. Diagnostic builds may force a nominal level for
 // reproducible lifecycle measurements without changing persisted settings.
 func (s *SettingsService) EffectivePerformancePolicy(profile *config.ProfileDocumentV4) performancepolicy.Policy {
-	settings := s.Snapshot().Performance
-	if override := diagnosticPerformanceLevel(); override != 0 {
-		return performancepolicy.Resolve(performancepolicy.Policy{
-			Mode:  performancepolicy.ModeLevel,
-			Level: performancepolicy.Level(override),
-		}, nil)
-	}
-	return ResolvePerformancePolicy(settings, profile)
+	return ResolveEffectivePerformancePolicy(s.Snapshot().Performance, profile)
 }
 
 // persistSidecarApplied writes the current settings to disk (via atomicWrite)

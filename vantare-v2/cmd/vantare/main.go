@@ -2116,7 +2116,7 @@ func main() {
 		Emitter:                 emitter,
 		Engineer:                engSvc,
 		StrategyPublicTransport: *strategyPublicTransport,
-		PerformancePolicy:       app.ResolvePerformancePolicy(settingsSvc.Settings().Performance, studioProfileSvc.PerformanceProfile()),
+		PerformancePolicy:       settingsSvc.EffectivePerformancePolicy(studioProfileSvc.PerformanceProfile()),
 	})
 	if err != nil {
 		log.Printf("telemetry core init error: %v", err)
@@ -2124,7 +2124,7 @@ func main() {
 	}
 	reconcilePerformance := func(settings app.PerformanceSettings, profile *config.ProfileDocumentV4) {
 		if telemetryCoreRuntime != nil {
-			telemetryCoreRuntime.SetPerformancePolicy(app.ResolvePerformancePolicy(settings, profile))
+			telemetryCoreRuntime.SetPerformancePolicy(app.ResolveEffectivePerformancePolicy(settings, profile))
 		}
 	}
 	performanceSaves := app.NewPerformanceSaveCoordinator(settingsSvc, studioProfileSvc, reconcilePerformance)

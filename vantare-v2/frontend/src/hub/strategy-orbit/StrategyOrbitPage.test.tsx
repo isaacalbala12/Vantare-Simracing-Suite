@@ -511,6 +511,23 @@ describe("StrategyOrbitPage · Resumen", () => {
     expect(next[1]).toBeGreaterThan(original[1]);
   });
 
+  it("bloquea al escribir un override de stint antes del blur", async () => {
+    const snapshots: Array<{ other?: string[] }> = [];
+    const disposeGuard = installHubSuspendGuard({
+      on: () => () => undefined,
+      emit: (event, payload) => {
+        if (event === "hub:blockers") snapshots.push(payload as { other?: string[] });
+      },
+    }, "stint-generation");
+    await mounted();
+
+    fireEvent.click(screen.getByTestId("orbit-stint-edit-0"));
+    fireEvent.input(await screen.findByLabelText("Vueltas"), { target: { value: "20" } });
+
+    expect(snapshots.at(-1)?.other).toHaveLength(1);
+    disposeGuard();
+  });
+
   it("Restablecer devuelve el estado a Al día", async () => {
     await mounted();
 

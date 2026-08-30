@@ -193,6 +193,7 @@ export const strategyOrbitEn: Record<string, string> = {
   "strategy.pit.newSet": "4 new",
 
   "strategy.editor.laps": "Laps",
+  "strategy.editor.suspendBlocker": "Strategy has an unapplied stint",
   "strategy.editor.fuel": "Fuel",
   "strategy.editor.pace": "Pace",
   "strategy.editor.ofDriver": "of the driver",
@@ -496,6 +497,7 @@ export const strategyOrbitEn: Record<string, string> = {
   "strategy.weather.bucket.wet": "Wet",
   "strategy.weather.add": "Add scenario",
   "strategy.weather.saveError": "Weather could not be saved to the canonical document.",
+  "strategy.weather.suspendBlocker": "Strategy has unsaved weather",
   "strategy.weather.robust": "Robust recommendation",
   "strategy.weather.minimax": "Minimax regret",
   "strategy.weather.maxRegret": "Maximum regret",

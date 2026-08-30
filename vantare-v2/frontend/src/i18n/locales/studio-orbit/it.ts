@@ -123,6 +123,7 @@ export const studioOrbitIt: Record<string, string> = {
   "studio.inspector.layout.aspectHint": "Mantiene il rapporto durante il ridimensionamento.",
   "studio.inspector.layout.order": "Ordine e allineamento",
   "studio.inspector.layout.reset": "Ripristina",
+  "studio.inspector.layout.suspendBlocker": "Studio ha una posizione o dimensione non applicata",
   "studio.inspector.actions.restoreDefaults": "Ripristina valori",
   "studio.inspector.actions.discardAll": "Scarta tutto",
   "studio.inspector.actions.restoreHint":

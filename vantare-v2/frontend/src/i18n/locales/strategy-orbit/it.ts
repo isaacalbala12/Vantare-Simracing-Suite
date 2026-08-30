@@ -193,6 +193,7 @@ export const strategyOrbitIt: Record<string, string> = {
   "strategy.pit.newSet": "4 nuove",
 
   "strategy.editor.laps": "Giri",
+  "strategy.editor.suspendBlocker": "La Strategia ha uno stint non applicato",
   "strategy.editor.fuel": "Carburante",
   "strategy.editor.pace": "Passo",
   "strategy.editor.ofDriver": "del pilota",
@@ -497,6 +498,7 @@ export const strategyOrbitIt: Record<string, string> = {
   "strategy.weather.bucket.wet": "Bagnato",
   "strategy.weather.add": "Aggiungi scenario",
   "strategy.weather.saveError": "Impossibile salvare il meteo nel documento canonico.",
+  "strategy.weather.suspendBlocker": "La Strategia ha meteo non salvato",
   "strategy.weather.robust": "Raccomandazione robusta",
   "strategy.weather.minimax": "Minimax regret",
   "strategy.weather.maxRegret": "Regret massimo",

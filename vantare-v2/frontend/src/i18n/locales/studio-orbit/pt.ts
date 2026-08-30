@@ -123,6 +123,7 @@ export const studioOrbitPt: Record<string, string> = {
   "studio.inspector.layout.aspectHint": "Mantém o rácio ao redimensionar.",
   "studio.inspector.layout.order": "Ordem e alinhamento",
   "studio.inspector.layout.reset": "Repor",
+  "studio.inspector.layout.suspendBlocker": "O Studio tem uma posição ou tamanho por aplicar",
   "studio.inspector.actions.restoreDefaults": "Repor valores",
   "studio.inspector.actions.discardAll": "Descartar tudo",
   "studio.inspector.actions.restoreHint":

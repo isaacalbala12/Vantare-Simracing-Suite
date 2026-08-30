@@ -122,6 +122,7 @@ export const studioOrbitEn: Record<string, string> = {
   "studio.inspector.layout.aspectHint": "Keeps the ratio while resizing.",
   "studio.inspector.layout.order": "Order and alignment",
   "studio.inspector.layout.reset": "Reset",
+  "studio.inspector.layout.suspendBlocker": "Studio has an unapplied position or size",
   "studio.inspector.actions.restoreDefaults": "Restore defaults",
   "studio.inspector.actions.discardAll": "Discard all",
   "studio.inspector.actions.restoreHint":

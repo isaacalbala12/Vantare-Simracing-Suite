@@ -1,4 +1,6 @@
+import { useEffect, useRef, useState } from "react";
 import { Button, Input, Note, Select } from "../../ui/orbit";
+import { useHubSuspendBlocker } from "../hub-suspend-guard";
 import type {
   StrategyOrbitWeatherResultV1,
   StrategyWeatherNodeV1,
@@ -33,6 +35,50 @@ function replaceScenario(
 }
 
 export function StrategyWeatherPanel({ eventId, combinationId, scenarios, result, saving, onSave, t }: StrategyWeatherPanelProps) {
+  const [dirtyInputs, setDirtyInputs] = useState<Set<string>>(() => new Set());
+  const revisions = useRef(new Map<string, number>());
+  const pending = useRef(new Map<string, number>());
+  const previousSaving = useRef(saving);
+  useHubSuspendBlocker(
+    "strategy-weather-input-draft",
+    t("strategy.weather.suspendBlocker"),
+    dirtyInputs.size > 0 || saving === "saving",
+  );
+  useEffect(() => {
+    if (previousSaving.current === "saving" && saving === "idle") {
+      setDirtyInputs((current) => {
+        const next = new Set(current);
+        for (const [key, revision] of pending.current) {
+          if (revisions.current.get(key) === revision) next.delete(key);
+        }
+        pending.current.clear();
+        return next;
+      });
+    }
+    previousSaving.current = saving;
+  }, [saving]);
+  const beginInput = (key: string) => {
+    revisions.current.set(key, (revisions.current.get(key) ?? 0) + 1);
+    setDirtyInputs((current) => {
+      if (current.has(key)) return current;
+      const next = new Set(current);
+      next.add(key);
+      return next;
+    });
+  };
+  const commitInput = (key: string, save: () => void) => {
+    pending.current.set(key, revisions.current.get(key) ?? 0);
+    save();
+  };
+  const cancelInput = (key: string) => {
+    pending.current.delete(key);
+    setDirtyInputs((current) => {
+      if (!current.has(key)) return current;
+      const next = new Set(current);
+      next.delete(key);
+      return next;
+    });
+  };
   const updateNode = (scenarioIndex: number, nodeIndex: number, change: Partial<StrategyWeatherNodeV1>) => {
     onSave(replaceScenario(scenarios, scenarioIndex, (weighted) => ({
       ...weighted,
@@ -53,26 +99,29 @@ export function StrategyWeatherPanel({ eventId, combinationId, scenarios, result
       {scenarios.length === 0 ? <Note title={t("strategy.weather.emptyTitle")}>{t("strategy.weather.empty")}</Note> : null}
       {scenarios.map((weighted, scenarioIndex) => {
         const plan = result?.plans.find((candidate) => candidate.scenarioId === weighted.scenario.scenarioId);
+        const weightKey = `${scenarioIndex}:weight`;
         return (
           <article className="orbit-weather__scenario" data-testid={`orbit-weather-scenario-${scenarioIndex}`} key={weighted.scenario.scenarioId}>
             <header>
               <b>{t("strategy.weather.scenario")} {scenarioIndex + 1}</b>
               <label>
                 <span>{t("strategy.weather.weight")}</span>
-                <Input aria-label={t("strategy.weather.weight")} defaultValue={String(weighted.weight)} inputMode="decimal" numeric onBlur={(event) => onSave(replaceScenario(scenarios, scenarioIndex, (current) => ({ ...current, weight: numberAt(event.currentTarget.value, current.weight, 0.01, 100) })))} />
+                <Input aria-label={t("strategy.weather.weight")} defaultValue={String(weighted.weight)} inputMode="decimal" numeric onBlur={(event) => commitInput(weightKey, () => onSave(replaceScenario(scenarios, scenarioIndex, (current) => ({ ...current, weight: numberAt(event.currentTarget.value, current.weight, 0.01, 100) }))))} onInput={() => beginInput(weightKey)} onKeyDown={(event) => { if (event.key === "Escape") { event.currentTarget.value = String(weighted.weight); cancelInput(weightKey); } }} />
               </label>
               <Button aria-label={`${t("strategy.weather.remove")} ${scenarioIndex + 1}`} onClick={() => onSave(scenarios.filter((_, index) => index !== scenarioIndex))} size="sm" variant="danger">{t("strategy.weather.remove")}</Button>
             </header>
             <div className="orbit-weather__nodes">
-              {weighted.scenario.nodes.map((node, nodeIndex) => (
+              {weighted.scenario.nodes.map((node, nodeIndex) => {
+                const inputKey = (field: string) => `${scenarioIndex}:${nodeIndex}:${field}`;
+                return (
                 <div data-testid={`orbit-weather-node-${scenarioIndex}-${nodeIndex}`} key={node.progress}>
                   <b>{t(`strategy.weather.node.${node.progress}`)}</b>
-                  <label><span>{t("strategy.weather.rain")}</span><Input aria-label={t("strategy.weather.rain")} defaultValue={String(node.rainChance)} inputMode="decimal" numeric onBlur={(event) => updateNode(scenarioIndex, nodeIndex, { rainChance: numberAt(event.currentTarget.value, node.rainChance, 0, 100) })} unit="%" /></label>
+                  <label><span>{t("strategy.weather.rain")}</span><Input aria-label={t("strategy.weather.rain")} defaultValue={String(node.rainChance)} inputMode="decimal" numeric onBlur={(event) => commitInput(inputKey("rain"), () => updateNode(scenarioIndex, nodeIndex, { rainChance: numberAt(event.currentTarget.value, node.rainChance, 0, 100) }))} onInput={() => beginInput(inputKey("rain"))} unit="%" /></label>
                   <label><span>{t("strategy.weather.sky")}</span><Select label={t("strategy.weather.sky")} native onChange={(sky) => updateNode(scenarioIndex, nodeIndex, { sky })} options={skyValues.map((sky) => ({ value: sky, label: t(`strategy.weather.sky.${sky}`) }))} value={node.sky} /></label>
-                  <label><span>{t("strategy.weather.air")}</span><Input aria-label={t("strategy.weather.air")} defaultValue={String(node.airTempC)} inputMode="decimal" numeric onBlur={(event) => updateNode(scenarioIndex, nodeIndex, { airTempC: numberAt(event.currentTarget.value, node.airTempC, -50, 80) })} unit="°C" /></label>
-                  <label><span>{t("strategy.weather.track")}</span><Input aria-label={t("strategy.weather.track")} defaultValue={String(node.trackTempC)} inputMode="decimal" numeric onBlur={(event) => updateNode(scenarioIndex, nodeIndex, { trackTempC: numberAt(event.currentTarget.value, node.trackTempC, -50, 100) })} unit="°C" /></label>
+                  <label><span>{t("strategy.weather.air")}</span><Input aria-label={t("strategy.weather.air")} defaultValue={String(node.airTempC)} inputMode="decimal" numeric onBlur={(event) => commitInput(inputKey("air"), () => updateNode(scenarioIndex, nodeIndex, { airTempC: numberAt(event.currentTarget.value, node.airTempC, -50, 80) }))} onInput={() => beginInput(inputKey("air"))} unit="°C" /></label>
+                  <label><span>{t("strategy.weather.track")}</span><Input aria-label={t("strategy.weather.track")} defaultValue={String(node.trackTempC)} inputMode="decimal" numeric onBlur={(event) => commitInput(inputKey("track"), () => updateNode(scenarioIndex, nodeIndex, { trackTempC: numberAt(event.currentTarget.value, node.trackTempC, -50, 100) }))} onInput={() => beginInput(inputKey("track"))} unit="°C" /></label>
                 </div>
-              ))}
+              );})}
             </div>
             {plan ? (
               <div className="orbit-weather__plan">

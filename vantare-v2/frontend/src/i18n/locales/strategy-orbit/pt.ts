@@ -193,6 +193,7 @@ export const strategyOrbitPt: Record<string, string> = {
   "strategy.pit.newSet": "4 novos",
 
   "strategy.editor.laps": "Voltas",
+  "strategy.editor.suspendBlocker": "A Estratégia tem um stint por aplicar",
   "strategy.editor.fuel": "Combustível",
   "strategy.editor.pace": "Ritmo",
   "strategy.editor.ofDriver": "do piloto",
@@ -496,6 +497,7 @@ export const strategyOrbitPt: Record<string, string> = {
   "strategy.weather.bucket.wet": "Molhado",
   "strategy.weather.add": "Adicionar cenário",
   "strategy.weather.saveError": "Não foi possível guardar o clima no documento canónico.",
+  "strategy.weather.suspendBlocker": "A Estratégia tem clima por guardar",
   "strategy.weather.robust": "Recomendação robusta",
   "strategy.weather.minimax": "Minimax regret",
   "strategy.weather.maxRegret": "Regret máximo",

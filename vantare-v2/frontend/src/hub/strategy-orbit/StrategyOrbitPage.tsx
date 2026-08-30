@@ -864,6 +864,24 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
   const [panel, setPanel] = useState<SidePanel>("drivers");
   const [selected, setSelected] = useState(-1);
   const [editing, setEditing] = useState(-1);
+  const [stintInputDrafts, setStintInputDrafts] = useState<Set<string>>(() => new Set());
+  useHubSuspendBlocker(
+    "strategy-stint-input-draft",
+    t("strategy.editor.suspendBlocker"),
+    stintInputDrafts.size > 0,
+  );
+  const beginStintInput = (key: string) => setStintInputDrafts((current) => {
+    if (current.has(key)) return current;
+    const next = new Set(current);
+    next.add(key);
+    return next;
+  });
+  const endStintInput = (key: string) => setStintInputDrafts((current) => {
+    if (!current.has(key)) return current;
+    const next = new Set(current);
+    next.delete(key);
+    return next;
+  });
   const [picked, setPicked] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
@@ -3463,7 +3481,11 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
                                 inputMode="numeric"
                                 key={`laps-${stint.i}-${stint.laps}`}
                                 numeric
-                                onBlur={(e) => setOverride(stint.i, "laps", e.currentTarget.value)}
+                                onBlur={(e) => {
+                                  setOverride(stint.i, "laps", e.currentTarget.value);
+                                  endStintInput(`${stint.i}:laps`);
+                                }}
+                                onInput={() => beginStintInput(`${stint.i}:laps`)}
                                 aria-label={t("strategy.editor.laps")}
                               />
                               <InputProvenanceChip t={t} view={{ kind: "manual", presence: "valid", value: stint.laps, canRevert: false }} />
@@ -3475,7 +3497,11 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
                                 inputMode="decimal"
                                 key={`fuel-${stint.i}-${stint.fuel.toFixed(1)}`}
                                 numeric
-                                onBlur={(e) => setOverride(stint.i, "fuel", e.currentTarget.value)}
+                                onBlur={(e) => {
+                                  setOverride(stint.i, "fuel", e.currentTarget.value);
+                                  endStintInput(`${stint.i}:fuel`);
+                                }}
+                                onInput={() => beginStintInput(`${stint.i}:fuel`)}
                                 unit="L"
                                 aria-label={t("strategy.editor.fuel")}
                               />

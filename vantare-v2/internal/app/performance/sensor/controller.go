@@ -9,13 +9,13 @@ import (
 )
 
 const (
-	healthyCPUThreshold        = 70.0
-	overloadedCPUThreshold     = 90.0
-	healthyFrametimeRatio      = 1.03
-	overloadedFrametimeRatio   = 1.05
-	healthySamplesForPromotion = 30
-	overloadSamplesForDrop     = 2
-	promotionHysteresis        = 60 * time.Second
+	healthyCPUThreshold      = 70.0
+	overloadedCPUThreshold   = 90.0
+	healthyFrametimeRatio    = 1.03
+	overloadedFrametimeRatio = 1.05
+	healthyPromotionDuration = 30 * time.Second
+	overloadSamplesForDrop   = 2
+	promotionHysteresis      = 60 * time.Second
 )
 
 type HostPayload struct {
@@ -41,7 +41,7 @@ type AutoController struct {
 	level           performancepolicy.Level
 	requestedLevel  performancepolicy.Level
 	reason          performancepolicy.Reason
-	healthySamples  int
+	healthySince    time.Time
 	overloadSamples int
 	lastDrop        time.Time
 	referenceFrame  float64
@@ -95,6 +95,7 @@ func (controller *AutoController) Observe(sample Sample) Decision {
 
 	// Fuera de foreground no se toma ninguna decisión ni se mueve la referencia.
 	if sample.Game.Available && !sample.Game.Foreground {
+		controller.healthySince = time.Time{}
 		return decision
 	}
 	if controller.vr {
@@ -107,7 +108,7 @@ func (controller *AutoController) Observe(sample Sample) Decision {
 	cpuOverloaded := sample.Host.CPUPct > overloadedCPUThreshold
 	if cpuOverloaded || frameOverloaded {
 		controller.overloadSamples++
-		controller.healthySamples = 0
+		controller.healthySince = time.Time{}
 		if controller.overloadSamples >= overloadSamplesForDrop && controller.level < performancepolicy.LevelMinimum {
 			controller.level++
 			controller.lastDrop = sample.At
@@ -122,14 +123,17 @@ func (controller *AutoController) Observe(sample Sample) Decision {
 		controller.overloadSamples = 0
 		healthy := sample.Host.CPUPct < healthyCPUThreshold && (!sample.Game.Available || frameHealthy)
 		if healthy {
-			controller.healthySamples++
+			if controller.healthySince.IsZero() || sample.At.Before(controller.healthySince) {
+				controller.healthySince = sample.At
+			}
 		} else {
-			controller.healthySamples = 0
+			controller.healthySince = time.Time{}
 		}
 		canPromote := controller.lastDrop.IsZero() || sample.At.Sub(controller.lastDrop) >= promotionHysteresis
-		if controller.healthySamples >= healthySamplesForPromotion && canPromote && controller.level > controller.requestedLevel {
+		healthyLongEnough := !controller.healthySince.IsZero() && sample.At.Sub(controller.healthySince) >= healthyPromotionDuration
+		if healthyLongEnough && canPromote && controller.level > controller.requestedLevel {
 			controller.level--
-			controller.healthySamples = 0
+			controller.healthySince = time.Time{}
 			controller.reason = performancepolicy.ReasonCPU
 			if sample.Game.Available {
 				controller.reason = performancepolicy.ReasonFrameTime
@@ -168,7 +172,7 @@ func (controller *AutoController) classifyFrametime(game GameSample) (healthy, o
 }
 
 func (controller *AutoController) resetEvidence() {
-	controller.healthySamples = 0
+	controller.healthySince = time.Time{}
 	controller.overloadSamples = 0
 	controller.referenceFrame = 0
 }

@@ -144,6 +144,7 @@ func TestPerformanceRuntimeFeedsAutoPolicyHotAndPublishesOnlyWhenVisible(t *test
 	visible := false
 	runtime := NewPerformanceRuntime(func() PerformanceSampleRunner { return nil }, PerformanceSettings{Mode: "auto", Level: 3}, performancepolicy.Policy{}, target, emitter, func() bool { return visible }, announcer)
 	start := time.Unix(1000, 0)
+	runtime.Observe(sensor.Sample{At: start, Host: sensor.HostSample{CPUPct: 50}, Game: sensor.GameSample{Available: true, Foreground: true, FrametimeMS: 10}})
 	for second := 1; second <= 30; second++ {
 		runtime.Observe(sensor.Sample{At: start.Add(time.Duration(second) * time.Second), Host: sensor.HostSample{CPUPct: 50}, Game: sensor.GameSample{Available: true, Foreground: true, FrametimeMS: 10}})
 	}

@@ -27,9 +27,29 @@ func TestAutoStartsBalancedAndPromotesAfterThirtyHealthySeconds(t *testing.T) {
 			t.Fatalf("changed early at second %d: %+v", second, got)
 		}
 	}
-	got := controller.Observe(autoSample(start.Add(29*time.Second), 50, 10.2, true))
+	if got := controller.Observe(autoSample(start.Add(29*time.Second), 50, 10.2, true)); got.Changed {
+		t.Fatalf("promotion before 30 seconds = %+v", got)
+	}
+	got := controller.Observe(autoSample(start.Add(30*time.Second), 50, 10.2, true))
 	if !got.Changed || got.Level != performancepolicy.LevelHigh {
 		t.Fatalf("promotion = %+v", got)
+	}
+}
+
+func TestAutoDoesNotPromoteFromBurstOfThirtySamples(t *testing.T) {
+	controller := NewAutoController(performancepolicy.LevelHigh)
+	start := time.Unix(150, 0)
+	for sample := 0; sample < 30; sample++ {
+		at := start.Add(time.Duration(sample) * 100 * time.Millisecond)
+		if got := controller.Observe(autoSample(at, 50, 10, true)); got.Changed {
+			t.Fatalf("burst promoted at %s: %+v", at.Sub(start), got)
+		}
+	}
+	if got := controller.Observe(autoSample(start.Add(30*time.Second-time.Nanosecond), 50, 10, true)); got.Changed {
+		t.Fatalf("promoted before 30 real seconds: %+v", got)
+	}
+	if got := controller.Observe(autoSample(start.Add(30*time.Second), 50, 10, true)); !got.Changed || got.Level != performancepolicy.LevelHigh {
+		t.Fatalf("did not promote at 30 real seconds: %+v", got)
 	}
 }
 

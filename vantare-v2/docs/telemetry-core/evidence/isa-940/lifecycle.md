@@ -3,12 +3,15 @@
 ## Autoridad y alcance
 
 - Rama: `vantareapp/isa-940-lifecycle-coste-cero`.
-- Base final de la medida: `origin/nightly@ade6f561`.
-- HEAD medido: `cd5a1dcbf314141828a01ce7dc392427e02343c1`.
+- Base de la medida efectiva: `origin/nightly@ade6f561`.
+- HEAD medido: `61c34c89cbb391abb37092d9661695139dc6c097`. La rama se
+  rebasó después sobre `origin/nightly@9723148f`, como exigía la coordinación;
+  #954 solo añadió frontend de Ajustes y regeneró roadmap, después de cerrar el
+  turno físico de medida.
 - Build diagnóstica propia: `bin/vantare-isa940.exe` (sin `-tags production`),
-  SHA-256 `668E183D1FCF632CC3B20F5D0F041966F2D78BB4285503E994E7E327508FB1BA`.
+  SHA-256 `8A5C571FBBB09F151BF3CA1B82D83D0CBBE579ABBC4AE6B447E13484F03773FA`.
 - Dist final: 47 ficheros, SHA-256
-  `79BADA433763767A91C0D4919FFBDF81253D241649388D0600C6CA74DBF01A08`.
+  `88C9340449FE51DD21181DE8DBDD18464F42AECF625C9785E18F30BFDD09F1CB`.
   El digest concatena por LF las filas ordenadas
   `ruta-relativa<TAB>sha256-del-fichero-en-minúsculas` y aplica SHA-256.
 - Perfil: `testdata/bench/huella-endurance-3.json`, tres widgets.
@@ -41,40 +44,46 @@ La ruta dinámica aún necesita módulos compartidos de edición importados por
 Las corridas contaminadas realizadas antes de la coordinación de máquina se
 descartaron y no se usan en esta tabla. Ninguna corrida aceptada usó `-Forzar`.
 
-### Pareja final atestada · mismo HEAD/exe/dist
+### Pareja final efectiva atestada · mismo HEAD/exe/dist
 
 El 30 de agosto, con LMU en Spa-Francorchamps, `PRACTICE1`, 18 coches,
 jugador en garaje e IA rodando, se ejecutaron L1 y L3 desde el artefacto fijado
 arriba. Antes de cada lanzamiento la higiene confirmó cero procesos
 `vantare-*.exe`; después de cada cierre confirmó cero Vantare y cero sesiones
 ETW `VantareHuella-*`. Los manifiestos versionados están junto a esta evidencia:
-`hubmin-20260830-031521-scene.json` y
-`hubmin-20260830-032129-scene.json`; cada directorio crudo contiene además
+`hubmin-20260830-040646-scene.json` y
+`hubmin-20260830-041235-scene.json`; cada directorio crudo contiene además
 `scene-manifest.json`.
 
 | Rol (privada media) | L1 MiB | L3 MiB | Delta MiB |
 |---|---:|---:|---:|
-| Go host | 74,83 | 72,98 | -1,85 |
-| Browser | 45,20 | 44,02 | -1,18 |
-| GPU process | 141,26 | 134,30 | -6,96 |
-| Utility | 22,19 | 22,26 | +0,07 |
-| Crashpad | 2,86 | 2,86 | 0,00 |
-| Renderer Hub | 54,01 | 0,00 | -54,01 |
-| Renderer overlay (`renderer-unassigned`) | 154,98 | 146,70 | -8,28 |
-| **Total árbol privado** | **495,33** | **423,13** | **-72,20** |
+| Go host | 73,31 | 72,57 | -0,74 |
+| Browser | 45,96 | 44,24 | -1,72 |
+| GPU process | 136,44 | 133,56 | -2,88 |
+| Utility | 22,68 | 22,45 | -0,23 |
+| Crashpad | 2,87 | 2,87 | 0,00 |
+| Renderer Hub | 51,08 | 0,00 | -51,08 |
+| Renderer overlay (`renderer-unassigned`) | 135,35 | 129,66 | -5,69 |
+| **Total árbol privado** | **467,69** | **405,35** | **-62,34** |
 
-L3 reduce 14,58 % frente al L1 del mismo binario y 24,71 % frente al baseline
-contractual de 562 MiB. Cumple la decisión P13 de RAM ≥20 %; no promociona L3,
-por lo que el default productivo continúa en nivel 1. El renderer Hub no aparece
-en ninguna muestra L3 y la reapertura real tardó 838,20 ms por CDP (L1:
-254,51 ms). PresentMon perdió 0/5.314 frames en L1 y 0/6.957 en L3; el frametime
-medio del juego fue 22,57 ms y 17,24 ms respectivamente. L1 registró una
-muestra inválida del contador GPU de Windows y la mantuvo ausente, sin rellenar
-con cero; RAM y PresentMon siguieron válidos.
+L3 reduce 13,33 % frente al L1 del mismo binario y 27,87 % frente al baseline
+contractual de 562 MiB. Cumple la decisión P13 de RAM ≥20 % frente al baseline;
+no promociona L3, por lo que el default productivo continúa en nivel 1. El
+renderer Hub no aparece en ninguna muestra L3 y la reapertura real tardó
+389,39 ms por CDP (L1: 273,28 ms). PresentMon perdió 0/8.747 frames en L1 y
+0/7.685 en L3; el frametime medio del juego fue 13,72 ms y 15,61 ms
+respectivamente. N=1 no permite atribuir esa diferencia al nivel.
+
+La corrida L3 verificó además el defecto que motivó la repetición: el SSE
+`/telemetry/overlay-v2/projection` publicó en vivo
+`capabilities.performance.level=3`, `mode=manual`, `rafCap=40`,
+`standings=5 Hz` e `input-telemetry=40 Hz`. La pareja anterior publicaba L1 en
+esa ruta aunque el lifecycle nativo aplicase el override L3, por lo que queda
+relegada a diagnóstico histórico.
 
 Artefactos crudos:
-`results/isa-940-same-final-l1/hubmin-20260830-031521.csv` y
-`results/isa-940-same-final-l3/hubmin-20260830-032129.csv`. El banco no pudo
+`results/isa-940-effective-final-l1/hubmin-20260830-040646.csv` y
+`results/isa-940-effective-final-l3/hubmin-20260830-041235.csv`. El banco no pudo
 resolver la relación PID↔target del overlay dentro de su ventana CDP y conservó
 honestamente ambos renderers de esa superficie como `renderer-unassigned`.
 

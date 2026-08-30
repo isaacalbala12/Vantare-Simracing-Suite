@@ -233,7 +233,7 @@ Fuera: cortes finos de renderer/Go (#912); cutover/retirada V1 (#893/#894); life
 ## 12. Gates
 
 1. Ningún nivel se publica sin la tabla de §8 en las tres condiciones de hardware (o dos si VR no está disponible, indicándolo).
-2. Nivel 3 debe ser ≥ 25 % mejor que hoy en CPU total de Vantare y ≥ 20 % en RAM privada con hub minimizado (medido 423,13 MiB, −24,71 % vs 562 MiB, 2026-08-30), sin empeorar frametime del juego. Este gate no promociona el nivel 3: el default productivo sigue en nivel 1 mientras esa decisión permanezca abierta.
+2. Nivel 3 debe ser ≥ 25 % mejor que hoy en CPU total de Vantare y ≥ 20 % en RAM privada con hub minimizado (medido 405,35 MiB, −27,87 % vs 562 MiB, 2026-08-30), sin empeorar frametime del juego. Este gate no promociona el nivel 3: el default productivo sigue en nivel 1 mientras esa decisión permanezca abierta.
 3. Nivel 5 debe dejar Vantare ≤ 0,5 cores y ≤ 250 MB privados con overlay activo.
 4. Automático no puede oscilar: ≤ 2 cambios de nivel en 10 minutos de sesión estable.
 5. Ningún evento de seguridad (banderas, spotter, avisos) aumenta su latencia p99 en ningún nivel (> 50 ms sobre nivel 1 es fallo).

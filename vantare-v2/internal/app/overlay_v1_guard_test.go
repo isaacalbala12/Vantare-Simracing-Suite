@@ -65,6 +65,8 @@ func TestOverlayV1EmissionGuardRejectsEveryEmitterVariant(t *testing.T) {
 		{name: "generic Emit projection", source: `package sample; func f() { emitter.Emit("telemetry:overlay:projection", nil) }`, want: true},
 		{name: "EmitEvent status", source: `package sample; func f() { window.EmitEvent("telemetry:overlay:status", nil) }`, want: true},
 		{name: "constant alias", source: `package sample; const legacy = "telemetry:overlay:projection"; func f() { emitter.Emit(legacy, nil) }`, want: true},
+		{name: "local assignment alias", source: `package sample; func f() { projection := "telemetry:overlay:projection"; emitter.Emit(projection, nil) }`, want: true},
+		{name: "negated diagnostic switch", source: `package sample; func f() { if !runtime.overlayV1Emit { emitter.Emit("telemetry:overlay:projection", nil) } }`, want: true},
 		{name: "diagnostic switch", source: `package sample; func f() { if runtime.overlayV1Emit { emitter.Emit("telemetry:overlay:projection", nil) } }`},
 		{name: "v2 stays allowed", source: `package sample; func f() { emitter.Emit("telemetry:overlay-v2:snapshot", nil) }`},
 	}
@@ -82,7 +84,6 @@ func hasGlobalOverlayV1Emission(source string) bool {
 	if err != nil {
 		return true
 	}
-	constants := stringConstants(file)
 	forbidden := map[string]struct{}{
 		"telemetry:snapshot":           {},
 		"telemetry:overlay:projection": {},
@@ -98,65 +99,108 @@ func hasGlobalOverlayV1Emission(source string) bool {
 		if !ok || selector.Sel.Name != "Emit" && selector.Sel.Name != "EmitEvent" {
 			return true
 		}
-		name, ok := resolveString(call.Args[0], constants)
-		if !ok {
-			return true
-		}
-		if _, blocked := forbidden[name]; blocked && !insideOverlayV1Switch(file, call) {
-			violation = true
-			return false
+		bindings := stringBindingsAt(file, call.Pos())
+		for name := range resolveStrings(call.Args[0], bindings, nil) {
+			if _, blocked := forbidden[name]; blocked && !insideOverlayV1Switch(file, call) {
+				violation = true
+				return false
+			}
 		}
 		return true
 	})
 	return violation
 }
 
-func stringConstants(file *ast.File) map[string]string {
-	constants := make(map[string]string)
+func stringBindingsAt(file *ast.File, position token.Pos) map[string][]ast.Expr {
+	bindings := make(map[string][]ast.Expr)
 	for _, declaration := range file.Decls {
 		generic, ok := declaration.(*ast.GenDecl)
-		if !ok || generic.Tok != token.CONST {
+		if !ok || generic.Tok != token.CONST && generic.Tok != token.VAR {
 			continue
 		}
-		for _, specification := range generic.Specs {
-			valueSpec, ok := specification.(*ast.ValueSpec)
-			if !ok {
-				continue
-			}
-			for index, name := range valueSpec.Names {
-				if index >= len(valueSpec.Values) {
-					continue
-				}
-				if value, ok := resolveString(valueSpec.Values[index], constants); ok {
-					constants[name.Name] = value
-				}
-			}
-		}
+		addValueSpecBindings(bindings, generic.Specs)
 	}
-	return constants
+	for _, declaration := range file.Decls {
+		function, ok := declaration.(*ast.FuncDecl)
+		if !ok || function.Body == nil || position < function.Body.Pos() || position > function.Body.End() {
+			continue
+		}
+		ast.Inspect(function.Body, func(node ast.Node) bool {
+			if node == nil || node.Pos() >= position {
+				return false
+			}
+			switch statement := node.(type) {
+			case *ast.FuncLit:
+				return false
+			case *ast.AssignStmt:
+				if len(statement.Lhs) != len(statement.Rhs) {
+					return true
+				}
+				for index, left := range statement.Lhs {
+					if name, ok := left.(*ast.Ident); ok {
+						bindings[name.Name] = append(bindings[name.Name], statement.Rhs[index])
+					}
+				}
+			case *ast.DeclStmt:
+				if generic, ok := statement.Decl.(*ast.GenDecl); ok {
+					addValueSpecBindings(bindings, generic.Specs)
+				}
+			}
+			return true
+		})
+	}
+	return bindings
 }
 
-func resolveString(expression ast.Expr, constants map[string]string) (string, bool) {
+func addValueSpecBindings(bindings map[string][]ast.Expr, specifications []ast.Spec) {
+	for _, specification := range specifications {
+		valueSpec, ok := specification.(*ast.ValueSpec)
+		if !ok {
+			continue
+		}
+		for index, name := range valueSpec.Names {
+			if index < len(valueSpec.Values) {
+				bindings[name.Name] = append(bindings[name.Name], valueSpec.Values[index])
+			}
+		}
+	}
+}
+
+func resolveStrings(expression ast.Expr, bindings map[string][]ast.Expr, resolving map[string]bool) map[string]struct{} {
+	resolved := make(map[string]struct{})
 	switch value := expression.(type) {
 	case *ast.BasicLit:
-		if value.Kind != token.STRING {
-			return "", false
+		if value.Kind == token.STRING {
+			if decoded, err := strconv.Unquote(value.Value); err == nil {
+				resolved[decoded] = struct{}{}
+			}
 		}
-		decoded, err := strconv.Unquote(value.Value)
-		return decoded, err == nil
 	case *ast.Ident:
-		resolved, ok := constants[value.Name]
-		return resolved, ok
-	case *ast.BinaryExpr:
-		if value.Op != token.ADD {
-			return "", false
+		if resolving == nil {
+			resolving = make(map[string]bool)
 		}
-		left, leftOK := resolveString(value.X, constants)
-		right, rightOK := resolveString(value.Y, constants)
-		return left + right, leftOK && rightOK
-	default:
-		return "", false
+		if resolving[value.Name] {
+			return resolved
+		}
+		resolving[value.Name] = true
+		for _, bound := range bindings[value.Name] {
+			for candidate := range resolveStrings(bound, bindings, resolving) {
+				resolved[candidate] = struct{}{}
+			}
+		}
+		delete(resolving, value.Name)
+	case *ast.BinaryExpr:
+		if value.Op == token.ADD {
+			left := resolveStrings(value.X, bindings, resolving)
+			right := resolveStrings(value.Y, bindings, resolving)
+			for prefix := range left {
+				for suffix := range right {
+					resolved[prefix+suffix] = struct{}{}
+				}
+			}
+		}
 	}
+	return resolved
 }
 
 func insideOverlayV1Switch(file *ast.File, call *ast.CallExpr) bool {
@@ -166,16 +210,23 @@ func insideOverlayV1Switch(file *ast.File, call *ast.CallExpr) bool {
 		if !ok || call.Pos() < statement.Body.Pos() || call.End() > statement.Body.End() {
 			return true
 		}
-		ast.Inspect(statement.Cond, func(conditionNode ast.Node) bool {
-			switch condition := conditionNode.(type) {
-			case *ast.Ident:
-				guarded = guarded || condition.Name == "overlayV1Emit"
-			case *ast.SelectorExpr:
-				guarded = guarded || condition.Sel.Name == "overlayV1Emit"
-			}
-			return !guarded
-		})
+		guarded = positiveOverlayV1Condition(statement.Cond)
 		return !guarded
 	})
 	return guarded
+}
+
+func positiveOverlayV1Condition(expression ast.Expr) bool {
+	switch condition := expression.(type) {
+	case *ast.Ident:
+		return condition.Name == "overlayV1Emit"
+	case *ast.SelectorExpr:
+		return condition.Sel.Name == "overlayV1Emit"
+	case *ast.ParenExpr:
+		return positiveOverlayV1Condition(condition.X)
+	case *ast.BinaryExpr:
+		return condition.Op == token.LAND && (positiveOverlayV1Condition(condition.X) || positiveOverlayV1Condition(condition.Y))
+	default:
+		return false
+	}
 }

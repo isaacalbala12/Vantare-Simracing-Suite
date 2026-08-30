@@ -25,8 +25,8 @@ func TestEffectivePerformancePolicyDefaultsAndDiagnosticOverride(t *testing.T) {
 	if err := svc.Load(); err != nil {
 		t.Fatal(err)
 	}
-	if got := svc.EffectivePerformancePolicy(nil); got.Level != 3 || got.Mode != "auto" {
-		t.Fatalf("default policy=%+v want automatic level 3", got)
+	if got := svc.EffectivePerformancePolicy(nil); got.Level != 2 || got.Mode != "auto" || got.Reason != "unavailable" {
+		t.Fatalf("effective default policy=%+v want automatic level-2 ceiling unavailable", got)
 	}
 	t.Setenv("VANTARE_PERF_LEVEL", "4")
 	profile := &config.ProfileDocumentV4{
@@ -36,8 +36,8 @@ func TestEffectivePerformancePolicyDefaultsAndDiagnosticOverride(t *testing.T) {
 		t.Fatalf("diagnostic policy=%+v want level 4", got)
 	}
 	t.Setenv("VANTARE_PERF_LEVEL", "9")
-	if got := svc.EffectivePerformancePolicy(nil); got.Level != 3 || got.Mode != "auto" {
-		t.Fatalf("invalid diagnostic policy=%+v want automatic fallback", got)
+	if got := svc.EffectivePerformancePolicy(nil); got.Level != 2 || got.Mode != "auto" || got.Reason != "unavailable" {
+		t.Fatalf("invalid diagnostic policy=%+v want effective automatic fallback", got)
 	}
 }
 

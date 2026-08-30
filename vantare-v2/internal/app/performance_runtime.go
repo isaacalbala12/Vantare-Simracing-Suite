@@ -243,7 +243,7 @@ func (runtime *PerformanceRuntime) applyPolicyLocked() {
 		return
 	}
 	if runtime.settings.Mode == string(performancepolicy.ModeAuto) {
-		runtime.target.SetPerformancePolicy(performancepolicy.ResolveAutoRequested(runtime.request, runtime.controller.Level(), performancepolicy.ReasonUser))
+		runtime.target.SetPerformancePolicy(performancepolicy.ResolveAutoRequested(runtime.request, runtime.controller.Level(), performancepolicy.ReasonUnavailable))
 		return
 	}
 	runtime.target.SetPerformancePolicy(runtime.request)

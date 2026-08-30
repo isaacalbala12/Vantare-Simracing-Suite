@@ -50,10 +50,11 @@
   la sesión ya ausente. El guion reproducible queda en
   `scripts/bench/isa944-auto-smoke.ps1`; falta la captura sin LMU. PR draft
   **#948** hacia `nightly`; sin merge ni promoción.
-  El defecto continúa temporalmente en nivel 1 manual por decisión de rollout
-  hasta cerrar el gate 12.2. `performanceRolloutDefault` es el único punto que
-  alimenta instalaciones nuevas y la migración vigente; pasar a `auto`/nivel 3
-  exige cambiar esa autoridad y añadir una nueva migración de esquema.
+  Isaac aceptó el gate 12.2 y revirtió el rollout temporal: Automático es el
+  defecto desde #948. El schema v5 migra tanto la ausencia de `performance`
+  como el sentinel legado sin procedencia `level`/1 a `auto`, y preserva las
+  elecciones explícitas mediante `source: user`; todo guardado desde Ajustes
+  fija esa procedencia.
   El tope D4 entra por la interfaz estrecha `RequestedLevelSource`, hoy
   implementada por `SettingsService.EffectivePerformancePolicy` e incluyendo
   `VANTARE_PERF_LEVEL` en builds de diagnóstico. #947 debe implementar esa

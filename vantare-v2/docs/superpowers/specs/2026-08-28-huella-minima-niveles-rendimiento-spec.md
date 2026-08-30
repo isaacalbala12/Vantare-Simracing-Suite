@@ -172,6 +172,8 @@ Se publica dentro del frame para que el widget no necesite otra suscripción (re
 
 Sin sensor o juego disponible, Automático se mantiene en nivel 3 y publica `reason: "unavailable"`.
 
+Defecto Automático desde #948 (2026-08-30); sustituye el rollout temporal en nivel 1 manual.
+
 ### 7.2 Evento `performance:level` (Go → hub)
 
 Payload igual a 7.1 más `host: { cpuPct, vantareCpuPct, vantareRamMB, gpuPct, gameFrametimeMs? }`, a 1 Hz, solo mientras el hub está visible.
@@ -182,11 +184,14 @@ Payload igual a 7.1 más `host: { cpuPct, vantareCpuPct, vantareRamMB, gpuPct, g
 Performance struct {
   Mode      string            // "level" | "custom" | "auto"
   Level     int               // 1..5 (si Mode == "level"; nivel inicial si "auto")
+  Source    string            // "default" | "user"; procedencia de la elección de app
   Overrides map[string]Override // si Mode == "custom"
 }
 ```
 
 `CpuSampling` existente (`settings_service.go:48`) pasa a ser obligatorio en modo `auto` (se activa solo).
+
+La migración a schema v5 considera defecto temporal únicamente el sentinel legado exacto `mode: level`, `level: 1`, sin `source` ni overrides. La ausencia de `performance` y ese sentinel migran a `mode: auto`, `source: default`; cualquier elección marcada `source: user`, cualquier otro nivel y `custom` se preservan. Todo guardado desde Ajustes marca `source: user`.
 
 ### 7.4 Perfil v4
 
@@ -266,6 +271,7 @@ Fuera: cortes finos de renderer/Go (#912); cutover/retirada V1 (#893/#894); life
 | P11 | ¿Cerrar Edge/WebView2 ajenos al medir? | **Sí, cerrar todo.** | §8 |
 | P12 | ¿Escena del A/B? | **Coche en pista parado.** | §8 |
 | P13 | ¿Se acepta el gate RAM de F2 con el resultado de #940? | **Sí, ≥ 20 %.** El −30 % original requería el Hub a cero y además recortar GPU process/renderer del overlay; ese trabajo continúa en [#951](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/951). | §12.2, #951 |
+| P14 | ¿Termina el rollout temporal en nivel 1 al aceptar el gate 12.2? | **Sí. Automático es el defecto desde #948 (2026-08-30), con migración que preserva elecciones explícitas.** | D7, §7.1, §7.3 |
 
 Pendiente de Isaac: elegir el juego de nombres de §5.1 y diseñar las variantes `noBlur`/`flat` de Endurance (D9).
 

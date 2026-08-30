@@ -86,7 +86,7 @@ export type AppSettings = {
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {
   cpuSampling: true,
-  performance: { mode: "level", level: 1 },
+  performance: { mode: "auto", level: 3 },
   notifications: {},
   hotkeys: {
     toggleOverlay: "ctrl+shift+v",

@@ -56,19 +56,19 @@ type WidgetOverride struct {
 type PerformanceSettings struct {
 	Mode      string                    `json:"mode"`
 	Level     int                       `json:"level"`
+	Source    PerformanceSource         `json:"source"`
 	Overrides map[string]WidgetOverride `json:"overrides,omitempty"`
 }
 
+type PerformanceSource string
+
 const (
-	performanceRolloutMode  = "level"
-	performanceRolloutLevel = 1
+	PerformanceSourceDefault PerformanceSource = "default"
+	PerformanceSourceUser    PerformanceSource = "user"
 )
 
-// performanceRolloutDefault mantiene el rollout conservador en un único punto.
-// Cuando el gate 12.2 autorice Automático por defecto, se cambia esta autoridad
-// y se añade la migración de esquema correspondiente.
-func performanceRolloutDefault() PerformanceSettings {
-	return PerformanceSettings{Mode: performanceRolloutMode, Level: performanceRolloutLevel}
+func performanceDefault() PerformanceSettings {
+	return PerformanceSettings{Mode: string(performancepolicy.ModeAuto), Source: PerformanceSourceDefault}
 }
 
 // ResolvePerformancePolicy combina el defecto de la app con la preferencia
@@ -392,7 +392,7 @@ func DefaultAppSettings() *AppSettings {
 	return &AppSettings{
 		SchemaVersion: appSettingsSchemaVersion,
 		CpuSampling:   true,
-		Performance:   performanceRolloutDefault(),
+		Performance:   performanceDefault(),
 		Hotkeys: map[string]string{
 			"toggleOverlay":       "ctrl+shift+v",
 			"toggleEditMode":      "ctrl+shift+e",
@@ -478,7 +478,7 @@ func cloneWidgetOverrides(source map[string]WidgetOverride) map[string]WidgetOve
 }
 
 // appSettingsSchemaVersion is the current shape of the persisted settings.
-const appSettingsSchemaVersion = 4
+const appSettingsSchemaVersion = 5
 
 // migrateSettings applies schema migrations in place.
 //
@@ -491,7 +491,10 @@ const appSettingsSchemaVersion = 4
 //	          sampler through SetCPUEnabled.
 //	v2 -> v3: add the configurable Delta reference hotkey without replacing any
 //	          user-defined combinations.
-//	v3 -> v4: add the global performance default at parity level.
+//	v3 -> v4: add the former temporary global performance default at level 1.
+//	v4 -> v5: make Automatic the default after gate 12.2. The exact unmarked
+//	          level-1 sentinel was written by the temporary rollout and migrates;
+//	          an explicit user source or any other choice is preserved.
 func (s *SettingsService) migrateSettings(settings *AppSettings) {
 	if settings.SchemaVersion == 0 {
 		settings.SchemaVersion = 1
@@ -516,9 +519,21 @@ func (s *SettingsService) migrateSettings(settings *AppSettings) {
 	}
 	if settings.SchemaVersion < 4 {
 		if settings.Performance.Mode == "" {
-			settings.Performance = performanceRolloutDefault()
+			settings.Performance = PerformanceSettings{Mode: string(performancepolicy.ModeLevel), Level: 1}
 		}
 		settings.SchemaVersion = 4
+	}
+	if settings.SchemaVersion < 5 {
+		performance := settings.Performance
+		legacyDefault := performance.Source == "" &&
+			performance.Mode == string(performancepolicy.ModeLevel) &&
+			performance.Level == 1 && len(performance.Overrides) == 0
+		if performance.Source == PerformanceSourceDefault || performance.Mode == "" || legacyDefault {
+			settings.Performance = performanceDefault()
+		} else if performance.Source == "" {
+			settings.Performance.Source = PerformanceSourceUser
+		}
+		settings.SchemaVersion = 5
 	}
 }
 

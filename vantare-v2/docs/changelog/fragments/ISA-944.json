@@ -6,7 +6,8 @@
   "technicalNotes": [
     "El sensor Go mide a 1 Hz la CPU total y la CPU/RAM del proceso Vantare junto con sus WebView2 propios.",
     "PresentMon usa una sesión ETW VantareSensor propia, conserva las sesiones de Radeon y de otros bancos, y limpia sus huérfanas al siguiente arranque.",
-    "El controlador trabaja entre los niveles 2 y 5 con promoción tras 30 segundos estables, descenso en dos segundos e histéresis de 60 segundos."
+    "El controlador trabaja entre los niveles 2 y 5 con promoción tras 30 segundos estables, descenso en dos segundos e histéresis de 60 segundos.",
+    "Automático es el defecto desde el schema v5; la migración reemplaza el sentinel temporal nivel 1 y conserva las elecciones marcadas como usuario."
   ],
   "testing": [
     "Activar Automático con LMU cerrado y comprobar que el Hub publica reason unavailable mientras el nivel sigue respondiendo a CPU.",

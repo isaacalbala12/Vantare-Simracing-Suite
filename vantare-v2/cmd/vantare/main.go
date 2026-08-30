@@ -2713,6 +2713,7 @@ func main() {
 		if s.Performance.Mode == "auto" {
 			s.CpuSampling = true
 		}
+		s.Performance.Source = app.PerformanceSourceUser
 		confirmed, _, err := performanceSaves.Execute(func() error { return settingsSvc.Save(&s) })
 		if err != nil {
 			log.Printf("settings:save error: %v", err)

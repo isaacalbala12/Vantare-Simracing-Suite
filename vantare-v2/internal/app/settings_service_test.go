@@ -65,8 +65,8 @@ func TestDefaultAppSettings(t *testing.T) {
 	if !s.CpuSampling {
 		t.Errorf("expected cpuSampling=true")
 	}
-	if s.Performance.Mode != "level" || s.Performance.Level != 1 {
-		t.Errorf("expected parity performance default, got %+v", s.Performance)
+	if s.Performance.Mode != "auto" || s.Performance.Level != 0 || s.Performance.Source != app.PerformanceSourceDefault {
+		t.Errorf("expected automatic performance default, got %+v", s.Performance)
 	}
 	if len(s.Hotkeys) != 5 {
 		t.Errorf("expected 5 hotkeys, got %d", len(s.Hotkeys))
@@ -114,6 +114,7 @@ func TestSettingsServiceLoadSave(t *testing.T) {
 
 	// Save custom settings
 	custom := app.DefaultAppSettings()
+	custom.Performance = app.PerformanceSettings{Mode: "level", Level: 3, Source: app.PerformanceSourceUser}
 	custom.CpuSampling = false
 	custom.CpuSampling = false
 	custom.Hotkeys["toggleOverlay"] = "alt+v"
@@ -463,8 +464,8 @@ func TestLoadMigratesSchemaVersionAndAddsDeltaHotkey(t *testing.T) {
 	os.WriteFile(path, []byte(data), 0o644)
 	svc := app.NewSettingsService(path, nil, nil)
 	svc.Load()
-	if svc.Settings().SchemaVersion != 4 {
-		t.Errorf("expected SchemaVersion=4, got %d", svc.Settings().SchemaVersion)
+	if svc.Settings().SchemaVersion != 5 {
+		t.Errorf("expected SchemaVersion=5, got %d", svc.Settings().SchemaVersion)
 	}
 	if got := svc.Settings().Hotkeys["cycleDeltaReference"]; got != "ctrl+shift+d" {
 		t.Errorf("cycleDeltaReference=%q want ctrl+shift+d", got)
@@ -484,7 +485,7 @@ func TestLoadMigratesSettingsBeforePerformanceWithoutLosingExistingValues(t *tes
 		t.Fatal(err)
 	}
 	got := svc.Settings()
-	if got.SchemaVersion != 4 || got.Performance.Mode != "level" || got.Performance.Level != 1 {
+	if got.SchemaVersion != 5 || got.Performance.Mode != "auto" || got.Performance.Level != 0 || got.Performance.Source != app.PerformanceSourceDefault {
 		t.Fatalf("migration result = %+v", got.Performance)
 	}
 	if got.CpuSampling || got.ActiveOverlayProfileID != "endurance" {
@@ -611,8 +612,8 @@ func TestLauncherPoliciesMigrateLegacyProfilesToSafeDefaults(t *testing.T) {
 
 func TestDefaultAppSettingsHasCurrentSchemaVersion(t *testing.T) {
 	s := app.DefaultAppSettings()
-	if s.SchemaVersion != 4 {
-		t.Fatalf("expected SchemaVersion=4, got %d", s.SchemaVersion)
+	if s.SchemaVersion != 5 {
+		t.Fatalf("expected SchemaVersion=5, got %d", s.SchemaVersion)
 	}
 }
 
@@ -682,11 +683,11 @@ func TestLoadMigratesLegacySettings(t *testing.T) {
 	if err := svc.Load(); err != nil {
 		t.Fatalf("load: %v", err)
 	}
-	if svc.Settings().SchemaVersion != 4 {
-		t.Errorf("expected SchemaVersion=4 after migration, got %d", svc.Settings().SchemaVersion)
+	if svc.Settings().SchemaVersion != 5 {
+		t.Errorf("expected SchemaVersion=5 after migration, got %d", svc.Settings().SchemaVersion)
 	}
-	if got := svc.Settings().Performance; got.Mode != "level" || got.Level != 1 {
-		t.Errorf("expected migrated performance level 1, got %+v", got)
+	if got := svc.Settings().Performance; got.Mode != "auto" || got.Level != 0 || got.Source != app.PerformanceSourceDefault {
+		t.Errorf("expected migrated automatic performance default, got %+v", got)
 	}
 	if svc.Settings().LauncherApps == nil {
 		t.Error("LauncherApps should be initialized")
@@ -725,8 +726,8 @@ func TestLoadFallsBackToDefaultsOnTotalCorruption(t *testing.T) {
 	if err := svc.Load(); err != nil {
 		t.Fatalf("load should not panic: %v", err)
 	}
-	if svc.Settings().SchemaVersion != 4 {
-		t.Errorf("expected defaults with SchemaVersion=4")
+	if svc.Settings().SchemaVersion != 5 {
+		t.Errorf("expected defaults with SchemaVersion=5")
 	}
 	if svc.Settings().LauncherProfiles == nil {
 		t.Error("expected default profiles")

@@ -28,8 +28,10 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   #956 separará PID/target, dominators y una lane `-tags production` sin CDP.
   El gesto fue cruce a pista y escapatoria por teclado, sin vuelta lanzada
   completa; puede requerir repetición estricta. Evidencia:
-  `docs/telemetry-core/evidence/isa-894/s1-definitiva-20260830.md`. Corte 2
-  sigue bloqueado; sin merge, promoción ni release.
+  `docs/telemetry-core/evidence/isa-894/s1-definitiva-20260830.md`; las tres
+  crudas sanitizadas, checkpoints, CSV, resúmenes, SHA-256 y recálculo
+  ejecutable están versionados bajo `s1-definitiva/`. Corte 2 sigue bloqueado;
+  sin merge, promoción ni release.
 - 2026-08-30, seguimiento ISA-894/PR #955 después de S1 ON completa (20 min):
   el segundo fallo `StrictMode` del colector era la enumeración de una lista
   vacía de screenshots finales; el parser y el script toleran listas/targets y

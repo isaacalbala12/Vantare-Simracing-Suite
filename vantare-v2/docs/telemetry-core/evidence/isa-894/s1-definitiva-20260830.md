@@ -13,10 +13,12 @@ Gesto humano observado: **cruce a pista y escapatoria, sin vuelta lanzada
 completa — conducción remota por teclado; Isaac puede repetir el gesto estricto
 al volante si lo exige el gate**.
 
-Crudas locales:
+Paquetes sanitizados y versionados:
 
-- ON: `results/isa-894/sesiones/s1-on-20260830-201420/`.
-- OFF: `results/isa-894/sesiones/s1-off-20260830-203454/`.
+- ON: `s1-definitiva/on/`.
+- OFF: `s1-definitiva/off/`.
+- Manifiesto y procedimiento de recálculo: `s1-definitiva/README.md` y
+  `s1-definitiva/SHA256SUMS`.
 
 ## Resúmenes regenerados
 
@@ -46,8 +48,7 @@ del guion; si ese detalle es vinculante, S1 debe repetirse al volante.
 
 Se ejecutó una fase diagnóstica S1 OFF de 10 minutos, sin gesto, con el mismo
 exe/dist, `EstadoCada=0` y solo tres conexiones CDP: inicio, minuto 5 y final.
-La cruda está en
-`results/isa-894/cdp-isolation/s1-off-20260830-205930/`. Captura, metadata,
+La cruda sanitizada está en `s1-definitiva/cdp-isolation-off/`. Captura, metadata,
 duración, higiene, ventanas, V1 OFF, entrega (p99 39,5 ms; max 1.016,1 ms),
 screenshots y cierre pasaron. Memoria falló.
 

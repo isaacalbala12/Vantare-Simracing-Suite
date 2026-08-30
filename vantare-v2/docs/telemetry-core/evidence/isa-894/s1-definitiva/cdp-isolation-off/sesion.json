@@ -1,0 +1,1218 @@
+{
+  "schema": "vantare.session.v1",
+  "session": "S1",
+  "phase": "off",
+  "expectedWindows": [
+    "desktop"
+  ],
+  "durationMinutes": 10,
+  "memoryDiagnostic": true,
+  "statePollSeconds": 0,
+  "startedAt": "2026-08-30T20:59:31.4901752+02:00",
+  "endedAt": "2026-08-30T21:09:31.6172555+02:00",
+  "executable": {
+    "path": "<measurement-worktree>\\bin\\vantare-sesiones.exe",
+    "sha256": "d02054e33a25139a59f57ef443255bb1fa63cc5988d05d4db98a332fbb1eda98",
+    "sha256End": "d02054e33a25139a59f57ef443255bb1fa63cc5988d05d4db98a332fbb1eda98",
+    "distPath": "<measurement-worktree>\\frontend\\dist",
+    "distSha256": "5b8e388c3a4b242d2e913dcfcfb1a7f5211536c564c464f7880a4fc77bf944f3",
+    "distSha256End": "5b8e388c3a4b242d2e913dcfcfb1a7f5211536c564c464f7880a4fc77bf944f3",
+    "stable": true,
+    "gitHead": "32c3e68646936e8b7ac93da761adadbb5a658606"
+  },
+  "scene": {
+    "description": "Spa practica, jugador en garaje, IA rodando; sin gesto; polling CDP aislado",
+    "cars": 14
+  },
+  "hygiene": {
+    "foreign": [],
+    "systemWebView2": [
+      {
+        "Name": "msedgewebview2.exe",
+        "ProcessId": 9752,
+        "ParentProcessId": 9080,
+        "CommandLine": "\"C:\\Program Files (x86)\\Microsoft\\EdgeWebView\\Application\\151.0.4129.107\\msedgewebview2.exe\" --embedded-browser-webview=1 --webview-exe-name=SearchHost.exe --webview-exe-version=2606.30004.100.0 --user-data-dir=\"<user-profile>\\AppData\\Local\\Packages\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\LocalState\\EBWebView\" --noerrdialogs --disable-features=msSmartScreenProtection --edge-webview-enable-mojo-ipcz --enable-features=msEdgeFluentOverlayScrollbar --user-agent=\"Mozilla/5.0 (Windows NT 10.0; Win64; x64; Cortana 1.18.9.23723; 10.0.0.0.26200.9168) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.102 Safari/537.36 Edge/18.26200 IsWebView2/True (WebView2Version 151.0.4129.107)\" --lang=es-ES --mojo-named-platform-channel-pipe=9080.10132.8573600517262582037 /pfhostedapp:ea1fa936703d743fbdf7b85ecde4a1cda5b2724a",
+        "userDataDir": "<user-profile>\\AppData\\Local\\Packages\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\LocalState\\EBWebView"
+      },
+      {
+        "Name": "msedgewebview2.exe",
+        "ProcessId": 7948,
+        "ParentProcessId": 9752,
+        "CommandLine": "\"C:\\Program Files (x86)\\Microsoft\\EdgeWebView\\Application\\151.0.4129.107\\msedgewebview2.exe\" --type=crashpad-handler --user-data-dir=<user-profile>\\AppData\\Local\\Packages\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\LocalState\\EBWebView /prefetch:4 /pfhostedapp:ea1fa936703d743fbdf7b85ecde4a1cda5b2724a --monitor-self-annotation=ptype=crashpad-handler --database=<user-profile>\\AppData\\Local\\Packages\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\LocalState\\EBWebView\\Crashpad --annotation=IsOfficialBuild=1 --annotation=channel= --annotation=chromium-version=151.0.7922.174 \"--annotation=exe=C:\\Program Files (x86)\\Microsoft\\EdgeWebView\\Application\\151.0.4129.107\\msedgewebview2.exe\" --annotation=plat=Win64 \"--annotation=prod=Edge WebView2\" --annotation=ver=151.0.4129.107 --initial-client-data=0x16c,0x170,0x174,0x148,0x17c,0x7ffba97265f0,0x7ffba9726600,0x7ffba9726610",
+        "userDataDir": "<user-profile>\\AppData\\Local\\Packages\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\LocalState\\EBWebView"
+      },
+      {
+        "Name": "msedgewebview2.exe",
+        "ProcessId": 10352,
+        "ParentProcessId": 9752,
+        "CommandLine": "\"C:\\Program Files (x86)\\Microsoft\\EdgeWebView\\Application\\151.0.4129.107\\msedgewebview2.exe\" --type=gpu-process --noerrdialogs --user-agent=\"Mozilla/5.0 (Windows NT 10.0; Win64; x64; Cortana 1.18.9.23723; 10.0.0.0.26200.9168) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.102 Safari/537.36 Edge/18.26200 IsWebView2/True (WebView2Version 151.0.4129.107)\" --user-data-dir=\"<user-profile>\\AppData\\Local\\Packages\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\LocalState\\EBWebView\" --webview-exe-name=SearchHost.exe --webview-exe-version=2606.30004.100.0 --embedded-browser-webview=1 --gpu-preferences=WAAAAAAAAADgAAAEAAAAAAAAAAAAAGAAQAAAAAAAAAADAAAAAAAAADgAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAKAAAAAAAAAAoAAAAAAAAAAgAAAAAAAAAEAAAAAIAAAABAAAAAAAAAAgAAAAAAAAACAAAAAAAAAA= --always-read-main-dll --metrics-shmem-handle=1980,i,18282524052107099634,13166805384568636141,262144 --field-trial-handle=2060,i,3365090682232894945,14813822915426672071,262144 --enable-features=msEdgeFluentOverlayScrollbar --disable-features=msSmartScreenProtection --variations-seed-version --pseudonymization-salt-handle=2084,i,14650293429704669866,7778520600876478717,4 --trace-process-track-uuid=3190708988185955192 --mojo-platform-channel-handle=2040 /prefetch:2 /pfhostedapp:ea1fa936703d743fbdf7b85ecde4a1cda5b2724a",
+        "userDataDir": "<user-profile>\\AppData\\Local\\Packages\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\LocalState\\EBWebView"
+      },
+      {
+        "Name": "msedgewebview2.exe",
+        "ProcessId": 10376,
+        "ParentProcessId": 9752,
+        "CommandLine": "\"C:\\Program Files (x86)\\Microsoft\\EdgeWebView\\Application\\151.0.4129.107\\msedgewebview2.exe\" --type=utility --utility-sub-type=network.mojom.NetworkService --lang=es --service-sandbox-type=none --noerrdialogs --user-agent=\"Mozilla/5.0 (Windows NT 10.0; Win64; x64; Cortana 1.18.9.23723; 10.0.0.0.26200.9168) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.102 Safari/537.36 Edge/18.26200 IsWebView2/True (WebView2Version 151.0.4129.107)\" --user-data-dir=\"<user-profile>\\AppData\\Local\\Packages\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\LocalState\\EBWebView\" --webview-exe-name=SearchHost.exe --webview-exe-version=2606.30004.100.0 --embedded-browser-webview=1 --always-read-main-dll --metrics-shmem-handle=2324,i,17558993731762439155,16377761269087256930,524288 --field-trial-handle=2060,i,3365090682232894945,14813822915426672071,262144 --enable-features=msEdgeFluentOverlayScrollbar --disable-features=msSmartScreenProtection --variations-seed-version --pseudonymization-salt-handle=2084,i,14650293429704669866,7778520600876478717,4 --trace-process-track-uuid=3190708989122997041 --mojo-platform-channel-handle=2332 /prefetch:11 /pfhostedapp:ea1fa936703d743fbdf7b85ecde4a1cda5b2724a",
+        "userDataDir": "<user-profile>\\AppData\\Local\\Packages\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\LocalState\\EBWebView"
+      },
+      {
+        "Name": "msedgewebview2.exe",
+        "ProcessId": 10424,
+        "ParentProcessId": 9752,
+        "CommandLine": "\"C:\\Program Files (x86)\\Microsoft\\EdgeWebView\\Application\\151.0.4129.107\\msedgewebview2.exe\" --type=utility --utility-sub-type=storage.mojom.StorageService --lang=es --service-sandbox-type=service --noerrdialogs --user-agent=\"Mozilla/5.0 (Windows NT 10.0; Win64; x64; Cortana 1.18.9.23723; 10.0.0.0.26200.9168) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.102 Safari/537.36 Edge/18.26200 IsWebView2/True (WebView2Version 151.0.4129.107)\" --user-data-dir=\"<user-profile>\\AppData\\Local\\Packages\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\LocalState\\EBWebView\" --webview-exe-name=SearchHost.exe --webview-exe-version=2606.30004.100.0 --embedded-browser-webview=1 --always-read-main-dll --metrics-shmem-handle=2636,i,2707856395177270348,9954285788031475675,524288 --field-trial-handle=2060,i,3365090682232894945,14813822915426672071,262144 --enable-features=msEdgeFluentOverlayScrollbar --disable-features=msSmartScreenProtection --variations-seed-version --pseudonymization-salt-handle=2084,i,14650293429704669866,7778520600876478717,4 --trace-process-track-uuid=3190708990060038890 --mojo-platform-channel-handle=2648 /prefetch:13 /pfhostedapp:ea1fa936703d743fbdf7b85ecde4a1cda5b2724a",
+        "userDataDir": "<user-profile>\\AppData\\Local\\Packages\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\LocalState\\EBWebView"
+      },
+      {
+        "Name": "msedgewebview2.exe",
+        "ProcessId": 10636,
+        "ParentProcessId": 9752,
+        "CommandLine": "\"C:\\Program Files (x86)\\Microsoft\\EdgeWebView\\Application\\151.0.4129.107\\msedgewebview2.exe\" --type=renderer --noerrdialogs --user-agent=\"Mozilla/5.0 (Windows NT 10.0; Win64; x64; Cortana 1.18.9.23723; 10.0.0.0.26200.9168) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.102 Safari/537.36 Edge/18.26200 IsWebView2/True (WebView2Version 151.0.4129.107)\" --user-data-dir=\"<user-profile>\\AppData\\Local\\Packages\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\LocalState\\EBWebView\" --webview-exe-name=SearchHost.exe --webview-exe-version=2606.30004.100.0 --embedded-browser-webview=1 --video-capture-use-gpu-memory-buffer --lang=es --js-flags=--expose-gc --device-scale-factor=1 --num-raster-threads=4 --enable-main-frame-before-activation --renderer-client-id=5 --time-ticks-at-unix-epoch=-1788097422204529 --launch-time-ticks=269364661 --always-read-main-dll --metrics-shmem-handle=4068,i,13221559354169700947,11973272461152883813,2097152 --field-trial-handle=2060,i,3365090682232894945,14813822915426672071,262144 --enable-features=msEdgeFluentOverlayScrollbar --disable-features=msSmartScreenProtection --variations-seed-version --pseudonymization-salt-handle=2084,i,14650293429704669866,7778520600876478717,4 --trace-process-track-uuid=3190708990997080739 --mojo-platform-channel-handle=4092 /pfhostedapp:ea1fa936703d743fbdf7b85ecde4a1cda5b2724a /prefetch:1",
+        "userDataDir": "<user-profile>\\AppData\\Local\\Packages\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\LocalState\\EBWebView"
+      }
+    ]
+  },
+  "samples": [
+    {
+      "timestamp": "2026-08-30T20:59:31.4901752+02:00",
+      "pid": 3312,
+      "role": "gpu-process",
+      "cpuPct": 0,
+      "privateBytes": 190545920
+    },
+    {
+      "timestamp": "2026-08-30T20:59:31.4901752+02:00",
+      "pid": 3632,
+      "role": "renderer-unassigned",
+      "cpuPct": 0,
+      "privateBytes": 53239808
+    },
+    {
+      "timestamp": "2026-08-30T20:59:31.4901752+02:00",
+      "pid": 24168,
+      "role": "browser",
+      "cpuPct": 0,
+      "privateBytes": 49336320
+    },
+    {
+      "timestamp": "2026-08-30T20:59:31.4901752+02:00",
+      "pid": 13576,
+      "role": "renderer-unassigned",
+      "cpuPct": 0,
+      "privateBytes": 65400832
+    },
+    {
+      "timestamp": "2026-08-30T20:59:31.4901752+02:00",
+      "pid": 28260,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 13725696
+    },
+    {
+      "timestamp": "2026-08-30T20:59:31.4901752+02:00",
+      "pid": 19300,
+      "role": "go-host",
+      "cpuPct": 0,
+      "privateBytes": 71020544
+    },
+    {
+      "timestamp": "2026-08-30T20:59:31.4901752+02:00",
+      "pid": 26488,
+      "role": "crashpad",
+      "cpuPct": 0,
+      "privateBytes": 2453504
+    },
+    {
+      "timestamp": "2026-08-30T20:59:31.4901752+02:00",
+      "pid": 23460,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 9469952
+    },
+    {
+      "timestamp": "2026-08-30T21:00:31.5098502+02:00",
+      "pid": 3312,
+      "role": "gpu-process",
+      "cpuPct": 0,
+      "privateBytes": 142467072
+    },
+    {
+      "timestamp": "2026-08-30T21:00:31.5098502+02:00",
+      "pid": 3632,
+      "role": "renderer-unassigned",
+      "cpuPct": 0,
+      "privateBytes": 52555776
+    },
+    {
+      "timestamp": "2026-08-30T21:00:31.5098502+02:00",
+      "pid": 24168,
+      "role": "browser",
+      "cpuPct": 1,
+      "privateBytes": 47022080
+    },
+    {
+      "timestamp": "2026-08-30T21:00:31.5098502+02:00",
+      "pid": 13576,
+      "role": "renderer-unassigned",
+      "cpuPct": 1,
+      "privateBytes": 86532096
+    },
+    {
+      "timestamp": "2026-08-30T21:00:31.5098502+02:00",
+      "pid": 28260,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 14110720
+    },
+    {
+      "timestamp": "2026-08-30T21:00:31.5098502+02:00",
+      "pid": 19300,
+      "role": "go-host",
+      "cpuPct": 2,
+      "privateBytes": 76103680
+    },
+    {
+      "timestamp": "2026-08-30T21:00:31.5098502+02:00",
+      "pid": 26488,
+      "role": "crashpad",
+      "cpuPct": 0,
+      "privateBytes": 3035136
+    },
+    {
+      "timestamp": "2026-08-30T21:00:31.5098502+02:00",
+      "pid": 23460,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 9289728
+    },
+    {
+      "timestamp": "2026-08-30T21:01:31.6489528+02:00",
+      "pid": 3312,
+      "role": "gpu-process",
+      "cpuPct": 0,
+      "privateBytes": 142422016
+    },
+    {
+      "timestamp": "2026-08-30T21:01:31.6489528+02:00",
+      "pid": 3632,
+      "role": "renderer-unassigned",
+      "cpuPct": 0,
+      "privateBytes": 58449920
+    },
+    {
+      "timestamp": "2026-08-30T21:01:31.6489528+02:00",
+      "pid": 24168,
+      "role": "browser",
+      "cpuPct": 1,
+      "privateBytes": 47661056
+    },
+    {
+      "timestamp": "2026-08-30T21:01:31.6489528+02:00",
+      "pid": 13576,
+      "role": "renderer-unassigned",
+      "cpuPct": 1,
+      "privateBytes": 120107008
+    },
+    {
+      "timestamp": "2026-08-30T21:01:31.6489528+02:00",
+      "pid": 28260,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 14491648
+    },
+    {
+      "timestamp": "2026-08-30T21:01:31.6489528+02:00",
+      "pid": 19300,
+      "role": "go-host",
+      "cpuPct": 2,
+      "privateBytes": 74858496
+    },
+    {
+      "timestamp": "2026-08-30T21:01:31.6489528+02:00",
+      "pid": 26488,
+      "role": "crashpad",
+      "cpuPct": 0,
+      "privateBytes": 3035136
+    },
+    {
+      "timestamp": "2026-08-30T21:01:31.6489528+02:00",
+      "pid": 23460,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 9289728
+    },
+    {
+      "timestamp": "2026-08-30T21:02:31.5637979+02:00",
+      "pid": 3312,
+      "role": "gpu-process",
+      "cpuPct": 0,
+      "privateBytes": 142331904
+    },
+    {
+      "timestamp": "2026-08-30T21:02:31.5637979+02:00",
+      "pid": 3632,
+      "role": "renderer-unassigned",
+      "cpuPct": 0,
+      "privateBytes": 63352832
+    },
+    {
+      "timestamp": "2026-08-30T21:02:31.5637979+02:00",
+      "pid": 24168,
+      "role": "browser",
+      "cpuPct": 1,
+      "privateBytes": 49344512
+    },
+    {
+      "timestamp": "2026-08-30T21:02:31.5637979+02:00",
+      "pid": 13576,
+      "role": "renderer-unassigned",
+      "cpuPct": 1,
+      "privateBytes": 128229376
+    },
+    {
+      "timestamp": "2026-08-30T21:02:31.5637979+02:00",
+      "pid": 28260,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 15572992
+    },
+    {
+      "timestamp": "2026-08-30T21:02:31.5637979+02:00",
+      "pid": 19300,
+      "role": "go-host",
+      "cpuPct": 2,
+      "privateBytes": 75722752
+    },
+    {
+      "timestamp": "2026-08-30T21:02:31.5637979+02:00",
+      "pid": 26488,
+      "role": "crashpad",
+      "cpuPct": 0,
+      "privateBytes": 2940928
+    },
+    {
+      "timestamp": "2026-08-30T21:02:31.5637979+02:00",
+      "pid": 23460,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 9289728
+    },
+    {
+      "timestamp": "2026-08-30T21:03:31.6856673+02:00",
+      "pid": 3312,
+      "role": "gpu-process",
+      "cpuPct": 0,
+      "privateBytes": 142303232
+    },
+    {
+      "timestamp": "2026-08-30T21:03:31.6856673+02:00",
+      "pid": 3632,
+      "role": "renderer-unassigned",
+      "cpuPct": 0,
+      "privateBytes": 68300800
+    },
+    {
+      "timestamp": "2026-08-30T21:03:31.6856673+02:00",
+      "pid": 24168,
+      "role": "browser",
+      "cpuPct": 1,
+      "privateBytes": 49377280
+    },
+    {
+      "timestamp": "2026-08-30T21:03:31.6856673+02:00",
+      "pid": 13576,
+      "role": "renderer-unassigned",
+      "cpuPct": 1,
+      "privateBytes": 132235264
+    },
+    {
+      "timestamp": "2026-08-30T21:03:31.6856673+02:00",
+      "pid": 28260,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 15572992
+    },
+    {
+      "timestamp": "2026-08-30T21:03:31.6856673+02:00",
+      "pid": 19300,
+      "role": "go-host",
+      "cpuPct": 2,
+      "privateBytes": 76230656
+    },
+    {
+      "timestamp": "2026-08-30T21:03:31.6856673+02:00",
+      "pid": 26488,
+      "role": "crashpad",
+      "cpuPct": 0,
+      "privateBytes": 2891776
+    },
+    {
+      "timestamp": "2026-08-30T21:03:31.6856673+02:00",
+      "pid": 23460,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 9289728
+    },
+    {
+      "timestamp": "2026-08-30T21:04:31.6262234+02:00",
+      "pid": 3312,
+      "role": "gpu-process",
+      "cpuPct": 0,
+      "privateBytes": 149647360
+    },
+    {
+      "timestamp": "2026-08-30T21:04:31.6262234+02:00",
+      "pid": 3632,
+      "role": "renderer-unassigned",
+      "cpuPct": 0,
+      "privateBytes": 73412608
+    },
+    {
+      "timestamp": "2026-08-30T21:04:31.6262234+02:00",
+      "pid": 24168,
+      "role": "browser",
+      "cpuPct": 1,
+      "privateBytes": 49967104
+    },
+    {
+      "timestamp": "2026-08-30T21:04:31.6262234+02:00",
+      "pid": 13576,
+      "role": "renderer-unassigned",
+      "cpuPct": 1,
+      "privateBytes": 137416704
+    },
+    {
+      "timestamp": "2026-08-30T21:04:31.6262234+02:00",
+      "pid": 28260,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 15663104
+    },
+    {
+      "timestamp": "2026-08-30T21:04:31.6262234+02:00",
+      "pid": 19300,
+      "role": "go-host",
+      "cpuPct": 2,
+      "privateBytes": 75087872
+    },
+    {
+      "timestamp": "2026-08-30T21:04:31.6262234+02:00",
+      "pid": 26488,
+      "role": "crashpad",
+      "cpuPct": 0,
+      "privateBytes": 2969600
+    },
+    {
+      "timestamp": "2026-08-30T21:04:31.6262234+02:00",
+      "pid": 23460,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 9420800
+    },
+    {
+      "timestamp": "2026-08-30T21:05:31.5209994+02:00",
+      "pid": 3312,
+      "role": "gpu-process",
+      "cpuPct": 0,
+      "privateBytes": 144453632
+    },
+    {
+      "timestamp": "2026-08-30T21:05:31.5209994+02:00",
+      "pid": 3632,
+      "role": "renderer-unassigned",
+      "cpuPct": 0,
+      "privateBytes": 78483456
+    },
+    {
+      "timestamp": "2026-08-30T21:05:31.5209994+02:00",
+      "pid": 24168,
+      "role": "browser",
+      "cpuPct": 1,
+      "privateBytes": 51167232
+    },
+    {
+      "timestamp": "2026-08-30T21:05:31.5209994+02:00",
+      "pid": 13576,
+      "role": "renderer-unassigned",
+      "cpuPct": 1,
+      "privateBytes": 144789504
+    },
+    {
+      "timestamp": "2026-08-30T21:05:31.5209994+02:00",
+      "pid": 28260,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 16904192
+    },
+    {
+      "timestamp": "2026-08-30T21:05:31.5209994+02:00",
+      "pid": 19300,
+      "role": "go-host",
+      "cpuPct": 2,
+      "privateBytes": 77090816
+    },
+    {
+      "timestamp": "2026-08-30T21:05:31.5209994+02:00",
+      "pid": 26488,
+      "role": "crashpad",
+      "cpuPct": 0,
+      "privateBytes": 2965504
+    },
+    {
+      "timestamp": "2026-08-30T21:05:31.5209994+02:00",
+      "pid": 23460,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 9392128
+    },
+    {
+      "timestamp": "2026-08-30T21:06:31.5535931+02:00",
+      "pid": 3312,
+      "role": "gpu-process",
+      "cpuPct": 0,
+      "privateBytes": 161742848
+    },
+    {
+      "timestamp": "2026-08-30T21:06:31.5535931+02:00",
+      "pid": 3632,
+      "role": "renderer-unassigned",
+      "cpuPct": 0,
+      "privateBytes": 82505728
+    },
+    {
+      "timestamp": "2026-08-30T21:06:31.5535931+02:00",
+      "pid": 24168,
+      "role": "browser",
+      "cpuPct": 1,
+      "privateBytes": 51990528
+    },
+    {
+      "timestamp": "2026-08-30T21:06:31.5535931+02:00",
+      "pid": 13576,
+      "role": "renderer-unassigned",
+      "cpuPct": 1,
+      "privateBytes": 147070976
+    },
+    {
+      "timestamp": "2026-08-30T21:06:31.5535931+02:00",
+      "pid": 28260,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 16760832
+    },
+    {
+      "timestamp": "2026-08-30T21:06:31.5535931+02:00",
+      "pid": 19300,
+      "role": "go-host",
+      "cpuPct": 2,
+      "privateBytes": 76902400
+    },
+    {
+      "timestamp": "2026-08-30T21:06:31.5535931+02:00",
+      "pid": 26488,
+      "role": "crashpad",
+      "cpuPct": 0,
+      "privateBytes": 2899968
+    },
+    {
+      "timestamp": "2026-08-30T21:06:31.5535931+02:00",
+      "pid": 23460,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 9326592
+    },
+    {
+      "timestamp": "2026-08-30T21:07:31.5552895+02:00",
+      "pid": 3312,
+      "role": "gpu-process",
+      "cpuPct": 0,
+      "privateBytes": 142118912
+    },
+    {
+      "timestamp": "2026-08-30T21:07:31.5552895+02:00",
+      "pid": 3632,
+      "role": "renderer-unassigned",
+      "cpuPct": 0,
+      "privateBytes": 68509696
+    },
+    {
+      "timestamp": "2026-08-30T21:07:31.5552895+02:00",
+      "pid": 24168,
+      "role": "browser",
+      "cpuPct": 1,
+      "privateBytes": 53407744
+    },
+    {
+      "timestamp": "2026-08-30T21:07:31.5552895+02:00",
+      "pid": 13576,
+      "role": "renderer-unassigned",
+      "cpuPct": 1,
+      "privateBytes": 149794816
+    },
+    {
+      "timestamp": "2026-08-30T21:07:31.5552895+02:00",
+      "pid": 28260,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 17907712
+    },
+    {
+      "timestamp": "2026-08-30T21:07:31.5552895+02:00",
+      "pid": 19300,
+      "role": "go-host",
+      "cpuPct": 2,
+      "privateBytes": 77885440
+    },
+    {
+      "timestamp": "2026-08-30T21:07:31.5552895+02:00",
+      "pid": 26488,
+      "role": "crashpad",
+      "cpuPct": 0,
+      "privateBytes": 2895872
+    },
+    {
+      "timestamp": "2026-08-30T21:07:31.5552895+02:00",
+      "pid": 23460,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 9302016
+    },
+    {
+      "timestamp": "2026-08-30T21:08:31.5787867+02:00",
+      "pid": 3312,
+      "role": "gpu-process",
+      "cpuPct": 0,
+      "privateBytes": 158982144
+    },
+    {
+      "timestamp": "2026-08-30T21:08:31.5787867+02:00",
+      "pid": 3632,
+      "role": "renderer-unassigned",
+      "cpuPct": 0,
+      "privateBytes": 73363456
+    },
+    {
+      "timestamp": "2026-08-30T21:08:31.5787867+02:00",
+      "pid": 24168,
+      "role": "browser",
+      "cpuPct": 1,
+      "privateBytes": 53465088
+    },
+    {
+      "timestamp": "2026-08-30T21:08:31.5787867+02:00",
+      "pid": 13576,
+      "role": "renderer-unassigned",
+      "cpuPct": 1,
+      "privateBytes": 148115456
+    },
+    {
+      "timestamp": "2026-08-30T21:08:31.5787867+02:00",
+      "pid": 28260,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 17911808
+    },
+    {
+      "timestamp": "2026-08-30T21:08:31.5787867+02:00",
+      "pid": 19300,
+      "role": "go-host",
+      "cpuPct": 2,
+      "privateBytes": 77692928
+    },
+    {
+      "timestamp": "2026-08-30T21:08:31.5787867+02:00",
+      "pid": 26488,
+      "role": "crashpad",
+      "cpuPct": 0,
+      "privateBytes": 2895872
+    },
+    {
+      "timestamp": "2026-08-30T21:08:31.5787867+02:00",
+      "pid": 23460,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 9302016
+    },
+    {
+      "timestamp": "2026-08-30T21:09:31.6172555+02:00",
+      "pid": 3312,
+      "role": "gpu-process",
+      "cpuPct": 0,
+      "privateBytes": 141991936
+    },
+    {
+      "timestamp": "2026-08-30T21:09:31.6172555+02:00",
+      "pid": 3632,
+      "role": "renderer-unassigned",
+      "cpuPct": 0,
+      "privateBytes": 77062144
+    },
+    {
+      "timestamp": "2026-08-30T21:09:31.6172555+02:00",
+      "pid": 24168,
+      "role": "browser",
+      "cpuPct": 1,
+      "privateBytes": 51773440
+    },
+    {
+      "timestamp": "2026-08-30T21:09:31.6172555+02:00",
+      "pid": 13576,
+      "role": "renderer-unassigned",
+      "cpuPct": 1,
+      "privateBytes": 151379968
+    },
+    {
+      "timestamp": "2026-08-30T21:09:31.6172555+02:00",
+      "pid": 28260,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 15609856
+    },
+    {
+      "timestamp": "2026-08-30T21:09:31.6172555+02:00",
+      "pid": 19300,
+      "role": "go-host",
+      "cpuPct": 1,
+      "privateBytes": 78209024
+    },
+    {
+      "timestamp": "2026-08-30T21:09:31.6172555+02:00",
+      "pid": 26488,
+      "role": "crashpad",
+      "cpuPct": 0,
+      "privateBytes": 2961408
+    },
+    {
+      "timestamp": "2026-08-30T21:09:31.6172555+02:00",
+      "pid": 23460,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 9342976
+    }
+  ],
+  "diagnostics": [
+    {
+      "schema": "vantare.huella.cdp.v1",
+      "capturedAt": "2026-08-30T18:59:33.848Z",
+      "action": "overlay-start",
+      "control": {
+        "changed": true,
+        "running": true,
+        "emittedAt": "2026-08-30T18:59:32.088Z",
+        "mechanism": {
+          "kind": "wails-event",
+          "eventName": "overlay:start-active"
+        }
+      },
+      "durationSeconds": 1,
+      "expectedWidgets": 3,
+      "renderedWidgets": 3,
+      "overlayReadyAt": "2026-08-30T18:59:32.646Z",
+      "rendererProcessIds": [
+        13576,
+        3632
+      ],
+      "rendererProcessInfoError": null,
+      "targets": [
+        {
+          "role": "hub",
+          "url": "http://wails.localhost/#/hub",
+          "title": "Vantare",
+          "overlay": false,
+          "hub": true,
+          "surface": "hub",
+          "widgetCount": 0,
+          "diagnostics": null,
+          "probe": {
+            "rafPerSecond": 121,
+            "longTaskCount": 0,
+            "longTaskTotalMs": 0,
+            "longTaskMaxMs": 0,
+            "widgetCount": 0
+          },
+          "memory": {
+            "jsHeapUsedBytes": 8715784,
+            "jsHeapTotalBytes": 11546624,
+            "documents": 3,
+            "nodes": 60,
+            "jsEventListeners": 196
+          },
+          "memoryError": null,
+          "screenshot": "<session-root>\\screenshots\\initial\\hub-1.png"
+        },
+        {
+          "role": "overlay",
+          "url": "http://wails.localhost/overlay.html",
+          "title": "Vantare Overlay",
+          "overlay": true,
+          "hub": false,
+          "surface": "desktop",
+          "widgetCount": 3,
+          "diagnostics": {
+            "overlay_v2_parse_duration": {
+              "count": 10,
+              "p50": 0.4000000022351742,
+              "p99": 1.3999999985098839,
+              "nonLiveSamples": 0
+            },
+            "overlay_v2_transport": {
+              "revision": 17,
+              "frameRevision": 17,
+              "sourceState": "live",
+              "epoch": 1,
+              "sequence": 141,
+              "sessionId": "lmu-session-1",
+              "vehicleCount": 18,
+              "playerPit": "pit"
+            },
+            "pull": {
+              "active": true,
+              "requestsCompleted": 10,
+              "receivedV1Projections": 0,
+              "receivedV2Snapshots": 9,
+              "requestDurationMs": {
+                "count": 10,
+                "sampleCount": 10,
+                "mean": 7.030000000447035,
+                "max": 32.5,
+                "p99": 32.5,
+                "histogram": [
+                  {
+                    "le": 1,
+                    "count": 0
+                  },
+                  {
+                    "le": 2,
+                    "count": 0
+                  },
+                  {
+                    "le": 4,
+                    "count": 4
+                  },
+                  {
+                    "le": 8,
+                    "count": 5
+                  },
+                  {
+                    "le": 16,
+                    "count": 0
+                  },
+                  {
+                    "le": 32,
+                    "count": 0
+                  },
+                  {
+                    "le": 64,
+                    "count": 1
+                  },
+                  {
+                    "le": 128,
+                    "count": 0
+                  },
+                  {
+                    "le": 250,
+                    "count": 0
+                  },
+                  {
+                    "le": 500,
+                    "count": 0
+                  },
+                  {
+                    "le": 1000,
+                    "count": 0
+                  },
+                  {
+                    "le": 2500,
+                    "count": 0
+                  },
+                  {
+                    "le": 5000,
+                    "count": 0
+                  },
+                  {
+                    "le": null,
+                    "count": 0
+                  }
+                ]
+              }
+            },
+            "shadow": null
+          },
+          "probe": {
+            "rafPerSecond": 120,
+            "longTaskCount": 0,
+            "longTaskTotalMs": 0,
+            "longTaskMaxMs": 0,
+            "widgetCount": 3
+          },
+          "memory": {
+            "jsHeapUsedBytes": 7438992,
+            "jsHeapTotalBytes": 11423744,
+            "documents": 3,
+            "nodes": 380,
+            "jsEventListeners": 179
+          },
+          "memoryError": null,
+          "screenshot": "<session-root>\\screenshots\\initial\\overlay-2.png"
+        }
+      ]
+    },
+    {
+      "schema": "vantare.huella.cdp.v1",
+      "capturedAt": "2026-08-30T19:04:33.404Z",
+      "action": "inspect",
+      "control": null,
+      "durationSeconds": 1,
+      "expectedWidgets": 3,
+      "renderedWidgets": 0,
+      "overlayReadyAt": null,
+      "rendererProcessIds": [],
+      "rendererProcessInfoError": null,
+      "targets": [
+        {
+          "role": "overlay",
+          "url": "http://wails.localhost/overlay.html",
+          "title": "Vantare Overlay",
+          "overlay": true,
+          "hub": false,
+          "surface": "desktop",
+          "widgetCount": 3,
+          "diagnostics": {
+            "overlay_v2_parse_duration": {
+              "count": 512,
+              "p50": 0.19999999925494194,
+              "p99": 0.5,
+              "nonLiveSamples": 14
+            },
+            "overlay_v2_transport": {
+              "revision": 18850,
+              "frameRevision": 18850,
+              "sourceState": "live",
+              "epoch": 1,
+              "sequence": 18970,
+              "sessionId": "lmu-session-1",
+              "vehicleCount": 18,
+              "playerPit": "pit"
+            },
+            "pull": {
+              "active": true,
+              "requestsCompleted": 14024,
+              "receivedV1Projections": 0,
+              "receivedV2Snapshots": 14003,
+              "requestDurationMs": {
+                "count": 14024,
+                "sampleCount": 512,
+                "mean": 4.406360524814391,
+                "max": 1016.1000000014901,
+                "p99": 39.5,
+                "histogram": [
+                  {
+                    "le": 1,
+                    "count": 0
+                  },
+                  {
+                    "le": 2,
+                    "count": 0
+                  },
+                  {
+                    "le": 4,
+                    "count": 399
+                  },
+                  {
+                    "le": 8,
+                    "count": 69
+                  },
+                  {
+                    "le": 16,
+                    "count": 19
+                  },
+                  {
+                    "le": 32,
+                    "count": 16
+                  },
+                  {
+                    "le": 64,
+                    "count": 8
+                  },
+                  {
+                    "le": 128,
+                    "count": 0
+                  },
+                  {
+                    "le": 250,
+                    "count": 0
+                  },
+                  {
+                    "le": 500,
+                    "count": 0
+                  },
+                  {
+                    "le": 1000,
+                    "count": 0
+                  },
+                  {
+                    "le": 2500,
+                    "count": 1
+                  },
+                  {
+                    "le": 5000,
+                    "count": 0
+                  },
+                  {
+                    "le": null,
+                    "count": 0
+                  }
+                ]
+              }
+            },
+            "shadow": null
+          },
+          "probe": {
+            "rafPerSecond": 121,
+            "longTaskCount": 0,
+            "longTaskTotalMs": 0,
+            "longTaskMaxMs": 0,
+            "widgetCount": 3
+          },
+          "memory": {
+            "jsHeapUsedBytes": 36951000,
+            "jsHeapTotalBytes": 82235392,
+            "documents": 1,
+            "nodes": 363,
+            "jsEventListeners": 177
+          },
+          "memoryError": null,
+          "screenshot": null
+        },
+        {
+          "role": "hub",
+          "url": "http://wails.localhost/#/hub",
+          "title": "Vantare",
+          "overlay": false,
+          "hub": true,
+          "surface": "hub",
+          "widgetCount": 0,
+          "diagnostics": null,
+          "probe": {
+            "rafPerSecond": 121,
+            "longTaskCount": 0,
+            "longTaskTotalMs": 0,
+            "longTaskMaxMs": 0,
+            "widgetCount": 0
+          },
+          "memory": {
+            "jsHeapUsedBytes": 30753668,
+            "jsHeapTotalBytes": 32550912,
+            "documents": 1,
+            "nodes": 100,
+            "jsEventListeners": 199
+          },
+          "memoryError": null,
+          "screenshot": null
+        }
+      ]
+    },
+    {
+      "schema": "vantare.huella.cdp.v1",
+      "capturedAt": "2026-08-30T19:09:33.61Z",
+      "action": "inspect",
+      "control": null,
+      "durationSeconds": 1,
+      "expectedWidgets": 3,
+      "renderedWidgets": 0,
+      "overlayReadyAt": null,
+      "rendererProcessIds": [],
+      "rendererProcessInfoError": null,
+      "targets": [
+        {
+          "role": "overlay",
+          "url": "http://wails.localhost/overlay.html",
+          "title": "Vantare Overlay",
+          "overlay": true,
+          "hub": false,
+          "surface": "desktop",
+          "widgetCount": 3,
+          "diagnostics": {
+            "overlay_v2_parse_duration": {
+              "count": 512,
+              "p50": 0.19999999925494194,
+              "p99": 0.4000000022351742,
+              "nonLiveSamples": 14
+            },
+            "overlay_v2_transport": {
+              "revision": 37822,
+              "frameRevision": 37822,
+              "sourceState": "live",
+              "epoch": 1,
+              "sequence": 37942,
+              "sessionId": "lmu-session-1",
+              "vehicleCount": 18,
+              "playerPit": "pit"
+            },
+            "pull": {
+              "active": true,
+              "requestsCompleted": 28153,
+              "receivedV1Projections": 0,
+              "receivedV2Snapshots": 28110,
+              "requestDurationMs": {
+                "count": 28153,
+                "sampleCount": 512,
+                "mean": 4.330405285409728,
+                "max": 1016.1000000014901,
+                "p99": 5.699999999254942,
+                "histogram": [
+                  {
+                    "le": 1,
+                    "count": 0
+                  },
+                  {
+                    "le": 2,
+                    "count": 0
+                  },
+                  {
+                    "le": 4,
+                    "count": 464
+                  },
+                  {
+                    "le": 8,
+                    "count": 47
+                  },
+                  {
+                    "le": 16,
+                    "count": 1
+                  },
+                  {
+                    "le": 32,
+                    "count": 0
+                  },
+                  {
+                    "le": 64,
+                    "count": 0
+                  },
+                  {
+                    "le": 128,
+                    "count": 0
+                  },
+                  {
+                    "le": 250,
+                    "count": 0
+                  },
+                  {
+                    "le": 500,
+                    "count": 0
+                  },
+                  {
+                    "le": 1000,
+                    "count": 0
+                  },
+                  {
+                    "le": 2500,
+                    "count": 0
+                  },
+                  {
+                    "le": 5000,
+                    "count": 0
+                  },
+                  {
+                    "le": null,
+                    "count": 0
+                  }
+                ]
+              }
+            },
+            "shadow": null
+          },
+          "probe": {
+            "rafPerSecond": 120,
+            "longTaskCount": 0,
+            "longTaskTotalMs": 0,
+            "longTaskMaxMs": 0,
+            "widgetCount": 3
+          },
+          "memory": {
+            "jsHeapUsedBytes": 40951896,
+            "jsHeapTotalBytes": 91721728,
+            "documents": 1,
+            "nodes": 365,
+            "jsEventListeners": 190
+          },
+          "memoryError": null,
+          "screenshot": "<session-root>\\screenshots\\final\\overlay-1.png"
+        },
+        {
+          "role": "hub",
+          "url": "http://wails.localhost/#/hub",
+          "title": "Vantare",
+          "overlay": false,
+          "hub": true,
+          "surface": "hub",
+          "widgetCount": 0,
+          "diagnostics": null,
+          "probe": {
+            "rafPerSecond": 120,
+            "longTaskCount": 0,
+            "longTaskTotalMs": 0,
+            "longTaskMaxMs": 0,
+            "widgetCount": 0
+          },
+          "memory": {
+            "jsHeapUsedBytes": 32566480,
+            "jsHeapTotalBytes": 35680256,
+            "documents": 1,
+            "nodes": 100,
+            "jsEventListeners": 212
+          },
+          "memoryError": null,
+          "screenshot": "<session-root>\\screenshots\\final\\hub-2.png"
+        }
+      ]
+    }
+  ],
+  "transitions": [
+    {
+      "kind": "window-first-seen",
+      "surface": "hub",
+      "window": "hub|hub|http://wails.localhost/#/hub|Vantare",
+      "timestamp": "08/30/2026 18:59:33"
+    },
+    {
+      "kind": "window-first-seen",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "timestamp": "08/30/2026 18:59:33"
+    },
+    {
+      "kind": "window-widget-ready",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "timestamp": "08/30/2026 18:59:33"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 18850,
+      "sequence": 18970,
+      "timestamp": "08/30/2026 19:04:33"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 37822,
+      "sequence": 37942,
+      "timestamp": "08/30/2026 19:09:33"
+    }
+  ],
+  "screenshots": {
+    "initial": [
+      "<session-root>\\screenshots\\initial\\hub-1.png",
+      "<session-root>\\screenshots\\initial\\overlay-2.png"
+    ],
+    "final": [
+      "<session-root>\\screenshots\\final\\overlay-1.png",
+      "<session-root>\\screenshots\\final\\hub-2.png"
+    ]
+  },
+  "shutdownClean": true,
+  "failure": null
+}

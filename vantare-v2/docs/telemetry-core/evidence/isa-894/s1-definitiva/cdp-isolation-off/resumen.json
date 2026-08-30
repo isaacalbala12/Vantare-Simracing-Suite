@@ -1,0 +1,116 @@
+{
+  "schema": "vantare.session.summary.v1",
+  "generatedAt": "2026-08-30T19:09:35.133Z",
+  "session": "S1",
+  "phase": "off",
+  "verdict": "fail",
+  "criteria": {
+    "capture": {
+      "status": "pass",
+      "detail": "captura completada"
+    },
+    "metadata": {
+      "status": "pass",
+      "detail": "Spa practica, jugador en garaje, IA rodando; sin gesto; polling CDP aislado; 14 coches; build estable"
+    },
+    "duration": {
+      "status": "pass",
+      "detail": "10.00 min medidos"
+    },
+    "hygiene": {
+      "status": "pass",
+      "detail": "0 procesos bloqueantes"
+    },
+    "windows": {
+      "status": "pass",
+      "detail": "declaración array válida; clases 1/1; pull presente en 3/3 checkpoints",
+      "expected": [
+        "desktop"
+      ],
+      "missing": [],
+      "declaredValid": true
+    },
+    "v1Off": {
+      "status": "pass",
+      "detail": "V1 máximo 0.00 (exige 0); shadow activos 0, ausentes 0 (exige null en 3/3); precondiciones transporte PASS"
+    },
+    "shadowOn": {
+      "status": "not-applicable",
+      "detail": "fase OFF"
+    },
+    "delivery": {
+      "status": "pass",
+      "detail": "p99 39.50 ms (límite p99 250 ms); max 1016.10 ms (límite 5000 ms); precondiciones transporte PASS",
+      "windows": [
+        {
+          "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+          "checkpoints": 3,
+          "progresses": true,
+          "p99Ms": 39.5,
+          "maxMs": 1016.1000000014901,
+          "status": "pass"
+        }
+      ]
+    },
+    "memory": {
+      "status": "fail",
+      "detail": "pendiente total 560.09 MiB/h",
+      "minimumSamples": 10,
+      "total": {
+        "samples": 11,
+        "slopeMiBPerHour": 560.0890059115318,
+        "limitMiBPerHour": 15,
+        "status": "fail"
+      },
+      "processes": [
+        {
+          "key": "gpu-process:3312",
+          "samples": 11,
+          "slopeMiBPerHour": -71.11014653105612,
+          "limitMiBPerHour": 10,
+          "status": "pass"
+        },
+        {
+          "key": "renderer-unassigned:3632",
+          "samples": 11,
+          "slopeMiBPerHour": 146.17014424043757,
+          "limitMiBPerHour": 5,
+          "status": "fail"
+        },
+        {
+          "key": "browser:24168",
+          "samples": 11,
+          "slopeMiBPerHour": 32.39194007711035,
+          "limitMiBPerHour": 5,
+          "status": "fail"
+        },
+        {
+          "key": "renderer-unassigned:13576",
+          "samples": 11,
+          "slopeMiBPerHour": 424.23637876050896,
+          "limitMiBPerHour": 5,
+          "status": "fail"
+        },
+        {
+          "key": "go-host:19300",
+          "samples": 11,
+          "slopeMiBPerHour": 28.40068936453106,
+          "limitMiBPerHour": 5,
+          "status": "fail"
+        }
+      ]
+    },
+    "scenario": {
+      "status": "not-applicable",
+      "detail": "sin criterio de transición específico"
+    },
+    "screenshots": {
+      "status": "pass",
+      "detail": "2 iniciales; 2 finales"
+    },
+    "shutdown": {
+      "status": "pass",
+      "detail": "cierre limpio"
+    }
+  }
+}

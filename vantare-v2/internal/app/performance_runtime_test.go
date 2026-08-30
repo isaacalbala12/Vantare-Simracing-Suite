@@ -163,6 +163,25 @@ func TestPerformanceRuntimeFeedsAutoPolicyHotAndPublishesOnlyWhenVisible(t *test
 	}
 }
 
+func TestPerformanceRuntimeReplacesHubVisibilityProviderAcrossRecreation(t *testing.T) {
+	target := &runtimePolicyTarget{}
+	emitter := &performanceEventEmitter{}
+	runtime := NewPerformanceRuntime(func() PerformanceSampleRunner { return nil }, PerformanceSettings{Mode: "auto"}, performancepolicy.Policy{}, target, emitter, nil, nil)
+	sample := sensor.Sample{At: time.Unix(1000, 0), Host: sensor.HostSample{CPUPct: 50}, Game: sensor.GameSample{Available: false}}
+
+	runtime.SetHubVisibleProvider(func() bool { return true })
+	runtime.Observe(sample)
+	runtime.SetHubVisibleProvider(func() bool { return false })
+	runtime.Observe(sample)
+	runtime.Observe(sample)
+	runtime.SetHubVisibleProvider(func() bool { return true })
+	runtime.Observe(sample)
+
+	if got := len(emitter.events); got != 2 {
+		t.Fatalf("events across visible/destroyed/recreated hub = %d, want 2", got)
+	}
+}
+
 func TestPerformanceRuntimeManualSettingStopsAutomaticAuthority(t *testing.T) {
 	target := &runtimePolicyTarget{}
 	runtime := NewPerformanceRuntime(func() PerformanceSampleRunner { return nil }, PerformanceSettings{Mode: "auto"}, performancepolicy.Policy{}, target, nil, nil, nil)

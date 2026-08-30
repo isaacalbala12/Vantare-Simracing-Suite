@@ -60,6 +60,9 @@
   misma interfaz con la política efectiva del perfil y llamar
   `RefreshRequestedLevel` cuando cambie; los overrides custom se conservan al
   mover el nivel automático.
+  `SetHubVisibleProvider` permite reemplazar en caliente la generación que
+  decide si se publica `performance:level`; al rebase sobre #942 debe recibir
+  el estado de `HubLifecycle`, no conservar el `hubW` inicial.
 
 - **ISA-943 — perfil v4 y Ajustes › Rendimiento (2026-08-30):** rama
   `vantareapp/isa-943-perfil-v4-ajustes-rendimiento`, base inicial

@@ -65,6 +65,18 @@ func (runtime *PerformanceRuntime) SetTrace(handler func(sensor.Sample, sensor.D
 	runtime.mu.Unlock()
 }
 
+// SetHubVisibleProvider reemplaza en caliente la generación del Hub que
+// gobierna la publicación. Un Hub destruido se representa con un proveedor
+// que devuelve false hasta que el lifecycle instale la nueva generación.
+func (runtime *PerformanceRuntime) SetHubVisibleProvider(provider func() bool) {
+	if runtime == nil {
+		return
+	}
+	runtime.mu.Lock()
+	runtime.visible = provider
+	runtime.mu.Unlock()
+}
+
 func NewPerformanceRuntime(
 	factory PerformanceSamplerFactory,
 	settings PerformanceSettings,

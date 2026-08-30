@@ -171,6 +171,10 @@ export const OVERLAY_SHADOW_PHASES: readonly OverlayShadowPhase[] = Object.freez
 
 export type OverlayShadowPhaseCounts = Readonly<Record<OverlayShadowPhase, number>>;
 
+export type OverlayShadowNotComparableReason =
+  | "cached-section"
+  | `${Exclude<OverlayShadowPhase, "live">}-phase`;
+
 export type OverlayV2ShadowSessionSummary = Readonly<{
   /** Frames compared in the `live` phase: the gate denominator. */
   frames: number;
@@ -191,6 +195,7 @@ export type OverlayV2PlayerInstrumentsComparator = Readonly<{
   markNotComparable(
     feature: OverlayV2ShadowComparableFeature,
     input: OverlayV2ShadowPhaseInput,
+    reason?: OverlayShadowNotComparableReason,
   ): void;
   compare(input: Readonly<{
     legacySnapshot: TelemetrySnapshot;
@@ -311,7 +316,7 @@ const ANCHOR_FEATURE = "player-instruments";
 
 type ShadowPhaseAccumulator = Readonly<{
   record(feature: string, phase: OverlayShadowPhase, fields: readonly string[]): void;
-  markNotComparable(feature: string, phase: OverlayShadowPhase): void;
+  markNotComparable(feature: string, phase: OverlayShadowPhase, reason: OverlayShadowNotComparableReason): void;
   reset(): void;
   markEpochReset(): void;
   summary(): OverlayV2ShadowSessionSummary;
@@ -336,9 +341,10 @@ function createShadowPhaseAccumulator(): ShadowPhaseAccumulator {
         byMetric.set(key, (byMetric.get(key) ?? 0) + 1);
       }
     },
-    markNotComparable(feature, phase) {
+    markNotComparable(feature, phase, reason) {
+      if (feature === ANCHOR_FEATURE && reason.endsWith("-phase")) framesByPhase[phase] += 1;
       notComparable += 1;
-      const key = `overlay_shadow_not_comparable_total{feature="${feature}",reason="cached-section",phase="${phase}"}`;
+      const key = `overlay_shadow_not_comparable_total{feature="${feature}",reason="${reason}",phase="${phase}"}`;
       byMetric.set(key, (byMetric.get(key) ?? 0) + 1);
     },
     reset() {
@@ -653,8 +659,8 @@ export function compareControlsModels(
 export function createOverlayV2PlayerInstrumentsComparator(): OverlayV2PlayerInstrumentsComparator {
   const accumulator = createShadowPhaseAccumulator();
   return {
-    markNotComparable(feature, input) {
-      accumulator.markNotComparable(feature, resolveOverlayShadowPhase(input.legacySnapshot, input.source));
+    markNotComparable(feature, input, reason = "cached-section") {
+      accumulator.markNotComparable(feature, resolveOverlayShadowPhase(input.legacySnapshot, input.source), reason);
     },
     compareSession(input) {
       const legacy = buildRacingFlagsViewModel(input.legacySnapshot, input.content);
@@ -689,9 +695,13 @@ export function createOverlayV2PlayerInstrumentsComparator(): OverlayV2PlayerIns
     compare(input) {
       const legacy = buildPedalsTelemetryViewModel(input.legacySnapshot, input.content);
       const overlayV2 = buildPedalsTelemetryViewModelV2(input.frame, input.source, input.content);
-      const fields = comparePlayerInstrumentModels(legacy, overlayV2);
       const phase = resolveOverlayShadowPhase(input.legacySnapshot, input.source);
-      accumulator.record(ANCHOR_FEATURE, phase, fields);
+      const fields = phase === "live" ? comparePlayerInstrumentModels(legacy, overlayV2) : [];
+      if (phase !== "live") {
+        accumulator.markNotComparable(ANCHOR_FEATURE, phase, `${phase}-phase`);
+      } else {
+        accumulator.record(ANCHOR_FEATURE, phase, fields);
+      }
       return Object.freeze({
         equal: fields.length === 0,
         phase,
@@ -715,6 +725,10 @@ function record(
   fields: readonly string[],
 ): OverlayV2FeatureComparison {
   const phase = resolveOverlayShadowPhase(input.legacySnapshot, input.source);
+  if (phase !== "live") {
+    accumulator.markNotComparable(feature, phase, `${phase}-phase`);
+    return Object.freeze({ equal: true, phase, mismatches: Object.freeze([]) });
+  }
   accumulator.record(feature, phase, fields);
   return Object.freeze({ equal: fields.length === 0, phase, mismatches: Object.freeze(fields) });
 }

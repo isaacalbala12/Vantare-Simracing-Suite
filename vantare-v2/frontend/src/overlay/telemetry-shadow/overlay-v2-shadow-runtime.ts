@@ -13,6 +13,7 @@ import { relativeDefinition } from "../widget-types/relative/relative-definition
 import { standingsDefinition } from "../widget-types/standings/standings-definition";
 import {
   createOverlayV2PlayerInstrumentsComparator,
+  resolveOverlayShadowPhase,
   type OverlayV2ShadowComparableFeature,
   type OverlayV2PlayerInstrumentsComparator,
 } from "./overlay-shadow-comparator";
@@ -139,6 +140,11 @@ function compareSection(
   requiredMask: number,
   compare: () => unknown,
 ): void {
+  const phase = resolveOverlayShadowPhase(pair.legacySnapshot, pair.source);
+  if (phase !== "live") {
+    comparator.markNotComparable(feature, pair, `${phase}-phase`);
+    return;
+  }
   if ((pair.frame.sectionMask & requiredMask) === requiredMask) {
     compare();
     return;

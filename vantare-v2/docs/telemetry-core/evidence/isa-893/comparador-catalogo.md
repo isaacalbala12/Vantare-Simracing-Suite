@@ -40,6 +40,13 @@ veredicto declarado. `external` tampoco se convierte en PASS telemétrico. La
 comparación bloqueada conserva la ruta auxiliar exacta para no disfrazar
 `engineerPresentation` como `events`.
 
+La paridad de valores solo existe cuando ambos contratos están en fase `live`.
+En `stale`, `degraded`, `no-frame` o durante una transición entre fases, el
+shadow no evalúa campos: contabiliza la sección como `not-comparable` con la
+razón explícita `<fase>-phase`. V1 conserva valores anteriores mientras V2
+puede ocultarlos, de modo que tratarlos como mismatches exactos produciría
+falsos positivos como los observados en S1 ON.
+
 Para campos exactos de tiempo de vuelta, `""`, `"-"` y `"—"` se normalizan como
 la misma ausencia antes de comparar. La normalización no redondea ni modifica
 tiempos reales: dos textos de vuelta presentes y distintos siguen produciendo

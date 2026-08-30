@@ -59,7 +59,9 @@ func (rate *ProfileWidgetRateV4) UnmarshalJSON(data []byte) error {
 }
 
 type ProfilePerformanceOverrideV4 struct {
-	Hz      *ProfileWidgetRateV4         `json:"hz,omitempty"`
+	Hz *ProfileWidgetRateV4 `json:"hz,omitempty"`
+	// Effects is reserved for the dedicated Endurance noBlur/flat variants issue.
+	// C2 preserves the field but does not offer it as a per-widget control.
 	Effects *ProfilePerformanceEffectsV4 `json:"effects,omitempty"`
 }
 

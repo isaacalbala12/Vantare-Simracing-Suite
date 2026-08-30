@@ -223,7 +223,7 @@ describe("SettingsOrbitPage", () => {
     );
   });
 
-  it("Personalizado muestra los tres widgets activos, Hz efectivos y costes CPU/GPU", () => {
+  it("Personalizado ofrece solo Hz por widget y no promete overrides de efectos", () => {
     const handlers = new Map<string, Array<(event: { data: unknown }) => void>>();
     vi.mocked(Events.On).mockImplementation(((name: string, handler: (event: { data: unknown }) => void) => {
       handlers.set(name, [...(handlers.get(name) ?? []), handler]);
@@ -260,7 +260,9 @@ describe("SettingsOrbitPage", () => {
     expect(within(table).getAllByRole("row")).toHaveLength(4);
     expect(screen.getByTestId("orbit-settings-performance-row-delta-main").textContent).toContain("20");
     expect(screen.getByTestId("orbit-settings-performance-row-delta-main").textContent).toContain("+CPU");
-    expect(screen.getByTestId("orbit-settings-performance-row-delta-main").textContent).toContain("+GPU");
+    expect(within(table).queryByText("Efectos")).toBeNull();
+    expect(within(table).queryByText("+GPU")).toBeNull();
+    expect(within(table).queryByRole("combobox", { name: "Efectos" })).toBeNull();
     expect(screen.getByTestId("orbit-settings-performance-migration-notices").textContent).toContain(
       "delta-main tenía 3 Hz",
     );

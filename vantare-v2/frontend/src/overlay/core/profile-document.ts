@@ -170,6 +170,7 @@ export type ProfilePerformanceModeV4 = "inherit" | "level" | "custom";
 export type ProfilePerformanceEffectsV4 = "full" | "noBlur" | "flat";
 export type ProfilePerformanceOverrideV4 = {
   hz?: number | "dirty";
+  /** Reserved for the dedicated Endurance noBlur/flat variants issue; C2 does not expose it in Settings. */
   effects?: ProfilePerformanceEffectsV4;
 };
 export type ProfilePerformanceV4 = {

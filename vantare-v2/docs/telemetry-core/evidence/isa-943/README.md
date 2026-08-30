@@ -40,16 +40,17 @@ Al terminar, CDP pidió `Application.Quit()` y se comprobó que solo el PID prop
 ## Dump semántico · Personalizado con tres widgets
 
 Vitest monta un perfil activo `triple` con `delta-main`, `standings-main` y
-`relative-main`, una política `custom` de nivel 3 y override de Delta a 60 Hz +
-`full`. Después inyecta el payload real de `performance:level` con los techos
+`relative-main`, una política `custom` de nivel 3 y override de Delta a 60 Hz.
+El fixture conserva además un campo `effects` reservado para demostrar que la
+UI no lo ofrece. Después inyecta el payload real de `performance:level` con los techos
 20/5/15 Hz. El DOM observable es equivalente a:
 
 ```text
 table[data-testid="orbit-settings-performance-table"]
-  Widget       Hz del nivel  Override de cadencia  Efectos  Coste
-  Delta        20            60 Hz                  full     +CPU +GPU
-  Clasificación 5            Heredar                Heredar  —
-  Relativo     15            Heredar                Heredar  —
+  Widget         Hz del nivel  Override de cadencia  Coste
+  Delta          20            60 Hz                  +CPU
+  Clasificación  5             Heredar                —
+  Relativo       15            Heredar                —
 ```
 
 Las filas estables para el pase visual son:
@@ -58,8 +59,8 @@ Las filas estables para el pase visual son:
 - `orbit-settings-performance-row-standings-main`
 - `orbit-settings-performance-row-relative-main`
 
-La prueba exige cuatro filas contando la cabecera y verifica explícitamente
-`20`, `+CPU` y `+GPU` en Delta. No usa datos sintéticos en runtime: este dump es
+La prueba exige cuatro filas contando la cabecera, verifica `20` y `+CPU` en
+Delta y comprueba que no haya selector de efectos ni promesa `+GPU`. No usa datos sintéticos en runtime: este dump es
 evidencia del contrato de UI bajo Vitest, separada del smoke Wails anterior.
 
 Los `updateHz` fast atípicos de un perfil v3 se conservan además como avisos

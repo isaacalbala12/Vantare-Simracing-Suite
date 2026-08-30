@@ -19,13 +19,15 @@
   automático provisional solo puede bajar calidad. Ajustes ofrece los cinco
   nombres aprobados, Personalizado y Automático deshabilitado, refresca desde
   `performance:level`, muestra los avisos de migración atípica y ofrece
-  overrides por widget con `+CPU`/`+GPU`. Studio
+  overrides de Hz por widget con coste `+CPU`. El campo v4 de efectos queda
+  reservado para la issue dedicada a las variantes Endurance. Studio
   guarda la política v4, muestra el nivel efectivo y ya no presenta el selector
   legado de frecuencia; los guardados posteriores de layout preservan la
   política. Smoke Wails/CDP propio en 9245: nivel 1→4 y `rafCap` null→30 en el
   mismo target de overlay, con PID propio cerrado y puerto liberado. Evidencia:
   `docs/telemetry-core/evidence/isa-943/`. Quedan para Isaac únicamente el pase
-  visual de los controles existentes y las variantes `noBlur`/`flat`; el sensor
+  visual de los controles existentes; las variantes `noBlur`/`flat` y su
+  control/coste GPU pertenecen a su issue dedicada. El sensor
   real de Automático sigue fuera de C2.
 
 - **ISA-924 — banco de huella y baseline por hardware (2026-08-28):** PR #929

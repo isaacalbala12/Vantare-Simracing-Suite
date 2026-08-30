@@ -57,7 +57,7 @@ import { channelRelease } from "../settings/release-channel";
 import type { Channel } from "../settings/settings-contract";
 import type { PerformanceSettings } from "../settings/settings-contract";
 import type { OverlayPerformanceV2 } from "../../generated/telemetry";
-import type { ProfilePerformanceEffectsV4, ProfilePerformanceV4 } from "../../overlay/core/profile-document";
+import type { ProfilePerformanceV4 } from "../../overlay/core/profile-document";
 import { useAppSettings } from "../settings/useAppSettings";
 import { useUpdaterSettings } from "../settings/useUpdaterSettings";
 import { useStartupSettings } from "../settings/useStartupSettings";
@@ -780,13 +780,6 @@ function ApplicationSection({
 type PerformanceChoice = "1" | "2" | "3" | "4" | "5" | "custom" | "auto";
 
 const PERFORMANCE_CHOICES: PerformanceChoice[] = ["1", "2", "3", "4", "5", "custom", "auto"];
-const PERFORMANCE_EFFECTS_BY_LEVEL: Record<number, ProfilePerformanceEffectsV4> = {
-  1: "full",
-  2: "full",
-  3: "noBlur",
-  4: "flat",
-  5: "flat",
-};
 
 function PerformanceSection() {
   const { t } = useI18n();
@@ -858,14 +851,10 @@ function PerformanceSection() {
     app.setPerformance({ mode: "level", level: Number(choice) as PerformanceSettings["level"] });
   };
 
-  const updateOverride = (
-    widgetId: string,
-    patch: { hz?: number | "dirty"; effects?: ProfilePerformanceEffectsV4 },
-  ) => {
+  const updateOverride = (widgetId: string, hz?: number | "dirty") => {
     const current = profilePerformance?.overrides?.[widgetId] ?? {};
-    const next = { ...current, ...patch };
-    if (patch.hz === undefined) delete next.hz;
-    if (patch.effects === undefined) delete next.effects;
+    const next = { ...current, hz };
+    if (hz === undefined) delete next.hz;
     const overrides = { ...(profilePerformance?.overrides ?? {}) };
     if (next.hz === undefined && next.effects === undefined) delete overrides[widgetId];
     else overrides[widgetId] = next;
@@ -942,7 +931,6 @@ function PerformanceSection() {
                   <th>{t("settings.performance.widget")}</th>
                   <th>{t("settings.performance.currentHz")}</th>
                   <th>{t("settings.performance.overrideHz")}</th>
-                  <th>{t("settings.performance.effects")}</th>
                   <th>{t("settings.performance.cost")}</th>
                 </tr>
               </thead>
@@ -952,9 +940,6 @@ function PerformanceSection() {
                   const override = profilePerformance?.overrides?.[widget.id];
                   const cpuCost =
                     typeof override?.hz === "number" && typeof baseline === "number" && override.hz > baseline;
-                  const baseEffect = PERFORMANCE_EFFECTS_BY_LEVEL[level] ?? "full";
-                  const effectRank = { full: 0, noBlur: 1, flat: 2 };
-                  const gpuCost = override?.effects !== undefined && effectRank[override.effects] < effectRank[baseEffect];
                   return (
                     <tr data-testid={`orbit-settings-performance-row-${widget.id}`} key={widget.id}>
                       <th scope="row">{t(`studio.v3.widgetTypes.${widget.type}`)}</th>
@@ -962,9 +947,10 @@ function PerformanceSection() {
                       <td>
                         <Select
                           label={t("settings.performance.overrideHz")}
-                          onChange={(value) => updateOverride(widget.id, {
-                            hz: value === "" ? undefined : value === "dirty" ? "dirty" : Number(value),
-                          })}
+                          onChange={(value) => updateOverride(
+                            widget.id,
+                            value === "" ? undefined : value === "dirty" ? "dirty" : Number(value),
+                          )}
                           options={[
                             { value: "", label: t("settings.performance.inherit") },
                             { value: "dirty", label: t("settings.performance.dirty") },
@@ -975,25 +961,8 @@ function PerformanceSection() {
                         />
                       </td>
                       <td>
-                        <Select
-                          label={t("settings.performance.effects")}
-                          onChange={(value) => updateOverride(widget.id, {
-                            effects: value === "" ? undefined : value as ProfilePerformanceEffectsV4,
-                          })}
-                          options={[
-                            { value: "", label: t("settings.performance.inherit") },
-                            { value: "full", label: "full" },
-                            { value: "noBlur", label: "noBlur" },
-                            { value: "flat", label: "flat" },
-                          ]}
-                          value={override?.effects ?? ""}
-                          width={128}
-                        />
-                      </td>
-                      <td>
                         {cpuCost ? <Chip>+CPU</Chip> : null}
-                        {gpuCost ? <Chip>+GPU</Chip> : null}
-                        {!cpuCost && !gpuCost ? "—" : null}
+                        {!cpuCost ? "—" : null}
                       </td>
                     </tr>
                   );

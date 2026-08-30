@@ -62,3 +62,14 @@ test("añade screenshots finales aunque la lista de destino empiece vacía", () 
 
   assert.deepEqual(JSON.parse(output), { initial: [], final: ["final/overlay.png"] });
 });
+
+test("el dry-run conserva expectedWindows como array aunque S1 tenga una sola clase", () => {
+  const collectorPath = fileURLToPath(new URL("./sesion-v1.ps1", import.meta.url));
+  const output = execFileSync("pwsh", [
+    "-NoProfile", "-File", collectorPath,
+    "-Sesion", "S1", "-Fase", "off", "-Duracion", "20",
+    "-Exe", "bin/dry-run.exe", "-Puerto", "19455", "-DryRun",
+  ], {cwd: benchDirectory, encoding: "utf8"});
+
+  assert.deepEqual(JSON.parse(output).expectedWindows, ["desktop"]);
+});

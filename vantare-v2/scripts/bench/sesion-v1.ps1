@@ -31,7 +31,7 @@ if ($PSVersionTable.PSVersion.Major -lt 7) { throw 'sesion-v1.ps1 requiere Power
 if ($Puerto -in @(9222, 9231)) { throw "El puerto $Puerto está reservado por otros bancos." }
 
 $repoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..\..')).Path
-$expectedWindows = if ($Sesion -eq 'S5') { @('desktop', 'studio-or-obs') } else { @('desktop') }
+[string[]]$expectedWindows = if ($Sesion -eq 'S5') { 'desktop', 'studio-or-obs' } else { 'desktop' }
 function Resolve-SessionPath([string]$Path, [switch]$MustExist) {
     $candidate = if ([IO.Path]::IsPathRooted($Path)) { $Path } else { Join-Path $repoRoot $Path }
     if ($MustExist) { return (Resolve-Path -LiteralPath $candidate).Path }

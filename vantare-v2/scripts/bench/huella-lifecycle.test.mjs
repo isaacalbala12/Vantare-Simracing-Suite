@@ -4,6 +4,7 @@ import { test } from "node:test";
 
 const cdpHelper = await readFile(new URL("./huella-cdp.mjs", import.meta.url), "utf8");
 const bench = await readFile(new URL("./huella.ps1", import.meta.url), "utf8");
+const buildMeasurement = await readFile(new URL("./build-measurement.ps1", import.meta.url), "utf8");
 
 test("reconoce la entrada overlay dedicada", () => {
   assert.match(cdpHelper, /wails\.localhost\/overlay\.html/);
@@ -49,4 +50,13 @@ test("la medida falla cerrada si la build arranca sin licencia configurada", () 
   assert.match(bench, /Prohibido medir una build sin licencia configurada/);
   assert.match(bench, /licenseState = \$licenseState/);
   assert.match(bench, /licenseAccount = \$licenseAccount/);
+});
+
+test("la build de medida embebe Supabase sin copiar ni mostrar env.local", () => {
+  assert.match(buildMeasurement, /VITE_SUPABASE_URL/);
+  assert.match(buildMeasurement, /VANTARE_SUPABASE_URL = \$values\['VITE_SUPABASE_URL'\]/);
+  assert.match(buildMeasurement, /generate_supabase_config\.ps1/);
+  assert.match(buildMeasurement, /go build -tags production/);
+  assert.match(buildMeasurement, /Remove-Item -LiteralPath \$generatedPath/);
+  assert.doesNotMatch(buildMeasurement, /Write-Host.*\$values/);
 });

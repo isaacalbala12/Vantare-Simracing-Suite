@@ -28,3 +28,10 @@ valores de configuración.
 No se deben imprimir, copiar ni versionar los valores de `.env.local`. El
 fichero se lee únicamente desde su ubicación autorizada durante el build.
 
+El procedimiento reproducible es:
+
+```powershell
+pwsh -File scripts/bench/build-measurement.ps1 `
+  -EnvFile C:\ruta\autorizada\frontend\.env.local `
+  -OutFile bin\vantare-isa894.exe
+```

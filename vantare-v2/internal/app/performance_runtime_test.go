@@ -181,18 +181,43 @@ func TestPerformanceRuntimeReplacesHubVisibilityProviderAcrossRecreation(t *test
 	emitter := &performanceEventEmitter{}
 	runtime := NewPerformanceRuntime(func() PerformanceSampleRunner { return nil }, PerformanceSettings{Mode: "auto"}, performancepolicy.Policy{}, target, emitter, nil, nil)
 	sample := sensor.Sample{At: time.Unix(1000, 0), Host: sensor.HostSample{CPUPct: 50}, Game: sensor.GameSample{Available: false}}
+	created := []*performanceRuntimeHubWindow{}
+	lifecycle := NewHubLifecycle(func() HubWindow {
+		window := &performanceRuntimeHubWindow{}
+		created = append(created, window)
+		return window
+	}, func() int { return 3 }, func(context.Context) bool { return true }, nil)
+	runtime.SetHubVisibleProvider(lifecycle.IsVisible)
 
-	runtime.SetHubVisibleProvider(func() bool { return true })
+	first, _ := lifecycle.Open()
 	runtime.Observe(sample)
-	runtime.SetHubVisibleProvider(func() bool { return false })
+	first.Minimise()
+	if !lifecycle.HandleMinimise(context.Background()) {
+		t.Fatal("expected the canonical lifecycle to destroy the minimised hub")
+	}
 	runtime.Observe(sample)
 	runtime.Observe(sample)
-	runtime.SetHubVisibleProvider(func() bool { return true })
+	lifecycle.Open()
 	runtime.Observe(sample)
 
+	if got := len(created); got != 2 {
+		t.Fatalf("created hub generations = %d, want 2", got)
+	}
 	if got := len(emitter.events); got != 2 {
 		t.Fatalf("events across visible/destroyed/recreated hub = %d, want 2", got)
 	}
+}
+
+type performanceRuntimeHubWindow struct{ minimised bool }
+
+func (*performanceRuntimeHubWindow) Close()             {}
+func (*performanceRuntimeHubWindow) Hide()              {}
+func (*performanceRuntimeHubWindow) Show()              {}
+func (*performanceRuntimeHubWindow) Focus()             {}
+func (window *performanceRuntimeHubWindow) Minimise()   { window.minimised = true }
+func (window *performanceRuntimeHubWindow) UnMinimise() { window.minimised = false }
+func (window *performanceRuntimeHubWindow) IsMinimised() bool {
+	return window.minimised
 }
 
 func TestPerformanceRuntimeManualSettingStopsAutomaticAuthority(t *testing.T) {

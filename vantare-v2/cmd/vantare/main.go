@@ -2132,7 +2132,6 @@ func main() {
 		telemetryCoreRuntime = nil
 	}
 	if telemetryCoreRuntime != nil && performanceSensorEnabled() {
-		hubVisible := func() bool { return !hubW.IsMinimised() }
 		performanceRuntime = app.NewPerformanceRuntime(
 			func() app.PerformanceSampleRunner {
 				return performancesensor.New(
@@ -2147,7 +2146,7 @@ func main() {
 			nil,
 			engSvc,
 		)
-		performanceRuntime.SetHubVisibleProvider(hubVisible)
+		performanceRuntime.SetHubVisibleProvider(hubLifecycle.IsVisible)
 		performanceRuntime.SetGameForegroundHandler(func(foreground bool) {
 			if overlayController.Status().Mode != config.ModeRacing {
 				return

@@ -201,19 +201,6 @@ func ResolveAutomaticPerformancePolicy(level performancepolicy.Level, reason per
 	return performancepolicy.ResolveAuto(level, reason)
 }
 
-// EffectivePerformancePolicy devuelve la misma política canónica que consume
-// el runtime. Las builds de diagnóstico pueden fijar un nivel reproducible sin
-// modificar los ajustes persistidos.
-func (s *SettingsService) EffectivePerformancePolicy(profile *config.ProfileDocumentV4) performancepolicy.Policy {
-	settings := s.Snapshot().Performance
-	if override := diagnosticPerformanceLevel(); override != 0 {
-		return performancepolicy.Resolve(performancepolicy.Policy{
-			Mode: performancepolicy.ModeLevel, Level: performancepolicy.Level(override),
-		}, nil)
-	}
-	return ResolvePerformancePolicy(settings, profile)
-}
-
 func performanceRateFromJSON(raw json.RawMessage) (performancepolicy.WidgetRate, bool) {
 	if len(raw) == 0 {
 		return performancepolicy.WidgetRate{}, false

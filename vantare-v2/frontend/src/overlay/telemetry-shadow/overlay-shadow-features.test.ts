@@ -163,7 +163,7 @@ describe("shadow comparator: session and standings features", () => {
       })),
     };
     expect(compareStandingsModels(model, stripped)).toEqual([]);
-    expect(OVERLAY_V2_STANDINGS_DECLARED_GAPS).toContain("rows[].bestLapText");
+    expect(OVERLAY_V2_STANDINGS_DECLARED_GAPS).not.toContain("rows[].bestLapText");
   });
 });
 

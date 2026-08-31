@@ -349,6 +349,7 @@ export interface OverlaySpotterViewV2 {
 }
 
 export interface OverlayStandingRowV2 {
+  readonly bestLap: OverlayQValue<number>;
   readonly classId?: string | undefined;
   readonly classPosition: number;
   readonly driver?: string | undefined;

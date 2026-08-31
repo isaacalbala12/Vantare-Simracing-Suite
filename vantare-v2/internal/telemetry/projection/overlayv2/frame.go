@@ -223,6 +223,7 @@ type StandingRowV2 struct {
 	GapLaps        int32                    `json:"gapLaps,omitempty"`
 	PitState       string                   `json:"pit,omitempty"`
 	CompletedLaps  int32                    `json:"laps,omitempty"`
+	BestLapSeconds QValue[float64]          `json:"bestLap"`
 	LastLapSeconds QValue[float64]          `json:"lastLap"`
 	LapDistance    QValue[float64]          `json:"lapDistance"`
 	GroundPosition QValue[GroundPositionV2] `json:"groundPosition"`

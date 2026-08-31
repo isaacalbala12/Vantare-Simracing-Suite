@@ -178,7 +178,7 @@ export function WidgetVisualHost(props: WidgetVisualHostProps): ReactNode {
         systemId={widget.visual.systemId}
         onError={(error) => reportDiagnostic(props, "renderer-exception", error.message)}
       >
-        <Renderer model={model} settings={settings} renderMode={renderMode} />
+        <Renderer model={model} settings={settings} renderMode={renderMode} layout={widget.layout} />
       </WidgetRenderBoundary>
     </>
   );

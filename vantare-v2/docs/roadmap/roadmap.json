@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-30T14:13:58Z",
+  "generatedAt": "2026-08-31T00:31:28Z",
   "digest": {
-    "lastCommit": "9a9179aa7bd74faf3903f1a604aafe092045443a"
+    "lastCommit": "659b2c57dc2c7fc75962cc3c8e425ed1289266ec"
   },
   "phases": [
     {
@@ -529,10 +529,10 @@
         "it": "Telemetria LMU dal vivo"
       },
       "body": {
-        "es": "Driver LMU con reconexión acotada, transporte Overlay dirigido con una sola entrega pendiente, generaciones retiradas y recuperación ante timeout compartido por Desktop y Studio, y lifecycle V2 renovado por montaje sin reutilizar recursos dispuestos. OverlayFrame V2 es la única autoridad visual, de layout y visibilidad en Studio, Desktop y OBS para los 18 widgets telemétricos; Calendar y Engineer conservan sus fuentes auxiliares explícitas, y los fallos V2 se muestran en el widget. Relative ordena el tráfico por topología física y muestra gaps temporales canónicos calculados en Go.",
-        "en": "LMU driver with bounded reconnects, targeted Overlay transport with one pending delivery, bounded retired generations and timeout recovery shared by Desktop and Studio, and a V2 lifecycle renewed per mount without reusing disposed resources. OverlayFrame V2 is the sole rendering, layout, and visibility authority in Studio, Desktop, and OBS for all 18 telemetry widgets; Calendar and Engineer keep their explicit auxiliary sources, and V2 failures are shown in the widget. Relative orders traffic by physical topology and displays canonical time gaps calculated in Go.",
-        "pt": "Driver LMU com reconexão limitada, transporte Overlay dirigido com uma única entrega pendente, gerações retiradas limitadas e recuperação após timeout partilhada por Desktop e Studio, e lifecycle V2 renovado por montagem sem reutilizar recursos descartados. OverlayFrame V2 é a única autoridade visual, de layout e visibilidade no Studio, Desktop e OBS para os 18 widgets telemétricos; Calendar e Engineer mantêm fontes auxiliares explícitas, e as falhas V2 aparecem no widget. O Relative ordena o tráfego pela topologia física e mostra gaps temporais canónicos calculados em Go.",
-        "it": "Driver LMU con riconnessione limitata, trasporto Overlay diretto con una sola consegna pendente, generazioni ritirate limitate e recupero dopo timeout condiviso da Desktop e Studio, e lifecycle V2 rinnovato a ogni montaggio senza riutilizzare risorse disposte. OverlayFrame V2 è l'unica autorità di rendering, layout e visibilità in Studio, Desktop e OBS per i 18 widget telemetrici; Calendar ed Engineer mantengono fonti ausiliarie esplicite e gli errori V2 compaiono nel widget. Relative ordina il traffico per topologia fisica e mostra gap temporali canonici calcolati in Go."
+        "es": "Driver LMU con reconexión acotada, transporte Overlay dirigido con una sola entrega pendiente, generaciones retiradas y recuperación ante timeout compartido por Desktop y Studio, y lifecycle V2 renovado por montaje sin reutilizar recursos dispuestos. OverlayFrame V2 es la única autoridad visual, de layout y visibilidad en Studio, Desktop y OBS para los 18 widgets telemétricos; Calendar y Engineer conservan sus fuentes auxiliares explícitas, y los fallos V2 se muestran en el widget. Standings limita todas las plantillas Endurance a filas completas y, en práctica o clasificación, separa la mejor vuelta de cada coche de su diferencia contra la mejor vuelta de la sesión. Relative ordena el tráfico por topología física y muestra gaps temporales canónicos calculados en Go.",
+        "en": "LMU driver with bounded reconnects, targeted Overlay transport with one pending delivery, bounded retired generations and timeout recovery shared by Desktop and Studio, and a V2 lifecycle renewed per mount without reusing disposed resources. OverlayFrame V2 is the sole rendering, layout, and visibility authority in Studio, Desktop, and OBS for all 18 telemetry widgets; Calendar and Engineer keep their explicit auxiliary sources, and V2 failures are shown in the widget. Standings limits every Endurance template to complete rows and, in practice or qualifying, separates each car's best lap from its gap to the session best. Relative orders traffic by physical topology and displays canonical time gaps calculated in Go.",
+        "pt": "Driver LMU com reconexão limitada, transporte Overlay dirigido com uma única entrega pendente, gerações retiradas limitadas e recuperação após timeout partilhada por Desktop e Studio, e lifecycle V2 renovado por montagem sem reutilizar recursos descartados. OverlayFrame V2 é a única autoridade visual, de layout e visibilidade no Studio, Desktop e OBS para os 18 widgets telemétricos; Calendar e Engineer mantêm fontes auxiliares explícitas, e as falhas V2 aparecem no widget. Standings limita todos os modelos Endurance a linhas completas e, em treino ou qualificação, separa a melhor volta de cada carro da diferença para a melhor volta da sessão. O Relative ordena o tráfego pela topologia física e mostra gaps temporais canónicos calculados em Go.",
+        "it": "Driver LMU con riconnessione limitata, trasporto Overlay diretto con una sola consegna pendente, generazioni ritirate limitate e recupero dopo timeout condiviso da Desktop e Studio, e lifecycle V2 rinnovato a ogni montaggio senza riutilizzare risorse disposte. OverlayFrame V2 è l'unica autorità di rendering, layout e visibilità in Studio, Desktop e OBS per i 18 widget telemetrici; Calendar ed Engineer mantengono fonti ausiliarie esplicite e gli errori V2 compaiono nel widget. Standings limita tutti i template Endurance a righe complete e, in pratica o qualifica, separa il miglior giro di ogni auto dal distacco rispetto al miglior giro della sessione. Relative ordina il traffico per topologia fisica e mostra gap temporali canonici calcolati in Go."
       },
       "label": {
         "es": "En desarrollo",
@@ -896,6 +896,16 @@
   ],
   "delivered": [
     {
+      "date": "2026-08-31",
+      "entries": [
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-894 · Seguimiento: colector CDP tolerante y diagnóstico S1 ON"
+        }
+      ]
+    },
+    {
       "date": "2026-08-30",
       "entries": [
         {
@@ -922,6 +932,16 @@
           "kind": "change",
           "scope": "",
           "text": "ISA-940 · Lifecycle a coste cero: entry propio del overlay, bounding box, hub destruido por nivel, ingeniero solo audio, EcoQoS (F2)"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-894 · F9 corte 1: V1 apagado por defecto con rollback, A/B y guardarraíles"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-944 · Sensor de host y modo Automático (F3)"
         }
       ]
     },
@@ -1577,16 +1597,6 @@
           "kind": "change",
           "scope": "",
           "text": "Seis bugs de Overlays Studio v3 y alineación del gate de licencia"
-        }
-      ]
-    },
-    {
-      "date": "2026-08-09",
-      "entries": [
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "ISA-304 / CAL-02: el calendario como puerta de entrada a los eventos de LMU"
         }
       ]
     }

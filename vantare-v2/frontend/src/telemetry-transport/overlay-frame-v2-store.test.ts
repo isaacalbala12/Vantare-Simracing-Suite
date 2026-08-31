@@ -25,6 +25,12 @@ describe("OverlayFrame v2 store", () => {
     expect(() => decodeOverlayUpdateV2({ ...update, revision: 0 })).toThrow(
       "overlay-frame-v2:invalid-contract:revision",
     );
+    const withoutBestLap = JSON.parse(JSON.stringify(update)) as Record<string, unknown>;
+    const frameWithoutBestLap = withoutBestLap.frame as { standings: Record<string, unknown>[] };
+    delete frameWithoutBestLap.standings[0]?.bestLap;
+    expect(() => decodeOverlayUpdateV2(withoutBestLap)).toThrow(
+      "overlay-frame-v2:invalid-contract:frame.standings[0]",
+    );
     expect(() => decodeOverlayUpdateV2({
       ...update,
       frame: { ...update.frame, sectionMask: 0x800 },

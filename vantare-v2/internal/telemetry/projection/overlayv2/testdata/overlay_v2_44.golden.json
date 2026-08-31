@@ -96,6 +96,9 @@
         },
         "pit": "pit",
         "laps": 127,
+        "bestLap": {
+          "q": "missing"
+        },
         "lastLap": {
           "v": 91.234,
           "q": "fresh"
@@ -119,6 +122,9 @@
         },
         "pit": "track",
         "laps": 127,
+        "bestLap": {
+          "q": "missing"
+        },
         "lastLap": {
           "v": 91.28399999999999,
           "q": "fresh"
@@ -147,6 +153,9 @@
         },
         "pit": "track",
         "laps": 127,
+        "bestLap": {
+          "q": "missing"
+        },
         "lastLap": {
           "v": 91.33399999999999,
           "q": "fresh"
@@ -175,6 +184,9 @@
         },
         "pit": "track",
         "laps": 127,
+        "bestLap": {
+          "q": "missing"
+        },
         "lastLap": {
           "v": 91.384,
           "q": "fresh"
@@ -203,6 +215,9 @@
         },
         "pit": "track",
         "laps": 127,
+        "bestLap": {
+          "q": "missing"
+        },
         "lastLap": {
           "v": 91.434,
           "q": "fresh"
@@ -231,6 +246,9 @@
         },
         "pit": "track",
         "laps": 127,
+        "bestLap": {
+          "q": "missing"
+        },
         "lastLap": {
           "v": 91.484,
           "q": "fresh"
@@ -259,6 +277,9 @@
         },
         "pit": "track",
         "laps": 127,
+        "bestLap": {
+          "q": "missing"
+        },
         "lastLap": {
           "v": 91.53399999999999,
           "q": "fresh"
@@ -287,6 +308,9 @@
         },
         "pit": "track",
         "laps": 127,
+        "bestLap": {
+          "q": "missing"
+        },
         "lastLap": {
           "v": 91.58399999999999,
           "q": "fresh"
@@ -315,6 +339,9 @@
         },
         "pit": "track",
         "laps": 126,
+        "bestLap": {
+          "q": "missing"
+        },
         "lastLap": {
           "v": 91.634,
           "q": "fresh"
@@ -343,6 +370,9 @@
         },
         "pit": "track",
         "laps": 126,
+        "bestLap": {
+          "q": "missing"
+        },
         "lastLap": {
           "v": 91.684,
           "q": "fresh"
@@ -371,6 +401,9 @@
         },
         "pit": "track",
         "laps": 126,
+        "bestLap": {
+          "q": "missing"
+        },
         "lastLap": {
           "v": 91.734,
           "q": "fresh"
@@ -399,6 +432,9 @@
         },
         "pit": "track",
         "laps": 126,
+        "bestLap": {
+          "q": "missing"
+        },
         "lastLap": {
           "v": 91.78399999999999,
           "q": "fresh"
@@ -427,6 +463,9 @@
         },
         "pit": "track",
         "laps": 126,
+        "bestLap": {
+          "q": "missing"
+        },
         "lastLap": {
           "v": 91.83399999999999,
           "q": "fresh"
@@ -455,6 +494,9 @@
         },
         "pit": "track",
         "laps": 126,
+        "bestLap": {
+          "q": "missing"
+        },
         "lastLap": {
           "v": 91.884,
           "q": "fresh"
@@ -483,6 +525,9 @@
         },
         "pit": "track",
         "laps": 126,
+        "bestLap": {
+          "q": "missing"
+        },
         "lastLap": {
           "v": 91.934,
           "q": "fresh"
@@ -511,6 +556,9 @@
         },
         "pit": "track",
         "laps": 126,
+        "bestLap": {
+          "q": "missing"
+        },
         "lastLap": {
           "v": 91.984,
           "q": "fresh"
@@ -539,6 +587,9 @@
         },
         "pit": "track",
         "laps": 125,
+        "bestLap": {
+          "q": "missing"
+        },
         "lastLap": {
           "v": 92.03399999999999,
           "q": "fresh"
@@ -567,6 +618,9 @@
         },
         "pit": "pit",
         "laps": 125,
+        "bestLap": {
+          "q": "missing"
+        },
         "lastLap": {
           "v": 92.08399999999999,
           "q": "fresh"
@@ -595,6 +649,9 @@
         },
         "pit": "track",
         "laps": 125,
+        "bestLap": {
+          "q": "missing"
+        },
         "lastLap": {
           "v": 92.134,
           "q": "fresh"
@@ -623,6 +680,9 @@
         },
         "pit": "track",
         "laps": 125,
+        "bestLap": {
+          "q": "missing"
+        },
         "lastLap": {
           "v": 92.184,
           "q": "fresh"
@@ -651,6 +711,9 @@
         },
         "pit": "track",
         "laps": 125,
+        "bestLap": {
+          "q": "missing"
+        },
         "lastLap": {
           "v": 92.234,
           "q": "fresh"
@@ -679,6 +742,9 @@
         },
         "pit": "track",
         "laps": 125,
+        "bestLap": {
+          "q": "missing"
+        },
         "lastLap": {
           "v": 92.28399999999999,
           "q": "fresh"
@@ -707,6 +773,9 @@
         },
         "pit": "track",
         "laps": 125,
+        "bestLap": {
+          "q": "missing"
+        },
         "lastLap": {
           "v": 92.33399999999999,
           "q": "fresh"
@@ -735,6 +804,9 @@
         },
         "pit": "track",
         "laps": 125,
+        "bestLap": {
+          "q": "missing"
+        },
         "lastLap": {
           "v": 92.384,
           "q": "fresh"
@@ -763,6 +835,9 @@
         },
         "pit": "track",
         "laps": 124,
+        "bestLap": {
+          "q": "missing"
+        },
         "lastLap": {
           "v": 92.434,
           "q": "fresh"
@@ -791,6 +866,9 @@
         },
         "pit": "track",
         "laps": 124,
+        "bestLap": {
+          "q": "missing"
+        },
         "lastLap": {
           "v": 92.484,
           "q": "fresh"
@@ -819,6 +897,9 @@
         },
         "pit": "track",
         "laps": 124,
+        "bestLap": {
+          "q": "missing"
+        },
         "lastLap": {
           "v": 92.53399999999999,
           "q": "fresh"
@@ -847,6 +928,9 @@
         },
         "pit": "track",
         "laps": 124,
+        "bestLap": {
+          "q": "missing"
+        },
         "lastLap": {
           "v": 92.58399999999999,
           "q": "fresh"
@@ -875,6 +959,9 @@
         },
         "pit": "track",
         "laps": 124,
+        "bestLap": {
+          "q": "missing"
+        },
         "lastLap": {
           "v": 92.634,
           "q": "fresh"
@@ -903,6 +990,9 @@
         },
         "pit": "track",
         "laps": 124,
+        "bestLap": {
+          "q": "missing"
+        },
         "lastLap": {
           "v": 92.684,
           "q": "fresh"
@@ -931,6 +1021,9 @@
         },
         "pit": "track",
         "laps": 124,
+        "bestLap": {
+          "q": "missing"
+        },
         "lastLap": {
           "v": 92.734,
           "q": "fresh"
@@ -959,6 +1052,9 @@
         },
         "pit": "track",
         "laps": 124,
+        "bestLap": {
+          "q": "missing"
+        },
         "lastLap": {
           "v": 92.78399999999999,
           "q": "fresh"
@@ -987,6 +1083,9 @@
         },
         "pit": "track",
         "laps": 123,
+        "bestLap": {
+          "q": "missing"
+        },
         "lastLap": {
           "v": 92.83399999999999,
           "q": "fresh"
@@ -1015,6 +1114,9 @@
         },
         "pit": "track",
         "laps": 123,
+        "bestLap": {
+          "q": "missing"
+        },
         "lastLap": {
           "v": 92.884,
           "q": "fresh"
@@ -1043,6 +1145,9 @@
         },
         "pit": "pit",
         "laps": 123,
+        "bestLap": {
+          "q": "missing"
+        },
         "lastLap": {
           "v": 92.934,
           "q": "fresh"
@@ -1071,6 +1176,9 @@
         },
         "pit": "track",
         "laps": 123,
+        "bestLap": {
+          "q": "missing"
+        },
         "lastLap": {
           "v": 92.984,
           "q": "fresh"
@@ -1099,6 +1207,9 @@
         },
         "pit": "track",
         "laps": 123,
+        "bestLap": {
+          "q": "missing"
+        },
         "lastLap": {
           "v": 93.03399999999999,
           "q": "fresh"
@@ -1127,6 +1238,9 @@
         },
         "pit": "track",
         "laps": 123,
+        "bestLap": {
+          "q": "missing"
+        },
         "lastLap": {
           "v": 93.08399999999999,
           "q": "fresh"
@@ -1155,6 +1269,9 @@
         },
         "pit": "track",
         "laps": 123,
+        "bestLap": {
+          "q": "missing"
+        },
         "lastLap": {
           "v": 93.134,
           "q": "fresh"
@@ -1183,6 +1300,9 @@
         },
         "pit": "track",
         "laps": 123,
+        "bestLap": {
+          "q": "missing"
+        },
         "lastLap": {
           "v": 93.184,
           "q": "fresh"
@@ -1212,6 +1332,9 @@
         "gapLaps": 1,
         "pit": "track",
         "laps": 122,
+        "bestLap": {
+          "q": "missing"
+        },
         "lastLap": {
           "v": 93.234,
           "q": "fresh"
@@ -1241,6 +1364,9 @@
         "gapLaps": 1,
         "pit": "track",
         "laps": 122,
+        "bestLap": {
+          "q": "missing"
+        },
         "lastLap": {
           "v": 93.28399999999999,
           "q": "fresh"
@@ -1270,6 +1396,9 @@
         "gapLaps": 1,
         "pit": "track",
         "laps": 122,
+        "bestLap": {
+          "q": "missing"
+        },
         "lastLap": {
           "v": 93.33399999999999,
           "q": "fresh"
@@ -1299,6 +1428,9 @@
         "gapLaps": 1,
         "pit": "track",
         "laps": 122,
+        "bestLap": {
+          "q": "missing"
+        },
         "lastLap": {
           "v": 93.384,
           "q": "fresh"

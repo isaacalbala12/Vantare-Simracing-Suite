@@ -15,6 +15,11 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 
 ## Estado real
 
+- 2026-08-31, ISA-957 en rama: `StandingRowV2` incorpora la mejor vuelta
+  canónica con calidad y el ViewModel de Standings separa por fase la métrica
+  de mejor vuelta del gap de clasificación. Los goldens V2 y el contrato TS se
+  regeneraron desde Go; sin promoción ni prueba Wails/LMU nueva.
+
 - 2026-08-30, ISA-894/PR #955, S1 definitiva: ON y OFF usaron el mismo exe
   `d02054e3…`/dist `5b8e388c…`, Spa práctica y 14 coches. El parser corregido
   deja transporte/paridad en PASS: ON comparó 6.074 frames con cero mismatch

@@ -96,6 +96,9 @@
         },
         "pit": "pit",
         "laps": 127,
+        "bestLap": {
+          "q": "missing"
+        },
         "lastLap": {
           "v": 91.234,
           "q": "fresh"

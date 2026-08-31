@@ -11,10 +11,15 @@
 ## Estado
 
 - **ISA-958 — Relative estable por instancia (2026-08-31, rama):** la
-  pertenencia mantiene solo VehicleID y exige 900 ms monotónicos o un cambio
-  espacial de 75 m; cada render rehidrata los campos de la row Relative actual,
-  elimina ausentes y no avanza con secuencias duplicadas/atrasadas. Position,
+  pertenencia mantiene solo VehicleID y exige 900 ms monotónicos; no compara
+  posiciones de coches distintos para saltarse el hold. Cada render rehidrata
+  los campos de la row Relative actual, elimina ausentes y no avanza con
+  secuencias duplicadas/atrasadas aunque declaren un `generatedAt` posterior. Position,
   gap, nombre, clase y última vuelta comparten row/epoch, sin join a Standings.
+  El host crea el estado por montaje con un inicializador perezoso de React y
+  lo delimita por identidad lógica `perfil:widget.id`, sin depender del objeto
+  recreado por responsive layout, refs leídas durante render, mutable global,
+  timers ni renders extra.
   Baseline real nightly `659b2c57`, Spa práctica/boxes: 347 muestras/90 s,
   65 transiciones y 56 composiciones; 262 muestras en la composición estable.
   El probe de repetición debe separar membership canónica de ghosts de motion.

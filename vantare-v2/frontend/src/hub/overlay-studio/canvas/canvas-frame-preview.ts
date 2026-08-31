@@ -76,7 +76,11 @@ function writeMovePreview(
 ): void {
   writeFrameGeometry(frame, start);
   const effectiveStart = resolveEffectiveFrameLayout(frame, start);
-  const effectivePreview = resolveEffectiveFrameLayout(frame, preview);
+  const effectivePreview = resolveEffectiveFrameLayout(frame, {
+    ...effectiveStart,
+    x: effectiveStart.x + preview.x - start.x,
+    y: effectiveStart.y + preview.y - start.y,
+  });
   const dx = effectivePreview.x - effectiveStart.x;
   const dy = effectivePreview.y - effectiveStart.y;
   if (dx === 0 && dy === 0) {

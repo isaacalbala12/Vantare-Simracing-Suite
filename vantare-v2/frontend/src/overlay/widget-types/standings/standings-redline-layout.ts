@@ -87,14 +87,16 @@ export function resolveMinimumWidthFrameLayout(
   minimumWidth: number | undefined,
   viewportWidth?: number,
 ): WidgetLayoutV3 {
-  if (minimumWidth === undefined || minimumWidth <= layout.w) return layout;
+  if (minimumWidth === undefined) return layout;
+  const effectiveWidth = Math.max(layout.w, minimumWidth);
   const normalizedX = viewportWidth === undefined
     ? layout.x
-    : Math.min(layout.x, Math.max(0, viewportWidth - minimumWidth));
+    : Math.min(Math.max(0, layout.x), Math.max(0, viewportWidth - effectiveWidth));
+  if (effectiveWidth === layout.w && normalizedX === layout.x) return layout;
   return {
     ...layout,
     x: normalizedX,
-    w: minimumWidth,
+    w: effectiveWidth,
   };
 }
 

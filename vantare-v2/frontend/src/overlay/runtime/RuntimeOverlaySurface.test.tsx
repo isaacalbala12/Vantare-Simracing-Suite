@@ -1,4 +1,7 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { act, cleanup, render } from "@testing-library/react";
+import { chromium } from "playwright";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { buildMockTelemetry } from "../core/mock-scenarios";
 import type { ProfileDocumentV3 } from "../core/profile-document";
@@ -173,6 +176,81 @@ describe("RuntimeOverlaySurface", () => {
       expect(renderer?.textContent).toContain(presentation.text);
       presentations.dispose();
       coordinator.dispose();
+    },
+  );
+
+  it.each(["desktop", "obs"] as const)(
+    "scales the complete effective Redline composition into a 280px %s frame",
+    async (renderMode) => {
+      measuredWidth = 280;
+      measuredHeight = 1080;
+      const coordinator = createTelemetryRateCoordinator();
+      const document = buildDocument();
+      const widget = standingsDefinition.createDefault(`standings-redline-${renderMode}-280`);
+      widget.layout = { ...widget.layout, x: 1094, y: 40, w: 280, h: 560 };
+      widget.content = buildMaximumRedlineContent();
+      widget.visual = {
+        ...widget.visual,
+        systemId: "vantare-endurance",
+        baseSettings: { templateId: "standings-redline", showSessionHeader: true },
+      };
+      document.layouts.general.widgets = [widget];
+
+      const view = render(
+        <RuntimeOverlaySurface document={document} telemetry={coordinator} renderMode={renderMode} />,
+      );
+      const frame = view.getByTestId("runtime-widget-frame") as HTMLElement;
+      const viewport = view.getByTestId(`runtime-widget-viewport-${widget.id}`) as HTMLElement;
+      expect(frame.style.width).toBe("280px");
+      expect(viewport.dataset.widgetVisualBaseWidth).toBe("826");
+      expect(viewport.style.transform).toBe("scale(0.3389830508474576)");
+
+      const enduranceCss = readFileSync(
+        join(__dirname, "..", "design-systems", "vantare-endurance", "tokens.css"),
+        "utf8",
+      );
+      const browser = await chromium.launch({ headless: true });
+      try {
+        const page = await browser.newPage({ viewport: { width: 400, height: 700 } });
+        await page.setContent(
+          `<style>html,body{margin:0;background:transparent}*,*::before,*::after{box-sizing:border-box}${enduranceCss}</style>${view.container.innerHTML}`,
+        );
+        const geometry = await page.evaluate(() => {
+          const frame = document.querySelector<HTMLElement>('[data-testid="runtime-widget-frame"]');
+          const renderer = document.querySelector<HTMLElement>('[data-template="standings-redline"]');
+          const header = renderer?.querySelector<HTMLElement>(".ven-red-slots");
+          const row = renderer?.querySelector<HTMLElement>("[data-standings-row]");
+          const lastColumn = row?.querySelector<HTMLElement>('[data-metric="bestLap"]');
+          if (!frame || !renderer || !header || !row || !lastColumn) {
+            throw new Error("missing mounted Redline frame, header, row, or last column");
+          }
+          const frameBox = frame.getBoundingClientRect();
+          const inside = (element: HTMLElement) => {
+            const box = element.getBoundingClientRect();
+            return box.left >= frameBox.left - 1 && box.right <= frameBox.right + 1
+              && box.top >= frameBox.top - 1 && box.bottom <= frameBox.bottom + 1;
+          };
+          return {
+            frameWidth: frameBox.width,
+            headerInside: inside(header),
+            rowInside: inside(row),
+            lastColumnInside: inside(lastColumn),
+            headerReadable: header.scrollWidth <= header.clientWidth + 1,
+            rowReadable: row.scrollWidth <= row.clientWidth + 1,
+            lastColumnReadable: lastColumn.scrollWidth <= lastColumn.clientWidth + 1,
+          };
+        });
+        expect(geometry.frameWidth).toBeCloseTo(280, 1);
+        expect(geometry.headerInside).toBe(true);
+        expect(geometry.rowInside).toBe(true);
+        expect(geometry.lastColumnInside).toBe(true);
+        expect(geometry.headerReadable).toBe(true);
+        expect(geometry.rowReadable).toBe(true);
+        expect(geometry.lastColumnReadable).toBe(true);
+      } finally {
+        await browser.close();
+        coordinator.dispose();
+      }
     },
   );
 

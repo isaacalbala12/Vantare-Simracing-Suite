@@ -30,7 +30,10 @@ import {
   EMPTY_RACE_SCHEDULE_SNAPSHOT,
   type RaceScheduleStore,
 } from "../core/race-schedule-store";
-import { resolveStandingsRedlineFrameLayout } from "../widget-types/standings/standings-redline-layout";
+import {
+  isStandingsRedlineWidget,
+  resolveStandingsRedlineFrameLayout,
+} from "../widget-types/standings/standings-redline-layout";
 
 export type RuntimeOverlaySurfaceProps = {
   document: ProfileDocumentV3;
@@ -169,19 +172,27 @@ export function RuntimeOverlaySurface(props: RuntimeOverlaySurfaceProps): React.
       x: widget.layout.x - origin.x,
       y: widget.layout.y - origin.y,
     };
+    const effectiveLayout = resolveStandingsRedlineFrameLayout(widget, localLayout, layoutViewport.width);
     return {
       ...widget,
-      layout: resolveStandingsRedlineFrameLayout(widget, localLayout, layoutViewport.width),
+      layout: effectiveLayout,
+      visualBaseWidth: isStandingsRedlineWidget(widget) ? effectiveLayout.w : undefined,
     };
   });
   const responsiveWidgets = transform
-    ? effectiveWidgets.map((widget) => ({
-        ...widget,
-        layout: {
-          ...widget.layout,
-          ...mapWidgetFrameToResponsive(widget.layout, transform),
-        },
-      }))
+    ? effectiveWidgets.map((widget) => {
+        const responsiveLayout = mapWidgetFrameToResponsive(widget.layout, transform);
+        // Redline keeps its legible logical grid as the viewport base, but the
+        // responsive scene owns the physical frame. This composes the whole
+        // widget once inside a narrow output instead of re-expanding its frame.
+        const physicalLayout = widget.visualBaseWidth === undefined
+          ? responsiveLayout
+          : { ...responsiveLayout, w: Math.min(responsiveLayout.w, transform.layoutWidth) };
+        return {
+          ...widget,
+          layout: { ...widget.layout, ...physicalLayout },
+        };
+      })
     : effectiveWidgets;
 
   const surfaceStyle: CSSProperties = {
@@ -225,6 +236,7 @@ export function RuntimeOverlaySurface(props: RuntimeOverlaySurfaceProps): React.
               profileId={document.id}
               telemetry={telemetry}
               renderMode={renderMode}
+              visualBaseWidth={widget.visualBaseWidth}
               onDiagnostic={onDiagnostic}
               diagnostics={diagnostics}
               engineerPresentation={engineerPresentation}

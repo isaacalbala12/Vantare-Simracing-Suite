@@ -21,10 +21,11 @@ export type RuntimeWidgetFrameProps = {
   engineerSubtitlesEnabled?: boolean;
   overlayV2Features?: readonly OverlayV2Feature[];
   raceSchedule?: RaceScheduleSnapshot;
+  visualBaseWidth?: number;
 };
 
 function RuntimeWidgetFrameComponent(props: RuntimeWidgetFrameProps): React.ReactElement {
-  const { widget, profileId, telemetry, renderMode, layoutOrigin, onDiagnostic, diagnostics, engineerPresentation, engineerSubtitlesEnabled, overlayV2Features, raceSchedule } = props;
+  const { widget, profileId, telemetry, renderMode, layoutOrigin, onDiagnostic, diagnostics, engineerPresentation, engineerSubtitlesEnabled, overlayV2Features, raceSchedule, visualBaseWidth } = props;
   const runtimeTelemetry = useRateLimitedWidgetTelemetry(
     telemetry,
     widget.type,
@@ -49,6 +50,7 @@ function RuntimeWidgetFrameComponent(props: RuntimeWidgetFrameProps): React.Reac
         widgetType={widget.type}
         visual={widget.visual}
         layout={widget.layout}
+        visualBaseWidth={visualBaseWidth}
         testId={`runtime-widget-viewport-${widget.id}`}
       >
         <WidgetVisualHost
@@ -106,5 +108,6 @@ export const RuntimeWidgetFrame = memo(RuntimeWidgetFrameComponent, (left, right
   left.engineerPresentation === right.engineerPresentation &&
   left.engineerSubtitlesEnabled === right.engineerSubtitlesEnabled &&
   left.overlayV2Features === right.overlayV2Features &&
-  left.raceSchedule === right.raceSchedule,
+  left.raceSchedule === right.raceSchedule &&
+  left.visualBaseWidth === right.visualBaseWidth,
 );

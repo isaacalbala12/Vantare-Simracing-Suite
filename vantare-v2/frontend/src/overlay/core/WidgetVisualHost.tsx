@@ -1,4 +1,4 @@
-import { useLayoutEffect, useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { DesignSystemResolutionError } from "./design-system-definition";
 import type { WidgetInstanceV3 } from "./profile-document";
 import type { TelemetrySnapshot } from "./telemetry-snapshot";
@@ -10,10 +10,7 @@ import { readInputTelemetryHistory, recordInputTelemetrySample } from "../widget
 import type { InputTelemetryViewModel } from "../widget-types/input-telemetry/input-telemetry-view-model";
 import type { WidgetRuntimeInput } from "./widget-definition";
 import { getOverlayV2ViewModelEntry } from "./overlay-v2-view-models";
-import {
-  createRelativeViewModelCommitAuthority,
-  prepareRelativeViewModelV2,
-} from "../widget-types/relative/relative-view-model-v2";
+import { prepareRelativeViewModelV2 } from "../widget-types/relative/relative-view-model-v2";
 import { isRelativeRedlineTemplateId } from "../design-systems/vantare-endurance/relative/relative-endurance-settings";
 import type { RelativeViewModel } from "../widget-types/relative/relative-view-model";
 
@@ -69,31 +66,15 @@ function CommittedRedlineRelative(props: {
   frame: NonNullable<WidgetRuntimeInput["overlayV2Frame"]>;
   source: NonNullable<WidgetRuntimeInput["overlayV2Source"]>;
   content: Record<string, unknown>;
-  runtime: WidgetRuntimeInput | undefined;
-  instanceKey: string;
   render: (model: RelativeViewModel) => ReactNode;
 }): ReactNode {
-  const [authority] = useState(createRelativeViewModelCommitAuthority);
-  const committedState = authority.read();
+  // Redline opts into the Go-owned settled membership. The frontend retains
+  // only visual motion; it must not apply a second membership hold.
   const transition = prepareRelativeViewModelV2(
-    props.frame,
+    { ...props.frame, relative: props.frame.relativeSettled ?? props.frame.relative },
     props.source,
     props.content as never,
-    {
-      state: committedState,
-      nowMs: props.runtime?.relativeViewModelNowMs,
-      instanceKey: props.instanceKey,
-      bridgeSourceReconnect: true,
-    },
   );
-
-  // A render can be suspended or discarded. Only an effect belonging to the
-  // committed tree may publish its draft; publishing does not schedule a
-  // second render for the same telemetry snapshot.
-  useLayoutEffect(() => {
-    authority.publish(transition.state);
-  }, [authority, transition.state]);
-
   return props.render(transition.model);
 }
 
@@ -169,14 +150,11 @@ export function WidgetVisualHost(props: WidgetVisualHostProps): ReactNode {
     isRelativeRedlineTemplateId(settings.templateId);
   const Renderer = registration.Renderer;
   if (v2Entry && !v2Rollback && frame && source && relativeRedline) {
-    const instanceKey = props.runtime?.relativeViewModelInstanceKey ?? `${renderMode}:${widget.id}`;
     return (
       <CommittedRedlineRelative
         frame={frame}
         source={source}
         content={content}
-        runtime={props.runtime}
-        instanceKey={instanceKey}
         render={(model) => (
           <WidgetRenderBoundary
             widgetId={widget.id}

@@ -139,12 +139,16 @@ type FrameV2 struct {
 	Controls         ControlsV2          `json:"controls"`
 	Standings        []StandingRowV2     `json:"standings"`
 	Relative         []RelativeRowV2     `json:"relative"`
-	Delta            DeltaViewV2         `json:"delta"`
-	Fuel             FuelViewV2          `json:"fuel"`
-	Spotter          SpotterViewV2       `json:"spotter"`
-	Damage           DamageViewV2        `json:"damage"`
-	Weather          WeatherV2           `json:"weather"`
-	Capabilities     CapabilitiesV2      `json:"capabilities"`
+	// RelativeSettled is the bounded, membership-settled form of Relative. The
+	// reference projector publishes Relative here; only CachedProjector owns
+	// the historical authority needed to settle it.
+	RelativeSettled []RelativeRowV2 `json:"relativeSettled"`
+	Delta           DeltaViewV2     `json:"delta"`
+	Fuel            FuelViewV2      `json:"fuel"`
+	Spotter         SpotterViewV2   `json:"spotter"`
+	Damage          DamageViewV2    `json:"damage"`
+	Weather         WeatherV2       `json:"weather"`
+	Capabilities    CapabilitiesV2  `json:"capabilities"`
 }
 
 type SessionV2 struct {

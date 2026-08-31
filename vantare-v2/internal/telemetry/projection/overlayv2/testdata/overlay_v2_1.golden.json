@@ -131,6 +131,26 @@
         "classId": "hypercar"
       }
     ],
+    "relativeSettled": [
+      {
+        "id": "vehicle-000",
+        "position": 1,
+        "gap": {
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "q": "fresh"
+        },
+        "lastLap": {
+          "v": 91.234,
+          "q": "fresh"
+        },
+        "side": "player",
+        "authority": "derived",
+        "name": "Driver 000",
+        "classId": "hypercar"
+      }
+    ],
     "delta": {
       "seconds": {
         "q": "missing"

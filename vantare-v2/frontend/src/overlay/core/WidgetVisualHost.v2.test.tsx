@@ -74,6 +74,7 @@ function makeFrame(): OverlayFrameV2 {
     spotter: { mode: "none", left: missing, right: missing },
     capabilities: { supported: ["controls"], available: { controls: "fresh" }, modes: { spatial: [], delta: [], standings: "none", gaps: "none" } },
   };
+  frame.relativeSettled = frame.relative;
   return frame;
 }
 
@@ -133,15 +134,16 @@ describe("WidgetVisualHost v2 generic registry", () => {
     expect(view.container.querySelectorAll('[data-widget-renderer="relative"]')).toHaveLength(2);
   });
 
-  it("mantiene el hold al recrear el objeto del mismo widget y resetea al cambiar de perfil", () => {
+  it("Redline consumes the settled window while a recreated widget does not create a frontend authority", () => {
     const widget = enduranceRelative("relative-stable-id", "relative-redline-proximity");
     const frame = makeFrame();
     const oldRow = { ...frame.relative[0]!, id: "old-ahead", name: "OLD" };
     const newRow = { ...frame.relative[0]!, id: "new-ahead", name: "NEW" };
     const farRow = { ...frame.relative[0]!, id: "far-ahead", name: "FAR" };
     const player = frame.relative.find((row) => row.side === "player")!;
-    const firstFrame = { ...frame, relative: [farRow, newRow, oldRow, player] };
-    const changedFrame = { ...frame, sequence: 2, relative: [farRow, oldRow, newRow, player] };
+    const settled = [farRow, newRow, oldRow, player];
+    const firstFrame = { ...frame, relative: [farRow, newRow, oldRow, player], relativeSettled: settled };
+    const changedFrame = { ...frame, sequence: 2, relative: [farRow, oldRow, newRow, player], relativeSettled: settled };
     let nowMs = 0;
     const runtime = (profileId: string, overlayV2Frame: OverlayFrameV2) => ({
       overlayV2Frame,
@@ -165,7 +167,7 @@ describe("WidgetVisualHost v2 generic registry", () => {
       <WidgetVisualHost widget={{ ...widget }} renderMode="harness" runtime={runtime("profile-b", changedFrame)} />,
     );
     expect([...view.container.querySelectorAll("[data-relative-row]")].map((row) => row.getAttribute("data-relative-row"))).toEqual([
-      "old-ahead", "new-ahead", "player-1",
+      "new-ahead", "old-ahead", "player-1",
     ]);
   });
 
@@ -224,7 +226,7 @@ describe("WidgetVisualHost v2 generic registry", () => {
     ["relative-redline-mirror", "desktop"],
     ["relative-redline-proximity", "studio"],
     ["relative-redline-traffic", "obs"],
-  ] as const)("keeps the one 400 ms Redline hold observable in %s/%s", (templateId, renderMode) => {
+  ] as const)("uses relativeSettled rather than the immediate window in %s/%s", (templateId, renderMode) => {
     const widget = enduranceRelative(`relative-${renderMode}`, templateId);
     const instanceKey = `profile-boundary:${widget.id}`;
     const transitionSpy = vi.spyOn(relativeV2, "prepareRelativeViewModelV2");
@@ -240,6 +242,13 @@ describe("WidgetVisualHost v2 generic registry", () => {
         player,
         { ...behind, id: "behind-near" },
         { ...behind, id: "behind-far" },
+      ],
+      relativeSettled: [
+        { ...ahead, id: "settled-far" },
+        { ...ahead, id: "settled-near" },
+        player,
+        { ...behind, id: "settled-behind-near" },
+        { ...behind, id: "settled-behind-far" },
       ],
     };
     let nowMs = 0;
@@ -258,7 +267,7 @@ describe("WidgetVisualHost v2 generic registry", () => {
     );
     const rowIds = () => [...view.container.querySelectorAll("[data-relative-row]")]
       .map((row) => row.getAttribute("data-relative-row"));
-    expect(rowIds()).toEqual(["ahead-far", "ahead-near", "player-1", "behind-near", "behind-far"]);
+    expect(rowIds()).toEqual(["settled-far", "settled-near", "player-1", "settled-behind-near", "settled-behind-far"]);
 
     view.rerender(
       <WidgetVisualHost
@@ -267,7 +276,7 @@ describe("WidgetVisualHost v2 generic registry", () => {
         runtime={runtime(frame, { state: "detecting", retry: 1 })}
       />,
     );
-    expect(rowIds()).toEqual(["ahead-far", "ahead-near", "player-1", "behind-near", "behind-far"]);
+    expect(rowIds()).toEqual([]);
     expect(view.container.querySelectorAll('[data-ghost="true"]')).toHaveLength(0);
 
     nowMs = 399;
@@ -275,22 +284,19 @@ describe("WidgetVisualHost v2 generic registry", () => {
       <WidgetVisualHost
         widget={widget}
         renderMode={renderMode}
-        runtime={runtime({ ...frame, sequence: 2, relative: [] }, { state: "live", retry: 1 })}
+        runtime={runtime({ ...frame, sequence: 2, relative: [], relativeSettled: [] }, { state: "live", retry: 1 })}
       />,
     );
-    expect(rowIds()).toEqual(["ahead-far", "ahead-near", "player-1", "behind-near", "behind-far"]);
-    const scopeAt399 = transitionSpy.mock.calls.at(-1)?.[3]?.state?.scopeKey;
-    expect(scopeAt399).toContain(instanceKey);
+    expect(rowIds()).toEqual([]);
 
     nowMs = 400;
     view.rerender(
       <WidgetVisualHost
         widget={widget}
         renderMode={renderMode}
-        runtime={runtime({ ...frame, sequence: 3, relative: [] }, { state: "live", retry: 1 })}
+        runtime={runtime({ ...frame, sequence: 3, relative: [], relativeSettled: [] }, { state: "live", retry: 1 })}
       />,
     );
-    expect(transitionSpy.mock.calls.at(-1)?.[3]?.state?.scopeKey).toBe(scopeAt399);
     expect(rowIds()).toEqual([]);
     expect(view.container.querySelectorAll('[data-ghost="true"]')).toHaveLength(0);
 
@@ -299,13 +305,11 @@ describe("WidgetVisualHost v2 generic registry", () => {
       <WidgetVisualHost
         widget={widget}
         renderMode={renderMode}
-        runtime={runtime({ ...frame, sequence: 4, relative: [] }, { state: "live", retry: 1 })}
+        runtime={runtime({ ...frame, sequence: 4, relative: [], relativeSettled: [] }, { state: "live", retry: 1 })}
       />,
     );
     expect(rowIds()).toEqual([]);
     expect(view.container.querySelectorAll('[data-ghost="true"]')).toHaveLength(0);
-    expect(transitionSpy.mock.calls.map((call) => call[3]?.instanceKey))
-      .toEqual(Array(transitionSpy.mock.calls.length).fill(instanceKey));
     transitionSpy.mockRestore();
   });
 
@@ -327,7 +331,7 @@ describe("WidgetVisualHost v2 generic registry", () => {
       <WidgetVisualHost
         widget={widget}
         renderMode={renderMode}
-        runtime={runtime({ ...frame, sequence: 50, relative: oldRows }, source)}
+        runtime={runtime({ ...frame, sequence: 50, relative: frame.relative, relativeSettled: oldRows }, source)}
       />,
     );
     expect(view.container.textContent).toContain("OLD-Player");
@@ -345,7 +349,7 @@ describe("WidgetVisualHost v2 generic registry", () => {
       <WidgetVisualHost
         widget={widget}
         renderMode={renderMode}
-        runtime={runtime({ ...frame, sequence: 1, relative: recoveredRows }, source)}
+        runtime={runtime({ ...frame, sequence: 1, relative: frame.relative, relativeSettled: recoveredRows }, source)}
       />,
     );
     expect(view.container.textContent).toContain("NEW-Player");
@@ -366,11 +370,11 @@ describe("WidgetVisualHost v2 generic registry", () => {
         {block ? <Blocking /> : null}
       </Suspense>
     );
-    const view = render(scene({ ...frame, sequence: 1, relative: oldRows }, false));
+    const view = render(scene({ ...frame, sequence: 1, relative: frame.relative, relativeSettled: oldRows }, false));
     expect(view.container.textContent).toContain("OLD-Player");
 
-    view.rerender(scene({ ...frame, sequence: 2, relative: abandonedRows }, true));
-    view.rerender(scene({ ...frame, sequence: 2, relative: oldRows }, false));
+    view.rerender(scene({ ...frame, sequence: 2, relative: frame.relative, relativeSettled: abandonedRows }, true));
+    view.rerender(scene({ ...frame, sequence: 2, relative: frame.relative, relativeSettled: oldRows }, false));
 
     expect(view.container.textContent).toContain("OLD-Player");
     expect(view.container.textContent).not.toContain("ABANDONED-Player");

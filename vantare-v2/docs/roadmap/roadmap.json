@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-31T20:08:40Z",
+  "generatedAt": "2026-08-31T20:37:56Z",
   "digest": {
     "lastCommit": "659b2c57dc2c7fc75962cc3c8e425ed1289266ec"
   },
@@ -507,10 +507,10 @@
         "it": "Overlay Studio V3 in corso"
       },
       "body": {
-        "es": "Un único límite de render para estudio, runtime y previsualización, con guardado automático, historial de deshacer/rehacer, Standings Redline configurable y ampliable, y Track Map Endurance ajustado al frame sin recortar su pie, dentro de los catálogos Crystal, Neo y Endurance.",
-        "en": "A single render boundary for studio, runtime and preview, with autosave, undo/redo history, configurable and resizable Standings Redline, and Endurance Track Map fitted to its frame without clipping its footer, within the Crystal, Neo and Endurance catalogues.",
-        "pt": "Um único limite de render para estúdio, runtime e pré-visualização, com gravação automática, histórico de desfazer/refazer, Standings Redline configurável e redimensionável e Track Map Endurance ajustado ao frame sem cortar o rodapé, nos catálogos Crystal, Neo e Endurance.",
-        "it": "Un unico confine di render per studio, runtime e anteprima, con salvataggio automatico, cronologia annulla/ripristina, Standings Redline configurabile e ridimensionabile e Track Map Endurance adattato al frame senza tagliare il piè di pagina, nei cataloghi Crystal, Neo ed Endurance."
+        "es": "Un único límite de render para estudio, runtime y previsualización, con guardado automático, historial de deshacer/rehacer, Standings Redline configurable y ampliable, pedales Redline contenidos en su frame y con la saturación confinada a sus wells, y Track Map Endurance ajustado al frame sin recortar su pie, dentro de los catálogos Crystal, Neo y Endurance.",
+        "en": "A single render boundary for studio, runtime and preview, with autosave, undo/redo history, configurable and resizable Standings Redline, Redline pedals contained in their frame with saturation confined to their wells, and Endurance Track Map fitted to its frame without clipping its footer, within the Crystal, Neo and Endurance catalogues.",
+        "pt": "Um único limite de render para estúdio, runtime e pré-visualização, com gravação automática, histórico de desfazer/refazer, Standings Redline configurável e redimensionável, pedais Redline contidos no frame e com a saturação confinada aos seus wells, e Track Map Endurance ajustado ao frame sem cortar o rodapé, nos catálogos Crystal, Neo e Endurance.",
+        "it": "Un unico confine di render per studio, runtime e anteprima, con salvataggio automatico, cronologia annulla/ripristina, Standings Redline configurabile e ridimensionabile, pedali Redline contenuti nel frame e con la saturazione confinata ai propri well, e Track Map Endurance adattato al frame senza tagliare il piè di pagina, nei cataloghi Crystal, Neo ed Endurance."
       },
       "label": {
         "es": "En desarrollo",
@@ -911,22 +911,12 @@
         {
           "kind": "change",
           "scope": "",
-          "text": "ISA-924 · Banco: atribución del renderer overlay, limpieza de sesiones ETW y frametime inválido marcado"
+          "text": "ISA-894 · F9 corte 1: V1 apagado por defecto con rollback, A/B y guardarraíles"
         },
         {
           "kind": "change",
           "scope": "",
-          "text": "ISA-893 · OverlayFrame V2 autoridad completa en Studio, Desktop y OBS (cutover)"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "ISA-943 · Perfil v4 + Ajustes › Rendimiento (C2)"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "ISA-943 · Pase visual de Ajustes › Rendimiento"
+          "text": "ISA-944 · Sensor de host y modo Automático (F3)"
         },
         {
           "kind": "change",
@@ -936,12 +926,22 @@
         {
           "kind": "change",
           "scope": "",
-          "text": "ISA-894 · F9 corte 1: V1 apagado por defecto con rollback, A/B y guardarraíles"
+          "text": "ISA-943 · Pase visual de Ajustes › Rendimiento"
         },
         {
           "kind": "change",
           "scope": "",
-          "text": "ISA-944 · Sensor de host y modo Automático (F3)"
+          "text": "ISA-943 · Perfil v4 + Ajustes › Rendimiento (C2)"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-893 · OverlayFrame V2 autoridad completa en Studio, Desktop y OBS (cutover)"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-924 · Banco: atribución del renderer overlay, limpieza de sesiones ETW y frametime inválido marcado"
         }
       ]
     },
@@ -951,12 +951,12 @@
         {
           "kind": "change",
           "scope": "",
-          "text": "ISA-926 · PerformancePolicy en Go: niveles 1–5, ajustes v4 y capabilities.performance"
+          "text": "ISA-924 · Baseline F0 de huella mínima (2026-08-29)"
         },
         {
           "kind": "change",
           "scope": "",
-          "text": "ISA-924 · Baseline F0 de huella mínima (2026-08-29)"
+          "text": "ISA-926 · PerformancePolicy en Go: niveles 1–5, ajustes v4 y capabilities.performance"
         }
       ]
     },

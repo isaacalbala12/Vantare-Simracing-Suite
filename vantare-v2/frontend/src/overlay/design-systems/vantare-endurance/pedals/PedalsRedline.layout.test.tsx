@@ -59,7 +59,6 @@ describe("Pedals Redline frame geometry", () => {
           `<style>html,body{margin:0;background:transparent}${css}</style>`
             + renderRuntimeFrame(status),
         );
-
         const result = await page.evaluate(() => {
           const frame = document.querySelector<HTMLElement>("[data-testid='runtime-widget-frame']");
           const root = document.querySelector<HTMLElement>("[data-template='pedals-redline']");

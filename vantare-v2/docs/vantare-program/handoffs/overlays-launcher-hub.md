@@ -10,6 +10,26 @@
 
 ## Estado
 
+- **ISA-967 — Pedals Redline contenido en su frame (2026-08-31, rama):** el
+  renderer productivo `pedals-redline` ya no hereda el `padding`/`min-height`
+  del shell genérico de pedales ni el mínimo intrínseco de sus wells. El
+  override queda limitado al selector del template Redline; a 520×420 todos
+  los descendientes visibles caben con tolerancia de 0,5 px. Se añadió un
+  test Playwright de geometría contra el pipeline productivo completo con
+  estados V2 `ready` y `missing`. No modifica `pedals-classic`, `pedals-neo`
+  ni otros diseños. La
+  validación física S3 con Wails/LMU y licencia activa sobre `cf75af2f` quedó
+  `ready` a 520×420: raíz contenida, cero descendientes recortados, cero clips
+  internos y cero placas opacas exteriores. Evidencia local:
+  `C:\tmp\vantare-s3-gate\results\runs\pedals-20260831-163106\22-pedals-redline`.
+  La repetición física posterior detectó que, con freno al 100 %, la sombra
+  exterior de saturación se escalaba como un halo blanco alrededor del well.
+  `80da8c91` la confinó a un brillo `inset` sin perder la lectura `100%` ni la
+  transparencia. La regresión Chromium compara reposo/saturación con
+  `deviceScaleFactor: 1`, exige una señal `inset` distinta y cero píxeles
+  cambiados fuera del well/slot local; así queda atendida la revisión
+  adversarial posterior a `80da8c91`.
+
 - **ISA-958 — Relative estable por instancia (2026-08-31, rama):** la
   pertenencia mantiene solo VehicleID y exige 900 ms monotónicos; no compara
   posiciones de coches distintos para saltarse el hold. Cada render rehidrata

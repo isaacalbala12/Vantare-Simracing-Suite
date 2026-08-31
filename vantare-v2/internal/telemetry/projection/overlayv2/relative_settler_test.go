@@ -132,8 +132,7 @@ func TestCachedProjectorSettledResetsPerSessionEpochAndPlayer(t *testing.T) {
 	if !ok {
 		t.Fatal("missing final")
 	}
-	projector := NewCachedProjector(SectionCadence{})
-	project := func(header envelope.Header, value derive.FinalState, now time.Time) UpdateV2 {
+	project := func(projector *CachedProjector, header envelope.Header, value derive.FinalState, now time.Time) UpdateV2 {
 		snapshot, err := envelope.NewSnapshot(header, value, cloneFinalState)
 		if err != nil {
 			t.Fatal(err)
@@ -144,22 +143,48 @@ func TestCachedProjectorSettledResetsPerSessionEpochAndPlayer(t *testing.T) {
 		}
 		return update
 	}
-	first := project(base.Header(), state, cadenceOrigin)
-	for _, mutate := range []func(*envelope.Header, *derive.FinalState){
-		func(h *envelope.Header, _ *derive.FinalState) { h.Identity.Session = "new-session" },
-		func(h *envelope.Header, _ *derive.FinalState) { h.Cursor.Epoch++ },
-		func(_ *envelope.Header, s *derive.FinalState) {
+	cases := []struct {
+		name   string
+		mutate func(*envelope.Header, *derive.FinalState)
+	}{
+		{"session", func(h *envelope.Header, _ *derive.FinalState) { h.Identity.Session = "new-session" }},
+		{"epoch", func(h *envelope.Header, _ *derive.FinalState) { h.Cursor.Epoch++ }},
+		{"player", func(_ *envelope.Header, s *derive.FinalState) {
 			s.Observed.Vehicles[0].Player = builderField(t, false, schema.FreshnessFresh)
 			s.Observed.Vehicles[1].Player = builderField(t, true, schema.FreshnessFresh)
-		},
-	} {
-		header, value := base.Header(), cloneFinalState(state)
-		header.Cursor.Sequence++
-		mutate(&header, &value)
-		got := project(header, value, cadenceOrigin.Add(time.Second))
-		if got.Frame == nil || !sameRelativeIDs(relativeIDs(got.Frame.RelativeSettled), relativeIDs(got.Frame.Relative)) {
-			t.Fatalf("reset did not bootstrap: first=%#v got=%#v", first.Frame, got.Frame)
+		}},
+	}
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			projector := NewCachedProjector(SectionCadence{})
+			project(projector, base.Header(), state, cadenceOrigin)
+			header, value := base.Header(), cloneFinalState(state)
+			header.Cursor.Sequence++
+			testCase.mutate(&header, &value)
+			got := project(projector, header, value, cadenceOrigin.Add(time.Second))
+			if got.Frame == nil || !sameRelativeIDs(relativeIDs(got.Frame.RelativeSettled), relativeIDs(got.Frame.Relative)) {
+				t.Fatalf("reset did not bootstrap: %#v", got.Frame)
+			}
+		})
+	}
+}
+
+func TestCachedProjectorsKeepIndependentSettledAuthority(t *testing.T) {
+	t.Parallel()
+	base := builderFinalState(t, 37)
+	left, right := NewCachedProjector(SectionCadence{}), NewCachedProjector(SectionCadence{})
+	project := func(projector *CachedProjector, revision uint64) UpdateV2 {
+		update, err := projector.Project(base, builderSourceContext(), DefaultPreferencesV2(), revision, cadenceOrigin.Add(time.Duration(revision)*time.Second))
+		if err != nil {
+			t.Fatal(err)
 		}
+		return update
+	}
+	leftFirst := project(left, 1)
+	rightFirst := project(right, 1)
+	leftNext := project(left, 2)
+	if leftFirst.Frame == nil || rightFirst.Frame == nil || leftNext.Frame == nil || !sameRelativeIDs(relativeIDs(rightFirst.Frame.RelativeSettled), relativeIDs(rightFirst.Frame.Relative)) || !sameRelativeIDs(relativeIDs(leftNext.Frame.RelativeSettled), relativeIDs(leftFirst.Frame.RelativeSettled)) {
+		t.Fatal("CachedProjector settled authority leaked or did not retain independently")
 	}
 }
 

@@ -49,16 +49,86 @@ function modelWithRows(
   rows: StandingsRowViewModel[],
   sessionLabel = "RACE",
   visibleMetrics: readonly string[] = ["gap", "bestLap", "tireCompound", "pit"],
+  motionIdentity = "session-a:1",
+  motionSequence = 1,
 ): StandingsViewModel {
   return {
     type: "standings",
     status: "ready",
     sessionLabel,
     remainingText: "10:00",
+    motionIdentity,
+    motionSequence,
     columns: visibleMetrics.map(column),
     rows,
   } as StandingsViewModel;
 }
+
+describe("position delta authority", () => {
+  it.each(["PRACTICE", "QUALIFYING", "WARMUP", "RACE"])(
+    "does not invent a grid baseline in %s",
+    (sessionLabel) => {
+      const initial = modelWithRows([
+        row({ id: "a", position: 1 }),
+        row({ id: "b", position: 2 }),
+      ], sessionLabel);
+      const { result, rerender } = renderMotion(initial);
+
+      rerender({ value: modelWithRows([
+        row({ id: "b", position: 1 }),
+        row({ id: "a", position: 2 }),
+      ], sessionLabel, undefined, "session-a:1", 2) });
+
+      expect(result.current.positionDeltas.size).toBe(0);
+    },
+  );
+
+  it.each(["PRACTICE", "QUALIFYING"])(
+    "clears a race delta when the session changes to %s",
+    (sessionLabel) => {
+      const { result, rerender } = renderMotion(modelWithRows([
+        row({ id: "a", position: 2, gridPosition: 3 }),
+      ]));
+      expect(result.current.positionDeltas.get("a")).toBe(1);
+
+      rerender({ value: modelWithRows([
+        row({ id: "a", position: 2, gridPosition: 3 }),
+      ], sessionLabel, undefined, "session-b:2", 1) });
+
+      expect(result.current.positionDeltas.size).toBe(0);
+    },
+  );
+
+  it.each([
+    ["session id", "session-b:1"],
+    ["epoch", "session-a:2"],
+  ])("does not retain a delta after a %s reset", (_label, motionIdentity) => {
+    const { result, rerender } = renderMotion(modelWithRows([
+      row({ id: "a", position: 2, gridPosition: 3 }),
+    ]));
+    expect(result.current.positionDeltas.get("a")).toBe(1);
+
+    rerender({ value: modelWithRows([
+      row({ id: "a", position: 1 }),
+    ], "RACE", undefined, motionIdentity, 1) });
+
+    expect(result.current.positionDeltas.size).toBe(0);
+  });
+
+  it("does not treat the first late race frame as the starting grid", () => {
+    const { result, rerender } = renderMotion(modelWithRows([
+      row({ id: "a", position: 8 }),
+      row({ id: "b", position: 9 }),
+    ], "RACE", undefined, "late-race:7", 500));
+
+    rerender({ value: modelWithRows([
+      row({ id: "b", position: 8 }),
+      row({ id: "a", position: 9 }),
+    ], "RACE", undefined, "late-race:7", 501) });
+
+    expect(result.current.positionDeltas.size).toBe(0);
+  });
+});
 
 function renderMotion(initial: StandingsViewModel) {
   const rootRef = createRef<HTMLElement>();

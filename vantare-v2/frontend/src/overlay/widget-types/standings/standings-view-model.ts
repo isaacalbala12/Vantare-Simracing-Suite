@@ -17,6 +17,8 @@ const PLACEHOLDER = "—";
 export type StandingsRowViewModel = {
   id: string;
   position: number;
+  /** Explicit same-session starting-grid position. Absent means no delta authority. */
+  gridPosition?: number;
   driverNumber: string;
   driverName: string;
   configuredDriverName?: string;
@@ -42,6 +44,9 @@ export type StandingsViewModel = WidgetViewModelBase & {
   lapText?: string;
   columns: readonly WidgetColumnV3[];
   rows: readonly StandingsRowViewModel[];
+  /** Productive stream identity used only to discard ephemeral motion state. */
+  motionIdentity?: string;
+  motionSequence?: number;
 };
 
 function buildUnavailableModel(
@@ -220,5 +225,7 @@ export function buildStandingsViewModel(
     ...(lapText ? { lapText } : {}),
     columns,
     rows,
+    motionIdentity: `${snapshot.session.key ?? snapshot.session.type}:${snapshot.session.epoch ?? "unknown"}`,
+    motionSequence: snapshot.capturedAt,
   };
 }

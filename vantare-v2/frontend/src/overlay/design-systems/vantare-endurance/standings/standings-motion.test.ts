@@ -212,14 +212,13 @@ describe("standings-motion", () => {
     expect(deriveRosterChange(model([], "stale"), gridA())).toEqual({ entered: [], retired: [] });
   });
 
-  it("tracks net position deltas against the session baseline", () => {
-    const baseline = classPositionsById(gridA());
+  it("tracks net position deltas only from explicit race grid positions", () => {
     const next = model([
-      row({ id: "c", position: 1, gapText: "—", isPlayer: true }),
-      row({ id: "a", position: 2, gapText: "+1.0s" }),
-      row({ id: "b", position: 3, gapText: "+2.0s" }),
+      row({ id: "c", position: 1, gridPosition: 3, gapText: "—", isPlayer: true }),
+      row({ id: "a", position: 2, gridPosition: 1, gapText: "+1.0s" }),
+      row({ id: "b", position: 3, gridPosition: 2, gapText: "+2.0s" }),
     ]);
-    const deltas = derivePositionDeltas(baseline, next);
+    const deltas = derivePositionDeltas(next);
     expect(deltas.get("c")).toBe(2);
     expect(deltas.get("a")).toBe(-1);
     expect(deltas.get("b")).toBe(-1);

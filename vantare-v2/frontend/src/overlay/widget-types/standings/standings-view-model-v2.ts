@@ -67,6 +67,8 @@ export function buildStandingsViewModelV2(
     remainingText: formatRemainingTime(displayedNumber(frame.session.remaining)),
     columns,
     rows: limited.map((row, index) => buildRow(row, index, playerId, paceSession, sessionBestLap)),
+    motionIdentity: `${frame.sessionId}:${frame.epoch}`,
+    motionSequence: frame.sequence,
   };
 }
 

@@ -12,6 +12,7 @@ import type { WidgetInstanceV3 } from "../../../core/profile-document";
 import { RuntimeWidgetFrame } from "../../../runtime/RuntimeWidgetFrame";
 import { standingsDefinition } from "../../../widget-types/standings/standings-definition";
 import type { StandingsContent } from "../../../widget-types/standings/standings-content";
+import { resolveStandingsRedlineFrameLayout } from "../../../widget-types/standings/standings-redline-layout";
 import { StudioTelemetryContext } from "../../../../hub/overlay-studio/canvas/studio-telemetry";
 import { StudioWidgetFrame } from "../../../../hub/overlay-studio/canvas/StudioWidgetFrame";
 import goldenV2Raw from "../../../../../../internal/telemetry/projection/overlayv2/testdata/overlay_v2_20.golden.json?raw";
@@ -117,6 +118,12 @@ function renderSurface(surface: Surface, state: State, width: number): string {
     ? { overlayV2Frame: golden.frame, overlayV2Source: golden.source }
     : {};
   if (state === "ready") telemetry.setOverlayFrame(golden.frame, golden.source);
+  const runtimeWidget = {
+    ...widget,
+    // RuntimeOverlaySurface owns the effective Redline geometry before it
+    // delegates the final frame to RuntimeWidgetFrame.
+    layout: resolveStandingsRedlineFrameLayout(widget, widget.layout, 1920),
+  };
 
   const markup = surface === "studio"
     ? renderToStaticMarkup(
@@ -134,7 +141,7 @@ function renderSurface(surface: Surface, state: State, width: number): string {
       )
     : renderToStaticMarkup(
         <RuntimeWidgetFrame
-          widget={widget}
+          widget={runtimeWidget}
           profileId="isa-968-golden"
           telemetry={telemetry}
           renderMode={surface}

@@ -8,7 +8,6 @@ import { useRateLimitedWidgetTelemetry } from "./use-rate-limited-telemetry";
 import type { EngineerPresentation } from "../../engineer/engineer-presentation-store";
 import type { OverlayV2Feature } from "../telemetry-shadow/overlay-v2-features";
 import type { RaceScheduleSnapshot } from "../core/race-schedule-store";
-import { resolveStandingsRedlineFrameLayout } from "../widget-types/standings/standings-redline-layout";
 
 export type RuntimeWidgetFrameProps = {
   widget: WidgetInstanceV3;
@@ -31,8 +30,7 @@ function RuntimeWidgetFrameComponent(props: RuntimeWidgetFrameProps): React.Reac
     widget.type,
   );
   const origin = layoutOrigin ?? { x: 0, y: 0 };
-  const effectiveLayout = resolveStandingsRedlineFrameLayout(widget, widget.layout);
-  const { x, y, w, h, zIndex } = effectiveLayout;
+  const { x, y, w, h, zIndex } = widget.layout;
 
   const frameStyle: CSSProperties = {
     position: "absolute",
@@ -50,7 +48,7 @@ function RuntimeWidgetFrameComponent(props: RuntimeWidgetFrameProps): React.Reac
       <WidgetVisualViewport
         widgetType={widget.type}
         visual={widget.visual}
-        layout={effectiveLayout}
+        layout={widget.layout}
         testId={`runtime-widget-viewport-${widget.id}`}
       >
         <WidgetVisualHost

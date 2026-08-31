@@ -72,16 +72,38 @@ export function resolveStandingsRedlineGridTemplate(columns: readonly WidgetColu
   ].join(" ");
 }
 
+export function resolveStandingsRedlineMinimumWidth(widget: WidgetInstanceV3): number | undefined {
+  if (!isStandingsRedlineWidget(widget)) return undefined;
+  try {
+    return resolveStandingsRedlineRequiredWidth(parseStandingsContent(widget.content));
+  } catch {
+    // Invalid content remains owned by WidgetVisualHost's existing diagnostic boundary.
+    return undefined;
+  }
+}
+
+export function resolveMinimumWidthFrameLayout(
+  layout: WidgetLayoutV3,
+  minimumWidth: number | undefined,
+  viewportWidth?: number,
+): WidgetLayoutV3 {
+  if (minimumWidth === undefined || minimumWidth <= layout.w) return layout;
+  const touchesRightEdge = viewportWidth !== undefined && layout.x + layout.w >= viewportWidth;
+  return {
+    ...layout,
+    x: touchesRightEdge ? Math.max(0, viewportWidth - minimumWidth) : layout.x,
+    w: minimumWidth,
+  };
+}
+
 export function resolveStandingsRedlineFrameLayout(
   widget: WidgetInstanceV3,
   layout: WidgetLayoutV3,
+  viewportWidth?: number,
 ): WidgetLayoutV3 {
-  if (!isStandingsRedlineWidget(widget)) return layout;
-  try {
-    const requiredWidth = resolveStandingsRedlineRequiredWidth(parseStandingsContent(widget.content));
-    return requiredWidth > layout.w ? { ...layout, w: requiredWidth } : layout;
-  } catch {
-    // Invalid content remains owned by WidgetVisualHost's existing diagnostic boundary.
-    return layout;
-  }
+  return resolveMinimumWidthFrameLayout(
+    layout,
+    resolveStandingsRedlineMinimumWidth(widget),
+    viewportWidth,
+  );
 }

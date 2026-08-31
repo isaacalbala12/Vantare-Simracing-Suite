@@ -15,6 +15,7 @@ import { raceScheduleDefinition } from "../widget-types/race-schedule/race-sched
 import { createRaceScheduleStore } from "../core/race-schedule-store";
 import type { Calendar } from "../../calendar/calendar-types";
 import { engineerRadioDefinition } from "../widget-types/engineer-radio/engineer-radio-definition";
+import type { StandingsContent } from "../widget-types/standings/standings-content";
 
 const originalResizeObserver = globalThis.ResizeObserver;
 
@@ -99,6 +100,19 @@ function buildDocument(): ProfileDocumentV3 {
   };
 }
 
+function buildMaximumRedlineContent(): StandingsContent {
+  const content = standingsDefinition.parseContent(undefined);
+  const presets = ["sm", "sm", "lg", "lg", "md", "md", "auto", "lg", "lg", "xs", "sm"] as const;
+  return {
+    ...content,
+    columns: content.columns.map((column, index) => ({
+      ...column,
+      enabled: true,
+      widthPreset: presets[index],
+    })),
+  };
+}
+
 describe("RuntimeOverlaySurface", () => {
   it.each([
     ["desktop", "source-missing"],
@@ -161,6 +175,62 @@ describe("RuntimeOverlaySurface", () => {
       coordinator.dispose();
     },
   );
+
+  it.each(["desktop", "obs"] as const)(
+    "maps a maximum Redline from 1920 to a 280-wide scene without re-expansion or negative origin in %s",
+    (renderMode) => {
+      measuredWidth = 280;
+      measuredHeight = 1080;
+      const coordinator = createTelemetryRateCoordinator();
+      const document = buildDocument();
+      const widget = standingsDefinition.createDefault("standings-redline-full-width");
+      widget.content = buildMaximumRedlineContent();
+      widget.layout = { ...widget.layout, x: 64, w: 1920 };
+      widget.visual = {
+        ...widget.visual,
+        systemId: "vantare-endurance",
+        baseSettings: { templateId: "standings-redline" },
+      };
+      document.layouts.general.widgets = [widget];
+
+      const view = render(
+        <RuntimeOverlaySurface
+          document={document}
+          telemetry={coordinator}
+          renderMode={renderMode}
+          layoutOrigin={{ x: 64, y: 0 }}
+        />,
+      );
+
+      const scene = view.getByTestId("runtime-overlay-scene") as HTMLElement;
+      const frame = view.getByTestId("runtime-widget-frame") as HTMLElement;
+      expect(scene.dataset.layoutWidth).toBe("280");
+      expect(frame.style.left).toBe("0px");
+      expect(frame.style.width).toBe("280px");
+      expect(Number.parseFloat(frame.style.left) + Number.parseFloat(frame.style.width)).toBeLessThanOrEqual(280);
+      coordinator.dispose();
+    },
+  );
+
+  it("does not apply the Redline minimum to another Endurance standings template", () => {
+    const coordinator = createTelemetryRateCoordinator();
+    const document = buildDocument();
+    const widget = standingsDefinition.createDefault("standings-endurance-classic");
+    widget.layout = { ...widget.layout, w: 280 };
+    widget.visual = {
+      ...widget.visual,
+      systemId: "vantare-endurance",
+      baseSettings: { templateId: "standings-classic" },
+    };
+    document.layouts.general.widgets = [widget];
+
+    const view = render(
+      <RuntimeOverlaySurface document={document} telemetry={coordinator} renderMode="desktop" />,
+    );
+
+    expect((view.getByTestId("runtime-widget-frame") as HTMLElement).style.width).toBe("280px");
+    coordinator.dispose();
+  });
 
   it.each(["desktop", "obs"] as const)(
     "passes the productive Calendar store through the %s surface to race-schedule",

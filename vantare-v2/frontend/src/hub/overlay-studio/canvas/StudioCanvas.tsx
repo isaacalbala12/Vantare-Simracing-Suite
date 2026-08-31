@@ -410,6 +410,7 @@ export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement 
                 widget={widget}
                 profileId={document?.id ?? 'studio-unloaded'}
                 layout={interaction.resolveLayout(widget)}
+                layoutViewportWidth={layoutViewport.width}
                 previewActive={interaction.isWidgetPreviewActive(widget.id)}
                 selected={selectedWidgetId === widget.id}
                 onSelect={selectWidget}

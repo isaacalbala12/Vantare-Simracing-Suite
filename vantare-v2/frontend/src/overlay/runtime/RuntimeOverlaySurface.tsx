@@ -162,10 +162,18 @@ export function RuntimeOverlaySurface(props: RuntimeOverlaySurfaceProps): React.
     ? resolveResponsiveSceneTransform(layoutViewport, outputViewport)
     : null;
 
-  const effectiveWidgets = widgets.map((widget) => ({
-    ...widget,
-    layout: resolveStandingsRedlineFrameLayout(widget, widget.layout),
-  }));
+  const origin = layoutOrigin ?? { x: 0, y: 0 };
+  const effectiveWidgets = widgets.map((widget) => {
+    const localLayout = {
+      ...widget.layout,
+      x: widget.layout.x - origin.x,
+      y: widget.layout.y - origin.y,
+    };
+    return {
+      ...widget,
+      layout: resolveStandingsRedlineFrameLayout(widget, localLayout, layoutViewport.width),
+    };
+  });
   const responsiveWidgets = transform
     ? effectiveWidgets.map((widget) => ({
         ...widget,
@@ -217,7 +225,6 @@ export function RuntimeOverlaySurface(props: RuntimeOverlaySurfaceProps): React.
               profileId={document.id}
               telemetry={telemetry}
               renderMode={renderMode}
-              layoutOrigin={layoutOrigin}
               onDiagnostic={onDiagnostic}
               diagnostics={diagnostics}
               engineerPresentation={engineerPresentation}

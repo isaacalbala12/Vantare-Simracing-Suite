@@ -92,6 +92,7 @@ func hashStandingsVehicle(sum uint64, vehicle *core.VehicleState) uint64 {
 	sum = hashFieldInt32(sum, vehicle.LapsBehindLeader)
 	sum = hashFieldBool(sum, vehicle.InPit)
 	sum = hashFieldInt32(sum, vehicle.CompletedLaps)
+	sum = hashFieldFloat(sum, vehicle.BestLapTime)
 	sum = hashFieldFloat(sum, vehicle.LastLapTime)
 	sum = hashFieldFloat(sum, vehicle.LapDistance)
 	sum = hashQuality(sum, vehicle.WorldPosition)

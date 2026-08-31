@@ -53,10 +53,10 @@ export function buildStandingsViewModelV2(
         const rowClass = (row.classId ?? "").toUpperCase();
         return rowClass === "" || rowClass === activeClass;
       });
-  const limited = scoped.slice(0, content.rowCount ?? 20);
   const phase = displayedText(frame.session.phase)?.toLowerCase();
   const paceSession = phase === "practice" || phase === "qualifying";
-  const sessionBestLap = paceSession ? fastestLap(limited) : undefined;
+  const sessionBestLap = paceSession ? fastestLap(scoped) : undefined;
+  const limited = scoped.slice(0, content.rowCount ?? 20);
 
   return {
     type: "standings",

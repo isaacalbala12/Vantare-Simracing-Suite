@@ -12,11 +12,13 @@
 
 - **ISA-957 — filas completas y semántica de Standings (2026-08-31, rama):**
   las nueve plantillas Endurance recortan el modelo con
-  `floor(altoUtil/altoFila)` antes de renderizar; el caso 520×560 deja 16 de
-  18 filas Redline y nunca media fila. Overlay V2 publica `bestLap` y el
+  `floor(altoUtil/altoFila)` antes de renderizar; el caso 520×560 deja 14 de
+  18 filas Redline completas y reserva el flujo transitorio de una retirada y
+  una batalla. Overlay V2 publica `bestLap` y el
   ViewModel muestra en práctica/clasificación la mejor vuelta de la fila y su
   diferencia contra la mejor de sesión; en carrera conserva el gap oficial al
-  líder. Evidencia local: 54 tests frontend focales, paquete Go Overlay V2,
+  líder; el shadow compara ese campo y el referente se calcula antes de
+  `rowCount`. Evidencia local: tests frontend focales, paquete Go Overlay V2,
   typecheck y `git diff --check`; no se lanzó Wails ni se tocó CSS.
 
 - **ISA-940 — lifecycle a coste cero (2026-08-30):** rama

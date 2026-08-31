@@ -40,4 +40,22 @@ describe("buildStandingsViewModelV2 session columns", () => {
     });
     expect(model.rows[1]?.gapText).not.toBe(model.rows[1]?.pitText);
   });
+
+  it("uses the session/class scope best lap even when its row is below rowCount", () => {
+    const frame = frameForPhase("practice");
+    const outsideLimit = {
+      ...frame.standings[1]!,
+      id: "best-outside-limit",
+      position: 3,
+      bestLap: { q: "fresh" as const, v: 239 },
+    };
+    const model = buildStandingsViewModelV2(
+      { ...frame, standings: [...frame.standings, outsideLimit] },
+      { state: "live" },
+      { ...content, rowCount: 2 },
+    );
+
+    expect(model.rows).toHaveLength(2);
+    expect(model.rows.map((row) => row.gapText)).toEqual(["+1.000s", "+3.000s"]);
+  });
 });

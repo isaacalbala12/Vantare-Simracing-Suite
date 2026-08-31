@@ -73,10 +73,11 @@ func TestStandingsDirtySignalIgnoresUnprojectedChanges(t *testing.T) {
 			},
 		},
 		{
-			name: "best lap time is not projected",
+			name: "best lap time is projected",
 			mutate: func(state *derive.FinalState) {
 				state.Observed.Vehicles[1].BestLapTime = builderPresent(standings.LapTime(88.1))
 			},
+			dirty: true,
 		},
 		{
 			name: "order changes",

@@ -494,6 +494,7 @@ const COMPARABLE_STANDINGS_FIELDS = [
   "vehicleClass",
   "currentLapText",
   "lastLapText",
+  "bestLapText",
   "pitText",
   "isPlayer",
   "isLeader",

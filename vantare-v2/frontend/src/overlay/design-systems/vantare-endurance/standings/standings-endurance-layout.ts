@@ -19,7 +19,11 @@ type LayoutMetrics = Readonly<{
   groupHeight: number;
   extraGroupHeight: number;
   maxRowsPerGroup?: number;
+  transientReserveHeight?: number;
 }>;
+
+export const REDLINE_RETIREMENT_GHOST_HEIGHT_PX = 30;
+export const REDLINE_BATTLE_BOX_EXTRA_HEIGHT_PX = 12;
 
 const LAYOUT_METRICS: Readonly<Record<StandingsEnduranceLayoutTemplate, LayoutMetrics>> = {
   "standings-f1": { rowHeight: 30, headerHeight: 54, baseHeight: 0, groupHeight: 24, extraGroupHeight: 0 },
@@ -28,7 +32,14 @@ const LAYOUT_METRICS: Readonly<Record<StandingsEnduranceLayoutTemplate, LayoutMe
   "standings-racelabs": { rowHeight: 32, headerHeight: 32, baseHeight: 0, groupHeight: 0, extraGroupHeight: 2 },
   "standings-apex": { rowHeight: 27, headerHeight: 32, baseHeight: 0, groupHeight: 19, extraGroupHeight: 0 },
   "standings-neo": { rowHeight: 38, headerHeight: 38, baseHeight: 0, groupHeight: 37, extraGroupHeight: 12 },
-  "standings-redline": { rowHeight: 30, headerHeight: 28, baseHeight: 16, groupHeight: 28, extraGroupHeight: 10 },
+  "standings-redline": {
+    rowHeight: 30,
+    headerHeight: 28,
+    baseHeight: 16,
+    groupHeight: 28,
+    extraGroupHeight: 10,
+    transientReserveHeight: REDLINE_RETIREMENT_GHOST_HEIGHT_PX + REDLINE_BATTLE_BOX_EXTRA_HEIGHT_PX,
+  },
   "standings-tower": { rowHeight: 20, headerHeight: 24, baseHeight: 20, groupHeight: 16, extraGroupHeight: 4 },
   "standings-strip": { rowHeight: 20, headerHeight: 24, baseHeight: 20, groupHeight: 0, extraGroupHeight: 0 },
 };
@@ -53,6 +64,7 @@ export function fitStandingsRowsToHeight(
   const metrics = LAYOUT_METRICS[options.templateId];
   let remaining = Math.max(0, options.viewportHeight)
     - metrics.baseHeight
+    - (metrics.transientReserveHeight ?? 0)
     - (options.showSessionHeader ? metrics.headerHeight : 0)
     - (options.hasStatusMessage ? 20 : 0);
   const result: StandingsRowViewModel[] = [];
@@ -78,4 +90,23 @@ export function fitStandingsRowsToHeight(
   }
 
   return result;
+}
+
+export function measureStandingsFlowHeight(options: Readonly<{
+  templateId: StandingsEnduranceLayoutTemplate;
+  rowCount: number;
+  groupCount: number;
+  showSessionHeader: boolean;
+  hasStatusMessage?: boolean;
+  battleBoxCount?: number;
+}>): number {
+  const metrics = LAYOUT_METRICS[options.templateId];
+  const groups = Math.max(0, Math.trunc(options.groupCount));
+  return metrics.baseHeight
+    + (options.showSessionHeader ? metrics.headerHeight : 0)
+    + (options.hasStatusMessage ? 20 : 0)
+    + Math.max(0, Math.trunc(options.rowCount)) * metrics.rowHeight
+    + groups * metrics.groupHeight
+    + Math.max(0, groups - 1) * metrics.extraGroupHeight
+    + Math.max(0, Math.trunc(options.battleBoxCount ?? 0)) * REDLINE_BATTLE_BOX_EXTRA_HEIGHT_PX;
 }

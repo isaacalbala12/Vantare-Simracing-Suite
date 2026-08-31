@@ -228,6 +228,7 @@ export function StandingsRedlineTemplate({
     bucket.push(ghost);
     ghostsByClass.set(ghost.vehicleClass, bucket);
   }
+  let ghostBudget = 1;
 
   return (
     <div ref={rootRef} className="ven-red-root" style={{ minWidth: requiredWidth }}>
@@ -272,7 +273,11 @@ export function StandingsRedlineTemplate({
             rendered.push(renderRow(row, index + 1));
           }
         }
-        for (const ghost of ghostsByClass.get(group.vehicleClass) ?? []) {
+        // The layout reserves one transient row across the complete widget.
+        // Rendering more would exceed it before the 640 ms ghosts leave.
+        const visibleGhosts = (ghostsByClass.get(group.vehicleClass) ?? []).slice(0, ghostBudget);
+        ghostBudget -= visibleGhosts.length;
+        for (const ghost of visibleGhosts) {
           rendered.splice(
             Math.min(ghost.classIndex, rendered.length),
             0,

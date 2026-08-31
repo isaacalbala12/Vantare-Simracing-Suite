@@ -4,7 +4,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/vantare/overlays/v2/internal/telemetry/derive"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/envelope"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/standings"
 )
 
@@ -120,6 +122,44 @@ func TestProjectV2SettledIsPureImmediateBootstrapAndNoPlayerResets(t *testing.T)
 	settler := relativeSettler{}
 	if got := settler.project(final, BuildRelative(final), snapshot.Header(), cadenceOrigin); len(got) != 0 {
 		t.Fatalf("no player must reset immediately: %#v", got)
+	}
+}
+
+func TestCachedProjectorSettledResetsPerSessionEpochAndPlayer(t *testing.T) {
+	t.Parallel()
+	base := builderFinalState(t, 37)
+	state, ok := base.Value()
+	if !ok {
+		t.Fatal("missing final")
+	}
+	projector := NewCachedProjector(SectionCadence{})
+	project := func(header envelope.Header, value derive.FinalState, now time.Time) UpdateV2 {
+		snapshot, err := envelope.NewSnapshot(header, value, cloneFinalState)
+		if err != nil {
+			t.Fatal(err)
+		}
+		update, err := projector.Project(snapshot, builderSourceContext(), DefaultPreferencesV2(), uint64(header.Cursor.Sequence), now)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return update
+	}
+	first := project(base.Header(), state, cadenceOrigin)
+	for _, mutate := range []func(*envelope.Header, *derive.FinalState){
+		func(h *envelope.Header, _ *derive.FinalState) { h.Identity.Session = "new-session" },
+		func(h *envelope.Header, _ *derive.FinalState) { h.Cursor.Epoch++ },
+		func(_ *envelope.Header, s *derive.FinalState) {
+			s.Observed.Vehicles[0].Player = builderField(t, false, schema.FreshnessFresh)
+			s.Observed.Vehicles[1].Player = builderField(t, true, schema.FreshnessFresh)
+		},
+	} {
+		header, value := base.Header(), cloneFinalState(state)
+		header.Cursor.Sequence++
+		mutate(&header, &value)
+		got := project(header, value, cadenceOrigin.Add(time.Second))
+		if got.Frame == nil || !sameRelativeIDs(relativeIDs(got.Frame.RelativeSettled), relativeIDs(got.Frame.Relative)) {
+			t.Fatalf("reset did not bootstrap: first=%#v got=%#v", first.Frame, got.Frame)
+		}
 	}
 }
 

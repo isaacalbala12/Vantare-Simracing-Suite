@@ -82,6 +82,19 @@ export function resolveStandingsRedlineMinimumWidth(widget: WidgetInstanceV3): n
   }
 }
 
+/**
+ * The runtime frame remains the physical size persisted in the profile. Redline
+ * uses its readable minimum only as the viewport's visual base, so the complete
+ * composition can be scaled into a narrower physical frame exactly once.
+ */
+export function resolveStandingsRedlineVisualBaseWidth(
+  widget: WidgetInstanceV3,
+  layout: Pick<WidgetLayoutV3, "w">,
+): number | undefined {
+  const minimumWidth = resolveStandingsRedlineMinimumWidth(widget);
+  return minimumWidth === undefined ? undefined : Math.max(layout.w, minimumWidth);
+}
+
 export function resolveMinimumWidthFrameLayout(
   layout: WidgetLayoutV3,
   minimumWidth: number | undefined,

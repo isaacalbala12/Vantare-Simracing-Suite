@@ -32,7 +32,7 @@ import {
 } from "../core/race-schedule-store";
 import {
   isStandingsRedlineWidget,
-  resolveStandingsRedlineFrameLayout,
+  resolveStandingsRedlineVisualBaseWidth,
 } from "../widget-types/standings/standings-redline-layout";
 
 export type RuntimeOverlaySurfaceProps = {
@@ -172,25 +172,20 @@ export function RuntimeOverlaySurface(props: RuntimeOverlaySurfaceProps): React.
       x: widget.layout.x - origin.x,
       y: widget.layout.y - origin.y,
     };
-    const effectiveLayout = resolveStandingsRedlineFrameLayout(widget, localLayout, layoutViewport.width);
     return {
       ...widget,
-      layout: effectiveLayout,
-      visualBaseWidth: isStandingsRedlineWidget(widget) ? effectiveLayout.w : undefined,
+      layout: localLayout,
+      visualBaseWidth: isStandingsRedlineWidget(widget)
+        ? resolveStandingsRedlineVisualBaseWidth(widget, localLayout)
+        : undefined,
     };
   });
   const responsiveWidgets = transform
     ? effectiveWidgets.map((widget) => {
         const responsiveLayout = mapWidgetFrameToResponsive(widget.layout, transform);
-        // Redline keeps its legible logical grid as the viewport base, but the
-        // responsive scene owns the physical frame. This composes the whole
-        // widget once inside a narrow output instead of re-expanding its frame.
-        const physicalLayout = widget.visualBaseWidth === undefined
-          ? responsiveLayout
-          : { ...responsiveLayout, w: Math.min(responsiveLayout.w, transform.layoutWidth) };
         return {
           ...widget,
-          layout: { ...widget.layout, ...physicalLayout },
+          layout: { ...widget.layout, ...responsiveLayout },
         };
       })
     : effectiveWidgets;

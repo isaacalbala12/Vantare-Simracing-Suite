@@ -32,6 +32,19 @@ function RuntimeWidgetFrameComponent(props: RuntimeWidgetFrameProps): React.Reac
   );
   const origin = layoutOrigin ?? { x: 0, y: 0 };
   const { x, y, w, h, zIndex } = widget.layout;
+  const visualScale = visualBaseWidth === undefined ? undefined : w / visualBaseWidth;
+  // Redline's renderer decides how many complete rows fit from its layout.
+  // Only its height needs the viewport's visual coordinate space; the 826px
+  // width remains exclusively WidgetVisualViewport's visualBaseWidth.
+  const visualWidget = visualScale !== undefined && Number.isFinite(visualScale) && visualScale > 0
+    ? {
+        ...widget,
+        layout: {
+          ...widget.layout,
+          h: h / visualScale,
+        },
+      }
+    : widget;
 
   const frameStyle: CSSProperties = {
     position: "absolute",
@@ -54,7 +67,7 @@ function RuntimeWidgetFrameComponent(props: RuntimeWidgetFrameProps): React.Reac
         testId={`runtime-widget-viewport-${widget.id}`}
       >
         <WidgetVisualHost
-          widget={widget}
+          widget={visualWidget}
           renderMode={renderMode}
           onDiagnostic={onDiagnostic}
           diagnostics={diagnostics}

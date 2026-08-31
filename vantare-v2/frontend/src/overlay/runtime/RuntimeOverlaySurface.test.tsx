@@ -19,6 +19,7 @@ import { createRaceScheduleStore } from "../core/race-schedule-store";
 import type { Calendar } from "../../calendar/calendar-types";
 import { engineerRadioDefinition } from "../widget-types/engineer-radio/engineer-radio-definition";
 import type { StandingsContent } from "../widget-types/standings/standings-content";
+import goldenV2TwentyRaw from "../../../../internal/telemetry/projection/overlayv2/testdata/overlay_v2_20.golden.json?raw";
 
 const originalResizeObserver = globalThis.ResizeObserver;
 
@@ -108,6 +109,7 @@ function buildMaximumRedlineContent(): StandingsContent {
   const presets = ["sm", "sm", "lg", "lg", "md", "md", "auto", "lg", "lg", "xs", "sm"] as const;
   return {
     ...content,
+    classScope: "all-classes",
     columns: content.columns.map((column, index) => ({
       ...column,
       enabled: true,
@@ -180,11 +182,13 @@ describe("RuntimeOverlaySurface", () => {
   );
 
   it.each(["desktop", "obs"] as const)(
-    "scales the complete effective Redline composition into a 280px %s frame",
+    "keeps a physical 280x900 Redline frame while scaling its 826px visual base in a 1920x1080 %s scene",
     async (renderMode) => {
-      measuredWidth = 280;
+      measuredWidth = 1920;
       measuredHeight = 1080;
-      const coordinator = createTelemetryRateCoordinator();
+      const coordinator = createBaseTelemetryRateCoordinator();
+      const twentyCarUpdate = JSON.parse(goldenV2TwentyRaw) as OverlayUpdateV2;
+      coordinator.setOverlayFrame(twentyCarUpdate.frame ?? undefined, twentyCarUpdate.source);
       const document = buildDocument();
       const widget = standingsDefinition.createDefault(`standings-redline-${renderMode}-280`);
       const maximumContent = buildMaximumRedlineContent();
@@ -199,7 +203,7 @@ describe("RuntimeOverlaySurface", () => {
       ];
       const expectedLastMetric = expectedMetrics.at(-1);
       expect(expectedLastMetric).toBe("tireCompound");
-      widget.layout = { ...widget.layout, x: 1094, y: 40, w: 280, h: 560 };
+      widget.layout = { ...widget.layout, x: 1094, y: 40, w: 280, h: 900 };
       widget.content = maximumContent;
       widget.visual = {
         ...widget.visual,
@@ -314,7 +318,7 @@ describe("RuntimeOverlaySurface", () => {
         expect(geometry.baseline.frameWidth).toBeCloseTo(280, 1);
         expect(geometry.baseline.headerInside).toBe(true);
         expect(geometry.baseline.headerReadable).toBe(true);
-        expect(geometry.baseline.rowCount).toBeGreaterThan(0);
+        expect(geometry.baseline.rowCount).toBe(20);
         expect(geometry.baseline.rowFailures).toEqual([]);
         expect(geometry.baseline.cellFailures).toEqual([]);
         expect(geometry.baseline.lastColumnFailures).toEqual([]);
@@ -561,7 +565,7 @@ describe("RuntimeOverlaySurface", () => {
   });
 
   it.each(["desktop", "obs"] as const)(
-    "anchors the effective Standings Redline minimum inside the %s scene",
+    "preserves the physical Standings Redline frame inside the %s scene",
     (renderMode) => {
       const coordinator = createTelemetryRateCoordinator();
       const document = buildDocument();
@@ -579,8 +583,8 @@ describe("RuntimeOverlaySurface", () => {
       );
 
       const frame = view.getByTestId("runtime-widget-frame") as HTMLElement;
-      expect(frame.style.width).toBe("430px");
-      expect(frame.style.left).toBe("1490px");
+      expect(frame.style.width).toBe("280px");
+      expect(frame.style.left).toBe("1640px");
       coordinator.dispose();
     },
   );

@@ -88,10 +88,12 @@ export function resolveMinimumWidthFrameLayout(
   viewportWidth?: number,
 ): WidgetLayoutV3 {
   if (minimumWidth === undefined || minimumWidth <= layout.w) return layout;
-  const touchesRightEdge = viewportWidth !== undefined && layout.x + layout.w >= viewportWidth;
+  const normalizedX = viewportWidth === undefined
+    ? layout.x
+    : Math.min(layout.x, Math.max(0, viewportWidth - minimumWidth));
   return {
     ...layout,
-    x: touchesRightEdge ? Math.max(0, viewportWidth - minimumWidth) : layout.x,
+    x: normalizedX,
     w: minimumWidth,
   };
 }

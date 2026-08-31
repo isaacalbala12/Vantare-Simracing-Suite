@@ -150,6 +150,28 @@ describe("StudioWidgetFrame", () => {
     expect(screen.getByTestId(`studio-resize-handle-w-${widget.id}`)).toBeTruthy();
   });
 
+  it("keeps a narrow Redline inside the canvas after moving one pixel away from the right edge", () => {
+    const widget = buildMaximumRedlineWidget();
+    widget.layout = { ...widget.layout, x: 1639 };
+    beginStudioFramePreview(widget.id, "move", widget.layout);
+    applyStudioFrameLayoutPreview(widget.id, widget.layout);
+
+    renderFrame(widget, {
+      selected: true,
+      previewActive: true,
+      onResizePointerDown: vi.fn(),
+    });
+
+    const frame = screen.getByTestId(`studio-widget-frame-${widget.id}`);
+    const selection = screen.getByTestId(`studio-widget-selection-${widget.id}`);
+    expect(frame.style.left).toBe("1094px");
+    expect(frame.style.width).toBe("826px");
+    expect(Number.parseFloat(frame.style.left) + Number.parseFloat(frame.style.width)).toBe(1920);
+    expect(selection.parentElement).toBe(frame);
+    expect(screen.getByTestId(`studio-resize-handle-e-${widget.id}`)).toBeTruthy();
+    expect(screen.getByTestId(`studio-resize-handle-w-${widget.id}`)).toBeTruthy();
+  });
+
   it("positions the frame from layout x/y/w/h/zIndex", () => {
     const widget = buildWidget();
     renderFrame(widget);

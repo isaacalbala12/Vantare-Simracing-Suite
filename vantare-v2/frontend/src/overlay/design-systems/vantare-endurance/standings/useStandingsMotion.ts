@@ -74,6 +74,22 @@ function rowElement(root: HTMLElement | null, rowId: string): HTMLElement | null
   return root?.querySelector<HTMLElement>(`[data-standings-row="${CSS.escape(rowId)}"]`) ?? null;
 }
 
+function clearImperativeMotion(root: HTMLElement | null): void {
+  if (!root) return;
+  for (const row of root.querySelectorAll<HTMLElement>("[data-standings-row]")) {
+    delete row.dataset.motion;
+    delete row.dataset.hot;
+    row.style.removeProperty("--flash-delay");
+  }
+  for (const element of [root, ...root.querySelectorAll("*")]) {
+    const getAnimations = (element as Element & { getAnimations?: () => Animation[] }).getAnimations;
+    if (typeof getAnimations === "function") {
+      for (const animation of getAnimations.call(element)) animation.cancel();
+    }
+  }
+  for (const floater of root.querySelectorAll(".ven-red-crown-fly")) floater.remove();
+}
+
 /** Flies a clone of the fastest-lap glyph from the old holder's best cell to the new one. */
 function flyCrown(root: HTMLElement, fromRowId: string, toRowId: string): void {
   const fromCell = rowElement(root, fromRowId)?.querySelector<HTMLElement>(".ven-red-best");
@@ -164,6 +180,7 @@ export function useStandingsMotion(
     if (reset) {
       for (const timer of timersRef.current) clearTimeout(timer);
       timersRef.current.clear();
+      clearImperativeMotion(rootRef.current);
       battleSeenRef.current.clear();
       deltaTargetsRef.current = new Map();
       deltaShownRef.current = new Map();

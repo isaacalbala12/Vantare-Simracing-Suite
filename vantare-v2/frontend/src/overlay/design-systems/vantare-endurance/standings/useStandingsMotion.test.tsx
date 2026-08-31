@@ -87,7 +87,12 @@ describe("position delta authority", () => {
     "clears a race delta when the session changes to %s",
     (sessionLabel) => {
       const { result, rerender } = renderMotion(modelWithRows([
-        row({ id: "a", position: 2, gridPosition: 3 }),
+        row({
+          id: "a",
+          position: 2,
+          gridPosition: 3,
+          gridSessionIdentity: "session-a:1",
+        }),
       ]));
       expect(result.current.positionDeltas.get("a")).toBe(1);
 
@@ -104,7 +109,12 @@ describe("position delta authority", () => {
     ["epoch", "session-a:2"],
   ])("does not retain a delta after a %s reset", (_label, motionIdentity) => {
     const { result, rerender } = renderMotion(modelWithRows([
-      row({ id: "a", position: 2, gridPosition: 3 }),
+      row({
+        id: "a",
+        position: 2,
+        gridPosition: 3,
+        gridSessionIdentity: "session-a:1",
+      }),
     ]));
     expect(result.current.positionDeltas.get("a")).toBe(1);
 
@@ -138,6 +148,59 @@ function renderMotion(initial: StandingsViewModel) {
 }
 
 describe("battle teardown", () => {
+  it.each([
+    { reset: "session", sessionLabel: "RACE", identity: "session-b:1", sequence: 1 },
+    { reset: "epoch", sessionLabel: "RACE", identity: "session-a:2", sequence: 1 },
+    { reset: "mode", sessionLabel: "PRACTICE", identity: "session-a:1", sequence: 3 },
+    { reset: "sequence", sessionLabel: "RACE", identity: "session-a:1", sequence: 1 },
+  ])("clears imperative marks and animations on a $reset reset", ({ sessionLabel, identity, sequence }) => {
+    vi.useFakeTimers();
+    const root = document.createElement("div");
+    root.innerHTML = [
+      '<div data-standings-row="a"></div>',
+      '<div data-standings-row="b"></div>',
+    ].join("");
+    const activeAnimation = { cancel: vi.fn() };
+    for (const element of root.querySelectorAll<HTMLElement>("[data-standings-row]")) {
+      Object.defineProperty(element, "animate", {
+        configurable: true,
+        value: vi.fn(() => activeAnimation),
+      });
+      Object.defineProperty(element, "getAnimations", {
+        configurable: true,
+        value: vi.fn(() => [activeAnimation]),
+      });
+    }
+    const rootRef = createRef<HTMLElement>();
+    rootRef.current = root;
+    const initial = modelWithRows([
+      row({ id: "a", position: 1, bestLapText: "1:40.000" }),
+      row({ id: "b", position: 2, bestLapText: "1:41.000", isPlayer: true }),
+    ]);
+    const highlighted = modelWithRows([
+      row({ id: "b", position: 1, bestLapText: "1:39.000", isPlayer: true }),
+      row({ id: "a", position: 2, bestLapText: "1:40.000" }),
+    ], "RACE", undefined, "session-a:1", 2);
+    const hook = renderHook(({ value }) => useStandingsMotion(value, true, rootRef), {
+      initialProps: { value: initial },
+    });
+
+    hook.rerender({ value: highlighted });
+    const highlightedRow = root.querySelector<HTMLElement>('[data-standings-row="b"]')!;
+    expect(highlightedRow.dataset.motion).toBe("rise");
+    expect(highlightedRow.dataset.hot).toBe("true");
+    expect(highlightedRow.style.getPropertyValue("--flash-delay")).toBe("0ms");
+
+    hook.rerender({
+      value: modelWithRows([...highlighted.rows], sessionLabel, undefined, identity, sequence),
+    });
+
+    expect(highlightedRow.dataset.motion).toBeUndefined();
+    expect(highlightedRow.dataset.hot).toBeUndefined();
+    expect(highlightedRow.style.getPropertyValue("--flash-delay")).toBe("");
+    expect(activeAnimation.cancel).toHaveBeenCalled();
+  });
+
   it("reports a pair while it is within the threshold", () => {
     const { result } = renderMotion(model(0.4));
     expect(result.current.battles).toHaveLength(1);

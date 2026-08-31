@@ -259,12 +259,17 @@ export function deriveRosterChange(
 /** Net positions gained (+) or lost (−) from an explicit same-session grid source. */
 export function derivePositionDeltas(model: StandingsViewModel): Map<string, number> {
   const deltas = new Map<string, number>();
-  if (model.status !== "ready" || resolveStandingsSessionMode(model.sessionLabel) !== "race") {
+  if (
+    model.status !== "ready" ||
+    resolveStandingsSessionMode(model.sessionLabel) !== "race" ||
+    model.motionIdentity === undefined
+  ) {
     return deltas;
   }
   for (const row of model.rows) {
     const start = row.gridPosition;
     if (
+      row.gridSessionIdentity === model.motionIdentity &&
       Number.isSafeInteger(start) &&
       start !== undefined &&
       start > 0 &&

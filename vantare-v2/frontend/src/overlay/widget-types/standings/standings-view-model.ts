@@ -19,6 +19,8 @@ export type StandingsRowViewModel = {
   position: number;
   /** Explicit same-session starting-grid position. Absent means no delta authority. */
   gridPosition?: number;
+  /** Session/epoch identity that authorised gridPosition. */
+  gridSessionIdentity?: string;
   driverNumber: string;
   driverName: string;
   configuredDriverName?: string;

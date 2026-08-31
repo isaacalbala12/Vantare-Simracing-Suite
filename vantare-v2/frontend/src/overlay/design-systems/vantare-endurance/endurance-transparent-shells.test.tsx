@@ -34,6 +34,7 @@ type FunctionalRegion = Readonly<{
   name: string;
   selector: string;
   kind: "backing" | "graphic";
+  expectedCount?: number;
 }>;
 
 const catalog: readonly Catalog[] = [
@@ -81,7 +82,12 @@ function functionalRegions(type: WidgetType, templateId: string): readonly Funct
   }
   if (type === "relative") {
     const regions: FunctionalRegion[] = [
-      { name: "each relative row", selector: "[data-relative-row]", kind: "backing" },
+      {
+        name: "each relative row",
+        selector: "[data-relative-row]",
+        kind: "backing",
+        expectedCount: 3,
+      },
     ];
     if (templateId === "relative-redline-mirror") {
       regions.push({ name: "each relative axis", selector: ".ven-rel-axis", kind: "backing" });
@@ -356,6 +362,13 @@ describe("Endurance transparent production shells", () => {
               `${context} opaque full-frame pseudo: ${item}`));
             for (const region of result.regionResults) {
               if (region.count === 0) violations.push(`${context} missing ${region.name}`);
+              const expectedCount = regions.find((candidate) => candidate.name === region.name)
+                ?.expectedCount;
+              if (expectedCount !== undefined && region.count !== expectedCount) {
+                violations.push(
+                  `${context} ${region.name} count ${region.count}, expected ${expectedCount}`,
+                );
+              }
               violations.push(...region.failures.map((failure) => `${context} ${failure}`));
             }
           }

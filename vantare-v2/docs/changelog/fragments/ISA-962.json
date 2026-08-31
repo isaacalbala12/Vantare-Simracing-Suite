@@ -4,7 +4,7 @@
   "type": "fix",
   "summary": "La matriz visual Endurance usa filas Relative compatibles con el contrato V2 vigente.",
   "technicalNotes": [
-    "La prueba deriva sus filas de la fila canónica del golden V2 y solo modifica identidad, lado y gap necesarios para el escenario.",
+    "La prueba deriva sus filas de la fila canónica del golden V2 y modifica explícitamente identidad, lado, gap, autoridad, nombre y clase para representar el escenario.",
     "No se añade fallback productivo ni se relaja la validación de OverlayQValue."
   ],
   "testing": [

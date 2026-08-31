@@ -38,6 +38,22 @@
   su animación existente. La traducción determinista del RED físico falló
   1/9 antes del cambio y quedó 9/9 después; la repetición física por Isaac
   queda pendiente.
+  Un segundo RED físico del candidato combinado `8f2c3dbb`, run
+  `relative-20260831-171609/15-relative-redline-traffic`, alternó cinco filas
+  con jugador `lmu-slot-0` y cero filas en las muestras 20/22; stderr registró
+  `state=live available=true reconnectAttempt=1`, mientras el run que pasó no
+  entró en stale/reconnect hasta después del muestreo. El cierre limita toda la
+  histéresis a los templates Relative Endurance Redline mediante una señal
+  explícita del host: Classic/Minimal/Neo y otros sistemas conservan el
+  comportamiento inmediato anterior. Dentro de la misma epoch/session, un
+  reconnect puede puentear un frame Relative vacío durante 400 ms; stopped,
+  stale o una nueva epoch/session vacían de inmediato.
+  La captura física `relative-20260831-172352/15-relative-redline-traffic`
+  mostró además el lapnote azul detrás de filas durante churn, con VehicleID
+  estables en las 25 muestras. Traffic agrupa aviso y amenaza en un slot y
+  desactiva solo el FLIP traslacional mientras ese slot compuesto existe; el
+  gate geométrico mueve la amenaza arriba y exige cero intersecciones entre
+  lapnote y filas.
   Baseline real nightly `659b2c57`, Spa práctica/boxes: 347 muestras/90 s,
   65 transiciones y 56 composiciones; 262 muestras en la composición estable.
   El probe de repetición debe separar membership canónica de ghosts de motion.

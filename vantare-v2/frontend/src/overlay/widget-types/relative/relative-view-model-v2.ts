@@ -11,6 +11,7 @@ import type { RelativeRowViewModel, RelativeViewModel } from "./relative-view-mo
 
 const PLACEHOLDER = "—";
 export const RELATIVE_MEMBERSHIP_HOLD_MS = 900;
+export const RELATIVE_REDLINE_INTERRUPTION_HOLD_MS = 400;
 
 export type RelativeViewModelState = {
   scopeKey?: string;
@@ -27,6 +28,7 @@ export type RelativeViewModelStabilityOptions = Readonly<{
   nowMs?: () => number;
   holdMs?: number;
   instanceKey?: string;
+  bridgeSourceReconnect?: boolean;
 }>;
 
 export function createRelativeViewModelState(): RelativeViewModelState {
@@ -58,11 +60,18 @@ export function buildRelativeViewModelV2(
 ): RelativeViewModel {
   const columns = getEnabledRelativeColumns(content);
   if (source.state !== "live") {
-    resetStability(stability.state);
+    const bridgeReconnect = stability.bridgeSourceReconnect === true &&
+      (source.state === "connecting" || source.state === "detecting");
+    if (!bridgeReconnect) {
+      resetStability(stability.state);
+    }
     return {
       type: "relative",
       status: unavailableStatus(source.state),
       statusMessage: source.reason || undefined,
+      presentationKey: bridgeReconnect
+        ? stabilityScopeKey(frame, source, content, stability.instanceKey, true)
+        : undefined,
       columns,
       rowHeightMode: content.rowHeightMode,
       rows: [],
@@ -90,7 +99,13 @@ export function buildRelativeViewModelV2(
     type: "relative",
     status: "ready",
     statusMessage: source.reason || undefined,
-    presentationKey: stabilityScopeKey(frame, source, content, stability.instanceKey),
+    presentationKey: stabilityScopeKey(
+      frame,
+      source,
+      content,
+      stability.instanceKey,
+      stability.bridgeSourceReconnect === true,
+    ),
     columns,
     rowHeightMode: content.rowHeightMode,
     rows: window.map(buildRow),
@@ -168,7 +183,13 @@ function stabilizeWindow(
   const state = options.state;
   if (state === undefined) return candidate;
 
-  const scopeKey = stabilityScopeKey(frame, source, content, options.instanceKey);
+  const scopeKey = stabilityScopeKey(
+    frame,
+    source,
+    content,
+    options.instanceKey,
+    options.bridgeSourceReconnect === true,
+  );
   if (
     state.scopeKey !== scopeKey ||
     state.acceptedIds === undefined
@@ -185,6 +206,24 @@ function stabilizeWindow(
   const nowMs = monotonicNow(options, state);
   const candidateKey = identityKey(candidate);
   const acceptedKey = state.acceptedIds.join("|");
+  if (
+    options.bridgeSourceReconnect === true &&
+    candidate.length === 0 &&
+    scoped.length === 0 &&
+    state.lastRows?.some((row) => row.side === "player")
+  ) {
+    if (state.pendingKey !== candidateKey) {
+      state.pendingKey = candidateKey;
+      state.pendingSinceMs = nowMs;
+    }
+    state.lastSequence = frame.sequence;
+    state.lastNowMs = nowMs;
+    if (nowMs - (state.pendingSinceMs ?? nowMs) < RELATIVE_REDLINE_INTERRUPTION_HOLD_MS) {
+      return state.lastRows;
+    }
+    acceptWindow(state, scopeKey, frame, nowMs, candidate);
+    return candidate;
+  }
   const holdsCanonicalSideChange = hasCanonicalSideChange(state.acceptedIds, acceptedCurrent);
   if (candidateKey === acceptedKey) {
     state.pendingKey = undefined;
@@ -220,12 +259,13 @@ function stabilityScopeKey(
   source: OverlaySourceStatusV2,
   content: RelativeContent,
   instanceKey: string | undefined,
+  bridgeSourceReconnect = false,
 ): string {
   return [
     instanceKey ?? "",
     frame.epoch,
     frame.sessionId,
-    source.retry ?? 0,
+    bridgeSourceReconnect ? "session" : source.retry ?? 0,
     content.classScope,
     content.rangeAhead,
     content.rangeBehind,

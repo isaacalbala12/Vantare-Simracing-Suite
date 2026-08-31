@@ -78,6 +78,20 @@ function makeFrame(): OverlayFrameV2 {
 
 const source: OverlaySourceStatusV2 = { state: "live" };
 
+function enduranceRelative(id: string, templateId: string) {
+  const widget = relativeDefinition.createDefault(id);
+  return {
+    ...widget,
+    visual: {
+      systemId: "vantare-endurance" as const,
+      systemVersion: 1,
+      configVersion: 1,
+      baseSettings: { templateId },
+      appearanceOverrides: {},
+    },
+  };
+}
+
 type Case = {
   type: string;
   feature: string;
@@ -98,8 +112,8 @@ const cases: Case[] = [
 
 describe("WidgetVisualHost v2 generic registry", () => {
   it("monta dos Relative con estado productivo aislado por instancia", () => {
-    const first = relativeDefinition.createDefault("relative-a");
-    const second = relativeDefinition.createDefault("relative-b");
+    const first = enduranceRelative("relative-a", "relative-redline-mirror");
+    const second = enduranceRelative("relative-b", "relative-redline-traffic");
     const frame = makeFrame();
     const spy = vi.spyOn(relativeV2, "buildRelativeViewModelV2");
     let nowMs = 0;
@@ -128,7 +142,7 @@ describe("WidgetVisualHost v2 generic registry", () => {
   });
 
   it("mantiene el hold al recrear el objeto del mismo widget y resetea al cambiar de perfil", () => {
-    const widget = relativeDefinition.createDefault("relative-stable-id");
+    const widget = enduranceRelative("relative-stable-id", "relative-redline-proximity");
     const frame = makeFrame();
     const oldRow = { ...frame.relative[0]!, id: "old-ahead", name: "OLD" };
     const newRow = { ...frame.relative[0]!, id: "new-ahead", name: "NEW" };
@@ -161,6 +175,116 @@ describe("WidgetVisualHost v2 generic registry", () => {
     expect([...view.container.querySelectorAll("[data-relative-row]")].map((row) => row.getAttribute("data-relative-row"))).toEqual([
       "old-ahead", "new-ahead", "player-1",
     ]);
+  });
+
+  it("keeps Endurance non-Redline Relative free of Redline membership hysteresis", () => {
+    const widget = enduranceRelative("relative-classic", "relative-classic");
+    const frame = makeFrame();
+    const oldRow = { ...frame.relative[0]!, id: "old-ahead", name: "OLD" };
+    const newRow = { ...frame.relative[0]!, id: "new-ahead", name: "NEW" };
+    const farRow = { ...frame.relative[0]!, id: "far-ahead", name: "FAR" };
+    const player = frame.relative.find((row) => row.side === "player")!;
+    const firstFrame = { ...frame, relative: [farRow, newRow, oldRow, player] };
+    const changedFrame = { ...frame, sequence: 2, relative: [farRow, oldRow, newRow, player] };
+    let nowMs = 0;
+    const runtime = (overlayV2Frame: OverlayFrameV2) => ({
+      overlayV2Frame,
+      overlayV2Source: source,
+      relativeViewModelNowMs: () => nowMs,
+    });
+    const view = render(
+      <WidgetVisualHost widget={widget} renderMode="harness" runtime={runtime(firstFrame)} />,
+    );
+
+    nowMs = 1;
+    view.rerender(
+      <WidgetVisualHost widget={{ ...widget }} renderMode="harness" runtime={runtime(changedFrame)} />,
+    );
+
+    expect([...view.container.querySelectorAll("[data-relative-row]")].map(
+      (row) => row.getAttribute("data-relative-row"),
+    )).toEqual(["old-ahead", "new-ahead", "player-1"]);
+  });
+
+  it("keeps the five-row Redline Traffic snapshot across a same-session source reconnect", () => {
+    const widget = enduranceRelative("relative-traffic", "relative-redline-traffic");
+    const base = makeFrame();
+    const ahead = base.relative.find((row) => row.side === "ahead")!;
+    const player = base.relative.find((row) => row.side === "player")!;
+    const behind = base.relative.find((row) => row.side === "behind")!;
+    const frame = {
+      ...base,
+      relative: [
+        { ...ahead, id: "ahead-far" },
+        { ...ahead, id: "ahead-near" },
+        player,
+        { ...behind, id: "behind-near" },
+        { ...behind, id: "behind-far" },
+      ],
+    };
+    const runtime = (overlayV2Frame: OverlayFrameV2, overlayV2Source: OverlaySourceStatusV2) => ({
+      overlayV2Frame,
+      overlayV2Source,
+      relativeViewModelNowMs: () => 100,
+    });
+    const view = render(
+      <WidgetVisualHost
+        widget={widget}
+        renderMode="harness"
+        runtime={runtime(frame, { state: "live", retry: 0 })}
+      />,
+    );
+    const rowIds = () => [...view.container.querySelectorAll("[data-relative-row]")]
+      .map((row) => row.getAttribute("data-relative-row"));
+    expect(rowIds()).toEqual(["ahead-far", "ahead-near", "player-1", "behind-near", "behind-far"]);
+
+    view.rerender(
+      <WidgetVisualHost
+        widget={widget}
+        renderMode="harness"
+        runtime={runtime(frame, { state: "detecting", retry: 1 })}
+      />,
+    );
+    expect(rowIds()).toEqual(["ahead-far", "ahead-near", "player-1", "behind-near", "behind-far"]);
+
+    view.rerender(
+      <WidgetVisualHost
+        widget={widget}
+        renderMode="harness"
+        runtime={runtime({ ...frame, sequence: 2, relative: [] }, { state: "live", retry: 1 })}
+      />,
+    );
+    expect(rowIds()).toEqual(["ahead-far", "ahead-near", "player-1", "behind-near", "behind-far"]);
+
+    view.rerender(
+      <WidgetVisualHost
+        widget={widget}
+        renderMode="harness"
+        runtime={runtime({ ...frame, sequence: 3 }, { state: "live", retry: 1 })}
+      />,
+    );
+    expect(rowIds()).toEqual(["ahead-far", "ahead-near", "player-1", "behind-near", "behind-far"]);
+
+    view.rerender(
+      <WidgetVisualHost
+        widget={widget}
+        renderMode="harness"
+        runtime={runtime(
+          { ...frame, epoch: frame.epoch + 1, sequence: 1, relative: [] },
+          { state: "live", retry: 1 },
+        )}
+      />,
+    );
+    expect(rowIds()).toEqual([]);
+
+    view.rerender(
+      <WidgetVisualHost
+        widget={widget}
+        renderMode="harness"
+        runtime={runtime(frame, { state: "stopped", retry: 1 })}
+      />,
+    );
+    expect(rowIds()).toEqual([]);
   });
 
   it.each(cases)("[$type] usa VM v2 por defecto cuando frame y source están presentes", ({ definition, spyModule, spyName, feature }) => {

@@ -81,6 +81,7 @@ export type WidgetRuntimeInput = {
   relativeViewModelState?: RelativeViewModelState;
   relativeViewModelNowMs?: () => number;
   relativeViewModelInstanceKey?: string;
+  relativeViewModelStability?: "endurance-redline";
 };
 
 export type WidgetRenderMode = "studio" | "desktop" | "obs" | "harness";

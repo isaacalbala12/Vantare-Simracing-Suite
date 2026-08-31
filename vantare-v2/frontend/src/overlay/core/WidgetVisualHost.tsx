@@ -11,6 +11,7 @@ import type { InputTelemetryViewModel } from "../widget-types/input-telemetry/in
 import type { WidgetRuntimeInput } from "./widget-definition";
 import { getOverlayV2ViewModelEntry } from "./overlay-v2-view-models";
 import { createRelativeViewModelState } from "../widget-types/relative/relative-view-model-v2";
+import { isRelativeRedlineTemplateId } from "../design-systems/vantare-endurance/relative/relative-endurance-settings";
 
 export type { WidgetDiagnostic, WidgetDiagnosticCollector } from "./widget-diagnostics";
 
@@ -130,6 +131,9 @@ export function WidgetVisualHost(props: WidgetVisualHostProps): ReactNode {
 
   let model;
   if (v2Entry && !v2Rollback && frame && source) {
+    const relativeRedline = widget.type === "relative" &&
+      registration.systemId === "vantare-endurance" &&
+      isRelativeRedlineTemplateId(settings.templateId);
     // V2 se construye primero: el builder V1 no se ejecuta para luego
     // sobrescribirlo. El renderer recibe únicamente la ViewModel pura.
     model = v2Entry.buildViewModelV2(
@@ -140,6 +144,7 @@ export function WidgetVisualHost(props: WidgetVisualHostProps): ReactNode {
         ...props.runtime,
         relativeViewModelState,
         relativeViewModelInstanceKey: props.runtime?.relativeViewModelInstanceKey ?? `${renderMode}:${widget.id}`,
+        relativeViewModelStability: relativeRedline ? "endurance-redline" : undefined,
       },
     );
   } else if (!v2Entry && definition.buildAuxiliaryViewModel) {

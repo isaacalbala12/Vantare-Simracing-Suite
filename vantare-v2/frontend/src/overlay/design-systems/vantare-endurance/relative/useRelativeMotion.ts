@@ -43,6 +43,11 @@ function rowElement(root: HTMLElement | null, rowId: string): HTMLElement | null
   return root?.querySelector<HTMLElement>(`[data-relative-row="${CSS.escape(rowId)}"]`) ?? null;
 }
 
+function motionElement(root: HTMLElement | null, rowId: string): HTMLElement | null {
+  const row = rowElement(root, rowId);
+  return row?.closest<HTMLElement>(`[data-relative-motion-row="${CSS.escape(rowId)}"]`) ?? row;
+}
+
 /**
  * Motion for the Redline relative. Same shape as the standings engine: the
  * previous ViewModel is ephemeral presentation state in a ref, and discrete
@@ -146,14 +151,15 @@ export function useRelativeMotion(
       return;
     }
     const rootTop = root.getBoundingClientRect().top;
+    const hasCompositeTrafficSlot = root.querySelector("[data-relative-motion-row]") !== null;
 
     // FLIP real: cada fila se desliza desde la posicion que ocupaba en el modelo
     // anterior (medida) hasta la actual. La distancia medida atraviesa tambien
     // los ejes y la fila del jugador, asi que un cruce recorre una trayectoria
     // continua en vez de un salto estimado por indice.
-    if (prev) {
+    if (prev && !hasCompositeTrafficSlot) {
       for (const [rowId, previousTop] of rectsRef.current) {
-        const element = rowElement(root, rowId);
+        const element = motionElement(root, rowId);
         if (!element) {
           continue;
         }
@@ -183,7 +189,7 @@ export function useRelativeMotion(
     for (const event of deriveRelativeEvents(prev, model)) {
       if (event.kind === "enter") {
         // The row unfolds from nothing rather than blinking into the list.
-        rowElement(root, event.rowId)?.animate(
+        motionElement(root, event.rowId)?.animate(
           [
             { transform: "scaleY(0.1)", opacity: 0, transformOrigin: "center" },
             { transform: "scaleY(1)", opacity: 1, transformOrigin: "center" },
@@ -213,7 +219,7 @@ export function useRelativeMotion(
     // deslizara cada fila desde aqui hasta su nuevo sitio.
     const nextRects = new Map<string, number>();
     for (const row of model.rows) {
-      const element = rowElement(root, row.id);
+      const element = motionElement(root, row.id);
       if (element) {
         nextRects.set(row.id, element.getBoundingClientRect().top - rootTop);
       }

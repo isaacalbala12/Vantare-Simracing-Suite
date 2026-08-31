@@ -354,6 +354,12 @@ export function useCanvasInteraction(input: UseCanvasInteractionInput): UseCanva
     if (current.kind === 'idle') {
       return;
     }
+    if (!layoutGeometryChanged(current.start, current.preview)) {
+      clearStudioFrameLayoutPreview(current.widgetId);
+      flushGuidesFrame();
+      setInteractionState({ kind: 'idle' });
+      return;
+    }
     const widget = inputRef.current.widgets.find((entry) => entry.id === current.widgetId);
     const committedPreview = current.kind === 'move' && widget
       ? resolveStandingsRedlineMoveLayout(
@@ -363,12 +369,6 @@ export function useCanvasInteraction(input: UseCanvasInteractionInput): UseCanva
           inputRef.current.layoutViewport.width,
         )
       : current.preview;
-    if (!layoutGeometryChanged(current.start, committedPreview)) {
-      clearStudioFrameLayoutPreview(current.widgetId);
-      flushGuidesFrame();
-      setInteractionState({ kind: 'idle' });
-      return;
-    }
     const patch = buildLayoutPatch(current.start, committedPreview);
     inputRef.current.dispatch({
       type: 'widget/layout',

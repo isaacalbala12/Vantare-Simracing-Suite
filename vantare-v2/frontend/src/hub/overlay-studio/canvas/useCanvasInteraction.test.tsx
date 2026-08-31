@@ -716,6 +716,30 @@ describe("useCanvasInteraction", () => {
     expect(screen.getByTestId("studio-canvas-viewport").getAttribute("data-interaction")).toBe("idle");
   });
 
+  it("does not persist Redline normalization on click without movement", async () => {
+    renderRedlineCanvas();
+    const frame = await screen.findByTestId("studio-widget-frame-standings-redline-selected");
+    mockSceneRect();
+    expect(frame.style.left).toBe("1094px");
+    expect(frame.style.width).toBe("826px");
+
+    fireEvent.pointerDown(frame, {
+      pointerId: 42,
+      button: 0,
+      clientX: 1094,
+      clientY: 100,
+      bubbles: true,
+    });
+    fireEvent.pointerUp(window, { pointerId: 42, bubbles: true });
+
+    await waitFor(() =>
+      expect(screen.getByTestId("studio-canvas-viewport").getAttribute("data-interaction")).toBe("idle"),
+    );
+    expect(screen.getByTestId("dirty-flag").textContent).toBe("clean");
+    expect(frame.style.left).toBe("1094px");
+    expect(frame.style.width).toBe("826px");
+  });
+
   it("does not dispatch when pointer-up happens without movement", async () => {
     renderInteractiveCanvas();
     await waitFor(() => expect(screen.getByTestId("studio-widget-frame-delta-main")).toBeTruthy());

@@ -285,9 +285,11 @@ func (s *Service) DiscoverApps() ([]app.LauncherAppEntry, error) {
 	s.emitDiscoveryProgress(75, DiscoveryResolvingIcons, true, nil)
 	const iconWorkers = 4
 	var (
-		wg        sync.WaitGroup
-		completed atomic.Int32
+		wg           sync.WaitGroup
+		completed    atomic.Int32
+		iconProgress atomic.Int32
 	)
+	iconProgress.Store(75)
 	for i, a := range appsList {
 		wg.Add(1)
 		go func(i int, a app.LauncherAppEntry) {
@@ -297,7 +299,17 @@ func (s *Service) DiscoverApps() ([]app.LauncherAppEntry, error) {
 			// single emit at 75% left the bar parked there for its whole
 			// duration. The completed counter keeps progress monotonic even
 			// though apps finish out of order.
-			s.emitDiscoveryProgress(75+(25*int(completed.Add(1)))/len(appsList), DiscoveryResolvingIcons, true, nil)
+			next := int32(75 + (25*int(completed.Add(1)))/len(appsList))
+			for {
+				previous := iconProgress.Load()
+				if next <= previous || iconProgress.CompareAndSwap(previous, next) {
+					break
+				}
+			}
+			if next > iconProgress.Load() {
+				return
+			}
+			s.emitDiscoveryProgress(int(next), DiscoveryResolvingIcons, true, nil)
 		}(i, a)
 		if (i+1)%iconWorkers == 0 {
 			wg.Wait()

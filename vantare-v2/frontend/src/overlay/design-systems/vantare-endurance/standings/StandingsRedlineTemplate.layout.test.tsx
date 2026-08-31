@@ -193,6 +193,7 @@ describe("Standings Redline narrow production geometry", () => {
               });
             return {
               frameWidth: frameBox.width,
+              sessionMode: renderer.querySelector<HTMLElement>(".ven-red-root")?.dataset.sessionMode,
               status: renderer.dataset.status,
               rowCount: rows.length,
               metrics: cells.map((cell) => cell.dataset.metric),
@@ -202,12 +203,16 @@ describe("Standings Redline narrow production geometry", () => {
               outside,
               completeRows: rows.every((row) =>
                 expectedMetrics.every((metric) => row.querySelector(`[data-metric="${metric}"]`))),
+              semanticPositionDeltas: [...renderer.querySelectorAll<HTMLElement>("[data-position-delta]")]
+                .map((element) => element.dataset.positionDelta),
             };
           }, { expectedMetrics });
 
           const context = `${surface}/${width}px`;
           expect(result.frameWidth, `${context} physical frame width`).toBeCloseTo(width, 1);
           expect(result.status, `${context} V2 status`).toBe("ready");
+          expect(result.sessionMode, `${context} semantic session mode`).toBe("race");
+          expect(result.semanticPositionDeltas.every((delta) => delta === "0"), `${context} semantic position deltas`).toBe(true);
           expect(result.rowCount, `${context} complete rows`).toBeGreaterThan(0);
           expect(result.metrics, `${context} configured order`).toEqual(expectedMetrics);
           expect(result.widths.lastLap, `${context} lg preset`).toBeGreaterThanOrEqual(90);

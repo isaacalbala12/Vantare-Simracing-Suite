@@ -124,6 +124,7 @@ function RedlineRow({
       <span
         key={positionDelta}
         className="ven-red-delta"
+        data-position-delta={positionDelta}
         data-trend={positionDelta > 0 ? "up" : positionDelta < 0 ? "down" : undefined}
       >
         {positionDelta > 0 ? `+${positionDelta}` : positionDelta < 0 ? String(positionDelta) : ""}
@@ -195,7 +196,11 @@ export function StandingsRedlineTemplate({
   const ghostClass = groups.find((group) => ghostsByClass.has(group.vehicleClass))?.vehicleClass;
 
   return (
-    <div ref={rootRef} className="ven-red-root">
+    <div
+      ref={rootRef}
+      className="ven-red-root"
+      data-session-mode={model.sessionLabel.trim().toLowerCase()}
+    >
       {model.statusMessage ? (
         <p className="ven-status-message" role="status">
           {model.statusMessage}

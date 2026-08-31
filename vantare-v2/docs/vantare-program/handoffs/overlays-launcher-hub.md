@@ -1387,4 +1387,7 @@ Evidencia Task 4 y cierre acumulado:
   geometría física y escalan la misma base visual que Desktop/OBS; selección y
   tiradores permanecen en el frame persistido. La regresión productiva cubre
   Desktop, Studio y OBS a 280/340/419/420 px, y los focales de layout/preview
-  quedan en 60/60 PASS. S3 físico sigue pendiente sobre el nuevo HEAD.
+  quedan en 60/60 PASS. El renderer Redline publica además
+  `data-session-mode` y `data-position-delta` para que S3 demuestre Practice y
+  cero ganadas/perdidas sin depender de clases CSS. Focal ampliado 82/82 PASS.
+  S3 físico sigue pendiente sobre el nuevo HEAD.

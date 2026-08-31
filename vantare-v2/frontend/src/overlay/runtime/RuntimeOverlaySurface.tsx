@@ -209,6 +209,7 @@ export function RuntimeOverlaySurface(props: RuntimeOverlaySurfaceProps): React.
             <RuntimeWidgetFrame
               key={widget.id}
               widget={widget}
+              profileId={document.id}
               telemetry={telemetry}
               renderMode={renderMode}
               layoutOrigin={layoutOrigin}

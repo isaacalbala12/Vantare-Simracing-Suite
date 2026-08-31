@@ -1,4 +1,4 @@
-import { useRef, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { DesignSystemResolutionError } from "./design-system-definition";
 import type { WidgetInstanceV3 } from "./profile-document";
 import type { TelemetrySnapshot } from "./telemetry-snapshot";
@@ -62,7 +62,7 @@ function HostDiagnostic(props: {
 
 export function WidgetVisualHost(props: WidgetVisualHostProps): ReactNode {
   const { widget, snapshot, renderMode } = props;
-  const relativeViewModelState = useRef(createRelativeViewModelState()).current;
+  const [relativeViewModelState] = useState(createRelativeViewModelState);
 
   let definition;
   try {
@@ -139,7 +139,7 @@ export function WidgetVisualHost(props: WidgetVisualHostProps): ReactNode {
       {
         ...props.runtime,
         relativeViewModelState,
-        relativeViewModelInstanceToken: widget,
+        relativeViewModelInstanceKey: props.runtime?.relativeViewModelInstanceKey ?? `${renderMode}:${widget.id}`,
       },
     );
   } else if (!v2Entry && definition.buildAuxiliaryViewModel) {

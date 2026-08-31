@@ -295,6 +295,7 @@ export function StudioOrbitStage(props: StudioOrbitStageProps): React.ReactEleme
                 <StudioWidgetFrame
                   diagnostics={diagnostics}
                   key={widget.id}
+                  profileId={document?.id ?? 'studio-unloaded'}
                   layout={interaction.resolveLayout(widget)}
                   onFramePointerDown={interaction.onFramePointerDown}
                   onLostPointerCapture={interaction.onLostPointerCapture}

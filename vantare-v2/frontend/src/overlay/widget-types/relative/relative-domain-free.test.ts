@@ -159,7 +159,7 @@ describe("relative v2 view model", () => {
     expect(nonPlayerIds(model)).toEqual(["new-ahead", "new-behind"]);
   });
 
-  it("accepts immediately beyond the configured spatial displacement in metres", () => {
+  it("does not compare different VehicleIDs to bypass the hold at a spatial edge", () => {
     const base = goldenFrame(44);
     const state = createRelativeViewModelState();
     const content = { ...CONTENT, rangeAhead: 1, rangeBehind: 0 };
@@ -170,9 +170,9 @@ describe("relative v2 view model", () => {
       relativeScenarioFrame(base, 301, ["old-ahead", "new-ahead"], [], true, {}, { "old-ahead": 100, "new-ahead": 200 }),
       { state: "live" },
       content,
-      { state, nowMs: () => nowMs, holdMs: 10_000, immediateSpatialDisplacementMeters: 75 },
+      { state, nowMs: () => nowMs, holdMs: 10_000 },
     );
-    expect(nonPlayerIds(replaced)).toEqual(["new-ahead"]);
+    expect(nonPlayerIds(replaced)).toEqual(["old-ahead"]);
   });
 
   it("uses fresh canonical rows across start-finish wrap and a stopped-car pass", () => {
@@ -242,7 +242,7 @@ describe("relative v2 view model", () => {
     let nowMs = 0;
     const options = { state, nowMs: () => nowMs, holdMs: 600 };
     const old = relativeScenarioFrame(base, 600, ["new", "old"], [], true);
-    const changed = relativeScenarioFrame(base, 601, ["old", "new"], [], true);
+    const changed = relativeScenarioFrame(base, 601, ["old", "new"], [], true, { new: 7.5 });
     buildRelativeViewModelV2(old, { state: "live" }, content, options);
     nowMs = 100;
     buildRelativeViewModelV2(changed, { state: "live" }, content, options);
@@ -252,6 +252,13 @@ describe("relative v2 view model", () => {
     expect(nonPlayerIds(accepted)).toEqual(["new"]);
     nowMs = 2000;
     expect(nonPlayerIds(buildRelativeViewModelV2(old, { state: "live" }, content, options))).toEqual(["new"]);
+    const outOfOrder = buildRelativeViewModelV2({
+      ...old,
+      generatedAt: "2026-08-31T03:00:01Z",
+      relative: old.relative.map((row) => row.id === "new" ? { ...row, gap: { q: "fresh", v: 99 } } : row),
+    }, { state: "live" }, content, options);
+    expect(nonPlayerIds(outOfOrder)).toEqual(["new"]);
+    expect(outOfOrder.rows.find((row) => row.id === "new")?.gapSeconds).toBe(7.5);
   });
 
   it("clamps a backwards injected clock instead of advancing the hold", () => {
@@ -288,27 +295,29 @@ describe("relative v2 view model", () => {
     expect(model.rows.find((row) => row.id === "far")?.gapSeconds).toBe(8.5);
   });
 
-  it.each(["session", "epoch", "instance", "source", "sequence"] as const)("resets membership on $case reset", (resetCase) => {
+  it.each(["session", "epoch", "profile", "widget", "source"] as const)("resets membership on $case reset", (resetCase) => {
     const base = goldenFrame(44);
     const state = createRelativeViewModelState();
     const content = { ...CONTENT, rangeAhead: 1, rangeBehind: 0 };
-    const tokenA = {};
-    const tokenB = resetCase === "instance" ? {} : tokenA;
+    const instanceKeyA = "profile-a:widget-a";
+    const instanceKeyB = resetCase === "profile" ? "profile-b:widget-a"
+      : resetCase === "widget" ? "profile-a:widget-b"
+        : instanceKeyA;
     let nowMs = 0;
     const old = relativeScenarioFrame(base, 700, ["new", "old"], [], true);
-    buildRelativeViewModelV2(old, { state: "live" }, content, { state, nowMs: () => nowMs, instanceToken: tokenA });
+    buildRelativeViewModelV2(old, { state: "live" }, content, { state, nowMs: () => nowMs, instanceKey: instanceKeyA });
     if (resetCase === "source") {
-      buildRelativeViewModelV2(old, { state: "stopped" }, content, { state, nowMs: () => nowMs, instanceToken: tokenA });
+      buildRelativeViewModelV2(old, { state: "stopped" }, content, { state, nowMs: () => nowMs, instanceKey: instanceKeyA });
     }
     nowMs = 1;
-    const changedBase = relativeScenarioFrame(base, resetCase === "sequence" ? 0 : 701, ["old", "new"], [], true);
+    const changedBase = relativeScenarioFrame(base, 701, ["old", "new"], [], true);
     const changed = {
       ...changedBase,
       sessionId: resetCase === "session" ? `${base.sessionId}-next` : base.sessionId,
       epoch: resetCase === "epoch" ? base.epoch + 1 : base.epoch,
-      generatedAt: resetCase === "sequence" ? "2026-08-31T03:00:01Z" : base.generatedAt,
+      generatedAt: base.generatedAt,
     };
-    const model = buildRelativeViewModelV2(changed, { state: "live" }, content, { state, nowMs: () => nowMs, instanceToken: tokenB });
+    const model = buildRelativeViewModelV2(changed, { state: "live" }, content, { state, nowMs: () => nowMs, instanceKey: instanceKeyB });
     expect(nonPlayerIds(model)).toEqual(["new"]);
   });
 

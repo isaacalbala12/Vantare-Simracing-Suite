@@ -11,25 +11,22 @@ import type { RelativeRowViewModel, RelativeViewModel } from "./relative-view-mo
 
 const PLACEHOLDER = "—";
 export const RELATIVE_MEMBERSHIP_HOLD_MS = 900;
-export const RELATIVE_IMMEDIATE_SPATIAL_DISPLACEMENT_METERS = 75;
 
 export type RelativeViewModelState = {
   scopeKey?: string;
-  instanceToken?: object;
   acceptedIds?: readonly string[];
+  lastRows?: readonly OverlayRelativeRowV2[];
   pendingKey?: string;
   pendingSinceMs?: number;
   lastSequence?: number;
   lastNowMs?: number;
-  lastGeneratedAtMs?: number;
 };
 
 export type RelativeViewModelStabilityOptions = Readonly<{
   state?: RelativeViewModelState;
   nowMs?: () => number;
   holdMs?: number;
-  immediateSpatialDisplacementMeters?: number;
-  instanceToken?: object;
+  instanceKey?: string;
 }>;
 
 export function createRelativeViewModelState(): RelativeViewModelState {
@@ -171,6 +168,7 @@ function stabilizeWindow(
   if (state === undefined) return candidate;
 
   const scopeKey = [
+    options.instanceKey ?? "",
     frame.epoch,
     frame.sessionId,
     source.retry ?? 0,
@@ -181,31 +179,22 @@ function stabilizeWindow(
   ].join(":");
   if (
     state.scopeKey !== scopeKey ||
-    state.instanceToken !== options.instanceToken ||
     state.acceptedIds === undefined
   ) {
-    acceptWindow(state, scopeKey, options.instanceToken, frame, monotonicNow(options, state), candidate);
+    acceptWindow(state, scopeKey, frame, monotonicNow(options, state), candidate);
     return candidate;
   }
 
   const acceptedCurrent = rowsForIds(scoped, state.acceptedIds);
-  const generatedAtMs = parsedGeneratedAt(frame.generatedAt);
-  if (
-    state.lastSequence !== undefined && frame.sequence < state.lastSequence &&
-    generatedAtMs > (state.lastGeneratedAtMs ?? generatedAtMs)
-  ) {
-    acceptWindow(state, scopeKey, options.instanceToken, frame, monotonicNow(options, state), candidate);
-    return candidate;
-  }
   if (state.lastSequence !== undefined && frame.sequence <= state.lastSequence) {
-    return acceptedCurrent;
+    return state.lastRows ?? acceptedCurrent;
   }
 
   const nowMs = monotonicNow(options, state);
   const candidateKey = identityKey(candidate);
   const acceptedKey = state.acceptedIds.join("|");
   if (hasCanonicalSideChange(state.acceptedIds, acceptedCurrent)) {
-    acceptWindow(state, scopeKey, options.instanceToken, frame, nowMs, candidate);
+    acceptWindow(state, scopeKey, frame, nowMs, candidate);
     return candidate;
   }
   if (candidateKey === acceptedKey) {
@@ -213,18 +202,13 @@ function stabilizeWindow(
     state.pendingSinceMs = undefined;
     state.lastSequence = frame.sequence;
     state.lastNowMs = nowMs;
-    state.lastGeneratedAtMs = generatedAtMs;
+    state.lastRows = candidate;
     return candidate;
   }
 
   // Membership state contains VehicleIDs only. Values and ordering are always
   // rehydrated from the current canonical row, and vanished IDs are pruned.
   state.acceptedIds = acceptedCurrent.map((row) => row.id);
-  const thresholdMeters = normalizedSpatialThreshold(options.immediateSpatialDisplacementMeters);
-  if (exceedsSpatialDisplacement(candidate, acceptedCurrent, thresholdMeters)) {
-    acceptWindow(state, scopeKey, options.instanceToken, frame, nowMs, candidate);
-    return candidate;
-  }
 
   if (state.pendingKey !== candidateKey) {
     state.pendingKey = candidateKey;
@@ -232,12 +216,12 @@ function stabilizeWindow(
   }
   state.lastSequence = frame.sequence;
   state.lastNowMs = nowMs;
-  state.lastGeneratedAtMs = generatedAtMs;
   const holdMs = normalizedHold(options.holdMs);
   if (nowMs - (state.pendingSinceMs ?? nowMs) >= holdMs) {
-    acceptWindow(state, scopeKey, options.instanceToken, frame, nowMs, candidate);
+    acceptWindow(state, scopeKey, frame, nowMs, candidate);
     return candidate;
   }
+  state.lastRows = acceptedCurrent;
   return acceptedCurrent;
 }
 
@@ -274,47 +258,6 @@ function hasCanonicalSideChange(
   });
 }
 
-function exceedsSpatialDisplacement(
-  candidate: readonly OverlayRelativeRowV2[],
-  accepted: readonly OverlayRelativeRowV2[],
-  thresholdMeters: number,
-): boolean {
-  const acceptedIds = new Set(accepted.map((row) => row.id));
-  const candidateIds = new Set(candidate.map((row) => row.id));
-  const newcomers = candidate.filter((row) => row.side !== "player" && !acceptedIds.has(row.id));
-  const outgoing = accepted.filter((row) => row.side !== "player" && !candidateIds.has(row.id));
-  for (const newcomer of newcomers) {
-    const newcomerPosition = displayedGroundPosition(newcomer);
-    if (newcomerPosition === undefined) continue;
-    for (const previous of outgoing) {
-      if (previous.side !== newcomer.side) continue;
-      const previousPosition = displayedGroundPosition(previous);
-      if (previousPosition !== undefined && Math.hypot(
-        newcomerPosition.x - previousPosition.x,
-        newcomerPosition.z - previousPosition.z,
-      ) >= thresholdMeters) {
-        return true;
-      }
-    }
-  }
-  return false;
-}
-
-function displayedGroundPosition(
-  row: OverlayRelativeRowV2,
-): Readonly<{ x: number; z: number }> | undefined {
-  const position = row.groundPosition;
-  if (position.q === "missing" || position.q === "invalid" || position.v === undefined) return undefined;
-  return position.v;
-}
-
-function normalizedSpatialThreshold(value: number | undefined): number {
-  const threshold = value ?? RELATIVE_IMMEDIATE_SPATIAL_DISPLACEMENT_METERS;
-  return Number.isFinite(threshold) && threshold >= 0
-    ? threshold
-    : RELATIVE_IMMEDIATE_SPATIAL_DISPLACEMENT_METERS;
-}
-
 function normalizedHold(value: number | undefined): number {
   const hold = value ?? RELATIVE_MEMBERSHIP_HOLD_MS;
   return Number.isFinite(hold) && hold >= 0 ? hold : RELATIVE_MEMBERSHIP_HOLD_MS;
@@ -332,36 +275,28 @@ function monotonicNow(
 function acceptWindow(
   state: RelativeViewModelState,
   scopeKey: string,
-  instanceToken: object | undefined,
   frame: OverlayFrameV2,
   nowMs: number,
   rows: readonly OverlayRelativeRowV2[],
 ): void {
   state.scopeKey = scopeKey;
-  state.instanceToken = instanceToken;
   state.acceptedIds = rows.map((row) => row.id);
+  state.lastRows = rows;
   state.pendingKey = undefined;
   state.pendingSinceMs = undefined;
   state.lastSequence = frame.sequence;
   state.lastNowMs = nowMs;
-  state.lastGeneratedAtMs = parsedGeneratedAt(frame.generatedAt);
-}
-
-function parsedGeneratedAt(value: string): number {
-  const parsed = Date.parse(value);
-  return Number.isFinite(parsed) ? parsed : 0;
 }
 
 function resetStability(state: RelativeViewModelState | undefined): void {
   if (state === undefined) return;
   state.scopeKey = undefined;
-  state.instanceToken = undefined;
   state.acceptedIds = undefined;
+  state.lastRows = undefined;
   state.pendingKey = undefined;
   state.pendingSinceMs = undefined;
   state.lastSequence = undefined;
   state.lastNowMs = undefined;
-  state.lastGeneratedAtMs = undefined;
 }
 
 function formatGap(seconds: number): string {

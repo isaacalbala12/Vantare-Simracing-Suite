@@ -1,4 +1,4 @@
-import { memo, useLayoutEffect, useRef, type CSSProperties } from 'react';
+import { memo, useLayoutEffect, useMemo, useRef, type CSSProperties } from 'react';
 import {
   applyStudioFrameLayoutPreview,
   getStudioFrameLayoutPreview,
@@ -32,6 +32,7 @@ const RESIZE_HANDLES: readonly ResizeHandle[] = ['nw', 'n', 'ne', 'e', 'se', 's'
 
 export type StudioWidgetFrameProps = {
   widget: WidgetInstanceV3;
+  profileId: string;
   layout: WidgetLayoutV3;
   previewActive?: boolean;
   selected: boolean;
@@ -55,6 +56,7 @@ export type StudioWidgetFrameProps = {
 function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactElement {
   const {
     widget,
+    profileId,
     layout,
     previewActive = false,
     selected,
@@ -67,6 +69,10 @@ function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactE
   } = props;
   const { t } = useI18n();
   const runtime = useStudioTelemetryRuntime(widget.type);
+  const widgetRuntime = useMemo(() => ({
+    ...runtime,
+    relativeViewModelInstanceKey: `${profileId}:${widget.id}`,
+  }), [profileId, runtime, widget.id]);
   const frameRef = useRef<HTMLDivElement>(null);
   const selectionRef = useRef<HTMLDivElement>(null);
   const frameGeometry = resolveStudioFrameGeometry(widget.id, layout, previewActive);
@@ -197,7 +203,7 @@ function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactE
             widget={widget}
             renderMode="studio"
             diagnostics={diagnostics}
-            runtime={runtime}
+            runtime={widgetRuntime}
           />
         </WidgetVisualViewport>
       </div>
@@ -209,6 +215,7 @@ export const StudioWidgetFrame = memo(
   StudioWidgetFrameComponent,
   (previous, next) =>
     previous.widget === next.widget &&
+    previous.profileId === next.profileId &&
     layoutsEqual(previous.layout, next.layout) &&
     previous.previewActive === next.previewActive &&
     previous.selected === next.selected &&

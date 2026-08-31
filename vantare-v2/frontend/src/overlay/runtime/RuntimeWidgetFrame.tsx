@@ -11,6 +11,7 @@ import type { RaceScheduleSnapshot } from "../core/race-schedule-store";
 
 export type RuntimeWidgetFrameProps = {
   widget: WidgetInstanceV3;
+  profileId: string;
   telemetry: TelemetryRateCoordinator;
   renderMode: "desktop" | "obs";
   layoutOrigin?: { x: number; y: number };
@@ -23,7 +24,7 @@ export type RuntimeWidgetFrameProps = {
 };
 
 function RuntimeWidgetFrameComponent(props: RuntimeWidgetFrameProps): React.ReactElement {
-  const { widget, telemetry, renderMode, layoutOrigin, onDiagnostic, diagnostics, engineerPresentation, engineerSubtitlesEnabled, overlayV2Features, raceSchedule } = props;
+  const { widget, profileId, telemetry, renderMode, layoutOrigin, onDiagnostic, diagnostics, engineerPresentation, engineerSubtitlesEnabled, overlayV2Features, raceSchedule } = props;
   const runtimeTelemetry = useRateLimitedWidgetTelemetry(
     telemetry,
     widget.type,
@@ -62,6 +63,7 @@ function RuntimeWidgetFrameComponent(props: RuntimeWidgetFrameProps): React.Reac
             raceScheduleStatus: raceSchedule?.status,
             ...runtimeTelemetry,
             overlayV2Features,
+            relativeViewModelInstanceKey: `${profileId}:${widget.id}`,
           }}
         />
       </WidgetVisualViewport>
@@ -95,6 +97,7 @@ function sameOrigin(left?: { x: number; y: number }, right?: { x: number; y: num
 
 export const RuntimeWidgetFrame = memo(RuntimeWidgetFrameComponent, (left, right) =>
   sameWidget(left.widget, right.widget) &&
+  left.profileId === right.profileId &&
   left.telemetry === right.telemetry &&
   left.renderMode === right.renderMode &&
   sameOrigin(left.layoutOrigin, right.layoutOrigin) &&

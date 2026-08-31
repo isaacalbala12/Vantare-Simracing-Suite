@@ -114,8 +114,8 @@ describe("WidgetVisualHost v2 generic registry", () => {
     expect(firstOptions?.state).toBeDefined();
     expect(secondOptions?.state).toBeDefined();
     expect(firstOptions?.state).not.toBe(secondOptions?.state);
-    expect(firstOptions?.instanceToken).toBe(first);
-    expect(secondOptions?.instanceToken).toBe(second);
+    expect(firstOptions?.instanceKey).toBe(`harness:${first.id}`);
+    expect(secondOptions?.instanceKey).toBe(`harness:${second.id}`);
 
     nowMs = 100;
     view.rerender(<>
@@ -125,6 +125,42 @@ describe("WidgetVisualHost v2 generic registry", () => {
     expect(spy.mock.calls[2]?.[3]?.state).toBe(firstOptions?.state);
     expect(spy.mock.calls[3]?.[3]?.state).toBe(secondOptions?.state);
     spy.mockRestore();
+  });
+
+  it("mantiene el hold al recrear el objeto del mismo widget y resetea al cambiar de perfil", () => {
+    const widget = relativeDefinition.createDefault("relative-stable-id");
+    const frame = makeFrame();
+    const oldRow = { ...frame.relative[0]!, id: "old-ahead", name: "OLD" };
+    const newRow = { ...frame.relative[0]!, id: "new-ahead", name: "NEW" };
+    const farRow = { ...frame.relative[0]!, id: "far-ahead", name: "FAR" };
+    const player = frame.relative.find((row) => row.side === "player")!;
+    const firstFrame = { ...frame, relative: [farRow, newRow, oldRow, player] };
+    const changedFrame = { ...frame, sequence: 2, relative: [farRow, oldRow, newRow, player] };
+    let nowMs = 0;
+    const runtime = (profileId: string, overlayV2Frame: OverlayFrameV2) => ({
+      overlayV2Frame,
+      overlayV2Source: source,
+      relativeViewModelNowMs: () => nowMs,
+      relativeViewModelInstanceKey: `${profileId}:${widget.id}`,
+    });
+    const view = render(
+      <WidgetVisualHost widget={widget} renderMode="harness" runtime={runtime("profile-a", firstFrame)} />,
+    );
+
+    nowMs = 1;
+    view.rerender(
+      <WidgetVisualHost widget={{ ...widget }} renderMode="harness" runtime={runtime("profile-a", changedFrame)} />,
+    );
+    expect([...view.container.querySelectorAll("[data-relative-row]")].map((row) => row.getAttribute("data-relative-row"))).toEqual([
+      "new-ahead", "old-ahead", "player-1",
+    ]);
+
+    view.rerender(
+      <WidgetVisualHost widget={{ ...widget }} renderMode="harness" runtime={runtime("profile-b", changedFrame)} />,
+    );
+    expect([...view.container.querySelectorAll("[data-relative-row]")].map((row) => row.getAttribute("data-relative-row"))).toEqual([
+      "old-ahead", "new-ahead", "player-1",
+    ]);
   });
 
   it.each(cases)("[$type] usa VM v2 por defecto cuando frame y source están presentes", ({ definition, spyModule, spyName, feature }) => {

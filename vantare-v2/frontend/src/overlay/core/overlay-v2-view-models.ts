@@ -73,7 +73,7 @@ export const overlayV2ViewModelRegistry: ReadonlyMap<WidgetType, OverlayV2ViewMo
         buildRelativeViewModelV2(frame, source, content as never, {
           state: ctx?.relativeViewModelState,
           nowMs: ctx?.relativeViewModelNowMs,
-          instanceToken: ctx?.relativeViewModelInstanceToken,
+          instanceKey: ctx?.relativeViewModelInstanceKey,
         }),
     },
   ],

@@ -80,7 +80,7 @@ export type WidgetRuntimeInput = {
   overlayV2Source?: OverlaySourceStatusV2;
   relativeViewModelState?: RelativeViewModelState;
   relativeViewModelNowMs?: () => number;
-  relativeViewModelInstanceToken?: object;
+  relativeViewModelInstanceKey?: string;
 };
 
 export type WidgetRenderMode = "studio" | "desktop" | "obs" | "harness";

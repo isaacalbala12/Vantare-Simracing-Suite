@@ -65,6 +65,7 @@ function renderFrame(
     <StudioProvider client={client} initialFile="profiles/a.json">
       <StudioTelemetryProvider coordinator={coordinator} liveAvailable={false} runtime={runtime}>
         <StudioWidgetFrame
+          profileId="profile-test"
           widget={widget}
           layout={widget.layout}
           selected={false}
@@ -130,7 +131,12 @@ describe("StudioWidgetFrame", () => {
     renderFrame(widget, {}, runtime);
 
     expect(WidgetVisualHost).toHaveBeenCalledWith(
-      expect.objectContaining({ runtime }),
+      expect.objectContaining({
+        runtime: expect.objectContaining({
+          ...runtime,
+          relativeViewModelInstanceKey: "profile-test:delta-main",
+        }),
+      }),
       undefined,
     );
   });

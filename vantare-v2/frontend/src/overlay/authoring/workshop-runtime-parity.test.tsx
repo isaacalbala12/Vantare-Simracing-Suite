@@ -62,7 +62,7 @@ async function runtimeMarkup(input: AuthoringFixtureScenario): Promise<string> {
   const runtime = buildAuthoringV2Runtime(widget.type, snapshot);
   coordinator.setOverlayFrame(runtime.overlayV2Frame, runtime.overlayV2Source);
   const { container } = render(
-    <RuntimeWidgetFrame widget={widget} telemetry={coordinator} renderMode="obs" />,
+    <RuntimeWidgetFrame widget={widget} profileId="workshop-fixture" telemetry={coordinator} renderMode="obs" />,
   );
   await waitFor(() =>
     expect(container.querySelector(`[data-widget-renderer="${input.widget}"]`)).toBeTruthy(),

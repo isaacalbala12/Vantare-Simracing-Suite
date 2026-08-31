@@ -226,6 +226,8 @@ describe("WidgetVisualHost v2 generic registry", () => {
     ["relative-redline-traffic", "obs"],
   ] as const)("keeps the one 400 ms Redline hold observable in %s/%s", (templateId, renderMode) => {
     const widget = enduranceRelative(`relative-${renderMode}`, templateId);
+    const instanceKey = `profile-boundary:${widget.id}`;
+    const transitionSpy = vi.spyOn(relativeV2, "prepareRelativeViewModelV2");
     const base = makeFrame();
     const ahead = base.relative.find((row) => row.side === "ahead")!;
     const player = base.relative.find((row) => row.side === "player")!;
@@ -245,6 +247,7 @@ describe("WidgetVisualHost v2 generic registry", () => {
       overlayV2Frame,
       overlayV2Source,
       relativeViewModelNowMs: () => nowMs,
+      relativeViewModelInstanceKey: instanceKey,
     });
     const view = render(
       <WidgetVisualHost
@@ -276,15 +279,18 @@ describe("WidgetVisualHost v2 generic registry", () => {
       />,
     );
     expect(rowIds()).toEqual(["ahead-far", "ahead-near", "player-1", "behind-near", "behind-far"]);
+    const scopeAt399 = transitionSpy.mock.calls.at(-1)?.[3]?.state?.scopeKey;
+    expect(scopeAt399).toContain(instanceKey);
 
     nowMs = 400;
     view.rerender(
       <WidgetVisualHost
         widget={widget}
-        renderMode="harness"
+        renderMode={renderMode}
         runtime={runtime({ ...frame, sequence: 3, relative: [] }, { state: "live", retry: 1 })}
       />,
     );
+    expect(transitionSpy.mock.calls.at(-1)?.[3]?.state?.scopeKey).toBe(scopeAt399);
     expect(rowIds()).toEqual([]);
     expect(view.container.querySelectorAll('[data-ghost="true"]')).toHaveLength(0);
 
@@ -298,6 +304,9 @@ describe("WidgetVisualHost v2 generic registry", () => {
     );
     expect(rowIds()).toEqual([]);
     expect(view.container.querySelectorAll('[data-ghost="true"]')).toHaveLength(0);
+    expect(transitionSpy.mock.calls.map((call) => call[3]?.instanceKey))
+      .toEqual(Array(transitionSpy.mock.calls.length).fill(instanceKey));
+    transitionSpy.mockRestore();
   });
 
   it.each([

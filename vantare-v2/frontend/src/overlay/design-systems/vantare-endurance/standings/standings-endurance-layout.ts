@@ -23,7 +23,8 @@ type LayoutMetrics = Readonly<{
 }>;
 
 export const REDLINE_RETIREMENT_GHOST_HEIGHT_PX = 30;
-export const REDLINE_BATTLE_BOX_EXTRA_HEIGHT_PX = 12;
+// Seam 12 + vertical padding 4 + borders 2 + vertical margins 6.
+export const REDLINE_BATTLE_BOX_EXTRA_HEIGHT_PX = 24;
 
 const LAYOUT_METRICS: Readonly<Record<StandingsEnduranceLayoutTemplate, LayoutMetrics>> = {
   "standings-f1": { rowHeight: 30, headerHeight: 54, baseHeight: 0, groupHeight: 24, extraGroupHeight: 0 },

@@ -14,7 +14,7 @@
   las nueve plantillas Endurance recortan el modelo con
   `floor(altoUtil/altoFila)` antes de renderizar; el caso 520×560 deja 14 de
   18 filas Redline completas y reserva el flujo transitorio de una retirada y
-  una batalla. Overlay V2 publica `bestLap` y el
+  una batalla (54 px: ghost 30 + box completo 24). Overlay V2 publica `bestLap` y el
   ViewModel muestra en práctica/clasificación la mejor vuelta de la fila y su
   diferencia contra la mejor de sesión; en carrera conserva el gap oficial al
   líder; el shadow compara ese campo y el referente se calcula antes de

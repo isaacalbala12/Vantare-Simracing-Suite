@@ -61,6 +61,28 @@ describe("fitStandingsRowsToHeight", () => {
     })).toBeLessThanOrEqual(560);
   });
 
+  it("fits battle plus ghost at the 534px boundary with full box geometry", () => {
+    const rows = Array.from({ length: 18 }, (_, index) => ({
+      id: `boundary-${index}`,
+      vehicleClass: "HYPERCAR",
+      isPlayer: index === 7,
+    })) as unknown as StandingsRowViewModel[];
+    const fitted = fitStandingsRowsToHeight(rows, {
+      templateId: "standings-redline",
+      viewportHeight: 534,
+      showSessionHeader: true,
+    });
+
+    expect(fitted).toHaveLength(13);
+    expect(measureStandingsFlowHeight({
+      templateId: "standings-redline",
+      rowCount: fitted.length + 1,
+      groupCount: 1,
+      showSessionHeader: true,
+      battleBoxCount: 1,
+    })).toBeLessThanOrEqual(534);
+  });
+
   it.each(TEMPLATES)("uses only complete rows for %s", (templateId) => {
     const rows = Array.from({ length: 40 }, (_, index) => ({
       id: `${templateId}-${index}`,

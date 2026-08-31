@@ -1,10 +1,8 @@
 import {
   createContext,
   useContext,
-  useEffect,
   useMemo,
   useRef,
-  useState,
   type CSSProperties,
   type ReactNode,
 } from "react";
@@ -14,7 +12,6 @@ import type {
   RelativeRowViewModel,
   RelativeViewModel,
 } from "../../../widget-types/relative/relative-view-model";
-import { RELATIVE_REDLINE_INTERRUPTION_HOLD_MS } from "../../../widget-types/relative/relative-view-model-v2";
 import {
   classShortLabel,
   findLappingThreat,
@@ -26,57 +23,6 @@ import {
 } from "./relative-redline-shared";
 
 export type RelativeRedlineVariant = "mirror" | "proximity" | "traffic";
-
-function isAcceptedSnapshot(model: RelativeViewModel): boolean {
-  return model.status === "ready" &&
-    model.rows.length > 0 &&
-    model.rows.filter((row) => row.isPlayer).length === 1;
-}
-
-function canBridgeInterruption(
-  model: RelativeViewModel,
-  accepted: RelativeViewModel | null,
-): accepted is RelativeViewModel {
-  if (
-    accepted === null ||
-    model.rows.length !== 0 ||
-    (model.status !== "ready" && model.status !== "missing")
-  ) {
-    return false;
-  }
-  return model.presentationKey === undefined ||
-    model.presentationKey === accepted.presentationKey;
-}
-
-function useRelativeRedlineSnapshot(model: RelativeViewModel): RelativeViewModel {
-  const [snapshotState, setSnapshotState] = useState(() => ({
-    model,
-    accepted: isAcceptedSnapshot(model) ? model : null as RelativeViewModel | null,
-  }));
-  let accepted = snapshotState.accepted;
-  if (snapshotState.model !== model) {
-    if (isAcceptedSnapshot(model)) {
-      accepted = model;
-    } else if (!canBridgeInterruption(model, accepted)) {
-      accepted = null;
-    }
-    setSnapshotState({ model, accepted });
-  }
-  const bridge = canBridgeInterruption(model, accepted);
-
-  useEffect(() => {
-    if (!bridge) return;
-    const retained = accepted;
-    const timer = setTimeout(() => {
-      setSnapshotState((current) => current.accepted === retained
-        ? { ...current, accepted: null }
-        : current);
-    }, RELATIVE_REDLINE_INTERRUPTION_HOLD_MS);
-    return () => clearTimeout(timer);
-  }, [accepted, bridge]);
-
-  return bridge && accepted !== null ? accepted : model;
-}
 
 function playerRow(model: RelativeViewModel): RelativeRowViewModel | undefined {
   return model.rows.find((row) => row.isPlayer);
@@ -360,7 +306,7 @@ export function RelativeRedlineTemplate({
   showHeader: boolean;
 }) {
   const rootRef = useRef<HTMLDivElement | null>(null);
-  const presentedModel = useRelativeRedlineSnapshot(model);
+  const presentedModel = model;
   const motion = useRelativeMotion(presentedModel, presentedModel.status === "ready", rootRef);
 
   // Departed rows are put back where they sat and marked, so the variants keep

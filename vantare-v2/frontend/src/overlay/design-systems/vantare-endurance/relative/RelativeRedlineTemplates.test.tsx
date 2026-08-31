@@ -1,4 +1,4 @@
-import { act, cleanup, render } from "@testing-library/react";
+import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type {
   RelativeRowViewModel,
@@ -126,13 +126,16 @@ describe("RelativeRedlineTemplate", () => {
       expect(intersections).toEqual([]);
       expect(animate.mock.instances).not.toContain(wrapper);
       expect(animate.mock.instances).not.toContain(threatRow);
+      expect(animate.mock.instances).toContain(
+        view.container.querySelector<HTMLElement>('[data-relative-row="other"]'),
+      );
     } finally {
       HTMLElement.prototype.animate = originalAnimate;
       rectSpy.mockRestore();
     }
   });
 
-  it("keeps the accepted five-row Traffic snapshot through a brief empty ready interruption", () => {
+  it("renders an empty Traffic model immediately because interruption hold belongs to the VM", () => {
     const { container, rerender } = renderTraffic(scopedPitModel);
 
     rerender(
@@ -143,8 +146,7 @@ describe("RelativeRedlineTemplate", () => {
       />,
     );
 
-    expect(container.querySelectorAll("[data-relative-row]")).toHaveLength(5);
-    expect(container.querySelectorAll('[data-relative-row][data-player="true"]')).toHaveLength(1);
+    expect(container.querySelectorAll("[data-relative-row]")).toHaveLength(0);
 
     rerender(
       <RelativeEndurance
@@ -180,22 +182,6 @@ describe("RelativeRedlineTemplate", () => {
         renderMode="desktop"
       />,
     );
-
-    expect(container.querySelectorAll("[data-relative-row]")).toHaveLength(0);
-  });
-
-  it("stops retaining an empty ready Traffic snapshot after the bounded interruption window", () => {
-    vi.useFakeTimers();
-    const { container, rerender } = renderTraffic(scopedPitModel);
-
-    rerender(
-      <RelativeEndurance
-        model={{ ...scopedPitModel, status: "missing", rows: [] }}
-        settings={{ templateId: "relative-redline-traffic", showHeader: true }}
-        renderMode="desktop"
-      />,
-    );
-    act(() => vi.runAllTimers());
 
     expect(container.querySelectorAll("[data-relative-row]")).toHaveLength(0);
   });

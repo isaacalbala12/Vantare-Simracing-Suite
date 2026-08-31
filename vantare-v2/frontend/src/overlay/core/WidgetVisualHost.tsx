@@ -10,7 +10,10 @@ import { readInputTelemetryHistory, recordInputTelemetrySample } from "../widget
 import type { InputTelemetryViewModel } from "../widget-types/input-telemetry/input-telemetry-view-model";
 import type { WidgetRuntimeInput } from "./widget-definition";
 import { getOverlayV2ViewModelEntry } from "./overlay-v2-view-models";
-import { createRelativeViewModelState } from "../widget-types/relative/relative-view-model-v2";
+import {
+  createRelativeViewModelState,
+  resetRelativeViewModelState,
+} from "../widget-types/relative/relative-view-model-v2";
 import { isRelativeRedlineTemplateId } from "../design-systems/vantare-endurance/relative/relative-endurance-settings";
 
 export type { WidgetDiagnostic, WidgetDiagnosticCollector } from "./widget-diagnostics";
@@ -114,6 +117,7 @@ export function WidgetVisualHost(props: WidgetVisualHostProps): ReactNode {
     return <HostDiagnostic widget={widget} code={code} message={v2Failure.message} />;
   }
   if (v2Entry && !v2Rollback && source?.state === "error") {
+    resetRelativeViewModelState(relativeViewModelState);
     const message = source.reason ?? "Overlay V2 source error";
     reportDiagnostic(props, "overlay-v2-source-error", message);
     return <HostDiagnostic widget={widget} code="overlay-v2-source-error" message={message} />;

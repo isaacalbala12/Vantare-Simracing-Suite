@@ -385,7 +385,7 @@ describe("relative v2 view model", () => {
     expect(model.rows.find((row) => row.id === "far")?.gapSeconds).toBe(8.5);
   });
 
-  it.each(["session", "epoch", "profile", "widget", "source"] as const)("resets membership on $case reset", (resetCase) => {
+  it.each(["session", "epoch", "profile", "widget", "source-stopped", "source-stale"] as const)("resets membership on $case reset", (resetCase) => {
     const base = goldenFrame(44);
     const state = createRelativeViewModelState();
     const content = { ...CONTENT, rangeAhead: 1, rangeBehind: 0 };
@@ -396,8 +396,13 @@ describe("relative v2 view model", () => {
     let nowMs = 0;
     const old = relativeScenarioFrame(base, 700, ["new", "old"], [], true);
     buildRelativeViewModelV2(old, { state: "live" }, content, { state, nowMs: () => nowMs, instanceKey: instanceKeyA });
-    if (resetCase === "source") {
-      buildRelativeViewModelV2(old, { state: "stopped" }, content, { state, nowMs: () => nowMs, instanceKey: instanceKeyA });
+    if (resetCase === "source-stopped" || resetCase === "source-stale") {
+      buildRelativeViewModelV2(
+        old,
+        { state: resetCase === "source-stopped" ? "stopped" : "stale" },
+        content,
+        { state, nowMs: () => nowMs, instanceKey: instanceKeyA },
+      );
     }
     nowMs = 1;
     const changedBase = relativeScenarioFrame(base, 701, ["old", "new"], [], true);

@@ -98,7 +98,13 @@ export function useRelativeMotion(
     const departed: RelativeGhost[] = [];
     let nextDeparture = ghostState.nextDeparture;
     const vacantSlots = Math.max(0, (ghostState.model?.rows.length ?? 0) - model.rows.length);
-    if (samePresentation && enabled && model.status === "ready" && ghostState.model?.status === "ready") {
+    if (
+      samePresentation &&
+      enabled &&
+      model.status === "ready" &&
+      model.rows.some((row) => row.isPlayer) &&
+      ghostState.model?.status === "ready"
+    ) {
       ghostState.model.rows.forEach((row, index) => {
         if (departed.length < vacantSlots && !row.isPlayer && !stillHere.has(row.id)) {
           departed.push({ row, index, departure: nextDeparture++ });
@@ -151,16 +157,14 @@ export function useRelativeMotion(
       return;
     }
     const rootTop = root.getBoundingClientRect().top;
-    const hasCompositeTrafficSlot = root.querySelector("[data-relative-motion-row]") !== null;
-
     // FLIP real: cada fila se desliza desde la posicion que ocupaba en el modelo
     // anterior (medida) hasta la actual. La distancia medida atraviesa tambien
     // los ejes y la fila del jugador, asi que un cruce recorre una trayectoria
     // continua en vez de un salto estimado por indice.
-    if (prev && !hasCompositeTrafficSlot) {
+    if (prev) {
       for (const [rowId, previousTop] of rectsRef.current) {
         const element = motionElement(root, rowId);
-        if (!element) {
+        if (!element || element.hasAttribute("data-relative-motion-row")) {
           continue;
         }
         const offsetPx = previousTop - (element.getBoundingClientRect().top - rootTop);

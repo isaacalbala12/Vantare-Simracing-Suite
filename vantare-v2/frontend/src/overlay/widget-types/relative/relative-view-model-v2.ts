@@ -62,8 +62,27 @@ export function buildRelativeViewModelV2(
   if (source.state !== "live") {
     const bridgeReconnect = stability.bridgeSourceReconnect === true &&
       (source.state === "connecting" || source.state === "detecting");
-    if (!bridgeReconnect) {
-      resetStability(stability.state);
+    const state = stability.state;
+    const scopeKey = stabilityScopeKey(frame, source, content, stability.instanceKey, true);
+    let retainedRows: readonly OverlayRelativeRowV2[] = [];
+    if (
+      bridgeReconnect &&
+      state?.scopeKey === scopeKey &&
+      state.lastRows?.some((row) => row.side === "player")
+    ) {
+      const nowMs = monotonicNow(stability, state);
+      if (state.pendingKey !== "") {
+        state.pendingKey = "";
+        state.pendingSinceMs = nowMs;
+      }
+      state.lastNowMs = nowMs;
+      if (nowMs - (state.pendingSinceMs ?? nowMs) < RELATIVE_REDLINE_INTERRUPTION_HOLD_MS) {
+        retainedRows = state.lastRows;
+      } else {
+        resetRelativeViewModelState(state);
+      }
+    } else {
+      resetRelativeViewModelState(state);
     }
     return {
       type: "relative",
@@ -74,7 +93,7 @@ export function buildRelativeViewModelV2(
         : undefined,
       columns,
       rowHeightMode: content.rowHeightMode,
-      rows: [],
+      rows: retainedRows.map(buildRow),
     };
   }
 
@@ -336,7 +355,7 @@ function acceptWindow(
   state.lastNowMs = nowMs;
 }
 
-function resetStability(state: RelativeViewModelState | undefined): void {
+export function resetRelativeViewModelState(state: RelativeViewModelState | undefined): void {
   if (state === undefined) return;
   state.scopeKey = undefined;
   state.acceptedIds = undefined;

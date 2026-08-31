@@ -177,36 +177,60 @@ describe("WidgetVisualHost v2 generic registry", () => {
     ]);
   });
 
-  it("keeps Endurance non-Redline Relative free of Redline membership hysteresis", () => {
-    const widget = enduranceRelative("relative-classic", "relative-classic");
-    const frame = makeFrame();
-    const oldRow = { ...frame.relative[0]!, id: "old-ahead", name: "OLD" };
-    const newRow = { ...frame.relative[0]!, id: "new-ahead", name: "NEW" };
-    const farRow = { ...frame.relative[0]!, id: "far-ahead", name: "FAR" };
-    const player = frame.relative.find((row) => row.side === "player")!;
-    const firstFrame = { ...frame, relative: [farRow, newRow, oldRow, player] };
-    const changedFrame = { ...frame, sequence: 2, relative: [farRow, oldRow, newRow, player] };
-    let nowMs = 0;
-    const runtime = (overlayV2Frame: OverlayFrameV2) => ({
-      overlayV2Frame,
-      overlayV2Source: source,
-      relativeViewModelNowMs: () => nowMs,
-    });
-    const view = render(
-      <WidgetVisualHost widget={widget} renderMode="harness" runtime={runtime(firstFrame)} />,
+  it.each(["relative-classic", "relative-minimal", "relative-neo"])(
+    "keeps Endurance %s free of Redline membership hysteresis",
+    (templateId) => {
+      const widget = enduranceRelative(templateId, templateId);
+      const frame = makeFrame();
+      const oldRow = { ...frame.relative[0]!, id: "old-ahead", name: "OLD" };
+      const newRow = { ...frame.relative[0]!, id: "new-ahead", name: "NEW" };
+      const farRow = { ...frame.relative[0]!, id: "far-ahead", name: "FAR" };
+      const player = frame.relative.find((row) => row.side === "player")!;
+      const firstFrame = { ...frame, relative: [farRow, newRow, oldRow, player] };
+      const changedFrame = { ...frame, sequence: 2, relative: [farRow, oldRow, newRow, player] };
+      let nowMs = 0;
+      const runtime = (overlayV2Frame: OverlayFrameV2) => ({
+        overlayV2Frame,
+        overlayV2Source: source,
+        relativeViewModelNowMs: () => nowMs,
+      });
+      const view = render(
+        <WidgetVisualHost widget={widget} renderMode="harness" runtime={runtime(firstFrame)} />,
+      );
+
+      nowMs = 1;
+      view.rerender(
+        <WidgetVisualHost widget={{ ...widget }} renderMode="harness" runtime={runtime(changedFrame)} />,
+      );
+
+      expect([...view.container.querySelectorAll("[data-relative-row]")].map(
+        (row) => row.getAttribute("data-relative-row"),
+      )).toEqual(["old-ahead", "new-ahead", "player-1"]);
+    },
+  );
+
+  it.each([
+    ["relative-redline-mirror", "desktop"],
+    ["relative-redline-proximity", "studio"],
+    ["relative-redline-traffic", "obs"],
+  ] as const)("enables Redline stability for %s on %s", (templateId, renderMode) => {
+    const widget = enduranceRelative(`${templateId}-${renderMode}`, templateId);
+    const spy = vi.spyOn(relativeV2, "buildRelativeViewModelV2");
+
+    render(
+      <WidgetVisualHost
+        widget={widget}
+        renderMode={renderMode}
+        runtime={{ overlayV2Frame: makeFrame(), overlayV2Source: source }}
+      />,
     );
 
-    nowMs = 1;
-    view.rerender(
-      <WidgetVisualHost widget={{ ...widget }} renderMode="harness" runtime={runtime(changedFrame)} />,
-    );
-
-    expect([...view.container.querySelectorAll("[data-relative-row]")].map(
-      (row) => row.getAttribute("data-relative-row"),
-    )).toEqual(["old-ahead", "new-ahead", "player-1"]);
+    expect(spy.mock.calls[0]?.[3]).toMatchObject({ bridgeSourceReconnect: true });
+    expect(spy.mock.calls[0]?.[3]?.state).toBeDefined();
+    spy.mockRestore();
   });
 
-  it("keeps the five-row Redline Traffic snapshot across a same-session source reconnect", () => {
+  it("limits the integrated Redline Traffic reconnect hold to 400 ms end to end", () => {
     const widget = enduranceRelative("relative-traffic", "relative-redline-traffic");
     const base = makeFrame();
     const ahead = base.relative.find((row) => row.side === "ahead")!;
@@ -222,10 +246,11 @@ describe("WidgetVisualHost v2 generic registry", () => {
         { ...behind, id: "behind-far" },
       ],
     };
+    let nowMs = 0;
     const runtime = (overlayV2Frame: OverlayFrameV2, overlayV2Source: OverlaySourceStatusV2) => ({
       overlayV2Frame,
       overlayV2Source,
-      relativeViewModelNowMs: () => 100,
+      relativeViewModelNowMs: () => nowMs,
     });
     const view = render(
       <WidgetVisualHost
@@ -247,6 +272,7 @@ describe("WidgetVisualHost v2 generic registry", () => {
     );
     expect(rowIds()).toEqual(["ahead-far", "ahead-near", "player-1", "behind-near", "behind-far"]);
 
+    nowMs = 399;
     view.rerender(
       <WidgetVisualHost
         widget={widget}
@@ -256,35 +282,64 @@ describe("WidgetVisualHost v2 generic registry", () => {
     );
     expect(rowIds()).toEqual(["ahead-far", "ahead-near", "player-1", "behind-near", "behind-far"]);
 
+    nowMs = 400;
     view.rerender(
       <WidgetVisualHost
         widget={widget}
         renderMode="harness"
-        runtime={runtime({ ...frame, sequence: 3 }, { state: "live", retry: 1 })}
+        runtime={runtime({ ...frame, sequence: 3, relative: [] }, { state: "live", retry: 1 })}
       />,
     );
-    expect(rowIds()).toEqual(["ahead-far", "ahead-near", "player-1", "behind-near", "behind-far"]);
+    expect(rowIds()).toEqual([]);
+
+    nowMs = 401;
+    view.rerender(
+      <WidgetVisualHost
+        widget={widget}
+        renderMode="harness"
+        runtime={runtime({ ...frame, sequence: 4, relative: [] }, { state: "live", retry: 1 })}
+      />,
+    );
+    expect(rowIds()).toEqual([]);
+  });
+
+  it("invalidates Redline rows on source error before a same-session sequence reset", () => {
+    const widget = enduranceRelative("relative-error-recovery", "relative-redline-traffic");
+    const frame = makeFrame();
+    const oldRows = frame.relative.map((row) => ({ ...row, name: `OLD-${row.name}` }));
+    const recoveredRows = frame.relative.map((row) => ({ ...row, name: `NEW-${row.name}` }));
+    const runtime = (overlayV2Frame: OverlayFrameV2, overlayV2Source: OverlaySourceStatusV2) => ({
+      overlayV2Frame,
+      overlayV2Source,
+      relativeViewModelNowMs: () => 0,
+    });
+    const view = render(
+      <WidgetVisualHost
+        widget={widget}
+        renderMode="harness"
+        runtime={runtime({ ...frame, sequence: 50, relative: oldRows }, source)}
+      />,
+    );
+    expect(view.container.textContent).toContain("OLD-Player");
 
     view.rerender(
       <WidgetVisualHost
         widget={widget}
         renderMode="harness"
-        runtime={runtime(
-          { ...frame, epoch: frame.epoch + 1, sequence: 1, relative: [] },
-          { state: "live", retry: 1 },
-        )}
+        runtime={runtime(frame, { state: "error", reason: "LMU projection stopped" })}
       />,
     );
-    expect(rowIds()).toEqual([]);
+    expect(view.getByRole("alert").textContent).toBe("LMU projection stopped");
 
     view.rerender(
       <WidgetVisualHost
         widget={widget}
         renderMode="harness"
-        runtime={runtime(frame, { state: "stopped", retry: 1 })}
+        runtime={runtime({ ...frame, sequence: 1, relative: recoveredRows }, source)}
       />,
     );
-    expect(rowIds()).toEqual([]);
+    expect(view.container.textContent).toContain("NEW-Player");
+    expect(view.container.textContent).not.toContain("OLD-Player");
   });
 
   it.each(cases)("[$type] usa VM v2 por defecto cuando frame y source están presentes", ({ definition, spyModule, spyName, feature }) => {

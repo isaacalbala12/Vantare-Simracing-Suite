@@ -5,7 +5,8 @@
   "summary": "Track Map Endurance mantiene visible el nombre del circuito dentro del tamaño configurado del widget.",
   "technicalNotes": [
     "El renderer ocupa el alto disponible con sizing border-box, de modo que padding, borde, mapa y pie caben dentro del frame productivo.",
-    "La corrección conserva el renderer único WidgetVisualHost y no cambia la geometría del perfil ni los datos del mapa."
+    "La corrección conserva el renderer único WidgetVisualHost y no cambia la geometría del perfil ni los datos del mapa.",
+    "La regresión comprueba Desktop, Studio y OBS en los tamaños mínimo, predeterminado, auditado y de resize libre."
   ],
   "testing": [
     "Abrir un perfil Endurance con Track Map a 640×440 y comprobar que el mapa completo y el nombre del circuito quedan visibles.",

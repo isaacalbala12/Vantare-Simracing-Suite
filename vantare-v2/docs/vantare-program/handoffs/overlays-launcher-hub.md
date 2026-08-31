@@ -29,11 +29,16 @@
   `640×485.625` dentro del frame `640×440`, con el footer completamente fuera.
   La raíz `.ven-track-map` ahora ocupa el alto disponible con `border-box`, sin
   cambiar geometría, tipografía, ViewModel ni la frontera `WidgetVisualHost`.
-  Una regresión Chromium renderiza el componente y CSS productivos a `640×440`
-  y exige que renderer y footer no excedan el frame en más de 1 CSS px; falló
-  antes del fix con `35.1875 px` y pasa después junto al contrato Endurance
-  (18/18). Queda pendiente la revalidación manual en Wails/LMU real; no se
-  arrancó la app. Sin push, PR, merge, promoción ni release.
+  Tras el REQUEST_CHANGES adversarial sobre `66d3f541`, la regresión Chromium
+  monta `RuntimeWidgetFrame`, `WidgetVisualViewport` y `WidgetVisualHost` para
+  Desktop/OBS, y la frontera compartida viewport/host para Studio. Mide frame,
+  renderer, SVG, outline y footer por los cuatro lados, dimensiones,
+  visibilidad, intersección y orden mapa→footer, con `overflow:visible` para no
+  esconder el fallo. Cubre `160×110`, `320×220`, `640×440` y resize libre
+  `480×260` en las tres superficies. Contra el CSS anterior falló directamente
+  en Desktop `160×110`: bottom `121.40625` frente al máximo `111`; con el fix
+  pasa la matriz 12/12. Queda pendiente la revalidación manual en Wails/LMU
+  real; no se arrancó la app. Sin push, PR, merge, promoción ni release.
 
 - **ISA-940 — lifecycle a coste cero (2026-08-30):** rama
   `vantareapp/isa-940-lifecycle-coste-cero`, rebasada sobre

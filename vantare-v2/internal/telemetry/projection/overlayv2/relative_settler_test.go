@@ -172,7 +172,17 @@ func TestCachedProjectorSettledResetsPerSessionEpochAndPlayer(t *testing.T) {
 func TestCachedProjectorsKeepIndependentSettledAuthority(t *testing.T) {
 	t.Parallel()
 	base := builderFinalState(t, 37)
-	left, right := NewCachedProjector(SectionCadence{}), NewCachedProjector(SectionCadence{})
+	windowA := settledRows("vehicle-022", "vehicle-024", "vehicle-000", "vehicle-027", "vehicle-036")
+	windowB := settledRows("vehicle-024", "vehicle-027", "vehicle-000", "vehicle-004", "vehicle-036")
+	leftCalls := 0
+	left := NewCachedProjectorWithBuilders(SectionCadence{}, SectionBuilders{Relative: func(derive.FinalState, PreferencesV2, SourceContextV2) []RelativeRowV2 {
+		leftCalls++
+		if leftCalls == 1 {
+			return windowA
+		}
+		return windowB
+	}})
+	right := NewCachedProjectorWithBuilders(SectionCadence{}, SectionBuilders{Relative: func(derive.FinalState, PreferencesV2, SourceContextV2) []RelativeRowV2 { return windowB }})
 	project := func(projector *CachedProjector, revision uint64) UpdateV2 {
 		update, err := projector.Project(base, builderSourceContext(), DefaultPreferencesV2(), revision, cadenceOrigin.Add(time.Duration(revision)*time.Second))
 		if err != nil {
@@ -180,11 +190,11 @@ func TestCachedProjectorsKeepIndependentSettledAuthority(t *testing.T) {
 		}
 		return update
 	}
-	leftFirst := project(left, 1)
-	rightFirst := project(right, 1)
-	leftNext := project(left, 2)
-	if leftFirst.Frame == nil || rightFirst.Frame == nil || leftNext.Frame == nil || !sameRelativeIDs(relativeIDs(rightFirst.Frame.RelativeSettled), relativeIDs(rightFirst.Frame.Relative)) || !sameRelativeIDs(relativeIDs(leftNext.Frame.RelativeSettled), relativeIDs(leftFirst.Frame.RelativeSettled)) {
-		t.Fatal("CachedProjector settled authority leaked or did not retain independently")
+	project(left, 1)
+	leftHeld := project(left, 2)
+	rightStarted := project(right, 1)
+	if leftHeld.Frame == nil || rightStarted.Frame == nil || !sameRelativeIDs(relativeIDs(leftHeld.Frame.RelativeSettled), relativeIDs(windowA)) || !sameRelativeIDs(relativeIDs(rightStarted.Frame.RelativeSettled), relativeIDs(windowB)) {
+		t.Fatalf("CachedProjector authority leaked: left=%v right=%v", relativeIDs(leftHeld.Frame.RelativeSettled), relativeIDs(rightStarted.Frame.RelativeSettled))
 	}
 }
 

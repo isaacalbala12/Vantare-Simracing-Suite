@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-959",
+  "type": "fix",
+  "summary": "Track Map Endurance mantiene visible el nombre del circuito dentro del tamaño configurado del widget.",
+  "technicalNotes": [
+    "El renderer ocupa el alto disponible con sizing border-box, de modo que padding, borde, mapa y pie caben dentro del frame productivo.",
+    "La corrección conserva el renderer único WidgetVisualHost y no cambia la geometría del perfil ni los datos del mapa."
+  ],
+  "testing": [
+    "Abrir un perfil Endurance con Track Map a 640×440 y comprobar que el mapa completo y el nombre del circuito quedan visibles.",
+    "Redimensionar el widget a otros tamaños válidos y confirmar que su borde, mapa y pie permanecen dentro del frame."
+  ],
+  "knownLimitations": [
+    "La revalidación final con Wails y telemetría LMU real queda pendiente antes de promover la rama."
+  ]
+}

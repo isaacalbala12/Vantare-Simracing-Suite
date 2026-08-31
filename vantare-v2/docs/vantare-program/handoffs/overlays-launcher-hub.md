@@ -23,6 +23,17 @@
   del flujo aun con `overflow:hidden`; una mutación de 1 px admite una quinta
   fila recortada y falla. Evidencia local: tests frontend focales, paquete Go Overlay V2,
   typecheck y `git diff --check`; no se lanzó Wails ni se tocó CSS.
+- **ISA-959 — Track Map Endurance respeta el frame (2026-08-31, rama):**
+  `vantareapp/isa-959-track-map-footer-clipping`, base exacta
+  `origin/nightly@659b2c57`. La auditoría Wails/LMU real midió un renderer de
+  `640×485.625` dentro del frame `640×440`, con el footer completamente fuera.
+  La raíz `.ven-track-map` ahora ocupa el alto disponible con `border-box`, sin
+  cambiar geometría, tipografía, ViewModel ni la frontera `WidgetVisualHost`.
+  Una regresión Chromium renderiza el componente y CSS productivos a `640×440`
+  y exige que renderer y footer no excedan el frame en más de 1 CSS px; falló
+  antes del fix con `35.1875 px` y pasa después junto al contrato Endurance
+  (18/18). Queda pendiente la revalidación manual en Wails/LMU real; no se
+  arrancó la app. Sin push, PR, merge, promoción ni release.
 
 - **ISA-940 — lifecycle a coste cero (2026-08-30):** rama
   `vantareapp/isa-940-lifecycle-coste-cero`, rebasada sobre

@@ -3003,6 +3003,8 @@
 [data-widget-system="vantare-endurance"].ven-track-map {
   display: flex;
   flex-direction: column;
+  height: 100%;
+  box-sizing: border-box;
   gap: 4px;
   padding: 8px;
   overflow: hidden;

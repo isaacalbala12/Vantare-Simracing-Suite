@@ -363,10 +363,10 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - titulo.en: Overlay Studio V3 under way
 - titulo.pt: Overlay Studio V3 em curso
 - titulo.it: Overlay Studio V3 in corso
-- cuerpo: Un único límite de render para estudio, runtime y previsualización, con guardado automático, historial de deshacer/rehacer y Standings Redline configurable y ampliable dentro de los catálogos Crystal, Neo y Endurance.
-- cuerpo.en: A single render boundary for studio, runtime and preview, with autosave, undo/redo history and configurable, resizable Standings Redline within the Crystal, Neo and Endurance catalogues.
-- cuerpo.pt: Um único limite de render para estúdio, runtime e pré-visualização, com gravação automática, histórico de desfazer/refazer e Standings Redline configurável e redimensionável nos catálogos Crystal, Neo e Endurance.
-- cuerpo.it: Un unico confine di render per studio, runtime e anteprima, con salvataggio automatico, cronologia annulla/ripristina e Standings Redline configurabile e ridimensionabile nei cataloghi Crystal, Neo ed Endurance.
+- cuerpo: Un único límite de render para estudio, runtime y previsualización, con guardado automático, historial de deshacer/rehacer, Standings Redline configurable y ampliable, y Track Map Endurance ajustado al frame sin recortar su pie, dentro de los catálogos Crystal, Neo y Endurance.
+- cuerpo.en: A single render boundary for studio, runtime and preview, with autosave, undo/redo history, configurable and resizable Standings Redline, and Endurance Track Map fitted to its frame without clipping its footer, within the Crystal, Neo and Endurance catalogues.
+- cuerpo.pt: Um único limite de render para estúdio, runtime e pré-visualização, com gravação automática, histórico de desfazer/refazer, Standings Redline configurável e redimensionável e Track Map Endurance ajustado ao frame sem cortar o rodapé, nos catálogos Crystal, Neo e Endurance.
+- cuerpo.it: Un unico confine di render per studio, runtime e anteprima, con salvataggio automatico, cronologia annulla/ripristina, Standings Redline configurabile e ridimensionabile e Track Map Endurance adattato al frame senza tagliare il piè di pagina, nei cataloghi Crystal, Neo ed Endurance.
 - etiqueta: En desarrollo
 - etiqueta.en: In progress
 - etiqueta.pt: Em desenvolvimento

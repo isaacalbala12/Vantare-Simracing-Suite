@@ -2754,6 +2754,14 @@
 /* Redline pedals. The pedal colours stay user-configurable — they are an
    explicit setting with a strong convention behind them — so this widget spends
    no carmine of its own; the rails and the slots carry everything it says. */
+[data-widget-system="vantare-endurance"][data-template="pedals-redline"].ven-pedals {
+  display: block;
+  box-sizing: border-box;
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+}
+
 [data-widget-system="vantare-endurance"] .ven-pred-root {
   position: relative;
   height: 100%;
@@ -2782,16 +2790,17 @@
    slot has been laid out, so the widget scales instead of clipping. */
 [data-widget-system="vantare-endurance"] .ven-pred-rail {
   min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
 }
 
-/* flex:1 lets the well take the height the widget is given; min-height keeps it
-   from collapsing to nothing when the host does not constrain height at all. */
+/* flex:1 lets the well take the height the widget is given. Redline is hosted
+   in a scaled viewport, so an intrinsic minimum here would escape the frame. */
 [data-widget-system="vantare-endurance"] .ven-pred-well {
   position: relative;
   flex: 1;
-  min-height: 72px;
+  min-height: 0;
   border-radius: 4px;
   overflow: hidden;
   background: #0a0a0b;

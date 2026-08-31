@@ -1381,3 +1381,10 @@ Evidencia Task 4 y cierre acumulado:
 - La validación física S3 Wails/LMU no se ejecutó por instrucción expresa de
   este corte y permanece pendiente antes de promoción. Trabajo solo local: sin
   app, push, PR, CI remoto, merge, promoción ni release.
+- Cierre adversarial integrado en ISA-962: el runtime ya mantenía el frame
+  físico estrecho, pero Studio todavía sustituía 280 px por el mínimo visual
+  de 826 px. Studio y su preview imperativo conservan ahora `layout.w` como
+  geometría física y escalan la misma base visual que Desktop/OBS; selección y
+  tiradores permanecen en el frame persistido. La regresión productiva cubre
+  Desktop, Studio y OBS a 280/340/419/420 px, y los focales de layout/preview
+  quedan en 60/60 PASS. S3 físico sigue pendiente sobre el nuevo HEAD.

@@ -15,8 +15,8 @@ import type { ResizeHandle } from './canvas-resize';
 import { useSelectionFit } from './useSelectionFit';
 import { useStudioTelemetryRuntime } from './studio-telemetry';
 import {
-  resolveStandingsRedlineFrameLayout,
   resolveStandingsRedlineMinimumWidth,
+  resolveStandingsRedlineVisualBaseWidth,
 } from '../../../overlay/widget-types/standings/standings-redline-layout';
 import { DEFAULT_LAYOUT_VIEWPORT } from '../../../overlay/core/layout-viewport';
 
@@ -82,12 +82,19 @@ function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactE
   }), [profileId, runtime, widget.id]);
   const frameRef = useRef<HTMLDivElement>(null);
   const selectionRef = useRef<HTMLDivElement>(null);
-  const frameGeometry = resolveStandingsRedlineFrameLayout(
-    widget,
-    resolveStudioFrameGeometry(widget.id, layout, previewActive),
-    layoutViewportWidth,
-  );
+  const frameGeometry = resolveStudioFrameGeometry(widget.id, layout, previewActive);
   const effectiveMinimumWidth = resolveStandingsRedlineMinimumWidth(widget);
+  const visualBaseWidth = resolveStandingsRedlineVisualBaseWidth(widget, frameGeometry);
+  const visualScale = visualBaseWidth === undefined ? undefined : frameGeometry.w / visualBaseWidth;
+  const visualWidget = visualScale !== undefined && Number.isFinite(visualScale) && visualScale > 0
+    ? {
+        ...widget,
+        layout: {
+          ...frameGeometry,
+          h: frameGeometry.h / visualScale,
+        },
+      }
+    : { ...widget, layout: frameGeometry };
   const resizeHandles =
     widgetTypeRegistry.get(widget.type).capabilities.resizeMode === 'horizontal-only'
       ? (['e', 'w'] as const)
@@ -211,10 +218,11 @@ function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactE
           widgetType={widget.type}
           visual={widget.visual}
           layout={frameGeometry}
+          visualBaseWidth={visualBaseWidth}
           testId={`studio-widget-viewport-${widget.id}`}
         >
           <MemoWidgetVisualHost
-            widget={widget}
+            widget={visualWidget}
             renderMode="studio"
             diagnostics={diagnostics}
             runtime={widgetRuntime}

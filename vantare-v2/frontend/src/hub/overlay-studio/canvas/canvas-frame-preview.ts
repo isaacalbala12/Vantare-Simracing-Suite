@@ -1,6 +1,5 @@
 import type { WidgetLayoutV3 } from "../../../overlay/core/profile-document";
 import { resolveWidgetVisualGeometry } from "../../../overlay/core/widget-visual-geometry";
-import { resolveMinimumWidthFrameLayout } from "../../../overlay/widget-types/standings/standings-redline-layout";
 
 type FramePreviewKind = "move" | "resize";
 
@@ -43,19 +42,14 @@ export function clearStudioFrameLayoutPreview(widgetId: string): void {
 
 function writeFrameGeometry(frame: HTMLElement, layout: WidgetLayoutV3): void {
   const minimumWidth = Number(frame.dataset.effectiveMinimumWidth);
-  const viewportWidth = Number(frame.dataset.layoutViewportWidth);
-  const effectiveLayout = resolveMinimumWidthFrameLayout(
-    layout,
-    Number.isFinite(minimumWidth) && minimumWidth > 0 ? minimumWidth : undefined,
-    Number.isFinite(viewportWidth) && viewportWidth > 0 ? viewportWidth : undefined,
-  );
+  const effectiveLayout = layout;
   frame.style.left = `${effectiveLayout.x}px`;
   frame.style.top = `${effectiveLayout.y}px`;
   frame.style.width = `${effectiveLayout.w}px`;
   frame.style.height = `${effectiveLayout.h}px`;
   const viewport = frame.querySelector<HTMLElement>("[data-widget-visual-viewport]");
   const baseWidth = viewport?.dataset.widgetVisualFluidWidth === "true"
-    ? effectiveLayout.w
+    ? Math.max(effectiveLayout.w, Number.isFinite(minimumWidth) && minimumWidth > 0 ? minimumWidth : effectiveLayout.w)
     : Number(viewport?.dataset.widgetVisualBaseWidth);
   if (viewport && Number.isFinite(baseWidth) && baseWidth > 0) {
     const geometry = resolveWidgetVisualGeometry(effectiveLayout, baseWidth);

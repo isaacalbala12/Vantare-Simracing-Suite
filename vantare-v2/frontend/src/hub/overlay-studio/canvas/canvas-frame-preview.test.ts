@@ -25,8 +25,11 @@ function mountFrame(fluidWidth = false): HTMLElement {
   frame.dataset.testid = studioFrameTestId("delta-main");
   const viewport = document.createElement("div");
   viewport.dataset.widgetVisualViewport = "true";
-  viewport.dataset.widgetVisualBaseWidth = "280";
-  if (fluidWidth) viewport.dataset.widgetVisualFluidWidth = "true";
+  viewport.dataset.widgetVisualBaseWidth = fluidWidth ? "826" : "280";
+  if (fluidWidth) {
+    frame.dataset.effectiveMinimumWidth = "826";
+    viewport.dataset.widgetVisualFluidWidth = "true";
+  }
   frame.append(viewport);
   document.body.append(frame);
   return frame;
@@ -67,16 +70,17 @@ describe("canvas-frame-preview", () => {
     expect(viewport?.style.transform).toBe("scale(2)");
   });
 
-  it("keeps fluid Redline width real during imperative resize", () => {
+  it("keeps the fluid Redline physical frame narrow while scaling its visual base", () => {
     const frame = mountFrame(true);
     beginStudioFramePreview("delta-main", "resize", layout);
 
     applyStudioFrameLayoutPreview("delta-main", { ...layout, w: 560, h: 192 });
 
     const viewport = frame.querySelector<HTMLElement>("[data-widget-visual-viewport]");
-    expect(viewport?.style.width).toBe("560px");
-    expect(viewport?.style.height).toBe("192px");
-    expect(viewport?.style.transform).toBe("scale(1)");
+    expect(frame.style.width).toBe("560px");
+    expect(viewport?.style.width).toBe("826px");
+    expect(viewport?.style.height).toBe(`${192 / (560 / 826)}px`);
+    expect(viewport?.style.transform).toBe(`scale(${560 / 826})`);
   });
 
   it("keeps start geometry and applies transform delta on move", () => {

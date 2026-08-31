@@ -12,7 +12,7 @@ import type { WidgetInstanceV3 } from "../../../core/profile-document";
 import { RuntimeWidgetFrame } from "../../../runtime/RuntimeWidgetFrame";
 import { standingsDefinition } from "../../../widget-types/standings/standings-definition";
 import type { StandingsContent } from "../../../widget-types/standings/standings-content";
-import { resolveStandingsRedlineFrameLayout } from "../../../widget-types/standings/standings-redline-layout";
+import { resolveStandingsRedlineVisualBaseWidth } from "../../../widget-types/standings/standings-redline-layout";
 import { StudioTelemetryContext } from "../../../../hub/overlay-studio/canvas/studio-telemetry";
 import { StudioWidgetFrame } from "../../../../hub/overlay-studio/canvas/StudioWidgetFrame";
 import goldenV2Raw from "../../../../../../internal/telemetry/projection/overlayv2/testdata/overlay_v2_20.golden.json?raw";
@@ -39,8 +39,6 @@ const expectedMetrics = [
 // 12 tracks: the two anchors, Redline's motion delta and all nine configurable metrics.
 // Presets: 36 + 90 + 44 + (90 + 36 + 20 + 52 + 60 + 90 + 36 + 90 + 60),
 // plus eleven 8px gaps and 34px row/block chrome.
-const expectedEffectiveWidth = 826;
-
 const activityGate = {
   getActive: () => true,
   subscribe: () => () => undefined,
@@ -118,12 +116,7 @@ function renderSurface(surface: Surface, state: State, width: number): string {
     ? { overlayV2Frame: golden.frame, overlayV2Source: golden.source }
     : {};
   if (state === "ready") telemetry.setOverlayFrame(golden.frame, golden.source);
-  const runtimeWidget = {
-    ...widget,
-    // RuntimeOverlaySurface owns the effective Redline geometry before it
-    // delegates the final frame to RuntimeWidgetFrame.
-    layout: resolveStandingsRedlineFrameLayout(widget, widget.layout, 1920),
-  };
+  const visualBaseWidth = resolveStandingsRedlineVisualBaseWidth(widget, widget.layout);
 
   const markup = surface === "studio"
     ? renderToStaticMarkup(
@@ -141,10 +134,11 @@ function renderSurface(surface: Surface, state: State, width: number): string {
       )
     : renderToStaticMarkup(
         <RuntimeWidgetFrame
-          widget={runtimeWidget}
+          widget={widget}
           profileId="isa-968-golden"
           telemetry={telemetry}
           renderMode={surface}
+          visualBaseWidth={visualBaseWidth}
         />,
       );
   telemetry.dispose();
@@ -212,7 +206,7 @@ describe("Standings Redline narrow production geometry", () => {
           }, { expectedMetrics });
 
           const context = `${surface}/${width}px`;
-          expect(result.frameWidth, `${context} explicit effective width`).toBeCloseTo(expectedEffectiveWidth, 1);
+          expect(result.frameWidth, `${context} physical frame width`).toBeCloseTo(width, 1);
           expect(result.status, `${context} V2 status`).toBe("ready");
           expect(result.rowCount, `${context} complete rows`).toBeGreaterThan(0);
           expect(result.metrics, `${context} configured order`).toEqual(expectedMetrics);
@@ -255,7 +249,7 @@ describe("Standings Redline narrow production geometry", () => {
                 && alertBox.top >= frameBox.top - 1 && alertBox.bottom <= frameBox.bottom + 1,
             };
           });
-          expect(result.frameWidth, `${surface}/${width}px effective missing width`).toBeCloseTo(expectedEffectiveWidth, 1);
+          expect(result.frameWidth, `${surface}/${width}px physical missing width`).toBeCloseTo(width, 1);
           expect(result.code, `${surface}/${width}px missing code`).toBe("overlay-v2-frame-missing");
           expect(result.inside, `${surface}/${width}px missing geometry`).toBe(true);
         }

@@ -128,7 +128,7 @@ describe("StudioWidgetFrame", () => {
     cleanup();
   });
 
-  it("keeps a selected maximum Redline and its resize handles at the effective minimum preview", () => {
+  it("keeps a selected maximum Redline in its persisted physical frame during preview", () => {
     const widget = buildMaximumRedlineWidget();
     beginStudioFramePreview(widget.id, "resize", widget.layout);
     applyStudioFrameLayoutPreview(widget.id, widget.layout);
@@ -141,8 +141,11 @@ describe("StudioWidgetFrame", () => {
 
     const frame = screen.getByTestId(`studio-widget-frame-${widget.id}`);
     const selection = screen.getByTestId(`studio-widget-selection-${widget.id}`);
-    expect(frame.style.left).toBe("1094px");
-    expect(frame.style.width).toBe("826px");
+    const viewport = screen.getByTestId(`studio-widget-viewport-${widget.id}`);
+    expect(frame.style.left).toBe("1640px");
+    expect(frame.style.width).toBe("280px");
+    expect(viewport.dataset.widgetVisualBaseWidth).toBe("826");
+    expect(viewport.style.transform).toBe(`scale(${280 / 826})`);
     expect(selection.parentElement).toBe(frame);
     expect(screen.getByTestId(`studio-resize-handle-e-${widget.id}`)).toBeTruthy();
     expect(screen.getByTestId(`studio-resize-handle-w-${widget.id}`)).toBeTruthy();

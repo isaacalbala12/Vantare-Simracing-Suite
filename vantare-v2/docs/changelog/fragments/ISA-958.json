@@ -6,12 +6,14 @@
   "technicalNotes": [
     "Un cambio ahead/behind del mismo VehicleID debe sostenerse durante 900 ms monotónicos; mientras oscila, posición, gap y lado conservan una única fila aceptada y coherente.",
     "Los cruces reales se publican al vencer el hold, con una latencia máxima de 900 ms más una cadencia del widget.",
-    "Los cambios de epoch o sesión reinician la presentación sin ghosts, y cada desaparición tiene un identificador propio para que un timer antiguo no borre una salida posterior."
+    "Los cambios de epoch o sesión reinician la presentación sin ghosts, y cada desaparición tiene un identificador propio para que un timer antiguo no borre una salida posterior.",
+    "Una sustitución conserva el número de filas: Redline anima la entrada nueva sin añadir como sexta fila el coche saliente; los ghosts quedan reservados para huecos netos reales."
   ],
   "testing": [
     "Con el jugador parado en boxes y tráfico denso, comprobar que un rival que oscila alrededor de cero no salta repetidamente entre adelante y detrás.",
     "Mantener un cruce real más de 900 ms y confirmar que la fila cambia de lado con su posición y gap del mismo snapshot.",
-    "Cambiar de sesión o epoch y confirmar que Redline no anima como retirados los coches de la sesión anterior."
+    "Cambiar de sesión o epoch y confirmar que Redline no anima como retirados los coches de la sesión anterior.",
+    "Repetir S3 Relative Redline Mirror y confirmar que una sustitución 5→5 genera como máximo una transición, sin muestra intermedia de seis filas."
   ],
   "knownLimitations": [
     "La rama se valida con pruebas deterministas y build; la comprobación física en Wails con LMU real queda pendiente antes de promoverla."

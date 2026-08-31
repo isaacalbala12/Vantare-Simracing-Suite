@@ -26,9 +26,18 @@
   ready no crea ghosts; cada desaparición tiene identidad propia para que un
   timer anterior no elimine una salida posterior del mismo VehicleID.
   TDD de cierre sobre `bff576bc`: RED literal 5 fallos/36 pases; GREEN focal
-  acumulado 6 archivos/74 pruebas, typecheck, build, lint focal, changelog,
+  acumulado 6 archivos/75 pruebas, typecheck, build, lint focal, changelog,
   generador/check de roadmap y `diff --check` verdes. No sustituye la prueba
   física Wails/LMU, que no se ejecutó en esta rama.
+  RED físico aportado por Isaac sobre build bff/#967: run
+  `relative-20260831-164218/13-relative-redline-mirror`,
+  `invalidRows=false`, `playerChanged=false`, `jumps=4`. Las muestras 8→10 y
+  16→19 demuestran dos sustituciones canónicas duplicadas por el ghost de
+  salida (5→6→5 filas). El cierre local reserva ghosts solo para huecos netos:
+  una sustitución 5→5 conserva una única transición y la entrada sigue usando
+  su animación existente. La traducción determinista del RED físico falló
+  1/9 antes del cambio y quedó 9/9 después; la repetición física por Isaac
+  queda pendiente.
   Baseline real nightly `659b2c57`, Spa práctica/boxes: 347 muestras/90 s,
   65 transiciones y 56 composiciones; 262 muestras en la composición estable.
   El probe de repetición debe separar membership canónica de ghosts de motion.

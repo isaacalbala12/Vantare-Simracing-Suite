@@ -92,9 +92,10 @@ export function useRelativeMotion(
     const stillHere = new Set(model.rows.map((row) => row.id));
     const departed: RelativeGhost[] = [];
     let nextDeparture = ghostState.nextDeparture;
+    const vacantSlots = Math.max(0, (ghostState.model?.rows.length ?? 0) - model.rows.length);
     if (samePresentation && enabled && model.status === "ready" && ghostState.model?.status === "ready") {
       ghostState.model.rows.forEach((row, index) => {
-        if (!row.isPlayer && !stillHere.has(row.id)) {
+        if (departed.length < vacantSlots && !row.isPlayer && !stillHere.has(row.id)) {
           departed.push({ row, index, departure: nextDeparture++ });
         }
       });

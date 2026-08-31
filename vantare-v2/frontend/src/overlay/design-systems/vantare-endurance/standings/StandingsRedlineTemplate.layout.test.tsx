@@ -81,6 +81,8 @@ function buildMaximumContent(): StandingsContent {
   const byMetric = new Map(defaults.columns.map((column) => [column.metricId, column]));
   return {
     ...defaults,
+    classScope: "all-classes",
+    rowCount: 20,
     columns: order.map((metricId) => {
       const column = byMetric.get(metricId);
       if (!column) throw new Error(`missing standings column: ${metricId}`);
@@ -99,7 +101,7 @@ function buildWidget(width: number): WidgetInstanceV3 {
   return {
     ...widget,
     content: buildMaximumContent(),
-    layout: { ...widget.layout, x: 0, y: 0, w: width, h: 560, aspectLocked: false },
+    layout: { ...widget.layout, x: 0, y: 0, w: width, h: 900, aspectLocked: false },
     visual: {
       ...widget.visual,
       systemId: "vantare-endurance",
@@ -219,7 +221,7 @@ describe("Standings Redline narrow production geometry", () => {
           expect(result.status, `${context} V2 status`).toBe("ready");
           expect(result.sessionMode, `${context} semantic session mode`).toBe("race");
           expect(result.semanticPositionDeltas.every((delta) => delta === "0"), `${context} semantic position deltas`).toBe(true);
-          expect(result.rowCount, `${context} complete rows`).toBeGreaterThan(0);
+          expect(result.rowCount, `${context} complete 20-car grid`).toBe(20);
           expect(result.metrics, `${context} configured order`).toEqual(expectedMetrics);
           expect(result.widths.lastLap, `${context} lg preset`).toBeGreaterThanOrEqual(90);
           expect(result.widths.pit, `${context} xs preset`).toBeGreaterThanOrEqual(20);

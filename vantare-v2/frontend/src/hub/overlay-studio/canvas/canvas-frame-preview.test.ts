@@ -95,6 +95,23 @@ describe("canvas-frame-preview", () => {
     expect(element?.style.transform).toBe("translate(40px, 30px)");
   });
 
+  it("clamps an effective minimum-width frame while moving at the right edge", () => {
+    const frame = mountFrame(true);
+    frame.dataset.effectiveMinimumWidth = "826";
+    frame.dataset.layoutViewportWidth = "1920";
+    const narrowStart = { ...start, x: 1094, w: 280 };
+
+    beginStudioFramePreview("delta-main", "move", narrowStart);
+    applyStudioFrameLayoutPreview("delta-main", { ...narrowStart, x: 1194 });
+
+    expect(frame.style.left).toBe("1094px");
+    expect(frame.style.width).toBe("826px");
+    expect(frame.style.transform).toBe("");
+
+    applyStudioFrameLayoutPreview("delta-main", { ...narrowStart, x: 994 });
+    expect(frame.style.transform).toBe("translate(-100px, 0px)");
+  });
+
   it("keeps document frame dimensions while moving", () => {
     mountFrame();
     const widget = relativeDefinition.createDefault("delta-main");

@@ -131,7 +131,7 @@ describe("Endurance transparent production shells", () => {
               `<style>html,body{margin:0;background:transparent}${css}</style>`
                 + renderWidget(entry, templateId, surface),
             );
-            const result = await page.evaluate(({ functionalSelector }) => {
+            const result = await page.evaluate(({ functionalSelector, templateId }) => {
               const frame = document.querySelector<HTMLElement>('[data-testid="runtime-widget-frame"]');
               const root = document.querySelector<HTMLElement>(
                 '[data-widget-system="vantare-endurance"]',
@@ -144,7 +144,7 @@ describe("Endurance transparent production shells", () => {
               const hasOpaqueBackground = (computed: CSSStyleDeclaration) =>
                 computed.backgroundImage !== "none" || !transparent(computed.backgroundColor);
               const isIntentionalPanel = (element: HTMLElement) =>
-                element.matches(".ven-neo-card");
+                templateId.endsWith("-neo") && element.matches(".ven-neo-card");
               const fillsFrame = (element: HTMLElement) => {
                 const box = element.getBoundingClientRect();
                 return box.width >= frameBox.width - 1 && box.height >= frameBox.height - 1;
@@ -161,7 +161,12 @@ describe("Endurance transparent production shells", () => {
                   const active = content !== "none" && content !== "normal";
                   const width = Number.parseFloat(computed.width);
                   const height = Number.parseFloat(computed.height);
-                  const coversFrame = width >= frameBox.width - 1 && height >= frameBox.height - 1;
+                  const fillsOwner = computed.top === "0px"
+                    && computed.right === "0px"
+                    && computed.bottom === "0px"
+                    && computed.left === "0px";
+                  const coversFrame = width >= frameBox.width - 1 && height >= frameBox.height - 1
+                    || fillsFrame(element) && fillsOwner;
                   if (
                     !active
                     || !coversFrame
@@ -195,7 +200,7 @@ describe("Endurance transparent production shells", () => {
                 functionalCount: functional.length,
                 hasFunctionalPaint,
               };
-            }, { functionalSelector: entry.functionalSelector });
+            }, { functionalSelector: entry.functionalSelector, templateId });
 
             const context = `${surface}/${entry.type}/${templateId}`;
             expect(result.rootBackgroundColor, `${context} root alpha`)

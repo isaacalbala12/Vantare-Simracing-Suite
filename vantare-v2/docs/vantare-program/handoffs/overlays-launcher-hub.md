@@ -10,6 +10,15 @@
 
 ## Estado
 
+- **ISA-958 — Relative estable por instancia (2026-08-31, rama):** la
+  pertenencia mantiene solo VehicleID y exige 900 ms monotónicos o un cambio
+  espacial de 75 m; cada render rehidrata los campos de la row Relative actual,
+  elimina ausentes y no avanza con secuencias duplicadas/atrasadas. Position,
+  gap, nombre, clase y última vuelta comparten row/epoch, sin join a Standings.
+  Baseline real nightly `659b2c57`, Spa práctica/boxes: 347 muestras/90 s,
+  65 transiciones y 56 composiciones; 262 muestras en la composición estable.
+  El probe de repetición debe separar membership canónica de ghosts de motion.
+
 - **ISA-957 — filas completas y semántica de Standings (2026-08-31, rama):**
   las nueve plantillas Endurance recortan el modelo con
   `floor(altoUtil/altoFila)` antes de renderizar; el caso 520×560 deja 14 de

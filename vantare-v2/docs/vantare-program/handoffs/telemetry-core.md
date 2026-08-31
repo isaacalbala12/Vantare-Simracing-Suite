@@ -15,6 +15,12 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 
 ## Estado real
 
+- 2026-08-31, ISA-958 en rama: `RelativeRowV2` publica posición, última vuelta
+  y posición 3D junto al gap; el builder conserva el signo canónico y marca
+  contradicciones como `invalid`, sin corregirlas con `abs`. El frontend valida
+  esos campos como obligatorios y no cruza la sección Standings, que puede
+  pertenecer a otra cadencia. Goldens y contrato TS regenerados desde Go.
+
 - 2026-08-31, ISA-957 en rama: `StandingRowV2` incorpora la mejor vuelta
   canónica con calidad y el ViewModel de Standings separa por fase la métrica
   de mejor vuelta del gap de clasificación. Los goldens V2 y el contrato TS se

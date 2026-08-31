@@ -51,13 +51,13 @@ function makeFrame(): OverlayFrameV2 {
       steering: missing,
     },
     standings: [
-      { id: "player-1", position: 1, classPosition: 1, gap: { q: "missing" }, lastLap: fresh(92.123), driver: "Player", classId: "HYPERCAR", pit: "none" },
-      { id: "car-2", position: 2, classPosition: 2, gap: fresh(1.5), lastLap: fresh(91.8), driver: "ALO", classId: "HYPERCAR", pit: "none" },
+      { id: "player-1", position: 1, classPosition: 1, gap: { q: "missing" }, bestLap: fresh(90), lastLap: fresh(92.123), lapDistance: fresh(500), groundPosition: { q: "missing" }, driver: "Player", classId: "HYPERCAR", pit: "none" },
+      { id: "car-2", position: 2, classPosition: 2, gap: fresh(1.5), bestLap: fresh(89.5), lastLap: fresh(91.8), lapDistance: fresh(510), groundPosition: { q: "missing" }, driver: "ALO", classId: "HYPERCAR", pit: "none" },
     ],
     relative: [
-      { id: "car-2", gap: fresh(-1.2), side: "ahead", authority: "native", name: "ALO", classId: "HYPERCAR" },
-      { id: "player-1", gap: fresh(0), side: "player", authority: "native", name: "Player", classId: "HYPERCAR" },
-      { id: "car-3", gap: fresh(0.8), side: "behind", authority: "native", name: "VER", classId: "HYPERCAR" },
+      { id: "car-2", position: 2, gap: fresh(1.2), groundPosition: { q: "fresh", v: { x: 10, z: 0 } }, lastLap: fresh(91.8), side: "ahead", authority: "native", name: "ALO", classId: "HYPERCAR" },
+      { id: "player-1", position: 1, gap: fresh(0), groundPosition: { q: "fresh", v: { x: 0, z: 0 } }, lastLap: fresh(92.123), side: "player", authority: "native", name: "Player", classId: "HYPERCAR" },
+      { id: "car-3", position: 3, gap: fresh(-0.8), groundPosition: { q: "fresh", v: { x: -10, z: 0 } }, lastLap: fresh(93), side: "behind", authority: "native", name: "VER", classId: "HYPERCAR" },
     ],
     delta: { seconds: fresh(-0.42), available: ["personal-best"], reference: "personal-best", requested: "personal-best" },
     fuel: { remaining: fresh(22.5), capacity: fresh(110), perLap: fresh(2.3), estimatedLaps: fresh(9) },
@@ -97,6 +97,36 @@ const cases: Case[] = [
 ];
 
 describe("WidgetVisualHost v2 generic registry", () => {
+  it("monta dos Relative con estado productivo aislado por instancia", () => {
+    const first = relativeDefinition.createDefault("relative-a");
+    const second = relativeDefinition.createDefault("relative-b");
+    const frame = makeFrame();
+    const spy = vi.spyOn(relativeV2, "buildRelativeViewModelV2");
+    let nowMs = 0;
+
+    const view = render(<>
+      <WidgetVisualHost widget={first} renderMode="harness" runtime={{ overlayV2Frame: frame, overlayV2Source: source, relativeViewModelNowMs: () => nowMs }} />
+      <WidgetVisualHost widget={second} renderMode="harness" runtime={{ overlayV2Frame: frame, overlayV2Source: source, relativeViewModelNowMs: () => nowMs }} />
+    </>);
+
+    const firstOptions = spy.mock.calls[0]?.[3];
+    const secondOptions = spy.mock.calls[1]?.[3];
+    expect(firstOptions?.state).toBeDefined();
+    expect(secondOptions?.state).toBeDefined();
+    expect(firstOptions?.state).not.toBe(secondOptions?.state);
+    expect(firstOptions?.instanceToken).toBe(first);
+    expect(secondOptions?.instanceToken).toBe(second);
+
+    nowMs = 100;
+    view.rerender(<>
+      <WidgetVisualHost widget={first} renderMode="harness" runtime={{ overlayV2Frame: { ...frame, sequence: 2 }, overlayV2Source: source, relativeViewModelNowMs: () => nowMs }} />
+      <WidgetVisualHost widget={second} renderMode="harness" runtime={{ overlayV2Frame: frame, overlayV2Source: source, relativeViewModelNowMs: () => nowMs }} />
+    </>);
+    expect(spy.mock.calls[2]?.[3]?.state).toBe(firstOptions?.state);
+    expect(spy.mock.calls[3]?.[3]?.state).toBe(secondOptions?.state);
+    spy.mockRestore();
+  });
+
   it.each(cases)("[$type] usa VM v2 por defecto cuando frame y source están presentes", ({ definition, spyModule, spyName, feature }) => {
     const widget = (definition.createDefault as (id: string) => { id: string; type: string })("v2-case-" + feature);
     const frame = makeFrame();

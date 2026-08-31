@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useRef, type ReactNode } from "react";
 import { DesignSystemResolutionError } from "./design-system-definition";
 import type { WidgetInstanceV3 } from "./profile-document";
 import type { TelemetrySnapshot } from "./telemetry-snapshot";
@@ -10,6 +10,7 @@ import { readInputTelemetryHistory, recordInputTelemetrySample } from "../widget
 import type { InputTelemetryViewModel } from "../widget-types/input-telemetry/input-telemetry-view-model";
 import type { WidgetRuntimeInput } from "./widget-definition";
 import { getOverlayV2ViewModelEntry } from "./overlay-v2-view-models";
+import { createRelativeViewModelState } from "../widget-types/relative/relative-view-model-v2";
 
 export type { WidgetDiagnostic, WidgetDiagnosticCollector } from "./widget-diagnostics";
 
@@ -61,6 +62,7 @@ function HostDiagnostic(props: {
 
 export function WidgetVisualHost(props: WidgetVisualHostProps): ReactNode {
   const { widget, snapshot, renderMode } = props;
+  const relativeViewModelState = useRef(createRelativeViewModelState()).current;
 
   let definition;
   try {
@@ -134,7 +136,11 @@ export function WidgetVisualHost(props: WidgetVisualHostProps): ReactNode {
       frame,
       source,
       content,
-      props.runtime,
+      {
+        ...props.runtime,
+        relativeViewModelState,
+        relativeViewModelInstanceToken: widget,
+      },
     );
   } else if (!v2Entry && definition.buildAuxiliaryViewModel) {
     model = definition.buildAuxiliaryViewModel(content as never, props.runtime ?? {}, renderMode);

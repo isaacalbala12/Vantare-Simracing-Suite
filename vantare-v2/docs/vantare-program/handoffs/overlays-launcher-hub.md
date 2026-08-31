@@ -18,7 +18,10 @@
   ViewModel muestra en práctica/clasificación la mejor vuelta de la fila y su
   diferencia contra la mejor de sesión; en carrera conserva el gap oficial al
   líder; el shadow compara ese campo y el referente se calcula antes de
-  `rowCount`. Evidencia local: tests frontend focales, paquete Go Overlay V2,
+  `rowCount`. La regresión de layout monta las nueve plantillas, cuenta sus
+  filas DOM y contrasta la geometría declarada en `tokens.css` y la medición
+  del flujo aun con `overflow:hidden`; una mutación de 1 px admite una quinta
+  fila recortada y falla. Evidencia local: tests frontend focales, paquete Go Overlay V2,
   typecheck y `git diff --check`; no se lanzó Wails ni se tocó CSS.
 
 - **ISA-940 — lifecycle a coste cero (2026-08-30):** rama

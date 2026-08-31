@@ -170,10 +170,13 @@ function renderWidget(
     : snapshot);
   if (entry.type === "relative" && runtime.overlayV2Frame) {
     const playerId = runtime.overlayV2Frame.player.id;
+    const relativeTemplate = runtime.overlayV2Frame.relative[0];
+    if (!relativeTemplate) throw new Error("reference relative row missing");
     runtime.overlayV2Frame = {
       ...runtime.overlayV2Frame,
       relative: [
         {
+          ...relativeTemplate,
           id: "relative-ahead",
           gap: { v: -1.2, q: "fresh" },
           side: "ahead",
@@ -182,6 +185,7 @@ function renderWidget(
           classId: "hypercar",
         },
         {
+          ...relativeTemplate,
           id: playerId,
           gap: { v: 0, q: "fresh" },
           side: "player",
@@ -190,6 +194,7 @@ function renderWidget(
           classId: "hypercar",
         },
         {
+          ...relativeTemplate,
           id: "relative-behind",
           gap: { v: 0.8, q: "fresh" },
           side: "behind",

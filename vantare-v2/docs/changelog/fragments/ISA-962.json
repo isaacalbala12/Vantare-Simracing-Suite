@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-962",
+  "type": "fix",
+  "summary": "La matriz visual Endurance usa filas Relative compatibles con el contrato V2 vigente.",
+  "technicalNotes": [
+    "La prueba deriva sus filas de la fila canónica del golden V2 y solo modifica identidad, lado y gap necesarios para el escenario.",
+    "No se añade fallback productivo ni se relaja la validación de OverlayQValue."
+  ],
+  "testing": [
+    "Ejecutar la matriz de 23 plantillas Endurance en Desktop y OBS junto con los focales Relative.",
+    "Comprobar typecheck y el candidato integrado antes de iniciar Wails/LMU."
+  ],
+  "knownLimitations": [
+    "La validación física S3 en Wails/LMU permanece pendiente."
+  ]
+}

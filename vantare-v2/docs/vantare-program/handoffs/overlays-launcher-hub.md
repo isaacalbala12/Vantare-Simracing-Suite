@@ -1260,3 +1260,17 @@ Evidencia Task 4 y cierre acumulado:
   de los gates finales.
 - No hay PR, merge, promoción ni release. HEAD funcional antes de este
   checkpoint: `0a25f4ad`.
+
+## ISA-962 — compatibilidad del gate S3 con Relative V2 (2026-08-31)
+
+- El candidato local que combina #957, #958, #959, #960 y #961 reveló que la
+  matriz de transparencia construía filas Relative incompletas y fallaba al
+  leer la calidad de `lastLap` del contrato V2 vigente.
+- La regresión ahora deriva cada fila de la fila canónica del golden V2 y solo
+  cambia los campos necesarios para representar delante, jugador y detrás. No
+  añade fallback productivo ni relaja `OverlayQValue`.
+- RED integrado: `TypeError` en `relative-view-model-v2.ts:312`. GREEN focal:
+  matriz Endurance y focales Relative, 47/47 tests PASS. Typecheck integrado
+  PASS. S3 Wails/LMU sigue pendiente.
+- Trabajo local en `vantareapp/isa-962-s3-relative-transparency-integration`;
+  sin push, PR, merge, promoción ni release.

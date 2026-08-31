@@ -201,6 +201,47 @@ describe("battle teardown", () => {
     expect(activeAnimation.cancel).toHaveBeenCalled();
   });
 
+  it("removes crown flight and cannot resurrect timed state after a mode reset", () => {
+    vi.useFakeTimers();
+    const root = document.createElement("div");
+    root.innerHTML = '<div data-standings-row="player"></div>';
+    const crown = document.createElement("div");
+    crown.className = "ven-red-crown-fly";
+    const crownAnimation = { cancel: vi.fn() };
+    Object.defineProperty(crown, "getAnimations", {
+      configurable: true,
+      value: vi.fn(() => [crownAnimation]),
+    });
+    root.appendChild(crown);
+    const rootRef = createRef<HTMLElement>();
+    rootRef.current = root;
+    const inPit = modelWithRows([
+      row({ id: "player", pitText: "PIT", tireCompound: "M", isPlayer: true }),
+    ]);
+    const onTrack = modelWithRows([
+      row({ id: "player", pitText: "", tireCompound: "S", isPlayer: true }),
+    ], "RACE", undefined, "session-a:1", 2);
+    const hook = renderHook(({ value }) => useStandingsMotion(value, true, rootRef), {
+      initialProps: { value: inPit },
+    });
+
+    hook.rerender({ value: onTrack });
+    hook.rerender({
+      value: modelWithRows([...onTrack.rows], "PRACTICE", undefined, "session-a:1", 3),
+    });
+    act(() => vi.advanceTimersByTime(0));
+
+    expect(hook.result.current.tires.size).toBe(0);
+    act(() => vi.runAllTimers());
+
+    expect(root.querySelector(".ven-red-crown-fly")).toBeNull();
+    expect(crownAnimation.cancel).toHaveBeenCalledOnce();
+    expect(hook.result.current.tires.size).toBe(0);
+    expect(hook.result.current.positionDeltas.size).toBe(0);
+    expect(hook.result.current.battles).toHaveLength(0);
+    expect(hook.result.current.ghosts).toHaveLength(0);
+  });
+
   it("reports a pair while it is within the threshold", () => {
     const { result } = renderMotion(model(0.4));
     expect(result.current.battles).toHaveLength(1);

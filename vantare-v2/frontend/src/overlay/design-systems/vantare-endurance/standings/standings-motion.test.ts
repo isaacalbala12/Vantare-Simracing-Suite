@@ -252,4 +252,22 @@ describe("standings-motion", () => {
 
     expect(derivePositionDeltas(next)).toEqual(new Map());
   });
+
+  it.each(["PRACTICE", "QUALIFYING", "WARMUP"])(
+    "rejects an authorised grid position outside a race in %s",
+    (sessionLabel) => {
+      const identity = "session-a:1";
+      const next = withStandingsMotionIdentity(
+        model(
+          [gridRow({ id: "a", position: 2, gridPosition: 3 }, identity)],
+          "ready",
+          sessionLabel,
+        ),
+        identity,
+        1,
+      );
+
+      expect(derivePositionDeltas(next)).toEqual(new Map());
+    },
+  );
 });

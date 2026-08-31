@@ -9,7 +9,6 @@ import {
   derivePositionDeltas,
   deriveRosterChange,
   deriveStandingsEvents,
-  classPositionsById,
 } from "./standings-motion";
 
 function row(partial: Partial<StandingsRowViewModel> & { id: string }): StandingsRowViewModel {

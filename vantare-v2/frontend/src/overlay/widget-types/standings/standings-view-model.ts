@@ -49,6 +49,18 @@ export type StandingsViewModel = WidgetViewModelBase & {
   motionSequence?: number;
 };
 
+export function withStandingsMotionIdentity(
+  model: StandingsViewModel,
+  identity: string,
+  sequence: number,
+): StandingsViewModel {
+  Object.defineProperties(model, {
+    motionIdentity: { value: identity, enumerable: false },
+    motionSequence: { value: sequence, enumerable: false },
+  });
+  return model;
+}
+
 function buildUnavailableModel(
   status: StandingsViewModel["status"],
   content: StandingsContent,
@@ -216,7 +228,7 @@ export function buildStandingsViewModel(
         : String(lapNumber)
       : undefined;
 
-  return {
+  return withStandingsMotionIdentity({
     type: "standings",
     status: "ready",
     activeClass,
@@ -225,7 +237,5 @@ export function buildStandingsViewModel(
     ...(lapText ? { lapText } : {}),
     columns,
     rows,
-    motionIdentity: `${snapshot.session.key ?? snapshot.session.type}:${snapshot.session.epoch ?? "unknown"}`,
-    motionSequence: snapshot.capturedAt,
-  };
+  }, `${snapshot.session.key ?? snapshot.session.type}:${snapshot.session.epoch ?? "unknown"}`, snapshot.capturedAt);
 }

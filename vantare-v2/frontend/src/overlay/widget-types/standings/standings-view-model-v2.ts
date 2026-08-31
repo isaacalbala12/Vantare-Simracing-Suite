@@ -7,7 +7,11 @@ import type {
 import type { StandingsContent } from "./standings-content";
 import { getEnabledStandingsColumns } from "./standings-content";
 import { formatRemainingTime } from "./standings-formatting";
-import type { StandingsRowViewModel, StandingsViewModel } from "./standings-view-model";
+import {
+  withStandingsMotionIdentity,
+  type StandingsRowViewModel,
+  type StandingsViewModel,
+} from "./standings-view-model";
 
 const PLACEHOLDER = "—";
 
@@ -58,7 +62,7 @@ export function buildStandingsViewModelV2(
   const sessionBestLap = paceSession ? fastestLap(scoped) : undefined;
   const limited = scoped.slice(0, content.rowCount ?? 20);
 
-  return {
+  return withStandingsMotionIdentity({
     type: "standings",
     status: source.state === "stale" ? "stale" : "ready",
     statusMessage: source.reason || undefined,
@@ -67,9 +71,7 @@ export function buildStandingsViewModelV2(
     remainingText: formatRemainingTime(displayedNumber(frame.session.remaining)),
     columns,
     rows: limited.map((row, index) => buildRow(row, index, playerId, paceSession, sessionBestLap)),
-    motionIdentity: `${frame.sessionId}:${frame.epoch}`,
-    motionSequence: frame.sequence,
-  };
+  }, `${frame.sessionId}:${frame.epoch}`, frame.sequence);
 }
 
 export function standingsDisplayedValues(

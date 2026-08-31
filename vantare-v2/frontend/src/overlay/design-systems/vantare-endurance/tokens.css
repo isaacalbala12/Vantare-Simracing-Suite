@@ -2822,12 +2822,11 @@
   transition: transform 90ms linear;
 }
 
-/* Pinned. The rail itself lights rather than growing further, which is the one
-   thing a full-scale bar cannot say on its own. */
+/* Pinned. The local well lights rather than growing further, which is the one
+   thing a full-scale bar cannot say on its own. Keeping that light inset avoids
+   scaling a halo into the transparent composition around the rail. */
 [data-widget-system="vantare-endurance"] .ven-pred-rail[data-saturated="true"] .ven-pred-well {
-  box-shadow:
-    inset 0 0 12px rgba(232, 232, 232, 0.16),
-    0 0 10px rgba(232, 232, 232, 0.1);
+  box-shadow: inset 0 0 12px rgba(232, 232, 232, 0.16);
 }
 
 /* A rail is far too narrow to seat the label beside the reading, so the slot

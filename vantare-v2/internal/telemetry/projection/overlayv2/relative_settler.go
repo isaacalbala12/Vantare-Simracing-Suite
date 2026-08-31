@@ -84,6 +84,7 @@ func sameRelativeIDs(left, right []string) bool {
 // not cache rows and does not allocate/publish a full-grid relative view.
 func rehydrateSettledRows(final derive.FinalState, accepted []RelativeRowV2) ([]RelativeRowV2, bool) {
 	vehicles := make(map[string]int, len(final.Observed.Vehicles))
+	positions := resolvedRelativePositions(final.Observed.Vehicles)
 	gaps := make(map[string]schema.Field[standings.RelativeTime], len(final.Derived.Gaps.Vehicles))
 	for i := range final.Observed.Vehicles {
 		vehicles[string(final.Observed.Vehicles[i].Identity.Vehicle)] = i
@@ -98,9 +99,10 @@ func rehydrateSettledRows(final derive.FinalState, accepted []RelativeRowV2) ([]
 			return nil, false
 		}
 		vehicle := final.Observed.Vehicles[index]
-		position, ok := usablePosition(vehicle)
-		if !ok {
-			position = int32(index + 1)
+		position := positions[previous.VehicleID]
+		if previous.Side == RelativeSidePlayer {
+			rows = append(rows, playerRelativeRow(vehicle, position, gaps[previous.VehicleID]))
+			continue
 		}
 		rows = append(rows, relativeRow(vehicle, position, gaps[previous.VehicleID], previous.Side))
 	}

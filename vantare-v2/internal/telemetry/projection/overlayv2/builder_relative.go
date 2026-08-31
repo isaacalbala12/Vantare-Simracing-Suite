@@ -51,10 +51,7 @@ func BuildRelative(final derive.FinalState) []RelativeRowV2 {
 	for _, gap := range final.Derived.Gaps.Vehicles {
 		gaps[string(gap.Vehicle)] = gap.Time
 	}
-	positions := make(map[string]int32, len(final.Observed.Vehicles))
-	for index, current := range orderedVehicles(final.Observed.Vehicles) {
-		positions[string(current.Identity.Vehicle)] = resolvedPosition(current, index)
-	}
+	positions := resolvedRelativePositions(final.Observed.Vehicles)
 
 	for _, current := range window.ahead {
 		rows = append(rows, relativeRow(current, positions[string(current.Identity.Vehicle)], gaps[string(current.Identity.Vehicle)], RelativeSideAhead))
@@ -64,6 +61,16 @@ func BuildRelative(final derive.FinalState) []RelativeRowV2 {
 		rows = append(rows, relativeRow(current, positions[string(current.Identity.Vehicle)], gaps[string(current.Identity.Vehicle)], RelativeSideBehind))
 	}
 	return rows
+}
+
+// resolvedRelativePositions is shared by the immediate and settled views so
+// a missing observed Position takes the same canonical ordered fallback.
+func resolvedRelativePositions(vehicles []core.VehicleState) map[string]int32 {
+	positions := make(map[string]int32, len(vehicles))
+	for index, current := range orderedVehicles(vehicles) {
+		positions[string(current.Identity.Vehicle)] = resolvedPosition(current, index)
+	}
+	return positions
 }
 
 type physicalRelativeWindow struct {

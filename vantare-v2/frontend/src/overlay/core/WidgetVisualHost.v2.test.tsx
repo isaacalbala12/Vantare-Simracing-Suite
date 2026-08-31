@@ -380,9 +380,9 @@ describe("WidgetVisualHost v2 generic registry", () => {
     expect(view.container.textContent).not.toContain("ABANDONED-Player");
   });
 
-  it("publishes one committed Redline draft without rerendering its snapshot", () => {
+  it("builds Redline once per frame through the settled adapter", () => {
     const widget = enduranceRelative("relative-one-render", "relative-redline-mirror");
-    const spy = vi.spyOn(relativeV2, "prepareRelativeViewModelV2");
+    const spy = vi.spyOn(relativeV2, "buildSettledRelativeViewModelV2");
     const frame = makeFrame();
     const view = render(
       <WidgetVisualHost widget={widget} renderMode="desktop" runtime={{ overlayV2Frame: frame, overlayV2Source: source }} />,

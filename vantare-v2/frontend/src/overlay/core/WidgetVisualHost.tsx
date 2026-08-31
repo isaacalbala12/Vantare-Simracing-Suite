@@ -10,7 +10,7 @@ import { readInputTelemetryHistory, recordInputTelemetrySample } from "../widget
 import type { InputTelemetryViewModel } from "../widget-types/input-telemetry/input-telemetry-view-model";
 import type { WidgetRuntimeInput } from "./widget-definition";
 import { getOverlayV2ViewModelEntry } from "./overlay-v2-view-models";
-import { prepareRelativeViewModelV2 } from "../widget-types/relative/relative-view-model-v2";
+import { buildSettledRelativeViewModelV2 } from "../widget-types/relative/relative-view-model-v2";
 import { isRelativeRedlineTemplateId } from "../design-systems/vantare-endurance/relative/relative-endurance-settings";
 import type { RelativeViewModel } from "../widget-types/relative/relative-view-model";
 
@@ -70,12 +70,12 @@ function CommittedRedlineRelative(props: {
 }): ReactNode {
   // Redline opts into the Go-owned settled membership. The frontend retains
   // only visual motion; it must not apply a second membership hold.
-  const transition = prepareRelativeViewModelV2(
-    { ...props.frame, relative: props.frame.relativeSettled },
+  const model = buildSettledRelativeViewModelV2(
+    props.frame,
     props.source,
     props.content as never,
   );
-  return props.render(transition.model);
+  return props.render(model);
 }
 
 export function WidgetVisualHost(props: WidgetVisualHostProps): ReactNode {

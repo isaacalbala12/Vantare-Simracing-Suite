@@ -15,11 +15,18 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 
 ## Estado real
 
-- 2026-08-31, ISA-958 en rama: `RelativeRowV2` publica posición, última vuelta
-  y posición 3D junto al gap; el builder conserva el signo canónico y marca
-  contradicciones como `invalid`, sin corregirlas con `abs`. El frontend valida
-  esos campos como obligatorios y no cruza la sección Standings, que puede
-  pertenecer a otra cadencia. Goldens y contrato TS regenerados desde Go.
+- 2026-09-01, ISA-958 en rama: `CachedProjector` publica `relativeSettled`
+  como autoridad única para Endurance Redline. Mantiene una ventana ordenada
+  de máximo 8+jugador+8 hasta que otra ventana permanezca estable 7 s; si los
+  candidatos oscilan, no salta mientras todos los IDs aceptados sigan realmente
+  observados, y rehidrata sus campos desde cada `FinalState`. Ausencia real,
+  cambio de sesión/epoch/jugador o falta de jugador reinician inmediatamente.
+  El store rechaza secuencias atrasadas dentro del mismo stream y valida ambos
+  arrays con side/orden/ID/jugador canónicos. Classic/Minimal/Neo siguen usando
+  `relative` inmediato. El adaptador Redline no admite estado de estabilidad
+  frontend, evitando un segundo hold. `RelativeRowV2` mantiene posición, última
+  vuelta y posición 3D de la misma fila; no cruza Standings. Focales Go y
+  frontend, typecheck y diff-check verdes; full gates e integración pendientes.
 
 - 2026-08-31, ISA-957 en rama: `StandingRowV2` incorpora la mejor vuelta
   canónica con calidad y el ViewModel de Standings separa por fase la métrica

@@ -46,13 +46,25 @@ func (settler *relativeSettler) project(final derive.FinalState, candidate []Rel
 		settler.accepted = accepted
 		return accepted
 	}
+	// The debounce is intentionally over the complete ordered window, not only
+	// its set membership. Relative order can oscillate around a timing boundary;
+	// publishing each oscillation is the row jump ISA-958 removes. While every
+	// accepted ID is still observed, a different ordered candidate must remain
+	// unchanged for the whole hold before it becomes visible.
 	if !sameRelativeIDs(settler.pending, candidateIDs) {
 		settler.pending, settler.pendingSince = candidateIDs, now
 		settler.accepted = accepted
 		return accepted
 	}
 	settler.accepted = accepted
-	if now.Sub(settler.pendingSince) < relativeSettledHold {
+	elapsed := now.Sub(settler.pendingSince)
+	if elapsed < 0 {
+		// CachedProjector supplies time.Now (with its monotonic component), but
+		// tests and future callers may inject a wall-only time. A backwards clock
+		// must never publish a candidate early.
+		elapsed = 0
+	}
+	if elapsed < relativeSettledHold {
 		return accepted
 	}
 	settler.accepted, settler.pending, settler.pendingSince = candidate, nil, time.Time{}

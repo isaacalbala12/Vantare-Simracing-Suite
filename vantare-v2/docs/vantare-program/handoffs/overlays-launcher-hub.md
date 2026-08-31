@@ -30,7 +30,19 @@
   cambiados fuera del well/slot local; así queda atendida la revisión
   adversarial posterior a `80da8c91`.
 
-- **ISA-958 — Relative estable por instancia (2026-08-31, rama):** la
+- **ISA-958 — autoridad estable Redline en Go (2026-09-01, rama):** Endurance
+  Redline consume exclusivamente `FrameV2.relativeSettled`, una ventana
+  ordenada con hold de 7 s propiedad de cada `CachedProjector`. La UI rehidrata
+  datos vivos sin cambiar filas durante churn; ausencia real o nueva identidad
+  de sesión publica de inmediato. El decoder exige como máximo 8+jugador+8,
+  sides y orden canónicos, IDs únicos y exactamente un jugador, y el store no
+  acepta `sequence` duplicada o regresiva en la misma sesión/epoch. El adapter
+  Redline no expone estado de estabilidad frontend; Classic/Minimal/Neo no
+  cambian. Focales actuales: Go PASS, frontend 80/80, typecheck y diff-check
+  PASS. Falta revisión adversarial final, full suite e integración en el
+  candidato físico S3; no hay PR, promoción ni prueba Wails/LMU nueva.
+
+- **Histórico ISA-958 previo a la autoridad Go (2026-08-31, sustituido):** la
   pertenencia mantiene solo VehicleID y exige 900 ms monotónicos; no compara
   posiciones de coches distintos para saltarse el hold. Cada render rehidrata
   los campos de la row Relative actual, elimina ausentes y no avanza con

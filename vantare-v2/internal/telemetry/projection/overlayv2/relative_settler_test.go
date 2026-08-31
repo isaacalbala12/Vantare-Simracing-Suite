@@ -40,6 +40,66 @@ func TestRelativeSettlerHoldsBoundedMembershipUntilSevenSeconds(t *testing.T) {
 	}
 }
 
+func TestRelativeSettlerDebouncesOrderedWindowChurnWhileAcceptedRowsRemainObserved(t *testing.T) {
+	t.Parallel()
+	snapshot := builderFinalState(t, 37)
+	final, ok := snapshot.Value()
+	if !ok {
+		t.Fatal("missing final")
+	}
+	header := snapshot.Header()
+	start := cadenceOrigin
+	settler := relativeSettler{}
+	accepted := settledRows("vehicle-022", "vehicle-024", "vehicle-000", "vehicle-027", "vehicle-036")
+	reordered := settledRows("vehicle-024", "vehicle-022", "vehicle-000", "vehicle-036", "vehicle-027")
+	replacement := settledRows("vehicle-024", "vehicle-027", "vehicle-000", "vehicle-004", "vehicle-036")
+	settler.project(final, accepted, header, start)
+
+	for index, sample := range []struct {
+		at        time.Duration
+		candidate []RelativeRowV2
+	}{
+		{2 * time.Second, reordered},
+		{6 * time.Second, replacement},
+		{10 * time.Second, reordered},
+		{14 * time.Second, replacement},
+		{18 * time.Second, reordered},
+	} {
+		got := settler.project(final, sample.candidate, header, start.Add(sample.at))
+		if !sameRelativeIDs(relativeIDs(got), relativeIDs(accepted)) {
+			t.Fatalf("ordered churn sample %d jumped rows: %v", index, relativeIDs(got))
+		}
+	}
+	got := settler.project(final, reordered, header, start.Add(25*time.Second))
+	if !sameRelativeIDs(relativeIDs(got), relativeIDs(reordered)) {
+		t.Fatalf("stable ordered window did not publish after 7s: %v", relativeIDs(got))
+	}
+}
+
+func TestRelativeSettlerDoesNotPublishEarlyWhenInjectedClockMovesBackwards(t *testing.T) {
+	t.Parallel()
+	snapshot := builderFinalState(t, 37)
+	final, ok := snapshot.Value()
+	if !ok {
+		t.Fatal("missing final")
+	}
+	header := snapshot.Header()
+	start := cadenceOrigin
+	settler := relativeSettler{}
+	accepted := settledRows("vehicle-022", "vehicle-024", "vehicle-000", "vehicle-027", "vehicle-036")
+	replacement := settledRows("vehicle-024", "vehicle-027", "vehicle-000", "vehicle-004", "vehicle-036")
+	settler.project(final, accepted, header, start)
+	settler.project(final, replacement, header, start.Add(time.Second))
+	got := settler.project(final, replacement, header, start.Add(-time.Second))
+	if !sameRelativeIDs(relativeIDs(got), relativeIDs(accepted)) {
+		t.Fatalf("backwards clock published candidate early: %v", relativeIDs(got))
+	}
+	got = settler.project(final, replacement, header, start.Add(8*time.Second))
+	if !sameRelativeIDs(relativeIDs(got), relativeIDs(replacement)) {
+		t.Fatalf("original monotonic deadline did not publish: %v", relativeIDs(got))
+	}
+}
+
 func TestRelativeSettlerRehydratesEvictedObservedIDAndResetsOnRealAbsence(t *testing.T) {
 	t.Parallel()
 	snapshot := builderFinalState(t, 37)

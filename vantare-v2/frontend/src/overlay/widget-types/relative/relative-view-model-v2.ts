@@ -86,6 +86,23 @@ export function buildRelativeViewModelV2(
 }
 
 /**
+ * Redline-only adapter for the Go-owned ordered window. Its signature has no
+ * frontend stability state, so a caller cannot accidentally stack the legacy
+ * presentation debounce on top of FrameV2.relativeSettled.
+ */
+export function buildSettledRelativeViewModelV2(
+  frame: OverlayFrameV2,
+  source: OverlaySourceStatusV2,
+  content: RelativeContent,
+): RelativeViewModel {
+  return prepareRelativeViewModelV2(
+    { ...frame, relative: frame.relativeSettled },
+    source,
+    content,
+  ).model;
+}
+
+/**
  * Calculates the next Relative state without publishing it. React hosts must
  * publish this draft only from a commit effect: a render can be abandoned.
  */

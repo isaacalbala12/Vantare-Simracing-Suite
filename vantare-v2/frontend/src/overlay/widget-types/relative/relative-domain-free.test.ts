@@ -121,7 +121,7 @@ describe("relative v2 view model", () => {
     const state = createRelativeViewModelState();
     const content = { ...CONTENT, rangeAhead: 1, rangeBehind: 1 };
     let nowMs = 0;
-    const options = { state, nowMs: () => nowMs };
+    const options = { state, nowMs: () => nowMs, holdMs: RELATIVE_MEMBERSHIP_HOLD_MS };
     const first = relativeScenarioFrame(base, 100, ["far-ahead", "stable-ahead"], ["stable-behind", "far-behind"], playerInPit);
     const transient = relativeScenarioFrame(base, 101, ["stable-ahead", "new-ahead"], ["new-behind", "stable-behind"], playerInPit);
 
@@ -143,7 +143,7 @@ describe("relative v2 view model", () => {
     const intervalMs = 1000 / hz;
     let nowMs = 0;
     let sequence = 200;
-    const options = { state, nowMs: () => nowMs };
+    const options = { state, nowMs: () => nowMs, holdMs: RELATIVE_MEMBERSHIP_HOLD_MS };
     buildRelativeViewModelV2(relativeScenarioFrame(base, sequence, ["far-ahead", "old-ahead"], ["old-behind", "far-behind"], true), { state: "live" }, content, options);
 
     nowMs += intervalMs;
@@ -157,6 +157,37 @@ describe("relative v2 view model", () => {
       model = buildRelativeViewModelV2(relativeScenarioFrame(base, sequence, ["old-ahead", "new-ahead"], ["new-behind", "old-behind"], true), { state: "live" }, content, options);
     }
     expect(nonPlayerIds(model)).toEqual(["new-ahead", "new-behind"]);
+  });
+
+  it("keeps pit-lane neighbours stable while dense traffic rotates candidates every few seconds", () => {
+    const base = goldenFrame(44);
+    const state = createRelativeViewModelState();
+    const content = { ...CONTENT, rangeAhead: 1, rangeBehind: 1 };
+    let nowMs = 0;
+    let sequence = 800;
+    const options = { state, nowMs: () => nowMs };
+    const initial = relativeScenarioFrame(base, sequence, ["far-a", "ahead-a"], ["behind-a", "far-b"], true);
+
+    expect(nonPlayerIds(buildRelativeViewModelV2(initial, { state: "live" }, content, options)))
+      .toEqual(["ahead-a", "behind-a"]);
+
+    for (const [ahead, behind, elapsedMs] of [
+      ["ahead-b", "behind-b", 2_000],
+      ["ahead-c", "behind-c", 4_000],
+      ["ahead-d", "behind-d", 6_000],
+      ["ahead-e", "behind-e", 8_000],
+      ["ahead-f", "behind-f", 11_000],
+      ["ahead-g", "behind-g", 13_000],
+      ["ahead-h", "behind-h", 16_000],
+      ["ahead-i", "behind-i", 18_000],
+      ["ahead-j", "behind-j", 22_000],
+    ] as const) {
+      nowMs = elapsedMs;
+      sequence += 1;
+      const rotated = relativeScenarioFrame(base, sequence, ["far-a", ahead], [behind, "far-b"], true);
+      expect(nonPlayerIds(buildRelativeViewModelV2(rotated, { state: "live" }, content, options)))
+        .toEqual(["ahead-a", "behind-a"]);
+    }
   });
 
   it("does not compare different VehicleIDs to bypass the hold at a spatial edge", () => {
@@ -356,7 +387,7 @@ describe("relative v2 view model", () => {
     const state = createRelativeViewModelState();
     const content = { ...CONTENT, rangeAhead: 1, rangeBehind: 0 };
     let nowMs = 100;
-    const options = { state, nowMs: () => nowMs };
+    const options = { state, nowMs: () => nowMs, holdMs: RELATIVE_MEMBERSHIP_HOLD_MS };
     buildRelativeViewModelV2(relativeScenarioFrame(base, 620, ["new", "old"], [], true), { state: "live" }, content, options);
     nowMs = 200;
     const changed = relativeScenarioFrame(base, 621, ["old", "new"], [], true);

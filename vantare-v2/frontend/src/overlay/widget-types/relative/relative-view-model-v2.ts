@@ -11,6 +11,7 @@ import type { RelativeRowViewModel, RelativeViewModel } from "./relative-view-mo
 
 const PLACEHOLDER = "—";
 export const RELATIVE_MEMBERSHIP_HOLD_MS = 900;
+export const RELATIVE_NEIGHBOUR_REPLACEMENT_HOLD_MS = 7_000;
 export const RELATIVE_REDLINE_INTERRUPTION_HOLD_MS = 400;
 
 export type RelativeViewModelState = {
@@ -331,12 +332,17 @@ function stabilizeWindow(
   }
   state.lastSequence = frame.sequence;
   state.lastNowMs = nowMs;
-  const holdMs = normalizedHold(options.holdMs);
+  const holdMs = normalizedHold(options.holdMs, holdsCanonicalSideChange);
   if (nowMs - (state.pendingSinceMs ?? nowMs) >= holdMs) {
     acceptWindow(state, scopeKey, frame, nowMs, candidate);
     return candidate;
   }
-  const held = holdsCanonicalSideChange ? state.lastRows ?? acceptedCurrent : acceptedCurrent;
+  // A rotating pit-lane window can replace every neighbour while the player is
+  // stationary. Keep the last complete canonical window until one replacement
+  // remains stable; this is membership stability, not a motion ghost.
+  const held = holdsCanonicalSideChange
+    ? state.lastRows ?? acceptedCurrent
+    : heldWindow(state.lastRows, acceptedCurrent);
   state.lastRows = held;
   return held;
 }
@@ -375,6 +381,21 @@ function rowsForIds(
   });
 }
 
+function heldWindow(
+  lastRows: readonly OverlayRelativeRowV2[] | undefined,
+  currentRows: readonly OverlayRelativeRowV2[],
+): readonly OverlayRelativeRowV2[] {
+  if (lastRows === undefined) return currentRows;
+  const currentById = new Map(currentRows.map((row) => [row.id, row]));
+  const previousNeighbours = lastRows.filter((row) => row.side !== "player");
+  const hasSharedNeighbour = previousNeighbours.some((row) => currentById.has(row.id));
+  if (!hasSharedNeighbour) return lastRows;
+  return lastRows.flatMap((row) => {
+    const current = currentById.get(row.id);
+    return current === undefined ? [] : [current];
+  });
+}
+
 function hasCanonicalSideChange(
   acceptedIds: readonly string[],
   current: readonly OverlayRelativeRowV2[],
@@ -393,9 +414,11 @@ function hasCanonicalSideChange(
   });
 }
 
-function normalizedHold(value: number | undefined): number {
-  const hold = value ?? RELATIVE_MEMBERSHIP_HOLD_MS;
-  return Number.isFinite(hold) && hold >= 0 ? hold : RELATIVE_MEMBERSHIP_HOLD_MS;
+function normalizedHold(value: number | undefined, canonicalSideChange: boolean): number {
+  if (value !== undefined) {
+    return Number.isFinite(value) && value >= 0 ? value : RELATIVE_MEMBERSHIP_HOLD_MS;
+  }
+  return canonicalSideChange ? RELATIVE_MEMBERSHIP_HOLD_MS : RELATIVE_NEIGHBOUR_REPLACEMENT_HOLD_MS;
 }
 
 function monotonicNow(

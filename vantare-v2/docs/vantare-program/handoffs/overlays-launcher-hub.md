@@ -57,6 +57,36 @@
   Baseline real nightly `659b2c57`, Spa práctica/boxes: 347 muestras/90 s,
   65 transiciones y 56 composiciones; 262 muestras en la composición estable.
   El probe de repetición debe separar membership canónica de ghosts de motion.
+  La revisión NO-GO de `53d725fc` queda corregida localmente en `e84d593a`:
+  `error`, `stopped` y `stale` invalidan el estado estable antes de aceptar una
+  secuencia reiniciada de la misma sesión; el hold de reconnect vive solo en la
+  ViewModel y el test integrado conserva filas a 399 ms y publica cero a
+  400/401 ms, sin prolongación por el renderer ni por ghosts sin jugador.
+  Traffic excluye del FLIP únicamente el wrapper compuesto de amenaza+lapnote;
+  una fila ordinaria sigue animándose. El aislamiento de Classic, Minimal, Neo
+  y las superficies compartidas permanece cubierto. RED previo: 3 fallos/27
+  pases; GREEN acumulado: 10 archivos/114 pruebas, typecheck, build, ESLint
+  focal y `git diff --check` verdes. No se abrió Wails/LMU; S3 física sigue
+  pendiente y no hay push, PR, merge ni promoción.
+  Último NO-GO P1 corregido localmente en `c80a0769`: Redline ya no
+  muta `lastSequence`, `lastRows` ni el hold durante render. Calcula un draft
+  inmutable desde la última autoridad publicada y solo lo publica en
+  `useLayoutEffect` tras commit, sin programar un segundo render por snapshot.
+  La regresión Suspense abandona sequence 2 y demuestra que no contamina la
+  recuperación con el mismo sequence. El DOM integrado cubre mirror/Desktop,
+  proximity/Studio y traffic/OBS: filas visibles a 399 ms, cero filas y cero
+  ghosts a 400/401 ms, recuperación limpia tras error y no-Redline sin
+  histéresis. Focal 80/80, typecheck, build (solo warning heredado de chunks
+  >500 kB), ESLint focal y `git diff --check` PASS. Sin Wails/LMU, push, PR,
+  merge ni promoción.
+  Corrección posterior pendiente de revisión: el RED físico
+  `relative-20260831-213627/13-relative-redline-mirror` registró nueve cambios
+  completos en 24 s sin ghosts, desconexión ni drift. Relative conserva ahora
+  una ventana completa cuando todos los vecinos rotan, exige siete segundos
+  para aceptar ese reemplazo y mantiene 900 ms para el cruce del mismo rival.
+  La regresión simula nueve candidatos de boxes que cambian cada 2–4 s y queda
+  estable; falta repetir la prueba física Wails/LMU. Sin push, PR, merge ni
+  promoción.
 
 - **ISA-957 — filas completas y semántica de Standings (2026-08-31, rama):**
   las nueve plantillas Endurance recortan el modelo con

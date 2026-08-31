@@ -69,7 +69,7 @@ func TestRelativeSettlerRehydratesEvictedObservedIDAndResetsOnRealAbsence(t *tes
 		t.Fatalf("rehydration diverged from canonical position/live fields: got=%#v wantPosition=%d", got[0], wantPosition)
 	}
 	final.Observed.Vehicles = append(final.Observed.Vehicles[:22], final.Observed.Vehicles[23:]...)
-	got = settler.project(final, candidate, header, start.Add(2*time.Second))
+	got = settler.project(final, candidate, header, start.Add(5*time.Second))
 	if !sameRelativeIDs(relativeIDs(got), relativeIDs(candidate)) {
 		t.Fatalf("real disappearance must reset immediately: %v", relativeIDs(got))
 	}

@@ -3065,3 +3065,18 @@
   stroke: var(--ven-bg);
   stroke-width: 1.5;
 }
+
+/* Transparent outer silhouette ------------------------------------------------
+   Endurance is composited directly over the game. Its renderer root must not
+   turn the widget viewport into a black rectangle; contrast remains owned by
+   rows, cards, bars, wells, rails, chips and the footer. */
+[data-widget-system="vantare-endurance"].ven-root[data-template],
+[data-widget-system="vantare-endurance"] .ven-red-block,
+[data-widget-system="vantare-endurance"] .ven-rel-block,
+[data-widget-system="vantare-endurance"] .ven-dred-block,
+[data-widget-system="vantare-endurance"] .ven-pred-block {
+  background-color: transparent;
+  background-image: none;
+  border: 0;
+  box-shadow: none;
+}

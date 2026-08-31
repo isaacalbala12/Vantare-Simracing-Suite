@@ -24,6 +24,8 @@ export type RelativeGhost = {
   row: RelativeRowViewModel;
   /** Index it occupied, so the fold happens where the row actually was. */
   index: number;
+  /** Identifies this departure, even if the same VehicleID leaves again. */
+  departure: number;
 };
 
 export type RelativeMotionState = {
@@ -34,6 +36,7 @@ type RelativeGhostState = {
   model: RelativeViewModel | null;
   ghosts: readonly RelativeGhost[];
   departed: readonly RelativeGhost[];
+  nextDeparture: number;
 };
 
 function rowElement(root: HTMLElement | null, rowId: string): HTMLElement | null {
@@ -60,6 +63,7 @@ export function useRelativeMotion(
     model: null,
     ghosts: [],
     departed: [],
+    nextDeparture: 0,
   });
   const ghostTimersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
   /**
@@ -83,22 +87,25 @@ export function useRelativeMotion(
 
   let ghosts = ghostState.ghosts;
   if (ghostState.model !== model) {
+    const samePresentation = ghostState.model !== null &&
+      ghostState.model.presentationKey === model.presentationKey;
     const stillHere = new Set(model.rows.map((row) => row.id));
     const departed: RelativeGhost[] = [];
-    if (enabled && model.status === "ready" && ghostState.model?.status === "ready") {
+    let nextDeparture = ghostState.nextDeparture;
+    if (samePresentation && enabled && model.status === "ready" && ghostState.model?.status === "ready") {
       ghostState.model.rows.forEach((row, index) => {
         if (!row.isPlayer && !stillHere.has(row.id)) {
-          departed.push({ row, index });
+          departed.push({ row, index, departure: nextDeparture++ });
         }
       });
     }
     ghosts = [
-      ...ghostState.ghosts.filter(
+      ...(samePresentation ? ghostState.ghosts : []).filter(
         (ghost) => !departed.some((item) => item.row.id === ghost.row.id),
       ),
       ...departed,
     ];
-    setGhostState({ model, ghosts, departed });
+    setGhostState({ model, ghosts, departed, nextDeparture });
   }
 
   useEffect(() => {
@@ -108,10 +115,11 @@ export function useRelativeMotion(
     }
     const timer = setTimeout(() => {
       ghostTimersRef.current.delete(timer);
+      const departures = new Set(departed.map((item) => item.departure));
       setGhostState((current) => ({
         ...current,
         ghosts: current.ghosts.filter(
-          (ghost) => !departed.some((item) => item.row.id === ghost.row.id),
+          (ghost) => !departures.has(ghost.departure),
         ),
       }));
     }, EXIT_MS);
@@ -124,7 +132,13 @@ export function useRelativeMotion(
       rectsRef.current = new Map();
       return;
     }
-    const prev = prevRef.current;
+    const previous = prevRef.current;
+    const samePresentation = previous !== null &&
+      previous.presentationKey === model.presentationKey;
+    const prev = samePresentation ? previous : null;
+    if (!samePresentation) {
+      rectsRef.current = new Map();
+    }
     prevRef.current = model;
     const root = rootRef.current;
     if (!root) {

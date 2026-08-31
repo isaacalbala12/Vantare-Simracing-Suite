@@ -19,7 +19,16 @@
   El host crea el estado por montaje con un inicializador perezoso de React y
   lo delimita por identidad lógica `perfil:widget.id`, sin depender del objeto
   recreado por responsive layout, refs leídas durante render, mutable global,
-  timers ni renders extra.
+  timers ni renders extra. Un cruce ahead/behind debe sostenerse durante el
+  hold monotónico de 900 ms: hasta entonces se conserva la última row completa
+  aceptada y, al vencer, se publica la nueva row canónica en la siguiente
+  cadencia. Motion delimita también epoch/session, por lo que un cambio ready a
+  ready no crea ghosts; cada desaparición tiene identidad propia para que un
+  timer anterior no elimine una salida posterior del mismo VehicleID.
+  TDD de cierre sobre `bff576bc`: RED literal 5 fallos/36 pases; GREEN focal
+  acumulado 6 archivos/74 pruebas, typecheck, build, lint focal, changelog,
+  generador/check de roadmap y `diff --check` verdes. No sustituye la prueba
+  física Wails/LMU, que no se ejecutó en esta rama.
   Baseline real nightly `659b2c57`, Spa práctica/boxes: 347 muestras/90 s,
   65 transiciones y 56 composiciones; 262 muestras en la composición estable.
   El probe de repetición debe separar membership canónica de ghosts de motion.

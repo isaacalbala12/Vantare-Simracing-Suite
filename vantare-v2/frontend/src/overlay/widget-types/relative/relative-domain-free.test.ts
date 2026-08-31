@@ -186,11 +186,101 @@ describe("relative v2 view model", () => {
     const options = { state, nowMs: () => nowMs };
     buildRelativeViewModelV2(before, { state: "live" }, content, options);
     nowMs = 10;
-    const wrapped = buildRelativeViewModelV2(after, { state: "live" }, content, options);
+    const held = buildRelativeViewModelV2(after, { state: "live" }, content, options);
+    nowMs = 910;
+    const wrapped = buildRelativeViewModelV2(
+      { ...after, sequence: 402 },
+      { state: "live" },
+      content,
+      options,
+    );
     const buemi = wrapped.rows.find((row) => row.id === "buemi");
 
+    expect(held.rows.find((row) => row.id === "buemi")).toMatchObject({
+      side: "behind",
+      gapSeconds: -0.2,
+      gapText: "-0.2",
+    });
     expect(buemi).toMatchObject({ side: "ahead", gapSeconds: 1.5, gapText: "+1.5" });
     expect(wrapped.rows.filter((row) => row.id === "buemi")).toHaveLength(1);
+  });
+
+  it("keeps one accepted row snapshot while the same VehicleID crosses inside the hold", () => {
+    const base = goldenFrame(44);
+    const state = createRelativeViewModelState();
+    const content = { ...CONTENT, rangeAhead: 1, rangeBehind: 1 };
+    let nowMs = 0;
+    const options = { state, nowMs: () => nowMs };
+    const aheadBase = relativeScenarioFrame(base, 450, ["rival"], [], true, { rival: 0.3 });
+    const behindBase = relativeScenarioFrame(base, 451, [], ["rival"], true, { rival: -0.1 });
+    const ahead = {
+      ...aheadBase,
+      relative: aheadBase.relative.map((row) => row.id === "rival" ? { ...row, position: 19 } : row),
+    } as OverlayFrameV2;
+    const behind = {
+      ...behindBase,
+      relative: behindBase.relative.map((row) => row.id === "rival" ? { ...row, position: 20 } : row),
+    } as OverlayFrameV2;
+
+    const accepted = buildRelativeViewModelV2(ahead, { state: "live" }, content, options);
+    nowMs = 100;
+    const held = buildRelativeViewModelV2(behind, { state: "live" }, content, options);
+
+    expect(accepted.rows.find((row) => row.id === "rival")).toMatchObject({
+      position: 19,
+      side: "ahead",
+      gapSeconds: 0.3,
+    });
+    expect(held.rows.find((row) => row.id === "rival")).toMatchObject({
+      position: 19,
+      side: "ahead",
+      gapSeconds: 0.3,
+    });
+  });
+
+  it("ignores ahead-behind churn inside the hold and exposes a sustained crossing at its bound", () => {
+    const base = goldenFrame(44);
+    const state = createRelativeViewModelState();
+    const content = { ...CONTENT, rangeAhead: 1, rangeBehind: 1 };
+    let nowMs = 0;
+    const options = { state, nowMs: () => nowMs };
+    const ahead = relativeScenarioFrame(base, 460, ["rival"], [], true, { rival: 0.3 });
+    const behind = relativeScenarioFrame(base, 461, [], ["rival"], true, { rival: -0.1 });
+
+    buildRelativeViewModelV2(ahead, { state: "live" }, content, options);
+    nowMs = 100;
+    expect(buildRelativeViewModelV2(behind, { state: "live" }, content, options)
+      .rows.find((row) => row.id === "rival")?.side).toBe("ahead");
+    nowMs = 200;
+    expect(buildRelativeViewModelV2({ ...ahead, sequence: 462 }, { state: "live" }, content, options)
+      .rows.find((row) => row.id === "rival")?.side).toBe("ahead");
+    nowMs = 300;
+    expect(buildRelativeViewModelV2({ ...behind, sequence: 463 }, { state: "live" }, content, options)
+      .rows.find((row) => row.id === "rival")?.side).toBe("ahead");
+    nowMs = 1_199;
+    expect(buildRelativeViewModelV2({ ...behind, sequence: 464 }, { state: "live" }, content, options)
+      .rows.find((row) => row.id === "rival")?.side).toBe("ahead");
+    nowMs = 1_200;
+    expect(buildRelativeViewModelV2({ ...behind, sequence: 465 }, { state: "live" }, content, options)
+      .rows.find((row) => row.id === "rival")).toMatchObject({
+        side: "behind",
+        gapSeconds: -0.1,
+      });
+  });
+
+  it.each(["epoch", "session"] as const)("changes the motion scope on a ready %s reset", (reset) => {
+    const base = goldenFrame(44);
+    const first = buildRelativeViewModelV2(base, { state: "live" }, CONTENT, {
+      instanceKey: "profile:widget",
+    });
+    const next = buildRelativeViewModelV2({
+      ...base,
+      epoch: reset === "epoch" ? base.epoch + 1 : base.epoch,
+      sessionId: reset === "session" ? `${base.sessionId}-next` : base.sessionId,
+      sequence: base.sequence + 1,
+    }, { state: "live" }, CONTENT, { instanceKey: "profile:widget" });
+
+    expect(next.presentationKey).not.toBe(first.presentationKey);
   });
 
   it("rehydrates accepted IDs from the current frame and removes vanished IDs", () => {

@@ -90,6 +90,7 @@ export function buildRelativeViewModelV2(
     type: "relative",
     status: "ready",
     statusMessage: source.reason || undefined,
+    presentationKey: stabilityScopeKey(frame, source, content, stability.instanceKey),
     columns,
     rowHeightMode: content.rowHeightMode,
     rows: window.map(buildRow),
@@ -167,16 +168,7 @@ function stabilizeWindow(
   const state = options.state;
   if (state === undefined) return candidate;
 
-  const scopeKey = [
-    options.instanceKey ?? "",
-    frame.epoch,
-    frame.sessionId,
-    source.retry ?? 0,
-    content.classScope,
-    content.rangeAhead,
-    content.rangeBehind,
-    content.includePlayer ? 1 : 0,
-  ].join(":");
+  const scopeKey = stabilityScopeKey(frame, source, content, options.instanceKey);
   if (
     state.scopeKey !== scopeKey ||
     state.acceptedIds === undefined
@@ -193,10 +185,7 @@ function stabilizeWindow(
   const nowMs = monotonicNow(options, state);
   const candidateKey = identityKey(candidate);
   const acceptedKey = state.acceptedIds.join("|");
-  if (hasCanonicalSideChange(state.acceptedIds, acceptedCurrent)) {
-    acceptWindow(state, scopeKey, frame, nowMs, candidate);
-    return candidate;
-  }
+  const holdsCanonicalSideChange = hasCanonicalSideChange(state.acceptedIds, acceptedCurrent);
   if (candidateKey === acceptedKey) {
     state.pendingKey = undefined;
     state.pendingSinceMs = undefined;
@@ -221,8 +210,27 @@ function stabilizeWindow(
     acceptWindow(state, scopeKey, frame, nowMs, candidate);
     return candidate;
   }
-  state.lastRows = acceptedCurrent;
-  return acceptedCurrent;
+  const held = holdsCanonicalSideChange ? state.lastRows ?? acceptedCurrent : acceptedCurrent;
+  state.lastRows = held;
+  return held;
+}
+
+function stabilityScopeKey(
+  frame: OverlayFrameV2,
+  source: OverlaySourceStatusV2,
+  content: RelativeContent,
+  instanceKey: string | undefined,
+): string {
+  return [
+    instanceKey ?? "",
+    frame.epoch,
+    frame.sessionId,
+    source.retry ?? 0,
+    content.classScope,
+    content.rangeAhead,
+    content.rangeBehind,
+    content.includePlayer ? 1 : 0,
+  ].join(":");
 }
 
 function identityKey(rows: readonly OverlayRelativeRowV2[]): string {

@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-958",
+  "type": "fix",
+  "summary": "Relative Endurance Redline mantiene estables las filas durante tráfico denso y cruces alrededor del coche del jugador.",
+  "technicalNotes": [
+    "Un cambio ahead/behind del mismo VehicleID debe sostenerse durante 900 ms monotónicos; mientras oscila, posición, gap y lado conservan una única fila aceptada y coherente.",
+    "Los cruces reales se publican al vencer el hold, con una latencia máxima de 900 ms más una cadencia del widget.",
+    "Los cambios de epoch o sesión reinician la presentación sin ghosts, y cada desaparición tiene un identificador propio para que un timer antiguo no borre una salida posterior."
+  ],
+  "testing": [
+    "Con el jugador parado en boxes y tráfico denso, comprobar que un rival que oscila alrededor de cero no salta repetidamente entre adelante y detrás.",
+    "Mantener un cruce real más de 900 ms y confirmar que la fila cambia de lado con su posición y gap del mismo snapshot.",
+    "Cambiar de sesión o epoch y confirmar que Redline no anima como retirados los coches de la sesión anterior."
+  ],
+  "knownLimitations": [
+    "La rama se valida con pruebas deterministas y build; la comprobación física en Wails con LMU real queda pendiente antes de promoverla."
+  ]
+}

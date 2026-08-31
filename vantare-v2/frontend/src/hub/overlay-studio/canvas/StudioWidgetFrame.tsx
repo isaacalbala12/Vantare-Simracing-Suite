@@ -15,8 +15,8 @@ import type { ResizeHandle } from './canvas-resize';
 import { useSelectionFit } from './useSelectionFit';
 import { useStudioTelemetryRuntime } from './studio-telemetry';
 import {
+  resolveStandingsRedlineFrameLayout,
   resolveStandingsRedlineMinimumWidth,
-  resolveStandingsRedlineVisualBaseWidth,
 } from '../../../overlay/widget-types/standings/standings-redline-layout';
 import { DEFAULT_LAYOUT_VIEWPORT } from '../../../overlay/core/layout-viewport';
 
@@ -82,19 +82,13 @@ function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactE
   }), [profileId, runtime, widget.id]);
   const frameRef = useRef<HTMLDivElement>(null);
   const selectionRef = useRef<HTMLDivElement>(null);
-  const frameGeometry = resolveStudioFrameGeometry(widget.id, layout, previewActive);
+  const frameGeometry = resolveStandingsRedlineFrameLayout(
+    widget,
+    resolveStudioFrameGeometry(widget.id, layout, previewActive),
+    layoutViewportWidth,
+  );
   const effectiveMinimumWidth = resolveStandingsRedlineMinimumWidth(widget);
-  const visualBaseWidth = resolveStandingsRedlineVisualBaseWidth(widget, frameGeometry);
-  const visualScale = visualBaseWidth === undefined ? undefined : frameGeometry.w / visualBaseWidth;
-  const visualWidget = visualScale !== undefined && Number.isFinite(visualScale) && visualScale > 0
-    ? {
-        ...widget,
-        layout: {
-          ...frameGeometry,
-          h: frameGeometry.h / visualScale,
-        },
-      }
-    : { ...widget, layout: frameGeometry };
+  const layoutWasNormalized = effectiveMinimumWidth !== undefined && layout.w < effectiveMinimumWidth;
   const resizeHandles =
     widgetTypeRegistry.get(widget.type).capabilities.resizeMode === 'horizontal-only'
       ? (['e', 'w'] as const)
@@ -153,6 +147,7 @@ function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactE
       data-testid={`studio-widget-frame-${widget.id}`}
       data-preview-active={previewActive ? 'true' : undefined}
       data-effective-minimum-width={effectiveMinimumWidth}
+      data-layout-normalized={layoutWasNormalized ? 'true' : undefined}
       data-layout-viewport-width={layoutViewportWidth}
       className={frameClassName}
       style={frameStyle}
@@ -218,11 +213,10 @@ function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactE
           widgetType={widget.type}
           visual={widget.visual}
           layout={frameGeometry}
-          visualBaseWidth={visualBaseWidth}
           testId={`studio-widget-viewport-${widget.id}`}
         >
           <MemoWidgetVisualHost
-            widget={visualWidget}
+            widget={widget}
             renderMode="studio"
             diagnostics={diagnostics}
             runtime={widgetRuntime}

@@ -21,31 +21,16 @@ export type RuntimeWidgetFrameProps = {
   engineerSubtitlesEnabled?: boolean;
   overlayV2Features?: readonly OverlayV2Feature[];
   raceSchedule?: RaceScheduleSnapshot;
-  visualBaseWidth?: number;
 };
 
 function RuntimeWidgetFrameComponent(props: RuntimeWidgetFrameProps): React.ReactElement {
-  const { widget, profileId, telemetry, renderMode, layoutOrigin, onDiagnostic, diagnostics, engineerPresentation, engineerSubtitlesEnabled, overlayV2Features, raceSchedule, visualBaseWidth } = props;
+  const { widget, profileId, telemetry, renderMode, layoutOrigin, onDiagnostic, diagnostics, engineerPresentation, engineerSubtitlesEnabled, overlayV2Features, raceSchedule } = props;
   const runtimeTelemetry = useRateLimitedWidgetTelemetry(
     telemetry,
     widget.type,
   );
   const origin = layoutOrigin ?? { x: 0, y: 0 };
   const { x, y, w, h, zIndex } = widget.layout;
-  const visualScale = visualBaseWidth === undefined ? undefined : w / visualBaseWidth;
-  // Redline's renderer decides how many complete rows fit from its layout.
-  // Only its height needs the viewport's visual coordinate space; the 826px
-  // width remains exclusively WidgetVisualViewport's visualBaseWidth.
-  const visualWidget = visualScale !== undefined && Number.isFinite(visualScale) && visualScale > 0
-    ? {
-        ...widget,
-        layout: {
-          ...widget.layout,
-          h: h / visualScale,
-        },
-      }
-    : widget;
-
   const frameStyle: CSSProperties = {
     position: "absolute",
     left: x - origin.x,
@@ -63,11 +48,10 @@ function RuntimeWidgetFrameComponent(props: RuntimeWidgetFrameProps): React.Reac
         widgetType={widget.type}
         visual={widget.visual}
         layout={widget.layout}
-        visualBaseWidth={visualBaseWidth}
         testId={`runtime-widget-viewport-${widget.id}`}
       >
         <WidgetVisualHost
-          widget={visualWidget}
+          widget={widget}
           renderMode={renderMode}
           onDiagnostic={onDiagnostic}
           diagnostics={diagnostics}
@@ -121,6 +105,5 @@ export const RuntimeWidgetFrame = memo(RuntimeWidgetFrameComponent, (left, right
   left.engineerPresentation === right.engineerPresentation &&
   left.engineerSubtitlesEnabled === right.engineerSubtitlesEnabled &&
   left.overlayV2Features === right.overlayV2Features &&
-  left.raceSchedule === right.raceSchedule &&
-  left.visualBaseWidth === right.visualBaseWidth,
+  left.raceSchedule === right.raceSchedule,
 );

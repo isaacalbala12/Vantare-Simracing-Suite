@@ -141,11 +141,10 @@ describe("StudioWidgetFrame", () => {
 
     const frame = screen.getByTestId(`studio-widget-frame-${widget.id}`);
     const selection = screen.getByTestId(`studio-widget-selection-${widget.id}`);
-    const viewport = screen.getByTestId(`studio-widget-viewport-${widget.id}`);
-    expect(frame.style.left).toBe("1640px");
-    expect(frame.style.width).toBe("280px");
-    expect(viewport.dataset.widgetVisualBaseWidth).toBe("826");
-    expect(viewport.style.transform).toBe(`scale(${280 / 826})`);
+    expect(frame.style.left).toBe("1094px");
+    expect(frame.style.width).toBe("826px");
+    expect(frame.dataset.effectiveMinimumWidth).toBe("826");
+    expect(frame.dataset.layoutNormalized).toBe("true");
     expect(selection.parentElement).toBe(frame);
     expect(screen.getByTestId(`studio-resize-handle-e-${widget.id}`)).toBeTruthy();
     expect(screen.getByTestId(`studio-resize-handle-w-${widget.id}`)).toBeTruthy();

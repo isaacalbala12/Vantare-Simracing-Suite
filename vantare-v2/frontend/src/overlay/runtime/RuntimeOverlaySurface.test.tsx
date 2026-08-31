@@ -181,16 +181,20 @@ describe("RuntimeOverlaySurface", () => {
     },
   );
 
-  it.each(["desktop", "obs"] as const)(
-    "keeps a physical 280x900 Redline frame while scaling its 826px visual base in a 1920x1080 %s scene",
-    async (renderMode) => {
+  it.each(
+    ([280, 340, 419, 420] as const).flatMap((persistedWidth) =>
+      (["desktop", "obs"] as const).map((renderMode) => [persistedWidth, renderMode] as const),
+    ),
+  )(
+    "normalizes a maximum Redline persisted at %spx to its readable physical minimum in %s",
+    async (persistedWidth, renderMode) => {
       measuredWidth = 1920;
       measuredHeight = 1080;
       const coordinator = createBaseTelemetryRateCoordinator();
       const twentyCarUpdate = JSON.parse(goldenV2TwentyRaw) as OverlayUpdateV2;
       coordinator.setOverlayFrame(twentyCarUpdate.frame ?? undefined, twentyCarUpdate.source);
       const document = buildDocument();
-      const widget = standingsDefinition.createDefault(`standings-redline-${renderMode}-280`);
+      const widget = standingsDefinition.createDefault(`standings-redline-${renderMode}-${persistedWidth}`);
       const maximumContent = buildMaximumRedlineContent();
       const fixedMetrics = ["position", "driverName"] as const;
       const expectedMetrics = [
@@ -203,7 +207,7 @@ describe("RuntimeOverlaySurface", () => {
       ];
       const expectedLastMetric = expectedMetrics.at(-1);
       expect(expectedLastMetric).toBe("tireCompound");
-      widget.layout = { ...widget.layout, x: 1094, y: 40, w: 280, h: 900 };
+      widget.layout = { ...widget.layout, x: 1094, y: 40, w: persistedWidth, h: 900 };
       widget.content = maximumContent;
       widget.visual = {
         ...widget.visual,
@@ -217,9 +221,9 @@ describe("RuntimeOverlaySurface", () => {
       );
       const frame = view.getByTestId("runtime-widget-frame") as HTMLElement;
       const viewport = view.getByTestId(`runtime-widget-viewport-${widget.id}`) as HTMLElement;
-      expect(frame.style.width).toBe("280px");
+      expect(frame.style.width).toBe("826px");
       expect(viewport.dataset.widgetVisualBaseWidth).toBe("826");
-      expect(viewport.style.transform).toBe("scale(0.3389830508474576)");
+      expect(viewport.style.transform).toBe("scale(1)");
 
       const enduranceCss = readFileSync(
         join(__dirname, "..", "design-systems", "vantare-endurance", "tokens.css"),
@@ -239,6 +243,7 @@ describe("RuntimeOverlaySurface", () => {
           const rows = renderer
             ? [...renderer.querySelectorAll<HTMLElement>("[data-standings-row]")]
             : [];
+          const firstRow = rows[0];
           if (!frame || !viewport || !renderer || !header || rows.length === 0 || !expectedLastMetric) {
             throw new Error("missing mounted Redline frame, viewport, header, rows, or configured last column");
           }
@@ -292,8 +297,14 @@ describe("RuntimeOverlaySurface", () => {
                 }
               }
             }
+            const representativeValue = firstRow.querySelector<HTMLElement>('[data-metric="lastLap"]');
+            if (!representativeValue) throw new Error("missing representative Redline value");
+            const representativeBox = representativeValue.getBoundingClientRect();
+            const renderedFontSize = Number.parseFloat(getComputedStyle(representativeValue).fontSize)
+              * (representativeBox.width / representativeValue.clientWidth);
             return {
               frameWidth: frameBox.width,
+              renderedFontSize,
               headerInside: insideFrame(header),
               headerReadable: header.scrollWidth <= header.clientWidth + 1,
               rowCount: rows.length,
@@ -306,16 +317,17 @@ describe("RuntimeOverlaySurface", () => {
           const baseline = inspect();
           const originalWidth = viewport.style.width;
           const originalTransform = viewport.style.transform;
-          viewport.style.transform = "none";
-          const withoutScale = inspect();
           viewport.style.width = "280px";
           viewport.style.transform = "scale(1)";
           const withCompressedBase = inspect();
           viewport.style.width = originalWidth;
           viewport.style.transform = originalTransform;
-          return { baseline, withoutScale, withCompressedBase };
+          return { baseline, withCompressedBase };
         }, { expectedMetrics, expectedLastMetric });
-        expect(geometry.baseline.frameWidth).toBeCloseTo(280, 1);
+        expect(geometry.baseline.frameWidth).toBeCloseTo(826, 1);
+        // Redline's compact metric tokens are authored at 11px; their physical
+        // rect must never be reduced below that readable design size.
+        expect(geometry.baseline.renderedFontSize).toBeGreaterThanOrEqual(11);
         expect(geometry.baseline.headerInside).toBe(true);
         expect(geometry.baseline.headerReadable).toBe(true);
         expect(geometry.baseline.rowCount).toBe(20);
@@ -326,16 +338,10 @@ describe("RuntimeOverlaySurface", () => {
           Array.from({ length: geometry.baseline.rowCount }, () => expectedLastMetric),
         );
         expect(
-          geometry.withoutScale.rowFailures.length + geometry.withoutScale.cellFailures.length,
-          "removing the viewport scale must break row/cell containment",
-        ).toBeGreaterThan(0);
-        expect(geometry.withoutScale.lastColumnFailures.length).toBeGreaterThan(0);
-        expect(
           geometry.withCompressedBase.rowFailures.length
             + geometry.withCompressedBase.cellFailures.length,
           "using a 280px visual base must expose horizontal overflow",
         ).toBeGreaterThan(0);
-        expect(geometry.withCompressedBase.lastColumnFailures.length).toBeGreaterThan(0);
       } finally {
         await browser.close();
         coordinator.dispose();
@@ -583,8 +589,8 @@ describe("RuntimeOverlaySurface", () => {
       );
 
       const frame = view.getByTestId("runtime-widget-frame") as HTMLElement;
-      expect(frame.style.width).toBe("280px");
-      expect(frame.style.left).toBe("1640px");
+      expect(frame.style.width).toBe("430px");
+      expect(frame.style.left).toBe("1490px");
       coordinator.dispose();
     },
   );

@@ -30,10 +30,7 @@ import {
   EMPTY_RACE_SCHEDULE_SNAPSHOT,
   type RaceScheduleStore,
 } from "../core/race-schedule-store";
-import {
-  isStandingsRedlineWidget,
-  resolveStandingsRedlineVisualBaseWidth,
-} from "../widget-types/standings/standings-redline-layout";
+import { resolveStandingsRedlineFrameLayout } from "../widget-types/standings/standings-redline-layout";
 
 export type RuntimeOverlaySurfaceProps = {
   document: ProfileDocumentV3;
@@ -172,12 +169,14 @@ export function RuntimeOverlaySurface(props: RuntimeOverlaySurfaceProps): React.
       x: widget.layout.x - origin.x,
       y: widget.layout.y - origin.y,
     };
+    const effectiveLayout = resolveStandingsRedlineFrameLayout(
+      widget,
+      localLayout,
+      layoutViewport.width,
+    );
     return {
       ...widget,
-      layout: localLayout,
-      visualBaseWidth: isStandingsRedlineWidget(widget)
-        ? resolveStandingsRedlineVisualBaseWidth(widget, localLayout)
-        : undefined,
+      layout: effectiveLayout,
     };
   });
   const responsiveWidgets = transform
@@ -231,7 +230,6 @@ export function RuntimeOverlaySurface(props: RuntimeOverlaySurfaceProps): React.
               profileId={document.id}
               telemetry={telemetry}
               renderMode={renderMode}
-              visualBaseWidth={widget.visualBaseWidth}
               onDiagnostic={onDiagnostic}
               diagnostics={diagnostics}
               engineerPresentation={engineerPresentation}

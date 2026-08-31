@@ -171,6 +171,9 @@ describe("Standings Redline narrow production geometry", () => {
             const firstRow = rows[0];
             if (!firstRow) throw new Error("missing complete Redline row");
             const cells = [...firstRow.querySelectorAll<HTMLElement>("[data-metric]")];
+            const compactMetric = firstRow.querySelector<HTMLElement>('[data-metric="pit"]');
+            if (!compactMetric) throw new Error("missing compact Redline metric");
+            const compactMetricBox = compactMetric.getBoundingClientRect();
             const clipped = cells.flatMap((cell) =>
               [cell, ...cell.querySelectorAll<HTMLElement>("*")]
                 .filter((node) => node.textContent?.trim())
@@ -194,6 +197,8 @@ describe("Standings Redline narrow production geometry", () => {
             return {
               frameWidth: frameBox.width,
               sessionMode: renderer.querySelector<HTMLElement>(".ven-red-root")?.dataset.sessionMode,
+              physicalCompactFontSize: Number.parseFloat(getComputedStyle(compactMetric).fontSize)
+                * (compactMetricBox.width / compactMetric.clientWidth),
               status: renderer.dataset.status,
               rowCount: rows.length,
               metrics: cells.map((cell) => cell.dataset.metric),
@@ -209,7 +214,8 @@ describe("Standings Redline narrow production geometry", () => {
           }, { expectedMetrics });
 
           const context = `${surface}/${width}px`;
-          expect(result.frameWidth, `${context} physical frame width`).toBeCloseTo(width, 1);
+          expect(result.frameWidth, `${context} explicit effective width`).toBeCloseTo(expectedEffectiveWidth, 1);
+          expect(result.physicalCompactFontSize, `${context} physical compact font`).toBeGreaterThanOrEqual(10);
           expect(result.status, `${context} V2 status`).toBe("ready");
           expect(result.sessionMode, `${context} semantic session mode`).toBe("race");
           expect(result.semanticPositionDeltas.every((delta) => delta === "0"), `${context} semantic position deltas`).toBe(true);

@@ -58,6 +58,16 @@ func TestRelativeSettlerRehydratesEvictedObservedIDAndResetsOnRealAbsence(t *tes
 	if got[0].VehicleID != "vehicle-022" || got[0].Position != 77 {
 		t.Fatalf("evicted observed row was stale or replaced: %#v", got)
 	}
+	// Missing Position must use the same sorted canonical fallback as
+	// BuildRelative, not the source slice index; live row fields also refresh.
+	final.Observed.Vehicles[22].Position = schema.MissingField[standings.Position]()
+	final.Observed.Vehicles[22].LastLapTime = builderField(t, standings.LapTime(123.456), schema.FreshnessFresh)
+	settler.project(final, accepted, header, start.Add(3*time.Second))
+	got = settler.project(final, candidate, header, start.Add(4*time.Second))
+	wantPosition := resolvedRelativePositions(final.Observed.Vehicles)["vehicle-022"]
+	if got[0].Position != wantPosition || got[0].LastLapSeconds.V != 123.456 {
+		t.Fatalf("rehydration diverged from canonical position/live fields: got=%#v wantPosition=%d", got[0], wantPosition)
+	}
 	final.Observed.Vehicles = append(final.Observed.Vehicles[:22], final.Observed.Vehicles[23:]...)
 	got = settler.project(final, candidate, header, start.Add(2*time.Second))
 	if !sameRelativeIDs(relativeIDs(got), relativeIDs(candidate)) {

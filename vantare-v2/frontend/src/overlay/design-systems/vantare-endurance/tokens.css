@@ -1541,7 +1541,12 @@
   gap: 14px;
   align-items: flex-end;
   padding: 12px 14px 10px;
-  margin-top: 0;
+  box-sizing: border-box;
+  width: calc(100% - 8px);
+  height: calc(100% - 8px);
+  min-width: 0;
+  min-height: 0;
+  margin: 4px;
 }
 
 [data-widget-system="vantare-endurance"] .ven-neop-card .ven-pedal {
@@ -3079,4 +3084,66 @@
   background-image: none;
   border: 0;
   box-shadow: none;
+}
+
+/* Local contrast layers -------------------------------------------------------
+   The outer silhouette stays transparent. Text and readings own a small,
+   bounded backing so neither odd rows nor compact readouts depend on the game
+   pixels below them for legibility. Existing template-specific paint has
+   higher specificity and remains authoritative. */
+[data-widget-system="vantare-endurance"] :where([data-standings-row]),
+[data-widget-system="vantare-endurance"] :where([data-relative-row]) {
+  background-color: rgba(9, 12, 18, 0.72);
+}
+
+[data-widget-system="vantare-endurance"] .ven-red-row:not([data-player="true"]):not([data-class-leader="true"]),
+[data-widget-system="vantare-endurance"] .ven-relative-row:not([data-player="true"]),
+[data-widget-system="vantare-endurance"] .ven-rel-row[data-variant]:not([data-player="true"]) {
+  background: rgba(9, 12, 18, 0.72);
+}
+
+[data-widget-system="vantare-endurance"] .ven-red-row:nth-child(even):not([data-player="true"]):not([data-class-leader="true"]),
+[data-widget-system="vantare-endurance"] .ven-relative-row[data-even="true"]:not([data-player="true"]),
+[data-widget-system="vantare-endurance"] .ven-rel-row[data-variant]:nth-child(even):not([data-player="true"]) {
+  background: rgba(15, 21, 32, 0.82);
+}
+
+[data-widget-system="vantare-endurance"] .ven-relative-row[data-player="true"] {
+  background: rgba(24, 78, 132, 0.72);
+}
+
+[data-widget-system="vantare-endurance"] :where([data-class-header]),
+[data-widget-system="vantare-endurance"] :where(.ven-rel-axis) {
+  background-color: rgba(9, 12, 18, 0.78);
+}
+
+[data-widget-system="vantare-endurance"] :where(.ven-delta-value),
+[data-widget-system="vantare-endurance"] :where(.ven-delta-laps),
+[data-widget-system="vantare-endurance"] :where(.ven-dred-ref),
+[data-widget-system="vantare-endurance"] :where(.ven-pred-slot),
+[data-widget-system="vantare-endurance"] :where(.ven-tm-footer) {
+  background-color: rgba(9, 12, 18, 0.82);
+  border-radius: 4px;
+}
+
+[data-widget-system="vantare-endurance"] .ven-delta-track {
+  background: rgba(9, 12, 18, 0.82);
+}
+
+[data-widget-system="vantare-endurance"] :where(.ven-delta-value),
+[data-widget-system="vantare-endurance"] :where(.ven-delta-laps),
+[data-widget-system="vantare-endurance"] :where(.ven-dred-ref),
+[data-widget-system="vantare-endurance"] :where(.ven-tm-footer) {
+  padding: 4px 6px;
+}
+
+[data-widget-system="vantare-endurance"][data-template="pedals-classic"] :where([data-pedal]),
+[data-widget-system="vantare-endurance"][data-template="pedals-neo"] :where([data-pedal]) {
+  background-color: rgba(9, 12, 18, 0.72);
+  border-radius: 4px;
+  padding: 4px;
+}
+
+[data-widget-system="vantare-endurance"] .ven-neo-card {
+  margin-inline: 2px;
 }

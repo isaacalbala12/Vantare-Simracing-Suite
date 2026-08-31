@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 import { chromium } from "playwright";
 import { describe, expect, it } from "vitest";
+import type { OverlayFrameV2 } from "../../../generated/telemetry";
 import { buildAuthoringV2Runtime } from "../../authoring/fixtures/authoring-v2-fixture";
 import { buildMockTelemetry } from "../../core/mock-scenarios";
 import { createTelemetryRateCoordinator } from "../../core/telemetry-rate-coordinator";
@@ -27,7 +28,12 @@ type Catalog = Readonly<{
   templateIds: readonly string[];
   width: number;
   height: number;
-  functionalSelector: string;
+}>;
+
+type FunctionalRegion = Readonly<{
+  name: string;
+  selector: string;
+  kind: "backing" | "graphic";
 }>;
 
 const catalog: readonly Catalog[] = [
@@ -36,37 +42,97 @@ const catalog: readonly Catalog[] = [
     templateIds: STANDINGS_ENDURANCE_TEMPLATE_IDS,
     width: 520,
     height: 464,
-    functionalSelector: "[data-standings-row], [data-class-header], .ven-red-chip",
   },
   {
     type: "relative",
     templateIds: RELATIVE_ENDURANCE_TEMPLATE_IDS,
     width: 430,
     height: 234,
-    functionalSelector: "[data-relative-row], .ven-rel-axis, .ven-relative-row",
   },
   {
     type: "delta",
     templateIds: DELTA_ENDURANCE_TEMPLATE_IDS,
     width: 500,
     height: 153,
-    functionalSelector: ".ven-delta-track, .ven-delta-laps, .ven-neod-card, .ven-dred-bar",
   },
   {
     type: "pedals",
     templateIds: PEDALS_ENDURANCE_TEMPLATE_IDS,
     width: 320,
     height: 353,
-    functionalSelector: "[data-pedal], .ven-pedal-bar, .ven-pred-well, .ven-neop-card",
   },
   {
     type: "track-map",
     templateIds: TRACK_MAP_ENDURANCE_TEMPLATE_IDS,
     width: 640,
     height: 440,
-    functionalSelector: ".ven-tm-canvas, .ven-tm-outline, .ven-tm-footer",
   },
 ];
+
+function functionalRegions(type: WidgetType, templateId: string): readonly FunctionalRegion[] {
+  if (type === "standings") {
+    const regions: FunctionalRegion[] = [
+      { name: "each standings row", selector: "[data-standings-row]", kind: "backing" },
+    ];
+    if (!["standings-strip", "standings-lmu", "standings-racelabs"].includes(templateId)) {
+      regions.push({ name: "each class header", selector: "[data-class-header]", kind: "backing" });
+    }
+    return regions;
+  }
+  if (type === "relative") {
+    const regions: FunctionalRegion[] = [
+      { name: "each relative row", selector: "[data-relative-row]", kind: "backing" },
+    ];
+    if (templateId === "relative-redline-mirror") {
+      regions.push({ name: "each relative axis", selector: ".ven-rel-axis", kind: "backing" });
+    }
+    return regions;
+  }
+  if (type === "delta") {
+    if (templateId === "delta-strip") {
+      return [
+        { name: "delta reading", selector: ".ven-delta-value", kind: "backing" },
+        { name: "delta track", selector: ".ven-delta-track", kind: "backing" },
+      ];
+    }
+    if (templateId === "delta-block") {
+      return [
+        { name: "delta reading", selector: ".ven-delta-value", kind: "backing" },
+        { name: "delta lap summaries", selector: ".ven-delta-laps", kind: "backing" },
+      ];
+    }
+    if (templateId === "delta-neo") {
+      return [
+        { name: "Neo delta card", selector: ".ven-neod-card", kind: "backing" },
+        { name: "Neo delta track", selector: ".ven-neod-track", kind: "backing" },
+        { name: "each Neo lap well", selector: ".ven-neod-well", kind: "backing" },
+      ];
+    }
+    return [
+      { name: "Redline delta bar", selector: ".ven-dred-bar", kind: "backing" },
+      { name: "Redline delta reference", selector: ".ven-dred-ref", kind: "backing" },
+    ];
+  }
+  if (type === "pedals") {
+    if (templateId === "pedals-redline") {
+      return [
+        { name: "each Redline pedal well", selector: ".ven-pred-well", kind: "backing" },
+        { name: "each Redline pedal label", selector: ".ven-pred-slot", kind: "backing" },
+      ];
+    }
+    if (templateId === "pedals-neo") {
+      return [
+        { name: "Neo pedals card", selector: ".ven-neop-card", kind: "backing" },
+        { name: "each Neo pedal", selector: "[data-pedal]", kind: "backing" },
+      ];
+    }
+    return [{ name: "each classic pedal", selector: "[data-pedal]", kind: "backing" }];
+  }
+  return [
+    { name: "track outline", selector: ".ven-tm-outline", kind: "graphic" },
+    { name: "track footer", selector: ".ven-tm-footer", kind: "backing" },
+  ];
+}
 
 const definitions = {
   standings: standingsDefinition,
@@ -102,6 +168,38 @@ function renderWidget(
   const runtime = buildAuthoringV2Runtime(entry.type, entry.type === "track-map"
     ? { ...snapshot, session: { ...snapshot.session, trackName: trackLabel } }
     : snapshot);
+  if (entry.type === "relative" && runtime.overlayV2Frame) {
+    const playerId = runtime.overlayV2Frame.player.id;
+    runtime.overlayV2Frame = {
+      ...runtime.overlayV2Frame,
+      relative: [
+        {
+          id: "relative-ahead",
+          gap: { v: -1.2, q: "fresh" },
+          side: "ahead",
+          authority: "official",
+          name: "Ahead Driver",
+          classId: "hypercar",
+        },
+        {
+          id: playerId,
+          gap: { v: 0, q: "fresh" },
+          side: "player",
+          authority: "official",
+          name: "Player Driver",
+          classId: "hypercar",
+        },
+        {
+          id: "relative-behind",
+          gap: { v: 0.8, q: "fresh" },
+          side: "behind",
+          authority: "official",
+          name: "Behind Driver",
+          classId: "hypercar",
+        },
+      ] as OverlayFrameV2["relative"],
+    };
+  }
   const telemetry = createTelemetryRateCoordinator();
   if (runtime.overlayV2Frame && runtime.overlayV2Source) {
     telemetry.setOverlayFrame(runtime.overlayV2Frame, runtime.overlayV2Source);
@@ -122,6 +220,7 @@ describe("Endurance transparent production shells", () => {
     expect(catalog.reduce((total, entry) => total + entry.templateIds.length, 0)).toBe(23);
     const css = readFileSync(join(__dirname, "tokens.css"), "utf8");
     const browser = await chromium.launch({ headless: true });
+    const violations: string[] = [];
     try {
       const page = await browser.newPage({ viewport: { width: 800, height: 600 } });
       for (const surface of ["desktop", "obs"] as const) {
@@ -131,7 +230,8 @@ describe("Endurance transparent production shells", () => {
               `<style>html,body{margin:0;background:transparent}${css}</style>`
                 + renderWidget(entry, templateId, surface),
             );
-            const result = await page.evaluate(({ functionalSelector, templateId }) => {
+            const regions = functionalRegions(entry.type, templateId);
+            const result = await page.evaluate(({ regions }) => {
               const frame = document.querySelector<HTMLElement>('[data-testid="runtime-widget-frame"]');
               const root = document.querySelector<HTMLElement>(
                 '[data-widget-system="vantare-endurance"]',
@@ -143,17 +243,27 @@ describe("Endurance transparent production shells", () => {
                 value === "transparent" || value === "rgba(0, 0, 0, 0)";
               const hasOpaqueBackground = (computed: CSSStyleDeclaration) =>
                 computed.backgroundImage !== "none" || !transparent(computed.backgroundColor);
-              const isIntentionalPanel = (element: HTMLElement) =>
-                templateId.endsWith("-neo") && element.matches(".ven-neo-card");
+              const backgroundAlpha = (value: string) => {
+                const match = value.match(/^rgba?\(([^)]+)\)$/);
+                if (!match) return 0;
+                const channels = match[1].split(/[\s,/]+/).filter(Boolean).map(Number);
+                return channels.length >= 4 ? channels[3] : 1;
+              };
+              const hasEffectiveBackground = (computed: CSSStyleDeclaration) =>
+                computed.backgroundImage !== "none" || backgroundAlpha(computed.backgroundColor) >= 0.45;
               const fillsFrame = (element: HTMLElement) => {
                 const box = element.getBoundingClientRect();
                 return box.width >= frameBox.width - 1 && box.height >= frameBox.height - 1;
               };
               const opaqueFrameFillers = elements
                 .filter((element) =>
-                  element !== root && !isIntentionalPanel(element) && fillsFrame(element))
+                  element !== root && fillsFrame(element))
                 .filter((element) => hasOpaqueBackground(getComputedStyle(element)))
-                .map((element) => element.className || element.tagName);
+                .map((element) => {
+                  const box = element.getBoundingClientRect();
+                  return `${element.className || element.tagName} `
+                    + `${box.width}x${box.height}/${frameBox.width}x${frameBox.height}`;
+                });
               const opaqueFullPseudos = elements.flatMap((element) =>
                 (["::before", "::after"] as const).flatMap((pseudo) => {
                   const computed = getComputedStyle(element, pseudo);
@@ -170,24 +280,45 @@ describe("Endurance transparent production shells", () => {
                   if (
                     !active
                     || !coversFrame
-                    || isIntentionalPanel(element)
                     || !hasOpaqueBackground(computed)
                   ) return [];
                   return [`${element.className || element.tagName}${pseudo}`];
                 }),
               );
-              const functional = [...root.querySelectorAll<HTMLElement>(functionalSelector)]
-                .filter((element) => {
+              const regionResults = regions.map((region) => {
+                const nodes = [...root.querySelectorAll<HTMLElement>(region.selector)];
+                const failures = nodes.flatMap((element, index) => {
                   const box = element.getBoundingClientRect();
-                  return box.width > 0 && box.height > 0;
+                  if (box.width <= 0 || box.height <= 0) {
+                    return [`${region.name}[${index}] has no visible geometry`];
+                  }
+                  if (region.kind === "graphic") {
+                    const computed = getComputedStyle(element);
+                    const graphicPaint = [computed.stroke, computed.fill]
+                      .some((value) => value !== "none" && !transparent(value));
+                    return graphicPaint ? [] : [`${region.name}[${index}] has no own graphic paint`];
+                  }
+
+                  const candidates = [element, ...element.querySelectorAll<HTMLElement>(":scope > *")];
+                  const backing = candidates.find((candidate) => {
+                    const candidateBox = candidate.getBoundingClientRect();
+                    const coversRegion = candidateBox.width >= box.width - 1
+                      && candidateBox.height >= box.height - 1;
+                    return coversRegion && hasEffectiveBackground(getComputedStyle(candidate));
+                  });
+                  if (!backing) {
+                    return [`${region.name}[${index}] has no local full-region backing`];
+                  }
+                  const textNodes = [element, ...element.querySelectorAll<HTMLElement>("*")]
+                    .filter((candidate) => (candidate.textContent ?? "").trim() !== "")
+                    .filter((candidate) => candidate.children.length === 0);
+                  const invisibleText = textNodes.find((candidate) =>
+                    transparent(getComputedStyle(candidate).color));
+                  return invisibleText
+                    ? [`${region.name}[${index}] has transparent text`]
+                    : [];
                 });
-              const hasFunctionalPaint = functional.some((element) => {
-                const computed = getComputedStyle(element);
-                const borderPaint = Number.parseFloat(computed.borderTopWidth) > 0
-                  && !transparent(computed.borderTopColor);
-                const textPaint = !transparent(computed.color);
-                const svgPaint = computed.stroke !== "none" && !transparent(computed.stroke);
-                return hasOpaqueBackground(computed) || borderPaint || textPaint || svgPaint;
+                return { name: region.name, count: nodes.length, failures };
               });
               const rootStyle = getComputedStyle(root);
               return {
@@ -197,26 +328,37 @@ describe("Endurance transparent production shells", () => {
                 rootBoxShadow: rootStyle.boxShadow,
                 opaqueFrameFillers,
                 opaqueFullPseudos,
-                functionalCount: functional.length,
-                hasFunctionalPaint,
+                regionResults,
               };
-            }, { functionalSelector: entry.functionalSelector, templateId });
+            }, { regions });
 
             const context = `${surface}/${entry.type}/${templateId}`;
-            expect(result.rootBackgroundColor, `${context} root alpha`)
-              .toBe("rgba(0, 0, 0, 0)");
-            expect(result.rootBackgroundImage, `${context} root image`).toBe("none");
-            expect(result.rootBorderWidth, `${context} root border`).toBe("0px");
-            expect(result.rootBoxShadow, `${context} root shadow`).toBe("none");
-            expect(result.opaqueFrameFillers, `${context} opaque full-frame children`).toEqual([]);
-            expect(result.opaqueFullPseudos, `${context} opaque full-frame pseudos`).toEqual([]);
-            expect(result.functionalCount, `${context} functional nodes`).toBeGreaterThan(0);
-            expect(result.hasFunctionalPaint, `${context} functional contrast`).toBe(true);
+            if (result.rootBackgroundColor !== "rgba(0, 0, 0, 0)") {
+              violations.push(`${context} opaque root color: ${result.rootBackgroundColor}`);
+            }
+            if (result.rootBackgroundImage !== "none") {
+              violations.push(`${context} opaque root image: ${result.rootBackgroundImage}`);
+            }
+            if (result.rootBorderWidth !== "0px") {
+              violations.push(`${context} root border: ${result.rootBorderWidth}`);
+            }
+            if (result.rootBoxShadow !== "none") {
+              violations.push(`${context} root shadow: ${result.rootBoxShadow}`);
+            }
+            violations.push(...result.opaqueFrameFillers.map((item) =>
+              `${context} opaque full-frame child: ${item}`));
+            violations.push(...result.opaqueFullPseudos.map((item) =>
+              `${context} opaque full-frame pseudo: ${item}`));
+            for (const region of result.regionResults) {
+              if (region.count === 0) violations.push(`${context} missing ${region.name}`);
+              violations.push(...region.failures.map((failure) => `${context} ${failure}`));
+            }
           }
         }
       }
     } finally {
       await browser.close();
     }
+    expect(violations).toEqual([]);
   });
 });

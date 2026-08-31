@@ -14,6 +14,7 @@ import { useI18n } from '../../../i18n/I18nProvider';
 import type { ResizeHandle } from './canvas-resize';
 import { useSelectionFit } from './useSelectionFit';
 import { useStudioTelemetryRuntime } from './studio-telemetry';
+import { resolveStandingsRedlineFrameLayout } from '../../../overlay/widget-types/standings/standings-redline-layout';
 
 const MemoWidgetVisualHost = memo(WidgetVisualHost);
 
@@ -75,7 +76,10 @@ function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactE
   }), [profileId, runtime, widget.id]);
   const frameRef = useRef<HTMLDivElement>(null);
   const selectionRef = useRef<HTMLDivElement>(null);
-  const frameGeometry = resolveStudioFrameGeometry(widget.id, layout, previewActive);
+  const frameGeometry = resolveStandingsRedlineFrameLayout(
+    widget,
+    resolveStudioFrameGeometry(widget.id, layout, previewActive),
+  );
   const resizeHandles =
     widgetTypeRegistry.get(widget.type).capabilities.resizeMode === 'horizontal-only'
       ? (['e', 'w'] as const)

@@ -30,6 +30,7 @@ import {
   EMPTY_RACE_SCHEDULE_SNAPSHOT,
   type RaceScheduleStore,
 } from "../core/race-schedule-store";
+import { resolveStandingsRedlineFrameLayout } from "../widget-types/standings/standings-redline-layout";
 
 export type RuntimeOverlaySurfaceProps = {
   document: ProfileDocumentV3;
@@ -161,15 +162,19 @@ export function RuntimeOverlaySurface(props: RuntimeOverlaySurfaceProps): React.
     ? resolveResponsiveSceneTransform(layoutViewport, outputViewport)
     : null;
 
+  const effectiveWidgets = widgets.map((widget) => ({
+    ...widget,
+    layout: resolveStandingsRedlineFrameLayout(widget, widget.layout),
+  }));
   const responsiveWidgets = transform
-    ? widgets.map((widget) => ({
+    ? effectiveWidgets.map((widget) => ({
         ...widget,
         layout: {
           ...widget.layout,
           ...mapWidgetFrameToResponsive(widget.layout, transform),
         },
       }))
-    : widgets;
+    : effectiveWidgets;
 
   const surfaceStyle: CSSProperties = {
     position: "relative",

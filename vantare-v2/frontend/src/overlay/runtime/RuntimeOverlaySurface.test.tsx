@@ -327,6 +327,31 @@ describe("RuntimeOverlaySurface", () => {
     coordinator.dispose();
   });
 
+  it.each(["desktop", "obs"] as const)(
+    "anchors the effective Standings Redline minimum inside the %s scene",
+    (renderMode) => {
+      const coordinator = createTelemetryRateCoordinator();
+      const document = buildDocument();
+      const widget = standingsDefinition.createDefault("standings-redline-narrow");
+      widget.layout = { ...widget.layout, x: 1640, w: 280 };
+      widget.visual = {
+        ...widget.visual,
+        systemId: "vantare-endurance",
+        baseSettings: { templateId: "standings-redline" },
+      };
+      document.layouts.general.widgets = [widget];
+
+      const view = render(
+        <RuntimeOverlaySurface document={document} telemetry={coordinator} renderMode={renderMode} />,
+      );
+
+      const frame = view.getByTestId("runtime-widget-frame") as HTMLElement;
+      expect(frame.style.width).toBe("430px");
+      expect(frame.style.left).toBe("1490px");
+      coordinator.dispose();
+    },
+  );
+
   it("subtracts layoutOrigin once in logical space before the shared scale", () => {
     measuredWidth = 960;
     measuredHeight = 540;

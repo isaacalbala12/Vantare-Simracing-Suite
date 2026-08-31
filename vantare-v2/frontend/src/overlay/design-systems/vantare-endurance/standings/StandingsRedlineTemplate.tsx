@@ -1,9 +1,6 @@
 import { useRef, type CSSProperties, type ReactNode } from "react";
-import { resolveColumnWidthPixels, type WidgetColumnV3 } from "../../../widget-types/shared/widget-column";
-import {
-  nearestWidthPreset,
-  STANDINGS_COLUMN_TEMPLATES,
-} from "../../../widget-types/standings/standings-content";
+import type { WidgetColumnV3 } from "../../../widget-types/shared/widget-column";
+import { resolveStandingsRedlineGridTemplate } from "../../../widget-types/standings/standings-redline-layout";
 import type {
   StandingsRowViewModel,
   StandingsViewModel,
@@ -28,52 +25,9 @@ function remainingSecondsFromText(remainingText: string): number | null {
 
 const FINAL_MINUTES_SECONDS = 5 * 60;
 const REDLINE_FIXED_METRICS = new Set(["position", "driverName"]);
-const DELTA_TRACK_PX = 44;
-const ROW_GAP_PX = 8;
-const ROW_HORIZONTAL_PADDING_PX = 16;
-const BLOCK_HORIZONTAL_PADDING_PX = 18;
 
-function columnFallbackWidth(metricId: string): number {
-  return STANDINGS_COLUMN_TEMPLATES.find((template) => template.metricId === metricId)?.defaultWidth ?? 60;
-}
-
-function columnWidth(column: WidgetColumnV3 | undefined, metricId: string): number {
-  const fallback = columnFallbackWidth(metricId);
-  if (column) return resolveColumnWidthPixels(column, fallback);
-  return resolveColumnWidthPixels(
-    { id: metricId, metricId, enabled: true, widthPreset: nearestWidthPreset(fallback) },
-    fallback,
-  );
-}
-
-function redlineGridTemplateColumns(
-  columns: readonly WidgetColumnV3[],
-  availableWidth: number,
-): string {
-  const positionColumn = columns.find((column) => column.metricId === "position");
-  const driverColumn = columns.find((column) => column.metricId === "driverName");
-  const flexibleColumns = columns.filter((column) => !REDLINE_FIXED_METRICS.has(column.metricId));
-  const widths = [
-    columnWidth(positionColumn, "position"),
-    columnWidth(driverColumn, "driverName"),
-    DELTA_TRACK_PX,
-    ...flexibleColumns.map((column) => columnWidth(column, column.metricId)),
-  ];
-  const fixedChrome = ROW_GAP_PX * (widths.length - 1)
-    + ROW_HORIZONTAL_PADDING_PX
-    + BLOCK_HORIZONTAL_PADDING_PX;
-  const configuredWidth = widths.reduce((sum, width) => sum + width, 0);
-  const usableWidth = Math.max(0, availableWidth - fixedChrome);
-  const scale = Math.min(1, usableWidth / configuredWidth);
-
-  if (scale < 1) {
-    return widths.map((width) => `${width * scale}px`).join(" ");
-  }
-  return [
-    `${widths[0]}px`,
-    `minmax(${widths[1]}px, 1fr)`,
-    ...widths.slice(2).map((width) => `${width}px`),
-  ].join(" ");
+function redlineGridTemplateColumns(columns: readonly WidgetColumnV3[]): string {
+  return resolveStandingsRedlineGridTemplate(columns);
 }
 
 function justifyForAlign(align: "left" | "center" | "right"): CSSProperties["justifyContent"] {
@@ -119,7 +73,6 @@ function RedlineRow({
   positionDelta,
   tire,
   battle,
-  availableWidth,
   ghost = false,
 }: {
   row: StandingsRowViewModel;
@@ -129,7 +82,6 @@ function RedlineRow({
   positionDelta: number;
   tire: TireReveal | undefined;
   battle: BattleState | undefined;
-  availableWidth: number;
   ghost?: boolean;
 }) {
   const driverColumn = columns.find((column) => column.metricId === "driverName");
@@ -154,7 +106,7 @@ function RedlineRow({
       data-class-leader={isLead ? "true" : undefined}
       data-pit={row.pitText ? "true" : undefined}
       className={`ven-red-row${ghost ? " ven-red-ghost" : ""}`}
-      style={{ gridTemplateColumns: redlineGridTemplateColumns(columns, availableWidth) }}
+      style={{ gridTemplateColumns: redlineGridTemplateColumns(columns) }}
     >
       <span className="ven-red-pos" data-metric="position">{ghost ? "—" : classPosition}</span>
       <span
@@ -221,12 +173,10 @@ function RedlineRow({
 export function StandingsRedlineTemplate({
   model,
   showSessionHeader,
-  availableWidth = Number.POSITIVE_INFINITY,
 }: {
   model: StandingsViewModel;
   settings: Readonly<Record<string, unknown>>;
   showSessionHeader: boolean;
-  availableWidth?: number;
 }) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const motion = useStandingsMotion(model, model.status === "ready", rootRef);
@@ -269,7 +219,6 @@ export function StandingsRedlineTemplate({
                 positionDelta={motion.positionDeltas.get(target.id) ?? 0}
                 tire={motion.tires.get(target.id)}
                 battle={battle && battle.behindId === target.id ? battle : undefined}
-                availableWidth={availableWidth}
               />
             );
           };
@@ -306,7 +255,6 @@ export function StandingsRedlineTemplate({
               positionDelta={0}
               tire={undefined}
               battle={undefined}
-              availableWidth={availableWidth}
               ghost
             />,
           );

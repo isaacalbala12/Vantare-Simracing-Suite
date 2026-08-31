@@ -278,7 +278,6 @@ function templateBody(
   model: StandingsViewModel,
   settings: Readonly<Record<string, unknown>>,
   showSessionHeader: boolean,
-  availableWidth: number | undefined,
 ) {
   switch (templateId) {
     case "standings-f1":
@@ -313,7 +312,6 @@ function templateBody(
           model={model}
           settings={settings}
           showSessionHeader={showSessionHeader}
-          availableWidth={availableWidth}
         />
       );
     case "standings-tower":
@@ -357,7 +355,7 @@ export function StandingsEndurance({ model, settings, layout }: WidgetRendererPr
       className="ven-root ven-standings"
       style={buildStandingsAppearanceStyle(settings)}
     >
-      {templateBody(parsed.templateId, fittedModel, settings, parsed.showSessionHeader, layout?.w)}
+      {templateBody(parsed.templateId, fittedModel, settings, parsed.showSessionHeader)}
     </section>
   );
 }

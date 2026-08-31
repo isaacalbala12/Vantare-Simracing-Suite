@@ -70,17 +70,17 @@ describe("canvas-frame-preview", () => {
     expect(viewport?.style.transform).toBe("scale(2)");
   });
 
-  it("keeps the fluid Redline physical frame narrow while scaling its visual base", () => {
+  it("expands the fluid Redline preview to its effective physical width", () => {
     const frame = mountFrame(true);
     beginStudioFramePreview("delta-main", "resize", layout);
 
     applyStudioFrameLayoutPreview("delta-main", { ...layout, w: 560, h: 192 });
 
     const viewport = frame.querySelector<HTMLElement>("[data-widget-visual-viewport]");
-    expect(frame.style.width).toBe("560px");
+    expect(frame.style.width).toBe("826px");
     expect(viewport?.style.width).toBe("826px");
-    expect(viewport?.style.height).toBe(`${192 / (560 / 826)}px`);
-    expect(viewport?.style.transform).toBe(`scale(${560 / 826})`);
+    expect(viewport?.style.height).toBe("192px");
+    expect(viewport?.style.transform).toBe("scale(1)");
   });
 
   it("keeps start geometry and applies transform delta on move", () => {

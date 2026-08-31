@@ -10,6 +10,7 @@ import {
 import type { AuthoringFixtureScenario } from "./fixtures/authoring-fixtures";
 import { buildAuthoringV2Runtime } from "./fixtures/authoring-v2-fixture";
 import * as relativeV2 from "../widget-types/relative/relative-view-model-v2";
+import { relativeDefinition } from "../widget-types/relative/relative-definition";
 
 afterEach(() => {
   cleanup();
@@ -79,26 +80,34 @@ async function runtimeMarkup(input: AuthoringFixtureScenario): Promise<string> {
 
 describe("the Workshop renders what the runtime renders", () => {
   it("consume la autoridad settled de Relative Redline sin estado frontend por perfil", async () => {
-    const spy = vi.spyOn(relativeV2, "prepareRelativeViewModelV2");
+    const input = scenario({ widget: "relative", system: "vantare-endurance" });
+    const widget = buildAuthoringFixtureWidget(input);
+    const snapshot = buildAuthoringFixtureTelemetry(input);
+    const runtime = buildAuthoringV2Runtime(widget.type, snapshot);
+    expect(runtime.overlayV2Frame).toBeDefined();
+    expect(runtime.overlayV2Source).toBeDefined();
+    const frame = runtime.overlayV2Frame!;
+    const model = relativeV2.buildSettledRelativeViewModelV2(
+      {
+        ...frame,
+        relative: frame.relative.map((row, index) => ({ ...row, id: `raw-${index}` })),
+      },
+      runtime.overlayV2Source!,
+      relativeDefinition.parseContent(widget.content),
+    );
+    const settledIds = new Set(frame.relativeSettled.map((row) => row.id));
+    expect(model.rows.length).toBeGreaterThan(0);
+    expect(model.rows.every((row) => settledIds.has(row.id))).toBe(true);
+    expect(model.rows.some((row) => row.id.startsWith("raw-"))).toBe(false);
+
     const search = "?widget=relative&system=vantare-endurance&state=ready&surface=obs";
-    const view = render(<OverlayWorkshopDevRoute search={search} profileId="profile-a" />);
-
-    await waitFor(() => expect(spy).toHaveBeenCalled());
-    const firstCall = spy.mock.calls.at(-1);
-    expect(firstCall?.[0].relative).toEqual(firstCall?.[0].relativeSettled);
-    expect(firstCall?.[3]).toBeUndefined();
-
-    const callsBeforeSpread = spy.mock.calls.length;
-    view.rerender(<OverlayWorkshopDevRoute search={search} profileId="profile-a" />);
-    await waitFor(() => expect(spy.mock.calls.length).toBeGreaterThan(callsBeforeSpread));
-    expect(spy.mock.calls.at(-1)?.[3]).toBeUndefined();
-
-    const callsBeforeProfileChange = spy.mock.calls.length;
-    view.rerender(<OverlayWorkshopDevRoute search={search} profileId="profile-b" />);
-    await waitFor(() => expect(spy.mock.calls.length).toBeGreaterThan(callsBeforeProfileChange));
-    const changedProfileCall = spy.mock.calls.at(-1);
-    expect(changedProfileCall?.[0].relative).toEqual(changedProfileCall?.[0].relativeSettled);
-    expect(changedProfileCall?.[3]).toBeUndefined();
+    const first = render(<OverlayWorkshopDevRoute search={search} profileId="profile-a" />);
+    await waitFor(() => expect(first.container.querySelector('[data-widget-renderer="relative"]')).toBeTruthy());
+    const firstMarkup = rendererMarkup(first.container, "relative");
+    first.unmount();
+    const second = render(<OverlayWorkshopDevRoute search={search} profileId="profile-b" />);
+    await waitFor(() => expect(second.container.querySelector('[data-widget-renderer="relative"]')).toBeTruthy());
+    expect(rendererMarkup(second.container, "relative")).toBe(firstMarkup);
   });
 
   const cases = [

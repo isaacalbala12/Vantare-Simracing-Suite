@@ -81,12 +81,14 @@
   merge ni promoción.
   Corrección posterior pendiente de revisión: el RED físico
   `relative-20260831-213627/13-relative-redline-mirror` registró nueve cambios
-  completos en 24 s sin ghosts, desconexión ni drift. Relative conserva ahora
-  una ventana completa cuando todos los vecinos rotan, exige siete segundos
-  para aceptar ese reemplazo y mantiene 900 ms para el cruce del mismo rival.
-  La regresión simula nueve candidatos de boxes que cambian cada 2–4 s y queda
-  estable; falta repetir la prueba física Wails/LMU. Sin push, PR, merge ni
-  promoción.
+  completos en 24 s sin ghosts, desconexión ni drift. Tras REQUEST_CHANGES, el
+  hold de siete segundos sólo conserva slots cuyos VehicleID siguen presentes
+  en el `scoped` canónico: si falta uno, acepta inmediatamente la ventana
+  candidata completa, sin ghosts, stale ni huecos. Player y filas que no cruzan
+  se rehidratan desde el frame actual; el cruce del mismo rival conserva 900 ms.
+  RED 3 fallos/39 pases y GREEN 42/42 cubren reemplazo parcial, player actual,
+  ausencia de IDs no canónicos y reset session/epoch. Falta repetir la prueba
+  física Wails/LMU. Sin push, PR, merge ni promoción.
 
 - **ISA-957 — filas completas y semántica de Standings (2026-08-31, rama):**
   las nueve plantillas Endurance recortan el modelo con

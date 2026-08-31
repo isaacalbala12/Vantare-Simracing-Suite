@@ -184,10 +184,95 @@ describe("relative v2 view model", () => {
     ] as const) {
       nowMs = elapsedMs;
       sequence += 1;
-      const rotated = relativeScenarioFrame(base, sequence, ["far-a", ahead], [behind, "far-b"], true);
+      const rotated = relativeScenarioFrame(base, sequence, ["ahead-a", ahead], [behind, "behind-a"], true);
       expect(nonPlayerIds(buildRelativeViewModelV2(rotated, { state: "live" }, content, options)))
         .toEqual(["ahead-a", "behind-a"]);
     }
+  });
+
+  it("keeps row count and canonical order when exactly one neighbour is replaced", () => {
+    const base = goldenFrame(44);
+    const state = createRelativeViewModelState();
+    const content = { ...CONTENT, rangeAhead: 1, rangeBehind: 1 };
+    let nowMs = 0;
+    const options = { state, nowMs: () => nowMs };
+    const initial = relativeScenarioFrame(base, 810, ["ahead-old"], ["behind-stable"], true);
+    const changed = relativeScenarioFrame(base, 811, ["ahead-new"], ["behind-stable"], true);
+
+    buildRelativeViewModelV2(initial, { state: "live" }, content, options);
+    nowMs = 100;
+    const model = buildRelativeViewModelV2(changed, { state: "live" }, content, options);
+
+    expect(model.rows.map((row) => row.id)).toEqual(["ahead-new", base.player.id, "behind-stable"]);
+    expect(model.rows.map((row) => row.side)).toEqual(["ahead", "player", "behind"]);
+  });
+
+  it("rehydrates the player row while a same-rival crossing is held", () => {
+    const base = goldenFrame(44);
+    const state = createRelativeViewModelState();
+    const content = { ...CONTENT, rangeAhead: 1, rangeBehind: 1 };
+    let nowMs = 0;
+    const options = { state, nowMs: () => nowMs };
+    const initial = relativeScenarioFrame(base, 820, ["rival"], ["stable"], true);
+    const crossedBase = relativeScenarioFrame(base, 821, ["stable"], ["rival"], true);
+    const crossed = {
+      ...crossedBase,
+      relative: crossedBase.relative.map((row) => row.id === base.player.id
+        ? { ...row, position: 34, name: "player-now", lastLap: { q: "fresh" as const, v: 88.321 } }
+        : row) as OverlayFrameV2["relative"],
+    };
+
+    buildRelativeViewModelV2(initial, { state: "live" }, content, options);
+    nowMs = 100;
+    const held = buildRelativeViewModelV2(crossed, { state: "live" }, content, options);
+
+    expect(held.rows.find((row) => row.isPlayer)).toMatchObject({
+      position: 34,
+      driverName: "player-now",
+      lastLapText: "1:28.321",
+    });
+  });
+
+  it("never renders a VehicleID absent from the current scoped canonical rows", () => {
+    const base = goldenFrame(44);
+    const state = createRelativeViewModelState();
+    const content = { ...CONTENT, rangeAhead: 1, rangeBehind: 1 };
+    let nowMs = 0;
+    const options = { state, nowMs: () => nowMs };
+    const initial = relativeScenarioFrame(base, 830, ["ahead-old"], ["behind-old"], true);
+    const changed = relativeScenarioFrame(base, 831, ["ahead-new"], ["behind-new"], true);
+
+    buildRelativeViewModelV2(initial, { state: "live" }, content, options);
+    nowMs = 100;
+    const model = buildRelativeViewModelV2(changed, { state: "live" }, content, options);
+    const canonicalIds = new Set(changed.relative.map((row) => row.id));
+
+    expect(model.rows).toHaveLength(3);
+    expect(model.rows.every((row) => canonicalIds.has(row.id))).toBe(true);
+  });
+
+  it.each(["session", "epoch"] as const)("abandons a pending neighbour hold on %s reset", (resetCase) => {
+    const base = goldenFrame(44);
+    const state = createRelativeViewModelState();
+    const content = { ...CONTENT, rangeAhead: 1, rangeBehind: 0 };
+    let nowMs = 0;
+    const options = { state, nowMs: () => nowMs };
+    const initial = relativeScenarioFrame(base, 840, ["next", "accepted"], [], true);
+    const pending = relativeScenarioFrame(base, 841, ["accepted", "next"], [], true);
+
+    buildRelativeViewModelV2(initial, { state: "live" }, content, options);
+    nowMs = 100;
+    expect(nonPlayerIds(buildRelativeViewModelV2(pending, { state: "live" }, content, options)))
+      .toEqual(["accepted"]);
+
+    const resetFrame = {
+      ...pending,
+      sequence: 842,
+      sessionId: resetCase === "session" ? `${base.sessionId}-next` : base.sessionId,
+      epoch: resetCase === "epoch" ? base.epoch + 1 : base.epoch,
+    };
+    expect(nonPlayerIds(buildRelativeViewModelV2(resetFrame, { state: "live" }, content, options)))
+      .toEqual(["next"]);
   });
 
   it("does not compare different VehicleIDs to bypass the hold at a spatial edge", () => {
@@ -228,9 +313,9 @@ describe("relative v2 view model", () => {
     const buemi = wrapped.rows.find((row) => row.id === "buemi");
 
     expect(held.rows.find((row) => row.id === "buemi")).toMatchObject({
-      side: "behind",
-      gapSeconds: -0.2,
-      gapText: "-0.2",
+      side: "ahead",
+      gapSeconds: 1.5,
+      gapText: "+1.5",
     });
     expect(buemi).toMatchObject({ side: "ahead", gapSeconds: 1.5, gapText: "+1.5" });
     expect(wrapped.rows.filter((row) => row.id === "buemi")).toHaveLength(1);
@@ -314,7 +399,7 @@ describe("relative v2 view model", () => {
     expect(next.presentationKey).not.toBe(first.presentationKey);
   });
 
-  it("rehydrates accepted IDs from the current frame and removes vanished IDs", () => {
+  it("accepts a complete candidate immediately when a previous ID vanishes", () => {
     const base = goldenFrame(44);
     const state = createRelativeViewModelState();
     const content = { ...CONTENT, rangeAhead: 1, rangeBehind: 1 };
@@ -326,9 +411,10 @@ describe("relative v2 view model", () => {
     const changed = relativeScenarioFrame(base, 501, ["kept", "new"], ["replacement"], true, { kept: 7.5 }, { kept: 123, new: 130 });
     const model = buildRelativeViewModelV2(changed, { state: "live" }, content, options);
 
-    expect(model.rows.find((row) => row.id === "kept")).toMatchObject({ gapSeconds: 7.5, position: 1 });
+    expect(nonPlayerIds(model)).toEqual(["new", "replacement"]);
+    expect(model.rows).toHaveLength(3);
     expect(model.rows.some((row) => row.id === "gone")).toBe(false);
-    expect(model.rows.some((row) => row.id === "replacement")).toBe(false);
+    expect(model.rows.some((row) => row.id === "kept")).toBe(false);
   });
 
   it.each([

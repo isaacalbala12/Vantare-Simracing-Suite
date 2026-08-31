@@ -322,9 +322,13 @@ function stabilizeWindow(
     return candidate;
   }
 
-  // Membership state contains VehicleIDs only. Values and ordering are always
-  // rehydrated from the current canonical row, and vanished IDs are pruned.
-  state.acceptedIds = acceptedCurrent.map((row) => row.id);
+  // A hold is valid only while every accepted VehicleID still belongs to the
+  // current canonical scope. Otherwise publish the complete candidate now:
+  // never keep an absent car and never create a structural hole.
+  if (acceptedCurrent.length !== state.acceptedIds.length) {
+    acceptWindow(state, scopeKey, frame, nowMs, candidate);
+    return candidate;
+  }
 
   if (state.pendingKey !== candidateKey) {
     state.pendingKey = candidateKey;
@@ -337,12 +341,9 @@ function stabilizeWindow(
     acceptWindow(state, scopeKey, frame, nowMs, candidate);
     return candidate;
   }
-  // A rotating pit-lane window can replace every neighbour while the player is
-  // stationary. Keep the last complete canonical window until one replacement
-  // remains stable; this is membership stability, not a motion ghost.
   const held = holdsCanonicalSideChange
-    ? state.lastRows ?? acceptedCurrent
-    : heldWindow(state.lastRows, acceptedCurrent);
+    ? heldCrossingWindow(state.lastRows, acceptedCurrent)
+    : acceptedCurrent;
   state.lastRows = held;
   return held;
 }
@@ -381,18 +382,15 @@ function rowsForIds(
   });
 }
 
-function heldWindow(
+function heldCrossingWindow(
   lastRows: readonly OverlayRelativeRowV2[] | undefined,
   currentRows: readonly OverlayRelativeRowV2[],
 ): readonly OverlayRelativeRowV2[] {
   if (lastRows === undefined) return currentRows;
   const currentById = new Map(currentRows.map((row) => [row.id, row]));
-  const previousNeighbours = lastRows.filter((row) => row.side !== "player");
-  const hasSharedNeighbour = previousNeighbours.some((row) => currentById.has(row.id));
-  if (!hasSharedNeighbour) return lastRows;
-  return lastRows.flatMap((row) => {
-    const current = currentById.get(row.id);
-    return current === undefined ? [] : [current];
+  return lastRows.map((previous) => {
+    const current = currentById.get(previous.id)!;
+    return previous.side !== current.side && previous.side !== "player" ? previous : current;
   });
 }
 

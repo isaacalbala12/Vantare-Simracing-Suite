@@ -97,6 +97,32 @@ func TestRelativeSettlerIsPerInstanceAndBoundsItsOutput(t *testing.T) {
 	}
 }
 
+func TestProjectV2SettledIsPureImmediateBootstrapAndNoPlayerResets(t *testing.T) {
+	t.Parallel()
+	for _, count := range []int{1, 20, 44, 104} {
+		snapshot := builderFinalState(t, count)
+		update, err := ProjectV2(snapshot, builderSourceContext(), DefaultPreferencesV2(), 1)
+		if err != nil || update.Frame == nil {
+			t.Fatalf("ProjectV2(%d): %v", count, err)
+		}
+		if !sameRelativeIDs(relativeIDs(update.Frame.RelativeSettled), relativeIDs(update.Frame.Relative)) {
+			t.Fatalf("bootstrap differs at %d", count)
+		}
+	}
+	snapshot := builderFinalState(t, 20)
+	final, ok := snapshot.Value()
+	if !ok {
+		t.Fatal("missing final")
+	}
+	for i := range final.Observed.Vehicles {
+		final.Observed.Vehicles[i].Player = builderField(t, false, schema.FreshnessFresh)
+	}
+	settler := relativeSettler{}
+	if got := settler.project(final, BuildRelative(final), snapshot.Header(), cadenceOrigin); len(got) != 0 {
+		t.Fatalf("no player must reset immediately: %#v", got)
+	}
+}
+
 func settledRows(ids ...string) []RelativeRowV2 {
 	sides := []string{RelativeSideAhead, RelativeSideAhead, RelativeSidePlayer, RelativeSideBehind, RelativeSideBehind}
 	rows := make([]RelativeRowV2, len(ids))

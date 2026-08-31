@@ -31,8 +31,29 @@ export type RelativeViewModelStabilityOptions = Readonly<{
   bridgeSourceReconnect?: boolean;
 }>;
 
+export type RelativeViewModelTransition = Readonly<{
+  model: RelativeViewModel;
+  state: RelativeViewModelState;
+}>;
+
+export type RelativeViewModelCommitAuthority = Readonly<{
+  read: () => RelativeViewModelState;
+  publish: (draft: RelativeViewModelState) => void;
+}>;
+
 export function createRelativeViewModelState(): RelativeViewModelState {
   return {};
+}
+
+/** A render reads the last committed snapshot; drafts publish only after commit. */
+export function createRelativeViewModelCommitAuthority(): RelativeViewModelCommitAuthority {
+  let committed = createRelativeViewModelState();
+  return Object.freeze({
+    read: () => committed,
+    publish: (draft) => {
+      if (!relativeViewModelStateEquals(committed, draft)) committed = draft;
+    },
+  });
 }
 
 /**
@@ -58,19 +79,35 @@ export function buildRelativeViewModelV2(
   content: RelativeContent,
   stability: RelativeViewModelStabilityOptions = {},
 ): RelativeViewModel {
+  const transition = prepareRelativeViewModelV2(frame, source, content, stability);
+  publishRelativeViewModelState(stability.state, transition.state);
+  return transition.model;
+}
+
+/**
+ * Calculates the next Relative state without publishing it. React hosts must
+ * publish this draft only from a commit effect: a render can be abandoned.
+ */
+export function prepareRelativeViewModelV2(
+  frame: OverlayFrameV2,
+  source: OverlaySourceStatusV2,
+  content: RelativeContent,
+  stability: RelativeViewModelStabilityOptions = {},
+): RelativeViewModelTransition {
+  const state = cloneRelativeViewModelState(stability.state);
+  const draftStability = { ...stability, state };
   const columns = getEnabledRelativeColumns(content);
   if (source.state !== "live") {
-    const bridgeReconnect = stability.bridgeSourceReconnect === true &&
+    const bridgeReconnect = draftStability.bridgeSourceReconnect === true &&
       (source.state === "connecting" || source.state === "detecting");
-    const state = stability.state;
-    const scopeKey = stabilityScopeKey(frame, source, content, stability.instanceKey, true);
+    const scopeKey = stabilityScopeKey(frame, source, content, draftStability.instanceKey, true);
     let retainedRows: readonly OverlayRelativeRowV2[] = [];
     if (
       bridgeReconnect &&
       state?.scopeKey === scopeKey &&
       state.lastRows?.some((row) => row.side === "player")
     ) {
-      const nowMs = monotonicNow(stability, state);
+      const nowMs = monotonicNow(draftStability, state);
       if (state.pendingKey !== "") {
         state.pendingKey = "";
         state.pendingSinceMs = nowMs;
@@ -85,15 +122,18 @@ export function buildRelativeViewModelV2(
       resetRelativeViewModelState(state);
     }
     return {
-      type: "relative",
-      status: unavailableStatus(source.state),
-      statusMessage: source.reason || undefined,
-      presentationKey: bridgeReconnect
-        ? stabilityScopeKey(frame, source, content, stability.instanceKey, true)
-        : undefined,
-      columns,
-      rowHeightMode: content.rowHeightMode,
-      rows: retainedRows.map(buildRow),
+      state,
+      model: {
+        type: "relative",
+        status: unavailableStatus(source.state),
+        statusMessage: source.reason || undefined,
+        presentationKey: bridgeReconnect
+          ? stabilityScopeKey(frame, source, content, draftStability.instanceKey, true)
+          : undefined,
+        columns,
+        rowHeightMode: content.rowHeightMode,
+        rows: retainedRows.map(buildRow),
+      },
     };
   }
 
@@ -109,12 +149,14 @@ export function buildRelativeViewModelV2(
         scoped[anchor],
         ...scoped.slice(anchor + 1, anchor + 1 + content.rangeBehind),
       ];
-  const stableWithPlayer = stabilizeWindow(frame, source, scoped, candidateWithPlayer, content, stability);
+  const stableWithPlayer = stabilizeWindow(frame, source, scoped, candidateWithPlayer, content, draftStability);
   const window = content.includePlayer
     ? stableWithPlayer
     : stableWithPlayer.filter((row) => row.side !== "player");
 
   return {
+    state,
+    model: {
     type: "relative",
     status: "ready",
     statusMessage: source.reason || undefined,
@@ -122,13 +164,39 @@ export function buildRelativeViewModelV2(
       frame,
       source,
       content,
-      stability.instanceKey,
-      stability.bridgeSourceReconnect === true,
+      draftStability.instanceKey,
+      draftStability.bridgeSourceReconnect === true,
     ),
     columns,
     rowHeightMode: content.rowHeightMode,
     rows: window.map(buildRow),
+    },
   };
+}
+
+export function relativeViewModelStateEquals(
+  left: RelativeViewModelState,
+  right: RelativeViewModelState,
+): boolean {
+  return left.scopeKey === right.scopeKey &&
+    left.acceptedIds === right.acceptedIds &&
+    left.lastRows === right.lastRows &&
+    left.pendingKey === right.pendingKey &&
+    left.pendingSinceMs === right.pendingSinceMs &&
+    left.lastSequence === right.lastSequence &&
+    left.lastNowMs === right.lastNowMs;
+}
+
+function cloneRelativeViewModelState(state: RelativeViewModelState | undefined): RelativeViewModelState {
+  return state === undefined ? {} : { ...state };
+}
+
+function publishRelativeViewModelState(
+  target: RelativeViewModelState | undefined,
+  draft: RelativeViewModelState,
+): void {
+  if (target === undefined || relativeViewModelStateEquals(target, draft)) return;
+  Object.assign(target, draft);
 }
 
 export function relativeDisplayedValues(

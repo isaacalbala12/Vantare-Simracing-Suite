@@ -1,4 +1,5 @@
 import { cleanup, render } from "@testing-library/react";
+import { Suspense } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { buildMockTelemetry } from "./mock-scenarios";
 import type { OverlayFrameV2, OverlaySourceStatusV2 } from "../../generated/telemetry";
@@ -115,7 +116,6 @@ describe("WidgetVisualHost v2 generic registry", () => {
     const first = enduranceRelative("relative-a", "relative-redline-mirror");
     const second = enduranceRelative("relative-b", "relative-redline-traffic");
     const frame = makeFrame();
-    const spy = vi.spyOn(relativeV2, "buildRelativeViewModelV2");
     let nowMs = 0;
 
     const view = render(<>
@@ -123,22 +123,14 @@ describe("WidgetVisualHost v2 generic registry", () => {
       <WidgetVisualHost widget={second} renderMode="harness" runtime={{ overlayV2Frame: frame, overlayV2Source: source, relativeViewModelNowMs: () => nowMs }} />
     </>);
 
-    const firstOptions = spy.mock.calls[0]?.[3];
-    const secondOptions = spy.mock.calls[1]?.[3];
-    expect(firstOptions?.state).toBeDefined();
-    expect(secondOptions?.state).toBeDefined();
-    expect(firstOptions?.state).not.toBe(secondOptions?.state);
-    expect(firstOptions?.instanceKey).toBe(`harness:${first.id}`);
-    expect(secondOptions?.instanceKey).toBe(`harness:${second.id}`);
+    expect(view.container.querySelectorAll('[data-widget-renderer="relative"]')).toHaveLength(2);
 
     nowMs = 100;
     view.rerender(<>
       <WidgetVisualHost widget={first} renderMode="harness" runtime={{ overlayV2Frame: { ...frame, sequence: 2 }, overlayV2Source: source, relativeViewModelNowMs: () => nowMs }} />
       <WidgetVisualHost widget={second} renderMode="harness" runtime={{ overlayV2Frame: frame, overlayV2Source: source, relativeViewModelNowMs: () => nowMs }} />
     </>);
-    expect(spy.mock.calls[2]?.[3]?.state).toBe(firstOptions?.state);
-    expect(spy.mock.calls[3]?.[3]?.state).toBe(secondOptions?.state);
-    spy.mockRestore();
+    expect(view.container.querySelectorAll('[data-widget-renderer="relative"]')).toHaveLength(2);
   });
 
   it("mantiene el hold al recrear el objeto del mismo widget y resetea al cambiar de perfil", () => {
@@ -213,11 +205,9 @@ describe("WidgetVisualHost v2 generic registry", () => {
     ["relative-redline-mirror", "desktop"],
     ["relative-redline-proximity", "studio"],
     ["relative-redline-traffic", "obs"],
-  ] as const)("enables Redline stability for %s on %s", (templateId, renderMode) => {
+  ] as const)("renders the Redline DOM on %s/%s", (templateId, renderMode) => {
     const widget = enduranceRelative(`${templateId}-${renderMode}`, templateId);
-    const spy = vi.spyOn(relativeV2, "buildRelativeViewModelV2");
-
-    render(
+    const view = render(
       <WidgetVisualHost
         widget={widget}
         renderMode={renderMode}
@@ -225,13 +215,17 @@ describe("WidgetVisualHost v2 generic registry", () => {
       />,
     );
 
-    expect(spy.mock.calls[0]?.[3]).toMatchObject({ bridgeSourceReconnect: true });
-    expect(spy.mock.calls[0]?.[3]?.state).toBeDefined();
-    spy.mockRestore();
+    expect(view.container.querySelector('[data-widget-renderer="relative"]')?.getAttribute("data-template"))
+      .toBe(templateId);
+    expect(view.container.querySelectorAll("[data-relative-row]")).toHaveLength(3);
   });
 
-  it("limits the integrated Redline Traffic reconnect hold to 400 ms end to end", () => {
-    const widget = enduranceRelative("relative-traffic", "relative-redline-traffic");
+  it.each([
+    ["relative-redline-mirror", "desktop"],
+    ["relative-redline-proximity", "studio"],
+    ["relative-redline-traffic", "obs"],
+  ] as const)("keeps the one 400 ms Redline hold observable in %s/%s", (templateId, renderMode) => {
+    const widget = enduranceRelative(`relative-${renderMode}`, templateId);
     const base = makeFrame();
     const ahead = base.relative.find((row) => row.side === "ahead")!;
     const player = base.relative.find((row) => row.side === "player")!;
@@ -255,7 +249,7 @@ describe("WidgetVisualHost v2 generic registry", () => {
     const view = render(
       <WidgetVisualHost
         widget={widget}
-        renderMode="harness"
+        renderMode={renderMode}
         runtime={runtime(frame, { state: "live", retry: 0 })}
       />,
     );
@@ -266,17 +260,18 @@ describe("WidgetVisualHost v2 generic registry", () => {
     view.rerender(
       <WidgetVisualHost
         widget={widget}
-        renderMode="harness"
+        renderMode={renderMode}
         runtime={runtime(frame, { state: "detecting", retry: 1 })}
       />,
     );
     expect(rowIds()).toEqual(["ahead-far", "ahead-near", "player-1", "behind-near", "behind-far"]);
+    expect(view.container.querySelectorAll('[data-ghost="true"]')).toHaveLength(0);
 
     nowMs = 399;
     view.rerender(
       <WidgetVisualHost
         widget={widget}
-        renderMode="harness"
+        renderMode={renderMode}
         runtime={runtime({ ...frame, sequence: 2, relative: [] }, { state: "live", retry: 1 })}
       />,
     );
@@ -291,20 +286,26 @@ describe("WidgetVisualHost v2 generic registry", () => {
       />,
     );
     expect(rowIds()).toEqual([]);
+    expect(view.container.querySelectorAll('[data-ghost="true"]')).toHaveLength(0);
 
     nowMs = 401;
     view.rerender(
       <WidgetVisualHost
         widget={widget}
-        renderMode="harness"
+        renderMode={renderMode}
         runtime={runtime({ ...frame, sequence: 4, relative: [] }, { state: "live", retry: 1 })}
       />,
     );
     expect(rowIds()).toEqual([]);
+    expect(view.container.querySelectorAll('[data-ghost="true"]')).toHaveLength(0);
   });
 
-  it("invalidates Redline rows on source error before a same-session sequence reset", () => {
-    const widget = enduranceRelative("relative-error-recovery", "relative-redline-traffic");
+  it.each([
+    ["relative-redline-mirror", "desktop"],
+    ["relative-redline-proximity", "studio"],
+    ["relative-redline-traffic", "obs"],
+  ] as const)("recovers fresh Redline rows after error in %s/%s", (templateId, renderMode) => {
+    const widget = enduranceRelative(`relative-error-recovery-${renderMode}`, templateId);
     const frame = makeFrame();
     const oldRows = frame.relative.map((row) => ({ ...row, name: `OLD-${row.name}` }));
     const recoveredRows = frame.relative.map((row) => ({ ...row, name: `NEW-${row.name}` }));
@@ -316,7 +317,7 @@ describe("WidgetVisualHost v2 generic registry", () => {
     const view = render(
       <WidgetVisualHost
         widget={widget}
-        renderMode="harness"
+        renderMode={renderMode}
         runtime={runtime({ ...frame, sequence: 50, relative: oldRows }, source)}
       />,
     );
@@ -325,7 +326,7 @@ describe("WidgetVisualHost v2 generic registry", () => {
     view.rerender(
       <WidgetVisualHost
         widget={widget}
-        renderMode="harness"
+        renderMode={renderMode}
         runtime={runtime(frame, { state: "error", reason: "LMU projection stopped" })}
       />,
     );
@@ -334,12 +335,52 @@ describe("WidgetVisualHost v2 generic registry", () => {
     view.rerender(
       <WidgetVisualHost
         widget={widget}
-        renderMode="harness"
+        renderMode={renderMode}
         runtime={runtime({ ...frame, sequence: 1, relative: recoveredRows }, source)}
       />,
     );
     expect(view.container.textContent).toContain("NEW-Player");
     expect(view.container.textContent).not.toContain("OLD-Player");
+    expect(view.container.querySelectorAll('[data-ghost="true"]')).toHaveLength(0);
+  });
+
+  it("does not publish an abandoned Suspense Relative draft", () => {
+    const widget = enduranceRelative("relative-suspense", "relative-redline-mirror");
+    const frame = makeFrame();
+    const oldRows = frame.relative.map((row) => ({ ...row, name: `OLD-${row.name}` }));
+    const abandonedRows = frame.relative.map((row) => ({ ...row, name: `ABANDONED-${row.name}` }));
+    const never = new Promise<void>(() => undefined);
+    const Blocking = () => { throw never; };
+    const scene = (relative: OverlayFrameV2, block: boolean) => (
+      <Suspense fallback={<span>loading</span>}>
+        <WidgetVisualHost widget={widget} renderMode="desktop" runtime={{ overlayV2Frame: relative, overlayV2Source: source }} />
+        {block ? <Blocking /> : null}
+      </Suspense>
+    );
+    const view = render(scene({ ...frame, sequence: 1, relative: oldRows }, false));
+    expect(view.container.textContent).toContain("OLD-Player");
+
+    view.rerender(scene({ ...frame, sequence: 2, relative: abandonedRows }, true));
+    view.rerender(scene({ ...frame, sequence: 2, relative: oldRows }, false));
+
+    expect(view.container.textContent).toContain("OLD-Player");
+    expect(view.container.textContent).not.toContain("ABANDONED-Player");
+  });
+
+  it("publishes one committed Redline draft without rerendering its snapshot", () => {
+    const widget = enduranceRelative("relative-one-render", "relative-redline-mirror");
+    const spy = vi.spyOn(relativeV2, "prepareRelativeViewModelV2");
+    const frame = makeFrame();
+    const view = render(
+      <WidgetVisualHost widget={widget} renderMode="desktop" runtime={{ overlayV2Frame: frame, overlayV2Source: source }} />,
+    );
+
+    expect(spy).toHaveBeenCalledTimes(1);
+    view.rerender(
+      <WidgetVisualHost widget={widget} renderMode="desktop" runtime={{ overlayV2Frame: { ...frame, sequence: 2 }, overlayV2Source: source }} />,
+    );
+    expect(spy).toHaveBeenCalledTimes(2);
+    spy.mockRestore();
   });
 
   it.each(cases)("[$type] usa VM v2 por defecto cuando frame y source están presentes", ({ definition, spyModule, spyName, feature }) => {

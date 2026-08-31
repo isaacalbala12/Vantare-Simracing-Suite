@@ -78,12 +78,25 @@ describe("rows leaving the visible window", () => {
   });
 
   it("does not add a sixth row ghost when a departed rival is replaced in the same window", () => {
-    const initial = model([row("far-ahead", 2), row("near-ahead", 1), player, row("behind", -1)]);
-    const replacement = model([row("near-ahead", 1), row("new-ahead", 0.5), player, row("behind", -1)]);
+    const initial = model([
+      row("far-ahead", 2),
+      row("near-ahead", 1),
+      player,
+      row("near-behind", -1),
+      row("far-behind", -2),
+    ]);
+    const replacement = model([
+      row("near-ahead", 1),
+      row("new-ahead", 0.5),
+      player,
+      row("near-behind", -1),
+      row("far-behind", -2),
+    ]);
     const { result, rerender } = renderMotion(initial);
 
     rerender({ value: replacement });
 
+    expect(result.current.rows).toHaveLength(5);
     expect(result.current.ghosts).toHaveLength(0);
   });
 

@@ -78,31 +78,27 @@ async function runtimeMarkup(input: AuthoringFixtureScenario): Promise<string> {
 }
 
 describe("the Workshop renders what the runtime renders", () => {
-  it("delimita Relative por perfil sin reiniciar el estado al recrear el widget", async () => {
-    const spy = vi.spyOn(relativeV2, "buildRelativeViewModelV2");
+  it("consume la autoridad settled de Relative Redline sin estado frontend por perfil", async () => {
+    const spy = vi.spyOn(relativeV2, "prepareRelativeViewModelV2");
     const search = "?widget=relative&system=vantare-endurance&state=ready&surface=obs";
     const view = render(<OverlayWorkshopDevRoute search={search} profileId="profile-a" />);
 
     await waitFor(() => expect(spy).toHaveBeenCalled());
-    const firstOptions = spy.mock.calls.at(-1)?.[3];
-    const firstScope = firstOptions?.state?.scopeKey;
-    expect(firstOptions?.instanceKey).toBe("profile-a:relative-harness");
-    expect(firstScope).toContain("profile-a:relative-harness");
+    const firstCall = spy.mock.calls.at(-1);
+    expect(firstCall?.[0].relative).toEqual(firstCall?.[0].relativeSettled);
+    expect(firstCall?.[3]).toBeUndefined();
 
     const callsBeforeSpread = spy.mock.calls.length;
     view.rerender(<OverlayWorkshopDevRoute search={search} profileId="profile-a" />);
     await waitFor(() => expect(spy.mock.calls.length).toBeGreaterThan(callsBeforeSpread));
-    const spreadOptions = spy.mock.calls.at(-1)?.[3];
-    expect(spreadOptions?.state).toBe(firstOptions?.state);
-    expect(spreadOptions?.instanceKey).toBe("profile-a:relative-harness");
-    expect(spreadOptions?.state?.scopeKey).toBe(firstScope);
+    expect(spy.mock.calls.at(-1)?.[3]).toBeUndefined();
 
+    const callsBeforeProfileChange = spy.mock.calls.length;
     view.rerender(<OverlayWorkshopDevRoute search={search} profileId="profile-b" />);
-    await waitFor(() => expect(spy.mock.calls.at(-1)?.[3]?.instanceKey).toBe("profile-b:relative-harness"));
-    const changedProfileOptions = spy.mock.calls.at(-1)?.[3];
-    expect(changedProfileOptions?.state).toBe(firstOptions?.state);
-    expect(changedProfileOptions?.state?.scopeKey).toContain("profile-b:relative-harness");
-    expect(changedProfileOptions?.state?.scopeKey).not.toBe(firstScope);
+    await waitFor(() => expect(spy.mock.calls.length).toBeGreaterThan(callsBeforeProfileChange));
+    const changedProfileCall = spy.mock.calls.at(-1);
+    expect(changedProfileCall?.[0].relative).toEqual(changedProfileCall?.[0].relativeSettled);
+    expect(changedProfileCall?.[3]).toBeUndefined();
   });
 
   const cases = [

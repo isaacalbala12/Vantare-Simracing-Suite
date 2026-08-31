@@ -178,9 +178,7 @@ function renderWidget(
     const playerId = runtime.overlayV2Frame.player.id;
     const relativeTemplate = runtime.overlayV2Frame.relative[0];
     if (!relativeTemplate) throw new Error("reference relative row missing");
-    runtime.overlayV2Frame = {
-      ...runtime.overlayV2Frame,
-      relative: [
+    const relative = [
         {
           ...relativeTemplate,
           id: "relative-ahead",
@@ -208,7 +206,11 @@ function renderWidget(
           name: "Behind Driver",
           classId: "hypercar",
         },
-      ] as OverlayFrameV2["relative"],
+      ] as OverlayFrameV2["relative"];
+    runtime.overlayV2Frame = {
+      ...runtime.overlayV2Frame,
+      relative,
+      relativeSettled: relative,
     };
   }
   const telemetry = createTelemetryRateCoordinator();

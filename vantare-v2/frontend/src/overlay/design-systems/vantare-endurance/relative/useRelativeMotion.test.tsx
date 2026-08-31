@@ -1,6 +1,6 @@
 import { createRef } from "react";
 import { renderHook } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type {
   RelativeRowViewModel,
   RelativeViewModel,
@@ -73,5 +73,64 @@ describe("rows leaving the visible window", () => {
 
     rerender({ value: model(rows) });
     expect(result.current.ghosts).toHaveLength(0);
+  });
+});
+
+describe("measured row motion", () => {
+  it("does not animate the player when a rival crosses its row", () => {
+    const root = document.createElement("div");
+    const ahead = document.createElement("div");
+    const playerElement = document.createElement("div");
+    const rival = document.createElement("div");
+    const positions = new Map([
+      ["ahead", 0],
+      ["me", 30],
+      ["rival", 60],
+    ]);
+
+    for (const [id, element] of [
+      ["ahead", ahead],
+      ["me", playerElement],
+      ["rival", rival],
+    ] as const) {
+      element.dataset.relativeRow = id;
+      Object.defineProperty(element, "getBoundingClientRect", {
+        configurable: true,
+        value: () => ({ top: positions.get(id) ?? 0 }),
+      });
+      root.append(element);
+    }
+    Object.defineProperty(root, "getBoundingClientRect", {
+      configurable: true,
+      value: () => ({ top: 0 }),
+    });
+    document.body.append(root);
+
+    const playerAnimate = vi.fn();
+    const rivalAnimate = vi.fn();
+    Object.defineProperty(playerElement, "animate", {
+      configurable: true,
+      value: playerAnimate,
+    });
+    Object.defineProperty(rival, "animate", {
+      configurable: true,
+      value: rivalAnimate,
+    });
+
+    const rootRef = { current: root };
+    const { rerender, unmount } = renderHook(
+      ({ value }) => useRelativeMotion(value, true, rootRef),
+      { initialProps: { value: model([row("ahead", 1), player, row("rival", -1)]) } },
+    );
+
+    positions.set("me", 60);
+    positions.set("rival", 30);
+    rerender({ value: model([row("ahead", 1), row("rival", 1), player]) });
+
+    expect(playerAnimate).not.toHaveBeenCalled();
+    expect(rivalAnimate).toHaveBeenCalledOnce();
+
+    unmount();
+    root.remove();
   });
 });

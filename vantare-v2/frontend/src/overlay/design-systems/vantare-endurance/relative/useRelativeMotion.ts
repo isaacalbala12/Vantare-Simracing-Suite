@@ -63,11 +63,12 @@ export function useRelativeMotion(
   });
   const ghostTimersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
   /**
-   * Top position of every row in the last painted model, relative to the root.
-   * Measured imperatively after each paint; the next model slides each row from
-   * its previous position to its current one, which is what makes a crossing
-   * through the player row (and past the axis seams) read as one continuous
-   * glide instead of an estimated jump.
+   * Top position of every rival row in the last painted model, relative to the
+   * root. Measured imperatively after each paint; the next model slides each
+   * rival from its previous position to its current one, which is what makes a
+   * crossing through the player row (and past the axis seams) read as one
+   * continuous glide instead of an estimated jump. The player is the fixed
+   * axis anchor and is intentionally not part of this map.
    */
   const rectsRef = useRef<Map<string, number>>(new Map());
 
@@ -198,6 +199,11 @@ export function useRelativeMotion(
     // deslizara cada fila desde aqui hasta su nuevo sitio.
     const nextRects = new Map<string, number>();
     for (const row of model.rows) {
+      // The player is the fixed axis anchor. Rival crossings may reorder the
+      // surrounding rows, but must never make the player's own row animate.
+      if (row.isPlayer) {
+        continue;
+      }
       const element = rowElement(root, row.id);
       if (element) {
         nextRects.set(row.id, element.getBoundingClientRect().top - rootTop);

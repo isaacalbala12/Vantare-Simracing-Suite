@@ -9,6 +9,7 @@ import {
 } from "../../../widget-types/standings/standings-renderer-helpers";
 import {
   resolveStandingsCellValue,
+  withStandingsMotionIdentity,
   type StandingsRowViewModel,
   type StandingsViewModel,
 } from "../../../widget-types/standings/standings-view-model";
@@ -333,7 +334,7 @@ export function StandingsEndurance({ model, settings, layout }: WidgetRendererPr
     : parsed.templateId === "standings-redline"
       ? layout.h
       : resolveWidgetVisualGeometryForType(layout, "standings").baseHeight;
-  const fittedModel = {
+  const fittedRowsModel: StandingsViewModel = {
     ...model,
     rows: fitStandingsRowsToHeight(model.rows, {
       templateId: parsed.templateId,
@@ -342,7 +343,9 @@ export function StandingsEndurance({ model, settings, layout }: WidgetRendererPr
       hasStatusMessage: Boolean(model.statusMessage),
     }),
   };
-
+  const fittedModel = model.motionIdentity !== undefined && model.motionSequence !== undefined
+    ? withStandingsMotionIdentity(fittedRowsModel, model.motionIdentity, model.motionSequence)
+    : fittedRowsModel;
   return (
     <section
       data-widget-system="vantare-endurance"

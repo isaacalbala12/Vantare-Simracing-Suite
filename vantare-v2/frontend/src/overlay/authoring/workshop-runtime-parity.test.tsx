@@ -1,6 +1,6 @@
 import { cleanup, render, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
-import { OverlayWorkshopDevRoute } from "./OverlayWorkshopDevRoute";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { OverlayWorkshopDevRoute, OVERLAY_WORKSHOP_PROFILE_ID } from "./OverlayWorkshopDevRoute";
 import { RuntimeWidgetFrame } from "../runtime/RuntimeWidgetFrame";
 import { createTelemetryRateCoordinator } from "../core/telemetry-rate-coordinator";
 import {
@@ -9,8 +9,12 @@ import {
 } from "./fixtures/authoring-fixtures";
 import type { AuthoringFixtureScenario } from "./fixtures/authoring-fixtures";
 import { buildAuthoringV2Runtime } from "./fixtures/authoring-v2-fixture";
+import * as relativeV2 from "../widget-types/relative/relative-view-model-v2";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
 
 /**
  * The Workshop exists to show what a design will look like in a race. That is a
@@ -62,7 +66,7 @@ async function runtimeMarkup(input: AuthoringFixtureScenario): Promise<string> {
   const runtime = buildAuthoringV2Runtime(widget.type, snapshot);
   coordinator.setOverlayFrame(runtime.overlayV2Frame, runtime.overlayV2Source);
   const { container } = render(
-    <RuntimeWidgetFrame widget={widget} profileId="workshop-fixture" telemetry={coordinator} renderMode="obs" />,
+    <RuntimeWidgetFrame widget={widget} profileId={OVERLAY_WORKSHOP_PROFILE_ID} telemetry={coordinator} renderMode="obs" />,
   );
   await waitFor(() =>
     expect(container.querySelector(`[data-widget-renderer="${input.widget}"]`)).toBeTruthy(),
@@ -74,6 +78,33 @@ async function runtimeMarkup(input: AuthoringFixtureScenario): Promise<string> {
 }
 
 describe("the Workshop renders what the runtime renders", () => {
+  it("delimita Relative por perfil sin reiniciar el estado al recrear el widget", async () => {
+    const spy = vi.spyOn(relativeV2, "buildRelativeViewModelV2");
+    const search = "?widget=relative&system=vantare-endurance&state=ready&surface=obs";
+    const view = render(<OverlayWorkshopDevRoute search={search} profileId="profile-a" />);
+
+    await waitFor(() => expect(spy).toHaveBeenCalled());
+    const firstOptions = spy.mock.calls.at(-1)?.[3];
+    const firstScope = firstOptions?.state?.scopeKey;
+    expect(firstOptions?.instanceKey).toBe("profile-a:relative-harness");
+    expect(firstScope).toContain("profile-a:relative-harness");
+
+    const callsBeforeSpread = spy.mock.calls.length;
+    view.rerender(<OverlayWorkshopDevRoute search={search} profileId="profile-a" />);
+    await waitFor(() => expect(spy.mock.calls.length).toBeGreaterThan(callsBeforeSpread));
+    const spreadOptions = spy.mock.calls.at(-1)?.[3];
+    expect(spreadOptions?.state).toBe(firstOptions?.state);
+    expect(spreadOptions?.instanceKey).toBe("profile-a:relative-harness");
+    expect(spreadOptions?.state?.scopeKey).toBe(firstScope);
+
+    view.rerender(<OverlayWorkshopDevRoute search={search} profileId="profile-b" />);
+    await waitFor(() => expect(spy.mock.calls.at(-1)?.[3]?.instanceKey).toBe("profile-b:relative-harness"));
+    const changedProfileOptions = spy.mock.calls.at(-1)?.[3];
+    expect(changedProfileOptions?.state).toBe(firstOptions?.state);
+    expect(changedProfileOptions?.state?.scopeKey).toContain("profile-b:relative-harness");
+    expect(changedProfileOptions?.state?.scopeKey).not.toBe(firstScope);
+  });
+
   const cases = [
     {
       widget: "standings" as const,

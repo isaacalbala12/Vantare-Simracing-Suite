@@ -46,6 +46,36 @@ function columnWidth(column: WidgetColumnV3 | undefined, metricId: string): numb
   );
 }
 
+function redlineGridTemplateColumns(
+  columns: readonly WidgetColumnV3[],
+  availableWidth: number,
+): string {
+  const positionColumn = columns.find((column) => column.metricId === "position");
+  const driverColumn = columns.find((column) => column.metricId === "driverName");
+  const flexibleColumns = columns.filter((column) => !REDLINE_FIXED_METRICS.has(column.metricId));
+  const widths = [
+    columnWidth(positionColumn, "position"),
+    columnWidth(driverColumn, "driverName"),
+    DELTA_TRACK_PX,
+    ...flexibleColumns.map((column) => columnWidth(column, column.metricId)),
+  ];
+  const fixedChrome = ROW_GAP_PX * (widths.length - 1)
+    + ROW_HORIZONTAL_PADDING_PX
+    + BLOCK_HORIZONTAL_PADDING_PX;
+  const configuredWidth = widths.reduce((sum, width) => sum + width, 0);
+  const usableWidth = Math.max(0, availableWidth - fixedChrome);
+  const scale = Math.min(1, usableWidth / configuredWidth);
+
+  if (scale < 1) {
+    return widths.map((width) => `${width * scale}px`).join(" ");
+  }
+  return [
+    `${widths[0]}px`,
+    `minmax(${widths[1]}px, 1fr)`,
+    ...widths.slice(2).map((width) => `${width}px`),
+  ].join(" ");
+}
+
 function justifyForAlign(align: "left" | "center" | "right"): CSSProperties["justifyContent"] {
   return align === "right" ? "flex-end" : align === "center" ? "center" : "flex-start";
 }
@@ -89,6 +119,7 @@ function RedlineRow({
   positionDelta,
   tire,
   battle,
+  availableWidth,
   ghost = false,
 }: {
   row: StandingsRowViewModel;
@@ -98,17 +129,11 @@ function RedlineRow({
   positionDelta: number;
   tire: TireReveal | undefined;
   battle: BattleState | undefined;
+  availableWidth: number;
   ghost?: boolean;
 }) {
-  const positionColumn = columns.find((column) => column.metricId === "position");
   const driverColumn = columns.find((column) => column.metricId === "driverName");
   const flexibleColumns = columns.filter((column) => !REDLINE_FIXED_METRICS.has(column.metricId));
-  const tracks = [
-    `${columnWidth(positionColumn, "position")}px`,
-    `minmax(${columnWidth(driverColumn, "driverName")}px, 1fr)`,
-    `${DELTA_TRACK_PX}px`,
-    ...flexibleColumns.map((column) => `${columnWidth(column, column.metricId)}px`),
-  ];
   const isLead = !ghost && classPosition === 1;
   // A dissolving battle keeps its last interval, so the cell mounts at the
   // charge it had rather than at zero. The node is new — React rebuilds this
@@ -129,7 +154,7 @@ function RedlineRow({
       data-class-leader={isLead ? "true" : undefined}
       data-pit={row.pitText ? "true" : undefined}
       className={`ven-red-row${ghost ? " ven-red-ghost" : ""}`}
-      style={{ gridTemplateColumns: tracks.join(" ") }}
+      style={{ gridTemplateColumns: redlineGridTemplateColumns(columns, availableWidth) }}
     >
       <span className="ven-red-pos" data-metric="position">{ghost ? "—" : classPosition}</span>
       <span
@@ -196,28 +221,17 @@ function RedlineRow({
 export function StandingsRedlineTemplate({
   model,
   showSessionHeader,
+  availableWidth = Number.POSITIVE_INFINITY,
 }: {
   model: StandingsViewModel;
   settings: Readonly<Record<string, unknown>>;
   showSessionHeader: boolean;
+  availableWidth?: number;
 }) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const motion = useStandingsMotion(model, model.status === "ready", rootRef);
   const sessionBest = findSessionBestLapSeconds(model.rows);
   const groups = groupRowsByClass(model.rows);
-  const flexibleColumns = model.columns.filter((column) => !REDLINE_FIXED_METRICS.has(column.metricId));
-  const positionColumn = model.columns.find((column) => column.metricId === "position");
-  const driverColumn = model.columns.find((column) => column.metricId === "driverName");
-  const requiredWidth = Math.max(
-    420,
-    columnWidth(positionColumn, "position") +
-      columnWidth(driverColumn, "driverName") +
-      DELTA_TRACK_PX +
-      flexibleColumns.reduce((sum, column) => sum + columnWidth(column, column.metricId), 0) +
-      ROW_GAP_PX * (2 + flexibleColumns.length) +
-      ROW_HORIZONTAL_PADDING_PX +
-      BLOCK_HORIZONTAL_PADDING_PX,
-  );
   const battleByAhead = new Map(motion.battles.map((battle) => [battle.aheadId, battle]));
   const remainingSeconds = remainingSecondsFromText(model.remainingText);
   const isFinalMinutes =
@@ -228,10 +242,10 @@ export function StandingsRedlineTemplate({
     bucket.push(ghost);
     ghostsByClass.set(ghost.vehicleClass, bucket);
   }
-  let ghostBudget = 1;
+  const ghostClass = groups.find((group) => ghostsByClass.has(group.vehicleClass))?.vehicleClass;
 
   return (
-    <div ref={rootRef} className="ven-red-root" style={{ minWidth: requiredWidth }}>
+    <div ref={rootRef} className="ven-red-root">
       {model.statusMessage ? (
         <p className="ven-status-message" role="status">
           {model.statusMessage}
@@ -255,6 +269,7 @@ export function StandingsRedlineTemplate({
                 positionDelta={motion.positionDeltas.get(target.id) ?? 0}
                 tire={motion.tires.get(target.id)}
                 battle={battle && battle.behindId === target.id ? battle : undefined}
+                availableWidth={availableWidth}
               />
             );
           };
@@ -275,8 +290,9 @@ export function StandingsRedlineTemplate({
         }
         // The layout reserves one transient row across the complete widget.
         // Rendering more would exceed it before the 640 ms ghosts leave.
-        const visibleGhosts = (ghostsByClass.get(group.vehicleClass) ?? []).slice(0, ghostBudget);
-        ghostBudget -= visibleGhosts.length;
+        const visibleGhosts = group.vehicleClass === ghostClass
+          ? (ghostsByClass.get(group.vehicleClass) ?? []).slice(0, 1)
+          : [];
         for (const ghost of visibleGhosts) {
           rendered.splice(
             Math.min(ghost.classIndex, rendered.length),
@@ -290,6 +306,7 @@ export function StandingsRedlineTemplate({
               positionDelta={0}
               tire={undefined}
               battle={undefined}
+              availableWidth={availableWidth}
               ghost
             />,
           );

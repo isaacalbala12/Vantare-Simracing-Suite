@@ -125,8 +125,7 @@ describe("StandingsRedlineTemplate", () => {
       (row.querySelector('[data-metric="tireCompound"]') as HTMLElement).style.justifySelf,
     ).toBe("start");
     const root = view.container.querySelector<HTMLElement>(".ven-red-root");
-    expect(root?.style.width).toBe("");
-    expect(root?.style.minWidth).toMatch(/px$/);
+    expect(root?.style.minWidth).toBe("");
   });
 
   it("renders retirement ghosts through the same configurable row", () => {

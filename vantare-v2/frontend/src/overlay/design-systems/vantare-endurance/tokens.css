@@ -1597,7 +1597,7 @@
 
 [data-widget-system="vantare-endurance"] .ven-red-root {
   position: relative;
-  min-width: 420px;
+  width: 100%;
 }
 
 [data-widget-system="vantare-endurance"] .ven-red-block {
@@ -1748,6 +1748,8 @@
 }
 
 [data-widget-system="vantare-endurance"] .ven-red-name {
+  display: block;
+  max-width: 100%;
   color: #e8e8e8;
   font-size: 13px;
   font-weight: 700;
@@ -1832,7 +1834,11 @@
 }
 
 [data-widget-system="vantare-endurance"] .ven-red-gaptext {
+  max-width: 100%;
+  overflow: hidden;
   position: relative;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   z-index: 1;
 }
 

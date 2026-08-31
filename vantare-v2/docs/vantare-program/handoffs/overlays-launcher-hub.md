@@ -1292,3 +1292,24 @@ Evidencia Task 4 y cierre acumulado:
   PASS. S3 Wails/LMU sigue pendiente.
 - Trabajo local en `vantareapp/isa-962-s3-relative-transparency-integration`;
   sin push, PR, merge, promoción ni release.
+
+## ISA-968 — Standings Redline estrecho (2026-08-31)
+
+- Rama aislada `vantareapp/isa-968-standings-redline-narrow`, worktree
+  `C:\tmp\vantare-isa968\vantare-v2`, base exacta
+  `bff576bc3d8175bf986ff7bfef56c19b1ad5e7ab`.
+- RED productivo: la regresión con el golden Overlay V2 de 20 vehículos falló
+  en `desktop/280px` con 32 descendientes fuera del frame; raíz, bloque y filas
+  medían 430 px y las columnas Gap/Última vuelta quedaban recortadas.
+- Solución: únicamente Standings Redline ocupa el ancho real y reduce
+  proporcionalmente las pistas configuradas cuando no caben. Conserva orden,
+  alineación, relación de anchos, filas y motion; no cambia el mínimo global de
+  Standings, `RuntimeWidgetFrame`, otros templates ni los datos V2.
+- GREEN: matriz productiva ready en Desktop, Studio y OBS a 280, 340, 419 y
+  420 px, más missing en Desktop/OBS, sin descendientes visibles fuera del
+  frame. Focal ampliado: 6 archivos y 24/24 tests PASS. Typecheck, build y lint
+  frontend PASS; el build conserva únicamente el aviso informativo de chunks
+  mayores de 500 kB. Digest de roadmap y dry-run del fragmento ISA-968 PASS.
+- La validación física S3 Wails/LMU no se ejecutó por instrucción expresa de
+  este corte y permanece pendiente antes de promoción. Trabajo solo local: sin
+  app, push, PR, CI remoto, merge, promoción ni release.

@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-968",
+  "type": "fix",
+  "summary": "Standings Redline mantiene todas sus columnas configuradas dentro de los perfiles estrechos.",
+  "technicalNotes": [
+    "Redline adapta proporcionalmente sus pistas al ancho real cuando la configuración no cabe, sin cambiar el contrato global de Standings ni otros templates.",
+    "La regresión atraviesa RuntimeWidgetFrame, WidgetVisualViewport, WidgetVisualHost y el builder V2 con el golden canónico de 20 vehículos.",
+    "Desktop, Studio y OBS quedan cubiertos a 280, 340, 419 y 420 px; también se comprueba el estado V2 missing en las superficies productivas."
+  ],
+  "testing": [
+    "Abrir Standings Redline en Studio con anchos de 280, 340, 419 y 420 px y confirmar que todas las columnas visibles permanecen dentro del frame.",
+    "Comprobar el mismo perfil en Desktop y OBS con telemetría real, verificando filas completas y ausencia de recortes laterales."
+  ],
+  "knownLimitations": [
+    "La validación física S3 en Wails/LMU permanece pendiente antes de promover la rama."
+  ]
+}

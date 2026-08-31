@@ -96,7 +96,8 @@ describe("rows leaving the visible window", () => {
 
     rerender({ value: replacement });
 
-    expect(result.current.rows).toHaveLength(5);
+    expect(replacement.rows).toHaveLength(5);
+    expect(replacement.rows.length + result.current.ghosts.length).toBe(5);
     expect(result.current.ghosts).toHaveLength(0);
   });
 

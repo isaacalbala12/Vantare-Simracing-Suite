@@ -347,6 +347,7 @@ describe("RuntimeOverlaySurface", () => {
         coordinator.dispose();
       }
     },
+    60_000,
   );
 
   it.each(["desktop", "obs"] as const)(

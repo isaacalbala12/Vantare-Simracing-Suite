@@ -71,7 +71,7 @@ function CommittedRedlineRelative(props: {
   // Redline opts into the Go-owned settled membership. The frontend retains
   // only visual motion; it must not apply a second membership hold.
   const transition = prepareRelativeViewModelV2(
-    { ...props.frame, relative: props.frame.relativeSettled ?? props.frame.relative },
+    { ...props.frame, relative: props.frame.relativeSettled },
     props.source,
     props.content as never,
   );

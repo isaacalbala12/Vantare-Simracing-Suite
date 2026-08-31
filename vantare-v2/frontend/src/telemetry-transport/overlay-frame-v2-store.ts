@@ -278,7 +278,7 @@ function sourceStatus(value: unknown, path: string): void {
 function frame(value: unknown, path: string): void {
   objectWithKeys(value, path, [
     "contract", "algorithm", "epoch", "sequence", "sectionMask", "sessionId", "generatedAt", "units",
-    "session", "player", "controls", "standings", "relative", "delta", "fuel", "spotter", "capabilities", "damage", "weather",
+    "session", "player", "controls", "standings", "relative", "relativeSettled", "delta", "fuel", "spotter", "capabilities", "damage", "weather",
   ]);
   if (value.contract !== 2) invalid(`${path}.contract`);
   positiveInteger(value.algorithm, `${path}.algorithm`);
@@ -295,7 +295,8 @@ function frame(value: unknown, path: string): void {
   player(value.player, `${path}.player`);
   controls(value.controls, `${path}.controls`);
   rowArray(value.standings, `${path}.standings`, validStanding);
-  rowArray(value.relative, `${path}.relative`, validRelative);
+  relativeRowArray(value.relative, `${path}.relative`);
+  relativeRowArray(value.relativeSettled, `${path}.relativeSettled`);
   delta(value.delta, `${path}.delta`);
   fuel(value.fuel, `${path}.fuel`);
   spotter(value.spotter, `${path}.spotter`);
@@ -560,6 +561,11 @@ function rowArray(value: unknown, path: string, validate: (value: unknown) => bo
     if (!validate(value[index])) invalid(`${path}[${index}]`);
   }
   Object.freeze(value);
+}
+
+function relativeRowArray(value: unknown, path: string): void {
+  if (!Array.isArray(value) || value.length > 17) invalid(path);
+  rowArray(value, path, validRelative);
 }
 
 function record(value: unknown, path: string, validate: (value: unknown, path: string) => void): void {

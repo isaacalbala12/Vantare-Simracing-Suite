@@ -51,13 +51,17 @@ func BuildRelative(final derive.FinalState) []RelativeRowV2 {
 	for _, gap := range final.Derived.Gaps.Vehicles {
 		gaps[string(gap.Vehicle)] = gap.Time
 	}
+	positions := make(map[string]int32, len(final.Observed.Vehicles))
+	for index, current := range orderedVehicles(final.Observed.Vehicles) {
+		positions[string(current.Identity.Vehicle)] = resolvedPosition(current, index)
+	}
 
 	for _, current := range window.ahead {
-		rows = append(rows, relativeRow(current, gaps[string(current.Identity.Vehicle)], RelativeSideAhead))
+		rows = append(rows, relativeRow(current, positions[string(current.Identity.Vehicle)], gaps[string(current.Identity.Vehicle)], RelativeSideAhead))
 	}
-	rows = append(rows, playerRelativeRow(window.player, gaps[string(window.player.Identity.Vehicle)]))
+	rows = append(rows, playerRelativeRow(window.player, positions[string(window.player.Identity.Vehicle)], gaps[string(window.player.Identity.Vehicle)]))
 	for _, current := range window.behind {
-		rows = append(rows, relativeRow(current, gaps[string(current.Identity.Vehicle)], RelativeSideBehind))
+		rows = append(rows, relativeRow(current, positions[string(current.Identity.Vehicle)], gaps[string(current.Identity.Vehicle)], RelativeSideBehind))
 	}
 	return rows
 }
@@ -176,33 +180,42 @@ func usableRelativeGap(field schema.Field[standings.RelativeTime]) (float64, boo
 
 func relativeRow(
 	vehicle core.VehicleState,
+	position int32,
 	gap schema.Field[standings.RelativeTime],
 	side string,
 ) RelativeRowV2 {
 	return RelativeRowV2{
-		VehicleID: string(vehicle.Identity.Vehicle),
-		GapSeconds: qualityValue(gap, func(value standings.RelativeTime) float64 {
-			seconds := math.Abs(float64(value))
-			if side == RelativeSideBehind {
-				return -seconds
-			}
-			if side == RelativeSidePlayer {
-				return 0
-			}
-			return seconds
-		}),
-		Side:        side,
-		Authority:   relativeAuthority(gap),
-		DisplayName: observedString(vehicle.DriverName),
-		ClassID:     vehicleClassID(vehicle),
+		VehicleID:      string(vehicle.Identity.Vehicle),
+		Position:       position,
+		GapSeconds:     canonicalRelativeGap(gap, side),
+		GroundPosition: groundPositionValue(vehicle.WorldPosition),
+		LastLapSeconds: qualityValue(vehicle.LastLapTime, func(value standings.LapTime) float64 { return float64(value) }),
+		Side:           side,
+		Authority:      relativeAuthority(gap),
+		DisplayName:    observedString(vehicle.DriverName),
+		ClassID:        vehicleClassID(vehicle),
 	}
+}
+
+func canonicalRelativeGap(gap schema.Field[standings.RelativeTime], side string) QValue[float64] {
+	value := qualityValue(gap, func(raw standings.RelativeTime) float64 { return float64(raw) })
+	if value.Q != QualityFresh && value.Q != QualityStale {
+		return value
+	}
+	consistent := side == RelativeSidePlayer && value.V == 0 ||
+		side == RelativeSideAhead && value.V > 0 ||
+		side == RelativeSideBehind && value.V < 0
+	if !consistent {
+		return QValue[float64]{Q: QualityInvalid}
+	}
+	return value
 }
 
 // playerRelativeRow publishes the player anchor. Its gap to itself is zero by
 // construction, and it carries the quality of the gap set rather than claiming
 // a freshness the canonical state never observed.
-func playerRelativeRow(player core.VehicleState, gap schema.Field[standings.RelativeTime]) RelativeRowV2 {
-	row := relativeRow(player, gap, RelativeSidePlayer)
+func playerRelativeRow(player core.VehicleState, position int32, gap schema.Field[standings.RelativeTime]) RelativeRowV2 {
+	row := relativeRow(player, position, gap, RelativeSidePlayer)
 	if _, usable := usableRelativeGap(gap); !usable {
 		row.GapSeconds = missingValue[float64]()
 		row.Authority = AuthorityDerived

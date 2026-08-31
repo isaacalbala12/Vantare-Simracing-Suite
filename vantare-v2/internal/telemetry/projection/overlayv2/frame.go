@@ -230,12 +230,15 @@ type StandingRowV2 struct {
 }
 
 type RelativeRowV2 struct {
-	VehicleID   string          `json:"id"`
-	GapSeconds  QValue[float64] `json:"gap"`
-	Side        string          `json:"side"`
-	Authority   Authority       `json:"authority"`
-	DisplayName string          `json:"name,omitempty"`
-	ClassID     string          `json:"classId,omitempty"`
+	VehicleID      string                   `json:"id"`
+	Position       int32                    `json:"position"`
+	GapSeconds     QValue[float64]          `json:"gap"`
+	GroundPosition QValue[GroundPositionV2] `json:"groundPosition"`
+	LastLapSeconds QValue[float64]          `json:"lastLap"`
+	Side           string                   `json:"side"`
+	Authority      Authority                `json:"authority"`
+	DisplayName    string                   `json:"name,omitempty"`
+	ClassID        string                   `json:"classId,omitempty"`
 }
 
 type DeltaViewV2 struct {

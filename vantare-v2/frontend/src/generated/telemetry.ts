@@ -299,8 +299,11 @@ export interface OverlayRelativeRowV2 {
   readonly authority: OverlayAuthorityV2;
   readonly classId?: string | undefined;
   readonly gap: OverlayQValue<number>;
+  readonly groundPosition: OverlayQValue<Overlayv2GroundPositionV2>;
   readonly id: string;
+  readonly lastLap: OverlayQValue<number>;
   readonly name?: string | undefined;
+  readonly position: number;
   readonly side: string;
 }
 

@@ -114,7 +114,15 @@
     "relative": [
       {
         "id": "vehicle-000",
+        "position": 1,
         "gap": {
+          "q": "fresh"
+        },
+        "groundPosition": {
+          "q": "fresh"
+        },
+        "lastLap": {
+          "v": 91.234,
           "q": "fresh"
         },
         "side": "player",

@@ -120,14 +120,18 @@ func hashRelativeMark(final derive.FinalState) uint64 {
 	for _, gap := range final.Derived.Gaps.Vehicles {
 		gapsByVehicle[string(gap.Vehicle)] = gap.Time
 	}
+	positions := make(map[string]int32, len(final.Observed.Vehicles))
+	for index, current := range orderedVehicles(final.Observed.Vehicles) {
+		positions[string(current.Identity.Vehicle)] = resolvedPosition(current, index)
+	}
 
 	for _, current := range window.ahead {
-		row := relativeRow(current, gapsByVehicle[string(current.Identity.Vehicle)], RelativeSideAhead)
+		row := relativeRow(current, positions[string(current.Identity.Vehicle)], gapsByVehicle[string(current.Identity.Vehicle)], RelativeSideAhead)
 		sum = hashRelativeRow(sum, row)
 	}
-	sum = hashRelativeRow(sum, playerRelativeRow(window.player, gapsByVehicle[string(window.player.Identity.Vehicle)]))
+	sum = hashRelativeRow(sum, playerRelativeRow(window.player, positions[string(window.player.Identity.Vehicle)], gapsByVehicle[string(window.player.Identity.Vehicle)]))
 	for _, current := range window.behind {
-		row := relativeRow(current, gapsByVehicle[string(current.Identity.Vehicle)], RelativeSideBehind)
+		row := relativeRow(current, positions[string(current.Identity.Vehicle)], gapsByVehicle[string(current.Identity.Vehicle)], RelativeSideBehind)
 		sum = hashRelativeRow(sum, row)
 	}
 	sum = hashUint64(sum, uint64(len(window.ahead)))
@@ -137,8 +141,14 @@ func hashRelativeMark(final derive.FinalState) uint64 {
 
 func hashRelativeRow(sum uint64, row RelativeRowV2) uint64 {
 	sum = hashString(sum, row.VehicleID)
+	sum = hashUint64(sum, uint64(row.Position))
 	sum = hashString(sum, string(row.GapSeconds.Q))
 	sum = hashUint64(sum, math.Float64bits(row.GapSeconds.V))
+	sum = hashString(sum, string(row.GroundPosition.Q))
+	sum = hashUint64(sum, math.Float64bits(row.GroundPosition.V.X))
+	sum = hashUint64(sum, math.Float64bits(row.GroundPosition.V.Z))
+	sum = hashString(sum, string(row.LastLapSeconds.Q))
+	sum = hashUint64(sum, math.Float64bits(row.LastLapSeconds.V))
 	sum = hashString(sum, row.Side)
 	sum = hashString(sum, string(row.Authority))
 	sum = hashString(sum, row.DisplayName)

@@ -31,6 +31,14 @@ describe("OverlayFrame v2 store", () => {
     expect(() => decodeOverlayUpdateV2(withoutBestLap)).toThrow(
       "overlay-frame-v2:invalid-contract:frame.standings[0]",
     );
+    for (const field of ["position", "groundPosition", "lastLap"] as const) {
+      const incomplete = JSON.parse(JSON.stringify(update)) as Record<string, unknown>;
+      const frame = incomplete.frame as { relative: Record<string, unknown>[] };
+      delete frame.relative[0]?.[field];
+      expect(() => decodeOverlayUpdateV2(incomplete)).toThrow(
+        "overlay-frame-v2:invalid-contract:frame.relative[0]",
+      );
+    }
     expect(() => decodeOverlayUpdateV2({
       ...update,
       frame: { ...update.frame, sectionMask: 0x800 },

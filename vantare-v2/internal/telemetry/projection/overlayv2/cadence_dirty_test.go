@@ -271,6 +271,13 @@ func TestRelativeDirtySignalIgnoresUnprojectedChanges(t *testing.T) {
 			dirty: true,
 		},
 		{
+			name: "position of neighbour inside window changes",
+			mutate: func(state *derive.FinalState) {
+				state.Observed.Vehicles[1].Position = builderPresent(standings.Position(19))
+			},
+			dirty: true,
+		},
+		{
 			name: "gap window reorders with tiny gap change",
 			mutate: func(state *derive.FinalState) {
 				// swap order of two near vehicles by adjusting gaps

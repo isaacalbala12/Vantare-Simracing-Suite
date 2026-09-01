@@ -128,6 +128,21 @@ test("falla una pendiente renderer superior a cinco MiB por hora", () => {
   assert.equal(summary.criteria.memory.status, "fail");
 });
 
+test("la observación de cinco minutos exige cinco muestras por proceso", () => {
+  const enough = fixture();
+  const started = Date.parse(enough.startedAt);
+  enough.durationMinutes = 5;
+  enough.endedAt = new Date(started + 5 * 60_000).toISOString();
+  enough.samples = enough.samples.filter(({timestamp}) => Date.parse(timestamp) <= started + 4 * 60_000);
+  const enoughSummary = summarizeSession(enough);
+  assert.equal(enoughSummary.criteria.memory.minimumSamples, 5);
+  assert.equal(enoughSummary.criteria.memory.status, "pass");
+
+  const short = structuredClone(enough);
+  short.samples = short.samples.filter(({timestamp}) => Date.parse(timestamp) <= started + 3 * 60_000);
+  assert.equal(summarizeSession(short).criteria.memory.status, "fail");
+});
+
 test("valida reconnect y apertura tardía contra sus timestamps", () => {
   const reconnect = fixture();
   reconnect.session = "S4";

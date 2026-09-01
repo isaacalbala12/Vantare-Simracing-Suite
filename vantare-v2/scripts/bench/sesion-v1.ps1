@@ -7,7 +7,7 @@ param(
     [ValidateSet('on', 'off')]
     [string]$Fase,
     [Parameter(Mandatory)]
-    [ValidateRange(1, 480)]
+    [ValidateRange(1, 5)]
     [int]$Duracion,
     [Parameter(Mandatory)]
     [string]$Exe,
@@ -15,7 +15,7 @@ param(
     [Parameter(Mandatory)]
     [ValidateRange(1024, 65535)]
     [int]$Puerto,
-    [string]$Perfil = 'testdata/bench/huella-endurance-3.json',
+    [string]$Perfil = '',
     [string]$Salida = 'results/isa-894/sesiones',
     [string]$Escena = '',
     [ValidateRange(0, 200)]
@@ -40,6 +40,11 @@ function Resolve-SessionPath([string]$Path, [switch]$MustExist) {
     $candidate = if ([IO.Path]::IsPathRooted($Path)) { $Path } else { Join-Path $repoRoot $Path }
     if ($MustExist) { return (Resolve-Path -LiteralPath $candidate).Path }
     return [IO.Path]::GetFullPath($candidate)
+}
+
+if ($Duracion -ne 5) { throw 'Cada comprobación física debe durar exactamente cinco minutos.' }
+if ([string]::IsNullOrWhiteSpace($Perfil)) {
+    $Perfil = if ($Sesion -eq 'S3') { 'testdata/bench/huella-endurance-s3-sin-delta.json' } else { 'testdata/bench/huella-endurance-3.json' }
 }
 
 if ($DiagnosticoMemoria -and $Sesion -ne 'S1') { throw '-DiagnosticoMemoria solo admite S1.' }
@@ -68,12 +73,6 @@ if ($DryRun) {
     exit 0
 }
 
-if ($DiagnosticoMemoria) {
-    if ($Duracion -lt 10) { throw 'El diagnóstico de memoria requiere al menos 10 minutos.' }
-} elseif ($Duracion -lt 20) {
-    throw 'Una sesión real no puede durar menos de 20 minutos.'
-}
-if ($Sesion -eq 'S3' -and $Fase -eq 'off' -and $Duracion -lt 60) { throw 'S3 OFF es el soak prolongado y requiere al menos 60 minutos.' }
 if ([string]::IsNullOrWhiteSpace($Escena)) {
     if ([Console]::IsInputRedirected) { throw '-Escena es obligatorio sin consola interactiva.' }
     $Escena = Read-Host 'escena LMU (circuito, tipo y estado inicial)'
@@ -82,8 +81,6 @@ if ($Coches -lt 1) {
     if ([Console]::IsInputRedirected) { throw '-Coches es obligatorio sin consola interactiva.' }
     $Coches = [int](Read-Host 'coches observados en LMU')
 }
-if ($Sesion -eq 'S3' -and $Coches -le 40) { throw 'S3 requiere más de 40 coches confirmados.' }
-
 $exePath = Resolve-SessionPath $Exe -MustExist
 $profilePath = Resolve-SessionPath $Perfil -MustExist
 $distPath = Resolve-SessionPath $Dist -MustExist
@@ -143,9 +140,12 @@ $exeName = [IO.Path]::GetFileName($exePath)
 $profileDocument = Get-Content -LiteralPath $profilePath -Raw | ConvertFrom-Json
 $profileLayouts = Get-SessionOptionalProperty -InputObject $profileDocument -Name 'layouts'
 if ($null -eq $profileLayouts) { throw 'El perfil de sesión no contiene layouts.' }
+$profileWidgets = @($profileLayouts.PSObject.Properties.Value | ForEach-Object { @(Get-SessionOptionalProperty -InputObject $_ -Name 'widgets') })
+if ($Sesion -eq 'S3' -and @($profileWidgets | Where-Object { [string]$_.type -eq 'delta' }).Count -gt 0) {
+    throw 'S3 excluye Delta por decisión de producto.'
+}
 $expectedWidgets = @(
-    $profileLayouts.PSObject.Properties.Value |
-        ForEach-Object { @(Get-SessionOptionalProperty -InputObject $_ -Name 'widgets') } |
+    $profileWidgets |
         Where-Object {
             $behavior = Get-SessionOptionalProperty -InputObject $_ -Name 'behavior'
             $enabled = Get-SessionOptionalProperty -InputObject $behavior -Name 'enabled'

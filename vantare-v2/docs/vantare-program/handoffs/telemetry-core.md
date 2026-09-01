@@ -15,6 +15,13 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 
 ## Estado real
 
+- 2026-09-01, decisión operativa ISA-894/ISA-962: Delta queda fuera de S3 y
+  ningún gate depende de completar o validar vueltas del jugador. Las nuevas
+  comprobaciones duran cinco minutos, se ejecutan con el jugador en pista y
+  siguen el orden S3 → S4 → S5 → S2. El colector falla cerrado fuera de cinco
+  minutos y S3 selecciona un perfil Redline sin Delta. La evidencia histórica
+  larga se conserva; esta reducción no autoriza Cut 2 ni promoción.
+
 - 2026-09-01, ISA-958 en rama: `CachedProjector` publica `relativeSettled`
   como autoridad única para Endurance Redline. Mantiene una ventana ordenada
   de máximo 8+jugador+8 hasta que otra ventana permanezca estable 7 s; si los

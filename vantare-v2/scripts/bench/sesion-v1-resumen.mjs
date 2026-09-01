@@ -60,9 +60,7 @@ function memoryCriterion(input) {
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push(sample);
   }
-  const minimumSamples = input.memoryDiagnostic === true
-    ? 10
-    : Number(input.durationMinutes) >= 60 ? 45 : 15;
+  const minimumSamples = 5;
   const slopes = [];
   const foundRoles = new Set();
   let pass = true;

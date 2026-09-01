@@ -124,11 +124,7 @@ describe("RelativeRedlineTemplate", () => {
             Math.min(alertRect.bottom, rowRect.bottom) > Math.max(alertRect.top, rowRect.top);
         });
       expect(intersections).toEqual([]);
-      expect(animate.mock.instances).not.toContain(wrapper);
-      expect(animate.mock.instances).not.toContain(threatRow);
-      expect(animate.mock.instances).toContain(
-        view.container.querySelector<HTMLElement>('[data-relative-row="other"]'),
-      );
+      expect(animate).not.toHaveBeenCalled();
     } finally {
       HTMLElement.prototype.animate = originalAnimate;
       rectSpy.mockRestore();

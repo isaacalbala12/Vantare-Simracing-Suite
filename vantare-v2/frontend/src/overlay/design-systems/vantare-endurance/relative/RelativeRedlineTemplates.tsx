@@ -307,7 +307,15 @@ export function RelativeRedlineTemplate({
 }) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const presentedModel = model;
-  const motion = useRelativeMotion(presentedModel, presentedModel.status === "ready", rootRef);
+  // Traffic inserts a full-width lapping note between rows. A FLIP transition
+  // can move an adjacent row through that reserved slot, so this variant keeps
+  // the V2 order stable without cross-row animation. Mirror and Proximity keep
+  // their motion because their rows all share the same fixed pitch.
+  const motion = useRelativeMotion(
+    presentedModel,
+    presentedModel.status === "ready" && variant !== "traffic",
+    rootRef,
+  );
 
   // Departed rows are put back where they sat and marked, so the variants keep
   // rendering a plain list and the fold happens in the right place.

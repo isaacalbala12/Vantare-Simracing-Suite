@@ -26,7 +26,9 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
   `relative` inmediato. El adaptador Redline no admite estado de estabilidad
   frontend, evitando un segundo hold. `RelativeRowV2` mantiene posición, última
   vuelta y posición 3D de la misma fila; no cruza Standings. Focales Go y
-  frontend, typecheck y diff-check verdes; full gates e integración pendientes.
+  frontend, typecheck y diff-check verdes. El candidato integrado superó 441
+  archivos/3.418 pruebas frontend, `go test ./...`, build y lint; la revisión
+  adversarial de la autoridad aislada fue APPROVE. S3 Wails/LMU sigue pendiente.
 
 - 2026-08-31, ISA-957 en rama: `StandingRowV2` incorpora la mejor vuelta
   canónica con calidad y el ViewModel de Standings separa por fase la métrica

@@ -38,9 +38,11 @@
   sides y orden canónicos, IDs únicos y exactamente un jugador, y el store no
   acepta `sequence` duplicada o regresiva en la misma sesión/epoch. El adapter
   Redline no expone estado de estabilidad frontend; Classic/Minimal/Neo no
-  cambian. Focales actuales: Go PASS, frontend 80/80, typecheck y diff-check
-  PASS. Falta revisión adversarial final, full suite e integración en el
-  candidato físico S3; no hay PR, promoción ni prueba Wails/LMU nueva.
+  cambian. Integrado en el candidato final Redline: frontend 441 archivos y
+  3.418 pruebas PASS, `go test ./...`, build, typecheck implícito, lint y
+  `diff --check` PASS. Las revisiones adversariales de la rama de autoridad y
+  del contrato de integración no mantienen hallazgos P0/P1. Falta únicamente
+  la validación física S3; no hay PR, promoción ni prueba Wails/LMU nueva.
 
 - **Histórico ISA-958 previo a la autoridad Go (2026-08-31, sustituido):** la
   pertenencia mantiene solo VehicleID y exige 900 ms monotónicos; no compara
@@ -1381,10 +1383,10 @@ Evidencia Task 4 y cierre acumulado:
 - RED productivo: la regresión con el golden Overlay V2 de 20 vehículos falló
   en `desktop/280px` con 32 descendientes fuera del frame; raíz, bloque y filas
   medían 430 px y las columnas Gap/Última vuelta quedaban recortadas.
-- Solución: únicamente Standings Redline ocupa el ancho real y reduce
-  proporcionalmente las pistas configuradas cuando no caben. Conserva orden,
-  alineación, relación de anchos, filas y motion; no cambia el mínimo global de
-  Standings, `RuntimeWidgetFrame`, otros templates ni los datos V2.
+- Solución final: únicamente Standings Redline calcula un mínimo desde sus
+  columnas y amplía el frame físico efectivo cuando el ancho persistido no
+  basta. No comprime tipografía, no oculta columnas y no conserva el escalado
+  visual alternativo. Desktop, Studio y OBS comparten esa misma geometría.
 - GREEN: matriz productiva ready en Desktop, Studio y OBS a 280, 340, 419 y
   420 px, más missing en Desktop/OBS, sin descendientes visibles fuera del
   frame. Focal ampliado: 6 archivos y 24/24 tests PASS. Typecheck, build y lint
@@ -1393,13 +1395,14 @@ Evidencia Task 4 y cierre acumulado:
 - La validación física S3 Wails/LMU no se ejecutó por instrucción expresa de
   este corte y permanece pendiente antes de promoción. Trabajo solo local: sin
   app, push, PR, CI remoto, merge, promoción ni release.
-- Cierre adversarial integrado en ISA-962: el runtime ya mantenía el frame
-  físico estrecho, pero Studio todavía sustituía 280 px por el mínimo visual
-  de 826 px. Studio y su preview imperativo conservan ahora `layout.w` como
-  geometría física y escalan la misma base visual que Desktop/OBS; selección y
-  tiradores permanecen en el frame persistido. La regresión productiva cubre
-  Desktop, Studio y OBS a 280/340/419/420 px, y los focales de layout/preview
-  quedan en 60/60 PASS. El renderer Redline publica además
+- Cierre adversarial integrado en ISA-962: un perfil heredado en `x=1639,
+  w=280` se representa a `x=1094, w=826`; al arrastrar 100 px a la izquierda
+  persiste `x=994` sin salto, hacia la derecha permanece acotado en `x=1094`,
+  y un click sin movimiento no ensucia ni autosalva el documento. Selección y
+  tiradores acompañan siempre al frame efectivo. El renderer Redline publica
+  además
   `data-session-mode` y `data-position-delta` para que S3 demuestre Practice y
-  cero ganadas/perdidas sin depender de clases CSS. Focal ampliado 82/82 PASS.
-  S3 físico sigue pendiente sobre el nuevo HEAD.
+  cero ganadas/perdidas sin depender de clases CSS. Candidato integrado:
+  frontend 441/441 archivos y 3.418/3.418 pruebas, Go completo, build y lint
+  PASS; revisión adversarial de la rama ISA-968 APPROVE. S3 físico sigue
+  pendiente sobre el nuevo HEAD.

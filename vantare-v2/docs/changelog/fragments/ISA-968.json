@@ -2,15 +2,16 @@
   "schemaVersion": 1,
   "issue": "ISA-968",
   "type": "fix",
-  "summary": "Standings Redline mantiene todas sus columnas configuradas dentro de los perfiles estrechos.",
+  "summary": "Standings Redline amplía físicamente su frame cuando las columnas configuradas necesitan más espacio.",
   "technicalNotes": [
-    "Redline adapta proporcionalmente sus pistas al ancho real cuando la configuración no cabe, sin cambiar el contrato global de Standings ni otros templates.",
-    "La regresión atraviesa RuntimeWidgetFrame, WidgetVisualViewport, WidgetVisualHost y el builder V2 con el golden canónico de 20 vehículos.",
-    "Desktop, Studio y OBS quedan cubiertos a 280, 340, 419 y 420 px; también se comprueba el estado V2 missing en las superficies productivas."
+    "Redline calcula un ancho mínimo efectivo a partir de sus columnas y normaliza la geometría física compartida por Desktop, Studio y OBS; no comprime texto ni oculta columnas.",
+    "Studio conserva el desplazamiento visual al soltar, limita el borde derecho y no guarda cambios cuando solo se selecciona el widget sin moverlo.",
+    "La regresión atraviesa RuntimeOverlaySurface, RuntimeWidgetFrame, WidgetVisualViewport, WidgetVisualHost y el builder V2 con el golden canónico de 20 vehículos."
   ],
   "testing": [
-    "Abrir Standings Redline en Studio con anchos de 280, 340, 419 y 420 px y confirmar que todas las columnas visibles permanecen dentro del frame.",
-    "Comprobar el mismo perfil en Desktop y OBS con telemetría real, verificando filas completas y ausencia de recortes laterales."
+    "Abrir Standings Redline en Studio desde un perfil estrecho y confirmar que frame, selección y tiradores muestran el ancho efectivo completo sin recortes.",
+    "Arrastrarlo desde el borde derecho hacia ambos lados y confirmar que no salta al soltar; un clic sin arrastre no debe ensuciar el perfil.",
+    "Comprobar Desktop y OBS con telemetría real, 20 filas completas y cero ganadas/perdidas durante Practice."
   ],
   "knownLimitations": [
     "La validación física S3 en Wails/LMU permanece pendiente antes de promover la rama."

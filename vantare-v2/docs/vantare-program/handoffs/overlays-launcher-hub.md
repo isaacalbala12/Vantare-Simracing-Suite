@@ -1381,9 +1381,13 @@ Evidencia Task 4 y cierre acumulado:
   completo 441 archivos y 3421/3421 tests PASS; typecheck, build, ESLint focal,
   `node --check`, digest de roadmap y `git diff --check` PASS. El build conserva
   únicamente el aviso informativo de chunks mayores de 500 kB.
-- Pendiente físico: reconstruir una sola vez desde el HEAD final y ejecutar S3
-  con el jugador en pista (máximo cinco minutos por familia), después S4, S5 y
-  S2 al final. Sin push, PR, merge, promoción ni release.
+- Revisión adversarial final sobre `1363de97` APPROVE, sin P0/P1. La rama está
+  publicada y el PR draft #969 apunta a `nightly`; CI remoto queda en curso.
+- Pendiente físico: ejecutar S3 con el jugador en pista (máximo cinco minutos
+  por familia), después S4, S5 y S2 al final. LMU acepta el ratón automatizado
+  pero su RawInput descartó cambio, acelerador y Escape inyectados; el coche
+  permaneció en boxes y esa observación no se declara PASS. Sin merge,
+  promoción ni release.
 
 ## ISA-968 — Standings Redline estrecho (2026-08-31)
 

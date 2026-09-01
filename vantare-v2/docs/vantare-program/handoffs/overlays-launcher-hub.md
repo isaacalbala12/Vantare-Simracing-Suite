@@ -1361,19 +1361,29 @@ Evidencia Task 4 y cierre acumulado:
 - No hay PR, merge, promoción ni release. HEAD funcional antes de este
   checkpoint: `0a25f4ad`.
 
-## ISA-962 — compatibilidad del gate S3 con Relative V2 (2026-08-31)
+## ISA-962 — integración final Endurance Redline (2026-09-01)
 
-- El candidato local que combina #957, #958, #959, #960 y #961 reveló que la
-  matriz de transparencia construía filas Relative incompletas y fallaba al
-  leer la calidad de `lastLap` del contrato V2 vigente.
-- La regresión ahora deriva cada fila de la fila canónica del golden V2 y solo
-  cambia los campos necesarios para representar delante, jugador y detrás. No
-  añade fallback productivo ni relaja `OverlayQValue`.
-- RED integrado: `TypeError` en `relative-view-model-v2.ts:312`. GREEN focal:
-  matriz Endurance y focales Relative, 47/47 tests PASS. Typecheck integrado
-  PASS. S3 Wails/LMU sigue pendiente.
-- Trabajo local en `vantareapp/isa-962-s3-relative-transparency-integration`;
-  sin push, PR, merge, promoción ni release.
+- Rama aislada `vantareapp/isa-962-redline-final-integration`, base exacta
+  `origin/nightly@659b2c57dc2c7fc75962cc3c8e425ed1289266ec`; commit funcional
+  `bf13921a93d7a662ab2f59526d5f1258217141f2`.
+- El candidato integra #957, #958, #959, #960, #961 y #968. La fixture Relative
+  deriva de la fila canónica V2; no añade fallback ni relaja `OverlayQValue`.
+- Tras reproducir en capturas físicas los saltos, cruces y celdas recortadas,
+  Mirror, Proximity y Traffic dejaron de usar FLIP/ghosts y representan el
+  orden físico de cada frame directamente. El exterior transparente quedó
+  confirmado sobre checkerboard; las capturas anteriores no se declaran PASS
+  porque proceden de boxes y de un HEAD previo.
+- S3 ya no puede ejecutarse desde el colector genérico. El catálogo fuente
+  versiona exactamente Standings Redline, Relative Mirror/Proximity/Traffic y
+  Pedals Redline; su materializador genera perfiles e índice ligados al HEAD.
+  Delta y cualquier criterio de vuelta están excluidos.
+- Gates frescos: focal Relative 9/9 PASS; scripts de banco 22/22 PASS; frontend
+  completo 441 archivos y 3421/3421 tests PASS; typecheck, build, ESLint focal,
+  `node --check`, digest de roadmap y `git diff --check` PASS. El build conserva
+  únicamente el aviso informativo de chunks mayores de 500 kB.
+- Pendiente físico: reconstruir una sola vez desde el HEAD final y ejecutar S3
+  con el jugador en pista (máximo cinco minutos por familia), después S4, S5 y
+  S2 al final. Sin push, PR, merge, promoción ni release.
 
 ## ISA-968 — Standings Redline estrecho (2026-08-31)
 

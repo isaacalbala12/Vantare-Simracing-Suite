@@ -143,6 +143,18 @@ test("la observación de cinco minutos exige cinco muestras por proceso", () => 
   assert.equal(summarizeSession(short).criteria.memory.status, "fail");
 });
 
+test("rechaza una captura que excede la ventana exacta de cinco minutos", () => {
+  const input = fixture();
+  input.durationMinutes = 5;
+  input.endedAt = new Date(Date.parse(input.startedAt) + 20 * 60_000).toISOString();
+
+  const summary = summarizeSession(input);
+
+  assert.equal(summary.verdict, "fail");
+  assert.equal(summary.criteria.duration.status, "fail");
+  assert.match(summary.criteria.duration.detail, /20\.00 min medidos; 5\.00 min previstos/);
+});
+
 test("valida reconnect y apertura tardía contra sus timestamps", () => {
   const reconnect = fixture();
   reconnect.session = "S4";

@@ -46,6 +46,14 @@ if ($Duracion -ne 5) { throw 'Cada comprobación física debe durar exactamente 
 if ([string]::IsNullOrWhiteSpace($Perfil)) {
     $Perfil = if ($Sesion -eq 'S3') { 'testdata/bench/huella-endurance-s3-sin-delta.json' } else { 'testdata/bench/huella-endurance-3.json' }
 }
+$profilePath = Resolve-SessionPath $Perfil -MustExist
+$profileDocument = Get-Content -LiteralPath $profilePath -Raw | ConvertFrom-Json
+$profileLayouts = Get-SessionOptionalProperty -InputObject $profileDocument -Name 'layouts'
+if ($null -eq $profileLayouts) { throw 'El perfil de sesión no contiene layouts.' }
+$profileWidgets = @($profileLayouts.PSObject.Properties.Value | ForEach-Object { @(Get-SessionOptionalProperty -InputObject $_ -Name 'widgets') })
+if ($Sesion -eq 'S3' -and @($profileWidgets | Where-Object { [string]$_.type -eq 'delta' }).Count -gt 0) {
+    throw 'S3 excluye Delta por decisión de producto.'
+}
 
 if ($DiagnosticoMemoria -and $Sesion -ne 'S1') { throw '-DiagnosticoMemoria solo admite S1.' }
 if ($DiagnosticoMemoria -and $EstadoCada -ne 0) { throw '-DiagnosticoMemoria exige -EstadoCada 0 para aislar el polling CDP.' }
@@ -57,7 +65,7 @@ $plan = [ordered]@{
     durationMinutes = $Duracion
     executable = Resolve-SessionPath $Exe
     dist = Resolve-SessionPath $Dist
-    profile = Resolve-SessionPath $Perfil
+    profile = $profilePath
     cdpPort = $Puerto
     outputRoot = Resolve-SessionPath $Salida
     v1Environment = if ($Fase -eq 'on') { '1' } else { $null }
@@ -82,7 +90,6 @@ if ($Coches -lt 1) {
     $Coches = [int](Read-Host 'coches observados en LMU')
 }
 $exePath = Resolve-SessionPath $Exe -MustExist
-$profilePath = Resolve-SessionPath $Perfil -MustExist
 $distPath = Resolve-SessionPath $Dist -MustExist
 $processHelper = Resolve-SessionPath 'scripts/bench/huella-procesos.mjs' -MustExist
 $cdpHelper = Resolve-SessionPath 'scripts/bench/huella-cdp.mjs' -MustExist
@@ -137,13 +144,6 @@ $stdoutLog = Join-Path $runDirectory 'stdout.log'
 $stderrLog = Join-Path $runDirectory 'stderr.log'
 $processScratch = Join-Path $runDirectory 'processes.tmp.json'
 $exeName = [IO.Path]::GetFileName($exePath)
-$profileDocument = Get-Content -LiteralPath $profilePath -Raw | ConvertFrom-Json
-$profileLayouts = Get-SessionOptionalProperty -InputObject $profileDocument -Name 'layouts'
-if ($null -eq $profileLayouts) { throw 'El perfil de sesión no contiene layouts.' }
-$profileWidgets = @($profileLayouts.PSObject.Properties.Value | ForEach-Object { @(Get-SessionOptionalProperty -InputObject $_ -Name 'widgets') })
-if ($Sesion -eq 'S3' -and @($profileWidgets | Where-Object { [string]$_.type -eq 'delta' }).Count -gt 0) {
-    throw 'S3 excluye Delta por decisión de producto.'
-}
 $expectedWidgets = @(
     $profileWidgets |
         Where-Object {

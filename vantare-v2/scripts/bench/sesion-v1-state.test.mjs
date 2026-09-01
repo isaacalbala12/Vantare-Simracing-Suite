@@ -136,4 +136,11 @@ test("S3 selecciona por defecto el perfil Redline sin Delta", () => {
   ], {cwd: benchDirectory, encoding: "utf8"});
 
   assert.match(JSON.parse(output).profile, /huella-endurance-s3-sin-delta\.json$/);
+
+  assert.throws(() => execFileSync("pwsh", [
+    "-NoProfile", "-File", collectorPath,
+    "-Sesion", "S3", "-Fase", "off", "-Duracion", "5",
+    "-Exe", "bin/dry-run.exe", "-Puerto", "19461",
+    "-Perfil", "testdata/bench/huella-endurance-3.json", "-DryRun",
+  ], {cwd: benchDirectory, encoding: "utf8", stdio: "pipe"}), /S3 excluye Delta/);
 });

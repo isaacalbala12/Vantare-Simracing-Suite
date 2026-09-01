@@ -270,10 +270,11 @@ export function summarizeSession(input) {
   const transport = transportEvidence(input);
   const phase = phaseCriterion(input, transport);
   const elapsedMinutes = (Date.parse(input.endedAt) - Date.parse(input.startedAt)) / 60_000;
+  const expectedMinutes = Number(input.durationMinutes);
   const criteria = {
     capture: result(input.failure ? "fail" : "pass", input.failure ?? "captura completada"),
     metadata: result(/^[a-f\d]{64}$/i.test(input.executable?.sha256 ?? "") && /^[a-f\d]{64}$/i.test(input.executable?.distSha256 ?? "") && input.executable?.stable === true && input.executable.sha256 === input.executable.sha256End && input.executable.distSha256 === input.executable.distSha256End && Number(input.scene?.cars) > 0 ? "pass" : "fail", `${input.scene?.description ?? "sin escena"}; ${input.scene?.cars ?? 0} coches; build ${input.executable?.stable === true ? "estable" : "cambió"}`),
-    duration: result(elapsedMinutes >= Number(input.durationMinutes) - 0.1 ? "pass" : "fail", `${formatNumber(elapsedMinutes)} min medidos`),
+    duration: result(Math.abs(elapsedMinutes - expectedMinutes) <= 0.1 ? "pass" : "fail", `${formatNumber(elapsedMinutes)} min medidos; ${formatNumber(expectedMinutes)} min previstos`),
     hygiene: result((input.hygiene?.foreign ?? []).length === 0 ? "pass" : "fail", `${input.hygiene?.foreign?.length ?? 0} procesos bloqueantes`),
     windows: windowsCriterion(transport),
     v1Off: phase.v1Off,

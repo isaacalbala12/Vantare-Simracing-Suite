@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)]
-    [ValidateSet('S1', 'S2', 'S3', 'S4', 'S5')]
+    [ValidateSet('S1', 'S2', 'S4', 'S5')]
     [string]$Sesion,
     [Parameter(Mandatory)]
     [ValidateSet('on', 'off')]
@@ -44,16 +44,13 @@ function Resolve-SessionPath([string]$Path, [switch]$MustExist) {
 
 if ($Duracion -ne 5) { throw 'Cada comprobación física debe durar exactamente cinco minutos.' }
 if ([string]::IsNullOrWhiteSpace($Perfil)) {
-    $Perfil = if ($Sesion -eq 'S3') { 'testdata/bench/huella-endurance-s3-sin-delta.json' } else { 'testdata/bench/huella-endurance-3.json' }
+    $Perfil = 'testdata/bench/huella-endurance-3.json'
 }
 $profilePath = Resolve-SessionPath $Perfil -MustExist
 $profileDocument = Get-Content -LiteralPath $profilePath -Raw | ConvertFrom-Json
 $profileLayouts = Get-SessionOptionalProperty -InputObject $profileDocument -Name 'layouts'
 if ($null -eq $profileLayouts) { throw 'El perfil de sesión no contiene layouts.' }
 $profileWidgets = @($profileLayouts.PSObject.Properties.Value | ForEach-Object { @(Get-SessionOptionalProperty -InputObject $_ -Name 'widgets') })
-if ($Sesion -eq 'S3' -and @($profileWidgets | Where-Object { [string]$_.type -eq 'delta' }).Count -gt 0) {
-    throw 'S3 excluye Delta por decisión de producto.'
-}
 
 if ($DiagnosticoMemoria -and $Sesion -ne 'S1') { throw '-DiagnosticoMemoria solo admite S1.' }
 if ($DiagnosticoMemoria -and $EstadoCada -ne 0) { throw '-DiagnosticoMemoria exige -EstadoCada 0 para aislar el polling CDP.' }

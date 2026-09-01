@@ -127,20 +127,11 @@ test("el dry-run rechaza cualquier gate que no dure exactamente cinco minutos", 
   }
 });
 
-test("S3 selecciona por defecto el perfil Redline sin Delta", () => {
+test("el colector genérico no puede declarar S3 sin el catálogo Redline cerrado", () => {
   const collectorPath = fileURLToPath(new URL("./sesion-v1.ps1", import.meta.url));
-  const output = execFileSync("pwsh", [
-    "-NoProfile", "-File", collectorPath,
-    "-Sesion", "S3", "-Fase", "off", "-Duracion", "5",
-    "-Exe", "bin/dry-run.exe", "-Puerto", "19460", "-DryRun",
-  ], {cwd: benchDirectory, encoding: "utf8"});
-
-  assert.match(JSON.parse(output).profile, /huella-endurance-s3-sin-delta\.json$/);
-
   assert.throws(() => execFileSync("pwsh", [
     "-NoProfile", "-File", collectorPath,
     "-Sesion", "S3", "-Fase", "off", "-Duracion", "5",
-    "-Exe", "bin/dry-run.exe", "-Puerto", "19461",
-    "-Perfil", "testdata/bench/huella-endurance-3.json", "-DryRun",
-  ], {cwd: benchDirectory, encoding: "utf8", stdio: "pipe"}), /S3 excluye Delta/);
+    "-Exe", "bin/dry-run.exe", "-Puerto", "19460", "-DryRun",
+  ], {cwd: benchDirectory, encoding: "utf8", stdio: "pipe"}), /ValidateSet/);
 });

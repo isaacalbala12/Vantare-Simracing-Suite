@@ -60,6 +60,57 @@ function renderTraffic(model: RelativeViewModel) {
 }
 
 describe("RelativeRedlineTemplate", () => {
+  it.each(["mirror", "proximity", "traffic"] as const)(
+    "keeps %s rows stable without FLIP or ghost animations",
+    (variant) => {
+      const animate = vi.fn(() => ({}) as Animation);
+      const originalAnimate = HTMLElement.prototype.animate;
+      HTMLElement.prototype.animate = animate;
+      const first = {
+        ...scopedPitModel,
+        rows: [
+          row("ahead", "ahead"),
+          row("player", "player", true),
+          row("behind", "behind"),
+        ],
+      };
+      const reordered = {
+        ...scopedPitModel,
+        rows: [
+          row("behind", "ahead"),
+          row("player", "player", true),
+          row("ahead", "behind"),
+        ],
+      };
+
+      try {
+        const view = render(
+          <RelativeRedlineTemplate
+            model={first}
+            settings={{}}
+            variant={variant}
+            showHeader={false}
+          />,
+        );
+        animate.mockClear();
+        view.rerender(
+          <RelativeRedlineTemplate
+            model={reordered}
+            settings={{}}
+            variant={variant}
+            showHeader={false}
+          />,
+        );
+
+        expect(animate).not.toHaveBeenCalled();
+        expect(view.container.querySelectorAll("[data-relative-row]")).toHaveLength(3);
+        expect(view.container.querySelectorAll("[data-ghost='true']")).toHaveLength(0);
+      } finally {
+        HTMLElement.prototype.animate = originalAnimate;
+      }
+    },
+  );
+
   it("keeps an upper Traffic threat and its lap alert in one non-overlapping slot during churn", () => {
     const rectSpy = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function () {
       const element = this as HTMLElement;

@@ -2,16 +2,19 @@
   "schemaVersion": 1,
   "issue": "ISA-962",
   "type": "fix",
-  "summary": "La matriz visual Endurance usa filas Relative compatibles con el contrato V2 vigente.",
+  "summary": "Endurance Redline integra el contrato V2 vigente y mantiene estables las filas Relative sin interpolación visual.",
   "technicalNotes": [
     "La prueba deriva sus filas de la fila canónica del golden V2 y modifica explícitamente identidad, lado, gap, autoridad, nombre y clase para representar el escenario.",
-    "No se añade fallback productivo ni se relaja la validación de OverlayQValue."
+    "Mirror, Proximity y Traffic renderizan el orden físico recibido sin FLIP ni filas fantasma, evitando cruces, saltos y recortes transitorios.",
+    "El catálogo S3 versiona exactamente Standings Redline, las tres variantes Relative y Pedals Redline; Delta queda excluido."
   ],
   "testing": [
-    "Ejecutar la matriz de 23 plantillas Endurance en Desktop y OBS junto con los focales Relative.",
-    "Comprobar typecheck y el candidato integrado antes de iniciar Wails/LMU."
+    "Ejecutar la matriz Endurance en Desktop y OBS junto con los focales Relative.",
+    "Comprobar el materializador del catálogo S3, typecheck y el candidato integrado antes de iniciar Wails/LMU.",
+    "Validar físicamente cada familia con el jugador en pista, sin superar cinco minutos."
   ],
   "knownLimitations": [
-    "La validación física S3 en Wails/LMU permanece pendiente."
+    "La validación física S3 en Wails/LMU permanece pendiente tras el reinicio; S4, S5 y S2 se ejecutan después, con S2 al final.",
+    "Delta y cualquier criterio basado en completar o validar vueltas quedan fuera de estos gates."
   ]
 }

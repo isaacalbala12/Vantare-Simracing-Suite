@@ -7,7 +7,8 @@ reescriben, pero no gobiernan las nuevas ejecuciones.
 
 ## Decisiones de producto vigentes
 
-- Cada comprobación individual dura exactamente cinco minutos.
+- Ninguna comprobación individual supera cinco minutos. El colector general usa
+  ventanas de cinco minutos; S3 termina antes si completa toda la familia.
 - El orden obligatorio es **S3 → S4 → S5 → S2**. S2 se ejecuta al final.
 - El jugador permanece en pista durante todos los gates físicos.
 - No se exige completar, validar ni comparar una vuelta del jugador.
@@ -34,14 +35,16 @@ reescriben, pero no gobiernan las nuevas ejecuciones.
 
 | Orden | Gate | Ejecución | Escenario y evidencia |
 | ---: | --- | --- | --- |
-| 1 | S3 · Redline visual | Una familia por vez, ≤5 min | Jugador en pista. Standings Redline, Relative Redline Mirror/Proximity/Traffic y Pedals Redline. Sin Delta. Revisar texto, filas completas, estabilidad, transparencia exterior, placas negras, recortes y solapes. Sellar los diez PNG/checker con `attest-s3.ps1`. |
+| 1 | S3 · Redline visual | Una familia por vez, máximo 5 min | Jugador en pista. Standings Redline, Relative Redline Mirror/Proximity/Traffic y Pedals Redline. Sin Delta. Revisar texto, filas completas, estabilidad, transparencia exterior, placas negras, recortes y solapes. Sellar los diez PNG/checker con `attest-s3.ps1`. |
 | 2 | S4 · reconnect | ON 5 min + OFF 5 min | Sin reiniciar Vantare: provocar y recuperar una pérdida de fuente. Exigir `live → no-live → live`, revisión/epoch monotónicos y frame V2 nuevo ≤30 s. |
 | 3 | S5 · ventana tardía | ON 5 min + OFF 5 min | Con LMU/Vantare live y jugador en pista, abrir Desktop y después Studio Live u OBS. Primer status/frame ≤5 s y widgets completos ≤10 s. |
 | 4 | S2 · carrera | ON 5 min + OFF 5 min | Último gate. Jugador en pista con tráfico real; validar identidad/orden de Standings, Relative, banderas/eventos y p99. No se usa la validez o finalización de vueltas como criterio. |
 
-S3 usa `testdata/bench/huella-endurance-s3-sin-delta.json` cuando pasa por el
-colector general. Las capturas visuales selladas usan además el arnés cerrado
-`C:\tmp\vantare-s3-gate`, cuyo catálogo contiene exactamente cinco perfiles.
+S3 no usa el colector general. Su catálogo fuente está versionado en
+`testdata/bench/s3-redline-catalog.json` y se materializa para el HEAD candidato
+con `node scripts/bench/materialize-s3-redline-catalog.mjs --head <HEAD> --out
+C:\tmp\vantare-s3-gate\profiles`. El arnés cerrado en
+`C:\tmp\vantare-s3-gate` consume entonces exactamente esos cinco perfiles.
 
 ## Criterios comunes
 

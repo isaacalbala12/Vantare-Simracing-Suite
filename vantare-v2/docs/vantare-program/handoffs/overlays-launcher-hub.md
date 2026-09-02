@@ -56,6 +56,18 @@
   Revalidar con el SHA integrado y registrar por separado si reaparece.
   Diagnóstico local del orquestador: ese test aislado, `-count=3`, PASS en
   0,329 s; no reproduce el fallo del runner y no demuestra CI completo verde.
+  Conjunto R1/R-FIX1 subido en `9d3971af`, run `33652826996`. Su job de
+  promoción estaba verde en modo auditoría pero tenía un error de formulario
+  de #962. Se completaron las secciones del contrato sin ampliar alcance.
+  El validador estricto descubrió además arrastre del digest anterior; se
+  regeneró `roadmap.json` sembrándolo desde la base confiable `659b2c57` y
+  conservando `plan.md` candidato. No se cambia el modo auditoría ni se omite
+  ningún check. Hace falta CI del SHA documental actualizado.
+  Build de preparación `9d3971af` pasó frontend/typecheck y Go con el
+  procedimiento autorizado de configuración embebida, sin mostrar valores.
+  No se ha validado aún licencia activa ni ejecutado física. Manifiesto local:
+  `C:\tmp\vantare-s3-gate\results\r2-preflight-20260902.json`; la siguiente
+  preparación debe identificar el nuevo digest, no relabelar el ejecutable.
   Las notas históricas inferiores no sustituyen este alcance ni el SHA de cada
   evidencia. No se ha ejecutado ninguna prueba física nueva al escribir el plan.
 

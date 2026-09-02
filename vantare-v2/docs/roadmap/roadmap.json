@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-02T15:50:49Z",
+  "generatedAt": "2026-09-02T16:09:50Z",
   "digest": {
     "lastCommit": "659b2c57dc2c7fc75962cc3c8e425ed1289266ec"
   },
@@ -911,27 +911,7 @@
         {
           "kind": "change",
           "scope": "",
-          "text": "ISA-894 · F9 corte 1: V1 apagado por defecto con rollback, A/B y guardarraíles"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "ISA-944 · Sensor de host y modo Automático (F3)"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "ISA-940 · Lifecycle a coste cero: entry propio del overlay, bounding box, hub destruido por nivel, ingeniero solo audio, EcoQoS (F2)"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "ISA-943 · Pase visual de Ajustes › Rendimiento"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "ISA-943 · Perfil v4 + Ajustes › Rendimiento (C2)"
+          "text": "ISA-924 · Banco: atribución del renderer overlay, limpieza de sesiones ETW y frametime inválido marcado"
         },
         {
           "kind": "change",
@@ -941,7 +921,27 @@
         {
           "kind": "change",
           "scope": "",
-          "text": "ISA-924 · Banco: atribución del renderer overlay, limpieza de sesiones ETW y frametime inválido marcado"
+          "text": "ISA-943 · Perfil v4 + Ajustes › Rendimiento (C2)"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-943 · Pase visual de Ajustes › Rendimiento"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-940 · Lifecycle a coste cero: entry propio del overlay, bounding box, hub destruido por nivel, ingeniero solo audio, EcoQoS (F2)"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-894 · F9 corte 1: V1 apagado por defecto con rollback, A/B y guardarraíles"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-944 · Sensor de host y modo Automático (F3)"
         }
       ]
     },
@@ -951,12 +951,12 @@
         {
           "kind": "change",
           "scope": "",
-          "text": "ISA-924 · Baseline F0 de huella mínima (2026-08-29)"
+          "text": "ISA-926 · PerformancePolicy en Go: niveles 1–5, ajustes v4 y capabilities.performance"
         },
         {
           "kind": "change",
           "scope": "",
-          "text": "ISA-926 · PerformancePolicy en Go: niveles 1–5, ajustes v4 y capabilities.performance"
+          "text": "ISA-924 · Baseline F0 de huella mínima (2026-08-29)"
         }
       ]
     },

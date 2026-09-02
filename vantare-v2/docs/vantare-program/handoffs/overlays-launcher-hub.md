@@ -68,6 +68,57 @@
   No se ha validado aún licencia activa ni ejecutado física. Manifiesto local:
   `C:\tmp\vantare-s3-gate\results\r2-preflight-20260902.json`; la siguiente
   preparación debe identificar el nuevo digest, no relabelar el ejecutable.
+  **Actualización 2026-09-02 16:22 UTC:** CI `33653238356` del candidato
+  `33f6dcfa` terminó FAIL sólo en frontend: 440/441 archivos y 3420/3421 tests
+  PASS. Chromium ya se instala y Go pasó. Fallo:
+  `PedalsRedline.layout.test.tsx`, saturación de freno, 8 píxeles cambiados
+  fuera del well/slot donde exige cero. Focal local sin cambios: 3/3 PASS.
+  R-FIX2 iniciado con Terra high/priority `01a062f0-0cd4-7261-98f2-ebf89a5439a0`
+  (Euler), rama `vantareapp/isa-962-redline-pedals-ci`, worktree
+  `C:\tmp\vantare-redline-pedals-ci`, base `33f6dcfa`. Sólo test y, si se prueba
+  causa productiva, CSS/TSX exclusivo de Pedals Redline (máximo 3 archivos).
+  Distinguir halo real de máscara subpíxel/entorno; no aumentar tolerancias,
+  ocultar el test ni aplicar parche especulativo. Review independiente después.
+  Física y merge siguen pendientes. Preparación vigente identificada en
+  `C:\tmp\vantare-s3-gate\results\r2-preflight-20260902-33f6dcfa.json`;
+  no hay prueba nueva de licencia activa, Wails ni LMU.
+  R-FIX2 entregado por Euler en `364f7e2c`: sólo test (+121/-3), suite
+  441 archivos/3423 tests, focal 5/5, build/typecheck/lint reportados PASS.
+  Control negativo de antigua sombra detecta 20.674 píxeles exteriores.
+  Diagnósticos: `C:\tmp\pedals-redline-ci-diagnostics-364f7e2c`. El orquestador
+  comprobó que `inset.json` tiene cero diferencias incluso con la máscara
+  anterior: los ocho píxeles concretos de CI siguen sin reproducción local.
+  No se declara aún acreditada esa atribución. Helper unitario y máscaras
+  de los tests de capturas deben compartir cobertura efectiva. Terra
+  `01a062fc-2417-72d2-9bb5-ccacaf62a242` revisa cumplimiento sobre ese SHA;
+  worker sin editar durante review, aún no integrado ni subido.
+  Review Pauli: REQUEST_CHANGES P1, aceptado. `364f7e2c` no se integra.
+  El siguiente intento requiere el mismo comparador para positivo/negativo
+  y una captura que falle la máscara original; no fabricar exactamente ocho
+  píxeles para igualar CI. Ronda local acotada a cinco minutos; si no reproduce,
+  entregar sólo diagnósticos manteniendo máscara/aserción original para obtener
+  coordenadas/rects del runner. No aceptar fórmula plausible como causalidad
+  demostrada ni reiniciar suites grandes sin información nueva.
+  Ronda acotada final: desplazar el renderer productivo 0,5 px tampoco
+  reproduce (máscara anterior y propuesta: cero diferencias). Euler revirtió
+  `364f7e2c` en su rama y entregó `0172d1de`, autónomo, sólo diagnóstico
+  (+21 líneas de test). Conserva máscara y aserción cero originales; ante
+  fallo registra hasta 16 coordenadas/RGBA, DOMRects, DPR y sombras calculadas.
+  Focal 3/3 y typecheck PASS reportados; no se repitieron suite/build/lint
+  completos para este cambio observacional. Pauli revisa cumplimiento; después
+  procede review de calidad independiente e integración sólo de `0172d1de`.
+  No hay arreglo productivo acreditado ni pruebas físicas nuevas.
+  Terra Pauli (cumplimiento) y Terra Galileo
+  `01a06303-97eb-76e0-9f78-b9540130ab53` (calidad) aprobaron `0172d1de`.
+  El orquestador inspeccionó el diff neto, verificó otra vez el focal 3/3 e
+  integró sólo el commit diagnóstico como `a0ffe300`. Workers/reviewers
+  cerrados; la candidata pasó suite completa (441 archivos/3421 tests, 66,45 s),
+  typecheck y lint. La suite emitió `AbortError` de teardown Happy DOM pero
+  terminó con todos los tests PASS y código cero; no se oculta ese diagnóstico.
+  No se repitió build/Go en este corte de observabilidad exclusiva del test;
+  no cambia fuentes productivas, contratos ni el artefacto de runtime.
+  El siguiente CI debe conservar el fallo si reaparece y aportar sus
+  coordenadas, no se considera resuelta todavía la causa de Pedals.
   Las notas históricas inferiores no sustituyen este alcance ni el SHA de cada
   evidencia. No se ha ejecutado ninguna prueba física nueva al escribir el plan.
 

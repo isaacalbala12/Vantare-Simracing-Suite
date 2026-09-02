@@ -1,5 +1,15 @@
 # Spec (SDD · SPECIFY): Huella mínima — niveles de rendimiento, sensor automático, banco objetivo y composición
 
+> Actualización de ejecución 2026-09-02: el
+> [maestro integral](2026-09-02-huella-minima-plan-maestro.md) reúne TODOS los
+> compromisos de esta spec y los desglosa en microcortes, comenzando por Redline.
+> Sus §§3–4 distinguen entregado/verificación pendiente y concilian decisiones
+> posteriores: Automático ya es default, D19 no se implementa, V2/V1 sí pertenece
+> al programa, nuevos diseños/pruebas se limitan a Redline sin Delta ni vueltas,
+> y cada comprobación física dura como máximo cinco minutos. Las antiguas listas
+> «por crear/no autorizadas» y referencias al default nivel 1 se conservan como
+> historia, no como órdenes de ejecución. No reabrir tareas integradas desde ellas.
+
 Fecha: 2026-08-28. Issue: pendiente de crear (propuesta: `ISA-9xx · Huella mínima`). Base: `nightly` actual (`d717f732`).
 Autores: Isaac (decisión), Fable (redacción, orquestación).
 Estado SDD: **SPECIFY aprobado e IMPLEMENT autorizado por Isaac el 2026-08-28** ("puedes continuar"; P1–P12 respondidas en §14). #912 cerró su ciclo sin cortes finos viables (NO-GO ×2) y con la atribución hecha (PR #927). Issues abiertas: #924 (F0 banco), #926 (F1 policy). **D19 queda superada** (ver nota en D19): los frames v2 ya viajan por pull HTTP dirigido y Wails no tiene emisión dirigida; #925 cerrada. **La cadena #896 → #893 → #894 (lifecycle, cutover V2, retirada V1) entra en este plan** por decisión de Isaac: es el mayor ahorro de CPU pendiente (pull dual 1,3–1,8 ms vs V2-only 17 µs). El spike de composición (§10) está entregado y aparcado hasta el A/B.

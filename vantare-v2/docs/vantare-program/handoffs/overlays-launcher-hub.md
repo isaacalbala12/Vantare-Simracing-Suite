@@ -11,14 +11,19 @@
 ## Estado
 
 - **Prioridad operativa 2026-09-02 — cerrar Redline primero (ISA-962):**
-  [plan maestro y microcortes](../../superpowers/specs/2026-09-02-redline-plan-maestro.md).
+  [maestro integral y microcortes](../../superpowers/specs/2026-09-02-huella-minima-plan-maestro.md),
+  con [subplan A Redline](../../superpowers/specs/2026-09-02-redline-plan-maestro.md).
+  Isaac aclara que quiere planificar TODO el compromiso original: el maestro
+  B–J cubre banco, atribución y recortes de memoria/CPU/GPU, UI Hub, efectos
+  Redline, Coste e informe, niveles/Automático, HUD swap, composición y V1.
   Documento pendiente de revisión escrita antes de activar workers. Isaac ha
   autorizado integrar el candidato en `nightly` una vez superados sus gates;
   no releases, otros canales ni retirada irreversible V1. PR #969 sigue draft.
   Primero reparar el entorno Chromium de CI; después S3 de las cinco
   presentaciones Redline, S4/S5 limitados a su regresión y S2 último, con jugador
   en pista, sin vueltas/Delta y máximo cinco minutos por comprobación.
-  Memoria #956 y optimizaciones globales quedan separadas, sin activación nueva.
+  Memoria #956 y optimizaciones globales quedan secuenciadas después de Redline,
+  no descartadas ni sin plan. No se han activado nuevos workers en este corte.
   Las notas históricas inferiores no sustituyen este alcance ni el SHA de cada
   evidencia. No se ha ejecutado ninguna prueba física nueva al escribir el plan.
 

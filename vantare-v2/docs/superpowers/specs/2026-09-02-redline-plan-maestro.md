@@ -1,7 +1,10 @@
-# Plan maestro — cierre Endurance Redline
+# Subplan A — cierre Endurance Redline
 
 Fecha: 2026-09-02. Expediente: **ISA-962 / PR #969**.
 Estado del documento: propuesta escrita para revisión de Isaac antes de activar microcortes.
+
+Parte ejecutable A del [maestro integral de Huella mínima](2026-09-02-huella-minima-plan-maestro.md).
+Este documento no agota el programa original: B–J se desglosan en el maestro.
 
 ## 1. Objetivo y autoridad
 
@@ -46,8 +49,8 @@ No crear otro handoff ni usar notificaciones antiguas como estado actual.
 | Fase | Alcance | Activación |
 | --- | --- | --- |
 | A · Redline | Cinco presentaciones, CI y regresiones físicas acotadas | Única fase activa tras revisar este plan |
-| B · Huella global | CPU/RAM/GPU, atribución #956, presupuestos y beneficios medidos | Después de A, alcance y plan técnico propios antes de asignar workers |
-| C · Retirada V1 | Criterios completos del corte irreversible y rollback | Separada; exige evidencia y autorización específica |
+| B–H · Huella global | Banco, CPU/RAM/GPU, efectos, Coste, HUD y evaluación de composición | Después de A, según dependencias del maestro integral |
+| I · Retirada V1 | Criterios completos del corte irreversible y rollback | Separada; exige evidencia y autorización específica |
 
 Delta, otros diseños Endurance/Original/Crystal, nuevas variantes, reescrituras
 Qt/Rust/nativas, clusters y benchmarks prolongados no pertenecen a A. Track Map
@@ -203,7 +206,7 @@ integración y ejecutar regresiones afectadas antes del merge. Verificar SHA
 fusionado y checks del canal; si fallan, informar y corregir/revertir mediante
 PR, nunca forzar ni afirmar publicación. `nightly` integrado no es release.
 
-Después entregar un informe corto de Redline cerrado y pendientes separados.
-No iniciar B/C automáticamente: preparar el siguiente alcance desde evidencia
-y las issues existentes. No marcar #956 ni la retirada irreversible V1 cerradas
-por la integración de Redline.
+Después entregar un informe corto de Redline cerrado y activar la siguiente
+dependencia del maestro integral aprobado. No marcar #956 ni la retirada
+irreversible V1 cerradas por la integración de Redline. Los cortes posteriores
+conservan sus gates y autorizaciones propias, sin reiniciar toda la planificación.

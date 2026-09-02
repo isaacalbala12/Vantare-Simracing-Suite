@@ -10,6 +10,18 @@
 
 ## Estado
 
+- **Prioridad operativa 2026-09-02 — cerrar Redline primero (ISA-962):**
+  [plan maestro y microcortes](../../superpowers/specs/2026-09-02-redline-plan-maestro.md).
+  Documento pendiente de revisión escrita antes de activar workers. Isaac ha
+  autorizado integrar el candidato en `nightly` una vez superados sus gates;
+  no releases, otros canales ni retirada irreversible V1. PR #969 sigue draft.
+  Primero reparar el entorno Chromium de CI; después S3 de las cinco
+  presentaciones Redline, S4/S5 limitados a su regresión y S2 último, con jugador
+  en pista, sin vueltas/Delta y máximo cinco minutos por comprobación.
+  Memoria #956 y optimizaciones globales quedan separadas, sin activación nueva.
+  Las notas históricas inferiores no sustituyen este alcance ni el SHA de cada
+  evidencia. No se ha ejecutado ninguna prueba física nueva al escribir el plan.
+
 - **ISA-967 — Pedals Redline contenido en su frame (2026-08-31, rama):** el
   renderer productivo `pedals-redline` ya no hereda el `padding`/`min-height`
   del shell genérico de pedales ni el mínimo intrínseco de sus wells. El
@@ -1382,12 +1394,16 @@ Evidencia Task 4 y cierre acumulado:
   `node --check`, digest de roadmap y `git diff --check` PASS. El build conserva
   únicamente el aviso informativo de chunks mayores de 500 kB.
 - Revisión adversarial final sobre `1363de97` APPROVE, sin P0/P1. La rama está
-  publicada y el PR draft #969 apunta a `nightly`; CI remoto queda en curso.
+  publicada y el PR draft #969 apunta a `nightly`. CI sobre `9af9daa6` falló
+  en el run `33502297892`: falta Chromium headless de Playwright al ejecutar
+  tests frontend. Promotion path y GitGuardian pasaron; no es CI global verde.
 - Pendiente físico: ejecutar S3 con el jugador en pista (máximo cinco minutos
-  por familia), después S4, S5 y S2 al final. LMU acepta el ratón automatizado
-  pero su RawInput descartó cambio, acelerador y Escape inyectados; el coche
-  permaneció en boxes y esa observación no se declara PASS. Sin merge,
-  promoción ni release.
+  por comprobación), después S4, S5 y S2 al final, según el plan maestro.
+  Corrección del diagnóstico anterior: no se demostró que RawInput descartara
+  teclas; solo se observó falta de respuesta y una discrepancia entre la
+  pantalla controlada y los procesos locales. R2 debe demostrar que se controla
+  el mismo entorno antes de otra prueba. Boxes no es PASS. Sin merge ni release;
+  la autorización condicional de Isaac del 2026-09-02 no equivale a integración.
 
 ## ISA-968 — Standings Redline estrecho (2026-08-31)
 

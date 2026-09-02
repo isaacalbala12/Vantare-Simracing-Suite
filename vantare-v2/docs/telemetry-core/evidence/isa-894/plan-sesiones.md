@@ -1,5 +1,12 @@
 # ISA-894 — cierre físico acotado de Overlay V1
 
+**Separación de alcance (2026-09-02):** este protocolo conserva los criterios
+del corte V1, no es la lista de pendientes del cierre visual ISA-962.
+El [plan maestro Redline](../../../superpowers/specs/2026-09-02-redline-plan-maestro.md)
+gobierna ese cierre: cinco presentaciones, reconexión/reapertura/tráfico en V2
+por defecto, sin nueva matriz ON/OFF ni gate de memoria. Sus PASS no certifican
+este protocolo ni autorizan el corte 2. Se conserva el orden S3 → S4 → S5 → S2.
+
 Este documento fija el protocolo vigente para cerrar los gates físicos antes de
 valorar el corte 2. Sustituye el guion operativo de sesiones de 20/60 minutos.
 Las capturas largas ya realizadas se conservan como evidencia histórica y no se

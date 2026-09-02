@@ -10,6 +10,49 @@
 
 ## Estado
 
+- **Actualización operativa 2026-09-02, candidata congelada `6fc3c506`:**
+  se eliminó con la herramienta oficial la automatización
+  `continuar-cierre-redline-isa-962`, a petición de Isaac; ya no existe su
+  `automation.toml`. La ejecución continúa en la tarea activa, sin heartbeat.
+  Luna `01a06324-7706-7a81-ba29-c5ec83326284` verificó en lectura los hashes
+  EXE/dist/índice y los cinco perfiles del manifiesto
+  `C:\tmp\vantare-s3-gate\results\r2-preflight-20260902-6fc3c506.json`: PASS.
+  No demuestra licencia activa ni física. Worker cerrado. Terra
+  `01a06324-77da-7740-a1b5-9f5c0e999fc1` entregó la receta S4/S5 en lectura,
+  sin controlar el PC ni modificar producto, en snapshot aislado
+  `C:\tmp\vantare-redline-r4-review`; worker cerrado. S4 debe observar pérdida
+  y recuperación real de la fuente, no inyectar datos ni usar `sesion-v1.ps1`.
+  S5 reutiliza controles de overlay/CDP y apertura normal Studio/OBS. Las
+  recetas no son evidencia física ni prueba de los plazos. El orquestador
+  sigue como único operador y debe verificar renderer con la sonda específica.
+  CI `33660140203` terminó SUCCESS sobre `6fc3c506`: promoción, Go, frontend,
+  lint cambiado, Testing Center y build Wails PASS; anotación de lint global
+  advisory ajena separada del gate obligatorio. R2, primer intento 17:30 UTC:
+  EXE verificado PID19568, ventana8849048 coincidente con Computer Use;
+  HTTP29222 del mismo PID y CDP9222 del hijo WebView16808. Captura sanitizada
+  `r2-6fc3c506-license-attempt-1.json`: active/configured/authenticated/deviceOK.
+  LMU PID4880/ventana1509852 corresponden también a la pantalla controlada;
+  preflight técnico R2 PASS en el primer intento. Evidencia adicional
+  `C:\tmp\vantare-s3-gate\results\r2-6fc3c506-runtime.json`.
+  Jugador en pista y cinco presentaciones S3 siguen pendientes.
+  Preparación física posterior: Spa práctica con el coche del jugador #17;
+  dos entradas observadas desde Start Driving al cockpit y retorno posterior
+  a la pantalla de boxes, sin acreditar salida a pista. Se detienen intentos.
+  Luna `01a0632f-a4e8-7802-936f-47d1784f75cb` identificó en lectura
+  `UserData/player/keyboard.json` (custom activo): acelerador17, freno31,
+  subir marcha16, limitador38; AI Control no figura. El orquestador contrastó
+  con `dinput.h` del SDK local: W/S/Q/L. No se editaron controles ni se
+  atribuye el problema a RawInput. Worker cerrado. R3–R6 BLOQUEADOS a la
+  espera de jugador fuera de boxes; requieren intervención puntual de Isaac.
+  CI/licencia/preflight no se repiten por este bloqueo. No hay PASS S3, merge,
+  release ni retirada V1. La siguiente acción es colocar el coche en pista
+  y ejecutar el banco preparado con la misma build, respetando cinco minutos.
+  La pantalla BetaWelcome dice Plan Free mediante texto literal, no se usa
+  para sustituir el contrato de licencia. Ninguna captura S3 se declara PASS.
+  Esta actualización documental se prepara en rama aislada
+  `vantareapp/isa-962-redline-coordination` para conservar la candidata física
+  inmutable; se incorporará al mismo handoff al cerrar el checkpoint.
+
 - **Prioridad operativa 2026-09-02 — cerrar Redline primero (ISA-962):**
   [maestro integral y microcortes](../../superpowers/specs/2026-09-02-huella-minima-plan-maestro.md),
   con [subplan A Redline](../../superpowers/specs/2026-09-02-redline-plan-maestro.md).

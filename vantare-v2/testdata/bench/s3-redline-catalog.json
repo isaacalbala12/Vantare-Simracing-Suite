@@ -10,6 +10,7 @@
       "widgetId": "widget-standings-redline",
       "type": "standings",
       "layout": { "w": 280, "h": 900 },
+      "expectedPhysicalFrameWidth": 826,
       "updateHz": 8,
       "content": { "rowCount": 20, "classScope": "all-classes" },
       "baseSettings": { "templateId": "standings-redline", "showSessionHeader": true }

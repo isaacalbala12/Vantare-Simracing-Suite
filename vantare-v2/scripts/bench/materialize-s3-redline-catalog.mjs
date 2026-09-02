@@ -90,7 +90,8 @@ for (const entry of profiles) {
     profileId: entry.profileId,
     file: entry.file,
     widgetId: entry.widgetId,
-    expectedFrameWidth: entry.layout.w,
+    persistedFrameWidth: entry.layout.w,
+    expectedFrameWidth: entry.expectedPhysicalFrameWidth ?? entry.layout.w,
     expectedFrameHeight: entry.layout.h,
     sha256: sha256(bytes),
   });

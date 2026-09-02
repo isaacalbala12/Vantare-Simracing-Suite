@@ -28,7 +28,27 @@ test("materializa exactamente los cinco perfiles Endurance Redline sin Delta", (
       const [widget] = profile.layouts.general.widgets;
       assert.equal(widget.id, entry.widgetId);
       assert.equal(widget.visual.baseSettings.templateId, entry.templateId);
+      assert.equal(entry.persistedFrameWidth, widget.layout.w);
+      if (entry.ordinal === 9) {
+        assert.equal(entry.persistedFrameWidth, 280);
+        assert.equal(entry.expectedFrameWidth, 826);
+      } else {
+        assert.equal(entry.expectedFrameWidth, widget.layout.w);
+      }
     }
+  } finally {
+    rmSync(output, { recursive: true, force: true });
+  }
+});
+
+test("mantiene el ancho persistido estrecho de Standings para que el producto normalice el frame", () => {
+  const output = mkdtempSync(path.join(tmpdir(), "vantare-s3-redline-"));
+  try {
+    execFileSync(process.execPath, [script, "--head", "a".repeat(40), "--out", output]);
+    const index = JSON.parse(readFileSync(path.join(output, "redline-index.json"), "utf8"));
+    const standings = index.profiles.find((entry) => entry.ordinal === 9);
+    const profile = JSON.parse(readFileSync(path.join(output, standings.file), "utf8"));
+    assert.equal(profile.layouts.general.widgets[0].layout.w, 280);
   } finally {
     rmSync(output, { recursive: true, force: true });
   }

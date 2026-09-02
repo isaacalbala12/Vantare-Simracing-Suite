@@ -119,6 +119,47 @@
   no cambia fuentes productivas, contratos ni el artefacto de runtime.
   El siguiente CI debe conservar el fallo si reaparece y aportar sus
   coordenadas, no se considera resuelta todavía la causa de Pedals.
+  **Actualización 2026-09-02 17:01 UTC:** CI `33657242122` sobre `7e0e4d73`
+  vuelve a fallar sólo el mismo test (440/441 archivos y 3420/3421 tests PASS).
+  El diagnóstico sí aporta evidencia nueva: ocho diferencias en x=328,
+  y=369..376, junto al texto inferior; well termina y=276,5886, slot y=389,6615
+  y ambos rects tienen right=327,84375, DPR=1. Sombras `none`/`inset`.
+  No atribuirlo al halo del well ni ampliar la máscara: x=328 está también
+  fuera de la propuesta anterior. JSON literal preservado en
+  `C:\tmp\vantare-s3-gate\results\pedals-ci-33657242122.json`.
+  R-FIX2b: worker Terra high/priority, worktree exclusivo
+  `C:\tmp\vantare-redline-pedals-glyph`, rama
+  `vantareapp/isa-962-redline-pedals-glyph`, base `7e0e4d73`.
+  Investigar texto/fuentes/raster con reproducción RED: máximo tres archivos
+  (layout test, CSS exclusivo Redline y TSX si necesario), sin modificar
+  máscara/tolerancia, sin ocultar ni recortar el texto. Primera ronda acotada
+  a cinco minutos y checkpoint. Después revisión independiente antes de integrar.
+  Física, promoción y resto del programa continúan pendientes; no hay merge.
+  Banach terminó NEEDS_CONTEXT, sin cambios: fuente local Roboto-Bold y valor
+  contenido; faltaba reproducir la selección fallback. Tras la objeción de
+  Isaac a las pausas, el orquestador pausó la tarea programada y asumió el
+  bloqueo directamente en el worktree exclusivo, limpio, sin otro writer.
+  Reproducción TDD: forzar la alternativa genérica `sans-serif` ya declarada
+  por producto selecciona Arial Black a peso 800 y produce exactamente los
+  ocho píxeles/RGBA/rects de CI. El valor mide 139,276 px frente a slot135,755.
+  RED 4 PASS/1 FAIL; cambio mínimo exclusivo `.ven-pred-slot b`: peso700,
+  misma fuente de 11 px, sin clipping ni cambio de máscara. Selecciona Arial
+  Bold, valor118,151 px, cero diferencias exteriores. GREEN5/5, más aserción
+  explícita del valor completo dentro de su slot. PNG/JSON preservados en
+  `C:\tmp\pedals-redline-glyph-red` y `C:\tmp\pedals-redline-glyph-green`;
+  el orquestador revisó ambas imágenes. Suite/build/typecheck/lint en ejecución;
+  review Terra independiente de cumplimiento iniciada antes de calidad.
+  Commit del fix `b3f60b03`: dos archivos (+33/-4). Suite441/3423,
+  typecheck/build/lint PASS. Erdos de cumplimiento
+  `01a0631c-28ef-73c3-97d2-129d8050920f`: APPROVE sin bloqueantes tras revisar
+  diff y reproducción. Revisión Terra de calidad en curso; no integrado todavía.
+  [Evidencia y comandos del microcorte](../../analysis/2026-09-02-redline-pedals-font-fallback.md).
+  Heisenberg de calidad `01a0631e-a409-7792-8248-b0735416d0d2`: APPROVE sin
+  hallazgos, focal5/5 verificado. Orquestador integra el fix y la evidencia en
+  la candidata; todos los workers/reviewers cerrados. CI exacto nuevo pendiente.
+  La tarea programada permanece PAUSADA por instrucción correctiva de Isaac;
+  la continuación se hace activamente en esta sesión. Preparar la nueva build
+  configurada y sus hashes en paralelo a CI; todavía no lanzar física ni LMU.
   Las notas históricas inferiores no sustituyen este alcance ni el SHA de cada
   evidencia. No se ha ejecutado ninguna prueba física nueva al escribir el plan.
 

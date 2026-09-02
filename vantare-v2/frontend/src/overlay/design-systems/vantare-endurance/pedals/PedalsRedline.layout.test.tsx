@@ -1,6 +1,6 @@
 // @vitest-environment node
 
-import { readFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 import { chromium } from "playwright";
@@ -90,7 +90,11 @@ describe("Pedals Redline frame geometry", () => {
     },
   );
 
-  it("confines a saturated brake indication to its local well and slot", async () => {
+  it.each([
+    { name: "configured font stack", fontOverride: "" },
+    { name: "Windows fallback Segoe UI", fontOverride: ':root{--ven-font:"Segoe UI",sans-serif}' },
+    { name: "generic sans-serif fallback", fontOverride: ':root{--ven-font:sans-serif}' },
+  ])("confines a saturated brake indication to its local well and slot with $name", async ({ name, fontOverride }) => {
     const css = readFileSync(join(__dirname, "../tokens.css"), "utf8");
     const browser = await chromium.launch({ headless: true });
     try {
@@ -100,7 +104,7 @@ describe("Pedals Redline frame geometry", () => {
       });
       const page = await context.newPage();
       const html = (brake: number) =>
-        `<style>html,body{margin:0;background:transparent}*{transition:none!important;animation:none!important}${css}</style>`
+        `<style>html,body{margin:0;background:transparent}*{transition:none!important;animation:none!important}${css}${fontOverride}</style>`
           + renderRuntimeFrame("ready", brake);
       await page.setContent(html(0));
       const releasedBoxShadow = await page.locator(".ven-pred-rail[data-pedal='brake'] .ven-pred-well")
@@ -154,17 +158,37 @@ describe("Pedals Redline frame geometry", () => {
           outsideDifferences,
           well: well.getBoundingClientRect().toJSON(),
           slot: slot.getBoundingClientRect().toJSON(),
+          value: slot.querySelector("b")?.getBoundingClientRect().toJSON(),
+          fontFamily: getComputedStyle(slot).fontFamily,
           devicePixelRatio: window.devicePixelRatio,
           saturated: rail.getAttribute("data-saturated"),
           brakeText: slot.textContent,
         };
       }, { released: released.toString("base64"), saturated: saturated.toString("base64") });
 
+      const cdp = await context.newCDPSession(page);
+      await cdp.send("DOM.enable");
+      await cdp.send("CSS.enable");
+      const { root } = await cdp.send("DOM.getDocument");
+      const { nodeId } = await cdp.send("DOM.querySelector", {
+        nodeId: root.nodeId,
+        selector: ".ven-pred-rail[data-pedal='brake'] .ven-pred-slot b",
+      });
+      const platformFonts = await cdp.send("CSS.getPlatformFontsForNode", { nodeId });
+      await cdp.detach();
+      const evidenceDir = process.env.VANTARE_REDLINE_GLYPH_EVIDENCE;
+      if (evidenceDir) {
+        mkdirSync(evidenceDir, { recursive: true });
+        writeFileSync(join(evidenceDir, `${name}-released.png`), released);
+        writeFileSync(join(evidenceDir, `${name}-saturated.png`), saturated);
+        writeFileSync(join(evidenceDir, `${name}.json`), JSON.stringify({ ...result, platformFonts }, null, 2));
+      }
       if (result.changedOutsideLocalBacking > 0) {
         console.info("Pedals Redline saturation containment diagnostics", JSON.stringify({
           ...result,
           releasedBoxShadow,
           saturatedBoxShadow,
+          platformFonts,
         }));
       }
 
@@ -173,6 +197,9 @@ describe("Pedals Redline frame geometry", () => {
       expect(saturatedBoxShadow).toContain("inset");
       expect(saturatedBoxShadow).not.toBe(releasedBoxShadow);
       expect(result.changedOutsideLocalBacking).toBe(0);
+      expect(result.value).toBeDefined();
+      expect(result.value!.left).toBeGreaterThanOrEqual(result.slot.left);
+      expect(result.value!.right).toBeLessThanOrEqual(result.slot.right);
     } finally {
       await browser.close();
     }

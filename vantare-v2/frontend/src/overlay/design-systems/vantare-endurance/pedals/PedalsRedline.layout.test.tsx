@@ -131,21 +131,42 @@ describe("Pedals Redline frame geometry", () => {
         const [before, after] = await Promise.all([toImageData(released), toImageData(saturated)]);
         const allowed = [well, slot].map((element) => element.getBoundingClientRect());
         let changedOutsideLocalBacking = 0;
+        const outsideDifferences: Array<{ x: number; y: number; released: number[]; saturated: number[] }> = [];
         for (let y = 0; y < after.height; y += 1) {
           for (let x = 0; x < after.width; x += 1) {
             if (allowed.some((box) => x >= box.left && x < box.right && y >= box.top && y < box.bottom)) continue;
             const offset = (y * after.width + x) * 4;
             if ([0, 1, 2, 3].some((channel) => before.data[offset + channel] !== after.data[offset + channel])) {
               changedOutsideLocalBacking += 1;
+              if (outsideDifferences.length < 16) {
+                outsideDifferences.push({
+                  x,
+                  y,
+                  released: [...before.data.slice(offset, offset + 4)],
+                  saturated: [...after.data.slice(offset, offset + 4)],
+                });
+              }
             }
           }
         }
         return {
           changedOutsideLocalBacking,
+          outsideDifferences,
+          well: well.getBoundingClientRect().toJSON(),
+          slot: slot.getBoundingClientRect().toJSON(),
+          devicePixelRatio: window.devicePixelRatio,
           saturated: rail.getAttribute("data-saturated"),
           brakeText: slot.textContent,
         };
       }, { released: released.toString("base64"), saturated: saturated.toString("base64") });
+
+      if (result.changedOutsideLocalBacking > 0) {
+        console.info("Pedals Redline saturation containment diagnostics", JSON.stringify({
+          ...result,
+          releasedBoxShadow,
+          saturatedBoxShadow,
+        }));
+      }
 
       expect(result.saturated).toBe("true");
       expect(result.brakeText).toContain("100%");

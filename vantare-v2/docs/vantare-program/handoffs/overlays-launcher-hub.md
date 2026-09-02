@@ -16,14 +16,46 @@
   Isaac aclara que quiere planificar TODO el compromiso original: el maestro
   B–J cubre banco, atribución y recortes de memoria/CPU/GPU, UI Hub, efectos
   Redline, Coste e informe, niveles/Automático, HUD swap, composición y V1.
-  Documento pendiente de revisión escrita antes de activar workers. Isaac ha
+  Maestro aprobado por Isaac para iniciar. Modelos: Luna para mecánico, Terra
+  para la mayoría, Sol para hipercomplejo; fast/priority. Isaac ha
   autorizado integrar el candidato en `nightly` una vez superados sus gates;
   no releases, otros canales ni retirada irreversible V1. PR #969 sigue draft.
   Primero reparar el entorno Chromium de CI; después S3 de las cinco
   presentaciones Redline, S4/S5 limitados a su regresión y S2 último, con jugador
   en pista, sin vueltas/Delta y máximo cinco minutos por comprobación.
   Memoria #956 y optimizaciones globales quedan secuenciadas después de Redline,
-  no descartadas ni sin plan. No se han activado nuevos workers en este corte.
+  no descartadas ni sin plan. R1 iniciado con worker Luna nativo
+  `01a062d5-4dda-7ba3-bc0a-48f763e333a2` (Nietzsche), worktree
+  `C:\tmp\vantare-redline-ci-r1`, rama `vantareapp/isa-962-redline-ci-r1`, base
+  `66ead80f`. Alcance: instalación Chromium anterior a Vitest y regresión de CI;
+  sin renderer/LMU. T3 en 3773 no responde; Codex nativo hereda configuración
+  `service_tier=priority`. Tras entrega: Terra para review de contrato y calidad.
+  Luna entregó `e03ff363` (dos archivos, 25 líneas): instalación obligatoria de
+  Chromium antes de Vitest y regresión. RED previo; 45 tests Python y parser
+  YAML PASS. Terra `01a062d8-416b-7eb3-9822-1bac4967413e` revisó el diff y
+  verificó cumplimiento: APPROVE. Terra de calidad
+  `01a062da-1617-7c62-874f-301a3e29440a`: APPROVE sin hallazgos. El orquestador
+  inspeccionó el diff y repitió los 45 tests. Integración en rama candidata;
+  aún pendiente el CI remoto de ese cambio, no merge a nightly.
+  Durante preflight estático apareció R-FIX1: el materializador del catálogo
+  copiaba ancho persistido 280 a la expectativa física de Standings, aunque
+  el contrato exige normalizarlo a 826. Worker Luna
+  `01a062d9-d42d-7451-96ab-ea6ce0caa25f`, worktree
+  `C:\tmp\vantare-redline-gate-frame`, base `e03ff363`, sólo catálogo/materializador/
+  test. Debe preservar el perfil 280; no cambiar renderer ni derivar la
+  expectativa de la medición observada. Entrega `aaa9a491`: test RED (1 PASS /
+  1 FAIL), GREEN 2/2, syntax/diff-check PASS. Terra de cumplimiento
+  `01a062dc-52b2-7941-bab3-93635c8971fa`: APPROVE y 2/2 verificados;
+  Terra de calidad `01a062de-1a30-7c32-adb2-49b202eea34c`: APPROVE sin
+  hallazgos. Integrado en candidata; el orquestador repitió los 2/2 tests.
+  El conjunto R1/R-FIX1 no cambia runtime. No se ha iniciado prueba física.
+  CI previo `33651244585` sobre `66ead80f` terminó FAIL antes de Vitest:
+  `TestCoordinatorWithSQLiteDrainsAndReleasesAllHandles`, `store_test.go:801`,
+  `recording commit exceeded budget`. No demuestra nada sobre R1 aún no subido;
+  no se relajan presupuestos ni se cambia recording dentro del arreglo Chromium.
+  Revalidar con el SHA integrado y registrar por separado si reaparece.
+  Diagnóstico local del orquestador: ese test aislado, `-count=3`, PASS en
+  0,329 s; no reproduce el fallo del runner y no demuestra CI completo verde.
   Las notas históricas inferiores no sustituyen este alcance ni el SHA de cada
   evidencia. No se ha ejecutado ninguna prueba física nueva al escribir el plan.
 

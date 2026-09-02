@@ -1,7 +1,7 @@
 # Subplan A — cierre Endurance Redline
 
 Fecha: 2026-09-02. Expediente: **ISA-962 / PR #969**.
-Estado del documento: propuesta escrita para revisión de Isaac antes de activar microcortes.
+Estado del documento: aprobado por Isaac el 2026-09-02; R0 cerrado, R1 iniciado.
 
 Parte ejecutable A del [maestro integral de Huella mínima](2026-09-02-huella-minima-plan-maestro.md).
 Este documento no agota el programa original: B–J se desglosan en el maestro.
@@ -16,7 +16,7 @@ Isaac ha elegido «primero cerrar redline» y autorizado integrar este candidato
 en `nightly` **cuando cumpla este cierre**. La autorización no permite saltarse
 checks, publicar releases, promocionar a `testers`/`master`, cambiar rulesets ni
 retirar irreversiblemente V1. Este plan desarrolla esa decisión, no una nueva
-arquitectura. No activa trabajo hasta la revisión del documento.
+arquitectura. La aprobación escrita de Isaac activa sus microcortes en orden.
 
 Este documento gobierna alcance, dependencias y aceptación. El estado operativo
 y la evidencia se mantienen en el único
@@ -122,8 +122,8 @@ No mezclar dos defectos independientes ni encargar «revisa todo de nuevo».
 
 - Un solo operador usa el PC/LMU. No ejecutar builds/tests pesados en paralelo
   a una captura física. Una revisión estática independiente sí puede avanzar.
-- Terra fast para arreglos acotados, razonamiento medio por defecto; reviewer
-  con razonamiento alto si el contrato lo requiere. Usar herramientas/modelos
+- Luna fast para cortes mecánicos, Terra fast para la mayoría y Sol fast solo
+  para problemas hipercomplejos; razonamiento según riesgo. Usar herramientas/modelos
   disponibles y declarar sustitución, no afirmar un modo fast inexistente.
 - Un nivel de delegación, un escritor por worktree/rama; ningún worker crea
   otros workers. El orquestador inspecciona el diff y las pruebas, no solo el

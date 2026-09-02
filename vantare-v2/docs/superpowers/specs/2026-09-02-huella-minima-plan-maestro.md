@@ -1,6 +1,6 @@
 # Plan maestro integral — Huella mínima de Vantare
 
-Fecha: 2026-09-02. Propuesta para revisión de Isaac.
+Fecha: 2026-09-02. Aprobado por Isaac para iniciar: «perfecto, puedes iniciar».
 Expediente documental actual: ISA-962; ejecución por las issues de cada corte.
 
 ## 1. Objetivo completo y prioridad
@@ -256,8 +256,10 @@ registrar precisamente la reducción de alcance; no cambiar historia ni cifras.
 - Cada worker recibe **un corte**, issue, base/SHA/worktree, archivos permitidos,
   reproducción, ≤3 criterios de aceptación, comandos, límites y reviewer.
   Prohibida delegación anidada, edición del checkout principal y merge por worker.
-- Terra fast para implementación acotada si está disponible; razonamiento según
-  riesgo. Reviewer independiente, lectura de diff y evidencia; no aprobar por
+- Asignación confirmada por Isaac: Luna para tareas rápidas/mecánicas, Terra
+  para la mayoría y Sol solo para problemas hipercomplejos; todos en fast
+  (`service_tier=priority`). Razonamiento según riesgo. Reviewer independiente,
+  lectura de diff y evidencia; no aprobar por
   el informe del autor. Si herramientas/modelos no están disponibles, declararlo.
 - Paralelizar únicamente archivos/worktrees independientes: diseño D0, contrato
   E0 y revisión estática pueden avanzar mientras otro corte espera. Nunca dos
@@ -303,6 +305,6 @@ si el límite de cinco minutos no resuelve memoria sostenida; GO/NO-GO composici
 y, solo si GO, lenguaje/integración; autorización Cut 2; promociones posteriores
 y cualquier publicación de ventajas comerciales. Ningún worker decide por Isaac.
 
-La aprobación escrita de este maestro activa primero A. B–J ya tienen ruta de
+La aprobación escrita recibida activa primero A. B–J ya tienen ruta de
 cierre y se despachan por dependencias, sin otra ronda de planificación desde
 cero; los puntos de decisión anteriores se resuelven cuando corresponda.

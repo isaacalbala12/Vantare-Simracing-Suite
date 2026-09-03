@@ -256,11 +256,10 @@ registrar precisamente la reducción de alcance; no cambiar historia ni cifras.
 - Cada worker recibe **un corte**, issue, base/SHA/worktree, archivos permitidos,
   reproducción, ≤3 criterios de aceptación, comandos, límites y reviewer.
   Prohibida delegación anidada, edición del checkout principal y merge por worker.
-- Asignación confirmada por Isaac: Luna para tareas rápidas/mecánicas, Terra
-  para la mayoría y Sol solo para problemas hipercomplejos; todos en fast
-  (`service_tier=priority`). Razonamiento según riesgo. Reviewer independiente,
-  lectura de diff y evidencia; no aprobar por
-  el informe del autor. Si herramientas/modelos no están disponibles, declararlo.
+- Asignación actualizada por Isaac el 2026-09-03: únicamente Muse Spark 1.3
+  Contributor, `opencode-go/muse-spark-1.3-contributor`, mediante MCP OpenCode
+  con variante `xhigh`. No sustituir modelos si está indisponible. Reviewer
+  independiente y lectura de diff/evidencia; no aprobar por el informe del autor.
 - Paralelizar únicamente archivos/worktrees independientes: diseño D0, contrato
   E0 y revisión estática pueden avanzar mientras otro corte espera. Nunca dos
   operadores del PC ni builds pesados mientras se mide. Empezar con un worker y

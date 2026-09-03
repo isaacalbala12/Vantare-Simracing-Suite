@@ -10,6 +10,26 @@
 
 ## Estado
 
+- **Actualización operativa 2026-09-03 — R3a y modelo único:** Isaac confirma
+  jugador preparado. Se observa LMU en cockpit junto a pista con tráfico; no
+  se completan vueltas. PR #969 conserva candidato `6fc3c506` y los tres checks
+  obligatorios SUCCESS. Automatización de cinco minutos sigue eliminada.
+  Todos los subagentes nuevos usan exclusivamente Muse Spark 1.3 Contributor
+  mediante OpenCode (`opencode-go/muse-spark-1.3-contributor`, `xhigh`).
+  Revisor solo lectura `ses_f98ae9cd8ffeiBBObbendSddjP` en snapshot aislado
+  `C:\tmp\vantare-redline-r4-review`; sin control del PC ni builds paralelos.
+  R3a ejecutado con el EXE congelado: licencia activa, renderer Standings Redline,
+  V2 live y secuencias 378/412/444. La sonda falla: frame 430x900 y cinco columnas
+  frente a 826x900/once exigidos. El perfil materializado no declara `columns`;
+  el parser usa las cinco predeterminadas. Se abre R-FIX3 de catálogo/regresión
+  bajo ISA-962; no se atribuye todavía a clipping del renderer. Captura con cero
+  recortes detectados, exterior alpha y cero ganadas/perdidas en Practice.
+  Evidencia local inmutable:
+  `C:\tmp\vantare-s3-gate\results\runs\standings-20260903-144839-164-54201101`.
+  Es un intento fallido, no PASS S3. No modificar esa evidencia ni bajar la
+  expectativa a 430. R3b–R7 pendientes; candidato de producto sin cambios,
+  calendar ajeno preservado, sin merge/release ni retirada V1.
+
 - **Actualización operativa 2026-09-02, candidata congelada `6fc3c506`:**
   se eliminó con la herramienta oficial la automatización
   `continuar-cierre-redline-isa-962`, a petición de Isaac; ya no existe su

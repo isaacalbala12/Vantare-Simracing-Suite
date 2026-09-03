@@ -122,9 +122,10 @@ No mezclar dos defectos independientes ni encargar «revisa todo de nuevo».
 
 - Un solo operador usa el PC/LMU. No ejecutar builds/tests pesados en paralelo
   a una captura física. Una revisión estática independiente sí puede avanzar.
-- Luna fast para cortes mecánicos, Terra fast para la mayoría y Sol fast solo
-  para problemas hipercomplejos; razonamiento según riesgo. Usar herramientas/modelos
-  disponibles y declarar sustitución, no afirmar un modo fast inexistente.
+- Desde la decisión de Isaac del 2026-09-03, todos los subagentes usan únicamente
+  `opencode-go/muse-spark-1.3-contributor` mediante MCP OpenCode, con variante
+  `xhigh`. No sustituir por otro modelo ni reactivar workers históricos con otra
+  configuración. Si no está disponible, declarar el bloqueo de delegación.
 - Un nivel de delegación, un escritor por worktree/rama; ningún worker crea
   otros workers. El orquestador inspecciona el diff y las pruebas, no solo el
   texto del informe. No reactivar agentes históricos ya terminados.

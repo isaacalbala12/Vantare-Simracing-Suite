@@ -71,8 +71,17 @@ prueba física; la verificación manual final pertenece a Isaac.
 Review independiente de especificación Muse xhigh
 `ses_f96748a29ffeuTz9Gdq49MyRqb` sobre `b4c0a38c`: **APPROVE**,
 P0/P1/P2/P3 abiertos = 0. Confirmó alcance cerrado, contratos de lifecycle,
-tests no debilitados y auxiliares intactos. La revisión de calidad y el CI
-remoto son estados posteriores a este documento.
+tests no debilitados y auxiliares intactos.
+
+Review independiente de calidad/adversarial Muse xhigh
+`ses_f96711213ffenLfc0LKeJ6ncbY` sobre `cb9a3068`: **APPROVE**,
+P0/P1/P2/P3 bloqueantes = 0. Reprodujo el diff completo, ownership/StrictMode,
+cleanup y error de arranque, tests, límites documentales y roadmap. Clasificó
+la doble llamada preexistente a `pull.stop()` como redundante pero segura por
+la guarda idempotente del cliente.
+
+El CI remoto y la publicación de la PR son estados posteriores a este
+documento; ninguna review autoriza merge o promoción.
 
 Riesgos pendientes:
 

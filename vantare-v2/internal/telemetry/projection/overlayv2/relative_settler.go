@@ -49,12 +49,19 @@ func (settler *relativeSettler) project(final derive.FinalState, candidate []Rel
 	// The debounce is intentionally over the complete ordered window, not only
 	// its set membership. Relative order can oscillate around a timing boundary;
 	// publishing each oscillation is the row jump ISA-958 removes. While every
-	// accepted ID is still observed, a different ordered candidate must remain
-	// unchanged for the whole hold before it becomes visible.
+	// accepted ID is still observed, a different ordered candidate opens one
+	// bounded wait of relativeSettledHold from the first pending change: the
+	// window start never restarts while the wait is open, so continuous churn
+	// publishes the latest canonical candidate in force at the deadline instead
+	// of freezing forever. A return to the accepted IDs before the deadline
+	// cancels the wait without publishing.
 	if !sameRelativeIDs(settler.pending, candidateIDs) {
-		settler.pending, settler.pendingSince = candidateIDs, now
-		settler.accepted = accepted
-		return accepted
+		if len(settler.pending) == 0 {
+			settler.pending, settler.pendingSince = candidateIDs, now
+			settler.accepted = accepted
+			return accepted
+		}
+		settler.pending = candidateIDs
 	}
 	settler.accepted = accepted
 	elapsed := now.Sub(settler.pendingSince)

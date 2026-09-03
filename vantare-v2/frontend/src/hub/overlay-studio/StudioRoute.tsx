@@ -4,7 +4,6 @@ import { useI18n } from '../../i18n/I18nProvider';
 import { createTelemetryRateCoordinator } from '../../overlay/core/telemetry-rate-coordinator';
 import type { TelemetryAdapter } from '../../overlay/transports/telemetry-adapter';
 import type { WidgetRuntimeInput } from '../../overlay/core/widget-definition';
-import { createWailsProjectionTelemetryAdapter } from '../../overlay/transports/projection-telemetry-adapter';
 import {
   createOverlayFrameV2Store,
 } from '../../telemetry-transport/overlay-frame-v2-store';
@@ -355,13 +354,8 @@ export const StudioRoute = memo(function StudioRoute(props: StudioRouteProps): R
     });
     const raceSchedule = createWailsRaceScheduleStore();
     const overlayV2Features = createOverlayV2FeaturesGeneration();
-    const legacy = createWailsProjectionTelemetryAdapter({
-      coordinator,
-      runtime: 'studio',
-      subscribe: overlayPull.source.subscribe,
-    });
     const telemetryAdapter = telemetryAdapterProp ?? createStudioOverlayTelemetryAdapter({
-      legacy,
+      coordinator,
       pull: overlayPull,
       overlayV2Store,
       onOverlayV2Error: (error) => {

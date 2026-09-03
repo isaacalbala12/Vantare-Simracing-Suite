@@ -48,6 +48,7 @@ func BuildStandings(final derive.FinalState) []StandingRowV2 {
 			GapLaps:        observedInt32(current.LapsBehindLeader),
 			PitState:       pitState(current.InPit),
 			CompletedLaps:  observedInt32(current.CompletedLaps),
+			BestLapSeconds: qualityValue(current.BestLapTime, func(value standings.LapTime) float64 { return float64(value) }),
 			LastLapSeconds: qualityValue(current.LastLapTime, func(value standings.LapTime) float64 { return float64(value) }),
 			LapDistance:    qualityValue(current.LapDistance, func(value standings.LapDistance) float64 { return float64(value) }),
 			GroundPosition: groundPositionValue(current.WorldPosition),

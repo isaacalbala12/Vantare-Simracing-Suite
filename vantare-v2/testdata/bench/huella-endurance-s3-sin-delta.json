@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 3,
+  "id": "huella-endurance-s3-sin-delta",
+  "name": "Huella · S3 Endurance Redline sin Delta",
+  "displayMode": "racing",
+  "monitorIndex": 0,
+  "layoutViewport": { "width": 1920, "height": 1080 },
+  "defaultVisualSystemId": "vantare-endurance",
+  "layouts": {
+    "general": {
+      "type": "general",
+      "widgets": [
+        {
+          "id": "bench-standings",
+          "type": "standings",
+          "layout": { "x": 32, "y": 32, "w": 826, "h": 900, "zIndex": 1, "aspectLocked": false },
+          "behavior": { "enabled": true, "updateHz": 15 },
+          "content": {},
+          "visual": { "systemId": "vantare-endurance", "systemVersion": 1, "configVersion": 1, "baseSettings": { "templateId": "standings-redline", "showSessionHeader": true }, "appearanceOverrides": {} }
+        },
+        {
+          "id": "bench-relative",
+          "type": "relative",
+          "layout": { "x": 1100, "y": 32, "w": 760, "h": 700, "zIndex": 2, "aspectLocked": false },
+          "behavior": { "enabled": true, "updateHz": 15 },
+          "content": {},
+          "visual": { "systemId": "vantare-endurance", "systemVersion": 1, "configVersion": 1, "baseSettings": { "templateId": "relative-redline-mirror" }, "appearanceOverrides": {} }
+        },
+        {
+          "id": "bench-pedals",
+          "type": "pedals",
+          "layout": { "x": 1200, "y": 740, "w": 520, "h": 300, "zIndex": 3, "aspectLocked": false },
+          "behavior": { "enabled": true, "updateHz": 20 },
+          "content": {},
+          "visual": { "systemId": "vantare-endurance", "systemVersion": 1, "configVersion": 1, "baseSettings": { "templateId": "pedals-redline" }, "appearanceOverrides": {} }
+        }
+      ]
+    }
+  }
+}

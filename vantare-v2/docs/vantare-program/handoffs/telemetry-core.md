@@ -1,5 +1,30 @@
 # Handoff vivo — Telemetry Core
 
+## R3 Studio V2-only congelado — 2026-09-04, ISA-894
+
+Writer único en `C:\tmp\vantare-v1-retirada-r3\vantare-v2`, rama
+`vantareapp/isa-894-retirada-v1-r3`, base exacta R2 `cc443e53`. Candidato
+`b4c0a38c`; worktree limpio al congelar código/test/microplan. Sin apps, LMU,
+navegadores, `.env*`, merge, promoción o release.
+
+R3 elimina del ciclo productivo de Studio la construcción y ejecución del
+adapter Overlay Projection V1. El lifecycle recibe el coordinador existente,
+resetea el store, adjunta listeners V2 antes del pull, conserva restart,
+invalid-frame, diagnósticos, auxiliares y cleanup. Los mocks de autoría,
+fixtures, OBS, backend, productor, rutas, flags y tipos siguen intactos.
+Evidencia:
+[`retirada-v1-r3-studio-20260904.md`](../../telemetry-core/evidence/isa-894/retirada-v1-r3-studio-20260904.md).
+
+TDD: el RED V2-only produjo 3 fallos por
+`options.legacy.coordinator`; GREEN focal 3/3 y Studio 23/23. Typecheck, build,
+ESLint focal y `diff --check` PASS. Review de especificación Muse
+`ses_f96748a29ffeuTz9Gdq49MyRqb`: APPROVE, P0/P1/P2/P3=0. Review de calidad,
+publicación y CI R3 pendientes. Siguiente migración: OBS V2-only; después se
+puede retirar la ruta/productor/flags/builders V1 según el inventario.
+
+R3 NO significa V1 ausente del binario y no inicia auditoría V2 ni bucle de
+rendimiento. Rollback exclusivamente por build anterior R0.
+
 ## R2 Desktop V2-only publicado en PR draft — 2026-09-04, ISA-894
 
 Writer unico en `C:\tmp\vantare-v1-retirada-r2\vantare-v2`, rama

@@ -1,5 +1,13 @@
 # ADR 0008: Frontera única de commit, aislamiento de consumidores y `OverlayFrame v2`
 
+> Enmienda operativa 2026-09-03: el
+> [maestro de Telemetría V2](../superpowers/specs/2026-09-03-telemetria-v2-plan-maestro.md)
+> sustituye el orden de retirada legacy y el rollback dentro del nuevo binario
+> por vuelta a una build/commit anterior verificados. No modifica las garantías
+> semánticas de commit, calidad, tiempo, hechos o aislamiento fijadas aquí.
+> Las banderas de transición descritas abajo son historia de la migración,
+> no una obligación de conservar V1 en el candidato final.
+
 ## Estado
 
 Aceptado por Isaac el 2026-08-19 (junto con SPECIFY/PLAN/TASKS de ISA-372). Desbloquea la primera fase que cambia una frontera (F1 del plan ISA-372). Enmienda parcialmente ADR 0004; no modifica ADR 0005 (SQLite/MCAP y DuckDB post-sesión) ni el contrato de capabilities de Engineer (ADR 0005-engineer), cuya entrega pasa a ser asíncrona.

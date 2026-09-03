@@ -8,6 +8,8 @@ import type { TelemetryRateCoordinator } from "../../../overlay/core/telemetry-r
 import { createTestTelemetryCoordinator } from "../test-helpers";
 import { deltaDefinition } from "../../../overlay/widget-types/delta/delta-definition";
 import { relativeDefinition } from "../../../overlay/widget-types/relative/relative-definition";
+import { standingsDefinition } from "../../../overlay/widget-types/standings/standings-definition";
+import type { StandingsContent } from "../../../overlay/widget-types/standings/standings-content";
 import { StudioProvider, useStudioDocument } from "../state/studio-store";
 import type { StudioProfileClient } from "../state/studio-profile-client";
 import { StudioCanvas } from "./StudioCanvas";
@@ -62,6 +64,58 @@ function renderInteractiveCanvas(): TelemetryRateCoordinator {
     </div>,
   );
   return coordinator;
+}
+
+function buildMaximumRedlineDocument(): ProfileDocumentV3 {
+  const widget = standingsDefinition.createDefault("standings-redline-selected");
+  const content = standingsDefinition.parseContent(undefined);
+  const presets = ["sm", "sm", "lg", "lg", "md", "md", "auto", "lg", "lg", "xs", "sm"] as const;
+  widget.content = {
+    ...content,
+    columns: content.columns.map((column, index) => ({
+      ...column,
+      enabled: true,
+      widthPreset: presets[index],
+    })),
+  } satisfies StandingsContent;
+  widget.layout = { ...widget.layout, x: 1639, y: 100, w: 280, h: 900, aspectLocked: false };
+  widget.visual = {
+    ...widget.visual,
+    systemId: "vantare-endurance",
+    baseSettings: { templateId: "standings-redline" },
+  };
+  return {
+    schemaVersion: 3,
+    id: "profile-redline",
+    name: "Redline move test",
+    displayMode: "edit",
+    monitorIndex: 0,
+    layouts: {
+      general: {
+        type: "general",
+        widgets: [widget],
+      },
+    },
+  };
+}
+
+const redlineClient: StudioProfileClient = {
+  load: async () => ({ document: buildMaximumRedlineDocument(), revision: "redline-rev-1" }),
+  save: async () => ({ status: "saved", document: buildMaximumRedlineDocument(), revision: "redline-rev-2" }),
+};
+
+function renderRedlineCanvas(): void {
+  const coordinator = createTestTelemetryCoordinator();
+  render(
+    <div style={{ width: 960, height: 540 }}>
+      <StudioProvider client={redlineClient} initialFile="profiles/redline.json">
+        <StudioTelemetryProvider coordinator={coordinator} liveAvailable={false}>
+          <DispatchRecorder />
+          <StudioCanvas />
+        </StudioTelemetryProvider>
+      </StudioProvider>
+    </div>,
+  );
 }
 
 function mockSceneRect(): void {
@@ -626,6 +680,64 @@ describe("useCanvasInteraction", () => {
     await waitFor(() => expect(screen.getByTestId("dirty-flag").textContent).toBe("dirty"));
     expect(screen.getByTestId("studio-widget-frame-delta-main").style.left).toBe("140px");
     expect(screen.getByTestId("studio-canvas-viewport").getAttribute("data-interaction")).toBe("idle");
+  });
+
+  it.each([
+    { delta: -100, expectedLeft: 994 },
+    { delta: 100, expectedLeft: 1094 },
+  ])("persists a normalized Redline move after pointer-up ($delta px)", async ({ delta, expectedLeft }) => {
+    renderRedlineCanvas();
+    const frame = await screen.findByTestId("studio-widget-frame-standings-redline-selected");
+    mockSceneRect();
+    expect(frame.style.left).toBe("1094px");
+    expect(frame.style.width).toBe("826px");
+
+    fireEvent.pointerDown(frame, {
+      pointerId: 41,
+      button: 0,
+      clientX: 1094,
+      clientY: 100,
+      bubbles: true,
+    });
+    fireEvent.pointerMove(window, {
+      pointerId: 41,
+      clientX: 1094 + delta,
+      clientY: 100,
+      altKey: true,
+      bubbles: true,
+    });
+    await waitFor(() => expect(readFrameVisualLeft(frame)).toBe(expectedLeft));
+
+    fireEvent.pointerUp(window, { pointerId: 41, bubbles: true });
+
+    await waitFor(() => expect(frame.style.left).toBe(`${expectedLeft}px`));
+    expect(frame.style.transform).toBe("");
+    expect(frame.style.width).toBe("826px");
+    expect(screen.getByTestId("studio-canvas-viewport").getAttribute("data-interaction")).toBe("idle");
+  });
+
+  it("does not persist Redline normalization on click without movement", async () => {
+    renderRedlineCanvas();
+    const frame = await screen.findByTestId("studio-widget-frame-standings-redline-selected");
+    mockSceneRect();
+    expect(frame.style.left).toBe("1094px");
+    expect(frame.style.width).toBe("826px");
+
+    fireEvent.pointerDown(frame, {
+      pointerId: 42,
+      button: 0,
+      clientX: 1094,
+      clientY: 100,
+      bubbles: true,
+    });
+    fireEvent.pointerUp(window, { pointerId: 42, bubbles: true });
+
+    await waitFor(() =>
+      expect(screen.getByTestId("studio-canvas-viewport").getAttribute("data-interaction")).toBe("idle"),
+    );
+    expect(screen.getByTestId("dirty-flag").textContent).toBe("clean");
+    expect(frame.style.left).toBe("1094px");
+    expect(frame.style.width).toBe("826px");
   });
 
   it("does not dispatch when pointer-up happens without movement", async () => {

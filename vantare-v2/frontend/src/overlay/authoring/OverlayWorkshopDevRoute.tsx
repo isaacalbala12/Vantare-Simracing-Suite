@@ -30,6 +30,7 @@ import "./overlay-workshop.css";
 const SYSTEMS: readonly DesignSystemId[] = ["vantare-original", "vantare-crystal", "vantare-endurance"];
 const STATES = ["ready", "stale", "disconnected", "error"] as const;
 const SURFACES = ["studio", "desktop", "obs", "harness"] as const;
+export const OVERLAY_WORKSHOP_PROFILE_ID = "workshop-fixture";
 const VARIANTS: readonly HarnessVariant[] = [
   "default",
   "relative-fill",
@@ -135,10 +136,13 @@ function defaultSystem(widget: WidgetType): DesignSystemId {
   return compatibleSystems(widget)[0]!;
 }
 
-function WorkshopSurface({ prepared, surface, query, comparison = false }: { prepared: PreparedFixture; surface: OverlayWorkshopQuery["surface"]; query: OverlayWorkshopQuery; comparison?: boolean }): React.ReactElement {
+function WorkshopSurface({ prepared, profileId, surface, query, comparison = false }: { prepared: PreparedFixture; profileId: string; surface: OverlayWorkshopQuery["surface"]; query: OverlayWorkshopQuery; comparison?: boolean }): React.ReactElement {
   const width = query.width ?? prepared.widget.layout.w;
   const height = query.height ?? prepared.widget.layout.h;
-  const runtime = buildAuthoringV2Runtime(prepared.widget.type, prepared.snapshot);
+  const runtime = {
+    ...buildAuthoringV2Runtime(prepared.widget.type, prepared.snapshot),
+    relativeViewModelInstanceKey: `${profileId}:${prepared.widget.id}`,
+  };
   return <div className="overlay-workshop-surface" data-overlay-workshop-surface={surface} data-overlay-workshop-comparison={comparison || undefined}>
     {surface !== "obs" && <span className="overlay-workshop-surface-label">{surface}</span>}
     <div className="overlay-workshop-widget-root" data-overlay-workshop-widget-root style={{ width, height, transform: `scale(${query.scale})`, transformOrigin: "center" }}>
@@ -150,7 +154,7 @@ function WorkshopSurface({ prepared, surface, query, comparison = false }: { pre
   </div>;
 }
 
-function OverlayWorkshopPage({ initialQuery }: { initialQuery: OverlayWorkshopQuery }): React.ReactElement {
+function OverlayWorkshopPage({ initialQuery, profileId }: { initialQuery: OverlayWorkshopQuery; profileId: string }): React.ReactElement {
   const [parsed, setQuery] = useState<OverlayWorkshopQuery>(initialQuery);
   const [prepared, setPrepared] = useState<PreparedFixture | null>(null);
   const [dimensionDraft, setDimensionDraft] = useState({
@@ -514,15 +518,15 @@ function OverlayWorkshopPage({ initialQuery }: { initialQuery: OverlayWorkshopQu
       </section>
       <section className={`overlay-workshop-stage overlay-workshop-stage--${parsed.background}`} data-overlay-workshop-stage>
         {prepared?.key === fixtureKey && (
-          <><WorkshopSurface prepared={preparedForRender ?? prepared} surface={parsed.surface} query={parsed} />
-          {parsed.compare && <WorkshopSurface prepared={preparedForRender ?? prepared} surface={parsed.compare} query={parsed} comparison />}</>
+          <><WorkshopSurface prepared={preparedForRender ?? prepared} profileId={profileId} surface={parsed.surface} query={parsed} />
+          {parsed.compare && <WorkshopSurface prepared={preparedForRender ?? prepared} profileId={profileId} surface={parsed.compare} query={parsed} comparison />}</>
         )}
       </section>
     </main>
   );
 }
 
-export function OverlayWorkshopDevRoute({ search = window.location.search }: { search?: string }): React.ReactElement {
+export function OverlayWorkshopDevRoute({ search = window.location.search, profileId = OVERLAY_WORKSHOP_PROFILE_ID }: { search?: string; profileId?: string }): React.ReactElement {
   const parsed = parseOverlayWorkshopQuery(search);
   if ("error" in parsed) {
     return (
@@ -531,5 +535,5 @@ export function OverlayWorkshopDevRoute({ search = window.location.search }: { s
       </main>
     );
   }
-  return <OverlayWorkshopPage initialQuery={parsed} />;
+  return <OverlayWorkshopPage initialQuery={parsed} profileId={profileId} />;
 }

@@ -413,6 +413,7 @@ type CachedProjector struct {
 	previous dirtySignals
 	hasPrev  bool
 	memo     FrameV2
+	settled  relativeSettler
 
 	ticks    uint64
 	fullRuns uint64
@@ -555,6 +556,7 @@ func (projector *CachedProjector) Project(
 	}
 	if plan.Rebuild(SectionRelative) {
 		frame.Relative = projector.builders.Relative(final, preferences, source)
+		frame.RelativeSettled = projector.settled.project(final, frame.Relative, header, now)
 	}
 	if plan.Rebuild(SectionSpotter) {
 		frame.Spotter = projector.builders.Spotter(final, preferences, source)

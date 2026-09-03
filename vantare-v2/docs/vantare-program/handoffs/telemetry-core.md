@@ -1,6 +1,53 @@
 # Handoff vivo — Telemetry Core
 
-## Decisión vigente — 2026-09-03, ISA-962
+## R0 ejecutado, revisión final en curso — 2026-09-03, ISA-894
+
+Isaac aprueba ejecutar R0 («sí, agree»). Writer único en
+`C:\tmp\vantare-v1-retirada-r0`, rama `vantareapp/isa-894-retirada-v1-r0`,
+base `8e8ec17b2d2b660d717316c10925a6b93d073d1c` (candidato #969).
+La diferencia respecto a `2abd32f9` del plan es sólo documentación/roadmap;
+Nightly remoto verificado permanece `659b2c57`. No se toca el checkout principal.
+
+Tres Muse leen en snapshots aislados de la misma base: frontend/catálogo
+`ses_f97d0cf51ffeAeZYBKiE0ACNk9`, Go/transporte
+`ses_f97d0bc82ffeF0g7zlxOmfPJPH` y compatibilidad
+`ses_f97d0a6f5ffe8clDFCBlgrBxqZ`. Main consolida documentos y ejecuta focales.
+Sin modificación productiva, borrado V1, apps/LMU, benchmark o promoción.
+
+Copia privada ya creada en
+`C:\tmp\vantare-v1-rollback-4864b5c6-20260903\vantare-redline-rfix4-4864b5c6.exe`:
+30.851.584 bytes y SHA256 `cb69a4d56ca7cb59078cb7bd7e223b33c34aa927ec808c2e49154386b878faba`,
+idéntico al original. Commit `4864b5c6` presente. Copia verificada, no restauración
+funcional. Código 4864b5c6 y base 8e8ec17b idénticos (diff sólo documental);
+ambos soportan perfiles V4/settings 6. Cambiar ubicación/CWD puede seleccionar
+otros datos; recovery settings/updater puede escribir al arrancar. No se copian
+datos ni se cambia canal. Ver [rollback](../../telemetry-core/evidence/isa-894/retirada-v1-rollback-20260903.md).
+
+Los lectores han entregado inventario y suplemento, snapshots limpios. Main
+contrasta suscripciones dinámicas (sí hay listeners legacy de diagnóstico),
+Host V2/auxiliar, constructor/tests pull y consumo fail-closed del contador por
+el banco. Rechaza paridad V1 nueva como gate, supuesto pre-V4, borrado masivo de
+bench y conservación de shadow por nombre. El [inventario](../../telemetry-core/evidence/isa-894/retirada-v1-inventario-20260903.md)
+clasifica los 20 widgets, fuentes auxiliares, productor/transporte/contratos y
+tooling; marca explícitamente qué unidades no se pueden borrar aún.
+
+[Checks](../../telemetry-core/evidence/isa-894/retirada-v1-checks-20260903.md): instalación
+offline frozen sin actualizar dependencias; 3 archivos/16 tests frontend,
+typecheck, build, focal de emisión/guardias Go y ocho paquetes Go PASS, exit 0.
+Avisos Node/Vite conservados. No suites completas ni rendimiento/LMU/rollback
+físico. Preparado [R1](../../superpowers/plans/2026-09-03-telemetria-v1-retirada-r1.md):
+pull Go V2-only en dos archivos productivos y cuatro tests/bench, pendiente de
+ejecución. No se inicia auditoría V2 ni bucle de experimentos.
+
+Siguiente: review Muse spec y después calidad sobre SHA documental congelado;
+registrar resultados y entrega aislada. Ningún merge/push a Nightly autorizado.
+
+Este bloque prevalece sobre los estados históricos de aprobación inferiores.
+
+## Decisión de diseño y registro previo — 2026-09-03, ISA-962
+
+El alcance del maestro sigue vigente. Los estados de R0 en este registro son
+anteriores y quedan sustituidos por la cabecera actual; no son otra cola activa.
 
 Isaac sustituye completamente el programa anterior por el
 [maestro de Telemetría V2](../../superpowers/specs/2026-09-03-telemetria-v2-plan-maestro.md).

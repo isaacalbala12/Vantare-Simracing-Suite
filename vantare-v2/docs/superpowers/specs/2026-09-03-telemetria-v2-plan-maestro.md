@@ -5,8 +5,11 @@ autorización documental final: «sí. sustitúyelo completamente por esto».
 Expediente: [ISA-962](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/962).
 
 Revisión del maestro escrito aprobada por Isaac: «estoy de acuerdo».
-Primer microplan propuesto: [R0 — inventario, rollback y regresiones](../plans/2026-09-03-telemetria-v1-retirada-r0.md).
-Estado SDD: SPECIFY aprobado; PLAN preparado para revisión, sin implementación.
+[R0 — inventario, rollback y regresiones](../plans/2026-09-03-telemetria-v1-retirada-r0.md)
+autorizado y ejecutado en alcance documental/artefacto/checks; revisión independiente
+registrada en el handoff. [R1 — pull V2-only](../plans/2026-09-03-telemetria-v1-retirada-r1.md)
+preparado, no ejecutado. Estado SDD: SPECIFY aprobado; R0 en verificación final.
+No se ha modificado código productivo, retirado V1 ni iniciado la auditoría V2.
 
 ## 1. Una sola dirección activa
 

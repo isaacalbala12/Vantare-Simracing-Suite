@@ -1,6 +1,6 @@
 # Retirada segura de Telemetría V1 — R0 Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** cerrar el inventario de dependencias, preservar una referencia de rollback y fijar las pruebas protectoras antes del primer borrado V1.
 
@@ -12,9 +12,14 @@
 
 ## Estado y alcance
 
+**Ejecución autorizada:** Isaac responde «sí, agree». Base efectiva reconciliada
+`8e8ec17b2d2b660d717316c10925a6b93d073d1c`: sobre `2abd32f9` sólo cambian
+documentación y roadmap. R0 se ejecuta en la rama/worktree previstos;
+el alcance sigue sin permitir edición de código productivo o pruebas del juego.
+
 Isaac aprueba el [maestro](../specs/2026-09-03-telemetria-v2-plan-maestro.md).
-Este documento propone el primer microplan de ejecución, bajo **ISA-894**;
-su revisión precede a IMPLEMENT. La exploración que lo fundamenta está en
+Este es el primer microplan ejecutado, bajo **ISA-894**; su entrega documental
+está en revisión final. El primer corte de código R1 sigue sin ejecutarse. La exploración que lo fundamenta está en
 [la evidencia de base](../../telemetry-core/evidence/isa-894/retirada-v1-base-20260903.md).
 No se presenta un inventario parcial como exhaustivo ni un hash como rollback funcional.
 
@@ -45,7 +50,7 @@ adelanta ni consume el presupuesto del bucle.
 **Escritura permitida:** sólo el documento de inventario. Lectura: `cmd/`,
 `internal/`, `pkg/`, `frontend/src/`, entradas/build frontend y `scripts/bench/`.
 
-- [ ] Registrar issue, raíz, rama, HEAD y estado limpio; si difieren de la base declarada, parar y reconciliar, sin reset ni checkout destructivo.
+- [x] Registrar issue, raíz, rama, HEAD y estado limpio; si difieren de la base declarada, parar y reconciliar, sin reset ni checkout destructivo.
 
 ```powershell
 git rev-parse --show-toplevel
@@ -58,7 +63,7 @@ Esperado: rama/worktree de R0 desde la base declarada, sin cambios previos.
 Si esa base sólo recibe documentación posterior, registrar explícitamente ambos
 SHA y comprobar el diff; no atribuir evidencia vieja a código distinto.
 
-- [ ] Buscar las fronteras legacy y seguir **todos sus importadores/callers**, no sólo el primer resultado. Ejecutar desde la raíz de aplicación; `rg` con salida 1 significa sin coincidencias, salida mayor que 1 es error.
+- [x] Buscar las fronteras legacy y seguir **todos sus importadores/callers**, no sólo el primer resultado. Ejecutar desde la raíz de aplicación; `rg` con salida 1 significa sin coincidencias, salida mayor que 1 es error.
 
 ```powershell
 rg -n 'TelemetrySnapshot|snapshot\.scoring|adaptOverlayProjectionToSnapshot|derived-telemetry-store' frontend/src
@@ -71,9 +76,9 @@ Esperado **antes** de la retirada: coincidencias. Un resultado no acredita por s
 solo uso productivo ni permiso de borrado. No buscar `.env*`, credenciales ni
 perfiles privados. Separar producción, test/fixture, tooling, generado e historia.
 
-- [ ] Completar una fila por consumidor real con: ruta/símbolo/SHA, upstream, downstream, categoría KEEP/MIGRATE/DELETE, garantía que protege, test existente o brecha, dependencia previa al borrado. Inventariar también entradas HTML/Vite, exports, bindings generados y comandos que empaquetan harnesses.
-- [ ] Resolver las trampas ya comprobadas en la evidencia de base: `WidgetTypeDefinition.buildViewModel`, rama harness de `WidgetVisualHost`, pull mixto, SSE compartido, guardias que exigen coexistencia y contratos independientes de Strategy/Engineer/recording. No borrar `telemetry-rate-coordinator` o `telemetry-shadow` enteros por su nombre.
-- [ ] Clasificar cada uno de los tipos del registro de widgets, incluidas las autoridades auxiliares. Un widget migrado en producción puede seguir arrastrando un builder legacy desde su definición o sus fixtures.
+- [x] Completar una fila por consumidor real con: ruta/símbolo/SHA, upstream, downstream, categoría KEEP/MIGRATE/DELETE, garantía que protege, test existente o brecha, dependencia previa al borrado. Inventariar también entradas HTML/Vite, exports, bindings generados y comandos que empaquetan harnesses.
+- [x] Resolver las trampas ya comprobadas en la evidencia de base: `WidgetTypeDefinition.buildViewModel`, rama harness de `WidgetVisualHost`, pull mixto, SSE compartido, guardias que exigen coexistencia y contratos independientes de Strategy/Engineer/recording. No borrar `telemetry-rate-coordinator` o `telemetry-shadow` enteros por su nombre.
+- [x] Clasificar cada uno de los tipos del registro de widgets, incluidas las autoridades auxiliares. Un widget migrado en producción puede seguir arrastrando un builder legacy desde su definición o sus fixtures.
 
 **Aceptación:** (1) cada coincidencia/importador queda clasificado o bloqueado de
 forma explícita; (2) ningún KEEP compartido se incluye en un borrado de carpeta;
@@ -84,7 +89,7 @@ forma explícita; (2) ningún KEEP compartido se incluye en un borrado de carpet
 **Escritura permitida:** documento de rollback y copia privada del exe a una
 carpeta nueva fuera de Git. No copiar datos reales ni cambiar instalación/configuración.
 
-- [ ] Revalidar artefacto y commit. El hash ya se comprobó al redactar este plan; repetir sólo antes de copiar para detectar cambios.
+- [x] Revalidar artefacto y commit. El hash ya se comprobó al redactar este plan; repetir sólo antes de copiar para detectar cambios.
 
 ```powershell
 $rollbackSource = 'C:\tmp\vantare-redline-integration\vantare-v2\vantare-v2\bin\vantare-redline-rfix4-4864b5c6.exe'
@@ -96,7 +101,7 @@ git cat-file -t 4864b5c6cd5bd8bc0f9b7279ac6f9a83e438253c
 Esperado: sin excepción y `commit`. No extraer/imprimir cadenas del ejecutable,
 subirlo a GitHub ni distribuir su configuración embebida.
 
-- [ ] Crear copia sin sobrescribir destinos existentes; esta operación guarda un binario, **no** lo ejecuta ni lo instala.
+- [x] Crear copia sin sobrescribir destinos existentes; esta operación guarda un binario, **no** lo ejecuta ni lo instala.
 
 ```powershell
 $rollbackSource = 'C:\tmp\vantare-redline-integration\vantare-v2\vantare-v2\bin\vantare-redline-rfix4-4864b5c6.exe'
@@ -112,9 +117,9 @@ if ((Get-FileHash -LiteralPath $rollbackCopy -Algorithm SHA256).Hash.ToLowerInva
 Esperado: copia con el mismo SHA256. Si falla, conservar evidencia y parar;
 no borrar ni reparar automáticamente los archivos implicados.
 
-- [ ] Documentar, leyendo **código**, los stores/configuraciones compartidos: settings, perfiles v3/v4, perfil activo/política de rendimiento, updater y runtime auxiliar. Determinar si hay escrituras automáticas al arrancar. No leer/capturar su contenido privado.
-- [ ] Registrar artefacto como **copia verificada**, no restauración funcional. Describir vuelta atrás sin downgrade/migración de datos: cerrar candidato mediante su cierre normal, seleccionar build preservada y mantener datos compatibles. Si hace falta backup de datos privados o cambio de instalador, elevarlo con rutas concretas antes de efectuarlo. Isaac ejecutará cualquier comprobación física imprescindible, máximo cinco minutos.
-- [ ] Conservar como referencia `scripts/bench/build-measurement.ps1`: build configurada y con CDP; no confundirla con `-tags production`, release o medida limpia. R0 no vuelve a compilar con `.env*` ni prueba una app sin licencia.
+- [x] Documentar, leyendo **código**, los stores/configuraciones compartidos: settings, perfiles v3/v4, perfil activo/política de rendimiento, updater y runtime auxiliar. Determinar si hay escrituras automáticas al arrancar. No leer/capturar su contenido privado.
+- [x] Registrar artefacto como **copia verificada**, no restauración funcional. Describir vuelta atrás sin downgrade/migración de datos: cerrar candidato mediante su cierre normal, seleccionar build preservada y mantener datos compatibles. Si hace falta backup de datos privados o cambio de instalador, elevarlo con rutas concretas antes de efectuarlo. Isaac ejecutará cualquier comprobación física imprescindible, máximo cinco minutos.
+- [x] Conservar como referencia `scripts/bench/build-measurement.ps1`: build configurada y con CDP; no confundirla con `-tags production`, release o medida limpia. R0 no vuelve a compilar con `.env*` ni prueba una app sin licencia.
 
 **Aceptación:** (1) commit y copia verificables; (2) datos preservados sin migración
 irreversible y riesgos de compatibilidad explícitos; (3) pendientes físicos
@@ -124,8 +129,8 @@ declarados sin inventar PASS. Falta de rollback seguro bloquea borrado, no oblig
 
 **Escritura permitida:** documento de checks; coordinación final en handoff/roadmap/issue.
 
-- [ ] Identificar qué comportamiento protege cada guard actual. En particular, `internal/app/overlay_v1_guard_test.go` y `frontend/src/overlay/core/v1-authority-guard.test.ts` congelan coexistencia: el corte de retirada tendrá que sustituir esa expectativa por ausencia legacy **manteniendo negativos, invariantes y cobertura semántica**.
-- [ ] Ejecutar focales no invasivos sobre la base, sin tocar fuentes ni lanzar apps:
+- [x] Identificar qué comportamiento protege cada guard actual. En particular, `internal/app/overlay_v1_guard_test.go` y `frontend/src/overlay/core/v1-authority-guard.test.ts` congelan coexistencia: el corte de retirada tendrá que sustituir esa expectativa por ausencia legacy **manteniendo negativos, invariantes y cobertura semántica**.
+- [x] Ejecutar focales no invasivos sobre la base, sin tocar fuentes ni lanzar apps:
 
 ```powershell
 corepack pnpm --dir frontend exec vitest run src/overlay/core/v1-authority-guard.test.ts src/overlay/transports/legacy-retirement.test.ts src/telemetry-transport/overlay-wails-pull.test.ts --maxWorkers=2
@@ -141,8 +146,8 @@ embed. Ejecutar cada comando por separado y registrar su salida y código; el
 de instalar; no actualizar versiones para desbloquear un test. Estos focales
 no equivalen a la suite completa ni acreditan rendimiento/runtime físico.
 
-- [ ] Ante fallo, registrar comando, salida, SHA y si es anterior al corte; no corregir producción dentro de R0 ni debilitar el test. Error no comprendido bloquea ese paso.
-- [ ] Elegir el **primer conjunto cerrado de dependencias** del inventario, con hasta cinco archivos de código por microcorte y sus tests. Preparar sus TASKS con test RED, diff mínimo previsto, test GREEN, checks completos aplicables y rollback. Si el conjunto requiere más archivos inseparables, justificar la unidad y pedir revisión; no dejar commits artificialmente rotos para cumplir un número.
+- [x] Gestión de fallos: no fallaron los focales ejecutados. Los avisos y checks no ejecutados constan en la evidencia; no se corrigió producción ni se debilitó ningún test.
+- [x] Elegir el **primer conjunto cerrado de dependencias** del inventario, con hasta cinco archivos de código por microcorte y sus tests. Preparar sus TASKS con test RED, diff mínimo previsto, test GREEN, checks completos aplicables y rollback. Si el conjunto requiere más archivos inseparables, justificar la unidad y pedir revisión; no dejar commits artificialmente rotos para cumplir un número.
 - [ ] Reviewer Muse independiente en snapshot: comprobar clasificación, preservación, riesgos y fuerza de las pruebas. El orquestador contrasta las rutas y el diff; el informe del worker no basta. Publicar resultado, actualizar #894 y el único handoff, sin cerrar la issue ni promover.
 
 **Aceptación:** (1) comandos/resultados reproducibles; (2) próxima tarea de código
@@ -164,8 +169,19 @@ SHA concreto. El banco físico tendrá un solo dueño y no arranca durante R0.
 
 ## Cierre de este plan
 
-La aprobación del maestro no certifica la retirada ni su rendimiento. Este
-microplan se ofrece a revisión antes de ejecutarlo. No se solicita otra elección
+La aprobación del maestro no certifica la retirada ni su rendimiento. R0 ha sido
+ejecutado dentro de su autorización; los resultados se someten a revisión independiente. No se solicita otra elección
 de modelo ni de método: Isaac ya eligió workers Muse y revisión adversarial.
 La siguiente entrega de R0 es evidencia y el primer corte de código, no otra
 ronda abierta de brainstorming ni un reinicio del inventario desde cero.
+
+## Entrega R0
+
+- [Inventario y límites explícitos](../../telemetry-core/evidence/isa-894/retirada-v1-inventario-20260903.md).
+- [Artefacto y compatibilidad de rollback](../../telemetry-core/evidence/isa-894/retirada-v1-rollback-20260903.md).
+- [Regresiones de la base](../../telemetry-core/evidence/isa-894/retirada-v1-checks-20260903.md).
+- [Primer corte de código R1](2026-09-03-telemetria-v1-retirada-r1.md), preparado, no implementado.
+
+Las unidades BLOCKED tienen identidad y consumidores clasificados, pero su
+semántica requiere revisión antes de borrarlas; no bloquean R1, que no las toca.
+La copia no es prueba de restauración física ni autorización para copiar datos.

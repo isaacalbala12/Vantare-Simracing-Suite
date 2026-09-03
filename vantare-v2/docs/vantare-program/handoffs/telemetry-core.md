@@ -20,16 +20,34 @@ consecutivos sin mejora medida o ocho horas acumuladas de ejecución del bucle,
 lo primero. La mejora sólo reinicia consecutivos. Únicamente Muse Spark 1.3
 Contributor xhigh mediante MCP OpenCode; revisión adversarial independiente.
 
-**Estado actual:** sólo documentación del nuevo diseño; ninguna retirada,
-auditoría de código V2 o prueba de rendimiento nueva. Candidato previo
-Redline `c13b8888`, código `4864b5c6`, PR #969 draft; S3 FINAL PASS acotado
+**Estado actual:** Isaac aprueba el maestro escrito («estoy de acuerdo»).
+SPECIFY aprobado; [microplan R0](../../superpowers/plans/2026-09-03-telemetria-v1-retirada-r0.md)
+preparado para revisión. Dos Muse en snapshots de `2abd32f9` hicieron exploración
+acotada de dependencias y rollback, contrastada por main; no es la auditoría V2.
+Ninguna retirada ni prueba de rendimiento nueva. Código del candidato
+`4864b5c6`, documentación en `2abd32f9`, PR #969 draft; S3 FINAL PASS acotado
 según su evidencia. S4/S5/S2 no ejecutadas; memoria y rendimiento global V2
 no certificados. Esas afirmaciones no cambian por aprobar este plan.
 
-**Siguiente acción:** revisar el maestro escrito y desglosar el primer microcorte
-seguro de #894 con inventario, rollback por build y pruebas protectoras.
+**Siguiente acción:** revisar R0 y ejecutarlo tras su aprobación: inventario
+completo, copia privada del exe con hash, compatibilidad/rollback y regresiones
+protectoras. No repetir el brainstorming ni inventariar de cero lo ya contrastado.
 No reactivar la cola antigua. Los registros inferiores son históricos cuando
 contradigan este bloque; conservan sus cifras y resultados, no permisos actuales.
+
+**Exploración de PLAN:** [base verificada](../../telemetry-core/evidence/isa-894/retirada-v1-base-20260903.md).
+Workers `ses_f97dbe79fffexMAi0IEDDID27H` y `ses_f97dbe353ffehpum1nA3FSjGzb`
+terminados, sin cambios en sus snapshots. Main rechaza la reimposición de gates
+históricos sugerida por el primero y corrige su ruta SSE contra código actual.
+Exe previo localizado y SHA256 confirmado `cb69a4d5…878faba`; todavía no se ha
+copiado ni restaurado. Los guardias de coexistencia y dependencias mixtas
+frontend/pull exigen sustitución de pruebas y clasificación, no borrado ciego.
+La propuesta R0 no es autorización de implementación o promoción. CI de
+`2abd32f9` estaba en progreso al preparar este corte; no se hereda como PASS.
+Autorrevisión del plan: comandos/rutas, variables y alcance de cada tarea
+comprobados; sin cambios productivos. Digest regenerado y reproducible,
+44 tests de roadmap PASS y diff-check limpio. Focales Go/frontend de R0 aún
+no ejecutados: pertenecen al microplan propuesto, no a esta entrega documental.
 
 **Entrega documental:** commit coordinador `79e88db6`, incorporado al candidato
 como `f92dc2cc`; los dos checkpoints S3 anteriores también se incorporaron sin

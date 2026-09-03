@@ -4,6 +4,10 @@ Fecha: 2026-09-03. Diseño aprobado por Isaac mediante brainstorming e interroga
 autorización documental final: «sí. sustitúyelo completamente por esto».
 Expediente: [ISA-962](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/962).
 
+Revisión del maestro escrito aprobada por Isaac: «estoy de acuerdo».
+Primer microplan propuesto: [R0 — inventario, rollback y regresiones](../plans/2026-09-03-telemetria-v1-retirada-r0.md).
+Estado SDD: SPECIFY aprobado; PLAN preparado para revisión, sin implementación.
+
 ## 1. Una sola dirección activa
 
 El objeto es **Telemetría V2 de extremo a extremo**, no toda la aplicación ni

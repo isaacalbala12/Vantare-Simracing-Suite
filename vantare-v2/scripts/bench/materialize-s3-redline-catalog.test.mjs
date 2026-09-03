@@ -53,3 +53,61 @@ test("mantiene el ancho persistido estrecho de Standings para que el producto no
     rmSync(output, { recursive: true, force: true });
   }
 });
+
+test("declara las once columnas Standings Redline habilitadas en orden contractual con presets productivos", () => {
+  const output = mkdtempSync(path.join(tmpdir(), "vantare-s3-redline-"));
+  try {
+    execFileSync(process.execPath, [script, "--head", "a".repeat(40), "--out", output]);
+    const index = JSON.parse(readFileSync(path.join(output, "redline-index.json"), "utf8"));
+    const standings = index.profiles.find((entry) => entry.ordinal === 9);
+    const profile = JSON.parse(readFileSync(path.join(output, standings.file), "utf8"));
+    const widget = profile.layouts.general.widgets[0];
+    const columns = widget.content.columns;
+    assert.ok(Array.isArray(columns), "standings debe declarar columns");
+    const enabled = columns.filter((column) => column.enabled);
+    assert.equal(enabled.length, 11);
+    const probeOrder = [
+      "position",
+      "driverName",
+      "driverNumber",
+      "gap",
+      "bestLap",
+      "vehicleClass",
+      "currentLap",
+      "interval",
+      "lastLap",
+      "pit",
+      "tireCompound",
+    ];
+    assert.deepEqual(columns.map((column) => column.metricId), probeOrder);
+    const productivePresets = {
+      position: "sm",
+      driverName: "lg",
+      driverNumber: "sm",
+      gap: "md",
+      bestLap: "lg",
+      vehicleClass: "lg",
+      currentLap: "auto",
+      interval: "md",
+      lastLap: "lg",
+      pit: "xs",
+      tireCompound: "sm",
+    };
+    for (const column of columns) {
+      assert.equal(column.id, column.metricId);
+      assert.equal(column.widthPreset, productivePresets[column.metricId]);
+    }
+    const fixedMetrics = new Set(["position", "driverName"]);
+    const position = columns.find((column) => column.metricId === "position");
+    const driver = columns.find((column) => column.metricId === "driverName");
+    const flexible = columns.filter((column) => column.enabled && !fixedMetrics.has(column.metricId));
+    const rendered = [position, driver, ...flexible].map((column) => column.metricId);
+    assert.deepEqual(rendered, probeOrder);
+    assert.equal(widget.content.rowCount, 20);
+    assert.equal(widget.content.classScope, "all-classes");
+    assert.equal(widget.layout.w, 280);
+    assert.equal(standings.expectedFrameWidth, 826);
+  } finally {
+    rmSync(output, { recursive: true, force: true });
+  }
+});

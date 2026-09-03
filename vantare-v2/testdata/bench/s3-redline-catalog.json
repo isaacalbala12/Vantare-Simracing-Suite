@@ -12,7 +12,23 @@
       "layout": { "w": 280, "h": 900 },
       "expectedPhysicalFrameWidth": 826,
       "updateHz": 8,
-      "content": { "rowCount": 20, "classScope": "all-classes" },
+      "content": {
+        "rowCount": 20,
+        "classScope": "all-classes",
+        "columns": [
+          { "id": "position", "metricId": "position", "enabled": true, "widthPreset": "sm" },
+          { "id": "driverName", "metricId": "driverName", "enabled": true, "widthPreset": "lg" },
+          { "id": "driverNumber", "metricId": "driverNumber", "enabled": true, "widthPreset": "sm" },
+          { "id": "gap", "metricId": "gap", "enabled": true, "widthPreset": "md" },
+          { "id": "bestLap", "metricId": "bestLap", "enabled": true, "widthPreset": "lg" },
+          { "id": "vehicleClass", "metricId": "vehicleClass", "enabled": true, "widthPreset": "lg" },
+          { "id": "currentLap", "metricId": "currentLap", "enabled": true, "widthPreset": "auto" },
+          { "id": "interval", "metricId": "interval", "enabled": true, "widthPreset": "md" },
+          { "id": "lastLap", "metricId": "lastLap", "enabled": true, "widthPreset": "lg" },
+          { "id": "pit", "metricId": "pit", "enabled": true, "widthPreset": "xs" },
+          { "id": "tireCompound", "metricId": "tireCompound", "enabled": true, "widthPreset": "sm" }
+        ]
+      },
       "baseSettings": { "templateId": "standings-redline", "showSessionHeader": true }
     },
     {

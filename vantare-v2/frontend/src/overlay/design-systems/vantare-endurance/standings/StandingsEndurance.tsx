@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import type { WidgetRendererProps } from "../../../core/design-system-definition";
+import { resolveWidgetVisualGeometryForType } from "../../../core/widget-visual-geometry";
 import { resolveColumnWidthPixels } from "../../../widget-types/shared/widget-column";
 import { STANDINGS_COLUMN_TEMPLATES } from "../../../widget-types/standings/standings-content";
 import {
@@ -8,6 +9,7 @@ import {
 } from "../../../widget-types/standings/standings-renderer-helpers";
 import {
   resolveStandingsCellValue,
+  withStandingsMotionIdentity,
   type StandingsRowViewModel,
   type StandingsViewModel,
 } from "../../../widget-types/standings/standings-view-model";
@@ -27,6 +29,7 @@ import { StandingsRedlineTemplate } from "./StandingsRedlineTemplate";
 import { StandingsLmuTemplate } from "./StandingsLmuTemplate";
 import { StandingsRacelabsTemplate } from "./StandingsRacelabsTemplate";
 import { StandingsWecTemplate } from "./StandingsWecTemplate";
+import { fitStandingsRowsToHeight } from "./standings-endurance-layout";
 
 function columnLabel(metricId: string): string {
   return (
@@ -324,9 +327,25 @@ function templateBody(
   }
 }
 
-export function StandingsEndurance({ model, settings }: WidgetRendererProps<StandingsViewModel>) {
+export function StandingsEndurance({ model, settings, layout }: WidgetRendererProps<StandingsViewModel>) {
   const parsed = parseStandingsEnduranceSettings(settings);
-
+  const viewportHeight = layout === undefined
+    ? Number.POSITIVE_INFINITY
+    : parsed.templateId === "standings-redline"
+      ? layout.h
+      : resolveWidgetVisualGeometryForType(layout, "standings").baseHeight;
+  const fittedRowsModel: StandingsViewModel = {
+    ...model,
+    rows: fitStandingsRowsToHeight(model.rows, {
+      templateId: parsed.templateId,
+      viewportHeight,
+      showSessionHeader: parsed.showSessionHeader,
+      hasStatusMessage: Boolean(model.statusMessage),
+    }),
+  };
+  const fittedModel = model.motionIdentity !== undefined && model.motionSequence !== undefined
+    ? withStandingsMotionIdentity(fittedRowsModel, model.motionIdentity, model.motionSequence)
+    : fittedRowsModel;
   return (
     <section
       data-widget-system="vantare-endurance"
@@ -336,7 +355,7 @@ export function StandingsEndurance({ model, settings }: WidgetRendererProps<Stan
       className="ven-root ven-standings"
       style={buildStandingsAppearanceStyle(settings)}
     >
-      {templateBody(parsed.templateId, model, settings, parsed.showSessionHeader)}
+      {templateBody(parsed.templateId, fittedModel, settings, parsed.showSessionHeader)}
     </section>
   );
 }

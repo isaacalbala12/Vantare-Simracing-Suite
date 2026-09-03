@@ -1,5 +1,68 @@
 # Handoff vivo — Telemetry Core
 
+## Decisión vigente — 2026-09-03, ISA-962
+
+Isaac sustituye completamente el programa anterior por el
+[maestro de Telemetría V2](../../superpowers/specs/2026-09-03-telemetria-v2-plan-maestro.md).
+Este es su único handoff vivo. Secuencia: retirada segura completa de V1 (#894),
+auditoría integral de V2 en cuatro carriles de sólo lectura y bucle de mejoras
+comparables. Rollback mediante build/commit previo verificado; no dejar V1
+dentro del nuevo ejecutable. Se conservan las garantías de ADR 0004/0008.
+
+La autorización de diseño reemplaza el bloqueo histórico por falta de permiso
+genérico de Cut 2 y la prioridad Redline. No borra resultados FAIL ni permite
+ignorar consumidores, pérdida de información, riesgos de datos o gates de seguridad.
+Isaac hará las pruebas manuales LMU; no hay otra sesión física, tarea programada,
+merge ni release autorizados desde esta sustitución.
+
+Fase 3: mantener información, apariencia, frescura y cadencias. Cinco experimentos
+consecutivos sin mejora medida o ocho horas acumuladas de ejecución del bucle,
+lo primero. La mejora sólo reinicia consecutivos. Únicamente Muse Spark 1.3
+Contributor xhigh mediante MCP OpenCode; revisión adversarial independiente.
+
+**Estado actual:** Isaac aprueba el maestro escrito («estoy de acuerdo»).
+SPECIFY aprobado; [microplan R0](../../superpowers/plans/2026-09-03-telemetria-v1-retirada-r0.md)
+preparado para revisión. Dos Muse en snapshots de `2abd32f9` hicieron exploración
+acotada de dependencias y rollback, contrastada por main; no es la auditoría V2.
+Ninguna retirada ni prueba de rendimiento nueva. Código del candidato
+`4864b5c6`, documentación en `2abd32f9`, PR #969 draft; S3 FINAL PASS acotado
+según su evidencia. S4/S5/S2 no ejecutadas; memoria y rendimiento global V2
+no certificados. Esas afirmaciones no cambian por aprobar este plan.
+
+**Siguiente acción:** revisar R0 y ejecutarlo tras su aprobación: inventario
+completo, copia privada del exe con hash, compatibilidad/rollback y regresiones
+protectoras. No repetir el brainstorming ni inventariar de cero lo ya contrastado.
+No reactivar la cola antigua. Los registros inferiores son históricos cuando
+contradigan este bloque; conservan sus cifras y resultados, no permisos actuales.
+
+**Exploración de PLAN:** [base verificada](../../telemetry-core/evidence/isa-894/retirada-v1-base-20260903.md).
+Workers `ses_f97dbe79fffexMAi0IEDDID27H` y `ses_f97dbe353ffehpum1nA3FSjGzb`
+terminados, sin cambios en sus snapshots. Main rechaza la reimposición de gates
+históricos sugerida por el primero y corrige su ruta SSE contra código actual.
+Exe previo localizado y SHA256 confirmado `cb69a4d5…878faba`; todavía no se ha
+copiado ni restaurado. Los guardias de coexistencia y dependencias mixtas
+frontend/pull exigen sustitución de pruebas y clasificación, no borrado ciego.
+La propuesta R0 no es autorización de implementación o promoción. CI de
+`2abd32f9` estaba en progreso al preparar este corte; no se hereda como PASS.
+Autorrevisión del plan: comandos/rutas, variables y alcance de cada tarea
+comprobados; sin cambios productivos. Digest regenerado y reproducible,
+44 tests de roadmap PASS y diff-check limpio. Focales Go/frontend de R0 aún
+no ejecutados: pertenecen al microplan propuesto, no a esta entrega documental.
+
+**Entrega documental:** commit coordinador `79e88db6`, incorporado al candidato
+como `f92dc2cc`; los dos checkpoints S3 anteriores también se incorporaron sin
+cambiar código productivo. Muse independiente `ses_f97e0b4d0ffeCuPPcbastUkozY`
+revisa ese diff en snapshot aislado: APPROVE documental, sin P0/P1/P2 bloqueantes.
+Main verifica archivo histórico íntegro, enlaces del maestro, diff-check,
+digest reproducible y 44 tests de roadmap PASS. El guard completo local no pudo
+leer la issue por ausencia de `GITHUB_TOKEN`; su resultado remoto debe comprobarse
+para el nuevo HEAD, sin atribuirle el CI de `c13b8888`. No se ejecutan suites
+Go/frontend porque este corte sólo toca documentación y JSON generado.
+Issues #962/#894/#924 reconciliadas; #951/#952 fuera de la cola activa y #956
+conservada como entrada diagnóstica. Ninguna cerrada como entregada por esta
+decisión. PR #969 sigue draft; no merge, promoción ni release. Cambio ajeno de
+`configs/calendar-lmu.json` preservado, hash sin variación.
+
 ## Resultado
 
 Un único núcleo live modular y neutral al simulador. El driver LMU posee Shared
@@ -8,12 +71,41 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 
 ## Autoridad
 
+- `docs/superpowers/specs/2026-09-03-telemetria-v2-plan-maestro.md`: alcance y secuencia operativa actuales.
+
 - `docs/adr/0004-telemetry-core-modular-observation-architecture.md`.
 - `docs/telemetry-core/README.md` y su evidencia.
 - `docs/superpowers/plans/2026-07-19-telemetry-core-final-architecture-master.md`.
 - Issue y microplan activos en GitHub.
 
 ## Estado real
+
+- 2026-09-01, decisión operativa ISA-894/ISA-962: Delta queda fuera de S3 y
+  ningún gate depende de completar o validar vueltas del jugador. Las nuevas
+  comprobaciones duran cinco minutos, se ejecutan con el jugador en pista y
+  siguen el orden S3 → S4 → S5 → S2. El colector falla cerrado fuera de cinco
+  minutos y S3 selecciona un perfil Redline sin Delta. La evidencia histórica
+  larga se conserva; esta reducción no autoriza Cut 2 ni promoción.
+
+- 2026-09-01, ISA-958 en rama: `CachedProjector` publica `relativeSettled`
+  como autoridad única para Endurance Redline. Mantiene una ventana ordenada
+  de máximo 8+jugador+8 hasta que otra ventana permanezca estable 7 s; si los
+  candidatos oscilan, no salta mientras todos los IDs aceptados sigan realmente
+  observados, y rehidrata sus campos desde cada `FinalState`. Ausencia real,
+  cambio de sesión/epoch/jugador o falta de jugador reinician inmediatamente.
+  El store rechaza secuencias atrasadas dentro del mismo stream y valida ambos
+  arrays con side/orden/ID/jugador canónicos. Classic/Minimal/Neo siguen usando
+  `relative` inmediato. El adaptador Redline no admite estado de estabilidad
+  frontend, evitando un segundo hold. `RelativeRowV2` mantiene posición, última
+  vuelta y posición 3D de la misma fila; no cruza Standings. Focales Go y
+  frontend, typecheck y diff-check verdes. El candidato integrado superó 441
+  archivos/3.418 pruebas frontend, `go test ./...`, build y lint; la revisión
+  adversarial de la autoridad aislada fue APPROVE. S3 Wails/LMU sigue pendiente.
+
+- 2026-08-31, ISA-957 en rama: `StandingRowV2` incorpora la mejor vuelta
+  canónica con calidad y el ViewModel de Standings separa por fase la métrica
+  de mejor vuelta del gap de clasificación. Los goldens V2 y el contrato TS se
+  regeneraron desde Go; sin promoción ni prueba Wails/LMU nueva.
 
 - 2026-08-30, ISA-894/PR #955, S1 definitiva: ON y OFF usaron el mismo exe
   `d02054e3…`/dist `5b8e388c…`, Spa práctica y 14 coches. El parser corregido

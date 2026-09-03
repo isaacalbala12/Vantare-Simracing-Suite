@@ -256,17 +256,28 @@ export function deriveRosterChange(
   return { entered, retired };
 }
 
-/** Net positions gained (+) or lost (−) versus the baseline the player joined with. */
-export function derivePositionDeltas(
-  baseline: ReadonlyMap<string, number>,
-  model: StandingsViewModel,
-): Map<string, number> {
+/** Net positions gained (+) or lost (−) from an explicit same-session grid source. */
+export function derivePositionDeltas(model: StandingsViewModel): Map<string, number> {
   const deltas = new Map<string, number>();
-  const positions = classPositionsById(model);
-  for (const [id, position] of positions) {
-    const start = baseline.get(id);
-    if (start !== undefined && start !== position) {
-      deltas.set(id, start - position);
+  if (
+    model.status !== "ready" ||
+    resolveStandingsSessionMode(model.sessionLabel) !== "race" ||
+    model.motionIdentity === undefined
+  ) {
+    return deltas;
+  }
+  for (const row of model.rows) {
+    const start = row.gridPosition;
+    if (
+      row.gridSessionIdentity === model.motionIdentity &&
+      Number.isSafeInteger(start) &&
+      start !== undefined &&
+      start > 0 &&
+      Number.isSafeInteger(row.position) &&
+      row.position > 0 &&
+      start !== row.position
+    ) {
+      deltas.set(row.id, start - row.position);
     }
   }
   return deltas;

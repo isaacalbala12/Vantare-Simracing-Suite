@@ -100,6 +100,7 @@ func TestBuildStandingsProjectsPitStateAndGapQuality(t *testing.T) {
 	final.Observed.Vehicles[1].InPit = builderField(t, pit.InPit(true), schema.FreshnessFresh)
 	final.Observed.Vehicles[2].InPit = schema.MissingField[pit.InPit]()
 	final.Observed.Vehicles[2].TimeBehindLeader = schema.MissingField[standings.TimeGap]()
+	final.Observed.Vehicles[1].BestLapTime = builderField(t, standings.LapTime(240.123), schema.FreshnessFresh)
 	rows := BuildStandings(final)
 
 	if rows[0].PitState != PitStateTrack {
@@ -116,6 +117,9 @@ func TestBuildStandingsProjectsPitStateAndGapQuality(t *testing.T) {
 	}
 	if rows[0].GapSeconds.Q != QualityFresh {
 		t.Fatalf("fresh gap not preserved: %#v", rows[0].GapSeconds)
+	}
+	if rows[1].BestLapSeconds.Q != QualityFresh || rows[1].BestLapSeconds.V != 240.123 {
+		t.Fatalf("best lap not projected: %#v", rows[1].BestLapSeconds)
 	}
 }
 

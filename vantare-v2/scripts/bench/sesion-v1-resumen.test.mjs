@@ -128,6 +128,33 @@ test("falla una pendiente renderer superior a cinco MiB por hora", () => {
   assert.equal(summary.criteria.memory.status, "fail");
 });
 
+test("la observación de cinco minutos exige cinco muestras por proceso", () => {
+  const enough = fixture();
+  const started = Date.parse(enough.startedAt);
+  enough.durationMinutes = 5;
+  enough.endedAt = new Date(started + 5 * 60_000).toISOString();
+  enough.samples = enough.samples.filter(({timestamp}) => Date.parse(timestamp) <= started + 4 * 60_000);
+  const enoughSummary = summarizeSession(enough);
+  assert.equal(enoughSummary.criteria.memory.minimumSamples, 5);
+  assert.equal(enoughSummary.criteria.memory.status, "pass");
+
+  const short = structuredClone(enough);
+  short.samples = short.samples.filter(({timestamp}) => Date.parse(timestamp) <= started + 3 * 60_000);
+  assert.equal(summarizeSession(short).criteria.memory.status, "fail");
+});
+
+test("rechaza una captura que excede la ventana exacta de cinco minutos", () => {
+  const input = fixture();
+  input.durationMinutes = 5;
+  input.endedAt = new Date(Date.parse(input.startedAt) + 20 * 60_000).toISOString();
+
+  const summary = summarizeSession(input);
+
+  assert.equal(summary.verdict, "fail");
+  assert.equal(summary.criteria.duration.status, "fail");
+  assert.match(summary.criteria.duration.detail, /20\.00 min medidos; 5\.00 min previstos/);
+});
+
 test("valida reconnect y apertura tardía contra sus timestamps", () => {
   const reconnect = fixture();
   reconnect.session = "S4";

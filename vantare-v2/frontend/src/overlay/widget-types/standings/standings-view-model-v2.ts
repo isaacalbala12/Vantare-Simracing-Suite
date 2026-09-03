@@ -7,7 +7,11 @@ import type {
 import type { StandingsContent } from "./standings-content";
 import { getEnabledStandingsColumns } from "./standings-content";
 import { formatRemainingTime } from "./standings-formatting";
-import type { StandingsRowViewModel, StandingsViewModel } from "./standings-view-model";
+import {
+  withStandingsMotionIdentity,
+  type StandingsRowViewModel,
+  type StandingsViewModel,
+} from "./standings-view-model";
 
 const PLACEHOLDER = "—";
 
@@ -23,7 +27,7 @@ const PLACEHOLDER = "—";
  *
  * Fields the canonical state does not carry stay at the placeholder and are
  * declared unsupported for the shadow comparator rather than invented:
- * driverNumber, teamCode, teamBrandColor, tireCompound, bestLap and the
+ * driverNumber, teamCode, teamBrandColor, tireCompound and the
  * interval to the car ahead (the frame carries the gap to the leader only).
  */
 export function buildStandingsViewModelV2(
@@ -53,9 +57,12 @@ export function buildStandingsViewModelV2(
         const rowClass = (row.classId ?? "").toUpperCase();
         return rowClass === "" || rowClass === activeClass;
       });
+  const phase = displayedText(frame.session.phase)?.toLowerCase();
+  const paceSession = phase === "practice" || phase === "qualifying";
+  const sessionBestLap = paceSession ? fastestLap(scoped) : undefined;
   const limited = scoped.slice(0, content.rowCount ?? 20);
 
-  return {
+  return withStandingsMotionIdentity({
     type: "standings",
     status: source.state === "stale" ? "stale" : "ready",
     statusMessage: source.reason || undefined,
@@ -63,8 +70,8 @@ export function buildStandingsViewModelV2(
     sessionLabel: displayedText(frame.session.phase)?.toUpperCase() ?? PLACEHOLDER,
     remainingText: formatRemainingTime(displayedNumber(frame.session.remaining)),
     columns,
-    rows: limited.map((row, index) => buildRow(row, index, playerId)),
-  };
+    rows: limited.map((row, index) => buildRow(row, index, playerId, paceSession, sessionBestLap)),
+  }, `${frame.sessionId}:${frame.epoch}`, frame.sequence);
 }
 
 export function standingsDisplayedValues(
@@ -96,6 +103,8 @@ function buildRow(
   row: OverlayStandingRowV2,
   index: number,
   playerId: string | undefined,
+  paceSession: boolean,
+  sessionBestLap: number | undefined,
 ): StandingsRowViewModel {
   const driverName = row.driver || PLACEHOLDER;
   return {
@@ -107,16 +116,34 @@ function buildRow(
     vehicleClass: row.classId ?? "",
     teamCode: "",
     teamBrandColor: "",
-    gapText: formatGap(row, index),
+    gapText: paceSession ? formatBestLapGap(row, sessionBestLap) : formatGap(row, index),
     intervalText: PLACEHOLDER,
     currentLapText: row.laps === undefined ? "" : String(row.laps),
     lastLapText: formatLapTime(displayedNumber(row.lastLap)),
-    bestLapText: PLACEHOLDER,
+    bestLapText: formatLapTime(displayedNumber(row.bestLap)),
     pitText: row.pit === "pit" ? "PIT" : "",
     tireCompound: "",
     isPlayer: playerId !== undefined && row.id === playerId,
     isLeader: index === 0,
   };
+}
+
+function fastestLap(rows: readonly OverlayStandingRowV2[]): number | undefined {
+  let fastest: number | undefined;
+  for (const row of rows) {
+    const lap = displayedNumber(row.bestLap);
+    if (lap !== undefined && lap > 0 && (fastest === undefined || lap < fastest)) {
+      fastest = lap;
+    }
+  }
+  return fastest;
+}
+
+function formatBestLapGap(row: OverlayStandingRowV2, sessionBestLap: number | undefined): string {
+  const lap = displayedNumber(row.bestLap);
+  if (lap === undefined || lap <= 0 || sessionBestLap === undefined) return PLACEHOLDER;
+  const gap = lap - sessionBestLap;
+  return gap <= 0.0005 ? "Leader" : `+${gap.toFixed(3)}s`;
 }
 
 function formatGap(row: OverlayStandingRowV2, index: number): string {

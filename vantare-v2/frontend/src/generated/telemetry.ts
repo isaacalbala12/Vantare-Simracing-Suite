@@ -233,6 +233,7 @@ export interface OverlayFrameV2 {
   readonly generatedAt: string;
   readonly player: OverlayPlayerInstrumentsV2;
   readonly relative: readonly OverlayRelativeRowV2[];
+  readonly relativeSettled: readonly OverlayRelativeRowV2[];
   readonly sectionMask: number;
   readonly sequence: number;
   readonly session: OverlaySessionV2;
@@ -299,8 +300,11 @@ export interface OverlayRelativeRowV2 {
   readonly authority: OverlayAuthorityV2;
   readonly classId?: string | undefined;
   readonly gap: OverlayQValue<number>;
+  readonly groundPosition: OverlayQValue<Overlayv2GroundPositionV2>;
   readonly id: string;
+  readonly lastLap: OverlayQValue<number>;
   readonly name?: string | undefined;
+  readonly position: number;
   readonly side: string;
 }
 
@@ -349,6 +353,7 @@ export interface OverlaySpotterViewV2 {
 }
 
 export interface OverlayStandingRowV2 {
+  readonly bestLap: OverlayQValue<number>;
   readonly classId?: string | undefined;
   readonly classPosition: number;
   readonly driver?: string | undefined;

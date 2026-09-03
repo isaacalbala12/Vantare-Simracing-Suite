@@ -139,12 +139,16 @@ type FrameV2 struct {
 	Controls         ControlsV2          `json:"controls"`
 	Standings        []StandingRowV2     `json:"standings"`
 	Relative         []RelativeRowV2     `json:"relative"`
-	Delta            DeltaViewV2         `json:"delta"`
-	Fuel             FuelViewV2          `json:"fuel"`
-	Spotter          SpotterViewV2       `json:"spotter"`
-	Damage           DamageViewV2        `json:"damage"`
-	Weather          WeatherV2           `json:"weather"`
-	Capabilities     CapabilitiesV2      `json:"capabilities"`
+	// RelativeSettled is the bounded, membership-settled form of Relative. The
+	// reference projector publishes Relative here; only CachedProjector owns
+	// the historical authority needed to settle it.
+	RelativeSettled []RelativeRowV2 `json:"relativeSettled"`
+	Delta           DeltaViewV2     `json:"delta"`
+	Fuel            FuelViewV2      `json:"fuel"`
+	Spotter         SpotterViewV2   `json:"spotter"`
+	Damage          DamageViewV2    `json:"damage"`
+	Weather         WeatherV2       `json:"weather"`
+	Capabilities    CapabilitiesV2  `json:"capabilities"`
 }
 
 type SessionV2 struct {
@@ -223,18 +227,22 @@ type StandingRowV2 struct {
 	GapLaps        int32                    `json:"gapLaps,omitempty"`
 	PitState       string                   `json:"pit,omitempty"`
 	CompletedLaps  int32                    `json:"laps,omitempty"`
+	BestLapSeconds QValue[float64]          `json:"bestLap"`
 	LastLapSeconds QValue[float64]          `json:"lastLap"`
 	LapDistance    QValue[float64]          `json:"lapDistance"`
 	GroundPosition QValue[GroundPositionV2] `json:"groundPosition"`
 }
 
 type RelativeRowV2 struct {
-	VehicleID   string          `json:"id"`
-	GapSeconds  QValue[float64] `json:"gap"`
-	Side        string          `json:"side"`
-	Authority   Authority       `json:"authority"`
-	DisplayName string          `json:"name,omitempty"`
-	ClassID     string          `json:"classId,omitempty"`
+	VehicleID      string                   `json:"id"`
+	Position       int32                    `json:"position"`
+	GapSeconds     QValue[float64]          `json:"gap"`
+	GroundPosition QValue[GroundPositionV2] `json:"groundPosition"`
+	LastLapSeconds QValue[float64]          `json:"lastLap"`
+	Side           string                   `json:"side"`
+	Authority      Authority                `json:"authority"`
+	DisplayName    string                   `json:"name,omitempty"`
+	ClassID        string                   `json:"classId,omitempty"`
 }
 
 type DeltaViewV2 struct {

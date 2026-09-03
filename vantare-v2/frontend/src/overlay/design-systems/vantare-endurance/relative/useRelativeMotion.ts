@@ -24,6 +24,8 @@ export type RelativeGhost = {
   row: RelativeRowViewModel;
   /** Index it occupied, so the fold happens where the row actually was. */
   index: number;
+  /** Identifies this departure, even if the same VehicleID leaves again. */
+  departure: number;
 };
 
 export type RelativeMotionState = {
@@ -34,10 +36,16 @@ type RelativeGhostState = {
   model: RelativeViewModel | null;
   ghosts: readonly RelativeGhost[];
   departed: readonly RelativeGhost[];
+  nextDeparture: number;
 };
 
 function rowElement(root: HTMLElement | null, rowId: string): HTMLElement | null {
   return root?.querySelector<HTMLElement>(`[data-relative-row="${CSS.escape(rowId)}"]`) ?? null;
+}
+
+function motionElement(root: HTMLElement | null, rowId: string): HTMLElement | null {
+  const row = rowElement(root, rowId);
+  return row?.closest<HTMLElement>(`[data-relative-motion-row="${CSS.escape(rowId)}"]`) ?? row;
 }
 
 /**
@@ -60,6 +68,7 @@ export function useRelativeMotion(
     model: null,
     ghosts: [],
     departed: [],
+    nextDeparture: 0,
   });
   const ghostTimersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
   /**
@@ -83,22 +92,32 @@ export function useRelativeMotion(
 
   let ghosts = ghostState.ghosts;
   if (ghostState.model !== model) {
+    const samePresentation = ghostState.model !== null &&
+      ghostState.model.presentationKey === model.presentationKey;
     const stillHere = new Set(model.rows.map((row) => row.id));
     const departed: RelativeGhost[] = [];
-    if (enabled && model.status === "ready" && ghostState.model?.status === "ready") {
+    let nextDeparture = ghostState.nextDeparture;
+    const vacantSlots = Math.max(0, (ghostState.model?.rows.length ?? 0) - model.rows.length);
+    if (
+      samePresentation &&
+      enabled &&
+      model.status === "ready" &&
+      model.rows.some((row) => row.isPlayer) &&
+      ghostState.model?.status === "ready"
+    ) {
       ghostState.model.rows.forEach((row, index) => {
-        if (!row.isPlayer && !stillHere.has(row.id)) {
-          departed.push({ row, index });
+        if (departed.length < vacantSlots && !row.isPlayer && !stillHere.has(row.id)) {
+          departed.push({ row, index, departure: nextDeparture++ });
         }
       });
     }
     ghosts = [
-      ...ghostState.ghosts.filter(
+      ...(samePresentation ? ghostState.ghosts : []).filter(
         (ghost) => !departed.some((item) => item.row.id === ghost.row.id),
       ),
       ...departed,
     ];
-    setGhostState({ model, ghosts, departed });
+    setGhostState({ model, ghosts, departed, nextDeparture });
   }
 
   useEffect(() => {
@@ -108,10 +127,11 @@ export function useRelativeMotion(
     }
     const timer = setTimeout(() => {
       ghostTimersRef.current.delete(timer);
+      const departures = new Set(departed.map((item) => item.departure));
       setGhostState((current) => ({
         ...current,
         ghosts: current.ghosts.filter(
-          (ghost) => !departed.some((item) => item.row.id === ghost.row.id),
+          (ghost) => !departures.has(ghost.departure),
         ),
       }));
     }, EXIT_MS);
@@ -124,22 +144,27 @@ export function useRelativeMotion(
       rectsRef.current = new Map();
       return;
     }
-    const prev = prevRef.current;
+    const previous = prevRef.current;
+    const samePresentation = previous !== null &&
+      previous.presentationKey === model.presentationKey;
+    const prev = samePresentation ? previous : null;
+    if (!samePresentation) {
+      rectsRef.current = new Map();
+    }
     prevRef.current = model;
     const root = rootRef.current;
     if (!root) {
       return;
     }
     const rootTop = root.getBoundingClientRect().top;
-
     // FLIP real: cada fila se desliza desde la posicion que ocupaba en el modelo
     // anterior (medida) hasta la actual. La distancia medida atraviesa tambien
     // los ejes y la fila del jugador, asi que un cruce recorre una trayectoria
     // continua en vez de un salto estimado por indice.
     if (prev) {
       for (const [rowId, previousTop] of rectsRef.current) {
-        const element = rowElement(root, rowId);
-        if (!element) {
+        const element = motionElement(root, rowId);
+        if (!element || element.hasAttribute("data-relative-motion-row")) {
           continue;
         }
         const offsetPx = previousTop - (element.getBoundingClientRect().top - rootTop);
@@ -168,7 +193,7 @@ export function useRelativeMotion(
     for (const event of deriveRelativeEvents(prev, model)) {
       if (event.kind === "enter") {
         // The row unfolds from nothing rather than blinking into the list.
-        rowElement(root, event.rowId)?.animate(
+        motionElement(root, event.rowId)?.animate(
           [
             { transform: "scaleY(0.1)", opacity: 0, transformOrigin: "center" },
             { transform: "scaleY(1)", opacity: 1, transformOrigin: "center" },
@@ -198,7 +223,7 @@ export function useRelativeMotion(
     // deslizara cada fila desde aqui hasta su nuevo sitio.
     const nextRects = new Map<string, number>();
     for (const row of model.rows) {
-      const element = rowElement(root, row.id);
+      const element = motionElement(root, row.id);
       if (element) {
         nextRects.set(row.id, element.getBoundingClientRect().top - rootTop);
       }

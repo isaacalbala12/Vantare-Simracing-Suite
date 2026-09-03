@@ -10,6 +10,25 @@
 
 ## Estado
 
+- **S3 cerrado, 2026-09-03:** el mismo EXE R-FIX4 desde
+  `4864b5c6`, SHA `cb69a4d5…878faba`, muestra Pedals sobre LMU con freno real
+  al 100%, contenido y sin halo/recorte. Captura aislada posterior al 46% y
+  muestra DOM anterior al 34% durante liberación: no son simultáneas y no
+  acreditan una duración exacta ni una curva calibrada. Licencia activa y V2
+  live/playerPit track confirmados mediante salidas sanitizadas. Main abre
+  ambas imágenes; Muse independiente `ses_f988a07a7ffeg8yy6dsIV2igLF`:
+  CUMPLE acotado. Atéstación existente, sin cambios, verifica tres seals,
+  cinco perfiles y diez PNG/checker y devuelve **S3 FINAL PASS**, exit 0.
+  Resultado `C:\tmp\vantare-s3-gate\results\s3-final-attestation-rfix4-20260903.json`;
+  prueba activa suplementaria en `pedals-active-rfix4-20260903/`, fuera de las
+  corridas selladas originales. Detalles y hashes en el checkpoint R-FIX4.
+  Proceso 15040 cerrado por CLI antes de cinco minutos y ausencia confirmada;
+  LMU permanece abierto. CI `33761361312` de `c13b8888`: tres SUCCESS.
+  PR #969 continúa draft, sin merge/promoción/release. **Siguiente: S4
+  reconexión → S5 reapertura → S2 tráfico último**, cada comprobación ≤5 min.
+  S3 no certifica por sí solo toda V2, memoria, rendimiento global ni retiro
+  de V1. No Delta, vueltas, soaks ni automatizaciones.
+
 - **Checkpoint físico R-FIX4, 2026-09-03 15:34 Madrid:** arreglo Go incorporado
   en la rama candidata como `4864b5c6`; `c13b8888` añade sólo documentación.
   Ambos publicados en PR #969 draft. Build de medida con licencia desde

@@ -10,6 +10,37 @@
 
 ## Estado
 
+- **Checkpoint físico R-FIX4, 2026-09-03 15:34 Madrid:** arreglo Go incorporado
+  en la rama candidata como `4864b5c6`; `c13b8888` añade sólo documentación.
+  Ambos publicados en PR #969 draft. Build de medida con licencia desde
+  `4864b5c6`, exe SHA-256
+  `cb69a4d56ca7cb59078cb7bd7e223b33c34aa927ec808c2e49154386b878faba`;
+  build frontend y Go exit 0, configuración consumida por el procedimiento
+  autorizado sin leer/imprimir secretos. Índice S3 `63b71810…084ddcc`.
+  Mismo candidato/índice: Relative 128.0 s, Standings 27.9 s, Pedals 26.5 s.
+  Todos los captures automáticos completos; main abre diez PNG/checker y
+  reviewer Muse `ses_f988a07a7ffeg8yy6dsIV2igLF` revisa los diez sin hallazgos
+  concretos de clipping/alpha/ghost. Mirror dos cambios (7.675 s entre ellos),
+  Proximity tres (8.027/7.676 s), Traffic dos (8.444 s), cada uno con 119
+  muestras/20.587 s, sin intervalos rápidos ni solape Traffic.
+  Prueba pasiva adicional, mismo exe y jugador en pista, 25 muestras/25.013 s
+  live, secuencias 809–2356: diez firmas canónicas y tres settled. Dos cambios
+  observados separados 7.067 s: ya no hay congelación indefinida observada.
+  El muestreo 1 Hz NO demuestra paridad exacta en cada publicación (un cambio
+  ya difiere del canonical al muestrearlo). Tests y lectura del algoritmo
+  cubren el criterio latest; no confundir esa prueba con observación física.
+  Primer intento pasivo terminó por cierre entre perfiles/ECONNRESET y no
+  cuenta como evidencia. La corrida independiente sí es válida.
+  Nativa Relative sobre LMU conservada; intento nativo adicional de Pedals
+  no mostró el overlay y no se acredita. Su evidencia anterior de composición
+  sólo cubre reposo; las nuevas cuatro imágenes de Standings/Pedals tampoco
+  acreditan entrada/saturación real. **S3 sigue sin FINAL PASS por Pedals
+  activo no observado.** No se ejecutaron S4/S5/S2 ni atestación final.
+  El proceso de la lectura independiente recibió cierre limpio tras menos
+  de dos minutos; LMU permanece abierto. CI final de `c13b8888` en curso,
+  run `33761361312`. Sin merge, promoción, release ni automatizaciones.
+  Detalle/seals: `C:\tmp\vantare-s3-gate\results\rfix4-checkpoint-20260903.md`.
+
 - **Entrega local R-FIX4, 2026-09-03 15:20 Madrid:** commit worker
   `e72fbfcf055817c4bb19231da9b4f811a7665f9f`, dos archivos Go, todavía sin
   integrar. El test nuevo falla antes del arreglo; worker acredita 11 focales

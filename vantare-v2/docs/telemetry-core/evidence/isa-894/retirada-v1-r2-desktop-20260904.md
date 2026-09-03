@@ -75,6 +75,11 @@ Confirmo conjunto cerrado, tests no debilitados y lifecycle V2/auxiliar intacto.
 Sus P3 de trazabilidad se resolvieron en `992d1177`: diagnostico exige ausencia
 real de la clave `shadow` y pruebas V2 ya no inyectan eventos V1.
 
+Review independiente de calidad/adversarial Muse xhigh
+`ses_f9681a57bffeSnlDKCNUB0t4uR` sobre `20e5c0c3`: **APPROVE**, P0/P1/P2/P3
+bloqueantes = 0. Confirmo lifecycle/StrictMode/pull/auxiliares, simpleza del
+delta, tests no debilitados, roadmap reproducible y limites honestos.
+
 Riesgos pendientes y honestos:
 
 - OBS y Studio todavia construyen adapters legacy; la ruta SSE/productor V1 no
@@ -82,8 +87,11 @@ Riesgos pendientes y honestos:
 - El adapter/decoder/shadow V1 sigue empaquetado por esos consumidores.
 - Las filas BLOCKED del inventario (historias input, dano, auxiliares) siguen
   sin autorizar borrado.
-- La review final de calidad, CI remoto y prueba manual de Isaac son estados
-  posteriores; ningun PASS se infiere de esta evidencia.
+- CI remoto y prueba manual de Isaac son estados posteriores; ningun PASS se
+  infiere de esta evidencia.
+
+Publicacion aislada: [PR draft #972](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/972)
+contra `nightly`, apilada sobre #969, #970 y #971. No hubo merge o promocion.
 
 Rollback: cambiar a la build anterior privada verificada en R0; el ejecutable
 nuevo no recupera V1 mediante un flag adicional.

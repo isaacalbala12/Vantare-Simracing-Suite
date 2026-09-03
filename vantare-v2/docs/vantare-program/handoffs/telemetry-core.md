@@ -1,6 +1,6 @@
 # Handoff vivo — Telemetry Core
 
-## R2 Desktop V2-only, candidato local — 2026-09-04, ISA-894
+## R2 Desktop V2-only publicado en PR draft — 2026-09-04, ISA-894
 
 Writer unico en `C:\tmp\vantare-v1-retirada-r2\vantare-v2`, rama
 `vantareapp/isa-894-retirada-v1-r2`, base exacta R1 `c3cb104a`. Candidato de
@@ -19,9 +19,12 @@ Checks del orquestador: focales 5 archivos/42 tests, typecheck, build, lint,
 Go focal R1, `rg` de frontera y diff-check PASS; roadmap frontend 49 tests,
 Python 23 tests y digest reproducible PASS. Review spec Muse
 `ses_f96873b0effe2VItOuu03U5Dgw` sobre `4fe69f12`: APPROVE, P0/P1=0; P3
-endurecidos en `992d1177`. Pendiente review final de calidad, documentacion de
-cierre, push/PR draft y CI. Siguiente migracion: Studio V2-only; despues OBS
-V2-only; solo entonces retirar ruta/productor/flags/builders V1 segun dependencias.
+endurecidos en `992d1177`. Review calidad/adversarial Muse
+`ses_f9681a57bffeSnlDKCNUB0t4uR` sobre `20e5c0c3`: APPROVE,
+P0/P1/P2/P3 bloqueantes=0. [PR draft #972](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/972)
+abierto contra `nightly`, apilado sobre #969/#970/#971; CI pendiente. Siguiente
+migracion: Studio V2-only; despues OBS V2-only; solo entonces retirar
+ruta/productor/flags/builders V1 segun dependencias.
 
 R2 NO significa V1 ausente del binario: OBS/Studio, productor/SSE, flags,
 builders, tipos y tooling legacy siguen. Tampoco inicia auditoria V2, bucle de

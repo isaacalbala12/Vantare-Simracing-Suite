@@ -35,7 +35,7 @@ Documentacion de cierre: este microplan, evidencia R2, handoff vivo, `docs/roadm
 - [x] Focales: `CompositeApp.test.tsx`, `overlay-wails-pull.test.ts`, `overlay-frame-v2-store.test.ts`, `legacy-retirement.test.ts` y `v1-authority-guard.test.ts`.
 - [x] `pnpm --dir frontend typecheck`, `pnpm --dir frontend build` y lint aplicable; Go focal R1 como testigo de frontera, aunque Go no cambie.
 - [x] `rg` confirma que `CompositeApp.tsx` no contiene adapter/snapshot/shadow V1 y que OBS/Studio siguen intactos. `git diff --check` y diff completo.
-- [ ] Actualizar evidencia, handoff, roadmap/digest e issue con afirmaciones exactas. Dos Muse xhigh independientes revisan primero especificacion y despues calidad sobre SHA exacto.
-- [ ] Push y PR draft apilado sobre R1 solo tras gates/reviews; ningun merge/promocion sin autorizacion expresa de Isaac.
+- [x] Actualizar evidencia, handoff, roadmap/digest e issue con afirmaciones exactas. Dos Muse xhigh independientes revisan primero especificacion y despues calidad sobre SHA exacto.
+- [x] Push y PR draft apilado sobre R1 solo tras gates/reviews; ningun merge/promocion sin autorizacion expresa de Isaac.
 
 **Done R2:** Desktop productivo ya no construye ni consume V1 y V2 conserva su lifecycle. **No significa:** OBS/Studio/productor/SSE/builders/flags retirados, V1 ausente del binario, auditoria V2 ejecutada o rendimiento optimo certificado.

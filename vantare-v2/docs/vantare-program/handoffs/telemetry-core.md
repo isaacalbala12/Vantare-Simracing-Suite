@@ -1,5 +1,32 @@
 # Handoff vivo — Telemetry Core
 
+## R2 Desktop V2-only, candidato local — 2026-09-04, ISA-894
+
+Writer unico en `C:\tmp\vantare-v1-retirada-r2\vantare-v2`, rama
+`vantareapp/isa-894-retirada-v1-r2`, base exacta R1 `c3cb104a`. Candidato de
+codigo/test `992d1177`; worktree limpio al congelar cada commit. Sin apps, LMU,
+navegadores, `.env*`, merge, promocion o release. Este bloque prevalece sobre
+R1 en el avance de retirada, sin repetir su contenido.
+
+R2 retira de `CompositeApp` el adapter/observer V1 y la activacion/reporting del
+shadow legacy. Desktop conserva pull Wails, store/binding V2, Engineer, Calendar,
+RaceSchedule, features y teardown. TDD: el RED creo shadow una vez al entregar
+V1 (`1 failed, 15 passed`); GREEN ignora V1, pinta un snapshot V2 solo y cierra
+la sesion pull al desmontar. Evidencia:
+`docs/telemetry-core/evidence/isa-894/retirada-v1-r2-desktop-20260904.md`.
+
+Checks del orquestador: focales 5 archivos/42 tests, typecheck, build, lint,
+Go focal R1, `rg` de frontera y diff-check PASS; roadmap frontend 49 tests,
+Python 23 tests y digest reproducible PASS. Review spec Muse
+`ses_f96873b0effe2VItOuu03U5Dgw` sobre `4fe69f12`: APPROVE, P0/P1=0; P3
+endurecidos en `992d1177`. Pendiente review final de calidad, documentacion de
+cierre, push/PR draft y CI. Siguiente migracion: Studio V2-only; despues OBS
+V2-only; solo entonces retirar ruta/productor/flags/builders V1 segun dependencias.
+
+R2 NO significa V1 ausente del binario: OBS/Studio, productor/SSE, flags,
+builders, tipos y tooling legacy siguen. Tampoco inicia auditoria V2, bucle de
+rendimiento ni prueba fisica. Rollback unicamente por build anterior R0.
+
 ## R1 publicado en PR draft — 2026-09-04, ISA-894
 
 Writer único en `C:\tmp\vantare-v1-retirada-r1\vantare-v2`, rama

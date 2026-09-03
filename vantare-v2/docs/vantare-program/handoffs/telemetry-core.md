@@ -1,5 +1,28 @@
 # Handoff vivo — Telemetry Core
 
+## R4 OBS V2-only cerrado localmente — 2026-09-04, ISA-894
+
+Writer único en `C:\tmp\vantare-v1-retirada-r4\vantare-v2`, rama
+`vantareapp/isa-894-retirada-v1-r4`, base exacta R3 `f755a527`. Candidato
+`c2bc2142`; sin apps, LMU, navegadores, `.env*`, merge, promoción o release.
+
+R4 elimina de OBS la construcción y ejecución del adapter SSE V1 y la
+activación/diagnóstico/dispose del shadow. Conserva store, binding y SSE
+OverlayFrame V2, `invalid-frame`, Engineer, perfil, calendario, Race Schedule,
+flags V2, diagnósticos, StrictMode y teardown. Evidencia:
+[`retirada-v1-r4-obs-20260904.md`](../../telemetry-core/evidence/isa-894/retirada-v1-r4-obs-20260904.md).
+
+TDD: RED 3 fallos/7 superados por el tercer EventSource V1; GREEN 10/10.
+Checks del orquestador: OBS/V2 25/25, typecheck, build, ESLint focal,
+`diff --check` y frontera V1/shadow PASS. Review de especificación Muse
+`ses_f96617126ffeAzP2TFMF1g0Uqs`: APPROVE, P0/P1/P2/P3 bloqueantes=0.
+
+R4 NO significa V1 ausente del binario: productor, ruta SSE, configuración,
+contratos, adapters, tipos, builders y fixtures legacy siguen. Siguiente corte:
+retirar la producción/publicación y ruta V1 por dependencia, antes de borrar
+tipos y tooling. La auditoría V2 y el bucle de rendimiento aún no empiezan.
+Rollback exclusivamente por build anterior R0.
+
 ## R3 Studio V2-only publicado en PR draft — 2026-09-04, ISA-894
 
 Writer único en `C:\tmp\vantare-v1-retirada-r3\vantare-v2`, rama

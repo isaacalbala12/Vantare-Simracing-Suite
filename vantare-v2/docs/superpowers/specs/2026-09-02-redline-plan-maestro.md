@@ -1,5 +1,11 @@
 # Subplan A — cierre Endurance Redline
 
+> SECUENCIA SUPERADA, 2026-09-03. El
+> [nuevo maestro de Telemetría V2](2026-09-03-telemetria-v2-plan-maestro.md)
+> reemplaza la prioridad y cola R0–R7/A–J. Este documento conserva contratos y
+> evidencia del candidato, no autoriza ejecutar pruebas o integrar por su cuenta.
+> Las pruebas manuales quedan a cargo de Isaac; pendientes no equivalen a PASS.
+
 Fecha: 2026-09-02. Expediente: **ISA-962 / PR #969**.
 Estado del documento: aprobado por Isaac el 2026-09-02; R0 cerrado, R1 iniciado.
 

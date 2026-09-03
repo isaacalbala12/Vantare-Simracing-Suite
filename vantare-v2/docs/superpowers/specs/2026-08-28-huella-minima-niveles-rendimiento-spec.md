@@ -1,5 +1,12 @@
 # Spec (SDD · SPECIFY): Huella mínima — niveles de rendimiento, sensor automático, banco objetivo y composición
 
+> DECISIÓN POSTERIOR, 2026-09-03: el
+> [maestro de Telemetría V2](2026-09-03-telemetria-v2-plan-maestro.md) sustituye
+> por completo la secuencia del programa Huella mínima. Esta spec y la nota del
+> 2 de septiembre quedan como referencia histórica; las capacidades entregadas
+> se preservan y los pendientes excluidos no se consideran cumplidos. No arrancar
+> F0–F6/A–J desde aquí ni mantener V1 embebida por el antiguo plan de rollback.
+
 > Actualización de ejecución 2026-09-02: el
 > [maestro integral](2026-09-02-huella-minima-plan-maestro.md) reúne TODOS los
 > compromisos de esta spec y los desglosa en microcortes, comenzando por Redline.

@@ -1,5 +1,17 @@
 # Handoff vivo — Overlay Studio, Launcher y Hub
 
+## Replanificación vigente — 2026-09-03, ISA-962
+
+Isaac sustituye la secuencia «primero Redline → A–J» por el
+[maestro de Telemetría V2](../../superpowers/specs/2026-09-03-telemetria-v2-plan-maestro.md).
+Su única continuidad operativa está en [Telemetry Core](telemetry-core.md).
+Este handoff conserva el expediente visual; no dirige otra cola paralela.
+S3 FINAL PASS permanece acotado al candidato y evidencia indicados abajo;
+S4/S5/S2 no se consideran ejecutadas ni se reanudan automáticamente. Isaac
+asume las pruebas manuales del juego. Los «siguientes pasos» inferiores quedan
+superados cuando contradigan esta decisión. Sin lanzamiento ni comprobación
+física nueva, retirada V1, merge o release en este corte documental.
+
 ## Autoridad y lectura
 
 - `docs/vantare-program/README.md` y `product-contract.md`.

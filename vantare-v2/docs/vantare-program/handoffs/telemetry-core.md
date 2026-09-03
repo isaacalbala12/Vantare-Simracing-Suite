@@ -1,5 +1,36 @@
 # Handoff vivo — Telemetry Core
 
+## Decisión vigente — 2026-09-03, ISA-962
+
+Isaac sustituye completamente el programa anterior por el
+[maestro de Telemetría V2](../../superpowers/specs/2026-09-03-telemetria-v2-plan-maestro.md).
+Este es su único handoff vivo. Secuencia: retirada segura completa de V1 (#894),
+auditoría integral de V2 en cuatro carriles de sólo lectura y bucle de mejoras
+comparables. Rollback mediante build/commit previo verificado; no dejar V1
+dentro del nuevo ejecutable. Se conservan las garantías de ADR 0004/0008.
+
+La autorización de diseño reemplaza el bloqueo histórico por falta de permiso
+genérico de Cut 2 y la prioridad Redline. No borra resultados FAIL ni permite
+ignorar consumidores, pérdida de información, riesgos de datos o gates de seguridad.
+Isaac hará las pruebas manuales LMU; no hay otra sesión física, tarea programada,
+merge ni release autorizados desde esta sustitución.
+
+Fase 3: mantener información, apariencia, frescura y cadencias. Cinco experimentos
+consecutivos sin mejora medida o ocho horas acumuladas de ejecución del bucle,
+lo primero. La mejora sólo reinicia consecutivos. Únicamente Muse Spark 1.3
+Contributor xhigh mediante MCP OpenCode; revisión adversarial independiente.
+
+**Estado actual:** sólo documentación del nuevo diseño; ninguna retirada,
+auditoría de código V2 o prueba de rendimiento nueva. Candidato previo
+Redline `c13b8888`, código `4864b5c6`, PR #969 draft; S3 FINAL PASS acotado
+según su evidencia. S4/S5/S2 no ejecutadas; memoria y rendimiento global V2
+no certificados. Esas afirmaciones no cambian por aprobar este plan.
+
+**Siguiente acción:** revisar el maestro escrito y desglosar el primer microcorte
+seguro de #894 con inventario, rollback por build y pruebas protectoras.
+No reactivar la cola antigua. Los registros inferiores son históricos cuando
+contradigan este bloque; conservan sus cifras y resultados, no permisos actuales.
+
 ## Resultado
 
 Un único núcleo live modular y neutral al simulador. El driver LMU posee Shared
@@ -7,6 +38,8 @@ Memory y REST local como fuentes complementarias. Overlay, Engineer, Strategy
 y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 
 ## Autoridad
+
+- `docs/superpowers/specs/2026-09-03-telemetria-v2-plan-maestro.md`: alcance y secuencia operativa actuales.
 
 - `docs/adr/0004-telemetry-core-modular-observation-architecture.md`.
 - `docs/telemetry-core/README.md` y su evidencia.

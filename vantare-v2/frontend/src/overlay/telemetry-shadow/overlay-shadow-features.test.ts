@@ -158,12 +158,19 @@ describe("shadow comparator: session and standings features", () => {
         teamCode: "TEAM",
         teamBrandColor: "#fff",
         tireCompound: "soft",
-        bestLapText: "1:30.000",
         intervalText: "+1.000s",
       })),
     };
     expect(compareStandingsModels(model, stripped)).toEqual([]);
-    expect(OVERLAY_V2_STANDINGS_DECLARED_GAPS).toContain("rows[].bestLapText");
+    expect(OVERLAY_V2_STANDINGS_DECLARED_GAPS).not.toContain("rows[].bestLapText");
+
+    const changedBestLap = {
+      ...model,
+      rows: model.rows.map((row, index) => index === 0
+        ? { ...row, bestLapText: "1:30.000" }
+        : row),
+    };
+    expect(compareStandingsModels(model, changedBestLap)).toContain("rows[].bestLapText");
   });
 });
 

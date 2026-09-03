@@ -25,6 +25,20 @@ describe("OverlayFrame v2 store", () => {
     expect(() => decodeOverlayUpdateV2({ ...update, revision: 0 })).toThrow(
       "overlay-frame-v2:invalid-contract:revision",
     );
+    const withoutBestLap = JSON.parse(JSON.stringify(update)) as Record<string, unknown>;
+    const frameWithoutBestLap = withoutBestLap.frame as { standings: Record<string, unknown>[] };
+    delete frameWithoutBestLap.standings[0]?.bestLap;
+    expect(() => decodeOverlayUpdateV2(withoutBestLap)).toThrow(
+      "overlay-frame-v2:invalid-contract:frame.standings[0]",
+    );
+    for (const field of ["position", "groundPosition", "lastLap"] as const) {
+      const incomplete = JSON.parse(JSON.stringify(update)) as Record<string, unknown>;
+      const frame = incomplete.frame as { relative: Record<string, unknown>[] };
+      delete frame.relative[0]?.[field];
+      expect(() => decodeOverlayUpdateV2(incomplete)).toThrow(
+        "overlay-frame-v2:invalid-contract:frame.relative[0]",
+      );
+    }
     expect(() => decodeOverlayUpdateV2({
       ...update,
       frame: { ...update.frame, sectionMask: 0x800 },
@@ -53,6 +67,85 @@ describe("OverlayFrame v2 store", () => {
         },
       },
     })).toThrow("overlay-frame-v2:invalid-contract:frame.capabilities.performance.reason");
+  });
+
+  it("requires and bounds both Relative windows to the canonical 8+player+8 contract", () => {
+    const update = golden();
+    const row = update.frame?.relative[0];
+    if (!update.frame || !row) throw new Error("golden Relative row missing");
+
+    const seventeen = Array.from({ length: 17 }, (_, index) => ({
+      ...row,
+      id: `relative-${index}`,
+      side: index < 8 ? "ahead" as const : index === 8 ? "player" as const : "behind" as const,
+    }));
+    expect(() => decodeOverlayUpdateV2({
+      ...update,
+      frame: { ...update.frame, relative: seventeen, relativeSettled: seventeen },
+    })).not.toThrow();
+    const settledWithDifferentCanonicalMembership = seventeen.map((entry, index) => ({
+      ...entry,
+      id: index === 0 ? "previous-ahead" : entry.id,
+    }));
+    expect(() => decodeOverlayUpdateV2({
+      ...update,
+      frame: {
+        ...update.frame,
+        relative: seventeen,
+        relativeSettled: settledWithDifferentCanonicalMembership,
+      },
+    })).not.toThrow();
+
+    for (const field of ["relative", "relativeSettled"] as const) {
+      expect(() => decodeOverlayUpdateV2({
+        ...update,
+        frame: { ...update.frame, [field]: [...seventeen, { ...row, id: `${field}-overflow` }] },
+      })).toThrow(`overlay-frame-v2:invalid-contract:frame.${field}`);
+
+      const rejects = [
+        seventeen.map((entry) => ({ ...entry, side: "ahead" })),
+        seventeen.map((entry, index) => ({ ...entry, side: index === 8 || index === 9 ? "player" : entry.side })),
+        seventeen.map((entry, index) => ({ ...entry, id: index === 16 ? seventeen[0]!.id : entry.id })),
+        [seventeen[9]!, seventeen[8]!, seventeen[7]!],
+        seventeen.map((entry, index) => ({ ...entry, side: index === 0 ? "nearby" : entry.side })),
+      ];
+      for (const rejected of rejects) {
+        expect(() => decodeOverlayUpdateV2({
+          ...update,
+          frame: { ...update.frame, [field]: rejected },
+        })).toThrow(`overlay-frame-v2:invalid-contract:frame.${field}`);
+      }
+    }
+
+    const missingSettled = JSON.parse(JSON.stringify(update)) as Record<string, unknown>;
+    delete (missingSettled.frame as Record<string, unknown>).relativeSettled;
+    expect(() => decodeOverlayUpdateV2(missingSettled)).toThrow(
+      "overlay-frame-v2:invalid-contract:frame",
+    );
+  });
+
+  it("rejects duplicate or regressing frame sequences within one stream", () => {
+    const store = createOverlayFrameV2Store();
+    const first = golden();
+    if (!first.frame) throw new Error("golden frame missing");
+    store.ingest(OVERLAY_V2_SNAPSHOT_EVENT, first);
+    const accepted = store.getSnapshot().frame;
+
+    for (const sequence of [first.frame.sequence, first.frame.sequence - 1]) {
+      expect(() => store.ingest(OVERLAY_V2_SNAPSHOT_EVENT, {
+        ...first,
+        revision: first.revision + 1,
+        frame: { ...first.frame!, sequence },
+      })).toThrow("overlay-frame-v2:invalid-contract:sequence");
+      expect(store.getSnapshot().frame).toBe(accepted);
+      expect(store.getSnapshot().revision).toBe(first.revision);
+    }
+
+    expect(() => store.ingest(OVERLAY_V2_SNAPSHOT_EVENT, {
+      ...first,
+      revision: first.revision + 1,
+      frame: { ...first.frame, epoch: first.frame.epoch + 1, sequence: 1 },
+    })).not.toThrow();
   });
 
   it("accepts revision gaps and retains one stable immutable frame reference", () => {

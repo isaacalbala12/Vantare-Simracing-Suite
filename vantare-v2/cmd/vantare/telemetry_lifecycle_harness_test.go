@@ -145,7 +145,6 @@ func TestTelemetryLifecycleHarness(t *testing.T) {
 	cleanupStatusReplayHandlers := registerTelemetryStatusReplayHandlers(wailsApp.Event, emitter, telemetryRuntime)
 	defer cleanupStatusReplayHandlers()
 	pullTransport := telemetrytransport.NewOverlayPullTransport(
-		telemetryRuntime.Hub(),
 		telemetryRuntime.OverlayV2Publishers(),
 	)
 	defer pullTransport.CloseAll()
@@ -225,6 +224,22 @@ func TestTelemetryLifecycleHarness(t *testing.T) {
 	if err != nil || !deliver {
 		t.Fatalf("Overlay pull response = %#v, deliver=%v, err=%v", pulled, deliver, err)
 	}
+	overlayV2SnapshotName := telemetrytransport.PublisherEventName(
+		telemetrytransport.ProductOverlayV2,
+		telemetrytransport.PublisherEventSnapshot,
+	)
+	seenV2Status := false
+	for _, event := range pulled.Events {
+		if event.Name != overlayV2StatusName && event.Name != overlayV2SnapshotName {
+			t.Fatalf("Overlay pull delivered non-V2 event %q: %#v", event.Name, pulled)
+		}
+		if event.Name == overlayV2StatusName {
+			seenV2Status = true
+		}
+	}
+	if !seenV2Status {
+		t.Fatalf("Overlay pull response without %q: %#v", overlayV2StatusName, pulled)
+	}
 	for _, event := range pulled.Events {
 		wails[event.Name] = event.Data
 	}
@@ -237,7 +252,7 @@ func TestTelemetryLifecycleHarness(t *testing.T) {
 			t.Fatalf("Wails/SSE payload mismatch for %s\nWails: %s\nSSE:   %s", name, wailsData, sseData)
 		}
 	}
-	assertProjectionCursor(t, wails[telemetrytransport.EventName(
+	assertProjectionCursor(t, sse[telemetrytransport.EventName(
 		telemetrytransport.ProductOverlay,
 		telemetrytransport.EventSnapshot,
 	)], snapshot)
@@ -411,9 +426,6 @@ func TestTelemetryStatusReplayHandlersIgnoreNilRuntime(t *testing.T) {
 }
 
 func TestOverlayPullHTTPServiceRespondsOnlyToTheRequestingWindowAndClosesConsumer(t *testing.T) {
-	hub := telemetrytransport.NewHub(telemetrytransport.HubConfig{
-		Product: telemetrytransport.ProductOverlay,
-	})
 	registry, err := telemetrytransport.NewPublisherRegistry(telemetrytransport.PublisherConfig{
 		Product: telemetrytransport.ProductOverlayV2,
 	})
@@ -427,7 +439,7 @@ func TestOverlayPullHTTPServiceRespondsOnlyToTheRequestingWindowAndClosesConsume
 	}); err != nil {
 		t.Fatal(err)
 	}
-	pull := telemetrytransport.NewOverlayPullTransport(hub, registry)
+	pull := telemetrytransport.NewOverlayPullTransport(registry)
 	target := newCaptureOverlayPullTarget()
 	service := newOverlayPullHTTPService(target, pull)
 	defer service.shutdown()

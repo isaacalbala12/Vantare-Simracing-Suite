@@ -1,155 +1,97 @@
-# ISA-894 — guion de cinco sesiones LMU largas
+# ISA-894 — cierre físico acotado de Overlay V1
 
-Estas sesiones son una precondición humana de F9. El worker **no las ejecuta**:
-Isaac coordina LMU y confirma cada transición. No sustituyen ni se sustituyen
-por fixtures, replay, REST o el banco corto A/B.
+**Separación de alcance (2026-09-02):** este protocolo conserva los criterios
+del corte V1, no es la lista de pendientes del cierre visual ISA-962.
+El [plan maestro Redline](../../../superpowers/specs/2026-09-02-redline-plan-maestro.md)
+gobierna ese cierre: cinco presentaciones, reconexión/reapertura/tráfico en V2
+por defecto, sin nueva matriz ON/OFF ni gate de memoria. Sus PASS no certifican
+este protocolo ni autorizan el corte 2. Se conserva el orden S3 → S4 → S5 → S2.
+
+Este documento fija el protocolo vigente para cerrar los gates físicos antes de
+valorar el corte 2. Sustituye el guion operativo de sesiones de 20/60 minutos.
+Las capturas largas ya realizadas se conservan como evidencia histórica y no se
+reescriben, pero no gobiernan las nuevas ejecuciones.
+
+## Decisiones de producto vigentes
+
+- Ninguna comprobación individual supera cinco minutos. El colector general usa
+  ventanas de cinco minutos; S3 termina antes si completa toda la familia.
+- El orden obligatorio es **S3 → S4 → S5 → S2**. S2 se ejecuta al final.
+- El jugador permanece en pista durante todos los gates físicos.
+- No se exige completar, validar ni comparar una vuelta del jugador.
+- Delta queda fuera de S3. Esta exclusión no retira Delta del producto.
+- Ningún PASS de este protocolo autoriza por sí solo la retirada física de V1,
+  una promoción de canal o una release.
 
 ## Preparación común
 
-1. Construir la build exacta del PR embebiendo la configuración autorizada de
-   `frontend/.env.local`: mapear `VITE_SUPABASE_*` a `VANTARE_SUPABASE_*`,
-   ejecutar `corepack pnpm --dir frontend build`,
-   `tools/generate_supabase_config.ps1` y después `go build`. Verificar por CDP
-   que `license:changed` no sea `unconfigured`, y anotar estado/tipo de cuenta
-   sanitizados junto con SHA, versión de LMU, circuito, sesión, coches y hora.
-   Está prohibido medir con una build sin licencia configurada; nunca se
-   imprimen, copian ni versionan los valores de `.env.local`.
-2. Cerrar Edge/WebView2 y cualquier `vantare-*.exe` ajeno. Mantener una sola
-   app, un solo medidor y el juego. No cerrar `PresentMon-x64.exe` de Radeon.
-3. Ejecutar **dos fases identificadas por escenario**, nunca mezcladas en un
-   mismo proceso: `on` con `VANTARE_OVERLAY_V1_EMIT=1` para paridad shadow y
-   `off` sin override, con `overlayV1Emit=false`, para soak V2-only. Perfil con
-   Standings, Relative y Delta visibles.
-4. Capturar al inicio y al final: diagnóstico V2 de cada ventana, contadores de
-   pull V1/V2, métricas del host, árbol de procesos y screenshot de widgets.
-5. Cada 60 s registrar CPU y Private Bytes de Go host, browser, renderer(es) y
-   GPU process. No sumar procesos del sistema ni atribuir un renderer ambiguo.
-6. Validar en vivo los campos equivalentes del comparador. Todo mismatch se
-   conserva con feature, epoch, sequence, estado LMU y explicación; nunca se
-   redondea a PASS por ser `partial` o `not-comparable`.
-
-El colector declara `expectedWindows` en el dry-run y en `sesion.json`: S1–S4
-exigen `desktop`; S5 exige `desktop` y una segunda superficie `studio-or-obs`.
-Cada aparición de esas superficies debe incluir diagnóstico `pull`; una
-ventana esperada ausente o un único checkpoint sin `pull` hace fallar el
-resumen.
+1. Construir una única build exacta y licenciada. La configuración autorizada se
+   embebe con el procedimiento documentado sin leer, imprimir ni versionar
+   valores de `.env.local`.
+2. Registrar HEAD, SHA-256 del ejecutable y de `frontend/dist`, versión de LMU,
+   circuito, tipo de sesión, coches observados y timestamps.
+3. Cerrar procesos Vantare/WebView2 ajenos. Mantener LMU, una única app y un
+   único colector. No matar el PresentMon permanente de Radeon.
+4. Para los gates con `sesion-v1.ps1`, ejecutar procesos separados:
+   `on` con `VANTARE_OVERLAY_V1_EMIT=1` y `off` sin override.
+5. Capturar diagnóstico V2, transporte V1/V2, árbol de procesos, CPU, Private
+   Bytes, screenshots inicial/final y cierre limpio. Un dato ausente no se
+   sustituye por cero.
 
 ## Matriz obligatoria
 
-| Sesión | Fase `on` | Fase `off` | Escenario y gesto humano | Evidencia específica |
-| --- | ---: | ---: | --- | --- |
-| S1 · práctica/garaje/pista | 20 min | 20 min | Spa práctica: 5 min garaje, salir de boxes, vuelta lanzada y volver al box | Transiciones pit/track, Delta y Relative; paridad exacta ON, cero V1 OFF y memoria inicial/final. |
-| S2 · carrera | 20 min | 20 min | Carrera con salida, tráfico, al menos una vuelta y entrada a boxes | Orden/identidad Standings, tráfico Relative, banderas/eventos e histograma/p99 de entrega. |
-| S3 · parrilla grande | 20 min | **60 min** | Sesión con **más de 40 coches**; mantener tráfico real alrededor | Conteo de coches, payload/Hz, CPU/RAM por proceso y soak prolongado OFF. |
-| S4 · reconnect | 20 min | 20 min | En sesión: detener/reanudar la fuente de telemetría o reiniciar LMU según coordine Isaac, sin reiniciar Vantare | `live -> stale/disconnected -> connecting -> live`, epoch/revisión monotónicos y recuperación en ambas fases. |
-| S5 · ventana tardía | 20 min | 20 min | Mantener LMU/Vantare live ≥5 min y abrir después Desktop; repetir abriendo Studio Live u OBS tarde | Primer status/frame retenido, perfil completo, sin hueco visual; shadow ON y cero listener V1 OFF. |
+| Orden | Gate | Ejecución | Escenario y evidencia |
+| ---: | --- | --- | --- |
+| 1 | S3 · Redline visual | Una familia por vez, máximo 5 min | Jugador en pista. Standings Redline, Relative Redline Mirror/Proximity/Traffic y Pedals Redline. Sin Delta. Revisar texto, filas completas, estabilidad, transparencia exterior, placas negras, recortes y solapes. Sellar los diez PNG/checker con `attest-s3.ps1`. |
+| 2 | S4 · reconnect | ON 5 min + OFF 5 min | Sin reiniciar Vantare: provocar y recuperar una pérdida de fuente. Exigir `live → no-live → live`, revisión/epoch monotónicos y frame V2 nuevo ≤30 s. |
+| 3 | S5 · ventana tardía | ON 5 min + OFF 5 min | Con LMU/Vantare live y jugador en pista, abrir Desktop y después Studio Live u OBS. Primer status/frame ≤5 s y widgets completos ≤10 s. |
+| 4 | S2 · carrera | ON 5 min + OFF 5 min | Último gate. Jugador en pista con tráfico real; validar identidad/orden de Standings, Relative, banderas/eventos y p99. No se usa la validez o finalización de vueltas como criterio. |
 
-La sesión prolongada queda fijada en **S3 OFF durante 60 minutos medidos**. Las
-otras nueve fases duran 20 minutos. Reiniciar Vantare entre ON y OFF es
-obligatorio para que el interruptor resuelto y los contadores nazcan limpios.
+S3 no usa el colector general. Su catálogo fuente está versionado en
+`testdata/bench/s3-redline-catalog.json` y se materializa para el HEAD candidato
+con `node scripts/bench/materialize-s3-redline-catalog.mjs --head <HEAD> --out
+C:\tmp\vantare-s3-gate\profiles`. El arnés cerrado en
+`C:\tmp\vantare-s3-gate` consume entonces exactamente esos cinco perfiles.
 
-## Validación y criterio de parada
+## Criterios comunes
 
-- Campos `exact`: cero mismatch durante toda la ventana comparable.
-- Campos `partial`/`not-comparable`: veredicto explícito según
-  `isa-893/comparador-catalogo.md`; no cuentan como paridad.
-- Fase ON: el shadow debe activarse, comparar frames y mantener **cero mismatch
-  en campos `exact`**; cada diferencia partial/not-comparable se conserva por
-  métrica. Fase OFF: `shadow` permanece inactivo y cada ventana recibe **cero**
-  `telemetry:overlay:projection`.
-- En OFF, cada checkpoint de cada ventana esperada debe registrar a la vez
-  `receivedV1Projections=0` y `shadow=null`; campo ausente también es fallo.
-- V2 aumenta entre checkpoints de cinco minutos. El pull publica histograma de
-  las últimas 512 entregas y su p99 empírico: **p99 ≤ 250 ms**, máximo ≤ 5.000 ms
-  y cero checkpoints consecutivos sin avance V2. La espera incluida en el POST
-  se declara; no se confunde con los 17 µs del encoder V2 medidos por #912.
-- Pendiente lineal de Private Bytes calculada sobre toda la fase: Go host,
-  browser y **cada renderer** ≤ **5 MiB/h**; GPU process ≤ **10 MiB/h**; suma
-  de procesos propios ≤ **15 MiB/h**. Cada rol necesita al menos 15 muestras en
-  una fase de 20 min y 45 en S3 OFF; un proceso reiniciado invalida su pendiente.
-- En cada checkpoint CDP se capturan además, por target Hub/overlay, heap JS
-  usado/reservado, documentos, nodos y listeners, junto con los tamaños
-  retenidos del shadow. Un error CDP queda explícito y no se sustituye por cero.
-- Cero `overlay-v2-*`, `widget-authority-missing`, renderer exception o fallback
+- Campos `exact`: cero mismatch durante toda ventana comparable.
+- ON: shadow activo y cero mismatch exacto en cada ventana esperada.
+- OFF: `shadow=null` y `receivedV1Projections=0` en todos los checkpoints.
+- V2 debe avanzar; p99 empírico ≤250 ms y máximo ≤5.000 ms.
+- Cinco muestras por proceso como mínimo en cada observación de cinco minutos.
+  La pendiente de memoria de esta ventana es **indicativa**, no sustituye el
+  diagnóstico de retención de #956 ni una prueba prolongada futura.
+- Cero excepción renderer, `overlay-v2-*`, `widget-authority-missing` o fallback
   visual V1.
-- Reconnect recupera `live` y un frame V2 nuevo en ≤ **30 s** desde la marca de
-  reanudación. Una ventana tardía recibe primer status/frame en ≤ **5 s** y
-  completa widgets en ≤ **10 s** desde su marca de apertura.
-- S4 evalúa por separado cada ciclo `live → no-live → live`: cada uno necesita
-  su marca humana y un `frameRevision` V2 posterior en la misma clave de
-  ventana. S5 necesita marcas separadas para Desktop y Studio Live/OBS; sus
-  eventos `window-first-seen` y `window-widget-ready` deben compartir la misma
-  clave, por lo que no se puede completar una apertura con eventos de otra.
+- Cualquier consumidor V1 productivo, mismatch exacto no entendido, pérdida V2,
+  captura visual defectuosa o cierre incompleto detiene el gate.
 
-Se detiene el gate y se entrega la evidencia si aparece cualquier consumidor
-V1 productivo, mismatch exacto no entendido, pérdida de V2, crecimiento de
-memoria no acotado o sesión incompleta. No se habilita el corte 2.
+## Comandos
 
-## Entrega que debe devolver Isaac
-
-Por cada S1–S5: SHA, timestamps, escenario/coches, CSV de procesos, diagnóstico
-JSON por ventana, screenshot inicial/final, resumen de mismatches y cierre
-limpio. Pregunta operativa: **¿qué ventana horaria coordinamos para S1 y quién
-confirma desde LMU cada transición garaje → pista → boxes?**
-
-## Colector ejecutable
-
-Cada fase se captura con `scripts/bench/sesion-v1.ps1`. No acepta `-Forzar`,
-aplica exactamente la allow-list de `huella.ps1` y no cierra procesos ajenos.
-El polling de transiciones conecta CDP cada 5 s por defecto. Para aislar si esa
-conexión repetida altera memoria, S1–S3 pueden repetirse con `-EstadoCada 0`:
-se conservan inicio, checkpoints cada 5 min, final, heap y screenshots, pero
-las transiciones se marcan manualmente con Enter. S4/S5 no usan este modo
-porque necesitan observar reconnect y ventanas tardías entre checkpoints.
-Una repetición corta de 10 minutos solo se admite como diagnóstico explícito
-de S1 con `-DiagnosticoMemoria -EstadoCada 0`; queda marcada en el JSON, usa
-10 muestras como mínimo y **no sustituye** ninguna fase S1 de 20 minutos. Si el
-exe pertenece a otra worktree, `-Dist` debe apuntar al `frontend/dist` exacto
-embebido para que el hash de estabilidad sea válido.
-Ejemplos desde `vantare-v2`:
+El colector falla cerrado si `-Duracion` no es exactamente `5`:
 
 ```powershell
 pwsh -File scripts/bench/sesion-v1.ps1 `
-  -Sesion S1 -Fase on -Duracion 20 `
+  -Sesion S4 -Fase off -Duracion 5 `
   -Exe bin/vantare-isa894.exe -Puerto 9294 `
-  -Escena 'Spa práctica, jugador en garaje' -Coches 20
-
-pwsh -File scripts/bench/sesion-v1.ps1 `
-  -Sesion S1 -Fase off -Duracion 20 `
-  -Exe bin/vantare-isa894.exe -Puerto 9294 `
-  -Escena 'Spa práctica, jugador en garaje' -Coches 20
-
-pwsh -File scripts/bench/sesion-v1.ps1 `
-  -Sesion S3 -Fase off -Duracion 60 `
-  -Exe bin/vantare-isa894.exe -Puerto 9294 `
-  -Escena 'Spa práctica, parrilla grande' -Coches 45
-
-pwsh -File scripts/bench/sesion-v1.ps1 `
-  -Sesion S1 -Fase off -Duracion 10 -DiagnosticoMemoria -EstadoCada 0 `
-  -Exe C:\ruta\vantare.exe -Dist C:\misma-build\frontend\dist -Puerto 9294 `
-  -Escena 'Spa práctica; sin gesto; aislamiento CDP' -Coches 20
+  -Escena 'Spa; jugador en pista; reconnect' -Coches 37
 ```
 
-Antes de ocupar la máquina puede validarse el plan sin resolver ni lanzar el
-ejecutable:
+S3 selecciona por defecto el perfil sin Delta. `S4`, `S5` y `S2` conservan el
+perfil general salvo que el operador indique otro explícitamente. `S5` exige
+`desktop` y `studio-or-obs`; los demás gates exigen `desktop`.
+
+La salida se guarda bajo
+`results/isa-894/sesiones/<sesion>-<fase>-<timestamp>/` con JSON crudo, CSV,
+diagnósticos, screenshots, logs y resumen. Los checks del colector son:
 
 ```powershell
-pwsh -File scripts/bench/sesion-v1.ps1 `
-  -Sesion S5 -Fase off -Duracion 20 `
-  -Exe C:\ruta\futura\vantare.exe -Puerto 9294 -DryRun
+node --test scripts/bench/sesion-v1-state.test.mjs scripts/bench/sesion-v1-resumen.test.mjs
 ```
 
-Durante la captura la consola muestra `marca de transición: <texto>`. Isaac
-escribe, por ejemplo, `salir de boxes`, `reanudar LMU` o `abrir Desktop tarde`
-y pulsa Enter en el instante real. El colector añade además marcas automáticas
-cuando cambia `sourceState`, el estado de pit o aparece una ventana/widget.
+## Cierre
 
-La salida única `results/isa-894/sesiones/<sesion>-<fase>-<timestamp>/`
-contiene el JSON crudo, `procesos.csv`, checkpoints
-CDP, screenshots inicial/final, logs, `resumen.json` y `resumen.md`. El resumen
-falla cerrado si falta metadata/hash, duración, un rol, muestras, avance V2,
-captura visual o cierre limpio. El parser se prueba con:
-
-```powershell
-node --test scripts/bench/sesion-v1-resumen.test.mjs
-```
+Tras S2 se actualizan issue, handoff y evidencia con SHA y rutas literales. Una
+revisión independiente debe quedar sin P0/P1. La retirada física de V1 continúa
+requiriendo autorización expresa de Isaac.

@@ -23,12 +23,13 @@ export function WidgetVisualViewport(props: {
   widgetType: WidgetType;
   visual?: VisualSelection;
   layout: VisualLayoutSize;
+  visualBaseWidth?: number;
   testId: string;
   children: ReactNode;
 }): React.ReactElement {
   const fluidWidth = isFluidRedlineStandings(props.widgetType, props.visual);
   const geometry = fluidWidth
-    ? resolveWidgetVisualGeometry(props.layout, props.layout.w)
+    ? resolveWidgetVisualGeometry(props.layout, props.visualBaseWidth ?? props.layout.w)
     : resolveWidgetVisualGeometryForType(props.layout, props.widgetType);
   return (
     <div

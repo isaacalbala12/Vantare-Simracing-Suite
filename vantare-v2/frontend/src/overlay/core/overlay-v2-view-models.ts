@@ -69,8 +69,15 @@ export const overlayV2ViewModelRegistry: ReadonlyMap<WidgetType, OverlayV2ViewMo
     "relative",
     {
       feature: OVERLAY_V2_RELATIVE,
-      buildViewModelV2: (frame, source, content) =>
-        buildRelativeViewModelV2(frame, source, content as never),
+      buildViewModelV2: (frame, source, content, ctx) => {
+        const redline = ctx?.relativeViewModelStability === "endurance-redline";
+        return buildRelativeViewModelV2(frame, source, content as never, {
+          state: redline ? ctx?.relativeViewModelState : undefined,
+          nowMs: ctx?.relativeViewModelNowMs,
+          instanceKey: ctx?.relativeViewModelInstanceKey,
+          bridgeSourceReconnect: redline,
+        });
+      },
     },
   ],
   [

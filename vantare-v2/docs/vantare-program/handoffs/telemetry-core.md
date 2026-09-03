@@ -1,5 +1,246 @@
 # Handoff vivo — Telemetry Core
 
+## R3 Studio V2-only publicado en PR draft — 2026-09-04, ISA-894
+
+Writer único en `C:\tmp\vantare-v1-retirada-r3\vantare-v2`, rama
+`vantareapp/isa-894-retirada-v1-r3`, base exacta R2 `cc443e53`. Candidato
+`b4c0a38c`; worktree limpio al congelar código/test/microplan. Sin apps, LMU,
+navegadores, `.env*`, merge, promoción o release.
+
+R3 elimina del ciclo productivo de Studio la construcción y ejecución del
+adapter Overlay Projection V1. El lifecycle recibe el coordinador existente,
+resetea el store, adjunta listeners V2 antes del pull, conserva restart,
+invalid-frame, diagnósticos, auxiliares y cleanup. Los mocks de autoría,
+fixtures, OBS, backend, productor, rutas, flags y tipos siguen intactos.
+Evidencia:
+[`retirada-v1-r3-studio-20260904.md`](../../telemetry-core/evidence/isa-894/retirada-v1-r3-studio-20260904.md).
+
+TDD: el RED V2-only produjo 3 fallos por
+`options.legacy.coordinator`; GREEN focal 3/3 y Studio 23/23. Typecheck, build,
+ESLint focal y `diff --check` PASS. Review de especificación Muse
+`ses_f96748a29ffeuTz9Gdq49MyRqb`: APPROVE, P0/P1/P2/P3=0. Review de
+calidad/adversarial Muse `ses_f96711213ffenLfc0LKeJ6ncbY` sobre `cb9a3068`:
+APPROVE, P0/P1/P2/P3 bloqueantes=0. [PR draft #973](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/973)
+abierto contra `nightly`, apilado sobre #969/#970/#971/#972; CI pendiente.
+Siguiente migración: OBS V2-only; después se puede retirar la
+ruta/productor/flags/builders V1 según el inventario.
+
+R3 NO significa V1 ausente del binario y no inicia auditoría V2 ni bucle de
+rendimiento. Rollback exclusivamente por build anterior R0.
+
+## R2 Desktop V2-only publicado en PR draft — 2026-09-04, ISA-894
+
+Writer unico en `C:\tmp\vantare-v1-retirada-r2\vantare-v2`, rama
+`vantareapp/isa-894-retirada-v1-r2`, base exacta R1 `c3cb104a`. Candidato de
+codigo/test `992d1177`; worktree limpio al congelar cada commit. Sin apps, LMU,
+navegadores, `.env*`, merge, promocion o release. Este bloque prevalece sobre
+R1 en el avance de retirada, sin repetir su contenido.
+
+R2 retira de `CompositeApp` el adapter/observer V1 y la activacion/reporting del
+shadow legacy. Desktop conserva pull Wails, store/binding V2, Engineer, Calendar,
+RaceSchedule, features y teardown. TDD: el RED creo shadow una vez al entregar
+V1 (`1 failed, 15 passed`); GREEN ignora V1, pinta un snapshot V2 solo y cierra
+la sesion pull al desmontar. Evidencia:
+`docs/telemetry-core/evidence/isa-894/retirada-v1-r2-desktop-20260904.md`.
+
+Checks del orquestador: focales 5 archivos/42 tests, typecheck, build, lint,
+Go focal R1, `rg` de frontera y diff-check PASS; roadmap frontend 49 tests,
+Python 23 tests y digest reproducible PASS. Review spec Muse
+`ses_f96873b0effe2VItOuu03U5Dgw` sobre `4fe69f12`: APPROVE, P0/P1=0; P3
+endurecidos en `992d1177`. Review calidad/adversarial Muse
+`ses_f9681a57bffeSnlDKCNUB0t4uR` sobre `20e5c0c3`: APPROVE,
+P0/P1/P2/P3 bloqueantes=0. [PR draft #972](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/972)
+abierto contra `nightly`, apilado sobre #969/#970/#971; CI pendiente. Siguiente
+migracion: Studio V2-only; despues OBS V2-only; solo entonces retirar
+ruta/productor/flags/builders V1 segun dependencias.
+
+R2 NO significa V1 ausente del binario: OBS/Studio, productor/SSE, flags,
+builders, tipos y tooling legacy siguen. Tampoco inicia auditoria V2, bucle de
+rendimiento ni prueba fisica. Rollback unicamente por build anterior R0.
+
+## R1 publicado en PR draft — 2026-09-04, ISA-894
+
+Writer único en `C:\tmp\vantare-v1-retirada-r1\vantare-v2`, rama
+`vantareapp/isa-894-retirada-v1-r1`, base exacta `d687d38c` (R0). Sin
+apps, LMU, navegadores, `.env*` ni secretos. HEAD revisado `78cce939`, rama
+publicada y [PR draft #971](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/971)
+abierto contra `nightly`; depende de #969 y #970. Sin merge, promoción ni
+release. Este bloque prevalece sobre los inferiores en lo que describa R1;
+no repite R0.
+
+R1 = pull dirigido de Wails exclusivamente V2 (microplan
+`docs/superpowers/plans/2026-09-03-telemetria-v1-retirada-r1.md`). Commit de
+código `fba4ed5a` (6 archivos Go): `OverlayPullTransport` pierde `hub *Hub`,
+`NewOverlayPullTransport(registry)`, `Pull` sin guard de hub, `currentEvents`
+sólo status/snapshot V2 sin error, y `main.go` compone sólo
+`OverlayV2Publishers()`. Intactos: ACK, replay, latest-wins, sesiones
+retiradas, cleanup y estados del registry. Harness conserva golden/SSE V1 y
+lee el cursor V1 desde SSE; bench sólo V2 (1/20/44/104) con warm-up de ACK
+real y métrica única `v2_bytes`. TDD RED→GREEN con
+`TestOverlayPullExcludesLegacyEvenWhenPublished` (RED: `deliver=true
+want=false` y 3 eventos vs 1). Evidencia:
+`docs/telemetry-core/evidence/isa-894/retirada-v1-r1-20260903.md`. Roadmap:
+entrada `telemetry-live` actualizada y `roadmap.json` regenerado por script.
+
+Checks: gofmt limpio, typecheck, build frontend, `telemetrytransport`,
+focales `cmd/vantare` (harness + replay + HTTP pull), vitest focal 14/14,
+bench smoke sintético, `rg` sin firmas antiguas, `git diff --check` limpio.
+`go test ./...`: la primera pasada falló sólo por el flaky heredado
+`TestDownloadStallTimerRestartsWithEveryChunk` (updater, fuera del diff); la
+repetición del orquestador sobre el mismo código dio PASS completo con exit 0
+(updater 2.870s). Roadmap: `roadmap-data` 30/30, tests Python 23/23 + 21/21,
+digest `--check` sin cambios; contrato local con issue viva no ejecutable por
+ausencia de `GITHUB_TOKEN` (queda para CI del PR). R1 NO es retirada física
+total de V1 (productor/SSE/builders/flags siguen) ni auditoría V2; sin prueba
+física Wails/LMU.
+
+Dos revisiones independientes del SHA final terminaron `APPROVE`, con
+P0/P1/P2/P3 = 0. **Siguiente acción:** esperar los checks del PR #971 y
+corregir únicamente fallos atribuibles a R1; ningún merge/promoción desde
+este corte.
+
+## R0 completado y revisado — 2026-09-03, ISA-894
+
+Isaac aprueba ejecutar R0 («sí, agree»). Writer único en
+`C:\tmp\vantare-v1-retirada-r0`, rama `vantareapp/isa-894-retirada-v1-r0`,
+base `8e8ec17b2d2b660d717316c10925a6b93d073d1c` (candidato #969).
+La diferencia respecto a `2abd32f9` del plan es sólo documentación/roadmap;
+Nightly remoto verificado permanece `659b2c57`. No se toca el checkout principal.
+
+Tres Muse leen en snapshots aislados de la misma base: frontend/catálogo
+`ses_f97d0cf51ffeAeZYBKiE0ACNk9`, Go/transporte
+`ses_f97d0bc82ffeF0g7zlxOmfPJPH` y compatibilidad
+`ses_f97d0a6f5ffe8clDFCBlgrBxqZ`. Main consolida documentos y ejecuta focales.
+Sin modificación productiva, borrado V1, apps/LMU, benchmark o promoción.
+
+Copia privada ya creada en
+`C:\tmp\vantare-v1-rollback-4864b5c6-20260903\vantare-redline-rfix4-4864b5c6.exe`:
+30.851.584 bytes y SHA256 `cb69a4d56ca7cb59078cb7bd7e223b33c34aa927ec808c2e49154386b878faba`,
+idéntico al original. Commit `4864b5c6` presente. Copia verificada, no restauración
+funcional. Código 4864b5c6 y base 8e8ec17b idénticos (diff sólo documental);
+ambos soportan perfiles V4/settings 6. Cambiar ubicación/CWD puede seleccionar
+otros datos; recovery settings/updater puede escribir al arrancar. No se copian
+datos ni se cambia canal. Ver [rollback](../../telemetry-core/evidence/isa-894/retirada-v1-rollback-20260903.md).
+
+Los lectores han entregado inventario y suplemento, snapshots limpios. Main
+contrasta suscripciones dinámicas (sí hay listeners legacy de diagnóstico),
+Host V2/auxiliar, constructor/tests pull y consumo fail-closed del contador por
+el banco. Rechaza paridad V1 nueva como gate, supuesto pre-V4, borrado masivo de
+bench y conservación de shadow por nombre. El [inventario](../../telemetry-core/evidence/isa-894/retirada-v1-inventario-20260903.md)
+clasifica los 20 widgets, fuentes auxiliares, productor/transporte/contratos y
+tooling; marca explícitamente qué unidades no se pueden borrar aún.
+
+[Checks](../../telemetry-core/evidence/isa-894/retirada-v1-checks-20260903.md): instalación
+offline frozen sin actualizar dependencias; 3 archivos/16 tests frontend,
+typecheck, build, focal de emisión/guardias Go y ocho paquetes Go PASS, exit 0.
+Avisos Node/Vite conservados. No suites completas ni rendimiento/LMU/rollback
+físico. Preparado [R1](../../superpowers/plans/2026-09-03-telemetria-v1-retirada-r1.md):
+pull Go V2-only en dos archivos productivos y cuatro tests/bench, pendiente de
+ejecución. No se inicia auditoría V2 ni bucle de experimentos.
+
+Spec review Muse `ses_f97c50549ffe5Pd8t5IrwarC5l`: **APPROVE** sobre
+`3e11d93ac8ea2f697b4de6e7ea083593704d3909` (9 documentos, cero código
+productivo). Snapshot limpio, lectura de código y diff; no ejecutó checks.
+44 tests de roadmap PASS y 26 enlaces locales resueltos. Digest reproducible y
+contrato de issue/diff completo validados localmente con issue viva de GitHub.
+Se corrigieron los campos formales de la issue (encabezados exactos y contrato),
+sin cambiar el alcance. Sus cuatro IDs reflejan el diff apilado de #969; R0
+sólo cambia `telemetry-live` respecto a 8e8ec17b.
+
+Calidad/adversarial Muse `ses_f97c1e8c4ffe32HX5LyfBqZ2xS`: **APPROVE** sobre
+el mismo `3e11d93a`; cero Critical/Important bloqueantes, snapshot limpio.
+Main incorpora aclaraciones menores: son 18 builders que importan snapshot,
+helpers de tests localizados, workdir/nombre del paquete, Lookup con comprobación
+de publisher activo y líneas del cursor SSE. No se adopta ignorar el booleano
+de Lookup. El diff de estas aclaraciones y registro de review lo revisa main;
+las reviews no se presentan como prueba física ni certificación de V2.
+
+R0 queda completado dentro de su alcance: nueve documentos/roadmap, copia
+privada y focales. No código productivo, apps, LMU, datos privados, auditoría
+integral, rendimiento ni experimento ejecutados. Siguiente corte propuesto R1,
+todavía sin implementar; no repetir R0 ni el interrogatorio.
+
+Entrega en rama `vantareapp/isa-894-retirada-v1-r0`, apilada sobre #969;
+destino permitido draft a Nightly, dependiente de #969. Ningún merge/push
+directo a Nightly autorizado. #969 sigue draft con tres checks SUCCESS
+en 8e8ec17b; ese CI no se atribuye a la nueva rama R0. Estado de publicación
+de R0 se contrasta en la issue/PR remotos, nunca se infiere de este registro.
+
+Este bloque prevalece sobre los estados históricos de aprobación inferiores.
+
+**Publicación R0:** [PR #970](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/970)
+creada draft a Nightly, depende de #969; push de rama confirmado en
+`5190b1fcf6fc97bae49ac243b4034d5fa030b259`. Dos commits de R0 hasta ese punto:
+evidencia `3e11d93a` y cierre/reviews `5190b1fc`. Este registro posterior sólo
+documenta la PR. CI de R0 pendiente de comprobar en el HEAD remoto final;
+sin merge, release o promoción. Issue #894 permanece abierta, retirada sin ejecutar.
+
+## Decisión de diseño y registro previo — 2026-09-03, ISA-962
+
+El alcance del maestro sigue vigente. Los estados de R0 en este registro son
+anteriores y quedan sustituidos por la cabecera actual; no son otra cola activa.
+
+Isaac sustituye completamente el programa anterior por el
+[maestro de Telemetría V2](../../superpowers/specs/2026-09-03-telemetria-v2-plan-maestro.md).
+Este es su único handoff vivo. Secuencia: retirada segura completa de V1 (#894),
+auditoría integral de V2 en cuatro carriles de sólo lectura y bucle de mejoras
+comparables. Rollback mediante build/commit previo verificado; no dejar V1
+dentro del nuevo ejecutable. Se conservan las garantías de ADR 0004/0008.
+
+La autorización de diseño reemplaza el bloqueo histórico por falta de permiso
+genérico de Cut 2 y la prioridad Redline. No borra resultados FAIL ni permite
+ignorar consumidores, pérdida de información, riesgos de datos o gates de seguridad.
+Isaac hará las pruebas manuales LMU; no hay otra sesión física, tarea programada,
+merge ni release autorizados desde esta sustitución.
+
+Fase 3: mantener información, apariencia, frescura y cadencias. Cinco experimentos
+consecutivos sin mejora medida o ocho horas acumuladas de ejecución del bucle,
+lo primero. La mejora sólo reinicia consecutivos. Únicamente Muse Spark 1.3
+Contributor xhigh mediante MCP OpenCode; revisión adversarial independiente.
+
+**Estado actual:** Isaac aprueba el maestro escrito («estoy de acuerdo»).
+SPECIFY aprobado; [microplan R0](../../superpowers/plans/2026-09-03-telemetria-v1-retirada-r0.md)
+preparado para revisión. Dos Muse en snapshots de `2abd32f9` hicieron exploración
+acotada de dependencias y rollback, contrastada por main; no es la auditoría V2.
+Ninguna retirada ni prueba de rendimiento nueva. Código del candidato
+`4864b5c6`, documentación en `2abd32f9`, PR #969 draft; S3 FINAL PASS acotado
+según su evidencia. S4/S5/S2 no ejecutadas; memoria y rendimiento global V2
+no certificados. Esas afirmaciones no cambian por aprobar este plan.
+
+**Siguiente acción:** revisar R0 y ejecutarlo tras su aprobación: inventario
+completo, copia privada del exe con hash, compatibilidad/rollback y regresiones
+protectoras. No repetir el brainstorming ni inventariar de cero lo ya contrastado.
+No reactivar la cola antigua. Los registros inferiores son históricos cuando
+contradigan este bloque; conservan sus cifras y resultados, no permisos actuales.
+
+**Exploración de PLAN:** [base verificada](../../telemetry-core/evidence/isa-894/retirada-v1-base-20260903.md).
+Workers `ses_f97dbe79fffexMAi0IEDDID27H` y `ses_f97dbe353ffehpum1nA3FSjGzb`
+terminados, sin cambios en sus snapshots. Main rechaza la reimposición de gates
+históricos sugerida por el primero y corrige su ruta SSE contra código actual.
+Exe previo localizado y SHA256 confirmado `cb69a4d5…878faba`; todavía no se ha
+copiado ni restaurado. Los guardias de coexistencia y dependencias mixtas
+frontend/pull exigen sustitución de pruebas y clasificación, no borrado ciego.
+La propuesta R0 no es autorización de implementación o promoción. CI de
+`2abd32f9` estaba en progreso al preparar este corte; no se hereda como PASS.
+Autorrevisión del plan: comandos/rutas, variables y alcance de cada tarea
+comprobados; sin cambios productivos. Digest regenerado y reproducible,
+44 tests de roadmap PASS y diff-check limpio. Focales Go/frontend de R0 aún
+no ejecutados: pertenecen al microplan propuesto, no a esta entrega documental.
+
+**Entrega documental:** commit coordinador `79e88db6`, incorporado al candidato
+como `f92dc2cc`; los dos checkpoints S3 anteriores también se incorporaron sin
+cambiar código productivo. Muse independiente `ses_f97e0b4d0ffeCuPPcbastUkozY`
+revisa ese diff en snapshot aislado: APPROVE documental, sin P0/P1/P2 bloqueantes.
+Main verifica archivo histórico íntegro, enlaces del maestro, diff-check,
+digest reproducible y 44 tests de roadmap PASS. El guard completo local no pudo
+leer la issue por ausencia de `GITHUB_TOKEN`; su resultado remoto debe comprobarse
+para el nuevo HEAD, sin atribuirle el CI de `c13b8888`. No se ejecutan suites
+Go/frontend porque este corte sólo toca documentación y JSON generado.
+Issues #962/#894/#924 reconciliadas; #951/#952 fuera de la cola activa y #956
+conservada como entrada diagnóstica. Ninguna cerrada como entregada por esta
+decisión. PR #969 sigue draft; no merge, promoción ni release. Cambio ajeno de
+`configs/calendar-lmu.json` preservado, hash sin variación.
+
 ## Resultado
 
 Un único núcleo live modular y neutral al simulador. El driver LMU posee Shared
@@ -8,12 +249,41 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 
 ## Autoridad
 
+- `docs/superpowers/specs/2026-09-03-telemetria-v2-plan-maestro.md`: alcance y secuencia operativa actuales.
+
 - `docs/adr/0004-telemetry-core-modular-observation-architecture.md`.
 - `docs/telemetry-core/README.md` y su evidencia.
 - `docs/superpowers/plans/2026-07-19-telemetry-core-final-architecture-master.md`.
 - Issue y microplan activos en GitHub.
 
 ## Estado real
+
+- 2026-09-01, decisión operativa ISA-894/ISA-962: Delta queda fuera de S3 y
+  ningún gate depende de completar o validar vueltas del jugador. Las nuevas
+  comprobaciones duran cinco minutos, se ejecutan con el jugador en pista y
+  siguen el orden S3 → S4 → S5 → S2. El colector falla cerrado fuera de cinco
+  minutos y S3 selecciona un perfil Redline sin Delta. La evidencia histórica
+  larga se conserva; esta reducción no autoriza Cut 2 ni promoción.
+
+- 2026-09-01, ISA-958 en rama: `CachedProjector` publica `relativeSettled`
+  como autoridad única para Endurance Redline. Mantiene una ventana ordenada
+  de máximo 8+jugador+8 hasta que otra ventana permanezca estable 7 s; si los
+  candidatos oscilan, no salta mientras todos los IDs aceptados sigan realmente
+  observados, y rehidrata sus campos desde cada `FinalState`. Ausencia real,
+  cambio de sesión/epoch/jugador o falta de jugador reinician inmediatamente.
+  El store rechaza secuencias atrasadas dentro del mismo stream y valida ambos
+  arrays con side/orden/ID/jugador canónicos. Classic/Minimal/Neo siguen usando
+  `relative` inmediato. El adaptador Redline no admite estado de estabilidad
+  frontend, evitando un segundo hold. `RelativeRowV2` mantiene posición, última
+  vuelta y posición 3D de la misma fila; no cruza Standings. Focales Go y
+  frontend, typecheck y diff-check verdes. El candidato integrado superó 441
+  archivos/3.418 pruebas frontend, `go test ./...`, build y lint; la revisión
+  adversarial de la autoridad aislada fue APPROVE. S3 Wails/LMU sigue pendiente.
+
+- 2026-08-31, ISA-957 en rama: `StandingRowV2` incorpora la mejor vuelta
+  canónica con calidad y el ViewModel de Standings separa por fase la métrica
+  de mejor vuelta del gap de clasificación. Los goldens V2 y el contrato TS se
+  regeneraron desde Go; sin promoción ni prueba Wails/LMU nueva.
 
 - 2026-08-30, ISA-894/PR #955, S1 definitiva: ON y OFF usaron el mismo exe
   `d02054e3…`/dist `5b8e388c…`, Spa práctica y 14 coches. El parser corregido

@@ -1,6 +1,6 @@
 # Handoff vivo — Telemetry Core
 
-## R3 Studio V2-only congelado — 2026-09-04, ISA-894
+## R3 Studio V2-only publicado en PR draft — 2026-09-04, ISA-894
 
 Writer único en `C:\tmp\vantare-v1-retirada-r3\vantare-v2`, rama
 `vantareapp/isa-894-retirada-v1-r3`, base exacta R2 `cc443e53`. Candidato
@@ -20,9 +20,10 @@ TDD: el RED V2-only produjo 3 fallos por
 ESLint focal y `diff --check` PASS. Review de especificación Muse
 `ses_f96748a29ffeuTz9Gdq49MyRqb`: APPROVE, P0/P1/P2/P3=0. Review de
 calidad/adversarial Muse `ses_f96711213ffenLfc0LKeJ6ncbY` sobre `cb9a3068`:
-APPROVE, P0/P1/P2/P3 bloqueantes=0. Publicación y CI R3 pendientes. Siguiente
-migración: OBS V2-only; después se puede retirar la ruta/productor/flags/builders
-V1 según el inventario.
+APPROVE, P0/P1/P2/P3 bloqueantes=0. [PR draft #973](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/973)
+abierto contra `nightly`, apilado sobre #969/#970/#971/#972; CI pendiente.
+Siguiente migración: OBS V2-only; después se puede retirar la
+ruta/productor/flags/builders V1 según el inventario.
 
 R3 NO significa V1 ausente del binario y no inicia auditoría V2 ni bucle de
 rendimiento. Rollback exclusivamente por build anterior R0.

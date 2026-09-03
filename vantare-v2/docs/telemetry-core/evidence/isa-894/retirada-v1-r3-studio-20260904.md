@@ -92,5 +92,9 @@ Riesgos pendientes:
 - El adapter/decoder/shadow V1 continúa empaquetado por consumidores restantes.
 - R3 no certifica rendimiento óptimo ni equivalencia física Wails/LMU.
 
+Publicación aislada: [PR draft #973](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/973)
+contra `nightly`, apilada sobre #969/#970/#971/#972. CI remoto pendiente. No
+hubo merge o promoción.
+
 Rollback: instalar la build anterior privada verificada en R0. No se añade un
 flag V1 ni un fallback oculto al binario nuevo.

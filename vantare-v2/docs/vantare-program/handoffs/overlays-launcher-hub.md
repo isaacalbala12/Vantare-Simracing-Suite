@@ -10,6 +10,48 @@
 
 ## Estado
 
+- **R-FIX4 confirmado, 2026-09-03:** revisión paralela encuentra hambre de
+  actualización de vecinos en el productor Go: evidencia real de 25 muestras
+  live/24.241 s, secuencias 6817–8365, `relative` con 21 firmas frente a una
+  sola `relativeSettled`. `relative_settler.go` reinicia `pendingSince` cuando
+  cambia cualquier miembro/orden; el tráfico continuo puede congelar la
+  pertenencia aunque se actualicen valores. No es PASS de estabilidad.
+  Fuente sanitizada `C:\tmp\vantare-s3-gate\results\relative-canonical-20260903.json`.
+  Microcorte de dos archivos Go bajo ISA-962, base `bdd26eec`, worktree
+  `C:\tmp\vantare-redline-relative-rfix4`, rama
+  `vantareapp/isa-962-redline-relative-rfix4`. Muse implementador
+  `ses_f98997f66ffedm6RZmr55OC96n`; Muse revisor de riesgos independiente
+  `ses_f98ae9cd8ffeiBBObbendSddjP`, sin escrituras ni PC. Primero RED de
+  tráfico continuo; acotar la espera sin subir el hold, introducir otro
+  buffer ni alterar autoridad V2. Main revisa e integra sólo tras reviews.
+  Las capturas estáticas S3 conservan valor para geometría/alpha pero no
+  cierran S3 dinámico. Pedals nativo sobre LMU acreditado en reposo; entrada
+  real/saturación no observada. Observación física cerrada en menos de cuatro
+  minutos y proceso de prueba terminado; LMU permanece abierto.
+  R4/R5/R6 aún no ejecutados; no se repiten vueltas ni Delta.
+
+- **Paralelización y checkpoint 2026-09-03:** por petición de Isaac, las
+  revisiones independientes de código y capturas avanzan en paralelo con el
+  único operador físico. No se espera el cierre de una familia para preparar
+  otra; S4/S5/S2 siguen dependiendo del S3 completo. Solo Muse Spark 1.3
+  Contributor/OpenCode/xhigh; sin tareas programadas ni delegación anidada.
+  R-FIX3 `e209cf18` tiene compliance y calidad APPROVE, regresión Node 3/3 y se
+  incorporó en la rama aislada candidata como `bdd26eec`. Solo catálogo/test:
+  el EXE sigue siendo build `6fc3c506`, SHA `20db565c…`; no recompilado.
+  El índice corregido `9406adf9…` declara las once columnas de Standings.
+  Las cinco presentaciones tienen captura automática completa con ese mismo
+  índice: Standings 24.2 s, Relative 125.0 s y Pedals 24.9 s. Standings prueba
+  826x900/20 filas/11 métricas y Practice sin ganancias/pérdidas. Diez imágenes
+  abiertas por el orquestador; revisión visual Muse separada. No es S3 PASS:
+  Relative conserva la misma pertenencia durante las ventanas observadas y se
+  contrasta con `relative`/`relativeSettled` canónicos; Pedals solo acredita
+  reposo y composición nativa sobre LMU. Entrada/saturación aún no observada.
+  Evidencia y tres seals independientes en
+  `C:\tmp\vantare-s3-gate\results\s3-checkpoint-20260903.md`.
+  Los intentos previos se conservan intactos. CI SUCCESS corresponde a
+  `6fc3c506`, no se atribuye a `bdd26eec` antes de su nueva ejecución remota.
+  Calendar ajeno preservado; sin merge/release ni retirada V1.
+
 - **Actualización operativa 2026-09-03 — R3a y modelo único:** Isaac confirma
   jugador preparado. Se observa LMU en cockpit junto a pista con tráfico; no
   se completan vueltas. PR #969 conserva candidato `6fc3c506` y los tres checks

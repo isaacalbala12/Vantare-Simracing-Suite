@@ -8,7 +8,9 @@ Revisión del maestro escrito aprobada por Isaac: «estoy de acuerdo».
 [R0 — inventario, rollback y regresiones](../plans/2026-09-03-telemetria-v1-retirada-r0.md)
 autorizado y ejecutado en alcance documental/artefacto/checks; revisión independiente
 registrada en el handoff. [R1 — pull V2-only](../plans/2026-09-03-telemetria-v1-retirada-r1.md)
-preparado, no ejecutado. Estado SDD: SPECIFY aprobado; R0 en verificación final.
+preparado, no ejecutado. Estado SDD: SPECIFY aprobado; R0 completado con revisión
+spec y calidad APPROVE. Las unidades BLOCKED del inventario no están autorizadas
+para borrarse hasta resolver su garantía en el microcorte correspondiente.
 No se ha modificado código productivo, retirado V1 ni iniciado la auditoría V2.
 
 ## 1. Una sola dirección activa

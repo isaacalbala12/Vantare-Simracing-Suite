@@ -54,7 +54,7 @@ consumidores; la equivalencia interna de unidades BLOCKED se resuelve en su cort
 
 | Unidad / ancla | Upstream → downstream | Decisión y protección |
 | --- | --- | --- |
-| `overlay/core/telemetry-snapshot.ts:7` | Tipo legacy (incluye tipos del derived store) → 19 view-models y unidades de esta tabla | DELETE cuando todos los consumidores estén migrados; no sustituir por otro snapshot genérico |
+| `overlay/core/telemetry-snapshot.ts:7` | Tipo legacy (incluye tipos del derived store) → 18 view-models telemétricos y unidades de esta tabla | DELETE cuando todos los consumidores estén migrados; no sustituir por otro snapshot genérico |
 | `core/widget-definition.ts:113-128`, `widget-registry.ts:60` | Builder legacy obligatorio → 20 definitions/assert del registro | MIGRATE juntos; definición V2/auxiliar sin perder inspector/layout/capabilities |
 | `core/WidgetVisualHost.tsx:173-207` | V2 frame/source primero; auxiliar después; snapshot sólo rama harness | KEEP frontera única; DELETE rama snapshot después de migrar previews. Error/frescura/ausencia V2 siguen visibles, no fallback |
 | `core/overlay-v2-view-models.ts:56-136` | Frame/source → 18 builders V2 | KEEP autoridad; las fixtures/imports legacy que aún arrastre deben migrarse, no borrar el registro |

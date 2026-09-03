@@ -8,7 +8,9 @@ Código igual a 4864b5c6; R0 sólo modifica documentos y roadmap generado.
 
 ## Comandos ejecutados, cada uno con salida independiente
 
-Desde raíz Git se instalaron las dependencias bloqueadas ya disponibles:
+Desde raíz Git `C:\tmp\vantare-v1-retirada-r0` se instalaron las dependencias
+bloqueadas ya disponibles. El filtro `vantare-overlay` es el nombre del paquete
+en `vantare-v2/frontend/package.json` dentro del workspace pnpm de la raíz:
 
 ```powershell
 corepack pnpm --filter vantare-overlay install --offline --frozen-lockfile --ignore-scripts

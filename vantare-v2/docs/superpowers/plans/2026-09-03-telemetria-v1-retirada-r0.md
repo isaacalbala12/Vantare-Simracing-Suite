@@ -19,7 +19,7 @@ el alcance sigue sin permitir edición de código productivo o pruebas del juego
 
 Isaac aprueba el [maestro](../specs/2026-09-03-telemetria-v2-plan-maestro.md).
 Este es el primer microplan ejecutado, bajo **ISA-894**; su entrega documental
-está en revisión final. El primer corte de código R1 sigue sin ejecutarse. La exploración que lo fundamenta está en
+ha recibido revisión spec y calidad APPROVE. El primer corte de código R1 sigue sin ejecutarse. La exploración que lo fundamenta está en
 [la evidencia de base](../../telemetry-core/evidence/isa-894/retirada-v1-base-20260903.md).
 No se presenta un inventario parcial como exhaustivo ni un hash como rollback funcional.
 
@@ -148,7 +148,7 @@ no equivalen a la suite completa ni acreditan rendimiento/runtime físico.
 
 - [x] Gestión de fallos: no fallaron los focales ejecutados. Los avisos y checks no ejecutados constan en la evidencia; no se corrigió producción ni se debilitó ningún test.
 - [x] Elegir el **primer conjunto cerrado de dependencias** del inventario, con hasta cinco archivos de código por microcorte y sus tests. Preparar sus TASKS con test RED, diff mínimo previsto, test GREEN, checks completos aplicables y rollback. Si el conjunto requiere más archivos inseparables, justificar la unidad y pedir revisión; no dejar commits artificialmente rotos para cumplir un número.
-- [ ] Reviewer Muse independiente en snapshot: comprobar clasificación, preservación, riesgos y fuerza de las pruebas. El orquestador contrasta las rutas y el diff; el informe del worker no basta. Publicar resultado, actualizar #894 y el único handoff, sin cerrar la issue ni promover.
+- [x] Reviewer Muse independiente en snapshot: spec y calidad APPROVE sobre `3e11d93a`, sin bloqueantes. Main contrasta código/diff y añade aclaraciones menores (18 builders, helpers, workdir y Lookup/cursores del test). Resultados en #894 y handoff; sin cierre de issue ni promoción.
 
 **Aceptación:** (1) comandos/resultados reproducibles; (2) próxima tarea de código
 cerrada, pequeña y sin consumidor perdido; (3) revisión de R0 y brechas visibles.

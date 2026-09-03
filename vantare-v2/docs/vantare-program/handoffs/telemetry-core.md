@@ -1,6 +1,6 @@
 # Handoff vivo — Telemetry Core
 
-## R0 ejecutado, revisión final en curso — 2026-09-03, ISA-894
+## R0 completado y revisado — 2026-09-03, ISA-894
 
 Isaac aprueba ejecutar R0 («sí, agree»). Writer único en
 `C:\tmp\vantare-v1-retirada-r0`, rama `vantareapp/isa-894-retirada-v1-r0`,
@@ -39,8 +39,33 @@ físico. Preparado [R1](../../superpowers/plans/2026-09-03-telemetria-v1-retirad
 pull Go V2-only en dos archivos productivos y cuatro tests/bench, pendiente de
 ejecución. No se inicia auditoría V2 ni bucle de experimentos.
 
-Siguiente: review Muse spec y después calidad sobre SHA documental congelado;
-registrar resultados y entrega aislada. Ningún merge/push a Nightly autorizado.
+Spec review Muse `ses_f97c50549ffe5Pd8t5IrwarC5l`: **APPROVE** sobre
+`3e11d93ac8ea2f697b4de6e7ea083593704d3909` (9 documentos, cero código
+productivo). Snapshot limpio, lectura de código y diff; no ejecutó checks.
+44 tests de roadmap PASS y 26 enlaces locales resueltos. Digest reproducible y
+contrato de issue/diff completo validados localmente con issue viva de GitHub.
+Se corrigieron los campos formales de la issue (encabezados exactos y contrato),
+sin cambiar el alcance. Sus cuatro IDs reflejan el diff apilado de #969; R0
+sólo cambia `telemetry-live` respecto a 8e8ec17b.
+
+Calidad/adversarial Muse `ses_f97c1e8c4ffe32HX5LyfBqZ2xS`: **APPROVE** sobre
+el mismo `3e11d93a`; cero Critical/Important bloqueantes, snapshot limpio.
+Main incorpora aclaraciones menores: son 18 builders que importan snapshot,
+helpers de tests localizados, workdir/nombre del paquete, Lookup con comprobación
+de publisher activo y líneas del cursor SSE. No se adopta ignorar el booleano
+de Lookup. El diff de estas aclaraciones y registro de review lo revisa main;
+las reviews no se presentan como prueba física ni certificación de V2.
+
+R0 queda completado dentro de su alcance: nueve documentos/roadmap, copia
+privada y focales. No código productivo, apps, LMU, datos privados, auditoría
+integral, rendimiento ni experimento ejecutados. Siguiente corte propuesto R1,
+todavía sin implementar; no repetir R0 ni el interrogatorio.
+
+Entrega en rama `vantareapp/isa-894-retirada-v1-r0`, apilada sobre #969;
+destino permitido draft a Nightly, dependiente de #969. Ningún merge/push
+directo a Nightly autorizado. #969 sigue draft con tres checks SUCCESS
+en 8e8ec17b; ese CI no se atribuye a la nueva rama R0. Estado de publicación
+de R0 se contrasta en la issue/PR remotos, nunca se infiere de este registro.
 
 Este bloque prevalece sobre los estados históricos de aprobación inferiores.
 

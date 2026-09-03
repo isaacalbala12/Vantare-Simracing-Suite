@@ -45,6 +45,11 @@ ampliarla silenciosamente.
 
 ## Tarea 1 — RED que distingue V1 de V2
 
+Helpers existentes verificados: `mustStatus` y `mustSnapshot` en
+`internal/app/telemetrytransport/transport_test.go:630,592`,
+`mustPublisherRegistry` en `publisher_test.go:207`, y `assertPullEventContains`
+en `overlay_pull_test.go:245`; todos en el mismo paquete de tests.
+
 - [ ] Añadir al archivo de tests del pull este test, **con el constructor antiguo**:
 
 ```go
@@ -145,7 +150,19 @@ func (transport *OverlayPullTransport) currentEvents(session *overlayPullSession
   entrega revisión 100, nunca 99. Mantener cierres antiguo/vigente y desactivación.
   No usar un consumidor extra permanente que impida probar liberación del último.
 
+  Dentro del bucle conservar la obtención y comprobación del publisher existente:
+
+```go
+publisher, active := registry.Lookup(ProductOverlayV2)
+if !active { t.Fatal("overlay v2 publisher disappeared while consumer is active") }
+if err := publisher.PublishSnapshot(uint64(sequence), map[string]any{"revision": sequence}); err != nil {
+    t.Fatal(err)
+}
+```
+
 - [ ] En lifecycle conservar el V1 golden/SSE (esa ruta no se retira aquí).
+  El mapa SSE captura explícitamente ProductOverlay en las líneas 192–205 del
+  harness de la base; el cursor antiguo está en las líneas 240–243.
   Sustituir sólo el cursor V1 leído de `wails[...]` por el mismo leído de `sse[...]`.
   Añadir negativo sobre cada `pulled.Events`: nombre sólo status/snapshot V2,
   y exigir presencia explícita de `overlayV2StatusName`. Mantener comparaciones

@@ -25,10 +25,14 @@ entrada `telemetry-live` actualizada y `roadmap.json` regenerado por script.
 Checks: gofmt limpio, typecheck, build frontend, `telemetrytransport`,
 focales `cmd/vantare` (harness + replay + HTTP pull), vitest focal 14/14,
 bench smoke sintético, `rg` sin firmas antiguas, `git diff --check` limpio.
-`go test ./...`: sólo falla el flaky heredado
-`TestDownloadStallTimerRestartsWithEveryChunk` (updater, fuera del diff; pasa
-aislado). R1 NO es retirada física total de V1 (productor/SSE/builders/flags
-siguen) ni auditoría V2; sin prueba física Wails/LMU.
+`go test ./...`: la primera pasada falló sólo por el flaky heredado
+`TestDownloadStallTimerRestartsWithEveryChunk` (updater, fuera del diff); la
+repetición del orquestador sobre el mismo código dio PASS completo con exit 0
+(updater 2.870s). Roadmap: `roadmap-data` 30/30, tests Python 23/23 + 21/21,
+digest `--check` sin cambios; contrato local con issue viva no ejecutable por
+ausencia de `GITHUB_TOKEN` (queda para CI del PR). R1 NO es retirada física
+total de V1 (productor/SSE/builders/flags siguen) ni auditoría V2; sin prueba
+física Wails/LMU.
 
 **Siguiente acción:** revisión independiente del SHA final, issue #894 y PR
 draft a Nightly por el orquestador; ningún merge/promoción desde este corte.

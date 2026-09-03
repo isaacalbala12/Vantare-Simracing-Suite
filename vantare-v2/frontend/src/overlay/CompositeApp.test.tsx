@@ -205,7 +205,7 @@ describe("CompositeApp", () => {
     expect(shadowRuntimeMock.acceptLegacy).not.toHaveBeenCalled();
     const diagnostics = window.__vantareOverlayV2Diagnostics?.() as Record<string, unknown> | undefined;
     expect(diagnostics).toBeDefined();
-    expect(diagnostics?.["shadow"] ?? null).toBeNull();
+    expect(diagnostics).not.toHaveProperty("shadow");
   });
 
   it("R2: un snapshot V2 solo sigue alimentando el runtime y unmount cierra el pull", async () => {
@@ -261,13 +261,6 @@ describe("CompositeApp", () => {
     );
     dispatch("overlay:profile-v3-loaded", buildProfilePayload(buildRelativeDocument()));
     await dispatchTelemetry([
-      { name: "telemetry:overlay:status", data: {
-        product: "overlay",
-        statusRevision: 1,
-        capturedAt: "2026-07-28T09:00:00Z",
-        payload: { state: "live", reconnectAttempt: 0 },
-      } },
-      { name: "telemetry:overlay:projection", data: canonicalEnvelope() },
       { name: "telemetry:overlay-v2:snapshot", data: JSON.parse(goldenV2Raw) },
     ]);
     tick(100);
@@ -328,22 +321,12 @@ describe("CompositeApp", () => {
     expect(screen.getByText("Overlay V2 frame unavailable")).toBeTruthy();
   });
 
-  it("applies canonical Overlay projections from the HTTP response", async () => {
+  it("applies the Overlay V2 snapshot from the HTTP response", async () => {
     render(<CompositeApp />);
     dispatch("overlay:profile-v3-loaded", buildProfilePayload(buildRelativeDocument()));
     tick(100);
 
     await dispatchTelemetry([
-      {
-        name: "telemetry:overlay:status",
-        data: {
-          product: "overlay",
-          statusRevision: 1,
-          capturedAt: "2026-07-28T09:00:00Z",
-          payload: { state: "live", reconnectAttempt: 0 },
-        },
-      },
-      {name: "telemetry:overlay:projection", data: canonicalEnvelope()},
       {name: "telemetry:overlay-v2:snapshot", data: JSON.parse(goldenV2Raw)},
     ]);
     tick(200);

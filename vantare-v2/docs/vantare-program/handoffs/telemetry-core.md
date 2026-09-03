@@ -1,5 +1,38 @@
 # Handoff vivo — Telemetry Core
 
+## R1 entregado en rama — 2026-09-03, ISA-894
+
+Writer único en `C:\tmp\vantare-v1-retirada-r1\vantare-v2`, rama
+`vantareapp/isa-894-retirada-v1-r1`, base exacta `d687d38c` (R0). Sin
+subagentes, apps, LMU, navegadores, `.env*`, secretos, push, PR, merge,
+promoción ni release. Este bloque prevalece sobre los inferiores en lo que
+describa R1; no repite R0.
+
+R1 = pull dirigido de Wails exclusivamente V2 (microplan
+`docs/superpowers/plans/2026-09-03-telemetria-v1-retirada-r1.md`). Commit de
+código `fba4ed5a` (6 archivos Go): `OverlayPullTransport` pierde `hub *Hub`,
+`NewOverlayPullTransport(registry)`, `Pull` sin guard de hub, `currentEvents`
+sólo status/snapshot V2 sin error, y `main.go` compone sólo
+`OverlayV2Publishers()`. Intactos: ACK, replay, latest-wins, sesiones
+retiradas, cleanup y estados del registry. Harness conserva golden/SSE V1 y
+lee el cursor V1 desde SSE; bench sólo V2 (1/20/44/104) con warm-up de ACK
+real y métrica única `v2_bytes`. TDD RED→GREEN con
+`TestOverlayPullExcludesLegacyEvenWhenPublished` (RED: `deliver=true
+want=false` y 3 eventos vs 1). Evidencia:
+`docs/telemetry-core/evidence/isa-894/retirada-v1-r1-20260903.md`. Roadmap:
+entrada `telemetry-live` actualizada y `roadmap.json` regenerado por script.
+
+Checks: gofmt limpio, typecheck, build frontend, `telemetrytransport`,
+focales `cmd/vantare` (harness + replay + HTTP pull), vitest focal 14/14,
+bench smoke sintético, `rg` sin firmas antiguas, `git diff --check` limpio.
+`go test ./...`: sólo falla el flaky heredado
+`TestDownloadStallTimerRestartsWithEveryChunk` (updater, fuera del diff; pasa
+aislado). R1 NO es retirada física total de V1 (productor/SSE/builders/flags
+siguen) ni auditoría V2; sin prueba física Wails/LMU.
+
+**Siguiente acción:** revisión independiente del SHA final, issue #894 y PR
+draft a Nightly por el orquestador; ningún merge/promoción desde este corte.
+
 ## R0 completado y revisado — 2026-09-03, ISA-894
 
 Isaac aprueba ejecutar R0 («sí, agree»). Writer único en

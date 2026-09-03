@@ -12,6 +12,12 @@ export const RELATIVE_ENDURANCE_TEMPLATE_IDS = [
 export type RelativeEnduranceTemplateId = (typeof RELATIVE_ENDURANCE_TEMPLATE_IDS)[number];
 export type RelativeEnduranceTemplateDiagnostic = "unknown-template";
 
+export function isRelativeRedlineTemplateId(value: unknown): boolean {
+  return value === "relative-redline-mirror" ||
+    value === "relative-redline-proximity" ||
+    value === "relative-redline-traffic";
+}
+
 export type RelativeEnduranceSettings = {
   templateId: RelativeEnduranceTemplateId;
   showHeader: boolean;

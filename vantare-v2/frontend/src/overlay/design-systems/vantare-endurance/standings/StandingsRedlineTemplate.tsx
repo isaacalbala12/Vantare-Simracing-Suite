@@ -1,9 +1,6 @@
 import { useRef, type CSSProperties, type ReactNode } from "react";
-import { resolveColumnWidthPixels, type WidgetColumnV3 } from "../../../widget-types/shared/widget-column";
-import {
-  nearestWidthPreset,
-  STANDINGS_COLUMN_TEMPLATES,
-} from "../../../widget-types/standings/standings-content";
+import type { WidgetColumnV3 } from "../../../widget-types/shared/widget-column";
+import { resolveStandingsRedlineGridTemplate } from "../../../widget-types/standings/standings-redline-layout";
 import type {
   StandingsRowViewModel,
   StandingsViewModel,
@@ -28,22 +25,9 @@ function remainingSecondsFromText(remainingText: string): number | null {
 
 const FINAL_MINUTES_SECONDS = 5 * 60;
 const REDLINE_FIXED_METRICS = new Set(["position", "driverName"]);
-const DELTA_TRACK_PX = 44;
-const ROW_GAP_PX = 8;
-const ROW_HORIZONTAL_PADDING_PX = 16;
-const BLOCK_HORIZONTAL_PADDING_PX = 18;
 
-function columnFallbackWidth(metricId: string): number {
-  return STANDINGS_COLUMN_TEMPLATES.find((template) => template.metricId === metricId)?.defaultWidth ?? 60;
-}
-
-function columnWidth(column: WidgetColumnV3 | undefined, metricId: string): number {
-  const fallback = columnFallbackWidth(metricId);
-  if (column) return resolveColumnWidthPixels(column, fallback);
-  return resolveColumnWidthPixels(
-    { id: metricId, metricId, enabled: true, widthPreset: nearestWidthPreset(fallback) },
-    fallback,
-  );
+function redlineGridTemplateColumns(columns: readonly WidgetColumnV3[]): string {
+  return resolveStandingsRedlineGridTemplate(columns);
 }
 
 function justifyForAlign(align: "left" | "center" | "right"): CSSProperties["justifyContent"] {
@@ -100,15 +84,8 @@ function RedlineRow({
   battle: BattleState | undefined;
   ghost?: boolean;
 }) {
-  const positionColumn = columns.find((column) => column.metricId === "position");
   const driverColumn = columns.find((column) => column.metricId === "driverName");
   const flexibleColumns = columns.filter((column) => !REDLINE_FIXED_METRICS.has(column.metricId));
-  const tracks = [
-    `${columnWidth(positionColumn, "position")}px`,
-    `minmax(${columnWidth(driverColumn, "driverName")}px, 1fr)`,
-    `${DELTA_TRACK_PX}px`,
-    ...flexibleColumns.map((column) => `${columnWidth(column, column.metricId)}px`),
-  ];
   const isLead = !ghost && classPosition === 1;
   // A dissolving battle keeps its last interval, so the cell mounts at the
   // charge it had rather than at zero. The node is new — React rebuilds this
@@ -129,7 +106,7 @@ function RedlineRow({
       data-class-leader={isLead ? "true" : undefined}
       data-pit={row.pitText ? "true" : undefined}
       className={`ven-red-row${ghost ? " ven-red-ghost" : ""}`}
-      style={{ gridTemplateColumns: tracks.join(" ") }}
+      style={{ gridTemplateColumns: redlineGridTemplateColumns(columns) }}
     >
       <span className="ven-red-pos" data-metric="position">{ghost ? "—" : classPosition}</span>
       <span
@@ -147,6 +124,7 @@ function RedlineRow({
       <span
         key={positionDelta}
         className="ven-red-delta"
+        data-position-delta={positionDelta}
         data-trend={positionDelta > 0 ? "up" : positionDelta < 0 ? "down" : undefined}
       >
         {positionDelta > 0 ? `+${positionDelta}` : positionDelta < 0 ? String(positionDelta) : ""}
@@ -205,19 +183,6 @@ export function StandingsRedlineTemplate({
   const motion = useStandingsMotion(model, model.status === "ready", rootRef);
   const sessionBest = findSessionBestLapSeconds(model.rows);
   const groups = groupRowsByClass(model.rows);
-  const flexibleColumns = model.columns.filter((column) => !REDLINE_FIXED_METRICS.has(column.metricId));
-  const positionColumn = model.columns.find((column) => column.metricId === "position");
-  const driverColumn = model.columns.find((column) => column.metricId === "driverName");
-  const requiredWidth = Math.max(
-    420,
-    columnWidth(positionColumn, "position") +
-      columnWidth(driverColumn, "driverName") +
-      DELTA_TRACK_PX +
-      flexibleColumns.reduce((sum, column) => sum + columnWidth(column, column.metricId), 0) +
-      ROW_GAP_PX * (2 + flexibleColumns.length) +
-      ROW_HORIZONTAL_PADDING_PX +
-      BLOCK_HORIZONTAL_PADDING_PX,
-  );
   const battleByAhead = new Map(motion.battles.map((battle) => [battle.aheadId, battle]));
   const remainingSeconds = remainingSecondsFromText(model.remainingText);
   const isFinalMinutes =
@@ -228,9 +193,14 @@ export function StandingsRedlineTemplate({
     bucket.push(ghost);
     ghostsByClass.set(ghost.vehicleClass, bucket);
   }
+  const ghostClass = groups.find((group) => ghostsByClass.has(group.vehicleClass))?.vehicleClass;
 
   return (
-    <div ref={rootRef} className="ven-red-root" style={{ minWidth: requiredWidth }}>
+    <div
+      ref={rootRef}
+      className="ven-red-root"
+      data-session-mode={model.sessionLabel.trim().toLowerCase()}
+    >
       {model.statusMessage ? (
         <p className="ven-status-message" role="status">
           {model.statusMessage}
@@ -272,7 +242,12 @@ export function StandingsRedlineTemplate({
             rendered.push(renderRow(row, index + 1));
           }
         }
-        for (const ghost of ghostsByClass.get(group.vehicleClass) ?? []) {
+        // The layout reserves one transient row across the complete widget.
+        // Rendering more would exceed it before the 640 ms ghosts leave.
+        const visibleGhosts = group.vehicleClass === ghostClass
+          ? (ghostsByClass.get(group.vehicleClass) ?? []).slice(0, 1)
+          : [];
+        for (const ghost of visibleGhosts) {
           rendered.splice(
             Math.min(ghost.classIndex, rendered.length),
             0,

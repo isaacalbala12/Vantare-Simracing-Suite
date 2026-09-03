@@ -1,6 +1,6 @@
 import { cleanup, render, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
-import { OverlayWorkshopDevRoute } from "./OverlayWorkshopDevRoute";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { OverlayWorkshopDevRoute, OVERLAY_WORKSHOP_PROFILE_ID } from "./OverlayWorkshopDevRoute";
 import { RuntimeWidgetFrame } from "../runtime/RuntimeWidgetFrame";
 import { createTelemetryRateCoordinator } from "../core/telemetry-rate-coordinator";
 import {
@@ -9,8 +9,13 @@ import {
 } from "./fixtures/authoring-fixtures";
 import type { AuthoringFixtureScenario } from "./fixtures/authoring-fixtures";
 import { buildAuthoringV2Runtime } from "./fixtures/authoring-v2-fixture";
+import * as relativeV2 from "../widget-types/relative/relative-view-model-v2";
+import { relativeDefinition } from "../widget-types/relative/relative-definition";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
 
 /**
  * The Workshop exists to show what a design will look like in a race. That is a
@@ -62,7 +67,7 @@ async function runtimeMarkup(input: AuthoringFixtureScenario): Promise<string> {
   const runtime = buildAuthoringV2Runtime(widget.type, snapshot);
   coordinator.setOverlayFrame(runtime.overlayV2Frame, runtime.overlayV2Source);
   const { container } = render(
-    <RuntimeWidgetFrame widget={widget} telemetry={coordinator} renderMode="obs" />,
+    <RuntimeWidgetFrame widget={widget} profileId={OVERLAY_WORKSHOP_PROFILE_ID} telemetry={coordinator} renderMode="obs" />,
   );
   await waitFor(() =>
     expect(container.querySelector(`[data-widget-renderer="${input.widget}"]`)).toBeTruthy(),
@@ -74,6 +79,37 @@ async function runtimeMarkup(input: AuthoringFixtureScenario): Promise<string> {
 }
 
 describe("the Workshop renders what the runtime renders", () => {
+  it("consume la autoridad settled de Relative Redline sin estado frontend por perfil", async () => {
+    const input = scenario({ widget: "relative", system: "vantare-endurance" });
+    const widget = buildAuthoringFixtureWidget(input);
+    const snapshot = buildAuthoringFixtureTelemetry(input);
+    const runtime = buildAuthoringV2Runtime(widget.type, snapshot);
+    expect(runtime.overlayV2Frame).toBeDefined();
+    expect(runtime.overlayV2Source).toBeDefined();
+    const frame = runtime.overlayV2Frame!;
+    const model = relativeV2.buildSettledRelativeViewModelV2(
+      {
+        ...frame,
+        relative: frame.relative.map((row, index) => ({ ...row, id: `raw-${index}` })),
+      },
+      runtime.overlayV2Source!,
+      relativeDefinition.parseContent(widget.content),
+    );
+    const settledIds = new Set(frame.relativeSettled.map((row) => row.id));
+    expect(model.rows.length).toBeGreaterThan(0);
+    expect(model.rows.every((row) => settledIds.has(row.id))).toBe(true);
+    expect(model.rows.some((row) => row.id.startsWith("raw-"))).toBe(false);
+
+    const search = "?widget=relative&system=vantare-endurance&state=ready&surface=obs";
+    const first = render(<OverlayWorkshopDevRoute search={search} profileId="profile-a" />);
+    await waitFor(() => expect(first.container.querySelector('[data-widget-renderer="relative"]')).toBeTruthy());
+    const firstMarkup = rendererMarkup(first.container, "relative");
+    first.unmount();
+    const second = render(<OverlayWorkshopDevRoute search={search} profileId="profile-b" />);
+    await waitFor(() => expect(second.container.querySelector('[data-widget-renderer="relative"]')).toBeTruthy());
+    expect(rendererMarkup(second.container, "relative")).toBe(firstMarkup);
+  });
+
   const cases = [
     {
       widget: "standings" as const,

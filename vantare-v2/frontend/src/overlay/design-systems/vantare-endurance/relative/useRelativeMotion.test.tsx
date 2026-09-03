@@ -1,6 +1,6 @@
 import { createRef } from "react";
-import { renderHook } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { act, renderHook } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type {
   RelativeRowViewModel,
   RelativeViewModel,
@@ -24,8 +24,8 @@ function row(id: string, gapSeconds: number, isPlayer = false): RelativeRowViewM
   };
 }
 
-function model(rows: RelativeRowViewModel[]): RelativeViewModel {
-  return { type: "relative", status: "ready", columns: [], rowHeightMode: "auto", rows };
+function model(rows: RelativeRowViewModel[], presentationKey?: string): RelativeViewModel {
+  return { type: "relative", status: "ready", columns: [], rowHeightMode: "auto", rows, presentationKey };
 }
 
 const player = row("me", 0, true);
@@ -38,6 +38,8 @@ function renderMotion(initial: RelativeViewModel) {
 }
 
 describe("rows leaving the visible window", () => {
+  afterEach(() => vi.useRealTimers());
+
   it("reports no ghosts while the field is stable", () => {
     const { result } = renderMotion(model([row("a", 1), player]));
     expect(result.current.ghosts).toHaveLength(0);
@@ -72,6 +74,59 @@ describe("rows leaving the visible window", () => {
     expect(result.current.ghosts).toHaveLength(1);
 
     rerender({ value: model(rows) });
+    expect(result.current.ghosts).toHaveLength(0);
+  });
+
+  it("does not add a sixth row ghost when a departed rival is replaced in the same window", () => {
+    const initial = model([
+      row("far-ahead", 2),
+      row("near-ahead", 1),
+      player,
+      row("near-behind", -1),
+      row("far-behind", -2),
+    ]);
+    const replacement = model([
+      row("near-ahead", 1),
+      row("new-ahead", 0.5),
+      player,
+      row("near-behind", -1),
+      row("far-behind", -2),
+    ]);
+    const { result, rerender } = renderMotion(initial);
+
+    rerender({ value: replacement });
+
+    expect(replacement.rows).toHaveLength(5);
+    expect(replacement.rows.length + result.current.ghosts.length).toBe(5);
+    expect(result.current.ghosts).toHaveLength(0);
+  });
+
+  it("does not let an old timer delete a later disappearance of the same row", () => {
+    vi.useFakeTimers();
+    const rows = [row("a", 1), player, row("b", -1)];
+    const withoutB = model([row("a", 1), player]);
+    const { result, rerender } = renderMotion(model(rows));
+
+    rerender({ value: withoutB });
+    expect(result.current.ghosts.map((ghost) => ghost.row.id)).toEqual(["b"]);
+    act(() => vi.advanceTimersByTime(200));
+    rerender({ value: model(rows) });
+    rerender({ value: withoutB });
+    expect(result.current.ghosts.map((ghost) => ghost.row.id)).toEqual(["b"]);
+
+    act(() => vi.advanceTimersByTime(180));
+    expect(result.current.ghosts.map((ghost) => ghost.row.id)).toEqual(["b"]);
+  });
+
+  it.each(["epoch", "session"])("does not create ghosts when the ready %s scope changes", (scope) => {
+    const initialKey = "profile:widget:1:session-a";
+    const nextKey = scope === "epoch" ? "profile:widget:2:session-a" : "profile:widget:1:session-b";
+    const { result, rerender } = renderMotion(
+      model([row("a", 1), player, row("b", -1)], initialKey),
+    );
+
+    rerender({ value: model([row("a", 1), player], nextKey) });
+
     expect(result.current.ghosts).toHaveLength(0);
   });
 });

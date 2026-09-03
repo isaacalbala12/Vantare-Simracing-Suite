@@ -2529,7 +2529,6 @@ func main() {
 		overlayPullService := newOverlayPullHTTPService(
 			newWailsOverlayPullTarget(wailsApp),
 			telemetrytransport.NewOverlayPullTransport(
-				telemetryCoreRuntime.Hub(),
 				telemetryCoreRuntime.OverlayV2Publishers(),
 			),
 		)

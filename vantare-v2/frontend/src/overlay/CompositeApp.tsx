@@ -9,7 +9,6 @@ import { applyOverlayDocumentMode } from "./overlay-document";
 import { OverlayCalendarReminderBanner } from "./OverlayCalendarReminderBanner";
 import { DesktopOverlayRuntime } from "./runtime/DesktopOverlayRuntime";
 import { InPlaceEditModeBranch } from "./edit/InPlaceEditModeBranch";
-import { createWailsProjectionTelemetryAdapter } from "./transports/projection-telemetry-adapter";
 import { createEngineerPresentationStore } from "../engineer/engineer-presentation-store";
 import { createWailsEngineerPresentationAdapter } from "../engineer/engineer-presentation-adapters";
 import {
@@ -17,7 +16,6 @@ import {
   createOverlayFrameV2Store,
 } from "../telemetry-transport/overlay-frame-v2-store";
 import { createBrowserOverlayWailsPullClient } from "../telemetry-transport/overlay-wails-pull";
-import { createOverlayV2ShadowActivation } from "./telemetry-shadow/overlay-v2-shadow-activation";
 import { createOverlayV2FeaturesGeneration } from "./telemetry-shadow/overlay-v2-features";
 import { createWailsRaceScheduleStore } from "./core/race-schedule-store";
 
@@ -49,7 +47,6 @@ export function CompositeApp() {
   useEffect(() => {
     const coordinator = createTelemetryRateCoordinator();
     const overlayV2Store = createOverlayFrameV2Store();
-    const overlayV2Shadow = createOverlayV2ShadowActivation(overlayV2Store);
     const engineerPresentations = createEngineerPresentationStore();
     const raceSchedule = createWailsRaceScheduleStore();
     const overlayV2Features = createOverlayV2FeaturesGeneration();
@@ -63,12 +60,6 @@ export function CompositeApp() {
         return () => unsubscribe?.();
       },
       requestSnapshot: () => Events.Emit("engineer:stream:get"),
-    });
-    const adapter = createWailsProjectionTelemetryAdapter({
-      coordinator,
-      runtime: "desktop",
-      subscribe: overlayPull.source.subscribe,
-      onMappedSnapshot: overlayV2Shadow.acceptLegacy,
     });
     overlayV2Store.reset();
     const unsubscribeOverlayV2Store = bindOverlayV2Coordinator(
@@ -90,9 +81,7 @@ export function CompositeApp() {
     diagnosticWindow.__vantareOverlayV2Diagnostics = () => Object.freeze({
       ...overlayV2Store.getDiagnostics(),
       pull: overlayPull.getDiagnostics(),
-      shadow: overlayV2Shadow.sessionSummary(),
     });
-    adapter.start();
     engineerAdapter.start();
     raceSchedule.start();
     overlayPull.start();
@@ -105,8 +94,6 @@ export function CompositeApp() {
       delete diagnosticWindow.__vantareOverlayV2Diagnostics;
       detachOverlayV2();
       unsubscribeOverlayV2Store();
-      overlayV2Shadow.dispose();
-      adapter.stop();
       engineerAdapter.stop();
       overlayV2Store.dispose();
       engineerPresentations.dispose();

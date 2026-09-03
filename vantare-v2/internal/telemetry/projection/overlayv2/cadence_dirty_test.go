@@ -73,10 +73,11 @@ func TestStandingsDirtySignalIgnoresUnprojectedChanges(t *testing.T) {
 			},
 		},
 		{
-			name: "best lap time is not projected",
+			name: "best lap time is projected",
 			mutate: func(state *derive.FinalState) {
 				state.Observed.Vehicles[1].BestLapTime = builderPresent(standings.LapTime(88.1))
 			},
+			dirty: true,
 		},
 		{
 			name: "order changes",
@@ -266,6 +267,13 @@ func TestRelativeDirtySignalIgnoresUnprojectedChanges(t *testing.T) {
 						state.Observed.Vehicles[index].DriverName = builderPresent(identity.DriverName("Otro"))
 					}
 				}
+			},
+			dirty: true,
+		},
+		{
+			name: "position of neighbour inside window changes",
+			mutate: func(state *derive.FinalState) {
+				state.Observed.Vehicles[1].Position = builderPresent(standings.Position(19))
 			},
 			dirty: true,
 		},

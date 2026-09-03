@@ -31,6 +31,20 @@ seguro de #894 con inventario, rollback por build y pruebas protectoras.
 No reactivar la cola antigua. Los registros inferiores son históricos cuando
 contradigan este bloque; conservan sus cifras y resultados, no permisos actuales.
 
+**Entrega documental:** commit coordinador `79e88db6`, incorporado al candidato
+como `f92dc2cc`; los dos checkpoints S3 anteriores también se incorporaron sin
+cambiar código productivo. Muse independiente `ses_f97e0b4d0ffeCuPPcbastUkozY`
+revisa ese diff en snapshot aislado: APPROVE documental, sin P0/P1/P2 bloqueantes.
+Main verifica archivo histórico íntegro, enlaces del maestro, diff-check,
+digest reproducible y 44 tests de roadmap PASS. El guard completo local no pudo
+leer la issue por ausencia de `GITHUB_TOKEN`; su resultado remoto debe comprobarse
+para el nuevo HEAD, sin atribuirle el CI de `c13b8888`. No se ejecutan suites
+Go/frontend porque este corte sólo toca documentación y JSON generado.
+Issues #962/#894/#924 reconciliadas; #951/#952 fuera de la cola activa y #956
+conservada como entrada diagnóstica. Ninguna cerrada como entregada por esta
+decisión. PR #969 sigue draft; no merge, promoción ni release. Cambio ajeno de
+`configs/calendar-lmu.json` preservado, hash sin variación.
+
 ## Resultado
 
 Un único núcleo live modular y neutral al simulador. El driver LMU posee Shared

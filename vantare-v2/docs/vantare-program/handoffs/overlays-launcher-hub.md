@@ -10,6 +10,27 @@
 
 ## Estado
 
+- **Entrega local R-FIX4, 2026-09-03 15:20 Madrid:** commit worker
+  `e72fbfcf055817c4bb19231da9b4f811a7665f9f`, dos archivos Go, todavía sin
+  integrar. El test nuevo falla antes del arreglo; worker acredita 11 focales
+  PASS. Main lee el diff completo y ejecuta todo el paquete `overlayv2` sin
+  filtro: PASS (0.107 s). `go test ./...` completo termina con exit 0 en el worktree aislado,
+  reutilizando `frontend/dist` verificado tras comprobar que no cambió ningún
+  fuente frontend. Review de cumplimiento independiente
+  `ses_f9892509dffeyF6bi3BtFQSWFX`, snapshot aislado
+  `C:\tmp\vantare-redline-rfix4-review`: APPROVE. Calidad independiente
+  `ses_f988e13f6ffeCPZCM24BuOUoLU`: APPROVE, sin bloqueantes reproducibles.
+  La prueba física de la nueva build sigue pendiente. No atribuir al EXE
+  `6fc3c506` el arreglo Go. Otro Muse `ses_f988d7b2dffeQ2aCUTv69R4DPO`
+  prepara en paralelo las acciones existentes S4/S5/S2, sólo lectura y sin PC;
+  su ejecución sigue condicionada al S3 completo.
+  El fallo afecta las cinco filas visibles: 14 firmas canónicas frente a una
+  publicada. La revisión visual confirmó los seis PNG Relative del catálogo
+  corregido; retiró dos alertas no reproducibles (línea decorativa Traffic y
+  glow Proximity no eran texto cortado ni ghosts). No se añaden arreglos por
+  esos estilos. La rama del PR #969 está publicada en `9fa5863d`, con catálogo
+  y checkpoints; CI de ese SHA está en curso. Sin merge ni promoción.
+
 - **R-FIX4 confirmado, 2026-09-03:** revisión paralela encuentra hambre de
   actualización de vecinos en el productor Go: evidencia real de 25 muestras
   live/24.241 s, secuencias 6817–8365, `relative` con 21 firmas frente a una

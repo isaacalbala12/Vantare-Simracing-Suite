@@ -82,8 +82,9 @@ Riesgos pendientes:
   empaquetados o referenciados hasta clasificarlos y retirarlos por dependencia;
 - R4 no certifica rendimiento óptimo ni equivalencia física Wails/LMU.
 
-El CI remoto y la publicación de la PR son estados posteriores a este
-documento. Ninguna review autoriza merge o promoción.
+Publicación aislada: [PR draft #974](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/974)
+contra `nightly`, apilada sobre #969/#970/#971/#972/#973. CI remoto pendiente.
+Ninguna review autoriza merge o promoción.
 
 Rollback: instalar la build anterior privada verificada en R0. No se añade un
 flag V1 ni un fallback oculto al binario nuevo.

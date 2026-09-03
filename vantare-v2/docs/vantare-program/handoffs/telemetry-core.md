@@ -1,6 +1,6 @@
 # Handoff vivo — Telemetry Core
 
-## R4 OBS V2-only cerrado localmente — 2026-09-04, ISA-894
+## R4 OBS V2-only publicado en PR draft — 2026-09-04, ISA-894
 
 Writer único en `C:\tmp\vantare-v1-retirada-r4\vantare-v2`, rama
 `vantareapp/isa-894-retirada-v1-r4`, base exacta R3 `f755a527`. Candidato
@@ -18,7 +18,8 @@ Checks del orquestador: OBS/V2 25/25, typecheck, build, ESLint focal,
 `ses_f96617126ffeAzP2TFMF1g0Uqs`: APPROVE, P0/P1/P2/P3 bloqueantes=0.
 Review de calidad/adversarial Muse `ses_f965c73b9ffexbDbAPyPAF3m76`:
 APPROVE, P0/P1/P2/P3 bloqueantes=0; reprodujo 25/25 tests, typecheck, ESLint,
-frontera y digest.
+frontera y digest. [PR draft #974](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/974)
+abierto contra `nightly`, apilado sobre #969/#970/#971/#972/#973; CI pendiente.
 
 R4 NO significa V1 ausente del binario: productor, ruta SSE, configuración,
 contratos, adapters, tipos, builders y fixtures legacy siguen. Siguiente corte:

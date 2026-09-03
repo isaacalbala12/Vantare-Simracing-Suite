@@ -69,6 +69,13 @@ de R0 se contrasta en la issue/PR remotos, nunca se infiere de este registro.
 
 Este bloque prevalece sobre los estados históricos de aprobación inferiores.
 
+**Publicación R0:** [PR #970](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/970)
+creada draft a Nightly, depende de #969; push de rama confirmado en
+`5190b1fcf6fc97bae49ac243b4034d5fa030b259`. Dos commits de R0 hasta ese punto:
+evidencia `3e11d93a` y cierre/reviews `5190b1fc`. Este registro posterior sólo
+documenta la PR. CI de R0 pendiente de comprobar en el HEAD remoto final;
+sin merge, release o promoción. Issue #894 permanece abierta, retirada sin ejecutar.
+
 ## Decisión de diseño y registro previo — 2026-09-03, ISA-962
 
 El alcance del maestro sigue vigente. Los estados de R0 en este registro son

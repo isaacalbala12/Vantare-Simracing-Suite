@@ -55,15 +55,20 @@ function syntheticFullUpdate(vehicles: number) {
     pit: "track",
     laps: 12,
     lastLap: fresh(92.125 + index / 1_000),
+    bestLap: fresh(91.875 + index / 1_000),
     lapDistance: fresh(index * 37.5),
     groundPosition: fresh({ x: index * 10, z: index * -5 }),
   }));
-  const relative = standings.map((row, index) => ({
+  const relative = standings.slice(44, 61).map((row, index) => ({
     id: row.id,
-    gap: fresh((index - 52) * 0.25),
-    side: index < 52 ? "behind" : "ahead",
+    position: row.position,
+    gap: fresh((index - 8) * 0.25),
+    groundPosition: row.groundPosition,
+    lastLap: row.lastLap,
+    side: index < 8 ? "ahead" : index === 8 ? "player" : "behind",
     authority: "native" as const,
     name: row.driver,
+    classId: row.classId,
   }));
   // The worst case is always the full canonical window of pedal samples.
   const series = (offset: number) => Array.from({ length: 120 }, (_, index) => (index * 7 + offset) % 1_001);
@@ -87,6 +92,7 @@ function syntheticFullUpdate(vehicles: number) {
       controls: { history: { q: "fresh", windowMs: 1_904, throttle: series(0), brake: series(37), clutch: series(91) } },
       standings,
       relative,
+      relativeSettled: relative,
       delta: { seconds: fresh(-0.245), reference: "best", requested: "best", available: ["best", "last"], trend: "gaining", authority: "derived" },
       fuel: { remaining: fresh(42), capacity: fresh(100), perLap: fresh(2.4), estimatedLaps: fresh(17.5) },
       spotter: { mode: "official", left: fresh(false), right: fresh(true) },

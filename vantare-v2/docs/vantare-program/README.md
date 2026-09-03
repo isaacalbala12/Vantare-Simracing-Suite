@@ -37,7 +37,8 @@ No se usa la skill `vantare-core`: está desactualizada y no es fuente de verdad
 - `../roadmap/plan.md`: fuente manual del planning y del roadmap público.
 - `research-policy.md`: investigación de productos, repositorios y apps.
 - `handoff-template.md`: contrato común para los handoffs.
-- `handoffs/telemetry-core.md`: núcleo live y siguiente corte TC-04D.
+- `handoffs/telemetry-core.md`: núcleo live y continuidad del programa de retirada V1, auditoría integral V2 y optimización medida.
+- `../superpowers/specs/2026-09-03-telemetria-v2-plan-maestro.md`: único maestro operativo de ese programa; sustituye la secuencia Huella mínima A–J.
 - `handoffs/telemetry-analysis.md`: análisis post-sesión.
 - `handoffs/engineer-spotter.md`: Engineer Beta, Spotter, voz y Pit Manager.
 - `handoffs/strategy-planner.md`: producto unificado, sin A/B/C.

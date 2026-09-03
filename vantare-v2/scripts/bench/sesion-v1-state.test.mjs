@@ -67,7 +67,7 @@ test("el dry-run conserva expectedWindows como array aunque S1 tenga una sola cl
   const collectorPath = fileURLToPath(new URL("./sesion-v1.ps1", import.meta.url));
   const output = execFileSync("pwsh", [
     "-NoProfile", "-File", collectorPath,
-    "-Sesion", "S1", "-Fase", "off", "-Duracion", "20",
+    "-Sesion", "S1", "-Fase", "off", "-Duracion", "5",
     "-Exe", "bin/dry-run.exe", "-Puerto", "19455", "-DryRun",
   ], {cwd: benchDirectory, encoding: "utf8"});
 
@@ -78,7 +78,7 @@ test("el dry-run permite aislar el coste del polling CDP sin quitar checkpoints"
   const collectorPath = fileURLToPath(new URL("./sesion-v1.ps1", import.meta.url));
   const output = execFileSync("pwsh", [
     "-NoProfile", "-File", collectorPath,
-    "-Sesion", "S1", "-Fase", "off", "-Duracion", "20",
+    "-Sesion", "S1", "-Fase", "off", "-Duracion", "5",
     "-Exe", "bin/dry-run.exe", "-Puerto", "19456", "-EstadoCada", "0", "-DryRun",
   ], {cwd: benchDirectory, encoding: "utf8"});
 
@@ -87,11 +87,11 @@ test("el dry-run permite aislar el coste del polling CDP sin quitar checkpoints"
   assert.equal(plan.cdpCheckpointSeconds, 300);
 });
 
-test("el diagnostico de memoria admite 10 minutos solo en S1 sin polling y declara el dist", () => {
+test("el diagnostico de memoria admite cinco minutos solo en S1 sin polling y declara el dist", () => {
   const collectorPath = fileURLToPath(new URL("./sesion-v1.ps1", import.meta.url));
   const output = execFileSync("pwsh", [
     "-NoProfile", "-File", collectorPath,
-    "-Sesion", "S1", "-Fase", "off", "-Duracion", "10",
+    "-Sesion", "S1", "-Fase", "off", "-Duracion", "5",
     "-Exe", "bin/dry-run.exe", "-Dist", "frontend/dist-external",
     "-Puerto", "19457", "-EstadoCada", "0", "-DiagnosticoMemoria", "-DryRun",
   ], {cwd: benchDirectory, encoding: "utf8"});
@@ -110,8 +110,28 @@ test("el diagnostico de memoria falla cerrado fuera de S1 o con polling de estad
   ]) {
     assert.throws(() => execFileSync("pwsh", [
       "-NoProfile", "-File", collectorPath,
-      ...args, "-Fase", "off", "-Duracion", "10",
+      ...args, "-Fase", "off", "-Duracion", "5",
       "-Exe", "bin/dry-run.exe", "-Puerto", "19458", "-DiagnosticoMemoria", "-DryRun",
     ], {cwd: benchDirectory, encoding: "utf8", stdio: "pipe"}));
   }
+});
+
+test("el dry-run rechaza cualquier gate que no dure exactamente cinco minutos", () => {
+  const collectorPath = fileURLToPath(new URL("./sesion-v1.ps1", import.meta.url));
+  for (const duration of [1, 6, 20, 60]) {
+    assert.throws(() => execFileSync("pwsh", [
+      "-NoProfile", "-File", collectorPath,
+      "-Sesion", "S4", "-Fase", "off", "-Duracion", String(duration),
+      "-Exe", "bin/dry-run.exe", "-Puerto", "19459", "-DryRun",
+    ], {cwd: benchDirectory, encoding: "utf8", stdio: "pipe"}));
+  }
+});
+
+test("el colector genérico no puede declarar S3 sin el catálogo Redline cerrado", () => {
+  const collectorPath = fileURLToPath(new URL("./sesion-v1.ps1", import.meta.url));
+  assert.throws(() => execFileSync("pwsh", [
+    "-NoProfile", "-File", collectorPath,
+    "-Sesion", "S3", "-Fase", "off", "-Duracion", "5",
+    "-Exe", "bin/dry-run.exe", "-Puerto", "19460", "-DryRun",
+  ], {cwd: benchDirectory, encoding: "utf8", stdio: "pipe"}), /ValidateSet/);
 });

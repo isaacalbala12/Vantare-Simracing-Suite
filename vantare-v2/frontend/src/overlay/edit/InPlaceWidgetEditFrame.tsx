@@ -1,4 +1,4 @@
-import { memo, useLayoutEffect, useRef, type CSSProperties } from "react";
+import { memo, useLayoutEffect, useMemo, useRef, type CSSProperties } from "react";
 import type { WidgetInstanceV3, WidgetLayoutV3 } from "../core/profile-document";
 import { WidgetVisualHost } from "../core/WidgetVisualHost";
 import { WidgetVisualViewport } from "../core/WidgetVisualViewport";
@@ -30,6 +30,7 @@ const HANDLE_STYLE: Record<ResizeHandle, CSSProperties> = {
 
 export type InPlaceWidgetEditFrameProps = {
   widget: WidgetInstanceV3;
+  profileId: string;
   layout: WidgetLayoutV3;
   previewActive?: boolean;
   selected: boolean;
@@ -50,6 +51,7 @@ export type InPlaceWidgetEditFrameProps = {
 function InPlaceWidgetEditFrameComponent(props: InPlaceWidgetEditFrameProps): React.ReactElement {
   const {
     widget,
+    profileId,
     layout,
     previewActive = false,
     selected,
@@ -65,12 +67,13 @@ function InPlaceWidgetEditFrameComponent(props: InPlaceWidgetEditFrameProps): Re
   const frameRef = useRef<HTMLDivElement>(null);
   const origin = layoutOrigin ?? { x: 0, y: 0 };
   const telemetryRuntime = useRateLimitedWidgetTelemetry(telemetry, widget.type);
-  const runtime = {
+  const runtime = useMemo(() => ({
     ...telemetryRuntime,
     overlayV2Features,
     raceScheduleEvents: raceSchedule?.events,
     raceScheduleStatus: raceSchedule?.status,
-  };
+    relativeViewModelInstanceKey: `${profileId}:${widget.id}`,
+  }), [overlayV2Features, profileId, raceSchedule, telemetryRuntime, widget.id]);
   const frameGeometry = resolveInplaceFrameGeometry(widget.id, layout, previewActive);
   const definition = widgetTypeRegistry.get(widget.type);
   const resizeHandles = definition.capabilities.resizeMode === "horizontal-only"
@@ -198,6 +201,7 @@ export const InPlaceWidgetEditFrame = memo(
   InPlaceWidgetEditFrameComponent,
   (previous, next) =>
     previous.widget === next.widget
+    && previous.profileId === next.profileId
     && previous.layout === next.layout
     && previous.previewActive === next.previewActive
     && previous.selected === next.selected

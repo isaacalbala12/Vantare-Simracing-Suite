@@ -1,12 +1,14 @@
 # Handoff vivo — Telemetry Core
 
-## R1 entregado en rama — 2026-09-03, ISA-894
+## R1 publicado en PR draft — 2026-09-04, ISA-894
 
 Writer único en `C:\tmp\vantare-v1-retirada-r1\vantare-v2`, rama
 `vantareapp/isa-894-retirada-v1-r1`, base exacta `d687d38c` (R0). Sin
-subagentes, apps, LMU, navegadores, `.env*`, secretos, push, PR, merge,
-promoción ni release. Este bloque prevalece sobre los inferiores en lo que
-describa R1; no repite R0.
+apps, LMU, navegadores, `.env*` ni secretos. HEAD revisado `78cce939`, rama
+publicada y [PR draft #971](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/971)
+abierto contra `nightly`; depende de #969 y #970. Sin merge, promoción ni
+release. Este bloque prevalece sobre los inferiores en lo que describa R1;
+no repite R0.
 
 R1 = pull dirigido de Wails exclusivamente V2 (microplan
 `docs/superpowers/plans/2026-09-03-telemetria-v1-retirada-r1.md`). Commit de
@@ -34,8 +36,10 @@ ausencia de `GITHUB_TOKEN` (queda para CI del PR). R1 NO es retirada física
 total de V1 (productor/SSE/builders/flags siguen) ni auditoría V2; sin prueba
 física Wails/LMU.
 
-**Siguiente acción:** revisión independiente del SHA final, issue #894 y PR
-draft a Nightly por el orquestador; ningún merge/promoción desde este corte.
+Dos revisiones independientes del SHA final terminaron `APPROVE`, con
+P0/P1/P2/P3 = 0. **Siguiente acción:** esperar los checks del PR #971 y
+corregir únicamente fallos atribuibles a R1; ningún merge/promoción desde
+este corte.
 
 ## R0 completado y revisado — 2026-09-03, ISA-894
 

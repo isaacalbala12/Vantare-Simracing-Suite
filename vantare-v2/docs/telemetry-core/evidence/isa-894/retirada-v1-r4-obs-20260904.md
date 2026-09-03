@@ -54,7 +54,7 @@ Commit de código, test y microplan:
 | `corepack pnpm --dir frontend build` | PASS, exit 0; aviso heredado de chunks >500 kB |
 | ESLint de los dos archivos de comportamiento | PASS, exit 0 |
 | `git diff --check` | PASS |
-| `rg` de adapter V1, ruta V1 y shadow en `ObsOverlayApp.tsx` | Cero coincidencias |
+| `rg` de `createSseProjectionTelemetryAdapter`, `createOverlayV2ShadowActivation`, `/telemetry/overlay/projection`, `sessionSummary` y `acceptLegacy` en `ObsOverlayApp.tsx` | Cero coincidencias |
 
 No se ejecutó suite Go porque R4 no cambia Go ni contratos compartidos. No se
 abrieron apps, LMU o navegadores y no se leyeron `.env*`. No hubo benchmark ni
@@ -67,6 +67,12 @@ Review independiente de especificación Muse xhigh
 P0/P1/P2/P3 bloqueantes = 0. Confirmó alcance cerrado, solución puramente
 sustractiva, lifecycle V2/Engineer, StrictMode, teardown y RED atribuible a la
 producción R3. Los P3 documentales se cierran en este follow-up.
+
+Review independiente de calidad/adversarial Muse xhigh
+`ses_f965c73b9ffexbDbAPyPAF3m76` sobre `0cac9bd5`: **APPROVE**,
+P0/P1/P2/P3 bloqueantes = 0. Reprodujo 25/25 tests, typecheck, ESLint,
+`diff --check`, frontera productiva y digest. Su única precisión documental
+no bloqueante sobre el patrón `rg` queda aplicada en este follow-up.
 
 Riesgos pendientes:
 

@@ -530,7 +530,7 @@ describe("StudioCanvas", () => {
     expect(screen.getByTestId("selected-id").textContent).toBe("");
   });
 
-  it("feeds widgets telemetry from the shared provider snapshot", async () => {
+  it("feeds canonical V2 missing state without synthesizing a legacy delta", async () => {
     render(
       <div style={{ width: 960, height: 540 }}>
         <StudioProvider client={client} initialFile="profiles/a.json">
@@ -542,9 +542,12 @@ describe("StudioCanvas", () => {
     );
 
     await waitFor(() => expect(screen.getByTestId("studio-widget-frame-delta-back")).toBeTruthy());
+    const frame = screen.getByTestId("studio-widget-frame-delta-back");
     await waitFor(() => expect(
-      screen.getByTestId("studio-widget-frame-delta-back").querySelector(".vo-delta-value")?.textContent,
-    ).toBe("-0.150"));
+      frame.querySelector('[data-widget-renderer="delta"]')?.getAttribute("data-status"),
+    ).toBe("missing"));
+    expect(frame.querySelector(".vo-delta-value")?.textContent).toBe("—");
+    expect(frame.textContent).not.toContain("-0.150");
   });
 
   it("applies the selected background and safe area inside an arbitrary scene", async () => {

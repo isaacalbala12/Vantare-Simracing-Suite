@@ -38,9 +38,9 @@ describe("fuel strategy v2 view model", () => {
     expect(model.requiredFuel).toBeUndefined();
     expect(model.fuelPercent).toBeUndefined();
     expect(model.history).toEqual([]);
-    expect(OVERLAY_V2_FUEL_DECLARED_GAPS).toEqual(
-      expect.arrayContaining(["requiredFuel", "history", "fuelPercent"]),
-    );
+    // A2 publishes requiredFuel and history from the frame; only fuelPercent
+    // stays a declared gap with no canonical signal behind it.
+    expect(OVERLAY_V2_FUEL_DECLARED_GAPS).toEqual(["fuelPercent"]);
   });
 
   it("reads the canonical per-lap consumption without averaging anything itself", () => {

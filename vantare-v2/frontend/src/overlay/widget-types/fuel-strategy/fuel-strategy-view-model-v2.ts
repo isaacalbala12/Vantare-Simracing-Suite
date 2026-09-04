@@ -25,10 +25,16 @@ import type { FuelStrategyViewModel } from "./fuel-strategy-view-model";
  * numbers can differ, and the canonical one is the authority. See
  * docs/telemetry-core/evidence/isa-678-fuel-perlap.md.
  *
- * `requiredFuel` and `history` stay undefined. `requiredFuel` needs the laps
- * left *of the session*, which `estimatedLaps` no longer always carries once
- * the frame prefers the fuel basis; `history` is the per-lap series itself,
- * which the frame does not publish, only its average.
+ * `requiredFuel` is `fuel.requiredFuel`, read verbatim: Go already computed
+ * perLap x sessionLaps with the worst quality of both, never from
+ * `estimatedLaps`. `history` decodes `fuel.history` (lap numbers plus litre
+ * figures, index-aligned) into `{lap, consumedLiters}` rows in canonical
+ * litres, clipped to the widget `historyRows` window for presentation only.
+ * No unit conversion and no clock read happen here: the frame already carries
+ * the preferred fuel unit and absolute history needs no `Date.now()`.
+ *
+ * `fuel.sessionLaps` stays on the wire for future consumers: this widget
+ * keeps the v1 shape (`lapsRemaining` only), so it is not decoded here.
  *
  * `fuelPercent` is left undefined to match Overlay v1, which never populated
  * it, even though the frame does carry the tank capacity.
@@ -49,8 +55,10 @@ export function buildFuelStrategyViewModelV2(
     lapsRemaining: unavailable || !content.showProjection
       ? undefined
       : displayedNumber(frame.fuel.estimatedLaps),
-    requiredFuel: undefined,
-    history: [],
+    requiredFuel: unavailable || !content.showProjection
+      ? undefined
+      : displayedNumber(frame.fuel.requiredFuel),
+    history: unavailable ? [] : decodeFuelHistory(frame, content.historyRows),
     units: content.units,
     showProjection: content.showProjection,
   };
@@ -71,8 +79,6 @@ export function fuelStrategyDisplayedValues(
 /** Fields with no canonical signal behind them; declared, never compared. */
 export const OVERLAY_V2_FUEL_DECLARED_GAPS: readonly string[] = Object.freeze([
   "fuelPercent",
-  "requiredFuel",
-  "history",
 ]);
 
 /**
@@ -107,4 +113,29 @@ function displayedNumber(value: OverlayQValue<number>): number | undefined {
   if (value.q === "missing" || value.q === "invalid") return undefined;
   // Go omitempty elides legitimate zeroes. Quality is the presence bit.
   return value.v ?? 0;
+}
+
+/**
+ * Decodes the canonical fuel history into `{lap, consumedLiters}` rows in the
+ * frame unit (litres for this widget), oldest first, clipped to the newest
+ * `historyRows` for presentation only. A non-fresh quality, a length mismatch
+ * or a non-finite figure decodes to no rows instead of inventing any.
+ */
+function decodeFuelHistory(
+  frame: OverlayFrameV2,
+  historyRows: number,
+): FuelStrategyViewModel["history"] {
+  const history = frame.fuel.history;
+  if (history.q === "missing" || history.q === "invalid") return [];
+  const laps = history.lap ?? [];
+  const consumed = history.consumed ?? [];
+  if (laps.length !== consumed.length) return [];
+  const rows: { lap: number; consumedLiters: number }[] = [];
+  for (let index = 0; index < laps.length; index++) {
+    const lap = laps[index];
+    const litres = consumed[index];
+    if (!Number.isFinite(lap) || !Number.isFinite(litres)) return [];
+    rows.push({ lap, consumedLiters: litres });
+  }
+  return rows.slice(-Math.max(1, historyRows));
 }

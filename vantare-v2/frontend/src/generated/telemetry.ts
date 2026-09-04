@@ -185,6 +185,7 @@ export interface OverlayControlsV2 {
 export interface OverlayDeltaViewV2 {
   readonly authority?: OverlayAuthorityV2 | undefined;
   readonly available: readonly string[];
+  readonly history: Overlayv2DeltaHistoryV2;
   readonly reference?: string | undefined;
   readonly requested?: string | undefined;
   readonly seconds: OverlayQValue<number>;
@@ -384,6 +385,12 @@ export interface Overlayv2DamageViewV2 {
   readonly detached: OverlayQValue<boolean>;
   readonly overheating: OverlayQValue<boolean>;
   readonly wheelDetachedCount: OverlayQValue<number>;
+}
+
+export interface Overlayv2DeltaHistoryV2 {
+  readonly capturedAtMS?: readonly number[] | undefined;
+  readonly q: OverlayQualityV2;
+  readonly seconds?: readonly number[] | undefined;
 }
 
 export interface Overlayv2FuelHistoryV2 {

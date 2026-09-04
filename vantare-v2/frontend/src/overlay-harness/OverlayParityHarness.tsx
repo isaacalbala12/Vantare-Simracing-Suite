@@ -1,12 +1,9 @@
 import type { CSSProperties } from "react";
-import crystalReferenceManifest from "../../testdata/crystal-reference/manifest.json";
 import { WidgetVisualHost } from "../overlay/core/WidgetVisualHost";
-import {
-  buildAuthoringV2ScenarioRuntime,
-  buildAuthoringV2ScenarioWidget,
-} from "../overlay/authoring/fixtures/authoring-v2-scenario-fixture";
+import { buildAuthoringV2ScenarioRuntime } from "../overlay/authoring/fixtures/authoring-v2-scenario-fixture";
+import { buildAuthoringV2ScenarioWidget } from "../overlay/authoring/fixtures/authoring-v2-scenario-widget";
 import { buildEngineerPresentationFixture } from "../engineer/engineer-presentation-fixtures";
-import { parseHarnessQuery, type HarnessQuery } from "./overlay-parity-query";
+import { getCrystalParityDesign, parseHarnessQuery, type HarnessQuery } from "./overlay-parity-query";
 
 export function OverlayParityHarness({ query }: { query: HarnessQuery }) {
   const widget = buildAuthoringV2ScenarioWidget({
@@ -16,9 +13,7 @@ export function OverlayParityHarness({ query }: { query: HarnessQuery }) {
     ...(query.designId ? { designId: query.designId } : {}),
   });
   // La dimensión Crystal exacta vive en el manifest, no en la telemetría.
-  const referenceDesign = query.designId
-    ? crystalReferenceManifest.entries.find((entry) => entry.designId === query.designId)
-    : undefined;
+  const referenceDesign = query.designId ? getCrystalParityDesign(query.designId) : undefined;
   if (referenceDesign) {
     widget.layout = { ...widget.layout, w: referenceDesign.width, h: referenceDesign.height };
   }

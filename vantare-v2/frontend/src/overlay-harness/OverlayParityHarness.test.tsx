@@ -1,17 +1,25 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { ALL_WIDGET_TYPES } from "../overlay/core/profile-document";
+import { buildAuthoringV2ScenarioWidget } from "../overlay/authoring/fixtures/authoring-v2-scenario-widget";
 import { OverlayParityHarness, OverlayParityHarnessPage } from "./OverlayParityHarness";
-import { parseHarnessQuery } from "./overlay-parity-query";
+import { getCrystalParityDesign, parseHarnessQuery } from "./overlay-parity-query";
 import { readRendererMarkup } from "./parity-html";
 import { getOverlayV2ViewModelEntry } from "../overlay/core/overlay-v2-view-models";
 
 afterEach(() => cleanup());
 
-function sourceOf(relative: string): string {
-  return readFileSync(join(process.cwd(), "src", relative), "utf8");
+type StandingsColumns = { metricId?: string; enabled?: boolean }[];
+
+function standingsColumns(variant: "standings-multiclass" | "standings-minimal" | "standings-all-columns"): StandingsColumns {
+  const widget = buildAuthoringV2ScenarioWidget({
+    widget: "standings",
+    system: "vantare-original",
+    variant,
+  });
+  const columns = (widget.content as Record<string, unknown>).columns;
+  expect(Array.isArray(columns)).toBe(true);
+  return columns as StandingsColumns;
 }
 
 describe("parseHarnessQuery", () => {
@@ -62,6 +70,20 @@ describe("parseHarnessQuery", () => {
     }
   });
 
+  it("rejects standings variants on other widgets", () => {
+    for (const variant of ["standings-multiclass", "standings-minimal", "standings-all-columns"]) {
+      expect(parseHarnessQuery(`?widget=delta&variant=${variant}`)).toEqual({
+        error: `${variant} variant requires widget=standings`,
+      });
+    }
+  });
+
+  it("rejects engineer-radio outside vantare-crystal like Workshop", () => {
+    expect(parseHarnessQuery("?widget=engineer-radio&system=vantare-original")).toEqual({
+      error: "engineer-radio requires system=vantare-crystal",
+    });
+  });
+
   it("accepts each canonical Crystal design only with its functional widget type", () => {
     expect(
       parseHarnessQuery("?widget=delta&system=vantare-crystal&design=delta-crystal-simple"),
@@ -81,25 +103,46 @@ describe("parseHarnessQuery", () => {
   });
 });
 
-describe("OverlayParityHarness", () => {
-  it("uses the pure V2 scenario runtime without snapshot or harness builders", () => {
-    const harness = sourceOf("overlay-harness/OverlayParityHarness.tsx");
-    for (const anchor of [
-      "snapshot={",
-      "authoring-v2-fixture",
-      "authoring-fixtures",
-      "buildHarnessTelemetry",
-      "seedHarnessInputHistory",
-    ]) {
-      expect(harness, `Parity debe ser V2 puro sin ${anchor}`).not.toContain(anchor);
-    }
-    expect(harness).toContain("buildAuthoringV2ScenarioRuntime");
-    expect(
-      sourceOf("overlay-harness/overlay-parity-query.ts"),
-      "el query no debe importar authoring-fixtures",
-    ).not.toContain("authoring-fixtures");
+describe("buildAuthoringV2ScenarioWidget", () => {
+  it("applies relative fill with a minimum frame height", () => {
+    const widget = buildAuthoringV2ScenarioWidget({
+      widget: "relative",
+      system: "vantare-original",
+      variant: "relative-fill",
+    });
+    expect((widget.content as Record<string, unknown>).rowHeightMode).toBe("fill");
+    expect(widget.layout.h).toBeGreaterThanOrEqual(320);
+    expect(widget.layout).toMatchObject({ x: 120, y: 96, zIndex: 1 });
   });
 
+  it("selects the multiclass field with bestLap on for standings-multiclass", () => {
+    const widget = buildAuthoringV2ScenarioWidget({
+      widget: "standings",
+      system: "vantare-original",
+      variant: "standings-multiclass",
+    });
+    expect((widget.content as Record<string, unknown>).classScope).toBe("all-classes");
+    expect(standingsColumns("standings-multiclass").find((column) => column.metricId === "bestLap")).toMatchObject({
+      enabled: true,
+    });
+  });
+
+  it("keeps only position and driverName on for standings-minimal", () => {
+    for (const column of standingsColumns("standings-minimal")) {
+      expect(column.enabled).toBe(column.metricId === "position" || column.metricId === "driverName");
+    }
+  });
+
+  it("enables every column for standings-all-columns", () => {
+    const columns = standingsColumns("standings-all-columns");
+    expect(columns.length).toBeGreaterThan(0);
+    for (const column of columns) {
+      expect(column.enabled).toBe(true);
+    }
+  });
+});
+
+describe("OverlayParityHarness", () => {
   it("renders a fixed 1920x1080 stage with the default Delta host", () => {
     const parsed = parseHarnessQuery("");
     if ("error" in parsed) {
@@ -140,6 +183,8 @@ describe("OverlayParityHarness", () => {
   });
 
   it("keeps the exact Crystal manifest dimensions for official designs", () => {
+    const design = getCrystalParityDesign("delta-crystal-simple");
+    expect(design).toMatchObject({ widgetType: "delta" });
     const parsed = parseHarnessQuery(
       "?widget=delta&system=vantare-crystal&design=delta-crystal-simple",
     );
@@ -148,8 +193,8 @@ describe("OverlayParityHarness", () => {
     }
     render(<OverlayParityHarness query={parsed} />);
     const frame = document.querySelector("[data-overlay-parity-widget-frame]") as HTMLElement;
-    expect(frame.style.width).toBe("420px");
-    expect(frame.style.height).toBe("69px");
+    expect(frame.style.width).toBe(`${design!.width}px`);
+    expect(frame.style.height).toBe(`${design!.height}px`);
     expect(document.querySelector('[data-widget-renderer="delta"]')).toBeTruthy();
   });
 

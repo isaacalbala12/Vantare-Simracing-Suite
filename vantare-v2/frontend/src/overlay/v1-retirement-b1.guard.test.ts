@@ -363,6 +363,15 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
       "buildAuthoringV2ScenarioWidget",
       "C2b6b (widget V2 puro sin snapshot)",
     );
+    // C2b6b (frontera runtime/visual): el fixture del golden no importa el
+    // módulo visual ni el registry; solo Parity lo hace vía el vecino.
+    contentAbsentAll([
+      [src("overlay", "authoring", "fixtures", "authoring-v2-scenario-fixture.ts"), "authoring-v2-scenario-widget", "C2b6b (runtime sin módulo visual)"],
+      [src("overlay", "authoring", "fixtures", "authoring-v2-scenario-fixture.ts"), "widget-registry", "C2b6b (runtime sin registry)"],
+      [src("overlay", "authoring", "fixtures", "authoring-v2-scenario-fixture.ts"), "widget-design", "C2b6b (runtime sin diseños)"],
+      [src("overlay", "authoring", "fixtures", "authoring-v2-scenario-fixture.ts"), "official-designs", "C2b6b (runtime sin diseños)"],
+      [src("overlay", "authoring", "fixtures", "authoring-v2-scenario-fixture.ts"), "relative-content", "C2b6b (runtime sin contenido)"],
+    ]);
     for (const route of [
       src("overlay", "CompositeApp.test.tsx"),
       src("overlay", "ObsOverlayApp.test.tsx"),

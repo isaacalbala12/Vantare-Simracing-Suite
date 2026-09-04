@@ -1,5 +1,9 @@
 import crystalReferenceManifest from "../../testdata/crystal-reference/manifest.json";
 import type { EngineerLocale, EngineerSeverity } from "../engineer/engineer-presentation-store";
+import {
+  AUTHORING_V2_VARIANTS,
+  type AuthoringV2Variant,
+} from "../overlay/authoring/fixtures/authoring-v2-scenario-fixture";
 import { WIDGET_TYPES, type DesignSystemId, type WidgetType } from "../overlay/core/profile-document";
 import type {
   MockDataState,
@@ -15,20 +19,9 @@ export type HarnessWidget = WidgetType;
 // Las que fabrican telemetría (relative-multiclass, standings-stress60,
 // standings-replay, pedals-zero, pedals-full) se rechazan como invalid
 // variant; siguen disponibles en Workshop sin tocar.
-export type HarnessVariant =
-  | "default"
-  | "relative-fill"
-  | "standings-multiclass"
-  | "standings-minimal"
-  | "standings-all-columns";
+export type HarnessVariant = AuthoringV2Variant;
 
-const PARITY_VARIANTS = new Set<HarnessVariant>([
-  "default",
-  "relative-fill",
-  "standings-multiclass",
-  "standings-minimal",
-  "standings-all-columns",
-]);
+const PARITY_VARIANTS: ReadonlySet<string> = new Set(AUTHORING_V2_VARIANTS);
 
 export type HarnessQuery = {
   widget: HarnessWidget;
@@ -70,7 +63,7 @@ const SURFACES = new Set<HarnessSurface>(["studio", "desktop", "obs", "harness"]
 const ENGINEER_LOCALES = new Set<EngineerLocale>(["es", "en", "it", "pt-BR"]);
 const ENGINEER_SEVERITIES = new Set<EngineerSeverity>(["info", "warning", "critical"]);
 
-function getCrystalParityDesign(designId: string):
+export function getCrystalParityDesign(designId: string):
   | { widgetType: string; designId: string; width: number; height: number }
   | undefined {
   return crystalReferenceManifest.entries.find((entry) => entry.designId === designId);
@@ -112,6 +105,17 @@ export function parseHarnessQuery(search: string): HarnessQuery | { error: strin
 
   if (variant === "relative-fill" && widget !== "relative") {
     return { error: "relative-fill variant requires widget=relative" };
+  }
+  if (
+    (variant === "standings-multiclass" ||
+      variant === "standings-minimal" ||
+      variant === "standings-all-columns") &&
+    widget !== "standings"
+  ) {
+    return { error: `${variant} variant requires widget=standings` };
+  }
+  if (widget === "engineer-radio" && system !== "vantare-crystal") {
+    return { error: "engineer-radio requires system=vantare-crystal" };
   }
 
   return {

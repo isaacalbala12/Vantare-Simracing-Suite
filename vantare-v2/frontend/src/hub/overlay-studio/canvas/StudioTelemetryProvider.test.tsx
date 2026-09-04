@@ -226,7 +226,48 @@ describe("StudioTelemetryProvider - mock V2 puro (C2b4)", () => {
     );
     expect(coordinator.getOverlayFrame()?.session.phase?.v).toBe("practice");
 
-    for (const source of ["live", "mock", "live", "mock"] as const) {
+    // El live puede terminar justo en la siguiente secuencia que habría
+    // elegido el mock. La vuelta a mock debe avanzar sobre el frame retenido,
+    // no colisionar por epoch+sequence y dejar datos live por error.
+    state.source = "live";
+    view.rerender(
+      <StudioTelemetryProvider
+        coordinator={coordinator}
+        liveAvailable={true}
+        telemetryAdapter={adapter}
+      >
+        <div>Test</div>
+      </StudioTelemetryProvider>,
+    );
+    const retained = coordinator.getOverlayFrame()!;
+    coordinator.setOverlayFrame(
+      {
+        ...retained,
+        sequence: retained.sequence + 1,
+        session: {
+          ...retained.session,
+          phase: { ...retained.session.phase, v: "qualifying" },
+        },
+      },
+      coordinator.getOverlaySource(),
+    );
+    const liveSequence = coordinator.getOverlayFrame()!.sequence;
+
+    state.mockSession = "race";
+    state.source = "mock";
+    view.rerender(
+      <StudioTelemetryProvider
+        coordinator={coordinator}
+        liveAvailable={true}
+        telemetryAdapter={adapter}
+      >
+        <div>Test</div>
+      </StudioTelemetryProvider>,
+    );
+    expect(coordinator.getOverlayFrame()!.sequence).toBeGreaterThan(liveSequence);
+    expect(coordinator.getOverlayFrame()?.session.phase?.v).toBe("race");
+
+    for (const source of ["live", "mock"] as const) {
       state.source = source;
       view.rerender(
         <StudioTelemetryProvider
@@ -243,7 +284,7 @@ describe("StudioTelemetryProvider - mock V2 puro (C2b4)", () => {
     expect(start).toHaveBeenCalledTimes(2);
     expect(stop).toHaveBeenCalledTimes(2);
     expect(publishSpy).not.toHaveBeenCalled();
-    expect(coordinator.getOverlayFrame()?.session.phase?.v).toBe("practice");
+    expect(coordinator.getOverlayFrame()?.session.phase?.v).toBe("race");
 
     view.unmount();
     expect(stop).toHaveBeenCalledTimes(2);

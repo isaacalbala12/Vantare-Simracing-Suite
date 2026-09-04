@@ -51,6 +51,7 @@ export function StudioTelemetryProvider(props: StudioTelemetryProviderProps): Re
       // session/location aunque la semilla canónica sea determinista.
       mockSequenceRef.current = Math.max(
         mockSequenceRef.current,
+        coordinator.getOverlayFrame()?.sequence ?? 0,
         mockV2.overlayV2Frame.sequence,
       ) + 1;
       coordinator.setOverlayFrame(

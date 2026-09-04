@@ -112,8 +112,9 @@ func TestWatchdogRecoversWhenFramesResume(t *testing.T) {
 func TestReconnectRecoversWithoutRestart(t *testing.T) {
 	now := time.Date(2026, 8, 19, 12, 0, 0, 0, time.UTC)
 	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{
-		Enabled: true,
-		Now:     func() time.Time { return now },
+		Enabled:                 true,
+		Now:                     func() time.Time { return now },
+		StrategyPublicTransport: true,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -160,7 +161,7 @@ func TestReconnectRecoversWithoutRestart(t *testing.T) {
 	if err := runtime.evaluateWatchdog(); err != nil {
 		t.Fatal(err)
 	}
-	subscription, err := runtime.Hub().Subscribe(context.Background())
+	subscription, err := runtime.StrategyHub().Subscribe(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -218,11 +219,13 @@ func TestTelemetryWatchdogDisabledPreservesPreviousBehavior(t *testing.T) {
 }
 
 func TestStatusErrorReachesSubscribersBeforeHubsClose(t *testing.T) {
-	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{})
+	// R6a: el terminal error llega a Strategy; el Hub Overlay V1 retirado
+	// permanece en silencio.
+	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{StrategyPublicTransport: true})
 	if err != nil {
 		t.Fatal(err)
 	}
-	subscription, err := runtime.Hub().Subscribe(context.Background())
+	subscription, err := runtime.StrategyHub().Subscribe(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}

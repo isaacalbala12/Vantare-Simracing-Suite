@@ -113,10 +113,6 @@ func Available[T comparable](field Field[T]) bool {
 	return field.Present && field.Freshness != FreshnessInvalid
 }
 
-func FromFreshness(value schema.Freshness) Freshness {
-	return projectFreshness(value)
-}
-
 func SessionTypeName(value session.Type) string {
 	switch value {
 	case session.TypePractice:

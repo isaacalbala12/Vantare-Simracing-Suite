@@ -161,11 +161,11 @@ pnpm --dir frontend test -- canvas-frame-preview.test.ts useCanvasInteraction.te
 
 ## 9. Una sola geometría visual (2026-07-14)
 
-El rectángulo persistido en `widget.layout` es también el frame visual en Studio, en la preview de perfiles y en runtime. No debe existir una normalización del frame derivada del contenido.
+El rectángulo persistido en `widget.layout` es también el frame visual en Studio, en la preview de perfiles y en runtime. La única excepción aprobada es `standings-redline`: su tabla de columnas configurables declara un ancho físico mínimo calculado desde esas columnas. Studio, Desktop y OBS aplican el mismo helper, conservan el documento persistido y recolocan el frame efectivo dentro del viewport; no existe una escala exclusiva de Studio ni se ocultan columnas para encajarlo.
 
 El contenido se renderiza en una capa de coordenadas canónicas común (`WidgetVisualViewport`), cuya anchura base procede de `defaultSize.width`. La escala depende únicamente de `layout.w`; la altura lógica se deriva de `layout.h / scale`. Así, un resize proporcional escala tipografía y composición completas sin modificar el frame ni depender del contenido.
 
-Durante un gesto, `canvas-frame-preview.ts` modifica `left`, `top`, `width`, `height`, el `translate` transitorio del **frame** y la geometría de ese viewport común. No puede introducir una escala exclusiva de Studio: ProfilePreview y runtime deben usar exactamente el mismo cálculo.
+Durante un gesto, `canvas-frame-preview.ts` modifica `left`, `top`, `width`, `height`, el `translate` transitorio del **frame** y la geometría de ese viewport común. Cuando existe un mínimo físico, tanto la geometría inicial como la preview se normalizan antes de calcular el delta y se acotan al viewport. No puede introducir una escala exclusiva de Studio: ProfilePreview y runtime deben usar exactamente el mismo cálculo.
 
 Tests que protegen este contrato:
 

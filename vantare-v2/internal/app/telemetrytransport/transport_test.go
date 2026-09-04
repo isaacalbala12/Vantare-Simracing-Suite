@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/vantare/overlays/v2/internal/telemetry/projection"
-	"github.com/vantare/overlays/v2/internal/telemetry/projection/overlay"
 	"github.com/vantare/overlays/v2/internal/telemetry/projection/strategy"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
 )
@@ -232,37 +231,25 @@ func TestLateJoinNeverPairsNewStatusWithOldSnapshot(t *testing.T) {
 }
 
 func TestExportedSnapshotConstructorsAreProductTyped(t *testing.T) {
-	tests := []struct {
-		name        string
-		constructor any
-		payload     reflect.Type
-	}{
-		{name: "overlay", constructor: NewOverlayFull, payload: reflect.TypeFor[overlay.PayloadV1]()},
-		{name: "strategy", constructor: NewStrategyFull, payload: reflect.TypeFor[strategy.PayloadV1]()},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			signature := reflect.TypeOf(test.constructor)
-			if got := signature.In(2); got != test.payload {
-				t.Fatalf("constructor payload = %v, want %v", got, test.payload)
-			}
-		})
+	// R6a.1: NewOverlayFull esta retirado; solo queda el constructor
+	// tipado de Strategy. La garantia de tipado por producto se conserva
+	// sobre el unico constructor exportado vivo.
+	signature := reflect.TypeOf(NewStrategyFull)
+	if got := signature.In(2); got != reflect.TypeFor[strategy.PayloadV1]() {
+		t.Fatalf("constructor payload = %v, want %v", got, reflect.TypeFor[strategy.PayloadV1]())
 	}
 }
 
 func TestTypedSnapshotConstructorRejectsInvalidMetadata(t *testing.T) {
-	_, err := NewOverlayFull(
+	_, err := NewStrategyFull(
 		projection.Metadata{
-			ProjectionVersion: overlay.VersionV1,
+			ProjectionVersion: strategy.VersionV1,
 			Epoch:             1,
 			Sequence:          0,
 			CapturedAt:        "2026-07-29T10:00:00Z",
 		},
 		1,
-		overlay.PayloadV1{
-			Capabilities: []overlay.Capability{},
-			Vehicles:     []overlay.VehicleV1{},
-		},
+		strategy.PayloadV1{},
 	)
 	if !errors.Is(err, ErrInvalidEnvelope) {
 		t.Fatalf("constructor error = %v, want %v", err, ErrInvalidEnvelope)

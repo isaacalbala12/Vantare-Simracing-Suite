@@ -12,6 +12,13 @@ import { StudioProvider } from "../state/studio-store";
 import type { StudioProfileClient } from "../state/studio-profile-client";
 import { StudioTelemetryProvider } from "./StudioTelemetryProvider";
 import { StudioWidgetFrame } from "./StudioWidgetFrame";
+import {
+  applyStudioFrameLayoutPreview,
+  beginStudioFramePreview,
+  clearStudioFrameLayoutPreview,
+} from "./canvas-frame-preview";
+import { standingsDefinition } from "../../../overlay/widget-types/standings/standings-definition";
+import type { StandingsContent } from "../../../overlay/widget-types/standings/standings-content";
 
 vi.mock("../../../overlay/core/WidgetVisualHost", () => ({
   WidgetVisualHost: vi.fn(() => <div data-testid="widget-visual-host-mock" />),
@@ -65,6 +72,7 @@ function renderFrame(
     <StudioProvider client={client} initialFile="profiles/a.json">
       <StudioTelemetryProvider coordinator={coordinator} liveAvailable={false} runtime={runtime}>
         <StudioWidgetFrame
+          profileId="profile-test"
           widget={widget}
           layout={widget.layout}
           selected={false}
@@ -91,8 +99,78 @@ function buildWidget(overrides: Partial<WidgetInstanceV3> = {}): WidgetInstanceV
   };
 }
 
+function buildMaximumRedlineWidget(): WidgetInstanceV3 {
+  const widget = standingsDefinition.createDefault("standings-redline-selected");
+  const content = standingsDefinition.parseContent(undefined);
+  const presets = ["sm", "sm", "lg", "lg", "md", "md", "auto", "lg", "lg", "xs", "sm"] as const;
+  return {
+    ...widget,
+    content: {
+      ...content,
+      columns: content.columns.map((column, index) => ({
+        ...column,
+        enabled: true,
+        widthPreset: presets[index],
+      })),
+    } satisfies StandingsContent,
+    layout: { ...widget.layout, x: 1640, w: 280, aspectLocked: false },
+    visual: {
+      ...widget.visual,
+      systemId: "vantare-endurance",
+      baseSettings: { templateId: "standings-redline" },
+    },
+  };
+}
+
 describe("StudioWidgetFrame", () => {
-  afterEach(() => cleanup());
+  afterEach(() => {
+    clearStudioFrameLayoutPreview("standings-redline-selected");
+    cleanup();
+  });
+
+  it("keeps a selected maximum Redline in its persisted physical frame during preview", () => {
+    const widget = buildMaximumRedlineWidget();
+    beginStudioFramePreview(widget.id, "resize", widget.layout);
+    applyStudioFrameLayoutPreview(widget.id, widget.layout);
+
+    renderFrame(widget, {
+      selected: true,
+      previewActive: true,
+      onResizePointerDown: vi.fn(),
+    });
+
+    const frame = screen.getByTestId(`studio-widget-frame-${widget.id}`);
+    const selection = screen.getByTestId(`studio-widget-selection-${widget.id}`);
+    expect(frame.style.left).toBe("1094px");
+    expect(frame.style.width).toBe("826px");
+    expect(frame.dataset.effectiveMinimumWidth).toBe("826");
+    expect(frame.dataset.layoutNormalized).toBe("true");
+    expect(selection.parentElement).toBe(frame);
+    expect(screen.getByTestId(`studio-resize-handle-e-${widget.id}`)).toBeTruthy();
+    expect(screen.getByTestId(`studio-resize-handle-w-${widget.id}`)).toBeTruthy();
+  });
+
+  it("keeps a narrow Redline inside the canvas after moving one pixel away from the right edge", () => {
+    const widget = buildMaximumRedlineWidget();
+    widget.layout = { ...widget.layout, x: 1639 };
+    beginStudioFramePreview(widget.id, "move", widget.layout);
+    applyStudioFrameLayoutPreview(widget.id, widget.layout);
+
+    renderFrame(widget, {
+      selected: true,
+      previewActive: true,
+      onResizePointerDown: vi.fn(),
+    });
+
+    const frame = screen.getByTestId(`studio-widget-frame-${widget.id}`);
+    const selection = screen.getByTestId(`studio-widget-selection-${widget.id}`);
+    expect(frame.style.left).toBe("1094px");
+    expect(frame.style.width).toBe("826px");
+    expect(Number.parseFloat(frame.style.left) + Number.parseFloat(frame.style.width)).toBe(1920);
+    expect(selection.parentElement).toBe(frame);
+    expect(screen.getByTestId(`studio-resize-handle-e-${widget.id}`)).toBeTruthy();
+    expect(screen.getByTestId(`studio-resize-handle-w-${widget.id}`)).toBeTruthy();
+  });
 
   it("positions the frame from layout x/y/w/h/zIndex", () => {
     const widget = buildWidget();
@@ -130,7 +208,12 @@ describe("StudioWidgetFrame", () => {
     renderFrame(widget, {}, runtime);
 
     expect(WidgetVisualHost).toHaveBeenCalledWith(
-      expect.objectContaining({ runtime }),
+      expect.objectContaining({
+        runtime: expect.objectContaining({
+          ...runtime,
+          relativeViewModelInstanceKey: "profile-test:delta-main",
+        }),
+      }),
       undefined,
     );
   });

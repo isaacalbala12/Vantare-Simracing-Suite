@@ -111,19 +111,24 @@ func TestTelemetryEngineApplyFlagDefaultsOnAndCanRollback(t *testing.T) {
 }
 
 func TestTelemetryCoreRuntimeDisabledPublishesStoppedWithoutStartingLMU(t *testing.T) {
-	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{Enabled: false})
+	// R6a: el stopped inicial solo llega a Strategy; el Hub Overlay V1
+	// retirado permanece en silencio aunque siga construido.
+	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{Enabled: false, StrategyPublicTransport: true})
 	if err != nil {
 		t.Fatal(err)
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	subscription, err := runtime.Hub().Subscribe(ctx)
+	subscription, err := runtime.StrategyHub().Subscribe(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer subscription.Close()
 	if err := runtime.Start(ctx); err != nil {
 		t.Fatal(err)
+	}
+	if _, ok, _ := runtime.Hub().ReplayStatus(); ok {
+		t.Fatal("retired Overlay V1 Hub published status on Start")
 	}
 	event, err := subscription.Next(ctx)
 	if err != nil {

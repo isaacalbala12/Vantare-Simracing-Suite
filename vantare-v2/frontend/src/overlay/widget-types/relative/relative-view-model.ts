@@ -28,6 +28,8 @@ export type RelativeRowViewModel = {
 
 export type RelativeViewModel = WidgetViewModelBase & {
   type: "relative";
+  /** Logical V2 scope. Motion must not animate rows across this boundary. */
+  presentationKey?: string;
   columns: readonly WidgetColumnV3[];
   rowHeightMode: RelativeContent["rowHeightMode"];
   rows: readonly RelativeRowViewModel[];

@@ -37,7 +37,11 @@ func TestTelemetryCoreTwoHourLogicalSoakIsBoundedAndPayloadFree(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	overlaySubscriptions := subscribeHardeningProduct(t, runtime.Hub())
+	// R6a: el Hub Overlay V1 esta retirado y no recibe suscriptores de soak;
+	// permanece construido para su retirada aislada en R6b.
+	if runtime.Hub() == nil {
+		t.Fatal("retired Overlay V1 Hub must stay built until R6b")
+	}
 	strategySubscriptions := subscribeHardeningProduct(t, runtime.StrategyHub())
 
 	root := t.TempDir()
@@ -97,23 +101,17 @@ func TestTelemetryCoreTwoHourLogicalSoakIsBoundedAndPayloadFree(t *testing.T) {
 
 		for index := range hardeningSoakFastSubscribersPerProduct {
 			if sequence == 1 {
-				assertHardeningStatusEvent(t, overlaySubscriptions[index], telemetrytransport.ProductOverlay)
 				assertHardeningStatusEvent(t, strategySubscriptions[index], telemetrytransport.ProductStrategy)
 			}
-			assertHardeningSnapshotEvent(t, overlaySubscriptions[index], telemetrytransport.ProductOverlay, 1, schema.Sequence(sequence), telemetrytransport.Full)
 			assertHardeningSnapshotEvent(t, strategySubscriptions[index], telemetrytransport.ProductStrategy, 1, schema.Sequence(sequence), telemetrytransport.Full)
 		}
 	}
 
-	// Each product keeps one intentionally slow subscriber. Latest-wins
+	// Strategy keeps one intentionally slow subscriber. Latest-wins
 	// coalescing must preserve status plus the final full, never a backlog.
-	overlaySlow := overlaySubscriptions[hardeningSoakFastSubscribersPerProduct]
 	strategySlow := strategySubscriptions[hardeningSoakFastSubscribersPerProduct]
-	assertHardeningStatusEvent(t, overlaySlow, telemetrytransport.ProductOverlay)
 	assertHardeningStatusEvent(t, strategySlow, telemetrytransport.ProductStrategy)
-	assertHardeningSnapshotEvent(t, overlaySlow, telemetrytransport.ProductOverlay, 1, hardeningSoakSamples, telemetrytransport.Full)
 	assertHardeningSnapshotEvent(t, strategySlow, telemetrytransport.ProductStrategy, 1, hardeningSoakSamples, telemetrytransport.Full)
-	assertHardeningQueueEmpty(t, overlaySlow, telemetrytransport.ProductOverlay)
 	assertHardeningQueueEmpty(t, strategySlow, telemetrytransport.ProductStrategy)
 
 	stopContext, cancel := context.WithTimeout(context.Background(), 15*time.Second)
@@ -129,22 +127,24 @@ func TestTelemetryCoreTwoHourLogicalSoakIsBoundedAndPayloadFree(t *testing.T) {
 	}
 
 	metrics := runtime.Metrics()
+	// R6a: los contadores Overlay V1 heredados quedan en cero y el Hub
+	// retirado no publica; Strategy conserva su semantica de soak.
 	if metrics.ObservationsRejected != 0 ||
 		metrics.BatchesApplied != hardeningSoakSamples ||
-		metrics.ProjectionsPublished != hardeningSoakSamples ||
-		metrics.OverlayProjectionsPublished != hardeningSoakSamples ||
+		metrics.ProjectionsPublished != 0 ||
+		metrics.OverlayProjectionsPublished != 0 ||
 		metrics.StrategyProjectionsPublished != hardeningSoakSamples ||
 		metrics.EngineerStatusesDelivered != hardeningSoakSamples ||
 		metrics.EngineerObservations != hardeningSoakSamples ||
 		metrics.EngineerFacts == 0 || metrics.EngineerFacts != consumer.facts ||
 		metrics.EngineerDeliveryFailures != 0 ||
-		metrics.Transport.CurrentSubscribers != hardeningSoakSubscribersPerProduct ||
+		metrics.Transport.CurrentSubscribers != 0 ||
 		metrics.StrategyTransport.CurrentSubscribers != hardeningSoakSubscribersPerProduct ||
-		metrics.Transport.StatusPublications != 1 ||
+		metrics.Transport.StatusPublications != 0 ||
 		metrics.StrategyTransport.StatusPublications != 1 ||
-		metrics.Transport.SnapshotPublications != hardeningSoakSamples ||
+		metrics.Transport.SnapshotPublications != 0 ||
 		metrics.StrategyTransport.SnapshotPublications != hardeningSoakSamples ||
-		metrics.Transport.SnapshotReplacements != hardeningSoakSamples-1 ||
+		metrics.Transport.SnapshotReplacements != 0 ||
 		metrics.StrategyTransport.SnapshotReplacements != hardeningSoakSamples-1 ||
 		metrics.Transport.DeltasRetained != 0 || metrics.StrategyTransport.DeltasRetained != 0 {
 		t.Fatalf("runtime metrics = %#v", metrics)
@@ -155,11 +155,9 @@ func TestTelemetryCoreTwoHourLogicalSoakIsBoundedAndPayloadFree(t *testing.T) {
 	}
 	assertMetricsContainNoPersonalPayload(t, metrics)
 
-	for _, subscriptions := range [][]*telemetrytransport.Subscription{overlaySubscriptions, strategySubscriptions} {
-		for _, subscription := range subscriptions {
-			if err := subscription.Close(); err != nil {
-				t.Fatal(err)
-			}
+	for _, subscription := range strategySubscriptions {
+		if err := subscription.Close(); err != nil {
+			t.Fatal(err)
 		}
 	}
 	metrics = runtime.Metrics()
@@ -218,11 +216,12 @@ func BenchmarkTelemetryCoreCombined64Vehicles(b *testing.B) {
 	}
 	b.StopTimer()
 	// This historical combined benchmark is the regression signal for the
-	// complete Overlay + Engineer + Strategy fan-out. Keep the counter guard so
+	// Strategy + Engineer fan-out. Keep the counter guard so
 	// Strategy cannot be removed while the benchmark still appears healthy.
+	// Los contadores Overlay V1 heredados quedan en cero (R6a).
 	metrics := runtime.Metrics()
-	if metrics.BatchesApplied != sequence || metrics.ProjectionsPublished != sequence ||
-		metrics.OverlayProjectionsPublished != sequence || metrics.StrategyProjectionsPublished != sequence ||
+	if metrics.BatchesApplied != sequence || metrics.ProjectionsPublished != 0 ||
+		metrics.OverlayProjectionsPublished != 0 || metrics.StrategyProjectionsPublished != sequence ||
 		metrics.EngineerObservations != sequence || metrics.EngineerDeliveryFailures != 0 {
 		b.Fatalf("combined runtime metrics = %#v, iterations = %d", metrics, sequence)
 	}

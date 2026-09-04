@@ -9,14 +9,14 @@ import (
 
 func TestRuntimePublishes104VehiclesEndToEnd(t *testing.T) {
 	engineer := &recordingEngineerConsumer{}
-	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{Engineer: engineer})
+	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{Engineer: engineer, StrategyPublicTransport: true})
 	if err != nil {
 		t.Fatal(err)
 	}
 	// The production constructor has no driver-injection seam. Exercise the
 	// real post-driver runtime sink so this remains production-code-free.
 	runtime.lifecycle = telemetryRuntimeRunning
-	subscription, err := runtime.Hub().Subscribe(context.Background())
+	subscription, err := runtime.StrategyHub().Subscribe(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -29,10 +29,13 @@ func TestRuntimePublishes104VehiclesEndToEnd(t *testing.T) {
 		t.Fatalf("runtime lifecycle = %d, want running", runtime.lifecycle)
 	}
 	metrics := runtime.Metrics()
-	if metrics.OverlayProjectionsPublished != 0 || metrics.EngineerObservations != 1 ||
-		metrics.FramesDropped["overlay-publish"] != 1 || metrics.PublishFailures["overlay"] != 1 {
-		t.Fatalf("104-vehicle outcome = overlay:%d engineer:%d dropped:%v publish failures:%v",
-			metrics.OverlayProjectionsPublished, metrics.EngineerObservations,
+	// R6a: 104 vehiculos ya no tocan el limite de payload (era exclusivo de
+	// la proyeccion Overlay V1 retirada): Strategy publica y los contadores
+	// heredados quedan en cero.
+	if metrics.OverlayProjectionsPublished != 0 || metrics.StrategyProjectionsPublished != 1 ||
+		metrics.EngineerObservations != 1 || len(metrics.FramesDropped) != 0 || len(metrics.PublishFailures) != 0 {
+		t.Fatalf("104-vehicle outcome = overlay:%d strategy:%d engineer:%d dropped:%v publish failures:%v",
+			metrics.OverlayProjectionsPublished, metrics.StrategyProjectionsPublished, metrics.EngineerObservations,
 			metrics.FramesDropped, metrics.PublishFailures)
 	}
 	event, err := subscription.Next(context.Background())

@@ -64,6 +64,27 @@ cabe bajo 72 KiB; no se afirma que toda string no acotada quepa.
 - Validador del store: `delta()` acepta y valida `history` (alineada,
   tope 120, instantes enteros seguros, segundos finitos).
 
+## Revisión spec P0 — hard clamp explícito (2026-09-04)
+
+Hallazgo bloqueante: `newPublisher` y `Registry.PublishStatus` solo
+comparaban el override explícito contra `MaxPayloadBytes` (256 KiB), así que
+`PublisherConfig{ProductOverlayV2, MaxPayloadBytes: 100*1024}` resolvía 100
+KiB en Go mientras el frontend rechaza >72 KiB. Contrato aprobado: hard cap
+sincronizado, no solo default.
+
+- RED: `TestOverlayV2ExplicitOverrideAbove72KiBIsClamped` y
+  `TestOverlayV2RegistryStatusRespects72KiBHardCapWithOverride` (2 failed;
+  los 4 tests previos del archivo seguían en verde, incluido el override
+  menor de 64 KiB).
+- GREEN mínimo: `resolvePublisherMaxPayloadBytes(product, configured)`,
+  regla única compartida por constructor y vía retained-status.
+  Overlay-v2: `<=0` o `>72 KiB` → 72 KiB; `1..72 KiB` → explícito menor.
+  Otros productos: comportamiento previo intacto (techo 256 KiB, default
+  64 KiB); nada ampliado. Comando literal:
+  `go test ./internal/app/telemetrytransport/ -count=1` → `ok`.
+- Frontend sin cambios: el validador ya era correcto (verificado por sus
+  tests de frontera 72 KiB / 72 KiB+1).
+
 ## Reparaciones previas requeridas por los gates (no deuda P3)
 
 1. `fuel()` del validador estricto no aceptaba `sessionLaps`/`requiredFuel`/
@@ -133,6 +154,7 @@ de este corte: fallan igual con mis cambios frontend revertidos vía stash):
 7. `65e7aa8e` fix fixture delta shadow harness.
 8. `8d2173a1` pin digest replay canónico.
 9. Siguiente: este archivo + handoff (commits pequeños).
+10. Re-review spec P0: hard clamp explícito (este commit).
 
 ## Riesgos
 

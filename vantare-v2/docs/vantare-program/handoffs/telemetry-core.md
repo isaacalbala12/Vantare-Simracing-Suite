@@ -31,6 +31,10 @@ independientes); typecheck con exactamente los 8 heredados R7a, cero nuevos
 Bytes MEDIDOS: base 104/17/17 **52723**; 20ch+A3 **61049** (margen +4487
 bajo 64 KiB); 32ch+adverso+A3 **66677** (margen +7051 bajo 72 KiB); coste A3
 +3353/+4013. `256 KiB` genérico intacto; ningún otro producto cambia.
+Re-review spec P0 (hard clamp): override explícito >72 KiB en overlay-v2
+resuelve a 72 KiB en constructor y `PublishStatus` vía regla única
+`resolvePublisherMaxPayloadBytes`; menores explícitos intactos; frontend sin
+cambios (ya correcto).
 `plan.md`/`roadmap.json` sin tocar (cierre combinado R7b). Siguiente:
 revisión de especificación + revisión adversarial de calidad.
 

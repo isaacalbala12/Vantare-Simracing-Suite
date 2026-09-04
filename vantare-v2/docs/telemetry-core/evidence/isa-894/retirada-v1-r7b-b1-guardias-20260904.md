@@ -217,3 +217,21 @@ Re-review quality Muse `ses_f92522698ffeDQwN643LThbEoz` sobre `6c4ead7f`:
 Dos P3 no bloqueantes pasan con dueño explícito a C2b: aislamiento cruzado
 específico del array `standings` y decisión factory/ownership del singleton
 preview junto con la medición del coste de inlining del golden.
+
+## C2b preflight — 30 anclas divididas por superficie (ISA-894)
+
+Auditoría read-only Muse `ses_f9245f094ffew97dEQcTBvLIio` verificó las 30
+anclas activas y sus callers. El orden corregido queda:
+`C2b0 Studio type 30→26`, `C2b1 Composite 26→24`, `C2b2 Studio test 24→23`,
+`C2b3 Hub previews 23→17`, `C2b4 Studio provider 17→15`,
+`C2b5 Parity/responsive 15→10`, `C2b6 Workshop/compat 10→2` y
+`C2b7 gaps/scenes 2→0`. El descenso es criterio de aceptación, no estimación:
+si un corte no cierra sus anclas, permanece abierto.
+
+La contradicción principal era propiedad de tipos: cuatro imports Studio
+apuntan al módulo E1 aunque no cargan V1 en runtime. C2b0 los reubica mediante
+tipo inferido en `studio-overlay-telemetry.ts`, sin interfaz/archivo nuevo ni
+cambio de conducta. Histories, seeds, variantes, scenes y gaps quedan sujetos
+a productor V2 demostrable; si falta, STOP/defer con dueño, nunca dato
+sintético o degradación silenciosa. El microplan actualizado requiere doble
+review antes de escribir C2b0.

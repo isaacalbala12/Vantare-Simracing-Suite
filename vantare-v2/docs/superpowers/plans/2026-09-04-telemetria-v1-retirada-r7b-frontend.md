@@ -496,6 +496,42 @@ B1; si una ruta no existe en árbol, lo registra como divergencia y para ese
   antiguo y deja su test focal con el nombre
   `authoring-v2-scenario-fixture.test.ts`. El puente se conserva solo para E4
   y B2 lo borra tras B2-prep.
+- Desglose C2b validable (estado inicial tras C2a: 30 anclas activas):
+  1. **C2b0, tipo de ciclo Studio (30→26):** `studio-overlay-telemetry.ts`
+     infiere y exporta `StudioOverlayTelemetryAdapter` con `ReturnType`; los
+     otros tres consumidores Studio importan ese tipo desde el mismo módulo.
+     No se crea interfaz/archivo nuevo, no se duplica el contrato y no se toca
+     conducta ni el módulo legacy dueño de E1.
+  2. **C2b1, Composite test V2-only (26→24):** retirar golden V1 y mock shadow
+     obsoleto de `CompositeApp.test.tsx`, conservando cobertura del snapshot
+     V2 real.
+  3. **C2b2, StudioRoute test V2-only (24→23):** retirar golden/evento V1;
+     cualquier publicación snapshot usada exclusivamente para histories E1
+     queda citada y no se presenta como autoridad de proyección.
+  4. **C2b3, previews Hub (23→17):** `HomeMiniStage`, `ProfilePreview` y
+     `ui-orbit-harness` pasan a runtime V2. C2a añade factory por consumidor y
+     prueba aislamiento cruzado de `standings`; el golden `?raw` se importa una
+     vez por módulo/chunk. Medir tamaño cuando el build deje de estar bloqueado
+     por los 8 errores R7a; hasta entonces no declarar gate de bundle verde.
+  5. **C2b4, provider Studio mock (17→15):** sustituir mock/puente snapshot por
+     escenario V2 puro sin cambiar ciclo live ni adelantar D1/E1.
+  6. **C2b5, Parity + responsive dev (15→10):** pasar runtime V2 y retirar
+     builders/seeds snapshot. La historia de input solo puede sembrarse desde
+     muestras V2 por la API pública existente; si una señal no tiene productor
+     V2, STOP/defer E1, nunca snapshot oculto ni dato inventado.
+  7. **C2b6, Workshop + compat (10→2):** migrar route, parity, TrackMap y shells
+     por variantes reales. Cada variante se añade al fixture al demostrar su
+     transformación acotada desde datos canónicos. `stress60`, replay, scenes,
+     relative/pedals extremos que requieran inventar filas o señales hacen
+     STOP de paridad; no se degradan a `default` ni se conservan wrappers V1.
+     Puede partirse en C2b6a/b, pero no se declara 10→2 hasta cerrar las ocho
+     anclas.
+  8. **C2b7, contratos gaps/scenes (2→0):** sustituir lectura textual del
+     adapter B2 por contrato V2 puro/congelado. Un gap sin equivalente se
+     mantiene explícitamente `unsupportedSignal`; no se finge soporte.
+  Cada subcorte empieza con focal/guard RED, termina con tests del área,
+  ESLint/diff-check y review independiente, y registra el conteo real de
+  anclas. No se mezclan dos subcortes si el anterior no queda aceptado.
 - Archivos: nuevo fixture V2, consumidores citados y sus tests. Prohibido:
   wrapper sobre snapshot legacy, tocar el Host o definitions de D.
 - Test RED previo: test que afirma que **ningún preview/caller migrado pasa
@@ -513,6 +549,14 @@ B1; si una ruta no existe en árbol, lo registra como divergencia y para ese
 - Reviewer: quality.
 - Rollback/stop: revert. Stop si una preview pierde información visible sin
   equivalente V2 → volver a A (paridad) antes de migrarla.
+
+Decisiones de borde C2b: los cuatro imports `type TelemetryAdapter` de Studio
+no son V1 en runtime, pero su ruta tiene dueño E1; C2b0 resuelve la propiedad
+sin duplicar tipos. Las histories snapshot que solo prueban E1 pueden seguir
+en tests con dueño explícito, nunca en callers productivos migrados. Las diez
+variantes legacy no forman automáticamente parte del API V2: se habilitan una
+a una con prueba de productor/transformación o activan STOP. El singleton
+preview y el coste del golden son riesgos C2b3, no excusa para reintroducir V1.
 
 ---
 

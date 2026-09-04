@@ -1,5 +1,19 @@
 # Handoff vivo — Telemetry Core
 
+## R7b/C2b MICROPLAN preparado — pendiente review antes de C2b0 — 2026-09-04, ISA-894
+
+Auditoría read-only Muse `ses_f9245f094ffew97dEQcTBvLIio` mapeó las 30
+anclas C2 activas y detectó seis bordes que impedían tratarlas como un bloque.
+El microplan queda dividido C2b0→C2b7 con conteos
+`30→26→24→23→17→15→10→2→0`. C2b0 resuelve los cuatro imports type Studio sin
+interfaz ni archivo nuevo: el módulo Studio exporta un `ReturnType` inferido.
+Histories E1 solo pueden permanecer en tests con dueño explícito; callers no
+conservan snapshot. Previews usan factory V2 y miden bundle cuando el build sea
+interpretable. Seeds, variants, scenes y gaps solo migran desde datos V2
+demostrados; ausencia de productor activa STOP, nunca fallback/default o dato
+sintético. Siguiente: review spec + quality del microplan y ejecutar C2b0 con
+el mismo writer. Sin push/PR/merge/promoción/apps/LMU.
+
 ## R7b/C2a CERRADO en rama (doble APPROVE, sin push) — siguiente C2b — 2026-09-04, ISA-894
 
 Writer único en `C:\tmp\vantare-v1-retirada-r7b\vantare-v2`, rama

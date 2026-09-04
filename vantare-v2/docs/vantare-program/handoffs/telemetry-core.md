@@ -1,5 +1,20 @@
 # Handoff vivo — Telemetry Core
 
+## R7b/C2b6a APROBADO final — compat Endurance V2, siguiente C2b6b 12→N — 2026-09-05, ISA-894
+
+Commit `b3d1a5ac`: TrackMap layout y los 23 shells Endurance eliminan
+snapshot, mock, puente V1 y filas Relative fabricadas; usan únicamente el
+escenario canónico V2. El nombre `Sebring` del golden resuelve exactamente a
+la geometría real mediante generador+pack sincronizados. Relative conserva el
+contrato 2+jugador+2. Guard C2 14→12; focales 10/10 y paquete del generador
+PASS; ESLint, escaneo y diff-check limpios. Typecheck permanece NO verde con
+los ocho errores R7a heredados exactos; build no evaluable y `go test ./...`
+no es verde solo porque falta el `frontend/dist` embebido. Reviews Ponytail
+`full`: spec `ses_f91516404ffeDJqxZpQXxO8W3d` y quality
+`ses_f91535269ffeD2T3we4lnb5xlf`, ambas **APPROVE**, P0/P1/P2=0. Siguiente:
+C2b6b sobre una sola familia coherente; B3/B2 siguen bloqueados. Sin
+push/PR/merge/promoción/apps/LMU.
+
 ## R7b/C2b5a APROBADO final — cerrado, siguiente C2b6 14→2 por variantes — 2026-09-05, ISA-894
 
 Commits `04da9dcc` + hardening `9648dbf4`: el responsive deja el megamódulo

@@ -662,6 +662,16 @@ B1; si una ruta no existe en árbol, lo registra como divergencia y para ese
      su retirada/migración forma parte de la aceptación y del escaneo aunque
      no esté en las 30 anclas. Puede partirse en C2b6a/b, pero no se declara
      14→2 hasta cerrar las doce anclas más esos usos ocultos.
+
+     **C2b6a ejecutado en `b3d1a5ac` (14→12):** los tests productivos de
+     layout TrackMap y shells Endurance consumen directamente el escenario
+     canónico V2 y eliminan el snapshot, el puente y las tres filas Relative
+     inventadas. El nombre `Sebring` del golden resuelve de forma exacta y
+     fail-closed contra la geometría real; el alias vive tanto en el generador
+     como en el pack versionado. Relative fija la ventana de producto 2+1+2,
+     cinco filas canónicas. Guard C2: 12 anclas; focales 10/10 y generador
+     PASS; doble review Ponytail `full` APPROVE, P0/P1/P2=0. Siguiente C2b6b:
+     escoger una sola familia coherente entre Parity, Workshop y compat.
   8. **C2b7, contratos gaps/scenes (2→0):** `projection-gaps` puede ir
      separado: sustituir su lectura textual del adapter B2 por contrato V2
      puro/congelado. `animation-scenes` NO puede declararse 2→0 mientras

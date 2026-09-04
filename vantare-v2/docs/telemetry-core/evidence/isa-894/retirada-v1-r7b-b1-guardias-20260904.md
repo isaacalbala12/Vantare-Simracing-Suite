@@ -559,3 +559,31 @@ Reviews finales read-only, ambas con Ponytail `full`: spec
 la llamada de módulo y tipar el único `rowCount` de tower no justifican más
 infraestructura en este harness dev. Parity queda intacto y pasa a C2b6 por
 variante. Sin push/PR/merge/promoción/apps/LMU.
+
+## C2b6a cierre técnico — compat Endurance sobre golden V2 (ISA-894)
+
+Commit `b3d1a5ac`. `TrackMapEndurance.layout.test.tsx` y
+`endurance-transparent-shells.test.tsx` dejan `buildMockTelemetry` y el puente
+`authoring-v2-fixture`: ambos construyen su runtime con
+`buildAuthoringV2ScenarioRuntime`. Se elimina además el array Relative manual
+de tres coches; la prueba usa la ventana canónica de producto 2 delante +
+jugador + 2 detrás. TrackMap usa el `session.track="Sebring"` del golden V2:
+el alias exacto se añade a la fuente `tools/trackgeometry/pack.go` y a su pack
+generado, con tests Go y TypeScript. El resolver continúa fail-closed, sin
+prefijos, substrings, geometría sintética ni fallback.
+
+TDD: el RED inicial mostró 5 filas reales frente a 3 inventadas y TrackMap sin
+geometría para el nombre corto. GREEN: 3 ficheros focales, **10/10**; paquete
+`go test ./tools/trackgeometry`, ESLint focal, escaneo V1 y `git diff --check`,
+PASS. Guard global deliberadamente RED `7 failed | 9 passed (16)` y C2 baja
+14→12. Typecheck sigue NO verde con exactamente los 8 errores R7a heredados,
+cero nuevos; build no evaluable. `go test ./...` ejecutó el resto de paquetes
+sin nuevos fallos, pero no es verde: `frontend` y `cmd/vantare` no compilan el
+embed porque `frontend/dist` no existe mientras el build global está bloqueado.
+
+Preflight Ponytail `full`: `ses_f915d1e2bffe6EP10LHPn0fe6Z` y
+`ses_f915e898affeHfMBgX20lZMH44`. Reviews finales read-only del SHA exacto:
+spec `ses_f91516404ffeDJqxZpQXxO8W3d` y quality
+`ses_f91535269ffeD2T3we4lnb5xlf`, ambas **APPROVE**, P0/P1/P2=0. Sin
+push/PR/merge/promoción/apps/LMU. Siguiente: C2b6b, una sola familia coherente
+de Parity/Workshop/compat; no se convierte el resto a `default` en bloque.

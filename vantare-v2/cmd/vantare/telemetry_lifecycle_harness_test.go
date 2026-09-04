@@ -28,7 +28,6 @@ import (
 	engineerservice "github.com/vantare/overlays/v2/internal/engineer/service"
 	"github.com/vantare/overlays/v2/internal/ops"
 	"github.com/vantare/overlays/v2/internal/server"
-	"github.com/vantare/overlays/v2/internal/telemetry/projection/overlay"
 	strategyprojection "github.com/vantare/overlays/v2/internal/telemetry/projection/strategy"
 	"github.com/vantare/overlays/v2/internal/telemetry/recording"
 	recordingsqlite "github.com/vantare/overlays/v2/internal/telemetry/recording/sqlite"
@@ -153,14 +152,6 @@ func TestTelemetryLifecycleHarness(t *testing.T) {
 	}
 	t.Logf("after Telemetry Core: handles=%d", processHandleCount(t))
 
-	snapshot := readOverlayGolden(t)
-	full, err := telemetrytransport.NewOverlayFull(snapshot.Metadata, 1, snapshot.PayloadV1)
-	if err != nil {
-		t.Fatalf("NewOverlayFull() error = %v", err)
-	}
-	if err := telemetryRuntime.Hub().PublishSnapshot(full, nil); err != nil {
-		t.Fatalf("PublishSnapshot() error = %v", err)
-	}
 	strategySnapshot := readStrategyGolden(t)
 	strategyFull, err := telemetrytransport.NewStrategyFull(strategySnapshot.Metadata, 1, strategySnapshot.PayloadV1)
 	if err != nil {
@@ -174,7 +165,6 @@ func TestTelemetryLifecycleHarness(t *testing.T) {
 		Addr:                    "127.0.0.1:0",
 		EngineerSvc:             engineer,
 		Emitter:                 emitter,
-		OverlayProjection:       telemetryRuntime.Hub(),
 		OverlayV2Publishers:     telemetryRuntime.OverlayV2Publishers(),
 		StrategyProjection:      telemetryRuntime.StrategyHub(),
 		StrategyPublicTransport: true,
@@ -188,19 +178,15 @@ func TestTelemetryLifecycleHarness(t *testing.T) {
 	client := &http.Client{Transport: &http.Transport{DisableKeepAlives: true}, Timeout: 5 * time.Second}
 	assertHealthReachable(t, client, httpServer.Addr())
 	sse := make(map[string][]byte, 4)
-	for _, product := range []telemetrytransport.ProductID{
-		telemetrytransport.ProductOverlay,
-		telemetrytransport.ProductStrategy,
-	} {
-		wanted := []string{
-			telemetrytransport.EventName(product, telemetrytransport.EventStatus),
-			telemetrytransport.EventName(product, telemetrytransport.EventSnapshot),
-		}
-		for name, data := range captureSSE(
-			t, appContext, client, httpServer.Addr(), telemetrytransport.ProjectionRoute(product), wanted...,
-		) {
-			sse[name] = data
-		}
+	product := telemetrytransport.ProductStrategy
+	wanted := []string{
+		telemetrytransport.EventName(product, telemetrytransport.EventStatus),
+		telemetrytransport.EventName(product, telemetrytransport.EventSnapshot),
+	}
+	for name, data := range captureSSE(
+		t, appContext, client, httpServer.Addr(), telemetrytransport.ProjectionRoute(product), wanted...,
+	) {
+		sse[name] = data
 	}
 	overlayV2StatusName := telemetrytransport.PublisherEventName(
 		telemetrytransport.ProductOverlayV2,
@@ -252,10 +238,6 @@ func TestTelemetryLifecycleHarness(t *testing.T) {
 			t.Fatalf("Wails/SSE payload mismatch for %s\nWails: %s\nSSE:   %s", name, wailsData, sseData)
 		}
 	}
-	assertProjectionCursor(t, sse[telemetrytransport.EventName(
-		telemetrytransport.ProductOverlay,
-		telemetrytransport.EventSnapshot,
-	)], snapshot)
 	assertStrategyProjectionCursor(t, wails[telemetrytransport.EventName(
 		telemetrytransport.ProductStrategy,
 		telemetrytransport.EventSnapshot,
@@ -731,20 +713,6 @@ func awaitWailsStatusReplayEvents(
 	return result
 }
 
-func readOverlayGolden(t *testing.T) overlay.SnapshotV1 {
-	t.Helper()
-	path := filepath.Join("..", "..", "internal", "telemetry", "projection", "overlay", "testdata", "overlay_v1.golden.json")
-	data, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatalf("read overlay golden: %v", err)
-	}
-	var result overlay.SnapshotV1
-	if err := json.Unmarshal(data, &result); err != nil {
-		t.Fatalf("decode overlay golden: %v", err)
-	}
-	return result
-}
-
 func readStrategyGolden(t *testing.T) strategyprojection.SnapshotV1 {
 	t.Helper()
 	path := filepath.Join("..", "..", "internal", "telemetry", "projection", "strategy", "testdata", "strategy_v1.golden.json")
@@ -757,27 +725,6 @@ func readStrategyGolden(t *testing.T) strategyprojection.SnapshotV1 {
 		t.Fatalf("decode Strategy golden: %v", err)
 	}
 	return result
-}
-
-func assertProjectionCursor(t *testing.T, encoded []byte, snapshot overlay.SnapshotV1) {
-	t.Helper()
-	var envelope struct {
-		Product           telemetrytransport.ProductID `json:"product"`
-		ProjectionVersion uint64                       `json:"projectionVersion"`
-		Epoch             uint64                       `json:"epoch"`
-		Sequence          uint64                       `json:"sequence"`
-		StatusRevision    uint64                       `json:"statusRevision"`
-	}
-	if err := json.Unmarshal(encoded, &envelope); err != nil {
-		t.Fatalf("decode projection envelope: %v", err)
-	}
-	if envelope.Product != telemetrytransport.ProductOverlay ||
-		envelope.ProjectionVersion != uint64(snapshot.ProjectionVersion) ||
-		envelope.Epoch != uint64(snapshot.Epoch) ||
-		envelope.Sequence != uint64(snapshot.Sequence) ||
-		envelope.StatusRevision != 1 {
-		t.Fatalf("projection cursor = %#v", envelope)
-	}
 }
 
 func assertStrategyProjectionCursor(t *testing.T, encoded []byte, snapshot strategyprojection.SnapshotV1) {

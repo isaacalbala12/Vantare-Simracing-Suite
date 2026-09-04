@@ -18,41 +18,21 @@ import (
 	strategyprojection "github.com/vantare/overlays/v2/internal/telemetry/projection/strategy"
 )
 
-func TestServerExposesCanonicalOverlayProjectionSSE(t *testing.T) {
-	hub := telemetrytransport.NewHub(telemetrytransport.HubConfig{
-		Product: telemetrytransport.ProductOverlay,
-	})
-	status, err := telemetrytransport.NewStatus(
-		telemetrytransport.ProductOverlay,
-		1,
-		time.Date(2026, 7, 19, 20, 21, 22, 0, time.UTC),
-		telemetrytransport.StatusPayload{State: "detecting"},
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := hub.PublishStatus(status); err != nil {
-		t.Fatal(err)
-	}
-
-	ctx, cancel := context.WithCancel(context.Background())
+func TestServerOverlayProjectionRouteRetired(t *testing.T) {
+	// The Overlay V1 Hub is retired in a later cut. The server no longer accepts
+	// it as configuration, so the public route must remain unregistered.
+	srv := server.New(server.ServerConfig{})
 	request := httptest.NewRequest(
 		http.MethodGet,
 		telemetrytransport.ProjectionRoute(telemetrytransport.ProductOverlay),
 		nil,
-	).WithContext(ctx)
+	)
 	request.RemoteAddr = "127.0.0.1:45678"
-	writer := &cancelAfterFlushWriter{header: make(http.Header), cancel: cancel, cancelAfter: 1}
-	srv := server.New(server.ServerConfig{OverlayProjection: hub})
-	srv.Handler().ServeHTTP(writer, request)
+	response := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(response, request)
 
-	if got := writer.header.Get("Content-Type"); got != "text/event-stream" {
-		t.Fatalf("content type = %q", got)
-	}
-	body := writer.body.String()
-	if !strings.Contains(body, "event: telemetry:overlay:status") ||
-		!strings.Contains(body, `"state":"detecting"`) {
-		t.Fatalf("canonical SSE body = %q", body)
+	if response.Code != http.StatusNotFound {
+		t.Fatalf("overlay V1 route status = %d, want %d; body=%q", response.Code, http.StatusNotFound, response.Body.String())
 	}
 }
 
@@ -173,11 +153,9 @@ func TestServerStrategyProjectionRouteIsolation(t *testing.T) {
 			wantStatus: http.StatusNotFound,
 		},
 		{
-			name: "overlay does not enable strategy",
-			server: server.New(server.ServerConfig{
-				OverlayProjection: overlayHub,
-			}),
-			route:      strategyRoute,
+			name:       "overlay route stays retired without strategy",
+			server:     server.New(server.ServerConfig{}),
+			route:      overlayRoute,
 			remoteAddr: "127.0.0.1:45678",
 			wantStatus: http.StatusNotFound,
 		},

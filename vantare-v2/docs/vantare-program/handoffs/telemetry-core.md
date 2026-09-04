@@ -1,6 +1,15 @@
 # Handoff vivo — Telemetry Core
 
-## R7b/C2b0 QUALITY REQUEST_CHANGES — endurecido, pendiente nueva spec+quality — 2026-09-04, ISA-894
+## R7b/C2b0 APROBADO final — cerrado, siguiente C2b1 26→24 — 2026-09-04, ISA-894
+
+Spec final Muse `ses_f921b746cffeVYW5VLt14SAKGY`: **APPROVE**,
+P0=0 P1=0 P2=0 (P3 informativo). Quality final Muse
+`ses_f921f9197ffe7ax5CGD6KkQOMb`: **APPROVE**, P0=P1=P2=P3=0. Alcance
+cerrado: solo guard + 3 docs vivos, cero producción. Estado literal: guard
+deliberadamente RED `7 failed | 8 passed (15)` con C2 en **26 anclas**
+activas; typecheck NO verde con los 8 errores heredados R7a; build no
+ejecutado. Siguiente: C2b1 (Composite test V2-only, 26→24). Sin push/PR/
+merge/promoción/apps/LMU.
 
 Quality review Muse `ses_f92271085ffeQRY7qOv1BrisR0`: **REQUEST_CHANGES**
 sobre `276ab8e4` (la spec anterior hizo timeout: sin veredicto, no se inventa
@@ -111,7 +120,7 @@ heredados R7a en los 3 módulos documentados
 verde); build no ejecutado (bloqueado por esos 8 preexistentes). Sin push/PR/
 merge/promoción/apps/LMU. C2 NO está completo: callers/previews/compat (C2b)
 pendientes. Riesgo: el RED pendiente real son las 30 anclas C2 del guard más
-compat tests (el fichero `authoring-v2-fixture.test.ts` del primer RED ya no
+compat tests (histórico C2a: tras C2b0 son 26 activas; el fichero `authoring-v2-fixture.test.ts` del primer RED ya no
 existe: el preflight lo retiró en `da516230`/`1e73fcfb`); el singleton
 `PREVIEW_V2_RUNTIME` queda como riesgo C2b (factory/ownership con consumidores
 reales), no se toca en este corte.

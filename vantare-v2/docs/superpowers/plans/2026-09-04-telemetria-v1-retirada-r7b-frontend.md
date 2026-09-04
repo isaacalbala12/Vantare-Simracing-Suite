@@ -513,7 +513,11 @@ B1; si una ruta no existe en árbol, lo registra como divergencia y para ese
      `StudioTelemetryProvider.tsx` en el loop sin-imports-V1. Metodología de
      conteo: el reviewer cuenta entradas DECLARADAS (31 antes, una ya inactiva
      desde C2a; 27 después); la secuencia 30→26→…→0 es de ACTIVAS y coincide
-     con el `expected …(26)` de Vitest.
+     con el `expected …(26)` de Vitest. APROBADO final: spec
+     `ses_f921b746cffeVYW5VLt14SAKGY` (P0/P1/P2=0, P3 informativo) y quality
+     `ses_f921f9197ffe7ax5CGD6KkQOMb` (P0=P1=P2=P3=0). Guard deliberadamente
+     RED `7 failed | 8 passed (15)` con 26 activas; typecheck NO verde (8
+     heredados); build no ejecutado; siguiente C2b1 26→24.
   2. **C2b1, Composite test V2-only (26→24):** retirar golden V1 y mock shadow
      obsoleto de `CompositeApp.test.tsx`, conservando cobertura del snapshot
      V2 real.

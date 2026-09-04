@@ -225,6 +225,16 @@ dentro de las anclas negativas C2 (las dos menciones
 `git diff --check` limpios; typecheck con los 8 heredados R7a (no verde);
 build no ejecutado. El guard global NO está verde. Siguiente: C2b1 26→24.
 
+## C2b0 APROBADO final (ISA-894)
+
+Spec final Muse `ses_f921b746cffeVYW5VLt14SAKGY`: **APPROVE**,
+P0=0 P1=0 P2=0 (P3 informativo). Quality final Muse
+`ses_f921f9197ffe7ax5CGD6KkQOMb`: **APPROVE**, P0=P1=P2=P3=0. Estado literal
+tras el cierre: guard deliberadamente RED `7 failed | 8 passed (15)` con C2
+en 26 anclas activas; typecheck NO verde con los 8 errores heredados R7a;
+build no ejecutado. Siguiente: C2b1 26→24. (Histórico C2a: el baseline previo
+a C2b0 era de 30 anclas activas.)
+
 ## C2b0 quality REQUEST_CHANGES — endurecimiento (ISA-894)
 
 Quality review Muse `ses_f92271085ffeQRY7qOv1BrisR0` sobre `276ab8e4`:

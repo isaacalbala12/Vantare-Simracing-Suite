@@ -202,8 +202,8 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
 
   it("C2: callers, previews y fixtures migran a V2 puro antes de B3/B2", () => {
     contentAbsentAll([
-      [src("overlay", "CompositeApp.test.tsx"), "overlay_v1.golden.json?raw", "C2 (test Desktop V2-only)"],
-      [src("overlay", "CompositeApp.test.tsx"), "overlay-v2-shadow-runtime", "C2 (mock shadow obsoleto)"],
+      // C2b1: CompositeApp.test.tsx ya es V2-only (golden V1 y mock shadow
+      // retirados con cobertura del snapshot V2 real preservada).
       // C2b0: los cuatro `import type TelemetryAdapter` de Studio
       // (StudioRoute, OverlayStudioV3, studio-overlay-telemetry,
       // StudioTelemetryProvider) son type-only bajo ownership E1: no son V1

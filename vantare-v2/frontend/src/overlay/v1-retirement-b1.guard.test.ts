@@ -220,7 +220,8 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
       [src("overlay", "authoring", "OverlayWorkshopDevRoute.tsx"), "authoring-v2-fixture", "C2 (usar escenario V2 puro)"],
       [src("overlay", "authoring", "OverlayWorkshopDevRoute.tsx"), "buildAuthoringFixtureTelemetry", "C2 (sin builder snapshot)"],
       [src("overlay", "authoring", "OverlayWorkshopDevRoute.tsx"), "resetAndSeedAuthoringInputTelemetry", "C2 (sin seed snapshot global)"],
-      [src("overlay-harness", "responsive-overlay-main.tsx"), "buildHarnessTelemetry", "C2 (harness dev V2)"],
+      // C2b5a: responsive-overlay-main.tsx ya es V2-only; el lock exacto
+      // queda abajo, fuera de las anclas pendientes.
       // C2b3: HomeMiniStage, ProfilePreview y ui-orbit-harness ya son V2
       // (factory por consumidor sobre el escenario canónico, sin snapshot).
       [src("overlay", "authoring", "workshop-runtime-parity.test.tsx"), "authoring-v2-fixture", "C2 (compat API V2 pura)"],
@@ -275,6 +276,7 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
       src("hub", "home-orbit", "HomeMiniStage.tsx"),
       src("hub", "overlays", "ProfilePreview.tsx"),
       src("ui-orbit-harness.tsx"),
+      src("overlay-harness", "responsive-overlay-main.tsx"),
       src("overlay-harness", "OverlayParityHarness.tsx"),
       src("overlay", "authoring", "OverlayWorkshopDevRoute.tsx"),
       src("overlay", "authoring", "fixtures", "authoring-fixtures.ts"),
@@ -308,7 +310,21 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
       [src("hub", "overlay-studio", "canvas", "StudioTelemetryProvider.tsx"), "authoring-v2-fixture", "C2b4 (provider usa escenario V2 puro)"],
       [src("hub", "overlay-studio", "canvas", "StudioTelemetryProvider.tsx"), "coordinator.publish", "C2b4 (provider publica solo frame V2)"],
       [src("hub", "overlay-studio", "canvas", "StudioTelemetryProvider.test.tsx"), "wails-telemetry-adapter", "C2b4 (tipo desde módulo canónico)"],
+      [src("overlay-harness", "responsive-overlay-main.tsx"), "buildHarnessTelemetry", "C2b5a (harness sin snapshot V1)"],
+      [src("overlay-harness", "responsive-overlay-main.tsx"), "buildHarnessWidget", "C2b5a (widgets desde registro productivo)"],
+      [src("overlay-harness", "responsive-overlay-main.tsx"), "authoring-fixtures", "C2b5a (sin megamódulo legacy)"],
+      [src("overlay-harness", "responsive-overlay-main.tsx"), "coordinator.publish", "C2b5a (publica solo frame V2)"],
     ]);
+    contentHas(
+      src("overlay-harness", "responsive-overlay-main.tsx"),
+      "buildAuthoringV2ScenarioRuntime",
+      "C2b5a (escenario V2 canónico)",
+    );
+    contentHas(
+      src("overlay-harness", "responsive-overlay-main.tsx"),
+      "coordinator.setOverlayFrame",
+      "C2b5a (frontera V2)",
+    );
     for (const route of [
       src("overlay", "CompositeApp.test.tsx"),
       src("overlay", "ObsOverlayApp.test.tsx"),

@@ -270,6 +270,30 @@ type FuelViewV2 struct {
 	PerLap        QValue[float64] `json:"perLap"`
 	EstimatedLaps QValue[float64] `json:"estimatedLaps"`
 	Basis         FuelBasis       `json:"basis,omitempty"`
+	// SessionLaps is the laps the session still has left at the last lap
+	// pace, always published from SessionRemaining + player LastLapTime even
+	// when the fuel basis wins EstimatedLaps. Unit agnostic: laps are laps.
+	SessionLaps QValue[float64] `json:"sessionLaps"`
+	// RequiredFuel is PerLap x SessionLaps in the preferred fuel unit, never
+	// derived from EstimatedLaps: once the fuel basis wins, EstimatedLaps
+	// carries the laps the tank allows, not the laps the session has left.
+	RequiredFuel QValue[float64] `json:"requiredFuel"`
+	History      FuelHistoryV2   `json:"history"`
+}
+
+// FuelHistoryV2 carries the player's measured per-lap fuel series. It is the
+// player alone, never the grid: one entry per canonical measured lap, always
+// index-aligned across both arrays, oldest first, capped at 64.
+//
+// The wire form keeps one lap number plus one litre figure per sample.
+// Parallel arrays cost one number per sample instead of an object with keys;
+// consumption travels in canonical litres and only the presentation converts
+// it to the preferred unit. A lap with no measurement has no entry: there are
+// no sentinels and no shortened arrays, only fewer entries.
+type FuelHistoryV2 struct {
+	Q        Quality   `json:"q"`
+	Lap      []int32   `json:"lap,omitempty"`
+	Consumed []float64 `json:"consumed,omitempty"`
 }
 
 type SpotterViewV2 struct {

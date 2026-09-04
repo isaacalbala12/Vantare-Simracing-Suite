@@ -66,7 +66,10 @@ func syntheticFullFrame(vehicles int) FrameV2 {
 	// grid, but the worst case is always the full canonical window, so the
 	// budget must be measured with it populated: 120 absolute instants plus
 	// three quality-bearing motion cells per sample, all fresh with
-	// representative values.
+	// representative values. The fuel history follows the same rule: the
+	// player's alone, measured here at its full 64-sample cap with
+	// representative lap numbers and litre figures, plus the session laps and
+	// required fuel the builder always publishes alongside it.
 	controls := ControlsHistoryV2{
 		Q:            QualityFresh,
 		CapturedAtMS: make([]int64, 120),
@@ -82,6 +85,11 @@ func syntheticFullFrame(vehicles int) FrameV2 {
 		controls.SpeedMPS[index] = QValue[float64]{V: 82.5, Q: QualityFresh}
 		controls.RPM[index] = QValue[float64]{V: 7250, Q: QualityFresh}
 		controls.Gear[index] = QValue[int32]{V: 6, Q: QualityFresh}
+	}
+	fuelHistory := FuelHistoryV2{Q: QualityFresh, Lap: make([]int32, 64), Consumed: make([]float64, 64)}
+	for index := range fuelHistory.Lap {
+		fuelHistory.Lap[index] = int32(64 + index)
+		fuelHistory.Consumed[index] = 3.4
 	}
 	standings := make([]StandingRowV2, vehicles)
 	relative := make([]RelativeRowV2, vehicles)
@@ -117,7 +125,7 @@ func syntheticFullFrame(vehicles int) FrameV2 {
 		Controls:  ControlsV2{History: controls},
 		Standings: standings, Relative: relative,
 		Delta:   DeltaViewV2{Seconds: QValue[float64]{V: -.238, Q: QualityFresh}, Reference: "personal-best", Requested: "personal-best", Available: []string{"personal-best", "session-best", "previous-lap"}, Trend: "improving", Authority: AuthorityDerived},
-		Fuel:    FuelViewV2{Remaining: QValue[float64]{V: 42.1, Q: QualityFresh}, Capacity: QValue[float64]{V: 90, Q: QualityFresh}, PerLap: QValue[float64]{V: 3.4, Q: QualityFresh}, EstimatedLaps: QValue[float64]{V: 12.38, Q: QualityFresh}},
+		Fuel:    FuelViewV2{Remaining: QValue[float64]{V: 42.1, Q: QualityFresh}, Capacity: QValue[float64]{V: 90, Q: QualityFresh}, PerLap: QValue[float64]{V: 3.4, Q: QualityFresh}, EstimatedLaps: QValue[float64]{V: 12.38, Q: QualityFresh}, SessionLaps: QValue[float64]{V: 79, Q: QualityFresh}, RequiredFuel: QValue[float64]{V: 268.6, Q: QualityFresh}, History: fuelHistory},
 		Spotter: SpotterViewV2{Mode: "xy", Left: QValue[bool]{V: true, Q: QualityFresh}, Right: QValue[bool]{V: false, Q: QualityFresh}},
 		Damage: DamageViewV2{
 			Dents: QValue[[]uint16]{V: []uint16{1, 2, 3, 4, 5, 6, 7, 8}, Q: QualityFresh}, Overheating: QValue[bool]{V: false, Q: QualityFresh}, Detached: QValue[bool]{V: false, Q: QualityFresh}, WheelDetachedCount: QValue[uint8]{V: 0, Q: QualityFresh},

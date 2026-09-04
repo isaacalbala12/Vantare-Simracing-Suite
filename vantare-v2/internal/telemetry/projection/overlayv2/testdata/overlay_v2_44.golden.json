@@ -2280,7 +2280,17 @@
         "v": 79,
         "q": "fresh"
       },
-      "basis": "session"
+      "basis": "session",
+      "sessionLaps": {
+        "v": 79,
+        "q": "fresh"
+      },
+      "requiredFuel": {
+        "q": "missing"
+      },
+      "history": {
+        "q": "missing"
+      }
     },
     "spotter": {
       "mode": "none",

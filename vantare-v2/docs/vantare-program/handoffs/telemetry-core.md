@@ -1,5 +1,36 @@
 # Handoff vivo — Telemetry Core
 
+## R7b/C2a EJECUTADO en rama (fixture puro, sin push) — siguiente C2b tras review — 2026-09-04, ISA-894
+
+Writer único en `C:\tmp\vantare-v1-retirada-r7b\vantare-v2`, rama
+`vantareapp/isa-894-retirada-v1-r7b`, base `41c584a7` (preflight C2 cerrado).
+Commit de código `50c5f8f6`: crea
+`frontend/src/overlay/authoring/fixtures/authoring-v2-scenario-fixture.ts`
+(65 líneas, único fichero tocado). Semilla exacta
+`internal/telemetry/projection/overlayv2/testdata/overlay_v2_20.golden.json`
+(20 filas, 3 clases, jugador `vehicle-000` dentro, relative con
+side/authority del productor, source `live`): el escenario default devuelve
+clones profundos exactos de frame y source; `standings-multiclass` solo
+re-selecciona standings sin reescribir el productor; track y relative
+canónicos intactos; estados ready→live, stale→stale,
+disconnected→stopped, error→error; `PREVIEW_V2_RUNTIME` ready con 20 filas.
+API estable `AuthoringV2Scenario` con session/location/state/widget/system/
+variant (los cuatro últimos reservados sin especializar todavía). Cero
+`TelemetrySnapshot`, `buildMockTelemetry`, `Date.now`, adapters, runtime,
+transports o shadow V1; sin sintéticos. TDD: RED previo (módulo inexistente,
+import sin resolver) → GREEN 7/7 del focal
+`authoring-v2-scenario-fixture.test.ts` (el contrato lo puso el preflight, no
+se tocó). Checks: ESLint focal limpio (ambos ficheros), `git diff --check`
+limpio, `pnpm --dir frontend typecheck` con exactamente los 8 errores
+heredados R7a en los 3 módulos documentados
+(`overlay-projection-v1.ts:172`, `projection-observer.ts:72,207,209`,
+`telemetry-cutover-runtime-harness/main.ts:40,41,53,54`), cero nuevos (no
+verde); build no ejecutado (bloqueado por esos 8 preexistentes). Sin push/PR/
+merge/promoción/apps/LMU. C2 NO está completo: callers/previews/compat (C2b)
+pendientes. Riesgo: el RED previo `authoring-v2-fixture.test.ts` (b72af09d,
+firma antigua) sigue fallando y pertenece a C2b; no se tocó
+`authoring-v2-fixture.ts` en este corte.
+
 ## R7b/C2 PRE-FLIGHT CERRADO — siguiente C2a, no B3/B2 — 2026-09-04, ISA-894
 
 B1 sigue sin cambios productivos. El preflight descubrió que ejecutar B2

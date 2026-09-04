@@ -160,3 +160,18 @@ Ambas revisiones verificaron el árbol limpio, las 31 anclas C2 declaradas
 `overlay_v2_20.golden.json`, los 15 grupos B0 y el orden
 `B1 → C2 → B3 → B2-prep → B2`. C2a puede reanudarse con el mismo writer y
 alcance limitado al nuevo fixture V2 puro.
+
+## C2a ejecutado — fixture V2 puro de escenario (ISA-894)
+
+Rama `vantareapp/isa-894-retirada-v1-r7b`, base `41c584a7`, commit de código
+`50c5f8f6` (un fichero, +65): `authoring-v2-scenario-fixture.ts`.
+TDD RED→GREEN literal: RED = el focal no resolvía el import del módulo
+inexistente; GREEN = 7/7 en
+`frontend/src/overlay/authoring/fixtures/authoring-v2-scenario-fixture.test.ts`
+(contrato del preflight, sin tocar). Checks: ESLint focal limpio en módulo y
+test; `git diff --check` limpio; typecheck con los 8 heredados R7a exactos en
+sus 3 módulos y cero nuevos (dos errores propios intermedios por `readonly`/
+`null` se corrigieron con spread antes del commit); build no ejecutado por el
+mismo bloqueo preexistente. Sin push/PR/merge/promoción/apps/LMU. C2 sigue
+abierto: C2b migrará callers/previews/compat; el RED `authoring-v2-fixture.test.ts`
+de `b72af09d` queda para C2b.

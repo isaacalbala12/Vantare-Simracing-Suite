@@ -274,6 +274,9 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
       src("hub", "overlay-studio", "OverlayStudioV3.tsx"),
       src("hub", "overlay-studio", "studio-overlay-telemetry.ts"),
       src("hub", "overlay-studio", "canvas", "StudioTelemetryProvider.tsx"),
+      src("hub", "home-orbit", "HomeMiniStage.tsx"),
+      src("hub", "overlays", "ProfilePreview.tsx"),
+      src("ui-orbit-harness.tsx"),
       src("overlay-harness", "OverlayParityHarness.tsx"),
       src("overlay", "authoring", "OverlayWorkshopDevRoute.tsx"),
       src("overlay", "authoring", "fixtures", "authoring-fixtures.ts"),
@@ -289,6 +292,20 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
     // importar ni referenciar el runtime shadow aunque no exponga diagnóstico.
     contentAbsentAll([
       [src("overlay", "CompositeApp.tsx"), "overlay-v2-shadow-runtime", "C2b1 (Desktop V2-only sin shadow)"],
+    ]);
+    // C2b3 (lock previews V2): los tres consumidores no pueden volver a la
+    // prop snapshot, sus constantes ni buildMockTelemetry. Fuera del array
+    // RED C2: es lock post-corte, no ancla pendiente.
+    contentAbsentAll([
+      [src("hub", "home-orbit", "HomeMiniStage.tsx"), "snapshot={", "C2b3 (preview sin snapshot)"],
+      [src("hub", "home-orbit", "HomeMiniStage.tsx"), "PREVIEW_SNAPSHOT", "C2b3 (constante snapshot retirada)"],
+      [src("hub", "home-orbit", "HomeMiniStage.tsx"), "buildMockTelemetry", "C2b3 (sin mock snapshot)"],
+      [src("hub", "overlays", "ProfilePreview.tsx"), "snapshot={", "C2b3 (preview sin snapshot)"],
+      [src("hub", "overlays", "ProfilePreview.tsx"), "PREVIEW_SNAPSHOT", "C2b3 (constante snapshot retirada)"],
+      [src("hub", "overlays", "ProfilePreview.tsx"), "buildMockTelemetry", "C2b3 (sin mock snapshot)"],
+      [src("ui-orbit-harness.tsx"), "snapshot={", "C2b3 (harness sin snapshot)"],
+      [src("ui-orbit-harness.tsx"), "STAGE_SNAPSHOT", "C2b3 (constante snapshot retirada)"],
+      [src("ui-orbit-harness.tsx"), "buildMockTelemetry", "C2b3 (sin mock snapshot)"],
     ]);
     for (const route of [
       src("overlay", "CompositeApp.test.tsx"),

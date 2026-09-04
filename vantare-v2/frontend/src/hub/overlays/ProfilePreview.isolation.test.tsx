@@ -7,8 +7,10 @@ import type { WidgetRuntimeInput } from "../../overlay/core/widget-definition";
 import type { AuthoringV2Scenario } from "../../overlay/authoring/fixtures/authoring-v2-scenario-fixture";
 
 // Espía la factory pura C2a sin ocultar el contrato: cada llamada construye
-// el runtime real y solo se registra su identidad para probar ownership.
+// el runtime real y solo se registran identidad y escenario para probar
+// ownership y args exactos.
 const seen: WidgetRuntimeInput[] = [];
+const seenScenarios: AuthoringV2Scenario[] = [];
 vi.mock("../../overlay/authoring/fixtures/authoring-v2-scenario-fixture", async (importOriginal) => {
   const actual = await importOriginal<
     typeof import("../../overlay/authoring/fixtures/authoring-v2-scenario-fixture")
@@ -18,6 +20,7 @@ vi.mock("../../overlay/authoring/fixtures/authoring-v2-scenario-fixture", async 
     buildAuthoringV2ScenarioRuntime: (scenario: AuthoringV2Scenario) => {
       const runtime = actual.buildAuthoringV2ScenarioRuntime(scenario);
       seen.push(runtime);
+      seenScenarios.push(scenario);
       return runtime;
     },
   };
@@ -30,6 +33,7 @@ beforeAll(() => {
 afterEach(() => {
   cleanup();
   seen.length = 0;
+  seenScenarios.length = 0;
 });
 
 function standingsProfile(id: string): ProfileConfig {
@@ -52,6 +56,18 @@ describe("ProfilePreview V2 isolation (C2b3)", () => {
     // Dos consumidores vivos, cada uno con su runtime del Host real.
     expect(document.querySelectorAll('[data-widget-renderer="standings"]')).toHaveLength(2);
     expect(seen.length).toBeGreaterThanOrEqual(2);
+    // La factory recibe el escenario canónico exacto en cada llamada: sin
+    // mock falso, la implementación real construye cada runtime.
+    for (const scenario of seenScenarios) {
+      expect(scenario).toEqual({
+        session: "race",
+        location: "track",
+        state: "ready",
+        widget: "standings",
+        system: "vantare-crystal",
+        variant: "default",
+      });
+    }
     const [first, second] = seen;
     expect(first.overlayV2Frame).not.toBe(second.overlayV2Frame);
     expect(first.overlayV2Frame).toEqual(second.overlayV2Frame);

@@ -102,14 +102,3 @@ export function buildAuthoringV2ScenarioRuntime(
     : frame;
   return { overlayV2Frame: outFrame, overlayV2Source: source };
 }
-
-// Runtime estático compartido por las previews Hub: escenario default, fuente
-// V2 pura, sin snapshot ni mocks por superficie.
-export const PREVIEW_V2_RUNTIME: WidgetRuntimeInput = buildAuthoringV2ScenarioRuntime({
-  session: "race",
-  location: "track",
-  state: "ready",
-  widget: "standings",
-  system: "vantare-crystal",
-  variant: "default",
-});

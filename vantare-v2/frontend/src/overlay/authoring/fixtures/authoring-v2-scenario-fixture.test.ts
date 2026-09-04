@@ -5,7 +5,6 @@ import goldenV2Raw from "../../../../../internal/telemetry/projection/overlayv2/
 import type { OverlayUpdateV2 } from "../../../generated/telemetry";
 import {
   buildAuthoringV2ScenarioRuntime,
-  PREVIEW_V2_RUNTIME,
   type AuthoringV2Scenario,
 } from "./authoring-v2-scenario-fixture";
 
@@ -90,12 +89,6 @@ describe("authoring V2 fixture puro (C2)", () => {
       expect(source, `el fixture V2 puro no puede mencionar ${anchor}`).not.toContain(anchor);
     }
     expect(source).toContain("overlay_v2_20.golden.json?raw");
-  });
-
-  it("expone un runtime de preview listo para las superficies Hub", () => {
-    expect(PREVIEW_V2_RUNTIME.overlayV2Frame).toBeDefined();
-    expect(PREVIEW_V2_RUNTIME.overlayV2Source?.state).toBe("live");
-    expect((PREVIEW_V2_RUNTIME.overlayV2Frame?.standings ?? []).length).toBeGreaterThan(1);
   });
 
   it("devuelve clones distintos con el mismo contenido en cada invocación", () => {

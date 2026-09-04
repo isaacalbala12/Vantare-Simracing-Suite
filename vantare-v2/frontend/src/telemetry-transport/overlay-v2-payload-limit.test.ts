@@ -30,6 +30,9 @@ function leanUpdate(): OverlayUpdateV2 {
         capacity: { q: "missing" },
         perLap: { q: "missing" },
         estimatedLaps: { q: "missing" },
+        sessionLaps: { q: "missing" },
+        requiredFuel: { q: "missing" },
+        history: { q: "missing" },
       },
     },
   };

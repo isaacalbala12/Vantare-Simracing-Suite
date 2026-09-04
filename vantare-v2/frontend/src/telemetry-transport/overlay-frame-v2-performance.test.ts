@@ -108,8 +108,8 @@ function syntheticFullUpdate(vehicles: number) {
       standings,
       relative,
       relativeSettled: relative,
-      delta: { seconds: fresh(-0.245), reference: "best", requested: "best", available: ["best", "last"], trend: "gaining", authority: "derived" },
-      fuel: { remaining: fresh(42), capacity: fresh(100), perLap: fresh(2.4), estimatedLaps: fresh(17.5) },
+      delta: { seconds: fresh(-0.245), reference: "best", requested: "best", available: ["best", "last"], trend: "gaining", authority: "derived", history: { q: "missing" } },
+      fuel: { remaining: fresh(42), capacity: fresh(100), perLap: fresh(2.4), estimatedLaps: fresh(17.5), sessionLaps: fresh(79), requiredFuel: fresh(189.6), history: { q: "missing" } },
       spotter: { mode: "official", left: fresh(false), right: fresh(true) },
       capabilities: {
         supported: ["session", "controls", "standings", "gaps", "fuel", "delta", "spotter"],

@@ -481,11 +481,33 @@ function validRelative(value: unknown): boolean {
 }
 
 function delta(value: unknown, path: string): void {
-  objectWithKeys(value, path, ["seconds", "available"], ["reference", "requested", "trend", "authority"]);
+  objectWithKeys(value, path, ["seconds", "available", "history"], ["reference", "requested", "trend", "authority"]);
   qvalue(value.seconds, `${path}.seconds`, "number");
   array(value.available, `${path}.available`, nonEmptyString);
   for (const key of ["reference", "requested", "trend"] as const) optionalString(value[key], `${path}.${key}`);
   if (value.authority !== undefined) enumValue<OverlayAuthorityV2>(value.authority, `${path}.authority`, ["native", "derived", "estimated"]);
+  deltaHistory(value.history, `${path}.history`);
+  Object.freeze(value);
+}
+
+// Serie de delta del jugador: un instante Unix absoluto más una cifra de
+// segundos por muestra, siempre alineadas, tope 120, sin sentinels.
+function deltaHistory(value: unknown, path: string): void {
+  objectWithKeys(value, path, ["q"], ["capturedAtMS", "seconds"]);
+  quality(value.q, `${path}.q`);
+  const instants = value.capturedAtMS;
+  const seconds = value.seconds;
+  if (instants === undefined && seconds === undefined) {
+    Object.freeze(value);
+    return;
+  }
+  if (!Array.isArray(instants) || !Array.isArray(seconds)) invalid(path);
+  if (instants.length !== seconds.length || instants.length > 120) invalid(path);
+  instantSeries(instants, `${path}.capturedAtMS`);
+  for (const entry of seconds) {
+    if (typeof entry !== "number" || !Number.isFinite(entry)) invalid(`${path}.seconds`);
+  }
+  Object.freeze(seconds);
   Object.freeze(value);
 }
 

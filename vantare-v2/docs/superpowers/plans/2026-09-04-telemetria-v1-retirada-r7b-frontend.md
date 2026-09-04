@@ -26,12 +26,27 @@ documentación.
 antes/después en la evidencia exacta
 `docs/telemetry-core/evidence/isa-894/retirada-v1-r7b-frontend-20260904.md`.
 
-**Gate de payload efectivo**: `DefaultPublisherMaxPayloadBytes = 64 * 1024` en
-`internal/app/telemetrytransport/publisher.go`, impuesto por el Publisher; el
-`MaxPayloadBytes = 256 * 1024` del Hub (`transport.go`) es solo invariante
-secundaria (techo duro). `frame_test.go` ya exige frame sintético completo con
-104 vehículos < 64 KiB: el frame V2 @104 con las historias A debe permanecer
-< 64 KiB.
+**Gate de payload efectivo (decisión A3 aprobada por Isaac, 2026-09-04)**:
+tres niveles distintos, sin ampliar el transporte general:
+
+- **Objetivo de rendimiento representativo <= 64 KiB** (`65536 B`): el frame
+  V2 @104 con historias A y strings representativos (20 caracteres) debe
+  permanecer < 64 KiB.
+- **Límite duro de seguridad <= 72 KiB** (`73728 B`): sincronizado entre el
+  Publisher Go de overlay-v2 y el validador frontend. El escenario legal de
+  seguridad (strings de 32 caracteres + float adverso + A3) cabe bajo 72 KiB;
+  no se afirma que toda string no acotada quepa.
+- **Transporte general = 256 KiB** (`MaxPayloadBytes` del Hub en
+  `transport.go`): invariante secundaria, techo duro, **sin ampliarlo**.
+  Ningún producto no relacionado cambia de límite.
+
+Histórico: `DefaultPublisherMaxPayloadBytes = 64 * 1024` en
+`internal/app/telemetrytransport/publisher.go` era el límite impuesto por el
+Publisher; el `MaxPayloadBytes = 256 * 1024` del Hub (`transport.go`) era la
+invariante secundaria. `frame_test.go` exigía frame sintético completo con
+104 vehículos < 64 KiB con un fixture 104/104 inalcanzable en producción
+(`Relative`/`RelativeSettled` están acotados a 17); el gate representativo
+usa desde A3 el fixture corregido 104/17/17.
 
 ## Invariantes que todo subcorte respeta
 
@@ -236,18 +251,25 @@ completa. A1 la expande en Go antes de proyectarla.
   2. Singleton/`Date.now` eliminado después de verde; regresión estructural
      conservada (delta sigue excluido de pruebas automáticas de vueltas,
      **no** de regresión estructural).
-  3. Frame V2 @104 < 64 KiB; bytes absolutos y delta en la evidencia exacta.
+  3. Presupuesto A3 (decisión aprobada 2026-09-04): escenario representativo
+     (fixture 104/17/17 + strings 20 + A3) <= 64 KiB como objetivo;
+     escenario de seguridad (strings 32 + float adverso + A3) <= 72 KiB como
+     límite duro; bytes absolutos y delta en la evidencia exacta.
 - Microcheckpoints ordenados EN LA MISMA rama/PR (ninguna otra rama):
-  a. derive RED→GREEN, campo histórico (gate: `go test` derive);
-  b. projection/frame/builder/copia + `frame_test` 64 KiB (gate: `go test`
-     overlayv2 en verde);
+  a. derive RED→GREEN, campo histórico (gate: `go test` derive; si derive ya
+     posee la historia canónica sin cambios, el gate focal en verde basta);
+  b. projection/frame/builder/copia + `frame_test` en verde con el fixture
+     corregido 104/17/17 y los gates representativo (<= 64 KiB) y de
+     seguridad (<= 72 KiB) (gate: `go test` overlayv2 en verde);
   c. contrato generado con `task telemetry:contract` + `:check` (gate: check
      verde; sin typecheck frontend previo);
   d. decoder frontend + focales + regresión estructural + golden/payload en
      evidencia exacta (gate: `pnpm --dir frontend test` focal y
      `pnpm --dir frontend typecheck` verdes).
 - Checks/reviewer/rollback: como A1.
-- Stop: como STOP historias / STOP coste de A1, más STOP específico: si aparece
+- Stop: como STOP historias / STOP coste de A1 (con el presupuesto aprobado:
+  objetivo representativo <= 64 KiB, límite duro de seguridad <= 72 KiB),
+  más STOP específico: si aparece
   un consumidor real de `SourceTime`/`LapDistance` en historia delta →
   conservar/migrar el campo, no borrar; parar y pedir decisión.
 
@@ -667,8 +689,9 @@ B1; si una ruta no existe en árbol, lo registra como divergencia y para ese
 ## Stops específicos (además de los generales de AGENTS.md)
 
 - **Historias/coste (A)**: sin VehicleState canónico, necesidad de snapshot
-  genérico / autoridad browser / `Date.now`, o frame @104 que no queda
-  < 64 KiB (gate efectivo Publisher; Hub 256 KiB solo secundaria) → parar,
+  genérico / autoridad browser / `Date.now`, o frame @104 que no cumpla el
+  presupuesto aprobado (representativo <= 64 KiB, duro de seguridad
+  <= 72 KiB; Hub 256 KiB intacto como techo general) → parar,
   pedir ADR.
 - **Daño (C1)**: producción visible sin equivalente V2 que exija nueva
   autoridad o arquitectura → parar, pedir decisión/ADR; nunca inventar el dato.

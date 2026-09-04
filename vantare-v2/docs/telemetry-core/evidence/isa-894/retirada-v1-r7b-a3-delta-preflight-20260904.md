@@ -82,18 +82,22 @@ debilitación, siempre que se añadan también aserciones de los topes
 productivos. Sin embargo, esa corrección no elimina la regresión de la cola de
 strings.
 
-## Decisión pendiente
+## Decisión aprobada por Isaac (2026-09-04)
 
-Antes de A3 hay que aprobar una de estas familias de cambio:
+1. **Objetivo de rendimiento representativo <= 64 KiB** (`65536 B`): frame V2
+   @104 corregido (Standings 104, Relative/Settled 17/17) con strings
+   representativos e historia A3.
+2. **Límite duro de seguridad <= 72 KiB** (`73728 B`): sincronizado entre el
+   Publisher Go de overlay-v2 y el validador frontend. El escenario legal de
+   seguridad (strings de 32 caracteres + float adverso + A3, medido
+   67.213–67.873 B) cabe bajo 72 KiB. No se afirma que toda string no
+   acotada quepa: las strings del contrato siguen sin cota de longitud.
+3. **Transporte general = 256 KiB** (`MaxPayloadBytes` del Hub): techo duro
+   sin ampliar; ningún producto no relacionado cambia de límite.
 
-1. elevar de forma explícita el presupuesto Publisher con un nuevo gate que
-   demuestre que ningún frame antes válido pasa a ser rechazado por el coste
-   máximo A3; o
-2. recuperar al menos el coste A3 mediante una codificación lossless del wire,
-   lo que reabre contratos ya aprobados y exige ADR/revisión propia.
-
-No se recomienda un segundo transporte, compresión ad hoc, formato binario o
-truncado: aumentan complejidad o pierden garantías.
+Con esta decisión el bloqueo queda levantado y A3 procede con TDD RED→GREEN
+en la misma rama. No se reduce ninguna garantía A3 (120 muestras, precisión,
+calidad, frescura, información, funciones, cadencia).
 
 ## Acciones y límites
 

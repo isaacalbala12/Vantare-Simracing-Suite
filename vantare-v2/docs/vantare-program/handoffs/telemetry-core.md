@@ -1,5 +1,23 @@
 # Handoff vivo — Telemetry Core
 
+## R7b/A3 en curso tras decisión de presupuesto (Delta) — 2026-09-04, ISA-894
+
+Decisión aprobada por Isaac: 64 KiB pasa a objetivo de rendimiento
+representativo y **72 KiB (`73728 B`) es el límite duro de seguridad**,
+sincronizado entre Publisher Go de overlay-v2 y validador frontend; el
+transporte general conserva 256 KiB sin ampliarse. El escenario legal de
+seguridad (strings 32 + float adverso + A3, 67.213–67.873 B medidos) cabe
+bajo 72 KiB; no se afirma que toda string no acotada quepa.
+
+A3 se implementa con TDD RED→GREEN en `vantareapp/isa-894-retirada-v1-r7b`
+desde `60a78e55`: límite overlay-v2 explícito en Go, constante centralizada
+y validador en frontend, fixture corregido 104/17/17 con asserts de topes,
+`DeltaHistoryV2` + builder + contrato generado + decoder V2 sin
+singleton/`Date.now`, gates y evidencia. Sin push/PR/merge/promoción.
+Evidencia: `retirada-v1-r7b-a3-delta-preflight-20260904.md` (preflight) y el
+cierre A3 que se añadirá en este mismo ciclo. No declara A3 cerrada: faltan
+revisión de especificación y revisión adversarial de calidad.
+
 ## R7b/A3 bloqueado en preflight (Delta, cero producción) — 2026-09-04, ISA-894
 
 Sobre `9847c544`, el inventario confirmó cero consumidores wire de

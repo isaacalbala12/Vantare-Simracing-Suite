@@ -1,0 +1,29 @@
+snapshot,entry,classification,minified,gzip,brotli,chunks,modules,cssBytes,sourceMaps,scope,raw
+locale-active,Hub,MEASURED-MAC-CANONICAL,1830993,506030,417363,10,866,479233,disabled,entry + selected runtime and synchronous dependencies; ES active for locale experiment,not measured for experiment
+locale-active,Overlay Desktop,MEASURED-MAC-CANONICAL,866540,247289,202703,10,340,330651,disabled,entry + selected runtime and synchronous dependencies; ES active for locale experiment,not measured for experiment
+locale-active,OBS,MEASURED-MAC-CANONICAL,779523,223722,181774,9,297,329630,disabled,entry + selected runtime and synchronous dependencies; ES active for locale experiment,not measured for experiment
+locale-active,Studio (Hub route),MEASURED-MAC-CANONICAL,1830993,506030,417363,10,866,479233,disabled,entry + selected runtime and synchronous dependencies; ES active for locale experiment,not measured for experiment
+impl-head,Hub,MEASURED-MAC-CANONICAL,2207898,604528,466063,6,911,479261,disabled,entry + selected runtime and synchronous dependencies; ES active for locale experiment,not measured for experiment
+impl-head,Overlay Desktop,MEASURED-MAC-CANONICAL,1239887,345022,250661,7,385,330679,disabled,entry + selected runtime and synchronous dependencies; ES active for locale experiment,not measured for experiment
+impl-head,OBS,MEASURED-MAC-CANONICAL,1152870,321453,229776,6,342,329658,disabled,entry + selected runtime and synchronous dependencies; ES active for locale experiment,not measured for experiment
+impl-head,Studio (Hub route),MEASURED-MAC-CANONICAL,2207898,604528,466063,6,911,479261,disabled,entry + selected runtime and synchronous dependencies; ES active for locale experiment,not measured for experiment
+candidate,Hub,MEASURED-MAC-CANONICAL,2204006,603559,464721,6,911,479233,disabled,entry + selected runtime and synchronous dependencies; ES active for locale experiment,4309829
+candidate,Overlay Desktop,MEASURED-MAC-CANONICAL,1239626,344925,250243,7,385,330651,disabled,entry + selected runtime and synchronous dependencies; ES active for locale experiment,2065864
+candidate,OBS,MEASURED-MAC-CANONICAL,1152609,321360,229354,6,342,329630,disabled,entry + selected runtime and synchronous dependencies; ES active for locale experiment,1893840
+candidate,Studio (Hub route),MEASURED-MAC-CANONICAL,2204006,603559,464721,6,911,479233,disabled,entry + selected runtime and synchronous dependencies; ES active for locale experiment,4309829
+edit-lazy,Hub,MEASURED-MAC-CANONICAL,2204113,604003,465338,7,911,479233,disabled,entry + selected runtime and synchronous dependencies; ES active for locale experiment,not measured for experiment
+edit-lazy,Overlay Desktop,MEASURED-MAC-CANONICAL,1155870,322942,230819,7,341,329014,disabled,entry + selected runtime and synchronous dependencies; ES active for locale experiment,not measured for experiment
+edit-lazy,OBS,MEASURED-MAC-CANONICAL,1152568,321343,229337,6,342,329630,disabled,entry + selected runtime and synchronous dependencies; ES active for locale experiment,not measured for experiment
+edit-lazy,Studio (Hub route),MEASURED-MAC-CANONICAL,2204113,604003,465338,7,911,479233,disabled,entry + selected runtime and synchronous dependencies; ES active for locale experiment,not measured for experiment
+geometry-defer,Hub,MEASURED-MAC-CANONICAL,2204566,602277,465501,9,911,479233,disabled,entry + selected runtime and synchronous dependencies; ES active for locale experiment,not measured for experiment
+geometry-defer,Overlay Desktop,MEASURED-MAC-CANONICAL,1240113,343536,250860,9,385,330651,disabled,entry + selected runtime and synchronous dependencies; ES active for locale experiment,not measured for experiment
+geometry-defer,OBS,MEASURED-MAC-CANONICAL,1153096,319967,229915,8,342,329630,disabled,entry + selected runtime and synchronous dependencies; ES active for locale experiment,not measured for experiment
+geometry-defer,Studio (Hub route),MEASURED-MAC-CANONICAL,2204566,602277,465501,9,911,479233,disabled,entry + selected runtime and synchronous dependencies; ES active for locale experiment,not measured for experiment
+route-lazy,Hub,MEASURED-MAC-CANONICAL,1553851,433795,327454,16,700,348935,disabled,entry + selected runtime and synchronous dependencies; ES active for locale experiment,not measured for experiment
+route-lazy,Overlay Desktop,MEASURED-MAC-CANONICAL,1239953,346232,251838,9,385,330651,disabled,entry + selected runtime and synchronous dependencies; ES active for locale experiment,not measured for experiment
+route-lazy,OBS,MEASURED-MAC-CANONICAL,1152722,322151,230323,7,342,329630,disabled,entry + selected runtime and synchronous dependencies; ES active for locale experiment,not measured for experiment
+route-lazy,Studio (Hub route),MEASURED-MAC-CANONICAL,1752314,488070,375305,20,798,386591,disabled,entry + selected runtime and synchronous dependencies; ES active for locale experiment,not measured for experiment
+nightly,Hub,MEASURED-MAC-CANONICAL,2209218,603019,464681,6,919,476460,disabled,entry + selected runtime and synchronous dependencies; ES active for locale experiment,4333491
+nightly,Overlay Desktop,MEASURED-MAC-CANONICAL,1269071,352848,257072,7,396,327878,disabled,entry + selected runtime and synchronous dependencies; ES active for locale experiment,2129671
+nightly,OBS,MEASURED-MAC-CANONICAL,1182554,329486,236252,6,353,326857,disabled,entry + selected runtime and synchronous dependencies; ES active for locale experiment,1959078
+nightly,Studio (Hub route),MEASURED-MAC-CANONICAL,2209218,603019,464681,6,919,476460,disabled,entry + selected runtime and synchronous dependencies; ES active for locale experiment,4333491

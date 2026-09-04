@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-30T14:13:58Z",
+  "generatedAt": "2026-09-04T22:53:48Z",
   "digest": {
-    "lastCommit": "9a9179aa7bd74faf3903f1a604aafe092045443a"
+    "lastCommit": "659b2c57dc2c7fc75962cc3c8e425ed1289266ec"
   },
   "phases": [
     {
@@ -353,10 +353,10 @@
         "it": "Banco riproducibile dell'impronta hardware"
       },
       "body": {
-        "es": "Un banco Windows mide RAM, CPU y GPU por proceso, atribuye Hub y overlay con PID confirmados por CDP, excluye muestras GPU inválidas, recupera sesiones ETW huérfanas y solo publica frametime de LMU cuando PresentMon entrega frames válidos.",
-        "en": "A Windows bench measures RAM, CPU and GPU per process, attributes Hub and overlay with CDP-confirmed PIDs, excludes invalid GPU samples, recovers orphaned ETW sessions, and only publishes LMU frame time when PresentMon provides valid frames.",
-        "pt": "Um banco Windows mede RAM, CPU e GPU por processo, atribui Hub e overlay com PIDs confirmados por CDP, exclui amostras GPU inválidas, recupera sessões ETW órfãs e só publica o tempo de frame do LMU quando o PresentMon fornece frames válidos.",
-        "it": "Un banco Windows misura RAM, CPU e GPU per processo, attribuisce Hub e overlay con PID confermati da CDP, esclude i campioni GPU non validi, recupera le sessioni ETW orfane e pubblica il frame time di LMU solo quando PresentMon fornisce frame validi."
+        "es": "Un banco Windows mide RAM, CPU y GPU por proceso, atribuye Hub y overlay con PID confirmados por CDP, excluye muestras GPU inválidas, recupera sesiones ETW huérfanas y solo publica frametime de LMU cuando PresentMon entrega frames válidos. ISA-978 añade evidencia experimental reproducible en Mac, un informe ciego congelado y una entrada de captura Windows que reutiliza el banco; startup completo, OBS físico y soak conservan gates explícitos sin resultados inventados. Telemetry Core queda fuera de valoración mientras está en desarrollo.",
+        "en": "A Windows bench measures RAM, CPU and GPU per process, attributes Hub and overlay with CDP-confirmed PIDs, excludes invalid GPU samples, recovers orphaned ETW sessions, and only publishes LMU frame time when PresentMon provides valid frames. ISA-978 adds reproducible Mac experiments, a frozen blind report and a Windows capture entry reusing this bench; complete startup, physical OBS and soak retain explicit gates without invented results. Telemetry Core is excluded from assessment while in development.",
+        "pt": "Um banco Windows mede RAM, CPU e GPU por processo, atribui Hub e overlay com PIDs confirmados por CDP, exclui amostras GPU inválidas, recupera sessões ETW órfãs e só publica o tempo de frame do LMU quando o PresentMon fornece frames válidos. ISA-978 adiciona experiências reproduzíveis no Mac, um relatório cego congelado e uma entrada de captura Windows que reutiliza o banco; startup completo, OBS físico e soak mantêm gates explícitos sem resultados inventados. Telemetry Core fica fora da avaliação durante o desenvolvimento.",
+        "it": "Un banco Windows misura RAM, CPU e GPU per processo, attribuisce Hub e overlay con PID confermati da CDP, esclude i campioni GPU non validi, recupera le sessioni ETW orfane e pubblica il frame time di LMU solo quando PresentMon fornisce frame validi. ISA-978 aggiunge esperimenti riproducibili su Mac, un rapporto cieco congelato e un punto di acquisizione Windows che riutilizza il banco; startup completo, OBS fisico e soak mantengono gate espliciti senza risultati inventati. Telemetry Core è escluso dalla valutazione durante lo sviluppo."
       },
       "label": {
         "es": "Feature",
@@ -896,6 +896,16 @@
   ],
   "delivered": [
     {
+      "date": "2026-08-31",
+      "entries": [
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-894 · Seguimiento: colector CDP tolerante y diagnóstico S1 ON"
+        }
+      ]
+    },
+    {
       "date": "2026-08-30",
       "entries": [
         {
@@ -922,6 +932,16 @@
           "kind": "change",
           "scope": "",
           "text": "ISA-940 · Lifecycle a coste cero: entry propio del overlay, bounding box, hub destruido por nivel, ingeniero solo audio, EcoQoS (F2)"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-894 · F9 corte 1: V1 apagado por defecto con rollback, A/B y guardarraíles"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-944 · Sensor de host y modo Automático (F3)"
         }
       ]
     },
@@ -1577,16 +1597,6 @@
           "kind": "change",
           "scope": "",
           "text": "Seis bugs de Overlays Studio v3 y alineación del gate de licencia"
-        }
-      ]
-    },
-    {
-      "date": "2026-08-09",
-      "entries": [
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "ISA-304 / CAL-02: el calendario como puerta de entrada a los eventos de LMU"
         }
       ]
     }

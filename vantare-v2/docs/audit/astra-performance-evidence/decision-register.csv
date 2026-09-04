@@ -1,0 +1,18 @@
+proposal,verdict,reason
+PERF-001,IMPLEMENT NOW — WINDOWS CI REQUIRED,paridad pistas/viewport/markers/estados; count10 BASE HEAD; full frontend
+PERF-002,WAIT FOR ACTIVE MIGRATION,intención prefetch; primera visita; KeepAlive estado Studio
+PERF-003,IMPLEMENT AFTER SMALL GATE,races cambio idioma; fallback; offline; namespaces editor
+PERF-004,WAIT FOR ACTIVE MIGRATION,loading/error/edit/runtime/dispose parity
+PERF-005,REJECT,sin ahorro de carga completa
+PERF-006,IMPLEMENT AFTER SMALL GATE,cobertura visual todos widgets/idiomas/resoluciones; used fonts
+PERF-007,REJECT,paridad salida animada y beneficio construido
+PERF-008,WAIT FOR ACTIVE MIGRATION,auth/offline/grace; experimento separable
+PERF-009,IMPLEMENT AFTER SMALL GATE,benchmark contención + revision/status ordering; no cambio Core
+PERF-010,IMPLEMENT AFTER SMALL GATE,benchmark política aislada; invalidación SetPerformancePolicy
+PERF-011,REJECT,no hotspot que justifique ownership adicional
+PERF-012,WINDOWS-RUNTIME-BLOCKED,marcadores Windows y profile grande
+Strategy solver,REJECT,NO PERFORMANCE CHANGE RECOMMENDED; ~2.6us
+Engineer radio/evaluation,REJECT,NO PERFORMANCE CHANGE RECOMMENDED; físico no medido
+Telemetry Core,OUT OF SCOPE,Exclusión expresa del usuario
+Global React store/mass memo,REJECT,No responde al perfil localizado
+Native lifecycle changes,WINDOWS-RUNTIME-BLOCKED,Solo plateau del consumidor Chromium medido

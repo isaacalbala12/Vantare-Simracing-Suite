@@ -1,0 +1,7 @@
+Main checkout observed before audit delivery commit:
+branch=nightly
+HEAD=659b2c57dc2c7fc75962cc3c8e425ed1289266ec
+git status --short=''
+Implementation worktree was clean and removed; remote PR980 head330d3387.
+Blind blob equality PASS: 959c4604ad16b53687d9ab70288d1b4cc15a6ad4
+Audit worktree contains only own audit/tooling plus required roadmap/handoff. Post-commit cleanliness is checked again in the final tool record.

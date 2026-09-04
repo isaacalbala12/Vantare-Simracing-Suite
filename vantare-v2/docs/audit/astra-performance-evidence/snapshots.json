@@ -1,0 +1,762 @@
+{
+  "blindFreezeCommit": "96539f54",
+  "firstLoggedCommandUTC": "2026-09-04T22:02:35.540528+00:00",
+  "inventoryExactStartUTC": "UNKNOWN",
+  "BASE_NIGHTLY": {
+    "sha": "659b2c57dc2c7fc75962cc3c8e425ed1289266ec"
+  },
+  "NEXT_CANDIDATE": {
+    "sha": "813b96c43028353a599903fb035268c354b58896",
+    "base": "659b2c57dc2c7fc75962cc3c8e425ed1289266ec",
+    "includedPRs": [
+      977,
+      976,
+      975,
+      974,
+      973,
+      972,
+      971,
+      970,
+      969
+    ],
+    "reason": "git ancestry chain 123 commits; candidate head checks success; no merged claim; Core excluded"
+  },
+  "INDEPENDENT_PENDING": [
+    {
+      "number": 933,
+      "sha": "006ad77d65a5757f45097059093b57b8e5629ee5",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 913,
+      "sha": "4751bfa53706779cc4df0f391bd1b6e3897aa499",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 886,
+      "sha": "48ab9ee2ec9344c0ccf2f2c7a2dbb2875c08be7c",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 882,
+      "sha": "7b35880e490b5867d895f14e75a6cea3d277752f",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 880,
+      "sha": "0cd76ed0dbaecc89f1776e62a249ccd5fba49d3d",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 873,
+      "sha": "5e30cf4418199417615140ec93c1b9d4fcaf5aef",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 872,
+      "sha": "8ac5adc4741cf143d1b5b3f81e87080981c9e02e",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 839,
+      "sha": "48342b6c7d661c208bb7251f9957af6f0152525f",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 801,
+      "sha": "4df90a22a535a44ff1a8f45903eed187b272efd7",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 795,
+      "sha": "4edda0c9af4ca9f29822d4de50c159e6353835a1",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 792,
+      "sha": "a3e78c232b1b095240751148d0d2e7ae39980b00",
+      "status": "SUPERSEDED_BY_795_TITLE"
+    },
+    {
+      "number": 783,
+      "sha": "66c54bdad172dd8a90b192acce1f92414468d454",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 673,
+      "sha": "bba9a3d266c0d9ad4e0649bc8826a9b59ba33398",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 280,
+      "sha": "a593347fa97de5091b2c0adf20c0ae521ef46c75",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 278,
+      "sha": "2460be30a6ff324480f0b48fbf52d9676bf91d7c",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 277,
+      "sha": "0b819894d78f767781c11934c3778f8c6c59dffc",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 268,
+      "sha": "d86af2877d00d6ed05c727e59267f19ebddb572d",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 256,
+      "sha": "0d8cb7ba11c7c0bb8a92c5ed77a1a7d971debcb5",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 244,
+      "sha": "007654dffb6342b14d61e455ac21d03d2b7222c8",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 242,
+      "sha": "a2fb747c5d7a101f0813aaca370b56378399b5a6",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 240,
+      "sha": "1e6498a0e65087a3f1ca1fde72d6cb7448dafee7",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 238,
+      "sha": "986e82186ae420ec28f59d2a9fe4f1f57b407ff9",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 237,
+      "sha": "4768badd5b9c88830e6e47a6da21caeb83993a95",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 234,
+      "sha": "6bb944621f6c300f4a6225227e8dbc80fd650eb0",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 228,
+      "sha": "d2d2ee758b2c74730b85afdc46610d644894e9ae",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 227,
+      "sha": "d77b87886261b01d2105a99c38d5699a89c91117",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 210,
+      "sha": "be2b30dd226a4d899865b1e858552b774d440371",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 209,
+      "sha": "b44b9ed1046dc957baedd2bbd58b0815e2ee136e",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 205,
+      "sha": "bc110a54dff3a687379bdb7ae944c12dd2ad7243",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 201,
+      "sha": "753a1bb4af42243b768d591e3f1e5d9c5f4cb6d4",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 197,
+      "sha": "402cdf8c7676295c365c75f570d892b1286cb61c",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 196,
+      "sha": "7ac6b4b9a5adf964fdb14d5e6d80ffa90a548eca",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 194,
+      "sha": "33d94408d00b7cee6b8492fccaeadee441a440da",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 159,
+      "sha": "0a8b31fc1c1fec5a0c1633de9a2e3a52bd8d810a",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 158,
+      "sha": "f2f29b722b8ab98e74c4f7de8b3a74fbb13ed041",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 157,
+      "sha": "649bd0e409095c8ac1aafd6f7d7f7bd37ad0db51",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 156,
+      "sha": "50c6d06f92255b8bc082305bc0af6e72d306faeb",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 155,
+      "sha": "eb898b26c54f9b5a38e2eabd98eb7a17a8709388",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 152,
+      "sha": "54088b2e5ad25d9a897cb89187ee9684b75c645f",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 150,
+      "sha": "dd15ec4fbd73a6910aa385f82a8e0cbff82c1047",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 148,
+      "sha": "abbc92eb5484f317345929621d1050a7eee3f004",
+      "status": "PATCH_EQUIVALENT_NIGHTLY"
+    },
+    {
+      "number": 147,
+      "sha": "a17791512a66918e7b715034c854c62cabda8210",
+      "status": "PATCH_EQUIVALENT_NIGHTLY"
+    },
+    {
+      "number": 146,
+      "sha": "5e1dbc24b394e9a9fd05583c5332917f9a470536",
+      "status": "PATCH_EQUIVALENT_NIGHTLY"
+    },
+    {
+      "number": 145,
+      "sha": "98d9f1ca5b6e174c07bc97b267743fce093fa1a5",
+      "status": "PATCH_EQUIVALENT_NIGHTLY"
+    },
+    {
+      "number": 126,
+      "sha": "153a8f22f50f289cb002c6ca167fb9800edb722a",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 120,
+      "sha": "03ca18ceb56ae6d94ae0d471a979a8fb0ef7cca0",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 119,
+      "sha": "e9546d917bf52889320e1a6eeb93b64c97ec74b0",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 118,
+      "sha": "f3a80f288e6e083a19d75b09f0d1fadf3d68ecb8",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 117,
+      "sha": "24df7552c4d1b28a81507ed0f7f47621a2bbeedc",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 116,
+      "sha": "06121359cfa05b892db8891aad581d395337b79a",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 115,
+      "sha": "a4239a45840f3f2c8d0f4f2fcae8bd83763a258f",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 114,
+      "sha": "a475c6ce5aa188c3c8d277cd946665bff2a36ad1",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 113,
+      "sha": "a1df3dd274719a34c02297a2fef050d837bad4ed",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 112,
+      "sha": "be892dffabbe5218b6534285d7b9eeb8b334d0ba",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 111,
+      "sha": "da75004fed926ec7437602e4707019eb2dd2eea5",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 110,
+      "sha": "9a22e65101f515b4bc1bab585940753d201c9f37",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 109,
+      "sha": "a92cfe7aa3f39a145bdcd7c8a16566fa7a6fb0d6",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 108,
+      "sha": "6c3260e610b3516687fa697678819013e5bd52cb",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 107,
+      "sha": "ba28de76a1e9e7f5c75988a51f76f4be6e9b0eee",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 106,
+      "sha": "6d0e12e4edb6350c4e407dda4e075d48238a72a4",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 104,
+      "sha": "9b6511269204b4ab05ca17728b387721848bf732",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 102,
+      "sha": "a44473abcd42d1ea459930678d43c9b16cdf1f15",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 100,
+      "sha": "a896720fce7a45c93110d24131eae841f1867900",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 97,
+      "sha": "81bb2ef283d6324c8581f3f5a5f0df5da451dc33",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 95,
+      "sha": "1950476a1b19fa9af0f830035c657f9bffdec64f",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 92,
+      "sha": "9c92836b90dacc5d82cc86569954cb11f0cf9460",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 91,
+      "sha": "07aed8ab0507c91523c2ae7344668336ffdcd848",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 90,
+      "sha": "5141aa6523a6850ef2f73233268056fd171bbb8e",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 89,
+      "sha": "ed7ebb2e8cf47f71d89947eee40f81cc2620a501",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 88,
+      "sha": "ba04846f8ac38fc4fa0110a51dd1bffd63ca8943",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 87,
+      "sha": "1dda42a496cc5ec077341c2b8f0c5b59a813cdb2",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 86,
+      "sha": "f8803988c945b6eda63e871e333bd7205b93ccb1",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 85,
+      "sha": "ddfb80248bc1a430ad6530e030617f0b8bf59967",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 84,
+      "sha": "5b4e0d315d54f99e8d404e617ad8873cedbd3277",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 83,
+      "sha": "53e81582dae47c7dc30ccc3efe1f7062af92410e",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 82,
+      "sha": "c5109edad1a6261d6cadd9cbe3d7fc728be4a5e6",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 81,
+      "sha": "46a7320d33c7ebb47bbcae44eac0f4fa01ed3ca9",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 80,
+      "sha": "cf890f50e19882bd90f27049f219dc9bac77d50b",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 79,
+      "sha": "edcaffa098b7e705456406f11b6bb74e37256a68",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 78,
+      "sha": "78a77237e3b2ecafb8dd4768ed8477e9de947bda",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 77,
+      "sha": "52d2466a61b2e841fdd4322071328076eddaa305",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 76,
+      "sha": "2d0af853fc729755487d8c4ff0e0459cf642d53a",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 75,
+      "sha": "5ff860b5320100a70b53cfb1f218e0094aa484cb",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 74,
+      "sha": "eea8b760dc382c82c3f6b9f193782f9e1469b8d7",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 73,
+      "sha": "f60f480c064a4b5140e0f12a0918bd7c7d012276",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 72,
+      "sha": "b1b81a780c2fe9a9f71d917dc83ab2c687447beb",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 71,
+      "sha": "2a6288a36e368b322e8262534988277d1e16025e",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 70,
+      "sha": "8e151b86159ec165d6ee45f7b90c515eaa053711",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 68,
+      "sha": "ebd4af15dda4d7cad33aeb092adcd80680ebeed4",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 67,
+      "sha": "08bb83a959dee601ca5884fba6ac96b399c5e2bd",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 66,
+      "sha": "91c16c2c0eb7d9e761cde0f6126b30b4c8073e17",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 64,
+      "sha": "c6a3ebf2181e6764a1b204e231cab4a348e3ab95",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 61,
+      "sha": "6a7bea697c9c84d02d834c164af27803d1f6b470",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 60,
+      "sha": "f85fd31e665b3162b3db335ee6ea3a73f7fe1fa4",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 59,
+      "sha": "6861bd1a1b3ae9f221e701c1db7396c8d8a07650",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 58,
+      "sha": "8ddae9d9d6e33d42956c269c2fc51e6a6e4386e3",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 57,
+      "sha": "c960815f555e65933f7a5060a99eb8cc59aaeb6a",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 56,
+      "sha": "170eaebbaa6744019ead96a2c78201b4da2fb9bb",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 55,
+      "sha": "4233c9f22086b9751e25016a15bae7837a1f5142",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 54,
+      "sha": "b53078707d45db7b7c9adcd77306a4f9d8a4f703",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 53,
+      "sha": "13ed5b5e0836a05f1653199ca1a10049225f47e0",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 52,
+      "sha": "578bd704adda1be76b7146fb9d2414684e0f9104",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 51,
+      "sha": "2b33177e1abe5d159a9de14c3b52d9bfec58c947",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 50,
+      "sha": "2fff97055096731f0456129d483fa05943f60d57",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 49,
+      "sha": "905ad1e2306bc3e8e2b2d5de824c7a35268f3829",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 48,
+      "sha": "a9ae7dba664035157d24a746775345d439ef0f98",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 47,
+      "sha": "825a46b54beaf95d4ccb2193de33b6281939ff07",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 46,
+      "sha": "c6e40ed2614196a7afca839aef3610674f3eec07",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 45,
+      "sha": "ee58e3a747c9207efdceb8680226bc1bbc0e31b4",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 44,
+      "sha": "29b9b3dd6e12eb030496eac65d449555bcfa75e7",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 43,
+      "sha": "e3bacdb1011df908369db2903c79b0a13c6adc9a",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 42,
+      "sha": "7f679e6160be95d8d7be2409f273f9f5f5e7dc7f",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 41,
+      "sha": "c9acee24cf4c4d80922b380b12f7367c2a60c937",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 40,
+      "sha": "3b44d36713213ab642f47174c1b5d8234362cac0",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 39,
+      "sha": "8b89c0adafed46a3c2c42cd52c858c8c185aa8bf",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 38,
+      "sha": "8683f036bc1169be2e27ea50982ebf86af369bed",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 37,
+      "sha": "6aa46f17a613bd85b6eafbf22db5a7a70b527a00",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 36,
+      "sha": "4801dced7f93ab13ef639f01c3c4e6e9790b5d8c",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 35,
+      "sha": "ebb0bd7abc4b2614665a1918a94cc068f6c92edc",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 34,
+      "sha": "e224495064deb53fcdaa2cdfb7d99726a5d92d05",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 33,
+      "sha": "dc215665a0060147e1e8f36d23b128339beab241",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 32,
+      "sha": "efcc77c60f173a160e8c186f54ccfb43da5be692",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 31,
+      "sha": "df0c20260b925940cefbbf11aa07007b4589c4ab",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 30,
+      "sha": "f59fd3d2e1971944ee6cf2979f5535c7ac8d2a29",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 29,
+      "sha": "08836514d973e7833db8a58720e0aae38c47e746",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 28,
+      "sha": "7a1cd702bc1f50e13a3f351360e6a018d0bd7423",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 27,
+      "sha": "0d7686b168f60ae9c21d55ffd995ce7837caff40",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 26,
+      "sha": "25569154ae2eae3f52a73a41901ce23b54453a98",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 25,
+      "sha": "44c7513499f1ab88ebf1aedbc02d3b8e5feda99e",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 24,
+      "sha": "7e4d13247bbc87403806daac54fd9b920ff96687",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 23,
+      "sha": "37cb64e2cd17b29deaf542441a79aa0c799cf4f7",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 22,
+      "sha": "d0e89d8cc1460d218d885b186d3087f65c915da2",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 21,
+      "sha": "08323022c79cc7d11096ed604c61da702dfeeee9",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 20,
+      "sha": "539da68604d14df88f0d87638028f1f46ca95d8e",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 19,
+      "sha": "6d897d578b8dbe028e97cee20247bfe14478cc0e",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 18,
+      "sha": "17622da9e2314a8b74e3193724361f6b38a11275",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 17,
+      "sha": "8d12cf0399f1848d873a8268d12e5d3005945830",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 16,
+      "sha": "e182f92cc085c3c51f119a02146e20c6236cdd38",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 15,
+      "sha": "72da58552495d8a9623ad42fc1e82510d048d7a0",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 14,
+      "sha": "9bd922fe245b27440d239c3578f1a4aaf6ea2817",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 13,
+      "sha": "724158a262eaa5dbcc8ab89c98aa74847ffed06b",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 11,
+      "sha": "e8370d476e5fffe32cb389bbf1a176cd885f01ac",
+      "status": "ABSORBED_ANCESTRY"
+    },
+    {
+      "number": 10,
+      "sha": "2e2c6455440f4c9287a34172e4a6d8ac29df1eea",
+      "status": "ABSORBED_ANCESTRY"
+    },
+    {
+      "number": 9,
+      "sha": "7a570655253ea8c4e51047f6ebd2e97e3a49f8a6",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 7,
+      "sha": "0a797bf720c098a52e91883ed0ddddda0c9fdd15",
+      "status": "ABSORBED_ANCESTRY"
+    },
+    {
+      "number": 6,
+      "sha": "bf87ddf362d456da7d75751f266ac8d8068157e0",
+      "status": "INDEPENDENT_PENDING"
+    },
+    {
+      "number": 5,
+      "sha": "eebd4de3fb2e5c851a07cc986ebc9bc191452db7",
+      "status": "INDEPENDENT_PENDING"
+    }
+  ],
+  "countOpenPRsAtInventory": 156
+}

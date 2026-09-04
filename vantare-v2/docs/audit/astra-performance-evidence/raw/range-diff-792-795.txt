@@ -1,0 +1,7 @@
+1:  de6b9917 < -:  -------- fix(studio): la etiqueta de seleccion sigue al marco en el mismo pintado (ISA-789)
+2:  a3e78c23 < -:  -------- docs(handoff): registrar ISA-789 fix de etiqueta de seleccion en el handoff vivo
+-:  -------- > 1:  9de4ed6f fix(studio): etiqueta de seleccion hija del marco, movimiento atomico (ISA-793)
+-:  -------- > 2:  f8eb20a7 docs(handoff): registrar ISA-793 en el handoff vivo
+-:  -------- > 3:  461d62d3 fix(studio): la geometria de la etiqueta pasa a ser del DOM, no de React (ISA-793)
+-:  -------- > 4:  5f9761b1 fix(studio): motores de movimiento Redline apagados en el lienzo de edicion (ISA-799)
+-:  -------- > 5:  4edda0c9 docs(handoff): registrar ISA-799 en el handoff vivo

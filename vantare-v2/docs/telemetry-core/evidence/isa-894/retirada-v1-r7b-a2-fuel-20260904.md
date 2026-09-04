@@ -1,5 +1,23 @@
 # R7b/A2 — paridad Fuel V2 cerrada (ISA-894) — 2026-09-04
 
+## Corrección del orquestador (review, mismo día)
+
+El reporte inicial afirmó 8 errores typecheck; la repetición del orquestador
+sobre `5f4d5a02` mostró **9**: faltaba el fixture Fuel de
+`src/telemetry-overlay-shadow-harness/evidence.ts(206,5)` (`TS2739`, sin
+`history`/`requiredFuel`/`sessionLaps`). Causa: los nuevos campos son
+requeridos y ese literal quedó desactualizado; mis pasadas lo omitieron
+(salida truncada / caché incremental `tsc -b`). Fix mínimo en el mismo estilo
+`missing` del fixture, cero comportamiento. Repetición con salida íntegra a
+fichero: exactamente los 8 heredados originales, cero nuevos.
+Semántica de unidades aclarada sin rediseño: derive conserva litros
+canónicos, la proyección convierte exactamente una vez y el wire sigue
+`frame.units.fuel` (litros bajo la preferencia por defecto); el widget solo
+admite `units: "liters"`, límite documentado en el decoder sin inventar
+conversiones frontend. Commit de corrección: ver handoff.
+
+## Contrato cumplido
+
 Writer único en `C:\tmp\vantare-v1-retirada-r7b\vantare-v2`, rama
 `vantareapp/isa-894-retirada-v1-r7b`. Base A2 `d32b56f1`
 (tree limpio verificado antes de empezar). Sin push/PR/merge/promoción/

@@ -203,7 +203,7 @@ function playerInstrumentsFrameV2(): OverlayFrameV2 {
       throttle: { q: "fresh" }, brake: { q: "fresh" }, clutch: { q: "fresh" }, steering: missing,
     },
     standings: [], relative: [], relativeSettled: [], delta: { seconds: missing, available: [] },
-    fuel: { remaining: missing, capacity: missing, perLap: missing, estimatedLaps: missing },
+    fuel: { remaining: missing, capacity: missing, perLap: missing, estimatedLaps: missing, sessionLaps: missing, requiredFuel: missing, history: missing },
     spotter: { mode: "none", left: missing, right: missing },
     damage: { dents: missing, overheating: missing, detached: missing, wheelDetachedCount: missing },
     weather: { ambientC: missing, trackC: missing, rainPercent: missing, wetnessPct: missing, windKph: missing, windDir: missing, pressureHpa: missing },

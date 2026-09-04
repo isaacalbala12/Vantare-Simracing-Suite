@@ -285,11 +285,12 @@ type FuelViewV2 struct {
 // player alone, never the grid: one entry per canonical measured lap, always
 // index-aligned across both arrays, oldest first, capped at 64.
 //
-// The wire form keeps one lap number plus one litre figure per sample.
+// The wire form keeps one lap number plus one consumption figure per sample.
 // Parallel arrays cost one number per sample instead of an object with keys;
-// consumption travels in canonical litres and only the presentation converts
-// it to the preferred unit. A lap with no measurement has no entry: there are
-// no sentinels and no shortened arrays, only fewer entries.
+// consumption is in the frame unit (frame.units.fuel): derive/ keeps canonical
+// litres and the projection converts exactly once, so litres and gallons never
+// mix on the wire. A lap with no measurement has no entry: there are no
+// sentinels and no shortened arrays, only fewer entries.
 type FuelHistoryV2 struct {
 	Q        Quality   `json:"q"`
 	Lap      []int32   `json:"lap,omitempty"`

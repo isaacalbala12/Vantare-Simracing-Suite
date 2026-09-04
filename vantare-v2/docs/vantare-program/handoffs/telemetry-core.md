@@ -28,9 +28,13 @@ history `[]`, requiredFuel `undefined`) → GREEN (fuel-strategy 17/17,
 shadow focal 33/33). Gate duro: sintético @104 63613 → 64208 bytes (+595,
 margen 1328 bajo 65536) PASS con gate intacto; preflight local ~559 bytes
 dio PROCEED antes de tocar producción. Contrato check + `git diff
---exit-code` verdes. `pnpm typecheck`: 8 errores heredados R7a
-byte-idénticos antes/después (mismos 3 módulos legacy, ámbito B, fuera de
-A2), cero nuevos; no se declara verde global. `go vet` limpio en el diff;
+--exit-code` verdes. `pnpm typecheck`: CORRECCIÓN del orquestador — el
+reporte inicial afirmó 8 errores pero la repetición sobre `5f4d5a02` dio 9
+(`evidence.ts` del shadow harness sin los 3 campos Fuel nuevos, `TS2739`);
+fix mínimo `missing` + aclaración de unidades (wire sigue
+`frame.units.fuel`, widget liters-only documentado) en commit explícito;
+repetición con salida íntegra confirma los 8 heredados R7a byte-idénticos,
+cero nuevos; no se declara verde global. `go vet` limpio en el diff;
 `git diff --check` limpio. `fuel.sessionLaps` queda en wire sin decoder
 widget (forma v1 conservada; documentado). Sin runtime físico: todo
 sintético/determinista; LMU/Wails pendiente de Isaac.

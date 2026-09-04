@@ -27,11 +27,14 @@ import type { FuelStrategyViewModel } from "./fuel-strategy-view-model";
  *
  * `requiredFuel` is `fuel.requiredFuel`, read verbatim: Go already computed
  * perLap x sessionLaps with the worst quality of both, never from
- * `estimatedLaps`. `history` decodes `fuel.history` (lap numbers plus litre
- * figures, index-aligned) into `{lap, consumedLiters}` rows in canonical
- * litres, clipped to the widget `historyRows` window for presentation only.
- * No unit conversion and no clock read happen here: the frame already carries
- * the preferred fuel unit and absolute history needs no `Date.now()`.
+ * `estimatedLaps`. `history` decodes `fuel.history` (lap numbers plus
+ * consumption figures, index-aligned) into `{lap, consumedLiters}` rows in
+ * the frame fuel unit (`frame.units.fuel`), clipped to the widget
+ * `historyRows` window for presentation only. No unit conversion and no clock
+ * read happen here. Limit documented, not worked around: this widget only
+ * admits `units: "liters"`, so the rows are litres while the frame stays on
+ * the default liters preference; a gallons frame would need a consumer-side
+ * unit decision that this decoder does not invent.
  *
  * `fuel.sessionLaps` stays on the wire for future consumers: this widget
  * keeps the v1 shape (`lapsRemaining` only), so it is not decoded here.

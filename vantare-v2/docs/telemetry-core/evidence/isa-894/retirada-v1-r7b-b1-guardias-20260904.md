@@ -479,7 +479,13 @@ El fix `cad73784` incluye además la secuencia del frame retenido en el máximo:
 el test deja un frame live justo en la siguiente secuencia candidata y prueba
 que la vuelta a mock lo supera y reemplaza su `phase`, sin colisión silenciosa.
 
-Evidencia local: focales provider+fixture **22/22**; ESLint focal y
+La extensión de test `7aa7352b` corrige el único rojo de la suite amplia:
+`StudioCanvas.test.tsx` aún exigía `-0.150`, dato sintético del mock V1. El
+golden canónico V2 marca `delta.seconds` como `missing`; ahora el test exige
+el estado `missing`, el placeholder `—` y la ausencia del valor inventado.
+No se modifica código productivo ni se debilita el renderer.
+
+Evidencia local: focales **40/40** y suite amplia Studio **255/255**; ESLint focal y
 `git diff --check` limpios. `pnpm --dir frontend typecheck` permanece NO verde
 con exactamente los 8 errores R7a heredados y cero nuevos. El guard permanece
 deliberadamente RED `7 failed | 8 passed (15)`: C2 baja de 18/17 a **16

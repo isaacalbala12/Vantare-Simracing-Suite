@@ -1,13 +1,13 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)]
-    [ValidateSet('S1', 'S2', 'S3', 'S4', 'S5')]
+    [ValidateSet('S1', 'S2', 'S4', 'S5')]
     [string]$Sesion,
     [Parameter(Mandatory)]
     [ValidateSet('on', 'off')]
     [string]$Fase,
     [Parameter(Mandatory)]
-    [ValidateRange(1, 480)]
+    [ValidateRange(1, 5)]
     [int]$Duracion,
     [Parameter(Mandatory)]
     [string]$Exe,
@@ -15,7 +15,7 @@ param(
     [Parameter(Mandatory)]
     [ValidateRange(1024, 65535)]
     [int]$Puerto,
-    [string]$Perfil = 'testdata/bench/huella-endurance-3.json',
+    [string]$Perfil = '',
     [string]$Salida = 'results/isa-894/sesiones',
     [string]$Escena = '',
     [ValidateRange(0, 200)]
@@ -42,6 +42,16 @@ function Resolve-SessionPath([string]$Path, [switch]$MustExist) {
     return [IO.Path]::GetFullPath($candidate)
 }
 
+if ($Duracion -ne 5) { throw 'Cada comprobación física debe durar exactamente cinco minutos.' }
+if ([string]::IsNullOrWhiteSpace($Perfil)) {
+    $Perfil = 'testdata/bench/huella-endurance-3.json'
+}
+$profilePath = Resolve-SessionPath $Perfil -MustExist
+$profileDocument = Get-Content -LiteralPath $profilePath -Raw | ConvertFrom-Json
+$profileLayouts = Get-SessionOptionalProperty -InputObject $profileDocument -Name 'layouts'
+if ($null -eq $profileLayouts) { throw 'El perfil de sesión no contiene layouts.' }
+$profileWidgets = @($profileLayouts.PSObject.Properties.Value | ForEach-Object { @(Get-SessionOptionalProperty -InputObject $_ -Name 'widgets') })
+
 if ($DiagnosticoMemoria -and $Sesion -ne 'S1') { throw '-DiagnosticoMemoria solo admite S1.' }
 if ($DiagnosticoMemoria -and $EstadoCada -ne 0) { throw '-DiagnosticoMemoria exige -EstadoCada 0 para aislar el polling CDP.' }
 
@@ -52,7 +62,7 @@ $plan = [ordered]@{
     durationMinutes = $Duracion
     executable = Resolve-SessionPath $Exe
     dist = Resolve-SessionPath $Dist
-    profile = Resolve-SessionPath $Perfil
+    profile = $profilePath
     cdpPort = $Puerto
     outputRoot = Resolve-SessionPath $Salida
     v1Environment = if ($Fase -eq 'on') { '1' } else { $null }
@@ -68,12 +78,6 @@ if ($DryRun) {
     exit 0
 }
 
-if ($DiagnosticoMemoria) {
-    if ($Duracion -lt 10) { throw 'El diagnóstico de memoria requiere al menos 10 minutos.' }
-} elseif ($Duracion -lt 20) {
-    throw 'Una sesión real no puede durar menos de 20 minutos.'
-}
-if ($Sesion -eq 'S3' -and $Fase -eq 'off' -and $Duracion -lt 60) { throw 'S3 OFF es el soak prolongado y requiere al menos 60 minutos.' }
 if ([string]::IsNullOrWhiteSpace($Escena)) {
     if ([Console]::IsInputRedirected) { throw '-Escena es obligatorio sin consola interactiva.' }
     $Escena = Read-Host 'escena LMU (circuito, tipo y estado inicial)'
@@ -82,10 +86,7 @@ if ($Coches -lt 1) {
     if ([Console]::IsInputRedirected) { throw '-Coches es obligatorio sin consola interactiva.' }
     $Coches = [int](Read-Host 'coches observados en LMU')
 }
-if ($Sesion -eq 'S3' -and $Coches -le 40) { throw 'S3 requiere más de 40 coches confirmados.' }
-
 $exePath = Resolve-SessionPath $Exe -MustExist
-$profilePath = Resolve-SessionPath $Perfil -MustExist
 $distPath = Resolve-SessionPath $Dist -MustExist
 $processHelper = Resolve-SessionPath 'scripts/bench/huella-procesos.mjs' -MustExist
 $cdpHelper = Resolve-SessionPath 'scripts/bench/huella-cdp.mjs' -MustExist
@@ -140,12 +141,8 @@ $stdoutLog = Join-Path $runDirectory 'stdout.log'
 $stderrLog = Join-Path $runDirectory 'stderr.log'
 $processScratch = Join-Path $runDirectory 'processes.tmp.json'
 $exeName = [IO.Path]::GetFileName($exePath)
-$profileDocument = Get-Content -LiteralPath $profilePath -Raw | ConvertFrom-Json
-$profileLayouts = Get-SessionOptionalProperty -InputObject $profileDocument -Name 'layouts'
-if ($null -eq $profileLayouts) { throw 'El perfil de sesión no contiene layouts.' }
 $expectedWidgets = @(
-    $profileLayouts.PSObject.Properties.Value |
-        ForEach-Object { @(Get-SessionOptionalProperty -InputObject $_ -Name 'widgets') } |
+    $profileWidgets |
         Where-Object {
             $behavior = Get-SessionOptionalProperty -InputObject $_ -Name 'behavior'
             $enabled = Get-SessionOptionalProperty -InputObject $behavior -Name 'enabled'

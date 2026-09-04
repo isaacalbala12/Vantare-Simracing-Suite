@@ -165,7 +165,7 @@ func TestPublisherOverlayPullAndSSEUseIdenticalEventContract(t *testing.T) {
 	if err := publisher.PublishSnapshot(5, map[string]any{"revision": 5, "frame": map[string]any{"contract": 2}}); err != nil {
 		t.Fatal(err)
 	}
-	pull := NewOverlayPullTransport(NewHub(HubConfig{Product: ProductOverlay}), registry)
+	pull := NewOverlayPullTransport(registry)
 	defer pull.CloseAll()
 	response, deliver, err := pull.Pull("overlay-window", OverlayPullRequest{SessionID: "contract", Ack: 0})
 	if err != nil || !deliver {

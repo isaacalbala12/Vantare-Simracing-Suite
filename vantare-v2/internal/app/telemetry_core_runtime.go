@@ -19,7 +19,6 @@ import (
 	telemetryengine "github.com/vantare/overlays/v2/internal/telemetry/engine"
 	"github.com/vantare/overlays/v2/internal/telemetry/projection"
 	engineerprojection "github.com/vantare/overlays/v2/internal/telemetry/projection/engineer"
-	overlayprojection "github.com/vantare/overlays/v2/internal/telemetry/projection/overlay"
 	overlayv2 "github.com/vantare/overlays/v2/internal/telemetry/projection/overlayv2"
 	strategyprojection "github.com/vantare/overlays/v2/internal/telemetry/projection/strategy"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/envelope"
@@ -65,9 +64,6 @@ type EngineerProjectionConsumer interface {
 // TelemetryCoreRuntimeConfig configures the canonical product runtime.
 type TelemetryCoreRuntimeConfig struct {
 	Enabled bool
-	// OverlayV1Emit keeps the legacy Overlay projection available for one
-	// diagnostic rollback cycle. Product composition leaves it off by default.
-	OverlayV1Emit *bool
 	// PerformancePolicy es el nivel efectivo inicial decidido desde Ajustes.
 	PerformancePolicy performancepolicy.Policy
 	// Now is injectable for deterministic freshness tests. It defaults to
@@ -123,15 +119,12 @@ type TelemetryCoreRuntimeConfig struct {
 
 // TelemetryCoreMetrics is a payload-free operational summary. It is safe to
 // expose through local diagnostics because it contains only counters and
-// bounded transport state. ProjectionsPublished remains one canonical batch
-// whose product fulls both published, and Transport remains the Overlay hub
-// for compatibility.
+// bounded transport state. StrategyProjectionsPublished keeps its current
+// semantics and StrategyTransport is the single surviving product transport.
 type TelemetryCoreMetrics struct {
 	ObservationsReceived         uint64
 	ObservationsRejected         uint64
 	BatchesApplied               uint64
-	ProjectionsPublished         uint64
-	OverlayProjectionsPublished  uint64
 	StrategyProjectionsPublished uint64
 	EngineerStatusesDelivered    uint64
 	EngineerObservations         uint64
@@ -147,7 +140,6 @@ type TelemetryCoreMetrics struct {
 	WatchdogDegradations         uint64
 	PayloadBytes                 map[string]TelemetryPayloadPercentiles
 	LifecycleTransitions         map[string]uint64
-	Transport                    telemetrytransport.HubMetrics
 	StrategyTransport            telemetrytransport.HubMetrics
 	ShadowMismatches             map[string]uint64
 	ShadowDisabled               bool
@@ -171,8 +163,6 @@ type telemetryCoreCounters struct {
 	observationsReceived      atomic.Uint64
 	observationsRejected      atomic.Uint64
 	batchesApplied            atomic.Uint64
-	projectionsPublished      atomic.Uint64
-	overlayProjections        atomic.Uint64
 	strategyProjections       atomic.Uint64
 	engineerStatusesDelivered atomic.Uint64
 	engineerObservations      atomic.Uint64
@@ -201,10 +191,8 @@ type TelemetryCoreRuntime struct {
 	telemetryFailurePolicyV2 bool
 	telemetryEngineApply     bool
 	overlayFrameV2Shadow     bool
-	overlayV1Emit            bool
 	engineerAsyncPort        bool
 	emitter                  telemetrytransport.EventEmitter
-	hub                      *telemetrytransport.Hub
 	strategyHub              *telemetrytransport.Hub
 	overlayV2Publishers      *telemetrytransport.PublisherRegistry
 	simulator                telemetrycore.SimulatorRuntime
@@ -275,10 +263,6 @@ func NewTelemetryCoreRuntime(config TelemetryCoreRuntimeConfig) (*TelemetryCoreR
 	if config.OverlayFrameV2Shadow != nil {
 		overlayFrameV2Shadow = *config.OverlayFrameV2Shadow
 	}
-	overlayV1Emit := true
-	if config.OverlayV1Emit != nil {
-		overlayV1Emit = *config.OverlayV1Emit
-	}
 	engineerAsyncPort := true
 	if config.EngineerAsyncPort != nil {
 		engineerAsyncPort = *config.EngineerAsyncPort
@@ -340,36 +324,28 @@ func NewTelemetryCoreRuntime(config TelemetryCoreRuntimeConfig) (*TelemetryCoreR
 		telemetryFailurePolicyV2: failurePolicyV2,
 		telemetryEngineApply:     engineApply,
 		overlayFrameV2Shadow:     overlayFrameV2Shadow,
-		overlayV1Emit:            overlayV1Emit,
 		engineerAsyncPort:        engineerAsyncPort,
 		emitter:                  config.Emitter,
-		hub: telemetrytransport.NewHub(telemetrytransport.HubConfig{
-			Product: telemetrytransport.ProductOverlay,
-			Versions: projection.VersionPolicy{
-				Current:          overlayprojection.CurrentVersion,
-				MinimumSupported: overlayprojection.MinimumSupportedVersion,
-			},
-		}),
-		strategyHub:            strategyHub,
-		overlayV2Publishers:    overlayV2Publishers,
-		simulator:              simulator,
-		reducer:                reducer,
-		coord:                  coordinator,
-		derive:                 pipeline,
-		engine:                 telemetryengine.New(reducer, coordinator, pipeline),
-		shadow:                 newTelemetryShadow(config.TelemetryShadowEvery, config.TelemetryShadowBudget, now),
-		engineer:               config.Engineer,
-		engineerManifest:       engineerManifest,
-		capabilities:           capabilities,
-		capabilityDeclaration:  simulatorConfig.Capabilities,
-		descriptorCapabilities: descriptorCapabilityTokens(simulatorConfig.Descriptor, capabilities),
-		now:                    now,
-		watchdogDelay:          watchdogDelay,
-		watchdogEnabled:        watchdogEnabled,
-		overlayV2Project:       overlayV2Project,
-		overlayV2SetCadence:    overlayV2SetCadence,
-		performancePolicy:      effectivePerformance,
-		performanceRevision:    1,
+		strategyHub:              strategyHub,
+		overlayV2Publishers:      overlayV2Publishers,
+		simulator:                simulator,
+		reducer:                  reducer,
+		coord:                    coordinator,
+		derive:                   pipeline,
+		engine:                   telemetryengine.New(reducer, coordinator, pipeline),
+		shadow:                   newTelemetryShadow(config.TelemetryShadowEvery, config.TelemetryShadowBudget, now),
+		engineer:                 config.Engineer,
+		engineerManifest:         engineerManifest,
+		capabilities:             capabilities,
+		capabilityDeclaration:    simulatorConfig.Capabilities,
+		descriptorCapabilities:   descriptorCapabilityTokens(simulatorConfig.Descriptor, capabilities),
+		now:                      now,
+		watchdogDelay:            watchdogDelay,
+		watchdogEnabled:          watchdogEnabled,
+		overlayV2Project:         overlayV2Project,
+		overlayV2SetCadence:      overlayV2SetCadence,
+		performancePolicy:        effectivePerformance,
+		performanceRevision:      1,
 	}
 	if engineerAsyncPort {
 		runtime.engineerPort = newEngineerPort(runtime, config.Engineer, config.EngineerConsumeTimeout, config.EngineerFactQueueCapacity)
@@ -377,15 +353,7 @@ func NewTelemetryCoreRuntime(config TelemetryCoreRuntimeConfig) (*TelemetryCoreR
 	return runtime, nil
 }
 
-func (runtime *TelemetryCoreRuntime) Hub() *telemetrytransport.Hub {
-	if runtime == nil {
-		return nil
-	}
-	return runtime.hub
-}
-
-// StrategyHub exposes the Strategy product transport while Hub keeps its
-// historical Overlay meaning for existing callers.
+// StrategyHub exposes the single surviving product transport.
 func (runtime *TelemetryCoreRuntime) StrategyHub() *telemetrytransport.Hub {
 	if runtime == nil {
 		return nil
@@ -497,8 +465,6 @@ func (runtime *TelemetryCoreRuntime) Metrics() TelemetryCoreMetrics {
 		ObservationsReceived:         runtime.counters.observationsReceived.Load(),
 		ObservationsRejected:         runtime.counters.observationsRejected.Load(),
 		BatchesApplied:               runtime.counters.batchesApplied.Load(),
-		ProjectionsPublished:         runtime.counters.projectionsPublished.Load(),
-		OverlayProjectionsPublished:  runtime.counters.overlayProjections.Load(),
 		StrategyProjectionsPublished: runtime.counters.strategyProjections.Load(),
 		EngineerStatusesDelivered:    runtime.counters.engineerStatusesDelivered.Load(),
 		EngineerObservations:         runtime.counters.engineerObservations.Load(),
@@ -514,7 +480,6 @@ func (runtime *TelemetryCoreRuntime) Metrics() TelemetryCoreMetrics {
 		WatchdogDegradations:         details.watchdogDegradations,
 		PayloadBytes:                 details.payloadBytes,
 		LifecycleTransitions:         details.lifecycleTransitions,
-		Transport:                    runtime.hub.Metrics(),
 		StrategyTransport:            strategyHubMetrics(runtime.strategyHub),
 		ShadowMismatches:             shadow.mismatches,
 		ShadowDisabled:               shadow.disabled,
@@ -794,9 +759,6 @@ func (runtime *TelemetryCoreRuntime) abortStart(startErr error) error {
 
 func (runtime *TelemetryCoreRuntime) closeProductHubs() error {
 	var result error
-	if err := runtime.hub.Close(); err != nil {
-		result = errors.Join(result, fmt.Errorf("close Overlay telemetry hub: %w", err))
-	}
 	if runtime.strategyHub != nil {
 		if err := runtime.strategyHub.Close(); err != nil {
 			result = errors.Join(result, fmt.Errorf("close Strategy telemetry hub: %w", err))
@@ -936,8 +898,6 @@ func (runtime *TelemetryCoreRuntime) serveWails(
 
 func productName(product telemetrytransport.ProductID) string {
 	switch product {
-	case telemetrytransport.ProductOverlay:
-		return "Overlay"
 	case telemetrytransport.ProductStrategy:
 		return "Strategy"
 	default:
@@ -1032,22 +992,6 @@ func (sink runtimeBatchSink) WriteBatch(ctx context.Context, batch telemetrycore
 	}
 	sink.runtime.recordFrameArrival()
 	sink.runtime.counters.batchesApplied.Add(1)
-	var overlayProjected overlayprojection.SnapshotV1
-	overlayReady := false
-	if sink.runtime.overlayV1Emit {
-		var err error
-		overlayProjected, err = overlayprojection.ProjectV1(final)
-		overlayReady = err == nil
-		if err != nil {
-			if failureErr := sink.runtime.handlePostCommitFailure(
-				telemetrytransport.ProductOverlay,
-				"projection",
-				fmt.Errorf("project Overlay telemetry: %w", err),
-			); failureErr != nil {
-				return failureErr
-			}
-		}
-	}
 	strategyProjected, err := strategyprojection.ProjectV1(final)
 	strategyReady := err == nil
 	if err != nil {
@@ -1061,8 +1005,6 @@ func (sink runtimeBatchSink) WriteBatch(ctx context.Context, batch telemetrycore
 	}
 	status := sink.runtime.simulator.Status()
 	publication := sink.runtime.publishProjections(
-		overlayProjected,
-		overlayReady,
 		strategyProjected,
 		strategyReady,
 		status.State,
@@ -1070,13 +1012,6 @@ func (sink runtimeBatchSink) WriteBatch(ctx context.Context, batch telemetrycore
 	)
 	if publication.statusErr != nil {
 		if failureErr := sink.runtime.handlePostCommitFailure("", "status", publication.statusErr); failureErr != nil {
-			return failureErr
-		}
-	}
-	if publication.overlayErr != nil {
-		if failureErr := sink.runtime.handlePostCommitFailure(
-			telemetrytransport.ProductOverlay, "publish", publication.overlayErr,
-		); failureErr != nil {
 			return failureErr
 		}
 	}
@@ -1089,9 +1024,6 @@ func (sink runtimeBatchSink) WriteBatch(ctx context.Context, batch telemetrycore
 	}
 	if err := sink.runtime.publishOverlayV2(final, status.State, status.ReconnectAttempt); err != nil {
 		sink.runtime.handleOverlayV2Failure(err)
-	}
-	if publication.overlayPublished && (sink.runtime.strategyHub == nil || publication.strategyPublished) {
-		sink.runtime.counters.projectionsPublished.Add(1)
 	}
 	sink.runtime.deliverEngineerStatus(status.State, status.ReconnectAttempt)
 	sink.runtime.deliverEngineer(final, factValues)
@@ -1224,7 +1156,7 @@ func (runtime *TelemetryCoreRuntime) handleOverlayV2Failure(err error) {
 		return
 	}
 	// Shadow failure is deliberately not reflected in the canonical source
-	// status: doing so would invalidate a pending v1 full and make an
+	// status: doing so would invalidate a pending Strategy full and make an
 	// observational path user-visible.
 	product := string(telemetrytransport.ProductOverlayV2)
 	runtime.metricStore.publishFailure(product)
@@ -1435,16 +1367,12 @@ func engineerSourceState(state driver.State) engineerprojection.SourceState {
 }
 
 type projectionPublication struct {
-	overlayPublished  bool
 	strategyPublished bool
 	statusErr         error
-	overlayErr        error
 	strategyErr       error
 }
 
 func (runtime *TelemetryCoreRuntime) publishProjections(
-	overlayProjected overlayprojection.SnapshotV1,
-	overlayReady bool,
 	strategyProjected strategyprojection.SnapshotV1,
 	strategyReady bool,
 	state driver.State,
@@ -1456,26 +1384,6 @@ func (runtime *TelemetryCoreRuntime) publishProjections(
 		return projectionPublication{statusErr: err}
 	}
 	result := projectionPublication{}
-	if overlayReady {
-		overlayFrame, err := telemetrytransport.NewOverlayFull(
-			overlayProjected.Metadata,
-			runtime.statusRev,
-			overlayProjected.PayloadV1,
-		)
-		if err != nil {
-			result.overlayErr = fmt.Errorf("build Overlay telemetry projection: %w", err)
-		} else {
-			runtime.metricStore.observePayload(productName(telemetrytransport.ProductOverlay), uint64(len(overlayFrame.Payload)))
-			if err := runtime.guardConsumer("overlay.publish", func() error {
-				return runtime.hub.PublishSnapshot(overlayFrame, nil)
-			}); err != nil {
-				result.overlayErr = fmt.Errorf("publish Overlay telemetry projection: %w", err)
-			} else {
-				result.overlayPublished = true
-				runtime.counters.overlayProjections.Add(1)
-			}
-		}
-	}
 	if strategyReady && runtime.strategyHub != nil {
 		strategyFrame, err := telemetrytransport.NewStrategyFull(
 			strategyProjected.Metadata,
@@ -1515,20 +1423,6 @@ func (runtime *TelemetryCoreRuntime) setStatusLocked(state driver.State, attempt
 	nextRevision := runtime.statusRev + 1
 	capturedAt := runtime.now().UTC()
 	payload := telemetrytransport.StatusPayload{State: state.String(), ReconnectAttempt: attempt}
-	if runtime.overlayV1Emit {
-		overlayStatus, err := telemetrytransport.NewStatus(
-			telemetrytransport.ProductOverlay,
-			nextRevision,
-			capturedAt,
-			payload,
-		)
-		if err != nil {
-			return fmt.Errorf("build Overlay telemetry status: %w", err)
-		}
-		if err := runtime.hub.PublishStatus(overlayStatus); err != nil {
-			return fmt.Errorf("publish Overlay telemetry status: %w", err)
-		}
-	}
 	if runtime.strategyHub != nil {
 		strategyStatus, err := telemetrytransport.NewStatus(
 			telemetrytransport.ProductStrategy,

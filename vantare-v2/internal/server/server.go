@@ -205,7 +205,6 @@ type ServerConfig struct {
 	CfgDir                  string
 	EngineerSvc             *engineerservice.EngineerService
 	Emitter                 EventEmitter
-	OverlayProjection       *telemetrytransport.Hub
 	StrategyProjection      *telemetrytransport.Hub
 	StrategyPublicTransport bool
 	OverlayV2Publishers     *telemetrytransport.PublisherRegistry
@@ -230,12 +229,6 @@ func New(cfg ServerConfig) *Server {
 	mux.HandleFunc("GET /api/profile-v3", s.handleProfileV3)
 	mux.HandleFunc("GET /api/calendar", s.handleCalendar)
 	mux.HandleFunc("GET /api/engineer/health", s.handleEngineerHealth)
-	if cfg.OverlayProjection != nil {
-		mux.Handle(
-			"GET "+telemetrytransport.ProjectionRoute(telemetrytransport.ProductOverlay),
-			telemetrytransport.SSEHandler(cfg.OverlayProjection),
-		)
-	}
 	if cfg.StrategyPublicTransport && cfg.StrategyProjection != nil {
 		mux.Handle(
 			"GET "+telemetrytransport.ProjectionRoute(telemetrytransport.ProductStrategy),

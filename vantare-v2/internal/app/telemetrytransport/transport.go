@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/vantare/overlays/v2/internal/telemetry/projection"
-	"github.com/vantare/overlays/v2/internal/telemetry/projection/overlay"
 	"github.com/vantare/overlays/v2/internal/telemetry/projection/strategy"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
 )
@@ -169,14 +168,6 @@ func NewHub(config HubConfig) *Hub {
 			MaxPayloadBytes: maxPayload,
 		},
 	}
-}
-
-func NewOverlayFull(
-	metadata projection.Metadata,
-	statusRevision uint64,
-	payload overlay.PayloadV1,
-) (Envelope, error) {
-	return newFull(ProductOverlay, metadata, statusRevision, payload)
 }
 
 func NewStrategyFull(

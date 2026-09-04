@@ -25,7 +25,9 @@ func TestShadowHasNoExternalEffects(t *testing.T) {
 		t.Fatalf("shadow duplicated external Engineer delivery: observations=%d facts=%d", len(consumer.observations), len(consumer.facts))
 	}
 	metrics := runtime.Metrics()
-	if metrics.ProjectionsPublished != 1 || len(metrics.ShadowMismatches) != 0 || metrics.ShadowDisabled {
+	// R6b: sin produccion V1 ni Hub Overlay; el shadow sigue sin efectos
+	// externos ni divergencias.
+	if len(metrics.ShadowMismatches) != 0 || metrics.ShadowDisabled {
 		t.Fatalf("shadow affected authority or diverged: %+v", metrics)
 	}
 }

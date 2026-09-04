@@ -203,6 +203,7 @@ function InPlaceEditOverlayContent(props: Omit<InPlaceEditOverlayProps, "revisio
             <InPlaceWidgetEditFrame
               key={widget.id}
               widget={widget}
+              profileId={(storeDocument ?? document).id}
               layout={widget.layout}
               previewActive={interaction.isWidgetPreviewActive(widget.id)}
               selected={selectedWidgetIdLocal === widget.id}

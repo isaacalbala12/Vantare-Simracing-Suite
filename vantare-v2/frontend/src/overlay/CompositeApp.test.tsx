@@ -184,6 +184,53 @@ describe("CompositeApp", () => {
     installResizeObserver();
   });
 
+  it("R2: un evento legacy V1 solo no alimenta Desktop (sin snapshot, sin shadow, sin widget V1)", async () => {
+    render(<CompositeApp />);
+    dispatch("overlay:profile-v3-loaded", buildProfilePayload(buildRelativeDocument()));
+    tick(100);
+
+    await dispatchTelemetry([
+      { name: "telemetry:overlay:status", data: {
+        product: "overlay",
+        statusRevision: 1,
+        capturedAt: "2026-07-28T09:00:00Z",
+        payload: { state: "live", reconnectAttempt: 0 },
+      } },
+      { name: "telemetry:overlay:projection", data: canonicalEnvelope() },
+    ]);
+    tick(200);
+
+    expect(screen.queryByText("Driver 000")).toBeNull();
+    expect(shadowRuntimeMock.create).not.toHaveBeenCalled();
+    expect(shadowRuntimeMock.acceptLegacy).not.toHaveBeenCalled();
+    const diagnostics = window.__vantareOverlayV2Diagnostics?.() as Record<string, unknown> | undefined;
+    expect(diagnostics).toBeDefined();
+    expect(diagnostics).not.toHaveProperty("shadow");
+  });
+
+  it("R2: un snapshot V2 solo sigue alimentando el runtime y unmount cierra el pull", async () => {
+    const view = render(<CompositeApp />);
+    dispatch("overlay:profile-v3-loaded", buildProfilePayload(buildRelativeDocument()));
+    tick(100);
+
+    await dispatchTelemetry([
+      { name: "telemetry:overlay-v2:snapshot", data: JSON.parse(goldenV2Raw) },
+    ]);
+    tick(200);
+
+    expect(screen.getByText("Driver 000")).toBeTruthy();
+    expect(shadowRuntimeMock.create).not.toHaveBeenCalled();
+    const sessionId = pullRequests.at(-1)?.sessionId;
+    expect(sessionId).toBeDefined();
+
+    view.unmount();
+    tick(500);
+
+    expect(pullClosedSessions.has(sessionId!)).toBe(true);
+    expect(window.__vantareOverlayV2Diagnostics).toBeUndefined();
+    expect(runtimeMock.handlers.get("overlay:profile-v3-loaded") ?? []).toHaveLength(0);
+  });
+
   it("does not allocate or ingest shadow state while V1 emission is off", async () => {
     render(<CompositeApp />);
 
@@ -214,13 +261,6 @@ describe("CompositeApp", () => {
     );
     dispatch("overlay:profile-v3-loaded", buildProfilePayload(buildRelativeDocument()));
     await dispatchTelemetry([
-      { name: "telemetry:overlay:status", data: {
-        product: "overlay",
-        statusRevision: 1,
-        capturedAt: "2026-07-28T09:00:00Z",
-        payload: { state: "live", reconnectAttempt: 0 },
-      } },
-      { name: "telemetry:overlay:projection", data: canonicalEnvelope() },
       { name: "telemetry:overlay-v2:snapshot", data: JSON.parse(goldenV2Raw) },
     ]);
     tick(100);
@@ -281,22 +321,12 @@ describe("CompositeApp", () => {
     expect(screen.getByText("Overlay V2 frame unavailable")).toBeTruthy();
   });
 
-  it("applies canonical Overlay projections from the HTTP response", async () => {
+  it("applies the Overlay V2 snapshot from the HTTP response", async () => {
     render(<CompositeApp />);
     dispatch("overlay:profile-v3-loaded", buildProfilePayload(buildRelativeDocument()));
     tick(100);
 
     await dispatchTelemetry([
-      {
-        name: "telemetry:overlay:status",
-        data: {
-          product: "overlay",
-          statusRevision: 1,
-          capturedAt: "2026-07-28T09:00:00Z",
-          payload: { state: "live", reconnectAttempt: 0 },
-        },
-      },
-      {name: "telemetry:overlay:projection", data: canonicalEnvelope()},
       {name: "telemetry:overlay-v2:snapshot", data: JSON.parse(goldenV2Raw)},
     ]);
     tick(200);

@@ -10,14 +10,12 @@ import { readOverlayRouteParams } from "./overlay-route-params";
 import { OverlayCalendarReminderBanner } from "./OverlayCalendarReminderBanner";
 import { ObsOverlayStudioPreview } from "./ObsOverlayStudioPreview";
 import { ObsOverlayRuntime } from "./runtime/ObsOverlayRuntime";
-import { createSseProjectionTelemetryAdapter } from "./transports/projection-telemetry-adapter";
 import { createEngineerPresentationStore } from "../engineer/engineer-presentation-store";
 import { createSseEngineerPresentationAdapter } from "../engineer/engineer-presentation-adapters";
 import {
   attachOverlayFrameV2Sse,
   createOverlayFrameV2Store,
 } from "../telemetry-transport/overlay-frame-v2-store";
-import { createOverlayV2ShadowActivation } from "./telemetry-shadow/overlay-v2-shadow-activation";
 import { createOverlayV2FeaturesGeneration } from "./telemetry-shadow/overlay-v2-features";
 import { createHttpRaceScheduleStore } from "./core/race-schedule-store";
 
@@ -51,16 +49,10 @@ export function ObsOverlayApp() {
   useEffect(() => {
     const coordinator = createTelemetryRateCoordinator();
     const overlayV2Store = createOverlayFrameV2Store();
-    const overlayV2Shadow = createOverlayV2ShadowActivation(overlayV2Store);
     const engineerPresentations = createEngineerPresentationStore();
     const raceSchedule = createHttpRaceScheduleStore();
     const overlayV2Features = createOverlayV2FeaturesGeneration();
     const engineerAdapter = createSseEngineerPresentationAdapter({ store: engineerPresentations });
-    const adapter = createSseProjectionTelemetryAdapter({
-      coordinator,
-      runtime: "obs",
-      onMappedSnapshot: overlayV2Shadow.acceptLegacy,
-    });
     overlayV2Store.reset();
     const unsubscribeOverlayV2Store = bindOverlayV2Coordinator(
       overlayV2Store,
@@ -78,9 +70,7 @@ export function ObsOverlayApp() {
     };
     diagnosticWindow.__vantareOverlayV2Diagnostics = () => Object.freeze({
       ...overlayV2Store.getDiagnostics(),
-      shadow: overlayV2Shadow.sessionSummary(),
     });
-    adapter.start();
     engineerAdapter.start();
     raceSchedule.start();
     // Este efecto es la fabrica y el owner de la generacion; el render que la
@@ -91,8 +81,6 @@ export function ObsOverlayApp() {
       delete diagnosticWindow.__vantareOverlayV2Diagnostics;
       detachOverlayV2();
       unsubscribeOverlayV2Store();
-      overlayV2Shadow.dispose();
-      adapter.stop();
       engineerAdapter.stop();
       overlayV2Store.dispose();
       engineerPresentations.dispose();

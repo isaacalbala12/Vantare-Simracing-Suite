@@ -1,6 +1,6 @@
 # Handoff vivo — Telemetry Core
 
-## R5 ruta SSE publica Overlay V1 retirada — 2026-09-04, ISA-894
+## R5 ruta SSE publica Overlay V1 retirada y publicada — 2026-09-04, ISA-894
 
 Writer unico Muse en `C:\tmp\vantare-v1-retirada-r5\vantare-v2`, rama
 `vantareapp/isa-894-retirada-v1-r5`, base exacta R4 `d9893379`. Commit de
@@ -23,6 +23,9 @@ aprobo sin P0/P1/P2; su P3 sobre la ausencia de una asercion negativa de
 integracion se endurecio en el harness antes del SHA final.
 Review final Muse `ses_f963d3a8fffeYpLFm41Uwq6EdJ` sobre `4daea04a`:
 APPROVE, P0/P1/P2=0.
+[PR draft #975](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/975)
+abierta contra `nightly`, apilada sobre #969/#970/#971/#972/#973/#974; sin
+merge ni promocion.
 
 R5 NO significa V1 ausente del binario: productor, Hub, flag, persistencia,
 metricas, tipos, builders, fixtures y tooling siguen. El inventario R6

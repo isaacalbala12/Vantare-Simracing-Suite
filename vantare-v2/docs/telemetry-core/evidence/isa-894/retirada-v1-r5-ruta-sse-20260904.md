@@ -81,3 +81,7 @@ formato y fronteras. Los P3 restantes son nits sin impacto funcional.
 Rama `vantareapp/isa-894-retirada-v1-r5`, apilada sobre R4. Sin merge,
 promocion, release ni retirada fisica total de V1. Rollback exclusivamente por
 la build anterior verificada en R0.
+
+[PR draft #975](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/975)
+abierta contra `nightly`, apilada sobre #969/#970/#971/#972/#973/#974.
+La publicacion de la rama no es merge ni promocion.

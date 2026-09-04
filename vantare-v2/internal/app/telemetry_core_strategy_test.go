@@ -14,6 +14,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/app/telemetrytransport"
 	telemetrycore "github.com/vantare/overlays/v2/internal/telemetry/core"
 	"github.com/vantare/overlays/v2/internal/telemetry/driver"
+	"github.com/vantare/overlays/v2/internal/telemetry/projection"
 	engineerprojection "github.com/vantare/overlays/v2/internal/telemetry/projection/engineer"
 	strategyprojection "github.com/vantare/overlays/v2/internal/telemetry/projection/strategy"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
@@ -272,29 +273,41 @@ func TestTelemetryCoreRuntimeIsolatesEngineerFailureFromStrategyHub(t *testing.T
 }
 
 func TestStrategyFailureLeavesRetiredOverlaySilent(t *testing.T) {
-	// R6a: con Strategy cerrado, WriteBatch registra el fallo sin tumbar el
-	// driver y el Hub Overlay V1 retirado sigue sin publicar nada.
+	// R6a.1: el fallo es un ErrPayloadTooLarge real de Strategy (ya no
+	// ErrClosed): con el status ya publicado, WriteBatch conserva el estado y
+	// el snapshot no cabe en el hub acotado de test. La policy V2 lo absorbe
+	// sin tumbar el driver y el Hub Overlay V1 retirado sigue sin publicar.
 	runtime, err := newStrategyTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Seed the same status in Strategy before closing it. WriteBatch then
+	subscription := subscribeRuntimeHub(t, runtime.StrategyHub())
+	defer subscription.Close()
+	// Seed the same status in Strategy before bounding it. WriteBatch then
 	// keeps that status and reaches the Strategy snapshot publication itself.
 	if err := runtime.setStatus(driver.StateStopped, 0); err != nil {
 		t.Fatal(err)
 	}
-	if err := runtime.StrategyHub().Close(); err != nil {
+	_ = nextStatus(t, subscription)
+	if err := (runtimeBatchSink{runtime: runtime}).WriteBatch(context.Background(), strategyRuntimeBatch(1, 1, time.Second)); err != nil {
 		t.Fatal(err)
 	}
+	frame := nextSnapshot(t, subscription)
+	swapStrategyHubForPayloadCeiling(t, runtime, len(frame.Payload))
+	assertStrategyHubRejectsSnapshotAsTooLarge(t, runtime.StrategyHub(), frame)
 
-	err = (runtimeBatchSink{runtime: runtime}).WriteBatch(context.Background(), engineerRuntimeBatch())
+	err = (runtimeBatchSink{runtime: runtime}).WriteBatch(context.Background(), strategyRuntimeBatch(1, 2, 2*time.Second))
 	if err != nil {
 		t.Fatalf("Strategy transport failure escaped driver loop: %v", err)
 	}
 	metrics := runtime.Metrics()
+	// batch#1 publico 1 snapshot en el hub normal; batch#2 fallo en el hub
+	// acotado sin publicar snapshot en ningun hub. La transicion a degraded
+	// si cabe en el limite y queda entregada (StatusPublications==1).
 	if metrics.ProjectionsPublished != 0 || metrics.OverlayProjectionsPublished != 0 ||
-		metrics.StrategyProjectionsPublished != 0 || metrics.Transport.SnapshotPublications != 0 ||
+		metrics.StrategyProjectionsPublished != 1 || metrics.Transport.SnapshotPublications != 0 ||
 		metrics.StrategyTransport.SnapshotPublications != 0 ||
+		metrics.StrategyTransport.StatusPublications != 1 ||
 		metrics.PublishFailures["strategy"] != 1 || metrics.FramesDropped["strategy-publish"] != 1 ||
 		metrics.FailStops != 0 {
 		t.Fatalf("failed cycle metrics = %#v", metrics)
@@ -302,12 +315,91 @@ func TestStrategyFailureLeavesRetiredOverlaySilent(t *testing.T) {
 	if _, ok, _ := runtime.Hub().ReplaySnapshot(); ok {
 		t.Fatal("retired Overlay V1 Hub published snapshot after Strategy failure")
 	}
-	subscription, err := runtime.Hub().Subscribe(context.Background())
+	hubSubscription, err := runtime.Hub().Subscribe(context.Background())
 	if err != nil {
 		t.Fatalf("retired Overlay hub must stay subscribable until R6b: %v", err)
 	}
+	defer hubSubscription.Close()
+}
+
+func TestStrategyPayloadTooLargeLegacyFailStop(t *testing.T) {
+	// R6a.1: con la policy legacy, el mismo ErrPayloadTooLarge real de
+	// Strategy tumba el runtime (fail-stop) en lugar de absorberse.
+	legacy := false
+	runtime, err := newStrategyTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{TelemetryFailurePolicyV2: &legacy})
+	if err != nil {
+		t.Fatal(err)
+	}
+	subscription := subscribeRuntimeHub(t, runtime.StrategyHub())
 	defer subscription.Close()
+	if err := runtime.setStatus(driver.StateStopped, 0); err != nil {
+		t.Fatal(err)
+	}
+	_ = nextStatus(t, subscription)
+	if err := (runtimeBatchSink{runtime: runtime}).WriteBatch(context.Background(), strategyRuntimeBatch(1, 1, time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	frame := nextSnapshot(t, subscription)
+	swapStrategyHubForPayloadCeiling(t, runtime, len(frame.Payload))
+	assertStrategyHubRejectsSnapshotAsTooLarge(t, runtime.StrategyHub(), frame)
+
+	err = (runtimeBatchSink{runtime: runtime}).WriteBatch(context.Background(), strategyRuntimeBatch(1, 2, 2*time.Second))
+	if !errors.Is(err, telemetrytransport.ErrPayloadTooLarge) {
+		t.Fatalf("legacy failure = %v, want %v", err, telemetrytransport.ErrPayloadTooLarge)
+	}
+	metrics := runtime.Metrics()
+	if metrics.StrategyProjectionsPublished != 1 || metrics.FailStops != 1 {
+		t.Fatalf("legacy fail-stop metrics = %#v", metrics)
+	}
+	if runtime.lifecycle != telemetryRuntimeTerminal {
+		t.Fatalf("legacy lifecycle = %d, want terminal", runtime.lifecycle)
+	}
+	if _, ok, _ := runtime.Hub().ReplaySnapshot(); ok {
+		t.Fatal("retired Overlay V1 Hub published snapshot after legacy fail-stop")
+	}
 	assertRuntimeHubClosed(t, runtime.StrategyHub())
+}
+
+// swapStrategyHubForPayloadCeiling sustituye el strategyHub del runtime por un
+// Hub ProductStrategy con un limite derivado del snapshot real ya publicado:
+// la mitad de su tamano. El status (decenas de bytes) no se republica porque
+// WriteBatch conserva el mismo estado, y el snapshot falla con
+// ErrPayloadTooLarge con un margen inmune a variaciones de pocos bytes entre
+// batches. El limite nunca cae al fallback de NewHub: bounded() solo acepta
+// valores >= 1, y el guard lo verifica.
+func swapStrategyHubForPayloadCeiling(t *testing.T, runtime *TelemetryCoreRuntime, snapshotPayloadBytes int) {
+	t.Helper()
+	limit := snapshotPayloadBytes / 2
+	if limit < 1 {
+		t.Fatalf("strategy snapshot payload = %d bytes, cannot derive a test ceiling below it", snapshotPayloadBytes)
+	}
+	runtime.strategyHub = telemetrytransport.NewHub(telemetrytransport.HubConfig{
+		Product:         telemetrytransport.ProductStrategy,
+		MaxPayloadBytes: limit,
+		Versions: projection.VersionPolicy{
+			Current:          strategyprojection.CurrentVersion,
+			MinimumSupported: strategyprojection.MinimumSupportedVersion,
+		},
+	})
+}
+
+// assertStrategyHubRejectsSnapshotAsTooLarge prueba causalmente que el payload
+// observado, reenviado tal cual al hub acotado, falla con ErrPayloadTooLarge.
+func assertStrategyHubRejectsSnapshotAsTooLarge(t *testing.T, hub *telemetrytransport.Hub, frame telemetrytransport.Envelope) {
+	t.Helper()
+	oversized := telemetrytransport.Envelope{
+		Product:           telemetrytransport.ProductStrategy,
+		ProjectionVersion: strategyprojection.VersionV1,
+		Epoch:             frame.Epoch,
+		Sequence:          frame.Sequence + 1,
+		Kind:              telemetrytransport.Full,
+		CapturedAt:        frame.CapturedAt,
+		StatusRevision:    frame.StatusRevision,
+		Payload:           frame.Payload,
+	}
+	if err := hub.PublishSnapshot(oversized, nil); !errors.Is(err, telemetrytransport.ErrPayloadTooLarge) {
+		t.Fatalf("bounded hub publish = %v, want %v", err, telemetrytransport.ErrPayloadTooLarge)
+	}
 }
 
 func TestTelemetryCoreRuntimeRejectsInvalidCursorsWithoutAdvancingStrategy(t *testing.T) {

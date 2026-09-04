@@ -19,7 +19,6 @@ import (
 	telemetryengine "github.com/vantare/overlays/v2/internal/telemetry/engine"
 	"github.com/vantare/overlays/v2/internal/telemetry/projection"
 	engineerprojection "github.com/vantare/overlays/v2/internal/telemetry/projection/engineer"
-	overlayprojection "github.com/vantare/overlays/v2/internal/telemetry/projection/overlay"
 	overlayv2 "github.com/vantare/overlays/v2/internal/telemetry/projection/overlayv2"
 	strategyprojection "github.com/vantare/overlays/v2/internal/telemetry/projection/strategy"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/envelope"
@@ -120,16 +119,12 @@ type TelemetryCoreRuntimeConfig struct {
 
 // TelemetryCoreMetrics is a payload-free operational summary. It is safe to
 // expose through local diagnostics because it contains only counters and
-// bounded transport state. ProjectionsPublished and OverlayProjectionsPublished
-// are retired in R6a: they stay exposed for compatibility but always report
-// zero and must never count OverlayFrame V2. StrategyProjectionsPublished keeps
-// its current semantics. Transport remains the Overlay hub for compatibility.
+// bounded transport state. StrategyProjectionsPublished keeps its current
+// semantics and StrategyTransport is the single surviving product transport.
 type TelemetryCoreMetrics struct {
 	ObservationsReceived         uint64
 	ObservationsRejected         uint64
 	BatchesApplied               uint64
-	ProjectionsPublished         uint64
-	OverlayProjectionsPublished  uint64
 	StrategyProjectionsPublished uint64
 	EngineerStatusesDelivered    uint64
 	EngineerObservations         uint64
@@ -145,7 +140,6 @@ type TelemetryCoreMetrics struct {
 	WatchdogDegradations         uint64
 	PayloadBytes                 map[string]TelemetryPayloadPercentiles
 	LifecycleTransitions         map[string]uint64
-	Transport                    telemetrytransport.HubMetrics
 	StrategyTransport            telemetrytransport.HubMetrics
 	ShadowMismatches             map[string]uint64
 	ShadowDisabled               bool
@@ -199,7 +193,6 @@ type TelemetryCoreRuntime struct {
 	overlayFrameV2Shadow     bool
 	engineerAsyncPort        bool
 	emitter                  telemetrytransport.EventEmitter
-	hub                      *telemetrytransport.Hub
 	strategyHub              *telemetrytransport.Hub
 	overlayV2Publishers      *telemetrytransport.PublisherRegistry
 	simulator                telemetrycore.SimulatorRuntime
@@ -333,33 +326,26 @@ func NewTelemetryCoreRuntime(config TelemetryCoreRuntimeConfig) (*TelemetryCoreR
 		overlayFrameV2Shadow:     overlayFrameV2Shadow,
 		engineerAsyncPort:        engineerAsyncPort,
 		emitter:                  config.Emitter,
-		hub: telemetrytransport.NewHub(telemetrytransport.HubConfig{
-			Product: telemetrytransport.ProductOverlay,
-			Versions: projection.VersionPolicy{
-				Current:          overlayprojection.CurrentVersion,
-				MinimumSupported: overlayprojection.MinimumSupportedVersion,
-			},
-		}),
-		strategyHub:            strategyHub,
-		overlayV2Publishers:    overlayV2Publishers,
-		simulator:              simulator,
-		reducer:                reducer,
-		coord:                  coordinator,
-		derive:                 pipeline,
-		engine:                 telemetryengine.New(reducer, coordinator, pipeline),
-		shadow:                 newTelemetryShadow(config.TelemetryShadowEvery, config.TelemetryShadowBudget, now),
-		engineer:               config.Engineer,
-		engineerManifest:       engineerManifest,
-		capabilities:           capabilities,
-		capabilityDeclaration:  simulatorConfig.Capabilities,
-		descriptorCapabilities: descriptorCapabilityTokens(simulatorConfig.Descriptor, capabilities),
-		now:                    now,
-		watchdogDelay:          watchdogDelay,
-		watchdogEnabled:        watchdogEnabled,
-		overlayV2Project:       overlayV2Project,
-		overlayV2SetCadence:    overlayV2SetCadence,
-		performancePolicy:      effectivePerformance,
-		performanceRevision:    1,
+		strategyHub:              strategyHub,
+		overlayV2Publishers:      overlayV2Publishers,
+		simulator:                simulator,
+		reducer:                  reducer,
+		coord:                    coordinator,
+		derive:                   pipeline,
+		engine:                   telemetryengine.New(reducer, coordinator, pipeline),
+		shadow:                   newTelemetryShadow(config.TelemetryShadowEvery, config.TelemetryShadowBudget, now),
+		engineer:                 config.Engineer,
+		engineerManifest:         engineerManifest,
+		capabilities:             capabilities,
+		capabilityDeclaration:    simulatorConfig.Capabilities,
+		descriptorCapabilities:   descriptorCapabilityTokens(simulatorConfig.Descriptor, capabilities),
+		now:                      now,
+		watchdogDelay:            watchdogDelay,
+		watchdogEnabled:          watchdogEnabled,
+		overlayV2Project:         overlayV2Project,
+		overlayV2SetCadence:      overlayV2SetCadence,
+		performancePolicy:        effectivePerformance,
+		performanceRevision:      1,
 	}
 	if engineerAsyncPort {
 		runtime.engineerPort = newEngineerPort(runtime, config.Engineer, config.EngineerConsumeTimeout, config.EngineerFactQueueCapacity)
@@ -367,15 +353,7 @@ func NewTelemetryCoreRuntime(config TelemetryCoreRuntimeConfig) (*TelemetryCoreR
 	return runtime, nil
 }
 
-func (runtime *TelemetryCoreRuntime) Hub() *telemetrytransport.Hub {
-	if runtime == nil {
-		return nil
-	}
-	return runtime.hub
-}
-
-// StrategyHub exposes the Strategy product transport while Hub keeps its
-// historical Overlay meaning for existing callers.
+// StrategyHub exposes the single surviving product transport.
 func (runtime *TelemetryCoreRuntime) StrategyHub() *telemetrytransport.Hub {
 	if runtime == nil {
 		return nil
@@ -484,12 +462,9 @@ func (runtime *TelemetryCoreRuntime) Metrics() TelemetryCoreMetrics {
 	mapper := runtime.simulator.MapperMetrics()
 	coordinator := runtime.coord.Metrics()
 	return TelemetryCoreMetrics{
-		ObservationsReceived: runtime.counters.observationsReceived.Load(),
-		ObservationsRejected: runtime.counters.observationsRejected.Load(),
-		BatchesApplied:       runtime.counters.batchesApplied.Load(),
-		// Retirados en R6a: siempre cero, nunca cuentan OverlayFrame V2.
-		ProjectionsPublished:         0,
-		OverlayProjectionsPublished:  0,
+		ObservationsReceived:         runtime.counters.observationsReceived.Load(),
+		ObservationsRejected:         runtime.counters.observationsRejected.Load(),
+		BatchesApplied:               runtime.counters.batchesApplied.Load(),
 		StrategyProjectionsPublished: runtime.counters.strategyProjections.Load(),
 		EngineerStatusesDelivered:    runtime.counters.engineerStatusesDelivered.Load(),
 		EngineerObservations:         runtime.counters.engineerObservations.Load(),
@@ -505,7 +480,6 @@ func (runtime *TelemetryCoreRuntime) Metrics() TelemetryCoreMetrics {
 		WatchdogDegradations:         details.watchdogDegradations,
 		PayloadBytes:                 details.payloadBytes,
 		LifecycleTransitions:         details.lifecycleTransitions,
-		Transport:                    runtime.hub.Metrics(),
 		StrategyTransport:            strategyHubMetrics(runtime.strategyHub),
 		ShadowMismatches:             shadow.mismatches,
 		ShadowDisabled:               shadow.disabled,
@@ -785,9 +759,6 @@ func (runtime *TelemetryCoreRuntime) abortStart(startErr error) error {
 
 func (runtime *TelemetryCoreRuntime) closeProductHubs() error {
 	var result error
-	if err := runtime.hub.Close(); err != nil {
-		result = errors.Join(result, fmt.Errorf("close Overlay telemetry hub: %w", err))
-	}
 	if runtime.strategyHub != nil {
 		if err := runtime.strategyHub.Close(); err != nil {
 			result = errors.Join(result, fmt.Errorf("close Strategy telemetry hub: %w", err))
@@ -927,8 +898,6 @@ func (runtime *TelemetryCoreRuntime) serveWails(
 
 func productName(product telemetrytransport.ProductID) string {
 	switch product {
-	case telemetrytransport.ProductOverlay:
-		return "Overlay"
 	case telemetrytransport.ProductStrategy:
 		return "Strategy"
 	default:
@@ -1187,7 +1156,7 @@ func (runtime *TelemetryCoreRuntime) handleOverlayV2Failure(err error) {
 		return
 	}
 	// Shadow failure is deliberately not reflected in the canonical source
-	// status: doing so would invalidate a pending v1 full and make an
+	// status: doing so would invalidate a pending Strategy full and make an
 	// observational path user-visible.
 	product := string(telemetrytransport.ProductOverlayV2)
 	runtime.metricStore.publishFailure(product)
@@ -1454,8 +1423,6 @@ func (runtime *TelemetryCoreRuntime) setStatusLocked(state driver.State, attempt
 	nextRevision := runtime.statusRev + 1
 	capturedAt := runtime.now().UTC()
 	payload := telemetrytransport.StatusPayload{State: state.String(), ReconnectAttempt: attempt}
-	// R6a: el Hub Overlay V1 permanece construido pero ya no recibe status.
-	// Su retirada fisica pertenece a R6b.
 	if runtime.strategyHub != nil {
 		strategyStatus, err := telemetrytransport.NewStatus(
 			telemetrytransport.ProductStrategy,

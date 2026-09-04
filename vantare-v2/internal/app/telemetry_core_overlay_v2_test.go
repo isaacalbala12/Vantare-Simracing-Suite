@@ -137,14 +137,11 @@ func TestOverlayV2PublishesObservedSourceHzOverTwoSeconds(t *testing.T) {
 }
 
 func TestRuntimePublishesV2WithoutV1(t *testing.T) {
-	// R6a: el Hub Overlay V1 permanece construido pero retirado: WriteBatch
-	// publica V2 y deja el Hub sin status ni snapshot.
+	// R6b: no existe Hub Overlay; WriteBatch publica V2 y Strategy conserva
+	// su semantica.
 	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{})
 	if err != nil {
 		t.Fatal(err)
-	}
-	if runtime.Hub() == nil {
-		t.Fatal("retired Overlay V1 Hub must stay built until R6b")
 	}
 	v2Publisher, release, err := runtime.OverlayV2Publishers().RegisterConsumer(telemetrytransport.ProductOverlayV2)
 	if err != nil {
@@ -160,12 +157,6 @@ func TestRuntimePublishesV2WithoutV1(t *testing.T) {
 	if err := (runtimeBatchSink{runtime: runtime}).WriteBatch(context.Background(), hardeningBatch(1, 1)); err != nil {
 		t.Fatalf("WriteBatch() = %v", err)
 	}
-	if _, ok, _ := runtime.Hub().ReplayStatus(); ok {
-		t.Fatal("retired Overlay V1 Hub published status")
-	}
-	if _, ok, _ := runtime.Hub().ReplaySnapshot(); ok {
-		t.Fatal("retired Overlay V1 Hub published snapshot")
-	}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	event := nextOverlayV2Snapshot(t, v2, ctx)
@@ -180,9 +171,7 @@ func TestRuntimePublishesV2WithoutV1(t *testing.T) {
 		t.Fatalf("v2 update = %+v", update)
 	}
 	metrics := runtime.Metrics()
-	if metrics.ProjectionsPublished != 0 || metrics.OverlayProjectionsPublished != 0 ||
-		metrics.Transport.SnapshotPublications != 0 || metrics.Transport.StatusPublications != 0 ||
-		metrics.OverlayV2PayloadBytes["1"].Count != 1 ||
+	if metrics.OverlayV2PayloadBytes["1"].Count != 1 ||
 		metrics.OverlayV2BuildDurationUs.Count != 1 || metrics.PublisherDroppedFrames["overlay-v2"] != 0 {
 		t.Fatalf("shadow metrics = %+v", metrics)
 	}
@@ -237,8 +226,8 @@ func TestRuntimePublishesAndRetainsOverlayV2LifecycleWithoutFrames(t *testing.T)
 }
 
 func TestOverlayV2FailureIsNonTerminal(t *testing.T) {
-	// R6a: un fallo V2 sigue siendo no terminal; el Hub V1 retirado no recibe
-	// nada y Strategy conserva su semantica (sin hub en este corte).
+	// R6b: un fallo V2 sigue siendo no terminal y Strategy conserva su
+	// semantica (sin hub en este corte).
 	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{})
 	if err != nil {
 		t.Fatal(err)
@@ -258,8 +247,7 @@ func TestOverlayV2FailureIsNonTerminal(t *testing.T) {
 		t.Fatalf("v2 shadow failure escaped driver loop: %v", err)
 	}
 	metrics := runtime.Metrics()
-	if metrics.ProjectionsPublished != 0 || metrics.OverlayProjectionsPublished != 0 ||
-		metrics.Transport.SnapshotPublications != 0 || metrics.PublishFailures["overlay-v2"] != 1 ||
+	if metrics.PublishFailures["overlay-v2"] != 1 ||
 		metrics.FramesDropped["overlay-v2-publish"] != 1 || metrics.FailStops != 0 {
 		t.Fatalf("v2 failure isolation metrics = %+v", metrics)
 	}

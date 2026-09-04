@@ -22,11 +22,14 @@ func TestOverlayV1EmissionGuard(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	text := string(runtimeSource)
-	// R6a: cero produccion Overlay V1 en el runtime. El Hub inerte se
-	// conserva para R6b, pero WriteBatch/status ya no lo alimentan.
-	// Strategy V1 conserva su semantica y su ProjectV1 queda fuera de esta
-	// prohibicion.
+	text := strings.ReplaceAll(string(runtimeSource), "ProductOverlayV2", "")
+	// R6b: el Hub Overlay V1 inerte esta fisicamente retirado del runtime.
+	// Ni campo, ni constructor ProductOverlay, ni accessor Hub(), ni
+	// import overlayprojection, ni cierre, ni metricas Overlay. Strategy V1
+	// conserva su semantica y su ProjectV1 queda fuera de esta prohibicion.
+	// ProductOverlayV2 es el transporte vivo y contiene el prefijo
+	// ProductOverlay: se enmascara arriba para que el token sin coma no lo
+	// marque.
 	for _, forbidden := range []string{
 		"overlayprojection.ProjectV1(final)",
 		"NewOverlayFull",
@@ -35,6 +38,10 @@ func TestOverlayV1EmissionGuard(t *testing.T) {
 		"VANTARE_OVERLAY_V1_EMIT",
 		"runtime.hub.PublishSnapshot",
 		"runtime.hub.PublishStatus",
+		"overlayprojection",
+		"Product: telemetrytransport.ProductOverlay",
+		"func (runtime *TelemetryCoreRuntime) Hub()",
+		"runtime.hub",
 	} {
 		if strings.Contains(text, forbidden) {
 			t.Fatalf("retired Overlay V1 production still present in runtime: %q", forbidden)

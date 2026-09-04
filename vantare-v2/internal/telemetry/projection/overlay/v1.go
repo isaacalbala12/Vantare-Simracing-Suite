@@ -13,14 +13,12 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/vehicle"
 )
 
-// R6a.1: la proyeccion Overlay V1 esta retirada. Sobreviven solo los tipos y
-// constantes de contrato con consumidor literal en contract-gen (tipos y
-// capacidades) o en el Hub inerte (versiones). No queda logica de proyeccion.
-const (
-	CurrentVersion          projection.Version = 1
-	MinimumSupportedVersion projection.Version = 1
-)
-
+// R6b: la proyeccion Overlay V1 esta retirada y el Hub inerte tambien.
+// Sobreviven solo los tipos y capacidades de contrato con consumidor literal
+// en contract-gen. Las versiones del Hub retirado (CurrentVersion,
+// MinimumSupportedVersion) se eliminan con él; el wiring guard las
+// marco huerfanas al retirar su unico caller productivo. No queda logica de
+// proyeccion.
 type Capability string
 
 const (

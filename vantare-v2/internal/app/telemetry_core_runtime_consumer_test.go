@@ -70,9 +70,8 @@ func TestPublishFailureIsNotTerminal(t *testing.T) {
 	if metrics.FramesDropped["strategy-publish"] != 1 || metrics.PublishFailures["strategy"] != 1 {
 		t.Fatalf("publish failure metrics = %+v", metrics)
 	}
-	if metrics.ProjectionsPublished != 0 || metrics.OverlayProjectionsPublished != 0 ||
-		metrics.StrategyProjectionsPublished != 0 {
-		t.Fatalf("retired counters moved on failure = %+v", metrics)
+	if metrics.StrategyProjectionsPublished != 0 {
+		t.Fatalf("strategy counter moved on failure = %#v", metrics)
 	}
 }
 

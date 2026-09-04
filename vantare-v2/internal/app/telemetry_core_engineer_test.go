@@ -45,8 +45,8 @@ func TestTelemetryCoreRuntimePublishesEngineerProjectionAndOrderedFacts(t *testi
 }
 
 func TestTelemetryCoreRuntimeIsolatesEngineerFailureWithoutOverlayV1(t *testing.T) {
-	// R6a: el fallo de Engineer queda aislado y el Hub Overlay V1 retirado
-	// no publica status ni snapshot.
+	// R6b: el fallo de Engineer queda aislado en su frontera; no existe Hub
+	// Overlay.
 	consumer := &recordingEngineerConsumer{observationErr: errors.New("engineer unavailable")}
 	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{Engineer: consumer})
 	if err != nil {
@@ -56,18 +56,11 @@ func TestTelemetryCoreRuntimeIsolatesEngineerFailureWithoutOverlayV1(t *testing.
 	if err := (runtimeBatchSink{runtime: runtime}).WriteBatch(context.Background(), engineerRuntimeBatch()); err != nil {
 		t.Fatalf("Engineer failure escaped product boundary: %v", err)
 	}
-	if _, ok, _ := runtime.Hub().ReplayStatus(); ok {
-		t.Fatal("retired Overlay V1 Hub published status")
-	}
-	if _, ok, _ := runtime.Hub().ReplaySnapshot(); ok {
-		t.Fatal("retired Overlay V1 Hub published snapshot")
-	}
 	if runtime.EngineerError() == nil {
 		t.Fatal("EngineerError() = nil, want isolated diagnostic")
 	}
 	metrics := runtime.Metrics()
-	if metrics.EngineerObservations != 0 || metrics.EngineerDeliveryFailures != 1 ||
-		metrics.ProjectionsPublished != 0 || metrics.OverlayProjectionsPublished != 0 {
+	if metrics.EngineerObservations != 0 || metrics.EngineerDeliveryFailures != 1 {
 		t.Fatalf("isolated Engineer metrics = %#v", metrics)
 	}
 }

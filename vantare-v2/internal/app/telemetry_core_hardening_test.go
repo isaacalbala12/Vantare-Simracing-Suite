@@ -37,11 +37,7 @@ func TestTelemetryCoreTwoHourLogicalSoakIsBoundedAndPayloadFree(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// R6a: el Hub Overlay V1 esta retirado y no recibe suscriptores de soak;
-	// permanece construido para su retirada aislada en R6b.
-	if runtime.Hub() == nil {
-		t.Fatal("retired Overlay V1 Hub must stay built until R6b")
-	}
+	// R6b: no existe Hub Overlay; el soak solo suscribe Strategy.
 	strategySubscriptions := subscribeHardeningProduct(t, runtime.StrategyHub())
 
 	root := t.TempDir()
@@ -127,26 +123,20 @@ func TestTelemetryCoreTwoHourLogicalSoakIsBoundedAndPayloadFree(t *testing.T) {
 	}
 
 	metrics := runtime.Metrics()
-	// R6a: los contadores Overlay V1 heredados quedan en cero y el Hub
-	// retirado no publica; Strategy conserva su semantica de soak.
+	// R6b: sin Hub Overlay ni contadores heredados; Strategy conserva su
+	// semantica de soak.
 	if metrics.ObservationsRejected != 0 ||
 		metrics.BatchesApplied != hardeningSoakSamples ||
-		metrics.ProjectionsPublished != 0 ||
-		metrics.OverlayProjectionsPublished != 0 ||
 		metrics.StrategyProjectionsPublished != hardeningSoakSamples ||
 		metrics.EngineerStatusesDelivered != hardeningSoakSamples ||
 		metrics.EngineerObservations != hardeningSoakSamples ||
 		metrics.EngineerFacts == 0 || metrics.EngineerFacts != consumer.facts ||
 		metrics.EngineerDeliveryFailures != 0 ||
-		metrics.Transport.CurrentSubscribers != 0 ||
 		metrics.StrategyTransport.CurrentSubscribers != hardeningSoakSubscribersPerProduct ||
-		metrics.Transport.StatusPublications != 0 ||
 		metrics.StrategyTransport.StatusPublications != 1 ||
-		metrics.Transport.SnapshotPublications != 0 ||
 		metrics.StrategyTransport.SnapshotPublications != hardeningSoakSamples ||
-		metrics.Transport.SnapshotReplacements != 0 ||
 		metrics.StrategyTransport.SnapshotReplacements != hardeningSoakSamples-1 ||
-		metrics.Transport.DeltasRetained != 0 || metrics.StrategyTransport.DeltasRetained != 0 {
+		metrics.StrategyTransport.DeltasRetained != 0 {
 		t.Fatalf("runtime metrics = %#v", metrics)
 	}
 	if consumer.statuses != hardeningSoakSamples || consumer.observations != hardeningSoakSamples ||
@@ -161,8 +151,8 @@ func TestTelemetryCoreTwoHourLogicalSoakIsBoundedAndPayloadFree(t *testing.T) {
 		}
 	}
 	metrics = runtime.Metrics()
-	if metrics.Transport.CurrentSubscribers != 0 || metrics.StrategyTransport.CurrentSubscribers != 0 {
-		t.Fatalf("subscribers after teardown: Overlay=%d Strategy=%d", metrics.Transport.CurrentSubscribers, metrics.StrategyTransport.CurrentSubscribers)
+	if metrics.StrategyTransport.CurrentSubscribers != 0 {
+		t.Fatalf("subscribers after teardown: Strategy=%d", metrics.StrategyTransport.CurrentSubscribers)
 	}
 }
 
@@ -218,10 +208,9 @@ func BenchmarkTelemetryCoreCombined64Vehicles(b *testing.B) {
 	// This historical combined benchmark is the regression signal for the
 	// Strategy + Engineer fan-out. Keep the counter guard so
 	// Strategy cannot be removed while the benchmark still appears healthy.
-	// Los contadores Overlay V1 heredados quedan en cero (R6a).
 	metrics := runtime.Metrics()
-	if metrics.BatchesApplied != sequence || metrics.ProjectionsPublished != 0 ||
-		metrics.OverlayProjectionsPublished != 0 || metrics.StrategyProjectionsPublished != sequence ||
+	if metrics.BatchesApplied != sequence ||
+		metrics.StrategyProjectionsPublished != sequence ||
 		metrics.EngineerObservations != sequence || metrics.EngineerDeliveryFailures != 0 {
 		b.Fatalf("combined runtime metrics = %#v, iterations = %d", metrics, sequence)
 	}

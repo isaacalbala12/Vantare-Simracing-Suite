@@ -29,13 +29,12 @@ func TestRuntimePublishes104VehiclesEndToEnd(t *testing.T) {
 		t.Fatalf("runtime lifecycle = %d, want running", runtime.lifecycle)
 	}
 	metrics := runtime.Metrics()
-	// R6a: 104 vehiculos ya no tocan el limite de payload (era exclusivo de
-	// la proyeccion Overlay V1 retirada): Strategy publica y los contadores
-	// heredados quedan en cero.
-	if metrics.OverlayProjectionsPublished != 0 || metrics.StrategyProjectionsPublished != 1 ||
+	// R6b: 104 vehiculos ya no tocan ningun limite de payload heredado de la
+	// proyeccion Overlay V1 retirada: Strategy publica.
+	if metrics.StrategyProjectionsPublished != 1 ||
 		metrics.EngineerObservations != 1 || len(metrics.FramesDropped) != 0 || len(metrics.PublishFailures) != 0 {
-		t.Fatalf("104-vehicle outcome = overlay:%d strategy:%d engineer:%d dropped:%v publish failures:%v",
-			metrics.OverlayProjectionsPublished, metrics.StrategyProjectionsPublished, metrics.EngineerObservations,
+		t.Fatalf("104-vehicle outcome = strategy:%d engineer:%d dropped:%v publish failures:%v",
+			metrics.StrategyProjectionsPublished, metrics.EngineerObservations,
 			metrics.FramesDropped, metrics.PublishFailures)
 	}
 	event, err := subscription.Next(context.Background())

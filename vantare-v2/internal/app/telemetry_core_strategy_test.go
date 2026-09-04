@@ -38,17 +38,37 @@ func TestStrategyHubNotInstantiatedWithoutFlag(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if runtime.Hub() == nil || runtime.StrategyHub() == nil || runtime.Hub() == runtime.StrategyHub() {
-		t.Fatalf("product hubs = Overlay %p Strategy %p", runtime.Hub(), runtime.StrategyHub())
+	if runtime.StrategyHub() == nil {
+		t.Fatal("StrategyHub() = nil, want the single surviving product hub")
+	}
+
+	// R6b: el Hub Overlay esta fisicamente retirado: un unico campo Hub
+	// (strategyHub), sin campo hub ni accessor Hub().
+	hubType := reflect.TypeOf((*telemetrytransport.Hub)(nil))
+	runtimeType := reflect.TypeOf(runtime).Elem()
+	var hubFields []string
+	for index := 0; index < runtimeType.NumField(); index++ {
+		if field := runtimeType.Field(index); field.Type == hubType {
+			hubFields = append(hubFields, field.Name)
+		}
+	}
+	if len(hubFields) != 1 || hubFields[0] != "strategyHub" {
+		t.Fatalf("runtime Hub fields = %v, want [strategyHub]", hubFields)
+	}
+	if _, ok := runtimeType.FieldByName("hub"); ok {
+		t.Fatal("runtime field hub still present")
+	}
+	if _, ok := reflect.TypeOf(runtime).MethodByName("Hub"); ok {
+		t.Fatal("runtime accessor Hub() still present")
 	}
 
 	// Guard the architectural contract without adding production seams: there
-	// is one canonical acquisition/reduction chain and exactly two product hubs.
+	// is one canonical acquisition/reduction chain and exactly one product hub.
 	assertRuntimeFieldCount(t, runtime, reflect.TypeOf((*telemetrycore.SimulatorRuntime)(nil)).Elem(), 1)
 	assertRuntimeFieldCount(t, runtime, reflect.TypeOf(runtime.reducer), 1)
 	assertRuntimeFieldCount(t, runtime, reflect.TypeOf(runtime.coord), 1)
 	assertRuntimeFieldCount(t, runtime, reflect.TypeOf(runtime.derive), 1)
-	assertRuntimeFieldCount(t, runtime, reflect.TypeOf(runtime.hub), 2)
+	assertRuntimeFieldCount(t, runtime, reflect.TypeOf(runtime.strategyHub), 1)
 }
 
 func newStrategyTelemetryCoreRuntime(config TelemetryCoreRuntimeConfig) (*TelemetryCoreRuntime, error) {
@@ -57,27 +77,18 @@ func newStrategyTelemetryCoreRuntime(config TelemetryCoreRuntimeConfig) (*Teleme
 }
 
 func TestTelemetryCoreRuntimePublishesStrategyWithoutOverlayV1(t *testing.T) {
-	// R6a: WriteBatch solo proyecta y publica Strategy. El Hub Overlay V1
-	// permanece construido pero retirado: sin status, sin snapshot y con sus
-	// contadores heredados en cero.
+	// R6b: WriteBatch solo proyecta y publica Strategy. No existe Hub
+	// Overlay: la ausencia es estructural (ver
+	// TestOverlayV1HubPhysicallyRetired) y Strategy conserva su semantica.
 	runtime, err := newStrategyTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{})
 	if err != nil {
 		t.Fatal(err)
-	}
-	if runtime.Hub() == nil {
-		t.Fatal("retired Overlay V1 Hub must stay built until R6b")
 	}
 	strategySubscription := subscribeRuntimeHub(t, runtime.StrategyHub())
 	defer strategySubscription.Close()
 
 	if err := (runtimeBatchSink{runtime: runtime}).WriteBatch(context.Background(), engineerRuntimeBatch()); err != nil {
 		t.Fatal(err)
-	}
-	if _, ok, _ := runtime.Hub().ReplayStatus(); ok {
-		t.Fatal("retired Overlay V1 Hub published status")
-	}
-	if _, ok, _ := runtime.Hub().ReplaySnapshot(); ok {
-		t.Fatal("retired Overlay V1 Hub published snapshot")
 	}
 	strategyStatus := nextStatus(t, strategySubscription)
 	strategyFrame := nextSnapshot(t, strategySubscription)
@@ -102,17 +113,15 @@ func TestTelemetryCoreRuntimePublishesStrategyWithoutOverlayV1(t *testing.T) {
 	}
 
 	metrics := runtime.Metrics()
-	if metrics.ProjectionsPublished != 0 || metrics.OverlayProjectionsPublished != 0 ||
-		metrics.StrategyProjectionsPublished != 1 || metrics.Transport.SnapshotPublications != 0 ||
-		metrics.Transport.StatusPublications != 0 ||
+	if metrics.StrategyProjectionsPublished != 1 ||
 		metrics.StrategyTransport.SnapshotPublications != 1 {
 		t.Fatalf("strategy-only metrics = %#v", metrics)
 	}
 }
 
 func TestTelemetryCoreRuntimePublishesStrategyStatusTransitionsWithoutOverlayV1(t *testing.T) {
-	// R6a: las transiciones de estado solo llegan a Strategy. El Hub Overlay
-	// V1 retirado no publica ni retiene status.
+	// R6b: las transiciones de estado solo llegan a Strategy; no existe Hub
+	// Overlay que retenga nada.
 	runtime, err := newStrategyTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{})
 	if err != nil {
 		t.Fatal(err)
@@ -152,13 +161,9 @@ func TestTelemetryCoreRuntimePublishesStrategyStatusTransitionsWithoutOverlayV1(
 			t.Fatal(err)
 		}
 		metrics := runtime.Metrics()
-		if metrics.Transport.StatusPublications != 0 ||
-			metrics.StrategyTransport.StatusPublications != uint64(index+1) {
+		if metrics.StrategyTransport.StatusPublications != uint64(index+1) {
 			t.Fatalf("strategy-only status publications = %#v", metrics)
 		}
-	}
-	if _, ok, _ := runtime.Hub().ReplayStatus(); ok {
-		t.Fatal("retired Overlay V1 Hub retained status")
 	}
 }
 
@@ -221,16 +226,13 @@ func TestTelemetryCoreRuntimeStartsOnlyTheExplicitStrategyWailsAdapter(t *testin
 	emitter.waitFor(t,
 		telemetrytransport.EventName(telemetrytransport.ProductStrategy, telemetrytransport.EventSnapshot),
 	)
-	if got := runtime.Hub().Metrics().CurrentSubscribers; got != 0 {
-		t.Fatalf("global Overlay Wails subscribers = %d, want 0", got)
-	}
 
 	stopContext, stopCancel := context.WithTimeout(context.Background(), time.Second)
 	defer stopCancel()
 	if err := runtime.Stop(stopContext); err != nil {
 		t.Fatal(err)
 	}
-	if runtime.Metrics().Transport.CurrentSubscribers != 0 || runtime.Metrics().StrategyTransport.CurrentSubscribers != 0 {
+	if runtime.Metrics().StrategyTransport.CurrentSubscribers != 0 {
 		t.Fatalf("adapter subscribers after Stop = %#v", runtime.Metrics())
 	}
 	if err := runtime.Stop(stopContext); err != nil {
@@ -239,8 +241,7 @@ func TestTelemetryCoreRuntimeStartsOnlyTheExplicitStrategyWailsAdapter(t *testin
 }
 
 func TestTelemetryCoreRuntimeIsolatesEngineerFailureFromStrategyHub(t *testing.T) {
-	// R6a: el fallo de Engineer no escapa al producto Strategy y el Hub
-	// Overlay V1 retirado permanece en silencio.
+	// R6b: el fallo de Engineer no escapa al producto Strategy.
 	consumer := &recordingEngineerConsumer{observationErr: errors.New("engineer unavailable")}
 	runtime, err := newStrategyTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{Engineer: consumer})
 	if err != nil {
@@ -256,27 +257,18 @@ func TestTelemetryCoreRuntimeIsolatesEngineerFailureFromStrategyHub(t *testing.T
 	if frame := nextSnapshot(t, strategySubscription); frame.Product != telemetrytransport.ProductStrategy {
 		t.Fatalf("Strategy frame product = %q", frame.Product)
 	}
-	if _, ok, _ := runtime.Hub().ReplayStatus(); ok {
-		t.Fatal("retired Overlay V1 Hub published status")
-	}
-	if _, ok, _ := runtime.Hub().ReplaySnapshot(); ok {
-		t.Fatal("retired Overlay V1 Hub published snapshot")
-	}
 	if runtime.EngineerError() == nil {
 		t.Fatal("EngineerError() = nil, want isolated diagnostic")
 	}
 	metrics := runtime.Metrics()
-	if metrics.ProjectionsPublished != 0 || metrics.OverlayProjectionsPublished != 0 ||
-		metrics.StrategyProjectionsPublished != 1 || metrics.EngineerDeliveryFailures != 1 {
+	if metrics.StrategyProjectionsPublished != 1 || metrics.EngineerDeliveryFailures != 1 {
 		t.Fatalf("isolated Engineer metrics = %#v", metrics)
 	}
 }
 
 func TestStrategyFailureLeavesRetiredOverlaySilent(t *testing.T) {
-	// R6a.1: el fallo es un ErrPayloadTooLarge real de Strategy (ya no
-	// ErrClosed): con el status ya publicado, WriteBatch conserva el estado y
-	// el snapshot no cabe en el hub acotado de test. La policy V2 lo absorbe
-	// sin tumbar el driver y el Hub Overlay V1 retirado sigue sin publicar.
+	// R6b: el fallo es un ErrPayloadTooLarge real de Strategy con la policy
+	// V2, que lo absorbe sin tumbar el driver. No existe Hub Overlay.
 	runtime, err := newStrategyTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{})
 	if err != nil {
 		t.Fatal(err)
@@ -304,22 +296,13 @@ func TestStrategyFailureLeavesRetiredOverlaySilent(t *testing.T) {
 	// batch#1 publico 1 snapshot en el hub normal; batch#2 fallo en el hub
 	// acotado sin publicar snapshot en ningun hub. La transicion a degraded
 	// si cabe en el limite y queda entregada (StatusPublications==1).
-	if metrics.ProjectionsPublished != 0 || metrics.OverlayProjectionsPublished != 0 ||
-		metrics.StrategyProjectionsPublished != 1 || metrics.Transport.SnapshotPublications != 0 ||
+	if metrics.StrategyProjectionsPublished != 1 ||
 		metrics.StrategyTransport.SnapshotPublications != 0 ||
 		metrics.StrategyTransport.StatusPublications != 1 ||
 		metrics.PublishFailures["strategy"] != 1 || metrics.FramesDropped["strategy-publish"] != 1 ||
 		metrics.FailStops != 0 {
 		t.Fatalf("failed cycle metrics = %#v", metrics)
 	}
-	if _, ok, _ := runtime.Hub().ReplaySnapshot(); ok {
-		t.Fatal("retired Overlay V1 Hub published snapshot after Strategy failure")
-	}
-	hubSubscription, err := runtime.Hub().Subscribe(context.Background())
-	if err != nil {
-		t.Fatalf("retired Overlay hub must stay subscribable until R6b: %v", err)
-	}
-	defer hubSubscription.Close()
 }
 
 func TestStrategyPayloadTooLargeLegacyFailStop(t *testing.T) {
@@ -353,9 +336,6 @@ func TestStrategyPayloadTooLargeLegacyFailStop(t *testing.T) {
 	}
 	if runtime.lifecycle != telemetryRuntimeTerminal {
 		t.Fatalf("legacy lifecycle = %d, want terminal", runtime.lifecycle)
-	}
-	if _, ok, _ := runtime.Hub().ReplaySnapshot(); ok {
-		t.Fatal("retired Overlay V1 Hub published snapshot after legacy fail-stop")
 	}
 	assertRuntimeHubClosed(t, runtime.StrategyHub())
 }
@@ -455,8 +435,8 @@ func TestTelemetryCoreRuntimeRejectsCanceledParentWithoutMutation(t *testing.T) 
 		t.Fatalf("Start(canceled parent) error = %v, want %v", err, context.Canceled)
 	}
 	metrics := runtime.Metrics()
-	if metrics.Transport.StatusPublications != 0 || metrics.StrategyTransport.StatusPublications != 0 ||
-		metrics.Transport.CurrentSubscribers != 0 || metrics.StrategyTransport.CurrentSubscribers != 0 {
+	if metrics.StrategyTransport.StatusPublications != 0 ||
+		metrics.StrategyTransport.CurrentSubscribers != 0 {
 		t.Fatalf("canceled Start mutated runtime = %#v", metrics)
 	}
 	if err := runtime.Start(context.Background()); err != nil {
@@ -467,7 +447,7 @@ func TestTelemetryCoreRuntimeRejectsCanceledParentWithoutMutation(t *testing.T) 
 	}
 }
 
-func TestTelemetryCoreRuntimeFailedStartClosesBothHubsAndBecomesTerminal(t *testing.T) {
+func TestTelemetryCoreRuntimeFailedStartClosesStrategyHubAndBecomesTerminal(t *testing.T) {
 	consumer := &recordingEngineerConsumer{}
 	runtime, err := newStrategyTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{Engineer: consumer})
 	if err != nil {
@@ -483,16 +463,15 @@ func TestTelemetryCoreRuntimeFailedStartClosesBothHubsAndBecomesTerminal(t *test
 		t.Fatalf("Start() error = %v", err)
 	}
 	metrics := runtime.Metrics()
-	// R6a: el Hub Overlay V1 retirado no publica status ni siquiera en el
-	// arranque; solo Strategy intentaba publicar y fallo por cierre.
-	if metrics.Transport.StatusPublications != 0 || metrics.StrategyTransport.StatusPublications != 0 ||
-		metrics.Transport.SnapshotPublications != 0 || metrics.StrategyTransport.SnapshotPublications != 0 {
+	// R6b: sin Hub Overlay; solo Strategy intentaba publicar y fallo por
+	// cierre.
+	if metrics.StrategyTransport.StatusPublications != 0 ||
+		metrics.StrategyTransport.SnapshotPublications != 0 {
 		t.Fatalf("partial Start status metrics = %#v", metrics)
 	}
 	if len(consumer.calls) != 0 {
 		t.Fatalf("Engineer calls before initial status = %v, want none", consumer.calls)
 	}
-	assertRuntimeHubClosed(t, runtime.Hub())
 	assertRuntimeHubClosed(t, runtime.StrategyHub())
 	if err := runtime.Start(context.Background()); !errors.Is(err, telemetrytransport.ErrClosed) {
 		t.Fatalf("second Start() error = %v, want %v", err, telemetrytransport.ErrClosed)
@@ -505,28 +484,7 @@ func TestTelemetryCoreRuntimeFailedStartClosesBothHubsAndBecomesTerminal(t *test
 	}
 }
 
-func TestTelemetryCoreRuntimeOverlayHubCloseDoesNotAffectWailsAdapter(t *testing.T) {
-	emitter := &recordingTelemetryEmitter{seen: make(map[string]int), notices: make(chan string, 8)}
-	runtime, err := newStrategyTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{Emitter: emitter})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := runtime.Start(context.Background()); err != nil {
-		t.Fatal(err)
-	}
-	emitter.waitFor(t, telemetrytransport.EventName(telemetrytransport.ProductStrategy, telemetrytransport.EventStatus))
-	if err := runtime.Hub().Close(); err != nil {
-		t.Fatal(err)
-	}
-	if err := runtime.currentRunError(); err != nil {
-		t.Fatalf("Overlay Hub close escaped into Wails lifecycle: %v", err)
-	}
-	if err := runtime.Stop(context.Background()); err != nil {
-		t.Fatalf("Stop() after isolated Overlay close = %v", err)
-	}
-}
-
-func TestTelemetryCoreRuntimeUnexpectedStrategyWailsCloseIsAuditedAndFailsBothHubs(t *testing.T) {
+func TestTelemetryCoreRuntimeUnexpectedStrategyWailsCloseIsAuditedAndFailsStrategyHub(t *testing.T) {
 	emitter := &recordingTelemetryEmitter{seen: make(map[string]int), notices: make(chan string, 8)}
 	runtime, err := newStrategyTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{Emitter: emitter})
 	if err != nil {
@@ -541,7 +499,6 @@ func TestTelemetryCoreRuntimeUnexpectedStrategyWailsCloseIsAuditedAndFailsBothHu
 	}
 	wantContext := "serve Strategy telemetry"
 	waitForRuntimeError(t, runtime, wantContext)
-	assertRuntimeHubClosed(t, runtime.Hub())
 	assertRuntimeHubClosed(t, runtime.StrategyHub())
 	if err := runtime.Stop(context.Background()); err == nil ||
 		!strings.Contains(err.Error(), wantContext) ||
@@ -641,7 +598,6 @@ func TestTelemetryCoreRuntimeCanceledAfterInitialEngineerStatusDeliversStoppedOn
 	}) {
 		t.Fatalf("Engineer status order = %v", got)
 	}
-	assertRuntimeHubClosed(t, runtime.Hub())
 	assertRuntimeHubClosed(t, runtime.StrategyHub())
 	for attempt := 1; attempt <= 2; attempt++ {
 		if err := runtime.Stop(context.Background()); err != nil {
@@ -759,7 +715,6 @@ func TestTelemetryCoreRuntimeNormalStopCancelsWorkersBeforeClosingHubs(t *testin
 	if err := runtime.currentRunError(); err != nil {
 		t.Fatalf("normal teardown run error = %v", err)
 	}
-	assertRuntimeHubClosed(t, runtime.Hub())
 	assertRuntimeHubClosed(t, runtime.StrategyHub())
 }
 
@@ -783,13 +738,11 @@ func assertStrategyRuntimePublicationMetrics(t *testing.T, metrics TelemetryCore
 	if want > 0 {
 		wantReplacements = want - 1
 	}
-	// R6a: los contadores Overlay V1 heredados quedan en cero y el Hub
-	// retirado no publica; Strategy conserva su semantica.
-	if metrics.BatchesApplied != want || metrics.ProjectionsPublished != 0 ||
-		metrics.OverlayProjectionsPublished != 0 || metrics.StrategyProjectionsPublished != want ||
-		metrics.Transport.StatusPublications != 0 || metrics.StrategyTransport.StatusPublications != 1 ||
-		metrics.Transport.SnapshotPublications != 0 || metrics.StrategyTransport.SnapshotPublications != want ||
-		metrics.Transport.SnapshotReplacements != 0 ||
+	// R6b: sin Hub Overlay ni contadores heredados; Strategy conserva su
+	// semantica.
+	if metrics.BatchesApplied != want || metrics.StrategyProjectionsPublished != want ||
+		metrics.StrategyTransport.StatusPublications != 1 ||
+		metrics.StrategyTransport.SnapshotPublications != want ||
 		metrics.StrategyTransport.SnapshotReplacements != wantReplacements {
 		t.Fatalf("strategy-only runtime publication metrics = %#v, want %d", metrics, want)
 	}

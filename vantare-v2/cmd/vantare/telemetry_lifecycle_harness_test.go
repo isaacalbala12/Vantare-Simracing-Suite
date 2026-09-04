@@ -306,9 +306,6 @@ func TestTelemetryLifecycleHarness(t *testing.T) {
 	if !recorder.complete {
 		t.Error("SQLite recording did not complete and close during shutdown")
 	}
-	if metrics := telemetryRuntime.Hub().Metrics(); metrics.CurrentSubscribers != 0 {
-		t.Errorf("telemetry subscribers after shutdown = %d", metrics.CurrentSubscribers)
-	}
 	if metrics := telemetryRuntime.StrategyHub().Metrics(); metrics.CurrentSubscribers != 0 {
 		t.Errorf("Strategy telemetry subscribers after shutdown = %d", metrics.CurrentSubscribers)
 	}
@@ -350,25 +347,32 @@ func TestTelemetryStatusReplayHandlerCleanupPreventsDuplicateDelivery(t *testing
 	cleanupSecond := registerTelemetryStatusReplayHandlers(events, emitter, runtime)
 	defer cleanupSecond()
 
-	for _, product := range []telemetrytransport.ProductID{
-		telemetrytransport.ProductOverlay,
-		telemetrytransport.ProductStrategy,
-	} {
-		events.Emit(telemetrytransport.StatusRequestEventName(product))
-	}
+	// R6b: solo Strategy conserva replay de status; no existe Hub Overlay.
+	// La peticion Overlay es negativa: sin handler registrado no debe
+	// producir ningun replay. Con el Hub antiguo habria entregado un status
+	// Overlay y el total seria 2.
+	events.Emit(telemetrytransport.StatusRequestEventName(telemetrytransport.ProductStrategy))
+	events.Emit(telemetrytransport.StatusRequestEventName(telemetrytransport.ProductOverlay))
 
 	replayEvents := emitter.snapshot()
 	if len(replayEvents) != 1 {
 		t.Fatalf("status replay event count = %d, want 1: %#v", len(replayEvents), replayEvents)
 	}
+	overlayStatus := telemetrytransport.EventName(telemetrytransport.ProductOverlay, telemetrytransport.EventStatus)
 	counts := make(map[string]int, 2)
 	for _, event := range replayEvents {
+		if event.name == overlayStatus {
+			t.Fatalf("retired Overlay product replayed status: %#v", event)
+		}
 		counts[event.name]++
 		var envelope struct {
 			Product telemetrytransport.ProductID `json:"product"`
 		}
 		if err := json.Unmarshal(event.data, &envelope); err != nil {
 			t.Fatalf("decode replay %q: %v", event.name, err)
+		}
+		if envelope.Product != telemetrytransport.ProductStrategy {
+			t.Fatalf("replay product = %q, want %q", envelope.Product, telemetrytransport.ProductStrategy)
 		}
 		if event.name != telemetrytransport.EventName(envelope.Product, telemetrytransport.EventStatus) {
 			t.Fatalf("crossed replay event name=%q product=%q", event.name, envelope.Product)
@@ -391,12 +395,8 @@ func TestTelemetryStatusReplayHandlersIgnoreNilRuntime(t *testing.T) {
 		t.Fatal("registerTelemetryStatusReplayHandlers() cleanup is nil")
 	}
 
-	for _, product := range []telemetrytransport.ProductID{
-		telemetrytransport.ProductOverlay,
-		telemetrytransport.ProductStrategy,
-	} {
-		events.Emit(telemetrytransport.StatusRequestEventName(product))
-	}
+	// R6b: solo Strategy conserva replay de status; no existe Hub Overlay.
+	events.Emit(telemetrytransport.StatusRequestEventName(telemetrytransport.ProductStrategy))
 
 	events.mu.Lock()
 	registered := 0

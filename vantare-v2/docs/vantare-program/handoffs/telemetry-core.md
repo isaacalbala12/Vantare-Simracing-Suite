@@ -45,6 +45,24 @@ frame/source/standings (sin fallbacks `undefined`/`[]`), focal endurecido a
 9/9 con identidad distinta de clones y aislamiento ante mutaciones, y estas
 correcciones de docs. `PREVIEW` singleton queda explícitamente para C2b.
 
+Revisión quality post-C2a Muse `ses_f92522698ffeDQwN643LThbEoz`:
+**REQUEST_CHANGES**, P2=2. Cierres en commit `fdb1130d` (sin entrar en C2b):
+P2-1, el test multiclass comparaba `scenarioStandings` contra `rows` (el
+propio campo, tautología) — ahora contra `canonicalStandings`; P2-2,
+aislamiento profundo real — identidad distinta (`not.toBe`) al menos de
+session, relative, player y standings, mutación tipada explícita de
+`session.track.v`, `player.id` y `relative[0].name` vía cast a mutable solo en
+el test (el contrato productivo sigue readonly) y segunda invocación igual al
+canónico. P3 barato: el fail-fast exige además `player.id`, `session.track` y
+relative no vacío con side/authority de productor (se exigen, no se
+sintetizan). Independencia aclarada: es de valores runtime/bundle — el módulo
+ya no importa nada de `authoring-fixtures.ts` (ni siquiera `type`; el
+`import type` anterior se borró con el tipo local). Riesgos C2b registrados,
+sin optimizar: singleton `PREVIEW_V2_RUNTIME` (factory/ownership con
+consumidores reales) y tamaño bundle del golden `?raw` (~33,5 KB). HEAD tras
+la corrección: `fdb1130d` (código+focal); este bloque se cierra en el commit
+documental siguiente.
+
 ## R7b/C2 PRE-FLIGHT CERRADO — siguiente C2a, no B3/B2 — 2026-09-04, ISA-894
 
 B1 sigue sin cambios productivos. El preflight descubrió que ejecutar B2

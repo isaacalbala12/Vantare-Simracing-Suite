@@ -191,3 +191,21 @@ del guard + compat (el `authoring-v2-fixture.test.ts` del primer RED ya no
 existe). P3 no aplicado a propósito: singleton `PREVIEW_V2_RUNTIME` — C2b
 decidirá factory/ownership con consumidores reales; queda como riesgo C2b.
 Guard tras C2a: `7 failed | 8 passed (15)` (grupo C2 en rojo, resto igual).
+
+## C2a quality review — corrección P2+P3 (ISA-894)
+
+Revisión quality Muse `ses_f92522698ffeDQwN643LThbEoz` sobre `608161eb`:
+**REQUEST_CHANGES**, P2=2. Corrección en commit `fdb1130d` (módulo+focal):
+P2-1, `scenarioStandings` se comparaba contra `rows` (tautología) — ahora
+contra `canonicalStandings`; P2-2, aislamiento profundo real — `not.toBe` de
+session/relative/player/standings contra el canónico, mutación tipada de
+`session.track.v`, `player.id`, `relative[0].name` con cast explícito a mutable
+solo en el test, segunda invocación igual al canónico; focal 9/9 con los 7
+previos intactos. P3: fail-fast extendido a `player.id`, `session.track` y
+relative con side/authority (exigidos, no sintetizados); independencia =
+valores runtime/bundle (cero imports de `authoring-fixtures.ts`, ni `type`).
+Riesgos C2b sin optimizar: singleton `PREVIEW_V2_RUNTIME` y tamaño bundle del
+golden `?raw` (~33,5 KB medidos). Guard tras la corrección:
+`7 failed | 8 passed (15)`; typecheck con los 8 heredados exactos, cero
+nuevos; ESLint y `diff --check` limpios. HEAD tras la corrección: `fdb1130d`
+(código+focal); este registro se cierra en el commit documental siguiente.

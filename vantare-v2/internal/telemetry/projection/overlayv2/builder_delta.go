@@ -45,6 +45,12 @@ var deltaReferencePriority = [3]string{
 // (derive.SelfDelta.History) but no trend concept, and reconstructing one here
 // would create a second authority for something delta-trace already owns. It is
 // declared missing rather than invented.
+//
+// History is published on every frame, even when no reference is effective:
+// it is the measured series with its own quality derived from the delta
+// freshness, not a function of the resolved reference. Delta is a fast-tier
+// section rebuilt on every tick, so no dirty signal is needed to keep the
+// series current.
 func BuildDelta(final derive.FinalState, preferences PreferencesV2) DeltaViewV2 {
 	preferences = normalizedPreferences(preferences)
 	candidates := deltaReferenceCandidates(final)
@@ -62,6 +68,7 @@ func BuildDelta(final derive.FinalState, preferences PreferencesV2) DeltaViewV2 
 		Seconds:   missingValue[float64](),
 		Requested: requested,
 		Available: available,
+		History:   buildDeltaHistory(final.Derived.Delta),
 	}
 	if effective == "" {
 		return result
@@ -71,6 +78,34 @@ func BuildDelta(final derive.FinalState, preferences PreferencesV2) DeltaViewV2 
 	result.Seconds = qualityValue(field, func(value session.DeltaSeconds) float64 { return float64(value) })
 	result.Authority = deltaAuthority(field)
 	return result
+}
+
+// buildDeltaHistory projects the canonical SelfDelta series verbatim:
+// absolute Unix capture instants plus unquantized seconds, oldest first.
+// Both arrays grow together from the same samples, so they stay aligned by
+// construction; the tail is kept when the canonical state ever exceeds the
+// consumer bound. A series without usable quality publishes its quality
+// with no entries, never a sentinel. The copy owns its backing arrays: the
+// caller can never alias the canonical history.
+func buildDeltaHistory(delta derive.SelfDelta) DeltaHistoryV2 {
+	quality := qualityFromFreshness(delta.Freshness)
+	view := DeltaHistoryV2{Q: quality}
+	switch quality {
+	case QualityFresh, QualityStale:
+	default:
+		return view
+	}
+	samples := delta.History
+	if len(samples) > derive.MaxSelfDeltaHistory {
+		samples = samples[len(samples)-derive.MaxSelfDeltaHistory:]
+	}
+	view.CapturedAtMS = make([]int64, len(samples))
+	view.Seconds = make([]float64, len(samples))
+	for index, sample := range samples {
+		view.CapturedAtMS[index] = sample.CapturedAt.UnixMilli()
+		view.Seconds[index] = float64(sample.Seconds)
+	}
+	return view
 }
 
 func deltaReferenceCandidates(final derive.FinalState) map[string]schema.Field[session.DeltaSeconds] {

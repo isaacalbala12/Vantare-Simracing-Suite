@@ -1514,7 +1514,10 @@
         "q": "missing"
       },
       "requested": "personal-best",
-      "available": []
+      "available": [],
+      "history": {
+        "q": "missing"
+      }
     },
     "fuel": {
       "remaining": {

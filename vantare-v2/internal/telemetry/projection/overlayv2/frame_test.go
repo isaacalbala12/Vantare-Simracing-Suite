@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -51,13 +52,132 @@ func TestUpdateV2NullFrameRoundTrip(t *testing.T) {
 func TestFrameV2SyntheticFullUnder64KiBWith104Vehicles(t *testing.T) {
 	t.Parallel()
 
-	payload, err := json.Marshal(syntheticFullFrame(104))
+	frame := syntheticFullFrame(104)
+	if len(frame.Standings) != 104 {
+		t.Fatalf("standings = %d rows, want the full 104-vehicle grid", len(frame.Standings))
+	}
+	assertProductiveRelativeWindows(t, frame)
+	payload, err := json.Marshal(frame)
 	if err != nil {
 		t.Fatalf("marshal synthetic full FrameV2: %v", err)
 	}
 	t.Logf("synthetic full FrameV2 with 104 vehicles: %d bytes", len(payload))
 	if len(payload) >= 64*1024 {
 		t.Fatalf("synthetic full FrameV2 = %d bytes, want < %d", len(payload), 64*1024)
+	}
+}
+
+// assertProductiveRelativeWindows guards the productive cardinalities the
+// preflight proved: BuildRelative and the settler publish at most
+// 8+player+8 rows each, never the full grid. Both windows are independent
+// clones so a later mutation cannot alias one into the other.
+func assertProductiveRelativeWindows(t *testing.T, frame FrameV2) {
+	t.Helper()
+	const window = MaxRelativeAhead + MaxRelativeBehind + 1
+	if len(frame.Relative) > window || len(frame.RelativeSettled) > window {
+		t.Fatalf("relative windows = %d/%d rows, want at most %d each",
+			len(frame.Relative), len(frame.RelativeSettled), window)
+	}
+	if len(frame.Relative) == 0 || len(frame.RelativeSettled) == 0 {
+		t.Fatalf("relative windows must be populated in the full fixture, got %d/%d",
+			len(frame.Relative), len(frame.RelativeSettled))
+	}
+	for index := range frame.Relative {
+		if index >= len(frame.RelativeSettled) {
+			break
+		}
+		if &frame.Relative[index] == &frame.RelativeSettled[index] {
+			t.Fatalf("relative windows share backing at row %d: must be independent clones", index)
+		}
+	}
+}
+
+func TestFrameV2Representative20CharWithDeltaHistoryUnder64KiB(t *testing.T) {
+	t.Parallel()
+
+	frame := syntheticFullFrame(104)
+	withStringWidths(frame, 20)
+	frame.Delta.History = realisticDeltaHistory()
+	assertProductiveRelativeWindows(t, frame)
+	payload, err := json.Marshal(frame)
+	if err != nil {
+		t.Fatalf("marshal representative FrameV2: %v", err)
+	}
+	t.Logf("representative 20-char FrameV2 with A3 delta history: %d bytes", len(payload))
+	if len(payload) > 64*1024 {
+		t.Fatalf("representative FrameV2 = %d bytes, want <= %d (performance objective)", len(payload), 64*1024)
+	}
+}
+
+func TestFrameV2Security32CharAdverseUnder72KiB(t *testing.T) {
+	t.Parallel()
+
+	frame := syntheticFullFrame(104)
+	withStringWidths(frame, 32)
+	frame.Delta.History = adverseDeltaHistory()
+	assertProductiveRelativeWindows(t, frame)
+	payload, err := json.Marshal(frame)
+	if err != nil {
+		t.Fatalf("marshal security FrameV2: %v", err)
+	}
+	t.Logf("security 32-char adverse FrameV2 with A3 delta history: %d bytes", len(payload))
+	if len(payload) > 72*1024 {
+		t.Fatalf("security FrameV2 = %d bytes, want <= %d (hard safety limit)", len(payload), 72*1024)
+	}
+}
+
+// realisticDeltaHistory is the A3 worst representative case: 120 absolute
+// instants at the canonical 100 ms delta sampling interval with the
+// 9-decimal seconds observed on the real LMU trace.
+func realisticDeltaHistory() DeltaHistoryV2 {
+	history := DeltaHistoryV2{Q: QualityFresh, CapturedAtMS: make([]int64, 120), Seconds: make([]float64, 120)}
+	origin := int64(1786711200000)
+	for index := range history.CapturedAtMS {
+		history.CapturedAtMS[index] = origin + int64(index)*100
+		if index%2 == 0 {
+			history.Seconds[index] = -0.030563504
+		} else {
+			history.Seconds[index] = 123.456789012
+		}
+	}
+	return history
+}
+
+// adverseDeltaHistory pushes every seconds cell to its longest plausible
+// JSON form while staying finite and inside the +-10000 bound derive keeps.
+func adverseDeltaHistory() DeltaHistoryV2 {
+	history := realisticDeltaHistory()
+	for index := range history.Seconds {
+		history.Seconds[index] = -88.88888888888889
+	}
+	return history
+}
+
+// withStringWidths rewrites every free string the contract leaves unbounded
+// (vehicle id, driver/display name, class id) to exactly width characters so
+// the budget gates measure a stated scenario instead of the short fixture
+// defaults.
+func withStringWidths(frame FrameV2, width int) {
+	vehicle := func(index int) string { return fmt.Sprintf("v%0*d", width-1, index+1) }
+	name := func(index int) string { return fmt.Sprintf("D%0*d", width-1, index+1) }
+	class := strings.Repeat("c", width)
+	for index := range frame.Standings {
+		frame.Standings[index].VehicleID = vehicle(index)
+		frame.Standings[index].DriverName = name(index)
+		frame.Standings[index].ClassID = class
+	}
+	for index := range frame.Relative {
+		frame.Relative[index].VehicleID = vehicle(index)
+		frame.Relative[index].DisplayName = name(index)
+		frame.Relative[index].ClassID = class
+	}
+	for index := range frame.RelativeSettled {
+		frame.RelativeSettled[index].VehicleID = vehicle(index)
+		frame.RelativeSettled[index].DisplayName = name(index)
+		frame.RelativeSettled[index].ClassID = class
+	}
+	if frame.Player.VehicleID != "" {
+		frame.Player.VehicleID = vehicle(0)
 	}
 }
 
@@ -92,20 +212,34 @@ func syntheticFullFrame(vehicles int) FrameV2 {
 		fuelHistory.Consumed[index] = 3.4
 	}
 	standings := make([]StandingRowV2, vehicles)
-	relative := make([]RelativeRowV2, vehicles)
 	for index := 0; index < vehicles; index++ {
 		id := fmt.Sprintf("vehicle-%03d", index+1)
 		standings[index] = StandingRowV2{
 			VehicleID: id, Position: int32(index + 1), ClassPosition: int32(index%24 + 1),
-			ClassID: "hypercar", DriverName: fmt.Sprintf("Driver %03d", index+1), CarNumber: fmt.Sprintf("%d", index+1),
+			ClassID: "hypercar", DriverName: fmt.Sprintf("Driver %03d", index+1),
 			GapSeconds: QValue[float64]{V: float64(index) * 1.234, Q: QualityFresh}, GapLaps: int32(index / 40),
-			PitState: "track", CompletedLaps: 127, LastLapSeconds: QValue[float64]{V: 91.234, Q: QualityFresh},
+			PitState: "track", CompletedLaps: 127,
+			BestLapSeconds: QValue[float64]{V: 88.123, Q: QualityFresh}, LastLapSeconds: QValue[float64]{V: 91.234, Q: QualityFresh},
 			LapDistance: QValue[float64]{V: float64(index) * 42.5, Q: QualityFresh}, GroundPosition: QValue[GroundPositionV2]{V: GroundPositionV2{X: float64(index) * 10, Z: float64(index) * -5}, Q: QualityFresh},
 		}
-		relative[index] = RelativeRowV2{
-			VehicleID: id, GapSeconds: QValue[float64]{V: float64(index-52) * 0.314, Q: QualityFresh},
+	}
+	// Productive cardinalities only: BuildRelative and the settler publish at
+	// most 8+player+8 rows each, never the full grid. Both windows are
+	// independent clones. BestLap travels fresh (BuildStandings always
+	// projects it) while CarNumber stays empty (the canonical state carries
+	// no car-number signal and the builder never invents one).
+	const relativeWindow = MaxRelativeAhead + MaxRelativeBehind + 1
+	relativeCount := min(vehicles, relativeWindow)
+	relative := make([]RelativeRowV2, relativeCount)
+	relativeSettled := make([]RelativeRowV2, relativeCount)
+	for index := 0; index < relativeCount; index++ {
+		id := fmt.Sprintf("vehicle-%03d", index+1)
+		row := RelativeRowV2{
+			VehicleID: id, GapSeconds: QValue[float64]{V: float64(index-8) * 0.314, Q: QualityFresh},
 			Side: "ahead", Authority: AuthorityDerived, DisplayName: fmt.Sprintf("Driver %03d", index+1),
 		}
+		relative[index] = row
+		relativeSettled[index] = row
 	}
 	return FrameV2{
 		ContractVersion: ContractVersionV2, AlgorithmVersion: AlgorithmVersionV2,
@@ -123,7 +257,7 @@ func syntheticFullFrame(vehicles int) FrameV2 {
 			Steering: QValue[float64]{V: -.13, Q: QualityFresh},
 		},
 		Controls:  ControlsV2{History: controls},
-		Standings: standings, Relative: relative,
+		Standings: standings, Relative: relative, RelativeSettled: relativeSettled,
 		Delta:   DeltaViewV2{Seconds: QValue[float64]{V: -.238, Q: QualityFresh}, Reference: "personal-best", Requested: "personal-best", Available: []string{"personal-best", "session-best", "previous-lap"}, Trend: "improving", Authority: AuthorityDerived},
 		Fuel:    FuelViewV2{Remaining: QValue[float64]{V: 42.1, Q: QualityFresh}, Capacity: QValue[float64]{V: 90, Q: QualityFresh}, PerLap: QValue[float64]{V: 3.4, Q: QualityFresh}, EstimatedLaps: QValue[float64]{V: 12.38, Q: QualityFresh}, SessionLaps: QValue[float64]{V: 79, Q: QualityFresh}, RequiredFuel: QValue[float64]{V: 268.6, Q: QualityFresh}, History: fuelHistory},
 		Spotter: SpotterViewV2{Mode: "xy", Left: QValue[bool]{V: true, Q: QualityFresh}, Right: QValue[bool]{V: false, Q: QualityFresh}},

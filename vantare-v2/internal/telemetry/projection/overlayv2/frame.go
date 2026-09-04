@@ -251,6 +251,29 @@ type DeltaViewV2 struct {
 	Available []string        `json:"available"`
 	Trend     string          `json:"trend,omitempty"`
 	Authority Authority       `json:"authority,omitempty"`
+	History   DeltaHistoryV2  `json:"history"`
+}
+
+// DeltaHistoryV2 carries the player's recent delta series. It is the player
+// alone, never the grid: one entry per canonical delta sample at the 100 ms
+// sampling interval, always index-aligned across both arrays, oldest first,
+// capped at 120 (derive.MaxSelfDeltaHistory).
+//
+// The wire form keeps one absolute capture instant plus one delta figure per
+// sample. CapturedAtMS holds absolute Unix epoch milliseconds taken from
+// each sample's real capture instant, never a relative age: the delta
+// section can be served memoized across several frame.GeneratedAt values,
+// so a relative age would change meaning while memoized. Seconds travels
+// unquantized, exactly as derive measured it. A series with no usable
+// quality publishes its quality with no entries: there are no sentinels and
+// no shortened arrays, only fewer entries. SourceTime and LapDistance are
+// not transported: the only delta-history consumer (delta-trace) reads
+// {capturedAt, deltaSeconds}, proven by inventory with zero wire consumers
+// of those fields.
+type DeltaHistoryV2 struct {
+	Q            Quality   `json:"q"`
+	CapturedAtMS []int64   `json:"capturedAtMS,omitempty"`
+	Seconds      []float64 `json:"seconds,omitempty"`
 }
 
 // FuelBasis names the arithmetic behind FuelViewV2.EstimatedLaps.

@@ -17,6 +17,12 @@ export const OVERLAY_V2_STATUS_EVENT = "telemetry:overlay-v2:status";
 export const OVERLAY_V2_SNAPSHOT_REQUEST_EVENT = `${OVERLAY_V2_SNAPSHOT_EVENT}:get`;
 export const OVERLAY_V2_PROJECTION_ROUTE = "/telemetry/overlay-v2/projection";
 
+// Límite duro de seguridad del producto overlay-v2 (ISA-894 A3, aprobado
+// 2026-09-04): sincronizado con OverlayV2MaxPayloadBytes del Publisher Go.
+// 64 KiB sigue siendo el objetivo de rendimiento representativo; el
+// transporte general conserva sus 256 KiB en telemetry-transport/contracts.
+export const OVERLAY_V2_MAX_PAYLOAD_BYTES = 72 * 1024;
+
 export type OverlayFrameV2State = Readonly<{
   revision: number;
   /** Revision of the last decoded snapshot, unchanged by status/watchdog republishes. */
@@ -484,11 +490,39 @@ function delta(value: unknown, path: string): void {
 }
 
 function fuel(value: unknown, path: string): void {
-  objectWithKeys(value, path, ["remaining", "capacity", "perLap", "estimatedLaps"], ["basis"]);
-  for (const key of ["remaining", "capacity", "perLap", "estimatedLaps"] as const) qvalue(value[key], `${path}.${key}`, "number");
+  objectWithKeys(value, path, ["remaining", "capacity", "perLap", "estimatedLaps", "sessionLaps", "requiredFuel", "history"], ["basis"]);
+  for (const key of ["remaining", "capacity", "perLap", "estimatedLaps", "sessionLaps", "requiredFuel"] as const) qvalue(value[key], `${path}.${key}`, "number");
   // `basis` names the arithmetic behind `estimatedLaps`; Go elides it when
   // neither projection produced a value.
   if (value.basis !== undefined) enumValue(value.basis, `${path}.basis`, ["fuel", "session"]);
+  fuelHistory(value.history, `${path}.history`);
+  Object.freeze(value);
+}
+
+// Serie de consumo por vuelta del jugador: un número de vuelta más una
+// cifra de consumo por muestra, siempre alineadas, tope 64, sin sentinels.
+function fuelHistory(value: unknown, path: string): void {
+  objectWithKeys(value, path, ["q"], ["lap", "consumed"]);
+  quality(value.q, `${path}.q`);
+  let length: number | undefined;
+  const lap = value.lap;
+  if (lap !== undefined) {
+    if (!Array.isArray(lap) || lap.length > 64) invalid(`${path}.lap`);
+    for (const entry of lap) {
+      if (!Number.isSafeInteger(entry)) invalid(`${path}.lap`);
+    }
+    length = lap.length;
+    Object.freeze(lap);
+  }
+  const consumed = value.consumed;
+  if (consumed !== undefined) {
+    if (!Array.isArray(consumed) || consumed.length > 64) invalid(`${path}.consumed`);
+    for (const entry of consumed) {
+      if (typeof entry !== "number" || !Number.isFinite(entry)) invalid(`${path}.consumed`);
+    }
+    if (length !== undefined && consumed.length !== length) invalid(`${path}.consumed`);
+    Object.freeze(consumed);
+  }
   Object.freeze(value);
 }
 
@@ -563,7 +597,7 @@ type JSONObject = Record<string, unknown>;
 function cloneJSONInput(input: unknown): JSONObject {
   try {
     const text = typeof input === "string" ? input : JSON.stringify(input);
-    if (new TextEncoder().encode(text).byteLength > 64 * 1024) invalid("size");
+    if (new TextEncoder().encode(text).byteLength > OVERLAY_V2_MAX_PAYLOAD_BYTES) invalid("size");
     const value = JSON.parse(text) as unknown;
     if (!plainObject(value)) invalid("update");
     return value;

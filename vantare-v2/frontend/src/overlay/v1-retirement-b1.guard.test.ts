@@ -67,12 +67,10 @@ function contentHas(route: string, anchor: string, owner: string): void {
 }
 
 // Módulos V1 cuya importación en un caller es resto B2: se afirma ausencia
-// en cada caller C2/B2 (acumula archivo+especificador). Los módulos E1
-// (telemetry-snapshot, telemetry-adapter, derived-telemetry-store) los
-// importan hoy 4 callers (StudioRoute y studio-overlay-telemetry →
-// telemetry-adapter; authoring-fixtures y authoring-v2-fixture →
-// telemetry-snapshot): es la deuda que C2 migra y E1 retira, verificada real
-// y registrada en evidencia; no se exige ausente en B1.
+// en cada caller C2/B2 (acumula archivo+especificador). C2 migra únicamente
+// los callers productivos a runtime V2 puro. Los helpers snapshot de
+// authoring-fixtures y telemetry-snapshot permanecen bajo D/E1, mientras el
+// puente authoring-v2-fixture queda reservado al oráculo E4 hasta B2-prep/B2.
 const V1_MODULES_B2 = [
   "overlay-projection-v1",
   "overlay-projection-adapter",
@@ -212,24 +210,25 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
       [src("hub", "overlay-studio", "canvas", "StudioTelemetryProvider.tsx"), "transports/telemetry-adapter", "C2 (provider V2)"],
       [src("hub", "overlay-studio", "canvas", "StudioTelemetryProvider.tsx"), "buildMockTelemetry", "C2 (mock V1 fuera)"],
       [src("hub", "overlay-studio", "canvas", "StudioTelemetryProvider.tsx"), "authoring-v2-fixture", "C2 (usar escenario V2 puro)"],
-      [src("overlay", "authoring", "fixtures", "authoring-v2-scenario-fixture.ts"), "TelemetrySnapshot", "C2 (fixture V2 puro)"],
-      [src("overlay", "authoring", "fixtures", "authoring-v2-scenario-fixture.ts"), "buildMockTelemetry", "C2 (fixture V2 puro)"],
-      [src("overlay", "authoring", "fixtures", "authoring-v2-scenario-fixture.ts"), "Date.now", "C2 (tiempo determinista)"],
-      [src("overlay", "authoring", "fixtures", "authoring-v2-scenario-fixture.ts"), "overlay-projection-adapter", "C2 (sin adapter B2)"],
-      [src("overlay", "authoring", "fixtures", "authoring-v2-scenario-fixture.ts"), "projection-telemetry-adapter", "C2 (sin transporte B2)"],
-      [src("overlay", "authoring", "fixtures", "authoring-v2-scenario-fixture.ts"), "overlay-v2-shadow-runtime", "C2 (sin runtime B3)"],
-      [src("overlay", "authoring", "fixtures", "authoring-v2-scenario-fixture.ts"), "transports/telemetry-adapter", "C2 (sin adapter E1)"],
       [src("overlay", "authoring", "fixtures", "authoring-v2-scenario-fixture.test.ts"), "./authoring-v2-fixture", "C2 (test del escenario V2 puro)"],
       [src("overlay-harness", "OverlayParityHarness.tsx"), "snapshot={snapshot}", "C2 (Host vía runtime V2)"],
       [src("overlay-harness", "OverlayParityHarness.tsx"), "authoring-v2-fixture", "C2 (usar escenario V2 puro)"],
+      [src("overlay-harness", "OverlayParityHarness.tsx"), "buildHarnessTelemetry", "C2 (sin builder snapshot)"],
+      [src("overlay-harness", "OverlayParityHarness.tsx"), "seedHarnessInputHistory", "C2 (sin seed snapshot global)"],
       [src("overlay", "authoring", "OverlayWorkshopDevRoute.tsx"), "snapshot={prepared.snapshot}", "C2 (Workshop V2)"],
       [src("overlay", "authoring", "OverlayWorkshopDevRoute.tsx"), "authoring-v2-fixture", "C2 (usar escenario V2 puro)"],
+      [src("overlay", "authoring", "OverlayWorkshopDevRoute.tsx"), "buildAuthoringFixtureTelemetry", "C2 (sin builder snapshot)"],
+      [src("overlay", "authoring", "OverlayWorkshopDevRoute.tsx"), "resetAndSeedAuthoringInputTelemetry", "C2 (sin seed snapshot global)"],
       [src("overlay-harness", "responsive-overlay-main.tsx"), "buildHarnessTelemetry", "C2 (harness dev V2)"],
       [src("hub", "home-orbit", "HomeMiniStage.tsx"), "snapshot={PREVIEW_SNAPSHOT}", "C2 (preview Hub V2)"],
+      [src("hub", "home-orbit", "HomeMiniStage.tsx"), "buildMockTelemetry", "C2 (preview sin mock snapshot)"],
       [src("hub", "overlays", "ProfilePreview.tsx"), "snapshot={PREVIEW_SNAPSHOT}", "C2 (preview Hub V2)"],
+      [src("hub", "overlays", "ProfilePreview.tsx"), "buildMockTelemetry", "C2 (preview sin mock snapshot)"],
       [src("ui-orbit-harness.tsx"), "snapshot={STAGE_SNAPSHOT}", "C2 (harness UI V2)"],
+      [src("ui-orbit-harness.tsx"), "buildMockTelemetry", "C2 (harness UI sin mock snapshot)"],
       [src("hub", "overlay-studio", "StudioRoute.test.tsx"), "overlay_v1.golden.json?raw", "C2 (test Studio V2)"],
       [src("overlay", "authoring", "workshop-runtime-parity.test.tsx"), "authoring-v2-fixture", "C2 (compat API V2 pura)"],
+      [src("overlay", "authoring", "workshop-runtime-parity.test.tsx"), "buildAuthoringFixtureTelemetry", "C2 (compat sin snapshot)"],
       [src("overlay", "design-systems", "vantare-endurance", "track-map", "TrackMapEndurance.layout.test.tsx"), "authoring-v2-fixture", "C2 (compat API V2 pura)"],
       [src("overlay", "design-systems", "vantare-endurance", "endurance-transparent-shells.test.tsx"), "authoring-v2-fixture", "C2 (compat API V2 pura)"],
       [src("overlay", "authoring", "fixtures", "projection-gaps.test.ts"), "overlay-projection-adapter.ts", "C2 (contrato gaps V2)"],

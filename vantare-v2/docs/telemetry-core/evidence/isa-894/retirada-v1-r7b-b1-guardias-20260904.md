@@ -32,8 +32,7 @@ en este corte. C2 ya es RED explícito porque debe ejecutarse antes de B3/B2.
 | studio-v1-snapshot-test-harness | `frontend/src/hub/overlay-studio/canvas/fixtures/studio-v1-snapshot-test-harness.ts` (sin test propio en árbol) | E1 | presente |
 | vite.config / index.html / overlay.html | `frontend/vite.config.ts`, `frontend/index.html`, `frontend/overlay.html` | E3 solo con refs (limpio) | sin refs V1 |
 | runtime/harness/scripts sesion-v1 | runtime+activación, `overlay-shadow-lote2b-features.test.ts`, 2 packages harness, 2 HTML, 2 Playwright, `sesion-v1.ps1`, `sesion-v1-state.ps1`, `sesion-v1-resumen.mjs` + 2 tests, refs en `all.test.mjs`/README/`package.json`; helper histórico `s1-definitiva/recalcular.mjs` | B3 | 19 rutas AUSENTES + 6 refs activas AUSENTES; helper/README/hash PRESENTES |
-| bench research frontend | `docs/research/telemetry-architecture-2026/bench/frontend-bench-entry.ts`, `frontend-bench.mjs` | E3 | presente |
-| (preservado E3) | `bench/compact_frame.go`: prototipo Go con tag `researchbench`, imports canónicos (derive/envelope), V1 solo en 2 comentarios, sin import `projection/overlay` | E3 | presente + anclas |
+| bench research frontend + prototipo Go preservado | `docs/research/telemetry-architecture-2026/bench/frontend-bench-entry.ts`, `frontend-bench.mjs`, `compact_frame.go` (tag `researchbench`, imports canónicos; V1 solo en comentarios) | E3 | presentes + anclas |
 
 Núcleo B2: `overlay-projection-v1.*`, `overlay-projection-adapter.*`,
 `transports/projection-telemetry-adapter.*`,
@@ -78,7 +77,8 @@ Además aparecieron tres previews Hub, `StudioTelemetryProvider` y, en la review
 adversarial, `OverlayStudioV3`, el fixture authoring completo y el golden
 pre-D7 fuera de las anclas iniciales. Todos quedan ahora con dueño explícito.
 Orden corregido: `B1 → C2 → B3 → B2-prep → B2`. Tras el RED C2, un segundo
-preflight cerró el grafo: el guard C2 enumera 30 anclas; el puente snapshot de
+preflight cerró el grafo: el guard C2 enumera 31 anclas de callers; la pureza
+del módulo nuevo queda en su focal semántico. El puente snapshot de
 `authoring-v2-fixture.ts` pasa a B2 (9 rutas) y su único caller E4 se desacopla
 en B2-prep (3 imports). Los helpers de `authoring-fixtures.ts` quedan D/E1.
 Exentos: `strategy-contract-v1(.canonical).ts`, `engineer-types.ts`,
@@ -99,7 +99,7 @@ No se inició B2 inseguro y no hubo cambios productivos.
 - B3 runtime/harness/tooling (19 rutas; recalculador histórico preservado).
 - B3 referencias activas (6 anclas, incluido el import del recalculador).
 - B2-prep comparator/test (3 imports: tipos desde el adapter y puente snapshot E4).
-- C2 callers/previews/fixtures (30 anclas).
+- C2 callers/previews/fixtures (31 anclas).
 - 8 en verde: diferidos D/E1/E2/E3/E4, callers sin imports B2, exentos y
   superficies preservadas.
 
@@ -116,7 +116,7 @@ No se declara verde el suite: el rojo es el estado esperado de B1.
 - Corrección: todos quedan ahora en el guard/plan con rutas o especificadores
   exactos; el helper S1 se preserva y solo pierde su dependencia activa en B3.
   El focal conserva exactamente `7 failed | 8 passed (15)`, ahora con
-  9 rutas + 9 anclas B2, 19 rutas + 6 refs B3, 3 imports B2-prep y 30 anclas C2.
+  9 rutas + 9 anclas B2, 19 rutas + 6 refs B3, 3 imports B2-prep y 31 anclas C2.
 - Re-review spec Muse `ses_f928d2…` sobre `fc0a4262`: APPROVE,
   P0/P1/P2=0; reejecutó focal, ESLint y diff-check.
 - Re-review quality Muse `ses_f928adc…` sobre `fc0a4262`: APPROVE,
@@ -139,8 +139,15 @@ Contrato corregido, aún sin producción:
 - `authoring-fixtures.ts` permanece bajo D/E1; no se mueve ni duplica.
 - el puente snapshot actual permanece solo para E4; B2-prep desacopla su único
   caller y B2 lo elimina.
-- el guard declara 30 anclas C2; 29 siguen activas porque el propio test RED ya
-  importa el futuro API puro.
+- el guard declara 31 anclas C2 de callers; 30 siguen activas porque el propio
+  test RED ya importa el futuro API puro. Las prohibiciones internas del módulo
+  viven solo en el focal, evitando siete falsos fallos repetidos por fichero
+  todavía ausente.
+
+El review de calidad posterior añadió anclas para los builders snapshot de
+Parity, Workshop, sus tests y previews Hub; corrigió el comentario de dueño
+D/E1 y cerró la semilla con golden 20, igualdad completa del escenario default,
+`trackName`, relative canónico y mutación acotada de multiclass.
 
 Reproducción: guard `7 failed | 8 passed (15)` y test focal C2 falla al resolver
 `./authoring-v2-scenario-fixture`, exactamente antes de C2a. Este addendum y el

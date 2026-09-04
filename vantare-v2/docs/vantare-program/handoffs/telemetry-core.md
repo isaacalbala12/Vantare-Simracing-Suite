@@ -7,7 +7,7 @@ directamente rompería el oráculo E4, dos tests C2 y los harnesses B3. El orden
 canónico queda corregido a **B1 → C2 → B3 → B2-prep → B2 → C1 → D/E/F**.
 `v1-retirement-b1.guard.test.ts` tiene 15 tests en rojo reproducible:
 7 failed que enumeran en una ejecución B2 (9 rutas + 5 anclas ProductID/golden
-y 4 anclas wails-pull), B3 (19 rutas + 6 referencias activas) y C2 (30 anclas
+y 4 anclas wails-pull), B3 (19 rutas + 6 referencias activas) y C2 (31 anclas
 de callers/previews/fixtures), más B2-prep (3 imports); 8 passed para diferidos
 y exentos. La tabla B0
 queda en 15/15 grupos tras añadir `OverlayStudioV3`, `StudioTelemetryProvider`,
@@ -24,7 +24,9 @@ El primer RED C2 (`b72af09d`) descubrió consumidores legacy fuera del inventari
 y el intento de moverlos a un módulo snapshot nuevo se abortó sin commit. Grafo
 corregido: módulo puro nuevo en C2; helpers legacy existentes permanecen D/E1;
 puente snapshot actual queda solo para E4 hasta B2-prep/B2. Siguiente: review
-del plan/guard corregidos y reanudar **C2a**. No B3/B2 todavía. Sin push/PR/
+del plan/guard/focal endurecidos y reanudar **C2a**. Los callers C2 deben dejar
+también sus builders/seeds snapshot; el escenario default debe igualar el
+golden V2 de 20 coches. No B3/B2 todavía. Sin push/PR/
 merge/promoción/apps/LMU.
 
 ## R7b/A3 CERRADO — doble APPROVE, siguiente B1 — 2026-09-04, ISA-894

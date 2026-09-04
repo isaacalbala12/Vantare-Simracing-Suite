@@ -479,9 +479,14 @@ B1; si una ruta no existe en árbol, lo registra como divergencia y para ese
   `projection-gaps`/`animation-scenes` que leen el adapter por contrato V2 puro.
   `authoring-fixtures.ts` y sus tests/builders snapshot permanecen con dueño
   D/E1 hasta que las definitions legacy se migren; no se mueven a otro módulo.
+  Esto no autoriza que los callers C2 conserven `buildHarnessTelemetry`,
+  `seedHarnessInputHistory`, `buildAuthoringFixtureTelemetry`,
+  `resetAndSeedAuthoringInputTelemetry` o `buildMockTelemetry`: esos callers
+  pasan al runtime de escenario V2 puro en C2.
   Preservar InPlaceEdit/Studio real ya V2. La rama legacy del Host **puede
   seguir existiendo** durante C2; la elimina D1.
-- Semilla cerrada: parte del golden V2 canónico y solo aplica variantes ya
+- Semilla cerrada: parte exactamente de
+  `overlay_v2_20.golden.json` y solo aplica variantes ya
   documentadas por las tablas puras existentes (stress60, multiclass, replay,
   pedals y escenas). Instante fijo real del fixture, `trackName` explícito para
   TrackMap; no sintetizar `relative.side/authority` ni rellenar secciones sin
@@ -499,6 +504,8 @@ B1; si una ruta no existe en árbol, lo registra como divergencia y para ese
 - Aceptación:
   1. Fixture V2 puro; previews/callers citados sin snapshot/wrapper legacy; el
      único puente restante está acotado al test-oráculo E4 con dueño B2-prep/B2.
+     El escenario `default` clona el frame/source del golden 20 sin completar
+     secciones, y cada variante solo puede modificar su sección documentada.
   2. InPlaceEdit/Studio real ya V2 preservados.
   3. Tests migrados en verde; cero lectura/import del adapter B2 o runtime B3
      desde los callers/tests C2.

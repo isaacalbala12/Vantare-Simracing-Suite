@@ -525,6 +525,19 @@ B1; si una ruta no existe en árbol, lo registra como divergencia y para ese
       V2 + diagnóstico sin `shadow`; focal 17/17 verde; guard RED
       `7 failed | 8 passed (15)` con 24 anclas activas (25 declaradas, una
       inactiva heredada de C2a); ESLint y `diff --check` limpios; typecheck
+      con los 8 heredados (no verde); build no ejecutado.
+   3. **C2b2, StudioRoute test V2-only (24→23):** retirar golden/evento V1;
+      cualquier publicación snapshot usada exclusivamente para histories E1
+      queda citada y no se presenta como autoridad de proyección. Ejecutado
+      en `56449665`: import golden V1, `canonicalEnvelope` y eventos legacy
+      `status`/`projection` retirados del caso StrictMode; golden V2 canónico
+      intacto; lifecycle/listeners/store/repaint/editor preservados; el
+      `coordinator.publish` manual queda citado como historia auxiliar E1
+      (inputHistory, no autoridad); el literal negativo de no-suscripción se
+      conserva bajo ownership B2. Focal 9/9 verde (mismo número baseline);
+      `studio-overlay-telemetry.test.ts` 3/3; guard RED
+      `7 failed | 8 passed (15)` con 23 anclas activas (24 declaradas, una
+      inactiva heredada de C2a); ESLint y `diff --check` limpios; typecheck
       con los 8 heredados (no verde); build no ejecutado. Spec C2b1
       `ses_f920fe705ffez0fE6o5MTU6efP` APPROVE 0/0/0/0; quality C2b1
       `ses_f920d0602ffeQ1MIm8eKW0J3RY` REQUEST_CHANGES (P2 único + P3
@@ -533,11 +546,8 @@ B1; si una ruta no existe en árbol, lo registra como divergencia y para ese
       spec `ses_f920fe705ffez0fE6o5MTU6efP` (P0=P1=P2=P3=0) y quality
       `ses_f920d0602ffeQ1MIm8eKW0J3RY` (P2 cerrado, sin P0–P3 pendientes).
       Guard deliberadamente RED con 24 activas; typecheck NO verde (8
-      heredados); build no ejecutado; siguiente C2b2 24→23.
-  3. **C2b2, StudioRoute test V2-only (24→23):** retirar golden/evento V1;
-     cualquier publicación snapshot usada exclusivamente para histories E1
-     queda citada y no se presenta como autoridad de proyección.
-  4. **C2b3, previews Hub (23→17):** `HomeMiniStage`, `ProfilePreview` y
+      heredados); build no ejecutado; siguiente C2b3 23→17.
+   4. **C2b3, previews Hub (23→17):** `HomeMiniStage`, `ProfilePreview` y
      `ui-orbit-harness` pasan a runtime V2. C2b3 (no C2a) añade/resuelve la
      factory por consumidor; el aislamiento cruzado de `standings` es
      obligatorio (un preview no puede contaminar a otro; singleton

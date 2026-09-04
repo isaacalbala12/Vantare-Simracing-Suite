@@ -1,5 +1,27 @@
 # Handoff vivo — Telemetry Core
 
+## R7b/C2b2 CERRADO en rama (StudioRoute test V2-only) — siguiente C2b3 23→17 — 2026-09-04, ISA-894
+
+Writer único, rama `vantareapp/isa-894-retirada-v1-r7b`, base `1f6a4308`.
+Commit de test `56449665` (2 ficheros, +6/−26, cero producción):
+`StudioRoute.test.tsx` pierde import del golden V1, `canonicalEnvelope` y
+eventos legacy `status`/`projection` del caso StrictMode; golden V2 canónico
+(`overlay_v2_1`) intacto; lifecycle/listeners/store/repaint/editor
+preservados (focal 9/9, mismo número baseline; `studio-overlay-telemetry`
+3/3). El `coordinator.publish` manual queda citado como historia auxiliar E1
+(inputHistory, no autoridad de proyección ni frame V1); el literal negativo
+`not.toContain('telemetry:overlay:projection')` se conserva bajo ownership B2
+(garantía útil, documentada en el test). Barrido del fichero: solo queda ese
+literal negativo; cero `TelemetrySnapshot`, `buildMockTelemetry`,
+builders/seeds, `authoring-fixtures`/bridge, `overlay_v1`, goldens V1 o
+`canonicalEnvelope`. Guard en el mismo commit: C2 con **24 declaradas / 23
+activas** (hereda la inactiva de C2a); deliberadamente RED
+`7 failed | 8 passed (15)` con `expected 23`. ESLint focal y
+`git diff --check` limpios; `pnpm --dir frontend typecheck` NO verde con
+exactamente los 8 errores R7a heredados y cero nuevos; build no ejecutado en
+este subcorte (documentado). Guard/typecheck/build globales NO verdes.
+Siguiente: C2b3 (previews Hub, 23→17). Sin push/PR/merge/promoción/apps/LMU.
+
 ## R7b/C2b1 APROBADO final — cerrado, siguiente C2b2 24→23 — 2026-09-04, ISA-894
 
 Spec C2b1 Muse `ses_f920fe705ffez0fE6o5MTU6efP`: **APPROVE**,

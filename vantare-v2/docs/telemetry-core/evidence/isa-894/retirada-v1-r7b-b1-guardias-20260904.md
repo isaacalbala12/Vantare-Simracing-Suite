@@ -283,6 +283,26 @@ V1, sin ampliar prueba, sin producción). Guard: `7 failed | 8 passed (15)`
 con 24 activas; focal 17/17; ESLint, `diff --check` y typecheck (8
 heredados) sin regresión. Pendiente: re-review.
 
+## C2b2 ejecutado — StudioRoute test V2-only (ISA-894)
+
+Base `1f6a4308`, commit de test `56449665` (cero producción). Única ancla
+activa C2 identificada antes de editar: `overlay_v1.golden.json?raw` en
+`StudioRoute.test.tsx` (alimentaba `canonicalEnvelope` en el caso
+StrictMode). Migración: import golden V1, `canonicalEnvelope` y eventos
+legacy `status`/`projection` retirados; golden V2 canónico intacto;
+lifecycle/listeners únicos, store, repaint, editor y diagnóstico preservados.
+El `coordinator.publish` manual permanece citado como historia auxiliar E1
+(inputHistory del derived store, no autoridad). El literal negativo
+`not.toContain('telemetry:overlay:projection')` se conserva bajo ownership B2
+(protege ausencia de suscripción; no es evento inyectado). Barrido literal
+del fichero: solo queda ese literal negativo. Focal:
+`pnpm --dir frontend test -- src/hub/overlay-studio/StudioRoute.test.tsx` →
+`9 passed (9)` (baseline previo 9/9); `studio-overlay-telemetry.test.ts`
+3/3. Guard: `7 failed | 8 passed (15)` con 23 anclas C2 (24 declaradas, una
+inactiva heredada de C2a). ESLint de ambos TS tocados limpio;
+`git diff --check` limpio; typecheck con los 8 heredados exactos y cero
+nuevos (no verde); build no ejecutado. Siguiente: C2b3 23→17.
+
 ## C2b1 APROBADO final (ISA-894)
 
 Spec C2b1 `ses_f920fe705ffez0fE6o5MTU6efP`: **APPROVE**, P0=P1=P2=P3=0.

@@ -2,13 +2,14 @@
 
 ## R7b/C2b4 cierre técnico — pendiente doble review — 2026-09-04, ISA-894
 
-Commit `71ef8cad`: Studio mock deja V1/puente y publica solo un escenario V2
+Commits `71ef8cad` + hardening `cad73784`: Studio mock deja V1/puente y publica solo un escenario V2
 canónico por `setOverlayFrame`. `mockSession` transforma únicamente
 `session.phase` conservando quality; `mockLocation` transforma únicamente el
 pit de la fila de `player.id`, con fail-fast sin ids/coches inventados. El
 fixture es determinista e inmutable; el provider avanza la secuencia del
 envelope como productor de autoría para que cambios sucesivos del mismo golden
-no sean descartados por el coordinador. Se preservan primer paint, conmutación,
+no sean descartados por el coordinador; el máximo incluye el frame live
+retenido y el test reproduce la colisión exacta. Se preservan primer paint, conmutación,
 start/stop live y suspensión. El test usa el tipo canónico real.
 
 Evidencia: focales 22/22; ESLint y diff-check limpios; guard deliberadamente

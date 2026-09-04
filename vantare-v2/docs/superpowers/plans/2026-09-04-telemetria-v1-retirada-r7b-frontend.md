@@ -596,7 +596,9 @@ B1; si una ruta no existe en árbol, lo registra como divergencia y para ese
      no contiene al jugador. El fixture sigue determinista e inmutable; el
      provider, como productor de autoría, avanza solo la `sequence` del
      envelope para que el coordinador no descarte dos escenarios distintos
-     derivados del mismo golden. Se preservan start/stop live, conmutación,
+     derivados del mismo golden. Endurecido en `cad73784`: la secuencia se
+     calcula también sobre el frame retenido, evitando colisión al volver de
+     live; el test de conmutación reproduce ese borde. Se preservan start/stop live, conmutación,
      suspensión y primer paint. Focales 22/22 y ESLint/diff-check limpios;
      guard deliberadamente RED `7 failed | 8 passed (15)`, C2 en 16
      declaradas / 15 activas; typecheck NO verde con exactamente los 8 errores

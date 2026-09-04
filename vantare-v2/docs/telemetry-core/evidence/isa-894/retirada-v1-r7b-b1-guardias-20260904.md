@@ -475,6 +475,9 @@ fallback si no existe id o fila. El fixture devuelve clones deterministas e
 inmutables. Como todos parten de la misma secuencia del golden, el provider
 mantiene una secuencia local monotónica en el envelope de autoría; no altera
 los datos de sección y permite que el coordinador observe cambios sucesivos.
+El fix `cad73784` incluye además la secuencia del frame retenido en el máximo:
+el test deja un frame live justo en la siguiente secuencia candidata y prueba
+que la vuelta a mock lo supera y reemplaza su `phase`, sin colisión silenciosa.
 
 Evidencia local: focales provider+fixture **22/22**; ESLint focal y
 `git diff --check` limpios. `pnpm --dir frontend typecheck` permanece NO verde

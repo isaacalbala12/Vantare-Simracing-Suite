@@ -5,10 +5,10 @@
 Writer unico en `C:\tmp\vantare-v1-retirada-r7b\vantare-v2`, rama
 `vantareapp/isa-894-retirada-v1-r7b`, base exacta `5198e4cd5a007893faedd89151168ae26bf7e951`
 (R7a final). Secuencia documental conocida: `d242f634` → `2a2ab054` →
-`46d519d5` (HEAD revisado por el orquestador); HEAD de trabajo = el commit de
-esta corrección (su hash queda en el propio commit y en el reporte, no
-inventado aquí). Sin apps/LMU/navegadores, sin `.env*`, sin
-push/PR/merge/promocion/release.
+`46d519d5` → `e4342b69` → `20e0aaf1` (HEAD revisado SPEC por el orquestador);
+HEAD de trabajo = el commit de esta corrección (su hash queda en el propio
+commit y en el reporte, no inventado aquí). Sin apps/LMU/navegadores, sin
+`.env*`, sin push/PR/merge/promocion/release.
 
 R7a final comprometido en esta linea: `7ee3f87b` (retirada de contratos Overlay
 V1: `telemetrytransport.ProductOverlay` + `knownProduct`,
@@ -31,8 +31,13 @@ R7b planificado, todavia **sin codigo productivo**: microplan ejecutable en
 REQUEST_CHANGES** (commit sobre `2a2ab054`; sin afirmar aprobación futura) y
 **autocorregido por arquitectura del orquestador sobre `46d519d5`** (commit
 sobre `46d519d5`; `46d519d5` era el HEAD revisado) y **recorregido por
-contradicción B0/B3/E3 sobre `e4342b69`** (este commit; `e4342b69` era el HEAD
-revisado). Esta ronda: B0 en 13 grupos (fila sesion-v1/B3 separada de
+contradicción B0/B3/E3 sobre `e4342b69`** (commit `20e0aaf1`; `e4342b69` era el
+HEAD revisado) y **corregido SPEC sobre `20e0aaf1`** (este commit; sin afirmar
+aprobación futura). Esta ronda SPEC: E2 absorbe el residuo rollback del Host
+(`WidgetVisualHost.tsx:121-126`, 8 gates, 2 tests) con `rg`
+`v2Rollback`+`overlay-v2-rollback`; A3 refuerza la omisión
+`SourceTime`/`LapDistance` con inventario `rg` y STOP conservar/migrar.
+Ronda anterior: B0 en 13 grupos (fila sesion-v1/B3 separada de
 entrypoints research-bench/E3; Go bench preservado sin dueño de borrado);
 B3 dueño exclusivo de runtime/2 packages harness/scripts-HTML sesion-v1
 (E3 no los toca); E3 dueño exclusivo de los 3 JSON + 2 entrypoints frontend +
@@ -55,14 +60,19 @@ A2 con contrato `FuelHistoryV2` fijado y derogación del comentario
 `Trend` intacto); B0 consistente en 13 grupos; D5 sin RED; microcheckpoints
 a–d por A en la misma rama/PR (A2/A3 en texto propio); E2 fijado según callsites (catálogo estático a
 `overlay/core/overlay-v2-feature-catalog.ts`, default directo en los 3
-callsites); E3 exacto (3 JSON nombrados, `frontend-bench-entry.ts`/`.mjs` fuera,
+callsites, más Host `WidgetVisualHost.tsx:121-126` con sus 8 gates
+`!v2Rollback` simplificados y 2 tests del código `overlay-v2-rollback`
+actualizados; E2 dueño del residuo rollback, no diferido a D1; `rg`
+`v2Rollback`+`overlay-v2-rollback` en árbol y bundle); E3 exacto (3 JSON nombrados, `frontend-bench-entry.ts`/`.mjs` fuera,
 Go bench preservado, `sesion-v1-*` y packages harness solo en B3,
 `vite.config`/HTML intactos por `rg` limpio). Primera ronda: A1 ya no llama canónica
 a la historia actual (verificado: `ControlSample` sin Speed/RPM/Gear); A2 separa
 ventana 3/10 de la nueva historia 64 y fija `requiredFuel` = perLap × sessionLaps
 sin derivar de `EstimatedLaps`; A3 corrige premisa (`SelfDelta.History` existe,
 `DeltaViewV2` sin campo: el corte lo agrega) y elimina singleton/`Date.now`
-solo tras verde; comparator/sanitizer sobreviven como oráculo hasta E4 (D no se
+solo tras verde; omisión `SourceTime`/`LapDistance` reforzada con inventario
+`rg` (delta-trace legacy solo `{capturedAt, deltaSeconds}`; cero consumidores
+wire en `delta*/`; STOP conservar/migrar si aparece consumidor real); comparator/sanitizer sobreviven como oráculo hasta E4 (D no se
 queda sin oráculo); tabla B0 asigna dueño/corte a los 13 grupos sin
 `etc.`; C1 pasa a hipótesis contra productor (ramas A/B con evidencia, sin
 inventar fracciones); C2/D1 resueltos (C2 no exige Host V2-only; D1 verifica

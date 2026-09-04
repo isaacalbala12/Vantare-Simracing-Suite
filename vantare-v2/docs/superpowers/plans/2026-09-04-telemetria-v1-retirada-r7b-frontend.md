@@ -208,8 +208,16 @@ completa. A1 la expande en Go antes de proyectarla.
   valor, sin string timestamps ni `Date.now`, sin reconstrucción dependiente del
   frame. Misma razón que A1: la sección delta puede sobrevivir memoizada a
   varios `frame.GeneratedAt` (`cadence.go:331-340`); una edad cacheada cambiaría
-  de significado. No se transportan `SourceTime`/`LapDistance`:
-  ningún consumidor legítimo los usa en el wire. `Trend` conserva el
+  de significado. No se transportan `SourceTime`/`LapDistance`, con inventario
+  `rg` exacto: el único consumidor de historia delta (legacy
+  `delta-trace-view-model.ts:6`, puntos `snapshot.derived?.deltaHistory`)
+  usa solo `{capturedAt, deltaSeconds}`; el tipo legacy es
+  `DerivedDeltaSample = {capturedAt, deltaSeconds}`
+  (`derived-telemetry-store.ts:10-13`); `rg SourceTime|LapDistance` en
+  `widget-types/delta*/` da cero; los demás hits (`generated/telemetry.ts`,
+  `overlay-frame-v2-store.ts` validador de fila relative, fixtures de
+  authoring) son conceptos de fila relative/standings, no historia delta.
+  `Trend` conserva el
   comportamiento actual (vacío en builder; delta-trace posee el concepto).
   Mapping exacto: derive (`SelfDelta.History`, `Freshness`) → frame
   (`DeltaViewV2.History` vía `BuildDelta` + copia) → TS generado →
@@ -219,7 +227,10 @@ completa. A1 la expande en Go antes de proyectarla.
   generados vía tasks, decoder V2, tests de regresión migrados a V2. Prohibido:
   pruebas automáticas de vueltas del jugador, snapshot genérico.
 - Test RED previo: regresión estructural V2 que exige el campo histórico
-  proyectado con instantes absolutos reales; falla con singleton/`Date.now` o sin campo.
+  proyectado con instantes absolutos reales, más `rg`/assert estructural que
+  demuestra cero consumidores wire de `SourceTime`/`LapDistance` en historia
+  delta antes de omitirlos; falla con singleton/`Date.now`, sin campo o con un
+  consumidor real no inventariado.
 - Aceptación:
   1. Campo histórico delta con instantes absolutos reales; frontend decodifica.
   2. Singleton/`Date.now` eliminado después de verde; regresión estructural
@@ -236,7 +247,9 @@ completa. A1 la expande en Go antes de proyectarla.
      evidencia exacta (gate: `pnpm --dir frontend test` focal y
      `pnpm --dir frontend typecheck` verdes).
 - Checks/reviewer/rollback: como A1.
-- Stop: como STOP historias / STOP coste de A1.
+- Stop: como STOP historias / STOP coste de A1, más STOP específico: si aparece
+  un consumidor real de `SourceTime`/`LapDistance` en historia delta →
+  conservar/migrar el campo, no borrar; parar y pedir decisión.
 
 ---
 
@@ -495,7 +508,15 @@ B1; si una ruta no existe en árbol, lo registra como divergencia y para ese
   ObsOverlayApp y StudioRoute crean generación + `useSyncExternalStore`
   (subscribe/getSnapshot) + `dispose`; el snapshot (array estático en la
   práctica) fluye como prop hasta el runtime (`InPlaceWidgetEditFrame`), que lo
-  consume como dato, no como switch.
+  consume como dato, no como switch. Residuo omitido hasta ahora y verificado:
+  `frontend/src/overlay/core/WidgetVisualHost.tsx:121-126` define
+  `const v2Rollback = props.runtime?.overlayV2Features?.length === 0` y la rama
+  diagnóstica `overlay-v2-rollback` (mensaje "Overlay V2 diagnostic rollback
+  active"); los gates `!v2Rollback` viven en las líneas 127, 132, 137, 142,
+  152, 173, 200 y 209 (8 ocurrencias); los tests
+  `overlay/edit/InPlaceEditModeBranch.test.tsx:102` y
+  `overlay/runtime/RuntimeOverlaySurface.test.tsx:151` referencian el código
+  `overlay-v2-rollback`.
 - Decisión fijada (no disyunción): el catálogo estático se conserva **movido**
   a `frontend/src/overlay/core/overlay-v2-feature-catalog.ts` (constantes, tipo,
   `DEFAULT_OVERLAY_V2_FEATURES`, `hasOverlayV2Feature` pura). Se elimina
@@ -505,19 +526,32 @@ B1; si una ruta no existe en árbol, lo registra como divergencia y para ese
   pasan a usar el default estático directo: fuera generación, suscripción,
   `dispose` y campo de generación; las props downstream conservan el tipo
   estático del catálogo (sigue haciendo falta el dato; ya no hace falta gating).
-  Sin parse/switch mutable.
+  Sin parse/switch mutable. En el Host: eliminar `const v2Rollback` (con su
+  comentario 119-120) y la rama diagnóstica 122-126, y simplificar los 8 gates
+  `v2Entry && !v2Rollback && …` a la condición V2 restante (`v2Entry && …`;
+  en 200/209 solo cae el conjunct, la lógica harness/input-accumulator queda
+  intacta para C2/D1/E1). E2 es dueño del switch mutable/residuo de rollback:
+  no se difiere al Host de D1 (D1 elimina prop snapshot/rama harness/hack
+  input, no el rollback).
 - Archivos: `telemetry-shadow/overlay-v2-features.ts` (queda vacío → se borra),
   nuevo `overlay/core/overlay-v2-feature-catalog.ts`, los tres callsites +
-  props downstream, `overlay-v2-features.test.ts` (se reescribe a catálogo
+  props downstream, `overlay/core/WidgetVisualHost.tsx` (const, rama y 8
+  gates), `InPlaceEditModeBranch.test.tsx` + `RuntimeOverlaySurface.test.tsx`
+  (casos `overlay-v2-rollback` reescritos a ausencia o borrados si solo cubrían
+  el rollback), `overlay-v2-features.test.ts` (se reescribe a catálogo
   estático o se borra si solo cubría la maquinaria), tests `*-domain-free`
   que importen el switch.
 - Test RED previo: test que exige cero `createOverlayV2FeaturesGeneration`/
   `activeGeneration`/`setRollback`/`subscribe`/`parseOverlayV2Features`/
-  `__vantareSet/GetOverlayV2Rollback`/`overlay-v2-rollback-changed` en árbol y
-  bundle, con el catálogo estático presente en su archivo; falla antes.
+  `__vantareSet/GetOverlayV2Rollback`/`overlay-v2-rollback-changed`/
+  `v2Rollback`/`overlay-v2-rollback` en árbol y bundle (`rg` con patrones
+  `v2Rollback` y `overlay-v2-rollback`), con el catálogo estático presente en
+  su archivo; falla antes.
 - Aceptación:
-  1. Cero maquinaria mutable en árbol y bundle (falsable por `rg`).
-  2. Catálogo estático en su archivo distinto, sin mutabilidad ni retorno V1.
+  1. Cero maquinaria mutable y cero residuo rollback en árbol y bundle
+     (falsable por `rg` con ambos patrones).
+  2. Catálogo estático en su archivo distinto, sin mutabilidad ni retorno V1;
+     Host con gates V2 simplificados y sin rama diagnóstica rollback.
   3. Focales en verde.
 - Checks: focales, `rg` ausencia, `pnpm --dir frontend typecheck`.
 - Reviewer: spec + quality.

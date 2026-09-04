@@ -18,6 +18,15 @@ var (
 
 const DefaultPublisherMaxPayloadBytes = 64 * 1024
 
+// OverlayV2MaxPayloadBytes is the hard safety limit for the overlay-v2
+// product (ISA-894 A3, approved 2026-09-04): 64 KiB stays the representative
+// performance objective, 72 KiB is what the publisher accepts and the
+// frontend validator mirrors. It is product-specific on purpose: future
+// products keep DefaultPublisherMaxPayloadBytes instead of silently
+// inheriting this raise. The generic transport ceiling (MaxPayloadBytes,
+// 256 KiB) is untouched.
+const OverlayV2MaxPayloadBytes = 72 * 1024
+
 // DefaultPublisherBytesWindow is the moving window used to report the outgoing
 // byte rate. One second keeps the number readable next to a cadence in Hz.
 const DefaultPublisherBytesWindow = time.Second
@@ -103,13 +112,23 @@ type Publisher struct {
 	metrics          PublisherMetrics
 }
 
+// defaultPublisherMaxPayloadBytes resolves the fallback limit per product.
+// Only overlay-v2 carries the approved 72 KiB hard safety limit; any other
+// product falls back to the 64 KiB representative objective.
+func defaultPublisherMaxPayloadBytes(product PublisherProduct) int {
+	if product == ProductOverlayV2 {
+		return OverlayV2MaxPayloadBytes
+	}
+	return DefaultPublisherMaxPayloadBytes
+}
+
 func newPublisher(config PublisherConfig) (*Publisher, error) {
 	if !knownPublisherProduct(config.Product) {
 		return nil, ErrPublisherProduct
 	}
 	maximum := config.MaxPayloadBytes
 	if maximum <= 0 || maximum > MaxPayloadBytes {
-		maximum = DefaultPublisherMaxPayloadBytes
+		maximum = defaultPublisherMaxPayloadBytes(config.Product)
 	}
 	subscribers := config.MaxSubscribers
 	if subscribers <= 0 || subscribers > MaxSubscribers {
@@ -411,7 +430,7 @@ func (registry *PublisherRegistry) PublishStatus(
 	}
 	maximum := config.MaxPayloadBytes
 	if maximum <= 0 || maximum > MaxPayloadBytes {
-		maximum = DefaultPublisherMaxPayloadBytes
+		maximum = defaultPublisherMaxPayloadBytes(product)
 	}
 	if len(encoded) > maximum {
 		return ErrPayloadTooLarge

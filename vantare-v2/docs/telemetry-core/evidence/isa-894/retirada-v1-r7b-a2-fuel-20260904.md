@@ -116,3 +116,37 @@ release, sin apps/LMU/browser, sin `.env*`, sin dependencias nuevas, sin
 3. `0bfb7f3f` contrato TS regenerado.
 4. `63bf4eec` decoder + tests frontend.
 5. Evidencia + handoff (este archivo y checkpoint vivo).
+6. `c59efbff` fix fixture Fuel shadow harness + aclaración unidad wire.
+
+## Cierre A2 — doble aprobación fresca sobre `c59efbff`
+
+- Spec session `ses_f9536ddf4ffeOAJpR9axTS4Twt`: APPROVE, P0/P1/P2=0.
+- Quality session `ses_f95328eeeffeh7zGiYvEN3dSKC`: APPROVE, P0/P1/P2=0.
+- Los P3 observados no se aplican: no bloqueantes y fuera del alcance A2.
+
+## Deuda para auditoría posterior (no bloquea A2)
+
+1. Preference Fuel no invalida inmediatamente `SectionFuel` (<=1s): el
+   cambio de preferencia solo reconstruye la sección en el próximo tick con
+   `remaining`/`playerLastLap`/history cambiados o FullRebuild; latencia
+   acotada a un ciclo, verificar en auditoría V2.
+2. Naming liters-only vs gallons: tipos (`consumedLiters`) y comentarios del
+   widget asumen litros mientras el wire sigue `frame.units.fuel`; unificar
+   nombres cuando un consumidor lea gallons.
+3. Comentario non-fresh: revisar redacción de calidad en `builder_fuel.go`
+   (`output`/`History.Freshness`) para que missing/stale/invalid queden
+   inequívocos en una sola lectura.
+4. Cobertura stint-only: la serie cubre el stint vigente (reset canónico);
+   decidir en auditoría si algún consumidor necesita persistencia entre
+   stints o el reset actual es el contrato final.
+5. Rama average no finito: `output` declara missing ante promedio no finito;
+   auditar si ese caso merece métrica dedicada en lugar de missing
+   silencioso.
+6. Decoder malformed sin tests: el decoder descarta desalineados/no-finitos
+   a `[]`, pero no hay tests focales para arrays malformadas entrantes;
+   añadirlos en auditoría.
+
+## Veredicto
+
+A2 CERRADO. Siguiente: A3 con preflight obligatorio de payload por margen
+restante de 1328 bytes bajo 65536.

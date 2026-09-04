@@ -39,6 +39,15 @@ cero nuevos; no se declara verde global. `go vet` limpio en el diff;
 widget (forma v1 conservada; documentado). Sin runtime físico: todo
 sintético/determinista; LMU/Wails pendiente de Isaac.
 
+Cierre A2: doble aprobación fresca sobre `c59efbff` — spec
+`ses_f9536ddf4ffeOAJpR9axTS4Twt` APPROVE P0/P1/P2=0 y quality
+`ses_f95328eeeffeh7zGiYvEN3dSKC` APPROVE P0/P1/P2=0; P3 no aplicados (no
+bloqueantes, fuera de alcance). Deuda para auditoría en evidencia A2
+(preference Fuel vs `SectionFuel` <=1s, naming liters-only, comentario
+non-fresh, cobertura stint-only, average no finito, decoder malformed sin
+tests). **A2 CERRADO**; siguiente A3 con preflight obligatorio (margen
+1328 bajo 65536).
+
 ## R7b/A1 ejecutado en rama (controles, sin push) — 2026-09-04, ISA-894
 
 Writer unico en `C:\tmp\vantare-v1-retirada-r7b\vantare-v2`, rama

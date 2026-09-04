@@ -218,8 +218,11 @@ export interface OverlayFuelViewV2 {
   readonly basis?: string | undefined;
   readonly capacity: OverlayQValue<number>;
   readonly estimatedLaps: OverlayQValue<number>;
+  readonly history: Overlayv2FuelHistoryV2;
   readonly perLap: OverlayQValue<number>;
   readonly remaining: OverlayQValue<number>;
+  readonly requiredFuel: OverlayQValue<number>;
+  readonly sessionLaps: OverlayQValue<number>;
 }
 
 export interface OverlayPerformanceV2 {
@@ -381,6 +384,12 @@ export interface Overlayv2DamageViewV2 {
   readonly detached: OverlayQValue<boolean>;
   readonly overheating: OverlayQValue<boolean>;
   readonly wheelDetachedCount: OverlayQValue<number>;
+}
+
+export interface Overlayv2FuelHistoryV2 {
+  readonly consumed?: readonly number[] | undefined;
+  readonly lap?: readonly number[] | undefined;
+  readonly q: OverlayQualityV2;
 }
 
 export interface Overlayv2GroundPositionV2 {

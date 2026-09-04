@@ -362,6 +362,7 @@ func cloneFinal(state FinalState) FinalState {
 	result.Derived.Gaps.Vehicles = slices.Clone(state.Derived.Gaps.Vehicles)
 	result.Derived.Delta.History = slices.Clone(state.Derived.Delta.History)
 	result.Derived.ControlsHistory.Samples = slices.Clone(state.Derived.ControlsHistory.Samples)
+	result.Derived.Fuel.History.Samples = slices.Clone(state.Derived.Fuel.History.Samples)
 	result.Derived.Algorithms = slices.Clone(state.Derived.Algorithms)
 	return result
 }

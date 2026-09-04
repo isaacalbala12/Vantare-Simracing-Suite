@@ -21,15 +21,30 @@ R7a: Go/contract/frontend-runtime verdes; `pnpm typecheck` en rojo con 8 errores
 en 3 modulos legacy de R7b; build/dist/`cmd/vantare` bloqueados en cascada.
 
 R7b planificado, todavia **sin codigo productivo**: microplan ejecutable en
-[`2026-09-04-telemetria-v1-retirada-r7b-frontend.md`](../../superpowers/plans/2026-09-04-telemetria-v1-retirada-r7b-frontend.md).
-Orden: A paridad de historias V2 (controles 120, fuel 64, delta canónico Go, sin
-sintéticos ni `Date.now` frontend); B contratos/transporte/shadow/harness V1 con
-guardias RED; C daño (repoint a V2, tyres fraccionales no producidos) + fixture
-V2 puro y previews al mismo `WidgetVisualHost`; D Host endurecido + 20
-definitions/viewmodels por lotes; E auxiliares, switch `overlay-v2-features` y
-borrado final (testdata Go huérfano, scripts/harnesses, bundle); F
-ausencia/bundle/gates/docs. Commits pequeños en UNA rama R7b y un único draft PR
-apilado sobre #977; rollback exclusivo por build anterior R0.
+[`2026-09-04-telemetria-v1-retirada-r7b-frontend.md`](../../superpowers/plans/2026-09-04-telemetria-v1-retirada-r7b-frontend.md),
+**corregido tras REQUEST_CHANGES adversarial** (commit de corrección sobre
+`d242f634`, solo estos 2 docs). Correcciones aplicadas: A1 ya no llama canónica
+a la historia actual (verificado: `ControlSample` sin Speed/RPM/Gear) y diseña
+su expansión Go compacta con gate de coste contra `MaxPayloadBytes`; A2 separa
+ventana 3/10 de la nueva historia 64 y fija `requiredFuel` = perLap × sessionLaps
+sin derivar de `EstimatedLaps`; A3 corrige premisa (`SelfDelta.History` existe,
+`DeltaViewV2` sin campo: el corte lo agrega) y elimina singleton/`Date.now`
+solo tras verde; comparator/sanitizer sobreviven como oráculo hasta E4 (D no se
+queda sin oráculo); tabla B0 asigna dueño/corte a los 13 consumidores sin
+`etc.`; C1 pasa a hipótesis contra productor (ramas A/B con evidencia, sin
+inventar fracciones); C2/D1 resueltos (C2 no exige Host V2-only; D1 verifica
+cero callers y elimina); E2 con expectativa única falsable sin disyunción;
+F declarado verificación no-TDD; rollback R0 literal (artefacto+hash por código,
+restauración física pendiente manual de Isaac, no probada); D2/D3/D4 en lotes
+explícitos de 6 + corte auxiliar D5; comando exacto
+`pnpm --dir frontend typecheck`; `plan.md`+digest como deuda obligatoria del PR
+de código (`roadmap:required`), no del commit solo-plan.
+Orden: A paridad V2; B guardias RED + retirada V1 (oráculo conservado); C daño
+hipótesis + fixture V2 puro y previews; D1 Host + D2/D3/D4 lotes + D5
+auxiliares; E borrado final + E4 oráculo + E2 switch; F gates/cierre. Commits pequeños en UNA rama R7b y un único draft PR
+apilado sobre #977; rollback exclusivo por build anterior R0 (artefacto+hash
+preservados, compatibilidad verificada por código; restauración física no
+probada, pendiente manual de Isaac).
 `Strategy`/`Engineer`/`Analysis` v1 independientes se preservan. Este commit no
 toca `plan.md`/`roadmap.json`: el mero microplan no cambia el roadmap público;
 se actualizarán en el mismo PR que entregue código si cambia entrega pública.

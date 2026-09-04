@@ -7,7 +7,7 @@ directamente rompería el oráculo E4, dos tests C2 y los harnesses B3. El orden
 canónico queda corregido a **B1 → C2 → B3 → B2-prep → B2 → C1 → D/E/F**.
 `v1-retirement-b1.guard.test.ts` tiene 15 tests en rojo reproducible:
 7 failed que enumeran en una ejecución B2 (9 rutas + 5 anclas ProductID/golden
-y 4 anclas wails-pull), B3 (19 rutas + 6 referencias activas) y C2 (29 anclas
+y 4 anclas wails-pull), B3 (19 rutas + 6 referencias activas) y C2 (30 anclas
 de callers/previews/fixtures), más B2-prep (3 imports); 8 passed para diferidos
 y exentos. La tabla B0
 queda en 15/15 grupos tras añadir `OverlayStudioV3`, `StudioTelemetryProvider`,

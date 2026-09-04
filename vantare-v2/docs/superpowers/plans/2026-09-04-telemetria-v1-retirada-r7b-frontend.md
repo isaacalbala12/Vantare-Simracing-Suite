@@ -488,7 +488,9 @@ B1; si una ruta no existe en árbol, lo registra como divergencia y para ese
   productor. Si el golden no contiene una forma necesaria, STOP de paridad.
 - Subcortes bisectables: C2a añade módulo/API puro en paralelo; C2b migra
   callers/previews/compat tests; C2c elimina dependencias productivas del puente
-  antiguo. El puente se conserva solo para E4 y B2 lo borra tras B2-prep.
+  antiguo y deja su test focal con el nombre
+  `authoring-v2-scenario-fixture.test.ts`. El puente se conserva solo para E4
+  y B2 lo borra tras B2-prep.
 - Archivos: nuevo fixture V2, consumidores citados y sus tests. Prohibido:
   wrapper sobre snapshot legacy, tocar el Host o definitions de D.
 - Test RED previo: test que afirma que **ningún preview/caller migrado pasa

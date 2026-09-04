@@ -78,7 +78,7 @@ Además aparecieron tres previews Hub, `StudioTelemetryProvider` y, en la review
 adversarial, `OverlayStudioV3`, el fixture authoring completo y el golden
 pre-D7 fuera de las anclas iniciales. Todos quedan ahora con dueño explícito.
 Orden corregido: `B1 → C2 → B3 → B2-prep → B2`. Tras el RED C2, un segundo
-preflight cerró el grafo: el guard C2 enumera 29 anclas; el puente snapshot de
+preflight cerró el grafo: el guard C2 enumera 30 anclas; el puente snapshot de
 `authoring-v2-fixture.ts` pasa a B2 (9 rutas) y su único caller E4 se desacopla
 en B2-prep (3 imports). Los helpers de `authoring-fixtures.ts` quedan D/E1.
 Exentos: `strategy-contract-v1(.canonical).ts`, `engineer-types.ts`,
@@ -99,7 +99,7 @@ No se inició B2 inseguro y no hubo cambios productivos.
 - B3 runtime/harness/tooling (19 rutas; recalculador histórico preservado).
 - B3 referencias activas (6 anclas, incluido el import del recalculador).
 - B2-prep comparator/test (3 imports: tipos desde el adapter y puente snapshot E4).
-- C2 callers/previews/fixtures (29 anclas).
+- C2 callers/previews/fixtures (30 anclas).
 - 8 en verde: diferidos D/E1/E2/E3/E4, callers sin imports B2, exentos y
   superficies preservadas.
 
@@ -116,7 +116,7 @@ No se declara verde el suite: el rojo es el estado esperado de B1.
 - Corrección: todos quedan ahora en el guard/plan con rutas o especificadores
   exactos; el helper S1 se preserva y solo pierde su dependencia activa en B3.
   El focal conserva exactamente `7 failed | 8 passed (15)`, ahora con
-  9 rutas + 9 anclas B2, 19 rutas + 6 refs B3, 3 imports B2-prep y 29 anclas C2.
+  9 rutas + 9 anclas B2, 19 rutas + 6 refs B3, 3 imports B2-prep y 30 anclas C2.
 - Re-review spec Muse `ses_f928d2…` sobre `fc0a4262`: APPROVE,
   P0/P1/P2=0; reejecutó focal, ESLint y diff-check.
 - Re-review quality Muse `ses_f928adc…` sobre `fc0a4262`: APPROVE,
@@ -139,7 +139,7 @@ Contrato corregido, aún sin producción:
 - `authoring-fixtures.ts` permanece bajo D/E1; no se mueve ni duplica.
 - el puente snapshot actual permanece solo para E4; B2-prep desacopla su único
   caller y B2 lo elimina.
-- el guard declara 29 anclas C2; 28 siguen activas porque el propio test RED ya
+- el guard declara 30 anclas C2; 29 siguen activas porque el propio test RED ya
   importa el futuro API puro.
 
 Reproducción: guard `7 failed | 8 passed (15)` y test focal C2 falla al resolver

@@ -20,6 +20,24 @@ function requireCanonicalFrame(): OverlayFrameV2 {
   if (!Array.isArray(frame.standings) || frame.standings.length === 0) {
     throw new Error("authoring-v2-scenario-fixture: el golden V2 de 20 carece de standings");
   }
+  // Lo que C2a promete usar/preservar debe existir en la semilla: id del
+  // jugador, track de sesión y relative no vacío con side/authority del
+  // productor (se exigen, no se sintetizan).
+  if (typeof frame.player?.id !== "string" || frame.player.id === "") {
+    throw new Error("authoring-v2-scenario-fixture: el golden V2 de 20 carece de player.id");
+  }
+  if (!frame.session?.track) {
+    throw new Error("authoring-v2-scenario-fixture: el golden V2 de 20 carece de session.track");
+  }
+  if (
+    !Array.isArray(frame.relative) ||
+    frame.relative.length === 0 ||
+    frame.relative.some((row) => !row.side || !row.authority)
+  ) {
+    throw new Error(
+      "authoring-v2-scenario-fixture: el golden V2 de 20 carece de relative con side/authority de productor",
+    );
+  }
   return frame;
 }
 

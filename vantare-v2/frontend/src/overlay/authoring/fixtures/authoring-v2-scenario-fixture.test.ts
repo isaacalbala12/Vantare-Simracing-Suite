@@ -48,7 +48,7 @@ describe("authoring V2 fixture puro (C2)", () => {
     const { standings: canonicalStandings, ...canonicalRest } = canonical.frame!;
     const { standings: scenarioStandings, ...scenarioRest } = runtime.overlayV2Frame!;
     expect(canonicalStandings.length).toBeGreaterThan(1);
-    expect(scenarioStandings).toEqual(rows);
+    expect(scenarioStandings).toEqual(canonicalStandings);
     expect(scenarioRest).toEqual(canonicalRest);
   });
 
@@ -107,21 +107,23 @@ describe("authoring V2 fixture puro (C2)", () => {
     expect(first.overlayV2Source).not.toBe(second.overlayV2Source);
   });
 
-  it("aísla invocaciones: mutar un runtime no contamina al siguiente", () => {
+  it("aísla invocaciones: mutar session/relative/player no contamina al siguiente", () => {
     const first = buildAuthoringV2ScenarioRuntime(scenario());
-    first.overlayV2Frame?.standings.push({
-      id: "intruso",
-      position: 99,
-      classPosition: 99,
-      driver: "Intruso",
-      gap: { q: "missing" as const },
-      groundPosition: { q: "missing" as const },
-      lastLap: { q: "missing" as const },
-      bestLap: { q: "missing" as const },
-      lapDistance: { q: "missing" as const },
-    });
+    expect(first.overlayV2Frame?.session).not.toBe(canonical.frame?.session);
+    expect(first.overlayV2Frame?.relative).not.toBe(canonical.frame?.relative);
+    expect(first.overlayV2Frame?.player).not.toBe(canonical.frame?.player);
+    expect(first.overlayV2Frame?.standings).not.toBe(canonical.frame?.standings);
+    // Cast explícito a mutable solo en el test: el contrato productivo sigue
+    // readonly y el fixture nunca muta la semilla.
+    const mutable = first.overlayV2Frame as unknown as {
+      session: { track: { v: string } };
+      player: { id: string };
+      relative: { name?: string }[];
+    };
+    mutable.session.track.v = "Mutado";
+    mutable.player.id = "intruso";
+    mutable.relative[0]!.name = "Intruso";
     const second = buildAuthoringV2ScenarioRuntime(scenario());
     expect(second.overlayV2Frame).toEqual(canonical.frame);
-    expect(second.overlayV2Frame?.standings.some((row) => row.id === "intruso")).toBe(false);
   });
 });

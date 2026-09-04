@@ -122,8 +122,9 @@ export function inputTelemetryDisplayedValues(
 
 /**
  * Fields that cannot be paired sample-by-sample with v1; declared, not
- * compared. V2 reconstructs timestamps from `windowMs`, so an array index is
- * not a shared observation across the independently sampled histories.
+ * compared. Both histories are sampled independently (v1 accumulates arriving
+ * snapshots in the browser, v2 carries the canonical Go series with absolute
+ * instants), so an array index is not a shared observation across them.
  */
 export const OVERLAY_V2_CONTROLS_DECLARED_GAPS: readonly string[] = Object.freeze([
   "history.length",

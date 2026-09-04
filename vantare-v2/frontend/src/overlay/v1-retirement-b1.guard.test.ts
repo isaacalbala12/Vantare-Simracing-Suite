@@ -204,10 +204,10 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
     contentAbsentAll([
       [src("overlay", "CompositeApp.test.tsx"), "overlay_v1.golden.json?raw", "C2 (test Desktop V2-only)"],
       [src("overlay", "CompositeApp.test.tsx"), "overlay-v2-shadow-runtime", "C2 (mock shadow obsoleto)"],
-      [src("hub", "overlay-studio", "StudioRoute.tsx"), "transports/telemetry-adapter", "C2 (lifecycle Studio V2)"],
-      [src("hub", "overlay-studio", "OverlayStudioV3.tsx"), "transports/telemetry-adapter", "C2 (prop Studio V2)"],
-      [src("hub", "overlay-studio", "studio-overlay-telemetry.ts"), "transports/telemetry-adapter", "C2 (lifecycle Studio V2)"],
-      [src("hub", "overlay-studio", "canvas", "StudioTelemetryProvider.tsx"), "transports/telemetry-adapter", "C2 (provider V2)"],
+      // C2b0: los cuatro `import type TelemetryAdapter` de Studio
+      // (StudioRoute, OverlayStudioV3, studio-overlay-telemetry,
+      // StudioTelemetryProvider) son type-only bajo ownership E1: no son V1
+      // en runtime ni entran al bundle, así que no se vigilan aquí.
       [src("hub", "overlay-studio", "canvas", "StudioTelemetryProvider.tsx"), "buildMockTelemetry", "C2 (mock V1 fuera)"],
       [src("hub", "overlay-studio", "canvas", "StudioTelemetryProvider.tsx"), "authoring-v2-fixture", "C2 (usar escenario V2 puro)"],
       [src("overlay", "authoring", "fixtures", "authoring-v2-scenario-fixture.test.ts"), "./authoring-v2-fixture", "C2 (test del escenario V2 puro)"],

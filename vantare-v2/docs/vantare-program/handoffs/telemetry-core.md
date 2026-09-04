@@ -1,5 +1,15 @@
 # Handoff vivo — Telemetry Core
 
+## R7b/C2b APROBADO en re-review — desbloqueado, siguiente C2b0 — 2026-09-04, ISA-894
+
+Re-review spec Muse `ses_f9240634bffeNNMnf3wHltlOI6`: **APPROVE**,
+P0/P1/P2/P3=0. Re-review quality Muse `ses_f923cf6acffeSiLRo6Z3APoEit`:
+**APPROVE**, P0/P1/P2=0; P3 no bloqueante: el golden `controls.history`
+trae 2 muestras y C2b5 activa STOP/defer E1 si son insuficientes. Cero
+código tocado; este commit solo registra la aprobación, sin reescribir la
+historia anterior. Checkpoint C2b **desbloqueado, siguiente C2b0** con el
+mismo writer. Sin push/PR/merge/promoción/apps/LMU.
+
 ## R7b/C2b CORREGIDO tras doble REQUEST_CHANGES — pendiente re-review, no escribir C2b0 — 2026-09-04, ISA-894
 
 Spec review Muse `ses_f9240634bffeNNMnf3wHltlOI6`: **REQUEST_CHANGES**.

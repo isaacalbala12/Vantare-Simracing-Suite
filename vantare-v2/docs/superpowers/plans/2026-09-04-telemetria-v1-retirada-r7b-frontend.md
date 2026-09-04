@@ -588,6 +588,11 @@ B1; si una ruta no existe en árbol, lo registra como divergencia y para ese
 - Reviewer: quality.
 - Rollback/stop: revert. Stop si una preview pierde información visible sin
   equivalente V2 → volver a A (paridad) antes de migrarla.
+- Checkpoint C2b: re-review spec `ses_f9240634bffeNNMnf3wHltlOI6` APPROVE
+  P0/P1/P2/P3=0 y re-review quality `ses_f923cf6acffeSiLRo6Z3APoEit` APPROVE
+  P0/P1/P2=0 (P3 no bloqueante: el golden `controls.history` trae 2 muestras
+  y C2b5 activa STOP/defer E1 si son insuficientes). Desbloqueado, siguiente
+  C2b0.
 
 Decisiones de borde C2b: los cuatro imports `type TelemetryAdapter` de Studio
 son type-only (no V1 en runtime ni bundle) y su ruta tiene dueño E1; C2b0 NO

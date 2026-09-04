@@ -288,3 +288,14 @@ Hallazgos aplicados:
 
 Pendiente: re-review spec + quality del checkpoint C2b corregido antes de
 escribir C2b0. `git diff --check` limpio en este commit documental.
+
+## C2b re-review — checkpoint APROBADO y desbloqueado (ISA-894, solo docs)
+
+Re-review spec Muse `ses_f9240634bffeNNMnf3wHltlOI6`: **APPROVE**,
+P0/P1/P2/P3=0. Re-review quality Muse `ses_f923cf6acffeSiLRo6Z3APoEit`:
+**APPROVE**, P0/P1/P2=0; P3 no bloqueante: el golden
+`controls.history` trae 2 muestras y C2b5 activa STOP/defer E1 si son
+insuficientes para la superficie que lo necesite. Cero código tocado; este
+commit solo registra la aprobación en los tres documentos, sin reescribir la
+historia anterior. Checkpoint C2b **desbloqueado, siguiente C2b0**.
+`git diff --check` limpio en este commit documental.

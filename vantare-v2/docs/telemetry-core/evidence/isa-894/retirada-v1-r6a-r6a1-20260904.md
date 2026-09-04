@@ -145,5 +145,7 @@ Rama `vantareapp/isa-894-retirada-v1-r6a`, SHA de código/test `8878178d`,
 apilada sobre R5. Sin merge, promoción, release ni retirada física total
 de V1. Rollback exclusivamente por la build anterior verificada en R0. El
 closeout documental (comentario, evidencia, handoff y roadmap con digest
-regenerado) se incorpora en el commit de cierre; pendiente de push/PR
-draft.
+regenerado) se incorpora en el commit de cierre `9451ad6b`, publicado en
+[PR draft #976](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/976)
+contra `nightly`, apilada sobre #969/#970/#971/#972/#973/#974/#975. Sin
+merge ni promoción.

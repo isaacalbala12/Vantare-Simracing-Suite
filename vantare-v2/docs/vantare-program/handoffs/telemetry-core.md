@@ -40,10 +40,13 @@ de la retirada Overlay V1; el V1 de investigacion bajo tag
 `researchbench` tampoco se toca en este corte y se retira en R7. La
 auditoria integral V2 y el bucle de rendimiento aun no comienzan; no se
 certifica rendimiento optimo. Rollback solo por la build anterior
-verificada en R0. Cerrado localmente, pendiente de publicacion en PR
-draft: el codigo/test esta en 8878178d mientras este documento se incorpora
-en el commit de cierre; este bloque prevalece sobre los inferiores en el
-avance de
+verificada en R0. Publicado en
+[PR draft #976](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/976)
+contra `nightly`, rama remota `vantareapp/isa-894-retirada-v1-r6a`,
+apilada sobre #969/#970/#971/#972/#973/#974/#975: el codigo/test esta en
+`8878178d` y este documento se incorpora en el commit de cierre
+`9451ad6b`. Sin merge ni promocion; este bloque prevalece sobre los
+inferiores en el avance de
 retirada, sin repetir su contenido.
 
 ## R5 ruta SSE publica Overlay V1 retirada y publicada — 2026-09-04, ISA-894

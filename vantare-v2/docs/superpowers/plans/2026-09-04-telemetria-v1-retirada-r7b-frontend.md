@@ -183,8 +183,14 @@ completa. A1 la expande en Go antes de proyectarla.
   2. `SessionLaps`/`RequiredFuel` según fórmula fijada; frame V2 @104 < 64 KiB;
      bytes absolutos y delta en la evidencia exacta.
   3. Focales + `go test` en verde.
-- Microcheckpoints a–d como A1 (derive; projection+frame_test < 64 KiB;
-  contrato generado; decoder + focales + evidencia), en la misma rama/PR.
+- Microcheckpoints ordenados EN LA MISMA rama/PR (ninguna otra rama):
+  a. derive RED→GREEN, historia 64 + cálculo (gate: `go test` derive);
+  b. projection/frame/builder/copia + `frame_test` 64 KiB (gate: `go test`
+     overlayv2 en verde);
+  c. contrato generado con `task telemetry:contract` + `:check` (gate: check
+     verde; sin typecheck frontend previo);
+  d. decoder frontend + focales + golden/payload en evidencia exacta (gate:
+     `pnpm --dir frontend test` focal y `pnpm --dir frontend typecheck` verdes).
 - Checks/reviewer/rollback: como A1.
 - Stop: como STOP historias / STOP coste de A1.
 
@@ -220,7 +226,15 @@ completa. A1 la expande en Go antes de proyectarla.
      conservada (delta sigue excluido de pruebas automáticas de vueltas,
      **no** de regresión estructural).
   3. Frame V2 @104 < 64 KiB; bytes absolutos y delta en la evidencia exacta.
-- Microcheckpoints a–d como A1, en la misma rama/PR.
+- Microcheckpoints ordenados EN LA MISMA rama/PR (ninguna otra rama):
+  a. derive RED→GREEN, campo histórico (gate: `go test` derive);
+  b. projection/frame/builder/copia + `frame_test` 64 KiB (gate: `go test`
+     overlayv2 en verde);
+  c. contrato generado con `task telemetry:contract` + `:check` (gate: check
+     verde; sin typecheck frontend previo);
+  d. decoder frontend + focales + regresión estructural + golden/payload en
+     evidencia exacta (gate: `pnpm --dir frontend test` focal y
+     `pnpm --dir frontend typecheck` verdes).
 - Checks/reviewer/rollback: como A1.
 - Stop: como STOP historias / STOP coste de A1.
 
@@ -228,7 +242,7 @@ completa. A1 la expande en Go antes de proyectarla.
 
 ## B · Guardias RED, dueños explícitos y retirada V1 (hecho 1)
 
-### B0 · Tabla cerrada de consumidores R0: 12 grupos con dueño/corte explícito, sin "etc."
+### B0 · Tabla cerrada de consumidores R0: 13 grupos con dueño/corte explícito, sin "etc."
 
 Cada consumidor recibe corte dueño. El worker fija rutas exactas en el RED de
 B1; si una ruta no existe en árbol, lo registra como divergencia y para ese
@@ -246,8 +260,9 @@ B1; si una ruta no existe en árbol, lo registra como divergencia y para ese
 | OverlayParityHarness | C2 (misma migración Host) |
 | OverlayWorkshopDevRoute | C2 |
 | studio-v1-snapshot-test-harness | E1 (tras C2; último consumidor snapshot) |
-| vite.config / index.html / overlay.html | E3 si referencian harness V1 |
-| scripts sesion-v1 y bench | B3 (scripts) / E3 (bench Go huérfano) |
+| vite.config / index.html / overlay.html | E3 solo si `rg` demuestra referencias V1 (verificado limpio: no se tocan) |
+| scripts/bench/sesion-v1-* (`sesion-v1.ps1`, `sesion-v1-resumen.mjs`, `sesion-v1-resumen.test.mjs`, `sesion-v1-state.test.mjs` + refs en `all.test.mjs`/README) | B3 (dueño exclusivo) |
+| entrypoints históricos frontend del research bench (`docs/research/telemetry-architecture-2026/bench/frontend-bench-entry.ts`, `frontend-bench.mjs`) | E3 (dueño exclusivo; el Go bench del mismo dir y `compact_frame.go` se preservan, sin dueño de borrado) |
 
 `Strategy`/`Engineer`/`Analysis` v1 quedan exentos por contrato independiente.
 
@@ -297,7 +312,11 @@ B1; si una ruta no existe en árbol, lo registra como divergencia y para ese
 ### B3 · Retirar shadow runtime V1 + harnesses/scripts/HTML (comparator/sanitizer EXCLUIDOS)
 
 - Objetivo: retirar el runtime del shadow de compatibilidad V1 y sus
-  harnesses/scripts/HTML (incluidos scripts sesion-v1). **Comparator/sanitizer
+  harnesses/scripts/HTML (incluidos los 4 scripts sesion-v1-* con sus
+  referencias). B3 es **dueño exclusivo** del runtime, los 2 packages harness
+  (`telemetry-cutover-runtime-harness`, `telemetry-overlay-shadow-harness`) y
+  los scripts/HTML sesion-v1: **ningún otro subcorte los declara DELETE**.
+  **Comparator/sanitizer
   y sus resultados se conservan** como oráculo de D; su borrado vive en E4.
 - Archivos: runtime del shadow, `telemetry-cutover-runtime-harness`,
   `telemetry-overlay-shadow-harness`, scripts sesion-v1, scripts/HTML de
@@ -506,34 +525,33 @@ B1; si una ruta no existe en árbol, lo registra como divergencia y para ese
   exige gating mutable o cambiar capabilities/demand/arquitectura → parar,
   fijar stop condition con ADR; no reintroducir switch de retorno.
 
-### E3 · Borrar testdata Go overlay V1 + entrypoints/harnesses V1 exactos, limpiar bundle
+### E3 · Borrar 3 JSON overlay/testdata + 2 entrypoints frontend research bench, limpiar bundle
 
-- Hechos de árbol (verificado con `rg`, sin frase vaga "bench Go huérfano"):
+- Hechos de árbol (verificado con `rg`; la frase "bench Go huérfano" queda
+  prohibida: ningún Go bench depende de Overlay V1 tras R7a):
   `internal/telemetry/projection/overlay/testdata/` contiene exactamente 3 JSON:
   `lmu-1.4-delta-overlay-v1.golden.json`, `overlay_v1_pre_d7.golden.json`,
-  `overlay_v1.golden.json`. `docs/research/telemetry-architecture-2026/bench/frontend-bench-entry.ts`
+  `overlay_v1.golden.json` → DELETE (dueño exclusivo E3).
+  `docs/research/telemetry-architecture-2026/bench/frontend-bench-entry.ts`
   importa `overlay-projection-v1` + `overlay-projection-adapter` (líneas 9-10) →
-  DELETE junto a `frontend-bench.mjs`. Los Go bench del mismo dir usan
-  `strategy/engineer/analysis.ProjectV1` (contratos independientes vivos,
-  preservados) y `compact_frame.go` es prototipo hipotético sin import V1
-  (menciona al proyector V1 solo en comentarios) → se PRESERVAN como evidencia
-  histórica; se corrigen los comentarios que afirmen wiring ejecutable V1, no
-  se borran. **Ningún Go bench se declara DELETE**: ninguno depende de Overlay
-  V1 tras R7a. `scripts/bench/sesion-v1.ps1`, `sesion-v1-resumen.mjs`,
-  `sesion-v1-resumen.test.mjs`, `sesion-v1-state.test.mjs` (+ sus referencias en
-  `scripts/bench/all.test.mjs` y README) → DELETE. Packages
-  `frontend/src/telemetry-cutover-runtime-harness/` y
-  `frontend/src/telemetry-overlay-shadow-harness/` → DELETE (B3 ya retiró su
-  runtime; aquí cae el resto). `vite.config`/`index.html`/`overlay.html`:
-  verificados sin referencias V1 → no se tocan salvo que `rg` demuestre lo
-  contrario. Evidencia histórica bajo `docs/` se conserva siempre.
+  DELETE junto a `frontend-bench.mjs` (dueño exclusivo E3). Los Go bench del
+  mismo dir usan `strategy/engineer/analysis.ProjectV1` (contratos
+  independientes vivos, preservados) y `compact_frame.go` es prototipo
+  hipotético sin import V1 (menciona al proyector V1 solo en comentarios) → se
+  PRESERVAN como evidencia histórica; se corrigen los comentarios que afirmen
+  wiring ejecutable V1, no se borran. Los 4 `sesion-v1-*` y los 2 packages
+  harness pertenecen a B3 (dueño exclusivo) y E3 no los toca.
+  `vite.config`/`index.html`/`overlay.html`: verificados sin referencias V1 →
+  no se tocan salvo que `rg` demuestre lo contrario; E3 solo elimina
+  referencias residuales verificadas por `rg`. Evidencia histórica bajo `docs/`
+  se conserva siempre.
 - Test RED previo: guardia que exige cero referencias productivas a los 3 JSON
-  y a los entrypoints/harnesses citados; falla si algo los importa.
+  y a los 2 entrypoints; falla si algo los importa.
 - Aceptación:
-  1. Los 3 JSON, `frontend-bench-entry.ts`/`frontend-bench.mjs`, los 4
-     `sesion-v1-*` (+ referencias) y los 2 packages harness borrados.
-  2. Go bench preservado con comentarios corregidos; cero imports productivos
-     restantes.
+  1. Los 3 JSON y `frontend-bench-entry.ts`/`frontend-bench.mjs` borrados;
+     referencias residuales verificadas eliminadas.
+  2. Go bench + `compact_frame.go` preservados con comentarios corregidos;
+     cero imports productivos restantes a lo borrado.
   3. Bundle sin legacy (verificado en F1).
 - Checks: `go test` paquetes afectados, focales frontend, `rg` ausencia.
 - Reviewer: quality.

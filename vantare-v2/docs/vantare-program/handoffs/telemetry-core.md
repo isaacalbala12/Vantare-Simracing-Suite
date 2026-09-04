@@ -29,8 +29,15 @@ R7b planificado, todavia **sin codigo productivo**: microplan ejecutable en
 **corregido tras REQUEST_CHANGES adversarial** (commit de corrección sobre
 `d242f634`, solo estos 2 docs) y **recorregido tras segunda revisión de calidad
 REQUEST_CHANGES** (commit sobre `2a2ab054`; sin afirmar aprobación futura) y
-**autocorregido por arquitectura del orquestador sobre `46d519d5`** (este
-commit; `46d519d5` era el HEAD revisado). Autocorrecciones: A1 ya no usa Q
+**autocorregido por arquitectura del orquestador sobre `46d519d5`** (commit
+sobre `46d519d5`; `46d519d5` era el HEAD revisado) y **recorregido por
+contradicción B0/B3/E3 sobre `e4342b69`** (este commit; `e4342b69` era el HEAD
+revisado). Esta ronda: B0 en 13 grupos (fila sesion-v1/B3 separada de
+entrypoints research-bench/E3; Go bench preservado sin dueño de borrado);
+B3 dueño exclusivo de runtime/2 packages harness/scripts-HTML sesion-v1
+(E3 no los toca); E3 dueño exclusivo de los 3 JSON + 2 entrypoints frontend +
+residuales verificados; A2/A3 con microcheckpoints a–d en texto propio.
+Autocorrecciones: A1 ya no usa Q
 único + arrays acortados —derive añade exactamente `schema.Field` por campo
 (SpeedMPS/EngineRPM/Gear) y el wire lleva `QValue` por muestra siempre
 alineados, sin `V` en missing, sin sentinel ni pérdida; A1/A3 cambian edades
@@ -42,21 +49,21 @@ gate de payload efectivo Publisher 64 KiB (frame @104 < 64 KiB; Hub 256 KiB
 secundaria) con bytes absolutos/delta en evidencia exacta
 `docs/telemetry-core/evidence/isa-894/retirada-v1-r7b-frontend-20260904.md`;
 A1 cerrado (reset vigente epoch+SameSession, fuente m/s sin SpeedKPH canónico,
-offsets enteros vs `GeneratedAt`, tipos exactos, sin "preferentemente"/"p. ej.");
+`CapturedAtMS` absolutos cache-safe, tipos exactos, sin "preferentemente"/"p. ej.");
 A2 con contrato `FuelHistoryV2` fijado y derogación del comentario
 `builder_fuel.go:44-48`; A3 mínimo (`DeltaHistoryV2`, mapping exacto,
-`Trend` intacto); B0 consistente en 12 grupos; D5 sin RED; microcheckpoints
-a–d por A en la misma rama/PR; E2 fijado según callsites (catálogo estático a
+`Trend` intacto); B0 consistente en 13 grupos; D5 sin RED; microcheckpoints
+a–d por A en la misma rama/PR (A2/A3 en texto propio); E2 fijado según callsites (catálogo estático a
 `overlay/core/overlay-v2-feature-catalog.ts`, default directo en los 3
 callsites); E3 exacto (3 JSON nombrados, `frontend-bench-entry.ts`/`.mjs` fuera,
-Go bench preservado, 4 `sesion-v1-*` fuera, `vite.config`/HTML intactos por
-`rg` limpio). Primera ronda: A1 ya no llama canónica
+Go bench preservado, `sesion-v1-*` y packages harness solo en B3,
+`vite.config`/HTML intactos por `rg` limpio). Primera ronda: A1 ya no llama canónica
 a la historia actual (verificado: `ControlSample` sin Speed/RPM/Gear); A2 separa
 ventana 3/10 de la nueva historia 64 y fija `requiredFuel` = perLap × sessionLaps
 sin derivar de `EstimatedLaps`; A3 corrige premisa (`SelfDelta.History` existe,
 `DeltaViewV2` sin campo: el corte lo agrega) y elimina singleton/`Date.now`
 solo tras verde; comparator/sanitizer sobreviven como oráculo hasta E4 (D no se
-queda sin oráculo); tabla B0 asigna dueño/corte a los 12 grupos sin
+queda sin oráculo); tabla B0 asigna dueño/corte a los 13 grupos sin
 `etc.`; C1 pasa a hipótesis contra productor (ramas A/B con evidencia, sin
 inventar fracciones); C2/D1 resueltos (C2 no exige Host V2-only; D1 verifica
 cero callers y elimina); E2 con expectativa única falsable sin disyunción;

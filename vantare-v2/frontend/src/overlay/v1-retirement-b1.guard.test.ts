@@ -287,6 +287,11 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
       }
     }
     expect(violations, "imports V1 en callers").toEqual([]);
+    // C2b1 (pin Desktop V2-only sin shadow): CompositeApp no puede volver a
+    // importar ni referenciar el runtime shadow aunque no exponga diagnóstico.
+    contentAbsentAll([
+      [src("overlay", "CompositeApp.tsx"), "overlay-v2-shadow-runtime", "C2b1 (Desktop V2-only sin shadow)"],
+    ]);
     for (const route of [
       src("overlay", "CompositeApp.test.tsx"),
       src("overlay", "ObsOverlayApp.test.tsx"),

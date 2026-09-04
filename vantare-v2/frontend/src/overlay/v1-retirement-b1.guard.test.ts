@@ -234,6 +234,19 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
       [src("overlay", "authoring", "fixtures", "projection-gaps.test.ts"), "overlay-projection-adapter.ts", "C2 (contrato gaps V2)"],
       [src("overlay", "authoring", "fixtures", "animation-scenes.test.ts"), "overlay-projection-adapter.ts", "C2 (escenas V2)"],
     ]);
+    // C2b0 (reclasificación E1, comprobación positiva): los cuatro callers
+    // Studio conservan `import type { TelemetryAdapter }` desde el módulo
+    // canónico hasta E1. Falla si pasa a import runtime o si cambia
+    // silenciosamente de módulo. El módulo neutral no se vigila como V1.
+    for (const route of [
+      src("hub", "overlay-studio", "StudioRoute.tsx"),
+      src("hub", "overlay-studio", "OverlayStudioV3.tsx"),
+      src("hub", "overlay-studio", "studio-overlay-telemetry.ts"),
+      src("hub", "overlay-studio", "canvas", "StudioTelemetryProvider.tsx"),
+    ] as const) {
+      contentHas(route, "import type { TelemetryAdapter }", "E1 (type-only canónico)");
+      contentHas(route, "overlay/transports/telemetry-adapter", "E1 (módulo canónico)");
+    }
   });
 
   it("diferidos C2 presentes: nadie los migra antes de su corte", () => {
@@ -262,6 +275,7 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
       src("hub", "overlay-studio", "StudioRoute.tsx"),
       src("hub", "overlay-studio", "OverlayStudioV3.tsx"),
       src("hub", "overlay-studio", "studio-overlay-telemetry.ts"),
+      src("hub", "overlay-studio", "canvas", "StudioTelemetryProvider.tsx"),
       src("overlay-harness", "OverlayParityHarness.tsx"),
       src("overlay", "authoring", "OverlayWorkshopDevRoute.tsx"),
       src("overlay", "authoring", "fixtures", "authoring-fixtures.ts"),

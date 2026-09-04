@@ -5,14 +5,12 @@ import { join } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 import { chromium } from "playwright";
 import { describe, expect, it } from "vitest";
-import { buildAuthoringV2Runtime } from "../../../authoring/fixtures/authoring-v2-fixture";
-import { buildMockTelemetry } from "../../../core/mock-scenarios";
+import { buildAuthoringV2ScenarioRuntime } from "../../../authoring/fixtures/authoring-v2-scenario-fixture";
 import { createTelemetryRateCoordinator } from "../../../core/telemetry-rate-coordinator";
 import { WidgetVisualHost } from "../../../core/WidgetVisualHost";
 import { WidgetVisualViewport } from "../../../core/WidgetVisualViewport";
 import type { WidgetInstanceV3 } from "../../../core/profile-document";
 import { RuntimeWidgetFrame } from "../../../runtime/RuntimeWidgetFrame";
-import { TRACK_GEOMETRY_PACK } from "../../../track-geometry/track-geometry-pack";
 import { trackMapDefinition } from "../../../widget-types/track-map/track-map-definition";
 
 type Surface = "desktop" | "studio" | "obs";
@@ -42,12 +40,13 @@ function buildWidget(size: Size): WidgetInstanceV3 {
 }
 
 function buildRuntime() {
-  const trackLabel = TRACK_GEOMETRY_PACK.find((geometry) => geometry.synthetic)?.label;
-  if (!trackLabel) throw new Error("reference track geometry missing");
-  const snapshot = buildMockTelemetry({ session: "race", location: "track", state: "ready" });
-  return buildAuthoringV2Runtime("track-map", {
-    ...snapshot,
-    session: { ...snapshot.session, trackName: trackLabel },
+  return buildAuthoringV2ScenarioRuntime({
+    session: "race",
+    location: "track",
+    state: "ready",
+    widget: "track-map",
+    system: "vantare-endurance",
+    variant: "default",
   });
 }
 
@@ -181,7 +180,7 @@ describe("TrackMapEndurance production layout", () => {
             .toBeGreaterThan(frame.height / 2);
           expect(geometry.boxes.map.bottom, `${context} map precedes footer`)
             .toBeLessThanOrEqual(geometry.boxes.footer.top + 1);
-          expect(geometry.footerText, `${context} footer text`).toContain("Vantare Reference Loop");
+          expect(geometry.footerText, `${context} footer text`).toContain("Sebring International Raceway");
           expect(geometry.rendererSystem, `${context} renderer system`).toBe("vantare-endurance");
         }
       }

@@ -226,8 +226,8 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
       // (factory por consumidor sobre el escenario canónico, sin snapshot).
       [src("overlay", "authoring", "workshop-runtime-parity.test.tsx"), "authoring-v2-fixture", "C2 (compat API V2 pura)"],
       [src("overlay", "authoring", "workshop-runtime-parity.test.tsx"), "buildAuthoringFixtureTelemetry", "C2 (compat sin snapshot)"],
-      [src("overlay", "design-systems", "vantare-endurance", "track-map", "TrackMapEndurance.layout.test.tsx"), "authoring-v2-fixture", "C2 (compat API V2 pura)"],
-      [src("overlay", "design-systems", "vantare-endurance", "endurance-transparent-shells.test.tsx"), "authoring-v2-fixture", "C2 (compat API V2 pura)"],
+      // C2b6a: los tests de layout TrackMap y shells Endurance ya consumen
+      // el escenario V2 puro; el lock exacto queda abajo.
       [src("overlay", "authoring", "fixtures", "projection-gaps.test.ts"), "overlay-projection-adapter.ts", "C2 (contrato gaps V2)"],
       [src("overlay", "authoring", "fixtures", "animation-scenes.test.ts"), "overlay-projection-adapter.ts", "C2 (escenas V2)"],
     ]);
@@ -243,6 +243,24 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
     ] as const) {
       contentHas(route, "import type { TelemetryAdapter }", "E1 (type-only canónico)");
       contentHas(route, "overlay/transports/telemetry-adapter", "E1 (módulo canónico)");
+    }
+  });
+
+  it("C2b6a: layout TrackMap y shells Endurance usan el escenario V2 puro", () => {
+    contentAbsentAll(
+      [
+        src("overlay", "design-systems", "vantare-endurance", "track-map", "TrackMapEndurance.layout.test.tsx"),
+        src("overlay", "design-systems", "vantare-endurance", "endurance-transparent-shells.test.tsx"),
+      ].flatMap((route) => [
+        [route, "authoring-v2-fixture", "C2b6a (sin puente snapshot a V2)"],
+        [route, "buildMockTelemetry", "C2b6a (sin snapshot sintético)"],
+      ] as const),
+    );
+    for (const route of [
+      src("overlay", "design-systems", "vantare-endurance", "track-map", "TrackMapEndurance.layout.test.tsx"),
+      src("overlay", "design-systems", "vantare-endurance", "endurance-transparent-shells.test.tsx"),
+    ] as const) {
+      contentHas(route, "buildAuthoringV2ScenarioRuntime", "C2b6a (golden V2 canónico)");
     }
   });
 

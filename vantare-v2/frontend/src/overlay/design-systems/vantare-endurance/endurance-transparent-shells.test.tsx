@@ -5,13 +5,10 @@ import { join } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 import { chromium } from "playwright";
 import { describe, expect, it } from "vitest";
-import type { OverlayFrameV2 } from "../../../generated/telemetry";
-import { buildAuthoringV2Runtime } from "../../authoring/fixtures/authoring-v2-fixture";
-import { buildMockTelemetry } from "../../core/mock-scenarios";
+import { buildAuthoringV2ScenarioRuntime } from "../../authoring/fixtures/authoring-v2-scenario-fixture";
 import { createTelemetryRateCoordinator } from "../../core/telemetry-rate-coordinator";
 import type { WidgetInstanceV3, WidgetType } from "../../core/profile-document";
 import { RuntimeWidgetFrame } from "../../runtime/RuntimeWidgetFrame";
-import { TRACK_GEOMETRY_PACK } from "../../track-geometry/track-geometry-pack";
 import { deltaDefinition } from "../../widget-types/delta/delta-definition";
 import { pedalsDefinition } from "../../widget-types/pedals/pedals-definition";
 import { relativeDefinition } from "../../widget-types/relative/relative-definition";
@@ -86,7 +83,7 @@ function functionalRegions(type: WidgetType, templateId: string): readonly Funct
         name: "each relative row",
         selector: "[data-relative-row]",
         kind: "backing",
-        expectedCount: 3,
+        expectedCount: 5,
       },
     ];
     if (templateId === "relative-redline-mirror") {
@@ -168,51 +165,14 @@ function renderWidget(
   templateId: string,
   surface: "desktop" | "obs",
 ): string {
-  const snapshot = buildMockTelemetry({ session: "race", location: "track", state: "ready" });
-  const trackLabel = TRACK_GEOMETRY_PACK.find((geometry) => geometry.synthetic)?.label;
-  if (!trackLabel) throw new Error("reference track geometry missing");
-  const runtime = buildAuthoringV2Runtime(entry.type, entry.type === "track-map"
-    ? { ...snapshot, session: { ...snapshot.session, trackName: trackLabel } }
-    : snapshot);
-  if (entry.type === "relative" && runtime.overlayV2Frame) {
-    const playerId = runtime.overlayV2Frame.player.id;
-    const relativeTemplate = runtime.overlayV2Frame.relative[0];
-    if (!relativeTemplate) throw new Error("reference relative row missing");
-    const relative = [
-        {
-          ...relativeTemplate,
-          id: "relative-ahead",
-          gap: { v: -1.2, q: "fresh" },
-          side: "ahead",
-          authority: "official",
-          name: "Ahead Driver",
-          classId: "hypercar",
-        },
-        {
-          ...relativeTemplate,
-          id: playerId,
-          gap: { v: 0, q: "fresh" },
-          side: "player",
-          authority: "official",
-          name: "Player Driver",
-          classId: "hypercar",
-        },
-        {
-          ...relativeTemplate,
-          id: "relative-behind",
-          gap: { v: 0.8, q: "fresh" },
-          side: "behind",
-          authority: "official",
-          name: "Behind Driver",
-          classId: "hypercar",
-        },
-      ] as OverlayFrameV2["relative"];
-    runtime.overlayV2Frame = {
-      ...runtime.overlayV2Frame,
-      relative,
-      relativeSettled: relative,
-    };
-  }
+  const runtime = buildAuthoringV2ScenarioRuntime({
+    session: "race",
+    location: "track",
+    state: "ready",
+    widget: entry.type,
+    system: "vantare-endurance",
+    variant: "default",
+  });
   const telemetry = createTelemetryRateCoordinator();
   if (runtime.overlayV2Frame && runtime.overlayV2Source) {
     telemetry.setOverlayFrame(runtime.overlayV2Frame, runtime.overlayV2Source);

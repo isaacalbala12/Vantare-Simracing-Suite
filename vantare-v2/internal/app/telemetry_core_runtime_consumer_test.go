@@ -9,6 +9,7 @@ import (
 
 	"github.com/vantare/overlays/v2/internal/app/telemetrytransport"
 	telemetrycore "github.com/vantare/overlays/v2/internal/telemetry/core"
+	"github.com/vantare/overlays/v2/internal/telemetry/driver"
 	telemetryprojection "github.com/vantare/overlays/v2/internal/telemetry/projection"
 	engineerprojection "github.com/vantare/overlays/v2/internal/telemetry/projection/engineer"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
@@ -16,15 +17,26 @@ import (
 )
 
 func TestFailurePolicyFlagRestoresLegacyBehaviour(t *testing.T) {
+	// R6a: el fail-stop legacy se ejerce sobre el fallo de publicacion
+	// Strategy (el Hub Overlay V1 esta retirado y ya no puede fallar).
 	disabled := false
-	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{TelemetryFailurePolicyV2: &disabled})
+	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{
+		TelemetryFailurePolicyV2: &disabled,
+		StrategyPublicTransport:  true,
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	runtime.lifecycle = telemetryRuntimeRunning
-	err = (runtimeBatchSink{runtime: runtime}).WriteBatch(context.Background(), hardeningBatch(1, 104))
-	if !errors.Is(err, telemetrytransport.ErrPayloadTooLarge) {
-		t.Fatalf("legacy publication error = %v, want ErrPayloadTooLarge", err)
+	if err := runtime.setStatus(driver.StateStopped, 0); err != nil {
+		t.Fatal(err)
+	}
+	if err := runtime.StrategyHub().Close(); err != nil {
+		t.Fatal(err)
+	}
+	err = (runtimeBatchSink{runtime: runtime}).WriteBatch(context.Background(), hardeningBatch(1, 1))
+	if !errors.Is(err, telemetrytransport.ErrClosed) {
+		t.Fatalf("legacy publication error = %v, want ErrClosed", err)
 	}
 	if runtime.lifecycle != telemetryRuntimeTerminal || runtime.Metrics().FailStops != 1 {
 		t.Fatalf("legacy policy did not fail-stop: lifecycle=%d metrics=%+v", runtime.lifecycle, runtime.Metrics())
@@ -35,20 +47,32 @@ func TestFailurePolicyFlagRestoresLegacyBehaviour(t *testing.T) {
 }
 
 func TestPublishFailureIsNotTerminal(t *testing.T) {
-	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{})
+	// R6a: el fallo de publicacion Strategy no tumba el driver; el Hub
+	// Overlay V1 retirado no registra nada.
+	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{StrategyPublicTransport: true})
 	if err != nil {
 		t.Fatal(err)
 	}
 	runtime.lifecycle = telemetryRuntimeRunning
-	if err := (runtimeBatchSink{runtime: runtime}).WriteBatch(context.Background(), hardeningBatch(1, 104)); err != nil {
+	if err := runtime.setStatus(driver.StateStopped, 0); err != nil {
+		t.Fatal(err)
+	}
+	if err := runtime.StrategyHub().Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := (runtimeBatchSink{runtime: runtime}).WriteBatch(context.Background(), hardeningBatch(1, 1)); err != nil {
 		t.Fatalf("transient publish failure escaped driver loop: %v", err)
 	}
 	if runtime.lifecycle != telemetryRuntimeRunning {
 		t.Fatalf("lifecycle = %d, want running", runtime.lifecycle)
 	}
 	metrics := runtime.Metrics()
-	if metrics.FramesDropped["overlay-publish"] != 1 || metrics.PublishFailures["overlay"] != 1 {
+	if metrics.FramesDropped["strategy-publish"] != 1 || metrics.PublishFailures["strategy"] != 1 {
 		t.Fatalf("publish failure metrics = %+v", metrics)
+	}
+	if metrics.ProjectionsPublished != 0 || metrics.OverlayProjectionsPublished != 0 ||
+		metrics.StrategyProjectionsPublished != 0 {
+		t.Fatalf("retired counters moved on failure = %+v", metrics)
 	}
 }
 

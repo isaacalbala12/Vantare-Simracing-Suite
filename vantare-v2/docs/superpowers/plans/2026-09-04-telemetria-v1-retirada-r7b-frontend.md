@@ -89,36 +89,48 @@ completa. A1 la expande en Go antes de proyectarla.
   (`core/reducer.go:54-56`, `vehicle.Gear` = int32); el wire actual
   `ControlsHistoryV2` publica pedales per-mille + `WindowMS`/espaciado igual,
   declarado como diferencia contra V1 (`frame.go:173-198`).
-- Objetivo (formato completamente cerrado, sin "preferentemente" ni "p. ej."):
-  ampliar `derive.ControlSample` con `SpeedMPS float64` (m/s, unidad de la
-  fuente; la presentación a km/h es solo formato en el decoder),
-  `EngineRPM vehicle.EngineRPM` y `Gear vehicle.Gear`, tomados del VehicleState
-  activo canónico, conservando `CapturedAt` real; historia limitada a 120 con el
-  reset vigente epoch+SameSession y clone ya existente (`cloneFinal`); proyectar
-  en `OverlayFrameV2` el tipo cerrado `ControlsHistoryV2 { Q Quality;
-  CapturedAgeMS []int32; Throttle []int16; Brake []int16; Clutch []int16;
-  SpeedMPS []float64; RPM []float64; Gear []int32 }`, arrays alineados, máximo
-  120, con `CapturedAgeMS[i] = frame.GeneratedAt - sample.CapturedAt` en ms
-  (sustituye a `WindowMS`/espaciado igual); tipos generados solo vía tasks
-  oficiales, versionado aditivo; ausencia/calidad: muestra ausente se representa
-  con `Q` degradada y arrays acortados, nunca convirtiendo missing en cero; el
-  decoder frontend reconstruye `capturedAt = generatedAt - age` y formatea
-  unidades, sin `Date.now` ni autoridad browser; preserva la información del
-  contrato legacy legítimo (pedales + speed/rpm/gear por muestra con su base
-  temporal real).
+- Objetivo (formato completamente cerrado, autocorregido cache-safe): ampliar
+  `derive.ControlSample` con exactamente `SpeedMPS schema.Field[float64]`
+  (m/s, unidad de la fuente; la presentación a km/h es solo formato en el
+  decoder), `EngineRPM schema.Field[vehicle.EngineRPM]` y `Gear
+  schema.Field[vehicle.Gear]` —no escalares— para conservar
+  present/freshness/provenance en Core, tomados del VehicleState activo
+  canónico, conservando `CapturedAt` real; historia limitada a 120 con el
+  reset vigente epoch+SameSession y clone ya existente (`cloneFinal`);
+  proyectar en `OverlayFrameV2` el tipo cerrado `ControlsHistoryV2 { Q Quality;
+  CapturedAtMS []int64; Throttle []int16; Brake []int16; Clutch []int16;
+  SpeedMPS []QValue[float64]; RPM []QValue[float64]; Gear []QValue[int32] }`,
+  máximo 120, con `CapturedAtMS[i]` = epoch Unix en milisegundos de cada
+  `sample.CapturedAt` real. `Q` cubre la serie/pedales; las tres series nuevas
+  llevan calidad propia por muestra: todas las arrays SIEMPRE alineadas por
+  índice con pedales y `CapturedAtMS`; cada `QValue` conserva
+  missing/stale/invalid/fresh y no emite `V` cuando missing; nunca acortar una
+  array por missing, nunca sentinel, nunca pérdida. La proyección convierte
+  `schema.Field` → `QValue`; la autoridad/procedencia de las tres series se
+  documenta native/observed desde VehicleState, no inventada. Se elige timestamp
+  absoluto entero (no string repetida, no edad relativa) porque la sección puede
+  sobrevivir a varios `frame.GeneratedAt`: `CachedProjector` reutiliza secciones
+  memoizadas (`cadence.go:331-340`) y una edad cacheada cambiaría de
+  significado; el implementador no debe rebasar edades ni romper memoización.
+  El decoder frontend usa directamente `CapturedAtMS`, sin `Date.now` ni
+  autoridad browser; preserva la información del contrato legacy legítimo
+  (pedales + speed/rpm/gear por muestra con su base temporal real). Tipos
+  generados solo vía tasks oficiales, versionado aditivo.
 - Archivos permitidos/esperados: `internal/telemetry/derive/` (muestra,
   historia, reset vigente, clone), `internal/telemetry/projection/overlayv2/`
   (`frame.go`, `builder_controls.go`, copia), tipos generados solo vía tasks
   oficiales, decoder frontend de controles, tests focales. Prohibido: tocar
   legacy, crear snapshot genérico, autoridad temporal browser, llamar SpeedKPH
-  canónico a una fuente en m/s.
+  canónico a una fuente en m/s, escalares sin calidad en derive, arrays
+  acortadas por missing, sentinels.
 - Test RED previo (triple): fuente/procedencia (SpeedMPS/EngineRPM/Gear del
-  VehicleState canónico con unidades y calidad preservadas); offsets reales
-  monótonos (no `WindowMS`/espaciado igual); tope 120 + reset epoch+SameSession.
-  Falla mientras falte cualquier pieza.
+  VehicleState canónico como `schema.Field` con unidades, calidad y procedencia
+  preservadas); timestamps absolutos reales monótonos (no `WindowMS`/espaciado
+  igual, no edades relativas); tope 120 + reset epoch+SameSession + alineación
+  total con `QValue` sin `V` en missing. Falla mientras falte cualquier pieza.
 - Aceptación (máx. 3):
-  1. Historia 120 con tipos exactos fijados, offsets reales y reset vigente;
-     frontend solo decodifica y formatea.
+  1. Historia 120 con tipos exactos fijados, timestamps absolutos y reset
+     vigente; frontend solo decodifica y formatea.
   2. Contrato regenerado con tasks oficiales, aditivo; frame V2 @104 < 64 KiB;
      bytes absolutos y delta registrados en la evidencia exacta.
   3. Focales + `go test` del paquete afectado en verde.
@@ -136,7 +148,9 @@ completa. A1 la expande en Go antes de proyectarla.
 - Rollback/stop: revert del micro-commit. **STOP historias / STOP coste**: si
   falta VehicleState canónico, si exige snapshot genérico / autoridad browser /
   `Date.now`, o si el frame @104 no queda < 64 KiB (gate efectivo Publisher;
-  Hub 256 KiB solo secundaria) → parar y pedir ADR/decision; no borrar legacy.
+  Hub 256 KiB solo secundaria; si el formato con calidad por muestra no cabe,
+  STOP y diseño/ADR, no sentinel ni pérdida) → parar y pedir ADR/decision;
+  no borrar legacy.
 
 ### A2 · Fuel: contrato y semántica fijados (el writer no decide)
 
@@ -181,24 +195,27 @@ completa. A1 la expande en Go antes de proyectarla.
   LapDistance, Seconds}` (`delta.go:29-35`); `DeltaViewV2` no tiene campo
   histórico (`frame.go:248-255`); `Trend` queda vacío por diseño porque el
   concepto lo posee delta-trace (`builder_delta.go:44-47`).
-- Contrato fijado (mínimo): `DeltaHistoryV2 { Q Quality; CapturedAgeMS []int32;
-  Seconds []float64 }`, arrays alineados, máximo `MaxSelfDeltaHistory = 120`
-  (`delta.go:21`); `CapturedAgeMS[i] = frame.GeneratedAt - sample.CapturedAt`
-  en ms; el decoder frontend reconstruye `capturedAt = generatedAt - age`, sin
-  string timestamps ni `Date.now`. No se transportan `SourceTime`/`LapDistance`:
+- Contrato fijado (mínimo, cache-safe): `DeltaHistoryV2 { Q Quality;
+  CapturedAtMS []int64; Seconds []float64 }`, arrays alineados, máximo
+  `MaxSelfDeltaHistory = 120` (`delta.go:21`); `CapturedAtMS[i]` = epoch Unix en
+  ms de cada `sample.CapturedAt` real; el decoder frontend usa directamente ese
+  valor, sin string timestamps ni `Date.now`, sin reconstrucción dependiente del
+  frame. Misma razón que A1: la sección delta puede sobrevivir memoizada a
+  varios `frame.GeneratedAt` (`cadence.go:331-340`); una edad cacheada cambiaría
+  de significado. No se transportan `SourceTime`/`LapDistance`:
   ningún consumidor legítimo los usa en el wire. `Trend` conserva el
   comportamiento actual (vacío en builder; delta-trace posee el concepto).
   Mapping exacto: derive (`SelfDelta.History`, `Freshness`) → frame
   (`DeltaViewV2.History` vía `BuildDelta` + copia) → TS generado →
-  decoder (edades a instantes + segundos con calidad).
+  decoder (instantes absolutos + segundos con calidad).
 - El singleton/`Date.now` frontend se elimina **solo después de verde**.
 - Archivos: `frame.go` (campo nuevo), `builder_delta.go` + copia, tipos
   generados vía tasks, decoder V2, tests de regresión migrados a V2. Prohibido:
   pruebas automáticas de vueltas del jugador, snapshot genérico.
 - Test RED previo: regresión estructural V2 que exige el campo histórico
-  proyectado con edades reales; falla con singleton/`Date.now` o sin campo.
+  proyectado con instantes absolutos reales; falla con singleton/`Date.now` o sin campo.
 - Aceptación:
-  1. Campo histórico delta con edades reales; frontend decodifica.
+  1. Campo histórico delta con instantes absolutos reales; frontend decodifica.
   2. Singleton/`Date.now` eliminado después de verde; regresión estructural
      conservada (delta sigue excluido de pruebas automáticas de vueltas,
      **no** de regresión estructural).

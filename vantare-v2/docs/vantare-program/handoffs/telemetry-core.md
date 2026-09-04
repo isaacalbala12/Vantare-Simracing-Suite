@@ -3,9 +3,12 @@
 ## R7b planificado (microplan, sin codigo) + R7a final comprometido — 2026-09-04, ISA-894
 
 Writer unico en `C:\tmp\vantare-v1-retirada-r7b\vantare-v2`, rama
-`vantareapp/isa-894-retirada-v1-r7b`, base `5198e4cd5a007893faedd89151168ae26bf7e951`
-(R7a final), HEAD actual `2a2ab054` antes de este commit de corrección.
-Sin apps/LMU/navegadores, sin `.env*`, sin push/PR/merge/promocion/release.
+`vantareapp/isa-894-retirada-v1-r7b`, base exacta `5198e4cd5a007893faedd89151168ae26bf7e951`
+(R7a final). Secuencia documental conocida: `d242f634` → `2a2ab054` →
+`46d519d5` (HEAD revisado por el orquestador); HEAD de trabajo = el commit de
+esta corrección (su hash queda en el propio commit y en el reporte, no
+inventado aquí). Sin apps/LMU/navegadores, sin `.env*`, sin
+push/PR/merge/promocion/release.
 
 R7a final comprometido en esta linea: `7ee3f87b` (retirada de contratos Overlay
 V1: `telemetrytransport.ProductOverlay` + `knownProduct`,
@@ -25,7 +28,16 @@ R7b planificado, todavia **sin codigo productivo**: microplan ejecutable en
 [`2026-09-04-telemetria-v1-retirada-r7b-frontend.md`](../../superpowers/plans/2026-09-04-telemetria-v1-retirada-r7b-frontend.md),
 **corregido tras REQUEST_CHANGES adversarial** (commit de corrección sobre
 `d242f634`, solo estos 2 docs) y **recorregido tras segunda revisión de calidad
-REQUEST_CHANGES** (este commit; sin afirmar aprobación futura). Segunda ronda:
+REQUEST_CHANGES** (commit sobre `2a2ab054`; sin afirmar aprobación futura) y
+**autocorregido por arquitectura del orquestador sobre `46d519d5`** (este
+commit; `46d519d5` era el HEAD revisado). Autocorrecciones: A1 ya no usa Q
+único + arrays acortados —derive añade exactamente `schema.Field` por campo
+(SpeedMPS/EngineRPM/Gear) y el wire lleva `QValue` por muestra siempre
+alineados, sin `V` en missing, sin sentinel ni pérdida; A1/A3 cambian edades
+relativas a `GeneratedAt` por `CapturedAtMS []int64` absolutos cache-safe
+(`cadence.go:331-340`: la sección memoizada sobrevive a varios
+`frame.GeneratedAt`), sin rebaseo ni reconstrucción dependiente del frame;
+STOP explícito si el formato con calidad no cabe en 64 KiB. Segunda ronda:
 gate de payload efectivo Publisher 64 KiB (frame @104 < 64 KiB; Hub 256 KiB
 secundaria) con bytes absolutos/delta en evidencia exacta
 `docs/telemetry-core/evidence/isa-894/retirada-v1-r7b-frontend-20260904.md`;

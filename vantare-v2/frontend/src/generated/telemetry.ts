@@ -169,10 +169,13 @@ export interface OverlayCapabilityModesV2 {
 
 export interface OverlayControlsHistoryV2 {
   readonly brake?: readonly number[] | undefined;
+  readonly capturedAtMS?: readonly number[] | undefined;
   readonly clutch?: readonly number[] | undefined;
+  readonly gear?: readonly OverlayQValue<number>[] | undefined;
   readonly q: OverlayQualityV2;
+  readonly rpm?: readonly OverlayQValue<number>[] | undefined;
+  readonly speedMPS?: readonly OverlayQValue<number>[] | undefined;
   readonly throttle?: readonly number[] | undefined;
-  readonly windowMs?: number | undefined;
 }
 
 export interface OverlayControlsV2 {

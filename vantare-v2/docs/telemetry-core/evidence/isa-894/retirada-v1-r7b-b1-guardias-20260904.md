@@ -173,5 +173,21 @@ test; `git diff --check` limpio; typecheck con los 8 heredados R7a exactos en
 sus 3 módulos y cero nuevos (dos errores propios intermedios por `readonly`/
 `null` se corrigieron con spread antes del commit); build no ejecutado por el
 mismo bloqueo preexistente. Sin push/PR/merge/promoción/apps/LMU. C2 sigue
-abierto: C2b migrará callers/previews/compat; el RED `authoring-v2-fixture.test.ts`
-de `b72af09d` queda para C2b.
+abierto: C2b migrará callers/previews/compat; el RED pendiente real son las 30
+anclas C2 del guard más compat tests.
+
+## C2a post-review — cierres P3 de pureza (ISA-894)
+
+Revisión spec Muse `ses_f925a2447ffecpXMuKkjuSaKaN`: **APPROVE**, P0/P1/P2=0,
+7 P3. Cierres aplicados (sin entrar en C2b): tipo local estrecho
+`AuthoringV2Variant` (`"default" | "standings-multiclass"`, ya sin importar
+`HarnessVariant`; variante desconocida lanza en vez de no-op silencioso),
+fail-fast en carga si el golden carece de frame/source/standings (cero
+fallbacks `undefined`/`[]`), focal a 9/9 (los 7 intactos + identidad distinta
+de clones y aislamiento ante mutaciones). Correcciones de docs:
+session/location/widget/system son los 4 reservados (state/variant sí se
+especializan); "cero shadow-runtime V1"; el RED pendiente son las 30 anclas C2
+del guard + compat (el `authoring-v2-fixture.test.ts` del primer RED ya no
+existe). P3 no aplicado a propósito: singleton `PREVIEW_V2_RUNTIME` — C2b
+decidirá factory/ownership con consumidores reales; queda como riesgo C2b.
+Guard tras C2a: `7 failed | 8 passed (15)` (grupo C2 en rojo, resto igual).

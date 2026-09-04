@@ -15,9 +15,11 @@ re-selecciona standings sin reescribir el productor; track y relative
 canónicos intactos; estados ready→live, stale→stale,
 disconnected→stopped, error→error; `PREVIEW_V2_RUNTIME` ready con 20 filas.
 API estable `AuthoringV2Scenario` con session/location/state/widget/system/
-variant (los cuatro últimos reservados sin especializar todavía). Cero
-`TelemetrySnapshot`, `buildMockTelemetry`, `Date.now`, adapters, runtime,
-transports o shadow V1; sin sintéticos. TDD: RED previo (módulo inexistente,
+variant: state/variant sí se especializan (source y standings-multiclass);
+session/location/widget/system quedan reservados sin alterar el fixture
+todavía. Cero
+`TelemetrySnapshot`, `buildMockTelemetry`, `Date.now`, adapters, transports o
+shadow-runtime V1; sin sintéticos. TDD: RED previo (módulo inexistente,
 import sin resolver) → GREEN 7/7 del focal
 `authoring-v2-scenario-fixture.test.ts` (el contrato lo puso el preflight, no
 se tocó). Checks: ESLint focal limpio (ambos ficheros), `git diff --check`
@@ -27,9 +29,21 @@ heredados R7a en los 3 módulos documentados
 `telemetry-cutover-runtime-harness/main.ts:40,41,53,54`), cero nuevos (no
 verde); build no ejecutado (bloqueado por esos 8 preexistentes). Sin push/PR/
 merge/promoción/apps/LMU. C2 NO está completo: callers/previews/compat (C2b)
-pendientes. Riesgo: el RED previo `authoring-v2-fixture.test.ts` (b72af09d,
-firma antigua) sigue fallando y pertenece a C2b; no se tocó
-`authoring-v2-fixture.ts` en este corte.
+pendientes. Riesgo: el RED pendiente real son las 30 anclas C2 del guard más
+compat tests (el fichero `authoring-v2-fixture.test.ts` del primer RED ya no
+existe: el preflight lo retiró en `da516230`/`1e73fcfb`); el singleton
+`PREVIEW_V2_RUNTIME` queda como riesgo C2b (factory/ownership con consumidores
+reales), no se toca en este corte.
+
+Revisión spec post-C2a Muse `ses_f925a2447ffecpXMuKkjuSaKaN`: **APPROVE**,
+P0/P1/P2=0, con 7 P3. Cierres aplicados en este corte (pureza/sencillez, sin
+entrar en C2b): tipo local estrecho `AuthoringV2Variant`
+(`"default" | "standings-multiclass"`, sin importar `HarnessVariant` de
+authoring-fixtures ni duplicar sus 10 variantes; variante desconocida falla
+rápido en vez de no-op silencioso), fail-fast en carga si el golden carece de
+frame/source/standings (sin fallbacks `undefined`/`[]`), focal endurecido a
+9/9 con identidad distinta de clones y aislamiento ante mutaciones, y estas
+correcciones de docs. `PREVIEW` singleton queda explícitamente para C2b.
 
 ## R7b/C2 PRE-FLIGHT CERRADO — siguiente C2a, no B3/B2 — 2026-09-04, ISA-894
 

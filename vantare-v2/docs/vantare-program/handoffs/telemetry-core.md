@@ -1,10 +1,20 @@
 # Handoff vivo — Telemetry Core
 
-## R7b/C2b1 QUALITY REQUEST_CHANGES — pin shadow aplicado, pendiente re-review — 2026-09-04, ISA-894
+## R7b/C2b1 APROBADO final — cerrado, siguiente C2b2 24→23 — 2026-09-04, ISA-894
 
-Spec C2b1 Muse `ses_f920fe705ffez0fE6o5MTU6efP`: **APPROVE**, 0/0/0/0.
-Quality C2b1 Muse `ses_f920d0602ffeQ1MIm8eKW0J3RY`: **REQUEST_CHANGES**
-(P2 único + P3 informativo). Fix P2 en commit `ffdf2bf6` (solo guard): pin
+Spec C2b1 Muse `ses_f920fe705ffez0fE6o5MTU6efP`: **APPROVE**,
+P0=P1=P2=P3=0. Quality C2b1 Muse `ses_f920d0602ffeQ1MIm8eKW0J3RY`:
+**APPROVE** final — P2 cerrado con el pin shadow (`ffdf2bf6`), sin P0–P3
+pendientes (historial REQUEST_CHANGES conservado abajo). Estado literal:
+guard deliberadamente RED `7 failed | 8 passed (15)` con 24 activas; focal
+17/17; typecheck NO verde con los 8 heredados R7a; build no ejecutado.
+Siguiente: C2b2 (StudioRoute test V2-only, 24→23). Sin push/PR/merge/
+promoción/apps/LMU.
+
+(Historial del cierre técnico, previo al APROBADO final de arriba.) Spec
+C2b1 Muse `ses_f920fe705ffez0fE6o5MTU6efP`: **APPROVE**, 0/0/0/0; quality
+C2b1 Muse `ses_f920d0602ffeQ1MIm8eKW0J3RY` dio entonces **REQUEST_CHANGES**
+(P2 único + P3 informativo), ya cerrado arriba. Fix P2 en commit `ffdf2bf6` (solo guard): pin
 estructural dentro del test existente de callers (15 intactos, sin entrada
 nueva al array C2) que exige ausencia de `overlay-v2-shadow-runtime` en
 `CompositeApp.tsx` (owner C2b1); la regresión falla aunque no exponga
@@ -13,8 +23,8 @@ mantiene como informativo aceptado porque el filtro es por nombre; no se
 reintroduce golden V1, no se amplía la prueba y no se toca producción.
 Guard tras el fix: `7 failed | 8 passed (15)` con 24
 activas; focal 17/17; ESLint y `diff --check` limpios; typecheck con los 8
-heredados (no verde); build no ejecutado. Pendiente: re-review. Siguiente
-intacto: C2b2 24→23. Sin push/PR/merge/promoción/apps/LMU.
+heredados (no verde); build no ejecutado. Siguiente intacto: C2b2 24→23
+entonces; estado vigente arriba. Sin push/PR/merge/promoción/apps/LMU.
 
 Writer único, rama `vantareapp/isa-894-retirada-v1-r7b`, base `08c660e5`.
 Commit de test `5a99fa14` (2 ficheros, +20/−38, cero producción):
@@ -36,7 +46,7 @@ ejecutado en este subcorte (documentado). Guard/typecheck/build globales NO
 verdes. Siguiente: C2b2 (StudioRoute test V2-only, 24→23). Sin push/PR/
 merge/promoción/apps/LMU. Nota: el bloque inferior ("C2b1 CERRADO") describía
 el cierre técnico previo a las reviews; el estado vigente es el bloque
-superior (pendiente re-review).
+superior (APROBADO final).
 
 ## R7b/C2b1 CERRADO en rama (Desktop test V2-only) — siguiente C2b2 24→23 — 2026-09-04, ISA-894
 

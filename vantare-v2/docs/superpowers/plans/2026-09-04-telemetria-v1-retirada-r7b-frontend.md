@@ -529,8 +529,11 @@ B1; si una ruta no existe en árbol, lo registra como divergencia y para ese
       `ses_f920fe705ffez0fE6o5MTU6efP` APPROVE 0/0/0/0; quality C2b1
       `ses_f920d0602ffeQ1MIm8eKW0J3RY` REQUEST_CHANGES (P2 único + P3
       informativo): fix P2 con pin shadow en el test de callers existente
-      (`ffdf2bf6`, conteo intacto); P3 aceptado informativo; pendiente
-      re-review.
+      (`ffdf2bf6`, conteo intacto); P3 aceptado informativo. APROBADO final:
+      spec `ses_f920fe705ffez0fE6o5MTU6efP` (P0=P1=P2=P3=0) y quality
+      `ses_f920d0602ffeQ1MIm8eKW0J3RY` (P2 cerrado, sin P0–P3 pendientes).
+      Guard deliberadamente RED con 24 activas; typecheck NO verde (8
+      heredados); build no ejecutado; siguiente C2b2 24→23.
   3. **C2b2, StudioRoute test V2-only (24→23):** retirar golden/evento V1;
      cualquier publicación snapshot usada exclusivamente para histories E1
      queda citada y no se presenta como autoridad de proyección.

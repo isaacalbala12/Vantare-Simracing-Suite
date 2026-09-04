@@ -283,6 +283,16 @@ V1, sin ampliar prueba, sin producción). Guard: `7 failed | 8 passed (15)`
 con 24 activas; focal 17/17; ESLint, `diff --check` y typecheck (8
 heredados) sin regresión. Pendiente: re-review.
 
+## C2b1 APROBADO final (ISA-894)
+
+Spec C2b1 `ses_f920fe705ffez0fE6o5MTU6efP`: **APPROVE**, P0=P1=P2=P3=0.
+Quality C2b1 `ses_f920d0602ffeQ1MIm8eKW0J3RY`: **APPROVE** final — P2 cerrado
+con el pin shadow (`ffdf2bf6`), sin P0–P3 pendientes (historial
+REQUEST_CHANGES conservado en la sección anterior). Estado literal: guard
+deliberadamente RED `7 failed | 8 passed (15)` con 24 anclas C2 activas;
+typecheck NO verde con los 8 errores heredados R7a; build no ejecutado.
+Siguiente: C2b2 24→23.
+
 Re-review quality Muse `ses_f92522698ffeDQwN643LThbEoz` sobre `6c4ead7f`:
 **APPROVE**, P0/P1/P2=0. Reprodujo focal 9/9, guard
 `7 failed | 8 passed (15)` con 30 anclas C2 activas, ESLint, diff-check y los

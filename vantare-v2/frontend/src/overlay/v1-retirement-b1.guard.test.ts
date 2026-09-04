@@ -102,6 +102,16 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
         "(overlay|engineer|strategy|analysis)",
         "B2 (regex eventName: overlay seguiría direccionable sin esto)",
       ],
+      [
+        src("telemetry-transport", "projection-golden.test.ts"),
+        "../internal/telemetry/projection/overlay/testdata/overlay_v1.golden.json",
+        "B2 (golden de producto Overlay retirado)",
+      ],
+      [
+        src("telemetry-transport", "projection-golden.test.ts"),
+        'eventName("overlay", "projection")',
+        "B2 (caso pre-D7 Overlay retirado)",
+      ],
     ]);
   });
 
@@ -124,6 +134,7 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
       // legacy: es la puerta de ingesta V1 del runtime, mismo dueño B3.
       [src("overlay", "telemetry-shadow", "overlay-v2-shadow-activation.ts"), "B3 (puerta acceptLegacy)"],
       [src("overlay", "telemetry-shadow", "overlay-v2-shadow-activation.test.ts"), "B3 (puerta acceptLegacy)"],
+      [src("overlay", "telemetry-shadow", "overlay-shadow-lote2b-features.test.ts"), "B3 (test runtime V1; migrar garantías útiles)"],
       [src("telemetry-cutover-runtime-harness", "main.ts"), "B3 (harness cutover)"],
       [src("telemetry-overlay-shadow-harness", "main.tsx"), "B3 (harness shadow)"],
       [src("telemetry-overlay-shadow-harness", "TelemetryOverlayShadowHarness.tsx"), "B3 (harness shadow)"],
@@ -132,6 +143,7 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
       [path.resolve(FRONTEND, "telemetry-cutover-runtime-harness.html"), "B3 (HTML harness)"],
       [path.resolve(FRONTEND, "telemetry-overlay-shadow-harness.html"), "B3 (HTML harness)"],
       [root("scripts", "bench", "sesion-v1.ps1"), "B3 (dueño exclusivo)"],
+      [root("scripts", "bench", "sesion-v1-state.ps1"), "B3 (parser del collector)"],
       [root("scripts", "bench", "sesion-v1-resumen.mjs"), "B3 (dueño exclusivo)"],
       [root("scripts", "bench", "sesion-v1-resumen.test.mjs"), "B3 (dueño exclusivo)"],
       [root("scripts", "bench", "sesion-v1-state.test.mjs"), "B3 (dueño exclusivo)"],
@@ -141,13 +153,55 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
       // huérfanos, mismo dueño B3.
       [path.resolve(FRONTEND, "scripts", "telemetry-overlay-shadow.playwright.mjs"), "B3 (playwright harness)"],
       [path.resolve(FRONTEND, "scripts", "telemetry-cutover-runtimes.playwright.mjs"), "B3 (playwright harness)"],
+      [
+        root("docs", "telemetry-core", "evidence", "isa-894", "s1-definitiva", "recalcular.mjs"),
+        "B3 (helper ejecutable dependiente del resumen retirado)",
+      ],
     ]);
   });
 
   it("B3: referencias a scripts sesion-v1 fuera", () => {
     contentAbsentAll([
       [root("scripts", "bench", "all.test.mjs"), "sesion-v1-resumen.test.mjs", "B3 (refs)"],
+      [root("scripts", "bench", "all.test.mjs"), "sesion-v1-state.test.mjs", "B3 (refs)"],
       [root("scripts", "bench", "README.md"), "sesion-v1.ps1", "B3 (refs)"],
+      [path.resolve(FRONTEND, "package.json"), '"test:telemetry-overlay-shadow"', "B3 (script npm)"],
+      [path.resolve(FRONTEND, "package.json"), '"test:telemetry-cutover-runtimes"', "B3 (script npm)"],
+    ]);
+  });
+
+  it("B2-prep: el oráculo E4 no depende del adapter que B2 borrará", () => {
+    contentAbsentAll([
+      [
+        src("overlay", "telemetry-shadow", "overlay-shadow-comparator.ts"),
+        "../projection/overlay-projection-adapter",
+        "B2-prep (tipos locales del oráculo E4)",
+      ],
+      [
+        src("overlay", "telemetry-shadow", "overlay-shadow-comparator.test.ts"),
+        "../projection/overlay-projection-adapter",
+        "B2-prep (test del oráculo E4)",
+      ],
+    ]);
+  });
+
+  it("C2: callers, previews y fixtures migran a V2 puro antes de B3/B2", () => {
+    contentAbsentAll([
+      [src("overlay", "CompositeApp.test.tsx"), "overlay_v1.golden.json?raw", "C2 (test Desktop V2-only)"],
+      [src("overlay", "CompositeApp.test.tsx"), "overlay-v2-shadow-runtime", "C2 (mock shadow obsoleto)"],
+      [src("hub", "overlay-studio", "StudioRoute.tsx"), "TelemetryAdapter", "C2 (lifecycle Studio V2)"],
+      [src("hub", "overlay-studio", "studio-overlay-telemetry.ts"), "TelemetryAdapter", "C2 (lifecycle Studio V2)"],
+      [src("hub", "overlay-studio", "canvas", "StudioTelemetryProvider.tsx"), "TelemetryAdapter", "C2 (provider V2)"],
+      [src("hub", "overlay-studio", "canvas", "StudioTelemetryProvider.tsx"), "buildMockTelemetry", "C2 (mock V1 fuera)"],
+      [src("overlay", "authoring", "fixtures", "authoring-v2-fixture.ts"), "TelemetrySnapshot", "C2 (fixture V2 puro)"],
+      [src("overlay-harness", "OverlayParityHarness.tsx"), "snapshot={snapshot}", "C2 (Host vía runtime V2)"],
+      [src("overlay", "authoring", "OverlayWorkshopDevRoute.tsx"), "snapshot={prepared.snapshot}", "C2 (Workshop V2)"],
+      [src("hub", "home-orbit", "HomeMiniStage.tsx"), "snapshot={PREVIEW_SNAPSHOT}", "C2 (preview Hub V2)"],
+      [src("hub", "overlays", "ProfilePreview.tsx"), "snapshot={PREVIEW_SNAPSHOT}", "C2 (preview Hub V2)"],
+      [src("ui-orbit-harness.tsx"), "snapshot={STAGE_SNAPSHOT}", "C2 (harness UI V2)"],
+      [src("hub", "overlay-studio", "StudioRoute.test.tsx"), "overlay_v1.golden.json?raw", "C2 (test Studio V2)"],
+      [src("overlay", "authoring", "fixtures", "projection-gaps.test.ts"), "overlay-projection-adapter.ts", "C2 (contrato gaps V2)"],
+      [src("overlay", "authoring", "fixtures", "animation-scenes.test.ts"), "overlay-projection-adapter.ts", "C2 (escenas V2)"],
     ]);
   });
 
@@ -157,10 +211,14 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
       [src("overlay", "ObsOverlayApp.tsx"), "B2+C2 (parte adapter + previews)"],
       [src("hub", "overlay-studio", "StudioRoute.tsx"), "C2"],
       [src("hub", "overlay-studio", "studio-overlay-telemetry.ts"), "C2"],
+      [src("hub", "overlay-studio", "canvas", "StudioTelemetryProvider.tsx"), "C2"],
       [src("overlay", "authoring", "fixtures", "authoring-fixtures.ts"), "C2"],
       [src("overlay", "authoring", "fixtures", "authoring-v2-fixture.ts"), "C2"],
       [src("overlay-harness", "OverlayParityHarness.tsx"), "C2"],
       [src("overlay", "authoring", "OverlayWorkshopDevRoute.tsx"), "C2"],
+      [src("hub", "home-orbit", "HomeMiniStage.tsx"), "C2"],
+      [src("hub", "overlays", "ProfilePreview.tsx"), "C2"],
+      [src("ui-orbit-harness.tsx"), "C2"],
     ] as const) present(route, owner);
   });
 

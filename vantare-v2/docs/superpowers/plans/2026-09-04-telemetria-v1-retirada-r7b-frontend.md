@@ -11,7 +11,8 @@ Predecesores: R7a final comprometido en esta misma línea
 (`7ee3f87b` código/contratos + `5198e4cd` checkpoint documental);
 PR draft de referencia R6b: #977 (R7b se apilará sobre él cuando exista su PR).
 
-Estado de este documento: **solo plan**. No cambia código, no cambia entrega
+Estado de este documento: **solo plan**, corregido tras el preflight B2 de
+2026-09-04. No cambia código, no cambia entrega
 pública y por tanto **no toca `plan.md` ni `roadmap.json` en este commit**.
 `plan.md` + digest regenerado es **deuda obligatoria del PR que entregue
 código R7b** (la issue es `roadmap:required`), no de este commit solo-plan:
@@ -71,18 +72,28 @@ usa desde A3 el fixture corregido 104/17/17.
 
 ```text
 A paridad de historias V2 (prerrequisito, sin borrar nada legacy)
-  → B guardias RED + retirada de transporte/proyección/harness V1
+  → B1 guardias RED
+  → C2 fixture V2 puro + previews/callers (prerrequisito de borrado)
+  → B3 runtime/harness/scripts V1 fuera
+  → B2-prep desacoplar tipos del oráculo E4, sin conducta
+  → B2 proyección/adapter/observer/transporte V1 fuera
       (comparator/sanitizer y sus resultados se CONSERVAN como oráculo)
-  → C daño (hipótesis contra productor) + fixture V2 puro y previews
+  → C1 daño (hipótesis contra productor)
   → D Host endurecido + definitions/viewmodels por lotes explícitos
   → E borrado final (módulos, switch, testdata) + comparator/sanitizer al final
   → F gates de SHA final y cierre documental (no TDD)
 ```
 
 Restricciones de orden: ningún borrado de `TelemetrySnapshot`/derived antes de
-que A esté verde; ningún borrado de `damage-reader`/builders legacy antes de
-que C1 resuelva sus dos ramas con evidencia; comparator/sanitizer sobreviven a
-D para que D no se quede sin oráculo (borrado en E4, justo antes de F).
+que A esté verde; **B2 no puede ejecutarse inmediatamente tras B1**: C2 debe
+migrar primero los tests/fixtures que leen el adapter por ruta y B3 debe retirar
+los harnesses que lo importan. Después, B2-prep desacopla del adapter los tipos
+que usa el comparator E4. Ningún borrado de `damage-reader`/builders legacy
+antes de que C1 resuelva sus dos ramas con evidencia; comparator/sanitizer
+sobreviven a D para que D no se quede sin oráculo (borrado en E4, justo antes
+de F). Los dos entrypoints frontend históricos de research bench quedan fuera
+del build productivo y conservan dueño E3 hasta su borrado explícito; no cuentan
+como caller productivo B2.
 
 ---
 
@@ -277,7 +288,7 @@ completa. A1 la expande en Go antes de proyectarla.
 
 ## B · Guardias RED, dueños explícitos y retirada V1 (hecho 1)
 
-### B0 · Tabla cerrada de consumidores R0: 13 grupos con dueño/corte explícito, sin "etc."
+### B0 · Tabla cerrada de consumidores R0: 14 grupos con dueño/corte explícito, sin "etc."
 
 Cada consumidor recibe corte dueño. El worker fija rutas exactas en el RED de
 B1; si una ruta no existe en árbol, lo registra como divergencia y para ese
@@ -287,16 +298,17 @@ B1; si una ruta no existe en árbol, lo registra como divergencia y para ese
 |---|---|
 | CompositeApp | C2 (migra a fixture/frame V2 puro) |
 | ObsOverlayApp | B2 (adapter SSE V1 fuera) + C2 si conserva previews |
-| StudioRoute / studio-overlay-telemetry | C2 |
+| StudioRoute / studio-overlay-telemetry / StudioTelemetryProvider | C2 |
 | telemetry-rate-coordinator y sus historias/API legacy | E1 (historias/API legacy fuera tras D) |
 | overlay-wails-pull allowlist/counters | B2 |
 | authoring fixtures completos | C2 (al fixture V2 puro) |
+| previews Hub (`HomeMiniStage`, `ProfilePreview`, `ui-orbit-harness`) | C2 (mismo fixture V2 puro) |
 | mock-scenarios | E1 |
 | OverlayParityHarness | C2 (misma migración Host) |
 | OverlayWorkshopDevRoute | C2 |
 | studio-v1-snapshot-test-harness | E1 (tras C2; último consumidor snapshot) |
 | vite.config / index.html / overlay.html | E3 solo si `rg` demuestra referencias V1 (verificado limpio: no se tocan) |
-| scripts/bench/sesion-v1-* (`sesion-v1.ps1`, `sesion-v1-resumen.mjs`, `sesion-v1-resumen.test.mjs`, `sesion-v1-state.test.mjs` + refs en `all.test.mjs`/README) | B3 (dueño exclusivo) |
+| scripts/bench/sesion-v1-* (`sesion-v1.ps1`, `sesion-v1-state.ps1`, `sesion-v1-resumen.mjs`, `sesion-v1-resumen.test.mjs`, `sesion-v1-state.test.mjs` + refs en `all.test.mjs`/README), scripts Playwright/`package.json`, test `overlay-shadow-lote2b-features.test.ts` y recalculador ejecutable S1 | B3 (dueño exclusivo; salidas históricas se preservan) |
 | entrypoints históricos frontend del research bench (`docs/research/telemetry-architecture-2026/bench/frontend-bench-entry.ts`, `frontend-bench.mjs`) | E3 (dueño exclusivo; el Go bench del mismo dir y `compact_frame.go` se preservan, sin dueño de borrado) |
 
 `Strategy`/`Engineer`/`Analysis` v1 quedan exentos por contrato independiente.
@@ -323,7 +335,60 @@ B1; si una ruta no existe en árbol, lo registra como divergencia y para ese
 - Rollback/stop: revert del commit. Stop si un resto citado resulta ser
   consumidor necesario sin migrar → reclasificar en B0, no borrar.
 
-### B2 · Retirar proyección/adapter/observer/transporte V1 + eventos/allowlist/counters
+### B3 · Retirar shadow runtime V1 + harnesses/scripts/HTML (se ejecuta después de C2; comparator/sanitizer EXCLUIDOS)
+
+- Objetivo: retirar el runtime del shadow de compatibilidad V1 y sus
+  harnesses/scripts/HTML. Incluye exactamente cinco ficheros `sesion-v1-*`
+  (`sesion-v1.ps1`, `sesion-v1-state.ps1`, `sesion-v1-resumen.mjs` y sus dos
+  tests), sus dos imports en `scripts/bench/all.test.mjs`, la instrucción activa
+  del README, los dos scripts Playwright y sus dos entradas en
+  `frontend/package.json`, los dos HTML y los dos packages harness. También
+  retira `overlay-shadow-lote2b-features.test.ts`: antes migra a tests V2/E4
+  cualquier garantía semántica útil y elimina solo los casos exclusivos del
+  runtime V1. El helper ejecutable
+  `docs/telemetry-core/evidence/isa-894/s1-definitiva/recalcular.mjs` se borra
+  porque importa el resumen retirado; las salidas, CSV, hashes y documentos S1
+  ya congelados se conservan como evidencia histórica.
+- B3 es dueño exclusivo de esos artefactos. **Comparator/sanitizer y sus
+  resultados se conservan** como oráculo de D; su borrado vive en E4.
+- Prerrequisito duro: C2 verde. `CompositeApp.test.tsx` y demás tests/callers
+  ya no pueden mockear/importar el runtime ni goldens V1 cuando B3 empiece.
+- Test RED previo: guardia B1 (parte runtime/harness/scripts/referencias) en
+  rojo con inventario completo; tests semánticos migrados antes del borrado.
+- Aceptación:
+  1. Runtime/harness/tooling ejecutable V1 ausente del bundle y del árbol;
+     cero comandos npm/imports activos colgantes.
+  2. Comparator/sanitizer intactos y toda garantía útil del test lote2b vive en
+     V2/E4; evidencia histórica no ejecutable preservada.
+  3. Guardias correspondientes en verde y build/typecheck sin regresión nueva.
+- Checks: focales migrados, tests bench restantes, typecheck, build frontend,
+  `rg` de ausencia y `git diff --check`.
+- Reviewer: spec + quality.
+- Rollback/stop: revert del micro-commit. Stop si un harness/test es la única
+  cobertura de una garantía V2 → migrar cobertura primero.
+
+### B2-prep · Desacoplar tipos del oráculo E4 (después de C2+B3, antes de B2)
+
+- Hecho de árbol: `overlay-shadow-comparator.ts` y su test importan
+  `OverlayProjectionAdaptation`/`OverlayProjectionMapping` desde
+  `overlay-projection-adapter.ts`; borrar el adapter antes rompería el oráculo
+  que debe sobrevivir hasta E4.
+- Objetivo: declarar en el comparator tipos estructurales **solo de oráculo**
+  (nombres `OverlayShadowProjectionAdaptation`/
+  `OverlayShadowProjectionMapping`), cambiar únicamente sus anotaciones y las
+  del test, sin import runtime, sin módulo genérico nuevo y sin alterar una rama
+  de comportamiento. La duplicación de forma es temporal y desaparece en E4.
+- Test RED previo: guard estructural que exige cero import del adapter desde
+  comparator/test y falla antes; GREEN con focal comparator semánticamente
+  equivalente.
+- Aceptación: comparator/test sin dependencia B2, focal completo verde, cero
+  cambio runtime y cero nuevos exports productivos.
+- Checks: focal comparator, typecheck, `rg` exacto y `git diff --check`.
+- Reviewer: spec + quality.
+- Rollback/stop: revert. Stop si el desacoplamiento exige copiar lógica o crea
+  una segunda autoridad runtime; B2 no empieza.
+
+### B2 · Retirar proyección/adapter/observer/transporte V1 + eventos/allowlist/counters (después de B2-prep)
 
 - Objetivo: poner en verde el guardia retirando lo citado en B1, con contratos
   explícitos de ausencia. Incluye `overlay-wails-pull` allowlist/counters V1.
@@ -331,47 +396,29 @@ B1; si una ruta no existe en árbol, lo registra como divergencia y para ese
   `overlay-projection-adapter*`, `transports/projection-telemetry-adapter*`,
   `transports/projection-observer*`, eventos/allowlist/counters exclusivos V1,
   `ProductID` overlay, ObsOverlayApp (parte adapter), y sus tests exclusivos.
+  Incluye migrar `telemetry-transport/projection-golden.test.ts` para conservar
+  solo Engineer/Strategy/Analysis V1 independientes, y actualizar
+  `core/v1-authority-guard.test.ts` al inventario restante. Los dos entrypoints
+  históricos research-bench siguen diferidos a E3 y fuera del build productivo.
   Prohibido tocar V2/host/fixtures de otros subcortes en el mismo commit; no
-  tocar comparator/sanitizer (E4).
+  tocar lógica de comparator/sanitizer (E4).
 - Test RED previo: guardia B1 en rojo.
 - Aceptación:
   1. Guardia B1 en verde (salvo diferidos E4); cero referencias productivas.
   2. Contratos explícitos de ausencia donde había tipos/eventos V1.
-  3. Focales + typecheck del área en verde.
+  3. Focales + typecheck del área en verde; comparator E4 sigue verde y sin
+     importar el adapter borrado.
 - Checks: focales, `pnpm --dir frontend typecheck`, `rg` de ausencia del lote.
 - Reviewer: spec + quality en el PR.
 - Rollback/stop: revert del micro-commit (rollback real = build anterior R0,
   restauración física pendiente de Isaac). Stop si aparece caller productivo no
   inventariado → parar el lote.
 
-### B3 · Retirar shadow runtime V1 + harnesses/scripts/HTML (comparator/sanitizer EXCLUIDOS)
-
-- Objetivo: retirar el runtime del shadow de compatibilidad V1 y sus
-  harnesses/scripts/HTML (incluidos los 4 scripts sesion-v1-* con sus
-  referencias). B3 es **dueño exclusivo** del runtime, los 2 packages harness
-  (`telemetry-cutover-runtime-harness`, `telemetry-overlay-shadow-harness`) y
-  los scripts/HTML sesion-v1: **ningún otro subcorte los declara DELETE**.
-  **Comparator/sanitizer
-  y sus resultados se conservan** como oráculo de D; su borrado vive en E4.
-- Archivos: runtime del shadow, `telemetry-cutover-runtime-harness`,
-  `telemetry-overlay-shadow-harness`, scripts sesion-v1, scripts/HTML de
-  harness V1, y sus tests exclusivos.
-- Test RED previo: guardia B1 (parte runtime/harness) en rojo.
-- Aceptación:
-  1. Runtime/harness V1 ausentes del bundle y del árbol productivo.
-  2. Guardia correspondiente en verde; comparator/sanitizer intactos y citados.
-  3. Tests semánticos útiles migrados a frontera V2 o citados como evidencia
-     histórica (no debilitados).
-- Checks: focales, build frontend del área o completa según alcance, `rg` ausencia.
-- Reviewer: quality.
-- Rollback/stop: revert del micro-commit. Stop si un harness es la única
-  cobertura de una garantía V2 → migrar cobertura primero.
-
 ---
 
 ## C · Daño como hipótesis + fixture V2 puro (hechos 3 y 4, primera mitad)
 
-### C1 · Daño: hipótesis verificada contra el productor real, no hecho
+### C1 · Daño: hipótesis verificada contra el productor real, no hecho (después de B2)
 
 - Hecho verificado en árbol (no presuponer más): `DamageViewV2` ya publica
   `dents`/`overheating`/`detached`/`wheelDetachedCount` mapeados desde el estado
@@ -405,11 +452,16 @@ B1; si una ruta no existe en árbol, lo registra como divergencia y para ese
   sin equivalente V2 y añadirlo exige nueva autoridad o arquitectura → parar,
   pedir decisión/ADR; nunca inventar el dato.
 
-### C2 · Fixture V2 puro + migración de previews (la rama legacy del Host AÚN puede existir)
+### C2 · Fixture V2 puro + migración de previews (se ejecuta inmediatamente después de B1; la rama legacy del Host AÚN puede existir)
 
 - Objetivo: crear fixture V2 puro (no wrapper de snapshot) y migrar los
-  callers/previews de la tabla B0 (CompositeApp, StudioRoute, authoring
-  fixtures, OverlayParityHarness, OverlayWorkshopDevRoute y sus tests).
+  callers/previews de la tabla B0 (CompositeApp, StudioRoute/
+  StudioTelemetryProvider, authoring fixtures, previews Hub `HomeMiniStage`/
+  `ProfilePreview`/`ui-orbit-harness`, OverlayParityHarness,
+  OverlayWorkshopDevRoute y sus tests).
+  Incluye retirar de `CompositeApp.test.tsx` el golden V1 y el mock/assertions
+  del shadow runtime ya sin caller productivo, y sustituir los tests
+  `projection-gaps`/`animation-scenes` que leen el adapter por contrato V2 puro.
   Preservar InPlaceEdit/Studio real ya V2. La rama legacy del Host **puede
   seguir existiendo** durante C2; la elimina D1.
 - Archivos: nuevo fixture V2, consumidores citados y sus tests. Prohibido:
@@ -420,7 +472,8 @@ B1; si una ruta no existe en árbol, lo registra como divergencia y para ese
 - Aceptación:
   1. Fixture V2 puro; previews/callers citados sin snapshot/wrapper legacy.
   2. InPlaceEdit/Studio real ya V2 preservados.
-  3. Tests migrados en verde.
+  3. Tests migrados en verde; cero lectura/import del adapter B2 o runtime B3
+     desde los callers/tests C2.
 - Checks: focales, `pnpm --dir frontend typecheck` del área.
 - Reviewer: quality.
 - Rollback/stop: revert. Stop si una preview pierde información visible sin
@@ -590,9 +643,11 @@ B1; si una ruta no existe en árbol, lo registra como divergencia y para ese
   `overlay_v1.golden.json` → DELETE (dueño exclusivo E3).
   `docs/research/telemetry-architecture-2026/bench/frontend-bench-entry.ts`
   importa `overlay-projection-v1` + `overlay-projection-adapter` (líneas 9-10) →
-  DELETE junto a `frontend-bench.mjs` (dueño exclusivo E3). Los Go bench del
-  mismo dir usan `strategy/engineer/analysis.ProjectV1` (contratos
-  independientes vivos, preservados) y `compact_frame.go` es prototipo
+  DELETE junto a `frontend-bench.mjs` (dueño exclusivo E3). E3 actualiza además
+  `internal/telemetry/projection/contracts_test.go` y cualquier test de golden
+  ya sin producto Overlay para no dejar referencias ejecutables a los JSON.
+  Los Go bench del mismo dir usan `strategy/engineer/analysis.ProjectV1`
+  (contratos independientes vivos, preservados) y `compact_frame.go` es prototipo
   hipotético sin import V1 (menciona al proyector V1 solo en comentarios) → se
   PRESERVAN como evidencia histórica; se corrigen los comentarios que afirmen
   wiring ejecutable V1, no se borran. Los 4 `sesion-v1-*` y los 2 packages

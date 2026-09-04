@@ -1,17 +1,21 @@
 # Handoff vivo — Telemetry Core
 
-## R7b/B1 RED — guardias de ausencia V1, siguiente B2 — 2026-09-04, ISA-894
+## R7b/B1 RED corregido — siguiente C2, no B2 — 2026-09-04, ISA-894
 
-B1 ejecutado sin cambios productivos: `v1-retirement-b1.guard.test.ts`
-(13 tests) en rojo reproducible — 5 failed con enumeración completa en una
-ejecución (B2 archivos 8 rutas, B2 ProductID 2 anclas, B2 wails-pull 4
-anclas, B3 17 rutas y B3 2 refs) + 8 passed (diferidos C2/D18/D5/E1/E2/E3,
-oráculo E4, callers sin imports B2, exentos por contrato, HTML limpios).
-Inventario B0 13/13 rutas verificadas, cero divergencias STOP (activación
-`acceptLegacy` y 2 playwright → B3 con prueba; 4 callers con imports E1 =
-deuda C2/E1 documentada). Evidencia:
-`retirada-v1-r7b-b1-guardias-20260904.md`. Siguiente: **B2** (pone en verde
-retirando lo citado, comparator/sanitizer intactos hasta E4).
+B1 sigue sin cambios productivos. El preflight descubrió que ejecutar B2
+directamente rompería el oráculo E4, dos tests C2 y los harnesses B3. El orden
+canónico queda corregido a **B1 → C2 → B3 → B2-prep → B2 → C1 → D/E/F**.
+`v1-retirement-b1.guard.test.ts` tiene 15 tests en rojo reproducible:
+7 failed que enumeran en una ejecución B2 (8 rutas + 4 anclas ProductID/golden
+y 4 anclas wails-pull), B3 (20 rutas + 5 referencias activas) y C2 (15 anclas
+de callers/previews/fixtures), más B2-prep (2 imports); 8 passed para diferidos
+y exentos. La tabla B0
+queda en 14/14 grupos tras añadir `StudioTelemetryProvider` y las tres previews
+Hub. Comparator/sanitizer permanecen como oráculo hasta E4; B2-prep solo
+desacoplará sus tipos del adapter, sin conducta. Evidencia y microplan:
+`retirada-v1-r7b-b1-guardias-20260904.md` y
+`2026-09-04-telemetria-v1-retirada-r7b-frontend.md`. Siguiente: review fresca
+del plan/guard y después **C2**. Sin push/PR/merge/promoción/apps/LMU.
 
 ## R7b/A3 CERRADO — doble APPROVE, siguiente B1 — 2026-09-04, ISA-894
 

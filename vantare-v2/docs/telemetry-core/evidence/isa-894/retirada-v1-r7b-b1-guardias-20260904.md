@@ -531,3 +531,31 @@ Si la fixture V2 no conserva la información visible del responsive, C2b5a
 activa STOP; no se rellena delta, history ni ninguna señal sintética. El corte
 empieza en RED, exige 14 anclas activas, escaneo completo del fichero tocado y
 doble review spec/quality del SHA exacto. Cero código tocado en esta decisión.
+
+## C2b5a cierre técnico — responsive V2 puro (ISA-894)
+
+Commits `04da9dcc` + hardening `9648dbf4`. El único caller migrado es
+`responsive-overlay-main.tsx`: retira `buildHarnessTelemetry`,
+`buildHarnessWidget`, `authoring-fixtures` y `coordinator.publish`; construye
+tower, standings y delta desde `widgetTypeRegistry`, conserva sus ids, layout,
+sistema visual y contenido relevante, y entrega el frame/source del golden V2
+canónico mediante `setOverlayFrame`. Standings usa el parser productivo
+`parseStandingsContent` antes de modificar columnas, cerrando el borrado de
+tipos del registro sin helper nuevo. El delta no recibe un valor sintético: si
+el golden declara `missing`, el renderer muestra su placeholder honesto.
+
+RED previo: guard `7 failed | 8 passed (15)` con 15 anclas C2 y residuo
+responsive explícito. GREEN del subcorte: mismo guard deliberadamente RED por
+los otros dueños, pero C2 baja a 14; cuatro locks negativos, dos positivos V2
+y el escaneo de imports impiden regresión. Prueba responsive 1/1 y conjunto
+focal (fixture V2, registry y RuntimeOverlaySurface) 60/60 PASS; ESLint focal,
+escaneo completo de los ficheros tocados y `git diff --check` PASS. Typecheck
+NO verde con exactamente los 8 errores R7a heredados, cero nuevos; build no
+evaluable mientras exista ese bloqueo.
+
+Reviews finales read-only, ambas con Ponytail `full`: spec
+`ses_f91679b01ffesHBssaqhByrm3D` y quality
+`ses_f9169dd50ffe0p4nCIdjJCvfj9`, **APPROVE**, P0/P1/P2=0. Los P3 de espiar
+la llamada de módulo y tipar el único `rowCount` de tower no justifican más
+infraestructura en este harness dev. Parity queda intacto y pasa a C2b6 por
+variante. Sin push/PR/merge/promoción/apps/LMU.

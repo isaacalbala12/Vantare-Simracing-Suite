@@ -635,6 +635,19 @@ B1; si una ruta no existe en árbol, lo registra como divergencia y para ese
      degradaría cobertura. Se migran o retiran por variante dentro de C2b6.
      `engineer-radio` sigue siendo fuente auxiliar explícita (no V1 ni parte
      de `OverlayFrameV2`) y se conserva por su frontera auxiliar sin snapshot.
+     Ejecutado en `04da9dcc` y endurecido en `9648dbf4`: el responsive crea
+     los mismos tres widgets desde `widgetTypeRegistry`, conserva layouts,
+     sistemas visuales, `rowCount`, multiclase y best-lap, y publica el golden
+     V2 canónico por `setOverlayFrame`. Standings pasa por
+     `parseStandingsContent`, por lo que sus columnas no dependen de `any` ni
+     de la forma borrada por el registro genérico. El delta conserva el widget
+     y refleja `missing` si así lo declara el golden, sin valor fabricado.
+     TDD: guard C2 RED 15→14; prueba propia 1/1 y conjunto focal 60/60; ESLint,
+     escaneo y `diff --check` limpios. Typecheck continúa NO verde con los ocho
+     errores R7a heredados exactos, cero nuevos; build no evaluable. Reviews
+     finales Ponytail `full`: spec `ses_f91679b01ffesHBssaqhByrm3D` y quality
+     `ses_f9169dd50ffe0p4nCIdjJCvfj9`, ambas **APPROVE** con P0/P1/P2=0.
+     C2b5a queda cerrado; siguiente C2b6 por variante.
   7. **C2b6, Parity + Workshop + compat (14→2, dividido por
      superficies/variantes, puede ser 6a, 6b…):** migrar route, parity,
      TrackMap y shells por

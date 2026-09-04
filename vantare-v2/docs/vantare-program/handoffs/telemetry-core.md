@@ -1,6 +1,20 @@
 # Handoff vivo — Telemetry Core
 
-## R7b/C2b5 preflight Ponytail — siguiente C2b5a responsive 15→14 — 2026-09-05, ISA-894
+## R7b/C2b5a APROBADO final — cerrado, siguiente C2b6 14→2 por variantes — 2026-09-05, ISA-894
+
+Commits `04da9dcc` + hardening `9648dbf4`: el responsive deja el megamódulo
+legacy y publica solo el golden canónico V2 por `setOverlayFrame`. Sus tres
+widgets salen del registro productivo con ids/layouts/sistemas/contenido
+conservados; Standings pasa por `parseStandingsContent` para mantener columnas
+tipadas. No se inventa delta: el placeholder sigue la calidad del golden.
+Guard C2 15→14; prueba propia 1/1 y focales 60/60; ESLint, escaneo y diff-check
+limpios. Typecheck NO verde con los ocho errores R7a heredados exactos, cero
+nuevos; build no evaluable. Reviews finales Ponytail `full`: spec
+`ses_f91679b01ffesHBssaqhByrm3D` y quality
+`ses_f9169dd50ffe0p4nCIdjJCvfj9`, ambas **APPROVE**, P0/P1/P2=0. Parity
+intacto pasa a C2b6 por variante. Sin push/PR/merge/promoción/apps/LMU.
+
+## R7b/C2b5 preflight Ponytail — decisión aplicada en C2b5a — 2026-09-05, ISA-894
 
 Ponytail `full` aplicado por orquestador y dos Muse read-only. Sesiones
 `ses_f9174bb27ffeCalPtlXMEnfdEW` (orden/variantes) y

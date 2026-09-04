@@ -1,11 +1,12 @@
 # Handoff vivo — Telemetry Core
 
-## R6b Hub Overlay Telemetry V1 inerte retirado, codigo congelado y aprobado localmente — 2026-09-04, ISA-894
+## R6b Hub Overlay Telemetry V1 inerte retirado y publicado en PR draft #977 — 2026-09-04, ISA-894
 
 Writer unico en `C:\tmp\vantare-v1-retirada-r6b\vantare-v2`, rama
 `vantareapp/isa-894-retirada-v1-r6b`, base exacta `58d1e8fe`. HEAD de
-codigo/test/microplan `c5c85012`, pendiente de publicacion draft a `nightly`;
-sin merge, promocion ni release.
+codigo/test/microplan `c5c85012` y cierre documental `afafe3ce`, publicados
+en el PR draft [#977](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/977)
+hacia `nightly`; sin merge, promocion ni release.
 
 R6b retira de `TelemetryCoreRuntime` el Hub Overlay Telemetry V1 inerte:
 campo, `NewHub(ProductOverlay...)`, import `overlayprojection` huerfano,

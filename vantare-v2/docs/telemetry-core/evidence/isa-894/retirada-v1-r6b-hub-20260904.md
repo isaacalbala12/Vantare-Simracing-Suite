@@ -125,7 +125,8 @@ especifico `overlayGuardQuoted()` del guard.
 ## Estado
 
 Rama `vantareapp/isa-894-retirada-v1-r6b`, codigo/test/microplan congelados
-en `c5c85012`, aprobados localmente y pendientes de publicacion draft a
-`nightly`. Sin merge, promocion, release ni retirada fisica total de
+en `c5c85012` y cierre documental `afafe3ce`, publicados en el PR draft
+[#977](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/977)
+hacia `nightly`. Sin merge, promocion, release ni retirada fisica total de
 Overlay Telemetry V1. Rollback exclusivamente por la build anterior
 verificada en R0.

@@ -1,5 +1,45 @@
 # Handoff vivo — Telemetry Core
 
+## R6b Hub Overlay Telemetry V1 inerte retirado, codigo congelado y aprobado localmente — 2026-09-04, ISA-894
+
+Writer unico en `C:\tmp\vantare-v1-retirada-r6b\vantare-v2`, rama
+`vantareapp/isa-894-retirada-v1-r6b`, base exacta `58d1e8fe`. HEAD de
+codigo/test/microplan `c5c85012`, pendiente de publicacion draft a `nightly`;
+sin merge, promocion ni release.
+
+R6b retira de `TelemetryCoreRuntime` el Hub Overlay Telemetry V1 inerte:
+campo, `NewHub(ProductOverlay...)`, import `overlayprojection` huerfano,
+accessor `Hub()`, cierre, metricas `Transport` y contadores
+`ProjectionsPublished`/`OverlayProjectionsPublished`, mas la rama huerfana de
+`productName` y las versiones huerfanas que marco el wiring guard (misma
+doctrina que `FromFreshness` en R6a.1). Migra 11 tests + harness a ausencia
+estructural o Strategy correcto, con peticion Overlay negativa en el replay.
+Conjunto 58d1e8fe → c5c85012: 15 archivos, +351/-269 (14 de
+codigo/test mas microplan). Evidencia:
+[`retirada-v1-r6b-hub-20260904.md`](../../telemetry-core/evidence/isa-894/retirada-v1-r6b-hub-20260904.md).
+
+TDD: RED estructural con 10 restos literales (2 campos Hub, `hub`/`Hub()`,
+3 metricas, 4 restos en fuente); GREEN con retirada minima y guard
+endurecido. Gates: focales, `internal/app` + `telemetrytransport` + `server`
++ `cmd/vantare` afectados, wiring guard sin excepciones nuevas,
+`pnpm --dir frontend build` PASS (dist real) y `go test ./... -count=1` PASS
+fresco completo sobre `c5c85012`, `go vet` solo con los tres `unsafe.Pointer`
+heredados fuera del diff, gofmt y `diff --check` limpios. Reviews finales
+sobre SHA `c5c85012` + diff local final: spec
+`ses_f95dacf4bffe1EM9LaZK5VfOmm` APPROVE P0/P1/P2/P3=0 (cumplimiento R6b) y
+quality `ses_f95d7c49bfferYo8uws0fzpJDf` APPROVE P0/P1/P2/P3=0
+(calidad/lifecycle/tests/huerfanos), con sus 4 mejoras minimas ya cerradas
+en `c5c85012`.
+
+R6b NO significa Overlay Telemetry V1 ausente del binario: quedan para R7
+los tipos y contratos (incluido `ProductOverlay`), el tooling y el frontend
+legacy. R7 se divide en R7a (Go/contratos/tooling) y R7b (frontend legacy).
+Strategy/Engineer/Analysis V1 son contratos independientes vivos y no forman
+parte de esta retirada. La auditoria integral V2 y el bucle de rendimiento
+aun no comienzan; no se certifica rendimiento optimo. Rollback solo por la
+build anterior verificada en R0. Este bloque prevalece sobre los inferiores
+en el avance de retirada, sin repetir su contenido.
+
 ## R6a + R6a.1 productor Overlay V1 y constructores huerfanos retirados, cerrado localmente — 2026-09-04, ISA-894
 
 Writer unico Muse en `C:\tmp\vantare-v1-retirada-r6a\vantare-v2`, rama

@@ -177,6 +177,13 @@ func TestTelemetryLifecycleHarness(t *testing.T) {
 
 	client := &http.Client{Transport: &http.Transport{DisableKeepAlives: true}, Timeout: 5 * time.Second}
 	assertHealthReachable(t, client, httpServer.Addr())
+	assertRouteStatus(
+		t,
+		client,
+		httpServer.Addr(),
+		telemetrytransport.ProjectionRoute(telemetrytransport.ProductOverlay),
+		http.StatusNotFound,
+	)
 	sse := make(map[string][]byte, 4)
 	product := telemetrytransport.ProductStrategy
 	wanted := []string{
@@ -813,6 +820,21 @@ func assertHealthReachable(t *testing.T, client *http.Client, address string) {
 	response.Body.Close()
 	if response.StatusCode != http.StatusOK {
 		t.Fatalf("health status = %d", response.StatusCode)
+	}
+}
+
+func assertRouteStatus(t *testing.T, client *http.Client, address string, route string, want int) {
+	t.Helper()
+	response, err := client.Get("http://" + address + route)
+	if err != nil {
+		t.Fatalf("GET %s error = %v", route, err)
+	}
+	status := response.StatusCode
+	if err := response.Body.Close(); err != nil {
+		t.Fatalf("close GET %s response: %v", route, err)
+	}
+	if status != want {
+		t.Fatalf("GET %s status = %d, want %d", route, status, want)
 	}
 }
 

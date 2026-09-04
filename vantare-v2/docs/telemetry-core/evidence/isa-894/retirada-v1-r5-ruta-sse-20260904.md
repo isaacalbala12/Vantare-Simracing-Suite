@@ -9,9 +9,9 @@ Base R4: `d9893379a0c19e2d39307aef957eafe3466c17b3`.
 R5 retira exclusivamente la entrada HTTP publica
 `GET /telemetry/overlay/projection`, su campo
 `ServerConfig.OverlayProjection` y el cableado desde `cmd/vantare/main.go`.
-El harness deja de publicar y capturar Overlay V1 por SSE, pero conserva
-Strategy por Wails/SSE, Overlay V2 por SSE/pull, Engineer y el cierre de
-recursos.
+El harness deja de publicar y capturar Overlay V1 por SSE, exige 404 con el
+Hub V1 interno vivo y conserva Strategy por Wails/SSE, Overlay V2 por
+SSE/pull, Engineer y el cierre de recursos.
 
 R5 no retira el productor, Hub, flag, persistencia, metricas, tipos ni
 fixtures V1 internos. Tampoco modifica Strategy V1, Overlay V2 o los helpers
@@ -63,8 +63,12 @@ Revision de especificacion Muse Spark 1.3 Contributor xhigh,
 P0/P1/P2 = 0. Verifico el diff literal, 404, aislamiento Strategy/V2,
 lifecycle, permanencia del interior V1 y ausencia de cambios fuera de alcance.
 
-La revision de calidad se ejecuta sobre el SHA final que incluya esta
-evidencia, handoff y roadmap.
+La primera revision de calidad Muse
+`ses_f9641e0e8ffeTifyWR2BSh084U` aprobo sin P0/P1/P2 y detecto como P3 que
+el test unitario con configuracion vacia no demostraba la integracion con un
+Hub V1 vivo. Se endurecio el harness con un GET real que exige 404 mientras
+`telemetryRuntime.Hub()` sigue existiendo. La revision final se repite sobre
+el SHA que contiene este hardening.
 
 ## Estado
 

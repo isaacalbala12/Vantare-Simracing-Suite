@@ -9,8 +9,8 @@ merge, promocion o release.
 
 R5 elimina `ServerConfig.OverlayProjection`, el registro de
 `GET /telemetry/overlay/projection` y su wiring en `main`. El harness ya no
-publica ni compara Overlay V1 por HTTP, pero conserva Strategy Wails/SSE,
-Overlay V2 SSE/pull, Engineer y shutdown. Evidencia:
+publica ni compara Overlay V1 por HTTP, exige 404 con el Hub V1 interno vivo y
+conserva Strategy Wails/SSE, Overlay V2 SSE/pull, Engineer y shutdown. Evidencia:
 [`retirada-v1-r5-ruta-sse-20260904.md`](../../telemetry-core/evidence/isa-894/retirada-v1-r5-ruta-sse-20260904.md).
 
 TDD: RED cancelable porque R4 abria el SSE V1 en lugar de responder 404;
@@ -18,6 +18,9 @@ GREEN con servidor, lifecycle, paquetes focales y `go test ./...` PASS.
 Build frontend PASS. Vet focal PASS; vet global conserva tres avisos heredados
 de `unsafe.Pointer` fuera del diff. Revision de especificacion Muse
 `ses_f9646e4bfffe3U670drv4bDWWB`: APPROVE, P0/P1/P2=0.
+La primera review de calidad Muse `ses_f9641e0e8ffeTifyWR2BSh084U` tambien
+aprobo sin P0/P1/P2; su P3 sobre la ausencia de una asercion negativa de
+integracion se endurecio en el harness antes del SHA final.
 
 R5 NO significa V1 ausente del binario: productor, Hub, flag, persistencia,
 metricas, tipos, builders, fixtures y tooling siguen. El inventario R6

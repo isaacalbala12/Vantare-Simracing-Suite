@@ -1,27 +1,40 @@
 # Handoff vivo — Telemetry Core
 
-## R7a checkpoint local sin commit (no entrega) — 2026-09-04, ISA-894
+## R7b planificado (microplan, sin codigo) + R7a final comprometido — 2026-09-04, ISA-894
 
-Writer unico en `C:\tmp\vantare-v1-retirada-r7a\vantare-v2`, rama
-`vantareapp/isa-894-retirada-v1-r7a`, base exacta `edc682e1`. Cambios sin
-commit para revision del orquestador; **no es entrega, ni PR, ni CI**.
+Writer unico en `C:\tmp\vantare-v1-retirada-r7b\vantare-v2`, rama
+`vantareapp/isa-894-retirada-v1-r7b`, HEAD/base exacta `5198e4cd5a007893faedd89151168ae26bf7e951`
+(R7a final). Sin apps/LMU/navegadores, sin `.env*`, sin push/PR/merge/promocion/release.
 
-R7a retira `telemetrytransport.ProductOverlay` (+`knownProduct`),
-`internal/telemetry/projection/overlay/v1.go`, las raices Overlay V1 de
-`tools/telemetry-contract-gen` y el wire `Overlay*V1` + `"overlay"` del TS
-generado (regenerado solo via `task telemetry:contract`). Migra Hub a
-Strategy, negativas a Engineer, rutas/eventos a literales historicos de
-ausencia y bench `researchbench` a Strategy/brazos comparativos sin V1.
-Los JSON de `overlay/testdata/` quedan huerfanos hasta R7b (restaurados
-identicos). TDD RED→GREEN con `TestOverlayV1ContractsRetired`. Evidencia:
+R7a final comprometido en esta linea: `7ee3f87b` (retirada de contratos Overlay
+V1: `telemetrytransport.ProductOverlay` + `knownProduct`,
+`internal/telemetry/projection/overlay/v1.go`, raices Overlay V1 de
+`tools/telemetry-contract-gen`, wire `Overlay*V1` + `"overlay"` del TS generado
+solo via `task telemetry:contract`; Hub a Strategy, negativas a Engineer,
+rutas/eventos a literales historicos de ausencia, bench `researchbench` a
+Strategy/brazos comparativos sin V1; TDD RED→GREEN con
+`TestOverlayV1ContractsRetired`) + `5198e4cd` (checkpoint documental: microplan
+R7a, evidencia y bloque de handoff). Evidencia:
 [`retirada-v1-r7a-contratos-go-20260904.md`](../../telemetry-core/evidence/isa-894/retirada-v1-r7a-contratos-go-20260904.md).
+Los JSON de `overlay/testdata/` quedan huerfanos hasta R7b. Estado heredado de
+R7a: Go/contract/frontend-runtime verdes; `pnpm typecheck` en rojo con 8 errores
+en 3 modulos legacy de R7b; build/dist/`cmd/vantare` bloqueados en cascada.
 
-Checkpoint local: Go/contract/frontend-runtime verdes (suite 3425/3425);
-`pnpm typecheck` en rojo con exactamente 8 errores en 3 modulos legacy de
-R7b; build/dist/`cmd/vantare` bloqueados en cascada. **Siguiente accion:
-R7b** (borrado del legacy frontend); solo el combinado R7a+R7b se publica.
-Este bloque documenta estado local y no declara entrega, PR ni CI;
-prevalece sobre los inferiores solo en el avance de R7a.
+R7b planificado, todavia **sin codigo productivo**: microplan ejecutable en
+[`2026-09-04-telemetria-v1-retirada-r7b-frontend.md`](../../superpowers/plans/2026-09-04-telemetria-v1-retirada-r7b-frontend.md).
+Orden: A paridad de historias V2 (controles 120, fuel 64, delta canónico Go, sin
+sintéticos ni `Date.now` frontend); B contratos/transporte/shadow/harness V1 con
+guardias RED; C daño (repoint a V2, tyres fraccionales no producidos) + fixture
+V2 puro y previews al mismo `WidgetVisualHost`; D Host endurecido + 20
+definitions/viewmodels por lotes; E auxiliares, switch `overlay-v2-features` y
+borrado final (testdata Go huérfano, scripts/harnesses, bundle); F
+ausencia/bundle/gates/docs. Commits pequeños en UNA rama R7b y un único draft PR
+apilado sobre #977; rollback exclusivo por build anterior R0.
+`Strategy`/`Engineer`/`Analysis` v1 independientes se preservan. Este commit no
+toca `plan.md`/`roadmap.json`: el mero microplan no cambia el roadmap público;
+se actualizarán en el mismo PR que entregue código si cambia entrega pública.
+Este bloque prevalece sobre los inferiores solo en el avance R7a→R7b;
+**siguiente accion: ejecutar R7b**; solo el combinado R7a+R7b se publica.
 
 ## R6b Hub Overlay Telemetry V1 inerte retirado y publicado en PR draft #977 — 2026-09-04, ISA-894
 

@@ -1,5 +1,15 @@
 # Handoff vivo — Telemetry Core
 
+## R7b/B1 RED — guardias de ausencia V1, siguiente B2 — 2026-09-04, ISA-894
+
+B1 ejecutado sin cambios productivos: `v1-retirement-b1.guard.test.ts`
+(9 tests) en rojo reproducible — 2 failed (lotes B2/B3 por restos reales:
+`overlay-projection-v1.ts`, `overlay-v2-shadow-runtime.ts`) + 7 passed
+(diferidos C2/D/E1/E2/E3, oráculo E4, exentos Strategy/Engineer/Analysis v1,
+HTML limpios). Inventario B0 13/13 rutas verificadas, cero divergencias.
+Evidencia: `retirada-v1-r7b-b1-guardias-20260904.md`. Siguiente: **B2**
+(pone en verde retirando lo citado, comparator/sanitizer intactos hasta E4).
+
 ## R7b/A3 CERRADO — doble APPROVE, siguiente B1 — 2026-09-04, ISA-894
 
 A3 CERRADO con APPROVE de spec (`ses_f92d…`) y APPROVE fresh de quality

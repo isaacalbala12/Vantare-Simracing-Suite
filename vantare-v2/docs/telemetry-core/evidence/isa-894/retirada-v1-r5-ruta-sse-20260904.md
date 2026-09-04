@@ -70,6 +70,12 @@ Hub V1 vivo. Se endurecio el harness con un GET real que exige 404 mientras
 `telemetryRuntime.Hub()` sigue existiendo. La revision final se repite sobre
 el SHA que contiene este hardening.
 
+Revision final de calidad Muse
+`ses_f963d3a8fffeYpLFm41Uwq6EdJ` sobre
+`4daea04a181fd091a8691830c467396e87aefaf3`: **APPROVE**,
+P0/P1/P2 = 0. Reprodujo el 404 con Hub vivo, Strategy/V2, lifecycle, vet focal,
+formato y fronteras. Los P3 restantes son nits sin impacto funcional.
+
 ## Estado
 
 Rama `vantareapp/isa-894-retirada-v1-r5`, apilada sobre R4. Sin merge,

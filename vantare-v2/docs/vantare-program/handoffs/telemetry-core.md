@@ -4,8 +4,8 @@
 
 Writer unico Muse en `C:\tmp\vantare-v1-retirada-r5\vantare-v2`, rama
 `vantareapp/isa-894-retirada-v1-r5`, base exacta R4 `d9893379`. Commit de
-codigo/test/microplan `cd5b33c3`; sin apps, LMU, navegadores, `.env*`,
-merge, promocion o release.
+codigo/test/microplan `cd5b33c3` y hardening de integracion `4daea04a`;
+sin apps, LMU, navegadores, `.env*`, merge, promocion o release.
 
 R5 elimina `ServerConfig.OverlayProjection`, el registro de
 `GET /telemetry/overlay/projection` y su wiring en `main`. El harness ya no
@@ -21,6 +21,8 @@ de `unsafe.Pointer` fuera del diff. Revision de especificacion Muse
 La primera review de calidad Muse `ses_f9641e0e8ffeTifyWR2BSh084U` tambien
 aprobo sin P0/P1/P2; su P3 sobre la ausencia de una asercion negativa de
 integracion se endurecio en el harness antes del SHA final.
+Review final Muse `ses_f963d3a8fffeYpLFm41Uwq6EdJ` sobre `4daea04a`:
+APPROVE, P0/P1/P2=0.
 
 R5 NO significa V1 ausente del binario: productor, Hub, flag, persistencia,
 metricas, tipos, builders, fixtures y tooling siguen. El inventario R6

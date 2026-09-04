@@ -325,10 +325,22 @@ constantes o seeds. Layout/renderer/widgets/cadencias intactos (focales
 con **18 declaradas / 17 activas** (hereda la inactiva de C2a);
 deliberadamente RED `7 failed | 8 passed (15)` con `expected 17`. ESLint
 focal y `git diff --check` limpios; typecheck NO verde con los 8 heredados
-exactos y cero nuevos; build no evaluable/no ejecutado por bloqueo heredado
-(no se declara verde). Riesgo: placeholders V2 donde el golden trae
-`missing` (igual que toda superficie V2). Siguiente: C2b4 17→15.
+exactos y cero
+nuevos; build no evaluable/no ejecutado por bloqueo heredado (no se declara
+verde). Riesgo: placeholders V2 donde el golden trae `missing` (igual que
+toda superficie V2). Siguiente: C2b4 17→15.
 
+## C2b3 quality REQUEST_CHANGES — locks y limpieza (ISA-894)
+
+Quality C2b3: **REQUEST_CHANGES** (P1: sin lock permanente tras retirar las 6
+anclas + singleton muerto por limpiar). Fix en `79bf23e7`: 9 locks negativos
+exactos en el test de callers existente (15 intactos, fuera del array RED) +
+3 ficheros en el loop sin-imports-V1; mutante probado en copia temporal sin
+tocar producción (anclas detectadas); `PREVIEW_V2_RUNTIME` eliminado de
+módulo y test (solo vivía allí); focal de aislamiento fija args exactos con
+espía call-through. Aritmética intacta 18/17 (visible en diff y `expected
+17`). Guard `7 failed | 8 passed (15)`; focales 32/32; ESLint, `diff --check`
+y typecheck (8 heredados) sin regresión. Pendiente: re-review.
 ## C2b2 APROBADO final (ISA-894)
 
 Spec C2b2 `ses_f91ff25dbffejp7kMw0wLaqfg5`: **APPROVE**, P0/P1/P2=0 (P3

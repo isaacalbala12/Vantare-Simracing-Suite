@@ -1,6 +1,23 @@
 # Handoff vivo — Telemetry Core
 
-## R7b/C2b3 CERRADO en rama (previews Hub V2) — siguiente C2b4 17→15 — 2026-09-04, ISA-894
+## R7b/C2b3 QUALITY REQUEST_CHANGES — locks aplicados, pendiente re-review — 2026-09-04, ISA-894
+
+Quality C2b3: **REQUEST_CHANGES** (P1 único: faltaba lock permanente tras
+retirar las 6 anclas + limpieza del singleton). Fix en commit `79bf23e7`
+(solo guard/focales, cero producción): 9 locks negativos exactos
+(`snapshot={`, constantes retiradas, `buildMockTelemetry`) para los 3
+previews dentro del test existente de callers (15 intactos, fuera del array
+RED C2) + los 3 ficheros en el loop sin-imports-V1; prueba de mutante sin
+tocar producción (anclas inyectadas en copia temporal, detectadas por la
+misma lógica). Limpieza ownership C2b3: `PREVIEW_V2_RUNTIME` eliminado del
+módulo y su test (solo vivía allí; sin `deprecated`, menos código); el
+focal de aislamiento fija args exactos race/track/ready/standings/
+vantare-crystal/default con espía call-through (sin mock falso).
+Aritmética intacta: **18 declaradas / 17 activas** (visible en el diff del
+guard y en el `expected 17`; no se cambia la cifra). Guard tras el fix:
+`7 failed | 8 passed (15)`; focales 32/32; ESLint y `diff --check` limpios;
+typecheck con los 8 heredados (no verde); build no evaluable por bloqueo
+heredado. Pendiente: re-review. Sin push/PR/merge/promoción/apps/LMU.
 
 Writer único, rama `vantareapp/isa-894-retirada-v1-r7b`, base `5f7fca59`.
 Commit de código `b61a7441` (5 ficheros, +120/−26): `HomeMiniStage`,
@@ -24,6 +41,8 @@ calidad `missing` en el golden pintan placeholder, igual que toda superficie
 V2; no es pérdida de información real). Guard/typecheck/build globales NO
 verdes. Siguiente: C2b4 (provider Studio mock, 17→15). Sin push/PR/merge/
 promoción/apps/LMU.
+
+## R7b/C2b3 CERRADO en rama (previews Hub V2) — siguiente C2b4 17→15 — 2026-09-04, ISA-894
 
 ## R7b/C2b2 APROBADO final — cerrado, siguiente C2b3 23→17 — 2026-09-04, ISA-894
 

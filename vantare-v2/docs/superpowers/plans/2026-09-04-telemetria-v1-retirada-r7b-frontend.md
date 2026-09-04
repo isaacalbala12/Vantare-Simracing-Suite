@@ -570,7 +570,12 @@ B1; si una ruta no existe en árbol, lo registra como divergencia y para ese
       guard RED `7 failed | 8 passed (15)` con 17 anclas activas (18
       declaradas, una inactiva heredada de C2a); ESLint y `diff --check`
       limpios; typecheck con los 8 heredados (no verde); build no evaluable
-      por bloqueo heredado (no se declara verde).
+      por bloqueo heredado (no se declara verde). Quality C2b3
+      REQUEST_CHANGES (P1 locks + limpieza): fix en `79bf23e7` con 9 locks
+      negativos en el test de callers (15 intactos, fuera del array RED),
+      mutante probado en copia temporal, `PREVIEW_V2_RUNTIME` eliminado y
+      args exactos fijados con espía call-through; aritmética 18/17 intacta;
+      pendiente re-review.
   5. **C2b4, provider Studio mock (17→15):** sustituir mock/puente snapshot por
      escenario V2 puro sin cambiar ciclo live ni adelantar D1/E1.
      `preview.mockSession/mockLocation` solo se preservan si existe

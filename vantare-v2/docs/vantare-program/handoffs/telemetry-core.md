@@ -1,6 +1,6 @@
 # Handoff vivo — Telemetry Core
 
-## R7b/B1 CERRADO — siguiente C2, no B2 — 2026-09-04, ISA-894
+## R7b/C2 PRE-FLIGHT CERRADO — siguiente C2a, no B3/B2 — 2026-09-04, ISA-894
 
 B1 sigue sin cambios productivos. El preflight descubrió que ejecutar B2
 directamente rompería el oráculo E4, dos tests C2 y los harnesses B3. El orden
@@ -23,8 +23,12 @@ P1 de la primera quality review, re-review spec `ses_f928d2…` y quality
 El primer RED C2 (`b72af09d`) descubrió consumidores legacy fuera del inventario
 y el intento de moverlos a un módulo snapshot nuevo se abortó sin commit. Grafo
 corregido: módulo puro nuevo en C2; helpers legacy existentes permanecen D/E1;
-puente snapshot actual queda solo para E4 hasta B2-prep/B2. Siguiente: review
-del plan/guard/focal endurecidos y reanudar **C2a**. Los callers C2 deben dejar
+puente snapshot actual queda solo para E4 hasta B2-prep/B2. El checkpoint
+corregido `5b254087` tiene doble APPROVE fresco: spec Muse
+`ses_f92712299ffeGIc4JPPXEs97MN` y quality Muse
+`ses_f926b66f5ffe1QN1JaDlihRZbW`, ambos P0/P1/P2=0. Verificaron 31 anclas C2
+(30 activas), golden V2 de 20 coches como semilla exacta, 15 grupos B0 y árbol
+limpio. Siguiente: reanudar **C2a** con el mismo writer. Los callers C2 deben dejar
 también sus builders/seeds snapshot; el escenario default debe igualar el
 golden V2 de 20 coches. No B3/B2 todavía. Sin push/PR/
 merge/promoción/apps/LMU.

@@ -151,5 +151,12 @@ D/E1 y cerró la semilla con golden 20, igualdad completa del escenario default,
 
 Reproducción: guard `7 failed | 8 passed (15)` y test focal C2 falla al resolver
 `./authoring-v2-scenario-fixture`, exactamente antes de C2a. Este addendum y el
-plan corregido requieren review spec + quality frescas antes de reanudar al
-mismo writer.
+plan corregido quedaron cerrados en HEAD `5b254087` con doble revisión fresca:
+- spec Muse `ses_f92712299ffeGIc4JPPXEs97MN`: **APPROVE**, P0/P1/P2=0;
+- quality Muse `ses_f926b66f5ffe1QN1JaDlihRZbW`: **APPROVE**, P0/P1/P2=0.
+
+Ambas revisiones verificaron el árbol limpio, las 31 anclas C2 declaradas
+(30 activas), las 8 anclas nuevas contra callers reales, la semilla exacta
+`overlay_v2_20.golden.json`, los 15 grupos B0 y el orden
+`B1 → C2 → B3 → B2-prep → B2`. C2a puede reanudarse con el mismo writer y
+alcance limitado al nuevo fixture V2 puro.

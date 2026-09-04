@@ -288,7 +288,7 @@ completa. A1 la expande en Go antes de proyectarla.
 
 ## B · Guardias RED, dueños explícitos y retirada V1 (hecho 1)
 
-### B0 · Tabla cerrada de consumidores R0: 14 grupos con dueño/corte explícito, sin "etc."
+### B0 · Tabla cerrada de consumidores R0: 15 grupos con dueño/corte explícito, sin "etc."
 
 Cada consumidor recibe corte dueño. El worker fija rutas exactas en el RED de
 B1; si una ruta no existe en árbol, lo registra como divergencia y para ese
@@ -301,7 +301,8 @@ B1; si una ruta no existe en árbol, lo registra como divergencia y para ese
 | StudioRoute / OverlayStudioV3 / studio-overlay-telemetry / StudioTelemetryProvider | C2 |
 | telemetry-rate-coordinator y sus historias/API legacy | E1 (historias/API legacy fuera tras D) |
 | overlay-wails-pull allowlist/counters | B2 |
-| authoring fixtures completos | C2 (al fixture V2 puro) |
+| fixture nuevo `authoring-v2-scenario-fixture` + callers/previews/dev harness | C2 (V2 puro) |
+| helpers snapshot de `authoring-fixtures` + tests de builders legacy | D/E1 (se preservan hasta migrar definitions; no se trasladan) |
 | previews Hub (`HomeMiniStage`, `ProfilePreview`, `ui-orbit-harness`) | C2 (mismo fixture V2 puro) |
 | mock-scenarios | E1 |
 | OverlayParityHarness | C2 (misma migración Host) |
@@ -376,12 +377,17 @@ B1; si una ruta no existe en árbol, lo registra como divergencia y para ese
 - Hecho de árbol: `overlay-shadow-comparator.ts` y su test importan
   `OverlayProjectionAdaptation`/`OverlayProjectionMapping` desde
   `overlay-projection-adapter.ts`; borrar el adapter antes rompería el oráculo
-  que debe sobrevivir hasta E4.
+  que debe sobrevivir hasta E4. Además, el test usa el puente snapshot
+  `authoring-v2-fixture.ts`; C2 no puede borrarlo mientras siga siendo su único
+  generador V2 comparable.
 - Objetivo: declarar en el comparator tipos estructurales **solo de oráculo**
   (nombres `OverlayShadowProjectionAdaptation`/
   `OverlayShadowProjectionMapping`), cambiar únicamente sus anotaciones y las
   del test, sin import runtime, sin módulo genérico nuevo y sin alterar una rama
-  de comportamiento. La duplicación de forma es temporal y desaparece en E4.
+  de comportamiento. En el mismo corte, el test recibe un helper local de
+  oráculo que conserva la comparación y deja de importar
+  `authoring-v2-fixture.ts`; ese puente temporal se borra en B2. La duplicación
+  de forma es temporal y desaparece en E4.
 - Test RED previo: guard estructural que exige cero import del adapter desde
   comparator/test y falla antes; GREEN con focal comparator semánticamente
   equivalente.
@@ -398,7 +404,8 @@ B1; si una ruta no existe en árbol, lo registra como divergencia y para ese
   explícitos de ausencia. Incluye `overlay-wails-pull` allowlist/counters V1.
 - Archivos: `overlay/projection/overlay-projection-v1*`,
   `overlay-projection-adapter*`, `transports/projection-telemetry-adapter*`,
-  `transports/projection-observer*`, eventos/allowlist/counters exclusivos V1,
+  `transports/projection-observer*`, el puente snapshot temporal
+  `authoring/fixtures/authoring-v2-fixture.ts`, eventos/allowlist/counters exclusivos V1,
   `ProductID` overlay, ObsOverlayApp (parte adapter), y sus tests exclusivos.
   Incluye migrar `telemetry-transport/projection-golden.test.ts` para conservar
   solo Engineer/Strategy/Analysis V1 independientes, y actualizar
@@ -458,24 +465,38 @@ B1; si una ruta no existe en árbol, lo registra como divergencia y para ese
 
 ### C2 · Fixture V2 puro + migración de previews (se ejecuta inmediatamente después de B1; la rama legacy del Host AÚN puede existir)
 
-- Objetivo: crear fixture V2 puro (no wrapper de snapshot) y migrar los
+- Objetivo: crear `authoring-v2-scenario-fixture.ts` V2 puro (no wrapper de
+  snapshot) y migrar los
   callers/previews de la tabla B0 (CompositeApp, StudioRoute/
-  `OverlayStudioV3`/StudioTelemetryProvider, authoring fixtures completos sin
-  `TelemetrySnapshot` ni `buildMockTelemetry`, previews Hub `HomeMiniStage`/
+  `OverlayStudioV3`/StudioTelemetryProvider, previews Hub `HomeMiniStage`/
   `ProfilePreview`/`ui-orbit-harness`, OverlayParityHarness,
-  OverlayWorkshopDevRoute y sus tests).
+  OverlayWorkshopDevRoute, `responsive-overlay-main` y sus tests). También
+  migra los callsites de compatibilidad del API V2 en workshop parity,
+  TrackMap layout y transparent shells. El comparator E4 queda expresamente
+  fuera: mantiene el puente snapshot hasta B2-prep.
   Incluye retirar de `CompositeApp.test.tsx` el golden V1 y el mock/assertions
   del shadow runtime ya sin caller productivo, y sustituir los tests
   `projection-gaps`/`animation-scenes` que leen el adapter por contrato V2 puro.
+  `authoring-fixtures.ts` y sus tests/builders snapshot permanecen con dueño
+  D/E1 hasta que las definitions legacy se migren; no se mueven a otro módulo.
   Preservar InPlaceEdit/Studio real ya V2. La rama legacy del Host **puede
   seguir existiendo** durante C2; la elimina D1.
+- Semilla cerrada: parte del golden V2 canónico y solo aplica variantes ya
+  documentadas por las tablas puras existentes (stress60, multiclass, replay,
+  pedals y escenas). Instante fijo real del fixture, `trackName` explícito para
+  TrackMap; no sintetizar `relative.side/authority` ni rellenar secciones sin
+  productor. Si el golden no contiene una forma necesaria, STOP de paridad.
+- Subcortes bisectables: C2a añade módulo/API puro en paralelo; C2b migra
+  callers/previews/compat tests; C2c elimina dependencias productivas del puente
+  antiguo. El puente se conserva solo para E4 y B2 lo borra tras B2-prep.
 - Archivos: nuevo fixture V2, consumidores citados y sus tests. Prohibido:
   wrapper sobre snapshot legacy, tocar el Host o definitions de D.
 - Test RED previo: test que afirma que **ningún preview/caller migrado pasa
   snapshot/wrapper legacy** (render contra fixture/frame V2 puro). Expresamente
   **NO** afirma que el Host entero ya sea V2-only — eso lo verifica D1.
 - Aceptación:
-  1. Fixture V2 puro; previews/callers citados sin snapshot/wrapper legacy.
+  1. Fixture V2 puro; previews/callers citados sin snapshot/wrapper legacy; el
+     único puente restante está acotado al test-oráculo E4 con dueño B2-prep/B2.
   2. InPlaceEdit/Studio real ya V2 preservados.
   3. Tests migrados en verde; cero lectura/import del adapter B2 o runtime B3
      desde los callers/tests C2.

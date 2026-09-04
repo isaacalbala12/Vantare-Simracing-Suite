@@ -91,6 +91,7 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
       [src("overlay", "transports", "projection-telemetry-adapter.test.ts"), "B2"],
       [src("overlay", "transports", "projection-observer.ts"), "B2"],
       [src("overlay", "transports", "projection-observer.test.ts"), "B2"],
+      [src("overlay", "authoring", "fixtures", "authoring-v2-fixture.ts"), "B2 (puente snapshot reservado al oráculo E4)"],
     ]);
   });
 
@@ -193,6 +194,11 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
         "../projection/overlay-projection-adapter",
         "B2-prep (test del oráculo E4)",
       ],
+      [
+        src("overlay", "telemetry-shadow", "overlay-shadow-comparator.test.ts"),
+        "../authoring/fixtures/authoring-v2-fixture",
+        "B2-prep (puente snapshot del oráculo E4)",
+      ],
     ]);
   });
 
@@ -205,15 +211,26 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
       [src("hub", "overlay-studio", "studio-overlay-telemetry.ts"), "transports/telemetry-adapter", "C2 (lifecycle Studio V2)"],
       [src("hub", "overlay-studio", "canvas", "StudioTelemetryProvider.tsx"), "transports/telemetry-adapter", "C2 (provider V2)"],
       [src("hub", "overlay-studio", "canvas", "StudioTelemetryProvider.tsx"), "buildMockTelemetry", "C2 (mock V1 fuera)"],
-      [src("overlay", "authoring", "fixtures", "authoring-fixtures.ts"), "TelemetrySnapshot", "C2 (fixture V2 puro)"],
-      [src("overlay", "authoring", "fixtures", "authoring-fixtures.ts"), "buildMockTelemetry", "C2 (mock V1 fuera)"],
-      [src("overlay", "authoring", "fixtures", "authoring-v2-fixture.ts"), "TelemetrySnapshot", "C2 (fixture V2 puro)"],
+      [src("overlay", "authoring", "fixtures", "authoring-v2-scenario-fixture.ts"), "TelemetrySnapshot", "C2 (fixture V2 puro)"],
+      [src("overlay", "authoring", "fixtures", "authoring-v2-scenario-fixture.ts"), "buildMockTelemetry", "C2 (fixture V2 puro)"],
+      [src("overlay", "authoring", "fixtures", "authoring-v2-scenario-fixture.ts"), "Date.now", "C2 (tiempo determinista)"],
+      [src("overlay", "authoring", "fixtures", "authoring-v2-scenario-fixture.ts"), "overlay-projection-adapter", "C2 (sin adapter B2)"],
+      [src("overlay", "authoring", "fixtures", "authoring-v2-scenario-fixture.ts"), "projection-telemetry-adapter", "C2 (sin transporte B2)"],
+      [src("overlay", "authoring", "fixtures", "authoring-v2-scenario-fixture.ts"), "overlay-v2-shadow-runtime", "C2 (sin runtime B3)"],
+      [src("overlay", "authoring", "fixtures", "authoring-v2-scenario-fixture.ts"), "transports/telemetry-adapter", "C2 (sin adapter E1)"],
+      [src("overlay", "authoring", "fixtures", "authoring-v2-fixture.test.ts"), "./authoring-v2-fixture", "C2 (test del escenario V2 puro)"],
       [src("overlay-harness", "OverlayParityHarness.tsx"), "snapshot={snapshot}", "C2 (Host vía runtime V2)"],
+      [src("overlay-harness", "OverlayParityHarness.tsx"), "authoring-v2-fixture", "C2 (usar escenario V2 puro)"],
       [src("overlay", "authoring", "OverlayWorkshopDevRoute.tsx"), "snapshot={prepared.snapshot}", "C2 (Workshop V2)"],
+      [src("overlay", "authoring", "OverlayWorkshopDevRoute.tsx"), "authoring-v2-fixture", "C2 (usar escenario V2 puro)"],
+      [src("overlay-harness", "responsive-overlay-main.tsx"), "buildHarnessTelemetry", "C2 (harness dev V2)"],
       [src("hub", "home-orbit", "HomeMiniStage.tsx"), "snapshot={PREVIEW_SNAPSHOT}", "C2 (preview Hub V2)"],
       [src("hub", "overlays", "ProfilePreview.tsx"), "snapshot={PREVIEW_SNAPSHOT}", "C2 (preview Hub V2)"],
       [src("ui-orbit-harness.tsx"), "snapshot={STAGE_SNAPSHOT}", "C2 (harness UI V2)"],
       [src("hub", "overlay-studio", "StudioRoute.test.tsx"), "overlay_v1.golden.json?raw", "C2 (test Studio V2)"],
+      [src("overlay", "authoring", "workshop-runtime-parity.test.tsx"), "authoring-v2-fixture", "C2 (compat API V2 pura)"],
+      [src("overlay", "design-systems", "vantare-endurance", "track-map", "TrackMapEndurance.layout.test.tsx"), "authoring-v2-fixture", "C2 (compat API V2 pura)"],
+      [src("overlay", "design-systems", "vantare-endurance", "endurance-transparent-shells.test.tsx"), "authoring-v2-fixture", "C2 (compat API V2 pura)"],
       [src("overlay", "authoring", "fixtures", "projection-gaps.test.ts"), "overlay-projection-adapter.ts", "C2 (contrato gaps V2)"],
       [src("overlay", "authoring", "fixtures", "animation-scenes.test.ts"), "overlay-projection-adapter.ts", "C2 (escenas V2)"],
     ]);
@@ -227,8 +244,8 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
       [src("hub", "overlay-studio", "OverlayStudioV3.tsx"), "C2"],
       [src("hub", "overlay-studio", "studio-overlay-telemetry.ts"), "C2"],
       [src("hub", "overlay-studio", "canvas", "StudioTelemetryProvider.tsx"), "C2"],
-      [src("overlay", "authoring", "fixtures", "authoring-fixtures.ts"), "C2"],
-      [src("overlay", "authoring", "fixtures", "authoring-v2-fixture.ts"), "C2"],
+      [src("overlay", "authoring", "fixtures", "authoring-fixtures.ts"), "D/E1"],
+      [src("overlay", "authoring", "fixtures", "authoring-v2-fixture.ts"), "B2 (puente temporal E4)"],
       [src("overlay-harness", "OverlayParityHarness.tsx"), "C2"],
       [src("overlay", "authoring", "OverlayWorkshopDevRoute.tsx"), "C2"],
       [src("hub", "home-orbit", "HomeMiniStage.tsx"), "C2"],
@@ -302,6 +319,16 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
       [src("overlay", "core", "telemetry-rate-coordinator.test.ts"), "E1"],
       [src("overlay", "core", "mock-scenarios.test.ts"), "E1"],
     ] as const) present(route, owner);
+    contentHas(
+      src("overlay", "authoring", "fixtures", "authoring-fixtures.ts"),
+      "TelemetrySnapshot",
+      "D/E1 (helpers legacy permanecen hasta migrar definitions/tests)",
+    );
+    contentHas(
+      src("overlay", "authoring", "fixtures", "authoring-fixtures.ts"),
+      "buildMockTelemetry",
+      "D/E1 (helpers legacy permanecen hasta migrar definitions/tests)",
+    );
     // Ancla real de las historias legacy consumidas por el coordinator.
     for (const anchor of ["getFuelHistory", "getInputHistory", "getDeltaHistory"] as const) {
       contentHas(src("overlay", "core", "telemetry-rate-coordinator.ts"), anchor, "E1 (historias legacy)");

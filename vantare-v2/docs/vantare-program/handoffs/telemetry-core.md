@@ -1,5 +1,51 @@
 # Handoff vivo — Telemetry Core
 
+## R6a + R6a.1 productor Overlay V1 y constructores huerfanos retirados, cerrado localmente — 2026-09-04, ISA-894
+
+Writer unico Muse en `C:\tmp\vantare-v1-retirada-r6a\vantare-v2`, rama
+`vantareapp/isa-894-retirada-v1-r6a`, base exacta R5 `2371958d`. R6a,
+commit `fcf96568`, retira el unico productor runtime de Overlay V1 y su
+activacion (19 archivos, +373/-393, con `-3` lineas en
+`settings-contract.ts`). R6a.1, commit `8878178d`, retira los
+constructores huerfanos `overlay.ProjectV1`/`ProjectorV1` y
+`telemetrytransport.NewOverlayFull`, y el export huerfano
+`projection.FromFreshness`, migrando sus tests a hechos canonicos y Overlay V2 (17 archivos,
++470/-1130; sin frontend). Conjunto: 35 archivos, +839/-1519. Sin apps,
+LMU, navegadores, `.env*`, merge, promocion o release. Evidencia:
+[`retirada-v1-r6a-r6a1-20260904.md`](../../telemetry-core/evidence/isa-894/retirada-v1-r6a-r6a1-20260904.md).
+
+TDD: RED arquitectonico del wiring guard citando `NewOverlayFull` y
+`overlay.ProjectV1` sin caller productivo, mas el replay canonico que no
+compilaba contra V1 retirado; GREEN retirando ambos constructores, con
+doble excepcion minima al microplan: digest canonico con OverlayFrame V2
+determinista (`ProjectV2` puro, golden `fffecdb4…faea`) y garantia fija
+del fingerprint canonico LMU14 (`393155d6…092b6b4`). La politica de
+fallos conserva `ErrPayloadTooLarge` real en policy V2 no terminal y en
+legacy fail-stop. Gates: wiring guard, focales, `internal/app` +
+`internal/telemetry`, `go test ./...` PASS; `go vet` solo con los tres
+`unsafe.Pointer` heredados fuera del diff; gofmt, `diff --check` y
+frontera por simbolo limpios. Frontend heredado verde de R6a, no
+repetido en R6a.1. Spec review Muse `ses_f95fb746cffeIJegu669xjgMYj`:
+APPROVE, P0/P1/P2=0. Quality review Muse `ses_f95f72d65ffe0O1cnMMxgbWNPs`:
+APPROVE, P0/P1/P2=0, P3=3: researchbench con V1 (a R7), golden canonico
+deliberadamente en ProjectV2, y comentario del Hub acotado ya corregido
+sin logica (focal 2/2 PASS). Roadmap `telemetry-live` actualizado en
+ES/EN/PT/IT con digest regenerado y `--check` verde.
+
+R6a/R6a.1 NO significan V1 ausente del binario: quedan para R6b/R7 el
+Hub Overlay inerte y luego los tipos y contratos, el tooling y el
+frontend Overlay legacy segun callers. Strategy/Analysis/Engineer V1 son
+contratos independientes vivos que se preservan y estan fuera del alcance
+de la retirada Overlay V1; el V1 de investigacion bajo tag
+`researchbench` tampoco se toca en este corte y se retira en R7. La
+auditoria integral V2 y el bucle de rendimiento aun no comienzan; no se
+certifica rendimiento optimo. Rollback solo por la build anterior
+verificada en R0. Cerrado localmente, pendiente de publicacion en PR
+draft: el codigo/test esta en 8878178d mientras este documento se incorpora
+en el commit de cierre; este bloque prevalece sobre los inferiores en el
+avance de
+retirada, sin repetir su contenido.
+
 ## R5 ruta SSE publica Overlay V1 retirada y publicada — 2026-09-04, ISA-894
 
 Writer unico Muse en `C:\tmp\vantare-v1-retirada-r5\vantare-v2`, rama

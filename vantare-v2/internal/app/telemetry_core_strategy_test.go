@@ -362,8 +362,8 @@ func TestStrategyPayloadTooLargeLegacyFailStop(t *testing.T) {
 
 // swapStrategyHubForPayloadCeiling sustituye el strategyHub del runtime por un
 // Hub ProductStrategy con un limite derivado del snapshot real ya publicado:
-// la mitad de su tamano. El status (decenas de bytes) no se republica porque
-// WriteBatch conserva el mismo estado, y el snapshot falla con
+// la mitad de su tamano. El status (decenas de bytes) si cabe y se publica
+// una vez en el Hub nuevo, que parte sin estado; solo el snapshot falla con
 // ErrPayloadTooLarge con un margen inmune a variaciones de pocos bytes entre
 // batches. El limite nunca cae al fallback de NewHub: bounded() solo acepta
 // valores >= 1, y el guard lo verifica.

@@ -225,6 +225,19 @@ describe("StudioTelemetryProvider - mock V2 puro (C2b4)", () => {
       </StudioTelemetryProvider>,
     );
     expect(coordinator.getOverlayFrame()?.session.phase?.v).toBe("practice");
+    const collidingLiveFrame = coordinator.getOverlayFrame()!;
+    start.mockImplementationOnce(() => {
+      coordinator.setOverlayFrame(
+        {
+          ...collidingLiveFrame,
+          session: {
+            ...collidingLiveFrame.session,
+            phase: { ...collidingLiveFrame.session.phase, v: "qualifying" },
+          },
+        },
+        { state: "live" },
+      );
+    });
 
     // El live puede terminar justo en la siguiente secuencia que habría
     // elegido el mock. La vuelta a mock debe avanzar sobre el frame retenido,
@@ -239,6 +252,7 @@ describe("StudioTelemetryProvider - mock V2 puro (C2b4)", () => {
         <div>Test</div>
       </StudioTelemetryProvider>,
     );
+    expect(coordinator.getOverlayFrame()?.session.phase?.v).toBe("qualifying");
     const retained = coordinator.getOverlayFrame()!;
     coordinator.setOverlayFrame(
       {

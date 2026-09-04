@@ -59,6 +59,12 @@ export function StudioTelemetryProvider(props: StudioTelemetryProviderProps): Re
         mockV2.overlayV2Source,
       );
     } else if (preview.source === 'live' && liveAvailable && telemetryAdapter) {
+      // Relinquish the mock authority before the live adapter publishes. A
+      // real frame can legitimately reuse the canonical fixture's
+      // epoch+sequence; changing the source state prevents that first live
+      // frame from being treated as a duplicate. Retain the frame shape so
+      // widgets paint their disconnected placeholder while LMU connects.
+      coordinator.setOverlayFrame(coordinator.getOverlayFrame(), { state: 'stopped' });
       // Start live adapter when in live mode
       telemetryAdapter.start();
       // Cleanup stops adapter when source changes or component unmounts

@@ -74,16 +74,18 @@ function sourceStateFor(state: AuthoringV2Scenario["state"]): OverlaySourceStatu
   return state;
 }
 
-// Fixture V2 puro de autoría (C2a): el frame canónico de 20 coches ya es el
-// campo multiclass (hypercar/lmp2/gte) con el jugador dentro, y el relative
-// canónico ya trae side/authority del productor. El escenario solo clona en
-// profundo y mapea el estado a source.
+// Fixture V2 puro de autoría (C2a+C2b4): el frame canónico de 20 coches ya
+// es el campo multiclass (hypercar/lmp2/gte) con el jugador dentro, y el
+// relative canónico ya trae side/authority del productor. El escenario clona
+// en profundo, mapea el estado a source y aplica solo dos transformaciones
+// acotadas desde datos canónicos: session → phase (misma quality) y
+// location → pit de la fila del jugador.
 export function buildAuthoringV2ScenarioRuntime(
   scenario: AuthoringV2Scenario,
 ): WidgetRuntimeInput {
-  // session/location/widget/system quedan reservados en la API estable para
-  // C2b: el fixture canónico aún no los especializa.
-  const { state, variant } = scenario;
+  // widget/system quedan reservados en la API estable para C2b+: el fixture
+  // canónico aún no los especializa.
+  const { state, variant, session, location } = scenario;
   if (variant !== "default" && variant !== "standings-multiclass") {
     throw new Error(
       `authoring-v2-scenario-fixture: variante no soportada ${JSON.stringify(variant)}`,
@@ -94,11 +96,43 @@ export function buildAuthoringV2ScenarioRuntime(
     ...structuredClone(canonicalSource),
     state: sourceStateFor(state),
   };
-  // Única sección que una variante puede tocar: standings-multiclass
-  // selecciona el campo multiclass canónico tal cual, sin reescribir datos
-  // del productor (el frame de 20 coches ya es multiclass).
-  const outFrame = variant === "standings-multiclass"
-    ? { ...frame, standings: structuredClone(canonicalFrame.standings) }
-    : frame;
+  const playerId = frame.player.id;
+  if (typeof playerId !== "string" || playerId === "") {
+    throw new Error(
+      "authoring-v2-scenario-fixture: el golden V2 de 20 carece de player.id",
+    );
+  }
+  // location especializa únicamente el pit de la fila cuyo id coincide con
+  // el jugador canónico. Sin esa fila no hay fixture honesto: falla rápido,
+  // sin fallback ni id inventado.
+  const pit = location === "pits" ? "pit" : "track";
+  const standings = variant === "standings-multiclass"
+    ? structuredClone(canonicalFrame.standings)
+    : frame.standings;
+  if (!standings.some((row) => row.id === playerId)) {
+    throw new Error(
+      "authoring-v2-scenario-fixture: el jugador canónico no está en standings",
+    );
+  }
+  // standings-multiclass selecciona el campo multiclass canónico tal cual,
+  // sin reescribir datos del productor (el frame de 20 coches ya es
+  // multiclass). Es la única variante que re-selecciona una sección.
+  // session especializa únicamente phase, conservando su quality canónica.
+  const outFrame: OverlayFrameV2 = {
+    ...frame,
+    session: {
+      ...frame.session,
+      phase: { v: session, q: frame.session.phase.q },
+    },
+    standings: withPlayerPit(standings, playerId, pit),
+  };
   return { overlayV2Frame: outFrame, overlayV2Source: source };
+}
+
+function withPlayerPit(
+  standings: OverlayFrameV2["standings"],
+  playerId: string,
+  pit: "pit" | "track",
+): OverlayFrameV2["standings"] {
+  return standings.map((row) => (row.id === playerId ? { ...row, pit } : row));
 }

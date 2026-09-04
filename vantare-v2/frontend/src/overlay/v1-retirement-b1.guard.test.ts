@@ -211,8 +211,6 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
       // (StudioRoute, OverlayStudioV3, studio-overlay-telemetry,
       // StudioTelemetryProvider) son type-only bajo ownership E1: no son V1
       // en runtime ni entran al bundle, así que no se vigilan aquí.
-      [src("hub", "overlay-studio", "canvas", "StudioTelemetryProvider.tsx"), "buildMockTelemetry", "C2 (mock V1 fuera)"],
-      [src("hub", "overlay-studio", "canvas", "StudioTelemetryProvider.tsx"), "authoring-v2-fixture", "C2 (usar escenario V2 puro)"],
       [src("overlay", "authoring", "fixtures", "authoring-v2-scenario-fixture.test.ts"), "./authoring-v2-fixture", "C2 (test del escenario V2 puro)"],
       [src("overlay-harness", "OverlayParityHarness.tsx"), "snapshot={snapshot}", "C2 (Host vía runtime V2)"],
       [src("overlay-harness", "OverlayParityHarness.tsx"), "authoring-v2-fixture", "C2 (usar escenario V2 puro)"],
@@ -306,6 +304,10 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
       [src("ui-orbit-harness.tsx"), "snapshot={", "C2b3 (harness sin snapshot)"],
       [src("ui-orbit-harness.tsx"), "STAGE_SNAPSHOT", "C2b3 (constante snapshot retirada)"],
       [src("ui-orbit-harness.tsx"), "buildMockTelemetry", "C2b3 (sin mock snapshot)"],
+      [src("hub", "overlay-studio", "canvas", "StudioTelemetryProvider.tsx"), "buildMockTelemetry", "C2b4 (provider sin mock snapshot)"],
+      [src("hub", "overlay-studio", "canvas", "StudioTelemetryProvider.tsx"), "authoring-v2-fixture", "C2b4 (provider usa escenario V2 puro)"],
+      [src("hub", "overlay-studio", "canvas", "StudioTelemetryProvider.tsx"), "coordinator.publish", "C2b4 (provider publica solo frame V2)"],
+      [src("hub", "overlay-studio", "canvas", "StudioTelemetryProvider.test.tsx"), "wails-telemetry-adapter", "C2b4 (tipo desde módulo canónico)"],
     ]);
     for (const route of [
       src("overlay", "CompositeApp.test.tsx"),

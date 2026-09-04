@@ -25,8 +25,26 @@ function scenario(overrides: Partial<AuthoringV2Scenario> = {}): AuthoringV2Scen
 describe("authoring V2 fixture puro (C2)", () => {
   it("parte del golden V2 canónico sin rellenar secciones sin productor", () => {
     const runtime = buildAuthoringV2ScenarioRuntime(scenario());
-    expect(runtime.overlayV2Frame).toEqual(canonical.frame);
     expect(runtime.overlayV2Source).toEqual(canonical.source);
+    const { session: scenarioSession, standings: scenarioStandings, ...scenarioRest } =
+      runtime.overlayV2Frame!;
+    const { session: canonicalSession, standings: canonicalStandings, ...canonicalRest } =
+      canonical.frame!;
+    // Sin secciones rellenadas: todo lo demás es el canónico exacto.
+    expect(scenarioRest).toEqual(canonicalRest);
+    expect(scenarioSession.track).toEqual(canonicalSession.track);
+    expect(scenarioSession.phase).toEqual({ v: "race", q: "fresh" });
+    // Location track especializa el pit del jugador; el resto, intacto.
+    expect(scenarioStandings.map((row) => row.id)).toEqual(
+      canonicalStandings.map((row) => row.id),
+    );
+    const playerId = runtime.overlayV2Frame!.player.id;
+    expect(scenarioStandings.find((row) => row.id === playerId)?.pit).toBe("track");
+    for (const row of scenarioStandings) {
+      if (row.id !== playerId) {
+        expect(row).toEqual(canonicalStandings.find((candidate) => candidate.id === row.id));
+      }
+    }
   });
 
   it("es determinista: el mismo escenario produce el mismo frame", () => {
@@ -47,7 +65,16 @@ describe("authoring V2 fixture puro (C2)", () => {
     const { standings: canonicalStandings, ...canonicalRest } = canonical.frame!;
     const { standings: scenarioStandings, ...scenarioRest } = runtime.overlayV2Frame!;
     expect(canonicalStandings.length).toBeGreaterThan(1);
-    expect(scenarioStandings).toEqual(canonicalStandings);
+    // Mismo campo multiclass, salvo el pit del jugador (location track).
+    expect(scenarioStandings.map((row) => row.id)).toEqual(
+      canonicalStandings.map((row) => row.id),
+    );
+    for (const row of scenarioStandings) {
+      const expected = canonicalStandings.find((candidate) => candidate.id === row.id)!;
+      expect(row).toEqual(
+        row.id === playerId ? { ...expected, pit: "track" } : expected,
+      );
+    }
     expect(scenarioRest).toEqual(canonicalRest);
   });
 
@@ -117,6 +144,53 @@ describe("authoring V2 fixture puro (C2)", () => {
     mutable.player.id = "intruso";
     mutable.relative[0]!.name = "Intruso";
     const second = buildAuthoringV2ScenarioRuntime(scenario());
-    expect(second.overlayV2Frame).toEqual(canonical.frame);
+    // La semilla productiva sigue intacta: el frame nuevo iguala al canónico
+    // de test salvo el pit del jugador (location track documentada).
+    const { standings: secondStandings, ...secondRest } = second.overlayV2Frame!;
+    const { standings: seedStandings, ...seedRest } = canonical.frame!;
+    expect(secondRest).toEqual(seedRest);
+    const seedPlayerId = second.overlayV2Frame!.player.id;
+    expect(secondStandings.find((row) => row.id === seedPlayerId)?.pit).toBe("track");
+    for (const row of secondStandings) {
+      if (row.id !== seedPlayerId) {
+        expect(row).toEqual(seedStandings.find((candidate) => candidate.id === row.id));
+      }
+    }
+  });
+
+  it("aplica scenario.session solo a frame.session.phase con quality canónica", () => {
+    const runtime = buildAuthoringV2ScenarioRuntime(scenario({ session: "qualifying" }));
+    expect(runtime.overlayV2Frame?.session.phase).toEqual({ v: "qualifying", q: "fresh" });
+    const { session: canonicalSession, standings: canonicalStandings, ...canonicalRest } =
+      canonical.frame!;
+    const { session: scenarioSession, standings: scenarioStandings, ...scenarioRest } =
+      runtime.overlayV2Frame!;
+    expect(scenarioRest).toEqual(canonicalRest);
+    expect(scenarioSession.track).toEqual(canonicalSession.track);
+    // standings idéntico salvo el pit del jugador (location track del escenario).
+    const playerId = runtime.overlayV2Frame!.player.id;
+    expect(scenarioStandings.find((row) => row.id === playerId)?.pit).toBe("track");
+    for (const row of scenarioStandings) {
+      if (row.id !== playerId) {
+        expect(row).toEqual(canonicalStandings.find((candidate) => candidate.id === row.id));
+      }
+    }
+  });
+
+  it("aplica scenario.location solo al pit de la fila del jugador canónico", () => {
+    const playerId = canonical.frame!.player.id;
+    const pits = buildAuthoringV2ScenarioRuntime(scenario({ location: "pits" }));
+    const track = buildAuthoringV2ScenarioRuntime(scenario({ location: "track" }));
+    const pitOf = (frame: typeof pits.overlayV2Frame) =>
+      frame?.standings.find((row) => row.id === playerId)?.pit;
+    expect(pitOf(pits.overlayV2Frame)).toBe("pit");
+    expect(pitOf(track.overlayV2Frame)).toBe("track");
+    // Sin coches/IDs inventados: el resto de filas conserva su pit canónico.
+    const canonicalPits = new Map(canonical.frame!.standings.map((row) => [row.id, row.pit]));
+    for (const row of pits.overlayV2Frame!.standings) {
+      if (row.id !== playerId) {
+        expect(row.pit).toBe(canonicalPits.get(row.id));
+      }
+    }
   });
 });

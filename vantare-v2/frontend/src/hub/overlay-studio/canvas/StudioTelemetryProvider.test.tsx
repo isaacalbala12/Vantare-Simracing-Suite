@@ -1,18 +1,17 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import { render, waitFor, fireEvent, screen, cleanup } from "@testing-library/react";
-import React from "react";
+import type { ReactElement } from "react";
 import type { TelemetryRateCoordinator } from "../../../overlay/core/telemetry-rate-coordinator";
-import type { TelemetrySnapshot } from "../../../overlay/core/telemetry-snapshot";
-import type { TelemetryAdapter } from "../../../overlay/transports/wails-telemetry-adapter";
+import type { TelemetryAdapter } from "../../../overlay/transports/telemetry-adapter";
 import { StudioTelemetryProvider, ConnectedStudioTelemetryProvider } from "./StudioTelemetryProvider";
-import { useStudioV1SnapshotTestHarness } from "./fixtures/studio-v1-snapshot-test-harness";
 import { useStudioPreview, StudioProvider } from "../state/studio-store";
-import { buildMockTelemetry } from "../../../overlay/core/mock-scenarios";
 import { createTelemetryRateCoordinator } from "../../../overlay/core/telemetry-rate-coordinator";
 import type { StudioProfileClient } from "../state/studio-profile-client";
 import { deltaDefinition } from "../../../overlay/widget-types/delta/delta-definition";
 import type { ProfileDocumentV3 } from "../../../overlay/core/profile-document";
 import { OrbitKeepAlive } from "../../components/orbit/OrbitKeepAlive";
+import { useStudioTelemetryCoordinator } from "./studio-telemetry";
+import { useRateLimitedWidgetTelemetry } from "../../../overlay/runtime/use-rate-limited-telemetry";
 
 vi.mock("../state/studio-store", async () => {
   const actual = await vi.importActual("../state/studio-store");
@@ -43,12 +42,13 @@ const client: StudioProfileClient = {
   save: async () => ({ status: "saved", document: buildDocument(), revision: "rev-2" }),
 };
 
-function SnapshotProbe(): React.ReactElement {
-  const snapshot = useStudioV1SnapshotTestHarness();
-  return <div data-testid="telemetry-probe">{snapshot.session.type}</div>;
+function FrameProbe(): ReactElement {
+  const coordinator = useStudioTelemetryCoordinator();
+  const telemetry = useRateLimitedWidgetTelemetry(coordinator, "delta");
+  return <div data-testid="telemetry-probe">{telemetry.overlayV2Frame?.session.phase?.v ?? "none"}</div>;
 }
 
-function SourceSwitcher(): React.ReactElement {
+function SourceSwitcher(): ReactElement {
   const { setPreview } = useStudioPreview();
   return (
     <button
@@ -59,470 +59,353 @@ function SourceSwitcher(): React.ReactElement {
   );
 }
 
-describe("StudioTelemetryProvider - single merged effect", () => {
-  let mockCoordinator: TelemetryRateCoordinator;
-  let mockAdapter: TelemetryAdapter;
-  let publishHistory: TelemetrySnapshot[] = [];
-  let adapterStarted = false;
+type PreviewState = {
+  source: "mock" | "live";
+  mockSession: "practice" | "qualifying" | "race";
+  mockLocation: "track" | "pits";
+  zoom: "fit";
+  backgroundId: string;
+  safeArea: false;
+};
 
+function mockPreviewState(): PreviewState {
+  return {
+    source: "mock",
+    mockSession: "practice",
+    mockLocation: "track",
+    zoom: "fit",
+    backgroundId: "grid",
+    safeArea: false,
+  };
+}
+
+function mockPreview(state: PreviewState): void {
+  vi.mocked(useStudioPreview).mockReturnValue({
+    preview: state,
+    setPreview: vi.fn(),
+  });
+}
+
+function setupUnit(): {
+  coordinator: TelemetryRateCoordinator;
+  publishSpy: ReturnType<typeof vi.spyOn>;
+  setFrameSpy: ReturnType<typeof vi.spyOn>;
+  adapter: TelemetryAdapter;
+} {
+  const coordinator = createTelemetryRateCoordinator();
+  const publishSpy = vi.spyOn(coordinator, "publish");
+  const setFrameSpy = vi.spyOn(coordinator, "setOverlayFrame");
+  const adapter: TelemetryAdapter = {
+    coordinator,
+    start: vi.fn(),
+    stop: vi.fn(),
+  };
+  return { coordinator, publishSpy, setFrameSpy, adapter };
+}
+
+describe("StudioTelemetryProvider - mock V2 puro (C2b4)", () => {
   beforeEach(() => {
-    publishHistory = [];
-    adapterStarted = false;
     vi.clearAllMocks();
-
-    const coordinator = createTelemetryRateCoordinator();
-    mockCoordinator = {
-      ...coordinator,
-      publish: vi.fn((snapshot) => {
-        publishHistory.push(snapshot);
-      }),
-      getSnapshot: vi.fn(() => publishHistory[publishHistory.length - 1]),
-      subscribe: vi.fn(() => () => {}),
-    };
-
-    mockAdapter = {
-      coordinator: mockCoordinator,
-      start: vi.fn(() => {
-        adapterStarted = true;
-      }),
-      stop: vi.fn(() => {
-        adapterStarted = false;
-        mockCoordinator.publish({
-          status: "disconnected",
-          capturedAt: Date.now(),
-          session: { type: "race" },
-          player: { inPit: false },
-          scoring: [],
-        });
-      }),
-    };
   });
 
   afterEach(() => cleanup());
 
-  it("should start with mock snapshot", async () => {
-    const mockSetPreview = vi.fn();
-    vi.mocked(useStudioPreview).mockReturnValue({
-      preview: {
-        source: "mock",
-        mockSession: "practice",
-        mockLocation: "track",
-        zoom: "fit",
-        backgroundId: "grid",
-        safeArea: false,
-      },
-      setPreview: mockSetPreview,
-    });
+  it("publica únicamente frame/source V2 sin snapshot legacy", () => {
+    mockPreview(mockPreviewState());
+    const { coordinator, publishSpy, setFrameSpy, adapter } = setupUnit();
 
     render(
       <StudioTelemetryProvider
-        coordinator={mockCoordinator}
+        coordinator={coordinator}
         liveAvailable={true}
-        telemetryAdapter={mockAdapter}
+        telemetryAdapter={adapter}
       >
         <div>Test</div>
       </StudioTelemetryProvider>,
     );
 
-    await waitFor(() => {
-      expect(mockCoordinator.publish).toHaveBeenCalledWith(
-        expect.objectContaining({
-          status: "ready",
-        }),
-      );
-    });
-
-    expect(publishHistory.some((s) => s.status === "ready")).toBe(true);
+    expect(publishSpy).not.toHaveBeenCalled();
+    expect(setFrameSpy).toHaveBeenCalledTimes(1);
+    const frame = coordinator.getOverlayFrame();
+    expect(frame).toBeDefined();
+    expect(frame?.player.id).toBe("vehicle-000");
+    expect(new Set(frame?.standings.map((row) => row.classId)).size).toBeGreaterThan(1);
+    expect(coordinator.getOverlaySource()?.state).toBe("live");
   });
 
-  it("should restore mock snapshot when switching from live back to mock (no race condition)", async () => {
-    let previewState = {
-      source: "mock" as const,
-      mockSession: "practice" as const,
-      mockLocation: "track" as const,
-      zoom: "fit" as const,
-      backgroundId: "grid",
-      safeArea: false,
-    };
-
+  it("refleja mockSession en frame.session.phase de forma observable", () => {
+    const state = mockPreviewState();
     vi.mocked(useStudioPreview).mockImplementation(() => ({
-      preview: previewState,
+      preview: state,
       setPreview: (patch) => {
-        previewState = { ...previewState, ...patch };
+        Object.assign(state, patch);
       },
     }));
+    const { coordinator, publishSpy, adapter } = setupUnit();
 
-    const { rerender } = render(
+    const view = render(
       <StudioTelemetryProvider
-        coordinator={mockCoordinator}
+        coordinator={coordinator}
         liveAvailable={true}
-        telemetryAdapter={mockAdapter}
+        telemetryAdapter={adapter}
       >
-        <div>Test</div>
+        <FrameProbe />
+      </StudioTelemetryProvider>,
+    );
+    expect(coordinator.getOverlayFrame()?.session.phase?.v).toBe("practice");
+
+    state.mockSession = "race";
+    view.rerender(
+      <StudioTelemetryProvider
+        coordinator={coordinator}
+        liveAvailable={true}
+        telemetryAdapter={adapter}
+      >
+        <FrameProbe />
       </StudioTelemetryProvider>,
     );
 
-    await waitFor(() => {
-      expect(publishHistory.some((s) => s.status === "ready")).toBe(true);
-    });
-
-    previewState.source = "live";
-    rerender(
-      <StudioTelemetryProvider
-        coordinator={mockCoordinator}
-        liveAvailable={true}
-        telemetryAdapter={mockAdapter}
-      >
-        <div>Test</div>
-      </StudioTelemetryProvider>,
-    );
-
-    await waitFor(() => {
-      expect(adapterStarted).toBe(true);
-    });
-
-    publishHistory = [];
-
-    previewState.source = "mock";
-    rerender(
-      <StudioTelemetryProvider
-        coordinator={mockCoordinator}
-        liveAvailable={true}
-        telemetryAdapter={mockAdapter}
-      >
-        <div>Test</div>
-      </StudioTelemetryProvider>,
-    );
-
-    await waitFor(() => {
-      expect(adapterStarted).toBe(false);
-    });
-
-    const finalSnapshot = publishHistory[publishHistory.length - 1];
-    expect(finalSnapshot?.status).toBe("ready");
+    expect(coordinator.getOverlayFrame()?.session.phase).toEqual({ v: "race", q: "fresh" });
+    expect(publishSpy).not.toHaveBeenCalled();
   });
 
-  it("should handle repeated toggling without leaking subscriptions", async () => {
-    let previewState = {
-      source: "mock" as const,
-      mockSession: "practice" as const,
-      mockLocation: "track" as const,
-      zoom: "fit" as const,
-      backgroundId: "grid",
-      safeArea: false,
-    };
-
+  it("refleja mockLocation en el pit de la fila del jugador canónico", () => {
+    const state = mockPreviewState();
     vi.mocked(useStudioPreview).mockImplementation(() => ({
-      preview: previewState,
+      preview: state,
       setPreview: (patch) => {
-        previewState = { ...previewState, ...patch };
+        Object.assign(state, patch);
       },
     }));
+    const { coordinator } = setupUnit();
+    const playerPit = () => {
+      const frame = coordinator.getOverlayFrame();
+      return frame?.standings.find((row) => row.id === frame.player.id)?.pit;
+    };
 
-    const { rerender } = render(
-      <StudioTelemetryProvider
-        coordinator={mockCoordinator}
-        liveAvailable={true}
-        telemetryAdapter={mockAdapter}
-      >
+    const view = render(
+      <StudioTelemetryProvider coordinator={coordinator} liveAvailable={true}>
+        <div>Test</div>
+      </StudioTelemetryProvider>,
+    );
+    expect(coordinator.getOverlayFrame()?.player.id).toBe("vehicle-000");
+    expect(playerPit()).toBe("track");
+
+    state.mockLocation = "pits";
+    view.rerender(
+      <StudioTelemetryProvider coordinator={coordinator} liveAvailable={true}>
         <div>Test</div>
       </StudioTelemetryProvider>,
     );
 
-    const toggleSequence = ["live", "mock", "live", "mock"];
-    for (const source of toggleSequence) {
-      previewState.source = source as "mock" | "live";
-      rerender(
+    // Sin coches/IDs inventados: solo cambia el pit del jugador canónico.
+    expect(coordinator.getOverlayFrame()?.player.id).toBe("vehicle-000");
+    expect(playerPit()).toBe("pit");
+  });
+
+  it("conmuta live y mock sin carreras, fugas ni doble stop", () => {
+    const state = mockPreviewState();
+    vi.mocked(useStudioPreview).mockImplementation(() => ({
+      preview: state,
+      setPreview: (patch) => {
+        Object.assign(state, patch);
+      },
+    }));
+    const { coordinator, publishSpy, adapter } = setupUnit();
+    const start = adapter.start as ReturnType<typeof vi.fn>;
+    const stop = adapter.stop as ReturnType<typeof vi.fn>;
+
+    const view = render(
+      <StudioTelemetryProvider
+        coordinator={coordinator}
+        liveAvailable={true}
+        telemetryAdapter={adapter}
+      >
+        <div>Test</div>
+      </StudioTelemetryProvider>,
+    );
+    expect(coordinator.getOverlayFrame()?.session.phase?.v).toBe("practice");
+
+    for (const source of ["live", "mock", "live", "mock"] as const) {
+      state.source = source;
+      view.rerender(
         <StudioTelemetryProvider
-          coordinator={mockCoordinator}
+          coordinator={coordinator}
           liveAvailable={true}
-          telemetryAdapter={mockAdapter}
+          telemetryAdapter={adapter}
         >
           <div>Test</div>
         </StudioTelemetryProvider>,
       );
     }
 
-    expect(previewState.source).toBe("mock");
-    expect(adapterStarted).toBe(false);
+    expect(state.source).toBe("mock");
+    expect(start).toHaveBeenCalledTimes(2);
+    expect(stop).toHaveBeenCalledTimes(2);
+    expect(publishSpy).not.toHaveBeenCalled();
+    expect(coordinator.getOverlayFrame()?.session.phase?.v).toBe("practice");
 
-    const finalSnapshot = publishHistory[publishHistory.length - 1];
-    expect(finalSnapshot?.status).toBe("ready");
-    expect(mockAdapter.start).toHaveBeenCalledTimes(2);
-    expect(mockAdapter.stop).toHaveBeenCalledTimes(2);
+    view.unmount();
+    expect(stop).toHaveBeenCalledTimes(2);
   });
 
-  it("keeps live transport running while an inactive Studio suspends visual subscriptions", async () => {
-    const unsubscribe = vi.fn();
-    const snapshot = buildMockTelemetry({
-      session: "practice",
-      location: "track",
-      state: "ready",
+  it("expone el primer frame mock V2 antes del primer paint", () => {
+    mockPreview(mockPreviewState());
+    const { coordinator } = setupUnit();
+
+    render(
+      <StudioTelemetryProvider coordinator={coordinator} liveAvailable>
+        <FrameProbe />
+      </StudioTelemetryProvider>,
+    );
+
+    // El layout effect ya corrió de forma síncrona: el frame existe antes de
+    // pintar, como imponía la vista previa activa.
+    expect(coordinator.getOverlayFrame()?.session.phase?.v).toBe("practice");
+    return waitFor(() => {
+      expect(screen.getByTestId("telemetry-probe").textContent).toBe("practice");
     });
-    mockCoordinator.getSnapshot = vi.fn(() => snapshot);
-    mockCoordinator.subscribe = vi.fn(() => unsubscribe);
-    vi.mocked(useStudioPreview).mockReturnValue({
-      preview: {
-        source: "live",
-        mockSession: "practice",
-        mockLocation: "track",
-        zoom: "fit",
-        backgroundId: "grid",
-        safeArea: false,
-      },
-      setPreview: vi.fn(),
-    });
+  });
+
+  it("keeps live transport running while an inactive Studio suspends paints", async () => {
+    mockPreview({ ...mockPreviewState(), source: "live" });
+    const { coordinator, adapter } = setupUnit();
+    const start = adapter.start as ReturnType<typeof vi.fn>;
+    const stop = adapter.stop as ReturnType<typeof vi.fn>;
 
     const view = render(
       <StudioTelemetryProvider
         active
-        coordinator={mockCoordinator}
+        coordinator={coordinator}
         liveAvailable
-        telemetryAdapter={mockAdapter}
+        telemetryAdapter={adapter}
       >
-        <SnapshotProbe />
+        <FrameProbe />
       </StudioTelemetryProvider>,
     );
 
-    await waitFor(() => expect(mockAdapter.start).toHaveBeenCalledTimes(1));
-    expect(mockCoordinator.subscribe).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(start).toHaveBeenCalledTimes(1));
 
     view.rerender(
       <StudioTelemetryProvider
         active={false}
-        coordinator={mockCoordinator}
+        coordinator={coordinator}
         liveAvailable
-        telemetryAdapter={mockAdapter}
+        telemetryAdapter={adapter}
       >
-        <SnapshotProbe />
+        <FrameProbe />
       </StudioTelemetryProvider>,
     );
 
-    expect(unsubscribe).toHaveBeenCalledTimes(1);
-    expect(mockAdapter.stop).not.toHaveBeenCalled();
+    // Suspender pintado no reinicia el transporte: sin stop ni start extra.
+    expect(stop).not.toHaveBeenCalled();
+    expect(start).toHaveBeenCalledTimes(1);
 
     view.rerender(
       <StudioTelemetryProvider
         active
-        coordinator={mockCoordinator}
+        coordinator={coordinator}
         liveAvailable
-        telemetryAdapter={mockAdapter}
+        telemetryAdapter={adapter}
       >
-        <SnapshotProbe />
+        <FrameProbe />
       </StudioTelemetryProvider>,
     );
 
-    expect(mockCoordinator.subscribe).toHaveBeenCalledTimes(2);
-    expect(mockAdapter.start).toHaveBeenCalledTimes(1);
+    expect(start).toHaveBeenCalledTimes(1);
+    expect(stop).not.toHaveBeenCalled();
   });
 
-  it("gates visual subscriptions from Orbit without rerendering the Studio provider", async () => {
-    const unsubscribe = vi.fn();
-    const snapshot = buildMockTelemetry({ session: "practice", location: "track", state: "ready" });
-    mockCoordinator.getSnapshot = vi.fn(() => snapshot);
-    mockCoordinator.subscribe = vi.fn(() => unsubscribe);
-    vi.mocked(useStudioPreview).mockReturnValue({
-      preview: {
-        source: "live",
-        mockSession: "practice",
-        mockLocation: "track",
-        zoom: "fit",
-        backgroundId: "grid",
-        safeArea: false,
-      },
-      setPreview: vi.fn(),
-    });
+  it("gates live transport from Orbit without restarting on resume", async () => {
+    mockPreview({ ...mockPreviewState(), source: "live" });
+    const { coordinator, adapter } = setupUnit();
+    const start = adapter.start as ReturnType<typeof vi.fn>;
+    const stop = adapter.stop as ReturnType<typeof vi.fn>;
 
-    const PersistentProvider = React.memo(function PersistentProvider() {
-      return (
-        <StudioTelemetryProvider
-          coordinator={mockCoordinator}
-          liveAvailable
-          telemetryAdapter={mockAdapter}
-        >
-          <SnapshotProbe />
-        </StudioTelemetryProvider>
-      );
-    });
     const view = render(
       <OrbitKeepAlive active>
-        <PersistentProvider />
+        <StudioTelemetryProvider coordinator={coordinator} liveAvailable telemetryAdapter={adapter}>
+          <FrameProbe />
+        </StudioTelemetryProvider>
       </OrbitKeepAlive>,
     );
 
-    await waitFor(() => expect(mockCoordinator.subscribe).toHaveBeenCalledTimes(1));
-    expect(mockAdapter.start).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(start).toHaveBeenCalledTimes(1));
 
     view.rerender(
       <OrbitKeepAlive active={false}>
-        <PersistentProvider />
+        <StudioTelemetryProvider coordinator={coordinator} liveAvailable telemetryAdapter={adapter}>
+          <FrameProbe />
+        </StudioTelemetryProvider>
       </OrbitKeepAlive>,
     );
 
-    expect(unsubscribe).toHaveBeenCalledTimes(1);
-    expect(mockAdapter.stop).not.toHaveBeenCalled();
+    expect(stop).not.toHaveBeenCalled();
 
     view.rerender(
       <OrbitKeepAlive active>
-        <PersistentProvider />
+        <StudioTelemetryProvider coordinator={coordinator} liveAvailable telemetryAdapter={adapter}>
+          <FrameProbe />
+        </StudioTelemetryProvider>
       </OrbitKeepAlive>,
     );
 
-    expect(mockCoordinator.subscribe).toHaveBeenCalledTimes(2);
-    expect(mockAdapter.start).toHaveBeenCalledTimes(1);
+    expect(start).toHaveBeenCalledTimes(1);
+    expect(stop).not.toHaveBeenCalled();
   });
 
-  it("should not publish after unmount", async () => {
-    let previewState = {
-      source: "live" as const,
-      mockSession: "practice" as const,
-      mockLocation: "track" as const,
-      zoom: "fit" as const,
-      backgroundId: "grid",
-      safeArea: false,
-    };
-
+  it("stops the live adapter on unmount", () => {
+    const state = { ...mockPreviewState(), source: "live" as const };
     vi.mocked(useStudioPreview).mockImplementation(() => ({
-      preview: previewState,
+      preview: state,
       setPreview: (patch) => {
-        previewState = { ...previewState, ...patch };
+        Object.assign(state, patch);
       },
     }));
+    const { coordinator, adapter } = setupUnit();
+    const stop = adapter.stop as ReturnType<typeof vi.fn>;
 
-    const { unmount } = render(
+    const view = render(
       <StudioTelemetryProvider
-        coordinator={mockCoordinator}
+        coordinator={coordinator}
         liveAvailable={true}
-        telemetryAdapter={mockAdapter}
+        telemetryAdapter={adapter}
       >
         <div>Test</div>
       </StudioTelemetryProvider>,
     );
 
-    await waitFor(() => {
-      expect(adapterStarted).toBe(true);
-    });
+    view.unmount();
 
-    const publishCountBeforeUnmount = mockCoordinator.publish.mock.calls.length;
-
-    unmount();
-
-    await waitFor(() => {
-      expect(adapterStarted).toBe(false);
-    });
-
-    expect(mockAdapter.stop).toHaveBeenCalled();
-    expect(mockCoordinator.publish.mock.calls.length).toBeGreaterThan(
-      publishCountBeforeUnmount,
-    );
-  });
-
-  it("should not publish mock if source changes to live before effect cleanup", async () => {
-    let previewState = {
-      source: "live" as const,
-      mockSession: "practice" as const,
-      mockLocation: "track" as const,
-      zoom: "fit" as const,
-      backgroundId: "grid",
-      safeArea: false,
-    };
-
-    vi.mocked(useStudioPreview).mockImplementation(() => ({
-      preview: previewState,
-      setPreview: (patch) => {
-        previewState = { ...previewState, ...patch };
-      },
-    }));
-
-    const { rerender } = render(
-      <StudioTelemetryProvider
-        coordinator={mockCoordinator}
-        liveAvailable={true}
-        telemetryAdapter={mockAdapter}
-      >
-        <div>Test</div>
-      </StudioTelemetryProvider>,
-    );
-
-    await waitFor(() => {
-      expect(adapterStarted).toBe(true);
-    });
-
-    publishHistory = [];
-
-    previewState.source = "mock";
-    rerender(
-      <StudioTelemetryProvider
-        coordinator={mockCoordinator}
-        liveAvailable={true}
-        telemetryAdapter={mockAdapter}
-      >
-        <div>Test</div>
-      </StudioTelemetryProvider>,
-    );
-
-    await waitFor(() => {
-      const finalSnapshot = publishHistory[publishHistory.length - 1];
-      expect(finalSnapshot?.status).toBe("ready");
-    });
-
-    mockAdapter.stop.mockClear();
-    publishHistory = [];
-
-    previewState.source = "live";
-    rerender(
-      <StudioTelemetryProvider
-        coordinator={mockCoordinator}
-        liveAvailable={true}
-        telemetryAdapter={mockAdapter}
-      >
-        <div>Test</div>
-      </StudioTelemetryProvider>,
-    );
-
-    await waitFor(() => {
-      expect(adapterStarted).toBe(true);
-    });
-
-    const allSnapshots = publishHistory.map((s) => s.status);
-    expect(allSnapshots).not.toContain("ready");
+    expect(stop).toHaveBeenCalledTimes(1);
   });
 });
 
 describe("StudioTelemetryProvider - integration with StudioProvider", () => {
   beforeEach(async () => {
-    // Import the real useStudioPreview and mock it to use the real implementation
     const actual = await vi.importActual<typeof import("../state/studio-store")>("../state/studio-store");
     vi.mocked(useStudioPreview).mockImplementation(actual.useStudioPreview);
   });
   afterEach(() => cleanup());
 
-  it("serves mock telemetry for the active preview before the first paint", () => {
-    // Se siembra otra sesion a proposito: el proveedor debe imponer la de la
-    // vista previa activa -- "practice" por defecto -- y hacerlo antes de que
-    // se pinte. Con useEffect publicaba despues del primer fotograma, asi que
-    // los widgets aparecian un instante sin datos al entrar en el Studio.
+  it("serves the active preview V2 frame before the first paint", () => {
     const coordinator = createTelemetryRateCoordinator();
-    coordinator.publish(
-      buildMockTelemetry({ session: "qualifying", location: "track", state: "ready" }),
-    );
 
     render(
       <StudioProvider client={client} initialFile="profiles/a.json">
         <StudioTelemetryProvider coordinator={coordinator} liveAvailable>
-          <SnapshotProbe />
+          <FrameProbe />
         </StudioTelemetryProvider>
       </StudioProvider>,
     );
 
-    expect(screen.getByTestId("telemetry-probe").textContent).toBe("practice");
+    // La vista previa activa (practice por defecto) manda sobre lo anterior
+    // y el frame ya existe antes de pintar.
+    expect(coordinator.getOverlayFrame()?.session.phase?.v).toBe("practice");
   });
 
-  it("republishes mock telemetry when mock session changes", async () => {
+  it("republishes the V2 frame when mock session changes", async () => {
     const coordinator = createTelemetryRateCoordinator();
-    coordinator.publish(
-      buildMockTelemetry({ session: "practice", location: "track", state: "ready" }),
-    );
 
     function SessionChanger(): React.ReactElement {
       const { setPreview } = useStudioPreview();
@@ -539,15 +422,15 @@ describe("StudioTelemetryProvider - integration with StudioProvider", () => {
       <StudioProvider client={client} initialFile="profiles/a.json">
         <StudioTelemetryProvider coordinator={coordinator} liveAvailable={false}>
           <SessionChanger />
-          <SnapshotProbe />
+          <FrameProbe />
         </StudioTelemetryProvider>
       </StudioProvider>,
     );
 
-    expect(screen.getByTestId("telemetry-probe").textContent).toBe("practice");
+    expect(coordinator.getOverlayFrame()?.session.phase?.v).toBe("practice");
     fireEvent.click(screen.getByTestId("set-race"));
     await waitFor(() => {
-      expect(screen.getByTestId("telemetry-probe").textContent).toBe("race");
+      expect(coordinator.getOverlayFrame()?.session.phase?.v).toBe("race");
     });
   });
 
@@ -555,13 +438,10 @@ describe("StudioTelemetryProvider - integration with StudioProvider", () => {
     const coordinator = createTelemetryRateCoordinator();
     let started = 0;
     let stopped = 0;
-    const telemetryAdapter = {
+    const telemetryAdapter: TelemetryAdapter = {
       coordinator,
       start() {
         started += 1;
-        coordinator.publish(
-          buildMockTelemetry({ session: "race", location: "pits", state: "ready" }),
-        );
       },
       stop() {
         stopped += 1;
@@ -576,7 +456,7 @@ describe("StudioTelemetryProvider - integration with StudioProvider", () => {
           telemetryAdapter={telemetryAdapter}
         >
           <SourceSwitcher />
-          <SnapshotProbe />
+          <FrameProbe />
         </StudioTelemetryProvider>
       </StudioProvider>,
     );
@@ -585,7 +465,6 @@ describe("StudioTelemetryProvider - integration with StudioProvider", () => {
     fireEvent.click(screen.getByTestId("use-live-source"));
     await waitFor(() => {
       expect(started).toBe(1);
-      expect(screen.getByTestId("telemetry-probe").textContent).toBe("race");
     });
     expect(stopped).toBeGreaterThanOrEqual(0);
   });
@@ -593,7 +472,6 @@ describe("StudioTelemetryProvider - integration with StudioProvider", () => {
 
 describe("ConnectedStudioTelemetryProvider", () => {
   beforeEach(async () => {
-    // Import the real useStudioPreview and mock it to use the real implementation
     const actual = await vi.importActual<typeof import("../state/studio-store")>("../state/studio-store");
     vi.mocked(useStudioPreview).mockImplementation(actual.useStudioPreview);
   });
@@ -601,19 +479,16 @@ describe("ConnectedStudioTelemetryProvider", () => {
 
   it("wires coordinator and live availability through the connected provider", () => {
     const coordinator = createTelemetryRateCoordinator();
-    coordinator.publish(
-      buildMockTelemetry({ session: "qualifying", location: "track", state: "ready" }),
-    );
 
     render(
       <StudioProvider client={client} initialFile="profiles/a.json">
         <ConnectedStudioTelemetryProvider coordinator={coordinator} liveAvailable={false}>
-          <SnapshotProbe />
+          <FrameProbe />
         </ConnectedStudioTelemetryProvider>
       </StudioProvider>,
     );
 
-    // Igual que arriba: la vista previa activa manda sobre lo sembrado.
-    expect(screen.getByTestId("telemetry-probe").textContent).toBe("practice");
+    // Igual que arriba: la vista previa activa manda sobre lo anterior.
+    expect(coordinator.getOverlayFrame()?.session.phase?.v).toBe("practice");
   });
 });

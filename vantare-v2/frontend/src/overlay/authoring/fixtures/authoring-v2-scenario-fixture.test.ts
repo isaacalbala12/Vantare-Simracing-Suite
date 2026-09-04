@@ -97,4 +97,31 @@ describe("authoring V2 fixture puro (C2)", () => {
     expect(PREVIEW_V2_RUNTIME.overlayV2Source?.state).toBe("live");
     expect((PREVIEW_V2_RUNTIME.overlayV2Frame?.standings ?? []).length).toBeGreaterThan(1);
   });
+
+  it("devuelve clones distintos con el mismo contenido en cada invocación", () => {
+    const first = buildAuthoringV2ScenarioRuntime(scenario());
+    const second = buildAuthoringV2ScenarioRuntime(scenario());
+    expect(first.overlayV2Frame).toEqual(second.overlayV2Frame);
+    expect(first.overlayV2Frame).not.toBe(second.overlayV2Frame);
+    expect(first.overlayV2Source).toEqual(second.overlayV2Source);
+    expect(first.overlayV2Source).not.toBe(second.overlayV2Source);
+  });
+
+  it("aísla invocaciones: mutar un runtime no contamina al siguiente", () => {
+    const first = buildAuthoringV2ScenarioRuntime(scenario());
+    first.overlayV2Frame?.standings.push({
+      id: "intruso",
+      position: 99,
+      classPosition: 99,
+      driver: "Intruso",
+      gap: { q: "missing" as const },
+      groundPosition: { q: "missing" as const },
+      lastLap: { q: "missing" as const },
+      bestLap: { q: "missing" as const },
+      lapDistance: { q: "missing" as const },
+    });
+    const second = buildAuthoringV2ScenarioRuntime(scenario());
+    expect(second.overlayV2Frame).toEqual(canonical.frame);
+    expect(second.overlayV2Frame?.standings.some((row) => row.id === "intruso")).toBe(false);
+  });
 });

@@ -41,9 +41,14 @@ function absentAll(entries: ReadonlyArray<readonly [route: string, owner: string
 
 // Exige ausentes TODAS las anclas de contenido (acumula, no cortocircuita).
 function contentAbsentAll(entries: ReadonlyArray<readonly [route: string, anchor: string, owner: string]>): void {
-  const remaining = entries
-    .filter(([route, anchor]) => read(route).includes(anchor))
-    .map(([route, anchor, owner]) => `${route} aún contiene ${JSON.stringify(anchor)}: resto V1, dueño ${owner}`);
+  const remaining = entries.flatMap(([route, anchor, owner]) => {
+    if (!existsSync(route)) {
+      return [`${route} falta: no se puede verificar ${JSON.stringify(anchor)}, dueño ${owner}`];
+    }
+    return read(route).includes(anchor)
+      ? [`${route} aún contiene ${JSON.stringify(anchor)}: resto V1, dueño ${owner}`]
+      : [];
+  });
   expect(remaining, "anclas V1 productivas pendientes").toEqual([]);
 }
 
@@ -109,6 +114,11 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
       ],
       [
         src("telemetry-transport", "projection-golden.test.ts"),
+        "../internal/telemetry/projection/overlay/testdata/overlay_v1_pre_d7.golden.json",
+        "B2 (golden pre-D7 de producto Overlay retirado)",
+      ],
+      [
+        src("telemetry-transport", "projection-golden.test.ts"),
         'eventName("overlay", "projection")',
         "B2 (caso pre-D7 Overlay retirado)",
       ],
@@ -153,10 +163,6 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
       // huérfanos, mismo dueño B3.
       [path.resolve(FRONTEND, "scripts", "telemetry-overlay-shadow.playwright.mjs"), "B3 (playwright harness)"],
       [path.resolve(FRONTEND, "scripts", "telemetry-cutover-runtimes.playwright.mjs"), "B3 (playwright harness)"],
-      [
-        root("docs", "telemetry-core", "evidence", "isa-894", "s1-definitiva", "recalcular.mjs"),
-        "B3 (helper ejecutable dependiente del resumen retirado)",
-      ],
     ]);
   });
 
@@ -167,6 +173,11 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
       [root("scripts", "bench", "README.md"), "sesion-v1.ps1", "B3 (refs)"],
       [path.resolve(FRONTEND, "package.json"), '"test:telemetry-overlay-shadow"', "B3 (script npm)"],
       [path.resolve(FRONTEND, "package.json"), '"test:telemetry-cutover-runtimes"', "B3 (script npm)"],
+      [
+        root("docs", "telemetry-core", "evidence", "isa-894", "s1-definitiva", "recalcular.mjs"),
+        "../../../../../scripts/bench/sesion-v1-resumen.mjs",
+        "B3 (desacoplar helper histórico antes de retirar el resumen)",
+      ],
     ]);
   });
 
@@ -189,10 +200,13 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
     contentAbsentAll([
       [src("overlay", "CompositeApp.test.tsx"), "overlay_v1.golden.json?raw", "C2 (test Desktop V2-only)"],
       [src("overlay", "CompositeApp.test.tsx"), "overlay-v2-shadow-runtime", "C2 (mock shadow obsoleto)"],
-      [src("hub", "overlay-studio", "StudioRoute.tsx"), "TelemetryAdapter", "C2 (lifecycle Studio V2)"],
-      [src("hub", "overlay-studio", "studio-overlay-telemetry.ts"), "TelemetryAdapter", "C2 (lifecycle Studio V2)"],
-      [src("hub", "overlay-studio", "canvas", "StudioTelemetryProvider.tsx"), "TelemetryAdapter", "C2 (provider V2)"],
+      [src("hub", "overlay-studio", "StudioRoute.tsx"), "transports/telemetry-adapter", "C2 (lifecycle Studio V2)"],
+      [src("hub", "overlay-studio", "OverlayStudioV3.tsx"), "transports/telemetry-adapter", "C2 (prop Studio V2)"],
+      [src("hub", "overlay-studio", "studio-overlay-telemetry.ts"), "transports/telemetry-adapter", "C2 (lifecycle Studio V2)"],
+      [src("hub", "overlay-studio", "canvas", "StudioTelemetryProvider.tsx"), "transports/telemetry-adapter", "C2 (provider V2)"],
       [src("hub", "overlay-studio", "canvas", "StudioTelemetryProvider.tsx"), "buildMockTelemetry", "C2 (mock V1 fuera)"],
+      [src("overlay", "authoring", "fixtures", "authoring-fixtures.ts"), "TelemetrySnapshot", "C2 (fixture V2 puro)"],
+      [src("overlay", "authoring", "fixtures", "authoring-fixtures.ts"), "buildMockTelemetry", "C2 (mock V1 fuera)"],
       [src("overlay", "authoring", "fixtures", "authoring-v2-fixture.ts"), "TelemetrySnapshot", "C2 (fixture V2 puro)"],
       [src("overlay-harness", "OverlayParityHarness.tsx"), "snapshot={snapshot}", "C2 (Host vía runtime V2)"],
       [src("overlay", "authoring", "OverlayWorkshopDevRoute.tsx"), "snapshot={prepared.snapshot}", "C2 (Workshop V2)"],
@@ -210,6 +224,7 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
       [src("overlay", "CompositeApp.tsx"), "C2"],
       [src("overlay", "ObsOverlayApp.tsx"), "B2+C2 (parte adapter + previews)"],
       [src("hub", "overlay-studio", "StudioRoute.tsx"), "C2"],
+      [src("hub", "overlay-studio", "OverlayStudioV3.tsx"), "C2"],
       [src("hub", "overlay-studio", "studio-overlay-telemetry.ts"), "C2"],
       [src("hub", "overlay-studio", "canvas", "StudioTelemetryProvider.tsx"), "C2"],
       [src("overlay", "authoring", "fixtures", "authoring-fixtures.ts"), "C2"],
@@ -228,6 +243,7 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
       src("overlay", "CompositeApp.tsx"),
       src("overlay", "ObsOverlayApp.tsx"),
       src("hub", "overlay-studio", "StudioRoute.tsx"),
+      src("hub", "overlay-studio", "OverlayStudioV3.tsx"),
       src("hub", "overlay-studio", "studio-overlay-telemetry.ts"),
       src("overlay-harness", "OverlayParityHarness.tsx"),
       src("overlay", "authoring", "OverlayWorkshopDevRoute.tsx"),
@@ -317,6 +333,10 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
         ),
       ),
     );
+    const s1Evidence = root("docs", "telemetry-core", "evidence", "isa-894", "s1-definitiva");
+    present(path.resolve(s1Evidence, "recalcular.mjs"), "B3 (evidencia histórica reproducible, se conserva)");
+    present(path.resolve(s1Evidence, "README.md"), "B3 (evidencia histórica reproducible, se conserva)");
+    contentHas(path.resolve(s1Evidence, "SHA256SUMS"), "recalcular.mjs", "B3 (custodia histórica)");
   });
 
   it("diferidos E4 presentes: comparator/sanitizer son el oráculo vivo", () => {

@@ -6,16 +6,20 @@ B1 sigue sin cambios productivos. El preflight descubrió que ejecutar B2
 directamente rompería el oráculo E4, dos tests C2 y los harnesses B3. El orden
 canónico queda corregido a **B1 → C2 → B3 → B2-prep → B2 → C1 → D/E/F**.
 `v1-retirement-b1.guard.test.ts` tiene 15 tests en rojo reproducible:
-7 failed que enumeran en una ejecución B2 (8 rutas + 4 anclas ProductID/golden
-y 4 anclas wails-pull), B3 (20 rutas + 5 referencias activas) y C2 (15 anclas
+7 failed que enumeran en una ejecución B2 (8 rutas + 5 anclas ProductID/golden
+y 4 anclas wails-pull), B3 (19 rutas + 6 referencias activas) y C2 (18 anclas
 de callers/previews/fixtures), más B2-prep (2 imports); 8 passed para diferidos
 y exentos. La tabla B0
-queda en 14/14 grupos tras añadir `StudioTelemetryProvider` y las tres previews
-Hub. Comparator/sanitizer permanecen como oráculo hasta E4; B2-prep solo
+queda en 14/14 grupos tras añadir `OverlayStudioV3`, `StudioTelemetryProvider`,
+las tres previews Hub, el fixture authoring completo y el golden pre-D7. El
+recalculador S1 queda preservado y B3 solo elimina su dependencia activa.
+Comparator/sanitizer permanecen como oráculo hasta E4; B2-prep solo
 desacoplará sus tipos del adapter, sin conducta. Evidencia y microplan:
 `retirada-v1-r7b-b1-guardias-20260904.md` y
-`2026-09-04-telemetria-v1-retirada-r7b-frontend.md`. Siguiente: review fresca
-del plan/guard y después **C2**. Sin push/PR/merge/promoción/apps/LMU.
+`2026-09-04-telemetria-v1-retirada-r7b-frontend.md`. Spec review inicial:
+APPROVE. Quality review encontró cinco P1 de cobertura, ya corregidos en guard
+y plan sin producción; siguiente: re-review spec + quality frescas y, solo con
+doble APPROVE, **C2**. Sin push/PR/merge/promoción/apps/LMU.
 
 ## R7b/A3 CERRADO — doble APPROVE, siguiente B1 — 2026-09-04, ISA-894
 

@@ -298,7 +298,7 @@ B1; si una ruta no existe en árbol, lo registra como divergencia y para ese
 |---|---|
 | CompositeApp | C2 (migra a fixture/frame V2 puro) |
 | ObsOverlayApp | B2 (adapter SSE V1 fuera) + C2 si conserva previews |
-| StudioRoute / studio-overlay-telemetry / StudioTelemetryProvider | C2 |
+| StudioRoute / OverlayStudioV3 / studio-overlay-telemetry / StudioTelemetryProvider | C2 |
 | telemetry-rate-coordinator y sus historias/API legacy | E1 (historias/API legacy fuera tras D) |
 | overlay-wails-pull allowlist/counters | B2 |
 | authoring fixtures completos | C2 (al fixture V2 puro) |
@@ -308,7 +308,7 @@ B1; si una ruta no existe en árbol, lo registra como divergencia y para ese
 | OverlayWorkshopDevRoute | C2 |
 | studio-v1-snapshot-test-harness | E1 (tras C2; último consumidor snapshot) |
 | vite.config / index.html / overlay.html | E3 solo si `rg` demuestra referencias V1 (verificado limpio: no se tocan) |
-| scripts/bench/sesion-v1-* (`sesion-v1.ps1`, `sesion-v1-state.ps1`, `sesion-v1-resumen.mjs`, `sesion-v1-resumen.test.mjs`, `sesion-v1-state.test.mjs` + refs en `all.test.mjs`/README), scripts Playwright/`package.json`, test `overlay-shadow-lote2b-features.test.ts` y recalculador ejecutable S1 | B3 (dueño exclusivo; salidas históricas se preservan) |
+| scripts/bench/sesion-v1-* (`sesion-v1.ps1`, `sesion-v1-state.ps1`, `sesion-v1-resumen.mjs`, `sesion-v1-resumen.test.mjs`, `sesion-v1-state.test.mjs` + refs en `all.test.mjs`/README), scripts Playwright/`package.json`, test `overlay-shadow-lote2b-features.test.ts`; recalculador S1 | B3 (retira tooling activo; desacopla y conserva el recalculador con la evidencia histórica) |
 | entrypoints históricos frontend del research bench (`docs/research/telemetry-architecture-2026/bench/frontend-bench-entry.ts`, `frontend-bench.mjs`) | E3 (dueño exclusivo; el Go bench del mismo dir y `compact_frame.go` se preservan, sin dueño de borrado) |
 
 `Strategy`/`Engineer`/`Analysis` v1 quedan exentos por contrato independiente.
@@ -346,9 +346,13 @@ B1; si una ruta no existe en árbol, lo registra como divergencia y para ese
   retira `overlay-shadow-lote2b-features.test.ts`: antes migra a tests V2/E4
   cualquier garantía semántica útil y elimina solo los casos exclusivos del
   runtime V1. El helper ejecutable
-  `docs/telemetry-core/evidence/isa-894/s1-definitiva/recalcular.mjs` se borra
-  porque importa el resumen retirado; las salidas, CSV, hashes y documentos S1
-  ya congelados se conservan como evidencia histórica.
+  `docs/telemetry-core/evidence/isa-894/s1-definitiva/recalcular.mjs` **se
+  conserva** con el paquete histórico: antes de retirar el resumen activo se
+  vuelve autocontenido insertando una copia congelada exacta de la función
+  `summarizeSession` que hoy importa, sin módulo genérico nuevo ni dependencia
+  de `scripts/bench/sesion-v1-*`. Antes/después debe producir el mismo resumen
+  sobre las crudas congeladas; después se actualizan README y hashes del
+  paquete. Las salidas y CSV ya congelados no se reescriben.
 - B3 es dueño exclusivo de esos artefactos. **Comparator/sanitizer y sus
   resultados se conservan** como oráculo de D; su borrado vive en E4.
 - Prerrequisito duro: C2 verde. `CompositeApp.test.tsx` y demás tests/callers
@@ -456,7 +460,8 @@ B1; si una ruta no existe en árbol, lo registra como divergencia y para ese
 
 - Objetivo: crear fixture V2 puro (no wrapper de snapshot) y migrar los
   callers/previews de la tabla B0 (CompositeApp, StudioRoute/
-  StudioTelemetryProvider, authoring fixtures, previews Hub `HomeMiniStage`/
+  `OverlayStudioV3`/StudioTelemetryProvider, authoring fixtures completos sin
+  `TelemetrySnapshot` ni `buildMockTelemetry`, previews Hub `HomeMiniStage`/
   `ProfilePreview`/`ui-orbit-harness`, OverlayParityHarness,
   OverlayWorkshopDevRoute y sus tests).
   Incluye retirar de `CompositeApp.test.tsx` el golden V1 y el mock/assertions

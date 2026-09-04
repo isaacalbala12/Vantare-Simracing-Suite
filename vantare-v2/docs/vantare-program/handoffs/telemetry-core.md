@@ -1,5 +1,40 @@
 # Handoff vivo — Telemetry Core
 
+## R7b/A2 ejecutado en rama (fuel, sin push) — 2026-09-04, ISA-894
+
+Writer unico en `C:\tmp\vantare-v1-retirada-r7b\vantare-v2`, rama
+`vantareapp/isa-894-retirada-v1-r7b`, base exacta `d32b56f1` (limpia,
+verificada antes de empezar). Commits locales A2 (sin push/PR/merge/
+promocion/release, sin apps/LMU/navegadores, sin `.env*`, sin dependencias
+nuevas): `564016fc` (derive: `FuelHistory` 64 con ownership/clone/reset
+canonicos + ventana 3/10 intacta y separada) → `97b66d05` (proyección:
+`FuelHistoryV2` + `SessionLaps` siempre + `RequiredFuel` = perLap x
+sessionLaps peor-de + dirty signals fuel + goldens + stress) → `0bfb7f3f`
+(contrato TS solo vía `go run ./tools/telemetry-contract-gen`; `task` CLI
+ausente, comando real reportado literal) → `63bf4eec` (decoder history +
+requiredFuel en litros, sin `Date.now`, `DECLARED_GAPS` a `fuelPercent`) →
+evidencia + este checkpoint. Este bloque prevalece sobre el inferior solo en
+el avance A2; siguiente accion: A3 y resto de R7b por sus writers; el cierre
+combinado R7b hara `plan.md`+digest (no se tocan aqui).
+
+TDD RED→GREEN literal en
+[`retirada-v1-r7b-a2-fuel-20260904.md`](../../telemetry-core/evidence/isa-894/retirada-v1-r7b-a2-fuel-20260904.md):
+RED derive (build failed: `MaxFuelHistory`/`History` undefined) → GREEN
+(`derive` ok, 2 correcciones de fixture propias, cero diseño); RED
+proyección (build failed: `History`/`SessionLaps`/`RequiredFuel`
+undefined) → GREEN (overlayv2 ok; `Basis` intacto, comentario
+requiredFuel-ausente derogado en el builder); RED decoder (3/5 fail:
+history `[]`, requiredFuel `undefined`) → GREEN (fuel-strategy 17/17,
+shadow focal 33/33). Gate duro: sintético @104 63613 → 64208 bytes (+595,
+margen 1328 bajo 65536) PASS con gate intacto; preflight local ~559 bytes
+dio PROCEED antes de tocar producción. Contrato check + `git diff
+--exit-code` verdes. `pnpm typecheck`: 8 errores heredados R7a
+byte-idénticos antes/después (mismos 3 módulos legacy, ámbito B, fuera de
+A2), cero nuevos; no se declara verde global. `go vet` limpio en el diff;
+`git diff --check` limpio. `fuel.sessionLaps` queda en wire sin decoder
+widget (forma v1 conservada; documentado). Sin runtime físico: todo
+sintético/determinista; LMU/Wails pendiente de Isaac.
+
 ## R7b/A1 ejecutado en rama (controles, sin push) — 2026-09-04, ISA-894
 
 Writer unico en `C:\tmp\vantare-v1-retirada-r7b\vantare-v2`, rama

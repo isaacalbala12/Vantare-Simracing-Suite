@@ -618,20 +618,27 @@ B1; si una ruta no existe en árbol, lo registra como divergencia y para ese
      `ses_f917912d4ffe10UO1E5ZtcPHAW` y quality
      `ses_f917912f0ffejyS439XE3hcShv`, ambos **APPROVE** con P0/P1/P2=0 y
      Ponytail `full` acreditado. Siguiente C2b5.
-  6. **C2b5, Parity + responsive dev (15→10):** pasar runtime V2 y retirar
-     solo los USOS de builders/seeds en callers; los helpers de
-     `authoring-fixtures.ts` permanecen con dueño D/E1 y no se tocan.
-     La historia de input solo puede venir del `OverlayControlsHistoryV2`
-     ya contenido en runtime/captura canónica, por la API pública
-     existente; no crear seeder API por conveniencia. Si no existe,
-     STOP/defer E1, nunca snapshot oculto ni dato inventado.
-     `engineer-radio` es fuente auxiliar explícita (no V1 ni parte de
-     `OverlayFrameV2`): se conserva su cobertura pasando
-     `engineerPresentation` por la frontera auxiliar sin snapshot, o STOP
-     si no puede.
-  7. **C2b6, Workshop + compat (10→2, dividido por superficies/variantes,
-     puede ser 6a, 6b…):** migrar route, parity, TrackMap y shells por
-     variantes reales; no se promete un 10→2 monolítico. `default`/
+  6. **C2b5a, responsive dev (15→14):** migrar únicamente
+     `responsive-overlay-main.tsx` a un runtime V2 canónico y retirar su uso
+     de `buildHarnessTelemetry`. No importar `authoring-fixtures.ts`: aunque
+     `buildHarnessWidget` parezca geométrico, ese módulo arrastra el megamódulo
+     legacy al chunk. Los widgets se construyen desde el registro productivo
+     con los overrides de layout/contenido ya declarados. Si el golden V2 no
+     puede representar la información visible actual, STOP con dueño; nunca
+     snapshot oculto, seeder ni dato inventado.
+
+     `OverlayParityHarness` no entra en este corte. Sus cuatro anclas están
+     ligadas a variantes con decisiones distintas: unas son solo de forma
+     (`relative-fill`, `standings-minimal`, `standings-all-columns`), otras
+     cambian datos o son contrato de producto/dev (`stress60`, replay,
+     multiclass y extremos de pedals). Sustituirlas todas por `default`
+     degradaría cobertura. Se migran o retiran por variante dentro de C2b6.
+     `engineer-radio` sigue siendo fuente auxiliar explícita (no V1 ni parte
+     de `OverlayFrameV2`) y se conserva por su frontera auxiliar sin snapshot.
+  7. **C2b6, Parity + Workshop + compat (14→2, dividido por
+     superficies/variantes, puede ser 6a, 6b…):** migrar route, parity,
+     TrackMap y shells por
+     variantes reales; no se promete un 14→2 monolítico. `default`/
      `multiclass` solo si son reales para esa superficie. Cada variante se
      añade al fixture al demostrar su transformación acotada desde datos
      canónicos. Las variantes dev sintéticas (`stress60`, replay, scenes,
@@ -641,7 +648,7 @@ B1; si una ruta no existe en árbol, lo registra como divergencia y para ese
      declararse V2 puros mientras conserven su `buildMockTelemetry` oculto:
      su retirada/migración forma parte de la aceptación y del escaneo aunque
      no esté en las 30 anclas. Puede partirse en C2b6a/b, pero no se declara
-     10→2 hasta cerrar las ocho anclas más esos usos ocultos.
+     14→2 hasta cerrar las doce anclas más esos usos ocultos.
   8. **C2b7, contratos gaps/scenes (2→0):** `projection-gaps` puede ir
      separado: sustituir su lectura textual del adapter B2 por contrato V2
      puro/congelado. `animation-scenes` NO puede declararse 2→0 mientras

@@ -384,7 +384,7 @@ Auditoría read-only Muse `ses_f9245f094ffew97dEQcTBvLIio` verificó las 30
 anclas activas y sus callers. El orden corregido queda:
 `C2b0 Studio type 30→26`, `C2b1 Composite 26→24`, `C2b2 Studio test 24→23`,
 `C2b3 Hub previews 23→17`, `C2b4 Studio provider 17→15`,
-`C2b5 Parity/responsive 15→10`, `C2b6 Workshop/compat 10→2` y
+`C2b5a responsive 15→14`, `C2b6 Parity/Workshop/compat 14→2` y
 `C2b7 gaps/scenes 2→0`. El descenso es criterio de aceptación, no estimación:
 si un corte no cierra sus anclas, permanece abierto.
 
@@ -511,3 +511,23 @@ Build no evaluable mientras persista el bloqueo R7a. Review spec
 `ses_f917912f0ffejyS439XE3hcShv`: **APPROVE**, P0/P1/P2=0; solo P3
 informativos. Ambas acreditan Ponytail `full`. C2b4 queda cerrado; siguiente
 C2b5.
+
+## C2b5 preflight Ponytail — corte reducido a responsive 15→14 (ISA-894)
+
+Dos auditorías read-only independientes, ambas iniciadas tras leer Ponytail
+`full`, impiden ejecutar el antiguo bloque monolítico 15→10. La revisión de
+orden/variantes `ses_f9174bb27ffeCalPtlXMEnfdEW` y la revisión runtime/TDD
+`ses_f9174bb4dffeNawSBoZnHHUOPQ` coinciden: `OverlayParityHarness` mezcla
+variantes de forma con variantes que cambian datos o conservan contratos
+dev/producto. Reemplazarlas por `default` perdería cobertura y no constituye
+una migración V2 honesta.
+
+El mínimo completo es **C2b5a responsive 15→14**: retirar de
+`responsive-overlay-main.tsx` el builder V1 y publicar un frame/source V2
+canónico; construir sus tres widgets desde el registro productivo sin importar
+`authoring-fixtures.ts`, porque ese import conserva el megamódulo legacy en el
+chunk. Parity pasa a C2b6 y se resolverá por variante junto a Workshop/compat.
+Si la fixture V2 no conserva la información visible del responsive, C2b5a
+activa STOP; no se rellena delta, history ni ninguna señal sintética. El corte
+empieza en RED, exige 14 anclas activas, escaneo completo del fichero tocado y
+doble review spec/quality del SHA exacto. Cero código tocado en esta decisión.

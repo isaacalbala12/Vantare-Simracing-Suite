@@ -1,6 +1,20 @@
 # Handoff vivo — Telemetry Core
 
-## R7b/C2b4 APROBADO final — cerrado, siguiente C2b5 15→10 — 2026-09-05, ISA-894
+## R7b/C2b5 preflight Ponytail — siguiente C2b5a responsive 15→14 — 2026-09-05, ISA-894
+
+Ponytail `full` aplicado por orquestador y dos Muse read-only. Sesiones
+`ses_f9174bb27ffeCalPtlXMEnfdEW` (orden/variantes) y
+`ses_f9174bb4dffeNawSBoZnHHUOPQ` (runtime/TDD) coinciden en **STOP** para el
+C2b5 monolítico 15→10: Parity mezcla escenarios de forma con escenarios que
+cambian datos o son contrato dev/producto, y degradarlos todos a `default`
+perdería cobertura. El mínimo completo pasa a ser C2b5a: solo
+`responsive-overlay-main.tsx`, 15→14, runtime V2 canónico y widgets desde el
+registro productivo, sin importar el megamódulo `authoring-fixtures.ts` ni
+crear snapshots/seeds/fallbacks. Parity se mueve a C2b6 por variante. Si el
+golden V2 no conserva la información visible, STOP. Pendiente RED→GREEN,
+checks y doble review del SHA exacto. Sin código/push/PR/merge/promoción/apps/LMU.
+
+## R7b/C2b4 APROBADO final — cerrado, siguiente C2b5a 15→14 — 2026-09-05, ISA-894
 
 Commits `71ef8cad` + hardening `cad73784`/`dd7806a9` + contrato de test `7aa7352b`: Studio mock deja V1/puente y publica solo un escenario V2
 canónico por `setOverlayFrame`. `mockSession` transforma únicamente
@@ -24,7 +38,7 @@ verde con exactamente los 8 errores R7a heredados, cero nuevos; build no
 evaluable. Review spec `ses_f917912d4ffe10UO1E5ZtcPHAW`: **APPROVE**,
 P0/P1/P2=0. Review quality `ses_f917912f0ffejyS439XE3hcShv`: **APPROVE**,
 P0/P1/P2=0; solo P3 informativos. Ambas acreditan Ponytail `full`.
-Siguiente: C2b5; B3/B2 siguen bloqueados. Sin push/PR/merge/promoción/apps/LMU.
+Siguiente: C2b5a; B3/B2 siguen bloqueados. Sin push/PR/merge/promoción/apps/LMU.
 `27204349` retira además los dos snapshots V1 del test de pérdida de LMU: la
 simulación usa exclusivamente frame/source V2 y el escaneo de los ficheros
 Studio tocados queda sin snapshot/build/publish/puente legacy.

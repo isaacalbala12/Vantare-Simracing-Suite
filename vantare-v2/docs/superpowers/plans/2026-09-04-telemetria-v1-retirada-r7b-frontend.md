@@ -614,8 +614,10 @@ B1; si una ruta no existe en árbol, lo registra como divergencia y para ese
        tocados queda sin snapshot/build/publish/puente V1. ESLint/diff-check limpios;
       guard deliberadamente RED `7 failed | 8 passed (15)`, C2 en 16
      declaradas / 15 activas; typecheck NO verde con exactamente los 8 errores
-     R7a heredados, cero nuevos; build no evaluable. Pendiente: review spec y
-     quality independientes antes de abrir C2b5.
+     R7a heredados, cero nuevos; build no evaluable. APROBADO final: spec
+     `ses_f917912d4ffe10UO1E5ZtcPHAW` y quality
+     `ses_f917912f0ffejyS439XE3hcShv`, ambos **APPROVE** con P0/P1/P2=0 y
+     Ponytail `full` acreditado. Siguiente C2b5.
   6. **C2b5, Parity + responsive dev (15→10):** pasar runtime V2 y retirar
      solo los USOS de builders/seeds en callers; los helpers de
      `authoring-fixtures.ts` permanecen con dueño D/E1 y no se tocan.

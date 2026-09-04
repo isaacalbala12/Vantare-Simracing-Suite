@@ -506,5 +506,8 @@ con exactamente los 8 errores R7a heredados y cero nuevos. El guard permanece
 deliberadamente RED `7 failed | 8 passed (15)`: C2 baja de 18/17 a **16
 declaradas / 15 activas**, y añade locks permanentes contra mock/puente/
 `coordinator.publish` en producción y contra el import inexistente en el test.
-Build no evaluable mientras persista el bloqueo R7a. Pendiente: reviews spec y
-quality independientes; C2b5 no se inicia antes de ambas aprobaciones.
+Build no evaluable mientras persista el bloqueo R7a. Review spec
+`ses_f917912d4ffe10UO1E5ZtcPHAW`: **APPROVE**, P0/P1/P2=0. Review quality
+`ses_f917912f0ffejyS439XE3hcShv`: **APPROVE**, P0/P1/P2=0; solo P3
+informativos. Ambas acreditan Ponytail `full`. C2b4 queda cerrado; siguiente
+C2b5.

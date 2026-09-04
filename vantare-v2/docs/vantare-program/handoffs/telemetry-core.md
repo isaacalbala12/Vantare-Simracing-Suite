@@ -1,5 +1,32 @@
 # Handoff vivo — Telemetry Core
 
+## R5 ruta SSE publica Overlay V1 retirada — 2026-09-04, ISA-894
+
+Writer unico Muse en `C:\tmp\vantare-v1-retirada-r5\vantare-v2`, rama
+`vantareapp/isa-894-retirada-v1-r5`, base exacta R4 `d9893379`. Commit de
+codigo/test/microplan `cd5b33c3`; sin apps, LMU, navegadores, `.env*`,
+merge, promocion o release.
+
+R5 elimina `ServerConfig.OverlayProjection`, el registro de
+`GET /telemetry/overlay/projection` y su wiring en `main`. El harness ya no
+publica ni compara Overlay V1 por HTTP, pero conserva Strategy Wails/SSE,
+Overlay V2 SSE/pull, Engineer y shutdown. Evidencia:
+[`retirada-v1-r5-ruta-sse-20260904.md`](../../telemetry-core/evidence/isa-894/retirada-v1-r5-ruta-sse-20260904.md).
+
+TDD: RED cancelable porque R4 abria el SSE V1 en lugar de responder 404;
+GREEN con servidor, lifecycle, paquetes focales y `go test ./...` PASS.
+Build frontend PASS. Vet focal PASS; vet global conserva tres avisos heredados
+de `unsafe.Pointer` fuera del diff. Revision de especificacion Muse
+`ses_f9646e4bfffe3U670drv4bDWWB`: APPROVE, P0/P1/P2=0.
+
+R5 NO significa V1 ausente del binario: productor, Hub, flag, persistencia,
+metricas, tipos, builders, fixtures y tooling siguen. El inventario R6
+recomienda dos microcortes: R6a elimina produccion/configuracion V1 dejando el
+Hub inerte; R6b elimina Hub, metricas de transporte y constructor huerfano.
+R7 retira contratos/tooling/frontend legacy cuando ya no tengan callers. La
+auditoria integral V2 y el bucle de rendimiento aun no empiezan. Rollback solo
+por build anterior R0.
+
 ## R4 OBS V2-only publicado en PR draft — 2026-09-04, ISA-894
 
 Writer único en `C:\tmp\vantare-v1-retirada-r4\vantare-v2`, rama

@@ -1,5 +1,27 @@
 # Handoff vivo — Telemetry Core
 
+## R7b/C2b1 CERRADO en rama (Desktop test V2-only) — siguiente C2b2 24→23 — 2026-09-04, ISA-894
+
+Writer único, rama `vantareapp/isa-894-retirada-v1-r7b`, base `08c660e5`.
+Commit de test `5a99fa14` (2 ficheros, +20/−38, cero producción):
+`CompositeApp.test.tsx` pierde el import del golden V1 y el `vi.mock` + mock
+del shadow runtime (módulo que producción ya no importa desde R2); la sonda
+R2 negativa usa envelope V1 inline mínimo con payload irrelevante (no es
+fixture de datos) y conserva que nada se pinta + diagnóstico sin `shadow`;
+los asserts shadow vacuos se sustituyen por render V2 real (`Driver 000`) y
+diagnóstico sin `shadow`. Barrido completo del fichero: cero
+`TelemetrySnapshot`, `buildMockTelemetry`, builders/seeds authoring,
+`authoring-fixtures`, `authoring-v2-fixture`, `overlay-v2-shadow-runtime`,
+nombres/goldens V1 o seeds. Guard actualizado en el mismo commit: C2 con
+**25 declaradas / 24 activas** (hereda la inactiva de C2a). Focal
+`CompositeApp.test.tsx` **17/17 verde** (baseline previo también 17/17);
+guard deliberadamente RED `7 failed | 8 passed (15)` con `expected 24`;
+ESLint focal y `git diff --check` limpios; `pnpm --dir frontend typecheck`
+NO verde con exactamente los 8 errores R7a heredados y cero nuevos; build no
+ejecutado en este subcorte (documentado). Guard/typecheck/build globales NO
+verdes. Siguiente: C2b2 (StudioRoute test V2-only, 24→23). Sin push/PR/
+merge/promoción/apps/LMU.
+
 ## R7b/C2b0 APROBADO final — cerrado, siguiente C2b1 26→24 — 2026-09-04, ISA-894
 
 Spec final Muse `ses_f921b746cffeVYW5VLt14SAKGY`: **APPROVE**,

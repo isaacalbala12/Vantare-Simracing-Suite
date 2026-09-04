@@ -251,6 +251,26 @@ activas después; la secuencia es de ACTIVAS y coincide con el Vitest
 ESLint, `diff --check` y typecheck (8 heredados) sin regresión. Pendiente:
 nueva spec+quality.
 
+## C2b1 ejecutado — CompositeApp test V2-only (ISA-894)
+
+Base `08c660e5`, commit de test `5a99fa14` (cero producción). Anclas activas
+C2 identificadas antes de editar (2, ambas en `CompositeApp.test.tsx`):
+`overlay_v1.golden.json?raw` (línea 10, alimentaba `canonicalEnvelope`) y
+`overlay-v2-shadow-runtime` (línea 28, `vi.mock` + mock). Migración con
+intención R2 preservada: `legacyV1Envelope()` inline mínimo para la sonda
+negativa (el pull ignora V1; payload `{}` irrelevante, no fixture), asserts
+vacuos del mock eliminado sustituidos por render V2 + diagnóstico sin
+`shadow`; la cobertura del snapshot V2 real (`overlay_v2_1.golden.json`,
+`Driver 000`, cierre del pull en unmount) queda intacta. Barrido literal del
+fichero sin restos (lista de 13 patrones del alcance, cero coincidencias).
+Focal: `pnpm --dir frontend test -- src/overlay/CompositeApp.test.tsx` →
+`17 passed (17)` (baseline previo 17/17). Guard:
+`pnpm --dir frontend test -- src/overlay/v1-retirement-b1.guard.test.ts` →
+`7 failed | 8 passed (15)` con 24 anclas C2 (25 declaradas, una inactiva
+heredada de C2a). ESLint de ambos TS tocados limpio; `git diff --check`
+limpio; `pnpm --dir frontend typecheck` con los 8 heredados exactos y cero
+nuevos (no verde); build no ejecutado. Siguiente: C2b2 24→23.
+
 Re-review quality Muse `ses_f92522698ffeDQwN643LThbEoz` sobre `6c4ead7f`:
 **APPROVE**, P0/P1/P2=0. Reprodujo focal 9/9, guard
 `7 failed | 8 passed (15)` con 30 anclas C2 activas, ESLint, diff-check y los

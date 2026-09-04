@@ -518,9 +518,14 @@ B1; si una ruta no existe en árbol, lo registra como divergencia y para ese
      `ses_f921f9197ffe7ax5CGD6KkQOMb` (P0=P1=P2=P3=0). Guard deliberadamente
      RED `7 failed | 8 passed (15)` con 26 activas; typecheck NO verde (8
      heredados); build no ejecutado; siguiente C2b1 26→24.
-  2. **C2b1, Composite test V2-only (26→24):** retirar golden V1 y mock shadow
-     obsoleto de `CompositeApp.test.tsx`, conservando cobertura del snapshot
-     V2 real.
+   2. **C2b1, Composite test V2-only (26→24):** retirar golden V1 y mock shadow
+      obsoleto de `CompositeApp.test.tsx`, conservando cobertura del snapshot
+      V2 real. Ejecutado en `5a99fa14`: sonda negativa R2 con envelope V1
+      inline mínimo (sin golden), asserts shadow vacuos sustituidos por render
+      V2 + diagnóstico sin `shadow`; focal 17/17 verde; guard RED
+      `7 failed | 8 passed (15)` con 24 anclas activas (25 declaradas, una
+      inactiva heredada de C2a); ESLint y `diff --check` limpios; typecheck
+      con los 8 heredados (no verde); build no ejecutado.
   3. **C2b2, StudioRoute test V2-only (24→23):** retirar golden/evento V1;
      cualquier publicación snapshot usada exclusivamente para histories E1
      queda citada y no se presenta como autoridad de proyección.

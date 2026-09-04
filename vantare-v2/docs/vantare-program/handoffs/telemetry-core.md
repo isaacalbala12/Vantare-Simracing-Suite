@@ -1,6 +1,17 @@
 # Handoff vivo — Telemetry Core
 
-## R7b/C2b3 QUALITY REQUEST_CHANGES — locks aplicados, pendiente re-review — 2026-09-04, ISA-894
+## R7b/C2b3 APROBADO final — cerrado, siguiente C2b4 17→15 — 2026-09-04, ISA-894
+
+Spec re-review `ses_f91f06dd6ffeGxyzv99sMczVrR`: **APPROVE**, P0/P1/P2=0
+(solo P3 handoff duplicado y evidencia mutante no versionada). Quality
+re-review `ses_f91ee235effemoyuBxFI9m5wW7`: **APPROVE**, P0/P1/P2=0 (P3
+opcionales no bloqueantes). Estado literal: guard deliberadamente RED
+`7 failed | 8 passed (15)` con C2 en **18 declaradas / 17 activas**;
+focales 32/32; typecheck NO verde con los 8 heredados R7a; build no
+evaluable. Siguiente: C2b4 (provider Studio mock, 17→15). Sin push/PR/
+merge/promoción/apps/LMU.
+
+## R7b/C2b3 historial — REQUEST_CHANGES, fix y cierre técnico (APROBADO arriba) — 2026-09-04, ISA-894
 
 Quality C2b3: **REQUEST_CHANGES** (P1 único: faltaba lock permanente tras
 retirar las 6 anclas + limpieza del singleton). Fix en commit `79bf23e7`
@@ -41,8 +52,6 @@ calidad `missing` en el golden pintan placeholder, igual que toda superficie
 V2; no es pérdida de información real). Guard/typecheck/build globales NO
 verdes. Siguiente: C2b4 (provider Studio mock, 17→15). Sin push/PR/merge/
 promoción/apps/LMU.
-
-## R7b/C2b3 CERRADO en rama (previews Hub V2) — siguiente C2b4 17→15 — 2026-09-04, ISA-894
 
 ## R7b/C2b2 APROBADO final — cerrado, siguiente C2b3 23→17 — 2026-09-04, ISA-894
 

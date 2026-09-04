@@ -575,7 +575,11 @@ B1; si una ruta no existe en árbol, lo registra como divergencia y para ese
       negativos en el test de callers (15 intactos, fuera del array RED),
       mutante probado en copia temporal, `PREVIEW_V2_RUNTIME` eliminado y
       args exactos fijados con espía call-through; aritmética 18/17 intacta;
-      pendiente re-review.
+      pendiente re-review. APROBADO final: spec re-review
+      `ses_f91f06dd6ffeGxyzv99sMczVrR` (P0/P1/P2=0) y quality re-review
+      `ses_f91ee235effemoyuBxFI9m5wW7` (P0/P1/P2=0). Guard deliberadamente
+      RED con 17 activas; typecheck NO verde (8 heredados); build no
+      evaluable; siguiente C2b4 17→15.
   5. **C2b4, provider Studio mock (17→15):** sustituir mock/puente snapshot por
      escenario V2 puro sin cambiar ciclo live ni adelantar D1/E1.
      `preview.mockSession/mockLocation` solo se preservan si existe

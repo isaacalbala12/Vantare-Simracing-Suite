@@ -330,6 +330,16 @@ nuevos; build no evaluable/no ejecutado por bloqueo heredado (no se declara
 verde). Riesgo: placeholders V2 donde el golden trae `missing` (igual que
 toda superficie V2). Siguiente: C2b4 17→15.
 
+## C2b3 APROBADO final (ISA-894)
+
+Spec re-review `ses_f91f06dd6ffeGxyzv99sMczVrR`: **APPROVE**, P0/P1/P2=0
+(solo P3 handoff duplicado y evidencia mutante no versionada, aplicado aquí:
+cabecera colapsada, mutante registrado). Quality re-review
+`ses_f91ee235effemoyuBxFI9m5wW7`: **APPROVE**, P0/P1/P2=0 (P3 opcionales no
+bloqueantes). Estado literal: guard deliberadamente RED `7 failed | 8 passed
+(15)` con C2 en 18 declaradas / 17 activas; focales 32/32; typecheck NO verde
+con los 8 heredados R7a; build no evaluable. Siguiente: C2b4 17→15.
+
 ## C2b3 quality REQUEST_CHANGES — locks y limpieza (ISA-894)
 
 Quality C2b3: **REQUEST_CHANGES** (P1: sin lock permanente tras retirar las 6

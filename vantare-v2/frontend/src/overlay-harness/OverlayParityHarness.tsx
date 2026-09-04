@@ -1,27 +1,45 @@
 import type { CSSProperties } from "react";
+import crystalReferenceManifest from "../../testdata/crystal-reference/manifest.json";
 import { WidgetVisualHost } from "../overlay/core/WidgetVisualHost";
 import {
-  buildHarnessTelemetry,
-  buildHarnessWidget,
-  seedHarnessInputHistory,
-} from "../overlay/authoring/fixtures/authoring-fixtures";
+  buildAuthoringV2ScenarioRuntime,
+  buildAuthoringV2ScenarioWidget,
+} from "../overlay/authoring/fixtures/authoring-v2-scenario-fixture";
 import { buildEngineerPresentationFixture } from "../engineer/engineer-presentation-fixtures";
 import { parseHarnessQuery, type HarnessQuery } from "./overlay-parity-query";
-import { buildAuthoringV2Runtime } from "../overlay/authoring/fixtures/authoring-v2-fixture";
 
 export function OverlayParityHarness({ query }: { query: HarnessQuery }) {
-  const snapshot = buildHarnessTelemetry({
-    session: query.session,
-    location: query.location,
-    state: query.state,
+  const widget = buildAuthoringV2ScenarioWidget({
     widget: query.widget,
     system: query.system,
     variant: query.variant,
-    designId: query.designId,
+    ...(query.designId ? { designId: query.designId } : {}),
   });
-  const widget = buildHarnessWidget(query.widget, query.system, query.variant, query.designId);
-  seedHarnessInputHistory(widget, snapshot);
-  const runtime = buildAuthoringV2Runtime(widget.type, snapshot);
+  // La dimensión Crystal exacta vive en el manifest, no en la telemetría.
+  const referenceDesign = query.designId
+    ? crystalReferenceManifest.entries.find((entry) => entry.designId === query.designId)
+    : undefined;
+  if (referenceDesign) {
+    widget.layout = { ...widget.layout, w: referenceDesign.width, h: referenceDesign.height };
+  }
+  const runtime = {
+    ...buildAuthoringV2ScenarioRuntime({
+      session: query.session,
+      location: query.location,
+      state: query.state,
+      widget: query.widget,
+      system: query.system,
+      variant: query.variant,
+    }),
+    ...(query.widget === "engineer-radio"
+      ? {
+          engineerPresentation:
+            query.state === "ready"
+              ? buildEngineerPresentationFixture(query.engineerLocale ?? "es", query.engineerSeverity ?? "critical")
+              : null,
+        }
+      : {}),
+  };
 
   return (
     <div
@@ -52,14 +70,8 @@ export function OverlayParityHarness({ query }: { query: HarnessQuery }) {
       >
         <WidgetVisualHost
           widget={widget}
-          snapshot={snapshot}
           renderMode={query.surface}
-          runtime={query.widget === "engineer-radio" ? {
-            ...runtime,
-            engineerPresentation: query.state === "ready"
-              ? buildEngineerPresentationFixture(query.engineerLocale ?? "es", query.engineerSeverity ?? "critical")
-              : null,
-          } : runtime}
+          runtime={runtime}
         />
       </div>
     </div>

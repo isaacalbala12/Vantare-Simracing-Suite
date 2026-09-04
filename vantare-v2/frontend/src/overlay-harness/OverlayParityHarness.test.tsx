@@ -1,20 +1,18 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import {
-  buildHarnessTelemetry,
-  buildHarnessViewModel,
-  buildHarnessWidget,
-  HARNESS_WIDGETS,
-} from "./harness-fixtures";
-import {
-  OverlayParityHarness,
-  OverlayParityHarnessPage,
-} from "./OverlayParityHarness";
+import { ALL_WIDGET_TYPES } from "../overlay/core/profile-document";
+import { OverlayParityHarness, OverlayParityHarnessPage } from "./OverlayParityHarness";
 import { parseHarnessQuery } from "./overlay-parity-query";
 import { readRendererMarkup } from "./parity-html";
 import { getOverlayV2ViewModelEntry } from "../overlay/core/overlay-v2-view-models";
 
 afterEach(() => cleanup());
+
+function sourceOf(relative: string): string {
+  return readFileSync(join(process.cwd(), "src", relative), "utf8");
+}
 
 describe("parseHarnessQuery", () => {
   it("defaults to Delta Original race track ready harness", () => {
@@ -29,16 +27,39 @@ describe("parseHarnessQuery", () => {
     });
   });
 
-  it("accepts all four core widgets and special variants", () => {
-    expect(parseHarnessQuery("?widget=standings")).toMatchObject({ widget: "standings" });
+  it("accepts the Parity content variants", () => {
     expect(parseHarnessQuery("?widget=relative&variant=relative-fill")).toMatchObject({
       widget: "relative",
       variant: "relative-fill",
     });
-    expect(parseHarnessQuery("?widget=pedals&variant=pedals-full")).toMatchObject({
-      widget: "pedals",
-      variant: "pedals-full",
+    expect(parseHarnessQuery("?widget=standings&variant=standings-multiclass")).toMatchObject({
+      widget: "standings",
+      variant: "standings-multiclass",
     });
+    expect(parseHarnessQuery("?widget=standings&variant=standings-minimal")).toMatchObject({
+      widget: "standings",
+      variant: "standings-minimal",
+    });
+    expect(parseHarnessQuery("?widget=standings&variant=standings-all-columns")).toMatchObject({
+      widget: "standings",
+      variant: "standings-all-columns",
+    });
+  });
+
+  it("rejects telemetry-fabricating variants as invalid variant", () => {
+    for (const variant of [
+      "relative-multiclass",
+      "standings-stress60",
+      "standings-replay",
+      "pedals-zero",
+      "pedals-full",
+    ]) {
+      const widget =
+        variant === "relative-multiclass" ? "relative" : variant.startsWith("standings") ? "standings" : "pedals";
+      expect(parseHarnessQuery(`?widget=${widget}&variant=${variant}`)).toEqual({
+        error: `invalid variant parameter: ${variant}`,
+      });
+    }
   });
 
   it("accepts each canonical Crystal design only with its functional widget type", () => {
@@ -61,6 +82,24 @@ describe("parseHarnessQuery", () => {
 });
 
 describe("OverlayParityHarness", () => {
+  it("uses the pure V2 scenario runtime without snapshot or harness builders", () => {
+    const harness = sourceOf("overlay-harness/OverlayParityHarness.tsx");
+    for (const anchor of [
+      "snapshot={",
+      "authoring-v2-fixture",
+      "authoring-fixtures",
+      "buildHarnessTelemetry",
+      "seedHarnessInputHistory",
+    ]) {
+      expect(harness, `Parity debe ser V2 puro sin ${anchor}`).not.toContain(anchor);
+    }
+    expect(harness).toContain("buildAuthoringV2ScenarioRuntime");
+    expect(
+      sourceOf("overlay-harness/overlay-parity-query.ts"),
+      "el query no debe importar authoring-fixtures",
+    ).not.toContain("authoring-fixtures");
+  });
+
   it("renders a fixed 1920x1080 stage with the default Delta host", () => {
     const parsed = parseHarnessQuery("");
     if ("error" in parsed) {
@@ -73,8 +112,9 @@ describe("OverlayParityHarness", () => {
     expect(document.querySelector('[data-widget-system="vantare-original"]')).toBeTruthy();
   });
 
-  it("renders each core widget marker", () => {
-    for (const widget of HARNESS_WIDGETS) {
+  it("renders each default widget marker", () => {
+    expect(ALL_WIDGET_TYPES).toHaveLength(20);
+    for (const widget of ALL_WIDGET_TYPES) {
       cleanup();
       const parsed = parseHarnessQuery(`?widget=${widget}`);
       if ("error" in parsed) {
@@ -83,6 +123,34 @@ describe("OverlayParityHarness", () => {
       render(<OverlayParityHarness query={parsed} />);
       expect(document.querySelector(`[data-widget-renderer="${widget}"]`)).toBeTruthy();
     }
+  });
+
+  it.each([
+    "?widget=relative&variant=relative-fill",
+    "?widget=standings&variant=standings-multiclass",
+    "?widget=standings&variant=standings-minimal",
+    "?widget=standings&variant=standings-all-columns",
+  ])("keeps content variant %s rendering its renderer", (search) => {
+    const parsed = parseHarnessQuery(search);
+    if ("error" in parsed) {
+      throw new Error(parsed.error);
+    }
+    render(<OverlayParityHarness query={parsed} />);
+    expect(document.querySelector(`[data-widget-renderer="${parsed.widget}"]`)).toBeTruthy();
+  });
+
+  it("keeps the exact Crystal manifest dimensions for official designs", () => {
+    const parsed = parseHarnessQuery(
+      "?widget=delta&system=vantare-crystal&design=delta-crystal-simple",
+    );
+    if ("error" in parsed) {
+      throw new Error(parsed.error);
+    }
+    render(<OverlayParityHarness query={parsed} />);
+    const frame = document.querySelector("[data-overlay-parity-widget-frame]") as HTMLElement;
+    expect(frame.style.width).toBe("420px");
+    expect(frame.style.height).toBe("69px");
+    expect(document.querySelector('[data-widget-renderer="delta"]')).toBeTruthy();
   });
 
   it("switches only the host render mode label for surface changes", () => {
@@ -95,7 +163,7 @@ describe("OverlayParityHarness", () => {
     expect(document.querySelector('[data-widget-renderer="delta"]')).toBeTruthy();
   });
 
-  it("seeds the deterministic Input history before the host builds its ViewModel", () => {
+  it("uses the deterministic Input history from the canonical V2 frame", () => {
     const parsed = parseHarnessQuery(
       "?widget=input-telemetry&system=vantare-crystal&design=input-crystal-blade",
     );
@@ -106,7 +174,7 @@ describe("OverlayParityHarness", () => {
     expect(document.querySelector(".vc-input-graph path")?.getAttribute("d")).toContain("L");
   });
 
-  it.each(HARNESS_WIDGETS)(
+  it.each(ALL_WIDGET_TYPES)(
     "keeps %s runtime markup identical while Studio may label an explicit preview",
     (widget) => {
       const surfaces = ["studio", "desktop", "obs"] as const;
@@ -135,22 +203,8 @@ describe("OverlayParityHarness", () => {
     },
   );
 
-  it.each(HARNESS_WIDGETS)("serializes stable view models for %s", (widget) => {
-    const built = buildHarnessWidget(widget, "vantare-original");
-    const snapshot = buildHarnessTelemetry({
-      session: "race",
-      location: "track",
-      state: "ready",
-      widget,
-    });
-    const modelA = JSON.stringify(buildHarnessViewModel(built, snapshot));
-    const modelB = JSON.stringify(buildHarnessViewModel(built, snapshot));
-    expect(modelA).toBe(modelB);
-    expect(modelA).toContain(`"type":"${widget}"`);
-  });
-
-  it("renders all four widgets in stale/disconnected/error states", () => {
-    for (const widget of HARNESS_WIDGETS) {
+  it("renders all widgets in stale/disconnected/error states", () => {
+    for (const widget of ALL_WIDGET_TYPES) {
       for (const state of ["stale", "disconnected", "error"] as const) {
         cleanup();
         const parsed = parseHarnessQuery(`?widget=${widget}&state=${state}&surface=obs`);

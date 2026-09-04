@@ -4,8 +4,12 @@ import type {
   OverlaySourceStatusV2,
   OverlayUpdateV2,
 } from "../../../generated/telemetry";
-import type { DesignSystemId, WidgetType } from "../../core/profile-document";
+import type { DesignSystemId, WidgetInstanceV3, WidgetType } from "../../core/profile-document";
 import type { WidgetRuntimeInput } from "../../core/widget-definition";
+import { widgetTypeRegistry } from "../../core/widget-registry";
+import { applyWidgetDesign } from "../../core/widget-design";
+import { getOfficialDesign } from "../../design-systems/official-designs";
+import { parseRelativeContent, updateRelativeFilters } from "../../widget-types/relative/relative-content";
 
 // El golden es la única semilla: si carece de frame, source o standings no
 // hay fixture honesto que construir y se falla rápido en la carga, sin
@@ -51,9 +55,16 @@ function requireCanonicalSource(): OverlaySourceStatusV2 {
 const canonicalFrame = requireCanonicalFrame();
 const canonicalSource = requireCanonicalSource();
 
-// Variantes soportadas hoy: solo estas dos. El tipo estrecho impide no-ops
-// silenciosos en TS; cualquier otra variante falla rápido en runtime.
-export type AuthoringV2Variant = "default" | "standings-multiclass";
+// Variantes soportadas hoy: solo estas cinco de Parity. El tipo estrecho
+// impide no-ops silenciosos en TS; cualquier otra variante falla rápido en
+// runtime. Las tres de forma no alteran el frame; standings-multiclass solo
+// re-selecciona el campo canónico que ya es multiclass.
+export type AuthoringV2Variant =
+  | "default"
+  | "relative-fill"
+  | "standings-multiclass"
+  | "standings-minimal"
+  | "standings-all-columns";
 
 export type AuthoringV2Scenario = {
   session: "practice" | "qualifying" | "race";
@@ -83,10 +94,16 @@ function sourceStateFor(state: AuthoringV2Scenario["state"]): OverlaySourceStatu
 export function buildAuthoringV2ScenarioRuntime(
   scenario: AuthoringV2Scenario,
 ): WidgetRuntimeInput {
-  // widget/system quedan reservados en la API estable para C2b+: el fixture
-  // canónico aún no los especializa.
+  // widget/system quedan reservados en la API estable para C2b+: el frame
+  // canónico aún no los especializa, pero el widget sí los usa abajo.
   const { state, variant, session, location } = scenario;
-  if (variant !== "default" && variant !== "standings-multiclass") {
+  if (
+    variant !== "default" &&
+    variant !== "relative-fill" &&
+    variant !== "standings-multiclass" &&
+    variant !== "standings-minimal" &&
+    variant !== "standings-all-columns"
+  ) {
     throw new Error(
       `authoring-v2-scenario-fixture: variante no soportada ${JSON.stringify(variant)}`,
     );
@@ -135,4 +152,67 @@ function withPlayerPit(
   pit: "pit" | "track",
 ): OverlayFrameV2["standings"] {
   return standings.map((row) => (row.id === playerId ? { ...row, pit } : row));
+}
+
+// Widget de autoría para el escenario V2 puro (C2b6b): solo forma, cero
+// telemetría. Construye desde el registro productivo, aplica el diseño
+// oficial y preserva los ajustes de forma de Parity. La dimensión Crystal
+// específica la resuelve el caller con el manifest, no este fixture.
+export function buildAuthoringV2ScenarioWidget(input: {
+  widget: WidgetType;
+  system: DesignSystemId;
+  variant: AuthoringV2Variant;
+  designId?: string;
+}): WidgetInstanceV3 {
+  const definition = widgetTypeRegistry.get(input.widget);
+  let widget = definition.createDefault(`${input.widget}-harness`);
+  widget.visual = { ...widget.visual, systemId: input.system };
+
+  if (input.designId) {
+    const design = getOfficialDesign(input.designId);
+    if (!design) {
+      throw new Error(`official Crystal design not registered: ${input.designId}`);
+    }
+    widget = applyWidgetDesign(widget, design, "1970-01-01T00:00:00.000Z");
+  }
+  if (input.widget === "broadcast-tower") {
+    widget.content = { ...widget.content as Record<string, unknown>, rowCount: 10 };
+  }
+  if (input.widget === "multiclass-relative") {
+    widget.content = { ...widget.content as Record<string, unknown>, rowCount: 4 };
+  }
+  if (input.widget === "standings" && input.variant === "standings-multiclass") {
+    const content = widget.content as Record<string, unknown>;
+    const columns = Array.isArray(content.columns)
+      ? (content.columns as Record<string, unknown>[]).map((column) =>
+          column.metricId === "bestLap" ? { ...column, enabled: true } : column,
+        )
+      : content.columns;
+    widget.content = { ...content, classScope: "all-classes", columns };
+  }
+  if (
+    input.widget === "standings" &&
+    (input.variant === "standings-minimal" || input.variant === "standings-all-columns")
+  ) {
+    const content = widget.content as Record<string, unknown>;
+    const columns = Array.isArray(content.columns)
+      ? (content.columns as Record<string, unknown>[]).map((column) => ({
+          ...column,
+          enabled:
+            input.variant === "standings-all-columns" ||
+            column.metricId === "position" ||
+            column.metricId === "driverName",
+        }))
+      : content.columns;
+    widget.content = { ...content, columns };
+  }
+  widget.layout = { ...widget.layout, x: 120, y: 96, zIndex: 1 };
+
+  if (input.widget === "relative" && input.variant === "relative-fill") {
+    const content = parseRelativeContent(widget.content);
+    widget.content = updateRelativeFilters(content, { rowHeightMode: "fill" });
+    widget.layout = { ...widget.layout, h: Math.max(widget.layout.h, 320) };
+  }
+
+  return widget;
 }

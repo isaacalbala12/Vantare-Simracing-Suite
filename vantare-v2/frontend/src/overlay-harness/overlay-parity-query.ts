@@ -1,20 +1,34 @@
+import crystalReferenceManifest from "../../testdata/crystal-reference/manifest.json";
 import type { EngineerLocale, EngineerSeverity } from "../engineer/engineer-presentation-store";
-import type { DesignSystemId } from "../overlay/core/profile-document";
+import { WIDGET_TYPES, type DesignSystemId, type WidgetType } from "../overlay/core/profile-document";
 import type {
   MockDataState,
   MockLocationScenario,
   MockSessionScenario,
 } from "../overlay/core/mock-scenarios";
-import {
-  getCrystalHarnessDesign,
-  isHarnessVariant,
-  isHarnessWidget,
-  type HarnessVariant,
-  type HarnessWidget,
-} from "../overlay/authoring/fixtures/authoring-fixtures";
 
 export type HarnessSurface = "studio" | "desktop" | "obs" | "harness";
 export type HarnessSystem = DesignSystemId;
+export type HarnessWidget = WidgetType;
+
+// Parity solo admite variantes de forma/contenido sobre datos canónicos V2.
+// Las que fabrican telemetría (relative-multiclass, standings-stress60,
+// standings-replay, pedals-zero, pedals-full) se rechazan como invalid
+// variant; siguen disponibles en Workshop sin tocar.
+export type HarnessVariant =
+  | "default"
+  | "relative-fill"
+  | "standings-multiclass"
+  | "standings-minimal"
+  | "standings-all-columns";
+
+const PARITY_VARIANTS = new Set<HarnessVariant>([
+  "default",
+  "relative-fill",
+  "standings-multiclass",
+  "standings-minimal",
+  "standings-all-columns",
+]);
 
 export type HarnessQuery = {
   widget: HarnessWidget;
@@ -56,6 +70,12 @@ const SURFACES = new Set<HarnessSurface>(["studio", "desktop", "obs", "harness"]
 const ENGINEER_LOCALES = new Set<EngineerLocale>(["es", "en", "it", "pt-BR"]);
 const ENGINEER_SEVERITIES = new Set<EngineerSeverity>(["info", "warning", "critical"]);
 
+function getCrystalParityDesign(designId: string):
+  | { widgetType: string; designId: string; width: number; height: number }
+  | undefined {
+  return crystalReferenceManifest.entries.find((entry) => entry.designId === designId);
+}
+
 export function parseHarnessQuery(search: string): HarnessQuery | { error: string } {
   const params = new URLSearchParams(search.startsWith("?") ? search : `?${search}`);
   const widget = (params.get("widget") ?? DEFAULT_QUERY.widget) as HarnessWidget;
@@ -69,18 +89,18 @@ export function parseHarnessQuery(search: string): HarnessQuery | { error: strin
   const engineerLocale = (params.get("locale") ?? "es") as EngineerLocale;
   const engineerSeverity = (params.get("severity") ?? "critical") as EngineerSeverity;
 
-  if (!isHarnessWidget(widget)) return { error: `invalid widget parameter: ${widget}` };
+  if (!WIDGET_TYPES.has(widget)) return { error: `invalid widget parameter: ${widget}` };
   if (!SYSTEMS.has(system)) return { error: `invalid system parameter: ${system}` };
   if (!SESSIONS.has(session)) return { error: `invalid session parameter: ${session}` };
   if (!LOCATIONS.has(location)) return { error: `invalid location parameter: ${location}` };
   if (!STATES.has(state)) return { error: `invalid state parameter: ${state}` };
   if (!SURFACES.has(surface)) return { error: `invalid surface parameter: ${surface}` };
-  if (!isHarnessVariant(variant)) return { error: `invalid variant parameter: ${variant}` };
+  if (!PARITY_VARIANTS.has(variant)) return { error: `invalid variant parameter: ${variant}` };
   if (!ENGINEER_LOCALES.has(engineerLocale)) return { error: `invalid locale parameter: ${engineerLocale}` };
   if (!ENGINEER_SEVERITIES.has(engineerSeverity)) return { error: `invalid severity parameter: ${engineerSeverity}` };
 
   if (designId) {
-    const design = getCrystalHarnessDesign(designId);
+    const design = getCrystalParityDesign(designId);
     if (!design) return { error: `invalid design parameter: ${designId}` };
     if (system !== "vantare-crystal") {
       return { error: `design ${designId} requires system=vantare-crystal` };
@@ -92,12 +112,6 @@ export function parseHarnessQuery(search: string): HarnessQuery | { error: strin
 
   if (variant === "relative-fill" && widget !== "relative") {
     return { error: "relative-fill variant requires widget=relative" };
-  }
-  if (variant === "standings-stress60" && widget !== "standings") {
-    return { error: "standings-stress60 variant requires widget=standings" };
-  }
-  if ((variant === "pedals-zero" || variant === "pedals-full") && widget !== "pedals") {
-    return { error: `${variant} variant requires widget=pedals` };
   }
 
   return {

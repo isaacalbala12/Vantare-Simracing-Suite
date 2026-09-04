@@ -212,10 +212,9 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
       // StudioTelemetryProvider) son type-only bajo ownership E1: no son V1
       // en runtime ni entran al bundle, así que no se vigilan aquí.
       [src("overlay", "authoring", "fixtures", "authoring-v2-scenario-fixture.test.ts"), "./authoring-v2-fixture", "C2 (test del escenario V2 puro)"],
-      [src("overlay-harness", "OverlayParityHarness.tsx"), "snapshot={snapshot}", "C2 (Host vía runtime V2)"],
-      [src("overlay-harness", "OverlayParityHarness.tsx"), "authoring-v2-fixture", "C2 (usar escenario V2 puro)"],
-      [src("overlay-harness", "OverlayParityHarness.tsx"), "buildHarnessTelemetry", "C2 (sin builder snapshot)"],
-      [src("overlay-harness", "OverlayParityHarness.tsx"), "seedHarnessInputHistory", "C2 (sin seed snapshot global)"],
+      // C2b6b: OverlayParityHarness ya es V2 puro (escenario canónico, sin
+      // snapshot ni builders snapshot); el lock exacto queda abajo, fuera de
+      // las anclas pendientes.
       [src("overlay", "authoring", "OverlayWorkshopDevRoute.tsx"), "snapshot={prepared.snapshot}", "C2 (Workshop V2)"],
       [src("overlay", "authoring", "OverlayWorkshopDevRoute.tsx"), "authoring-v2-fixture", "C2 (usar escenario V2 puro)"],
       [src("overlay", "authoring", "OverlayWorkshopDevRoute.tsx"), "buildAuthoringFixtureTelemetry", "C2 (sin builder snapshot)"],
@@ -342,6 +341,27 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
       src("overlay-harness", "responsive-overlay-main.tsx"),
       "coordinator.setOverlayFrame",
       "C2b5a (frontera V2)",
+    );
+    // C2b6b (lock Parity V2 puro): sin prop snapshot, puente, builders ni
+    // seed snapshot; escenario V2 canónico como única fuente. Fuera del
+    // array RED C2: es lock post-corte, no ancla pendiente.
+    contentAbsentAll([
+      [src("overlay-harness", "OverlayParityHarness.tsx"), "snapshot={", "C2b6b (Parity sin snapshot)"],
+      [src("overlay-harness", "OverlayParityHarness.tsx"), "authoring-v2-fixture", "C2b6b (Parity usa escenario V2 puro)"],
+      [src("overlay-harness", "OverlayParityHarness.tsx"), "authoring-fixtures", "C2b6b (Parity sin megamódulo legacy)"],
+      [src("overlay-harness", "OverlayParityHarness.tsx"), "buildHarnessTelemetry", "C2b6b (Parity sin builder snapshot)"],
+      [src("overlay-harness", "OverlayParityHarness.tsx"), "seedHarnessInputHistory", "C2b6b (Parity sin seed snapshot global)"],
+      [src("overlay-harness", "overlay-parity-query.ts"), "authoring-fixtures", "C2b6b (query sin megamódulo legacy)"],
+    ]);
+    contentHas(
+      src("overlay-harness", "OverlayParityHarness.tsx"),
+      "buildAuthoringV2ScenarioRuntime",
+      "C2b6b (escenario V2 canónico)",
+    );
+    contentHas(
+      src("overlay-harness", "OverlayParityHarness.tsx"),
+      "buildAuthoringV2ScenarioWidget",
+      "C2b6b (widget V2 puro sin snapshot)",
     );
     for (const route of [
       src("overlay", "CompositeApp.test.tsx"),

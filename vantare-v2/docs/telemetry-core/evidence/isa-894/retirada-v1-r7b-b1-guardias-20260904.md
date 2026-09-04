@@ -114,4 +114,10 @@ No se declara verde el suite: el rojo es el estado esperado de B1.
   exactos; el helper S1 se preserva y solo pierde su dependencia activa en B3.
   El focal conserva exactamente `7 failed | 8 passed (15)`, ahora con
   8 rutas + 9 anclas B2, 19 rutas + 6 refs B3, 2 imports B2-prep y 18 anclas C2.
-- Estado: re-review spec y quality frescas pendientes; cero producción.
+- Re-review spec Muse `ses_f928d2…` sobre `fc0a4262`: APPROVE,
+  P0/P1/P2=0; reejecutó focal, ESLint y diff-check.
+- Re-review quality Muse `ses_f928adc…` sobre `fc0a4262`: APPROVE,
+  P0/P1/P2=0; cerró uno a uno los cinco P1 y auditó falsos verdes/rojos,
+  custodia S1 y riesgo de borrado.
+- Estado: **B1 CERRADO con doble APPROVE fresco**; cero producción. Siguiente
+  corte canónico: C2.

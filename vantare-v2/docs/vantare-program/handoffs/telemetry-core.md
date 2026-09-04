@@ -1,6 +1,6 @@
 # Handoff vivo — Telemetry Core
 
-## R7b/B1 RED corregido — siguiente C2, no B2 — 2026-09-04, ISA-894
+## R7b/B1 CERRADO — siguiente C2, no B2 — 2026-09-04, ISA-894
 
 B1 sigue sin cambios productivos. El preflight descubrió que ejecutar B2
 directamente rompería el oráculo E4, dos tests C2 y los harnesses B3. El orden
@@ -16,10 +16,12 @@ recalculador S1 queda preservado y B3 solo elimina su dependencia activa.
 Comparator/sanitizer permanecen como oráculo hasta E4; B2-prep solo
 desacoplará sus tipos del adapter, sin conducta. Evidencia y microplan:
 `retirada-v1-r7b-b1-guardias-20260904.md` y
-`2026-09-04-telemetria-v1-retirada-r7b-frontend.md`. Spec review inicial:
-APPROVE. Quality review encontró cinco P1 de cobertura, ya corregidos en guard
-y plan sin producción; siguiente: re-review spec + quality frescas y, solo con
-doble APPROVE, **C2**. Sin push/PR/merge/promoción/apps/LMU.
+`2026-09-04-telemetria-v1-retirada-r7b-frontend.md`. Tras corregir los cinco
+P1 de la primera quality review, re-review spec `ses_f928d2…` y quality
+`ses_f928adc…` dan **APPROVE, P0/P1/P2=0** sobre `fc0a4262`; focal RED
+`7 failed | 8 passed`, ESLint y diff-check reproducidos. B1 queda cerrado.
+Siguiente: **C2** test-first; no B3/B2 todavía. Sin push/PR/merge/promoción/
+apps/LMU.
 
 ## R7b/A3 CERRADO — doble APPROVE, siguiente B1 — 2026-09-04, ISA-894
 

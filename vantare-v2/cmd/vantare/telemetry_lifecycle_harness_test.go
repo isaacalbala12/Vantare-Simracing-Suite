@@ -181,7 +181,9 @@ func TestTelemetryLifecycleHarness(t *testing.T) {
 		t,
 		client,
 		httpServer.Addr(),
-		telemetrytransport.ProjectionRoute(telemetrytransport.ProductOverlay),
+		// R7a: ProductOverlay retirado; la ruta retirada se expresa en
+		// literal historico y debe seguir respondiendo 404.
+		"/telemetry/overlay/projection",
 		http.StatusNotFound,
 	)
 	sse := make(map[string][]byte, 4)
@@ -351,17 +353,19 @@ func TestTelemetryStatusReplayHandlerCleanupPreventsDuplicateDelivery(t *testing
 	// La peticion Overlay es negativa: sin handler registrado no debe
 	// producir ningun replay. Con el Hub antiguo habria entregado un status
 	// Overlay y el total seria 2.
+	// R7a: ProductOverlay esta retirado; la peticion negativa usa el
+	// literal historico "telemetry:overlay:status:get".
 	events.Emit(telemetrytransport.StatusRequestEventName(telemetrytransport.ProductStrategy))
-	events.Emit(telemetrytransport.StatusRequestEventName(telemetrytransport.ProductOverlay))
+	events.Emit("telemetry:overlay:status:get")
 
 	replayEvents := emitter.snapshot()
 	if len(replayEvents) != 1 {
 		t.Fatalf("status replay event count = %d, want 1: %#v", len(replayEvents), replayEvents)
 	}
-	overlayStatus := telemetrytransport.EventName(telemetrytransport.ProductOverlay, telemetrytransport.EventStatus)
+	const retiredOverlayStatus = "telemetry:overlay:status"
 	counts := make(map[string]int, 2)
 	for _, event := range replayEvents {
-		if event.name == overlayStatus {
+		if event.name == retiredOverlayStatus {
 			t.Fatalf("retired Overlay product replayed status: %#v", event)
 		}
 		counts[event.name]++

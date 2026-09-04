@@ -18,7 +18,7 @@ import (
 )
 
 func TestLateJoinReconnectAndGapAlwaysStartWithFull(t *testing.T) {
-	hub := NewHub(HubConfig{Product: ProductOverlay})
+	hub := NewHub(HubConfig{Product: ProductStrategy})
 	status := mustStatus(t, 1, map[string]any{"state": "live"})
 	if err := hub.PublishStatus(status); err != nil {
 		t.Fatal(err)
@@ -55,7 +55,7 @@ func TestLateJoinReconnectAndGapAlwaysStartWithFull(t *testing.T) {
 }
 
 func TestInvalidOversizedAndDeltaPayloadsAreRejectedAtomically(t *testing.T) {
-	hub := NewHub(HubConfig{Product: ProductOverlay, MaxPayloadBytes: 32})
+	hub := NewHub(HubConfig{Product: ProductStrategy, MaxPayloadBytes: 32})
 	if err := hub.PublishStatus(mustStatus(t, 1, map[string]any{"state": "live"})); err != nil {
 		t.Fatal(err)
 	}
@@ -111,7 +111,7 @@ func TestPayloadValidationRequiresJSONObject(t *testing.T) {
 }
 
 func TestPublisherGapAcceptsFull(t *testing.T) {
-	hub := NewHub(HubConfig{Product: ProductOverlay})
+	hub := NewHub(HubConfig{Product: ProductStrategy})
 	if err := hub.PublishStatus(mustStatus(t, 1, map[string]any{"state": "live"})); err != nil {
 		t.Fatal(err)
 	}
@@ -134,7 +134,7 @@ func TestPublisherGapAcceptsFull(t *testing.T) {
 
 func TestUnknownProjectionVersionIsRejected(t *testing.T) {
 	hub := NewHub(HubConfig{
-		Product:  ProductOverlay,
+		Product:  ProductStrategy,
 		Versions: projection.VersionPolicy{Current: 2, MinimumSupported: 1},
 	})
 	if err := hub.PublishStatus(mustStatus(t, 1, map[string]any{"state": "live"})); err != nil {
@@ -148,7 +148,7 @@ func TestUnknownProjectionVersionIsRejected(t *testing.T) {
 }
 
 func TestStatusIsLowRateAndIndependentFromSnapshotSequence(t *testing.T) {
-	hub := NewHub(HubConfig{Product: ProductOverlay})
+	hub := NewHub(HubConfig{Product: ProductStrategy})
 	if err := hub.PublishStatus(mustStatus(t, 1, map[string]any{"state": "connecting"})); err != nil {
 		t.Fatal(err)
 	}
@@ -176,7 +176,7 @@ func TestStatusIsLowRateAndIndependentFromSnapshotSequence(t *testing.T) {
 }
 
 func TestStatusRevisionGapIsAccepted(t *testing.T) {
-	hub := NewHub(HubConfig{Product: ProductOverlay})
+	hub := NewHub(HubConfig{Product: ProductStrategy})
 	if err := hub.PublishStatus(mustStatus(t, 1, map[string]any{"state": "connecting"})); err != nil {
 		t.Fatal(err)
 	}
@@ -199,7 +199,7 @@ func TestStatusRevisionGapIsAccepted(t *testing.T) {
 }
 
 func TestLateJoinNeverPairsNewStatusWithOldSnapshot(t *testing.T) {
-	hub := NewHub(HubConfig{Product: ProductOverlay})
+	hub := NewHub(HubConfig{Product: ProductStrategy})
 	if err := hub.PublishStatus(mustStatus(t, 1, map[string]any{"state": "connecting"})); err != nil {
 		t.Fatal(err)
 	}
@@ -256,9 +256,10 @@ func TestTypedSnapshotConstructorRejectsInvalidMetadata(t *testing.T) {
 	}
 }
 
-func TestFourProductHubsRemainIsolated(t *testing.T) {
+func TestThreeProductHubsRemainIsolated(t *testing.T) {
+	// R7a: ProductOverlay esta retirado; el Hub generico se prueba sobre
+	// los tres productos vivos (Strategy lo usa en produccion).
 	products := []ProductID{
-		ProductOverlay,
 		ProductEngineer,
 		ProductStrategy,
 		ProductAnalysis,
@@ -276,12 +277,9 @@ func TestFourProductHubsRemainIsolated(t *testing.T) {
 		hubs[product] = hub
 	}
 
-	for _, product := range products {
+	for index, product := range products {
 		hub := hubs[product]
-		other := ProductOverlay
-		if product == ProductOverlay {
-			other = ProductEngineer
-		}
+		other := products[(index+1)%len(products)]
 		if err := hub.PublishSnapshot(
 			mustProductSnapshot(t, other, 1, 2, Full, 1, map[string]any{"value": other}),
 			nil,
@@ -306,7 +304,7 @@ func TestFourProductHubsRemainIsolated(t *testing.T) {
 }
 
 func TestEpochMustAdvanceAndRestartAtSequenceOne(t *testing.T) {
-	hub := NewHub(HubConfig{Product: ProductOverlay})
+	hub := NewHub(HubConfig{Product: ProductStrategy})
 	if err := hub.PublishStatus(mustStatus(t, 1, map[string]any{"state": "live"})); err != nil {
 		t.Fatal(err)
 	}
@@ -338,7 +336,7 @@ func TestEpochMustAdvanceAndRestartAtSequenceOne(t *testing.T) {
 }
 
 func TestSlowWailsConsumerDoesNotBlockPublisherAndResyncsFull(t *testing.T) {
-	hub := NewHub(HubConfig{Product: ProductOverlay})
+	hub := NewHub(HubConfig{Product: ProductStrategy})
 	if err := hub.PublishStatus(mustStatus(t, 1, map[string]any{"state": "live"})); err != nil {
 		t.Fatal(err)
 	}
@@ -377,7 +375,7 @@ func TestSlowWailsConsumerDoesNotBlockPublisherAndResyncsFull(t *testing.T) {
 }
 
 func TestSSEAndWailsPublishIdenticalJSONAndSSELifecycle(t *testing.T) {
-	hub := NewHub(HubConfig{Product: ProductOverlay})
+	hub := NewHub(HubConfig{Product: ProductStrategy})
 	if err := hub.PublishStatus(mustStatus(t, 1, map[string]any{"state": "live"})); err != nil {
 		t.Fatal(err)
 	}
@@ -391,15 +389,15 @@ func TestSSEAndWailsPublishIdenticalJSONAndSSELifecycle(t *testing.T) {
 	go func() { wailsDone <- ServeWails(wailsCtx, hub, emitter) }()
 	wailsStatus := <-emitter.events
 	wailsSnapshot := <-emitter.events
-	if wailsStatus.name != EventName(ProductOverlay, EventStatus) ||
-		wailsSnapshot.name != EventName(ProductOverlay, EventSnapshot) {
+	if wailsStatus.name != EventName(ProductStrategy, EventStatus) ||
+		wailsSnapshot.name != EventName(ProductStrategy, EventSnapshot) {
 		t.Fatalf("Wails event order = %q, %q", wailsStatus.name, wailsSnapshot.name)
 	}
 
 	requestCtx, cancelRequest := context.WithCancel(context.Background())
 	request := httptest.NewRequest(
 		http.MethodGet,
-		ProjectionRoute(ProductOverlay),
+		ProjectionRoute(ProductStrategy),
 		nil,
 	).WithContext(requestCtx)
 	request.RemoteAddr = "127.0.0.1:45678"
@@ -435,7 +433,7 @@ func TestSSEAndWailsPublishIdenticalJSONAndSSELifecycle(t *testing.T) {
 }
 
 func TestSubscriberLimitLoopbackRoutesAndConcurrentClose(t *testing.T) {
-	limited := NewHub(HubConfig{Product: ProductOverlay, MaxSubscribers: 1})
+	limited := NewHub(HubConfig{Product: ProductStrategy, MaxSubscribers: 1})
 	first := mustSubscribe(t, limited)
 	if _, err := limited.Subscribe(context.Background()); !errors.Is(err, ErrSubscriberLimit) {
 		t.Fatalf("second subscription error = %v", err)
@@ -451,10 +449,10 @@ func TestSubscriberLimitLoopbackRoutesAndConcurrentClose(t *testing.T) {
 		t.Fatal("non-loopback accepted")
 	}
 
-	hub := NewHub(HubConfig{Product: ProductOverlay})
+	hub := NewHub(HubConfig{Product: ProductStrategy})
 	nonLoopback := httptest.NewRequest(
 		http.MethodGet,
-		ProjectionRoute(ProductOverlay),
+		ProjectionRoute(ProductStrategy),
 		nil,
 	)
 	nonLoopback.RemoteAddr = "192.0.2.1:45678"
@@ -471,7 +469,7 @@ func TestSubscriberLimitLoopbackRoutesAndConcurrentClose(t *testing.T) {
 		t.Fatalf("wrong product route status = %d", recorder.Code)
 	}
 
-	closeHub := NewHub(HubConfig{Product: ProductOverlay, MaxSubscribers: MaxSubscribers})
+	closeHub := NewHub(HubConfig{Product: ProductStrategy, MaxSubscribers: MaxSubscribers})
 	subscriptions := make([]*Subscription, 0, MaxSubscribers)
 	for range MaxSubscribers {
 		subscriptions = append(subscriptions, mustSubscribe(t, closeHub))
@@ -495,7 +493,7 @@ func TestSubscriberLimitLoopbackRoutesAndConcurrentClose(t *testing.T) {
 }
 
 func TestHubMetricsStayBoundedAndContainNoPayload(t *testing.T) {
-	hub := NewHub(HubConfig{Product: ProductOverlay, MaxSubscribers: 6, MaxPayloadBytes: 1024})
+	hub := NewHub(HubConfig{Product: ProductStrategy, MaxSubscribers: 6, MaxPayloadBytes: 1024})
 	if err := hub.PublishStatus(mustStatus(t, 1, map[string]any{"state": "live"})); err != nil {
 		t.Fatal(err)
 	}
@@ -536,7 +534,7 @@ func FuzzTransportEnvelopeValidationNeverPanics(f *testing.F) {
 	f.Add([]byte(`{"nested":[[[[{"value":1}]]]]}`))
 	f.Fuzz(func(t *testing.T, payload []byte) {
 		frame := Envelope{
-			Product:           ProductOverlay,
+			Product:           ProductStrategy,
 			ProjectionVersion: 1,
 			Epoch:             1,
 			Sequence:          1,
@@ -554,7 +552,7 @@ func FuzzTransportEnvelopeValidationNeverPanics(f *testing.F) {
 }
 
 func BenchmarkHubPublishSnapshot(b *testing.B) {
-	hub := NewHub(HubConfig{Product: ProductOverlay})
+	hub := NewHub(HubConfig{Product: ProductStrategy})
 	if err := hub.PublishStatus(mustStatus(b, 1, map[string]any{"state": "live"})); err != nil {
 		b.Fatal(err)
 	}
@@ -584,7 +582,7 @@ func mustSnapshot(
 	statusRevision uint64,
 	payload any,
 ) Envelope {
-	return mustProductSnapshot(t, ProductOverlay, epoch, sequence, kind, statusRevision, payload)
+	return mustProductSnapshot(t, ProductStrategy, epoch, sequence, kind, statusRevision, payload)
 }
 
 func mustProductSnapshot(
@@ -621,7 +619,7 @@ func mustStatus(t testingTB, revision uint64, payload any) StatusEnvelope {
 		t.Fatal(err)
 	}
 	result := StatusEnvelope{
-		Product:        ProductOverlay,
+		Product:        ProductStrategy,
 		StatusRevision: revision,
 		CapturedAt:     "2026-07-29T10:00:00Z",
 		Payload:        encoded,
@@ -720,7 +718,7 @@ func newBlockingEmitter() *blockingEmitter {
 }
 
 func (emitter *blockingEmitter) Emit(name string, data any) {
-	if name == EventName(ProductOverlay, EventStatus) {
+	if name == EventName(ProductStrategy, EventStatus) {
 		emitter.once.Do(func() {
 			close(emitter.blocked)
 			<-emitter.releaseCh

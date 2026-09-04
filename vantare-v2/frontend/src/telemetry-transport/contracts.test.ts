@@ -57,6 +57,12 @@ describe("telemetry transport contracts", () => {
       closeRoute: OVERLAY_PULL_CLOSE_ROUTE,
     });
     for (const product of TELEMETRY_PRODUCTS) {
+      if (product === "overlay") {
+        // R7a: producto retirado del fixture Go observable; el mirror
+        // legacy lo conserva hasta R7b y no debe resucitar en el fixture.
+        expect(fixture.products).not.toHaveProperty(product);
+        continue;
+      }
       expect(fixture.products[product]).toEqual({
         projectionEvent: eventName(product, "projection"),
         statusEvent: eventName(product, "status"),

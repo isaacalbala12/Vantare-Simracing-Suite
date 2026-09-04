@@ -223,49 +223,9 @@ func TestOverlayPullRetiredSessionCannotReplaceCurrentSession(t *testing.T) {
 	}
 }
 
-func TestOverlayPullExcludesLegacyEvenWhenPublished(t *testing.T) {
-	for _, hasV2 := range []bool{false, true} {
-		name := "legacy-only"
-		if hasV2 {
-			name = "legacy-and-v2"
-		}
-		t.Run(name, func(t *testing.T) {
-			hub := NewHub(HubConfig{Product: ProductOverlay})
-			if err := hub.PublishStatus(mustStatus(t, 1, map[string]any{"state": "live"})); err != nil {
-				t.Fatal(err)
-			}
-			if err := hub.PublishSnapshot(mustSnapshot(t, 1, 1, Full, 1, map[string]any{"sequence": 1}), nil); err != nil {
-				t.Fatal(err)
-			}
-			registry := mustPublisherRegistry(t, PublisherConfig{Product: ProductOverlayV2})
-			if hasV2 {
-				if err := registry.PublishStatus(ProductOverlayV2, 1, map[string]any{"revision": 1}); err != nil {
-					t.Fatal(err)
-				}
-			}
-			transport := NewOverlayPullTransport(registry)
-			defer transport.CloseAll()
-			response, deliver, err := transport.Pull("overlay-window", OverlayPullRequest{SessionID: "test", Ack: 0})
-			if err != nil {
-				t.Fatal(err)
-			}
-			if deliver != hasV2 {
-				t.Fatalf("deliver=%v want=%v: %#v", deliver, hasV2, response)
-			}
-			if !hasV2 {
-				if len(response.Events) != 0 {
-					t.Fatalf("legacy events: %#v", response.Events)
-				}
-				return
-			}
-			if len(response.Events) != 1 {
-				t.Fatalf("events=%#v", response.Events)
-			}
-			assertPullEventContains(t, response.Events, PublisherEventName(ProductOverlayV2, PublisherEventStatus), `"revision":1`)
-		})
-	}
-}
-
+// R7a: TestOverlayPullExcludesLegacyEvenWhenPublished esta eliminado.
+// El Hub Strategy nunca se conecta al registry V2 y el caso era vacuo tras
+// retirar ProductOverlay; no se inventa wiring para conservarlo.
 func assertPullEventContains(t *testing.T, events []OverlayPullEvent, name, fragment string) {
 	t.Helper()
 	for _, event := range events {

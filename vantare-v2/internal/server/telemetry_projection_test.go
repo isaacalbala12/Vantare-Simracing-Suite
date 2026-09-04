@@ -21,10 +21,13 @@ import (
 func TestServerOverlayProjectionRouteRetired(t *testing.T) {
 	// The Overlay V1 Hub is retired in a later cut. The server no longer accepts
 	// it as configuration, so the public route must remain unregistered.
+	// R7a: ProductOverlay esta retirado; la ruta se expresa como literal
+	// historico porque ya no existe el producto que la construia.
+	const retiredOverlayRoute = "/telemetry/overlay/projection"
 	srv := server.New(server.ServerConfig{})
 	request := httptest.NewRequest(
 		http.MethodGet,
-		telemetrytransport.ProjectionRoute(telemetrytransport.ProductOverlay),
+		retiredOverlayRoute,
 		nil,
 	)
 	request.RemoteAddr = "127.0.0.1:45678"
@@ -122,14 +125,17 @@ func TestServerExposesOverlayV2PublisherSSE(t *testing.T) {
 }
 
 func TestServerStrategyProjectionRouteIsolation(t *testing.T) {
+	// R7a: ProductOverlay esta retirado; el aislamiento cruzado se prueba
+	// con el Hub vivo de Engineer y la ruta historica del overlay.
+	const retiredOverlayRoute = "/telemetry/overlay/projection"
 	strategyHub := telemetrytransport.NewHub(telemetrytransport.HubConfig{
 		Product: telemetrytransport.ProductStrategy,
 	})
-	overlayHub := telemetrytransport.NewHub(telemetrytransport.HubConfig{
-		Product: telemetrytransport.ProductOverlay,
+	engineerHub := telemetrytransport.NewHub(telemetrytransport.HubConfig{
+		Product: telemetrytransport.ProductEngineer,
 	})
 	strategyRoute := telemetrytransport.ProjectionRoute(telemetrytransport.ProductStrategy)
-	overlayRoute := telemetrytransport.ProjectionRoute(telemetrytransport.ProductOverlay)
+	overlayRoute := retiredOverlayRoute
 
 	tests := []struct {
 		name       string
@@ -172,7 +178,7 @@ func TestServerStrategyProjectionRouteIsolation(t *testing.T) {
 		{
 			name: "cross product hub",
 			server: server.New(server.ServerConfig{
-				StrategyProjection:      overlayHub,
+				StrategyProjection:      engineerHub,
 				StrategyPublicTransport: true,
 			}),
 			route:      strategyRoute,

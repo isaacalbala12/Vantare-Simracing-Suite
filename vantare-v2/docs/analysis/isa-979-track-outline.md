@@ -6,33 +6,55 @@ Rama: `vantareapp/isa-979-cache-track-outline`; PR draft #980 contra nightly.
 
 ## Resultado medido
 
-MEASURED-MAC-RELATIVE, Apple M5/Go1.25/Node22.23.2; el benchmark es JavaScript del constructor real importado por Vite SSR, el formato benchstat es solo el formato de comparación (no se presenta como benchmark Go). Fixture 44 coches móviles, Circuit de la Sarthe, 1.363 puntos; 1.000 warm-up, 10×3.000 operaciones. Misma toolchain, sin carga simultánea de otros benchmarks. BASE mediana 213.84 µs, HEAD 6.14 µs; checksum idéntico 634590000. No extrapolar a FPS, RAM GPU ni latencia Wails.
+Base de entrega: origin/nightly `659b2c57dc2c7fc75962cc3c8e425ed1289266ec`.
+El archivo productivo antes del cambio es idéntico en nightly y NEXT_CANDIDATE.
+MEASURED-MAC-RELATIVE. Apple M5, Node22.23.2, constructor JS real cargado por Vite SSR;
+44 coches, Le Mans/1.363 puntos, warm-up1.000, 10×3.000 operaciones. Formato benchstat
+solo para comparar las series JS, no un benchmark Go. BASE y HEAD en el mismo
+worktree secuencialmente, con restauración comprobada de fuentes.
 
 ```text
 goos: darwin
 goarch: arm64
-           │ /tmp/vantare-astra-20260904/runtime/impl-base-bench.txt │ /tmp/vantare-astra-20260904/runtime/impl-head-bench.txt │
-           │                         sec/op                          │             sec/op               vs base                │
-TrackMapV2                                             213.837µ ± 4%                       6.140µ ± 4%  -97.13% (p=0.000 n=10)
-
+           │ /tmp/vantare-astra-20260904/runtime/nightly-base-bench.txt │ /tmp/vantare-astra-20260904/runtime/nightly-head-bench.txt │
+           │                           sec/op                           │               sec/op                vs base                │
+TrackMapV2                                                209.493µ ± 2%                          6.919µ ± 4%  -96.70% (p=0.000 n=10)
 ```
+
+Checksum idéntico 634590000; no se convierte el resultado en FPS ni latencia Wails.
+La comparación previa sobre candidato fue 213,837→6,140 µs; se conserva en ISA-978
+etiquetada, sin mezclar sus cifras con la base final.
 
 La caché se aloja en una clausura privada y conserva una sola geometría estática, dimensiones, proyección y path. No expone estado mutable de producto, retiene frames ni duplica autoridad V2. Alternar pistas reemplaza esa única entrada; dos mapas de pistas diferentes podrían reducir su hit rate, sin alterar resultados. Primera llamada mantiene el coste original, sin precomputar todos los circuitos al arrancar. El módulo libera la entrada cuando se destruye su contexto JS. Marcadores/estado/contenido se calculan cada vez.
 
 ## Gates
 
-Antes del cambio, 11 tests focales PASS, incluyendo las nuevas caracterizaciones: cada pista/alias, cambio y vuelta a pista, dimensiones, marcadores móviles, stale/desconectado y contenido. Después: mismos 11 PASS; suite 441 archivos/3.430 tests PASS; typecheck PASS; build PASS; lint global y focal PASS. Warnings AbortError de teardown happy-dom conservados, sin tests fallidos. No cambios Go; race del candidato en transporte/Strategy/Engineer/Spotter/radio PASS en ISA-978. El gate Go general del candidato es rojo en macOS por causas preexistentes documentadas allí.
+Antes del cambio, 11 tests focales PASS: cada pista/alias, alternancia, dimensiones,
+marcadores móviles, desconexión/stale y contenido. En candidato: 3.430 tests PASS,
+typecheck/build/lint PASS. Repetición en la base final nightly: 433 archivos y
+3.299 tests PASS, build (tsc -b incluido) y lint global PASS. Avisos AbortError
+de teardown happy-dom conservados, sin tests fallidos.
 
-El ensayo Chromium usa renderers productivos; solo prueba consumidores auxiliares, no ventanas WebView2. El PR requiere CI Windows antes de integración. Ninguna promoción ni FPS canónico certificados.
+Chromium del candidato usa renderers productivos y deja cero suscripciones tras
+50 ciclos; no certifica ventanas WebView2. Sin cambios Go. La suite Go general
+del candidato tiene fallos macOS preexistentes documentados en ISA-978.
+El PR #980 final apunta a nightly y requiere sus checks Windows antes de integrar.
+El validador local de roadmap requiere GITHUB_TOKEN ausente; no se extraen
+credenciales de gh para eludirlo. El digest sí pasa comprobación local contra base.
 
-## Reproducir
+## Reproducir y revisar
 
-Desde vantare-v2, instalar lockfile congelado. El recolector versionado en el PR de ISA-978 se ejecuta con `node scripts/performance/measure-track-map.mjs frontend <salida-externa> <label>` sobre BASE y HEAD secuencialmente. Las series completas, perfiles y comandos se adjuntan al paquete de evidencia ISA-978. Suite: `pnpm --dir frontend test`, `typecheck`, `build`, `lint`.
+Recolector en ISA-978: `node scripts/performance/measure-track-map.mjs frontend
+<salida-externa> <label>` sobre BASE y HEAD secuencialmente. Series, perfiles y
+comandos en su paquete de evidencia. Suite: `pnpm --dir frontend test`,
+`typecheck`, `build`, `lint`.
 
-## Revisión y rollback
+Un archivo productivo, +26/-3 líneas; sin nuevas dependencias, schema, transporte,
+frecuencias o cambios Core. La autorización expresa de memoización selectiva
+medida se limita a este derivado privado, no a un store global. El coste del
+caché fue +261 bytes minificados del chunk de widgets en el candidato. El digest
+puede cambiar el bundle del Hub y se registra por separado.
 
-Un archivo productivo, sin dependencias, cambios de schema, transporte, paquetes de pistas, frecuencias, estado canónico o retirada legacy. La instrucción expresa del usuario autoriza memoización selectiva medida; este derivado privado no crea un store global. Roadmap actualizado únicamente en `milestones:performance-policy`; digest regenerado contra el SHA base del PR apilado. Rollback: revertir este PR completo. La rama candidata #977 debe conservar o integrar antes su migración; no mezclar su delta acumulado con este pequeño cambio al revisar.
-
-El bundle añade 261 bytes minificados al chunk compartido de widgets; no cambia el número de módulos (1.089). El digest obligatorio añade además ~3,6 KB al chunk Hub y no es trabajo de render por frame. El harness HEAD conserva cero suscripciones tras 50 ciclos. Los workflows actuales solo lanzan branch gates para PRs contra nightly/testers/master; este PR apilado no tiene ese CI automático hasta retarget tras integrar su base. El workflow de build manual exige SHA ya contenido en nightly/testers, por lo que no se ejecuta fingiendo esa condición. CI Windows queda pendiente, sin autorización de merge.
-
-Corrección de base: el contrato no admite PRs apilados. La entrega se rebasa a nightly `659b2c57dc2c7fc75962cc3c8e425ed1289266ec`; el archivo productivo es byte-idéntico en ambos snapshots antes del cambio. Se conservan las métricas originales etiquetadas NEXT_CANDIDATE, y se repiten BASE/HEAD y checks sobre nightly. No se arrastra la migración #977. El comentario anterior sobre falta de CI apilado describe el intento descartado; el PR final apunta a nightly.
+Roadmap: únicamente `milestones:performance-policy`, regenerado contra nightly.
+Rollback: revertir este PR completo. No merge, promoción ni release. PR draft:
+https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/980

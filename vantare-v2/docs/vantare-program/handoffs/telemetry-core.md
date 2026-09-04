@@ -14,9 +14,25 @@ desde `60a78e55`: límite overlay-v2 explícito en Go, constante centralizada
 y validador en frontend, fixture corregido 104/17/17 con asserts de topes,
 `DeltaHistoryV2` + builder + contrato generado + decoder V2 sin
 singleton/`Date.now`, gates y evidencia. Sin push/PR/merge/promoción.
-Evidencia: `retirada-v1-r7b-a3-delta-preflight-20260904.md` (preflight) y el
-cierre A3 que se añadirá en este mismo ciclo. No declara A3 cerrada: faltan
-revisión de especificación y revisión adversarial de calidad.
+Evidencia: `retirada-v1-r7b-a3-delta-preflight-20260904.md` (preflight) y
+`retirada-v1-r7b-a3-delta-20260904.md` (ejecución). No declara A3 cerrada:
+faltan revisión de especificación y revisión adversarial de calidad.
+
+## R7b/A3 ejecutado sin push (Delta, pendiente de revisiones) — 2026-09-04, ISA-894
+
+Commits locales `ca4b032a → 8d2173a1` (docs decisión, Go 72 KiB por producto,
+frontend 72 KiB + validador fuel, Go DeltaHistoryV2 + fixture/gates +
+goldens, contrato TS, decoder V2, fix evidence harness, pin replay).
+Gates: overlayv2/derive/transport/contract-gen ok; delta-trace 11/11;
+transport 64/64; suite frontend 3439/3441 (2 fallos A2 preexistentes:
+fuel-strategy VM y gaps del comparador, fuera de alcance, verificados
+independientes); typecheck con exactamente los 8 heredados R7a, cero nuevos
+(no verde); build bloqueado solo por esos 8 (preexistente).
+Bytes MEDIDOS: base 104/17/17 **52723**; 20ch+A3 **61049** (margen +4487
+bajo 64 KiB); 32ch+adverso+A3 **66677** (margen +7051 bajo 72 KiB); coste A3
++3353/+4013. `256 KiB` genérico intacto; ningún otro producto cambia.
+`plan.md`/`roadmap.json` sin tocar (cierre combinado R7b). Siguiente:
+revisión de especificación + revisión adversarial de calidad.
 
 ## R7b/A3 bloqueado en preflight (Delta, cero producción) — 2026-09-04, ISA-894
 

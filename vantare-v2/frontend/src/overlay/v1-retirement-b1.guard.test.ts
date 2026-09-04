@@ -223,12 +223,8 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
       [src("overlay", "authoring", "OverlayWorkshopDevRoute.tsx"), "buildAuthoringFixtureTelemetry", "C2 (sin builder snapshot)"],
       [src("overlay", "authoring", "OverlayWorkshopDevRoute.tsx"), "resetAndSeedAuthoringInputTelemetry", "C2 (sin seed snapshot global)"],
       [src("overlay-harness", "responsive-overlay-main.tsx"), "buildHarnessTelemetry", "C2 (harness dev V2)"],
-      [src("hub", "home-orbit", "HomeMiniStage.tsx"), "snapshot={PREVIEW_SNAPSHOT}", "C2 (preview Hub V2)"],
-      [src("hub", "home-orbit", "HomeMiniStage.tsx"), "buildMockTelemetry", "C2 (preview sin mock snapshot)"],
-      [src("hub", "overlays", "ProfilePreview.tsx"), "snapshot={PREVIEW_SNAPSHOT}", "C2 (preview Hub V2)"],
-      [src("hub", "overlays", "ProfilePreview.tsx"), "buildMockTelemetry", "C2 (preview sin mock snapshot)"],
-      [src("ui-orbit-harness.tsx"), "snapshot={STAGE_SNAPSHOT}", "C2 (harness UI V2)"],
-      [src("ui-orbit-harness.tsx"), "buildMockTelemetry", "C2 (harness UI sin mock snapshot)"],
+      // C2b3: HomeMiniStage, ProfilePreview y ui-orbit-harness ya son V2
+      // (factory por consumidor sobre el escenario canónico, sin snapshot).
       [src("overlay", "authoring", "workshop-runtime-parity.test.tsx"), "authoring-v2-fixture", "C2 (compat API V2 pura)"],
       [src("overlay", "authoring", "workshop-runtime-parity.test.tsx"), "buildAuthoringFixtureTelemetry", "C2 (compat sin snapshot)"],
       [src("overlay", "design-systems", "vantare-endurance", "track-map", "TrackMapEndurance.layout.test.tsx"), "authoring-v2-fixture", "C2 (compat API V2 pura)"],

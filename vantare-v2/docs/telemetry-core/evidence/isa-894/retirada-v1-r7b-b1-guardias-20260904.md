@@ -485,6 +485,14 @@ golden canónico V2 marca `delta.seconds` como `missing`; ahora el test exige
 el estado `missing`, el placeholder `—` y la ausencia del valor inventado.
 No se modifica código productivo ni se debilita el renderer.
 
+La autorrevisión añadió el RED→GREEN `dd7806a9`: un primer frame live que
+reutiliza el `epoch+sequence` canónico era descartado como duplicado porque el
+mock también conservaba `source.state=live`. Al entrar en live, el provider
+mantiene la forma del último frame pero entrega la autoridad marcando la fuente
+`stopped` antes de `adapter.start()`. El frame live idéntico ya se acepta y,
+durante la conexión, el renderer conserva el placeholder desconectado en lugar
+de desaparecer. El test reproduce ambas direcciones mock↔live.
+
 Evidencia local: focales **40/40** y suite amplia Studio **255/255**; ESLint focal y
 `git diff --check` limpios. `pnpm --dir frontend typecheck` permanece NO verde
 con exactamente los 8 errores R7a heredados y cero nuevos. El guard permanece

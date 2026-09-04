@@ -2,7 +2,7 @@
 
 ## R7b/C2b4 cierre técnico — pendiente doble review — 2026-09-04, ISA-894
 
-Commits `71ef8cad` + hardening `cad73784` + contrato de test `7aa7352b`: Studio mock deja V1/puente y publica solo un escenario V2
+Commits `71ef8cad` + hardening `cad73784`/`dd7806a9` + contrato de test `7aa7352b`: Studio mock deja V1/puente y publica solo un escenario V2
 canónico por `setOverlayFrame`. `mockSession` transforma únicamente
 `session.phase` conservando quality; `mockLocation` transforma únicamente el
 pit de la fila de `player.id`, con fail-fast sin ids/coches inventados. El
@@ -11,6 +11,9 @@ envelope como productor de autoría para que cambios sucesivos del mismo golden
 no sean descartados por el coordinador; el máximo incluye el frame live
 retenido y el test reproduce la colisión exacta. Se preservan primer paint, conmutación,
 start/stop live y suspensión. El test usa el tipo canónico real.
+Al entrar en live, el último frame conserva su forma con fuente `stopped`
+antes de arrancar el adapter: evita deduplicar un primer frame live con el
+mismo `epoch+sequence` y mantiene visible el placeholder desconectado.
 
 El test amplio ya no exige el delta `-0.150` sintético del mock V1: el golden
 V2 lo declara `missing` y se comprueba `data-status="missing"` + `—`. Sin

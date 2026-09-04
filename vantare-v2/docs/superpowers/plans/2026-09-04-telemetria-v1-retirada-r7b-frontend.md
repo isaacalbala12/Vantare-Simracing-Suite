@@ -603,7 +603,11 @@ B1; si una ruta no existe en árbol, lo registra como divergencia y para ese
       canvas la expectativa `-0.150` fabricada por el mock V1: el golden V2
       declara el delta como `missing`, por lo que el contrato honesto es
       `data-status="missing"` y `—`, sin rellenarlo. Focales 40/40 y suite
-      amplia de Studio 255/255; ESLint/diff-check limpios;
+      amplia de Studio 255/255. El hardening `dd7806a9` reproduce además un
+      primer frame live con el mismo `epoch+sequence` del mock: antes se
+      deduplicaba; ahora la transición marca la fuente retenida `stopped`
+      antes de arrancar el adapter, por lo que el frame live gana y el widget
+      conserva su placeholder desconectado mientras conecta. ESLint/diff-check limpios;
      guard deliberadamente RED `7 failed | 8 passed (15)`, C2 en 16
      declaradas / 15 activas; typecheck NO verde con exactamente los 8 errores
      R7a heredados, cero nuevos; build no evaluable. Pendiente: review spec y

@@ -14,6 +14,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/envelope"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/identity"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/session"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/vehicle"
 )
 
 var (
@@ -61,6 +62,14 @@ type ControlSample struct {
 	Throttle   schema.Ratio
 	Brake      schema.Ratio
 	Clutch     schema.Ratio
+	// SpeedMPS, EngineRPM and Gear ride along from the active canonical
+	// VehicleState, preserving present/freshness/provenance per field. The
+	// series gate stays pedal-only (fresh pedals append the sample); a stale
+	// or missing motion field keeps its own quality instead of blocking the
+	// sample. SpeedMPS keeps the source unit m/s; km/h is presentation only.
+	SpeedMPS  schema.Field[float64]
+	EngineRPM schema.Field[vehicle.EngineRPM]
+	Gear      schema.Field[vehicle.Gear]
 }
 
 type ControlHistory struct {
@@ -279,6 +288,9 @@ func deriveControlsHistory(
 		Throttle:   throttle,
 		Brake:      brake,
 		Clutch:     clutch,
+		SpeedMPS:   active.SpeedMPS,
+		EngineRPM:  active.EngineRPM,
+		Gear:       active.Gear,
 	})
 	if overflow := len(history) - limit; overflow > 0 {
 		history = slices.Clone(history[overflow:])

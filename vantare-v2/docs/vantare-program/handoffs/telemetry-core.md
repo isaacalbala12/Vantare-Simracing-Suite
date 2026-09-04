@@ -3,9 +3,9 @@
 ## R7b/B1 RED — guardias de ausencia V1, siguiente B2 — 2026-09-04, ISA-894
 
 B1 ejecutado sin cambios productivos: `v1-retirement-b1.guard.test.ts`
-(12 tests) en rojo reproducible — 4 failed con enumeración completa en una
+(13 tests) en rojo reproducible — 5 failed con enumeración completa en una
 ejecución (B2 archivos 8 rutas, B2 ProductID 2 anclas, B2 wails-pull 4
-anclas, B3 17 rutas + 2 refs) + 8 passed (diferidos C2/D18/D5/E1/E2/E3,
+anclas, B3 17 rutas y B3 2 refs) + 8 passed (diferidos C2/D18/D5/E1/E2/E3,
 oráculo E4, callers sin imports B2, exentos por contrato, HTML limpios).
 Inventario B0 13/13 rutas verificadas, cero divergencias STOP (activación
 `acceptLegacy` y 2 playwright → B3 con prueba; 4 callers con imports E1 =

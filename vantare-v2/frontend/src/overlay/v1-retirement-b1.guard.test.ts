@@ -65,7 +65,7 @@ function contentHas(route: string, anchor: string, owner: string): void {
 // en cada caller C2/B2 (acumula archivo+especificador). Los módulos E1
 // (telemetry-snapshot, telemetry-adapter, derived-telemetry-store) los
 // importan hoy 4 callers (StudioRoute y studio-overlay-telemetry →
-/// telemetry-adapter; authoring-fixtures y authoring-v2-fixture →
+// telemetry-adapter; authoring-fixtures y authoring-v2-fixture →
 // telemetry-snapshot): es la deuda que C2 migra y E1 retira, verificada real
 // y registrada en evidencia; no se exige ausente en B1.
 const V1_MODULES_B2 = [
@@ -142,6 +142,9 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
       [path.resolve(FRONTEND, "scripts", "telemetry-overlay-shadow.playwright.mjs"), "B3 (playwright harness)"],
       [path.resolve(FRONTEND, "scripts", "telemetry-cutover-runtimes.playwright.mjs"), "B3 (playwright harness)"],
     ]);
+  });
+
+  it("B3: referencias a scripts sesion-v1 fuera", () => {
     contentAbsentAll([
       [root("scripts", "bench", "all.test.mjs"), "sesion-v1-resumen.test.mjs", "B3 (refs)"],
       [root("scripts", "bench", "README.md"), "sesion-v1.ps1", "B3 (refs)"],
@@ -249,11 +252,13 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
     present(compact, "E3 (se preserva)");
     contentHas(compact, "//go:build researchbench", "E3 (prototipo acotado)");
     contentAbsentAll([[compact, "internal/telemetry/projection/overlay", "E3 (sin cableado V1)"]]);
-    for (const route of ["vite.config.ts", "index.html", "overlay.html"] as const) {
-      for (const anchor of ["overlay-projection-v1", "projection-telemetry-adapter", "telemetry-snapshot"]) {
-        contentAbsentAll([[path.resolve(FRONTEND, route), anchor, "E3 (verificado limpio en B0)"]]);
-      }
-    }
+    contentAbsentAll(
+      (["vite.config.ts", "index.html", "overlay.html"] as const).flatMap((route) =>
+        (["overlay-projection-v1", "projection-telemetry-adapter", "telemetry-snapshot"] as const).map(
+          (anchor) => [path.resolve(FRONTEND, route), anchor, "E3 (verificado limpio en B0)"] as const,
+        ),
+      ),
+    );
   });
 
   it("diferidos E4 presentes: comparator/sanitizer son el oráculo vivo", () => {

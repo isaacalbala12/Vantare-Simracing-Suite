@@ -6,7 +6,7 @@ este corte solo toca el guardia, su evidencia y el handoff.
 
 ## Guardia
 
-`frontend/src/overlay/v1-retirement-b1.guard.test.ts` (12 tests): las
+`frontend/src/overlay/v1-retirement-b1.guard.test.ts` (13 tests): las
 ausencias B2/B3 se ACUMULAN y se afirman juntas para que una ejecución
 enumere TODOS los residuos con ruta+dueño (sin cortocircuito). Los
 diferidos C2/D/E1/E2/E3 y el oráculo E4 se afirman PRESENTES (rojo si
@@ -79,12 +79,13 @@ B3 con prueba citada, no a ciegas.
 ## RED literal
 
 `pnpm --dir frontend test src/overlay/v1-retirement-b1.guard.test.ts` →
-`Test Files 1 failed (1)` · `Tests 4 failed | 8 passed (12)`:
+`Test Files 1 failed (1)` · `Tests 5 failed | 8 passed (13)`:
 - B2 archivos (8 rutas: proyección/adapter/observer + tests).
 - B2 ProductID (2 anclas `contracts.ts`: literal + regex).
 - B2 wails-pull (4 anclas: 3 eventos + `receivedV1Projections`).
-- B3 (17 rutas: runtime, activación, harnesses, 2 HTML, 4 sesion-v1,
-  2 playwright + 2 refs sesion-v1 en `all.test.mjs`/`README.md`).
+- B3 runtime/harness (17 rutas: runtime, activación, harnesses, 2 HTML,
+  4 sesion-v1 y 2 playwright).
+- B3 referencias (2 anclas sesion-v1 en `all.test.mjs`/`README.md`).
 - 8 en verde: diferidos C2/D/E1/E2/E3/E4, callers sin imports B2, exentos,
   HTML limpios.
 

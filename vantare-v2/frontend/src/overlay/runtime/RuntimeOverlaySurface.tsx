@@ -30,6 +30,7 @@ import {
   EMPTY_RACE_SCHEDULE_SNAPSHOT,
   type RaceScheduleStore,
 } from "../core/race-schedule-store";
+import { resolveStandingsRedlineFrameLayout } from "../widget-types/standings/standings-redline-layout";
 
 export type RuntimeOverlaySurfaceProps = {
   document: ProfileDocumentV3;
@@ -161,15 +162,32 @@ export function RuntimeOverlaySurface(props: RuntimeOverlaySurfaceProps): React.
     ? resolveResponsiveSceneTransform(layoutViewport, outputViewport)
     : null;
 
+  const origin = layoutOrigin ?? { x: 0, y: 0 };
+  const effectiveWidgets = widgets.map((widget) => {
+    const localLayout = {
+      ...widget.layout,
+      x: widget.layout.x - origin.x,
+      y: widget.layout.y - origin.y,
+    };
+    const effectiveLayout = resolveStandingsRedlineFrameLayout(
+      widget,
+      localLayout,
+      layoutViewport.width,
+    );
+    return {
+      ...widget,
+      layout: effectiveLayout,
+    };
+  });
   const responsiveWidgets = transform
-    ? widgets.map((widget) => ({
-        ...widget,
-        layout: {
-          ...widget.layout,
-          ...mapWidgetFrameToResponsive(widget.layout, transform),
-        },
-      }))
-    : widgets;
+    ? effectiveWidgets.map((widget) => {
+        const responsiveLayout = mapWidgetFrameToResponsive(widget.layout, transform);
+        return {
+          ...widget,
+          layout: { ...widget.layout, ...responsiveLayout },
+        };
+      })
+    : effectiveWidgets;
 
   const surfaceStyle: CSSProperties = {
     position: "relative",
@@ -209,9 +227,9 @@ export function RuntimeOverlaySurface(props: RuntimeOverlaySurfaceProps): React.
             <RuntimeWidgetFrame
               key={widget.id}
               widget={widget}
+              profileId={document.id}
               telemetry={telemetry}
               renderMode={renderMode}
-              layoutOrigin={layoutOrigin}
               onDiagnostic={onDiagnostic}
               diagnostics={diagnostics}
               engineerPresentation={engineerPresentation}

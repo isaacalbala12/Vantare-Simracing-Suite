@@ -494,6 +494,7 @@ const COMPARABLE_STANDINGS_FIELDS = [
   "vehicleClass",
   "currentLapText",
   "lastLapText",
+  "bestLapText",
   "pitText",
   "isPlayer",
   "isLeader",
@@ -510,7 +511,6 @@ export const OVERLAY_V2_STANDINGS_DECLARED_GAPS: readonly string[] = Object.free
   "rows[].teamCode",
   "rows[].teamBrandColor",
   "rows[].tireCompound",
-  "rows[].bestLapText",
   "rows[].intervalText",
 ]);
 

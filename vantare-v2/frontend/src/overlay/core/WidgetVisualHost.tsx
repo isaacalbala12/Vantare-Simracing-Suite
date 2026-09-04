@@ -10,6 +10,9 @@ import { readInputTelemetryHistory, recordInputTelemetrySample } from "../widget
 import type { InputTelemetryViewModel } from "../widget-types/input-telemetry/input-telemetry-view-model";
 import type { WidgetRuntimeInput } from "./widget-definition";
 import { getOverlayV2ViewModelEntry } from "./overlay-v2-view-models";
+import { buildSettledRelativeViewModelV2 } from "../widget-types/relative/relative-view-model-v2";
+import { isRelativeRedlineTemplateId } from "../design-systems/vantare-endurance/relative/relative-endurance-settings";
+import type { RelativeViewModel } from "../widget-types/relative/relative-view-model";
 
 export type { WidgetDiagnostic, WidgetDiagnosticCollector } from "./widget-diagnostics";
 
@@ -57,6 +60,22 @@ function HostDiagnostic(props: {
       {props.message}
     </div>
   );
+}
+
+function CommittedRedlineRelative(props: {
+  frame: NonNullable<WidgetRuntimeInput["overlayV2Frame"]>;
+  source: NonNullable<WidgetRuntimeInput["overlayV2Source"]>;
+  content: Record<string, unknown>;
+  render: (model: RelativeViewModel) => ReactNode;
+}): ReactNode {
+  // Redline opts into the Go-owned settled membership. The frontend retains
+  // only visual motion; it must not apply a second membership hold.
+  const model = buildSettledRelativeViewModelV2(
+    props.frame,
+    props.source,
+    props.content as never,
+  );
+  return props.render(model);
 }
 
 export function WidgetVisualHost(props: WidgetVisualHostProps): ReactNode {
@@ -126,6 +145,30 @@ export function WidgetVisualHost(props: WidgetVisualHostProps): ReactNode {
     return <HostDiagnostic widget={widget} code="overlay-v2-source-missing" message={message} />;
   }
 
+  const relativeRedline = widget.type === "relative" &&
+    registration.systemId === "vantare-endurance" &&
+    isRelativeRedlineTemplateId(settings.templateId);
+  const Renderer = registration.Renderer;
+  if (v2Entry && !v2Rollback && frame && source && relativeRedline) {
+    return (
+      <CommittedRedlineRelative
+        frame={frame}
+        source={source}
+        content={content}
+        render={(model) => (
+          <WidgetRenderBoundary
+            widgetId={widget.id}
+            widgetType={widget.type}
+            systemId={widget.visual.systemId}
+            onError={(error) => reportDiagnostic(props, "renderer-exception", error.message)}
+          >
+            <Renderer model={model} settings={settings} renderMode={renderMode} layout={widget.layout} />
+          </WidgetRenderBoundary>
+        )}
+      />
+    );
+  }
+
   let model;
   if (v2Entry && !v2Rollback && frame && source) {
     // V2 se construye primero: el builder V1 no se ejecuta para luego
@@ -134,7 +177,11 @@ export function WidgetVisualHost(props: WidgetVisualHostProps): ReactNode {
       frame,
       source,
       content,
-      props.runtime,
+      {
+        ...props.runtime,
+        relativeViewModelInstanceKey: props.runtime?.relativeViewModelInstanceKey ?? `${renderMode}:${widget.id}`,
+        relativeViewModelStability: undefined,
+      },
     );
   } else if (!v2Entry && definition.buildAuxiliaryViewModel) {
     model = definition.buildAuxiliaryViewModel(content as never, props.runtime ?? {}, renderMode);
@@ -159,7 +206,6 @@ export function WidgetVisualHost(props: WidgetVisualHostProps): ReactNode {
     } as InputTelemetryViewModel;
   }
 
-  const Renderer = registration.Renderer;
   const staleMessage = v2Entry && !v2Rollback && frame && source?.state === "stale"
     ? `Overlay V2 stale${source.ageMs !== undefined ? ` (${Math.round(source.ageMs)} ms)` : ""}`
     : undefined;
@@ -178,7 +224,7 @@ export function WidgetVisualHost(props: WidgetVisualHostProps): ReactNode {
         systemId={widget.visual.systemId}
         onError={(error) => reportDiagnostic(props, "renderer-exception", error.message)}
       >
-        <Renderer model={model} settings={settings} renderMode={renderMode} />
+        <Renderer model={model} settings={settings} renderMode={renderMode} layout={widget.layout} />
       </WidgetRenderBoundary>
     </>
   );

@@ -1,4 +1,4 @@
-import { memo, useLayoutEffect, useRef, type CSSProperties } from 'react';
+import { memo, useLayoutEffect, useMemo, useRef, type CSSProperties } from 'react';
 import {
   applyStudioFrameLayoutPreview,
   getStudioFrameLayoutPreview,
@@ -14,6 +14,11 @@ import { useI18n } from '../../../i18n/I18nProvider';
 import type { ResizeHandle } from './canvas-resize';
 import { useSelectionFit } from './useSelectionFit';
 import { useStudioTelemetryRuntime } from './studio-telemetry';
+import {
+  resolveStandingsRedlineFrameLayout,
+  resolveStandingsRedlineMinimumWidth,
+} from '../../../overlay/widget-types/standings/standings-redline-layout';
+import { DEFAULT_LAYOUT_VIEWPORT } from '../../../overlay/core/layout-viewport';
 
 const MemoWidgetVisualHost = memo(WidgetVisualHost);
 
@@ -32,6 +37,7 @@ const RESIZE_HANDLES: readonly ResizeHandle[] = ['nw', 'n', 'ne', 'e', 'se', 's'
 
 export type StudioWidgetFrameProps = {
   widget: WidgetInstanceV3;
+  profileId: string;
   layout: WidgetLayoutV3;
   previewActive?: boolean;
   selected: boolean;
@@ -50,11 +56,13 @@ export type StudioWidgetFrameProps = {
    * piel Orbit; el lienzo V3 clasico lo deja apagado y no cambia.
    */
   fitSelectionToContent?: boolean;
+  layoutViewportWidth?: number;
 };
 
 function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactElement {
   const {
     widget,
+    profileId,
     layout,
     previewActive = false,
     selected,
@@ -64,12 +72,23 @@ function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactE
     onLostPointerCapture,
     diagnostics,
     fitSelectionToContent = false,
+    layoutViewportWidth = DEFAULT_LAYOUT_VIEWPORT.width,
   } = props;
   const { t } = useI18n();
   const runtime = useStudioTelemetryRuntime(widget.type);
+  const widgetRuntime = useMemo(() => ({
+    ...runtime,
+    relativeViewModelInstanceKey: `${profileId}:${widget.id}`,
+  }), [profileId, runtime, widget.id]);
   const frameRef = useRef<HTMLDivElement>(null);
   const selectionRef = useRef<HTMLDivElement>(null);
-  const frameGeometry = resolveStudioFrameGeometry(widget.id, layout, previewActive);
+  const frameGeometry = resolveStandingsRedlineFrameLayout(
+    widget,
+    resolveStudioFrameGeometry(widget.id, layout, previewActive),
+    layoutViewportWidth,
+  );
+  const effectiveMinimumWidth = resolveStandingsRedlineMinimumWidth(widget);
+  const layoutWasNormalized = effectiveMinimumWidth !== undefined && layout.w < effectiveMinimumWidth;
   const resizeHandles =
     widgetTypeRegistry.get(widget.type).capabilities.resizeMode === 'horizontal-only'
       ? (['e', 'w'] as const)
@@ -127,6 +146,9 @@ function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactE
       ref={frameRef}
       data-testid={`studio-widget-frame-${widget.id}`}
       data-preview-active={previewActive ? 'true' : undefined}
+      data-effective-minimum-width={effectiveMinimumWidth}
+      data-layout-normalized={layoutWasNormalized ? 'true' : undefined}
+      data-layout-viewport-width={layoutViewportWidth}
       className={frameClassName}
       style={frameStyle}
       role="button"
@@ -197,7 +219,7 @@ function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactE
             widget={widget}
             renderMode="studio"
             diagnostics={diagnostics}
-            runtime={runtime}
+            runtime={widgetRuntime}
           />
         </WidgetVisualViewport>
       </div>
@@ -209,6 +231,7 @@ export const StudioWidgetFrame = memo(
   StudioWidgetFrameComponent,
   (previous, next) =>
     previous.widget === next.widget &&
+    previous.profileId === next.profileId &&
     layoutsEqual(previous.layout, next.layout) &&
     previous.previewActive === next.previewActive &&
     previous.selected === next.selected &&
@@ -217,5 +240,6 @@ export const StudioWidgetFrame = memo(
     previous.onResizePointerDown === next.onResizePointerDown &&
     previous.onLostPointerCapture === next.onLostPointerCapture &&
     previous.diagnostics === next.diagnostics &&
-    previous.fitSelectionToContent === next.fitSelectionToContent,
+    previous.fitSelectionToContent === next.fitSelectionToContent &&
+    previous.layoutViewportWidth === next.layoutViewportWidth,
 );

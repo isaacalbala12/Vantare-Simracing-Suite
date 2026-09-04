@@ -13,16 +13,6 @@ const runtimeMock = vi.hoisted(() => ({
   emit: vi.fn(),
 }));
 
-const shadowRuntimeMock = vi.hoisted(() => ({
-  acceptLegacy: vi.fn(),
-  acceptOverlayV2: vi.fn(),
-  create: vi.fn(),
-}));
-
-vi.mock("./telemetry-shadow/overlay-v2-shadow-runtime", () => ({
-  createOverlayV2ShadowRuntime: shadowRuntimeMock.create,
-}));
-
 vi.mock("@wailsio/runtime", () => ({
   Events: {
     On: (name: string, handler: Handler) => {
@@ -127,38 +117,50 @@ describe("ObsOverlayApp", () => {
     vi.stubGlobal("EventSource", MockEventSource);
     runtimeOutput = { width: 1600, height: 900 };
     previewOutput = { width: 1600, height: 900 };
-    shadowRuntimeMock.acceptLegacy.mockReset();
-    shadowRuntimeMock.acceptOverlayV2.mockReset();
-    shadowRuntimeMock.create.mockReset().mockReturnValue({
-      acceptLegacy: shadowRuntimeMock.acceptLegacy,
-      acceptOverlayV2: shadowRuntimeMock.acceptOverlayV2,
-      sessionSummary: () => ({ frames: 0, mismatches: 0 }),
-    });
     installResizeObserver();
   });
 
-  it("does not allocate or ingest shadow state while V1 emission is off", async () => {
+  it("R4 OBS V2-only: abre exactamente V2 + Engineer, sin V1 ni shadow, y cierra ambos al desmontar", async () => {
+    const delta = deltaDefinition.createDefault("delta-r4");
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
       ok: true,
       json: () => Promise.resolve(buildApiResponse({
         schemaVersion: 3,
-        id: "obs-shadow-off",
-        name: "OBS Shadow Off",
+        id: "obs-r4-v2-only",
+        name: "OBS R4 V2-only",
         displayMode: "streaming",
         monitorIndex: 0,
-        layouts: { general: { type: "general", widgets: [] } },
+        layouts: { general: { type: "general", widgets: [delta] } },
       })),
     } as Response));
-    render(<ObsOverlayApp />);
+    const view = render(<ObsOverlayApp />);
     await flush();
+
+    expect(MockEventSource.instances.map((source) => source.url)).toEqual([
+      "/telemetry/overlay-v2/projection",
+      "/engineer/stream",
+    ]);
+    expect(MockEventSource.instances.some(
+      (source) => source.url === "/telemetry/overlay/projection",
+    )).toBe(false);
 
     const overlayV2 = MockEventSource.instances.find(
       (source) => source.url === "/telemetry/overlay-v2/projection",
     );
     act(() => overlayV2?.dispatch("telemetry:overlay-v2:snapshot", goldenV2Raw));
 
-    expect(shadowRuntimeMock.create).not.toHaveBeenCalled();
-    expect(shadowRuntimeMock.acceptOverlayV2).not.toHaveBeenCalled();
+    expect(screen.getAllByTestId("runtime-widget-frame")).toHaveLength(1);
+    const diagnostics = window.__vantareOverlayV2Diagnostics?.() as Record<string, unknown> | undefined;
+    expect(diagnostics).toBeDefined();
+    expect(diagnostics).toMatchObject({ overlay_v2_parse_duration: { count: 1 } });
+    expect(diagnostics).not.toHaveProperty("shadow");
+
+    view.unmount();
+    expect(MockEventSource.instances).toHaveLength(2);
+    for (const source of MockEventSource.instances) {
+      expect(source.close).toHaveBeenCalledTimes(1);
+    }
+    expect(window.__vantareOverlayV2Diagnostics).toBeUndefined();
   });
 
   afterEach(() => {
@@ -198,14 +200,19 @@ describe("ObsOverlayApp", () => {
 
     expect(screen.getAllByTestId("runtime-widget-frame")).toHaveLength(1);
     expect(consoleError.mock.calls.flat().join(" ")).not.toContain("invalid-contract:disposed");
-    expect(window.__vantareOverlayV2Diagnostics?.()).toMatchObject({
+    expect(MockEventSource.instances.some(
+      (source) => source.url === "/telemetry/overlay/projection",
+    )).toBe(false);
+    const diagnostics = window.__vantareOverlayV2Diagnostics?.() as Record<string, unknown> | undefined;
+    expect(diagnostics).toMatchObject({
       overlay_v2_parse_duration: { count: 1 },
     });
-    expect(MockEventSource.instances.filter((source) => !source.close.mock.calls.length)).toHaveLength(3);
-    expect(MockEventSource.instances.filter((source) => source.close.mock.calls.length)).toHaveLength(3);
+    expect(diagnostics).not.toHaveProperty("shadow");
+    expect(MockEventSource.instances.filter((source) => !source.close.mock.calls.length)).toHaveLength(2);
+    expect(MockEventSource.instances.filter((source) => source.close.mock.calls.length)).toHaveLength(2);
   });
 
-  it("loads profile-v3 and starts canonical v1 plus shadow v2 SSE adapters", async () => {
+  it("loads profile-v3 and starts canonical V2 plus Engineer SSE adapters without V1", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: () =>
@@ -228,7 +235,6 @@ describe("ObsOverlayApp", () => {
     expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("/api/profile-v3?profile="));
     expect(MockEventSource.instances.map((source) => source.url)).toEqual([
       "/telemetry/overlay-v2/projection",
-      "/telemetry/overlay/projection",
       "/engineer/stream",
     ]);
     expect(screen.getByTestId("runtime-overlay-surface")).toBeTruthy();

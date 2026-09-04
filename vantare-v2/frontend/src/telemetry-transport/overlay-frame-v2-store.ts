@@ -133,6 +133,14 @@ export function createOverlayFrameV2Store(
       if (name === OVERLAY_V2_STATUS_EVENT && update.frame !== null) {
         throw new OverlayFrameV2ContractError("frame");
       }
+      if (
+        update.frame && state.frame &&
+        update.frame.epoch === state.frame.epoch &&
+        update.frame.sessionId === state.frame.sessionId &&
+        update.frame.sequence <= state.frame.sequence
+      ) {
+        throw new OverlayFrameV2ContractError("sequence");
+      }
       // The 512-sample ring already rotates per sample, but its percentiles
       // must not mix two runs: a new epoch or session id starts a fresh window.
       if (update.frame) {
@@ -278,7 +286,7 @@ function sourceStatus(value: unknown, path: string): void {
 function frame(value: unknown, path: string): void {
   objectWithKeys(value, path, [
     "contract", "algorithm", "epoch", "sequence", "sectionMask", "sessionId", "generatedAt", "units",
-    "session", "player", "controls", "standings", "relative", "delta", "fuel", "spotter", "capabilities", "damage", "weather",
+    "session", "player", "controls", "standings", "relative", "relativeSettled", "delta", "fuel", "spotter", "capabilities", "damage", "weather",
   ]);
   if (value.contract !== 2) invalid(`${path}.contract`);
   positiveInteger(value.algorithm, `${path}.algorithm`);
@@ -295,7 +303,8 @@ function frame(value: unknown, path: string): void {
   player(value.player, `${path}.player`);
   controls(value.controls, `${path}.controls`);
   rowArray(value.standings, `${path}.standings`, validStanding);
-  rowArray(value.relative, `${path}.relative`, validRelative);
+  relativeRowArray(value.relative, `${path}.relative`);
+  relativeRowArray(value.relativeSettled, `${path}.relativeSettled`);
   delta(value.delta, `${path}.delta`);
   fuel(value.fuel, `${path}.fuel`);
   spotter(value.spotter, `${path}.spotter`);
@@ -365,10 +374,10 @@ function perMilleSeries(value: unknown, path: string): asserts value is readonly
 }
 
 function validStanding(value: unknown): boolean {
-  if (!objectHasKeys(value, ["id", "position", "classPosition", "gap", "lastLap", "lapDistance", "groundPosition"], ["classId", "driver", "number", "gapLaps", "pit", "laps"])) return false;
+  if (!objectHasKeys(value, ["id", "position", "classPosition", "gap", "bestLap", "lastLap", "lapDistance", "groundPosition"], ["classId", "driver", "number", "gapLaps", "pit", "laps"])) return false;
   const valid = typeof value.id === "string" && value.id.length > 0 &&
     Number.isSafeInteger(value.position) && Number.isSafeInteger(value.classPosition) &&
-    validQValue(value.gap, "number") && validQValue(value.lastLap, "number") &&
+    validQValue(value.gap, "number") && validQValue(value.bestLap, "number") && validQValue(value.lastLap, "number") &&
     validQValue(value.lapDistance, "number") && validGroundPosition(value.groundPosition) &&
     [value.classId, value.driver, value.number, value.pit].every(optionalStringValue) &&
     [value.gapLaps, value.laps].every(optionalIntegerValue);
@@ -424,9 +433,11 @@ function weather(value: unknown, path: string): void {
 }
 
 function validRelative(value: unknown): boolean {
-  if (!objectHasKeys(value, ["id", "gap", "side", "authority"], ["name", "classId"])) return false;
+  if (!objectHasKeys(value, ["id", "position", "gap", "groundPosition", "lastLap", "side", "authority"], ["name", "classId"])) return false;
   const valid = typeof value.id === "string" && value.id.length > 0 &&
-    validQValue(value.gap, "number") && typeof value.side === "string" && value.side.length > 0 &&
+    typeof value.position === "number" && Number.isSafeInteger(value.position) && value.position > 0 &&
+    validQValue(value.gap, "number") && validGroundPosition(value.groundPosition) &&
+    validQValue(value.lastLap, "number") && ["ahead", "player", "behind"].includes(value.side as string) &&
     ["native", "derived", "estimated"].includes(value.authority as string) &&
     optionalStringValue(value.name) && optionalStringValue(value.classId);
   if (valid) Object.freeze(value);
@@ -558,6 +569,21 @@ function rowArray(value: unknown, path: string, validate: (value: unknown) => bo
     if (!validate(value[index])) invalid(`${path}[${index}]`);
   }
   Object.freeze(value);
+}
+
+function relativeRowArray(value: unknown, path: string): void {
+  if (!Array.isArray(value) || value.length > 17) invalid(path);
+  rowArray(value, path, validRelative);
+  if (value.length === 0) return;
+  const rows = value as readonly JSONObject[];
+  const playerIndex = rows.findIndex((row) => row.side === "player");
+  const playerCount = rows.filter((row) => row.side === "player").length;
+  if (
+    playerCount !== 1 || playerIndex > 8 || rows.length - playerIndex - 1 > 8 ||
+    rows.slice(0, playerIndex).some((row) => row.side !== "ahead") ||
+    rows.slice(playerIndex + 1).some((row) => row.side !== "behind") ||
+    new Set(rows.map((row) => row.id)).size !== rows.length
+  ) invalid(path);
 }
 
 function record(value: unknown, path: string, validate: (value: unknown, path: string) => void): void {

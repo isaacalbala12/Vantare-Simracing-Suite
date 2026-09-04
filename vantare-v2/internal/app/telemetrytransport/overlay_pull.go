@@ -45,20 +45,19 @@ type overlayPullSession struct {
 	last        map[string]json.RawMessage
 }
 
-// OverlayPullTransport converts the retained v1/v2 projections into an
+// OverlayPullTransport converts the retained v2 projections into an
 // acknowledged, latest-wins exchange. It does not emit or start goroutines;
 // the Wails asset server returns the response to the requesting window.
 type OverlayPullTransport struct {
 	mu       sync.Mutex
-	hub      *Hub
 	registry *PublisherRegistry
 	sessions map[string]*overlayPullSession
 	retired  map[string][]string
 }
 
-func NewOverlayPullTransport(hub *Hub, registry *PublisherRegistry) *OverlayPullTransport {
+func NewOverlayPullTransport(registry *PublisherRegistry) *OverlayPullTransport {
 	return &OverlayPullTransport{
-		hub: hub, registry: registry, sessions: make(map[string]*overlayPullSession),
+		registry: registry, sessions: make(map[string]*overlayPullSession),
 		retired: make(map[string][]string),
 	}
 }
@@ -70,7 +69,7 @@ func (transport *OverlayPullTransport) Pull(
 	sender string,
 	request OverlayPullRequest,
 ) (OverlayPullResponse, bool, error) {
-	if transport == nil || transport.hub == nil || transport.registry == nil ||
+	if transport == nil || transport.registry == nil ||
 		sender == "" || request.SessionID == "" || len(request.SessionID) > maxOverlayPullSessionID {
 		return OverlayPullResponse{}, false, nil
 	}
@@ -111,10 +110,7 @@ func (transport *OverlayPullTransport) Pull(
 	}
 	session.pending = OverlayPullResponse{}
 
-	events, err := transport.currentEvents(session)
-	if err != nil {
-		return OverlayPullResponse{}, false, err
-	}
+	events := transport.currentEvents(session)
 	if len(events) == 0 {
 		return OverlayPullResponse{}, false, nil
 	}
@@ -129,22 +125,8 @@ func (transport *OverlayPullTransport) Pull(
 	return response, true, nil
 }
 
-func (transport *OverlayPullTransport) currentEvents(session *overlayPullSession) ([]OverlayPullEvent, error) {
-	candidates := make([]OverlayPullEvent, 0, 4)
-	if event, ok, err := transport.hub.ReplayStatus(); err != nil {
-		return nil, err
-	} else if ok {
-		candidates = append(candidates, OverlayPullEvent{
-			Name: EventName(event.Product, event.Kind), Data: event.Data,
-		})
-	}
-	if event, ok, err := transport.hub.ReplaySnapshot(); err != nil {
-		return nil, err
-	} else if ok {
-		candidates = append(candidates, OverlayPullEvent{
-			Name: EventName(event.Product, event.Kind), Data: event.Data,
-		})
-	}
+func (transport *OverlayPullTransport) currentEvents(session *overlayPullSession) []OverlayPullEvent {
+	candidates := make([]OverlayPullEvent, 0, 2)
 	if event, ok := session.publisher.ReplayStatus(); ok {
 		candidates = append(candidates, OverlayPullEvent{
 			Name: PublisherEventName(event.Product, event.Kind), Data: event.Data,
@@ -165,7 +147,7 @@ func (transport *OverlayPullTransport) currentEvents(session *overlayPullSession
 		session.last[event.Name] = data
 		changed = append(changed, OverlayPullEvent{Name: event.Name, Data: data})
 	}
-	return changed, nil
+	return changed
 }
 
 // Close releases only the matching frontend generation. This makes cleanup

@@ -2235,12 +2235,6 @@ func main() {
 		CfgDir:      cfgDir,
 		EngineerSvc: engSvc,
 		Emitter:     emitter,
-		OverlayProjection: func() *telemetrytransport.Hub {
-			if telemetryCoreRuntime == nil {
-				return nil
-			}
-			return telemetryCoreRuntime.Hub()
-		}(),
 		StrategyProjection: func() *telemetrytransport.Hub {
 			if telemetryCoreRuntime == nil || !*strategyPublicTransport {
 				return nil
@@ -2529,7 +2523,6 @@ func main() {
 		overlayPullService := newOverlayPullHTTPService(
 			newWailsOverlayPullTarget(wailsApp),
 			telemetrytransport.NewOverlayPullTransport(
-				telemetryCoreRuntime.Hub(),
 				telemetryCoreRuntime.OverlayV2Publishers(),
 			),
 		)

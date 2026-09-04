@@ -1,4 +1,7 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { act, cleanup, render } from "@testing-library/react";
+import { chromium } from "playwright";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { buildMockTelemetry } from "../core/mock-scenarios";
 import type { ProfileDocumentV3 } from "../core/profile-document";
@@ -15,6 +18,8 @@ import { raceScheduleDefinition } from "../widget-types/race-schedule/race-sched
 import { createRaceScheduleStore } from "../core/race-schedule-store";
 import type { Calendar } from "../../calendar/calendar-types";
 import { engineerRadioDefinition } from "../widget-types/engineer-radio/engineer-radio-definition";
+import type { StandingsContent } from "../widget-types/standings/standings-content";
+import goldenV2TwentyRaw from "../../../../internal/telemetry/projection/overlayv2/testdata/overlay_v2_20.golden.json?raw";
 
 const originalResizeObserver = globalThis.ResizeObserver;
 
@@ -99,6 +104,20 @@ function buildDocument(): ProfileDocumentV3 {
   };
 }
 
+function buildMaximumRedlineContent(): StandingsContent {
+  const content = standingsDefinition.parseContent(undefined);
+  const presets = ["sm", "sm", "lg", "lg", "md", "md", "auto", "lg", "lg", "xs", "sm"] as const;
+  return {
+    ...content,
+    classScope: "all-classes",
+    columns: content.columns.map((column, index) => ({
+      ...column,
+      enabled: true,
+      widthPreset: presets[index],
+    })),
+  };
+}
+
 describe("RuntimeOverlaySurface", () => {
   it.each([
     ["desktop", "source-missing"],
@@ -161,6 +180,231 @@ describe("RuntimeOverlaySurface", () => {
       coordinator.dispose();
     },
   );
+
+  it.each(
+    ([280, 340, 419, 420] as const).flatMap((persistedWidth) =>
+      (["desktop", "obs"] as const).map((renderMode) => [persistedWidth, renderMode] as const),
+    ),
+  )(
+    "normalizes a maximum Redline persisted at %spx to its readable physical minimum in %s",
+    async (persistedWidth, renderMode) => {
+      measuredWidth = 1920;
+      measuredHeight = 1080;
+      const coordinator = createBaseTelemetryRateCoordinator();
+      const twentyCarUpdate = JSON.parse(goldenV2TwentyRaw) as OverlayUpdateV2;
+      coordinator.setOverlayFrame(twentyCarUpdate.frame ?? undefined, twentyCarUpdate.source);
+      const document = buildDocument();
+      const widget = standingsDefinition.createDefault(`standings-redline-${renderMode}-${persistedWidth}`);
+      const maximumContent = buildMaximumRedlineContent();
+      const fixedMetrics = ["position", "driverName"] as const;
+      const expectedMetrics = [
+        ...fixedMetrics,
+        ...maximumContent.columns
+          .filter((column) => column.enabled && !fixedMetrics.includes(
+            column.metricId as (typeof fixedMetrics)[number],
+          ))
+          .map((column) => column.metricId),
+      ];
+      const expectedLastMetric = expectedMetrics.at(-1);
+      expect(expectedLastMetric).toBe("tireCompound");
+      widget.layout = { ...widget.layout, x: 1094, y: 40, w: persistedWidth, h: 900 };
+      widget.content = maximumContent;
+      widget.visual = {
+        ...widget.visual,
+        systemId: "vantare-endurance",
+        baseSettings: { templateId: "standings-redline", showSessionHeader: true },
+      };
+      document.layouts.general.widgets = [widget];
+
+      const view = render(
+        <RuntimeOverlaySurface document={document} telemetry={coordinator} renderMode={renderMode} />,
+      );
+      const frame = view.getByTestId("runtime-widget-frame") as HTMLElement;
+      const viewport = view.getByTestId(`runtime-widget-viewport-${widget.id}`) as HTMLElement;
+      expect(frame.style.width).toBe("826px");
+      expect(viewport.dataset.widgetVisualBaseWidth).toBe("826");
+      expect(viewport.style.transform).toBe("scale(1)");
+
+      const enduranceCss = readFileSync(
+        join(__dirname, "..", "design-systems", "vantare-endurance", "tokens.css"),
+        "utf8",
+      );
+      const browser = await chromium.launch({ headless: true });
+      try {
+        const page = await browser.newPage({ viewport: { width: 400, height: 700 } });
+        await page.setContent(
+          `<style>html,body{margin:0;background:transparent}*,*::before,*::after{box-sizing:border-box}${enduranceCss}</style>${view.container.innerHTML}`,
+        );
+        const geometry = await page.evaluate(({ expectedMetrics, expectedLastMetric }) => {
+          const frame = document.querySelector<HTMLElement>('[data-testid="runtime-widget-frame"]');
+          const viewport = document.querySelector<HTMLElement>('[data-widget-visual-viewport="true"]');
+          const renderer = document.querySelector<HTMLElement>('[data-template="standings-redline"]');
+          const header = renderer?.querySelector<HTMLElement>(".ven-red-slots");
+          const rows = renderer
+            ? [...renderer.querySelectorAll<HTMLElement>("[data-standings-row]")]
+            : [];
+          const firstRow = rows[0];
+          if (!frame || !viewport || !renderer || !header || rows.length === 0 || !expectedLastMetric) {
+            throw new Error("missing mounted Redline frame, viewport, header, rows, or configured last column");
+          }
+          const isVisible = (element: HTMLElement) => {
+            const style = getComputedStyle(element);
+            const box = element.getBoundingClientRect();
+            return style.display !== "none" && style.visibility !== "hidden"
+              && Number(style.opacity) > 0 && box.width > 0 && box.height > 0;
+          };
+          const inspect = () => {
+            const frameBox = frame.getBoundingClientRect();
+            const insideFrame = (element: HTMLElement) => {
+              const box = element.getBoundingClientRect();
+              return box.left >= frameBox.left - 1 && box.right <= frameBox.right + 1
+                && box.top >= frameBox.top - 1 && box.bottom <= frameBox.bottom + 1;
+            };
+            const rowFailures: string[] = [];
+            const cellFailures: string[] = [];
+            const lastColumnFailures: string[] = [];
+            const lastMetrics: string[] = [];
+            for (const [rowIndex, row] of rows.entries()) {
+              if (!insideFrame(row)) rowFailures.push(`${rowIndex}:outside`);
+              if (row.scrollWidth > row.clientWidth + 1) {
+                rowFailures.push(`${rowIndex}:scroll:${row.clientWidth}/${row.scrollWidth}`);
+              }
+              const cells = [...row.querySelectorAll<HTMLElement>("[data-metric]")];
+              const metrics = cells.map((cell) => cell.dataset.metric ?? "");
+              if (metrics.join("|") !== expectedMetrics.join("|")) {
+                rowFailures.push(`${rowIndex}:order:${metrics.join("|")}`);
+              }
+              lastMetrics.push(metrics.at(-1) ?? "");
+              const lastColumn = cells.at(-1);
+              if (!lastColumn || lastColumn.dataset.metric !== expectedLastMetric) {
+                lastColumnFailures.push(`${rowIndex}:missing:${metrics.at(-1) ?? "none"}`);
+              } else {
+                if (!isVisible(lastColumn)) lastColumnFailures.push(`${rowIndex}:hidden`);
+                if (!insideFrame(lastColumn)) lastColumnFailures.push(`${rowIndex}:outside`);
+                if (lastColumn.scrollWidth > lastColumn.clientWidth + 1) {
+                  lastColumnFailures.push(
+                    `${rowIndex}:scroll:${lastColumn.clientWidth}/${lastColumn.scrollWidth}`,
+                  );
+                }
+              }
+              for (const cell of cells.filter(isVisible)) {
+                const metric = cell.dataset.metric ?? "unknown";
+                if (!insideFrame(cell)) cellFailures.push(`${rowIndex}:${metric}:outside`);
+                if (cell.scrollWidth > cell.clientWidth + 1) {
+                  cellFailures.push(
+                    `${rowIndex}:${metric}:scroll:${cell.clientWidth}/${cell.scrollWidth}`,
+                  );
+                }
+              }
+            }
+            const representativeValue = firstRow.querySelector<HTMLElement>('[data-metric="lastLap"]');
+            if (!representativeValue) throw new Error("missing representative Redline value");
+            const representativeBox = representativeValue.getBoundingClientRect();
+            const renderedFontSize = Number.parseFloat(getComputedStyle(representativeValue).fontSize)
+              * (representativeBox.width / representativeValue.clientWidth);
+            return {
+              frameWidth: frameBox.width,
+              renderedFontSize,
+              headerInside: insideFrame(header),
+              headerReadable: header.scrollWidth <= header.clientWidth + 1,
+              rowCount: rows.length,
+              rowFailures,
+              cellFailures,
+              lastColumnFailures,
+              lastMetrics,
+            };
+          };
+          const baseline = inspect();
+          const originalWidth = viewport.style.width;
+          const originalTransform = viewport.style.transform;
+          viewport.style.width = "280px";
+          viewport.style.transform = "scale(1)";
+          const withCompressedBase = inspect();
+          viewport.style.width = originalWidth;
+          viewport.style.transform = originalTransform;
+          return { baseline, withCompressedBase };
+        }, { expectedMetrics, expectedLastMetric });
+        expect(geometry.baseline.frameWidth).toBeCloseTo(826, 1);
+        // Redline's compact metric tokens are authored at 11px; their physical
+        // rect must never be reduced below that readable design size.
+        expect(geometry.baseline.renderedFontSize).toBeGreaterThanOrEqual(11);
+        expect(geometry.baseline.headerInside).toBe(true);
+        expect(geometry.baseline.headerReadable).toBe(true);
+        expect(geometry.baseline.rowCount).toBe(20);
+        expect(geometry.baseline.rowFailures).toEqual([]);
+        expect(geometry.baseline.cellFailures).toEqual([]);
+        expect(geometry.baseline.lastColumnFailures).toEqual([]);
+        expect(geometry.baseline.lastMetrics).toEqual(
+          Array.from({ length: geometry.baseline.rowCount }, () => expectedLastMetric),
+        );
+        expect(
+          geometry.withCompressedBase.rowFailures.length
+            + geometry.withCompressedBase.cellFailures.length,
+          "using a 280px visual base must expose horizontal overflow",
+        ).toBeGreaterThan(0);
+      } finally {
+        await browser.close();
+        coordinator.dispose();
+      }
+    },
+    60_000,
+  );
+
+  it.each(["desktop", "obs"] as const)(
+    "maps a maximum Redline from 1920 to a 280-wide scene without re-expansion or negative origin in %s",
+    (renderMode) => {
+      measuredWidth = 280;
+      measuredHeight = 1080;
+      const coordinator = createTelemetryRateCoordinator();
+      const document = buildDocument();
+      const widget = standingsDefinition.createDefault("standings-redline-full-width");
+      widget.content = buildMaximumRedlineContent();
+      widget.layout = { ...widget.layout, x: 64, w: 1920 };
+      widget.visual = {
+        ...widget.visual,
+        systemId: "vantare-endurance",
+        baseSettings: { templateId: "standings-redline" },
+      };
+      document.layouts.general.widgets = [widget];
+
+      const view = render(
+        <RuntimeOverlaySurface
+          document={document}
+          telemetry={coordinator}
+          renderMode={renderMode}
+          layoutOrigin={{ x: 64, y: 0 }}
+        />,
+      );
+
+      const scene = view.getByTestId("runtime-overlay-scene") as HTMLElement;
+      const frame = view.getByTestId("runtime-widget-frame") as HTMLElement;
+      expect(scene.dataset.layoutWidth).toBe("280");
+      expect(frame.style.left).toBe("0px");
+      expect(frame.style.width).toBe("280px");
+      expect(Number.parseFloat(frame.style.left) + Number.parseFloat(frame.style.width)).toBeLessThanOrEqual(280);
+      coordinator.dispose();
+    },
+  );
+
+  it("does not apply the Redline minimum to another Endurance standings template", () => {
+    const coordinator = createTelemetryRateCoordinator();
+    const document = buildDocument();
+    const widget = standingsDefinition.createDefault("standings-endurance-classic");
+    widget.layout = { ...widget.layout, w: 280 };
+    widget.visual = {
+      ...widget.visual,
+      systemId: "vantare-endurance",
+      baseSettings: { templateId: "standings-classic" },
+    };
+    document.layouts.general.widgets = [widget];
+
+    const view = render(
+      <RuntimeOverlaySurface document={document} telemetry={coordinator} renderMode="desktop" />,
+    );
+
+    expect((view.getByTestId("runtime-widget-frame") as HTMLElement).style.width).toBe("280px");
+    coordinator.dispose();
+  });
 
   it.each(["desktop", "obs"] as const)(
     "passes the productive Calendar store through the %s surface to race-schedule",
@@ -326,6 +570,31 @@ describe("RuntimeOverlaySurface", () => {
     expect(scene.dataset.scale).toBe("0.5");
     coordinator.dispose();
   });
+
+  it.each(["desktop", "obs"] as const)(
+    "preserves the physical Standings Redline frame inside the %s scene",
+    (renderMode) => {
+      const coordinator = createTelemetryRateCoordinator();
+      const document = buildDocument();
+      const widget = standingsDefinition.createDefault("standings-redline-narrow");
+      widget.layout = { ...widget.layout, x: 1640, w: 280 };
+      widget.visual = {
+        ...widget.visual,
+        systemId: "vantare-endurance",
+        baseSettings: { templateId: "standings-redline" },
+      };
+      document.layouts.general.widgets = [widget];
+
+      const view = render(
+        <RuntimeOverlaySurface document={document} telemetry={coordinator} renderMode={renderMode} />,
+      );
+
+      const frame = view.getByTestId("runtime-widget-frame") as HTMLElement;
+      expect(frame.style.width).toBe("430px");
+      expect(frame.style.left).toBe("1490px");
+      coordinator.dispose();
+    },
+  );
 
   it("subtracts layoutOrigin once in logical space before the shared scale", () => {
     measuredWidth = 960;

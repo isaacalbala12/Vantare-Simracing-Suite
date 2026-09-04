@@ -1,5 +1,28 @@
 # Handoff vivo — Telemetry Core
 
+## R7b/A3 bloqueado en preflight (Delta, cero producción) — 2026-09-04, ISA-894
+
+Sobre `9847c544`, el inventario confirmó cero consumidores wire de
+`DeltaSample.SourceTime`/`LapDistance` y que Delta Trace solo necesita los 120
+instantes reales + segundos. El primer preflight sobre el fixture histórico
+104/104 midió 67.561–68.221 B y activó el STOP de 65.536 B. La revisión
+adversarial descubrió que ese fixture es inalcanzable: producción limita
+`Relative` y `RelativeSettled` a 17 filas. Una segunda medida temporal,
+alcanzable (Standings 104 + Relative 17 + settled 17 + bestLap fresh), dio
+52.796 B base y 56.149–56.809 B con A3; con strings de 20 caracteres,
+62.245–62.905 B. Sin embargo, con strings libres de 32 caracteres el frame
+base todavía cabe (63.860 B) y A3 lo hace fallar (67.213–67.873 B), creando
+una nueva región legal de rechazo. Por ello A3 sigue `BLOCKED`: cero código,
+cero tests RED persistidos y tree limpio tras eliminar los artefactos.
+
+Evidencia exacta:
+[`retirada-v1-r7b-a3-delta-preflight-20260904.md`](../../telemetry-core/evidence/isa-894/retirada-v1-r7b-a3-delta-preflight-20260904.md).
+Decisión pendiente: aprobar un presupuesto Publisher mayor con gate de no
+regresión o una recodificación lossless del wire mediante ADR. No reducir 120
+muestras, precisión, calidad, información, funciones ni cadencia; no continuar
+B–F mientras falte la paridad Delta V2. Este bloque prevalece sobre A2 para el
+estado y la siguiente acción.
+
 ## R7b/A2 ejecutado en rama (fuel, sin push) — 2026-09-04, ISA-894
 
 Writer unico en `C:\tmp\vantare-v1-retirada-r7b\vantare-v2`, rama

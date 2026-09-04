@@ -64,15 +64,24 @@ func TestFrameV2SyntheticFullUnder64KiBWith104Vehicles(t *testing.T) {
 func syntheticFullFrame(vehicles int) FrameV2 {
 	// The controls history is the player's alone and does not scale with the
 	// grid, but the worst case is always the full canonical window, so the
-	// budget must be measured with it populated.
+	// budget must be measured with it populated: 120 absolute instants plus
+	// three quality-bearing motion cells per sample, all fresh with
+	// representative values.
 	controls := ControlsHistoryV2{
-		Q: QualityFresh, WindowMS: 1904,
-		Throttle: make([]int16, 120), Brake: make([]int16, 120), Clutch: make([]int16, 120),
+		Q:            QualityFresh,
+		CapturedAtMS: make([]int64, 120),
+		Throttle:     make([]int16, 120), Brake: make([]int16, 120), Clutch: make([]int16, 120),
+		SpeedMPS: make([]QValue[float64], 120), RPM: make([]QValue[float64], 120), Gear: make([]QValue[int32], 120),
 	}
+	origin := int64(1786711200000)
 	for index := range controls.Throttle {
-		controls.Throttle[index] = int16(876 + index%100)
+		controls.CapturedAtMS[index] = origin + int64(index)*16
+		controls.Throttle[index] = int16(876 - index%100)
 		controls.Brake[index] = int16(543 - index%100)
 		controls.Clutch[index] = int16(index % 100)
+		controls.SpeedMPS[index] = QValue[float64]{V: 82.5, Q: QualityFresh}
+		controls.RPM[index] = QValue[float64]{V: 7250, Q: QualityFresh}
+		controls.Gear[index] = QValue[int32]{V: 6, Q: QualityFresh}
 	}
 	standings := make([]StandingRowV2, vehicles)
 	relative := make([]RelativeRowV2, vehicles)

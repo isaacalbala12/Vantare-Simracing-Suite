@@ -69,7 +69,10 @@
     "controls": {
       "history": {
         "q": "fresh",
-        "windowMs": 1000,
+        "capturedAtMS": [
+          1787140801000,
+          1787140802000
+        ],
         "throttle": [
           750,
           750
@@ -81,6 +84,36 @@
         "clutch": [
           0,
           0
+        ],
+        "speedMPS": [
+          {
+            "v": 50,
+            "q": "fresh"
+          },
+          {
+            "v": 50,
+            "q": "fresh"
+          }
+        ],
+        "rpm": [
+          {
+            "v": 7200,
+            "q": "fresh"
+          },
+          {
+            "v": 7200,
+            "q": "fresh"
+          }
+        ],
+        "gear": [
+          {
+            "v": 4,
+            "q": "fresh"
+          },
+          {
+            "v": 4,
+            "q": "fresh"
+          }
         ]
       }
     },

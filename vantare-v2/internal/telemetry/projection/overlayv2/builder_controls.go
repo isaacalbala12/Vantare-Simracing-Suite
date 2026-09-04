@@ -5,6 +5,7 @@ import (
 
 	"github.com/vantare/overlays/v2/internal/telemetry/derive"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/vehicle"
 )
 
 // controlsPerMille is the quantization of a pedal ratio on the v2 wire: three
@@ -12,7 +13,7 @@ import (
 // magnitude cheaper than a float per sample.
 const controlsPerMille = 1000
 
-// BuildControls publishes the player's pedal history from the canonical
+// BuildControls publishes the player's control history from the canonical
 // derivation.
 //
 // The authority is derive.FinalState.Derived.ControlsHistory, the same series
@@ -23,9 +24,10 @@ const controlsPerMille = 1000
 // happened to reach the browser, so two widgets could disagree about the same
 // lap. The canonical history has one owner and one retention rule.
 //
-// Only the ratios travel. Overlay v1's TypeScript samples also carried speed,
-// rpm and gear, but the canonical ControlSample has none of them: the
-// derivation records pedals. They are declared gaps, not reconstructed here.
+// Pedals travel quantized per-mille; every sample also carries its absolute
+// capture instant and its motion fields (speed in m/s, rpm, gear), each with
+// its own quality. All arrays stay index-aligned; a missing motion value omits
+// V on the wire without shortening any array. Q covers the series/pedals.
 func BuildControls(final derive.FinalState) ControlsV2 {
 	history := final.Derived.ControlsHistory
 	quality := qualityFromFreshness(history.Freshness)
@@ -34,21 +36,23 @@ func BuildControls(final derive.FinalState) ControlsV2 {
 		return ControlsV2{History: ControlsHistoryV2{Q: quality}}
 	}
 	view := ControlsHistoryV2{
-		Q:        quality,
-		Throttle: make([]int16, len(samples)),
-		Brake:    make([]int16, len(samples)),
-		Clutch:   make([]int16, len(samples)),
+		Q:            quality,
+		CapturedAtMS: make([]int64, len(samples)),
+		Throttle:     make([]int16, len(samples)),
+		Brake:        make([]int16, len(samples)),
+		Clutch:       make([]int16, len(samples)),
+		SpeedMPS:     make([]QValue[float64], len(samples)),
+		RPM:          make([]QValue[float64], len(samples)),
+		Gear:         make([]QValue[int32], len(samples)),
 	}
 	for index, sample := range samples {
+		view.CapturedAtMS[index] = sample.CapturedAt.UnixMilli()
 		view.Throttle[index] = quantizeRatio(sample.Throttle)
 		view.Brake[index] = quantizeRatio(sample.Brake)
 		view.Clutch[index] = quantizeRatio(sample.Clutch)
-	}
-	if len(samples) > 1 {
-		span := samples[len(samples)-1].CapturedAt.Sub(samples[0].CapturedAt).Milliseconds()
-		if span > 0 {
-			view.WindowMS = span
-		}
+		view.SpeedMPS[index] = qualityValue(sample.SpeedMPS, func(value float64) float64 { return value })
+		view.RPM[index] = qualityValue(sample.EngineRPM, func(value vehicle.EngineRPM) float64 { return float64(value) })
+		view.Gear[index] = qualityValue(sample.Gear, func(value vehicle.Gear) int32 { return int32(value) })
 	}
 	return ControlsV2{History: view}
 }

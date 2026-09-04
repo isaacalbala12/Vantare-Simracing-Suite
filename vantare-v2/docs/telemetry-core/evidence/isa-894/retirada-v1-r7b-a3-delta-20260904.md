@@ -32,8 +32,9 @@ cabe bajo 72 KiB; no se afirma que toda string no acotada quepa.
 - RED Go publisher (`publisher_overlayv2_limit_test.go` nuevo):
   `FAIL [build failed]` — `undefined: OverlayV2MaxPayloadBytes` (4 errores).
 - GREEN Go publisher: `OverlayV2MaxPayloadBytes = 72 * 1024` específico de
-  producto + `defaultPublisherMaxPayloadBytes(product)` usado en `newPublisher`
-  y `Registry.PublishStatus`. Futuros productos conservan 64 KiB por defecto;
+  producto + `resolvePublisherMaxPayloadBytes(product, configured)` usado en
+  `newPublisher` y `Registry.PublishStatus` (endurecido a hard clamp en el
+  re-review P0, ver sección). Futuros productos conservan 64 KiB por defecto;
   el techo genérico `MaxPayloadBytes = 256 * 1024` intacto (test dedicado).
 - RED frontend límite (`overlay-v2-payload-limit.test.ts` nuevo): 2 failed —
   `expected undefined to be 73728`.
@@ -74,7 +75,7 @@ sincronizado, no solo default.
 
 - RED: `TestOverlayV2ExplicitOverrideAbove72KiBIsClamped` y
   `TestOverlayV2RegistryStatusRespects72KiBHardCapWithOverride` (2 failed;
-  los 4 tests previos del archivo seguían en verde, incluido el override
+  los 3 tests previos del archivo seguían en verde, incluido el override
   menor de 64 KiB).
 - GREEN mínimo: `resolvePublisherMaxPayloadBytes(product, configured)`,
   regla única compartida por constructor y vía retained-status.

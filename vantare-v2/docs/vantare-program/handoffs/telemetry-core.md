@@ -1,22 +1,15 @@
 # Handoff vivo — Telemetry Core
 
-## R7b/A3 en curso tras decisión de presupuesto (Delta) — 2026-09-04, ISA-894
+## R7b/A3 CERRADO — doble APPROVE, siguiente B1 — 2026-09-04, ISA-894
 
-Decisión aprobada por Isaac: 64 KiB pasa a objetivo de rendimiento
-representativo y **72 KiB (`73728 B`) es el límite duro de seguridad**,
-sincronizado entre Publisher Go de overlay-v2 y validador frontend; el
-transporte general conserva 256 KiB sin ampliarse. El escenario legal de
-seguridad (strings 32 + float adverso + A3, 67.213–67.873 B medidos) cabe
-bajo 72 KiB; no se afirma que toda string no acotada quepa.
-
-A3 se implementa con TDD RED→GREEN en `vantareapp/isa-894-retirada-v1-r7b`
-desde `60a78e55`: límite overlay-v2 explícito en Go, constante centralizada
-y validador en frontend, fixture corregido 104/17/17 con asserts de topes,
-`DeltaHistoryV2` + builder + contrato generado + decoder V2 sin
-singleton/`Date.now`, gates y evidencia. Sin push/PR/merge/promoción.
-Evidencia: `retirada-v1-r7b-a3-delta-preflight-20260904.md` (preflight) y
-`retirada-v1-r7b-a3-delta-20260904.md` (ejecución). No declara A3 cerrada:
-faltan revisión de especificación y revisión adversarial de calidad.
+A3 CERRADO con APPROVE de spec (`ses_f92d…`) y APPROVE fresh de quality
+(`ses_f92cc…`), P0/P1/P2=0 sobre HEAD `d9dd3951` (sin push/PR/merge).
+Payloads re-medidos por el reviewer: **52723 / 61049 / 66677 B**
+(base 104/17/17, 20ch+A3 bajo 64 KiB, 32ch+adverso+A3 bajo 72 KiB).
+Riesgos no bloqueantes heredados: strings sin cota, endurecimientos P3
+posibles del validador, deriva nominal documental; no se convierten en
+scope. Siguiente: **B1** (guardias estructurales RED de ausencia V1).
+`plan.md`/`roadmap.json` sin tocar (cierre combinado R7b pendiente).
 
 ## R7b/A3 ejecutado sin push (Delta, pendiente de revisiones) — 2026-09-04, ISA-894
 

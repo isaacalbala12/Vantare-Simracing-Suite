@@ -1,0 +1,32 @@
+[
+  {
+    "asset": "CascadiaCode-BLEi_uz2.ttf",
+    "bytes": 387948,
+    "sha256": "cfb6a8d474018fe46d53a427e5fbee44b998822d0d3d8772914bd712cfc55ac4",
+    "transfer": "UNKNOWN; referenced assets are not necessarily downloaded"
+  },
+  {
+    "asset": "orbit-icons-DtQBEL0h.svg",
+    "bytes": 2793,
+    "sha256": "b3f1c0c05214ca5be31e9e3af46758b2b0ecbf3a41b70beff74ba100d7f78499",
+    "transfer": "UNKNOWN; referenced assets are not necessarily downloaded"
+  },
+  {
+    "asset": "plus-jakarta-sans-latin-wght-700-800-v12-eXO_dkmS.woff2",
+    "bytes": 27348,
+    "sha256": "153fc85b70298beeb1d61a5f723331649e7f23bb77302a66e61cb3e2fbdb5e79",
+    "transfer": "UNKNOWN; referenced assets are not necessarily downloaded"
+  },
+  {
+    "asset": "Inter-Variable-Dx4kXJAl.woff2",
+    "bytes": 48256,
+    "sha256": "3100e775e8616cd2611beecfa23a4263d7037586789b43f035236a2e6fbd4c62",
+    "transfer": "UNKNOWN; referenced assets are not necessarily downloaded"
+  },
+  {
+    "asset": "jetbrains-mono-latin-wght-500-800-v24-6fWv1k7M.woff2",
+    "bytes": 31432,
+    "sha256": "83c005d49d8a6a50474c73a5a36ac0468076e9c4a29da7bdb14995d80560a5be",
+    "transfer": "UNKNOWN; referenced assets are not necessarily downloaded"
+  }
+]

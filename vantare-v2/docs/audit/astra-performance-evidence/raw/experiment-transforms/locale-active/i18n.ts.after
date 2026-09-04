@@ -1,0 +1,27 @@
+
+export type Locale = "es" | "en" | "pt" | "it";
+
+export const SUPPORTED_LOCALES: readonly Locale[] = ["es", "en", "pt", "it"];
+
+export const DEFAULT_LOCALE: Locale = "es";
+
+const dictionaries: Partial<Record<Locale, Record<string, string>>> = {};
+const loaders = { es: () => import('./locales/es').then(m=>m.es), en: () => import('./locales/en').then(m=>m.en), pt: () => import('./locales/pt').then(m=>m.pt), it: () => import('./locales/it').then(m=>m.it) };
+export async function loadLocale(locale: Locale) { dictionaries[locale] ??= await loaders[locale](); }
+let initial: Locale = DEFAULT_LOCALE;
+try { initial = normalizeLocale(localStorage.getItem('vantare.locale')); } catch {}
+await loadLocale(initial);
+
+export function isLocale(value: unknown): value is Locale {
+  return SUPPORTED_LOCALES.includes(value as Locale);
+}
+
+export function normalizeLocale(value: unknown): Locale {
+  if (isLocale(value)) return value;
+  return DEFAULT_LOCALE;
+}
+
+export function translate(locale: Locale, key: string): string {
+  const dict = dictionaries[normalizeLocale(locale)];
+  return dict?.[key] ?? key;
+}

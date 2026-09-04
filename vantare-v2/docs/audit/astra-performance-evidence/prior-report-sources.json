@@ -1,0 +1,26 @@
+[
+  {
+    "file": "/Users/isaacalbala/Desktop/vantare-auditorias/codebase-health-audit-v3.md",
+    "sha256": "d9875b5940e333f32b1026744848e1d81c0784c1601c26a70d8286b56d3f459c",
+    "firstReadAfterBlindCommit": "96539f54",
+    "scope": "material performance findings and executive decisions; no adoption of scores"
+  },
+  {
+    "file": "/Users/isaacalbala/Desktop/vantare-auditorias/codebase-health-audit.md",
+    "sha256": "ac3bc6c51a5ee98536ec56c2c437115538911cfbd231c49b3c93597fa6e8c29b",
+    "firstReadAfterBlindCommit": "96539f54",
+    "scope": "material performance findings and executive decisions; no adoption of scores"
+  },
+  {
+    "file": "/Users/isaacalbala/Desktop/vantare-auditorias/codebase-health-audit-v4.md",
+    "sha256": "d6e71a1ca809e272246ca6f8028c59d5c38d34a8de4c019acd866fef3a4ff12f",
+    "firstReadAfterBlindCommit": "96539f54",
+    "scope": "material performance findings and executive decisions; no adoption of scores"
+  },
+  {
+    "file": "/Users/isaacalbala/Desktop/vantare-nightly-audit-2026-09-04/docs/audit/codebase-health-audit.md",
+    "sha256": "c2154d98ecfc0e49ed47dab5267fd77f2d868befa5d2a70936471f458c4cca8b",
+    "firstReadAfterBlindCommit": "96539f54",
+    "scope": "material performance findings and executive decisions; no adoption of scores"
+  }
+]

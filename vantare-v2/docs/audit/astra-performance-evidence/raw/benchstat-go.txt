@@ -1,0 +1,86 @@
+goos: darwin
+goarch: arm64
+pkg: github.com/vantare/overlays/v2/internal/engineer/messagepolicy
+cpu: Apple M5
+                                 │ <evidence-temp>/candidate-go-bench.log │
+                                 │                       sec/op                       │
+SchedulerSaturatedQueue-10                                                2.130µ ± 1%
+SpotterSupersessionAtCapacity-10                                          232.4µ ± 0%
+geomean                                                                   22.25µ
+
+                                 │ <evidence-temp>/candidate-go-bench.log │
+                                 │                        B/op                        │
+SchedulerSaturatedQueue-10                                                 478.0 ± 0%
+SpotterSupersessionAtCapacity-10                                         39.98Ki ± 0%
+geomean                                                                  4.320Ki
+
+                                 │ <evidence-temp>/candidate-go-bench.log │
+                                 │                     allocs/op                      │
+SchedulerSaturatedQueue-10                                                 7.000 ± 0%
+SpotterSupersessionAtCapacity-10                                           14.00 ± 0%
+geomean                                                                    9.899
+
+pkg: github.com/vantare/overlays/v2/internal/engineer/presentation
+            │ <evidence-temp>/candidate-go-bench.log │
+            │                       sec/op                       │
+Resolver-10                                         34.95n ± 20%
+
+            │ <evidence-temp>/candidate-go-bench.log │
+            │                        B/op                        │
+Resolver-10                                           0.000 ± 0%
+
+            │ <evidence-temp>/candidate-go-bench.log │
+            │                     allocs/op                      │
+Resolver-10                                           0.000 ± 0%
+
+pkg: github.com/vantare/overlays/v2/internal/engineer/service
+                                                               │ <evidence-temp>/candidate-go-bench.log │
+                                                               │                       sec/op                       │
+EngineerDeliverySchedulerToStartedUnderConcurrentPreemption-10                                          10.29µ ± 1%
+
+                                                               │ <evidence-temp>/candidate-go-bench.log │
+                                                               │                        B/op                        │
+EngineerDeliverySchedulerToStartedUnderConcurrentPreemption-10                                         4.756Ki ± 0%
+
+                                                               │ <evidence-temp>/candidate-go-bench.log │
+                                                               │                     allocs/op                      │
+EngineerDeliverySchedulerToStartedUnderConcurrentPreemption-10                                           26.00 ± 0%
+
+pkg: github.com/vantare/overlays/v2/internal/radio
+                              │ <evidence-temp>/candidate-go-bench.log │
+                              │                       sec/op                       │
+SpotterFastLane8Concurrent-10                                          15.99µ ± 0%
+
+                              │ <evidence-temp>/candidate-go-bench.log │
+                              │                        B/op                        │
+SpotterFastLane8Concurrent-10                                         26.52Ki ± 0%
+
+                              │ <evidence-temp>/candidate-go-bench.log │
+                              │                     allocs/op                      │
+SpotterFastLane8Concurrent-10                                           142.0 ± 0%
+
+pkg: github.com/vantare/overlays/v2/internal/spotter
+                             │ <evidence-temp>/candidate-go-bench.log │
+                             │                       sec/op                       │
+ObservationToRadioStarted-10                                          2.581µ ± 1%
+
+                             │ <evidence-temp>/candidate-go-bench.log │
+                             │                        B/op                        │
+ObservationToRadioStarted-10                                         1.835Ki ± 0%
+
+                             │ <evidence-temp>/candidate-go-bench.log │
+                             │                     allocs/op                      │
+ObservationToRadioStarted-10                                           24.00 ± 0%
+
+pkg: github.com/vantare/overlays/v2/internal/strategy/solver
+                      │ <evidence-temp>/candidate-go-bench.log │
+                      │                       sec/op                       │
+SolveEnduranceRace-10                                          2.588µ ± 0%
+
+                      │ <evidence-temp>/candidate-go-bench.log │
+                      │                        B/op                        │
+SolveEnduranceRace-10                                         4.119Ki ± 0%
+
+                      │ <evidence-temp>/candidate-go-bench.log │
+                      │                     allocs/op                      │
+SolveEnduranceRace-10                                           34.00 ± 0%

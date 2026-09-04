@@ -1,0 +1,51 @@
+{
+  "implementation": {
+    "baseRefName": "nightly",
+    "baseRefOid": "659b2c57dc2c7fc75962cc3c8e425ed1289266ec",
+    "headRefOid": "330d33877b7e60cbfd475b6851220ff60266822b",
+    "isDraft": true,
+    "mergeStateStatus": "CLEAN",
+    "number": 980,
+    "statusCheckRollup": [
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-09-04T22:42:16Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/33926595053/job/101196362382",
+        "name": "Validate promotion path",
+        "startedAt": "2026-09-04T22:41:58Z",
+        "status": "COMPLETED",
+        "workflowName": "Branch channel gates"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-09-04T22:53:11Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/33926595053/job/101196430903",
+        "name": "Validate Vantare blocking gates",
+        "startedAt": "2026-09-04T22:42:18Z",
+        "status": "COMPLETED",
+        "workflowName": "Branch channel gates"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-09-04T22:41:56Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://dashboard.gitguardian.com",
+        "name": "GitGuardian Security Checks",
+        "startedAt": "2026-09-04T22:41:55Z",
+        "status": "COMPLETED",
+        "workflowName": ""
+      }
+    ],
+    "url": "https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/980"
+  },
+  "blindFreezeCommit": "96539f54",
+  "auditDeliveryBase": "659b2c57dc2c7fc75962cc3c8e425ed1289266ec",
+  "telemetryCore": "excluded",
+  "nativeWindowsMeasurements": "UNKNOWN",
+  "mainCheckout": "untouched",
+  "merges": 0,
+  "releases": 0,
+  "implementationRoadmapContract": "First run audit-mode substep failed on missing issue checkboxes; live issue corrected; rerun requested. Windows tests passed independently."
+}

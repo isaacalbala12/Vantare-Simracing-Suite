@@ -1,0 +1,16 @@
+# Windows validation backlog
+
+Estado de todos los resultados: **UNKNOWN / WINDOWS-RUNTIME-BLOCKED**, sin ejecución Windows local. La entrada común es `pwsh -File scripts/performance/windows/Invoke-VantarePerformanceValidation.ps1 -Exe <binary> -ExpectedGitSha <SHA> -ExpectedBuildSha256 <hash>`. No copiar secretos ni subir private-do-not-upload. El hash esperado debe venir del artefacto de build confiable; la ausencia de revisión embebida se declara.
+
+| Gate/cambio | Por qué Mac no basta | Escenario/comando adicional | Repeticiones | Métricas | Aceptación | Capacidad |
+|---|---|---|---|---|---|---|
+|ContornoV2, FPS/CPU|WebView2/GPU y carga LMU|`-Scenarios overlay-race-44,game-control`|warmup10s+5×60s BASE y HEAD|CPU/private/GPU válidos, LMU frame p50/p95/p99; comparar mismos coches/perfil/escena|beneficio superior al ruido o reportar no material; ninguna pérdida visual/Hz|colector disponible, no ejecutado|
+|Idle/Hub minimized|cierre nativo real y procesos|`-Scenarios hub-visible,hub-minimized,overlay-idle`|warmup10s+5×60s|PID/roles, privateBytes, CPU, heap JS, listeners|sin crecimiento sostenido tras reapertura; roles no ambiguos|colector disponible|
+|Startup/TTI|Go/Wails/WebView arranque real|misma entrada, startup JSON enumera11marcadores|5 arranques fríos y5 calientes separados|proceso,Go ready,WebView,JS,React,Hub visible/interactivo,ruta,Overlay,primer dato,cierre|cada marca debe tener sonda explícita y reloj compatible; no sumar/substraer relojes distintos|faltan sondas; JSON conserva UNKNOWN, no duración de escenario como TTI|
+|10/50 ciclos de ventana|retención mismo proceso WebView2|extender control overlay-start/stop de huella-cdp; medir tras10 y50 en un único proceso|5 series por variante|handles/threads, PrivateBytes/heap trasGC, timers/listeners/dispose|plateau entre10/50; callbacks tardíos0; validar reapertura/edit/perfil/conexión|acciones CDP existentes; orquestación de ensayo completa pendiente|
+|Soak30min|memoria y GPU sostenidas|extender duración del banco canónico a1800s (wrapper corto no equivale)|3 BASE/HEAD|pendiente/slope privateBytes,GC,CPU,handles|sin pendiente repetible atribuible al cambio; conservar ruido/control|huella admite1800s; wrapper corto no ejecuta esta matriz|
+|OBS/transparent|compositor y browser source OBS reales|escena física OBS reproducible con mismo perfil y44coches|5×60s + capturasestáticas|paint/FPS/Private/GPU y paridad|sin diffs visuales inesperados, información/cadencia iguales|requiere entorno OBS y controlador de escena; no simular con Chromium|
+|IPC E2E|puente Wails y cola real|sondas correlacionadas por epoch/sequence antes/consumidor/paint|5×60s a20/44/104coches|msg/s,bytes/s,payloadp50/95/99,drops,E2E|latest-wins, ninguna revisión regresiva; reloj monotónico dentro de cada proceso|instrumentación pendiente; pull microbench no es E2E|
+|Audio Engineer|dispositivo/driver/TTS reales|misma sesión+replay de eventos aprobados por familia|5series|evento→audio start, drops/preemption, presentación|paridad semántica por familia y política; no eliminar legacy|gates de familia/repositorio, medición física pendiente|
+
+El paquete no declara «ready» una sonda no implementada. Windows CI de980 prueba build/tests, no completa esta tabla. No usar resultados previos como medición nueva ni cerrar incidencias automáticamente.

@@ -1,0 +1,17 @@
+resource,createdAt,owner,disposePath,survivesUnmount,evidence
+Wails listeners,CompositeApp.tsx effects; engineer-presentation-adapters,Composite generation,unsubscribe / engineerAdapter.stop,no by cleanup contract,candidate tests; full native UNKNOWN
+SSE/EventSource,telemetry-transport/overlay-frame-v2-store.ts::attachOverlayFrameV2Sse,Obs generation,detachOverlayV2,no by cleanup contract,candidate tests; physical OBS UNKNOWN
+pull requests / retries,telemetry-transport/overlay-wails-pull.ts,Composite generation,overlayPull.stop,pending operations gated by generation,candidate teardown tests; in-flight native UNKNOWN
+stores,CompositeApp/ObsOverlayApp::useEffect,generation,store.dispose,no,unit tests; consumer cycles subscriptions0
+rAF / timers,overlay/core/telemetry-rate-coordinator.ts,coordinator,coordinator.dispose and subscription detach,no,10/50 consumer cycles
+ResizeObserver,overlay/runtime/RuntimeOverlaySurface.tsx effect,surface,observer.disconnect,no,ResizeObserver tests PASS
+resize listener fallback,RuntimeOverlaySurface.tsx effect,surface,removeEventListener,no,fallback cleanup tests PASS
+MutationObserver,scripts/performance/react-harness.tsx,audit harness,stop/disconnect,no,harness finally
+React delegated listeners,React root in harness,root container,context destruction; reused root retains delegation,yes root reused:159 plateau,10/50afterGC; not a native window claim
+diagnostics function,CompositeApp/ObsOverlayApp effect,generation,delete window.__vantareOverlayV2Diagnostics,no,candidate lifecycle tests
+track outline cache,ISA979 getStaticOutline closure,JS module context,replace on track/viewport; context destruction,yes one entry per module,bounded by construction; markers/frames not retained
+AbortControllers,profile/http/pull clients,request or generation,abort/stale-generation guard,UNKNOWN across all callers,no complete window census executed
+Web Animations,design-system renderers,renderer,per-renderer cleanup,UNKNOWN all renderers,CSS/visual parity gates; no blanket claim
+workers,no worker created by narrow fixture,not applicable in tested fixture,not applicable,UNKNOWN complete application,not inferred absent globally
+audio / TTS,Go radio/Engineer services,application/service; not overlay window,service close/context,may intentionally outlive Hub,radio tests; physical audio UNKNOWN
+CDP/browser,measure-react.mjs / huella-cdp.mjs,audit runner,finally browser.close/server.close,no owned runner resources expected,foreground runs completed; native session owner separate

@@ -1,0 +1,14 @@
+{
+  "schema": "vantare.astra.scenarios.v1",
+  "warmupSeconds": 10,
+  "measurementSeconds": 60,
+  "repetitions": 5,
+  "scenarios": [
+    {"id":"hub-visible", "condition":"HubVisible", "gameRequired":false},
+    {"id":"hub-minimized", "condition":"HubMin", "gameRequired":false},
+    {"id":"overlay-idle", "condition":"A1", "gameRequired":false},
+    {"id":"overlay-race-44", "condition":"A1", "gameRequired":true, "cars":44},
+    {"id":"game-control", "condition":"A0", "gameRequired":true, "cars":44}
+  ],
+  "additionalGates": ["OBS physical capture", "10/50 native window cycles in one process", "complete startup markers", "30-minute same-process soak", "sequence-aligned IPC latency"]
+}

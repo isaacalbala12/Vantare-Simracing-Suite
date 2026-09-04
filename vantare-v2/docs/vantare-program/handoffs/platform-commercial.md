@@ -1,5 +1,22 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+## ISA-978 — auditoría experimental Astra
+
+Informe ciego congelado en96539f54 antes de consultar auditorías anteriores;
+referencia remota isa-978-blind-freeze preserva el mismo documento. La auditoría
+principal usa813b96c4 (#977), compara nightly659b2c57 y156PRs. Telemetry Core
+excluido por Isaac. Plan, reconciliación y evidencia en docs/audit/astra-*.
+La entrega documental/tooling se basa en nightly para respetar el contrato.
+
+Primer lote: ISA-979/PR draft980, HEAD330d3387, un archivo productivo de mapaV2;
+209,493→6,919µs en Mac, 3299tests/build/lintPASS sobre nightly. Sin claims FPS.
+No se arrastra la retirada V1 ni se modifica auth. El paquete Windows reutiliza
+huella y declara sondas/matrices incompletas como UNKNOWN; no se ha ejecutado
+en este Mac. Go general del candidato conserva fallos macOS documentados;
+Wails bindings exit0/0servicios no se presenta como validación real.
+Sin merge, promoción, release ni anuncios. El siguiente paso es revisar PR980
+y los gates exactos, y completar las sondas Windows que constan en el backlog.
+
 ## ISA-900 — preferencias y prueba de notificaciones
 
 - Rama aislada `vantareapp/isa-900-reparar-preferencias-notificaciones`, creada

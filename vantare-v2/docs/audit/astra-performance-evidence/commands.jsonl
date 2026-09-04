@@ -1,0 +1,741 @@
+[
+  {
+    "name": "install",
+    "cwd": "<worktrees>/vantare-isa-978-astra/vantare-v2/frontend",
+    "command": [
+      "pnpm",
+      "install",
+      "--frozen-lockfile"
+    ],
+    "startUTC": "2026-09-04T22:02:35.540528+00:00",
+    "seconds": 2.697909116744995,
+    "exit": 0
+  },
+  {
+    "name": "candidate-bundle",
+    "cwd": "<worktrees>/vantare-isa-978-astra/vantare-v2",
+    "command": [
+      "node",
+      "scripts/performance/measure-bundle.mjs",
+      "frontend",
+      "<evidence-temp>/bundle",
+      "candidate",
+      "minified"
+    ],
+    "startUTC": "2026-09-04T22:04:14.143407+00:00",
+    "seconds": 4.639567852020264,
+    "exit": 0
+  },
+  {
+    "name": "candidate-raw",
+    "cwd": "<worktrees>/vantare-isa-978-astra/vantare-v2",
+    "command": [
+      "node",
+      "scripts/performance/measure-bundle.mjs",
+      "frontend",
+      "<evidence-temp>/bundle",
+      "candidate",
+      "raw"
+    ],
+    "startUTC": "2026-09-04T22:04:32.342316+00:00",
+    "seconds": 5.453517913818359,
+    "exit": 0
+  },
+  {
+    "name": "candidate-typecheck",
+    "cwd": "<worktrees>/vantare-isa-978-astra/vantare-v2",
+    "command": [
+      "pnpm",
+      "--dir",
+      "frontend",
+      "typecheck"
+    ],
+    "startUTC": "2026-09-04T22:04:37.828021+00:00",
+    "seconds": 5.149118900299072,
+    "exit": 0
+  },
+  {
+    "name": "base-install",
+    "cwd": "/tmp/vantare-astra-base-nightly",
+    "command": [
+      "pnpm",
+      "install",
+      "--frozen-lockfile"
+    ],
+    "startUTC": "2026-09-04T22:04:57.956439+00:00",
+    "seconds": 2.617962121963501,
+    "exit": 0
+  },
+  {
+    "name": "base-bundle",
+    "cwd": "/tmp/vantare-astra-base-nightly/vantare-v2",
+    "command": [
+      "node",
+      "<worktrees>/vantare-isa-978-astra/vantare-v2/scripts/performance/measure-bundle.mjs",
+      "frontend",
+      "<evidence-temp>/bundle",
+      "nightly",
+      "minified"
+    ],
+    "startUTC": "2026-09-04T22:05:00.595941+00:00",
+    "seconds": 4.410110950469971,
+    "exit": 0
+  },
+  {
+    "name": "base-raw",
+    "cwd": "/tmp/vantare-astra-base-nightly/vantare-v2",
+    "command": [
+      "node",
+      "<worktrees>/vantare-isa-978-astra/vantare-v2/scripts/performance/measure-bundle.mjs",
+      "frontend",
+      "<evidence-temp>/bundle",
+      "nightly",
+      "raw"
+    ],
+    "startUTC": "2026-09-04T22:05:05.030328+00:00",
+    "seconds": 5.1777849197387695,
+    "exit": 0
+  },
+  {
+    "name": "candidate-go-bench",
+    "cwd": "<worktrees>/vantare-isa-978-astra/vantare-v2",
+    "command": [
+      "go",
+      "test",
+      "./internal/strategy/solver",
+      "./internal/engineer/presentation",
+      "./internal/engineer/messagepolicy",
+      "./internal/engineer/service",
+      "./internal/spotter",
+      "./internal/radio",
+      "-run",
+      "^$",
+      "-bench",
+      ".",
+      "-benchmem",
+      "-benchtime=100ms",
+      "-count=10"
+    ],
+    "startUTC": "2026-09-04T22:05:32.293790+00:00",
+    "seconds": 48.066280126571655,
+    "exit": 0
+  },
+  {
+    "name": "candidate-transport-bench",
+    "cwd": "<worktrees>/vantare-isa-978-astra/vantare-v2",
+    "command": [
+      "go",
+      "test",
+      "./internal/app/telemetrytransport",
+      "-run",
+      "^$",
+      "-bench",
+      ".",
+      "-benchmem",
+      "-benchtime=100x",
+      "-count=10"
+    ],
+    "startUTC": "2026-09-04T22:06:20.389207+00:00",
+    "seconds": 1.237405776977539,
+    "exit": 0
+  },
+  {
+    "name": "track-map-base",
+    "cwd": "<worktrees>/vantare-isa-978-astra/vantare-v2",
+    "command": [
+      "node",
+      "scripts/performance/measure-track-map.mjs",
+      "frontend",
+      "<evidence-temp>/runtime",
+      "base"
+    ],
+    "startUTC": "2026-09-04T22:07:39.734910+00:00",
+    "seconds": 6.606220006942749,
+    "exit": 0
+  },
+  {
+    "name": "candidate-tests",
+    "cwd": "<worktrees>/vantare-isa-978-astra/vantare-v2",
+    "command": [
+      "pnpm",
+      "--dir",
+      "frontend",
+      "test"
+    ],
+    "startUTC": "2026-09-04T22:08:16.114869+00:00",
+    "seconds": 30.785420179367065,
+    "exit": 0
+  },
+  {
+    "name": "track-map-base-clean",
+    "cwd": "<worktrees>/vantare-isa-978-astra/vantare-v2",
+    "command": [
+      "node",
+      "scripts/performance/measure-track-map.mjs",
+      "frontend",
+      "<evidence-temp>/runtime",
+      "base-clean"
+    ],
+    "startUTC": "2026-09-04T22:09:32.302617+00:00",
+    "seconds": 6.768136978149414,
+    "exit": 0
+  },
+  {
+    "name": "track-map-cache",
+    "cwd": "<worktrees>/vantare-isa-978-astra/vantare-v2",
+    "command": [
+      "node",
+      "scripts/performance/measure-track-map.mjs",
+      "frontend",
+      "<evidence-temp>/runtime",
+      "cache",
+      "track-cache"
+    ],
+    "startUTC": "2026-09-04T22:09:39.092087+00:00",
+    "seconds": 0.3850870132446289,
+    "exit": 0
+  },
+  {
+    "name": "experiment-edit-lazy",
+    "cwd": "<worktrees>/vantare-isa-978-astra/vantare-v2",
+    "command": [
+      "node",
+      "scripts/performance/measure-bundle.mjs",
+      "frontend",
+      "<evidence-temp>/bundle",
+      "edit-lazy",
+      "minified",
+      "edit-lazy"
+    ],
+    "startUTC": "2026-09-04T22:09:39.497406+00:00",
+    "seconds": 3.4755969047546387,
+    "exit": 0
+  },
+  {
+    "name": "experiment-locale-active",
+    "cwd": "<worktrees>/vantare-isa-978-astra/vantare-v2",
+    "command": [
+      "node",
+      "scripts/performance/measure-bundle.mjs",
+      "frontend",
+      "<evidence-temp>/bundle",
+      "locale-active",
+      "minified",
+      "locale-active"
+    ],
+    "startUTC": "2026-09-04T22:09:42.993116+00:00",
+    "seconds": 3.3101820945739746,
+    "exit": 0
+  },
+  {
+    "name": "react-base",
+    "cwd": "<worktrees>/vantare-isa-978-astra/vantare-v2",
+    "command": [
+      "node",
+      "scripts/performance/measure-react.mjs",
+      "frontend",
+      "<evidence-temp>/runtime",
+      "base"
+    ],
+    "startUTC": "2026-09-04T22:11:21.235156+00:00",
+    "seconds": 7.51711893081665,
+    "exit": 0
+  },
+  {
+    "name": "react-cache",
+    "cwd": "<worktrees>/vantare-isa-978-astra/vantare-v2",
+    "command": [
+      "node",
+      "scripts/performance/measure-react.mjs",
+      "frontend",
+      "<evidence-temp>/runtime",
+      "cache",
+      "track-cache"
+    ],
+    "startUTC": "2026-09-04T22:11:59.444291+00:00",
+    "seconds": 7.245799779891968,
+    "exit": 0
+  },
+  {
+    "name": "candidate-build",
+    "cwd": "<worktrees>/vantare-isa-978-astra/vantare-v2",
+    "command": [
+      "pnpm",
+      "--dir",
+      "frontend",
+      "build"
+    ],
+    "startUTC": "2026-09-04T22:12:06.716686+00:00",
+    "seconds": 5.266102075576782,
+    "exit": 0
+  },
+  {
+    "name": "candidate-go-suite",
+    "cwd": "<worktrees>/vantare-isa-978-astra/vantare-v2",
+    "command": [
+      "go",
+      "test",
+      "-p",
+      "1",
+      "./..."
+    ],
+    "startUTC": "2026-09-04T22:12:12.004756+00:00",
+    "seconds": 91.92280197143555,
+    "exit": 1
+  },
+  {
+    "name": "wire-generated",
+    "cwd": "<worktrees>/vantare-isa-978-astra/vantare-v2",
+    "command": [
+      "go",
+      "run",
+      "./tools/telemetry-contract-gen",
+      "-check"
+    ],
+    "startUTC": "2026-09-04T22:14:23.695820+00:00",
+    "seconds": 0.8660368919372559,
+    "exit": 0
+  },
+  {
+    "name": "tidy-diff",
+    "cwd": "<worktrees>/vantare-isa-978-astra/vantare-v2",
+    "command": [
+      "go",
+      "mod",
+      "tidy",
+      "-diff"
+    ],
+    "startUTC": "2026-09-04T22:14:24.590503+00:00",
+    "seconds": 0.11234903335571289,
+    "exit": 0
+  },
+  {
+    "name": "roadmap-generated",
+    "cwd": "<worktrees>/vantare-isa-978-astra",
+    "command": [
+      "python3",
+      ".github/scripts/roadmap_digest.py",
+      "--repo",
+      ".",
+      "--ref",
+      "origin/nightly",
+      "--check"
+    ],
+    "startUTC": "2026-09-04T22:14:24.724188+00:00",
+    "seconds": 0.06084299087524414,
+    "exit": 0
+  },
+  {
+    "name": "wails-bindings",
+    "cwd": "<worktrees>/vantare-isa-978-astra/vantare-v2",
+    "command": [
+      "wails3",
+      "generate",
+      "bindings",
+      "-clean=true"
+    ],
+    "startUTC": "2026-09-04T22:14:24.804297+00:00",
+    "seconds": 0.13176488876342773,
+    "exit": 0
+  },
+  {
+    "name": "experiment-route-lazy",
+    "cwd": "<worktrees>/vantare-isa-978-astra/vantare-v2",
+    "command": [
+      "node",
+      "scripts/performance/measure-bundle.mjs",
+      "frontend",
+      "<evidence-temp>/bundle",
+      "route-lazy",
+      "minified",
+      "route-lazy"
+    ],
+    "startUTC": "2026-09-04T22:15:37.544446+00:00",
+    "seconds": 5.9376749992370605,
+    "exit": 0
+  },
+  {
+    "name": "candidate-race",
+    "cwd": "<worktrees>/vantare-isa-978-astra/vantare-v2",
+    "command": [
+      "go",
+      "test",
+      "-race",
+      "-p",
+      "1",
+      "./internal/app/telemetrytransport",
+      "./internal/strategy/...",
+      "./internal/engineer/...",
+      "./internal/spotter",
+      "./internal/radio"
+    ],
+    "startUTC": "2026-09-04T22:15:43.504169+00:00",
+    "seconds": 152.14103293418884,
+    "exit": 0
+  },
+  {
+    "name": "version-sync",
+    "cwd": "<worktrees>/vantare-isa-978-astra/vantare-v2",
+    "command": [
+      "go",
+      "run",
+      "build/sync_version.go"
+    ],
+    "startUTC": "2026-09-04T22:18:15.676801+00:00",
+    "seconds": 0.468994140625,
+    "exit": 0
+  },
+  {
+    "name": "candidate-repeat",
+    "cwd": "<worktrees>/vantare-isa-978-astra/vantare-v2",
+    "command": [
+      "node",
+      "scripts/performance/measure-bundle.mjs",
+      "frontend",
+      "<evidence-temp>/bundle",
+      "candidate-repeat",
+      "minified"
+    ],
+    "startUTC": "2026-09-04T22:23:19.716948+00:00",
+    "seconds": 6.354881048202515,
+    "exit": 0
+  },
+  {
+    "name": "storage-bench",
+    "cwd": "<worktrees>/vantare-isa-978-astra/vantare-v2",
+    "command": [
+      "go",
+      "test",
+      "-p",
+      "1",
+      "./scripts/performance/storage-bench",
+      "-run",
+      "^$",
+      "-bench",
+      ".",
+      "-benchmem",
+      "-benchtime=100ms",
+      "-count=10",
+      "-cpuprofile",
+      "<evidence-temp>/storage.cpu",
+      "-memprofile",
+      "<evidence-temp>/storage.mem",
+      "-o",
+      "<evidence-temp>/storage.test"
+    ],
+    "startUTC": "2026-09-04T22:23:57.009504+00:00",
+    "seconds": 6.72687292098999,
+    "exit": 0
+  },
+  {
+    "name": "geometry-defer",
+    "cwd": "<worktrees>/vantare-isa-978-astra/vantare-v2",
+    "command": [
+      "node",
+      "scripts/performance/measure-bundle.mjs",
+      "frontend",
+      "<evidence-temp>/bundle",
+      "geometry-defer",
+      "minified",
+      "geometry-defer"
+    ],
+    "startUTC": "2026-09-04T22:25:21.549857+00:00",
+    "seconds": 6.402054786682129,
+    "exit": 0
+  },
+  {
+    "name": "pprof-storage",
+    "cwd": "<worktrees>/vantare-isa-978-astra/vantare-v2",
+    "command": [
+      "go",
+      "tool",
+      "pprof",
+      "-top",
+      "<evidence-temp>/storage.cpu"
+    ],
+    "startUTC": "2026-09-04T22:25:27.978080+00:00",
+    "seconds": 0.21058297157287598,
+    "exit": 0
+  },
+  {
+    "name": "pprof-storage-alloc",
+    "cwd": "<worktrees>/vantare-isa-978-astra/vantare-v2",
+    "command": [
+      "go",
+      "tool",
+      "pprof",
+      "-top",
+      "-alloc_space",
+      "<evidence-temp>/storage.mem"
+    ],
+    "startUTC": "2026-09-04T22:25:28.208259+00:00",
+    "seconds": 0.09006595611572266,
+    "exit": 0
+  },
+  {
+    "name": "impl-install",
+    "cwd": "<worktrees>/vantare-isa-979-track-outline/vantare-v2/frontend",
+    "command": [
+      "pnpm",
+      "install",
+      "--frozen-lockfile"
+    ],
+    "startUTC": "2026-09-04T22:32:07.228747+00:00",
+    "seconds": 2.761972188949585,
+    "exit": 0
+  },
+  {
+    "name": "impl-characterization",
+    "cwd": "<worktrees>/vantare-isa-979-track-outline/vantare-v2",
+    "command": [
+      "pnpm",
+      "--dir",
+      "frontend",
+      "exec",
+      "vitest",
+      "run",
+      "src/overlay/widget-types/track-map/track-map-view-model-v2.test.ts"
+    ],
+    "startUTC": "2026-09-04T22:33:05.265267+00:00",
+    "seconds": 1.8954691886901855,
+    "exit": 0
+  },
+  {
+    "name": "impl-base",
+    "cwd": "<worktrees>/vantare-isa-979-track-outline/vantare-v2",
+    "command": [
+      "node",
+      "<worktrees>/vantare-isa-978-astra/vantare-v2/scripts/performance/measure-track-map.mjs",
+      "frontend",
+      "<evidence-temp>/runtime",
+      "impl-base"
+    ],
+    "startUTC": "2026-09-04T22:33:07.184251+00:00",
+    "seconds": 6.9679741859436035,
+    "exit": 0
+  },
+  {
+    "name": "impl-focal",
+    "cwd": "<worktrees>/vantare-isa-979-track-outline/vantare-v2",
+    "command": [
+      "pnpm",
+      "--dir",
+      "frontend",
+      "exec",
+      "vitest",
+      "run",
+      "src/overlay/widget-types/track-map/track-map-view-model-v2.test.ts"
+    ],
+    "startUTC": "2026-09-04T22:33:44.098765+00:00",
+    "seconds": 0.6965067386627197,
+    "exit": 0
+  },
+  {
+    "name": "impl-head",
+    "cwd": "<worktrees>/vantare-isa-979-track-outline/vantare-v2",
+    "command": [
+      "node",
+      "<worktrees>/vantare-isa-978-astra/vantare-v2/scripts/performance/measure-track-map.mjs",
+      "frontend",
+      "<evidence-temp>/runtime",
+      "impl-head"
+    ],
+    "startUTC": "2026-09-04T22:33:44.818569+00:00",
+    "seconds": 0.4044821262359619,
+    "exit": 0
+  },
+  {
+    "name": "impl-tests",
+    "cwd": "<worktrees>/vantare-isa-979-track-outline/vantare-v2",
+    "command": [
+      "pnpm",
+      "--dir",
+      "frontend",
+      "test"
+    ],
+    "startUTC": "2026-09-04T22:33:45.244399+00:00",
+    "seconds": 31.258009910583496,
+    "exit": 0
+  },
+  {
+    "name": "impl-typecheck",
+    "cwd": "<worktrees>/vantare-isa-979-track-outline/vantare-v2",
+    "command": [
+      "pnpm",
+      "--dir",
+      "frontend",
+      "typecheck"
+    ],
+    "startUTC": "2026-09-04T22:34:16.528055+00:00",
+    "seconds": 4.9445600509643555,
+    "exit": 0
+  },
+  {
+    "name": "impl-build",
+    "cwd": "<worktrees>/vantare-isa-979-track-outline/vantare-v2",
+    "command": [
+      "pnpm",
+      "--dir",
+      "frontend",
+      "build"
+    ],
+    "startUTC": "2026-09-04T22:34:21.495151+00:00",
+    "seconds": 5.368913888931274,
+    "exit": 0
+  },
+  {
+    "name": "impl-lint",
+    "cwd": "<worktrees>/vantare-isa-979-track-outline/vantare-v2",
+    "command": [
+      "pnpm",
+      "--dir",
+      "frontend",
+      "lint"
+    ],
+    "startUTC": "2026-09-04T22:34:26.889227+00:00",
+    "seconds": 11.920964241027832,
+    "exit": 0
+  },
+  {
+    "name": "impl-lint-focal",
+    "cwd": "<worktrees>/vantare-isa-979-track-outline/vantare-v2",
+    "command": [
+      "pnpm",
+      "--dir",
+      "frontend",
+      "exec",
+      "eslint",
+      "src/overlay/widget-types/track-map/track-map-view-model-v2.ts",
+      "src/overlay/widget-types/track-map/track-map-view-model-v2.test.ts"
+    ],
+    "startUTC": "2026-09-04T22:34:48.667876+00:00",
+    "seconds": 0.6187107563018799,
+    "exit": 0
+  },
+  {
+    "name": "impl-react",
+    "cwd": "<worktrees>/vantare-isa-979-track-outline/vantare-v2",
+    "command": [
+      "node",
+      "<worktrees>/vantare-isa-978-astra/vantare-v2/scripts/performance/measure-react.mjs",
+      "frontend",
+      "<evidence-temp>/runtime",
+      "impl-head"
+    ],
+    "startUTC": "2026-09-04T22:34:49.309190+00:00",
+    "seconds": 7.5041773319244385,
+    "exit": 0
+  },
+  {
+    "name": "impl-bundle",
+    "cwd": "<worktrees>/vantare-isa-979-track-outline/vantare-v2",
+    "command": [
+      "node",
+      "<worktrees>/vantare-isa-978-astra/vantare-v2/scripts/performance/measure-bundle.mjs",
+      "frontend",
+      "<evidence-temp>/bundle",
+      "impl-head",
+      "minified"
+    ],
+    "startUTC": "2026-09-04T22:34:56.838244+00:00",
+    "seconds": 6.440125942230225,
+    "exit": 0
+  },
+  {
+    "name": "impl-nightly-tests",
+    "cwd": "<worktrees>/vantare-isa-979-track-outline/vantare-v2",
+    "command": [
+      "pnpm",
+      "--dir",
+      "frontend",
+      "test"
+    ],
+    "startUTC": "2026-09-04T22:39:26.908853+00:00",
+    "seconds": 28.582774877548218,
+    "exit": 0
+  },
+  {
+    "name": "impl-nightly-build",
+    "cwd": "<worktrees>/vantare-isa-979-track-outline/vantare-v2",
+    "command": [
+      "pnpm",
+      "--dir",
+      "frontend",
+      "build"
+    ],
+    "startUTC": "2026-09-04T22:39:55.519787+00:00",
+    "seconds": 5.241520881652832,
+    "exit": 0
+  },
+  {
+    "name": "impl-nightly-lint",
+    "cwd": "<worktrees>/vantare-isa-979-track-outline/vantare-v2",
+    "command": [
+      "pnpm",
+      "--dir",
+      "frontend",
+      "lint"
+    ],
+    "startUTC": "2026-09-04T22:40:00.783350+00:00",
+    "seconds": 11.610641956329346,
+    "exit": 0
+  },
+  {
+    "name": "impl-nightly-base",
+    "cwd": "<worktrees>/vantare-isa-979-track-outline/vantare-v2",
+    "command": [
+      "node",
+      "<worktrees>/vantare-isa-978-astra/vantare-v2/scripts/performance/measure-track-map.mjs",
+      "frontend",
+      "<evidence-temp>/runtime",
+      "nightly-base"
+    ],
+    "startUTC": "2026-09-04T22:40:52.109921+00:00",
+    "seconds": 6.912320137023926,
+    "exit": 0
+  },
+  {
+    "name": "impl-nightly-head",
+    "cwd": "<worktrees>/vantare-isa-979-track-outline/vantare-v2",
+    "command": [
+      "node",
+      "<worktrees>/vantare-isa-978-astra/vantare-v2/scripts/performance/measure-track-map.mjs",
+      "frontend",
+      "<evidence-temp>/runtime",
+      "nightly-head"
+    ],
+    "startUTC": "2026-09-04T22:40:59.049417+00:00",
+    "seconds": 0.43762898445129395,
+    "exit": 0
+  },
+  {
+    "name": "audit-storage-check",
+    "cwd": "<worktrees>/vantare-isa-978-astra/vantare-v2",
+    "command": [
+      "go",
+      "test",
+      "./scripts/performance/storage-bench",
+      "-run",
+      "^$",
+      "-bench",
+      ".",
+      "-benchtime=1x"
+    ],
+    "startUTC": "2026-09-04T22:54:42.530372+00:00",
+    "seconds": 2.2311768531799316,
+    "exit": 0
+  },
+  {
+    "name": "audit-tooling-tests",
+    "cwd": "<worktrees>/vantare-isa-978-astra/vantare-v2",
+    "command": [
+      "go",
+      "test",
+      "./scripts/performance/storage-bench",
+      "-v"
+    ],
+    "startUTC": "2026-09-04T22:57:33.597773+00:00",
+    "seconds": 1.7866239547729492,
+    "exit": 0
+  }
+]

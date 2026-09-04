@@ -1,0 +1,7 @@
+snapshot,variant,metric,classification,median,min,max,repetitions,checksum,scope
+NEXT_CANDIDATE,base-clean,track-map ns/op,MEASURED-MAC-RELATIVE,209108.0485000001,205902.222,212816.98599999995,10,634590000,44 synthetic moving cars; Le Mans1363; warmup1000; 3000 ops/repetition
+NEXT_CANDIDATE experiment,cache,track-map ns/op,MEASURED-MAC-RELATIVE,6024.715333333337,5992.277666666667,6532.375000000001,10,634590000,44 synthetic moving cars; Le Mans1363; warmup1000; 3000 ops/repetition
+NEXT_CANDIDATE implementation BASE,impl-base,track-map ns/op,MEASURED-MAC-RELATIVE,213837.47933333332,204877.02800000005,248471.2363333332,10,634590000,44 synthetic moving cars; Le Mans1363; warmup1000; 3000 ops/repetition
+NEXT_CANDIDATE implementation HEAD,impl-head,track-map ns/op,MEASURED-MAC-RELATIVE,6139.791666666668,6097.069333333328,6728.777666666673,10,634590000,44 synthetic moving cars; Le Mans1363; warmup1000; 3000 ops/repetition
+BASE_NIGHTLY,nightly-base,track-map ns/op,MEASURED-MAC-RELATIVE,209493.21533333336,204636.04166666663,248193.26400000017,10,634590000,44 synthetic moving cars; Le Mans1363; warmup1000; 3000 ops/repetition
+ISA979 on BASE_NIGHTLY,nightly-head,track-map ns/op,MEASURED-MAC-RELATIVE,6918.527833333334,6573.055666666675,7822.097333333327,10,634590000,44 synthetic moving cars; Le Mans1363; warmup1000; 3000 ops/repetition

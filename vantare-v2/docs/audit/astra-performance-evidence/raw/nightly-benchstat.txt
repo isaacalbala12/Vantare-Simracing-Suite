@@ -1,0 +1,5 @@
+goos: darwin
+goarch: arm64
+           │ <evidence-temp>/runtime/nightly-base-bench.txt │ <evidence-temp>/runtime/nightly-head-bench.txt │
+           │                           sec/op                           │               sec/op                vs base                │
+TrackMapV2                                                209.493µ ± 2%                          6.919µ ± 4%  -96.70% (p=0.000 n=10)

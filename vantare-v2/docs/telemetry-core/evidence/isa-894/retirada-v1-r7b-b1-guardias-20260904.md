@@ -210,6 +210,19 @@ golden `?raw` (~33,5 KB medidos). Guard tras la corrección:
 nuevos; ESLint y `diff --check` limpios. HEAD tras la corrección: `fdb1130d`
 (código+focal); este registro se cierra en el commit documental siguiente.
 
+## C2b0 ejecutado — reclasificación tipos Studio (ISA-894)
+
+Base `a32c18cb`, commit de test/gobernanza `9e7cf552` (cero producción).
+Baseline literal previo: guard `7 failed | 8 passed (15)`, C2 con 30 anclas
+(4 con `transports/telemetry-adapter`). Cambio: retiradas del bloque C2 esas
+4 entradas (`StudioRoute`, `OverlayStudioV3`, `studio-overlay-telemetry`,
+`StudioTelemetryProvider`) por false-positive probado (`import type` bajo
+ownership E1, sin V1 en runtime/bundle); comentario mínimo en el guard.
+Resultado literal: guard deliberadamente RED `7 failed | 8 passed (15)`, C2
+con **26 anclas** exactas y cero menciones al adapter. ESLint focal y
+`git diff --check` limpios; typecheck con los 8 heredados R7a (no verde);
+build no ejecutado. El guard global NO está verde. Siguiente: C2b1 26→24.
+
 Re-review quality Muse `ses_f92522698ffeDQwN643LThbEoz` sobre `6c4ead7f`:
 **APPROVE**, P0/P1/P2=0. Reprodujo focal 9/9, guard
 `7 failed | 8 passed (15)` con 30 anclas C2 activas, ESLint, diff-check y los

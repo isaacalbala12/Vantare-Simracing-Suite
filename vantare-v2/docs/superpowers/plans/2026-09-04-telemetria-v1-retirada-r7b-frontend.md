@@ -504,7 +504,9 @@ B1; si una ruta no existe en árbol, lo registra como divergencia y para ese
      false-positive del guard C2 y mantiene el tipo canónico
      (`overlay/transports/telemetry-adapter.ts`) hasta E1 o un refactor
      neutral futuro. 30→26 significa quitar esas cuatro anclas del guard,
-     no cambiar producción por vanidad del guard.
+     no cambiar producción por vanidad del guard. Ejecutado en `9e7cf552`:
+     guard `7 failed | 8 passed (15)` con C2 en 26 anclas exactas, ESLint y
+     `diff --check` limpios, typecheck con los 8 heredados (no verde).
   2. **C2b1, Composite test V2-only (26→24):** retirar golden V1 y mock shadow
      obsoleto de `CompositeApp.test.tsx`, conservando cobertura del snapshot
      V2 real.

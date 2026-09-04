@@ -1,5 +1,21 @@
 # Handoff vivo — Telemetry Core
 
+## R7b/C2b0 CERRADO en rama (guard, cero producción) — siguiente C2b1 26→24 — 2026-09-04, ISA-894
+
+Writer único, rama `vantareapp/isa-894-retirada-v1-r7b`, base `a32c18cb`.
+Commit de test/gobernanza `9e7cf552` (un fichero, +4/−4): retira del bloque
+C2 del guard las 4 entradas `transports/telemetry-adapter` de `StudioRoute`,
+`OverlayStudioV3`, `studio-overlay-telemetry` y `StudioTelemetryProvider`
+(false-positive: `import type` bajo ownership E1, sin V1 en runtime/bundle;
+producción intacta) y deja comentario mínimo que lo explica. Baseline previo:
+guard `7 failed | 8 passed (15)` con C2 en 30 anclas; resultado: guard
+**deliberadamente RED** `7 failed | 8 passed (15)` con C2 en **26 anclas**
+exactas (cero menciones al adapter). ESLint focal y `git diff --check`
+limpios; typecheck registra los 8 heredados R7a (no verde, no necesario para
+cero producción); build no ejecutado. El guard global NO está verde: C2 sigue
+en rojo hasta C2b7. Siguiente: C2b1 (Composite test V2-only, 26→24). Sin
+push/PR/merge/promoción/apps/LMU.
+
 ## R7b/C2b APROBADO en re-review — desbloqueado, siguiente C2b0 — 2026-09-04, ISA-894
 
 Re-review spec Muse `ses_f9240634bffeNNMnf3wHltlOI6`: **APPROVE**,

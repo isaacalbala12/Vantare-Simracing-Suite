@@ -23,6 +23,9 @@ RED `7 failed | 8 passed (15)`, C2 **16 declaradas / 15 activas**; typecheck NO
 verde con exactamente los 8 errores R7a heredados, cero nuevos; build no
 evaluable. Pendiente doble review independiente spec+quality. No iniciar C2b5
 ni B3/B2; sin push/PR/merge/promoción/apps/LMU.
+`27204349` retira además los dos snapshots V1 del test de pérdida de LMU: la
+simulación usa exclusivamente frame/source V2 y el escaneo de los ficheros
+Studio tocados queda sin snapshot/build/publish/puente legacy.
 
 ## R7b/C2b3 APROBADO final — cerrado, siguiente C2b4 17→15 — 2026-09-04, ISA-894
 

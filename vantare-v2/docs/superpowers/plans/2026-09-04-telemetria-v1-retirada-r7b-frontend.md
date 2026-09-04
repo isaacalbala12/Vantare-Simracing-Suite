@@ -607,8 +607,12 @@ B1; si una ruta no existe en árbol, lo registra como divergencia y para ese
       primer frame live con el mismo `epoch+sequence` del mock: antes se
       deduplicaba; ahora la transición marca la fuente retenida `stopped`
       antes de arrancar el adapter, por lo que el frame live gana y el widget
-      conserva su placeholder desconectado mientras conecta. ESLint/diff-check limpios;
-     guard deliberadamente RED `7 failed | 8 passed (15)`, C2 en 16
+       conserva su placeholder desconectado mientras conecta. `27204349`
+       retira además los dos `buildMockTelemetry` que el caso de LMU detenido
+       conservaba en `StudioCanvas.test.tsx`: el adapter de prueba conecta y se
+       detiene usando solo frame/source V2. El escaneo de los ficheros Studio
+       tocados queda sin snapshot/build/publish/puente V1. ESLint/diff-check limpios;
+      guard deliberadamente RED `7 failed | 8 passed (15)`, C2 en 16
      declaradas / 15 activas; typecheck NO verde con exactamente los 8 errores
      R7a heredados, cero nuevos; build no evaluable. Pendiente: review spec y
      quality independientes antes de abrir C2b5.

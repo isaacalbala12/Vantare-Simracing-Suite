@@ -493,6 +493,13 @@ mantiene la forma del último frame pero entrega la autoridad marcando la fuente
 durante la conexión, el renderer conserva el placeholder desconectado en lugar
 de desaparecer. El test reproduce ambas direcciones mock↔live.
 
+`27204349` elimina también los dos `buildMockTelemetry` residuales del caso
+`StudioCanvas` que simula una pérdida de LMU. El adapter de test publica un
+frame live V2 y después `source.state=stopped`; conserva la misma prueba visual
+sin snapshot ni `coordinator.publish` legacy. El escaneo de los ficheros Studio
+tocados no encuentra `TelemetrySnapshot`, `buildMockTelemetry`,
+`coordinator.publish`, el puente antiguo ni el import inexistente.
+
 Evidencia local: focales **40/40** y suite amplia Studio **255/255**; ESLint focal y
 `git diff --check` limpios. `pnpm --dir frontend typecheck` permanece NO verde
 con exactamente los 8 errores R7a heredados y cero nuevos. El guard permanece

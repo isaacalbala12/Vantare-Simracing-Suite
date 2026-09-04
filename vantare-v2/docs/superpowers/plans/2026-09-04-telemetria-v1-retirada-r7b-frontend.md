@@ -589,6 +589,19 @@ B1; si una ruta no existe en árbol, lo registra como divergencia y para ese
      `overlay/transports/wails-telemetry-adapter` (inexistente) al tipo
      canónico real (`overlay/transports/telemetry-adapter`), sin
      presentarlo como V1 runtime.
+     Ejecutado técnicamente en `71ef8cad`: el provider construye el escenario
+     canónico V2 y llama únicamente a `setOverlayFrame`; `mockSession` cambia
+     solo `session.phase` (conserva `q`) y `mockLocation` solo el `pit` de la
+     fila cuyo id coincide con `player.id`, con fallo explícito si la semilla
+     no contiene al jugador. El fixture sigue determinista e inmutable; el
+     provider, como productor de autoría, avanza solo la `sequence` del
+     envelope para que el coordinador no descarte dos escenarios distintos
+     derivados del mismo golden. Se preservan start/stop live, conmutación,
+     suspensión y primer paint. Focales 22/22 y ESLint/diff-check limpios;
+     guard deliberadamente RED `7 failed | 8 passed (15)`, C2 en 16
+     declaradas / 15 activas; typecheck NO verde con exactamente los 8 errores
+     R7a heredados, cero nuevos; build no evaluable. Pendiente: review spec y
+     quality independientes antes de abrir C2b5.
   6. **C2b5, Parity + responsive dev (15→10):** pasar runtime V2 y retirar
      solo los USOS de builders/seeds en callers; los helpers de
      `authoring-fixtures.ts` permanecen con dueño D/E1 y no se tocan.

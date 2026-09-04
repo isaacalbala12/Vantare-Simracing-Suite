@@ -459,3 +459,28 @@ insuficientes para la superficie que lo necesite. Cero código tocado; este
 commit solo registra la aprobación en los tres documentos, sin reescribir la
 historia anterior. Checkpoint C2b **desbloqueado, siguiente C2b0**.
 `git diff --check` limpio en este commit documental.
+
+## C2b4 cierre técnico — provider Studio mock V2 puro (ISA-894)
+
+Commit de código `71ef8cad`. `StudioTelemetryProvider` ya no importa ni llama
+`buildMockTelemetry` ni el puente `authoring-v2-fixture`: construye el escenario
+canónico con `buildAuthoringV2ScenarioRuntime` y publica únicamente
+`setOverlayFrame`. El import type colgado del test pasa al módulo canónico
+`overlay/transports/telemetry-adapter`.
+
+Las transformaciones del escenario son acotadas y demostradas: `session`
+reemplaza solo `frame.session.phase.v`, conservando `q`; `location` reemplaza
+solo `pit` en la fila canónica identificada por `frame.player.id`, y falla sin
+fallback si no existe id o fila. El fixture devuelve clones deterministas e
+inmutables. Como todos parten de la misma secuencia del golden, el provider
+mantiene una secuencia local monotónica en el envelope de autoría; no altera
+los datos de sección y permite que el coordinador observe cambios sucesivos.
+
+Evidencia local: focales provider+fixture **22/22**; ESLint focal y
+`git diff --check` limpios. `pnpm --dir frontend typecheck` permanece NO verde
+con exactamente los 8 errores R7a heredados y cero nuevos. El guard permanece
+deliberadamente RED `7 failed | 8 passed (15)`: C2 baja de 18/17 a **16
+declaradas / 15 activas**, y añade locks permanentes contra mock/puente/
+`coordinator.publish` en producción y contra el import inexistente en el test.
+Build no evaluable mientras persista el bloqueo R7a. Pendiente: reviews spec y
+quality independientes; C2b5 no se inicia antes de ambas aprobaciones.

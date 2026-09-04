@@ -1,5 +1,22 @@
 # Handoff vivo — Telemetry Core
 
+## R7b/C2b4 cierre técnico — pendiente doble review — 2026-09-04, ISA-894
+
+Commit `71ef8cad`: Studio mock deja V1/puente y publica solo un escenario V2
+canónico por `setOverlayFrame`. `mockSession` transforma únicamente
+`session.phase` conservando quality; `mockLocation` transforma únicamente el
+pit de la fila de `player.id`, con fail-fast sin ids/coches inventados. El
+fixture es determinista e inmutable; el provider avanza la secuencia del
+envelope como productor de autoría para que cambios sucesivos del mismo golden
+no sean descartados por el coordinador. Se preservan primer paint, conmutación,
+start/stop live y suspensión. El test usa el tipo canónico real.
+
+Evidencia: focales 22/22; ESLint y diff-check limpios; guard deliberadamente
+RED `7 failed | 8 passed (15)`, C2 **16 declaradas / 15 activas**; typecheck NO
+verde con exactamente los 8 errores R7a heredados, cero nuevos; build no
+evaluable. Pendiente doble review independiente spec+quality. No iniciar C2b5
+ni B3/B2; sin push/PR/merge/promoción/apps/LMU.
+
 ## R7b/C2b3 APROBADO final — cerrado, siguiente C2b4 17→15 — 2026-09-04, ISA-894
 
 Spec re-review `ses_f91f06dd6ffeGxyzv99sMczVrR`: **APPROVE**, P0/P1/P2=0

@@ -304,6 +304,31 @@ inactiva heredada de C2a). ESLint de ambos TS tocados limpio;
 `git diff --check` limpio; typecheck con los 8 heredados exactos y cero
 nuevos (no verde); build no ejecutado. Siguiente: C2b3 23→17.
 
+## C2b3 ejecutado — previews Hub V2 (ISA-894)
+
+Base `5f7fca59`, commit de código `b61a7441` (5 ficheros, +120/−26, cero
+fuera de los 3 consumidores + focal + guard). Anclas activas identificadas
+antes de editar (6, dos por fichero `snapshot={…}` + `buildMockTelemetry`):
+`HomeMiniStage.tsx`, `ProfilePreview.tsx`, `ui-orbit-harness.tsx`.
+TDD RED→GREEN literal: `ProfilePreview.isolation.test.tsx` nuevo con espía
+call-through a la factory C2a — RED `expected 0 to be greater than or equal
+to 2` (ningún preview la llamaba) → GREEN con dos `ProfilePreview` vivos,
+runtimes con identidad distinta e igualdad profunda, y mutación de standings
+en uno sin contaminar al otro. Migración: factory por instancia (`useMemo`)
+en los dos componentes y por llamada (`buildStageV2Runtime`) en el harness
+dev, mismo escenario race/track/ready; sin singleton mutable compartido; el
+`?raw` vive solo en el módulo C2a (una vez por chunk). Barrido literal de los
+3 ficheros + focal: cero `TelemetrySnapshot`, `buildMockTelemetry`,
+builders/seeds, `authoring-fixtures`, `snapshot=`, snapshots/previews
+constantes o seeds. Layout/renderer/widgets/cadencias intactos (focales
+`ProfilePreview` 5/5 y `HomeOrbitPage` 19/19). Guard en el mismo commit: C2
+con **18 declaradas / 17 activas** (hereda la inactiva de C2a);
+deliberadamente RED `7 failed | 8 passed (15)` con `expected 17`. ESLint
+focal y `git diff --check` limpios; typecheck NO verde con los 8 heredados
+exactos y cero nuevos; build no evaluable/no ejecutado por bloqueo heredado
+(no se declara verde). Riesgo: placeholders V2 donde el golden trae
+`missing` (igual que toda superficie V2). Siguiente: C2b4 17→15.
+
 ## C2b2 APROBADO final (ISA-894)
 
 Spec C2b2 `ses_f91ff25dbffejp7kMw0wLaqfg5`: **APPROVE**, P0/P1/P2=0 (P3

@@ -1,5 +1,30 @@
 # Handoff vivo — Telemetry Core
 
+## R7b/C2b3 CERRADO en rama (previews Hub V2) — siguiente C2b4 17→15 — 2026-09-04, ISA-894
+
+Writer único, rama `vantareapp/isa-894-retirada-v1-r7b`, base `5f7fca59`.
+Commit de código `b61a7441` (5 ficheros, +120/−26): `HomeMiniStage`,
+`ProfilePreview` y `ui-orbit-harness` pierden `buildMockTelemetry` y la prop
+`snapshot`; cada uno construye su runtime con `buildAuthoringV2ScenarioRuntime`
+(escenario race/track/ready, frame canónico de 20 coches) vía factory por
+instancia (`useMemo`) o por llamada (`buildStageV2Runtime`): sin singleton
+mutable compartido, sin `TelemetrySnapshot`, adapters/shadow V1, fallbacks ni
+sintéticos; el `?raw` vive solo en el módulo C2a. TDD: RED literal en
+`ProfilePreview.isolation.test.tsx` (`expected 0 to be greater than or equal
+to 2`) → GREEN con dos consumidores vivos aislados (mutar standings en uno no
+contamina al otro). Layout/renderer/widgets/cadencias intactos. Guard en el
+mismo commit: C2 con **18 declaradas / 17 activas** (hereda la inactiva de
+C2a); deliberadamente RED `7 failed | 8 passed (15)` con `expected 17`.
+Focales: `ProfilePreview` 5/5 (4 existentes + aislamiento) y `HomeOrbitPage`
+19/19; ESLint focal y `git diff --check` limpios; `pnpm --dir frontend
+typecheck` NO verde con exactamente los 8 errores R7a heredados y cero
+nuevos; build no evaluable/no ejecutado por bloqueo heredado (no se declara
+verde). Riesgo: los previews muestran valores canónicos V2 (los campos con
+calidad `missing` en el golden pintan placeholder, igual que toda superficie
+V2; no es pérdida de información real). Guard/typecheck/build globales NO
+verdes. Siguiente: C2b4 (provider Studio mock, 17→15). Sin push/PR/merge/
+promoción/apps/LMU.
+
 ## R7b/C2b2 APROBADO final — cerrado, siguiente C2b3 23→17 — 2026-09-04, ISA-894
 
 Spec C2b2 `ses_f91ff25dbffejp7kMw0wLaqfg5`: **APPROVE**, P0/P1/P2=0 (P3
@@ -21,7 +46,9 @@ negativos `telemetry:overlay:projection` y `telemetry:overlay:status:get` se
 conservan bajo ownership B2 (dos literales, ninguno es input V1). Barrido del fichero: solo queda ese
 literal negativo; cero `TelemetrySnapshot`, `buildMockTelemetry`,
 builders/seeds, `authoring-fixtures`/bridge, `overlay_v1`, goldens V1 o
-`canonicalEnvelope`. Guard en el mismo commit: C2 con **24 declaradas / 23
+`canonicalEnvelope`. (Corrección de redacción: donde decía "solo queda ese
+literal negativo", léase esos dos literales negativos.) Guard en el mismo
+commit: C2 con **24 declaradas / 23
 activas** (hereda la inactiva de C2a); deliberadamente RED
 `7 failed | 8 passed (15)` con `expected 23`. ESLint focal y
 `git diff --check` limpios; `pnpm --dir frontend typecheck` NO verde con

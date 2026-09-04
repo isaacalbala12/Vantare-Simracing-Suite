@@ -554,12 +554,23 @@ B1; si una ruta no existe en árbol, lo registra como divergencia y para ese
       Guard deliberadamente RED con 24 activas; typecheck NO verde (8
       heredados); build no ejecutado; siguiente C2b3 23→17.
    4. **C2b3, previews Hub (23→17):** `HomeMiniStage`, `ProfilePreview` y
-     `ui-orbit-harness` pasan a runtime V2. C2b3 (no C2a) añade/resuelve la
-     factory por consumidor; el aislamiento cruzado de `standings` es
-     obligatorio (un preview no puede contaminar a otro; singleton
-     compartido mutable prohibido como estado final). El golden `?raw` se
-     importa una vez por módulo/chunk. Bundle no evaluable hasta desbloquear
-     los 8 errores R7a; hasta entonces no declarar gate de bundle verde.
+      `ui-orbit-harness` pasan a runtime V2. C2b3 (no C2a) añade/resuelve la
+      factory por consumidor; el aislamiento cruzado de `standings` es
+      obligatorio (un preview no puede contaminar a otro; singleton
+      compartido mutable prohibido como estado final). El golden `?raw` se
+      importa una vez por módulo/chunk. Bundle no evaluable hasta desbloquear
+      los 8 errores R7a; hasta entonces no declarar gate de bundle verde.
+      Ejecutado en `b61a7441`: TDD con `ProfilePreview.isolation.test.tsx`
+      (RED literal `expected 0 to be greater than or equal to 2`: ningún
+      preview llamaba a la factory); factory por instancia (`useMemo` en
+      `HomeMiniStage`/`ProfilePreview`) y por llamada (`buildStageV2Runtime`
+      en `ui-orbit-harness`) sobre el escenario canónico race/track/ready sin
+      singleton compartido; el `?raw` vive solo en el módulo C2a. Focales
+      5/5 (`isolation` 1/1 + `ProfilePreview` 4/4) y `HomeOrbitPage` 19/19;
+      guard RED `7 failed | 8 passed (15)` con 17 anclas activas (18
+      declaradas, una inactiva heredada de C2a); ESLint y `diff --check`
+      limpios; typecheck con los 8 heredados (no verde); build no evaluable
+      por bloqueo heredado (no se declara verde).
   5. **C2b4, provider Studio mock (17→15):** sustituir mock/puente snapshot por
      escenario V2 puro sin cambiar ciclo live ni adelantar D1/E1.
      `preview.mockSession/mockLocation` solo se preservan si existe

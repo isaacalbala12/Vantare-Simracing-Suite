@@ -1,5 +1,49 @@
 # Handoff vivo — Telemetry Core
 
+## R7b/A1 ejecutado en rama (controles, sin push) — 2026-09-04, ISA-894
+
+Writer unico en `C:\tmp\vantare-v1-retirada-r7b\vantare-v2`, rama
+`vantareapp/isa-894-retirada-v1-r7b`, base exacta
+`f287288825af7aff9f234e984dd3fa59a9d32779` (limpia). Commits locales A1
+(sin push/PR/merge/promocion/release, sin apps/LMU/navegadores, sin `.env*`,
+sin dependencias nuevas):
+`5416847c` (derive: `ControlSample` + `SpeedMPS`/`EngineRPM`/`Gear` como
+`schema.Field` desde el `VehicleState` activo + tests + golden fiel) →
+`5e3e60ca` (proyección: `ControlsHistoryV2` exacto de 8 miembros con
+`CapturedAtMS` y motion con calidad + tests + goldens regenerados vía
+`UPDATE_GOLDEN=1`) → `8e8aeaf0` (contrato TS solo vía
+`go run ./tools/telemetry-contract-gen`; `task` CLI ausente en el worktree,
+comando real reportado literal) → `6d3a9116` (decoder absoluto `CapturedAtMS`
++ frontera fail-closed V2 + fixtures + evidencia exacta). Este bloque
+prevalece sobre el inferior solo en el avance A1; siguiente accion: A2/A3 y
+resto de R7b por sus writers; el cierre combinado R7b hara `plan.md`+
+digest (no se tocan aqui).
+
+TDD RED→GREEN literal en
+[`retirada-v1-r7b-frontend-20260904.md`](../../telemetry-core/evidence/isa-894/retirada-v1-r7b-frontend-20260904.md):
+RED derive (build failed: `SpeedMPS`/`EngineRPM`/`Gear` undefined) → GREEN
+(`go test ./internal/telemetry/derive/` ok); RED proyección (build failed:
+`CapturedAtMS`/`SpeedMPS` undefined) → GREEN (overlayv2 ok);
+RED decoder (5/5 fail: reconstruía desde `generatedAt` 1999 → 915148800000)
+→ GREEN (input-telemetry 5/5→18/18 con su dir, transport 62/62, Host+shadow
+114/114, suite frontend completa 442/3430). Gate duro: sintético @104
+53982 → 63613 bytes (+9631, margen 1923 bajo 65536) PASS; sección @120
+1515 → 11146 bytes. Contrato check + `git diff --exit-code` verdes.
+`pnpm typecheck`: 8 errores heredados R7a byte-idénticos antes/después
+(`ProductID` vs `"overlay"` en `overlay-projection-v1.ts`,
+`projection-observer.ts`, `telemetry-cutover-runtime-harness/main.ts`,
+ámbito B, fuera de A1), cero nuevos, cero de controles; no se declara verde
+global. `go test ./internal/... ./tools/...` PASS sin FAIL;
+`cmd/vantare`+`frontend` en setup-failed preexistente por `dist/` ausente
+(build bloqueado por los mismos 8 errores; idéntico en base). `go vet` solo
+los tres `unsafe.Pointer` heredados fuera del diff; `git diff --check`
+limpio. Revisión del orquestador en curso: el bloque vacío transitorio
+`if view.WindowMS != 0 {}` ya quedó eliminado y reemplazado por aserciones
+reales de `CapturedAtMS`; reset epoch+`SameSession` intacto en
+`TestPipelineResetsHistoryAtEveryDeclaredIdentityBoundary` + reset con motion
+nuevo. Sin runtime físico: todo sintético/determinista; LMU/Wails pendiente
+de Isaac.
+
 ## R7b planificado (microplan, sin codigo) + R7a final comprometido — 2026-09-04, ISA-894
 
 Writer unico en `C:\tmp\vantare-v1-retirada-r7b\vantare-v2`, rama

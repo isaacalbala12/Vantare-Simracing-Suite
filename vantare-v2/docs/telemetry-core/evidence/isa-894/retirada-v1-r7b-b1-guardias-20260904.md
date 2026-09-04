@@ -271,6 +271,18 @@ heredada de C2a). ESLint de ambos TS tocados limpio; `git diff --check`
 limpio; `pnpm --dir frontend typecheck` con los 8 heredados exactos y cero
 nuevos (no verde); build no ejecutado. Siguiente: C2b2 24→23.
 
+## C2b1 quality REQUEST_CHANGES — pin shadow (ISA-894)
+
+Spec C2b1 `ses_f920fe705ffez0fE6o5MTU6efP`: **APPROVE** 0/0/0/0. Quality
+C2b1 `ses_f920d0602ffeQ1MIm8eKW0J3RY`: **REQUEST_CHANGES** (P2 único + P3
+informativo). Fix P2 en `ffdf2bf6`: pin `contentAbsentAll` dentro del test de
+callers existente (15 intactos; fuera del array C2, conteo 25/24 intacto) que
+exige ausencia de `overlay-v2-shadow-runtime` en `CompositeApp.tsx`.
+P3 aceptado como informativo (filtro por nombre; sonda validada; sin golden
+V1, sin ampliar prueba, sin producción). Guard: `7 failed | 8 passed (15)`
+con 24 activas; focal 17/17; ESLint, `diff --check` y typecheck (8
+heredados) sin regresión. Pendiente: re-review.
+
 Re-review quality Muse `ses_f92522698ffeDQwN643LThbEoz` sobre `6c4ead7f`:
 **APPROVE**, P0/P1/P2=0. Reprodujo focal 9/9, guard
 `7 failed | 8 passed (15)` con 30 anclas C2 activas, ESLint, diff-check y los

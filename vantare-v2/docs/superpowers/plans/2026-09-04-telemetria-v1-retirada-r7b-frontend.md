@@ -525,7 +525,12 @@ B1; si una ruta no existe en árbol, lo registra como divergencia y para ese
       V2 + diagnóstico sin `shadow`; focal 17/17 verde; guard RED
       `7 failed | 8 passed (15)` con 24 anclas activas (25 declaradas, una
       inactiva heredada de C2a); ESLint y `diff --check` limpios; typecheck
-      con los 8 heredados (no verde); build no ejecutado.
+      con los 8 heredados (no verde); build no ejecutado. Spec C2b1
+      `ses_f920fe705ffez0fE6o5MTU6efP` APPROVE 0/0/0/0; quality C2b1
+      `ses_f920d0602ffeQ1MIm8eKW0J3RY` REQUEST_CHANGES (P2 único + P3
+      informativo): fix P2 con pin shadow en el test de callers existente
+      (`ffdf2bf6`, conteo intacto); P3 aceptado informativo; pendiente
+      re-review.
   3. **C2b2, StudioRoute test V2-only (24→23):** retirar golden/evento V1;
      cualquier publicación snapshot usada exclusivamente para histories E1
      queda citada y no se presenta como autoridad de proyección.

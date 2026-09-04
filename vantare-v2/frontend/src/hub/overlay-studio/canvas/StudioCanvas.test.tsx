@@ -13,7 +13,6 @@ import type { StudioProfileClient } from "../state/studio-profile-client";
 import { SAFE_AREA_INSET_RATIO } from "./canvas-backgrounds";
 import { StudioCanvas } from "./StudioCanvas";
 import { StudioTelemetryProvider } from "./StudioTelemetryProvider";
-import { buildMockTelemetry } from "../../../overlay/core/mock-scenarios";
 import { createTelemetryRateCoordinator } from "../../../overlay/core/telemetry-rate-coordinator";
 import type { StudioMonitor } from "../state/studio-monitor-client";
 
@@ -604,14 +603,13 @@ describe("StudioCanvas", () => {
 
   it("renders disconnected delta when live source loses LMU", async () => {
     const coordinator = createTelemetryRateCoordinator();
-    coordinator.publish(
-      buildMockTelemetry({ session: "practice", location: "track", state: "ready" }),
-    );
     const telemetryAdapter = {
       coordinator,
       start() {
-        coordinator.publish(
-          buildMockTelemetry({ session: "race", location: "track", state: "disconnected" }),
+        const retained = coordinator.getOverlayFrame()!;
+        coordinator.setOverlayFrame(
+          { ...retained, sequence: retained.sequence + 1 },
+          { state: "live" },
         );
         coordinator.setOverlayFrame(coordinator.getOverlayFrame(), { state: "stopped" });
       },

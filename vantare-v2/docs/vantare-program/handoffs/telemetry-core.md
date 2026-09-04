@@ -1,6 +1,6 @@
 # Handoff vivo — Telemetry Core
 
-## R7b/C2a EJECUTADO en rama (fixture puro, sin push) — siguiente C2b tras review — 2026-09-04, ISA-894
+## R7b/C2a CERRADO en rama (doble APPROVE, sin push) — siguiente C2b — 2026-09-04, ISA-894
 
 Writer único en `C:\tmp\vantare-v1-retirada-r7b\vantare-v2`, rama
 `vantareapp/isa-894-retirada-v1-r7b`, base `41c584a7` (preflight C2 cerrado).
@@ -62,6 +62,14 @@ sin optimizar: singleton `PREVIEW_V2_RUNTIME` (factory/ownership con
 consumidores reales) y tamaño bundle del golden `?raw` (~33,5 KB). HEAD tras
 la corrección: `fdb1130d` (código+focal); este bloque se cierra en el commit
 documental siguiente.
+
+Re-review quality `ses_f92522698ffeDQwN643LThbEoz` sobre `6c4ead7f`:
+**APPROVE**, P0/P1/P2=0. Reprodujo focal 9/9, guard
+`7 failed | 8 passed (15)` con 30 anclas C2 restantes, ESLint y diff-check;
+typecheck conserva solo los 8 errores heredados. C2a queda cerrado. C2b debe
+resolver dos P3 explícitos al conectar consumidores: aislamiento cruzado del
+array `standings` y factory/ownership de `PREVIEW_V2_RUNTIME`, midiendo además
+el impacto del golden `?raw` en el bundle. No B3/B2 todavía.
 
 ## R7b/C2 PRE-FLIGHT CERRADO — siguiente C2a, no B3/B2 — 2026-09-04, ISA-894
 

@@ -209,3 +209,11 @@ golden `?raw` (~33,5 KB medidos). Guard tras la corrección:
 `7 failed | 8 passed (15)`; typecheck con los 8 heredados exactos, cero
 nuevos; ESLint y `diff --check` limpios. HEAD tras la corrección: `fdb1130d`
 (código+focal); este registro se cierra en el commit documental siguiente.
+
+Re-review quality Muse `ses_f92522698ffeDQwN643LThbEoz` sobre `6c4ead7f`:
+**APPROVE**, P0/P1/P2=0. Reprodujo focal 9/9, guard
+`7 failed | 8 passed (15)` con 30 anclas C2 activas, ESLint, diff-check y los
+8 errores typecheck heredados sin errores nuevos. C2a queda **CERRADO**.
+Dos P3 no bloqueantes pasan con dueño explícito a C2b: aislamiento cruzado
+específico del array `standings` y decisión factory/ownership del singleton
+preview junto con la medición del coste de inlining del golden.

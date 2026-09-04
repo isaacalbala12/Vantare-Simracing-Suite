@@ -65,10 +65,25 @@ function makeFrame(): OverlayFrameV2 {
     controls: {
       history: {
         q: "fresh" as const,
-        windowMs: 3000,
+        capturedAtMS: [1787140801000, 1787140802000, 1787140803000],
         throttle: [800, 820, 790],
         brake: [100, 90, 110],
         clutch: [0, 0, 0],
+        speedMPS: [
+          { v: 50, q: "fresh" as const },
+          { v: 51, q: "fresh" as const },
+          { v: 52, q: "fresh" as const },
+        ],
+        rpm: [
+          { v: 7200, q: "fresh" as const },
+          { v: 7300, q: "fresh" as const },
+          { v: 7400, q: "fresh" as const },
+        ],
+        gear: [
+          { v: 4, q: "fresh" as const },
+          { v: 4, q: "fresh" as const },
+          { v: 5, q: "fresh" as const },
+        ],
       },
     },
     spotter: { mode: "none", left: missing, right: missing },

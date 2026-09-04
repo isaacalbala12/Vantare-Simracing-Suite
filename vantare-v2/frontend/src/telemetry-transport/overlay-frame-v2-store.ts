@@ -343,16 +343,17 @@ function player(value: unknown, path: string): void {
 }
 
 /**
- * The controls history is three parallel per-mille arrays. They must have the
- * same length: a frame whose pedals disagree on how many samples exist is
- * malformed, not partially usable.
+ * The controls history is seven parallel arrays: three per-mille pedal
+ * series, one absolute capture instant per sample and three quality-bearing
+ * motion series. Every present array must have the same length: a frame whose
+ * series disagree on how many samples exist is malformed, not partially
+ * usable.
  */
 function controls(value: unknown, path: string): void {
   objectWithKeys(value, path, ["history"]);
   const history = value.history;
-  objectWithKeys(history, `${path}.history`, ["q"], ["windowMs", "throttle", "brake", "clutch"]);
+  objectWithKeys(history, `${path}.history`, ["q"], ["capturedAtMS", "throttle", "brake", "clutch", "speedMPS", "rpm", "gear"]);
   quality(history.q, `${path}.history.q`);
-  optionalNonNegativeInteger(history.windowMs, `${path}.history.windowMs`);
   let length: number | undefined;
   for (const key of ["throttle", "brake", "clutch"] as const) {
     const series = history[key];
@@ -361,7 +362,36 @@ function controls(value: unknown, path: string): void {
     if (length !== undefined && series.length !== length) invalid(`${path}.history.${key}`);
     length = series.length;
   }
+  const instants = history.capturedAtMS;
+  if (instants !== undefined) {
+    instantSeries(instants, `${path}.history.capturedAtMS`);
+    if (length !== undefined && instants.length !== length) invalid(`${path}.history.capturedAtMS`);
+    length = instants.length;
+  }
+  for (const key of ["speedMPS", "rpm", "gear"] as const) {
+    const series = history[key];
+    if (series === undefined) continue;
+    qvalueSeries(series, `${path}.history.${key}`);
+    if (length !== undefined && series.length !== length) invalid(`${path}.history.${key}`);
+    length = series.length;
+  }
   Object.freeze(history);
+  Object.freeze(value);
+}
+
+function instantSeries(value: unknown, path: string): asserts value is readonly number[] {
+  if (!Array.isArray(value) || value.length > 120) invalid(path);
+  for (const entry of value) {
+    if (!Number.isSafeInteger(entry) || (entry as number) < 0) invalid(path);
+  }
+  Object.freeze(value);
+}
+
+function qvalueSeries(value: unknown, path: string): asserts value is readonly OverlayQValue<unknown>[] {
+  if (!Array.isArray(value) || value.length > 120) invalid(path);
+  for (const entry of value) {
+    if (!validQValue(entry, "number")) invalid(path);
+  }
   Object.freeze(value);
 }
 

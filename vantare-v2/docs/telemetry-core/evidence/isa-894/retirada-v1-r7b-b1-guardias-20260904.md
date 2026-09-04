@@ -219,9 +219,27 @@ Baseline literal previo: guard `7 failed | 8 passed (15)`, C2 con 30 anclas
 `StudioTelemetryProvider`) por false-positive probado (`import type` bajo
 ownership E1, sin V1 en runtime/bundle); comentario mínimo en el guard.
 Resultado literal: guard deliberadamente RED `7 failed | 8 passed (15)`, C2
-con **26 anclas** exactas y cero menciones al adapter. ESLint focal y
+con **26 anclas** exactas y cero menciones a `transports/telemetry-adapter`
+dentro de las anclas negativas C2 (las dos menciones
+`overlay-projection-adapter` siguen C2b7). ESLint focal y
 `git diff --check` limpios; typecheck con los 8 heredados R7a (no verde);
 build no ejecutado. El guard global NO está verde. Siguiente: C2b1 26→24.
+
+## C2b0 quality REQUEST_CHANGES — endurecimiento (ISA-894)
+
+Quality review Muse `ses_f92271085ffeQRY7qOv1BrisR0` sobre `276ab8e4`:
+**REQUEST_CHANGES** (la spec anterior hizo timeout: sin veredicto). Fixes en
+commit `c0745202`: las 4 falsas alarmas siguen fuera de `contentAbsentAll`;
+comprobación positiva mínima y exacta dentro del mismo test C2 (sin tests
+nuevos, 15 intactos) de `import type { TelemetryAdapter }` + módulo canónico
+en las 4 rutas (owner E1); `StudioTelemetryProvider.tsx` en el loop
+sin-imports-V1. Metodología: 31 declaradas/30 activas antes, 27 declaradas/26
+activas después; la secuencia es de ACTIVAS y coincide con el Vitest
+`expected …(26)`. Frase corregida: cero menciones a
+`transports/telemetry-adapter` dentro de las anclas negativas C2 (las dos
+`overlay-projection-adapter` siguen C2b7). Guard: `7 failed | 8 passed (15)`;
+ESLint, `diff --check` y typecheck (8 heredados) sin regresión. Pendiente:
+nueva spec+quality.
 
 Re-review quality Muse `ses_f92522698ffeDQwN643LThbEoz` sobre `6c4ead7f`:
 **APPROVE**, P0/P1/P2=0. Reprodujo focal 9/9, guard

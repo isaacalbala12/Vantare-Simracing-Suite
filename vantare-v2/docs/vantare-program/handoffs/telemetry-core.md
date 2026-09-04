@@ -1,5 +1,22 @@
 # Handoff vivo — Telemetry Core
 
+## R7b/C2b0 QUALITY REQUEST_CHANGES — endurecido, pendiente nueva spec+quality — 2026-09-04, ISA-894
+
+Quality review Muse `ses_f92271085ffeQRY7qOv1BrisR0`: **REQUEST_CHANGES**
+sobre `276ab8e4` (la spec anterior hizo timeout: sin veredicto, no se inventa
+ninguno). Fixes en commit `c0745202` (solo guard, cero producción): las 4
+falsas alarmas siguen fuera de `contentAbsentAll`; dentro del mismo test C2
+(sin tests nuevos, 15 intactos) comprobación positiva mínima y exacta de
+`import type { TelemetryAdapter }` + módulo canónico en las 4 rutas (owner
+E1; falla ante import runtime o cambio de módulo; el módulo neutral no se
+vigila como V1); `StudioTelemetryProvider.tsx` añadido al loop sin-imports-V1
+de `V1_MODULES_B2`. Metodología de conteo aclarada: 31 declaradas/30 activas
+antes (una inactiva desde C2a), 27 declaradas/26 activas después; la secuencia
+30→26→…→0 es de ACTIVAS y coincide con el `expected …(26)` de Vitest. Guard
+tras el fix: `7 failed | 8 passed (15)`; ESLint focal, `diff --check` y
+typecheck (8 heredados exactos) limpios de regresión. Pendiente: nueva
+spec+quality del checkpoint endurecido. Sin push/PR/merge/promoción/apps/LMU.
+
 ## R7b/C2b0 CERRADO en rama (guard, cero producción) — siguiente C2b1 26→24 — 2026-09-04, ISA-894
 
 Writer único, rama `vantareapp/isa-894-retirada-v1-r7b`, base `a32c18cb`.
@@ -10,7 +27,8 @@ C2 del guard las 4 entradas `transports/telemetry-adapter` de `StudioRoute`,
 producción intacta) y deja comentario mínimo que lo explica. Baseline previo:
 guard `7 failed | 8 passed (15)` con C2 en 30 anclas; resultado: guard
 **deliberadamente RED** `7 failed | 8 passed (15)` con C2 en **26 anclas**
-exactas (cero menciones al adapter). ESLint focal y `git diff --check`
+exactas (cero menciones a `transports/telemetry-adapter` dentro de las anclas
+negativas C2; las dos menciones `overlay-projection-adapter` siguen C2b7). ESLint focal y `git diff --check`
 limpios; typecheck registra los 8 heredados R7a (no verde, no necesario para
 cero producción); build no ejecutado. El guard global NO está verde: C2 sigue
 en rojo hasta C2b7. Siguiente: C2b1 (Composite test V2-only, 26→24). Sin

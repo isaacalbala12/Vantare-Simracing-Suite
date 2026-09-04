@@ -507,6 +507,13 @@ B1; si una ruta no existe en árbol, lo registra como divergencia y para ese
      no cambiar producción por vanidad del guard. Ejecutado en `9e7cf552`:
      guard `7 failed | 8 passed (15)` con C2 en 26 anclas exactas, ESLint y
      `diff --check` limpios, typecheck con los 8 heredados (no verde).
+     Endurecido en `c0745202` (mismo test C2, sin tests nuevos): comprobación
+     positiva de `import type { TelemetryAdapter }` desde el módulo canónico
+     en las 4 rutas (owner E1; falla si pasa a runtime o cambia de módulo) y
+     `StudioTelemetryProvider.tsx` en el loop sin-imports-V1. Metodología de
+     conteo: el reviewer cuenta entradas DECLARADAS (31 antes, una ya inactiva
+     desde C2a; 27 después); la secuencia 30→26→…→0 es de ACTIVAS y coincide
+     con el `expected …(26)` de Vitest.
   2. **C2b1, Composite test V2-only (26→24):** retirar golden V1 y mock shadow
      obsoleto de `CompositeApp.test.tsx`, conservando cobertura del snapshot
      V2 real.

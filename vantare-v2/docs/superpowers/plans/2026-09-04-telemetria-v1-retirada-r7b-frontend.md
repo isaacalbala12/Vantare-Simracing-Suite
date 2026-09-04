@@ -17,9 +17,21 @@ pública y por tanto **no toca `plan.md` ni `roadmap.json` en este commit**.
 código R7b** (la issue es `roadmap:required`), no de este commit solo-plan:
 el mero microplan no modifica el roadmap público.
 
-**TDD y gates**: RED→GREEN aplica a los cambios conductuales **A–E**. **F no
+**TDD y gates**: RED→GREEN aplica a los subcortes conductuales **A–E excepto
+D5** (D5 es conservación/verificación, solo verificación). **F no
 es un subcorte TDD y no finge RED**: F1/F2 verifican el SHA final y cierran
 documentación.
+
+**Evidencia de payload de A**: cada subcorte A registra bytes absolutos y delta
+antes/después en la evidencia exacta
+`docs/telemetry-core/evidence/isa-894/retirada-v1-r7b-frontend-20260904.md`.
+
+**Gate de payload efectivo**: `DefaultPublisherMaxPayloadBytes = 64 * 1024` en
+`internal/app/telemetrytransport/publisher.go`, impuesto por el Publisher; el
+`MaxPayloadBytes = 256 * 1024` del Hub (`transport.go`) es solo invariante
+secundaria (techo duro). `frame_test.go` ya exige frame sintético completo con
+104 vehículos < 64 KiB: el frame V2 @104 con las historias A debe permanecer
+< 64 KiB.
 
 ## Invariantes que todo subcorte respeta
 
@@ -66,102 +78,140 @@ Hecho verificado en árbol: `derive.ControlSample` hoy es
 speed/rpm/gear**, así que la historia actual no puede llamarse canónica
 completa. A1 la expande en Go antes de proyectarla.
 
-### A1 · Controles: expandir ControlSample en Go y proyectar historia compacta 120
+### A1 · Controles: expandir ControlSample en Go y proyectar historia cerrada 120
 
-- Objetivo: diseñar explícitamente la expansión Go: ampliar
-  `derive.ControlSample` con `SpeedKPH`/`RPM`/`Gear` tomados del VehicleState
-  activo canónico, conservar `CapturedAt` real; historia limitada a 120 con
-  propiedad/reset/clone por epoch/session/stint según el patrón real vigente
-  (p. ej. el tracker con epoch/session/player como `selfDeltaTracker`);
-  proyectar en `OverlayFrameV2` mediante contrato tipado generado,
-  preferentemente formato compacto (arrays paralelos y offsets temporales
-  enteros relativos, no timestamps string repetidos); sin `Date.now` ni
-  autoridad browser; compatibilidad/versionado aditivo; regenerar contrato solo
-  con las tasks oficiales.
+- Hechos de árbol (no negociar): `derive.ControlSample` es hoy
+  `{Cursor, CapturedAt, Vehicle, Throttle, Brake, Clutch}` sin speed/rpm/gear
+  (`builder_controls.go:26-28` lo declara gap); el reset vigente de
+  `ControlsHistory` es `mustReset` por epoch + `SameSession`
+  (`pipeline.go:336-339`), NO stint/player; la fuente canónica es el
+  VehicleState activo con `SpeedMPS` (m/s, no kPH), `EngineRPM` y `Gear`
+  (`core/reducer.go:54-56`, `vehicle.Gear` = int32); el wire actual
+  `ControlsHistoryV2` publica pedales per-mille + `WindowMS`/espaciado igual,
+  declarado como diferencia contra V1 (`frame.go:173-198`).
+- Objetivo (formato completamente cerrado, sin "preferentemente" ni "p. ej."):
+  ampliar `derive.ControlSample` con `SpeedMPS float64` (m/s, unidad de la
+  fuente; la presentación a km/h es solo formato en el decoder),
+  `EngineRPM vehicle.EngineRPM` y `Gear vehicle.Gear`, tomados del VehicleState
+  activo canónico, conservando `CapturedAt` real; historia limitada a 120 con el
+  reset vigente epoch+SameSession y clone ya existente (`cloneFinal`); proyectar
+  en `OverlayFrameV2` el tipo cerrado `ControlsHistoryV2 { Q Quality;
+  CapturedAgeMS []int32; Throttle []int16; Brake []int16; Clutch []int16;
+  SpeedMPS []float64; RPM []float64; Gear []int32 }`, arrays alineados, máximo
+  120, con `CapturedAgeMS[i] = frame.GeneratedAt - sample.CapturedAt` en ms
+  (sustituye a `WindowMS`/espaciado igual); tipos generados solo vía tasks
+  oficiales, versionado aditivo; ausencia/calidad: muestra ausente se representa
+  con `Q` degradada y arrays acortados, nunca convirtiendo missing en cero; el
+  decoder frontend reconstruye `capturedAt = generatedAt - age` y formatea
+  unidades, sin `Date.now` ni autoridad browser; preserva la información del
+  contrato legacy legítimo (pedales + speed/rpm/gear por muestra con su base
+  temporal real).
 - Archivos permitidos/esperados: `internal/telemetry/derive/` (muestra,
-  historia, ownership/reset/clone), `internal/telemetry/projection/overlayv2/`
-  (builder/copia del campo histórico), tipos generados solo vía tasks
-  oficiales, builder/view-model V2 de controles solo como decodificador,
-  tests focales. Prohibido: tocar legacy, crear snapshot genérico, autoridad
-  temporal browser.
-- Test RED previo (triple): fuente/procedencia (cada muestra trae Speed/RPM/Gear
-  del VehicleState canónico, no inventados); timestamps monótonos reales;
-  tope 120 + reset por cambio de epoch/session/stint. Falla mientras falte
-  cualquier pieza.
+  historia, reset vigente, clone), `internal/telemetry/projection/overlayv2/`
+  (`frame.go`, `builder_controls.go`, copia), tipos generados solo vía tasks
+  oficiales, decoder frontend de controles, tests focales. Prohibido: tocar
+  legacy, crear snapshot genérico, autoridad temporal browser, llamar SpeedKPH
+  canónico a una fuente en m/s.
+- Test RED previo (triple): fuente/procedencia (SpeedMPS/EngineRPM/Gear del
+  VehicleState canónico con unidades y calidad preservadas); offsets reales
+  monótonos (no `WindowMS`/espaciado igual); tope 120 + reset epoch+SameSession.
+  Falla mientras falte cualquier pieza.
 - Aceptación (máx. 3):
-  1. Historia 120 con Speed/RPM/Gear canónicos, `CapturedAt` real monótono y
-     reset canónico; frontend solo decodifica.
-  2. Contrato regenerado con tasks oficiales, aditivo; bytes absolutos y delta
-     de payload registrados sin superar `MaxPayloadBytes` del transporte.
+  1. Historia 120 con tipos exactos fijados, offsets reales y reset vigente;
+     frontend solo decodifica y formatea.
+  2. Contrato regenerado con tasks oficiales, aditivo; frame V2 @104 < 64 KiB;
+     bytes absolutos y delta registrados en la evidencia exacta.
   3. Focales + `go test` del paquete afectado en verde.
-- Checks: focales RED→GREEN, `task telemetry:contract` +
-  `task telemetry:contract:check`, `pnpm --dir frontend test` focal,
-  `go test` paquete afectado, benchmark/tamaño golden contra frame actual.
+- Microcheckpoints ordenados EN LA MISMA rama/PR (ninguna otra rama):
+  a. derive RED→GREEN (gate: `go test` del paquete derive afectado);
+  b. projection/frame/builder/copia (gate: `go test` overlayv2 + `frame_test`
+     < 64 KiB en verde);
+  c. contrato generado con `task telemetry:contract` + `:check` (gate: check
+     verde; no se exige typecheck frontend antes de regenerar tipos);
+  d. decoder frontend + focales + golden/payload en evidencia exacta (gate:
+     `pnpm --dir frontend test` focal y `pnpm --dir frontend typecheck` verdes).
+  Cada checkpoint coherente y verificable en su capa.
+- Checks: los cuatro checkpoints + benchmark/tamaño golden contra frame actual.
 - Reviewer: spec (contrato/autoridad) + quality en el PR apilado.
 - Rollback/stop: revert del micro-commit. **STOP historias / STOP coste**: si
   falta VehicleState canónico, si exige snapshot genérico / autoridad browser /
-  `Date.now`, o si la regresión de payload no es aceptable (supera
-  `MaxPayloadBytes`; sin umbral numérico inventado: valen bytes
-  absolutos/delta registrados) → parar y pedir ADR/decision; no borrar legacy.
+  `Date.now`, o si el frame @104 no queda < 64 KiB (gate efectivo Publisher;
+  Hub 256 KiB solo secundaria) → parar y pedir ADR/decision; no borrar legacy.
 
-### A2 · Fuel: ventana de cálculo intacta + NUEVA historia de consumo por vuelta 64
+### A2 · Fuel: contrato y semántica fijados (el writer no decide)
 
-- Objetivo: mantener la ventana de cálculo existente
-  (`DefaultFuelUsageWindow = 3`, `MaxFuelUsageWindow = 10`, verificado en
-  `internal/telemetry/derive/fuel.go`) **separada** de una NUEVA historia de
-  consumo por vuelta, p. ej. `FuelLapSample{Lap, Consumed}`, acotada a 64, con
-  ownership/clone/reset canónicos. `OverlayFrameV2` publica la historia
-  compacta tipada. Calcular en Go `sessionLaps` desde `SessionRemaining` +
-  player `LastLapTime` **aun cuando gane la base fuel** (las dos bases
-  `FuelBasisFuel`/`FuelBasisSession` ya existen en el frame); `requiredFuel` =
-  perLap canónico × sessionLaps, con quality/presence/freshness resultante como
-  peor calidad de las entradas y basis explícito. **No derivar `requiredFuel`
-  de `EstimatedLaps` del fuel basis.**
-- Archivos: `internal/telemetry/derive/fuel*` (historia nueva, cálculo
-  `sessionLaps`/`requiredFuel`), `projection/overlayv2` builder/copia, tipos
-  generados solo vía tasks oficiales, view-model V2 como decodificador, tests
-  focales. Prohibido: alterar la ventana 3/10, sintéticos, autoridad browser.
+- Hechos de árbol: ventana `DefaultFuelUsageWindow = 3` / `MaxFuelUsageWindow
+  = 10` (`derive/fuel.go:13-17`); `sessionLapsRemaining` ya calcula
+  ceil(sessionRemaining/lastLapTime) con peor calidad (`builder_fuel.go:104`);
+  `builder_fuel.go:44-48` afirma hoy que `requiredFuel` permanece ausente — este
+  corte **deroga explícitamente ese comentario** al publicar el segundo campo
+  de vueltas que el comentario echaba en falta.
+- Contrato fijado: `FuelHistoryV2 { Q Quality; Lap []int32; Consumed []float64 }`,
+  arrays alineados, máximo 64, consumo en la unidad declarada por el frame
+  (litros canónicos, conversión a preferencia solo en presentación);
+  `FuelViewV2` añade `History FuelHistoryV2`, `SessionLaps QValue[float64]`,
+  `RequiredFuel QValue[float64]`. `Basis` actual sigue describiendo **solo**
+  `EstimatedLaps`. `RequiredFuel = PerLap × SessionLaps`, calculado en Go desde
+  `SessionRemaining` + player `LastLapTime` aun cuando gane la base fuel; su
+  base es `SessionLaps` y su quality es peor-de, nunca `EstimatedLaps`. La
+  ventana de promedio 3/10 queda separada e intacta.
+- Archivos: `internal/telemetry/derive/fuel*` (historia nueva + ownership/clone/
+  reset canónicos), `builder_fuel.go` (derogación del comentario + cálculo),
+  `frame.go`, tipos generados solo vía tasks oficiales, view-model V2 como
+  decodificador, tests focales. Prohibido: alterar la ventana 3/10, sintéticos,
+  autoridad browser, derivar de `EstimatedLaps`.
 - Test RED previo: serie (muestras reales por vuelta), límite 64, reset
   canónico, ausencia/calidad (peor calidad propagada, basis explícito) y cálculo
-  (`requiredFuel` = perLap × sessionLaps con `SessionRemaining`+`LastLapTime`,
-  independiente de `EstimatedLaps`). Falla sin cada pieza.
+  (`RequiredFuel` = PerLap × SessionLaps, independiente de `EstimatedLaps`).
+  Falla sin cada pieza.
 - Aceptación:
   1. Historia 64 real con reset canónico; ventana 3/10 intacta y separada.
-  2. `requiredFuel` calculado en Go según fórmula fijada, con calidad peor-de y
-     basis explícito; contrato regenerado + coste de payload medido.
+  2. `SessionLaps`/`RequiredFuel` según fórmula fijada; frame V2 @104 < 64 KiB;
+     bytes absolutos y delta en la evidencia exacta.
   3. Focales + `go test` en verde.
+- Microcheckpoints a–d como A1 (derive; projection+frame_test < 64 KiB;
+  contrato generado; decoder + focales + evidencia), en la misma rama/PR.
 - Checks/reviewer/rollback: como A1.
-- Stop: como STOP historias de A1.
+- Stop: como STOP historias / STOP coste de A1.
 
-### A3 · Delta: la historia existe en derive pero NO está en frame; agregarla tipada/compacta
+### A3 · Delta: campo histórico mínimo y mapping exacto
 
-- Premisa corregida (verificada en árbol): `derive.SelfDelta.History
-  []DeltaSample` **ya existe**, pero `DeltaViewV2` en `frame.go` **no tiene
-  campo histórico**. El corte agrega el campo histórico tipado/compacto a
-  `OverlayFrameV2` + builder/copia, conserva timestamps reales y el frontend
-  solo decodifica. El singleton/`Date.now` frontend se elimina **solo después
-  de verde**, no antes.
+- Hechos de árbol: `derive.SelfDelta.History []DeltaSample` ya existe
+  (`delta.go:41`), con `DeltaSample {Cursor, CapturedAt, SourceTime,
+  LapDistance, Seconds}` (`delta.go:29-35`); `DeltaViewV2` no tiene campo
+  histórico (`frame.go:248-255`); `Trend` queda vacío por diseño porque el
+  concepto lo posee delta-trace (`builder_delta.go:44-47`).
+- Contrato fijado (mínimo): `DeltaHistoryV2 { Q Quality; CapturedAgeMS []int32;
+  Seconds []float64 }`, arrays alineados, máximo `MaxSelfDeltaHistory = 120`
+  (`delta.go:21`); `CapturedAgeMS[i] = frame.GeneratedAt - sample.CapturedAt`
+  en ms; el decoder frontend reconstruye `capturedAt = generatedAt - age`, sin
+  string timestamps ni `Date.now`. No se transportan `SourceTime`/`LapDistance`:
+  ningún consumidor legítimo los usa en el wire. `Trend` conserva el
+  comportamiento actual (vacío en builder; delta-trace posee el concepto).
+  Mapping exacto: derive (`SelfDelta.History`, `Freshness`) → frame
+  (`DeltaViewV2.History` vía `BuildDelta` + copia) → TS generado →
+  decoder (edades a instantes + segundos con calidad).
+- El singleton/`Date.now` frontend se elimina **solo después de verde**.
 - Archivos: `frame.go` (campo nuevo), `builder_delta.go` + copia, tipos
-  generados vía tasks, view-model/builder V2 de delta como decodificador, tests
-  de regresión migrados a V2. Prohibido: pruebas automáticas de vueltas del
-  jugador, snapshot genérico.
+  generados vía tasks, decoder V2, tests de regresión migrados a V2. Prohibido:
+  pruebas automáticas de vueltas del jugador, snapshot genérico.
 - Test RED previo: regresión estructural V2 que exige el campo histórico
-  proyectado desde la historia canónica Go con timestamps reales; falla con
-  singleton/`Date.now` o sin campo.
+  proyectado con edades reales; falla con singleton/`Date.now` o sin campo.
 - Aceptación:
-  1. Campo histórico delta en frame con timestamps reales; frontend decodifica.
+  1. Campo histórico delta con edades reales; frontend decodifica.
   2. Singleton/`Date.now` eliminado después de verde; regresión estructural
-     conservada en builders V2 (delta sigue excluido de pruebas automáticas de
-     vueltas, **no** de regresión estructural).
-  3. Contrato regenerado + payload medido.
+     conservada (delta sigue excluido de pruebas automáticas de vueltas,
+     **no** de regresión estructural).
+  3. Frame V2 @104 < 64 KiB; bytes absolutos y delta en la evidencia exacta.
+- Microcheckpoints a–d como A1, en la misma rama/PR.
 - Checks/reviewer/rollback: como A1.
-- Stop: como STOP historias de A1.
+- Stop: como STOP historias / STOP coste de A1.
 
 ---
 
 ## B · Guardias RED, dueños explícitos y retirada V1 (hecho 1)
 
-### B0 · Tabla cerrada de consumidores R0: dueño/corte explícito, sin "etc."
+### B0 · Tabla cerrada de consumidores R0: 12 grupos con dueño/corte explícito, sin "etc."
 
 Cada consumidor recibe corte dueño. El worker fija rutas exactas en el RED de
 B1; si una ruta no existe en árbol, lo registra como divergencia y para ese
@@ -363,8 +413,8 @@ B1; si una ruta no existe en árbol, lo registra como divergencia y para ese
   `engineer-radio` son auxiliares con fuentes propias, **no telemetría V2**;
   se conservan y no se cuentan en los 18 V2.
 - Archivos: solo los auxiliares citados y sus tests. Sin borrado.
-- Test RED previo: no aplica (conservación, no cambio conductual); se verifica
-  con sus tests existentes en verde.
+- Test RED previo: no hay RED — D5 es conservación/verificación, no cambio
+  conductual; se verifica con sus tests existentes en verde.
 - Aceptación:
   1. Auxiliares intactos con fuentes explícitas.
   2. Ningún lote D2–D4 los incluye.
@@ -396,44 +446,77 @@ B1; si una ruta no existe en árbol, lo registra como divergencia y para ese
 - Rollback/stop: revert. Stop si algo citado sigue importado por un preview
   no migrado → volver a C2.
 
-### E2 · Switch overlay-v2-features: expectativa única y falsable, sin disyunción
+### E2 · Switch overlay-v2-features: decisión fijada según callsites reales, sin disyunción
 
-- Expectativa única: **retirar por completo** el rollback mutable, los globals
-  `window`, los setters y las suscripciones del switch diagnóstico
-  `overlay-v2-features`. Sin camino de vuelta dentro del binario; el rollback
-  aprobado es la build anterior R0 (restauración física pendiente de Isaac).
-- Si demand/capabilities necesita catálogo: separarlo explícitamente como
-  **datos estáticos V2 directos en símbolo/archivo distinto**, sin switch, sin
-  mutabilidad y sin retorno V1. No hay disyunción: o se retira todo, o el
-  residuo estático vive aislado y falsable por `rg` (cero `window`, cero
-  setters, cero suscripciones).
-- Archivos: switch, globals, setters, suscripciones y tests asociados; archivo
-  de datos estáticos solo si aplica la separación.
-- Test RED previo: test que exige ausencia total de switch/globals/setters/
-  suscripciones (y, si aplica, presencia del dato estático aislado); falla antes.
+- Hechos de árbol (`frontend/src/overlay/telemetry-shadow/overlay-v2-features.ts`,
+  125 líneas): el catálogo estático (`OVERLAY_V2_*`, `OverlayV2Feature`,
+  `DEFAULT_OVERLAY_V2_FEATURES`, `hasOverlayV2Feature` pura) convive con la
+  maquinaria mutable (`createOverlayV2FeaturesGeneration`, `activeGeneration`,
+  `setRollback`/`ROLLBACK_FEATURES`, `parseOverlayV2Features`,
+  `readDiagnosticOverlayV2Features`, `writeOverlayV2Rollback`,
+  `readOverlayV2Rollback`, globals `window.__vantareSet/GetOverlayV2Rollback`,
+  evento `vantare:overlay-v2-rollback-changed`). Callsites reales: CompositeApp,
+  ObsOverlayApp y StudioRoute crean generación + `useSyncExternalStore`
+  (subscribe/getSnapshot) + `dispose`; el snapshot (array estático en la
+  práctica) fluye como prop hasta el runtime (`InPlaceWidgetEditFrame`), que lo
+  consume como dato, no como switch.
+- Decisión fijada (no disyunción): el catálogo estático se conserva **movido**
+  a `frontend/src/overlay/core/overlay-v2-feature-catalog.ts` (constantes, tipo,
+  `DEFAULT_OVERLAY_V2_FEATURES`, `hasOverlayV2Feature` pura). Se elimina
+  `createOverlayV2FeaturesGeneration`, `activeGeneration`, `setRollback`,
+  `subscribe`, `parseOverlayV2Features`, los readers/writers diagnósticos, los
+  globals `window` y toda mutabilidad. CompositeApp/ObsOverlayApp/StudioRoute
+  pasan a usar el default estático directo: fuera generación, suscripción,
+  `dispose` y campo de generación; las props downstream conservan el tipo
+  estático del catálogo (sigue haciendo falta el dato; ya no hace falta gating).
+  Sin parse/switch mutable.
+- Archivos: `telemetry-shadow/overlay-v2-features.ts` (queda vacío → se borra),
+  nuevo `overlay/core/overlay-v2-feature-catalog.ts`, los tres callsites +
+  props downstream, `overlay-v2-features.test.ts` (se reescribe a catálogo
+  estático o se borra si solo cubría la maquinaria), tests `*-domain-free`
+  que importen el switch.
+- Test RED previo: test que exige cero `createOverlayV2FeaturesGeneration`/
+  `activeGeneration`/`setRollback`/`subscribe`/`parseOverlayV2Features`/
+  `__vantareSet/GetOverlayV2Rollback`/`overlay-v2-rollback-changed` en árbol y
+  bundle, con el catálogo estático presente en su archivo; falla antes.
 - Aceptación:
-  1. Cero switch/globals/setters/suscripciones en árbol y bundle.
-  2. Residuo estático —si existe— aislado, sin mutabilidad ni retorno V1.
+  1. Cero maquinaria mutable en árbol y bundle (falsable por `rg`).
+  2. Catálogo estático en su archivo distinto, sin mutabilidad ni retorno V1.
   3. Focales en verde.
 - Checks: focales, `rg` ausencia, `pnpm --dir frontend typecheck`.
 - Reviewer: spec + quality.
-- Rollback/stop: revert. **STOP switch/ADR**: si la separación exige cambiar
-  capabilities/demand o arquitectura inesperada → parar, fijar stop condition
-  con ADR; no reintroducir switch de retorno.
+- Rollback/stop: revert. **STOP switch/ADR**: si aparece un consumidor que
+  exige gating mutable o cambiar capabilities/demand/arquitectura → parar,
+  fijar stop condition con ADR; no reintroducir switch de retorno.
 
-### E3 · Borrar testdata Go overlay V1 huérfano + packages scripts/harnesses, limpiar bundle
+### E3 · Borrar testdata Go overlay V1 + entrypoints/harnesses V1 exactos, limpiar bundle
 
-- Objetivo: borrar el `testdata` Go de overlay V1 quedado huérfano en R7a
-  (`internal/telemetry/projection/overlay/testdata/`), bench Go huérfano,
-  `vite.config`/`index.html`/`overlay.html` solo si referencian harness V1, y
-  limpiar el bundle.
-- Archivos: testdata huérfano, bench/scripts restantes, config de bundle si
-  aplica.
-- Test RED previo: guardia que exige cero referencias productivas al testdata
-  y a los packages; falla si algo los importa.
+- Hechos de árbol (verificado con `rg`, sin frase vaga "bench Go huérfano"):
+  `internal/telemetry/projection/overlay/testdata/` contiene exactamente 3 JSON:
+  `lmu-1.4-delta-overlay-v1.golden.json`, `overlay_v1_pre_d7.golden.json`,
+  `overlay_v1.golden.json`. `docs/research/telemetry-architecture-2026/bench/frontend-bench-entry.ts`
+  importa `overlay-projection-v1` + `overlay-projection-adapter` (líneas 9-10) →
+  DELETE junto a `frontend-bench.mjs`. Los Go bench del mismo dir usan
+  `strategy/engineer/analysis.ProjectV1` (contratos independientes vivos,
+  preservados) y `compact_frame.go` es prototipo hipotético sin import V1
+  (menciona al proyector V1 solo en comentarios) → se PRESERVAN como evidencia
+  histórica; se corrigen los comentarios que afirmen wiring ejecutable V1, no
+  se borran. **Ningún Go bench se declara DELETE**: ninguno depende de Overlay
+  V1 tras R7a. `scripts/bench/sesion-v1.ps1`, `sesion-v1-resumen.mjs`,
+  `sesion-v1-resumen.test.mjs`, `sesion-v1-state.test.mjs` (+ sus referencias en
+  `scripts/bench/all.test.mjs` y README) → DELETE. Packages
+  `frontend/src/telemetry-cutover-runtime-harness/` y
+  `frontend/src/telemetry-overlay-shadow-harness/` → DELETE (B3 ya retiró su
+  runtime; aquí cae el resto). `vite.config`/`index.html`/`overlay.html`:
+  verificados sin referencias V1 → no se tocan salvo que `rg` demuestre lo
+  contrario. Evidencia histórica bajo `docs/` se conserva siempre.
+- Test RED previo: guardia que exige cero referencias productivas a los 3 JSON
+  y a los entrypoints/harnesses citados; falla si algo los importa.
 - Aceptación:
-  1. Testdata huérfano y packages citados borrados.
-  2. Cero imports productivos restantes.
+  1. Los 3 JSON, `frontend-bench-entry.ts`/`frontend-bench.mjs`, los 4
+     `sesion-v1-*` (+ referencias) y los 2 packages harness borrados.
+  2. Go bench preservado con comentarios corregidos; cero imports productivos
+     restantes.
   3. Bundle sin legacy (verificado en F1).
 - Checks: `go test` paquetes afectados, focales frontend, `rg` ausencia.
 - Reviewer: quality.
@@ -468,7 +551,7 @@ B1; si una ruta no existe en árbol, lo registra como divergencia y para ese
 - Objetivo: demostrar binario sin V1 y gates completos sobre el SHA final.
   No cambia código: no hay RED previo ni GREEN; hay verificación.
 - Archivos: ninguno productivo (solo evidencia en
-  `docs/telemetry-core/evidence/isa-894/`).
+  `docs/telemetry-core/evidence/isa-894/retirada-v1-r7b-frontend-20260904.md`).
 - Aceptación:
   1. `rg`/guardias de ausencia: cero referencias productivas/bundling legacy.
   2. Gates completos en verde sobre el SHA final (ver Checks finales).
@@ -497,7 +580,8 @@ B1; si una ruta no existe en árbol, lo registra como divergencia y para ese
 
 ## Checks finales obligatorios (sobre el SHA final R7b, antes de abrir el draft PR)
 
-- Focales RED→GREEN de cada subcorte A–E + contrato generado
+- Focales RED→GREEN de cada subcorte conductual A–E excepto D5
+  (conservación, solo verificación) + contrato generado
   (`task telemetry:contract` y `task telemetry:contract:check` si aplica).
 - `pnpm --dir frontend test`, `pnpm --dir frontend typecheck`
   (comando exacto; resuelve `tsc -b --noEmit`, nunca `tsc -p tsconfig.json`),
@@ -514,8 +598,9 @@ B1; si una ruta no existe en árbol, lo registra como divergencia y para ese
 ## Stops específicos (además de los generales de AGENTS.md)
 
 - **Historias/coste (A)**: sin VehicleState canónico, necesidad de snapshot
-  genérico / autoridad browser / `Date.now`, o payload que supera
-  `MaxPayloadBytes` → parar, pedir ADR.
+  genérico / autoridad browser / `Date.now`, o frame @104 que no queda
+  < 64 KiB (gate efectivo Publisher; Hub 256 KiB solo secundaria) → parar,
+  pedir ADR.
 - **Daño (C1)**: producción visible sin equivalente V2 que exija nueva
   autoridad o arquitectura → parar, pedir decisión/ADR; nunca inventar el dato.
 - **Feature switch (E2)**: separación que exige cambiar capabilities/demand o

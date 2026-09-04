@@ -3,8 +3,9 @@
 ## R7b planificado (microplan, sin codigo) + R7a final comprometido — 2026-09-04, ISA-894
 
 Writer unico en `C:\tmp\vantare-v1-retirada-r7b\vantare-v2`, rama
-`vantareapp/isa-894-retirada-v1-r7b`, HEAD/base exacta `5198e4cd5a007893faedd89151168ae26bf7e951`
-(R7a final). Sin apps/LMU/navegadores, sin `.env*`, sin push/PR/merge/promocion/release.
+`vantareapp/isa-894-retirada-v1-r7b`, base `5198e4cd5a007893faedd89151168ae26bf7e951`
+(R7a final), HEAD actual `2a2ab054` antes de este commit de corrección.
+Sin apps/LMU/navegadores, sin `.env*`, sin push/PR/merge/promocion/release.
 
 R7a final comprometido en esta linea: `7ee3f87b` (retirada de contratos Overlay
 V1: `telemetrytransport.ProductOverlay` + `knownProduct`,
@@ -23,20 +24,33 @@ en 3 modulos legacy de R7b; build/dist/`cmd/vantare` bloqueados en cascada.
 R7b planificado, todavia **sin codigo productivo**: microplan ejecutable en
 [`2026-09-04-telemetria-v1-retirada-r7b-frontend.md`](../../superpowers/plans/2026-09-04-telemetria-v1-retirada-r7b-frontend.md),
 **corregido tras REQUEST_CHANGES adversarial** (commit de corrección sobre
-`d242f634`, solo estos 2 docs). Correcciones aplicadas: A1 ya no llama canónica
-a la historia actual (verificado: `ControlSample` sin Speed/RPM/Gear) y diseña
-su expansión Go compacta con gate de coste contra `MaxPayloadBytes`; A2 separa
+`d242f634`, solo estos 2 docs) y **recorregido tras segunda revisión de calidad
+REQUEST_CHANGES** (este commit; sin afirmar aprobación futura). Segunda ronda:
+gate de payload efectivo Publisher 64 KiB (frame @104 < 64 KiB; Hub 256 KiB
+secundaria) con bytes absolutos/delta en evidencia exacta
+`docs/telemetry-core/evidence/isa-894/retirada-v1-r7b-frontend-20260904.md`;
+A1 cerrado (reset vigente epoch+SameSession, fuente m/s sin SpeedKPH canónico,
+offsets enteros vs `GeneratedAt`, tipos exactos, sin "preferentemente"/"p. ej.");
+A2 con contrato `FuelHistoryV2` fijado y derogación del comentario
+`builder_fuel.go:44-48`; A3 mínimo (`DeltaHistoryV2`, mapping exacto,
+`Trend` intacto); B0 consistente en 12 grupos; D5 sin RED; microcheckpoints
+a–d por A en la misma rama/PR; E2 fijado según callsites (catálogo estático a
+`overlay/core/overlay-v2-feature-catalog.ts`, default directo en los 3
+callsites); E3 exacto (3 JSON nombrados, `frontend-bench-entry.ts`/`.mjs` fuera,
+Go bench preservado, 4 `sesion-v1-*` fuera, `vite.config`/HTML intactos por
+`rg` limpio). Primera ronda: A1 ya no llama canónica
+a la historia actual (verificado: `ControlSample` sin Speed/RPM/Gear); A2 separa
 ventana 3/10 de la nueva historia 64 y fija `requiredFuel` = perLap × sessionLaps
 sin derivar de `EstimatedLaps`; A3 corrige premisa (`SelfDelta.History` existe,
 `DeltaViewV2` sin campo: el corte lo agrega) y elimina singleton/`Date.now`
 solo tras verde; comparator/sanitizer sobreviven como oráculo hasta E4 (D no se
-queda sin oráculo); tabla B0 asigna dueño/corte a los 13 consumidores sin
+queda sin oráculo); tabla B0 asigna dueño/corte a los 12 grupos sin
 `etc.`; C1 pasa a hipótesis contra productor (ramas A/B con evidencia, sin
 inventar fracciones); C2/D1 resueltos (C2 no exige Host V2-only; D1 verifica
 cero callers y elimina); E2 con expectativa única falsable sin disyunción;
 F declarado verificación no-TDD; rollback R0 literal (artefacto+hash por código,
 restauración física pendiente manual de Isaac, no probada); D2/D3/D4 en lotes
-explícitos de 6 + corte auxiliar D5; comando exacto
+explícitos de 6 + corte auxiliar D5 (conservación, sin RED); comando exacto
 `pnpm --dir frontend typecheck`; `plan.md`+digest como deuda obligatoria del PR
 de código (`roadmap:required`), no del commit solo-plan.
 Orden: A paridad V2; B guardias RED + retirada V1 (oráculo conservado); C daño

@@ -228,10 +228,63 @@ anclas activas y sus callers. El orden corregido queda:
 `C2b7 gaps/scenes 2→0`. El descenso es criterio de aceptación, no estimación:
 si un corte no cierra sus anclas, permanece abierto.
 
-La contradicción principal era propiedad de tipos: cuatro imports Studio
-apuntan al módulo E1 aunque no cargan V1 en runtime. C2b0 los reubica mediante
-tipo inferido en `studio-overlay-telemetry.ts`, sin interfaz/archivo nuevo ni
-cambio de conducta. Histories, seeds, variantes, scenes y gaps quedan sujetos
-a productor V2 demostrable; si falta, STOP/defer con dueño, nunca dato
-sintético o degradación silenciosa. El microplan actualizado requiere doble
-review antes de escribir C2b0.
+La contradicción principal era propiedad de tipos: cuatro imports Studio son
+`import type` del módulo E1 (`overlay/transports/telemetry-adapter.ts`) y no
+cargan V1 en runtime ni entran al bundle. C2b0 NO los mueve ni duplica:
+corrige/reclasifica esas cuatro entradas false-positive del guard y mantiene
+el tipo canónico hasta E1 o un refactor neutral futuro. Además se detectó el
+import colgado de `StudioTelemetryProvider.test.tsx` desde
+`overlay/transports/wails-telemetry-adapter` (inexistente): C2b4 lo corrige
+al tipo canónico real, sin presentarlo como V1 runtime. La factory por
+consumidor (aislamiento de `standings`) se añade/resuelve en C2b3, no en C2a,
+y el bundle queda no evaluable hasta desbloquear los 8 errores R7a.
+
+## C2b corrección tras doble REQUEST_CHANGES (ISA-894, solo docs)
+
+Spec review Muse `ses_f9240634bffeNNMnf3wHltlOI6`: **REQUEST_CHANGES**.
+Quality review Muse `ses_f923cf6acffeSiLRo6Z3APoEit`: **REQUEST_CHANGES**.
+Cero código tocado; este commit solo corrige los tres documentos
+(microplan, evidencia, handoff).
+
+Hallazgos aplicados:
+
+1. C2b0 NO mueve ni duplica `TelemetryAdapter`. Los cuatro imports Studio
+   son type-only (no V1 runtime ni bundle). 30→26 = quitar esas cuatro
+   anclas false-positive del guard, manteniendo el tipo canónico hasta E1
+   o refactor neutral futuro; nada de `ReturnType` inferido ni re-export.
+2. `StudioTelemetryProvider.test.tsx` importa el tipo desde
+   `overlay/transports/wails-telemetry-adapter`, ruta inexistente en árbol.
+   C2b4 la corrige al tipo canónico real, sin presentarla como V1 runtime.
+3. La factory por consumidor y el aislamiento cruzado de `standings` se
+   añaden/resuelven en C2b3 (no en C2a); el singleton mutable no es estado
+   final. Bundle no evaluable hasta desbloquear los 8 errores R7a.
+4. `preview.mockSession/mockLocation` solo se preservan con transformación
+   V2 demostrable; si no, STOP/defer con dueño, nunca fixture estático
+   silencioso.
+5. C2b5 retira solo USOS en callers, no helpers de `authoring-fixtures.ts`
+   (D/E1). Input history solo desde `OverlayControlsHistoryV2` ya
+   contenido en runtime/captura canónica, sin seeder API nueva; si no
+   existe, STOP/defer E1. `engineer-radio` es auxiliar explícito: su
+   cobertura pasa `engineerPresentation` por la frontera auxiliar sin
+   snapshot, o STOP.
+6. C2b6 se divide por superficies/variantes (6a, 6b…). Sin 10→2
+   monolítico; variantes dev sintéticas solo se retiran tras probar que no
+   son contrato de producto. TrackMap y transparent-shells incluyen su
+   `buildMockTelemetry` oculto en aceptación/escaneo aunque no esté en las
+   30 anclas.
+7. C2b7: `projection-gaps` puede ir separado; `animation-scenes` incluye su
+   migración de `buildAuthoringFixtureTelemetry`/`buildAuthoringFixtureWidget`
+   a V2 o STOP/defer D/E1.
+8. El guard numérico es condición necesaria, no suficiente: cada subcorte
+   escanea TODO fichero tocado por `TelemetrySnapshot`,
+   `buildMockTelemetry`, `buildAuthoringFixtureTelemetry`,
+   `buildAuthoringFixtureWidget`, `authoring-fixtures`, puente antiguo y
+   seeds, con dueño/justificación explícita de lo restante.
+9. Se mantiene `B1 → C2 → B3 → B2-prep → B2` sin absorber E1/E4/D; si un
+   STOP impide cerrar C2 antes de E1, se documenta la dependencia real y el
+   micro-orden mínimo, sin mentir.
+10. Spec + quality independientes por cada subcorte de código. Cero datos
+    sintéticos y cero fallback silencioso.
+
+Pendiente: re-review spec + quality del checkpoint C2b corregido antes de
+escribir C2b0. `git diff --check` limpio en este commit documental.

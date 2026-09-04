@@ -1,12 +1,35 @@
 # Handoff vivo — Telemetry Core
 
+## R7b/C2b CORREGIDO tras doble REQUEST_CHANGES — pendiente re-review, no escribir C2b0 — 2026-09-04, ISA-894
+
+Spec review Muse `ses_f9240634bffeNNMnf3wHltlOI6`: **REQUEST_CHANGES**.
+Quality review Muse `ses_f923cf6acffeSiLRo6Z3APoEit`: **REQUEST_CHANGES**.
+Cero código tocado; este commit solo corrige microplan, evidencia y handoff.
+C2b0 NO mueve ni duplica `TelemetryAdapter` (los cuatro imports Studio son
+type-only; 30→26 = quitar esas anclas false-positive del guard, tipo
+canónico hasta E1). Se documenta el import colgado de
+`StudioTelemetryProvider.test.tsx` (`wails-telemetry-adapter` inexistente,
+C2b4 lo corrige al tipo canónico). Factory por consumidor en C2b3 con
+aislamiento de `standings` obligatorio; bundle no evaluable hasta
+desbloquear los 8 errores R7a. `mockSession/mockLocation` solo con
+transformación V2 demostrable. C2b5 retira solo USOS (helpers quedan D/E1);
+input history solo desde `OverlayControlsHistoryV2` en runtime/captura;
+`engineer-radio` por frontera auxiliar. C2b6 dividido por superficies
+(6a, 6b…), con `buildMockTelemetry` oculto de TrackMap/shells en aceptación.
+C2b7 separa gaps de scenes (builders de scenes migran o STOP/defer).
+Guard numérico necesario, no suficiente (escaneo total por subcorte).
+Orden `B1 → C2 → B3 → B2-prep → B2` intacto; spec + quality por subcorte;
+cero sintéticos. Siguiente: re-review spec + quality del checkpoint
+corregido antes de escribir C2b0. Sin push/PR/merge/promoción/apps/LMU.
+
 ## R7b/C2b MICROPLAN preparado — pendiente review antes de C2b0 — 2026-09-04, ISA-894
 
 Auditoría read-only Muse `ses_f9245f094ffew97dEQcTBvLIio` mapeó las 30
 anclas C2 activas y detectó seis bordes que impedían tratarlas como un bloque.
 El microplan queda dividido C2b0→C2b7 con conteos
-`30→26→24→23→17→15→10→2→0`. C2b0 resuelve los cuatro imports type Studio sin
-interfaz ni archivo nuevo: el módulo Studio exporta un `ReturnType` inferido.
+`30→26→24→23→17→15→10→2→0`. C2b0 NO mueve ni duplica `TelemetryAdapter`:
+corrige/reclasifica las cuatro entradas type-only false-positive del guard y
+mantiene el tipo canónico hasta E1 o refactor neutral futuro.
 Histories E1 solo pueden permanecer en tests con dueño explícito; callers no
 conservan snapshot. Previews usan factory V2 y miden bundle cuando el build sea
 interpretable. Seeds, variants, scenes y gaps solo migran desde datos V2

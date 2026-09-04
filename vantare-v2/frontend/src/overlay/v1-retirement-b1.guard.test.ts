@@ -204,6 +204,9 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
     contentAbsentAll([
       // C2b1: CompositeApp.test.tsx ya es V2-only (golden V1 y mock shadow
       // retirados con cobertura del snapshot V2 real preservada).
+      // C2b2: StudioRoute.test.tsx ya es V2-only (golden V1, envelope y
+      // eventos legacy retirados; el literal negativo de no-suscripción
+      // queda bajo ownership B2 en el propio test).
       // C2b0: los cuatro `import type TelemetryAdapter` de Studio
       // (StudioRoute, OverlayStudioV3, studio-overlay-telemetry,
       // StudioTelemetryProvider) son type-only bajo ownership E1: no son V1
@@ -226,7 +229,6 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
       [src("hub", "overlays", "ProfilePreview.tsx"), "buildMockTelemetry", "C2 (preview sin mock snapshot)"],
       [src("ui-orbit-harness.tsx"), "snapshot={STAGE_SNAPSHOT}", "C2 (harness UI V2)"],
       [src("ui-orbit-harness.tsx"), "buildMockTelemetry", "C2 (harness UI sin mock snapshot)"],
-      [src("hub", "overlay-studio", "StudioRoute.test.tsx"), "overlay_v1.golden.json?raw", "C2 (test Studio V2)"],
       [src("overlay", "authoring", "workshop-runtime-parity.test.tsx"), "authoring-v2-fixture", "C2 (compat API V2 pura)"],
       [src("overlay", "authoring", "workshop-runtime-parity.test.tsx"), "buildAuthoringFixtureTelemetry", "C2 (compat sin snapshot)"],
       [src("overlay", "design-systems", "vantare-endurance", "track-map", "TrackMapEndurance.layout.test.tsx"), "authoring-v2-fixture", "C2 (compat API V2 pura)"],

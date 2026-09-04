@@ -9,7 +9,6 @@ import { createTelemetryRateCoordinator } from '../../overlay/core/telemetry-rat
 import { StudioRoute } from './StudioRoute';
 import type { StudioProfileClient } from './state/studio-profile-client';
 import * as overlayV2StoreModule from '../../telemetry-transport/overlay-frame-v2-store';
-import goldenRaw from '../../../../internal/telemetry/projection/overlay/testdata/overlay_v1.golden.json?raw';
 import goldenV2Raw from '../../../../internal/telemetry/projection/overlayv2/testdata/overlay_v2_1.golden.json?raw';
 
 type WailsListener = (event: { data: unknown }) => void;
@@ -60,24 +59,6 @@ function buildDocument(id = 'default-racing'): ProfileDocumentV3 {
         widgets: [deltaDefinition.createDefault('delta-main')],
       },
     },
-  };
-}
-
-function canonicalEnvelope() {
-  const snapshot = JSON.parse(goldenRaw) as Record<string, unknown>;
-  const payload = { ...snapshot };
-  for (const key of ['canonicalVersion', 'projectionVersion', 'epoch', 'sequence', 'capturedAt']) {
-    delete payload[key];
-  }
-  return {
-    product: 'overlay',
-    projectionVersion: snapshot.projectionVersion,
-    epoch: snapshot.epoch,
-    sequence: snapshot.sequence,
-    kind: 'full',
-    capturedAt: snapshot.capturedAt,
-    statusRevision: 1,
-    payload,
   };
 }
 
@@ -254,6 +235,7 @@ describe('StudioRoute', () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock.mock.calls[0]?.[0]).toBe('/_vantare/overlay-telemetry/pull');
+    // Guardia negativa B2: Studio live no suscribe eventos globales legacy.
     expect(vi.mocked(Events.On).mock.calls.map(([name]) => name)).not.toContain(
       'telemetry:overlay:projection',
     );
@@ -327,12 +309,6 @@ describe('StudioRoute', () => {
           sessionId: request?.sessionId,
           delivery: 1,
           events: [
-            { name: 'telemetry:overlay:status', data: {
-              product: 'overlay', statusRevision: 1,
-              capturedAt: '2026-07-28T09:00:00Z',
-              payload: { state: 'live', reconnectAttempt: 0 },
-            } },
-            { name: 'telemetry:overlay:projection', data: canonicalEnvelope() },
             { name: 'telemetry:overlay-v2:snapshot', data: JSON.parse(goldenV2Raw) },
           ],
         }),
@@ -341,6 +317,8 @@ describe('StudioRoute', () => {
     });
     const repaint = vi.fn();
     const unsubscribe = coordinator.subscribe(undefined, repaint);
+    // Historia auxiliar E1 (inputHistory del derived store): alimenta la
+    // aserción de repaint, no es autoridad de proyección ni frame V1.
     coordinator.publish({
       status: 'ready',
       capturedAt: 1,

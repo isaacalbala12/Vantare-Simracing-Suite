@@ -6,6 +6,7 @@ import type { ProfileDocumentV3 } from "../overlay/core/profile-document";
 import { createTelemetryRateCoordinator } from "../overlay/core/telemetry-rate-coordinator";
 import { widgetTypeRegistry } from "../overlay/core/widget-registry";
 import { RuntimeOverlaySurface } from "../overlay/runtime/RuntimeOverlaySurface";
+import { parseStandingsContent } from "../overlay/widget-types/standings/standings-content";
 
 export function buildResponsiveDocument(): ProfileDocumentV3 {
   const tower = widgetTypeRegistry.get("broadcast-tower").createDefault("broadcast-tower-harness");
@@ -15,12 +16,14 @@ export function buildResponsiveDocument(): ProfileDocumentV3 {
 
   const standings = widgetTypeRegistry.get("standings").createDefault("standings-harness");
   standings.visual = { ...standings.visual, systemId: "vantare-crystal" };
-  const columns = Array.isArray(standings.content.columns)
-    ? standings.content.columns.map((column) =>
-        column.metricId === "bestLap" ? { ...column, enabled: true } : column,
-      )
-    : standings.content.columns;
-  standings.content = { ...standings.content, classScope: "all-classes", columns };
+  const standingsContent = parseStandingsContent(standings.content);
+  standings.content = {
+    ...standingsContent,
+    classScope: "all-classes",
+    columns: standingsContent.columns.map((column) =>
+      column.metricId === "bestLap" ? { ...column, enabled: true } : column,
+    ),
+  };
   standings.layout = { ...standings.layout, x: 1500, y: 90, zIndex: 2 };
 
   const delta = widgetTypeRegistry.get("delta").createDefault("delta-harness");

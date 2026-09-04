@@ -533,12 +533,18 @@ B1; si una ruta no existe en árbol, lo registra como divergencia y para ese
       `status`/`projection` retirados del caso StrictMode; golden V2 canónico
       intacto; lifecycle/listeners/store/repaint/editor preservados; el
       `coordinator.publish` manual queda citado como historia auxiliar E1
-      (inputHistory, no autoridad); el literal negativo de no-suscripción se
-      conserva bajo ownership B2. Focal 9/9 verde (mismo número baseline);
+      (inputHistory, no autoridad); los literales negativos de no-suscripción
+      se conservan bajo ownership B2 (`telemetry:overlay:projection` y
+      `telemetry:overlay:status:get`: dos literales, ninguno es input V1).
+      Focal 9/9 verde (mismo número baseline);
       `studio-overlay-telemetry.test.ts` 3/3; guard RED
       `7 failed | 8 passed (15)` con 23 anclas activas (24 declaradas, una
       inactiva heredada de C2a); ESLint y `diff --check` limpios; typecheck
-      con los 8 heredados (no verde); build no ejecutado. Spec C2b1
+      con los 8 heredados (no verde); build no ejecutado. APROBADO final:
+      spec `ses_f91ff25dbffejp7kMw0wLaqfg5` (P0/P1/P2=0, P3 redacción) y
+      quality `ses_f91fc9c29ffegp92tei06icSpN` (P0=P1=P2=P3=0). Guard
+      deliberadamente RED con 23 activas; typecheck NO verde (8 heredados);
+      build no ejecutado; siguiente C2b3 23→17. Spec C2b1
       `ses_f920fe705ffez0fE6o5MTU6efP` APPROVE 0/0/0/0; quality C2b1
       `ses_f920d0602ffeQ1MIm8eKW0J3RY` REQUEST_CHANGES (P2 único + P3
       informativo): fix P2 con pin shadow en el test de callers existente

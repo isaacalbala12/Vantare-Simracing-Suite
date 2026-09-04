@@ -292,16 +292,26 @@ StrictMode). Migración: import golden V1, `canonicalEnvelope` y eventos
 legacy `status`/`projection` retirados; golden V2 canónico intacto;
 lifecycle/listeners únicos, store, repaint, editor y diagnóstico preservados.
 El `coordinator.publish` manual permanece citado como historia auxiliar E1
-(inputHistory del derived store, no autoridad). El literal negativo
-`not.toContain('telemetry:overlay:projection')` se conserva bajo ownership B2
-(protege ausencia de suscripción; no es evento inyectado). Barrido literal
-del fichero: solo queda ese literal negativo. Focal:
+(inputHistory del derived store, no autoridad). Los literales negativos
+`not.toContain('telemetry:overlay:projection')` y
+`not.toContain('telemetry:overlay:status:get')` se conservan bajo ownership B2
+(dos literales que protegen ausencia de suscripción; ninguno es input V1).
+Barrido literal del fichero: solo quedan esos dos literales negativos. Focal:
 `pnpm --dir frontend test -- src/hub/overlay-studio/StudioRoute.test.tsx` →
 `9 passed (9)` (baseline previo 9/9); `studio-overlay-telemetry.test.ts`
 3/3. Guard: `7 failed | 8 passed (15)` con 23 anclas C2 (24 declaradas, una
 inactiva heredada de C2a). ESLint de ambos TS tocados limpio;
 `git diff --check` limpio; typecheck con los 8 heredados exactos y cero
 nuevos (no verde); build no ejecutado. Siguiente: C2b3 23→17.
+
+## C2b2 APROBADO final (ISA-894)
+
+Spec C2b2 `ses_f91ff25dbffejp7kMw0wLaqfg5`: **APPROVE**, P0/P1/P2=0 (P3
+redacción, aplicado aquí: plural exacto de literales negativos). Quality C2b2
+`ses_f91fc9c29ffegp92tei06icSpN`: **APPROVE**, P0=P1=P2=P3=0. Estado literal:
+guard deliberadamente RED `7 failed | 8 passed (15)` con 23 anclas C2
+activas; typecheck NO verde con los 8 errores heredados R7a; build no
+ejecutado. Siguiente: C2b3 23→17.
 
 ## C2b1 APROBADO final (ISA-894)
 

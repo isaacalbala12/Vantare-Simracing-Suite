@@ -1,6 +1,13 @@
 # Handoff vivo — Telemetry Core
 
-## R7b/C2b2 CERRADO en rama (StudioRoute test V2-only) — siguiente C2b3 23→17 — 2026-09-04, ISA-894
+## R7b/C2b2 APROBADO final — cerrado, siguiente C2b3 23→17 — 2026-09-04, ISA-894
+
+Spec C2b2 `ses_f91ff25dbffejp7kMw0wLaqfg5`: **APPROVE**, P0/P1/P2=0 (P3
+redacción, aplicado aquí). Quality C2b2 `ses_f91fc9c29ffegp92tei06icSpN`:
+**APPROVE**, P0=P1=P2=P3=0. Estado literal: guard deliberadamente RED
+`7 failed | 8 passed (15)` con 23 anclas C2 activas; focal StudioRoute 9/9;
+typecheck NO verde con los 8 errores heredados R7a; build no ejecutado.
+Siguiente: C2b3 (previews Hub, 23→17). Sin push/PR/merge/promoción/apps/LMU.
 
 Writer único, rama `vantareapp/isa-894-retirada-v1-r7b`, base `1f6a4308`.
 Commit de test `56449665` (2 ficheros, +6/−26, cero producción):
@@ -9,9 +16,9 @@ eventos legacy `status`/`projection` del caso StrictMode; golden V2 canónico
 (`overlay_v2_1`) intacto; lifecycle/listeners/store/repaint/editor
 preservados (focal 9/9, mismo número baseline; `studio-overlay-telemetry`
 3/3). El `coordinator.publish` manual queda citado como historia auxiliar E1
-(inputHistory, no autoridad de proyección ni frame V1); el literal negativo
-`not.toContain('telemetry:overlay:projection')` se conserva bajo ownership B2
-(garantía útil, documentada en el test). Barrido del fichero: solo queda ese
+(inputHistory, no autoridad de proyección ni frame V1); los literales
+negativos `telemetry:overlay:projection` y `telemetry:overlay:status:get` se
+conservan bajo ownership B2 (dos literales, ninguno es input V1). Barrido del fichero: solo queda ese
 literal negativo; cero `TelemetrySnapshot`, `buildMockTelemetry`,
 builders/seeds, `authoring-fixtures`/bridge, `overlay_v1`, goldens V1 o
 `canonicalEnvelope`. Guard en el mismo commit: C2 con **24 declaradas / 23

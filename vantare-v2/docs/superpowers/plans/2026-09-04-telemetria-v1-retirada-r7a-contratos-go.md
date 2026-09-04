@@ -16,7 +16,12 @@ independientes de Strategy, Engineer y Analysis.
 ### Retirar
 
 - `telemetrytransport.ProductOverlay` y su aceptación por `knownProduct`.
-- `internal/telemetry/projection/overlay/v1.go` y sus goldens exclusivos.
+- `internal/telemetry/projection/overlay/v1.go` (el `.go` ejecutable del
+  paquete). Los JSON bajo `internal/telemetry/projection/overlay/testdata/`
+  quedan como fixtures huérfanos temporales hasta R7b: los tests/harnesses
+  frontend legacy reservados a R7b (projection-golden, StudioRoute,
+  CompositeApp, adapters, cutover harness, etc.) siguen importándolos, así
+  que R7a no los borra ni los modifica.
 - Las raíces Overlay V1 de `tools/telemetry-contract-gen` y los tipos
   `Overlay*V1` que desaparezcan al regenerar `frontend/src/generated/telemetry.ts`.
 - Fixtures y pruebas cuyo único propósito sea acreditar el wire Overlay V1.
@@ -40,9 +45,10 @@ independientes de Strategy, Engineer y Analysis.
 
 ### R7a.1 · Guardarraíl rojo y raíces de contrato
 
-1. Añadir primero un test estructural que falle mientras existan el paquete
-   Go `projection/overlay`, `ProductOverlay`, sus tipos generados y sus raíces
-   en contract-gen.
+1. Añadir primero un test estructural que falle mientras existan el `.go`
+   ejecutable de `projection/overlay`, `ProductOverlay`, sus tipos generados
+   y sus raíces en contract-gen. El `testdata/` huerfano hasta R7b no lo
+   hace fallar (ver alcance).
 2. Retirar las raíces Overlay V1 del generador y actualizar su prueba para
    demostrar tanto la ausencia de Overlay V1 como la presencia de Overlay V2
    y de los V1 independientes que deben sobrevivir.
@@ -55,9 +61,11 @@ independientes de Strategy, Engineer y Analysis.
    no crear un producto ficticio de reemplazo.
 2. Para pruebas de rutas retiradas, usar el literal histórico `/telemetry/overlay/projection`
    y nombres de evento históricos, sin reintroducir `ProductOverlay`.
-3. Retirar el paquete/proyector/goldens Overlay V1 y adaptar los benchmarks
-   vivos para que midan V2 o eliminar sólo el caso V1 ejecutable cuando sea
-   puramente comparativo. Mantener resultados históricos inmutables.
+3. Retirar el proyector Overlay V1 (`v1.go`, sin `.go` ejecutable restante)
+   y adaptar los benchmarks vivos para que midan V2 o eliminar sólo el
+   caso V1 ejecutable cuando sea puramente comparativo. Los JSON de
+   `projection/overlay/testdata/` quedan huerfanos hasta R7b (los importa
+   el frontend legacy) y los resultados historicos se mantienen inmutables.
 4. Consolidar los guards anteriores de R6b en un guard final de ausencia Go,
    evitando tests duplicados o búsquedas que oculten `ProductOverlayV2`.
 

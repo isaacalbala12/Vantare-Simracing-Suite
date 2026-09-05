@@ -6,13 +6,19 @@ import { expect, it } from "vitest";
 import { WidgetVisualViewport } from "../../core/WidgetVisualViewport";
 import { standingsDefinition } from "../../widget-types/standings/standings-definition";
 import { createDefaultStandingsContent } from "../../widget-types/standings/standings-content";
-import { buildStandingsViewModel } from "../../widget-types/standings/standings-view-model";
-import { buildMockTelemetry } from "../../core/mock-scenarios";
+import { buildStandingsViewModelV2 } from "../../widget-types/standings/standings-view-model-v2";
+import type { OverlayFrameV2 } from "../../../generated/telemetry";
 import { applyStudioCommand } from "../../../hub/overlay-studio/state/studio-command";
 import { RelativeCrystal } from "./relative/RelativeCrystal";
 import { createDefaultRelativeContent } from "../../widget-types/relative/relative-content";
-import { buildRelativeViewModel } from "../../widget-types/relative/relative-view-model";
+import { buildRelativeViewModelV2 } from "../../widget-types/relative/relative-view-model-v2";
 import { StandingsCrystal } from "./standings/StandingsCrystal";
+
+function goldenFrame(): OverlayFrameV2 {
+  return (JSON.parse(readFileSync(resolve(process.cwd(),
+    "../internal/telemetry/projection/overlayv2/testdata/overlay_v2_20.golden.json"),
+  "utf8")) as { frame: OverlayFrameV2 }).frame;
+}
 
 function productiveCss(): string {
   return ["tokens.css", "isa93-parity-overrides.css"].map(file =>
@@ -29,7 +35,7 @@ it("contains five complete rows after a persisted 20-to-5 edit at tester widths"
   try {
     const page = await browser.newPage();
     const css = productiveCss();
-    const snapshot = buildMockTelemetry({ session: "race", location: "track", state: "ready" });
+    const frame = goldenFrame();
     for (const compactRows of [false, true]) for (const w of [340, 420, 520]) {
       const widget = standingsDefinition.createDefault("table");
       widget.visual.systemId = "vantare-crystal";
@@ -38,7 +44,7 @@ it("contains five complete rows after a persisted 20-to-5 edit at tester widths"
       widget.content = { ...createDefaultStandingsContent(), rowCount: 20 };
       const next = applyStudioCommand({ schemaVersion: 3, id: "test", name: "test", displayMode: "edit", monitorIndex: 0, layouts: { general: { type: "general", widgets: [widget] } } }, { type: "widget/content", session: "general", widgetIds: [widget.id], content: { ...widget.content, rowCount: 5 } });
       const layout = next.layouts.general!.widgets[0]!.layout;
-      const model = buildStandingsViewModel({ ...snapshot, scoring: Array.from({ length: 20 }, (_, i) => ({ id: i + 1, place: i + 1, driverName: "Julien Andlauer", isPlayer: i === 0, vehicleClass: "HYPERCAR" })) }, { ...createDefaultStandingsContent(), rowCount: 5 });
+      const model = buildStandingsViewModelV2({ ...frame, standings: frame.standings.map(row => ({ ...row, driver: "Julien Andlauer" })) }, { state: "live" }, { ...createDefaultStandingsContent(), classScope: "all-classes", rowCount: 5 });
       for (const row of model.rows) { row.lastLapText = "1:38.621"; row.gapText = "+12.345"; }
       await page.setContent(`<style>${css}</style>` + renderToStaticMarkup(<div id="frame" style={{ width: layout.w, height: layout.h }}><WidgetVisualViewport widgetType="standings" layout={layout} visual={widget.visual} testId="viewport"><StandingsCrystal model={model} settings={{ compactRows }} renderMode="harness" /></WidgetVisualViewport></div>));
       await page.evaluate(() => document.fonts.ready);
@@ -62,9 +68,9 @@ it("Relative widths change physical tracks and align headers with all selected c
   try {
     const page = await browser.newPage();
     const css = productiveCss();
-    const snapshot = buildMockTelemetry({ session: "race", location: "track", state: "ready" });
+    const frame = goldenFrame();
     const content = createDefaultRelativeContent();
-    const model = buildRelativeViewModel({ ...snapshot, scoring: [{ id: 1, isPlayer: true, driverName: "Player", place: 1, lapDistanceMeters: 1000 }, { id: 2, driverName: "Rival", place: 2, lapDistanceMeters: 900 }] }, content);
+    const model = buildRelativeViewModelV2(frame, { state: "live" }, content);
     const widths: number[] = [];
     for (const preset of ["sm", "lg"] as const) {
       const columns = content.columns.filter(c => ["position", "driverName", "lastLap"].includes(c.metricId)).map(c => ({ ...c, enabled: true, widthPreset: c.metricId === "driverName" ? preset : c.widthPreset, style: { align: "right" as const } }));

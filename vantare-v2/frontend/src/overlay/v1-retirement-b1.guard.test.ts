@@ -10,8 +10,8 @@ import { describe, expect, it } from "vitest";
 // Falla en rojo mientras exista V1 productivo. Para que UNA ejecución enumere
 // TODOS los residuos (sin cortocircuito), las ausencias se acumulan y se
 // afirman juntas con ruta+dueño en el mensaje. Los diferidos (C2/D/E1/E2/E3)
-// y el oráculo E4 se afirman PRESENTES para que nadie los borre antes de su
-// corte; los exentos Strategy/Engineer/Analysis v1 se afirman presentes por
+// se afirman PRESENTES para que nadie los borre antes de su corte (E4 ya
+// ejecutó su ausencia en este mismo archivo); los exentos Strategy/Engineer/Analysis v1 se afirman presentes por
 // contrato independiente (verde heredado de la suite A3, no reejecutado en
 // este corte).
 
@@ -611,11 +611,58 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
     contentHas(path.resolve(s1Evidence, "SHA256SUMS"), "recalcular.mjs", "B3 (custodia histórica)");
   });
 
-  it("diferidos E4 presentes: comparator/sanitizer son el oráculo vivo", () => {
-    present(src("overlay", "telemetry-shadow", "overlay-shadow-comparator.ts"), "E4 (oráculo, no borrar en B)");
-    present(src("overlay", "telemetry-shadow", "overlay-shadow-sanitizer.ts"), "E4 (oráculo, no borrar en B)");
-    present(src("overlay", "telemetry-shadow", "overlay-shadow-comparator.test.ts"), "E4 (oráculo)");
-    present(src("overlay", "telemetry-shadow", "overlay-shadow-sanitizer.test.ts"), "E4 (oráculo)");
+  it("E4 verde: comparator/sanitizer, tests oráculo y builders legacy fuera", () => {
+    // E4 retira el oráculo completo: comparator/sanitizer, sus 6 tests y
+    // 2 JSON S1, más los 16 tests de builders legacy y los 16 builders
+    // snapshot (cero callers productivos verificados por rg). Los tipos y
+    // helpers puros se conservan in situ en los mismos ficheros.
+    absentAll([
+      [src("overlay", "telemetry-shadow", "overlay-shadow-comparator.ts"), "E4 (oráculo)"],
+      [src("overlay", "telemetry-shadow", "overlay-shadow-sanitizer.ts"), "E4 (oráculo)"],
+      [src("overlay", "telemetry-shadow", "overlay-shadow-comparator.test.ts"), "E4 (oráculo)"],
+      [src("overlay", "telemetry-shadow", "overlay-shadow-sanitizer.test.ts"), "E4 (oráculo)"],
+      [src("overlay", "telemetry-shadow", "overlay-shadow-features.test.ts"), "E4 (oráculo)"],
+      [src("overlay", "telemetry-shadow", "overlay-shadow-lote2a-features.test.ts"), "E4 (oráculo)"],
+      [src("overlay", "telemetry-shadow", "overlay-shadow-phase.test.ts"), "E4 (oráculo)"],
+      [src("overlay", "telemetry-shadow", "overlay-frame-v2-parity.test.ts"), "E4 (oráculo)"],
+      [src("overlay", "telemetry-shadow", "testdata", "s1-on-20260830-185729.json"), "E4 (testdata oráculo)"],
+      [src("overlay", "telemetry-shadow", "testdata", "s1-on-20260830-192729.json"), "E4 (testdata oráculo)"],
+      [src("overlay", "widget-types", "standings", "standings-view-model.test.ts"), "E4 (test builder legacy)"],
+      [src("overlay", "widget-types", "relative", "relative-view-model.test.ts"), "E4 (test builder legacy)"],
+      [src("overlay", "widget-types", "delta", "delta-view-model.test.ts"), "E4 (test builder legacy)"],
+      [src("overlay", "widget-types", "fuel-strategy", "fuel-strategy-view-model.test.ts"), "E4 (test builder legacy)"],
+      [src("overlay", "widget-types", "input-telemetry", "input-telemetry-view-model.test.ts"), "E4 (test builder legacy)"],
+      [src("overlay", "widget-types", "pedals-telemetry", "pedals-telemetry-view-model.test.ts"), "E4 (test builder legacy)"],
+      [src("overlay", "widget-types", "racing-flags", "racing-flags-view-model.test.ts"), "E4 (test builder legacy)"],
+      [src("overlay", "widget-types", "delta-advanced", "delta-advanced-view-model.test.ts"), "E4 (test builder legacy)"],
+      [src("overlay", "widget-types", "delta-trace", "delta-trace-view-model.test.ts"), "E4 (test builder legacy)"],
+      [src("overlay", "widget-types", "pedals", "pedals-view-model.test.ts"), "E4 (test builder legacy)"],
+      [src("overlay", "widget-types", "pedals-telemetry-compact", "pedals-telemetry-compact-view-model.test.ts"), "E4 (test builder legacy)"],
+      [src("overlay", "widget-types", "multiclass-relative", "multiclass-relative-view-model.test.ts"), "E4 (test builder legacy)"],
+      [src("overlay", "widget-types", "head-to-head", "head-to-head-view-model.test.ts"), "E4 (test builder legacy)"],
+      [src("overlay", "widget-types", "track-map", "track-map-view-model.test.ts"), "E4 (test builder legacy)"],
+      [src("overlay", "widget-types", "broadcast-tower", "broadcast-tower-view-model.test.ts"), "E4 (test builder legacy)"],
+      [src("overlay", "widget-types", "track-weather", "track-weather-view-model.test.ts"), "E4 (test builder legacy)"],
+    ]);
+    contentAbsentAll([
+      [src("overlay", "widget-types", "standings", "standings-view-model.ts"), "buildStandingsViewModel(", "E4 (builder legacy)"],
+      [src("overlay", "widget-types", "relative", "relative-view-model.ts"), "buildRelativeViewModel(", "E4 (builder legacy)"],
+      [src("overlay", "widget-types", "delta", "delta-view-model.ts"), "buildDeltaViewModel(", "E4 (builder legacy)"],
+      [src("overlay", "widget-types", "fuel-strategy", "fuel-strategy-view-model.ts"), "buildFuelStrategyViewModel(", "E4 (builder legacy)"],
+      [src("overlay", "widget-types", "input-telemetry", "input-telemetry-view-model.ts"), "buildInputTelemetryViewModel(", "E4 (builder legacy)"],
+      [src("overlay", "widget-types", "pedals-telemetry", "pedals-telemetry-view-model.ts"), "buildPedalsTelemetryViewModel(", "E4 (builder legacy)"],
+      [src("overlay", "widget-types", "racing-flags", "racing-flags-view-model.ts"), "buildRacingFlagsViewModel(", "E4 (builder legacy)"],
+      [src("overlay", "widget-types", "delta-advanced", "delta-advanced-view-model.ts"), "buildDeltaAdvancedViewModel(", "E4 (builder legacy)"],
+      [src("overlay", "widget-types", "delta-trace", "delta-trace-view-model.ts"), "buildDeltaTraceViewModel(", "E4 (builder legacy)"],
+      [src("overlay", "widget-types", "pedals", "pedals-view-model.ts"), "buildPedalsViewModel(", "E4 (builder legacy)"],
+      [src("overlay", "widget-types", "pedals-telemetry-compact", "pedals-telemetry-compact-view-model.ts"), "buildPedalsTelemetryCompactViewModel(", "E4 (builder legacy)"],
+      [src("overlay", "widget-types", "multiclass-relative", "multiclass-relative-view-model.ts"), "buildMulticlassRelativeViewModel(", "E4 (builder legacy)"],
+      [src("overlay", "widget-types", "head-to-head", "head-to-head-view-model.ts"), "buildHeadToHeadViewModel(", "E4 (builder legacy)"],
+      [src("overlay", "widget-types", "track-map", "track-map-view-model.ts"), "buildTrackMapViewModel(", "E4 (builder legacy)"],
+      [src("overlay", "widget-types", "track-map", "track-map-view-model.ts"), "buildTrackMapPreviewViewModel(", "E4 (preview legacy)"],
+      [src("overlay", "widget-types", "broadcast-tower", "broadcast-tower-view-model.ts"), "buildBroadcastTowerViewModel(", "E4 (builder legacy)"],
+      [src("overlay", "widget-types", "track-weather", "track-weather-view-model.ts"), "buildTrackWeatherViewModel(", "E4 (builder legacy)"],
+    ]);
   });
 
   it("exentos Strategy/Engineer/Analysis v1: contratos independientes vivos", () => {

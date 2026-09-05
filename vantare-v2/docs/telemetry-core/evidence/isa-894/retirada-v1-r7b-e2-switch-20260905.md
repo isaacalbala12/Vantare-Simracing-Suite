@@ -25,7 +25,7 @@ PR, merge, promoción ni release.
   (+ comparador), `RuntimeOverlaySurface`, `ObsOverlayRuntime` y
   `DesktopOverlayRuntime`.
 - Host (`WidgetVisualHost.tsx`): fuera `v2Rollback`, la rama
-  diagnóstica `overlay-v2-rollback` y los 8 gates `!v2Rollback`;
+  diagnóstica `overlay-v2-rollback` y los 7 gates `!v2Rollback`;
   los diagnósticos V2 productivos (`source-missing`, `frame-missing`,
   `stale`…) quedan intactos.
 - Registry (`overlay-v2-view-models.ts`): fuera el import del
@@ -41,6 +41,16 @@ PR, merge, promoción ni release.
   `localStorage['vantare:overlay-v2-features']` inertes
   (ningún código productivo los leía).
 - Guard B1: el diferido E2 pasa de presencia a ausencia.
+
+## Revisión adversarial y simplificación del guard
+
+Review read-only Muse `ses_f8fd55932ffeI9eCwgS6qguYrF`: APPROVE,
+P0/P1 = 0/0. Señaló un P2 de sobreingeniería: el guard E2 de 155 líneas
+duplicaba helpers y locks del guard maestro B1. Se borró el megaguard y
+se conservaron en B1 únicamente las ausencias de raíces, hilo y registry,
+además de la presencia de los tres diagnósticos V2 productivos. También se
+corrigieron el comentario obsoleto del Host y el conteo real de 7 gates.
+Tras simplificar: 60/60 focales PASS, typecheck PASS y diff-check limpio.
 
 ## Corrección explícita de la decisión previa
 

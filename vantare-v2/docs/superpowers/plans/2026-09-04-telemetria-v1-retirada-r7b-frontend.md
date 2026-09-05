@@ -1039,8 +1039,8 @@ evidencia. La revisión principal repitió 46 focales, typecheck, lint y build.
   `frontend/src/overlay/core/WidgetVisualHost.tsx:121-126` define
   `const v2Rollback = props.runtime?.overlayV2Features?.length === 0` y la rama
   diagnóstica `overlay-v2-rollback` (mensaje "Overlay V2 diagnostic rollback
-  active"); los gates `!v2Rollback` viven en las líneas 127, 132, 137, 142,
-  152, 173, 200 y 209 (8 ocurrencias); los tests
+  active"); los gates `!v2Rollback` viven en las líneas 123, 128, 133, 138,
+  148, 169 y 190 (7 ocurrencias); los tests
   `overlay/edit/InPlaceEditModeBranch.test.tsx:102` y
   `overlay/runtime/RuntimeOverlaySurface.test.tsx:151` referencian el código
   `overlay-v2-rollback`.
@@ -1054,7 +1054,7 @@ evidencia. La revisión principal repitió 46 focales, typecheck, lint y build.
   `dispose` y campo de generación; las props downstream conservan el tipo
   estático del catálogo (sigue haciendo falta el dato; ya no hace falta gating).
   Sin parse/switch mutable. En el Host: eliminar `const v2Rollback` (con su
-  comentario 119-120) y la rama diagnóstica 122-126, y simplificar los 8 gates
+  comentario 119-120) y la rama diagnóstica 122-126, y simplificar los 7 gates
   `v2Entry && !v2Rollback && …` a la condición V2 restante (`v2Entry && …`;
   en 200/209 solo cae el conjunct, la lógica harness/input-accumulator queda
   intacta para C2/D1/E1). E2 es dueño del switch mutable/residuo de rollback:
@@ -1062,7 +1062,7 @@ evidencia. La revisión principal repitió 46 focales, typecheck, lint y build.
   input, no el rollback).
 - Archivos: `telemetry-shadow/overlay-v2-features.ts` (queda vacío → se borra),
   nuevo `overlay/core/overlay-v2-feature-catalog.ts`, los tres callsites +
-  props downstream, `overlay/core/WidgetVisualHost.tsx` (const, rama y 8
+  props downstream, `overlay/core/WidgetVisualHost.tsx` (const, rama y 7
   gates), `InPlaceEditModeBranch.test.tsx` + `RuntimeOverlaySurface.test.tsx`
   (casos `overlay-v2-rollback` reescritos a ausencia o borrados si solo cubrían
   el rollback), `overlay-v2-features.test.ts` (se reescribe a catálogo

@@ -1,5 +1,14 @@
 # Handoff vivo — Telemetry Core
 
+## R7b/E2 aprobado y guard simplificado — 2026-09-05, ISA-894
+
+Review adversarial read-only Muse `ses_f8fd55932ffeI9eCwgS6qguYrF`:
+APPROVE, P0/P1 = 0/0. Su P2 detectó que el guard E2 de 155 líneas
+duplicaba el guard B1; se eliminó y B1 conserva solo los locks mínimos.
+Corregidos además el comentario del Host y el conteo de 7 gates.
+Revisión principal: 145 focales PASS, typecheck PASS, lint PASS y build
+PASS. E2 cerrado; E3 tiene preflight GO.
+
 ## R7b/E2 ejecutado en rama — sistema features/rollback fuera, V2 directo — 2026-09-05, ISA-894
 
 Commits locales `1fce8fef` (RED: guard E2 6 failed | 1 passed) +

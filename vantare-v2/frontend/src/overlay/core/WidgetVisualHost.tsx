@@ -159,8 +159,8 @@ export function WidgetVisualHost(props: WidgetVisualHostProps): ReactNode {
 
   let model;
   if (v2Entry && frame && source) {
-    // V2 se construye primero: el builder V1 no se ejecuta para luego
-    // sobrescribirlo. El renderer recibe únicamente la ViewModel pura.
+    // V2 es la única autoridad de telemetría; el renderer recibe únicamente
+    // la ViewModel pura.
     model = v2Entry.buildViewModelV2(
       frame,
       source,

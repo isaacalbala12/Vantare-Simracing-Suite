@@ -544,6 +544,40 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
       [src("overlay", "core", "overlay-v2-view-models.ts"), "feature:", "E2 (registry V2 directo)"],
       [src("overlay", "core", "widget-definition.ts"), "overlayV2Features", "E2 (contrato sin hilo)"],
     ]);
+
+    const roots = [
+      src("overlay", "CompositeApp.tsx"),
+      src("overlay", "ObsOverlayApp.tsx"),
+      src("hub", "overlay-studio", "StudioRoute.tsx"),
+    ] as const;
+    contentAbsentAll(roots.flatMap((route) =>
+      (["createOverlayV2FeaturesGeneration", "overlayV2Features"] as const)
+        .map((anchor) => [route, anchor, "E2 (raíz V2 directa)"] as const),
+    ));
+
+    const threaded = [
+      src("overlay", "core", "widget-definition.ts"),
+      src("overlay", "edit", "InPlaceWidgetEditFrame.tsx"),
+      src("overlay", "edit", "InPlaceEditOverlay.tsx"),
+      src("overlay", "edit", "InPlaceEditModeBranch.tsx"),
+      src("overlay", "runtime", "RuntimeWidgetFrame.tsx"),
+      src("overlay", "runtime", "RuntimeOverlaySurface.tsx"),
+      src("overlay", "runtime", "ObsOverlayRuntime.tsx"),
+      src("overlay", "runtime", "DesktopOverlayRuntime.tsx"),
+    ] as const;
+    contentAbsentAll(threaded.flatMap((route) =>
+      (["overlayV2Features", "OverlayV2Feature"] as const)
+        .map((anchor) => [route, anchor, "E2 (hilo retirado)"] as const),
+    ));
+
+    const registry = src("overlay", "core", "overlay-v2-view-models.ts");
+    contentAbsentAll([
+      [registry, "overlay-v2-features", "E2 (registry sin catálogo)"],
+      [registry, "OverlayV2Feature", "E2 (registry sin tipo muerto)"],
+    ]);
+    for (const diagnostic of ["overlay-v2-source-missing", "overlay-v2-frame-missing", "overlay-v2-stale"] as const) {
+      contentHas(src("overlay", "core", "WidgetVisualHost.tsx"), diagnostic, "E2 (diagnóstico V2 productivo)");
+    }
   });
 
   it("diferidos E3 presentes y preservados: bench research sin borrado prematuro", () => {

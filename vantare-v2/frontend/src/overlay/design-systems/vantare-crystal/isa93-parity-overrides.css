@@ -2021,3 +2021,34 @@
 [data-widget-system="vantare-crystal"] .vc-pedals-compact-gear { grid-column: 1; grid-row: 3 / 5; font-size: 32px; }
 [data-widget-system="vantare-crystal"] .vc-pedals-compact-rpm { grid-column: 2; grid-row: 3; font-size: 11px; white-space: nowrap; }
 [data-widget-system="vantare-crystal"] .vc-pedals-compact-speed { grid-column: 2; grid-row: 4; margin: 0; font-size: 10px; white-space: nowrap; }
+/* ISA-991: configured columns share one grid; readable at persisted 340px widths. */
+[data-widget-system="vantare-crystal"] :is(.vc-standings-row, .vc-relative-row) {
+  min-height: 34px;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+[data-widget-system="vantare-crystal"] :is(.vc-standings-row, .vc-relative-row) > [data-metric] {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 18px;
+}
+[data-widget-system="vantare-crystal"] :is(.vc-standings-table-header, .vc-relative-table-header) {
+  height: 26px;
+  min-height: 26px;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  font-size: 14px;
+}
+[data-widget-system="vantare-crystal"] :is(.vc-standings-table-header, .vc-relative-table-header) > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+[data-widget-system="vantare-crystal"] .vc-standings-header,
+[data-widget-system="vantare-crystal"] .vc-standings-frame > [data-crystal-primitive="footer"] {
+  flex-shrink: 0;
+}
+[data-widget-system="vantare-crystal"] .vc-standings-frame > [data-crystal-primitive="footer"] { height: 26px; }

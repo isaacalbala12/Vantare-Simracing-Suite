@@ -163,3 +163,15 @@ describe("StandingsCrystal", () => {
     expect(source).not.toMatch(/profile-document/);
   });
 });
+
+ it("renders all selected metrics and honors their widths", () => {
+   const columns = ["lastLap", "bestLap", "interval", "currentLap"].map(metricId => ({ id: metricId, metricId, enabled: true, widthPreset: "lg" as const }));
+   const { root, view } = renderCrystal({ ...readyModel, columns });
+   const row = root.querySelector('[data-standings-row]')!;
+   expect([...row.querySelectorAll('[data-metric]')].map(c => c.getAttribute('data-metric'))).toEqual(columns.map(c => c.metricId));
+   const header = root.querySelector('.vc-standings-table-header') as HTMLElement;
+   const wide = header.style.gridTemplateColumns;
+   expect(wide).not.toBe("");
+   view.rerender(<StandingsCrystal model={{ ...readyModel, columns: columns.map(c => ({ ...c, widthPreset: "sm" })) }} settings={{}} renderMode="harness" />);
+   expect(header.style.gridTemplateColumns).not.toBe(wide);
+ });

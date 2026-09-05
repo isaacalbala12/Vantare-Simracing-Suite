@@ -1,3 +1,5 @@
+import { resolveColumnWidthPixels } from "../../../widget-types/shared/widget-column";
+import { RELATIVE_COLUMN_TEMPLATES } from "../../../widget-types/relative/relative-content";
 import type { CSSProperties } from "react";
 import type { WidgetRendererProps } from "../../../core/design-system-definition";
 import { CrystalBrand, CrystalFooter, CrystalPill } from "../crystal-primitives";
@@ -35,9 +37,11 @@ function renderCell(
 
 export function RelativeCrystal({ model, settings }: WidgetRendererProps<RelativeViewModel>) {
   const showHeader = settings.showHeader !== false;
-  const canonicalColumns = model.columns.filter((column) =>
-    ["position", "class", "carNumber", "driverName", "gap", "bestLap"].includes(column.metricId),
-  );
+  const canonicalColumns = model.columns;
+  const gridTemplateColumns = canonicalColumns.map(column => {
+    const fallback = RELATIVE_COLUMN_TEMPLATES.find(t => t.metricId === column.metricId)?.defaultWidth ?? 60;
+    return `minmax(0, ${resolveColumnWidthPixels(column, fallback)}fr)`;
+  }).join(" ");
 
   return (
     <section
@@ -63,9 +67,9 @@ export function RelativeCrystal({ model, settings }: WidgetRendererProps<Relativ
             {model.statusMessage}
           </p>
         ) : null}
-        <div className="vc-relative-table-header" role="row">
+        <div className="vc-relative-table-header" role="row" style={{ gridTemplateColumns }}>
           {canonicalColumns.map((column) => (
-            <span key={column.id} data-metric={column.metricId}>
+            <span key={column.id} data-metric={column.metricId} style={{ textAlign: column.style?.align ?? "center" }}>
               {column.metricId === "position"
                 ? "POS"
                 : column.metricId === "class"
@@ -76,7 +80,7 @@ export function RelativeCrystal({ model, settings }: WidgetRendererProps<Relativ
                       ? "PILOTO"
                       : column.metricId === "gap"
                         ? "GAP"
-                        : "BEST"}
+                        : column.metricId === "lastLap" ? "LAST" : "BEST"}
             </span>
           ))}
         </div>
@@ -85,6 +89,7 @@ export function RelativeCrystal({ model, settings }: WidgetRendererProps<Relativ
             <div
               key={row.id}
               data-relative-row={row.id}
+              style={{ gridTemplateColumns }}
               data-player={row.isPlayer ? "true" : undefined}
               data-tone={row.tone}
               data-class={row.vehicleClass || undefined}

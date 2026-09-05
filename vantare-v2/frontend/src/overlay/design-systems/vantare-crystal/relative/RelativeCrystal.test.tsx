@@ -204,3 +204,15 @@ describe("RelativeCrystal", () => {
     expect(source).not.toMatch(/clientWidth/);
   });
 });
+
+ it("honors last lap and configurable column widths", () => {
+   const columns = [{ id: "lastLap", metricId: "lastLap", enabled: true, widthPreset: "lg" as const, style: { align: "left" as const } }];
+   const { root, view } = renderCrystal({ ...readyModel, columns });
+   expect(root.querySelector('[data-relative-row] [data-metric="lastLap"]')).toBeTruthy();
+   const header = root.querySelector('.vc-relative-table-header') as HTMLElement;
+   const wide = header.style.gridTemplateColumns;
+   expect(wide).not.toBe("");
+   expect((header.firstElementChild as HTMLElement).style.textAlign).toBe("left");
+   view.rerender(<RelativeCrystal model={{ ...readyModel, columns: columns.map(c => ({ ...c, widthPreset: "sm" })) }} settings={defaultSettings} renderMode="harness" />);
+   expect(header.style.gridTemplateColumns).not.toBe(wide);
+ });

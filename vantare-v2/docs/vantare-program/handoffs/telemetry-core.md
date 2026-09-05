@@ -1,5 +1,19 @@
 # Handoff vivo — Telemetry Core
 
+## R7b/E1a EJECUTADO en rama — contrato sin snapshot, siguiente E1b — 2026-09-05, ISA-894
+
+Commits locales `79856dba` (RED 3/1) + `c99770a5` (GREEN).
+`WidgetTypeDefinition` pierde `TelemetrySnapshot` y sus tres firmas
+snapshot; `race-schedule`/`engineer-radio` conservan solo
+`buildAuxiliaryViewModel` con fuentes Calendar/Engineer intactas;
+`track-map` pierde el preview snapshot de la definition y usa la
+frontera V2 del registro. Ajustes mínimos exigidos por el contrato en
+`authoring-fixtures`, comparador, `studio-catalog` y guard. Focales
+31/31 y vecinos 87/87 PASS; typecheck verde; build PASS; diff-check y
+`rg` de ausencia PASS; suite completa pendiente de E1d/F1. Evidencia:
+[`retirada-v1-r7b-e1a-contrato-20260905.md`](../../telemetry-core/evidence/isa-894/retirada-v1-r7b-e1a-contrato-20260905.md).
+Siguiente: E1b. Sin push, PR, merge, promoción, apps ni LMU.
+
 ## R7b/D5 APROBADO final — Calendar y Engineer siguen auxiliares — 2026-09-05, ISA-894
 
 Sin cambio productivo. `race-schedule` y `engineer-radio` son las dos únicas

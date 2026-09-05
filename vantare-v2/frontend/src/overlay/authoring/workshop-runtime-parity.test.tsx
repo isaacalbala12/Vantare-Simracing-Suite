@@ -15,6 +15,7 @@ import {
 import { parseOverlayWorkshopQuery } from "./overlay-workshop-query";
 import * as relativeV2 from "../widget-types/relative/relative-view-model-v2";
 import { relativeDefinition } from "../widget-types/relative/relative-definition";
+import { decodeControlsHistory } from "../widget-types/input-telemetry/input-telemetry-view-model-v2";
 
 afterEach(() => {
   cleanup();
@@ -143,20 +144,17 @@ describe("buildWorkshopFrameV2", () => {
   it("keeps observable rows and classes for relative-multiclass", () => {
     const frame = buildWorkshopFrameV2(scenario({ widget: "relative", variant: "relative-multiclass" }))
       .overlayV2Frame!;
-    // Orden canónico real: 4 ahead far→near, player, 3 behind near→far.
+    // Ventana canónica explícita: 4 ahead más cercanos (pos 5,4,3,2),
+    // player (pos 1), 3 behind más cercanos (pos 20,19,18).
     const canonical = buildWorkshopFrameV2(scenario({ widget: "relative" })).overlayV2Frame!;
-    const expected = [
-      ...canonical.relative
-        .filter((row) => row.side === "ahead")
-        .sort((left, right) => (right.gap.v ?? 0) - (left.gap.v ?? 0))
-        .slice(-4),
-      canonical.relative.find((row) => row.id === canonical.player.id)!,
-      ...canonical.relative.filter((row) => row.side === "behind").slice(0, 3),
-    ].map((row) => row.id);
+    const at = (position: number): string =>
+      canonical.relative.find((row) => row.position === position)!.id;
+    const expected = [5, 4, 3, 2, 1, 20, 19, 18].map(at);
     expect(frame.relative.map((row) => row.id)).toEqual(expected);
     expect(frame.relativeSettled.map((row) => row.id)).toEqual(expected);
     for (const section of [frame.relative, frame.relativeSettled] as const) {
       expect(section).toHaveLength(8);
+      expect(section.map((row) => row.gap.v)).toEqual([5.5, 4.2, 1.8, 0.4, 0, -0.3, -2.6, -5.1]);
       expect(new Set(section.map((row) => row.id)).size).toBe(8);
       const players = section.filter((row) => row.side === "player");
       expect(players).toHaveLength(1);
@@ -249,7 +247,17 @@ describe("buildWorkshopFrameV2", () => {
     const canonical = buildWorkshopFrameV2(scenario({ widget: "pedals" })).overlayV2Frame!;
     expect(zero.controls.history.capturedAtMS).toEqual(canonical.controls.history.capturedAtMS);
     expect(zero.controls.history.throttle?.every((value) => value === 0)).toBe(true);
-    expect(full.controls.history.throttle?.every((value) => value === 1)).toBe(true);
+    expect(full.controls.history.throttle?.every((value) => value === 1000)).toBe(true);
+    // El history V2 es per-mille: el decoder productivo debe ver 1.0/0.0.
+    for (const [frame, expected] of [[zero, 0], [full, 1]] as const) {
+      const samples = decodeControlsHistory(frame.controls.history, 8);
+      expect(samples.length).toBeGreaterThan(0);
+      for (const sample of samples) {
+        expect(sample.throttle).toBe(expected);
+        expect(sample.brake).toBe(expected);
+        expect(sample.clutch).toBe(expected);
+      }
+    }
   });
 
   it("applies scene frames observably without snapshot", () => {

@@ -280,8 +280,9 @@ function relativeDevWindow(
 function forcePedals(frame: OverlayFrameV2, value: number, quality: OverlayQualityV2): OverlayFrameV2 {
   const pedal = qualityValue(value, quality);
   const history = frame.controls.history;
+  // El history V2 es per-mille 0..1000; el player va en fracción 0..1.
   const force = (samples: readonly number[] | undefined): readonly number[] | undefined =>
-    samples?.map(() => value);
+    samples?.map(() => value * 1000);
   return {
     ...frame,
     player: { ...frame.player, throttle: pedal, brake: pedal, clutch: pedal },

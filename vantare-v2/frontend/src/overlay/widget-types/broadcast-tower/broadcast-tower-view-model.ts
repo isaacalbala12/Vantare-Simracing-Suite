@@ -1,6 +1,6 @@
 import type { TelemetrySnapshot } from "../../core/telemetry-snapshot";
 import type { WidgetViewModelBase } from "../../core/widget-definition";
-import { readScoringBoolean, readScoringClass, readScoringGap, readScoringName, readScoringNumber, readScoringString, readScoringTeam } from "../shared/scoring-readers";
+import { readScoringBoolean, readScoringClass, readScoringName, readScoringNumber, readScoringString, readScoringTeam } from "../shared/scoring-readers";
 import type { BroadcastTowerContent } from "./broadcast-tower-definition";
 
 export type BroadcastTowerRow = { place: number; number: string; name: string; team: string; className: string; brandColor?: string; gap?: number; isPlayer: boolean };
@@ -10,6 +10,6 @@ function unavailable(status: BroadcastTowerViewModel["status"], content: Broadca
 
 export function buildBroadcastTowerViewModel(snapshot: TelemetrySnapshot, content: BroadcastTowerContent): BroadcastTowerViewModel {
   if (snapshot.status === "disconnected" || snapshot.status === "missing" || snapshot.status === "error") return unavailable(snapshot.status, content, snapshot.errorMessage);
-  const rows = [...snapshot.scoring].sort((a, b) => (readScoringNumber(a, "place") ?? 99) - (readScoringNumber(b, "place") ?? 99)).slice(0, Math.min(10, content.rowCount)).map((row, index) => ({ place: readScoringNumber(row, "place") ?? index + 1, number: readScoringString(row, "driverNumber") ?? readScoringString(row, "number") ?? "—", name: readScoringName(row) ?? "—", team: readScoringTeam(row) ?? "—", className: readScoringClass(row) ?? "—", brandColor: readScoringString(row, "teamBrandColor"), gap: readScoringGap(row), isPlayer: readScoringBoolean(row, "isPlayer") ?? false }));
+  const rows = [...snapshot.scoring].sort((a, b) => (readScoringNumber(a, "place") ?? 99) - (readScoringNumber(b, "place") ?? 99)).slice(0, Math.min(10, content.rowCount)).map((row, index) => ({ place: readScoringNumber(row, "place") ?? index + 1, number: readScoringString(row, "driverNumber") ?? readScoringString(row, "number") ?? "—", name: readScoringName(row) ?? "—", team: readScoringTeam(row) ?? "—", className: readScoringClass(row) ?? "—", brandColor: readScoringString(row, "teamBrandColor"), gap: readScoringNumber(row, "timeBehindLeader"), isPlayer: readScoringBoolean(row, "isPlayer") ?? false }));
   return { type: "broadcast-tower", status: snapshot.status === "stale" ? "stale" : "ready", sessionLabel: snapshot.session.type.toUpperCase(), lap: snapshot.player.lapNumber ?? snapshot.player.totalLaps, totalLaps: snapshot.player.totalLaps, rows, rowCount: content.rowCount, showWeather: content.showWeather, showSof: content.showSof };
 }

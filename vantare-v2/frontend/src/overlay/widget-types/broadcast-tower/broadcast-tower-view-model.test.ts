@@ -19,3 +19,10 @@ describe("buildBroadcastTowerViewModel", () => {
     expect(model.rows).toHaveLength(10);
   });
 });
+
+it("uses only leader gaps in the classification stream", () => {
+  const snapshot = buildMockTelemetry({ session: "race", location: "track" });
+  const scoring = [{ place: 2, driverName: "RIVAL", timeGapToPlayer: 2, timeBehindLeader: 10 }];
+  const model = buildBroadcastTowerViewModel({ ...snapshot, scoring }, { rowCount: 3, showWeather: false, showSof: false });
+  expect(model.rows[0].gap).toBe(10);
+});

@@ -1,6 +1,6 @@
 import type { TelemetrySnapshot } from "../../core/telemetry-snapshot";
 import type { WidgetViewModelBase } from "../../core/widget-definition";
-import { readScoringBoolean, readScoringClass, readScoringGap, readScoringName, readScoringNumber, readScoringString, readScoringTeam } from "../shared/scoring-readers";
+import { readScoringBoolean, readScoringClass, readScoringName, readScoringNumber, readScoringString, readScoringTeam } from "../shared/scoring-readers";
 import type { HeadToHeadContent } from "./head-to-head-definition";
 
 export type HeadToHeadEntry = { place: number; number: string; name: string; team: string; className: string; isPlayer: boolean };
@@ -22,5 +22,5 @@ export function buildHeadToHeadViewModel(snapshot: TelemetrySnapshot, content: H
   const sectorComparisons = Array.isArray(rawSectorComparisons)
     ? rawSectorComparisons.filter((value): value is string => typeof value === "string").slice(0, 4)
     : [];
-  return { type: "head-to-head", status: "ready", player, opponent: entry(opponentRow, opponentIndex), ahead: aheadRow ? entry(aheadRow, playerIndex - 1) : undefined, behind: behindRow ? entry(behindRow, playerIndex + 1) : undefined, gapSeconds: readScoringGap(opponentRow) ?? readScoringGap(rows[playerIndex]), sectorComparisons, target: content.target, showSectors: content.showSectors };
+  return { type: "head-to-head", status: "ready", player, opponent: entry(opponentRow, opponentIndex), ahead: aheadRow ? entry(aheadRow, playerIndex - 1) : undefined, behind: behindRow ? entry(behindRow, playerIndex + 1) : undefined, gapSeconds: readScoringNumber(opponentRow, "timeGapToPlayer"), sectorComparisons, target: content.target, showSectors: content.showSectors };
 }

@@ -16,3 +16,11 @@ it("places the player in the second row when an even four-row window is availabl
   expect(model.rows).toHaveLength(4);
   expect(model.rows.findIndex((row) => row.isPlayer)).toBe(1);
 });
+
+it("keeps only other-class cars and no substituted leader gaps", () => {
+  const snapshot = buildMockTelemetry({ session: "race", location: "track" });
+  const scoring = snapshot.scoring.map((row) => ({ ...row, vehicleClass: row.isPlayer ? "HYPERCAR" : "GT3", timeGapToPlayer: undefined, timeBehindLeader: 42 }));
+  const result = buildMulticlassRelativeViewModel({ ...snapshot, scoring }, { rowCount: 5, classMode: "other", showClassDivider: true });
+  expect(result.rows.length).toBeGreaterThan(0);
+  expect(result.rows.every((row) => row.classId === "GT3" && !row.isPlayer && row.gap === undefined)).toBe(true);
+});

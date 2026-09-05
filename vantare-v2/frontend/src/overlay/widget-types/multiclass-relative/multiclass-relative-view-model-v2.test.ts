@@ -61,7 +61,14 @@ describe("buildMulticlassRelativeViewModelV2", () => {
     const same = buildMulticlassRelativeViewModelV2(frameFixture(), live, { ...content, classMode: "same" });
     expect(same.rows.every((r) => r.classId === "HYPERCAR")).toBe(true);
     const other = buildMulticlassRelativeViewModelV2(frameFixture(), live, { ...content, classMode: "other" });
+    expect(other.status).toBe("ready");
+    expect(other.rows).toHaveLength(2);
     expect(other.rows.every((r) => r.classId !== "HYPERCAR")).toBe(true);
+  });
+
+  it("does not substitute leader gaps when player gaps are missing", () => {
+    const model = buildMulticlassRelativeViewModelV2(frameFixture({ relative: [] }), live, content);
+    expect(model.rows.filter((row) => !row.isPlayer).every((row) => row.gap === undefined)).toBe(true);
   });
 
   it("devuelve disconnected/error en estados no live", () => {

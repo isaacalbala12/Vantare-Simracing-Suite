@@ -27,3 +27,9 @@ describe("buildHeadToHeadViewModel", () => {
     expect(model.sectorComparisons).toEqual(["g", "g", "r", "r"]);
   });
 });
+
+it("does not use leader gaps in a player comparison", () => {
+  const snapshot = buildMockTelemetry({ session: "race", location: "track" });
+  const scoring = snapshot.scoring.map((row) => ({ ...row, timeGapToPlayer: undefined, timeBehindLeader: 42 }));
+  expect(buildHeadToHeadViewModel({ ...snapshot, scoring }, { target: "ahead", showSectors: false }).gapSeconds).toBeUndefined();
+});

@@ -48,10 +48,10 @@ export function buildMulticlassRelativeViewModelV2(
     return content.classMode === "same" ? rowClass === playerClass : rowClass !== playerClass;
   });
 
-  const playerIndex = candidates.indexOf(player);
-  if (playerIndex < 0) {
-    return unavailable("missing", content, "Player vehicle unavailable");
-  }
+  // Other-class mode has no player row; centre on its insertion position.
+  const playerIndex = content.classMode === "other"
+    ? candidates.filter((row) => row.position < player.position).length
+    : candidates.indexOf(player);
 
   const start = Math.max(
     0,
@@ -61,7 +61,7 @@ export function buildMulticlassRelativeViewModelV2(
     ),
   );
   const selected = candidates.slice(start, start + Math.min(7, content.rowCount));
-  if (!selected.includes(player) && selected.length > 0) {
+  if (content.classMode !== "other" && !selected.includes(player) && selected.length > 0) {
     selected[Math.floor(selected.length / 2)] = player;
   }
 
@@ -71,7 +71,7 @@ export function buildMulticlassRelativeViewModelV2(
     classColor: "#8b93a7",
     number: row.number ?? "—",
     name: row.driver ?? "?",
-    gap: gapById.get(row.id) ?? displayedNumber(row.gap) ?? undefined,
+    gap: row.id === frame.player.id ? 0 : gapById.get(row.id),
     isPlayer: row.id === frame.player.id,
   }));
 
@@ -135,7 +135,7 @@ function mapStatus(state: string): MulticlassRelativeViewModel["status"] {
 
 function displayedNumber(value: OverlayQValue<number>): number | undefined {
   if (value.q === "missing" || value.q === "invalid") return undefined;
-  return value.v ?? 0;
+  return value.v !== undefined && Number.isFinite(value.v) ? value.v : undefined;
 }
 
 export type { OverlayStandingRowV2 };

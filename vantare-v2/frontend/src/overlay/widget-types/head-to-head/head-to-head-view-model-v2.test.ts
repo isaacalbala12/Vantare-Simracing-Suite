@@ -38,6 +38,10 @@ function frameFixture(overrides?: Partial<OverlayFrameV2>): OverlayFrameV2 {
 const live: OverlaySourceStatusV2 = { state: "live" };
 
 describe("buildHeadToHeadViewModelV2", () => {
+  it("does not substitute a leader gap for the selected rival gap", () => {
+    const model = buildHeadToHeadViewModelV2(frameFixture({ relative: [] }), live, { target: "ahead", showSectors: true });
+    expect(model.gapSeconds).toBeUndefined();
+  });
   it("selecciona rival inmediato ahead y behind", () => {
     const ahead = buildHeadToHeadViewModelV2(frameFixture(), live, { target: "ahead", showSectors: true });
     expect(ahead.status).toBe("ready");

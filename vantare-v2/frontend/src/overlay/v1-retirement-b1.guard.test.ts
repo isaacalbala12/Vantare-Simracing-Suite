@@ -370,8 +370,8 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
     );
     contentHas(
       src("overlay-harness", "OverlayParityHarness.tsx"),
-      "createScenarioWidget",
-      "E1b (widget V2 puro desde la frontera Workshop)",
+      "buildAuthoringV2ScenarioWidget",
+      "C2b6b (widget V2 puro sin snapshot)",
     );
     // C2b6b (frontera runtime/visual): el fixture del golden no importa el
     // módulo visual ni el registry; solo Parity lo hace vía el vecino.

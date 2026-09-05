@@ -13,11 +13,9 @@ const legacyV1Baseline: Readonly<Record<string, readonly string[]>> = {
   "core/telemetry-adapter.ts": Array(7).fill("TelemetrySnapshot"),
   "core/telemetry-rate-coordinator.ts": Array(4).fill("TelemetrySnapshot"),
   "core/telemetry-snapshot.ts": ["TelemetrySnapshot"],
-  "core/widget-definition.ts": Array(4).fill("TelemetrySnapshot"),
   "telemetry-shadow/overlay-shadow-comparator.ts": [
     ...Array(24).fill("TelemetrySnapshot"),
     ...Array(4).fill("snapshot.scoring"),
-    "legacy view-model builder",
   ],
   "widget-types/broadcast-tower/broadcast-tower-view-model.ts": ["TelemetrySnapshot", "TelemetrySnapshot", "snapshot.scoring"],
   "widget-types/delta/delta-view-model.ts": ["TelemetrySnapshot", "TelemetrySnapshot", "TelemetrySnapshot", "snapshot.scoring"],

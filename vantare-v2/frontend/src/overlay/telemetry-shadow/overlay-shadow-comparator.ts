@@ -1480,10 +1480,7 @@ function buildViewModelPair(
       break;
     }
     default:
-      if (!definition.buildViewModel) {
-        throw new Error(`missing legacy shadow builder for ${widget.type}`);
-      }
-      legacy = definition.buildViewModel(legacySnapshot, parsedContent);
+      throw new Error(`missing legacy shadow builder for ${widget.type}`);
   }
   return {
     legacy,

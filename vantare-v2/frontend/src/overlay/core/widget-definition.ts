@@ -1,7 +1,6 @@
 import type { FeatureId } from "../../lib/access-policy";
 import type { InspectorCapability } from "./inspector-control";
 import type { WidgetType, WidgetInstanceV3 } from "./profile-document";
-import type { TelemetrySnapshot } from "./telemetry-snapshot";
 import type { EngineerPresentation } from "../../engineer/engineer-presentation-store";
 import type { OverlayFrameV2, OverlaySourceStatusV2 } from "../../generated/telemetry";
 import type { OverlayV2Feature } from "../telemetry-shadow/overlay-v2-features";
@@ -110,17 +109,6 @@ export type WidgetTypeDefinition<
   inspector: WidgetInspectorCapability;
   createDefault(id: string): WidgetInstanceV3;
   parseContent(input: unknown): TContent;
-  buildViewModel?(snapshot: TelemetrySnapshot, content: TContent): TModel;
-  buildRuntimeViewModel?(
-    snapshot: TelemetrySnapshot,
-    content: TContent,
-    runtime: WidgetRuntimeInput,
-  ): TModel;
-  buildPreviewViewModel?(
-    snapshot: TelemetrySnapshot,
-    content: TContent,
-    runtime: WidgetRuntimeInput,
-  ): TModel;
   buildAuxiliaryViewModel?(
     content: TContent,
     runtime: WidgetRuntimeInput,

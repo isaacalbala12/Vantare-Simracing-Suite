@@ -6,7 +6,6 @@ import {
   type TrackMapContent,
 } from "./track-map-content";
 import {
-  buildTrackMapPreviewViewModel,
   type TrackMapViewModel,
 } from "./track-map-view-model";
 
@@ -39,5 +38,4 @@ export const trackMapDefinition: WidgetTypeDefinition<TrackMapContent, TrackMapV
     };
   },
   parseContent: parseTrackMapContent,
-  buildPreviewViewModel: buildTrackMapPreviewViewModel,
 };

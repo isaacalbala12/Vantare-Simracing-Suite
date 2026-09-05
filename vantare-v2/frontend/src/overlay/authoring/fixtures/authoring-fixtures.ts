@@ -37,6 +37,7 @@ import type { CarDamageVisualContent } from "../../widget-types/car-damage-visua
 import { parseRelativeContent, updateRelativeFilters } from "../../widget-types/relative/relative-content";
 import crystalReferenceManifest from "../../../../testdata/crystal-reference/manifest.json";
 import { buildEngineerPresentationFixture } from "../../../engineer/engineer-presentation-fixtures";
+import { buildEngineerRadioViewModel } from "../../widget-types/engineer-radio/engineer-radio-definition";
 
 export type HarnessWidget = WidgetType;
 export type AuthoringFixtureWidget = WidgetType;
@@ -722,8 +723,8 @@ export function buildHarnessViewModel(widget: WidgetInstanceV3, snapshot: Teleme
     const damage = content as CarDamageVisualContent;
     return { type: "car-damage-visual", status: "missing", showPercent: damage.showPercent, showAero: damage.showAero };
   }
-  if (widget.type === "engineer-radio" && definition.buildRuntimeViewModel) {
-    return definition.buildRuntimeViewModel(snapshot, content as never, {
+  if (widget.type === "engineer-radio") {
+    return buildEngineerRadioViewModel(content as never, {
       engineerPresentation: buildEngineerPresentationFixture(),
     });
   }
@@ -733,10 +734,7 @@ export function buildHarnessViewModel(widget: WidgetInstanceV3, snapshot: Teleme
       raceScheduleStatus: snapshot.status,
     }, "harness");
   }
-  if (!definition.buildViewModel) {
-    throw new Error(`missing legacy fixture builder for ${widget.type}`);
-  }
-  return definition.buildViewModel(snapshot, content as never);
+  throw new Error(`missing legacy fixture builder for ${widget.type}`);
 }
 
 export function seedHarnessInputHistory(widget: WidgetInstanceV3, snapshot: TelemetrySnapshot): void {

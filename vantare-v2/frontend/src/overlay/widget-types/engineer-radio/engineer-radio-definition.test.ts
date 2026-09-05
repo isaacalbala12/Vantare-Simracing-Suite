@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { buildMockTelemetry } from "../../core/mock-scenarios";
 import type { EngineerPresentation } from "../../../engineer/engineer-presentation-store";
 import { engineerRadioDefinition } from "./engineer-radio-definition";
 
@@ -29,10 +28,9 @@ describe("engineer radio widget definition", () => {
   });
 
   it("builds one pure view model from the canonical presentation", () => {
-    const snapshot = buildMockTelemetry({ session: "race", location: "track", state: "ready" });
-    const model = engineerRadioDefinition.buildRuntimeViewModel!(snapshot, engineerRadioDefinition.parseContent({}), {
+    const model = engineerRadioDefinition.buildAuxiliaryViewModel!(engineerRadioDefinition.parseContent({}), {
       engineerPresentation: activePresentation,
-    });
+    }, "desktop");
     expect(model).toMatchObject({
       type: "engineer-radio",
       status: "ready",
@@ -45,17 +43,15 @@ describe("engineer radio widget definition", () => {
   });
 
   it("renders no message when product policy has no active presentation", () => {
-    const snapshot = buildMockTelemetry({ session: "race", location: "track", state: "ready" });
-    expect(engineerRadioDefinition.buildRuntimeViewModel!(snapshot, engineerRadioDefinition.parseContent({}), {})).toMatchObject({
+    expect(engineerRadioDefinition.buildAuxiliaryViewModel!(engineerRadioDefinition.parseContent({}), {}, "desktop")).toMatchObject({
       visible: false,
       status: "missing",
     });
   });
 
   it("uses an explicitly labelled fixture only for Studio preview", () => {
-    const snapshot = buildMockTelemetry({ session: "race", location: "track", state: "ready" });
-    const preview = engineerRadioDefinition.buildPreviewViewModel!(snapshot, {}, {});
-    const runtime = engineerRadioDefinition.buildRuntimeViewModel!(snapshot, {}, {});
+    const preview = engineerRadioDefinition.buildAuxiliaryViewModel!({}, {}, "studio");
+    const runtime = engineerRadioDefinition.buildAuxiliaryViewModel!({}, {}, "desktop");
     expect(preview).toMatchObject({ visible: true, preview: true, messageId: "studio-preview" });
     expect(runtime).toMatchObject({ visible: false, status: "missing" });
   });

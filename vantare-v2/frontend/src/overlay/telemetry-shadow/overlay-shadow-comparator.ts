@@ -1407,8 +1407,31 @@ function buildViewModelPair(
       projection: v2.buildViewModelV2(frame, source, parsedContent),
     };
   }
+  let legacy: WidgetViewModelBase;
+  switch (widget.type) {
+    case "standings":
+      legacy = buildStandingsViewModel(legacySnapshot, parsedContent as StandingsContent);
+      break;
+    case "relative":
+      legacy = buildRelativeViewModel(legacySnapshot, parsedContent as RelativeContent);
+      break;
+    case "delta":
+      legacy = buildDeltaViewModel(legacySnapshot, parsedContent as DeltaContent);
+      break;
+    case "fuel-strategy":
+      legacy = buildFuelStrategyViewModel(legacySnapshot, parsedContent as FuelStrategyContent);
+      break;
+    case "pedals-telemetry":
+      legacy = buildPedalsTelemetryViewModel(legacySnapshot, parsedContent as PedalsTelemetryContent);
+      break;
+    default:
+      if (!definition.buildViewModel) {
+        throw new Error(`missing legacy shadow builder for ${widget.type}`);
+      }
+      legacy = definition.buildViewModel(legacySnapshot, parsedContent);
+  }
   return {
-    legacy: definition.buildViewModel(legacySnapshot, parsedContent),
+    legacy,
     projection: v2.buildViewModelV2(frame, source, parsedContent),
   };
 }

@@ -67,9 +67,16 @@ describe("widgetTypeRegistry", () => {
     });
   });
 
-  it("exposes a view model builder for every registered widget", () => {
-    for (const definition of widgetTypeRegistry.list()) {
-      expect(typeof definition.buildViewModel).toBe("function");
+  it("does not require a legacy builder for the V2-only D2 definitions", () => {
+    for (const type of [
+      "standings",
+      "relative",
+      "delta",
+      "fuel-strategy",
+      "pedals-telemetry",
+      "input-telemetry",
+    ] as const) {
+      expect(widgetTypeRegistry.get(type).buildViewModel).toBeUndefined();
     }
   });
 });

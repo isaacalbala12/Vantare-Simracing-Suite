@@ -110,7 +110,7 @@ export type WidgetTypeDefinition<
   inspector: WidgetInspectorCapability;
   createDefault(id: string): WidgetInstanceV3;
   parseContent(input: unknown): TContent;
-  buildViewModel(snapshot: TelemetrySnapshot, content: TContent): TModel;
+  buildViewModel?(snapshot: TelemetrySnapshot, content: TContent): TModel;
   buildRuntimeViewModel?(
     snapshot: TelemetrySnapshot,
     content: TContent,

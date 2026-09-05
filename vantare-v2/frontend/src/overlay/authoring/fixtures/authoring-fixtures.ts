@@ -17,6 +17,11 @@ import {
   type InputTelemetrySample,
 } from "../../widget-types/input-telemetry/input-telemetry-accumulator";
 import { buildInputTelemetryViewModel } from "../../widget-types/input-telemetry/input-telemetry-view-model";
+import { buildStandingsViewModel } from "../../widget-types/standings/standings-view-model";
+import { buildRelativeViewModel } from "../../widget-types/relative/relative-view-model";
+import { buildDeltaViewModel } from "../../widget-types/delta/delta-view-model";
+import { buildFuelStrategyViewModel } from "../../widget-types/fuel-strategy/fuel-strategy-view-model";
+import { buildPedalsTelemetryViewModel } from "../../widget-types/pedals-telemetry/pedals-telemetry-view-model";
 import { parseRelativeContent, updateRelativeFilters } from "../../widget-types/relative/relative-content";
 import crystalReferenceManifest from "../../../../testdata/crystal-reference/manifest.json";
 import { buildEngineerPresentationFixture } from "../../../engineer/engineer-presentation-fixtures";
@@ -682,6 +687,11 @@ export function buildHarnessViewModel(widget: WidgetInstanceV3, snapshot: Teleme
       })) ?? [],
     );
   }
+  if (widget.type === "standings") return buildStandingsViewModel(snapshot, content as never);
+  if (widget.type === "relative") return buildRelativeViewModel(snapshot, content as never);
+  if (widget.type === "delta") return buildDeltaViewModel(snapshot, content as never);
+  if (widget.type === "fuel-strategy") return buildFuelStrategyViewModel(snapshot, content as never);
+  if (widget.type === "pedals-telemetry") return buildPedalsTelemetryViewModel(snapshot, content as never);
   if (widget.type === "engineer-radio" && definition.buildRuntimeViewModel) {
     return definition.buildRuntimeViewModel(snapshot, content as never, {
       engineerPresentation: buildEngineerPresentationFixture(),
@@ -692,6 +702,9 @@ export function buildHarnessViewModel(widget: WidgetInstanceV3, snapshot: Teleme
       raceScheduleEvents: snapshot.auxiliary?.scheduleEvents,
       raceScheduleStatus: snapshot.status,
     }, "harness");
+  }
+  if (!definition.buildViewModel) {
+    throw new Error(`missing legacy fixture builder for ${widget.type}`);
   }
   return definition.buildViewModel(snapshot, content as never);
 }

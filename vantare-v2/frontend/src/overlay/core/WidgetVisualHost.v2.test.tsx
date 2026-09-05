@@ -58,7 +58,15 @@ function makeFrame(): OverlayFrameV2 {
       { id: "car-3", position: 3, gap: fresh(-0.8), groundPosition: { q: "fresh", v: { x: -10, z: 0 } }, lastLap: fresh(93), side: "behind", authority: "native", name: "VER", classId: "HYPERCAR" },
     ],
     delta: { seconds: fresh(-0.42), available: ["personal-best"], reference: "personal-best", requested: "personal-best" },
-    fuel: { remaining: fresh(22.5), capacity: fresh(110), perLap: fresh(2.3), estimatedLaps: fresh(9) },
+    fuel: {
+      remaining: fresh(22.5),
+      capacity: fresh(110),
+      perLap: fresh(2.3),
+      estimatedLaps: fresh(9),
+      requiredFuel: missing,
+      history: missing,
+      sessionLaps: missing,
+    },
     controls: {
       history: {
         q: "fresh" as const,

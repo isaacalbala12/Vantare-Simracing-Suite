@@ -1,24 +1,20 @@
 # Handoff vivo — Telemetry Core
 
-## R7b/E1b corte honesto — dos fixtures legacy fuera, megamódulo diferido a E1c/E1d — 2026-09-05, ISA-894
+## R7b/E1b corte mínimo — harness snapshot Studio fuera, helper diferido a E1c (P1 cerrado) — 2026-09-05, ISA-894
 
-Commits locales `62a541b5` (RED 2/2) + `59c564a0` (borrado 2 ficheros)
-+ `fd9d134e` (migración callers + guard). Retirados
-`authoring-v2-scenario-widget.ts` (forma consolidada como
-`buildScenarioWidgetShape` local en `authoring-v2-workshop-frame.ts`;
-`createScenarioWidget`/`buildWorkshopFrameV2` son la frontera V2) y
-`studio-v1-snapshot-test-harness.ts` (cero importadores). Parity y su
-test usan la frontera Workshop (`designId` por manifest, mismos
-números). Guard B1: el harness Studio sale de diferidos E1; Parity
-fija `createScenarioWidget`. D5 y E4 intactos. `authoring-fixtures.ts`
-NO se borra aquí: `contract.test.tsx` lo exige con builders legacy
-(E1c) y los tipos `Mock*` de Studio son dueños E1d — STOP aplicado sin
-ampliar. Focales 83/83 y revalidación 63/63 PASS; guards 25/25;
-typecheck verde; build PASS; ESLint/diff-check limpios; `rg` sin
-importadores de los dos módulos. Suite completa pendiente de E1d/F1.
-Evidencia:
+Commits locales `62a541b5` (RED 2/2) + `59c564a0` (borrado del
+harness) + `4d4f6ca6` (revert del churn: helper restaurado
+byte-idéntico, migraciones Parity/Workshop revertidas) + `59140b41`
+(RED/guard en harness-only). Retirado únicamente
+`studio-v1-snapshot-test-harness.ts` (cero importadores); el guard B1
+lo saca de diferidos E1 sin más cambios. `authoring-v2-scenario-widget.ts`
+y `authoring-fixtures.ts` quedan con dueño explícito E1c y caen
+juntos; los tipos `Mock*` de Studio son dueños E1d. D5 y E4 intactos.
+Focales E1b+guard+E1a+autoridad+Parity 71/71 PASS; typecheck verde;
+build PASS; ESLint/diff-check limpios. Suite completa pendiente de
+E1d/F1. Evidencia:
 [`retirada-v1-r7b-e1b-autoria-20260905.md`](../../telemetry-core/evidence/isa-894/retirada-v1-r7b-e1b-autoria-20260905.md).
-Siguiente: E1c/E1d. Sin push, PR, merge, promoción, apps ni LMU.
+Siguiente: E1c. Sin push, PR, merge, promoción, apps ni LMU.
 
 ## R7b/E1a APROBADO final — contrato sin snapshot, siguiente E1b — 2026-09-05, ISA-894
 

@@ -1,4 +1,4 @@
-# ISA-894 R7b/E1b — autoría/Studio sin fixtures legacy (corte honesto mínimo)
+# ISA-894 R7b/E1b — harness snapshot de Studio fuera (corte mínimo, P1 cerrado)
 
 Fecha: 2026-09-05. Rama local
 `vantareapp/isa-894-retirada-v1-r7b`. Base E1b `ceff6697`.
@@ -7,68 +7,59 @@ Fecha: 2026-09-05. Rama local
 
 Solo E1b. Sin E1c/E1d/E2+.
 
-- Retirados del árbol:
-  `frontend/src/overlay/authoring/fixtures/authoring-v2-scenario-widget.ts`
-  y `frontend/src/hub/overlay-studio/canvas/fixtures/studio-v1-snapshot-test-harness.ts`.
-- `authoring-v2-workshop-frame.ts` consolida la forma del widget
-  (`buildScenarioWidgetShape`, local no exportada) desde el registro
-  productivo; `createScenarioWidget` + `buildWorkshopFrameV2` son la
-  frontera V2 final. Sin registro/adapter/DSL/fixture genérico nuevo y
-  sin datos inventados (diseños por manifest, mismas dimensiones).
-- `OverlayParityHarness.tsx` usa `createScenarioWidget` con `designId`;
-  su test usa la misma frontera (throw ante variante desconocida real,
-  dimensiones por manifest).
-- Guard B1 actualizado en lo directo: el harness Studio sale de la
-  lista de diferidos E1 presentes; Parity fija `createScenarioWidget`
-  como lock E1b.
+- Retirado del árbol un único módulo:
+  `frontend/src/hub/overlay-studio/canvas/fixtures/studio-v1-snapshot-test-harness.ts`
+  (`useStudioV1SnapshotTestHarness`, cero importadores verificados
+  por `rg`; solo el guard B1 lo citaba como diferido E1).
+- Guard B1 actualizado en lo directo: el harness sale de la lista de
+  diferidos E1 presentes. Ningún otro lock del guard cambia.
 - D5 (Calendar/Engineer) y E4 (comparator/oráculo) intactos.
 
-## Límite honesto (STOP aplicado, no ampliado)
+## P1 del orquestador (cerrado aquí, sin reescribir historia)
 
-- `authoring-fixtures.ts` (megamódulo) **no** se borra en este corte:
-  `frontend/src/overlay/design-systems/vantare-endurance/contract.test.tsx`
-  lo exige (5× `buildHarnessTelemetry` con variante multiclass +
-  `buildStandingsViewModel`/`buildRelativeViewModel`/`buildTrackMapViewModel`
-  legacy, dueños E1c). Migrarlo aquí invadiría E1c: STOP y se reporta.
-- Los `import type { Mock*Scenario }` de Studio (`PreviewSourceControls`,
-  `studio-context`, queries Workshop/Parity) siguen vivos: su retirada
-  es dueña E1d (núcleo `mock-scenarios` + coordinador). No se tocan.
-- `rg TelemetrySnapshot` en autoría/Studio aún cita el megamódulo
-  (8 líneas) + un lock negativo de su propio test: deuda explícita
-  E1c/E1d, no regresión E1b.
+- El primer intento E1b borró además
+  `authoring-v2-scenario-widget.ts` y copió su lógica (~63 líneas) a
+  `authoring-v2-workshop-frame.ts`: churn, no simplificación; violaba
+  Ponytail y el "sin trasladar duplicación".
+- Corrección con commits nuevos: `4d4f6ca6` restaura el helper
+  byte-idéntico desde la base y revierte las migraciones de
+  `authoring-v2-workshop-frame.ts`, `OverlayParityHarness.tsx` y su
+  test; `59140b41` deja el RED y el guard en harness-only.
+- El helper queda con dueño explícito **E1c** y cae junto al
+  megamódulo `authoring-fixtures.ts`; el RED lo fija como presencia
+  deliberada, no como ausencia complaciente.
+
+## Límite honesto (STOP, no ampliado)
+
+- `authoring-fixtures.ts` no se toca: `contract.test.tsx` lo exige
+  con builders legacy (dueños E1c).
+- Los `import type { Mock*Scenario }` de Studio/queries siguen vivos:
+  su retirada es dueña E1d. No se tocan.
+- El microplan no se edita: su condición ("el helper cae cuando el
+  megamódulo desaparezca") queda vigente y E1c los retira juntos.
 
 ## TDD RED → GREEN
 
-- RED `62a541b5`: `e1b-retirada.test.ts` 2 failed / 2
-  (los dos módulos existían y los callers los importaban).
-- GREEN `59c564a0` (borrado de los 2 ficheros) + `fd9d134e`
-  (migración de callers + guard): el mismo focal pasa.
+- RED `62a541b5`: `e1b-retirada.test.ts` 2 failed / 2 sobre la base
+  (los dos módulos existían).
+- Tras P1 el test exige solo la ausencia del harness y la presencia
+  deliberada del helper hasta E1c (`59140b41`): 2/2 PASS.
+- Borrado físico del harness en `59c564a0` (cero callers; el build
+  habría fallado ante un import colgado).
 
 ## Checks
 
-- Focales E1b + Parity + Workshop/parity + escenas + gaps: 83/83 PASS.
-- Revalidación sobre HEAD final (E1b + Parity + guard B1): 63/63 PASS.
-- Guards B1 + E1a + autoridad: 25/25 PASS.
+- Focales E1b + guard B1 + E1a + autoridad + Parity: 71/71 PASS.
 - `pnpm typecheck` (`tsc -b --noEmit`): verde.
 - `pnpm build`: PASS (solo aviso preexistente de chunks > 500 kB).
-- ESLint de los 5 ficheros tocados: limpio.
-- `rg` ausencia: cero importadores productivos de los dos módulos
-  (solo el propio test RED y un lock negativo del guard que exige
-  ausencia en el fixture runtime).
+- ESLint de los ficheros tocados: limpio.
+- `rg studio-v1-snapshot-test-harness|useStudioV1SnapshotTestHarness`:
+  cero restos fuera del propio test/guard histórico.
 - `git diff --check`: limpio.
 - Suite completa no ejecutada; queda para E1d/F1.
 
-## Riesgos
-
-- Parity resuelve dimensiones vía manifest en vez del objeto
-  `design` directo: idénticos números (misma fuente), verificado por
-  el test de contrato Crystal 420×69.
-- El throw ante variante inválida ahora se prueba con variante
-  realmente desconocida (`pedals-full` es variante dev Workshop
-  válida y mapea a `default`; no era el caso honesto para Parity).
-
 ## Siguiente
 
-E1c (builders legacy por widget, incluido `contract.test.tsx`) y
-E1d (núcleo `mock-scenarios`/coordinator + tipos Studio). Sin push,
-PR, merge, promoción, apps ni LMU.
+E1c (megamódulo + helper juntos) y E1d (núcleo `mock-scenarios`/
+coordinator + tipos Studio). Sin push, PR, merge, promoción, apps
+ni LMU.

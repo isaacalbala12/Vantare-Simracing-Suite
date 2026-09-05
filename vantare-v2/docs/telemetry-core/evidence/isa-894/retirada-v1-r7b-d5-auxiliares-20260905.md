@@ -22,7 +22,8 @@ debe resolver antes de borrar `TelemetrySnapshot` y `mock-scenarios`: las
 definitions auxiliares aún conservan firmas legacy `buildViewModel`,
 `buildRuntimeViewModel` y `buildPreviewViewModel`, y sus tests usan snapshots
 solo como argumento ignorado. E1 retirará esas firmas/callers sin alterar
-`buildAuxiliaryViewModel` ni sus fuentes reales.
+`buildAuxiliaryViewModel` ni sus fuentes reales. E1 también retirará el
+`buildPreviewViewModel` snapshot-real que Track Map conserva temporalmente.
 
 ## Evidencia
 
@@ -35,5 +36,7 @@ solo como argumento ignorado. E1 retirará esas firmas/callers sin alterar
 
 ## Estado
 
-Verificación D5 ejecutada y pendiente de revisión adversarial. Sin push, PR,
-merge, promoción, release, apps ni LMU.
+APROBADO por review adversarial read-only
+`ses_f902344d8ffefwjrSlff0BTYTs`: P0/P1/P2 = 0; P3 = 2 informativos, ya
+asignados a E1/F1 (preview Track Map y comando exacto del focal). Sin push,
+PR, merge, promoción, release, apps ni LMU.

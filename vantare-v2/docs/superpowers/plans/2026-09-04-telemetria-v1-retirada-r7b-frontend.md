@@ -936,12 +936,15 @@ evaluable hasta desbloquear los 8 errores R7a, no excusa para reintroducir V1.
 - Reviewer: quality.
 - Rollback/stop: revert. Stop si un auxiliar depende de un módulo E1 → citarlo
   y resolver antes de E1.
-- Resultado D5 (verificado en rama 2026-09-05, pendiente de revisión):
+- Resultado D5 (APROBADO final en rama 2026-09-05):
   sin cambio productivo. Calendar y Engineer siguen fuera del registro V2 y
   llegan al Host solo por `buildAuxiliaryViewModel`; focal 92/92 PASS. Se cita
   la dependencia E1: retirar firmas snapshot ignoradas y migrar sus tests sin
   tocar las fuentes auxiliares. Evidencia:
   `docs/telemetry-core/evidence/isa-894/retirada-v1-r7b-d5-auxiliares-20260905.md`.
+  Review adversarial read-only `ses_f902344d8ffefwjrSlff0BTYTs`: APPROVE,
+  P0/P1/P2 = 0; E1 incorpora además el preview snapshot de Track Map y F1
+  publicará el comando exacto del focal.
 
 ---
 

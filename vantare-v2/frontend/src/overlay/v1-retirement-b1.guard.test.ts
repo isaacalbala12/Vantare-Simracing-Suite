@@ -69,8 +69,8 @@ function contentHas(route: string, anchor: string, owner: string): void {
 // Módulos V1 cuya importación en un caller es resto B2: se afirma ausencia
 // en cada caller C2/B2 (acumula archivo+especificador). C2 migra únicamente
 // los callers productivos a runtime V2 puro. Los helpers snapshot de
-// authoring-fixtures y telemetry-snapshot permanecen bajo D/E1, mientras el
-// puente authoring-v2-fixture queda reservado al oráculo E4 hasta B2-prep/B2.
+// authoring-fixtures y telemetry-snapshot permanecen bajo D/E1; el puente
+// authoring-v2-fixture se retiró en B2 tras desacoplar el oráculo E4.
 const V1_MODULES_B2 = [
   "overlay-projection-v1",
   "overlay-projection-adapter",
@@ -284,7 +284,6 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
       [src("hub", "overlay-studio", "studio-overlay-telemetry.ts"), "C2"],
       [src("hub", "overlay-studio", "canvas", "StudioTelemetryProvider.tsx"), "C2"],
       [src("overlay", "authoring", "fixtures", "authoring-fixtures.ts"), "D/E1"],
-      [src("overlay", "authoring", "fixtures", "authoring-v2-fixture.ts"), "B2 (puente temporal E4)"],
       [src("overlay-harness", "OverlayParityHarness.tsx"), "C2"],
       [src("overlay", "authoring", "OverlayWorkshopDevRoute.tsx"), "C2"],
       [src("hub", "home-orbit", "HomeMiniStage.tsx"), "C2"],
@@ -309,7 +308,6 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
       src("overlay-harness", "OverlayParityHarness.tsx"),
       src("overlay", "authoring", "OverlayWorkshopDevRoute.tsx"),
       src("overlay", "authoring", "fixtures", "authoring-fixtures.ts"),
-      src("overlay", "authoring", "fixtures", "authoring-v2-fixture.ts"),
     ] as const) {
       const text = read(route);
       for (const module of V1_MODULES_B2) {

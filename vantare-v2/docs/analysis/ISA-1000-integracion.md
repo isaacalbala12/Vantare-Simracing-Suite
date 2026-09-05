@@ -30,7 +30,25 @@ el antiguo #277 encima: su intención está superada por esta implementación.
 
 ## Validación
 
-Typecheck del conjunto PASS. Suites y build del candidato en curso.
+Gates locales del producto `b0cce263`:
+
+- Typecheck PASS; build frontend y Windows production con configuración pública
+  embebida PASS; ESLint global PASS; Go `go test ./...` PASS.
+- Primera suite frontend: 412 archivos y 3208 tests PASS, una suite no pudo
+  cargar por importar mocks V1 ya retirados (556,34 s, exit 1). Adaptada a golden
+  V2 sin reducir aserciones: focal de esa suite 2/2 PASS (4,94 s, exit 0).
+  No se presenta esa primera ejecución como una suite global verde. CI del
+  nuevo SHA debe repetir el conjunto antes de merge.
+- Roadmap digest `--check` y diff-check PASS. Instalación offline con lockfile
+  congelado, sin dependencias nuevas.
+- EXE candidato (no release) SHA256:
+  `110AF8E5E1768B4E1E2363C294DD096D7ADA90365BC7F64854E0F3ECEE78217D`.
+- Config pública cargada por el procedimiento oficial A2; valores no impresos,
+  archivo generado retirado al terminar. Perfiles originales no modificados.
+
+Integración publicada como PR #1001 hacia nightly. La autorización está
+concedida; el resultado remoto del merge y CI se verificará en esa PR y #1000.
+Estos datos son evidencia previa al merge, no una release ni un PASS físico.
 Los PASS históricos de cada rama no se atribuyen al conjunto integrado.
 La prueba física anterior con LMU correspondía a `2dbf358b`, no a este árbol.
 

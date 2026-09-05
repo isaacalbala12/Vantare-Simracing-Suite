@@ -9,7 +9,10 @@ Manifest: retirada completa `28bac676` + auditoría `7cd24786`, microcortes
 #994/#995 y feedback #993 (`2dbf358b`). No incluye #997–999 sin terminar.
 Se conservan los cambios ya integrados en nightly. Conflictos resueltos sin
 resucitar builders/readers V1. Relative Redline usa la versión sin FLIP/ghosts.
-Typecheck PASS; suites/build en curso. Merge aún pendiente. Evidencia y vuelta
+Typecheck, build frontend/Windows, Go completo y lint PASS. Frontend: 3208
+PASS y una suite con import legacy corregida, focal posterior 2/2 PASS;
+CI debe certificar la suite del nuevo SHA. PR #1001 publicada, integración
+autorizada pendiente de checks remotos. Evidencia y vuelta
 atrás: [ISA-1000](../../analysis/ISA-1000-integracion.md). Los límites históricos
 sobre promoción quedan sustituidos únicamente para este conjunto autorizado;
 no releases ni testers/master, no aceptación física implícita.

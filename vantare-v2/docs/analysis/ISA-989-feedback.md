@@ -76,3 +76,26 @@ tester, su versión exacta y el HUD real requieren comprobación posterior.
 
 Se conserva `WidgetVisualHost`, sin dependencias nuevas ni nuevas fuentes.
 Cambios productivos, tests y documentación repartidos en commits por ISA-989–992.
+
+## Validación final del conjunto
+
+- `pnpm --dir frontend exec vitest run --maxWorkers=1`: **438 archivos,
+  3342 tests PASS**, exit0, 434,79s. Aparece AbortError de teardown happy-dom;
+  la suite final termina sin tests fallidos ni error de salida.
+- `go test ./...`: PASS, incluido disco temporal de Track Map. Ejecutado tras
+  build frontend para disponer del dist embebido.
+- `pnpm --dir frontend run build`: PASS (typecheck real tsc-b y Vite).
+  Aviso de chunks mayores de500kB, sin error de build.
+- `pnpm --dir frontend run lint`: PASS.
+- Chromium integrado: tablas y Head-to-Head incluidos en suite; Track Map
+  320×220/640×440; script instrumentos pasa nueve tamaños/variantes con
+  historial no vacío y tres trazas visibles, más Compact260×92.
+- Gate local `validate_issue_contract`: PASS para el único ID modificado
+  `milestones:overlay-tester-feedback`. Artefacto generado desde origin/nightly.
+- `git diff --check`: PASS. Checkout principal conserva los dos JSON modificados
+  y sus entradas no versionadas; ningún archivo ajeno se incorporó.
+
+Entrega: PR borrador [#993](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/993),
+rama `vantareapp/isa-989-feedback-tester`, base `659b2c57`.
+No merge/promoción/release. Los checks locales anteriores no equivalen a CI
+remoto completo ni a aceptación física Wails/LMU, que permanece pendiente.

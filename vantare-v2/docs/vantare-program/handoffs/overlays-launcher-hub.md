@@ -16,7 +16,9 @@
   Regresiones RED/GREEN y round-trip Go comprobados; cortes ISA-990/991/992
   revisados e integrados localmente, con corrección adicional de filas compactas
   detectada en review. Go completo, build y lint integrados pasan; suite frontend
-  global en curso. Head-to-Head conserva proporción360:128 y puede cambiar altura
+  global438archivos/3342tests PASS. Gate de roadmap y Chromium con dimensiones
+  persistidas PASS. PR borrador#993 subida hacia nightly; aceptación física
+  Wails/LMU pendiente. Head-to-Head conserva proporción360:128 y puede cambiar altura
   de perfiles previos; RPM es escala0–10k sin alerta de corte inventada.
   No merge/promoción/release ni
   prueba física Wails/LMU. Evidencia: `docs/analysis/ISA-989-feedback.md`.

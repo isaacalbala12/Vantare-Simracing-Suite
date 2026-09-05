@@ -894,6 +894,13 @@ evaluable hasta desbloquear los 8 errores R7a, no excusa para reintroducir V1.
 
 - Objetivo, archivos, RED, aceptación, checks, reviewer y rollback/stop: como
   D2, aplicado a estas 6 definitions. Commit/review/gate independientes.
+- Resultado D3 (ejecutado en rama 2026-09-05, pendiente de revisión):
+  `e3f9d5a5` RED enumera las seis anclas y `367a4df7` retira su autoridad V1
+  de las definitions. E1/E4 llaman temporalmente a los builders por imports
+  directos, sin registro paralelo ni fallback silencioso. RED 21/23; focales
+  64/64 y 164/164, typecheck, ESLint, build, diff-check y ausencia PASS. Suite
+  completa 3412/3418 con los mismos seis fallos heredados ajenos de D2.
+  Evidencia: `docs/telemetry-core/evidence/isa-894/retirada-v1-r7b-d3-dinamicos-20260905.md`.
 
 ### D4 · Lote espacial/broadcast/daño: head-to-head, track-map, broadcast-tower, track-weather, car-damage-numbers, car-damage-visual
 

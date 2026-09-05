@@ -1,5 +1,19 @@
 # Handoff vivo — Telemetry Core
 
+## R7b/D3 ejecutado en rama, pendiente de revisión — seis definitions dinámicas V2-only — 2026-09-05, ISA-894
+
+Commits `e3f9d5a5` (RED exacto 6/6) y `367a4df7` (GREEN).
+`racing-flags`, `delta-advanced`, `delta-trace`, `pedals`,
+`pedals-telemetry-compact` y `multiclass-relative` ya no publican
+`buildViewModel`. Los builders y tipos legacy permanecen solo para los
+oráculos E1/E4, que ahora los importan directamente sin registro paralelo ni
+fallback silencioso. RED 21/23; focales 64/64 y 164/164 PASS; typecheck,
+ESLint focal, build, diff-check y `rg` PASS. Suite completa 3412/3418 con los
+mismos seis fallos heredados ajenos de D2. Evidencia:
+[`retirada-v1-r7b-d3-dinamicos-20260905.md`](../../telemetry-core/evidence/isa-894/retirada-v1-r7b-d3-dinamicos-20260905.md).
+Pendiente review adversarial; siguiente D4 solo tras aprobación. Sin push, PR,
+merge, promoción, apps ni LMU.
+
 ## R7b/D2 APROBADO final — seis definitions core/status V2-only — 2026-09-05, ISA-894
 
 Commits `fe29411c` (RED exacto 6/6), `caebb5e8` (GREEN) y `5139b09c`

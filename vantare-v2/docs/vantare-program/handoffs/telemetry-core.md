@@ -1,5 +1,33 @@
 # Handoff vivo — Telemetry Core
 
+## R7b/C2b6c APROBADO final — Workshop V2 puro, C2 queda 2→0 — 2026-09-05, ISA-894
+
+Base `76f413dedf3a9a600fefa6b417a93caf4de0ea19`; commits
+`20ee2932` + `70e3881d` + `adce805f`. Workshop deja snapshot, builders,
+seeders y puente V1: construye una sola vez el escenario V2 canónico, aplica el
+diseño una sola vez y falla rápido ante widget o sistema desconocidos. Conserva
+sus cinco variantes de forma y añade las cinco variantes dev reales
+`standings-stress60`, `standings-replay`, `relative-multiclass`, `pedals-zero` y
+`pedals-full`; Engineer Radio y Race Schedule permanecen como fuentes
+auxiliares explícitas. Las escenas Relative transforman `relative` y
+`relativeSettled` y se prueban a través del ViewModel de producto; señales sin
+sumidero V2 (`lapDistanceMeters`, `tireCompound` y best-lap de Delta) siguen
+declaradas como no representables, sin dato inventado.
+
+El bucle adversarial encontró y cerró tres huecos de prueba y un defecto real:
+identidad exacta del coche que cruza, orden canónico multiclase, oráculo de orden
+independiente y escala del historial de pedales. Este último escribía `1` donde
+el contrato exige `1000` permille; quedó reproducido RED, corregido y validado
+mediante `decodeControlsHistory`. Evidencia final: nueve suites focales/vecinas,
+117/117 PASS; ESLint del alcance, escaneo y `diff --check` limpios. Typecheck
+mantiene exactamente los ocho errores R7a heredados, cero nuevos; build sigue no
+evaluable. El guard deliberadamente RED queda `7 failed | 9 passed (16)` y C2
+conserva exactamente dos anclas: `projection-gaps.test.ts` y
+`animation-scenes.test.ts`. Reviews finales Ponytail `full`: spec
+`ses_f90ce6163ffeJVbLSvSwAhPOVi` y quality
+`ses_f90cb7c21ffeG92Ct5MFSBXHwO`, ambas **APPROVE**, P0/P1/P2/P3=0.
+Siguiente: C2b7, gaps/scenes 2→0. Sin push/PR/merge/promoción/apps/LMU.
+
 ## R7b/C2b6b APROBADO final — Parity V2 puro, siguiente Workshop 8→2 — 2026-09-05, ISA-894
 
 Commits `d98a7daa` + `f4b9b262` + `a13c4428` + `2035477f`:

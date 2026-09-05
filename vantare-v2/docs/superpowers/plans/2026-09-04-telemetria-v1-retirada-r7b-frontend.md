@@ -686,6 +686,24 @@ B1; si una ruta no existe en árbol, lo registra como divergencia y para ese
      `ses_f9119e586ffepXBtcGwG2QaySu` y quality
      `ses_f9116bc39ffe3TBoDcMWQ1fhi3`: **APPROVE**, P0/P1/P2=0. Siguiente
      C2b6c: solo Workshop + compat, 8→2; C2b7 conserva gaps/scenes 2→0.
+
+     **C2b6c ejecutado en `20ee2932`/`70e3881d`/`adce805f` (8→2):**
+     Workshop usa exclusivamente el escenario canónico V2 y el registro
+     productivo; retira snapshot, builders, seeds y compatibilidad V1. Mantiene
+     las cinco variantes shape-only y modela de forma acotada los contratos dev
+     `standings-stress60`, `standings-replay`, `relative-multiclass`,
+     `pedals-zero` y `pedals-full`. Relative cambia tanto el frame bruto como el
+     settled y se valida por el ViewModel real; Pedals mantiene jugador 0..1 e
+     historial 0..1000 permille. El review adversarial reprodujo y corrigió el
+     error de escala del historial y endureció identidad/orden. Las señales sin
+     sumidero V2 (`lapDistanceMeters`, `tireCompound` y best-lap de Delta) quedan
+     explícitamente no representables. Guard C2: dos anclas, solo gaps/scenes;
+     focales y vecinos 117/117 PASS; ESLint, escaneo y diff-check limpios.
+     Typecheck conserva los ocho errores R7a heredados, cero nuevos; build no
+     evaluable. Reviews Ponytail `full` spec
+     `ses_f90ce6163ffeJVbLSvSwAhPOVi` y quality
+     `ses_f90cb7c21ffeG92Ct5MFSBXHwO`: **APPROVE**, P0/P1/P2/P3=0. Siguiente
+     C2b7: gaps/scenes 2→0.
   8. **C2b7, contratos gaps/scenes (2→0):** `projection-gaps` puede ir
      separado: sustituir su lectura textual del adapter B2 por contrato V2
      puro/congelado. `animation-scenes` NO puede declararse 2→0 mientras

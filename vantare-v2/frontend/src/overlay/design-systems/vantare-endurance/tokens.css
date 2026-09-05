@@ -1274,7 +1274,7 @@
 }
 
 [data-widget-system="vantare-endurance"] .ven-delta-value[data-tone="losing"] {
-  color: var(--ven-negative);
+  color: var(--ven-delta-loss, var(--ven-negative));
 }
 
 [data-widget-system="vantare-endurance"] .ven-delta-track {
@@ -1303,7 +1303,7 @@
   bottom: 0;
   left: 50%;
   width: calc(50% * max(var(--delta-progress, 0), -1 * var(--delta-progress, 0)));
-  background: var(--ven-negative);
+  background: var(--ven-delta-loss, var(--ven-negative));
 }
 
 [data-widget-system="vantare-endurance"] .ven-delta-fill[data-tone="gaining"] {
@@ -1449,7 +1449,7 @@
 }
 
 [data-widget-system="vantare-endurance"] .ven-neod-value[data-tone="losing"] {
-  color: #ff8585;
+  color: var(--ven-delta-loss, #ff8585);
   text-shadow: 0 0 16px rgba(255, 133, 133, 0.45);
 }
 
@@ -1483,7 +1483,7 @@
   left: 50%;
   border-radius: 4px;
   width: calc((50% - 4px) * max(var(--delta-progress, 0), -1 * var(--delta-progress, 0)));
-  background: #ff8585;
+  background: var(--ven-delta-loss, #ff8585);
   box-shadow: 0 0 10px rgba(255, 133, 133, 0.55);
 }
 
@@ -2709,7 +2709,7 @@
 
 [data-widget-system="vantare-endurance"] .ven-dred-fill[data-dir="loss"] {
   left: 50%;
-  background: #ff6b76;
+  background: var(--ven-delta-loss, #ff6b76);
 }
 
 [data-widget-system="vantare-endurance"] .ven-dred-zero {
@@ -3022,6 +3022,11 @@
 /* Track map ---------------------------------------------------------------- */
 
 [data-widget-system="vantare-endurance"].ven-track-map {
+  background: transparent;
+  border-color: transparent;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -3029,6 +3034,33 @@
   gap: 4px;
   padding: 8px;
   overflow: hidden;
+}
+
+[data-widget-system="vantare-endurance"] .ven-tm-legend {
+  display: flex;
+  flex-wrap: wrap;
+  flex: 0 0 auto;
+  gap: 4px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  text-shadow: 0 1px 2px #000, 0 0 3px #000;
+}
+
+[data-widget-system="vantare-endurance"] .ven-tm-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+[data-widget-system="vantare-endurance"] .ven-tm-legend i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px #10141b;
+}
+
+[data-widget-system="vantare-endurance"] .ven-tm-player-key {
+  border: 2px solid white;
 }
 
 [data-widget-system="vantare-endurance"] .ven-tm-canvas {
@@ -3060,6 +3092,7 @@
 
 [data-widget-system="vantare-endurance"] .ven-tm-footer {
   display: flex;
+  flex: 0 0 auto;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
@@ -3083,8 +3116,8 @@
 
 [data-widget-system="vantare-endurance"] .ven-tm-car[data-player="true"] {
   fill: var(--ven-accent);
-  stroke: var(--ven-bg);
-  stroke-width: 1.5;
+  stroke: white;
+  stroke-width: 2.5;
 }
 
 /* Transparent outer silhouette ------------------------------------------------

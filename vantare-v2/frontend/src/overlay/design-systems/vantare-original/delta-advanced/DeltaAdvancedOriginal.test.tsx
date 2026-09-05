@@ -5,3 +5,8 @@ import { DeltaAdvancedOriginal } from "./DeltaAdvancedOriginal";
 afterEach(() => cleanup());
 const model: DeltaAdvancedViewModel = { type: "delta-advanced", status: "ready", best: -0.15, availability: { best: true, sector: false, theoretical: false, last: false }, showUnavailableFields: true };
 describe("DeltaAdvancedOriginal", () => { it("renders live best and honest unavailable fields", () => { const { container } = render(<DeltaAdvancedOriginal model={model} settings={{}} renderMode="harness" />); expect(container.textContent).toContain("-0.150"); expect(container.textContent).toContain("SECTOR —"); }); });
+
+it("hides unavailable fields instead of their value alone", () => {
+  const { container } = render(<DeltaAdvancedOriginal model={{ ...model, showUnavailableFields: false }} settings={{}} renderMode="harness" />);
+  expect(container.textContent).not.toContain("SECTOR");
+});

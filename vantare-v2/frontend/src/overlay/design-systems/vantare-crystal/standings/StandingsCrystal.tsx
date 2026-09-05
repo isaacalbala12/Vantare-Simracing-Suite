@@ -1,3 +1,5 @@
+import { resolveColumnWidthPixels } from "../../../widget-types/shared/widget-column";
+import { STANDINGS_COLUMN_TEMPLATES } from "../../../widget-types/standings/standings-content";
 import type { CSSProperties } from "react";
 import type { WidgetRendererProps } from "../../../core/design-system-definition";
 import { CrystalBrand, CrystalFooter, CrystalPill } from "../crystal-primitives";
@@ -45,13 +47,14 @@ function renderGap(row: StandingsRowViewModel, metricId: string | undefined) {
 export function StandingsCrystal({ model, settings }: WidgetRendererProps<StandingsViewModel>) {
   const showSessionHeader = settings.showSessionHeader !== false;
   const compactRows = settings.compactRows === true;
-  const enabledMetrics = new Set(model.columns.map((column) => column.metricId));
-  const gapMetric = ["gap", "interval", "pit", "tireCompound"].find((metricId) =>
-    enabledMetrics.has(metricId),
-  );
-  const lastMetric = ["lastLap", "bestLap", "currentLap"].find((metricId) =>
-    enabledMetrics.has(metricId),
-  );
+  const gridTemplateColumns = ["20px", ...model.columns.map(column => {
+    const fallback = STANDINGS_COLUMN_TEMPLATES.find(t => t.metricId === column.metricId)?.defaultWidth ?? 60;
+    // Names need more room than numeric metrics at the same width preset.
+    const weight = resolveColumnWidthPixels(column, fallback) * (column.metricId === "driverName" ? 1.5 : 1);
+    return `minmax(0, ${weight}fr)`;
+  })].join(" ");
+  const headings: Record<string, string> = { position: "POS", driverNumber: "#", driverName: "EQUIPO / PILOTO", gap: "GAP", interval: "INT", lastLap: "LAST", bestLap: "BEST", currentLap: "LAP", vehicleClass: "CLASE", pit: "PIT", tireCompound: "NEUM." };
+  const cellClasses: Record<string, string> = { position: "vc-standings-position", driverNumber: "vc-standings-number", driverName: "vc-standings-driver", gap: "vc-standings-gap-value", interval: "vc-standings-gap-value", lastLap: "vc-standings-last", bestLap: "vc-standings-last" };
 
   return (
     <section
@@ -76,19 +79,16 @@ export function StandingsCrystal({ model, settings }: WidgetRendererProps<Standi
             {model.statusMessage}
           </p>
         ) : null}
-        <div className="vc-standings-table-header" role="row">
+        <div className="vc-standings-table-header" role="row" style={{ gridTemplateColumns }}>
           <span aria-hidden="true" />
-          <span data-metric="position">POS</span>
-          <span data-metric="driverNumber">#</span>
-          <span className="vc-standings-driver-heading" data-metric="driverName">EQUIPO / PILOTO</span>
-          <span data-metric={gapMetric}>{gapMetric === "interval" ? "INT" : gapMetric === "pit" ? "PIT" : "GAP"}</span>
-          <span data-metric={lastMetric}>{lastMetric === "bestLap" ? "BEST" : lastMetric === "currentLap" ? "LAP" : "LAST"}</span>
+          {model.columns.map(column => <span key={column.id} data-metric={column.metricId} style={{ textAlign: column.style?.align ?? "center" }}>{headings[column.metricId]}</span>)}
         </div>
         <div className="vc-standings-rows">
           {model.rows.map((row) => (
             <article
               key={row.id}
               data-standings-row={row.id}
+              style={{ gridTemplateColumns }}
               data-player={row.isPlayer ? "true" : undefined}
               data-leader={row.isLeader ? "true" : undefined}
               data-pit={row.pitText ? "true" : undefined}
@@ -101,15 +101,11 @@ export function StandingsCrystal({ model, settings }: WidgetRendererProps<Standi
               >
                 {row.teamCode || teamAbbreviation(row.driverName) || classAbbreviation(row.vehicleClass)}
               </span>
-              <span className="vc-standings-position" data-metric="position">{row.position}</span>
-              <span className="vc-standings-number" data-metric="driverNumber">{row.driverNumber || "—"}</span>
-              <span className="vc-standings-driver" data-metric="driverName">{row.driverName}</span>
-              <span className="vc-standings-gap-value" data-metric={gapMetric}>
-                {renderGap(row, gapMetric)}
-              </span>
-              <span className="vc-standings-last" data-metric={lastMetric}>
-                {lastMetric ? resolveStandingsCellValue(row, lastMetric) : "—"}
-              </span>
+              {model.columns.map(column => (
+                <span key={column.id} data-metric={column.metricId} className={cellClasses[column.metricId]} style={{ textAlign: column.style?.align ?? "center" }}>
+                  {column.metricId === "gap" || column.metricId === "interval" ? renderGap(row, column.metricId) : resolveStandingsCellValue(row, column.metricId)}
+                </span>
+              ))}
             </article>
           ))}
         </div>

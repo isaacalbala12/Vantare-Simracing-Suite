@@ -16,6 +16,7 @@ export function DeltaEndurance({ model, settings }: WidgetRendererProps<DeltaVie
         data-tone={model.tone}
         data-template="delta-redline"
         className="ven-root ven-delta ven-dred"
+        style={{ "--ven-delta-loss": parsed.lossColor } as CSSProperties}
       >
         {/* showHeader drives the reference row: the expanded state of the design. */}
         <DeltaRedlineTemplate model={model} showReference={parsed.showHeader} />
@@ -32,6 +33,7 @@ export function DeltaEndurance({ model, settings }: WidgetRendererProps<DeltaVie
         data-tone={model.tone}
         data-template="delta-neo"
         className="ven-root ven-delta ven-neod"
+        style={{ "--ven-delta-loss": parsed.lossColor } as CSSProperties}
       >
         {parsed.showHeader ? (
           <header className="ven-neo-header">
@@ -81,6 +83,7 @@ export function DeltaEndurance({ model, settings }: WidgetRendererProps<DeltaVie
       data-tone={model.tone}
       data-template={parsed.templateId}
       className="ven-root ven-delta"
+      style={{ "--ven-delta-loss": parsed.lossColor } as CSSProperties}
     >
       {parsed.showHeader ? (
         <header className="ven-titlebar">

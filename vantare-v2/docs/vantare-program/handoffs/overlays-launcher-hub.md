@@ -1,5 +1,19 @@
 # Handoff vivo — Overlay Studio, Launcher y Hub
 
+## ISA-1000 — integración autorizada a nightly (2026-09-06)
+
+Isaac autoriza integrar el trabajo terminado y resolver desde V2, con rollback
+si falla. Base remota `483f4e80`; rama aislada
+`vantareapp/isa-1000-integracion-v2-feedback`, worktree `C:/tmp/vantare-isa1000`.
+Manifest: retirada completa `28bac676` + auditoría `7cd24786`, microcortes
+#994/#995 y feedback #993 (`2dbf358b`). No incluye #997–999 sin terminar.
+Se conservan los cambios ya integrados en nightly. Conflictos resueltos sin
+resucitar builders/readers V1. Relative Redline usa la versión sin FLIP/ghosts.
+Typecheck PASS; suites/build en curso. Merge aún pendiente. Evidencia y vuelta
+atrás: [ISA-1000](../../analysis/ISA-1000-integracion.md). Los límites históricos
+sobre promoción quedan sustituidos únicamente para este conjunto autorizado;
+no releases ni testers/master, no aceptación física implícita.
+
 ## ISA-979 — contorno estático del mapa V2 (entrega aislada)
 
 Derivado exclusivamente visual del pack inmutable: una caché privada de una
@@ -510,6 +524,18 @@ física nueva, retirada V1, merge o release en este corte documental.
   en Desktop `160×110`: bottom `121.40625` frente al máximo `111`; con el fix
   pasa la matriz 12/12. Queda pendiente la revalidación manual en Wails/LMU
   real; no se arrancó la app. Sin push, PR, merge, promoción ni release.
+- **ISA-989 — feedback de tester (2026-09-05, rama):** base `659b2c57`,
+  worktree aislado `C:/tmp/vantare-isa989`. Guardado compara JSON por contenido,
+  conservando orden de arrays, y Track Map transparente comunica clases V2.
+  Regresiones RED/GREEN y round-trip Go comprobados; cortes ISA-990/991/992
+  revisados e integrados localmente, con corrección adicional de filas compactas
+  detectada en review. Go completo, build y lint integrados pasan; suite frontend
+  global438archivos/3342tests PASS. Gate de roadmap y Chromium con dimensiones
+  persistidas PASS. PR borrador#993 subida hacia nightly; aceptación física
+  Wails/LMU pendiente. Head-to-Head conserva proporción360:128 y puede cambiar altura
+  de perfiles previos; RPM es escala0–10k sin alerta de corte inventada.
+  No merge/promoción/release ni
+  prueba física Wails/LMU. Evidencia: `docs/analysis/ISA-989-feedback.md`.
 
 - **ISA-940 — lifecycle a coste cero (2026-08-30):** rama
   `vantareapp/isa-940-lifecycle-coste-cero`, rebasada sobre

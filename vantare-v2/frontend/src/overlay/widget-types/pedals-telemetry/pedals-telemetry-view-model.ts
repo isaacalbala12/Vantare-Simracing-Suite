@@ -1,3 +1,4 @@
+import { formatGear } from "../shared/format-gear";
 import type { WidgetViewModelBase } from "../../core/widget-definition";
 
 export type PedalsTelemetryViewModel = WidgetViewModelBase & {
@@ -29,5 +30,5 @@ export function formatPedalsTelemetryRpm(value: number | undefined): string {
 }
 
 export function formatPedalsTelemetryGear(value: number | undefined): string {
-  return value === undefined ? PLACEHOLDER : String(Math.round(value));
+  return formatGear(value);
 }

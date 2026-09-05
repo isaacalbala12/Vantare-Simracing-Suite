@@ -1,5 +1,19 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1000 — integración autorizada a nightly (2026-09-06)
+
+Isaac autoriza integrar el trabajo terminado y resolver desde V2, con rollback
+si falla. Base remota `483f4e80`; rama aislada
+`vantareapp/isa-1000-integracion-v2-feedback`, worktree `C:/tmp/vantare-isa1000`.
+Manifest: retirada completa `28bac676` + auditoría `7cd24786`, microcortes
+#994/#995 y feedback #993 (`2dbf358b`). No incluye #997–999 sin terminar.
+Se conservan los cambios ya integrados en nightly. Conflictos resueltos sin
+resucitar builders/readers V1. Relative Redline usa la versión sin FLIP/ghosts.
+Typecheck PASS; suites/build en curso. Merge aún pendiente. Evidencia y vuelta
+atrás: [ISA-1000](../../analysis/ISA-1000-integracion.md). Los límites históricos
+sobre promoción quedan sustituidos únicamente para este conjunto autorizado;
+no releases ni testers/master, no aceptación física implícita.
+
 ## Auditoría integral V2 consolidada — 2026-09-05, ISA-987
 
 Retirada Overlay V1 cerrada localmente en

@@ -37,6 +37,7 @@ describe("delta-advanced v2 view model", () => {
     const model = buildDeltaAdvancedViewModelV2(frame, { state: "live" }, { showUnavailableFields: true });
     expect(model.status).toBe("ready");
     expect(model.best).toBeCloseTo(-0.238, 9);
+    expect(model.reference).toBe("personal-best");
     expect(model.availability.best).toBe(true);
     expect(model.availability.sector).toBe(false);
     expect(model.showUnavailableFields).toBe(true);

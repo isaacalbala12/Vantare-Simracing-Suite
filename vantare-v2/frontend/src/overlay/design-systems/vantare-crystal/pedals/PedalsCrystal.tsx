@@ -41,7 +41,7 @@ export function PedalsCrystal({ model, settings }: WidgetRendererProps<PedalsVie
                 }
               />
             </div>
-            <span className="vc-pedals-label">THR</span>
+            <span className="vc-pedals-label" style={{ color: resolvePedalColor("throttle", settings) }}>THR</span>
             <span className="vc-pedals-value">{model.throttleText}</span>
           </article>
           <article className="vc-pedals-channel" data-pedal="brake">
@@ -56,7 +56,7 @@ export function PedalsCrystal({ model, settings }: WidgetRendererProps<PedalsVie
                 }
               />
             </div>
-            <span className="vc-pedals-label">BRK</span>
+            <span className="vc-pedals-label" style={{ color: resolvePedalColor("brake", settings) }}>BRK</span>
             <span className="vc-pedals-value">{model.brakeText}</span>
           </article>
           <article className="vc-pedals-channel" data-pedal="clutch">
@@ -71,7 +71,7 @@ export function PedalsCrystal({ model, settings }: WidgetRendererProps<PedalsVie
                 }
               />
             </div>
-            <span className="vc-pedals-label">CLU</span>
+            <span className="vc-pedals-label" style={{ color: resolvePedalColor("clutch", settings) }}>CLU</span>
             <span className="vc-pedals-value">{model.clutchText}</span>
           </article>
         </div>

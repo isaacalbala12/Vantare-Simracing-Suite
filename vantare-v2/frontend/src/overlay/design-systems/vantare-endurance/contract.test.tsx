@@ -518,3 +518,11 @@ describe("vantare-endurance contract", () => {
     }
   }, 30_000);
 });
+
+it("passes the configured loss colour to every Delta Endurance template", () => {
+  for (const templateId of ["delta-redline", "delta-neo", "delta-strip", "delta-block"]) {
+    const { container, unmount } = render(<DeltaEndurance model={{ ...deltaModel, tone: "losing", progress: 0.2 }} settings={{ templateId, lossColor: "#d50020" }} renderMode="harness" />);
+    expect(rootOf(container).style.getPropertyValue("--ven-delta-loss")).toBe("#d50020");
+    unmount();
+  }
+});

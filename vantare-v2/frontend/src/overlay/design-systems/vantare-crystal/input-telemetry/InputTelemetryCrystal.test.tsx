@@ -8,3 +8,18 @@ describe("InputTelemetryCrystal", () => {
   it.each(["input-blade", "input-capsule", "input-dense"])('renders template %s from its ViewModel', (templateId) => { const { container } = render(<InputTelemetryCrystal model={model} settings={{ templateId }} renderMode="harness" />); const root = container.querySelector('[data-widget-system="vantare-crystal"]') as HTMLElement; expect(root.getAttribute("data-template")).toBe(templateId); expect(root.querySelectorAll("[data-input]")).toHaveLength(3); expect(root.querySelector("path")?.getAttribute("d")).toContain(templateId === "input-dense" ? "L400" : "L500"); cleanup(); });
   it("omits clutch when the content contract disables it", () => { const { container } = render(<InputTelemetryCrystal model={{ ...model, showClutch: false }} settings={{ templateId: "input-dense" }} renderMode="harness" />); expect(container.querySelector('[data-input="clutch"]')).toBeNull(); });
 });
+
+ it.each(["input-blade", "input-capsule", "input-dense"])("preserves zero clutch samples and updates %s history", (templateId) => {
+ const first = {...model, history: [{capturedAt: 1, throttle: 0, brake: 0, clutch: 0}, {capturedAt: 2, throttle: 1, brake: 0, clutch: 1}, {capturedAt: 3, throttle: 0, brake: 0, clutch: 0}]};
+ const {container, rerender} = render(<InputTelemetryCrystal model={first} settings={{templateId}} renderMode="harness"/>);
+ const paths = container.querySelectorAll("path");
+ expect(paths).toHaveLength(3);
+ expect(paths[2]?.getAttribute("d")?.match(/[ML]/g)).toHaveLength(3);
+ const before = paths[0]?.getAttribute("d");
+ rerender(<InputTelemetryCrystal model={{...first, history: [...first.history, {capturedAt: 4, throttle: 0.5, brake: 1, clutch: 0}]}} settings={{templateId}} renderMode="harness"/>);
+ expect(container.querySelector("path")?.getAttribute("d")).not.toBe(before);
+ });
+ it.each([[-1,"R"],[0,"N"],[undefined,"\u2014"]] as const)("formats gear %s", (gear, expected) => {
+ const {container} = render(<InputTelemetryCrystal model={{...model, gear}} settings={{}} renderMode="harness"/>);
+ expect(container.querySelector(".vc-input-readout>b")?.textContent).toBe(expected);
+ });

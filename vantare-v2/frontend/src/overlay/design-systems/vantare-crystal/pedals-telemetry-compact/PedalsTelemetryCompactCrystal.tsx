@@ -19,14 +19,18 @@ export function PedalsTelemetryCompactCrystal({ model }: WidgetRendererProps<Ped
           })}
         </div>
         <div className="vc-pedals-compact-core">
+          {model.showRpm ? <>
+          <small className="vc-rpm-scale">0-10k RPM</small>
           <div className="vc-pedals-compact-shift" aria-label={`RPM ${model.rpmText}`}>
             {Array.from({ length: 7 }, (_, index) => (
               <i
-                className={`${model.rpm !== undefined && model.rpm >= (index + 1) * 900 ? "is-on " : ""}${index < 3 ? "is-green" : index < 5 ? "is-yellow" : "is-red"}`}
+                className={`${model.rpm !== undefined && model.rpm >= (index + 1) * 10000 / 7 ? "is-on " : ""}`}
                 key={index}
               />
             ))}
           </div>
+          <span className="vc-pedals-compact-rpm">{model.rpmText} RPM</span>
+          </> : null}
           <strong className="vc-pedals-compact-gear">{model.gearText}</strong>
           {model.showSpeed ? <span className="vc-pedals-compact-speed">{model.speedText} KM/H</span> : null}
         </div>

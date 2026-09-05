@@ -1,6 +1,6 @@
 # Handoff vivo — Telemetry Core
 
-## R7b/D4 ejecutado en rama, pendiente de revisión — las 18 definitions productivas V2-only — 2026-09-05, ISA-894
+## R7b/D4 APROBADO final — las 18 definitions productivas V2-only — 2026-09-05, ISA-894
 
 Commits `ca462478` (RED exacto 6/6), `6a5da362` (GREEN) y `4eaa0eb8`
 (tests C1 de daño alineados). Las seis definitions finales ya no publican
@@ -11,8 +11,10 @@ focales 64/64, 140/140 y 68/68 PASS; typecheck, ESLint, build, diff-check y
 `rg` PASS. Suite final 3412/3418, mismos seis fallos heredados ajenos.
 Evidencia:
 [`retirada-v1-r7b-d4-final-20260905.md`](../../telemetry-core/evidence/isa-894/retirada-v1-r7b-d4-final-20260905.md).
-Pendiente review adversarial; siguiente D5 solo tras aprobación. Sin push, PR,
-merge, promoción, apps ni LMU.
+Review adversarial read-only `ses_f90288574ffeuvXgeIjpxMIP8z`: **APPROVE**,
+P0/P1/P2 = 0; P3 = 2 informativos y propiedad E1/E4 (casts temporales y
+tests legacy restantes). Siguiente: D5. Sin push, PR, merge, promoción, apps
+ni LMU.
 
 ## R7b/D3 APROBADO final — seis definitions dinámicas V2-only — 2026-09-05, ISA-894
 

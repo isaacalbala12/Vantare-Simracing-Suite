@@ -42,5 +42,7 @@ reducen 30 líneas legacy.
 
 ## Estado
 
-Implementado en rama y pendiente de revisión adversarial. Sin push, PR,
-merge, promoción, release, apps ni LMU.
+APROBADO por review adversarial read-only
+`ses_f90288574ffeuvXgeIjpxMIP8z`: P0/P1/P2 = 0; P3 = 2 informativos por
+casts y tests legacy temporales con dueño E1/E4. Sin push, PR, merge,
+promoción, release, apps ni LMU.

@@ -370,8 +370,8 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
     );
     contentHas(
       src("overlay-harness", "OverlayParityHarness.tsx"),
-      "buildAuthoringV2ScenarioWidget",
-      "C2b6b (widget V2 puro sin snapshot)",
+      "createScenarioWidget",
+      "E1b (widget V2 puro desde la frontera Workshop)",
     );
     // C2b6b (frontera runtime/visual): el fixture del golden no importa el
     // módulo visual ni el registry; solo Parity lo hace vía el vecino.
@@ -501,7 +501,6 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
     for (const [route, owner] of [
       [src("overlay", "core", "telemetry-rate-coordinator.ts"), "E1 (historias/API legacy)"],
       [src("overlay", "core", "mock-scenarios.ts"), "E1"],
-      [src("hub", "overlay-studio", "canvas", "fixtures", "studio-v1-snapshot-test-harness.ts"), "E1"],
       [src("overlay", "core", "telemetry-snapshot.ts"), "E1"],
       [src("overlay", "transports", "telemetry-adapter.ts"), "E1"],
       [src("overlay", "core", "telemetry-adapter.ts"), "E1"],

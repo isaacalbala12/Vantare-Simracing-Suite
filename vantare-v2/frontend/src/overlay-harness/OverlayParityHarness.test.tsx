@@ -1,7 +1,7 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { ALL_WIDGET_TYPES } from "../overlay/core/profile-document";
-import { buildAuthoringV2ScenarioWidget } from "../overlay/authoring/fixtures/authoring-v2-scenario-widget";
+import { createScenarioWidget } from "../overlay/authoring/fixtures/authoring-v2-workshop-frame";
 import { OverlayParityHarness, OverlayParityHarnessPage } from "./OverlayParityHarness";
 import { parseHarnessQuery } from "./overlay-parity-query";
 import { readRendererMarkup } from "./parity-html";
@@ -12,7 +12,7 @@ afterEach(() => cleanup());
 type StandingsColumns = { metricId?: string; enabled?: boolean }[];
 
 function standingsColumns(variant: "standings-multiclass" | "standings-minimal" | "standings-all-columns"): StandingsColumns {
-  const widget = buildAuthoringV2ScenarioWidget({
+  const widget = createScenarioWidget({
     widget: "standings",
     system: "vantare-original",
     variant,
@@ -106,29 +106,29 @@ describe("parseHarnessQuery", () => {
   });
 });
 
-describe("buildAuthoringV2ScenarioWidget", () => {
+describe("createScenarioWidget", () => {
   it("throws on non-canonical variants even when cast", () => {
     expect(() =>
-      buildAuthoringV2ScenarioWidget({
+      createScenarioWidget({
         widget: "pedals",
         system: "vantare-original",
-        variant: "pedals-full" as "default",
+        variant: "no-such-variant" as "default",
       }),
     ).toThrow(/variante no soportada/);
   });
 
   it("applies the resolved design dimensions", () => {
-    const widget = buildAuthoringV2ScenarioWidget({
+    const widget = createScenarioWidget({
       widget: "delta",
       system: "vantare-crystal",
       variant: "default",
-      design: { designId: "delta-crystal-simple", width: 420, height: 69 },
+      designId: "delta-crystal-simple",
     });
     expect(widget.layout).toMatchObject({ x: 120, y: 96, zIndex: 1, w: 420, h: 69 });
   });
 
   it("applies relative fill with a minimum frame height", () => {
-    const widget = buildAuthoringV2ScenarioWidget({
+    const widget = createScenarioWidget({
       widget: "relative",
       system: "vantare-original",
       variant: "relative-fill",
@@ -139,7 +139,7 @@ describe("buildAuthoringV2ScenarioWidget", () => {
   });
 
   it("selects the multiclass field with bestLap on for standings-multiclass", () => {
-    const widget = buildAuthoringV2ScenarioWidget({
+    const widget = createScenarioWidget({
       widget: "standings",
       system: "vantare-original",
       variant: "standings-multiclass",

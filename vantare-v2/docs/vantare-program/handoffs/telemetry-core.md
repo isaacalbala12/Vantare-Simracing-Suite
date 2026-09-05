@@ -1,5 +1,38 @@
 # Handoff vivo — Telemetry Core
 
+## R7b/C1 CERRADO en rama — daño rama B, sin productores snapshot — 2026-09-05, ISA-894
+
+Commits locales `0db6b39e` (RED: `car-damage-c1.test.ts` 2 failed / 2
+passed) + `49809c3f` (GREEN + borrado + guardias). Rama elegida: **B** —
+`wheelDetachedCount` viaja en el frame canónico pero ningún renderer lo
+consume; sin campo canónico nuevo, sin arquitectura, sin datos
+inventados. Evidencia exacta en
+[`retirada-v1-r7b-c1-damage-20260905.md`](../../telemetry-core/evidence/isa-894/retirada-v1-r7b-c1-damage-20260905.md):
+cero productores reales de `snapshot.damage` (`buildMockTelemetry` y
+`telemetry-adapter` jamás la fijan; solo ceros sintéticos de
+`authoring-fixtures.ts:591-593` + tests); `tyres` solo lo lee
+`CarDamageNumbersCrystal.tsx:7`; `wheelDetachedCount` invisible en
+toda superficie de render; `BuildDamage` (`builder_damage.go:43-51`)
+publica los 4 campos desde `damage.State` (driver
+`format.go:523-562`); diferencia legítima = passthrough sintético vs
+dents/2 canónico + tyres `undefined` (fila Tyre `"n/a"`, honestidad).
+
+Producción ya resolvía por V2 vía `overlayV2ViewModelRegistry` + Host;
+las definitions conservan el slot `buildViewModel` (ancla B1 del lote D4
+intacta) como stub honesto `missing`, y D4 lo retirará con su lote. Los
+ficheros `car-damage-*-view-model.ts` quedan solo-tipo (renderers
+intactos, misma ruta); borrados `shared/damage-reader.ts` y los 2 tests
+de builders V1; `harness-fixtures` visual pasa a `missing`.
+v1-authority-guard pierde 3 entradas de ficheros sin `TelemetrySnapshot`
+(sin debilitar el detector); B1 suma lock C1 (ausencia + anclas +
+rama fijada en test) y conserva todos sus locks.
+
+Checks: focales 51/51 + vecinos 14/14; `git grep` de ausencia limpio
+salvo anclas del propio lock; `pnpm typecheck` verde; `pnpm build`
+PASS; ESLint focal y `git diff --check` limpios. Siguiente: D2/D3/D4
+por lotes (daño ya resuelto, su slot cae en D4). Sin push, PR, merge,
+promoción, apps ni LMU.
+
 ## R7b/B2 APROBADO final — proyección/transporte Overlay V1 retirados — 2026-09-05, ISA-894
 
 Commits `c1214a4a` (tests de contrato a productos V1 independientes) +

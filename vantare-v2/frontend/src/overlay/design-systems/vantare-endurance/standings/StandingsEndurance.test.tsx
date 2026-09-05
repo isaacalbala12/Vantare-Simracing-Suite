@@ -1,9 +1,9 @@
 import { act, cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { buildMockTelemetry } from "../../../core/mock-scenarios";
-import { createDefaultStandingsContent } from "../../../widget-types/standings/standings-content";
+import { createDefaultStandingsContent, getEnabledStandingsColumns } from "../../../widget-types/standings/standings-content";
 import {
-  buildStandingsViewModel,
+  withStandingsMotionIdentity,
+  type StandingsRowViewModel,
   type StandingsViewModel,
 } from "../../../widget-types/standings/standings-view-model";
 import { StandingsEndurance } from "./StandingsEndurance";
@@ -13,35 +13,55 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+const templateRow: StandingsRowViewModel = {
+  id: "template",
+  position: 1,
+  driverNumber: "",
+  driverName: "Driver",
+  vehicleClass: "HYPERCAR",
+  teamCode: "",
+  teamBrandColor: "",
+  gapText: "+0.0s",
+  intervalText: "+0.0s",
+  currentLapText: "1",
+  lastLapText: "1:31.234",
+  bestLapText: "1:30.999",
+  pitText: "",
+  tireCompound: "",
+  isPlayer: false,
+  isLeader: false,
+};
+
 function battleModel(sessionId: string, epoch: number, sequence: number): StandingsViewModel {
-  const snapshot = buildMockTelemetry({ session: "race", location: "track", state: "ready" });
-  const model = buildStandingsViewModel({
-    ...snapshot,
-    capturedAt: sequence,
-    session: { ...snapshot.session, key: sessionId, epoch },
-  }, createDefaultStandingsContent());
-  const source = model.rows[0]!;
-  model.rows = [
-    {
-      ...source,
-      id: "ahead",
-      position: 1,
-      gapText: "+0.0s",
-      pitText: "",
-      isPlayer: false,
-      isLeader: true,
-    },
-    {
-      ...source,
-      id: "player",
-      position: 2,
-      gapText: "+0.4s",
-      pitText: "",
-      isPlayer: true,
-      isLeader: false,
-    },
-  ];
-  return model;
+  const model: StandingsViewModel = {
+    type: "standings",
+    status: "ready",
+    activeClass: "HYPERCAR",
+    sessionLabel: "RACE",
+    remainingText: "—",
+    columns: getEnabledStandingsColumns(createDefaultStandingsContent()),
+    rows: [
+      {
+        ...templateRow,
+        id: "ahead",
+        position: 1,
+        gapText: "+0.0s",
+        pitText: "",
+        isPlayer: false,
+        isLeader: true,
+      },
+      {
+        ...templateRow,
+        id: "player",
+        position: 2,
+        gapText: "+0.4s",
+        pitText: "",
+        isPlayer: true,
+        isLeader: false,
+      },
+    ],
+  };
+  return withStandingsMotionIdentity(model, `${sessionId}:${epoch}`, sequence);
 }
 
 describe("StandingsEndurance Redline motion lifecycle", () => {

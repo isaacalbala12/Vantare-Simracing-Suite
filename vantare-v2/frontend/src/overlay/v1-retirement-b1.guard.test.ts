@@ -180,25 +180,9 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
     ]);
   });
 
-  it("B2-prep: el oráculo E4 no depende del adapter que B2 borrará", () => {
-    contentAbsentAll([
-      [
-        src("overlay", "telemetry-shadow", "overlay-shadow-comparator.ts"),
-        "../projection/overlay-projection-adapter",
-        "B2-prep (tipos locales del oráculo E4)",
-      ],
-      [
-        src("overlay", "telemetry-shadow", "overlay-shadow-comparator.test.ts"),
-        "../projection/overlay-projection-adapter",
-        "B2-prep (test del oráculo E4)",
-      ],
-      [
-        src("overlay", "telemetry-shadow", "overlay-shadow-comparator.test.ts"),
-        "../authoring/fixtures/authoring-v2-fixture",
-        "B2-prep (puente snapshot del oráculo E4)",
-      ],
-    ]);
-  });
+  // B2-prep retirado en E4: vigilaba el desacoplamiento del oráculo
+  // (comparator + su test) del adapter V1; ambos ficheros ya no existen y
+  // su ausencia la fija el test E4 de arriba.
 
   it("C2: callers, previews y fixtures migran a V2 puro antes de B3/B2", () => {
     contentAbsentAll([

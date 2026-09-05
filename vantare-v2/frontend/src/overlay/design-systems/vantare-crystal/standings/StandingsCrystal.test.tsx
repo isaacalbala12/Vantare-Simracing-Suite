@@ -3,20 +3,54 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import { buildMockTelemetry } from "../../../core/mock-scenarios";
-import { createDefaultStandingsContent } from "../../../widget-types/standings/standings-content";
-import { buildStandingsViewModel } from "../../../widget-types/standings/standings-view-model";
-import type { StandingsViewModel } from "../../../widget-types/standings/standings-view-model";
+import { createDefaultStandingsContent, getEnabledStandingsColumns } from "../../../widget-types/standings/standings-content";
+import type { StandingsContent } from "../../../widget-types/standings/standings-content";
+import type { StandingsRowViewModel, StandingsViewModel } from "../../../widget-types/standings/standings-view-model";
 import { StandingsCrystal } from "./StandingsCrystal";
 
 const testDir = dirname(fileURLToPath(import.meta.url));
 
 afterEach(() => cleanup());
 
-const readyModel = buildStandingsViewModel(
-  buildMockTelemetry({ session: "race", location: "track", state: "ready" }),
-  createDefaultStandingsContent(),
-);
+function standingsRow(
+  row: Pick<StandingsRowViewModel, "id" | "position" | "driverName"> &
+    Partial<StandingsRowViewModel>,
+): StandingsRowViewModel {
+  return {
+    vehicleClass: "HYPERCAR",
+    driverNumber: "",
+    teamCode: "",
+    teamBrandColor: "",
+    gapText: "+1.234",
+    intervalText: "+0.456",
+    currentLapText: "12",
+    lastLapText: "1:31.234",
+    bestLapText: "1:30.999",
+    pitText: "",
+    tireCompound: "",
+    isPlayer: false,
+    isLeader: false,
+    ...row,
+  };
+}
+
+function buildReadyModel(content: StandingsContent = createDefaultStandingsContent()): StandingsViewModel {
+  return {
+    type: "standings",
+    status: "ready",
+    activeClass: "HYPERCAR",
+    sessionLabel: "RACE",
+    remainingText: "—",
+    columns: getEnabledStandingsColumns(content),
+    rows: [
+      standingsRow({ id: "1", position: 1, driverName: "Leader", isLeader: true }),
+      standingsRow({ id: "2", position: 2, driverName: "Player", isPlayer: true }),
+      standingsRow({ id: "3", position: 3, driverName: "Third" }),
+    ],
+  };
+}
+
+const readyModel = buildReadyModel();
 
 const unavailable = (status: StandingsViewModel["status"], statusMessage?: string): StandingsViewModel => ({
   type: "standings",
@@ -73,26 +107,19 @@ describe("StandingsCrystal", () => {
         column.metricId === "bestLap" ? { ...column, enabled: false } : column,
       ),
     };
-    const model = buildStandingsViewModel(
-      buildMockTelemetry({ session: "race", location: "track", state: "ready" }),
-      disabledBestLap,
-    );
+    const model = buildReadyModel(disabledBestLap);
     const { root } = renderCrystal(model);
     expect(root.querySelector('[data-metric="bestLap"]')).toBeNull();
   });
 
   it("marks player leader pit and tire states on canonical rows", () => {
-    const snapshot = buildMockTelemetry({ session: "race", location: "track", state: "ready" });
-    const model = buildStandingsViewModel(
-      {
-        ...snapshot,
-        scoring: [
-          { id: 1, place: 1, driverName: "Leader", isPlayer: false, inPits: false, tireCompound: "SOFT" },
-          { id: 2, place: 2, driverName: "Player", isPlayer: true, inPits: true, tireCompound: "MED" },
-        ],
-      },
-      createDefaultStandingsContent(),
-    );
+    const model: StandingsViewModel = {
+      ...buildReadyModel(),
+      rows: [
+        standingsRow({ id: "1", position: 1, driverName: "Leader", isLeader: true, tireCompound: "SOFT" }),
+        standingsRow({ id: "2", position: 2, driverName: "Player", isPlayer: true, pitText: "PIT", tireCompound: "MED" }),
+      ],
+    };
     const { root } = renderCrystal(model);
     const leader = root.querySelector('[data-standings-row="1"]') as HTMLElement;
     const player = root.querySelector('[data-standings-row="2"]') as HTMLElement;
@@ -105,16 +132,16 @@ describe("StandingsCrystal", () => {
   });
 
   it("keeps stable row keys for 60-row stress input", () => {
-    const snapshot = buildMockTelemetry({ session: "race", location: "track", state: "ready" });
-    const manyRows = Array.from({ length: 60 }, (_, index) => ({
-      id: index + 1,
-      place: index + 1,
-      driverName: `Driver ${index + 1}`,
-      vehicleClass: "HYPERCAR",
-      isPlayer: index === 4,
-    }));
-    const content = { ...createDefaultStandingsContent(), rowCount: 60 };
-    const model = buildStandingsViewModel({ ...snapshot, scoring: manyRows }, content);
+    const rows = Array.from({ length: 60 }, (_, index) =>
+      standingsRow({
+        id: String(index + 1),
+        position: index + 1,
+        driverName: `Driver ${index + 1}`,
+        isPlayer: index === 4,
+        isLeader: index === 0,
+      }),
+    );
+    const model: StandingsViewModel = { ...buildReadyModel(), rows };
     const { root } = renderCrystal(model);
     const rowIds = [...root.querySelectorAll("[data-standings-row]")].map((row) =>
       row.getAttribute("data-standings-row"),

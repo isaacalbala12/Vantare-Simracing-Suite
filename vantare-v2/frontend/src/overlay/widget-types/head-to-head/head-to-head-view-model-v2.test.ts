@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { OverlayFrameV2, OverlaySourceStatusV2 } from "../../../generated/telemetry";
 import { buildHeadToHeadViewModelV2 } from "./head-to-head-view-model-v2";
-import { buildHeadToHeadViewModel } from "./head-to-head-view-model";
-import { buildMockTelemetry } from "../../core/mock-scenarios";
 
 function frameFixture(overrides?: Partial<OverlayFrameV2>): OverlayFrameV2 {
   const base: OverlayFrameV2 = {
@@ -66,11 +64,4 @@ describe("buildHeadToHeadViewModelV2", () => {
     expect(buildHeadToHeadViewModelV2(frameFixture(), { state: "stopped" }, { target: "ahead", showSectors: true }).status).toBe("disconnected");
   });
 
-  it("equivalencia sintetica con v1: mismo player y vecino sobre mock", () => {
-    const snapshot = buildMockTelemetry({ session: "race", location: "track" });
-    const v1 = buildHeadToHeadViewModel(snapshot, { target: "ahead", showSectors: true });
-    const v2 = buildHeadToHeadViewModelV2(frameFixture(), live, { target: "ahead", showSectors: true });
-    expect(v2.player?.name).toBe(v1.player?.name);
-    expect(v2.opponent?.place).toBe(v1.opponent?.place);
-  });
 });

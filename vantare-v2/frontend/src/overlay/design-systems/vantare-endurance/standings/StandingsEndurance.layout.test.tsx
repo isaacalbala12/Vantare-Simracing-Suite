@@ -3,9 +3,8 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import { buildMockTelemetry } from "../../../core/mock-scenarios";
-import { createDefaultStandingsContent } from "../../../widget-types/standings/standings-content";
-import { buildStandingsViewModel } from "../../../widget-types/standings/standings-view-model";
+import { createDefaultStandingsContent, getEnabledStandingsColumns } from "../../../widget-types/standings/standings-content";
+import type { StandingsRowViewModel, StandingsViewModel } from "../../../widget-types/standings/standings-view-model";
 import { StandingsEndurance } from "./StandingsEndurance";
 import {
   measureStandingsFlowHeight,
@@ -37,8 +36,33 @@ const CSS_GEOMETRY: readonly CssGeometry[] = [
 ];
 
 const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "../tokens.css"), "utf8");
-const snapshot = buildMockTelemetry({ session: "race", location: "track", state: "ready" });
-const baseModel = buildStandingsViewModel(snapshot, createDefaultStandingsContent());
+const templateRow: StandingsRowViewModel = {
+  id: "template",
+  position: 1,
+  driverNumber: "",
+  driverName: "Driver",
+  vehicleClass: "HYPERCAR",
+  teamCode: "",
+  teamBrandColor: "",
+  gapText: "+0.0s",
+  intervalText: "+0.0s",
+  currentLapText: "1",
+  lastLapText: "1:31.234",
+  bestLapText: "1:30.999",
+  pitText: "",
+  tireCompound: "",
+  isPlayer: false,
+  isLeader: false,
+};
+const baseModel: StandingsViewModel = {
+  type: "standings",
+  status: "ready",
+  activeClass: "HYPERCAR",
+  sessionLabel: "RACE",
+  remainingText: "—",
+  columns: getEnabledStandingsColumns(createDefaultStandingsContent()),
+  rows: [templateRow],
+};
 
 afterEach(cleanup);
 

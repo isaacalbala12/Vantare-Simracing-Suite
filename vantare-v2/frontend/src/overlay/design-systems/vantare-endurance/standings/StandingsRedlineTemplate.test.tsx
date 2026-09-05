@@ -1,11 +1,11 @@
 import { act, cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { buildMockTelemetry } from "../../../core/mock-scenarios";
 import {
   createDefaultStandingsContent,
+  getEnabledStandingsColumns,
   type StandingsMetricId,
 } from "../../../widget-types/standings/standings-content";
-import { buildStandingsViewModel } from "../../../widget-types/standings/standings-view-model";
+import type { StandingsRowViewModel, StandingsViewModel } from "../../../widget-types/standings/standings-view-model";
 import { StandingsRedlineTemplate } from "./StandingsRedlineTemplate";
 import { fitStandingsRowsToHeight, measureStandingsFlowHeight } from "./standings-endurance-layout";
 
@@ -14,10 +14,29 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+const templateRow: StandingsRowViewModel = {
+  id: "template",
+  position: 1,
+  driverNumber: "",
+  driverName: "Driver 001",
+  vehicleClass: "HYPERCAR",
+  teamCode: "",
+  teamBrandColor: "",
+  gapText: "+0.0s",
+  intervalText: "+0.0s",
+  currentLapText: "1",
+  lastLapText: "1:31.234",
+  bestLapText: "1:30.999",
+  pitText: "",
+  tireCompound: "",
+  isPlayer: false,
+  isLeader: false,
+};
+
 function modelWithColumns(
   metrics: readonly StandingsMetricId[],
   disabledAnchors = false,
-) {
+): StandingsViewModel {
   const defaults = createDefaultStandingsContent();
   const byMetric = new Map(defaults.columns.map((column) => [column.metricId, column]));
   const columns = metrics.map((metricId) => {
@@ -30,10 +49,15 @@ function modelWithColumns(
         : true,
     };
   });
-  return buildStandingsViewModel(
-    buildMockTelemetry({ session: "race", location: "track", state: "ready" }),
-    { ...defaults, columns },
-  );
+  return {
+    type: "standings",
+    status: "ready",
+    activeClass: "HYPERCAR",
+    sessionLabel: "RACE",
+    remainingText: "—",
+    columns: getEnabledStandingsColumns({ ...defaults, columns }),
+    rows: [{ ...templateRow }],
+  };
 }
 
 function firstRow(container: HTMLElement): HTMLElement {

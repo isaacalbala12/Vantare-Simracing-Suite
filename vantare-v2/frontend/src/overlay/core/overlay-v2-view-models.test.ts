@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { overlayV2ViewModelRegistry, getOverlayV2ViewModelEntry } from "./overlay-v2-view-models";
 import { widgetTypeRegistry } from "./widget-registry";
-import { OVERLAY_SHADOW_POLICIES } from "../telemetry-shadow/overlay-shadow-comparator";
 import type { OverlayUpdateV2 } from "../../generated/telemetry";
 import golden1Raw from "../../../../internal/telemetry/projection/overlayv2/testdata/overlay_v2_1.golden.json?raw";
 import golden20Raw from "../../../../internal/telemetry/projection/overlayv2/testdata/overlay_v2_20.golden.json?raw";
@@ -64,8 +63,6 @@ describe("overlay-v2 view model registry", () => {
         expect(Object.keys(model).length, `${type} output fields @${update.revision}`).toBeGreaterThan(2);
         expect(JSON.parse(JSON.stringify(model)), `${type} serializable output @${update.revision}`)
           .toMatchObject({ type, status: model.status });
-        expect(OVERLAY_SHADOW_POLICIES[type].rules.length, `${type} declared fields`)
-          .toBeGreaterThan(0);
       }
     }
   });

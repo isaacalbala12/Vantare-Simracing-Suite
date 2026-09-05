@@ -2,8 +2,6 @@ import { describe, expect, it } from "vitest";
 import type { OverlayFrameV2, OverlaySourceStatusV2 } from "../../../generated/telemetry";
 import type { MulticlassRelativeContent } from "./multiclass-relative-definition";
 import { buildMulticlassRelativeViewModelV2 } from "./multiclass-relative-view-model-v2";
-import { buildMulticlassRelativeViewModel } from "./multiclass-relative-view-model";
-import { buildMockTelemetry } from "../../core/mock-scenarios";
 
 function frameFixture(overrides?: Partial<OverlayFrameV2>): OverlayFrameV2 {
   const base: OverlayFrameV2 = {
@@ -69,15 +67,4 @@ describe("buildMulticlassRelativeViewModelV2", () => {
     expect(buildMulticlassRelativeViewModelV2(frameFixture(), { state: "error" }, content).status).toBe("error");
   });
 
-  it("equivalencia sintetica con v1 sobre fixture centrada", () => {
-    const snapshot = buildMockTelemetry({ session: "race", location: "track" });
-    const scoring = [...snapshot.scoring];
-    // v1 centrado: player en posicion 5 de 6 HYPERCAR visibles
-    const v1 = buildMulticlassRelativeViewModel({ ...snapshot, scoring }, content);
-    // v2 con standings equivalentes (mismas posiciones) debe contener al player y respetar rowCount
-    const f = frameFixture();
-    const v2 = buildMulticlassRelativeViewModelV2(f, live, content);
-    expect(v2.rows.some((r) => r.isPlayer)).toBe(v1.rows.some((r) => r.isPlayer));
-    expect(v2.rows.length).toBeLessThanOrEqual(content.rowCount);
-  });
 });

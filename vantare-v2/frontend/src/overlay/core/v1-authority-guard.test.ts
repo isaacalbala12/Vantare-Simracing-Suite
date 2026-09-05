@@ -6,6 +6,8 @@ const overlayRoot = resolve(process.cwd(), "src", "overlay");
 
 // La retirada V1 aún no ha terminado: este inventario exacto conserva los
 // artefactos legacy que siguen vivos, pero cualquier referencia adicional falla.
+// E4 retiró el oráculo shadow y los 16 builders snapshot legacy: sus ficheros
+// conservan solo tipos y helpers puros sin autoridad V1.
 const legacyV1Baseline: Readonly<Record<string, readonly string[]>> = {
   "core/derived-telemetry-store.ts": ["TelemetrySnapshot", "TelemetrySnapshot", "TelemetrySnapshot"],
   "core/mock-scenarios.ts": ["TelemetrySnapshot", "TelemetrySnapshot", "TelemetrySnapshot"],
@@ -13,27 +15,7 @@ const legacyV1Baseline: Readonly<Record<string, readonly string[]>> = {
   "core/telemetry-adapter.ts": Array(7).fill("TelemetrySnapshot"),
   "core/telemetry-rate-coordinator.ts": Array(4).fill("TelemetrySnapshot"),
   "core/telemetry-snapshot.ts": ["TelemetrySnapshot"],
-  "telemetry-shadow/overlay-shadow-comparator.ts": [
-    ...Array(24).fill("TelemetrySnapshot"),
-    ...Array(4).fill("snapshot.scoring"),
-  ],
-  "widget-types/broadcast-tower/broadcast-tower-view-model.ts": ["TelemetrySnapshot", "TelemetrySnapshot", "snapshot.scoring"],
-  "widget-types/delta/delta-view-model.ts": ["TelemetrySnapshot", "TelemetrySnapshot", "TelemetrySnapshot", "snapshot.scoring"],
-  "widget-types/delta-advanced/delta-advanced-view-model.ts": ["TelemetrySnapshot", "TelemetrySnapshot"],
-  "widget-types/delta-trace/delta-trace-view-model.ts": ["TelemetrySnapshot", "TelemetrySnapshot"],
-  "widget-types/fuel-strategy/fuel-strategy-view-model.ts": ["TelemetrySnapshot", "TelemetrySnapshot"],
-  "widget-types/head-to-head/head-to-head-view-model.ts": ["TelemetrySnapshot", "TelemetrySnapshot", "snapshot.scoring"],
   "widget-types/input-telemetry/input-telemetry-accumulator.ts": Array(5).fill("TelemetrySnapshot"),
-  "widget-types/input-telemetry/input-telemetry-view-model.ts": ["TelemetrySnapshot", "TelemetrySnapshot"],
-  "widget-types/multiclass-relative/multiclass-relative-view-model.ts": ["TelemetrySnapshot", "TelemetrySnapshot", "snapshot.scoring"],
-  "widget-types/pedals/pedals-view-model.ts": ["TelemetrySnapshot", "TelemetrySnapshot"],
-  "widget-types/pedals-telemetry/pedals-telemetry-view-model.ts": ["TelemetrySnapshot", "TelemetrySnapshot", "TelemetrySnapshot", "snapshot.scoring"],
-  "widget-types/pedals-telemetry-compact/pedals-telemetry-compact-view-model.ts": ["TelemetrySnapshot", "TelemetrySnapshot"],
-  "widget-types/racing-flags/racing-flags-view-model.ts": ["TelemetrySnapshot", "TelemetrySnapshot"],
-  "widget-types/relative/relative-view-model.ts": ["TelemetrySnapshot", "TelemetrySnapshot", "snapshot.scoring"],
-  "widget-types/standings/standings-view-model.ts": ["TelemetrySnapshot", "TelemetrySnapshot", "TelemetrySnapshot", "snapshot.scoring"],
-  "widget-types/track-map/track-map-view-model.ts": [...Array(7).fill("TelemetrySnapshot"), "snapshot.scoring"],
-  "widget-types/track-weather/track-weather-view-model.ts": ["TelemetrySnapshot", "TelemetrySnapshot"],
 };
 
 function sourceFiles(directory: string): string[] {

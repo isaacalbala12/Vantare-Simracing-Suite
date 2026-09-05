@@ -2,7 +2,6 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import type { OverlayFrameV2, OverlayUpdateV2 } from "../../../generated/telemetry";
-import { buildDeltaTraceViewModel } from "./delta-trace-view-model";
 import {
   buildDeltaTraceViewModelV2,
   deltaTraceDisplayedValues,
@@ -94,27 +93,12 @@ describe("delta-trace v2 view model", () => {
     expect(model.points).toEqual([{ capturedAt: T0 + 2500, deltaSeconds: 0.9 }]);
   });
 
-  it("equivalencia de tendencia con v1 sobre historia de 20 puntos", () => {
+  it("detecta tendencia gaining sobre historia canonica de 20 puntos", () => {
     const base = goldenFrame();
     const content = { windowSeconds: 8, showSectors: true, showTrackMap: true };
     const capturedAtMS = Array.from({ length: 20 }, (_, index) => T0 + index * 100);
     const seconds = Array.from({ length: 20 }, (_, index) => (index < 10 ? 0.2 : -0.2));
     const v2 = buildDeltaTraceViewModelV2(frameWithDelta(base, -0.2, capturedAtMS, seconds), { state: "live" }, content);
-
-    const deltaHistory = Array.from({ length: 20 }, (_, index) => ({
-      capturedAt: index,
-      deltaSeconds: index < 10 ? 0.2 : -0.2,
-    }));
-    const snapshot = {
-      status: "ready" as const,
-      capturedAt: Date.now(),
-      session: { type: "race" as const },
-      player: { inPit: false },
-      scoring: [],
-      derived: { fuelHistory: [], inputHistory: [], deltaHistory },
-    };
-    const v1 = buildDeltaTraceViewModel(snapshot, content);
-    expect(v2.trend).toBe(v1.trend);
     expect(v2.trend).toBe("gaining");
   });
 

@@ -5,12 +5,12 @@ import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { buildAuthoringV2ScenarioRuntime } from "../../authoring/fixtures/authoring-v2-scenario-fixture";
 import { buildWorkshopFrameV2 } from "../../authoring/fixtures/authoring-v2-workshop-frame";
-import { buildMockTelemetry } from "../../core/mock-scenarios";
-import { createDefaultStandingsContent } from "../../widget-types/standings/standings-content";
-import { buildStandingsViewModel } from "../../widget-types/standings/standings-view-model";
+import { createDefaultStandingsContent, getEnabledStandingsColumns } from "../../widget-types/standings/standings-content";
 import { buildStandingsViewModelV2 } from "../../widget-types/standings/standings-view-model-v2";
-import { createDefaultRelativeContent } from "../../widget-types/relative/relative-content";
-import { buildRelativeViewModel } from "../../widget-types/relative/relative-view-model";
+import type { StandingsRowViewModel, StandingsViewModel } from "../../widget-types/standings/standings-view-model";
+import { createDefaultRelativeContent, getEnabledRelativeColumns } from "../../widget-types/relative/relative-content";
+import type { RelativeRowViewModel, RelativeViewModel } from "../../widget-types/relative/relative-view-model";
+import type { TrackMapViewModel } from "../../widget-types/track-map/track-map-view-model";
 import { DeltaEndurance } from "./delta/DeltaEndurance";
 import { parseDeltaEnduranceSettings } from "./delta/delta-endurance-settings";
 import { parsePedalsEnduranceSettings } from "./pedals/pedals-endurance-settings";
@@ -20,8 +20,6 @@ import { parseRelativeEnduranceSettings } from "./relative/relative-endurance-se
 import { StandingsEndurance } from "./standings/StandingsEndurance";
 import { TrackMapEndurance } from "./track-map/TrackMapEndurance";
 import { parseTrackMapEnduranceSettings } from "./track-map/track-map-endurance-settings";
-import { buildTrackMapViewModel } from "../../widget-types/track-map/track-map-view-model";
-import { createDefaultTrackMapContent } from "../../widget-types/track-map/track-map-content";
 import { parseStandingsEnduranceSettings } from "./standings/standings-endurance-settings";
 import { vantareEnduranceManifest } from "./manifest";
 import type { DeltaViewModel } from "../../widget-types/delta/delta-view-model";
@@ -31,9 +29,65 @@ const testDir = dirname(fileURLToPath(import.meta.url));
 
 afterEach(() => cleanup());
 
-const snapshot = buildMockTelemetry({ session: "race", location: "track", state: "ready" });
-const standingsModel = buildStandingsViewModel(snapshot, createDefaultStandingsContent());
-const relativeModel = buildRelativeViewModel(snapshot, createDefaultRelativeContent());
+const standingsTemplateRow: StandingsRowViewModel = {
+  id: "template",
+  position: 1,
+  driverNumber: "",
+  driverName: "Driver",
+  vehicleClass: "HYPERCAR",
+  teamCode: "",
+  teamBrandColor: "",
+  gapText: "+0.0s",
+  intervalText: "+0.0s",
+  currentLapText: "1",
+  lastLapText: "1:31.234",
+  bestLapText: "1:30.999",
+  pitText: "",
+  tireCompound: "",
+  isPlayer: false,
+  isLeader: false,
+};
+
+const standingsModel: StandingsViewModel = {
+  type: "standings",
+  status: "ready",
+  activeClass: "HYPERCAR",
+  sessionLabel: "RACE",
+  remainingText: "—",
+  columns: getEnabledStandingsColumns(createDefaultStandingsContent()),
+  rows: [
+    { ...standingsTemplateRow, id: "1", isLeader: true },
+    { ...standingsTemplateRow, id: "2", position: 2, driverName: "Player", isPlayer: true },
+    { ...standingsTemplateRow, id: "3", position: 3 },
+  ],
+};
+
+const relativeTemplateRow: RelativeRowViewModel = {
+  id: "template",
+  position: 1,
+  vehicleClass: "HYPERCAR",
+  driverNumber: "",
+  driverName: "Driver",
+  gapText: "+0.0s",
+  bestLapText: "-",
+  lastLapText: "-",
+  isPlayer: false,
+  side: "ahead",
+  tone: "neutral",
+  gapSeconds: 0,
+};
+
+const relativeModel: RelativeViewModel = {
+  type: "relative",
+  status: "ready",
+  columns: getEnabledRelativeColumns(createDefaultRelativeContent()),
+  rowHeightMode: "compact",
+  rows: [
+    { ...relativeTemplateRow, id: "2", position: 2, tone: "ahead", gapText: "+2.0", gapSeconds: 2 },
+    { ...relativeTemplateRow, id: "4", position: 4, driverName: "Player", isPlayer: true, tone: "player" },
+    { ...relativeTemplateRow, id: "5", position: 5, side: "behind", tone: "behind", gapText: "-1.0", gapSeconds: -1 },
+  ],
+};
 
 const deltaModel: DeltaViewModel = {
   type: "delta",
@@ -93,8 +147,16 @@ describe("vantare-endurance contract", () => {
   });
 
   it("draws the outline when the circuit resolves, and badges it as reference", () => {
-    const mapped = { ...snapshot, session: { ...snapshot.session, trackName: "Vantare Reference Loop" } };
-    const model = buildTrackMapViewModel(mapped, createDefaultTrackMapContent());
+    const model: TrackMapViewModel = {
+      type: "track-map",
+      status: "ready",
+      trackLabel: "Vantare Reference Loop",
+      outlinePath: "M0 0L320 220",
+      synthetic: true,
+      viewBox: "0 0 320 220",
+      showTrackLabel: true,
+      markers: [],
+    };
     expect(model.synthetic).toBe(true);
     const view = render(
       <TrackMapEndurance model={model} settings={{}} renderMode="harness" />,
@@ -109,16 +171,19 @@ describe("vantare-endurance contract", () => {
   });
 
   it("draws every placed car, with the player marked", () => {
-    const mapped = {
-      ...snapshot,
-      session: { ...snapshot.session, trackName: "Vantare Reference Loop" },
-      scoring: [
-        { id: "car-1", isPlayer: true, groundPositionXMeters: 0, groundPositionZMeters: 0 },
-        { id: "car-2", groundPositionXMeters: 200, groundPositionZMeters: -150 },
-        { id: "car-3" },
+    const model: TrackMapViewModel = {
+      type: "track-map",
+      status: "ready",
+      trackLabel: "Vantare Reference Loop",
+      outlinePath: "M0 0L320 220",
+      synthetic: true,
+      viewBox: "0 0 320 220",
+      showTrackLabel: true,
+      markers: [
+        { id: "car-1", x: 160, y: 110, isPlayer: true },
+        { id: "car-2", x: 200, y: 80, isPlayer: false },
       ],
     };
-    const model = buildTrackMapViewModel(mapped, createDefaultTrackMapContent());
     const view = render(
       <TrackMapEndurance model={model} settings={{}} renderMode="harness" />,
     );
@@ -131,8 +196,15 @@ describe("vantare-endurance contract", () => {
   });
 
   it("draws nothing and says so when the circuit is not mapped", () => {
-    const unmapped = { ...snapshot, session: { ...snapshot.session, trackName: "Suzuka" } };
-    const model = buildTrackMapViewModel(unmapped, createDefaultTrackMapContent());
+    const model: TrackMapViewModel = {
+      type: "track-map",
+      status: "missing",
+      synthetic: false,
+      unavailableReason: "unknown-track",
+      viewBox: "0 0 320 220",
+      showTrackLabel: true,
+      markers: [],
+    };
     const view = render(
       <TrackMapEndurance model={model} settings={{}} renderMode="harness" />,
     );

@@ -422,13 +422,19 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
     ] as const) present(route, "tests exactos del expediente");
   });
 
-  it("diferidos D2/D3/D4 COMPLETOS: buildViewModel legacy por lote exacto", () => {
-    const lots = {
-      "D2 (lote core/status)": ["standings", "relative", "delta", "fuel-strategy", "pedals-telemetry", "input-telemetry"],
+  it("D2 cerrado y D3/D4 diferidos: buildViewModel legacy por lote exacto", () => {
+    const retiredD2 = ["standings", "relative", "delta", "fuel-strategy", "pedals-telemetry", "input-telemetry"] as const;
+    contentAbsentAll(retiredD2.map((type) => [
+        src("overlay", "widget-types", type, type + "-definition.ts"),
+        "buildViewModel",
+        "D2 (lote core/status retirado)",
+      ] as const));
+
+    const deferredLots = {
       "D3 (lote dinámicos)": ["racing-flags", "delta-advanced", "delta-trace", "pedals", "pedals-telemetry-compact", "multiclass-relative"],
       "D4 (lote espacial/broadcast/daño)": ["head-to-head", "track-map", "broadcast-tower", "track-weather", "car-damage-numbers", "car-damage-visual"],
     } as const;
-    for (const [lot, types] of Object.entries(lots)) {
+    for (const [lot, types] of Object.entries(deferredLots)) {
       for (const type of types) {
         contentHas(src("overlay", "widget-types", type, type + "-definition.ts"), "buildViewModel", lot);
       }

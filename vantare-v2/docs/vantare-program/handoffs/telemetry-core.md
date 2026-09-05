@@ -1,5 +1,26 @@
 # Handoff vivo — Telemetry Core
 
+## R7b/E3 ejecutado en rama — testdata overlay y bench frontend fuera, prototipo intacto — 2026-09-05, ISA-894
+
+Commits locales `572911f4` (RED: guard E3 1 failed | 17 passed, fallo
+exacto con los 5 artefactos) + `745a1048` (GREEN, 6 ficheros, 1482
+deletions, 0 inserciones). Borrados los 3 JSON
+`overlay/testdata/` (`lmu-1.4-delta`, `overlay_v1_pre_d7`,
+`overlay_v1`) y los 2 entrypoints research bench
+(`frontend-bench-entry.ts` + `frontend-bench.mjs`, importaban el
+adapter V1 ya borrado en B2). `contracts_test.go` pierde solo la
+entrada overlay (strategy y analysis intactos). Guard B1 E3 de
+presencia a ausencia (2 entrypoints + 3 JSON); `compact_frame.go`
+(tag `researchbench`, sin cableado V1), Go bench, checks vite/html
+research y custodia S1 intactos. Inventario `rg` previo: cero
+consumidores ejecutables reales fuera de `contracts_test` (STOP no
+activado). Checks: `TestGoldenContractsDoNotLeakCanonicalInternals`
+PASS, `TestOverlayV1ContractsRetired` PASS, guard 18/18, `rg` limpio
+salvo anclas del guard, `git diff --check` limpio, `gofmt` limpio.
+Suite completa pendiente de E1d/F1. Evidencia:
+[`retirada-v1-r7b-e3-bench-20260905.md`](../../telemetry-core/evidence/isa-894/retirada-v1-r7b-e3-bench-20260905.md).
+Siguiente: E4. Sin push, PR, merge, promoción, apps ni LMU.
+
 ## R7b/E2 aprobado y guard simplificado — 2026-09-05, ISA-894
 
 Review adversarial read-only Muse `ses_f8fd55932ffeI9eCwgS6qguYrF`:

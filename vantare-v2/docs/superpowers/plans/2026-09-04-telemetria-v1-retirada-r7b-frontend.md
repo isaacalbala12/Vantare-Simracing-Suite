@@ -1143,6 +1143,22 @@ Siguiente: E3.
 - Rollback/stop: revert. Stop si algún test/harness R7b aún los importa →
   completar C/D/E1 primero.
 
+**Resultado E3 (ejecutado en rama, 2026-09-05):** `572911f4` fija RED
+(guard E3 1 failed | 17 passed, fallo exacto con los 5 artefactos) y
+`745a1048` retira los 3 JSON overlay/testdata + los 2 entrypoints
+research bench + 1 línea de `contracts_test.go` (entrada overlay fuera;
+strategy y analysis intactos), 6 ficheros, 1482 deletions, 0
+inserciones. El bloque E3 del guard B1 pasa de presencia a ausencia
+(2 entrypoints + 3 JSON); `compact_frame.go`, Go bench, checks
+vite/html research y custodia S1 intactos. Inventario previo con `rg`:
+cero consumidores ejecutables reales fuera de `contracts_test`
+(STOP no activado). Checks: `TestGoldenContractsDoNotLeakCanonicalInternals`
+PASS, `TestOverlayV1ContractsRetired` PASS, guard 18/18, `rg` limpio
+salvo anclas del guard, `git diff --check` limpio; suite completa
+pendiente de E1d/F1. Evidencia:
+`docs/telemetry-core/evidence/isa-894/retirada-v1-r7b-e3-bench-20260905.md`.
+Siguiente: E4.
+
 ### E4 · Retirar comparator/sanitizer y sus resultados (oráculo hasta el final)
 
 - Objetivo: solo con D, E1a–E1c, E2 y E3 verdes, retirar

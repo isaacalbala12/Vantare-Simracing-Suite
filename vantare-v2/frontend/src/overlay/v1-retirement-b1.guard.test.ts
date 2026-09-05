@@ -422,10 +422,11 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
     ] as const) present(route, "tests exactos del expediente");
   });
 
-  it("D2/D3 cerrados y D4 diferido: buildViewModel legacy por lote exacto", () => {
+  it("D2/D3/D4 cerrados: buildViewModel legacy por lote exacto", () => {
     const retiredLots = {
       "D2 (lote core/status retirado)": ["standings", "relative", "delta", "fuel-strategy", "pedals-telemetry", "input-telemetry"],
       "D3 (lote dinámicos retirado)": ["racing-flags", "delta-advanced", "delta-trace", "pedals", "pedals-telemetry-compact", "multiclass-relative"],
+      "D4 (lote espacial/broadcast/daño retirado)": ["head-to-head", "track-map", "broadcast-tower", "track-weather", "car-damage-numbers", "car-damage-visual"],
     } as const;
     for (const [lot, types] of Object.entries(retiredLots)) {
       contentAbsentAll(types.map((type) => [
@@ -433,15 +434,6 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
         "buildViewModel",
         lot,
       ] as const));
-    }
-
-    const deferredLots = {
-      "D4 (lote espacial/broadcast/daño)": ["head-to-head", "track-map", "broadcast-tower", "track-weather", "car-damage-numbers", "car-damage-visual"],
-    } as const;
-    for (const [lot, types] of Object.entries(deferredLots)) {
-      for (const type of types) {
-        contentHas(src("overlay", "widget-types", type, type + "-definition.ts"), "buildViewModel", lot);
-      }
     }
     // D5 auxiliares con fuente propia, fuera de los lotes: se conservan,
     // no se cuentan en los 18 V2 ni se retiran en D2–D4.

@@ -67,7 +67,7 @@ describe("widgetTypeRegistry", () => {
     });
   });
 
-  it("does not require a legacy builder for the V2-only D2/D3 definitions", () => {
+  it("does not require a legacy builder for the 18 V2-only definitions", () => {
     for (const type of [
       "standings",
       "relative",
@@ -81,6 +81,12 @@ describe("widgetTypeRegistry", () => {
       "pedals",
       "pedals-telemetry-compact",
       "multiclass-relative",
+      "head-to-head",
+      "track-map",
+      "broadcast-tower",
+      "track-weather",
+      "car-damage-numbers",
+      "car-damage-visual",
     ] as const) {
       expect(widgetTypeRegistry.get(type).buildViewModel).toBeUndefined();
     }

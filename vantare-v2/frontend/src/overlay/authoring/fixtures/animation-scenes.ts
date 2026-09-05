@@ -340,9 +340,9 @@ const DELTA_NEW_BEST_SCENE: AnimationScene = {
   unsupportedSignal: "bestLapText",
   frameMs: 1500,
   frames: [
-    { caption: "Referencia: 1:38.031", player: { bestLapSeconds: 98.031 } },
-    { caption: "Nueva mejor: 1:37.402 — barrido morado", player: { bestLapSeconds: 97.402 } },
-    { caption: "Asentada", player: { bestLapSeconds: 97.402 } },
+    { caption: "Referencia no disponible: V2 mantiene el placeholder", player: { bestLapSeconds: 98.031 } },
+    { caption: "Mejor vuelta recibida fuera del modelo Delta; referencia no disponible", player: { bestLapSeconds: 97.402 } },
+    { caption: "Referencia no disponible: el placeholder no cambia", player: { bestLapSeconds: 97.402 } },
   ],
 };
 

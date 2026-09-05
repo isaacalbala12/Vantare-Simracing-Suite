@@ -90,6 +90,9 @@ describe("animation scene catalog", () => {
     );
     expect(getAnimationScene("standings-full")?.unsupportedSignal).toBe("rows[].tireCompound");
     expect(getAnimationScene("delta-new-best")?.unsupportedSignal).toBe("bestLapText");
+    const deltaCaptions = getAnimationScene("delta-new-best")?.frames.map((frame) => frame.caption) ?? [];
+    expect(deltaCaptions.every((caption) => /no disponible|placeholder/.test(caption))).toBe(true);
+    expect(deltaCaptions.join(" ")).not.toMatch(/\d+:\d+|barrido/i);
   });
 });
 

@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import goldenV2Raw from "../../../../../internal/telemetry/projection/overlayv2/testdata/overlay_v2_20.golden.json?raw";
 import type { OverlayUpdateV2 } from "../../../generated/telemetry";
 import {
+  AUTHORING_V2_VARIANTS,
   buildAuthoringV2ScenarioRuntime,
   type AuthoringV2Scenario,
 } from "./authoring-v2-scenario-fixture";
@@ -51,6 +52,13 @@ describe("authoring V2 fixture puro (C2)", () => {
     const first = JSON.stringify(buildAuthoringV2ScenarioRuntime(scenario()));
     const second = JSON.stringify(buildAuthoringV2ScenarioRuntime(scenario()));
     expect(first).toBe(second);
+  });
+
+  it("mantiene el mismo frame para todas las variantes shape-only", () => {
+    const expected = buildAuthoringV2ScenarioRuntime(scenario()).overlayV2Frame;
+    for (const variant of AUTHORING_V2_VARIANTS) {
+      expect(buildAuthoringV2ScenarioRuntime(scenario({ variant })).overlayV2Frame).toEqual(expected);
+    }
   });
 
   it("publica el campo multiclass con más de una clase para standings", () => {

@@ -878,7 +878,7 @@ evaluable hasta desbloquear los 8 errores R7a, no excusa para reintroducir V1.
   independientes de este lote.
 - Rollback/stop: revert del lote. Stop si falta equivalente V2 → reclasificar
   a paridad (A).
-- Resultado D2 (ejecutado en rama 2026-09-05, pendiente de revisión):
+- Resultado D2 (APROBADO final en rama 2026-09-05):
   `fe29411c` RED enumera las seis anclas; `caebb5e8` retira su autoridad de
   las definitions y `5139b09c` elimina la aserción V1 del test de perfiles.
   Los ficheros de ViewModel sobreviven hasta E1/E4 porque contienen tipos de
@@ -887,6 +887,8 @@ evaluable hasta desbloquear los 8 errores R7a, no excusa para reintroducir V1.
   alineado con A2. Focal 223/223 + revalidación 75/75, typecheck, ESLint, build,
   diff-check y ausencia PASS. Suite completa 3412/3418; seis fallos heredados
   ajenos. Evidencia: `docs/telemetry-core/evidence/isa-894/retirada-v1-r7b-d2-core-20260905.md`.
+  Review adversarial read-only `ses_f903df475ffeAngN0noGhhxIBo`: APPROVE,
+  P0/P1/P2/P3 = 0; reproducción focal 23/23 y 68/68 PASS.
 
 ### D3 · Lote dinámicos: racing-flags, delta-advanced, delta-trace, pedals, pedals-telemetry-compact, multiclass-relative
 

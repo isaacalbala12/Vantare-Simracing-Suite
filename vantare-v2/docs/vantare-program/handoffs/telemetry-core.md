@@ -1,6 +1,6 @@
 # Handoff vivo — Telemetry Core
 
-## R7b/D2 ejecutado en rama, pendiente de revisión — seis definitions core/status V2-only — 2026-09-05, ISA-894
+## R7b/D2 APROBADO final — seis definitions core/status V2-only — 2026-09-05, ISA-894
 
 Commits `fe29411c` (RED exacto 6/6), `caebb5e8` (GREEN) y `5139b09c`
 (test de perfiles sin aserción V1). `standings`, `relative`, `delta`,
@@ -15,8 +15,9 @@ typecheck, ESLint focal, build, diff-check y `rg` PASS. Suite completa final
 3412/3418: seis fallos heredados fuera de D2 (4 transport, 1 i18n Studio,
 1 gaps Fuel). Evidencia:
 [`retirada-v1-r7b-d2-core-20260905.md`](../../telemetry-core/evidence/isa-894/retirada-v1-r7b-d2-core-20260905.md).
-Pendiente review adversarial; siguiente D3 solo tras aprobación. Sin push, PR,
-merge, promoción, apps ni LMU.
+Review adversarial read-only `ses_f903df475ffeAngN0noGhhxIBo`: **APPROVE**,
+P0/P1/P2/P3 = 0; reprodujo guard+registry 23/23 y perfiles+Host+comparador
+68/68. Siguiente: D3. Sin push, PR, merge, promoción, apps ni LMU.
 
 ## R7b/D1 APROBADO final — Host sin snapshot ni rama legacy — 2026-09-05, ISA-894
 

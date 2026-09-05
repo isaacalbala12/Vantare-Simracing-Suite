@@ -1,6 +1,7 @@
+import { formatGear } from "../shared/format-gear";
 import type { TelemetrySnapshot } from "../../core/telemetry-snapshot";
 import type { WidgetViewModelBase } from "../../core/widget-definition";
-import { readNonNegativeNumber, readNormalizedInput } from "../shared/input-readers";
+import { readFiniteNumber, readNonNegativeNumber, readNormalizedInput } from "../shared/input-readers";
 import type { PedalsTelemetryCompactContent } from "./pedals-telemetry-compact-definition";
 
 export type PedalsTelemetryCompactViewModel = WidgetViewModelBase & {
@@ -60,7 +61,7 @@ export function buildPedalsTelemetryCompactViewModel(
   }
   const speedKph = readNonNegativeNumber(snapshot.player.speedKph);
   const rpm = readNonNegativeNumber(snapshot.player.rpm);
-  const gear = readNonNegativeNumber(snapshot.player.gear);
+  const gear = readFiniteNumber(snapshot.player.gear);
   return {
     type: "pedals-telemetry-compact",
     status: snapshot.status === "stale" ? "stale" : "ready",
@@ -72,7 +73,7 @@ export function buildPedalsTelemetryCompactViewModel(
     gear,
     speedText: formatSpeed(speedKph),
     rpmText: formatRpm(rpm),
-    gearText: gear === undefined ? PLACEHOLDER : String(Math.round(gear)),
+    gearText: formatGear(gear),
     showSpeed: content.showSpeed,
     showRpm: content.showRpm,
     showClutch: content.showClutch,

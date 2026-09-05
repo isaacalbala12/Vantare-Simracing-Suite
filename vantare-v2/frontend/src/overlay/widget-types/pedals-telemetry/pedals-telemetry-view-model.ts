@@ -1,6 +1,7 @@
+import { formatGear } from "../shared/format-gear";
 import type { TelemetrySnapshot } from "../../core/telemetry-snapshot";
 import type { WidgetViewModelBase } from "../../core/widget-definition";
-import { readNonNegativeNumber, readNormalizedInput } from "../shared/input-readers";
+import { readFiniteNumber, readNonNegativeNumber, readNormalizedInput } from "../shared/input-readers";
 import { readScoringBoolean, readScoringNumber } from "../shared/scoring-readers";
 import type { PedalsTelemetryContent } from "./pedals-telemetry-definition";
 
@@ -34,7 +35,7 @@ export function formatPedalsTelemetryRpm(value: number | undefined): string {
 }
 
 export function formatPedalsTelemetryGear(value: number | undefined): string {
-  return value === undefined ? PLACEHOLDER : String(Math.round(value));
+  return formatGear(value);
 }
 
 function formatPosition(value: number | undefined): string {
@@ -77,7 +78,7 @@ export function buildPedalsTelemetryViewModel(
 
   const speedKph = readNonNegativeNumber(snapshot.player.speedKph);
   const rpm = readNonNegativeNumber(snapshot.player.rpm);
-  const gear = readNonNegativeNumber(snapshot.player.gear);
+  const gear = readFiniteNumber(snapshot.player.gear);
   const playerPosition = findPlayerPosition(snapshot);
   const status = snapshot.status === "stale" ? "stale" : "ready";
 

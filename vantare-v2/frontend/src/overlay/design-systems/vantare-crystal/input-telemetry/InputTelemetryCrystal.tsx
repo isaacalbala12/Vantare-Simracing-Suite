@@ -1,3 +1,4 @@
+import { formatGear } from "../../../widget-types/shared/format-gear";
 import type { WidgetRendererProps } from "../../../core/design-system-definition";
 import type { InputTelemetryViewModel } from "../../../widget-types/input-telemetry/input-telemetry-view-model";
 
@@ -20,9 +21,7 @@ function tracePath(
   const start = model.history[0]!.capturedAt;
   const end = model.history.at(-1)!.capturedAt;
   const span = Math.max(1, end - start);
-  const samples = channel === "clutch"
-    ? model.history.filter((sample) => sample.clutch > 0)
-    : model.history;
+  const samples = model.history;
   return samples.map((sample, index) => {
     const x = model.history.length === 1
       ? geometry.width
@@ -40,7 +39,7 @@ function Trace({ model, template }: { model: InputTelemetryViewModel; template: 
     </> : null}
     <path d={tracePath(model, "throttle", template)}/>
     <path d={tracePath(model, "brake", template)}/>
-    {model.showClutch && template !== "input-dense" ? <path d={tracePath(model, "clutch", template)}/> : null}
+    {model.showClutch ? <path d={tracePath(model, "clutch", template)}/> : null}
   </svg>;
 }
 
@@ -53,11 +52,11 @@ function VerticalInputs({ model }: { model: InputTelemetryViewModel }) {
 }
 
 function Readout({ model }: { model: InputTelemetryViewModel }) {
-  return <div className="vc-input-readout"><b>{model.gear === undefined ? "—" : Math.round(model.gear)}</b><div><strong>{model.speedKph === undefined ? "—" : Math.round(model.speedKph)}</strong><small>KPH</small></div></div>;
+  return <div className="vc-input-readout"><b>{formatGear(model.gear)}</b><div><strong>{model.speedKph === undefined ? "—" : Math.round(model.speedKph)}</strong><small>KPH</small></div></div>;
 }
 
 function DenseReadout({ model }: { model: InputTelemetryViewModel }) {
-  return <div className="vc-input-readout"><b>{model.gear === undefined ? "—" : Math.round(model.gear)}</b><strong>{model.speedKph === undefined ? "—" : Math.round(model.speedKph)}</strong><small>KPH</small></div>;
+  return <div className="vc-input-readout"><b>{formatGear(model.gear)}</b><strong>{model.speedKph === undefined ? "—" : Math.round(model.speedKph)}</strong><small>KPH</small></div>;
 }
 
 export function InputTelemetryCrystal({ model, settings }: WidgetRendererProps<InputTelemetryViewModel>) {

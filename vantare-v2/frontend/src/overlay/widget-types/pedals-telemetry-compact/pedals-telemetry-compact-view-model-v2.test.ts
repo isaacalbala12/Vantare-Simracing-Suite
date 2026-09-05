@@ -1,3 +1,4 @@
+import { buildPedalsTelemetryViewModelV2 } from "../pedals-telemetry/pedals-telemetry-view-model-v2";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -99,4 +100,10 @@ describe("pedals-telemetry-compact v2 view model", () => {
     expect(v2.rpmText).toBe(v1.rpmText);
     expect(v2.gearText).toBe(v1.gearText);
   });
+});
+
+it.each([[-1,"R"],[0,"N"],[5,"5"],[-2,"\u2014"]] as const)("both V2 instruments format gear %s", (v, text) => {
+ const frame=syntheticFrame({gear:{q:"ok",v}});
+ expect(buildPedalsTelemetryCompactViewModelV2(frame,{state:"live"},{showSpeed:true,showRpm:true,showClutch:true}).gearText).toBe(text);
+ expect(buildPedalsTelemetryViewModelV2(frame,{state:"live"},{showPosition:true,showClutch:true}).gearText).toBe(text);
 });

@@ -59,3 +59,9 @@ describe("buildPedalsTelemetryViewModel", () => {
     }
   });
 });
+
+it.each([[-1,"R"],[0,"N"],[-2,"\u2014"],[1.2,"\u2014"],[undefined,"\u2014"]] as const)("preserves and formats gear %s", (gear, expected) => {
+ const snapshot=buildMockTelemetry({session:"race",location:"track"});
+ const model=buildPedalsTelemetryViewModel({...snapshot, player:{...snapshot.player,gear}}, {showPosition:true,showClutch:true});
+ expect(model.gearText).toBe(expected);
+});

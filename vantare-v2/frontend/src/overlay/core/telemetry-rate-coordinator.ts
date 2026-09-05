@@ -216,9 +216,8 @@ export function createTelemetryRateCoordinator(
     getOverlayFailure() {
       return overlayFailure;
     },
-    subscribe(rateKey, listener) {
+    subscribe(widgetType, listener) {
       ensureScheduler();
-      const widgetType = rateKey;
       const initialRate = widgetType === "runtime-context"
         ? "dirty"
         : widgetType

@@ -48,9 +48,15 @@ caller productivo.
 - Suite frontend completa y gates Go: pendientes del cierre F, como exige el
   microplan. Apps, LMU y benchmark no ejecutados en E1d.
 
+Comandos exactos usados: `pnpm --dir frontend typecheck`,
+`pnpm --dir frontend lint`, `pnpm --dir frontend build`,
+`git diff --check` y `rg --fixed-strings` sobre `frontend/src` y
+`frontend/dist` para `TelemetrySnapshot`, `mock-scenarios`, `telemetry-ref`,
+`widget-preview-fixtures`, `derived-telemetry-store`, `coordinator.publish`,
+`getFuelHistory`, `getInputHistory` y `getDeltaHistory`.
+
 ## Riesgo restante
 
 F debe ejecutar la matriz completa y revisar el diff acumulado. Los nombres
 V1 de Strategy, Engineer y Analysis son contratos independientes y quedan
 fuera del producto Overlay por D5; no constituyen una ruta Overlay V1.
-

@@ -619,6 +619,32 @@ describe("useCanvasInteraction", () => {
     expect(screen.getByTestId("dirty-flag").textContent).toBe("clean");
   });
 
+  it("keeps imperative preview when a V2 frame arrives during drag", async () => {
+    const coordinator = renderInteractiveCanvas();
+    await waitFor(() => expect(screen.getByTestId("studio-widget-frame-delta-main")).toBeTruthy());
+    mockSceneRect();
+
+    pointerDownFrame();
+    pointerMove(140, 130, 1, { altKey: true });
+    await waitFor(() => {
+      const frame = screen.getByTestId("studio-widget-frame-delta-main");
+      expect(readFrameVisualLeft(frame)).toBe(140);
+    });
+
+    const telemetryFrame = coordinator.getOverlayFrame();
+    if (!telemetryFrame) throw new Error("test coordinator is missing its V2 frame");
+    coordinator.setOverlayFrame(
+      { ...telemetryFrame, sequence: telemetryFrame.sequence + 1 },
+      coordinator.getOverlaySource(),
+    );
+
+    await waitFor(() => {
+      const frame = screen.getByTestId("studio-widget-frame-delta-main");
+      expect(readFrameVisualLeft(frame)).toBe(140);
+    });
+    expect(screen.getByTestId("dirty-flag").textContent).toBe("clean");
+  });
+
   it("does not teleport on the first pointer-move after pointer-down", async () => {
     renderInteractiveCanvas();
     await waitFor(() => expect(screen.getByTestId("studio-widget-frame-delta-main")).toBeTruthy());

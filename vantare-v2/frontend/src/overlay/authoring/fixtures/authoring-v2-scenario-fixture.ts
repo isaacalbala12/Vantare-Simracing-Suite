@@ -53,8 +53,7 @@ const canonicalSource = requireCanonicalSource();
 
 // Variantes soportadas hoy: solo estas cinco de Parity. El tipo deriva de
 // la tupla canónica para no duplicar la unión; cualquier otra variante
-// falla rápido en runtime. Las tres de forma no alteran el frame;
-// standings-multiclass solo re-selecciona el campo canónico ya multiclass.
+// falla rápido en runtime. Todas son shape-only: no alteran el frame.
 export const AUTHORING_V2_VARIANTS = [
   "default",
   "relative-fill",
@@ -116,17 +115,12 @@ export function buildAuthoringV2ScenarioRuntime(
   // el jugador canónico. Sin esa fila no hay fixture honesto: falla rápido,
   // sin fallback ni id inventado.
   const pit = location === "pits" ? "pit" : "track";
-  const standings = variant === "standings-multiclass"
-    ? structuredClone(canonicalFrame.standings)
-    : frame.standings;
+  const standings = frame.standings;
   if (!standings.some((row) => row.id === playerId)) {
     throw new Error(
       "authoring-v2-scenario-fixture: el jugador canónico no está en standings",
     );
   }
-  // standings-multiclass selecciona el campo multiclass canónico tal cual,
-  // sin reescribir datos del productor (el frame de 20 coches ya es
-  // multiclass). Es la única variante que re-selecciona una sección.
   // session especializa únicamente phase, conservando su quality canónica.
   const outFrame: OverlayFrameV2 = {
     ...frame,

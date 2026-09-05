@@ -3,28 +3,32 @@ import { widgetTypeRegistry } from "../../core/widget-registry";
 import { applyWidgetDesign } from "../../core/widget-design";
 import { getOfficialDesign } from "../../design-systems/official-designs";
 import { parseRelativeContent, updateRelativeFilters } from "../../widget-types/relative/relative-content";
-import type { AuthoringV2Variant } from "./authoring-v2-scenario-fixture";
+import { AUTHORING_V2_VARIANTS, type AuthoringV2Variant } from "./authoring-v2-scenario-fixture";
 
 // ponytail: forma duplicada del megamódulo legacy hasta E1; borrar con él.
 
 // Widget de autoría para el escenario V2 puro (C2b6b): solo forma, cero
 // telemetría. Construye desde el registro productivo, aplica el diseño
-// oficial y preserva los ajustes de forma de Parity. La dimensión Crystal
-// específica la resuelve el caller con el manifest, no este fixture.
+// oficial y sus dimensiones, y preserva los ajustes de forma de Parity.
 export function buildAuthoringV2ScenarioWidget(input: {
   widget: WidgetType;
   system: DesignSystemId;
   variant: AuthoringV2Variant;
-  designId?: string;
+  design?: { designId: string; width: number; height: number };
 }): WidgetInstanceV3 {
+  if (!AUTHORING_V2_VARIANTS.includes(input.variant)) {
+    throw new Error(
+      `authoring-v2-scenario-widget: variante no soportada ${JSON.stringify(input.variant)}`,
+    );
+  }
   const definition = widgetTypeRegistry.get(input.widget);
   let widget = definition.createDefault(`${input.widget}-harness`);
   widget.visual = { ...widget.visual, systemId: input.system };
 
-  if (input.designId) {
-    const design = getOfficialDesign(input.designId);
+  if (input.design) {
+    const design = getOfficialDesign(input.design.designId);
     if (!design) {
-      throw new Error(`official Crystal design not registered: ${input.designId}`);
+      throw new Error(`official Crystal design not registered: ${input.design.designId}`);
     }
     widget = applyWidgetDesign(widget, design, "1970-01-01T00:00:00.000Z");
   }
@@ -60,6 +64,9 @@ export function buildAuthoringV2ScenarioWidget(input: {
     widget.content = { ...content, columns };
   }
   widget.layout = { ...widget.layout, x: 120, y: 96, zIndex: 1 };
+  if (input.design) {
+    widget.layout = { ...widget.layout, w: input.design.width, h: input.design.height };
+  }
 
   if (input.widget === "relative" && input.variant === "relative-fill") {
     const content = parseRelativeContent(widget.content);

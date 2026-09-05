@@ -31,7 +31,7 @@ export type HarnessQuery = {
   state: MockDataState;
   surface: HarnessSurface;
   variant: HarnessVariant;
-  designId?: string;
+  design?: CrystalParityDesign;
   engineerLocale?: EngineerLocale;
   engineerSeverity?: EngineerSeverity;
 };
@@ -63,10 +63,17 @@ const SURFACES = new Set<HarnessSurface>(["studio", "desktop", "obs", "harness"]
 const ENGINEER_LOCALES = new Set<EngineerLocale>(["es", "en", "it", "pt-BR"]);
 const ENGINEER_SEVERITIES = new Set<EngineerSeverity>(["info", "warning", "critical"]);
 
-export function getCrystalParityDesign(designId: string):
-  | { widgetType: string; designId: string; width: number; height: number }
-  | undefined {
-  return crystalReferenceManifest.entries.find((entry) => entry.designId === designId);
+export type CrystalParityDesign = {
+  designId: string;
+  widgetType: WidgetType;
+  width: number;
+  height: number;
+};
+
+function getCrystalParityDesign(designId: string): CrystalParityDesign | undefined {
+  const entry = crystalReferenceManifest.entries.find((entry) => entry.designId === designId);
+  if (!entry) return undefined;
+  return { designId: entry.designId, widgetType: entry.widgetType as WidgetType, width: entry.width, height: entry.height };
 }
 
 export function parseHarnessQuery(search: string): HarnessQuery | { error: string } {
@@ -92,8 +99,9 @@ export function parseHarnessQuery(search: string): HarnessQuery | { error: strin
   if (!ENGINEER_LOCALES.has(engineerLocale)) return { error: `invalid locale parameter: ${engineerLocale}` };
   if (!ENGINEER_SEVERITIES.has(engineerSeverity)) return { error: `invalid severity parameter: ${engineerSeverity}` };
 
+  // Una sola resolución de la entrada validada; se devuelve tipada.
+  const design = designId ? getCrystalParityDesign(designId) : undefined;
   if (designId) {
-    const design = getCrystalParityDesign(designId);
     if (!design) return { error: `invalid design parameter: ${designId}` };
     if (system !== "vantare-crystal") {
       return { error: `design ${designId} requires system=vantare-crystal` };
@@ -128,6 +136,6 @@ export function parseHarnessQuery(search: string): HarnessQuery | { error: strin
     variant,
     ...(widget === "engineer-radio" || params.has("locale") ? { engineerLocale } : {}),
     ...(widget === "engineer-radio" || params.has("severity") ? { engineerSeverity } : {}),
-    ...(designId ? { designId } : {}),
+    ...(design ? { design } : {}),
   };
 }

@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { ALL_WIDGET_TYPES } from "../overlay/core/profile-document";
 import { buildAuthoringV2ScenarioWidget } from "../overlay/authoring/fixtures/authoring-v2-scenario-widget";
 import { OverlayParityHarness, OverlayParityHarnessPage } from "./OverlayParityHarness";
-import { getCrystalParityDesign, parseHarnessQuery } from "./overlay-parity-query";
+import { parseHarnessQuery } from "./overlay-parity-query";
 import { readRendererMarkup } from "./parity-html";
 import { getOverlayV2ViewModelEntry } from "../overlay/core/overlay-v2-view-models";
 
@@ -87,7 +87,10 @@ describe("parseHarnessQuery", () => {
   it("accepts each canonical Crystal design only with its functional widget type", () => {
     expect(
       parseHarnessQuery("?widget=delta&system=vantare-crystal&design=delta-crystal-simple"),
-    ).toMatchObject({ widget: "delta", designId: "delta-crystal-simple" });
+    ).toMatchObject({
+      widget: "delta",
+      design: { designId: "delta-crystal-simple", widgetType: "delta", width: 420, height: 69 },
+    });
     expect(
       parseHarnessQuery("?widget=pedals&system=vantare-crystal&design=delta-crystal-simple"),
     ).toEqual({ error: "design delta-crystal-simple requires widget=delta" });
@@ -104,6 +107,26 @@ describe("parseHarnessQuery", () => {
 });
 
 describe("buildAuthoringV2ScenarioWidget", () => {
+  it("throws on non-canonical variants even when cast", () => {
+    expect(() =>
+      buildAuthoringV2ScenarioWidget({
+        widget: "pedals",
+        system: "vantare-original",
+        variant: "pedals-full" as "default",
+      }),
+    ).toThrow(/variante no soportada/);
+  });
+
+  it("applies the resolved design dimensions", () => {
+    const widget = buildAuthoringV2ScenarioWidget({
+      widget: "delta",
+      system: "vantare-crystal",
+      variant: "default",
+      design: { designId: "delta-crystal-simple", width: 420, height: 69 },
+    });
+    expect(widget.layout).toMatchObject({ x: 120, y: 96, zIndex: 1, w: 420, h: 69 });
+  });
+
   it("applies relative fill with a minimum frame height", () => {
     const widget = buildAuthoringV2ScenarioWidget({
       widget: "relative",
@@ -182,9 +205,7 @@ describe("OverlayParityHarness", () => {
     expect(document.querySelector(`[data-widget-renderer="${parsed.widget}"]`)).toBeTruthy();
   });
 
-  it("keeps the exact Crystal manifest dimensions for official designs", () => {
-    const design = getCrystalParityDesign("delta-crystal-simple");
-    expect(design).toMatchObject({ widgetType: "delta" });
+  it("keeps the exact Crystal contract dimensions for official designs", () => {
     const parsed = parseHarnessQuery(
       "?widget=delta&system=vantare-crystal&design=delta-crystal-simple",
     );
@@ -193,8 +214,8 @@ describe("OverlayParityHarness", () => {
     }
     render(<OverlayParityHarness query={parsed} />);
     const frame = document.querySelector("[data-overlay-parity-widget-frame]") as HTMLElement;
-    expect(frame.style.width).toBe(`${design!.width}px`);
-    expect(frame.style.height).toBe(`${design!.height}px`);
+    expect(frame.style.width).toBe("420px");
+    expect(frame.style.height).toBe("69px");
     expect(document.querySelector('[data-widget-renderer="delta"]')).toBeTruthy();
   });
 

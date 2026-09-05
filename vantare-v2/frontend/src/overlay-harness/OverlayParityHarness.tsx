@@ -3,20 +3,15 @@ import { WidgetVisualHost } from "../overlay/core/WidgetVisualHost";
 import { buildAuthoringV2ScenarioRuntime } from "../overlay/authoring/fixtures/authoring-v2-scenario-fixture";
 import { buildAuthoringV2ScenarioWidget } from "../overlay/authoring/fixtures/authoring-v2-scenario-widget";
 import { buildEngineerPresentationFixture } from "../engineer/engineer-presentation-fixtures";
-import { getCrystalParityDesign, parseHarnessQuery, type HarnessQuery } from "./overlay-parity-query";
+import { parseHarnessQuery, type HarnessQuery } from "./overlay-parity-query";
 
 export function OverlayParityHarness({ query }: { query: HarnessQuery }) {
   const widget = buildAuthoringV2ScenarioWidget({
     widget: query.widget,
     system: query.system,
     variant: query.variant,
-    ...(query.designId ? { designId: query.designId } : {}),
+    ...(query.design ? { design: query.design } : {}),
   });
-  // La dimensión Crystal exacta vive en el manifest, no en la telemetría.
-  const referenceDesign = query.designId ? getCrystalParityDesign(query.designId) : undefined;
-  if (referenceDesign) {
-    widget.layout = { ...widget.layout, w: referenceDesign.width, h: referenceDesign.height };
-  }
   const runtime = {
     ...buildAuthoringV2ScenarioRuntime({
       session: query.session,
@@ -42,7 +37,7 @@ export function OverlayParityHarness({ query }: { query: HarnessQuery }) {
       data-overlay-parity-widget={query.widget}
       data-overlay-parity-system={query.system}
       data-overlay-parity-variant={query.variant}
-      data-overlay-parity-design={query.designId ?? ""}
+      data-overlay-parity-design={query.design?.designId ?? ""}
       style={{
         width: 1920,
         height: 1080,

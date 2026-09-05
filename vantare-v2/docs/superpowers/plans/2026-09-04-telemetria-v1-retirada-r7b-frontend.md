@@ -672,6 +672,20 @@ B1; si una ruta no existe en árbol, lo registra como divergencia y para ese
      cinco filas canónicas. Guard C2: 12 anclas; focales 10/10 y generador
      PASS; doble review Ponytail `full` APPROVE, P0/P1/P2=0. Siguiente C2b6b:
      escoger una sola familia coherente entre Parity, Workshop y compat.
+     **C2b6b ejecutado en `d98a7daa`/`f4b9b262`/`a13c4428`/`2035477f`
+     (12→8):** Parity usa exclusivamente el golden V2 canónico y el registro
+     productivo para sus 20 widgets. Conserva superficies y estados; sus cinco
+     variantes son solo de forma y un test común exige que produzcan el mismo
+     frame. Las variantes sintéticas se rechazan aquí y permanecen en Workshop.
+     Crystal se resuelve una vez, aplica su diseño y dimensiones exactas dentro
+     del builder; Engineer Radio sigue como auxiliar e Input usa
+     `controls.history`. Guard C2: ocho anclas (Workshop 4, compat 2,
+     gaps/scenes 2); focales 55/55 y vecinos 26/26; ESLint, escaneo y
+     diff-check limpios. Typecheck conserva los ocho errores R7a heredados y
+     build no evaluable. Reviews Ponytail `full` spec
+     `ses_f9119e586ffepXBtcGwG2QaySu` y quality
+     `ses_f9116bc39ffe3TBoDcMWQ1fhi3`: **APPROVE**, P0/P1/P2=0. Siguiente
+     C2b6c: solo Workshop + compat, 8→2; C2b7 conserva gaps/scenes 2→0.
   8. **C2b7, contratos gaps/scenes (2→0):** `projection-gaps` puede ir
      separado: sustituir su lectura textual del adapter B2 por contrato V2
      puro/congelado. `animation-scenes` NO puede declararse 2→0 mientras
@@ -804,7 +818,10 @@ evaluable hasta desbloquear los 8 errores R7a, no excusa para reintroducir V1.
 - Objetivo: retirar `telemetry-snapshot`, `telemetry-adapter`, derived store,
   acumulador de input, mock-scenarios y widget preview fixtures legacy
   (incluye `studio-v1-snapshot-test-harness` como último consumidor snapshot y
-  las historias/API legacy de telemetry-rate-coordinator), con tests semánticos
+  las historias/API legacy de telemetry-rate-coordinator). Retirar también el
+  helper temporal `authoring-v2-scenario-widget.ts` cuando el megamódulo
+  `authoring-fixtures.ts` desaparezca; sus callers deben usar la frontera
+  productiva final, sin trasladar la duplicación. Todo ello con tests semánticos
   ya migrados a builders V2 (D).
 - Archivos: módulos citados + tests. Conservar auxiliares D5.
 - Test RED previo: guardia de ausencia del lote; falla mientras exista.

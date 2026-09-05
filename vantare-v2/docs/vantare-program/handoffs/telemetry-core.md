@@ -1,5 +1,24 @@
 # Handoff vivo — Telemetry Core
 
+## R7b/C2b6b APROBADO final — Parity V2 puro, siguiente Workshop 8→2 — 2026-09-05, ISA-894
+
+Commits `d98a7daa` + `f4b9b262` + `a13c4428` + `2035477f`:
+`OverlayParityHarness` deja snapshot, builders, seeders y puente V1. Sus 20
+widgets usan el golden canónico V2; las cinco variantes admitidas son solo de
+forma y un test común fija que ninguna altera el frame. Las variantes que
+fabrican telemetría se rechazan en Parity y siguen bajo contrato Workshop.
+Crystal resuelve una vez el manifest, conserva dimensiones exactas y falla
+rápido; Engineer Radio permanece como fuente auxiliar e Input consume
+`controls.history`. Guard C2 12→8 sin silenciarlo; focales 55/55 y vecinos
+26/26; ESLint, escaneo y diff-check limpios. Typecheck continúa NO verde con
+los ocho errores R7a heredados exactos y build no evaluable. Reviews finales
+Ponytail `full`: spec `ses_f9119e586ffepXBtcGwG2QaySu` y quality
+`ses_f9116bc39ffe3TBoDcMWQ1fhi3`, ambas **APPROVE**, P0/P1/P2=0. Los P3
+informativos de calidad quedan cubiertos por el test shape-only y por el dueño
+E1 del helper visual temporal. Siguiente: C2b6c, migrar únicamente Workshop y
+su compatibilidad (8→2); gaps/scenes permanecen en C2b7. Sin
+push/PR/merge/promoción/apps/LMU.
+
 ## R7b/C2b6a APROBADO final — compat Endurance V2, siguiente C2b6b 12→N — 2026-09-05, ISA-894
 
 Commit `b3d1a5ac`: TrackMap layout y los 23 shells Endurance eliminan

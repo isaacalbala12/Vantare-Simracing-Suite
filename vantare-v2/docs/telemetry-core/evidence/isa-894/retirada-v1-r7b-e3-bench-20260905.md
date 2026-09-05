@@ -68,6 +68,15 @@ en comentarios; ambos caen juntos. STOP no activado.
 - `gofmt -l` sobre `contracts_test.go`: limpio.
 - Suite completa no ejecutada; queda para E1d/F1.
 
+## Revisión adversarial
+
+Review read-only Muse `ses_f8fc90211ffeBn9PPLG9rIKxi4`: APPROVE,
+P0/P1/P2 = 0/0/0. Repitió los checks focales y confirmó cero caller
+ejecutable, cero test debilitado y cero código movido o duplicado. Registró
+un P3 no bloqueante: `compact_frame.go` conserva una frase histórica en
+presente sobre el proyector V1; no se cambia porque no existe wiring V1 y
+el corte E3 es de borrado puro.
+
 ## Siguiente
 
 E4 (comparator/sanitizer + builders oráculo) según el orden efectivo.

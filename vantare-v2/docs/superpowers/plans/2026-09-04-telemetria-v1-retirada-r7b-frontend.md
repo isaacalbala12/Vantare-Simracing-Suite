@@ -1157,6 +1157,8 @@ PASS, `TestOverlayV1ContractsRetired` PASS, guard 18/18, `rg` limpio
 salvo anclas del guard, `git diff --check` limpio; suite completa
 pendiente de E1d/F1. Evidencia:
 `docs/telemetry-core/evidence/isa-894/retirada-v1-r7b-e3-bench-20260905.md`.
+Review adversarial Muse `ses_f8fc90211ffeBn9PPLG9rIKxi4`: APPROVE,
+P0/P1/P2 = 0/0/0; un P3 histórico no ejecutable en `compact_frame.go`.
 Siguiente: E4.
 
 ### E4 · Retirar comparator/sanitizer y sus resultados (oráculo hasta el final)

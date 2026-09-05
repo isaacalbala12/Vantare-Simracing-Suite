@@ -1,5 +1,13 @@
 # Handoff vivo — Telemetry Core
 
+## R7b/E3 aprobado — 2026-09-05, ISA-894
+
+Review adversarial read-only Muse `ses_f8fc90211ffeBn9PPLG9rIKxi4`:
+APPROVE, P0/P1/P2 = 0/0/0. Revisión principal y adversarial repitieron
+los dos tests Go, guard B1 18/18 y diff-check: PASS. El único P3 es una
+frase histórica sin wiring en `compact_frame.go`; no bloquea ni amplía E3.
+E3 cerrado; siguiente E4.
+
 ## R7b/E3 ejecutado en rama — testdata overlay y bench frontend fuera, prototipo intacto — 2026-09-05, ISA-894
 
 Commits locales `572911f4` (RED: guard E3 1 failed | 17 passed, fallo

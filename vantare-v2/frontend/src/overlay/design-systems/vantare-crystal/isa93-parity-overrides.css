@@ -2052,3 +2052,7 @@
   flex-shrink: 0;
 }
 [data-widget-system="vantare-crystal"] .vc-standings-frame > [data-crystal-primitive="footer"] { height: 26px; }
+
+[data-widget-system="vantare-crystal"][data-compact="true"] .vc-standings-row {
+  min-height: 28px;
+}

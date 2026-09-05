@@ -311,7 +311,7 @@ function applyWidgetContent(document: ProfileDocumentV3, command: Extract<Studio
       // Explicit content edit only: the persisted frame is never derived from live cars.
       const settings = { ...widget.visual.baseSettings, ...widget.visual.appearanceOverrides };
       const header = settings.showSessionHeader === false ? 0 : 40;
-      const rowHeight = settings.compactRows === true ? 24 : 34;
+      const rowHeight = settings.compactRows === true ? 28 : 34;
       const h = Math.max(240, Math.ceil((header + 26 + rows * rowHeight + 26 + 2) * widget.layout.w / 520));
       return { ...widget, content, layout: { ...widget.layout, h } };
     });

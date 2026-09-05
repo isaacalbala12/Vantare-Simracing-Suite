@@ -49,7 +49,9 @@ export function StandingsCrystal({ model, settings }: WidgetRendererProps<Standi
   const compactRows = settings.compactRows === true;
   const gridTemplateColumns = ["20px", ...model.columns.map(column => {
     const fallback = STANDINGS_COLUMN_TEMPLATES.find(t => t.metricId === column.metricId)?.defaultWidth ?? 60;
-    return `minmax(0, ${resolveColumnWidthPixels(column, fallback)}fr)`;
+    // Names need more room than numeric metrics at the same width preset.
+    const weight = resolveColumnWidthPixels(column, fallback) * (column.metricId === "driverName" ? 1.5 : 1);
+    return `minmax(0, ${weight}fr)`;
   })].join(" ");
   const headings: Record<string, string> = { position: "POS", driverNumber: "#", driverName: "EQUIPO / PILOTO", gap: "GAP", interval: "INT", lastLap: "LAST", bestLap: "BEST", currentLap: "LAP", vehicleClass: "CLASE", pit: "PIT", tireCompound: "NEUM." };
   const cellClasses: Record<string, string> = { position: "vc-standings-position", driverNumber: "vc-standings-number", driverName: "vc-standings-driver", gap: "vc-standings-gap-value", interval: "vc-standings-gap-value", lastLap: "vc-standings-last", bestLap: "vc-standings-last" };

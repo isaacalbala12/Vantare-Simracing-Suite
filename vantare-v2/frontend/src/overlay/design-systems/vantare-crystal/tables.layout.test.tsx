@@ -30,26 +30,29 @@ it("contains five complete rows after a persisted 20-to-5 edit at tester widths"
     const page = await browser.newPage();
     const css = productiveCss();
     const snapshot = buildMockTelemetry({ session: "race", location: "track", state: "ready" });
-    for (const w of [340, 420, 520]) {
+    for (const compactRows of [false, true]) for (const w of [340, 420, 520]) {
       const widget = standingsDefinition.createDefault("table");
       widget.visual.systemId = "vantare-crystal";
+      widget.visual.appearanceOverrides.compactRows = compactRows;
       widget.layout = { ...widget.layout, w, h: 600 };
       widget.content = { ...createDefaultStandingsContent(), rowCount: 20 };
       const next = applyStudioCommand({ schemaVersion: 3, id: "test", name: "test", displayMode: "edit", monitorIndex: 0, layouts: { general: { type: "general", widgets: [widget] } } }, { type: "widget/content", session: "general", widgetIds: [widget.id], content: { ...widget.content, rowCount: 5 } });
       const layout = next.layouts.general!.widgets[0]!.layout;
-      const model = buildStandingsViewModel({ ...snapshot, scoring: Array.from({ length: 20 }, (_, i) => ({ id: i + 1, place: i + 1, driverName: `Driver ${i + 1}`, isPlayer: i === 0, vehicleClass: "HYPERCAR" })) }, { ...createDefaultStandingsContent(), rowCount: 5 });
-      await page.setContent(`<style>${css}</style>` + renderToStaticMarkup(<div id="frame" style={{ width: layout.w, height: layout.h }}><WidgetVisualViewport widgetType="standings" layout={layout} visual={widget.visual} testId="viewport"><StandingsCrystal model={model} settings={{}} renderMode="harness" /></WidgetVisualViewport></div>));
+      const model = buildStandingsViewModel({ ...snapshot, scoring: Array.from({ length: 20 }, (_, i) => ({ id: i + 1, place: i + 1, driverName: "Julien Andlauer", isPlayer: i === 0, vehicleClass: "HYPERCAR" })) }, { ...createDefaultStandingsContent(), rowCount: 5 });
+      for (const row of model.rows) { row.lastLapText = "1:38.621"; row.gapText = "+12.345"; }
+      await page.setContent(`<style>${css}</style>` + renderToStaticMarkup(<div id="frame" style={{ width: layout.w, height: layout.h }}><WidgetVisualViewport widgetType="standings" layout={layout} visual={widget.visual} testId="viewport"><StandingsCrystal model={model} settings={{ compactRows }} renderMode="harness" /></WidgetVisualViewport></div>));
       await page.evaluate(() => document.fonts.ready);
       const measured = await page.evaluate(() => {
         const frame = document.querySelector('#frame')!.getBoundingClientRect();
         const rows = [...document.querySelectorAll('[data-standings-row]')];
-        return { width: frame.width, height: frame.height, rows: rows.map(row => { const rect = row.getBoundingClientRect(); return { bottom: rect.bottom, right: rect.right, height: rect.height }; }), bottom: frame.bottom, right: frame.right, font: parseFloat(getComputedStyle(rows[0]!.querySelector('[data-metric="driverName"]')!).fontSize) * frame.width / 520 };
+        return { cells: [...rows[0]!.querySelectorAll<HTMLElement>('[data-metric="driverName"], [data-metric="lastLap"], [data-metric="gap"]')].map(cell => ({ metric: cell.dataset.metric, scroll: cell.scrollWidth, width: cell.clientWidth })), width: frame.width, height: frame.height, rows: rows.map(row => { const rect = row.getBoundingClientRect(); return { bottom: rect.bottom, right: rect.right, height: rect.height }; }), bottom: frame.bottom, right: frame.right, font: parseFloat(getComputedStyle(rows[0]!.querySelector('[data-metric="driverName"]')!).fontSize) * frame.width / 520 };
       });
       expect(measured.width).toBe(w);
       expect(measured.height).toBeLessThan(600);
       expect(measured.rows).toHaveLength(5);
-      for (const row of measured.rows) { expect(row.bottom).toBeLessThanOrEqual(measured.bottom); expect(row.right).toBeLessThanOrEqual(measured.right + 1); expect(row.height).toBeGreaterThanOrEqual(34 * w / 520 - 1); }
+      for (const row of measured.rows) { expect(row.bottom).toBeLessThanOrEqual(measured.bottom); expect(row.right).toBeLessThanOrEqual(measured.right + 1); expect(row.height).toBeCloseTo((compactRows ? 28 : 34) * w / 520, 0); }
       expect(measured.font).toBeGreaterThanOrEqual(11.7);
+      for (const cell of measured.cells) expect(cell.scroll, cell.metric).toBeLessThanOrEqual(cell.width + 1);
     }
   } finally { await browser.close(); }
 }, 30_000);

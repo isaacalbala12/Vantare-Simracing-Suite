@@ -1022,6 +1022,15 @@ Review adversarial read-only `ses_f8feb3bdfffe8KVwkns5tWs53q`:
 APPROVE, P0/P1/P2 = 0/0/0; tres P3 informativos documentados en la
 evidencia. La revisión principal repitió 46 focales, typecheck, lint y build.
 
+**Resultado E1d (ejecutado en rama, 2026-09-05):** `8b7ed0e3` fija RED y
+`31742554` retira el núcleo V1 frontend y el subárbol legacy de previews
+omitido por el inventario inicial (58 ficheros, +158/−3075, neto −2917).
+`telemetry-rate-coordinator` queda V2-only, sin snapshot, `publish`, derived
+store ni historias. Guardias 21/21 y afectados 210/210 PASS; typecheck, lint,
+build, diff-check y ausencia en bundle PASS. Suite completa y Go quedan para
+F. Evidencia:
+`docs/telemetry-core/evidence/isa-894/retirada-v1-r7b-e1d-nucleo-20260905.md`.
+
 ### E2 · Switch overlay-v2-features: decisión fijada según callsites reales, sin disyunción
 
 - Hechos de árbol (`frontend/src/overlay/telemetry-shadow/overlay-v2-features.ts`,

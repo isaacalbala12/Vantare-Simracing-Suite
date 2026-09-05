@@ -1,5 +1,21 @@
 # Handoff vivo — Telemetry Core
 
+## R7b/E1d ejecutado en rama — núcleo y previews V1 frontend fuera — 2026-09-05, ISA-894
+
+Commits locales `8b7ed0e3` (RED: 2 failed | 19 passed) + `31742554`
+(GREEN: 58 ficheros, +158/−3075, neto −2917). Retirados 25 ficheros:
+snapshot, adapters, derived store, mocks, acumulador e historias, readers y
+fixtures preview legacy. El barrido final detectó 12 rutas omitidas en el
+inventario (`telemetry-ref`, demo/visibility y fixtures asociados), todas sin
+caller productivo; se fijaron en la guardia y se eliminaron sin reemplazo.
+El coordinador conserva solo OverlayFrameV2/source/context/failure y un
+scheduler; `TelemetryAdapter` queda junto al constructor V2 de Studio.
+Guardias 21/21 y afectados 210/210 PASS; typecheck, lint, build, diff-check y
+ausencia en bundle PASS. Suite completa frontend y Go quedan para F. Evidencia:
+[`retirada-v1-r7b-e1d-nucleo-20260905.md`](../../telemetry-core/evidence/isa-894/retirada-v1-r7b-e1d-nucleo-20260905.md).
+Siguiente: review adversarial E1d; después F. Sin push, PR, merge, promoción,
+apps ni LMU.
+
 ## R7b/E4 ejecutado en rama — oráculo shadow y builders legacy fuera, tipos vivos in situ — 2026-09-05, ISA-894
 
 Commits locales `5391ac7d` (RED: guard E4 1 failed | 17 passed, fallo

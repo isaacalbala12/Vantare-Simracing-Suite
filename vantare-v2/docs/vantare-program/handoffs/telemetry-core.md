@@ -1,5 +1,17 @@
 # Handoff vivo — Telemetry Core
 
+## R7b/D5 verificado en rama, pendiente de revisión — Calendar y Engineer siguen auxiliares — 2026-09-05, ISA-894
+
+Sin cambio productivo. `race-schedule` y `engineer-radio` son las dos únicas
+familias fuera de las 18 entradas V2 y llegan al Host solo mediante
+`buildAuxiliaryViewModel`, desde Calendar y Engineer respectivamente. Focal de
+definitions, Host, registro y RuntimeSurface: 92/92 PASS. E1 debe retirar sus
+firmas snapshot ignoradas y migrar tests antes de borrar `TelemetrySnapshot` y
+`mock-scenarios`, conservando intacta la autoridad auxiliar. Evidencia:
+[`retirada-v1-r7b-d5-auxiliares-20260905.md`](../../telemetry-core/evidence/isa-894/retirada-v1-r7b-d5-auxiliares-20260905.md).
+Pendiente review adversarial; siguiente E1 solo tras aprobación. Sin push, PR,
+merge, promoción, apps ni LMU.
+
 ## R7b/D4 APROBADO final — las 18 definitions productivas V2-only — 2026-09-05, ISA-894
 
 Commits `ca462478` (RED exacto 6/6), `6a5da362` (GREEN) y `4eaa0eb8`

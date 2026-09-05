@@ -1,5 +1,33 @@
 # Handoff vivo — Telemetry Core
 
+## R7b/D1 ejecutado en rama, pendiente de revisión — Host sin snapshot ni rama legacy — 2026-09-05, ISA-894
+
+Commits locales `e92d58dc` (RED: `WidgetVisualHost.d1.test.tsx` 22 passed /
+1 failed, fallo estructural exigido `not.toContain("TelemetrySnapshot")`) +
+`556c68ed` (GREEN + ajustes estrictos). Inventario previo con `rg`: cero
+callers productivos con `snapshot={` (los 9 callers pasan solo
+widget/renderMode/runtime/diagnostics; STOP no activado, V1 no se reabre).
+El Host pierde prop/import `TelemetrySnapshot`, la rama
+`harnessMode && snapshot` (`buildPreview/Runtime/ViewModel`,
+`definition.buildViewModel`) y el hack `input-telemetry`
+(`recordInputTelemetrySample`/`readInputTelemetryHistory` + cast); +1/−20 neto.
+`WidgetTypeDefinition.buildViewModel` intacto (dueños D2/D3/D4), `v2Rollback`
+intacto (dueño E2), renderers/UX/frontera única intactos, cero sintéticos.
+Ajustes mínimos: 2 tests legacy a frame V2 (`-0.420`/`-0.42` honestos),
+props snapshot retiradas, fixture de contrato a runtime V2 canónico, guard a
+ausencia (baseline sin entrada del Host).
+
+Checks sobre `556c68ed`: focales Host/guard 79/80 (el fallo es deuda heredada
+verificada en base: `v2.test [fuel-strategy]`, `makeFrame` manual sin
+`requiredFuel` A2, dueño D2); vecinos 99/99; `pnpm typecheck` verde; ESLint
+focal limpio; `pnpm build` PASS (aviso chunks preexistente);
+`git diff --check` limpio; `rg` ausencia limpio en Host y callers. Evidencia
+exacta en
+[`retirada-v1-r7b-d1-host-20260905.md`](../../telemetry-core/evidence/isa-894/retirada-v1-r7b-d1-host-20260905.md).
+`plan.md`/`roadmap.json` sin tocar (deuda del PR R7b, microplan F2). Siguiente:
+D2 por lotes (daño ya resuelto en C1, su slot cae en D4). Sin push, PR, merge,
+promoción, apps ni LMU. Sin APPROVE: el orquestador revisará el diff.
+
 ## R7b/C1 APROBADO final — daño rama B, sin productores snapshot — 2026-09-05, ISA-894
 
 Commits locales `0db6b39e` (RED: `car-damage-c1.test.ts` 2 failed / 2

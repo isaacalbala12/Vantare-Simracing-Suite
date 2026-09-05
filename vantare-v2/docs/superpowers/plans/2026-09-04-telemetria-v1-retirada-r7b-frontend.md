@@ -847,6 +847,16 @@ evaluable hasta desbloquear los 8 errores R7a, no excusa para reintroducir V1.
 - Reviewer: spec + quality.
 - Rollback/stop: revert. Stop si queda un caller productivo → volver a C2, no
   reabrir la prop.
+- Resultado D1 (ejecutado en rama 2026-09-05, pendiente de revisión, sin
+  APPROVE): `e92d58dc` (RED 22/1, fallo estructural exigido) + `556c68ed`
+  (GREEN). Inventario `rg`: cero callers productivos con `snapshot={` (STOP no
+  activado). Host +1/−20: fuera prop/import, rama `harnessMode && snapshot` y
+  hack input; `buildViewModel` de definitions intacto, `v2Rollback` intacto
+  (E2). Focales 79/80 (1 heredado fuel `makeFrame` sin `requiredFuel`, dueño
+  D2), vecinos 99/99, typecheck verde, ESLint focal limpio, build PASS,
+  diff-check y `rg` limpios. Evidencia:
+  `docs/telemetry-core/evidence/isa-894/retirada-v1-r7b-d1-host-20260905.md`.
+  `plan.md`/`roadmap.json` sin tocar (deuda del PR R7b, F2).
 
 ### D2 · Lote core/status: standings, relative, delta, fuel-strategy, pedals-telemetry, input-telemetry
 

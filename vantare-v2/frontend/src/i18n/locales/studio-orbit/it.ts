@@ -130,6 +130,7 @@ export const studioOrbitIt: Record<string, string> = {
     "Ripristina contenuto, aspetto e comportamento. Mantiene ID e layout.",
 
   /* Rotulos de los controles de apariencia de los sistemas visuales. */
+  "overlay.inspector.delta.lossColor": "Colore perdita",
   "overlay.inspector.delta.showHeader": "Mostra intestazione",
   "overlay.inspector.relative.showHeader": "Mostra intestazione",
   "overlay.inspector.relative.accentColor": "Colore d'accento",

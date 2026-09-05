@@ -130,6 +130,7 @@ export const studioOrbitPt: Record<string, string> = {
     "Repõe conteúdo, visual e comportamento. Mantém o ID e o layout.",
 
   /* Rotulos de los controles de apariencia de los sistemas visuales. */
+  "overlay.inspector.delta.lossColor": "Cor de perda",
   "overlay.inspector.delta.showHeader": "Mostrar cabeçalho",
   "overlay.inspector.relative.showHeader": "Mostrar cabeçalho",
   "overlay.inspector.relative.accentColor": "Cor de destaque",

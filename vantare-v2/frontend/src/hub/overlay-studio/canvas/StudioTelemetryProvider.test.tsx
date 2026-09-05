@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import { render, waitFor, fireEvent, screen, cleanup } from "@testing-library/react";
 import type { ReactElement } from "react";
 import type { TelemetryRateCoordinator } from "../../../overlay/core/telemetry-rate-coordinator";
-import type { TelemetryAdapter } from "../../../overlay/transports/telemetry-adapter";
+import type { TelemetryAdapter } from "../studio-overlay-telemetry";
 import { StudioTelemetryProvider, ConnectedStudioTelemetryProvider } from "./StudioTelemetryProvider";
 import { useStudioPreview, StudioProvider } from "../state/studio-store";
 import { createTelemetryRateCoordinator } from "../../../overlay/core/telemetry-rate-coordinator";
@@ -88,19 +88,17 @@ function mockPreview(state: PreviewState): void {
 
 function setupUnit(): {
   coordinator: TelemetryRateCoordinator;
-  publishSpy: ReturnType<typeof vi.spyOn>;
   setFrameSpy: ReturnType<typeof vi.spyOn>;
   adapter: TelemetryAdapter;
 } {
   const coordinator = createTelemetryRateCoordinator();
-  const publishSpy = vi.spyOn(coordinator, "publish");
   const setFrameSpy = vi.spyOn(coordinator, "setOverlayFrame");
   const adapter: TelemetryAdapter = {
     coordinator,
     start: vi.fn(),
     stop: vi.fn(),
   };
-  return { coordinator, publishSpy, setFrameSpy, adapter };
+  return { coordinator, setFrameSpy, adapter };
 }
 
 describe("StudioTelemetryProvider - mock V2 puro (C2b4)", () => {
@@ -112,7 +110,7 @@ describe("StudioTelemetryProvider - mock V2 puro (C2b4)", () => {
 
   it("publica únicamente frame/source V2 sin snapshot legacy", () => {
     mockPreview(mockPreviewState());
-    const { coordinator, publishSpy, setFrameSpy, adapter } = setupUnit();
+    const { coordinator, setFrameSpy, adapter } = setupUnit();
 
     render(
       <StudioTelemetryProvider
@@ -124,7 +122,6 @@ describe("StudioTelemetryProvider - mock V2 puro (C2b4)", () => {
       </StudioTelemetryProvider>,
     );
 
-    expect(publishSpy).not.toHaveBeenCalled();
     expect(setFrameSpy).toHaveBeenCalledTimes(1);
     const frame = coordinator.getOverlayFrame();
     expect(frame).toBeDefined();
@@ -141,7 +138,7 @@ describe("StudioTelemetryProvider - mock V2 puro (C2b4)", () => {
         Object.assign(state, patch);
       },
     }));
-    const { coordinator, publishSpy, adapter } = setupUnit();
+    const { coordinator, adapter } = setupUnit();
 
     const view = render(
       <StudioTelemetryProvider
@@ -166,7 +163,6 @@ describe("StudioTelemetryProvider - mock V2 puro (C2b4)", () => {
     );
 
     expect(coordinator.getOverlayFrame()?.session.phase).toEqual({ v: "race", q: "fresh" });
-    expect(publishSpy).not.toHaveBeenCalled();
   });
 
   it("refleja mockLocation en el pit de la fila del jugador canónico", () => {
@@ -211,7 +207,7 @@ describe("StudioTelemetryProvider - mock V2 puro (C2b4)", () => {
         Object.assign(state, patch);
       },
     }));
-    const { coordinator, publishSpy, adapter } = setupUnit();
+    const { coordinator, adapter } = setupUnit();
     const start = adapter.start as ReturnType<typeof vi.fn>;
     const stop = adapter.stop as ReturnType<typeof vi.fn>;
 
@@ -297,7 +293,6 @@ describe("StudioTelemetryProvider - mock V2 puro (C2b4)", () => {
     expect(state.source).toBe("mock");
     expect(start).toHaveBeenCalledTimes(2);
     expect(stop).toHaveBeenCalledTimes(2);
-    expect(publishSpy).not.toHaveBeenCalled();
     expect(coordinator.getOverlayFrame()?.session.phase?.v).toBe("race");
 
     view.unmount();

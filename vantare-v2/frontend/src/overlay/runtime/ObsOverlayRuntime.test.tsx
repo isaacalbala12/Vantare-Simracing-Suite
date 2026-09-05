@@ -1,8 +1,7 @@
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import { buildMockTelemetry } from "../core/mock-scenarios";
 import type { ProfileDocumentV3 } from "../core/profile-document";
-import { createTelemetryRateCoordinator } from "../core/telemetry-rate-coordinator";
+import { createTestTelemetryCoordinator } from "../../hub/overlay-studio/test-helpers";
 import { standingsDefinition } from "../widget-types/standings/standings-definition";
 import { ObsOverlayRuntime } from "./ObsOverlayRuntime";
 
@@ -53,8 +52,7 @@ function buildDocument(): ProfileDocumentV3 {
 describe("ObsOverlayRuntime", () => {
   it("renders the shared runtime surface in obs mode", () => {
     installViewportResizeObserver(1920, 1080);
-    const coordinator = createTelemetryRateCoordinator();
-    coordinator.publish(buildMockTelemetry({ session: "race", location: "track", state: "ready" }));
+    const coordinator = createTestTelemetryCoordinator();
 
     const view = render(
       <ObsOverlayRuntime

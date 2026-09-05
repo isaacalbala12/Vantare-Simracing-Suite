@@ -1,7 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useRef } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { buildMockTelemetry } from "../../../overlay/core/mock-scenarios";
 import { DEFAULT_LAYOUT_VIEWPORT } from "../../../overlay/core/layout-viewport";
 import type { ProfileDocumentV3 } from "../../../overlay/core/profile-document";
 import type { TelemetryRateCoordinator } from "../../../overlay/core/telemetry-rate-coordinator";
@@ -616,29 +615,6 @@ describe("useCanvasInteraction", () => {
       const left = readFrameVisualLeft(frame);
       expect(left).toBeGreaterThan(140);
       expect(left).toBeLessThan(180);
-    });
-    expect(screen.getByTestId("dirty-flag").textContent).toBe("clean");
-  });
-
-  it("keeps imperative preview when telemetry publishes during drag", async () => {
-    const coordinator = renderInteractiveCanvas();
-    await waitFor(() => expect(screen.getByTestId("studio-widget-frame-delta-main")).toBeTruthy());
-    mockSceneRect();
-
-    pointerDownFrame();
-    pointerMove(140, 130, 1, { altKey: true });
-    await waitFor(() => {
-      const frame = screen.getByTestId("studio-widget-frame-delta-main");
-      expect(readFrameVisualLeft(frame)).toBe(140);
-    });
-
-    coordinator.publish(
-      buildMockTelemetry({ session: "practice", location: "pits", state: "ready" }),
-    );
-
-    await waitFor(() => {
-      const frame = screen.getByTestId("studio-widget-frame-delta-main");
-      expect(readFrameVisualLeft(frame)).toBe(140);
     });
     expect(screen.getByTestId("dirty-flag").textContent).toBe("clean");
   });

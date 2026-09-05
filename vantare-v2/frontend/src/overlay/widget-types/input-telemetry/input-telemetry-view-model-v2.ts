@@ -5,9 +5,8 @@ import type {
   OverlaySourceStatusV2,
 } from "../../../generated/telemetry";
 import { speedInKph } from "../pedals-telemetry/pedals-telemetry-view-model-v2";
-import type { InputTelemetrySample } from "./input-telemetry-accumulator";
 import type { InputTelemetryContent } from "./input-telemetry-definition";
-import type { InputTelemetryViewModel } from "./input-telemetry-view-model";
+import type { InputTelemetrySample, InputTelemetryViewModel } from "./input-telemetry-view-model";
 
 /** Per-mille is the quantization the Go builder publishes: three decimals. */
 const PER_MILLE = 1000;
@@ -16,12 +15,11 @@ const PER_MILLE = 1000;
  * Input telemetry view model over the Overlay v2 contract.
  *
  * The history is NOT accumulated here. Overlay v1 kept one TypeScript
- * accumulator per widget id (input-telemetry-accumulator.ts), fed by whatever
+ * accumulator per widget id, fed by whatever
  * snapshots reached the browser, so two widgets watching the same lap could
  * hold different series and a remount lost the lap. Go now derives the series
  * once from the canonical stream and publishes it as `controls.history`; this
- * module only decodes it. The accumulator stays in the tree for the Overlay v1
- * path and is retired with it.
+ * module only decodes it.
  *
  * Each sample carries its absolute capture instant (`capturedAtMS`, Unix epoch
  * milliseconds from the real capture clock) plus its motion cells (speed in

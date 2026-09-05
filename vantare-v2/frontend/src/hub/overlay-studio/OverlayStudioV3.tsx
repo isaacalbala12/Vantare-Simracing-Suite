@@ -5,7 +5,7 @@ import './overlay-studio-v3.css';
 import { openBrowserView, type BrowserViewDecision } from './browser-view';
 import type { TelemetryRateCoordinator } from '../../overlay/core/telemetry-rate-coordinator';
 import { createWidgetDiagnosticCollector } from '../../overlay/core/widget-diagnostics';
-import type { TelemetryAdapter } from '../../overlay/transports/telemetry-adapter';
+import type { TelemetryAdapter } from './studio-overlay-telemetry';
 import type { WidgetRuntimeInput } from '../../overlay/core/widget-definition';
 import { StudioTelemetryProvider } from './canvas/StudioTelemetryProvider';
 import { StudioConfirmProvider } from './components/StudioConfirmProvider';

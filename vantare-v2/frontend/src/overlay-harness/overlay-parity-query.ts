@@ -2,14 +2,10 @@ import crystalReferenceManifest from "../../testdata/crystal-reference/manifest.
 import type { EngineerLocale, EngineerSeverity } from "../engineer/engineer-presentation-store";
 import {
   AUTHORING_V2_VARIANTS,
+  type AuthoringV2Scenario,
   type AuthoringV2Variant,
 } from "../overlay/authoring/fixtures/authoring-v2-scenario-fixture";
 import { WIDGET_TYPES, type DesignSystemId, type WidgetType } from "../overlay/core/profile-document";
-import type {
-  MockDataState,
-  MockLocationScenario,
-  MockSessionScenario,
-} from "../overlay/core/mock-scenarios";
 
 export type HarnessSurface = "studio" | "desktop" | "obs" | "harness";
 export type HarnessSystem = DesignSystemId;
@@ -26,9 +22,9 @@ const PARITY_VARIANTS: ReadonlySet<string> = new Set(AUTHORING_V2_VARIANTS);
 export type HarnessQuery = {
   widget: HarnessWidget;
   system: HarnessSystem;
-  session: MockSessionScenario;
-  location: MockLocationScenario;
-  state: MockDataState;
+  session: AuthoringV2Scenario["session"];
+  location: AuthoringV2Scenario["location"];
+  state: AuthoringV2Scenario["state"];
   surface: HarnessSurface;
   variant: HarnessVariant;
   design?: CrystalParityDesign;
@@ -56,9 +52,9 @@ const SYSTEMS = new Set<HarnessSystem>([
   "vantare-crystal",
   "vantare-endurance",
 ]);
-const SESSIONS = new Set<MockSessionScenario>(["practice", "qualifying", "race"]);
-const LOCATIONS = new Set<MockLocationScenario>(["track", "pits"]);
-const STATES = new Set<MockDataState>(["ready", "stale", "disconnected", "error"]);
+const SESSIONS = new Set<AuthoringV2Scenario["session"]>(["practice", "qualifying", "race"]);
+const LOCATIONS = new Set<AuthoringV2Scenario["location"]>(["track", "pits"]);
+const STATES = new Set<AuthoringV2Scenario["state"]>(["ready", "stale", "disconnected", "error"]);
 const SURFACES = new Set<HarnessSurface>(["studio", "desktop", "obs", "harness"]);
 const ENGINEER_LOCALES = new Set<EngineerLocale>(["es", "en", "it", "pt-BR"]);
 const ENGINEER_SEVERITIES = new Set<EngineerSeverity>(["info", "warning", "critical"]);
@@ -80,9 +76,9 @@ export function parseHarnessQuery(search: string): HarnessQuery | { error: strin
   const params = new URLSearchParams(search.startsWith("?") ? search : `?${search}`);
   const widget = (params.get("widget") ?? DEFAULT_QUERY.widget) as HarnessWidget;
   const system = (params.get("system") ?? DEFAULT_SYSTEM_BY_WIDGET[widget] ?? DEFAULT_QUERY.system) as HarnessSystem;
-  const session = (params.get("session") ?? DEFAULT_QUERY.session) as MockSessionScenario;
-  const location = (params.get("location") ?? DEFAULT_QUERY.location) as MockLocationScenario;
-  const state = (params.get("state") ?? DEFAULT_QUERY.state) as MockDataState;
+  const session = (params.get("session") ?? DEFAULT_QUERY.session) as AuthoringV2Scenario["session"];
+  const location = (params.get("location") ?? DEFAULT_QUERY.location) as AuthoringV2Scenario["location"];
+  const state = (params.get("state") ?? DEFAULT_QUERY.state) as AuthoringV2Scenario["state"];
   const surface = (params.get("surface") ?? DEFAULT_QUERY.surface) as HarnessSurface;
   const variant = (params.get("variant") ?? DEFAULT_QUERY.variant) as HarnessVariant;
   const designId = params.get("design") ?? undefined;

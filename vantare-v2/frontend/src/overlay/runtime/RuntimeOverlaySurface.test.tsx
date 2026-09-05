@@ -3,7 +3,6 @@ import { join } from "node:path";
 import { act, cleanup, render } from "@testing-library/react";
 import { chromium } from "playwright";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { buildMockTelemetry } from "../core/mock-scenarios";
 import type { ProfileDocumentV3 } from "../core/profile-document";
 import { createTelemetryRateCoordinator as createBaseTelemetryRateCoordinator } from "../core/telemetry-rate-coordinator";
 import { createWidgetDiagnosticCollector } from "../core/widget-diagnostics";
@@ -727,7 +726,6 @@ describe("RuntimeOverlaySurface", () => {
 
   it("renders a transparent empty surface when no widgets are visible", () => {
     const coordinator = createTelemetryRateCoordinator();
-    coordinator.publish(buildMockTelemetry({ session: "race", location: "track", state: "ready" }));
 
     const document = buildDocument();
     document.layouts.general.widgets = [];
@@ -743,7 +741,6 @@ describe("RuntimeOverlaySurface", () => {
 
   it("renders enabled visible widgets sorted by z-index without studio chrome", () => {
     const coordinator = createTelemetryRateCoordinator();
-    coordinator.publish(buildMockTelemetry({ session: "race", location: "track", state: "ready" }));
 
     const view = render(
       <RuntimeOverlaySurface document={buildDocument()} telemetry={coordinator} renderMode="desktop" />,
@@ -762,7 +759,6 @@ describe("RuntimeOverlaySurface", () => {
 
   it("renders the same widget roots for desktop and obs", () => {
     const coordinator = createTelemetryRateCoordinator();
-    coordinator.publish(buildMockTelemetry({ session: "race", location: "track", state: "ready" }));
     const document = buildDocument();
 
     const desktop = render(
@@ -782,7 +778,6 @@ describe("RuntimeOverlaySurface", () => {
 
   it("emits one preserved-widget diagnostic and keeps siblings when one renderer fails", () => {
     const coordinator = createTelemetryRateCoordinator();
-    coordinator.publish(buildMockTelemetry({ session: "race", location: "track", state: "ready" }));
     const onDiagnostic = vi.fn();
 
     const document = buildDocument();
@@ -807,7 +802,6 @@ describe("RuntimeOverlaySurface", () => {
 
   it("keeps surface diagnostics bounded and separate from the callback", () => {
     const coordinator = createTelemetryRateCoordinator();
-    coordinator.publish(buildMockTelemetry({ session: "race", location: "track", state: "ready" }));
     const diagnostics = createWidgetDiagnosticCollector(2);
     const onDiagnostic = vi.fn();
 
@@ -829,7 +823,6 @@ describe("RuntimeOverlaySurface", () => {
 
   it("renders optional subtitles independently from the radio widget", () => {
     const coordinator = createTelemetryRateCoordinator();
-    coordinator.publish(buildMockTelemetry({ session: "race", location: "track", state: "ready" }));
     const document = buildDocument();
     document.layouts.general.widgets = [];
     const presentations = createEngineerPresentationStore({ now: () => 1_000 });

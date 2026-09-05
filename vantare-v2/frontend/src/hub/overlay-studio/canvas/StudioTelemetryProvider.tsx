@@ -1,6 +1,6 @@
 import { useLayoutEffect, useMemo, useRef, type ReactNode } from 'react';
 import type { TelemetryRateCoordinator } from '../../../overlay/core/telemetry-rate-coordinator';
-import type { TelemetryAdapter } from '../../../overlay/transports/telemetry-adapter';
+import type { TelemetryAdapter } from '../studio-overlay-telemetry';
 import type { WidgetRuntimeInput } from '../../../overlay/core/widget-definition';
 import { useStudioPreview } from '../state/studio-store';
 import { StudioTelemetryContext, type StudioTelemetryContextValue } from './studio-telemetry';
@@ -46,9 +46,9 @@ export function StudioTelemetryProvider(props: StudioTelemetryProviderProps): Re
       if (!mockV2.overlayV2Frame || !mockV2.overlayV2Source) {
         throw new Error('StudioTelemetryProvider: el escenario V2 carece de frame/source');
       }
-      // El provider es el productor de los escenarios de autoría. Avanza la
-      // secuencia del envelope para que el coordinador observe cambios de
-      // session/location aunque la semilla canónica sea determinista.
+      // The provider owns authoring scenarios. Advance the envelope sequence
+      // so the coordinator observes session/location changes even though the
+      // canonical seed is deterministic.
       mockSequenceRef.current = Math.max(
         mockSequenceRef.current,
         coordinator.getOverlayFrame()?.sequence ?? 0,

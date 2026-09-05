@@ -1,7 +1,6 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { buildMockTelemetry } from "../../../overlay/core/mock-scenarios";
-import { createTelemetryRateCoordinator } from "../../../overlay/core/telemetry-rate-coordinator";
+import { createTestTelemetryCoordinator } from "../test-helpers";
 import type { WidgetInstanceV3 } from "../../../overlay/core/profile-document";
 import { widgetTypeRegistry } from "../../../overlay/core/widget-registry";
 import { deltaDefinition } from "../../../overlay/widget-types/delta/delta-definition";
@@ -65,8 +64,7 @@ function renderFrame(
   props: Partial<React.ComponentProps<typeof StudioWidgetFrame>> = {},
   runtime?: WidgetRuntimeInput,
 ) {
-  const coordinator = createTelemetryRateCoordinator();
-  coordinator.publish(buildMockTelemetry({ session: "race", location: "track", state: "ready" }));
+  const coordinator = createTestTelemetryCoordinator();
 
   return render(
     <StudioProvider client={client} initialFile="profiles/a.json">

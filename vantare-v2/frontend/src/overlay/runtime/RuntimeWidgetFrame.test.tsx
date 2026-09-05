@@ -1,6 +1,5 @@
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { buildMockTelemetry } from "../core/mock-scenarios";
 import { createTelemetryRateCoordinator as createBaseTelemetryRateCoordinator } from "../core/telemetry-rate-coordinator";
 import { deltaDefinition } from "../widget-types/delta/delta-definition";
 import { standingsDefinition } from "../widget-types/standings/standings-definition";
@@ -22,7 +21,6 @@ afterEach(() => cleanup());
 describe("RuntimeWidgetFrame", () => {
   it("positions the frame using layout geometry and layout origin", () => {
     const coordinator = createTelemetryRateCoordinator();
-    coordinator.publish(buildMockTelemetry({ session: "race", location: "track", state: "ready" }));
 
     const widget = deltaDefinition.createDefault("delta-frame");
     widget.layout = { x: 120, y: 80, w: 280, h: 96, zIndex: 3, aspectLocked: true };
@@ -49,7 +47,6 @@ describe("RuntimeWidgetFrame", () => {
 
   it("uses the supplied render mode for WidgetVisualHost", () => {
     const coordinator = createTelemetryRateCoordinator();
-    coordinator.publish(buildMockTelemetry({ session: "race", location: "track", state: "ready" }));
 
     const widget = deltaDefinition.createDefault("delta-obs");
     const view = render(

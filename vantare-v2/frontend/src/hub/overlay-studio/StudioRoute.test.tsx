@@ -249,7 +249,7 @@ describe('StudioRoute', () => {
     expect(fetchMock.mock.calls.filter(([route]) => String(route).endsWith('/close'))).toHaveLength(1);
   });
 
-  it('acepta V2 y conserva histories derivadas tras el doble setup de StrictMode', async () => {
+  it('acepta V2 y conserva un único repaint tras el doble setup de StrictMode', async () => {
     let resolvePull: ((response: Response) => void) | undefined;
     const requests: Array<{ sessionId: string; ack: number }> = [];
     vi.stubGlobal('fetch', vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
@@ -295,6 +295,8 @@ describe('StudioRoute', () => {
       expect(activeListeners.size, `listeners activos para ${event}`).toBe(1);
     }
     expect(activeSchedulers).toBe(1);
+    const repaint = vi.fn();
+    const unsubscribe = coordinator.subscribe(undefined, repaint);
     fireEvent.click(screen.getByRole('button', { name: 'Live' }));
     const request = requests.at(-1);
     expect(request).toBeDefined();
@@ -312,21 +314,9 @@ describe('StudioRoute', () => {
       } as Response);
       await Promise.resolve();
     });
-    const repaint = vi.fn();
-    const unsubscribe = coordinator.subscribe(undefined, repaint);
-    // Historia auxiliar E1 (inputHistory del derived store): alimenta la
-    // aserción de repaint, no es autoridad de proyección ni frame V1.
-    coordinator.publish({
-      status: 'ready',
-      capturedAt: 1,
-      session: { type: 'race', key: 'strict-mode', epoch: 1 },
-      player: { inPit: false, throttle: 0.5, brake: 0.25, clutch: 0 },
-      scoring: [],
-    });
     act(() => runScheduledFrame?.());
 
     expect(stores.some((store) => store.getSnapshot().revision === 1)).toBe(true);
-    expect(coordinator.getSnapshot().derived?.inputHistory.length).toBeGreaterThan(0);
     expect(repaint).toHaveBeenCalled();
     expect(screen.getByTestId('overlay-studio-v3')).toBeTruthy();
     unsubscribe();

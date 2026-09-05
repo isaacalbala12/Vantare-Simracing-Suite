@@ -1,10 +1,15 @@
 import type { TelemetryRateCoordinator } from '../../overlay/core/telemetry-rate-coordinator';
-import type { TelemetryAdapter } from '../../overlay/transports/telemetry-adapter';
 import {
   attachOverlayFrameV2Transport,
   type OverlayFrameV2Store,
 } from '../../telemetry-transport/overlay-frame-v2-store';
 import type { OverlayWailsPullClient } from '../../telemetry-transport/overlay-wails-pull';
+
+export type TelemetryAdapter = {
+  coordinator: TelemetryRateCoordinator;
+  start(): void;
+  stop(): void;
+};
 
 export type StudioOverlayTelemetryOptions = Readonly<{
   coordinator: TelemetryRateCoordinator;

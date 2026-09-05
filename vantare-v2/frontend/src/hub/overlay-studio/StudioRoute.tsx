@@ -2,7 +2,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExterna
 import { Events } from '@wailsio/runtime';
 import { useI18n } from '../../i18n/I18nProvider';
 import { createTelemetryRateCoordinator } from '../../overlay/core/telemetry-rate-coordinator';
-import type { TelemetryAdapter } from '../../overlay/transports/telemetry-adapter';
+import type { TelemetryAdapter } from './studio-overlay-telemetry';
 import type { WidgetRuntimeInput } from '../../overlay/core/widget-definition';
 import {
   createOverlayFrameV2Store,

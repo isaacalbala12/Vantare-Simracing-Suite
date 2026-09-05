@@ -226,18 +226,19 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
       "OVERLAY_V2_STANDINGS_DECLARED_GAPS",
       "C2b7 (gaps congelados junto al ViewModel V2)",
     );
-    // C2b0 (reclasificación E1, comprobación positiva): los cuatro callers
-    // Studio conservan `import type { TelemetryAdapter }` desde el módulo
-    // canónico hasta E1. Falla si pasa a import runtime o si cambia
-    // silenciosamente de módulo. El módulo neutral no se vigila como V1.
+    // E1d: el contrato de lifecycle V2 vive junto a su único constructor.
+    contentHas(
+      src("hub", "overlay-studio", "studio-overlay-telemetry.ts"),
+      "export type TelemetryAdapter",
+      "E1d (contrato junto a su dueño V2)",
+    );
     for (const route of [
       src("hub", "overlay-studio", "StudioRoute.tsx"),
       src("hub", "overlay-studio", "OverlayStudioV3.tsx"),
-      src("hub", "overlay-studio", "studio-overlay-telemetry.ts"),
       src("hub", "overlay-studio", "canvas", "StudioTelemetryProvider.tsx"),
+      src("hub", "overlay-studio", "canvas", "StudioTelemetryProvider.test.tsx"),
     ] as const) {
-      contentHas(route, "import type { TelemetryAdapter }", "E1 (type-only canónico)");
-      contentHas(route, "overlay/transports/telemetry-adapter", "E1 (módulo canónico)");
+      contentAbsentAll([[route, "overlay/transports/telemetry-adapter", "E1d (adapter V1 fuera)"]]);
     }
   });
 
@@ -499,6 +500,18 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
     absentAll([
       [src("overlay", "core", "mock-scenarios.ts"), "E1d"],
       [src("overlay", "core", "mock-scenarios.test.ts"), "E1d"],
+      [src("lib", "telemetry-ref.ts"), "E1d (store preview legacy sin consumidores productivos)"],
+      [src("lib", "telemetry-ref.test.ts"), "E1d (test exclusivo legacy)"],
+      [src("lib", "useDemoMode.ts"), "E1d (demo legacy sin consumidores productivos)"],
+      [src("lib", "useDemoMode.test.ts"), "E1d (test exclusivo legacy)"],
+      [src("lib", "visibility.ts"), "E1d (visibilidad legacy sustituida por widget-visibility)"],
+      [src("lib", "visibility.test.ts"), "E1d (test exclusivo legacy)"],
+      [src("overlay", "widgets", "mock-telemetry.ts"), "E1d (fixture legacy sin consumidores productivos)"],
+      [src("overlay", "widgets", "mock-telemetry.test.ts"), "E1d (test exclusivo legacy)"],
+      [src("overlay", "widgets", "widget-preview-fixtures.ts"), "E1d (preview fixture legacy)"],
+      [src("overlay", "widgets", "widget-preview-fixtures.test.ts"), "E1d (test exclusivo legacy)"],
+      [src("overlay", "widgets", "relative-filters.ts"), "E1d (helper del preview fixture legacy)"],
+      [src("overlay", "widgets", "relative-filters.test.ts"), "E1d (test exclusivo legacy)"],
       [src("overlay", "core", "telemetry-snapshot.ts"), "E1d"],
       [src("overlay", "transports", "telemetry-adapter.ts"), "E1d"],
       [src("overlay", "core", "telemetry-adapter.ts"), "E1d"],

@@ -711,6 +711,23 @@ B1; si una ruta no existe en árbol, lo registra como divergencia y para ese
      incluye su migración V2 o STOP/defer D/E1 con dueño. Un gap sin
      equivalente se mantiene explícitamente `unsupportedSignal`; no se finge
      soporte.
+
+     **C2b7 ejecutado en `8f12c448`/`15f7f5ce` (2→0; C2 cerrado):** gaps y
+     escenas dejan I/O textual, adapter y builders snapshot V1. Sus contratos
+     se congelan junto a los ViewModels V2 y se ejecutan mediante el escenario
+     Workshop V2 productivo. Standings intercambia posiciones dentro de una
+     misma clase y conserva el orden; su `bestLap` por fila prueba traspaso con
+     dueño anterior explícito. Relative usa solo gap/lado/presencia. Las
+     ausencias V2 `driverNumber`, `tireCompound` y `bestLapText` de Delta
+     permanecen declaradas, con placeholders y texto honesto; no se fabrica
+     soporte. Focales/vecinos 71/71 PASS; guard `6 failed | 10 passed`, con C2
+     verde y solo B3/B2-prep/B2 deliberadamente RED. Suite sin guard
+     3462/3465 PASS con tres fallos heredados ajenos; ESLint, escaneo y
+     diff-check limpios; typecheck conserva los ocho errores R7a exactos, cero
+     nuevos. Reviews Ponytail `full` spec
+     `ses_f90aee3afffems8ei5Qwdtdvv8` y quality
+     `ses_f90ab6e2effeolpsN6jxzGzg2c`: **APPROVE**, P0/P1/P2/P3=0. Siguiente:
+     B3, sin absorber B2-prep/B2.
   Cada subcorte empieza con focal/guard RED, termina con tests del área,
   ESLint/diff-check y review independiente (spec + quality por cada subcorte
   de código), y registra el conteo real de anclas. El conteo del guard es

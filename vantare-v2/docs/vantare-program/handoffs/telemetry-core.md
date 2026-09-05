@@ -1,5 +1,29 @@
 # Handoff vivo — Telemetry Core
 
+## R7b/C2b7 APROBADO final — contratos de autoría V2 puros, C2 cerrado — 2026-09-05, ISA-894
+
+Commits `8f12c448` + `15f7f5ce`: `projection-gaps` deja de leer texto del
+adapter V1 y congela sus ausencias contra los ViewModels V2 de producto;
+`animation-scenes` deja los builders snapshot V1 y ejecuta Standings/Relative
+mediante `buildWorkshopFrameV2`. Los adelantamientos usan dos filas Hypercar
+canónicas y conservan orden por posición; Relative solo transforma gap, lado y
+presencia. Los huecos sin señal V2 (`driverNumber`, `tireCompound` y
+`bestLapText` de Delta) permanecen explícitos, con placeholders y captions
+honestas. Standings sí conserva `bestLap` por fila y prueba el traspaso de
+corona con dueño anterior explícito.
+
+El RED focal inicial expuso siete expectativas legacy falsas; el GREEN final
+cubre 71/71 pruebas focales/vecinas. ESLint del alcance, escaneo V1 y
+`diff --check` están limpios. La suite frontend sin la guardia deliberada deja
+3462/3465 PASS: los tres fallos restantes son deuda heredada ajena de Fuel e
+i18n. Typecheck mantiene exactamente los ocho errores R7a heredados, cero
+nuevos; build sigue no evaluable. La guardia queda `6 failed | 10 passed (16)`:
+C2 pasa 2→0 y solo siguen RED B3, B2-prep y B2. Reviews finales Ponytail
+`full`: spec `ses_f90aee3afffems8ei5Qwdtdvv8` y quality
+`ses_f90ab6e2effeolpsN6jxzGzg2c`, ambas **APPROVE**, P0/P1/P2/P3=0 sobre
+HEAD `15f7f5ce`. Siguiente: B3, retirar runtime/harness/scripts shadow V1. Sin
+push/PR/merge/promoción/apps/LMU.
+
 ## R7b/C2b6c APROBADO final — Workshop V2 puro, C2 queda 2→0 — 2026-09-05, ISA-894
 
 Base `76f413dedf3a9a600fefa6b417a93caf4de0ea19`; commits

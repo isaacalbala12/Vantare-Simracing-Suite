@@ -458,6 +458,10 @@ B2-prep, deuda de baseline heredada, sin debilitar el detector). Guard B1
 `16 passed (16)` — B2 verde, E4 presente como oráculo afirmado, no como
 fallo; typecheck verde (mueren los cuatro errores heredados con sus
 módulos); comparator 33/33; vecinos 55/55. Sin push/PR/merge/promoción/apps/LMU.
+Review adversarial Muse + Ponytail `full` `ses_f9078d02affef8Jg2joBcn5vsz`:
+APPROVE. `3e2a4a30` retira dos filas muertas B3 del authority-guard, vuelve a
+apuntar sus casos sintéticos a rutas vigentes y corrige el tiempo verbal del
+veredicto Engineer; guard revalidado 20/20. P0/P1/P2/P3 abiertos = 0.
 
 ---
 

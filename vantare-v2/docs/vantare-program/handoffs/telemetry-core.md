@@ -1,6 +1,6 @@
 # Handoff vivo — Telemetry Core
 
-## R7b/B2 CERRADO en rama — proyección/transporte Overlay V1 retirados — 2026-09-05, ISA-894
+## R7b/B2 APROBADO final — proyección/transporte Overlay V1 retirados — 2026-09-05, ISA-894
 
 Commits `c1214a4a` (tests de contrato a productos V1 independientes) +
 `c8558a5e` (borrado + V2-only): salen del árbol `overlay-projection-v1*`,
@@ -28,6 +28,12 @@ base — 4 en attach/store (reproducidos en `b434161a` sin este corte) + 3
 de i18n/Fuel documentados desde B3; cero regresión B2. Siguiente: C1,
 hipótesis de daño contra productor. Sin push, PR, merge, promoción,
 apps ni LMU.
+
+Review adversarial Muse + Ponytail `full` `ses_f9078d02affef8Jg2joBcn5vsz`:
+**APPROVE**, P0/P1=0. El único P2 era inventario muerto de B3 en el
+authority-guard y el P3 documental decía que el adapter se borraría en el
+futuro; `3e2a4a30` elimina ambas imprecisiones. Revalidación del guard 20/20,
+`git diff --check` limpio. P0/P1/P2/P3 abiertos = 0.
 
 ## R7b/B2-prep APROBADO — oráculo desacoplado del adapter V1 — 2026-09-05, ISA-894
 

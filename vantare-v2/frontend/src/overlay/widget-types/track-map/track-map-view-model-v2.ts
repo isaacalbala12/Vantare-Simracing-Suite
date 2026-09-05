@@ -76,13 +76,14 @@ function draw(
   content: TrackMapContent,
   geometry: TrackGeometry,
 ): TrackMapViewModel | undefined {
-  const projection = createTrackProjection(geometry.points, TRACK_MAP_VIEWPORT_V2);
-  if (!projection) return undefined;
+  const outline = getStaticOutline(geometry);
+  if (!outline) return undefined;
+  const { projection } = outline;
   return {
     type: "track-map",
     status: mapStatus(source.state),
     statusMessage: source.reason || undefined,
-    outlinePath: buildTrackOutlinePath(geometry.points, projection),
+    outlinePath: outline.path,
     trackLabel: geometry.label,
     synthetic: geometry.synthetic,
     viewBox: VIEW_BOX,
@@ -151,3 +152,26 @@ function displayedText(value: OverlayQValue<string>): string | undefined {
   if (value.q === "missing" || value.q === "invalid") return undefined;
   return value.v ?? undefined;
 }
+
+// The bundled geometry is immutable. Retain only the last static outline, never
+// frames or markers; switching circuit replaces the entry instead of growing it.
+const getStaticOutline = (() => {
+  let last: {
+    geometry: TrackGeometry;
+    width: number;
+    height: number;
+    padding: number;
+    projection: TrackProjection;
+    path: string;
+  } | undefined;
+  return (geometry: TrackGeometry) => {
+    const { width, height, padding } = TRACK_MAP_VIEWPORT_V2;
+    if (last?.geometry === geometry && last.width === width && last.height === height && last.padding === padding) {
+      return last;
+    }
+    const projection = createTrackProjection(geometry.points, TRACK_MAP_VIEWPORT_V2);
+    if (!projection) return undefined;
+    last = { geometry, width, height, padding, projection, path: buildTrackOutlinePath(geometry.points, projection) };
+    return last;
+  };
+})();

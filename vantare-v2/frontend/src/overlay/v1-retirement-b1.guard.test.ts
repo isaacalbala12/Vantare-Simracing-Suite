@@ -495,24 +495,26 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
     ]);
   });
 
-  it("diferidos E1 presentes: snapshot, adapter, stores e historias legacy", () => {
-    for (const [route, owner] of [
-      [src("overlay", "core", "telemetry-rate-coordinator.ts"), "E1 (historias/API legacy)"],
-      [src("overlay", "core", "mock-scenarios.ts"), "E1"],
-      [src("overlay", "core", "telemetry-snapshot.ts"), "E1"],
-      [src("overlay", "transports", "telemetry-adapter.ts"), "E1"],
-      [src("overlay", "core", "telemetry-adapter.ts"), "E1"],
-      [src("overlay", "core", "derived-telemetry-store.ts"), "E1"],
-      [src("overlay", "core", "derived-telemetry-store.test.ts"), "E1"],
-      [src("overlay", "core", "telemetry-rate-coordinator.test.ts"), "E1"],
-      [src("overlay", "core", "mock-scenarios.test.ts"), "E1"],
-    ] as const) present(route, owner);
-    // E1c retiró el megamódulo de autoría y su shim: la única ancla legacy
-    // que queda en fixtures es el helper V2 de Workshop/Parity, sin snapshot.
-    // Ancla real de las historias legacy consumidas por el coordinator.
-    for (const anchor of ["getFuelHistory", "getInputHistory", "getDeltaHistory"] as const) {
-      contentHas(src("overlay", "core", "telemetry-rate-coordinator.ts"), anchor, "E1 (historias legacy)");
-    }
+  it("E1d cerrado: núcleo snapshot, adapters, stores e historias V1 fuera", () => {
+    absentAll([
+      [src("overlay", "core", "mock-scenarios.ts"), "E1d"],
+      [src("overlay", "core", "mock-scenarios.test.ts"), "E1d"],
+      [src("overlay", "core", "telemetry-snapshot.ts"), "E1d"],
+      [src("overlay", "transports", "telemetry-adapter.ts"), "E1d"],
+      [src("overlay", "core", "telemetry-adapter.ts"), "E1d"],
+      [src("overlay", "core", "telemetry-adapter.test.ts"), "E1d"],
+      [src("overlay", "core", "derived-telemetry-store.ts"), "E1d"],
+      [src("overlay", "core", "derived-telemetry-store.test.ts"), "E1d"],
+      [src("overlay", "widget-types", "input-telemetry", "input-telemetry-accumulator.ts"), "E1d"],
+      [src("overlay", "widget-types", "input-telemetry", "input-telemetry-accumulator.test.ts"), "E1d"],
+      [src("overlay", "widget-types", "relative", "relative-formatting.ts"), "E1d"],
+      [src("overlay", "widget-types", "shared", "scoring-readers.ts"), "E1d"],
+      [src("overlay", "widget-types", "shared", "scoring-readers.test.ts"), "E1d"],
+    ]);
+    contentAbsentAll(
+      ["TelemetrySnapshot", "getSnapshot", "publish(", "getFuelHistory", "getInputHistory", "getDeltaHistory"]
+        .map((anchor) => [src("overlay", "core", "telemetry-rate-coordinator.ts"), anchor, "E1d"] as const),
+    );
   });
 
   it("E2 verde: switch mutable y catálogo fuera, sin reubicar (dueño E2)", () => {

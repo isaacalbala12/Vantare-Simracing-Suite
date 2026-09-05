@@ -4,19 +4,7 @@ import { describe, expect, it } from "vitest";
 
 const overlayRoot = resolve(process.cwd(), "src", "overlay");
 
-// La retirada V1 aún no ha terminado: este inventario exacto conserva los
-// artefactos legacy que siguen vivos, pero cualquier referencia adicional falla.
-// E4 retiró el oráculo shadow y los 16 builders snapshot legacy: sus ficheros
-// conservan solo tipos y helpers puros sin autoridad V1.
-const legacyV1Baseline: Readonly<Record<string, readonly string[]>> = {
-  "core/derived-telemetry-store.ts": ["TelemetrySnapshot", "TelemetrySnapshot", "TelemetrySnapshot"],
-  "core/mock-scenarios.ts": ["TelemetrySnapshot", "TelemetrySnapshot", "TelemetrySnapshot"],
-  "core/overlay-v2-view-models.ts": ["TelemetrySnapshot"],
-  "core/telemetry-adapter.ts": Array(7).fill("TelemetrySnapshot"),
-  "core/telemetry-rate-coordinator.ts": Array(4).fill("TelemetrySnapshot"),
-  "core/telemetry-snapshot.ts": ["TelemetrySnapshot"],
-  "widget-types/input-telemetry/input-telemetry-accumulator.ts": Array(5).fill("TelemetrySnapshot"),
-};
+const legacyV1Baseline: Readonly<Record<string, readonly string[]>> = {};
 
 function sourceFiles(directory: string): string[] {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {

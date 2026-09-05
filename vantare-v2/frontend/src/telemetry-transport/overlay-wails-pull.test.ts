@@ -320,6 +320,51 @@ describe("overlay HTTP pull client", () => {
     client.stop();
   });
 
+  it("keeps the browser timeout active while the response body is pending", async () => {
+    vi.useFakeTimers();
+    const onError = vi.fn();
+    let attempts = 0;
+    const fetchMock = vi.fn((route: RequestInfo | URL, init?: RequestInit) => {
+      if (String(route).endsWith("/close")) {
+        return Promise.resolve({ok: true, status: 204} as Response);
+      }
+      const {sessionId} = JSON.parse(String(init?.body)) as {sessionId: string};
+      attempts += 1;
+      if (attempts === 1) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => new Promise<unknown>((_resolve, reject) => {
+            init?.signal?.addEventListener("abort", () => reject(new Error("aborted")));
+          }),
+        } as Response);
+      }
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({sessionId, delivery: 1, events: []}),
+      } as Response);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const client = createBrowserOverlayWailsPullClient({onError});
+
+    client.start();
+    await vi.advanceTimersByTimeAsync(5_000);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect((fetchMock.mock.calls[0]?.[1] as RequestInit | undefined)?.signal?.aborted).toBe(true);
+    expect(onError).toHaveBeenCalledTimes(1);
+
+    await vi.advanceTimersByTimeAsync(250);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(client.getDiagnostics()).toMatchObject({active: true, requestsCompleted: 1});
+
+    client.stop();
+    expect(client.getDiagnostics().active).toBe(false);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
   it("retries duplicate deliveries and rejects unknown event routes", async () => {
     const posted: Array<{route: string; data: unknown}> = [];
     const pending: PendingPull[] = [];

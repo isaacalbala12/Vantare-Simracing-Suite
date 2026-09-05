@@ -302,7 +302,7 @@ export function createBrowserOverlayWailsPullClient(
           throw new Error(`overlay telemetry pull HTTP ${response.status}`);
         }
         if (response.status === 204) return undefined;
-        return response.json();
+        return await response.json();
       } finally {
         clearTimeout(timeout);
       }

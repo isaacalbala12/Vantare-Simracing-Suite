@@ -77,9 +77,9 @@ func TestStrategyLiveLMUOptIn(t *testing.T) {
 			t.Errorf("stop telemetry core runtime: %v", stopErr)
 		}
 		metrics := telemetryRuntime.Metrics()
-		if metrics.Transport.CurrentSubscribers != 0 || metrics.StrategyTransport.CurrentSubscribers != 0 {
-			t.Errorf("subscribers after cleanup: overlay=%d strategy=%d, want 0/0",
-				metrics.Transport.CurrentSubscribers, metrics.StrategyTransport.CurrentSubscribers)
+		if metrics.StrategyTransport.CurrentSubscribers != 0 {
+			t.Errorf("subscribers after cleanup: strategy=%d, want 0",
+				metrics.StrategyTransport.CurrentSubscribers)
 		}
 	})
 

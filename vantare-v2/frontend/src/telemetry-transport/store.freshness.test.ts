@@ -9,9 +9,9 @@ afterEach(() => {
 test("degrada a stale cuando capturedAt supera el umbral", () => {
   vi.useFakeTimers();
   vi.setSystemTime(new Date("2026-08-19T12:00:00Z"));
-  const store = createProjectionTransportStore("overlay");
-  store.ingest(eventName("overlay", "status"), {
-    product: "overlay",
+  const store = createProjectionTransportStore("engineer");
+  store.ingest(eventName("engineer", "status"), {
+    product: "engineer",
     statusRevision: 1,
     capturedAt: "2026-08-19T11:59:58Z",
     payload: { state: "live", reconnectAttempt: 0 },

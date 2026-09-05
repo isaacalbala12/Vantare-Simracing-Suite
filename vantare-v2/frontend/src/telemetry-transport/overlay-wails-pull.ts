@@ -4,9 +4,6 @@ export const OVERLAY_PULL_CLOSE_ROUTE = "/_vantare/overlay-telemetry/close";
 const MAX_SESSION_ID_LENGTH = 128;
 
 const ALLOWED_EVENTS = new Set([
-  "telemetry:overlay:status",
-  "telemetry:overlay:projection",
-  "telemetry:overlay:fact",
   "telemetry:overlay-v2:status",
   "telemetry:overlay-v2:snapshot",
 ]);
@@ -40,7 +37,6 @@ export type OverlayWailsPullOptions = Readonly<{
 export type OverlayWailsPullDiagnostics = Readonly<{
   active: boolean;
   requestsCompleted: number;
-  receivedV1Projections: number;
   receivedV2Snapshots: number;
   requestDurationMs: Readonly<{
     count: number;
@@ -97,7 +93,6 @@ export function createOverlayWailsPullClient(
   let emptyResponses = 0;
   let scheduled: ScheduleHandle | undefined;
   let requestsCompleted = 0;
-  let receivedV1Projections = 0;
   let receivedV2Snapshots = 0;
   let requestDurationTotalMs = 0;
   let requestDurationMaxMs = 0;
@@ -191,7 +186,6 @@ export function createOverlayWailsPullClient(
         onError(new Error("overlay-wails-pull:invalid-event-name"));
         continue;
       }
-      if (event.name === "telemetry:overlay:projection") receivedV1Projections += 1;
       if (event.name === "telemetry:overlay-v2:snapshot") receivedV2Snapshots += 1;
       for (const listener of listeners.get(event.name) ?? []) {
         try {
@@ -257,7 +251,6 @@ export function createOverlayWailsPullClient(
       return Object.freeze({
         active,
         requestsCompleted,
-        receivedV1Projections,
         receivedV2Snapshots,
         requestDurationMs: Object.freeze({
           count: requestsCompleted,
@@ -309,7 +302,7 @@ export function createBrowserOverlayWailsPullClient(
           throw new Error(`overlay telemetry pull HTTP ${response.status}`);
         }
         if (response.status === 204) return undefined;
-        return response.json();
+        return await response.json();
       } finally {
         clearTimeout(timeout);
       }

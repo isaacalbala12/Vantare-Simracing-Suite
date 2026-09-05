@@ -7,7 +7,6 @@ import { relativeDefinition } from "./widget-types/relative/relative-definition"
 import {
   OVERLAY_PULL_REQUEST_ROUTE,
 } from "../telemetry-transport/overlay-wails-pull";
-import goldenRaw from "../../../internal/telemetry/projection/overlay/testdata/overlay_v1.golden.json?raw";
 import goldenV2Raw from "../../../internal/telemetry/projection/overlayv2/testdata/overlay_v2_1.golden.json?raw";
 
 type Handler = (event: { data: unknown }) => void;
@@ -16,16 +15,6 @@ const runtimeMock = vi.hoisted(() => ({
   handlers: new Map<string, Handler[]>(),
   onCalls: [] as string[],
   emit: vi.fn(),
-}));
-
-const shadowRuntimeMock = vi.hoisted(() => ({
-  acceptLegacy: vi.fn(),
-  acceptOverlayV2: vi.fn(),
-  create: vi.fn(),
-}));
-
-vi.mock("./telemetry-shadow/overlay-v2-shadow-runtime", () => ({
-  createOverlayV2ShadowRuntime: shadowRuntimeMock.create,
 }));
 
 const originalResizeObserver = globalThis.ResizeObserver;
@@ -114,21 +103,19 @@ function buildProfilePayload(document: ProfileDocumentV3, revision = "rev-1", wi
   };
 }
 
-function canonicalEnvelope() {
-  const snapshot = JSON.parse(goldenRaw) as Record<string, unknown>;
-  const payload = { ...snapshot };
-  for (const key of ["canonicalVersion", "projectionVersion", "epoch", "sequence", "capturedAt"]) {
-    delete payload[key];
-  }
+// R2, sonda negativa de protocolo: el pull ignora eventos V1 aunque lleguen
+// con forma canónica. Sin golden V1: el payload es irrelevante porque la
+// aserción es que nada se pinta (no es un fixture de datos).
+function legacyV1Envelope() {
   return {
     product: "overlay",
-    projectionVersion: snapshot.projectionVersion,
-    epoch: snapshot.epoch,
-    sequence: snapshot.sequence,
+    projectionVersion: 1,
+    epoch: 7,
+    sequence: 3,
     kind: "full",
-    capturedAt: snapshot.capturedAt,
+    capturedAt: "2026-07-28T09:00:00Z",
     statusRevision: 1,
-    payload,
+    payload: {},
   };
 }
 
@@ -160,13 +147,6 @@ describe("CompositeApp", () => {
     pullRequests = [];
     pullClosedSessions = new Set();
     resolvePull = undefined;
-    shadowRuntimeMock.acceptLegacy.mockReset();
-    shadowRuntimeMock.acceptOverlayV2.mockReset();
-    shadowRuntimeMock.create.mockReset().mockReturnValue({
-      acceptLegacy: shadowRuntimeMock.acceptLegacy,
-      acceptOverlayV2: shadowRuntimeMock.acceptOverlayV2,
-      sessionSummary: () => ({ frames: 0, mismatches: 0 }),
-    });
     vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       const route = typeof input === "string" ? input : input.toString();
       if (route === OVERLAY_PULL_REQUEST_ROUTE) {
@@ -184,15 +164,64 @@ describe("CompositeApp", () => {
     installResizeObserver();
   });
 
-  it("does not allocate or ingest shadow state while V1 emission is off", async () => {
+  it("R2: un evento legacy V1 solo no alimenta Desktop (sin widget V1)", async () => {
     render(<CompositeApp />);
+    dispatch("overlay:profile-v3-loaded", buildProfilePayload(buildRelativeDocument()));
+    tick(100);
+
+    await dispatchTelemetry([
+      { name: "telemetry:overlay:status", data: {
+        product: "overlay",
+        statusRevision: 1,
+        capturedAt: "2026-07-28T09:00:00Z",
+        payload: { state: "live", reconnectAttempt: 0 },
+      } },
+      { name: "telemetry:overlay:projection", data: legacyV1Envelope() },
+    ]);
+    tick(200);
+
+    expect(screen.queryByText("Driver 000")).toBeNull();
+    const diagnostics = window.__vantareOverlayV2Diagnostics?.() as Record<string, unknown> | undefined;
+    expect(diagnostics).toBeDefined();
+    expect(diagnostics).not.toHaveProperty("shadow");
+  });
+
+  it("R2: un snapshot V2 solo sigue alimentando el runtime y unmount cierra el pull", async () => {
+    const view = render(<CompositeApp />);
+    dispatch("overlay:profile-v3-loaded", buildProfilePayload(buildRelativeDocument()));
+    tick(100);
 
     await dispatchTelemetry([
       { name: "telemetry:overlay-v2:snapshot", data: JSON.parse(goldenV2Raw) },
     ]);
+    tick(200);
 
-    expect(shadowRuntimeMock.create).not.toHaveBeenCalled();
-    expect(shadowRuntimeMock.acceptOverlayV2).not.toHaveBeenCalled();
+    expect(screen.getByText("Driver 000")).toBeTruthy();
+    const sessionId = pullRequests.at(-1)?.sessionId;
+    expect(sessionId).toBeDefined();
+
+    view.unmount();
+    tick(500);
+
+    expect(pullClosedSessions.has(sessionId!)).toBe(true);
+    expect(window.__vantareOverlayV2Diagnostics).toBeUndefined();
+    expect(runtimeMock.handlers.get("overlay:profile-v3-loaded") ?? []).toHaveLength(0);
+  });
+
+  it("does not allocate or ingest shadow state while V1 emission is off", async () => {
+    render(<CompositeApp />);
+    dispatch("overlay:profile-v3-loaded", buildProfilePayload(buildRelativeDocument()));
+    tick(100);
+
+    await dispatchTelemetry([
+      { name: "telemetry:overlay-v2:snapshot", data: JSON.parse(goldenV2Raw) },
+    ]);
+    tick(200);
+
+    expect(screen.getByText("Driver 000")).toBeTruthy();
+    const diagnostics = window.__vantareOverlayV2Diagnostics?.() as Record<string, unknown> | undefined;
+    expect(diagnostics).toBeDefined();
+    expect(diagnostics).not.toHaveProperty("shadow");
   });
 
   afterEach(() => {
@@ -200,11 +229,9 @@ describe("CompositeApp", () => {
     vi.useRealTimers();
     vi.unstubAllGlobals();
     globalThis.ResizeObserver = originalResizeObserver;
-    delete window.__vantareOverlayV2Features;
   });
 
   it("crea una generacion limpia y acepta frames V2 tras el doble setup de StrictMode", async () => {
-    window.__vantareOverlayV2Features = ["relative"];
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
 
     render(
@@ -214,13 +241,6 @@ describe("CompositeApp", () => {
     );
     dispatch("overlay:profile-v3-loaded", buildProfilePayload(buildRelativeDocument()));
     await dispatchTelemetry([
-      { name: "telemetry:overlay:status", data: {
-        product: "overlay",
-        statusRevision: 1,
-        capturedAt: "2026-07-28T09:00:00Z",
-        payload: { state: "live", reconnectAttempt: 0 },
-      } },
-      { name: "telemetry:overlay:projection", data: canonicalEnvelope() },
       { name: "telemetry:overlay-v2:snapshot", data: JSON.parse(goldenV2Raw) },
     ]);
     tick(100);
@@ -281,22 +301,12 @@ describe("CompositeApp", () => {
     expect(screen.getByText("Overlay V2 frame unavailable")).toBeTruthy();
   });
 
-  it("applies canonical Overlay projections from the HTTP response", async () => {
+  it("applies the Overlay V2 snapshot from the HTTP response", async () => {
     render(<CompositeApp />);
     dispatch("overlay:profile-v3-loaded", buildProfilePayload(buildRelativeDocument()));
     tick(100);
 
     await dispatchTelemetry([
-      {
-        name: "telemetry:overlay:status",
-        data: {
-          product: "overlay",
-          statusRevision: 1,
-          capturedAt: "2026-07-28T09:00:00Z",
-          payload: { state: "live", reconnectAttempt: 0 },
-        },
-      },
-      {name: "telemetry:overlay:projection", data: canonicalEnvelope()},
       {name: "telemetry:overlay-v2:snapshot", data: JSON.parse(goldenV2Raw)},
     ]);
     tick(200);

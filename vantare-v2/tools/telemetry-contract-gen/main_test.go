@@ -24,7 +24,6 @@ func TestGeneratedContractMatchesHandwritten(t *testing.T) {
 	}
 	generated := string(generatedBytes)
 	transport := handwrittenTransportContract
-	overlayMirror := readRepositoryFile(t, "frontend", "src", "overlay", "projection", "overlay-projection-v1.ts")
 
 	compareFields(t, "ProjectionEnvelope",
 		interfaceFields(t, generated, "ProjectionEnvelope"),
@@ -39,18 +38,33 @@ func TestGeneratedContractMatchesHandwritten(t *testing.T) {
 		interfaceFields(t, generated, "FactEnvelope"),
 		typeLiteralFields(t, transport, "FactEnvelope"), nil)
 
-	fieldAliases := map[string]string{
-		"TelemetryField": "OverlayProjectionField",
+	// R7a: el contrato generado ya no contiene el wire Overlay V1. El
+	// mirror legacy de frontend queda para R7b y no se compara aqui.
+	for _, absent := range []string{
+		"export interface OverlayGroundPositionV1",
+		"export interface OverlaySnapshotV1",
+		"export interface OverlayPayloadV1",
+		"export interface OverlayVehicleV1",
+		"export interface OverlayControlHistoryV1",
+		"export interface OverlayDeltaHistoryV1",
+		"export type OverlayCapability",
+		`"overlay"`,
+	} {
+		if strings.Contains(generated, absent) {
+			t.Fatalf("retired Overlay V1 wire still generated: %q", absent)
+		}
 	}
-	vehicle := interfaceFields(t, generated, "OverlayVehicleV1")
-	compareFields(t, "OverlayVehicleV1", vehicle,
-		typeLiteralFields(t, overlayMirror, "OverlayVehicleV1"), fieldAliases)
-	if got := len(vehicle); got != 30 {
-		t.Fatalf("OverlayVehicleV1 generated %d fields; Go wire currently has 30", got)
+	for _, present := range []string{
+		"export interface OverlayFrameV2",
+		"export interface OverlayUpdateV2",
+		"export interface EngineerSnapshotV1",
+		"export interface StrategySnapshotV1",
+		"export interface AnalysisSnapshotV1",
+	} {
+		if !strings.Contains(generated, present) {
+			t.Fatalf("surviving contract missing from generated output: %q", present)
+		}
 	}
-	compareFields(t, "OverlayGroundPositionV1",
-		interfaceFields(t, generated, "OverlayGroundPositionV1"),
-		typeLiteralFields(t, overlayMirror, "OverlayGroundPositionV1"), nil)
 
 	compareValues(t, "ProductID", enumValues(t, generated, "ProductID"),
 		constArrayValues(t, transport, "TELEMETRY_PRODUCTS"))
@@ -93,7 +107,7 @@ func TestGeneratedOverlayV2ContractUsesCompactGenericQuality(t *testing.T) {
 // by F5.2. It is test evidence only; production TypeScript reexports the Go-
 // generated declarations after F5.3.
 const handwrittenTransportContract = `
-export const TELEMETRY_PRODUCTS = ["overlay", "engineer", "strategy", "analysis"] as const;
+export const TELEMETRY_PRODUCTS = ["engineer", "strategy", "analysis"] as const;
 export const TELEMETRY_STATUS_STATES = ["stopped", "detecting", "connecting", "live", "degraded", "stale", "error", "stopping"] as const;
 export type ProjectionEnvelope = {
   product: ProductID;
@@ -165,16 +179,6 @@ func TestCheckGeneratedRejectsStaleOutput(t *testing.T) {
 	if err := checkGenerated(output, generated); err == nil {
 		t.Fatal("stale generated contract was accepted")
 	}
-}
-
-func readRepositoryFile(t *testing.T, pathParts ...string) string {
-	t.Helper()
-	path := filepath.Join(append([]string{"..", ".."}, pathParts...)...)
-	content, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatalf("read %s: %v", path, err)
-	}
-	return string(content)
 }
 
 func interfaceFields(t *testing.T, source, name string) map[string]tsField {

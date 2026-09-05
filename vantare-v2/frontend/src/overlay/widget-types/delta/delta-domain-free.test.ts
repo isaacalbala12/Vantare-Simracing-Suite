@@ -2,11 +2,6 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import type { OverlayFrameV2, OverlayUpdateV2 } from "../../../generated/telemetry";
-import {
-  DEFAULT_OVERLAY_V2_FEATURES,
-  OVERLAY_V2_DELTA,
-  hasOverlayV2Feature,
-} from "../../telemetry-shadow/overlay-v2-features";
 import { deltaDefinition } from "./delta-definition";
 import {
   OVERLAY_V2_DELTA_DECLARED_GAPS,
@@ -19,12 +14,6 @@ import {
 const CONTENT = deltaDefinition.parseContent({ reference: "personal-best" });
 
 describe("delta v2 view model", () => {
-  it("is authoritative by default and remains explicitly addressable", () => {
-    expect(DEFAULT_OVERLAY_V2_FEATURES).toContain(OVERLAY_V2_DELTA);
-    expect(hasOverlayV2Feature(undefined, OVERLAY_V2_DELTA)).toBe(true);
-    expect(hasOverlayV2Feature([OVERLAY_V2_DELTA], OVERLAY_V2_DELTA)).toBe(true);
-  });
-
   it("renders the reference resolved in Go without choosing one itself", () => {
     const frame = withDelta(golden(20), {
       seconds: { v: -0.238, q: "fresh" },

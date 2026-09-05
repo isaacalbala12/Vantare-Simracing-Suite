@@ -24,12 +24,12 @@ import { resolveRuntimeLayout, selectRuntimeWidgets } from "./resolve-runtime-la
 import { useOverlayRuntimeContext } from "./use-rate-limited-telemetry";
 import type { EngineerPresentationStore } from "../../engineer/engineer-presentation-store";
 import { EngineerSubtitles } from "../../engineer/EngineerSubtitles";
-import type { OverlayV2Feature } from "../telemetry-shadow/overlay-v2-features";
 import type { OverlayRuntimeContext } from "../core/overlay-runtime-context";
 import {
   EMPTY_RACE_SCHEDULE_SNAPSHOT,
   type RaceScheduleStore,
 } from "../core/race-schedule-store";
+import { resolveStandingsRedlineFrameLayout } from "../widget-types/standings/standings-redline-layout";
 
 export type RuntimeOverlaySurfaceProps = {
   document: ProfileDocumentV3;
@@ -39,7 +39,6 @@ export type RuntimeOverlaySurfaceProps = {
   onDiagnostic?: (diagnostic: WidgetDiagnostic) => void;
   diagnostics?: WidgetDiagnosticCollector;
   engineerPresentations?: EngineerPresentationStore;
-  overlayV2Features?: readonly OverlayV2Feature[];
   raceSchedule?: RaceScheduleStore;
 };
 
@@ -47,7 +46,7 @@ const subscribeToNothing = () => () => undefined;
 const noPresentation = () => null;
 
 export function RuntimeOverlaySurface(props: RuntimeOverlaySurfaceProps): React.ReactElement {
-  const { document, telemetry, renderMode, layoutOrigin, onDiagnostic, diagnostics: diagnosticsProp, engineerPresentations, overlayV2Features, raceSchedule } = props;
+  const { document, telemetry, renderMode, layoutOrigin, onDiagnostic, diagnostics: diagnosticsProp, engineerPresentations, raceSchedule } = props;
   const diagnostics = useMemo(() => diagnosticsProp ?? createWidgetDiagnosticCollector(), [diagnosticsProp]);
   const runtimeContext = useOverlayRuntimeContext(telemetry);
   const [contextMemory, setContextMemory] = useState<{
@@ -161,15 +160,32 @@ export function RuntimeOverlaySurface(props: RuntimeOverlaySurfaceProps): React.
     ? resolveResponsiveSceneTransform(layoutViewport, outputViewport)
     : null;
 
+  const origin = layoutOrigin ?? { x: 0, y: 0 };
+  const effectiveWidgets = widgets.map((widget) => {
+    const localLayout = {
+      ...widget.layout,
+      x: widget.layout.x - origin.x,
+      y: widget.layout.y - origin.y,
+    };
+    const effectiveLayout = resolveStandingsRedlineFrameLayout(
+      widget,
+      localLayout,
+      layoutViewport.width,
+    );
+    return {
+      ...widget,
+      layout: effectiveLayout,
+    };
+  });
   const responsiveWidgets = transform
-    ? widgets.map((widget) => ({
-        ...widget,
-        layout: {
-          ...widget.layout,
-          ...mapWidgetFrameToResponsive(widget.layout, transform),
-        },
-      }))
-    : widgets;
+    ? effectiveWidgets.map((widget) => {
+        const responsiveLayout = mapWidgetFrameToResponsive(widget.layout, transform);
+        return {
+          ...widget,
+          layout: { ...widget.layout, ...responsiveLayout },
+        };
+      })
+    : effectiveWidgets;
 
   const surfaceStyle: CSSProperties = {
     position: "relative",
@@ -209,14 +225,13 @@ export function RuntimeOverlaySurface(props: RuntimeOverlaySurfaceProps): React.
             <RuntimeWidgetFrame
               key={widget.id}
               widget={widget}
+              profileId={document.id}
               telemetry={telemetry}
               renderMode={renderMode}
-              layoutOrigin={layoutOrigin}
               onDiagnostic={onDiagnostic}
               diagnostics={diagnostics}
               engineerPresentation={engineerPresentation}
               engineerSubtitlesEnabled={subtitlesEnabled}
-              overlayV2Features={overlayV2Features}
               raceSchedule={raceScheduleSnapshot}
             />
           ))}

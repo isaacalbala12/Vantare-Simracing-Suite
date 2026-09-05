@@ -1,7 +1,6 @@
 import type { DesignSystemId, WidgetType } from "../core/profile-document";
-import type { MockDataState, MockLocationScenario, MockSessionScenario } from "../core/mock-scenarios";
-import type { HarnessVariant } from "./fixtures/authoring-fixtures";
-import { isHarnessVariant } from "./fixtures/authoring-fixtures";
+import type { AuthoringV2Scenario } from "./fixtures/authoring-v2-scenario-fixture";
+import { isWorkshopV2Variant, type WorkshopV2Variant } from "./fixtures/authoring-v2-workshop-frame";
 import { getAnimationScene } from "./fixtures/animation-scenes";
 import { getOfficialDesign } from "../design-systems/official-designs";
 import { WIDGET_TYPES } from "../core/profile-document";
@@ -10,11 +9,11 @@ export type OverlayWorkshopQuery = {
   widget: WidgetType;
   system: DesignSystemId;
   designId?: string;
-  state: MockDataState;
+  state: AuthoringV2Scenario["state"];
   surface: "studio" | "desktop" | "obs" | "harness";
-  variant: HarnessVariant;
-  session: MockSessionScenario;
-  location: MockLocationScenario;
+  variant: WorkshopV2Variant;
+  session: AuthoringV2Scenario["session"];
+  location: AuthoringV2Scenario["location"];
   background: "transparent" | "grid" | "solid" | "context";
   scale: number;
   width?: number;
@@ -40,10 +39,10 @@ export const DEFAULT_OVERLAY_WORKSHOP_QUERY: OverlayWorkshopQuery = {
 };
 
 const DESIGN_SYSTEMS = new Set<DesignSystemId>(["vantare-original", "vantare-crystal", "vantare-endurance"]);
-const STATES = new Set<MockDataState>(["ready", "stale", "disconnected", "error"]);
+const STATES = new Set<AuthoringV2Scenario["state"]>(["ready", "stale", "disconnected", "error"]);
 const SURFACES = new Set<OverlayWorkshopQuery["surface"]>(["studio", "desktop", "obs", "harness"]);
-const SESSIONS = new Set<MockSessionScenario>(["practice", "qualifying", "race"]);
-const LOCATIONS = new Set<MockLocationScenario>(["track", "pits"]);
+const SESSIONS = new Set<AuthoringV2Scenario["session"]>(["practice", "qualifying", "race"]);
+const LOCATIONS = new Set<AuthoringV2Scenario["location"]>(["track", "pits"]);
 const BACKGROUNDS = new Set<OverlayWorkshopQuery["background"]>(["transparent", "grid", "solid", "context"]);
 const PRESETS = new Set<OverlayWorkshopQuery["preset"]>(["720p", "1080p", "1440p"]);
 
@@ -51,12 +50,12 @@ export function parseOverlayWorkshopQuery(search: string): OverlayWorkshopQuery 
   const params = new URLSearchParams(search.startsWith("?") ? search : `?${search}`);
   const widget = (params.get("widget") ?? DEFAULT_OVERLAY_WORKSHOP_QUERY.widget) as WidgetType;
   const system = (params.get("system") ?? DEFAULT_OVERLAY_WORKSHOP_QUERY.system) as DesignSystemId;
-  const state = (params.get("state") ?? DEFAULT_OVERLAY_WORKSHOP_QUERY.state) as MockDataState;
+  const state = (params.get("state") ?? DEFAULT_OVERLAY_WORKSHOP_QUERY.state) as AuthoringV2Scenario["state"];
   const surface = (params.get("surface") ?? DEFAULT_OVERLAY_WORKSHOP_QUERY.surface) as OverlayWorkshopQuery["surface"];
-  const variant = (params.get("variant") ?? DEFAULT_OVERLAY_WORKSHOP_QUERY.variant) as HarnessVariant;
+  const variant = (params.get("variant") ?? DEFAULT_OVERLAY_WORKSHOP_QUERY.variant) as WorkshopV2Variant;
   const designId = params.get("design") ?? undefined;
-  const session = (params.get("session") ?? DEFAULT_OVERLAY_WORKSHOP_QUERY.session) as MockSessionScenario;
-  const location = (params.get("location") ?? DEFAULT_OVERLAY_WORKSHOP_QUERY.location) as MockLocationScenario;
+  const session = (params.get("session") ?? DEFAULT_OVERLAY_WORKSHOP_QUERY.session) as AuthoringV2Scenario["session"];
+  const location = (params.get("location") ?? DEFAULT_OVERLAY_WORKSHOP_QUERY.location) as AuthoringV2Scenario["location"];
   const background = (params.get("background") ?? DEFAULT_OVERLAY_WORKSHOP_QUERY.background) as OverlayWorkshopQuery["background"];
   const preset = (params.get("preset") ?? DEFAULT_OVERLAY_WORKSHOP_QUERY.preset) as OverlayWorkshopQuery["preset"];
   const compare = params.get("compare") as OverlayWorkshopQuery["surface"] | null;
@@ -69,7 +68,7 @@ export function parseOverlayWorkshopQuery(search: string): OverlayWorkshopQuery 
   if (!DESIGN_SYSTEMS.has(system)) return { error: `invalid system parameter: ${system}` };
   if (!STATES.has(state)) return { error: `invalid state parameter: ${state}` };
   if (!SURFACES.has(surface)) return { error: `invalid surface parameter: ${surface}` };
-  if (!isHarnessVariant(variant)) return { error: `invalid variant parameter: ${variant}` };
+  if (!isWorkshopV2Variant(variant)) return { error: `invalid variant parameter: ${variant}` };
   if (!SESSIONS.has(session)) return { error: `invalid session parameter: ${session}` };
   if (!LOCATIONS.has(location)) return { error: `invalid location parameter: ${location}` };
   if (!BACKGROUNDS.has(background)) return { error: `invalid background parameter: ${background}` };

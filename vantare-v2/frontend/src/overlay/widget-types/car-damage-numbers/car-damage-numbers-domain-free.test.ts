@@ -2,11 +2,6 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import type { OverlayFrameV2, OverlayUpdateV2 } from "../../../generated/telemetry";
-import {
-  DEFAULT_OVERLAY_V2_FEATURES,
-  OVERLAY_V2_DAMAGE,
-  hasOverlayV2Feature,
-} from "../../telemetry-shadow/overlay-v2-features";
 import { carDamageNumbersDefinition } from "./car-damage-numbers-definition";
 import {
   OVERLAY_V2_DAMAGE_DECLARED_GAPS,
@@ -18,12 +13,6 @@ import {
 const CONTENT = carDamageNumbersDefinition.parseContent({});
 
 describe("car damage v2 view model", () => {
-  it("is authoritative by default and remains explicitly addressable", () => {
-    expect(DEFAULT_OVERLAY_V2_FEATURES).toContain(OVERLAY_V2_DAMAGE);
-    expect(hasOverlayV2Feature(undefined, OVERLAY_V2_DAMAGE)).toBe(true);
-    expect(hasOverlayV2Feature([OVERLAY_V2_DAMAGE], OVERLAY_V2_DAMAGE)).toBe(true);
-  });
-
   it("reads the dents published by Go without recomputing", () => {
     const frame = goldenFrame(20);
     expect(frame.damage.dents.q).toBe("fresh");

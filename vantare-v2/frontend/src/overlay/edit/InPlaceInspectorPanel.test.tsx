@@ -2,7 +2,6 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ProfileDocumentV3, WidgetInstanceV3 } from '../core/profile-document';
 import { createTestTelemetryCoordinator } from '../../hub/overlay-studio/test-helpers';
-import { buildMockTelemetry } from '../core/mock-scenarios';
 import { deltaDefinition } from '../widget-types/delta/delta-definition';
 import { StudioProvider, useStudioDocument } from '../../hub/overlay-studio/state/studio-store';
 import type {
@@ -75,7 +74,6 @@ function createMemoryClient(): StudioProfileClient {
 
 function Harness({ widget }: { widget: WidgetInstanceV3 | null }): React.ReactElement {
   const coordinator = createTestTelemetryCoordinator();
-  coordinator.publish(buildMockTelemetry({ session: 'race', location: 'track' }));
   return (
     <StudioProvider
       client={createMemoryClient()}

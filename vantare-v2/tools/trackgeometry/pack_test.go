@@ -2,6 +2,13 @@ package main
 
 import "testing"
 
+func TestGeneratedAliasesIncludeLMUShortNames(t *testing.T) {
+	got := aliasesForTrack("Sebring International Raceway")
+	if len(got) != 2 || got[0] != "Sebring International Raceway" || got[1] != "Sebring" {
+		t.Fatalf("aliases = %q, want canonical and short names", got)
+	}
+}
+
 func TestIdentifierIsStableKebabAscii(t *testing.T) {
 	for name, want := range map[string]string{
 		"Circuit de Barcelona":            "circuit-de-barcelona",

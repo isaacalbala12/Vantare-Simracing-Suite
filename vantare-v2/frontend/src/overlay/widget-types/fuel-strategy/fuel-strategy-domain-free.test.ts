@@ -2,11 +2,6 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import type { OverlayFrameV2, OverlayUpdateV2 } from "../../../generated/telemetry";
-import {
-  DEFAULT_OVERLAY_V2_FEATURES,
-  OVERLAY_V2_FUEL,
-  hasOverlayV2Feature,
-} from "../../telemetry-shadow/overlay-v2-features";
 import { fuelStrategyDefinition } from "./fuel-strategy-definition";
 import {
   OVERLAY_V2_FUEL_DECLARED_GAPS,
@@ -18,12 +13,6 @@ import {
 const CONTENT = fuelStrategyDefinition.parseContent({});
 
 describe("fuel strategy v2 view model", () => {
-  it("is authoritative by default and remains explicitly addressable", () => {
-    expect(DEFAULT_OVERLAY_V2_FEATURES).toContain(OVERLAY_V2_FUEL);
-    expect(hasOverlayV2Feature(undefined, OVERLAY_V2_FUEL)).toBe(true);
-    expect(hasOverlayV2Feature([OVERLAY_V2_FUEL], OVERLAY_V2_FUEL)).toBe(true);
-  });
-
   it("reads the tank and the laps projection resolved in Go without recomputing", () => {
     const frame = goldenFrame(20);
     expect(frame.fuel.remaining.q).toBe("fresh");
@@ -38,9 +27,9 @@ describe("fuel strategy v2 view model", () => {
     expect(model.requiredFuel).toBeUndefined();
     expect(model.fuelPercent).toBeUndefined();
     expect(model.history).toEqual([]);
-    expect(OVERLAY_V2_FUEL_DECLARED_GAPS).toEqual(
-      expect.arrayContaining(["requiredFuel", "history", "fuelPercent"]),
-    );
+    // A2 publishes requiredFuel and history from the frame; only fuelPercent
+    // stays a declared gap with no canonical signal behind it.
+    expect(OVERLAY_V2_FUEL_DECLARED_GAPS).toEqual(["fuelPercent"]);
   });
 
   it("reads the canonical per-lap consumption without averaging anything itself", () => {

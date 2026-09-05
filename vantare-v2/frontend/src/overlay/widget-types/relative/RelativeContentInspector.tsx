@@ -1,141 +1,48 @@
 import type { CustomInspectorProps } from "../../core/inspector-control";
 import type { WidgetColumnWidthPreset } from "../shared/widget-column";
+import { Check, Field, Seg } from "../../../ui/orbit";
 import {
-  moveRelativeColumn,
-  parseRelativeContent,
-  RELATIVE_COLUMN_TEMPLATES,
-  toggleRelativeColumn,
-  updateRelativeColumn,
-  updateRelativeFilters,
+  moveRelativeColumn, parseRelativeContent, RELATIVE_COLUMN_TEMPLATES,
+  toggleRelativeColumn, updateRelativeColumn, updateRelativeFilters,
 } from "./relative-content";
 
-const WIDTH_PRESET_OPTIONS: readonly WidgetColumnWidthPreset[] = ["xs", "sm", "md", "lg", "auto"];
-const ALIGN_OPTIONS = ["left", "center", "right"] as const;
+const widths: { value: WidgetColumnWidthPreset; label: string }[] = [
+  { value: "xs", label: "Mínima" }, { value: "sm", label: "Estrecha" },
+  { value: "md", label: "Media" }, { value: "lg", label: "Ancha" }, { value: "auto", label: "Auto" },
+];
+const aligns = [{ value: "left", label: "Izquierda" }, { value: "center", label: "Centro" }, { value: "right", label: "Derecha" }] as const;
 
-function templateLabel(columnId: string): string {
-  return RELATIVE_COLUMN_TEMPLATES.find((template) => template.id === columnId)?.label ?? columnId;
-}
-
-export function RelativeContentInspector(props: CustomInspectorProps): React.ReactElement {
-  const { widget, disabled, onContentChange } = props;
+export function RelativeContentInspector({ widget, disabled, onContentChange }: CustomInspectorProps): React.ReactElement {
   const content = parseRelativeContent(widget.content);
-
-  const publish = (nextContent: ReturnType<typeof parseRelativeContent>) => {
-    onContentChange?.(nextContent as Record<string, unknown>);
-  };
-
+  const publish = (next: ReturnType<typeof parseRelativeContent>) => onContentChange?.(next as Record<string, unknown>);
   return (
-    <div data-testid="studio-inspector-section-content" data-widget-id={widget.id}>
-      <fieldset className="osv3-relative-filters" data-testid="studio-relative-filters">
-        <legend>Filtros</legend>
-        <label>
-          Clase
-          <select
-            value={content.classScope}
-            disabled={disabled}
-            data-testid="studio-relative-class-scope"
-            onChange={(event) =>
-              publish(
-                updateRelativeFilters(content, {
-                  classScope: event.target.value as "all" | "sameClass",
-                }),
-              )
-            }
-          >
-            <option value="all">Todas</option>
-            <option value="sameClass">Misma clase</option>
-          </select>
-        </label>
-        <label>
-          Altura fila
-          <select
-            value={content.rowHeightMode}
-            disabled={disabled}
-            data-testid="studio-relative-row-height-mode"
-            onChange={(event) =>
-              publish(
-                updateRelativeFilters(content, {
-                  rowHeightMode: event.target.value as "compact" | "fill",
-                }),
-              )
-            }
-          >
-            <option value="compact">Compacto</option>
-            <option value="fill">Rellenar</option>
-          </select>
-        </label>
-      </fieldset>
-      <ul className="osv3-relative-columns" data-testid="studio-relative-columns">
-        {content.columns.map((column, index) => (
-          <li key={column.id} className="osv3-relative-columns__item" data-testid={`studio-relative-column-${column.id}`}>
-            <label className="osv3-relative-columns__toggle">
-              <input
-                type="checkbox"
-                checked={column.enabled}
-                disabled={disabled}
-                onChange={() => publish(toggleRelativeColumn(content, column.id))}
-              />
-              <span>{templateLabel(column.id)}</span>
-            </label>
-            <div className="osv3-relative-columns__controls">
-              <button
-                type="button"
-                disabled={disabled || index === 0}
-                data-testid={`studio-relative-column-up-${column.id}`}
-                onClick={() => publish(moveRelativeColumn(content, column.id, "up"))}
-              >
-                ↑
-              </button>
-              <button
-                type="button"
-                disabled={disabled || index === content.columns.length - 1}
-                data-testid={`studio-relative-column-down-${column.id}`}
-                onClick={() => publish(moveRelativeColumn(content, column.id, "down"))}
-              >
-                ↓
-              </button>
-              <select
-                value={column.widthPreset}
-                disabled={disabled}
-                data-testid={`studio-relative-column-width-${column.id}`}
-                onChange={(event) =>
-                  publish(
-                    updateRelativeColumn(content, column.id, {
-                      widthPreset: event.target.value as WidgetColumnWidthPreset,
-                    }),
-                  )
-                }
-              >
-                {WIDTH_PRESET_OPTIONS.map((preset) => (
-                  <option key={preset} value={preset}>
-                    {preset}
-                  </option>
-                ))}
-              </select>
-              {column.style?.align !== undefined ||
-              RELATIVE_COLUMN_TEMPLATES.find((template) => template.id === column.id)?.style?.align ? (
-                <select
-                  value={column.style?.align ?? "left"}
-                  disabled={disabled}
-                  data-testid={`studio-relative-column-align-${column.id}`}
-                  onChange={(event) =>
-                    publish(
-                      updateRelativeColumn(content, column.id, {
-                        style: { align: event.target.value as "left" | "center" | "right" },
-                      }),
-                    )
-                  }
-                >
-                  {ALIGN_OPTIONS.map((align) => (
-                    <option key={align} value={align}>
-                      {align}
-                    </option>
-                  ))}
-                </select>
-              ) : null}
-            </div>
-          </li>
-        ))}
+    <div className="orbit-studio-ins__body" data-testid="studio-inspector-section-content" data-widget-id={widget.id}>
+      <div data-testid="studio-relative-filters">
+        <Field label="Clase">
+          <Seg label="Clase" value={content.classScope} wide options={[{ value: "all", label: "Todas", disabled }, { value: "sameClass", label: "Misma clase", disabled }]} onChange={value => publish(updateRelativeFilters(content, { classScope: value as "all" | "sameClass" }))} />
+        </Field>
+        <Field label="Altura de fila">
+          <Seg label="Altura de fila" value={content.rowHeightMode} wide options={[{ value: "compact", label: "Compacta", disabled }, { value: "fill", label: "Rellenar", disabled }]} onChange={value => publish(updateRelativeFilters(content, { rowHeightMode: value as "compact" | "fill" }))} />
+        </Field>
+      </div>
+      <ul className="orbit-studio-cols" data-testid="studio-relative-columns">
+        {content.columns.map((column, index) => {
+          const name = RELATIVE_COLUMN_TEMPLATES.find(t => t.id === column.id)?.label ?? column.id;
+          return (
+            <li key={column.id} className="orbit-studio-cols__item" data-testid={`studio-relative-column-${column.id}`}>
+              <div className="orbit-studio-cols__head">
+                <Check checked={column.enabled} disabled={disabled} label={name} onChange={() => publish(toggleRelativeColumn(content, column.id))}>{name}</Check>
+                <div className="orbit-studio-cols__order">
+                  {(["up", "down"] as const).map(direction => <button key={direction} type="button" className="orbit-icon-btn orbit-icon-btn--28" aria-label={`${direction === "up" ? "Subir" : "Bajar"} · ${name}`} disabled={disabled || (direction === "up" ? index === 0 : index === content.columns.length - 1)} onClick={() => publish(moveRelativeColumn(content, column.id, direction))}>{direction === "up" ? "↑" : "↓"}</button>)}
+                </div>
+              </div>
+              <div className="orbit-studio-cols__controls">
+                <Field label={`Ancho · ${name}`}><Seg label={`Ancho · ${name}`} value={column.widthPreset} options={widths.map(option => ({ ...option, disabled }))} onChange={value => publish(updateRelativeColumn(content, column.id, { widthPreset: value as WidgetColumnWidthPreset }))} wide /></Field>
+                <Field label={`Alineación · ${name}`}><Seg label={`Alineación · ${name}`} value={column.style?.align ?? "center"} options={aligns.map(option => ({ ...option, disabled }))} onChange={value => publish(updateRelativeColumn(content, column.id, { style: { align: value as "left" | "center" | "right" } }))} wide /></Field>
+              </div>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

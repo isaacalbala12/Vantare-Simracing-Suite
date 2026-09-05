@@ -1,21 +1,20 @@
 import type { ReactNode } from "react";
 import { DesignSystemResolutionError } from "./design-system-definition";
 import type { WidgetInstanceV3 } from "./profile-document";
-import type { TelemetrySnapshot } from "./telemetry-snapshot";
 import { widgetTypeRegistry } from "./widget-registry";
 import { prepareWidgetVisualSettings } from "./widget-visual-settings";
 import { WidgetRenderBoundary } from "./WidgetRenderBoundary";
 import type { WidgetDiagnostic, WidgetDiagnosticCollector } from "./widget-diagnostics";
-import { readInputTelemetryHistory, recordInputTelemetrySample } from "../widget-types/input-telemetry/input-telemetry-accumulator";
-import type { InputTelemetryViewModel } from "../widget-types/input-telemetry/input-telemetry-view-model";
 import type { WidgetRuntimeInput } from "./widget-definition";
 import { getOverlayV2ViewModelEntry } from "./overlay-v2-view-models";
+import { buildSettledRelativeViewModelV2 } from "../widget-types/relative/relative-view-model-v2";
+import { isRelativeRedlineTemplateId } from "../design-systems/vantare-endurance/relative/relative-endurance-settings";
+import type { RelativeViewModel } from "../widget-types/relative/relative-view-model";
 
 export type { WidgetDiagnostic, WidgetDiagnosticCollector } from "./widget-diagnostics";
 
 export type WidgetVisualHostProps = {
   widget: WidgetInstanceV3;
-  snapshot?: TelemetrySnapshot;
   renderMode: "studio" | "desktop" | "obs" | "harness";
   onDiagnostic?: (diagnostic: WidgetDiagnostic) => void;
   diagnostics?: WidgetDiagnosticCollector;
@@ -59,8 +58,24 @@ function HostDiagnostic(props: {
   );
 }
 
+function CommittedRedlineRelative(props: {
+  frame: NonNullable<WidgetRuntimeInput["overlayV2Frame"]>;
+  source: NonNullable<WidgetRuntimeInput["overlayV2Source"]>;
+  content: Record<string, unknown>;
+  render: (model: RelativeViewModel) => ReactNode;
+}): ReactNode {
+  // Redline opts into the Go-owned settled membership. The frontend retains
+  // only visual motion; it must not apply a second membership hold.
+  const model = buildSettledRelativeViewModelV2(
+    props.frame,
+    props.source,
+    props.content as never,
+  );
+  return props.render(model);
+}
+
 export function WidgetVisualHost(props: WidgetVisualHostProps): ReactNode {
-  const { widget, snapshot, renderMode } = props;
+  const { widget, renderMode } = props;
 
   let definition;
   try {
@@ -97,70 +112,74 @@ export function WidgetVisualHost(props: WidgetVisualHostProps): ReactNode {
   const source = props.runtime?.overlayV2Source;
   const harnessMode = renderMode === "harness";
   const v2Failure = props.runtime?.overlayV2Failure;
-  // El único rollback diagnóstico se transporta como catálogo vacío; nunca
-  // persiste y en superficies productivas muestra un estado, no pinta V1.
-  const v2Rollback = props.runtime?.overlayV2Features?.length === 0;
-  if (v2Entry && v2Rollback && !harnessMode) {
-    const message = "Overlay V2 diagnostic rollback active";
-    reportDiagnostic(props, "overlay-v2-rollback", message);
-    return <HostDiagnostic widget={widget} code="overlay-v2-rollback" message={message} />;
-  }
-  if (v2Entry && !v2Rollback && v2Failure) {
+  if (v2Entry && v2Failure) {
     const code = `overlay-v2-${v2Failure.code}`;
     reportDiagnostic(props, code, v2Failure.message);
     return <HostDiagnostic widget={widget} code={code} message={v2Failure.message} />;
   }
-  if (v2Entry && !v2Rollback && source?.state === "error") {
+  if (v2Entry && source?.state === "error") {
     const message = source.reason ?? "Overlay V2 source error";
     reportDiagnostic(props, "overlay-v2-source-error", message);
     return <HostDiagnostic widget={widget} code="overlay-v2-source-error" message={message} />;
   }
-  if (v2Entry && !v2Rollback && !harnessMode && !frame) {
+  if (v2Entry && !harnessMode && !frame) {
     const message = "Overlay V2 frame unavailable";
     reportDiagnostic(props, "overlay-v2-frame-missing", message);
     return <HostDiagnostic widget={widget} code="overlay-v2-frame-missing" message={message} />;
   }
-  if (v2Entry && !v2Rollback && !harnessMode && !source) {
+  if (v2Entry && !harnessMode && !source) {
     const message = "Overlay V2 source state unavailable";
     reportDiagnostic(props, "overlay-v2-source-missing", message);
     return <HostDiagnostic widget={widget} code="overlay-v2-source-missing" message={message} />;
   }
 
+  const relativeRedline = widget.type === "relative" &&
+    registration.systemId === "vantare-endurance" &&
+    isRelativeRedlineTemplateId(settings.templateId);
+  const Renderer = registration.Renderer;
+  if (v2Entry && frame && source && relativeRedline) {
+    return (
+      <CommittedRedlineRelative
+        frame={frame}
+        source={source}
+        content={content}
+        render={(model) => (
+          <WidgetRenderBoundary
+            widgetId={widget.id}
+            widgetType={widget.type}
+            systemId={widget.visual.systemId}
+            onError={(error) => reportDiagnostic(props, "renderer-exception", error.message)}
+          >
+            <Renderer model={model} settings={settings} renderMode={renderMode} layout={widget.layout} />
+          </WidgetRenderBoundary>
+        )}
+      />
+    );
+  }
+
   let model;
-  if (v2Entry && !v2Rollback && frame && source) {
-    // V2 se construye primero: el builder V1 no se ejecuta para luego
-    // sobrescribirlo. El renderer recibe únicamente la ViewModel pura.
+  if (v2Entry && frame && source) {
+    // V2 es la única autoridad de telemetría; el renderer recibe únicamente
+    // la ViewModel pura.
     model = v2Entry.buildViewModelV2(
       frame,
       source,
       content,
-      props.runtime,
+      {
+        ...props.runtime,
+        relativeViewModelInstanceKey: props.runtime?.relativeViewModelInstanceKey ?? `${renderMode}:${widget.id}`,
+        relativeViewModelStability: undefined,
+      },
     );
   } else if (!v2Entry && definition.buildAuxiliaryViewModel) {
     model = definition.buildAuxiliaryViewModel(content as never, props.runtime ?? {}, renderMode);
-  } else if (harnessMode && snapshot) {
-    model = definition.buildPreviewViewModel
-      ? definition.buildPreviewViewModel(snapshot, content as never, props.runtime ?? {})
-      : definition.buildRuntimeViewModel
-        ? definition.buildRuntimeViewModel(snapshot, content as never, props.runtime ?? {})
-        : definition.buildViewModel(snapshot, content as never);
   } else {
     const message = `No V2 or auxiliary authority registered for ${widget.type}`;
     reportDiagnostic(props, "widget-authority-missing", message);
     return <HostDiagnostic widget={widget} code="widget-authority-missing" message={message} />;
   }
 
-  if (harnessMode && snapshot && !(v2Entry && !v2Rollback && frame && source) && widget.type === "input-telemetry") {
-    const inputContent = content as { historySeconds: number };
-    recordInputTelemetrySample(widget.id, snapshot);
-    model = {
-      ...model,
-      history: readInputTelemetryHistory(widget.id, snapshot, inputContent.historySeconds),
-    } as InputTelemetryViewModel;
-  }
-
-  const Renderer = registration.Renderer;
-  const staleMessage = v2Entry && !v2Rollback && frame && source?.state === "stale"
+  const staleMessage = v2Entry && frame && source?.state === "stale"
     ? `Overlay V2 stale${source.ageMs !== undefined ? ` (${Math.round(source.ageMs)} ms)` : ""}`
     : undefined;
   if (staleMessage) {
@@ -178,7 +197,7 @@ export function WidgetVisualHost(props: WidgetVisualHostProps): ReactNode {
         systemId={widget.visual.systemId}
         onError={(error) => reportDiagnostic(props, "renderer-exception", error.message)}
       >
-        <Renderer model={model} settings={settings} renderMode={renderMode} />
+        <Renderer model={model} settings={settings} renderMode={renderMode} layout={widget.layout} />
       </WidgetRenderBoundary>
     </>
   );

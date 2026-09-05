@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-989",
+  "type": "fix",
+  "summary": "Studio reconoce ACK equivalentes y Track Map mejora transparencia y clases",
+  "technicalNotes": ["Comparación semántica JSON conservando orden de arrays", "Track Map mantiene el contrato V2 y usa clases disponibles en sus marcadores"],
+  "testing": ["Regresión RED/GREEN de guardado", "Tests Track Map y round-trip Go de persistencia"],
+  "knownLimitations": ["Validación física Wails/LMU pendiente"]
+}

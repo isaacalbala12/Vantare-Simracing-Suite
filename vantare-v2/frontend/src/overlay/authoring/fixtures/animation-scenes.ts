@@ -1,4 +1,4 @@
-import type { AuthoringFixtureWidget } from "./authoring-fixtures";
+import type { WidgetType } from "../../core/profile-document";
 
 /**
  * A single car's state for one frame of a scene. Anything omitted keeps the
@@ -7,7 +7,6 @@ import type { AuthoringFixtureWidget } from "./authoring-fixtures";
 export type SceneOverride = {
   place?: number;
   timeBehindLeader?: number;
-  lapDistanceMeters?: number;
   /** Signed gap to the player, which is what the relative is built around. */
   timeGapToPlayer?: number;
   inPits?: boolean;
@@ -39,7 +38,7 @@ export type SceneFrame = {
 
 export type AnimationScene = {
   id: string;
-  widget: AuthoringFixtureWidget;
+  widget: WidgetType;
   label: string;
   /** What to look at, so a scene is self-explanatory without reading the code. */
   watchFor: string;
@@ -48,18 +47,18 @@ export type AnimationScene = {
   frames: readonly SceneFrame[];
   /**
    * Telemetry field this animation needs, when the live projection does not
-   * deliver it. The mock supplies it, so the scene plays here and never in a
-   * real race — which is exactly the kind of thing a catalog should say out
-   * loud. Kept in sync with UNSUPPORTED_FIELDS in overlay-projection-adapter.
+   * deliver it. Workshop keeps the value absent, so the catalog cannot suggest
+   * a behaviour that a real race will not reproduce. Kept in sync with the
+   * typed V2 presentation-gap catalog.
    */
   unsupportedSignal?: string;
 };
 
 /**
- * The GT3 pair the scenes lean on. Bovy runs ninth with Bruni right behind, far
- * enough down the order that the class block has rows above and below to move.
+ * The same-class Hypercar pair the scenes lean on. Bovy starts seventh and
+ * Bruni tenth, with enough rows around them to make position changes visible.
  */
-const BOVY_BASE = 19.35;
+const BOVY_BASE = 7.404;
 
 /** Best lap of the overall session-best holder in the baseline field. */
 const ALLEN_BEST = 86.408;
@@ -77,14 +76,14 @@ const OVERTAKE_SCENE: AnimationScene = {
     {
       caption: "Adelantamiento consumado",
       cars: {
-        "Gianmaria Bruni": { place: 9, timeBehindLeader: BOVY_BASE - 0.05 },
+        "Gianmaria Bruni": { place: 7, timeBehindLeader: BOVY_BASE - 0.05 },
         "Sarah Bovy": { place: 10, timeBehindLeader: BOVY_BASE + 0.2 },
       },
     },
     {
       caption: "Bruni se escapa",
       cars: {
-        "Gianmaria Bruni": { place: 9, timeBehindLeader: BOVY_BASE - 0.1 },
+        "Gianmaria Bruni": { place: 7, timeBehindLeader: BOVY_BASE - 0.1 },
         "Sarah Bovy": { place: 10, timeBehindLeader: BOVY_BASE + 1.3 },
       },
     },
@@ -134,20 +133,20 @@ const TIRE_CHANGE_SCENE: AnimationScene = {
   widget: "standings",
   label: "Parada y cambio de neumático",
   watchFor:
-    "La fila pasa a modo pit y, al salir, aparece el disco del compuesto junto al dorsal (S rojo, M amarillo, H blanco) antes de replegarse.",
-  unsupportedSignal: "scoring[].tireCompound",
+    "La fila pasa a modo pit y vuelve a pista; el compuesto permanece vacío porque OverlayFrame V2 todavía no lo entrega.",
+  unsupportedSignal: "rows[].tireCompound",
   frameMs: 1800,
-  // The compound has to differ across the stop, or the engine correctly reports
-  // no change and the disc never appears.
+  // The requested compounds document the desired transition. The V2 Workshop
+  // path deliberately ignores them until canonical telemetry can supply them.
   frames: [
-    { caption: "Cameron rueda con medias", cars: { "Duncan Cameron": { tireCompound: "M" } } },
+    { caption: "Cameron rueda; compuesto no disponible", cars: { "Duncan Cameron": { tireCompound: "M" } } },
     { caption: "Entra a boxes", cars: { "Duncan Cameron": { tireCompound: "M", inPits: true } } },
     { caption: "Sigue parado", cars: { "Duncan Cameron": { tireCompound: "M", inPits: true } } },
     {
-      caption: "Sale con blandas — disco S",
+      caption: "Sale a pista; compuesto sigue no disponible",
       cars: { "Duncan Cameron": { tireCompound: "S", timeBehindLeader: 24.5 } },
     },
-    { caption: "El disco se repliega", cars: { "Duncan Cameron": { tireCompound: "S", timeBehindLeader: 24.5 } } },
+    { caption: "Fila asentada sin compuesto", cars: { "Duncan Cameron": { tireCompound: "S", timeBehindLeader: 24.5 } } },
   ],
 };
 
@@ -226,7 +225,8 @@ const FULL_SEQUENCE_SCENE: AnimationScene = {
   id: "standings-full",
   widget: "standings",
   label: "Secuencia completa",
-  watchFor: "Encadena batalla, adelantamiento, parada con cambio de goma, vuelta rápida, abandono y reentrada.",
+  watchFor: "Encadena batalla, adelantamiento, parada y salida sin compuesto inventado, vuelta rápida, abandono y reentrada.",
+  unsupportedSignal: "rows[].tireCompound",
   frameMs: 1400,
   frames: [
     { caption: "Base" },
@@ -236,29 +236,29 @@ const FULL_SEQUENCE_SCENE: AnimationScene = {
     {
       caption: "Adelantamiento",
       cars: {
-        "Gianmaria Bruni": { place: 9, timeBehindLeader: BOVY_BASE - 0.05 },
+        "Gianmaria Bruni": { place: 7, timeBehindLeader: BOVY_BASE - 0.05 },
         "Sarah Bovy": { place: 10, timeBehindLeader: BOVY_BASE + 0.2 },
       },
     },
     {
       caption: "Se escapa",
       cars: {
-        "Gianmaria Bruni": { place: 9, timeBehindLeader: BOVY_BASE - 0.1 },
+        "Gianmaria Bruni": { place: 7, timeBehindLeader: BOVY_BASE - 0.1 },
         "Sarah Bovy": { place: 10, timeBehindLeader: BOVY_BASE + 1.3 },
       },
     },
     {
       caption: "Cameron entra a boxes",
       cars: {
-        "Gianmaria Bruni": { place: 9, timeBehindLeader: BOVY_BASE - 0.1 },
+        "Gianmaria Bruni": { place: 7, timeBehindLeader: BOVY_BASE - 0.1 },
         "Sarah Bovy": { place: 10, timeBehindLeader: BOVY_BASE + 1.3 },
         "Duncan Cameron": { inPits: true },
       },
     },
     {
-      caption: "Sale con blandas; Hanley marca la vuelta rápida",
+      caption: "Sale sin compuesto disponible; Hanley marca la vuelta rápida",
       cars: {
-        "Gianmaria Bruni": { place: 9, timeBehindLeader: BOVY_BASE - 0.1 },
+        "Gianmaria Bruni": { place: 7, timeBehindLeader: BOVY_BASE - 0.1 },
         "Sarah Bovy": { place: 10, timeBehindLeader: BOVY_BASE + 1.3 },
         "Duncan Cameron": { tireCompound: "S", timeBehindLeader: 24.5 },
         "Ben Hanley": { bestLapTime: 85.902 },
@@ -267,7 +267,7 @@ const FULL_SEQUENCE_SCENE: AnimationScene = {
     {
       caption: "Laursen abandona",
       cars: {
-        "Gianmaria Bruni": { place: 9, timeBehindLeader: BOVY_BASE - 0.1 },
+        "Gianmaria Bruni": { place: 7, timeBehindLeader: BOVY_BASE - 0.1 },
         "Sarah Bovy": { place: 10, timeBehindLeader: BOVY_BASE + 1.3 },
         "Duncan Cameron": { tireCompound: "S", timeBehindLeader: 24.5 },
         "Ben Hanley": { bestLapTime: 85.902 },
@@ -291,10 +291,10 @@ const RELATIVE_CROSS_SCENE: AnimationScene = {
     "La fila que cruza al jugador se desliza al otro lado y se lava de color: rojo si te ha pasado, verde si le has pasado tú.",
   frameMs: 1400,
   frames: [
-    { caption: "Bruni te sigue a 0,3 s", cars: { "Gianmaria Bruni": { lapDistanceMeters: 970, timeGapToPlayer: -0.3 } } },
-    { caption: "Te pasa: cruza al otro lado y se lava en rojo", cars: { "Gianmaria Bruni": { lapDistanceMeters: 1_050, timeGapToPlayer: 0.5 } } },
-    { caption: "Se va: 1,4 s por delante", cars: { "Gianmaria Bruni": { lapDistanceMeters: 1_140, timeGapToPlayer: 1.4 } } },
-    { caption: "Lo recuperas: cruza de vuelta en verde", cars: { "Gianmaria Bruni": { lapDistanceMeters: 960, timeGapToPlayer: -0.4 } } },
+    { caption: "Bruni te sigue a 0,3 s", cars: { "Gianmaria Bruni": { timeGapToPlayer: -0.3 } } },
+    { caption: "Te pasa: cruza al otro lado y se lava en rojo", cars: { "Gianmaria Bruni": { timeGapToPlayer: 0.5 } } },
+    { caption: "Se va: 1,4 s por delante", cars: { "Gianmaria Bruni": { timeGapToPlayer: 1.4 } } },
+    { caption: "Lo recuperas: cruza de vuelta en verde", cars: { "Gianmaria Bruni": { timeGapToPlayer: -0.4 } } },
   ],
 };
 
@@ -306,8 +306,8 @@ const RELATIVE_ENTER_SCENE: AnimationScene = {
   frameMs: 1500,
   frames: [
     { caption: "Birch fuera de la ventana", cars: { "Michael Birch": { absent: true } } },
-    { caption: "Aparece por detrás: la fila se despliega", cars: { "Michael Birch": { lapDistanceMeters: 850 } } },
-    { caption: "Ya asentado", cars: { "Michael Birch": { lapDistanceMeters: 850 } } },
+    { caption: "Aparece por detrás: la fila se despliega", cars: { "Michael Birch": {} } },
+    { caption: "Ya asentado", cars: { "Michael Birch": {} } },
   ],
 };
 
@@ -336,12 +336,13 @@ const DELTA_NEW_BEST_SCENE: AnimationScene = {
   widget: "delta",
   label: "Nueva vuelta de referencia",
   watchFor:
-    "Al bajar la mejor vuelta, un barrido morado recorre la fila de referencia: el delta pasa a medirse contra otra vuelta.",
+    "La referencia permanece en su placeholder: OverlayFrame V2 todavía no entrega bestLapText al Delta.",
+  unsupportedSignal: "bestLapText",
   frameMs: 1500,
   frames: [
-    { caption: "Referencia: 1:38.031", player: { bestLapSeconds: 98.031 } },
-    { caption: "Nueva mejor: 1:37.402 — barrido morado", player: { bestLapSeconds: 97.402 } },
-    { caption: "Asentada", player: { bestLapSeconds: 97.402 } },
+    { caption: "Referencia no disponible: V2 mantiene el placeholder", player: { bestLapSeconds: 98.031 } },
+    { caption: "Mejor vuelta recibida fuera del modelo Delta; referencia no disponible", player: { bestLapSeconds: 97.402 } },
+    { caption: "Referencia no disponible: el placeholder no cambia", player: { bestLapSeconds: 97.402 } },
   ],
 };
 
@@ -411,7 +412,7 @@ export function getAnimationScene(id: string): AnimationScene | undefined {
   return ANIMATION_SCENES.find((scene) => scene.id === id);
 }
 
-export function listAnimationScenes(widget: AuthoringFixtureWidget): readonly AnimationScene[] {
+export function listAnimationScenes(widget: WidgetType): readonly AnimationScene[] {
   return ANIMATION_SCENES.filter((scene) => scene.widget === widget);
 }
 

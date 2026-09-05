@@ -24,7 +24,7 @@ describe("RelativeContentInspector", () => {
   it("dispatches one content change when a filter changes", () => {
     const onContentChange = vi.fn();
     render(<RelativeContentInspector widget={createWidget()} onContentChange={onContentChange} />);
-    fireEvent.change(screen.getByTestId("studio-relative-class-scope"), { target: { value: "sameClass" } });
+    fireEvent.click(screen.getByRole("button", { name: "Misma clase" }));
     expect(onContentChange).toHaveBeenCalledTimes(1);
     expect(onContentChange.mock.calls[0]?.[0]).toMatchObject({
       rangeAhead: 2,
@@ -34,3 +34,9 @@ describe("RelativeContentInspector", () => {
     });
   });
 });
+
+ it("uses labelled Orbit controls without abbreviated native selects", () => {
+   const { container } = render(<RelativeContentInspector widget={createWidget()} onContentChange={vi.fn()} />);
+   expect(container.querySelector('select')).toBeNull();
+   expect(screen.getByRole('button', { name: 'Misma clase' })).toBeTruthy();
+ });

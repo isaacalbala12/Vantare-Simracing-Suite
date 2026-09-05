@@ -3,47 +3,12 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import type { OverlayUpdateV2 } from "../../../generated/telemetry";
 import {
-  DEFAULT_OVERLAY_V2_FEATURES,
-  OVERLAY_V2_SESSION,
-  hasOverlayV2Feature,
-} from "../../telemetry-shadow/overlay-v2-features";
-import type { TelemetrySnapshot } from "../../core/telemetry-snapshot";
-import { buildRacingFlagsViewModel } from "./racing-flags-view-model";
-import {
   buildRacingFlagsViewModelV2,
-  racingFlagsDisplayedValues,
 } from "./racing-flags-view-model-v2";
 
 const CONTENT = { showSectorFlags: true, hideWhenGreen: true } as const;
 
-const LEGACY: TelemetrySnapshot = {
-  status: "ready",
-  capturedAt: Date.parse("2026-08-19T12:00:02Z"),
-  session: { type: "race", trackName: "Sebring" },
-  player: { inPit: false },
-  scoring: [],
-};
-
 describe("racing-flags v2 view model", () => {
-  it("is authoritative by default and remains explicitly addressable", () => {
-    expect(DEFAULT_OVERLAY_V2_FEATURES).toContain(OVERLAY_V2_SESSION);
-    expect(hasOverlayV2Feature(undefined, OVERLAY_V2_SESSION)).toBe(true);
-    expect(hasOverlayV2Feature([OVERLAY_V2_SESSION], OVERLAY_V2_SESSION)).toBe(true);
-  });
-
-  it.each([1, 20, 44, 104])(
-    "matches the displayed v1 values for the %i-vehicle Go golden",
-    (vehicles) => {
-      const update = golden(vehicles);
-      if (!update.frame) throw new Error("golden frame missing");
-      const legacy = racingFlagsDisplayedValues(buildRacingFlagsViewModel(LEGACY, CONTENT));
-      const overlayV2 = racingFlagsDisplayedValues(
-        buildRacingFlagsViewModelV2(update.frame, update.source, CONTENT),
-      );
-      expect(overlayV2).toEqual(legacy);
-    },
-  );
-
   it("keeps the flag absent while the canonical state has no flag signal", () => {
     const update = golden(1);
     if (!update.frame) throw new Error("golden frame missing");

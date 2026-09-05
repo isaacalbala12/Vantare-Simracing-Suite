@@ -39,6 +39,11 @@ describe("track geometry pack", () => {
     }
   });
 
+  it("resolves the short Sebring name carried by OverlayFrame V2", () => {
+    expect(resolveTrackGeometry("Sebring", TRACK_GEOMETRY_PACK)?.label)
+      .toBe("Sebring International Raceway");
+  });
+
   it("still refuses a circuit it does not ship", () => {
     for (const name of ["Nürburgring", "Circuit de Barcelona GP", "Suzuka", ""]) {
       expect(resolveTrackGeometry(name, TRACK_GEOMETRY_PACK)).toBeUndefined();

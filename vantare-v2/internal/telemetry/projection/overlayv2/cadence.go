@@ -10,6 +10,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/energy"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/envelope"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/session"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/standings"
 )
 
 // Section names the parts of FrameV2 that can be regulated independently.
@@ -413,6 +414,7 @@ type CachedProjector struct {
 	previous dirtySignals
 	hasPrev  bool
 	memo     FrameV2
+	settled  relativeSettler
 
 	ticks    uint64
 	fullRuns uint64
@@ -555,6 +557,7 @@ func (projector *CachedProjector) Project(
 	}
 	if plan.Rebuild(SectionRelative) {
 		frame.Relative = projector.builders.Relative(final, preferences, source)
+		frame.RelativeSettled = projector.settled.project(final, frame.Relative, header, now)
 	}
 	if plan.Rebuild(SectionSpotter) {
 		frame.Spotter = projector.builders.Spotter(final, preferences, source)
@@ -611,6 +614,14 @@ type dirtySignals struct {
 
 	playerFuel schema.Field[energy.Fuel]
 	fuelPerLap schema.Field[energy.FuelAmount]
+	// fuelHistoryLen and fuelHistoryLast fingerprint exactly what BuildFuel
+	// projects from the canonical series: the newest sample alone decides a
+	// change, because the series only ever appends or drops the oldest entry.
+	// SessionLaps and RequiredFuel also read Derived.SessionRemaining (already
+	// the `remaining` signal) and the player LastLapTime below.
+	fuelHistoryLen  int
+	fuelHistoryLast derive.FuelLapSample
+	playerLastLap   schema.Field[standings.LapTime]
 	// standingsMark fingerprints exactly the fields BuildStandings projects
 	// (see hashStandingsVehicle), so a signal the builder ignores never marks
 	// the section dirty and any projected change always does.
@@ -652,9 +663,14 @@ func observeDirtySignals(header envelope.Header, final derive.FinalState, source
 		if player, present := current.Player.Value(); present && player {
 			signals.playerFuel = current.Fuel
 			signals.playerDamage = current.Damage
+			signals.playerLastLap = current.LastLapTime
 		}
 	}
 	signals.relativeMark = hashRelativeMark(final)
+	signals.fuelHistoryLen = len(final.Derived.Fuel.History.Samples)
+	if signals.fuelHistoryLen > 0 {
+		signals.fuelHistoryLast = final.Derived.Fuel.History.Samples[signals.fuelHistoryLen-1]
+	}
 	return signals
 }
 
@@ -688,7 +704,9 @@ func (signals dirtySignals) diff(previous dirtySignals) DirtySet {
 	} else if signals.spatialMark != previous.spatialMark {
 		dirty = dirty.Mark(SectionSpotter)
 	}
-	if signals.playerFuel != previous.playerFuel || signals.fuelPerLap != previous.fuelPerLap {
+	if signals.playerFuel != previous.playerFuel || signals.fuelPerLap != previous.fuelPerLap ||
+		signals.fuelHistoryLen != previous.fuelHistoryLen || signals.fuelHistoryLast != previous.fuelHistoryLast ||
+		signals.remaining != previous.remaining || signals.playerLastLap != previous.playerLastLap {
 		dirty = dirty.Mark(SectionFuel)
 	}
 	if signals.playerDamage != previous.playerDamage {

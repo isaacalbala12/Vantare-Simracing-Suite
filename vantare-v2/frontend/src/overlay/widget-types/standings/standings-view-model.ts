@@ -1,22 +1,13 @@
-import type { TelemetrySnapshot } from "../../core/telemetry-snapshot";
 import type { WidgetViewModelBase } from "../../core/widget-definition";
-import { readScoringBoolean, readScoringNumber, readScoringString } from "../shared/scoring-readers";
 import type { WidgetColumnV3 } from "../shared/widget-column";
-import type { StandingsContent } from "./standings-content";
-import { getEnabledStandingsColumns } from "./standings-content";
-import {
-  formatRemainingTime,
-  formatStandingsColumnValue,
-  formatStandingsPit,
-  resolveStandingsSessionMode,
-  type StandingsScoringRow,
-} from "./standings-formatting";
-
-const PLACEHOLDER = "—";
 
 export type StandingsRowViewModel = {
   id: string;
   position: number;
+  /** Explicit same-session starting-grid position. Absent means no delta authority. */
+  gridPosition?: number;
+  /** Session/epoch identity that authorised gridPosition. */
+  gridSessionIdentity?: string;
   driverNumber: string;
   driverName: string;
   configuredDriverName?: string;
@@ -42,78 +33,21 @@ export type StandingsViewModel = WidgetViewModelBase & {
   lapText?: string;
   columns: readonly WidgetColumnV3[];
   rows: readonly StandingsRowViewModel[];
+  /** Productive stream identity used only to discard ephemeral motion state. */
+  motionIdentity?: string;
+  motionSequence?: number;
 };
 
-function buildUnavailableModel(
-  status: StandingsViewModel["status"],
-  content: StandingsContent,
-  statusMessage?: string,
+export function withStandingsMotionIdentity(
+  model: StandingsViewModel,
+  identity: string,
+  sequence: number,
 ): StandingsViewModel {
-  return {
-    type: "standings",
-    status,
-    statusMessage,
-    activeClass: PLACEHOLDER,
-    sessionLabel: PLACEHOLDER,
-    remainingText: PLACEHOLDER,
-    columns: getEnabledStandingsColumns(content),
-    rows: [],
-  };
-}
-
-function sessionLabelFromSnapshot(snapshot: TelemetrySnapshot): string {
-  return snapshot.session.type.toUpperCase();
-}
-
-function sortScoringRows(rows: readonly StandingsScoringRow[]): StandingsScoringRow[] {
-  return [...rows].sort(
-    (left, right) => (readScoringNumber(left, "place") ?? 99) - (readScoringNumber(right, "place") ?? 99),
-  );
-}
-
-function resolveActiveClass(rows: readonly StandingsScoringRow[]): string {
-  const player = rows.find((row) => readScoringBoolean(row, "isPlayer"));
-  const fallback = rows[0];
-  return String(player?.vehicleClass ?? fallback?.vehicleClass ?? "HYPERCAR");
-}
-
-function buildRowViewModel(
-  row: StandingsScoringRow,
-  classLeader: StandingsScoringRow | undefined,
-  mode: ReturnType<typeof resolveStandingsSessionMode>,
-  columns: readonly WidgetColumnV3[],
-  driverNameColumn: WidgetColumnV3 | undefined,
-  index: number,
-): StandingsRowViewModel | null {
-  const id = readScoringString(row, "id") ?? String(readScoringNumber(row, "id") ?? index);
-  if (!id) {
-    return null;
-  }
-  const columnValues = Object.fromEntries(
-    columns.map((column) => [column.metricId, formatStandingsColumnValue(column.metricId, row, classLeader, mode, column)]),
-  ) as Record<string, string>;
-
-  return {
-    id,
-    position: readScoringNumber(row, "place") ?? index + 1,
-    driverNumber: columnValues.driverNumber ?? "",
-    driverName: columnValues.driverName ?? PLACEHOLDER,
-    configuredDriverName: driverNameColumn
-      ? formatStandingsColumnValue("driverName", row, classLeader, mode, driverNameColumn)
-      : readScoringString(row, "driverName") ?? PLACEHOLDER,
-    vehicleClass: readScoringString(row, "vehicleClass") ?? "",
-    teamCode: readScoringString(row, "teamCode") ?? "",
-    teamBrandColor: readScoringString(row, "teamBrandColor") ?? "",
-    gapText: columnValues.gap ?? PLACEHOLDER,
-    intervalText: columnValues.interval ?? PLACEHOLDER,
-    currentLapText: columnValues.currentLap ?? "",
-    lastLapText: columnValues.lastLap ?? PLACEHOLDER,
-    bestLapText: columnValues.bestLap ?? PLACEHOLDER,
-    pitText: formatStandingsPit(row),
-    tireCompound: String(row.tireCompound ?? ""),
-    isPlayer: readScoringBoolean(row, "isPlayer") ?? false,
-    isLeader: index === 0,
-  };
+  Object.defineProperties(model, {
+    motionIdentity: { value: identity, enumerable: false },
+    motionSequence: { value: sequence, enumerable: false },
+  });
+  return model;
 }
 
 export function resolveStandingsCellValue(
@@ -146,79 +80,4 @@ export function resolveStandingsCellValue(
     default:
       return "—";
   }
-}
-
-export function buildStandingsViewModel(
-  snapshot: TelemetrySnapshot,
-  content: StandingsContent,
-): StandingsViewModel {
-  const columns = getEnabledStandingsColumns(content);
-  const driverNameColumn = content.columns.find((column) => column.metricId === "driverName");
-  if (snapshot.status === "disconnected") {
-    return buildUnavailableModel("disconnected", content);
-  }
-  if (snapshot.status === "missing") {
-    return buildUnavailableModel("missing", content);
-  }
-  if (snapshot.status === "stale") {
-    return buildUnavailableModel("stale", content);
-  }
-  if (snapshot.status === "error") {
-    return buildUnavailableModel("error", content, snapshot.errorMessage);
-  }
-
-  const mode = resolveStandingsSessionMode(snapshot.session.type);
-  const sorted = sortScoringRows(snapshot.scoring);
-  const activeClass = resolveActiveClass(sorted).toUpperCase();
-  const classRows =
-    content.classScope === "all-classes"
-      ? sorted
-      : sorted.filter((row) => {
-          const rowClass = String(row.vehicleClass ?? "").toUpperCase();
-          if (!rowClass) {
-            return true;
-          }
-          return rowClass === activeClass;
-        });
-  const maxRows = content.rowCount ?? 20;
-  const limited = classRows.slice(0, maxRows);
-  const leader = limited[0];
-  const classLeaders = new Map<string, StandingsScoringRow>();
-  if (content.classScope === "all-classes") {
-    for (const row of limited) {
-      const rowClass = String(row.vehicleClass ?? "").toUpperCase();
-      if (!classLeaders.has(rowClass)) {
-        classLeaders.set(rowClass, row);
-      }
-    }
-  }
-  const rows = limited
-    .map((row, index) => {
-      const rowLeader =
-        content.classScope === "all-classes"
-          ? classLeaders.get(String(row.vehicleClass ?? "").toUpperCase()) ?? leader
-          : leader;
-      return buildRowViewModel(row, rowLeader, mode, columns, driverNameColumn, index);
-    })
-    .filter((row): row is StandingsRowViewModel => row !== null);
-
-  const lapNumber = snapshot.player.lapNumber;
-  const totalLaps = snapshot.player.totalLaps;
-  const lapText =
-    typeof lapNumber === "number" && lapNumber > 0
-      ? typeof totalLaps === "number" && totalLaps > 0
-        ? `${lapNumber}/${totalLaps}`
-        : String(lapNumber)
-      : undefined;
-
-  return {
-    type: "standings",
-    status: "ready",
-    activeClass,
-    sessionLabel: sessionLabelFromSnapshot(snapshot),
-    remainingText: formatRemainingTime(snapshot.session.remainingSeconds),
-    ...(lapText ? { lapText } : {}),
-    columns,
-    rows,
-  };
 }

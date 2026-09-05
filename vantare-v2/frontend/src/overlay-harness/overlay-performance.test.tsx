@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { buildMockTelemetry } from "../overlay/core/mock-scenarios";
+import { buildAuthoringV2ScenarioRuntime } from "../overlay/authoring/fixtures/authoring-v2-scenario-fixture";
 import { createTelemetryRateCoordinator } from "../overlay/core/telemetry-rate-coordinator";
 
 describe("Overlay Studio V3 performance contracts", () => {
@@ -20,11 +20,24 @@ describe("Overlay Studio V3 performance contracts", () => {
       }),
     });
     const listeners = Array.from({ length: 20 }, () => vi.fn());
-    listeners.forEach((listener) => coordinator.subscribe(15, listener));
-    coordinator.subscribe(30, vi.fn());
+    listeners.forEach((listener) => coordinator.subscribe(undefined, listener));
+    coordinator.subscribe(undefined, vi.fn());
+
+    const runtime = buildAuthoringV2ScenarioRuntime({
+      session: "race",
+      location: "track",
+      state: "ready",
+      widget: "delta",
+      system: "vantare-endurance",
+      variant: "default",
+    });
+    if (!runtime.overlayV2Frame) throw new Error("golden V2 frame missing");
 
     for (let index = 0; index < 120; index += 1) {
-      coordinator.publish(buildMockTelemetry({ session: "race", location: "track" }));
+      coordinator.setOverlayFrame(
+        { ...runtime.overlayV2Frame, sequence: index + 1 },
+        runtime.overlayV2Source,
+      );
     }
     frame?.();
 
@@ -48,12 +61,11 @@ describe("Overlay Studio V3 performance contracts", () => {
     });
     const oldListener = vi.fn();
     const newListener = vi.fn();
-    const unsubscribeOld = coordinator.subscribe(15, oldListener);
-    coordinator.subscribe(30, newListener);
+    const unsubscribeOld = coordinator.subscribe(undefined, oldListener);
+    coordinator.subscribe(undefined, newListener);
     unsubscribeOld();
 
     expect(stops).toBe(0);
-    coordinator.publish(buildMockTelemetry({ session: "race", location: "track" }));
     expect(oldListener).not.toHaveBeenCalled();
     expect(newListener).not.toHaveBeenCalled();
     coordinator.dispose();

@@ -8,6 +8,7 @@ import (
 
 	"github.com/vantare/overlays/v2/internal/telemetry/catalog"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/damage"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/pit"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/session"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/spatial"
@@ -256,6 +257,72 @@ func TestFusionFrozenSharedMemoryStalesWholeGridIncludingFalseInPit(t *testing.T
 		got.Vehicles[0].Orientation.Freshness() != schema.FreshnessStale {
 		t.Fatalf("stale spatial grid=%#v", got.Vehicles[0])
 	}
+}
+
+func TestFusionFrozenSourceStalesDamageRowAndTop(t *testing.T) {
+	wall := time.Unix(903, 0).UTC()
+	damaged := damage.State{Dents: [8]damage.Severity{1}, Overheating: true}
+	shared := sharedObservation(wall, "track")
+	shared.SourceTime = fieldWithFreshness(time.Duration(0), schema.FreshnessStale)
+	shared.PlayerPresent = fieldWithFreshness(true, schema.FreshnessStale)
+	shared.Vehicles = []VehicleObservation{
+		{
+			SourceID: 1, Player: observed(true), Position: observed(standings.Position(1)),
+			WorldPosition: observed(spatial.Position{}), Damage: observed(damaged),
+		},
+		{
+			SourceID: 2, Player: observed(false), Position: observed(standings.Position(2)),
+			Damage: schema.MissingField[damage.State](),
+		},
+		{
+			SourceID: 3, Player: observed(false), Position: observed(standings.Position(3)),
+			Damage: invalid[damage.State](),
+		},
+	}
+	got := (&Fusion{}).Merge(wall, 0, shared)
+	if len(got.Vehicles) != 3 || got.Vehicles[0].SourceID != 1 || got.Vehicles[1].SourceID != 2 || got.Vehicles[2].SourceID != 3 {
+		t.Fatalf("grid identity/order changed: %#v", got.Vehicles)
+	}
+	if player, present := got.Vehicles[0].Player.Value(); !present || !player {
+		t.Fatalf("player identity lost: %#v", got.Vehicles[0].Player)
+	}
+	if got.Vehicles[0].WorldPosition.Freshness() != schema.FreshnessStale {
+		t.Fatalf("control spatial field did not go stale: %v", got.Vehicles[0].WorldPosition.Freshness())
+	}
+	if got.Vehicles[0].Damage.Freshness() != schema.FreshnessStale {
+		t.Fatalf("frozen damage row freshness = %v, want stale", got.Vehicles[0].Damage.Freshness())
+	}
+	assertFieldValue(t, got.Vehicles[0].Damage, damaged)
+	assertFieldValue(t, got.Damage, damaged)
+	if got.Damage.Freshness() != schema.FreshnessStale {
+		t.Fatalf("published player damage freshness = %v, want stale", got.Damage.Freshness())
+	}
+	if got.Vehicles[1].Damage.Freshness() != schema.FreshnessMissing {
+		t.Fatalf("missing damage changed to %v", got.Vehicles[1].Damage.Freshness())
+	}
+	if got.Vehicles[2].Damage.Freshness() != schema.FreshnessInvalid {
+		t.Fatalf("invalid damage changed to %v", got.Vehicles[2].Damage.Freshness())
+	}
+
+	var fusion Fusion
+	fresh := sharedObservation(wall, "track")
+	fresh.PlayerPresent = observed(true)
+	fresh.Vehicles = []VehicleObservation{{
+		SourceID: 1, Player: observed(true), Position: observed(standings.Position(1)),
+		WorldPosition: observed(spatial.Position{}), Damage: observed(damaged),
+	}}
+	if expired := fusion.Merge(wall, 0, fresh); expired.Vehicles[0].Damage.Freshness() != schema.FreshnessFresh {
+		t.Fatalf("fresh damage = %v, want fresh", expired.Vehicles[0].Damage.Freshness())
+	}
+	expired := fusion.Merge(wall, defaultFreshnessLimit+time.Nanosecond)
+	if expired.Vehicles[0].Damage.Freshness() != schema.FreshnessStale {
+		t.Fatalf("ttl-expired damage row freshness = %v, want stale", expired.Vehicles[0].Damage.Freshness())
+	}
+	assertFieldValue(t, expired.Vehicles[0].Damage, damaged)
+	if expired.Damage.Freshness() != schema.FreshnessStale {
+		t.Fatalf("ttl-expired published damage freshness = %v, want stale", expired.Damage.Freshness())
+	}
+	assertFieldValue(t, expired.Damage, damaged)
 }
 
 func TestFusionPublishesInPitOnlyFromSharedMemoryWithExplicitFalsePresence(t *testing.T) {

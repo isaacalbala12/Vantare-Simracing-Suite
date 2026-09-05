@@ -227,7 +227,6 @@ func performanceRateFromJSON(raw json.RawMessage) (performancepolicy.WidgetRate,
 type AppSettings struct {
 	SchemaVersion               int                         `json:"schemaVersion"`
 	CpuSampling                 bool                        `json:"cpuSampling"`
-	OverlayV1Emit               bool                        `json:"overlayV1Emit,omitempty"`
 	Performance                 PerformanceSettings         `json:"performance"`
 	Notifications               NotificationSettings        `json:"notifications"`
 	Hotkeys                     map[string]string           `json:"hotkeys"`
@@ -487,7 +486,9 @@ const appSettingsSchemaVersion = 6
 //	          level-1 sentinel was written by the temporary rollout and migrates
 //	          with a visible marker; an explicit user source or any other choice
 //	          is preserved. The migration is never applied to schema v5+.
-//	v5 -> v6: persist the diagnostic Overlay V1 emission switch, off by default.
+//	v5 -> v6: retira el interruptor diagnostico Overlay V1 sin depender de el.
+//	Un JSON antiguo que aun contenga la clave retirada se ignora de forma
+//	segura porque el decodificador desconoce la clave. SchemaVersion queda en 6.
 func (s *SettingsService) migrateSettings(settings *AppSettings) {
 	if settings.SchemaVersion == 0 {
 		settings.SchemaVersion = 1
@@ -534,7 +535,6 @@ func (s *SettingsService) migrateSettings(settings *AppSettings) {
 		settings.SchemaVersion = 5
 	}
 	if settings.SchemaVersion < 6 {
-		settings.OverlayV1Emit = false
 		settings.SchemaVersion = 6
 	}
 }
@@ -828,7 +828,6 @@ func (s *SettingsService) applyLoaded(loaded *AppSettings) {
 	merged := &AppSettings{
 		SchemaVersion:               loaded.SchemaVersion,
 		CpuSampling:                 loaded.CpuSampling,
-		OverlayV1Emit:               loaded.OverlayV1Emit,
 		Performance:                 loaded.Performance,
 		Notifications:               loaded.Notifications,
 		ActiveOverlayProfileID:      loaded.ActiveOverlayProfileID,

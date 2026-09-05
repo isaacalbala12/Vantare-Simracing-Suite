@@ -1,12 +1,13 @@
 import type { ComponentType } from "react";
 import type { InspectorCapability } from "./inspector-control";
-import type { WidgetType, DesignSystemId } from "./profile-document";
+import type { WidgetType, DesignSystemId, WidgetLayoutV3 } from "./profile-document";
 import type { WidgetViewModelBase } from "./widget-definition";
 
 export type WidgetRendererProps<TModel extends WidgetViewModelBase = WidgetViewModelBase> = {
   model: TModel;
   settings: Readonly<Record<string, unknown>>;
   renderMode: "studio" | "desktop" | "obs" | "harness";
+  layout?: Pick<WidgetLayoutV3, "w" | "h">;
 };
 
 export type WidgetSystemInspectorCapability = Pick<

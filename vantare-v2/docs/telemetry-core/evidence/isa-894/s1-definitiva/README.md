@@ -8,7 +8,9 @@ Contenido publicado:
   tres checkpoints.
 - `SHA256SUMS`: hashes de todos los ficheros del paquete.
 - `recalcular.mjs`: recalcula paridad, V1 OFF, delivery y la reducción
-  post-warm-up a partir de las crudas publicadas.
+  post-warm-up a partir de las crudas publicadas. Incluye la clausura exacta
+  del resumen usada al publicar el paquete en `659b2c57`; no depende del
+  colector V1 retirado ni adopta cambios posteriores de sus criterios.
 
 Cada fase contiene `sesion.json`, `procesos.csv`, `resumen.json` regenerado y
 los JSON de `checkpoints/`. No se publican logs, perfiles de usuario,

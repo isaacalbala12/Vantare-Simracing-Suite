@@ -22,13 +22,30 @@ func TestOverlayV1EmissionGuard(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	text := string(runtimeSource)
-	if strings.Count(text, "overlayprojection.ProjectV1(final)") != 1 ||
-		!strings.Contains(text, "if sink.runtime.overlayV1Emit {\n\t\tvar err error\n\t\toverlayProjected, err = overlayprojection.ProjectV1(final)") {
-		t.Fatal("Overlay V1 projection must have one construction site behind overlayV1Emit")
-	}
-	if !strings.Contains(text, "if runtime.overlayV1Emit {\n\t\toverlayStatus, err := telemetrytransport.NewStatus(") {
-		t.Fatal("Overlay V1 status publication must stay behind overlayV1Emit")
+	text := strings.ReplaceAll(string(runtimeSource), "ProductOverlayV2", "")
+	// R6b: el Hub Overlay V1 inerte esta fisicamente retirado del runtime.
+	// Ni campo, ni constructor ProductOverlay, ni accessor Hub(), ni
+	// import overlayprojection, ni cierre, ni metricas Overlay. Strategy V1
+	// conserva su semantica y su ProjectV1 queda fuera de esta prohibicion.
+	// ProductOverlayV2 es el transporte vivo y contiene el prefijo
+	// ProductOverlay: se enmascara arriba para que el token sin coma no lo
+	// marque.
+	for _, forbidden := range []string{
+		"overlayprojection.ProjectV1(final)",
+		"NewOverlayFull",
+		"overlayV1Emit",
+		"OverlayV1Emit",
+		"VANTARE_OVERLAY_V1_EMIT",
+		"runtime.hub.PublishSnapshot",
+		"runtime.hub.PublishStatus",
+		"overlayprojection",
+		"Product: telemetrytransport.ProductOverlay",
+		"func (runtime *TelemetryCoreRuntime) Hub()",
+		"runtime.hub",
+	} {
+		if strings.Contains(text, forbidden) {
+			t.Fatalf("retired Overlay V1 production still present in runtime: %q", forbidden)
+		}
 	}
 
 	for _, directory := range []string{"cmd", "internal"} {
@@ -46,6 +63,11 @@ func TestOverlayV1EmissionGuard(t *testing.T) {
 			source := string(data)
 			if hasGlobalOverlayV1Emission(source) {
 				t.Errorf("global Overlay V1 emission forbidden in %s", filepath.ToSlash(path))
+			}
+			for _, forbidden := range []string{"overlayV1Emit", "OverlayV1Emit", "VANTARE_OVERLAY_V1_EMIT"} {
+				if strings.Contains(source, forbidden) {
+					t.Errorf("retired Overlay V1 switch forbidden in %s: %q", filepath.ToSlash(path), forbidden)
+				}
 			}
 			return nil
 		})
@@ -68,7 +90,7 @@ func TestOverlayV1EmissionGuardRejectsEveryEmitterVariant(t *testing.T) {
 		{name: "local assignment alias", source: `package sample; func f() { projection := "telemetry:overlay:projection"; emitter.Emit(projection, nil) }`, want: true},
 		{name: "closure local assignment alias", source: `package sample; func f() { callback := func() { event := "telemetry:overlay:projection"; emitter.Emit(event, nil) }; _ = callback }`, want: true},
 		{name: "negated diagnostic switch", source: `package sample; func f() { if !runtime.overlayV1Emit { emitter.Emit("telemetry:overlay:projection", nil) } }`, want: true},
-		{name: "diagnostic switch", source: `package sample; func f() { if runtime.overlayV1Emit { emitter.Emit("telemetry:overlay:projection", nil) } }`},
+		{name: "diagnostic switch", source: `package sample; func f() { if runtime.overlayV1Emit { emitter.Emit("telemetry:overlay:projection", nil) } }`, want: true},
 		{name: "v2 stays allowed", source: `package sample; func f() { emitter.Emit("telemetry:overlay-v2:snapshot", nil) }`},
 	}
 	for _, test := range tests {
@@ -102,7 +124,7 @@ func hasGlobalOverlayV1Emission(source string) bool {
 		}
 		bindings := stringBindingsAt(file, call.Pos())
 		for name := range resolveStrings(call.Args[0], bindings, nil) {
-			if _, blocked := forbidden[name]; blocked && !insideOverlayV1Switch(file, call) {
+			if _, blocked := forbidden[name]; blocked {
 				violation = true
 				return false
 			}
@@ -204,32 +226,4 @@ func resolveStrings(expression ast.Expr, bindings map[string][]ast.Expr, resolvi
 		}
 	}
 	return resolved
-}
-
-func insideOverlayV1Switch(file *ast.File, call *ast.CallExpr) bool {
-	guarded := false
-	ast.Inspect(file, func(node ast.Node) bool {
-		statement, ok := node.(*ast.IfStmt)
-		if !ok || call.Pos() < statement.Body.Pos() || call.End() > statement.Body.End() {
-			return true
-		}
-		guarded = positiveOverlayV1Condition(statement.Cond)
-		return !guarded
-	})
-	return guarded
-}
-
-func positiveOverlayV1Condition(expression ast.Expr) bool {
-	switch condition := expression.(type) {
-	case *ast.Ident:
-		return condition.Name == "overlayV1Emit"
-	case *ast.SelectorExpr:
-		return condition.Sel.Name == "overlayV1Emit"
-	case *ast.ParenExpr:
-		return positiveOverlayV1Condition(condition.X)
-	case *ast.BinaryExpr:
-		return condition.Op == token.LAND && (positiveOverlayV1Condition(condition.X) || positiveOverlayV1Condition(condition.Y))
-	default:
-		return false
-	}
 }

@@ -1,3 +1,4 @@
+import { parseStandingsContent } from "../../../overlay/widget-types/standings/standings-content";
 import {
   parseProfileDocumentV3,
   ProfileDocumentValidationError,
@@ -301,7 +302,19 @@ function applyWidgetContent(document: ProfileDocumentV3, command: Extract<Studio
     requireKnownWidgetIds(widgets, command.widgetIds, command.type);
     const targets = new Set(command.widgetIds);
     const content = structuredClone(command.content);
-    return widgets.map((widget) => (targets.has(widget.id) ? { ...widget, content } : widget));
+    return widgets.map((widget) => {
+      if (!targets.has(widget.id)) return widget;
+      if (widget.type !== "standings" || widget.visual.systemId !== "vantare-crystal") return { ...widget, content };
+      const previousRows = parseStandingsContent(widget.content).rowCount;
+      const rows = parseStandingsContent(content).rowCount;
+      if (rows === previousRows || rows === undefined) return { ...widget, content };
+      // Explicit content edit only: the persisted frame is never derived from live cars.
+      const settings = { ...widget.visual.baseSettings, ...widget.visual.appearanceOverrides };
+      const header = settings.showSessionHeader === false ? 0 : 40;
+      const rowHeight = settings.compactRows === true ? 28 : 34;
+      const h = Math.max(240, Math.ceil((header + 26 + rows * rowHeight + 26 + 2) * widget.layout.w / 520));
+      return { ...widget, content, layout: { ...widget.layout, h } };
+    });
   });
 }
 

@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/vantare/overlays/v2/internal/telemetry/projection"
-	"github.com/vantare/overlays/v2/internal/telemetry/projection/overlay"
 	"github.com/vantare/overlays/v2/internal/telemetry/projection/strategy"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
 )
@@ -44,7 +43,6 @@ type SnapshotKind string
 type ProductID string
 
 const (
-	ProductOverlay  ProductID = "overlay"
 	ProductEngineer ProductID = "engineer"
 	ProductStrategy ProductID = "strategy"
 	ProductAnalysis ProductID = "analysis"
@@ -169,14 +167,6 @@ func NewHub(config HubConfig) *Hub {
 			MaxPayloadBytes: maxPayload,
 		},
 	}
-}
-
-func NewOverlayFull(
-	metadata projection.Metadata,
-	statusRevision uint64,
-	payload overlay.PayloadV1,
-) (Envelope, error) {
-	return newFull(ProductOverlay, metadata, statusRevision, payload)
 }
 
 func NewStrategyFull(
@@ -585,7 +575,7 @@ func cursorRelation(previous, next Envelope) (contiguous bool, valid bool) {
 
 func knownProduct(product ProductID) bool {
 	switch product {
-	case ProductOverlay, ProductEngineer, ProductStrategy, ProductAnalysis:
+	case ProductEngineer, ProductStrategy, ProductAnalysis:
 		return true
 	default:
 		return false

@@ -1,5 +1,3 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   ANIMATION_SCENES,
@@ -7,44 +5,44 @@ import {
   listAnimationScenes,
   sceneFrameAt,
 } from "./animation-scenes";
-import { buildAuthoringFixtureTelemetry, buildAuthoringFixtureWidget } from "./authoring-fixtures";
-import { buildStandingsViewModel } from "../../widget-types/standings/standings-view-model";
+import { buildWorkshopFrameV2, createScenarioWidget, type WorkshopV2Scenario } from "./authoring-v2-workshop-frame";
+import { buildStandingsViewModelV2 } from "../../widget-types/standings/standings-view-model-v2";
 import { parseStandingsContent } from "../../widget-types/standings/standings-content";
 import { deriveStandingsEvents, deriveBattlePairs } from "../../design-systems/vantare-endurance/standings/standings-motion";
 import { deriveRelativeEvents } from "../../design-systems/vantare-endurance/relative/relative-motion";
-import { buildRelativeViewModel } from "../../widget-types/relative/relative-view-model";
+import { buildRelativeViewModelV2 } from "../../widget-types/relative/relative-view-model-v2";
 import { parseRelativeContent } from "../../widget-types/relative/relative-content";
+import { projectionGapsFor } from "./projection-gaps";
 
-function relativeModelAt(sceneId: string, frame: number) {
-  const scenario = {
+function scenario(widget: "standings" | "relative", sceneId: string, sceneFrame: number): WorkshopV2Scenario {
+  return {
     session: "race",
     location: "track",
     state: "ready",
-    widget: "relative",
+    widget,
     system: "vantare-endurance",
-    surface: "obs",
+    variant: "default",
     sceneId,
-    sceneFrame: frame,
-  } as const;
-  const widget = buildAuthoringFixtureWidget(scenario);
-  const snapshot = buildAuthoringFixtureTelemetry(scenario);
-  return buildRelativeViewModel(snapshot, parseRelativeContent(widget.content));
+    sceneFrame,
+  };
+}
+
+function relativeModelAt(sceneId: string, frame: number) {
+  const input = scenario("relative", sceneId, frame);
+  const runtime = buildWorkshopFrameV2(input);
+  const widget = createScenarioWidget(input);
+  return buildRelativeViewModelV2(
+    runtime.overlayV2Frame!, runtime.overlayV2Source!, parseRelativeContent(widget.content),
+  );
 }
 
 function modelAt(sceneId: string, frame: number) {
-  const scenario = {
-    session: "race",
-    location: "track",
-    state: "ready",
-    widget: "standings",
-    system: "vantare-endurance",
-    surface: "obs",
-    sceneId,
-    sceneFrame: frame,
-  } as const;
-  const widget = buildAuthoringFixtureWidget(scenario);
-  const snapshot = buildAuthoringFixtureTelemetry(scenario);
-  return buildStandingsViewModel(snapshot, parseStandingsContent(widget.content));
+  const input = scenario("standings", sceneId, frame);
+  const runtime = buildWorkshopFrameV2(input);
+  const widget = createScenarioWidget(input);
+  return buildStandingsViewModelV2(
+    runtime.overlayV2Frame!, runtime.overlayV2Source!, parseStandingsContent(widget.content),
+  );
 }
 
 describe("animation scene catalog", () => {
@@ -73,18 +71,13 @@ describe("animation scene catalog", () => {
     }
   });
 
-  // If the projection starts delivering one of these, the warning becomes a
-  // lie. Reading the adapter's own list keeps the two from drifting apart.
-  it("only flags signals the projection actually declares unsupported", () => {
-    const adapter = readFileSync(
-      join(process.cwd(), "src/overlay/projection/overlay-projection-adapter.ts"),
-      "utf8",
-    );
-    const declared = [...adapter.matchAll(/targetPath: "([^"]+)"/g)].map((match) => match[1]);
-    expect(declared.length).toBeGreaterThan(0);
+  it("only flags gaps declared by the V2 presentation contract", () => {
     for (const scene of ANIMATION_SCENES) {
       if (scene.unsupportedSignal) {
-        expect(declared, `${scene.id} flags a signal the adapter does not list`).toContain(
+        expect(
+          projectionGapsFor(scene.widget).map((gap) => gap.field),
+          `${scene.id} flags a signal the V2 presentation contract does not list`,
+        ).toContain(
           scene.unsupportedSignal,
         );
       }
@@ -93,8 +86,13 @@ describe("animation scene catalog", () => {
 
   it("warns that the tire disc never fires against live telemetry", () => {
     expect(getAnimationScene("standings-tire-change")?.unsupportedSignal).toBe(
-      "scoring[].tireCompound",
+      "rows[].tireCompound",
     );
+    expect(getAnimationScene("standings-full")?.unsupportedSignal).toBe("rows[].tireCompound");
+    expect(getAnimationScene("delta-new-best")?.unsupportedSignal).toBe("bestLapText");
+    const deltaCaptions = getAnimationScene("delta-new-best")?.frames.map((frame) => frame.caption) ?? [];
+    expect(deltaCaptions.every((caption) => /no disponible|placeholder/.test(caption))).toBe(true);
+    expect(deltaCaptions.join(" ")).not.toMatch(/\d+:\d+|barrido/i);
   });
 });
 
@@ -122,13 +120,23 @@ describe("scenes drive the motion engine", () => {
     }
   });
 
-  it("tire change reports the compound coming out of the pits", () => {
+  it("full sequence also transfers the session-best crown from an explicit holder", () => {
+    const events = deriveStandingsEvents(modelAt("standings-full", 6), modelAt("standings-full", 7));
+    const best = events.find((event) => event.kind === "session-best");
+    expect(best).toBeDefined();
+    if (best?.kind === "session-best") {
+      expect(best.previousRowId).not.toBeNull();
+      expect(best.previousRowId).not.toBe(best.rowId);
+    }
+  });
+
+  it("tire change reports pit-out but does not invent the unavailable compound", () => {
     const events = deriveStandingsEvents(modelAt("standings-tire-change", 2), modelAt("standings-tire-change", 3));
     const pitOut = events.find((event) => event.kind === "pit-out");
     expect(pitOut).toBeDefined();
     if (pitOut?.kind === "pit-out") {
-      expect(pitOut.tireCompound).toBe("S");
-      expect(pitOut.tireChanged).toBe(true);
+      expect(pitOut.tireCompound).toBe("");
+      expect(pitOut.tireChanged).toBe(false);
     }
   });
 
@@ -167,8 +175,9 @@ describe("scenes drive the motion engine", () => {
   it("delta chip scene moves a car several places at once", () => {
     const before = modelAt("standings-delta-chip", 0);
     const after = modelAt("standings-delta-chip", 1);
-    const find = (model: typeof before) =>
-      model.rows.findIndex((row) => row.driverName.includes("Bruni"));
+    const targetId = before.rows.find((row) => row.position === 10)?.id;
+    expect(targetId).toBeDefined();
+    const find = (model: typeof before) => model.rows.findIndex((row) => row.id === targetId);
     expect(find(before) - find(after)).toBeGreaterThanOrEqual(2);
   });
 });

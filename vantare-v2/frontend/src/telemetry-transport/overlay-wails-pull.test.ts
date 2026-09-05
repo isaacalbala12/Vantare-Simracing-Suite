@@ -64,15 +64,15 @@ describe("overlay HTTP pull client", () => {
   });
 
   it.each([
-    { state: "V1 off", events: [{name: "telemetry:overlay-v2:snapshot", data: {revision: 1}}], wantV1: 0 },
-    { state: "V1 diagnostic rollback", events: [
-      {name: "telemetry:overlay:projection", data: {sequence: 1}},
+    { state: "snapshot only", events: [{name: "telemetry:overlay-v2:snapshot", data: {revision: 1}}] },
+    { state: "status plus snapshot", events: [
+      {name: "telemetry:overlay-v2:status", data: {revision: 1}},
       {name: "telemetry:overlay-v2:snapshot", data: {revision: 1}},
-    ], wantV1: 1 },
-  ])("keeps V2 delivery authoritative with $state", async ({events, wantV1}) => {
+    ] },
+  ])("keeps V2 delivery authoritative with $state", async ({events}) => {
     const pending: PendingPull[] = [];
-    const v1Snapshots: unknown[] = [];
     const v2Snapshots: unknown[] = [];
+    const v2Statuses: unknown[] = [];
     const client = createOverlayWailsPullClient({
       post(route) {
         if (route === OVERLAY_PULL_CLOSE_ROUTE) return undefined;
@@ -80,16 +80,46 @@ describe("overlay HTTP pull client", () => {
       },
       schedule: () => 1,
       cancel: () => undefined,
-      createSessionID: () => "v1-switch",
+      createSessionID: () => "v2-only",
     });
-    client.source.subscribe("telemetry:overlay:projection", (data) => v1Snapshots.push(data));
+    client.source.subscribe("telemetry:overlay-v2:status", (data) => v2Statuses.push(data));
     client.source.subscribe("telemetry:overlay-v2:snapshot", (data) => v2Snapshots.push(data));
 
     client.start();
-    await flushResponse(pending, {sessionId: "v1-switch", delivery: 1, events});
+    await flushResponse(pending, {sessionId: "v2-only", delivery: 1, events});
 
-    expect(v1Snapshots).toHaveLength(wantV1);
     expect(v2Snapshots).toEqual([{revision: 1}]);
+    client.stop();
+  });
+
+  it("rejects legacy V1 overlay events without delivering them", async () => {
+    const pending: PendingPull[] = [];
+    const v1Snapshots: unknown[] = [];
+    const onError = vi.fn();
+    const client = createOverlayWailsPullClient({
+      post(route) {
+        if (route === OVERLAY_PULL_CLOSE_ROUTE) return undefined;
+        return new Promise((resolve) => pending.push({resolve}));
+      },
+      schedule: () => 1,
+      cancel: () => undefined,
+      createSessionID: () => "v2-only",
+      onError,
+    });
+    client.source.subscribe("telemetry:overlay:projection", (data) => v1Snapshots.push(data));
+
+    client.start();
+    await flushResponse(pending, {sessionId: "v2-only", delivery: 1, events: [
+      {name: "telemetry:overlay:projection", data: {sequence: 1}},
+    ]});
+
+    expect(v1Snapshots).toHaveLength(0);
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(client.getDiagnostics()).toMatchObject({
+      active: true,
+      requestsCompleted: 1,
+      receivedV2Snapshots: 0,
+    });
     client.stop();
   });
 
@@ -115,9 +145,9 @@ describe("overlay HTTP pull client", () => {
       createSessionID: () => "session-1",
       onError,
     });
-    const v1Snapshots: unknown[] = [];
     const v2Snapshots: unknown[] = [];
-    client.source.subscribe("telemetry:overlay:projection", (data) => v1Snapshots.push(data));
+    const v2Statuses: unknown[] = [];
+    client.source.subscribe("telemetry:overlay-v2:status", (data) => v2Statuses.push(data));
     client.source.subscribe("telemetry:overlay-v2:snapshot", (data) => v2Snapshots.push(data));
 
     client.start();
@@ -130,9 +160,9 @@ describe("overlay HTTP pull client", () => {
     await flushResponse(pending, {
       sessionId: "session-1",
       delivery: 1,
-      events: [{name: "telemetry:overlay:projection", data: {sequence: 1}}],
+      events: [{name: "telemetry:overlay-v2:status", data: {revision: 1}}],
     });
-    expect(v1Snapshots).toEqual([{sequence: 1}]);
+    expect(v2Statuses).toEqual([{revision: 1}]);
     expect(posted).toHaveLength(1);
     expect(scheduled).toHaveLength(1);
 
@@ -149,16 +179,15 @@ describe("overlay HTTP pull client", () => {
       sessionId: "session-1",
       delivery: 2,
       events: [
-        {name: "telemetry:overlay:projection", data: {sequence: 100}},
+        {name: "telemetry:overlay-v2:status", data: {revision: 100}},
         {name: "telemetry:overlay-v2:snapshot", data: {revision: 100}},
       ],
     });
-    expect(v1Snapshots).toEqual([{sequence: 1}, {sequence: 100}]);
+    expect(v2Statuses).toEqual([{revision: 1}, {revision: 100}]);
     expect(v2Snapshots).toEqual([{revision: 100}]);
     expect(client.getDiagnostics()).toMatchObject({
       active: true,
       requestsCompleted: 2,
-      receivedV1Projections: 2,
       receivedV2Snapshots: 1,
     });
     expect(onError).not.toHaveBeenCalled();
@@ -291,6 +320,51 @@ describe("overlay HTTP pull client", () => {
     client.stop();
   });
 
+  it("keeps the browser timeout active while the response body is pending", async () => {
+    vi.useFakeTimers();
+    const onError = vi.fn();
+    let attempts = 0;
+    const fetchMock = vi.fn((route: RequestInfo | URL, init?: RequestInit) => {
+      if (String(route).endsWith("/close")) {
+        return Promise.resolve({ok: true, status: 204} as Response);
+      }
+      const {sessionId} = JSON.parse(String(init?.body)) as {sessionId: string};
+      attempts += 1;
+      if (attempts === 1) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => new Promise<unknown>((_resolve, reject) => {
+            init?.signal?.addEventListener("abort", () => reject(new Error("aborted")));
+          }),
+        } as Response);
+      }
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({sessionId, delivery: 1, events: []}),
+      } as Response);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const client = createBrowserOverlayWailsPullClient({onError});
+
+    client.start();
+    await vi.advanceTimersByTimeAsync(5_000);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect((fetchMock.mock.calls[0]?.[1] as RequestInit | undefined)?.signal?.aborted).toBe(true);
+    expect(onError).toHaveBeenCalledTimes(1);
+
+    await vi.advanceTimersByTimeAsync(250);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(client.getDiagnostics()).toMatchObject({active: true, requestsCompleted: 1});
+
+    client.stop();
+    expect(client.getDiagnostics().active).toBe(false);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
   it("retries duplicate deliveries and rejects unknown event routes", async () => {
     const posted: Array<{route: string; data: unknown}> = [];
     const pending: PendingPull[] = [];
@@ -311,7 +385,7 @@ describe("overlay HTTP pull client", () => {
       onError,
     });
     const listener = vi.fn();
-    client.source.subscribe("telemetry:overlay:projection", listener);
+    client.source.subscribe("telemetry:overlay-v2:snapshot", listener);
     client.start();
 
     await flushResponse(pending, {
@@ -326,7 +400,7 @@ describe("overlay HTTP pull client", () => {
     await flushResponse(pending, {
       sessionId: "current",
       delivery: 1,
-      events: [{name: "telemetry:overlay:projection", data: {sequence: 2}}],
+      events: [{name: "telemetry:overlay-v2:snapshot", data: {revision: 2}}],
     });
     expect(callbacks).toHaveLength(1);
     expect(listener).not.toHaveBeenCalled();

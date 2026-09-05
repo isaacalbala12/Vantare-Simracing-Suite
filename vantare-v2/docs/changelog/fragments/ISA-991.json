@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-991",
+  "type": "fix",
+  "summary": "Relative y Standings Crystal respetan columnas, anchos y alineación con letra mayor y controles legibles.",
+  "technicalNotes": ["Cambiar las filas de Standings Crystal ajusta la altura guardada sin variar ancho o posición.", "Última vuelta Relative se representa cuando está seleccionada, sin inventar datos de telemetría."],
+  "testing": ["Cambiar columnas y anchos en Studio; guardar y reabrir.", "Reducir Standings de 20 a 5 filas y comparar espacio ocupado en Studio y HUD."],
+  "knownLimitations": ["Validación Wails/LMU y DPI real pendiente.", "Anchos extremos o muchas columnas pueden requerir ampliar el widget."]
+}

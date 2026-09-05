@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-992",
+  "type": "fix",
+  "summary": "Las comparaciones de overlays indican su referencia y sus datos ausentes; Head-to-Head conserva una proporción segura y Delta Endurance permite cambiar el color de pérdida.",
+  "technicalNotes": [
+    "Head-to-Head y Multiclass no sustituyen gaps al jugador por gaps al líder. El filtro otras clases funciona sin reinsertar al jugador.",
+    "Head-to-Head conforma perfiles libres a 360:128 preservando posición y ancho salvo mínimo 270 px; 360x304 pasa a 360x128.",
+    "Broadcast conserva la franja horizontal. Delta Advanced respeta campos no disponibles y referencia efectiva."
+  ],
+  "testing": [
+    "24 archivos y 93 tests focales pasan, incluida geometría Chromium con CSS productivo.",
+    "Typecheck, ESLint focal y build local pasan. Validación Wails/LMU pendiente."
+  ],
+  "knownLimitations": [
+    "Los campos sin fuente permanecen no disponibles.",
+    "Pendiente validación visual de producto, DPI, persistencia Wails y HUD real."
+  ]
+}

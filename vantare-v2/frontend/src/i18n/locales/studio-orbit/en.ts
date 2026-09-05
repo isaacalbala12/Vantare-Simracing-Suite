@@ -129,6 +129,7 @@ export const studioOrbitEn: Record<string, string> = {
     "Restores content, visuals and behavior. Keeps the ID and the layout.",
 
   /* Rotulos de los controles de apariencia de los sistemas visuales. */
+  "overlay.inspector.delta.lossColor": "Time loss colour",
   "overlay.inspector.delta.showHeader": "Show header",
   "overlay.inspector.relative.showHeader": "Show header",
   "overlay.inspector.relative.accentColor": "Accent color",

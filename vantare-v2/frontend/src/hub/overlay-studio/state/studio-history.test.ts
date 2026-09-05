@@ -172,6 +172,31 @@ describe("redoStudioHistory", () => {
 });
 
 describe("markStudioHistorySaved", () => {
+  it("accepts a saved JSON document with reordered object keys", () => {
+    const history = createStudioHistory(buildDocument());
+    const reorder = (value: unknown): unknown => {
+      if (Array.isArray(value)) return value.map(reorder);
+      if (value && typeof value === "object") {
+        return Object.fromEntries(Object.entries(value).reverse().map(([key, item]) => [key, reorder(item)]));
+      }
+      return value;
+    };
+    const acknowledged = reorder(history.present) as ProfileDocumentV3;
+    expect(JSON.stringify(acknowledged)).not.toBe(JSON.stringify(history.present));
+    expect(isStudioHistoryDirty(markStudioHistorySaved(history, acknowledged))).toBe(false);
+    acknowledged.layouts.general.widgets[0].layout.x += 1;
+    expect(isStudioHistoryDirty(markStudioHistorySaved(history, acknowledged))).toBe(true);
+  });
+
+  it("preserves widget array order when comparing the saved document", () => {
+    const document = buildDocument();
+    document.layouts.general.widgets.push(deltaDefinition.createDefault("delta-2"));
+    const history = createStudioHistory(document);
+    const acknowledged = structuredClone(document);
+    acknowledged.layouts.general.widgets.reverse();
+    expect(isStudioHistoryDirty(markStudioHistorySaved(history, acknowledged))).toBe(true);
+  });
+
   it("updates the saved snapshot without clearing history stacks", () => {
     const history = createStudioHistory(buildDocument());
     const edited = commitStudioCommand(history, {

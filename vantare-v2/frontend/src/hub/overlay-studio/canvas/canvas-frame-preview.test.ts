@@ -25,8 +25,11 @@ function mountFrame(fluidWidth = false): HTMLElement {
   frame.dataset.testid = studioFrameTestId("delta-main");
   const viewport = document.createElement("div");
   viewport.dataset.widgetVisualViewport = "true";
-  viewport.dataset.widgetVisualBaseWidth = "280";
-  if (fluidWidth) viewport.dataset.widgetVisualFluidWidth = "true";
+  viewport.dataset.widgetVisualBaseWidth = fluidWidth ? "826" : "280";
+  if (fluidWidth) {
+    frame.dataset.effectiveMinimumWidth = "826";
+    viewport.dataset.widgetVisualFluidWidth = "true";
+  }
   frame.append(viewport);
   document.body.append(frame);
   return frame;
@@ -67,14 +70,15 @@ describe("canvas-frame-preview", () => {
     expect(viewport?.style.transform).toBe("scale(2)");
   });
 
-  it("keeps fluid Redline width real during imperative resize", () => {
+  it("expands the fluid Redline preview to its effective physical width", () => {
     const frame = mountFrame(true);
     beginStudioFramePreview("delta-main", "resize", layout);
 
     applyStudioFrameLayoutPreview("delta-main", { ...layout, w: 560, h: 192 });
 
     const viewport = frame.querySelector<HTMLElement>("[data-widget-visual-viewport]");
-    expect(viewport?.style.width).toBe("560px");
+    expect(frame.style.width).toBe("826px");
+    expect(viewport?.style.width).toBe("826px");
     expect(viewport?.style.height).toBe("192px");
     expect(viewport?.style.transform).toBe("scale(1)");
   });
@@ -89,6 +93,23 @@ describe("canvas-frame-preview", () => {
     expect(element?.style.left).toBe("100px");
     expect(element?.style.top).toBe("100px");
     expect(element?.style.transform).toBe("translate(40px, 30px)");
+  });
+
+  it("clamps an effective minimum-width frame while moving at the right edge", () => {
+    const frame = mountFrame(true);
+    frame.dataset.effectiveMinimumWidth = "826";
+    frame.dataset.layoutViewportWidth = "1920";
+    const narrowStart = { ...start, x: 1639, w: 280 };
+
+    beginStudioFramePreview("delta-main", "move", narrowStart);
+    applyStudioFrameLayoutPreview("delta-main", { ...narrowStart, x: 1739 });
+
+    expect(frame.style.left).toBe("1094px");
+    expect(frame.style.width).toBe("826px");
+    expect(frame.style.transform).toBe("");
+
+    applyStudioFrameLayoutPreview("delta-main", { ...narrowStart, x: 1539 });
+    expect(frame.style.transform).toBe("translate(-100px, 0px)");
   });
 
   it("keeps document frame dimensions while moving", () => {

@@ -125,7 +125,7 @@ function buildMarkersV2(frame: OverlayFrameV2, projection: TrackProjection): rea
     const { x, z } = ground.v;
     if (!Number.isFinite(x) || !Number.isFinite(z)) continue;
     const projected = projectTrackPoint({ x, z }, projection);
-    markers.push({ id: row.id, x: projected.x, y: projected.y, isPlayer: playerId !== undefined && row.id === playerId });
+    markers.push({ id: row.id, x: projected.x, y: projected.y, isPlayer: playerId !== undefined && row.id === playerId, classId: row.classId });
   }
   return markers;
 }

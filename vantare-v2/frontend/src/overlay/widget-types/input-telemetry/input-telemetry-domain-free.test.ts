@@ -2,11 +2,6 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import type { OverlayFrameV2, OverlayUpdateV2 } from "../../../generated/telemetry";
-import {
-  DEFAULT_OVERLAY_V2_FEATURES,
-  OVERLAY_V2_CONTROLS,
-  hasOverlayV2Feature,
-} from "../../telemetry-shadow/overlay-v2-features";
 import { inputTelemetryDefinition } from "./input-telemetry-definition";
 import {
   OVERLAY_V2_CONTROLS_DECLARED_GAPS,
@@ -18,12 +13,6 @@ import {
 const CONTENT = inputTelemetryDefinition.parseContent({});
 
 describe("input telemetry v2 view model", () => {
-  it("is authoritative by default and remains explicitly addressable", () => {
-    expect(DEFAULT_OVERLAY_V2_FEATURES).toContain(OVERLAY_V2_CONTROLS);
-    expect(hasOverlayV2Feature(undefined, OVERLAY_V2_CONTROLS)).toBe(true);
-    expect(hasOverlayV2Feature([OVERLAY_V2_CONTROLS], OVERLAY_V2_CONTROLS)).toBe(true);
-  });
-
   it("reads the series Go derived instead of accumulating one in the browser", () => {
     const frame = goldenFrame(20);
     expect(frame.controls.history.q).toBe("fresh");
@@ -35,42 +24,93 @@ describe("input telemetry v2 view model", () => {
     expect(model.history.map((sample) => sample.clutch)).toEqual([0, 0]);
   });
 
-  it("spaces the samples across windowMs ending at the frame instant", () => {
+  it("carries the absolute capture instants Go derived", () => {
     const frame = goldenFrame(20);
-    expect(frame.controls.history.windowMs).toBe(1000);
+    expect(frame.controls.history.capturedAtMS).toEqual([1787140801000, 1787140802000]);
     const model = buildInputTelemetryViewModelV2(frame, { state: "live" }, CONTENT);
-    const frameMillis = Date.parse(frame.generatedAt);
-    expect(model.history.map((sample) => sample.capturedAt)).toEqual([frameMillis - 1000, frameMillis]);
+    expect(model.history.map((sample) => sample.capturedAt)).toEqual([1787140801000, 1787140802000]);
   });
 
   it("keeps only the samples inside the configured window", () => {
     const history = {
       q: "fresh" as const,
-      windowMs: 8000,
+      capturedAtMS: [92_000, 94_000, 97_000, 100_000],
       throttle: [0, 250, 500, 1000],
       brake: [1000, 750, 500, 0],
       clutch: [0, 0, 0, 0],
+      speedMPS: [
+        { v: 10, q: "fresh" as const },
+        { v: 20, q: "fresh" as const },
+        { v: 40, q: "fresh" as const },
+        { v: 82.5, q: "fresh" as const },
+      ],
+      rpm: [
+        { v: 3000, q: "fresh" as const },
+        { v: 4000, q: "fresh" as const },
+        { v: 6000, q: "fresh" as const },
+        { v: 7250, q: "fresh" as const },
+      ],
+      gear: [
+        { v: 2, q: "fresh" as const },
+        { v: 3, q: "fresh" as const },
+        { v: 5, q: "fresh" as const },
+        { v: 6, q: "fresh" as const },
+      ],
     };
-    // 4 samples across 8 s is one every 2667 ms; a 4 s window keeps the last 2.
-    const inWindow = decodeControlsHistory(history, 100_000, 4);
+    // Newest instant is 100_000; a 4 s window keeps the samples at >= 96_000.
+    const inWindow = decodeControlsHistory(history, 4);
     expect(inWindow).toHaveLength(2);
     expect(inWindow.map((sample) => sample.throttle)).toEqual([0.5, 1]);
-    expect(decodeControlsHistory(history, 100_000, 8)).toHaveLength(4);
+    expect(decodeControlsHistory(history, 8)).toHaveLength(4);
   });
 
   it("decodes per-mille integers back into ratios and clamps hostile input", () => {
     const decoded = decodeControlsHistory(
-      { q: "fresh", windowMs: 100, throttle: [1234, -5], brake: [1000, 0], clutch: [500, 500] },
-      1_000,
+      {
+        q: "fresh",
+        capturedAtMS: [900, 1000],
+        throttle: [1234, -5],
+        brake: [1000, 0],
+        clutch: [500, 500],
+        speedMPS: [
+          { v: 82.5, q: "fresh" as const },
+          { q: "missing" as const },
+        ],
+        rpm: [
+          { v: 7250, q: "fresh" as const },
+          { v: 7250, q: "fresh" as const },
+        ],
+        gear: [
+          { v: 6, q: "fresh" as const },
+          { v: 6, q: "fresh" as const },
+        ],
+      },
       8,
     );
     expect(decoded.map((sample) => sample.throttle)).toEqual([1, 0]);
     expect(decoded.map((sample) => sample.clutch)).toEqual([0.5, 0.5]);
+    expect(decoded.map((sample) => sample.capturedAt)).toEqual([900, 1000]);
+    expect(decoded[0].speedKph).toBeCloseTo(297, 10);
+    expect(decoded[1].speedKph).toBeUndefined();
   });
 
   it("publishes no series at all when the canonical history is absent or invalid", () => {
-    expect(decodeControlsHistory({ q: "missing" }, 1_000, 4)).toEqual([]);
-    expect(decodeControlsHistory({ q: "invalid", throttle: [500] }, 1_000, 4)).toEqual([]);
+    expect(decodeControlsHistory({ q: "missing" }, 4)).toEqual([]);
+    expect(
+      decodeControlsHistory(
+        {
+          q: "invalid",
+          capturedAtMS: [1000],
+          throttle: [500],
+          brake: [500],
+          clutch: [500],
+          speedMPS: [{ v: 50, q: "fresh" as const }],
+          rpm: [{ v: 7000, q: "fresh" as const }],
+          gear: [{ v: 4, q: "fresh" as const }],
+        },
+        4,
+      ),
+    ).toEqual([]);
     const frame = goldenFrame(20);
     const model = buildInputTelemetryViewModelV2(
       { ...frame, controls: { history: { q: "missing" } } },
@@ -95,13 +135,12 @@ describe("input telemetry v2 view model", () => {
     expect(model.throttle).toBeGreaterThanOrEqual(0);
   });
 
-  it("declares what the canonical series cannot carry instead of inventing it", () => {
+  it("carries per-sample motion from the canonical series", () => {
     const model = buildInputTelemetryViewModelV2(goldenFrame(20), { state: "live" }, CONTENT);
-    for (const sample of model.history) {
-      expect(sample.speedKph).toBeUndefined();
-      expect(sample.rpm).toBeUndefined();
-      expect(sample.gear).toBeUndefined();
-    }
+    // The golden fixture holds the player at 50 m/s, 7200 rpm, gear 4.
+    expect(model.history.map((sample) => sample.speedKph)).toEqual([180, 180]);
+    expect(model.history.map((sample) => sample.rpm)).toEqual([7200, 7200]);
+    expect(model.history.map((sample) => sample.gear)).toEqual([4, 4]);
     expect(OVERLAY_V2_CONTROLS_DECLARED_GAPS).toEqual(
       expect.arrayContaining([
         "history.length", "history[].capturedAt", "history[].throttle", "history[].brake",

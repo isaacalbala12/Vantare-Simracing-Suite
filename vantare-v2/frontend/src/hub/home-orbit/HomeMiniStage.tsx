@@ -1,6 +1,6 @@
 import { memo, useMemo } from "react";
 import { MiniStage, type WidgetDoc } from "../../ui/orbit";
-import { buildMockTelemetry } from "../../overlay/core/mock-scenarios";
+import { buildAuthoringV2ScenarioRuntime } from "../../overlay/authoring/fixtures/authoring-v2-scenario-fixture";
 import type { ProfileDocumentV3, WidgetInstanceV3 } from "../../overlay/core/profile-document";
 import { WidgetVisualHost } from "../../overlay/core/WidgetVisualHost";
 import { WidgetVisualViewport } from "../../overlay/core/WidgetVisualViewport";
@@ -10,12 +10,22 @@ import type { ProfileEntry } from "../state/overlay-workbench";
 const MemoWidgetVisualHost = memo(WidgetVisualHost);
 
 /** Mismo escenario que `ProfilePreview`: las cuatro superficies que pintan
- *  widgets deben coincidir, así que el mini-lienzo no inventa telemetría. */
-const PREVIEW_SNAPSHOT = buildMockTelemetry({
-  session: "race",
-  location: "track",
-  state: "ready",
-});
+ *  widgets deben coincidir, así que el mini-lienzo no inventa telemetría.
+ *  Factory por instancia: cada montaje clona su runtime V2 canónico. */
+function usePreviewV2Runtime() {
+  return useMemo(
+    () =>
+      buildAuthoringV2ScenarioRuntime({
+        session: "race",
+        location: "track",
+        state: "ready",
+        widget: "standings",
+        system: "vantare-crystal",
+        variant: "default",
+      }),
+    [],
+  );
+}
 
 const SYSTEM_BY_ID: Record<string, "crystal" | "original" | "endurance"> = {
   "vantare-crystal": "crystal",
@@ -62,6 +72,7 @@ export function HomeMiniStage({ profile }: HomeMiniStageProps) {
   }, [document]);
 
   const system = SYSTEM_BY_ID[widgets[0]?.system ?? ""] ?? "crystal";
+  const previewRuntime = usePreviewV2Runtime();
 
   return (
     <MiniStage
@@ -75,7 +86,7 @@ export function HomeMiniStage({ profile }: HomeMiniStageProps) {
             testId={`orbit-home-widget-${widget.id}`}
             widgetType={widget.type}
           >
-            <MemoWidgetVisualHost renderMode="harness" snapshot={PREVIEW_SNAPSHOT} widget={widget} />
+            <MemoWidgetVisualHost renderMode="harness" runtime={previewRuntime} widget={widget} />
           </WidgetVisualViewport>
         );
       }}

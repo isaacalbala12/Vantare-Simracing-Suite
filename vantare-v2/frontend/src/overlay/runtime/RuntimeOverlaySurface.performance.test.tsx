@@ -8,7 +8,6 @@ import {
   OVERLAY_V2_SNAPSHOT_EVENT,
 } from "../../telemetry-transport/overlay-frame-v2-store";
 import { bindOverlayV2Coordinator } from "../core/overlay-v2-coordinator-binding";
-import { buildMockTelemetry } from "../core/mock-scenarios";
 import type { ProfileDocumentV3 } from "../core/profile-document";
 import {
   createTelemetryRateCoordinator,
@@ -110,7 +109,6 @@ describe("store → RuntimeOverlaySurface → renderer", () => {
       createScheduler: harness.create,
       now: () => currentTime,
     });
-    coordinator.publish(buildMockTelemetry({ session: "race", location: "track", state: "ready" }));
     const store = createOverlayFrameV2Store();
     const unbind = bindOverlayV2Coordinator(store, coordinator);
     const renderStandings = vi.spyOn(getOverlayV2ViewModelEntry("standings")!, "buildViewModelV2");
@@ -141,7 +139,6 @@ describe("store → RuntimeOverlaySurface → renderer", () => {
   it("repaints immediately when the profile layout changes", () => {
     const harness = schedulerHarness();
     const coordinator = createTelemetryRateCoordinator({ createScheduler: harness.create });
-    coordinator.publish(buildMockTelemetry({ session: "race", location: "track", state: "ready" }));
     const update = golden();
     coordinator.setOverlayFrame(update.frame ?? undefined, update.source);
     const renderStandings = vi.spyOn(getOverlayV2ViewModelEntry("standings")!, "buildViewModelV2");

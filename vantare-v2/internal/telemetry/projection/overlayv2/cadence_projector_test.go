@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"go/parser"
 	"go/token"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -134,7 +135,7 @@ func TestCachedProjectorKeepsFullFrameWhenSlowSectionsAreSkipped(t *testing.T) {
 	if second.Frame.Standings == nil || second.Frame.Relative == nil || second.Frame.Delta.Available == nil {
 		t.Fatalf("skipped sections must reuse the previous value, not become null: %#v", second.Frame)
 	}
-	if second.Frame.Session != first.Frame.Session || second.Frame.Fuel != first.Frame.Fuel {
+	if second.Frame.Session != first.Frame.Session || !reflect.DeepEqual(second.Frame.Fuel, first.Frame.Fuel) {
 		t.Fatalf("skipped slow sections must keep the previous value")
 	}
 	// Header metadata is never regulated.

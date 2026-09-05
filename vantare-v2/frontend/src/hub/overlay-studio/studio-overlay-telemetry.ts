@@ -1,21 +1,27 @@
-import type { TelemetryAdapter } from '../../overlay/transports/telemetry-adapter';
+import type { TelemetryRateCoordinator } from '../../overlay/core/telemetry-rate-coordinator';
 import {
   attachOverlayFrameV2Transport,
   type OverlayFrameV2Store,
 } from '../../telemetry-transport/overlay-frame-v2-store';
 import type { OverlayWailsPullClient } from '../../telemetry-transport/overlay-wails-pull';
 
+export type TelemetryAdapter = {
+  coordinator: TelemetryRateCoordinator;
+  start(): void;
+  stop(): void;
+};
+
 export type StudioOverlayTelemetryOptions = Readonly<{
-  legacy: TelemetryAdapter;
+  coordinator: TelemetryRateCoordinator;
   pull: OverlayWailsPullClient;
   overlayV2Store: OverlayFrameV2Store;
   onOverlayV2Error?: (error: unknown) => void;
 }>;
 
 /**
- * One Studio lifecycle owns both Overlay projections. Listeners for V1 and V2
- * are attached before the bounded pull session starts, so neither projection
- * needs a global Wails telemetry event or a second producer.
+ * One Studio lifecycle owns the Overlay V2 projection. V2 listeners are
+ * attached before the bounded pull session starts, so the projection needs
+ * no global Wails telemetry event or a second producer.
  */
 export function createStudioOverlayTelemetryAdapter(
   options: StudioOverlayTelemetryOptions,
@@ -30,7 +36,6 @@ export function createStudioOverlayTelemetryAdapter(
     let firstError: unknown;
     for (const stop of [
       () => options.pull.stop(),
-      () => options.legacy.stop(),
       () => detach?.(),
     ]) {
       try {
@@ -43,7 +48,7 @@ export function createStudioOverlayTelemetryAdapter(
   };
 
   return {
-    coordinator: options.legacy.coordinator,
+    coordinator: options.coordinator,
     start() {
       if (started) return;
       // Studio can switch Mock -> Live without remounting this store. A new
@@ -56,7 +61,6 @@ export function createStudioOverlayTelemetryAdapter(
         options.onOverlayV2Error,
       );
       try {
-        options.legacy.start();
         options.pull.start();
         started = true;
       } catch (error) {

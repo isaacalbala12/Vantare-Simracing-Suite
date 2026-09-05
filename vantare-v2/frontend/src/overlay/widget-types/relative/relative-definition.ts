@@ -13,7 +13,7 @@ import {
   computeRelativeIntrinsicHeight,
   computeRelativeIntrinsicWidth,
 } from "./relative-renderer-helpers";
-import { buildRelativeViewModel, type RelativeViewModel } from "./relative-view-model";
+import type { RelativeViewModel } from "./relative-view-model";
 
 const RELATIVE_DEFAULT_LAYOUT = {
   x: 64,
@@ -63,5 +63,4 @@ export const relativeDefinition: WidgetTypeDefinition<RelativeContent, RelativeV
     };
   },
   parseContent: parseRelativeContent,
-  buildViewModel: buildRelativeViewModel,
 };

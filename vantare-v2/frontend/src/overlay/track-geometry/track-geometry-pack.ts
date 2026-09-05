@@ -703,7 +703,7 @@ const PACKED_TRACKS: readonly PackedTrack[] = [
   {
     id: "sebring-international-raceway",
     label: "Sebring International Raceway",
-    aliases: ["Sebring International Raceway"],
+    aliases: ["Sebring International Raceway", "Sebring"],
     coordinates: [
       -111, 4, -101, 4, -91, 4, -70, 3, -60, 2, -50, 2, -40, 1, -30, 1, -20, 1, -10, 0, 0, 0, 10, 0, 
       20, 0, 30, -1, 40, -1, 50, -1, 60, -1, 70, -1, 80, -1, 90, -1, 99, -1, 110, -1, 120, -1, 130, -1, 

@@ -4,11 +4,11 @@ import goldenV0 from "../../../../pkg/config/testdata/profile-v3-core-widgets-fr
 import goldenV2 from "../../../../pkg/config/testdata/profile-v3-core-widgets-from-v2.golden.json";
 import huellaCompleto from "../../../../testdata/bench/huella-completo.json";
 import huellaEndurance3 from "../../../../testdata/bench/huella-endurance-3.json";
-import { buildMockTelemetry } from "./mock-scenarios";
 import { designSystemRegistry } from "./design-system-registry";
 import { ALL_WIDGET_TYPES, parseProfileDocumentV3 } from "./profile-document";
 import { widgetTypeRegistry } from "./widget-registry";
 import { WidgetVisualHost } from "./WidgetVisualHost";
+import { buildAuthoringV2ScenarioRuntime } from "../authoring/fixtures/authoring-v2-scenario-fixture";
 
 afterEach(() => cleanup());
 
@@ -35,7 +35,6 @@ describe("profile v3 contract fixtures", () => {
 
   it("renders every v2 golden widget through real definitions", () => {
     const parsed = parseProfileDocumentV3(goldenV2);
-    const snapshot = buildMockTelemetry({ session: "race", location: "track", state: "ready" });
 
     for (const widget of parsed.layouts.general.widgets) {
       const definition = widgetTypeRegistry.get(widget.type);
@@ -47,12 +46,20 @@ describe("profile v3 contract fixtures", () => {
         widget.type,
       );
       expect(() => registration.parseSettings(widget.visual.baseSettings)).not.toThrow();
-      expect(() =>
-        definition.buildViewModel(snapshot, definition.parseContent(widget.content)),
-      ).not.toThrow();
 
       const view = render(
-        <WidgetVisualHost widget={widget} snapshot={snapshot} renderMode="harness" />,
+        <WidgetVisualHost
+          widget={widget}
+          renderMode="harness"
+          runtime={buildAuthoringV2ScenarioRuntime({
+            session: "race",
+            location: "track",
+            state: "ready",
+            widget: widget.type,
+            system: widget.visual.systemId,
+            variant: "default",
+          })}
+        />,
       );
       expect(
         view.container.querySelector(`[data-widget-renderer="${widget.type}"]`),

@@ -5,7 +5,6 @@ import type {
 } from "../../../widget-types/standings/standings-view-model";
 import { resolveStandingsSessionMode } from "../../../widget-types/standings/standings-formatting";
 import {
-  classPositionsById,
   deriveBattlePairs,
   deriveFlipOffsets,
   derivePositionDeltas,
@@ -75,6 +74,22 @@ function rowElement(root: HTMLElement | null, rowId: string): HTMLElement | null
   return root?.querySelector<HTMLElement>(`[data-standings-row="${CSS.escape(rowId)}"]`) ?? null;
 }
 
+function clearImperativeMotion(root: HTMLElement | null): void {
+  if (!root) return;
+  for (const row of root.querySelectorAll<HTMLElement>("[data-standings-row]")) {
+    delete row.dataset.motion;
+    delete row.dataset.hot;
+    row.style.removeProperty("--flash-delay");
+  }
+  for (const element of [root, ...root.querySelectorAll("*")]) {
+    const getAnimations = (element as Element & { getAnimations?: () => Animation[] }).getAnimations;
+    if (typeof getAnimations === "function") {
+      for (const animation of getAnimations.call(element)) animation.cancel();
+    }
+  }
+  for (const floater of root.querySelectorAll(".ven-red-crown-fly")) floater.remove();
+}
+
 /** Flies a clone of the fastest-lap glyph from the old holder's best cell to the new one. */
 function flyCrown(root: HTMLElement, fromRowId: string, toRowId: string): void {
   const fromCell = rowElement(root, fromRowId)?.querySelector<HTMLElement>(".ven-red-best");
@@ -123,9 +138,6 @@ export function useStandingsMotion(
   enabled: boolean,
   rootRef: RefObject<HTMLElement | null>,
 ): StandingsMotionState {
-  const [baseline] = useState(() =>
-    model.status === "ready" ? classPositionsById(model) : new Map<string, number>(),
-  );
   const [tires, setTires] = useState<ReadonlyMap<string, TireReveal>>(new Map());
   const [boxKeys, setBoxKeys] = useState<ReadonlySet<string>>(new Set());
   const [dissolving, setDissolving] = useState<ReadonlyMap<string, BattlePair>>(new Map());
@@ -138,6 +150,7 @@ export function useStandingsMotion(
   const battleSeenRef = useRef<Set<string>>(new Set());
   const deltaTargetsRef = useRef<ReadonlyMap<string, number>>(new Map());
   const deltaShownRef = useRef<ReadonlyMap<string, number>>(new Map());
+  const lifecycleRef = useRef<{ identity?: string; sequence?: number; mode: string } | null>(null);
 
   useEffect(() => {
     const timers = timersRef.current;
@@ -150,6 +163,34 @@ export function useStandingsMotion(
   }, []);
 
   useLayoutEffect(() => {
+    const mode = model.status === "ready" ? resolveStandingsSessionMode(model.sessionLabel) : model.status;
+    const previousLifecycle = lifecycleRef.current;
+    const reset = previousLifecycle !== null && (
+      previousLifecycle.identity !== model.motionIdentity ||
+      previousLifecycle.mode !== mode ||
+      (previousLifecycle.sequence !== undefined &&
+        model.motionSequence !== undefined &&
+        model.motionSequence < previousLifecycle.sequence)
+    );
+    lifecycleRef.current = {
+      identity: model.motionIdentity,
+      sequence: model.motionSequence,
+      mode,
+    };
+    if (reset) {
+      for (const timer of timersRef.current) clearTimeout(timer);
+      timersRef.current.clear();
+      clearImperativeMotion(rootRef.current);
+      battleSeenRef.current.clear();
+      deltaTargetsRef.current = new Map();
+      deltaShownRef.current = new Map();
+      prevRef.current = null;
+      setDisplayDeltas(new Map());
+      setTires(new Map());
+      setBoxKeys(new Set());
+      setDissolving(new Map());
+      setGhosts([]);
+    }
     if (!enabled || model.status !== "ready") {
       prevRef.current = model.status === "ready" ? model : null;
       return;
@@ -168,7 +209,7 @@ export function useStandingsMotion(
 
     // Delta counting: step the displayed value one unit toward the target so
     // a two-place jump reads +1 → +2 instead of teleporting.
-    deltaTargetsRef.current = derivePositionDeltas(baseline, model);
+    deltaTargetsRef.current = derivePositionDeltas(model);
     const stepDeltas = () => {
       const goal = deltaTargetsRef.current;
       const current = deltaShownRef.current;
@@ -339,7 +380,7 @@ export function useStandingsMotion(
         });
       }
     }
-  }, [enabled, model, rootRef, baseline]);
+  }, [enabled, model, rootRef]);
 
   // A pair that just broke has to be dissolving BEFORE anything commits.
   //

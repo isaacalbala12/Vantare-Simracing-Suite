@@ -97,6 +97,12 @@ de Isaac.
 
 ## Stop conditions
 
+Para el bucle experimental de Telemetría V2 rige el límite específico aprobado
+del [maestro 2026-09-03](../superpowers/specs/2026-09-03-telemetria-v2-plan-maestro.md):
+cinco experimentos consecutivos sin mejora medida u ocho horas de ejecución,
+lo primero. Sustituye sólo el contador genérico de enfoques; mantiene los demás
+stops de seguridad/autoridad y no autoriza sesiones LMU ni automatizaciones.
+
 - Tres enfoques razonables fallan.
 - Sesenta minutos sin nueva evidencia.
 - Hay que contradecir una decisión.

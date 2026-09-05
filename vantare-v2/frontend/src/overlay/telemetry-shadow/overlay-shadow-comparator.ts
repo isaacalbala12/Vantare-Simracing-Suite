@@ -60,6 +60,14 @@ export {
 } from "../widget-types/fuel-strategy/fuel-strategy-view-model-v2";
 import type { MulticlassRelativeRow, MulticlassRelativeViewModel } from "../widget-types/multiclass-relative/multiclass-relative-view-model";
 import { buildMulticlassRelativeViewModel } from "../widget-types/multiclass-relative/multiclass-relative-view-model";
+import { buildHeadToHeadViewModel } from "../widget-types/head-to-head/head-to-head-view-model";
+import { buildTrackMapViewModel } from "../widget-types/track-map/track-map-view-model";
+import { buildBroadcastTowerViewModel } from "../widget-types/broadcast-tower/broadcast-tower-view-model";
+import { buildTrackWeatherViewModel } from "../widget-types/track-weather/track-weather-view-model";
+import type { CarDamageNumbersContent } from "../widget-types/car-damage-numbers/car-damage-numbers-definition";
+import type { CarDamageVisualContent } from "../widget-types/car-damage-visual/car-damage-visual-definition";
+import type { CarDamageNumbersViewModel } from "../widget-types/car-damage-numbers/car-damage-numbers-view-model";
+import type { CarDamageVisualViewModel } from "../widget-types/car-damage-visual/car-damage-visual-view-model";
 import type { RelativeContent } from "../widget-types/relative/relative-content";
 import type { RelativeRowViewModel, RelativeViewModel } from "../widget-types/relative/relative-view-model";
 import { buildRelativeViewModel } from "../widget-types/relative/relative-view-model";
@@ -1447,6 +1455,30 @@ function buildViewModelPair(
     case "multiclass-relative":
       legacy = buildMulticlassRelativeViewModel(legacySnapshot, parsedContent as never);
       break;
+    case "head-to-head":
+      legacy = buildHeadToHeadViewModel(legacySnapshot, parsedContent as never);
+      break;
+    case "track-map":
+      legacy = buildTrackMapViewModel(legacySnapshot, parsedContent as never);
+      break;
+    case "broadcast-tower":
+      legacy = buildBroadcastTowerViewModel(legacySnapshot, parsedContent as never);
+      break;
+    case "track-weather":
+      legacy = buildTrackWeatherViewModel(legacySnapshot, parsedContent as never);
+      break;
+    case "car-damage-numbers": {
+      const content = parsedContent as CarDamageNumbersContent;
+      const model: CarDamageNumbersViewModel = { type: "car-damage-numbers", status: "missing", showTyres: content.showTyres, format: content.format };
+      legacy = model;
+      break;
+    }
+    case "car-damage-visual": {
+      const content = parsedContent as CarDamageVisualContent;
+      const model: CarDamageVisualViewModel = { type: "car-damage-visual", status: "missing", showPercent: content.showPercent, showAero: content.showAero };
+      legacy = model;
+      break;
+    }
     default:
       if (!definition.buildViewModel) {
         throw new Error(`missing legacy shadow builder for ${widget.type}`);

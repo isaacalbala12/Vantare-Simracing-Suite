@@ -147,7 +147,11 @@ describe("buildHarnessTelemetry", () => {
         widget: widgetType,
       });
       const model = buildHarnessViewModel(widget, snapshot) as { status: string };
-      expect(model.status, widgetType).toBe(widgetType === "car-damage-numbers" ? "missing" : "ready");
+      // C1 ISA-894 rama B: el snapshot no tiene productor real de daño
+      // (solo ceros sintéticos del harness); ambas definitions quedan missing.
+      expect(model.status, widgetType).toBe(
+        widgetType === "car-damage-numbers" || widgetType === "car-damage-visual" ? "missing" : "ready",
+      );
     }
   });
 

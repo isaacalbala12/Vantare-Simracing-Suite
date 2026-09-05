@@ -440,6 +440,61 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
     }
   });
 
+  it("C1 resuelto rama B: daño legacy fuera, definitions sin builders V1", () => {
+    // Rama B con evidencia: cero productores reales de snapshot.damage; la
+    // autoridad productiva es el frame V2 (overlayV2ViewModelRegistry). El
+    // slot legacy de cada definition queda honesto missing; D4 retirará el
+    // slot con su lote. Este lock solo endurece: no toca D2/D3/D4 ni E1–E4.
+    absentAll([
+      [src("overlay", "widget-types", "shared", "damage-reader.ts"), "C1 (lector legacy de daño)"],
+      [
+        src("overlay", "widget-types", "car-damage-visual", "car-damage-visual-view-model.test.ts"),
+        "C1 (test del builder V1 visual)",
+      ],
+      [
+        src("overlay", "widget-types", "car-damage-numbers", "car-damage-numbers-view-model.test.ts"),
+        "C1 (test del builder V1 numbers)",
+      ],
+    ]);
+    contentAbsentAll([
+      [
+        src("overlay", "widget-types", "car-damage-visual", "car-damage-visual-view-model.ts"),
+        "readDamage",
+        "C1 (builder V1 visual)",
+      ],
+      [
+        src("overlay", "widget-types", "car-damage-numbers", "car-damage-numbers-view-model.ts"),
+        "readDamage",
+        "C1 (builder V1 numbers)",
+      ],
+      [
+        src("overlay", "widget-types", "car-damage-visual", "car-damage-visual-view-model.ts"),
+        "buildCarDamageVisualViewModel(",
+        "C1 (builder V1 visual)",
+      ],
+      [
+        src("overlay", "widget-types", "car-damage-numbers", "car-damage-numbers-view-model.ts"),
+        "buildCarDamageNumbersViewModel(",
+        "C1 (builder V1 numbers)",
+      ],
+      [
+        src("overlay", "widget-types", "car-damage-visual", "car-damage-visual-definition.ts"),
+        "buildCarDamageVisualViewModel(",
+        "C1 (definition visual sin builder V1)",
+      ],
+      [
+        src("overlay", "widget-types", "car-damage-numbers", "car-damage-numbers-definition.ts"),
+        "buildCarDamageNumbersViewModel(",
+        "C1 (definition numbers sin builder V1)",
+      ],
+    ]);
+    contentHas(
+      src("overlay", "widget-types", "shared", "car-damage-c1.test.ts"),
+      "rama B",
+      "C1 (rama de evidencia fijada en test)",
+    );
+  });
+
   it("diferidos E1 presentes: snapshot, adapter, stores e historias legacy", () => {
     for (const [route, owner] of [
       [src("overlay", "core", "telemetry-rate-coordinator.ts"), "E1 (historias/API legacy)"],

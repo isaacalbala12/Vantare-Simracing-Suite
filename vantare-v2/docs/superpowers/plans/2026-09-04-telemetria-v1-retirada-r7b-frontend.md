@@ -336,7 +336,7 @@ B1; si una ruta no existe en árbol, lo registra como divergencia y para ese
 - Rollback/stop: revert del commit. Stop si un resto citado resulta ser
   consumidor necesario sin migrar → reclasificar en B0, no borrar.
 
-### B3 · Retirar shadow runtime V1 + harnesses/scripts/HTML (se ejecuta después de C2; comparator/sanitizer EXCLUIDOS)
+### B3 · Retirar shadow runtime V1 + harnesses/scripts/HTML — CERRADO 2026-09-05 (comparator/sanitizer EXCLUIDOS)
 
 - Objetivo: retirar el runtime del shadow de compatibilidad V1 y sus
   harnesses/scripts/HTML. Incluye exactamente cinco ficheros `sesion-v1-*`
@@ -371,6 +371,16 @@ B1; si una ruta no existe en árbol, lo registra como divergencia y para ese
 - Reviewer: spec + quality.
 - Rollback/stop: revert del micro-commit. Stop si un harness/test es la única
   cobertura de una garantía V2 → migrar cobertura primero.
+
+**Resultado B3:** `429a8bae` conserva en el comparator las garantías útiles de
+Controls y retira los casos exclusivos del runtime V1; `8aeb858c` congela en
+el paquete S1 la clausura exacta usada en `659b2c57`; `b3652e11` elimina las
+19 rutas y seis referencias activas inventariadas. Recalcular + hashes,
+comparator 33/33 y bench 32/32 PASS. Guardia `4 failed | 12 passed`: B3 verde,
+solo B2-prep/B2 deliberadamente RED. La suite sin guard queda 3442/3445 con
+tres fallos heredados ajenos; typecheck/build bajan de ocho a cuatro errores
+R7a, todos propiedad de B2. Review Muse + Ponytail `full`
+`ses_f909a2067ffeG4XRGFJHILQUbD`: **APPROVE**, P0/P1/P2=0.
 
 ### B2-prep · Desacoplar tipos del oráculo E4 (después de C2+B3, antes de B2)
 

@@ -1,5 +1,27 @@
 # Handoff vivo — Telemetry Core
 
+## R7b/B3 APROBADO — runtime y tooling shadow V1 retirados — 2026-09-05, ISA-894
+
+Commits `429a8bae`, `8aeb858c` y `b3652e11`: salen del árbol el runtime y la
+activación shadow V1, los dos packages harness, sus HTML y Playwright, y los
+cinco `sesion-v1-*`. Las garantías útiles de Controls quedan en el test del
+comparator; los cuatro casos exclusivos de ingesta/fases V1 desaparecen con su
+runtime. Comparator, sanitizador, testdata y resultados históricos siguen
+intactos como oráculo E4.
+
+El paquete S1 ya no importa tooling activo: `recalcular.mjs` contiene la
+clausura exacta usada al publicar en `659b2c57`. Recalcula ON 6074/0, OFF V1=0
+y shadow null 5/5, p99 67,6/49,1 ms y reducción 75,0 %; hashes PASS sin
+reescribir CSV, sesiones ni resúmenes. Comparator 33/33 y bench 32/32 PASS.
+Guard `4 failed | 12 passed (16)`: B3 verde, solo B2-prep y B2 siguen RED.
+Suite sin guard 3442/3445 con los tres fallos heredados de i18n/Fuel; typecheck
+y build reducen la deuda R7a de ocho a cuatro errores, todos en los módulos B2.
+ESLint focal y diff-check PASS.
+
+Review adversarial Muse + Ponytail `full` `ses_f909a2067ffeG4XRGFJHILQUbD`:
+**APPROVE**, P0/P1/P2=0; dos P3 informativos ya poseen dueño B2/E4. Siguiente:
+B2-prep y después B2. Sin push, PR, merge, promoción, apps ni LMU.
+
 ## R7b/C2b7 APROBADO final — contratos de autoría V2 puros, C2 cerrado — 2026-09-05, ISA-894
 
 Commits `8f12c448` + `15f7f5ce`: `projection-gaps` deja de leer texto del

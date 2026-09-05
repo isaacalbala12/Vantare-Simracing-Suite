@@ -1182,16 +1182,21 @@ Siguiente: E4.
 - Reviewer: quality + spec (cierre de garantías).
 - Rollback/stop: revert. Stop si una garantía semántica no tiene cobertura V2
   → no borrar; reclasificar a D/A.
-- **Resultado E4 (ejecutado en rama, 2026-09-05):** `5391ac7d` fija RED
+- **Resultado E4 (APROBADO en rama, 2026-09-05):** `5391ac7d` fija RED
   (guard E4 1 failed | 17 passed) + `92e5dd17` GREEN (60 ficheros,
-  +439/−6112, neto −5673). Borrados 26 ficheros (shadow restante + 16 tests
+  +439/−6112); el corte completo suma +493/−6119, neto −5626. Borrados 26 ficheros (shadow restante + 16 tests
   legacy; el preflight decía 28 por error de conteo). 16 builders legacy
   reducidos a tipos/helpers in situ; 8 renderers/contract a literales y
   7 V2 a aserciones nativas; B1/v1-guard/view-models sin shadow. Focales
   497+297+144+105 PASS; typecheck/lint/build/`rg`/diff-check verdes. Sin
   callers productivos (STOP no activado). Evidencia:
   `docs/telemetry-core/evidence/isa-894/retirada-v1-r7b-e4-oraculo-20260905.md`.
-  Siguiente: E1d. Sin push, PR, merge, promoción, apps ni LMU.
+  Review adversarial Muse + Ponytail `full`
+  `ses_f8fac15bcffe4LyafYHDCmts0C`: APPROVE, P0/P1/P2 = 0. Sus P3 de
+  evidencia, guard y formato quedaron cerrados sin nueva abstracción. La suite
+  completa accidental dejó 3234 PASS y 5 fallos heredados fuera del diff E4
+  (cuatro de transport/store y uno i18n Studio), bloqueadores explícitos de
+  E1d/F. Siguiente: E1d. Sin push, PR, merge, promoción, apps ni LMU.
 
 ---
 

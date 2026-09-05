@@ -3,7 +3,8 @@
 ## R7b/E4 ejecutado en rama — oráculo shadow y builders legacy fuera, tipos vivos in situ — 2026-09-05, ISA-894
 
 Commits locales `5391ac7d` (RED: guard E4 1 failed | 17 passed, fallo
-exacto) + `92e5dd17` (GREEN, 60 ficheros, +439/−6112, neto −5673).
+exacto) + `92e5dd17` (GREEN, 60 ficheros, +439/−6112); el corte completo
+suma +493/−6119, neto −5626.
 Borrados 26 ficheros: `telemetry-shadow/` restante (comparator/sanitizer,
 6 tests, 2 JSON S1) + 16 `*-view-model.test.ts` legacy (el preflight decía
 28 por error de conteo). Los 16 builders quedan en tipos y helpers puros
@@ -13,12 +14,17 @@ duplicar; cero callers productivos verificados por `rg` (STOP no activado).
 15 tests migrados: 8 renderers/contract a literales (pit/gaps/stress
 intactos), 7 V2 a aserciones nativas. B1 E4 en ausencia (B2-prep retirado),
 v1-guard sin las 17 entradas E4, view-models sin shadow. Preservados:
-race-schedule, car-damage, accumulator/historias (E1), scoring-readers (lo
-usa V2), geometría, goldens V2, evidencia histórica. Checks: focales
+race-schedule, car-damage, accumulator/historias (E1), scoring-readers y su
+cadena relative pendiente de confirmar/retirar en E1d, geometría, goldens V2,
+evidencia histórica. Checks: focales
 497+297+144+105 PASS; typecheck, lint, build, `rg` y diff-check verdes.
 Suite completa y Go pendientes de E1d/F1. Evidencia:
 [`retirada-v1-r7b-e4-oraculo-20260905.md`](../../telemetry-core/evidence/isa-894/retirada-v1-r7b-e4-oraculo-20260905.md).
-Siguiente: E1d. Sin push, PR, merge, promoción, apps ni LMU.
+Review adversarial Muse + Ponytail `full` `ses_f8fac15bcffe4LyafYHDCmts0C`:
+APPROVE, P0/P1/P2 = 0. P3 de evidencia, guard y formato cerrados sin nueva
+abstracción. La suite completa accidental dejó 3234 PASS y 5 fallos heredados
+fuera del diff E4 (cuatro de transport/store y uno i18n Studio), bloqueadores
+explícitos de E1d/F. Siguiente: E1d. Sin push, PR, merge, promoción, apps ni LMU.
 
 ## R7b/E3 aprobado — 2026-09-05, ISA-894
 

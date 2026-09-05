@@ -52,7 +52,7 @@ describe("Overlay V1 authority guard", () => {
       ["runtime/NewFrame.tsx", "useRateLimitedTelemetry(coordinator, 10);"],
       ["core/NewHost.tsx", "definition.buildViewModel(snapshot, content);"],
       ["core/nuevo-reader.ts", "const rows = snapshot.scoring;"],
-      ["telemetry-shadow/overlay-shadow-comparator.ts", "const rows = snapshot.scoring;"],
+      ["core/telemetry-rate-coordinator.ts", "const rows = snapshot.scoring;"],
     ] as const;
 
     for (const [relative, source] of mutants) {

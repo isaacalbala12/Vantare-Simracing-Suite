@@ -1,6 +1,6 @@
 # Handoff vivo — Telemetry Core
 
-## R7b/D1 ejecutado en rama, pendiente de revisión — Host sin snapshot ni rama legacy — 2026-09-05, ISA-894
+## R7b/D1 APROBADO final — Host sin snapshot ni rama legacy — 2026-09-05, ISA-894
 
 Commits locales `e92d58dc` (RED: `WidgetVisualHost.d1.test.tsx` 22 passed /
 1 failed, fallo estructural exigido `not.toContain("TelemetrySnapshot")`) +
@@ -24,9 +24,12 @@ focal limpio; `pnpm build` PASS (aviso chunks preexistente);
 `git diff --check` limpio; `rg` ausencia limpio en Host y callers. Evidencia
 exacta en
 [`retirada-v1-r7b-d1-host-20260905.md`](../../telemetry-core/evidence/isa-894/retirada-v1-r7b-d1-host-20260905.md).
-`plan.md`/`roadmap.json` sin tocar (deuda del PR R7b, microplan F2). Siguiente:
-D2 por lotes (daño ya resuelto en C1, su slot cae en D4). Sin push, PR, merge,
-promoción, apps ni LMU. Sin APPROVE: el orquestador revisará el diff.
+Review adversarial Muse Spark 1.3 Contributor + Ponytail `full`
+`ses_f905396d3ffemkM0VzgKBBux38`: **APPROVE**, P0/P1/P2/P3=0; reprodujo
+27/27 D1+guard, 44/45 Host/V2/fixture con el único fallo fuel heredado y
+typecheck verde. `plan.md`/`roadmap.json` sin tocar (deuda del PR R7b,
+microplan F2). Siguiente: D2 por lotes (daño ya resuelto en C1, su slot cae
+en D4). Sin push, PR, merge, promoción, apps ni LMU.
 
 ## R7b/C1 APROBADO final — daño rama B, sin productores snapshot — 2026-09-05, ISA-894
 

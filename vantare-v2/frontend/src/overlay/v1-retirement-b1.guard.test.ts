@@ -497,6 +497,23 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
     );
   });
 
+  it("E1c autoría legacy fuera: megamódulo, shim y tests V1", () => {
+    // E1c (autoría legacy): el megamódulo snapshot cae junto a su shim de
+    // compatibilidad y sus tests exclusivos V1. Workshop/Parity ya consumen
+    // la frontera V2 (authoring-v2-scenario-fixture/-widget/-workshop-frame);
+    // el contract Endurance construye su modelo multiclass desde el frame V2.
+    absentAll([
+      [src("overlay", "authoring", "fixtures", "authoring-fixtures.ts"), "E1c (megamódulo snapshot)"],
+      [src("overlay", "authoring", "fixtures", "authoring-fixtures.test.ts"), "E1c (test exclusivo V1)"],
+      [src("overlay-harness", "harness-fixtures.ts"), "E1c (shim sin callers productivos)"],
+      [src("overlay-harness", "harness-fixtures.test.ts"), "E1c (test exclusivo V1)"],
+    ]);
+    contentAbsentAll([
+      [src("overlay", "design-systems", "vantare-endurance", "contract.test.tsx"), "authoring-fixtures", "E1c (contract sobre frame V2)"],
+      [src("overlay", "design-systems", "vantare-endurance", "contract.test.tsx"), "buildHarnessTelemetry", "E1c (contract sobre frame V2)"],
+    ]);
+  });
+
   it("diferidos E1 presentes: snapshot, adapter, stores e historias legacy", () => {
     for (const [route, owner] of [
       [src("overlay", "core", "telemetry-rate-coordinator.ts"), "E1 (historias/API legacy)"],

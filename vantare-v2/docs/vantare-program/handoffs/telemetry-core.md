@@ -1,5 +1,25 @@
 # Handoff vivo — Telemetry Core
 
+## R7b/E1b corte honesto — dos fixtures legacy fuera, megamódulo diferido a E1c/E1d — 2026-09-05, ISA-894
+
+Commits locales `62a541b5` (RED 2/2) + `59c564a0` (borrado 2 ficheros)
++ `fd9d134e` (migración callers + guard). Retirados
+`authoring-v2-scenario-widget.ts` (forma consolidada como
+`buildScenarioWidgetShape` local en `authoring-v2-workshop-frame.ts`;
+`createScenarioWidget`/`buildWorkshopFrameV2` son la frontera V2) y
+`studio-v1-snapshot-test-harness.ts` (cero importadores). Parity y su
+test usan la frontera Workshop (`designId` por manifest, mismos
+números). Guard B1: el harness Studio sale de diferidos E1; Parity
+fija `createScenarioWidget`. D5 y E4 intactos. `authoring-fixtures.ts`
+NO se borra aquí: `contract.test.tsx` lo exige con builders legacy
+(E1c) y los tipos `Mock*` de Studio son dueños E1d — STOP aplicado sin
+ampliar. Focales 83/83 y revalidación 63/63 PASS; guards 25/25;
+typecheck verde; build PASS; ESLint/diff-check limpios; `rg` sin
+importadores de los dos módulos. Suite completa pendiente de E1d/F1.
+Evidencia:
+[`retirada-v1-r7b-e1b-autoria-20260905.md`](../../telemetry-core/evidence/isa-894/retirada-v1-r7b-e1b-autoria-20260905.md).
+Siguiente: E1c/E1d. Sin push, PR, merge, promoción, apps ni LMU.
+
 ## R7b/E1a APROBADO final — contrato sin snapshot, siguiente E1b — 2026-09-05, ISA-894
 
 Commits locales `79856dba` (RED 3/1) + `c99770a5` (GREEN).

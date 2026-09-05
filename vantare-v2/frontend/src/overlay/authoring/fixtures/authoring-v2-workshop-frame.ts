@@ -19,8 +19,6 @@ import { getOfficialDesign } from "../../design-systems/official-designs";
 import { getAnimationScene, sceneFrameAt } from "./animation-scenes";
 import type { SceneFrame } from "./animation-scenes";
 
-// ponytail: tablas dev migradas del megamódulo legacy; mueren con él en E1.
-
 // Variantes dev de Workshop: transformaciones explícitas, deterministas y
 // acotadas sobre el golden canónico. La variante en sí declara el artificio;
 // nada aquí pretende ser telemetría real.

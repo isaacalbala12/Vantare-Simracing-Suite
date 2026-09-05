@@ -68,8 +68,8 @@ function contentHas(route: string, anchor: string, owner: string): void {
 
 // Módulos V1 cuya importación en un caller es resto B2: se afirma ausencia
 // en cada caller C2/B2 (acumula archivo+especificador). C2 migra únicamente
-// los callers productivos a runtime V2 puro. Los helpers snapshot de
-// authoring-fixtures y telemetry-snapshot permanecen bajo D/E1; el puente
+// los callers productivos a runtime V2 puro. El snapshot de autoría cayó en
+// E1c; telemetry-snapshot permanece bajo E1d; el puente
 // authoring-v2-fixture se retiró en B2 tras desacoplar el oráculo E4.
 const V1_MODULES_B2 = [
   "overlay-projection-v1",
@@ -283,7 +283,6 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
       [src("hub", "overlay-studio", "OverlayStudioV3.tsx"), "C2"],
       [src("hub", "overlay-studio", "studio-overlay-telemetry.ts"), "C2"],
       [src("hub", "overlay-studio", "canvas", "StudioTelemetryProvider.tsx"), "C2"],
-      [src("overlay", "authoring", "fixtures", "authoring-fixtures.ts"), "D/E1"],
       [src("overlay-harness", "OverlayParityHarness.tsx"), "C2"],
       [src("overlay", "authoring", "OverlayWorkshopDevRoute.tsx"), "C2"],
       [src("hub", "home-orbit", "HomeMiniStage.tsx"), "C2"],
@@ -307,7 +306,6 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
       src("overlay-harness", "responsive-overlay-main.tsx"),
       src("overlay-harness", "OverlayParityHarness.tsx"),
       src("overlay", "authoring", "OverlayWorkshopDevRoute.tsx"),
-      src("overlay", "authoring", "fixtures", "authoring-fixtures.ts"),
     ] as const) {
       const text = read(route);
       for (const module of V1_MODULES_B2) {
@@ -415,7 +413,6 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
       src("telemetry-transport", "overlay-wails-pull.test.ts"),
       src("overlay-harness", "OverlayParityHarness.test.tsx"),
       src("overlay", "authoring", "OverlayWorkshopDevRoute.test.tsx"),
-      src("overlay", "authoring", "fixtures", "authoring-fixtures.test.ts"),
       src("overlay", "authoring", "fixtures", "scene-interpolation.test.ts"),
       src("overlay", "authoring", "fixtures", "projection-gaps.test.ts"),
       src("overlay", "authoring", "fixtures", "animation-scenes.test.ts"),
@@ -526,16 +523,8 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
       [src("overlay", "core", "telemetry-rate-coordinator.test.ts"), "E1"],
       [src("overlay", "core", "mock-scenarios.test.ts"), "E1"],
     ] as const) present(route, owner);
-    contentHas(
-      src("overlay", "authoring", "fixtures", "authoring-fixtures.ts"),
-      "TelemetrySnapshot",
-      "D/E1 (helpers legacy permanecen hasta migrar definitions/tests)",
-    );
-    contentHas(
-      src("overlay", "authoring", "fixtures", "authoring-fixtures.ts"),
-      "buildMockTelemetry",
-      "D/E1 (helpers legacy permanecen hasta migrar definitions/tests)",
-    );
+    // E1c retiró el megamódulo de autoría y su shim: la única ancla legacy
+    // que queda en fixtures es el helper V2 de Workshop/Parity, sin snapshot.
     // Ancla real de las historias legacy consumidas por el coordinator.
     for (const anchor of ["getFuelHistory", "getInputHistory", "getDeltaHistory"] as const) {
       contentHas(src("overlay", "core", "telemetry-rate-coordinator.ts"), anchor, "E1 (historias legacy)");

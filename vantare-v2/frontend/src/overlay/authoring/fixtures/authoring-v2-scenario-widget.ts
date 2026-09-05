@@ -5,8 +5,6 @@ import { getOfficialDesign } from "../../design-systems/official-designs";
 import { parseRelativeContent, updateRelativeFilters } from "../../widget-types/relative/relative-content";
 import { AUTHORING_V2_VARIANTS, type AuthoringV2Variant } from "./authoring-v2-scenario-fixture";
 
-// ponytail: forma duplicada del megamódulo legacy hasta E1; borrar con él.
-
 // Widget de autoría para el escenario V2 puro (C2b6b): solo forma, cero
 // telemetría. Construye desde el registro productivo, aplica el diseño
 // oficial y sus dimensiones, y preserva los ajustes de forma de Parity.

@@ -2,20 +2,11 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { StrictMode } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import { OverlayWorkshopDevRoute } from "./OverlayWorkshopDevRoute";
-import {
-  buildAuthoringFixtureTelemetry,
-  buildAuthoringFixtureWidget,
-} from "./fixtures/authoring-fixtures";
-import {
-  readInputTelemetryHistory,
-  recordInputTelemetrySample,
-  resetInputTelemetryHistory,
-} from "../widget-types/input-telemetry/input-telemetry-accumulator";
+import { ALL_WIDGET_TYPES } from "../core/profile-document";
 import { parseOverlayWorkshopQuery } from "./overlay-workshop-query";
 
 afterEach(() => {
   cleanup();
-  resetInputTelemetryHistory();
 });
 
 describe("OverlayWorkshopDevRoute", () => {
@@ -88,20 +79,7 @@ describe("OverlayWorkshopDevRoute", () => {
     expect(document.querySelector("[data-overlay-workshop-query]")?.textContent).toContain("scale=0.3");
   });
 
-  it("seeds Input Telemetry after render without clearing unrelated histories in StrictMode", async () => {
-    const scenario = {
-      session: "race" as const,
-      location: "track" as const,
-      state: "ready" as const,
-      widget: "input-telemetry" as const,
-      system: "vantare-crystal" as const,
-      surface: "studio" as const,
-      variant: "default" as const,
-      designId: "input-crystal-blade",
-    };
-    const snapshot = buildAuthoringFixtureTelemetry(scenario);
-    recordInputTelemetrySample("unrelated-workshop-widget", snapshot);
-
+  it("renders Input history from the canonical V2 frame without seeding", async () => {
     render(
       <StrictMode>
         <OverlayWorkshopDevRoute search="?widget=input-telemetry&system=vantare-crystal&design=input-crystal-blade&state=ready&surface=studio&variant=default" />
@@ -109,11 +87,19 @@ describe("OverlayWorkshopDevRoute", () => {
     );
 
     await waitFor(() => expect(document.querySelector("[data-widget-renderer=input-telemetry]")).toBeTruthy());
-    const widget = buildAuthoringFixtureWidget(scenario);
-    const seeded = readInputTelemetryHistory(widget.id, snapshot, 8);
+    expect(document.querySelector(".vc-input-graph path")?.getAttribute("d")).toContain("L");
+  });
 
-    expect(seeded).toHaveLength(snapshot.derived?.inputHistory.length ?? 0);
-    expect(readInputTelemetryHistory("unrelated-workshop-widget", snapshot, 8)).toHaveLength(1);
+  it("renders each default widget marker", async () => {
+    expect(ALL_WIDGET_TYPES).toHaveLength(20);
+    for (const widget of ALL_WIDGET_TYPES) {
+      cleanup();
+      const system = widget === "engineer-radio" ? "vantare-crystal" : widget === "track-map" ? "vantare-endurance" : "vantare-original";
+      render(<OverlayWorkshopDevRoute search={`?widget=${widget}&system=${system}&state=ready&surface=obs`} />);
+      await waitFor(() =>
+        expect(document.querySelector(`[data-widget-renderer="${widget}"]`)).toBeTruthy(),
+      );
+    }
   });
 
   // A scene shapes the widget as well as the snapshot. The Workshop used to

@@ -212,19 +212,15 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
       // StudioTelemetryProvider) son type-only bajo ownership E1: no son V1
       // en runtime ni entran al bundle, así que no se vigilan aquí.
       [src("overlay", "authoring", "fixtures", "authoring-v2-scenario-fixture.test.ts"), "./authoring-v2-fixture", "C2 (test del escenario V2 puro)"],
-      // C2b6b: OverlayParityHarness ya es V2 puro (escenario canónico, sin
-      // snapshot ni builders snapshot); el lock exacto queda abajo, fuera de
-      // las anclas pendientes.
-      [src("overlay", "authoring", "OverlayWorkshopDevRoute.tsx"), "snapshot={prepared.snapshot}", "C2 (Workshop V2)"],
-      [src("overlay", "authoring", "OverlayWorkshopDevRoute.tsx"), "authoring-v2-fixture", "C2 (usar escenario V2 puro)"],
-      [src("overlay", "authoring", "OverlayWorkshopDevRoute.tsx"), "buildAuthoringFixtureTelemetry", "C2 (sin builder snapshot)"],
-      [src("overlay", "authoring", "OverlayWorkshopDevRoute.tsx"), "resetAndSeedAuthoringInputTelemetry", "C2 (sin seed snapshot global)"],
+      // C2b6c: OverlayWorkshopDevRoute ya es V2 puro (frame canónico +
+      // variantes dev acotadas, sin snapshot ni builders snapshot); el lock
+      // exacto queda abajo, fuera de las anclas pendientes.
       // C2b5a: responsive-overlay-main.tsx ya es V2-only; el lock exacto
       // queda abajo, fuera de las anclas pendientes.
       // C2b3: HomeMiniStage, ProfilePreview y ui-orbit-harness ya son V2
       // (factory por consumidor sobre el escenario canónico, sin snapshot).
-      [src("overlay", "authoring", "workshop-runtime-parity.test.tsx"), "authoring-v2-fixture", "C2 (compat API V2 pura)"],
-      [src("overlay", "authoring", "workshop-runtime-parity.test.tsx"), "buildAuthoringFixtureTelemetry", "C2 (compat sin snapshot)"],
+      // C2b6c: workshop-runtime-parity ya compara mismo widget y frame V2;
+      // el lock exacto queda abajo.
       // C2b6a: los tests de layout TrackMap y shells Endurance ya consumen
       // el escenario V2 puro; el lock exacto queda abajo.
       [src("overlay", "authoring", "fixtures", "projection-gaps.test.ts"), "overlay-projection-adapter.ts", "C2 (contrato gaps V2)"],
@@ -372,6 +368,31 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
       [src("overlay", "authoring", "fixtures", "authoring-v2-scenario-fixture.ts"), "official-designs", "C2b6b (runtime sin diseños)"],
       [src("overlay", "authoring", "fixtures", "authoring-v2-scenario-fixture.ts"), "relative-content", "C2b6b (runtime sin contenido)"],
     ]);
+    // C2b6c (lock Workshop V2 puro): sin prop snapshot, puente, builders ni
+    // seed snapshot; frame canónico + variantes dev acotadas como única
+    // fuente. Fuera del array RED C2: es lock post-corte, no ancla pendiente.
+    contentAbsentAll([
+      [src("overlay", "authoring", "OverlayWorkshopDevRoute.tsx"), "snapshot={", "C2b6c (Workshop sin snapshot)"],
+      [src("overlay", "authoring", "OverlayWorkshopDevRoute.tsx"), "authoring-v2-fixture", "C2b6c (Workshop usa frame V2 puro)"],
+      [src("overlay", "authoring", "OverlayWorkshopDevRoute.tsx"), "authoring-fixtures", "C2b6c (Workshop sin megamódulo legacy)"],
+      [src("overlay", "authoring", "OverlayWorkshopDevRoute.tsx"), "buildAuthoringFixtureTelemetry", "C2b6c (Workshop sin builder snapshot)"],
+      [src("overlay", "authoring", "OverlayWorkshopDevRoute.tsx"), "resetAndSeedAuthoringInputTelemetry", "C2b6c (Workshop sin seed snapshot global)"],
+      [src("overlay", "authoring", "OverlayWorkshopDevRoute.tsx"), "clearInputTelemetryHistory", "C2b6c (Workshop sin acumulador global)"],
+      [src("overlay", "authoring", "overlay-workshop-query.ts"), "authoring-fixtures", "C2b6c (query sin megamódulo legacy)"],
+      [src("overlay", "authoring", "workshop-runtime-parity.test.tsx"), "authoring-v2-fixture", "C2b6c (compat sin puente snapshot)"],
+      [src("overlay", "authoring", "workshop-runtime-parity.test.tsx"), "buildAuthoringFixtureTelemetry", "C2b6c (compat sin builder snapshot)"],
+      [src("overlay", "authoring", "workshop-runtime-parity.test.tsx"), "coordinator.publish", "C2b6c (compat publica solo frame V2)"],
+    ]);
+    contentHas(
+      src("overlay", "authoring", "OverlayWorkshopDevRoute.tsx"),
+      "buildWorkshopFrameV2",
+      "C2b6c (frame V2 puro con variantes dev)",
+    );
+    contentHas(
+      src("overlay", "authoring", "workshop-runtime-parity.test.tsx"),
+      "buildWorkshopFrameV2",
+      "C2b6c (compat sobre frame V2)",
+    );
     for (const route of [
       src("overlay", "CompositeApp.test.tsx"),
       src("overlay", "ObsOverlayApp.test.tsx"),

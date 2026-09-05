@@ -1,7 +1,6 @@
 import type { DesignSystemId, WidgetType } from "../core/profile-document";
 import type { MockDataState, MockLocationScenario, MockSessionScenario } from "../core/mock-scenarios";
-import type { HarnessVariant } from "./fixtures/authoring-fixtures";
-import { isHarnessVariant } from "./fixtures/authoring-fixtures";
+import { isWorkshopV2Variant, type WorkshopV2Variant } from "./fixtures/authoring-v2-workshop-frame";
 import { getAnimationScene } from "./fixtures/animation-scenes";
 import { getOfficialDesign } from "../design-systems/official-designs";
 import { WIDGET_TYPES } from "../core/profile-document";
@@ -12,7 +11,7 @@ export type OverlayWorkshopQuery = {
   designId?: string;
   state: MockDataState;
   surface: "studio" | "desktop" | "obs" | "harness";
-  variant: HarnessVariant;
+  variant: WorkshopV2Variant;
   session: MockSessionScenario;
   location: MockLocationScenario;
   background: "transparent" | "grid" | "solid" | "context";
@@ -53,7 +52,7 @@ export function parseOverlayWorkshopQuery(search: string): OverlayWorkshopQuery 
   const system = (params.get("system") ?? DEFAULT_OVERLAY_WORKSHOP_QUERY.system) as DesignSystemId;
   const state = (params.get("state") ?? DEFAULT_OVERLAY_WORKSHOP_QUERY.state) as MockDataState;
   const surface = (params.get("surface") ?? DEFAULT_OVERLAY_WORKSHOP_QUERY.surface) as OverlayWorkshopQuery["surface"];
-  const variant = (params.get("variant") ?? DEFAULT_OVERLAY_WORKSHOP_QUERY.variant) as HarnessVariant;
+  const variant = (params.get("variant") ?? DEFAULT_OVERLAY_WORKSHOP_QUERY.variant) as WorkshopV2Variant;
   const designId = params.get("design") ?? undefined;
   const session = (params.get("session") ?? DEFAULT_OVERLAY_WORKSHOP_QUERY.session) as MockSessionScenario;
   const location = (params.get("location") ?? DEFAULT_OVERLAY_WORKSHOP_QUERY.location) as MockLocationScenario;
@@ -69,7 +68,7 @@ export function parseOverlayWorkshopQuery(search: string): OverlayWorkshopQuery 
   if (!DESIGN_SYSTEMS.has(system)) return { error: `invalid system parameter: ${system}` };
   if (!STATES.has(state)) return { error: `invalid state parameter: ${state}` };
   if (!SURFACES.has(surface)) return { error: `invalid surface parameter: ${surface}` };
-  if (!isHarnessVariant(variant)) return { error: `invalid variant parameter: ${variant}` };
+  if (!isWorkshopV2Variant(variant)) return { error: `invalid variant parameter: ${variant}` };
   if (!SESSIONS.has(session)) return { error: `invalid session parameter: ${session}` };
   if (!LOCATIONS.has(location)) return { error: `invalid location parameter: ${location}` };
   if (!BACKGROUNDS.has(background)) return { error: `invalid background parameter: ${background}` };

@@ -61,10 +61,6 @@ import { buildRelativeViewModel } from "../widget-types/relative/relative-view-m
 import { buildRelativeViewModelV2 } from "../widget-types/relative/relative-view-model-v2";
 export { OVERLAY_V2_RELATIVE_DECLARED_GAPS } from "../widget-types/relative/relative-view-model-v2";
 import { readScoringBoolean, readScoringNumber, readScoringString } from "../widget-types/shared/scoring-readers";
-import type {
-  OverlayProjectionAdaptation,
-  OverlayProjectionMapping,
-} from "../projection/overlay-projection-adapter";
 import {
   limitShadowEntries,
   sanitizeShadowObservation,
@@ -79,6 +75,36 @@ const MAX_WIDGETS = 128;
 const INPUT_HISTORY_LIMIT = 120;
 const MAX_NON_MISMATCH_SAMPLES = 64;
 const RUNTIME_STATUSES = ["ready", "missing", "stale", "disconnected", "error"] as const;
+
+export type OverlayShadowProjectionMapping = Readonly<{
+  kind: "mapped";
+  snapshot: TelemetrySnapshot;
+  quality: readonly Readonly<{
+    sourcePath: string;
+    targetPath?: string;
+    present: boolean;
+    provenance: "unknown" | "observed" | "derived" | "estimated";
+    freshness: "missing" | "fresh" | "stale" | "invalid";
+    usable: boolean;
+  }>[];
+  unsupported: readonly Readonly<{
+    targetPath: string;
+    reason: "unsupported-by-projection" | "history-without-timestamps";
+  }>[];
+}>;
+
+export type OverlayShadowProjectionAdaptation =
+  | OverlayShadowProjectionMapping
+  | Readonly<{
+      kind: "blocked";
+      code:
+        | "captured-at-invalid"
+        | "session-type-unavailable"
+        | "player-unavailable"
+        | "player-in-pit-unavailable";
+      quality: OverlayShadowProjectionMapping["quality"];
+      unsupported: OverlayShadowProjectionMapping["unsupported"];
+    }>;
 
 export type OverlayShadowCoverage = "exact" | "partial" | "not-comparable" | "external";
 
@@ -1228,7 +1254,7 @@ export const OVERLAY_SHADOW_POLICIES = {
 
 export function compareOverlayShadow(input: Readonly<{
   legacySnapshot: TelemetrySnapshot;
-  projection: OverlayProjectionAdaptation;
+  projection: OverlayShadowProjectionAdaptation;
   overlayV2: Readonly<{ frame: OverlayFrameV2; source: OverlaySourceStatusV2 }>;
   widgets: readonly WidgetInstanceV3[];
   maxEntries?: number;
@@ -1317,7 +1343,7 @@ function compareWidget(
   widget: WidgetInstanceV3,
   instance: number,
   legacySnapshot: TelemetrySnapshot,
-  projection: OverlayProjectionAdaptation,
+  projection: OverlayShadowProjectionAdaptation,
   overlayV2: Readonly<{ frame: OverlayFrameV2; source: OverlaySourceStatusV2 }>,
 ): OverlayShadowWidgetResult {
   const policy = OVERLAY_SHADOW_POLICIES[widget.type];
@@ -1401,7 +1427,7 @@ function compareRule(
   legacy: WidgetViewModelBase,
   projectionModel: WidgetViewModelBase,
   legacySnapshot: TelemetrySnapshot,
-  projection: OverlayProjectionMapping,
+  projection: OverlayShadowProjectionMapping,
 ): OverlayShadowEntry[] {
   switch (rule.kind) {
     case "scalar":
@@ -1434,7 +1460,7 @@ function compareScalarRule(
   rule: ScalarRule,
   legacy: WidgetViewModelBase,
   projectionModel: WidgetViewModelBase,
-  projection: OverlayProjectionMapping,
+  projection: OverlayShadowProjectionMapping,
 ): OverlayShadowEntry {
   let legacyValue: ShadowScalar;
   let projectionValue: ShadowScalar;
@@ -1460,7 +1486,7 @@ function compareListRule(
   legacy: WidgetViewModelBase,
   projectionModel: WidgetViewModelBase,
   legacySnapshot: TelemetrySnapshot,
-  projection: OverlayProjectionMapping,
+  projection: OverlayShadowProjectionMapping,
 ): OverlayShadowEntry[] {
   let legacyRows: readonly unknown[];
   let projectionRows: readonly unknown[];
@@ -1531,7 +1557,7 @@ function compareScalarValues(
   projectionValue: ShadowScalar,
   quality: QualityRequirement,
   disclosure: ShadowDisclosure,
-  projection: OverlayProjectionMapping,
+  projection: OverlayShadowProjectionMapping,
   tolerance?: number,
   item?: number,
   projectionVehicleIndex?: number,
@@ -1579,7 +1605,7 @@ function compareScalarValues(
 
 function classifyQuality(
   requirement: QualityRequirement,
-  projection: OverlayProjectionMapping,
+  projection: OverlayShadowProjectionMapping,
   projectionVehicleIndex?: number,
 ): "missing-projection" | "stale-projection" | "invalid-projection" | "value-mismatch" | undefined {
   if (requirement.selectors.length === 0) return undefined;
@@ -1660,7 +1686,7 @@ function scoringIndexByIdentity(
 
 function classifyQualitySelector(
   selector: QualitySelector,
-  projection: OverlayProjectionMapping,
+  projection: OverlayShadowProjectionMapping,
   projectionVehicleIndex?: number,
 ): "missing-projection" | "stale-projection" | "invalid-projection" | "value-mismatch" | undefined {
   const matches = qualityMatches(selector, projection, projectionVehicleIndex);
@@ -1676,9 +1702,9 @@ function classifyQualitySelector(
 
 function qualityMatches(
   selector: QualitySelector,
-  projection: OverlayProjectionMapping,
+  projection: OverlayShadowProjectionMapping,
   projectionVehicleIndex?: number,
-): readonly OverlayProjectionMapping["quality"][number][] {
+): readonly OverlayShadowProjectionMapping["quality"][number][] {
   const sourcePath = selector.kind === "vehicle"
     ? projectionVehicleIndex === undefined
       ? undefined

@@ -1,40 +1,43 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
-import type { OverlayFrameV2, OverlayUpdateV2 } from "../../generated/telemetry";
+import type {
+  OverlayFrameV2,
+  OverlaySourceStatusV2,
+  OverlayUpdateV2,
+} from "../../generated/telemetry";
 import type { WidgetInstanceV3, WidgetType } from "../core/profile-document";
 import { widgetTypeRegistry } from "../core/widget-registry";
 import type { TelemetrySnapshot } from "../core/telemetry-snapshot";
 import { inputTelemetryDefinition } from "../widget-types/input-telemetry/input-telemetry-definition";
 import { resetInputTelemetryHistory } from "../widget-types/input-telemetry/input-telemetry-accumulator";
 import { buildInputTelemetryViewModelV2 } from "../widget-types/input-telemetry/input-telemetry-view-model-v2";
-import type {
-  OverlayMappedField,
-  OverlayProjectionAdaptation,
-  OverlayProjectionMapping,
-} from "../projection/overlay-projection-adapter";
 import {
   OVERLAY_V2_CONTROLS_DECLARED_GAPS,
   OVERLAY_V2_CONTROLS_RATIO_TOLERANCE,
   OVERLAY_SHADOW_POLICIES,
+  type OverlayShadowProjectionAdaptation,
+  type OverlayShadowProjectionMapping,
   compareControlsModels,
   compareOverlayShadow,
   createOverlayV2PlayerInstrumentsComparator,
 } from "./overlay-shadow-comparator";
 import { overlayV2ViewModelRegistry } from "../core/overlay-v2-view-models";
-import { buildAuthoringV2Runtime } from "../authoring/fixtures/authoring-v2-fixture";
 
 const CONTROLS_CONTENT = inputTelemetryDefinition.parseContent({});
+const ORACLE_GOLDEN = JSON.parse(readFileSync(path.resolve(
+  process.cwd(),
+  "../internal/telemetry/projection/overlayv2/testdata/overlay_v2_1.golden.json",
+), "utf8")) as OverlayUpdateV2;
+type OverlayShadowMappedField = OverlayShadowProjectionMapping["quality"][number];
 
 function compareFixture(input: Omit<Parameters<typeof compareOverlayShadow>[0], "overlayV2">) {
   const projected = input.projection.kind === "mapped"
     ? input.projection.snapshot
     : input.legacySnapshot;
-  const runtime = buildAuthoringV2Runtime("delta", projected);
-  if (!runtime.overlayV2Frame || !runtime.overlayV2Source) throw new Error("V2 fixture missing");
   return compareOverlayShadow({
     ...input,
-    overlayV2: { frame: runtime.overlayV2Frame, source: runtime.overlayV2Source },
+    overlayV2: buildOracleV2(projected),
   });
 }
 
@@ -90,10 +93,129 @@ function snapshot(overrides: Partial<TelemetrySnapshot> = {}): TelemetrySnapshot
   };
 }
 
+function buildOracleV2(snapshot: TelemetrySnapshot): Readonly<{
+  frame: OverlayFrameV2;
+  source: OverlaySourceStatusV2;
+}> {
+  if (!ORACLE_GOLDEN.frame) throw new Error("V2 oracle fixture missing");
+  const quality = snapshot.status === "stale" ? "stale" : "fresh";
+  const frame = structuredClone(ORACLE_GOLDEN.frame);
+  const player = snapshot.scoring.find((row) => row.isPlayer === true);
+  const playerId = oracleString(player?.id) ?? frame.player.id;
+  const sourceState = snapshot.status === "ready"
+    ? "live"
+    : snapshot.status === "disconnected"
+      ? "stopped"
+      : snapshot.status === "missing"
+        ? "detecting"
+        : snapshot.status;
+  return {
+    source: {
+      ...ORACLE_GOLDEN.source,
+      state: sourceState,
+      reason: sourceState === "error" ? snapshot.errorMessage ?? "Fixture source error" : undefined,
+    },
+    frame: {
+      ...frame,
+      sequence: Math.max(frame.sequence + 1, Math.trunc(snapshot.capturedAt)),
+      generatedAt: new Date(snapshot.capturedAt).toISOString(),
+      session: {
+        ...frame.session,
+        phase: { v: snapshot.session.type, q: quality },
+        track: snapshot.session.trackName
+          ? { v: snapshot.session.trackName, q: quality }
+          : frame.session.track,
+        remaining: snapshot.session.remainingSeconds === undefined
+          ? frame.session.remaining
+          : { v: snapshot.session.remainingSeconds, q: quality },
+      },
+      player: {
+        ...frame.player,
+        id: playerId,
+        speed: oracleQNumber(
+          snapshot.player.speedKph === undefined ? undefined : snapshot.player.speedKph / 3.6,
+          quality,
+        ),
+        rpm: oracleQNumber(snapshot.player.rpm, quality),
+        gear: oracleQNumber(snapshot.player.gear, quality),
+        throttle: oracleQNumber(snapshot.player.throttle, quality),
+        brake: oracleQNumber(snapshot.player.brake, quality),
+        clutch: oracleQNumber(snapshot.player.clutch, quality),
+      },
+      delta: {
+        ...frame.delta,
+        seconds: oracleQNumber(snapshot.player.deltaSeconds, quality),
+      },
+      standings: snapshot.scoring.map((row, index) => ({
+        id: oracleString(row.id) ?? `fixture-${index}`,
+        position: oracleNumber(row.place) ?? index + 1,
+        classPosition: oracleNumber(row.classPlace) ?? index + 1,
+        classId: oracleString(row.vehicleClass) ?? "unknown",
+        driver: oracleString(row.driverName) ?? `Driver ${index + 1}`,
+        number: oracleString(row.driverNumber),
+        gap: oracleQNumber(oracleNumber(row.gapSeconds), quality),
+        pit: row.isPlayer === true ? (snapshot.player.inPit ? "pit" : "track") : "track",
+        laps: oracleNumber(row.completedLaps) ?? oracleNumber(row.totalLaps) ?? 0,
+        lastLap: oracleQNumber(oracleNumber(row.lastLapSeconds), quality),
+        bestLap: oracleQNumber(oracleNumber(row.bestLapSeconds), quality),
+        lapDistance: oracleQNumber(oracleNumber(row.lapDistance), quality),
+        groundPosition: { q: "missing" as const },
+      })) as OverlayFrameV2["standings"],
+      fuel: {
+        ...frame.fuel,
+        remaining: oracleQNumber(snapshot.player.fuelLiters, quality),
+      },
+      weather: {
+        ambientC: oracleQNumber(snapshot.environment?.ambientC, quality),
+        trackC: oracleQNumber(snapshot.environment?.trackC, quality),
+        rainPercent: oracleQNumber(snapshot.environment?.rainPercent, quality),
+        wetnessPct: oracleQNumber(snapshot.environment?.wetnessPercent, quality),
+        windKph: oracleQNumber(snapshot.environment?.windKph, quality),
+        windDir: snapshot.environment?.windDirection
+          ? { v: snapshot.environment.windDirection, q: quality }
+          : { q: "missing" },
+        pressureHpa: oracleQNumber(snapshot.environment?.pressureHpa, quality),
+      },
+      capabilities: {
+        ...frame.capabilities,
+        supported: [
+          "controls", "damage", "delta", "fuel", "gaps", "player-instruments",
+          "session", "spatial.lateral", "spatial.longitudinal", "spotter",
+          "standings", "weather",
+        ],
+        available: {
+          ...frame.capabilities.available,
+          controls: quality,
+          damage: quality,
+          delta: snapshot.player.deltaSeconds === undefined ? "missing" : quality,
+          fuel: snapshot.player.fuelLiters === undefined ? "missing" : quality,
+          "player-instruments": quality,
+          session: quality,
+          standings: quality,
+          weather: snapshot.environment ? quality : "missing",
+        },
+      },
+    },
+  };
+}
+
+function oracleQNumber(value: number | undefined, quality: "fresh" | "stale") {
+  return value === undefined ? { q: "missing" as const } : { v: value, q: quality };
+}
+
+function oracleNumber(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function oracleString(value: unknown): string | undefined {
+  if (typeof value === "string" && value !== "") return value;
+  return typeof value === "number" && Number.isFinite(value) ? String(value) : undefined;
+}
+
 function quality(
   targetPath: string,
-  freshness: OverlayMappedField["freshness"] = "fresh",
-): OverlayMappedField {
+  freshness: OverlayShadowMappedField["freshness"] = "fresh",
+): OverlayShadowMappedField {
   return {
     sourcePath: targetPath === "player" ? "playerVehicleId" : `source.${targetPath}`,
     targetPath,
@@ -108,8 +230,8 @@ function vehicleQuality(
   index: number,
   field: string,
   targetPath: string,
-  freshness: OverlayMappedField["freshness"] = "fresh",
-): OverlayMappedField {
+  freshness: OverlayShadowMappedField["freshness"] = "fresh",
+): OverlayShadowMappedField {
   return {
     sourcePath: `vehicles[${index}].${field}`,
     targetPath,
@@ -122,8 +244,8 @@ function vehicleQuality(
 
 function mapped(
   projectedSnapshot = snapshot(),
-  qualityOverrides: readonly OverlayMappedField[] = [],
-): OverlayProjectionMapping {
+  qualityOverrides: readonly OverlayShadowMappedField[] = [],
+): OverlayShadowProjectionMapping {
   const defaults = [
     quality("session.type"),
     quality("player"),
@@ -191,7 +313,7 @@ function partialWidget(type: WidgetType): WidgetInstanceV3 {
 function resultFor(
   type: WidgetType,
   legacy = snapshot(),
-  projection: OverlayProjectionAdaptation = mapped(),
+  projection: OverlayShadowProjectionAdaptation = mapped(),
 ) {
   const report = compareFixture({
     legacySnapshot: legacy,
@@ -397,7 +519,7 @@ describe("overlay shadow comparator behavior", () => {
 
   it("reports missing quality when Broadcast lap number is present", () => {
     const completeMapping = mapped();
-    const missingLapSource: OverlayProjectionMapping = {
+    const missingLapSource: OverlayShadowProjectionMapping = {
       ...completeMapping,
       quality: completeMapping.quality.filter(
         (field) => field.targetPath !== "player.lapNumber",
@@ -672,7 +794,7 @@ describe("overlay shadow comparator behavior", () => {
   });
 
   it("does not invoke builders for blocked projections and controls builder errors", () => {
-    const blocked: OverlayProjectionAdaptation = {
+    const blocked: OverlayShadowProjectionAdaptation = {
       kind: "blocked",
       code: "player-unavailable",
       quality: [],

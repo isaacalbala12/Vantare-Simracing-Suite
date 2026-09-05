@@ -1029,7 +1029,7 @@ omitido por el inventario inicial (58 ficheros, +158/−3075, neto −2917).
 store ni historias. Guardias 21/21 y afectados 210/210 PASS; typecheck, lint,
 build, diff-check y ausencia en bundle PASS. La corrección de review
 `7ff93c2d` conserva la regresión de repaint durante drag usando un frame V2.
-Suite completa 407/407 ficheros y 3163/3163 tests PASS; Go completo y contrato
+Suite completa 407/407 ficheros y 3164/3164 tests PASS; Go completo y contrato
 generado PASS; vet conserva solo tres avisos heredados fuera del diff. Review
 Muse `ses_f8f8383b0ffegmpe5mMk7uudRB`: APPROVE, P0/P1/P2/P3 = 0. Evidencia:
 `docs/telemetry-core/evidence/isa-894/retirada-v1-r7b-e1d-nucleo-20260905.md`.
@@ -1246,9 +1246,11 @@ Siguiente: E4.
 
 **Resultado F en curso (2026-09-05):** código productivo cerrado en
 `7ff93c2d`; primera review fresca aprobada y gates completos verdes. F2
-actualiza ahora evidencia, handoff, issue y roadmap. Falta únicamente regenerar
-el digest y obtener la segunda review independiente sobre el árbol final; no
-hay push, PR, merge ni promoción.
+actualizó evidencia, handoff y roadmap, con digest `--check` verde. Las suites
+completas pasaron secuencialmente sobre el cierre; los timeouts observados al
+ejecutarlas en paralelo pasaron aislados y no son regresiones. F1 termina con
+dos reviews independientes sobre el árbol final; no hay push, PR, merge ni
+promoción.
 
 ---
 

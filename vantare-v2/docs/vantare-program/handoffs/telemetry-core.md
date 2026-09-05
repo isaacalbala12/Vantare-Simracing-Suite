@@ -8,14 +8,16 @@ ficheros: snapshot, adapters, derived store, mocks, acumulador e historias,
 readers y fixtures preview legacy. El coordinador conserva solo
 OverlayFrameV2/source/context/failure y un scheduler; no hay wrapper ni camino
 de compatibilidad. Guardias 21/21, afectados 210/210, suite frontend 407/407
-ficheros y 3163/3163 tests, typecheck, lint, build, contrato generado y Go
+ficheros y 3164/3164 tests, typecheck, lint, build, contrato generado y Go
 completo PASS. `go vet` muestra solo tres avisos heredados de `unsafe.Pointer`
 fuera del diff. Review Muse + Ponytail `ses_f8f8383b0ffegmpe5mMk7uudRB`:
 APPROVE, P0/P1/P2/P3 = 0. Evidencia:
 [`retirada-v1-r7b-e1d-nucleo-20260905.md`](../../telemetry-core/evidence/isa-894/retirada-v1-r7b-e1d-nucleo-20260905.md).
-Siguiente: digest y segunda review fresca del árbol final. Sin push, PR, merge,
-promoción, apps ni LMU; la auditoría V2 y el bucle de rendimiento aún no han
-comenzado.
+Roadmap regenerado y `--check` verde. Una primera ejecución paralela agotó dos
+timeouts Playwright y uno Go por contención; los focales y las suites completas
+pasaron después secuencialmente. Siguiente: dos reviews frescas del árbol
+final. Sin push, PR, merge, promoción, apps ni LMU; la auditoría V2 y el bucle
+de rendimiento aún no han comenzado.
 
 ## R7b/E4 ejecutado en rama — oráculo shadow y builders legacy fuera, tipos vivos in situ — 2026-09-05, ISA-894
 

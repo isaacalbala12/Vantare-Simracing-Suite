@@ -45,7 +45,7 @@ caller productivo.
 - `pnpm --dir frontend build`: PASS; solo aviso preexistente de chunk size.
 - `git diff --check`: PASS.
 - Ausencia en `frontend/dist` de snapshot, stores, mocks e historias V1: PASS.
-- `pnpm --dir frontend test`: **407/407 ficheros y 3163/3163 tests PASS**,
+- `pnpm --dir frontend test`: **407/407 ficheros y 3164/3164 tests PASS**,
   exit 0. El `AbortError` de teardown de Happy DOM es ruido conocido posterior
   al resumen verde, no un fallo oculto.
 - `go test ./... -count=1`: PASS.

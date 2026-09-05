@@ -232,10 +232,16 @@ movió la duplicación a otro módulo y no se añadió dependencia.
 E1d eliminó 25 ficheros legacy en `31742554` (58 ficheros modificados,
 +158/−3075, neto −2917). `7ff93c2d` cerró la review conservando la prueba de
 repaint durante drag con `OverlayFrameV2`. Verificación acumulada: guardias
-21/21, afectados 210/210, suite frontend 407/407 ficheros y 3163/3163 tests,
+21/21, afectados 210/210, suite frontend 407/407 ficheros y 3164/3164 tests,
 typecheck, lint, build, bundle/ausencia, `go test ./... -count=1`, contrato
 generado y diff-check PASS. `go vet ./...` mantiene únicamente tres avisos
 heredados de `unsafe.Pointer` fuera del diff.
+
+Una primera ejecución concurrente de las suites completas agotó el timeout de
+dos casos Playwright de Pedals Redline y de un caso del bridge de diagnósticos
+Go. Ambos focales pasaron aislados (5/5 en 4,68 s y Go en 0,12 s), y las dos
+suites completas pasaron después en secuencia. Se clasifica como contención
+del equipo, no como regresión del candidato.
 
 Review Muse + Ponytail `ses_f8f8383b0ffegmpe5mMk7uudRB`: APPROVE,
 P0/P1/P2/P3 = 0. El cierre F exige todavía una segunda review independiente

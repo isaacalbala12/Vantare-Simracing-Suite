@@ -13,7 +13,7 @@
   background: rgba(15, 15, 18, 0.88);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 60px;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  box-shadow: none;
   backdrop-filter: blur(24px);
   font-family: var(--vc-font-sans);
 }
@@ -1983,3 +1983,41 @@
   width: 65px;
   box-sizing: border-box;
 }
+
+/* ISA-990: these are RPM instruments, not vehicle redline warnings. */
+[data-widget-system="vantare-crystal"] .vc-rpm-scale { color: #cbd5e1; font: 700 10px var(--vc-font-mono); line-height: 1.2; }
+[data-widget-system="vantare-crystal"] .vc-pedals-telemetry-led.is-on,
+[data-widget-system="vantare-crystal"] .vc-pedals-compact-shift i.is-on { background: #38bdf8; box-shadow: none; }
+[data-widget-system="vantare-crystal"] .vc-pedals-telemetry-rpm-value { color: #fff; }
+[data-widget-system="vantare-crystal"] .vc-pedals-compact-core { gap: 2px; }
+
+/* ISA-990: reserve history and pedal space at the 360px authoring width. */
+[data-widget-system="vantare-crystal"] .vc-input-graph { min-width: 70px; }
+[data-widget-system="vantare-crystal"] .vc-input-graph path { vector-effect: non-scaling-stroke; stroke-width: 2px; }
+[data-widget-system="vantare-crystal"] .vc-input-graph path:nth-of-type(3) { stroke: #60a5fa; }
+[data-widget-system="vantare-crystal"] .vc-input-vertical { flex: 0 0 90px; gap: 8px; padding: 0 6px; }
+[data-widget-system="vantare-crystal"] .vc-input-vertical b { font-size: 14px; }
+[data-widget-system="vantare-crystal"] .vc-input-vertical span { width: 20px; height: 60px; }
+[data-widget-system="vantare-crystal"] .vc-input-readout { flex: 0 0 100px; width: 100px; min-width: 0; gap: 8px; padding: 0 8px; }
+[data-widget-system="vantare-crystal"] .vc-input-readout strong { font-size: 20px; }
+[data-widget-system="vantare-crystal"].vc-input-telemetry.vc-input-capsule { padding-right: 6px; }
+[data-widget-system="vantare-crystal"].vc-input-telemetry.vc-input-capsule>header { width: 28px; }
+[data-widget-system="vantare-crystal"].vc-input-telemetry.vc-input-capsule .vc-input-graph { margin: 0 6px; height: 90px; }
+[data-widget-system="vantare-crystal"].vc-input-telemetry.vc-input-capsule .vc-input-vertical { margin-right: 6px; gap: 8px; height: 100px; }
+[data-widget-system="vantare-crystal"].vc-input-telemetry.vc-input-capsule .vc-input-readout { width: 100px; padding: 0 6px; height: 90px; }
+[data-widget-system="vantare-crystal"].vc-input-telemetry.vc-input-dense { display: grid; grid-template-columns: 38px minmax(0,1fr) 88px; grid-template-rows: minmax(62px,1fr) 42px; gap: 6px; padding: 8px; }
+[data-widget-system="vantare-crystal"].vc-input-telemetry.vc-input-dense>header { grid-column: 1; grid-row: 1; padding: 5px 3px; font-size: 12px; }
+[data-widget-system="vantare-crystal"].vc-input-telemetry.vc-input-dense .vc-input-horizontal { grid-column: 2; grid-row: 1; width: 100%; min-width: 0; gap: 7px; }
+[data-widget-system="vantare-crystal"].vc-input-telemetry.vc-input-dense .vc-input-horizontal>div { font-size: 14px; gap: 6px; }
+[data-widget-system="vantare-crystal"].vc-input-telemetry.vc-input-dense .vc-input-horizontal span { height: 12px; }
+[data-widget-system="vantare-crystal"].vc-input-telemetry.vc-input-dense .vc-input-graph { grid-column: 1 / -1; grid-row: 2; height: 100%; }
+[data-widget-system="vantare-crystal"].vc-input-telemetry.vc-input-dense .vc-input-readout { grid-column: 3; grid-row: 1; width: 88px; padding: 0 3px; gap: 4px; flex-wrap: wrap; }
+[data-widget-system="vantare-crystal"].vc-input-telemetry.vc-input-dense .vc-input-readout small { font-size: 11px; }
+[data-widget-system="vantare-crystal"].vc-pedals-telemetry-compact { padding: 8px 12px; gap: 12px; box-shadow: none; }
+[data-widget-system="vantare-crystal"] .vc-pedals-compact-bars { padding-right: 10px; gap: 10px; }
+[data-widget-system="vantare-crystal"] .vc-pedals-compact-core { display: grid; flex: 1; grid-template-columns: 34px minmax(0,1fr); grid-template-rows: auto auto auto auto; gap: 3px 5px; }
+[data-widget-system="vantare-crystal"] .vc-pedals-compact-core .vc-rpm-scale { grid-column: 1 / -1; text-align: center; }
+[data-widget-system="vantare-crystal"] .vc-pedals-compact-shift { grid-column: 1 / -1; margin: 0; }
+[data-widget-system="vantare-crystal"] .vc-pedals-compact-gear { grid-column: 1; grid-row: 3 / 5; font-size: 32px; }
+[data-widget-system="vantare-crystal"] .vc-pedals-compact-rpm { grid-column: 2; grid-row: 3; font-size: 11px; white-space: nowrap; }
+[data-widget-system="vantare-crystal"] .vc-pedals-compact-speed { grid-column: 2; grid-row: 4; margin: 0; font-size: 10px; white-space: nowrap; }

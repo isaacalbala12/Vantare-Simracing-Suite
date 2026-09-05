@@ -123,9 +123,9 @@ describe("OverlayWorkshopDevRoute", () => {
     );
     expect(classes.size).toBeGreaterThan(1);
 
-    // Overlay V2 no declara bestLap por coche: se conserva la columna sin
-    // inventar una corona desde la fixture V1.
-    expect(document.querySelector(".ven-red-fastest")).toBeNull();
+    // La escena V2 declara explícitamente un dueño anterior y otro nuevo para
+    // probar el traspaso; no depende de la fixture ni del adapter V1.
+    expect(document.querySelector(".ven-red-fastest")).toBeTruthy();
   });
 
   it("exposes reproducible minimal and all-column Redline fixtures", async () => {

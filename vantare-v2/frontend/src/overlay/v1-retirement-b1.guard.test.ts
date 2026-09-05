@@ -223,9 +223,25 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
       // el lock exacto queda abajo.
       // C2b6a: los tests de layout TrackMap y shells Endurance ya consumen
       // el escenario V2 puro; el lock exacto queda abajo.
-      [src("overlay", "authoring", "fixtures", "projection-gaps.test.ts"), "overlay-projection-adapter.ts", "C2 (contrato gaps V2)"],
-      [src("overlay", "authoring", "fixtures", "animation-scenes.test.ts"), "overlay-projection-adapter.ts", "C2 (escenas V2)"],
+      // C2b7: gaps/scenes ya están cerrados sobre contrato y ViewModels V2.
+      [src("overlay", "authoring", "fixtures", "projection-gaps.test.ts"), "overlay-projection-adapter.ts", "C2b7 (gaps sin adapter V1)"],
+      [src("overlay", "authoring", "fixtures", "projection-gaps.test.ts"), "readFileSync", "C2b7 (contrato V2 tipado, no textual)"],
+      [src("overlay", "authoring", "fixtures", "animation-scenes.ts"), "authoring-fixtures", "C2b7 (catálogo con tipo canónico)"],
+      [src("overlay", "authoring", "fixtures", "animation-scenes.test.ts"), "overlay-projection-adapter.ts", "C2b7 (escenas sin adapter V1)"],
+      [src("overlay", "authoring", "fixtures", "animation-scenes.test.ts"), "authoring-fixtures", "C2b7 (escenas sin builders V1)"],
+      [src("overlay", "authoring", "fixtures", "animation-scenes.test.ts"), "buildAuthoringFixtureTelemetry", "C2b7 (sin snapshot sintético)"],
+      [src("overlay", "authoring", "fixtures", "animation-scenes.test.ts"), "buildAuthoringFixtureWidget", "C2b7 (widget desde registro V2)"],
     ]);
+    contentHas(
+      src("overlay", "authoring", "fixtures", "animation-scenes.test.ts"),
+      "buildWorkshopFrameV2",
+      "C2b7 (escenas por runtime V2)",
+    );
+    contentHas(
+      src("overlay", "authoring", "fixtures", "projection-gaps.test.ts"),
+      "OVERLAY_V2_STANDINGS_DECLARED_GAPS",
+      "C2b7 (gaps congelados junto al ViewModel V2)",
+    );
     // C2b0 (reclasificación E1, comprobación positiva): los cuatro callers
     // Studio conservan `import type { TelemetryAdapter }` desde el módulo
     // canónico hasta E1. Falla si pasa a import runtime o si cambia

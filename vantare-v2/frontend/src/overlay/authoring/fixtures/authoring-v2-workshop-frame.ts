@@ -130,9 +130,12 @@ const WORKSHOP_V2_SCHEDULE_EVENTS = [
 // los overrides se aplican a la fila canónica en esa posición.
 const STANDINGS_DEV_SEAT_BY_DRIVER: Readonly<Record<string, number>> = {
   "Gianmaria Bruni": 10,
-  "Sarah Bovy": 9,
+  "Sarah Bovy": 7,
+  "Michael Birch": 9,
+  "Martin Berry": 8,
   "Duncan Cameron": 13,
   "Ben Hanley": 2,
+  "Filipe Albuquerque": 5,
   "Conrad Laursen": 16,
 };
 
@@ -153,8 +156,8 @@ type RowPatch = {
 };
 
 function replayStepPatches(step: number): Readonly<Record<number, RowPatch>> {
-  const base = 19.35;
-  const pair = { 10: { position: 9, gap: base - 0.05 }, 9: { position: 10, gap: base + 0.2 } };
+  const base = 7.404;
+  const pair = { 10: { position: 7, gap: base - 0.05 }, 7: { position: 10, gap: base + 0.2 } };
   switch (step) {
     case 1:
       return { 10: { gap: base + 0.6 } };
@@ -165,14 +168,14 @@ function replayStepPatches(step: number): Readonly<Record<number, RowPatch>> {
     case 4:
       return pair;
     case 5:
-      return { 10: { position: 9, gap: base - 0.1 }, 9: { position: 10, gap: base + 1.3 } };
+      return { 10: { position: 7, gap: base - 0.1 }, 7: { position: 10, gap: base + 1.3 } };
     case 6:
-      return { 10: { position: 9, gap: base - 0.1 }, 9: { position: 10, gap: base + 1.3 }, 13: { pit: true } };
+      return { 10: { position: 7, gap: base - 0.1 }, 7: { position: 10, gap: base + 1.3 }, 13: { pit: true } };
     case 7:
     case 8: {
       const patches: Record<number, RowPatch> = {
-        10: { position: 9, gap: base - 0.1 },
-        9: { position: 10, gap: base + 1.3 },
+        10: { position: 7, gap: base - 0.1 },
+        7: { position: 10, gap: base + 1.3 },
         13: { gap: 24.5 },
         2: { bestLap: 85.902 },
       };
@@ -221,7 +224,7 @@ function patchStandings(
     const patched = patchRow(row, patch, quality);
     if (patched) out.push(patched);
   }
-  return out;
+  return out.sort((left, right) => left.position - right.position);
 }
 
 function stressStandings(rows: readonly OverlayStandingRowV2[]): OverlayStandingRowV2[] {
@@ -330,6 +333,11 @@ function applyScene(
   let standings = frame.standings;
   let relative = frame.relative;
   let settled = frame.relativeSettled;
+  // El golden canónico no inventa vueltas. Estas dos escenas de autoría
+  // declaran su dueño inicial para que el traspaso observable tenga origen.
+  if (scene.id === "standings-fastest-lap" || scene.id === "standings-full") {
+    standings = patchStandings(standings, { 3: { bestLap: 86.408 } }, quality);
+  }
   if (state.cars) {
     if (scene.widget === "relative") {
       relative = patchRelativeSection(frame.relative, state.cars, quality);
@@ -350,6 +358,7 @@ function applyScene(
           }, quality) ?? row,
         ];
       });
+      standings = [...standings].sort((left, right) => left.position - right.position);
     }
   }
   let player = frame.player;

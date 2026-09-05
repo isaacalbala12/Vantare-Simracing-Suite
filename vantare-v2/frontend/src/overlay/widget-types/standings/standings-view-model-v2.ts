@@ -99,6 +99,15 @@ export function standingsDisplayedValues(
   });
 }
 
+/** Fields the V2 presentation cannot fill from canonical telemetry. */
+export const OVERLAY_V2_STANDINGS_DECLARED_GAPS: readonly string[] = Object.freeze([
+  "rows[].driverNumber",
+  "rows[].teamCode",
+  "rows[].teamBrandColor",
+  "rows[].tireCompound",
+  "rows[].intervalText",
+]);
+
 function buildRow(
   row: OverlayStandingRowV2,
   index: number,

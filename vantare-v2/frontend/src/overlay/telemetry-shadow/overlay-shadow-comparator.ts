@@ -5,6 +5,7 @@ import { widgetTypeRegistry } from "../core/widget-registry";
 import type { StandingsRowViewModel, StandingsViewModel } from "../widget-types/standings/standings-view-model";
 import { buildStandingsViewModel } from "../widget-types/standings/standings-view-model";
 import { buildStandingsViewModelV2 } from "../widget-types/standings/standings-view-model-v2";
+export { OVERLAY_V2_STANDINGS_DECLARED_GAPS } from "../widget-types/standings/standings-view-model-v2";
 import {
   getEnabledStandingsColumns,
   type StandingsContent,
@@ -504,15 +505,6 @@ function normalizeAbsentLapText(value: string): string {
   const normalized = value.trim();
   return normalized === "" || normalized === "-" || normalized === "—" ? "" : normalized;
 }
-
-/** Fields with no canonical signal behind them; declared, never compared. */
-export const OVERLAY_V2_STANDINGS_DECLARED_GAPS: readonly string[] = Object.freeze([
-  "rows[].driverNumber",
-  "rows[].teamCode",
-  "rows[].teamBrandColor",
-  "rows[].tireCompound",
-  "rows[].intervalText",
-]);
 
 /**
  * Compares the delta slice. The reference resolution now lives in Go, so what

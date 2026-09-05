@@ -165,41 +165,17 @@ describe("WidgetVisualHost", () => {
     expect(view.getByText("Le Mans Virtual Cup")).toBeTruthy();
   });
 
-  it("usa Overlay V2 por defecto y la antigua lista de features ya no cambia la selección", () => {
+  it("usa Overlay V2 por defecto, sin catálogo de features", () => {
     const widget = pedalsTelemetryDefinition.createDefault("pedals-v2");
     widget.content = { showPosition: false, showClutch: true };
     const frame = playerFrameV2();
-    const defaultV2 = render(
-      <WidgetVisualHost widget={widget} renderMode="harness" runtime={{
-        overlayV2Frame: frame,
-        overlayV2Source: { state: "live" },
-      }} />,
-    );
-    const defaultSpeed = defaultV2.container.querySelector(".vo-pedals-telemetry-values strong")?.textContent;
-    cleanup();
-    const activated = render(
-      <WidgetVisualHost widget={widget} renderMode="harness" runtime={{
-        overlayV2Features: ["player-instruments"],
-        overlayV2Frame: frame,
-        overlayV2Source: { state: "live" },
-      }} />,
-    );
-    const v2Speed = activated.container.querySelector(".vo-pedals-telemetry-values strong")?.textContent;
-    expect(defaultSpeed).toBe("180");
-    expect(v2Speed).toBe("180");
-  });
-
-  it("permite rollback diagnóstico total con una única señal no persistente", () => {
-    const widget = pedalsTelemetryDefinition.createDefault("pedals-rollback");
-    widget.content = { showPosition: false, showClutch: true };
     const view = render(
       <WidgetVisualHost widget={widget} renderMode="harness" runtime={{
-        overlayV2Features: [],
-        overlayV2Frame: playerFrameV2(),
+        overlayV2Frame: frame,
         overlayV2Source: { state: "live" },
       }} />,
     );
-    expect(view.container.querySelector(".vo-pedals-telemetry-values strong")?.textContent).not.toBe("180");
+    expect(view.container.querySelector(".vo-pedals-telemetry-values strong")?.textContent).toBe("180");
   });
 });
 

@@ -87,21 +87,6 @@ afterEach(() => {
 });
 
 describe("InPlaceEditModeBranch", () => {
-  it("transporta el rollback de la generación hasta el host in-place", () => {
-    const coordinator = createTestTelemetryCoordinator();
-
-    render(
-      <InPlaceEditModeBranch
-        document={buildDocument()}
-        revision="rev-rollback"
-        telemetry={coordinator}
-        overlayV2Features={[]}
-      />,
-    );
-
-    expect(screen.getByRole("alert").getAttribute("data-diagnostic-code")).toBe("overlay-v2-rollback");
-  });
-
   it("uses the stored locale and mounts the edit overlay inside the providers", async () => {
     localStorage.setItem("vantare.locale", "es");
     const coordinator = createTestTelemetryCoordinator();

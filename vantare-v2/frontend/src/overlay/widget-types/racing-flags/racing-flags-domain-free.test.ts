@@ -2,11 +2,6 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import type { OverlayUpdateV2 } from "../../../generated/telemetry";
-import {
-  DEFAULT_OVERLAY_V2_FEATURES,
-  OVERLAY_V2_SESSION,
-  hasOverlayV2Feature,
-} from "../../telemetry-shadow/overlay-v2-features";
 import type { TelemetrySnapshot } from "../../core/telemetry-snapshot";
 import { buildRacingFlagsViewModel } from "./racing-flags-view-model";
 import {
@@ -25,12 +20,6 @@ const LEGACY: TelemetrySnapshot = {
 };
 
 describe("racing-flags v2 view model", () => {
-  it("is authoritative by default and remains explicitly addressable", () => {
-    expect(DEFAULT_OVERLAY_V2_FEATURES).toContain(OVERLAY_V2_SESSION);
-    expect(hasOverlayV2Feature(undefined, OVERLAY_V2_SESSION)).toBe(true);
-    expect(hasOverlayV2Feature([OVERLAY_V2_SESSION], OVERLAY_V2_SESSION)).toBe(true);
-  });
-
   it.each([1, 20, 44, 104])(
     "matches the displayed v1 values for the %i-vehicle Go golden",
     (vehicles) => {

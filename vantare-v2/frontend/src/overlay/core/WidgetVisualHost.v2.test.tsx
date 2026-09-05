@@ -449,7 +449,7 @@ describe("WidgetVisualHost v2 generic registry", () => {
       <WidgetVisualHost
         widget={widget as never}
         renderMode="harness"
-        runtime={{ overlayV2Frame: frame, overlayV2Features: ["standings"] } as never}
+        runtime={{ overlayV2Frame: frame } as never}
       />,
     );
     expect(spy).not.toHaveBeenCalled();

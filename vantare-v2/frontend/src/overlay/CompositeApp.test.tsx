@@ -229,11 +229,9 @@ describe("CompositeApp", () => {
     vi.useRealTimers();
     vi.unstubAllGlobals();
     globalThis.ResizeObserver = originalResizeObserver;
-    delete window.__vantareOverlayV2Features;
   });
 
   it("crea una generacion limpia y acepta frames V2 tras el doble setup de StrictMode", async () => {
-    window.__vantareOverlayV2Features = ["relative"];
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
 
     render(

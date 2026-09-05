@@ -168,11 +168,9 @@ describe("ObsOverlayApp", () => {
     vi.useRealTimers();
     vi.unstubAllGlobals();
     globalThis.ResizeObserver = originalResizeObserver;
-    delete window.__vantareOverlayV2Features;
   });
 
   it("crea una generacion limpia y acepta frames V2 tras el doble setup de StrictMode", async () => {
-    window.__vantareOverlayV2Features = ["delta"];
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const delta = deltaDefinition.createDefault("delta-strict");
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({

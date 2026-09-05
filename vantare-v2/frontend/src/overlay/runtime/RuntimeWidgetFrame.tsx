@@ -6,7 +6,6 @@ import { WidgetVisualHost } from "../core/WidgetVisualHost";
 import { WidgetVisualViewport } from "../core/WidgetVisualViewport";
 import { useRateLimitedWidgetTelemetry } from "./use-rate-limited-telemetry";
 import type { EngineerPresentation } from "../../engineer/engineer-presentation-store";
-import type { OverlayV2Feature } from "../telemetry-shadow/overlay-v2-features";
 import type { RaceScheduleSnapshot } from "../core/race-schedule-store";
 
 export type RuntimeWidgetFrameProps = {
@@ -19,12 +18,11 @@ export type RuntimeWidgetFrameProps = {
   diagnostics?: WidgetDiagnosticCollector;
   engineerPresentation?: EngineerPresentation | null;
   engineerSubtitlesEnabled?: boolean;
-  overlayV2Features?: readonly OverlayV2Feature[];
   raceSchedule?: RaceScheduleSnapshot;
 };
 
 function RuntimeWidgetFrameComponent(props: RuntimeWidgetFrameProps): React.ReactElement {
-  const { widget, profileId, telemetry, renderMode, layoutOrigin, onDiagnostic, diagnostics, engineerPresentation, engineerSubtitlesEnabled, overlayV2Features, raceSchedule } = props;
+  const { widget, profileId, telemetry, renderMode, layoutOrigin, onDiagnostic, diagnostics, engineerPresentation, engineerSubtitlesEnabled, raceSchedule } = props;
   const runtimeTelemetry = useRateLimitedWidgetTelemetry(
     telemetry,
     widget.type,
@@ -61,7 +59,6 @@ function RuntimeWidgetFrameComponent(props: RuntimeWidgetFrameProps): React.Reac
             raceScheduleEvents: raceSchedule?.events,
             raceScheduleStatus: raceSchedule?.status,
             ...runtimeTelemetry,
-            overlayV2Features,
             relativeViewModelInstanceKey: `${profileId}:${widget.id}`,
           }}
         />
@@ -104,6 +101,5 @@ export const RuntimeWidgetFrame = memo(RuntimeWidgetFrameComponent, (left, right
   left.diagnostics === right.diagnostics &&
   left.engineerPresentation === right.engineerPresentation &&
   left.engineerSubtitlesEnabled === right.engineerSubtitlesEnabled &&
-  left.overlayV2Features === right.overlayV2Features &&
   left.raceSchedule === right.raceSchedule,
 );

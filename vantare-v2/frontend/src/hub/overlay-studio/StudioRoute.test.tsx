@@ -115,8 +115,6 @@ describe('StudioRoute', () => {
     listeners.clear();
     vi.clearAllMocks();
     resetStudioStageGeometryCache();
-    delete window.__vantareOverlayV2Features;
-    window.localStorage.removeItem('vantare:overlay-v2-features');
   });
 
   afterEach(() => {
@@ -137,7 +135,7 @@ describe('StudioRoute', () => {
     expect(Events.Emit).toHaveBeenCalledWith('settings:get');
   });
 
-  it('keeps one coordinator binding active during diagnostic rollback', () => {
+  it('keeps one coordinator binding active', () => {
     const store = overlayV2StoreModule.createOverlayFrameV2Store();
     const subscribe = vi.fn(store.subscribe);
     vi.spyOn(overlayV2StoreModule, 'createOverlayFrameV2Store').mockReturnValue({
@@ -252,7 +250,6 @@ describe('StudioRoute', () => {
   });
 
   it('acepta V2 y conserva histories derivadas tras el doble setup de StrictMode', async () => {
-    window.__vantareOverlayV2Features = ['delta'];
     let resolvePull: ((response: Response) => void) | undefined;
     const requests: Array<{ sessionId: string; ack: number }> = [];
     vi.stubGlobal('fetch', vi.fn((input: RequestInfo | URL, init?: RequestInit) => {

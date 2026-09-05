@@ -202,7 +202,6 @@ describe("StudioWidgetFrame", () => {
   it("passes the pure Overlay V2 runtime through the shared visual host", () => {
     const widget = buildWidget();
     const runtime: WidgetRuntimeInput = {
-      overlayV2Features: ["delta"],
       overlayV2Source: { state: "live" },
     };
     renderFrame(widget, {}, runtime);

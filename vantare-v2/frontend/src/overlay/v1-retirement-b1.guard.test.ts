@@ -531,12 +531,19 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
     }
   });
 
-  it("diferido E2 presente: switch mutable fuera solo en su corte", () => {
-    contentHas(
-      src("overlay", "telemetry-shadow", "overlay-v2-features.ts"),
-      "createOverlayV2FeaturesGeneration",
-      "E2 (maquinaria mutable)",
-    );
+  it("E2 verde: switch mutable y catálogo fuera, sin reubicar (dueño E2)", () => {
+    // E2 eliminó el sistema entero por inventario real (cero consumidor
+    // productivo del catálogo salvo el rollback): no se movió a otro archivo.
+    absentAll([
+      [src("overlay", "telemetry-shadow", "overlay-v2-features.ts"), "E2 (catálogo muerto)"],
+      [src("overlay", "telemetry-shadow", "overlay-v2-features.test.ts"), "E2 (test exclusivo)"],
+    ]);
+    contentAbsentAll([
+      [src("overlay", "core", "WidgetVisualHost.tsx"), "v2Rollback", "E2 (host sin rollback)"],
+      [src("overlay", "core", "WidgetVisualHost.tsx"), "overlay-v2-rollback", "E2 (diagnóstico muerto)"],
+      [src("overlay", "core", "overlay-v2-view-models.ts"), "feature:", "E2 (registry V2 directo)"],
+      [src("overlay", "core", "widget-definition.ts"), "overlayV2Features", "E2 (contrato sin hilo)"],
+    ]);
   });
 
   it("diferidos E3 presentes y preservados: bench research sin borrado prematuro", () => {

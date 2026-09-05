@@ -14,7 +14,6 @@ import {
   telemetrySourceStatusRequestEvent,
   type TelemetrySourceStatus,
 } from '../../telemetry-transport/source-status';
-import { createOverlayV2FeaturesGeneration } from '../../overlay/telemetry-shadow/overlay-v2-features';
 import { createWailsRaceScheduleStore } from '../../overlay/core/race-schedule-store';
 import { ProfilesOrbitPage } from '../profiles-orbit/ProfilesOrbitPage';
 import { setHubStudioDirty } from '../hub-suspend-guard';
@@ -339,7 +338,6 @@ type StudioTelemetryGeneration = Readonly<{
   overlayPull: ReturnType<typeof createBrowserOverlayWailsPullClient>;
   telemetryAdapter: TelemetryAdapter | null;
   raceSchedule: ReturnType<typeof createWailsRaceScheduleStore>;
-  overlayV2Features: ReturnType<typeof createOverlayV2FeaturesGeneration>;
 }>;
 
 export const StudioRoute = memo(function StudioRoute(props: StudioRouteProps): React.ReactElement {
@@ -353,7 +351,6 @@ export const StudioRoute = memo(function StudioRoute(props: StudioRouteProps): R
       onError: (error) => console.error('studio overlay telemetry pull failed', error),
     });
     const raceSchedule = createWailsRaceScheduleStore();
-    const overlayV2Features = createOverlayV2FeaturesGeneration();
     const telemetryAdapter = telemetryAdapterProp ?? createStudioOverlayTelemetryAdapter({
       coordinator,
       pull: overlayPull,
@@ -375,7 +372,7 @@ export const StudioRoute = memo(function StudioRoute(props: StudioRouteProps): R
     // registrar listeners ni cargar perfiles contra recursos ya dispuestos.
     raceSchedule.start();
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setGeneration({ coordinator, overlayV2Store, overlayPull, telemetryAdapter, raceSchedule, overlayV2Features });
+    setGeneration({ coordinator, overlayV2Store, overlayPull, telemetryAdapter, raceSchedule });
 
     return () => {
       delete diagnosticWindow.__vantareOverlayV2Diagnostics;
@@ -384,7 +381,6 @@ export const StudioRoute = memo(function StudioRoute(props: StudioRouteProps): R
       unbindOverlayV2();
       overlayV2Store.dispose();
       raceSchedule.dispose();
-      overlayV2Features.dispose();
       if (coordinatorProp === undefined) coordinator.dispose();
     };
   }, [coordinatorProp, telemetryAdapterProp]);
@@ -412,21 +408,15 @@ function StudioRouteGeneration(props: StudioRouteGenerationProps): React.ReactEl
     () => clientProp ?? createStudioProfileClient(createWailsStudioEventTransport()),
     [clientProp],
   );
-  const overlayV2Features = useSyncExternalStore(
-    generation.overlayV2Features.subscribe,
-    generation.overlayV2Features.getSnapshot,
-    generation.overlayV2Features.getSnapshot,
-  );
   const raceSchedule = useSyncExternalStore(
     generation.raceSchedule.subscribe,
     generation.raceSchedule.getSnapshot,
     generation.raceSchedule.getSnapshot,
   );
   const runtime = useMemo<WidgetRuntimeInput>(() => ({
-    overlayV2Features,
     raceScheduleEvents: raceSchedule.events,
     raceScheduleStatus: raceSchedule.status,
-  }), [overlayV2Features, raceSchedule]);
+  }), [raceSchedule]);
 
   const [profiles, setProfiles] = useState<ProfileEntry[]>([]);
   const [profilesLoaded, setProfilesLoaded] = useState(false);

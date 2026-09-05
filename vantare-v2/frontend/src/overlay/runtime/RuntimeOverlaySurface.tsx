@@ -24,7 +24,6 @@ import { resolveRuntimeLayout, selectRuntimeWidgets } from "./resolve-runtime-la
 import { useOverlayRuntimeContext } from "./use-rate-limited-telemetry";
 import type { EngineerPresentationStore } from "../../engineer/engineer-presentation-store";
 import { EngineerSubtitles } from "../../engineer/EngineerSubtitles";
-import type { OverlayV2Feature } from "../telemetry-shadow/overlay-v2-features";
 import type { OverlayRuntimeContext } from "../core/overlay-runtime-context";
 import {
   EMPTY_RACE_SCHEDULE_SNAPSHOT,
@@ -40,7 +39,6 @@ export type RuntimeOverlaySurfaceProps = {
   onDiagnostic?: (diagnostic: WidgetDiagnostic) => void;
   diagnostics?: WidgetDiagnosticCollector;
   engineerPresentations?: EngineerPresentationStore;
-  overlayV2Features?: readonly OverlayV2Feature[];
   raceSchedule?: RaceScheduleStore;
 };
 
@@ -48,7 +46,7 @@ const subscribeToNothing = () => () => undefined;
 const noPresentation = () => null;
 
 export function RuntimeOverlaySurface(props: RuntimeOverlaySurfaceProps): React.ReactElement {
-  const { document, telemetry, renderMode, layoutOrigin, onDiagnostic, diagnostics: diagnosticsProp, engineerPresentations, overlayV2Features, raceSchedule } = props;
+  const { document, telemetry, renderMode, layoutOrigin, onDiagnostic, diagnostics: diagnosticsProp, engineerPresentations, raceSchedule } = props;
   const diagnostics = useMemo(() => diagnosticsProp ?? createWidgetDiagnosticCollector(), [diagnosticsProp]);
   const runtimeContext = useOverlayRuntimeContext(telemetry);
   const [contextMemory, setContextMemory] = useState<{
@@ -234,7 +232,6 @@ export function RuntimeOverlaySurface(props: RuntimeOverlaySurfaceProps): React.
               diagnostics={diagnostics}
               engineerPresentation={engineerPresentation}
               engineerSubtitlesEnabled={subtitlesEnabled}
-              overlayV2Features={overlayV2Features}
               raceSchedule={raceScheduleSnapshot}
             />
           ))}

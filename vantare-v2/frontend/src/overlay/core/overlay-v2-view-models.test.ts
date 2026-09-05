@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { overlayV2ViewModelRegistry, getOverlayV2ViewModelEntry } from "./overlay-v2-view-models";
-import {
-  DEFAULT_OVERLAY_V2_FEATURES,
-  hasOverlayV2Feature,
-} from "../telemetry-shadow/overlay-v2-features";
 import { widgetTypeRegistry } from "./widget-registry";
 import { OVERLAY_SHADOW_POLICIES } from "../telemetry-shadow/overlay-shadow-comparator";
 import type { OverlayUpdateV2 } from "../../generated/telemetry";
@@ -16,45 +12,38 @@ const CANONICAL_UPDATES = [golden1Raw, golden20Raw, golden44Raw, golden104Raw]
   .map((raw) => JSON.parse(raw) as OverlayUpdateV2);
 
 describe("overlay-v2 view model registry", () => {
-  it("mantiene todo el catálogo V2 activo por defecto", () => {
-    expect(DEFAULT_OVERLAY_V2_FEATURES).toHaveLength(9);
-  });
-
-  it("registra exactamente los 18 widgets con VM v2 y cada uno con feature valida", () => {
-    const expected = new Map([
-      ["standings", "standings"],
-      ["relative", "relative"],
-      ["delta", "delta"],
-      ["fuel-strategy", "fuel"],
-      ["pedals-telemetry", "player-instruments"],
-      ["input-telemetry", "controls"],
-      ["racing-flags", "session"],
-      ["delta-advanced", "delta"],
-      ["delta-trace", "delta"],
-      ["pedals", "player-instruments"],
-      ["pedals-telemetry-compact", "player-instruments"],
-      ["multiclass-relative", "relative"],
-      ["head-to-head", "relative"],
-      ["track-map", "standings"],
-      ["broadcast-tower", "standings"],
-      ["track-weather", "weather"],
-      ["car-damage-numbers", "damage"],
-      ["car-damage-visual", "damage"],
-    ]);
-    expect(overlayV2ViewModelRegistry.size).toBe(expected.size);
-    for (const [widgetType, feature] of expected) {
+  it("registra exactamente los 18 widgets con VM v2 directa, sin catálogo", () => {
+    const expected = [
+      "standings",
+      "relative",
+      "delta",
+      "fuel-strategy",
+      "pedals-telemetry",
+      "input-telemetry",
+      "racing-flags",
+      "delta-advanced",
+      "delta-trace",
+      "pedals",
+      "pedals-telemetry-compact",
+      "multiclass-relative",
+      "head-to-head",
+      "track-map",
+      "broadcast-tower",
+      "track-weather",
+      "car-damage-numbers",
+      "car-damage-visual",
+    ];
+    expect(overlayV2ViewModelRegistry.size).toBe(expected.length);
+    for (const widgetType of expected) {
       const entry = getOverlayV2ViewModelEntry(widgetType as never);
       expect(entry, `entry missing for ${widgetType}`).toBeDefined();
-      expect(entry?.feature).toBe(feature);
       expect(typeof entry?.buildViewModelV2).toBe("function");
-      expect(hasOverlayV2Feature(undefined, entry!.feature)).toBe(true);
     }
   });
 
   it("todo tipo registrado tiene builder valido", () => {
     for (const [type, entry] of overlayV2ViewModelRegistry) {
       expect(typeof type).toBe("string");
-      expect(typeof entry.feature).toBe("string");
       expect(typeof entry.buildViewModelV2).toBe("function");
       // builder debe aceptar 4 args sin lanzar TypeError inmediato con frame dummy
       expect(entry.buildViewModelV2.length).toBeGreaterThanOrEqual(2);

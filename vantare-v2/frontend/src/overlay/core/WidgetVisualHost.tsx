@@ -112,30 +112,22 @@ export function WidgetVisualHost(props: WidgetVisualHostProps): ReactNode {
   const source = props.runtime?.overlayV2Source;
   const harnessMode = renderMode === "harness";
   const v2Failure = props.runtime?.overlayV2Failure;
-  // El único rollback diagnóstico se transporta como catálogo vacío; nunca
-  // persiste y en superficies productivas muestra un estado, no pinta V1.
-  const v2Rollback = props.runtime?.overlayV2Features?.length === 0;
-  if (v2Entry && v2Rollback && !harnessMode) {
-    const message = "Overlay V2 diagnostic rollback active";
-    reportDiagnostic(props, "overlay-v2-rollback", message);
-    return <HostDiagnostic widget={widget} code="overlay-v2-rollback" message={message} />;
-  }
-  if (v2Entry && !v2Rollback && v2Failure) {
+  if (v2Entry && v2Failure) {
     const code = `overlay-v2-${v2Failure.code}`;
     reportDiagnostic(props, code, v2Failure.message);
     return <HostDiagnostic widget={widget} code={code} message={v2Failure.message} />;
   }
-  if (v2Entry && !v2Rollback && source?.state === "error") {
+  if (v2Entry && source?.state === "error") {
     const message = source.reason ?? "Overlay V2 source error";
     reportDiagnostic(props, "overlay-v2-source-error", message);
     return <HostDiagnostic widget={widget} code="overlay-v2-source-error" message={message} />;
   }
-  if (v2Entry && !v2Rollback && !harnessMode && !frame) {
+  if (v2Entry && !harnessMode && !frame) {
     const message = "Overlay V2 frame unavailable";
     reportDiagnostic(props, "overlay-v2-frame-missing", message);
     return <HostDiagnostic widget={widget} code="overlay-v2-frame-missing" message={message} />;
   }
-  if (v2Entry && !v2Rollback && !harnessMode && !source) {
+  if (v2Entry && !harnessMode && !source) {
     const message = "Overlay V2 source state unavailable";
     reportDiagnostic(props, "overlay-v2-source-missing", message);
     return <HostDiagnostic widget={widget} code="overlay-v2-source-missing" message={message} />;
@@ -145,7 +137,7 @@ export function WidgetVisualHost(props: WidgetVisualHostProps): ReactNode {
     registration.systemId === "vantare-endurance" &&
     isRelativeRedlineTemplateId(settings.templateId);
   const Renderer = registration.Renderer;
-  if (v2Entry && !v2Rollback && frame && source && relativeRedline) {
+  if (v2Entry && frame && source && relativeRedline) {
     return (
       <CommittedRedlineRelative
         frame={frame}
@@ -166,7 +158,7 @@ export function WidgetVisualHost(props: WidgetVisualHostProps): ReactNode {
   }
 
   let model;
-  if (v2Entry && !v2Rollback && frame && source) {
+  if (v2Entry && frame && source) {
     // V2 se construye primero: el builder V1 no se ejecuta para luego
     // sobrescribirlo. El renderer recibe únicamente la ViewModel pura.
     model = v2Entry.buildViewModelV2(
@@ -187,7 +179,7 @@ export function WidgetVisualHost(props: WidgetVisualHostProps): ReactNode {
     return <HostDiagnostic widget={widget} code="widget-authority-missing" message={message} />;
   }
 
-  const staleMessage = v2Entry && !v2Rollback && frame && source?.state === "stale"
+  const staleMessage = v2Entry && frame && source?.state === "stale"
     ? `Overlay V2 stale${source.ageMs !== undefined ? ` (${Math.round(source.ageMs)} ms)` : ""}`
     : undefined;
   if (staleMessage) {

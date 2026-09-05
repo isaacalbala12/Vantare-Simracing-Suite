@@ -19,7 +19,6 @@ import { useInplaceAutosave } from "./use-inplace-autosave";
 import { createInPlaceProfileClient } from "./inplace-profile-client";
 import { createWailsStudioEventTransport } from "../../hub/overlay-studio/state/studio-profile-client";
 import { useI18n } from "../../i18n/I18nProvider";
-import type { OverlayV2Feature } from "../telemetry-shadow/overlay-v2-features";
 import { EMPTY_RACE_SCHEDULE_SNAPSHOT, type RaceScheduleStore } from "../core/race-schedule-store";
 import "./inplace-edit.css";
 
@@ -30,12 +29,11 @@ export type InPlaceEditOverlayProps = {
   telemetry: TelemetryRateCoordinator;
   access?: AccessContext;
   licenseLoading?: boolean;
-  overlayV2Features?: readonly OverlayV2Feature[];
   raceSchedule?: RaceScheduleStore;
 };
 
 export function InPlaceEditOverlay(props: InPlaceEditOverlayProps): React.ReactElement {
-  const { document, revision, layoutOrigin, telemetry, access, licenseLoading, overlayV2Features, raceSchedule } = props;
+  const { document, revision, layoutOrigin, telemetry, access, licenseLoading, raceSchedule } = props;
   const transport = useMemo(() => createWailsStudioEventTransport(), []);
   const client = useMemo(
     () => createInPlaceProfileClient({ document, revision, transport }),
@@ -55,7 +53,6 @@ export function InPlaceEditOverlay(props: InPlaceEditOverlayProps): React.ReactE
         telemetry={telemetry}
         access={access}
         licenseLoading={licenseLoading ?? false}
-        overlayV2Features={overlayV2Features}
         raceSchedule={raceSchedule}
       />
     </StudioProvider>
@@ -63,7 +60,7 @@ export function InPlaceEditOverlay(props: InPlaceEditOverlayProps): React.ReactE
 }
 
 function InPlaceEditOverlayContent(props: Omit<InPlaceEditOverlayProps, "revision">): React.ReactElement {
-  const { document, layoutOrigin, telemetry, access, licenseLoading, overlayV2Features, raceSchedule } = props;
+  const { document, layoutOrigin, telemetry, access, licenseLoading, raceSchedule } = props;
   const { t } = useI18n();
   const {
     document: storeDocument,
@@ -209,7 +206,6 @@ function InPlaceEditOverlayContent(props: Omit<InPlaceEditOverlayProps, "revisio
               selected={selectedWidgetIdLocal === widget.id}
               layoutOrigin={layoutOrigin}
               telemetry={telemetry}
-              overlayV2Features={overlayV2Features}
               raceSchedule={raceScheduleSnapshot}
               onSelect={setSelectedWidgetIdLocal}
               onFramePointerDown={interaction.onFramePointerDown}

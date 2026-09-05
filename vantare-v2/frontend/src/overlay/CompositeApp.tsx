@@ -1,4 +1,4 @@
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
 import { Events } from "@wailsio/runtime";
 import type { CalendarReminderPayload } from "../calendar/calendar-types";
 import { parseProfileDocumentV3, type ProfileDocumentV3 } from "./core/profile-document";
@@ -16,7 +16,6 @@ import {
   createOverlayFrameV2Store,
 } from "../telemetry-transport/overlay-frame-v2-store";
 import { createBrowserOverlayWailsPullClient } from "../telemetry-transport/overlay-wails-pull";
-import { createOverlayV2FeaturesGeneration } from "./telemetry-shadow/overlay-v2-features";
 import { createWailsRaceScheduleStore } from "./core/race-schedule-store";
 
 type ProfileV3LoadedPayload = {
@@ -31,7 +30,6 @@ type CompositeGeneration = Readonly<{
   overlayV2Store: ReturnType<typeof createOverlayFrameV2Store>;
   engineerPresentations: ReturnType<typeof createEngineerPresentationStore>;
   raceSchedule: ReturnType<typeof createWailsRaceScheduleStore>;
-  overlayV2Features: ReturnType<typeof createOverlayV2FeaturesGeneration>;
 }>;
 
 export function CompositeApp() {
@@ -49,7 +47,6 @@ export function CompositeApp() {
     const overlayV2Store = createOverlayFrameV2Store();
     const engineerPresentations = createEngineerPresentationStore();
     const raceSchedule = createWailsRaceScheduleStore();
-    const overlayV2Features = createOverlayV2FeaturesGeneration();
     const overlayPull = createBrowserOverlayWailsPullClient({
       onError: (error) => console.error("overlay telemetry pull failed", error),
     });
@@ -88,7 +85,7 @@ export function CompositeApp() {
     // Este efecto es la fabrica y el owner de la generacion; el render que la
     // consume no puede montarse antes de que sus recursos externos existan.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setGeneration({ coordinator, overlayV2Store, engineerPresentations, raceSchedule, overlayV2Features });
+    setGeneration({ coordinator, overlayV2Store, engineerPresentations, raceSchedule });
     return () => {
       overlayPull.stop();
       delete diagnosticWindow.__vantareOverlayV2Diagnostics;
@@ -98,7 +95,6 @@ export function CompositeApp() {
       overlayV2Store.dispose();
       engineerPresentations.dispose();
       raceSchedule.dispose();
-      overlayV2Features.dispose();
       coordinator.dispose();
     };
   }, []);
@@ -191,11 +187,6 @@ function CompositeGenerationView(props: CompositeGenerationViewProps) {
     reminder,
     onCloseReminder,
   } = props;
-  const overlayV2Features = useSyncExternalStore(
-    generation.overlayV2Features.subscribe,
-    generation.overlayV2Features.getSnapshot,
-    generation.overlayV2Features.getSnapshot,
-  );
   return (
     <div className="relative w-full h-full overflow-hidden bg-transparent">
       {editMode && document ? (
@@ -204,7 +195,6 @@ function CompositeGenerationView(props: CompositeGenerationViewProps) {
           revision={revision}
           layoutOrigin={layoutOrigin}
           telemetry={generation.coordinator}
-          overlayV2Features={overlayV2Features}
           raceSchedule={generation.raceSchedule}
         />
       ) : (
@@ -216,7 +206,6 @@ function CompositeGenerationView(props: CompositeGenerationViewProps) {
           telemetry={generation.coordinator}
           engineerPresentations={generation.engineerPresentations}
           raceSchedule={generation.raceSchedule}
-          overlayV2Features={overlayV2Features}
         />
       )}
       {reminder && (

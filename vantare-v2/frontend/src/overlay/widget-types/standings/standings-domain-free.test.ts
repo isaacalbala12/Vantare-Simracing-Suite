@@ -2,11 +2,6 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import type { OverlayUpdateV2 } from "../../../generated/telemetry";
-import {
-  DEFAULT_OVERLAY_V2_FEATURES,
-  OVERLAY_V2_STANDINGS,
-  hasOverlayV2Feature,
-} from "../../telemetry-shadow/overlay-v2-features";
 import { standingsDefinition } from "./standings-definition";
 import { buildStandingsViewModelV2, standingsDisplayedValues } from "./standings-view-model-v2";
 
@@ -27,12 +22,6 @@ describe("standings v2 view model", () => {
     expect(JSON.stringify(buildStandingsViewModelV2(update.frame, update.source, CONTENT)))
       .toBe(expected);
   });
-  it("is authoritative by default and remains explicitly addressable", () => {
-    expect(DEFAULT_OVERLAY_V2_FEATURES).toContain(OVERLAY_V2_STANDINGS);
-    expect(hasOverlayV2Feature(undefined, OVERLAY_V2_STANDINGS)).toBe(true);
-    expect(hasOverlayV2Feature([OVERLAY_V2_STANDINGS], OVERLAY_V2_STANDINGS)).toBe(true);
-  });
-
   it.each([1, 20, 44, 104])(
     "renders the order resolved in Go for the %i-vehicle golden without re-sorting",
     (vehicles) => {

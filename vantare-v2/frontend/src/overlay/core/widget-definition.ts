@@ -3,7 +3,6 @@ import type { InspectorCapability } from "./inspector-control";
 import type { WidgetType, WidgetInstanceV3 } from "./profile-document";
 import type { EngineerPresentation } from "../../engineer/engineer-presentation-store";
 import type { OverlayFrameV2, OverlaySourceStatusV2 } from "../../generated/telemetry";
-import type { OverlayV2Feature } from "../telemetry-shadow/overlay-v2-features";
 import type { RelativeViewModelState } from "../widget-types/relative/relative-view-model-v2";
 
 // Only registered widget definitions declare a feature gate. The vocabulary is
@@ -70,7 +69,6 @@ export type WidgetRuntimeInput = {
     license?: string;
   }[];
   raceScheduleStatus?: WidgetRuntimeStatus;
-  overlayV2Features?: readonly OverlayV2Feature[];
   overlayV2Failure?: Readonly<{
     code: "invalid-frame" | "transport-error";
     message: string;

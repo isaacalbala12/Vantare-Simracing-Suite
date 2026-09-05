@@ -2,11 +2,6 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import type { OverlayFrameV2, OverlayUpdateV2 } from "../../../generated/telemetry";
-import {
-  DEFAULT_OVERLAY_V2_FEATURES,
-  OVERLAY_V2_RELATIVE,
-  hasOverlayV2Feature,
-} from "../../telemetry-shadow/overlay-v2-features";
 import { relativeDefinition } from "./relative-definition";
 import {
   OVERLAY_V2_RELATIVE_DECLARED_GAPS,
@@ -19,12 +14,6 @@ import {
 const CONTENT = relativeDefinition.parseContent({});
 
 describe("relative v2 view model", () => {
-  it("is authoritative by default and remains explicitly addressable", () => {
-    expect(DEFAULT_OVERLAY_V2_FEATURES).toContain(OVERLAY_V2_RELATIVE);
-    expect(hasOverlayV2Feature(undefined, OVERLAY_V2_RELATIVE)).toBe(true);
-    expect(hasOverlayV2Feature([OVERLAY_V2_RELATIVE], OVERLAY_V2_RELATIVE)).toBe(true);
-  });
-
   it.each([20, 44, 104])(
     "renders the window resolved in Go for the %i-vehicle golden without re-selecting",
     (vehicles) => {

@@ -122,8 +122,6 @@ describe("RuntimeOverlaySurface", () => {
   it.each([
     ["desktop", "source-missing"],
     ["obs", "source-missing"],
-    ["desktop", "rollback"],
-    ["obs", "rollback"],
   ] as const)(
     "shows the productive %s %s diagnostic with role=alert and a stable code",
     (renderMode, failure) => {
@@ -142,14 +140,11 @@ describe("RuntimeOverlaySurface", () => {
           document={document}
           telemetry={coordinator}
           renderMode={renderMode}
-          overlayV2Features={failure === "rollback" ? [] : undefined}
         />,
       );
 
       const alert = view.getByRole("alert");
-      expect(alert.getAttribute("data-diagnostic-code")).toBe(
-        failure === "rollback" ? "overlay-v2-rollback" : "overlay-v2-source-missing",
-      );
+      expect(alert.getAttribute("data-diagnostic-code")).toBe("overlay-v2-source-missing");
       coordinator.dispose();
     },
   );

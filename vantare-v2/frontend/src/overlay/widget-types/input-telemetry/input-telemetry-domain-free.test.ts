@@ -2,11 +2,6 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import type { OverlayFrameV2, OverlayUpdateV2 } from "../../../generated/telemetry";
-import {
-  DEFAULT_OVERLAY_V2_FEATURES,
-  OVERLAY_V2_CONTROLS,
-  hasOverlayV2Feature,
-} from "../../telemetry-shadow/overlay-v2-features";
 import { inputTelemetryDefinition } from "./input-telemetry-definition";
 import {
   OVERLAY_V2_CONTROLS_DECLARED_GAPS,
@@ -18,12 +13,6 @@ import {
 const CONTENT = inputTelemetryDefinition.parseContent({});
 
 describe("input telemetry v2 view model", () => {
-  it("is authoritative by default and remains explicitly addressable", () => {
-    expect(DEFAULT_OVERLAY_V2_FEATURES).toContain(OVERLAY_V2_CONTROLS);
-    expect(hasOverlayV2Feature(undefined, OVERLAY_V2_CONTROLS)).toBe(true);
-    expect(hasOverlayV2Feature([OVERLAY_V2_CONTROLS], OVERLAY_V2_CONTROLS)).toBe(true);
-  });
-
   it("reads the series Go derived instead of accumulating one in the browser", () => {
     const frame = goldenFrame(20);
     expect(frame.controls.history.q).toBe("fresh");

@@ -1,18 +1,6 @@
 import type { OverlayFrameV2, OverlaySourceStatusV2 } from "../../generated/telemetry";
 import type { WidgetType } from "./profile-document";
 import type { WidgetRuntimeInput, WidgetViewModelBase } from "./widget-definition";
-import {
-  OVERLAY_V2_CONTROLS,
-  OVERLAY_V2_DELTA,
-  OVERLAY_V2_FUEL,
-  OVERLAY_V2_PLAYER_INSTRUMENTS,
-  OVERLAY_V2_RELATIVE,
-  OVERLAY_V2_SESSION,
-  OVERLAY_V2_STANDINGS,
-  OVERLAY_V2_DAMAGE,
-  OVERLAY_V2_WEATHER,
-  type OverlayV2Feature,
-} from "../telemetry-shadow/overlay-v2-features";
 import { buildStandingsViewModelV2 } from "../widget-types/standings/standings-view-model-v2";
 import { buildRelativeViewModelV2 } from "../widget-types/relative/relative-view-model-v2";
 import { buildDeltaViewModelV2 } from "../widget-types/delta/delta-view-model-v2";
@@ -40,7 +28,6 @@ export type OverlayV2ViewModelBuilder = (
 ) => WidgetViewModelBase;
 
 export type OverlayV2ViewModelEntry = Readonly<{
-  feature: OverlayV2Feature;
   buildViewModelV2: OverlayV2ViewModelBuilder;
 }>;
 
@@ -60,7 +47,6 @@ export const overlayV2ViewModelRegistry: ReadonlyMap<WidgetType, OverlayV2ViewMo
   [
     "standings",
     {
-      feature: OVERLAY_V2_STANDINGS,
       buildViewModelV2: (frame, source, content) =>
         buildStandingsViewModelV2(frame, source, content as never),
     },
@@ -68,7 +54,6 @@ export const overlayV2ViewModelRegistry: ReadonlyMap<WidgetType, OverlayV2ViewMo
   [
     "relative",
     {
-      feature: OVERLAY_V2_RELATIVE,
       buildViewModelV2: (frame, source, content, ctx) => {
         const redline = ctx?.relativeViewModelStability === "endurance-redline";
         return buildRelativeViewModelV2(frame, source, content as never, {
@@ -83,14 +68,12 @@ export const overlayV2ViewModelRegistry: ReadonlyMap<WidgetType, OverlayV2ViewMo
   [
     "delta",
     {
-      feature: OVERLAY_V2_DELTA,
       buildViewModelV2: deltaBuilder,
     },
   ],
   [
     "fuel-strategy",
     {
-      feature: OVERLAY_V2_FUEL,
       buildViewModelV2: (frame, source, content) =>
         buildFuelStrategyViewModelV2(frame, source, content as never),
     },
@@ -98,7 +81,6 @@ export const overlayV2ViewModelRegistry: ReadonlyMap<WidgetType, OverlayV2ViewMo
   [
     "pedals-telemetry",
     {
-      feature: OVERLAY_V2_PLAYER_INSTRUMENTS,
       buildViewModelV2: (frame, source, content) =>
         buildPedalsTelemetryViewModelV2(frame, source, content as never),
     },
@@ -106,7 +88,6 @@ export const overlayV2ViewModelRegistry: ReadonlyMap<WidgetType, OverlayV2ViewMo
   [
     "input-telemetry",
     {
-      feature: OVERLAY_V2_CONTROLS,
       buildViewModelV2: (frame, source, content) =>
         buildInputTelemetryViewModelV2(frame, source, content as never),
     },
@@ -114,7 +95,6 @@ export const overlayV2ViewModelRegistry: ReadonlyMap<WidgetType, OverlayV2ViewMo
   [
     "racing-flags",
     {
-      feature: OVERLAY_V2_SESSION,
       buildViewModelV2: (frame, source, content) =>
         buildRacingFlagsViewModelV2(frame, source, content as never),
     },
@@ -122,17 +102,17 @@ export const overlayV2ViewModelRegistry: ReadonlyMap<WidgetType, OverlayV2ViewMo
   // Cutover v2 (ISA-805): variantes de presentacion y widgets restantes.
   // race-schedule queda fuera a propósito: recibe el canal auxiliar Calendar
   // por WidgetRuntimeInput, no telemetría canónica ni TelemetrySnapshot.
-  ["delta-advanced", { feature: OVERLAY_V2_DELTA, buildViewModelV2: (frame, source, content) => buildDeltaAdvancedViewModelV2(frame, source, content as never) }],
-  ["delta-trace", { feature: OVERLAY_V2_DELTA, buildViewModelV2: (frame, source, content) => buildDeltaTraceViewModelV2(frame, source, content as never) }],
-  ["pedals", { feature: OVERLAY_V2_PLAYER_INSTRUMENTS, buildViewModelV2: (frame, source, content) => buildPedalsViewModelV2(frame, source, content as never) }],
-  ["pedals-telemetry-compact", { feature: OVERLAY_V2_PLAYER_INSTRUMENTS, buildViewModelV2: (frame, source, content) => buildPedalsTelemetryCompactViewModelV2(frame, source, content as never) }],
-  ["multiclass-relative", { feature: OVERLAY_V2_RELATIVE, buildViewModelV2: (frame, source, content) => buildMulticlassRelativeViewModelV2(frame, source, content as never) }],
-  ["head-to-head", { feature: OVERLAY_V2_RELATIVE, buildViewModelV2: (frame, source, content) => buildHeadToHeadViewModelV2(frame, source, content as never) }],
-  ["track-map", { feature: OVERLAY_V2_STANDINGS, buildViewModelV2: (frame, source, content) => buildTrackMapViewModelV2(frame, source, content as never) }],
-  ["broadcast-tower", { feature: OVERLAY_V2_STANDINGS, buildViewModelV2: (frame, source, content) => buildBroadcastTowerViewModelV2(frame, source, content as never) }],
-  ["track-weather", { feature: OVERLAY_V2_WEATHER, buildViewModelV2: (frame, source, content) => buildTrackWeatherViewModelV2(frame, source, content as never) }],
-  ["car-damage-numbers", { feature: OVERLAY_V2_DAMAGE, buildViewModelV2: (frame, source, content) => buildCarDamageNumbersViewModelV2(frame, source, content as never) }],
-  ["car-damage-visual", { feature: OVERLAY_V2_DAMAGE, buildViewModelV2: (frame, source, content) => buildCarDamageVisualViewModelV2(frame, source, content as never) }],
+  ["delta-advanced", { buildViewModelV2: (frame, source, content) => buildDeltaAdvancedViewModelV2(frame, source, content as never) }],
+  ["delta-trace", { buildViewModelV2: (frame, source, content) => buildDeltaTraceViewModelV2(frame, source, content as never) }],
+  ["pedals", { buildViewModelV2: (frame, source, content) => buildPedalsViewModelV2(frame, source, content as never) }],
+  ["pedals-telemetry-compact", { buildViewModelV2: (frame, source, content) => buildPedalsTelemetryCompactViewModelV2(frame, source, content as never) }],
+  ["multiclass-relative", { buildViewModelV2: (frame, source, content) => buildMulticlassRelativeViewModelV2(frame, source, content as never) }],
+  ["head-to-head", { buildViewModelV2: (frame, source, content) => buildHeadToHeadViewModelV2(frame, source, content as never) }],
+  ["track-map", { buildViewModelV2: (frame, source, content) => buildTrackMapViewModelV2(frame, source, content as never) }],
+  ["broadcast-tower", { buildViewModelV2: (frame, source, content) => buildBroadcastTowerViewModelV2(frame, source, content as never) }],
+  ["track-weather", { buildViewModelV2: (frame, source, content) => buildTrackWeatherViewModelV2(frame, source, content as never) }],
+  ["car-damage-numbers", { buildViewModelV2: (frame, source, content) => buildCarDamageNumbersViewModelV2(frame, source, content as never) }],
+  ["car-damage-visual", { buildViewModelV2: (frame, source, content) => buildCarDamageVisualViewModelV2(frame, source, content as never) }],
 ]);
 
 export function getOverlayV2ViewModelEntry(type: WidgetType): OverlayV2ViewModelEntry | undefined {

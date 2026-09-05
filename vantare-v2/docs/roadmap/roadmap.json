@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-05T22:22:49Z",
+  "generatedAt": "2026-09-05T22:52:01Z",
   "digest": {
-    "lastCommit": "483f4e802cf821da9de5814776b69cd850c9a108"
+    "lastCommit": "c18f2e6e92c587bd21eaabf2e0b7a753837af1a4"
   },
   "phases": [
     {
@@ -918,6 +918,16 @@
   ],
   "delivered": [
     {
+      "date": "2026-09-06",
+      "entries": [
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-1000 · Integrar V2 completo y feedback tester en nightly"
+        }
+      ]
+    },
+    {
       "date": "2026-09-05",
       "entries": [
         {
@@ -1554,26 +1564,6 @@
           "kind": "change",
           "scope": "",
           "text": "Catalogo de animaciones en el Workshop, y motor para relative, delta y pedals"
-        }
-      ]
-    },
-    {
-      "date": "2026-08-11",
-      "entries": [
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "Auditar señales live para Strategy"
-        },
-        {
-          "kind": "fix",
-          "scope": "discord",
-          "text": "Stop the tester announcement hiding the release it announces"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "Pedals Redline, el cuarto widget de la direccion insignia"
         }
       ]
     }

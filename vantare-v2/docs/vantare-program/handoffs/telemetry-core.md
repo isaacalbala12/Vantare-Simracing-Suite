@@ -1,5 +1,22 @@
 # Handoff vivo — Telemetry Core
 
+## R7b/E2 ejecutado en rama — sistema features/rollback fuera, V2 directo — 2026-09-05, ISA-894
+
+Commits locales `1fce8fef` (RED: guard E2 6 failed | 1 passed) +
+`6ae800f2` (GREEN +74/−479, neto −405). Borrados
+`overlay-v2-features.ts` + su test; callsites
+Composite/OBS/Studio sin generación ni suscripción; hilo
+`overlayV2Features` fuera de edit/runtime/definition; Host sin
+`v2Rollback`/rama/gates; registry `{ buildViewModelV2 }` directo sin
+`feature`; tests exclusivos fuera y cobertura productiva
+reformulada. Corrección al microplan: el inventario real demostró
+cero consumidor productivo del catálogo, así que no se mueve a otro
+archivo, se elimina. Guard 7/7, focales 300/300, typecheck, lint,
+build, `rg` en `src`/`dist` y diff-check PASS. Suite completa
+pendiente de E1d/F1. Evidencia:
+[`retirada-v1-r7b-e2-switch-20260905.md`](../../telemetry-core/evidence/isa-894/retirada-v1-r7b-e2-switch-20260905.md).
+Siguiente: E3. Sin push, PR, merge, promoción, apps ni LMU.
+
 ## R7b/E1c aprobado — 2026-09-05, ISA-894
 
 Review adversarial read-only Muse `ses_f8feb3bdfffe8KVwkns5tWs53q`:

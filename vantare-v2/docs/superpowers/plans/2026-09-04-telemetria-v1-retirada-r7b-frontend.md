@@ -1086,6 +1086,28 @@ evidencia. La revisión principal repitió 46 focales, typecheck, lint y build.
   exige gating mutable o cambiar capabilities/demand/arquitectura → parar,
   fijar stop condition con ADR; no reintroducir switch de retorno.
 
+### E2 · Corrección 2026-09-05: el catálogo se elimina, no se mueve
+
+El inventario real con `rg` (previo al RED de E2) desmiente la decisión
+fijada arriba: `overlayV2Features` solo llegaba a `WidgetVisualHost`
+para calcular `v2Rollback` (`length === 0`); `hasOverlayV2Feature` y
+`entry.feature` solo aparecían en tests y en la declaración del
+registry. Ningún consumidor productivo usa el catálogo salvo el
+rollback. Por Ponytail (`full`: YAGNI, borrar antes que mover) E2
+elimina todo el sistema de features —módulo, test, generaciones,
+prop e hilo, `v2Rollback`/diagnóstico/gates, `feature`/constantes y
+tests exclusivos— sin crear `overlay/core/overlay-v2-feature-catalog.ts`
+ni ningún otro archivo de reemplazo. V2 queda como única autoridad
+directa.
+
+**Resultado E2 (ejecutado en rama, 2026-09-05):** `1fce8fef` fija RED
+(guard E2 6 failed | 1 passed) y `6ae800f2` retira el sistema entero
+(+74/−479, neto −405; con el RED, E2 neto −250). Evidencia:
+`docs/telemetry-core/evidence/isa-894/retirada-v1-r7b-e2-switch-20260905.md`.
+Guard 7/7, focales 300/300, typecheck, lint completo, build y
+`rg` en `src`/`dist` PASS; suite completa pendiente de E1d/F1.
+Siguiente: E3.
+
 ### E3 · Borrar 3 JSON overlay/testdata + 2 entrypoints frontend research bench, limpiar bundle
 
 - Hechos de árbol (verificado con `rg`; la frase "bench Go huérfano" queda

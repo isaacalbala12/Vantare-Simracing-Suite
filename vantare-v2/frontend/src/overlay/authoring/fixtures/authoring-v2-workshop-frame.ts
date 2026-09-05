@@ -13,9 +13,8 @@ import {
   buildAuthoringV2ScenarioRuntime,
   type AuthoringV2Variant,
 } from "./authoring-v2-scenario-fixture";
-import { widgetTypeRegistry } from "../../core/widget-registry";
+import { buildAuthoringV2ScenarioWidget } from "./authoring-v2-scenario-widget";
 import { applyWidgetDesign } from "../../core/widget-design";
-import { parseRelativeContent, updateRelativeFilters } from "../../widget-types/relative/relative-content";
 import { getOfficialDesign } from "../../design-systems/official-designs";
 import { getAnimationScene, sceneFrameAt } from "./animation-scenes";
 import type { SceneFrame } from "./animation-scenes";
@@ -79,64 +78,6 @@ function shapeVariantFor(input: {
   return DEV_SHAPE_VARIANT[input.variant as WorkshopV2DevVariant];
 }
 
-// Forma del widget desde el registro productivo (E1b: consolida aquí el
-// helper temporal borrado; solo forma, cero telemetría).
-function buildScenarioWidgetShape(input: {
-  widget: WidgetType;
-  system: DesignSystemId;
-  variant: AuthoringV2Variant;
-}): WidgetInstanceV3 {
-  if (!AUTHORING_V2_VARIANTS.includes(input.variant)) {
-    throw new Error(
-      `authoring-v2-workshop-frame: variante no soportada ${JSON.stringify(input.variant)}`,
-    );
-  }
-  const definition = widgetTypeRegistry.get(input.widget);
-  const widget = definition.createDefault(`${input.widget}-harness`);
-  widget.visual = { ...widget.visual, systemId: input.system };
-
-  if (input.widget === "broadcast-tower") {
-    widget.content = { ...widget.content as Record<string, unknown>, rowCount: 10 };
-  }
-  if (input.widget === "multiclass-relative") {
-    widget.content = { ...widget.content as Record<string, unknown>, rowCount: 4 };
-  }
-  if (input.widget === "standings" && input.variant === "standings-multiclass") {
-    const content = widget.content as Record<string, unknown>;
-    const columns = Array.isArray(content.columns)
-      ? (content.columns as Record<string, unknown>[]).map((column) =>
-          column.metricId === "bestLap" ? { ...column, enabled: true } : column,
-        )
-      : content.columns;
-    widget.content = { ...content, classScope: "all-classes", columns };
-  }
-  if (
-    input.widget === "standings" &&
-    (input.variant === "standings-minimal" || input.variant === "standings-all-columns")
-  ) {
-    const content = widget.content as Record<string, unknown>;
-    const columns = Array.isArray(content.columns)
-      ? (content.columns as Record<string, unknown>[]).map((column) => ({
-          ...column,
-          enabled:
-            input.variant === "standings-all-columns" ||
-            column.metricId === "position" ||
-            column.metricId === "driverName",
-        }))
-      : content.columns;
-    widget.content = { ...content, columns };
-  }
-  widget.layout = { ...widget.layout, x: 120, y: 96, zIndex: 1 };
-
-  if (input.widget === "relative" && input.variant === "relative-fill") {
-    const content = parseRelativeContent(widget.content);
-    widget.content = updateRelativeFilters(content, { rowHeightMode: "fill" });
-    widget.layout = { ...widget.layout, h: Math.max(widget.layout.h, 320) };
-  }
-
-  return widget;
-}
-
 export function createScenarioWidget(input: {
   widget: WidgetType;
   system: DesignSystemId;
@@ -145,7 +86,7 @@ export function createScenarioWidget(input: {
   sceneId?: string;
 }): WidgetInstanceV3 {
   const shape = shapeVariantFor(input);
-  let widget = buildScenarioWidgetShape({ widget: input.widget, system: input.system, variant: shape });
+  let widget = buildAuthoringV2ScenarioWidget({ widget: input.widget, system: input.system, variant: shape });
   if (!input.designId) return widget;
   const official = getOfficialDesign(input.designId);
   if (!official) {

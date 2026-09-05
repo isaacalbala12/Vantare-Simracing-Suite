@@ -1,16 +1,16 @@
 import type { CSSProperties } from "react";
 import { WidgetVisualHost } from "../overlay/core/WidgetVisualHost";
 import { buildAuthoringV2ScenarioRuntime } from "../overlay/authoring/fixtures/authoring-v2-scenario-fixture";
-import { createScenarioWidget } from "../overlay/authoring/fixtures/authoring-v2-workshop-frame";
+import { buildAuthoringV2ScenarioWidget } from "../overlay/authoring/fixtures/authoring-v2-scenario-widget";
 import { buildEngineerPresentationFixture } from "../engineer/engineer-presentation-fixtures";
 import { parseHarnessQuery, type HarnessQuery } from "./overlay-parity-query";
 
 export function OverlayParityHarness({ query }: { query: HarnessQuery }) {
-  const widget = createScenarioWidget({
+  const widget = buildAuthoringV2ScenarioWidget({
     widget: query.widget,
     system: query.system,
     variant: query.variant,
-    ...(query.design ? { designId: query.design.designId } : {}),
+    ...(query.design ? { design: query.design } : {}),
   });
   const runtime = {
     ...buildAuthoringV2ScenarioRuntime({

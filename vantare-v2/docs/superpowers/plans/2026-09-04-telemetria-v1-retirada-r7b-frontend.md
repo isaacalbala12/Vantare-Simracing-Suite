@@ -971,6 +971,27 @@ evaluable hasta desbloquear los 8 errores R7a, no excusa para reintroducir V1.
 - Rollback/stop: revert. Stop si algo citado sigue importado por un preview
   no migrado → volver a C2.
 
+#### Microcortes E1 (orden obligatorio)
+
+1. **E1a · Contrato y previews**: retirar `TelemetrySnapshot` de
+   `WidgetTypeDefinition`; borrar las firmas snapshot ignoradas de
+   `race-schedule` y `engineer-radio`; migrar/eliminar el preview snapshot-real
+   de Track Map. Conservar `buildAuxiliaryViewModel` y las fuentes D5.
+2. **E1b · Autoría y Studio**: sustituir los fixtures legacy de autoría por la
+   frontera V2 productiva ya existente; retirar
+   `authoring-v2-scenario-widget.ts` y
+   `studio-v1-snapshot-test-harness.ts`, sin crear otro registro o adapter.
+3. **E1c · Builders legacy por widget**: borrar módulos/tests
+   `*-view-model.ts` exclusivos de V1; mover solo los tipos visuales todavía
+   compartidos al módulo V2 o común más cercano, sin abstracción nueva.
+4. **E1d · Núcleo legacy**: retirar snapshot, adapters, derived store,
+   acumulador de input, mock-scenarios e historias/API antiguas del
+   coordinador; cerrar con guardia de ausencia, focales, typecheck y build.
+
+Cada microcorte exige RED→GREEN y review literal independiente. La suite
+completa se ejecuta al cerrar E1d/F1, no después de cada borrado mecánico; un
+fallo focal dentro de alcance sí bloquea el microcorte.
+
 ### E2 · Switch overlay-v2-features: decisión fijada según callsites reales, sin disyunción
 
 - Hechos de árbol (`frontend/src/overlay/telemetry-shadow/overlay-v2-features.ts`,

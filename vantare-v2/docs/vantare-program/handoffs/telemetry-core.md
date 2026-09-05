@@ -1,5 +1,38 @@
 # Handoff vivo — Telemetry Core
 
+## Auditoría integral V2 consolidada — 2026-09-05, ISA-987
+
+Retirada Overlay V1 cerrada localmente en
+`28bac67650837d2a56d2466bfcbf7adf41436af7`. Las dos reviews finales sobre ese
+SHA, `ses_f8f6caaa8ffe7Ql7ZMpNUNutVB` y `ses_f8f6e4edbffeDKHQ4aikzOYbzz`,
+concluyeron APPROVE sin hallazgos pendientes; el comentario de cierre de #894
+registra la evidencia. El apartado R7b/F inferior conserva el checkpoint
+anterior, no una nueva obligación de repetir las reviews.
+
+Isaac ha autorizado continuar fase 2 del maestro: auditoría integral de
+Telemetría V2, no sólo OverlayFrame. Cuatro lectores Muse xhigh + Ponytail full
+en snapshots independientes del mismo SHA; main consolida en
+`C:/tmp/vantare-v2-audit-987/vantare-v2`, rama
+`vantareapp/isa-987-auditoria-integral-v2`. Matriz y sesiones en
+[`auditoría integral`](../../analysis/telemetria-v2-auditoria-integral-20260905.md).
+Los cuatro lectores han terminado y main ha contrastado los hallazgos.
+Defectos: llamadas Engineer sin límite efectivo tras timeout; facts bloqueados
+en el mismo epoch tras overflow/gap sin recuperación productiva; timeout HTTP
+que no cubre el cuerpo JSON; Damage que permanece Fresh cuando envejece la fuente.
+Los dos últimos tienen reproducción focal ejecutada por main. Los tests Go
+focales de engine/derive/LMU, transporte, recording/Engineer y wiring pasan;
+no sustituyen los casos de regresión que faltan ni las pruebas físicas.
+
+Simplificaciones candidatas: retirar el verificador duplicado del Core,
+no proyectar Strategy sin destino y eliminar copias redundantes concretas.
+El ahorro todavía no está medido. Siguiente orden: timeout HTTP y Damage en
+microcortes independientes, límites/recuperación Engineer y después las
+simplificaciones medidas. Mantener contratos, información, apariencia y Hz.
+Cobertura y exclusiones explícitas en el informe; no se certifica todo V2.
+No cambios productivos, apps, LMU ni mediciones físicas. Bucle de rendimiento
+no iniciado. Sin push, PR, merge o promoción. Límite posterior del bucle:
+cinco experimentos consecutivos sin mejora demostrada u ocho horas acumuladas.
+
 ## R7b/F en cierre — V1 fuera del candidato, gates completos — 2026-09-05, ISA-894
 
 E1d queda cerrado con `8b7ed0e3` (RED), `31742554` (GREEN: 58 ficheros,

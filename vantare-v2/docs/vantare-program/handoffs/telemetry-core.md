@@ -1,5 +1,22 @@
 # Handoff vivo — Telemetry Core
 
+## R7b/E1c ejecutado en rama — megamódulo fuera, helper V2 conservado, contract sobre frame V2 — 2026-09-05, ISA-894
+
+Commits locales `f8ee3f74` (RED: lock E1c enumera 4 ficheros) +
+`d5a34a16` (GREEN +69/−1244, neto −1175). Borrados `authoring-fixtures.ts`
++ su test exclusivo + shim `harness-fixtures.ts` (cero callers
+productivos) + su test V1. `authoring-v2-scenario-widget.ts` conservado
+como único helper V2 de Workshop/Parity (cae su comentario rancio que lo
+mandaba a borrar, igual que el de `authoring-v2-workshop-frame.ts`).
+Contract Endurance migrado a frame V2 canónico (bloques
+`[lmp2, gte, hypercar]`, tope WEC con stress60) sin copiar funciones ni
+datos inventados; builders legacy intactos para E4 y núcleo para E1d.
+Focales 176/176 + vecinos 411/411 PASS; typecheck verde; build PASS;
+ESLint/diff-check/`rg` limpios. Suite completa pendiente de E1d/F1.
+Evidencia:
+[`retirada-v1-r7b-e1c-autoria-20260905.md`](../../telemetry-core/evidence/isa-894/retirada-v1-r7b-e1c-autoria-20260905.md).
+Siguiente: E2. Sin push, PR, merge, promoción, apps ni LMU.
+
 ## R7b/E1c STOP resuelto por inventario — comparator conserva 16 builders hasta E4 — 2026-09-05, ISA-894
 
 Inventario read-only Muse `ses_f8ffd7b62ffeka520j86RvC7SE`: los 16 builders

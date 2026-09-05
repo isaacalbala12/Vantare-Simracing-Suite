@@ -1010,6 +1010,15 @@ se retira `studio-v1-snapshot-test-harness.ts` sin callers y se conserva el
 helper de autoría para caer con su megamódulo en E1c. Review adversarial
 `ses_f9002a0fbffeti4QtvJc4maIzG`: APPROVE, P0/P1/P2 = 0.
 
+**Resultado E1c (ejecutado en rama, 2026-09-05):** `f8ee3f74` fija RED y
+`d5a34a16` retira `authoring-fixtures.ts`, su test exclusivo, el shim
+`harness-fixtures.ts` y su test V1 (+69/−1244), migrando el contract
+Endurance al frame V2 canónico sin copiar funciones ni inventar datos.
+Corrección aplicada sobre E1b: el helper
+`authoring-v2-scenario-widget.ts` NO cae con el megamódulo, se conserva
+como único helper V2 de Workshop/Parity. Focales 176/176, vecinos
+411/411, typecheck, lint y build pasan. Siguiente: E2.
+
 ### E2 · Switch overlay-v2-features: decisión fijada según callsites reales, sin disyunción
 
 - Hechos de árbol (`frontend/src/overlay/telemetry-shadow/overlay-v2-features.ts`,

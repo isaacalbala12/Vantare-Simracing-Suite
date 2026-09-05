@@ -1,10 +1,9 @@
 import type { FeatureId } from "../../lib/access-policy";
 import type { InspectorCapability } from "./inspector-control";
 import type { WidgetType, WidgetInstanceV3 } from "./profile-document";
-import type { TelemetrySnapshot } from "./telemetry-snapshot";
 import type { EngineerPresentation } from "../../engineer/engineer-presentation-store";
 import type { OverlayFrameV2, OverlaySourceStatusV2 } from "../../generated/telemetry";
-import type { OverlayV2Feature } from "../telemetry-shadow/overlay-v2-features";
+import type { RelativeViewModelState } from "../widget-types/relative/relative-view-model-v2";
 
 // Only registered widget definitions declare a feature gate. The vocabulary is
 // intentionally broader while the remaining widget definitions land in later
@@ -70,13 +69,16 @@ export type WidgetRuntimeInput = {
     license?: string;
   }[];
   raceScheduleStatus?: WidgetRuntimeStatus;
-  overlayV2Features?: readonly OverlayV2Feature[];
   overlayV2Failure?: Readonly<{
     code: "invalid-frame" | "transport-error";
     message: string;
   }>;
   overlayV2Frame?: OverlayFrameV2;
   overlayV2Source?: OverlaySourceStatusV2;
+  relativeViewModelState?: RelativeViewModelState;
+  relativeViewModelNowMs?: () => number;
+  relativeViewModelInstanceKey?: string;
+  relativeViewModelStability?: "endurance-redline";
 };
 
 export type WidgetRenderMode = "studio" | "desktop" | "obs" | "harness";
@@ -105,17 +107,6 @@ export type WidgetTypeDefinition<
   inspector: WidgetInspectorCapability;
   createDefault(id: string): WidgetInstanceV3;
   parseContent(input: unknown): TContent;
-  buildViewModel(snapshot: TelemetrySnapshot, content: TContent): TModel;
-  buildRuntimeViewModel?(
-    snapshot: TelemetrySnapshot,
-    content: TContent,
-    runtime: WidgetRuntimeInput,
-  ): TModel;
-  buildPreviewViewModel?(
-    snapshot: TelemetrySnapshot,
-    content: TContent,
-    runtime: WidgetRuntimeInput,
-  ): TModel;
   buildAuxiliaryViewModel?(
     content: TContent,
     runtime: WidgetRuntimeInput,

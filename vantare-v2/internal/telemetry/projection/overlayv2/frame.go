@@ -139,12 +139,16 @@ type FrameV2 struct {
 	Controls         ControlsV2          `json:"controls"`
 	Standings        []StandingRowV2     `json:"standings"`
 	Relative         []RelativeRowV2     `json:"relative"`
-	Delta            DeltaViewV2         `json:"delta"`
-	Fuel             FuelViewV2          `json:"fuel"`
-	Spotter          SpotterViewV2       `json:"spotter"`
-	Damage           DamageViewV2        `json:"damage"`
-	Weather          WeatherV2           `json:"weather"`
-	Capabilities     CapabilitiesV2      `json:"capabilities"`
+	// RelativeSettled is the bounded, membership-settled form of Relative. The
+	// reference projector publishes Relative here; only CachedProjector owns
+	// the historical authority needed to settle it.
+	RelativeSettled []RelativeRowV2 `json:"relativeSettled"`
+	Delta           DeltaViewV2     `json:"delta"`
+	Fuel            FuelViewV2      `json:"fuel"`
+	Spotter         SpotterViewV2   `json:"spotter"`
+	Damage          DamageViewV2    `json:"damage"`
+	Weather         WeatherV2       `json:"weather"`
+	Capabilities    CapabilitiesV2  `json:"capabilities"`
 }
 
 type SessionV2 struct {
@@ -166,31 +170,30 @@ type PlayerInstrumentsV2 struct {
 	Steering  QValue[float64] `json:"steering"`
 }
 
-// ControlsHistoryV2 carries the player's recent pedal series. It is the player
-// alone, never the grid: one row of three ratios per canonical tick.
+// ControlsHistoryV2 carries the player's recent control series. It is the
+// player alone, never the grid: one row per canonical tick, always
+// index-aligned across all seven arrays.
 //
-// The wire form is three parallel arrays of per-mille integers (0..1000), which
-// is the ratio quantized to the three decimals the widget draws. Parallel
-// arrays cost one number per sample instead of an object with three keys, and
-// a per-mille integer costs at most four characters instead of the five a
-// "0.123" float needs. At the canonical maximum of 120 samples the whole
-// section stays around 1.5 KB.
+// The wire form keeps three parallel per-mille pedal arrays (0..1000, three
+// decimals) plus one absolute capture instant per sample and three
+// quality-bearing motion series. Parallel arrays cost one number per pedal
+// sample instead of an object with keys; each motion cell carries its own
+// quality so a missing value omits V without shortening any array.
 //
-// The samples are evenly spaced in the canonical stream (one per tick), so the
-// series publishes a single WindowMS — the span from the first sample to the
-// last — instead of repeating a timestamp per sample. A consumer that draws the
-// series against time reconstructs each x as an equal step across that window.
-// Under an irregular tick that reconstruction is an approximation of the real
-// capture instants; it is a declared difference against Overlay v1, which
-// carries a per-sample timestamp, and never an invented value.
+// CapturedAtMS holds absolute Unix epoch milliseconds taken from each
+// sample's real capture instant. Absolute instants are cache-safe:
+// CachedProjector reuses memoized sections across several frame.GeneratedAt
+// values, so a relative age would change meaning while memoized. SpeedMPS
+// travels in the source unit m/s; km/h is presentation only in the decoder.
 type ControlsHistoryV2 struct {
-	Q Quality `json:"q"`
-	// WindowMS is the span covered by the samples, first to last. It is zero
-	// when fewer than two samples exist: a single point spans nothing.
-	WindowMS int64   `json:"windowMs,omitempty"`
-	Throttle []int16 `json:"throttle,omitempty"`
-	Brake    []int16 `json:"brake,omitempty"`
-	Clutch   []int16 `json:"clutch,omitempty"`
+	Q            Quality           `json:"q"`
+	CapturedAtMS []int64           `json:"capturedAtMS,omitempty"`
+	Throttle     []int16           `json:"throttle,omitempty"`
+	Brake        []int16           `json:"brake,omitempty"`
+	Clutch       []int16           `json:"clutch,omitempty"`
+	SpeedMPS     []QValue[float64] `json:"speedMPS,omitempty"`
+	RPM          []QValue[float64] `json:"rpm,omitempty"`
+	Gear         []QValue[int32]   `json:"gear,omitempty"`
 }
 
 type ControlsV2 struct {
@@ -223,18 +226,22 @@ type StandingRowV2 struct {
 	GapLaps        int32                    `json:"gapLaps,omitempty"`
 	PitState       string                   `json:"pit,omitempty"`
 	CompletedLaps  int32                    `json:"laps,omitempty"`
+	BestLapSeconds QValue[float64]          `json:"bestLap"`
 	LastLapSeconds QValue[float64]          `json:"lastLap"`
 	LapDistance    QValue[float64]          `json:"lapDistance"`
 	GroundPosition QValue[GroundPositionV2] `json:"groundPosition"`
 }
 
 type RelativeRowV2 struct {
-	VehicleID   string          `json:"id"`
-	GapSeconds  QValue[float64] `json:"gap"`
-	Side        string          `json:"side"`
-	Authority   Authority       `json:"authority"`
-	DisplayName string          `json:"name,omitempty"`
-	ClassID     string          `json:"classId,omitempty"`
+	VehicleID      string                   `json:"id"`
+	Position       int32                    `json:"position"`
+	GapSeconds     QValue[float64]          `json:"gap"`
+	GroundPosition QValue[GroundPositionV2] `json:"groundPosition"`
+	LastLapSeconds QValue[float64]          `json:"lastLap"`
+	Side           string                   `json:"side"`
+	Authority      Authority                `json:"authority"`
+	DisplayName    string                   `json:"name,omitempty"`
+	ClassID        string                   `json:"classId,omitempty"`
 }
 
 type DeltaViewV2 struct {
@@ -244,6 +251,29 @@ type DeltaViewV2 struct {
 	Available []string        `json:"available"`
 	Trend     string          `json:"trend,omitempty"`
 	Authority Authority       `json:"authority,omitempty"`
+	History   DeltaHistoryV2  `json:"history"`
+}
+
+// DeltaHistoryV2 carries the player's recent delta series. It is the player
+// alone, never the grid: one entry per canonical delta sample at the 100 ms
+// sampling interval, always index-aligned across both arrays, oldest first,
+// capped at 120 (derive.MaxSelfDeltaHistory).
+//
+// The wire form keeps one absolute capture instant plus one delta figure per
+// sample. CapturedAtMS holds absolute Unix epoch milliseconds taken from
+// each sample's real capture instant, never a relative age: the delta
+// section can be served memoized across several frame.GeneratedAt values,
+// so a relative age would change meaning while memoized. Seconds travels
+// unquantized, exactly as derive measured it. A series with no usable
+// quality publishes its quality with no entries: there are no sentinels and
+// no shortened arrays, only fewer entries. SourceTime and LapDistance are
+// not transported: the only delta-history consumer (delta-trace) reads
+// {capturedAt, deltaSeconds}, proven by inventory with zero wire consumers
+// of those fields.
+type DeltaHistoryV2 struct {
+	Q            Quality   `json:"q"`
+	CapturedAtMS []int64   `json:"capturedAtMS,omitempty"`
+	Seconds      []float64 `json:"seconds,omitempty"`
 }
 
 // FuelBasis names the arithmetic behind FuelViewV2.EstimatedLaps.
@@ -263,6 +293,31 @@ type FuelViewV2 struct {
 	PerLap        QValue[float64] `json:"perLap"`
 	EstimatedLaps QValue[float64] `json:"estimatedLaps"`
 	Basis         FuelBasis       `json:"basis,omitempty"`
+	// SessionLaps is the laps the session still has left at the last lap
+	// pace, always published from SessionRemaining + player LastLapTime even
+	// when the fuel basis wins EstimatedLaps. Unit agnostic: laps are laps.
+	SessionLaps QValue[float64] `json:"sessionLaps"`
+	// RequiredFuel is PerLap x SessionLaps in the preferred fuel unit, never
+	// derived from EstimatedLaps: once the fuel basis wins, EstimatedLaps
+	// carries the laps the tank allows, not the laps the session has left.
+	RequiredFuel QValue[float64] `json:"requiredFuel"`
+	History      FuelHistoryV2   `json:"history"`
+}
+
+// FuelHistoryV2 carries the player's measured per-lap fuel series. It is the
+// player alone, never the grid: one entry per canonical measured lap, always
+// index-aligned across both arrays, oldest first, capped at 64.
+//
+// The wire form keeps one lap number plus one consumption figure per sample.
+// Parallel arrays cost one number per sample instead of an object with keys;
+// consumption is in the frame unit (frame.units.fuel): derive/ keeps canonical
+// litres and the projection converts exactly once, so litres and gallons never
+// mix on the wire. A lap with no measurement has no entry: there are no
+// sentinels and no shortened arrays, only fewer entries.
+type FuelHistoryV2 struct {
+	Q        Quality   `json:"q"`
+	Lap      []int32   `json:"lap,omitempty"`
+	Consumed []float64 `json:"consumed,omitempty"`
 }
 
 type SpotterViewV2 struct {

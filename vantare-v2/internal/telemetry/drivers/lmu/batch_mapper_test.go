@@ -15,9 +15,8 @@ import (
 
 	telemetrycore "github.com/vantare/overlays/v2/internal/telemetry/core"
 	"github.com/vantare/overlays/v2/internal/telemetry/derive"
-	telemetryprojection "github.com/vantare/overlays/v2/internal/telemetry/projection"
-	overlayprojection "github.com/vantare/overlays/v2/internal/telemetry/projection/overlay"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/envelope"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/identity"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/session"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/spatial"
@@ -83,7 +82,7 @@ func TestBatchMapperRealFixtureTraversesParseFusionMapperAndReducer(t *testing.T
 	}
 }
 
-func TestNativeDeltaBestTraversesLMUBufferToOverlayWithoutReferenceWarmup(t *testing.T) {
+func TestNativeDeltaBestTraversesLMUBufferToCanonicalWithoutReferenceWarmup(t *testing.T) {
 	input, err := os.ReadFile(filepath.Join("..", "..", "..", "..", "testdata", "lmu-fixture.bin"))
 	if err != nil {
 		t.Fatal(err)
@@ -100,36 +99,46 @@ func TestNativeDeltaBestTraversesLMUBufferToOverlayWithoutReferenceWarmup(t *tes
 	fused := new(Fusion).Merge(parsed.ReceivedUTC, 0, parsed)
 	mapper, reducer := NewBatchMapper(), telemetrycore.NewReducer()
 	pipeline := derive.NewPipeline(derive.Config{})
-	var projected overlayprojection.SnapshotV1
+	var final envelope.Snapshot[derive.FinalState]
 	sink := telemetrycore.BatchSinkFunc(func(_ context.Context, batch telemetrycore.Batch) error {
 		observed, err := reducer.Apply(batch)
 		if err != nil {
 			return err
 		}
-		final, err := pipeline.Apply(context.Background(), observed)
+		resolved, err := pipeline.Apply(context.Background(), observed)
 		if err != nil {
 			return err
 		}
-		projected, err = overlayprojection.ProjectV1(final)
-		return err
+		final = resolved
+		return nil
 	})
 	if err := mapper.WriteObservation(context.Background(), fused, sink); err != nil {
 		t.Fatal(err)
 	}
-	if !projected.PlayerDelta.Present || projected.PlayerDelta.Value != session.DeltaSeconds(-0.245) ||
-		projected.PlayerDelta.Provenance != telemetryprojection.ProvenanceObserved {
-		t.Fatalf("projected native delta = %+v", projected.PlayerDelta)
+	// R6a.1: el proyector Overlay V1 esta retirado; la garantia se conserva
+	// como asercion directa del hecho canonico Derived.Delta, sin oraculo V1.
+	state, ok := final.Value()
+	if !ok {
+		t.Fatal("pipeline did not produce a final state")
 	}
-	if !projected.PlayerDeltaPersonalBest.Present || projected.PlayerDeltaPersonalBest.Value != session.DeltaSeconds(-0.245) ||
-		projected.PlayerDeltaPersonalBest.Provenance != telemetryprojection.ProvenanceObserved {
-		t.Fatalf("projected personal-best delta = %+v", projected.PlayerDeltaPersonalBest)
+	delta := state.Derived.Delta
+	if got, present := delta.Seconds.Value(); !present || got != session.DeltaSeconds(-0.245) ||
+		delta.Seconds.Provenance() != schema.ProvenanceObserved {
+		t.Fatalf("native delta seconds = %+v", delta.Seconds)
 	}
-	if projected.PlayerDeltaSessionBest.Present || projected.PlayerDeltaPreviousLap.Present {
-		t.Fatalf("first frame invented derived references: session=%+v previous=%+v", projected.PlayerDeltaSessionBest, projected.PlayerDeltaPreviousLap)
+	if got, present := delta.PersonalBest.Value(); !present || got != session.DeltaSeconds(-0.245) ||
+		delta.PersonalBest.Provenance() != schema.ProvenanceObserved {
+		t.Fatalf("native personal-best delta = %+v", delta.PersonalBest)
 	}
-	if !projected.DeltaReference.Present || projected.DeltaReference.Value != "best-completed-player-lap" ||
-		projected.DeltaReference.Provenance != telemetryprojection.ProvenanceObserved {
-		t.Fatalf("projected native delta reference = %+v", projected.DeltaReference)
+	if _, present := delta.SessionBest.Value(); present {
+		t.Fatalf("first frame invented session reference: %+v", delta.SessionBest)
+	}
+	if _, present := delta.PreviousLap.Value(); present {
+		t.Fatalf("first frame invented previous-lap reference: %+v", delta.PreviousLap)
+	}
+	if got, present := delta.Reference.Value(); !present || got != session.DeltaReferenceBestCompletedPlayerLap ||
+		delta.Reference.Provenance() != schema.ProvenanceObserved {
+		t.Fatalf("native delta reference = %+v", delta.Reference)
 	}
 }
 
@@ -265,21 +274,21 @@ func testPlayerAbsence(t *testing.T) {
 	}
 }
 
-func TestBatchMapperPlayerAbsenceClearsActivePlayerThroughProjection(t *testing.T) {
+func TestBatchMapperPlayerAbsenceClearsActivePlayerInCanonicalState(t *testing.T) {
 	mapper, reducer := NewBatchMapper(), telemetrycore.NewReducer()
 	pipeline := derive.NewPipeline(derive.Config{})
-	var projected overlayprojection.SnapshotV1
+	var final envelope.Snapshot[derive.FinalState]
 	sink := telemetrycore.BatchSinkFunc(func(_ context.Context, batch telemetrycore.Batch) error {
 		observed, err := reducer.Apply(batch)
 		if err != nil {
 			return err
 		}
-		final, err := pipeline.Apply(context.Background(), observed)
+		resolved, err := pipeline.Apply(context.Background(), observed)
 		if err != nil {
 			return err
 		}
-		projected, err = overlayprojection.ProjectV1(final)
-		return err
+		final = resolved
+		return nil
 	})
 
 	first := trackObservation(7, 8)
@@ -287,8 +296,15 @@ func TestBatchMapperPlayerAbsenceClearsActivePlayerThroughProjection(t *testing.
 	first.Vehicles[0].Brake = observed(schema.Ratio(0))
 	first.Vehicles[0].Clutch = observed(schema.Ratio(0))
 	writeMapped(t, mapper, first, sink)
-	if projected.Player != "lmu-slot-7-generation-1" || len(projected.History.Samples) != 1 {
-		t.Fatalf("initial projection player/history = %q/%d", projected.Player, len(projected.History.Samples))
+	// R6a.1: sin oraculo V1; la garantia se conserva sobre el hecho canonico
+	// FinalState: identidad del jugador en la cabecera e historial de
+	// controles derivado.
+	firstState, ok := final.Value()
+	if !ok {
+		t.Fatal("pipeline did not produce a final state")
+	}
+	if final.Header().Identity.Vehicle != "lmu-slot-7-generation-1" || len(firstState.Derived.ControlsHistory.Samples) != 1 {
+		t.Fatalf("initial canonical player/history = %q/%d", final.Header().Identity.Vehicle, len(firstState.Derived.ControlsHistory.Samples))
 	}
 
 	absent := trackObservation(8)
@@ -296,14 +312,18 @@ func TestBatchMapperPlayerAbsenceClearsActivePlayerThroughProjection(t *testing.
 	absent.Vehicles[0].Player = observed(false)
 	absent.SourceTime = observed(2 * time.Second)
 	writeMapped(t, mapper, absent, sink)
-	if projected.Player != "" {
-		t.Fatalf("projection retained stale player %q", projected.Player)
+	if final.Header().Identity.Vehicle != "" {
+		t.Fatalf("canonical state retained stale player %q", final.Header().Identity.Vehicle)
 	}
-	if projected.History.Freshness != telemetryprojection.FreshnessMissing {
-		t.Fatalf("history freshness = %q, want missing", projected.History.Freshness)
+	absentState, ok := final.Value()
+	if !ok {
+		t.Fatal("pipeline did not produce a final state after player absence")
 	}
-	if len(projected.History.Samples) != 1 {
-		t.Fatalf("player absence history samples = %d, want retained reference sample", len(projected.History.Samples))
+	if absentState.Derived.ControlsHistory.Freshness != schema.FreshnessMissing {
+		t.Fatalf("history freshness = %q, want missing", absentState.Derived.ControlsHistory.Freshness)
+	}
+	if len(absentState.Derived.ControlsHistory.Samples) != 1 {
+		t.Fatalf("player absence history samples = %d, want retained reference sample", len(absentState.Derived.ControlsHistory.Samples))
 	}
 }
 

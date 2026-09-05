@@ -57,7 +57,6 @@ function assertCompleteWidgetDefinition<TContent extends Record<string, unknown>
     definition.labelKey.trim() === "" ||
     typeof definition.createDefault !== "function" ||
     typeof definition.parseContent !== "function" ||
-    typeof definition.buildViewModel !== "function" ||
     !definition.inspector ||
     !capabilities ||
     !Array.isArray(capabilities.inspectorSections) ||

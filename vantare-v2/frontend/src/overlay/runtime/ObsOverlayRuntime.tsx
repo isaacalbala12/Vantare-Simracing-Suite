@@ -2,7 +2,6 @@ import type { ProfileDocumentV3 } from "../core/profile-document";
 import type { TelemetryRateCoordinator } from "../core/telemetry-rate-coordinator";
 import { RuntimeOverlaySurface } from "./RuntimeOverlaySurface";
 import type { EngineerPresentationStore } from "../../engineer/engineer-presentation-store";
-import type { OverlayV2Feature } from "../telemetry-shadow/overlay-v2-features";
 import type { RaceScheduleStore } from "../core/race-schedule-store";
 
 export type ObsOverlayRuntimeProps = {
@@ -11,12 +10,11 @@ export type ObsOverlayRuntimeProps = {
   layoutOrigin?: { x: number; y: number };
   telemetry: TelemetryRateCoordinator;
   engineerPresentations?: EngineerPresentationStore;
-  overlayV2Features?: readonly OverlayV2Feature[];
   raceSchedule?: RaceScheduleStore;
 };
 
 export function ObsOverlayRuntime(props: ObsOverlayRuntimeProps): React.ReactElement {
-  const { document, layoutOrigin, telemetry, engineerPresentations, overlayV2Features, raceSchedule } = props;
+  const { document, layoutOrigin, telemetry, engineerPresentations, raceSchedule } = props;
   return (
     <RuntimeOverlaySurface
       document={document}
@@ -24,7 +22,6 @@ export function ObsOverlayRuntime(props: ObsOverlayRuntimeProps): React.ReactEle
       renderMode="obs"
       layoutOrigin={layoutOrigin}
       engineerPresentations={engineerPresentations}
-      overlayV2Features={overlayV2Features}
       raceSchedule={raceSchedule}
     />
   );

@@ -55,18 +55,27 @@ function syntheticFullUpdate(vehicles: number) {
     pit: "track",
     laps: 12,
     lastLap: fresh(92.125 + index / 1_000),
+    bestLap: fresh(91.875 + index / 1_000),
     lapDistance: fresh(index * 37.5),
     groundPosition: fresh({ x: index * 10, z: index * -5 }),
   }));
-  const relative = standings.map((row, index) => ({
+  const relative = standings.slice(44, 61).map((row, index) => ({
     id: row.id,
-    gap: fresh((index - 52) * 0.25),
-    side: index < 52 ? "behind" : "ahead",
+    position: row.position,
+    gap: fresh((index - 8) * 0.25),
+    groundPosition: row.groundPosition,
+    lastLap: row.lastLap,
+    side: index < 8 ? "ahead" : index === 8 ? "player" : "behind",
     authority: "native" as const,
     name: row.driver,
+    classId: row.classId,
   }));
-  // The worst case is always the full canonical window of pedal samples.
+  // The worst case is always the full canonical window of control samples:
+  // 120 absolute instants plus three quality-bearing motion cells per sample.
   const series = (offset: number) => Array.from({ length: 120 }, (_, index) => (index * 7 + offset) % 1_001);
+  const instants = Array.from({ length: 120 }, (_, index) => 1_786_711_200_000 + index * 16);
+  const motion = (base: number, step: number) =>
+    Array.from({ length: 120 }, (_, index) => ({ v: base + (index % 10) * step, q: "fresh" as const }));
   return {
     revision: 1,
     source: { state: "live", retry: 0, ageMs: 0 },
@@ -84,11 +93,23 @@ function syntheticFullUpdate(vehicles: number) {
         id: "vehicle-000", speed: fresh(50), rpm: fresh(7_200), gear: fresh(4),
         throttle: fresh(0.75), brake: fresh(0.125), clutch: fresh(0), steering: fresh(-0.1),
       },
-      controls: { history: { q: "fresh", windowMs: 1_904, throttle: series(0), brake: series(37), clutch: series(91) } },
+      controls: {
+        history: {
+          q: "fresh",
+          capturedAtMS: instants,
+          throttle: series(0),
+          brake: series(37),
+          clutch: series(91),
+          speedMPS: motion(80, 0.5),
+          rpm: motion(7000, 25),
+          gear: motion(4, 0),
+        },
+      },
       standings,
       relative,
-      delta: { seconds: fresh(-0.245), reference: "best", requested: "best", available: ["best", "last"], trend: "gaining", authority: "derived" },
-      fuel: { remaining: fresh(42), capacity: fresh(100), perLap: fresh(2.4), estimatedLaps: fresh(17.5) },
+      relativeSettled: relative,
+      delta: { seconds: fresh(-0.245), reference: "best", requested: "best", available: ["best", "last"], trend: "gaining", authority: "derived", history: { q: "missing" } },
+      fuel: { remaining: fresh(42), capacity: fresh(100), perLap: fresh(2.4), estimatedLaps: fresh(17.5), sessionLaps: fresh(79), requiredFuel: fresh(189.6), history: { q: "missing" } },
       spotter: { mode: "official", left: fresh(false), right: fresh(true) },
       capabilities: {
         supported: ["session", "controls", "standings", "gaps", "fuel", "delta", "spotter"],

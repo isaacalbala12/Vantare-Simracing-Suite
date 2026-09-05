@@ -6,7 +6,7 @@ resultado; una corrida que incumpla cualquiera de esos requisitos se descarta.
 
 ## Build de medida con licencia
 
-Toda build usada por `huella.ps1` o `sesion-v1.ps1` debe embeber la
+Toda build usada por `huella.ps1` debe embeber la
 configuración autorizada de `frontend/.env.local` en compile-time:
 
 1. Mapear en el proceso de build `VITE_SUPABASE_URL` y

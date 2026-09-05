@@ -2120,10 +2120,8 @@ func main() {
 	engBridge.Start()
 
 	effectivePerformance := settingsSvc.EffectivePerformancePolicy(studioProfileSvc.PerformanceProfile())
-	overlayV1Emit := app.ResolveOverlayV1Emit(settingsSvc.Settings().OverlayV1Emit, os.LookupEnv)
 	telemetryCoreRuntime, err = app.NewTelemetryCoreRuntime(app.TelemetryCoreRuntimeConfig{
 		Enabled:                 *live,
-		OverlayV1Emit:           &overlayV1Emit,
 		Emitter:                 emitter,
 		Engineer:                engSvc,
 		StrategyPublicTransport: *strategyPublicTransport,
@@ -2235,12 +2233,6 @@ func main() {
 		CfgDir:      cfgDir,
 		EngineerSvc: engSvc,
 		Emitter:     emitter,
-		OverlayProjection: func() *telemetrytransport.Hub {
-			if telemetryCoreRuntime == nil {
-				return nil
-			}
-			return telemetryCoreRuntime.Hub()
-		}(),
 		StrategyProjection: func() *telemetrytransport.Hub {
 			if telemetryCoreRuntime == nil || !*strategyPublicTransport {
 				return nil
@@ -2529,7 +2521,6 @@ func main() {
 		overlayPullService := newOverlayPullHTTPService(
 			newWailsOverlayPullTarget(wailsApp),
 			telemetrytransport.NewOverlayPullTransport(
-				telemetryCoreRuntime.Hub(),
 				telemetryCoreRuntime.OverlayV2Publishers(),
 			),
 		)

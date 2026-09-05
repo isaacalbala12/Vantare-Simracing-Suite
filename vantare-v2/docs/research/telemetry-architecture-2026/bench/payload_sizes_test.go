@@ -13,7 +13,6 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetry/derive"
 	"github.com/vantare/overlays/v2/internal/telemetry/projection/analysis"
 	"github.com/vantare/overlays/v2/internal/telemetry/projection/engineer"
-	"github.com/vantare/overlays/v2/internal/telemetry/projection/overlay"
 	"github.com/vantare/overlays/v2/internal/telemetry/projection/strategy"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/envelope"
 )
@@ -151,26 +150,9 @@ func TestPayloadSizes(t *testing.T) {
 		previousFinal := FinalStateFixture(t, count, 32)
 		nextSnapshot := advanceOne(t, count, 32)
 
-		// (a) current overlay v1
-		projected, err := overlay.ProjectV1(previousFinal)
-		if err != nil {
-			t.Fatal(err)
-		}
-		overlayEncoded, err := json.Marshal(projected.PayloadV1)
-		if err != nil {
-			t.Fatal(err)
-		}
-		record("a. overlay v1 (actual)", count, overlayEncoded, fmt.Sprintf("overlay-v1-%03d.json", count))
-
-		projectedNext, err := overlay.ProjectV1(nextSnapshot)
-		if err != nil {
-			t.Fatal(err)
-		}
-		overlayNextEncoded, err := json.Marshal(projectedNext.PayloadV1)
-		if err != nil {
-			t.Fatal(err)
-		}
-
+		// R7a: el brazo (a)/(d1) overlay-v1 esta retirado con el proyector
+		// Go; los ficheros historicos overlay-v1-*.json bajo results/
+		// se preservan intactos y ya no se regeneran.
 		// sibling products published on the same batch
 		engineerProjected, err := engineer.ProjectV1(previousFinal)
 		if err != nil {
@@ -223,9 +205,7 @@ func TestPayloadSizes(t *testing.T) {
 		record("c. canonical/final completo", count, canonicalEncoded, fmt.Sprintf("canonical-%03d.json", count))
 
 		// (d) RFC 7396 merge-patch between two consecutive realistic frames
-		overlayPatch := GenerateMergePatch(overlayEncoded, overlayNextEncoded)
-		record("d1. merge-patch sobre overlay v1", count, overlayPatch, fmt.Sprintf("overlay-v1-patch-%03d.json", count))
-
+		// R7a: retirado el patch sobre overlay-v1; solo queda el compacto.
 		compactPatch := GenerateMergePatch(compactEncoded, compactNextEncoded)
 		record("d2. merge-patch sobre compacto", count, compactPatch, fmt.Sprintf("compact-patch-%03d.json", count))
 	}

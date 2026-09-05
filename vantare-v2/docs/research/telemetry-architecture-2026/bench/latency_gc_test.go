@@ -15,7 +15,6 @@ import (
 
 	"github.com/vantare/overlays/v2/internal/telemetry/core"
 	"github.com/vantare/overlays/v2/internal/telemetry/derive"
-	"github.com/vantare/overlays/v2/internal/telemetry/projection/overlay"
 )
 
 const (
@@ -53,10 +52,12 @@ type latencyResult struct {
 // same run. This is the number that matters for "does a frame fit in the
 // 16.6 ms budget of 60 Hz".
 func TestFrameLatencyAndGC(t *testing.T) {
+	// R7a: el brazo overlay-v1 esta retirado; solo queda la serie del
+	// prototipo compacto historico (BuildCompactFrame), que no es el
+	// OverlayFrame V2 productivo ni la linea base de la auditoria futura.
 	var results []latencyResult
 	for _, count := range VehicleCounts {
-		results = append(results, measureChain(t, fmt.Sprintf("actual (v1+marshal) x%d", count), count, false))
-		results = append(results, measureChain(t, fmt.Sprintf("compacto (frame+marshal) x%d", count), count, true))
+		results = append(results, measureChain(t, fmt.Sprintf("compacto (frame+marshal) x%d", count), count))
 	}
 	report := renderLatency(results)
 	t.Log("\n" + report)
@@ -65,7 +66,7 @@ func TestFrameLatencyAndGC(t *testing.T) {
 	}
 }
 
-func measureChain(t *testing.T, label string, count int, compact bool) latencyResult {
+func measureChain(t *testing.T, label string, count int) latencyResult {
 	t.Helper()
 	ctx := context.Background()
 	batches := make([]core.Batch, 512)
@@ -102,15 +103,7 @@ func measureChain(t *testing.T, label string, count int, compact bool) latencyRe
 			t.Fatal(err)
 		}
 		var encoded []byte
-		if compact {
-			encoded, err = json.Marshal(BuildCompactFrame(final))
-		} else {
-			projected, projectErr := overlay.ProjectV1(final)
-			if projectErr != nil {
-				t.Fatal(projectErr)
-			}
-			encoded, err = json.Marshal(projected.PayloadV1)
-		}
+		encoded, err = json.Marshal(BuildCompactFrame(final))
 		if err != nil {
 			t.Fatal(err)
 		}

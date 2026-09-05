@@ -3,7 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ProfileDocumentV3 } from "../core/profile-document";
 import { deltaDefinition } from "../widget-types/delta/delta-definition";
 import { createTestTelemetryCoordinator } from "../../hub/overlay-studio/test-helpers";
-import { buildMockTelemetry } from "../core/mock-scenarios";
 import { InPlaceEditModeBranch } from "./InPlaceEditModeBranch";
 
 type Handler = (event: { data: unknown }) => void;
@@ -87,25 +86,9 @@ afterEach(() => {
 });
 
 describe("InPlaceEditModeBranch", () => {
-  it("transporta el rollback de la generación hasta el host in-place", () => {
-    const coordinator = createTestTelemetryCoordinator();
-
-    render(
-      <InPlaceEditModeBranch
-        document={buildDocument()}
-        revision="rev-rollback"
-        telemetry={coordinator}
-        overlayV2Features={[]}
-      />,
-    );
-
-    expect(screen.getByRole("alert").getAttribute("data-diagnostic-code")).toBe("overlay-v2-rollback");
-  });
-
   it("uses the stored locale and mounts the edit overlay inside the providers", async () => {
     localStorage.setItem("vantare.locale", "es");
     const coordinator = createTestTelemetryCoordinator();
-    coordinator.publish(buildMockTelemetry({ session: "race", location: "track" }));
 
     render(
       <InPlaceEditModeBranch

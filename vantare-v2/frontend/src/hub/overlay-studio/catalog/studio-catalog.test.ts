@@ -69,9 +69,6 @@ function createStubDefinition(type: WidgetType): WidgetTypeDefinition<Record<str
     parseContent() {
       return {};
     },
-    buildViewModel() {
-      return { type, status: "ready" as const };
-    },
   };
 }
 

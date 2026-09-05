@@ -11,8 +11,6 @@ import (
 
 	"github.com/vantare/overlays/v2/internal/telemetry/core"
 	"github.com/vantare/overlays/v2/internal/telemetry/derive"
-	"github.com/vantare/overlays/v2/internal/telemetry/projection"
-	overlayv1 "github.com/vantare/overlays/v2/internal/telemetry/projection/overlay"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/damage"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/energy"
@@ -44,15 +42,15 @@ func TestProjectV2Goldens(t *testing.T) {
 	}
 }
 
-func TestOverlayV2GoldenMatchesV1SemanticsForPlayer(t *testing.T) {
+func TestProjectV2PreservesCanonicalPlayerFacts(t *testing.T) {
 	t.Parallel()
 
+	// R6a.1: el proyector Overlay V1 esta retirado y ya no puede servir de
+	// oraculo. La garantia se conserva como asercion directa de los hechos
+	// canonicos del lote builder: el jugador lleva Speed 50 m/s, RPM 7200,
+	// marcha 4, throttle 0.75, brake 0.125 y clutch 0, todos frescos.
 	for _, count := range []int{1, 20, 44, 104} {
 		final := builderFinalState(t, count)
-		v1, err := overlayv1.ProjectV1(final)
-		if err != nil {
-			t.Fatalf("ProjectV1(%d): %v", count, err)
-		}
 		v2, err := ProjectV2(final, builderSourceContext(), DefaultPreferencesV2(), uint64(count))
 		if err != nil {
 			t.Fatalf("ProjectV2(%d): %v", count, err)
@@ -60,23 +58,12 @@ func TestOverlayV2GoldenMatchesV1SemanticsForPlayer(t *testing.T) {
 		if v2.Frame == nil {
 			t.Fatalf("ProjectV2(%d) returned nil frame", count)
 		}
-		var player overlayv1.VehicleV1
-		found := false
-		for _, current := range v1.Vehicles {
-			if current.ID == v1.Player {
-				player, found = current, true
-				break
-			}
-		}
-		if !found {
-			t.Fatalf("ProjectV1(%d) player %q absent", count, v1.Player)
-		}
-		assertQField(t, "speed", v2.Frame.Player.Speed, player.Speed.Value, qualityFromV1(player.Speed.Freshness))
-		assertQField(t, "rpm", v2.Frame.Player.RPM, float64(player.EngineRPM.Value), qualityFromV1(player.EngineRPM.Freshness))
-		assertQField(t, "gear", v2.Frame.Player.Gear, int32(player.Gear.Value), qualityFromV1(player.Gear.Freshness))
-		assertQField(t, "throttle", v2.Frame.Player.Throttle, float64(player.Throttle.Value), qualityFromV1(player.Throttle.Freshness))
-		assertQField(t, "brake", v2.Frame.Player.Brake, float64(player.Brake.Value), qualityFromV1(player.Brake.Freshness))
-		assertQField(t, "clutch", v2.Frame.Player.Clutch, float64(player.Clutch.Value), qualityFromV1(player.Clutch.Freshness))
+		assertQField(t, "speed", v2.Frame.Player.Speed, 50.0, QualityFresh)
+		assertQField(t, "rpm", v2.Frame.Player.RPM, float64(7200), QualityFresh)
+		assertQField(t, "gear", v2.Frame.Player.Gear, int32(4), QualityFresh)
+		assertQField(t, "throttle", v2.Frame.Player.Throttle, 0.75, QualityFresh)
+		assertQField(t, "brake", v2.Frame.Player.Brake, 0.125, QualityFresh)
+		assertQField(t, "clutch", v2.Frame.Player.Clutch, 0.0, QualityFresh)
 	}
 }
 
@@ -307,18 +294,5 @@ func assertQField[T comparable](t *testing.T, field string, got QValue[T], want 
 	t.Helper()
 	if got.V != want || got.Q != quality {
 		t.Fatalf("%s = %#v, want value %#v quality %q", field, got, want, quality)
-	}
-}
-
-func qualityFromV1(value projection.Freshness) Quality {
-	switch value {
-	case "fresh":
-		return QualityFresh
-	case "stale":
-		return QualityStale
-	case "invalid":
-		return QualityInvalid
-	default:
-		return QualityMissing
 	}
 }

@@ -9,6 +9,7 @@ import {
   type LayoutViewport,
 } from '../../../overlay/core/layout-viewport';
 import { widgetTypeRegistry } from '../../../overlay/core/widget-registry';
+import { resolveStandingsRedlineMoveLayout } from '../../../overlay/widget-types/standings/standings-redline-layout';
 import type { StudioCommand } from '../state/studio-command';
 import {
   applyStudioFrameLayoutPreview,
@@ -359,7 +360,16 @@ export function useCanvasInteraction(input: UseCanvasInteractionInput): UseCanva
       setInteractionState({ kind: 'idle' });
       return;
     }
-    const patch = buildLayoutPatch(current.start, current.preview);
+    const widget = inputRef.current.widgets.find((entry) => entry.id === current.widgetId);
+    const committedPreview = current.kind === 'move' && widget
+      ? resolveStandingsRedlineMoveLayout(
+          widget,
+          current.start,
+          current.preview,
+          inputRef.current.layoutViewport.width,
+        )
+      : current.preview;
+    const patch = buildLayoutPatch(current.start, committedPreview);
     inputRef.current.dispatch({
       type: 'widget/layout',
       session: inputRef.current.session,

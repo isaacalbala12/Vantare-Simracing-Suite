@@ -1,27 +1,35 @@
 import type { CSSProperties } from "react";
 import { WidgetVisualHost } from "../overlay/core/WidgetVisualHost";
-import {
-  buildHarnessTelemetry,
-  buildHarnessWidget,
-  seedHarnessInputHistory,
-} from "../overlay/authoring/fixtures/authoring-fixtures";
+import { buildAuthoringV2ScenarioRuntime } from "../overlay/authoring/fixtures/authoring-v2-scenario-fixture";
+import { buildAuthoringV2ScenarioWidget } from "../overlay/authoring/fixtures/authoring-v2-scenario-widget";
 import { buildEngineerPresentationFixture } from "../engineer/engineer-presentation-fixtures";
 import { parseHarnessQuery, type HarnessQuery } from "./overlay-parity-query";
-import { buildAuthoringV2Runtime } from "../overlay/authoring/fixtures/authoring-v2-fixture";
 
 export function OverlayParityHarness({ query }: { query: HarnessQuery }) {
-  const snapshot = buildHarnessTelemetry({
-    session: query.session,
-    location: query.location,
-    state: query.state,
+  const widget = buildAuthoringV2ScenarioWidget({
     widget: query.widget,
     system: query.system,
     variant: query.variant,
-    designId: query.designId,
+    ...(query.design ? { design: query.design } : {}),
   });
-  const widget = buildHarnessWidget(query.widget, query.system, query.variant, query.designId);
-  seedHarnessInputHistory(widget, snapshot);
-  const runtime = buildAuthoringV2Runtime(widget.type, snapshot);
+  const runtime = {
+    ...buildAuthoringV2ScenarioRuntime({
+      session: query.session,
+      location: query.location,
+      state: query.state,
+      widget: query.widget,
+      system: query.system,
+      variant: query.variant,
+    }),
+    ...(query.widget === "engineer-radio"
+      ? {
+          engineerPresentation:
+            query.state === "ready"
+              ? buildEngineerPresentationFixture(query.engineerLocale ?? "es", query.engineerSeverity ?? "critical")
+              : null,
+        }
+      : {}),
+  };
 
   return (
     <div
@@ -29,7 +37,7 @@ export function OverlayParityHarness({ query }: { query: HarnessQuery }) {
       data-overlay-parity-widget={query.widget}
       data-overlay-parity-system={query.system}
       data-overlay-parity-variant={query.variant}
-      data-overlay-parity-design={query.designId ?? ""}
+      data-overlay-parity-design={query.design?.designId ?? ""}
       style={{
         width: 1920,
         height: 1080,
@@ -52,14 +60,8 @@ export function OverlayParityHarness({ query }: { query: HarnessQuery }) {
       >
         <WidgetVisualHost
           widget={widget}
-          snapshot={snapshot}
           renderMode={query.surface}
-          runtime={query.widget === "engineer-radio" ? {
-            ...runtime,
-            engineerPresentation: query.state === "ready"
-              ? buildEngineerPresentationFixture(query.engineerLocale ?? "es", query.engineerSeverity ?? "critical")
-              : null,
-          } : runtime}
+          runtime={runtime}
         />
       </div>
     </div>

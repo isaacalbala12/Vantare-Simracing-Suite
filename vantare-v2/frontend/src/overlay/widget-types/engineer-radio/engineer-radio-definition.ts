@@ -94,15 +94,6 @@ export const engineerRadioDefinition: WidgetTypeDefinition<EngineerRadioContent,
     }
     return {};
   },
-  buildViewModel(_snapshot, content) {
-    return buildEngineerRadioViewModel(content);
-  },
-  buildRuntimeViewModel(_snapshot, content, runtime) {
-    return buildEngineerRadioViewModel(content, runtime);
-  },
-  buildPreviewViewModel(_snapshot, content, runtime) {
-    return buildEngineerRadioPreviewViewModel(content, runtime);
-  },
   buildAuxiliaryViewModel(content, runtime, renderMode) {
     return renderMode === "studio" || renderMode === "harness"
       ? buildEngineerRadioPreviewViewModel(content, runtime)

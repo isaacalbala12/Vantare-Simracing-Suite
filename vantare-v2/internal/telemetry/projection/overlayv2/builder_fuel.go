@@ -39,13 +39,23 @@ const usGallonsPerLitre = 0.26417205235814842
 //     remains the fallback while no lap has been measured yet.
 //
 // Both keep the worst quality of their inputs; Basis lets a consumer tell the
-// two apart instead of guessing which arithmetic produced the number.
+// two apart instead of guessing which arithmetic produced the number. Basis
+// describes EstimatedLaps only: SessionLaps below is the same session
+// projection published on its own, so it stays visible even when the fuel
+// basis wins.
 //
-// `requiredFuel` stays absent. It is perLap x laps-to-go **of the session**,
-// and that projection is no longer always the published EstimatedLaps once the
-// fuel basis wins. Publishing it would need a second laps field in the frame
-// for a consumer that has not asked for one, so it is declared missing with a
-// reason instead of being approximated from whichever basis happened to win.
+// SessionLaps is always the session projection, published even when the fuel
+// basis wins EstimatedLaps. RequiredFuel is perLap x SessionLaps, computed
+// here in Go from SessionRemaining + player LastLapTime through SessionLaps:
+// its base is SessionLaps and its quality is the worst of PerLap and
+// SessionLaps. It is never derived from EstimatedLaps, which carries the laps
+// the tank allows once the fuel basis wins. ISA-894 A2 derogates the earlier
+// note that left requiredFuel absent: the frame now carries the second laps
+// field that note was missing.
+//
+// History is derive.FuelUsage.History projected verbatim: lap numbers as-is
+// and consumption converted from canonical litres to the preferred unit.
+// Conversion to the preference happens only in this presentation step.
 func BuildFuel(final derive.FinalState, preferences PreferencesV2) FuelViewV2 {
 	preferences = normalizedPreferences(preferences)
 	result := FuelViewV2{
@@ -53,6 +63,9 @@ func BuildFuel(final derive.FinalState, preferences PreferencesV2) FuelViewV2 {
 		Capacity:      missingValue[float64](),
 		PerLap:        missingValue[float64](),
 		EstimatedLaps: missingValue[float64](),
+		SessionLaps:   missingValue[float64](),
+		RequiredFuel:  missingValue[float64](),
+		History:       FuelHistoryV2{Q: QualityMissing},
 	}
 	player, found := playerVehicle(final.Observed.Vehicles)
 	if !found {
@@ -67,16 +80,54 @@ func BuildFuel(final derive.FinalState, preferences PreferencesV2) FuelViewV2 {
 	result.PerLap = qualityValue(final.Derived.Fuel.PerLap, func(value energy.FuelAmount) float64 {
 		return convertFuel(float64(value), preferences.Fuel)
 	})
+	result.History = buildFuelHistory(final.Derived.Fuel.History, preferences.Fuel)
+	result.SessionLaps = sessionLapsRemaining(final.Derived.SessionRemaining, player.LastLapTime)
+	result.RequiredFuel = fuelRequiredFuel(result.PerLap, result.SessionLaps)
 	if laps := fuelLapsRemaining(result.Remaining, result.PerLap); laps.Q != QualityMissing {
 		result.EstimatedLaps = laps
 		result.Basis = FuelBasisFuel
 		return result
 	}
-	if laps := sessionLapsRemaining(final.Derived.SessionRemaining, player.LastLapTime); laps.Q != QualityMissing {
-		result.EstimatedLaps = laps
+	if result.SessionLaps.Q != QualityMissing {
+		result.EstimatedLaps = result.SessionLaps
 		result.Basis = FuelBasisSession
 	}
 	return result
+}
+
+// buildFuelHistory projects the canonical per-lap series verbatim: lap
+// numbers as-is, consumption converted from canonical litres to the preferred
+// unit. Both arrays grow together from the same samples, so they stay aligned
+// by construction; a history with no measured lap publishes its quality with
+// no entries, never a sentinel.
+func buildFuelHistory(history derive.FuelHistory, unit FuelUnit) FuelHistoryV2 {
+	view := FuelHistoryV2{Q: qualityFromFreshness(history.Freshness)}
+	for _, sample := range history.Samples {
+		view.Lap = append(view.Lap, int32(sample.Lap))
+		view.Consumed = append(view.Consumed, convertFuel(float64(sample.Consumed), unit))
+	}
+	return view
+}
+
+// fuelRequiredFuel is perLap x sessionLaps in the preferred fuel unit: both
+// inputs already carry the presentation conversion, so laps stay unit
+// agnostic. It keeps the worst quality of the two inputs and stays missing
+// unless both are usable; it never reads EstimatedLaps.
+func fuelRequiredFuel(perLap, sessionLaps QValue[float64]) QValue[float64] {
+	quality := worstOf(perLap.Q, sessionLaps.Q)
+	switch quality {
+	case QualityFresh, QualityStale:
+	default:
+		return missingValue[float64]()
+	}
+	if perLap.V <= 0 || !finite(perLap.V) || !finite(sessionLaps.V) || sessionLaps.V < 0 {
+		return missingValue[float64]()
+	}
+	required := perLap.V * sessionLaps.V
+	if !finite(required) {
+		return missingValue[float64]()
+	}
+	return QValue[float64]{V: required, Q: quality}
 }
 
 // fuelLapsRemaining is the laps the tank still allows at the canonical

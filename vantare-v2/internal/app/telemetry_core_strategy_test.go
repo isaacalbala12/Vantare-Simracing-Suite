@@ -1,7 +1,6 @@
 package app
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -15,8 +14,8 @@ import (
 	"github.com/vantare/overlays/v2/internal/app/telemetrytransport"
 	telemetrycore "github.com/vantare/overlays/v2/internal/telemetry/core"
 	"github.com/vantare/overlays/v2/internal/telemetry/driver"
+	"github.com/vantare/overlays/v2/internal/telemetry/projection"
 	engineerprojection "github.com/vantare/overlays/v2/internal/telemetry/projection/engineer"
-	overlayprojection "github.com/vantare/overlays/v2/internal/telemetry/projection/overlay"
 	strategyprojection "github.com/vantare/overlays/v2/internal/telemetry/projection/strategy"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
 )
@@ -39,17 +38,37 @@ func TestStrategyHubNotInstantiatedWithoutFlag(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if runtime.Hub() == nil || runtime.StrategyHub() == nil || runtime.Hub() == runtime.StrategyHub() {
-		t.Fatalf("product hubs = Overlay %p Strategy %p", runtime.Hub(), runtime.StrategyHub())
+	if runtime.StrategyHub() == nil {
+		t.Fatal("StrategyHub() = nil, want the single surviving product hub")
+	}
+
+	// R6b: el Hub Overlay esta fisicamente retirado: un unico campo Hub
+	// (strategyHub), sin campo hub ni accessor Hub().
+	hubType := reflect.TypeOf((*telemetrytransport.Hub)(nil))
+	runtimeType := reflect.TypeOf(runtime).Elem()
+	var hubFields []string
+	for index := 0; index < runtimeType.NumField(); index++ {
+		if field := runtimeType.Field(index); field.Type == hubType {
+			hubFields = append(hubFields, field.Name)
+		}
+	}
+	if len(hubFields) != 1 || hubFields[0] != "strategyHub" {
+		t.Fatalf("runtime Hub fields = %v, want [strategyHub]", hubFields)
+	}
+	if _, ok := runtimeType.FieldByName("hub"); ok {
+		t.Fatal("runtime field hub still present")
+	}
+	if _, ok := reflect.TypeOf(runtime).MethodByName("Hub"); ok {
+		t.Fatal("runtime accessor Hub() still present")
 	}
 
 	// Guard the architectural contract without adding production seams: there
-	// is one canonical acquisition/reduction chain and exactly two product hubs.
+	// is one canonical acquisition/reduction chain and exactly one product hub.
 	assertRuntimeFieldCount(t, runtime, reflect.TypeOf((*telemetrycore.SimulatorRuntime)(nil)).Elem(), 1)
 	assertRuntimeFieldCount(t, runtime, reflect.TypeOf(runtime.reducer), 1)
 	assertRuntimeFieldCount(t, runtime, reflect.TypeOf(runtime.coord), 1)
 	assertRuntimeFieldCount(t, runtime, reflect.TypeOf(runtime.derive), 1)
-	assertRuntimeFieldCount(t, runtime, reflect.TypeOf(runtime.hub), 2)
+	assertRuntimeFieldCount(t, runtime, reflect.TypeOf(runtime.strategyHub), 1)
 }
 
 func newStrategyTelemetryCoreRuntime(config TelemetryCoreRuntimeConfig) (*TelemetryCoreRuntime, error) {
@@ -57,47 +76,36 @@ func newStrategyTelemetryCoreRuntime(config TelemetryCoreRuntimeConfig) (*Teleme
 	return NewTelemetryCoreRuntime(config)
 }
 
-func TestTelemetryCoreRuntimePublishesOverlayAndStrategyFromSameFinalState(t *testing.T) {
+func TestTelemetryCoreRuntimePublishesStrategyWithoutOverlayV1(t *testing.T) {
+	// R6b: WriteBatch solo proyecta y publica Strategy. No existe Hub
+	// Overlay: la ausencia es estructural (ver
+	// TestOverlayV1HubPhysicallyRetired) y Strategy conserva su semantica.
 	runtime, err := newStrategyTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	overlaySubscription := subscribeRuntimeHub(t, runtime.Hub())
-	defer overlaySubscription.Close()
 	strategySubscription := subscribeRuntimeHub(t, runtime.StrategyHub())
 	defer strategySubscription.Close()
 
 	if err := (runtimeBatchSink{runtime: runtime}).WriteBatch(context.Background(), engineerRuntimeBatch()); err != nil {
 		t.Fatal(err)
 	}
-	overlayStatus := nextStatus(t, overlaySubscription)
 	strategyStatus := nextStatus(t, strategySubscription)
-	assertMatchingProductStatus(t, overlayStatus, strategyStatus)
-	overlayFrame := nextSnapshot(t, overlaySubscription)
 	strategyFrame := nextSnapshot(t, strategySubscription)
 
-	if overlayFrame.Product != telemetrytransport.ProductOverlay || strategyFrame.Product != telemetrytransport.ProductStrategy {
-		t.Fatalf("products = Overlay %q Strategy %q", overlayFrame.Product, strategyFrame.Product)
+	if strategyFrame.Product != telemetrytransport.ProductStrategy {
+		t.Fatalf("product = Strategy %q", strategyFrame.Product)
 	}
-	if overlayFrame.Epoch != strategyFrame.Epoch || overlayFrame.Sequence != strategyFrame.Sequence ||
-		overlayFrame.CapturedAt != strategyFrame.CapturedAt || overlayFrame.StatusRevision != strategyFrame.StatusRevision {
-		t.Fatalf("metadata differs: Overlay %#v Strategy %#v", overlayFrame, strategyFrame)
+	if strategyFrame.StatusRevision != strategyStatus.StatusRevision {
+		t.Fatalf("status revision differs: frame %d status %d", strategyFrame.StatusRevision, strategyStatus.StatusRevision)
 	}
-	if overlayFrame.Kind != telemetrytransport.Full || strategyFrame.Kind != telemetrytransport.Full {
-		t.Fatalf("snapshot kinds = Overlay %q Strategy %q", overlayFrame.Kind, strategyFrame.Kind)
+	if strategyFrame.Kind != telemetrytransport.Full {
+		t.Fatalf("snapshot kind = Strategy %q", strategyFrame.Kind)
 	}
 
-	var overlayPayload overlayprojection.PayloadV1
-	if err := json.Unmarshal(overlayFrame.Payload, &overlayPayload); err != nil {
-		t.Fatal(err)
-	}
 	var strategyPayload strategyprojection.PayloadV1
 	if err := json.Unmarshal(strategyFrame.Payload, &strategyPayload); err != nil {
 		t.Fatal(err)
-	}
-	if len(overlayPayload.Vehicles) == 0 || !overlayPayload.Vehicles[0].FuelLiters.Present ||
-		overlayPayload.Vehicles[0].FuelLiters.Value != 60 {
-		t.Fatalf("Overlay Fuel = %#v", overlayPayload.Vehicles)
 	}
 	if !strategyPayload.Player.FuelLiters.Present || strategyPayload.Player.FuelLiters.Value != 60 ||
 		!strategyPayload.Player.FuelCapacity.Present || strategyPayload.Player.FuelCapacity.Value != 100 {
@@ -105,20 +113,19 @@ func TestTelemetryCoreRuntimePublishesOverlayAndStrategyFromSameFinalState(t *te
 	}
 
 	metrics := runtime.Metrics()
-	if metrics.ProjectionsPublished != 1 || metrics.OverlayProjectionsPublished != 1 ||
-		metrics.StrategyProjectionsPublished != 1 || metrics.Transport.SnapshotPublications != 1 ||
+	if metrics.StrategyProjectionsPublished != 1 ||
 		metrics.StrategyTransport.SnapshotPublications != 1 {
-		t.Fatalf("dual product metrics = %#v", metrics)
+		t.Fatalf("strategy-only metrics = %#v", metrics)
 	}
 }
 
-func TestTelemetryCoreRuntimePublishesIdenticalStatusTransitionsToBothProducts(t *testing.T) {
+func TestTelemetryCoreRuntimePublishesStrategyStatusTransitionsWithoutOverlayV1(t *testing.T) {
+	// R6b: las transiciones de estado solo llegan a Strategy; no existe Hub
+	// Overlay que retenga nada.
 	runtime, err := newStrategyTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	overlaySubscription := subscribeRuntimeHub(t, runtime.Hub())
-	defer overlaySubscription.Close()
 	strategySubscription := subscribeRuntimeHub(t, runtime.StrategyHub())
 	defer strategySubscription.Close()
 
@@ -139,14 +146,12 @@ func TestTelemetryCoreRuntimePublishesIdenticalStatusTransitionsToBothProducts(t
 		if err := runtime.setStatus(transition.state, transition.attempt); err != nil {
 			t.Fatal(err)
 		}
-		overlayStatus := nextStatus(t, overlaySubscription)
 		strategyStatus := nextStatus(t, strategySubscription)
-		assertMatchingProductStatus(t, overlayStatus, strategyStatus)
-		if overlayStatus.StatusRevision != uint64(index+1) {
-			t.Fatalf("revision = %d, want %d", overlayStatus.StatusRevision, index+1)
+		if strategyStatus.StatusRevision != uint64(index+1) {
+			t.Fatalf("revision = %d, want %d", strategyStatus.StatusRevision, index+1)
 		}
 		var payload telemetrytransport.StatusPayload
-		if err := json.Unmarshal(overlayStatus.Payload, &payload); err != nil {
+		if err := json.Unmarshal(strategyStatus.Payload, &payload); err != nil {
 			t.Fatal(err)
 		}
 		if payload.State != transition.state.String() || payload.ReconnectAttempt != transition.attempt {
@@ -156,9 +161,8 @@ func TestTelemetryCoreRuntimePublishesIdenticalStatusTransitionsToBothProducts(t
 			t.Fatal(err)
 		}
 		metrics := runtime.Metrics()
-		if metrics.Transport.StatusPublications != uint64(index+1) ||
-			metrics.StrategyTransport.StatusPublications != uint64(index+1) {
-			t.Fatalf("duplicate status publications = %#v", metrics)
+		if metrics.StrategyTransport.StatusPublications != uint64(index+1) {
+			t.Fatalf("strategy-only status publications = %#v", metrics)
 		}
 	}
 }
@@ -222,16 +226,13 @@ func TestTelemetryCoreRuntimeStartsOnlyTheExplicitStrategyWailsAdapter(t *testin
 	emitter.waitFor(t,
 		telemetrytransport.EventName(telemetrytransport.ProductStrategy, telemetrytransport.EventSnapshot),
 	)
-	if got := runtime.Hub().Metrics().CurrentSubscribers; got != 0 {
-		t.Fatalf("global Overlay Wails subscribers = %d, want 0", got)
-	}
 
 	stopContext, stopCancel := context.WithTimeout(context.Background(), time.Second)
 	defer stopCancel()
 	if err := runtime.Stop(stopContext); err != nil {
 		t.Fatal(err)
 	}
-	if runtime.Metrics().Transport.CurrentSubscribers != 0 || runtime.Metrics().StrategyTransport.CurrentSubscribers != 0 {
+	if runtime.Metrics().StrategyTransport.CurrentSubscribers != 0 {
 		t.Fatalf("adapter subscribers after Stop = %#v", runtime.Metrics())
 	}
 	if err := runtime.Stop(stopContext); err != nil {
@@ -239,25 +240,20 @@ func TestTelemetryCoreRuntimeStartsOnlyTheExplicitStrategyWailsAdapter(t *testin
 	}
 }
 
-func TestTelemetryCoreRuntimeIsolatesEngineerFailureFromBothProductHubs(t *testing.T) {
+func TestTelemetryCoreRuntimeIsolatesEngineerFailureFromStrategyHub(t *testing.T) {
+	// R6b: el fallo de Engineer no escapa al producto Strategy.
 	consumer := &recordingEngineerConsumer{observationErr: errors.New("engineer unavailable")}
 	runtime, err := newStrategyTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{Engineer: consumer})
 	if err != nil {
 		t.Fatal(err)
 	}
-	overlaySubscription := subscribeRuntimeHub(t, runtime.Hub())
-	defer overlaySubscription.Close()
 	strategySubscription := subscribeRuntimeHub(t, runtime.StrategyHub())
 	defer strategySubscription.Close()
 
 	if err := (runtimeBatchSink{runtime: runtime}).WriteBatch(context.Background(), engineerRuntimeBatch()); err != nil {
 		t.Fatalf("Engineer failure escaped product boundary: %v", err)
 	}
-	_ = nextStatus(t, overlaySubscription)
 	_ = nextStatus(t, strategySubscription)
-	if frame := nextSnapshot(t, overlaySubscription); frame.Product != telemetrytransport.ProductOverlay {
-		t.Fatalf("Overlay frame product = %q", frame.Product)
-	}
 	if frame := nextSnapshot(t, strategySubscription); frame.Product != telemetrytransport.ProductStrategy {
 		t.Fatalf("Strategy frame product = %q", frame.Product)
 	}
@@ -265,53 +261,134 @@ func TestTelemetryCoreRuntimeIsolatesEngineerFailureFromBothProductHubs(t *testi
 		t.Fatal("EngineerError() = nil, want isolated diagnostic")
 	}
 	metrics := runtime.Metrics()
-	if metrics.ProjectionsPublished != 1 || metrics.OverlayProjectionsPublished != 1 ||
-		metrics.StrategyProjectionsPublished != 1 || metrics.EngineerDeliveryFailures != 1 {
+	if metrics.StrategyProjectionsPublished != 1 || metrics.EngineerDeliveryFailures != 1 {
 		t.Fatalf("isolated Engineer metrics = %#v", metrics)
 	}
 }
 
-func TestStrategyFailureDoesNotAffectOverlay(t *testing.T) {
+func TestStrategyFailureLeavesRetiredOverlaySilent(t *testing.T) {
+	// R6b: el fallo es un ErrPayloadTooLarge real de Strategy con la policy
+	// V2, que lo absorbe sin tumbar el driver. No existe Hub Overlay.
 	runtime, err := newStrategyTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Seed the same status in both hubs before closing Strategy. WriteBatch then
+	subscription := subscribeRuntimeHub(t, runtime.StrategyHub())
+	defer subscription.Close()
+	// Seed the same status in Strategy before bounding it. WriteBatch then
 	// keeps that status and reaches the Strategy snapshot publication itself.
 	if err := runtime.setStatus(driver.StateStopped, 0); err != nil {
 		t.Fatal(err)
 	}
-	if err := runtime.StrategyHub().Close(); err != nil {
+	_ = nextStatus(t, subscription)
+	if err := (runtimeBatchSink{runtime: runtime}).WriteBatch(context.Background(), strategyRuntimeBatch(1, 1, time.Second)); err != nil {
 		t.Fatal(err)
 	}
+	frame := nextSnapshot(t, subscription)
+	swapStrategyHubForPayloadCeiling(t, runtime, len(frame.Payload))
+	assertStrategyHubRejectsSnapshotAsTooLarge(t, runtime.StrategyHub(), frame)
 
-	err = (runtimeBatchSink{runtime: runtime}).WriteBatch(context.Background(), engineerRuntimeBatch())
+	err = (runtimeBatchSink{runtime: runtime}).WriteBatch(context.Background(), strategyRuntimeBatch(1, 2, 2*time.Second))
 	if err != nil {
 		t.Fatalf("Strategy transport failure escaped driver loop: %v", err)
 	}
 	metrics := runtime.Metrics()
-	if metrics.ProjectionsPublished != 0 || metrics.OverlayProjectionsPublished != 1 ||
-		metrics.StrategyProjectionsPublished != 0 || metrics.Transport.SnapshotPublications != 1 ||
+	// batch#1 publico 1 snapshot en el hub normal; batch#2 fallo en el hub
+	// acotado sin publicar snapshot en ningun hub. La transicion a degraded
+	// si cabe en el limite y queda entregada (StatusPublications==1).
+	if metrics.StrategyProjectionsPublished != 1 ||
 		metrics.StrategyTransport.SnapshotPublications != 0 ||
+		metrics.StrategyTransport.StatusPublications != 1 ||
 		metrics.PublishFailures["strategy"] != 1 || metrics.FramesDropped["strategy-publish"] != 1 ||
 		metrics.FailStops != 0 {
 		t.Fatalf("failed cycle metrics = %#v", metrics)
 	}
-	subscription, err := runtime.Hub().Subscribe(context.Background())
+}
+
+func TestStrategyPayloadTooLargeLegacyFailStop(t *testing.T) {
+	// R6a.1: con la policy legacy, el mismo ErrPayloadTooLarge real de
+	// Strategy tumba el runtime (fail-stop) en lugar de absorberse.
+	legacy := false
+	runtime, err := newStrategyTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{TelemetryFailurePolicyV2: &legacy})
 	if err != nil {
-		t.Fatalf("Overlay hub closed by Strategy failure: %v", err)
+		t.Fatal(err)
 	}
+	subscription := subscribeRuntimeHub(t, runtime.StrategyHub())
 	defer subscription.Close()
+	if err := runtime.setStatus(driver.StateStopped, 0); err != nil {
+		t.Fatal(err)
+	}
+	_ = nextStatus(t, subscription)
+	if err := (runtimeBatchSink{runtime: runtime}).WriteBatch(context.Background(), strategyRuntimeBatch(1, 1, time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	frame := nextSnapshot(t, subscription)
+	swapStrategyHubForPayloadCeiling(t, runtime, len(frame.Payload))
+	assertStrategyHubRejectsSnapshotAsTooLarge(t, runtime.StrategyHub(), frame)
+
+	err = (runtimeBatchSink{runtime: runtime}).WriteBatch(context.Background(), strategyRuntimeBatch(1, 2, 2*time.Second))
+	if !errors.Is(err, telemetrytransport.ErrPayloadTooLarge) {
+		t.Fatalf("legacy failure = %v, want %v", err, telemetrytransport.ErrPayloadTooLarge)
+	}
+	metrics := runtime.Metrics()
+	if metrics.StrategyProjectionsPublished != 1 || metrics.FailStops != 1 {
+		t.Fatalf("legacy fail-stop metrics = %#v", metrics)
+	}
+	if runtime.lifecycle != telemetryRuntimeTerminal {
+		t.Fatalf("legacy lifecycle = %d, want terminal", runtime.lifecycle)
+	}
 	assertRuntimeHubClosed(t, runtime.StrategyHub())
 }
 
-func TestTelemetryCoreRuntimeRejectsInvalidCursorsWithoutAdvancingEitherProduct(t *testing.T) {
+// swapStrategyHubForPayloadCeiling sustituye el strategyHub del runtime por un
+// Hub ProductStrategy con un limite derivado del snapshot real ya publicado:
+// la mitad de su tamano. El status (decenas de bytes) si cabe y se publica
+// una vez en el Hub nuevo, que parte sin estado; solo el snapshot falla con
+// ErrPayloadTooLarge con un margen inmune a variaciones de pocos bytes entre
+// batches. El limite nunca cae al fallback de NewHub: bounded() solo acepta
+// valores >= 1, y el guard lo verifica.
+func swapStrategyHubForPayloadCeiling(t *testing.T, runtime *TelemetryCoreRuntime, snapshotPayloadBytes int) {
+	t.Helper()
+	limit := snapshotPayloadBytes / 2
+	if limit < 1 {
+		t.Fatalf("strategy snapshot payload = %d bytes, cannot derive a test ceiling below it", snapshotPayloadBytes)
+	}
+	runtime.strategyHub = telemetrytransport.NewHub(telemetrytransport.HubConfig{
+		Product:         telemetrytransport.ProductStrategy,
+		MaxPayloadBytes: limit,
+		Versions: projection.VersionPolicy{
+			Current:          strategyprojection.CurrentVersion,
+			MinimumSupported: strategyprojection.MinimumSupportedVersion,
+		},
+	})
+}
+
+// assertStrategyHubRejectsSnapshotAsTooLarge prueba causalmente que el payload
+// observado, reenviado tal cual al hub acotado, falla con ErrPayloadTooLarge.
+func assertStrategyHubRejectsSnapshotAsTooLarge(t *testing.T, hub *telemetrytransport.Hub, frame telemetrytransport.Envelope) {
+	t.Helper()
+	oversized := telemetrytransport.Envelope{
+		Product:           telemetrytransport.ProductStrategy,
+		ProjectionVersion: strategyprojection.VersionV1,
+		Epoch:             frame.Epoch,
+		Sequence:          frame.Sequence + 1,
+		Kind:              telemetrytransport.Full,
+		CapturedAt:        frame.CapturedAt,
+		StatusRevision:    frame.StatusRevision,
+		Payload:           frame.Payload,
+	}
+	if err := hub.PublishSnapshot(oversized, nil); !errors.Is(err, telemetrytransport.ErrPayloadTooLarge) {
+		t.Fatalf("bounded hub publish = %v, want %v", err, telemetrytransport.ErrPayloadTooLarge)
+	}
+}
+
+func TestTelemetryCoreRuntimeRejectsInvalidCursorsWithoutAdvancingStrategy(t *testing.T) {
+	// R6a: cursores invalidos no avanzan Strategy y el Hub Overlay V1
+	// retirado no registra publicaciones.
 	runtime, err := newStrategyTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	overlaySubscription := subscribeRuntimeHub(t, runtime.Hub())
-	defer overlaySubscription.Close()
 	strategySubscription := subscribeRuntimeHub(t, runtime.StrategyHub())
 	defer strategySubscription.Close()
 
@@ -319,40 +396,32 @@ func TestTelemetryCoreRuntimeRejectsInvalidCursorsWithoutAdvancingEitherProduct(
 	if err := (runtimeBatchSink{runtime: runtime}).WriteBatch(context.Background(), first); err != nil {
 		t.Fatal(err)
 	}
-	_ = nextStatus(t, overlaySubscription)
 	_ = nextStatus(t, strategySubscription)
-	if frame := nextSnapshot(t, overlaySubscription); frame.Epoch != 1 || frame.Sequence != 1 {
-		t.Fatalf("first Overlay frame = %#v", frame)
-	}
 	if frame := nextSnapshot(t, strategySubscription); frame.Epoch != 1 || frame.Sequence != 1 {
 		t.Fatalf("first Strategy frame = %#v", frame)
 	}
-	assertDualRuntimePublicationMetrics(t, runtime.Metrics(), 1)
+	assertStrategyRuntimePublicationMetrics(t, runtime.Metrics(), 1)
 
 	if err := (runtimeBatchSink{runtime: runtime}).WriteBatch(context.Background(), first); !errors.Is(err, telemetrycore.ErrStaleBatch) {
 		t.Fatalf("duplicate 1/1 error = %v, want %v", err, telemetrycore.ErrStaleBatch)
 	}
-	assertDualRuntimePublicationMetrics(t, runtime.Metrics(), 1)
+	assertStrategyRuntimePublicationMetrics(t, runtime.Metrics(), 1)
 
 	gap := strategyRuntimeBatch(1, 3, 3*time.Second)
 	if err := (runtimeBatchSink{runtime: runtime}).WriteBatch(context.Background(), gap); !errors.Is(err, telemetrycore.ErrSequenceGap) {
 		t.Fatalf("gap 1/3 error = %v, want %v", err, telemetrycore.ErrSequenceGap)
 	}
-	assertDualRuntimePublicationMetrics(t, runtime.Metrics(), 1)
+	assertStrategyRuntimePublicationMetrics(t, runtime.Metrics(), 1)
 
 	second := strategyRuntimeBatch(1, 2, 2*time.Second)
 	if err := (runtimeBatchSink{runtime: runtime}).WriteBatch(context.Background(), second); err != nil {
 		t.Fatalf("recovery 1/2: %v", err)
 	}
-	if frame := nextSnapshot(t, overlaySubscription); frame.Kind != telemetrytransport.Full ||
-		frame.Epoch != 1 || frame.Sequence != 2 {
-		t.Fatalf("recovered Overlay frame = %#v", frame)
-	}
 	if frame := nextSnapshot(t, strategySubscription); frame.Kind != telemetrytransport.Full ||
 		frame.Epoch != 1 || frame.Sequence != 2 {
 		t.Fatalf("recovered Strategy frame = %#v", frame)
 	}
-	assertDualRuntimePublicationMetrics(t, runtime.Metrics(), 2)
+	assertStrategyRuntimePublicationMetrics(t, runtime.Metrics(), 2)
 }
 
 func TestTelemetryCoreRuntimeRejectsCanceledParentWithoutMutation(t *testing.T) {
@@ -366,8 +435,8 @@ func TestTelemetryCoreRuntimeRejectsCanceledParentWithoutMutation(t *testing.T) 
 		t.Fatalf("Start(canceled parent) error = %v, want %v", err, context.Canceled)
 	}
 	metrics := runtime.Metrics()
-	if metrics.Transport.StatusPublications != 0 || metrics.StrategyTransport.StatusPublications != 0 ||
-		metrics.Transport.CurrentSubscribers != 0 || metrics.StrategyTransport.CurrentSubscribers != 0 {
+	if metrics.StrategyTransport.StatusPublications != 0 ||
+		metrics.StrategyTransport.CurrentSubscribers != 0 {
 		t.Fatalf("canceled Start mutated runtime = %#v", metrics)
 	}
 	if err := runtime.Start(context.Background()); err != nil {
@@ -378,7 +447,7 @@ func TestTelemetryCoreRuntimeRejectsCanceledParentWithoutMutation(t *testing.T) 
 	}
 }
 
-func TestTelemetryCoreRuntimeFailedStartClosesBothHubsAndBecomesTerminal(t *testing.T) {
+func TestTelemetryCoreRuntimeFailedStartClosesStrategyHubAndBecomesTerminal(t *testing.T) {
 	consumer := &recordingEngineerConsumer{}
 	runtime, err := newStrategyTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{Engineer: consumer})
 	if err != nil {
@@ -394,14 +463,15 @@ func TestTelemetryCoreRuntimeFailedStartClosesBothHubsAndBecomesTerminal(t *test
 		t.Fatalf("Start() error = %v", err)
 	}
 	metrics := runtime.Metrics()
-	if metrics.Transport.StatusPublications != 1 || metrics.StrategyTransport.StatusPublications != 0 ||
-		metrics.Transport.SnapshotPublications != 0 || metrics.StrategyTransport.SnapshotPublications != 0 {
+	// R6b: sin Hub Overlay; solo Strategy intentaba publicar y fallo por
+	// cierre.
+	if metrics.StrategyTransport.StatusPublications != 0 ||
+		metrics.StrategyTransport.SnapshotPublications != 0 {
 		t.Fatalf("partial Start status metrics = %#v", metrics)
 	}
 	if len(consumer.calls) != 0 {
 		t.Fatalf("Engineer calls before initial status = %v, want none", consumer.calls)
 	}
-	assertRuntimeHubClosed(t, runtime.Hub())
 	assertRuntimeHubClosed(t, runtime.StrategyHub())
 	if err := runtime.Start(context.Background()); !errors.Is(err, telemetrytransport.ErrClosed) {
 		t.Fatalf("second Start() error = %v, want %v", err, telemetrytransport.ErrClosed)
@@ -414,28 +484,7 @@ func TestTelemetryCoreRuntimeFailedStartClosesBothHubsAndBecomesTerminal(t *test
 	}
 }
 
-func TestTelemetryCoreRuntimeOverlayHubCloseDoesNotAffectWailsAdapter(t *testing.T) {
-	emitter := &recordingTelemetryEmitter{seen: make(map[string]int), notices: make(chan string, 8)}
-	runtime, err := newStrategyTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{Emitter: emitter})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := runtime.Start(context.Background()); err != nil {
-		t.Fatal(err)
-	}
-	emitter.waitFor(t, telemetrytransport.EventName(telemetrytransport.ProductStrategy, telemetrytransport.EventStatus))
-	if err := runtime.Hub().Close(); err != nil {
-		t.Fatal(err)
-	}
-	if err := runtime.currentRunError(); err != nil {
-		t.Fatalf("Overlay Hub close escaped into Wails lifecycle: %v", err)
-	}
-	if err := runtime.Stop(context.Background()); err != nil {
-		t.Fatalf("Stop() after isolated Overlay close = %v", err)
-	}
-}
-
-func TestTelemetryCoreRuntimeUnexpectedStrategyWailsCloseIsAuditedAndFailsBothHubs(t *testing.T) {
+func TestTelemetryCoreRuntimeUnexpectedStrategyWailsCloseIsAuditedAndFailsStrategyHub(t *testing.T) {
 	emitter := &recordingTelemetryEmitter{seen: make(map[string]int), notices: make(chan string, 8)}
 	runtime, err := newStrategyTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{Emitter: emitter})
 	if err != nil {
@@ -450,7 +499,6 @@ func TestTelemetryCoreRuntimeUnexpectedStrategyWailsCloseIsAuditedAndFailsBothHu
 	}
 	wantContext := "serve Strategy telemetry"
 	waitForRuntimeError(t, runtime, wantContext)
-	assertRuntimeHubClosed(t, runtime.Hub())
 	assertRuntimeHubClosed(t, runtime.StrategyHub())
 	if err := runtime.Stop(context.Background()); err == nil ||
 		!strings.Contains(err.Error(), wantContext) ||
@@ -550,7 +598,6 @@ func TestTelemetryCoreRuntimeCanceledAfterInitialEngineerStatusDeliversStoppedOn
 	}) {
 		t.Fatalf("Engineer status order = %v", got)
 	}
-	assertRuntimeHubClosed(t, runtime.Hub())
 	assertRuntimeHubClosed(t, runtime.StrategyHub())
 	for attempt := 1; attempt <= 2; attempt++ {
 		if err := runtime.Stop(context.Background()); err != nil {
@@ -668,7 +715,6 @@ func TestTelemetryCoreRuntimeNormalStopCancelsWorkersBeforeClosingHubs(t *testin
 	if err := runtime.currentRunError(); err != nil {
 		t.Fatalf("normal teardown run error = %v", err)
 	}
-	assertRuntimeHubClosed(t, runtime.Hub())
 	assertRuntimeHubClosed(t, runtime.StrategyHub())
 }
 
@@ -686,19 +732,19 @@ func assertRuntimeFieldCount(t *testing.T, runtime *TelemetryCoreRuntime, fieldT
 	}
 }
 
-func assertDualRuntimePublicationMetrics(t *testing.T, metrics TelemetryCoreMetrics, want uint64) {
+func assertStrategyRuntimePublicationMetrics(t *testing.T, metrics TelemetryCoreMetrics, want uint64) {
 	t.Helper()
 	var wantReplacements uint64
 	if want > 0 {
 		wantReplacements = want - 1
 	}
-	if metrics.BatchesApplied != want || metrics.ProjectionsPublished != want ||
-		metrics.OverlayProjectionsPublished != want || metrics.StrategyProjectionsPublished != want ||
-		metrics.Transport.StatusPublications != 1 || metrics.StrategyTransport.StatusPublications != 1 ||
-		metrics.Transport.SnapshotPublications != want || metrics.StrategyTransport.SnapshotPublications != want ||
-		metrics.Transport.SnapshotReplacements != wantReplacements ||
+	// R6b: sin Hub Overlay ni contadores heredados; Strategy conserva su
+	// semantica.
+	if metrics.BatchesApplied != want || metrics.StrategyProjectionsPublished != want ||
+		metrics.StrategyTransport.StatusPublications != 1 ||
+		metrics.StrategyTransport.SnapshotPublications != want ||
 		metrics.StrategyTransport.SnapshotReplacements != wantReplacements {
-		t.Fatalf("dual runtime publication metrics = %#v, want %d", metrics, want)
+		t.Fatalf("strategy-only runtime publication metrics = %#v, want %d", metrics, want)
 	}
 }
 
@@ -746,19 +792,6 @@ func nextRuntimeEvent(t *testing.T, subscription *telemetrytransport.Subscriptio
 		t.Fatal(err)
 	}
 	return event
-}
-
-func assertMatchingProductStatus(
-	t *testing.T,
-	overlay telemetrytransport.StatusEnvelope,
-	strategy telemetrytransport.StatusEnvelope,
-) {
-	t.Helper()
-	if overlay.Product != telemetrytransport.ProductOverlay || strategy.Product != telemetrytransport.ProductStrategy ||
-		overlay.StatusRevision != strategy.StatusRevision || overlay.CapturedAt != strategy.CapturedAt ||
-		!bytes.Equal(overlay.Payload, strategy.Payload) {
-		t.Fatalf("product statuses differ: Overlay %#v Strategy %#v", overlay, strategy)
-	}
 }
 
 func strategyRuntimeBatch(epoch schema.Epoch, sequence schema.Sequence, elapsed time.Duration) telemetrycore.Batch {

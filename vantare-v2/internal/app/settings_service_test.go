@@ -65,9 +65,7 @@ func TestDefaultAppSettings(t *testing.T) {
 	if s.Performance.Mode != "auto" || s.Performance.Level != 3 || s.Performance.Source != app.PerformanceSourceDefault {
 		t.Errorf("expected automatic performance default, got %+v", s.Performance)
 	}
-	if s.OverlayV1Emit {
-		t.Errorf("expected Overlay V1 emission disabled by default")
-	}
+	// R6a: el interruptor Overlay V1 esta retirado; ya no forma parte del contrato.
 	if len(s.Hotkeys) != 5 {
 		t.Errorf("expected 5 hotkeys, got %d", len(s.Hotkeys))
 	}
@@ -116,7 +114,6 @@ func TestSettingsServiceLoadSave(t *testing.T) {
 	custom := app.DefaultAppSettings()
 	custom.Performance = app.PerformanceSettings{Mode: "level", Level: 3, Source: app.PerformanceSourceUser}
 	custom.CpuSampling = false
-	custom.OverlayV1Emit = true
 	custom.Hotkeys["toggleOverlay"] = "alt+v"
 	if err := svc.Save(custom); err != nil {
 		t.Fatalf("Save: %v", err)
@@ -133,9 +130,6 @@ func TestSettingsServiceLoadSave(t *testing.T) {
 	}
 	if s2.CpuSampling {
 		t.Errorf("expected cpuSampling=false")
-	}
-	if !s2.OverlayV1Emit {
-		t.Errorf("expected Overlay V1 diagnostic rollback to persist")
 	}
 	if s2.Hotkeys["toggleOverlay"] != "alt+v" {
 		t.Errorf("expected toggleOverlay=alt+v, got %q", s2.Hotkeys["toggleOverlay"])
@@ -488,11 +482,31 @@ func TestLoadMigratesSettingsBeforePerformanceWithoutLosingExistingValues(t *tes
 		t.Fatal(err)
 	}
 	got := svc.Settings()
-	if got.SchemaVersion != 6 || got.Performance.Mode != "auto" || got.Performance.Level != 3 || got.Performance.Source != app.PerformanceSourceDefault || got.Performance.MigratedFrom != "" || got.OverlayV1Emit {
+	if got.SchemaVersion != 6 || got.Performance.Mode != "auto" || got.Performance.Level != 3 || got.Performance.Source != app.PerformanceSourceDefault || got.Performance.MigratedFrom != "" {
 		t.Fatalf("migration result = %+v", got.Performance)
 	}
 	if got.CpuSampling || got.ActiveOverlayProfileID != "endurance" {
 		t.Fatalf("legacy values changed: cpuSampling=%v profile=%q", got.CpuSampling, got.ActiveOverlayProfileID)
+	}
+}
+
+// R6a: un JSON antiguo que aun contiene overlayV1Emit se ignora de forma
+// segura y la migracion conserva SchemaVersion 6 sin depender del campo.
+func TestLegacyOverlayV1EmitKeyIsIgnored(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "app-settings.json")
+	legacy := `{"schemaVersion":5,"cpuSampling":true,"overlayV1Emit":true,"hotkeys":{},"launcherApps":{},"launcherProfiles":[]}`
+	if err := os.WriteFile(path, []byte(legacy), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	svc := app.NewSettingsService(path, nil, nil)
+	if err := svc.Load(); err != nil {
+		t.Fatal(err)
+	}
+	got := svc.Settings()
+	if got.SchemaVersion != 6 {
+		t.Fatalf("SchemaVersion = %d, want 6", got.SchemaVersion)
 	}
 }
 

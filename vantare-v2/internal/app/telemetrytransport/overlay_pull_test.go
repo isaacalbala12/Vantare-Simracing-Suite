@@ -9,18 +9,11 @@ import (
 )
 
 func TestOverlayPullSlowConsumerKeepsOneDeliveryInFlightAndLatestWins(t *testing.T) {
-	hub := NewHub(HubConfig{Product: ProductOverlay})
-	if err := hub.PublishStatus(mustStatus(t, 1, map[string]any{"state": "live"})); err != nil {
-		t.Fatal(err)
-	}
-	if err := hub.PublishSnapshot(
-		mustSnapshot(t, 1, 1, Full, 1, map[string]any{"sequence": 1}),
-		nil,
-	); err != nil {
-		t.Fatal(err)
-	}
 	registry := mustPublisherRegistry(t, PublisherConfig{Product: ProductOverlayV2})
-	transport := NewOverlayPullTransport(hub, registry)
+	if err := registry.PublishStatus(ProductOverlayV2, 1, map[string]any{"revision": 1}); err != nil {
+		t.Fatal(err)
+	}
+	transport := NewOverlayPullTransport(registry)
 
 	if _, active := registry.Lookup(ProductOverlayV2); active {
 		t.Fatal("overlay v2 publisher active before an overlay consumer requested telemetry")
@@ -39,18 +32,12 @@ func TestOverlayPullSlowConsumerKeepsOneDeliveryInFlightAndLatestWins(t *testing
 	if _, active := registry.Lookup(ProductOverlayV2); !active {
 		t.Fatal("overlay v2 publisher inactive while an overlay consumer is active")
 	}
-	assertPullEventContains(t, first.Events, EventName(ProductOverlay, EventSnapshot), `"sequence":1`)
+	assertPullEventContains(t, first.Events, PublisherEventName(ProductOverlayV2, PublisherEventStatus), `"revision":1`)
 
 	// The WebView has not acknowledged delivery 1. Publishing many newer
 	// frames must not create another delivery or queue every intermediate
 	// payload behind the pending HTTP response.
 	for sequence := schema.Sequence(2); sequence <= 100; sequence++ {
-		if err := hub.PublishSnapshot(
-			mustSnapshot(t, 1, sequence, Full, 1, map[string]any{"sequence": sequence}),
-			nil,
-		); err != nil {
-			t.Fatal(err)
-		}
 		publisher, active := registry.Lookup(ProductOverlayV2)
 		if !active {
 			t.Fatal("overlay v2 publisher disappeared while consumer is active")
@@ -84,9 +71,7 @@ func TestOverlayPullSlowConsumerKeepsOneDeliveryInFlightAndLatestWins(t *testing
 	if !deliver || latest.Delivery != 2 {
 		t.Fatalf("latest response = %#v, deliver=%v", latest, deliver)
 	}
-	assertPullEventContains(t, latest.Events, EventName(ProductOverlay, EventSnapshot), `"sequence":100`)
 	assertPullEventContains(t, latest.Events, PublisherEventName(ProductOverlayV2, PublisherEventSnapshot), `"revision":100`)
-	assertPullEventNotContains(t, latest.Events, `"sequence":99`)
 	assertPullEventNotContains(t, latest.Events, `"revision":99`)
 
 	transport.Close("overlay-window", "another-session")
@@ -100,9 +85,8 @@ func TestOverlayPullSlowConsumerKeepsOneDeliveryInFlightAndLatestWins(t *testing
 }
 
 func TestOverlayPullDoesNotDeliverWithoutAConsumerOrForInvalidRequests(t *testing.T) {
-	hub := NewHub(HubConfig{Product: ProductOverlay})
 	registry := mustPublisherRegistry(t, PublisherConfig{Product: ProductOverlayV2})
-	transport := NewOverlayPullTransport(hub, registry)
+	transport := NewOverlayPullTransport(registry)
 
 	for _, testCase := range []struct {
 		name   string
@@ -127,7 +111,7 @@ func TestOverlayPullDoesNotDeliverWithoutAConsumerOrForInvalidRequests(t *testin
 	if _, active := registry.Lookup(ProductOverlayV2); active {
 		t.Fatal("invalid requests activated overlay v2")
 	}
-	if _, deliver, err := NewOverlayPullTransport(nil, nil).Pull(
+	if _, deliver, err := NewOverlayPullTransport(nil).Pull(
 		"overlay-window",
 		OverlayPullRequest{SessionID: "session", Ack: 0},
 	); err != nil || deliver {
@@ -138,7 +122,6 @@ func TestOverlayPullDoesNotDeliverWithoutAConsumerOrForInvalidRequests(t *testin
 func TestOverlayPullLateConsumerReceivesV2StatusWithoutSnapshot(t *testing.T) {
 	t.Parallel()
 
-	hub := NewHub(HubConfig{Product: ProductOverlay})
 	registry := mustPublisherRegistry(t, PublisherConfig{Product: ProductOverlayV2})
 	if err := registry.PublishStatus(ProductOverlayV2, 3, map[string]any{
 		"revision": 3,
@@ -147,7 +130,7 @@ func TestOverlayPullLateConsumerReceivesV2StatusWithoutSnapshot(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	transport := NewOverlayPullTransport(hub, registry)
+	transport := NewOverlayPullTransport(registry)
 	defer transport.CloseAll()
 
 	response, deliver, err := transport.Pull("studio-window", OverlayPullRequest{
@@ -162,7 +145,6 @@ func TestOverlayPullLateConsumerReceivesV2StatusWithoutSnapshot(t *testing.T) {
 }
 
 func TestOverlayPullDoesNotDeliverEmptyEventsAndPicksUpTheNextChange(t *testing.T) {
-	hub := NewHub(HubConfig{Product: ProductOverlay})
 	registry := mustPublisherRegistry(t, PublisherConfig{Product: ProductOverlayV2})
 	if err := registry.PublishStatus(ProductOverlayV2, 1, map[string]any{
 		"revision": 1,
@@ -171,7 +153,7 @@ func TestOverlayPullDoesNotDeliverEmptyEventsAndPicksUpTheNextChange(t *testing.
 	}); err != nil {
 		t.Fatal(err)
 	}
-	transport := NewOverlayPullTransport(hub, registry)
+	transport := NewOverlayPullTransport(registry)
 	defer transport.CloseAll()
 
 	first, deliver, err := transport.Pull("studio-window", OverlayPullRequest{
@@ -208,12 +190,11 @@ func TestOverlayPullDoesNotDeliverEmptyEventsAndPicksUpTheNextChange(t *testing.
 }
 
 func TestOverlayPullRetiredSessionCannotReplaceCurrentSession(t *testing.T) {
-	hub := NewHub(HubConfig{Product: ProductOverlay})
 	registry := mustPublisherRegistry(t, PublisherConfig{Product: ProductOverlayV2})
 	if err := registry.PublishStatus(ProductOverlayV2, 1, map[string]any{"revision": 1}); err != nil {
 		t.Fatal(err)
 	}
-	transport := NewOverlayPullTransport(hub, registry)
+	transport := NewOverlayPullTransport(registry)
 	defer transport.CloseAll()
 
 	first, deliver, err := transport.Pull("studio-window", OverlayPullRequest{SessionID: "old", Ack: 0})
@@ -242,6 +223,9 @@ func TestOverlayPullRetiredSessionCannotReplaceCurrentSession(t *testing.T) {
 	}
 }
 
+// R7a: TestOverlayPullExcludesLegacyEvenWhenPublished esta eliminado.
+// El Hub Strategy nunca se conecta al registry V2 y el caso era vacuo tras
+// retirar ProductOverlay; no se inventa wiring para conservarlo.
 func assertPullEventContains(t *testing.T, events []OverlayPullEvent, name, fragment string) {
 	t.Helper()
 	for _, event := range events {

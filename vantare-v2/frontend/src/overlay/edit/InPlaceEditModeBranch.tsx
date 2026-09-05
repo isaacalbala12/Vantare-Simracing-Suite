@@ -4,7 +4,6 @@ import { I18nProvider } from "../../i18n/I18nProvider";
 import { LicenseProvider, useLicense } from "../../lib/license";
 import { useAccess } from "../../lib/access";
 import { InPlaceEditOverlay } from "./InPlaceEditOverlay";
-import type { OverlayV2Feature } from "../telemetry-shadow/overlay-v2-features";
 import type { RaceScheduleStore } from "../core/race-schedule-store";
 
 export type InPlaceEditModeBranchProps = {
@@ -12,7 +11,6 @@ export type InPlaceEditModeBranchProps = {
   revision: string;
   layoutOrigin?: { x: number; y: number };
   telemetry: TelemetryRateCoordinator;
-  overlayV2Features?: readonly OverlayV2Feature[];
   raceSchedule?: RaceScheduleStore;
 };
 
@@ -25,7 +23,7 @@ export type InPlaceEditModeBranchProps = {
  * secciones de propiedades sin bloquear el drag de layout.
  */
 export function InPlaceEditModeBranch(props: InPlaceEditModeBranchProps): React.ReactElement {
-  const { document, revision, layoutOrigin, telemetry, overlayV2Features, raceSchedule } = props;
+  const { document, revision, layoutOrigin, telemetry, raceSchedule } = props;
   return (
     <LicenseProvider>
       <I18nProvider>
@@ -34,7 +32,6 @@ export function InPlaceEditModeBranch(props: InPlaceEditModeBranchProps): React.
           revision={revision}
           layoutOrigin={layoutOrigin}
           telemetry={telemetry}
-          overlayV2Features={overlayV2Features}
           raceSchedule={raceSchedule}
         />
       </I18nProvider>
@@ -51,7 +48,6 @@ function AccessEditor(props: InPlaceEditModeBranchProps): React.ReactElement {
       revision={props.revision}
       layoutOrigin={props.layoutOrigin}
       telemetry={props.telemetry}
-      overlayV2Features={props.overlayV2Features}
       raceSchedule={props.raceSchedule}
       access={access}
       licenseLoading={loading}

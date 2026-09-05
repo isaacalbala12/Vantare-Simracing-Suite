@@ -1,8 +1,7 @@
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import { buildMockTelemetry } from "../core/mock-scenarios";
 import type { ProfileDocumentV3 } from "../core/profile-document";
-import { createTelemetryRateCoordinator } from "../core/telemetry-rate-coordinator";
+import { createTestTelemetryCoordinator } from "../../hub/overlay-studio/test-helpers";
 import { deltaDefinition } from "../widget-types/delta/delta-definition";
 import { DesktopOverlayRuntime } from "./DesktopOverlayRuntime";
 import { ObsOverlayRuntime } from "./ObsOverlayRuntime";
@@ -54,8 +53,7 @@ function buildDocument(): ProfileDocumentV3 {
 describe("DesktopOverlayRuntime", () => {
   it("renders the shared runtime surface in desktop mode", () => {
     installViewportResizeObserver(1600, 900);
-    const coordinator = createTelemetryRateCoordinator();
-    coordinator.publish(buildMockTelemetry({ session: "race", location: "track", state: "ready" }));
+    const coordinator = createTestTelemetryCoordinator();
 
     const view = render(
       <DesktopOverlayRuntime
@@ -77,8 +75,7 @@ describe("DesktopOverlayRuntime", () => {
 
   it("matches OBS scene and frame geometry for identical inputs", () => {
     installViewportResizeObserver(1600, 900);
-    const coordinator = createTelemetryRateCoordinator();
-    coordinator.publish(buildMockTelemetry({ session: "race", location: "track", state: "ready" }));
+    const coordinator = createTestTelemetryCoordinator();
     const document = buildDocument();
     const layoutOrigin = { x: 20, y: 10 };
 

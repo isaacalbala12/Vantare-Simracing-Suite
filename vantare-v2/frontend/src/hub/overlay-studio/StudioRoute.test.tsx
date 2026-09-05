@@ -9,7 +9,6 @@ import { createTelemetryRateCoordinator } from '../../overlay/core/telemetry-rat
 import { StudioRoute } from './StudioRoute';
 import type { StudioProfileClient } from './state/studio-profile-client';
 import * as overlayV2StoreModule from '../../telemetry-transport/overlay-frame-v2-store';
-import goldenRaw from '../../../../internal/telemetry/projection/overlay/testdata/overlay_v1.golden.json?raw';
 import goldenV2Raw from '../../../../internal/telemetry/projection/overlayv2/testdata/overlay_v2_1.golden.json?raw';
 
 type WailsListener = (event: { data: unknown }) => void;
@@ -60,24 +59,6 @@ function buildDocument(id = 'default-racing'): ProfileDocumentV3 {
         widgets: [deltaDefinition.createDefault('delta-main')],
       },
     },
-  };
-}
-
-function canonicalEnvelope() {
-  const snapshot = JSON.parse(goldenRaw) as Record<string, unknown>;
-  const payload = { ...snapshot };
-  for (const key of ['canonicalVersion', 'projectionVersion', 'epoch', 'sequence', 'capturedAt']) {
-    delete payload[key];
-  }
-  return {
-    product: 'overlay',
-    projectionVersion: snapshot.projectionVersion,
-    epoch: snapshot.epoch,
-    sequence: snapshot.sequence,
-    kind: 'full',
-    capturedAt: snapshot.capturedAt,
-    statusRevision: 1,
-    payload,
   };
 }
 
@@ -134,8 +115,6 @@ describe('StudioRoute', () => {
     listeners.clear();
     vi.clearAllMocks();
     resetStudioStageGeometryCache();
-    delete window.__vantareOverlayV2Features;
-    window.localStorage.removeItem('vantare:overlay-v2-features');
   });
 
   afterEach(() => {
@@ -156,7 +135,7 @@ describe('StudioRoute', () => {
     expect(Events.Emit).toHaveBeenCalledWith('settings:get');
   });
 
-  it('keeps one coordinator binding active during diagnostic rollback', () => {
+  it('keeps one coordinator binding active', () => {
     const store = overlayV2StoreModule.createOverlayFrameV2Store();
     const subscribe = vi.fn(store.subscribe);
     vi.spyOn(overlayV2StoreModule, 'createOverlayFrameV2Store').mockReturnValue({
@@ -254,6 +233,7 @@ describe('StudioRoute', () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock.mock.calls[0]?.[0]).toBe('/_vantare/overlay-telemetry/pull');
+    // Guardia negativa B2: Studio live no suscribe eventos globales legacy.
     expect(vi.mocked(Events.On).mock.calls.map(([name]) => name)).not.toContain(
       'telemetry:overlay:projection',
     );
@@ -269,8 +249,7 @@ describe('StudioRoute', () => {
     expect(fetchMock.mock.calls.filter(([route]) => String(route).endsWith('/close'))).toHaveLength(1);
   });
 
-  it('acepta V2 y conserva histories derivadas tras el doble setup de StrictMode', async () => {
-    window.__vantareOverlayV2Features = ['delta'];
+  it('acepta V2 y conserva un único repaint tras el doble setup de StrictMode', async () => {
     let resolvePull: ((response: Response) => void) | undefined;
     const requests: Array<{ sessionId: string; ack: number }> = [];
     vi.stubGlobal('fetch', vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
@@ -316,6 +295,8 @@ describe('StudioRoute', () => {
       expect(activeListeners.size, `listeners activos para ${event}`).toBe(1);
     }
     expect(activeSchedulers).toBe(1);
+    const repaint = vi.fn();
+    const unsubscribe = coordinator.subscribe(undefined, repaint);
     fireEvent.click(screen.getByRole('button', { name: 'Live' }));
     const request = requests.at(-1);
     expect(request).toBeDefined();
@@ -327,31 +308,15 @@ describe('StudioRoute', () => {
           sessionId: request?.sessionId,
           delivery: 1,
           events: [
-            { name: 'telemetry:overlay:status', data: {
-              product: 'overlay', statusRevision: 1,
-              capturedAt: '2026-07-28T09:00:00Z',
-              payload: { state: 'live', reconnectAttempt: 0 },
-            } },
-            { name: 'telemetry:overlay:projection', data: canonicalEnvelope() },
             { name: 'telemetry:overlay-v2:snapshot', data: JSON.parse(goldenV2Raw) },
           ],
         }),
       } as Response);
       await Promise.resolve();
     });
-    const repaint = vi.fn();
-    const unsubscribe = coordinator.subscribe(undefined, repaint);
-    coordinator.publish({
-      status: 'ready',
-      capturedAt: 1,
-      session: { type: 'race', key: 'strict-mode', epoch: 1 },
-      player: { inPit: false, throttle: 0.5, brake: 0.25, clutch: 0 },
-      scoring: [],
-    });
     act(() => runScheduledFrame?.());
 
     expect(stores.some((store) => store.getSnapshot().revision === 1)).toBe(true);
-    expect(coordinator.getSnapshot().derived?.inputHistory.length).toBeGreaterThan(0);
     expect(repaint).toHaveBeenCalled();
     expect(screen.getByTestId('overlay-studio-v3')).toBeTruthy();
     unsubscribe();

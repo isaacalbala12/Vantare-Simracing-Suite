@@ -5,10 +5,7 @@ import type {
   SessionLayoutType,
   SessionLayoutV3,
 } from "../../../overlay/core/profile-document";
-import type {
-  MockLocationScenario,
-  MockSessionScenario,
-} from "../../../overlay/core/mock-scenarios";
+import type { AuthoringV2Scenario } from "../../../overlay/authoring/fixtures/authoring-v2-scenario-fixture";
 import type { StudioCommand } from "./studio-command";
 import type { StudioSaveResult } from "./studio-profile-client";
 
@@ -16,8 +13,8 @@ export type StudioSaveState = "idle" | "saving" | "saved" | "error" | "conflict"
 
 export type StudioPreviewState = {
   source: "mock" | "live";
-  mockSession: MockSessionScenario;
-  mockLocation: MockLocationScenario;
+  mockSession: AuthoringV2Scenario["session"];
+  mockLocation: AuthoringV2Scenario["location"];
   zoom: "fit" | 50 | 75 | 100 | 125 | 150;
   backgroundId: string;
   safeArea: boolean;

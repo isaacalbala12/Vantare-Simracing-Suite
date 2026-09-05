@@ -1,6 +1,6 @@
 import { cleanup, render } from "@testing-library/react";
+import { Suspense } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { buildMockTelemetry } from "./mock-scenarios";
 import type { OverlayFrameV2, OverlaySourceStatusV2 } from "../../generated/telemetry";
 import { WidgetVisualHost } from "./WidgetVisualHost";
 import { standingsDefinition } from "../widget-types/standings/standings-definition";
@@ -19,8 +19,6 @@ import * as inputV2 from "../widget-types/input-telemetry/input-telemetry-view-m
 import * as racingV2 from "../widget-types/racing-flags/racing-flags-view-model-v2";
 
 afterEach(() => cleanup());
-
-const snapshot = buildMockTelemetry({ session: "race", location: "track", state: "ready" });
 
 function makeFrame(): OverlayFrameV2 {
   const missing = { q: "missing" as const };
@@ -51,32 +49,70 @@ function makeFrame(): OverlayFrameV2 {
       steering: missing,
     },
     standings: [
-      { id: "player-1", position: 1, classPosition: 1, gap: { q: "missing" }, lastLap: fresh(92.123), driver: "Player", classId: "HYPERCAR", pit: "none" },
-      { id: "car-2", position: 2, classPosition: 2, gap: fresh(1.5), lastLap: fresh(91.8), driver: "ALO", classId: "HYPERCAR", pit: "none" },
+      { id: "player-1", position: 1, classPosition: 1, gap: { q: "missing" }, bestLap: fresh(90), lastLap: fresh(92.123), lapDistance: fresh(500), groundPosition: { q: "missing" }, driver: "Player", classId: "HYPERCAR", pit: "none" },
+      { id: "car-2", position: 2, classPosition: 2, gap: fresh(1.5), bestLap: fresh(89.5), lastLap: fresh(91.8), lapDistance: fresh(510), groundPosition: { q: "missing" }, driver: "ALO", classId: "HYPERCAR", pit: "none" },
     ],
     relative: [
-      { id: "car-2", gap: fresh(-1.2), side: "ahead", authority: "native", name: "ALO", classId: "HYPERCAR" },
-      { id: "player-1", gap: fresh(0), side: "player", authority: "native", name: "Player", classId: "HYPERCAR" },
-      { id: "car-3", gap: fresh(0.8), side: "behind", authority: "native", name: "VER", classId: "HYPERCAR" },
+      { id: "car-2", position: 2, gap: fresh(1.2), groundPosition: { q: "fresh", v: { x: 10, z: 0 } }, lastLap: fresh(91.8), side: "ahead", authority: "native", name: "ALO", classId: "HYPERCAR" },
+      { id: "player-1", position: 1, gap: fresh(0), groundPosition: { q: "fresh", v: { x: 0, z: 0 } }, lastLap: fresh(92.123), side: "player", authority: "native", name: "Player", classId: "HYPERCAR" },
+      { id: "car-3", position: 3, gap: fresh(-0.8), groundPosition: { q: "fresh", v: { x: -10, z: 0 } }, lastLap: fresh(93), side: "behind", authority: "native", name: "VER", classId: "HYPERCAR" },
     ],
     delta: { seconds: fresh(-0.42), available: ["personal-best"], reference: "personal-best", requested: "personal-best" },
-    fuel: { remaining: fresh(22.5), capacity: fresh(110), perLap: fresh(2.3), estimatedLaps: fresh(9) },
+    fuel: {
+      remaining: fresh(22.5),
+      capacity: fresh(110),
+      perLap: fresh(2.3),
+      estimatedLaps: fresh(9),
+      requiredFuel: missing,
+      history: missing,
+      sessionLaps: missing,
+    },
     controls: {
       history: {
         q: "fresh" as const,
-        windowMs: 3000,
+        capturedAtMS: [1787140801000, 1787140802000, 1787140803000],
         throttle: [800, 820, 790],
         brake: [100, 90, 110],
         clutch: [0, 0, 0],
+        speedMPS: [
+          { v: 50, q: "fresh" as const },
+          { v: 51, q: "fresh" as const },
+          { v: 52, q: "fresh" as const },
+        ],
+        rpm: [
+          { v: 7200, q: "fresh" as const },
+          { v: 7300, q: "fresh" as const },
+          { v: 7400, q: "fresh" as const },
+        ],
+        gear: [
+          { v: 4, q: "fresh" as const },
+          { v: 4, q: "fresh" as const },
+          { v: 5, q: "fresh" as const },
+        ],
       },
     },
     spotter: { mode: "none", left: missing, right: missing },
     capabilities: { supported: ["controls"], available: { controls: "fresh" }, modes: { spatial: [], delta: [], standings: "none", gaps: "none" } },
   };
+  frame.relativeSettled = frame.relative;
   return frame;
 }
 
 const source: OverlaySourceStatusV2 = { state: "live" };
+
+function enduranceRelative(id: string, templateId: string) {
+  const widget = relativeDefinition.createDefault(id);
+  return {
+    ...widget,
+    visual: {
+      systemId: "vantare-endurance" as const,
+      systemVersion: 1,
+      configVersion: 1,
+      baseSettings: { templateId },
+      appearanceOverrides: {},
+    },
+  };
+}
 
 type Case = {
   type: string;
@@ -97,6 +133,289 @@ const cases: Case[] = [
 ];
 
 describe("WidgetVisualHost v2 generic registry", () => {
+  it("monta dos Relative con estado productivo aislado por instancia", () => {
+    const first = enduranceRelative("relative-a", "relative-redline-mirror");
+    const second = enduranceRelative("relative-b", "relative-redline-traffic");
+    const frame = makeFrame();
+    let nowMs = 0;
+
+    const view = render(<>
+      <WidgetVisualHost widget={first} renderMode="harness" runtime={{ overlayV2Frame: frame, overlayV2Source: source, relativeViewModelNowMs: () => nowMs }} />
+      <WidgetVisualHost widget={second} renderMode="harness" runtime={{ overlayV2Frame: frame, overlayV2Source: source, relativeViewModelNowMs: () => nowMs }} />
+    </>);
+
+    expect(view.container.querySelectorAll('[data-widget-renderer="relative"]')).toHaveLength(2);
+
+    nowMs = 100;
+    view.rerender(<>
+      <WidgetVisualHost widget={first} renderMode="harness" runtime={{ overlayV2Frame: { ...frame, sequence: 2 }, overlayV2Source: source, relativeViewModelNowMs: () => nowMs }} />
+      <WidgetVisualHost widget={second} renderMode="harness" runtime={{ overlayV2Frame: frame, overlayV2Source: source, relativeViewModelNowMs: () => nowMs }} />
+    </>);
+    expect(view.container.querySelectorAll('[data-widget-renderer="relative"]')).toHaveLength(2);
+  });
+
+  it("Redline consumes the settled window while a recreated widget does not create a frontend authority", () => {
+    const widget = enduranceRelative("relative-stable-id", "relative-redline-proximity");
+    const frame = makeFrame();
+    const oldRow = { ...frame.relative[0]!, id: "old-ahead", name: "OLD" };
+    const newRow = { ...frame.relative[0]!, id: "new-ahead", name: "NEW" };
+    const farRow = { ...frame.relative[0]!, id: "far-ahead", name: "FAR" };
+    const player = frame.relative.find((row) => row.side === "player")!;
+    const settled = [farRow, newRow, oldRow, player];
+    const firstFrame = { ...frame, relative: [farRow, newRow, oldRow, player], relativeSettled: settled };
+    const changedFrame = { ...frame, sequence: 2, relative: [farRow, oldRow, newRow, player], relativeSettled: settled };
+    let nowMs = 0;
+    const runtime = (profileId: string, overlayV2Frame: OverlayFrameV2) => ({
+      overlayV2Frame,
+      overlayV2Source: source,
+      relativeViewModelNowMs: () => nowMs,
+      relativeViewModelInstanceKey: `${profileId}:${widget.id}`,
+    });
+    const view = render(
+      <WidgetVisualHost widget={widget} renderMode="harness" runtime={runtime("profile-a", firstFrame)} />,
+    );
+
+    nowMs = 1;
+    view.rerender(
+      <WidgetVisualHost widget={{ ...widget }} renderMode="harness" runtime={runtime("profile-a", changedFrame)} />,
+    );
+    expect([...view.container.querySelectorAll("[data-relative-row]")].map((row) => row.getAttribute("data-relative-row"))).toEqual([
+      "new-ahead", "old-ahead", "player-1",
+    ]);
+
+    view.rerender(
+      <WidgetVisualHost widget={{ ...widget }} renderMode="harness" runtime={runtime("profile-b", changedFrame)} />,
+    );
+    expect([...view.container.querySelectorAll("[data-relative-row]")].map((row) => row.getAttribute("data-relative-row"))).toEqual([
+      "new-ahead", "old-ahead", "player-1",
+    ]);
+  });
+
+  it.each(["relative-classic", "relative-minimal", "relative-neo"])(
+    "keeps Endurance %s free of Redline membership hysteresis",
+    (templateId) => {
+      const widget = enduranceRelative(templateId, templateId);
+      const frame = makeFrame();
+      const oldRow = { ...frame.relative[0]!, id: "old-ahead", name: "OLD" };
+      const newRow = { ...frame.relative[0]!, id: "new-ahead", name: "NEW" };
+      const farRow = { ...frame.relative[0]!, id: "far-ahead", name: "FAR" };
+      const player = frame.relative.find((row) => row.side === "player")!;
+      const firstFrame = { ...frame, relative: [farRow, newRow, oldRow, player] };
+      const changedFrame = { ...frame, sequence: 2, relative: [farRow, oldRow, newRow, player] };
+      let nowMs = 0;
+      const runtime = (overlayV2Frame: OverlayFrameV2) => ({
+        overlayV2Frame,
+        overlayV2Source: source,
+        relativeViewModelNowMs: () => nowMs,
+      });
+      const view = render(
+        <WidgetVisualHost widget={widget} renderMode="harness" runtime={runtime(firstFrame)} />,
+      );
+
+      nowMs = 1;
+      view.rerender(
+        <WidgetVisualHost widget={{ ...widget }} renderMode="harness" runtime={runtime(changedFrame)} />,
+      );
+
+      expect([...view.container.querySelectorAll("[data-relative-row]")].map(
+        (row) => row.getAttribute("data-relative-row"),
+      )).toEqual(["old-ahead", "new-ahead", "player-1"]);
+    },
+  );
+
+  it.each([
+    ["relative-redline-mirror", "desktop"],
+    ["relative-redline-proximity", "studio"],
+    ["relative-redline-traffic", "obs"],
+  ] as const)("renders the Redline DOM on %s/%s", (templateId, renderMode) => {
+    const widget = enduranceRelative(`${templateId}-${renderMode}`, templateId);
+    const view = render(
+      <WidgetVisualHost
+        widget={widget}
+        renderMode={renderMode}
+        runtime={{ overlayV2Frame: makeFrame(), overlayV2Source: source }}
+      />,
+    );
+
+    expect(view.container.querySelector('[data-widget-renderer="relative"]')?.getAttribute("data-template"))
+      .toBe(templateId);
+    expect(view.container.querySelectorAll("[data-relative-row]")).toHaveLength(3);
+  });
+
+  it.each([
+    ["relative-redline-mirror", "desktop"],
+    ["relative-redline-proximity", "studio"],
+    ["relative-redline-traffic", "obs"],
+  ] as const)("uses relativeSettled rather than the immediate window in %s/%s", (templateId, renderMode) => {
+    const widget = enduranceRelative(`relative-${renderMode}`, templateId);
+    const instanceKey = `profile-boundary:${widget.id}`;
+    const transitionSpy = vi.spyOn(relativeV2, "prepareRelativeViewModelV2");
+    const base = makeFrame();
+    const ahead = base.relative.find((row) => row.side === "ahead")!;
+    const player = base.relative.find((row) => row.side === "player")!;
+    const behind = base.relative.find((row) => row.side === "behind")!;
+    const frame = {
+      ...base,
+      relative: [
+        { ...ahead, id: "ahead-far" },
+        { ...ahead, id: "ahead-near" },
+        player,
+        { ...behind, id: "behind-near" },
+        { ...behind, id: "behind-far" },
+      ],
+      relativeSettled: [
+        { ...ahead, id: "settled-far" },
+        { ...ahead, id: "settled-near" },
+        player,
+        { ...behind, id: "settled-behind-near" },
+        { ...behind, id: "settled-behind-far" },
+      ],
+    };
+    let nowMs = 0;
+    const runtime = (overlayV2Frame: OverlayFrameV2, overlayV2Source: OverlaySourceStatusV2) => ({
+      overlayV2Frame,
+      overlayV2Source,
+      relativeViewModelNowMs: () => nowMs,
+      relativeViewModelInstanceKey: instanceKey,
+    });
+    const view = render(
+      <WidgetVisualHost
+        widget={widget}
+        renderMode={renderMode}
+        runtime={runtime(frame, { state: "live", retry: 0 })}
+      />,
+    );
+    const rowIds = () => [...view.container.querySelectorAll("[data-relative-row]")]
+      .map((row) => row.getAttribute("data-relative-row"));
+    expect(rowIds()).toEqual(["settled-far", "settled-near", "player-1", "settled-behind-near", "settled-behind-far"]);
+
+    view.rerender(
+      <WidgetVisualHost
+        widget={widget}
+        renderMode={renderMode}
+        runtime={runtime(frame, { state: "detecting", retry: 1 })}
+      />,
+    );
+    expect(rowIds()).toEqual([]);
+    expect(view.container.querySelectorAll('[data-ghost="true"]')).toHaveLength(0);
+
+    nowMs = 399;
+    view.rerender(
+      <WidgetVisualHost
+        widget={widget}
+        renderMode={renderMode}
+        runtime={runtime({ ...frame, sequence: 2, relative: [], relativeSettled: [] }, { state: "live", retry: 1 })}
+      />,
+    );
+    expect(rowIds()).toEqual([]);
+
+    nowMs = 400;
+    view.rerender(
+      <WidgetVisualHost
+        widget={widget}
+        renderMode={renderMode}
+        runtime={runtime({ ...frame, sequence: 3, relative: [], relativeSettled: [] }, { state: "live", retry: 1 })}
+      />,
+    );
+    expect(rowIds()).toEqual([]);
+    expect(view.container.querySelectorAll('[data-ghost="true"]')).toHaveLength(0);
+
+    nowMs = 401;
+    view.rerender(
+      <WidgetVisualHost
+        widget={widget}
+        renderMode={renderMode}
+        runtime={runtime({ ...frame, sequence: 4, relative: [], relativeSettled: [] }, { state: "live", retry: 1 })}
+      />,
+    );
+    expect(rowIds()).toEqual([]);
+    expect(view.container.querySelectorAll('[data-ghost="true"]')).toHaveLength(0);
+    transitionSpy.mockRestore();
+  });
+
+  it.each([
+    ["relative-redline-mirror", "desktop"],
+    ["relative-redline-proximity", "studio"],
+    ["relative-redline-traffic", "obs"],
+  ] as const)("recovers fresh Redline rows after error in %s/%s", (templateId, renderMode) => {
+    const widget = enduranceRelative(`relative-error-recovery-${renderMode}`, templateId);
+    const frame = makeFrame();
+    const oldRows = frame.relative.map((row) => ({ ...row, name: `OLD-${row.name}` }));
+    const recoveredRows = frame.relative.map((row) => ({ ...row, name: `NEW-${row.name}` }));
+    const runtime = (overlayV2Frame: OverlayFrameV2, overlayV2Source: OverlaySourceStatusV2) => ({
+      overlayV2Frame,
+      overlayV2Source,
+      relativeViewModelNowMs: () => 0,
+    });
+    const view = render(
+      <WidgetVisualHost
+        widget={widget}
+        renderMode={renderMode}
+        runtime={runtime({ ...frame, sequence: 50, relative: frame.relative, relativeSettled: oldRows }, source)}
+      />,
+    );
+    expect(view.container.textContent).toContain("OLD-Player");
+
+    view.rerender(
+      <WidgetVisualHost
+        widget={widget}
+        renderMode={renderMode}
+        runtime={runtime(frame, { state: "error", reason: "LMU projection stopped" })}
+      />,
+    );
+    expect(view.getByRole("alert").textContent).toBe("LMU projection stopped");
+
+    view.rerender(
+      <WidgetVisualHost
+        widget={widget}
+        renderMode={renderMode}
+        runtime={runtime({ ...frame, sequence: 1, relative: frame.relative, relativeSettled: recoveredRows }, source)}
+      />,
+    );
+    expect(view.container.textContent).toContain("NEW-Player");
+    expect(view.container.textContent).not.toContain("OLD-Player");
+    expect(view.container.querySelectorAll('[data-ghost="true"]')).toHaveLength(0);
+  });
+
+  it("does not publish an abandoned Suspense Relative draft", () => {
+    const widget = enduranceRelative("relative-suspense", "relative-redline-mirror");
+    const frame = makeFrame();
+    const oldRows = frame.relative.map((row) => ({ ...row, name: `OLD-${row.name}` }));
+    const abandonedRows = frame.relative.map((row) => ({ ...row, name: `ABANDONED-${row.name}` }));
+    const never = new Promise<void>(() => undefined);
+    const Blocking = () => { throw never; };
+    const scene = (relative: OverlayFrameV2, block: boolean) => (
+      <Suspense fallback={<span>loading</span>}>
+        <WidgetVisualHost widget={widget} renderMode="desktop" runtime={{ overlayV2Frame: relative, overlayV2Source: source }} />
+        {block ? <Blocking /> : null}
+      </Suspense>
+    );
+    const view = render(scene({ ...frame, sequence: 1, relative: frame.relative, relativeSettled: oldRows }, false));
+    expect(view.container.textContent).toContain("OLD-Player");
+
+    view.rerender(scene({ ...frame, sequence: 2, relative: frame.relative, relativeSettled: abandonedRows }, true));
+    view.rerender(scene({ ...frame, sequence: 2, relative: frame.relative, relativeSettled: oldRows }, false));
+
+    expect(view.container.textContent).toContain("OLD-Player");
+    expect(view.container.textContent).not.toContain("ABANDONED-Player");
+  });
+
+  it("builds Redline once per frame through the settled adapter", () => {
+    const widget = enduranceRelative("relative-one-render", "relative-redline-mirror");
+    const spy = vi.spyOn(relativeV2, "buildSettledRelativeViewModelV2");
+    const frame = makeFrame();
+    const view = render(
+      <WidgetVisualHost widget={widget} renderMode="desktop" runtime={{ overlayV2Frame: frame, overlayV2Source: source }} />,
+    );
+
+    expect(spy).toHaveBeenCalledTimes(1);
+    view.rerender(
+      <WidgetVisualHost widget={widget} renderMode="desktop" runtime={{ overlayV2Frame: { ...frame, sequence: 2 }, overlayV2Source: source }} />,
+    );
+    expect(spy).toHaveBeenCalledTimes(2);
+    spy.mockRestore();
+  });
+
   it.each(cases)("[$type] usa VM v2 por defecto cuando frame y source están presentes", ({ definition, spyModule, spyName, feature }) => {
     const widget = (definition.createDefault as (id: string) => { id: string; type: string })("v2-case-" + feature);
     const frame = makeFrame();
@@ -106,7 +425,6 @@ describe("WidgetVisualHost v2 generic registry", () => {
     render(
       <WidgetVisualHost
         widget={widget as never}
-        snapshot={snapshot}
         renderMode="harness"
         runtime={{ overlayV2Frame: frame, overlayV2Source: source } as never}
       />,
@@ -130,9 +448,8 @@ describe("WidgetVisualHost v2 generic registry", () => {
     render(
       <WidgetVisualHost
         widget={widget as never}
-        snapshot={snapshot}
         renderMode="harness"
-        runtime={{ overlayV2Frame: frame, overlayV2Features: ["standings"] } as never}
+        runtime={{ overlayV2Frame: frame } as never}
       />,
     );
     expect(spy).not.toHaveBeenCalled();
@@ -146,7 +463,6 @@ describe("WidgetVisualHost v2 generic registry", () => {
     render(
       <WidgetVisualHost
         widget={widget as never}
-        snapshot={snapshot}
         renderMode="harness"
         runtime={{ overlayV2Source: source } as never}
       />,
@@ -161,7 +477,6 @@ describe("WidgetVisualHost v2 generic registry", () => {
     const view = render(
       <WidgetVisualHost
         widget={widget}
-        snapshot={snapshot}
         renderMode="desktop"
         runtime={{
           overlayV2Failure: { code: "invalid-frame", message: "overlay-frame-v2:invalid-contract:frame" },
@@ -179,7 +494,6 @@ describe("WidgetVisualHost v2 generic registry", () => {
     const view = render(
       <WidgetVisualHost
         widget={widget}
-        snapshot={snapshot}
         renderMode="obs"
         runtime={{ overlayV2Source: source }}
       />,
@@ -194,7 +508,6 @@ describe("WidgetVisualHost v2 generic registry", () => {
     const view = render(
       <WidgetVisualHost
         widget={widget}
-        snapshot={snapshot}
         renderMode="studio"
         runtime={{
           overlayV2Frame: makeFrame(),
@@ -213,7 +526,6 @@ describe("WidgetVisualHost v2 generic registry", () => {
     const view = render(
       <WidgetVisualHost
         widget={widget}
-        snapshot={snapshot}
         renderMode="desktop"
         runtime={{
           overlayV2Frame: makeFrame(),

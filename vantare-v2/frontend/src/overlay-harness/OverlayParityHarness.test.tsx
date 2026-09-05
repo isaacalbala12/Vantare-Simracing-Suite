@@ -1,20 +1,26 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import {
-  buildHarnessTelemetry,
-  buildHarnessViewModel,
-  buildHarnessWidget,
-  HARNESS_WIDGETS,
-} from "./harness-fixtures";
-import {
-  OverlayParityHarness,
-  OverlayParityHarnessPage,
-} from "./OverlayParityHarness";
+import { ALL_WIDGET_TYPES } from "../overlay/core/profile-document";
+import { buildAuthoringV2ScenarioWidget } from "../overlay/authoring/fixtures/authoring-v2-scenario-widget";
+import { OverlayParityHarness, OverlayParityHarnessPage } from "./OverlayParityHarness";
 import { parseHarnessQuery } from "./overlay-parity-query";
 import { readRendererMarkup } from "./parity-html";
 import { getOverlayV2ViewModelEntry } from "../overlay/core/overlay-v2-view-models";
 
 afterEach(() => cleanup());
+
+type StandingsColumns = { metricId?: string; enabled?: boolean }[];
+
+function standingsColumns(variant: "standings-multiclass" | "standings-minimal" | "standings-all-columns"): StandingsColumns {
+  const widget = buildAuthoringV2ScenarioWidget({
+    widget: "standings",
+    system: "vantare-original",
+    variant,
+  });
+  const columns = (widget.content as Record<string, unknown>).columns;
+  expect(Array.isArray(columns)).toBe(true);
+  return columns as StandingsColumns;
+}
 
 describe("parseHarnessQuery", () => {
   it("defaults to Delta Original race track ready harness", () => {
@@ -29,22 +35,62 @@ describe("parseHarnessQuery", () => {
     });
   });
 
-  it("accepts all four core widgets and special variants", () => {
-    expect(parseHarnessQuery("?widget=standings")).toMatchObject({ widget: "standings" });
+  it("accepts the Parity content variants", () => {
     expect(parseHarnessQuery("?widget=relative&variant=relative-fill")).toMatchObject({
       widget: "relative",
       variant: "relative-fill",
     });
-    expect(parseHarnessQuery("?widget=pedals&variant=pedals-full")).toMatchObject({
-      widget: "pedals",
-      variant: "pedals-full",
+    expect(parseHarnessQuery("?widget=standings&variant=standings-multiclass")).toMatchObject({
+      widget: "standings",
+      variant: "standings-multiclass",
+    });
+    expect(parseHarnessQuery("?widget=standings&variant=standings-minimal")).toMatchObject({
+      widget: "standings",
+      variant: "standings-minimal",
+    });
+    expect(parseHarnessQuery("?widget=standings&variant=standings-all-columns")).toMatchObject({
+      widget: "standings",
+      variant: "standings-all-columns",
+    });
+  });
+
+  it("rejects telemetry-fabricating variants as invalid variant", () => {
+    for (const variant of [
+      "relative-multiclass",
+      "standings-stress60",
+      "standings-replay",
+      "pedals-zero",
+      "pedals-full",
+    ]) {
+      const widget =
+        variant === "relative-multiclass" ? "relative" : variant.startsWith("standings") ? "standings" : "pedals";
+      expect(parseHarnessQuery(`?widget=${widget}&variant=${variant}`)).toEqual({
+        error: `invalid variant parameter: ${variant}`,
+      });
+    }
+  });
+
+  it("rejects standings variants on other widgets", () => {
+    for (const variant of ["standings-multiclass", "standings-minimal", "standings-all-columns"]) {
+      expect(parseHarnessQuery(`?widget=delta&variant=${variant}`)).toEqual({
+        error: `${variant} variant requires widget=standings`,
+      });
+    }
+  });
+
+  it("rejects engineer-radio outside vantare-crystal like Workshop", () => {
+    expect(parseHarnessQuery("?widget=engineer-radio&system=vantare-original")).toEqual({
+      error: "engineer-radio requires system=vantare-crystal",
     });
   });
 
   it("accepts each canonical Crystal design only with its functional widget type", () => {
     expect(
       parseHarnessQuery("?widget=delta&system=vantare-crystal&design=delta-crystal-simple"),
-    ).toMatchObject({ widget: "delta", designId: "delta-crystal-simple" });
+    ).toMatchObject({
+      widget: "delta",
+      design: { designId: "delta-crystal-simple", widgetType: "delta", width: 420, height: 69 },
+    });
     expect(
       parseHarnessQuery("?widget=pedals&system=vantare-crystal&design=delta-crystal-simple"),
     ).toEqual({ error: "design delta-crystal-simple requires widget=delta" });
@@ -57,6 +103,65 @@ describe("parseHarnessQuery", () => {
     expect(parseHarnessQuery("?variant=relative-fill&widget=delta")).toEqual({
       error: "relative-fill variant requires widget=relative",
     });
+  });
+});
+
+describe("buildAuthoringV2ScenarioWidget", () => {
+  it("throws on non-canonical variants even when cast", () => {
+    expect(() =>
+      buildAuthoringV2ScenarioWidget({
+        widget: "pedals",
+        system: "vantare-original",
+        variant: "pedals-full" as "default",
+      }),
+    ).toThrow(/variante no soportada/);
+  });
+
+  it("applies the resolved design dimensions", () => {
+    const widget = buildAuthoringV2ScenarioWidget({
+      widget: "delta",
+      system: "vantare-crystal",
+      variant: "default",
+      design: { designId: "delta-crystal-simple", width: 420, height: 69 },
+    });
+    expect(widget.layout).toMatchObject({ x: 120, y: 96, zIndex: 1, w: 420, h: 69 });
+  });
+
+  it("applies relative fill with a minimum frame height", () => {
+    const widget = buildAuthoringV2ScenarioWidget({
+      widget: "relative",
+      system: "vantare-original",
+      variant: "relative-fill",
+    });
+    expect((widget.content as Record<string, unknown>).rowHeightMode).toBe("fill");
+    expect(widget.layout.h).toBeGreaterThanOrEqual(320);
+    expect(widget.layout).toMatchObject({ x: 120, y: 96, zIndex: 1 });
+  });
+
+  it("selects the multiclass field with bestLap on for standings-multiclass", () => {
+    const widget = buildAuthoringV2ScenarioWidget({
+      widget: "standings",
+      system: "vantare-original",
+      variant: "standings-multiclass",
+    });
+    expect((widget.content as Record<string, unknown>).classScope).toBe("all-classes");
+    expect(standingsColumns("standings-multiclass").find((column) => column.metricId === "bestLap")).toMatchObject({
+      enabled: true,
+    });
+  });
+
+  it("keeps only position and driverName on for standings-minimal", () => {
+    for (const column of standingsColumns("standings-minimal")) {
+      expect(column.enabled).toBe(column.metricId === "position" || column.metricId === "driverName");
+    }
+  });
+
+  it("enables every column for standings-all-columns", () => {
+    const columns = standingsColumns("standings-all-columns");
+    expect(columns.length).toBeGreaterThan(0);
+    for (const column of columns) {
+      expect(column.enabled).toBe(true);
+    }
   });
 });
 
@@ -73,8 +178,9 @@ describe("OverlayParityHarness", () => {
     expect(document.querySelector('[data-widget-system="vantare-original"]')).toBeTruthy();
   });
 
-  it("renders each core widget marker", () => {
-    for (const widget of HARNESS_WIDGETS) {
+  it("renders each default widget marker", () => {
+    expect(ALL_WIDGET_TYPES).toHaveLength(20);
+    for (const widget of ALL_WIDGET_TYPES) {
       cleanup();
       const parsed = parseHarnessQuery(`?widget=${widget}`);
       if ("error" in parsed) {
@@ -83,6 +189,34 @@ describe("OverlayParityHarness", () => {
       render(<OverlayParityHarness query={parsed} />);
       expect(document.querySelector(`[data-widget-renderer="${widget}"]`)).toBeTruthy();
     }
+  });
+
+  it.each([
+    "?widget=relative&variant=relative-fill",
+    "?widget=standings&variant=standings-multiclass",
+    "?widget=standings&variant=standings-minimal",
+    "?widget=standings&variant=standings-all-columns",
+  ])("keeps content variant %s rendering its renderer", (search) => {
+    const parsed = parseHarnessQuery(search);
+    if ("error" in parsed) {
+      throw new Error(parsed.error);
+    }
+    render(<OverlayParityHarness query={parsed} />);
+    expect(document.querySelector(`[data-widget-renderer="${parsed.widget}"]`)).toBeTruthy();
+  });
+
+  it("keeps the exact Crystal contract dimensions for official designs", () => {
+    const parsed = parseHarnessQuery(
+      "?widget=delta&system=vantare-crystal&design=delta-crystal-simple",
+    );
+    if ("error" in parsed) {
+      throw new Error(parsed.error);
+    }
+    render(<OverlayParityHarness query={parsed} />);
+    const frame = document.querySelector("[data-overlay-parity-widget-frame]") as HTMLElement;
+    expect(frame.style.width).toBe("420px");
+    expect(frame.style.height).toBe("69px");
+    expect(document.querySelector('[data-widget-renderer="delta"]')).toBeTruthy();
   });
 
   it("switches only the host render mode label for surface changes", () => {
@@ -95,7 +229,7 @@ describe("OverlayParityHarness", () => {
     expect(document.querySelector('[data-widget-renderer="delta"]')).toBeTruthy();
   });
 
-  it("seeds the deterministic Input history before the host builds its ViewModel", () => {
+  it("uses the deterministic Input history from the canonical V2 frame", () => {
     const parsed = parseHarnessQuery(
       "?widget=input-telemetry&system=vantare-crystal&design=input-crystal-blade",
     );
@@ -106,7 +240,7 @@ describe("OverlayParityHarness", () => {
     expect(document.querySelector(".vc-input-graph path")?.getAttribute("d")).toContain("L");
   });
 
-  it.each(HARNESS_WIDGETS)(
+  it.each(ALL_WIDGET_TYPES)(
     "keeps %s runtime markup identical while Studio may label an explicit preview",
     (widget) => {
       const surfaces = ["studio", "desktop", "obs"] as const;
@@ -135,22 +269,8 @@ describe("OverlayParityHarness", () => {
     },
   );
 
-  it.each(HARNESS_WIDGETS)("serializes stable view models for %s", (widget) => {
-    const built = buildHarnessWidget(widget, "vantare-original");
-    const snapshot = buildHarnessTelemetry({
-      session: "race",
-      location: "track",
-      state: "ready",
-      widget,
-    });
-    const modelA = JSON.stringify(buildHarnessViewModel(built, snapshot));
-    const modelB = JSON.stringify(buildHarnessViewModel(built, snapshot));
-    expect(modelA).toBe(modelB);
-    expect(modelA).toContain(`"type":"${widget}"`);
-  });
-
-  it("renders all four widgets in stale/disconnected/error states", () => {
-    for (const widget of HARNESS_WIDGETS) {
+  it("renders all widgets in stale/disconnected/error states", () => {
+    for (const widget of ALL_WIDGET_TYPES) {
       for (const state of ["stale", "disconnected", "error"] as const) {
         cleanup();
         const parsed = parseHarnessQuery(`?widget=${widget}&state=${state}&surface=obs`);

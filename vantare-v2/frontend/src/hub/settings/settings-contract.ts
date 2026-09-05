@@ -77,8 +77,6 @@ export type PerformanceSettings = {
 export type AppSettings = {
   cpuSampling: boolean;
   performance: PerformanceSettings;
-  /** Diagnostic rollback. Takes effect after restarting the app. */
-  overlayV1Emit?: boolean;
   notifications?: NotificationSettings;
   hotkeys: Record<string, string>;
   activeOverlayProfileId?: string;
@@ -91,7 +89,6 @@ export type AppSettings = {
 export const DEFAULT_APP_SETTINGS: AppSettings = {
   cpuSampling: true,
   performance: { mode: "auto", level: 3, source: "default" },
-  overlayV1Emit: false,
   notifications: {},
   hotkeys: {
     toggleOverlay: "ctrl+shift+v",

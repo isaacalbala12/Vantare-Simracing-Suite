@@ -17,6 +17,12 @@ export const OVERLAY_V2_STATUS_EVENT = "telemetry:overlay-v2:status";
 export const OVERLAY_V2_SNAPSHOT_REQUEST_EVENT = `${OVERLAY_V2_SNAPSHOT_EVENT}:get`;
 export const OVERLAY_V2_PROJECTION_ROUTE = "/telemetry/overlay-v2/projection";
 
+// Límite duro de seguridad del producto overlay-v2 (ISA-894 A3, aprobado
+// 2026-09-04): sincronizado con OverlayV2MaxPayloadBytes del Publisher Go.
+// 64 KiB sigue siendo el objetivo de rendimiento representativo; el
+// transporte general conserva sus 256 KiB en telemetry-transport/contracts.
+export const OVERLAY_V2_MAX_PAYLOAD_BYTES = 72 * 1024;
+
 export type OverlayFrameV2State = Readonly<{
   revision: number;
   /** Revision of the last decoded snapshot, unchanged by status/watchdog republishes. */
@@ -132,6 +138,14 @@ export function createOverlayFrameV2Store(
       }
       if (name === OVERLAY_V2_STATUS_EVENT && update.frame !== null) {
         throw new OverlayFrameV2ContractError("frame");
+      }
+      if (
+        update.frame && state.frame &&
+        update.frame.epoch === state.frame.epoch &&
+        update.frame.sessionId === state.frame.sessionId &&
+        update.frame.sequence <= state.frame.sequence
+      ) {
+        throw new OverlayFrameV2ContractError("sequence");
       }
       // The 512-sample ring already rotates per sample, but its percentiles
       // must not mix two runs: a new epoch or session id starts a fresh window.
@@ -278,7 +292,7 @@ function sourceStatus(value: unknown, path: string): void {
 function frame(value: unknown, path: string): void {
   objectWithKeys(value, path, [
     "contract", "algorithm", "epoch", "sequence", "sectionMask", "sessionId", "generatedAt", "units",
-    "session", "player", "controls", "standings", "relative", "delta", "fuel", "spotter", "capabilities", "damage", "weather",
+    "session", "player", "controls", "standings", "relative", "relativeSettled", "delta", "fuel", "spotter", "capabilities", "damage", "weather",
   ]);
   if (value.contract !== 2) invalid(`${path}.contract`);
   positiveInteger(value.algorithm, `${path}.algorithm`);
@@ -295,7 +309,8 @@ function frame(value: unknown, path: string): void {
   player(value.player, `${path}.player`);
   controls(value.controls, `${path}.controls`);
   rowArray(value.standings, `${path}.standings`, validStanding);
-  rowArray(value.relative, `${path}.relative`, validRelative);
+  relativeRowArray(value.relative, `${path}.relative`);
+  relativeRowArray(value.relativeSettled, `${path}.relativeSettled`);
   delta(value.delta, `${path}.delta`);
   fuel(value.fuel, `${path}.fuel`);
   spotter(value.spotter, `${path}.spotter`);
@@ -334,16 +349,17 @@ function player(value: unknown, path: string): void {
 }
 
 /**
- * The controls history is three parallel per-mille arrays. They must have the
- * same length: a frame whose pedals disagree on how many samples exist is
- * malformed, not partially usable.
+ * The controls history is seven parallel arrays: three per-mille pedal
+ * series, one absolute capture instant per sample and three quality-bearing
+ * motion series. Every present array must have the same length: a frame whose
+ * series disagree on how many samples exist is malformed, not partially
+ * usable.
  */
 function controls(value: unknown, path: string): void {
   objectWithKeys(value, path, ["history"]);
   const history = value.history;
-  objectWithKeys(history, `${path}.history`, ["q"], ["windowMs", "throttle", "brake", "clutch"]);
+  objectWithKeys(history, `${path}.history`, ["q"], ["capturedAtMS", "throttle", "brake", "clutch", "speedMPS", "rpm", "gear"]);
   quality(history.q, `${path}.history.q`);
-  optionalNonNegativeInteger(history.windowMs, `${path}.history.windowMs`);
   let length: number | undefined;
   for (const key of ["throttle", "brake", "clutch"] as const) {
     const series = history[key];
@@ -352,7 +368,36 @@ function controls(value: unknown, path: string): void {
     if (length !== undefined && series.length !== length) invalid(`${path}.history.${key}`);
     length = series.length;
   }
+  const instants = history.capturedAtMS;
+  if (instants !== undefined) {
+    instantSeries(instants, `${path}.history.capturedAtMS`);
+    if (length !== undefined && instants.length !== length) invalid(`${path}.history.capturedAtMS`);
+    length = instants.length;
+  }
+  for (const key of ["speedMPS", "rpm", "gear"] as const) {
+    const series = history[key];
+    if (series === undefined) continue;
+    qvalueSeries(series, `${path}.history.${key}`);
+    if (length !== undefined && series.length !== length) invalid(`${path}.history.${key}`);
+    length = series.length;
+  }
   Object.freeze(history);
+  Object.freeze(value);
+}
+
+function instantSeries(value: unknown, path: string): asserts value is readonly number[] {
+  if (!Array.isArray(value) || value.length > 120) invalid(path);
+  for (const entry of value) {
+    if (!Number.isSafeInteger(entry) || (entry as number) < 0) invalid(path);
+  }
+  Object.freeze(value);
+}
+
+function qvalueSeries(value: unknown, path: string): asserts value is readonly OverlayQValue<unknown>[] {
+  if (!Array.isArray(value) || value.length > 120) invalid(path);
+  for (const entry of value) {
+    if (!validQValue(entry, "number")) invalid(path);
+  }
   Object.freeze(value);
 }
 
@@ -365,10 +410,10 @@ function perMilleSeries(value: unknown, path: string): asserts value is readonly
 }
 
 function validStanding(value: unknown): boolean {
-  if (!objectHasKeys(value, ["id", "position", "classPosition", "gap", "lastLap", "lapDistance", "groundPosition"], ["classId", "driver", "number", "gapLaps", "pit", "laps"])) return false;
+  if (!objectHasKeys(value, ["id", "position", "classPosition", "gap", "bestLap", "lastLap", "lapDistance", "groundPosition"], ["classId", "driver", "number", "gapLaps", "pit", "laps"])) return false;
   const valid = typeof value.id === "string" && value.id.length > 0 &&
     Number.isSafeInteger(value.position) && Number.isSafeInteger(value.classPosition) &&
-    validQValue(value.gap, "number") && validQValue(value.lastLap, "number") &&
+    validQValue(value.gap, "number") && validQValue(value.bestLap, "number") && validQValue(value.lastLap, "number") &&
     validQValue(value.lapDistance, "number") && validGroundPosition(value.groundPosition) &&
     [value.classId, value.driver, value.number, value.pit].every(optionalStringValue) &&
     [value.gapLaps, value.laps].every(optionalIntegerValue);
@@ -424,9 +469,11 @@ function weather(value: unknown, path: string): void {
 }
 
 function validRelative(value: unknown): boolean {
-  if (!objectHasKeys(value, ["id", "gap", "side", "authority"], ["name", "classId"])) return false;
+  if (!objectHasKeys(value, ["id", "position", "gap", "groundPosition", "lastLap", "side", "authority"], ["name", "classId"])) return false;
   const valid = typeof value.id === "string" && value.id.length > 0 &&
-    validQValue(value.gap, "number") && typeof value.side === "string" && value.side.length > 0 &&
+    typeof value.position === "number" && Number.isSafeInteger(value.position) && value.position > 0 &&
+    validQValue(value.gap, "number") && validGroundPosition(value.groundPosition) &&
+    validQValue(value.lastLap, "number") && ["ahead", "player", "behind"].includes(value.side as string) &&
     ["native", "derived", "estimated"].includes(value.authority as string) &&
     optionalStringValue(value.name) && optionalStringValue(value.classId);
   if (valid) Object.freeze(value);
@@ -434,20 +481,70 @@ function validRelative(value: unknown): boolean {
 }
 
 function delta(value: unknown, path: string): void {
-  objectWithKeys(value, path, ["seconds", "available"], ["reference", "requested", "trend", "authority"]);
+  objectWithKeys(value, path, ["seconds", "available", "history"], ["reference", "requested", "trend", "authority"]);
   qvalue(value.seconds, `${path}.seconds`, "number");
   array(value.available, `${path}.available`, nonEmptyString);
   for (const key of ["reference", "requested", "trend"] as const) optionalString(value[key], `${path}.${key}`);
   if (value.authority !== undefined) enumValue<OverlayAuthorityV2>(value.authority, `${path}.authority`, ["native", "derived", "estimated"]);
+  deltaHistory(value.history, `${path}.history`);
+  Object.freeze(value);
+}
+
+// Serie de delta del jugador: un instante Unix absoluto más una cifra de
+// segundos por muestra, siempre alineadas, tope 120, sin sentinels.
+function deltaHistory(value: unknown, path: string): void {
+  objectWithKeys(value, path, ["q"], ["capturedAtMS", "seconds"]);
+  quality(value.q, `${path}.q`);
+  const instants = value.capturedAtMS;
+  const seconds = value.seconds;
+  if (instants === undefined && seconds === undefined) {
+    Object.freeze(value);
+    return;
+  }
+  if (!Array.isArray(instants) || !Array.isArray(seconds)) invalid(path);
+  if (instants.length !== seconds.length || instants.length > 120) invalid(path);
+  instantSeries(instants, `${path}.capturedAtMS`);
+  for (const entry of seconds) {
+    if (typeof entry !== "number" || !Number.isFinite(entry)) invalid(`${path}.seconds`);
+  }
+  Object.freeze(seconds);
   Object.freeze(value);
 }
 
 function fuel(value: unknown, path: string): void {
-  objectWithKeys(value, path, ["remaining", "capacity", "perLap", "estimatedLaps"], ["basis"]);
-  for (const key of ["remaining", "capacity", "perLap", "estimatedLaps"] as const) qvalue(value[key], `${path}.${key}`, "number");
+  objectWithKeys(value, path, ["remaining", "capacity", "perLap", "estimatedLaps", "sessionLaps", "requiredFuel", "history"], ["basis"]);
+  for (const key of ["remaining", "capacity", "perLap", "estimatedLaps", "sessionLaps", "requiredFuel"] as const) qvalue(value[key], `${path}.${key}`, "number");
   // `basis` names the arithmetic behind `estimatedLaps`; Go elides it when
   // neither projection produced a value.
   if (value.basis !== undefined) enumValue(value.basis, `${path}.basis`, ["fuel", "session"]);
+  fuelHistory(value.history, `${path}.history`);
+  Object.freeze(value);
+}
+
+// Serie de consumo por vuelta del jugador: un número de vuelta más una
+// cifra de consumo por muestra, siempre alineadas, tope 64, sin sentinels.
+function fuelHistory(value: unknown, path: string): void {
+  objectWithKeys(value, path, ["q"], ["lap", "consumed"]);
+  quality(value.q, `${path}.q`);
+  let length: number | undefined;
+  const lap = value.lap;
+  if (lap !== undefined) {
+    if (!Array.isArray(lap) || lap.length > 64) invalid(`${path}.lap`);
+    for (const entry of lap) {
+      if (!Number.isSafeInteger(entry)) invalid(`${path}.lap`);
+    }
+    length = lap.length;
+    Object.freeze(lap);
+  }
+  const consumed = value.consumed;
+  if (consumed !== undefined) {
+    if (!Array.isArray(consumed) || consumed.length > 64) invalid(`${path}.consumed`);
+    for (const entry of consumed) {
+      if (typeof entry !== "number" || !Number.isFinite(entry)) invalid(`${path}.consumed`);
+    }
+    if (length !== undefined && consumed.length !== length) invalid(`${path}.consumed`);
+    Object.freeze(consumed);
+  }
   Object.freeze(value);
 }
 
@@ -522,7 +619,7 @@ type JSONObject = Record<string, unknown>;
 function cloneJSONInput(input: unknown): JSONObject {
   try {
     const text = typeof input === "string" ? input : JSON.stringify(input);
-    if (new TextEncoder().encode(text).byteLength > 64 * 1024) invalid("size");
+    if (new TextEncoder().encode(text).byteLength > OVERLAY_V2_MAX_PAYLOAD_BYTES) invalid("size");
     const value = JSON.parse(text) as unknown;
     if (!plainObject(value)) invalid("update");
     return value;
@@ -558,6 +655,21 @@ function rowArray(value: unknown, path: string, validate: (value: unknown) => bo
     if (!validate(value[index])) invalid(`${path}[${index}]`);
   }
   Object.freeze(value);
+}
+
+function relativeRowArray(value: unknown, path: string): void {
+  if (!Array.isArray(value) || value.length > 17) invalid(path);
+  rowArray(value, path, validRelative);
+  if (value.length === 0) return;
+  const rows = value as readonly JSONObject[];
+  const playerIndex = rows.findIndex((row) => row.side === "player");
+  const playerCount = rows.filter((row) => row.side === "player").length;
+  if (
+    playerCount !== 1 || playerIndex > 8 || rows.length - playerIndex - 1 > 8 ||
+    rows.slice(0, playerIndex).some((row) => row.side !== "ahead") ||
+    rows.slice(playerIndex + 1).some((row) => row.side !== "behind") ||
+    new Set(rows.map((row) => row.id)).size !== rows.length
+  ) invalid(path);
 }
 
 function record(value: unknown, path: string, validate: (value: unknown, path: string) => void): void {

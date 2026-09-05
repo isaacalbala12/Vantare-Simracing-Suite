@@ -1,9 +1,10 @@
 import { cleanup, render } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
-import { buildMockTelemetry } from "../core/mock-scenarios";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { createTelemetryRateCoordinator as createBaseTelemetryRateCoordinator } from "../core/telemetry-rate-coordinator";
 import { deltaDefinition } from "../widget-types/delta/delta-definition";
 import { standingsDefinition } from "../widget-types/standings/standings-definition";
+import { relativeDefinition } from "../widget-types/relative/relative-definition";
+import * as relativeV2 from "../widget-types/relative/relative-view-model-v2";
 import { RuntimeWidgetFrame } from "./RuntimeWidgetFrame";
 import goldenV2Raw from "../../../../internal/telemetry/projection/overlayv2/testdata/overlay_v2_1.golden.json?raw";
 import type { OverlayUpdateV2 } from "../../generated/telemetry";
@@ -20,7 +21,6 @@ afterEach(() => cleanup());
 describe("RuntimeWidgetFrame", () => {
   it("positions the frame using layout geometry and layout origin", () => {
     const coordinator = createTelemetryRateCoordinator();
-    coordinator.publish(buildMockTelemetry({ session: "race", location: "track", state: "ready" }));
 
     const widget = deltaDefinition.createDefault("delta-frame");
     widget.layout = { x: 120, y: 80, w: 280, h: 96, zIndex: 3, aspectLocked: true };
@@ -28,6 +28,7 @@ describe("RuntimeWidgetFrame", () => {
     const view = render(
       <RuntimeWidgetFrame
         widget={widget}
+        profileId="profile-test"
         telemetry={coordinator}
         renderMode="desktop"
         layoutOrigin={{ x: 20, y: 10 }}
@@ -46,14 +47,29 @@ describe("RuntimeWidgetFrame", () => {
 
   it("uses the supplied render mode for WidgetVisualHost", () => {
     const coordinator = createTelemetryRateCoordinator();
-    coordinator.publish(buildMockTelemetry({ session: "race", location: "track", state: "ready" }));
 
     const widget = deltaDefinition.createDefault("delta-obs");
     const view = render(
-      <RuntimeWidgetFrame widget={widget} telemetry={coordinator} renderMode="obs" />,
+      <RuntimeWidgetFrame widget={widget} profileId="profile-test" telemetry={coordinator} renderMode="obs" />,
     );
     expect(view.getByTestId("runtime-widget-frame")).toBeTruthy();
     expect(view.container.querySelector('[data-widget-system="vantare-original"]')).toBeTruthy();
+    coordinator.dispose();
+  });
+
+  it("delimita Relative con la identidad logica perfil y widget", () => {
+    const coordinator = createTelemetryRateCoordinator();
+    const widget = relativeDefinition.createDefault("relative-runtime");
+    const spy = vi.spyOn(relativeV2, "buildRelativeViewModelV2");
+    const view = render(
+      <RuntimeWidgetFrame widget={widget} profileId="profile-a" telemetry={coordinator} renderMode="desktop" />,
+    );
+    expect(spy.mock.calls.at(-1)?.[3]?.instanceKey).toBe("profile-a:relative-runtime");
+
+    view.rerender(
+      <RuntimeWidgetFrame widget={{ ...widget }} profileId="profile-b" telemetry={coordinator} renderMode="desktop" />,
+    );
+    expect(spy.mock.calls.at(-1)?.[3]?.instanceKey).toBe("profile-b:relative-runtime");
     coordinator.dispose();
   });
 
@@ -63,7 +79,7 @@ describe("RuntimeWidgetFrame", () => {
     widget.layout = { ...widget.layout, w: 560, h: 192 };
 
     const view = render(
-      <RuntimeWidgetFrame widget={widget} telemetry={coordinator} renderMode="desktop" />,
+      <RuntimeWidgetFrame widget={widget} profileId="profile-test" telemetry={coordinator} renderMode="desktop" />,
     );
 
     const viewport = view.getByTestId("runtime-widget-viewport-delta-scaled") as HTMLElement;
@@ -84,7 +100,7 @@ describe("RuntimeWidgetFrame", () => {
     };
 
     const view = render(
-      <RuntimeWidgetFrame widget={widget} telemetry={coordinator} renderMode="desktop" />,
+      <RuntimeWidgetFrame widget={widget} profileId="profile-test" telemetry={coordinator} renderMode="desktop" />,
     );
 
     const viewport = view.getByTestId("runtime-widget-viewport-standings-redline-wide");

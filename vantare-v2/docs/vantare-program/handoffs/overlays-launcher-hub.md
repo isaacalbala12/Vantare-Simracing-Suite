@@ -16,6 +16,17 @@ escrita antes del cambio (11 tests), benchmark BASE/HEAD de 44 coches/Le Mans,
 [ISA-979](../../analysis/isa-979-track-outline.md). Rollback: revert del PR completo.
 Sin merge, promoción ni release; Windows runtime no ejecutado.
 
+## Replanificación vigente — 2026-09-03, ISA-962
+
+Isaac sustituye la secuencia «primero Redline → A–J» por el
+[maestro de Telemetría V2](../../superpowers/specs/2026-09-03-telemetria-v2-plan-maestro.md).
+Su única continuidad operativa está en [Telemetry Core](telemetry-core.md).
+Este handoff conserva el expediente visual; no dirige otra cola paralela.
+S3 FINAL PASS permanece acotado al candidato y evidencia indicados abajo;
+S4/S5/S2 no se consideran ejecutadas ni se reanudan automáticamente. Isaac
+asume las pruebas manuales del juego. Los «siguientes pasos» inferiores quedan
+superados cuando contradigan esta decisión. Sin lanzamiento ni comprobación
+física nueva, retirada V1, merge o release en este corte documental.
 
 ## Autoridad y lectura
 
@@ -26,6 +37,479 @@ Sin merge, promoción ni release; Windows runtime no ejecutado.
 - Hub: código actual y characterization; los roadmaps históricos no son spec.
 
 ## Estado
+
+- **S3 cerrado, 2026-09-03:** el mismo EXE R-FIX4 desde
+  `4864b5c6`, SHA `cb69a4d5…878faba`, muestra Pedals sobre LMU con freno real
+  al 100%, contenido y sin halo/recorte. Captura aislada posterior al 46% y
+  muestra DOM anterior al 34% durante liberación: no son simultáneas y no
+  acreditan una duración exacta ni una curva calibrada. Licencia activa y V2
+  live/playerPit track confirmados mediante salidas sanitizadas. Main abre
+  ambas imágenes; Muse independiente `ses_f988a07a7ffeg8yy6dsIV2igLF`:
+  CUMPLE acotado. Atéstación existente, sin cambios, verifica tres seals,
+  cinco perfiles y diez PNG/checker y devuelve **S3 FINAL PASS**, exit 0.
+  Resultado `C:\tmp\vantare-s3-gate\results\s3-final-attestation-rfix4-20260903.json`;
+  prueba activa suplementaria en `pedals-active-rfix4-20260903/`, fuera de las
+  corridas selladas originales. Detalles y hashes en el checkpoint R-FIX4.
+  Proceso 15040 cerrado por CLI antes de cinco minutos y ausencia confirmada;
+  LMU permanece abierto. CI `33761361312` de `c13b8888`: tres SUCCESS.
+  PR #969 continúa draft, sin merge/promoción/release. **Siguiente: S4
+  reconexión → S5 reapertura → S2 tráfico último**, cada comprobación ≤5 min.
+  S3 no certifica por sí solo toda V2, memoria, rendimiento global ni retiro
+  de V1. No Delta, vueltas, soaks ni automatizaciones.
+
+- **Checkpoint físico R-FIX4, 2026-09-03 15:34 Madrid:** arreglo Go incorporado
+  en la rama candidata como `4864b5c6`; `c13b8888` añade sólo documentación.
+  Ambos publicados en PR #969 draft. Build de medida con licencia desde
+  `4864b5c6`, exe SHA-256
+  `cb69a4d56ca7cb59078cb7bd7e223b33c34aa927ec808c2e49154386b878faba`;
+  build frontend y Go exit 0, configuración consumida por el procedimiento
+  autorizado sin leer/imprimir secretos. Índice S3 `63b71810…084ddcc`.
+  Mismo candidato/índice: Relative 128.0 s, Standings 27.9 s, Pedals 26.5 s.
+  Todos los captures automáticos completos; main abre diez PNG/checker y
+  reviewer Muse `ses_f988a07a7ffeg8yy6dsIV2igLF` revisa los diez sin hallazgos
+  concretos de clipping/alpha/ghost. Mirror dos cambios (7.675 s entre ellos),
+  Proximity tres (8.027/7.676 s), Traffic dos (8.444 s), cada uno con 119
+  muestras/20.587 s, sin intervalos rápidos ni solape Traffic.
+  Prueba pasiva adicional, mismo exe y jugador en pista, 25 muestras/25.013 s
+  live, secuencias 809–2356: diez firmas canónicas y tres settled. Dos cambios
+  observados separados 7.067 s: ya no hay congelación indefinida observada.
+  El muestreo 1 Hz NO demuestra paridad exacta en cada publicación (un cambio
+  ya difiere del canonical al muestrearlo). Tests y lectura del algoritmo
+  cubren el criterio latest; no confundir esa prueba con observación física.
+  Primer intento pasivo terminó por cierre entre perfiles/ECONNRESET y no
+  cuenta como evidencia. La corrida independiente sí es válida.
+  Nativa Relative sobre LMU conservada; intento nativo adicional de Pedals
+  no mostró el overlay y no se acredita. Su evidencia anterior de composición
+  sólo cubre reposo; las nuevas cuatro imágenes de Standings/Pedals tampoco
+  acreditan entrada/saturación real. **S3 sigue sin FINAL PASS por Pedals
+  activo no observado.** No se ejecutaron S4/S5/S2 ni atestación final.
+  El proceso de la lectura independiente recibió cierre limpio tras menos
+  de dos minutos; LMU permanece abierto. CI final de `c13b8888` en curso,
+  run `33761361312`. Sin merge, promoción, release ni automatizaciones.
+  Detalle/seals: `C:\tmp\vantare-s3-gate\results\rfix4-checkpoint-20260903.md`.
+
+- **Entrega local R-FIX4, 2026-09-03 15:20 Madrid:** commit worker
+  `e72fbfcf055817c4bb19231da9b4f811a7665f9f`, dos archivos Go, todavía sin
+  integrar. El test nuevo falla antes del arreglo; worker acredita 11 focales
+  PASS. Main lee el diff completo y ejecuta todo el paquete `overlayv2` sin
+  filtro: PASS (0.107 s). `go test ./...` completo termina con exit 0 en el worktree aislado,
+  reutilizando `frontend/dist` verificado tras comprobar que no cambió ningún
+  fuente frontend. Review de cumplimiento independiente
+  `ses_f9892509dffeyF6bi3BtFQSWFX`, snapshot aislado
+  `C:\tmp\vantare-redline-rfix4-review`: APPROVE. Calidad independiente
+  `ses_f988e13f6ffeCPZCM24BuOUoLU`: APPROVE, sin bloqueantes reproducibles.
+  La prueba física de la nueva build sigue pendiente. No atribuir al EXE
+  `6fc3c506` el arreglo Go. Otro Muse `ses_f988d7b2dffeQ2aCUTv69R4DPO`
+  prepara en paralelo las acciones existentes S4/S5/S2, sólo lectura y sin PC;
+  su ejecución sigue condicionada al S3 completo.
+  El fallo afecta las cinco filas visibles: 14 firmas canónicas frente a una
+  publicada. La revisión visual confirmó los seis PNG Relative del catálogo
+  corregido; retiró dos alertas no reproducibles (línea decorativa Traffic y
+  glow Proximity no eran texto cortado ni ghosts). No se añaden arreglos por
+  esos estilos. La rama del PR #969 está publicada en `9fa5863d`, con catálogo
+  y checkpoints; CI de ese SHA está en curso. Sin merge ni promoción.
+
+- **R-FIX4 confirmado, 2026-09-03:** revisión paralela encuentra hambre de
+  actualización de vecinos en el productor Go: evidencia real de 25 muestras
+  live/24.241 s, secuencias 6817–8365, `relative` con 21 firmas frente a una
+  sola `relativeSettled`. `relative_settler.go` reinicia `pendingSince` cuando
+  cambia cualquier miembro/orden; el tráfico continuo puede congelar la
+  pertenencia aunque se actualicen valores. No es PASS de estabilidad.
+  Fuente sanitizada `C:\tmp\vantare-s3-gate\results\relative-canonical-20260903.json`.
+  Microcorte de dos archivos Go bajo ISA-962, base `bdd26eec`, worktree
+  `C:\tmp\vantare-redline-relative-rfix4`, rama
+  `vantareapp/isa-962-redline-relative-rfix4`. Muse implementador
+  `ses_f98997f66ffedm6RZmr55OC96n`; Muse revisor de riesgos independiente
+  `ses_f98ae9cd8ffeiBBObbendSddjP`, sin escrituras ni PC. Primero RED de
+  tráfico continuo; acotar la espera sin subir el hold, introducir otro
+  buffer ni alterar autoridad V2. Main revisa e integra sólo tras reviews.
+  Las capturas estáticas S3 conservan valor para geometría/alpha pero no
+  cierran S3 dinámico. Pedals nativo sobre LMU acreditado en reposo; entrada
+  real/saturación no observada. Observación física cerrada en menos de cuatro
+  minutos y proceso de prueba terminado; LMU permanece abierto.
+  R4/R5/R6 aún no ejecutados; no se repiten vueltas ni Delta.
+
+- **Paralelización y checkpoint 2026-09-03:** por petición de Isaac, las
+  revisiones independientes de código y capturas avanzan en paralelo con el
+  único operador físico. No se espera el cierre de una familia para preparar
+  otra; S4/S5/S2 siguen dependiendo del S3 completo. Solo Muse Spark 1.3
+  Contributor/OpenCode/xhigh; sin tareas programadas ni delegación anidada.
+  R-FIX3 `e209cf18` tiene compliance y calidad APPROVE, regresión Node 3/3 y se
+  incorporó en la rama aislada candidata como `bdd26eec`. Solo catálogo/test:
+  el EXE sigue siendo build `6fc3c506`, SHA `20db565c…`; no recompilado.
+  El índice corregido `9406adf9…` declara las once columnas de Standings.
+  Las cinco presentaciones tienen captura automática completa con ese mismo
+  índice: Standings 24.2 s, Relative 125.0 s y Pedals 24.9 s. Standings prueba
+  826x900/20 filas/11 métricas y Practice sin ganancias/pérdidas. Diez imágenes
+  abiertas por el orquestador; revisión visual Muse separada. No es S3 PASS:
+  Relative conserva la misma pertenencia durante las ventanas observadas y se
+  contrasta con `relative`/`relativeSettled` canónicos; Pedals solo acredita
+  reposo y composición nativa sobre LMU. Entrada/saturación aún no observada.
+  Evidencia y tres seals independientes en
+  `C:\tmp\vantare-s3-gate\results\s3-checkpoint-20260903.md`.
+  Los intentos previos se conservan intactos. CI SUCCESS corresponde a
+  `6fc3c506`, no se atribuye a `bdd26eec` antes de su nueva ejecución remota.
+  Calendar ajeno preservado; sin merge/release ni retirada V1.
+
+- **Actualización operativa 2026-09-03 — R3a y modelo único:** Isaac confirma
+  jugador preparado. Se observa LMU en cockpit junto a pista con tráfico; no
+  se completan vueltas. PR #969 conserva candidato `6fc3c506` y los tres checks
+  obligatorios SUCCESS. Automatización de cinco minutos sigue eliminada.
+  Todos los subagentes nuevos usan exclusivamente Muse Spark 1.3 Contributor
+  mediante OpenCode (`opencode-go/muse-spark-1.3-contributor`, `xhigh`).
+  Revisor solo lectura `ses_f98ae9cd8ffeiBBObbendSddjP` en snapshot aislado
+  `C:\tmp\vantare-redline-r4-review`; sin control del PC ni builds paralelos.
+  R3a ejecutado con el EXE congelado: licencia activa, renderer Standings Redline,
+  V2 live y secuencias 378/412/444. La sonda falla: frame 430x900 y cinco columnas
+  frente a 826x900/once exigidos. El perfil materializado no declara `columns`;
+  el parser usa las cinco predeterminadas. Se abre R-FIX3 de catálogo/regresión
+  bajo ISA-962; no se atribuye todavía a clipping del renderer. Captura con cero
+  recortes detectados, exterior alpha y cero ganadas/perdidas en Practice.
+  Evidencia local inmutable:
+  `C:\tmp\vantare-s3-gate\results\runs\standings-20260903-144839-164-54201101`.
+  Es un intento fallido, no PASS S3. No modificar esa evidencia ni bajar la
+  expectativa a 430. R3b–R7 pendientes; candidato de producto sin cambios,
+  calendar ajeno preservado, sin merge/release ni retirada V1.
+
+- **Actualización operativa 2026-09-02, candidata congelada `6fc3c506`:**
+  se eliminó con la herramienta oficial la automatización
+  `continuar-cierre-redline-isa-962`, a petición de Isaac; ya no existe su
+  `automation.toml`. La ejecución continúa en la tarea activa, sin heartbeat.
+  Luna `01a06324-7706-7a81-ba29-c5ec83326284` verificó en lectura los hashes
+  EXE/dist/índice y los cinco perfiles del manifiesto
+  `C:\tmp\vantare-s3-gate\results\r2-preflight-20260902-6fc3c506.json`: PASS.
+  No demuestra licencia activa ni física. Worker cerrado. Terra
+  `01a06324-77da-7740-a1b5-9f5c0e999fc1` entregó la receta S4/S5 en lectura,
+  sin controlar el PC ni modificar producto, en snapshot aislado
+  `C:\tmp\vantare-redline-r4-review`; worker cerrado. S4 debe observar pérdida
+  y recuperación real de la fuente, no inyectar datos ni usar `sesion-v1.ps1`.
+  S5 reutiliza controles de overlay/CDP y apertura normal Studio/OBS. Las
+  recetas no son evidencia física ni prueba de los plazos. El orquestador
+  sigue como único operador y debe verificar renderer con la sonda específica.
+  CI `33660140203` terminó SUCCESS sobre `6fc3c506`: promoción, Go, frontend,
+  lint cambiado, Testing Center y build Wails PASS; anotación de lint global
+  advisory ajena separada del gate obligatorio. R2, primer intento 17:30 UTC:
+  EXE verificado PID19568, ventana8849048 coincidente con Computer Use;
+  HTTP29222 del mismo PID y CDP9222 del hijo WebView16808. Captura sanitizada
+  `r2-6fc3c506-license-attempt-1.json`: active/configured/authenticated/deviceOK.
+  LMU PID4880/ventana1509852 corresponden también a la pantalla controlada;
+  preflight técnico R2 PASS en el primer intento. Evidencia adicional
+  `C:\tmp\vantare-s3-gate\results\r2-6fc3c506-runtime.json`.
+  Jugador en pista y cinco presentaciones S3 siguen pendientes.
+  Preparación física posterior: Spa práctica con el coche del jugador #17;
+  dos entradas observadas desde Start Driving al cockpit y retorno posterior
+  a la pantalla de boxes, sin acreditar salida a pista. Se detienen intentos.
+  Luna `01a0632f-a4e8-7802-936f-47d1784f75cb` identificó en lectura
+  `UserData/player/keyboard.json` (custom activo): acelerador17, freno31,
+  subir marcha16, limitador38; AI Control no figura. El orquestador contrastó
+  con `dinput.h` del SDK local: W/S/Q/L. No se editaron controles ni se
+  atribuye el problema a RawInput. Worker cerrado. R3–R6 BLOQUEADOS a la
+  espera de jugador fuera de boxes; requieren intervención puntual de Isaac.
+  CI/licencia/preflight no se repiten por este bloqueo. No hay PASS S3, merge,
+  release ni retirada V1. La siguiente acción es colocar el coche en pista
+  y ejecutar el banco preparado con la misma build, respetando cinco minutos.
+  La pantalla BetaWelcome dice Plan Free mediante texto literal, no se usa
+  para sustituir el contrato de licencia. Ninguna captura S3 se declara PASS.
+  Esta actualización documental se prepara en rama aislada
+  `vantareapp/isa-962-redline-coordination` para conservar la candidata física
+  inmutable; se incorporará al mismo handoff al cerrar el checkpoint.
+
+- **Prioridad operativa 2026-09-02 — cerrar Redline primero (ISA-962):**
+  [maestro integral y microcortes](../../superpowers/specs/2026-09-02-huella-minima-plan-maestro.md),
+  con [subplan A Redline](../../superpowers/specs/2026-09-02-redline-plan-maestro.md).
+  Isaac aclara que quiere planificar TODO el compromiso original: el maestro
+  B–J cubre banco, atribución y recortes de memoria/CPU/GPU, UI Hub, efectos
+  Redline, Coste e informe, niveles/Automático, HUD swap, composición y V1.
+  Maestro aprobado por Isaac para iniciar. Modelos: Luna para mecánico, Terra
+  para la mayoría, Sol para hipercomplejo; fast/priority. Isaac ha
+  autorizado integrar el candidato en `nightly` una vez superados sus gates;
+  no releases, otros canales ni retirada irreversible V1. PR #969 sigue draft.
+  Primero reparar el entorno Chromium de CI; después S3 de las cinco
+  presentaciones Redline, S4/S5 limitados a su regresión y S2 último, con jugador
+  en pista, sin vueltas/Delta y máximo cinco minutos por comprobación.
+  Memoria #956 y optimizaciones globales quedan secuenciadas después de Redline,
+  no descartadas ni sin plan. R1 iniciado con worker Luna nativo
+  `01a062d5-4dda-7ba3-bc0a-48f763e333a2` (Nietzsche), worktree
+  `C:\tmp\vantare-redline-ci-r1`, rama `vantareapp/isa-962-redline-ci-r1`, base
+  `66ead80f`. Alcance: instalación Chromium anterior a Vitest y regresión de CI;
+  sin renderer/LMU. T3 en 3773 no responde; Codex nativo hereda configuración
+  `service_tier=priority`. Tras entrega: Terra para review de contrato y calidad.
+  Luna entregó `e03ff363` (dos archivos, 25 líneas): instalación obligatoria de
+  Chromium antes de Vitest y regresión. RED previo; 45 tests Python y parser
+  YAML PASS. Terra `01a062d8-416b-7eb3-9822-1bac4967413e` revisó el diff y
+  verificó cumplimiento: APPROVE. Terra de calidad
+  `01a062da-1617-7c62-874f-301a3e29440a`: APPROVE sin hallazgos. El orquestador
+  inspeccionó el diff y repitió los 45 tests. Integración en rama candidata;
+  aún pendiente el CI remoto de ese cambio, no merge a nightly.
+  Durante preflight estático apareció R-FIX1: el materializador del catálogo
+  copiaba ancho persistido 280 a la expectativa física de Standings, aunque
+  el contrato exige normalizarlo a 826. Worker Luna
+  `01a062d9-d42d-7451-96ab-ea6ce0caa25f`, worktree
+  `C:\tmp\vantare-redline-gate-frame`, base `e03ff363`, sólo catálogo/materializador/
+  test. Debe preservar el perfil 280; no cambiar renderer ni derivar la
+  expectativa de la medición observada. Entrega `aaa9a491`: test RED (1 PASS /
+  1 FAIL), GREEN 2/2, syntax/diff-check PASS. Terra de cumplimiento
+  `01a062dc-52b2-7941-bab3-93635c8971fa`: APPROVE y 2/2 verificados;
+  Terra de calidad `01a062de-1a30-7c32-adb2-49b202eea34c`: APPROVE sin
+  hallazgos. Integrado en candidata; el orquestador repitió los 2/2 tests.
+  El conjunto R1/R-FIX1 no cambia runtime. No se ha iniciado prueba física.
+  CI previo `33651244585` sobre `66ead80f` terminó FAIL antes de Vitest:
+  `TestCoordinatorWithSQLiteDrainsAndReleasesAllHandles`, `store_test.go:801`,
+  `recording commit exceeded budget`. No demuestra nada sobre R1 aún no subido;
+  no se relajan presupuestos ni se cambia recording dentro del arreglo Chromium.
+  Revalidar con el SHA integrado y registrar por separado si reaparece.
+  Diagnóstico local del orquestador: ese test aislado, `-count=3`, PASS en
+  0,329 s; no reproduce el fallo del runner y no demuestra CI completo verde.
+  Conjunto R1/R-FIX1 subido en `9d3971af`, run `33652826996`. Su job de
+  promoción estaba verde en modo auditoría pero tenía un error de formulario
+  de #962. Se completaron las secciones del contrato sin ampliar alcance.
+  El validador estricto descubrió además arrastre del digest anterior; se
+  regeneró `roadmap.json` sembrándolo desde la base confiable `659b2c57` y
+  conservando `plan.md` candidato. No se cambia el modo auditoría ni se omite
+  ningún check. Hace falta CI del SHA documental actualizado.
+  Build de preparación `9d3971af` pasó frontend/typecheck y Go con el
+  procedimiento autorizado de configuración embebida, sin mostrar valores.
+  No se ha validado aún licencia activa ni ejecutado física. Manifiesto local:
+  `C:\tmp\vantare-s3-gate\results\r2-preflight-20260902.json`; la siguiente
+  preparación debe identificar el nuevo digest, no relabelar el ejecutable.
+  **Actualización 2026-09-02 16:22 UTC:** CI `33653238356` del candidato
+  `33f6dcfa` terminó FAIL sólo en frontend: 440/441 archivos y 3420/3421 tests
+  PASS. Chromium ya se instala y Go pasó. Fallo:
+  `PedalsRedline.layout.test.tsx`, saturación de freno, 8 píxeles cambiados
+  fuera del well/slot donde exige cero. Focal local sin cambios: 3/3 PASS.
+  R-FIX2 iniciado con Terra high/priority `01a062f0-0cd4-7261-98f2-ebf89a5439a0`
+  (Euler), rama `vantareapp/isa-962-redline-pedals-ci`, worktree
+  `C:\tmp\vantare-redline-pedals-ci`, base `33f6dcfa`. Sólo test y, si se prueba
+  causa productiva, CSS/TSX exclusivo de Pedals Redline (máximo 3 archivos).
+  Distinguir halo real de máscara subpíxel/entorno; no aumentar tolerancias,
+  ocultar el test ni aplicar parche especulativo. Review independiente después.
+  Física y merge siguen pendientes. Preparación vigente identificada en
+  `C:\tmp\vantare-s3-gate\results\r2-preflight-20260902-33f6dcfa.json`;
+  no hay prueba nueva de licencia activa, Wails ni LMU.
+  R-FIX2 entregado por Euler en `364f7e2c`: sólo test (+121/-3), suite
+  441 archivos/3423 tests, focal 5/5, build/typecheck/lint reportados PASS.
+  Control negativo de antigua sombra detecta 20.674 píxeles exteriores.
+  Diagnósticos: `C:\tmp\pedals-redline-ci-diagnostics-364f7e2c`. El orquestador
+  comprobó que `inset.json` tiene cero diferencias incluso con la máscara
+  anterior: los ocho píxeles concretos de CI siguen sin reproducción local.
+  No se declara aún acreditada esa atribución. Helper unitario y máscaras
+  de los tests de capturas deben compartir cobertura efectiva. Terra
+  `01a062fc-2417-72d2-9bb5-ccacaf62a242` revisa cumplimiento sobre ese SHA;
+  worker sin editar durante review, aún no integrado ni subido.
+  Review Pauli: REQUEST_CHANGES P1, aceptado. `364f7e2c` no se integra.
+  El siguiente intento requiere el mismo comparador para positivo/negativo
+  y una captura que falle la máscara original; no fabricar exactamente ocho
+  píxeles para igualar CI. Ronda local acotada a cinco minutos; si no reproduce,
+  entregar sólo diagnósticos manteniendo máscara/aserción original para obtener
+  coordenadas/rects del runner. No aceptar fórmula plausible como causalidad
+  demostrada ni reiniciar suites grandes sin información nueva.
+  Ronda acotada final: desplazar el renderer productivo 0,5 px tampoco
+  reproduce (máscara anterior y propuesta: cero diferencias). Euler revirtió
+  `364f7e2c` en su rama y entregó `0172d1de`, autónomo, sólo diagnóstico
+  (+21 líneas de test). Conserva máscara y aserción cero originales; ante
+  fallo registra hasta 16 coordenadas/RGBA, DOMRects, DPR y sombras calculadas.
+  Focal 3/3 y typecheck PASS reportados; no se repitieron suite/build/lint
+  completos para este cambio observacional. Pauli revisa cumplimiento; después
+  procede review de calidad independiente e integración sólo de `0172d1de`.
+  No hay arreglo productivo acreditado ni pruebas físicas nuevas.
+  Terra Pauli (cumplimiento) y Terra Galileo
+  `01a06303-97eb-76e0-9f78-b9540130ab53` (calidad) aprobaron `0172d1de`.
+  El orquestador inspeccionó el diff neto, verificó otra vez el focal 3/3 e
+  integró sólo el commit diagnóstico como `a0ffe300`. Workers/reviewers
+  cerrados; la candidata pasó suite completa (441 archivos/3421 tests, 66,45 s),
+  typecheck y lint. La suite emitió `AbortError` de teardown Happy DOM pero
+  terminó con todos los tests PASS y código cero; no se oculta ese diagnóstico.
+  No se repitió build/Go en este corte de observabilidad exclusiva del test;
+  no cambia fuentes productivas, contratos ni el artefacto de runtime.
+  El siguiente CI debe conservar el fallo si reaparece y aportar sus
+  coordenadas, no se considera resuelta todavía la causa de Pedals.
+  **Actualización 2026-09-02 17:01 UTC:** CI `33657242122` sobre `7e0e4d73`
+  vuelve a fallar sólo el mismo test (440/441 archivos y 3420/3421 tests PASS).
+  El diagnóstico sí aporta evidencia nueva: ocho diferencias en x=328,
+  y=369..376, junto al texto inferior; well termina y=276,5886, slot y=389,6615
+  y ambos rects tienen right=327,84375, DPR=1. Sombras `none`/`inset`.
+  No atribuirlo al halo del well ni ampliar la máscara: x=328 está también
+  fuera de la propuesta anterior. JSON literal preservado en
+  `C:\tmp\vantare-s3-gate\results\pedals-ci-33657242122.json`.
+  R-FIX2b: worker Terra high/priority, worktree exclusivo
+  `C:\tmp\vantare-redline-pedals-glyph`, rama
+  `vantareapp/isa-962-redline-pedals-glyph`, base `7e0e4d73`.
+  Investigar texto/fuentes/raster con reproducción RED: máximo tres archivos
+  (layout test, CSS exclusivo Redline y TSX si necesario), sin modificar
+  máscara/tolerancia, sin ocultar ni recortar el texto. Primera ronda acotada
+  a cinco minutos y checkpoint. Después revisión independiente antes de integrar.
+  Física, promoción y resto del programa continúan pendientes; no hay merge.
+  Banach terminó NEEDS_CONTEXT, sin cambios: fuente local Roboto-Bold y valor
+  contenido; faltaba reproducir la selección fallback. Tras la objeción de
+  Isaac a las pausas, el orquestador pausó la tarea programada y asumió el
+  bloqueo directamente en el worktree exclusivo, limpio, sin otro writer.
+  Reproducción TDD: forzar la alternativa genérica `sans-serif` ya declarada
+  por producto selecciona Arial Black a peso 800 y produce exactamente los
+  ocho píxeles/RGBA/rects de CI. El valor mide 139,276 px frente a slot135,755.
+  RED 4 PASS/1 FAIL; cambio mínimo exclusivo `.ven-pred-slot b`: peso700,
+  misma fuente de 11 px, sin clipping ni cambio de máscara. Selecciona Arial
+  Bold, valor118,151 px, cero diferencias exteriores. GREEN5/5, más aserción
+  explícita del valor completo dentro de su slot. PNG/JSON preservados en
+  `C:\tmp\pedals-redline-glyph-red` y `C:\tmp\pedals-redline-glyph-green`;
+  el orquestador revisó ambas imágenes. Suite/build/typecheck/lint en ejecución;
+  review Terra independiente de cumplimiento iniciada antes de calidad.
+  Commit del fix `b3f60b03`: dos archivos (+33/-4). Suite441/3423,
+  typecheck/build/lint PASS. Erdos de cumplimiento
+  `01a0631c-28ef-73c3-97d2-129d8050920f`: APPROVE sin bloqueantes tras revisar
+  diff y reproducción. Revisión Terra de calidad en curso; no integrado todavía.
+  [Evidencia y comandos del microcorte](../../analysis/2026-09-02-redline-pedals-font-fallback.md).
+  Heisenberg de calidad `01a0631e-a409-7792-8248-b0735416d0d2`: APPROVE sin
+  hallazgos, focal5/5 verificado. Orquestador integra el fix y la evidencia en
+  la candidata; todos los workers/reviewers cerrados. CI exacto nuevo pendiente.
+  La tarea programada permanece PAUSADA por instrucción correctiva de Isaac;
+  la continuación se hace activamente en esta sesión. Preparar la nueva build
+  configurada y sus hashes en paralelo a CI; todavía no lanzar física ni LMU.
+  Las notas históricas inferiores no sustituyen este alcance ni el SHA de cada
+  evidencia. No se ha ejecutado ninguna prueba física nueva al escribir el plan.
+
+- **ISA-967 — Pedals Redline contenido en su frame (2026-08-31, rama):** el
+  renderer productivo `pedals-redline` ya no hereda el `padding`/`min-height`
+  del shell genérico de pedales ni el mínimo intrínseco de sus wells. El
+  override queda limitado al selector del template Redline; a 520×420 todos
+  los descendientes visibles caben con tolerancia de 0,5 px. Se añadió un
+  test Playwright de geometría contra el pipeline productivo completo con
+  estados V2 `ready` y `missing`. No modifica `pedals-classic`, `pedals-neo`
+  ni otros diseños. La
+  validación física S3 con Wails/LMU y licencia activa sobre `cf75af2f` quedó
+  `ready` a 520×420: raíz contenida, cero descendientes recortados, cero clips
+  internos y cero placas opacas exteriores. Evidencia local:
+  `C:\tmp\vantare-s3-gate\results\runs\pedals-20260831-163106\22-pedals-redline`.
+  La repetición física posterior detectó que, con freno al 100 %, la sombra
+  exterior de saturación se escalaba como un halo blanco alrededor del well.
+  `80da8c91` la confinó a un brillo `inset` sin perder la lectura `100%` ni la
+  transparencia. La regresión Chromium compara reposo/saturación con
+  `deviceScaleFactor: 1`, exige una señal `inset` distinta y cero píxeles
+  cambiados fuera del well/slot local; así queda atendida la revisión
+  adversarial posterior a `80da8c91`.
+
+- **ISA-958 — autoridad estable Redline en Go (2026-09-01, rama):** Endurance
+  Redline consume exclusivamente `FrameV2.relativeSettled`, una ventana
+  ordenada con hold de 7 s propiedad de cada `CachedProjector`. La UI rehidrata
+  datos vivos sin cambiar filas durante churn; ausencia real o nueva identidad
+  de sesión publica de inmediato. El decoder exige como máximo 8+jugador+8,
+  sides y orden canónicos, IDs únicos y exactamente un jugador, y el store no
+  acepta `sequence` duplicada o regresiva en la misma sesión/epoch. El adapter
+  Redline no expone estado de estabilidad frontend; Classic/Minimal/Neo no
+  cambian. Integrado en el candidato final Redline: frontend 441 archivos y
+  3.418 pruebas PASS, `go test ./...`, build, typecheck implícito, lint y
+  `diff --check` PASS. Las revisiones adversariales de la rama de autoridad y
+  del contrato de integración no mantienen hallazgos P0/P1. Falta únicamente
+  la validación física S3; no hay PR, promoción ni prueba Wails/LMU nueva.
+
+- **Histórico ISA-958 previo a la autoridad Go (2026-08-31, sustituido):** la
+  pertenencia mantiene solo VehicleID y exige 900 ms monotónicos; no compara
+  posiciones de coches distintos para saltarse el hold. Cada render rehidrata
+  los campos de la row Relative actual, elimina ausentes y no avanza con
+  secuencias duplicadas/atrasadas aunque declaren un `generatedAt` posterior. Position,
+  gap, nombre, clase y última vuelta comparten row/epoch, sin join a Standings.
+  El host crea el estado por montaje con un inicializador perezoso de React y
+  lo delimita por identidad lógica `perfil:widget.id`, sin depender del objeto
+  recreado por responsive layout, refs leídas durante render, mutable global,
+  timers ni renders extra. Un cruce ahead/behind debe sostenerse durante el
+  hold monotónico de 900 ms: hasta entonces se conserva la última row completa
+  aceptada y, al vencer, se publica la nueva row canónica en la siguiente
+  cadencia. Motion delimita también epoch/session, por lo que un cambio ready a
+  ready no crea ghosts; cada desaparición tiene identidad propia para que un
+  timer anterior no elimine una salida posterior del mismo VehicleID.
+  TDD de cierre sobre `bff576bc`: RED literal 5 fallos/36 pases; GREEN focal
+  acumulado 6 archivos/75 pruebas, typecheck, build, lint focal, changelog,
+  generador/check de roadmap y `diff --check` verdes. No sustituye la prueba
+  física Wails/LMU, que no se ejecutó en esta rama.
+  RED físico aportado por Isaac sobre build bff/#967: run
+  `relative-20260831-164218/13-relative-redline-mirror`,
+  `invalidRows=false`, `playerChanged=false`, `jumps=4`. Las muestras 8→10 y
+  16→19 demuestran dos sustituciones canónicas duplicadas por el ghost de
+  salida (5→6→5 filas). El cierre local reserva ghosts solo para huecos netos:
+  una sustitución 5→5 conserva una única transición y la entrada sigue usando
+  su animación existente. La traducción determinista del RED físico falló
+  1/9 antes del cambio y quedó 9/9 después; la repetición física por Isaac
+  queda pendiente.
+  Un segundo RED físico del candidato combinado `8f2c3dbb`, run
+  `relative-20260831-171609/15-relative-redline-traffic`, alternó cinco filas
+  con jugador `lmu-slot-0` y cero filas en las muestras 20/22; stderr registró
+  `state=live available=true reconnectAttempt=1`, mientras el run que pasó no
+  entró en stale/reconnect hasta después del muestreo. El cierre limita toda la
+  histéresis a los templates Relative Endurance Redline mediante una señal
+  explícita del host: Classic/Minimal/Neo y otros sistemas conservan el
+  comportamiento inmediato anterior. Dentro de la misma epoch/session, un
+  reconnect puede puentear un frame Relative vacío durante 400 ms; stopped,
+  stale o una nueva epoch/session vacían de inmediato.
+  La captura física `relative-20260831-172352/15-relative-redline-traffic`
+  mostró además el lapnote azul detrás de filas durante churn, con VehicleID
+  estables en las 25 muestras. Traffic agrupa aviso y amenaza en un slot y
+  desactiva solo el FLIP traslacional mientras ese slot compuesto existe; el
+  gate geométrico mueve la amenaza arriba y exige cero intersecciones entre
+  lapnote y filas.
+  Baseline real nightly `659b2c57`, Spa práctica/boxes: 347 muestras/90 s,
+  65 transiciones y 56 composiciones; 262 muestras en la composición estable.
+  El probe de repetición debe separar membership canónica de ghosts de motion.
+  La revisión NO-GO de `53d725fc` queda corregida localmente en `e84d593a`:
+  `error`, `stopped` y `stale` invalidan el estado estable antes de aceptar una
+  secuencia reiniciada de la misma sesión; el hold de reconnect vive solo en la
+  ViewModel y el test integrado conserva filas a 399 ms y publica cero a
+  400/401 ms, sin prolongación por el renderer ni por ghosts sin jugador.
+  Traffic excluye del FLIP únicamente el wrapper compuesto de amenaza+lapnote;
+  una fila ordinaria sigue animándose. El aislamiento de Classic, Minimal, Neo
+  y las superficies compartidas permanece cubierto. RED previo: 3 fallos/27
+  pases; GREEN acumulado: 10 archivos/114 pruebas, typecheck, build, ESLint
+  focal y `git diff --check` verdes. No se abrió Wails/LMU; S3 física sigue
+  pendiente y no hay push, PR, merge ni promoción.
+  Último NO-GO P1 corregido localmente en `c80a0769`: Redline ya no
+  muta `lastSequence`, `lastRows` ni el hold durante render. Calcula un draft
+  inmutable desde la última autoridad publicada y solo lo publica en
+  `useLayoutEffect` tras commit, sin programar un segundo render por snapshot.
+  La regresión Suspense abandona sequence 2 y demuestra que no contamina la
+  recuperación con el mismo sequence. El DOM integrado cubre mirror/Desktop,
+  proximity/Studio y traffic/OBS: filas visibles a 399 ms, cero filas y cero
+  ghosts a 400/401 ms, recuperación limpia tras error y no-Redline sin
+  histéresis. Focal 80/80, typecheck, build (solo warning heredado de chunks
+  >500 kB), ESLint focal y `git diff --check` PASS. Sin Wails/LMU, push, PR,
+  merge ni promoción.
+  Corrección posterior pendiente de revisión: el RED físico
+  `relative-20260831-213627/13-relative-redline-mirror` registró nueve cambios
+  completos en 24 s sin ghosts, desconexión ni drift. Tras REQUEST_CHANGES, el
+  hold de siete segundos sólo conserva slots cuyos VehicleID siguen presentes
+  en el `scoped` canónico: si falta uno, acepta inmediatamente la ventana
+  candidata completa, sin ghosts, stale ni huecos. Player y filas que no cruzan
+  se rehidratan desde el frame actual; el cruce del mismo rival conserva 900 ms.
+  RED 3 fallos/39 pases y GREEN 42/42 cubren reemplazo parcial, player actual,
+  ausencia de IDs no canónicos y reset session/epoch. Falta repetir la prueba
+  física Wails/LMU. Sin push, PR, merge ni promoción.
+
+- **ISA-957 — filas completas y semántica de Standings (2026-08-31, rama):**
+  las nueve plantillas Endurance recortan el modelo con
+  `floor(altoUtil/altoFila)` antes de renderizar; el caso 520×560 deja 14 de
+  18 filas Redline completas y reserva el flujo transitorio de una retirada y
+  una batalla (54 px: ghost 30 + box completo 24). Overlay V2 publica `bestLap` y el
+  ViewModel muestra en práctica/clasificación la mejor vuelta de la fila y su
+  diferencia contra la mejor de sesión; en carrera conserva el gap oficial al
+  líder; el shadow compara ese campo y el referente se calcula antes de
+  `rowCount`. La regresión de layout monta las nueve plantillas, cuenta sus
+  filas DOM y contrasta la geometría declarada en `tokens.css` y la medición
+  del flujo aun con `overflow:hidden`; una mutación de 1 px admite una quinta
+  fila recortada y falla. Evidencia local: tests frontend focales, paquete Go Overlay V2,
+  typecheck y `git diff --check`; no se lanzó Wails ni se tocó CSS.
+- **ISA-959 — Track Map Endurance respeta el frame (2026-08-31, rama):**
+  `vantareapp/isa-959-track-map-footer-clipping`, base exacta
+  `origin/nightly@659b2c57`. La auditoría Wails/LMU real midió un renderer de
+  `640×485.625` dentro del frame `640×440`, con el footer completamente fuera.
+  La raíz `.ven-track-map` ahora ocupa el alto disponible con `border-box`, sin
+  cambiar geometría, tipografía, ViewModel ni la frontera `WidgetVisualHost`.
+  Tras el REQUEST_CHANGES adversarial sobre `66d3f541`, la regresión Chromium
+  monta `RuntimeWidgetFrame`, `WidgetVisualViewport` y `WidgetVisualHost` para
+  Desktop/OBS, y la frontera compartida viewport/host para Studio. Mide frame,
+  renderer, SVG, outline y footer por los cuatro lados, dimensiones,
+  visibilidad, intersección y orden mapa→footer, con `overflow:visible` para no
+  esconder el fallo. Cubre `160×110`, `320×220`, `640×440` y resize libre
+  `480×260` en las tres superficies. Contra el CSS anterior falló directamente
+  en Desktop `160×110`: bottom `121.40625` frente al máximo `111`; con el fix
+  pasa la matriz 12/12. Queda pendiente la revalidación manual en Wails/LMU
+  real; no se arrancó la app. Sin push, PR, merge, promoción ni release.
 
 - **ISA-940 — lifecycle a coste cero (2026-08-30):** rama
   `vantareapp/isa-940-lifecycle-coste-cero`, rebasada sobre
@@ -1233,3 +1717,67 @@ Evidencia Task 4 y cierre acumulado:
   de los gates finales.
 - No hay PR, merge, promoción ni release. HEAD funcional antes de este
   checkpoint: `0a25f4ad`.
+
+## ISA-962 — integración final Endurance Redline (2026-09-01)
+
+- Rama aislada `vantareapp/isa-962-redline-final-integration`, base exacta
+  `origin/nightly@659b2c57dc2c7fc75962cc3c8e425ed1289266ec`; commit funcional
+  `bf13921a93d7a662ab2f59526d5f1258217141f2`.
+- El candidato integra #957, #958, #959, #960, #961 y #968. La fixture Relative
+  deriva de la fila canónica V2; no añade fallback ni relaja `OverlayQValue`.
+- Tras reproducir en capturas físicas los saltos, cruces y celdas recortadas,
+  Mirror, Proximity y Traffic dejaron de usar FLIP/ghosts y representan el
+  orden físico de cada frame directamente. El exterior transparente quedó
+  confirmado sobre checkerboard; las capturas anteriores no se declaran PASS
+  porque proceden de boxes y de un HEAD previo.
+- S3 ya no puede ejecutarse desde el colector genérico. El catálogo fuente
+  versiona exactamente Standings Redline, Relative Mirror/Proximity/Traffic y
+  Pedals Redline; su materializador genera perfiles e índice ligados al HEAD.
+  Delta y cualquier criterio de vuelta están excluidos.
+- Gates frescos: focal Relative 9/9 PASS; scripts de banco 22/22 PASS; frontend
+  completo 441 archivos y 3421/3421 tests PASS; typecheck, build, ESLint focal,
+  `node --check`, digest de roadmap y `git diff --check` PASS. El build conserva
+  únicamente el aviso informativo de chunks mayores de 500 kB.
+- Revisión adversarial final sobre `1363de97` APPROVE, sin P0/P1. La rama está
+  publicada y el PR draft #969 apunta a `nightly`. CI sobre `9af9daa6` falló
+  en el run `33502297892`: falta Chromium headless de Playwright al ejecutar
+  tests frontend. Promotion path y GitGuardian pasaron; no es CI global verde.
+- Pendiente físico: ejecutar S3 con el jugador en pista (máximo cinco minutos
+  por comprobación), después S4, S5 y S2 al final, según el plan maestro.
+  Corrección del diagnóstico anterior: no se demostró que RawInput descartara
+  teclas; solo se observó falta de respuesta y una discrepancia entre la
+  pantalla controlada y los procesos locales. R2 debe demostrar que se controla
+  el mismo entorno antes de otra prueba. Boxes no es PASS. Sin merge ni release;
+  la autorización condicional de Isaac del 2026-09-02 no equivale a integración.
+
+## ISA-968 — Standings Redline estrecho (2026-08-31)
+
+- Rama aislada `vantareapp/isa-968-standings-redline-narrow`, worktree
+  `C:\tmp\vantare-isa968\vantare-v2`, base exacta
+  `bff576bc3d8175bf986ff7bfef56c19b1ad5e7ab`.
+- RED productivo: la regresión con el golden Overlay V2 de 20 vehículos falló
+  en `desktop/280px` con 32 descendientes fuera del frame; raíz, bloque y filas
+  medían 430 px y las columnas Gap/Última vuelta quedaban recortadas.
+- Solución final: únicamente Standings Redline calcula un mínimo desde sus
+  columnas y amplía el frame físico efectivo cuando el ancho persistido no
+  basta. No comprime tipografía, no oculta columnas y no conserva el escalado
+  visual alternativo. Desktop, Studio y OBS comparten esa misma geometría.
+- GREEN: matriz productiva ready en Desktop, Studio y OBS a 280, 340, 419 y
+  420 px, más missing en Desktop/OBS, sin descendientes visibles fuera del
+  frame. Focal ampliado: 6 archivos y 24/24 tests PASS. Typecheck, build y lint
+  frontend PASS; el build conserva únicamente el aviso informativo de chunks
+  mayores de 500 kB. Digest de roadmap y dry-run del fragmento ISA-968 PASS.
+- La validación física S3 Wails/LMU no se ejecutó por instrucción expresa de
+  este corte y permanece pendiente antes de promoción. Trabajo solo local: sin
+  app, push, PR, CI remoto, merge, promoción ni release.
+- Cierre adversarial integrado en ISA-962: un perfil heredado en `x=1639,
+  w=280` se representa a `x=1094, w=826`; al arrastrar 100 px a la izquierda
+  persiste `x=994` sin salto, hacia la derecha permanece acotado en `x=1094`,
+  y un click sin movimiento no ensucia ni autosalva el documento. Selección y
+  tiradores acompañan siempre al frame efectivo. El renderer Redline publica
+  además
+  `data-session-mode` y `data-position-delta` para que S3 demuestre Practice y
+  cero ganadas/perdidas sin depender de clases CSS. Candidato integrado:
+  frontend 441/441 archivos y 3.418/3.418 pruebas, Go completo, build y lint
+  PASS; revisión adversarial de la rama ISA-968 APPROVE. S3 físico sigue
+  pendiente sobre el nuevo HEAD.

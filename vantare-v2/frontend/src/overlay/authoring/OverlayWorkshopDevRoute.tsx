@@ -3,22 +3,20 @@ import type { ReactNode } from "react";
 import { WidgetVisualHost } from "../core/WidgetVisualHost";
 import { WidgetVisualViewport } from "../core/WidgetVisualViewport";
 import { ALL_WIDGET_TYPES, type DesignSystemId, type WidgetInstanceV3, type WidgetType } from "../core/profile-document";
-import { applyWidgetDesign } from "../core/widget-design";
 import { buildEngineerPresentationFixture } from "../../engineer/engineer-presentation-fixtures";
 import {
+  buildWorkshopFrameV2,
+  createScenarioWidget,
   STANDINGS_REPLAY_FRAME_COUNT,
-  buildAuthoringFixtureTelemetry,
-  buildAuthoringFixtureWidget,
-  resetAndSeedAuthoringInputTelemetry,
-  type HarnessVariant,
-} from "./fixtures/authoring-fixtures";
-import { getCrystalHarnessDesign, type AuthoringFixtureWidget } from "./fixtures/authoring-fixtures";
+  WORKSHOP_V2_VARIANTS,
+  type WorkshopV2Scenario,
+  type WorkshopV2Variant,
+} from "./fixtures/authoring-v2-workshop-frame";
+import type { WidgetRuntimeInput } from "../core/widget-definition";
 import { getAnimationScene, listAnimationScenes } from "./fixtures/animation-scenes";
 import { interpolateSceneAt, sampleAtRate, sceneDurationMs } from "./fixtures/scene-interpolation";
 import { projectionGapsFor } from "./fixtures/projection-gaps";
 import { listOfficialDesigns } from "../design-systems/official-designs";
-import { clearInputTelemetryHistory } from "../widget-types/input-telemetry/input-telemetry-accumulator";
-import { buildAuthoringV2Runtime } from "./fixtures/authoring-v2-fixture";
 import {
   parseOverlayWorkshopQuery,
   serializeOverlayWorkshopQuery,
@@ -30,74 +28,47 @@ import "./overlay-workshop.css";
 const SYSTEMS: readonly DesignSystemId[] = ["vantare-original", "vantare-crystal", "vantare-endurance"];
 const STATES = ["ready", "stale", "disconnected", "error"] as const;
 const SURFACES = ["studio", "desktop", "obs", "harness"] as const;
-const VARIANTS: readonly HarnessVariant[] = [
-  "default",
-  "relative-fill",
-  "relative-multiclass",
-  "standings-stress60",
-  "standings-multiclass",
-  "standings-replay",
-  "standings-minimal",
-  "standings-all-columns",
-  "pedals-zero",
-  "pedals-full",
-];
+export const OVERLAY_WORKSHOP_PROFILE_ID = "workshop-fixture";
+const VARIANTS: readonly WorkshopV2Variant[] = WORKSHOP_V2_VARIANTS;
 
-function createScenarioWidget(query: OverlayWorkshopQuery): WidgetInstanceV3 {
-  const crystalDesign = query.designId ? getCrystalHarnessDesign(query.designId) : undefined;
-  let widget = buildAuthoringFixtureWidget({
-    session: query.session,
-    location: query.location,
-    state: query.state,
+function createRouteScenarioWidget(query: OverlayWorkshopQuery): WidgetInstanceV3 {
+  return createScenarioWidget({
     widget: query.widget,
     system: query.system,
-    surface: query.surface,
     variant: query.variant,
-    // The scene shapes the widget as well as the snapshot: without it the
-    // standings kept the player's class only and the best-lap column off, so
-    // the fastest-lap scene handed the crown between two cars that were not
-    // on screen and no glyph could appear at all.
-    sceneId: query.sceneId,
-    ...(crystalDesign ? { designId: crystalDesign.designId } : {}),
+    ...(query.designId ? { designId: query.designId } : {}),
+    ...(query.sceneId ? { sceneId: query.sceneId } : {}),
   });
-  if (query.designId) {
-    const design = listOfficialDesigns(query.widget).find((candidate) => candidate.id === query.designId);
-    if (design) {
-      widget = applyWidgetDesign(widget, design, "1970-01-01T00:00:00.000Z");
-    }
-  }
-  if (crystalDesign) {
-    widget.layout = {
-      ...widget.layout,
-      w: crystalDesign.width,
-      h: crystalDesign.height,
-    };
-  }
-  return widget;
 }
 
 type PreparedFixture = {
   key: string;
   widget: WidgetInstanceV3;
-  snapshot: ReturnType<typeof buildAuthoringFixtureTelemetry>;
+  base: {
+    session: WorkshopV2Scenario["session"];
+    location: WorkshopV2Scenario["location"];
+    state: WorkshopV2Scenario["state"];
+    widget: WidgetType;
+    system: DesignSystemId;
+    variant: WorkshopV2Variant;
+  };
+  runtime: WidgetRuntimeInput;
 };
 
 function prepareFixture(query: OverlayWorkshopQuery): PreparedFixture {
-  const crystalDesign = query.designId ? getCrystalHarnessDesign(query.designId) : undefined;
-  const widget = createScenarioWidget(query);
-  const snapshot = buildAuthoringFixtureTelemetry({
+  const widget = createRouteScenarioWidget(query);
+  const base = {
     session: query.session,
     location: query.location,
     state: query.state,
     widget: query.widget,
     system: query.system,
-    surface: query.surface,
     variant: query.variant,
-    ...(crystalDesign ? { designId: crystalDesign.designId } : {}),
-  });
+  };
+  const runtime = buildWorkshopFrameV2(base);
   // Keyed without the frame, matching fixtureKey: stepping a scene must not
   // count as a different fixture.
-  return { key: serializeOverlayWorkshopQuery({ ...query, sceneFrame: undefined }), widget, snapshot };
+  return { key: serializeOverlayWorkshopQuery({ ...query, sceneFrame: undefined }), widget, base, runtime };
 }
 
 const PRESET_DIMENSIONS = { "720p": [1280, 720], "1080p": [1920, 1080], "1440p": [2560, 1440] } as const;
@@ -135,22 +106,25 @@ function defaultSystem(widget: WidgetType): DesignSystemId {
   return compatibleSystems(widget)[0]!;
 }
 
-function WorkshopSurface({ prepared, surface, query, comparison = false }: { prepared: PreparedFixture; surface: OverlayWorkshopQuery["surface"]; query: OverlayWorkshopQuery; comparison?: boolean }): React.ReactElement {
+function WorkshopSurface({ prepared, profileId, surface, query, comparison = false }: { prepared: PreparedFixture; profileId: string; surface: OverlayWorkshopQuery["surface"]; query: OverlayWorkshopQuery; comparison?: boolean }): React.ReactElement {
   const width = query.width ?? prepared.widget.layout.w;
   const height = query.height ?? prepared.widget.layout.h;
-  const runtime = buildAuthoringV2Runtime(prepared.widget.type, prepared.snapshot);
+  const runtime = {
+    ...prepared.runtime,
+    relativeViewModelInstanceKey: `${profileId}:${prepared.widget.id}`,
+  };
   return <div className="overlay-workshop-surface" data-overlay-workshop-surface={surface} data-overlay-workshop-comparison={comparison || undefined}>
     {surface !== "obs" && <span className="overlay-workshop-surface-label">{surface}</span>}
     <div className="overlay-workshop-widget-root" data-overlay-workshop-widget-root style={{ width, height, transform: `scale(${query.scale})`, transformOrigin: "center" }}>
       <WidgetVisualViewport widgetType={prepared.widget.type} visual={prepared.widget.visual} layout={{ ...prepared.widget.layout, w: width, h: height }} testId="overlay-workshop-viewport">
-        <WidgetVisualHost widget={{ ...prepared.widget, layout: { ...prepared.widget.layout, w: width, h: height } }} snapshot={prepared.snapshot} renderMode={surface}
+        <WidgetVisualHost widget={{ ...prepared.widget, layout: { ...prepared.widget.layout, w: width, h: height } }} renderMode={surface}
           runtime={prepared.widget.type === "engineer-radio" ? { ...runtime, engineerPresentation: query.state === "ready" ? buildEngineerPresentationFixture() : null } : runtime} />
       </WidgetVisualViewport>
     </div>
   </div>;
 }
 
-function OverlayWorkshopPage({ initialQuery }: { initialQuery: OverlayWorkshopQuery }): React.ReactElement {
+function OverlayWorkshopPage({ initialQuery, profileId }: { initialQuery: OverlayWorkshopQuery; profileId: string }): React.ReactElement {
   const [parsed, setQuery] = useState<OverlayWorkshopQuery>(initialQuery);
   const [prepared, setPrepared] = useState<PreparedFixture | null>(null);
   const [dimensionDraft, setDimensionDraft] = useState({
@@ -197,7 +171,7 @@ function OverlayWorkshopPage({ initialQuery }: { initialQuery: OverlayWorkshopQu
       (initialQuery.sceneId ? (getAnimationScene(initialQuery.sceneId)?.frameMs ?? 0) : 0),
   );
   const elapsedRef = useRef(0);
-  const scenesForWidget = listAnimationScenes(parsed.widget as AuthoringFixtureWidget);
+  const scenesForWidget = listAnimationScenes(parsed.widget);
 
   useEffect(() => {
     elapsedRef.current = elapsedMs;
@@ -269,34 +243,22 @@ function OverlayWorkshopPage({ initialQuery }: { initialQuery: OverlayWorkshopQu
       throw new Error(`invalid serialized fixture query: ${fixtureQuery.error}`);
     }
     const next = prepareFixture(fixtureQuery);
-    resetAndSeedAuthoringInputTelemetry(next.widget, next.snapshot);
     let active = true;
     queueMicrotask(() => {
       if (active) setPrepared(next);
     });
     return () => {
       active = false;
-      clearInputTelemetryHistory(next.widget.id);
     };
   }, [fixtureKey]);
-
-  const liveFixtureInput = {
-    session: parsed.session,
-    location: parsed.location,
-    state: parsed.state,
-    widget: parsed.widget,
-    system: parsed.system,
-    surface: parsed.surface,
-    variant: parsed.variant,
-  } as const;
 
   const preparedForRender = !prepared
     ? prepared
     : scene && playhead
       ? {
           ...prepared,
-          snapshot: buildAuthoringFixtureTelemetry({
-            ...liveFixtureInput,
+          runtime: buildWorkshopFrameV2({
+            ...prepared.base,
             sceneId: scene.id,
             sceneState: playhead.frame,
           }),
@@ -304,7 +266,7 @@ function OverlayWorkshopPage({ initialQuery }: { initialQuery: OverlayWorkshopQu
       : parsed.variant === "standings-replay"
         ? {
             ...prepared,
-            snapshot: buildAuthoringFixtureTelemetry({ ...liveFixtureInput, replayFrame }),
+            runtime: buildWorkshopFrameV2({ ...prepared.base, replayFrame }),
           }
         : prepared;
 
@@ -317,7 +279,7 @@ function OverlayWorkshopPage({ initialQuery }: { initialQuery: OverlayWorkshopQu
   const chooseDesign = (value: string) => update({ ...parsed, ...(value ? { designId: value } : { designId: undefined }) });
   const chooseState = (value: string) => update({ ...parsed, state: value as OverlayWorkshopQuery["state"] });
   const chooseSurface = (value: string) => update({ ...parsed, surface: value as OverlayWorkshopQuery["surface"] });
-  const chooseVariant = (value: string) => update({ ...parsed, variant: value as HarnessVariant });
+  const chooseVariant = (value: string) => update({ ...parsed, variant: value as WorkshopV2Variant });
   const chooseSession = (value: string) => update({ ...parsed, session: value as OverlayWorkshopQuery["session"] });
   const chooseLocation = (value: string) => update({ ...parsed, location: value as OverlayWorkshopQuery["location"] });
   const chooseBackground = (value: string) => update({ ...parsed, background: value as OverlayWorkshopQuery["background"] });
@@ -514,15 +476,15 @@ function OverlayWorkshopPage({ initialQuery }: { initialQuery: OverlayWorkshopQu
       </section>
       <section className={`overlay-workshop-stage overlay-workshop-stage--${parsed.background}`} data-overlay-workshop-stage>
         {prepared?.key === fixtureKey && (
-          <><WorkshopSurface prepared={preparedForRender ?? prepared} surface={parsed.surface} query={parsed} />
-          {parsed.compare && <WorkshopSurface prepared={preparedForRender ?? prepared} surface={parsed.compare} query={parsed} comparison />}</>
+          <><WorkshopSurface prepared={preparedForRender ?? prepared} profileId={profileId} surface={parsed.surface} query={parsed} />
+          {parsed.compare && <WorkshopSurface prepared={preparedForRender ?? prepared} profileId={profileId} surface={parsed.compare} query={parsed} comparison />}</>
         )}
       </section>
     </main>
   );
 }
 
-export function OverlayWorkshopDevRoute({ search = window.location.search }: { search?: string }): React.ReactElement {
+export function OverlayWorkshopDevRoute({ search = window.location.search, profileId = OVERLAY_WORKSHOP_PROFILE_ID }: { search?: string; profileId?: string }): React.ReactElement {
   const parsed = parseOverlayWorkshopQuery(search);
   if ("error" in parsed) {
     return (
@@ -531,5 +493,5 @@ export function OverlayWorkshopDevRoute({ search = window.location.search }: { s
       </main>
     );
   }
-  return <OverlayWorkshopPage initialQuery={parsed} />;
+  return <OverlayWorkshopPage initialQuery={parsed} profileId={profileId} />;
 }

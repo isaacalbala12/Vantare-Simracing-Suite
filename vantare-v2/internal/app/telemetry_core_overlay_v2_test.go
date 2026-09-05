@@ -136,17 +136,13 @@ func TestOverlayV2PublishesObservedSourceHzOverTwoSeconds(t *testing.T) {
 	}
 }
 
-func TestRuntimePublishesV1AndV2InShadow(t *testing.T) {
-	enabled := true
-	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{OverlayV1Emit: &enabled})
+func TestRuntimePublishesV2WithoutV1(t *testing.T) {
+	// R6b: no existe Hub Overlay; WriteBatch publica V2 y Strategy conserva
+	// su semantica.
+	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	v1, err := runtime.Hub().Subscribe(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer v1.Close()
 	v2Publisher, release, err := runtime.OverlayV2Publishers().RegisterConsumer(telemetrytransport.ProductOverlayV2)
 	if err != nil {
 		t.Fatal(err)
@@ -161,7 +157,6 @@ func TestRuntimePublishesV1AndV2InShadow(t *testing.T) {
 	if err := (runtimeBatchSink{runtime: runtime}).WriteBatch(context.Background(), hardeningBatch(1, 1)); err != nil {
 		t.Fatalf("WriteBatch() = %v", err)
 	}
-	assertNextV1Snapshot(t, v1)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	event := nextOverlayV2Snapshot(t, v2, ctx)
@@ -176,7 +171,7 @@ func TestRuntimePublishesV1AndV2InShadow(t *testing.T) {
 		t.Fatalf("v2 update = %+v", update)
 	}
 	metrics := runtime.Metrics()
-	if metrics.OverlayProjectionsPublished != 1 || metrics.OverlayV2PayloadBytes["1"].Count != 1 ||
+	if metrics.OverlayV2PayloadBytes["1"].Count != 1 ||
 		metrics.OverlayV2BuildDurationUs.Count != 1 || metrics.PublisherDroppedFrames["overlay-v2"] != 0 {
 		t.Fatalf("shadow metrics = %+v", metrics)
 	}
@@ -230,16 +225,13 @@ func TestRuntimePublishesAndRetainsOverlayV2LifecycleWithoutFrames(t *testing.T)
 	}
 }
 
-func TestOverlayV2FailureDoesNotAffectV1(t *testing.T) {
+func TestOverlayV2FailureIsNonTerminal(t *testing.T) {
+	// R6b: un fallo V2 sigue siendo no terminal y Strategy conserva su
+	// semantica (sin hub en este corte).
 	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	v1, err := runtime.Hub().Subscribe(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer v1.Close()
 	_, release, err := runtime.OverlayV2Publishers().RegisterConsumer(telemetrytransport.ProductOverlayV2)
 	if err != nil {
 		t.Fatal(err)
@@ -254,9 +246,8 @@ func TestOverlayV2FailureDoesNotAffectV1(t *testing.T) {
 	if err := (runtimeBatchSink{runtime: runtime}).WriteBatch(context.Background(), hardeningBatch(1, 1)); err != nil {
 		t.Fatalf("v2 shadow failure escaped driver loop: %v", err)
 	}
-	assertNextV1Snapshot(t, v1)
 	metrics := runtime.Metrics()
-	if metrics.OverlayProjectionsPublished != 1 || metrics.PublishFailures["overlay-v2"] != 1 ||
+	if metrics.PublishFailures["overlay-v2"] != 1 ||
 		metrics.FramesDropped["overlay-v2-publish"] != 1 || metrics.FailStops != 0 {
 		t.Fatalf("v2 failure isolation metrics = %+v", metrics)
 	}
@@ -348,21 +339,6 @@ func TestOverlayV2SnapshotRevisionCannotBeOvertakenByConcurrentStatus(t *testing
 	}
 	if snapshotUpdate.Source.State != overlayv2.SourceStateStale {
 		t.Fatalf("snapshot source = %q, want current stale state", snapshotUpdate.Source.State)
-	}
-}
-
-func assertNextV1Snapshot(t *testing.T, subscription *telemetrytransport.Subscription) {
-	t.Helper()
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-	for {
-		event, err := subscription.Next(ctx)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if event.Kind == telemetrytransport.EventSnapshot {
-			return
-		}
 	}
 }
 

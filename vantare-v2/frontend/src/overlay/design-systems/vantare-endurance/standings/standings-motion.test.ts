@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
-import type {
-  StandingsRowViewModel,
-  StandingsViewModel,
+import {
+  withStandingsMotionIdentity,
+  type StandingsRowViewModel,
+  type StandingsViewModel,
 } from "../../../widget-types/standings/standings-view-model";
 import {
   deriveBattlePairs,
@@ -9,7 +10,6 @@ import {
   derivePositionDeltas,
   deriveRosterChange,
   deriveStandingsEvents,
-  classPositionsById,
 } from "./standings-motion";
 
 function row(partial: Partial<StandingsRowViewModel> & { id: string }): StandingsRowViewModel {
@@ -31,6 +31,13 @@ function row(partial: Partial<StandingsRowViewModel> & { id: string }): Standing
     isLeader: false,
     ...partial,
   };
+}
+
+function gridRow(
+  partial: Partial<StandingsRowViewModel> & { id: string },
+  gridSessionIdentity: string,
+): StandingsRowViewModel {
+  return row({ ...partial, gridSessionIdentity });
 }
 
 function model(
@@ -212,16 +219,55 @@ describe("standings-motion", () => {
     expect(deriveRosterChange(model([], "stale"), gridA())).toEqual({ entered: [], retired: [] });
   });
 
-  it("tracks net position deltas against the session baseline", () => {
-    const baseline = classPositionsById(gridA());
-    const next = model([
-      row({ id: "c", position: 1, gapText: "—", isPlayer: true }),
-      row({ id: "a", position: 2, gapText: "+1.0s" }),
-      row({ id: "b", position: 3, gapText: "+2.0s" }),
-    ]);
-    const deltas = derivePositionDeltas(baseline, next);
+  it("tracks net position deltas only from explicit race grid positions", () => {
+    const identity = "race-a:1";
+    const next = withStandingsMotionIdentity(model([
+      gridRow(
+        { id: "c", position: 1, gridPosition: 3, gapText: "—", isPlayer: true },
+        identity,
+      ),
+      gridRow({ id: "a", position: 2, gridPosition: 1, gapText: "+1.0s" }, identity),
+      gridRow({ id: "b", position: 3, gridPosition: 2, gapText: "+2.0s" }, identity),
+    ]), identity, 1);
+    const deltas = derivePositionDeltas(next);
     expect(deltas.get("c")).toBe(2);
     expect(deltas.get("a")).toBe(-1);
     expect(deltas.get("b")).toBe(-1);
   });
+
+  it("rejects an explicit grid position from another session", () => {
+    const next = withStandingsMotionIdentity(model([
+      gridRow({ id: "a", position: 2, gridPosition: 3 }, "race-a:1"),
+    ]), "race-b:1", 1);
+
+    expect(derivePositionDeltas(next)).toEqual(new Map());
+  });
+
+  it("rejects an explicit grid position without session provenance", () => {
+    const next = withStandingsMotionIdentity(
+      model([row({ id: "a", position: 2, gridPosition: 3 })]),
+      "race-a:1",
+      1,
+    );
+
+    expect(derivePositionDeltas(next)).toEqual(new Map());
+  });
+
+  it.each(["PRACTICE", "QUALIFYING", "WARMUP"])(
+    "rejects an authorised grid position outside a race in %s",
+    (sessionLabel) => {
+      const identity = "session-a:1";
+      const next = withStandingsMotionIdentity(
+        model(
+          [gridRow({ id: "a", position: 2, gridPosition: 3 }, identity)],
+          "ready",
+          sessionLabel,
+        ),
+        identity,
+        1,
+      );
+
+      expect(derivePositionDeltas(next)).toEqual(new Map());
+    },
+  );
 });

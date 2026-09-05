@@ -1,4 +1,3 @@
-import { buildMockTelemetry } from "../../overlay/core/mock-scenarios";
 import {
   createTelemetryRateCoordinator,
   type TelemetryRateCoordinator,
@@ -16,9 +15,9 @@ import type { OverlayUpdateV2 } from "../../generated/telemetry";
  * varios workers en paralelo esa competencia convertia una espera de 200 ms en
  * una de mas de cinco segundos, y fallaba un test distinto en cada pasada.
  *
- * Aqui el planificador no arranca ningun temporizador: solo guarda su tick, y
- * publish lo invoca. Los widgets se repintan cuando la prueba publica, que es
- * exactamente lo que las pruebas quieren observar, y en ningun otro momento.
+ * Aqui el planificador no arranca ningun temporizador: solo guarda su tick.
+ * Los widgets se repintan cuando la prueba publica un frame V2, y en ningun
+ * otro momento.
  */
 export function createTestTelemetryCoordinator(): TelemetryRateCoordinator {
   const ticks = new Set<() => void>();
@@ -44,13 +43,6 @@ export function createTestTelemetryCoordinator(): TelemetryRateCoordinator {
 
   const flushing: TelemetryRateCoordinator = {
     ...coordinator,
-    publish(snapshot) {
-      coordinator.publish(snapshot);
-      nowMs += 1_000;
-      for (const tick of [...ticks]) {
-        tick();
-      }
-    },
     setOverlayFrame(frame, source) {
       coordinator.setOverlayFrame(frame, source);
       nowMs += 1_000;
@@ -60,9 +52,6 @@ export function createTestTelemetryCoordinator(): TelemetryRateCoordinator {
     },
   };
 
-  flushing.publish(
-    buildMockTelemetry({ session: "race", location: "track", state: "ready" }),
-  );
   const update = JSON.parse(goldenV2Raw) as OverlayUpdateV2;
   coordinator.setOverlayFrame(update.frame ?? undefined, update.source);
   return flushing;

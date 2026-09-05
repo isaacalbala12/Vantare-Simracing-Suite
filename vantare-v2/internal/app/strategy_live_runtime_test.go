@@ -87,8 +87,8 @@ func TestStrategyLiveRuntimeRejectsInvalidEventWithoutMutatingConsumer(t *testin
 		name  string
 		event telemetrytransport.Event
 	}{
-		{name: "wrong channel product", event: telemetrytransport.Event{Product: telemetrytransport.ProductOverlay, Kind: telemetrytransport.EventStatus, Data: validStatus.Data}},
-		{name: "wrong status envelope product", event: withEventData(validStatus, strings.Replace(string(validStatus.Data), `"product":"strategy"`, `"product":"overlay"`, 1))},
+		{name: "wrong channel product", event: telemetrytransport.Event{Product: telemetrytransport.ProductEngineer, Kind: telemetrytransport.EventStatus, Data: validStatus.Data}},
+		{name: "wrong status envelope product", event: withEventData(validStatus, strings.Replace(string(validStatus.Data), `"product":"strategy"`, `"product":"engineer"`, 1))},
 		{name: "wrong projection version", event: withEventData(validSnapshot, strings.Replace(string(validSnapshot.Data), `"projectionVersion":1`, `"projectionVersion":2`, 1))},
 		{name: "delta snapshot", event: withEventData(validSnapshot, strings.Replace(string(validSnapshot.Data), `"kind":"full"`, `"kind":"delta"`, 1))},
 		{name: "wrong event kind", event: telemetrytransport.Event{Product: telemetrytransport.ProductStrategy, Kind: telemetrytransport.EventFact, Data: validSnapshot.Data}},

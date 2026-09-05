@@ -1,17 +1,33 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "../index.css";
-import { buildHarnessTelemetry, buildHarnessWidget } from "../overlay/authoring/fixtures/authoring-fixtures";
+import { buildAuthoringV2ScenarioRuntime } from "../overlay/authoring/fixtures/authoring-v2-scenario-fixture";
 import type { ProfileDocumentV3 } from "../overlay/core/profile-document";
 import { createTelemetryRateCoordinator } from "../overlay/core/telemetry-rate-coordinator";
+import { widgetTypeRegistry } from "../overlay/core/widget-registry";
 import { RuntimeOverlaySurface } from "../overlay/runtime/RuntimeOverlaySurface";
+import { parseStandingsContent } from "../overlay/widget-types/standings/standings-content";
 
-function buildResponsiveDocument(): ProfileDocumentV3 {
-  const tower = buildHarnessWidget("broadcast-tower", "vantare-original");
+export function buildResponsiveDocument(): ProfileDocumentV3 {
+  const tower = widgetTypeRegistry.get("broadcast-tower").createDefault("broadcast-tower-harness");
+  tower.visual = { ...tower.visual, systemId: "vantare-original" };
+  tower.content = { ...tower.content, rowCount: 10 };
   tower.layout = { ...tower.layout, x: 0, y: 0, w: 1920, h: 71, zIndex: 1 };
-  const standings = buildHarnessWidget("standings", "vantare-crystal", "standings-multiclass");
+
+  const standings = widgetTypeRegistry.get("standings").createDefault("standings-harness");
+  standings.visual = { ...standings.visual, systemId: "vantare-crystal" };
+  const standingsContent = parseStandingsContent(standings.content);
+  standings.content = {
+    ...standingsContent,
+    classScope: "all-classes",
+    columns: standingsContent.columns.map((column) =>
+      column.metricId === "bestLap" ? { ...column, enabled: true } : column,
+    ),
+  };
   standings.layout = { ...standings.layout, x: 1500, y: 90, zIndex: 2 };
-  const delta = buildHarnessWidget("delta", "vantare-crystal");
+
+  const delta = widgetTypeRegistry.get("delta").createDefault("delta-harness");
+  delta.visual = { ...delta.visual, systemId: "vantare-crystal" };
   delta.layout = { ...delta.layout, x: 120, y: 940, zIndex: 3 };
 
   return {
@@ -30,9 +46,15 @@ function buildResponsiveDocument(): ProfileDocumentV3 {
 }
 
 const coordinator = createTelemetryRateCoordinator();
-coordinator.publish(
-  buildHarnessTelemetry({ session: "race", location: "track", state: "ready", widget: "delta" }),
-);
+const runtime = buildAuthoringV2ScenarioRuntime({
+  session: "race",
+  location: "track",
+  state: "ready",
+  widget: "standings",
+  system: "vantare-crystal",
+  variant: "standings-multiclass",
+});
+coordinator.setOverlayFrame(runtime.overlayV2Frame, runtime.overlayV2Source);
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

@@ -3,33 +3,50 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import { buildMockTelemetry } from "../../../core/mock-scenarios";
-import { createDefaultRelativeContent } from "../../../widget-types/relative/relative-content";
-import { buildRelativeViewModel } from "../../../widget-types/relative/relative-view-model";
-import type { RelativeViewModel } from "../../../widget-types/relative/relative-view-model";
+import { createDefaultRelativeContent, getEnabledRelativeColumns } from "../../../widget-types/relative/relative-content";
+import type { RelativeContent } from "../../../widget-types/relative/relative-content";
+import type { RelativeRowViewModel, RelativeViewModel } from "../../../widget-types/relative/relative-view-model";
 import { RelativeCrystal } from "./RelativeCrystal";
 
 const testDir = dirname(fileURLToPath(import.meta.url));
 
-const vehicles = [
-  { id: 1, driverName: "Ahead far", place: 1, vehicleClass: "HYPERCAR", lapDistanceMeters: 1_300, timeGapToPlayer: 6, driverNumber: "7" },
-  { id: 2, driverName: "Ahead near", place: 2, vehicleClass: "HYPERCAR", lapDistanceMeters: 1_200, timeGapToPlayer: 2, driverNumber: "36" },
-  { id: 3, driverName: "Ahead gt", place: 3, vehicleClass: "LMGT3", lapDistanceMeters: 1_100, timeGapToPlayer: 1, driverNumber: "12" },
-  { id: 4, driverName: "Player", place: 4, vehicleClass: "HYPERCAR", lapDistanceMeters: 1_000, isPlayer: true, timeGapToPlayer: 0, driverNumber: "8" },
-  { id: 5, driverName: "Behind near", place: 5, vehicleClass: "HYPERCAR", lapDistanceMeters: 900, timeGapToPlayer: -1, driverNumber: "23" },
-  { id: 6, driverName: "Behind gt", place: 6, vehicleClass: "LMGT3", lapDistanceMeters: 800, timeGapToPlayer: -2, driverNumber: "44" },
-  { id: 7, driverName: "Behind far", place: 7, vehicleClass: "HYPERCAR", lapDistanceMeters: 700, timeGapToPlayer: -5, driverNumber: "99" },
-];
-
 afterEach(() => cleanup());
 
-function buildReadyModel(rowHeightMode: "compact" | "fill" = "compact"): RelativeViewModel {
-  const content = createDefaultRelativeContent();
-  const snapshot = buildMockTelemetry({ session: "race", location: "track", state: "ready" });
-  return buildRelativeViewModel(
-    { ...snapshot, scoring: vehicles },
-    { ...content, rowHeightMode },
-  );
+function relativeRow(
+  row: Pick<RelativeRowViewModel, "id" | "position" | "driverName"> &
+    Partial<RelativeRowViewModel>,
+): RelativeRowViewModel {
+  return {
+    vehicleClass: "HYPERCAR",
+    driverNumber: "",
+    gapText: "—",
+    bestLapText: "-",
+    lastLapText: "-",
+    isPlayer: false,
+    side: "ahead",
+    tone: "neutral",
+    gapSeconds: null,
+    ...row,
+  };
+}
+
+function buildReadyModel(
+  content: RelativeContent = createDefaultRelativeContent(),
+  rowHeightMode: "compact" | "fill" = "compact",
+): RelativeViewModel {
+  return {
+    type: "relative",
+    status: "ready",
+    columns: getEnabledRelativeColumns(content),
+    rowHeightMode,
+    rows: [
+      relativeRow({ id: "2", position: 2, driverName: "Ahead near", side: "ahead", tone: "ahead", gapText: "+2.0", gapSeconds: 2 }),
+      relativeRow({ id: "3", position: 3, driverName: "Ahead gt", vehicleClass: "LMGT3", side: "ahead", tone: "ahead", gapText: "+1.0", gapSeconds: 1 }),
+      relativeRow({ id: "4", position: 4, driverName: "Player", isPlayer: true, side: "ahead", tone: "player", gapSeconds: 0 }),
+      relativeRow({ id: "5", position: 5, driverName: "Behind near", side: "behind", tone: "behind", gapText: "-1.0", gapSeconds: -1 }),
+      relativeRow({ id: "6", position: 6, driverName: "Behind gt", vehicleClass: "LMGT3", side: "behind", tone: "behind", gapText: "-2.0", gapSeconds: -2 }),
+    ],
+  };
 }
 
 const readyModel = buildReadyModel();
@@ -110,15 +127,7 @@ describe("RelativeCrystal", () => {
   });
 
   it("keeps physical relative gaps while the player is in pit", () => {
-    const content = createDefaultRelativeContent();
-    const model = buildRelativeViewModel(
-      {
-        ...buildMockTelemetry({ session: "race", location: "pit", state: "ready" }),
-        scoring: vehicles.map((row) => (row.isPlayer ? { ...row, inPit: true } : row)),
-      },
-      content,
-    );
-    const { root } = renderCrystal(model);
+    const { root } = renderCrystal(readyModel);
     expect(root.querySelectorAll("[data-relative-row]")).toHaveLength(5);
     expect(root.querySelectorAll("[data-tone='ahead']")).toHaveLength(2);
     expect(root.querySelectorAll("[data-tone='behind']")).toHaveLength(2);
@@ -139,7 +148,7 @@ describe("RelativeCrystal", () => {
   });
 
   it("applies fill row height mode without measuring the DOM", () => {
-    const { root } = renderCrystal(buildReadyModel("fill"));
+    const { root } = renderCrystal(buildReadyModel(createDefaultRelativeContent(), "fill"));
     expect(root.getAttribute("data-row-height")).toBe("fill");
     expect(root.style.width).toBe("100%");
   });

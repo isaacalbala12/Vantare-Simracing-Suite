@@ -48,8 +48,9 @@ func TestBrowserContractFixtureMatchesGoTransport(t *testing.T) {
 	}) {
 		t.Fatalf("overlay pull fixture drift: %+v", fixture.OverlayPull)
 	}
+	// R7a: ProductOverlay esta retirado; el contrato browser cubre los
+	// tres productos vivos.
 	products := []ProductID{
-		ProductOverlay,
 		ProductEngineer,
 		ProductStrategy,
 		ProductAnalysis,

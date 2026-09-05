@@ -2,6 +2,7 @@ import type {
   OverlayFrameV2,
   OverlayQValue,
   OverlaySourceStatusV2,
+  Overlayv2DeltaHistoryV2,
 } from "../../../generated/telemetry";
 import type { DeltaTraceContent } from "./delta-trace-definition";
 import type { DeltaTraceViewModel } from "./delta-trace-view-model";
@@ -9,18 +10,6 @@ import type { DeltaTraceViewModel } from "./delta-trace-view-model";
 const MAX_POINTS = 120;
 
 type Point = { capturedAt: number; deltaSeconds: number };
-
-type HistoryState = {
-  sessionKey: string;
-  samples: Point[];
-  lastCapturedAt?: number;
-};
-
-let history: HistoryState | null = null;
-
-function sessionKey(frame: OverlayFrameV2): string {
-  return `${frame.sessionId}:${frame.epoch}`;
-}
 
 function displayedNumber(value: OverlayQValue<number>): number | undefined {
   if (value.q === "missing" || value.q === "invalid") return undefined;
@@ -55,27 +44,34 @@ function computeTrend(points: readonly Point[]): DeltaTraceViewModel["trend"] {
   return "stable";
 }
 
-/**
- * Resetea el historial acumulado. Exportado para tests.
- */
-export function resetDeltaTraceHistory(): void {
-  history = null;
+// Serie canónica del wire: instantes Unix absolutos + segundos sin
+// cuantizar, siempre alineados, tope 120. Sin calidad utilizable, sin
+// alineación o con un valor no finito no hay serie: se publica vacía, nunca
+// reconstruida desde generatedAt ni desde el reloj del navegador.
+function decodeHistory(history: Overlayv2DeltaHistoryV2): Point[] {
+  if (history.q !== "fresh" && history.q !== "stale") return [];
+  const capturedAtMS = history.capturedAtMS ?? [];
+  const seconds = history.seconds ?? [];
+  if (capturedAtMS.length !== seconds.length || capturedAtMS.length > MAX_POINTS) return [];
+  const points: Point[] = [];
+  for (let index = 0; index < capturedAtMS.length; index += 1) {
+    const at = capturedAtMS[index];
+    const value = seconds[index];
+    if (at === undefined || value === undefined) return [];
+    if (!Number.isSafeInteger(at) || at < 0 || typeof value !== "number" || !Number.isFinite(value)) return [];
+    points.push({ capturedAt: at, deltaSeconds: value });
+  }
+  return points;
 }
 
 /**
  * Delta-trace view model over the Overlay v2 contract.
  *
- * El frame v2 NO transporta una serie temporal de delta; solo el instante
- * `delta.seconds`. Para que delta-trace pueda pintar su traza este VM acumula
- * localmente los valores válidos que van llegando, acotado a 120 puntos y
- * reiniciado al cambiar de sesión/epoch. Es el mismo patrón que
- * `input-telemetry` usaba en TS antes de que Go publicara `controls.history`;
- * aquí se mantiene porque Go no deriva historial de delta.
- *
- * La acumulación es global (no por widget id) porque la firma v2 es
- * `buildXViewModelV2(frame, source, content)` sin id; dos widgets
- * delta-trace comparten la misma serie, igual que `controls.history` es única
- * por sesión. El corte por ventana lo aplica `content.windowSeconds` al leer.
+ * El frame v2 transporta la serie temporal en `delta.history`: 120 instantes
+ * Unix absolutos como máximo, medidos en Go desde `derive.SelfDelta.History`.
+ * Este VM solo decodifica y presenta: no acumula estado entre llamadas, no
+ * usa `Date.now` ni edades relativas a `generatedAt`. La ventana
+ * `content.windowSeconds` se recorta contra el instante más nuevo del wire.
  *
  * Campos sin señal canónica quedan declarados como gaps: sectorDeltas,
  * turnInsight, trackPath.
@@ -102,29 +98,12 @@ export function buildDeltaTraceViewModelV2(
     };
   }
 
-  // Mantener historial solo en estados live/stale y con delta válido.
   const current = displayedNumber(frame.delta.seconds);
-  const key = sessionKey(frame);
-  if (history === null || history.sessionKey !== key) {
-    history = { sessionKey: key, samples: [] };
-  }
-
-  if (current !== undefined && Number.isFinite(current)) {
-    const capturedAt = Date.parse(frame.generatedAt);
-    const millis = Number.isFinite(capturedAt) ? capturedAt : Date.now();
-    if (history.lastCapturedAt !== millis) {
-      history.samples.push({ capturedAt: millis, deltaSeconds: current });
-      history.lastCapturedAt = millis;
-      if (history.samples.length > MAX_POINTS) {
-        history.samples.splice(0, history.samples.length - MAX_POINTS);
-      }
-    }
-  }
+  const series = decodeHistory(frame.delta.history);
 
   const windowSeconds = Math.max(1, Math.min(8, content.windowSeconds));
-  const newest = history.samples.at(-1)?.capturedAt ?? Date.parse(frame.generatedAt);
-  const cutoff = (Number.isFinite(newest) ? newest : Date.now()) - windowSeconds * 1000;
-  const points = history.samples.filter((p) => p.capturedAt >= cutoff);
+  const newest = series.at(-1)?.capturedAt;
+  const points = newest === undefined ? [] : series.filter((p) => p.capturedAt >= newest - windowSeconds * 1000);
 
   const trend = computeTrend(points);
 

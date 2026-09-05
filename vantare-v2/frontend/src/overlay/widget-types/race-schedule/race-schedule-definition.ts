@@ -45,23 +45,6 @@ export const raceScheduleDefinition: WidgetTypeDefinition<RaceScheduleContent, R
       timeZone: typeof value.timeZone === "string" ? value.timeZone : "local",
     };
   },
-  buildViewModel(_snapshot, content) {
-    return buildRaceScheduleViewModel([], content);
-  },
-  buildRuntimeViewModel(_snapshot, content, runtime) {
-    return buildRaceScheduleViewModel(
-      runtime.raceScheduleEvents ?? [],
-      content,
-      runtime.raceScheduleStatus,
-    );
-  },
-  buildPreviewViewModel(_snapshot, content, runtime) {
-    return buildRaceScheduleViewModel(
-      runtime.raceScheduleEvents ?? [],
-      content,
-      runtime.raceScheduleStatus,
-    );
-  },
   buildAuxiliaryViewModel(content, runtime) {
     return buildRaceScheduleViewModel(
       runtime.raceScheduleEvents ?? [],

@@ -1,5 +1,1516 @@
 # Handoff vivo — Telemetry Core
 
+## Auditoría integral V2 consolidada — 2026-09-05, ISA-987
+
+Retirada Overlay V1 cerrada localmente en
+`28bac67650837d2a56d2466bfcbf7adf41436af7`. Las dos reviews finales sobre ese
+SHA, `ses_f8f6caaa8ffe7Ql7ZMpNUNutVB` y `ses_f8f6e4edbffeDKHQ4aikzOYbzz`,
+concluyeron APPROVE sin hallazgos pendientes; el comentario de cierre de #894
+registra la evidencia. El apartado R7b/F inferior conserva el checkpoint
+anterior, no una nueva obligación de repetir las reviews.
+
+Isaac ha autorizado continuar fase 2 del maestro: auditoría integral de
+Telemetría V2, no sólo OverlayFrame. Cuatro lectores Muse xhigh + Ponytail full
+en snapshots independientes del mismo SHA; main consolida en
+`C:/tmp/vantare-v2-audit-987/vantare-v2`, rama
+`vantareapp/isa-987-auditoria-integral-v2`. Matriz y sesiones en
+[`auditoría integral`](../../analysis/telemetria-v2-auditoria-integral-20260905.md).
+Los cuatro lectores han terminado y main ha contrastado los hallazgos.
+Defectos: llamadas Engineer sin límite efectivo tras timeout; facts bloqueados
+en el mismo epoch tras overflow/gap sin recuperación productiva; timeout HTTP
+que no cubre el cuerpo JSON; Damage que permanece Fresh cuando envejece la fuente.
+Los dos últimos tienen reproducción focal ejecutada por main. Los tests Go
+focales de engine/derive/LMU, transporte, recording/Engineer y wiring pasan;
+no sustituyen los casos de regresión que faltan ni las pruebas físicas.
+
+Simplificaciones candidatas: retirar el verificador duplicado del Core,
+no proyectar Strategy sin destino y eliminar copias redundantes concretas.
+El ahorro todavía no está medido. Siguiente orden: timeout HTTP y Damage en
+microcortes independientes, límites/recuperación Engineer y después las
+simplificaciones medidas. Mantener contratos, información, apariencia y Hz.
+Cobertura y exclusiones explícitas en el informe; no se certifica todo V2.
+No cambios productivos, apps, LMU ni mediciones físicas. Bucle de rendimiento
+no iniciado. Sin push, PR, merge o promoción. Límite posterior del bucle:
+cinco experimentos consecutivos sin mejora demostrada u ocho horas acumuladas.
+
+## R7b/F en cierre — V1 fuera del candidato, gates completos — 2026-09-05, ISA-894
+
+E1d queda cerrado con `8b7ed0e3` (RED), `31742554` (GREEN: 58 ficheros,
++158/−3075, neto −2917) y `7ff93c2d` (corrección de review). Retirados 25
+ficheros: snapshot, adapters, derived store, mocks, acumulador e historias,
+readers y fixtures preview legacy. El coordinador conserva solo
+OverlayFrameV2/source/context/failure y un scheduler; no hay wrapper ni camino
+de compatibilidad. Guardias 21/21, afectados 210/210, suite frontend 407/407
+ficheros y 3164/3164 tests, typecheck, lint, build, contrato generado y Go
+completo PASS. `go vet` muestra solo tres avisos heredados de `unsafe.Pointer`
+fuera del diff. Review Muse + Ponytail `ses_f8f8383b0ffegmpe5mMk7uudRB`:
+APPROVE, P0/P1/P2/P3 = 0. Evidencia:
+[`retirada-v1-r7b-e1d-nucleo-20260905.md`](../../telemetry-core/evidence/isa-894/retirada-v1-r7b-e1d-nucleo-20260905.md).
+Roadmap regenerado y `--check` verde. Una primera ejecución paralela agotó dos
+timeouts Playwright y uno Go por contención; los focales y las suites completas
+pasaron después secuencialmente. Siguiente: dos reviews frescas del árbol
+final. Sin push, PR, merge, promoción, apps ni LMU; la auditoría V2 y el bucle
+de rendimiento aún no han comenzado.
+
+## R7b/E4 ejecutado en rama — oráculo shadow y builders legacy fuera, tipos vivos in situ — 2026-09-05, ISA-894
+
+Commits locales `5391ac7d` (RED: guard E4 1 failed | 17 passed, fallo
+exacto) + `92e5dd17` (GREEN, 60 ficheros, +439/−6112); el corte completo
+suma +493/−6119, neto −5626.
+Borrados 26 ficheros: `telemetry-shadow/` restante (comparator/sanitizer,
+6 tests, 2 JSON S1) + 16 `*-view-model.test.ts` legacy (el preflight decía
+28 por error de conteo). Los 16 builders quedan en tipos y helpers puros
+(`withStandingsMotionIdentity`, `resolve*CellValue`,
+`formatPedalsTelemetry*`, `DeltaTone`, tipos ViewModel/Row) sin mover ni
+duplicar; cero callers productivos verificados por `rg` (STOP no activado).
+15 tests migrados: 8 renderers/contract a literales (pit/gaps/stress
+intactos), 7 V2 a aserciones nativas. B1 E4 en ausencia (B2-prep retirado),
+v1-guard sin las 17 entradas E4, view-models sin shadow. Preservados:
+race-schedule, car-damage, accumulator/historias (E1), scoring-readers y su
+cadena relative pendiente de confirmar/retirar en E1d, geometría, goldens V2,
+evidencia histórica. Checks: focales
+497+297+144+105 PASS; typecheck, lint, build, `rg` y diff-check verdes.
+Suite completa y Go pendientes de E1d/F1. Evidencia:
+[`retirada-v1-r7b-e4-oraculo-20260905.md`](../../telemetry-core/evidence/isa-894/retirada-v1-r7b-e4-oraculo-20260905.md).
+Review adversarial Muse + Ponytail `full` `ses_f8fac15bcffe4LyafYHDCmts0C`:
+APPROVE, P0/P1/P2 = 0. P3 de evidencia, guard y formato cerrados sin nueva
+abstracción. La suite completa accidental dejó 3234 PASS y 5 fallos heredados
+fuera del diff E4 (cuatro de transport/store y uno i18n Studio), bloqueadores
+explícitos de E1d/F. Siguiente: E1d. Sin push, PR, merge, promoción, apps ni LMU.
+
+## R7b/E3 aprobado — 2026-09-05, ISA-894
+
+Review adversarial read-only Muse `ses_f8fc90211ffeBn9PPLG9rIKxi4`:
+APPROVE, P0/P1/P2 = 0/0/0. Revisión principal y adversarial repitieron
+los dos tests Go, guard B1 18/18 y diff-check: PASS. El único P3 es una
+frase histórica sin wiring en `compact_frame.go`; no bloquea ni amplía E3.
+E3 cerrado; siguiente E4.
+
+## R7b/E3 ejecutado en rama — testdata overlay y bench frontend fuera, prototipo intacto — 2026-09-05, ISA-894
+
+Commits locales `572911f4` (RED: guard E3 1 failed | 17 passed, fallo
+exacto con los 5 artefactos) + `745a1048` (GREEN, 6 ficheros, 1482
+deletions, 0 inserciones). Borrados los 3 JSON
+`overlay/testdata/` (`lmu-1.4-delta`, `overlay_v1_pre_d7`,
+`overlay_v1`) y los 2 entrypoints research bench
+(`frontend-bench-entry.ts` + `frontend-bench.mjs`, importaban el
+adapter V1 ya borrado en B2). `contracts_test.go` pierde solo la
+entrada overlay (strategy y analysis intactos). Guard B1 E3 de
+presencia a ausencia (2 entrypoints + 3 JSON); `compact_frame.go`
+(tag `researchbench`, sin cableado V1), Go bench, checks vite/html
+research y custodia S1 intactos. Inventario `rg` previo: cero
+consumidores ejecutables reales fuera de `contracts_test` (STOP no
+activado). Checks: `TestGoldenContractsDoNotLeakCanonicalInternals`
+PASS, `TestOverlayV1ContractsRetired` PASS, guard 18/18, `rg` limpio
+salvo anclas del guard, `git diff --check` limpio, `gofmt` limpio.
+Suite completa pendiente de E1d/F1. Evidencia:
+[`retirada-v1-r7b-e3-bench-20260905.md`](../../telemetry-core/evidence/isa-894/retirada-v1-r7b-e3-bench-20260905.md).
+Siguiente: E4. Sin push, PR, merge, promoción, apps ni LMU.
+
+## R7b/E2 aprobado y guard simplificado — 2026-09-05, ISA-894
+
+Review adversarial read-only Muse `ses_f8fd55932ffeI9eCwgS6qguYrF`:
+APPROVE, P0/P1 = 0/0. Su P2 detectó que el guard E2 de 155 líneas
+duplicaba el guard B1; se eliminó y B1 conserva solo los locks mínimos.
+Corregidos además el comentario del Host y el conteo de 7 gates.
+Revisión principal: 145 focales PASS, typecheck PASS, lint PASS y build
+PASS. E2 cerrado; E3 tiene preflight GO.
+
+## R7b/E2 ejecutado en rama — sistema features/rollback fuera, V2 directo — 2026-09-05, ISA-894
+
+Commits locales `1fce8fef` (RED: guard E2 6 failed | 1 passed) +
+`6ae800f2` (GREEN +74/−479, neto −405). Borrados
+`overlay-v2-features.ts` + su test; callsites
+Composite/OBS/Studio sin generación ni suscripción; hilo
+`overlayV2Features` fuera de edit/runtime/definition; Host sin
+`v2Rollback`/rama/gates; registry `{ buildViewModelV2 }` directo sin
+`feature`; tests exclusivos fuera y cobertura productiva
+reformulada. Corrección al microplan: el inventario real demostró
+cero consumidor productivo del catálogo, así que no se mueve a otro
+archivo, se elimina. Guard 7/7, focales 300/300, typecheck, lint,
+build, `rg` en `src`/`dist` y diff-check PASS. Suite completa
+pendiente de E1d/F1. Evidencia:
+[`retirada-v1-r7b-e2-switch-20260905.md`](../../telemetry-core/evidence/isa-894/retirada-v1-r7b-e2-switch-20260905.md).
+Siguiente: E3. Sin push, PR, merge, promoción, apps ni LMU.
+
+## R7b/E1c aprobado — 2026-09-05, ISA-894
+
+Review adversarial read-only Muse `ses_f8feb3bdfffe8KVwkns5tWs53q`:
+APPROVE, P0/P1/P2 = 0/0/0. Los P3 no bloqueantes (clases/códigos del
+golden V2 y reproducibilidad de la evidencia) quedan registrados en el
+expediente. La revisión principal repitió 46 focales PASS, typecheck PASS,
+lint PASS y build PASS. E1c cerrado; siguiente microcorte: E2.
+
+## R7b/E1c ejecutado en rama — megamódulo fuera, helper V2 conservado, contract sobre frame V2 — 2026-09-05, ISA-894
+
+Commits locales `f8ee3f74` (RED: lock E1c enumera 4 ficheros) +
+`d5a34a16` (GREEN +69/−1244, neto −1175). Borrados `authoring-fixtures.ts`
++ su test exclusivo + shim `harness-fixtures.ts` (cero callers
+productivos) + su test V1. `authoring-v2-scenario-widget.ts` conservado
+como único helper V2 de Workshop/Parity (cae su comentario rancio que lo
+mandaba a borrar, igual que el de `authoring-v2-workshop-frame.ts`).
+Contract Endurance migrado a frame V2 canónico (bloques
+`[lmp2, gte, hypercar]`, tope WEC con stress60) sin copiar funciones ni
+datos inventados; builders legacy intactos para E4 y núcleo para E1d.
+Focales 176/176 + vecinos 411/411 PASS; typecheck verde; build PASS;
+ESLint/diff-check/`rg` limpios. Suite completa pendiente de E1d/F1.
+Evidencia:
+[`retirada-v1-r7b-e1c-autoria-20260905.md`](../../telemetry-core/evidence/isa-894/retirada-v1-r7b-e1c-autoria-20260905.md).
+Siguiente: E2. Sin push, PR, merge, promoción, apps ni LMU.
+
+## R7b/E1c STOP resuelto por inventario — comparator conserva 16 builders hasta E4 — 2026-09-05, ISA-894
+
+Inventario read-only Muse `ses_f8ffd7b62ffeka520j86RvC7SE`: los 16 builders
+legacy no pueden caer en E1c porque `overlay-shadow-comparator.ts` los importa
+como oráculo. El agente se abortó sin cambios antes de forzar la contradicción.
+Orden corregido: E1c retira solo autoría legacy; E2/E3 limpian switch y
+fixtures; E4 borra comparator + builders; E1d elimina al final snapshot,
+adapters, mocks y coordinador. `authoring-v2-scenario-widget.ts` se conserva
+como único helper V2 de Workshop/Parity, sin duplicación. Sin push, PR, merge,
+promoción, apps ni LMU.
+
+## R7b/E1b corte mínimo — harness snapshot Studio fuera, helper diferido a E1c (P1 cerrado) — 2026-09-05, ISA-894
+
+Commits locales `62a541b5` (RED 2/2) + `59c564a0` (borrado del
+harness) + `4d4f6ca6` (revert del churn: helper restaurado
+byte-idéntico, migraciones Parity/Workshop revertidas) + `59140b41`
+(RED/guard en harness-only) + `c090fae0` (docs corregidas) + `048b045b`
+(sin pin positivo de la deuda E1c). Retirado únicamente
+`studio-v1-snapshot-test-harness.ts` (cero importadores); el guard B1
+lo saca de diferidos E1 sin más cambios. `authoring-v2-scenario-widget.ts`
+y `authoring-fixtures.ts` quedan con dueño explícito E1c y caen
+juntos; los tipos `Mock*` de Studio son dueños E1d. D5 y E4 intactos.
+Focales E1b+guard+E1a+autoridad+Parity 71/71 PASS; typecheck verde;
+build PASS; ESLint/diff-check limpios. Suite completa pendiente de
+E1d/F1. Evidencia:
+[`retirada-v1-r7b-e1b-autoria-20260905.md`](../../telemetry-core/evidence/isa-894/retirada-v1-r7b-e1b-autoria-20260905.md).
+Review adversarial `ses_f9002a0fbffeti4QtvJc4maIzG`: **APPROVE final**,
+P0/P1/P2 = 0 tras corregir dos P2 documentales. Siguiente: E1c. Sin push, PR, merge,
+promoción, apps ni LMU.
+
+## R7b/E1a APROBADO final — contrato sin snapshot, siguiente E1b — 2026-09-05, ISA-894
+
+Commits locales `79856dba` (RED 3/1) + `c99770a5` (GREEN).
+`WidgetTypeDefinition` pierde `TelemetrySnapshot` y sus tres firmas
+snapshot; `race-schedule`/`engineer-radio` conservan solo
+`buildAuxiliaryViewModel` con fuentes Calendar/Engineer intactas;
+`track-map` pierde el preview snapshot de la definition; el live V2 ya está
+cableado en el registro y su builder preview V2 queda sin caller. Ajustes mínimos exigidos por el contrato en
+`authoring-fixtures`, comparador, `studio-catalog` y guard. Focales
+31/31 y vecinos 87/87 PASS; typecheck verde; build PASS; diff-check y
+`rg` de ausencia PASS; suite completa pendiente de E1d/F1. Evidencia:
+[`retirada-v1-r7b-e1a-contrato-20260905.md`](../../telemetry-core/evidence/isa-894/retirada-v1-r7b-e1a-contrato-20260905.md).
+Review adversarial read-only `ses_f90150e42ffelt0XRK9JV2t3oI`: **APPROVE**,
+P0/P1/P2 = 0; P3 informativos con dueño E1d/F1. Siguiente: E1b. Sin push,
+PR, merge, promoción, apps ni LMU.
+
+## R7b/D5 APROBADO final — Calendar y Engineer siguen auxiliares — 2026-09-05, ISA-894
+
+Sin cambio productivo. `race-schedule` y `engineer-radio` son las dos únicas
+familias fuera de las 18 entradas V2 y llegan al Host solo mediante
+`buildAuxiliaryViewModel`, desde Calendar y Engineer respectivamente. Focal de
+definitions, Host, registro y RuntimeSurface: 92/92 PASS. E1 debe retirar sus
+firmas snapshot ignoradas y migrar tests antes de borrar `TelemetrySnapshot` y
+`mock-scenarios`, junto al preview snapshot de Track Map, conservando intacta
+la autoridad auxiliar. Evidencia:
+[`retirada-v1-r7b-d5-auxiliares-20260905.md`](../../telemetry-core/evidence/isa-894/retirada-v1-r7b-d5-auxiliares-20260905.md).
+Review adversarial read-only `ses_f902344d8ffefwjrSlff0BTYTs`: **APPROVE**,
+P0/P1/P2 = 0; P3 = 2 informativos con dueño E1/F1. Siguiente: E1. Sin push,
+PR, merge, promoción, apps ni LMU.
+
+## R7b/D4 APROBADO final — las 18 definitions productivas V2-only — 2026-09-05, ISA-894
+
+Commits `ca462478` (RED exacto 6/6), `6a5da362` (GREEN) y `4eaa0eb8`
+(tests C1 de daño alineados). Las seis definitions finales ya no publican
+`buildViewModel`; con D2+D3, las 18 familias productivas son V2-only. E1/E4
+conservan temporalmente cuatro builders reales y los dos stubs `missing` de
+daño mediante llamadas directas, sin registro ni fallback. RED 21/23;
+focales 64/64, 140/140 y 68/68 PASS; typecheck, ESLint, build, diff-check y
+`rg` PASS. Suite final 3412/3418, mismos seis fallos heredados ajenos.
+Evidencia:
+[`retirada-v1-r7b-d4-final-20260905.md`](../../telemetry-core/evidence/isa-894/retirada-v1-r7b-d4-final-20260905.md).
+Review adversarial read-only `ses_f90288574ffeuvXgeIjpxMIP8z`: **APPROVE**,
+P0/P1/P2 = 0; P3 = 2 informativos y propiedad E1/E4 (casts temporales y
+tests legacy restantes). Siguiente: D5. Sin push, PR, merge, promoción, apps
+ni LMU.
+
+## R7b/D3 APROBADO final — seis definitions dinámicas V2-only — 2026-09-05, ISA-894
+
+Commits `e3f9d5a5` (RED exacto 6/6) y `367a4df7` (GREEN).
+`racing-flags`, `delta-advanced`, `delta-trace`, `pedals`,
+`pedals-telemetry-compact` y `multiclass-relative` ya no publican
+`buildViewModel`. Los builders y tipos legacy permanecen solo para los
+oráculos E1/E4, que ahora los importan directamente sin registro paralelo ni
+fallback silencioso. RED 21/23; focales 64/64 y 164/164 PASS; typecheck,
+ESLint focal, build, diff-check y `rg` PASS. Suite completa 3412/3418 con los
+mismos seis fallos heredados ajenos de D2. Evidencia:
+[`retirada-v1-r7b-d3-dinamicos-20260905.md`](../../telemetry-core/evidence/isa-894/retirada-v1-r7b-d3-dinamicos-20260905.md).
+Review adversarial read-only `ses_f90340906ffeafGj8G38G6gaWj`: **APPROVE**,
+P0/P1/P2 = 0 y P3 = 1 informativo por cinco casts temporales `as never` de
+E4. Siguiente: D4. Sin push, PR, merge, promoción, apps ni LMU.
+
+## R7b/D2 APROBADO final — seis definitions core/status V2-only — 2026-09-05, ISA-894
+
+Commits `fe29411c` (RED exacto 6/6), `caebb5e8` (GREEN) y `5139b09c`
+(test de perfiles sin aserción V1). `standings`, `relative`, `delta`,
+`fuel-strategy`, `pedals-telemetry` e `input-telemetry` ya no publican
+`buildViewModel`; el contrato lo hace opcional y el registro deja de exigirlo.
+El frame manual Fuel incorpora `requiredFuel/history/sessionLaps` `missing` y
+cierra el fallo heredado A2. Los `*-view-model.ts` sobreviven porque contienen
+tipos de renderer y el oráculo E4; `authoring-fixtures` (E1) y el comparador
+(E4) llaman temporalmente a los builders D2 de forma directa, sin registro
+nuevo ni fallback silencioso. Focal 223/223 y revalidación 75/75 PASS;
+typecheck, ESLint focal, build, diff-check y `rg` PASS. Suite completa final
+3412/3418: seis fallos heredados fuera de D2 (4 transport, 1 i18n Studio,
+1 gaps Fuel). Evidencia:
+[`retirada-v1-r7b-d2-core-20260905.md`](../../telemetry-core/evidence/isa-894/retirada-v1-r7b-d2-core-20260905.md).
+Review adversarial read-only `ses_f903df475ffeAngN0noGhhxIBo`: **APPROVE**,
+P0/P1/P2/P3 = 0; reprodujo guard+registry 23/23 y perfiles+Host+comparador
+68/68. Siguiente: D3. Sin push, PR, merge, promoción, apps ni LMU.
+
+## R7b/D1 APROBADO final — Host sin snapshot ni rama legacy — 2026-09-05, ISA-894
+
+Commits locales `e92d58dc` (RED: `WidgetVisualHost.d1.test.tsx` 22 passed /
+1 failed, fallo estructural exigido `not.toContain("TelemetrySnapshot")`) +
+`556c68ed` (GREEN + ajustes estrictos). Inventario previo con `rg`: cero
+callers productivos con `snapshot={` (los 9 callers pasan solo
+widget/renderMode/runtime/diagnostics; STOP no activado, V1 no se reabre).
+El Host pierde prop/import `TelemetrySnapshot`, la rama
+`harnessMode && snapshot` (`buildPreview/Runtime/ViewModel`,
+`definition.buildViewModel`) y el hack `input-telemetry`
+(`recordInputTelemetrySample`/`readInputTelemetryHistory` + cast); +1/−20 neto.
+`WidgetTypeDefinition.buildViewModel` intacto (dueños D2/D3/D4), `v2Rollback`
+intacto (dueño E2), renderers/UX/frontera única intactos, cero sintéticos.
+Ajustes mínimos: 2 tests legacy a frame V2 (`-0.420`/`-0.42` honestos),
+props snapshot retiradas, fixture de contrato a runtime V2 canónico, guard a
+ausencia (baseline sin entrada del Host).
+
+Checks sobre `556c68ed`: focales Host/guard 79/80 (el fallo es deuda heredada
+verificada en base: `v2.test [fuel-strategy]`, `makeFrame` manual sin
+`requiredFuel` A2, dueño D2); vecinos 99/99; `pnpm typecheck` verde; ESLint
+focal limpio; `pnpm build` PASS (aviso chunks preexistente);
+`git diff --check` limpio; `rg` ausencia limpio en Host y callers. Evidencia
+exacta en
+[`retirada-v1-r7b-d1-host-20260905.md`](../../telemetry-core/evidence/isa-894/retirada-v1-r7b-d1-host-20260905.md).
+Review adversarial Muse Spark 1.3 Contributor + Ponytail `full`
+`ses_f905396d3ffemkM0VzgKBBux38`: **APPROVE**, P0/P1/P2/P3=0; reprodujo
+27/27 D1+guard, 44/45 Host/V2/fixture con el único fallo fuel heredado y
+typecheck verde. `plan.md`/`roadmap.json` sin tocar (deuda del PR R7b,
+microplan F2). Siguiente: D2 por lotes (daño ya resuelto en C1, su slot cae
+en D4). Sin push, PR, merge, promoción, apps ni LMU.
+
+## R7b/C1 APROBADO final — daño rama B, sin productores snapshot — 2026-09-05, ISA-894
+
+Commits locales `0db6b39e` (RED: `car-damage-c1.test.ts` 2 failed / 2
+passed) + `49809c3f` (GREEN + borrado + guardias). Rama elegida: **B** —
+`wheelDetachedCount` viaja en el frame canónico pero ningún renderer lo
+consume; sin campo canónico nuevo, sin arquitectura, sin datos
+inventados. Evidencia exacta en
+[`retirada-v1-r7b-c1-damage-20260905.md`](../../telemetry-core/evidence/isa-894/retirada-v1-r7b-c1-damage-20260905.md):
+cero productores reales de `snapshot.damage` (`buildMockTelemetry` y
+`telemetry-adapter` jamás la fijan; solo ceros sintéticos de
+`authoring-fixtures.ts:591-593` + tests); `tyres` solo lo lee
+`CarDamageNumbersCrystal.tsx:7`; `wheelDetachedCount` invisible en
+toda superficie de render; `BuildDamage` (`builder_damage.go:43-51`)
+publica los 4 campos desde `damage.State` (driver
+`format.go:523-562`); diferencia legítima = passthrough sintético vs
+dents/2 canónico + tyres `undefined` (fila Tyre `"n/a"`, honestidad).
+
+Producción ya resolvía por V2 vía `overlayV2ViewModelRegistry` + Host;
+las definitions conservan el slot `buildViewModel` (ancla B1 del lote D4
+intacta) como stub honesto `missing`, y D4 lo retirará con su lote. Los
+ficheros `car-damage-*-view-model.ts` quedan solo-tipo (renderers
+intactos, misma ruta); borrados `shared/damage-reader.ts` y los 2 tests
+de builders V1; `harness-fixtures` visual pasa a `missing`.
+v1-authority-guard pierde 3 entradas de ficheros sin `TelemetrySnapshot`
+(sin debilitar el detector); B1 suma lock C1 (ausencia + anclas +
+rama fijada en test) y conserva todos sus locks.
+
+Checks: focales 51/51 + vecinos 14/14; `git grep` de ausencia limpio
+salvo anclas del propio lock; `pnpm typecheck` verde; `pnpm build`
+PASS; ESLint focal y `git diff --check` limpios. Review adversarial Muse
+Spark 1.3 Contributor + Ponytail `full` `ses_f906578d5ffeWmc0D6dNFAZ9dQ`:
+**APPROVE**, P0/P1/P2=0; observaciones P3 solo informativas. Confirma que el
+stub `missing` es correcto mientras `WidgetTypeDefinition.buildViewModel`
+siga siendo obligatorio: D1 elimina la rama legacy del Host y D4 retira el
+slot de las definitions de daño; conectar un builder V2 a la firma snapshot
+sería incorrecto. Siguiente: D1 y luego D2/D3/D4 por lotes (daño ya resuelto,
+su slot cae en D4). Sin push, PR, merge,
+promoción, apps ni LMU.
+
+## R7b/B2 APROBADO final — proyección/transporte Overlay V1 retirados — 2026-09-05, ISA-894
+
+Commits `c1214a4a` (tests de contrato a productos V1 independientes) +
+`c8558a5e` (borrado + V2-only): salen del árbol `overlay-projection-v1*`,
+`overlay-projection-adapter*`, `projection-telemetry-adapter*`,
+`projection-observer*` (prod + tests) y el puente snapshot
+`authoring-v2-fixture.ts`. `overlay-wails-pull` queda V2-only (allowlist de
+dos eventos, sin `receivedV1Projections`, con test de rechazo legacy) y
+`TELEMETRY_PRODUCTS`/regex pierden `overlay`; `projection-golden` conserva
+solo Engineer/Strategy/Analysis. `ObsOverlayApp` ya estaba sin parte adapter.
+Entrypoints research-bench intactos (E3); comparator/sanitizer/testdata/
+resultados intactos (E4). Inventario `rg` previo sin callers productivos
+fuera del lote; literales negativos útiles preservados (R2 Desktop,
+no-suscripción Studio, URLs OBS).
+
+Evidencia: guard B1 `16 passed (16)` — B2 verde y E4 presente como oráculo
+afirmado; authority-guard 4/4 (registra 24 menciones reales del comparator
+por el tipo local de B2-prep, sin debilitar el detector); focales
+contracts/wails-pull/golden + comparator 33/33 + vecinos
+(Composite/Obs/scenario/harness/store) 55/55; `pnpm typecheck` verde (mueren
+los cuatro errores heredados con sus módulos); `pnpm build` PASS;
+ESLint focal limpio; `rg` de ausencia limpio salvo literales negativos
+útiles y el propio guard; `git diff --check` limpio. Suite completa
+`3385 passed / 7 failed (3392)`: los 7 son deuda heredada verificada en
+base — 4 en attach/store (reproducidos en `b434161a` sin este corte) + 3
+de i18n/Fuel documentados desde B3; cero regresión B2. Siguiente: C1,
+hipótesis de daño contra productor. Sin push, PR, merge, promoción,
+apps ni LMU.
+
+Review adversarial Muse + Ponytail `full` `ses_f9078d02affef8Jg2joBcn5vsz`:
+**APPROVE**, P0/P1=0. El único P2 era inventario muerto de B3 en el
+authority-guard y el P3 documental decía que el adapter se borraría en el
+futuro; `3e2a4a30` elimina ambas imprecisiones. Revalidación del guard 20/20,
+`git diff --check` limpio. P0/P1/P2/P3 abiertos = 0.
+
+## R7b/B2-prep APROBADO — oráculo desacoplado del adapter V1 — 2026-09-05, ISA-894
+
+Commit `3a268792`: comparator y test ya no importan
+`overlay-projection-adapter` ni `authoring-v2-fixture`. El oráculo declara solo
+la forma estructural que consume y el test conserva localmente la misma
+conversión del golden V2. Cero ramas runtime cambiadas. Comparator 33/33,
+ESLint, escaneo y diff-check PASS; guard `3 failed | 13 passed (16)`, con
+B2-prep verde y solo B2 deliberadamente RED. Typecheck mantiene los cuatro
+errores heredados B2 exactos. Review Muse + Ponytail `full`
+`ses_f908e1c01ffeglp64iO3rfc8iV`: **APPROVE**, P0/P1/P2/P3=0. Siguiente:
+B2 físico. Sin push, PR, merge, promoción, apps ni LMU.
+
+## R7b/B3 APROBADO — runtime y tooling shadow V1 retirados — 2026-09-05, ISA-894
+
+Commits `429a8bae`, `8aeb858c` y `b3652e11`: salen del árbol el runtime y la
+activación shadow V1, los dos packages harness, sus HTML y Playwright, y los
+cinco `sesion-v1-*`. Las garantías útiles de Controls quedan en el test del
+comparator; los cuatro casos exclusivos de ingesta/fases V1 desaparecen con su
+runtime. Comparator, sanitizador, testdata y resultados históricos siguen
+intactos como oráculo E4.
+
+El paquete S1 ya no importa tooling activo: `recalcular.mjs` contiene la
+clausura exacta usada al publicar en `659b2c57`. Recalcula ON 6074/0, OFF V1=0
+y shadow null 5/5, p99 67,6/49,1 ms y reducción 75,0 %; hashes PASS sin
+reescribir CSV, sesiones ni resúmenes. Comparator 33/33 y bench 32/32 PASS.
+Guard `4 failed | 12 passed (16)`: B3 verde, solo B2-prep y B2 siguen RED.
+Suite sin guard 3442/3445 con los tres fallos heredados de i18n/Fuel; typecheck
+y build reducen la deuda R7a de ocho a cuatro errores, todos en los módulos B2.
+ESLint focal y diff-check PASS.
+
+Review adversarial Muse + Ponytail `full` `ses_f909a2067ffeG4XRGFJHILQUbD`:
+**APPROVE**, P0/P1/P2=0; dos P3 informativos ya poseen dueño B2/E4. Siguiente:
+B2-prep y después B2. Sin push, PR, merge, promoción, apps ni LMU.
+
+## R7b/C2b7 APROBADO final — contratos de autoría V2 puros, C2 cerrado — 2026-09-05, ISA-894
+
+Commits `8f12c448` + `15f7f5ce`: `projection-gaps` deja de leer texto del
+adapter V1 y congela sus ausencias contra los ViewModels V2 de producto;
+`animation-scenes` deja los builders snapshot V1 y ejecuta Standings/Relative
+mediante `buildWorkshopFrameV2`. Los adelantamientos usan dos filas Hypercar
+canónicas y conservan orden por posición; Relative solo transforma gap, lado y
+presencia. Los huecos sin señal V2 (`driverNumber`, `tireCompound` y
+`bestLapText` de Delta) permanecen explícitos, con placeholders y captions
+honestas. Standings sí conserva `bestLap` por fila y prueba el traspaso de
+corona con dueño anterior explícito.
+
+El RED focal inicial expuso siete expectativas legacy falsas; el GREEN final
+cubre 71/71 pruebas focales/vecinas. ESLint del alcance, escaneo V1 y
+`diff --check` están limpios. La suite frontend sin la guardia deliberada deja
+3462/3465 PASS: los tres fallos restantes son deuda heredada ajena de Fuel e
+i18n. Typecheck mantiene exactamente los ocho errores R7a heredados, cero
+nuevos; build sigue no evaluable. La guardia queda `6 failed | 10 passed (16)`:
+C2 pasa 2→0 y solo siguen RED B3, B2-prep y B2. Reviews finales Ponytail
+`full`: spec `ses_f90aee3afffems8ei5Qwdtdvv8` y quality
+`ses_f90ab6e2effeolpsN6jxzGzg2c`, ambas **APPROVE**, P0/P1/P2/P3=0 sobre
+HEAD `15f7f5ce`. Siguiente: B3, retirar runtime/harness/scripts shadow V1. Sin
+push/PR/merge/promoción/apps/LMU.
+
+## R7b/C2b6c APROBADO final — Workshop V2 puro, C2 queda 2→0 — 2026-09-05, ISA-894
+
+Base `76f413dedf3a9a600fefa6b417a93caf4de0ea19`; commits
+`20ee2932` + `70e3881d` + `adce805f`. Workshop deja snapshot, builders,
+seeders y puente V1: construye una sola vez el escenario V2 canónico, aplica el
+diseño una sola vez y falla rápido ante widget o sistema desconocidos. Conserva
+sus cinco variantes de forma y añade las cinco variantes dev reales
+`standings-stress60`, `standings-replay`, `relative-multiclass`, `pedals-zero` y
+`pedals-full`; Engineer Radio y Race Schedule permanecen como fuentes
+auxiliares explícitas. Las escenas Relative transforman `relative` y
+`relativeSettled` y se prueban a través del ViewModel de producto; señales sin
+sumidero V2 (`lapDistanceMeters`, `tireCompound` y best-lap de Delta) siguen
+declaradas como no representables, sin dato inventado.
+
+El bucle adversarial encontró y cerró tres huecos de prueba y un defecto real:
+identidad exacta del coche que cruza, orden canónico multiclase, oráculo de orden
+independiente y escala del historial de pedales. Este último escribía `1` donde
+el contrato exige `1000` permille; quedó reproducido RED, corregido y validado
+mediante `decodeControlsHistory`. Evidencia final: nueve suites focales/vecinas,
+117/117 PASS; ESLint del alcance, escaneo y `diff --check` limpios. Typecheck
+mantiene exactamente los ocho errores R7a heredados, cero nuevos; build sigue no
+evaluable. El guard deliberadamente RED queda `7 failed | 9 passed (16)` y C2
+conserva exactamente dos anclas: `projection-gaps.test.ts` y
+`animation-scenes.test.ts`. Reviews finales Ponytail `full`: spec
+`ses_f90ce6163ffeJVbLSvSwAhPOVi` y quality
+`ses_f90cb7c21ffeG92Ct5MFSBXHwO`, ambas **APPROVE**, P0/P1/P2/P3=0.
+Siguiente: C2b7, gaps/scenes 2→0. Sin push/PR/merge/promoción/apps/LMU.
+
+## R7b/C2b6b APROBADO final — Parity V2 puro, siguiente Workshop 8→2 — 2026-09-05, ISA-894
+
+Commits `d98a7daa` + `f4b9b262` + `a13c4428` + `2035477f`:
+`OverlayParityHarness` deja snapshot, builders, seeders y puente V1. Sus 20
+widgets usan el golden canónico V2; las cinco variantes admitidas son solo de
+forma y un test común fija que ninguna altera el frame. Las variantes que
+fabrican telemetría se rechazan en Parity y siguen bajo contrato Workshop.
+Crystal resuelve una vez el manifest, conserva dimensiones exactas y falla
+rápido; Engineer Radio permanece como fuente auxiliar e Input consume
+`controls.history`. Guard C2 12→8 sin silenciarlo; focales 55/55 y vecinos
+26/26; ESLint, escaneo y diff-check limpios. Typecheck continúa NO verde con
+los ocho errores R7a heredados exactos y build no evaluable. Reviews finales
+Ponytail `full`: spec `ses_f9119e586ffepXBtcGwG2QaySu` y quality
+`ses_f9116bc39ffe3TBoDcMWQ1fhi3`, ambas **APPROVE**, P0/P1/P2=0. Los P3
+informativos de calidad quedan cubiertos por el test shape-only y por el dueño
+E1 del helper visual temporal. Siguiente: C2b6c, migrar únicamente Workshop y
+su compatibilidad (8→2); gaps/scenes permanecen en C2b7. Sin
+push/PR/merge/promoción/apps/LMU.
+
+## R7b/C2b6a APROBADO final — compat Endurance V2, siguiente C2b6b 12→N — 2026-09-05, ISA-894
+
+Commit `b3d1a5ac`: TrackMap layout y los 23 shells Endurance eliminan
+snapshot, mock, puente V1 y filas Relative fabricadas; usan únicamente el
+escenario canónico V2. El nombre `Sebring` del golden resuelve exactamente a
+la geometría real mediante generador+pack sincronizados. Relative conserva el
+contrato 2+jugador+2. Guard C2 14→12; focales 10/10 y paquete del generador
+PASS; ESLint, escaneo y diff-check limpios. Typecheck permanece NO verde con
+los ocho errores R7a heredados exactos; build no evaluable y `go test ./...`
+no es verde solo porque falta el `frontend/dist` embebido. Reviews Ponytail
+`full`: spec `ses_f91516404ffeDJqxZpQXxO8W3d` y quality
+`ses_f91535269ffeD2T3we4lnb5xlf`, ambas **APPROVE**, P0/P1/P2=0. Siguiente:
+C2b6b sobre una sola familia coherente; B3/B2 siguen bloqueados. Sin
+push/PR/merge/promoción/apps/LMU.
+
+## R7b/C2b5a APROBADO final — cerrado, siguiente C2b6 14→2 por variantes — 2026-09-05, ISA-894
+
+Commits `04da9dcc` + hardening `9648dbf4`: el responsive deja el megamódulo
+legacy y publica solo el golden canónico V2 por `setOverlayFrame`. Sus tres
+widgets salen del registro productivo con ids/layouts/sistemas/contenido
+conservados; Standings pasa por `parseStandingsContent` para mantener columnas
+tipadas. No se inventa delta: el placeholder sigue la calidad del golden.
+Guard C2 15→14; prueba propia 1/1 y focales 60/60; ESLint, escaneo y diff-check
+limpios. Typecheck NO verde con los ocho errores R7a heredados exactos, cero
+nuevos; build no evaluable. Reviews finales Ponytail `full`: spec
+`ses_f91679b01ffesHBssaqhByrm3D` y quality
+`ses_f9169dd50ffe0p4nCIdjJCvfj9`, ambas **APPROVE**, P0/P1/P2=0. Parity
+intacto pasa a C2b6 por variante. Sin push/PR/merge/promoción/apps/LMU.
+
+## R7b/C2b5 preflight Ponytail — decisión aplicada en C2b5a — 2026-09-05, ISA-894
+
+Ponytail `full` aplicado por orquestador y dos Muse read-only. Sesiones
+`ses_f9174bb27ffeCalPtlXMEnfdEW` (orden/variantes) y
+`ses_f9174bb4dffeNawSBoZnHHUOPQ` (runtime/TDD) coinciden en **STOP** para el
+C2b5 monolítico 15→10: Parity mezcla escenarios de forma con escenarios que
+cambian datos o son contrato dev/producto, y degradarlos todos a `default`
+perdería cobertura. El mínimo completo pasa a ser C2b5a: solo
+`responsive-overlay-main.tsx`, 15→14, runtime V2 canónico y widgets desde el
+registro productivo, sin importar el megamódulo `authoring-fixtures.ts` ni
+crear snapshots/seeds/fallbacks. Parity se mueve a C2b6 por variante. Si el
+golden V2 no conserva la información visible, STOP. Pendiente RED→GREEN,
+checks y doble review del SHA exacto. Sin código/push/PR/merge/promoción/apps/LMU.
+
+## R7b/C2b4 APROBADO final — cerrado, siguiente C2b5a 15→14 — 2026-09-05, ISA-894
+
+Commits `71ef8cad` + hardening `cad73784`/`dd7806a9` + contrato de test `7aa7352b`: Studio mock deja V1/puente y publica solo un escenario V2
+canónico por `setOverlayFrame`. `mockSession` transforma únicamente
+`session.phase` conservando quality; `mockLocation` transforma únicamente el
+pit de la fila de `player.id`, con fail-fast sin ids/coches inventados. El
+fixture es determinista e inmutable; el provider avanza la secuencia del
+envelope como productor de autoría para que cambios sucesivos del mismo golden
+no sean descartados por el coordinador; el máximo incluye el frame live
+retenido y el test reproduce la colisión exacta. Se preservan primer paint, conmutación,
+start/stop live y suspensión. El test usa el tipo canónico real.
+Al entrar en live, el último frame conserva su forma con fuente `stopped`
+antes de arrancar el adapter: evita deduplicar un primer frame live con el
+mismo `epoch+sequence` y mantiene visible el placeholder desconectado.
+
+El test amplio ya no exige el delta `-0.150` sintético del mock V1: el golden
+V2 lo declara `missing` y se comprueba `data-status="missing"` + `—`. Sin
+cambio productivo ni dato inventado. Evidencia: focales 40/40 y suite Studio
+255/255; ESLint y diff-check limpios; guard deliberadamente
+RED `7 failed | 8 passed (15)`, C2 **16 declaradas / 15 activas**; typecheck NO
+verde con exactamente los 8 errores R7a heredados, cero nuevos; build no
+evaluable. Review spec `ses_f917912d4ffe10UO1E5ZtcPHAW`: **APPROVE**,
+P0/P1/P2=0. Review quality `ses_f917912f0ffejyS439XE3hcShv`: **APPROVE**,
+P0/P1/P2=0; solo P3 informativos. Ambas acreditan Ponytail `full`.
+Siguiente: C2b5a; B3/B2 siguen bloqueados. Sin push/PR/merge/promoción/apps/LMU.
+`27204349` retira además los dos snapshots V1 del test de pérdida de LMU: la
+simulación usa exclusivamente frame/source V2 y el escaneo de los ficheros
+Studio tocados queda sin snapshot/build/publish/puente legacy.
+
+## R7b/C2b3 APROBADO final — cerrado, siguiente C2b4 17→15 — 2026-09-04, ISA-894
+
+Spec re-review `ses_f91f06dd6ffeGxyzv99sMczVrR`: **APPROVE**, P0/P1/P2=0
+(solo P3 handoff duplicado y evidencia mutante no versionada). Quality
+re-review `ses_f91ee235effemoyuBxFI9m5wW7`: **APPROVE**, P0/P1/P2=0 (P3
+opcionales no bloqueantes). Estado literal: guard deliberadamente RED
+`7 failed | 8 passed (15)` con C2 en **18 declaradas / 17 activas**;
+focales 32/32; typecheck NO verde con los 8 heredados R7a; build no
+evaluable. Siguiente: C2b4 (provider Studio mock, 17→15). Sin push/PR/
+merge/promoción/apps/LMU.
+
+## R7b/C2b3 historial — REQUEST_CHANGES, fix y cierre técnico (APROBADO arriba) — 2026-09-04, ISA-894
+
+Quality C2b3: **REQUEST_CHANGES** (P1 único: faltaba lock permanente tras
+retirar las 6 anclas + limpieza del singleton). Fix en commit `79bf23e7`
+(solo guard/focales, cero producción): 9 locks negativos exactos
+(`snapshot={`, constantes retiradas, `buildMockTelemetry`) para los 3
+previews dentro del test existente de callers (15 intactos, fuera del array
+RED C2) + los 3 ficheros en el loop sin-imports-V1; prueba de mutante sin
+tocar producción (anclas inyectadas en copia temporal, detectadas por la
+misma lógica). Limpieza ownership C2b3: `PREVIEW_V2_RUNTIME` eliminado del
+módulo y su test (solo vivía allí; sin `deprecated`, menos código); el
+focal de aislamiento fija args exactos race/track/ready/standings/
+vantare-crystal/default con espía call-through (sin mock falso).
+Aritmética intacta: **18 declaradas / 17 activas** (visible en el diff del
+guard y en el `expected 17`; no se cambia la cifra). Guard tras el fix:
+`7 failed | 8 passed (15)`; focales 32/32; ESLint y `diff --check` limpios;
+typecheck con los 8 heredados (no verde); build no evaluable por bloqueo
+heredado. Pendiente: re-review. Sin push/PR/merge/promoción/apps/LMU.
+
+Writer único, rama `vantareapp/isa-894-retirada-v1-r7b`, base `5f7fca59`.
+Commit de código `b61a7441` (5 ficheros, +120/−26): `HomeMiniStage`,
+`ProfilePreview` y `ui-orbit-harness` pierden `buildMockTelemetry` y la prop
+`snapshot`; cada uno construye su runtime con `buildAuthoringV2ScenarioRuntime`
+(escenario race/track/ready, frame canónico de 20 coches) vía factory por
+instancia (`useMemo`) o por llamada (`buildStageV2Runtime`): sin singleton
+mutable compartido, sin `TelemetrySnapshot`, adapters/shadow V1, fallbacks ni
+sintéticos; el `?raw` vive solo en el módulo C2a. TDD: RED literal en
+`ProfilePreview.isolation.test.tsx` (`expected 0 to be greater than or equal
+to 2`) → GREEN con dos consumidores vivos aislados (mutar standings en uno no
+contamina al otro). Layout/renderer/widgets/cadencias intactos. Guard en el
+mismo commit: C2 con **18 declaradas / 17 activas** (hereda la inactiva de
+C2a); deliberadamente RED `7 failed | 8 passed (15)` con `expected 17`.
+Focales: `ProfilePreview` 5/5 (4 existentes + aislamiento) y `HomeOrbitPage`
+19/19; ESLint focal y `git diff --check` limpios; `pnpm --dir frontend
+typecheck` NO verde con exactamente los 8 errores R7a heredados y cero
+nuevos; build no evaluable/no ejecutado por bloqueo heredado (no se declara
+verde). Riesgo: los previews muestran valores canónicos V2 (los campos con
+calidad `missing` en el golden pintan placeholder, igual que toda superficie
+V2; no es pérdida de información real). Guard/typecheck/build globales NO
+verdes. Siguiente: C2b4 (provider Studio mock, 17→15). Sin push/PR/merge/
+promoción/apps/LMU.
+
+## R7b/C2b2 APROBADO final — cerrado, siguiente C2b3 23→17 — 2026-09-04, ISA-894
+
+Spec C2b2 `ses_f91ff25dbffejp7kMw0wLaqfg5`: **APPROVE**, P0/P1/P2=0 (P3
+redacción, aplicado aquí). Quality C2b2 `ses_f91fc9c29ffegp92tei06icSpN`:
+**APPROVE**, P0=P1=P2=P3=0. Estado literal: guard deliberadamente RED
+`7 failed | 8 passed (15)` con 23 anclas C2 activas; focal StudioRoute 9/9;
+typecheck NO verde con los 8 errores heredados R7a; build no ejecutado.
+Siguiente: C2b3 (previews Hub, 23→17). Sin push/PR/merge/promoción/apps/LMU.
+
+Writer único, rama `vantareapp/isa-894-retirada-v1-r7b`, base `1f6a4308`.
+Commit de test `56449665` (2 ficheros, +6/−26, cero producción):
+`StudioRoute.test.tsx` pierde import del golden V1, `canonicalEnvelope` y
+eventos legacy `status`/`projection` del caso StrictMode; golden V2 canónico
+(`overlay_v2_1`) intacto; lifecycle/listeners/store/repaint/editor
+preservados (focal 9/9, mismo número baseline; `studio-overlay-telemetry`
+3/3). El `coordinator.publish` manual queda citado como historia auxiliar E1
+(inputHistory, no autoridad de proyección ni frame V1); los literales
+negativos `telemetry:overlay:projection` y `telemetry:overlay:status:get` se
+conservan bajo ownership B2 (dos literales, ninguno es input V1). Barrido del fichero: solo queda ese
+literal negativo; cero `TelemetrySnapshot`, `buildMockTelemetry`,
+builders/seeds, `authoring-fixtures`/bridge, `overlay_v1`, goldens V1 o
+`canonicalEnvelope`. (Corrección de redacción: donde decía "solo queda ese
+literal negativo", léase esos dos literales negativos.) Guard en el mismo
+commit: C2 con **24 declaradas / 23
+activas** (hereda la inactiva de C2a); deliberadamente RED
+`7 failed | 8 passed (15)` con `expected 23`. ESLint focal y
+`git diff --check` limpios; `pnpm --dir frontend typecheck` NO verde con
+exactamente los 8 errores R7a heredados y cero nuevos; build no ejecutado en
+este subcorte (documentado). Guard/typecheck/build globales NO verdes.
+Siguiente: C2b3 (previews Hub, 23→17). Sin push/PR/merge/promoción/apps/LMU.
+
+## R7b/C2b1 APROBADO final — cerrado, siguiente C2b2 24→23 — 2026-09-04, ISA-894
+
+Spec C2b1 Muse `ses_f920fe705ffez0fE6o5MTU6efP`: **APPROVE**,
+P0=P1=P2=P3=0. Quality C2b1 Muse `ses_f920d0602ffeQ1MIm8eKW0J3RY`:
+**APPROVE** final — P2 cerrado con el pin shadow (`ffdf2bf6`), sin P0–P3
+pendientes (historial REQUEST_CHANGES conservado abajo). Estado literal:
+guard deliberadamente RED `7 failed | 8 passed (15)` con 24 activas; focal
+17/17; typecheck NO verde con los 8 heredados R7a; build no ejecutado.
+Siguiente: C2b2 (StudioRoute test V2-only, 24→23). Sin push/PR/merge/
+promoción/apps/LMU.
+
+(Historial del cierre técnico, previo al APROBADO final de arriba.) Spec
+C2b1 Muse `ses_f920fe705ffez0fE6o5MTU6efP`: **APPROVE**, 0/0/0/0; quality
+C2b1 Muse `ses_f920d0602ffeQ1MIm8eKW0J3RY` dio entonces **REQUEST_CHANGES**
+(P2 único + P3 informativo), ya cerrado arriba. Fix P2 en commit `ffdf2bf6` (solo guard): pin
+estructural dentro del test existente de callers (15 intactos, sin entrada
+nueva al array C2) que exige ausencia de `overlay-v2-shadow-runtime` en
+`CompositeApp.tsx` (owner C2b1); la regresión falla aunque no exponga
+diagnóstico. La sonda `payload: {}` queda validada y el P3 opcional se
+mantiene como informativo aceptado porque el filtro es por nombre; no se
+reintroduce golden V1, no se amplía la prueba y no se toca producción.
+Guard tras el fix: `7 failed | 8 passed (15)` con 24
+activas; focal 17/17; ESLint y `diff --check` limpios; typecheck con los 8
+heredados (no verde); build no ejecutado. Siguiente intacto: C2b2 24→23
+entonces; estado vigente arriba. Sin push/PR/merge/promoción/apps/LMU.
+
+Writer único, rama `vantareapp/isa-894-retirada-v1-r7b`, base `08c660e5`.
+Commit de test `5a99fa14` (2 ficheros, +20/−38, cero producción):
+`CompositeApp.test.tsx` pierde el import del golden V1 y el `vi.mock` + mock
+del shadow runtime (módulo que producción ya no importa desde R2); la sonda
+R2 negativa usa envelope V1 inline mínimo con payload irrelevante (no es
+fixture de datos) y conserva que nada se pinta + diagnóstico sin `shadow`;
+los asserts shadow vacuos se sustituyen por render V2 real (`Driver 000`) y
+diagnóstico sin `shadow`. Barrido completo del fichero: cero
+`TelemetrySnapshot`, `buildMockTelemetry`, builders/seeds authoring,
+`authoring-fixtures`, `authoring-v2-fixture`, `overlay-v2-shadow-runtime`,
+nombres/goldens V1 o seeds. Guard actualizado en el mismo commit: C2 con
+**25 declaradas / 24 activas** (hereda la inactiva de C2a). Focal
+`CompositeApp.test.tsx` **17/17 verde** (baseline previo también 17/17);
+guard deliberadamente RED `7 failed | 8 passed (15)` con `expected 24`;
+ESLint focal y `git diff --check` limpios; `pnpm --dir frontend typecheck`
+NO verde con exactamente los 8 errores R7a heredados y cero nuevos; build no
+ejecutado en este subcorte (documentado). Guard/typecheck/build globales NO
+verdes. Siguiente: C2b2 (StudioRoute test V2-only, 24→23). Sin push/PR/
+merge/promoción/apps/LMU. Nota: el bloque inferior ("C2b1 CERRADO") describía
+el cierre técnico previo a las reviews; el estado vigente es el bloque
+superior (APROBADO final).
+
+## R7b/C2b1 CERRADO en rama (Desktop test V2-only) — siguiente C2b2 24→23 — 2026-09-04, ISA-894
+
+## R7b/C2b0 APROBADO final — cerrado, siguiente C2b1 26→24 — 2026-09-04, ISA-894
+
+Spec final Muse `ses_f921b746cffeVYW5VLt14SAKGY`: **APPROVE**,
+P0=0 P1=0 P2=0 (P3 informativo). Quality final Muse
+`ses_f921f9197ffe7ax5CGD6KkQOMb`: **APPROVE**, P0=P1=P2=P3=0. Alcance
+cerrado: solo guard + 3 docs vivos, cero producción. Estado literal: guard
+deliberadamente RED `7 failed | 8 passed (15)` con C2 en **26 anclas**
+activas; typecheck NO verde con los 8 errores heredados R7a; build no
+ejecutado. Siguiente: C2b1 (Composite test V2-only, 26→24). Sin push/PR/
+merge/promoción/apps/LMU.
+
+Quality review Muse `ses_f92271085ffeQRY7qOv1BrisR0`: **REQUEST_CHANGES**
+sobre `276ab8e4` (la spec anterior hizo timeout: sin veredicto, no se inventa
+ninguno). Fixes en commit `c0745202` (solo guard, cero producción): las 4
+falsas alarmas siguen fuera de `contentAbsentAll`; dentro del mismo test C2
+(sin tests nuevos, 15 intactos) comprobación positiva mínima y exacta de
+`import type { TelemetryAdapter }` + módulo canónico en las 4 rutas (owner
+E1; falla ante import runtime o cambio de módulo; el módulo neutral no se
+vigila como V1); `StudioTelemetryProvider.tsx` añadido al loop sin-imports-V1
+de `V1_MODULES_B2`. Metodología de conteo aclarada: 31 declaradas/30 activas
+antes (una inactiva desde C2a), 27 declaradas/26 activas después; la secuencia
+30→26→…→0 es de ACTIVAS y coincide con el `expected …(26)` de Vitest. Guard
+tras el fix: `7 failed | 8 passed (15)`; ESLint focal, `diff --check` y
+typecheck (8 heredados exactos) limpios de regresión. Pendiente: nueva
+spec+quality del checkpoint endurecido. Sin push/PR/merge/promoción/apps/LMU.
+
+## R7b/C2b0 CERRADO en rama (guard, cero producción) — siguiente C2b1 26→24 — 2026-09-04, ISA-894
+
+Writer único, rama `vantareapp/isa-894-retirada-v1-r7b`, base `a32c18cb`.
+Commit de test/gobernanza `9e7cf552` (un fichero, +4/−4): retira del bloque
+C2 del guard las 4 entradas `transports/telemetry-adapter` de `StudioRoute`,
+`OverlayStudioV3`, `studio-overlay-telemetry` y `StudioTelemetryProvider`
+(false-positive: `import type` bajo ownership E1, sin V1 en runtime/bundle;
+producción intacta) y deja comentario mínimo que lo explica. Baseline previo:
+guard `7 failed | 8 passed (15)` con C2 en 30 anclas; resultado: guard
+**deliberadamente RED** `7 failed | 8 passed (15)` con C2 en **26 anclas**
+exactas (cero menciones a `transports/telemetry-adapter` dentro de las anclas
+negativas C2; las dos menciones `overlay-projection-adapter` siguen C2b7). ESLint focal y `git diff --check`
+limpios; typecheck registra los 8 heredados R7a (no verde, no necesario para
+cero producción); build no ejecutado. El guard global NO está verde: C2 sigue
+en rojo hasta C2b7. Siguiente: C2b1 (Composite test V2-only, 26→24). Sin
+push/PR/merge/promoción/apps/LMU.
+
+## R7b/C2b APROBADO en re-review — desbloqueado, siguiente C2b0 — 2026-09-04, ISA-894
+
+Re-review spec Muse `ses_f9240634bffeNNMnf3wHltlOI6`: **APPROVE**,
+P0/P1/P2/P3=0. Re-review quality Muse `ses_f923cf6acffeSiLRo6Z3APoEit`:
+**APPROVE**, P0/P1/P2=0; P3 no bloqueante: el golden `controls.history`
+trae 2 muestras y C2b5 activa STOP/defer E1 si son insuficientes. Cero
+código tocado; este commit solo registra la aprobación, sin reescribir la
+historia anterior. Checkpoint C2b **desbloqueado, siguiente C2b0** con el
+mismo writer. Sin push/PR/merge/promoción/apps/LMU.
+
+## R7b/C2b CORREGIDO tras doble REQUEST_CHANGES — pendiente re-review, no escribir C2b0 — 2026-09-04, ISA-894
+
+Spec review Muse `ses_f9240634bffeNNMnf3wHltlOI6`: **REQUEST_CHANGES**.
+Quality review Muse `ses_f923cf6acffeSiLRo6Z3APoEit`: **REQUEST_CHANGES**.
+Cero código tocado; este commit solo corrige microplan, evidencia y handoff.
+C2b0 NO mueve ni duplica `TelemetryAdapter` (los cuatro imports Studio son
+type-only; 30→26 = quitar esas anclas false-positive del guard, tipo
+canónico hasta E1). Se documenta el import colgado de
+`StudioTelemetryProvider.test.tsx` (`wails-telemetry-adapter` inexistente,
+C2b4 lo corrige al tipo canónico). Factory por consumidor en C2b3 con
+aislamiento de `standings` obligatorio; bundle no evaluable hasta
+desbloquear los 8 errores R7a. `mockSession/mockLocation` solo con
+transformación V2 demostrable. C2b5 retira solo USOS (helpers quedan D/E1);
+input history solo desde `OverlayControlsHistoryV2` en runtime/captura;
+`engineer-radio` por frontera auxiliar. C2b6 dividido por superficies
+(6a, 6b…), con `buildMockTelemetry` oculto de TrackMap/shells en aceptación.
+C2b7 separa gaps de scenes (builders de scenes migran o STOP/defer).
+Guard numérico necesario, no suficiente (escaneo total por subcorte).
+Orden `B1 → C2 → B3 → B2-prep → B2` intacto; spec + quality por subcorte;
+cero sintéticos. Siguiente: re-review spec + quality del checkpoint
+corregido antes de escribir C2b0. Sin push/PR/merge/promoción/apps/LMU.
+
+## R7b/C2b MICROPLAN preparado — pendiente review antes de C2b0 — 2026-09-04, ISA-894
+
+Auditoría read-only Muse `ses_f9245f094ffew97dEQcTBvLIio` mapeó las 30
+anclas C2 activas y detectó seis bordes que impedían tratarlas como un bloque.
+El microplan queda dividido C2b0→C2b7 con conteos
+`30→26→24→23→17→15→10→2→0`. C2b0 NO mueve ni duplica `TelemetryAdapter`:
+corrige/reclasifica las cuatro entradas type-only false-positive del guard y
+mantiene el tipo canónico hasta E1 o refactor neutral futuro.
+Histories E1 solo pueden permanecer en tests con dueño explícito; callers no
+conservan snapshot. Previews usan factory V2 y miden bundle cuando el build sea
+interpretable. Seeds, variants, scenes y gaps solo migran desde datos V2
+demostrados; ausencia de productor activa STOP, nunca fallback/default o dato
+sintético. Siguiente: review spec + quality del microplan y ejecutar C2b0 con
+el mismo writer. Sin push/PR/merge/promoción/apps/LMU.
+
+## R7b/C2a CERRADO en rama (doble APPROVE, sin push) — siguiente C2b — 2026-09-04, ISA-894
+
+Writer único en `C:\tmp\vantare-v1-retirada-r7b\vantare-v2`, rama
+`vantareapp/isa-894-retirada-v1-r7b`, base `41c584a7` (preflight C2 cerrado).
+Commit de código `50c5f8f6`: crea
+`frontend/src/overlay/authoring/fixtures/authoring-v2-scenario-fixture.ts`
+(65 líneas, único fichero tocado). Semilla exacta
+`internal/telemetry/projection/overlayv2/testdata/overlay_v2_20.golden.json`
+(20 filas, 3 clases, jugador `vehicle-000` dentro, relative con
+side/authority del productor, source `live`): el escenario default devuelve
+clones profundos exactos de frame y source; `standings-multiclass` solo
+re-selecciona standings sin reescribir el productor; track y relative
+canónicos intactos; estados ready→live, stale→stale,
+disconnected→stopped, error→error; `PREVIEW_V2_RUNTIME` ready con 20 filas.
+API estable `AuthoringV2Scenario` con session/location/state/widget/system/
+variant: state/variant sí se especializan (source y standings-multiclass);
+session/location/widget/system quedan reservados sin alterar el fixture
+todavía. Cero
+`TelemetrySnapshot`, `buildMockTelemetry`, `Date.now`, adapters, transports o
+shadow-runtime V1; sin sintéticos. TDD: RED previo (módulo inexistente,
+import sin resolver) → GREEN 7/7 del focal
+`authoring-v2-scenario-fixture.test.ts` (el contrato lo puso el preflight, no
+se tocó). Checks: ESLint focal limpio (ambos ficheros), `git diff --check`
+limpio, `pnpm --dir frontend typecheck` con exactamente los 8 errores
+heredados R7a en los 3 módulos documentados
+(`overlay-projection-v1.ts:172`, `projection-observer.ts:72,207,209`,
+`telemetry-cutover-runtime-harness/main.ts:40,41,53,54`), cero nuevos (no
+verde); build no ejecutado (bloqueado por esos 8 preexistentes). Sin push/PR/
+merge/promoción/apps/LMU. C2 NO está completo: callers/previews/compat (C2b)
+pendientes. Riesgo: el RED pendiente real son las 30 anclas C2 del guard más
+compat tests (histórico C2a: tras C2b0 son 26 activas; el fichero `authoring-v2-fixture.test.ts` del primer RED ya no
+existe: el preflight lo retiró en `da516230`/`1e73fcfb`); el singleton
+`PREVIEW_V2_RUNTIME` queda como riesgo C2b (factory/ownership con consumidores
+reales), no se toca en este corte.
+
+Revisión spec post-C2a Muse `ses_f925a2447ffecpXMuKkjuSaKaN`: **APPROVE**,
+P0/P1/P2=0, con 7 P3. Cierres aplicados en este corte (pureza/sencillez, sin
+entrar en C2b): tipo local estrecho `AuthoringV2Variant`
+(`"default" | "standings-multiclass"`, sin importar `HarnessVariant` de
+authoring-fixtures ni duplicar sus 10 variantes; variante desconocida falla
+rápido en vez de no-op silencioso), fail-fast en carga si el golden carece de
+frame/source/standings (sin fallbacks `undefined`/`[]`), focal endurecido a
+9/9 con identidad distinta de clones y aislamiento ante mutaciones, y estas
+correcciones de docs. `PREVIEW` singleton queda explícitamente para C2b.
+
+Revisión quality post-C2a Muse `ses_f92522698ffeDQwN643LThbEoz`:
+**REQUEST_CHANGES**, P2=2. Cierres en commit `fdb1130d` (sin entrar en C2b):
+P2-1, el test multiclass comparaba `scenarioStandings` contra `rows` (el
+propio campo, tautología) — ahora contra `canonicalStandings`; P2-2,
+aislamiento profundo real — identidad distinta (`not.toBe`) al menos de
+session, relative, player y standings, mutación tipada explícita de
+`session.track.v`, `player.id` y `relative[0].name` vía cast a mutable solo en
+el test (el contrato productivo sigue readonly) y segunda invocación igual al
+canónico. P3 barato: el fail-fast exige además `player.id`, `session.track` y
+relative no vacío con side/authority de productor (se exigen, no se
+sintetizan). Independencia aclarada: es de valores runtime/bundle — el módulo
+ya no importa nada de `authoring-fixtures.ts` (ni siquiera `type`; el
+`import type` anterior se borró con el tipo local). Riesgos C2b registrados,
+sin optimizar: singleton `PREVIEW_V2_RUNTIME` (factory/ownership con
+consumidores reales) y tamaño bundle del golden `?raw` (~33,5 KB). HEAD tras
+la corrección: `fdb1130d` (código+focal); este bloque se cierra en el commit
+documental siguiente.
+
+Re-review quality `ses_f92522698ffeDQwN643LThbEoz` sobre `6c4ead7f`:
+**APPROVE**, P0/P1/P2=0. Reprodujo focal 9/9, guard
+`7 failed | 8 passed (15)` con 30 anclas C2 restantes, ESLint y diff-check;
+typecheck conserva solo los 8 errores heredados. C2a queda cerrado. C2b debe
+resolver dos P3 explícitos al conectar consumidores: aislamiento cruzado del
+array `standings` y factory/ownership de `PREVIEW_V2_RUNTIME`, midiendo además
+el impacto del golden `?raw` en el bundle. No B3/B2 todavía.
+
+## R7b/C2 PRE-FLIGHT CERRADO — siguiente C2a, no B3/B2 — 2026-09-04, ISA-894
+
+B1 sigue sin cambios productivos. El preflight descubrió que ejecutar B2
+directamente rompería el oráculo E4, dos tests C2 y los harnesses B3. El orden
+canónico queda corregido a **B1 → C2 → B3 → B2-prep → B2 → C1 → D/E/F**.
+`v1-retirement-b1.guard.test.ts` tiene 15 tests en rojo reproducible:
+7 failed que enumeran en una ejecución B2 (9 rutas + 5 anclas ProductID/golden
+y 4 anclas wails-pull), B3 (19 rutas + 6 referencias activas) y C2 (31 anclas
+de callers/previews/fixtures), más B2-prep (3 imports); 8 passed para diferidos
+y exentos. La tabla B0
+queda en 15/15 grupos tras añadir `OverlayStudioV3`, `StudioTelemetryProvider`,
+las tres previews Hub, el fixture authoring completo y el golden pre-D7. El
+recalculador S1 queda preservado y B3 solo elimina su dependencia activa.
+Comparator/sanitizer permanecen como oráculo hasta E4; B2-prep solo
+desacoplará sus tipos del adapter, sin conducta. Evidencia y microplan:
+`retirada-v1-r7b-b1-guardias-20260904.md` y
+`2026-09-04-telemetria-v1-retirada-r7b-frontend.md`. Tras corregir los cinco
+P1 de la primera quality review, re-review spec `ses_f928d2…` y quality
+`ses_f928adc…` dan **APPROVE, P0/P1/P2=0** sobre `fc0a4262`; focal RED
+`7 failed | 8 passed`, ESLint y diff-check reproducidos. B1 queda cerrado.
+El primer RED C2 (`b72af09d`) descubrió consumidores legacy fuera del inventario
+y el intento de moverlos a un módulo snapshot nuevo se abortó sin commit. Grafo
+corregido: módulo puro nuevo en C2; helpers legacy existentes permanecen D/E1;
+puente snapshot actual queda solo para E4 hasta B2-prep/B2. El checkpoint
+corregido `5b254087` tiene doble APPROVE fresco: spec Muse
+`ses_f92712299ffeGIc4JPPXEs97MN` y quality Muse
+`ses_f926b66f5ffe1QN1JaDlihRZbW`, ambos P0/P1/P2=0. Verificaron 31 anclas C2
+(30 activas), golden V2 de 20 coches como semilla exacta, 15 grupos B0 y árbol
+limpio. Siguiente: reanudar **C2a** con el mismo writer. Los callers C2 deben dejar
+también sus builders/seeds snapshot; el escenario default debe igualar el
+golden V2 de 20 coches. No B3/B2 todavía. Sin push/PR/
+merge/promoción/apps/LMU.
+
+## R7b/A3 CERRADO — doble APPROVE, siguiente B1 — 2026-09-04, ISA-894
+
+A3 CERRADO con APPROVE de spec (`ses_f92d…`) y APPROVE fresh de quality
+(`ses_f92cc…`), P0/P1/P2=0 sobre HEAD `d9dd3951` (sin push/PR/merge).
+Payloads re-medidos por el reviewer: **52723 / 61049 / 66677 B**
+(base 104/17/17, 20ch+A3 bajo 64 KiB, 32ch+adverso+A3 bajo 72 KiB).
+Riesgos no bloqueantes heredados: strings sin cota, endurecimientos P3
+posibles del validador, deriva nominal documental; no se convierten en
+scope. Siguiente: **B1** (guardias estructurales RED de ausencia V1).
+`plan.md`/`roadmap.json` sin tocar (cierre combinado R7b pendiente).
+
+## R7b/A3 ejecutado sin push (Delta, pendiente de revisiones) — 2026-09-04, ISA-894
+
+Commits locales `ca4b032a → 8d2173a1` (docs decisión, Go 72 KiB por producto,
+frontend 72 KiB + validador fuel, Go DeltaHistoryV2 + fixture/gates +
+goldens, contrato TS, decoder V2, fix evidence harness, pin replay).
+Gates: overlayv2/derive/transport/contract-gen ok; delta-trace 11/11;
+transport 64/64; suite frontend 3439/3441 (2 fallos A2 preexistentes:
+fuel-strategy VM y gaps del comparador, fuera de alcance, verificados
+independientes); typecheck con exactamente los 8 heredados R7a, cero nuevos
+(no verde); build bloqueado solo por esos 8 (preexistente).
+Bytes MEDIDOS: base 104/17/17 **52723**; 20ch+A3 **61049** (margen +4487
+bajo 64 KiB); 32ch+adverso+A3 **66677** (margen +7051 bajo 72 KiB); coste A3
++3353/+4013. `256 KiB` genérico intacto; ningún otro producto cambia.
+Re-review spec P0 (hard clamp): override explícito >72 KiB en overlay-v2
+resuelve a 72 KiB en constructor y `PublishStatus` vía regla única
+`resolvePublisherMaxPayloadBytes`; menores explícitos intactos; frontend sin
+cambios (ya correcto).
+`plan.md`/`roadmap.json` sin tocar (cierre combinado R7b). Siguiente:
+revisión de especificación + revisión adversarial de calidad.
+
+## R7b/A3 bloqueado en preflight (Delta, cero producción) — 2026-09-04, ISA-894
+
+Sobre `9847c544`, el inventario confirmó cero consumidores wire de
+`DeltaSample.SourceTime`/`LapDistance` y que Delta Trace solo necesita los 120
+instantes reales + segundos. El primer preflight sobre el fixture histórico
+104/104 midió 67.561–68.221 B y activó el STOP de 65.536 B. La revisión
+adversarial descubrió que ese fixture es inalcanzable: producción limita
+`Relative` y `RelativeSettled` a 17 filas. Una segunda medida temporal,
+alcanzable (Standings 104 + Relative 17 + settled 17 + bestLap fresh), dio
+52.796 B base y 56.149–56.809 B con A3; con strings de 20 caracteres,
+62.245–62.905 B. Sin embargo, con strings libres de 32 caracteres el frame
+base todavía cabe (63.860 B) y A3 lo hace fallar (67.213–67.873 B), creando
+una nueva región legal de rechazo. Por ello A3 sigue `BLOCKED`: cero código,
+cero tests RED persistidos y tree limpio tras eliminar los artefactos.
+
+Evidencia exacta:
+[`retirada-v1-r7b-a3-delta-preflight-20260904.md`](../../telemetry-core/evidence/isa-894/retirada-v1-r7b-a3-delta-preflight-20260904.md).
+Decisión pendiente: aprobar un presupuesto Publisher mayor con gate de no
+regresión o una recodificación lossless del wire mediante ADR. No reducir 120
+muestras, precisión, calidad, información, funciones ni cadencia; no continuar
+B–F mientras falte la paridad Delta V2. Este bloque prevalece sobre A2 para el
+estado y la siguiente acción.
+
+## R7b/A2 ejecutado en rama (fuel, sin push) — 2026-09-04, ISA-894
+
+Writer unico en `C:\tmp\vantare-v1-retirada-r7b\vantare-v2`, rama
+`vantareapp/isa-894-retirada-v1-r7b`, base exacta `d32b56f1` (limpia,
+verificada antes de empezar). Commits locales A2 (sin push/PR/merge/
+promocion/release, sin apps/LMU/navegadores, sin `.env*`, sin dependencias
+nuevas): `564016fc` (derive: `FuelHistory` 64 con ownership/clone/reset
+canonicos + ventana 3/10 intacta y separada) → `97b66d05` (proyección:
+`FuelHistoryV2` + `SessionLaps` siempre + `RequiredFuel` = perLap x
+sessionLaps peor-de + dirty signals fuel + goldens + stress) → `0bfb7f3f`
+(contrato TS solo vía `go run ./tools/telemetry-contract-gen`; `task` CLI
+ausente, comando real reportado literal) → `63bf4eec` (decoder history +
+requiredFuel en litros, sin `Date.now`, `DECLARED_GAPS` a `fuelPercent`) →
+evidencia + este checkpoint. Este bloque prevalece sobre el inferior solo en
+el avance A2; siguiente accion: A3 y resto de R7b por sus writers; el cierre
+combinado R7b hara `plan.md`+digest (no se tocan aqui).
+
+TDD RED→GREEN literal en
+[`retirada-v1-r7b-a2-fuel-20260904.md`](../../telemetry-core/evidence/isa-894/retirada-v1-r7b-a2-fuel-20260904.md):
+RED derive (build failed: `MaxFuelHistory`/`History` undefined) → GREEN
+(`derive` ok, 2 correcciones de fixture propias, cero diseño); RED
+proyección (build failed: `History`/`SessionLaps`/`RequiredFuel`
+undefined) → GREEN (overlayv2 ok; `Basis` intacto, comentario
+requiredFuel-ausente derogado en el builder); RED decoder (3/5 fail:
+history `[]`, requiredFuel `undefined`) → GREEN (fuel-strategy 17/17,
+shadow focal 33/33). Gate duro: sintético @104 63613 → 64208 bytes (+595,
+margen 1328 bajo 65536) PASS con gate intacto; preflight local ~559 bytes
+dio PROCEED antes de tocar producción. Contrato check + `git diff
+--exit-code` verdes. `pnpm typecheck`: CORRECCIÓN del orquestador — el
+reporte inicial afirmó 8 errores pero la repetición sobre `5f4d5a02` dio 9
+(`evidence.ts` del shadow harness sin los 3 campos Fuel nuevos, `TS2739`);
+fix mínimo `missing` + aclaración de unidades (wire sigue
+`frame.units.fuel`, widget liters-only documentado) en commit explícito;
+repetición con salida íntegra confirma los 8 heredados R7a byte-idénticos,
+cero nuevos; no se declara verde global. `go vet` limpio en el diff;
+`git diff --check` limpio. `fuel.sessionLaps` queda en wire sin decoder
+widget (forma v1 conservada; documentado). Sin runtime físico: todo
+sintético/determinista; LMU/Wails pendiente de Isaac.
+
+Cierre A2: doble aprobación fresca sobre `c59efbff` — spec
+`ses_f9536ddf4ffeOAJpR9axTS4Twt` APPROVE P0/P1/P2=0 y quality
+`ses_f95328eeeffeh7zGiYvEN3dSKC` APPROVE P0/P1/P2=0; P3 no aplicados (no
+bloqueantes, fuera de alcance). Deuda para auditoría en evidencia A2
+(preference Fuel vs `SectionFuel` <=1s, naming liters-only, comentario
+non-fresh, cobertura stint-only, average no finito, decoder malformed sin
+tests). **A2 CERRADO**; siguiente A3 con preflight obligatorio (margen
+1328 bajo 65536).
+
+## R7b/A1 ejecutado en rama (controles, sin push) — 2026-09-04, ISA-894
+
+Writer unico en `C:\tmp\vantare-v1-retirada-r7b\vantare-v2`, rama
+`vantareapp/isa-894-retirada-v1-r7b`, base exacta
+`f287288825af7aff9f234e984dd3fa59a9d32779` (limpia). Commits locales A1
+(sin push/PR/merge/promocion/release, sin apps/LMU/navegadores, sin `.env*`,
+sin dependencias nuevas):
+`5416847c` (derive: `ControlSample` + `SpeedMPS`/`EngineRPM`/`Gear` como
+`schema.Field` desde el `VehicleState` activo + tests + golden fiel) →
+`5e3e60ca` (proyección: `ControlsHistoryV2` exacto de 8 miembros con
+`CapturedAtMS` y motion con calidad + tests + goldens regenerados vía
+`UPDATE_GOLDEN=1`) → `8e8aeaf0` (contrato TS solo vía
+`go run ./tools/telemetry-contract-gen`; `task` CLI ausente en el worktree,
+comando real reportado literal) → `6d3a9116` (decoder absoluto `CapturedAtMS`
++ frontera fail-closed V2 + fixtures + evidencia exacta). Este bloque
+prevalece sobre el inferior solo en el avance A1; siguiente accion: A2/A3 y
+resto de R7b por sus writers; el cierre combinado R7b hara `plan.md`+
+digest (no se tocan aqui).
+
+TDD RED→GREEN literal en
+[`retirada-v1-r7b-frontend-20260904.md`](../../telemetry-core/evidence/isa-894/retirada-v1-r7b-frontend-20260904.md):
+RED derive (build failed: `SpeedMPS`/`EngineRPM`/`Gear` undefined) → GREEN
+(`go test ./internal/telemetry/derive/` ok); RED proyección (build failed:
+`CapturedAtMS`/`SpeedMPS` undefined) → GREEN (overlayv2 ok);
+RED decoder (5/5 fail: reconstruía desde `generatedAt` 1999 → 915148800000)
+→ GREEN (input-telemetry 5/5→18/18 con su dir, transport 62/62, Host+shadow
+114/114, suite frontend completa 442/3430). Gate duro: sintético @104
+53982 → 63613 bytes (+9631, margen 1923 bajo 65536) PASS; sección @120
+1515 → 11146 bytes. Contrato check + `git diff --exit-code` verdes.
+`pnpm typecheck`: 8 errores heredados R7a byte-idénticos antes/después
+(`ProductID` vs `"overlay"` en `overlay-projection-v1.ts`,
+`projection-observer.ts`, `telemetry-cutover-runtime-harness/main.ts`,
+ámbito B, fuera de A1), cero nuevos, cero de controles; no se declara verde
+global. `go test ./internal/... ./tools/...` PASS sin FAIL;
+`cmd/vantare`+`frontend` en setup-failed preexistente por `dist/` ausente
+(build bloqueado por los mismos 8 errores; idéntico en base). `go vet` solo
+los tres `unsafe.Pointer` heredados fuera del diff; `git diff --check`
+limpio. Revisión del orquestador en curso: el bloque vacío transitorio
+`if view.WindowMS != 0 {}` ya quedó eliminado y reemplazado por aserciones
+reales de `CapturedAtMS`; reset epoch+`SameSession` intacto en
+`TestPipelineResetsHistoryAtEveryDeclaredIdentityBoundary` + reset con motion
+nuevo. Sin runtime físico: todo sintético/determinista; LMU/Wails pendiente
+de Isaac.
+
+## R7b planificado (microplan, sin codigo) + R7a final comprometido — 2026-09-04, ISA-894
+
+Writer unico en `C:\tmp\vantare-v1-retirada-r7b\vantare-v2`, rama
+`vantareapp/isa-894-retirada-v1-r7b`, base exacta `5198e4cd5a007893faedd89151168ae26bf7e951`
+(R7a final). Secuencia documental conocida: `d242f634` → `2a2ab054` →
+`46d519d5` → `e4342b69` → `20e0aaf1` (HEAD revisado SPEC por el orquestador);
+HEAD de trabajo = el commit de esta corrección (su hash queda en el propio
+commit y en el reporte, no inventado aquí). Sin apps/LMU/navegadores, sin
+`.env*`, sin push/PR/merge/promocion/release.
+
+R7a final comprometido en esta linea: `7ee3f87b` (retirada de contratos Overlay
+V1: `telemetrytransport.ProductOverlay` + `knownProduct`,
+`internal/telemetry/projection/overlay/v1.go`, raices Overlay V1 de
+`tools/telemetry-contract-gen`, wire `Overlay*V1` + `"overlay"` del TS generado
+solo via `task telemetry:contract`; Hub a Strategy, negativas a Engineer,
+rutas/eventos a literales historicos de ausencia, bench `researchbench` a
+Strategy/brazos comparativos sin V1; TDD RED→GREEN con
+`TestOverlayV1ContractsRetired`) + `5198e4cd` (checkpoint documental: microplan
+R7a, evidencia y bloque de handoff). Evidencia:
+[`retirada-v1-r7a-contratos-go-20260904.md`](../../telemetry-core/evidence/isa-894/retirada-v1-r7a-contratos-go-20260904.md).
+Los JSON de `overlay/testdata/` quedan huerfanos hasta R7b. Estado heredado de
+R7a: Go/contract/frontend-runtime verdes; `pnpm typecheck` en rojo con 8 errores
+en 3 modulos legacy de R7b; build/dist/`cmd/vantare` bloqueados en cascada.
+
+R7b planificado, todavia **sin codigo productivo**: microplan ejecutable en
+[`2026-09-04-telemetria-v1-retirada-r7b-frontend.md`](../../superpowers/plans/2026-09-04-telemetria-v1-retirada-r7b-frontend.md),
+**corregido tras REQUEST_CHANGES adversarial** (commit de corrección sobre
+`d242f634`, solo estos 2 docs) y **recorregido tras segunda revisión de calidad
+REQUEST_CHANGES** (commit sobre `2a2ab054`; sin afirmar aprobación futura) y
+**autocorregido por arquitectura del orquestador sobre `46d519d5`** (commit
+sobre `46d519d5`; `46d519d5` era el HEAD revisado) y **recorregido por
+contradicción B0/B3/E3 sobre `e4342b69`** (commit `20e0aaf1`; `e4342b69` era el
+HEAD revisado) y **corregido SPEC sobre `20e0aaf1`** (este commit; sin afirmar
+aprobación futura). Esta ronda SPEC: E2 absorbe el residuo rollback del Host
+(`WidgetVisualHost.tsx:121-126`, 8 gates, 2 tests) con `rg`
+`v2Rollback`+`overlay-v2-rollback`; A3 refuerza la omisión
+`SourceTime`/`LapDistance` con inventario `rg` y STOP conservar/migrar.
+Ronda anterior: B0 en 13 grupos (fila sesion-v1/B3 separada de
+entrypoints research-bench/E3; Go bench preservado sin dueño de borrado);
+B3 dueño exclusivo de runtime/2 packages harness/scripts-HTML sesion-v1
+(E3 no los toca); E3 dueño exclusivo de los 3 JSON + 2 entrypoints frontend +
+residuales verificados; A2/A3 con microcheckpoints a–d en texto propio.
+Autocorrecciones: A1 ya no usa Q
+único + arrays acortados —derive añade exactamente `schema.Field` por campo
+(SpeedMPS/EngineRPM/Gear) y el wire lleva `QValue` por muestra siempre
+alineados, sin `V` en missing, sin sentinel ni pérdida; A1/A3 cambian edades
+relativas a `GeneratedAt` por `CapturedAtMS []int64` absolutos cache-safe
+(`cadence.go:331-340`: la sección memoizada sobrevive a varios
+`frame.GeneratedAt`), sin rebaseo ni reconstrucción dependiente del frame;
+STOP explícito si el formato con calidad no cabe en 64 KiB. Segunda ronda:
+gate de payload efectivo Publisher 64 KiB (frame @104 < 64 KiB; Hub 256 KiB
+secundaria) con bytes absolutos/delta en evidencia exacta
+`docs/telemetry-core/evidence/isa-894/retirada-v1-r7b-frontend-20260904.md`;
+A1 cerrado (reset vigente epoch+SameSession, fuente m/s sin SpeedKPH canónico,
+`CapturedAtMS` absolutos cache-safe, tipos exactos, sin "preferentemente"/"p. ej.");
+A2 con contrato `FuelHistoryV2` fijado y derogación del comentario
+`builder_fuel.go:44-48`; A3 mínimo (`DeltaHistoryV2`, mapping exacto,
+`Trend` intacto); B0 consistente en 13 grupos; D5 sin RED; microcheckpoints
+a–d por A en la misma rama/PR (A2/A3 en texto propio); E2 fijado según callsites (catálogo estático a
+`overlay/core/overlay-v2-feature-catalog.ts`, default directo en los 3
+callsites, más Host `WidgetVisualHost.tsx:121-126` con sus 8 gates
+`!v2Rollback` simplificados y 2 tests del código `overlay-v2-rollback`
+actualizados; E2 dueño del residuo rollback, no diferido a D1; `rg`
+`v2Rollback`+`overlay-v2-rollback` en árbol y bundle); E3 exacto (3 JSON nombrados, `frontend-bench-entry.ts`/`.mjs` fuera,
+Go bench preservado, `sesion-v1-*` y packages harness solo en B3,
+`vite.config`/HTML intactos por `rg` limpio). Primera ronda: A1 ya no llama canónica
+a la historia actual (verificado: `ControlSample` sin Speed/RPM/Gear); A2 separa
+ventana 3/10 de la nueva historia 64 y fija `requiredFuel` = perLap × sessionLaps
+sin derivar de `EstimatedLaps`; A3 corrige premisa (`SelfDelta.History` existe,
+`DeltaViewV2` sin campo: el corte lo agrega) y elimina singleton/`Date.now`
+solo tras verde; omisión `SourceTime`/`LapDistance` reforzada con inventario
+`rg` (delta-trace legacy solo `{capturedAt, deltaSeconds}`; cero consumidores
+wire en `delta*/`; STOP conservar/migrar si aparece consumidor real); comparator/sanitizer sobreviven como oráculo hasta E4 (D no se
+queda sin oráculo); tabla B0 asigna dueño/corte a los 13 grupos sin
+`etc.`; C1 pasa a hipótesis contra productor (ramas A/B con evidencia, sin
+inventar fracciones); C2/D1 resueltos (C2 no exige Host V2-only; D1 verifica
+cero callers y elimina); E2 con expectativa única falsable sin disyunción;
+F declarado verificación no-TDD; rollback R0 literal (artefacto+hash por código,
+restauración física pendiente manual de Isaac, no probada); D2/D3/D4 en lotes
+explícitos de 6 + corte auxiliar D5 (conservación, sin RED); comando exacto
+`pnpm --dir frontend typecheck`; `plan.md`+digest como deuda obligatoria del PR
+de código (`roadmap:required`), no del commit solo-plan.
+Orden: A paridad V2; B guardias RED + retirada V1 (oráculo conservado); C daño
+hipótesis + fixture V2 puro y previews; D1 Host + D2/D3/D4 lotes + D5
+auxiliares; E borrado final + E4 oráculo + E2 switch; F gates/cierre. Commits pequeños en UNA rama R7b y un único draft PR
+apilado sobre #977; rollback exclusivo por build anterior R0 (artefacto+hash
+preservados, compatibilidad verificada por código; restauración física no
+probada, pendiente manual de Isaac).
+`Strategy`/`Engineer`/`Analysis` v1 independientes se preservan. Este commit no
+toca `plan.md`/`roadmap.json`: el mero microplan no cambia el roadmap público;
+se actualizarán en el mismo PR que entregue código si cambia entrega pública.
+Este bloque prevalece sobre los inferiores solo en el avance R7a→R7b;
+**siguiente accion: ejecutar R7b**; solo el combinado R7a+R7b se publica.
+
+## R6b Hub Overlay Telemetry V1 inerte retirado y publicado en PR draft #977 — 2026-09-04, ISA-894
+
+Writer unico en `C:\tmp\vantare-v1-retirada-r6b\vantare-v2`, rama
+`vantareapp/isa-894-retirada-v1-r6b`, base exacta `58d1e8fe`. HEAD de
+codigo/test/microplan `c5c85012` y cierre documental `afafe3ce`, publicados
+en el PR draft [#977](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/977)
+hacia `nightly`; sin merge, promocion ni release.
+
+R6b retira de `TelemetryCoreRuntime` el Hub Overlay Telemetry V1 inerte:
+campo, `NewHub(ProductOverlay...)`, import `overlayprojection` huerfano,
+accessor `Hub()`, cierre, metricas `Transport` y contadores
+`ProjectionsPublished`/`OverlayProjectionsPublished`, mas la rama huerfana de
+`productName` y las versiones huerfanas que marco el wiring guard (misma
+doctrina que `FromFreshness` en R6a.1). Migra 11 tests + harness a ausencia
+estructural o Strategy correcto, con peticion Overlay negativa en el replay.
+Conjunto 58d1e8fe → c5c85012: 15 archivos, +351/-269 (14 de
+codigo/test mas microplan). Evidencia:
+[`retirada-v1-r6b-hub-20260904.md`](../../telemetry-core/evidence/isa-894/retirada-v1-r6b-hub-20260904.md).
+
+TDD: RED estructural con 10 restos literales (2 campos Hub, `hub`/`Hub()`,
+3 metricas, 4 restos en fuente); GREEN con retirada minima y guard
+endurecido. Gates: focales, `internal/app` + `telemetrytransport` + `server`
++ `cmd/vantare` afectados, wiring guard sin excepciones nuevas,
+`pnpm --dir frontend build` PASS (dist real) y `go test ./... -count=1` PASS
+fresco completo sobre `c5c85012`, `go vet` solo con los tres `unsafe.Pointer`
+heredados fuera del diff, gofmt y `diff --check` limpios. Reviews finales
+sobre SHA `c5c85012` + diff local final: spec
+`ses_f95dacf4bffe1EM9LaZK5VfOmm` APPROVE P0/P1/P2/P3=0 (cumplimiento R6b) y
+quality `ses_f95d7c49bfferYo8uws0fzpJDf` APPROVE P0/P1/P2/P3=0
+(calidad/lifecycle/tests/huerfanos), con sus 4 mejoras minimas ya cerradas
+en `c5c85012`.
+
+R6b NO significa Overlay Telemetry V1 ausente del binario: quedan para R7
+los tipos y contratos (incluido `ProductOverlay`), el tooling y el frontend
+legacy. R7 se divide en R7a (Go/contratos/tooling) y R7b (frontend legacy).
+Strategy/Engineer/Analysis V1 son contratos independientes vivos y no forman
+parte de esta retirada. La auditoria integral V2 y el bucle de rendimiento
+aun no comienzan; no se certifica rendimiento optimo. Rollback solo por la
+build anterior verificada en R0. Este bloque prevalece sobre los inferiores
+en el avance de retirada, sin repetir su contenido.
+
+## R6a + R6a.1 productor Overlay V1 y constructores huerfanos retirados, cerrado localmente — 2026-09-04, ISA-894
+
+Writer unico Muse en `C:\tmp\vantare-v1-retirada-r6a\vantare-v2`, rama
+`vantareapp/isa-894-retirada-v1-r6a`, base exacta R5 `2371958d`. R6a,
+commit `fcf96568`, retira el unico productor runtime de Overlay V1 y su
+activacion (19 archivos, +373/-393, con `-3` lineas en
+`settings-contract.ts`). R6a.1, commit `8878178d`, retira los
+constructores huerfanos `overlay.ProjectV1`/`ProjectorV1` y
+`telemetrytransport.NewOverlayFull`, y el export huerfano
+`projection.FromFreshness`, migrando sus tests a hechos canonicos y Overlay V2 (17 archivos,
++470/-1130; sin frontend). Conjunto: 35 archivos, +839/-1519. Sin apps,
+LMU, navegadores, `.env*`, merge, promocion o release. Evidencia:
+[`retirada-v1-r6a-r6a1-20260904.md`](../../telemetry-core/evidence/isa-894/retirada-v1-r6a-r6a1-20260904.md).
+
+TDD: RED arquitectonico del wiring guard citando `NewOverlayFull` y
+`overlay.ProjectV1` sin caller productivo, mas el replay canonico que no
+compilaba contra V1 retirado; GREEN retirando ambos constructores, con
+doble excepcion minima al microplan: digest canonico con OverlayFrame V2
+determinista (`ProjectV2` puro, golden `fffecdb4…faea`) y garantia fija
+del fingerprint canonico LMU14 (`393155d6…092b6b4`). La politica de
+fallos conserva `ErrPayloadTooLarge` real en policy V2 no terminal y en
+legacy fail-stop. Gates: wiring guard, focales, `internal/app` +
+`internal/telemetry`, `go test ./...` PASS; `go vet` solo con los tres
+`unsafe.Pointer` heredados fuera del diff; gofmt, `diff --check` y
+frontera por simbolo limpios. Frontend heredado verde de R6a, no
+repetido en R6a.1. Spec review Muse `ses_f95fb746cffeIJegu669xjgMYj`:
+APPROVE, P0/P1/P2=0. Quality review Muse `ses_f95f72d65ffe0O1cnMMxgbWNPs`:
+APPROVE, P0/P1/P2=0, P3=3: researchbench con V1 (a R7), golden canonico
+deliberadamente en ProjectV2, y comentario del Hub acotado ya corregido
+sin logica (focal 2/2 PASS). Roadmap `telemetry-live` actualizado en
+ES/EN/PT/IT con digest regenerado y `--check` verde.
+
+R6a/R6a.1 NO significan V1 ausente del binario: quedan para R6b/R7 el
+Hub Overlay inerte y luego los tipos y contratos, el tooling y el
+frontend Overlay legacy segun callers. Strategy/Analysis/Engineer V1 son
+contratos independientes vivos que se preservan y estan fuera del alcance
+de la retirada Overlay V1; el V1 de investigacion bajo tag
+`researchbench` tampoco se toca en este corte y se retira en R7. La
+auditoria integral V2 y el bucle de rendimiento aun no comienzan; no se
+certifica rendimiento optimo. Rollback solo por la build anterior
+verificada en R0. Publicado en
+[PR draft #976](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/976)
+contra `nightly`, rama remota `vantareapp/isa-894-retirada-v1-r6a`,
+apilada sobre #969/#970/#971/#972/#973/#974/#975: el codigo/test esta en
+`8878178d` y este documento se incorpora en el commit de cierre
+`9451ad6b`. Sin merge ni promocion; este bloque prevalece sobre los
+inferiores en el avance de
+retirada, sin repetir su contenido.
+
+## R5 ruta SSE publica Overlay V1 retirada y publicada — 2026-09-04, ISA-894
+
+Writer unico Muse en `C:\tmp\vantare-v1-retirada-r5\vantare-v2`, rama
+`vantareapp/isa-894-retirada-v1-r5`, base exacta R4 `d9893379`. Commit de
+codigo/test/microplan `cd5b33c3` y hardening de integracion `4daea04a`;
+sin apps, LMU, navegadores, `.env*`, merge, promocion o release.
+
+R5 elimina `ServerConfig.OverlayProjection`, el registro de
+`GET /telemetry/overlay/projection` y su wiring en `main`. El harness ya no
+publica ni compara Overlay V1 por HTTP, exige 404 con el Hub V1 interno vivo y
+conserva Strategy Wails/SSE, Overlay V2 SSE/pull, Engineer y shutdown. Evidencia:
+[`retirada-v1-r5-ruta-sse-20260904.md`](../../telemetry-core/evidence/isa-894/retirada-v1-r5-ruta-sse-20260904.md).
+
+TDD: RED cancelable porque R4 abria el SSE V1 en lugar de responder 404;
+GREEN con servidor, lifecycle, paquetes focales y `go test ./...` PASS.
+Build frontend PASS. Vet focal PASS; vet global conserva tres avisos heredados
+de `unsafe.Pointer` fuera del diff. Revision de especificacion Muse
+`ses_f9646e4bfffe3U670drv4bDWWB`: APPROVE, P0/P1/P2=0.
+La primera review de calidad Muse `ses_f9641e0e8ffeTifyWR2BSh084U` tambien
+aprobo sin P0/P1/P2; su P3 sobre la ausencia de una asercion negativa de
+integracion se endurecio en el harness antes del SHA final.
+Review final Muse `ses_f963d3a8fffeYpLFm41Uwq6EdJ` sobre `4daea04a`:
+APPROVE, P0/P1/P2=0.
+[PR draft #975](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/975)
+abierta contra `nightly`, apilada sobre #969/#970/#971/#972/#973/#974; sin
+merge ni promocion.
+
+R5 NO significa V1 ausente del binario: productor, Hub, flag, persistencia,
+metricas, tipos, builders, fixtures y tooling siguen. El inventario R6
+recomienda dos microcortes: R6a elimina produccion/configuracion V1 dejando el
+Hub inerte; R6b elimina Hub, metricas de transporte y constructor huerfano.
+R7 retira contratos/tooling/frontend legacy cuando ya no tengan callers. La
+auditoria integral V2 y el bucle de rendimiento aun no empiezan. Rollback solo
+por build anterior R0.
+
+## R4 OBS V2-only publicado en PR draft — 2026-09-04, ISA-894
+
+Writer único en `C:\tmp\vantare-v1-retirada-r4\vantare-v2`, rama
+`vantareapp/isa-894-retirada-v1-r4`, base exacta R3 `f755a527`. Candidato
+`c2bc2142`; sin apps, LMU, navegadores, `.env*`, merge, promoción o release.
+
+R4 elimina de OBS la construcción y ejecución del adapter SSE V1 y la
+activación/diagnóstico/dispose del shadow. Conserva store, binding y SSE
+OverlayFrame V2, `invalid-frame`, Engineer, perfil, calendario, Race Schedule,
+flags V2, diagnósticos, StrictMode y teardown. Evidencia:
+[`retirada-v1-r4-obs-20260904.md`](../../telemetry-core/evidence/isa-894/retirada-v1-r4-obs-20260904.md).
+
+TDD: RED 3 fallos/7 superados por el tercer EventSource V1; GREEN 10/10.
+Checks del orquestador: OBS/V2 25/25, typecheck, build, ESLint focal,
+`diff --check` y frontera V1/shadow PASS. Review de especificación Muse
+`ses_f96617126ffeAzP2TFMF1g0Uqs`: APPROVE, P0/P1/P2/P3 bloqueantes=0.
+Review de calidad/adversarial Muse `ses_f965c73b9ffexbDbAPyPAF3m76`:
+APPROVE, P0/P1/P2/P3 bloqueantes=0; reprodujo 25/25 tests, typecheck, ESLint,
+frontera y digest. [PR draft #974](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/974)
+abierto contra `nightly`, apilado sobre #969/#970/#971/#972/#973; CI pendiente.
+
+R4 NO significa V1 ausente del binario: productor, ruta SSE, configuración,
+contratos, adapters, tipos, builders y fixtures legacy siguen. Siguiente corte:
+retirar la producción/publicación y ruta V1 por dependencia, antes de borrar
+tipos y tooling. La auditoría V2 y el bucle de rendimiento aún no empiezan.
+Rollback exclusivamente por build anterior R0.
+
+## R3 Studio V2-only publicado en PR draft — 2026-09-04, ISA-894
+
+Writer único en `C:\tmp\vantare-v1-retirada-r3\vantare-v2`, rama
+`vantareapp/isa-894-retirada-v1-r3`, base exacta R2 `cc443e53`. Candidato
+`b4c0a38c`; worktree limpio al congelar código/test/microplan. Sin apps, LMU,
+navegadores, `.env*`, merge, promoción o release.
+
+R3 elimina del ciclo productivo de Studio la construcción y ejecución del
+adapter Overlay Projection V1. El lifecycle recibe el coordinador existente,
+resetea el store, adjunta listeners V2 antes del pull, conserva restart,
+invalid-frame, diagnósticos, auxiliares y cleanup. Los mocks de autoría,
+fixtures, OBS, backend, productor, rutas, flags y tipos siguen intactos.
+Evidencia:
+[`retirada-v1-r3-studio-20260904.md`](../../telemetry-core/evidence/isa-894/retirada-v1-r3-studio-20260904.md).
+
+TDD: el RED V2-only produjo 3 fallos por
+`options.legacy.coordinator`; GREEN focal 3/3 y Studio 23/23. Typecheck, build,
+ESLint focal y `diff --check` PASS. Review de especificación Muse
+`ses_f96748a29ffeuTz9Gdq49MyRqb`: APPROVE, P0/P1/P2/P3=0. Review de
+calidad/adversarial Muse `ses_f96711213ffenLfc0LKeJ6ncbY` sobre `cb9a3068`:
+APPROVE, P0/P1/P2/P3 bloqueantes=0. [PR draft #973](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/973)
+abierto contra `nightly`, apilado sobre #969/#970/#971/#972; CI pendiente.
+Siguiente migración: OBS V2-only; después se puede retirar la
+ruta/productor/flags/builders V1 según el inventario.
+
+R3 NO significa V1 ausente del binario y no inicia auditoría V2 ni bucle de
+rendimiento. Rollback exclusivamente por build anterior R0.
+
+## R2 Desktop V2-only publicado en PR draft — 2026-09-04, ISA-894
+
+Writer unico en `C:\tmp\vantare-v1-retirada-r2\vantare-v2`, rama
+`vantareapp/isa-894-retirada-v1-r2`, base exacta R1 `c3cb104a`. Candidato de
+codigo/test `992d1177`; worktree limpio al congelar cada commit. Sin apps, LMU,
+navegadores, `.env*`, merge, promocion o release. Este bloque prevalece sobre
+R1 en el avance de retirada, sin repetir su contenido.
+
+R2 retira de `CompositeApp` el adapter/observer V1 y la activacion/reporting del
+shadow legacy. Desktop conserva pull Wails, store/binding V2, Engineer, Calendar,
+RaceSchedule, features y teardown. TDD: el RED creo shadow una vez al entregar
+V1 (`1 failed, 15 passed`); GREEN ignora V1, pinta un snapshot V2 solo y cierra
+la sesion pull al desmontar. Evidencia:
+`docs/telemetry-core/evidence/isa-894/retirada-v1-r2-desktop-20260904.md`.
+
+Checks del orquestador: focales 5 archivos/42 tests, typecheck, build, lint,
+Go focal R1, `rg` de frontera y diff-check PASS; roadmap frontend 49 tests,
+Python 23 tests y digest reproducible PASS. Review spec Muse
+`ses_f96873b0effe2VItOuu03U5Dgw` sobre `4fe69f12`: APPROVE, P0/P1=0; P3
+endurecidos en `992d1177`. Review calidad/adversarial Muse
+`ses_f9681a57bffeSnlDKCNUB0t4uR` sobre `20e5c0c3`: APPROVE,
+P0/P1/P2/P3 bloqueantes=0. [PR draft #972](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/972)
+abierto contra `nightly`, apilado sobre #969/#970/#971; CI pendiente. Siguiente
+migracion: Studio V2-only; despues OBS V2-only; solo entonces retirar
+ruta/productor/flags/builders V1 segun dependencias.
+
+R2 NO significa V1 ausente del binario: OBS/Studio, productor/SSE, flags,
+builders, tipos y tooling legacy siguen. Tampoco inicia auditoria V2, bucle de
+rendimiento ni prueba fisica. Rollback unicamente por build anterior R0.
+
+## R1 publicado en PR draft — 2026-09-04, ISA-894
+
+Writer único en `C:\tmp\vantare-v1-retirada-r1\vantare-v2`, rama
+`vantareapp/isa-894-retirada-v1-r1`, base exacta `d687d38c` (R0). Sin
+apps, LMU, navegadores, `.env*` ni secretos. HEAD revisado `78cce939`, rama
+publicada y [PR draft #971](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/971)
+abierto contra `nightly`; depende de #969 y #970. Sin merge, promoción ni
+release. Este bloque prevalece sobre los inferiores en lo que describa R1;
+no repite R0.
+
+R1 = pull dirigido de Wails exclusivamente V2 (microplan
+`docs/superpowers/plans/2026-09-03-telemetria-v1-retirada-r1.md`). Commit de
+código `fba4ed5a` (6 archivos Go): `OverlayPullTransport` pierde `hub *Hub`,
+`NewOverlayPullTransport(registry)`, `Pull` sin guard de hub, `currentEvents`
+sólo status/snapshot V2 sin error, y `main.go` compone sólo
+`OverlayV2Publishers()`. Intactos: ACK, replay, latest-wins, sesiones
+retiradas, cleanup y estados del registry. Harness conserva golden/SSE V1 y
+lee el cursor V1 desde SSE; bench sólo V2 (1/20/44/104) con warm-up de ACK
+real y métrica única `v2_bytes`. TDD RED→GREEN con
+`TestOverlayPullExcludesLegacyEvenWhenPublished` (RED: `deliver=true
+want=false` y 3 eventos vs 1). Evidencia:
+`docs/telemetry-core/evidence/isa-894/retirada-v1-r1-20260903.md`. Roadmap:
+entrada `telemetry-live` actualizada y `roadmap.json` regenerado por script.
+
+Checks: gofmt limpio, typecheck, build frontend, `telemetrytransport`,
+focales `cmd/vantare` (harness + replay + HTTP pull), vitest focal 14/14,
+bench smoke sintético, `rg` sin firmas antiguas, `git diff --check` limpio.
+`go test ./...`: la primera pasada falló sólo por el flaky heredado
+`TestDownloadStallTimerRestartsWithEveryChunk` (updater, fuera del diff); la
+repetición del orquestador sobre el mismo código dio PASS completo con exit 0
+(updater 2.870s). Roadmap: `roadmap-data` 30/30, tests Python 23/23 + 21/21,
+digest `--check` sin cambios; contrato local con issue viva no ejecutable por
+ausencia de `GITHUB_TOKEN` (queda para CI del PR). R1 NO es retirada física
+total de V1 (productor/SSE/builders/flags siguen) ni auditoría V2; sin prueba
+física Wails/LMU.
+
+Dos revisiones independientes del SHA final terminaron `APPROVE`, con
+P0/P1/P2/P3 = 0. **Siguiente acción:** esperar los checks del PR #971 y
+corregir únicamente fallos atribuibles a R1; ningún merge/promoción desde
+este corte.
+
+## R0 completado y revisado — 2026-09-03, ISA-894
+
+Isaac aprueba ejecutar R0 («sí, agree»). Writer único en
+`C:\tmp\vantare-v1-retirada-r0`, rama `vantareapp/isa-894-retirada-v1-r0`,
+base `8e8ec17b2d2b660d717316c10925a6b93d073d1c` (candidato #969).
+La diferencia respecto a `2abd32f9` del plan es sólo documentación/roadmap;
+Nightly remoto verificado permanece `659b2c57`. No se toca el checkout principal.
+
+Tres Muse leen en snapshots aislados de la misma base: frontend/catálogo
+`ses_f97d0cf51ffeAeZYBKiE0ACNk9`, Go/transporte
+`ses_f97d0bc82ffeF0g7zlxOmfPJPH` y compatibilidad
+`ses_f97d0a6f5ffe8clDFCBlgrBxqZ`. Main consolida documentos y ejecuta focales.
+Sin modificación productiva, borrado V1, apps/LMU, benchmark o promoción.
+
+Copia privada ya creada en
+`C:\tmp\vantare-v1-rollback-4864b5c6-20260903\vantare-redline-rfix4-4864b5c6.exe`:
+30.851.584 bytes y SHA256 `cb69a4d56ca7cb59078cb7bd7e223b33c34aa927ec808c2e49154386b878faba`,
+idéntico al original. Commit `4864b5c6` presente. Copia verificada, no restauración
+funcional. Código 4864b5c6 y base 8e8ec17b idénticos (diff sólo documental);
+ambos soportan perfiles V4/settings 6. Cambiar ubicación/CWD puede seleccionar
+otros datos; recovery settings/updater puede escribir al arrancar. No se copian
+datos ni se cambia canal. Ver [rollback](../../telemetry-core/evidence/isa-894/retirada-v1-rollback-20260903.md).
+
+Los lectores han entregado inventario y suplemento, snapshots limpios. Main
+contrasta suscripciones dinámicas (sí hay listeners legacy de diagnóstico),
+Host V2/auxiliar, constructor/tests pull y consumo fail-closed del contador por
+el banco. Rechaza paridad V1 nueva como gate, supuesto pre-V4, borrado masivo de
+bench y conservación de shadow por nombre. El [inventario](../../telemetry-core/evidence/isa-894/retirada-v1-inventario-20260903.md)
+clasifica los 20 widgets, fuentes auxiliares, productor/transporte/contratos y
+tooling; marca explícitamente qué unidades no se pueden borrar aún.
+
+[Checks](../../telemetry-core/evidence/isa-894/retirada-v1-checks-20260903.md): instalación
+offline frozen sin actualizar dependencias; 3 archivos/16 tests frontend,
+typecheck, build, focal de emisión/guardias Go y ocho paquetes Go PASS, exit 0.
+Avisos Node/Vite conservados. No suites completas ni rendimiento/LMU/rollback
+físico. Preparado [R1](../../superpowers/plans/2026-09-03-telemetria-v1-retirada-r1.md):
+pull Go V2-only en dos archivos productivos y cuatro tests/bench, pendiente de
+ejecución. No se inicia auditoría V2 ni bucle de experimentos.
+
+Spec review Muse `ses_f97c50549ffe5Pd8t5IrwarC5l`: **APPROVE** sobre
+`3e11d93ac8ea2f697b4de6e7ea083593704d3909` (9 documentos, cero código
+productivo). Snapshot limpio, lectura de código y diff; no ejecutó checks.
+44 tests de roadmap PASS y 26 enlaces locales resueltos. Digest reproducible y
+contrato de issue/diff completo validados localmente con issue viva de GitHub.
+Se corrigieron los campos formales de la issue (encabezados exactos y contrato),
+sin cambiar el alcance. Sus cuatro IDs reflejan el diff apilado de #969; R0
+sólo cambia `telemetry-live` respecto a 8e8ec17b.
+
+Calidad/adversarial Muse `ses_f97c1e8c4ffe32HX5LyfBqZ2xS`: **APPROVE** sobre
+el mismo `3e11d93a`; cero Critical/Important bloqueantes, snapshot limpio.
+Main incorpora aclaraciones menores: son 18 builders que importan snapshot,
+helpers de tests localizados, workdir/nombre del paquete, Lookup con comprobación
+de publisher activo y líneas del cursor SSE. No se adopta ignorar el booleano
+de Lookup. El diff de estas aclaraciones y registro de review lo revisa main;
+las reviews no se presentan como prueba física ni certificación de V2.
+
+R0 queda completado dentro de su alcance: nueve documentos/roadmap, copia
+privada y focales. No código productivo, apps, LMU, datos privados, auditoría
+integral, rendimiento ni experimento ejecutados. Siguiente corte propuesto R1,
+todavía sin implementar; no repetir R0 ni el interrogatorio.
+
+Entrega en rama `vantareapp/isa-894-retirada-v1-r0`, apilada sobre #969;
+destino permitido draft a Nightly, dependiente de #969. Ningún merge/push
+directo a Nightly autorizado. #969 sigue draft con tres checks SUCCESS
+en 8e8ec17b; ese CI no se atribuye a la nueva rama R0. Estado de publicación
+de R0 se contrasta en la issue/PR remotos, nunca se infiere de este registro.
+
+Este bloque prevalece sobre los estados históricos de aprobación inferiores.
+
+**Publicación R0:** [PR #970](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/970)
+creada draft a Nightly, depende de #969; push de rama confirmado en
+`5190b1fcf6fc97bae49ac243b4034d5fa030b259`. Dos commits de R0 hasta ese punto:
+evidencia `3e11d93a` y cierre/reviews `5190b1fc`. Este registro posterior sólo
+documenta la PR. CI de R0 pendiente de comprobar en el HEAD remoto final;
+sin merge, release o promoción. Issue #894 permanece abierta, retirada sin ejecutar.
+
+## Decisión de diseño y registro previo — 2026-09-03, ISA-962
+
+El alcance del maestro sigue vigente. Los estados de R0 en este registro son
+anteriores y quedan sustituidos por la cabecera actual; no son otra cola activa.
+
+Isaac sustituye completamente el programa anterior por el
+[maestro de Telemetría V2](../../superpowers/specs/2026-09-03-telemetria-v2-plan-maestro.md).
+Este es su único handoff vivo. Secuencia: retirada segura completa de V1 (#894),
+auditoría integral de V2 en cuatro carriles de sólo lectura y bucle de mejoras
+comparables. Rollback mediante build/commit previo verificado; no dejar V1
+dentro del nuevo ejecutable. Se conservan las garantías de ADR 0004/0008.
+
+La autorización de diseño reemplaza el bloqueo histórico por falta de permiso
+genérico de Cut 2 y la prioridad Redline. No borra resultados FAIL ni permite
+ignorar consumidores, pérdida de información, riesgos de datos o gates de seguridad.
+Isaac hará las pruebas manuales LMU; no hay otra sesión física, tarea programada,
+merge ni release autorizados desde esta sustitución.
+
+Fase 3: mantener información, apariencia, frescura y cadencias. Cinco experimentos
+consecutivos sin mejora medida o ocho horas acumuladas de ejecución del bucle,
+lo primero. La mejora sólo reinicia consecutivos. Únicamente Muse Spark 1.3
+Contributor xhigh mediante MCP OpenCode; revisión adversarial independiente.
+
+**Estado actual:** Isaac aprueba el maestro escrito («estoy de acuerdo»).
+SPECIFY aprobado; [microplan R0](../../superpowers/plans/2026-09-03-telemetria-v1-retirada-r0.md)
+preparado para revisión. Dos Muse en snapshots de `2abd32f9` hicieron exploración
+acotada de dependencias y rollback, contrastada por main; no es la auditoría V2.
+Ninguna retirada ni prueba de rendimiento nueva. Código del candidato
+`4864b5c6`, documentación en `2abd32f9`, PR #969 draft; S3 FINAL PASS acotado
+según su evidencia. S4/S5/S2 no ejecutadas; memoria y rendimiento global V2
+no certificados. Esas afirmaciones no cambian por aprobar este plan.
+
+**Siguiente acción:** revisar R0 y ejecutarlo tras su aprobación: inventario
+completo, copia privada del exe con hash, compatibilidad/rollback y regresiones
+protectoras. No repetir el brainstorming ni inventariar de cero lo ya contrastado.
+No reactivar la cola antigua. Los registros inferiores son históricos cuando
+contradigan este bloque; conservan sus cifras y resultados, no permisos actuales.
+
+**Exploración de PLAN:** [base verificada](../../telemetry-core/evidence/isa-894/retirada-v1-base-20260903.md).
+Workers `ses_f97dbe79fffexMAi0IEDDID27H` y `ses_f97dbe353ffehpum1nA3FSjGzb`
+terminados, sin cambios en sus snapshots. Main rechaza la reimposición de gates
+históricos sugerida por el primero y corrige su ruta SSE contra código actual.
+Exe previo localizado y SHA256 confirmado `cb69a4d5…878faba`; todavía no se ha
+copiado ni restaurado. Los guardias de coexistencia y dependencias mixtas
+frontend/pull exigen sustitución de pruebas y clasificación, no borrado ciego.
+La propuesta R0 no es autorización de implementación o promoción. CI de
+`2abd32f9` estaba en progreso al preparar este corte; no se hereda como PASS.
+Autorrevisión del plan: comandos/rutas, variables y alcance de cada tarea
+comprobados; sin cambios productivos. Digest regenerado y reproducible,
+44 tests de roadmap PASS y diff-check limpio. Focales Go/frontend de R0 aún
+no ejecutados: pertenecen al microplan propuesto, no a esta entrega documental.
+
+**Entrega documental:** commit coordinador `79e88db6`, incorporado al candidato
+como `f92dc2cc`; los dos checkpoints S3 anteriores también se incorporaron sin
+cambiar código productivo. Muse independiente `ses_f97e0b4d0ffeCuPPcbastUkozY`
+revisa ese diff en snapshot aislado: APPROVE documental, sin P0/P1/P2 bloqueantes.
+Main verifica archivo histórico íntegro, enlaces del maestro, diff-check,
+digest reproducible y 44 tests de roadmap PASS. El guard completo local no pudo
+leer la issue por ausencia de `GITHUB_TOKEN`; su resultado remoto debe comprobarse
+para el nuevo HEAD, sin atribuirle el CI de `c13b8888`. No se ejecutan suites
+Go/frontend porque este corte sólo toca documentación y JSON generado.
+Issues #962/#894/#924 reconciliadas; #951/#952 fuera de la cola activa y #956
+conservada como entrada diagnóstica. Ninguna cerrada como entregada por esta
+decisión. PR #969 sigue draft; no merge, promoción ni release. Cambio ajeno de
+`configs/calendar-lmu.json` preservado, hash sin variación.
+
 ## Resultado
 
 Un único núcleo live modular y neutral al simulador. El driver LMU posee Shared
@@ -8,12 +1519,41 @@ y Analysis consumen proyecciones versionadas y nunca abren readers propios.
 
 ## Autoridad
 
+- `docs/superpowers/specs/2026-09-03-telemetria-v2-plan-maestro.md`: alcance y secuencia operativa actuales.
+
 - `docs/adr/0004-telemetry-core-modular-observation-architecture.md`.
 - `docs/telemetry-core/README.md` y su evidencia.
 - `docs/superpowers/plans/2026-07-19-telemetry-core-final-architecture-master.md`.
 - Issue y microplan activos en GitHub.
 
 ## Estado real
+
+- 2026-09-01, decisión operativa ISA-894/ISA-962: Delta queda fuera de S3 y
+  ningún gate depende de completar o validar vueltas del jugador. Las nuevas
+  comprobaciones duran cinco minutos, se ejecutan con el jugador en pista y
+  siguen el orden S3 → S4 → S5 → S2. El colector falla cerrado fuera de cinco
+  minutos y S3 selecciona un perfil Redline sin Delta. La evidencia histórica
+  larga se conserva; esta reducción no autoriza Cut 2 ni promoción.
+
+- 2026-09-01, ISA-958 en rama: `CachedProjector` publica `relativeSettled`
+  como autoridad única para Endurance Redline. Mantiene una ventana ordenada
+  de máximo 8+jugador+8 hasta que otra ventana permanezca estable 7 s; si los
+  candidatos oscilan, no salta mientras todos los IDs aceptados sigan realmente
+  observados, y rehidrata sus campos desde cada `FinalState`. Ausencia real,
+  cambio de sesión/epoch/jugador o falta de jugador reinician inmediatamente.
+  El store rechaza secuencias atrasadas dentro del mismo stream y valida ambos
+  arrays con side/orden/ID/jugador canónicos. Classic/Minimal/Neo siguen usando
+  `relative` inmediato. El adaptador Redline no admite estado de estabilidad
+  frontend, evitando un segundo hold. `RelativeRowV2` mantiene posición, última
+  vuelta y posición 3D de la misma fila; no cruza Standings. Focales Go y
+  frontend, typecheck y diff-check verdes. El candidato integrado superó 441
+  archivos/3.418 pruebas frontend, `go test ./...`, build y lint; la revisión
+  adversarial de la autoridad aislada fue APPROVE. S3 Wails/LMU sigue pendiente.
+
+- 2026-08-31, ISA-957 en rama: `StandingRowV2` incorpora la mejor vuelta
+  canónica con calidad y el ViewModel de Standings separa por fase la métrica
+  de mejor vuelta del gap de clasificación. Los goldens V2 y el contrato TS se
+  regeneraron desde Go; sin promoción ni prueba Wails/LMU nueva.
 
 - 2026-08-30, ISA-894/PR #955, S1 definitiva: ON y OFF usaron el mismo exe
   `d02054e3…`/dist `5b8e388c…`, Spa práctica y 14 coches. El parser corregido

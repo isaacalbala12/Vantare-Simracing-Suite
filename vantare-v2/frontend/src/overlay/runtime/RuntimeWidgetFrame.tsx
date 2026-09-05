@@ -6,11 +6,11 @@ import { WidgetVisualHost } from "../core/WidgetVisualHost";
 import { WidgetVisualViewport } from "../core/WidgetVisualViewport";
 import { useRateLimitedWidgetTelemetry } from "./use-rate-limited-telemetry";
 import type { EngineerPresentation } from "../../engineer/engineer-presentation-store";
-import type { OverlayV2Feature } from "../telemetry-shadow/overlay-v2-features";
 import type { RaceScheduleSnapshot } from "../core/race-schedule-store";
 
 export type RuntimeWidgetFrameProps = {
   widget: WidgetInstanceV3;
+  profileId: string;
   telemetry: TelemetryRateCoordinator;
   renderMode: "desktop" | "obs";
   layoutOrigin?: { x: number; y: number };
@@ -18,19 +18,17 @@ export type RuntimeWidgetFrameProps = {
   diagnostics?: WidgetDiagnosticCollector;
   engineerPresentation?: EngineerPresentation | null;
   engineerSubtitlesEnabled?: boolean;
-  overlayV2Features?: readonly OverlayV2Feature[];
   raceSchedule?: RaceScheduleSnapshot;
 };
 
 function RuntimeWidgetFrameComponent(props: RuntimeWidgetFrameProps): React.ReactElement {
-  const { widget, telemetry, renderMode, layoutOrigin, onDiagnostic, diagnostics, engineerPresentation, engineerSubtitlesEnabled, overlayV2Features, raceSchedule } = props;
+  const { widget, profileId, telemetry, renderMode, layoutOrigin, onDiagnostic, diagnostics, engineerPresentation, engineerSubtitlesEnabled, raceSchedule } = props;
   const runtimeTelemetry = useRateLimitedWidgetTelemetry(
     telemetry,
     widget.type,
   );
   const origin = layoutOrigin ?? { x: 0, y: 0 };
   const { x, y, w, h, zIndex } = widget.layout;
-
   const frameStyle: CSSProperties = {
     position: "absolute",
     left: x - origin.x,
@@ -61,7 +59,7 @@ function RuntimeWidgetFrameComponent(props: RuntimeWidgetFrameProps): React.Reac
             raceScheduleEvents: raceSchedule?.events,
             raceScheduleStatus: raceSchedule?.status,
             ...runtimeTelemetry,
-            overlayV2Features,
+            relativeViewModelInstanceKey: `${profileId}:${widget.id}`,
           }}
         />
       </WidgetVisualViewport>
@@ -95,6 +93,7 @@ function sameOrigin(left?: { x: number; y: number }, right?: { x: number; y: num
 
 export const RuntimeWidgetFrame = memo(RuntimeWidgetFrameComponent, (left, right) =>
   sameWidget(left.widget, right.widget) &&
+  left.profileId === right.profileId &&
   left.telemetry === right.telemetry &&
   left.renderMode === right.renderMode &&
   sameOrigin(left.layoutOrigin, right.layoutOrigin) &&
@@ -102,6 +101,5 @@ export const RuntimeWidgetFrame = memo(RuntimeWidgetFrameComponent, (left, right
   left.diagnostics === right.diagnostics &&
   left.engineerPresentation === right.engineerPresentation &&
   left.engineerSubtitlesEnabled === right.engineerSubtitlesEnabled &&
-  left.overlayV2Features === right.overlayV2Features &&
   left.raceSchedule === right.raceSchedule,
 );

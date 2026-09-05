@@ -16,13 +16,6 @@
     "stopping"
   ],
   "products": {
-    "overlay": {
-      "projectionEvent": "telemetry:overlay:projection",
-      "statusEvent": "telemetry:overlay:status",
-      "factEvent": "telemetry:overlay:fact",
-      "projectionRoute": "/telemetry/overlay/projection",
-      "factsRoute": "/telemetry/overlay/facts"
-    },
     "engineer": {
       "projectionEvent": "telemetry:engineer:projection",
       "statusEvent": "telemetry:engineer:status",

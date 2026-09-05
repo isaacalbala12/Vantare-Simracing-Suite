@@ -2,7 +2,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ProfileDocumentV3 } from "../core/profile-document";
 import { createTestTelemetryCoordinator } from "../../hub/overlay-studio/test-helpers";
-import { buildMockTelemetry } from "../core/mock-scenarios";
 import { deltaDefinition } from "../widget-types/delta/delta-definition";
 import { InPlaceEditOverlay } from "./InPlaceEditOverlay";
 import goldenV2Raw from "../../../../internal/telemetry/projection/overlayv2/testdata/overlay_v2_1.golden.json?raw";
@@ -105,7 +104,6 @@ function buildRaceDocument(): ProfileDocumentV3 {
 
 function renderOverlay(document: ProfileDocumentV3, revision = "rev-1") {
   const coordinator = createTestTelemetryCoordinator();
-  coordinator.publish(buildMockTelemetry({ session: "race", location: "track" }));
   const update = JSON.parse(goldenV2Raw) as OverlayUpdateV2;
   coordinator.setOverlayFrame(update.frame ?? undefined, update.source);
   render(

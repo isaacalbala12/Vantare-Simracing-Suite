@@ -13,7 +13,6 @@ import type { StudioProfileClient } from "../state/studio-profile-client";
 import { SAFE_AREA_INSET_RATIO } from "./canvas-backgrounds";
 import { StudioCanvas } from "./StudioCanvas";
 import { StudioTelemetryProvider } from "./StudioTelemetryProvider";
-import { buildMockTelemetry } from "../../../overlay/core/mock-scenarios";
 import { createTelemetryRateCoordinator } from "../../../overlay/core/telemetry-rate-coordinator";
 import type { StudioMonitor } from "../state/studio-monitor-client";
 
@@ -530,7 +529,7 @@ describe("StudioCanvas", () => {
     expect(screen.getByTestId("selected-id").textContent).toBe("");
   });
 
-  it("feeds widgets telemetry from the shared provider snapshot", async () => {
+  it("feeds canonical V2 missing state without synthesizing a legacy delta", async () => {
     render(
       <div style={{ width: 960, height: 540 }}>
         <StudioProvider client={client} initialFile="profiles/a.json">
@@ -542,9 +541,12 @@ describe("StudioCanvas", () => {
     );
 
     await waitFor(() => expect(screen.getByTestId("studio-widget-frame-delta-back")).toBeTruthy());
+    const frame = screen.getByTestId("studio-widget-frame-delta-back");
     await waitFor(() => expect(
-      screen.getByTestId("studio-widget-frame-delta-back").querySelector(".vo-delta-value")?.textContent,
-    ).toBe("-0.150"));
+      frame.querySelector('[data-widget-renderer="delta"]')?.getAttribute("data-status"),
+    ).toBe("missing"));
+    expect(frame.querySelector(".vo-delta-value")?.textContent).toBe("—");
+    expect(frame.textContent).not.toContain("-0.150");
   });
 
   it("applies the selected background and safe area inside an arbitrary scene", async () => {
@@ -601,14 +603,13 @@ describe("StudioCanvas", () => {
 
   it("renders disconnected delta when live source loses LMU", async () => {
     const coordinator = createTelemetryRateCoordinator();
-    coordinator.publish(
-      buildMockTelemetry({ session: "practice", location: "track", state: "ready" }),
-    );
     const telemetryAdapter = {
       coordinator,
       start() {
-        coordinator.publish(
-          buildMockTelemetry({ session: "race", location: "track", state: "disconnected" }),
+        const retained = coordinator.getOverlayFrame()!;
+        coordinator.setOverlayFrame(
+          { ...retained, sequence: retained.sequence + 1 },
+          { state: "live" },
         );
         coordinator.setOverlayFrame(coordinator.getOverlayFrame(), { state: "stopped" });
       },

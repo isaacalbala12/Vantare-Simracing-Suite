@@ -5,9 +5,8 @@ import type {
   OverlaySourceStatusV2,
 } from "../../../generated/telemetry";
 import { speedInKph } from "../pedals-telemetry/pedals-telemetry-view-model-v2";
-import type { InputTelemetrySample } from "./input-telemetry-accumulator";
 import type { InputTelemetryContent } from "./input-telemetry-definition";
-import type { InputTelemetryViewModel } from "./input-telemetry-view-model";
+import type { InputTelemetrySample, InputTelemetryViewModel } from "./input-telemetry-view-model";
 
 /** Per-mille is the quantization the Go builder publishes: three decimals. */
 const PER_MILLE = 1000;
@@ -16,23 +15,18 @@ const PER_MILLE = 1000;
  * Input telemetry view model over the Overlay v2 contract.
  *
  * The history is NOT accumulated here. Overlay v1 kept one TypeScript
- * accumulator per widget id (input-telemetry-accumulator.ts), fed by whatever
+ * accumulator per widget id, fed by whatever
  * snapshots reached the browser, so two widgets watching the same lap could
  * hold different series and a remount lost the lap. Go now derives the series
  * once from the canonical stream and publishes it as `controls.history`; this
- * module only decodes it. The accumulator stays in the tree for the Overlay v1
- * path and is retired with it.
+ * module only decodes it.
  *
- * The wire carries three parallel per-mille arrays plus a single `windowMs`
- * rather than a timestamp per sample. Timestamps are reconstructed as an equal
- * step across that window ending at the frame instant, which is exact while the
- * canonical tick is regular and an approximation of the x axis when it is not.
- * That reconstruction is a declared difference against Overlay v1, which
- * carries a real per-sample timestamp.
- *
- * speedKph, rpm and gear are absent from the samples: the canonical control
- * history records pedals only. The instantaneous values still come from
- * `player`, as they did in F6.
+ * Each sample carries its absolute capture instant (`capturedAtMS`, Unix epoch
+ * milliseconds from the real capture clock) plus its motion cells (speed in
+ * m/s, rpm, gear), every motion cell with its own quality. The decoder reads
+ * those instants verbatim: no `Date.now`, no rebase to `frame.generatedAt`,
+ * no browser time authority. The only transformation is presentation:
+ * per-mille back to ratio and m/s to the km/h the widget draws.
  */
 export function buildInputTelemetryViewModelV2(
   frame: OverlayFrameV2,
@@ -54,7 +48,7 @@ export function buildInputTelemetryViewModelV2(
     gear: unavailable ? undefined : displayedNumber(frame.player.gear),
     history: unavailable || options.includeHistory === false
       ? []
-      : decodeControlsHistory(frame.controls.history, Date.parse(frame.generatedAt), content.historySeconds),
+      : decodeControlsHistory(frame.controls.history, content.historySeconds),
     historySeconds: content.historySeconds,
     showClutch: content.showClutch,
   };
@@ -63,32 +57,47 @@ export function buildInputTelemetryViewModelV2(
 /**
  * Decodes the compact wire series into the samples the widget draws, newest
  * last, trimmed to the window the widget is configured to show.
+ *
+ * Timestamps come straight from `capturedAtMS`; the trim cutoff is measured
+ * against the newest sample instant, never against the frame instant or the
+ * browser clock. A motion cell whose quality is missing/invalid decodes to
+ * `undefined`; stale/fresh cells keep their value. Arrays stay index-aligned
+ * by taking the shortest length, so a ragged wire row can never misalign a
+ * pedal with another sample's motion.
  */
 export function decodeControlsHistory(
   history: OverlayControlsHistoryV2,
-  frameMillis: number,
   historySeconds: number,
 ): readonly InputTelemetrySample[] {
   if (history.q === "missing" || history.q === "invalid") return [];
+  const capturedAtMS = history.capturedAtMS ?? [];
   const throttle = history.throttle ?? [];
   const brake = history.brake ?? [];
   const clutch = history.clutch ?? [];
-  const count = Math.min(throttle.length, brake.length, clutch.length);
+  const speedMPS = history.speedMPS ?? [];
+  const rpm = history.rpm ?? [];
+  const gear = history.gear ?? [];
+  const count = Math.min(
+    capturedAtMS.length, throttle.length, brake.length, clutch.length,
+    speedMPS.length, rpm.length, gear.length,
+  );
   if (count === 0) return [];
 
-  const windowMillis = history.windowMs ?? 0;
-  const step = count > 1 ? windowMillis / (count - 1) : 0;
-  const newest = Number.isFinite(frameMillis) ? frameMillis : 0;
+  const newest = capturedAtMS[count - 1];
+  if (!Number.isFinite(newest)) return [];
   const cutoff = newest - Math.max(1, Math.min(8, historySeconds)) * 1000;
   const samples: InputTelemetrySample[] = [];
   for (let index = 0; index < count; index += 1) {
-    const capturedAt = newest - step * (count - 1 - index);
-    if (capturedAt < cutoff) continue;
+    const capturedAt = capturedAtMS[index];
+    if (!Number.isFinite(capturedAt) || capturedAt < cutoff) continue;
     samples.push({
       capturedAt,
       throttle: ratio(throttle[index]),
       brake: ratio(brake[index]),
       clutch: ratio(clutch[index]),
+      speedKph: motionSpeedKph(speedMPS[index]),
+      rpm: motionNumber(rpm[index]),
+      gear: motionNumber(gear[index]),
     });
   }
   return samples;
@@ -111,8 +120,9 @@ export function inputTelemetryDisplayedValues(
 
 /**
  * Fields that cannot be paired sample-by-sample with v1; declared, not
- * compared. V2 reconstructs timestamps from `windowMs`, so an array index is
- * not a shared observation across the independently sampled histories.
+ * compared. Both histories are sampled independently (v1 accumulates arriving
+ * snapshots in the browser, v2 carries the canonical Go series with absolute
+ * instants), so an array index is not a shared observation across them.
  */
 export const OVERLAY_V2_CONTROLS_DECLARED_GAPS: readonly string[] = Object.freeze([
   "history.length",
@@ -143,6 +153,27 @@ function resolveStatus(state: string): InputTelemetryViewModel["status"] {
 function ratio(perMille: number | undefined): number {
   if (perMille === undefined || !Number.isFinite(perMille)) return 0;
   return Math.min(1, Math.max(0, perMille / PER_MILLE));
+}
+
+/**
+ * Reads one motion cell of the wire history. Missing/invalid cells decode to
+ * `undefined` (never zero: absent is not zero); stale/fresh cells keep their
+ * value, with Go's elided zero read back as 0 through the quality bit.
+ */
+function motionNumber(cell: OverlayQValue<number> | undefined): number | undefined {
+  if (cell === undefined || cell.q === "missing" || cell.q === "invalid") return undefined;
+  return cell.v ?? 0;
+}
+
+/**
+ * Presents a wire speed sample in the km/h the widget draws. The wire unit is
+ * always m/s (Go publishes the source value untouched); the x3.6 lives only
+ * here, never in the canonical series.
+ */
+function motionSpeedKph(cell: OverlayQValue<number> | undefined): number | undefined {
+  const metresPerSecond = motionNumber(cell);
+  if (metresPerSecond === undefined) return undefined;
+  return metresPerSecond * 3.6;
 }
 
 function displayedNumber(value: OverlayQValue<number>): number | undefined {

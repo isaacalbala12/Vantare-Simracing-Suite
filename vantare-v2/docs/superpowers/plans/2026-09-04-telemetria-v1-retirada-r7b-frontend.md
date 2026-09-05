@@ -909,6 +909,14 @@ evaluable hasta desbloquear los 8 errores R7a, no excusa para reintroducir V1.
 - Objetivo, archivos, RED, aceptación, checks, reviewer y rollback/stop: como
   D2, aplicado a estas 6 definitions (daño solo tras C1 resuelto).
   Commit/review/gate independientes.
+- Resultado D4 (ejecutado en rama 2026-09-05, pendiente de revisión):
+  `ca462478` RED enumera las seis anclas; `6a5da362` retira su autoridad V1 y
+  `4eaa0eb8` alinea los tests C1 de daño con la ausencia definitiva del stub.
+  E1/E4 conservan temporalmente los cuatro builders reales y dos modelos
+  `missing` de daño por rutas directas. RED 21/23; focales 64/64, 140/140 y
+  68/68, typecheck, ESLint, build, diff-check y ausencia PASS. Suite final
+  3412/3418 con los mismos seis fallos heredados ajenos. Evidencia:
+  `docs/telemetry-core/evidence/isa-894/retirada-v1-r7b-d4-final-20260905.md`.
 
 ### D5 · Corte auxiliar explícito: race-schedule y engineer-radio (se conservan)
 

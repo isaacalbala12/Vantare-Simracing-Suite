@@ -38,5 +38,8 @@ se endurecen en sus cortes propietarios.
 
 ## Estado
 
-Implementado en rama y pendiente de revisión adversarial. Sin push, PR,
-merge, promoción, release, apps ni LMU.
+APROBADO por review adversarial read-only
+`ses_f90340906ffeafGj8G38G6gaWj`: P0/P1/P2 = 0; P3 = 1 informativo por
+cinco casts temporales `as never` en E4, aceptados porque el contenido ya está
+validado y E4 eliminará esa ruta. Sin push, PR, merge, promoción, release,
+apps ni LMU.

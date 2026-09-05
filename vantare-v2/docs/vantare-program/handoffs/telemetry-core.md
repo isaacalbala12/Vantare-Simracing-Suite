@@ -1,6 +1,6 @@
 # Handoff vivo — Telemetry Core
 
-## R7b/D3 ejecutado en rama, pendiente de revisión — seis definitions dinámicas V2-only — 2026-09-05, ISA-894
+## R7b/D3 APROBADO final — seis definitions dinámicas V2-only — 2026-09-05, ISA-894
 
 Commits `e3f9d5a5` (RED exacto 6/6) y `367a4df7` (GREEN).
 `racing-flags`, `delta-advanced`, `delta-trace`, `pedals`,
@@ -11,8 +11,9 @@ fallback silencioso. RED 21/23; focales 64/64 y 164/164 PASS; typecheck,
 ESLint focal, build, diff-check y `rg` PASS. Suite completa 3412/3418 con los
 mismos seis fallos heredados ajenos de D2. Evidencia:
 [`retirada-v1-r7b-d3-dinamicos-20260905.md`](../../telemetry-core/evidence/isa-894/retirada-v1-r7b-d3-dinamicos-20260905.md).
-Pendiente review adversarial; siguiente D4 solo tras aprobación. Sin push, PR,
-merge, promoción, apps ni LMU.
+Review adversarial read-only `ses_f90340906ffeafGj8G38G6gaWj`: **APPROVE**,
+P0/P1/P2 = 0 y P3 = 1 informativo por cinco casts temporales `as never` de
+E4. Siguiente: D4. Sin push, PR, merge, promoción, apps ni LMU.
 
 ## R7b/D2 APROBADO final — seis definitions core/status V2-only — 2026-09-05, ISA-894
 

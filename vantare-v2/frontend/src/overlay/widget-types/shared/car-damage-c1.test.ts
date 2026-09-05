@@ -2,7 +2,6 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import type { OverlayFrameV2, OverlayUpdateV2 } from "../../../generated/telemetry";
-import { buildMockTelemetry } from "../../core/mock-scenarios";
 import { carDamageNumbersDefinition } from "../car-damage-numbers/car-damage-numbers-definition";
 import {
   OVERLAY_V2_DAMAGE_DECLARED_GAPS as NUMBERS_DECLARED_GAPS,
@@ -21,38 +20,13 @@ import {
 // wheelDetachedCount viaja en el frame pero ningún renderer lo consume:
 // decisión deliberada B, sin campo canónico nuevo.
 
-const INJECTED_DAMAGE = {
-  body: 0.9,
-  aero: 0.8,
-  suspension: 0.7,
-  tyres: [0.95, 0.94, 0.93, 0.92] as [number, number, number, number],
-};
-
 describe("car damage C1: definitions sin passthrough V1 (rama B)", () => {
-  it("visual ignora snapshot.damage aunque venga inyectado", () => {
-    const base = buildMockTelemetry({ session: "race", location: "track" });
-    const model = carDamageVisualDefinition.buildViewModel(
-      { ...base, damage: INJECTED_DAMAGE },
-      carDamageVisualDefinition.parseContent({}),
-    );
-    expect(model.status).toBe("missing");
-    expect(model.body).toBeUndefined();
-    expect(model.aero).toBeUndefined();
-    expect(model.suspension).toBeUndefined();
-    expect(model.tyres).toBeUndefined();
+  it("visual no vuelve a publicar un builder V1", () => {
+    expect(carDamageVisualDefinition.buildViewModel).toBeUndefined();
   });
 
-  it("numbers ignora snapshot.damage aunque venga inyectado", () => {
-    const base = buildMockTelemetry({ session: "race", location: "track" });
-    const model = carDamageNumbersDefinition.buildViewModel(
-      { ...base, damage: INJECTED_DAMAGE },
-      carDamageNumbersDefinition.parseContent({}),
-    );
-    expect(model.status).toBe("missing");
-    expect(model.body).toBeUndefined();
-    expect(model.aero).toBeUndefined();
-    expect(model.suspension).toBeUndefined();
-    expect(model.tyres).toBeUndefined();
+  it("numbers no vuelve a publicar un builder V1", () => {
+    expect(carDamageNumbersDefinition.buildViewModel).toBeUndefined();
   });
 
   it("el builder V2 visual mapea dents canónicos y deja tyres sin inventar", () => {

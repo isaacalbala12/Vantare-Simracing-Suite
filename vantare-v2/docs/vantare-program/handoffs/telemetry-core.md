@@ -1,5 +1,16 @@
 # Handoff vivo — Telemetry Core
 
+## R7b/E1c STOP resuelto por inventario — comparator conserva 16 builders hasta E4 — 2026-09-05, ISA-894
+
+Inventario read-only Muse `ses_f8ffd7b62ffeka520j86RvC7SE`: los 16 builders
+legacy no pueden caer en E1c porque `overlay-shadow-comparator.ts` los importa
+como oráculo. El agente se abortó sin cambios antes de forzar la contradicción.
+Orden corregido: E1c retira solo autoría legacy; E2/E3 limpian switch y
+fixtures; E4 borra comparator + builders; E1d elimina al final snapshot,
+adapters, mocks y coordinador. `authoring-v2-scenario-widget.ts` se conserva
+como único helper V2 de Workshop/Parity, sin duplicación. Sin push, PR, merge,
+promoción, apps ni LMU.
+
 ## R7b/E1b corte mínimo — harness snapshot Studio fuera, helper diferido a E1c (P1 cerrado) — 2026-09-05, ISA-894
 
 Commits locales `62a541b5` (RED 2/2) + `59c564a0` (borrado del

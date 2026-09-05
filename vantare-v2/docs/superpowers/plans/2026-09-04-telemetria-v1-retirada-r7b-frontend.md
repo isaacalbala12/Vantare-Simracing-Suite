@@ -971,7 +971,7 @@ evaluable hasta desbloquear los 8 errores R7a, no excusa para reintroducir V1.
 - Rollback/stop: revert. Stop si algo citado sigue importado por un preview
   no migrado → volver a C2.
 
-#### Microcortes E1 (orden obligatorio)
+#### Microcortes E1 (dependencias verificadas)
 
 1. **E1a · Contrato y previews**: retirar `TelemetrySnapshot` de
    `WidgetTypeDefinition`; borrar las firmas snapshot ignoradas de
@@ -979,18 +979,25 @@ evaluable hasta desbloquear los 8 errores R7a, no excusa para reintroducir V1.
    de Track Map. Conservar `buildAuxiliaryViewModel` y las fuentes D5.
 2. **E1b · Studio**: retirar `studio-v1-snapshot-test-harness.ts`, confirmado
    sin callers. No mover el helper de autoría mientras dependa del megamódulo.
-3. **E1c · Builders y autoría legacy**: borrar módulos/tests
-   `*-view-model.ts` exclusivos de V1 y retirar juntos
-   `authoring-fixtures.ts` + `authoring-v2-scenario-widget.ts`; mover solo los
-   tipos visuales todavía compartidos al módulo V2 o común más cercano, sin
-   abstracción nueva.
-4. **E1d · Núcleo legacy**: retirar snapshot, adapters, derived store,
+3. **E1c · Autoría legacy**: retirar `authoring-fixtures.ts` y sus tests
+   exclusivos, migrando callers a los fixtures V2 existentes. Se conserva
+   `authoring-v2-scenario-widget.ts`: al desaparecer el megamódulo deja de ser
+   duplicación y sigue siendo la frontera mínima usada por Workshop/Parity.
+4. **E1d · Núcleo legacy final**: retirar snapshot, adapters, derived store,
    acumulador de input, mock-scenarios e historias/API antiguas del
    coordinador; cerrar con guardia de ausencia, focales, typecheck y build.
+   Se ejecuta después de E4, porque comparator y builders necesitan el tipo
+   snapshot hasta que el oráculo sea retirado.
 
 Cada microcorte exige RED→GREEN y review literal independiente. La suite
 completa se ejecuta al cerrar E1d/F1, no después de cada borrado mecánico; un
 fallo focal dentro de alcance sí bloquea el microcorte.
+
+Orden efectivo tras inventario de imports:
+`E1a → E1b → E1c → E2 → E3 → E4 → E1d → F`. Los 16 builders legacy por
+widget siguen importados directamente por el comparator; borrarlos en E1c
+eliminaría el oráculo antes de E4. E4 los retira junto al shadow, y E1d borra
+después el núcleo que ya queda sin consumidores.
 
 **Resultado E1a (APROBADO final, 2026-09-05):** `79856dba` fija RED y
 `c99770a5` retira el snapshot del contrato y de las definitions auxiliares,
@@ -1104,9 +1111,12 @@ helper de autoría para caer con su megamódulo en E1c. Review adversarial
 
 ### E4 · Retirar comparator/sanitizer y sus resultados (oráculo hasta el final)
 
-- Objetivo: solo con D y E1 verdes, retirar comparator/sanitizer y sus
+- Objetivo: solo con D, E1a–E1c, E2 y E3 verdes, retirar
+  comparator/sanitizer, los builders/tests `*-view-model.ts` legacy que el
+  comparator conserva como oráculo y sus
   resultados, conservando su evidencia histórica (no se reescribe historia).
-  D ya no los necesita; F verifica ausencia total.
+  D ya no los necesita; E1d retira después el núcleo snapshot y F verifica
+  ausencia total.
 - Archivos: `overlay/telemetry-shadow/` restante (comparator/sanitizer),
   resultados asociados, tests exclusivos. Evidencia histórica conservada en
   `docs/telemetry-core/evidence/isa-894/`.

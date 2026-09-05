@@ -4,8 +4,8 @@ import { describe, expect, it } from "vitest";
 
 const overlayRoot = resolve(process.cwd(), "src", "overlay");
 
-// Corte 2 no está autorizado: este inventario exacto conserva los artefactos
-// legacy ya existentes, pero cualquier referencia o fichero adicional falla.
+// La retirada V1 aún no ha terminado: este inventario exacto conserva los
+// artefactos legacy que siguen vivos, pero cualquier referencia adicional falla.
 const legacyV1Baseline: Readonly<Record<string, readonly string[]>> = {
   "core/derived-telemetry-store.ts": ["TelemetrySnapshot", "TelemetrySnapshot", "TelemetrySnapshot"],
   "core/mock-scenarios.ts": ["TelemetrySnapshot", "TelemetrySnapshot", "TelemetrySnapshot"],
@@ -20,8 +20,6 @@ const legacyV1Baseline: Readonly<Record<string, readonly string[]>> = {
     ...Array(4).fill("snapshot.scoring"),
     "legacy view-model builder",
   ],
-  "telemetry-shadow/overlay-v2-shadow-activation.ts": Array(2).fill("TelemetrySnapshot"),
-  "telemetry-shadow/overlay-v2-shadow-runtime.ts": Array(3).fill("TelemetrySnapshot"),
   "widget-types/broadcast-tower/broadcast-tower-view-model.ts": ["TelemetrySnapshot", "TelemetrySnapshot", "snapshot.scoring"],
   "widget-types/car-damage-numbers/car-damage-numbers-view-model.ts": ["TelemetrySnapshot", "TelemetrySnapshot"],
   "widget-types/car-damage-visual/car-damage-visual-view-model.ts": ["TelemetrySnapshot", "TelemetrySnapshot"],
@@ -77,7 +75,7 @@ describe("Overlay V1 authority guard", () => {
       ["runtime/NewFrame.tsx", "useRateLimitedTelemetry(coordinator, 10);"],
       ["core/NewHost.tsx", "definition.buildViewModel(snapshot, content);"],
       ["core/nuevo-reader.ts", "const rows = snapshot.scoring;"],
-      ["telemetry-shadow/overlay-v2-shadow-activation.ts", "const rows = snapshot.scoring;"],
+      ["telemetry-shadow/overlay-shadow-comparator.ts", "const rows = snapshot.scoring;"],
     ] as const;
 
     for (const [relative, source] of mutants) {
@@ -89,7 +87,7 @@ describe("Overlay V1 authority guard", () => {
     for (const relative of [
       "runtime/NewFrame.test.tsx",
       "authoring/fixtures/sample.ts",
-      "telemetry-cutover-runtime-harness/main.ts",
+      "runtime/example-harness/main.ts",
     ]) {
       expect(
         v1AuthorityViolations(relative, "snapshot.scoring; adaptOverlayProjectionToSnapshot(input);"),

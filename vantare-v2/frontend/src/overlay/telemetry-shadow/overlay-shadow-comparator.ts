@@ -44,7 +44,11 @@ import { buildDeltaViewModel } from "../widget-types/delta/delta-view-model";
 import { buildDeltaViewModelV2 } from "../widget-types/delta/delta-view-model-v2";
 export { OVERLAY_V2_DELTA_DECLARED_GAPS } from "../widget-types/delta/delta-view-model-v2";
 import type { DeltaAdvancedViewModel } from "../widget-types/delta-advanced/delta-advanced-view-model";
+import { buildDeltaAdvancedViewModel } from "../widget-types/delta-advanced/delta-advanced-view-model";
 import type { DeltaTraceViewModel } from "../widget-types/delta-trace/delta-trace-view-model";
+import { buildDeltaTraceViewModel } from "../widget-types/delta-trace/delta-trace-view-model";
+import { buildPedalsViewModel } from "../widget-types/pedals/pedals-view-model";
+import { buildPedalsTelemetryCompactViewModel } from "../widget-types/pedals-telemetry-compact/pedals-telemetry-compact-view-model";
 import type { TrackMapViewModel } from "../widget-types/track-map/track-map-view-model";
 import type { FuelStrategyContent } from "../widget-types/fuel-strategy/fuel-strategy-definition";
 import type { FuelStrategyViewModel } from "../widget-types/fuel-strategy/fuel-strategy-view-model";
@@ -55,6 +59,7 @@ export {
   OVERLAY_V2_FUEL_INTENTIONAL_DIFFERENCES,
 } from "../widget-types/fuel-strategy/fuel-strategy-view-model-v2";
 import type { MulticlassRelativeRow, MulticlassRelativeViewModel } from "../widget-types/multiclass-relative/multiclass-relative-view-model";
+import { buildMulticlassRelativeViewModel } from "../widget-types/multiclass-relative/multiclass-relative-view-model";
 import type { RelativeContent } from "../widget-types/relative/relative-content";
 import type { RelativeRowViewModel, RelativeViewModel } from "../widget-types/relative/relative-view-model";
 import { buildRelativeViewModel } from "../widget-types/relative/relative-view-model";
@@ -1423,6 +1428,24 @@ function buildViewModelPair(
       break;
     case "pedals-telemetry":
       legacy = buildPedalsTelemetryViewModel(legacySnapshot, parsedContent as PedalsTelemetryContent);
+      break;
+    case "racing-flags":
+      legacy = buildRacingFlagsViewModel(legacySnapshot, parsedContent as RacingFlagsContent);
+      break;
+    case "delta-advanced":
+      legacy = buildDeltaAdvancedViewModel(legacySnapshot, parsedContent as never);
+      break;
+    case "delta-trace":
+      legacy = buildDeltaTraceViewModel(legacySnapshot, parsedContent as never);
+      break;
+    case "pedals":
+      legacy = buildPedalsViewModel(legacySnapshot, parsedContent as never);
+      break;
+    case "pedals-telemetry-compact":
+      legacy = buildPedalsTelemetryCompactViewModel(legacySnapshot, parsedContent as never);
+      break;
+    case "multiclass-relative":
+      legacy = buildMulticlassRelativeViewModel(legacySnapshot, parsedContent as never);
       break;
     default:
       if (!definition.buildViewModel) {

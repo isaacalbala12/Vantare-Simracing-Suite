@@ -2,10 +2,7 @@ import { validateInspectorControls } from "../../core/inspector-control";
 import type { WidgetInstanceV3 } from "../../core/profile-document";
 import type { WidgetTypeDefinition } from "../../core/widget-definition";
 import { getWidgetRequiredFeature } from "../../core/widget-definition";
-import {
-  buildPedalsTelemetryCompactViewModel,
-  type PedalsTelemetryCompactViewModel,
-} from "./pedals-telemetry-compact-view-model";
+import type { PedalsTelemetryCompactViewModel } from "./pedals-telemetry-compact-view-model";
 
 export type PedalsTelemetryCompactContent = {
   showSpeed: boolean;
@@ -75,5 +72,4 @@ export const pedalsTelemetryCompactDefinition: WidgetTypeDefinition<
       showClutch: typeof value.showClutch === "boolean" ? value.showClutch : DEFAULT_CONTENT.showClutch,
     };
   },
-  buildViewModel: buildPedalsTelemetryCompactViewModel,
 };

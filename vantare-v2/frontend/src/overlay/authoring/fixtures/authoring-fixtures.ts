@@ -22,6 +22,12 @@ import { buildRelativeViewModel } from "../../widget-types/relative/relative-vie
 import { buildDeltaViewModel } from "../../widget-types/delta/delta-view-model";
 import { buildFuelStrategyViewModel } from "../../widget-types/fuel-strategy/fuel-strategy-view-model";
 import { buildPedalsTelemetryViewModel } from "../../widget-types/pedals-telemetry/pedals-telemetry-view-model";
+import { buildRacingFlagsViewModel } from "../../widget-types/racing-flags/racing-flags-view-model";
+import { buildDeltaAdvancedViewModel } from "../../widget-types/delta-advanced/delta-advanced-view-model";
+import { buildDeltaTraceViewModel } from "../../widget-types/delta-trace/delta-trace-view-model";
+import { buildPedalsViewModel } from "../../widget-types/pedals/pedals-view-model";
+import { buildPedalsTelemetryCompactViewModel } from "../../widget-types/pedals-telemetry-compact/pedals-telemetry-compact-view-model";
+import { buildMulticlassRelativeViewModel } from "../../widget-types/multiclass-relative/multiclass-relative-view-model";
 import { parseRelativeContent, updateRelativeFilters } from "../../widget-types/relative/relative-content";
 import crystalReferenceManifest from "../../../../testdata/crystal-reference/manifest.json";
 import { buildEngineerPresentationFixture } from "../../../engineer/engineer-presentation-fixtures";
@@ -692,6 +698,12 @@ export function buildHarnessViewModel(widget: WidgetInstanceV3, snapshot: Teleme
   if (widget.type === "delta") return buildDeltaViewModel(snapshot, content as never);
   if (widget.type === "fuel-strategy") return buildFuelStrategyViewModel(snapshot, content as never);
   if (widget.type === "pedals-telemetry") return buildPedalsTelemetryViewModel(snapshot, content as never);
+  if (widget.type === "racing-flags") return buildRacingFlagsViewModel(snapshot, content as never);
+  if (widget.type === "delta-advanced") return buildDeltaAdvancedViewModel(snapshot, content as never);
+  if (widget.type === "delta-trace") return buildDeltaTraceViewModel(snapshot, content as never);
+  if (widget.type === "pedals") return buildPedalsViewModel(snapshot, content as never);
+  if (widget.type === "pedals-telemetry-compact") return buildPedalsTelemetryCompactViewModel(snapshot, content as never);
+  if (widget.type === "multiclass-relative") return buildMulticlassRelativeViewModel(snapshot, content as never);
   if (widget.type === "engineer-radio" && definition.buildRuntimeViewModel) {
     return definition.buildRuntimeViewModel(snapshot, content as never, {
       engineerPresentation: buildEngineerPresentationFixture(),

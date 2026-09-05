@@ -580,9 +580,17 @@ describe("B1 guardias RED de ausencia V1 frontend", () => {
     }
   });
 
-  it("diferidos E3 presentes y preservados: bench research sin borrado prematuro", () => {
-    present(root("docs", "research", "telemetry-architecture-2026", "bench", "frontend-bench-entry.ts"), "E3");
-    present(root("docs", "research", "telemetry-architecture-2026", "bench", "frontend-bench.mjs"), "E3");
+  it("E3 verde: bench research y testdata overlay fuera, prototipo preservado", () => {
+    // E3 elimina los 2 entrypoints frontend del research bench (importaban
+    // overlay-projection-v1 + adapter, ya borrados en B2) y los 3 JSON
+    // overlay/testdata huerfanos (solo los leia contracts_test, dueno E3).
+    absentAll([
+      [root("docs", "research", "telemetry-architecture-2026", "bench", "frontend-bench-entry.ts"), "E3"],
+      [root("docs", "research", "telemetry-architecture-2026", "bench", "frontend-bench.mjs"), "E3"],
+      [root("internal", "telemetry", "projection", "overlay", "testdata", "lmu-1.4-delta-overlay-v1.golden.json"), "E3"],
+      [root("internal", "telemetry", "projection", "overlay", "testdata", "overlay_v1_pre_d7.golden.json"), "E3"],
+      [root("internal", "telemetry", "projection", "overlay", "testdata", "overlay_v1.golden.json"), "E3"],
+    ]);
     // compact_frame.go es prototipo Go con tag researchbench e imports
     // canónicos (derive/envelope), sin cableado al proyector V1: solo lo
     // menciona en comentarios. Se preserva; se vigila que siga así.

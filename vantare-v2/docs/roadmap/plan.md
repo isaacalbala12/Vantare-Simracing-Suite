@@ -388,6 +388,22 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - etiqueta.pt: Em desenvolvimento
 - etiqueta.it: In corso
 
+### Correcciones del feedback de overlays
+
+- id: overlay-tester-feedback
+- tipo: fix
+- titulo.en: Overlay tester feedback fixes
+- titulo.pt: Correções do feedback dos overlays
+- titulo.it: Correzioni del feedback degli overlay
+- cuerpo: Studio reconoce documentos guardados equivalentes; las tablas Crystal respetan sus columnas y ajustan altura al cambiar filas. Pedales conservan el historial y muestran R/N, colores configurados y escala RPM sin simular el corte del coche. Track Map tiene fondo transparente y leyenda de clases. Las comparaciones explican referencias y datos ausentes; Head-to-Head protege su geometría. Verificación física Wails/LMU pendiente antes de promoción.
+- cuerpo.en: Studio recognizes equivalent saved documents; Crystal tables honor columns and adjust height when row count changes. Pedals preserve history and show R/N, configured colors and an RPM scale without simulating the car redline. Track Map has a transparent background and class legend. Comparisons explain references and missing data; Head-to-Head protects its geometry. Physical Wails/LMU verification is pending before promotion.
+- cuerpo.pt: Studio reconhece documentos guardados equivalentes; tabelas Crystal respeitam colunas e ajustam a altura ao mudar as linhas. Pedais preservam o histórico e mostram R/N, cores configuradas e escala RPM sem simular o limite do carro. Track Map tem fundo transparente e legenda de classes. Comparações explicam referências e dados ausentes; Head-to-Head protege a geometria. Verificação física Wails/LMU pendente antes da promoção.
+- cuerpo.it: Studio riconosce documenti salvati equivalenti; le tabelle Crystal rispettano le colonne e adattano l'altezza al numero di righe. I pedali conservano la cronologia e mostrano R/N, colori configurati e una scala RPM senza simulare il limitatore dell'auto. Track Map ha sfondo trasparente e legenda delle classi. I confronti spiegano riferimenti e dati assenti; Head-to-Head protegge la geometria. Verifica fisica Wails/LMU in attesa prima della promozione.
+- etiqueta: En validación
+- etiqueta.en: Under validation
+- etiqueta.pt: Em validação
+- etiqueta.it: In validazione
+
 ### Política de rendimiento para overlays
 
 - id: performance-policy

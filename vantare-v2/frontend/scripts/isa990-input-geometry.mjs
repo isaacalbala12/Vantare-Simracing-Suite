@@ -13,7 +13,8 @@ const browser=await chromium.launch({headless:true, ...(existsSync(chrome)?{exec
 try {
 const {InputTelemetryCrystal}=await server.ssrLoadModule('/src/overlay/design-systems/vantare-crystal/input-telemetry/InputTelemetryCrystal.tsx');
 const css=(await Promise.all(['tokens.css','isa93-live-families.css','isa93-input.css','isa93-parity-overrides.css'].map(f=>readFile('src/overlay/design-systems/vantare-crystal/'+f,'utf8')))).join('\n');
-const model={type:'input-telemetry',status:'ready',throttle:.8,brake:.1,clutch:.5,speedKph:242,gear:6,history:[],historySeconds:4,showClutch:true};
+const history = [0, .5, 1, .3, 0].map((value, index) => ({ capturedAt: index * 1000, throttle: value, brake: 1 - value, clutch: index % 2 }));
+const model={type:'input-telemetry',status:'ready',throttle:.8,brake:.1,clutch:.5,speedKph:242,gear:6,history,historySeconds:4,showClutch:true};
 const page=await browser.newPage();
 for(const templateId of ['input-dense','input-capsule','input-blade']) {
 for(const [width,height] of [[280,100],[360,140],[480,180]]) {
@@ -24,6 +25,9 @@ const result=await page.evaluate(()=>{const graph=document.querySelector('.vc-in
 console.log(templateId,width,height,result);
 assert.ok(result.graphWidth>=65*scale,'history needs at least 65px at base width');
 assert.ok(result.barsWidth>=85*scale,'pedal channels need at least 85px at base width');
+const traces = await page.locator('.vc-input-graph path').evaluateAll(paths => paths.map(path => ({ width: path.getBBox().width, stroke: getComputedStyle(path).stroke })));
+assert.equal(traces.length, 3, 'all three history channels remain visible');
+assert.ok(traces.every(trace => trace.width > 0 && trace.stroke !== 'none'), 'history has visible strokes');
 const escaped=await page.evaluate(()=>{const root=document.querySelector('.vc-input-telemetry').getBoundingClientRect();return [...document.querySelectorAll('.vc-input-telemetry header,.vc-input-graph,.vc-input-readout,.vc-input-horizontal,.vc-input-vertical,.vc-input-readout b,.vc-input-readout strong,.vc-input-horizontal span,.vc-input-vertical span')].filter(el=>{const r=el.getBoundingClientRect();return r.left<root.left-1 || r.right>root.right+1 || r.bottom>root.bottom+1 || r.top<root.top-1;}).map(el=>({name:el.className,rect:el.getBoundingClientRect().toJSON(),root:root.toJSON()}));});
 if(width===360) await page.screenshot({path:join(tmpdir(),`isa990-${templateId}.png`)});
 assert.deepEqual(escaped,[], 'all sections must stay inside the actual frame');

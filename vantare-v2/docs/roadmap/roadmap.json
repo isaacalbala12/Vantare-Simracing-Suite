@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-30T14:13:58Z",
+  "generatedAt": "2026-09-05T11:34:31Z",
   "digest": {
-    "lastCommit": "9a9179aa7bd74faf3903f1a604aafe092045443a"
+    "lastCommit": "659b2c57dc2c7fc75962cc3c8e425ed1289266ec"
   },
   "phases": [
     {
@@ -542,6 +542,28 @@
       }
     },
     {
+      "id": "overlay-tester-feedback",
+      "type": "fix",
+      "title": {
+        "es": "Correcciones del feedback de overlays",
+        "en": "Overlay tester feedback fixes",
+        "pt": "Correções do feedback dos overlays",
+        "it": "Correzioni del feedback degli overlay"
+      },
+      "body": {
+        "es": "Studio reconoce documentos guardados equivalentes; las tablas Crystal respetan sus columnas y ajustan altura al cambiar filas. Pedales conservan el historial y muestran R/N, colores configurados y escala RPM sin simular el corte del coche. Track Map tiene fondo transparente y leyenda de clases. Las comparaciones explican referencias y datos ausentes; Head-to-Head protege su geometría. Verificación física Wails/LMU pendiente antes de promoción.",
+        "en": "Studio recognizes equivalent saved documents; Crystal tables honor columns and adjust height when row count changes. Pedals preserve history and show R/N, configured colors and an RPM scale without simulating the car redline. Track Map has a transparent background and class legend. Comparisons explain references and missing data; Head-to-Head protects its geometry. Physical Wails/LMU verification is pending before promotion.",
+        "pt": "Studio reconhece documentos guardados equivalentes; tabelas Crystal respeitam colunas e ajustam a altura ao mudar as linhas. Pedais preservam o histórico e mostram R/N, cores configuradas e escala RPM sem simular o limite do carro. Track Map tem fundo transparente e legenda de classes. Comparações explicam referências e dados ausentes; Head-to-Head protege a geometria. Verificação física Wails/LMU pendente antes da promoção.",
+        "it": "Studio riconosce documenti salvati equivalenti; le tabelle Crystal rispettano le colonne e adattano l'altezza al numero di righe. I pedali conservano la cronologia e mostrano R/N, colori configurati e una scala RPM senza simulare il limitatore dell'auto. Track Map ha sfondo trasparente e legenda delle classi. I confronti spiegano riferimenti e dati assenti; Head-to-Head protegge la geometria. Verifica fisica Wails/LMU in attesa prima della promozione."
+      },
+      "label": {
+        "es": "En validación",
+        "en": "Under validation",
+        "pt": "Em validação",
+        "it": "In validazione"
+      }
+    },
+    {
       "id": "performance-policy",
       "type": "feature",
       "title": {
@@ -896,6 +918,16 @@
   ],
   "delivered": [
     {
+      "date": "2026-08-31",
+      "entries": [
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-894 · Seguimiento: colector CDP tolerante y diagnóstico S1 ON"
+        }
+      ]
+    },
+    {
       "date": "2026-08-30",
       "entries": [
         {
@@ -922,6 +954,16 @@
           "kind": "change",
           "scope": "",
           "text": "ISA-940 · Lifecycle a coste cero: entry propio del overlay, bounding box, hub destruido por nivel, ingeniero solo audio, EcoQoS (F2)"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-894 · F9 corte 1: V1 apagado por defecto con rollback, A/B y guardarraíles"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-944 · Sensor de host y modo Automático (F3)"
         }
       ]
     },
@@ -1577,16 +1619,6 @@
           "kind": "change",
           "scope": "",
           "text": "Seis bugs de Overlays Studio v3 y alineación del gate de licencia"
-        }
-      ]
-    },
-    {
-      "date": "2026-08-09",
-      "entries": [
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "ISA-304 / CAL-02: el calendario como puerta de entrada a los eventos de LMU"
         }
       ]
     }

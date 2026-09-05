@@ -13,8 +13,12 @@
 - **ISA-989 — feedback de tester (2026-09-05, rama):** base `659b2c57`,
   worktree aislado `C:/tmp/vantare-isa989`. Guardado compara JSON por contenido,
   conservando orden de arrays, y Track Map transparente comunica clases V2.
-  Regresiones RED/GREEN y round-trip Go comprobados; integración de cortes
-  ISA-990/991/992 y validación global en curso. No merge/promoción/release ni
+  Regresiones RED/GREEN y round-trip Go comprobados; cortes ISA-990/991/992
+  revisados e integrados localmente, con corrección adicional de filas compactas
+  detectada en review. Go completo, build y lint integrados pasan; suite frontend
+  global en curso. Head-to-Head conserva proporción360:128 y puede cambiar altura
+  de perfiles previos; RPM es escala0–10k sin alerta de corte inventada.
+  No merge/promoción/release ni
   prueba física Wails/LMU. Evidencia: `docs/analysis/ISA-989-feedback.md`.
 
 - **ISA-940 — lifecycle a coste cero (2026-08-30):** rama

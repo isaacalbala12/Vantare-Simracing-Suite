@@ -1018,6 +1018,9 @@ Corrección aplicada sobre E1b: el helper
 `authoring-v2-scenario-widget.ts` NO cae con el megamódulo, se conserva
 como único helper V2 de Workshop/Parity. Focales 176/176, vecinos
 411/411, typecheck, lint y build pasan. Siguiente: E2.
+Review adversarial read-only `ses_f8feb3bdfffe8KVwkns5tWs53q`:
+APPROVE, P0/P1/P2 = 0/0/0; tres P3 informativos documentados en la
+evidencia. La revisión principal repitió 46 focales, typecheck, lint y build.
 
 ### E2 · Switch overlay-v2-features: decisión fijada según callsites reales, sin disyunción
 

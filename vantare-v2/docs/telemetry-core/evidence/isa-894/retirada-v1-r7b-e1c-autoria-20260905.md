@@ -78,3 +78,22 @@ tenía equivalente V2 ya existente (frame canónico + builder V2).
 
 E2 (switch mutable) según el orden efectivo. Sin push, PR, merge,
 promoción, apps ni LMU.
+
+## Revisión independiente y adversarial
+
+La revisión principal repitió sobre `9ea19f2c`:
+
+- `pnpm --dir frontend exec vitest run` sobre guard B1, contract
+  Endurance y fixture V2: 3 ficheros, 46/46 PASS.
+- `pnpm --dir frontend typecheck`: PASS.
+- `pnpm --dir frontend lint`: PASS.
+- `pnpm --dir frontend build`: PASS; solo aviso preexistente de chunks.
+- `git diff --check 141592cd..9ea19f2c`: limpio.
+
+Review adversarial read-only Muse `ses_f8feb3bdfffe8KVwkns5tWs53q`:
+APPROVE, P0/P1/P2 = 0/0/0. Registró tres P3 informativos: el golden V2
+canónico usa `gte` y códigos numéricos, por lo que ya no cubre exactamente
+la jerarquía sintética LMP3/GT3 ni códigos solo alfabéticos; y el bloque de
+checks original no enumeraba sus ficheros. No encontró copia o traslado del
+megamódulo, pérdida de cobertura productiva, false-green, residuo fuera de
+locks ni ampliación de alcance. E1c queda cerrado.

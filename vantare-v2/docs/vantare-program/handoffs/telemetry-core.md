@@ -1,5 +1,13 @@
 # Handoff vivo — Telemetry Core
 
+## R7b/E1c aprobado — 2026-09-05, ISA-894
+
+Review adversarial read-only Muse `ses_f8feb3bdfffe8KVwkns5tWs53q`:
+APPROVE, P0/P1/P2 = 0/0/0. Los P3 no bloqueantes (clases/códigos del
+golden V2 y reproducibilidad de la evidencia) quedan registrados en el
+expediente. La revisión principal repitió 46 focales PASS, typecheck PASS,
+lint PASS y build PASS. E1c cerrado; siguiente microcorte: E2.
+
 ## R7b/E1c ejecutado en rama — megamódulo fuera, helper V2 conservado, contract sobre frame V2 — 2026-09-05, ISA-894
 
 Commits locales `f8ee3f74` (RED: lock E1c enumera 4 ficheros) +

@@ -500,6 +500,18 @@ veredicto Engineer; guard revalidado 20/20. P0/P1/P2/P3 abiertos = 0.
 - Rollback/stop: revert. **STOP daño**: si el productor produce algo visible
   sin equivalente V2 y añadirlo exige nueva autoridad o arquitectura → parar,
   pedir decisión/ADR; nunca inventar el dato.
+- Resultado C1: rama **B** cerrada en `0db6b39e` (RED) + `49809c3f`
+  (GREEN). No existe productor productivo de `snapshot.damage`; el único
+  escritor no-test eran ceros sintéticos del harness. `BuildDamage` publica
+  los cuatro campos canónicos desde LMU, pero ningún renderer consume
+  `wheelDetachedCount`; `tyres` legacy deja de inventarse y se presenta como
+  `n/a`. Se borraron `damage-reader` y los builders/tests V1 sin tocar
+  renderers. Focales 51/51, vecinos 14/14, typecheck y build PASS. Review
+  adversarial Muse Spark 1.3 Contributor + Ponytail `full`
+  `ses_f906578d5ffeWmc0D6dNFAZ9dQ`: **APPROVE**, P0/P1/P2=0; P3 solo
+  informativos. El stub `missing` se conserva deliberadamente hasta D4 porque
+  el contrato `WidgetTypeDefinition.buildViewModel` aún lo exige; D1 elimina
+  antes la rama legacy del Host.
 
 ### C2 · Fixture V2 puro + migración de previews (se ejecuta inmediatamente después de B1; la rama legacy del Host AÚN puede existir)
 

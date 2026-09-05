@@ -1,6 +1,6 @@
 # Handoff vivo — Telemetry Core
 
-## R7b/C1 CERRADO en rama — daño rama B, sin productores snapshot — 2026-09-05, ISA-894
+## R7b/C1 APROBADO final — daño rama B, sin productores snapshot — 2026-09-05, ISA-894
 
 Commits locales `0db6b39e` (RED: `car-damage-c1.test.ts` 2 failed / 2
 passed) + `49809c3f` (GREEN + borrado + guardias). Rama elegida: **B** —
@@ -29,8 +29,14 @@ rama fijada en test) y conserva todos sus locks.
 
 Checks: focales 51/51 + vecinos 14/14; `git grep` de ausencia limpio
 salvo anclas del propio lock; `pnpm typecheck` verde; `pnpm build`
-PASS; ESLint focal y `git diff --check` limpios. Siguiente: D2/D3/D4
-por lotes (daño ya resuelto, su slot cae en D4). Sin push, PR, merge,
+PASS; ESLint focal y `git diff --check` limpios. Review adversarial Muse
+Spark 1.3 Contributor + Ponytail `full` `ses_f906578d5ffeWmc0D6dNFAZ9dQ`:
+**APPROVE**, P0/P1/P2=0; observaciones P3 solo informativas. Confirma que el
+stub `missing` es correcto mientras `WidgetTypeDefinition.buildViewModel`
+siga siendo obligatorio: D1 elimina la rama legacy del Host y D4 retira el
+slot de las definitions de daño; conectar un builder V2 a la firma snapshot
+sería incorrecto. Siguiente: D1 y luego D2/D3/D4 por lotes (daño ya resuelto,
+su slot cae en D4). Sin push, PR, merge,
 promoción, apps ni LMU.
 
 ## R7b/B2 APROBADO final — proyección/transporte Overlay V1 retirados — 2026-09-05, ISA-894

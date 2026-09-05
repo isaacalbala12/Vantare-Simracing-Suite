@@ -992,6 +992,12 @@ Cada microcorte exige RED→GREEN y review literal independiente. La suite
 completa se ejecuta al cerrar E1d/F1, no después de cada borrado mecánico; un
 fallo focal dentro de alcance sí bloquea el microcorte.
 
+**Resultado E1a (APROBADO final, 2026-09-05):** `79856dba` fija RED y
+`c99770a5` retira el snapshot del contrato y de las definitions auxiliares,
+además del preview snapshot de Track Map. Focales, vecinos, typecheck, lint y
+build pasan. Review adversarial `ses_f90150e42ffelt0XRK9JV2t3oI`:
+APPROVE, P0/P1/P2 = 0. Siguiente: E1b.
+
 ### E2 · Switch overlay-v2-features: decisión fijada según callsites reales, sin disyunción
 
 - Hechos de árbol (`frontend/src/overlay/telemetry-shadow/overlay-v2-features.ts`,

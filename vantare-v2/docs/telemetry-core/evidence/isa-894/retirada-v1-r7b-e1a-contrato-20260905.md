@@ -13,9 +13,9 @@ Solo E1a. Sin E1b/E1c/E1d/E2+.
   ignoradas y conservan `buildAuxiliaryViewModel` y sus fuentes
   (Calendar / Engineer) intactas.
 - `track-map` pierde el `buildPreviewViewModel` snapshot-real de la
-  definition. La frontera V2 productiva ya existe en el registro
-  (`buildTrackMapViewModelV2` / preview V2); no se inventan datos ni se
-  crea otra capa de compatibilidad. Los builders snapshot
+  definition. El live V2 ya está cableado en el registro y el builder de
+  preview V2 existe sin caller; no se inventan datos ni se crea otra capa de
+  compatibilidad. Los builders snapshot
   (`track-map-view-model.ts`) y sus tests se conservan para el oráculo
   E4; su borrado es dueño E1c/E4.
 - Ajustes mínimos para `typecheck` verde exigidos por el propio
@@ -52,3 +52,9 @@ Solo E1a. Sin E1b/E1c/E1d/E2+.
 - `authoring-fixtures.ts` y comparador conservan el resto de builders
   legacy por llamada directa; su retirada total es E1b/E1c/E4.
 - Siguiente: E1b. Sin push, PR, merge, promoción, apps ni LMU.
+
+## Review adversarial
+
+`ses_f90150e42ffelt0XRK9JV2t3oI`: **APPROVE**, P0/P1/P2 = 0; tres P3
+informativos (precisión de redacción Track Map, modos equivalentes no
+duplicados en test y limpieza final de asserts legacy asignada a E1d/F1).

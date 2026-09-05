@@ -1,5 +1,22 @@
 # Handoff vivo — Overlay Studio, Launcher y Hub
 
+## ISA-979 — contorno estático del mapa V2 (entrega aislada)
+
+Derivado exclusivamente visual del pack inmutable: una caché privada de una
+entrada por módulo, invalidada por identidad de geometría y dimensiones del
+viewport. No retiene frames, posiciones ni configuración del usuario; cambiar
+pista sustituye la entrada. Los marcadores siguen calculándose por frame.
+La petición nueva de auditoría ISA-978 autoriza este corte medido; no reabre la
+cola histórica ni modifica Telemetry Core o la retirada ISA-894.
+
+Base `659b2c57dc2c7fc75962cc3c8e425ed1289266ec` (nightly), rama
+`vantareapp/isa-979-cache-track-outline`, worktree aislado. Caracterización
+escrita antes del cambio (11 tests), benchmark BASE/HEAD de 44 coches/Le Mans,
+10 repeticiones y 1.000 warm-up. Evidencia y gates en
+[ISA-979](../../analysis/isa-979-track-outline.md). Rollback: revert del PR completo.
+Sin merge, promoción ni release; Windows runtime no ejecutado.
+
+
 ## Autoridad y lectura
 
 - `docs/vantare-program/README.md` y `product-contract.md`.

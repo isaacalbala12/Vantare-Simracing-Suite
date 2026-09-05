@@ -3001,11 +3001,40 @@
 /* Track map ---------------------------------------------------------------- */
 
 [data-widget-system="vantare-endurance"].ven-track-map {
+  background: transparent;
+  border-color: transparent;
   display: flex;
   flex-direction: column;
   gap: 4px;
   padding: 8px;
   overflow: hidden;
+}
+
+[data-widget-system="vantare-endurance"] .ven-tm-legend {
+  display: flex;
+  flex-wrap: wrap;
+  flex: 0 0 auto;
+  gap: 4px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  text-shadow: 0 1px 2px #000, 0 0 3px #000;
+}
+
+[data-widget-system="vantare-endurance"] .ven-tm-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+[data-widget-system="vantare-endurance"] .ven-tm-legend i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px #10141b;
+}
+
+[data-widget-system="vantare-endurance"] .ven-tm-player-key {
+  border: 2px solid white;
 }
 
 [data-widget-system="vantare-endurance"] .ven-tm-canvas {
@@ -3060,6 +3089,6 @@
 
 [data-widget-system="vantare-endurance"] .ven-tm-car[data-player="true"] {
   fill: var(--ven-accent);
-  stroke: var(--ven-bg);
-  stroke-width: 1.5;
+  stroke: white;
+  stroke-width: 2.5;
 }

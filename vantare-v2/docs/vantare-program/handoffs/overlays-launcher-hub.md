@@ -10,6 +10,13 @@
 
 ## Estado
 
+- **ISA-989 — feedback de tester (2026-09-05, rama):** base `659b2c57`,
+  worktree aislado `C:/tmp/vantare-isa989`. Guardado compara JSON por contenido,
+  conservando orden de arrays, y Track Map transparente comunica clases V2.
+  Regresiones RED/GREEN y round-trip Go comprobados; integración de cortes
+  ISA-990/991/992 y validación global en curso. No merge/promoción/release ni
+  prueba física Wails/LMU. Evidencia: `docs/analysis/ISA-989-feedback.md`.
+
 - **ISA-940 — lifecycle a coste cero (2026-08-30):** rama
   `vantareapp/isa-940-lifecycle-coste-cero`, rebasada sobre
   `origin/nightly@9723148f`. El overlay navega a `overlay.html`, deja fuera del

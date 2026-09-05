@@ -210,6 +210,29 @@ func TestProfileDocumentStoreEngineerRadioRoundTrip(t *testing.T) {
 	}
 }
 
+func TestProfileDocumentStoreTrackMapRoundTrip(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "track-map.json")
+	widget := validWidget("track-map-main", WidgetTypeTrackMap)
+	widget.Visual.SystemID = DesignSystemVantareEndurance
+	widget.Content = map[string]any{"showTrackLabel": true}
+	store := ProfileDocumentStore{}
+	revision, err := store.Save(path, "", validProfileV3(widget), ProfileSchemaVersionV3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := store.Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loaded.Revision != revision {
+		t.Fatalf("revision=%q want %q", loaded.Revision, revision)
+	}
+	got := loaded.Document.Layouts[LayoutGeneral].Widgets
+	if len(got) != 1 || got[0].Type != WidgetTypeTrackMap || got[0].Content["showTrackLabel"] != true {
+		t.Fatalf("track map did not survive save/load: %+v", got)
+	}
+}
+
 func TestProfileDocumentStoreSaveConflictLeavesDiskUnchanged(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "profile.json")

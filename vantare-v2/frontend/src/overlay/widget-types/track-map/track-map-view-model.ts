@@ -27,6 +27,7 @@ export type TrackMapMarker = Readonly<{
   x: number;
   y: number;
   isPlayer: boolean;
+  classId?: string;
 }>;
 
 export type TrackMapViewModel = WidgetViewModelBase & {

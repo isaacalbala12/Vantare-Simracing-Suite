@@ -314,6 +314,28 @@ describe("StudioProvider", () => {
     expect(result.current.visuallyMigratedWidgetIds).toEqual([]);
   });
 
+  it("clears pending state after an ACK with reordered JSON object keys", async () => {
+    const client = createMockClient(buildDocument());
+    client.save = vi.fn(async ({ document, expectedRevision }) => {
+      expect(expectedRevision).toBe("rev-1");
+      const acknowledged = structuredClone(document);
+      const widget = acknowledged.layouts.general.widgets[0];
+      widget.layout = Object.fromEntries(Object.entries(widget.layout).reverse()) as typeof widget.layout;
+      return { status: "saved", document: acknowledged, revision: "rev-2" };
+    });
+    const { result } = renderHook(() => useStudioDocument(), { wrapper: wrapper(client) });
+    await waitFor(() => expect(result.current.document).not.toBeNull());
+    act(() => result.current.dispatch({
+      type: "widget/layout", session: "general", widgetIds: ["delta-main"], patch: { x: 250 },
+    }));
+    expect(result.current.dirty).toBe(true);
+    await act(async () => { await result.current.save(); });
+    expect(result.current.saveState).toBe("saved");
+    expect(result.current.dirty).toBe(false);
+    expect(result.current.document?.layouts.general.widgets[0].layout.x).toBe(250);
+    expect(client.save).toHaveBeenCalledTimes(1);
+  });
+
   it("preserves the draft when save fails or conflicts", async () => {
     const client = createMockClient(buildDocument());
     const { result } = renderHook(() => useStudioDocument(), { wrapper: wrapper(client) });

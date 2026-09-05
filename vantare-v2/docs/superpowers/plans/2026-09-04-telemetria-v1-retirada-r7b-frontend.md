@@ -1182,6 +1182,16 @@ Siguiente: E4.
 - Reviewer: quality + spec (cierre de garantías).
 - Rollback/stop: revert. Stop si una garantía semántica no tiene cobertura V2
   → no borrar; reclasificar a D/A.
+- **Resultado E4 (ejecutado en rama, 2026-09-05):** `5391ac7d` fija RED
+  (guard E4 1 failed | 17 passed) + `92e5dd17` GREEN (60 ficheros,
+  +439/−6112, neto −5673). Borrados 26 ficheros (shadow restante + 16 tests
+  legacy; el preflight decía 28 por error de conteo). 16 builders legacy
+  reducidos a tipos/helpers in situ; 8 renderers/contract a literales y
+  7 V2 a aserciones nativas; B1/v1-guard/view-models sin shadow. Focales
+  497+297+144+105 PASS; typecheck/lint/build/`rg`/diff-check verdes. Sin
+  callers productivos (STOP no activado). Evidencia:
+  `docs/telemetry-core/evidence/isa-894/retirada-v1-r7b-e4-oraculo-20260905.md`.
+  Siguiente: E1d. Sin push, PR, merge, promoción, apps ni LMU.
 
 ---
 

@@ -220,3 +220,25 @@ No se declara typecheck global verde. No se tocó fuel/delta.
 
 No se afirma runtime LMU/Wails: todo lo anterior son tests y gates
 sintéticos/deterministas. La prueba física queda pendiente de Isaac.
+
+## Cierre acumulado R7b/F — 2026-09-05
+
+El documento comenzó como evidencia A1 y se conserva como expediente
+acumulativo. Tras A–E, Overlay V1 queda físicamente ausente del candidato:
+productor y Hub Go, contratos y tooling, rutas Wails/SSE, adapters, observer,
+shadow, harnesses, snapshot, stores, historias, mocks y previews legacy. No se
+movió la duplicación a otro módulo y no se añadió dependencia.
+
+E1d eliminó 25 ficheros legacy en `31742554` (58 ficheros modificados,
++158/−3075, neto −2917). `7ff93c2d` cerró la review conservando la prueba de
+repaint durante drag con `OverlayFrameV2`. Verificación acumulada: guardias
+21/21, afectados 210/210, suite frontend 407/407 ficheros y 3163/3163 tests,
+typecheck, lint, build, bundle/ausencia, `go test ./... -count=1`, contrato
+generado y diff-check PASS. `go vet ./...` mantiene únicamente tres avisos
+heredados de `unsafe.Pointer` fuera del diff.
+
+Review Muse + Ponytail `ses_f8f8383b0ffegmpe5mMk7uudRB`: APPROVE,
+P0/P1/P2/P3 = 0. El cierre F exige todavía una segunda review independiente
+sobre el árbol definitivo. Apps, LMU y benchmark no se ejecutan; la prueba
+manual queda reservada para Isaac. La auditoría integral V2 y el bucle de
+rendimiento son las fases siguientes y no se presentan como iniciadas.

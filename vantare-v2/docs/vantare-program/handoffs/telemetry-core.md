@@ -1,20 +1,21 @@
 # Handoff vivo — Telemetry Core
 
-## R7b/E1d ejecutado en rama — núcleo y previews V1 frontend fuera — 2026-09-05, ISA-894
+## R7b/F en cierre — V1 fuera del candidato, gates completos — 2026-09-05, ISA-894
 
-Commits locales `8b7ed0e3` (RED: 2 failed | 19 passed) + `31742554`
-(GREEN: 58 ficheros, +158/−3075, neto −2917). Retirados 25 ficheros:
-snapshot, adapters, derived store, mocks, acumulador e historias, readers y
-fixtures preview legacy. El barrido final detectó 12 rutas omitidas en el
-inventario (`telemetry-ref`, demo/visibility y fixtures asociados), todas sin
-caller productivo; se fijaron en la guardia y se eliminaron sin reemplazo.
-El coordinador conserva solo OverlayFrameV2/source/context/failure y un
-scheduler; `TelemetryAdapter` queda junto al constructor V2 de Studio.
-Guardias 21/21 y afectados 210/210 PASS; typecheck, lint, build, diff-check y
-ausencia en bundle PASS. Suite completa frontend y Go quedan para F. Evidencia:
+E1d queda cerrado con `8b7ed0e3` (RED), `31742554` (GREEN: 58 ficheros,
++158/−3075, neto −2917) y `7ff93c2d` (corrección de review). Retirados 25
+ficheros: snapshot, adapters, derived store, mocks, acumulador e historias,
+readers y fixtures preview legacy. El coordinador conserva solo
+OverlayFrameV2/source/context/failure y un scheduler; no hay wrapper ni camino
+de compatibilidad. Guardias 21/21, afectados 210/210, suite frontend 407/407
+ficheros y 3163/3163 tests, typecheck, lint, build, contrato generado y Go
+completo PASS. `go vet` muestra solo tres avisos heredados de `unsafe.Pointer`
+fuera del diff. Review Muse + Ponytail `ses_f8f8383b0ffegmpe5mMk7uudRB`:
+APPROVE, P0/P1/P2/P3 = 0. Evidencia:
 [`retirada-v1-r7b-e1d-nucleo-20260905.md`](../../telemetry-core/evidence/isa-894/retirada-v1-r7b-e1d-nucleo-20260905.md).
-Siguiente: review adversarial E1d; después F. Sin push, PR, merge, promoción,
-apps ni LMU.
+Siguiente: digest y segunda review fresca del árbol final. Sin push, PR, merge,
+promoción, apps ni LMU; la auditoría V2 y el bucle de rendimiento aún no han
+comenzado.
 
 ## R7b/E4 ejecutado en rama — oráculo shadow y builders legacy fuera, tipos vivos in situ — 2026-09-05, ISA-894
 

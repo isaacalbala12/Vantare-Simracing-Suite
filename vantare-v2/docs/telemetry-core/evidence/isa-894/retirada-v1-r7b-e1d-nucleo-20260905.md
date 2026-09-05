@@ -45,8 +45,17 @@ caller productivo.
 - `pnpm --dir frontend build`: PASS; solo aviso preexistente de chunk size.
 - `git diff --check`: PASS.
 - Ausencia en `frontend/dist` de snapshot, stores, mocks e historias V1: PASS.
-- Suite frontend completa y gates Go: pendientes del cierre F, como exige el
-  microplan. Apps, LMU y benchmark no ejecutados en E1d.
+- `pnpm --dir frontend test`: **407/407 ficheros y 3163/3163 tests PASS**,
+  exit 0. El `AbortError` de teardown de Happy DOM es ruido conocido posterior
+  al resumen verde, no un fallo oculto.
+- `go test ./... -count=1`: PASS.
+- `go vet ./...`: sin regresiones del corte; conserva únicamente los tres
+  avisos heredados de `unsafe.Pointer` fuera del diff.
+- Generación y check del contrato mediante los equivalentes reales del
+  Taskfile (`go run ./tools/telemetry-contract-gen`, el mismo con `-check` y
+  `git diff --exit-code -- frontend/src/generated/`): PASS.
+- Apps, LMU y benchmark no ejecutados: este cierre es estructural y el usuario
+  reservó la validación manual para después.
 
 Comandos exactos usados: `pnpm --dir frontend typecheck`,
 `pnpm --dir frontend lint`, `pnpm --dir frontend build`,
@@ -57,6 +66,12 @@ Comandos exactos usados: `pnpm --dir frontend typecheck`,
 
 ## Riesgo restante
 
-F debe ejecutar la matriz completa y revisar el diff acumulado. Los nombres
-V1 de Strategy, Engineer y Analysis son contratos independientes y quedan
-fuera del producto Overlay por D5; no constituyen una ruta Overlay V1.
+Review adversarial Muse + Ponytail `full` `ses_f8f8383b0ffegmpe5mMk7uudRB`:
+tras restaurar la regresión de repaint durante drag sobre un frame V2 y
+renombrar `rateKey` a `widgetType`, **APPROVE, P0/P1/P2/P3 = 0** sobre
+`7ff93c2d`. No encontró wrappers, compatibilidad ni duplicación movida.
+
+F debe cerrar roadmap, evidencia final y una segunda review fresca sobre el
+árbol definitivo. Los nombres V1 de Strategy, Engineer y Analysis son
+contratos independientes y quedan fuera del producto Overlay por D5; no
+constituyen una ruta Overlay V1.

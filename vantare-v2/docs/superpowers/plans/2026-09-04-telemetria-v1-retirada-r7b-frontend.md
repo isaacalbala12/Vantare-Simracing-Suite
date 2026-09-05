@@ -442,6 +442,23 @@ los cuatro errores B2 heredados exactos. Review Muse + Ponytail `full`
   restauración física pendiente de Isaac). Stop si aparece caller productivo no
   inventariado → parar el lote.
 
+**Resultado B2:** `c1214a4a` migra los tests de contrato a productos
+V1 independientes (Engineer como producto bajo test; goldens solo
+Engineer/Strategy/Analysis) y `c8558a5e` borra las 9 rutas del lote
+(proyección/adapter/observer/transporte V1 + puente snapshot), deja
+`overlay-wails-pull` V2-only (allowlist de dos eventos, sin
+`receivedV1Projections`) y retira `overlay` de `TELEMETRY_PRODUCTS` y del
+regex. `ObsOverlayApp` ya estaba sin parte adapter (solo V2 + Engineer +
+schedule); los entrypoints research-bench quedan intactos (E3) y el
+comparator/sanitizer intactos (E4). El inventario `rg` previo no halló caller
+productivo fuera del lote; los literales negativos útiles (R2 Desktop,
+no-suscripción Studio, URLs OBS) se preservan. El authority-guard registra
+además el conteo real del comparator (23→24 por el tipo estructural local de
+B2-prep, deuda de baseline heredada, sin debilitar el detector). Guard B1
+`16 passed (16)` — B2 verde, E4 presente como oráculo afirmado, no como
+fallo; typecheck verde (mueren los cuatro errores heredados con sus
+módulos); comparator 33/33; vecinos 55/55. Sin push/PR/merge/promoción/apps/LMU.
+
 ---
 
 ## C · Daño como hipótesis + fixture V2 puro (hechos 3 y 4, primera mitad)

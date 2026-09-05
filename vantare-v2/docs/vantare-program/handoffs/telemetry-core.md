@@ -1,5 +1,34 @@
 # Handoff vivo — Telemetry Core
 
+## R7b/B2 CERRADO en rama — proyección/transporte Overlay V1 retirados — 2026-09-05, ISA-894
+
+Commits `c1214a4a` (tests de contrato a productos V1 independientes) +
+`c8558a5e` (borrado + V2-only): salen del árbol `overlay-projection-v1*`,
+`overlay-projection-adapter*`, `projection-telemetry-adapter*`,
+`projection-observer*` (prod + tests) y el puente snapshot
+`authoring-v2-fixture.ts`. `overlay-wails-pull` queda V2-only (allowlist de
+dos eventos, sin `receivedV1Projections`, con test de rechazo legacy) y
+`TELEMETRY_PRODUCTS`/regex pierden `overlay`; `projection-golden` conserva
+solo Engineer/Strategy/Analysis. `ObsOverlayApp` ya estaba sin parte adapter.
+Entrypoints research-bench intactos (E3); comparator/sanitizer/testdata/
+resultados intactos (E4). Inventario `rg` previo sin callers productivos
+fuera del lote; literales negativos útiles preservados (R2 Desktop,
+no-suscripción Studio, URLs OBS).
+
+Evidencia: guard B1 `16 passed (16)` — B2 verde y E4 presente como oráculo
+afirmado; authority-guard 4/4 (registra 24 menciones reales del comparator
+por el tipo local de B2-prep, sin debilitar el detector); focales
+contracts/wails-pull/golden + comparator 33/33 + vecinos
+(Composite/Obs/scenario/harness/store) 55/55; `pnpm typecheck` verde (mueren
+los cuatro errores heredados con sus módulos); `pnpm build` PASS;
+ESLint focal limpio; `rg` de ausencia limpio salvo literales negativos
+útiles y el propio guard; `git diff --check` limpio. Suite completa
+`3385 passed / 7 failed (3392)`: los 7 son deuda heredada verificada en
+base — 4 en attach/store (reproducidos en `b434161a` sin este corte) + 3
+de i18n/Fuel documentados desde B3; cero regresión B2. Siguiente: C1,
+hipótesis de daño contra productor. Sin push, PR, merge, promoción,
+apps ni LMU.
+
 ## R7b/B2-prep APROBADO — oráculo desacoplado del adapter V1 — 2026-09-05, ISA-894
 
 Commit `3a268792`: comparator y test ya no importan

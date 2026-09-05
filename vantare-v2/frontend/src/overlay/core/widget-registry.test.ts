@@ -67,7 +67,7 @@ describe("widgetTypeRegistry", () => {
     });
   });
 
-  it("does not require a legacy builder for the V2-only D2 definitions", () => {
+  it("does not require a legacy builder for the V2-only D2/D3 definitions", () => {
     for (const type of [
       "standings",
       "relative",
@@ -75,6 +75,12 @@ describe("widgetTypeRegistry", () => {
       "fuel-strategy",
       "pedals-telemetry",
       "input-telemetry",
+      "racing-flags",
+      "delta-advanced",
+      "delta-trace",
+      "pedals",
+      "pedals-telemetry-compact",
+      "multiclass-relative",
     ] as const) {
       expect(widgetTypeRegistry.get(type).buildViewModel).toBeUndefined();
     }

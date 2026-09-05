@@ -1,18 +1,30 @@
-import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { beforeEach, describe, expect, it } from "vitest";
+import type { OverlayFrameV2, OverlayUpdateV2 } from "../../generated/telemetry";
 import type { WidgetInstanceV3, WidgetType } from "../core/profile-document";
 import { widgetTypeRegistry } from "../core/widget-registry";
 import type { TelemetrySnapshot } from "../core/telemetry-snapshot";
+import { inputTelemetryDefinition } from "../widget-types/input-telemetry/input-telemetry-definition";
+import { resetInputTelemetryHistory } from "../widget-types/input-telemetry/input-telemetry-accumulator";
+import { buildInputTelemetryViewModelV2 } from "../widget-types/input-telemetry/input-telemetry-view-model-v2";
 import type {
   OverlayMappedField,
   OverlayProjectionAdaptation,
   OverlayProjectionMapping,
 } from "../projection/overlay-projection-adapter";
 import {
+  OVERLAY_V2_CONTROLS_DECLARED_GAPS,
+  OVERLAY_V2_CONTROLS_RATIO_TOLERANCE,
   OVERLAY_SHADOW_POLICIES,
+  compareControlsModels,
   compareOverlayShadow,
+  createOverlayV2PlayerInstrumentsComparator,
 } from "./overlay-shadow-comparator";
 import { overlayV2ViewModelRegistry } from "../core/overlay-v2-view-models";
 import { buildAuthoringV2Runtime } from "../authoring/fixtures/authoring-v2-fixture";
+
+const CONTROLS_CONTENT = inputTelemetryDefinition.parseContent({});
 
 function compareFixture(input: Omit<Parameters<typeof compareOverlayShadow>[0], "overlayV2">) {
   const projected = input.projection.kind === "mapped"
@@ -763,6 +775,105 @@ describe("overlay shadow comparator behavior", () => {
     expect(configured.truncated).toBe(true);
   });
 });
+
+describe("controls comparison rules", () => {
+  beforeEach(() => resetInputTelemetryHistory());
+
+  it("is equal to itself", () => {
+    const model = buildInputTelemetryViewModelV2(
+      controlsGoldenFrame(),
+      { state: "live" },
+      CONTROLS_CONTENT,
+    );
+    expect(compareControlsModels(model, model)).toEqual([]);
+  });
+
+  it("absorbs only the declared per-mille quantization", () => {
+    const model = buildInputTelemetryViewModelV2(
+      controlsGoldenFrame(),
+      { state: "live" },
+      CONTROLS_CONTENT,
+    );
+    expect(OVERLAY_V2_CONTROLS_RATIO_TOLERANCE).toBe(5e-4);
+    expect(compareControlsModels(model, { ...model, brake: model.brake + 4e-4 })).toEqual([]);
+    expect(compareControlsModels(model, { ...model, brake: model.brake + 0.01 }))
+      .toEqual(expect.arrayContaining(["brake"]));
+  });
+
+  it("does not align histories by array index without comparable timestamps", () => {
+    const evidence = JSON.parse(readFileSync(path.resolve(
+      process.cwd(),
+      "src/overlay/telemetry-shadow/testdata/s1-on-20260830-192729.json",
+    ), "utf8")) as { shadow: { metrics: Record<string, number> } };
+    expect(evidence.shadow.metrics).toHaveProperty(
+      'overlay_shadow_mismatches_total{feature="controls",field="history[].throttle",phase="live"}',
+      166,
+    );
+
+    const model = buildInputTelemetryViewModelV2(
+      controlsGoldenFrame(),
+      { state: "live" },
+      CONTROLS_CONTENT,
+    );
+    const older = { capturedAt: 0, throttle: 0.5, brake: 0.5, clutch: 0 };
+    expect(compareControlsModels({ ...model, history: [older, ...model.history] }, model)).toEqual([]);
+
+    const diverged = model.history.map((sample, index) =>
+      index === model.history.length - 1
+        ? { ...sample, throttle: sample.throttle + 0.2 }
+        : sample,
+    );
+    expect(compareControlsModels({ ...model, history: diverged }, model)).toEqual([]);
+  });
+
+  it("declares histories and fields absent from the canonical series", () => {
+    const model = buildInputTelemetryViewModelV2(
+      controlsGoldenFrame(),
+      { state: "live" },
+      CONTROLS_CONTENT,
+    );
+    expect(model.history.length).toBeGreaterThan(0);
+    expect(compareControlsModels({ ...model, history: [] }, model)).toEqual([]);
+
+    const unavailable = {
+      ...model,
+      history: model.history.map((sample) => ({
+        ...sample,
+        capturedAt: sample.capturedAt + 5_000,
+        speedKph: 200,
+        rpm: 7_000,
+        gear: 5,
+      })),
+    };
+    expect(compareControlsModels(model, unavailable)).toEqual([]);
+    expect(OVERLAY_V2_CONTROLS_DECLARED_GAPS).toEqual(expect.arrayContaining([
+      "history.length",
+      "history[].capturedAt",
+      "history[].throttle",
+      "history[].brake",
+      "history[].clutch",
+      "history[].speedKph",
+      "history[].rpm",
+      "history[].gear",
+    ]));
+  });
+
+  it("keeps spotter and damage outside the legacy comparator", () => {
+    const comparator = createOverlayV2PlayerInstrumentsComparator();
+    expect(Object.keys(comparator)).not.toContain("compareSpotter");
+    expect(Object.keys(comparator)).not.toContain("compareDamage");
+    expect(controlsGoldenFrame().spotter.mode).toBe("none");
+  });
+});
+
+function controlsGoldenFrame(): OverlayFrameV2 {
+  const update = JSON.parse(readFileSync(path.resolve(
+    process.cwd(),
+    "../internal/telemetry/projection/overlayv2/testdata/overlay_v2_20.golden.json",
+  ), "utf8")) as OverlayUpdateV2;
+  if (!update.frame) throw new Error("golden frame missing");
+  return update.frame;
+}
 
 function unsupportedSources(
   type: WidgetType,

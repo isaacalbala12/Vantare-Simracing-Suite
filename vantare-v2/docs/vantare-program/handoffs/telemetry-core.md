@@ -1,5 +1,17 @@
 # Handoff vivo — Telemetry Core
 
+## R7b/B2-prep APROBADO — oráculo desacoplado del adapter V1 — 2026-09-05, ISA-894
+
+Commit `3a268792`: comparator y test ya no importan
+`overlay-projection-adapter` ni `authoring-v2-fixture`. El oráculo declara solo
+la forma estructural que consume y el test conserva localmente la misma
+conversión del golden V2. Cero ramas runtime cambiadas. Comparator 33/33,
+ESLint, escaneo y diff-check PASS; guard `3 failed | 13 passed (16)`, con
+B2-prep verde y solo B2 deliberadamente RED. Typecheck mantiene los cuatro
+errores heredados B2 exactos. Review Muse + Ponytail `full`
+`ses_f908e1c01ffeglp64iO3rfc8iV`: **APPROVE**, P0/P1/P2/P3=0. Siguiente:
+B2 físico. Sin push, PR, merge, promoción, apps ni LMU.
+
 ## R7b/B3 APROBADO — runtime y tooling shadow V1 retirados — 2026-09-05, ISA-894
 
 Commits `429a8bae`, `8aeb858c` y `b3652e11`: salen del árbol el runtime y la

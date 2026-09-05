@@ -382,7 +382,7 @@ tres fallos heredados ajenos; typecheck/build bajan de ocho a cuatro errores
 R7a, todos propiedad de B2. Review Muse + Ponytail `full`
 `ses_f909a2067ffeG4XRGFJHILQUbD`: **APPROVE**, P0/P1/P2=0.
 
-### B2-prep · Desacoplar tipos del oráculo E4 (después de C2+B3, antes de B2)
+### B2-prep · Desacoplar tipos del oráculo E4 — CERRADO 2026-09-05
 
 - Hecho de árbol: `overlay-shadow-comparator.ts` y su test importan
   `OverlayProjectionAdaptation`/`OverlayProjectionMapping` desde
@@ -407,6 +407,13 @@ R7a, todos propiedad de B2. Review Muse + Ponytail `full`
 - Reviewer: spec + quality.
 - Rollback/stop: revert. Stop si el desacoplamiento exige copiar lógica o crea
   una segunda autoridad runtime; B2 no empieza.
+
+**Resultado B2-prep:** `3a268792` sustituye únicamente anotaciones importadas
+por tipos estructurales del oráculo y mueve al test la conversión temporal que
+antes aportaba `authoring-v2-fixture`. Comparator 33/33, ESLint, escaneo y
+diff-check PASS; guard `3 failed | 13 passed`, solo B2 RED; typecheck conserva
+los cuatro errores B2 heredados exactos. Review Muse + Ponytail `full`
+`ses_f908e1c01ffeglp64iO3rfc8iV`: **APPROVE**, P0/P1/P2/P3=0.
 
 ### B2 · Retirar proyección/adapter/observer/transporte V1 + eventos/allowlist/counters (después de B2-prep)
 

@@ -1,13 +1,10 @@
 import type { ReactNode } from "react";
 import { DesignSystemResolutionError } from "./design-system-definition";
 import type { WidgetInstanceV3 } from "./profile-document";
-import type { TelemetrySnapshot } from "./telemetry-snapshot";
 import { widgetTypeRegistry } from "./widget-registry";
 import { prepareWidgetVisualSettings } from "./widget-visual-settings";
 import { WidgetRenderBoundary } from "./WidgetRenderBoundary";
 import type { WidgetDiagnostic, WidgetDiagnosticCollector } from "./widget-diagnostics";
-import { readInputTelemetryHistory, recordInputTelemetrySample } from "../widget-types/input-telemetry/input-telemetry-accumulator";
-import type { InputTelemetryViewModel } from "../widget-types/input-telemetry/input-telemetry-view-model";
 import type { WidgetRuntimeInput } from "./widget-definition";
 import { getOverlayV2ViewModelEntry } from "./overlay-v2-view-models";
 import { buildSettledRelativeViewModelV2 } from "../widget-types/relative/relative-view-model-v2";
@@ -18,7 +15,6 @@ export type { WidgetDiagnostic, WidgetDiagnosticCollector } from "./widget-diagn
 
 export type WidgetVisualHostProps = {
   widget: WidgetInstanceV3;
-  snapshot?: TelemetrySnapshot;
   renderMode: "studio" | "desktop" | "obs" | "harness";
   onDiagnostic?: (diagnostic: WidgetDiagnostic) => void;
   diagnostics?: WidgetDiagnosticCollector;
@@ -79,7 +75,7 @@ function CommittedRedlineRelative(props: {
 }
 
 export function WidgetVisualHost(props: WidgetVisualHostProps): ReactNode {
-  const { widget, snapshot, renderMode } = props;
+  const { widget, renderMode } = props;
 
   let definition;
   try {
@@ -185,25 +181,10 @@ export function WidgetVisualHost(props: WidgetVisualHostProps): ReactNode {
     );
   } else if (!v2Entry && definition.buildAuxiliaryViewModel) {
     model = definition.buildAuxiliaryViewModel(content as never, props.runtime ?? {}, renderMode);
-  } else if (harnessMode && snapshot) {
-    model = definition.buildPreviewViewModel
-      ? definition.buildPreviewViewModel(snapshot, content as never, props.runtime ?? {})
-      : definition.buildRuntimeViewModel
-        ? definition.buildRuntimeViewModel(snapshot, content as never, props.runtime ?? {})
-        : definition.buildViewModel(snapshot, content as never);
   } else {
     const message = `No V2 or auxiliary authority registered for ${widget.type}`;
     reportDiagnostic(props, "widget-authority-missing", message);
     return <HostDiagnostic widget={widget} code="widget-authority-missing" message={message} />;
-  }
-
-  if (harnessMode && snapshot && !(v2Entry && !v2Rollback && frame && source) && widget.type === "input-telemetry") {
-    const inputContent = content as { historySeconds: number };
-    recordInputTelemetrySample(widget.id, snapshot);
-    model = {
-      ...model,
-      history: readInputTelemetryHistory(widget.id, snapshot, inputContent.historySeconds),
-    } as InputTelemetryViewModel;
   }
 
   const staleMessage = v2Entry && !v2Rollback && frame && source?.state === "stale"

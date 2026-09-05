@@ -14,7 +14,6 @@ const legacyV1Baseline: Readonly<Record<string, readonly string[]>> = {
   "core/telemetry-rate-coordinator.ts": Array(4).fill("TelemetrySnapshot"),
   "core/telemetry-snapshot.ts": ["TelemetrySnapshot"],
   "core/widget-definition.ts": Array(4).fill("TelemetrySnapshot"),
-  "core/WidgetVisualHost.tsx": ["TelemetrySnapshot", "TelemetrySnapshot", "legacy view-model builder"],
   "telemetry-shadow/overlay-shadow-comparator.ts": [
     ...Array(24).fill("TelemetrySnapshot"),
     ...Array(4).fill("snapshot.scoring"),
@@ -50,10 +49,11 @@ function sourceFiles(directory: string): string[] {
 }
 
 describe("Overlay V1 authority guard", () => {
-  it("keeps legacy WidgetVisualHost selection inside harness mode", () => {
+  it("keeps WidgetVisualHost free of legacy snapshot selection", () => {
     const source = readFileSync(resolve(overlayRoot, "core", "WidgetVisualHost.tsx"), "utf8");
-    expect(source).toContain("else if (harnessMode && snapshot)");
-    expect(source.match(/definition\.buildViewModel\(/g)).toHaveLength(1);
+    expect(source).not.toContain("TelemetrySnapshot");
+    expect(source).not.toContain("harnessMode && snapshot");
+    expect(source).not.toMatch(/definition\.buildViewModel\(/);
   });
 
   it("does not add V1 authority beyond the frozen cut 2 inventory", () => {

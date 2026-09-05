@@ -9,6 +9,7 @@ import { designSystemRegistry } from "./design-system-registry";
 import { ALL_WIDGET_TYPES, parseProfileDocumentV3 } from "./profile-document";
 import { widgetTypeRegistry } from "./widget-registry";
 import { WidgetVisualHost } from "./WidgetVisualHost";
+import { buildAuthoringV2ScenarioRuntime } from "../authoring/fixtures/authoring-v2-scenario-fixture";
 
 afterEach(() => cleanup());
 
@@ -52,7 +53,18 @@ describe("profile v3 contract fixtures", () => {
       ).not.toThrow();
 
       const view = render(
-        <WidgetVisualHost widget={widget} snapshot={snapshot} renderMode="harness" />,
+        <WidgetVisualHost
+          widget={widget}
+          renderMode="harness"
+          runtime={buildAuthoringV2ScenarioRuntime({
+            session: "race",
+            location: "track",
+            state: "ready",
+            widget: widget.type,
+            system: widget.visual.systemId,
+            variant: "default",
+          })}
+        />,
       );
       expect(
         view.container.querySelector(`[data-widget-renderer="${widget.type}"]`),

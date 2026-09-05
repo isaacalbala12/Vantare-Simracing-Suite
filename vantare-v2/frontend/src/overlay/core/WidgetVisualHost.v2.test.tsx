@@ -1,7 +1,6 @@
 import { cleanup, render } from "@testing-library/react";
 import { Suspense } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { buildMockTelemetry } from "./mock-scenarios";
 import type { OverlayFrameV2, OverlaySourceStatusV2 } from "../../generated/telemetry";
 import { WidgetVisualHost } from "./WidgetVisualHost";
 import { standingsDefinition } from "../widget-types/standings/standings-definition";
@@ -20,8 +19,6 @@ import * as inputV2 from "../widget-types/input-telemetry/input-telemetry-view-m
 import * as racingV2 from "../widget-types/racing-flags/racing-flags-view-model-v2";
 
 afterEach(() => cleanup());
-
-const snapshot = buildMockTelemetry({ session: "race", location: "track", state: "ready" });
 
 function makeFrame(): OverlayFrameV2 {
   const missing = { q: "missing" as const };
@@ -420,7 +417,6 @@ describe("WidgetVisualHost v2 generic registry", () => {
     render(
       <WidgetVisualHost
         widget={widget as never}
-        snapshot={snapshot}
         renderMode="harness"
         runtime={{ overlayV2Frame: frame, overlayV2Source: source } as never}
       />,
@@ -444,7 +440,6 @@ describe("WidgetVisualHost v2 generic registry", () => {
     render(
       <WidgetVisualHost
         widget={widget as never}
-        snapshot={snapshot}
         renderMode="harness"
         runtime={{ overlayV2Frame: frame, overlayV2Features: ["standings"] } as never}
       />,
@@ -460,7 +455,6 @@ describe("WidgetVisualHost v2 generic registry", () => {
     render(
       <WidgetVisualHost
         widget={widget as never}
-        snapshot={snapshot}
         renderMode="harness"
         runtime={{ overlayV2Source: source } as never}
       />,
@@ -475,7 +469,6 @@ describe("WidgetVisualHost v2 generic registry", () => {
     const view = render(
       <WidgetVisualHost
         widget={widget}
-        snapshot={snapshot}
         renderMode="desktop"
         runtime={{
           overlayV2Failure: { code: "invalid-frame", message: "overlay-frame-v2:invalid-contract:frame" },
@@ -493,7 +486,6 @@ describe("WidgetVisualHost v2 generic registry", () => {
     const view = render(
       <WidgetVisualHost
         widget={widget}
-        snapshot={snapshot}
         renderMode="obs"
         runtime={{ overlayV2Source: source }}
       />,
@@ -508,7 +500,6 @@ describe("WidgetVisualHost v2 generic registry", () => {
     const view = render(
       <WidgetVisualHost
         widget={widget}
-        snapshot={snapshot}
         renderMode="studio"
         runtime={{
           overlayV2Frame: makeFrame(),
@@ -527,7 +518,6 @@ describe("WidgetVisualHost v2 generic registry", () => {
     const view = render(
       <WidgetVisualHost
         widget={widget}
-        snapshot={snapshot}
         renderMode="desktop"
         runtime={{
           overlayV2Frame: makeFrame(),

@@ -24,10 +24,10 @@ Solo E1b. Sin E1c/E1d/E2+.
 - Corrección con commits nuevos: `4d4f6ca6` restaura el helper
   byte-idéntico desde la base y revierte las migraciones de
   `authoring-v2-workshop-frame.ts`, `OverlayParityHarness.tsx` y su
-  test; `59140b41` deja el RED y el guard en harness-only.
+  test; `59140b41` deja el RED y el guard en harness-only, y `048b045b`
+  evita fijar la deuda E1c como requisito positivo.
 - El helper queda con dueño explícito **E1c** y cae junto al
-  megamódulo `authoring-fixtures.ts`; el RED lo fija como presencia
-  deliberada, no como ausencia complaciente.
+  megamódulo `authoring-fixtures.ts`; E1b no fija su presencia en tests.
 
 ## Límite honesto (STOP, no ampliado)
 
@@ -35,15 +35,12 @@ Solo E1b. Sin E1c/E1d/E2+.
   con builders legacy (dueños E1c).
 - Los `import type { Mock*Scenario }` de Studio/queries siguen vivos:
   su retirada es dueña E1d. No se tocan.
-- El microplan no se edita: su condición ("el helper cae cuando el
-  megamódulo desaparezca") queda vigente y E1c los retira juntos.
+- El microplan asigna el helper y el megamódulo juntos a E1c.
 
 ## TDD RED → GREEN
 
-- RED `62a541b5`: `e1b-retirada.test.ts` 2 failed / 2 sobre la base
-  (los dos módulos existían).
-- Tras P1 el test exige solo la ausencia del harness y la presencia
-  deliberada del helper hasta E1c (`59140b41`): 2/2 PASS.
+- RED inicial `62a541b5`: 2 failed / 2; quedó superado al rechazar el
+  traslado del helper. El contrato final harness-only pasa 1/1 en `048b045b`.
 - Borrado físico del harness en `59c564a0` (cero callers; el build
   habría fallado ante un import colgado).
 
@@ -63,3 +60,8 @@ Solo E1b. Sin E1c/E1d/E2+.
 E1c (megamódulo + helper juntos) y E1d (núcleo `mock-scenarios`/
 coordinator + tipos Studio). Sin push, PR, merge, promoción, apps
 ni LMU.
+
+## Review adversarial
+
+`ses_f9002a0fbffeti4QtvJc4maIzG` confirmó P0/P1 = 0 y detectó dos P2
+documentales corregidos en este commit; no hay cambio productivo pendiente.

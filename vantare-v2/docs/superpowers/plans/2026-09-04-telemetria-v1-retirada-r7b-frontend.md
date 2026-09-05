@@ -977,13 +977,13 @@ evaluable hasta desbloquear los 8 errores R7a, no excusa para reintroducir V1.
    `WidgetTypeDefinition`; borrar las firmas snapshot ignoradas de
    `race-schedule` y `engineer-radio`; migrar/eliminar el preview snapshot-real
    de Track Map. Conservar `buildAuxiliaryViewModel` y las fuentes D5.
-2. **E1b · Autoría y Studio**: sustituir los fixtures legacy de autoría por la
-   frontera V2 productiva ya existente; retirar
-   `authoring-v2-scenario-widget.ts` y
-   `studio-v1-snapshot-test-harness.ts`, sin crear otro registro o adapter.
-3. **E1c · Builders legacy por widget**: borrar módulos/tests
-   `*-view-model.ts` exclusivos de V1; mover solo los tipos visuales todavía
-   compartidos al módulo V2 o común más cercano, sin abstracción nueva.
+2. **E1b · Studio**: retirar `studio-v1-snapshot-test-harness.ts`, confirmado
+   sin callers. No mover el helper de autoría mientras dependa del megamódulo.
+3. **E1c · Builders y autoría legacy**: borrar módulos/tests
+   `*-view-model.ts` exclusivos de V1 y retirar juntos
+   `authoring-fixtures.ts` + `authoring-v2-scenario-widget.ts`; mover solo los
+   tipos visuales todavía compartidos al módulo V2 o común más cercano, sin
+   abstracción nueva.
 4. **E1d · Núcleo legacy**: retirar snapshot, adapters, derived store,
    acumulador de input, mock-scenarios e historias/API antiguas del
    coordinador; cerrar con guardia de ausencia, focales, typecheck y build.

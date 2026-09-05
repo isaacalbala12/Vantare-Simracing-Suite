@@ -5,7 +5,8 @@
 Commits locales `62a541b5` (RED 2/2) + `59c564a0` (borrado del
 harness) + `4d4f6ca6` (revert del churn: helper restaurado
 byte-idéntico, migraciones Parity/Workshop revertidas) + `59140b41`
-(RED/guard en harness-only). Retirado únicamente
+(RED/guard en harness-only) + `c090fae0` (docs corregidas) + `048b045b`
+(sin pin positivo de la deuda E1c). Retirado únicamente
 `studio-v1-snapshot-test-harness.ts` (cero importadores); el guard B1
 lo saca de diferidos E1 sin más cambios. `authoring-v2-scenario-widget.ts`
 y `authoring-fixtures.ts` quedan con dueño explícito E1c y caen
@@ -14,7 +15,9 @@ Focales E1b+guard+E1a+autoridad+Parity 71/71 PASS; typecheck verde;
 build PASS; ESLint/diff-check limpios. Suite completa pendiente de
 E1d/F1. Evidencia:
 [`retirada-v1-r7b-e1b-autoria-20260905.md`](../../telemetry-core/evidence/isa-894/retirada-v1-r7b-e1b-autoria-20260905.md).
-Siguiente: E1c. Sin push, PR, merge, promoción, apps ni LMU.
+Review adversarial `ses_f9002a0fbffeti4QtvJc4maIzG`: producto P0/P1 = 0;
+dos P2 documentales corregidos. Siguiente: E1c. Sin push, PR, merge,
+promoción, apps ni LMU.
 
 ## R7b/E1a APROBADO final — contrato sin snapshot, siguiente E1b — 2026-09-05, ISA-894
 

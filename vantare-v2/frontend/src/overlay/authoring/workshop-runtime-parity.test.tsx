@@ -143,9 +143,20 @@ describe("buildWorkshopFrameV2", () => {
   it("keeps observable rows and classes for relative-multiclass", () => {
     const frame = buildWorkshopFrameV2(scenario({ widget: "relative", variant: "relative-multiclass" }))
       .overlayV2Frame!;
+    // Orden canónico real: 4 ahead far→near, player, 3 behind near→far.
+    const canonical = buildWorkshopFrameV2(scenario({ widget: "relative" })).overlayV2Frame!;
+    const expected = [
+      ...canonical.relative
+        .filter((row) => row.side === "ahead")
+        .sort((left, right) => (right.gap.v ?? 0) - (left.gap.v ?? 0))
+        .slice(-4),
+      canonical.relative.find((row) => row.id === canonical.player.id)!,
+      ...canonical.relative.filter((row) => row.side === "behind").slice(0, 3),
+    ].map((row) => row.id);
+    expect(frame.relative.map((row) => row.id)).toEqual(expected);
+    expect(frame.relativeSettled.map((row) => row.id)).toEqual(expected);
     for (const section of [frame.relative, frame.relativeSettled] as const) {
       expect(section).toHaveLength(8);
-      expect(section.map((row) => row.id)).toEqual(frame.relative.map((row) => row.id));
       expect(new Set(section.map((row) => row.id)).size).toBe(8);
       const players = section.filter((row) => row.side === "player");
       expect(players).toHaveLength(1);
@@ -171,6 +182,39 @@ describe("buildWorkshopFrameV2", () => {
       expect(crossed.side).toBe("ahead");
       expect(crossed.gap.v ?? 0).toBeGreaterThan(0);
     }
+  });
+
+  it("shows the same crosser id on both sides of the move through the product model", () => {
+    const content = relativeDefinition.parseContent(
+      relativeDefinition.createDefault("cross-probe").content,
+    );
+    const source = buildWorkshopFrameV2(scenario({ widget: "relative" })).overlayV2Source!;
+    // Identidad ya demostrada por el frame crudo: posición 20, mismo id.
+    const crosserId = buildWorkshopFrameV2(
+      scenario({ widget: "relative", sceneId: "relative-cross", sceneFrame: 0 }),
+    ).overlayV2Frame!.relative.find((row) => row.position === 20)!.id;
+    const before = relativeV2.buildSettledRelativeViewModelV2(
+      buildWorkshopFrameV2(
+        scenario({ widget: "relative", sceneId: "relative-cross", sceneFrame: 0 }),
+      ).overlayV2Frame!,
+      source,
+      content,
+    );
+    const after = relativeV2.buildSettledRelativeViewModelV2(
+      buildWorkshopFrameV2(
+        scenario({ widget: "relative", sceneId: "relative-cross", sceneFrame: 1 }),
+      ).overlayV2Frame!,
+      source,
+      content,
+    );
+    const past = before.rows.find((row) => row.id === crosserId)!;
+    expect(past).toBeDefined();
+    expect(past.side).toBe("behind");
+    const next = after.rows.find((row) => row.id === crosserId)!;
+    expect(next).toBeDefined();
+    expect(next.side).toBe("ahead");
+    expect(past.gapSeconds ?? 0).toBeLessThan(0);
+    expect(next.gapSeconds ?? 0).toBeGreaterThan(0);
   });
 
   it("hides and shows the entering id inside the product window", () => {

@@ -15,8 +15,8 @@ Focales E1b+guard+E1a+autoridad+Parity 71/71 PASS; typecheck verde;
 build PASS; ESLint/diff-check limpios. Suite completa pendiente de
 E1d/F1. Evidencia:
 [`retirada-v1-r7b-e1b-autoria-20260905.md`](../../telemetry-core/evidence/isa-894/retirada-v1-r7b-e1b-autoria-20260905.md).
-Review adversarial `ses_f9002a0fbffeti4QtvJc4maIzG`: producto P0/P1 = 0;
-dos P2 documentales corregidos. Siguiente: E1c. Sin push, PR, merge,
+Review adversarial `ses_f9002a0fbffeti4QtvJc4maIzG`: **APPROVE final**,
+P0/P1/P2 = 0 tras corregir dos P2 documentales. Siguiente: E1c. Sin push, PR, merge,
 promoción, apps ni LMU.
 
 ## R7b/E1a APROBADO final — contrato sin snapshot, siguiente E1b — 2026-09-05, ISA-894

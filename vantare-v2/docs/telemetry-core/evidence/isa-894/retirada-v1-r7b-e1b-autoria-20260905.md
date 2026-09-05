@@ -63,5 +63,5 @@ ni LMU.
 
 ## Review adversarial
 
-`ses_f9002a0fbffeti4QtvJc4maIzG` confirmó P0/P1 = 0 y detectó dos P2
-documentales corregidos en este commit; no hay cambio productivo pendiente.
+`ses_f9002a0fbffeti4QtvJc4maIzG` confirmó tras re-review final
+P0/P1/P2 = 0; los dos P2 documentales quedaron corregidos sin cambiar producto.

@@ -998,6 +998,11 @@ además del preview snapshot de Track Map. Focales, vecinos, typecheck, lint y
 build pasan. Review adversarial `ses_f90150e42ffelt0XRK9JV2t3oI`:
 APPROVE, P0/P1/P2 = 0. Siguiente: E1b.
 
+**Resultado E1b (APROBADO final, 2026-09-05):** corte Ponytail harness-only;
+se retira `studio-v1-snapshot-test-harness.ts` sin callers y se conserva el
+helper de autoría para caer con su megamódulo en E1c. Review adversarial
+`ses_f9002a0fbffeti4QtvJc4maIzG`: APPROVE, P0/P1/P2 = 0.
+
 ### E2 · Switch overlay-v2-features: decisión fijada según callsites reales, sin disyunción
 
 - Hechos de árbol (`frontend/src/overlay/telemetry-shadow/overlay-v2-features.ts`,

@@ -17,7 +17,7 @@ const history = [0, .5, 1, .3, 0].map((value, index) => ({ capturedAt: index * 1
 const model={type:'input-telemetry',status:'ready',throttle:.8,brake:.1,clutch:.5,speedKph:242,gear:6,history,historySeconds:4,showClutch:true};
 const page=await browser.newPage();
 for(const templateId of ['input-dense','input-capsule','input-blade']) {
-for(const [width,height] of [[280,100],[360,140],[480,180]]) {
+for(const [width,height] of (templateId === 'input-dense' ? [[560,100],[280,100],[360,140],[480,180]] : [[280,100],[360,140],[480,180]])) {
 const scale=width/360;
 const html=renderToStaticMarkup(createElement(InputTelemetryCrystal,{model,settings:{templateId},renderMode:'harness'}));
 await page.setContent(`<style>body{background:#202530}*{box-sizing:border-box} ${css}</style><div style="width:360px;height:${height/scale}px;transform:scale(${scale});transform-origin:top left">${html}</div>`);
@@ -28,7 +28,7 @@ assert.ok(result.barsWidth>=85*scale,'pedal channels need at least 85px at base 
 const traces = await page.locator('.vc-input-graph path').evaluateAll(paths => paths.map(path => ({ width: path.getBBox().width, stroke: getComputedStyle(path).stroke })));
 assert.equal(traces.length, 3, 'all three history channels remain visible');
 assert.ok(traces.every(trace => trace.width > 0 && trace.stroke !== 'none'), 'history has visible strokes');
-const escaped=await page.evaluate(()=>{const root=document.querySelector('.vc-input-telemetry').getBoundingClientRect();return [...document.querySelectorAll('.vc-input-telemetry header,.vc-input-graph,.vc-input-readout,.vc-input-horizontal,.vc-input-vertical,.vc-input-readout b,.vc-input-readout strong,.vc-input-horizontal span,.vc-input-vertical span')].filter(el=>{const r=el.getBoundingClientRect();return r.left<root.left-1 || r.right>root.right+1 || r.bottom>root.bottom+1 || r.top<root.top-1;}).map(el=>({name:el.className,rect:el.getBoundingClientRect().toJSON(),root:root.toJSON()}));});
+const escaped=await page.evaluate(()=>{const root=document.querySelector('.vc-input-telemetry').getBoundingClientRect();return [...document.querySelectorAll('.vc-input-telemetry header,.vc-input-graph,.vc-input-readout,.vc-input-horizontal,.vc-input-vertical,.vc-input-readout b,.vc-input-readout strong,.vc-input-horizontal span,.vc-input-horizontal b,.vc-input-horizontal em,.vc-input-vertical span')].filter(el=>{const r=el.getBoundingClientRect();return r.left<root.left-1 || r.right>root.right+1 || r.bottom>root.bottom+1 || r.top<root.top-1;}).map(el=>({name:el.className,rect:el.getBoundingClientRect().toJSON(),root:root.toJSON()}));});
 if(width===360) await page.screenshot({path:join(tmpdir(),`isa990-${templateId}.png`)});
 assert.deepEqual(escaped,[], 'all sections must stay inside the actual frame');
 }

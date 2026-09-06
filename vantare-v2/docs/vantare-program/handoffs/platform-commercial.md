@@ -1,5 +1,13 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+## ISA-1007 — nueva build nightly y Chromium requerido (2026-09-06)
+
+Build autorizada desde59185071; run34049646223 falló por Chromium ausente en
+las pruebas visuales. Se prepara el mismo paso bloqueante de instalación que
+usa branch-channel-gates, sin excluir tests ni cambiar permisos o secretos.
+Regresión RED/GREEN y contrato roadmap. Rama vantareapp/isa-1007-nightly-build,
+worktree C:/tmp/vantare-isa1007. Integración del fix y relanzamiento pendientes;
+publicación de canal consultada al usuario, no asumida. Sin artefactos aún.
 ## ISA-900 — preferencias y prueba de notificaciones
 
 - Rama aislada `vantareapp/isa-900-reparar-preferencias-notificaciones`, creada

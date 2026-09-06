@@ -29,3 +29,19 @@ subagentes por instrucción de Isaac. La aceptación visual se hará en nightly.
 Revertir el squash de esta PR mediante otra PR a nightly, conservando commits
 posteriores. Nunca reset/force push del canal. No activar E20 es el rollback
 de configuración más pequeño; no restituye las demás optimizaciones.
+
+## Gates locales de integración
+
+- Build frontend y typecheck por `tsc -b`: PASS.
+- `go test ./...`: PASS (`C:/tmp/isa1002-go-test.log`).
+- Lint global: PASS (`C:/tmp/isa1002-lint.log`).
+- Frontend completo:415 archivos/3227 tests PASS con `vitest run --maxWorkers=2`
+  (`C:/tmp/isa1002-frontend-final.log`). Primer intento:4 fallos, un texto del
+  roadmap corregido y3 timeouts con ejecución concurrente. Sin relajar tests.
+- Banco:26/26 tests PASS. No nueva sesión LMU ni nueva cifra de rendimiento.
+- Diff revisado personalmente: entrega/base/ACK, revocación/origen del socket,
+  ownership, publicación/frescura, borradores del Hub y conservación de fixes.
+  No cambios en dependencias, workflows, persistencia o diseños de nightly.
+- Diff-check productivo/documental PASS; los TXT crudos preservan espacios
+  originales del nombre CPU. No se retocan muestras ni sus manifests.
+- Estado remoto y SHA de merge: PR#1003. Sólo integrar tras CI verde en su HEAD.

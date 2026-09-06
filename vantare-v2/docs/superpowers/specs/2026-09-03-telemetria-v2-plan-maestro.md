@@ -6,6 +6,11 @@ Expediente: [ISA-962](https://github.com/isaacalbala12/Vantare-Simracing-Suite/i
 
 ## Estado operativo actualizado — ISA-996
 
+Integración de rendimiento autorizada en ISA-1002/PR#1003 sobre nightly
+c18f2e6e. La retirada V1 y feedback ya entraron en #1001; conservarlos. E20
+permanece opt-in, con control completo. Gates locales combinados aprobados;
+CI/merge se verifican en la PR, no se deducen de medidas anteriores. Sin release.
+
 Decisión06-09: cerrar primero E20 con cadencias aprobadas (Standings4,
 Relative30, mapa30, Pedals/Delta60, Fuel2Hz), después integrar sólo lo validado
 a nightly con review y CI; posteriormente adelgazar V2 por fases separadas.

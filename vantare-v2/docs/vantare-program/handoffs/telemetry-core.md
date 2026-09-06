@@ -6,7 +6,11 @@ Preparación sobre nightly `c18f2e6e` (#1001 ya integrado), fuente ISA-996
 preservada en `8bff8d93`. Sin subagentes. Mantener feedback de testers y caché
 del mapa ISA-979; no reintroducir tokens ni renderers antiguos. E20 opt-in
 con `VANTARE_OVERLAY_SECTIONS=1`; no cambiar el default durante la integración.
-Checks del árbol combinado y CI pendientes; no merge/release declarado.
+Árbol combinado: build frontend, Go completo y lint PASS; frontend completo
+415 archivos/3227 tests PASS con dos workers; banco26/26 PASS. La primera
+ejecución frontend tuvo texto roadmap corregido y tres timeouts; se conserva
+su log y no se ampliaron límites. PR#1003 contiene el estado vivo de CI y merge:
+no inferir integración de esta nota de preparación ni confundirla con release.
 Manifest y rollback: `docs/analysis/ISA-1002-integracion.md`.
 Las notas inferiores son historia del candidato, no el estado remoto actual.
 

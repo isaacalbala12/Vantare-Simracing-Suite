@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "tag": "v0.1.0.7-nightly.15",
+  "channel": "nightly",
+  "title": "Vantare — Telemetría V2, menor trabajo del HUD y correcciones visuales",
+  "summary": "Nightly con Telemetría V2 integrada, cadencias específicas por widget, menor trabajo del Hub y correcciones de Dense y Broadcast. El envío incremental E20 permanece opcional para comparar con el envío completo en la misma build.",
+  "issues": ["ISA-1009", "ISA-1004"]
+}

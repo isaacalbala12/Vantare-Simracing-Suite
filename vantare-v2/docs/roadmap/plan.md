@@ -373,10 +373,10 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - titulo.en: Reproducible Windows builds for the Nightly channel
 - titulo.pt: Builds Windows reproduzíveis do canal Nightly
 - titulo.it: Build Windows riproducibili del canale Nightly
-- cuerpo: El pipeline de releases fija PowerShell 7.6.5, instala y verifica el toolchain MSYS2 UCRT64 antes de compilar el reader de telemetría, instala Chromium para sus pruebas visuales y valida los seis artefactos oficiales del canal Nightly.
-- cuerpo.en: The release pipeline pins PowerShell 7.6.5, installs and verifies the MSYS2 UCRT64 toolchain before compiling the telemetry reader, installs Chromium for visual tests and validates the six official Nightly channel artifacts.
-- cuerpo.pt: O pipeline de releases fixa o PowerShell 7.6.5, instala e verifica o toolchain MSYS2 UCRT64 antes de compilar o reader de telemetria instala o Chromium para os testes visuais e valida os seis artefactos oficiais do canal Nightly.
-- cuerpo.it: La pipeline delle release fissa PowerShell 7.6.5, installa e verifica il toolchain MSYS2 UCRT64 prima di compilare il reader di telemetria installa Chromium per i test visivi e valida i sei artefatti ufficiali del canale Nightly.
+- cuerpo: El pipeline fija PowerShell 7.6.5, verifica MSYS2 UCRT64, instala Chromium y valida seis artefactos oficiales. El manifiesto de Nightly.15 reúne V2, optimizaciones y correcciones visuales para su publicación verificada; E20 sigue siendo opcional.
+- cuerpo.en: The pipeline pins PowerShell 7.6.5, verifies MSYS2 UCRT64, installs Chromium and validates six official artifacts. The Nightly.15 manifest brings together V2, optimizations and visual fixes for verified publication; E20 remains optional.
+- cuerpo.pt: O pipeline fixa PowerShell 7.6.5, verifica MSYS2 UCRT64, instala Chromium e valida seis artefactos oficiais. O manifesto Nightly.15 reúne V2, otimizações e correções visuais para publicação verificada; E20 permanece opcional.
+- cuerpo.it: La pipeline fissa PowerShell 7.6.5, verifica MSYS2 UCRT64, installa Chromium e convalida sei artefatti ufficiali. Il manifesto Nightly.15 riunisce V2, ottimizzazioni e correzioni visive per la pubblicazione verificata; E20 resta facoltativo.
 - etiqueta: Corregido
 - etiqueta.en: Fixed
 - etiqueta.pt: Corrigido

@@ -1,5 +1,15 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+## ISA-1009 — publicación Nightly.15 autorizada (2026-09-06)
+
+Isaac autoriza la release y la integración de Chromium (#1008, ac617491).
+Se prepara el manifiesto v0.1.0.7-nightly.15 y su resumen del conjunto
+#1001/#1003/#1006. E20 permanece opt-in y no se certifica CPU inferior al 2%.
+Rama vantareapp/isa-1009-nightly-15; base ac617491. Publicar únicamente
+mediante release.yml desde nightly, con SHA exacto, gates y seis artefactos
+verificados. Estado final y enlace de ejecución en la issue #1009.
+No hay promoción a testers/master. No se modifica el checkout principal.
+
 ## ISA-1007 — nueva build nightly y Chromium requerido (2026-09-06)
 
 Build autorizada desde59185071; run34049646223 falló por Chromium ausente en

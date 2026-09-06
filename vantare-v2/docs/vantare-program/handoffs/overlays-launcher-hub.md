@@ -1,5 +1,21 @@
 # Handoff vivo — Overlay Studio, Launcher y Hub
 
+## ISA-1004 — Dense y Broadcast tras validación Windows (2026-09-06)
+
+Isaac autoriza corregir ambos hallazgos y mergear a nightly. Base c18f2e6e;
+rama `vantareapp/isa-1004-dense-broadcast`, worktree `C:/tmp/vantare-isa1004`.
+Regresiones RED/GREEN: Dense 560x100 (con escala productiva width/360) contiene
+pedales, etiquetas e historial; Broadcast omite INT32_MAX y límites inválidos,
+conservando totales finitos. Revisión independiente sin hallazgos bloqueantes.
+Suite413 archivos/3219 tests, build/typecheck, lint y build Windows PASS.
+Studio Live y HUD sobre LMU muestran Dense completo y Broadcast sin el centinela.
+Base actualizada a3f58853f tras #1003, solo conflicto derivado de roadmap.
+Build/typecheck,34 tests focales y HUD con LMU repetidos PASS sobre el conjunto.
+Cierre de PR#1006 y CI trazado en #1005; no testers/master ni release.
+Ocultar el Hub al abrir HUD es intencionado y queda fuera del arreglo.
+La auditoría física previa no certificó marcha atrás, trail dinámico ni vueltas;
+esta entrega no los presenta como cerrados. Evidencia: [ISA-1004](../../analysis/ISA-1004.md).
+
 ## ISA-1000 — integración autorizada a nightly (2026-09-06)
 
 Isaac autoriza integrar el trabajo terminado y resolver desde V2, con rollback

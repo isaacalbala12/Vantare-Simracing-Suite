@@ -63,7 +63,9 @@ export function buildBroadcastTowerViewModelV2(
   const totalLaps = (() => {
     const max = frame.session?.maxLaps;
     if (!max || max.q === "missing" || max.q === "invalid") return undefined;
-    return max.v ?? undefined;
+    // LMU reports INT32_MAX for sessions without a finite lap limit.
+    const laps = max.v;
+    return laps !== undefined && Number.isInteger(laps) && laps > 0 && laps < 2147483647 ? laps : undefined;
   })();
 
   const lap = (() => {

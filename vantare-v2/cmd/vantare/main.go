@@ -17,6 +17,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"runtime"
+	"runtime/debug"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -602,6 +603,9 @@ type overlayPullHTTPService struct {
 	target    overlayPullTarget
 	transport *telemetrytransport.OverlayPullTransport
 	cleanup   sync.Once
+	mu        sync.Mutex
+	closed    bool
+	socket    *overlaySocket
 }
 
 type wailsOverlayPullTarget struct {
@@ -662,6 +666,12 @@ func (service *overlayPullHTTPService) ServeHTTP(response http.ResponseWriter, r
 		http.Error(response, "overlay telemetry unavailable", http.StatusServiceUnavailable)
 		return
 	}
+	service.mu.Lock()
+	defer service.mu.Unlock()
+	if service.closed {
+		http.Error(response, "overlay telemetry unavailable", http.StatusServiceUnavailable)
+		return
+	}
 	sender := strings.TrimSpace(request.Header.Get(overlayPullWindowNameHeader))
 	if sender == "" {
 		http.Error(response, "missing Wails window", http.StatusBadRequest)
@@ -673,6 +683,12 @@ func (service *overlayPullHTTPService) ServeHTTP(response http.ResponseWriter, r
 	}
 
 	switch request.URL.Path {
+	case "/socket-endpoint":
+		if service.socket == nil || !service.target.WatchClose(sender, func() { service.closeSender(sender) }) {
+			http.Error(response, "overlay socket unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		service.socket.bootstrap(response, sender)
 	case "/pull":
 		pullResponse, deliver, err := service.transport.Pull(sender, pullRequest)
 		if err != nil {
@@ -684,7 +700,7 @@ func (service *overlayPullHTTPService) ServeHTTP(response http.ResponseWriter, r
 			response.WriteHeader(http.StatusNoContent)
 			return
 		}
-		if !service.target.WatchClose(sender, func() { service.transport.CloseSender(sender) }) {
+		if !service.target.WatchClose(sender, func() { service.closeSender(sender) }) {
 			service.transport.Close(sender, pullRequest.SessionID)
 			http.Error(response, "overlay window unavailable", http.StatusServiceUnavailable)
 			return
@@ -721,11 +737,24 @@ func decodeOverlayPullHTTPRequest(
 	return pullRequest, true
 }
 
+func (service *overlayPullHTTPService) closeSender(sender string) {
+	service.mu.Lock()
+	defer service.mu.Unlock()
+	service.socket.revoke(sender)
+	service.transport.CloseSender(sender)
+}
+
 func (service *overlayPullHTTPService) shutdown() {
 	if service == nil || service.transport == nil {
 		return
 	}
-	service.cleanup.Do(service.transport.CloseAll)
+	service.cleanup.Do(func() {
+		service.mu.Lock()
+		defer service.mu.Unlock()
+		service.closed = true
+		service.socket.close()
+		service.transport.CloseAll()
+	})
 }
 
 func registerTelemetryStatusReplayHandlers(
@@ -1269,6 +1298,7 @@ func main() {
 		}
 		return
 	}
+	configureRuntimeGC(os.LookupEnv, debug.SetGCPercent)
 	// Set WebView2 user data folder to version-specific path to prevent cache issues across releases
 	if appData := os.Getenv("LOCALAPPDATA"); appData != "" {
 		udf := webviewUserDataFolder(filepath.Join(appData, "Vantare", "webview_v0.1.0.5"))
@@ -1684,7 +1714,9 @@ func main() {
 		})
 		return window
 	}
-	hubLifecycle = app.NewHubLifecycle(newHubWindow, effectivePerformanceLevel, func(context.Context) bool {
+	hubLifecycle = app.NewHubLifecycle(newHubWindow, func() int {
+		return hubLifecycleLevel(effectivePerformanceLevel(), overlayRunning.Load())
+	}, func(context.Context) bool {
 		return hubBlockers.CanSuspend()
 	}, func() {
 		snapshot, received := hubBlockers.Snapshot()
@@ -2121,6 +2153,7 @@ func main() {
 
 	effectivePerformance := settingsSvc.EffectivePerformancePolicy(studioProfileSvc.PerformanceProfile())
 	telemetryCoreRuntime, err = app.NewTelemetryCoreRuntime(app.TelemetryCoreRuntimeConfig{
+		OverlaySections:         os.Getenv("VANTARE_OVERLAY_SECTIONS") == "1",
 		Enabled:                 *live,
 		Emitter:                 emitter,
 		Engineer:                engSvc,
@@ -2524,6 +2557,11 @@ func main() {
 				telemetryCoreRuntime.OverlayV2Publishers(),
 			),
 		)
+		if os.Getenv("VANTARE_OVERLAY_SOCKET_PULL") != "0" {
+			if err := overlayPullService.startSocket(); err != nil {
+				log.Printf("overlay socket unavailable: %v", err)
+			}
+		}
 		wailsApp.RegisterService(application.NewServiceWithOptions(
 			overlayPullService,
 			application.ServiceOptions{
@@ -3515,6 +3553,15 @@ func resolveLicensePublicKeys(embedded, developmentOverride string) string {
 	return developmentOverride
 }
 
+// The hidden Hub may unload during a race without lowering HUD quality.
+// HubLifecycle still checks pending drafts and recreates the window on demand.
+func hubLifecycleLevel(level int, hudRunning bool) int {
+	if hudRunning {
+		return max(level, 3)
+	}
+	return level
+}
+
 type hubSuspendEventProbe struct {
 	emitter app.EventEmitter
 	mu      sync.Mutex
@@ -3874,6 +3921,9 @@ func (f *wailsOverlayFactory) NewOverlayWindow(document *config.ProfileDocumentV
 	options, err := resolveOverlayWindowOptionsAtLevel(document, f.screens, level)
 	if err != nil {
 		return nil, fmt.Errorf("create overlay window: %w", err)
+	}
+	if os.Getenv("VANTARE_OVERLAY_SOCKET_PULL") != "0" {
+		options.URL += "?socketOverlayPull=1"
 	}
 	if f.app == nil || f.app.Window == nil {
 		return nil, fmt.Errorf("create overlay window: Wails window manager is unavailable")

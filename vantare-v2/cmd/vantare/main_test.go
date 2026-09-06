@@ -22,6 +22,21 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
+func TestHubLifecycleLevelDuringHUD(t *testing.T) {
+	for _, test := range []struct {
+		level int
+		hud   bool
+		want  int
+	}{
+		{1, false, 1}, {2, false, 2}, {1, true, 3}, {2, true, 3},
+		{3, true, 3}, {4, true, 4}, {5, true, 5},
+	} {
+		if got := hubLifecycleLevel(test.level, test.hud); got != test.want {
+			t.Fatalf("level=%d hud=%t: got %d want %d", test.level, test.hud, got, test.want)
+		}
+	}
+}
+
 func TestShouldPersistValidatedSessionRequiresCurrentOnlineValidation(t *testing.T) {
 	if shouldPersistValidatedSession(&license.Result{UserID: "user", OnlineValidated: false}, "access", "refresh") {
 		t.Fatal("offline cache result was accepted as a backend-validated session")

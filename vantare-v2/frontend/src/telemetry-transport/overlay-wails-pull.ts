@@ -1,3 +1,6 @@
+import {createSocketPullPost} from "./overlay-socket-pull";
+import {OverlayFrameV2ContractError, parseOverlayPullJSON} from "./overlay-frame-v2-store";
+
 export const OVERLAY_PULL_REQUEST_ROUTE = "/_vantare/overlay-telemetry/pull";
 export const OVERLAY_PULL_CLOSE_ROUTE = "/_vantare/overlay-telemetry/close";
 
@@ -8,7 +11,7 @@ const ALLOWED_EVENTS = new Set([
   "telemetry:overlay-v2:snapshot",
 ]);
 
-type PullEvent = Readonly<{name: string; data: unknown}>;
+type PullEvent = Readonly<{name: string; data: unknown; baseRevision?: number}>;
 type PullResponse = Readonly<{
   sessionId: string;
   delivery: number;
@@ -38,6 +41,7 @@ export type OverlayWailsPullDiagnostics = Readonly<{
   active: boolean;
   requestsCompleted: number;
   receivedV2Snapshots: number;
+  receivedV2SectionSnapshots: number;
   requestDurationMs: Readonly<{
     count: number;
     sampleCount: number;
@@ -94,6 +98,7 @@ export function createOverlayWailsPullClient(
   let scheduled: ScheduleHandle | undefined;
   let requestsCompleted = 0;
   let receivedV2Snapshots = 0;
+  let receivedV2SectionSnapshots = 0;
   let requestDurationTotalMs = 0;
   let requestDurationMaxMs = 0;
   const requestDurationSamplesMs: number[] = [];
@@ -149,6 +154,13 @@ export function createOverlayWailsPullClient(
           (error) => {
             if (active && sessionID === requestSessionID && acknowledged === requestAck) {
               awaiting = false;
+              if (error instanceof OverlayFrameV2ContractError && error.path === "sections.base") {
+                // A missing base cannot be repaired by replaying that delta.
+                // A fresh generation forces a full bootstrap, without ACKing it.
+                sessionID = createSessionID();
+                acknowledged = 0;
+                emptyResponses = 0;
+              }
               scheduleNext(ERROR_PULL_DELAY_MS);
             }
             onError(error);
@@ -186,7 +198,10 @@ export function createOverlayWailsPullClient(
         onError(new Error("overlay-wails-pull:invalid-event-name"));
         continue;
       }
-      if (event.name === "telemetry:overlay-v2:snapshot") receivedV2Snapshots += 1;
+      if (event.name === "telemetry:overlay-v2:snapshot") {
+        receivedV2Snapshots += 1;
+        if (event.baseRevision !== undefined) receivedV2SectionSnapshots += 1;
+      }
       for (const listener of listeners.get(event.name) ?? []) {
         try {
           listener(event.data);
@@ -252,6 +267,7 @@ export function createOverlayWailsPullClient(
         active,
         requestsCompleted,
         receivedV2Snapshots,
+        receivedV2SectionSnapshots,
         requestDurationMs: Object.freeze({
           count: requestsCompleted,
           sampleCount: sortedDurations.length,
@@ -286,6 +302,9 @@ function requestDurationHistogram(sorted: readonly number[]) {
 export function createBrowserOverlayWailsPullClient(
   options: BrowserOverlayWailsPullOptions = {},
 ): OverlayWailsPullClient {
+  if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("socketOverlayPull") === "1") {
+    return createOverlayWailsPullClient({post: createSocketPullPost(), onError: options.onError});
+  }
   return createOverlayWailsPullClient({
     post: async (route, data) => {
       const controller = new AbortController();
@@ -302,7 +321,7 @@ export function createBrowserOverlayWailsPullClient(
           throw new Error(`overlay telemetry pull HTTP ${response.status}`);
         }
         if (response.status === 204) return undefined;
-        return await response.json();
+        return parseOverlayPullJSON(await response.text());
       } finally {
         clearTimeout(timeout);
       }
@@ -329,7 +348,8 @@ function decodeResponse(input: unknown): PullResponse | undefined {
     }
     const event = inputEvent as Record<string, unknown>;
     if (typeof event.name !== "string" || !("data" in event)) return undefined;
-    events.push({name: event.name, data: event.data});
+    if (event.baseRevision !== undefined && (!Number.isSafeInteger(event.baseRevision) || (event.baseRevision as number) <= 0)) return undefined;
+    events.push({name: event.name, data: event.data, baseRevision: event.baseRevision as number | undefined});
   }
   return {sessionId: value.sessionId, delivery: value.delivery as number, events};
 }

@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import {OverlayFrameV2ContractError} from "./overlay-frame-v2-store";
 import {
   createBrowserOverlayWailsPullClient,
   createOverlayWailsPullClient,
@@ -9,6 +10,18 @@ import {
 afterEach(() => {
   vi.useRealTimers();
   vi.unstubAllGlobals();
+});
+
+it("starts a fresh ACK-zero generation after an incremental base mismatch", async () => {
+ const scheduled:Array<()=>void>=[];const requests:unknown[]=[];let generation=0;
+ const client=createOverlayWailsPullClient({
+  post(route,data){if(route===OVERLAY_PULL_CLOSE_ROUTE)return undefined;requests.push(data);return Promise.reject(new OverlayFrameV2ContractError("sections.base"));},
+  createSessionID:()=>`s${++generation}`,schedule(callback){scheduled.push(callback);return callback;},cancel:()=>undefined,
+ });
+ client.start();await Promise.resolve();await Promise.resolve();
+ scheduled.shift()?.();await Promise.resolve();await Promise.resolve();
+ expect(requests).toEqual([{sessionId:"s1",ack:0},{sessionId:"s2",ack:0}]);
+ client.stop();
 });
 
 type PendingPull = {
@@ -24,6 +37,28 @@ async function flushResponse(pending: PendingPull[], input: unknown): Promise<vo
 }
 
 describe("overlay HTTP pull client", () => {
+  it("counts incremental snapshots separately from full deliveries", () => {
+    let delivery = 0;
+    const scheduled: Array<() => void> = [];
+    const client = createOverlayWailsPullClient({
+      post(route) {
+        if (route === OVERLAY_PULL_CLOSE_ROUTE) return undefined;
+        delivery += 1;
+        return {sessionId: "sections", delivery, events: [{
+          name: "telemetry:overlay-v2:snapshot", data: {revision: delivery},
+          ...(delivery === 2 ? {baseRevision: 1} : {}),
+        }]};
+      },
+      schedule(callback) { scheduled.push(callback); return callback; },
+      cancel: () => undefined,
+      createSessionID: () => "sections",
+    });
+    client.start();
+    expect(client.getDiagnostics()).toMatchObject({receivedV2Snapshots: 1, receivedV2SectionSnapshots: 0});
+    scheduled.shift()?.();
+    expect(client.getDiagnostics()).toMatchObject({receivedV2Snapshots: 2, receivedV2SectionSnapshots: 1});
+    client.stop();
+  });
   it("reports the empirical p99 and histogram of recent delivery durations", () => {
     const durations = [1, 4, 8, 20, 70];
     const scheduled: Array<() => void> = [];
@@ -334,7 +369,7 @@ describe("overlay HTTP pull client", () => {
         return Promise.resolve({
           ok: true,
           status: 200,
-          json: () => new Promise<unknown>((_resolve, reject) => {
+          text: () => new Promise<string>((_resolve, reject) => {
             init?.signal?.addEventListener("abort", () => reject(new Error("aborted")));
           }),
         } as Response);
@@ -342,7 +377,7 @@ describe("overlay HTTP pull client", () => {
       return Promise.resolve({
         ok: true,
         status: 200,
-        json: () => Promise.resolve({sessionId, delivery: 1, events: []}),
+        text: () => Promise.resolve(JSON.stringify({sessionId, delivery: 1, events: []})),
       } as Response);
     });
     vi.stubGlobal("fetch", fetchMock);

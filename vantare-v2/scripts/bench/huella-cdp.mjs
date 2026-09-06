@@ -229,7 +229,7 @@ const output = argument("output");
 const screenshotDir = argument("screenshot-dir");
 const durationSeconds = Number(argument("duration", "10"));
 const expectedWidgets = Number(argument("expected-widgets", "0"));
-if (!cdp || !["inspect", "state", "overlay-start", "overlay-stop", "hub-minimise", "hub-restore", "hub-open", "performance", "license", "app-quit"].includes(action) || !Number.isFinite(durationSeconds) || durationSeconds < 1 || durationSeconds > 120 || !Number.isInteger(expectedWidgets) || expectedWidgets < 0) {
+if (!cdp || !["inspect", "state", "overlay-start", "overlay-stop", "hub-minimise", "hub-restore", "hub-open", "performance", "license", "app-quit", "diagnostic-hide-paint"].includes(action) || !Number.isFinite(durationSeconds) || durationSeconds < 1 || durationSeconds > 120 || !Number.isInteger(expectedWidgets) || expectedWidgets < 0) {
   throw new Error("usage: node huella-cdp.mjs --cdp http://127.0.0.1:9247 --action inspect|state|overlay-start|overlay-stop|hub-minimise|hub-restore|hub-open|performance|license|app-quit [--duration 10] [--expected-widgets 3] [--output result.json] [--screenshot-dir directory]");
 }
 
@@ -238,6 +238,20 @@ async function writeResult(result) {
   const json = `${JSON.stringify(result)}\n`;
   if (output) await writeFile(output, json, { encoding: "utf8", flag: "wx" });
   process.stdout.write(json);
+}
+if (action === "diagnostic-hide-paint") {
+  const overlay = (await pagesByRole(browser)).find(({description}) => description.overlay)?.page;
+  if (!overlay) throw new Error("No overlay for paint isolation");
+  const state = await overlay.evaluate(() => {
+    const surface = document.querySelector('[data-testid="runtime-overlay-surface"]');
+    if (!(surface instanceof HTMLElement)) throw new Error("No runtime surface");
+    const previousOpacity = surface.style.opacity;
+    surface.style.setProperty("opacity", "0", "important");
+    if (getComputedStyle(surface).opacity !== "0") throw new Error("Paint isolation did not apply");
+    return {previousOpacity, opacity: "0", widgetCount: surface.querySelectorAll('[data-testid="runtime-widget-frame"]').length};
+  });
+  await writeResult({schema: "vantare.huella.cdp.v1", action, publishable: false, ...state});
+  process.exit(0);
 }
 if (action === "hub-open") {
   const appPage = (await pagesByRole(browser)).find(({ description }) => description.overlay)?.page;

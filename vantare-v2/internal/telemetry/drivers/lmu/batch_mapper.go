@@ -190,7 +190,6 @@ func (mapper *BatchMapper) prepareObservation(observation Observation) (prepared
 	if err != nil {
 		return preparedObservation{}, err
 	}
-	batch.State.Vehicles = append([]telemetrycore.VehicleState(nil), batch.State.Vehicles...)
 	return preparedObservation{candidate: candidate, batch: batch}, nil
 }
 

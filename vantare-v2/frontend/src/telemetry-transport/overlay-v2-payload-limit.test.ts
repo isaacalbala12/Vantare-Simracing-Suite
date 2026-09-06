@@ -5,6 +5,8 @@ import type { OverlayUpdateV2 } from "../generated/telemetry";
 import {
   decodeOverlayUpdateV2,
   OVERLAY_V2_MAX_PAYLOAD_BYTES,
+  parseOverlayPullJSON,
+  OVERLAY_V2_SNAPSHOT_EVENT,
 } from "./overlay-frame-v2-store";
 
 function golden(): OverlayUpdateV2 {
@@ -47,6 +49,17 @@ function paddedTo(update: OverlayUpdateV2, bytes: number): string {
 }
 
 describe("overlay-v2 payload hard limit", () => {
+  it("retains per-update UTF-8 limits even inside a larger pull envelope", () => {
+    const wrap = (data: string) => `{"sessionId":"s","delivery":1,"events":[{"name":"${OVERLAY_V2_SNAPSHOT_EVENT}","data":${data}}]}`;
+    const exact = paddedTo(leanUpdate(), OVERLAY_V2_MAX_PAYLOAD_BYTES);
+    const parsed = parseOverlayPullJSON(wrap(exact)) as {events: {data: unknown}[]};
+    expect(() => decodeOverlayUpdateV2(parsed.events[0]!.data)).not.toThrow();
+    expect(() => parseOverlayPullJSON(wrap(paddedTo(leanUpdate(), OVERLAY_V2_MAX_PAYLOAD_BYTES + 1)))).toThrow("size");
+    const unicode = JSON.parse(exact) as OverlayUpdateV2;
+    const tooLarge = {...unicode, frame: {...unicode.frame, sessionId: "é".repeat(OVERLAY_V2_MAX_PAYLOAD_BYTES / 2)}};
+    expect(() => parseOverlayPullJSON(wrap(JSON.stringify(tooLarge)))).toThrow("size");
+  });
+
   it("centraliza el límite duro en 72 KiB sin literales mágicos", () => {
     expect(OVERLAY_V2_MAX_PAYLOAD_BYTES).toBe(72 * 1024);
   });

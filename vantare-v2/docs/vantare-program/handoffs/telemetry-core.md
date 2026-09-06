@@ -1,21 +1,419 @@
 # Handoff vivo — Telemetry Core
 
-## ISA-1000 — integración autorizada a nightly (2026-09-06)
+## Integración autorizada ISA-1002 — 2026-09-06
 
-Isaac autoriza integrar el trabajo terminado y resolver desde V2, con rollback
-si falla. Base remota `483f4e80`; rama aislada
-`vantareapp/isa-1000-integracion-v2-feedback`, worktree `C:/tmp/vantare-isa1000`.
-Manifest: retirada completa `28bac676` + auditoría `7cd24786`, microcortes
-#994/#995 y feedback #993 (`2dbf358b`). No incluye #997–999 sin terminar.
-Se conservan los cambios ya integrados en nightly. Conflictos resueltos sin
-resucitar builders/readers V1. Relative Redline usa la versión sin FLIP/ghosts.
-Typecheck, build frontend/Windows, Go completo y lint PASS. Frontend: 3208
-PASS y una suite con import legacy corregida, focal posterior 2/2 PASS;
-CI debe certificar la suite del nuevo SHA. PR #1001 publicada, integración
-autorizada pendiente de checks remotos. Evidencia y vuelta
-atrás: [ISA-1000](../../analysis/ISA-1000-integracion.md). Los límites históricos
-sobre promoción quedan sustituidos únicamente para este conjunto autorizado;
-no releases ni testers/master, no aceptación física implícita.
+Preparación sobre nightly `c18f2e6e` (#1001 ya integrado), fuente ISA-996
+preservada en `8bff8d93`. Sin subagentes. Mantener feedback de testers y caché
+del mapa ISA-979; no reintroducir tokens ni renderers antiguos. E20 opt-in
+con `VANTARE_OVERLAY_SECTIONS=1`; no cambiar el default durante la integración.
+Árbol combinado: build frontend, Go completo y lint PASS; frontend completo
+415 archivos/3227 tests PASS con dos workers; banco26/26 PASS. La primera
+ejecución frontend tuvo texto roadmap corregido y tres timeouts; se conserva
+su log y no se ampliaron límites. PR#1003 contiene el estado vivo de CI y merge:
+no inferir integración de esta nota de preparación ni confundirla con release.
+Manifest y rollback: `docs/analysis/ISA-1002-integracion.md`.
+Las notas inferiores son historia del candidato, no el estado remoto actual.
+
+## Cadencias autorizadas y E20 — 2026-09-06
+
+Isaac autoriza aplicar tabla máxima: Standings4, Relative30, mapa30,
+Pedals/Delta60 y Fuel2Hz; medir y continuar E20 sin pausas ni subagentes.
+Ponytail: reutilizar Policy y SectionScheduler. Nuevos overrides internos
+Relative/Standings/Fuel; niveles ahorradores conservan sus tasas menores.
+Hallazgo: antes Go Fast20Hz y Relative/Standings4Hz; mapa comparte Standings.
+No afirmar que todo iba a60Hz. Ahora L1 permite instrumentos60 y posiciones30
+antes de serializar, pero Standings visual4; seguridad sigue exenta.
+Go completo PASS; tests RED/GREEN de tabla y consumidor compartido PASS.
+Build E21 y banco visible completos N3 por ruta: CPU2,6447→2,2755%,
+RAM382,65→388,11MiB; GPU0,1162→0,1081%. Seis corridas válidas y cierre limpio.
+Conservar E20 como candidato por intercambio CPU/RAM razonable; no alcanza2%.
+Flag sigue OFF hasta preparar integración; informe
+`docs/analysis/telemetria-v2-e20-cierre-996.md`.
+Isaac autoriza secuencia: cerrar E20 primero, después integrar lo validado a
+nightly con review/CI, después adelgazar V2 por fases. No testers/master/release.
+Cambios anteriores preservados; sin commit/push/promoción.
+
+## Condición obligatoria y repetición visible — 2026-09-06
+
+Isaac exige repetir E20 y hacer obligatoria la visibilidad. El banco requiere
+`overlay-visibility-probe.exe`: monitor nativo sólo lectura cada100ms sobre
+PIDs exactos, juego foreground y ventana Vantare Overlay visible/no minimizada,
+no cloaked, topmost e intersectando pantalla. Cualquier muestra inválida o
+cobertura temporal incompleta invalida todos los datos de la corrida.
+Se conserva prueba JSON y se verifica visualmente el perfil de seis widgets
+antes de medir. No se confunde montaje DOM con visibilidad nativa.
+Primeras corridas con monitor (`e20-visible-*`) rechazadas por comparación
+UTC/local: test reproduce y corrige el gate; no se retocan CSV antiguos.
+Repetición definitiva N3 por ruta en `C:/tmp/isa996-e20-v2-*`, misma SHA E20,
+completa: CPU 2,5279→2,3167%, RAM privada385,52→395,17MiB,
+GPU0,1121→0,1303%. Seis widgets visibles, live62, cierre limpio en las seis.
+No alcanza<2%; no mejora global por aumento RAM/GPU y variación. Flag OFF.
+Detalle: `docs/analysis/telemetria-v2-e20-visible-996.md`.
+Checks Go completo y16 tests del banco PASS. Sin cambios al exe candidato.
+
+## BLOQUEO de validez visual del banco — 2026-09-06 16:56
+
+Isaac observa que no veía widgets. Verificación Computer Use: proceso Vantare
+vivo pero sin ventana visible; al activar LMU aparecen los seis widgets y la
+ventana Vantare Overlay. `SetGameForeground(false)` oculta la ventana.
+El banco sólo acreditaba DOM/telemetría/secuencia, no visibilidad nativa/foco.
+**E19/E20 anteriores NO acreditan ahorro con HUD visible**, aunque el CSV diga
+publishable. Crudos se conservan; no reinterpretar esos flags como aceptación.
+Se detuvo el lanzador de nuevas corridas. full-3 también inválida: foco cambiado
+durante captura. Pendiente: gate de visibilidad durante intervalo y nuevo A/B
+con LMU foreground y comprobación visual. Revisar anteriores conclusiones
+que dependan del mismo gate; no afirmar que la meta<3 o<2 visible esté probada.
+
+## E20 en banco A/B — 2026-09-06
+
+E19 real N1:2,70367→2,45388% CPU,385,65→408,96MiB privados; misma SHA,
+live62 y seis widgets. No aceptación: aumento RAM y falta repetir.
+E20 evita revalidar sólo arrays previamente validados/congelados de la base
+privada; listas nuevas siguen validadas.409 archivos/3184 tests frontend,
+lint y build PASS. SHA5d28a20f8ffd77debeea55ed0b5c75ecf20a329adb70b1ef45e40b9b3b5c5c06.
+En curso tres repeticiones por ruta, orden ABBAAB,60s+30s cada una, sin builds
+ni otros bancos simultáneos. Lanzador `C:/tmp/isa996-e20-matrix.ps1`;
+salidas `C:/tmp/isa996-e20-{full,sections}-{1,2,3}/`.
+Resumen independiente `C:/tmp/isa996-e19-summary.ps1 -Experiment e20`.
+No declarar<2 ni ganancia repetible antes del resultado. Sin integración.
+
+## E18/E19 experimental implementado — 2026-09-06
+
+Secciones tipadas en el publisher y diferencias por base confirmada del consumidor,
+negociadas sobre el socket existente con `VANTARE_OVERLAY_SECTIONS=1` (OFF por defecto).
+Frontend reconstruye y valida el frame completo antes de publicarlo; conserva
+límites, epoch/sesión, ACK/replay y resincronización con bootstrap completo.
+Las pruebas focales Go/TS, typecheck y lint pasan; suites completas en curso.
+No hay todavía build ni A/B E19: NO es una mejora de CPU acreditada. El encoder
+tipado aislado es más caro que marshal completo; sólo se aceptará si compensa
+en el árbol completo de procesos. Misma escena, seis widgets y cadencias L1.
+Sin subagentes, commits, push, promoción ni release. PC reservado para gates
+y mediciones; siguiente acción: build configurada y A/B con idéntica SHA.
+
+## Arquitectura autorizada; microcorte E17 — 2026-09-06
+
+Isaac autoriza los cambios arquitectónicos necesarios dentro de las premisas.
+El envío por secciones ya NO está bloqueado por autorización. Sigue sin
+autorizarse promoción/release; main trabaja sin subagentes. ADR0095 fija
+invariantes, microcortes y gates de base/ACK/replay/reconstrucción atómica.
+E17 es exclusivamente un prototipo/benchmark `_test.go`: dividir el JSON
+serializado añade coste Go (fixture44:217–222µs/84alloc frente a169–176µs/2alloc
+del sobre completo, aun conservando base). Sin conclusión end-to-end.
+Siguiente: preparar secciones antes de serializar desde la proyección tipada,
+sin usar la última máscara de tick como sustituto del estado confirmado por
+cada consumidor. Detalles/crudos en [ADR0095](../../adr/0095-overlay-incremental-sections.md).
+No cambios productivos, integración ni nueva mejora CPU acreditada en E17.
+Checks: Go completo PASS, gofmt/digest/diff-check PASS. No frontend/build de
+producto ni prueba LMU nueva: sólo test/benchmark y documentación. Sin banco
+activo; reserva de cómputo liberada al terminar este microcorte.
+Las notas inferiores de autorización pendiente son historia superada.
+
+## Reanudación de optimización — 2026-09-06 15:44
+
+Isaac pide continuar tras la comparación HUD. Referencia nueva E16, misma
+SHA92dbb6b0 y seis widgets L1, LMU live62/HUD Full: captura60s después de30s
+de calentamiento,26 muestras, CPU propia2,80122%, memoria privada386,87MiB,
+GPU agregada0,23169% (26 muestras válidas). N1 exploratorio, no acredita
+mejora frente a otra escena ni objetivo<2. Go1,03726%, renderers sin asignación
+individual a ventana1,28894%; el total sí incluye todo el árbol propio.
+Primera tentativa abortada por higiene; se cerró únicamente Edge Startup Boost
+PID9804 sin ventana, verificado antes. Segunda termina limpia, sin Vantare residual.
+Crudos `C:/tmp/isa996-resume-e16-2/`; detalles en informe subdos.
+No cambios productivos, tests/build nuevos ni integración. Siguiente candidato
+sigue siendo transmisión de secciones cambiadas, con frame completo y atómico
+antes del store. Requiere autorización explícita antes de implementarse;
+beneficio global pendiente de A/B. No recortar datos, Hz ni validación.
+
+## Prioridad cambiada tras reinicio — 2026-09-06
+
+**Estado vigente: comparación exploratoria cerrada, HUD Full restaurado y
+comprobado en cockpit.** Full1/2/3:19,36853/19,38623/20,28747% CPU;
+Off1/2:18,63744/20,17960%. Medias Full19,68%/Off19,41%; no acredita ahorro
+CPU/RAM por variación y recargas. GPU 3D60,16%/56,59% es descriptiva, no
+efecto causal probado. Sin banco activo ni cambios productivos/integración.
+Informe: [comparación HUD](../../analysis/lmu-hud-comparacion-996.md).
+La prioridad de medir antes de optimizar queda atendida como exploración;
+no equivale a un gate pareado N3 aprobado. Envío por secciones no autorizado.
+
+### Registro previo de preparación (superado por el estado vigente)
+
+Actualización: Isaac aclara que HUD sólo se cambia desde menú principal.
+Se salió de sesión, se puso HUD Enabled Off (resto intacto), se aplicó y
+se recargó La Sarthe/Isotta #11/práctica 6h/parrilla 22HY+16P2+23GT3.
+HUD Off confirmado visualmente en cockpit estacionario. Vantare cerrado.
+Capturas de 60 s, 29 muestras cada una, CPU ponderada por duración:
+Full1 19,36853%, Off1 18,63744%, Off2 20,17960%. GPU 3D respectivamente
+57,74975%,57,12715%,56,05800%. CSV crudos:
+`C:/tmp/isa996-hud-full-1.csv`, `C:/tmp/isa996-hud-off-1.csv`,
+`C:/tmp/isa996-hud-off-2.csv`. Todos con GPU válida y proceso continuo.
+Veredicto provisional: NO acredita ahorro CPU; la variación entre Off1/2
+supera la diferencia Full1/Off1. Recarga y evolución AI/escena confunden
+RAM/GPU; no N3 pareado ni prueba de FPS. Escape remoto vuelve a no abrir
+pausa; pendiente volver a menú principal para restaurar Full y repetir.
+Configuración en ese checkpoint: Off, aún sin restaurar. No optimizaciones nuevas.
+
+Isaac pide medir primero LMU con/sin su HUD y después continuar optimizando.
+Esto sustituye el orden anterior de comparación al final. PC reservado a
+ISA-996; sin subagentes. HUD original observado por Computer Use: Full,
+escala Normal; gráficos 1920x1080,120Hz, sin modificaciones. Candidato E16
+SHA92dbb6b0 verificado tras reinicio. Preparación en curso, todavía sin
+resultados ON/OFF. El banco anterior no medía CPU/RAM del juego: se prepara
+colector local separado con contadores Windows, PID/arranque verificados y
+CSV crudo. Smoke en menú es sólo tooling, no evidencia de rendimiento.
+No se ha autorizado ni implementado el envío por secciones.
+
+Checkpoint de medida: LMU PID8680, coche parado en boxes de La Sarthe,
+Vantare cerrado. Una captura Full de 60 s está en
+`C:/tmp/isa996-hud-full-1.csv` (29 muestras); no hay todavía captura Off
+ni comparación válida. El control nativo consigue navegar menús, pero
+Escape en cockpit no abre el menú ni tras reenfocar y volver a observar.
+Se requiere salir manualmente a boxes para cambiar HUD sin reiniciar la
+escena. HUD original Full sigue intacto. No continuar optimizaciones antes
+de cerrar esta comparación solicitada. Sin cambios productivos ni integración.
+
+## Nueva ronda autorizada: CPU inferior a dos puntos — 2026-09-06
+
+Checkpoint: E12 JSON único, E13 geometría estática, E14 ownership Engineer,
+E16 ownership del replay sin copia intermedia (además corrige alias del dirty
+state). Gates completos: Go, race focal,3177 tests frontend, lint/typecheck/
+build,24 tests del banco, digest/diff PASS. Primera E14 real2,60851% CPU,
+seis widgets/54 coches, cierre limpio; N1 no acredita <2.
+E15 CSS inicial inválida por fuente degraded; repetición live62 sin mejora
+clara: ningún CSS experimental conservado. LMU reiniciado, parrilla ahora62,
+no mezclar con54. Relative380→480 en perfil del banco para no cortar fila;
+captura revisada. A/B intercalado control/E16 N3 terminado, mismo perfil62
+en ambos brazos,60s+30s sin instrumentación. Candidata3,06185% CPU,
+393,47MiB RAM privada,0,18941% GPU agregada; control3,43304%,403,73MiB,
+0,19254%. Control ruidoso(CV6,30%>5%): no publicar ahorro global estable.
+Objetivo<2 **pendiente**. Propuesta de envío por secciones consultada a Isaac,
+**sin autorización todavía y sin implementación**. Orden histórico de comparar
+HUD después de optimizar sustituido por la petición posterior de medir primero.
+Comparación exploratoria y restauración Full descritas arriba. Detalle y
+crudos en [informe subdos](../../analysis/telemetria-v2-subdos-cpu-996.md).
+
+Isaac solicita continuar hacia **menos del 2% de CPU máquina media**, con los
+mismos seis widgets L1, buscando reducir también RAM y GPU. Referencia local:
+2,87947% y410,33MiB; todavía no acredita el nuevo objetivo. Mantener la frontera
+adaptador de simulador → Core semántico → proyección común → widgets puros;
+no bajar calidad, cadencia ni señales. Main trabaja sin subagentes, con
+atribución separada de las mediciones de aceptación, TDD y cortes reversibles.
+Mediciones terminadas y procesos Vantare cerrados limpiamente. Se libera
+la exclusividad de cómputo de ISA-1000; conservar LMU abierto y no cambiar
+HUD. Recuperar reserva antes de nuevas medidas, nunca solapar bancos.
+Primero perfilar renderer y asignaciones; no aumentar GOGC para trasladar
+indiscriminadamente el coste a RAM. Verificar validez de contadores GPU.
+Sin cambios de autoridad para integración, releases, secretos o dependencias.
+El cierre inferior documenta el objetivo anterior, no el nuevo.
+
+Isaac añade comparación final **después de las optimizaciones**: LMU con HUD,
+LMU sin HUD y LMU sin HUD con los seis widgets Vantare. Cambiar el HUD desde
+Ajustes usando computer use. Misma escena, medidas repetidas de CPU/RAM/GPU
+separando juego, Vantare y conjunto; RAM/VRAM en MiB y, si se informa porcentaje,
+con denominador explícito. No afirmar ganancia neta antes de medir.
+
+## Cierre local del objetivo CPU medio — 2026-09-06
+
+Build final **sin overrides presentes**: tres corridas3,00740 /2,82336 /
+2,80766%, media **2,87947% CPU propia /410,33MiB privados**. Seis widgets L1,
+LMU Practice54, jugador estacionario. Primera corrida ligeramente sobre3;
+máximo de muestra4,12457%. Objetivo alcanzado como media, no techo de picos,
+ni prueba frente a HUD LMU u otros equipos. Todos los finales live/seis,
+SHA estable, licencia autenticada, Hub reabierto en315–368ms, cierre limpio.
+Crudos `C:/tmp/isa996-final-default-{1,2,3}` y agregador
+`C:/tmp/isa996-summarize-final.ps1`; informe
+[seis widgets](../../analysis/telemetria-v2-seis-widgets-cpu-996.md).
+
+Se conserva también el intento `C:/tmp/isa996-final-{1,2,3}`: GOGC quedó
+vacío pero presente por el setter de .NET. Son controles GC100 (media3,26526%),
+no pruebas del default. Se corrigió sólo el lanzador con Remove-Item Env:GOGC,
+verificando ausencia antes de arrancar; no se cambió el producto para el banco.
+
+E8 (estados idénticos Engineer) +E9 (socket persistente conservando pull/ACK)
++E11 (GC300, paralelismo normal) dan tres medias2,91167 /2,75480 /2,69391%
+con seis widgets L1 reales y RAM media406,88MiB. No se reducen cadencias,
+calidad, observaciones, alertas ni audio. E3/E5/E6/E10 descartados; E7 sólo
+diagnóstico no publicable. ADR0094 documenta el experimento autorizado y sus
+límites; el informe seis-widgets conserva crudos y comparación.
+
+Se validó el candidato final **sin overrides**: socket por defecto,
+GC300 si no existe GOGC explícito, control temporal de repetición E8 retirado.
+Build `bin/vantare-isa996-final.exe`, SHA
+`441b1db7e723588243f4fab0e8b826a3a57ef80b2ada256cc8fb58e68d3fa680`.
+Go completo, frontend3169/3169, lint y build PASS; test adicional de cierre
+socket +focales16/16 y banco completo45/45 PASS. HappyDOM registra AbortError de teardown
+con exit0 y resumen verde; aviso heredado de chunk grande, no ocultados.
+Race focal socket/GC/Hub PASS; tras documentación final, roadmap42/42 PASS,
+digest regenerado/--check sin cambios y git diff --check PASS.
+PC liberado explícitamente a ISA-1000; no quedan bancos activos de este corte.
+Siguiente paso de producto: aceptación/revisión independiente e integración
+sólo con la autoridad correspondiente, no más barridos oportunistas. El dato
+no certifica un óptimo global ni finaliza automáticamente todo el plan maestro.
+Sin subagentes, commit, push, PR, CI remota, integración o release.
+
+## Historia de experimentos: E6 descartado, E8 exploratorio — 2026-09-06
+
+E6 ejecutado y descartado: una pareja, misma build SHA
+77f73c95a084eb1dc4587f73af303dae27981069257aee0835081cb6505d567f:
+loopback 5,9422% /423,48 MiB; Wails 5,3692% /397,67 MiB. Ambas seis widgets,
+live54 y cierre limpio. Fuente E6 propia retirada; archivo recuperable en
+C:/tmp/isa996-e6-discarded. E7 diagnóstico opacity0: 5,0422% /390,93 MiB;
+NO ahorro de producto, no publicable. No es la pintura el coste predominante.
+
+E8 diagnóstico real: 639 engineer:status y 639 engineer:stream en 10 segundos,
+sólo un estado distinto (C:/tmp/isa996-e8-event-counts.json). Se implementa
+deduplicación por igualdad completa de estado y Active; copia privada para
+comparar, snapshot inicial intacto, alertas/facts/audio sin cambios. TDD RED
+64 eventos duplicados, GREEN; suite Engineer completa PASS. Control temporal
+VANTARE_BENCH_REPEAT_ENGINEER_STATUS=1 permite repetir estados en misma build.
+Go completo sin fallos en el log y build E8 completada. SHA del ejecutable:
+7a7c15ee8ac34c7790dda9e8304642c9146b12b0ebdab5cc3759fe57f5038778.
+Primera pareja E8 visible: 5,21345% ->4,20680% CPU, RAM 413,88 ->409,16 MiB.
+N1 exploratorio; no acredita <3%. Diagnóstico separado confirma cero duplicados
+de Engineer en diez segundos estables y secuencia V2 progresiva.
+E9 en medida: socket local persistente, mismo ACK y cadencias; biblioteca
+websocket ya resuelta, sin nuevas dependencias. Origen/host/token por ventana,
+timeout, cierre y replay; Go completo, quince tests frontend, typecheck y
+build PASS. SHA d5933545c1b1b5770a52da8dd5cb02ec1943e8f4823813ba7a7ee27ec100352a.
+Control HTTP en la misma build. No subagentes ni integración.
+
+Isaac autoriza todos los experimentos de rendimiento dentro del objetivo con
+seis widgets. La autorización cubrió E6 (ya retirado) y permite seguir con
+cambios reversibles medidos. No LAN, cambios de calidad, dependencias,
+promoción ni workers. E8 sólo deduplica estado idéntico del ingeniero; conserva
+observaciones, alertas, audio y snapshots iniciales. PC coordinado con ISA-1000.
+
+## Bucle CPU con seis widgets — 2026-09-06 (E3 descartado, E4 medido)
+
+E3 se implementó y probó; NO se conserva. Una pareja con la misma build:
+HTTP 5,607% /399,56 MiB; nativo ExecJS 5,117% /798,39 MiB. Variante JSON.parse
+5,119% /894,81 MiB. N=1 exploratorio: regresión de RAM, no promesa de ahorro.
+Se retiraron archivos/hook/imports propios de E3; fuente recuperable en
+`C:/tmp/isa996-e3-discarded`, exes y crudos preservados. No fork Wails.
+
+E4 elimina el json.Marshal previo a PublishSnapshot, que ya serializa/valida.
+Métrica de bytes conservada con delta del contador bajo lock del productor.
+Test de wire/revisiones/histograma PASS; benchmark con consumidor activo N6
+684.633,5 ->478.900,5 ns/op (generado, no LMU). Go completo/build PASS.
+Primer banco físico E4: ~5,03% CPU /400,73 MiB, seis widgets reales, cierre limpio.
+No acredita <3% ni mejora estadística final. Build E4 SHA
+`db0e447b15f96f5417c2d98d6d455722e9bc1f6c07dd7f06c10488e2577082cc`.
+E5 prueba JSON textual en el mismo HTTP: primera corrida 5,257% /419,10 MiB,
+frente a E4 ~5,03% /400,73 MiB. N=1: no se acredita mejora; E5 retirado del
+candidato, conservando test del JSON original. Go completo y tests focales
+habían pasado. Diagnóstico legible completo: 45,87 pulls/s, cloneJSONInput
+475 ms/30 s, fetch 393 ms, encode 184 ms; layout 30 ms, estilos 43 ms.
+No demuestra saturación Wails ni equivale a A/B de producción.
+Siguiente propuesta requiere aprobación: comparar el mismo pull/ACK sobre
+HTTP loopback real, evitando el servicio virtual Wails. No implementado.
+Sin subagentes, commit/push/PR/integración. Actualizar al terminar el banco.
+
+Isaac exige <3% CPU total propio con **seis widgets** y autoriza priorizar
+la descarga del Hub. Main trabaja solo en ISA-996, sin subagentes; PC reservado
+para el banco, LMU intacto. Cambios arquitectónicos/refactors grandes requieren
+consulta previa. Sin integración ni publicación autorizada.
+
+E1 reutiliza HubLifecycle: con HUD activo, el Hub minimizado puede destruirse
+también a calidad L1/L2, conservando guardas de borradores y reapertura. No
+modifica la política ni la cadencia del HUD. Tests focales y `go test ./...`
+PASS; build local `bin/vantare-isa996-e1.exe` PASS. SHA256:
+`2177db069b7ea0afed2ab5bff58dda7911b3a87ec0fe5e984767f92edef61bf2`.
+CDP observó sólo overlay.html tras minimizar y reapertura ~350 ms; esto no
+equivale a aceptación visual completa ni a ahorro CPU demostrado.
+
+Perfil fijo `testdata/bench/huella-seis-l1.json`: tres Redline, Map Endurance,
+Fuel/Weather Original (no tienen ese renderer Endurance). Se verificaron seis
+renderers sin diagnóstico de variante y telemetría real de 54 vehículos.
+La primera prueba con dos variantes no soportadas queda descartada.
+
+El banco incorpora auxiliares descendientes y corrige intervalos CPU: reloj
+monotónico por proceso después de consultar GPU, no antes. Las muestras cortas
+anteriores no acreditan mejora. Repetición completada: tres parejas de 60 s con
+30 s de calentamiento declarado, en `C:/tmp/isa996-e1-steady-*`.
+E1: medias 5,801% -> 5,313% CPU y 464,68 -> 419,38 MiB privados. Cierres limpios.
+E2 elimina una copia redundante del buffer serializado; 2 -> 1 alloc/op en
+microbenchmark. Una corrida exploratoria E1+E2 da 5,348% CPU: no acredita
+mejora adicional de CPU total. Build E2 y Go completo PASS, banco 37/37 PASS.
+Frontend 3164/3165: único fallo de porcentajes en roadmap. Corregido texto
+público sin perder datos en informes; página focal 12/12 PASS y digest PASS.
+No afirmar frontend completo verde tras el último ajuste documental.
+[Informe completo y límites](../../analysis/telemetria-v2-seis-widgets-cpu-996.md).
+Objetivo <3% pendiente. La autorización de E3 se ejecutó y el experimento se
+descartó por RAM; ya no existe selector nativo en el código candidato.
+El transporte productivo sigue siendo HTTP con protocolo V2 intacto.
+Sin subagentes, commit ni integración. Otro cambio arquitectónico requiere consulta.
+
+## Atribución CPU directa — 2026-09-06
+
+Isaac solicita localizar el mayor consumo sin subagentes. Main ejecuta dos
+diagnósticos cortos sobre la build existente y documenta procesos, pprof y CDP
+en [atribución ISA-996](../../analysis/telemetria-v2-atribucion-cpu-996.md).
+Muestra breve ~5,685% CPU total observado: Go2,501%, WebViews3,164%,
+auxiliar0,0195%. Foco medido en transporte/procesamiento JSON; layout pequeño.
+No hay mejora implementada ni objetivo <3% acreditado. Parte nativa sin
+atribución fina; pprof incluye pilas cuya duración no equivale a CPU externa.
+Perfil JS minificado conserva crudo pero falla gate de legibilidad; traza PASS.
+Sin nuevos subagentes ni cambios productivos; PC liberado tras cierres normales.
+
+## Banco propio autorizado — 2026-09-06
+
+Isaac pide «haz tus propias mediciones», sustituyendo la reserva humana previa
+para este banco. Ocho capturas reales completadas con LMU, build `b8254121`,
+producto `db40f76e`, dos widgets Redline, cierre limpio y licencia activa.
+[Informe y límites](../../analysis/telemetria-v2-medidas-reales-996.md): RAM
+subtotal y frametimes disponibles; CPU de seis capturas descartada por redondeo
+del tooling, corregido y repetido en pareja corta. No comparación equivalente
+contra HUD ni build previa: no acredita óptimo ni ganancia global.
+Dos fixes mínimos del banco con regresiones 34/34 PASS. Sin cambios productivos.
+PC liberado a ISA-1000; LMU intacto, candidato de medida cerrado. Crudos locales,
+sin uploads ni integración de ISA-996. El banco de aceptación sigue pendiente.
+
+## Cierre local de mejoras — ISA-996
+
+Producto combinado `db40f76efd10a6c599ecdc6806670f851198f1f1`, base de
+medida `210340b8210da14102a4f9e49c5218517e3b37ce`, rama
+`vantareapp/isa-996-cierre-rendimiento`, worktree
+`C:/tmp/vantare-isa996-performance/vantare-v2`. No canal remoto.
+D1/D2/D3/D4 y S1/S2/S3 cerrados localmente con revisión independiente Muse
+Spark 1.3 Contributor xhigh y Ponytail full. Workers detenidos; sin trabajo
+delegado pendiente. Main completó D2 tras detener su worker y Muse revisó
+el diff final `e7c70e2e`: APPROVE, sin bloqueos. D2 ofrece degradación
+explícita Health/Status hasta epoch real nuevo, no replay dentro del mismo epoch.
+
+Go global final PASS; frontend 3165 tests/407 archivos PASS con dos workers,
+typecheck, lint y build PASS. Primer intento paralelo tuvo cuatro timeouts:
+se conserva en el informe, sin debilitar tests. Advertencia de chunks grandes
+heredada. Diez repeticiones focales D1/D2 PASS tras RED real de gap/overflow.
+N10 A/A+A/B del candidato exacto: runtime64 sintético 214.155→158.577,5 ns/op
+(mediana observada −26%), 253–304→210 allocations/op; 135 líneas productivas
+netas menos. No equivale a FPS, RAM residente ni GPU. Baseline shadow puede
+auto-desactivarse; límites, hashes y crudos en el informe ISA-996.
+
+Fase 2 cerrada localmente; fase 3 no iniciada y contador no consumido.
+Siguiente paso: banco real aportado por Isaac para impacto total/HUD; no
+se inventan experimentos sin evidencia ni se afirma óptimo global.
+No apps/LMU, rebaja de Hz, secretos, dependencias nuevas, push/PR/merge/release.
+Informe: [cierre ISA-996](../../analysis/telemetria-v2-cierre-rendimiento-996.md).
+
+## Microcortes D3/D4 cerrados localmente — ISA-994 / ISA-995
+
+Isaac aprueba implementar los microcortes del informe #987. Dos workers Muse
+Spark 1.3 Contributor xhigh + Ponytail full, sin delegación anidada, sobre
+base documental `7cd247864050831bd7125745f5dd08b383218c6c` (producto `28bac676`).
+Cada issue usa `C:/tmp/vantare-isa-N-microcorte-v2/vantare-v2` y rama
+`vantareapp/isa-N-microcorte-v2` con N=994 (timeout body HTTP) o 995 (Damage).
+Sesiones: `ses_f8c88c854ffeirLqeDpwPVybEr` y `ses_f8c88c619ffe9n0Xas6Hl2N5jk`.
+Workers terminaron RED/GREEN; main revisó diffs y consolidó documentación.
+Ambos cortes tienen APPROVE adversarial en snapshots independientes:
+`ses_f8c84a563ffeRgE8zmMyvCHn7B` (#994) y
+`ses_f8c84a134ffe7bKec54Sh46fvn` (#995).
+#994 cerrado localmente en `cc3b3fa9ab5f2d7c73b8a9a982e0bed9265128b8`:
+3165 tests/407 archivos, typecheck, lint, build y checks documentales PASS.
+#995 cerrado localmente en `be39faf73fac45ea14bdd9229c61dc792f7369e7`,
+producto `b11889f7`: frontend build y Go global PASS (125 paquetes con tests,
+15 sin tests), gofmt y checks documentales PASS. Cada rama contiene sólo su
+propio microcorte. Checkpoint previo a #996; candidato combinado actual arriba.
+Sin apps/LMU, cambios de Hz, nuevas dependencias, push/PR/merge/promoción.
+Engineer D1/D2 y simplificaciones S1/S2/S3 pasan a ejecución bajo #996.
 
 ## Auditoría integral V2 consolidada — 2026-09-05, ISA-987
 

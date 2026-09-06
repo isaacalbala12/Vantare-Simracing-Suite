@@ -1,0 +1,60 @@
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/engine
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkEngineS32Apply 	   31977	      3603 ns/op	    5520 B/op	      13 allocs/op
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/engine
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkEngineS32Apply 	   36655	      3169 ns/op	    5520 B/op	      13 allocs/op
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/engine
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkEngineS32Apply 	   31590	      3421 ns/op	    5520 B/op	      13 allocs/op
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/engine
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkEngineS32Apply 	   38281	      3557 ns/op	    5520 B/op	      13 allocs/op
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/engine
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkEngineS32Apply 	   30786	      3483 ns/op	    5520 B/op	      13 allocs/op
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/engine
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkEngineS32Apply 	   32559	      3398 ns/op	    5520 B/op	      13 allocs/op
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/engine
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkEngineS32Apply 	   36496	      3470 ns/op	    5520 B/op	      13 allocs/op
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/engine
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkEngineS32Apply 	   36716	      3579 ns/op	    5520 B/op	      13 allocs/op
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/engine
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkEngineS32Apply 	   36326	      4052 ns/op	    5520 B/op	      13 allocs/op
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/engine
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkEngineS32Apply 	   38504	      3491 ns/op	    5520 B/op	      13 allocs/op
+PASS

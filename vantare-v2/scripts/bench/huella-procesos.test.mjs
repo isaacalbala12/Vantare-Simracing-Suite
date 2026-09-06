@@ -8,6 +8,17 @@ import { assignRendererRoles, classifyHygieneProcesses, classifyProcesses, comma
 const ownProfile = String.raw`C:\Users\isaac\AppData\Roaming\vantare-isa924.exe\EBWebView`;
 const browser = String.raw`"C:\Program Files (x86)\Microsoft\EdgeWebView\Application\151.0.4129.107\msedgewebview2.exe" --embedded-browser-webview=1 --webview-exe-name=vantare-isa924.exe --user-data-dir="${ownProfile}" --remote-debugging-port=9247`;
 const renderer = `${browser} --type=renderer --renderer-client-id=6`;
+test("incluye auxiliares descendientes sin sumar procesos ajenos", () => {
+  const records = [
+    {ProcessId: 3, ParentProcessId: 2, Name: "conhost.exe"},
+    {ProcessId: 2, ParentProcessId: 1, Name: "PresentMon.exe"},
+    {ProcessId: 1, ParentProcessId: 99, Name: "vantare-isa924.exe"},
+    {ProcessId: 4, ParentProcessId: 99, Name: "PresentMon.exe"},
+  ];
+  const result = classifyProcesses(records, {hostPid: 1, exeName: "vantare-isa924.exe"});
+  assert.deepEqual(result.map(({pid}) => pid).sort(), [1, 2, 3]);
+  assert.equal(result.find(({pid}) => pid === 2).role, "auxiliary");
+});
 const foreign = String.raw`"C:\Program Files (x86)\Microsoft\EdgeWebView\Application\151.0.4129.107\msedgewebview2.exe" --type=gpu-process --user-data-dir="C:\Users\isaac\AppData\Local\Packages\MicrosoftWindows.Client.CBS_x\LocalState\EBWebView"`;
 
 test("extrae switches citados de líneas WebView2 reales", () => {

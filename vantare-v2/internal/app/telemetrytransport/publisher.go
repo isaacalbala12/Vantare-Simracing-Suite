@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"sync"
 	"time"
+
+	"github.com/vantare/overlays/v2/internal/telemetry/projection/overlayv2"
 )
 
 var (
@@ -44,12 +46,14 @@ const (
 )
 
 type PublisherEvent struct {
-	Product PublisherProduct
-	Kind    PublisherEventKind
-	Data    json.RawMessage
+	sections *overlaySections
+	Product  PublisherProduct
+	Kind     PublisherEventKind
+	Data     json.RawMessage
 }
 
 type PublisherConfig struct {
+	SectionEncoding bool
 	Product         PublisherProduct
 	MaxPayloadBytes int
 	MaxSubscribers  int
@@ -93,7 +97,8 @@ type bytesSample struct {
 }
 
 type Publisher struct {
-	mu sync.Mutex
+	sectionEncoding bool
+	mu              sync.Mutex
 
 	closed           bool
 	product          PublisherProduct
@@ -152,7 +157,8 @@ func newPublisher(config PublisherConfig) (*Publisher, error) {
 		clock = time.Now
 	}
 	return &Publisher{
-		product: config.Product, maxPayload: maximum, maxSubscribers: subscribers,
+		sectionEncoding: config.SectionEncoding,
+		product:         config.Product, maxPayload: maximum, maxSubscribers: subscribers,
 		bytesWindow: window, now: clock,
 		subscribers: make(map[*PublisherSubscription]*publisherSubscriber),
 		metrics:     PublisherMetrics{MaxPayloadBytes: maximum, MaxSubscribers: subscribers},
@@ -160,7 +166,20 @@ func newPublisher(config PublisherConfig) (*Publisher, error) {
 }
 
 func (publisher *Publisher) PublishSnapshot(deliveryRevision uint64, payload any) error {
-	encoded, err := publisherPayload(payload)
+	var encoded json.RawMessage
+	var sections *overlaySections
+	var err error
+	if update, ok := payload.(overlayv2.UpdateV2); ok && publisher.sectionEncoding {
+		sections, err = encodeOverlaySections(update)
+		if err != nil {
+			return err
+		}
+	}
+	if sections != nil {
+		encoded = sections.full()
+	} else {
+		encoded, err = publisherPayload(payload)
+	}
 	if err != nil {
 		return err
 	}
@@ -179,7 +198,7 @@ func (publisher *Publisher) PublishSnapshot(deliveryRevision uint64, payload any
 	if publisher.hasSnapshot {
 		publisher.metrics.SnapshotReplacements++
 	}
-	publisher.latest = PublisherEvent{Product: publisher.product, Kind: PublisherEventSnapshot, Data: encoded}
+	publisher.latest = PublisherEvent{Product: publisher.product, Kind: PublisherEventSnapshot, Data: encoded, sections: sections}
 	publisher.hasSnapshot = true
 	publisher.snapshotRevision = deliveryRevision
 	publisher.metrics.SnapshotPublications++
@@ -543,7 +562,8 @@ func publisherPayload(payload any) (json.RawMessage, error) {
 	if len(trimmed) < 2 || trimmed[0] != '{' || trimmed[len(trimmed)-1] != '}' {
 		return nil, ErrInvalidPayload
 	}
-	return append(json.RawMessage(nil), trimmed...), nil
+	// Marshal already returns an owned buffer, even for RawMessage inputs.
+	return json.RawMessage(trimmed), nil
 }
 
 func clonePublisherEvent(event PublisherEvent) PublisherEvent {

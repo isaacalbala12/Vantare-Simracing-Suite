@@ -1,0 +1,50 @@
+[
+  {
+    "Side": "baseline",
+    "Benchmark": "BenchmarkIsa998RuntimeSink/2vehiculos",
+    "Samples": 10,
+    "MedianNs": 94214.0,
+    "MinNs": 47864.0,
+    "MaxNs": 101758.0,
+    "MinBytes": 63565.0,
+    "MaxBytes": 103766.0,
+    "MinAllocs": 48.0,
+    "MaxAllocs": 168.0
+  },
+  {
+    "Side": "baseline",
+    "Benchmark": "BenchmarkIsa998RuntimeSink/64vehiculos",
+    "Samples": 10,
+    "MedianNs": 214155.0,
+    "MinNs": 187680.0,
+    "MaxNs": 306195.0,
+    "MinBytes": 211895.0,
+    "MaxBytes": 221697.0,
+    "MinAllocs": 253.0,
+    "MaxAllocs": 304.0
+  },
+  {
+    "Side": "candidate",
+    "Benchmark": "BenchmarkIsa998RuntimeSink/2vehiculos",
+    "Samples": 10,
+    "MedianNs": 43146.0,
+    "MinNs": 38145.0,
+    "MaxNs": 46436.0,
+    "MinBytes": 39364.0,
+    "MaxBytes": 39508.0,
+    "MinAllocs": 17.0,
+    "MaxAllocs": 17.0
+  },
+  {
+    "Side": "candidate",
+    "Benchmark": "BenchmarkIsa998RuntimeSink/64vehiculos",
+    "Samples": 10,
+    "MedianNs": 158577.5,
+    "MinNs": 146043.0,
+    "MaxNs": 167885.0,
+    "MinBytes": 146426.0,
+    "MaxBytes": 147567.0,
+    "MinAllocs": 210.0,
+    "MaxAllocs": 210.0
+  }
+]

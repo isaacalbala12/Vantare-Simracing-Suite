@@ -174,10 +174,17 @@ func ResolveAutoRequested(requested Policy, level Level, reason Reason) Policy {
 }
 
 // CadenceFor escala los tres tiers existentes y mantiene el techo de rancio
-// en un segundo. Los niveles 1 y 2 son paridad exacta con la cadencia actual.
+// en un segundo. Máximo sirve instrumentos a60Hz y posiciones compartidas
+// a30Hz; Standings visual puede pintar más lento sin congelar el mapa.
 func CadenceFor(level Level) overlayv2.SectionCadence {
 	base := overlayv2.DefaultSectionCadence()
 	switch level {
+	case LevelMaximum:
+		base.Fast = time.Second / 60
+		base.Relative = time.Second / 30
+		base.Standings = time.Second / 30
+		base.Fuel = time.Second / 2
+		return base
 	case LevelBalanced:
 		return scaledCadence(base, 3, 2)
 	case LevelSaving:
@@ -206,9 +213,9 @@ func scaledCadence(base overlayv2.SectionCadence, numerator, denominator int64) 
 // WidgetHzFor devuelve la tabla cerrada de la spec, indexada por widgetType.
 func WidgetHzFor(level Level) map[string]WidgetRate {
 	column := map[Level][]WidgetRate{
-		LevelMaximum:  {Monitor(), Monitor(), Monitor(), Monitor(), Hertz(60), Hertz(60), Hertz(60), Hertz(60), Hertz(30), Hertz(30), Hertz(30), Hertz(20), Hertz(10), Hertz(5), Hertz(2), Hertz(5), Hertz(5), Hertz(1), Event(), Event()},
-		LevelHigh:     {Hertz(60), Hertz(60), Hertz(60), Hertz(60), Hertz(30), Hertz(30), Hertz(30), Hertz(30), Hertz(20), Hertz(20), Hertz(20), Hertz(10), Hertz(5), Hertz(2), Hertz(1), Hertz(2), Hertz(2), Hertz(1), Event(), Event()},
-		LevelBalanced: {Hertz(40), Hertz(40), Hertz(40), Hertz(40), Hertz(20), Hertz(20), Hertz(20), Hertz(20), Hertz(15), Hertz(15), Hertz(15), Hertz(5), Hertz(4), Hertz(1), Dirty(), Hertz(1), Hertz(1), Dirty(), Event(), Event()},
+		LevelMaximum:  {Hertz(60), Hertz(60), Hertz(60), Hertz(60), Hertz(60), Hertz(60), Hertz(60), Hertz(30), Hertz(30), Hertz(30), Hertz(30), Hertz(4), Hertz(10), Hertz(2), Hertz(2), Hertz(5), Hertz(5), Hertz(1), Event(), Event()},
+		LevelHigh:     {Hertz(60), Hertz(60), Hertz(60), Hertz(60), Hertz(30), Hertz(30), Hertz(30), Hertz(30), Hertz(20), Hertz(20), Hertz(20), Hertz(4), Hertz(5), Hertz(2), Hertz(1), Hertz(2), Hertz(2), Hertz(1), Event(), Event()},
+		LevelBalanced: {Hertz(40), Hertz(40), Hertz(40), Hertz(40), Hertz(20), Hertz(20), Hertz(20), Hertz(20), Hertz(15), Hertz(15), Hertz(15), Hertz(4), Hertz(4), Hertz(1), Dirty(), Hertz(1), Hertz(1), Dirty(), Event(), Event()},
 		LevelSaving:   {Hertz(30), Hertz(30), Hertz(30), Hertz(30), Hertz(15), Hertz(15), Hertz(10), Hertz(10), Hertz(10), Hertz(10), Hertz(10), Hertz(4), Hertz(2), Dirty(), Dirty(), Dirty(), Dirty(), Dirty(), Event(), Event()},
 		LevelMinimum:  {Hertz(20), Hertz(20), Hertz(20), Hertz(20), Hertz(10), Hertz(10), Hertz(5), Hertz(5), Hertz(5), Hertz(5), Hertz(5), Hertz(2), Dirty(), Dirty(), Dirty(), Dirty(), Dirty(), Dirty(), Event(), Event()},
 	}

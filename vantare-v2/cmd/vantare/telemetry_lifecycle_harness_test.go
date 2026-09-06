@@ -451,6 +451,12 @@ func TestOverlayPullHTTPServiceRespondsOnlyToTheRequestingWindowAndClosesConsume
 	if pullResponse.SessionID != "session-1" || pullResponse.Delivery != 1 {
 		t.Fatalf("pull response = %#v", pullResponse)
 	}
+	if len(pullResponse.Events) != 1 {
+		t.Fatalf("events = %d", len(pullResponse.Events))
+	}
+	if string(pullResponse.Events[0].Data) != `{"frame":null,"revision":1,"source":{"state":"stopped"}}` {
+		t.Fatalf("wire changed the original telemetry JSON: %s", pullResponse.Events[0].Data)
+	}
 	if _, active := registry.Lookup(telemetrytransport.ProductOverlayV2); !active {
 		t.Fatal("pull handler did not activate the overlay consumer")
 	}

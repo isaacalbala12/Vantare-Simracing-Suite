@@ -113,6 +113,11 @@ func (consumer *recordingEngineerConsumer) ConsumeFact(value engineerprojection.
 	return consumer.factErr
 }
 
+func (consumer *recordingEngineerConsumer) ConsumeFactBoundary(*engineerprojection.FactResyncRequiredError) error {
+	consumer.calls = append(consumer.calls, "fact-boundary")
+	return nil
+}
+
 func engineerRuntimeBatch() telemetrycore.Batch {
 	received := time.Date(2026, 8, 1, 12, 0, 0, 0, time.UTC)
 	run := identity.RunIdentity{Event: "event", Session: "session", Vehicle: "player", Team: "team", Driver: "driver"}

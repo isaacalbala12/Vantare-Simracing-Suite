@@ -298,6 +298,10 @@ func (panicEngineerConsumer) ConsumeObservation(engineerprojection.ObservationSn
 }
 func (panicEngineerConsumer) ConsumeFact(engineerprojection.FactEnvelopeV1) error { return nil }
 
+func (panicEngineerConsumer) ConsumeFactBoundary(*engineerprojection.FactResyncRequiredError) error {
+	return nil
+}
+
 type slowEngineerConsumer struct {
 	delay time.Duration
 	mu    sync.Mutex
@@ -315,6 +319,10 @@ func (consumer *slowEngineerConsumer) ConsumeObservation(engineerprojection.Obse
 	return nil
 }
 func (consumer *slowEngineerConsumer) ConsumeFact(engineerprojection.FactEnvelopeV1) error {
+	return nil
+}
+
+func (consumer *slowEngineerConsumer) ConsumeFactBoundary(*engineerprojection.FactResyncRequiredError) error {
 	return nil
 }
 func (consumer *slowEngineerConsumer) observationStarts() []time.Time {
@@ -360,6 +368,10 @@ func (consumer *blockingEngineerConsumer) ConsumeObservation(value engineerproje
 }
 
 func (*blockingEngineerConsumer) ConsumeFact(engineerprojection.FactEnvelopeV1) error { return nil }
+
+func (*blockingEngineerConsumer) ConsumeFactBoundary(*engineerprojection.FactResyncRequiredError) error {
+	return nil
+}
 
 func (consumer *blockingEngineerConsumer) sequences() []uint64 {
 	consumer.mu.Lock()
@@ -413,6 +425,10 @@ func (consumer *factRecordingEngineerConsumer) ConsumeFact(value engineerproject
 	if consumer.block {
 		<-consumer.release
 	}
+	return nil
+}
+
+func (*factRecordingEngineerConsumer) ConsumeFactBoundary(*engineerprojection.FactResyncRequiredError) error {
 	return nil
 }
 

@@ -1,7 +1,8 @@
 param(
     [Parameter(Mandatory = $true)]
     [string]$EnvFile,
-    [string]$OutFile = 'bin/vantare-measurement.exe'
+    [string]$OutFile = 'bin/vantare-measurement.exe',
+    [switch]$ReadableFrontend
 )
 
 $ErrorActionPreference = 'Stop'
@@ -47,7 +48,12 @@ try {
 
     Push-Location $repoRoot
     try {
-        corepack pnpm --dir frontend build
+        if ($ReadableFrontend) {
+            # Attribution only: this build must not be used as a production A/B result.
+            corepack pnpm --dir frontend build --minify false
+        } else {
+            corepack pnpm --dir frontend build
+        }
         if ($LASTEXITCODE -ne 0) { throw "frontend build falló con código $LASTEXITCODE." }
         & powershell -NoProfile -ExecutionPolicy Bypass -File tools\generate_supabase_config.ps1 -OutFile $generatedPath
         if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $generatedPath)) {

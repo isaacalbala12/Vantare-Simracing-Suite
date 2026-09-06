@@ -301,17 +301,13 @@ describe('StudioRoute', () => {
     const request = requests.at(-1);
     expect(request).toBeDefined();
     await act(async () => {
-      resolvePull?.({
-        ok: true,
-        status: 200,
-        json: async () => ({
+      resolvePull?.(new Response(JSON.stringify({
           sessionId: request?.sessionId,
           delivery: 1,
           events: [
             { name: 'telemetry:overlay-v2:snapshot', data: JSON.parse(goldenV2Raw) },
           ],
-        }),
-      } as Response);
+        }), {status: 200, headers: {'Content-Type': 'application/json'}}));
       await Promise.resolve();
     });
     act(() => runScheduledFrame?.());

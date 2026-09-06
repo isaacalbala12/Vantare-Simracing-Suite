@@ -1,0 +1,110 @@
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/app
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkIsa998RuntimeSink/2vehiculos         	    1906	     97093 ns/op	  103204 B/op	     167 allocs/op
+--- BENCH: BenchmarkIsa998RuntimeSink/2vehiculos
+    telemetry_isa998_perf_bench_test.go:66: isa998: baseline shadow presente, disabled=false campos=0 (budget default 2ms con auto-disable)
+BenchmarkIsa998RuntimeSink/64vehiculos        	     578	    202708 ns/op	  220279 B/op	     293 allocs/op
+--- BENCH: BenchmarkIsa998RuntimeSink/64vehiculos
+    telemetry_isa998_perf_bench_test.go:66: isa998: baseline shadow presente, disabled=true campos=0 (budget default 2ms con auto-disable)
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/app
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkIsa998RuntimeSink/2vehiculos         	    2655	     99307 ns/op	   96267 B/op	     145 allocs/op
+--- BENCH: BenchmarkIsa998RuntimeSink/2vehiculos
+    telemetry_isa998_perf_bench_test.go:66: isa998: baseline shadow presente, disabled=true campos=0 (budget default 2ms con auto-disable)
+BenchmarkIsa998RuntimeSink/64vehiculos        	     530	    219603 ns/op	  212116 B/op	     258 allocs/op
+--- BENCH: BenchmarkIsa998RuntimeSink/64vehiculos
+    telemetry_isa998_perf_bench_test.go:66: isa998: baseline shadow presente, disabled=true campos=0 (budget default 2ms con auto-disable)
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/app
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkIsa998RuntimeSink/2vehiculos         	    1670	     91335 ns/op	   96048 B/op	     148 allocs/op
+--- BENCH: BenchmarkIsa998RuntimeSink/2vehiculos
+    telemetry_isa998_perf_bench_test.go:66: isa998: baseline shadow presente, disabled=true campos=0 (budget default 2ms con auto-disable)
+BenchmarkIsa998RuntimeSink/64vehiculos        	     505	    219744 ns/op	  221697 B/op	     304 allocs/op
+--- BENCH: BenchmarkIsa998RuntimeSink/64vehiculos
+    telemetry_isa998_perf_bench_test.go:66: isa998: baseline shadow presente, disabled=true campos=0 (budget default 2ms con auto-disable)
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/app
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkIsa998RuntimeSink/2vehiculos         	    2220	     53606 ns/op	   65576 B/op	      54 allocs/op
+--- BENCH: BenchmarkIsa998RuntimeSink/2vehiculos
+    telemetry_isa998_perf_bench_test.go:66: isa998: baseline shadow presente, disabled=true campos=0 (budget default 2ms con auto-disable)
+BenchmarkIsa998RuntimeSink/64vehiculos        	     534	    216470 ns/op	  212104 B/op	     258 allocs/op
+--- BENCH: BenchmarkIsa998RuntimeSink/64vehiculos
+    telemetry_isa998_perf_bench_test.go:66: isa998: baseline shadow presente, disabled=true campos=0 (budget default 2ms con auto-disable)
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/app
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkIsa998RuntimeSink/2vehiculos         	    2234	     47864 ns/op	   63565 B/op	      48 allocs/op
+--- BENCH: BenchmarkIsa998RuntimeSink/2vehiculos
+    telemetry_isa998_perf_bench_test.go:66: isa998: baseline shadow presente, disabled=true campos=0 (budget default 2ms con auto-disable)
+BenchmarkIsa998RuntimeSink/64vehiculos        	     612	    193520 ns/op	  211895 B/op	     253 allocs/op
+--- BENCH: BenchmarkIsa998RuntimeSink/64vehiculos
+    telemetry_isa998_perf_bench_test.go:66: isa998: baseline shadow presente, disabled=true campos=0 (budget default 2ms con auto-disable)
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/app
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkIsa998RuntimeSink/2vehiculos         	    2089	    101758 ns/op	  103499 B/op	     167 allocs/op
+--- BENCH: BenchmarkIsa998RuntimeSink/2vehiculos
+    telemetry_isa998_perf_bench_test.go:66: isa998: baseline shadow presente, disabled=false campos=0 (budget default 2ms con auto-disable)
+BenchmarkIsa998RuntimeSink/64vehiculos        	     553	    211840 ns/op	  212048 B/op	     256 allocs/op
+--- BENCH: BenchmarkIsa998RuntimeSink/64vehiculos
+    telemetry_isa998_perf_bench_test.go:66: isa998: baseline shadow presente, disabled=true campos=0 (budget default 2ms con auto-disable)
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/app
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkIsa998RuntimeSink/2vehiculos         	    2220	     97413 ns/op	  103766 B/op	     168 allocs/op
+--- BENCH: BenchmarkIsa998RuntimeSink/2vehiculos
+    telemetry_isa998_perf_bench_test.go:66: isa998: baseline shadow presente, disabled=false campos=0 (budget default 2ms con auto-disable)
+BenchmarkIsa998RuntimeSink/64vehiculos        	     393	    306195 ns/op	  212690 B/op	     272 allocs/op
+--- BENCH: BenchmarkIsa998RuntimeSink/64vehiculos
+    telemetry_isa998_perf_bench_test.go:66: isa998: baseline shadow presente, disabled=true campos=0 (budget default 2ms con auto-disable)
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/app
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkIsa998RuntimeSink/2vehiculos         	    1730	     99053 ns/op	  102826 B/op	     166 allocs/op
+--- BENCH: BenchmarkIsa998RuntimeSink/2vehiculos
+    telemetry_isa998_perf_bench_test.go:66: isa998: baseline shadow presente, disabled=false campos=0 (budget default 2ms con auto-disable)
+BenchmarkIsa998RuntimeSink/64vehiculos        	     429	    235372 ns/op	  212505 B/op	     268 allocs/op
+--- BENCH: BenchmarkIsa998RuntimeSink/64vehiculos
+    telemetry_isa998_perf_bench_test.go:66: isa998: baseline shadow presente, disabled=true campos=0 (budget default 2ms con auto-disable)
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/app
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkIsa998RuntimeSink/2vehiculos         	    1948	     83706 ns/op	   92147 B/op	     134 allocs/op
+--- BENCH: BenchmarkIsa998RuntimeSink/2vehiculos
+    telemetry_isa998_perf_bench_test.go:66: isa998: baseline shadow presente, disabled=true campos=0 (budget default 2ms con auto-disable)
+BenchmarkIsa998RuntimeSink/64vehiculos        	     500	    206541 ns/op	  212216 B/op	     260 allocs/op
+--- BENCH: BenchmarkIsa998RuntimeSink/64vehiculos
+    telemetry_isa998_perf_bench_test.go:66: isa998: baseline shadow presente, disabled=true campos=0 (budget default 2ms con auto-disable)
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/app
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkIsa998RuntimeSink/2vehiculos         	    2206	     53090 ns/op	   67611 B/op	      60 allocs/op
+--- BENCH: BenchmarkIsa998RuntimeSink/2vehiculos
+    telemetry_isa998_perf_bench_test.go:66: isa998: baseline shadow presente, disabled=true campos=0 (budget default 2ms con auto-disable)
+BenchmarkIsa998RuntimeSink/64vehiculos        	     535	    187680 ns/op	  212101 B/op	     258 allocs/op
+--- BENCH: BenchmarkIsa998RuntimeSink/64vehiculos
+    telemetry_isa998_perf_bench_test.go:66: isa998: baseline shadow presente, disabled=true campos=0 (budget default 2ms con auto-disable)
+PASS

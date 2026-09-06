@@ -9,11 +9,42 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetry/projection/overlayv2"
 )
 
-func TestCadenceForLevelsOneAndTwoMatchesCurrentDefault(t *testing.T) {
+func TestCadenceForLevelTwoMatchesCurrentDefault(t *testing.T) {
 	want := overlayv2.DefaultSectionCadence()
-	for _, level := range []Level{LevelMaximum, LevelHigh} {
+	for _, level := range []Level{LevelHigh} {
 		if got := CadenceFor(level); !reflect.DeepEqual(got, want) {
 			t.Fatalf("CadenceFor(%d) = %+v, want paridad exacta %+v", level, got, want)
+		}
+	}
+}
+
+func TestMaximumCadenceServesFastestSharedConsumer(t *testing.T) {
+	c := CadenceFor(LevelMaximum)
+	for section, hz := range map[overlayv2.Section]int{
+		overlayv2.SectionPlayer: 60, overlayv2.SectionControls: 60,
+		overlayv2.SectionDelta: 60, overlayv2.SectionRelative: 30,
+		overlayv2.SectionStandings: 30, // map shares standings positions
+		overlayv2.SectionFuel:      2,
+	} {
+		if got := c.IntervalFor(section); got != time.Second/time.Duration(hz) {
+			t.Errorf("%s interval=%v want %dHz", section, got, hz)
+		}
+	}
+	if c.Spotter != overlayv2.DefaultSectionCadence().Spotter || c.Session != overlayv2.DefaultSectionCadence().Session {
+		t.Fatal("safety cadence changed")
+	}
+}
+
+func TestApprovedWidgetCeilings(t *testing.T) {
+	for widget, capHz := range map[string]int{"standings": 4, "relative": 30, "track-map": 30, "pedals": 60, "delta": 60, "fuel-strategy": 2} {
+		for level := LevelMaximum; level <= LevelMinimum; level++ {
+			rate := WidgetHzFor(level)[widget]
+			if hz, ok := rate.Hertz(); ok && hz > capHz || rate.IsMonitor() {
+				t.Errorf("%s level%d exceeds %dHz: %+v", widget, level, capHz, rate)
+			}
+		}
+		if hz, ok := WidgetHzFor(LevelMaximum)[widget].Hertz(); !ok || hz != capHz {
+			t.Errorf("maximum %s want %dHz", widget, capHz)
 		}
 	}
 }

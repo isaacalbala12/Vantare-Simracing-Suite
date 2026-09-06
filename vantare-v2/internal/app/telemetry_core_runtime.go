@@ -59,11 +59,16 @@ type EngineerProjectionConsumer interface {
 	ConsumeSourceStatus(engineerprojection.SourceStatusV1) error
 	ConsumeObservation(engineerprojection.ObservationSnapshotV1) error
 	ConsumeFact(engineerprojection.FactEnvelopeV1) error
+	// ConsumeFactBoundary recibe un gap de facts irrecuperable desde el
+	// puerto (overflow mas alla de la retencion o discontinuidad real). No
+	// inventa facts ni cambia conexion/fuente; solo degradacion explicita.
+	ConsumeFactBoundary(*engineerprojection.FactResyncRequiredError) error
 }
 
 // TelemetryCoreRuntimeConfig configures the canonical product runtime.
 type TelemetryCoreRuntimeConfig struct {
-	Enabled bool
+	OverlaySections bool
+	Enabled         bool
 	// PerformancePolicy es el nivel efectivo inicial decidido desde Ajustes.
 	PerformancePolicy performancepolicy.Policy
 	// Now is injectable for deterministic freshness tests. It defaults to
@@ -96,12 +101,6 @@ type TelemetryCoreRuntimeConfig struct {
 	// StrategyPublicTransport restores the previous Strategy Hub, Wails and
 	// SSE publication for one rollback cycle. It is off by default.
 	StrategyPublicTransport bool
-	// TelemetryShadowEvery controls semantic comparison sampling while the
-	// engine flag is on. Zero uses one comparison every 30 accepted batches.
-	TelemetryShadowEvery uint64
-	// TelemetryShadowBudget bounds one isolated legacy shadow application.
-	// Values <= 0 use two milliseconds; overruns disable only the shadow.
-	TelemetryShadowBudget time.Duration
 	// Emit runs on an adapter goroutine owned by Stop. Implementations must
 	// return from Emit and must not call Stop synchronously from that callback.
 	Emitter  telemetrytransport.EventEmitter
@@ -141,8 +140,6 @@ type TelemetryCoreMetrics struct {
 	PayloadBytes                 map[string]TelemetryPayloadPercentiles
 	LifecycleTransitions         map[string]uint64
 	StrategyTransport            telemetrytransport.HubMetrics
-	ShadowMismatches             map[string]uint64
-	ShadowDisabled               bool
 	EngineSequence               uint64
 	SlotGraceReopen              uint64
 	SlotGenerationBumps          uint64
@@ -200,7 +197,6 @@ type TelemetryCoreRuntime struct {
 	coord                    *telemetrycore.SessionCoordinator
 	derive                   *derive.Pipeline
 	engine                   *telemetryengine.TelemetryEngine
-	shadow                   *telemetryShadow
 	engineer                 EngineerProjectionConsumer
 	engineerPort             *engineerPort
 	engineerManifest         engineerprojection.Manifest
@@ -268,7 +264,8 @@ func NewTelemetryCoreRuntime(config TelemetryCoreRuntimeConfig) (*TelemetryCoreR
 		engineerAsyncPort = *config.EngineerAsyncPort
 	}
 	overlayV2Publishers, err := telemetrytransport.NewPublisherRegistry(telemetrytransport.PublisherConfig{
-		Product: telemetrytransport.ProductOverlayV2,
+		Product:         telemetrytransport.ProductOverlayV2,
+		SectionEncoding: config.OverlaySections,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("build Overlay v2 publisher registry: %w", err)
@@ -333,7 +330,6 @@ func NewTelemetryCoreRuntime(config TelemetryCoreRuntimeConfig) (*TelemetryCoreR
 		coord:                    coordinator,
 		derive:                   pipeline,
 		engine:                   telemetryengine.New(reducer, coordinator, pipeline),
-		shadow:                   newTelemetryShadow(config.TelemetryShadowEvery, config.TelemetryShadowBudget, now),
 		engineer:                 config.Engineer,
 		engineerManifest:         engineerManifest,
 		capabilities:             capabilities,
@@ -458,7 +454,6 @@ func (runtime *TelemetryCoreRuntime) Metrics() TelemetryCoreMetrics {
 		return TelemetryCoreMetrics{}
 	}
 	details := runtime.metricStore.snapshot()
-	shadow := runtime.shadow.metrics()
 	mapper := runtime.simulator.MapperMetrics()
 	coordinator := runtime.coord.Metrics()
 	return TelemetryCoreMetrics{
@@ -481,8 +476,6 @@ func (runtime *TelemetryCoreRuntime) Metrics() TelemetryCoreMetrics {
 		PayloadBytes:                 details.payloadBytes,
 		LifecycleTransitions:         details.lifecycleTransitions,
 		StrategyTransport:            strategyHubMetrics(runtime.strategyHub),
-		ShadowMismatches:             shadow.mismatches,
-		ShadowDisabled:               shadow.disabled,
 		EngineSequence:               runtime.counters.engineSequence.Load(),
 		SlotGraceReopen:              mapper.SlotGraceReopen,
 		SlotGenerationBumps:          mapper.SlotGenerationBumps,
@@ -973,7 +966,6 @@ func (sink runtimeBatchSink) WriteBatch(ctx context.Context, batch telemetrycore
 		sink.runtime.counters.engineSequence.Store(uint64(result.Cursor.Sequence))
 		final = result.State
 		factValues = result.Facts
-		sink.runtime.shadow.observe(ctx, batch, result)
 	} else {
 		observed, err := sink.runtime.reducer.Apply(batch)
 		if err != nil {
@@ -992,15 +984,20 @@ func (sink runtimeBatchSink) WriteBatch(ctx context.Context, batch telemetrycore
 	}
 	sink.runtime.recordFrameArrival()
 	sink.runtime.counters.batchesApplied.Add(1)
-	strategyProjected, err := strategyprojection.ProjectV1(final)
-	strategyReady := err == nil
-	if err != nil {
-		if failureErr := sink.runtime.handlePostCommitFailure(
-			telemetrytransport.ProductStrategy,
-			"projection",
-			fmt.Errorf("project Strategy telemetry: %w", err),
-		); failureErr != nil {
-			return failureErr
+	var strategyProjected strategyprojection.SnapshotV1
+	strategyReady := false
+	if sink.runtime.strategyHub != nil {
+		projected, err := strategyprojection.ProjectV1(final)
+		if err != nil {
+			if failureErr := sink.runtime.handlePostCommitFailure(
+				telemetrytransport.ProductStrategy,
+				"projection",
+				fmt.Errorf("project Strategy telemetry: %w", err),
+			); failureErr != nil {
+				return failureErr
+			}
+		} else {
+			strategyProjected, strategyReady = projected, true
 		}
 	}
 	status := sink.runtime.simulator.Status()
@@ -1096,7 +1093,10 @@ func (runtime *TelemetryCoreRuntime) publishOverlayV2(
 	if age < 0 {
 		age = 0
 	}
-	value, ok := final.Value()
+	// ponytail: Peek sin clon para count/modos; overlayCapabilityModes solo
+	// lee (TestIsa998PeekModesNoMutateNoRetain). La proyección real conserva
+	// su clon defensivo dentro de overlayV2Project.
+	value, ok := final.Peek()
 	if !ok {
 		return fmt.Errorf("%w: count Overlay v2 vehicles", telemetrytransport.ErrInvalidPayload)
 	}
@@ -1137,17 +1137,16 @@ func (runtime *TelemetryCoreRuntime) publishOverlayV2(
 	update.Source.State = overlayv2.SourceStateV2(currentState.String())
 	update.Source.ReconnectAttempt = uint32(currentAttempt)
 	update.Source.LastFrameAgeMS = currentAge
-	encoded, err := json.Marshal(update)
-	if err != nil {
-		runtime.mu.Unlock()
-		return fmt.Errorf("%w: encode Overlay v2: %v", telemetrytransport.ErrInvalidPayload, err)
-	}
-	if err := publisher.PublishSnapshot(revision, json.RawMessage(encoded)); err != nil {
+	// PublishSnapshot already serializes and validates. This lock serializes
+	// snapshot publication, so the counter delta is this exact payload size.
+	previousBytes := publisher.Metrics().SnapshotBytes
+	if err := publisher.PublishSnapshot(revision, update); err != nil {
 		runtime.mu.Unlock()
 		return fmt.Errorf("%w: publish Overlay v2: %v", telemetrytransport.ErrInvalidPayload, err)
 	}
+	payloadBytes := publisher.Metrics().SnapshotBytes - previousBytes
 	runtime.mu.Unlock()
-	runtime.metricStore.observeOverlayV2Payload(len(value.Observed.Vehicles), uint64(len(encoded)))
+	runtime.metricStore.observeOverlayV2Payload(len(value.Observed.Vehicles), payloadBytes)
 	return nil
 }
 

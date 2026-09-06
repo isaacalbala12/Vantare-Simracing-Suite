@@ -79,11 +79,10 @@ async function dispatchTelemetry(events: ReadonlyArray<{name: string; data: unkn
   if (!resolve) throw new Error("overlay pull response not pending");
   resolvePull = undefined;
   await act(async () => {
-    resolve({
-      ok: true,
+    resolve(new Response(JSON.stringify({sessionId: request.sessionId, delivery: pullDelivery, events}), {
       status: 200,
-      json: async () => ({sessionId: request.sessionId, delivery: pullDelivery, events}),
-    } as Response);
+      headers: {"Content-Type": "application/json"},
+    }));
     await Promise.resolve();
   });
 }

@@ -105,8 +105,13 @@ type SectionCadence struct {
 	Slow time.Duration
 	// Spotter y Session son rutas de seguridad. Cero conserva el intervalo de
 	// su tier para cadencias antiguas; PerformancePolicy fija ambos explícitos.
-	Spotter      time.Duration
-	Session      time.Duration
+	Spotter time.Duration
+	Session time.Duration
+	// Positive overrides split consumers within the slow tier. Zero retains
+	// the tier interval, preserving existing callers and safety dispatch.
+	Relative     time.Duration
+	Standings    time.Duration
+	Fuel         time.Duration
 	DirtyCeiling time.Duration
 }
 
@@ -154,6 +159,12 @@ func (cadence SectionCadence) IntervalFor(section Section) time.Duration {
 		value = cadence.Spotter
 	case SectionSession:
 		value = cadence.Session
+	case SectionRelative:
+		value = cadence.Relative
+	case SectionStandings:
+		value = cadence.Standings
+	case SectionFuel:
+		value = cadence.Fuel
 	}
 	if value == 0 {
 		return cadence.Interval(TierOf(section))

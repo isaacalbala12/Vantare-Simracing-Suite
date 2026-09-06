@@ -4,7 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
+	"reflect"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -86,12 +89,15 @@ type EngineerService struct {
 	presentationLifecycle     uint64
 	streamSequence            uint64
 	activePresentation        *EngineerNotification
+	lastEmittedStatus         *EngineerStatus
+	lastEmittedActive         bool
 
 	lastContext            engineerprojection.Context
 	lastObservation        *observationCursor
 	reconnectBoundary      *observationCursor
 	factEpoch              uint64
 	factSequence           uint64
+	factBoundary           *engineerprojection.FactResyncRequiredError
 	sourceState            engineerprojection.SourceState
 	sourceReconnectAttempt int
 	scheduler              *messagepolicy.Scheduler
@@ -699,8 +705,22 @@ func (s *EngineerService) getStatusLocked() EngineerStatus {
 		SubtitlesEnabled:      s.subtitlesEnabled && s.visualPresentationEnabled,
 		TTSCacheCount:         0, // TTS audio is disabled in this checkpoint
 		RecentMessages:        s.store.GetAll(),
-		LastError:             s.lastError,
+		LastError:             s.effectiveLastErrorLocked(),
 	}
+}
+
+// effectiveLastErrorLocked muestra el error transitorio mas reciente y, si no
+// hay ninguno, la degradacion persistente por gap de facts. Asi el boundary
+// sobrevive a las observaciones posteriores (que limpian lastError) hasta un
+// epoch nuevo, tanto en Status como en Health, sin campos nuevos en el wire.
+func (s *EngineerService) effectiveLastErrorLocked() string {
+	if s.lastError != "" {
+		return s.lastError
+	}
+	if s.factBoundary != nil {
+		return s.factBoundary.Error()
+	}
+	return ""
 }
 
 // SetVisualPresentationEnabled applies the performance policy to every visual
@@ -952,18 +972,24 @@ func (s *EngineerService) SubscribeStatus() (<-chan EngineerStatus, func()) {
 }
 
 func (s *EngineerService) emitStatus() {
-	status := s.Status()
 	s.mu.Lock()
-	s.publishStatusLocked(status)
-	s.publishStreamLocked(EngineerStreamStatus, nil, &status)
-	s.mu.Unlock()
-	if s.emitter != nil {
-		s.emitter.Emit("engineer:status", status)
-	}
+	defer s.mu.Unlock()
+	s.emitStatusLocked()
 }
 
 func (s *EngineerService) emitStatusLocked() {
 	status := s.getStatusLocked()
+	active := s.activePresentation != nil
+	if s.lastEmittedStatus != nil &&
+		s.lastEmittedActive == active && reflect.DeepEqual(*s.lastEmittedStatus, status) {
+		return
+	}
+	// Keep a private equality snapshot: channel/emitter consumers own their payload.
+	remembered := status
+	remembered.OutputModes = maps.Clone(status.OutputModes)
+	remembered.RecentMessages = slices.Clone(status.RecentMessages)
+	s.lastEmittedStatus = &remembered
+	s.lastEmittedActive = active
 	s.publishStatusLocked(status)
 	s.publishStreamLocked(EngineerStreamStatus, nil, &status)
 	if s.emitter != nil {
@@ -1249,6 +1275,7 @@ func (s *EngineerService) ConsumeFact(fact engineerprojection.FactEnvelopeV1) er
 	}
 	if epoch > s.factEpoch {
 		s.factSequence = 0
+		s.factBoundary = nil
 	}
 	s.factEpoch = epoch
 	s.factSequence = sequence
@@ -1278,6 +1305,22 @@ func (s *EngineerService) ConsumeFact(fact engineerprojection.FactEnvelopeV1) er
 		// A recovery fact is not proof that a usable observation exists.
 		s.connected = false
 	}
+	s.emitStatusLocked()
+	return nil
+}
+
+// ConsumeFactBoundary records an explicit fact gap declared by the delivery
+// port. It never invents facts and never touches connection or source state:
+// only a fresh observation can change those. The boundary stays visible in
+// Health until a fact from a newer epoch clears it.
+func (s *EngineerService) ConsumeFactBoundary(boundary *engineerprojection.FactResyncRequiredError) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if !s.running || !s.enabled || boundary == nil {
+		return nil
+	}
+	copied := *boundary
+	s.factBoundary = &copied
 	s.emitStatusLocked()
 	return nil
 }
@@ -1376,7 +1419,7 @@ func (s *EngineerService) Health() EngineerHealth {
 			return s.radioMetrics.Snapshot()
 		}(),
 		VoiceInput: voiceHealth,
-		LastError:  s.lastError,
+		LastError:  s.effectiveLastErrorLocked(),
 	}
 }
 

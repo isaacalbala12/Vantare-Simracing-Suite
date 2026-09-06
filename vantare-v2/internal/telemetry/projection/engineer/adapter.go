@@ -116,7 +116,8 @@ func ProjectObservationV1(snapshot envelope.Snapshot[derive.FinalState], manifes
 	if err != nil {
 		return ObservationSnapshotV1{}, err
 	}
-	payload, ok := projected.Value()
+	// adaptProjectedV1 reads this private projection and owns its output slice.
+	payload, ok := projected.Peek()
 	if !ok {
 		return ObservationSnapshotV1{}, envelope.ErrCloneRequired
 	}

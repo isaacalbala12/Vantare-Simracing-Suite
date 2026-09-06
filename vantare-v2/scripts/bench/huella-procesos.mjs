@@ -75,8 +75,22 @@ export function classifyProcess(processInfo, options) {
 }
 
 export function classifyProcesses(processes, options) {
+  const owned = new Set([Number(options.hostPid)]);
+  let changed;
+  do {
+    changed = false;
+    for (const entry of processes) {
+      const pid = Number(entry.ProcessId ?? entry.pid);
+      if (!owned.has(pid) && owned.has(Number(entry.ParentProcessId ?? entry.parentPid))) {
+        owned.add(pid);
+        changed = true;
+      }
+    }
+  } while (changed);
   return processes.flatMap((processInfo) => {
-    const role = classifyProcess(processInfo, options);
+    const nativeChild = owned.has(Number(processInfo.ProcessId ?? processInfo.pid))
+      && !/^msedgewebview2\.exe$/i.test(String(processInfo.Name ?? processInfo.name ?? ""));
+    const role = classifyProcess(processInfo, options) ?? (nativeChild ? "auxiliary" : null);
     if (!role) return [];
     return [{
       pid: Number(processInfo.ProcessId ?? processInfo.pid),

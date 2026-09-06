@@ -254,6 +254,32 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 
 ## Hitos
 
+### CPU con seis widgets
+
+- id: telemetry-six-widget-cpu
+- tipo: fix
+- titulo.en: CPU with six widgets
+- titulo.pt: CPU com seis widgets
+- titulo.it: CPU con sei widget
+- cuerpo: Transporte desktop persistente con E20 incremental seleccionable, menos publicaciones redundantes y descarga segura del Hub minimizado con HUD activo. Máximo permite Standings4, Relative30, mapa30, Pedals/Delta60 y Fuel2Hz. El candidato medido con seis widgets visibles dio CPU2,64→2,28 por ciento y RAM382,65→388,11MiB; no certifica otros equipos ni el árbol reconciliado. E20 se activa con VANTARE_OVERLAY_SECTIONS=1; sin esa opción se conserva el envío completo.
+- cuerpo.en: Persistent desktop transport with selectable E20 incremental delivery, fewer redundant publications and safe unloading of the minimised Hub with the HUD active. Maximum allows Standings4, Relative30, map30, Pedals/Delta60 and Fuel2Hz. The candidate measured with six visible widgets gave CPU2.64→2.28 percent and RAM382.65→388.11MiB; this does not certify other machines or the reconciled tree. Enable E20 with VANTARE_OVERLAY_SECTIONS=1; otherwise full delivery is retained.
+- cuerpo.pt: Transporte desktop persistente com E20 incremental selecionável, menos publicações redundantes e descarga segura do Hub minimizado com HUD ativo. Máximo permite Standings4, Relative30, mapa30, Pedals/Delta60 e Fuel2Hz. O candidato medido com seis widgets visíveis deu CPU2,64→2,28 por cento e RAM382,65→388,11MiB; não certifica outros PCs nem a árvore reconciliada. Ativar E20 com VANTARE_OVERLAY_SECTIONS=1; sem essa opção conserva-se o envio completo.
+- cuerpo.it: Trasporto desktop persistente con E20 incrementale selezionabile, meno pubblicazioni ridondanti e scaricamento sicuro dell'Hub minimizzato con HUD attivo. Massimo consente Standings4, Relative30, mappa30, Pedals/Delta60 e Fuel2Hz. Il candidato misurato con sei widget visibili ha dato CPU2,64→2,28 per cento e RAM382,65→388,11MiB; non certifica altri PC né l'albero riconciliato. Attivare E20 con VANTARE_OVERLAY_SECTIONS=1; altrimenti resta l'invio completo.
+- etiqueta: ISA-1002
+
+### Reducción adicional de CPU, RAM y GPU
+
+- id: telemetry-lower-footprint
+- tipo: plan
+- titulo.en: Further CPU, RAM and GPU reduction
+- titulo.pt: Redução adicional de CPU, RAM e GPU
+- titulo.it: Ulteriore riduzione di CPU, RAM e GPU
+- cuerpo: Tras validar E20 en nightly, simplificar Telemetría V2 por fases: datos nativos equivalentes, cálculos sin duplicación y trabajo sólo con consumidores. Mantener adaptadores, estado canónico y widgets puros. Cada fase requiere tests, medidas visibles y rollback. CPU inferior al2 por ciento y superioridad frente al HUD de LMU siguen sin demostrar.
+- cuerpo.en: After validating E20 in nightly, simplify Telemetry V2 in phases: equivalent native data, non-duplicated calculations and consumer-driven work. Retain adapters, canonical state and pure widgets. Each phase needs tests, visible measurements and rollback. Below2 percent CPU and superiority over the LMU HUD remain unproven.
+- cuerpo.pt: Após validar E20 em nightly, simplificar Telemetria V2 por fases: dados nativos equivalentes, cálculos sem duplicação e trabalho com consumidores. Preservar adaptadores, estado canónico e widgets puros. Cada fase exige testes, medições visíveis e rollback. CPU inferior a2 por cento e superioridade sobre o HUD LMU continuam por demonstrar.
+- cuerpo.it: Dopo la validazione E20 in nightly, semplificare Telemetry V2 per fasi: dati nativi equivalenti, calcoli senza duplicazioni e lavoro con consumatori. Conservare adattatori, stato canonico e widget puri. Ogni fase richiede test, misure visibili e rollback. CPU sotto2 per cento e superiorità sull'HUD LMU restano da dimostrare.
+- etiqueta: ISA-1002
+
 ### Banco reproducible de huella por hardware
 
 - id: huella-minima-banco

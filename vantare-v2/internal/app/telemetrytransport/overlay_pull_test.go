@@ -3,10 +3,75 @@ package telemetrytransport
 import (
 	"bytes"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
 )
+
+func TestOverlayPullCallerMutationCannotChangeReplayOrDirtyState(t *testing.T) {
+	registry := mustPublisherRegistry(t, PublisherConfig{Product: ProductOverlayV2})
+	if err := registry.PublishStatus(ProductOverlayV2, 1, map[string]any{"revision": 1}); err != nil {
+		t.Fatal(err)
+	}
+	transport := NewOverlayPullTransport(registry)
+	t.Cleanup(transport.CloseAll)
+	first, deliver, err := transport.Pull("overlay", OverlayPullRequest{SessionID: "s"})
+	if err != nil || !deliver || len(first.Events) != 1 {
+		t.Fatalf("first delivery: %v %v", deliver, err)
+	}
+	want := bytes.Clone(first.Events[0].Data)
+	first.Events[0].Data[0] = 'x'
+	first.Events[0].Name = "caller mutation"
+	replay, deliver, err := transport.Pull("overlay", OverlayPullRequest{SessionID: "s"})
+	if err != nil || !deliver || len(replay.Events) != 1 || !bytes.Equal(replay.Events[0].Data, want) {
+		t.Fatal("caller mutated pending replay")
+	}
+	replay.Events[0].Data[0] = 'y'
+	if _, deliver, err := transport.Pull("overlay", OverlayPullRequest{SessionID: "s", Ack: first.Delivery}); err != nil || deliver {
+		t.Fatalf("caller mutation made unchanged status dirty: deliver=%v err=%v", deliver, err)
+	}
+	if err := registry.PublishStatus(ProductOverlayV2, 2, map[string]any{"revision": 2}); err != nil {
+		t.Fatal(err)
+	}
+	next, deliver, err := transport.Pull("overlay", OverlayPullRequest{SessionID: "s", Ack: first.Delivery})
+	if err != nil || !deliver || next.Delivery != first.Delivery+1 || !bytes.Equal(next.Events[0].Data, []byte(`{"revision":2}`)) {
+		t.Fatal("next real update was lost")
+	}
+}
+
+func BenchmarkOverlayPullOwnership(b *testing.B) {
+	registry, err := NewPublisherRegistry(PublisherConfig{Product: ProductOverlayV2})
+	if err != nil {
+		b.Fatal(err)
+	}
+	transport := NewOverlayPullTransport(registry)
+	b.Cleanup(transport.CloseAll)
+	if _, _, err := transport.Pull("overlay", OverlayPullRequest{SessionID: "s"}); err != nil {
+		b.Fatal(err)
+	}
+	publisher, ok := registry.Lookup(ProductOverlayV2)
+	if !ok {
+		b.Fatal("publisher absent")
+	}
+	payload := struct {
+		Revision uint64 `json:"revision"`
+		Data     string `json:"data"`
+	}{Data: strings.Repeat("x", 64*1024)}
+	var ack uint64
+	b.ReportAllocs()
+	for b.Loop() {
+		payload.Revision++
+		if err := publisher.PublishSnapshot(payload.Revision, payload); err != nil {
+			b.Fatal(err)
+		}
+		response, deliver, err := transport.Pull("overlay", OverlayPullRequest{SessionID: "s", Ack: ack})
+		if err != nil || !deliver {
+			b.Fatal("delivery failed", err)
+		}
+		ack = response.Delivery
+	}
+}
 
 func TestOverlayPullSlowConsumerKeepsOneDeliveryInFlightAndLatestWins(t *testing.T) {
 	registry := mustPublisherRegistry(t, PublisherConfig{Product: ProductOverlayV2})

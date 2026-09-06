@@ -6,6 +6,8 @@ param(
     [string]$Perfil = 'testdata/bench/huella-endurance-3.json',
     [ValidateRange(1, 3600)]
     [int]$Duracion = 180,
+    [ValidateRange(0, 60)]
+    [int]$Calentamiento = 0,
     [ValidateRange(1024, 65535)]
     [int]$Puerto = 9247,
     [string]$Juego = 'Le Mans Ultimate',
@@ -15,6 +17,7 @@ param(
     [int]$Coches = 0,
     [string]$Salida = 'results',
     [switch]$SinJuego,
+    [switch]$OcultarPintura,
     [switch]$Forzar,
     [switch]$DryRun
 )
@@ -38,6 +41,11 @@ function Resolve-BenchPath([string]$Path, [switch]$MustExist) {
 
 $exePath = Resolve-BenchPath $Exe -MustExist
 $profilePath = Resolve-BenchPath $Perfil -MustExist
+$visibilityExe = Resolve-BenchPath 'bin/overlay-visibility-probe.exe'
+$requireVisibility = -not $SinJuego -and -not $OcultarPintura -and $Condicion -ne 'A0'
+if ($requireVisibility -and -not (Test-Path -LiteralPath $visibilityExe)) { throw 'Falta monitor nativo: go build -o bin/overlay-visibility-probe.exe ./tools/overlay-visibility-probe' }
+$visibilityProcess = $null
+$visibilityValid = $false
 $outputDir = Resolve-BenchPath $Salida
 $processHelper = Resolve-BenchPath 'scripts/bench/huella-procesos.mjs' -MustExist
 $cdpHelper = Resolve-BenchPath 'scripts/bench/huella-cdp.mjs' -MustExist
@@ -93,6 +101,7 @@ $plan = [ordered]@{
     executable = $exePath
     profile = $profilePath
     durationSeconds = $Duracion
+    warmupSeconds = $Calentamiento
     cdpPort = $Puerto
     game = if ($SinJuego) { $null } else { $Juego }
     gamePresent = -not [bool]$SinJuego
@@ -141,8 +150,8 @@ $systemWebView2Paths = @($systemWebView2.userDataDir | Where-Object { $_ } | Sor
 $systemWebView2PathsJson = if ($systemWebView2Paths.Count) { $systemWebView2Paths | ConvertTo-Json -Compress -AsArray } else { '[]' }
 $foreignProcessesJson = if ($foreignBrowsers.Count) { $foreignBrowsers | ConvertTo-Json -Compress -Depth 3 } else { '[]' }
 $hygieneForced = [bool]$Forzar
-$measurementMode = if ($SinJuego) { 'ram-only-no-game' } else { 'full' }
-$publishable = -not $hygieneForced -and -not [bool]$SinJuego
+$measurementMode = if ($OcultarPintura) { 'diagnostic-hidden-paint' } elseif ($SinJuego) { 'ram-only-no-game' } else { 'full' }
+$publishable = -not $hygieneForced -and -not [bool]$SinJuego -and -not [bool]$OcultarPintura
 Write-Host "WebView2 del sistema permitidos: $($systemWebView2.Count)"
 $systemWebView2Paths | ForEach-Object { Write-Host "  $_" }
 if ($foreignBrowsers.Count -gt 0) {
@@ -195,14 +204,24 @@ $licenseConfigured = $false
 $orphanEtwSessionsStopped = @()
 $orphanEtwSessionsStoppedJson = '[]'
 $previousCpu = @{}
-$previousAt = Get-Date
+$previousCpuAt = @{}
+$cpuClock = [Diagnostics.Stopwatch]::StartNew()
 $logicalProcessors = [Environment]::ProcessorCount
 $exeName = [IO.Path]::GetFileName($exePath)
 $gameExeName = if ($SinJuego) { $null } else { "$gameProcessName.exe" }
 
 function Get-OwnCimProcesses {
-    @(Get-CimInstance Win32_Process | Where-Object {
-        $_.ProcessId -eq $app.Id -or ($_.Name -eq 'msedgewebview2.exe' -and $_.CommandLine -like "*$exeName*EBWebView*")
+    $processes = @(Get-CimInstance Win32_Process)
+    $owned = [Collections.Generic.HashSet[int]]::new()
+    [void]$owned.Add($app.Id)
+    do {
+        $added = $false
+        foreach ($entry in $processes) {
+            if ($owned.Contains([int]$entry.ParentProcessId) -and $owned.Add([int]$entry.ProcessId)) { $added = $true }
+        }
+    } while ($added)
+    @($processes | Where-Object {
+        $owned.Contains([int]$_.ProcessId) -or ($_.Name -eq 'msedgewebview2.exe' -and $_.CommandLine -like "*$exeName*EBWebView*")
     })
 }
 
@@ -349,7 +368,8 @@ try {
     $hubRendererIdsJson = ConvertTo-Json -InputObject @($hubRendererIds) -Compress
     $cdpRendererIdsJson = ConvertTo-Json -InputObject @($cdpResult.rendererProcessIds) -Compress
     $overlayStarted = $action -eq 'overlay-start' -and [bool]$cdpResult.control.changed
-    $assignmentJson = & node $processHelper --assign-renderers --input $processJson --hub-renderer-ids $hubRendererIdsJson --activation-started-at ([string]$cdpResult.control.emittedAt) --overlay-ready-at ([string]$cdpResult.overlayReadyAt) --cdp-renderer-pids $cdpRendererIdsJson --overlay-started ([string]$overlayStarted).ToLowerInvariant()
+    $activationStartedAt = if ($overlayStarted) { [string]$cdpResult.control.emittedAt } else { '' }
+    $assignmentJson = & node $processHelper --assign-renderers --input $processJson --hub-renderer-ids $hubRendererIdsJson --activation-started-at $activationStartedAt --overlay-ready-at ([string]$cdpResult.overlayReadyAt) --cdp-renderer-pids $cdpRendererIdsJson --overlay-started ([string]$overlayStarted).ToLowerInvariant()
     if ($LASTEXITCODE -ne 0) { throw 'No se pudo atribuir el renderer del overlay.' }
     $assignment = $assignmentJson | ConvertFrom-Json
     $rendererRoles = @{}
@@ -357,6 +377,27 @@ try {
     Write-Host "Atribución renderer overlay: $($assignment.reason); PID=$($assignment.overlayRendererPid)"
     $roleByPid = Update-ProcessClassification
 
+    if ($OcultarPintura) {
+        & node $cdpHelper --cdp "http://127.0.0.1:$Puerto" --action diagnostic-hide-paint --output (Join-Path $outputDir "$stem-paint-isolation.json") | Out-Host
+        if ($LASTEXITCODE -ne 0) { throw 'No se pudo aislar la pintura; medida cancelada.' }
+    }
+    if ($Calentamiento -gt 0) { Start-Sleep -Seconds $Calentamiento }
+    if ($requireVisibility) {
+        Write-Host 'VISIBILITY WAIT: LMU debe estar foreground con el HUD visible.'
+        $visibilityDeadline = (Get-Date).AddSeconds(60)
+        do {
+            $visual = & $visibilityExe -host $app.Id -game $gameProcess.Id -once | ConvertFrom-Json
+            if ($LASTEXITCODE -ne 0) { throw 'Falló el preflight de visibilidad nativa.' }
+            if (-not $visual.valid) { Start-Sleep -Seconds 1 }
+        } until ($visual.valid -or (Get-Date) -ge $visibilityDeadline)
+        if (-not $visual.valid) { throw 'HUD no visible o juego sin foco: medición cancelada.' }
+        $visibilityJson = Join-Path $outputDir "$stem-visibility.json"
+        $visibilityStop = Join-Path $outputDir "$stem-visibility.stop"
+        $visibilityProcess = Start-Process -FilePath $visibilityExe -ArgumentList @('-host',$app.Id,'-game',$gameProcess.Id,'-stop',('"{0}"' -f $visibilityStop),'-output',('"{0}"' -f $visibilityJson)) -WindowStyle Hidden -PassThru
+        Start-Sleep -Milliseconds 300
+        $visibilityStart = Get-Date
+        Write-Host 'VISIBILITY CAPTURE: mantener LMU foreground durante toda la captura.'
+    }
     $sessionName = "VantareHuella-$($app.Id)-$stamp"
     if (-not $SinJuego) {
         $presentMonArgs = @('--process_name', ('"{0}"' -f $gameExeName), '--output_file', ('"{0}"' -f $presentMonCsv), '--v2_metrics', '--timed', [string]$Duracion, '--terminate_after_timed', '--session_name', $sessionName, '--no_console_stats')
@@ -365,15 +406,16 @@ try {
 
     foreach ($processId in $roleByPid.Keys) {
         $process = Get-Process -Id $processId -ErrorAction SilentlyContinue
-        if ($process) { $previousCpu[$processId] = $process.TotalProcessorTime.TotalSeconds }
+        if ($process) {
+            $previousCpu[$processId] = $process.TotalProcessorTime.TotalSeconds
+            $previousCpuAt[$processId] = $cpuClock.Elapsed.TotalSeconds
+        }
     }
-    $previousAt = Get-Date
     $sampleIndex = 0
     $sampleDeadline = (Get-Date).AddSeconds($Duracion)
     while ((Get-Date) -lt $sampleDeadline) {
         Start-Sleep -Seconds 1
         $now = Get-Date
-        $elapsed = ($now - $previousAt).TotalSeconds
         if ($sampleIndex % 5 -eq 0) {
             $roleByPid = Update-ProcessClassification
         }
@@ -382,8 +424,11 @@ try {
             $process = Get-Process -Id $processId -ErrorAction SilentlyContinue
             if (-not $process) { continue }
             $cpuSeconds = $process.TotalProcessorTime.TotalSeconds
+            $cpuSampleAt = $cpuClock.Elapsed.TotalSeconds
+            $elapsed = $cpuSampleAt - $previousCpuAt[$processId]
             $cpuPct = if ($previousCpu.ContainsKey($processId) -and $elapsed -gt 0) { (($cpuSeconds - $previousCpu[$processId]) / $elapsed / $logicalProcessors) * 100 } else { 0 }
             $previousCpu[$processId] = $cpuSeconds
+            $previousCpuAt[$processId] = $cpuSampleAt
             $gpuValues = if ($gpuSample.Valid -and $gpuSample.Totals.ContainsKey($processId)) { $gpuSample.Totals[$processId] } else { @{ Engine = 0.0; Dedicated = 0.0 } }
             $rows.Add([pscustomobject][ordered]@{
                 timestamp = $now.ToString('o'); condition = $Condicion; pid = $processId; role = $roleByPid[$processId]
@@ -394,19 +439,58 @@ try {
                 systemWebView2Count = $systemWebView2.Count; systemWebView2Paths = $systemWebView2PathsJson
                 orphanEtwSessionsStopped = $orphanEtwSessionsStoppedJson; gameFrametimeValid = $false; frametimePublishable = $false
                 privateBytes = [int64]$process.PrivateMemorySize64; workingSetBytes = [int64]$process.WorkingSet64
-                cpuPct = Format-Invariant ([Math]::Max(0, $cpuPct)); gpuSampleValid = [bool]$gpuSample.Valid
+                cpuPct = Format-Invariant ([Math]::Max(0.0, $cpuPct)); gpuSampleValid = [bool]$gpuSample.Valid
                 gpuPct = if ($gpuSample.Valid) { Format-Invariant ([double]$gpuValues.Engine) } else { $null }
                 gpuDedicatedBytes = if ($gpuSample.Valid) { Format-Invariant ([double]$gpuValues.Dedicated) } else { $null }
                 frameTimeMs = $null; dropped = $null
             })
         }
-        $previousAt = $now
         $sampleIndex += 1
     }
 
+    if ($requireVisibility) {
+        $visibilityEnd = Get-Date
+        New-Item -ItemType File -Path $visibilityStop -ErrorAction Stop | Out-Null
+        if (-not $visibilityProcess.WaitForExit(5000)) { throw 'Monitor de visibilidad no terminó.' }
+        if ($visibilityProcess.ExitCode -ne 0) { throw 'Monitor de visibilidad falló.' }
+        $visibilityEvidence = Get-Content -LiteralPath $visibilityJson -Raw | ConvertFrom-Json
+        $visibilityValid = $visibilityEvidence.valid -eq $true -and
+            ([datetime]$visibilityEvidence.samples[0].at).ToUniversalTime() -le $visibilityStart.ToUniversalTime() -and
+            ([datetime]$visibilityEvidence.samples[-1].at).ToUniversalTime() -ge $visibilityEnd.ToUniversalTime()
+        [pscustomobject]@{start=$visibilityStart.ToUniversalTime();end=$visibilityEnd.ToUniversalTime();valid=$visibilityValid} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $outputDir "$stem-visibility-interval.json")
+        $publishable = $publishable -and $visibilityValid
+        foreach ($row in $rows) {
+            $row | Add-Member -NotePropertyName overlayNativeVisible -NotePropertyValue $visibilityValid
+            if (-not $visibilityValid) { $row.publishable = $false }
+        }
+        Write-Host "VISIBILITY RESULT: $visibilityValid"
+    }
     if ($Condicion -eq 'HubMin') {
         & node $cdpHelper --cdp "http://127.0.0.1:$Puerto" --action hub-open --duration 1 --output $hubReopenJson | Out-Host
         if ($LASTEXITCODE -ne 0) { throw "No se pudo reabrir el Hub por CDP (código $LASTEXITCODE)." }
+    }
+
+    if ($Condicion -ne 'A0') {
+        # Outside the CPU sampling interval: a stalled HUD is not a saving.
+        $overlayEndJson = Join-Path $outputDir "$stem-overlay-end.json"
+        $overlayLiveAtEnd = $false
+        & node $cdpHelper --cdp "http://127.0.0.1:$Puerto" --action state --duration 1 --output $overlayEndJson | Out-Host
+        if ($LASTEXITCODE -eq 0) {
+            $overlayEnd = Get-Content -LiteralPath $overlayEndJson -Raw | ConvertFrom-Json
+            $startOverlay = @($cdpResult.targets | Where-Object role -eq 'overlay') | Select-Object -First 1
+            $endOverlay = @($overlayEnd.targets | Where-Object role -eq 'overlay') | Select-Object -First 1
+            if ($null -ne $startOverlay -and $null -ne $endOverlay) {
+                $startFrame = $startOverlay.diagnostics.overlay_v2_transport
+                $endFrame = $endOverlay.diagnostics.overlay_v2_transport
+                $overlayLiveAtEnd = $endOverlay.widgetCount -eq $expectedWidgetCount -and
+                    $endFrame.sourceState -eq 'live' -and $endFrame.sequence -gt $startFrame.sequence
+            }
+        }
+        foreach ($row in $rows) {
+            $row | Add-Member -NotePropertyName overlayLiveAtEnd -NotePropertyValue $overlayLiveAtEnd
+            if (-not $overlayLiveAtEnd) { $row.publishable = $false }
+        }
+        if (-not $overlayLiveAtEnd) { Write-Warning 'Overlay no acreditado vivo al final: se conservan crudos, no ahorro publicable.' }
     }
 
     if ($presentMon -and -not $presentMon.HasExited) { $presentMon.WaitForExit(($Duracion + 30) * 1000) | Out-Null }
@@ -464,7 +548,7 @@ try {
     $buildStable = $buildSha256 -eq $buildSha256End -and $distSha256 -eq $distSha256End
     foreach ($row in $rows) {
         $row.gameFrametimeValid = $gameFrametimeValid
-        $row.frametimePublishable = $gameFrametimeValid
+        $row.frametimePublishable = $gameFrametimeValid -and $publishable
         $row.buildStable = $buildStable
         if (-not $buildStable) { $row.publishable = $false }
     }
@@ -473,6 +557,10 @@ try {
     & node $summaryHelper --run-summary --condition $Condicion --output $summaryMd $rawCsv | Out-Host
     if ($LASTEXITCODE -ne 0) { throw "El resumen falló con código $LASTEXITCODE." }
 } finally {
+    if ($visibilityProcess -and -not $visibilityProcess.HasExited) {
+        if (-not (Test-Path -LiteralPath $visibilityStop)) { New-Item -ItemType File -Path $visibilityStop | Out-Null }
+        if (-not $visibilityProcess.WaitForExit(5000)) { Stop-Process -Id $visibilityProcess.Id }
+    }
     try {
         if ($presentMon -and -not $presentMon.HasExited) {
             if (-not $presentMon.WaitForExit(5000)) {

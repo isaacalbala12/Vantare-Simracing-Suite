@@ -837,6 +837,10 @@ func (*blockingInitialEngineerConsumer) ConsumeFact(engineerprojection.FactEnvel
 	return nil
 }
 
+func (*blockingInitialEngineerConsumer) ConsumeFactBoundary(*engineerprojection.FactResyncRequiredError) error {
+	return nil
+}
+
 func (consumer *blockingInitialEngineerConsumer) snapshotStates() []engineerprojection.SourceState {
 	consumer.mu.Lock()
 	defer consumer.mu.Unlock()

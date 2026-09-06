@@ -445,6 +445,10 @@ func (consumer *countingEngineerConsumer) ConsumeFact(engineerprojection.FactEnv
 	return nil
 }
 
+func (consumer *countingEngineerConsumer) ConsumeFactBoundary(*engineerprojection.FactResyncRequiredError) error {
+	return nil
+}
+
 func structuralInvalidObservation() lmu.Observation {
 	return lmu.Observation{
 		Source:        lmu.SourceCanonical,

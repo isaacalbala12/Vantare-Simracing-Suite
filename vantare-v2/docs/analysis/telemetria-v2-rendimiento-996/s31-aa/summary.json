@@ -1,0 +1,26 @@
+[
+  {
+    "Side": "baseline",
+    "Benchmark": "BenchmarkBatchMapperS31Fixture",
+    "Samples": 10,
+    "MedianNs": 44357.0,
+    "MinNs": 39335.0,
+    "MaxNs": 49594.0,
+    "MinBytes": 68994.0,
+    "MaxBytes": 68995.0,
+    "MinAllocs": 100.0,
+    "MaxAllocs": 100.0
+  },
+  {
+    "Side": "candidate",
+    "Benchmark": "BenchmarkBatchMapperS31Fixture",
+    "Samples": 10,
+    "MedianNs": 43213.5,
+    "MinNs": 38538.0,
+    "MaxNs": 51621.0,
+    "MinBytes": 68994.0,
+    "MaxBytes": 68995.0,
+    "MinAllocs": 100.0,
+    "MaxAllocs": 100.0
+  }
+]

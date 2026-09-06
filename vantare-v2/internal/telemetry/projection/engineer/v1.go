@@ -102,7 +102,9 @@ type ProjectorV1 struct{}
 var _ projection.Projector[derive.FinalState, PayloadV1] = ProjectorV1{}
 
 func (ProjectorV1) Project(snapshot envelope.Snapshot[derive.FinalState]) (envelope.Snapshot[PayloadV1], error) {
-	final, ok := snapshot.Value()
+	// Read committed Core data; projectVehicle creates value-only fields and
+	// the projection allocates its own collections below.
+	final, ok := snapshot.Peek()
 	if !ok {
 		return envelope.Snapshot[PayloadV1]{}, envelope.ErrCloneRequired
 	}
@@ -138,7 +140,7 @@ func (ProjectorV1) Project(snapshot envelope.Snapshot[derive.FinalState]) (envel
 		}
 	}
 	result.Capabilities = capabilities(result)
-	projected, err := envelope.NewSnapshot(snapshot.Header(), result, clonePayload)
+	projected, err := envelope.NewSnapshotOwned(snapshot.Header(), result, clonePayload)
 	if err != nil {
 		return envelope.Snapshot[PayloadV1]{}, fmt.Errorf("own engineer projection: %w", err)
 	}

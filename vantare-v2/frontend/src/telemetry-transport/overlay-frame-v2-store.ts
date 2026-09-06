@@ -120,7 +120,7 @@ export function createOverlayFrameV2Store(
       }
       const started = performance.now();
       const update = decodeOverlayUpdateV2(input);
-      const elapsed = performance.now() - started;
+      const elapsed = performance.now() - started + (parsedUpdates.get(update) ?? 0);
       // The percentiles describe the current live window only. Samples taken
       // while the source is stale, degraded or reconnecting mix a different
       // regime into the same ring and made the published p99 unreadable.
@@ -269,12 +269,99 @@ export function attachOverlayFrameV2Sse(
   return () => source.close();
 }
 
+// Only updates parsed, fully validated and frozen here can skip the defensive
+// copy on ingestion. Weak ownership does not retain historical frames.
+const parsedUpdates = new WeakMap<object, number>();
+
+type SectionBase = {update: OverlayUpdateV2; sizes: Map<string, number>};
+type SectionDecodeContext = {bases: Map<string, SectionBase>; sessionId: string; delivery: number};
+const jsonBytes = (value: unknown): number => new TextEncoder().encode(JSON.stringify(value)).byteLength;
+
+/** One bounded base per event, private to this pull client generation. */
+export function createOverlaySectionDecoder(): (text: string, request: unknown) => unknown {
+  let sessionId = "";
+  let bases = new Map<string, SectionBase>();
+  return (text, request) => {
+    if (!plainObject(request) || typeof request.sessionId !== "string" || !Number.isSafeInteger(request.ack) || (request.ack as number) < 0) invalid("sections.request");
+    const next = new Map(request.sessionId === sessionId ? bases : undefined);
+    const response = parseOverlayPullJSON(text, {bases: next, sessionId: request.sessionId, delivery: (request.ack as number) + 1});
+    // Only commit after the complete envelope, all updates and limits passed.
+    bases = next;
+    sessionId = request.sessionId;
+    return response;
+  };
+}
+
+function frameFieldSizes(frame: OverlayFrameV2): Map<string, number> {
+  return new Map(Object.entries(frame).map(([key, value]) => [key, jsonBytes(key) + 1 + jsonBytes(value)]));
+}
+
+/** Parse an owned pull envelope once; the pull client still validates session/ACK. */
+export function parseOverlayPullJSON(text: string, sections?: SectionDecodeContext): unknown {
+  const started = performance.now();
+  if (text.length > 1_048_576) invalid("size");
+  const bytes = new TextEncoder().encode(text).byteLength;
+  if (bytes > 1_048_576) invalid("size");
+  const response: unknown = JSON.parse(text);
+  const envelopeElapsed = performance.now() - started;
+  if (sections && response !== null) {
+    objectWithKeys(response, "sections.envelope", ["sessionId", "delivery", "events"]);
+    if (response.sessionId !== sections.sessionId || response.delivery !== sections.delivery || !Array.isArray(response.events) || response.events.length > 2) invalid("sections.delivery");
+  }
+  if (plainObject(response) && Array.isArray(response.events)) {
+    for (const event of response.events) {
+      if (sections) objectWithKeys(event, "sections.event", ["name", "data"], ["baseRevision"]);
+      if (sections && event.name !== OVERLAY_V2_SNAPSHOT_EVENT && event.name !== OVERLAY_V2_STATUS_EVENT) invalid("sections.event");
+      if (!plainObject(event) || (event.name !== OVERLAY_V2_SNAPSHOT_EVENT && event.name !== OVERLAY_V2_STATUS_EVENT)) continue;
+      const decodeStarted = performance.now();
+      let sizes: Map<string, number> | undefined;
+      let validatedBase: OverlayFrameV2 | undefined;
+      if (sections && event.baseRevision !== undefined) {
+        positiveInteger(event.baseRevision, "sections.base");
+        const base = sections.bases.get(event.name);
+        if (!base?.update.frame || base.update.revision !== event.baseRevision) invalid("sections.base");
+        validatedBase = base.update.frame;
+        objectWithKeys(event.data, "sections.update", ["revision", "source", "frame"]);
+        if (!plainObject(event.data.frame) || typeof event.data.revision !== "number" || event.data.revision <= base.update.revision) invalid("sections.update");
+        if ((event.data.frame.epoch !== undefined && event.data.frame.epoch !== base.update.frame.epoch) || (event.data.frame.sessionId !== undefined && event.data.frame.sessionId !== base.update.frame.sessionId)) invalid("sections.identity");
+        sizes = new Map(base.sizes);
+        for (const [key, value] of Object.entries(event.data.frame)) {
+          if (!sizes.has(key)) invalid("sections.field");
+          sizes.set(key, jsonBytes(key) + 1 + jsonBytes(value));
+        }
+        const frameBytes = 2 + Math.max(0, sizes.size - 1) + [...sizes.values()].reduce((sum, size) => sum + size, 0);
+        if (jsonBytes({...event.data, frame: null}) - 4 + frameBytes > OVERLAY_V2_MAX_PAYLOAD_BYTES) invalid("size");
+        event.data = {...event.data, frame: {...base.update.frame, ...event.data.frame}};
+      }
+      // If the entire envelope fits, every contained update necessarily fits.
+      // Larger envelopes retain the exact per-update byte check (e.g. status
+      // plus a snapshot at the limit), not a relaxed transport-sized limit.
+      const update = sizes || bytes <= OVERLAY_V2_MAX_PAYLOAD_BYTES
+        ? validateOverlayUpdateV2(event.data, validatedBase)
+        : decodeOverlayUpdateV2(event.data);
+      // Retain upstream work in per-update diagnostics. Including the whole
+      // envelope cost is conservative when it contains more than one update.
+      parsedUpdates.set(update, envelopeElapsed + performance.now() - decodeStarted);
+      event.data = update;
+      if (sections) {
+        if (update.frame) sections.bases.set(event.name, {update, sizes: sizes ?? frameFieldSizes(update.frame)});
+        else sections.bases.delete(event.name);
+      }
+    }
+  }
+  return response;
+}
+
 export function decodeOverlayUpdateV2(input: unknown): OverlayUpdateV2 {
-  const value = cloneJSONInput(input);
+  if (plainObject(input) && parsedUpdates.has(input)) return input as unknown as OverlayUpdateV2;
+  return validateOverlayUpdateV2(cloneJSONInput(input));
+}
+
+function validateOverlayUpdateV2(value: unknown, validatedBase?: OverlayFrameV2): OverlayUpdateV2 {
   objectWithKeys(value, "update", ["revision", "source", "frame"]);
   positiveInteger(value.revision, "revision");
   sourceStatus(value.source, "source");
-  if (value.frame !== null) frame(value.frame, "frame");
+  if (value.frame !== null) frame(value.frame, "frame", validatedBase);
   return Object.freeze(value) as unknown as OverlayUpdateV2;
 }
 
@@ -289,7 +376,7 @@ function sourceStatus(value: unknown, path: string): void {
   Object.freeze(value);
 }
 
-function frame(value: unknown, path: string): void {
+function frame(value: unknown, path: string, validatedBase?: OverlayFrameV2): void {
   objectWithKeys(value, path, [
     "contract", "algorithm", "epoch", "sequence", "sectionMask", "sessionId", "generatedAt", "units",
     "session", "player", "controls", "standings", "relative", "relativeSettled", "delta", "fuel", "spotter", "capabilities", "damage", "weather",
@@ -308,9 +395,11 @@ function frame(value: unknown, path: string): void {
   session(value.session, `${path}.session`);
   player(value.player, `${path}.player`);
   controls(value.controls, `${path}.controls`);
-  rowArray(value.standings, `${path}.standings`, validStanding);
-  relativeRowArray(value.relative, `${path}.relative`);
-  relativeRowArray(value.relativeSettled, `${path}.relativeSettled`);
+  // Only decoder-owned, previously validated and frozen arrays can be reused.
+  // Fresh JSON arrays always differ by identity, even if their contents match.
+  if (!validatedBase || value.standings !== validatedBase.standings) rowArray(value.standings, `${path}.standings`, validStanding);
+  if (!validatedBase || value.relative !== validatedBase.relative) relativeRowArray(value.relative, `${path}.relative`);
+  if (!validatedBase || value.relativeSettled !== validatedBase.relativeSettled) relativeRowArray(value.relativeSettled, `${path}.relativeSettled`);
   delta(value.delta, `${path}.delta`);
   fuel(value.fuel, `${path}.fuel`);
   spotter(value.spotter, `${path}.spotter`);

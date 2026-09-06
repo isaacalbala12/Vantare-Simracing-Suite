@@ -4,6 +4,102 @@ Fecha: 2026-09-03. Diseño aprobado por Isaac mediante brainstorming e interroga
 autorización documental final: «sí. sustitúyelo completamente por esto».
 Expediente: [ISA-962](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/962).
 
+## Estado operativo actualizado — ISA-996
+
+Decisión06-09: cerrar primero E20 con cadencias aprobadas (Standings4,
+Relative30, mapa30, Pedals/Delta60, Fuel2Hz), después integrar sólo lo validado
+a nightly con review y CI; posteriormente adelgazar V2 por fases separadas.
+N3 visible por ruta completado:2,6447→2,2755%CPU y382,65→388,11MiB privados.
+E20 candidato local; meta2% pendiente. Informe `docs/analysis/telemetria-v2-e20-cierre-996.md`.
+Sin promoción realizada; no autorización a testers/master/release.
+
+Condición obligatoria añadida por Isaac el06-09: ninguna medida de seis widgets
+se acepta sólo por DOM/telemetría. Verificar visualmente los seis antes y
+registrar foco del juego/visibilidad nativa cada100ms durante todo el intervalo.
+La pérdida de foco, ventana oculta/minimizada/cloaked/fuera de pantalla o evidencia
+incompleta invalida la corrida. Las cifras previas sin esta prueba requieren
+revalidación; no acreditan objetivos de CPU con HUD visible.
+
+Isaac amplía explícitamente la autorización a cambios arquitectónicos para
+optimizar dentro de las premisas anteriores. El experimento incremental por
+secciones deja de estar bloqueado por aprobación: ADR0095 fija microcortes,
+paridad, bases por consumidor, replay y reconstrucción atómica. E17 mide la
+alternativa de dividir JSON ya serializado sin conectarla al producto; añade
+coste Go. Siguiente microcorte: representación por secciones desde el productor.
+No implica aceptación de rendimiento, promoción ni release.
+
+Ampliación aprobada el 2026-09-06: buscar **CPU media inferior al 2% con seis
+widgets L1**, minimizando también RAM/GPU. El resultado anterior de2,87947%
+es la referencia, no la acreditación del nuevo objetivo. Conservar interfaces
+independientes del simulador, frescura/identidad/commit, calidad y cadencias.
+No subagentes. Medir y atribuir primero, probar cambios pequeños con regresión
+y aceptar sólo mejoras repetibles del árbol completo de procesos propios.
+Los contadores GPU inválidos no son ahorro; una reducción de CPU que traslade
+costes materiales a RAM/GPU no se acepta sin justificar ese intercambio.
+
+Comparación solicitada (orden actualizado): Isaac pidió medir primero HUD
+tras reiniciar. La exploración Full/Off está documentada en el informe
+`docs/analysis/lmu-hud-comparacion-996.md`, con Full restaurado; no acredita
+ahorro causal. Después solicita retomar optimización. Queda por acreditar
+en condiciones equivalentes el conjunto de escenarios:
+LMU con HUD, LMU sin HUD y LMU sin HUD más los seis widgets Vantare. Activar/
+desactivar el HUD desde Ajustes con computer use. Separar CPU/RAM/GPU de juego,
+Vantare y conjunto, misma escena y repeticiones; porcentajes con denominador
+explícito, memoria también en MiB. Reponer el ajuste al terminar.
+
+2026-09-06: Isaac autoriza los experimentos de rendimiento, incluidos cambios
+arquitectónicos reversibles dentro de este objetivo. Main sigue sin subagentes.
+E8+E9+E11 acredita tres capturas exploratorias repetidas2,91167 /2,75480 /2,69391%
+CPU propia con seis widgets reales y RAM media406,88MiB. La build final sin
+overrides, socket por defecto y GC300 respetando GOGC explícito, da3,00740 /
+2,82336 /2,80766%: **media2,87947% y410,33MiB**. Objetivo medio local alcanzado;
+primera corrida sobre3 y muestras hasta4,12457%, no techo de cada pico.
+ADR0094 fija transporte, seguridad, vuelta atrás y límites. El objetivo es
+de esta máquina/perfil/escena, no certificación global ni superioridad a LMU.
+La historia de experimentos se conserva en el informe seis-widgets ISA-996.
+E6 comparó el mismo pull V2 por HTTP loopback real frente al HTTP virtual
+Wails: 5,94% frente a 5,37% CPU, una pareja exploratoria. Se retiró por no
+mejorar el control. E3 y E5 también descartados; E4 queda conservado.
+E7 (pintura oculta) fue sólo atribución no publicable, no ahorro de producto.
+E8 deduplica estados idénticos del ingeniero: observados 639 status y
+639 stream en diez segundos, con un único estado distinto. No cambia
+observaciones, alertas, audio, Hz ni snapshots iniciales. Sin dependencias,
+integración/publicación. Las tres capturas finales sin overrides conservan
+seis widgets live, licencia autenticada, hashes estables y reapertura/cierre.
+No se conservan experimentos sin evidencia justificable.
+
+Retirada Overlay V1 cerrada localmente en `28bac676`; auditoría integral
+consolidada en ISA-987. ISA-994/995 corregidos y revisados; ISA-996 reúne
+correcciones y simplificaciones de ISA-997/998/999 con medidas locales.
+Fase 2 cerrada localmente sobre producto `db40f76e`: reviews independientes
+APPROVE, gates combinados y crudos N10 A/A+A/B. La comparación real de
+huella/FPS con LMU requiere banco controlado; no hay óptimo certificado.
+Isaac autorizó después medidas propias: ocho capturas exploratorias reales
+completadas, con límites en el informe de medidas reales ISA-996. La reserva
+humana anterior no impide ahora ejecutar el banco; no se acepta una ganancia
+por datos redondeados, procesos incompletos o condiciones no equivalentes.
+El [handoff vivo](../../vantare-program/handoffs/telemetry-core.md) y el
+[informe ISA-996](../../analysis/telemetria-v2-cierre-rendimiento-996.md)
+fijan SHA, gates y pendientes actuales. Fase 3 iniciada el 2026-09-06 por
+petición de Isaac: objetivo <3% CPU máquina **con seis widgets**, contando
+Go, WebViews y auxiliares propios. Main ejecuta sin subagentes; primero descarga
+segura del Hub minimizado con HUD activo, sin reducir calidad/cadencias. Una
+hipótesis por cambio, referencias repetidas con calentamiento idéntico y
+comprobaciones físicas de hasta cinco minutos por condición. Los refactors
+grandes o cambios arquitectónicos se explican y consultan antes de ejecutarse.
+La comparación contra HUD LMU sigue pendiente; lograr <3% aquí no demostraría
+ganancia sobre LMU ni sobre otros equipos.
+Sin integración remota ni certificación de óptimo global.
+
+E3 autorizado el 2026-09-06: experimentar sólo con el transporte desktop
+mediante mensajes WebView2 dirigidos a su ventana. Reutiliza OverlayPullTransport,
+sesiones, ACK, latest-wins y validación. HTTP queda como control seleccionable
+en la misma build; OBS, cadencias y renderers no cambian. Tests cubren origen,
+tamaño, correlación, timeout, sesiones y cierre antes de medir seis widgets.
+No añadir dependencias ni sustituir el IPC general de Wails.
+
+### Checkpoint histórico de aprobación del diseño
+
 Revisión del maestro escrito aprobada por Isaac: «estoy de acuerdo».
 [R0 — inventario, rollback y regresiones](../plans/2026-09-03-telemetria-v1-retirada-r0.md)
 autorizado y ejecutado en alcance documental/artefacto/checks; revisión independiente

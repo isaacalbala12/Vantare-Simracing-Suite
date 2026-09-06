@@ -3,6 +3,7 @@ package telemetrytransport
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -10,6 +11,39 @@ import (
 	"testing"
 	"time"
 )
+
+func TestPublisherPayloadOwnsSerializedBytes(t *testing.T) {
+	input := json.RawMessage(`{"frame":{"value":1}}`)
+	encoded, err := publisherPayload(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	input[0] = '['
+	if string(encoded) != `{"frame":{"value":1}}` {
+		t.Fatal("publisher retained caller-owned bytes")
+	}
+	encoded[0] = '['
+	next, err := publisherPayload(map[string]int{"value": 2})
+	if err != nil || string(next) != `{"value":2}` {
+		t.Fatalf("serialized result aliases another publication: %s, %v", next, err)
+	}
+}
+
+// Uses the existing generated wire fixture, not live LMU evidence.
+func BenchmarkPublisherPayload44(b *testing.B) {
+	payload, err := json.Marshal(benchmarkOverlayUpdateV2(44))
+	if err != nil {
+		b.Fatal(err)
+	}
+	var input any = json.RawMessage(payload)
+	b.ReportAllocs()
+	b.SetBytes(int64(len(payload)))
+	for b.Loop() {
+		if _, err := publisherPayload(input); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
 
 func TestPublisherIsInstantiatedOnlyForActiveConsumers(t *testing.T) {
 	t.Parallel()

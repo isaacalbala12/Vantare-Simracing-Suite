@@ -20,13 +20,16 @@ const (
 // WebView. Ack zero starts a fresh session. A new response is legal only after
 // the previous delivery has been acknowledged.
 type OverlayPullRequest struct {
+	Sections  uint8  `json:"sections,omitempty"`
 	SessionID string `json:"sessionId"`
 	Ack       uint64 `json:"ack"`
 }
 
 type OverlayPullEvent struct {
-	Name string          `json:"name"`
-	Data json.RawMessage `json:"data"`
+	BaseRevision uint64 `json:"baseRevision,omitempty"`
+	sections     *overlaySections
+	Name         string          `json:"name"`
+	Data         json.RawMessage `json:"data"`
 }
 
 type OverlayPullResponse struct {
@@ -36,13 +39,15 @@ type OverlayPullResponse struct {
 }
 
 type overlayPullSession struct {
-	id          string
-	publisher   *Publisher
-	release     func()
-	awaitingAck uint64
-	next        uint64
-	pending     OverlayPullResponse
-	last        map[string]json.RawMessage
+	sections     uint8
+	lastSections map[string]*overlaySections
+	id           string
+	publisher    *Publisher
+	release      func()
+	awaitingAck  uint64
+	next         uint64
+	pending      OverlayPullResponse
+	last         map[string]json.RawMessage
 }
 
 // OverlayPullTransport converts the retained v2 projections into an
@@ -76,6 +81,9 @@ func (transport *OverlayPullTransport) Pull(
 
 	transport.mu.Lock()
 	defer transport.mu.Unlock()
+	if request.Sections > 1 {
+		return OverlayPullResponse{}, false, ErrInvalidPayload
+	}
 
 	session := transport.sessions[sender]
 	if session == nil || session.id != request.SessionID {
@@ -94,10 +102,14 @@ func (transport *OverlayPullTransport) Pull(
 			return OverlayPullResponse{}, false, err
 		}
 		session = &overlayPullSession{
+			sections: request.Sections, lastSections: make(map[string]*overlaySections),
 			id: request.SessionID, publisher: publisher, release: release,
 			last: make(map[string]json.RawMessage),
 		}
 		transport.sessions[sender] = session
+	}
+	if session.sections != request.Sections {
+		return OverlayPullResponse{}, false, ErrInvalidPayload
 	}
 	if request.Ack < session.awaitingAck {
 		if session.pending.Delivery == session.awaitingAck && request.Ack+1 == session.awaitingAck {
@@ -121,8 +133,10 @@ func (transport *OverlayPullTransport) Pull(
 		Delivery:  session.next,
 		Events:    events,
 	}
-	session.pending = cloneOverlayPullResponse(response)
-	return response, true, nil
+	// Retain our owned replay bytes. Only the caller receives a defensive copy:
+	// mutating a returned response must not change pending ACK or dirty state.
+	session.pending = response
+	return cloneOverlayPullResponse(response), true, nil
 }
 
 func (transport *OverlayPullTransport) currentEvents(session *overlayPullSession) []OverlayPullEvent {
@@ -134,7 +148,7 @@ func (transport *OverlayPullTransport) currentEvents(session *overlayPullSession
 	}
 	if event, ok := session.publisher.ReplaySnapshot(); ok {
 		candidates = append(candidates, OverlayPullEvent{
-			Name: PublisherEventName(event.Product, event.Kind), Data: event.Data,
+			Name: PublisherEventName(event.Product, event.Kind), Data: event.Data, sections: event.sections,
 		})
 	}
 
@@ -143,9 +157,24 @@ func (transport *OverlayPullTransport) currentEvents(session *overlayPullSession
 		if bytes.Equal(session.last[event.Name], event.Data) {
 			continue
 		}
-		data := append(json.RawMessage(nil), event.Data...)
-		session.last[event.Name] = data
-		changed = append(changed, OverlayPullEvent{Name: event.Name, Data: data})
+		// Publisher replay already gives this session an owned copy. These bytes
+		// stay private in last/pending and are never modified by the transport.
+		session.last[event.Name] = event.Data
+		if session.sections == 1 {
+			base, current := session.lastSections[event.Name], event.sections
+			if base != nil && current != nil && base.epoch == current.epoch && base.session == current.session && base.revision < current.revision {
+				patch := current.difference(base)
+				if len(patch) < len(event.Data) {
+					event.Data, event.BaseRevision = patch, base.revision
+				}
+			}
+			if current == nil {
+				delete(session.lastSections, event.Name)
+			} else {
+				session.lastSections[event.Name] = current
+			}
+		}
+		changed = append(changed, event)
 	}
 	return changed
 }
@@ -226,8 +255,9 @@ func cloneOverlayPullResponse(response OverlayPullResponse) OverlayPullResponse 
 	cloned.Events = make([]OverlayPullEvent, len(response.Events))
 	for index, event := range response.Events {
 		cloned.Events[index] = OverlayPullEvent{
-			Name: event.Name,
-			Data: append(json.RawMessage(nil), event.Data...),
+			BaseRevision: event.BaseRevision,
+			Name:         event.Name,
+			Data:         append(json.RawMessage(nil), event.Data...),
 		}
 	}
 	return cloned

@@ -7,6 +7,7 @@ import {
   attachOverlayFrameV2Transport,
   createOverlayFrameV2Store,
   decodeOverlayUpdateV2,
+  parseOverlayPullJSON,
   OVERLAY_V2_PROJECTION_ROUTE,
   OVERLAY_V2_SNAPSHOT_EVENT,
   OVERLAY_V2_STATUS_EVENT,
@@ -16,6 +17,49 @@ import {
 afterEach(() => vi.useRealTimers());
 
 describe("OverlayFrame v2 store", () => {
+  it("includes upstream JSON parsing in ingestion diagnostics", () => {
+    const text = JSON.stringify({events: [{name: OVERLAY_V2_SNAPSHOT_EVENT, data: golden()}]});
+    let now = 0;
+    const clock = vi.spyOn(performance, "now").mockImplementation(() => now);
+    const original = JSON.parse;
+    const parser = vi.spyOn(JSON, "parse").mockImplementation(input => { now += 7; return original(input); });
+    try {
+      const response = parseOverlayPullJSON(text) as {events: {data: OverlayUpdateV2}[]};
+      const store = createOverlayFrameV2Store();
+      store.ingest(OVERLAY_V2_SNAPSHOT_EVENT, response.events[0]!.data);
+      expect(store.getDiagnostics().overlay_v2_parse_duration.p50).toBe(7);
+    } finally { parser.mockRestore(); clock.mockRestore(); }
+  });
+
+  it("parses a pull response once while retaining strict immutable ingestion", () => {
+    const update = golden();
+    const text = JSON.stringify({sessionId: "s", delivery: 1, events: [{name: OVERLAY_V2_SNAPSHOT_EVENT, data: update}]});
+    const parse = vi.spyOn(JSON, "parse");
+    try {
+      const response = parseOverlayPullJSON(text) as {events: {data: OverlayUpdateV2}[]};
+      const owned = response.events[0]!.data;
+      const store = createOverlayFrameV2Store();
+      store.ingest(OVERLAY_V2_SNAPSHOT_EVENT, owned);
+      expect(store.getSnapshot().frame).toEqual(update.frame);
+      expect(parse).toHaveBeenCalledTimes(1);
+      expect(Object.isFrozen(owned.frame?.standings[0])).toBe(true);
+      expect(() => Object.assign(owned.source, {state: "error"})).toThrow();
+      expect(store.getSnapshot().source?.state).toBe("live");
+    } finally { parse.mockRestore(); }
+  });
+
+  it("does not trust caller objects or invalid JSON just because they use the pull envelope", () => {
+    const update = golden();
+    const decoded = decodeOverlayUpdateV2(update);
+    Object.assign(update.source, {state: "error"});
+    expect(decoded.source.state).toBe("live");
+    const pull = (data: unknown) => JSON.stringify({sessionId: "s", delivery: 1, events: [{name: OVERLAY_V2_SNAPSHOT_EVENT, data}]});
+    expect(() => parseOverlayPullJSON(pull({...golden(), revision: 0}))).toThrow("revision");
+    expect(() => parseOverlayPullJSON(pull({...golden(), unexpected: true}))).toThrow("update");
+    expect(() => parseOverlayPullJSON("not-json")).toThrow();
+    expect(parseOverlayPullJSON("null")).toBeNull();
+  });
+
   it("decodes the generated Go contract strictly", () => {
     const update = golden();
     expect(decodeOverlayUpdateV2(JSON.stringify(update))).toEqual(update);

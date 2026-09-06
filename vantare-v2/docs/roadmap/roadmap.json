@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-06T17:23:42Z",
+  "generatedAt": "2026-09-06T18:04:18Z",
   "digest": {
-    "lastCommit": "3f58853f26d1e8dc32a2ca2291ac305d966f2815"
+    "lastCommit": "59185071d0b8250327ae79cbf58317daa11ae4fd"
   },
   "phases": [
     {
@@ -529,10 +529,10 @@
         "it": "Build Windows riproducibili del canale Nightly"
       },
       "body": {
-        "es": "El pipeline de releases fija PowerShell 7.6.5, instala y verifica el toolchain MSYS2 UCRT64 antes de compilar el reader de telemetría, y valida los seis artefactos oficiales del canal Nightly.",
-        "en": "The release pipeline pins PowerShell 7.6.5, installs and verifies the MSYS2 UCRT64 toolchain before compiling the telemetry reader, and validates the six official Nightly channel artifacts.",
-        "pt": "O pipeline de releases fixa o PowerShell 7.6.5, instala e verifica o toolchain MSYS2 UCRT64 antes de compilar o reader de telemetria e valida os seis artefactos oficiais do canal Nightly.",
-        "it": "La pipeline delle release fissa PowerShell 7.6.5, installa e verifica il toolchain MSYS2 UCRT64 prima di compilare il reader di telemetria e valida i sei artefatti ufficiali del canale Nightly."
+        "es": "El pipeline de releases fija PowerShell 7.6.5, instala y verifica el toolchain MSYS2 UCRT64 antes de compilar el reader de telemetría, instala Chromium para sus pruebas visuales y valida los seis artefactos oficiales del canal Nightly.",
+        "en": "The release pipeline pins PowerShell 7.6.5, installs and verifies the MSYS2 UCRT64 toolchain before compiling the telemetry reader, installs Chromium for visual tests and validates the six official Nightly channel artifacts.",
+        "pt": "O pipeline de releases fixa o PowerShell 7.6.5, instala e verifica o toolchain MSYS2 UCRT64 antes de compilar o reader de telemetria instala o Chromium para os testes visuais e valida os seis artefactos oficiais do canal Nightly.",
+        "it": "La pipeline delle release fissa PowerShell 7.6.5, installa e verifica il toolchain MSYS2 UCRT64 prima di compilare il reader di telemetria installa Chromium per i test visivi e valida i sei artefatti ufficiali del canale Nightly."
       },
       "label": {
         "es": "Corregido",
@@ -973,6 +973,11 @@
           "kind": "change",
           "scope": "",
           "text": "ISA-1002 · Integrar rendimiento Telemetría V2 y E20"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-1004 · Corregir Dense a 560x100 y vueltas ilimitadas de Broadcast"
         }
       ]
     },

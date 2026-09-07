@@ -1,6 +1,15 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
-## ISA-1015 — rendimiento de la base, primera exploración real (2026-09-07)
+## ISA-1015 — rendimiento de la base, medición junto a LMU (2026-09-08)
+
+Decisión vigente: Isaac autoriza continuar con LMU y Edge abiertos; sustituye la
+pausa sin juego del 2026-09-07. BaseRoute/A0 mide solo procesos propios; el juego
+tiene CSV de contexto separado y debe conservar PID/vida durante el intervalo.
+No PresentMon/ETW adicional ni control del juego. Auto admite sourceHz variable,
+pero exige política estable; ops:metrics etiqueta fuente sin confundir live/stale
+con menú/carrera. GPU conserva instancias por adaptador/motor, sin convertir la
+suma histórica en porcentaje total. 56/56 tests del banco PASS (dos RED previos),
+parser y diff-check PASS. Revisión y smoke Wails de este ajuste pendientes.
 
 Isaac aprueba auditar y medir todo salvo HUD/OBS/widgets y Overlay Studio,
 preservando apariencia, capacidades y contratos compartidos. Base verificada
@@ -83,7 +92,7 @@ Pausa runtime: LMU PID 29092 se reabrió a las 23:40:05 CEST, después de todas 
 capturas/perfiles y del cierre del diagnóstico (23:34:33). La tarea de widgets
 está activa. No cerrar LMU ni los cinco Edge. Se preguntó disponibilidad de nuevo;
 guard BaseRoute comprobado con LMU real: rechaza antes de lanzar Vantare.
-Siguiente cuando esté disponible sin juego: smoke Wails positivo y negativo del
+Esta pausa fue sustituida por la autorización anterior. Siguiente con LMU abierto: smoke Wails positivo y negativo del
 monitor/observador, una corrida completa, después A/A y control GPU/mezcla.
 El run1 no recibe garantías retroactivas. Los cinco experimentos sin mejora no
 han empezado ni se reinicia presupuesto. Los fallos CI históricos de la base

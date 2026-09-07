@@ -35,9 +35,11 @@ if ($Puerto -in @(9222, 9231)) {
 }
 $BaseRoute = $BaseRoute.ToLowerInvariant()
 $isBase = $BaseRoute -ne ''
-if ($isBase -and ($Condicion -ne 'A0' -or -not $SinJuego -or $OcultarPintura)) {
-    throw 'BaseRoute requiere A0/SinJuego, sin aislamiento de pintura.'
+if ($isBase -and ($Condicion -ne 'A0' -or $OcultarPintura)) {
+    throw 'BaseRoute requiere A0, sin aislamiento de pintura.'
 }
+$usePresentMon = -not $SinJuego -and -not $isBase
+$measurementMode = if ($isBase) { if ($SinJuego) { 'base-no-game' } else { 'base-with-game' } } elseif ($OcultarPintura) { 'diagnostic-hidden-paint' } elseif ($SinJuego) { 'ram-only-no-game' } else { 'full' }
 
 $repoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..\..')).Path
 function Resolve-BenchPath([string]$Path, [switch]$MustExist) {
@@ -112,7 +114,7 @@ $plan = [ordered]@{
     cdpPort = $Puerto
     game = if ($SinJuego) { $null } else { $Juego }
     gamePresent = -not [bool]$SinJuego
-    measurementMode = if ($SinJuego) { 'ram-only-no-game' } else { 'full' }
+    measurementMode = $measurementMode
     scene = $Escena
     baseRoute = $BaseRoute
     lmuSession = $SesionLmu
@@ -121,7 +123,7 @@ $plan = [ordered]@{
     distSha256 = $distSha256
     gitHead = $gitHead
     outputDirectory = $outputDir
-    presentMon = if ($SinJuego) { $null } else { $presentMonPath }
+    presentMon = if ($usePresentMon) { $presentMonPath } else { $null }
     presentMonUserPathPersisted = $presentMonDirectory -in $userPathParts
     expectedWidgets = $expectedWidgetCount
     forceHygiene = [bool]$Forzar
@@ -130,7 +132,7 @@ if ($DryRun) {
     $plan | ConvertTo-Json -Depth 4
     exit 0
 }
-if (-not $SinJuego -and (Test-Path -LiteralPath $standalonePresentMon)) {
+if ($usePresentMon -and (Test-Path -LiteralPath $standalonePresentMon)) {
     if ($presentMonDirectory -notin $userPathParts) {
         $updatedUserPath = (@($userPathParts) + $presentMonDirectory) -join ';'
         [Environment]::SetEnvironmentVariable('Path', $updatedUserPath, 'User')
@@ -139,13 +141,13 @@ if (-not $SinJuego -and (Test-Path -LiteralPath $standalonePresentMon)) {
         $env:Path = "$env:Path;$presentMonDirectory"
     }
 }
-if (-not $presentMonPath -and -not $SinJuego) {
+if (-not $presentMonPath -and $usePresentMon) {
     throw 'PresentMon 2.x no está en PATH ni en la ruta standalone documentada. Instala Intel.PresentMon antes de medir.'
 }
 if (Get-NetTCPConnection -LocalPort $Puerto -State Listen -ErrorAction SilentlyContinue) {
     throw "El puerto CDP $Puerto ya está escuchando."
 }
-if ($isBase -and (Get-Process -Name ([IO.Path]::GetFileNameWithoutExtension($Juego)) -ErrorAction SilentlyContinue)) {
+if ($isBase -and $SinJuego -and (Get-Process -Name ([IO.Path]::GetFileNameWithoutExtension($Juego)) -ErrorAction SilentlyContinue)) {
     throw 'BaseRoute sin juego requiere que LMU esté cerrado; no se detendrá ningún proceso.'
 }
 
@@ -161,8 +163,7 @@ $systemWebView2Paths = @($systemWebView2.userDataDir | Where-Object { $_ } | Sor
 $systemWebView2PathsJson = if ($systemWebView2Paths.Count) { $systemWebView2Paths | ConvertTo-Json -Compress -AsArray } else { '[]' }
 $foreignProcessesJson = if ($foreignBrowsers.Count) { $foreignBrowsers | ConvertTo-Json -Compress -Depth 3 } else { '[]' }
 $hygieneForced = [bool]$Forzar
-$measurementMode = if ($OcultarPintura) { 'diagnostic-hidden-paint' } elseif ($SinJuego) { 'ram-only-no-game' } else { 'full' }
-$publishable = -not $hygieneForced -and -not [bool]$SinJuego -and -not [bool]$OcultarPintura
+$publishable = -not $hygieneForced -and -not [bool]$SinJuego -and -not [bool]$OcultarPintura -and -not $isBase
 Write-Host "WebView2 del sistema permitidos: $($systemWebView2.Count)"
 $systemWebView2Paths | ForEach-Object { Write-Host "  $_" }
 if ($foreignBrowsers.Count -gt 0) {
@@ -184,7 +185,10 @@ if ($SinJuego) {
 
 $gameProcessName = if ($SinJuego) { $null } else { [IO.Path]::GetFileNameWithoutExtension($Juego) }
 $gameProcess = if ($SinJuego) { $null } else { Get-Process -Name $gameProcessName -ErrorAction SilentlyContinue | Select-Object -First 1 }
-if (-not $SinJuego -and -not $gameProcess) { throw "No se encontró el juego '$Juego'; PresentMon necesita un proceso vivo." }
+if (-not $SinJuego -and -not $gameProcess) { throw "No se encontró el juego '$Juego'; el escenario con juego requiere un proceso vivo." }
+$gameStartedAt = if ($gameProcess) { $gameProcess.StartTime.ToUniversalTime() } else { $null }
+$gameStable = $true
+$gameRows = [Collections.Generic.List[object]]::new()
 
 New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
 $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
@@ -245,9 +249,14 @@ function Get-GpuTotals {
         foreach ($sample in $samples) {
             if ($sample.InstanceName -notmatch 'pid_(\d+)') { continue }
             $processId = [int]$Matches[1]
-            if (-not $totals.ContainsKey($processId)) { $totals[$processId] = @{ Engine = 0.0; Dedicated = 0.0 } }
-            if ($sample.Path -like '*Utilization Percentage') { $totals[$processId].Engine += [double]$sample.CookedValue }
-            elseif ($sample.Path -like '*Dedicated Usage') { $totals[$processId].Dedicated += [double]$sample.CookedValue }
+            if (-not $totals.ContainsKey($processId)) { $totals[$processId] = @{ Engine = 0.0; Dedicated = 0.0; Engines = [Collections.Generic.List[object]]::new(); Memory = [Collections.Generic.List[object]]::new() } }
+            if ($sample.Path -like '*Utilization Percentage') {
+                $totals[$processId].Engine += [double]$sample.CookedValue
+                $totals[$processId].Engines.Add([pscustomobject]@{ instance = $sample.InstanceName; percent = [double]$sample.CookedValue })
+            } elseif ($sample.Path -like '*Dedicated Usage') {
+                $totals[$processId].Dedicated += [double]$sample.CookedValue
+                $totals[$processId].Memory.Add([pscustomobject]@{ instance = $sample.InstanceName; dedicatedBytes = [double]$sample.CookedValue })
+            }
         }
         return [pscustomobject]@{ Valid = $true; Totals = $totals; Error = $null }
     } catch {
@@ -307,7 +316,7 @@ function Update-ProcessClassification {
 }
 
 try {
-    if (-not $SinJuego) {
+    if ($usePresentMon) {
         foreach ($etwSession in @(Get-VantareEtwSessions)) {
             $owner = Get-Process -Id ([int]$etwSession.pid) -ErrorAction SilentlyContinue
             if ($owner -and $owner.ProcessName -like 'vantare*') {
@@ -422,7 +431,7 @@ try {
         & node $cdpHelper --cdp "http://127.0.0.1:$Puerto" --action base-watch-start --base-route $BaseRoute --output $baseStartJson | Out-Host
         if ($LASTEXITCODE -ne 0) { throw 'No se pudo observar el estado base.' }
     }
-    if (-not $SinJuego) {
+    if ($usePresentMon) {
         $sessionName = "VantareHuella-$($app.Id)-$stamp"
         $presentMonArgs = @('--process_name', ('"{0}"' -f $gameExeName), '--output_file', ('"{0}"' -f $presentMonCsv), '--v2_metrics', '--timed', [string]$Duracion, '--terminate_after_timed', '--session_name', $sessionName, '--no_console_stats')
         $presentMon = Start-Process -FilePath $presentMonPath -ArgumentList $presentMonArgs -RedirectStandardOutput $presentMonLog -RedirectStandardError $presentMonErrorLog -WindowStyle Hidden -PassThru
@@ -453,12 +462,12 @@ try {
             $cpuPct = if ($previousCpu.ContainsKey($processId) -and $elapsed -gt 0) { (($cpuSeconds - $previousCpu[$processId]) / $elapsed / $logicalProcessors) * 100 } else { 0 }
             $previousCpu[$processId] = $cpuSeconds
             $previousCpuAt[$processId] = $cpuSampleAt
-            $gpuValues = if ($gpuSample.Valid -and $gpuSample.Totals.ContainsKey($processId)) { $gpuSample.Totals[$processId] } else { @{ Engine = 0.0; Dedicated = 0.0 } }
+            $gpuValues = if ($gpuSample.Valid -and $gpuSample.Totals.ContainsKey($processId)) { $gpuSample.Totals[$processId] } else { @{ Engine = 0.0; Dedicated = 0.0; Engines = @(); Memory = @() } }
             $rows.Add([pscustomobject][ordered]@{
                 timestamp = $now.ToString('o'); condition = $Condicion; pid = $processId; role = $roleByPid[$processId]
                 buildSha256 = $buildSha256; distSha256 = $distSha256; buildStable = $true; gitHead = $gitHead
                 licenseState = $licenseState; licenseAccount = $licenseAccount; licenseConfigured = $licenseConfigured
-                scene = $Escena; lmuSession = $SesionLmu; cars = $Coches; baseRoute = $BaseRoute
+                scene = $Escena; lmuSession = $SesionLmu; cars = $Coches; baseRoute = $BaseRoute; gamePresent = -not [bool]$SinJuego
                 hygieneForced = $hygieneForced; foreignProcesses = $foreignProcessesJson; publishable = $publishable; measurementMode = $measurementMode
                 systemWebView2Count = $systemWebView2.Count; systemWebView2Paths = $systemWebView2PathsJson
                 orphanEtwSessionsStopped = $orphanEtwSessionsStoppedJson; gameFrametimeValid = $false; frametimePublishable = $false
@@ -466,7 +475,21 @@ try {
                 cpuPct = Format-Invariant ([Math]::Max(0.0, $cpuPct)); gpuSampleValid = [bool]$gpuSample.Valid
                 gpuPct = if ($gpuSample.Valid) { Format-Invariant ([double]$gpuValues.Engine) } else { $null }
                 gpuDedicatedBytes = if ($gpuSample.Valid) { Format-Invariant ([double]$gpuValues.Dedicated) } else { $null }
+                gpuEngineSamples = if ($gpuSample.Valid) { ConvertTo-Json -InputObject @($gpuValues.Engines) -Compress } else { $null }
+                gpuMemorySamples = if ($gpuSample.Valid) { ConvertTo-Json -InputObject @($gpuValues.Memory) -Compress } else { $null }
                 frameTimeMs = $null; dropped = $null
+            })
+        }
+        if ($isBase -and -not $SinJuego) {
+            $currentGame = Get-Process -Id $gameProcess.Id -ErrorAction SilentlyContinue
+            $alive = $null -ne $currentGame -and $currentGame.StartTime.ToUniversalTime() -eq $gameStartedAt
+            $gameStable = $gameStable -and $alive
+            $gameRows.Add([pscustomobject]@{
+                timestamp = (Get-Date).ToString('o'); elapsedSeconds = $cpuClock.Elapsed.TotalSeconds
+                pid = $gameProcess.Id; alive = $alive
+                cpuTotalSeconds = if ($alive) { $currentGame.TotalProcessorTime.TotalSeconds } else { $null }
+                privateBytes = if ($alive) { $currentGame.PrivateMemorySize64 } else { $null }
+                workingSetBytes = if ($alive) { $currentGame.WorkingSet64 } else { $null }
             })
         }
         $sampleIndex += 1
@@ -491,12 +514,13 @@ try {
         Write-Host "VISIBILITY RESULT: $visibilityValid"
     }
     if ($isBase) {
-        & node $cdpHelper --cdp "http://127.0.0.1:$Puerto" --action base-watch-stop --base-route $BaseRoute --output $baseEndJson | Out-Host
+        $baseGame = if ($SinJuego) { 'absent' } else { 'present' }
+        & node $cdpHelper --cdp "http://127.0.0.1:$Puerto" --action base-watch-stop --base-route $BaseRoute --base-game $baseGame --output $baseEndJson | Out-Host
         $baseStateValid = $false
         $baseLevel = '[]'
         if ($LASTEXITCODE -eq 0) {
             $baseEnd = Get-Content -LiteralPath $baseEndJson -Raw | ConvertFrom-Json
-            $baseStateValid = $baseEnd.validity.valid -eq $true -and $visibilityValid
+            $baseStateValid = $baseEnd.validity.valid -eq $true -and $visibilityValid -and $gameStable
             $baseLevel = $baseEnd.evidence.levels | ConvertTo-Json -Depth 4 -Compress -AsArray
         } else {
             Write-Warning 'Sin evidencia final base: se conservan crudos como inválidos.'
@@ -504,6 +528,7 @@ try {
         foreach ($row in $rows) {
             $row | Add-Member -NotePropertyName baseStateValid -NotePropertyValue $baseStateValid
             $row | Add-Member -NotePropertyName baseLevels -NotePropertyValue $baseLevel
+            $row | Add-Member -NotePropertyName gameProcessStable -NotePropertyValue $gameStable
         }
         Write-Host "BASE STATE RESULT: $baseStateValid (higiene/publicabilidad conservadas)"
     }
@@ -576,13 +601,15 @@ try {
         $gameFrametimeValid = $validPresentMonFrames -gt 0
         $droppedPercent = if ($validPresentMonFrames) { 100 * $droppedFrames / $validPresentMonFrames } else { 0 }
         Write-Host ("Frames perdidos: {0}/{1} ({2:N3} %)" -f $droppedFrames, $validPresentMonFrames, $droppedPercent)
+    } elseif ($isBase) {
+        Write-Host 'PresentMon omitido: base por procesos, sin medir frametimes del simulador.'
     } elseif ($SinJuego) {
         Write-Host 'PresentMon omitido: corrida RAM-only sin juego.'
     } else {
         Write-Warning 'PresentMon no produjo CSV; el resumen conservará las métricas de Vantare y marcará frametime ausente.'
     }
 
-    if (-not $gameFrametimeValid) {
+    if ($usePresentMon -and -not $gameFrametimeValid) {
         Write-Warning 'FRAMETIME NO PUBLICABLE: PresentMon no produjo ningún frame válido; RAM/CPU/GPU de Vantare siguen siendo utilizables.'
     }
     $buildSha256End = (Get-FileHash -LiteralPath $exePath -Algorithm SHA256).Hash.ToLowerInvariant()
@@ -596,6 +623,7 @@ try {
     }
 
     $rows | Export-Csv -LiteralPath $rawCsv -NoTypeInformation -Encoding utf8
+    if ($gameRows.Count) { $gameRows | Export-Csv -LiteralPath (Join-Path $outputDir "$stem-game-context.csv") -NoTypeInformation -Encoding utf8 }
     & node $summaryHelper --run-summary --condition $Condicion --output $summaryMd $rawCsv | Out-Host
     if ($LASTEXITCODE -ne 0) { throw "El resumen falló con código $LASTEXITCODE." }
 } finally {

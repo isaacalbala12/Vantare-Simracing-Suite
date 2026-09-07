@@ -227,6 +227,8 @@ async function captureLicense(page, timeoutMs) {
 const cdp = argument("cdp");
 const action = argument("action", "inspect");
 const baseRoute = argument("base-route", "home");
+const baseGame = argument("base-game", "absent");
+if (!["absent", "present"].includes(baseGame)) throw new Error('base-game must be absent or present');
 const output = argument("output");
 const screenshotDir = argument("screenshot-dir");
 const durationSeconds = Number(argument("duration", "10"));
@@ -257,8 +259,8 @@ if (action.startsWith("base-")) {
     await writeResult({ schema: 'vantare.base.cdp.v1', action, route: baseRoute });
   } else {
     const evidence = await hub.evaluate(baseWatchInPage, action === 'base-watch-start' ? 'start' : 'stop');
-    const validity = action === 'base-watch-stop' ? validateBaseEvidence(evidence, baseRoute) : null;
-    await writeResult({ schema: 'vantare.base.cdp.v1', action, route: baseRoute, evidence, validity });
+    const validity = action === 'base-watch-stop' ? validateBaseEvidence(evidence, baseRoute, baseGame === 'present') : null;
+    await writeResult({ schema: 'vantare.base.cdp.v1', action, route: baseRoute, gamePresent: baseGame === 'present', evidence, validity });
   }
   process.exit(0);
 }

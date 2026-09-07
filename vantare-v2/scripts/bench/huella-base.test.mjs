@@ -6,11 +6,28 @@ const { Window } = createRequire(new URL('../../frontend/package.json', import.m
 
 const view = () => ({ route: 'home', visibility: 'visible', studio: false, widgets: 0, welcome: false, viewport: { width: 1264, height: 761, dpr: 1 } });
 const evidence = () => ({ before: view(), after: view(), changes: [], levelEvents: 180,
+  sources: [{kind: 'lmu', state: 'live', available: true}], sourceEvents: 180, maxSourceGapMs: 1000, sourceQuietMs: 50,
   maxLevelGapMs: 1000, levelQuietMs: 20,
   levels: [{ mode: 'auto', level: 2, effects: 'full', rafCap: 60, sourceHz: 0 }] });
 
 test('base requiere ruta, viewport y nivel estables con efectos completos', () => {
   assert.equal(validateBaseEvidence(evidence(), 'home').valid, true);
+});
+
+test('con juego admite sourceHz variable sin confundirlo con cambios de Auto', () => {
+  const value = evidence();
+  value.levels = [58, 60, 59].map(sourceHz => ({ ...value.levels[0], sourceHz }));
+  assert.equal(validateBaseEvidence(value, 'home', true).valid, true);
+  assert.equal(validateBaseEvidence(value, 'home').valid, false, 'no mezclar con escenario sin juego');
+  value.levels[1].level = 3;
+  assert.equal(validateBaseEvidence(value, 'home', true).valid, false);
+});
+
+test('con juego tampoco acepta fuente ausente, negativa o no finita', () => {
+  for (const sourceHz of [undefined, -1, NaN, Infinity]) {
+    const value = evidence(); value.levels[0].sourceHz = sourceHz;
+    assert.equal(validateBaseEvidence(value, 'home', true).valid, false);
+  }
 });
 
 // DOM/event-bus fixtures exercise the observer, never stand in for Wails evidence.
@@ -25,7 +42,8 @@ async function withObserver(route, action) {
   const emit = (name, data) => listeners.get(name)?.({ data });
   const bus = { On(name, listener) {
     listeners.set(name, listener);
-    if (name === 'performance:level') queueMicrotask(() => emit(name, evidence().levels[0]));
+    if (name === 'performance:level') queueMicrotask(() => emit(name, { ...evidence().levels[0], host: {} }));
+    if (name === 'ops:metrics') queueMicrotask(() => emit(name, { source: evidence().sources[0] }));
     return () => listeners.delete(name);
   } };
   try {
@@ -68,7 +86,20 @@ test('el observador real detecta un HUD que abre y cierra entre extremos', async
 });
 
 test('el observador conserva una base quieta y se desmonta', async () => {
-  assert.equal(validateBaseEvidence(await withObserver('home', async () => {}), 'home').valid, true);
+  const result = await withObserver('home', async () => {});
+  assert.equal(validateBaseEvidence(result, 'home').valid, true);
+  assert.equal(validateBaseEvidence(result, 'home', true).valid, true);
+});
+
+test('fuente cambiante o ausente invalida con juego aunque sourceHz siga positivo', async () => {
+  const result = await withObserver('home', async (_window, emit) => {
+    emit('ops:metrics', {source: {kind: 'lmu', state: 'stale', available: true}});
+  });
+  assert.equal(validateBaseEvidence(result, 'home', true).valid, false);
+  const value = evidence(); value.sourceQuietMs = 4000;
+  assert.equal(validateBaseEvidence(value, 'home', true).valid, false);
+  delete value.sources;
+  assert.equal(validateBaseEvidence(value, 'home', true).valid, false);
 });
 
 test('una interacción invalida sin guardar su contenido', async () => {

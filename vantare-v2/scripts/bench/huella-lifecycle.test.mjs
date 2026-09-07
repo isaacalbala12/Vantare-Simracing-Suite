@@ -9,11 +9,56 @@ const cdpHelper = await readFile(new URL("./huella-cdp.mjs", import.meta.url), "
 const bench = await readFile(new URL("./huella.ps1", import.meta.url), "utf8");
 const buildMeasurement = await readFile(new URL("./build-measurement.ps1", import.meta.url), "utf8");
 
+test("base admite LMU abierto sin activar PresentMon ni mezclar modos", {skip: process.platform !== "win32"}, () => {
+  const header = bench.slice(0, bench.indexOf('$repoRoot ='));
+  execFileSync('pwsh', ['-NoProfile', '-Command', `
+  $ErrorActionPreference = 'Stop'
+  $entry = { ${header}
+    [pscustomobject]@{mode=$measurementMode;presentMon=$usePresentMon}
+  }
+  $live = & $entry -Condicion A0 -BaseRoute home
+  if ($live.mode -ne 'base-with-game' -or $live.presentMon) { throw 'wrong live base mode' }
+  $idle = & $entry -Condicion A0 -BaseRoute home -SinJuego
+  if ($idle.mode -ne 'base-no-game' -or $idle.presentMon) { throw 'wrong base no-game mode' }
+  $legacy = & $entry -Condicion A1
+  if ($legacy.mode -ne 'full' -or -not $legacy.presentMon) { throw 'legacy game protocol changed' }
+  $noGame = & $entry -Condicion A0 -SinJuego
+  if ($noGame.mode -ne 'ram-only-no-game' -or $noGame.presentMon) { throw 'legacy no-game changed' }
+  $rejected = $false
+  try { & $entry -Condicion A1 -BaseRoute home } catch { $rejected = $true }
+  if (-not $rejected) { throw 'base accepted HUD condition' }
+  `]);
+});
+
 test("HUD visible exige evidencia nativa durante toda la captura, no sólo DOM", () => {
  assert.match(bench, /overlay-visibility-probe\.exe/);
  assert.match(bench, /\$visibilityValid = \$visibilityEvidence\.valid -eq \$true/);
  assert.match(bench, /if \(-not \$visibilityValid\) \{ \$row\.publishable = \$false \}/);
  assert.ok(bench.indexOf('$visibilityProcess.WaitForExit') < bench.indexOf("if ($Condicion -eq 'HubMin') {", bench.indexOf('$sampleDeadline')));
+});
+
+test("GPU conserva PID, adaptador y motor separados; ausencia no inventa muestras", {skip: process.platform !== "win32"}, () => {
+  const gpu = bench.slice(bench.indexOf('function Get-GpuTotals'), bench.indexOf('function Get-VantareEtwSessions'));
+  execFileSync('pwsh', ['-NoProfile', '-Command', `
+    $ErrorActionPreference = 'Stop'
+    function Get-Counter {
+      [pscustomobject]@{CounterSamples=@(
+        [pscustomobject]@{InstanceName='pid_7_luid_a_phys_0_eng_0_engtype_3D';Path='GPU Engine/Utilization Percentage';CookedValue=1.5},
+        [pscustomobject]@{InstanceName='pid_7_luid_b_phys_0_eng_1_engtype_Copy';Path='GPU Engine/Utilization Percentage';CookedValue=2.5},
+        [pscustomobject]@{InstanceName='pid_8_luid_a_phys_0_eng_0_engtype_3D';Path='GPU Engine/Utilization Percentage';CookedValue=99},
+        [pscustomobject]@{InstanceName='pid_7_luid_a_phys_0';Path='GPU Process Memory/Dedicated Usage';CookedValue=4096}
+      )}
+    }
+    ${gpu}
+    $result=Get-GpuTotals
+    if (-not $result.Valid -or $result.Totals[7].Engine -ne 4 -or $result.Totals[7].Engines.Count -ne 2) { throw 'PID aggregation changed' }
+    $samples = @($result.Totals[7].Engines) | ConvertTo-Json -Compress | ConvertFrom-Json
+    if ($samples[1].instance -ne 'pid_7_luid_b_phys_0_eng_1_engtype_Copy' -or $samples[1].percent -ne 2.5) { throw 'lost adapter/engine' }
+    if ($result.Totals[7].Memory[0].dedicatedBytes -ne 4096 -or $result.Totals.ContainsKey(9)) { throw 'invented memory/process' }
+    function Get-Counter { throw 'test counter unavailable' }
+    $missing=Get-GpuTotals
+    if ($missing.Valid -or $missing.Totals.Count) { throw 'missing counters accepted' }
+  `]);
 });
 
 test("cobertura temporal compara UTC con UTC", {skip: process.platform !== "win32"}, () => {
@@ -123,16 +168,17 @@ test("HubMin mide la reapertura después de finalizar las muestras", () => {
 
 test("el modo sin juego conserva RAM/CDP y omite solo PresentMon", () => {
   assert.match(bench, /\[switch\]\$SinJuego/);
-  assert.match(bench, /measurementMode = if \(\$SinJuego\) \{ 'ram-only-no-game' \}/);
+  assert.match(bench, /elseif \(\$SinJuego\) \{ 'ram-only-no-game' \}/);
   assert.match(bench, /\$publishable = -not \$hygieneForced -and -not \[bool\]\$SinJuego/);
-  assert.match(bench, /if \(-not \$SinJuego\) \{\s*\$sessionName = [^\n]+\s*\$presentMonArgs/);
+  assert.match(bench, /if \(\$usePresentMon\) \{\s*\$sessionName = [^\n]+\s*\$presentMonArgs/);
   assert.match(bench, /PresentMon omitido: corrida RAM-only sin juego/);
 });
 
 test("sin juego no cambia PATH ni consulta o limpia sesiones ETW", () => {
-  assert.match(bench, /if \(-not \$SinJuego -and \(Test-Path -LiteralPath \$standalonePresentMon\)\)/);
-  assert.match(bench, /if \(-not \$SinJuego\) \{\s*foreach \(\$etwSession in @\(Get-VantareEtwSessions\)\)/);
-  assert.match(bench, /if \(-not \$SinJuego\) \{\s*\$sessionName = "VantareHuella-/);
+  assert.match(bench, /\$usePresentMon = -not \$SinJuego -and -not \$isBase/);
+  assert.match(bench, /if \(\$usePresentMon -and \(Test-Path -LiteralPath \$standalonePresentMon\)\)/);
+  assert.match(bench, /if \(\$usePresentMon\) \{\s*foreach \(\$etwSession in @\(Get-VantareEtwSessions\)\)/);
+  assert.match(bench, /if \(\$usePresentMon\) \{\s*\$sessionName = "VantareHuella-/);
 });
 
 test("la medida falla cerrada si la build arranca sin licencia configurada", () => {

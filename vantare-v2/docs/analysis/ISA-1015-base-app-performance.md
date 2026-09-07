@@ -75,6 +75,21 @@ cortes adicionales ni justifica alterar contratos compartidos de HUD/Studio.
 
 ## Banco: capacidad actual y preparación local
 
+Escenario principal vigente desde 2026-09-08: Isaac autoriza medir junto a LMU,
+que permanece abierto igual que Edge. `A0 -BaseRoute home|month|timeline` mide
+el árbol propio de Vantare con `measurementMode=base-with-game`; LMU se registra
+en un CSV de contexto separado, sin sumarlo ni descontarlo de los recursos propios.
+No usa PresentMon adicional, no cambia PATH/ETW ni controla el simulador.
+Auto conserva su comportamiento: sourceHz puede fluctuar sin cambiar de nivel;
+se observan pasivamente los estados de fuente de ops:metrics. Un cambio de
+estado/nivel, pérdida de eventos o desaparición/reinicio del PID de LMU invalida
+la estabilidad. Fuente live/stale y sourceHz no identifican por sí solos menú
+o conducción. No mezclar estas capturas con las anteriores sin juego.
+56/56 pruebas del banco PASS; dos regresiones reprodujeron el bloqueo anterior.
+También se conservan instancias GPU por PID/adaptador/motor y memoria por dominio;
+el campo agregado histórico gpuPct sigue siendo solo diagnóstico. La validación
+Wails de este ajuste sigue pendiente. Continúa siendo exploración, sin ahorro.
+
 Se conserva `scripts/bench/huella.ps1` y sus colectores. `A0 -SinJuego` recoge CPU,
 memoria privada, working set y contadores GPU, pero permanece **no publicable**.
 Su etiqueta histórica `ram-only-no-game` no se renombra ni se convierte en una
@@ -96,10 +111,10 @@ ha pasado; identidad nightly explícita, sin tag production ni gcflags que desac
 
 Ampliación mínima posterior a la primera exploración:
 
-- `A0 -SinJuego -BaseRoute home|month|timeline` prepara una ruta real mediante UI. El monitor existente añade `--surface hub`, por PID+título productivo `Vantare Hub`; conserva overlay por defecto y sus campos/reglas. Observa presencia, visibilidad, minimizado y foreground; **oclusión desconocida**, no certifica todos los píxeles descubiertos.
+- `A0 -BaseRoute home|month|timeline` prepara una ruta real mediante UI; `-SinJuego` conserva el escenario alternativo sin simulador. El monitor existente añade `--surface hub`, por PID+título productivo `Vantare Hub`; conserva overlay por defecto y sus campos/reglas. Observa presencia, visibilidad, minimizado y foreground; **oclusión desconocida**, no certifica todos los píxeles descubiertos.
 - El helper base observa cambios de ruta, visibilidad, tamaño, estado de overlays, interacciones y los eventos Auto sin rAF/tracing. Exige ruta/viewport iguales, cero HUD/Studio/bienvenida, nivel Auto estable, efectos completos y eventos sin silencios/huecos mayores de tres segundos (el productor emite a 1 Hz). Un cambio intermedio invalida aunque el estado vuelva al original. Registra solo clase y momento de la interacción, nunca su contenido; desmonta todos sus listeners al acabar.
 - CSV conserva `baseRoute`, `baseNativeVisible`, `baseStateValid` y `baseLevels`, además de las evidencias completas de inicio/fin. Un fallo de la comprobación final base conserva crudos inválidos. No cambia la bandera histórica `publishable=false` ni permite agregarla como aceptación del protocolo HUD.
-- LMU abierto bloquea BaseRoute antes de lanzar Vantare, sin cerrar procesos. Este guard se comprobó con el LMU real PID 29092. La integración positiva del monitor y el observador con Wails sigue pendiente de PC disponible.
+- LMU abierto bloquea únicamente el escenario explícito BaseRoute/SinJuego; el guard original se comprobó con LMU PID 29092. BaseRoute con juego exige el proceso vivo y conserva PID/CPU/RAM aparte. Nunca cierra el juego.
 
 Gates que aún impiden aceptar una baseline completa:
 
@@ -113,10 +128,10 @@ control de mezcla, y medir repetibilidad. Minimizado se valida aparte.
 
 ## Protocolo de medición y aceptación
 
-1. Reservar PC y un único medidor. Sin builds, tests, otros bancos ni cambios de ventana durante el intervalo. No cerrar procesos ajenos, LMU u OBS. `-Forzar` siempre invalida aceptación.
+1. Un único medidor y sin builds/tests propios durante el intervalo. LMU y Edge permanecen abiertos; registrar su contexto y cualquier interferencia de otra tarea. No cerrar procesos ajenos ni cambiar sus ventanas. `-Forzar` siempre invalida aceptación del protocolo histórico.
 2. Un mismo ejecutable/dist por variante, hashes antes/después, SHA de producto y tooling por separado, estado Git y flags de compilación. No identificar un binario antiguo con el HEAD del checkout. Registrar máquina, Windows/WebView2, adaptador/driver, monitores, resolución, escala, frecuencia, energía y temperatura inicial disponible sin inventarla.
 3. Conservar cuenta/licencia, calendario real, idioma, perfiles, tamaño de ventana, navegación previa, modo y nivel efectivo, animaciones y blur. Sin datos demo en la evidencia. Los datos de prueba de tooling se etiquetan aparte.
-4. Separar arranque frío, primer uso, reposo estabilizado y sesión larga. Primera exploración: Inicio sin juego/HUD/Studio; después Carreras. Para reposo: 60 s de estabilización y 180 s de captura, mismas duraciones entre variantes. Registrar cadencia y huecos reales del colector; no llamar 1 Hz a un intervalo que tarda más.
+4. Separar arranque frío, primer uso, reposo estabilizado y sesión larga. Escenario principal: Inicio junto a LMU sin HUD/Studio; después Carreras. La primera exploración histórica fue sin juego y se conserva aparte. Para reposo: 60 s de estabilización y 180 s de captura, mismas duraciones entre variantes. Registrar cadencia y huecos reales del colector; no llamar 1 Hz a un intervalo que tarda más.
 5. Calibrar A/A con tres pares de corridas iguales. Medir ruido absoluto además de CV; cerca de cero, CV por sí solo no decide. Fijar margen de equivalencia y mejora detectable después de A/A y antes de probar B. Si el banco no distingue señal de ruido, resultado inconcluso.
 6. Perfilar separadamente para atribuir coste: Go CPU/asignaciones y WebView2 JS/layout/paint. No incluir tracing, React Profiler, rAF diagnóstico ni capturas dentro del intervalo de aceptación. Un contador rAF no certifica FPS presentados.
 7. Abrir issue de un solo corte, crear/identificar regresión, editar, ejecutar checks del lenguaje y revisar diff. A/B con al menos tres pares alternando orden; comparar diferencias emparejadas y ruido A/A. Una mejora debe repetirse y superar el margen predeclarado; no elegir la corrida favorable.
@@ -220,14 +235,15 @@ Se observó Auto nivel 3 al preparar Inicio y 2 después; efectos full en ambos.
 Por eso la nueva captura debe conservar las transiciones de nivel, no asumirlo fijo.
 Se volvió a Inicio y se cerró limpiamente el diagnóstico propio.
 
-### Pausa de runtime
+### Pausa anterior, sustituida por la autorización de coexistencia
 
 A las 23:40:05 CEST reapareció LMU PID 29092; las capturas y perfiles anteriores
 ya habían terminado (último cierre diagnóstico 23:34:33). La tarea de widgets
 está activa. No cerrar LMU ni Edge: las nuevas medidas esperan de nuevo el PC
 disponible sin juego. El guard real rechazó correctamente lanzar otra Vantare.
-Se puede terminar revisión/documentación; la validación Wails del banco y A/A
-permanecen pendientes. No hay merge, promoción ni release.
+El 2026-09-08 Isaac autoriza continuar con LMU abierto. La validación Wails del
+banco y A/A siguen pendientes; el juego deja de ser un impedimento por sí solo.
+No hay merge, promoción ni release.
 
 ### Archivos de la entrega y comprobación pendiente
 
@@ -235,7 +251,7 @@ permanecen pendientes. No hay merge, promoción ni release.
 - Monitor: `tools/overlay-visibility-probe/main_windows.go` y `main_windows_test.go`.
 - Documentación: este informe nuevo, `docs/vantare-program/handoffs/platform-commercial.md`, `docs/roadmap/plan.md` y su `roadmap.json` regenerado. Sin archivos productivos de la app modificados ni movimientos versionados.
 
-Cuando el PC vuelva a estar disponible sin LMU: comprobar que Hub visible y en
+Con LMU y Edge abiertos: comprobar que Hub visible y en
 primer plano pasa; minimizar, cambiar foco, cambiar Mes/Timeline o abrir/cerrar
 HUD debe invalidar la captura. Recuperar la ruta inicial no debe borrar el fallo.
 Después, ejecutar una corrida completa y comprobar CSV/manifiestos antes de A/A.

@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { validateBaseEvidence } from './huella-base.mjs';
+import { createRequire } from 'node:module';
+import { baseWatchInPage, validateBaseEvidence } from './huella-base.mjs';
+const { Window } = createRequire(new URL('../../frontend/package.json', import.meta.url))('happy-dom');
 
 const view = () => ({ route: 'home', visibility: 'visible', studio: false, widgets: 0, welcome: false, viewport: { width: 1264, height: 761, dpr: 1 } });
 const evidence = () => ({ before: view(), after: view(), changes: [], levelEvents: 180,
@@ -9,6 +11,73 @@ const evidence = () => ({ before: view(), after: view(), changes: [], levelEvent
 
 test('base requiere ruta, viewport y nivel estables con efectos completos', () => {
   assert.equal(validateBaseEvidence(evidence(), 'home').valid, true);
+});
+
+// DOM/event-bus fixtures exercise the observer, never stand in for Wails evidence.
+async function withObserver(route, action) {
+  const window = new Window({ url: 'http://wails.localhost/#/hub' });
+  const names = ['window', 'document', 'MutationObserver', 'innerWidth', 'innerHeight', 'devicePixelRatio'];
+  const previous = names.map(name => Object.getOwnPropertyDescriptor(globalThis, name));
+  const values = [window, window.document, window.MutationObserver, 1264, 761, 1];
+  names.forEach((name, index) => Object.defineProperty(globalThis, name, { configurable: true, value: values[index] }));
+  window.document.body.innerHTML = `<main data-testid="${route === 'home' ? 'orbit-home' : `orbit-races-${route}`}"></main><button id="month" aria-pressed="true"></button><button id="timeline" aria-pressed="false"></button>`;
+  const listeners = new Map();
+  const emit = (name, data) => listeners.get(name)?.({ data });
+  const bus = { On(name, listener) {
+    listeners.set(name, listener);
+    if (name === 'performance:level') queueMicrotask(() => emit(name, evidence().levels[0]));
+    return () => listeners.delete(name);
+  } };
+  try {
+    await baseWatchInPage('start', bus);
+    await action(window, emit);
+    await window.happyDOM.whenAsyncComplete();
+    const result = await baseWatchInPage('stop', bus);
+    assert.equal(listeners.size, 0, 'all Wails listeners must be released');
+    assert.equal(window.__vantareBaseWatch, undefined);
+    return result;
+  } finally {
+    window.__vantareBaseWatch?.cleanup();
+    await window.happyDOM.close();
+    names.forEach((name, index) => previous[index] ? Object.defineProperty(globalThis, name, previous[index]) : delete globalThis[name]);
+  }
+}
+
+test('el observador real detecta Mes -> Timeline -> Mes con rail constante', async () => {
+  const result = await withObserver('month', async window => {
+    for (const selected of ['timeline', 'month']) {
+      window.document.getElementById('month').setAttribute('aria-pressed', String(selected === 'month'));
+      window.document.getElementById('timeline').setAttribute('aria-pressed', String(selected === 'timeline'));
+      await window.happyDOM.whenAsyncComplete();
+    }
+  });
+  assert.equal(result.before.route, result.after.route);
+  assert.ok(result.changes.some(change => change.kind === 'route'));
+  assert.equal(validateBaseEvidence(result, 'month').valid, false);
+});
+
+test('el observador real detecta un HUD que abre y cierra entre extremos', async () => {
+  const result = await withObserver('home', async (_window, emit) => {
+    emit('overlay:status', { running: true });
+    emit('overlay:status', { running: false });
+  });
+  assert.equal(result.before.widgets, 0);
+  assert.equal(result.after.widgets, 0);
+  assert.ok(result.changes.some(change => change.kind === 'overlay-status'));
+  assert.equal(validateBaseEvidence(result, 'home').valid, false);
+});
+
+test('el observador conserva una base quieta y se desmonta', async () => {
+  assert.equal(validateBaseEvidence(await withObserver('home', async () => {}), 'home').valid, true);
+});
+
+test('una interacción invalida sin guardar su contenido', async () => {
+  const result = await withObserver('home', async window => {
+    window.document.body.dispatchEvent(new window.Event('input', { bubbles: true }));
+  });
+  assert.deepEqual(Object.keys(result.changes[0]).sort(), ['at', 'kind']);
+  assert.equal(result.changes[0].kind, 'interaction');
+  assert.equal(validateBaseEvidence(result, 'home').valid, false);
 });
 
 test('volver al estado inicial no oculta cambios durante la captura', () => {

@@ -17,7 +17,7 @@ Informe/protocolo: `docs/analysis/ISA-1015-base-app-performance.md`.
 Tooling local: build de diagnóstico desde entorno sin leer `.env`, preservación
 de configuración/generado previo; SinJuego ya no cambia PATH ni consulta/limpia
 ETW de PresentMon. Dos regresiones fallan contra la base; preparación inicial
-44/44 PASS y revisión estática ACCEPT. Extensión base posterior: 47/47 PASS,
+44/44 PASS y revisión estática ACCEPT. Extensión base posterior: 51/51 PASS,
 parser/diff-check PASS, `go test ./...` completo y build del monitor PASS.
 Roadmap previo 23+21 tests PASS. A0/SinJuego sigue no publicable y exploratorio;
 faltan validación Wails de la extensión, GPU por motor, control de mezcla y
@@ -67,7 +67,11 @@ visibilidad/foreground, minimizado y presencia; oclusión unknown, overlay intac
 El banco integra `-BaseRoute home|month|timeline` sobre A0/SinJuego, observador
 pasivo de ruta/viewport/Auto y metadatos base. Cambios intermedios o silencios
 de performance superiores a 3 s invalidan; Forzar/SinJuego sigue no publicable.
-Regresiones añadidas antes de implementar; revisión final estática pendiente.
+La revisión encontró dos P2: ida/vuelta Mes-Timeline invisible al observar solo
+aria-current, y apertura/cierre de HUD entre extremos. Ambos reproducidos con el
+observador real en fixtures DOM/event-bus (RED), corregidos observando atributos
+de selección y overlay:status (GREEN); las interacciones invalidan sin guardar
+su contenido y se desmontan todos los listeners. Revisión de cierre pendiente.
 
 Pausa runtime: LMU PID 29092 se reabrió a las 23:40:05 CEST, después de todas las
 capturas/perfiles y del cierre del diagnóstico (23:34:33). La tarea de widgets

@@ -19,7 +19,7 @@ export function validateBaseEvidence(evidence, route) {
 }
 
 // Serialized by Playwright: keep this function independent of module closures.
-export async function baseWatchInPage(action) {
+export async function baseWatchInPage(action, eventBus) {
   const read = () => ({
     route: document.querySelector('[data-testid="orbit-home"]') ? 'home'
       : document.querySelector('[data-testid="orbit-races-month"]') ? 'month'
@@ -42,24 +42,32 @@ export async function baseWatchInPage(action) {
   }
   if (action !== 'start') throw new Error('Unknown base watch action');
   if (window.__vantareBaseWatch) throw new Error('Base watch already exists');
-  const { Events } = await import('/wails/runtime.js');
+  const Events = eventBus ?? (await import('/wails/runtime.js')).Events;
   const evidence = { startedAt: new Date().toISOString(), before: read(), changes: [], levels: [], levelEvents: 0, maxLevelGapMs: 0 };
-  const record = kind => evidence.changes.push({ kind, at: new Date().toISOString() });
+  const record = kind => {
+    if (!evidence.changes.some(change => change.kind === kind)) evidence.changes.push({ kind, at: new Date().toISOString() });
+  };
   const visibility = () => record('visibility');
   const resize = () => record('resize');
+  const interaction = () => record('interaction');
+  const interactionEvents = ['click', 'input', 'change', 'keydown', 'wheel'];
   const observer = new MutationObserver(() => record('route'));
   let off = () => {};
+  let offOverlay = () => {};
   const cleanup = () => {
-    off(); observer.disconnect();
+    off(); offOverlay(); observer.disconnect();
     document.removeEventListener('visibilitychange', visibility);
     window.removeEventListener('resize', resize);
+    for (const name of interactionEvents) document.removeEventListener(name, interaction, true);
   };
   const watch = { evidence, cleanup, lastLevelAt: null };
   window.__vantareBaseWatch = watch;
   document.addEventListener('visibilitychange', visibility);
   window.addEventListener('resize', resize);
-  observer.observe(document.body, { attributes: true, subtree: true, attributeFilter: ['aria-current'] });
+  for (const name of interactionEvents) document.addEventListener(name, interaction, { capture: true, passive: true });
+  observer.observe(document.body, { attributes: true, subtree: true, attributeFilter: ['aria-current', 'aria-pressed', 'aria-selected', 'aria-checked'] });
   try {
+    offOverlay = Events.On('overlay:status', () => record('overlay-status'));
     await new Promise((resolve, reject) => {
       const timer = setTimeout(() => reject(new Error('Missing performance:level')), 7000);
       off = Events.On('performance:level', event => {

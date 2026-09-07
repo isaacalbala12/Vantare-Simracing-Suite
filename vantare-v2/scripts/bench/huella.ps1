@@ -401,10 +401,6 @@ try {
         if ($LASTEXITCODE -ne 0) { throw 'No se pudo preparar la ruta base.' }
     }
     if ($Calentamiento -gt 0) { Start-Sleep -Seconds $Calentamiento }
-    if ($isBase) {
-        & node $cdpHelper --cdp "http://127.0.0.1:$Puerto" --action base-watch-start --base-route $BaseRoute --output $baseStartJson | Out-Host
-        if ($LASTEXITCODE -ne 0) { throw 'No se pudo observar el estado base.' }
-    }
     if ($requireVisibility) {
         $visibilityTarget = if ($isBase) { @('-host', $app.Id, '-surface', 'hub') } else { @('-host', $app.Id, '-game', $gameProcess.Id) }
         Write-Host $(if ($isBase) { 'VISIBILITY WAIT: mantener el Hub visible y foreground.' } else { 'VISIBILITY WAIT: LMU debe estar foreground con el HUD visible.' })
@@ -421,6 +417,10 @@ try {
         Start-Sleep -Milliseconds 300
         $visibilityStart = Get-Date
         Write-Host $(if ($isBase) { 'VISIBILITY CAPTURE: mantener Hub foreground durante toda la captura.' } else { 'VISIBILITY CAPTURE: mantener LMU foreground durante toda la captura.' })
+    }
+    if ($isBase) {
+        & node $cdpHelper --cdp "http://127.0.0.1:$Puerto" --action base-watch-start --base-route $BaseRoute --output $baseStartJson | Out-Host
+        if ($LASTEXITCODE -ne 0) { throw 'No se pudo observar el estado base.' }
     }
     if (-not $SinJuego) {
         $sessionName = "VantareHuella-$($app.Id)-$stamp"

@@ -3,7 +3,8 @@ param(
     [string]$RepoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot "..\..\..")),
     [string]$BinDir = "bin",
     [string]$DuckDBArchivePath = "",
-    [string]$GccBin = "C:\msys64\ucrt64\bin"
+    [string]$GccBin = "C:\msys64\ucrt64\bin",
+    [switch]$UsePublishedRuntime
 )
 
 $ErrorActionPreference = "Stop"
@@ -73,7 +74,14 @@ try {
     if ($DuckDBArchivePath) {
         $buildParameters.DuckDBArchivePath = [System.IO.Path]::GetFullPath($DuckDBArchivePath)
     }
-    & $buildScript @buildParameters
+    if ($UsePublishedRuntime) {
+        # Reuse the already approved helper; rebuilding with rolling MSYS2 changes its bytes.
+        $archivePath = Join-Path $work 'approved-portable.zip'
+        Invoke-WebRequest -Uri 'https://github.com/isaacalbala12/Vantare-Simracing-Suite/releases/download/v0.1.0.7-nightly.14/vantare-portable-amd64.zip' -OutFile $archivePath
+        & (Join-Path $PSScriptRoot 'extract-approved-runtime.ps1') -ArchivePath $archivePath -OutputDirectory $builtRuntime
+    } else {
+        & $buildScript @buildParameters
+    }
     & $verifyScript -RuntimeDirectory $builtRuntime -RepoRoot $repo
     & $smokeScript -RuntimeDirectory $builtRuntime
 

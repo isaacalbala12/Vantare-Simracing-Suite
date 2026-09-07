@@ -1,5 +1,14 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+## ISA-1011 — runtime de release (2026-09-07)
+
+Nightly.15 no se publicó: el segundo intento 34062671599 pasó tests pero
+falló en trust del runtime por toolchain rolling. Isaac autoriza corregirlo.
+Se conserva el digest 700201f9 y se verifica la unidad publicada de Nightly.14
+antes de empaquetarla. Descarga, extracción, verificación y smoke locales PASS.
+Detalle en docs/analysis/ISA-1011-runtime-release.md; CI y release pendientes
+en #1011/#1009. Sin cambio de código Go, secretos, dependencias ni master.
+
 ## ISA-1009 — publicación Nightly.15 autorizada (2026-09-06)
 
 Isaac autoriza la release y la integración de Chromium (#1008, ac617491).

@@ -8,11 +8,15 @@ tiene CSV de contexto separado y debe conservar PID/vida durante el intervalo.
 No PresentMon/ETW adicional ni control del juego. Auto admite sourceHz variable,
 pero exige política estable; ops:metrics etiqueta fuente sin confundir live/stale
 con menú/carrera. GPU conserva instancias por adaptador/motor, sin convertir la
-suma histórica en porcentaje total. 58/58 tests del banco PASS. Dos regresiones
+suma histórica en porcentaje total. 59/59 tests del banco PASS. Dos regresiones
 iniciales y dos P2 de revisión reproducidos/corregidos (primera fuente tardía y
 gamePresent inicial contradictorio). Parser/diff-check PASS; cierre de revisión
-pendiente. Primer smoke cancelado antes de medir por Hub no foreground, app propia
-cerrada y LMU/Edge intactos; repetir activando solo la ventana propia.
+ACCEPT estático de 0974d1d6. Dos smokes cancelados antes de medir por Hub no
+foreground (Racelab conservaba foco), app propia cerrada y LMU/Edge intactos.
+Coexistencia ahora valida los hechos nativos existentes: visible/no minimizado y
+foco estable, etiquetando background/foreground y oclusión unknown. Conserva
+valid original del monitor (foreground), publica criterio propio en el intervalo
+y mantiene SinJuego estricto. Revisión de este criterio y siguiente smoke pendientes.
 
 Isaac aprueba auditar y medir todo salvo HUD/OBS/widgets y Overlay Studio,
 preservando apariencia, capacidades y contratos compartidos. Base verificada

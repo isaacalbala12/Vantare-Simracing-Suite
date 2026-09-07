@@ -413,20 +413,21 @@ try {
     if ($Calentamiento -gt 0) { Start-Sleep -Seconds $Calentamiento }
     if ($requireVisibility) {
         $visibilityTarget = if ($isBase) { @('-host', $app.Id, '-surface', 'hub') } else { @('-host', $app.Id, '-game', $gameProcess.Id) }
-        Write-Host $(if ($isBase) { 'VISIBILITY WAIT: mantener el Hub visible y foreground.' } else { 'VISIBILITY WAIT: LMU debe estar foreground con el HUD visible.' })
+        Write-Host $(if ($isBase -and -not $SinJuego) { 'VISIBILITY WAIT: Hub visible; se registra su foco sin cambiar otras apps.' } elseif ($isBase) { 'VISIBILITY WAIT: mantener el Hub visible y foreground.' } else { 'VISIBILITY WAIT: LMU debe estar foreground con el HUD visible.' })
         $visibilityDeadline = (Get-Date).AddSeconds(60)
         do {
             $visual = & $visibilityExe @visibilityTarget -once | ConvertFrom-Json
             if ($LASTEXITCODE -ne 0) { throw 'Falló el preflight de visibilidad nativa.' }
-            if (-not $visual.valid) { Start-Sleep -Seconds 1 }
-        } until ($visual.valid -or (Get-Date) -ge $visibilityDeadline)
-        if (-not $visual.valid) { throw 'La superficie requerida no está visible y foreground: medición cancelada.' }
+            $visualReady = if ($isBase -and -not $SinJuego) { $visual.hubPresent -eq $true -and $visual.hubVisible -eq $true -and $visual.hubMinimized -eq $false } else { $visual.valid }
+            if (-not $visualReady) { Start-Sleep -Seconds 1 }
+        } until ($visualReady -or (Get-Date) -ge $visibilityDeadline)
+        if (-not $visualReady) { throw 'La superficie no cumple el escenario nativo requerido: medición cancelada.' }
         $visibilityJson = Join-Path $outputDir "$stem-visibility.json"
         $visibilityStop = Join-Path $outputDir "$stem-visibility.stop"
         $visibilityProcess = Start-Process -FilePath $visibilityExe -ArgumentList ($visibilityTarget + @('-stop',('"{0}"' -f $visibilityStop),'-output',('"{0}"' -f $visibilityJson))) -WindowStyle Hidden -PassThru
         Start-Sleep -Milliseconds 300
         $visibilityStart = Get-Date
-        Write-Host $(if ($isBase) { 'VISIBILITY CAPTURE: mantener Hub foreground durante toda la captura.' } else { 'VISIBILITY CAPTURE: mantener LMU foreground durante toda la captura.' })
+        Write-Host $(if ($isBase -and -not $SinJuego) { 'VISIBILITY CAPTURE: Hub visible con foco estable (foreground o background).' } elseif ($isBase) { 'VISIBILITY CAPTURE: mantener Hub foreground durante toda la captura.' } else { 'VISIBILITY CAPTURE: mantener LMU foreground durante toda la captura.' })
     }
     if ($isBase) {
         & node $cdpHelper --cdp "http://127.0.0.1:$Puerto" --action base-watch-start --base-route $BaseRoute --base-game $baseGame --output $baseStartJson | Out-Host
@@ -505,11 +506,24 @@ try {
         $visibilityValid = $visibilityEvidence.valid -eq $true -and
             ([datetime]$visibilityEvidence.samples[0].at).ToUniversalTime() -le $visibilityStart.ToUniversalTime() -and
             ([datetime]$visibilityEvidence.samples[-1].at).ToUniversalTime() -ge $visibilityEnd.ToUniversalTime()
-        [pscustomobject]@{start=$visibilityStart.ToUniversalTime();end=$visibilityEnd.ToUniversalTime();valid=$visibilityValid} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $outputDir "$stem-visibility-interval.json")
+        $visibilityBasis = 'foreground-required'
+        $baseFocus = 'foreground'
+        if ($isBase -and -not $SinJuego) {
+            # The collector's valid means foreground; coexistence uses its raw facts instead.
+            $visibilityBasis = 'visible-stable-focus'
+            $focusStates = @($visibilityEvidence.samples.hubForeground | Sort-Object -Unique)
+            $baseFocus = if ($focusStates.Count -ne 1) { 'mixed' } elseif ($focusStates[0]) { 'foreground' } else { 'background' }
+            $visibilityValid = @($visibilityEvidence.samples | Where-Object { $_.hubPresent -ne $true -or $_.hubVisible -ne $true -or $_.hubMinimized -ne $false }).Count -eq 0 -and
+                $focusStates.Count -eq 1 -and
+                ([datetime]$visibilityEvidence.samples[0].at).ToUniversalTime() -le $visibilityStart.ToUniversalTime() -and
+                ([datetime]$visibilityEvidence.samples[-1].at).ToUniversalTime() -ge $visibilityEnd.ToUniversalTime()
+        }
+        [pscustomobject]@{start=$visibilityStart.ToUniversalTime();end=$visibilityEnd.ToUniversalTime();valid=$visibilityValid;basis=$visibilityBasis;focus=$baseFocus;occlusion='unknown'} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $outputDir "$stem-visibility-interval.json")
         $publishable = $publishable -and $visibilityValid
         foreach ($row in $rows) {
             $visibilityField = if ($isBase) { 'baseNativeVisible' } else { 'overlayNativeVisible' }
             $row | Add-Member -NotePropertyName $visibilityField -NotePropertyValue $visibilityValid
+            if ($isBase) { $row | Add-Member -NotePropertyName baseFocus -NotePropertyValue $baseFocus }
             if (-not $visibilityValid) { $row.publishable = $false }
         }
         Write-Host "VISIBILITY RESULT: $visibilityValid"

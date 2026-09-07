@@ -75,9 +75,31 @@ test("cobertura temporal compara UTC con UTC", {skip: process.platform !== "win3
  execFileSync('pwsh',['-NoProfile','-Command',`
  $visibilityEvidence = '{"valid":true,"samples":[{"at":"2026-09-06T15:00:00Z"},{"at":"2026-09-06T15:02:00Z"}]}' | ConvertFrom-Json
  $visibilityStart=[datetime]'2026-09-06T17:00:01+02:00';$visibilityEnd=[datetime]'2026-09-06T17:01:59+02:00'
+ $isBase=$false;$SinJuego=$false
  ${bench.slice(start,end)}
  if(-not $visibilityValid){throw 'UTC/local coverage mismatch'}
  `]);
+});
+
+test('coexistencia registra background estable y rechaza foco mixto o minimizado', {skip: process.platform !== 'win32'}, () => {
+  const start = bench.indexOf('        $visibilityValid = $visibilityEvidence.valid');
+  const end = bench.indexOf('        [pscustomobject]@{start=', start);
+  execFileSync('pwsh', ['-NoProfile', '-Command', `
+    $ErrorActionPreference='Stop'; $isBase=$true; $SinJuego=$false
+    $visibilityStart=[datetime]'2026-09-07T22:00:01Z'; $visibilityEnd=[datetime]'2026-09-07T22:00:09Z'
+    $visibilityEvidence='{"valid":false,"samples":[{"at":"2026-09-07T22:00:00Z","hubPresent":true,"hubVisible":true,"hubMinimized":false,"hubForeground":false},{"at":"2026-09-07T22:00:10Z","hubPresent":true,"hubVisible":true,"hubMinimized":false,"hubForeground":false}]}' | ConvertFrom-Json
+    ${bench.slice(start, end)}
+    if (-not $visibilityValid -or $baseFocus -ne 'background') { throw 'background mislabelled' }
+    $visibilityEvidence.samples[1].hubForeground=$true
+    ${bench.slice(start, end)}
+    if ($visibilityValid -or $baseFocus -ne 'mixed') { throw 'mixed focus accepted' }
+    $visibilityEvidence.samples[1].hubForeground=$false; $visibilityEvidence.samples[1].hubMinimized=$true
+    ${bench.slice(start, end)}
+    if ($visibilityValid) { throw 'minimised accepted as visible' }
+    $visibilityEvidence.samples[1].hubMinimized=$false; $SinJuego=$true
+    ${bench.slice(start, end)}
+    if ($visibilityValid) { throw 'no-game foreground gate weakened' }
+  `]);
 });
 
 test("el aislamiento visual nunca se publica como ahorro de producto", () => {

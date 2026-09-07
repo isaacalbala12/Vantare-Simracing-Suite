@@ -85,12 +85,18 @@ se observan pasivamente los estados de fuente de ops:metrics. Un cambio de
 estado/nivel, pérdida de eventos o desaparición/reinicio del PID de LMU invalida
 la estabilidad. Fuente live/stale y sourceHz no identifican por sí solos menú
 o conducción. No mezclar estas capturas con las anteriores sin juego.
-58/58 pruebas del banco PASS; dos regresiones reprodujeron el bloqueo anterior.
+59/59 pruebas del banco PASS; dos regresiones reprodujeron el bloqueo anterior.
 La revisión posterior detectó primer evento de fuente tardío no contabilizado y
 metadato de juego contradictorio al inicio; ambos reproducidos (RED) y corregidos
 (GREEN). Primera comprobación real cancelada antes de muestrear porque Hub estaba
 visible pero no foreground; LMU y Edge permanecieron intactos. Se repite activando
-únicamente la ventana propia. Este fallo no produce una medida de consumo.
+únicamente la ventana propia. Dos intentos no consiguieron foreground (Racelab
+conservaba el foco) y no produjeron medida. Para coexistencia se usan los hechos
+nativos ya disponibles: Hub presente, visible, no minimizado y foco constante,
+etiquetado foreground/background. El valid original del monitor certifica
+foreground y se conserva intacto; la evidencia del intervalo especifica la base
+visible-stable-focus y oclusión unknown. SinJuego conserva foreground obligatorio.
+Un intervalo mixto no es comparable; no confundir visible con píxeles descubiertos.
 También se conservan instancias GPU por PID/adaptador/motor y memoria por dominio;
 el campo agregado histórico gpuPct sigue siendo solo diagnóstico. La validación
 Wails de este ajuste sigue pendiente. Continúa siendo exploración, sin ahorro.

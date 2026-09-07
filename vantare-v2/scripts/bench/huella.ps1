@@ -35,6 +35,7 @@ if ($Puerto -in @(9222, 9231)) {
 }
 $BaseRoute = $BaseRoute.ToLowerInvariant()
 $isBase = $BaseRoute -ne ''
+$baseGame = if ($SinJuego) { 'absent' } else { 'present' }
 if ($isBase -and ($Condicion -ne 'A0' -or $OcultarPintura)) {
     throw 'BaseRoute requiere A0, sin aislamiento de pintura.'
 }
@@ -428,7 +429,7 @@ try {
         Write-Host $(if ($isBase) { 'VISIBILITY CAPTURE: mantener Hub foreground durante toda la captura.' } else { 'VISIBILITY CAPTURE: mantener LMU foreground durante toda la captura.' })
     }
     if ($isBase) {
-        & node $cdpHelper --cdp "http://127.0.0.1:$Puerto" --action base-watch-start --base-route $BaseRoute --output $baseStartJson | Out-Host
+        & node $cdpHelper --cdp "http://127.0.0.1:$Puerto" --action base-watch-start --base-route $BaseRoute --base-game $baseGame --output $baseStartJson | Out-Host
         if ($LASTEXITCODE -ne 0) { throw 'No se pudo observar el estado base.' }
     }
     if ($usePresentMon) {
@@ -514,7 +515,6 @@ try {
         Write-Host "VISIBILITY RESULT: $visibilityValid"
     }
     if ($isBase) {
-        $baseGame = if ($SinJuego) { 'absent' } else { 'present' }
         & node $cdpHelper --cdp "http://127.0.0.1:$Puerto" --action base-watch-stop --base-route $BaseRoute --base-game $baseGame --output $baseEndJson | Out-Host
         $baseStateValid = $false
         $baseLevel = '[]'

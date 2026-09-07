@@ -8,8 +8,11 @@ tiene CSV de contexto separado y debe conservar PID/vida durante el intervalo.
 No PresentMon/ETW adicional ni control del juego. Auto admite sourceHz variable,
 pero exige política estable; ops:metrics etiqueta fuente sin confundir live/stale
 con menú/carrera. GPU conserva instancias por adaptador/motor, sin convertir la
-suma histórica en porcentaje total. 56/56 tests del banco PASS (dos RED previos),
-parser y diff-check PASS. Revisión y smoke Wails de este ajuste pendientes.
+suma histórica en porcentaje total. 58/58 tests del banco PASS. Dos regresiones
+iniciales y dos P2 de revisión reproducidos/corregidos (primera fuente tardía y
+gamePresent inicial contradictorio). Parser/diff-check PASS; cierre de revisión
+pendiente. Primer smoke cancelado antes de medir por Hub no foreground, app propia
+cerrada y LMU/Edge intactos; repetir activando solo la ventana propia.
 
 Isaac aprueba auditar y medir todo salvo HUD/OBS/widgets y Overlay Studio,
 preservando apariencia, capacidades y contratos compartidos. Base verificada

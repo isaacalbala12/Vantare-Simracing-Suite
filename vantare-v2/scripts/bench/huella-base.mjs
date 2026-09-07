@@ -73,7 +73,7 @@ export async function baseWatchInPage(action, eventBus) {
     window.removeEventListener('resize', resize);
     for (const name of interactionEvents) document.removeEventListener(name, interaction, true);
   };
-  const watch = { evidence, cleanup, lastLevelAt: null, lastSourceAt: null };
+  const watch = { evidence, cleanup, lastLevelAt: null, lastSourceAt: Date.now() };
   window.__vantareBaseWatch = watch;
   document.addEventListener('visibilitychange', visibility);
   window.addEventListener('resize', resize);

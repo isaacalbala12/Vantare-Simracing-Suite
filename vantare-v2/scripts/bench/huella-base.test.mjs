@@ -31,7 +31,7 @@ test('con juego tampoco acepta fuente ausente, negativa o no finita', () => {
 });
 
 // DOM/event-bus fixtures exercise the observer, never stand in for Wails evidence.
-async function withObserver(route, action) {
+async function withObserver(route, action, sourceOnStart = true) {
   const window = new Window({ url: 'http://wails.localhost/#/hub' });
   const names = ['window', 'document', 'MutationObserver', 'innerWidth', 'innerHeight', 'devicePixelRatio'];
   const previous = names.map(name => Object.getOwnPropertyDescriptor(globalThis, name));
@@ -43,7 +43,7 @@ async function withObserver(route, action) {
   const bus = { On(name, listener) {
     listeners.set(name, listener);
     if (name === 'performance:level') queueMicrotask(() => emit(name, { ...evidence().levels[0], host: {} }));
-    if (name === 'ops:metrics') queueMicrotask(() => emit(name, { source: evidence().sources[0] }));
+    if (name === 'ops:metrics' && sourceOnStart) queueMicrotask(() => emit(name, { source: evidence().sources[0] }));
     return () => listeners.delete(name);
   } };
   try {
@@ -100,6 +100,20 @@ test('fuente cambiante o ausente invalida con juego aunque sourceHz siga positiv
   assert.equal(validateBaseEvidence(value, 'home', true).valid, false);
   delete value.sources;
   assert.equal(validateBaseEvidence(value, 'home', true).valid, false);
+});
+
+test('la primera fuente tardía cuenta todo el intervalo sin observación', async () => {
+  const realNow = Date.now;
+  let offset = 0;
+  Date.now = () => realNow() + offset;
+  try {
+    const result = await withObserver('home', async (_window, emit) => {
+      offset = 10000;
+      emit('ops:metrics', {source: evidence().sources[0]});
+    }, false);
+    assert.ok(result.maxSourceGapMs >= 10000);
+    assert.equal(validateBaseEvidence(result, 'home', true).valid, false);
+  } finally { Date.now = realNow; }
 });
 
 test('una interacción invalida sin guardar su contenido', async () => {

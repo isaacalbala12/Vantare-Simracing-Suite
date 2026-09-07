@@ -9,6 +9,13 @@ const cdpHelper = await readFile(new URL("./huella-cdp.mjs", import.meta.url), "
 const bench = await readFile(new URL("./huella.ps1", import.meta.url), "utf8");
 const buildMeasurement = await readFile(new URL("./build-measurement.ps1", import.meta.url), "utf8");
 
+test('inicio y fin base reciben el mismo escenario del juego', () => {
+  for (const action of ['base-watch-start', 'base-watch-stop']) {
+    const line = bench.split('\n').find(line => line.includes(`--action ${action}`));
+    assert.match(line, /--base-game \$baseGame/);
+  }
+});
+
 test("base admite LMU abierto sin activar PresentMon ni mezclar modos", {skip: process.platform !== "win32"}, () => {
   const header = bench.slice(0, bench.indexOf('$repoRoot ='));
   execFileSync('pwsh', ['-NoProfile', '-Command', `

@@ -22,6 +22,10 @@ PASS. A0/SinJuego sigue no publicable y solo exploratorio;
 faltan ruta/visibilidad nativa, GPU por motor, metadatos y lifecycle minimizado para
 baseline aceptable. Sin build real, app, medición o corte productivo.
 
+Preparación comprometida y subida en `2994de6e`; PR borrador #1017 hacia nightly.
+Contrato exacto de roadmap contra issue #1015 PASS. CI remoto todavía pendiente
+de completar; el primer run es `34160442778`. No equivale a integración.
+
 Siguiente: coordinar exclusividad del PC
 (LMU y otras tareas están activos), construir desde entorno y explorar Inicio.
 Después adaptar lo mínimo del banco y medir A/A antes de editar producto.

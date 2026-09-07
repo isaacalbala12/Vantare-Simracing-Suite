@@ -140,7 +140,7 @@ escenario del candidato antes de ejecutar repetidamente toda la matriz.
 ## Evidencia y pendientes
 
 - Base remota y aislamiento verificados; dos inventarios independientes en snapshots limpios y revisión del tooling. No se desarrolló en el checkout principal.
-- Preparación inicial: dos regresiones fallan contra los scripts originales; 44/44 PASS. Ampliación base y correcciones de revisión: 51/51 PASS, incluidos rechazo de cambios intermedios y pérdida de eventos. La revisión detectó dos P2: Mes → Timeline → Mes podía quedar oculto al observar solo aria-current, y un HUD que abría y cerraba entre extremos podía pasar inadvertido. Dos regresiones con el observador real fallaron antes del arreglo y pasan después: observa los atributos de selección y overlay:status, además de invalidar interacciones. Los fixtures DOM/event-bus y la compilación simulada prueban tooling/cleanup, no Wails real. Revisión de cierre pendiente.
+- Preparación inicial: dos regresiones fallan contra los scripts originales; 44/44 PASS. Ampliación base y correcciones de revisión: 51/51 PASS, incluidos rechazo de cambios intermedios y pérdida de eventos. La revisión detectó dos P2: Mes → Timeline → Mes podía quedar oculto al observar solo aria-current, y un HUD que abría y cerraba entre extremos podía pasar inadvertido. Dos regresiones con el observador real fallaron antes del arreglo y pasan después: observa los atributos de selección y overlay:status, además de invalidar interacciones. Los fixtures DOM/event-bus y la compilación simulada prueban tooling/cleanup, no Wails real. Revisión independiente de cierre ACCEPT estático sobre 3abe2b16: ambos P2 cerrados, sin nuevos P1/P2 en el diff.
 - Revisión independiente de la preparación inicial ACCEPT. Extensión nativa entregada por worker en commit 116250cf y revisada por el padre antes de incorporar como 7758085d; solo dos archivos del monitor, sin cambios productivos. Parser PowerShell y diff-check PASS. Roadmap previo: 23/23 digest y 21/21 contrato PASS; estas pruebas no certifican runtime.
 - Preflight Windows real PASS: frontend/Go compilados; runtime aprobado verificado y handshake smoke PASS; sesión activa Owner y deviceOK; Inicio sin bienvenida, sin Studio y sin widgets runtime, único target Hub. Cierre Application.Quit comprobado. Se completó la bienvenida en la configuración portable propia con rol intermedio, sin cambiar la instalación personal.
 - Primera captura A0 y perfiles UI completados; pendientes validación del banco base, A/A y A/B. Hay CSV real de Inicio; no hay ahorro medido.
@@ -227,3 +227,15 @@ está activa. No cerrar LMU ni Edge: las nuevas medidas esperan de nuevo el PC
 disponible sin juego. El guard real rechazó correctamente lanzar otra Vantare.
 Se puede terminar revisión/documentación; la validación Wails del banco y A/A
 permanecen pendientes. No hay merge, promoción ni release.
+
+### Archivos de la entrega y comprobación pendiente
+
+- Banco: `scripts/bench/build-measurement.ps1`, `huella.ps1`, `huella-cdp.mjs`, `huella-lifecycle.test.mjs` y `all.test.mjs`; nuevos `huella-base.mjs` y `huella-base.test.mjs`.
+- Monitor: `tools/overlay-visibility-probe/main_windows.go` y `main_windows_test.go`.
+- Documentación: este informe nuevo, `docs/vantare-program/handoffs/platform-commercial.md`, `docs/roadmap/plan.md` y su `roadmap.json` regenerado. Sin archivos productivos de la app modificados ni movimientos versionados.
+
+Cuando el PC vuelva a estar disponible sin LMU: comprobar que Hub visible y en
+primer plano pasa; minimizar, cambiar foco, cambiar Mes/Timeline o abrir/cerrar
+HUD debe invalidar la captura. Recuperar la ruta inicial no debe borrar el fallo.
+Después, ejecutar una corrida completa y comprobar CSV/manifiestos antes de A/A.
+Edge permanece abierto. Estos pasos son verificación pendiente, no resultados.

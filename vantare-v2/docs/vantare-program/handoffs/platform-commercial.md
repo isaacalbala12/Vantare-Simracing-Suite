@@ -34,11 +34,12 @@ Configs/WebView propios; auth y cachés siguen rutas productivas compartidas,
 sin leer ni copiar credenciales. Escenario portable preparado, no instalación habitual.
 
 Preparación comprometida y subida en `2994de6e`; PR borrador #1017 hacia nightly.
-Contrato exacto de roadmap contra issue #1015 PASS. HEAD e93c7845 subido;
-CI remoto PASS (run 34161443366, gates de promoción/bloqueantes y GitGuardian).
-No equivale a integración.
+Contrato exacto de roadmap contra issue #1015 PASS. Preparación inicial e93c7845
+subida con CI remoto PASS (run 34161443366, gates de promoción/bloqueantes y
+GitGuardian). Código ampliado hasta 3abe2b16, seguido del cierre documental;
+consultar PR #1017 para SHA/CI de esa entrega posterior. No equivale a integración.
 
-Siguiente: Isaac declaró PC disponible y cerró LMU/otra Vantare. La tarea de
+Primera ventana de medición: Isaac declaró PC disponible y cerró LMU/otra Vantare. La tarea de
 widgets terminó su turno documental. Isaac exige mantener los cinco Edge sin
 ventana: no cerrarlos. Registrar sus snapshots aparte y reutilizar el binario/WebView
 preparados para explorar Inicio (A0/SinJuego/Forzar, 60 s warmup + 180 s captura,
@@ -71,7 +72,8 @@ La revisión encontró dos P2: ida/vuelta Mes-Timeline invisible al observar sol
 aria-current, y apertura/cierre de HUD entre extremos. Ambos reproducidos con el
 observador real en fixtures DOM/event-bus (RED), corregidos observando atributos
 de selección y overlay:status (GREEN); las interacciones invalidan sin guardar
-su contenido y se desmontan todos los listeners. Revisión de cierre pendiente.
+su contenido y se desmontan todos los listeners. Revisión independiente de cierre
+ACCEPT estático sobre 3abe2b16: ambos P2 cerrados, sin nuevos P1/P2 en el diff.
 
 Pausa runtime: LMU PID 29092 se reabrió a las 23:40:05 CEST, después de todas las
 capturas/perfiles y del cierre del diagnóstico (23:34:33). La tarea de widgets

@@ -1,8 +1,9 @@
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "../../i18n/I18nProvider";
 import type { Calendar, RaceSeries } from "../../calendar/calendar-types";
 import { ToastProvider } from "../../ui/orbit/Toast";
+import * as racesModel from "./races-orbit-model";
 import {
   RacesOrbitPage,
   RACES_CONTEXT_SLOT_ID,
@@ -33,6 +34,8 @@ afterEach(() => {
   cleanup();
   document.body.replaceChildren();
   mockEmit.mockReset();
+  vi.restoreAllMocks();
+  vi.useRealTimers();
   plan = "paid";
 });
 
@@ -106,6 +109,45 @@ const VIEWS = [
 ] as const;
 
 describe("RacesOrbitPage", () => {
+  it("conserva las salidas del Timeline entre segundos y las renueva al cambiar hora o filtro", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+    const rows = vi.spyOn(racesModel, "timelineRows");
+    setup({ now: undefined });
+    fireEvent.click(screen.getByRole("button", { name: "Timeline" }));
+    const blocks = screen.getAllByTestId("orbit-timeline-block").map((node) => node.getAttribute("data-tip"));
+    rows.mockClear();
+    for (let second = 0; second < 10; second++) act(() => vi.advanceTimersByTime(1000));
+    expect(rows).not.toHaveBeenCalled();
+    expect(screen.getAllByTestId("orbit-timeline-block").map((node) => node.getAttribute("data-tip"))).toEqual(blocks);
+    vi.setSystemTime(new Date(NOW.getTime() + 3_600_000));
+    act(() => vi.advanceTimersByTime(1000));
+    expect(rows).toHaveBeenCalledTimes(1);
+    expect(rows.mock.calls[0][1].getTime()).toBe(racesModel.timelineStart(new Date()).getTime());
+    fireEvent.click(screen.getByTestId("orbit-races-filter-advanced"));
+    expect(rows).toHaveBeenCalledTimes(2);
+    expect(screen.getAllByTestId("orbit-timeline-block").every((node) => node.getAttribute("data-tip")?.includes("Hypercar Open"))).toBe(true);
+  });
+
+  it("recalcula la columna a los 30 segundos, manteniendo activa la cuenta atrás", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+    const upcoming = vi.spyOn(racesModel, "upcomingRows");
+    const calendar = { ...CALENDAR, followedSeriesIds: ["bronze-1"] };
+    setup({ calendar, now: undefined });
+    fireEvent.click(screen.getByRole("button", { name: "Timeline" }));
+    const initialText = screen.getByTestId("orbit-races-detail").textContent;
+    upcoming.mockClear();
+    act(() => vi.advanceTimersByTime(1000));
+    expect(screen.getByTestId("orbit-races-detail").textContent).not.toBe(initialText);
+    for (let second = 1; second < 29; second++) act(() => vi.advanceTimersByTime(1000));
+    expect(upcoming).not.toHaveBeenCalled();
+    act(() => vi.advanceTimersByTime(1000));
+    expect(upcoming).toHaveBeenCalledTimes(1);
+    expect(upcoming.mock.calls[0][0].map((entry) => entry.id)).toEqual(["bronze-1"]);
+    expect(upcoming.mock.calls[0][1].getTime()).toBe(NOW.getTime() + 30_000);
+  });
+
   it("monta las cinco vistas sin ningún `title` nativo", () => {
     setup();
     for (const view of VIEWS) {

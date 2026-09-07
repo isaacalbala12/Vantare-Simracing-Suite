@@ -270,7 +270,7 @@ export const strategyOrbitEn: Record<string, string> = {
   "strategy.cards.activeTip": "This strategy is already the active one.",
 
   "strategy.empty.noneTitle": "No followed events",
-  "strategy.empty.none": "Follow a series in Races and it will show up here with its next starts.",
+  "strategy.empty.none": "Follow a series in Calendar and it will show up here with its next starts.",
 
   "strategy.context.events": "Events",
   "strategy.context.noEvents": "You have no strategy events yet.",

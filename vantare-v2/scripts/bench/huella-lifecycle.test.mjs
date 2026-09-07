@@ -16,6 +16,23 @@ test('inicio y fin base reciben el mismo escenario del juego', () => {
   }
 });
 
+test('el contexto LMU exporta decimales invariantes en Windows español', {skip: process.platform !== 'win32'}, () => {
+  const start = bench.indexOf('            $gameRows.Add(');
+  const end = bench.indexOf('            })', start) + '            })'.length;
+  const formatter = bench.slice(bench.indexOf('function Format-Invariant'), bench.indexOf('function Update-ProcessClassification'));
+  execFileSync('pwsh', ['-NoProfile', '-Command', `
+    [Threading.Thread]::CurrentThread.CurrentCulture = 'es-ES'
+    ${formatter}
+    $gameRows=[Collections.Generic.List[object]]::new(); $alive=$true
+    $cpuClock=[pscustomobject]@{Elapsed=[timespan]::FromSeconds(12.5)}
+    $gameProcess=[pscustomobject]@{Id=7}
+    $currentGame=[pscustomobject]@{TotalProcessorTime=[timespan]::FromSeconds(2.25);PrivateMemorySize64=1024;WorkingSet64=2048}
+    ${bench.slice(start,end)}
+    $row = $gameRows | ConvertTo-Csv -NoTypeInformation | ConvertFrom-Csv
+    if ($row.elapsedSeconds -ne '12.5' -or $row.cpuTotalSeconds -ne '2.25') { throw 'locale-dependent context CSV' }
+  `]);
+});
+
 test("base admite LMU abierto sin activar PresentMon ni mezclar modos", {skip: process.platform !== "win32"}, () => {
   const header = bench.slice(0, bench.indexOf('$repoRoot ='));
   execFileSync('pwsh', ['-NoProfile', '-Command', `

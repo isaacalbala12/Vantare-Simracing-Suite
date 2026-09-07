@@ -487,9 +487,9 @@ try {
             $alive = $null -ne $currentGame -and $currentGame.StartTime.ToUniversalTime() -eq $gameStartedAt
             $gameStable = $gameStable -and $alive
             $gameRows.Add([pscustomobject]@{
-                timestamp = (Get-Date).ToString('o'); elapsedSeconds = $cpuClock.Elapsed.TotalSeconds
+                timestamp = (Get-Date).ToString('o'); elapsedSeconds = Format-Invariant $cpuClock.Elapsed.TotalSeconds
                 pid = $gameProcess.Id; alive = $alive
-                cpuTotalSeconds = if ($alive) { $currentGame.TotalProcessorTime.TotalSeconds } else { $null }
+                cpuTotalSeconds = if ($alive) { Format-Invariant $currentGame.TotalProcessorTime.TotalSeconds } else { $null }
                 privateBytes = if ($alive) { $currentGame.PrivateMemorySize64 } else { $null }
                 workingSetBytes = if ($alive) { $currentGame.WorkingSet64 } else { $null }
             })

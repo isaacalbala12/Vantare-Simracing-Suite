@@ -38,6 +38,10 @@ Contrato exacto de roadmap contra issue #1015 PASS. Preparación inicial e93c784
 subida con CI remoto PASS (run 34161443366, gates de promoción/bloqueantes y
 GitGuardian). Código ampliado hasta 3abe2b16, seguido del cierre documental;
 consultar PR #1017 para SHA/CI de esa entrega posterior. No equivale a integración.
+Testing Center agent fix sigue fallando en pushes sin jobs/check-runs (run
+34164832100 sobre 29efba6c y anteriores): coincide con la issue abierta #728.
+Workflows sin cambios; no confundir PASS del gate de rama con todos los workflows
+verdes ni corregir #728 dentro de esta campaña.
 
 Primera ventana de medición: Isaac declaró PC disponible y cerró LMU/otra Vantare. La tarea de
 widgets terminó su turno documental. Isaac exige mantener los cinco Edge sin

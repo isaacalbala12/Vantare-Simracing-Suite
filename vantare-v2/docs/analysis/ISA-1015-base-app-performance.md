@@ -1,7 +1,7 @@
 # ISA-1015 — rendimiento de la base de Vantare
 
-Estado a 2026-09-07: inventario, primera captura exploratoria de Inicio y perfiles legibles completados. Ampliación del banco en validación; nuevas medidas pausadas porque LMU se reabrió.
-**No hay baseline real, ahorro demostrado ni optimización productiva.**
+Estado a 2026-09-08: inventario, perfiles legibles y tres capturas reales de Inicio junto a LMU completados. Isaac amplía el objetivo a rapidez de pantallas e interacción.
+**Hay una referencia descriptiva; no hay A/A aceptado, ahorro demostrado ni optimización productiva.**
 Autoridad: [issue #1015](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1015).
 Continuidad: `docs/vantare-program/handoffs/platform-commercial.md`; este informe no crea otro handoff.
 
@@ -18,6 +18,49 @@ Continuidad: `docs/vantare-program/handoffs/platform-commercial.md`; este inform
 
 Las referencias de código siguientes son relativas a `vantare-v2` y sus líneas
 corresponden a la base indicada, salvo la sección de tooling de esta entrega.
+
+## Rapidez de pantallas e interacción: ampliación aprobada
+
+Además de CPU, RAM y GPU, medir arranque hasta Inicio utilizable, primera apertura
+y visitas posteriores de cada pantalla, respuesta a botones/pestañas/filtros,
+desplazamiento, animaciones y restauración de ventana. Inicio, Carreras y Ajustes
+son el primer recorrido; ampliar después al resto de la matriz de la base.
+HUD y Overlay Studio siguen excluidos. No acortar efectos, ocultar contenido ni
+omitir validaciones para aparentar rapidez.
+
+Por transición registrar por separado: entrada del usuario, primera respuesta
+visible y contenido real utilizable (sin carga pendiente ni controles bloqueados).
+La aparición del contenedor DOM no demuestra contenido completo ni presentación
+en pantalla; rAF y CDP aportan diagnóstico, no prueba de píxeles presentados.
+Declarar el criterio específico de contenido preparado antes de cada captura.
+Registrar esperas de datos, tareas largas y trabajo de render por separado para
+atribuir la demora. Medir primero sin perfilador; instrumentar después una
+repetición independiente. No construir otro banco si el existente lo cubre.
+
+Separar arranque de proceso, caché fría de datos y revisita caliente: reiniciar
+la app no vacía por sí solo la caché del sistema. No borrar datos ni credenciales.
+Comparar mismas rutas/datos/viewport/Auto y situación del simulador. Para cada
+transición, conservar valores individuales y mediana; usar p95 solo con muestra
+suficiente y declarar su tamaño. Las pruebas de rapidez requieren Hub en primer
+plano estable; las capturas de reposo en segundo plano no sirven para certificar
+latencia percibida. Si otra app retiene el foco, avanzar en atribución estática y
+dejar esa prueba visual pendiente, sin controlar aplicaciones ajenas.
+
+Aceptar un corte solo si mejora su métrica objetivo por encima del ruido y no
+empeora consumo, respuesta, datos o apariencia en los escenarios afectados.
+No existe todavía una cifra de tiempo de apertura o navegación validada.
+
+La lectura del recorrido confirma que OrbitShell importa estáticamente las rutas
+base (`frontend/src/hub/components/orbit/OrbitShell.tsx:45`) y monta solo la activa
+(`:588`). Es una hipótesis de coste de arranque, no una mejora demostrada: diferir
+una importación puede trasladar espera a la primera visita. No modificar Studio
+ni su keep-alive. Para Inicio/Carreras el calendario debe haber llegado desde
+`calendar:loaded`, no basta con listas vacías iniciales (`use-calendar-starts.ts:41`).
+Mes requiere su cuadrícula real y Timeline filas/bloques acordes al documento;
+no fijar las 11 series observadas como dato universal. Ajustes debe comprobar
+`data-section`, panel y controles de la subsección elegida, sin medir una sección
+restaurada distinta (`SettingsOrbitPage.tsx:169`). Reutilizar esos selectores
+productivos y el helper CDP existente antes de añadir instrumentación.
 
 ## Skills aplicadas
 
@@ -250,11 +293,67 @@ Se volvió a Inicio y se cerró limpiamente el diagnóstico propio.
 
 A las 23:40:05 CEST reapareció LMU PID 29092; las capturas y perfiles anteriores
 ya habían terminado (último cierre diagnóstico 23:34:33). La tarea de widgets
-está activa. No cerrar LMU ni Edge: las nuevas medidas esperan de nuevo el PC
-disponible sin juego. El guard real rechazó correctamente lanzar otra Vantare.
+estaba activa. Se pausó entonces el escenario sin juego y el guard rechazó
+correctamente lanzar otra Vantare. Esa pausa ya no está vigente.
 El 2026-09-08 Isaac autoriza continuar con LMU abierto. La validación Wails del
-banco y A/A siguen pendientes; el juego deja de ser un impedimento por sí solo.
+banco se completó después para coexistencia; A/A sigue pendiente.
 No hay merge, promoción ni release.
+
+### Tres repeticiones con LMU: referencia descriptiva
+
+60 s de calentamiento y 180 s configurados por corrida, mismo exe/dist de nightly
+d6d0992f. Tooling 4000b023 en run1 y a185b50f en run2/3; la diferencia únicamente
+normaliza decimales del CSV contextual LMU. Crudo original conservado con lectura
+es-ES explícita; los contadores propios no cambiaron.
+
+| Corrida | Muestras propias | CPU media máquina | Memoria privada media | Motor 3D medio |
+| --- | ---: | ---: | ---: | ---: |
+| run1 / 001814 | 72 | 0,4907 % | 346,33 MiB | 0,06407 % |
+| run2 / 002636 | 70 | 0,6322 % | 344,25 MiB | 0,06046 % |
+| run3 / 003101 | 73 | 0,5718 % | 343,35 MiB | 0,06543 % |
+
+Artefactos locales: `results/isa1015-base-live/run1..run3`, CSV originales,
+`exploratory-summary.json` por corrida y `repeat-summary.json` conjunto.
+215 instantes/1935 filas de nueve procesos; medias aritméticas, no ponderadas
+por tiempo. Cadencia media 2,50/2,60/2,50 s. Dos intervalos GPU inválidos
+(18 filas) excluidos: 213 muestras GPU válidas, sin rellenar con ceros.
+Motor 3D: `luid_0x00000000_0x0000b897_phys_0_eng_0_engtype_3d`;
+no equivale a porcentaje total de GPU ni identifica por sí solo su modelo.
+
+Media de las tres medias: CPU 0,5649 %, memoria privada 344,64 MiB. CV muestral
+entre corridas: CPU 12,57 %, RAM 0,44 %. El ruido CPU supera la guía del 5 %:
+estas tres repeticiones no permiten aceptar ahorros pequeños ni sustituyen las
+seis corridas del A/A formal. No compararlas con la captura histórica sin juego.
+El proceso GPU concentra aproximadamente 134–138 MiB de RAM privada, Go 76 MiB,
+renderer Hub 65 MiB y browser 37–38 MiB. RAM privada del proceso GPU no es VRAM;
+su tamaño no demuestra fuga ni justifica desactivar aceleración.
+
+Home 1264x761/DPR1, Hub visible/no minimizado, foco background estable, oclusión
+desconocida, Auto3/full/raf40; fuente lmu/stale/available y sourceHz0 estables.
+Esto no prueba conducción activa. El campo cars=0 del banco es un valor de CLI,
+no un recuento observado; identidad de sesión/carrera no verificada. LMU mantuvo
+su PID y consumió aproximadamente 29–30 % CPU de máquina, registrado aparte y
+excluido de las cifras propias. Edge/Racelab permanecieron abiertos. No se resta
+su interferencia. Las tres corridas validaron estado y terminaron con cierre
+limpio, sin procesos propios residuales; todas conservan publishable=false.
+
+Banco 60/60 tests PASS. Revisión estática ACCEPT hasta 4000b023 y revisión
+parental de la regresión decimal de a185b50f. Smoke3 Wails positivo; smokes1/2
+abortaron antes de medir por falta de foreground. La validación negativa nativa
+de minimizar/cambiar foco durante captura sigue pendiente.
+
+CI: b8ffeea5 falló por timeout frontend en la superficie excluida, separado en
+[#1018](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1018).
+a185b50f falló en el test Go de PTT ya registrado en
+[#812](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/812);
+la única repetición del run 34166748099 pasó Go y falló en
+`overlay-frame-v2-performance.test.ts`: p99 1,532 ms frente al límite de 1,5 ms,
+3235 tests PASS/1 FAIL. Hallazgo separado en #1019 y Project Vantare; es otra
+superficie excluida, sin cambios en esta rama. Ampliación documental de rapidez:
+roadmap regenerado, 23 tests de digest y 21 de contrato PASS; diff-check PASS.
+#728 sigue aparte. No se modifican esos tests/workflows ni se repite CI a ciegas.
+Siguiente paso: atribuir arranque y preparar criterios de navegación real antes
+de elegir un corte productivo con issue propia. No hay ahorro ni promoción.
 
 ### Archivos de la entrega y comprobación pendiente
 
@@ -262,8 +361,8 @@ No hay merge, promoción ni release.
 - Monitor: `tools/overlay-visibility-probe/main_windows.go` y `main_windows_test.go`.
 - Documentación: este informe nuevo, `docs/vantare-program/handoffs/platform-commercial.md`, `docs/roadmap/plan.md` y su `roadmap.json` regenerado. Sin archivos productivos de la app modificados ni movimientos versionados.
 
-Con LMU y Edge abiertos: comprobar que Hub visible y en
-primer plano pasa; minimizar, cambiar foco, cambiar Mes/Timeline o abrir/cerrar
-HUD debe invalidar la captura. Recuperar la ruta inicial no debe borrar el fallo.
-Después, ejecutar una corrida completa y comprobar CSV/manifiestos antes de A/A.
-Edge permanece abierto. Estos pasos son verificación pendiente, no resultados.
+Con LMU y Edge abiertos: el modo coexistencia admite Hub visible con foco
+foreground o background estable; cambiar foco, minimizar, cambiar ruta o abrir
+HUD debe invalidar el reposo. Recuperar el estado inicial no borra el fallo.
+El recorrido de rapidez se mide aparte con interacción permitida y foco foreground;
+no reutilizar la validación de reposo para aceptar navegación.

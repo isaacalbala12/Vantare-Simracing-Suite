@@ -2,13 +2,41 @@
 
 ## ISA-1015 — rendimiento de la base, medición junto a LMU (2026-09-08)
 
+Estado vigente: Isaac añade rapidez de arranque, pantallas, interacción,
+desplazamiento y restauración al objetivo de consumo. Misma apariencia y datos;
+HUD/Studio excluidos. Protocolo ampliado en el informe y roadmap, todavía sin
+tiempos de navegación validados ni cortes de producto. Medir contenido utilizable,
+separar primera visita/revisita y latencia visible de señal DOM. Navegación con
+foco foreground; el reposo background no certifica rapidez percibida.
+
+Tres corridas completas con LMU, 60 s warmup +180 s configurados cada una,
+terminadas y cierre limpio: CPU 0,4907/0,6322/0,5718 %, memoria privada
+346,33/344,25/343,35 MiB. Media entre corridas 0,5649 % y 344,64 MiB;
+CV muestral CPU 12,57 %, RAM 0,44 %. No A/A formal ni ahorro. Motor 3D
+atribuido 0,06407/0,06046/0,06543 %, no porcentaje total de tarjeta.
+215 instantes propios, 213 GPU válidos; dos intervalos GPU excluidos.
+Home background estable, Auto3/full/raf40, lmu/stale/available/sourceHz0;
+no prueba conducción. LMU/Edge/Racelab conservados, consumo separado.
+Crudos y resumen en results/isa1015-base-live. Tooling a185b50f subido;
+60/60 tests PASS, revisión ACCEPT hasta 4000b023 y regresión decimal revisada
+por padre. Smoke3 positivo; validación negativa nativa pendiente.
+
+CI a185b50f: primer intento falla en PTT conocido #812; única repetición del
+run 34166748099 pasa Go y falla en presupuesto parse de OverlayFrame v2:
+1,532 ms frente a 1,5 ms, 3235 PASS/1 FAIL, hallazgo #1019 en Project Vantare.
+Roadmap ampliado y regenerado, 23+21 tests PASS. Fallo anterior separado en #1018;
+workflow inerte #728 persiste. Sin cambios en esas superficies ni merge/release.
+Siguiente acción: atribuir arranque/preparar navegación real antes de seleccionar
+una issue de corte. El historial siguiente conserva evidencia anterior y sus
+pendientes se sustituyen por este estado cuando corresponda.
+
 Decisión vigente: Isaac autoriza continuar con LMU y Edge abiertos; sustituye la
 pausa sin juego del 2026-09-07. BaseRoute/A0 mide solo procesos propios; el juego
 tiene CSV de contexto separado y debe conservar PID/vida durante el intervalo.
 No PresentMon/ETW adicional ni control del juego. Auto admite sourceHz variable,
 pero exige política estable; ops:metrics etiqueta fuente sin confundir live/stale
 con menú/carrera. GPU conserva instancias por adaptador/motor, sin convertir la
-suma histórica en porcentaje total. 59/59 tests del banco PASS. Dos regresiones
+suma histórica en porcentaje total. 60/60 tests del banco PASS. Dos regresiones
 iniciales y dos P2 de revisión reproducidos/corregidos (primera fuente tardía y
 gamePresent inicial contradictorio). Parser/diff-check PASS; cierre de revisión
 ACCEPT estático de 0974d1d6. Dos smokes cancelados antes de medir por Hub no
@@ -16,7 +44,7 @@ foreground (Racelab conservaba foco), app propia cerrada y LMU/Edge intactos.
 Coexistencia ahora valida los hechos nativos existentes: visible/no minimizado y
 foco estable, etiquetando background/foreground y oclusión unknown. Conserva
 valid original del monitor (foreground), publica criterio propio en el intervalo
-y mantiene SinJuego estricto. Revisión de este criterio y siguiente smoke pendientes.
+y mantiene SinJuego estricto. Revisión de este criterio ACCEPT y smoke3 PASS.
 
 Isaac aprueba auditar y medir todo salvo HUD/OBS/widgets y Overlay Studio,
 preservando apariencia, capacidades y contratos compartidos. Base verificada

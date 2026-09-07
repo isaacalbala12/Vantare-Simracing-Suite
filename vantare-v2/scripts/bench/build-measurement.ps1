@@ -1,15 +1,21 @@
+[CmdletBinding(DefaultParameterSetName = 'File')]
 param(
-    [Parameter(Mandatory = $true)]
+    [Parameter(Mandatory = $true, ParameterSetName = 'File')]
     [string]$EnvFile,
+    [Parameter(Mandatory = $true, ParameterSetName = 'Environment')]
+    [switch]$FromEnvironment,
     [string]$OutFile = 'bin/vantare-measurement.exe',
     [switch]$ReadableFrontend
 )
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
-$envPath = (Resolve-Path -LiteralPath $EnvFile).Path
+$envPath = if ($PSCmdlet.ParameterSetName -eq 'File') { (Resolve-Path -LiteralPath $EnvFile).Path } else { $null }
 $outPath = if ([IO.Path]::IsPathRooted($OutFile)) { $OutFile } else { Join-Path $repoRoot $OutFile }
 $generatedPath = Join-Path $repoRoot 'cmd\vantare\supabase_build.go'
+if (Test-Path -LiteralPath $generatedPath) {
+    throw 'Ya existe supabase_build.go; conserva o retira ese artefacto antes de construir.'
+}
 $names = @(
     'VITE_SUPABASE_URL',
     'VITE_SUPABASE_ANON_KEY',
@@ -22,19 +28,37 @@ foreach ($name in $names) { $previous[$name] = [Environment]::GetEnvironmentVari
 
 try {
     $values = @{}
-    foreach ($line in Get-Content -LiteralPath $envPath) {
-        if ($line -notmatch '^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$') { continue }
-        $name = $Matches[1]
-        if ($name -notin $names) { continue }
-        $value = $Matches[2].Trim()
-        if ($value.Length -ge 2 -and (($value[0] -eq '"' -and $value[-1] -eq '"') -or ($value[0] -eq "'" -and $value[-1] -eq "'"))) {
-            $value = $value.Substring(1, $value.Length - 2)
+    if ($PSCmdlet.ParameterSetName -eq 'Environment') {
+        # Reutiliza la configuracion publica ya inyectada; no abre ficheros .env.
+        foreach ($file in @('.env', '.env.local', '.env.production', '.env.production.local')) {
+            if (Test-Path -LiteralPath (Join-Path $repoRoot "frontend/$file")) {
+                throw 'FromEnvironment requiere frontend sin archivos de entorno que Vite pueda cargar.'
+            }
         }
-        $values[$name] = $value
+        foreach ($suffix in @('URL', 'ANON_KEY')) {
+            $backend = [Environment]::GetEnvironmentVariable("VANTARE_SUPABASE_$suffix", 'Process')
+            $frontend = [Environment]::GetEnvironmentVariable("VITE_SUPABASE_$suffix", 'Process')
+            if ($backend -and $frontend -and $backend -cne $frontend) {
+                throw "Configuracion distinta entre VANTARE_SUPABASE_$suffix y VITE_SUPABASE_$suffix."
+            }
+            $values["VITE_SUPABASE_$suffix"] = if ($backend) { $backend } else { $frontend }
+        }
+        $values['VANTARE_LICENSE_PUBLIC_KEYS'] = $env:VANTARE_LICENSE_PUBLIC_KEYS
+    } else {
+        foreach ($line in Get-Content -LiteralPath $envPath) {
+            if ($line -notmatch '^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$') { continue }
+            $name = $Matches[1]
+            if ($name -notin $names) { continue }
+            $value = $Matches[2].Trim()
+            if ($value.Length -ge 2 -and (($value[0] -eq '"' -and $value[-1] -eq '"') -or ($value[0] -eq "'" -and $value[-1] -eq "'"))) {
+                $value = $value.Substring(1, $value.Length - 2)
+            }
+            $values[$name] = $value
+        }
     }
     foreach ($required in @('VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY')) {
         if (-not $values.ContainsKey($required) -or [string]::IsNullOrWhiteSpace($values[$required])) {
-            throw "Falta $required en el fichero autorizado."
+            throw "Falta $required en la configuracion de compilacion."
         }
     }
 

@@ -122,7 +122,7 @@ if ($DryRun) {
     $plan | ConvertTo-Json -Depth 4
     exit 0
 }
-if (Test-Path -LiteralPath $standalonePresentMon) {
+if (-not $SinJuego -and (Test-Path -LiteralPath $standalonePresentMon)) {
     if ($presentMonDirectory -notin $userPathParts) {
         $updatedUserPath = (@($userPathParts) + $presentMonDirectory) -join ';'
         [Environment]::SetEnvironmentVariable('Path', $updatedUserPath, 'User')
@@ -294,17 +294,19 @@ function Update-ProcessClassification {
 }
 
 try {
-    foreach ($etwSession in @(Get-VantareEtwSessions)) {
-        $owner = Get-Process -Id ([int]$etwSession.pid) -ErrorAction SilentlyContinue
-        if ($owner -and $owner.ProcessName -like 'vantare*') {
-            Write-Host "Sesión ETW activa conservada: $($etwSession.name) (Vantare PID $($etwSession.pid))."
-            continue
+    if (-not $SinJuego) {
+        foreach ($etwSession in @(Get-VantareEtwSessions)) {
+            $owner = Get-Process -Id ([int]$etwSession.pid) -ErrorAction SilentlyContinue
+            if ($owner -and $owner.ProcessName -like 'vantare*') {
+                Write-Host "Sesión ETW activa conservada: $($etwSession.name) (Vantare PID $($etwSession.pid))."
+                continue
+            }
+            if (-not (Stop-HuellaEtwSession $etwSession.name)) {
+                throw "No se pudo detener la sesión ETW huérfana '$($etwSession.name)'."
+            }
+            $orphanEtwSessionsStopped += [string]$etwSession.name
+            Write-Warning "Sesión ETW huérfana detenida: $($etwSession.name)"
         }
-        if (-not (Stop-HuellaEtwSession $etwSession.name)) {
-            throw "No se pudo detener la sesión ETW huérfana '$($etwSession.name)'."
-        }
-        $orphanEtwSessionsStopped += [string]$etwSession.name
-        Write-Warning "Sesión ETW huérfana detenida: $($etwSession.name)"
     }
     $orphanEtwSessionsStoppedJson = ConvertTo-Json -InputObject @($orphanEtwSessionsStopped) -Compress
 
@@ -398,8 +400,8 @@ try {
         $visibilityStart = Get-Date
         Write-Host 'VISIBILITY CAPTURE: mantener LMU foreground durante toda la captura.'
     }
-    $sessionName = "VantareHuella-$($app.Id)-$stamp"
     if (-not $SinJuego) {
+        $sessionName = "VantareHuella-$($app.Id)-$stamp"
         $presentMonArgs = @('--process_name', ('"{0}"' -f $gameExeName), '--output_file', ('"{0}"' -f $presentMonCsv), '--v2_metrics', '--timed', [string]$Duracion, '--terminate_after_timed', '--session_name', $sessionName, '--no_console_stats')
         $presentMon = Start-Process -FilePath $presentMonPath -ArgumentList $presentMonArgs -RedirectStandardOutput $presentMonLog -RedirectStandardError $presentMonErrorLog -WindowStyle Hidden -PassThru
     }

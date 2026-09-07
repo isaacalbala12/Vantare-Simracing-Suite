@@ -254,6 +254,19 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 
 ## Hitos
 
+### Rendimiento de la base de la app
+
+- id: base-app-footprint
+- tipo: plan
+- titulo.en: Base app performance
+- titulo.pt: Desempenho da base da aplicação
+- titulo.it: Prestazioni della base dell'app
+- cuerpo: Campaña aprobada para medir y reducir CPU, GPU y memoria de la base de Vantare, conservando apariencia y capacidades. Incluye Hub, navegación y servicios comunes; HUD y Overlay Studio quedan excluidos. Primero se prepara el banco y una referencia reproducible, después se validan cambios pequeños. Todavía no se anuncia ahorro medido.
+- cuerpo.en: Approved campaign to measure and reduce CPU, GPU and memory use in the Vantare base app while preserving appearance and capabilities. Includes the Hub, navigation and shared services; HUD and Overlay Studio are excluded. First prepare the measurement tools and a reproducible baseline, then validate small changes. No measured savings are announced yet.
+- cuerpo.pt: Campanha aprovada para medir e reduzir CPU, GPU e memória da base do Vantare, preservando aparência e capacidades. Inclui Hub, navegação e serviços comuns; HUD e Overlay Studio ficam excluídos. Primeiro preparar as ferramentas e uma referência reproduzível, depois validar pequenas alterações. Ainda não se anuncia uma redução medida.
+- cuerpo.it: Campagna approvata per misurare e ridurre CPU, GPU e memoria della base di Vantare, preservando aspetto e capacità. Include Hub, navigazione e servizi comuni; HUD e Overlay Studio sono esclusi. Prima preparare gli strumenti e una base riproducibile, poi verificare piccole modifiche. Nessun risparmio misurato viene ancora annunciato.
+- etiqueta: ISA-1015
+
 ### CPU con seis widgets
 
 - id: telemetry-six-widget-cpu

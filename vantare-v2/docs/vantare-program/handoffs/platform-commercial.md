@@ -1,5 +1,33 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+## ISA-1015 — rendimiento de la base, preparación (2026-09-07)
+
+Isaac aprueba auditar y medir todo salvo HUD/OBS/widgets y Overlay Studio,
+preservando apariencia, capacidades y contratos compartidos. Base verificada
+`origin/nightly@d6d0992f8dbc800ccb6d75f60fffdc7c3d561da2`; rama
+`vantareapp/isa-1015-base-app-performance`, worktree `C:/tmp/vantare-isa1015-base-app`.
+Checkout principal y cambios previos preservados. Issue #1015, área plataforma,
+estado in-progress; sin versión comprometida ni autorización de integración.
+
+Inventarios estáticos UI/Core terminados en snapshots independientes limpios.
+Tres prioridades para atribuir: Ops sin consumidor, detección repetida de build
+con LMU ausente y recálculos de Carreras/calendario. No son ahorros medidos.
+Informe/protocolo: `docs/analysis/ISA-1015-base-app-performance.md`.
+
+Tooling local: build de diagnóstico desde entorno sin leer `.env`, preservación
+de configuración/generado previo; SinJuego ya no cambia PATH ni consulta/limpia
+ETW de PresentMon. Dos regresiones fallan contra la base; suite banco 44/44 PASS.
+Revisión estática de tooling ACCEPT; parser PowerShell y roadmap (23+21 tests)
+PASS. A0/SinJuego sigue no publicable y solo exploratorio;
+faltan ruta/visibilidad nativa, GPU por motor, metadatos y lifecycle minimizado para
+baseline aceptable. Sin build real, app, medición o corte productivo.
+
+Siguiente: coordinar exclusividad del PC
+(LMU y otras tareas están activos), construir desde entorno y explorar Inicio.
+Después adaptar lo mínimo del banco y medir A/A antes de editar producto.
+Los fallos SQLite del CI de la base siguen separados. La issue y la futura PR
+deben distinguir preparación, baseline y ahorro. Sin merge, promoción ni release.
+
 ## ISA-1011 — runtime de release (2026-09-07)
 
 Nightly.15 no se publicó: el segundo intento 34062671599 pasó tests pero

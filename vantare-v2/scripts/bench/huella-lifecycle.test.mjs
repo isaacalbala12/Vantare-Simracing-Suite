@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readFile, mkdtemp, mkdir, writeFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { test } from "node:test";
 import { execFileSync } from "node:child_process";
 
@@ -123,8 +125,14 @@ test("el modo sin juego conserva RAM/CDP y omite solo PresentMon", () => {
   assert.match(bench, /\[switch\]\$SinJuego/);
   assert.match(bench, /measurementMode = if \(\$SinJuego\) \{ 'ram-only-no-game' \}/);
   assert.match(bench, /\$publishable = -not \$hygieneForced -and -not \[bool\]\$SinJuego/);
-  assert.match(bench, /if \(-not \$SinJuego\) \{\s*\$presentMonArgs/);
+  assert.match(bench, /if \(-not \$SinJuego\) \{\s*\$sessionName = [^\n]+\s*\$presentMonArgs/);
   assert.match(bench, /PresentMon omitido: corrida RAM-only sin juego/);
+});
+
+test("sin juego no cambia PATH ni consulta o limpia sesiones ETW", () => {
+  assert.match(bench, /if \(-not \$SinJuego -and \(Test-Path -LiteralPath \$standalonePresentMon\)\)/);
+  assert.match(bench, /if \(-not \$SinJuego\) \{\s*foreach \(\$etwSession in @\(Get-VantareEtwSessions\)\)/);
+  assert.match(bench, /if \(-not \$SinJuego\) \{\s*\$sessionName = "VantareHuella-/);
 });
 
 test("la medida falla cerrada si la build arranca sin licencia configurada", () => {
@@ -147,6 +155,90 @@ test("la build de medida embebe Supabase sin copiar ni mostrar env.local", () =>
   assert.doesNotMatch(buildMeasurement, /go build -tags production/);
   assert.match(buildMeasurement, /Remove-Item -LiteralPath \$generatedPath/);
   assert.doesNotMatch(buildMeasurement, /Write-Host.*\$values/);
+});
+
+test("build desde entorno valida configuracion y restaura estado incluso si falla", { skip: process.platform !== "win32" }, async () => {
+  const fixture = await mkdtemp(path.join(tmpdir(), "vantare-build-contract-"));
+  try {
+    await mkdir(path.join(fixture, "scripts", "bench"), { recursive: true });
+    await mkdir(path.join(fixture, "cmd", "vantare"), { recursive: true });
+    await writeFile(path.join(fixture, "scripts", "bench", "build-measurement.ps1"), buildMeasurement);
+    // Solo prueba orquestacion: los compiladores se sustituyen por funciones
+    // locales. Estos artefactos no son builds ni evidencia de rendimiento.
+    const check = String.raw`
+$ErrorActionPreference = 'Stop'
+$names = @('VITE_SUPABASE_URL','VITE_SUPABASE_ANON_KEY','VANTARE_SUPABASE_URL','VANTARE_SUPABASE_ANON_KEY','VANTARE_LICENSE_PUBLIC_KEYS')
+foreach ($name in $names) { [Environment]::SetEnvironmentVariable($name, $null, 'Process') }
+$env:VANTARE_SUPABASE_URL = 'https://example.invalid'
+$env:VANTARE_SUPABASE_ANON_KEY = 'public-test-key'
+$env:VANTARE_LICENSE_PUBLIC_KEYS = 'public-test-verifier'
+$global:buildContractCalls = 0
+$global:buildContractFail = $false
+$global:buildContractEnvFile = $false
+function Test-Path {
+    param([string]$LiteralPath)
+    if ($global:buildContractEnvFile -and (Split-Path -Leaf $LiteralPath) -eq '.env.production') { return $true }
+    Microsoft.PowerShell.Management\Test-Path -LiteralPath $LiteralPath
+}
+function corepack {
+    $global:buildContractCalls++
+    if ($env:VITE_SUPABASE_URL -cne $env:VANTARE_SUPABASE_URL -or $env:VITE_SUPABASE_ANON_KEY -cne $env:VANTARE_SUPABASE_ANON_KEY) { throw 'frontend/backend mismatch' }
+    $global:LASTEXITCODE = if ($global:buildContractFail) { 9 } else { 0 }
+}
+function powershell {
+    $outputPath = $args[[Array]::IndexOf($args, '-OutFile') + 1]
+    Set-Content -LiteralPath $outputPath -Value 'test-only generated config'
+    $global:LASTEXITCODE = 0
+}
+function go {
+    $outputPath = $args[[Array]::IndexOf($args, '-o') + 1]
+    Set-Content -LiteralPath $outputPath -Value 'test-only compiler result'
+    $global:LASTEXITCODE = 0
+}
+$build = Join-Path $PSScriptRoot 'scripts/bench/build-measurement.ps1'
+$generated = Join-Path $PSScriptRoot 'cmd/vantare/supabase_build.go'
+function Assert-Restored {
+    if ($env:VITE_SUPABASE_URL -or $env:VITE_SUPABASE_ANON_KEY -or $env:VANTARE_SUPABASE_URL -cne 'https://example.invalid' -or $env:VANTARE_SUPABASE_ANON_KEY -cne 'public-test-key' -or $env:VANTARE_LICENSE_PUBLIC_KEYS -cne 'public-test-verifier') { throw 'environment not restored' }
+    if (Test-Path -LiteralPath $generated) { throw 'generated file leaked' }
+}
+& $build -FromEnvironment
+if ($global:buildContractCalls -ne 1) { throw 'build was not called' }
+Assert-Restored
+$global:buildContractFail = $true
+$failed = $false
+try { & $build -FromEnvironment } catch { $failed = $true }
+if (-not $failed -or $global:buildContractCalls -ne 2) { throw 'build failure not propagated' }
+Assert-Restored
+$env:VITE_SUPABASE_URL = 'https://conflict.invalid'
+$failed = $false
+try { & $build -FromEnvironment } catch { $failed = $true }
+if (-not $failed -or $global:buildContractCalls -ne 2 -or $env:VITE_SUPABASE_URL -cne 'https://conflict.invalid') { throw 'conflict not rejected or environment changed' }
+$env:VITE_SUPABASE_URL = $null
+$env:VANTARE_SUPABASE_ANON_KEY = $null
+$failed = $false
+try { & $build -FromEnvironment } catch { $failed = $true }
+if (-not $failed -or $global:buildContractCalls -ne 2) { throw 'missing key reached compiler' }
+$env:VANTARE_SUPABASE_ANON_KEY = 'public-test-key'
+$global:buildContractEnvFile = $true
+$failed = $false
+try { & $build -FromEnvironment } catch { $failed = $true }
+if (-not $failed -or $global:buildContractCalls -ne 2) { throw 'Vite environment file was not rejected before build' }
+$global:buildContractEnvFile = $false
+Assert-Restored
+Set-Content -LiteralPath $generated -Value 'preexisting'
+$failed = $false
+try { & $build -FromEnvironment } catch { $failed = $true }
+if (-not $failed -or (Get-Content -LiteralPath $generated -Raw).Trim() -ne 'preexisting') { throw 'preexisting artifact not preserved' }
+Remove-Item -LiteralPath $generated
+Assert-Restored
+`;
+    const checkPath = path.join(fixture, "check.ps1");
+    await writeFile(checkPath, check);
+    const output = execFileSync("pwsh", ["-NoProfile", "-NonInteractive", "-File", checkPath], { encoding: "utf8", timeout: 30_000 });
+    assert.doesNotMatch(output, /public-test-key|public-test-verifier|example\.invalid/);
+  } finally {
+    await rm(fixture, { recursive: true, force: true });
+  }
 });
 
 test("la medida conserva prueba de seis widgets vivos después de muestrear", () => {

@@ -254,6 +254,19 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 
 ## Hitos
 
+### Rendimiento de la base de la app
+
+- id: base-app-footprint
+- tipo: plan
+- titulo.en: Base app performance
+- titulo.pt: Desempenho da base da aplicação
+- titulo.it: Prestazioni della base dell'app
+- cuerpo: Campaña aprobada para reducir CPU, GPU y memoria y acelerar arranque, apertura de pantallas, navegación y respuesta de la base de Vantare, conservando apariencia y capacidades. Incluye Hub, navegación y servicios comunes; HUD y Overlay Studio quedan excluidos. El escenario principal mantiene el simulador abierto y mide los procesos propios de Vantare. Primero se prepara el banco y una referencia reproducible, después se validan cambios pequeños. Todavía no se anuncia ahorro medido.
+- cuerpo.en: Approved campaign to reduce CPU, GPU and memory use and speed up startup, screen opening, navigation and interaction in the Vantare base app while preserving appearance and capabilities. Includes the Hub, navigation and shared services; HUD and Overlay Studio are excluded. The main scenario keeps the simulator open and measures Vantare-owned processes. First prepare the measurement tools and a reproducible baseline, then validate small changes. No measured savings are announced yet.
+- cuerpo.pt: Campanha aprovada para reduzir CPU, GPU e memória e acelerar o arranque, a abertura de ecrãs, a navegação e a resposta da base do Vantare, preservando aparência e capacidades. Inclui Hub, navegação e serviços comuns; HUD e Overlay Studio ficam excluídos. O cenário principal mantém o simulador aberto e mede os processos do Vantare. Primeiro preparar as ferramentas e uma referência reproduzível, depois validar pequenas alterações. Ainda não se anuncia uma redução medida.
+- cuerpo.it: Campagna approvata per ridurre CPU, GPU e memoria e accelerare avvio, apertura delle schermate, navigazione e risposta della base di Vantare, preservando aspetto e capacità. Include Hub, navigazione e servizi comuni; HUD e Overlay Studio sono esclusi. Lo scenario principale mantiene aperto il simulatore e misura i processi di Vantare. Prima preparare gli strumenti e una base riproducibile, poi verificare piccole modifiche. Nessun risparmio misurato viene ancora annunciato.
+- etiqueta: ISA-1015
+
 ### CPU con seis widgets
 
 - id: telemetry-six-widget-cpu

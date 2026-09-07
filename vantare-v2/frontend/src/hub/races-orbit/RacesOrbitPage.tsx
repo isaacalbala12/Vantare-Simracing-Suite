@@ -237,10 +237,12 @@ export function RacesOrbitPage({ calendar, target, now }: RacesOrbitPageProps) {
     () => (view === "week" ? weekRows(visible, monday, clock) : []),
     [clock, monday, view, visible],
   );
-  const first = useMemo(() => monthAnchor(clock, offset), [clock, offset]);
+  const monthDayMs = dayAnchor(clock, 0).getTime();
+  const monthClock = useMemo(() => new Date(monthDayMs), [monthDayMs]);
+  const first = useMemo(() => monthAnchor(monthClock, offset), [monthClock, offset]);
   const month = useMemo(
-    () => (view === "month" ? monthDays(visible, first, clock, calendar?.events ?? []) : []),
-    [calendar?.events, clock, first, view, visible],
+    () => (view === "month" ? monthDays(visible, first, monthClock, calendar?.events ?? []) : []),
+    [calendar?.events, monthClock, first, view, visible],
   );
   const tlStart = useMemo(() => timelineStart(clock), [clock]);
   const tlRows = useMemo(

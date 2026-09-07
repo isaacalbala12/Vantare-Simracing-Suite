@@ -1,8 +1,9 @@
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "../../i18n/I18nProvider";
 import type { Calendar, RaceSeries } from "../../calendar/calendar-types";
 import { ToastProvider } from "../../ui/orbit/Toast";
+import * as racesModel from "./races-orbit-model";
 import {
   RacesOrbitPage,
   RACES_CONTEXT_SLOT_ID,
@@ -33,6 +34,8 @@ afterEach(() => {
   cleanup();
   document.body.replaceChildren();
   mockEmit.mockReset();
+  vi.restoreAllMocks();
+  vi.useRealTimers();
   plan = "paid";
 });
 
@@ -106,6 +109,53 @@ const VIEWS = [
 ] as const;
 
 describe("RacesOrbitPage", () => {
+  it("conserva Mes entre segundos y cambia de día y mes a medianoche local", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 11, 31, 23, 59, 48));
+    const monthDays = vi.spyOn(racesModel, "monthDays");
+    setup({ now: undefined });
+    fireEvent.click(screen.getByRole("button", { name: "Mes" }));
+    const grid = screen.getByTestId("orbit-races-month");
+    expect(within(grid).getAllByRole("gridcell")).toHaveLength(42);
+    const originalGrid = grid.textContent;
+    const originalCountdown = screen.getByTestId("orbit-races-detail-at").textContent;
+    monthDays.mockClear();
+    act(() => vi.advanceTimersByTime(1000));
+    expect(screen.getByTestId("orbit-races-detail-at").textContent).not.toBe(originalCountdown);
+    for (let second = 1; second < 10; second++) act(() => vi.advanceTimersByTime(1000));
+    expect(monthDays).not.toHaveBeenCalled();
+    expect(grid.textContent).toBe(originalGrid);
+    act(() => vi.advanceTimersByTime(2000));
+    expect(monthDays).toHaveBeenCalledTimes(1);
+    expect(monthDays.mock.calls[0][1].getFullYear()).toBe(2027);
+    expect(monthDays.mock.calls[0][1].getMonth()).toBe(0);
+    expect(grid.querySelector('[data-today="true"] button')?.textContent).toBe("1");
+    fireEvent.click(screen.getByTestId("orbit-races-filter-advanced"));
+    expect(monthDays).toHaveBeenCalledTimes(2);
+    expect(monthDays.mock.calls[1][0].map((entry) => entry.id)).toEqual(["gold-1"]);
+  });
+
+  it("actualiza Mes con eventos nuevos y al navegar sin esperar al siguiente día", () => {
+    const monthDays = vi.spyOn(racesModel, "monthDays");
+    mountSlots();
+    const page = (calendar: Calendar) => (
+      <I18nProvider><ToastProvider><RacesOrbitPage calendar={calendar} now={NOW} /></ToastProvider></I18nProvider>
+    );
+    const view = render(page(CALENDAR));
+    fireEvent.click(screen.getByRole("button", { name: "Mes" }));
+    monthDays.mockClear();
+    view.rerender(page({ ...CALENDAR, events: [{
+      id: "new-event", title: "Evento nuevo", startTime: NOW.toISOString(),
+      sim: "LMU", track: "Sebring", series: "LMGT3", sessionLabel: "Race",
+      durationMin: 20, registrationUrl: "", source: "test", notes: "",
+    }] }));
+    expect(monthDays).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId("orbit-races-month").textContent).toContain("Evento nuevo");
+    fireEvent.click(screen.getByTestId("orbit-races-next-page"));
+    expect(monthDays).toHaveBeenCalledTimes(2);
+    expect(screen.getByTestId("orbit-races-month").textContent).not.toContain("Evento nuevo");
+  });
+
   it("monta las cinco vistas sin ningún `title` nativo", () => {
     setup();
     for (const view of VIEWS) {

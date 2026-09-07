@@ -1,5 +1,21 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+## ISA-1024 — cálculo mensual sin repetición por segundo (2026-09-08)
+
+Continuación autorizada de #1015 con Ponytail y diagnóstico. Base d6d0992f;
+rama vantareapp/isa-1024-calendar-month en C:/tmp/vantare-isa1024-calendar-month.
+Mes reconstruía 42 celdas cada segundo pese a depender solo del día local y datos.
+Regresión RED: 10 llamadas redundantes/10 ticks; GREEN: cero. 44 tests focales
+PASS, incluidos medianoche/cambio de año, filtros, eventos nuevos y navegación;
+detalle continúa a 1 s. Se reutiliza dayAnchor y useMemo, sin motor/estilos nuevos.
+Informe docs/analysis/ISA-1024-calendar-month.md. Primera suite 3237 PASS/1 FAIL:
+timeout de Standings excluido, separado en #1025; única repetición 3236 PASS/2 FAIL
+(Standings y Pedals, timeout 20000 ms). Sin cambios en esas superficies ni nuevos
+reintentos. Suite completa no verde. Typecheck/build/lint y roadmap 23+21 PASS.
+ver #1024 para SHA/PR/CI. Independiente de #1020/#1022, no prueba su combinación.
+Sin HUD/Studio ni ahorro global demostrado. Wails/A-B pendientes, LMU/Edge intactos.
+Sin merge, promoción ni release.
+
 ## ISA-1011 — runtime de release (2026-09-07)
 
 Nightly.15 no se publicó: el segundo intento 34062671599 pasó tests pero

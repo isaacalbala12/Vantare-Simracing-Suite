@@ -254,6 +254,19 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 
 ## Hitos
 
+### Cálculo mensual del calendario sin trabajo repetido
+
+- id: calendar-month-stable-day
+- tipo: fix
+- titulo.en: Calendar month without repeated calculations
+- titulo.pt: Mês do calendário sem cálculos repetidos
+- titulo.it: Mese del calendario senza calcoli ripetuti
+- cuerpo: La vista Mes conserva sus cálculos mientras no cambian el día local, el mes mostrado, los datos o el filtro. La cuenta atrás del detalle sigue avanzando cada segundo; las actualizaciones del calendario y el cambio de día se reflejan sin reducir información ni efectos. No se anuncia una cifra de ahorro global.
+- cuerpo.en: Month view retains its calculations while the local day, displayed month, data and filter remain unchanged. The detail countdown still advances every second; calendar updates and day changes remain reflected without reducing information or effects. No overall savings figure is claimed.
+- cuerpo.pt: A vista Mês conserva os cálculos enquanto o dia local, o mês apresentado, os dados e o filtro não mudam. A contagem decrescente do detalhe continua a cada segundo; atualizações do calendário e mudanças de dia mantêm-se sem reduzir informação ou efeitos. Não se anuncia uma redução global medida.
+- cuerpo.it: La vista Mese conserva i calcoli finché giorno locale, mese visualizzato, dati e filtro non cambiano. Il conto alla rovescia del dettaglio avanza ogni secondo; aggiornamenti del calendario e cambi di giorno restano visibili senza ridurre informazioni o effetti. Nessun risparmio complessivo misurato dichiarato.
+- etiqueta: ISA-1024
+
 ### CPU con seis widgets
 
 - id: telemetry-six-widget-cpu

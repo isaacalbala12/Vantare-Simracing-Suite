@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-07T03:04:13Z",
+  "generatedAt": "2026-09-07T23:48:05Z",
   "digest": {
-    "lastCommit": "afc6509a8b7b336b17d94467a35e7b36c4e7c5c3"
+    "lastCommit": "d6d0992f8dbc800ccb6d75f60fffdc7c3d561da2"
   },
   "phases": [
     {
@@ -343,6 +343,28 @@
     }
   ],
   "milestones": [
+    {
+      "id": "calendar-month-stable-day",
+      "type": "fix",
+      "title": {
+        "es": "Cálculo mensual del calendario sin trabajo repetido",
+        "en": "Calendar month without repeated calculations",
+        "pt": "Mês do calendário sem cálculos repetidos",
+        "it": "Mese del calendario senza calcoli ripetuti"
+      },
+      "body": {
+        "es": "La vista Mes conserva sus cálculos mientras no cambian el día local, el mes mostrado, los datos o el filtro. La cuenta atrás del detalle sigue avanzando cada segundo; las actualizaciones del calendario y el cambio de día se reflejan sin reducir información ni efectos. No se anuncia una cifra de ahorro global.",
+        "en": "Month view retains its calculations while the local day, displayed month, data and filter remain unchanged. The detail countdown still advances every second; calendar updates and day changes remain reflected without reducing information or effects. No overall savings figure is claimed.",
+        "pt": "A vista Mês conserva os cálculos enquanto o dia local, o mês apresentado, os dados e o filtro não mudam. A contagem decrescente do detalhe continua a cada segundo; atualizações do calendário e mudanças de dia mantêm-se sem reduzir informação ou efeitos. Não se anuncia uma redução global medida.",
+        "it": "La vista Mese conserva i calcoli finché giorno locale, mese visualizzato, dati e filtro non cambiano. Il conto alla rovescia del dettaglio avanza ogni secondo; aggiornamenti del calendario e cambi di giorno restano visibili senza ridurre informazioni o effetti. Nessun risparmio complessivo misurato dichiarato."
+      },
+      "label": {
+        "es": "ISA-1024",
+        "en": "ISA-1024",
+        "pt": "ISA-1024",
+        "it": "ISA-1024"
+      }
+    },
     {
       "id": "telemetry-six-widget-cpu",
       "type": "fix",
@@ -961,6 +983,16 @@
     }
   ],
   "delivered": [
+    {
+      "date": "2026-09-07",
+      "entries": [
+        {
+          "kind": "fix",
+          "scope": "release",
+          "text": "Package hash-pinned approved telemetry runtime"
+        }
+      ]
+    },
     {
       "date": "2026-09-06",
       "entries": [
@@ -1608,26 +1640,6 @@
           "kind": "change",
           "scope": "",
           "text": "Producir StrategyLiveProjection v1 desde Telemetry Core"
-        }
-      ]
-    },
-    {
-      "date": "2026-08-12",
-      "entries": [
-        {
-          "kind": "docs",
-          "scope": "release",
-          "text": "Record nightly 7 publication"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "La celda de presion se va en vez de desaparecer"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "Catalogo de animaciones en el Workshop, y motor para relative, delta y pedals"
         }
       ]
     }

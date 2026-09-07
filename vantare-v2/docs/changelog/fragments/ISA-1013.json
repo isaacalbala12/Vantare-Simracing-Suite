@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-1013",
+  "type": "change",
+  "summary": "Presencia opcional de Vantare en Discord con estado observable del Hub y telemetría.",
+  "technicalNotes": [
+    "El cliente usa Discord Desktop IPC por named pipe en Windows, con reintentos acotados y limpieza al cerrar.",
+    "Solo publica el nombre de la suite, un estado de alto nivel y el timestamp de arranque; no publica datos de carrera ni credenciales.",
+    "VANTARE_DISCORD_RPC=0 desactiva la integración. El Client ID 1546608423485972571 es público y no es un secreto."
+  ],
+  "testing": [
+    "Abrir Discord Desktop y Vantare en Windows; comprobar la actividad y los estados de telemetría.",
+    "Cerrar Discord o dejar LMU sin telemetría; confirmar que Vantare sigue funcionando y que reconecta cuando vuelve el IPC.",
+    "Repetir con VANTARE_DISCORD_RPC=0 y confirmar que no aparece actividad."
+  ],
+  "knownLimitations": [
+    "La verificación física con Discord Desktop y LMU queda pendiente en esta entrega aislada.",
+    "Los assets visuales del portal de Discord no están cargados; la actividad básica funciona sin ellos.",
+    "No incluye merge a nightly, promoción, release ni publicación comercial."
+  ]
+}

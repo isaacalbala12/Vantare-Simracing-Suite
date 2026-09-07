@@ -34,6 +34,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/authsession"
 	"github.com/vantare/overlays/v2/internal/calendar"
 	"github.com/vantare/overlays/v2/internal/calendar/discordbot"
+	"github.com/vantare/overlays/v2/internal/discordpresence"
 	engineeraudio "github.com/vantare/overlays/v2/internal/engineer/audio"
 	"github.com/vantare/overlays/v2/internal/engineer/commands"
 	"github.com/vantare/overlays/v2/internal/engineer/ptt"
@@ -1358,6 +1359,24 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
+	discordPresenceEnabled := runtime.GOOS == "windows" && os.Getenv("VANTARE_DISCORD_RPC") != "0"
+	discordPresenceStartedAt := time.Now()
+	discordPresence := discordpresence.New(discordpresence.Config{
+		ClientID: discordPresenceClientID,
+		PID:      os.Getpid(),
+		Logf: func(format string, args ...any) {
+			log.Printf("discord presence: "+format, args...)
+		},
+	})
+	if discordPresenceEnabled {
+		discordPresence.SetActivity(discordPresenceActivity(driver.UnknownSourceStatus(), discordPresenceStartedAt))
+		if err := discordPresence.Start(ctx); err != nil {
+			log.Printf("discord presence unavailable: %v", err)
+		}
+	} else if runtime.GOOS == "windows" {
+		log.Printf("discord presence disabled by VANTARE_DISCORD_RPC=0")
+	}
+
 	// Gancho de diagnostico (ISA-912): `VANTARE_CPU_PROFILE_PATH` captura un
 	// perfil CPU del host a fichero para poder atribuir su coste real. No abre
 	// ningun puerto. Se detiene solo al agotar su duracion acotada; este defer
@@ -1530,6 +1549,12 @@ func main() {
 						engSvc.Stop()
 					}
 					return nil
+				}},
+				{name: "discord-presence", stop: func(context.Context) error {
+					if !discordPresenceEnabled {
+						return nil
+					}
+					return discordPresence.Close()
 				}},
 				{name: "application-context", stop: func(context.Context) error {
 					stop()
@@ -2233,6 +2258,11 @@ func main() {
 		}
 		return telemetryCoreRuntime.SourceStatus()
 	}
+	updateDiscordPresence := func(status driver.SourceStatus) {
+		if discordPresenceEnabled {
+			discordPresence.SetActivity(discordPresenceActivity(status, discordPresenceStartedAt))
+		}
+	}
 
 	// DriverManager no registra ninguna transicion, asi que un fallo de conexion
 	// solo era observable desde fuera como "no llega telemetria": el unico
@@ -2248,6 +2278,7 @@ func main() {
 		var seen bool
 		return func() driver.SourceStatus {
 			status := next()
+			updateDiscordPresence(status)
 			mu.Lock()
 			if !seen || status.State != lastState || status.ReconnectAttempt != lastAttempt {
 				seen, lastState, lastAttempt = true, status.State, status.ReconnectAttempt

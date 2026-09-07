@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-07T03:04:13Z",
+  "generatedAt": "2026-09-07T20:21:57Z",
   "digest": {
-    "lastCommit": "afc6509a8b7b336b17d94467a35e7b36c4e7c5c3"
+    "lastCommit": "d6d0992f8dbc800ccb6d75f60fffdc7c3d561da2"
   },
   "phases": [
     {
@@ -343,6 +343,28 @@
     }
   ],
   "milestones": [
+    {
+      "id": "discord-rich-presence",
+      "type": "feature",
+      "title": {
+        "es": "Discord Rich Presence opcional",
+        "en": "Optional Discord Rich Presence",
+        "pt": "Rich Presence opcional do Discord",
+        "it": "Rich Presence opzionale di Discord"
+      },
+      "body": {
+        "es": "Vantare publica una presencia local y opcional en Discord mediante el IPC de escritorio: nombre de la suite, estado del Hub, estado observable de telemetría y hora de arranque. No envía datos de carrera, identidad ni credenciales; si Discord no está abierto o el IPC falla, Vantare continúa y reintenta sin bloquear el Hub. Se puede desactivar con `VANTARE_DISCORD_RPC=0`.",
+        "en": "Vantare publishes an optional local Discord desktop IPC presence with the suite name, Hub state, observable telemetry state and startup time. It sends no race data, identity or credentials; if Discord is closed or IPC fails, Vantare continues and retries without blocking the Hub. Disable it with `VANTARE_DISCORD_RPC=0`.",
+        "pt": "O Vantare publica uma presença local e opcional no Discord através do IPC de desktop: nome da suite, estado do Hub, estado observável da telemetria e hora de arranque. Não envia dados de corrida, identidade nem credenciais; se o Discord estiver fechado ou o IPC falhar, o Vantare continua e tenta novamente sem bloquear o Hub. Pode ser desativado com `VANTARE_DISCORD_RPC=0`.",
+        "it": "Vantare pubblica una presenza locale e opzionale in Discord tramite IPC desktop: nome della suite, stato dell'Hub, stato osservabile della telemetria e ora di avvio. Non invia dati di gara, identità o credenziali; se Discord è chiuso o l'IPC fallisce, Vantare continua e ritenta senza bloccare l'Hub. Si può disattivare con `VANTARE_DISCORD_RPC=0`."
+      },
+      "label": {
+        "es": "En revisión",
+        "en": "In review",
+        "pt": "Em revisão",
+        "it": "In revisione"
+      }
+    },
     {
       "id": "telemetry-six-widget-cpu",
       "type": "fix",
@@ -961,6 +983,16 @@
     }
   ],
   "delivered": [
+    {
+      "date": "2026-09-07",
+      "entries": [
+        {
+          "kind": "fix",
+          "scope": "release",
+          "text": "Package hash-pinned approved telemetry runtime"
+        }
+      ]
+    },
     {
       "date": "2026-09-06",
       "entries": [
@@ -1608,26 +1640,6 @@
           "kind": "change",
           "scope": "",
           "text": "Producir StrategyLiveProjection v1 desde Telemetry Core"
-        }
-      ]
-    },
-    {
-      "date": "2026-08-12",
-      "entries": [
-        {
-          "kind": "docs",
-          "scope": "release",
-          "text": "Record nightly 7 publication"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "La celda de presion se va en vez de desaparecer"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "Catalogo de animaciones en el Workshop, y motor para relative, delta y pedals"
         }
       ]
     }

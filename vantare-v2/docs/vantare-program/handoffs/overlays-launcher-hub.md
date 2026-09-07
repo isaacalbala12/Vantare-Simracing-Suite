@@ -1,5 +1,18 @@
 # Handoff vivo — Overlay Studio, Launcher y Hub
 
+## ISA-1013 — Discord Rich Presence opcional (2026-09-07)
+
+Entrega aislada en la rama `vantareapp/isa-1013-discord-rich-presence`, basada
+en `origin/nightly` actualizado a `d6d0992f`. Vantare crea una presencia local
+opcional mediante Discord Desktop IPC con el nombre de la suite, estado del
+Hub, estado observable de telemetría y timestamp de arranque. No se envían
+datos de carrera, identidad ni credenciales; el cliente reintenta sin bloquear
+si Discord no está abierto y limpia la actividad al cerrar. `VANTARE_DISCORD_RPC=0`
+desactiva la integración. El Client ID público de la aplicación Discord es
+`1546608423485972571`; los assets del portal son opcionales y todavía requieren
+configuración manual porque Discord rechazó la subida automatizada. Tests focales
+del cliente y de `cmd/vantare` pasan; no hay merge, promoción ni release.
+
 ## ISA-1004 — Dense y Broadcast tras validación Windows (2026-09-06)
 
 Isaac autoriza corregir ambos hallazgos y mergear a nightly. Base c18f2e6e;

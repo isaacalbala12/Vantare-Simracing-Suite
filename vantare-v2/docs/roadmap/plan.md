@@ -254,6 +254,22 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 
 ## Hitos
 
+### Discord Rich Presence opcional
+
+- id: discord-rich-presence
+- tipo: feature
+- titulo.en: Optional Discord Rich Presence
+- titulo.pt: Rich Presence opcional do Discord
+- titulo.it: Rich Presence opzionale di Discord
+- cuerpo: Vantare publica una presencia local y opcional en Discord mediante el IPC de escritorio: nombre de la suite, estado del Hub, estado observable de telemetría y hora de arranque. No envía datos de carrera, identidad ni credenciales; si Discord no está abierto o el IPC falla, Vantare continúa y reintenta sin bloquear el Hub. Se puede desactivar con `VANTARE_DISCORD_RPC=0`.
+- cuerpo.en: Vantare publishes an optional local Discord desktop IPC presence with the suite name, Hub state, observable telemetry state and startup time. It sends no race data, identity or credentials; if Discord is closed or IPC fails, Vantare continues and retries without blocking the Hub. Disable it with `VANTARE_DISCORD_RPC=0`.
+- cuerpo.pt: O Vantare publica uma presença local e opcional no Discord através do IPC de desktop: nome da suite, estado do Hub, estado observável da telemetria e hora de arranque. Não envia dados de corrida, identidade nem credenciais; se o Discord estiver fechado ou o IPC falhar, o Vantare continua e tenta novamente sem bloquear o Hub. Pode ser desativado com `VANTARE_DISCORD_RPC=0`.
+- cuerpo.it: Vantare pubblica una presenza locale e opzionale in Discord tramite IPC desktop: nome della suite, stato dell'Hub, stato osservabile della telemetria e ora di avvio. Non invia dati di gara, identità o credenziali; se Discord è chiuso o l'IPC fallisce, Vantare continua e ritenta senza bloccare l'Hub. Si può disattivare con `VANTARE_DISCORD_RPC=0`.
+- etiqueta: En revisión
+- etiqueta.en: In review
+- etiqueta.pt: Em revisão
+- etiqueta.it: In revisione
+
 ### CPU con seis widgets
 
 - id: telemetry-six-widget-cpu

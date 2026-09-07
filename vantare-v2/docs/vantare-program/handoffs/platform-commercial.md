@@ -1,6 +1,6 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
-## ISA-1015 — rendimiento de la base, preparación (2026-09-07)
+## ISA-1015 — rendimiento de la base, preflight real (2026-09-07)
 
 Isaac aprueba auditar y medir todo salvo HUD/OBS/widgets y Overlay Studio,
 preservando apariencia, capacidades y contratos compartidos. Base verificada
@@ -20,14 +20,27 @@ ETW de PresentMon. Dos regresiones fallan contra la base; suite banco 44/44 PASS
 Revisión estática de tooling ACCEPT; parser PowerShell y roadmap (23+21 tests)
 PASS. A0/SinJuego sigue no publicable y solo exploratorio;
 faltan ruta/visibilidad nativa, GPU por motor, metadatos y lifecycle minimizado para
-baseline aceptable. Sin build real, app, medición o corte productivo.
+baseline aceptable. Sin captura de consumo ni corte productivo.
+
+Preflight real posterior: build frontend/typecheck y Go PASS, canal nightly
+explícito (el script antes conservaba master). BuildChannel normalizado a
+minúsculas, regresión de Nightly y flag Go; banco 44/44 PASS. Binario SHA-256
+`53136de43fde4117aa96fa12512b865291ce19b0fe5bbe7c33b6fd586ea26943`.
+Runtime aprobado 700201f9 verificado + handshake smoke PASS, junto al exe.
+Inicio real con Owner autenticado/deviceOK, sin HUD/Studio, Auto nivel 2 y
+effects full; cierre limpio. Evidencia local en `results/isa1015-preflight`.
+Configs/WebView propios; auth y cachés siguen rutas productivas compartidas,
+sin leer ni copiar credenciales. Escenario portable preparado, no instalación habitual.
 
 Preparación comprometida y subida en `2994de6e`; PR borrador #1017 hacia nightly.
 Contrato exacto de roadmap contra issue #1015 PASS. CI remoto todavía pendiente
 de completar; el primer run es `34160442778`. No equivale a integración.
 
-Siguiente: coordinar exclusividad del PC
-(LMU y otras tareas están activos), construir desde entorno y explorar Inicio.
+Siguiente: Isaac declaró PC disponible y cerró LMU/otra Vantare. La tarea de
+widgets terminó su turno documental. Quedan cinco Edge sin ventana; se pidió
+autorización para su cierre y sigue pendiente. No usar Forzar ni cerrarlos sin
+esa respuesta. Después reutilizar el binario/WebView preparados para explorar Inicio
+(A0/SinJuego, 60 s warmup + 180 s captura, no publicable).
 Después adaptar lo mínimo del banco y medir A/A antes de editar producto.
 Los fallos SQLite del CI de la base siguen separados. La issue y la futura PR
 deben distinguir preparación, baseline y ahorro. Sin merge, promoción ni release.

@@ -1,6 +1,6 @@
 # ISA-1015 — rendimiento de la base de Vantare
 
-Estado a 2026-09-07: inventario estático y preparación mínima del banco.
+Estado a 2026-09-07: inventario estático, preparación del banco y preflight Windows real completados.
 **No hay baseline real, ahorro demostrado ni optimización productiva.**
 Autoridad: [issue #1015](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1015).
 Continuidad: `docs/vantare-program/handoffs/platform-commercial.md`; este informe no crea otro handoff.
@@ -83,7 +83,7 @@ ruta verificada y HUD/Studio ausentes.
 
 Cambios mínimos de tooling en esta entrega:
 
-- `build-measurement.ps1 -FromEnvironment` usa configuración pública ya inyectada, establece los equivalentes frontend y restaura variables al acabar o fallar. Rechaza configuraciones frontend/backend diferentes y no sobrescribe un Go generado previo. Comprueba solo la existencia de archivos de entorno que Vite podría cargar y rechaza la compilación si existen; no los abre. No se invoca el modo de archivo en esta campaña.
+- `build-measurement.ps1 -FromEnvironment` usa configuración pública ya inyectada, establece los equivalentes frontend y restaura variables al acabar o fallar. Rechaza configuraciones frontend/backend diferentes y no sobrescribe un Go generado previo. Comprueba solo la existencia de archivos de entorno que Vite podría cargar y rechaza la compilación si existen; no los abre. No se invoca el modo de archivo en esta campaña. `-BuildChannel nightly` fija la identidad real de canal; el valor se normaliza a minúsculas y el defecto general sigue siendo master.
 - Con `-SinJuego`, el banco ya no modifica PATH ni consulta/limpia sesiones ETW de PresentMon. Se conserva el comportamiento del protocolo con juego.
 - Regresiones en `huella-lifecycle.test.mjs`; compilers sustituidos solo en el test de orquestación. Sus archivos temporales **no son builds reales ni muestras de rendimiento**.
 
@@ -91,7 +91,8 @@ La configuración necesaria para compilación estaba presente en el entorno al
 preflight (solo se consultó presencia, nunca valores). La configuración embebida
 no prueba una sesión autenticada: se mantiene el gate `license:changed` real.
 La release production deshabilita CDP (`cmd/vantare/webview_debug_production.go:8`)
-y no sustituye una build diagnóstica. No se ha construido todavía ninguna.
+y no sustituye una build diagnóstica. La compilación optimizada del preflight real
+ha pasado; identidad nightly explícita, sin tag production ni gcflags que desactiven inlining.
 
 Gates que aún impiden aceptar una baseline completa:
 
@@ -136,13 +137,24 @@ escenario del candidato antes de ejecutar repetidamente toda la matriz.
 - Base remota y aislamiento verificados; dos inventarios independientes en snapshots limpios y revisión del tooling. No se desarrolló en el checkout principal.
 - Dos nuevas regresiones fallan contra los scripts originales de la base. Suite del banco modificada: **44/44 PASS**. Prueba de compilación simulada valida orquestación/cleanup, no Wails real.
 - Revisión estática independiente del tooling: **ACCEPT**, sin hallazgos bloqueantes. Parser PowerShell y comprobación de espacios PASS. Roadmap: 23/23 tests del digest y 21/21 del contrato PASS; artefacto regenerado desde origin/nightly y comprobado sin diferencias pendientes. Estas pruebas no certifican el runtime.
-- Pendientes: build diagnóstica real, autenticación, exploración A0, extensión/validación del banco base, baseline A/A, perfiles y A/B. Sin cifras actuales de CPU/GPU/RAM.
-- Al preparar esta entrega hay otras tareas activas y un proceso LMU vivo. Se conservan; no se ha lanzado banco, app, juego ni build real.
+- Preflight Windows real PASS: frontend/Go compilados; runtime aprobado verificado y handshake smoke PASS; sesión activa Owner y deviceOK; Inicio sin bienvenida, sin Studio y sin widgets runtime, único target Hub. Cierre Application.Quit comprobado. Se completó la bienvenida en la configuración portable propia con rol intermedio, sin cambiar la instalación personal.
+- Pendientes: captura exploratoria A0, extensión/validación del banco base, baseline A/A, perfiles y A/B. No hay todavía CSV de consumo ni ahorro medido.
+- Isaac declaró el PC disponible y cerró personalmente LMU y la otra Vantare; la tarea de widgets terminó su turno documental. Persisten cinco procesos Edge sin ventana (PIDs observados 6576, 11032, 11928, 12236 y 17376); se solicitó autorización para cerrarlos y no se ha actuado sobre ellos. El preflight no se convierte en medición de aceptación ni se usa Forzar.
 - CI de la base: [release build PASS](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/34079151661); [branch-channel-gates FAIL](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/34079141222) en `TestCoordinatorWithSQLiteDrainsAndReleasesAllHandles` y `TestManifestOperationsHonorContextWithoutLateWriteOrTempLeak/checkpoint`. Frontend y build Wails posteriores quedaron sin ejecutar. No atribuir ese fallo al tooling ni declarar el conjunto verde.
-- No se ejecutan tests Go/frontend ni build de app por esta modificación exclusiva de tooling/documentación. Los futuros cortes productivos sí necesitan los checks completos aplicables.
+- No se ejecutaron suites Go/frontend completas por esta modificación exclusiva de tooling/documentación. Sí se ejecutó el build frontend con typecheck y compilación Go real. Los futuros cortes productivos necesitan los checks completos aplicables.
+
+Artefactos locales del preflight (en results, sin versionar):
+
+- `results/isa1015-preflight/manifest.json`: máquina Ryzen 7 3700X, 31,93 GiB RAM, RX 7800 XT + monitor virtual Meta; procedencia, flags y hashes, sin credenciales.
+- `bin/vantare-isa1015-nightly.exe`: SHA-256 `53136de43fde4117aa96fa12512b865291ce19b0fe5bbe7c33b6fd586ea26943`.
+- Dist embebido: SHA-256 de directorio `f1a69bb8594c1dd80765ed6939e3b27f0af2d6d773b16bfb5ad80f5bd581b290`.
+- Runtime aprobado: manifest SHA-256 `700201f90266ae6b829372d9989408c6b0efd86725a50980d46fc05adfc24869`, cinco miembros; preparado mediante `prepare-runtime.ps1 -UsePublishedRuntime` y verificado en su ubicación final.
+- `results/isa1015-preflight/home-preflight.json`, `license.json`, `performance.json` y `home.png`: prueba de estado y captura. Auto estaba en nivel efectivo 2, effects full, fuente unavailable por juego ausente. Son muestras diagnósticas fuera de aceptación; el campo GPU interno no es una medición.
+- Exe/configs/data propios bajo bin y WebView propio bajo `results/isa1015-preflight/webview/vantare-isa1015-nightly.exe/EBWebView`. Auth y cachés auxiliares siguen sus rutas productivas compartidas; no se leyeron ni copiaron credenciales. Es una instalación portable preparada, no la configuración habitual del usuario.
+- El primer ejecutable de diagnóstico que conservaba master no se utilizó para preflight ni medidas; se construyó después el candidato nightly identificado arriba. Los únicos cambios de fuente posteriores a d6d0992f son tooling/documentación, no código productivo.
 
 Verificación siguiente con PC disponible: desde el worktree, ejecutar
-`pwsh -NoProfile -File scripts/bench/build-measurement.ps1 -FromEnvironment`,
+`pwsh -NoProfile -File scripts/bench/build-measurement.ps1 -FromEnvironment -BuildChannel nightly`,
 registrar procedencia/hashes y validar licencia real. Preparar A0/SinJuego solo
 como exploración; verificar Inicio y ausencia de HUD/Studio, visibilidad y cierre
 antes de capturar. No ejecutar este paso mientras LMU u otro banco estén usando el PC.

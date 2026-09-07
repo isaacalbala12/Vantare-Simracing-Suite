@@ -191,6 +191,8 @@ function powershell {
     $global:LASTEXITCODE = 0
 }
 function go {
+    $flags = $args[[Array]::IndexOf($args, '-ldflags') + 1]
+    if ($flags -cnotmatch '(?:^|\s)-X main.buildChannel=nightly(?:\s|$)') { throw 'diagnostic build has wrong channel' }
     $outputPath = $args[[Array]::IndexOf($args, '-o') + 1]
     Set-Content -LiteralPath $outputPath -Value 'test-only compiler result'
     $global:LASTEXITCODE = 0
@@ -201,7 +203,7 @@ function Assert-Restored {
     if ($env:VITE_SUPABASE_URL -or $env:VITE_SUPABASE_ANON_KEY -or $env:VANTARE_SUPABASE_URL -cne 'https://example.invalid' -or $env:VANTARE_SUPABASE_ANON_KEY -cne 'public-test-key' -or $env:VANTARE_LICENSE_PUBLIC_KEYS -cne 'public-test-verifier') { throw 'environment not restored' }
     if (Test-Path -LiteralPath $generated) { throw 'generated file leaked' }
 }
-& $build -FromEnvironment
+& $build -FromEnvironment -BuildChannel Nightly
 if ($global:buildContractCalls -ne 1) { throw 'build was not called' }
 Assert-Restored
 $global:buildContractFail = $true

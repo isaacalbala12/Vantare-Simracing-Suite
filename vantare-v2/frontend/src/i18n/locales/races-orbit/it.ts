@@ -1,7 +1,7 @@
 /** Catalogo `races.*` di Command Orbit v0.3 (`docs/design/orbit-v03/14-i18n.md`). */
 export const racesOrbitIt: Record<string, string> = {
   "races.eyebrow": "Calendario LMU",
-  "races.title": "Gare",
+  "races.title": "Calendario",
   "races.lead":
     "Partenze calcolate dalla cadenza pubblicata del fixture, nel tuo fuso orario.",
   "races.refresh": "Aggiorna orario",

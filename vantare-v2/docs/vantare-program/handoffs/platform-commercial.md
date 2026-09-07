@@ -1,5 +1,24 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+## ISA-1022 — nombre Calendario (2026-09-08)
+
+Isaac solicita renombrar la pestaña Carreras a Calendario. Base nightly d6d0992f,
+rama vantareapp/isa-1022-calendar-name, worktree C:/tmp/vantare-isa1022-calendar-name.
+Cambio de texto en 16 catálogos (shell/races/home/strategy, ES/EN/PT/IT) y etiqueta
+legacy de navegación; roadmap actualizado y generado. Se mantienen claves, rutas,
+preferencias, vistas y datos. No se sustituyen menciones genéricas a competiciones.
+Sin dependencia de los candidatos de rendimiento #1017/#1021 ni cambios HUD/Studio.
+Dos expectativas existentes de tests actualizadas al nombre nuevo, sin alterar
+las aserciones de navegación. 3236/3236 tests frontend, 415 archivos PASS;
+typecheck/build/lint y 23+21 tests de roadmap PASS. Diff revisado y limpio.
+Primera suite falló por el nombre anterior del botón; resultado conservado junto
+al PASS final en results/isa1022-checks. AbortError de teardown y aviso de chunks
+grandes sin fallo final. Sin Go modificado; no se repite Go local.
+22 archivos modificados, ninguno creado/movido. Entrega draft; CI remoto y
+verificación Wails pendientes. Ver #1022 para SHA/PR/CI actualizados.
+Manual: revisar pestaña/títulos y enlaces de Inicio/Strategy en los cuatro idiomas.
+Sin merge, promoción ni release.
+
 ## ISA-1011 — runtime de release (2026-09-07)
 
 Nightly.15 no se publicó: el segundo intento 34062671599 pasó tests pero

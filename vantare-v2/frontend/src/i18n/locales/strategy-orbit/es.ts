@@ -271,7 +271,7 @@ export const strategyOrbitEs: Record<string, string> = {
 
   "strategy.empty.noneTitle": "Sin eventos seguidos",
   "strategy.empty.none":
-    "Sigue una serie en Carreras y aparecerá aquí con sus próximas salidas.",
+    "Sigue una serie en Calendario y aparecerá aquí con sus próximas salidas.",
 
   "strategy.context.events": "Eventos",
   "strategy.context.noEvents": "Aún no tienes ningún evento de estrategia.",

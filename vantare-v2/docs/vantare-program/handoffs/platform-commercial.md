@@ -1,6 +1,6 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
-## ISA-1015 — rendimiento de la base, preflight real (2026-09-07)
+## ISA-1015 — rendimiento de la base, primera exploración real (2026-09-07)
 
 Isaac aprueba auditar y medir todo salvo HUD/OBS/widgets y Overlay Studio,
 preservando apariencia, capacidades y contratos compartidos. Base verificada
@@ -16,11 +16,12 @@ Informe/protocolo: `docs/analysis/ISA-1015-base-app-performance.md`.
 
 Tooling local: build de diagnóstico desde entorno sin leer `.env`, preservación
 de configuración/generado previo; SinJuego ya no cambia PATH ni consulta/limpia
-ETW de PresentMon. Dos regresiones fallan contra la base; suite banco 44/44 PASS.
-Revisión estática de tooling ACCEPT; parser PowerShell y roadmap (23+21 tests)
-PASS. A0/SinJuego sigue no publicable y solo exploratorio;
-faltan ruta/visibilidad nativa, GPU por motor, metadatos y lifecycle minimizado para
-baseline aceptable. Sin captura de consumo ni corte productivo.
+ETW de PresentMon. Dos regresiones fallan contra la base; preparación inicial
+44/44 PASS y revisión estática ACCEPT. Extensión base posterior: 47/47 PASS,
+parser/diff-check PASS, `go test ./...` completo y build del monitor PASS.
+Roadmap previo 23+21 tests PASS. A0/SinJuego sigue no publicable y exploratorio;
+faltan validación Wails de la extensión, GPU por motor, control de mezcla y
+lifecycle minimizado para baseline aceptable. Sin corte productivo.
 
 Preflight real posterior: build frontend/typecheck y Go PASS, canal nightly
 explícito (el script antes conservaba master). BuildChannel normalizado a
@@ -33,17 +34,50 @@ Configs/WebView propios; auth y cachés siguen rutas productivas compartidas,
 sin leer ni copiar credenciales. Escenario portable preparado, no instalación habitual.
 
 Preparación comprometida y subida en `2994de6e`; PR borrador #1017 hacia nightly.
-Contrato exacto de roadmap contra issue #1015 PASS. CI remoto todavía pendiente
-de completar; el primer run es `34160442778`. No equivale a integración.
+Contrato exacto de roadmap contra issue #1015 PASS. HEAD e93c7845 subido;
+CI remoto PASS (run 34161443366, gates de promoción/bloqueantes y GitGuardian).
+No equivale a integración.
 
 Siguiente: Isaac declaró PC disponible y cerró LMU/otra Vantare. La tarea de
-widgets terminó su turno documental. Quedan cinco Edge sin ventana; se pidió
-autorización para su cierre y sigue pendiente. No usar Forzar ni cerrarlos sin
-esa respuesta. Después reutilizar el binario/WebView preparados para explorar Inicio
-(A0/SinJuego, 60 s warmup + 180 s captura, no publicable).
-Después adaptar lo mínimo del banco y medir A/A antes de editar producto.
-Los fallos SQLite del CI de la base siguen separados. La issue y la futura PR
-deben distinguir preparación, baseline y ahorro. Sin merge, promoción ni release.
+widgets terminó su turno documental. Isaac exige mantener los cinco Edge sin
+ventana: no cerrarlos. Registrar sus snapshots aparte y reutilizar el binario/WebView
+preparados para explorar Inicio (A0/SinJuego/Forzar, 60 s warmup + 180 s captura,
+hygieneForced=true, publishable=false). No descontar interferencia a partir de
+snapshots ni convertir esta exploración en aceptación. Revisión independiente de
+este primer paso conforme; CPU/RAM propias, GPU suma de motores solo diagnóstica.
+Primera captura completada: run1/a0-20260907-231514.csv bajo
+results/isa1015-base-home, 60 s warmup + 180 s configurados; 80 muestras,
+cadencia media 2,252 s. CPU propia 0,1907 %, memoria privada 342,69 MiB,
+working sets 533,13 MiB (suma con páginas compartidas), VRAM 74,23 MiB.
+GPU suma motores 0,0836 solo diagnóstica. Exe/dist estables y cierre limpio.
+Edge mismos cinco PID, 0,046875 s CPU en intervalo ampliado de 263,141 s;
+no se descuenta interferencia. No A/A, no aceptación ni ahorro.
+Perfil Go de 120 s inconcluso (GetMessage domina las muestras, sin delta CPU del
+mismo intervalo). Perfil JS optimizado ilegible descartado; se construyó copia
+ReadableFrontend separada, SHA 01f1157e, y se restauró el dist optimizado f1a69bb8.
+Perfiles legibles de 60 s: script Inicio 0,138 s, Mes 0,196 s, Timeline 0,314 s;
+cero tareas largas. Calendario backend real 11 series, Mes 42 celdas y Timeline
+660 salidas. RAf del propio diagnóstico no es coste productivo ni FPS presentado.
+No hay todavía evidencia suficiente para elegir un corte. Ver informe para hashes,
+crudos, límites y métricas; no comparar esta build con el CSV optimizado.
+
+Worker nativo: commit 116250cf revisado por el padre e incorporado como 7758085d;
+solo dos archivos del monitor. `--surface hub` observa PID+título Vantare Hub,
+visibilidad/foreground, minimizado y presencia; oclusión unknown, overlay intacto.
+El banco integra `-BaseRoute home|month|timeline` sobre A0/SinJuego, observador
+pasivo de ruta/viewport/Auto y metadatos base. Cambios intermedios o silencios
+de performance superiores a 3 s invalidan; Forzar/SinJuego sigue no publicable.
+Regresiones añadidas antes de implementar; revisión final estática pendiente.
+
+Pausa runtime: LMU PID 29092 se reabrió a las 23:40:05 CEST, después de todas las
+capturas/perfiles y del cierre del diagnóstico (23:34:33). La tarea de widgets
+está activa. No cerrar LMU ni los cinco Edge. Se preguntó disponibilidad de nuevo;
+guard BaseRoute comprobado con LMU real: rechaza antes de lanzar Vantare.
+Siguiente cuando esté disponible sin juego: smoke Wails positivo y negativo del
+monitor/observador, una corrida completa, después A/A y control GPU/mezcla.
+El run1 no recibe garantías retroactivas. Los cinco experimentos sin mejora no
+han empezado ni se reinicia presupuesto. Los fallos CI históricos de la base
+siguen separados; SQLite pasó en esta suite local. Sin merge, promoción ni release.
 
 ## ISA-1011 — runtime de release (2026-09-07)
 

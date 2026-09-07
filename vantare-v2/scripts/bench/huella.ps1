@@ -12,6 +12,8 @@ param(
     [int]$Puerto = 9247,
     [string]$Juego = 'Le Mans Ultimate',
     [string]$Escena = '',
+    [ValidateSet('', 'home', 'month', 'timeline')]
+    [string]$BaseRoute = '',
     [string]$SesionLmu = '',
     [ValidateRange(0, 200)]
     [int]$Coches = 0,
@@ -31,6 +33,11 @@ if ($PSVersionTable.PSVersion.Major -lt 7) {
 if ($Puerto -in @(9222, 9231)) {
     throw "El puerto $Puerto está reservado por otros bancos; usa un puerto propio."
 }
+$BaseRoute = $BaseRoute.ToLowerInvariant()
+$isBase = $BaseRoute -ne ''
+if ($isBase -and ($Condicion -ne 'A0' -or -not $SinJuego -or $OcultarPintura)) {
+    throw 'BaseRoute requiere A0/SinJuego, sin aislamiento de pintura.'
+}
 
 $repoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..\..')).Path
 function Resolve-BenchPath([string]$Path, [switch]$MustExist) {
@@ -42,7 +49,7 @@ function Resolve-BenchPath([string]$Path, [switch]$MustExist) {
 $exePath = Resolve-BenchPath $Exe -MustExist
 $profilePath = Resolve-BenchPath $Perfil -MustExist
 $visibilityExe = Resolve-BenchPath 'bin/overlay-visibility-probe.exe'
-$requireVisibility = -not $SinJuego -and -not $OcultarPintura -and $Condicion -ne 'A0'
+$requireVisibility = $isBase -or (-not $SinJuego -and -not $OcultarPintura -and $Condicion -ne 'A0')
 if ($requireVisibility -and -not (Test-Path -LiteralPath $visibilityExe)) { throw 'Falta monitor nativo: go build -o bin/overlay-visibility-probe.exe ./tools/overlay-visibility-probe' }
 $visibilityProcess = $null
 $visibilityValid = $false
@@ -107,6 +114,7 @@ $plan = [ordered]@{
     gamePresent = -not [bool]$SinJuego
     measurementMode = if ($SinJuego) { 'ram-only-no-game' } else { 'full' }
     scene = $Escena
+    baseRoute = $BaseRoute
     lmuSession = $SesionLmu
     cars = $Coches
     buildSha256 = $buildSha256
@@ -136,6 +144,9 @@ if (-not $presentMonPath -and -not $SinJuego) {
 }
 if (Get-NetTCPConnection -LocalPort $Puerto -State Listen -ErrorAction SilentlyContinue) {
     throw "El puerto CDP $Puerto ya está escuchando."
+}
+if ($isBase -and (Get-Process -Name ([IO.Path]::GetFileNameWithoutExtension($Juego)) -ErrorAction SilentlyContinue)) {
+    throw 'BaseRoute sin juego requiere que LMU esté cerrado; no se detendrá ningún proceso.'
 }
 
 $hygieneCandidates = @(Get-CimInstance Win32_Process | Where-Object {
@@ -182,6 +193,8 @@ $rawCsv = Join-Path $outputDir "$stem.csv"
 $presentMonCsv = Join-Path $outputDir "$stem-presentmon.csv"
 $summaryMd = Join-Path $outputDir "$stem.md"
 $cdpJson = Join-Path $outputDir "$stem-cdp.json"
+$baseStartJson = Join-Path $outputDir "$stem-base-start.json"
+$baseEndJson = Join-Path $outputDir "$stem-base-end.json"
 $licenseJson = Join-Path $outputDir "$stem-license.json"
 $hubReopenJson = Join-Path $outputDir "$stem-hub-reopen.json"
 $stdoutLog = Join-Path $outputDir "$stem-stdout.log"
@@ -383,22 +396,31 @@ try {
         & node $cdpHelper --cdp "http://127.0.0.1:$Puerto" --action diagnostic-hide-paint --output (Join-Path $outputDir "$stem-paint-isolation.json") | Out-Host
         if ($LASTEXITCODE -ne 0) { throw 'No se pudo aislar la pintura; medida cancelada.' }
     }
+    if ($isBase) {
+        & node $cdpHelper --cdp "http://127.0.0.1:$Puerto" --action base-prepare --base-route $BaseRoute | Out-Host
+        if ($LASTEXITCODE -ne 0) { throw 'No se pudo preparar la ruta base.' }
+    }
     if ($Calentamiento -gt 0) { Start-Sleep -Seconds $Calentamiento }
+    if ($isBase) {
+        & node $cdpHelper --cdp "http://127.0.0.1:$Puerto" --action base-watch-start --base-route $BaseRoute --output $baseStartJson | Out-Host
+        if ($LASTEXITCODE -ne 0) { throw 'No se pudo observar el estado base.' }
+    }
     if ($requireVisibility) {
-        Write-Host 'VISIBILITY WAIT: LMU debe estar foreground con el HUD visible.'
+        $visibilityTarget = if ($isBase) { @('-host', $app.Id, '-surface', 'hub') } else { @('-host', $app.Id, '-game', $gameProcess.Id) }
+        Write-Host $(if ($isBase) { 'VISIBILITY WAIT: mantener el Hub visible y foreground.' } else { 'VISIBILITY WAIT: LMU debe estar foreground con el HUD visible.' })
         $visibilityDeadline = (Get-Date).AddSeconds(60)
         do {
-            $visual = & $visibilityExe -host $app.Id -game $gameProcess.Id -once | ConvertFrom-Json
+            $visual = & $visibilityExe @visibilityTarget -once | ConvertFrom-Json
             if ($LASTEXITCODE -ne 0) { throw 'Falló el preflight de visibilidad nativa.' }
             if (-not $visual.valid) { Start-Sleep -Seconds 1 }
         } until ($visual.valid -or (Get-Date) -ge $visibilityDeadline)
-        if (-not $visual.valid) { throw 'HUD no visible o juego sin foco: medición cancelada.' }
+        if (-not $visual.valid) { throw 'La superficie requerida no está visible y foreground: medición cancelada.' }
         $visibilityJson = Join-Path $outputDir "$stem-visibility.json"
         $visibilityStop = Join-Path $outputDir "$stem-visibility.stop"
-        $visibilityProcess = Start-Process -FilePath $visibilityExe -ArgumentList @('-host',$app.Id,'-game',$gameProcess.Id,'-stop',('"{0}"' -f $visibilityStop),'-output',('"{0}"' -f $visibilityJson)) -WindowStyle Hidden -PassThru
+        $visibilityProcess = Start-Process -FilePath $visibilityExe -ArgumentList ($visibilityTarget + @('-stop',('"{0}"' -f $visibilityStop),'-output',('"{0}"' -f $visibilityJson))) -WindowStyle Hidden -PassThru
         Start-Sleep -Milliseconds 300
         $visibilityStart = Get-Date
-        Write-Host 'VISIBILITY CAPTURE: mantener LMU foreground durante toda la captura.'
+        Write-Host $(if ($isBase) { 'VISIBILITY CAPTURE: mantener Hub foreground durante toda la captura.' } else { 'VISIBILITY CAPTURE: mantener LMU foreground durante toda la captura.' })
     }
     if (-not $SinJuego) {
         $sessionName = "VantareHuella-$($app.Id)-$stamp"
@@ -436,7 +458,7 @@ try {
                 timestamp = $now.ToString('o'); condition = $Condicion; pid = $processId; role = $roleByPid[$processId]
                 buildSha256 = $buildSha256; distSha256 = $distSha256; buildStable = $true; gitHead = $gitHead
                 licenseState = $licenseState; licenseAccount = $licenseAccount; licenseConfigured = $licenseConfigured
-                scene = $Escena; lmuSession = $SesionLmu; cars = $Coches
+                scene = $Escena; lmuSession = $SesionLmu; cars = $Coches; baseRoute = $BaseRoute
                 hygieneForced = $hygieneForced; foreignProcesses = $foreignProcessesJson; publishable = $publishable; measurementMode = $measurementMode
                 systemWebView2Count = $systemWebView2.Count; systemWebView2Paths = $systemWebView2PathsJson
                 orphanEtwSessionsStopped = $orphanEtwSessionsStoppedJson; gameFrametimeValid = $false; frametimePublishable = $false
@@ -462,10 +484,28 @@ try {
         [pscustomobject]@{start=$visibilityStart.ToUniversalTime();end=$visibilityEnd.ToUniversalTime();valid=$visibilityValid} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $outputDir "$stem-visibility-interval.json")
         $publishable = $publishable -and $visibilityValid
         foreach ($row in $rows) {
-            $row | Add-Member -NotePropertyName overlayNativeVisible -NotePropertyValue $visibilityValid
+            $visibilityField = if ($isBase) { 'baseNativeVisible' } else { 'overlayNativeVisible' }
+            $row | Add-Member -NotePropertyName $visibilityField -NotePropertyValue $visibilityValid
             if (-not $visibilityValid) { $row.publishable = $false }
         }
         Write-Host "VISIBILITY RESULT: $visibilityValid"
+    }
+    if ($isBase) {
+        & node $cdpHelper --cdp "http://127.0.0.1:$Puerto" --action base-watch-stop --base-route $BaseRoute --output $baseEndJson | Out-Host
+        $baseStateValid = $false
+        $baseLevel = '[]'
+        if ($LASTEXITCODE -eq 0) {
+            $baseEnd = Get-Content -LiteralPath $baseEndJson -Raw | ConvertFrom-Json
+            $baseStateValid = $baseEnd.validity.valid -eq $true -and $visibilityValid
+            $baseLevel = $baseEnd.evidence.levels | ConvertTo-Json -Depth 4 -Compress -AsArray
+        } else {
+            Write-Warning 'Sin evidencia final base: se conservan crudos como inválidos.'
+        }
+        foreach ($row in $rows) {
+            $row | Add-Member -NotePropertyName baseStateValid -NotePropertyValue $baseStateValid
+            $row | Add-Member -NotePropertyName baseLevels -NotePropertyValue $baseLevel
+        }
+        Write-Host "BASE STATE RESULT: $baseStateValid (higiene/publicabilidad conservadas)"
     }
     if ($Condicion -eq 'HubMin') {
         & node $cdpHelper --cdp "http://127.0.0.1:$Puerto" --action hub-open --duration 1 --output $hubReopenJson | Out-Host

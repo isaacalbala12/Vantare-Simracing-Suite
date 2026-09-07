@@ -6,6 +6,7 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import process from "node:process";
 import { selectPageMemoryMetrics } from "./huella-cdp-metrics.mjs";
+import { baseWatchInPage, validateBaseEvidence } from "./huella-base.mjs";
 
 // Playwright pertenece al workspace frontend; resolver desde su package.json
 // evita exigir una segunda instalación en la raíz solo para este banco.
@@ -225,11 +226,12 @@ async function captureLicense(page, timeoutMs) {
 
 const cdp = argument("cdp");
 const action = argument("action", "inspect");
+const baseRoute = argument("base-route", "home");
 const output = argument("output");
 const screenshotDir = argument("screenshot-dir");
 const durationSeconds = Number(argument("duration", "10"));
 const expectedWidgets = Number(argument("expected-widgets", "0"));
-if (!cdp || !["inspect", "state", "overlay-start", "overlay-stop", "hub-minimise", "hub-restore", "hub-open", "performance", "license", "app-quit", "diagnostic-hide-paint"].includes(action) || !Number.isFinite(durationSeconds) || durationSeconds < 1 || durationSeconds > 120 || !Number.isInteger(expectedWidgets) || expectedWidgets < 0) {
+if (!cdp || !["inspect", "state", "overlay-start", "overlay-stop", "hub-minimise", "hub-restore", "hub-open", "performance", "license", "app-quit", "diagnostic-hide-paint", "base-prepare", "base-watch-start", "base-watch-stop"].includes(action) || !Number.isFinite(durationSeconds) || durationSeconds < 1 || durationSeconds > 120 || !Number.isInteger(expectedWidgets) || expectedWidgets < 0 || !["home", "month", "timeline"].includes(baseRoute)) {
   throw new Error("usage: node huella-cdp.mjs --cdp http://127.0.0.1:9247 --action inspect|state|overlay-start|overlay-stop|hub-minimise|hub-restore|hub-open|performance|license|app-quit [--duration 10] [--expected-widgets 3] [--output result.json] [--screenshot-dir directory]");
 }
 
@@ -238,6 +240,27 @@ async function writeResult(result) {
   const json = `${JSON.stringify(result)}\n`;
   if (output) await writeFile(output, json, { encoding: "utf8", flag: "wx" });
   process.stdout.write(json);
+}
+if (action.startsWith("base-")) {
+  const pages = await pagesByRole(browser);
+  const hub = pages.find(({ description }) => description.hub)?.page;
+  if (!hub || pages.length !== 1 || pages.some(({ description }) => description.surface !== 'hub')) {
+    throw new Error('Base requires exactly one Hub and no HUD/Studio');
+  }
+  if (action === 'base-prepare') {
+    await hub.getByTestId(`orbit-rail-${baseRoute === 'home' ? 'inicio' : 'carreras'}`).click();
+    if (baseRoute !== 'home') {
+      await hub.getByRole('group', { name: 'Vista del calendario', exact: true })
+        .getByRole('button', { name: baseRoute === 'month' ? 'Mes' : 'Timeline', exact: true }).click();
+    }
+    await hub.getByTestId(baseRoute === 'home' ? 'orbit-home' : `orbit-races-${baseRoute}`).waitFor({ state: 'visible' });
+    await writeResult({ schema: 'vantare.base.cdp.v1', action, route: baseRoute });
+  } else {
+    const evidence = await hub.evaluate(baseWatchInPage, action === 'base-watch-start' ? 'start' : 'stop');
+    const validity = action === 'base-watch-stop' ? validateBaseEvidence(evidence, baseRoute) : null;
+    await writeResult({ schema: 'vantare.base.cdp.v1', action, route: baseRoute, evidence, validity });
+  }
+  process.exit(0);
 }
 if (action === "diagnostic-hide-paint") {
   const overlay = (await pagesByRole(browser)).find(({description}) => description.overlay)?.page;

@@ -1,6 +1,6 @@
 # ISA-1015 — rendimiento de la base de Vantare
 
-Estado a 2026-09-07: inventario estático, preparación del banco y preflight Windows real completados.
+Estado a 2026-09-07: inventario, primera captura exploratoria de Inicio y perfiles legibles completados. Ampliación del banco en validación; nuevas medidas pausadas porque LMU se reabrió.
 **No hay baseline real, ahorro demostrado ni optimización productiva.**
 Autoridad: [issue #1015](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1015).
 Continuidad: `docs/vantare-program/handoffs/platform-commercial.md`; este informe no crea otro handoff.
@@ -94,17 +94,22 @@ La release production deshabilita CDP (`cmd/vantare/webview_debug_production.go:
 y no sustituye una build diagnóstica. La compilación optimizada del preflight real
 ha pasado; identidad nightly explícita, sin tag production ni gcflags que desactiven inlining.
 
+Ampliación mínima posterior a la primera exploración:
+
+- `A0 -SinJuego -BaseRoute home|month|timeline` prepara una ruta real mediante UI. El monitor existente añade `--surface hub`, por PID+título productivo `Vantare Hub`; conserva overlay por defecto y sus campos/reglas. Observa presencia, visibilidad, minimizado y foreground; **oclusión desconocida**, no certifica todos los píxeles descubiertos.
+- El helper base observa cambios de ruta, visibilidad, tamaño y los eventos Auto sin rAF/tracing. Exige ruta/viewport iguales, cero HUD/Studio/bienvenida, nivel Auto estable, efectos completos y eventos sin silencios/huecos mayores de tres segundos (el productor emite a 1 Hz). Un cambio intermedio invalida aunque el estado vuelva al original.
+- CSV conserva `baseRoute`, `baseNativeVisible`, `baseStateValid` y `baseLevels`, además de las evidencias completas de inicio/fin. Un fallo de la comprobación final base conserva crudos inválidos. No cambia la bandera histórica `publishable=false` ni permite agregarla como aceptación del protocolo HUD.
+- LMU abierto bloquea BaseRoute antes de lanzar Vantare, sin cerrar procesos. Este guard se comprobó con el LMU real PID 29092. La integración positiva del monitor y el observador con Wails sigue pendiente de PC disponible.
+
 Gates que aún impiden aceptar una baseline completa:
 
-- A0 no garantiza Inicio ni ausencia de Studio: CDP debe verificar ruta/estado reales antes y después. DOM presente no prueba ventana visible durante todo el intervalo.
-- El monitor nativo actual valida HUD+juego, no Hub. Extender su modo para Hub visible conservando la ruta overlay existente, si la exploración confirma utilidad.
+- A0 sin BaseRoute no garantiza Inicio ni ausencia de Studio. La extensión base está probada estáticamente, pero falta validar en Wails visible/minimizado/cambio de foco y una corrida completa; el primer CSV no recibe retrospectivamente sus garantías.
 - `gpuPct` actual suma motores por PID (`huella.ps1`, función Get-GpuTotals); no es un porcentaje único de GPU total. Registrar adaptador/motor y reportar cada dominio por separado antes de aceptar decisiones GPU. `WindowsHostSampler.Sample` no mide su campo GPUPct (`internal/app/performance/sensor/host_windows.go:93`); su cero no es evidencia.
-- El resumen no impide todas las mezclas de ruta/nivel/estado. Añadir esos metadatos y rechazo antes de A/B publicable. No eliminar ni sortear `publishable=false` del protocolo viejo.
+- Los nuevos metadatos deben incorporarse al control de mezcla entre corridas antes de A/B; el resumen histórico sigue rechazando Forzar/SinJuego. No eliminar ni sortear `publishable=false` del protocolo viejo.
 - Base minimizada requiere reapertura y cierre reales por bandeja: al destruir el último Hub no queda target CDP; el helper actual reabre desde un overlay. No abrir HUD como truco para medir esta campaña ni añadir un canal productivo alternativo.
 
-La siguiente adaptación será una condición base explícita dentro del mismo banco,
-navegación permitida, visibilidad nativa y metadatos/contadores correctos; minimizado
-se valida aparte. No se declara implementada por haber preparado los scripts.
+Siguiente: validar la extensión base real, completar contadores GPU por dominio y
+control de mezcla, y medir repetibilidad. Minimizado se valida aparte.
 
 ## Protocolo de medición y aceptación
 
@@ -135,13 +140,13 @@ escenario del candidato antes de ejecutar repetidamente toda la matriz.
 ## Evidencia y pendientes
 
 - Base remota y aislamiento verificados; dos inventarios independientes en snapshots limpios y revisión del tooling. No se desarrolló en el checkout principal.
-- Dos nuevas regresiones fallan contra los scripts originales de la base. Suite del banco modificada: **44/44 PASS**. Prueba de compilación simulada valida orquestación/cleanup, no Wails real.
-- Revisión estática independiente del tooling: **ACCEPT**, sin hallazgos bloqueantes. Parser PowerShell y comprobación de espacios PASS. Roadmap: 23/23 tests del digest y 21/21 del contrato PASS; artefacto regenerado desde origin/nightly y comprobado sin diferencias pendientes. Estas pruebas no certifican el runtime.
+- Preparación inicial: dos regresiones fallan contra los scripts originales; 44/44 PASS. Ampliación base: 47/47 PASS, incluidos rechazo de cambios intermedios y pérdida de eventos; el primer test falló por módulo ausente antes de implementarlo. La prueba de compilación simulada valida orquestación/cleanup, no Wails real.
+- Revisión independiente de la preparación inicial ACCEPT. Extensión nativa entregada por worker en commit 116250cf y revisada por el padre antes de incorporar como 7758085d; solo dos archivos del monitor, sin cambios productivos. Parser PowerShell y diff-check PASS. Roadmap previo: 23/23 digest y 21/21 contrato PASS; estas pruebas no certifican runtime.
 - Preflight Windows real PASS: frontend/Go compilados; runtime aprobado verificado y handshake smoke PASS; sesión activa Owner y deviceOK; Inicio sin bienvenida, sin Studio y sin widgets runtime, único target Hub. Cierre Application.Quit comprobado. Se completó la bienvenida en la configuración portable propia con rol intermedio, sin cambiar la instalación personal.
-- Pendientes: captura exploratoria A0, extensión/validación del banco base, baseline A/A, perfiles y A/B. No hay todavía CSV de consumo ni ahorro medido.
-- Isaac declaró el PC disponible y cerró personalmente LMU y la otra Vantare; la tarea de widgets terminó su turno documental. Persisten cinco procesos Edge sin ventana (PIDs observados 6576, 11032, 11928, 12236 y 17376); se solicitó autorización para cerrarlos y no se ha actuado sobre ellos. El preflight no se convierte en medición de aceptación ni se usa Forzar.
+- Primera captura A0 y perfiles UI completados; pendientes validación del banco base, A/A y A/B. Hay CSV real de Inicio; no hay ahorro medido.
+- Isaac declaró el PC disponible y cerró personalmente LMU y la otra Vantare; la tarea de widgets terminó su turno documental. Isaac exige conservar los cinco Edge sin ventana (PIDs observados 6576, 11032, 11928, 12236 y 17376). Se mantienen abiertos y se registran por separado mediante snapshots antes/después. Se reutiliza A0/SinJuego con Forzar exclusivamente para exploración, conservando hygieneForced=true y publishable=false. Los snapshots no permiten descontar interferencia ni certificar GPU; si el ruido impide distinguir una mejora, la comparación es inconclusa.
 - CI de la base: [release build PASS](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/34079151661); [branch-channel-gates FAIL](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/34079141222) en `TestCoordinatorWithSQLiteDrainsAndReleasesAllHandles` y `TestManifestOperationsHonorContextWithoutLateWriteOrTempLeak/checkpoint`. Frontend y build Wails posteriores quedaron sin ejecutar. No atribuir ese fallo al tooling ni declarar el conjunto verde.
-- No se ejecutaron suites Go/frontend completas por esta modificación exclusiva de tooling/documentación. Sí se ejecutó el build frontend con typecheck y compilación Go real. Los futuros cortes productivos necesitan los checks completos aplicables.
+- `go test ./...` PASS después de ampliar el monitor Go, incluyendo SQLite en esta ejecución; no borra el fallo histórico del CI de la base. Build del monitor PASS. No se ejecutó suite frontend completa porque no cambió código productivo frontend; sí typecheck/build optimizado y legible reales. Los cortes productivos necesitan los checks completos aplicables.
 
 Artefactos locales del preflight (en results, sin versionar):
 
@@ -153,8 +158,72 @@ Artefactos locales del preflight (en results, sin versionar):
 - Exe/configs/data propios bajo bin y WebView propio bajo `results/isa1015-preflight/webview/vantare-isa1015-nightly.exe/EBWebView`. Auth y cachés auxiliares siguen sus rutas productivas compartidas; no se leyeron ni copiaron credenciales. Es una instalación portable preparada, no la configuración habitual del usuario.
 - El primer ejecutable de diagnóstico que conservaba master no se utilizó para preflight ni medidas; se construyó después el candidato nightly identificado arriba. Los únicos cambios de fuente posteriores a d6d0992f son tooling/documentación, no código productivo.
 
-Verificación siguiente con PC disponible: desde el worktree, ejecutar
-`pwsh -NoProfile -File scripts/bench/build-measurement.ps1 -FromEnvironment -BuildChannel nightly`,
-registrar procedencia/hashes y validar licencia real. Preparar A0/SinJuego solo
-como exploración; verificar Inicio y ausencia de HUD/Studio, visibilidad y cierre
-antes de capturar. No ejecutar este paso mientras LMU u otro banco estén usando el PC.
+### Primera exploración real: Inicio con Edge conservado
+
+Captura `results/isa1015-base-home/run1/a0-20260907-231514.csv`, 60 s de
+calentamiento y 180 s configurados. 720 filas de nueve procesos propios, 80 muestras
+entre 23:16:29 y 23:19:27 CEST; separación media 2,252 s, p95 2,425 s, máxima
+3,784 s. No es muestreo de 1 Hz. Exe/dist estables, licencia activa y cierre limpio.
+Las medias siguientes promedian muestras, no ponderan por la duración variable de cada intervalo.
+
+| Medida del árbol propio | Media de muestras |
+| --- | ---: |
+| CPU normalizada a los 16 procesadores lógicos | 0,1907 % |
+| CPU del host Go | 0,0829 % |
+| CPU del renderer Hub | 0,0549 % |
+| Memoria privada | 342,69 MiB |
+| Suma de working sets, puede duplicar páginas compartidas | 533,13 MiB |
+| Memoria GPU dedicada según contador | 74,23 MiB |
+| Suma de motores GPU, solo diagnóstico | 0,0836 |
+
+Los 720 registros GPU tienen contador disponible; la suma no equivale a porcentaje
+total de tarjeta. Sin adaptador/motor separado todavía. El proceso GPU concentra
+134,01 MiB privados; eso no justifica desactivar aceleración ni reducir efectos.
+
+Edge conservó los mismos cinco PID y acumuló 0,046875 s CPU durante los 263,141 s
+del intervalo ampliado (arranque, calentamiento y cierre incluidos): aproximadamente
+0,0011 % de CPU de máquina. Memoria privada Edge 103,41 → 103,35 MiB. Estos
+snapshots son control de contexto, no una corrección del ruido ni prueba de ausencia
+de actividad GPU. Evidencia sanitizada en `exploratory-summary.json`, `edge-before.json`
+y `edge-after.json`, junto al CSV local.
+
+Inicio/Owner/viewport 1264x761 DPR 1 y ausencia de HUD/Studio verificados antes de
+la captura. Falta una comprobación de ruta/nivel al final y visibilidad nativa continua.
+**Una corrida, hygieneForced=true y publishable=false: no es A/A, aceptación ni
+ahorro.** No se ha iniciado ningún experimento productivo ni consumido/reiniciado
+el límite de cinco experimentos sin mejora.
+
+### Atribución separada, sin cambios de producto
+
+- Go, 120 s: el perfil contiene 119,82 s de muestras y 117,66 s bajo `GetMessage`. Es inconcluso para priorizar CPU: no se midió el delta de CPU del host durante ese mismo intervalo. No interpretar espera muestreada como CPU consumida ni usar sus porcentajes como ahorro. Artefactos locales `results/isa1015-profile-home/host.pprof` y `host-top.txt`.
+- El perfil JS optimizado fue rechazado por ilegibilidad; se conserva el crudo, sin sustituir el gate. Esa captura también incluyó una inspección/screenshot y se descarta para atribución. Se reutilizó `ReadableFrontend` en otra build, sin cambios de fuente ni dependencias. Las tres capturas siguientes terminaron con código cero, nombres legibles y retirada del probe.
+- Build legible SHA-256 `01f1157ef8fc6365ff02a41d7e93a4e32332a4f43550dd8030f6f36c7ebe0156`; dist `28845cf241ee9ed8955834b6d2dfebda3b5d31a5220177b7cb5d35b5a8bc22d0`. El dist optimizado original se conservó y restauró con hash f1a69bb8; el exe de medida original sigue intacto. WebView diagnóstico separado, sin copiar credenciales/cachés.
+
+| Perfil legible de 60 s | Tiempo de tareas | Tiempo de script | Layout | Tareas largas |
+| --- | ---: | ---: | ---: | ---: |
+| Inicio | 1,003 s | 0,138 s | 0,049 s | 0 |
+| Carreras Mes | 1,141 s | 0,196 s | 0,082 s | 0 |
+| Carreras Timeline | 1,404 s | 0,314 s | 0,087 s | 0 |
+
+Estas métricas instrumentadas no son CPU de máquina ni FPS presentados. El helper
+inyecta rAF diagnóstico (visible entre las primeras funciones): no atribuirlo al
+producto. El calendario servido por backend tenía 11 series (3 beginner, 3
+intermediate, 3 advanced, 2 weekly), 11 previews y cero eventos especiales; Mes
+pintó 42 celdas y Timeline 11 filas/660 salidas. Esto acredita fuente backend y
+composición real, no actualidad editorial del calendario. No se montó HUD/Studio.
+
+Los perfiles localizan reconstrucción de elementos/props del Timeline y pequeños
+recálculos, pero su coste absoluto no justifica todavía un corte: falta repetibilidad
+y ahorro detectable. No se demuestra fuga por crecimiento puntual del heap.
+Se observó Auto nivel 3 al preparar Inicio y 2 después; efectos full en ambos.
+Por eso la nueva captura debe conservar las transiciones de nivel, no asumirlo fijo.
+Se volvió a Inicio y se cerró limpiamente el diagnóstico propio.
+
+### Pausa de runtime
+
+A las 23:40:05 CEST reapareció LMU PID 29092; las capturas y perfiles anteriores
+ya habían terminado (último cierre diagnóstico 23:34:33). La tarea de widgets
+está activa. No cerrar LMU ni Edge: las nuevas medidas esperan de nuevo el PC
+disponible sin juego. El guard real rechazó correctamente lanzar otra Vantare.
+Se puede terminar revisión/documentación; la validación Wails del banco y A/A
+permanecen pendientes. No hay merge, promoción ni release.

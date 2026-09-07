@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-07T03:04:13Z",
+  "generatedAt": "2026-09-07T22:59:05Z",
   "digest": {
-    "lastCommit": "afc6509a8b7b336b17d94467a35e7b36c4e7c5c3"
+    "lastCommit": "d6d0992f8dbc800ccb6d75f60fffdc7c3d561da2"
   },
   "phases": [
     {
@@ -343,6 +343,28 @@
     }
   ],
   "milestones": [
+    {
+      "id": "races-stable-clock",
+      "type": "fix",
+      "title": {
+        "es": "Carreras sin recálculos de tiempo redundantes",
+        "en": "Stable time calculations in Races",
+        "pt": "Cálculos de tempo estáveis em Corridas",
+        "it": "Calcoli temporali stabili in Gare"
+      },
+      "body": {
+        "es": "Carreras reutiliza las filas del Timeline mientras no cambian la hora de inicio, el calendario o el filtro, y conserva los cálculos de columna entre actualizaciones de 30 segundos. La cuenta atrás sigue avanzando cada segundo. No cambia la apariencia ni las capacidades y no se anuncia un porcentaje de ahorro global.",
+        "en": "Races reuses Timeline rows while the start hour, calendar and filter remain unchanged, and retains column calculations between 30-second updates. The countdown still advances every second. Appearance and capabilities are preserved; no overall savings percentage is claimed.",
+        "pt": "Corridas reutiliza as linhas do Timeline enquanto a hora inicial, o calendário e o filtro não mudam, e conserva os cálculos da coluna entre atualizações de 30 segundos. A contagem decrescente continua a cada segundo. Aparência e capacidades preservadas, sem anunciar uma percentagem de redução global.",
+        "it": "Gare riutilizza le righe del Timeline finché ora iniziale, calendario e filtro non cambiano, e conserva i calcoli della colonna tra aggiornamenti di 30 secondi. Il conto alla rovescia avanza ogni secondo. Aspetto e capacità invariati, senza dichiarare una percentuale di risparmio complessivo."
+      },
+      "label": {
+        "es": "ISA-1020",
+        "en": "ISA-1020",
+        "pt": "ISA-1020",
+        "it": "ISA-1020"
+      }
+    },
     {
       "id": "telemetry-six-widget-cpu",
       "type": "fix",
@@ -961,6 +983,16 @@
     }
   ],
   "delivered": [
+    {
+      "date": "2026-09-07",
+      "entries": [
+        {
+          "kind": "fix",
+          "scope": "release",
+          "text": "Package hash-pinned approved telemetry runtime"
+        }
+      ]
+    },
     {
       "date": "2026-09-06",
       "entries": [
@@ -1608,26 +1640,6 @@
           "kind": "change",
           "scope": "",
           "text": "Producir StrategyLiveProjection v1 desde Telemetry Core"
-        }
-      ]
-    },
-    {
-      "date": "2026-08-12",
-      "entries": [
-        {
-          "kind": "docs",
-          "scope": "release",
-          "text": "Record nightly 7 publication"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "La celda de presion se va en vez de desaparecer"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "Catalogo de animaciones en el Workshop, y motor para relative, delta y pedals"
         }
       ]
     }

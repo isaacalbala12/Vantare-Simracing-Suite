@@ -93,7 +93,7 @@ function useClock(now: Date | undefined, everyMs: number): Date {
     const id = window.setInterval(() => setTick(Date.now()), everyMs);
     return () => window.clearInterval(id);
   }, [everyMs, now]);
-  return now ?? new Date(tick);
+  return useMemo(() => now ?? new Date(tick), [now, tick]);
 }
 
 function pad2(value: number): string {
@@ -242,7 +242,8 @@ export function RacesOrbitPage({ calendar, target, now }: RacesOrbitPageProps) {
     () => (view === "month" ? monthDays(visible, first, clock, calendar?.events ?? []) : []),
     [calendar?.events, clock, first, view, visible],
   );
-  const tlStart = useMemo(() => timelineStart(clock), [clock]);
+  const tlStartMs = timelineStart(clock).getTime();
+  const tlStart = useMemo(() => new Date(tlStartMs), [tlStartMs]);
   const tlRows = useMemo(
     () => (view === "timeline" ? timelineRows(visible, tlStart) : []),
     [tlStart, view, visible],

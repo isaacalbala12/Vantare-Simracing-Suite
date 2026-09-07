@@ -1,5 +1,20 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+## ISA-1020 — primer corte de Carreras (2026-09-08)
+
+Derivado de la campaña #1015 y autorizado por Isaac: optimizar código de la base
+con Ponytail, preservando visuales y excluyendo HUD/Studio. Base d6d0992f,
+rama vantareapp/isa-1020-races-stable-clock en C:/tmp/vantare-isa1020-races-clock.
+Sin dependencia de código del PR de banco #1017; consulta #1015 para sus crudos.
+Dos regresiones reproducidas: Timeline reconstruye filas idénticas cada segundo
+y columna recalcula antes del tick de 30 s. Tres líneas productivas estabilizan
+Date por valor relevante; se conserva timelineStart local, reloj principal a 1 s,
+calendario, filtros y visuales. 44 tests focales y 3238 tests frontend PASS;
+typecheck/build/lint y 23+21 tests de roadmap PASS. Diff completo revisado.
+Informe docs/analysis/ISA-1020-races-stable-clock.md. Sin ahorro global demostrado
+ni prueba A/B Wails. Siguiente paso: completar checks y entregar candidato aislado;
+campaña general de consumo/rapidez sigue abierta. Sin merge, promoción o release.
+
 ## ISA-1011 — runtime de release (2026-09-07)
 
 Nightly.15 no se publicó: el segundo intento 34062671599 pasó tests pero

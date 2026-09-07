@@ -254,6 +254,19 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 
 ## Hitos
 
+### Carreras sin recálculos de tiempo redundantes
+
+- id: races-stable-clock
+- tipo: fix
+- titulo.en: Stable time calculations in Races
+- titulo.pt: Cálculos de tempo estáveis em Corridas
+- titulo.it: Calcoli temporali stabili in Gare
+- cuerpo: Carreras reutiliza las filas del Timeline mientras no cambian la hora de inicio, el calendario o el filtro, y conserva los cálculos de columna entre actualizaciones de 30 segundos. La cuenta atrás sigue avanzando cada segundo. No cambia la apariencia ni las capacidades y no se anuncia un porcentaje de ahorro global.
+- cuerpo.en: Races reuses Timeline rows while the start hour, calendar and filter remain unchanged, and retains column calculations between 30-second updates. The countdown still advances every second. Appearance and capabilities are preserved; no overall savings percentage is claimed.
+- cuerpo.pt: Corridas reutiliza as linhas do Timeline enquanto a hora inicial, o calendário e o filtro não mudam, e conserva os cálculos da coluna entre atualizações de 30 segundos. A contagem decrescente continua a cada segundo. Aparência e capacidades preservadas, sem anunciar uma percentagem de redução global.
+- cuerpo.it: Gare riutilizza le righe del Timeline finché ora iniziale, calendario e filtro non cambiano, e conserva i calcoli della colonna tra aggiornamenti di 30 secondi. Il conto alla rovescia avanza ogni secondo. Aspetto e capacità invariati, senza dichiarare una percentuale di risparmio complessivo.
+- etiqueta: ISA-1020
+
 ### CPU con seis widgets
 
 - id: telemetry-six-widget-cpu

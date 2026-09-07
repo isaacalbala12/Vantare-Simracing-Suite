@@ -373,10 +373,10 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - titulo.en: Reproducible Windows builds for the Nightly channel
 - titulo.pt: Builds Windows reproduzíveis do canal Nightly
 - titulo.it: Build Windows riproducibili del canale Nightly
-- cuerpo: El pipeline fija PowerShell 7.6.5, verifica MSYS2 UCRT64, instala Chromium y valida seis artefactos oficiales. El manifiesto de Nightly.15 reúne V2, optimizaciones y correcciones visuales para su publicación verificada; E20 sigue siendo opcional.
-- cuerpo.en: The pipeline pins PowerShell 7.6.5, verifies MSYS2 UCRT64, installs Chromium and validates six official artifacts. The Nightly.15 manifest brings together V2, optimizations and visual fixes for verified publication; E20 remains optional.
-- cuerpo.pt: O pipeline fixa PowerShell 7.6.5, verifica MSYS2 UCRT64, instala Chromium e valida seis artefactos oficiais. O manifesto Nightly.15 reúne V2, otimizações e correções visuais para publicação verificada; E20 permanece opcional.
-- cuerpo.it: La pipeline fissa PowerShell 7.6.5, verifica MSYS2 UCRT64, installa Chromium e convalida sei artefatti ufficiali. Il manifesto Nightly.15 riunisce V2, ottimizzazioni e correzioni visive per la pubblicazione verificata; E20 resta facoltativo.
+- cuerpo: El pipeline instala Chromium y empaqueta el runtime aprobado de telemetría con SHA256 fijado, manifiesto y smoke verificados, sin recompilarlo con dependencias rolling. Nightly.15 reúne V2, optimizaciones y correcciones visuales; E20 sigue siendo opcional.
+- cuerpo.en: The pipeline installs Chromium and packages the approved telemetry runtime with pinned SHA256, verified manifest and smoke test, without rebuilding it with rolling dependencies. Nightly.15 brings together V2, optimizations and visual fixes; E20 remains optional.
+- cuerpo.pt: O pipeline instala Chromium e empacota o runtime aprovado com SHA256 fixo, manifesto e smoke verificados, sem recompilar com dependências rolling. Nightly.15 reúne V2, otimizações e correções visuais; E20 permanece opcional.
+- cuerpo.it: La pipeline installa Chromium e include il runtime approvato con SHA256 fissato, manifesto e smoke verificati, senza ricompilarlo con dipendenze rolling. Nightly.15 riunisce V2, ottimizzazioni e correzioni visive; E20 resta facoltativo.
 - etiqueta: Corregido
 - etiqueta.en: Fixed
 - etiqueta.pt: Corrigido

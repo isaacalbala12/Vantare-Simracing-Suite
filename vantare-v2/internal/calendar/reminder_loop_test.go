@@ -6,6 +6,28 @@ import (
 	"time"
 )
 
+func TestReminderDedupePrunesExpiredOccurrences(t *testing.T) {
+	now := time.Date(2026, 7, 1, 12, 0, 0, 0, time.UTC)
+	d := NewReminderDedupe()
+	reminders := []Reminder{
+		{EventID: "started", MinutesLeft: 2, StartTime: now},
+		{EventID: "past", MinutesLeft: 2, StartTime: now.Add(-time.Minute)},
+		{EventID: "future", MinutesLeft: 2, StartTime: now.Add(time.Minute)},
+	}
+	d.Filter(reminders)
+	d.Prune(now)
+	if len(d.seen) != 1 {
+		t.Fatalf("retained %d entries, want only the future occurrence", len(d.seen))
+	}
+	if got := d.Filter(reminders[2:]); len(got) != 0 {
+		t.Fatal("prune forgot a future reminder")
+	}
+	d.Prune(now.Add(time.Minute))
+	if len(d.seen) != 0 {
+		t.Fatal("expired entries retained after all starts")
+	}
+}
+
 func TestReminderDedupe_FiltersDuplicate(t *testing.T) {
 	d := NewReminderDedupe()
 	r := Reminder{EventID: "ev-1", MinutesLeft: 30}

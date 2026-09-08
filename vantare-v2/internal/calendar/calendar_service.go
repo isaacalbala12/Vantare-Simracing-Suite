@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"sort"
@@ -103,6 +104,10 @@ func (s *Service) Calendar() Calendar {
 
 func (s *Service) cloneLocked() Calendar {
 	out := s.cal
+	if s.cal.Schedule != nil {
+		metadata := *s.cal.Schedule
+		out.Schedule = &metadata
+	}
 	out.Events = cloneSlice(s.cal.Events)
 	out.ReminderMinutes = cloneSlice(s.cal.ReminderMinutes)
 	out.FollowedEventIDs = cloneSlice(s.cal.FollowedEventIDs)
@@ -195,6 +200,10 @@ func (s *Service) ApplyBundledSeed(seed Calendar) error {
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	// The legacy seed must not overwrite an official schedule loaded from disk.
+	if len(s.cal.Series) > 0 {
+		return nil
+	}
 
 	// Filter out existing bundled events.
 	var kept []RaceEvent
@@ -242,22 +251,27 @@ func (s *Service) ApplyBundledSeed(seed Calendar) error {
 	return s.persistLocked()
 }
 
-// ApplyOfficialSchedule loads the embedded weekly schedule, replaces old
-// bundled events with a bounded window of generated events, stores the
-// official series definitions, generates UI-safe series previews, prunes
-// invalid followed series IDs, and persists atomically. Non-bundled events
-// are preserved. A bad schedule logs a warning and does not mutate state.
+// ApplyOfficialSchedule initializes the service from the embedded schedule only
+// when no saved series exist. A refresh may replace it with a newer publication.
+// Existing events outside the official schedule are preserved.
 func (s *Service) ApplyOfficialSchedule(now time.Time) error {
+	// A saved schedule remains authoritative while the remote refresh is pending.
+	s.mu.Lock()
+	hasSeries := len(s.cal.Series) > 0
+	s.mu.Unlock()
+	if hasSeries {
+		return nil
+	}
 	sched, err := LoadWeeklySchedule()
 	if err != nil {
 		return fmt.Errorf("official schedule: %w", err)
 	}
-	return s.applySchedule(sched, now)
+	return s.applySchedule(sched, ScheduleSourceBundled, time.Time{}, now)
 }
 
 // applySchedule materialises a schedule into the calendar. The caller decides
 // where the schedule came from — the bundled seed or the published one.
-func (s *Service) applySchedule(sched OfficialSchedule, now time.Time) error {
+func (s *Service) applySchedule(sched OfficialSchedule, source ScheduleSource, publishedAt, now time.Time) error {
 	// Published schedules are allowed to introduce an unknown venue or class,
 	// but they never get to provide their own telemetry join keys. Resolve only
 	// from the local, reviewed registry and leave unknown identities empty so
@@ -276,6 +290,21 @@ func (s *Service) applySchedule(sched OfficialSchedule, now time.Time) error {
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	if sched.ValidFrom.After(now) && len(s.cal.Series) > 0 &&
+		(s.cal.Schedule == nil || (!now.Before(s.cal.Schedule.ValidFrom) && now.Before(s.cal.Schedule.ValidUntil))) {
+		return nil
+	}
+	if saved := s.cal.Schedule; saved != nil {
+		// Document Updated is not a publication revision: imports of the same
+		// week share it. Use the server publication timestamp for corrections.
+		if sched.ValidFrom.Before(saved.ValidFrom) ||
+			(sched.ValidFrom.Equal(saved.ValidFrom) &&
+				(sched.Updated.Before(saved.Updated) || publishedAt.Before(saved.PublishedAt))) {
+			return nil
+		}
+	}
+	previous := s.cal
 
 	// Filter out existing bundled events.
 	var kept []RaceEvent
@@ -310,6 +339,7 @@ func (s *Service) applySchedule(sched OfficialSchedule, now time.Time) error {
 	merged := dedupe(kept, filtered)
 
 	// Apply schedule metadata.
+	s.cal.Schedule = &ScheduleMetadata{ValidFrom: sched.ValidFrom, ValidUntil: sched.ValidUntil, Updated: sched.Updated, Source: source, PublishedAt: publishedAt}
 	s.cal.Version = sched.Version
 	s.cal.Timezone = sched.Timezone
 	s.cal.Events = merged
@@ -320,7 +350,11 @@ func (s *Service) applySchedule(sched OfficialSchedule, now time.Time) error {
 	s.cal.FollowedSeriesIDs = pruneFollowedSeriesLocked(s.cal.FollowedSeriesIDs, sched.Series)
 	s.cal.Updated = s.now().UTC()
 
-	return s.persistLocked()
+	if err := s.persistLocked(); err != nil {
+		s.cal = previous
+		return err
+	}
+	return nil
 }
 
 // makeSeriesPreviews generates UI-safe previews for all series in the
@@ -554,7 +588,7 @@ func (s *Service) Past(now time.Time) (RaceEvent, bool) {
 	return RaceEvent{}, false
 }
 
-// DueReminders returns reminders for followed events whose start time falls
+// DueReminders returns reminders for followed events or followed series occurrences whose start time falls
 // within each configured reminder threshold. A reminder at threshold T is due
 // when the event starts in (T-1, T] minutes. Past and active events are never
 // included. Deduplication is intentionally not performed here (handled by
@@ -568,7 +602,7 @@ func (s *Service) DueReminders(now time.Time) []Reminder {
 		reminderMinutes = DefaultReminderMinutes
 	}
 
-	if len(s.cal.FollowedEventIDs) == 0 {
+	if len(s.cal.FollowedEventIDs) == 0 && len(s.cal.FollowedSeriesIDs) == 0 {
 		return []Reminder{}
 	}
 
@@ -576,18 +610,49 @@ func (s *Service) DueReminders(now time.Time) []Reminder {
 	for _, id := range s.cal.FollowedEventIDs {
 		followed[id] = struct{}{}
 	}
+	candidates := make(map[string]RaceEvent)
+	if len(followed) > 0 {
+		for _, ev := range s.cal.Events {
+			if _, ok := followed[ev.ID]; ok {
+				candidates[ev.ID] = ev
+			}
+		}
+	}
+	if meta := s.cal.Schedule; meta != nil && meta.ValidUntil.After(meta.ValidFrom) && len(s.cal.FollowedSeriesIDs) > 0 {
+		schedule := OfficialSchedule{Timezone: s.cal.Timezone, ValidFrom: meta.ValidFrom, ValidUntil: meta.ValidUntil}
+		for _, series := range s.cal.Series {
+			for _, id := range s.cal.FollowedSeriesIDs {
+				if series.ID == id {
+					schedule.Series = append(schedule.Series, series)
+					break
+				}
+			}
+		}
+		maxMinutes := 0
+		for _, minutes := range reminderMinutes {
+			maxMinutes = max(maxMinutes, minutes)
+		}
+		// Expand only the reminder window; include its exact upper threshold.
+		events, err := ExpandSchedule(schedule, now, now.Add(time.Duration(maxMinutes)*time.Minute+time.Nanosecond))
+		if err != nil {
+			log.Printf("calendar reminders: %v", err)
+		} else {
+			for _, ev := range events {
+				if _, exists := candidates[ev.ID]; !exists {
+					candidates[ev.ID] = ev
+				}
+			}
+		}
+	}
 
 	var out []Reminder
-	for _, ev := range s.cal.Events {
-		if _, ok := followed[ev.ID]; !ok {
-			continue
-		}
+	for _, ev := range candidates {
 		if !now.Before(ev.StartTime) {
 			continue
 		}
-		minutesUntil := int(ev.StartTime.Sub(now).Minutes())
+		until := ev.StartTime.Sub(now)
 		for _, t := range reminderMinutes {
-			if minutesUntil <= t && minutesUntil > t-1 {
+			if until <= time.Duration(t)*time.Minute && until > time.Duration(t-1)*time.Minute {
 				out = append(out, Reminder{
 					EventID:         ev.ID,
 					Title:           ev.Title,
@@ -602,6 +667,15 @@ func (s *Service) DueReminders(now time.Time) []Reminder {
 	if out == nil {
 		return []Reminder{}
 	}
+	sort.Slice(out, func(i, j int) bool {
+		if !out[i].StartTime.Equal(out[j].StartTime) {
+			return out[i].StartTime.Before(out[j].StartTime)
+		}
+		if out[i].EventID != out[j].EventID {
+			return out[i].EventID < out[j].EventID
+		}
+		return out[i].MinutesLeft > out[j].MinutesLeft
+	})
 	return out
 }
 

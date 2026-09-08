@@ -335,7 +335,11 @@ export function monthDays(
             .map((entry) => ({
               id: entry.id,
               name: entry.name,
-              slots: entry.engine.weeklyUTC?.length ?? 0,
+              // A local day can intersect multiple UTC dates. Count its actual
+              // occurrences after the engine has applied publication validity.
+              slots: nextStarts(entry.engine, day,
+                (entry.engine.weeklyUTC?.length ?? 0) * (Math.ceil((end.getTime() - day.getTime()) / 86_400_000) + 1),
+              ).filter((at) => at < end).length,
             })),
       specials: other
         ? []

@@ -8,9 +8,11 @@ Rama `vantareapp/isa-1032-calendar-validity`, worktree
 El corte conserva schedule en el store y limita previews/motor a [inicio, fin).
 Documentos antiguos sin vigencia verificable no producen nuevas salidas.
 Regresión con el seed real: seis casos RED→GREEN (metadatos, desconocido,
-caducado, preview inválido, cinco vistas y detalle). 111 focales PASS;
+caducado, preview inválido, cinco vistas y detalle). 112 focales PASS;
 typecheck/lint/build PASS. Suite completa 3243 PASS/2 FAIL: timeouts 20 s en
 PedalsRedline excluido, antecedente #1025; no se declara verde ni se debilita.
+Go completo y roadmap 23+21 PASS. Review inicial P2 de conteo mensual en día
+parcialmente vigente: RED 12 frente a 3; GREEN 3. Revisión final pendiente.
 evidencia final en docs/analysis/ISA-1032-calendar-validity.md y #1032.
 
 No integrar este frontend antes del backend #1031: la nightly base aún no emite

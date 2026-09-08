@@ -15,10 +15,13 @@ caducidad, previews, cinco vistas y detalle. Se añaden límites exactos y fin i
 Fixtures visuales existentes declaran su ventana congelada de julio; no son
 evidencia de horario real actual ni se usan para medir rendimiento.
 
-111 pruebas focales PASS; typecheck, lint y build PASS (aviso heredado de chunk).
+112 pruebas focales PASS; typecheck, lint y build PASS (aviso heredado de chunk).
 Suite completa: 3243 PASS y 2 FAIL por timeout 20000 ms en PedalsRedline.layout,
 superficie excluida con antecedente #1025. No se modifican ni repiten esos tests:
-la suite completa NO está verde. Revisión independiente en curso. No se han
+la suite completa NO está verde. Go completo y roadmap 23+21 PASS.
+Review inicial: un P2, Mes contaba 12 slots en un día con solo 3 dentro de vigencia.
+Reproducido RED y corregido GREEN contando ocurrencias acotadas; revisión final
+del ajuste pendiente. No se han
 ejecutado pruebas Wails ni A/B. C4 debe hacer explícitos los estados de carga/error;
 F4/F5/F6 (DST, límite semanal y especiales) permanecen en sus cortes. No se afirma
 que todo Calendario esté corregido. HUD/Studio y datos del usuario intactos.

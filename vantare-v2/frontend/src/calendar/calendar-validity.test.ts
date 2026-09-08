@@ -4,7 +4,7 @@ import { EMPTY_CALENDAR, type RaceSeries } from "./calendar-types";
 import { normaliseCalendar } from "./calendar-store";
 import { buildRaceStarts } from "../hub/orbit/race-starts";
 import { nextStarts } from "../hub/orbit/next-starts";
-import { buildSeriesEntries, dayRows, monthDays, timelineRows, upcomingRows, weekRows } from "../hub/races-orbit/races-orbit-model";
+import { buildSeriesEntries, dayAnchor, dayRows, monthDays, timelineRows, upcomingRows, weekRows } from "../hub/races-orbit/races-orbit-model";
 
 const seed = JSON.parse(readFileSync("../internal/calendar/seed/lmu-weekly-schedule.json", "utf8")) as {
   validFrom: string; validUntil: string; updated: string; series: RaceSeries[];
@@ -65,5 +65,18 @@ describe("vigencia del documento oficial en todos sus consumidores", () => {
     const invalid = { ...document, schedule: { ...document.schedule, validUntil } };
     expect(buildSeriesEntries(invalid).length).toBe(0);
     expect(buildRaceStarts(invalid, new Date(seed.validFrom)).length).toBe(0);
+  });
+
+  it("Mes cuenta solo los slots de un día parcialmente vigente", () => {
+    const start = new Date(seed.validFrom);
+    const partial = { ...document, series: seed.series.filter((series) => series.recurrence.kind === "weekly-slots").slice(0, 1),
+      schedule: { ...document.schedule, validFrom: new Date(start.getTime() + 6 * 3_600_000).toISOString(), validUntil: new Date(start.getTime() + 12 * 3_600_000).toISOString() } };
+    const entries = buildSeriesEntries(partial);
+    expect(entries.length).toBe(1);
+    const day = dayAnchor(start, 0);
+    const dayCount = dayRows(entries, day, start).flatMap((hour) => hour.events).length;
+    expect(dayCount).toBeGreaterThan(0);
+    const month = monthDays(entries, new Date(day.getFullYear(), day.getMonth(), 1), start);
+    expect(month.find((cell) => cell.day.getTime() === day.getTime())?.weekly[0].slots).toBe(dayCount);
   });
 });

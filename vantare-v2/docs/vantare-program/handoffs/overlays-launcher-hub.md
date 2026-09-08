@@ -1,5 +1,62 @@
 # Handoff vivo — Overlay Studio, Launcher y Hub
 
+## ISA-1071 — aceptación visual y corte productivo (2026-09-08)
+
+Isaac acepta la torre y elige `redlineHeader=current`, luz roja y alpha .95.
+Autoriza continuar para probarla en nightly. El siguiente corte registra un
+diseño opt-in (sin migraciones), adapta su escala al marco persistido y conecta
+los campos V2 disponibles. Marca y dorsal no emitidos por Core no se inventan.
+No cambia la arquitectura ni absorbe #1068/#1069/#1070. Verificar tamaños,
+filas completas, nombres largos, datos ausentes y sesiones; después suite,
+build y revisión independiente. No hay todavía integración ni build nightly.
+
+Implementado localmente: diseño `standings-endurance-redline-tower` (Preview),
+sin cambiar el default; viewport de base 482 escalado al tamaño persistido,
+filas completas y campos V2 de pista, total, posición de clase y dorsal si
+existe. Inspector conserva filas y explica columnas fijas sin borrar ajustes.
+La procedencia de fabricante/dorsal no emitidos vive en #1072; no tocar Core
+desde #1071. Los recursos raster/fuentes del prototipo requieren cerrar su
+trazabilidad para distribución antes de declarar candidato publicable.
+Muse `ses_f7d72ab5cffeq7KpWw1XtUF8Z0` se abortó tras quedar sin avance,
+sin cambios; el orquestador completó el microcorte. No hay workers editando.
+Pruebas focales 32/32 y Chromium (280/340/482/650, gaps largos y señal atrasada)
+PASS. La suite completa se repite después de corregir el selector Workshop
+que ocultaba sus controles al elegir el nuevo diseño. Revisión pendiente.
+
+## ISA-1071 — reproducción HTML Redline en React (2026-09-08, aislado)
+
+- Rama `vantareapp/isa-1071-workshop-redline-lab`, base/HEAD sin commit
+  `b6b5754eee059bc239fce18c08b39adae8c553fa`, worktree `C:/tmp/vantare-isa1071`.
+- Worker Muse inició settings/CSS; quedó sin avance y se detuvo antes de que
+  el orquestador completara controles, URL, sidebar y comprobaciones.
+- Isaac rechazó la primera aproximación: restilizaba la tabla compacta y no
+  reproducía el HTML. Esa entrega queda sustituida por la composición Tower
+  productiva de 482 × 1087: cabecera 99, categoría 38, doce filas con su ritmo
+  exacto y pie 67. Perfiles anteriores mantienen `classic` por defecto.
+- `WidgetVisualHost` sigue siendo la frontera única. Workshop puede entregarle
+  una ViewModel de referencia explícita, solo aceptada en desarrollo; los
+  escenarios V2 mantienen su autoridad y no reciben marcas/dorsales inventados.
+- Fuentes y sprites son los mismos archivos del HTML aprobado. Las marcas
+  solo aparecen con identidad explícita en la ViewModel; no se infieren de
+  nombres. El fixture de 12 pilotos no forma parte del bundle productivo.
+- Escenario `context` reutiliza la imagen del estudio, solo en la ruta de
+  desarrollo. No se incorpora al widget ni a sus capturas de paridad.
+- Browser: 16 combinaciones de cuatro cabeceras y cuatro selecciones, 74 nodos
+  por combinación con geometría, textos y estilos medidos iguales al HTML.
+  Dos instancias Desktop/OBS: 12 filas, 482 × 1087, clips independientes,
+  fondo rgba(16,23,27,.95), pseudo-línea del jugador ausente.
+- El estudio Tower reproduce el HTML estático: no reutiliza las animaciones
+  de tabla basadas en 30px. Su adaptación modular/dinámica sigue pendiente,
+  y la validación Wails/LMU. La aceptación visual posterior consta arriba. #1069 conserva
+  el hallazgo de columnas de la tabla clásica; no se mezcla aquí.
+- Evidencia detallada, archivos y checks: [ISA-1071](../../analysis/ISA-1071-redline-html-parity.md).
+- Cierre: 422 archivos / 3324 tests PASS, 2 omitidos; typecheck, build, lint
+  y diff check PASS. Fixture/escenario ausentes de dist. Avisos heredados de
+  chunks grandes y teardown happy-dom registrados. Vista final abierta con
+  firma, luz roja, 95%, referencia de 12 pilotos, 482 × 1087 y escala 0.65.
+- Estado histórico anterior a la aceptación: valoración visual con Isaac. No commit,
+  push, PR, CI remoto, merge, promoción ni release para este corte.
+
 ## ISA-1004 — Dense y Broadcast tras validación Windows (2026-09-06)
 
 Isaac autoriza corregir ambos hallazgos y mergear a nightly. Base c18f2e6e;

@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import type { WidgetRendererProps } from "../../../core/design-system-definition";
-import { resolveWidgetVisualGeometryForType } from "../../../core/widget-visual-geometry";
+import { resolveWidgetVisualGeometry, resolveWidgetVisualGeometryForType } from "../../../core/widget-visual-geometry";
+import { REDLINE_TOWER_BASE_WIDTH } from "../../../widget-types/standings/standings-redline-layout";
 import { resolveColumnWidthPixels } from "../../../widget-types/shared/widget-column";
 import { STANDINGS_COLUMN_TEMPLATES } from "../../../widget-types/standings/standings-content";
 import {
@@ -29,7 +30,7 @@ import { StandingsRedlineTemplate } from "./StandingsRedlineTemplate";
 import { StandingsLmuTemplate } from "./StandingsLmuTemplate";
 import { StandingsRacelabsTemplate } from "./StandingsRacelabsTemplate";
 import { StandingsWecTemplate } from "./StandingsWecTemplate";
-import { fitStandingsRowsToHeight } from "./standings-endurance-layout";
+import { fitStandingsRowsToHeight, REDLINE_TOWER_ROW_HEIGHTS } from "./standings-endurance-layout";
 
 function columnLabel(metricId: string): string {
   return (
@@ -329,16 +330,20 @@ function templateBody(
 
 export function StandingsEndurance({ model, settings, layout }: WidgetRendererProps<StandingsViewModel>) {
   const parsed = parseStandingsEnduranceSettings(settings);
+  const isReferenceTower = parsed.templateId === "standings-redline" && parsed.redlineTheme === "tower";
   const viewportHeight = layout === undefined
     ? Number.POSITIVE_INFINITY
+    : isReferenceTower
+      ? resolveWidgetVisualGeometry(layout, REDLINE_TOWER_BASE_WIDTH).baseHeight
     : parsed.templateId === "standings-redline"
       ? layout.h
       : resolveWidgetVisualGeometryForType(layout, "standings").baseHeight;
   const fittedRowsModel: StandingsViewModel = {
     ...model,
-    rows: fitStandingsRowsToHeight(model.rows, {
+    rows: isReferenceTower ? fitTowerRows(model, viewportHeight, parsed.showSessionHeader) : fitStandingsRowsToHeight(model.rows, {
       templateId: parsed.templateId,
-      viewportHeight,
+      // Study headers occupy 64px instead of the classic 28px.
+      viewportHeight: viewportHeight - (parsed.templateId === "standings-redline" && parsed.redlineHeader !== "current" && parsed.showSessionHeader ? 36 : 0),
       showSessionHeader: parsed.showSessionHeader,
       hasStatusMessage: Boolean(model.statusMessage),
     }),
@@ -352,10 +357,30 @@ export function StandingsEndurance({ model, settings, layout }: WidgetRendererPr
       data-widget-renderer="standings"
       data-status={model.status}
       data-template={parsed.templateId}
+      data-redline-theme={parsed.templateId === "standings-redline" ? parsed.redlineTheme : undefined}
+      data-redline-selection={parsed.templateId === "standings-redline" ? parsed.redlineSelection : undefined}
+      data-redline-header={parsed.templateId === "standings-redline" ? parsed.redlineHeader : undefined}
       className="ven-root ven-standings"
       style={buildStandingsAppearanceStyle(settings)}
     >
       {templateBody(parsed.templateId, fittedModel, settings, parsed.showSessionHeader)}
     </section>
   );
+}
+
+/** Reserve complete rows, category, header and footer; never crop the last driver. */
+function fitTowerRows(model: StandingsViewModel, height: number, header: boolean): StandingsRowViewModel[] {
+  let used = 1 + 67 + (header ? 99 : 0) + (model.statusMessage ? 36 : 0);
+  const rows: StandingsRowViewModel[] = [];
+  for (const group of groupRowsByClass(model.rows)) {
+    used += 38;
+    for (const [index, row] of group.rows.entries()) {
+      const next = REDLINE_TOWER_ROW_HEIGHTS[index % 12]!;
+      // Scaling a persisted frame can produce 1086.9999999999998 for 1087.
+      if (used + next > height + 1e-6) return rows;
+      used += next;
+      rows.push(row);
+    }
+  }
+  return rows;
 }

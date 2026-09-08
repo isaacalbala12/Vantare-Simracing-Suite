@@ -69,6 +69,8 @@ export function buildStandingsViewModelV2(
     activeClass,
     sessionLabel: displayedText(frame.session.phase)?.toUpperCase() ?? PLACEHOLDER,
     remainingText: formatRemainingTime(displayedNumber(frame.session.remaining)),
+    trackName: displayedText(frame.session.track),
+    totalRows: scoped.length,
     columns,
     rows: limited.map((row, index) => buildRow(row, index, playerId, paceSession, sessionBestLap)),
   }, `${frame.sessionId}:${frame.epoch}`, frame.sequence);
@@ -119,7 +121,8 @@ function buildRow(
   return {
     id: row.id,
     position: row.position,
-    driverNumber: "",
+    classPosition: row.classPosition,
+    driverNumber: row.number ?? "",
     driverName,
     configuredDriverName: driverName,
     vehicleClass: row.classId ?? "",

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-08T14:19:49Z",
+  "generatedAt": "2026-09-08T20:10:43Z",
   "digest": {
-    "lastCommit": "d6d0992f8dbc800ccb6d75f60fffdc7c3d561da2"
+    "lastCommit": "b6b5754eee059bc239fce18c08b39adae8c553fa"
   },
   "phases": [
     {
@@ -343,6 +343,28 @@
     }
   ],
   "milestones": [
+    {
+      "id": "overlay-modular-contract",
+      "type": "plan",
+      "title": {
+        "es": "Contrato modular de overlays y laboratorio Redline",
+        "en": "Contrato modular de overlays y laboratorio Redline",
+        "pt": "Contrato modular de overlays y laboratorio Redline",
+        "it": "Contrato modular de overlays y laboratorio Redline"
+      },
+      "body": {
+        "es": "Contrato Endurance por cortes: animaciones y diseños, estructura modular, personalización y reglas por sesión y foco. La torre Redline queda aceptada visualmente con cabecera actual, luz roja y fondo azul al 95%. El corte ISA-1071 incorpora Tower Preview opt-in, escala proporcional y datos V2 disponibles, sin migrar perfiles; pendiente de integración. Los 12 pilotos de comparación están identificados como ejemplo y excluidos de producción. Animaciones, columnas configurables, fabricante y dorsal canónicos (ISA-1072), recursos de distribución y validación en una build nightly siguen pendientes; no se declara terminado el contrato.",
+        "en": "Contrato Endurance por cortes: animaciones y diseños, estructura modular, personalización y reglas por sesión y foco. La torre Redline queda aceptada visualmente con cabecera actual, luz roja y fondo azul al 95%. El corte ISA-1071 incorpora Tower Preview opt-in, escala proporcional y datos V2 disponibles, sin migrar perfiles; pendiente de integración. Los 12 pilotos de comparación están identificados como ejemplo y excluidos de producción. Animaciones, columnas configurables, fabricante y dorsal canónicos (ISA-1072), recursos de distribución y validación en una build nightly siguen pendientes; no se declara terminado el contrato.",
+        "pt": "Contrato Endurance por cortes: animaciones y diseños, estructura modular, personalización y reglas por sesión y foco. La torre Redline queda aceptada visualmente con cabecera actual, luz roja y fondo azul al 95%. El corte ISA-1071 incorpora Tower Preview opt-in, escala proporcional y datos V2 disponibles, sin migrar perfiles; pendiente de integración. Los 12 pilotos de comparación están identificados como ejemplo y excluidos de producción. Animaciones, columnas configurables, fabricante y dorsal canónicos (ISA-1072), recursos de distribución y validación en una build nightly siguen pendientes; no se declara terminado el contrato.",
+        "it": "Contrato Endurance por cortes: animaciones y diseños, estructura modular, personalización y reglas por sesión y foco. La torre Redline queda aceptada visualmente con cabecera actual, luz roja y fondo azul al 95%. El corte ISA-1071 incorpora Tower Preview opt-in, escala proporcional y datos V2 disponibles, sin migrar perfiles; pendiente de integración. Los 12 pilotos de comparación están identificados como ejemplo y excluidos de producción. Animaciones, columnas configurables, fabricante y dorsal canónicos (ISA-1072), recursos de distribución y validación en una build nightly siguen pendientes; no se declara terminado el contrato."
+      },
+      "label": {
+        "es": "Plan",
+        "en": "Plan",
+        "pt": "Plan",
+        "it": "Plan"
+      }
+    },
     {
       "id": "calendar-owner-review-notice",
       "type": "feature",
@@ -1336,6 +1358,16 @@
   ],
   "delivered": [
     {
+      "date": "2026-09-08",
+      "entries": [
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Calendario: aviso Owner y revision del horario de Discord"
+        }
+      ]
+    },
+    {
       "date": "2026-09-07",
       "entries": [
         {
@@ -1982,16 +2014,6 @@
           "kind": "change",
           "scope": "",
           "text": "Delta real, único y con hotkey global"
-        }
-      ]
-    },
-    {
-      "date": "2026-08-13",
-      "entries": [
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "Producir StrategyLiveProjection v1 desde Telemetry Core"
         }
       ]
     }

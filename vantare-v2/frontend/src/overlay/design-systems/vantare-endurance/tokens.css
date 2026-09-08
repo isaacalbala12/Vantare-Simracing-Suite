@@ -2333,6 +2333,143 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* ---------- Redline tower lab (ISA-1071, opt-in via settings) ---------- */
+/* These rules live in the shared renderer — never scoped to the Workshop —
+   so Studio, Desktop, OBS and the harness paint the same widget. Every rule
+   is gated by a data-redline-* attribute the renderer sets from settings;
+   saved profiles without those keys keep the historic look. */
+
+/* Tower theme: blue graphite surface. Alpha touches the background only. */
+[data-widget-system="vantare-endurance"][data-redline-theme="tower"] .ven-red-block {
+  background: rgb(16 23 27 / var(--ven-red-surface-alpha, 1));
+  border-color: rgba(179, 186, 193, 0.18);
+  border-radius: 5px 5px 30px 5px;
+}
+
+[data-widget-system="vantare-endurance"][data-redline-theme="tower"] .ven-red-row:nth-child(even):not([data-class-leader="true"]):not([data-player="true"]) {
+  background: rgba(232, 232, 232, 0.02);
+}
+
+[data-widget-system="vantare-endurance"][data-redline-theme="tower"] .ven-red-pos {
+  color: #ced4dc;
+}
+
+[data-widget-system="vantare-endurance"][data-redline-theme="tower"] .ven-red-gap {
+  color: #e0e4e8;
+}
+
+/* Identity cell: real team color wash with the approved bottom-right cut.
+   No manufacturer logos exist in production; teamBrandColor is the only
+   team identity the ViewModel carries. */
+[data-widget-system="vantare-endurance"][data-redline-theme="tower"] .ven-red-id {
+  background: transparent;
+  background: color-mix(in srgb, var(--ven-team-color, transparent) 14%, transparent);
+  border-radius: 2px 2px 10px 2px;
+  padding-right: 8px;
+}
+
+/* Session header cell shares the same bottom-right cut. */
+[data-widget-system="vantare-endurance"][data-redline-theme="tower"] .ven-red-slot[data-accent="true"] {
+  border-radius: 2px 2px 10px 2px;
+}
+
+/* "Fila de luz": subtle red wash, no left stripe, no right line. */
+[data-widget-system="vantare-endurance"][data-redline-selection="glow"] .ven-red-row[data-player="true"] {
+  background: linear-gradient(90deg, rgba(231, 75, 88, 0.08), rgba(231, 75, 88, 0.2) 55%, rgba(231, 75, 88, 0.1));
+}
+
+[data-widget-system="vantare-endurance"][data-redline-selection="glow"] .ven-red-row[data-player="true"] .ven-red-gap:not([data-pit="true"]) {
+  color: #ffd7db;
+}
+
+/* Alternatives stay selectable/restorable from settings. */
+[data-widget-system="vantare-endurance"][data-redline-selection="frame"] .ven-red-row[data-player="true"] {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px rgba(212, 227, 239, 0.52);
+  border-radius: 3px 3px 18px 3px;
+}
+
+[data-widget-system="vantare-endurance"][data-redline-selection="plate"] .ven-red-row[data-player="true"] {
+  background: transparent;
+}
+
+[data-widget-system="vantare-endurance"][data-redline-selection="plate"] .ven-red-row[data-player="true"] .ven-red-name {
+  background: #e7edf2;
+  color: #14202b;
+  border-radius: 2px 2px 14px 2px;
+  padding: 2px 8px 2px 0;
+}
+
+/* Exploratory header studies. Text only; no logo asset is bundled. */
+[data-widget-system="vantare-endurance"] .ven-red-wordmark {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  padding-left: 12px;
+  border-left: 4px solid #e32b39;
+  border-radius: 0 0 4px 0;
+}
+
+[data-widget-system="vantare-endurance"] .ven-red-wordmark small {
+  color: #aeb9c5;
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.3em;
+}
+
+[data-widget-system="vantare-endurance"] .ven-red-wordmark strong {
+  color: #f2f4f5;
+  font-size: 22px;
+  line-height: 1;
+  font-weight: 800;
+  font-style: italic;
+  letter-spacing: 0.04em;
+}
+
+[data-widget-system="vantare-endurance"] .ven-red-wordmark[data-wordmark="compact"] {
+  gap: 8px;
+  border-left-color: rgba(220, 224, 230, 0.17);
+}
+
+[data-widget-system="vantare-endurance"] .ven-red-wordmark[data-wordmark="compact"] strong {
+  font-size: 20px;
+  font-style: normal;
+  font-weight: 400;
+  letter-spacing: 0.22em;
+}
+
+[data-widget-system="vantare-endurance"] .ven-red-wordmark[data-wordmark="compact"] small {
+  color: #ed5260;
+  letter-spacing: 0.32em;
+}
+
+[data-widget-system="vantare-endurance"][data-redline-header="session"] .ven-red-slot[data-accent="true"] b {
+  font-size: 16px;
+}
+
+[data-widget-system="vantare-endurance"][data-redline-header="compact"] .ven-red-slots {
+  gap: 14px;
+}
+
+[data-widget-system="vantare-endurance"][data-redline-header]:not([data-redline-header="current"]) .ven-red-slots {
+  box-sizing: border-box;
+  height: 64px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 8px 10px;
+}
+[data-widget-system="vantare-endurance"][data-redline-header]:not([data-redline-header="current"]) .ven-red-slot {
+  flex-direction: column;
+  gap: 3px;
+}
+[data-widget-system="vantare-endurance"][data-redline-header="session"] .ven-red-slot small { font-size: 16px; }
+[data-widget-system="vantare-endurance"][data-redline-selection="glow"] .ven-red-row[data-player="true"] {
+  border: 0;
+  box-shadow: none;
+}
+
 /* ---------- relative: Redline family (mirror / proximity / traffic) ---------- */
 
 [data-widget-system="vantare-endurance"][data-template^="relative-redline"].ven-relative,

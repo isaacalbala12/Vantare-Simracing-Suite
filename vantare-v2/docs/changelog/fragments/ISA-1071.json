@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-1071",
+  "type": "feature",
+  "summary": "Nueva composición Endurance Redline Tower Preview, seleccionable sin reemplazar tus diseños actuales.",
+  "technicalNotes": [
+    "Renderer compartido entre Studio, Desktop, OBS y Workshop; cabecera actual, selección de luz roja y superficie al 95%.",
+    "Escala proporcional al marco guardado y filas completas. Los datos de ejemplo del estudio no llegan al producto."
+  ],
+  "testing": [
+    "En Studio selecciona Standings y el diseño Endurance Redline Tower Preview. Ajusta el marco y las filas; compara Studio con HUD y OBS.",
+    "Comprueba nombres largos, cambio de sesión y pérdida de señal. Al volver a Redline clásico deben conservarse las columnas anteriores."
+  ],
+  "knownLimitations": [
+    "Preview estática con columnas fijas; edición modular y animaciones pendientes.",
+    "Marcas y dorsales ausentes de Telemetría V2 quedan vacíos; procedencia pendiente en ISA-1072.",
+    "Integración nightly, validación Wails/LMU y normalización de recursos para distribución aún pendientes."
+  ]
+}

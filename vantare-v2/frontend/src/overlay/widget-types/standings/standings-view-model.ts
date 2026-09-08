@@ -4,6 +4,7 @@ import type { WidgetColumnV3 } from "../shared/widget-column";
 export type StandingsRowViewModel = {
   id: string;
   position: number;
+  classPosition?: number;
   /** Explicit same-session starting-grid position. Absent means no delta authority. */
   gridPosition?: number;
   /** Session/epoch identity that authorised gridPosition. */
@@ -14,6 +15,8 @@ export type StandingsRowViewModel = {
   vehicleClass: string;
   teamCode: string;
   teamBrandColor: string;
+  /** Optional, source-authorised manufacturer identity; never inferred from a driver name. */
+  manufacturer?: string;
   gapText: string;
   intervalText: string;
   currentLapText: string;
@@ -31,6 +34,8 @@ export type StandingsViewModel = WidgetViewModelBase & {
   sessionLabel: string;
   remainingText: string;
   lapText?: string;
+  trackName?: string;
+  totalRows?: number;
   columns: readonly WidgetColumnV3[];
   rows: readonly StandingsRowViewModel[];
   /** Productive stream identity used only to discard ephemeral motion state. */

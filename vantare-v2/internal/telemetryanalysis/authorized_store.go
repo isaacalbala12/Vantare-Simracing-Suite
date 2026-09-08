@@ -16,10 +16,19 @@ import (
 
 const authorizedSessionStoreVersion = 1
 
+var ErrCorruptAuthorizedSessionStore = errors.New("corrupt authorized session store")
+
+// ErrAuthorizedSessionCommitUncertain requires reopening the store: the first
+// recovery point exists, but replacing the primary failed.
+var ErrAuthorizedSessionCommitUncertain = errors.New("authorized session commit uncertain")
+
 type AuthorizedSessionStore struct {
-	mu     sync.RWMutex
-	path   string
-	models []AuthorizedSessionModel
+	mu        sync.RWMutex
+	path      string
+	models    []AuthorizedSessionModel
+	recovered bool
+	writeFile func(string, []byte) error
+	uncertain bool
 }
 
 type authorizedSessionStoreDocument struct {
@@ -46,33 +55,75 @@ func OpenAuthorizedSessionStore(path string) (*AuthorizedSessionStore, error) {
 	if strings.TrimSpace(path) == "" {
 		return nil, fmt.Errorf("authorized session store path is required")
 	}
-	store := &AuthorizedSessionStore{path: path, models: []AuthorizedSessionModel{}}
-	data, err := os.ReadFile(path)
-	if errors.Is(err, os.ErrNotExist) {
+	store := &AuthorizedSessionStore{path: path, models: []AuthorizedSessionModel{}, writeFile: writeAuthorizedSessionFile}
+	data, readErr := os.ReadFile(path)
+	if readErr != nil && !errors.Is(readErr, os.ErrNotExist) {
+		return nil, fmt.Errorf("read authorized session store: %w", readErr)
+	}
+	var primaryErr error
+	if readErr == nil {
+		store.models, primaryErr = decodeAuthorizedSessions(data)
+		if primaryErr == nil {
+			return store, nil
+		}
+	}
+	backup, backupErr := os.ReadFile(path + ".bak")
+	if errors.Is(readErr, os.ErrNotExist) && errors.Is(backupErr, os.ErrNotExist) {
 		return store, nil
 	}
-	if err != nil {
-		return nil, fmt.Errorf("read authorized session store: %w", err)
+	if backupErr != nil {
+		return nil, fmt.Errorf("%w: primary: %v; backup: %w", ErrCorruptAuthorizedSessionStore, errors.Join(readErr, primaryErr), backupErr)
 	}
+	models, err := decodeAuthorizedSessions(backup)
+	if err != nil {
+		return nil, fmt.Errorf("%w: backup: %w", ErrCorruptAuthorizedSessionStore, err)
+	}
+	// Preserve the damaged bytes before replacing the primary. Never move the
+	// only evidence away before a complete, validated backup is available.
+	if readErr == nil {
+		quarantine, err := os.CreateTemp(filepath.Dir(path), filepath.Base(path)+".corrupt-*")
+		if err != nil {
+			return nil, fmt.Errorf("create authorized session quarantine: %w", err)
+		}
+		_, writeErr := quarantine.Write(data)
+		syncErr := quarantine.Sync()
+		closeErr := quarantine.Close()
+		if err := errors.Join(writeErr, syncErr, closeErr); err != nil {
+			return nil, fmt.Errorf("preserve authorized session quarantine: %w", err)
+		}
+	}
+	if err := writeAuthorizedSessionFile(path, backup); err != nil {
+		return nil, fmt.Errorf("restore authorized session backup: %w", err)
+	}
+	store.models, store.recovered = models, true
+	return store, nil
+}
+
+// RecoveredFromBackup reports that opening this instance restored an older
+// recovery point. Consumers must not present recovery as a fresh empty catalog.
+func (store *AuthorizedSessionStore) RecoveredFromBackup() bool { return store.recovered }
+
+func decodeAuthorizedSessions(data []byte) ([]AuthorizedSessionModel, error) {
 	decoder := json.NewDecoder(bytes.NewReader(data))
 	decoder.DisallowUnknownFields()
 	var document authorizedSessionStoreDocument
 	if err := decoder.Decode(&document); err != nil || decoder.Decode(&struct{}{}) != io.EOF || document.Version != authorizedSessionStoreVersion || document.Models == nil {
-		return nil, fmt.Errorf("decode authorized session store")
+		return nil, ErrCorruptAuthorizedSessionStore
 	}
+	models := make([]AuthorizedSessionModel, 0, len(document.Models))
 	seen := make(map[string]struct{}, len(document.Models))
 	for _, record := range document.Models {
 		model := modelFromRecord(record)
 		if err := validateStoredModel(model); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("%w: %w", ErrCorruptAuthorizedSessionStore, err)
 		}
 		if _, duplicate := seen[model.Session.ID]; duplicate {
-			return nil, ErrInvalidAuthorizedSession
+			return nil, fmt.Errorf("%w: %w", ErrCorruptAuthorizedSessionStore, ErrInvalidAuthorizedSession)
 		}
 		seen[model.Session.ID] = struct{}{}
-		store.models = append(store.models, model)
+		models = append(models, model)
 	}
-	return store, nil
+	return models, nil
 }
 
 func (store *AuthorizedSessionStore) Add(ctx context.Context, model AuthorizedSessionModel) error {
@@ -87,6 +138,9 @@ func (store *AuthorizedSessionStore) Add(ctx context.Context, model AuthorizedSe
 	}
 	store.mu.Lock()
 	defer store.mu.Unlock()
+	if store.uncertain {
+		return ErrAuthorizedSessionCommitUncertain
+	}
 	for _, existing := range store.models {
 		if existing.Session.ID != model.Session.ID {
 			continue
@@ -101,6 +155,7 @@ func (store *AuthorizedSessionStore) Add(ctx context.Context, model AuthorizedSe
 	sort.Slice(store.models, func(i, j int) bool { return store.models[i].Session.ID < store.models[j].Session.ID })
 	if err := store.persistLocked(); err != nil {
 		store.models = previous
+		store.uncertain = errors.Is(err, ErrAuthorizedSessionCommitUncertain)
 		return err
 	}
 	return nil
@@ -165,7 +220,30 @@ func (store *AuthorizedSessionStore) persistLocked() error {
 	if err != nil {
 		return fmt.Errorf("encode authorized session store: %w", err)
 	}
-	directory := filepath.Dir(store.path)
+	previous, readErr := os.ReadFile(store.path)
+	firstCommit := errors.Is(readErr, os.ErrNotExist)
+	if firstCommit {
+		// Like Strategy's repository, the first generation backs itself up.
+		previous = data
+	} else if readErr != nil {
+		return fmt.Errorf("read authorized session recovery point: %w", readErr)
+	} else if _, err := decodeAuthorizedSessions(previous); err != nil {
+		return err // Do not overwrite a valid backup with corrupt primary bytes.
+	}
+	if err := store.writeFile(store.path+".bak", previous); err != nil {
+		return fmt.Errorf("write authorized session backup: %w", err)
+	}
+	if err := store.writeFile(store.path, data); err != nil {
+		if firstCommit {
+			return fmt.Errorf("%w: %w", ErrAuthorizedSessionCommitUncertain, err)
+		}
+		return err
+	}
+	return nil
+}
+
+func writeAuthorizedSessionFile(path string, data []byte) error {
+	directory := filepath.Dir(path)
 	if err := os.MkdirAll(directory, 0o700); err != nil {
 		return fmt.Errorf("create authorized session directory: %w", err)
 	}
@@ -190,7 +268,7 @@ func (store *AuthorizedSessionStore) persistLocked() error {
 	if err := temporary.Close(); err != nil {
 		return err
 	}
-	if err := os.Rename(temporaryPath, store.path); err != nil {
+	if err := os.Rename(temporaryPath, path); err != nil {
 		return fmt.Errorf("replace authorized session store: %w", err)
 	}
 	return nil

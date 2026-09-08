@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-08T01:18:38Z",
+  "generatedAt": "2026-09-08T01:29:21Z",
   "digest": {
     "lastCommit": "d6d0992f8dbc800ccb6d75f60fffdc7c3d561da2"
   },
@@ -825,6 +825,28 @@
         "en": "Feature",
         "pt": "Feature",
         "it": "Feature"
+      }
+    },
+    {
+      "id": "strategy-source-recovery",
+      "type": "fix",
+      "title": {
+        "es": "Recuperación del catálogo de telemetría autorizado",
+        "en": "Authorized telemetry catalog recovery",
+        "pt": "Recuperação do catálogo de telemetria autorizado",
+        "it": "Recupero del catalogo di telemetria autorizzato"
+      },
+      "body": {
+        "es": "El catálogo autorizado conserva un backup validado y permite recuperar el archivo principal ausente o corrupto, guardando el dañado para revisión. Distingue recuperación, corrupción y escritura incierta. Quedan pendientes la recuperación del estado de importación y su diagnóstico visible en Strategy.",
+        "en": "The authorized catalog keeps a validated backup and can restore a missing or corrupt primary while preserving damaged data for review. It distinguishes recovery, corruption and uncertain writes. Import state recovery and visible diagnostics in Strategy remain pending.",
+        "pt": "O catálogo autorizado mantém um backup validado e recupera o ficheiro principal ausente ou corrompido, preservando os dados danificados. Distingue recuperação, corrupção e escrita incerta. Faltam a recuperação do estado de importação e o diagnóstico visível em Strategy.",
+        "it": "Il catalogo autorizzato conserva un backup validato e ripristina il file principale assente o corrotto, preservando i dati danneggiati. Distingue recupero, corruzione e scrittura incerta. Restano il recupero dello stato di importazione e la diagnostica visibile in Strategy."
+      },
+      "label": {
+        "es": "Fix",
+        "en": "Fix",
+        "pt": "Fix",
+        "it": "Fix"
       }
     },
     {

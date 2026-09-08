@@ -17,6 +17,18 @@ son fases históricas.
 
 ## Estado
 
+Actualización ISA-819 (2026-09-08, primer corte local de recuperación):
+
+- Isaac autorizó continuar los microplanes de #1030. Rama aislada
+  `vantareapp/isa-819-authorized-store-recovery` desde `f29fe3d6`.
+- Store autorizado con backup validado, cuarentena y errores tipados; test RED
+  previo, paquete telemetryanalysis y `go test ./...` PASS. Build frontend PASS
+  para assets Go.
+- Evidencia: `docs/strategy-planner/evidence/isa-819-store-recovery.md`.
+- #819 sigue abierta: cold-start y mensaje visible de indisponibilidad/
+  recuperación aún pendientes. El banco empírico de #1030 no cambia de estado.
+- Sin merge, promoción, release, intervención en LMU ni datos reales modificados.
+
 Actualización ISA-1030 (2026-09-08, banco terminado, F0 empírico pendiente):
 
 - Isaac aprobó plan maestro y auditoría v1; ejecución inline en worktree propio

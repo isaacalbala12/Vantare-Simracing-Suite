@@ -581,6 +581,19 @@ se conservan aqui como hitos cumplidos; los demas siguen pendientes.
 - cuerpo.it: Il pianificatore usa un'unica autorità di calcolo e salvataggio sulle sessioni DuckDB reali di LMU. L'ingresso assistito parte dalle gare del calendario, collega sede e classe tramite identità canoniche dichiarate in Go e chiede il tracciato solo quando lo storico ne contiene più di uno; Orbit applica poi input e meteo, mostra backtest neutrali, offre riferimenti firmati e importa lo storico locale con avanzamento.
 - etiqueta: Feature
 
+### Recuperación del catálogo de telemetría autorizado
+
+- id: strategy-source-recovery
+- tipo: fix
+- titulo.en: Authorized telemetry catalog recovery
+- titulo.pt: Recuperação do catálogo de telemetria autorizado
+- titulo.it: Recupero del catalogo di telemetria autorizzato
+- cuerpo: El catálogo autorizado conserva un backup validado y permite recuperar el archivo principal ausente o corrupto, guardando el dañado para revisión. Distingue recuperación, corrupción y escritura incierta. Quedan pendientes la recuperación del estado de importación y su diagnóstico visible en Strategy.
+- cuerpo.en: The authorized catalog keeps a validated backup and can restore a missing or corrupt primary while preserving damaged data for review. It distinguishes recovery, corruption and uncertain writes. Import state recovery and visible diagnostics in Strategy remain pending.
+- cuerpo.pt: O catálogo autorizado mantém um backup validado e recupera o ficheiro principal ausente ou corrompido, preservando os dados danificados. Distingue recuperação, corrupção e escrita incerta. Faltam a recuperação do estado de importação e o diagnóstico visível em Strategy.
+- cuerpo.it: Il catalogo autorizzato conserva un backup validato e ripristina il file principale assente o corrotto, preservando i dati danneggiati. Distingue recupero, corruzione e scrittura incerta. Restano il recupero dello stato di importazione e la diagnostica visibile in Strategy.
+- etiqueta: Fix
+
 ### Asistente y edición de telemetría registrada
 
 - id: strategy-recorded-editor

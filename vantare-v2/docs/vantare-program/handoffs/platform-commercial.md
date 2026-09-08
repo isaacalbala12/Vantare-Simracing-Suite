@@ -1,5 +1,14 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+## ISA-1064 - Retoma de optimizaciones temporales
+
+Isaac autoriza continuar #1015. Nightly integra #1062 en b6b5754e; ultimo ajuste
+visual de review sigue pendiente y no se presenta como verificado. Nueva issue1064
+adapta cortes1020/1024 al calendario vigente sin tocar HUD/Studio. Rama/worktree
+propios; test antes de cada cambio y review. Consumo/latencia Wails pendientes de
+ventana coordinada; otra tarea continua activa. Sin promocion ni release nuevos.
+Evidencia: docs/analysis/ISA-1064-calendar-performance.md.
+
 ## ISA-1061 - Candidato revisado; validacion visual final pendiente
 
 Isaac aprueba el recorrido completo. Rama aislada desde ISA-1058 591b48b7.

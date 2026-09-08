@@ -33,7 +33,7 @@ Poda dedupe de ocurrencias iniciadas, conserva seguimiento individual, sin tocar
 Rama vantareapp/isa-1039-calendar-series-reminders ahora sobre C2 e9321068,
 dependencia necesaria para vigencia. Rebase local sin integración de nightly;
 documentos de ambos cortes conservados y JSON regenerado. Build y roadmap PASS;
-Go completo inicial PASS, validación final/review pendientes. Informe ISA-1039 en docs/analysis.
+Go completo final PASS y review 6094c44e ACCEPT. Informe ISA-1039 en docs/analysis.
 C2/C3/C4a/C4b son candidatos #1031/#1034/#1036/#1040, sin integrar. C6–C11,
 recorrido Wails y banco de rendimiento continúan pendientes. Sin merge ni release.
 

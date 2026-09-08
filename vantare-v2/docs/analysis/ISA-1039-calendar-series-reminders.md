@@ -25,7 +25,7 @@ Go del módulo Calendar PASS: seed real en su fecha histórica de vigencia,
 seguir/dejar de seguir, recarga desde disco, seguimiento doble, agotamiento de publicación, bordes por
 segundos, ID/fuente y cambio de título. Estas pruebas controladas no son Wails ni
 simulador en vivo. Build embed y roadmap 23+21 PASS. Go completo inicial PASS;
-comprobación final tras expansión acotada y revisión pendientes.
+Go completo final tras expansión acotada PASS y review independiente 6094c44e ACCEPT.
 
 Archivos: calendar_service.go,
 series_reminders_test.go, reminder_loop.go y su test, informe, handoff y roadmap manual/generado.
@@ -33,4 +33,6 @@ Verificación manual pendiente: con horario vigente y permisos/preferencias
 habilitados, seguir una serie y comprobar un aviso al entrar en el umbral; dejar
 de seguir y comprobar que no vuelve a avisar. Confirmación de acciones y permisos
 continúan en C6. No se afirma ahorro CPU/RAM/GPU ni aceptación de notificación real.
-Sin dependencias nuevas, cambios de datos reales, merge o release.
+Sin dependencias nuevas, cambios de datos reales, merge o release. PR a nightly
+incluye por dependencia los commits C2 ya revisados; el diff propio parte de
+e9321068. No vuelve a afirmar integración de ese prerrequisito.

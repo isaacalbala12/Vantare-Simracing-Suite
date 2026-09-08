@@ -12,8 +12,6 @@ export const racesOrbitIt: Record<string, string> = {
   "races.status.expired": "Orario scaduto. Aggiorna per vedere le prossime partenze.",
   "races.status.updated": "Orario aggiornato.",
   "races.refresh": "Aggiorna orario",
-  "races.refreshed": "Orario richiesto",
-  "races.refreshedHint": "È stato richiesto al backend il calendario pubblicato.",
 
   "races.views.label": "Vista del calendario",
   "races.views.next": "Prossime",

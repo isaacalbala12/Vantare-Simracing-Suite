@@ -12,8 +12,6 @@ export const racesOrbitEn: Record<string, string> = {
   "races.status.expired": "Schedule expired. Refresh to see upcoming starts.",
   "races.status.updated": "Schedule updated.",
   "races.refresh": "Refresh schedule",
-  "races.refreshed": "Schedule requested",
-  "races.refreshedHint": "The published calendar has been requested from the backend.",
 
   "races.views.label": "Calendar view",
   "races.views.next": "Upcoming",

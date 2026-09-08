@@ -12,8 +12,6 @@ export const racesOrbitPt: Record<string, string> = {
   "races.status.expired": "Horário expirado. Atualiza para consultar as próximas partidas.",
   "races.status.updated": "Horário atualizado.",
   "races.refresh": "Atualizar horário",
-  "races.refreshed": "Horário pedido",
-  "races.refreshedHint": "Foi pedido ao backend o calendário publicado.",
 
   "races.views.label": "Vista do calendário",
   "races.views.next": "Próximas",

@@ -12,8 +12,6 @@ export const racesOrbitEs: Record<string, string> = {
   "races.status.expired": "Horario caducado. Actualiza para consultar próximas salidas.",
   "races.status.updated": "Horario actualizado.",
   "races.refresh": "Actualizar horario",
-  "races.refreshed": "Horario solicitado",
-  "races.refreshedHint": "Se ha pedido al backend el calendario publicado.",
 
   "races.views.label": "Vista del calendario",
   "races.views.next": "Próximas",

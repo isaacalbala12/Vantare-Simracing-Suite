@@ -1,5 +1,22 @@
 # Handoff vivo — Strategy Planner
 
+## Visual en código antes de conexión — ISA-1063 (2026-09-08)
+
+Isaac considera plano el prototipo e53bb132 y excesivo el concepto rojo posterior.
+Pide un punto medio y fija el orden: primero completar la parte visual en código,
+después enlazar datos y motor. Se mantiene la dirección A4; no se considera
+aceptado el acabado concreto de esta nueva iteración antes de que lo vea.
+
+Corte local sobre e53bb132, misma rama y worktree: cabecera compacta, línea de
+carrera con selección, iconos, métricas pendientes, tablas, restricciones,
+servicios paralelos y evolución vacía. Rojo en selección e iconos; paneles neutros
+con tinte leve. Cambian plan-preview.js y recorded-editor.css, sin dependencias.
+Se conserva el asistente y la revisión de datos. No se conecta I/O ni solver.
+
+Verificación personal en Chrome y evidencia en el README. Siguiente: revisión
+visual del recorrido en código; después custodia/conexión en cortes por issue.
+No reordenar los contratos internos ni saltar su validación por esta decisión.
+
 ## A4 aceptado y adaptado a Orbit — ISA-1063 (2026-09-08)
 
 Isaac acepta A4 y las pantallas de edición, cálculo, resultado, stint y parada;

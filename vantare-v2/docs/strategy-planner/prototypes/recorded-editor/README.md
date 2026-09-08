@@ -1,5 +1,16 @@
 # ISA-1063 — propuesta registrada con Orbit
 
+Iteración vigente sobre `e53bb132`: punto medio solicitado por Isaac entre
+presentación plana y exceso de iluminación roja. Primero se termina y revisa la
+parte visual en código; después se enlazan datos y motor. La dirección A4 se
+mantiene; este acabado sigue sujeto a revisión visual.
+
+Cambios: `plan-preview.js` y `recorded-editor.css`. Cabecera compacta, timeline
+con estado seleccionado, pictogramas, tarjetas de entrada/salida, tabla de
+servicios, grupos paralelos, restricciones y detalle del stint. Colores Orbit,
+paneles neutros y carmín limitado a señales activas y detalles. Sin dependencias,
+I/O, persistencia, cálculos inventados ni cambios en originales.
+
 Isaac aprueba la dirección A4 y las pantallas de edición, cálculo, resultado,
 stint y parada. Este corte adapta esa composición a los colores actuales de
 Vantare mediante sus tokens Orbit reales. La propuesta inicial rechazada queda
@@ -109,3 +120,19 @@ No se ejecutan Go ni builds React: este corte solo modifica el prototipo documen
 Capturas reales de Chrome del corte A4 (carpeta de visualizaciones de la sesión):
 `strategy-a4-wizard-browser.png`, `strategy-a4-stint-browser.png` y
 `strategy-a4-pit-browser.png`. Son distintas de los conceptos generados.
+
+## Comprobación de la intensidad intermedia
+
+Chrome: siete pasos, acceso a Plan/Parada/Stint y vuelta a Datos; el acceso
+«Revisar datos» deja el foco en Datos. Calcular continúa deshabilitado.
+Parada sin desbordamiento horizontal del main a 1600 (1509/1509), 1198
+(1107/1107), 768 (677/677) y 320 px (252/252). Se corrigió la alineación del
+nodo de parada cuando su etiqueta ocupa dos líneas. Viewport restaurado.
+
+Capturas reales: `strategy-balanced-pit-code.png` y
+`strategy-balanced-stint-code.png` en la carpeta de visualizaciones de la sesión.
+La imagen del garaje sigue siendo decorativa; tablas, iconos, timeline y controles
+son HTML/CSS/SVG. No hay datos generados para rellenar los resultados.
+
+Revisión personal del diff y sintaxis JS; no tests unitarios nuevos para este
+ajuste visual reversible. No builds React/Go: no se modifica código productivo.

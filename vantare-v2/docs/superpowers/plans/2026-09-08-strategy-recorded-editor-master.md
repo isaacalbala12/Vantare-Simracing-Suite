@@ -39,6 +39,14 @@ sigue pendiente. No cambia el flujo aprobado.
 C1a (#1066) prepara identidad y
 corrección escalar antes de conectar la edición; el resto de F1–F5 sigue pendiente.
 
+### Orden visual acordado tras e53bb132
+
+Isaac pide una intensidad roja intermedia y desarrollar primero la parte visual
+en código. Se refina el prototipo #1063 con el detalle del concepto original:
+cabecera compacta, timeline, servicios y restricciones. Revisar el recorrido
+visual antes de enlazarlo; la conexión posterior respeta las dependencias de
+snapshots, correcciones y custodia. No se crean lectores ni solver de demostración.
+
 ## 1. Cómo ejecutar este programa
 
 El corte tiene dependencias empíricas: no es correcto escribir ahora algoritmos o

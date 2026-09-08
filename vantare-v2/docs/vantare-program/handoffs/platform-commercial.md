@@ -1,13 +1,17 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
-## ISA-1061 - Aviso y revision Owner en curso
+## ISA-1061 - Candidato revisado; validacion visual final pendiente
 
 Isaac aprueba el recorrido completo. Rama aislada desde ISA-1058 591b48b7.
 Automatizacion Windows existente (lector diario 03:00) ha recogido el horario
 8-15 septiembre con 11 series el dia5; no faltaban datos, faltaba avisar y
 la instancia anterior tenia otra bandeja. Se reutiliza el flujo existente.
 Aviso persistente Owner, enlace a candidato, aceptar/publicar con ACK correlacionado.
-7 UI y paquete app PASS; suites/review/Wails pendientes. Sin publicacion real,
+Producto74400917 ACCEPT, 147 focales/Go/build/lint/44 roadmap PASS.
+Suite completa3309 PASS/2 omitidas/1 fallo P99 (repeticion aislada PASS).
+Wails confirma aviso y candidato real8-15 septiembre; detecto fuente recortada.
+Arreglo CSS compilado/revisado; nuevo arranque bloqueado por revision automatica
+de permisos, queda GREEN visual final pendiente. Sin publicacion real,
 merge ni release. Documento: docs/analysis/ISA-1061-calendar-owner-review.md.
 
 ## ISA-1058 - Eje horario de Calendario

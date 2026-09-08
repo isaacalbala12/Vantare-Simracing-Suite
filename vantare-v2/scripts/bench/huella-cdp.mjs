@@ -6,12 +6,18 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import process from "node:process";
 import { selectPageMemoryMetrics } from "./huella-cdp-metrics.mjs";
+import { installDiagnosticRuntimeInPage } from "./huella-runtime.mjs";
 import { baseWatchInPage, validateBaseEvidence } from "./huella-base.mjs";
 
 // Playwright pertenece al workspace frontend; resolver desde su package.json
 // evita exigir una segunda instalación en la raíz solo para este banco.
 const requireFromFrontend = createRequire(new URL("../../frontend/package.json", import.meta.url));
 const { chromium } = requireFromFrontend("playwright");
+
+async function runtimeEvaluate(page, fn, arg) {
+  await page.evaluate(installDiagnosticRuntimeInPage);
+  return page.evaluate(fn, arg);
+}
 
 function argument(name, fallback = "") {
   const index = process.argv.indexOf(`--${name}`);
@@ -107,8 +113,8 @@ async function setOverlay(browser, shouldRun) {
   await hub.evaluate(() => { if (window.location.hash !== "#/hub") window.location.hash = "#/hub"; });
   const eventName = shouldRun ? "overlay:start-active" : "overlay:stop";
   const emittedAt = new Date().toISOString();
-  await hub.evaluate(async (name) => {
-    const { Events } = await import("/wails/runtime.js");
+  await runtimeEvaluate(hub, async (name) => {
+    const { Events } = window.__vantareDiagnosticRuntime;
     await Events.Emit(name);
   }, eventName);
   await waitForRole(browser, "overlay", shouldRun);
@@ -167,8 +173,8 @@ async function probe(page, durationMs) {
 }
 
 async function capturePerformance(page, timeoutMs) {
-  return page.evaluate(async (timeout) => {
-    const { Events } = await import("/wails/runtime.js");
+  return runtimeEvaluate(page, async (timeout) => {
+    const { Events } = window.__vantareDiagnosticRuntime;
     return new Promise((resolve, reject) => {
       const timer = window.setTimeout(() => {
         unsubscribe();
@@ -191,8 +197,8 @@ async function capturePerformance(page, timeoutMs) {
 }
 
 async function captureLicense(page, timeoutMs) {
-  return page.evaluate(async (timeout) => {
-    const { Events } = await import("/wails/runtime.js");
+  return runtimeEvaluate(page, async (timeout) => {
+    const { Events } = window.__vantareDiagnosticRuntime;
     return new Promise((resolve, reject) => {
       const transitions = [];
       const timer = window.setTimeout(() => {
@@ -258,7 +264,7 @@ if (action.startsWith("base-")) {
     await hub.getByTestId(baseRoute === 'home' ? 'orbit-home' : `orbit-races-${baseRoute}`).waitFor({ state: 'visible' });
     await writeResult({ schema: 'vantare.base.cdp.v1', action, route: baseRoute });
   } else {
-    const evidence = await hub.evaluate(baseWatchInPage, action === 'base-watch-start' ? 'start' : 'stop');
+    const evidence = await runtimeEvaluate(hub, baseWatchInPage, action === 'base-watch-start' ? 'start' : 'stop');
     const validity = action === 'base-watch-stop' ? validateBaseEvidence(evidence, baseRoute, baseGame === 'present') : null;
     await writeResult({ schema: 'vantare.base.cdp.v1', action, route: baseRoute, gamePresent: baseGame === 'present', evidence, validity });
   }
@@ -282,8 +288,8 @@ if (action === "hub-open") {
   const appPage = (await pagesByRole(browser)).find(({ description }) => description.overlay)?.page;
   if (!appPage) throw new Error("Overlay target is not available to request Hub reopening");
   const startedAt = performance.now();
-  await appPage.evaluate(async () => {
-    const { Events } = await import("/wails/runtime.js");
+  await runtimeEvaluate(appPage, async () => {
+    const { Events } = window.__vantareDiagnosticRuntime;
     await Events.Emit("hub:open");
   });
   await waitForRole(browser, "hub", true, 30_000);
@@ -296,8 +302,8 @@ if (action === "app-quit") {
   const appPage = pages.find(({ description }) => description.hub)?.page
     ?? pages.find(({ description }) => description.overlay)?.page;
   if (!appPage) throw new Error("No Wails target is available for clean shutdown");
-  await appPage.evaluate(async () => {
-    const { Application } = await import("/wails/runtime.js");
+  await runtimeEvaluate(appPage, async () => {
+    const { Application } = window.__vantareDiagnosticRuntime;
     await Application.Quit();
   }).catch(() => {
     // El transporte puede desaparecer antes de responder porque Quit cierra
@@ -310,8 +316,8 @@ await waitForRole(browser, "hub", true, 30_000);
 if (action === "hub-minimise" || action === "hub-restore") {
   const hub = (await pagesByRole(browser)).find(({ description }) => description.hub)?.page;
   if (!hub) throw new Error("Hub target is not available for its window action");
-  await hub.evaluate(async (requestedAction) => {
-    const { Window } = await import("/wails/runtime.js");
+  await runtimeEvaluate(hub, async (requestedAction) => {
+    const { Window } = window.__vantareDiagnosticRuntime;
     if (requestedAction === "hub-minimise") await Window.Minimise();
     else await Window.UnMinimise();
   }, action).catch(() => {

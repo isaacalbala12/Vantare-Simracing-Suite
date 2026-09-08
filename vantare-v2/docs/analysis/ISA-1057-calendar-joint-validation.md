@@ -44,3 +44,22 @@ No se han fusionado cambios a nightly ni publicado releases.
 - Roadmap: 44 tests PASS.
 - Banco extendido a Proximas/Dia/Semana, manteniendo Mes/Timeline/Inicio. Tres casos RED antes; 16 pruebas PASS despues. Solo tooling, sin cambio de producto.
 - Wails, referencia A/A y comparacion de optimizaciones siguen pendientes.
+
+## Primera comprobacion Wails y correccion del banco
+
+Ejecutable aislado bin/isa1057/vantare-calendar.exe, SHA256
+3c2b9a78d0f5c32d989e0d160c63eda791c226bda58baa670114b02f5a798b66.
+Cuenta autenticada, licencia activa, config portable y WebView propios. LMU y otras instancias intactas.
+El calendario recibido tiene 11 series, 0 eventos actuales y vigencia real
+2026-08-25 a 2026-09-01. La interfaz evita salidas inventadas y conserva duraciones estimadas.
+
+La importacion diagnostica de /wails/runtime.js reemplazaba dispatchWailsEvent
+(con otro registro de listeners), dejando la interfaz sin los eventos nativos.
+Reproduccion Wails: resultado ok=true mientras UI conservaba error; recarga sin
+instrumentacion recupera estado correcto. Banco corregido para conservar entrega
+a la app y al observador; 17 pruebas PASS y licencia + refresh real mantienen UI correcta.
+Las capturas previas a refresh-clean.png estan contaminadas por ese diagnostico.
+Los bancos anteriores que usaron esa importacion necesitan repetirse; no son una referencia aceptada.
+
+No hay horario vigente disponible en esta instancia; se ha solicitado su origen
+al usuario para validar proximas salidas y avisos actuales sin inventar datos.

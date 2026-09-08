@@ -53,7 +53,8 @@ export async function baseWatchInPage(action, eventBus) {
   }
   if (action !== 'start') throw new Error('Unknown base watch action');
   if (window.__vantareBaseWatch) throw new Error('Base watch already exists');
-  const Events = eventBus ?? (await import('/wails/runtime.js')).Events;
+  const Events = eventBus ?? window.__vantareDiagnosticRuntime?.Events;
+  if (!Events) throw new Error('Diagnostic runtime must be installed without replacing app events');
   const evidence = { startedAt: new Date().toISOString(), before: read(), changes: [], levels: [], levelEvents: 0, maxLevelGapMs: 0,
     sources: [], sourceEvents: 0, maxSourceGapMs: 0 };
   const record = kind => {

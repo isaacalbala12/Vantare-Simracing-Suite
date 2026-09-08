@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "../../i18n/I18nProvider";
 import type { Calendar, RaceSeries } from "../../calendar/calendar-types";
@@ -10,10 +10,18 @@ import {
 } from "./RacesOrbitPage";
 
 const mockEmit = vi.fn();
+const listeners = new Map<string, Set<(event: unknown) => void>>();
+function backend(name: string, data: unknown) {
+  act(() => { for (const listener of listeners.get(name) ?? []) listener({ data }); });
+}
 vi.mock("@wailsio/runtime", () => ({
   Events: {
     Emit: (...args: unknown[]) => mockEmit(...args),
-    On: () => () => undefined,
+    On: (name: string, listener: (event: unknown) => void) => {
+      const group = listeners.get(name) ?? new Set();
+      group.add(listener); listeners.set(name, group);
+      return () => { group.delete(listener); };
+    },
   },
 }));
 
@@ -33,6 +41,7 @@ afterEach(() => {
   cleanup();
   document.body.replaceChildren();
   mockEmit.mockReset();
+  listeners.clear();
   plan = "paid";
 });
 
@@ -58,6 +67,7 @@ function series(patch: Partial<RaceSeries> & { id: string; name: string }): Race
 }
 
 const CALENDAR: Calendar = {
+  schedule: { validFrom: "2026-07-01T00:00:00Z", validUntil: "2026-08-01T00:00:00Z", updated: "2026-07-01T00:00:00Z", source: "bundled" },
   version: 1,
   timezone: "UTC",
   reminderMinutes: [30, 15, 10, 5, 2],
@@ -86,15 +96,18 @@ function mountSlots() {
   }
 }
 
+function page(props: Partial<Parameters<typeof RacesOrbitPage>[0]> = {}) {
+  return <I18nProvider><ToastProvider><RacesOrbitPage calendar={CALENDAR} now={NOW} {...props} /></ToastProvider></I18nProvider>;
+}
 function setup(props: Partial<Parameters<typeof RacesOrbitPage>[0]> = {}) {
   mountSlots();
-  return render(
-    <I18nProvider>
-      <ToastProvider>
-        <RacesOrbitPage calendar={CALENDAR} now={NOW} {...props} />
-      </ToastProvider>
-    </I18nProvider>,
-  );
+  const view = render(page(props));
+  return { ...view, rerenderPage: (next: Partial<Parameters<typeof RacesOrbitPage>[0]>) => view.rerender(page(next)) };
+}
+function pickFirstDayStart() {
+  fireEvent.click(screen.getByRole("button", { name: "Día" }));
+  fireEvent.click(screen.getAllByTestId("orbit-races-ev-chip").find((chip) => chip.textContent?.includes("LMGT3 Fixed"))!);
+  expect(within(screen.getByTestId("orbit-races-detail")).getByText("Salida elegida")).toBeTruthy();
 }
 
 const VIEWS = [
@@ -106,6 +119,109 @@ const VIEWS = [
 ] as const;
 
 describe("RacesOrbitPage", () => {
+  it("el filtro no arrastra una hora elegida de otra serie", () => {
+    setup(); pickFirstDayStart();
+    fireEvent.click(screen.getByTestId("orbit-races-filter-advanced"));
+    const detail = within(screen.getByTestId("orbit-races-detail"));
+    expect(detail.getByText("Hypercar Open")).toBeTruthy();
+    expect(detail.queryByText("Salida elegida")).toBeNull();
+    expect(detail.getByText("Próxima salida")).toBeTruthy();
+  });
+  it("un nuevo destino de Inicio sustituye la selección manual anterior", () => {
+    const view = setup({ target: "bronze-1" }); pickFirstDayStart();
+    view.rerenderPage({ target: "gold-1" });
+    const detail = within(screen.getByTestId("orbit-races-detail"));
+    expect(detail.getByText("Hypercar Open")).toBeTruthy();
+    expect(detail.queryByText("Salida elegida")).toBeNull();
+  });
+  it("un nuevo horario descarta una hora que ya no es una salida publicada", () => {
+    const view = setup(); pickFirstDayStart();
+    const calendar = { ...CALENDAR, series: CALENDAR.series.map((item) => ({ ...item, startOffsetMinute: 30, recurrence: { kind: "interval", intervalMinutes: 60 } })) };
+    view.rerenderPage({ calendar });
+    const detail = within(screen.getByTestId("orbit-races-detail"));
+    expect(detail.queryByText("Salida elegida")).toBeNull();
+    expect(detail.getByText("Próxima salida")).toBeTruthy();
+  });
+  it("el destino nuevo de Inicio prevalece sobre el filtro anterior", () => {
+    const view = setup();
+    fireEvent.click(screen.getByTestId("orbit-races-filter-advanced"));
+    view.rerenderPage({ target: "bronze-1" });
+    expect(within(screen.getByTestId("orbit-races-detail")).getByText("LMGT3 Fixed")).toBeTruthy();
+  });
+  it("volver a un destino anterior no recupera una selección manual retirada", () => {
+    const view = setup(); pickFirstDayStart();
+    view.rerenderPage({ target: "gold-1" });
+    view.rerenderPage({});
+    expect(within(screen.getByTestId("orbit-races-detail")).queryByText("Salida elegida")).toBeNull();
+  });
+  it("actualizar el seguimiento conserva una hora histórica todavía publicada", () => {
+    const view = setup(); pickFirstDayStart();
+    view.rerenderPage({ calendar: { ...CALENDAR, followedSeriesIds: ["bronze-1"] } });
+    expect(within(screen.getByTestId("orbit-races-detail")).getByText("Salida elegida")).toBeTruthy();
+  });
+  it.each([false, true])("señala las sesiones estimadas sin convertir las confirmadas (estimada: %s)", (estimated) => {
+    setup({ calendar: { ...CALENDAR, series: [series({ id: "s", name: "Sesiones", sessions: [
+      { name: "practice", durationMin: 3, estimated }, { name: "race", durationMin: 20, estimated: false },
+    ] })] } });
+    const detail = screen.getByTestId("orbit-races-detail");
+    expect(detail.textContent).toContain(estimated ? "P ~3 · R 20" : "P 3 · R 20");
+    expect(detail.textContent?.includes("~ duración estimada")).toBe(estimated);
+  });
+
+  it.each([
+    ["especial", false], ["+N", false], ["especial", true], ["+N", true],
+  ] as const)("Mes → Día conserva especiales al abrir %s (con series: %s)", (target, withSeries) => {
+    const events: Calendar["events"] = Array.from({ length: 4 }, (_, index) => ({
+      id: `imported-${index}`, title: `Especial importado ${index}`, sim: "LMU",
+      track: "Sebring", series: "", sessionLabel: "Race", startTime: NOW.toISOString(),
+      durationMin: 20, registrationUrl: "", source: "import", notes: "",
+    }));
+    setup({ calendar: { ...CALENDAR, series: withSeries ? CALENDAR.series : [], events } });
+    fireEvent.click(screen.getByRole("button", { name: "Mes" }));
+    fireEvent.click(target === "+N"
+      ? screen.getByTestId("orbit-races-month-more")
+      : screen.getByRole("button", { name: "Especial importado 0" }));
+    const day = within(screen.getByTestId("orbit-races-day"));
+    for (const event of events) expect(day.getByText(event.title)).toBeTruthy();
+    if (!withSeries) expect(day.queryAllByTestId("orbit-races-ev-chip")).toHaveLength(0);
+  });
+
+  it.each(["pending", "error"] as const)("conserva la caducidad durante %s", (refreshState) => {
+    setup({ refreshState, calendar: { ...CALENDAR, schedule: {
+      validFrom: "2026-07-01T00:00:00Z", validUntil: NOW.toISOString(),
+      updated: "2026-07-01T00:00:00Z", source: "published",
+    } } });
+    const status = screen.getByTestId("orbit-races-status").textContent;
+    expect(status).toContain("Horario caducado");
+    expect(status).toContain(refreshState === "pending" ? "Actualizando" : "No se pudo actualizar");
+  });
+  it.each([
+    ["2026-07-01T00:00:00Z", "2026-07-08T00:00:00Z", "Horario actualizado"],
+    ["2026-07-01T00:00:00Z", "2026-07-07T18:07:30Z", "Horario caducado"],
+    ["2026-07-08T00:00:00Z", "2026-07-15T00:00:00Z", "todavía no ha comenzado"],
+    ["invalid", "2026-07-15T00:00:00Z", "vigencia"],
+    ["2026-07-15T00:00:00Z", "2026-07-08T00:00:00Z", "vigencia"],
+  ])("un refresh confirmado respeta la vigencia %s / %s", (validFrom, validUntil, expected) => {
+    setup({ refreshState: "success", calendar: { ...CALENDAR,
+      schedule: { validFrom, validUntil, updated: validFrom, source: "published" },
+    } });
+    expect(screen.getByTestId("orbit-races-status").textContent).toContain(expected);
+  });
+
+  it("distingue la carga inicial del calendario vacío", () => {
+    const { unmount } = setup({ calendar: null });
+    expect(screen.getByTestId("orbit-races-status").textContent).toContain("Cargando");
+    unmount();
+    setup({ calendar: { ...CALENDAR, series: [] } });
+    expect(screen.getByTestId("orbit-races-status").textContent).toContain("No hay series");
+  });
+
+  it("muestra el error del servicio sin ocultar la vista", () => {
+    setup({ calendarError: true });
+    expect(screen.getByTestId("orbit-races-status").textContent).toContain("No se pudo actualizar");
+    expect(screen.getByTestId("orbit-races-next")).toBeTruthy();
+  });
+
   it("monta las cinco vistas sin ningún `title` nativo", () => {
     setup();
     for (const view of VIEWS) {
@@ -151,13 +267,72 @@ describe("RacesOrbitPage", () => {
   it("seguir una serie despacha el evento real del calendario", () => {
     setup();
     fireEvent.click(screen.getByTestId("orbit-races-follow"));
-    expect(mockEmit).toHaveBeenCalledWith("calendar:series:follow", { seriesId: "bronze-1" });
+    expect(mockEmit).toHaveBeenCalledWith("calendar:series:follow", expect.objectContaining({ seriesId: "bronze-1", requestId: expect.any(String) }));
   });
 
   it("dejar de seguir despacha el evento contrario", () => {
     setup({ calendar: { ...CALENDAR, followedSeriesIds: ["bronze-1"] } });
     fireEvent.click(screen.getByTestId("orbit-races-follow"));
-    expect(mockEmit).toHaveBeenCalledWith("calendar:series:unfollow", { seriesId: "bronze-1" });
+    expect(mockEmit).toHaveBeenCalledWith("calendar:series:unfollow", expect.objectContaining({ seriesId: "bronze-1", requestId: expect.any(String) }));
+  });
+
+  it.each([false, true])("confirma el resultado guardado, no el clic (seguida: %s)", (following) => {
+    const { unmount } = setup({ calendar: { ...CALENDAR, followedSeriesIds: following ? ["bronze-1"] : [] } });
+    const button = screen.getByTestId("orbit-races-follow") as HTMLButtonElement;
+    fireEvent.click(button);
+    const success = following ? "Has dejado de seguir LMGT3 Fixed." : "Serie seguida";
+    expect(screen.queryByText(success)).toBeNull();
+    expect(button.disabled).toBe(true);
+    fireEvent.click(button);
+    expect(mockEmit).toHaveBeenCalledTimes(1);
+    const request = mockEmit.mock.calls[0][1];
+    backend("calendar:series:follow:result", { ...request, requestId: "another", followed: !following, ok: true });
+    expect(button.disabled).toBe(true);
+    backend("calendar:series:follow:result", { ...request, followed: !following, ok: true });
+    expect(screen.getByText(success)).toBeTruthy();
+    unmount();
+    expect(listeners.get("calendar:series:follow:result")?.size).toBe(0);
+  });
+
+  it("un fallo permite reintentar e ignora una respuesta tardía anterior", () => {
+    setup();
+    const button = screen.getByTestId("orbit-races-follow") as HTMLButtonElement;
+    fireEvent.click(button);
+    const first = mockEmit.mock.calls[0][1];
+    backend("calendar:series:follow:result", { ...first, followed: true, ok: false });
+    expect(screen.queryByText("Serie seguida")).toBeNull();
+    expect(screen.getByText("No se pudo guardar el seguimiento")).toBeTruthy();
+    expect(button.disabled).toBe(false);
+    fireEvent.click(button);
+    const second = mockEmit.mock.calls[1][1];
+    expect(second.requestId).not.toBe(first.requestId);
+    backend("calendar:series:follow:result", { ...first, followed: true, ok: true });
+    expect(button.disabled).toBe(true);
+    backend("calendar:series:follow:result", { ...second, followed: true, ok: true });
+    expect(screen.getByText("Serie seguida")).toBeTruthy();
+  });
+
+  it("un fallo del transporte libera el botón sin éxito", async () => {
+    mockEmit.mockRejectedValueOnce(new Error("transport unavailable"));
+    setup();
+    await act(async () => { fireEvent.click(screen.getByTestId("orbit-races-follow")); });
+    expect((screen.getByTestId("orbit-races-follow") as HTMLButtonElement).disabled).toBe(false);
+    expect(screen.queryByText("Serie seguida")).toBeNull();
+    expect(screen.getByText("No se pudo guardar el seguimiento")).toBeTruthy();
+  });
+
+  it("mantiene la correlación al elegir otra serie e ignora resultados inválidos", () => {
+    setup();
+    fireEvent.click(screen.getByTestId("orbit-races-follow"));
+    const request = mockEmit.mock.calls[0][1];
+    fireEvent.click(within(screen.getByTestId("orbit-races-next")).getAllByRole("option")
+      .find((row) => row.textContent?.includes("Hypercar Open"))!);
+    backend("calendar:series:follow:result", { ...request, followed: true, ok: "true" });
+    backend("calendar:series:follow:result", { ...request, seriesId: "gold-1", followed: true, ok: true });
+    expect((screen.getByTestId("orbit-races-follow") as HTMLButtonElement).disabled).toBe(true);
+    backend("calendar:series:follow:result", { ...request, followed: true, ok: true });
+    expect(screen.getByTestId("orbit-toasts").textContent).toContain("LMGT3 Fixed");
+    expect(screen.getByTestId("orbit-toasts").textContent).not.toContain("Hypercar Open");
   });
 
   it("en Free el botón de seguir queda bloqueado con motivo", () => {
@@ -174,6 +349,27 @@ describe("RacesOrbitPage", () => {
     setup();
     fireEvent.click(screen.getByTestId("orbit-races-refresh"));
     expect(mockEmit).toHaveBeenCalledWith("calendar:schedule:refresh");
+    expect(mockEmit).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText("Horario solicitado")).toBeNull();
+  });
+
+  it("muestra actualización pendiente y evita repetir la acción", () => {
+    setup({ refreshState: "pending" });
+    expect(screen.getByTestId("orbit-races-refresh").hasAttribute("disabled")).toBe(true);
+    expect(screen.getByTestId("orbit-races-status").textContent).toContain("Actualizando");
+    fireEvent.click(screen.getByTestId("orbit-races-refresh"));
+    expect(mockEmit).not.toHaveBeenCalled();
+  });
+
+  it("explica el fallo y conserva las vistas disponibles", () => {
+    setup({ refreshState: "error" });
+    expect(screen.getByTestId("orbit-races-status").textContent).toContain("No se pudo actualizar");
+    expect(screen.getByTestId("orbit-races-next")).toBeTruthy();
+  });
+
+  it("distingue vigencia desconocida de un calendario vacío", () => {
+    setup({ calendar: { ...CALENDAR, schedule: undefined } });
+    expect(screen.getByTestId("orbit-races-status").textContent).toContain("vigencia");
   });
 
   it("las filas de Próximas se agrupan por hora y la seleccionada marca la barra", () => {

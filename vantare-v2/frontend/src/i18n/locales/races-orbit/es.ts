@@ -1,12 +1,17 @@
 /** Catálogo `races.*` de Command Orbit v0.3 (`docs/design/orbit-v03/14-i18n.md`). */
 export const racesOrbitEs: Record<string, string> = {
   "races.eyebrow": "Calendario LMU",
-  "races.title": "Carreras",
+  "races.title": "Calendario",
   "races.lead":
-    "Salidas calculadas desde la cadencia publicada del fixture, en tu zona horaria.",
+    "Horarios y próximas salidas, en tu zona horaria.",
+  "races.status.refreshing": "Actualizando…",
+  "races.status.error": "No se pudo actualizar el calendario. Inténtalo de nuevo.",
+  "races.status.loading": "Cargando calendario…",
+  "races.status.unknown": "No se conoce la vigencia del horario. Actualízalo.",
+  "races.status.future": "Este horario todavía no ha comenzado.",
+  "races.status.expired": "Horario caducado. Actualiza para consultar próximas salidas.",
+  "races.status.updated": "Horario actualizado.",
   "races.refresh": "Actualizar horario",
-  "races.refreshed": "Horario solicitado",
-  "races.refreshedHint": "Se ha pedido al backend el calendario publicado.",
 
   "races.views.label": "Vista del calendario",
   "races.views.next": "Próximas",
@@ -46,6 +51,7 @@ export const racesOrbitEs: Record<string, string> = {
   "races.detail.race": "Carrera",
   "races.detail.cadence": "Cadencia",
   "races.detail.next": "Próxima salida",
+  "races.detail.estimated": "~ duración estimada",
   "races.detail.sessions": "Sesiones",
   "races.detail.starts": "Siguientes salidas",
   "races.detail.picked": "Salida elegida",
@@ -72,6 +78,9 @@ export const racesOrbitEs: Record<string, string> = {
   "races.tier.advanced": "Oro",
   "races.tier.weekly": "Semanal",
 
+  "races.detail.followPending": "Guardando…",
+  "races.toasts.followFailed": "No se pudo guardar el seguimiento",
+  "races.toasts.followFailedHint": "Tu preferencia no se ha confirmado. Vuelve a intentarlo.",
   "races.toasts.followed": "Serie seguida",
   "races.toasts.followedHint":
     "Recordatorios a {{minutes}} min de cada salida de {{name}}.",

@@ -1,5 +1,341 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+## ISA-1058 - Eje horario de Calendario
+
+Candidato aislado sobre ISA-1057 dd5dc1d7. Solo el modelo de Calendario ajusta
+la densidad de etiquetas; test real de geometria RED/GREEN (12 combinaciones).
+152 focales PASS/2 externas omitidas. Build/lint PASS, fullfrontend 3302 PASS/2 omitidas. Review ACCEPT bfea3baa. Wails 1264x761: cero solapamientos en 6/12/24h. Sigue pendiente horario vigente para completar C1/C10/C11; no ahorro medido.
+No integrado ni publicado. Evidencia: docs/analysis/ISA-1058-calendar-timeline-labels.md.
+
+## ISA-1057 - Calendario: validacion conjunta en curso
+
+Rama aislada sobre nightly d6d0992f. Reune los candidatos C2-C9, el nombre
+Calendario y el banco de medicion; no incluye aun #1020/#1024.
+142 pruebas focales PASS, 2 omitidas por artefacto externo. Build, lint, Go completo y 44 pruebas roadmap PASS. Frontend completo: 3299 PASS, 2 omitidas y 2 timeout Pedals Redline (#1025); suite no verde. Review estatica ACCEPT f8c36cc1. Banco ampliado a las cinco vistas: 16 PASS. Wails aislado autentica y actualiza estado correctamente; solo dispone de horario caducado (25 agosto-1 septiembre). Se corrige interferencia del banco con dispatch Wails; 17 pruebas PASS. Capturas anteriores contaminadas; no hay ahorro medido. Se solicita origen de horario vigente para avisos/proximas salidas.
+Manifest y resoluciones: docs/analysis/ISA-1057-calendar-joint-validation.md.
+Siguiente: review final del banco (19 PASS tras concurrencia RED), horario vigente para C1/C10 y despues C11. Las cinco vistas y seguimiento pasan en Wails con horario caducado; Timeline tiene eje superpuesto, registrado aparte en #1058.
+No merge a nightly, release ni cambios de producto en HUD/OBS/Studio.
+
+## ISA-1015 — rendimiento de la base, medición junto a LMU (2026-09-08)
+
+Estado vigente: Isaac añade rapidez de arranque, pantallas, interacción,
+desplazamiento y restauración al objetivo de consumo. Misma apariencia y datos;
+HUD/Studio excluidos. Protocolo ampliado en el informe y roadmap, todavía sin
+tiempos de navegación validados ni cortes de producto. Medir contenido utilizable,
+separar primera visita/revisita y latencia visible de señal DOM. Navegación con
+foco foreground; el reposo background no certifica rapidez percibida.
+
+Tres corridas completas con LMU, 60 s warmup +180 s configurados cada una,
+terminadas y cierre limpio: CPU 0,4907/0,6322/0,5718 %, memoria privada
+346,33/344,25/343,35 MiB. Media entre corridas 0,5649 % y 344,64 MiB;
+CV muestral CPU 12,57 %, RAM 0,44 %. No A/A formal ni ahorro. Motor 3D
+atribuido 0,06407/0,06046/0,06543 %, no porcentaje total de tarjeta.
+215 instantes propios, 213 GPU válidos; dos intervalos GPU excluidos.
+Home background estable, Auto3/full/raf40, lmu/stale/available/sourceHz0;
+no prueba conducción. LMU/Edge/Racelab conservados, consumo separado.
+Crudos y resumen en results/isa1015-base-live. Tooling a185b50f subido;
+60/60 tests PASS, revisión ACCEPT hasta 4000b023 y regresión decimal revisada
+por padre. Smoke3 positivo; validación negativa nativa pendiente.
+
+CI a185b50f: primer intento falla en PTT conocido #812; única repetición del
+run 34166748099 pasa Go y falla en presupuesto parse de OverlayFrame v2:
+1,532 ms frente a 1,5 ms, 3235 PASS/1 FAIL, hallazgo #1019 en Project Vantare.
+Roadmap ampliado y regenerado, 23+21 tests PASS. Fallo anterior separado en #1018;
+workflow inerte #728 persiste. Sin cambios en esas superficies ni merge/release.
+Siguiente acción: atribuir arranque/preparar navegación real antes de seleccionar
+una issue de corte. El historial siguiente conserva evidencia anterior y sus
+pendientes se sustituyen por este estado cuando corresponda.
+
+Decisión vigente: Isaac autoriza continuar con LMU y Edge abiertos; sustituye la
+pausa sin juego del 2026-09-07. BaseRoute/A0 mide solo procesos propios; el juego
+tiene CSV de contexto separado y debe conservar PID/vida durante el intervalo.
+No PresentMon/ETW adicional ni control del juego. Auto admite sourceHz variable,
+pero exige política estable; ops:metrics etiqueta fuente sin confundir live/stale
+con menú/carrera. GPU conserva instancias por adaptador/motor, sin convertir la
+suma histórica en porcentaje total. 60/60 tests del banco PASS. Dos regresiones
+iniciales y dos P2 de revisión reproducidos/corregidos (primera fuente tardía y
+gamePresent inicial contradictorio). Parser/diff-check PASS; cierre de revisión
+ACCEPT estático de 0974d1d6. Dos smokes cancelados antes de medir por Hub no
+foreground (Racelab conservaba foco), app propia cerrada y LMU/Edge intactos.
+Coexistencia ahora valida los hechos nativos existentes: visible/no minimizado y
+foco estable, etiquetando background/foreground y oclusión unknown. Conserva
+valid original del monitor (foreground), publica criterio propio en el intervalo
+y mantiene SinJuego estricto. Revisión de este criterio ACCEPT y smoke3 PASS.
+
+Isaac aprueba auditar y medir todo salvo HUD/OBS/widgets y Overlay Studio,
+preservando apariencia, capacidades y contratos compartidos. Base verificada
+`origin/nightly@d6d0992f8dbc800ccb6d75f60fffdc7c3d561da2`; rama
+`vantareapp/isa-1015-base-app-performance`, worktree `C:/tmp/vantare-isa1015-base-app`.
+Checkout principal y cambios previos preservados. Issue #1015, área plataforma,
+estado in-progress; sin versión comprometida ni autorización de integración.
+
+Inventarios estáticos UI/Core terminados en snapshots independientes limpios.
+Tres prioridades para atribuir: Ops sin consumidor, detección repetida de build
+con LMU ausente y recálculos de Carreras/calendario. No son ahorros medidos.
+Informe/protocolo: `docs/analysis/ISA-1015-base-app-performance.md`.
+
+Tooling local: build de diagnóstico desde entorno sin leer `.env`, preservación
+de configuración/generado previo; SinJuego ya no cambia PATH ni consulta/limpia
+ETW de PresentMon. Dos regresiones fallan contra la base; preparación inicial
+44/44 PASS y revisión estática ACCEPT. Extensión base posterior: 51/51 PASS,
+parser/diff-check PASS, `go test ./...` completo y build del monitor PASS.
+Roadmap previo 23+21 tests PASS. A0/SinJuego sigue no publicable y exploratorio;
+faltan validación Wails de la extensión, GPU por motor, control de mezcla y
+lifecycle minimizado para baseline aceptable. Sin corte productivo.
+
+Preflight real posterior: build frontend/typecheck y Go PASS, canal nightly
+explícito (el script antes conservaba master). BuildChannel normalizado a
+minúsculas, regresión de Nightly y flag Go; banco 44/44 PASS. Binario SHA-256
+`53136de43fde4117aa96fa12512b865291ce19b0fe5bbe7c33b6fd586ea26943`.
+Runtime aprobado 700201f9 verificado + handshake smoke PASS, junto al exe.
+Inicio real con Owner autenticado/deviceOK, sin HUD/Studio, Auto nivel 2 y
+effects full; cierre limpio. Evidencia local en `results/isa1015-preflight`.
+Configs/WebView propios; auth y cachés siguen rutas productivas compartidas,
+sin leer ni copiar credenciales. Escenario portable preparado, no instalación habitual.
+
+Preparación comprometida y subida en `2994de6e`; PR borrador #1017 hacia nightly.
+Contrato exacto de roadmap contra issue #1015 PASS. Preparación inicial e93c7845
+subida con CI remoto PASS (run 34161443366, gates de promoción/bloqueantes y
+GitGuardian). Código ampliado hasta 3abe2b16, seguido del cierre documental;
+consultar PR #1017 para SHA/CI de esa entrega posterior. No equivale a integración.
+Testing Center agent fix sigue fallando en pushes sin jobs/check-runs (run
+34164832100 sobre 29efba6c y anteriores): coincide con la issue abierta #728.
+Workflows sin cambios; no confundir PASS del gate de rama con todos los workflows
+verdes ni corregir #728 dentro de esta campaña.
+
+Primera ventana de medición: Isaac declaró PC disponible y cerró LMU/otra Vantare. La tarea de
+widgets terminó su turno documental. Isaac exige mantener los cinco Edge sin
+ventana: no cerrarlos. Registrar sus snapshots aparte y reutilizar el binario/WebView
+preparados para explorar Inicio (A0/SinJuego/Forzar, 60 s warmup + 180 s captura,
+hygieneForced=true, publishable=false). No descontar interferencia a partir de
+snapshots ni convertir esta exploración en aceptación. Revisión independiente de
+este primer paso conforme; CPU/RAM propias, GPU suma de motores solo diagnóstica.
+Primera captura completada: run1/a0-20260907-231514.csv bajo
+results/isa1015-base-home, 60 s warmup + 180 s configurados; 80 muestras,
+cadencia media 2,252 s. CPU propia 0,1907 %, memoria privada 342,69 MiB,
+working sets 533,13 MiB (suma con páginas compartidas), VRAM 74,23 MiB.
+GPU suma motores 0,0836 solo diagnóstica. Exe/dist estables y cierre limpio.
+Edge mismos cinco PID, 0,046875 s CPU en intervalo ampliado de 263,141 s;
+no se descuenta interferencia. No A/A, no aceptación ni ahorro.
+Perfil Go de 120 s inconcluso (GetMessage domina las muestras, sin delta CPU del
+mismo intervalo). Perfil JS optimizado ilegible descartado; se construyó copia
+ReadableFrontend separada, SHA 01f1157e, y se restauró el dist optimizado f1a69bb8.
+Perfiles legibles de 60 s: script Inicio 0,138 s, Mes 0,196 s, Timeline 0,314 s;
+cero tareas largas. Calendario backend real 11 series, Mes 42 celdas y Timeline
+660 salidas. RAf del propio diagnóstico no es coste productivo ni FPS presentado.
+No hay todavía evidencia suficiente para elegir un corte. Ver informe para hashes,
+crudos, límites y métricas; no comparar esta build con el CSV optimizado.
+
+Worker nativo: commit 116250cf revisado por el padre e incorporado como 7758085d;
+solo dos archivos del monitor. `--surface hub` observa PID+título Vantare Hub,
+visibilidad/foreground, minimizado y presencia; oclusión unknown, overlay intacto.
+El banco integra `-BaseRoute home|month|timeline` sobre A0/SinJuego, observador
+pasivo de ruta/viewport/Auto y metadatos base. Cambios intermedios o silencios
+de performance superiores a 3 s invalidan; Forzar/SinJuego sigue no publicable.
+La revisión encontró dos P2: ida/vuelta Mes-Timeline invisible al observar solo
+aria-current, y apertura/cierre de HUD entre extremos. Ambos reproducidos con el
+observador real en fixtures DOM/event-bus (RED), corregidos observando atributos
+de selección y overlay:status (GREEN); las interacciones invalidan sin guardar
+su contenido y se desmontan todos los listeners. Revisión independiente de cierre
+ACCEPT estático sobre 3abe2b16: ambos P2 cerrados, sin nuevos P1/P2 en el diff.
+
+Pausa runtime: LMU PID 29092 se reabrió a las 23:40:05 CEST, después de todas las
+capturas/perfiles y del cierre del diagnóstico (23:34:33). La tarea de widgets
+está activa. No cerrar LMU ni los cinco Edge. Se preguntó disponibilidad de nuevo;
+guard BaseRoute comprobado con LMU real: rechaza antes de lanzar Vantare.
+Esta pausa fue sustituida por la autorización anterior. Siguiente con LMU abierto: smoke Wails positivo y negativo del
+monitor/observador, una corrida completa, después A/A y control GPU/mezcla.
+El run1 no recibe garantías retroactivas. Los cinco experimentos sin mejora no
+han empezado ni se reinicia presupuesto. Los fallos CI históricos de la base
+siguen separados; SQLite pasó en esta suite local. Sin merge, promoción ni release.
+
+## ISA-1022 — nombre Calendario (2026-09-08)
+
+Isaac solicita renombrar la pestaña Carreras a Calendario. Base nightly d6d0992f,
+rama vantareapp/isa-1022-calendar-name, worktree C:/tmp/vantare-isa1022-calendar-name.
+Cambio de texto en 16 catálogos (shell/races/home/strategy, ES/EN/PT/IT) y etiqueta
+legacy de navegación; roadmap actualizado y generado. Se mantienen claves, rutas,
+preferencias, vistas y datos. No se sustituyen menciones genéricas a competiciones.
+Sin dependencia de los candidatos de rendimiento #1017/#1021 ni cambios HUD/Studio.
+Dos expectativas existentes de tests actualizadas al nombre nuevo, sin alterar
+las aserciones de navegación. 3236/3236 tests frontend, 415 archivos PASS;
+typecheck/build/lint y 23+21 tests de roadmap PASS. Diff revisado y limpio.
+Primera suite falló por el nombre anterior del botón; resultado conservado junto
+al PASS final en results/isa1022-checks. AbortError de teardown y aviso de chunks
+grandes sin fallo final. Sin Go modificado; no se repite Go local.
+22 archivos modificados, ninguno creado/movido. Entrega draft; CI remoto y
+verificación Wails pendientes. Ver #1022 para SHA/PR/CI actualizados.
+Manual: revisar pestaña/títulos y enlaces de Inicio/Strategy en los cuatro idiomas.
+Sin merge, promoción ni release.
+
+## ISA-1055 — avisos nativos y permisos (2026-09-08)
+
+C6c reutiliza notify.Service/SystemEnabled/autorización/minimizado y comprueba
+acceso nativo al seguir y emitir recordatorio. Roles separados de planes, estado
+active/grace; Free/bloqueado/desconocido no concede acceso. Payload compartido
+conservado para autorizados. Gate adelantado al cálculo/dedupe para no consumir
+avisos antes de validar cuenta; regresión por canales RED. Build y módulos
+Calendar/license/notify/app y full Go PASS; 35 focales UI/i18n, roadmap23+21
+y build PASS. Fullfrontend3240PASS/1timeoutPedals #1025; review ACCEPTa7454887. Base C6b a9a17cf3, rama vantareapp/isa-1055-calendar-native-reminders.
+Informe ISA-1055 en docs/analysis; diferencia gate UI legado/nativo documentada.
+C9 candidato #1054 aceptado; falta validación conjunta Wails y A/A–A/B. Sin merge/release.
+
+## ISA-1050 — confirmación de seguimiento (2026-09-08)
+
+C6b: resultado correlacionado tras persistencia, UI pendiente/sin doble clic,
+éxito confirmado y error recuperable. Free bloqueado como antes. 94 focales
+frontend, módulo app completo, build/tipos/lint/roadmap PASS. Full frontend
+3240 PASS, un timeout TrackMap #1025. Review P2 de expectativas event-only
+reproducido (7 RED) y corregido; review ACCEPT 81ffddfa y full Go PASS.
+Base C6a e9dc8ef9; C6a aceptado y full Go PASS, candidato #1051. Rama
+vantareapp/isa-1050-calendar-follow-confirmation. Informe ISA-1050 en docs/analysis.
+Quedan C6c permisos/avisos nativos, C9, Wails y rendimiento. Sin merge/release.
+
+## ISA-1049 — seguimiento atómico ante error (2026-09-08)
+
+C6a de #1027: cuatro operaciones restauran memoria/Updated al fallar escritura;
+el reintento persiste realmente. Cuatro regresiones RED→GREEN, módulo PASS.
+Base C5 9f3c5447, rama vantareapp/isa-1049-calendar-follow-persistence.
+Build/full Go/roadmap/review pendientes. Informe ISA-1049 en docs/analysis.
+C8 aceptado en #1048; C7 #1047 CI verde. C5 #1045 CI roja por parser p99 #1019.
+Quedan C6b UI/permisos, C9, Wails y A/A–A/B. Sin merge o release.
+
+## ISA-1027 / ISA-1029 — Calendario, plan aprobado y primer corte (2026-09-08)
+
+Isaac aprobó ejecutar el plan `docs/analysis/ISA-1027-calendar-plan.md`.
+El expediente #1027 recoge ocho hallazgos y sus reproducciones; no es una
+certificación visual Wails. HUD/OBS/Studio están excluidos de cambios.
+
+Primer corte #1029: `vantareapp/isa-1029-calendar-retention`, worktree
+`C:/tmp/vantare-isa1029-calendar-retention`, base nightly `d6d0992f`.
+Regresiones RED verificadas para fallo remoto, proyecto remoto vacío,
+publicación anterior/futura, reinicio, pérdida de vigencia y fallo de escritura.
+GREEN: `go test ./internal/calendar/...` PASS. El documento guarda metadatos
+aditivos, conserva horario/seguimientos al fallar red o arrancar y restaura la
+memoria anterior si no puede persistir. Los eventos compartidos se conservan.
+Build frontend PASS para el embed; `go test ./...` PASS y roadmap 23+21 PASS.
+Primera revisión independiente: dos P2 reproducidos y corregidos (orden de
+publicaciones de la misma semana mediante PublishedAt y protección de archivos
+legacy ante publicación futura). Módulo Calendar y `go test ./...` GREEN;
+revisión independiente final 01a6b613 ACCEPT para C2, sin P1/P2 nuevos;
+ver #1029 para la evidencia de cierre, commit, PR y CI exactos.
+
+Pendiente: propagar vigencia por normalización/frontend (C3), errores/acuse (C4),
+recordatorios (C5/C6), fechas/vistas/detalle (C7–C9), Wails representativo (C1) y
+banco A/A–A/B (C10/C11). #1020/#1022/#1024 son candidatos separados que no se
+presuponen integrados. Sin porcentaje de ahorro global ni validación de conducción.
+Sin merge, promoción o release; el checkout principal y LMU/Edge se preservan.
+
+## ISA-1039 — recordatorios de series (2026-09-08)
+
+C5 de #1027 expande solo la ventana de avisos de las series seguidas y corrige
+truncamiento de minutos. RED inicial y de review reproducidos; módulo Calendar GREEN.
+Poda dedupe de ocurrencias iniciadas, conserva seguimiento individual, sin tocar HUD/Studio.
+Rama vantareapp/isa-1039-calendar-series-reminders ahora sobre C2 e9321068,
+dependencia necesaria para vigencia. Rebase local sin integración de nightly;
+documentos de ambos cortes conservados y JSON regenerado. Build y roadmap PASS;
+Go completo final PASS y review 6094c44e ACCEPT. Informe ISA-1039 en docs/analysis.
+C2/C3/C4a/C4b son candidatos #1031/#1034/#1036/#1040, sin integrar. C6–C11,
+recorrido Wails y banco de rendimiento continúan pendientes. Sin merge ni release.
+
+## ISA-1052 — detalle y selección (2026-09-08)
+
+C9: sesiones estimadas marcadas con ~ y explicación; selección ligada a serie,
+instante y destino, validada con el motor/publicación actual. Nuevo target limpia
+filtro/selección; no pierde horas históricas válidas. RED 7+2, focal133PASS/2skips,
+build/tipos/lint/roadmap PASS; review ACCEPT3c85e2b8. Full frontend3276PASS,
+2skips y4timeouts externos (#1025). Base C8 ec3a75f5, rama
+vantareapp/isa-1052-calendar-detail-selection. Informe ISA-1052 en docs/analysis.
+C6a/C6b aceptados, full Go PASS, candidatos #1051/#1053; C6c y Wails/rendimiento
+pendientes. No merge/release, HUD/Studio intactos.
+
+## ISA-1046 — clasificación de Mes (2026-09-08)
+
+C8 de #1027 evita que las ocurrencias generadas aparezcan como especiales.
+Identidad/fuente exacta y todas las series publicadas, sin usar título/filtro activo.
+RED tres fallos; GREEN siete portables y contraste opt-in con 4596 eventos Go,
+ocho PASS. Sin mutar documento ni tocar HUD/Studio/CSS. Base C7 411b5538;
+C7 aceptado en review y candidato #1047, no integrado. Rama
+vantareapp/isa-1046-calendar-month-classification. Review halló P2 Mes → Día:
+cuatro regresiones RED, corregidas; especiales presentes con/sin series y sin
+duplicar ocurrencias. 113 focales PASS, build/tipos/lint/roadmap PASS; review ACCEPT 6a1daf60.
+Suite completa 3269 PASS, 2 skips, 3 FAIL fuera de Calendario: parser p99
+(#1019), Relative Crystal 30 s y Pedals Redline missing 20 s (#1025).
+Informe en docs/analysis/ISA-1046-calendar-month-classification.md.
+Continúan C6/C9, Wails y medición A/A–A/B; sin merge ni release.
+
+## ISA-1044 — días locales y slots (2026-09-08)
+
+C7 de #1027: fechas civiles con setDate; cantidad por ventana real en vez de ocho;
+hora repetida conserva instante y se identifica con UTC. Base C3 317ff133,
+sin integración. Rama vantareapp/isa-1044-calendar-local-days. RED seis fallos,
+focal 124 PASS y matriz UTC/Madrid/Nueva York. Checks finales/review en curso.
+Informe docs/analysis/ISA-1044-calendar-local-days.md. Sin CSS, HUD o Studio.
+C2/C3/C4a/C4b/C5 candidatos #1031/#1034/#1036/#1040/#1045; quedan C6, C8/C9,
+Wails y rendimiento A/A–A/B. No merge ni release.
+
+## ISA-1032 — vigencia en Inicio y Calendario (2026-09-08)
+
+Corte C3 del plan #1027 aprobado por Isaac, dependiente de #1029 / PR #1031.
+Rama `vantareapp/isa-1032-calendar-validity`, worktree
+`C:/tmp/vantare-isa1032-calendar-validity`, base nightly `d6d0992f`.
+El corte conserva schedule en el store y limita previews/motor a [inicio, fin).
+Documentos antiguos sin vigencia verificable no producen nuevas salidas.
+Regresión con el seed real: seis casos RED→GREEN (metadatos, desconocido,
+caducado, preview inválido, cinco vistas y detalle). 112 focales PASS;
+typecheck/lint/build PASS. Suite completa 3243 PASS/2 FAIL: timeouts 20 s en
+PedalsRedline excluido, antecedente #1025; no se declara verde ni se debilita.
+Go completo y roadmap 23+21 PASS. Review inicial P2 de conteo mensual en día
+parcialmente vigente: RED 12 frente a 3; GREEN 3. Revisión final fc12ceee ACCEPT
+para C3 sin nuevos P1/P2; build final PASS.
+evidencia final en docs/analysis/ISA-1032-calendar-validity.md y #1032.
+
+No integrar este frontend antes del backend #1031: la nightly base aún no emite
+el metadato. C4 aporta estados visibles/acuse; C5–C11 siguen pendientes.
+F4/F5/F6 de la auditoría no se declaran resueltos aquí. Sin Wails real ni ahorro
+global, HUD/Studio intactos, sin merge o release. La PR #1031 tiene revisión
+independiente C2 ACCEPT y Go/build locales PASS; CI remoto se verifica aparte.
+
+### Seguimiento de review C4b (2026-09-08)
+
+ISA-1035 añade snapshot local del estado de refresh para el shell que se monta
+después del arranque. No repite red. Regresión RED/GREEN del puente PASS;
+revisión 749d7761 ACCEPT y Go completo PASS. Continúa en el mismo corte C4a,
+sin integración; C4b ISA-1037 consume calendar:refresh:status:get/status.
+
+## ISA-1035 — resultado de actualización de Calendario (2026-09-08)
+
+C4a del plan #1027 aprobado. Rama `vantareapp/isa-1035-calendar-refresh-result`,
+worktree `C:/tmp/vantare-isa1035-calendar-refresh-result`, base nightly d6d0992f.
+El puente anuncia `calendar:refresh:started`, luego `calendar:loaded` si hay éxito
+y `calendar:refresh:result` con `{ok:true|false}`. No expone detalles privados del
+error. El arranque y la acción manual usan el mismo recorrido, serializado y con
+contexto de cierre para la consulta remota. Tests de éxito/fallo RED→GREEN.
+Bridge, build embed, Go completo y roadmap 23+21 PASS. Review independiente
+b15c7f76 ACCEPT para C4a sin P1/P2. Evidencia docs/analysis/ISA-1035-calendar-refresh-result.md.
+
+La conservación depende de C2 #1029/PR #1031; C3 #1032/PR #1034 limita vigencia.
+Ambos tienen review independiente ACCEPT y checks locales focales/build/Go PASS;
+#1031 CI falla en SQLite conocido #811 y la suite frontend de C3 tiene dos
+timeouts Pedals conocidos #1025. No afirmar conjunto verde. C4b añade la UI de
+estos estados; C1/C5–C11 pendientes. HUD/Studio, LMU y Edge intactos; sin merge/release.
+
+## ISA-1037 — estados de Calendario (2026-09-08)
+
+C4b de #1027: estados independientes del documento, refresh de una petición,
+sin éxito anticipado y aviso de vigencia en la descripción existente. Cuatro
+idiomas, sin CSS. Depende de #1029/#1032/#1035, todos candidatos sin integrar.
+Rama vantareapp/isa-1037-calendar-status-ui desde nightly d6d0992f.
+RED inicial siete fallos; review detectó dos P2, reproducidos y corregidos.
+GREEN final 70 focales, build/typecheck/lint y roadmap 23+21 PASS; review 7a84c268
+ACCEPT. Suite completa no verde: cuatro timeouts de overlays, i18n corregido;
+Go completo falla deuda SQLite #708. C4a 749d7761 añade snapshot local para
+recuperar resultado de arranque sin otra descarga. Evidencia y límites en
+docs/analysis/ISA-1037-calendar-status-ui.md. Sin validación Wails conjunta todavía.
+Pendientes del plan: recordatorios/confirmación de seguimiento, DST y slots,
+clasificación de Mes, detalle, Wails real y medición A/A antes de más optimización.
+No se toca HUD/Studio ni el checkout principal; no merge ni release.
+
 ## ISA-1011 — runtime de release (2026-09-07)
 
 Nightly.15 no se publicó: el segundo intento 34062671599 pasó tests pero

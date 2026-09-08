@@ -11,7 +11,9 @@ false sin loaded ni detalles privados. Usa el mismo camino para inicio y petici�
 manual. Mutex serializa refreshes; la petición HTTP recibe contexto de cierre.
 No se introduce un servicio, transporte o interfaz adicional.
 
-Pruebas focales del puente PASS. Gates completos y review independiente en curso.
+Pruebas focales del puente, build frontend para embed, `go test ./...`,
+roadmap 23+21 y diff check PASS. Review independiente b15c7f76 ACCEPT para C4a,
+sin P1/P2 nuevos. No cambios frontend; no se repite su suite/lint en este corte.
 Wails visual real y avisos visibles aún no ejecutados; no se declara ahorro.
 
 Contrato aditivo: calendar:refresh:started lleva objeto vacío; calendar:refresh:result

@@ -8,7 +8,8 @@ El puente anuncia `calendar:refresh:started`, luego `calendar:loaded` si hay éx
 y `calendar:refresh:result` con `{ok:true|false}`. No expone detalles privados del
 error. El arranque y la acción manual usan el mismo recorrido, serializado y con
 contexto de cierre para la consulta remota. Tests de éxito/fallo RED→GREEN.
-Gates y review en curso, evidencia docs/analysis/ISA-1035-calendar-refresh-result.md.
+Bridge, build embed, Go completo y roadmap 23+21 PASS. Review independiente
+b15c7f76 ACCEPT para C4a sin P1/P2. Evidencia docs/analysis/ISA-1035-calendar-refresh-result.md.
 
 La conservación depende de C2 #1029/PR #1031; C3 #1032/PR #1034 limita vigencia.
 Ambos tienen review independiente ACCEPT y checks locales focales/build/Go PASS;

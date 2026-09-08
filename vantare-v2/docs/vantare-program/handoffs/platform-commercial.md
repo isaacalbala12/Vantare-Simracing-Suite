@@ -1,5 +1,27 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+## ISA-1032 — vigencia en Inicio y Calendario (2026-09-08)
+
+Corte C3 del plan #1027 aprobado por Isaac, dependiente de #1029 / PR #1031.
+Rama `vantareapp/isa-1032-calendar-validity`, worktree
+`C:/tmp/vantare-isa1032-calendar-validity`, base nightly `d6d0992f`.
+El corte conserva schedule en el store y limita previews/motor a [inicio, fin).
+Documentos antiguos sin vigencia verificable no producen nuevas salidas.
+Regresión con el seed real: seis casos RED→GREEN (metadatos, desconocido,
+caducado, preview inválido, cinco vistas y detalle). 112 focales PASS;
+typecheck/lint/build PASS. Suite completa 3243 PASS/2 FAIL: timeouts 20 s en
+PedalsRedline excluido, antecedente #1025; no se declara verde ni se debilita.
+Go completo y roadmap 23+21 PASS. Review inicial P2 de conteo mensual en día
+parcialmente vigente: RED 12 frente a 3; GREEN 3. Revisión final fc12ceee ACCEPT
+para C3 sin nuevos P1/P2; build final PASS.
+evidencia final en docs/analysis/ISA-1032-calendar-validity.md y #1032.
+
+No integrar este frontend antes del backend #1031: la nightly base aún no emite
+el metadato. C4 aporta estados visibles/acuse; C5–C11 siguen pendientes.
+F4/F5/F6 de la auditoría no se declaran resueltos aquí. Sin Wails real ni ahorro
+global, HUD/Studio intactos, sin merge o release. La PR #1031 tiene revisión
+independiente C2 ACCEPT y Go/build locales PASS; CI remoto se verifica aparte.
+
 ## ISA-1011 — runtime de release (2026-09-07)
 
 Nightly.15 no se publicó: el segundo intento 34062671599 pasó tests pero

@@ -7,6 +7,8 @@ import type { Calendar } from "../calendar/calendar-types";
  * details instead of materialised hourly blocks.
  */
 export const mockCalendar: Calendar = {
+  // Explicit test window for the frozen July visual harness, not a live publication.
+  schedule: { validFrom: "2026-07-01T00:00:00Z", validUntil: "2026-08-01T00:00:00Z", updated: "2026-07-07T10:00:00Z", source: "bundled" },
   version: 1,
   timezone: "UTC",
   reminderMinutes: [30, 15, 10, 5, 2],

@@ -8,7 +8,7 @@
  */
 import type { Calendar, RaceSeries } from "../../calendar/calendar-types";
 import { nextStarts, upcoming, type Series, type SeriesTier } from "../orbit/next-starts";
-import { toEngineSeries, type LicenseTier } from "../orbit/race-starts";
+import { scheduleWindow, toEngineSeries, type LicenseTier } from "../orbit/race-starts";
 
 export type TierFilter = "all" | SeriesTier;
 
@@ -94,11 +94,13 @@ function sessionsLabel(series: RaceSeries): string {
  */
 export function buildSeriesEntries(calendar: Calendar | null): RaceSeriesEntry[] {
   if (!calendar) return [];
+  const window = scheduleWindow(calendar);
+  if (!window) return [];
   const followed = new Set(calendar.followedSeriesIds ?? []);
   const entries: RaceSeriesEntry[] = [];
 
   for (const series of calendar.series ?? []) {
-    const engine = toEngineSeries(series);
+    const engine = toEngineSeries(series, window);
     if (!engine) continue;
     entries.push({
       id: series.id,
@@ -325,15 +327,19 @@ export function monthDays(
       day,
       other,
       today: day.getTime() === today,
-      daily: other ? 0 : daily.length,
+      daily: other ? 0 : daily.filter((entry) => nextStarts(entry.engine, day, 1).some((at) => at < end)).length,
       weekly: other
         ? []
         : weekly
-            .filter((entry) => (entry.engine.days ?? []).includes(day.getDay()))
+            .filter((entry) => nextStarts(entry.engine, day, 1).some((at) => at < end))
             .map((entry) => ({
               id: entry.id,
               name: entry.name,
-              slots: entry.engine.weeklyUTC?.length ?? 0,
+              // A local day can intersect multiple UTC dates. Count its actual
+              // occurrences after the engine has applied publication validity.
+              slots: nextStarts(entry.engine, day,
+                (entry.engine.weeklyUTC?.length ?? 0) * (Math.ceil((end.getTime() - day.getTime()) / 86_400_000) + 1),
+              ).filter((at) => at < end).length,
             })),
       specials: other
         ? []

@@ -58,6 +58,7 @@ function series(patch: Partial<RaceSeries> & { id: string; name: string }): Race
 }
 
 const CALENDAR: Calendar = {
+  schedule: { validFrom: "2026-07-01T00:00:00Z", validUntil: "2026-08-01T00:00:00Z", updated: "2026-07-01T00:00:00Z", source: "bundled" },
   version: 1,
   timezone: "UTC",
   reminderMinutes: [30, 15, 10, 5, 2],

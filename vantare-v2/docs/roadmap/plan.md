@@ -254,6 +254,19 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 
 ## Hitos
 
+### Vigencia de las salidas de Calendario
+
+- id: calendar-schedule-validity
+- tipo: fix
+- titulo.en: Calendar departure validity
+- titulo.pt: Validade das saídas do Calendário
+- titulo.it: Validità delle partenze del Calendario
+- cuerpo: Inicio y el motor de las cinco vistas limitan las salidas al periodo publicado, incluido el detalle y los previews. Sin vigencia verificable no se generan nuevas salidas. Este corte depende de los metadatos del servicio ISA-1029; errores visibles, recordatorios y los demás ajustes de las vistas siguen en el plan ISA-1027.
+- cuerpo.en: Home and the five-view engine limit departures to the published period, including details and previews. No new departures are generated without verifiable validity. This cut depends on ISA-1029 service metadata; visible errors, reminders and remaining view fixes continue in ISA-1027.
+- cuerpo.pt: Início e o motor das cinco vistas limitam saídas ao período publicado, incluindo detalhe e previews. Sem validade verificável não são geradas novas saídas. Depende dos metadados ISA-1029; erros visíveis, lembretes e restantes correções continuam no plano ISA-1027.
+- cuerpo.it: Home e il motore delle cinque viste limitano le partenze al periodo pubblicato, inclusi dettagli e anteprime. Senza validità verificabile non vengono generate nuove partenze. Dipende dai metadati ISA-1029; errori visibili, promemoria e altre correzioni proseguono nel piano ISA-1027.
+- etiqueta: ISA-1032
+
 ### CPU con seis widgets
 
 - id: telemetry-six-widget-cpu

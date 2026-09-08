@@ -17,6 +17,16 @@ son fases históricas.
 
 ## Estado
 
+Actualización ISA-1043 (2026-09-08, calidad de vueltas con boxes):
+
+- Rama `vantareapp/isa-1043-pit-lap-overlap`, base `1ac45d69`. Ejecución personal.
+- Se añaden las transiciones de boxes dentro de vuelta a las etiquetas;
+  ritmo excluido, FamilyPit/ObservedStrategy conservadas. Sin nuevos umbrales.
+- RED/GREEN y paquete telemetryanalysis PASS sin modificar fixtures previas.
+  Build/Go completo/digest PASS. Evidencia: `docs/strategy-planner/evidence/isa-1043-pit-overlap.md`.
+- Continúan recuperación #819, deadline #821, referencias #445 y gate empírico
+  #1030. Sin modificaciones de originales ni promoción.
+
 Actualización ISA-1042 (2026-09-08, reloj normal de Orbit):
 
 - Rama `vantareapp/isa-1042-timed-race-horizon`, base `b7991919`, ejecución

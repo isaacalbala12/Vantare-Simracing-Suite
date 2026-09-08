@@ -453,6 +453,29 @@ func labelPitLaps(laps []AnalyzedLap, events []observedEvent) {
 		}
 		previousPit = pit
 	}
+	// End-of-lap state misses a complete pit visit between two boundaries.
+	// Keep that state-based labeling and include observed transitions too.
+	previousEventPit := false
+	for _, event := range events {
+		pit, ok := firstBoolean(event.values)
+		if !ok {
+			continue
+		}
+		wasPit := previousEventPit
+		previousEventPit = pit
+		index := lapIndexAt(laps, event.seconds)
+		if index >= len(laps) || laps[index].Start != nil && event.seconds < timestampSeconds(*laps[index].Start) {
+			continue
+		}
+		if pit {
+			addLapLabel(&laps[index], LapLabelPit)
+			if !wasPit && index > 0 {
+				addLapLabel(&laps[index], LapLabelInLap)
+			}
+		} else if wasPit {
+			addLapLabel(&laps[index], LapLabelOutLap)
+		}
+	}
 }
 
 func labelIncidentLaps(laps []AnalyzedLap, events []observedEvent) {

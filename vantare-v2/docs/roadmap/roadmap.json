@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-08T03:52:45Z",
+  "generatedAt": "2026-09-08T03:58:40Z",
   "digest": {
     "lastCommit": "d6d0992f8dbc800ccb6d75f60fffdc7c3d561da2"
   },
@@ -583,6 +583,28 @@
         "en": "ISA-1035",
         "pt": "ISA-1035",
         "it": "ISA-1035"
+      }
+    },
+    {
+      "id": "calendar-refresh-status-ui",
+      "type": "fix",
+      "title": {
+        "es": "Estado visible de actualización de Calendario",
+        "en": "Visible calendar refresh status",
+        "pt": "Estado visível da atualização do calendário",
+        "it": "Stato visibile dell'aggiornamento del calendario"
+      },
+      "body": {
+        "es": "Calendario distingue carga, actualización, error y vigencia del horario; confirma el resultado recibido y conserva la vista mientras se actualiza.",
+        "en": "Calendar distinguishes loading, refresh, errors and schedule validity; it confirms the received result and preserves the view during refresh.",
+        "pt": "O calendário distingue carregamento, atualização, erro e validade do horário; confirma o resultado recebido e conserva a vista durante a atualização.",
+        "it": "Il calendario distingue caricamento, aggiornamento, errore e validità dell'orario; conferma il risultato ricevuto e conserva la vista durante l'aggiornamento."
+      },
+      "label": {
+        "es": "Fix",
+        "en": "Fix",
+        "pt": "Fix",
+        "it": "Fix"
       }
     },
     {

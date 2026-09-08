@@ -152,6 +152,22 @@ Ambos tienen review independiente ACCEPT y checks locales focales/build/Go PASS;
 timeouts Pedals conocidos #1025. No afirmar conjunto verde. C4b añade la UI de
 estos estados; C1/C5–C11 pendientes. HUD/Studio, LMU y Edge intactos; sin merge/release.
 
+## ISA-1037 — estados de Calendario (2026-09-08)
+
+C4b de #1027: estados independientes del documento, refresh de una petición,
+sin éxito anticipado y aviso de vigencia en la descripción existente. Cuatro
+idiomas, sin CSS. Depende de #1029/#1032/#1035, todos candidatos sin integrar.
+Rama vantareapp/isa-1037-calendar-status-ui desde nightly d6d0992f.
+RED inicial siete fallos; review detectó dos P2, reproducidos y corregidos.
+GREEN final 70 focales, build/typecheck/lint y roadmap 23+21 PASS; review 7a84c268
+ACCEPT. Suite completa no verde: cuatro timeouts de overlays, i18n corregido;
+Go completo falla deuda SQLite #708. C4a 749d7761 añade snapshot local para
+recuperar resultado de arranque sin otra descarga. Evidencia y límites en
+docs/analysis/ISA-1037-calendar-status-ui.md. Sin validación Wails conjunta todavía.
+Pendientes del plan: recordatorios/confirmación de seguimiento, DST y slots,
+clasificación de Mes, detalle, Wails real y medición A/A antes de más optimización.
+No se toca HUD/Studio ni el checkout principal; no merge ni release.
+
 ## ISA-1011 — runtime de release (2026-09-07)
 
 Nightly.15 no se publicó: el segundo intento 34062671599 pasó tests pero

@@ -186,6 +186,42 @@ describe("RacesOrbitPage", () => {
     if (!withSeries) expect(day.queryAllByTestId("orbit-races-ev-chip")).toHaveLength(0);
   });
 
+  it.each(["pending", "error"] as const)("conserva la caducidad durante %s", (refreshState) => {
+    setup({ refreshState, calendar: { ...CALENDAR, schedule: {
+      validFrom: "2026-07-01T00:00:00Z", validUntil: NOW.toISOString(),
+      updated: "2026-07-01T00:00:00Z", source: "published",
+    } } });
+    const status = screen.getByTestId("orbit-races-status").textContent;
+    expect(status).toContain("Horario caducado");
+    expect(status).toContain(refreshState === "pending" ? "Actualizando" : "No se pudo actualizar");
+  });
+  it.each([
+    ["2026-07-01T00:00:00Z", "2026-07-08T00:00:00Z", "Horario actualizado"],
+    ["2026-07-01T00:00:00Z", "2026-07-07T18:07:30Z", "Horario caducado"],
+    ["2026-07-08T00:00:00Z", "2026-07-15T00:00:00Z", "todavía no ha comenzado"],
+    ["invalid", "2026-07-15T00:00:00Z", "vigencia"],
+    ["2026-07-15T00:00:00Z", "2026-07-08T00:00:00Z", "vigencia"],
+  ])("un refresh confirmado respeta la vigencia %s / %s", (validFrom, validUntil, expected) => {
+    setup({ refreshState: "success", calendar: { ...CALENDAR,
+      schedule: { validFrom, validUntil, updated: validFrom, source: "published" },
+    } });
+    expect(screen.getByTestId("orbit-races-status").textContent).toContain(expected);
+  });
+
+  it("distingue la carga inicial del calendario vacío", () => {
+    const { unmount } = setup({ calendar: null });
+    expect(screen.getByTestId("orbit-races-status").textContent).toContain("Cargando");
+    unmount();
+    setup({ calendar: { ...CALENDAR, series: [] } });
+    expect(screen.getByTestId("orbit-races-status").textContent).toContain("No hay series");
+  });
+
+  it("muestra el error del servicio sin ocultar la vista", () => {
+    setup({ calendarError: true });
+    expect(screen.getByTestId("orbit-races-status").textContent).toContain("No se pudo actualizar");
+    expect(screen.getByTestId("orbit-races-next")).toBeTruthy();
+  });
+
   it("monta las cinco vistas sin ningún `title` nativo", () => {
     setup();
     for (const view of VIEWS) {
@@ -313,6 +349,27 @@ describe("RacesOrbitPage", () => {
     setup();
     fireEvent.click(screen.getByTestId("orbit-races-refresh"));
     expect(mockEmit).toHaveBeenCalledWith("calendar:schedule:refresh");
+    expect(mockEmit).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText("Horario solicitado")).toBeNull();
+  });
+
+  it("muestra actualización pendiente y evita repetir la acción", () => {
+    setup({ refreshState: "pending" });
+    expect(screen.getByTestId("orbit-races-refresh").hasAttribute("disabled")).toBe(true);
+    expect(screen.getByTestId("orbit-races-status").textContent).toContain("Actualizando");
+    fireEvent.click(screen.getByTestId("orbit-races-refresh"));
+    expect(mockEmit).not.toHaveBeenCalled();
+  });
+
+  it("explica el fallo y conserva las vistas disponibles", () => {
+    setup({ refreshState: "error" });
+    expect(screen.getByTestId("orbit-races-status").textContent).toContain("No se pudo actualizar");
+    expect(screen.getByTestId("orbit-races-next")).toBeTruthy();
+  });
+
+  it("distingue vigencia desconocida de un calendario vacío", () => {
+    setup();
+    expect(screen.getByTestId("orbit-races-status").textContent).toContain("vigencia");
   });
 
   it("las filas de Próximas se agrupan por hora y la seleccionada marca la barra", () => {

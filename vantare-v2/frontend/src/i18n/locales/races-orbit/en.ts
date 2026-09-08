@@ -3,10 +3,15 @@ export const racesOrbitEn: Record<string, string> = {
   "races.eyebrow": "LMU calendar",
   "races.title": "Races",
   "races.lead":
-    "Starts computed from the fixture's published cadence, in your time zone.",
+    "Schedules and upcoming starts, in your time zone.",
+  "races.status.refreshing": "Refreshing…",
+  "races.status.error": "Could not update the calendar. Try again.",
+  "races.status.loading": "Loading calendar…",
+  "races.status.unknown": "The schedule's validity is unknown. Refresh it.",
+  "races.status.future": "This schedule has not started yet.",
+  "races.status.expired": "Schedule expired. Refresh to see upcoming starts.",
+  "races.status.updated": "Schedule updated.",
   "races.refresh": "Refresh schedule",
-  "races.refreshed": "Schedule requested",
-  "races.refreshedHint": "The published calendar has been requested from the backend.",
 
   "races.views.label": "Calendar view",
   "races.views.next": "Upcoming",

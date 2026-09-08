@@ -28,6 +28,27 @@ export function subscribeToCalendarFollowResults(callback: (result: CalendarFoll
   });
 }
 
+export type CalendarRefreshState = "idle" | "pending" | "success" | "error";
+
+export function subscribeToCalendarRefresh(
+  callback: (state: CalendarRefreshState) => void,
+): () => void {
+  const stopStarted = Events.On("calendar:refresh:started", () => callback("pending"));
+  const stopResult = Events.On("calendar:refresh:result", (event: unknown) => {
+    const data = (event as { data?: { ok?: boolean } })?.data;
+    callback(data?.ok === true ? "success" : "error");
+  });
+  const stopStatus = Events.On("calendar:refresh:status", (event: unknown) => {
+    const state = (event as { data?: { state?: unknown } })?.data?.state;
+    if (state === "idle" || state === "pending" || state === "success" || state === "error") callback(state);
+  });
+  return () => { stopStarted(); stopResult(); stopStatus(); };
+}
+
+export function requestCalendarRefreshStatus(): void {
+  Events.Emit("calendar:refresh:status:get");
+}
+
 // subscribeToCalendar wires a callback to be invoked whenever a new calendar
 // document is emitted by the backend. It returns the unsubscribe function.
 //

@@ -1,17 +1,19 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Events } from "@wailsio/runtime";
-import { I18nProvider } from "../../i18n/I18nProvider";
+import { I18nProvider, useI18n } from "../../i18n/I18nProvider";
 import { ScheduleImportSection } from "./ScheduleImportSection";
 
 const listeners = new Map<string, (event: unknown) => void>();
+const groups = new Map<string, Set<(event: unknown) => void>>();
 
 vi.mock("@wailsio/runtime", () => ({
   Events: {
     Emit: vi.fn(),
     On: vi.fn((name: string, listener: (event: unknown) => void) => {
-      listeners.set(name, listener);
-      return () => listeners.delete(name);
+      const group = groups.get(name) ?? new Set(); group.add(listener); groups.set(name, group);
+      listeners.set(name, event => { for (const fn of [...group]) fn(event); });
+      return () => { group.delete(listener); if (!group.size) listeners.delete(name); };
     }),
   },
 }));
@@ -70,9 +72,11 @@ const preview = {
 
 function requestId(name: string) { return (vi.mocked(Events.Emit).mock.calls.filter(call => call[0] === name).at(-1)?.[1] as {requestId?: string})?.requestId; }
 
+function LanguageSwitch() { const {setLocale} = useI18n(); return <button onClick={()=>setLocale("en")}>English</button>; }
 function mount(candidateTarget?: string) {
   return render(
     <I18nProvider>
+      <LanguageSwitch />
       <ScheduleImportSection candidateTarget={candidateTarget} />
     </I18nProvider>,
   );
@@ -80,6 +84,7 @@ function mount(candidateTarget?: string) {
 
 beforeEach(() => {
   listeners.clear();
+  groups.clear();
   localStorage.clear();
   vi.mocked(Events.Emit).mockClear();
 });
@@ -185,4 +190,24 @@ it("abre el candidato del aviso y solo publica tras aceptarlo y recibir su borra
   await act(async () => listeners.get("schedule:published")?.({data:{draftId:"right"}}));
   expect(localStorage.getItem("vantare.calendar.published-candidate")).toBe("123:hash");
   expect((screen.getByRole("button",{name:"Aceptar y publicar"}) as HTMLButtonElement).disabled).toBe(true);
+});
+
+async function openCandidate() {
+ await act(async()=>listeners.get("schedule:discord:inbox")?.({data:{candidates:[{messageId:"123",sourceHash:"hash",sourceText:"source",receivedAt:"2026-09-08T00:00:00Z"}]}}));
+}
+it("confirma el recibo aunque el Owner salga de Ajustes durante la publicacion",async()=>{
+ const view=mount("123:hash");await openCandidate();
+ await act(async()=>listeners.get("schedule:preview")?.({data:{...preview,requestId:requestId("schedule:parse")}}));
+ fireEvent.click(screen.getByTestId("orbit-settings-schedule-publish"));
+ await act(async()=>listeners.get("schedule:draft-saved")?.({data:{draftId:"right",requestId:requestId("schedule:draft:save")}}));
+ view.unmount();
+ await act(async()=>listeners.get("schedule:published")?.({data:{draftId:"right"}}));
+ expect(localStorage.getItem("vantare.calendar.published-candidate")).toBe("123:hash");
+});
+it("cambiar idioma mientras se analiza no descarta su respuesta",async()=>{
+ mount("123:hash");await openCandidate();const id=requestId("schedule:parse");
+ fireEvent.click(screen.getByRole("button",{name:"English"}));
+ await act(async()=>listeners.get("schedule:preview")?.({data:{...preview,requestId:id}}));
+ expect(screen.getByTestId("orbit-settings-schedule-preview")).toBeTruthy();
+ expect((screen.getByTestId("orbit-settings-schedule-publish") as HTMLButtonElement).disabled).toBe(false);
 });

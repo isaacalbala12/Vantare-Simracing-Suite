@@ -868,3 +868,11 @@ Estado Nightly previo integrado en esta reconciliación:
 2026-08-03, ISA-246 queda en `nightly@55fba3d` e ISA-247 implementa localmente
 la separación entre planes comerciales y accesos operativos. El apply remoto,
 Owner real y retiro de legacy siguen protegidos por gate. Venta pública NO-GO.
+
+
+ISA-1061 review inicial REQUEST_CHANGES 12200d59: dos P2 de ciclo de vida.
+Reproducidos RED: ACK perdido al salir de Ajustes y operacion bloqueada al
+cambiar idioma. Corregidos: listener de una publicacion sobrevive a navegacion
+hasta ACK/error y mantiene el recibo; cambiar traduccion conserva request pendiente.
+10 pruebas de flujo PASS. Fullfrontend previo: 3308 PASS/2 omitidas, build/lint
+PASS. Se revalidan cambios finales; Go completo en curso. No publicacion real.

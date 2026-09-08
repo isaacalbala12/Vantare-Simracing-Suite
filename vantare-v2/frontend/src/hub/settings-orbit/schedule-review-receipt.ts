@@ -1,3 +1,4 @@
+import { Events } from "@wailsio/runtime";
 import type { ScheduleCandidate } from "./schedule-import-model";
 
 const KEY = "vantare.calendar.published-candidate";
@@ -19,4 +20,18 @@ export function latestReviewCandidate(candidates: ScheduleCandidate[], now: numb
     Date.parse(c.schedule?.validFrom ?? "") < Date.parse(c.schedule?.validUntil ?? ""))
     .sort((a,b) => Date.parse(b.schedule!.validFrom) - Date.parse(a.schedule!.validFrom) ||
       Date.parse(b.receivedAt) - Date.parse(a.receivedAt))[0];
+}
+
+// This one-operation listener deliberately outlives the review screen. It is
+// released on the native result (or transport failure), not on route changes.
+export function trackCandidatePublication(candidate: ScheduleCandidate, draftId: string): () => void {
+  const done = () => { offPublished(); offError(); };
+  const offPublished = Events.On("schedule:published", (event: unknown) => {
+    if ((event as {data?: {draftId?: string}})?.data?.draftId !== draftId) return;
+    recordPublishedCandidate(candidate); done();
+  });
+  const offError = Events.On("schedule:error", (event: unknown) => {
+    if ((event as {data?: {requestId?: string}})?.data?.requestId === draftId) done();
+  });
+  return done;
 }

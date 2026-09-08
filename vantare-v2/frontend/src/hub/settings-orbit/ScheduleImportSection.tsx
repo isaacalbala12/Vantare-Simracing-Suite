@@ -6,7 +6,7 @@ import { Button, Chip, ListRow, Note, SubtleStatus, Surface, Textarea } from "..
 import { formatMessage } from "../orbit/format-message";
 import { useCalendarStarts } from "../orbit/use-calendar-starts";
 import { scheduleDiff, type ScheduleCandidate, type SchedulePreview } from "./schedule-import-model";
-import { candidateKey, publishedCandidateKey, recordPublishedCandidate } from "./schedule-review-receipt";
+import { candidateKey, publishedCandidateKey, trackCandidatePublication } from "./schedule-review-receipt";
 
 type ScheduleStatus = "idle" | "parsing" | "saving" | "publishing" | "ok" | "error";
 type Request = {kind: "parsing" | "saving" | "publishing"; id: string; candidate: ScheduleCandidate | null; accept?: boolean};
@@ -39,7 +39,9 @@ export function ScheduleImportSection({candidateTarget}: {candidateTarget?: stri
   const busy = status === "parsing" || status === "saving" || status === "publishing";
   const send = useCallback((name: string, payload: object, request: Request) => {
     pending.current = request; setStatus(request.kind); setError(null); setMessage(null);
-    const fail = () => { if (pending.current !== request) return; pending.current = null;
+    const stopReceipt = request.kind === "publishing" && request.candidate
+      ? trackCandidatePublication(request.candidate, request.id) : () => {};
+    const fail = () => { stopReceipt(); if (pending.current !== request) return; pending.current = null;
       setStatus("error"); setError(t("settings.schedule.errorFallback")); };
     try { Promise.resolve(Events.Emit(name, payload)).catch(fail); } catch { fail(); }
   }, [t]);
@@ -74,7 +76,6 @@ export function ScheduleImportSection({candidateTarget}: {candidateTarget?: stri
         const data = payloadOf(event); const request = pending.current;
         if (request?.kind !== "publishing" || data.draftId !== request.id) return;
         pending.current = null; setPublished(true); setStatus("ok"); setMessage(t("settings.schedule.published")); setDraftId(null);
-        if (request.candidate) recordPublishedCandidate(request.candidate);
         // The native publication handler refreshes Calendar after the server ACK.
       }),
       Events.On("schedule:draft", (event: unknown) => {
@@ -93,8 +94,9 @@ export function ScheduleImportSection({candidateTarget}: {candidateTarget?: stri
       }),
     ];
     Events.Emit("schedule:draft:get"); Events.Emit("schedule:discord:inbox:get");
-    return () => { unsubscribers.forEach(off => off()); pending.current = null; };
+    return () => { unsubscribers.forEach(off => off()); };
   }, [candidateTarget, isOwner, selectCandidate, send, t]);
+  useEffect(() => () => { pending.current = null; }, []);
   const diff = useMemo(() => scheduleDiff(preview, calendar?.series), [calendar?.series, preview]);
   const dateFormat = useMemo(() => new Intl.DateTimeFormat(locale, {dateStyle:"medium", timeStyle:"short"}), [locale]);
   if (!isOwner) return <Note>{t("settings.schedule.ownerOnly")}</Note>;

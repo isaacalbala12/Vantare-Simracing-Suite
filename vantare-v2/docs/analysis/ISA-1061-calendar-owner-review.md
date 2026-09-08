@@ -22,3 +22,11 @@ lee Discord y no publica. HUD/OBS/Studio sin modificaciones de producto.
 Pruebas en curso: RED de aviso y correlacion nativa; 7 UI y paquete app PASS.
 Validacion de publicacion mediante servidor local de tests; no se publica nada real.
 Pendientes: suites completas, review y Wails con copia aislada de bandeja real.
+
+
+ISA-1061 review inicial REQUEST_CHANGES 12200d59: dos P2 de ciclo de vida.
+Reproducidos RED: ACK perdido al salir de Ajustes y operacion bloqueada al
+cambiar idioma. Corregidos: listener de una publicacion sobrevive a navegacion
+hasta ACK/error y mantiene el recibo; cambiar traduccion conserva request pendiente.
+10 pruebas de flujo PASS. Fullfrontend previo: 3308 PASS/2 omitidas, build/lint
+PASS. Se revalidan cambios finales; Go completo en curso. No publicacion real.

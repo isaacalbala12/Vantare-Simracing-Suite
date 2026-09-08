@@ -46,6 +46,7 @@ export const racesOrbitIt: Record<string, string> = {
   "races.detail.race": "Gara",
   "races.detail.cadence": "Cadenza",
   "races.detail.next": "Prossima partenza",
+  "races.detail.estimated": "~ durata stimata",
   "races.detail.sessions": "Sessioni",
   "races.detail.starts": "Partenze successive",
   "races.detail.picked": "Partenza scelta",

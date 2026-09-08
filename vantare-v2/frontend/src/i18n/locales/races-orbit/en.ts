@@ -46,6 +46,7 @@ export const racesOrbitEn: Record<string, string> = {
   "races.detail.race": "Race",
   "races.detail.cadence": "Cadence",
   "races.detail.next": "Next start",
+  "races.detail.estimated": "~ estimated duration",
   "races.detail.sessions": "Sessions",
   "races.detail.starts": "Following starts",
   "races.detail.picked": "Picked start",

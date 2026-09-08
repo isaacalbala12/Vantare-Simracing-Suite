@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-08T03:40:32Z",
+  "generatedAt": "2026-09-08T03:51:02Z",
   "digest": {
     "lastCommit": "d6d0992f8dbc800ccb6d75f60fffdc7c3d561da2"
   },
@@ -344,751 +344,91 @@
   ],
   "milestones": [
     {
-      "id": "calendar-correction-optimization",
-      "type": "plan",
-      "title": {
-        "es": "Corrección y optimización integral de Calendario",
-        "en": "Calendar correctness and performance",
-        "pt": "Correção e otimização do Calendário",
-        "it": "Correzione e ottimizzazione del Calendario"
-      },
-      "body": {
-        "es": "Plan aprobado por cortes: pruebas de recorrido, vigencia del horario, recordatorios de series, coherencia de las cinco vistas y optimización medida de apertura, interacción y consumo. Conserva la apariencia y los contratos de HUD y Studio. La validación visual Wails y el ahorro global siguen pendientes.",
-        "en": "Approved incremental plan: end-to-end checks, schedule validity, series reminders, consistency across five views and measured improvements to opening, interaction and resource use. Appearance and HUD/Studio contracts are preserved. Wails visual validation and overall savings remain pending.",
-        "pt": "Plano aprovado por etapas: testes de percurso, validade do horário, lembretes de séries, consistência das cinco vistas e otimização medida de abertura, interação e consumo. Preserva a aparência e os contratos de HUD e Studio. A validação visual Wails e a poupança global continuam pendentes.",
-        "it": "Piano approvato per fasi: prove del percorso, validità degli orari, promemoria delle serie, coerenza delle cinque viste e ottimizzazione misurata di apertura, interazione e consumo. Preserva aspetto e contratti HUD/Studio. Validazione visiva Wails e risparmio complessivo ancora da verificare."
-      },
-      "label": {
-        "es": "ISA-1027",
-        "en": "ISA-1027",
-        "pt": "ISA-1027",
-        "it": "ISA-1027"
-      }
-    },
-    {
-      "id": "calendar-native-reminders",
+      "id": "calendar-detail-selection",
       "type": "fix",
       "title": {
-        "es": "Recordatorios nativos con permisos y preferencias",
-        "en": "Native reminders respect permissions and preferences",
-        "pt": "Lembretes nativos respeitam permissões e preferências",
-        "it": "Promemoria nativi con permessi e preferenze"
+        "es": "Detalle de Calendario coherente con la selección",
+        "en": "Calendar detail follows the selected race",
+        "pt": "Detalhe do Calendário coerente com a seleção",
+        "it": "Dettaglio del Calendario coerente con la selezione"
       },
       "body": {
-        "es": "Los recordatorios de Calendario usan las notificaciones nativas existentes cuando la ventana está minimizada, el usuario las activa y la plataforma las permite. La autoridad nativa controla los seguimientos y avisos; aceptar un envío no confirma que Windows lo haya mostrado.",
-        "en": "Calendar reminders use existing native notifications when the window is minimised, the user enables them and the platform allows them. Native authority controls follows and reminders; accepting a send does not prove Windows displayed it.",
-        "pt": "Os lembretes do Calendário usam as notificações nativas existentes com a janela minimizada, se o utilizador as ativar e a plataforma permitir. A autoridade nativa controla seguimentos e avisos; aceitar um envio não prova que o Windows o mostrou.",
-        "it": "I promemoria del Calendario usano le notifiche native esistenti con finestra ridotta a icona, se abilitate dall'utente e consentite dalla piattaforma. L'autorità nativa controlla preferenze e avvisi; accettare l'invio non prova che Windows lo abbia mostrato."
+        "es": "El detalle marca las duraciones estimadas y valida la hora elegida para la serie y publicación actuales. Cambiar de filtro o navegar desde Inicio no arrastra una hora ajena; las horas históricas aún publicadas se conservan.",
+        "en": "Details mark estimated durations and validate the selected time against the current series and publication. Changing filters or navigating from Home does not carry over another race time; valid historical times are preserved.",
+        "pt": "O detalhe assinala durações estimadas e valida a hora escolhida para a série e publicação atuais. Mudar o filtro ou navegar desde Início não arrasta outra hora; horários históricos válidos são preservados.",
+        "it": "Il dettaglio indica le durate stimate e verifica l'orario scelto per la serie e pubblicazione correnti. Cambiare filtro o navigare da Home non trascina un altro orario; gli orari storici validi vengono conservati."
       },
       "label": {
-        "es": "ISA-1055",
-        "en": "ISA-1055",
-        "pt": "ISA-1055",
-        "it": "ISA-1055"
+        "es": "ISA-1052",
+        "en": "ISA-1052",
+        "pt": "ISA-1052",
+        "it": "ISA-1052"
       }
     },
     {
-      "id": "calendar-follow-confirmation",
+      "id": "calendar-month-classification",
       "type": "fix",
       "title": {
-        "es": "Seguimiento confirmado después de guardar",
-        "en": "Follow confirmation after saving",
-        "pt": "Confirmação de seguimento após guardar",
-        "it": "Conferma della preferenza dopo il salvataggio"
+        "es": "Mes sin ocurrencias duplicadas como especiales",
+        "en": "Month without occurrences duplicated as specials",
+        "pt": "Mês sem ocorrências duplicadas como especiais",
+        "it": "Mese senza occorrenze duplicate come speciali"
       },
       "body": {
-        "es": "Seguir o dejar de seguir una serie espera la confirmación del guardado antes de anunciar éxito, bloquea clics duplicados y permite reintentar si falla. Las respuestas ajenas o antiguas no confirman otra acción.",
-        "en": "Following or unfollowing a series waits for save confirmation before reporting success, blocks duplicate clicks and allows retrying on failure. Unrelated or old responses cannot confirm another action.",
-        "pt": "Seguir ou deixar de seguir uma série espera a confirmação da gravação, bloqueia cliques duplicados e permite tentar novamente se falhar. Respostas alheias ou antigas não confirmam outra ação.",
-        "it": "Seguire o smettere di seguire una serie attende la conferma del salvataggio, blocca clic duplicati e consente di riprovare in caso di errore. Risposte estranee o precedenti non confermano un'altra azione."
+        "es": "Mes distingue las ocurrencias generadas de las series y los eventos especiales mediante su procedencia e identidad. Los filtros no convierten series ocultas en especiales y se conserva el documento compartido. Al abrir un especial o +N, Día conserva los eventos anunciados por Mes, incluso sin series.",
+        "en": "Month distinguishes generated series occurrences from special events by source and identity. Filters do not turn hidden series into specials and the shared document is preserved. Opening a special or +N keeps the events shown by Month in Day, even without series.",
+        "pt": "O mês distingue ocorrências geradas das séries e eventos especiais pela origem e identidade. Os filtros não convertem séries ocultas em especiais e o documento partilhado é preservado. Ao abrir um especial ou +N, Dia mantém os eventos mostrados pelo Mês, mesmo sem séries.",
+        "it": "Il mese distingue le occorrenze generate delle serie dagli eventi speciali tramite origine e identità. I filtri non trasformano serie nascoste in speciali e il documento condiviso resta intatto. Aprendo uno speciale o +N, Giorno conserva gli eventi mostrati da Mese, anche senza serie."
       },
       "label": {
-        "es": "ISA-1050",
-        "en": "ISA-1050",
-        "pt": "ISA-1050",
-        "it": "ISA-1050"
+        "es": "ISA-1046",
+        "en": "ISA-1046",
+        "pt": "ISA-1046",
+        "it": "ISA-1046"
       }
     },
     {
-      "id": "calendar-follow-persistence",
+      "id": "calendar-local-days-slots",
       "type": "fix",
       "title": {
-        "es": "Seguimiento conservado si falla el guardado",
-        "en": "Follow preferences preserved on save failure",
-        "pt": "Seguimento preservado se a gravação falhar",
-        "it": "Preferenze conservate se il salvataggio fallisce"
+        "es": "Días locales y salidas completas en Calendario",
+        "en": "Local days and complete calendar starts",
+        "pt": "Dias locais e partidas completas no calendário",
+        "it": "Giorni locali e partenze complete nel calendario"
       },
       "body": {
-        "es": "Si guardar falla, seguir o dejar de seguir un evento o serie conserva la preferencia anterior y permite reintentar sin aparentar un éxito inexistente.",
-        "en": "If saving fails, following or unfollowing an event or series preserves the previous preference and allows retrying without reporting a false success.",
-        "pt": "Se a gravação falhar, seguir ou deixar de seguir um evento ou série mantém a preferência anterior e permite tentar novamente sem aparentar sucesso.",
-        "it": "Se il salvataggio fallisce, seguire o smettere di seguire un evento o una serie conserva la preferenza precedente e consente di riprovare senza un falso successo."
+        "es": "Las vistas respetan medianoches locales y cambios de hora, cuentan todas las salidas publicadas y distinguen los instantes de una hora repetida mediante su desplazamiento UTC.",
+        "en": "Views respect local midnights and daylight saving changes, count every published start and distinguish repeated-hour instants using their UTC offset.",
+        "pt": "As vistas respeitam as meias-noites locais e mudanças de hora, contam todas as partidas publicadas e distinguem instantes de uma hora repetida pelo desvio UTC.",
+        "it": "Le viste rispettano le mezzanotti locali e i cambi d'ora, contano tutte le partenze pubblicate e distinguono gli istanti di un'ora ripetuta tramite lo scarto UTC."
       },
       "label": {
-        "es": "ISA-1049",
-        "en": "ISA-1049",
-        "pt": "ISA-1049",
-        "it": "ISA-1049"
+        "es": "ISA-1044",
+        "en": "ISA-1044",
+        "pt": "ISA-1044",
+        "it": "ISA-1044"
       }
     },
     {
-      "id": "calendar-schedule-retention",
+      "id": "calendar-schedule-validity",
       "type": "fix",
       "title": {
-        "es": "Conservación del horario publicado",
-        "en": "Retain the published schedule",
-        "pt": "Preservar o horário publicado",
-        "it": "Conservare il calendario pubblicato"
+        "es": "Vigencia de las salidas de Calendario",
+        "en": "Calendar departure validity",
+        "pt": "Validade das saídas do Calendário",
+        "it": "Validità delle partenze del Calendario"
       },
       "body": {
-        "es": "El servicio conserva el horario guardado al reiniciar o fallar la actualización, guarda su vigencia y procedencia y no sustituye un horario activo por una publicación futura. Un fallo al guardar el horario conserva también el estado anterior en memoria. La aplicación de vigencia en las vistas y los recordatorios continúa en los siguientes cortes.",
-        "en": "The service retains the saved schedule across restart or refresh failure, stores its validity and source, and does not replace an active schedule with a future publication. A schedule write failure also preserves the previous in-memory state. View validity and reminder fixes continue in subsequent cuts.",
-        "pt": "O serviço mantém o horário guardado ao reiniciar ou falhar a atualização, guarda validade e origem e não substitui um horário ativo por uma publicação futura. Uma falha de gravação também preserva o estado anterior em memória. Validade nas vistas e lembretes continuam nas próximas etapas.",
-        "it": "Il servizio conserva l'orario salvato al riavvio o in caso di aggiornamento fallito, ne registra validità e origine e non sostituisce un orario attivo con una pubblicazione futura. Un errore di salvataggio conserva anche lo stato precedente in memoria. Validità nelle viste e promemoria proseguono nei prossimi interventi."
+        "es": "Inicio y el motor de las cinco vistas limitan las salidas al periodo publicado, incluido el detalle y los previews. Sin vigencia verificable no se generan nuevas salidas. Este corte depende de los metadatos del servicio ISA-1029; errores visibles, recordatorios y los demás ajustes de las vistas siguen en el plan ISA-1027.",
+        "en": "Home and the five-view engine limit departures to the published period, including details and previews. No new departures are generated without verifiable validity. This cut depends on ISA-1029 service metadata; visible errors, reminders and remaining view fixes continue in ISA-1027.",
+        "pt": "Início e o motor das cinco vistas limitam saídas ao período publicado, incluindo detalhe e previews. Sem validade verificável não são geradas novas saídas. Depende dos metadados ISA-1029; erros visíveis, lembretes e restantes correções continuam no plano ISA-1027.",
+        "it": "Home e il motore delle cinque viste limitano le partenze al periodo pubblicato, inclusi dettagli e anteprime. Senza validità verificabile non vengono generate nuove partenze. Dipende dai metadati ISA-1029; errori visibili, promemoria e altre correzioni proseguono nel piano ISA-1027."
       },
       "label": {
-        "es": "ISA-1029",
-        "en": "ISA-1029",
-        "pt": "ISA-1029",
-        "it": "ISA-1029"
-      }
-    },
-    {
-      "id": "calendar-series-reminders",
-      "type": "fix",
-      "title": {
-        "es": "Recordatorios de series seguidas",
-        "en": "Reminders for followed series",
-        "pt": "Lembretes de séries seguidas",
-        "it": "Promemoria delle serie seguite"
-      },
-      "body": {
-        "es": "Seguir una serie incluye sus salidas publicadas en los recordatorios. Los avisos respetan el umbral por segundos y no se duplican al seguir también el evento.",
-        "en": "Following a series includes its published starts in reminders. Notifications respect the threshold to the second and are not duplicated when also following the event.",
-        "pt": "Seguir uma série inclui as suas partidas publicadas nos lembretes. Os avisos respeitam o limite por segundos e não se duplicam ao seguir também o evento.",
-        "it": "Seguire una serie include le sue partenze pubblicate nei promemoria. Gli avvisi rispettano la soglia al secondo e non si duplicano seguendo anche l'evento."
-      },
-      "label": {
-        "es": "ISA-1039",
-        "en": "ISA-1039",
-        "pt": "ISA-1039",
-        "it": "ISA-1039"
-      }
-    },
-    {
-      "id": "telemetry-six-widget-cpu",
-      "type": "fix",
-      "title": {
-        "es": "CPU con seis widgets",
-        "en": "CPU with six widgets",
-        "pt": "CPU com seis widgets",
-        "it": "CPU con sei widget"
-      },
-      "body": {
-        "es": "Transporte desktop persistente con E20 incremental seleccionable, menos publicaciones redundantes y descarga segura del Hub minimizado con HUD activo. Máximo permite Standings4, Relative30, mapa30, Pedals/Delta60 y Fuel2Hz. El candidato medido con seis widgets visibles dio CPU2,64→2,28 por ciento y RAM382,65→388,11MiB; no certifica otros equipos ni el árbol reconciliado. E20 se activa con VANTARE_OVERLAY_SECTIONS=1; sin esa opción se conserva el envío completo.",
-        "en": "Persistent desktop transport with selectable E20 incremental delivery, fewer redundant publications and safe unloading of the minimised Hub with the HUD active. Maximum allows Standings4, Relative30, map30, Pedals/Delta60 and Fuel2Hz. The candidate measured with six visible widgets gave CPU2.64→2.28 percent and RAM382.65→388.11MiB; this does not certify other machines or the reconciled tree. Enable E20 with VANTARE_OVERLAY_SECTIONS=1; otherwise full delivery is retained.",
-        "pt": "Transporte desktop persistente com E20 incremental selecionável, menos publicações redundantes e descarga segura do Hub minimizado com HUD ativo. Máximo permite Standings4, Relative30, mapa30, Pedals/Delta60 e Fuel2Hz. O candidato medido com seis widgets visíveis deu CPU2,64→2,28 por cento e RAM382,65→388,11MiB; não certifica outros PCs nem a árvore reconciliada. Ativar E20 com VANTARE_OVERLAY_SECTIONS=1; sem essa opção conserva-se o envio completo.",
-        "it": "Trasporto desktop persistente con E20 incrementale selezionabile, meno pubblicazioni ridondanti e scaricamento sicuro dell'Hub minimizzato con HUD attivo. Massimo consente Standings4, Relative30, mappa30, Pedals/Delta60 e Fuel2Hz. Il candidato misurato con sei widget visibili ha dato CPU2,64→2,28 per cento e RAM382,65→388,11MiB; non certifica altri PC né l'albero riconciliato. Attivare E20 con VANTARE_OVERLAY_SECTIONS=1; altrimenti resta l'invio completo."
-      },
-      "label": {
-        "es": "ISA-1002",
-        "en": "ISA-1002",
-        "pt": "ISA-1002",
-        "it": "ISA-1002"
-      }
-    },
-    {
-      "id": "telemetry-lower-footprint",
-      "type": "plan",
-      "title": {
-        "es": "Reducción adicional de CPU, RAM y GPU",
-        "en": "Further CPU, RAM and GPU reduction",
-        "pt": "Redução adicional de CPU, RAM e GPU",
-        "it": "Ulteriore riduzione di CPU, RAM e GPU"
-      },
-      "body": {
-        "es": "Tras validar E20 en nightly, simplificar Telemetría V2 por fases: datos nativos equivalentes, cálculos sin duplicación y trabajo sólo con consumidores. Mantener adaptadores, estado canónico y widgets puros. Cada fase requiere tests, medidas visibles y rollback. CPU inferior al2 por ciento y superioridad frente al HUD de LMU siguen sin demostrar.",
-        "en": "After validating E20 in nightly, simplify Telemetry V2 in phases: equivalent native data, non-duplicated calculations and consumer-driven work. Retain adapters, canonical state and pure widgets. Each phase needs tests, visible measurements and rollback. Below2 percent CPU and superiority over the LMU HUD remain unproven.",
-        "pt": "Após validar E20 em nightly, simplificar Telemetria V2 por fases: dados nativos equivalentes, cálculos sem duplicação e trabalho com consumidores. Preservar adaptadores, estado canónico e widgets puros. Cada fase exige testes, medições visíveis e rollback. CPU inferior a2 por cento e superioridade sobre o HUD LMU continuam por demonstrar.",
-        "it": "Dopo la validazione E20 in nightly, semplificare Telemetry V2 per fasi: dati nativi equivalenti, calcoli senza duplicazioni e lavoro con consumatori. Conservare adattatori, stato canonico e widget puri. Ogni fase richiede test, misure visibili e rollback. CPU sotto2 per cento e superiorità sull'HUD LMU restano da dimostrare."
-      },
-      "label": {
-        "es": "ISA-1002",
-        "en": "ISA-1002",
-        "pt": "ISA-1002",
-        "it": "ISA-1002"
-      }
-    },
-    {
-      "id": "huella-minima-banco",
-      "type": "feature",
-      "title": {
-        "es": "Banco reproducible de huella por hardware",
-        "en": "Reproducible hardware footprint bench",
-        "pt": "Banco reproduzível de impacto por hardware",
-        "it": "Banco riproducibile dell'impronta hardware"
-      },
-      "body": {
-        "es": "Un banco Windows mide RAM, CPU y GPU por proceso, atribuye Hub y overlay con PID confirmados por CDP, excluye muestras GPU inválidas, recupera sesiones ETW huérfanas y solo publica frametime de LMU cuando PresentMon entrega frames válidos. El nuevo programa reutilizará este banco para auditar y optimizar Telemetría V2, comparando también Vantare con información equivalente del HUD de LMU. Las mejoras requieren medidas repetidas, control de ruido y ausencia de regresiones relevantes; no están demostradas por aprobar el plan.",
-        "en": "A Windows bench measures RAM, CPU and GPU per process, attributes Hub and overlay with CDP-confirmed PIDs, excludes invalid GPU samples, recovers orphaned ETW sessions, and only publishes LMU frame time when PresentMon provides valid frames. The new programme will reuse this bench to audit and optimise Telemetry V2, also comparing Vantare with equivalent LMU HUD information. Gains require repeated measurements, noise control and no meaningful regressions; approving the plan does not prove them.",
-        "pt": "Um banco Windows mede RAM, CPU e GPU por processo, atribui Hub e overlay com PIDs confirmados por CDP, exclui amostras GPU inválidas, recupera sessões ETW órfãs e só publica o tempo de frame do LMU quando o PresentMon fornece frames válidos. O novo programa reutilizará este banco para auditar e otimizar a Telemetria V2, comparando também Vantare com informação equivalente do HUD do LMU. Os ganhos exigem medições repetidas, controlo de ruído e ausência de regressões relevantes; aprovar o plano não os demonstra.",
-        "it": "Un banco Windows misura RAM, CPU e GPU per processo, attribuisce Hub e overlay con PID confermati da CDP, esclude i campioni GPU non validi, recupera le sessioni ETW orfane e pubblica il frame time di LMU solo quando PresentMon fornisce frame validi. Il nuovo programma riutilizzerà questo banco per verificare e ottimizzare Telemetry V2, confrontando anche Vantare con informazioni equivalenti dell'HUD di LMU. I miglioramenti richiedono misure ripetute, controllo del rumore e nessuna regressione significativa; l'approvazione del piano non li dimostra."
-      },
-      "label": {
-        "es": "Feature",
-        "en": "Feature",
-        "pt": "Feature",
-        "it": "Feature"
-      }
-    },
-    {
-      "id": "notification-system",
-      "type": "fix",
-      "title": {
-        "es": "Preferencias y prueba de notificaciones",
-        "en": "Notification preferences and test",
-        "pt": "Preferências e teste de notificações",
-        "it": "Preferenze e prova delle notifiche"
-      },
-      "body": {
-        "es": "Los avisos de actualización respetan la preferencia guardada y Ajustes permite enviar una prueba de Windows con resultado visible; Spotter permanece en su overlay y audio de carrera, fuera de los canales de notificación del producto.",
-        "en": "Update alerts respect the saved preference and Settings can send a Windows test with a visible result; Spotter remains in its race overlay and audio, outside the product notification channels.",
-        "pt": "Os avisos de atualização respeitam a preferência guardada e as Definições permitem enviar um teste do Windows com resultado visível; o Spotter permanece no overlay e áudio de corrida, fora dos canais de notificação do produto.",
-        "it": "Gli avvisi di aggiornamento rispettano la preferenza salvata e le Impostazioni possono inviare una prova Windows con risultato visibile; Spotter resta nell'overlay e nell'audio di gara, fuori dai canali di notifica del prodotto."
-      },
-      "label": {
-        "es": "Corregido",
-        "en": "Fixed",
-        "pt": "Corrigido",
-        "it": "Corretto"
-      }
-    },
-    {
-      "id": "calendar-discord-review",
-      "type": "feature",
-      "title": {
-        "es": "Calendario LMU desde Discord",
-        "en": "LMU calendar from Discord",
-        "pt": "Calendário LMU via Discord",
-        "it": "Calendario LMU da Discord"
-      },
-      "body": {
-        "es": "Un lector restringido al canal oficial deja el mensaje semanal de LMU en una bandeja local; el owner revisa la fuente y los cambios antes de guardar y publicar el borrador.",
-        "en": "A reader restricted to the official channel leaves the LMU weekly message in a local inbox; the owner reviews the source and changes before saving and publishing the draft.",
-        "pt": "Um leitor limitado ao canal oficial deixa a mensagem semanal do LMU numa caixa de entrada local; o owner revê a fonte e as alterações antes de guardar e publicar o rascunho.",
-        "it": "Un lettore limitato al canale ufficiale lascia il messaggio settimanale LMU in una inbox locale; l'owner rivede fonte e modifiche prima di salvare e pubblicare la bozza."
-      },
-      "label": {
-        "es": "En revisión",
-        "en": "In review",
-        "pt": "Em revisão",
-        "it": "In revisione"
-      }
-    },
-    {
-      "id": "roadmap-issue-contract",
-      "type": "plan",
-      "title": {
-        "es": "Contrato de roadmap por issue",
-        "en": "Per-issue roadmap contract",
-        "pt": "Contrato de roadmap por issue",
-        "it": "Contratto roadmap per issue"
-      },
-      "body": {
-        "es": "El gate auditará la decisión, los IDs y el artefacto de cada issue; bloquear merges espera migrar las PR vivas, separar autor y reviewer, llegar a master y activar las protecciones remotas.",
-        "en": "The gate will audit each issue's decision, IDs and artefact; blocking merges awaits migrating live PRs, separating author and reviewer, reaching master and enabling remote protections.",
-        "pt": "O gate auditará a decisão, os IDs e o artefacto de cada issue; bloquear merges aguarda migrar os PR vivos, separar autor e reviewer, chegar a master e ativar as proteções remotas.",
-        "it": "Il gate verificherà la decisione, gli ID e l'artefatto di ogni issue; il blocco dei merge attende la migrazione delle PR attive, la separazione tra autore e reviewer, l'arrivo su master e l'attivazione delle protezioni remote."
-      },
-      "label": {
-        "es": "Plan",
-        "en": "Plan",
-        "pt": "Plano",
-        "it": "Piano"
-      }
-    },
-    {
-      "id": "v0105",
-      "type": "release",
-      "title": {
-        "es": "v0.1.0.5 en nightly",
-        "en": "v0.1.0.5 on nightly",
-        "pt": "v0.1.0.5 em nightly",
-        "it": "v0.1.0.5 su nightly"
-      },
-      "body": {
-        "es": "Lote de launcher de Windows, paneles del hub, servicios internos y documentación de marca y diseño.",
-        "en": "Windows launcher batch, hub panels, internal services and brand and design documentation.",
-        "pt": "Lote de launcher do Windows, painéis do hub, serviços internos e documentação de marca e design.",
-        "it": "Lotto di launcher Windows, pannelli hub, servizi interni e documentazione di brand e design."
-      },
-      "label": {
-        "es": "Release",
-        "en": "Release",
-        "pt": "Release",
-        "it": "Release"
-      }
-    },
-    {
-      "id": "orbit-v03",
-      "type": "release",
-      "title": {
-        "es": "Command Orbit v0.3 en el hub",
-        "en": "Command Orbit v0.3 in the hub",
-        "pt": "Command Orbit v0.3 no hub",
-        "it": "Command Orbit v0.3 nell'hub"
-      },
-      "body": {
-        "es": "El porte completo de la shell Orbit sustituye a la V5.2 y pasa a ser la única shell del hub.",
-        "en": "The full Orbit shell port replaces V5.2 and becomes the hub's only shell.",
-        "pt": "O porte completo da shell Orbit substitui a V5.2 e passa a ser a única shell do hub.",
-        "it": "Il porting completo della shell Orbit sostituisce la V5.2 e diventa l'unica shell dell'hub."
-      },
-      "label": {
-        "es": "Release",
-        "en": "Release",
-        "pt": "Release",
-        "it": "Release"
-      }
-    },
-    {
-      "id": "windows-release-toolchain",
-      "type": "fix",
-      "title": {
-        "es": "Builds Windows reproducibles del canal Nightly",
-        "en": "Reproducible Windows builds for the Nightly channel",
-        "pt": "Builds Windows reproduzíveis do canal Nightly",
-        "it": "Build Windows riproducibili del canale Nightly"
-      },
-      "body": {
-        "es": "El pipeline instala Chromium y empaqueta el runtime aprobado de telemetría con SHA256 fijado, manifiesto y smoke verificados, sin recompilarlo con dependencias rolling. Nightly.15 reúne V2, optimizaciones y correcciones visuales; E20 sigue siendo opcional.",
-        "en": "The pipeline installs Chromium and packages the approved telemetry runtime with pinned SHA256, verified manifest and smoke test, without rebuilding it with rolling dependencies. Nightly.15 brings together V2, optimizations and visual fixes; E20 remains optional.",
-        "pt": "O pipeline instala Chromium e empacota o runtime aprovado com SHA256 fixo, manifesto e smoke verificados, sem recompilar com dependências rolling. Nightly.15 reúne V2, otimizações e correções visuais; E20 permanece opcional.",
-        "it": "La pipeline installa Chromium e include il runtime approvato con SHA256 fissato, manifesto e smoke verificati, senza ricompilarlo con dipendenze rolling. Nightly.15 riunisce V2, ottimizzazioni e correzioni visive; E20 resta facoltativo."
-      },
-      "label": {
-        "es": "Corregido",
-        "en": "Fixed",
-        "pt": "Corrigido",
-        "it": "Corretto"
-      }
-    },
-    {
-      "id": "overlay-studio-v3",
-      "type": "feature",
-      "title": {
-        "es": "Overlay Studio V3 en marcha",
-        "en": "Overlay Studio V3 under way",
-        "pt": "Overlay Studio V3 em curso",
-        "it": "Overlay Studio V3 in corso"
-      },
-      "body": {
-        "es": "Un único límite de render para estudio, runtime y previsualización, con guardado automático, historial de deshacer/rehacer, Standings Redline configurable y con ancho físico mínimo que preserva columnas y filas completas en perfiles estrechos, pedales Redline contenidos en su frame y con la saturación confinada a sus wells, y Track Map Endurance ajustado al frame sin recortar su pie, dentro de los catálogos Crystal, Neo y Endurance. El candidato Redline conserva su evidencia visual S3 acotada; las comprobaciones restantes pasan a Isaac. El nuevo programa se centra en Telemetría V2 y ya no impone Redline como primera fase; no declara superados los gates pendientes ni amplía otros diseños.",
-        "en": "A single render boundary for studio, runtime and preview, with autosave, undo/redo history, configurable Standings Redline with a minimum physical width that preserves complete columns and rows in narrow profiles, Redline pedals contained in their frame with saturation confined to their wells, and Endurance Track Map fitted to its frame without clipping its footer, within the Crystal, Neo and Endurance catalogues. The Redline candidate retains its bounded S3 visual evidence; Isaac owns the remaining manual checks. The new programme focuses on Telemetry V2 rather than requiring Redline as its first phase; pending gates are not declared passed and other designs are not expanded.",
-        "pt": "Um único limite de render para estúdio, runtime e pré-visualização, com gravação automática, histórico de desfazer/refazer, Standings Redline configurável e com largura física mínima que preserva colunas e linhas completas em perfis estreitos, pedais Redline contidos no frame e com a saturação confinada aos seus wells, e Track Map Endurance ajustado ao frame sem cortar o rodapé, nos catálogos Crystal, Neo e Endurance. O candidato Redline conserva a evidência visual S3 delimitada; Isaac assume as verificações manuais restantes. O novo programa centra-se na Telemetria V2, sem impor Redline como primeira fase; não declara os gates pendentes aprovados nem amplia outros designs.",
-        "it": "Un unico confine di render per studio, runtime e anteprima, con salvataggio automatico, cronologia annulla/ripristina, Standings Redline configurabile e con larghezza fisica minima che preserva colonne e righe complete nei profili stretti, pedali Redline contenuti nel frame e con la saturazione confinata ai propri well, e Track Map Endurance adattato al frame senza tagliare il piè di pagina, nei cataloghi Crystal, Neo ed Endurance. Il candidato Redline conserva l'evidenza visiva S3 circoscritta; Isaac eseguirà le verifiche manuali restanti. Il nuovo programma si concentra su Telemetry V2 senza imporre Redline come prima fase; non dichiara superati i gate pendenti né amplia altri design."
-      },
-      "label": {
-        "es": "En desarrollo",
-        "en": "In progress",
-        "pt": "Em desenvolvimento",
-        "it": "In corso"
-      }
-    },
-    {
-      "id": "telemetry-live",
-      "type": "feature",
-      "title": {
-        "es": "Telemetría LMU en vivo",
-        "en": "Live LMU telemetry",
-        "pt": "Telemetria LMU ao vivo",
-        "it": "Telemetria LMU dal vivo"
-      },
-      "body": {
-        "es": "Driver LMU con reconexión acotada, transporte Overlay dirigido con una sola entrega pendiente, generaciones retiradas y recuperación ante timeout compartido por Desktop y Studio, y lifecycle V2 renovado por montaje sin reutilizar recursos dispuestos. OverlayFrame V2 es la única autoridad visual, de layout y visibilidad en Studio, Desktop y OBS para los 18 widgets telemétricos; Calendar y Engineer conservan sus fuentes auxiliares explícitas, y los fallos V2 se muestran en el widget. Standings limita todas las plantillas Endurance a filas completas y, en práctica o clasificación, separa la mejor vuelta de cada coche de su diferencia contra la mejor vuelta de la sesión. Relative Redline ordena el tráfico por topología física, estabiliza la pertenencia por instancia con tiempo monotónico y obtiene posición, gap y última vuelta de una misma fila canónica. Un reemplazo de vecinos requiere siete segundos sólo mientras todas las filas previas sigan canónicas; cualquier ausencia publica inmediatamente la ventana completa. Mirror, Proximity y Traffic representan cada frame sin FLIP ni filas fantasma para impedir saltos, cruces y recortes transitorios. El nuevo plan maestro prevé retirar completamente telemetría V1 con rollback por build anterior, auditar toda la cadena V2 y simplificarla con mejoras medidas, preservando sus garantías y consumidores. R0 reúne la clasificación de dependencias, una copia privada de la build anterior verificada por hash y regresiones focales aprobadas. R1 entrega el pull Wails exclusivamente V2, con ACK, replay, latest-wins, sesiones retiradas, cleanup y estados intactos. R2 retira de Desktop el adapter y shadow V1: un evento legacy ya no alimenta esa superficie y un frame V2 conserva render y cierre del pull. R3 retira el adapter V1 del ciclo productivo de Studio, que conserva reset, restart, errores y cleanup sobre el pull V2. R4 retira de OBS el adapter SSE V1 y el shadow, conservando V2, Engineer, perfil, calendario, Race Schedule, diagnósticos, StrictMode y teardown. R5 retira la ruta SSE pública de Overlay V1 y su configuración de servidor, manteniendo Strategy, Overlay V2 y el lifecycle. R6a retira el productor Overlay V1 y su activación, y R6a.1 retira los constructores huérfanos `overlay.ProjectV1`/`NewOverlayFull` y el export huérfano `FromFreshness`, migrando sus tests a hechos canónicos y Overlay V2. R6b retira el Hub Overlay Telemetry V1 inerte del runtime (campo, constructor, accessor, cierre, métricas Transport y contadores) y las versiones huérfanas, migrando sus tests a ausencia estructural y Strategy correcto. R7a y R7b ya están ejecutados en el candidato aislado: desaparecen Go, tipos, contratos, tooling, adapters, shadow, harnesses, núcleo y previews legacy de Overlay V1, con TypeScript regenerado, guardias, bundle y gates completos. La auditoría estática integral V2 está documentada en ISA-987 con cuatro defectos priorizados y simplificaciones concretas pendientes de implementar y medir; el bucle de rendimiento no ha comenzado; este estado de rama no implica integración en Nightly ni certifica rendimiento óptimo.",
-        "en": "LMU driver with bounded reconnects, targeted Overlay transport with one pending delivery, bounded retired generations and timeout recovery shared by Desktop and Studio, and a V2 lifecycle renewed per mount without reusing disposed resources. OverlayFrame V2 is the sole rendering, layout, and visibility authority in Studio, Desktop, and OBS for all 18 telemetry widgets; Calendar and Engineer keep their explicit auxiliary sources, and V2 failures are shown in the widget. Standings limits every Endurance template to complete rows and, in practice or qualifying, separates each car's best lap from its gap to the session best. Relative Redline orders traffic by physical topology, stabilizes membership per instance using monotonic time, and takes position, gap, and last lap from one canonical row. A neighbour replacement requires seven seconds only while every previous row remains canonical; any absence publishes the complete window immediately. Mirror, Proximity and Traffic render each frame without FLIP or ghost rows to prevent jumps, crossings and transient clipping. The new master plan calls for complete legacy telemetry V1 removal with rollback to a previous build, an end-to-end V2 audit and simplification through measured improvements while preserving guarantees and consumers. R0 records dependency classifications, a hash-verified private copy of the previous build and passing focused regressions. R1 delivers the Wails pull as V2-only, preserving ACK, replay, latest-wins, retired sessions, cleanup and states. R2 removes the V1 adapter and shadow from Desktop: a legacy event no longer feeds that surface while a V2 frame still renders and closes the pull session. R3 removes the V1 adapter from Studio's production lifecycle while preserving reset, restart, errors and cleanup over the V2 pull. R4 removes the V1 SSE adapter and shadow from OBS while preserving V2, Engineer, profile, calendar, Race Schedule, diagnostics, StrictMode and teardown. R5 removes Overlay V1's public SSE route and server configuration while preserving Strategy, Overlay V2 and lifecycle. R6a removes the Overlay V1 producer and its activation, and R6a.1 removes the orphaned constructors `overlay.ProjectV1`/`NewOverlayFull` and the orphaned export `FromFreshness`, migrating their tests to canonical facts and Overlay V2. R6b removes the inert Overlay Telemetry V1 Hub from the runtime (field, constructor, accessor, close, Transport metrics and counters) and the orphaned versions, migrating their tests to structural absence and correct Strategy. R7a and R7b are now complete in the isolated candidate: Overlay V1 Go code, types, contracts, tooling, adapters, shadow, harnesses, core and legacy previews are gone, with regenerated TypeScript, guards, bundle checks and complete gates. The end-to-end static V2 audit is documented in ISA-987 with four prioritized defects and concrete simplifications pending implementation and measurement; the performance loop has not started; this branch state does not imply Nightly integration or certify optimal performance.",
-        "pt": "Driver LMU com reconexão limitada, transporte Overlay dirigido com uma única entrega pendente, gerações retiradas limitadas e recuperação após timeout partilhada por Desktop e Studio, e lifecycle V2 renovado por montagem sem reutilizar recursos descartados. OverlayFrame V2 é a única autoridade visual, de layout e visibilidade no Studio, Desktop e OBS para os 18 widgets telemétricos; Calendar e Engineer mantêm fontes auxiliares explícitas, e as falhas V2 aparecem no widget. Standings limita todos os modelos Endurance a linhas completas e, em treino ou qualificação, separa a melhor volta de cada carro da diferença para a melhor volta da sessão. O Relative Redline ordena o tráfego pela topologia física, estabiliza a composição por instância com tempo monotónico e obtém posição, gap e última volta da mesma linha canónica. Uma substituição de vizinhos exige sete segundos apenas enquanto todas as linhas anteriores continuam canónicas; qualquer ausência publica imediatamente a janela completa. Mirror, Proximity e Traffic representam cada frame sem FLIP nem linhas fantasma para evitar saltos, cruzamentos e cortes transitórios. O novo plano mestre prevê retirar completamente a telemetria V1 com rollback por build anterior, auditar toda a cadeia V2 e simplificá-la com melhorias medidas, preservando garantias e consumidores. R0 reúne a classificação de dependências, uma cópia privada da build anterior verificada por hash e regressões focais aprovadas. R1 entrega o pull Wails exclusivamente V2, preservando ACK, replay, latest-wins, sessões retiradas, cleanup e estados. R2 remove o adapter e o shadow V1 do Desktop: um evento legacy deixa de alimentar essa superfície, enquanto um frame V2 continua a renderizar e encerra a sessão pull. R3 remove o adapter V1 do ciclo produtivo do Studio, preservando reset, reinício, erros e cleanup sobre o pull V2. R4 remove do OBS o adapter SSE V1 e o shadow, preservando V2, Engineer, perfil, calendário, Race Schedule, diagnósticos, StrictMode e teardown. R5 remove a rota SSE pública do Overlay V1 e a sua configuração de servidor, preservando Strategy, Overlay V2 e lifecycle. R6a remove o produtor Overlay V1 e a sua ativação, e R6a.1 remove os construtores órfãos `overlay.ProjectV1`/`NewOverlayFull` e o export órfão `FromFreshness`, migrando os seus testes para factos canónicos e Overlay V2. R6b remove o Hub inerte do Overlay Telemetry V1 do runtime (campo, construtor, accessor, fecho, métricas Transport e contadores) e as versões órfãs, migrando os seus testes para ausência estrutural e Strategy correto. R7a e R7b já foram executados no candidato isolado: desapareceram o código Go, tipos, contratos, tooling, adapters, shadow, harnesses, núcleo e previews legacy do Overlay V1, com TypeScript regenerado, guards, bundle e gates completos. A auditoria estática integral V2 está documentada em ISA-987 com quatro defeitos priorizados e simplificações concretas por implementar e medir; o ciclo de desempenho não começou; este estado da branch não implica integração em Nightly nem certifica desempenho ótimo.",
-        "it": "Driver LMU con riconnessione limitata, trasporto Overlay diretto con una sola consegna pendente, generazioni ritirate limitate e recupero dopo timeout condiviso da Desktop e Studio, e lifecycle V2 rinnovato a ogni montaggio senza riutilizzare risorse disposte. OverlayFrame V2 è l'unica autorità di rendering, layout e visibilità in Studio, Desktop e OBS per i 18 widget telemetrici; Calendar ed Engineer mantengono fonti ausiliarie esplicite e gli errori V2 compaiono nel widget. Standings limita tutti i template Endurance a righe complete e, in pratica o qualifica, separa il miglior giro di ogni auto dal distacco rispetto al miglior giro della sessione. Relative Redline ordina il traffico per topologia fisica, stabilizza l'appartenenza per istanza con tempo monotono e ricava posizione, gap e ultimo giro dalla stessa riga canonica. Una sostituzione dei vicini richiede sette secondi solo mentre tutte le righe precedenti restano canoniche; ogni assenza pubblica immediatamente la finestra completa. Mirror, Proximity e Traffic rappresentano ogni frame senza FLIP o righe fantasma per evitare salti, incroci e ritagli transitori. Il nuovo piano prevede la rimozione completa della telemetria V1 con rollback a una build precedente, l'audit dell'intera catena V2 e la semplificazione con miglioramenti misurati, preservando garanzie e consumatori. R0 raccoglie la classificazione delle dipendenze, una copia privata della build precedente verificata tramite hash e regressioni mirate superate. R1 consegna il pull Wails esclusivamente V2, preservando ACK, replay, latest-wins, sessioni ritirate, cleanup e stati. R2 rimuove adapter e shadow V1 dal Desktop: un evento legacy non alimenta più quella superficie, mentre un frame V2 continua a renderizzare e chiude la sessione pull. R3 rimuove l'adapter V1 dal ciclo produttivo di Studio, preservando reset, riavvio, errori e cleanup sul pull V2. R4 rimuove da OBS l'adapter SSE V1 e lo shadow, preservando V2, Engineer, profilo, calendario, Race Schedule, diagnostica, StrictMode e teardown. R5 rimuove la rotta SSE pubblica dell'Overlay V1 e la relativa configurazione del server, preservando Strategy, Overlay V2 e lifecycle. R6a rimuove il produttore Overlay V1 e la sua attivazione, e R6a.1 rimuove i costruttori orfani `overlay.ProjectV1`/`NewOverlayFull` e l'export orfano `FromFreshness`, migrando i loro test a fatti canonici e Overlay V2. R6b rimuove l'Hub inerte dell'Overlay Telemetry V1 dal runtime (campo, costruttore, accessor, chiusura, metriche Transport e contatori) e le versioni orfane, migrando i loro test ad assenza strutturale e Strategy corretto. R7a e R7b sono ora completati nel candidato isolato: codice Go, tipi, contratti, tooling, adapter, shadow, harness, core e preview legacy di Overlay V1 sono stati rimossi, con TypeScript rigenerato, guard, bundle e gate completi. L'audit statico V2 end-to-end è documentato in ISA-987 con quattro difetti prioritari e semplificazioni concrete da implementare e misurare; il ciclo di prestazioni non è iniziato; questo stato del branch non implica integrazione in Nightly né certifica prestazioni ottimali."
-      },
-      "label": {
-        "es": "En desarrollo",
-        "en": "In progress",
-        "pt": "Em desenvolvimento",
-        "it": "In corso"
-      }
-    },
-    {
-      "id": "overlay-tester-feedback",
-      "type": "fix",
-      "title": {
-        "es": "Correcciones del feedback de overlays",
-        "en": "Overlay tester feedback fixes",
-        "pt": "Correções do feedback dos overlays",
-        "it": "Correzioni del feedback degli overlay"
-      },
-      "body": {
-        "es": "Studio reconoce documentos guardados equivalentes; las tablas Crystal respetan sus columnas y ajustan altura al cambiar filas. Pedales conservan el historial y muestran R/N, colores configurados y escala RPM sin simular el corte del coche. Track Map tiene fondo transparente y leyenda de clases. Las comparaciones explican referencias y datos ausentes; Head-to-Head protege su geometría. Dense contiene los tres pedales y el historial a 560×100; Broadcast omite límites de vueltas inválidos o ilimitados. Validación física restante pendiente.",
-        "en": "Studio recognizes equivalent saved documents; Crystal tables honor columns and adjust height when row count changes. Pedals preserve history and show R/N, configured colors and an RPM scale without simulating the car redline. Track Map has a transparent background and class legend. Comparisons explain references and missing data; Head-to-Head protects its geometry. Dense contains all three pedals and history at 560×100; Broadcast omits invalid or unlimited lap limits. Remaining physical validation is pending.",
-        "pt": "Studio reconhece documentos guardados equivalentes; tabelas Crystal respeitam colunas e ajustam a altura ao mudar as linhas. Pedais preservam o histórico e mostram R/N, cores configuradas e escala RPM sem simular o limite do carro. Track Map tem fundo transparente e legenda de classes. Comparações explicam referências e dados ausentes; Head-to-Head protege a geometria. Dense contém os três pedais e o histórico a 560×100; Broadcast omite limites de voltas inválidos ou ilimitados. A validação física restante continua pendente.",
-        "it": "Studio riconosce documenti salvati equivalenti; le tabelle Crystal rispettano le colonne e adattano l'altezza al numero di righe. I pedali conservano la cronologia e mostrano R/N, colori configurati e una scala RPM senza simulare il limitatore dell'auto. Track Map ha sfondo trasparente e legenda delle classi. I confronti spiegano riferimenti e dati assenti; Head-to-Head protegge la geometria. Dense contiene i tre pedali e la cronologia a 560×100; Broadcast omette limiti di giri non validi o illimitati. La restante verifica fisica è in attesa."
-      },
-      "label": {
-        "es": "En validación",
-        "en": "Under validation",
-        "pt": "Em validação",
-        "it": "In validazione"
-      }
-    },
-    {
-      "id": "performance-policy",
-      "type": "feature",
-      "title": {
-        "es": "Política de rendimiento para overlays",
-        "en": "Overlay performance policy",
-        "pt": "Política de desempenho para overlays",
-        "it": "Politica prestazionale per gli overlay"
-      },
-      "body": {
-        "es": "Go decide uno de cinco niveles efectivos, publica `capabilities.performance` y aplica una cadencia común; Ajustes permite elegirlos y cada perfil v4 puede heredar, fijar un nivel o personalizar Hz por widget con su coste de CPU visible. Studio guarda esa política y deja `updateHz` como dato exclusivo del lector legado. En los niveles eficientes, el overlay usa una entrada propia y una ventana limitada a sus widgets, el Hub se destruye al minimizar solo cuando su registro empujado confirma que no hay borradores, Ingeniero conserva el audio sin presentación visual y Windows aplica una política de energía reversible. Automático mide CPU y memoria del árbol propio a 1 Hz, incorpora frametime de LMU mediante una sesión PresentMon aislada cuando está disponible y ajusta entre los niveles 2 y 5 con histéresis; sin juego o PresentMon continúa por CPU y declara `unavailable`. Los efectos por widget quedan reservados para la issue dedicada a las variantes Endurance `noBlur`/`flat`. D8 está demostrado para spotter por ruta real; banderas no tiene señal canónica en v2 y se verifica en #893. Automático es el defecto desde #948: empieza en 3 y la migración del rollout temporal a nivel 1 muestra un aviso hasta la primera elección explícita. El nuevo programa de Telemetría V2 preserva estas capacidades y mide optimizaciones sin reducir calidad, información o cadencias. El bucle termina tras cinco experimentos consecutivos sin mejora medida u ocho horas de ejecución. Efectos, indicador de coste, informe y recortes generales del Hub quedan fuera de esta secuencia activa, sin darse por entregados. La entrega aislada ISA-979 evita reconstruir el contorno estático del mapa V2 en cada frame y conserva marcadores y cadencias; su mejora de cálculo está medida en Mac, sin certificar FPS ni integración en nightly.",
-        "en": "Go selects one of five effective levels, publishes `capabilities.performance` and applies one shared cadence; Settings exposes those levels and each v4 profile can inherit, select a level, or customise per-widget Hz with visible CPU cost. Studio saves that policy and keeps `updateHz` exclusively in the legacy reader. At efficient levels, the overlay uses its own entry and a window bounded to its widgets, the Hub is destroyed on minimise only when its pushed registry confirms that no drafts exist, Engineer keeps audio without visual presentation, and Windows applies a reversible power policy. Automatic mode samples CPU and memory for Vantare's own process tree at 1 Hz, includes LMU frametime through an isolated PresentMon session when available, and adjusts between levels 2 and 5 with hysteresis; without the game or PresentMon it continues from CPU and reports `unavailable`. Per-widget effects remain reserved for the dedicated Endurance noBlur/flat variants issue. D8 is proven for spotter through the real path; flags have no canonical v2 signal and are verified in #893. Automatic is the default from #948: it starts at 3 and migration from the temporary level-1 rollout shows a notice until the first explicit choice. The new Telemetry V2 programme preserves these capabilities and measures optimisations without reducing quality, information or update rates. The loop stops after five consecutive experiments without measured improvement or eight hours of execution. Effects, the cost indicator, the report and general Hub reductions are outside this active sequence, not marked as delivered.isolated ISA-979 change avoids rebuilding the static V2 map outline on every frame while preserving markers and cadence; its computation improvement is measured on Mac, without certifying FPS or nightly integration.",
-        "pt": "O Go decide um de cinco níveis efetivos, publica `capabilities.performance` e aplica uma cadência comum; as Definições permitem escolhê-los e cada perfil v4 pode herdar, fixar um nível ou personalizar Hz por widget com o custo de CPU visível. O Studio guarda essa política e mantém `updateHz` apenas no leitor legado. Nos níveis eficientes, o overlay usa uma entrada própria e uma janela limitada aos seus widgets, o Hub é destruído ao minimizar apenas quando o seu registo enviado confirma que não existem rascunhos, o Engenheiro mantém o áudio sem apresentação visual e o Windows aplica uma política de energia reversível. O modo Automático mede CPU e memória da árvore de processos própria a 1 Hz, inclui o frametime do LMU por uma sessão PresentMon isolada quando disponível e ajusta entre os níveis 2 e 5 com histerese; sem o jogo ou PresentMon continua pela CPU e declara `unavailable`. Os efeitos por widget ficam reservados para a issue dedicada às variantes Endurance `noBlur`/`flat`. D8 está demonstrado para o spotter pela rota real; as bandeiras não têm sinal canónico em v2 e são verificadas em #893. Automático é o padrão desde #948: começa no nível 3 e a migração do rollout temporário no nível 1 mostra um aviso até à primeira escolha explícita. O novo programa de Telemetria V2 preserva estas capacidades e mede otimizações sem reduzir qualidade, informação ou cadências. O ciclo termina após cinco experiências consecutivas sem melhoria medida ou oito horas de execução. Efeitos, indicador de custo, relatório e reduções gerais do Hub ficam fora desta sequência ativa, sem serem considerados entregues. A entrega isolada ISA-979 evita reconstruir o contorno estático do mapa V2 a cada frame e conserva marcadores e cadências; a melhoria de cálculo foi medida no Mac, sem certificar FPS nem integração em nightly.",
-        "it": "Go decide uno dei cinque livelli effettivi, pubblica `capabilities.performance` e applica una cadenza comune; le Impostazioni permettono di sceglierli e ogni profilo v4 può ereditare, fissare un livello o personalizzare gli Hz per widget mostrando il costo CPU. Studio salva questa politica e mantiene `updateHz` solo nel lettore legacy. Nei livelli efficienti, l'overlay usa un entry dedicato e una finestra limitata ai suoi widget, l'Hub viene distrutto alla minimizzazione solo quando il registro inviato conferma che non esistono bozze, Engineer mantiene l'audio senza presentazione visiva e Windows applica una politica energetica reversibile. La modalità Automatica campiona CPU e memoria dell'albero di processi Vantare a 1 Hz, include il frametime di LMU tramite una sessione PresentMon isolata quando disponibile e regola i livelli da 2 a 5 con isteresi; senza gioco o PresentMon continua in base alla CPU e dichiara `unavailable`. Gli effetti per widget restano riservati alla issue dedicata alle varianti Endurance `noBlur`/`flat`. D8 è dimostrato per lo spotter tramite il percorso reale; le bandiere non hanno un segnale canonico v2 e sono verificate in #893. Automatico è il valore predefinito da #948: parte dal livello 3 e la migrazione del rollout temporaneo al livello 1 mostra un avviso fino alla prima scelta esplicita. Il nuovo programma Telemetry V2 preserva queste capacità e misura ottimizzazioni senza ridurre qualità, informazioni o frequenze. Il ciclo termina dopo cinque esperimenti consecutivi senza miglioramento misurato oppure otto ore di esecuzione. Effetti, indicatore del costo, rapporto e riduzioni generali dell'Hub restano fuori da questa sequenza attiva, senza considerarli consegnati. La consegna isolata ISA-979 evita di ricostruire il contorno statico della mappa V2 a ogni frame e conserva marcatori e frequenze; il miglioramento di calcolo è misurato su Mac, senza certificare FPS o integrazione in nightly."
-      },
-      "label": {
-        "es": "Feature",
-        "en": "Feature",
-        "pt": "Feature",
-        "it": "Feature"
-      }
-    },
-    {
-      "id": "telemetry-analysis-reader-runtime",
-      "type": "feature",
-      "title": {
-        "es": "Reader histórico LMU y runtime Windows",
-        "en": "LMU historical reader and Windows runtime",
-        "pt": "Reader histórico LMU e runtime Windows",
-        "it": "Reader storico LMU e runtime Windows"
-      },
-      "body": {
-        "es": "Analysis dispone de un reader LMU autorizado y fail-closed, compuesto en la app y empaquetado en Windows con runtime verificado; la pantalla post-sesión todavía no consume el catálogo real.",
-        "en": "Analysis has an authorized fail-closed LMU reader, composed in the app and packaged on Windows with a verified runtime; the post-session screen does not consume the real catalogue yet.",
-        "pt": "Analysis dispõe de um reader LMU autorizado e fail-closed, composto na app e empacotado no Windows com runtime verificado; o ecrã pós-sessão ainda não consome o catálogo real.",
-        "it": "Analysis dispone di un reader LMU autorizzato e fail-closed, composto nell'app e distribuito su Windows con runtime verificato; la schermata post-sessione non usa ancora il catalogo reale."
-      },
-      "label": {
-        "es": "Feature",
-        "en": "Feature",
-        "pt": "Feature",
-        "it": "Feature"
-      }
-    },
-    {
-      "id": "engineer-radio-spotter",
-      "type": "feature",
-      "title": {
-        "es": "Radio bus, Spotter y motor de familias",
-        "en": "Radio bus, Spotter and family engine",
-        "pt": "Radio bus, Spotter e motor de famílias",
-        "it": "Radio bus, Spotter e motore di famiglie"
-      },
-      "body": {
-        "es": "Spotter y las familias fuel, sanciones, vueltas, tiempos y boxes consumen telemetría canónica y entregan avisos priorizados por el mismo bus, con rollback exclusivo del stack anterior.",
-        "en": "Spotter plus fuel, penalties, laps, timings and pit families consume canonical telemetry and deliver prioritized alerts through the same bus, with an exclusive rollback to the previous stack.",
-        "pt": "Spotter e as famílias de combustível, penalizações, voltas, tempos e boxes consomem telemetria canónica e entregam alertas priorizados pelo mesmo bus, com rollback exclusivo para o stack anterior.",
-        "it": "Spotter e le famiglie carburante, penalità, giri, tempi e box consumano telemetria canonica e consegnano avvisi prioritari sullo stesso bus, con rollback esclusivo allo stack precedente."
-      },
-      "label": {
-        "es": "En revisión",
-        "en": "In review",
-        "pt": "Em revisão",
-        "it": "In revisione"
-      }
-    },
-    {
-      "id": "engineer-voice-input-experimental",
-      "type": "feature",
-      "title": {
-        "es": "Carril experimental de voz de entrada",
-        "en": "Experimental voice-input lane",
-        "pt": "Carril experimental de entrada de voz",
-        "it": "Corsia sperimentale di input vocale"
-      },
-      "body": {
-        "es": "El flag experimental aísla PTT, revalida su reserva F24, usa un host hijo asíncrono y solo publica valores con formato cerrado; WASAPI, Whisper, wake acústico y validación física/humana siguen pendientes y fallan cerrados.",
-        "en": "The experimental flag isolates PTT, revalidates its F24 reservation, uses an asynchronous child host and only publishes closed-format values; WASAPI, Whisper, acoustic wake and physical/human validation remain pending and fail closed.",
-        "pt": "O flag experimental isola PTT, revalida a reserva F24, usa um host filho assíncrono e só publica valores de formato fechado; WASAPI, Whisper, wake acústico e validação física/humana continuam pendentes e falham de forma fechada.",
-        "it": "Il flag sperimentale isola PTT, rivalida la riserva F24, usa un processo figlio asincrono e pubblica solo valori dal formato chiuso; WASAPI, Whisper, wake acustico e validazione fisica/umana restano pendenti e falliscono in modo chiuso."
-      },
-      "label": {
-        "es": "En revisión",
-        "en": "In review",
-        "pt": "Em revisão",
-        "it": "In revisione"
-      }
-    },
-    {
-      "id": "licensing-offline",
-      "type": "feature",
-      "title": {
-        "es": "Licencias con credencial offline",
-        "en": "Licensing with offline credentials",
-        "pt": "Licenças com credencial offline",
-        "it": "Licenze con credenziale offline"
-      },
-      "body": {
-        "es": "La app arranca desde la credencial en caché y verifica sin red, de modo que una caída del servicio no cierra la sesión.",
-        "en": "The app starts from the cached credential and verifies offline, so a service outage does not sign you out.",
-        "pt": "A app arranca a partir da credencial em cache e verifica sem rede, para que uma falha do serviço não encerre a sessão.",
-        "it": "L'app parte dalla credenziale in cache e verifica offline, così un guasto del servizio non chiude la sessione."
-      },
-      "label": {
-        "es": "Feature",
-        "en": "Feature",
-        "pt": "Feature",
-        "it": "Feature"
-      }
-    },
-    {
-      "id": "channels",
-      "type": "plan",
-      "title": {
-        "es": "Canales nightly y testers",
-        "en": "Nightly and testers channels",
-        "pt": "Canais nightly e testers",
-        "it": "Canali nightly e tester"
-      },
-      "body": {
-        "es": "Tres canales de actualización (estable, testers y nightly) con acceso según el rol de la cuenta.",
-        "en": "Three update channels (stable, testers and nightly) with access driven by the account role.",
-        "pt": "Três canais de atualização (estável, testers e nightly) com acesso conforme o papel da conta.",
-        "it": "Tre canali di aggiornamento (stabile, tester e nightly) con accesso in base al ruolo dell'account."
-      },
-      "label": {
-        "es": "Plan",
-        "en": "Plan",
-        "pt": "Plano",
-        "it": "Piano"
-      }
-    },
-    {
-      "id": "launcher-favorite-toggle",
-      "type": "feature",
-      "title": {
-        "es": "Favoritos y aplicaciones propias en el Launcher",
-        "en": "Favourites and custom apps in the Launcher",
-        "pt": "Favoritos e aplicações próprias no Launcher",
-        "it": "Preferiti e app personalizzate nel Launcher"
-      },
-      "body": {
-        "es": "La estrella de cada aplicación marca el favorito y manda en el orden, y «Añadir aplicación» da de alta programas que el escaneo no detecta.",
-        "en": "Each app's star marks it as a favourite and drives the ordering, and \"Add application\" registers programs the scan does not detect.",
-        "pt": "A estrela de cada aplicação marca o favorito e comanda a ordem, e «Adicionar aplicação» regista programas que a análise não deteta.",
-        "it": "La stella di ogni applicazione segna il preferito e comanda l'ordine, e «Aggiungi applicazione» registra programmi che la scansione non rileva."
-      },
-      "label": {
-        "es": "Feature",
-        "en": "Feature",
-        "pt": "Feature",
-        "it": "Feature"
-      }
-    },
-    {
-      "id": "strategy-multi-event",
-      "type": "plan",
-      "title": {
-        "es": "Estrategias por evento",
-        "en": "Per-event strategies",
-        "pt": "Estratégias por evento",
-        "it": "Strategie per evento"
-      },
-      "body": {
-        "es": "El puente de estrategia publica un único evento activo; «Otros eventos» solo podrá listarlos cuando publique varios.",
-        "en": "The strategy bridge publishes a single active event; \"Other events\" can only list them once it publishes several.",
-        "pt": "A ponte de estratégia publica um único evento ativo; «Outros eventos» só os poderá listar quando publicar vários.",
-        "it": "Il ponte di strategia pubblica un solo evento attivo; «Altri eventi» potrà elencarli solo quando ne pubblicherà diversi."
-      },
-      "label": {
-        "es": "Plan",
-        "en": "Plan",
-        "pt": "Plano",
-        "it": "Piano"
-      }
-    },
-    {
-      "id": "strategy-edit-drivers",
-      "type": "plan",
-      "title": {
-        "es": "Editar pilotos y sus ritmos",
-        "en": "Editing drivers and their pace",
-        "pt": "Editar pilotos e os seus ritmos",
-        "it": "Modificare i piloti e i loro ritmi"
-      },
-      "body": {
-        "es": "Los ritmos llegan desde el hub y no hay comando para escribirlos, así que la edición queda pendiente de contrato.",
-        "en": "Pace figures arrive from the hub and no command writes them back, so editing waits on a contract.",
-        "pt": "Os ritmos chegam do hub e não há comando para os escrever, pelo que a edição fica pendente de contrato.",
-        "it": "I ritmi arrivano dall'hub e nessun comando li riscrive, quindi la modifica attende un contratto."
-      },
-      "label": {
-        "es": "Plan",
-        "en": "Plan",
-        "pt": "Plano",
-        "it": "Piano"
-      }
-    },
-    {
-      "id": "strategy-rework-ab",
-      "type": "feature",
-      "title": {
-        "es": "Estrategia definitiva sobre telemetría real",
-        "en": "Definitive strategy over real telemetry",
-        "pt": "Estratégia definitiva sobre telemetria real",
-        "it": "Strategia definitiva su telemetria reale"
-      },
-      "body": {
-        "es": "El planificador usa una única autoridad de cálculo y guardado sobre las sesiones DuckDB reales de LMU. La entrada asistida parte de las carreras del calendario, cruza sede y clase mediante identidades canónicas declaradas en Go y solo pide trazado cuando el histórico contiene varios; después Orbit aplica inputs y clima, muestra backtests neutrales, ofrece referencias firmadas e importa el histórico local con progreso.",
-        "en": "The planner uses one calculation and storage authority over real LMU DuckDB sessions. Assisted entry starts from calendar races, joins venue and class through canonical identities declared in Go, and asks for a layout only when history contains several; Orbit then applies inputs and weather, shows neutral backtests, offers signed references, and imports local history with progress.",
-        "pt": "O planeador usa uma única autoridade de cálculo e gravação sobre as sessões DuckDB reais do LMU. A entrada assistida começa nas corridas do calendário, cruza circuito e classe através de identidades canónicas declaradas em Go e só pede o traçado quando o histórico contém vários; depois o Orbit aplica inputs e meteorologia, mostra backtests neutros, oferece referências assinadas e importa o histórico local com progresso.",
-        "it": "Il pianificatore usa un'unica autorità di calcolo e salvataggio sulle sessioni DuckDB reali di LMU. L'ingresso assistito parte dalle gare del calendario, collega sede e classe tramite identità canoniche dichiarate in Go e chiede il tracciato solo quando lo storico ne contiene più di uno; Orbit applica poi input e meteo, mostra backtest neutrali, offre riferimenti firmati e importa lo storico locale con avanzamento."
-      },
-      "label": {
-        "es": "Feature",
-        "en": "Feature",
-        "pt": "Feature",
-        "it": "Feature"
-      }
-    },
-    {
-      "id": "strategy-orbit-solve-v2",
-      "type": "feature",
-      "title": {
-        "es": "Cálculo Orbit sobre el motor completo",
-        "en": "Orbit calculation on the full engine",
-        "pt": "Cálculo do Orbit no motor completo",
-        "it": "Calcolo Orbit sul motore completo"
-      },
-      "body": {
-        "es": "Orbit ya envía los valores manuales, derivados y sus overrides al motor Strategy completo con su procedencia. El plan exige la reserva configurable, publica el margen efectivo, minimiza Fuel/VE inicial entre empates y rechaza con causa un resultado imposible.",
-        "en": "Orbit now sends manual and derived values, plus their overrides, to the full Strategy engine with provenance. The plan enforces the configurable reserve, publishes the effective margin, minimizes initial Fuel/VE among ties, and rejects an impossible result with a concrete reason.",
-        "pt": "O Orbit agora envia valores manuais e derivados, incluindo os overrides, para o motor Strategy completo com a respetiva procedência. O plano exige a reserva configurável, publica a margem efetiva, minimiza Fuel/VE inicial em empates e rejeita com uma causa concreta um resultado impossível.",
-        "it": "Orbit ora invia valori manuali e derivati, inclusi gli override, al motore Strategy completo con la relativa provenienza. Il piano applica la riserva configurabile, pubblica il margine effettivo, minimizza Fuel/VE iniziale nei pareggi e rifiuta con una causa concreta un risultato impossibile."
-      },
-      "label": {
-        "es": "Feature",
-        "en": "Feature",
-        "pt": "Feature",
-        "it": "Feature"
-      }
-    },
-    {
-      "id": "strategy-pseudonymous-contribution",
-      "type": "feature",
-      "title": {
-        "es": "Contribución seudonimizada de Strategy",
-        "en": "Pseudonymous Strategy contribution",
-        "pt": "Contribuição pseudonimizada de Strategy",
-        "it": "Contributo pseudonimizzato di Strategy"
-      },
-      "body": {
-        "es": "Ajustes > Privacidad permite aceptar una versión del consentimiento, inspeccionar cada bundle y su historial, y pausar la cola. Pausar cancela lo aún no aceptado; lo ya aceptado queda enviado. Revocar el consentimiento y pedir el borrado remoto son acciones separadas. Los envíos nacen desactivados hasta configurar un Worker revisado.",
-        "en": "Settings > Privacy lets users accept a consent-text version, inspect every bundle and its history, and pause the queue. Pausing cancels anything not yet accepted; accepted items remain sent. Revoking consent and requesting remote deletion are separate actions. Uploads start disabled until a reviewed Worker is configured.",
-        "pt": "Ajustes > Privacidade permite aceitar uma versão do consentimento, inspecionar cada bundle e o seu histórico e pausar a fila. A pausa cancela o que ainda não foi aceite; o que já foi aceite permanece enviado. Revogar o consentimento e pedir a eliminação remota são ações separadas. Os envios começam desativados até configurar um Worker revisto.",
-        "it": "Impostazioni > Privacy consente di accettare una versione del consenso, ispezionare ogni bundle e la sua cronologia e mettere in pausa la coda. La pausa annulla ciò che non è ancora stato accettato; gli elementi accettati restano inviati. Revoca del consenso e cancellazione remota sono azioni separate. Gli invii partono disattivati finché non viene configurato un Worker verificato."
-      },
-      "label": {
-        "es": "Feature",
-        "en": "Feature",
-        "pt": "Feature",
-        "it": "Feature"
-      }
-    },
-    {
-      "id": "strategy-local-editorial-cycle",
-      "type": "feature",
-      "title": {
-        "es": "Ciclo editorial local de Strategy",
-        "en": "Local Strategy editorial cycle",
-        "pt": "Ciclo editorial local de Strategy",
-        "it": "Ciclo editoriale locale di Strategy"
-      },
-      "body": {
-        "es": "Un ciclo local predigiere los bundles, prepara para el LLM un informe sin datos crudos ni identificadores y deja a Isaac aprobar perfiles y estrategias antes de generar un catálogo sin firmar. La sincronización remota, la firma y la publicación siguen detrás de sus gates humanos.",
-        "en": "A local cycle predigests bundles, prepares an LLM report without raw data or identifiers, and lets Isaac approve profiles and strategies before generating an unsigned catalogue. Remote synchronization, signing and publication remain behind their human gates.",
-        "pt": "Um ciclo local pré-digere os bundles, prepara para o LLM um relatório sem dados brutos nem identificadores e deixa Isaac aprovar perfis e estratégias antes de gerar um catálogo sem assinatura. A sincronização remota, a assinatura e a publicação continuam atrás dos seus gates humanos.",
-        "it": "Un ciclo locale predigerisce i bundle, prepara per l'LLM un rapporto senza dati grezzi né identificatori e lascia a Isaac l'approvazione di profili e strategie prima di generare un catalogo non firmato. Sincronizzazione remota, firma e pubblicazione restano dietro i rispettivi gate umani."
-      },
-      "label": {
-        "es": "Feature",
-        "en": "Feature",
-        "pt": "Feature",
-        "it": "Feature"
-      }
-    },
-    {
-      "id": "diagnostics-logs",
-      "type": "feature",
-      "title": {
-        "es": "Registros y últimos eventos en Diagnóstico",
-        "en": "Logs and recent events in Diagnostics",
-        "pt": "Registos e últimos eventos em Diagnóstico",
-        "it": "Log e ultimi eventi in Diagnostica"
-      },
-      "body": {
-        "es": "La app escribe un registro rotado en disco, Diagnóstico abre su carpeta y lista los últimos eventos con su nivel.",
-        "en": "The app writes a rotating log to disk, and Diagnostics opens its folder and lists recent events with their level.",
-        "pt": "A app escreve um registo rotativo em disco, e Diagnóstico abre a sua pasta e lista os últimos eventos com o seu nível.",
-        "it": "L'app scrive un log rotante su disco, e Diagnostica apre la sua cartella ed elenca gli ultimi eventi con il loro livello."
-      },
-      "label": {
-        "es": "Feature",
-        "en": "Feature",
-        "pt": "Feature",
-        "it": "Feature"
-      }
-    },
-    {
-      "id": "global-interface-zoom",
-      "type": "feature",
-      "title": {
-        "es": "Zoom global de la interfaz",
-        "en": "Global interface zoom",
-        "pt": "Zoom global da interface",
-        "it": "Zoom globale dell'interfaccia"
-      },
-      "body": {
-        "es": "Ajustes permite ampliar o reducir toda la app en seis pasos, restablecer el tamaño predeterminado y usar Ctrl +, Ctrl −, Ctrl 0 o Ctrl + rueda; la preferencia se recuerda en este equipo y convive con el ajuste responsive de la ventana.",
-        "en": "Settings can zoom the whole app through six steps, restore the default size and use Ctrl +, Ctrl −, Ctrl 0 or Ctrl + wheel; the preference is remembered on this device and works alongside responsive window scaling.",
-        "pt": "As Definições permitem ampliar ou reduzir toda a app em seis passos, repor o tamanho predefinido e usar Ctrl +, Ctrl −, Ctrl 0 ou Ctrl + roda; a preferência fica guardada neste equipamento e convive com o ajuste responsivo da janela.",
-        "it": "Le Impostazioni consentono di ingrandire o ridurre tutta l'app in sei passaggi, ripristinare la dimensione predefinita e usare Ctrl +, Ctrl −, Ctrl 0 o Ctrl + rotellina; la preferenza resta memorizzata su questo dispositivo e convive con l'adattamento responsive della finestra."
-      },
-      "label": {
-        "es": "Feature",
-        "en": "Feature",
-        "pt": "Feature",
-        "it": "Feature"
-      }
-    },
-    {
-      "id": "telemetry-timeline-export",
-      "type": "plan",
-      "title": {
-        "es": "Eje temporal en Telemetría y exportar radio",
-        "en": "Telemetry timeline and radio export",
-        "pt": "Eixo temporal em Telemetria e exportar rádio",
-        "it": "Asse temporale in Telemetria ed esportazione radio"
-      },
-      "body": {
-        "es": "Ambos dependen de que la grabación DuckDB (ADR 0004/0005) se exponga al frontend.",
-        "en": "Both wait on the DuckDB recording (ADR 0004/0005) being exposed to the frontend.",
-        "pt": "Ambos dependem de que a gravação DuckDB (ADR 0004/0005) seja exposta ao frontend.",
-        "it": "Entrambi dipendono dall'esposizione della registrazione DuckDB (ADR 0004/0005) al frontend."
-      },
-      "label": {
-        "es": "Plan",
-        "en": "Plan",
-        "pt": "Plano",
-        "it": "Piano"
+        "es": "ISA-1032",
+        "en": "ISA-1032",
+        "pt": "ISA-1032",
+        "it": "ISA-1032"
       }
     }
   ],

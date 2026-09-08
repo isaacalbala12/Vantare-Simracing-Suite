@@ -46,6 +46,7 @@ function series(patch: Partial<RaceSeries> & { id: string }): RaceSeries {
 
 function calendarOf(list: RaceSeries[], followed: string[] = []): Calendar {
   return {
+    schedule: { validFrom: "2026-07-01T00:00:00Z", validUntil: "2026-08-01T00:00:00Z", updated: "2026-07-01T00:00:00Z", source: "bundled" },
     version: 1,
     timezone: "UTC",
     reminderMinutes: [30, 15, 10, 5, 2],
@@ -105,7 +106,7 @@ describe("buildSeriesEntries", () => {
         }),
       ]),
     );
-    expect(entries[0].sessions).toBe("P 3 · Q 8 · R 20");
+    expect(entries[0].sessions).toBe("P ~3 · Q ~8 · R 20");
   });
 
   it("rotula el warmup y respeta las marcadas estimadas", () => {
@@ -121,7 +122,7 @@ describe("buildSeriesEntries", () => {
         }),
       ]),
     );
-    expect(entries[0].sessions).toBe("P 3 · W 5 · R 40");
+    expect(entries[0].sessions).toBe("P ~3 · W ~5 · R 40");
   });
 
   it("sin sesiones publicadas deja la etiqueta vacía para que el detalle pinte «—»", () => {
@@ -134,9 +135,9 @@ describe("buildSeriesEntries", () => {
   it("el calendario simulado trae las sesiones reales del fixture LMU", () => {
     const entries = buildSeriesEntries(mockCalendar);
     const lmgt3 = entries.find((entry) => entry.id === "beginner-lmgt3-fixed");
-    expect(lmgt3?.sessions).toBe("P 3 · Q 8 · R 20");
+    expect(lmgt3?.sessions).toBe("P ~3 · Q ~8 · R 20");
     const weekly = entries.find((entry) => entry.id === "weekly-wec-weekly");
-    expect(weekly?.sessions).toBe("P 3 · Q 8 · R 100");
+    expect(weekly?.sessions).toBe("P ~3 · Q ~8 · R 100");
   });
 });
 

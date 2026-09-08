@@ -106,6 +106,15 @@ const VIEWS = [
 ] as const;
 
 describe("RacesOrbitPage", () => {
+  it.each(["pending", "error"] as const)("conserva la caducidad durante %s", (refreshState) => {
+    setup({ refreshState, calendar: { ...CALENDAR, schedule: {
+      validFrom: "2026-07-01T00:00:00Z", validUntil: NOW.toISOString(),
+      updated: "2026-07-01T00:00:00Z", source: "published",
+    } } });
+    const status = screen.getByTestId("orbit-races-status").textContent;
+    expect(status).toContain("Horario caducado");
+    expect(status).toContain(refreshState === "pending" ? "Actualizando" : "No se pudo actualizar");
+  });
   it.each([
     ["2026-07-01T00:00:00Z", "2026-07-08T00:00:00Z", "Horario actualizado"],
     ["2026-07-01T00:00:00Z", "2026-07-07T18:07:30Z", "Horario caducado"],

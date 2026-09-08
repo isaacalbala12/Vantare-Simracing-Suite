@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { requestCalendar, subscribeToCalendar, subscribeToCalendarErrors, subscribeToCalendarRefresh, type CalendarRefreshState } from "../../calendar/calendar-store";
+import { requestCalendar, requestCalendarRefreshStatus, subscribeToCalendar, subscribeToCalendarErrors, subscribeToCalendarRefresh, type CalendarRefreshState } from "../../calendar/calendar-store";
 import type { Calendar } from "../../calendar/calendar-types";
 import { buildRaceStarts, dialTarget, type RaceStart } from "./race-starts";
 
@@ -50,6 +50,7 @@ export function useCalendarStarts(): OrbitRacesState {
     });
     const stopRefresh = subscribeToCalendarRefresh(setRefreshState);
     const stopErrors = subscribeToCalendarErrors(() => setCalendarError(true));
+    requestCalendarRefreshStatus();
     requestCalendar();
     return () => { unsubscribe(); stopRefresh(); stopErrors(); };
   }, []);

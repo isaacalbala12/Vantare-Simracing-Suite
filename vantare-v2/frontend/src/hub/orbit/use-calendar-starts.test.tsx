@@ -16,6 +16,14 @@ afterEach(() => { cleanup(); listeners.clear(); emit.mockReset(); vi.useRealTime
 function deliver(name: string, data: unknown) { act(() => { listeners.get(name)?.({ data }); }); }
 
 describe("estado de actualización independiente de calendar:get", () => {
+  it("recupera un error de arranque anterior al montaje sin repetir el refresh", () => {
+    const { result } = renderHook(() => useCalendarStarts());
+    expect(emit).toHaveBeenCalledWith("calendar:refresh:status:get");
+    deliver("calendar:refresh:status", { state: "error" });
+    deliver("calendar:loaded", { calendar: EMPTY_CALENDAR });
+    expect(result.current.refreshState).toBe("error");
+    expect(emit).not.toHaveBeenCalledWith("calendar:schedule:refresh");
+  });
   it("loaded no confirma el refresh; el resultado explícito sí", () => {
     const { result } = renderHook(() => useCalendarStarts());
     deliver("calendar:refresh:started", {});

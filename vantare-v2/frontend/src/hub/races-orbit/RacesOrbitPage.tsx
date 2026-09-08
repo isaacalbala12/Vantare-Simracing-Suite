@@ -138,15 +138,15 @@ export function RacesOrbitPage({ calendar, target, now, refreshState = "idle", c
   const columnClock = useClock(now, COLUMN_MS);
   const validFrom = Date.parse(calendar?.schedule?.validFrom ?? "");
   const validUntil = Date.parse(calendar?.schedule?.validUntil ?? "");
-  const statusKey = refreshState === "pending" ? "races.status.refreshing"
+  const operationKey = refreshState === "pending" ? "races.status.refreshing"
     : calendarError || refreshState === "error" ? "races.status.error"
-    : !calendar ? "races.status.loading"
+    : refreshState === "success" ? "races.status.updated" : null;
+  const validityKey = !calendar ? "races.status.loading"
     : !calendar.series?.length && !calendar.events.length ? "races.empty"
     : !Number.isFinite(validFrom) || !Number.isFinite(validUntil) || validFrom >= validUntil ? "races.status.unknown"
     : clock.getTime() < validFrom ? "races.status.future"
     : clock.getTime() >= validUntil ? "races.status.expired"
-    : refreshState === "success" ? "races.status.updated"
-    : "races.lead";
+    : null;
 
   const [view, setView] = useState<RacesView>("next");
   const [tier, setTier] = useState<TierFilter>("all");
@@ -501,7 +501,11 @@ export function RacesOrbitPage({ calendar, target, now, refreshState = "idle", c
         <div className="orbit-races__head-copy">
           <span className="orbit-eyebrow">{t("races.eyebrow")}</span>
           <h2>{t("races.title")}</h2>
-          <p role="status" data-testid="orbit-races-status">{t(statusKey)}</p>
+          <p role="status" data-testid="orbit-races-status">
+            {operationKey ? t(operationKey) : null}
+            {operationKey && validityKey ? " " : null}
+            {validityKey ? t(validityKey) : !operationKey ? t("races.lead") : null}
+          </p>
         </div>
         <Seg
           className="orbit-races__views"

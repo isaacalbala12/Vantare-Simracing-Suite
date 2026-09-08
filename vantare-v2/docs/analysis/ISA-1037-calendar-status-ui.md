@@ -19,8 +19,18 @@ este corte informa del estado y no pretende sustituir esa corrección.
 Regresión RED: siete fallos por estados ausentes, doble emisión y toast prematuro.
 GREEN focal: 66 tests, incluyendo límites exactos de vigencia, datos inválidos,
 errores, secuencia loaded/result y retirada de listeners. Typecheck y lint PASS.
-Suite completa, build, revisión y checks de roadmap: en curso; resultado final
-en este informe y #1037. No se han medido CPU/GPU/RAM ni tiempos Wails aquí.
+La suite completa inicial terminó 3244 PASS / 5 FAIL: un fallo de i18n por dos
+textos obsoletos corregido y comprobado después, y cuatro timeouts de overlays
+(Pedals dos, Standings uno, transparent-shells uno). No se declara suite verde.
+Go completo falló en TestCoordinatorWithSQLiteDrainsAndReleasesAllHandles,
+store_test.go:801, recording commit exceeded budget (deuda #708). Sin tocarlo.
+Build y roadmap 23+21 PASS. No se han medido CPU/GPU/RAM ni tiempos Wails aquí.
+
+Review 618d5a51: dos P2 reproducidos RED y corregidos: operación y vigencia se
+muestran juntas, y el hook solicita el estado actual del backend tras suscribirse
+para recuperar resultados de arranque anteriores al montaje. Este último depende
+del añadido a C4a #1035, sin segunda consulta remota. Regresiones focales finales:
+70 PASS. Revisión final y build del añadido pendientes.
 
 Archivos: calendar-store/types, use-calendar-starts, OrbitShell, RacesOrbitPage,
 sus pruebas y cuatro catálogos; informe, handoff y roadmap manual/generado.

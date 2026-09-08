@@ -12,14 +12,19 @@ La corrección usa los eventos ya publicados y la identidad canónica del genera
 de series actuales seguidas. No expande otra recurrencia ni altera Calendar.events.
 Se comparan duraciones completas con la ventana documentada (T-1,T]. El dedupe
 existente conserva un aviso por evento/umbral, incluso siguiendo serie y evento.
+Su mapa retenía todas las ocurrencias durante la vida del proceso: regresión RED
+3 retenidas frente a 1 futura. Ahora elimina las que ya empezaron en cada tick,
+sin olvidar avisos futuros. No añade persistencia de notificaciones: tras reinicio
+puede volver a avisar una vez si aún está dentro del umbral vigente.
 
 Go del módulo Calendar PASS: seed real en su fecha histórica de vigencia,
-seguir/dejar de seguir, seguimiento doble, agotamiento de publicación, bordes por
+seguir/dejar de seguir, recarga desde disco, seguimiento doble, agotamiento de publicación, bordes por
 segundos, ID/fuente y cambio de título. Estas pruebas controladas no son Wails ni
-simulador en vivo. Build embed, Go completo, roadmap y revisión pendientes.
+simulador en vivo. Build embed y roadmap 23+21 PASS. Go completo inicial PASS;
+comprobación final tras limpieza de dedupe y revisión pendientes.
 
 Archivos: calendar_service.go, official_schedule.go (constante de ID compartida),
-series_reminders_test.go, informe, handoff y roadmap manual/generado.
+series_reminders_test.go, reminder_loop.go y su test, informe, handoff y roadmap manual/generado.
 Verificación manual pendiente: con horario vigente y permisos/preferencias
 habilitados, seguir una serie y comprobar un aviso al entrar en el umbral; dejar
 de seguir y comprobar que no vuelve a avisar. Confirmación de acciones y permisos

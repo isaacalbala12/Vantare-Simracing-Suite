@@ -1,6 +1,7 @@
 package calendar
 
 import (
+	"path/filepath"
 	"testing"
 	"time"
 )
@@ -30,6 +31,11 @@ func TestDueRemindersFollowedRealSeries(t *testing.T) {
 	if _, err := svc.FollowSeries(series.ID); err != nil {
 		t.Fatal(err)
 	}
+	restarted := NewService(filepath.Dir(svc.Path()), func() time.Time { return now })
+	if err := restarted.Load(); err != nil {
+		t.Fatal(err)
+	}
+	svc = restarted
 	assertOne := func() []Reminder {
 		t.Helper()
 		got := svc.DueReminders(now)

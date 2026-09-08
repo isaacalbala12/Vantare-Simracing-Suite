@@ -9,12 +9,12 @@ import (
 // ReminderDedupe tracks which (eventId, minutesLeft) pairs have already been
 // emitted so the loop does not fire the same reminder twice.
 type ReminderDedupe struct {
-	seen map[string]struct{}
+	seen map[string]time.Time
 }
 
 // NewReminderDedupe creates an empty dedupe set.
 func NewReminderDedupe() *ReminderDedupe {
-	return &ReminderDedupe{seen: make(map[string]struct{})}
+	return &ReminderDedupe{seen: make(map[string]time.Time)}
 }
 
 func dedupeKey(r Reminder) string {
@@ -33,7 +33,7 @@ func (d *ReminderDedupe) Filter(reminders []Reminder) []Reminder {
 		if _, ok := d.seen[k]; ok {
 			continue
 		}
-		d.seen[k] = struct{}{}
+		d.seen[k] = r.StartTime
 		out = append(out, r)
 	}
 	if len(out) == 0 {
@@ -45,7 +45,16 @@ func (d *ReminderDedupe) Filter(reminders []Reminder) []Reminder {
 // Reset clears the dedupe set. Useful when the calendar is re-imported so
 // reminders can fire again for the new event set.
 func (d *ReminderDedupe) Reset() {
-	d.seen = make(map[string]struct{})
+	d.seen = make(map[string]time.Time)
+}
+
+// Prune releases dedupe entries for occurrences that have already started.
+func (d *ReminderDedupe) Prune(now time.Time) {
+	for key, start := range d.seen {
+		if !now.Before(start) {
+			delete(d.seen, key)
+		}
+	}
 }
 
 // ReminderEmitter is the callback signature for the reminder loop.
@@ -66,7 +75,9 @@ func StartReminderLoop(ctx context.Context, svc *Service, tick <-chan time.Time,
 		case <-ctx.Done():
 			return
 		case <-tick:
-			for _, r := range dedupe.Filter(svc.DueReminders(now())) {
+			at := now()
+			dedupe.Prune(at)
+			for _, r := range dedupe.Filter(svc.DueReminders(at)) {
 				emit(r)
 			}
 		}

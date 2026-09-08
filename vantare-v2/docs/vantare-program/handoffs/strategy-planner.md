@@ -24,7 +24,7 @@ Actualización ISA-1028 (2026-09-08, diseño funcional acordado con Isaac):
   correcciones reversibles, calidad por cálculo, Fuel/VE, resultados parciales y
   revisiones reproducibles. Toda la experiencia se presenta desde Strategy,
   conservando Analysis como autoridad interna de lectura y derivación.
-- Spec escrita v1 pendiente de revisión:
+- Spec escrita v1 aprobada por Isaac el 2026-09-08 sobre el commit `a009231a`:
   `docs/superpowers/specs/2026-09-08-strategy-recorded-editor-design.md`.
 - Este rumbo reemplaza la siguiente acción histórica de ISA-694. Live y la
   investigación OSS/Monte Carlo se aplazan hasta completar y validar este corte.
@@ -32,6 +32,9 @@ Actualización ISA-1028 (2026-09-08, diseño funcional acordado con Isaac):
   los párrafos anteriores a esta fecha que lo llaman candidato son históricos.
 - Issue #1028 solo entrega documentación sobre `origin/nightly@d6d0992f`.
   No se ha implementado esta nueva experiencia ni ejecutado el gate Wails/corpus.
+- Plan maestro: `docs/superpowers/plans/2026-09-08-strategy-recorded-editor-master.md`.
+  Primer plan ejecutable: `docs/superpowers/plans/2026-09-08-strategy-recorded-editor-audit.md`,
+  issue #1030. Ambos v1 pendientes de aprobación; la auditoría no ha comenzado.
 
 Actualización ISA-861 (2026-08-27, corte final candidato sobre
 `origin/nightly@b1d5b15b`):
@@ -1035,10 +1038,12 @@ posterior). Strategy permanece bloqueado para `testers` hasta el gate F7a.
 
 ## Siguiente acción exacta
 
-Isaac revisa la especificación escrita v1 de ISA-1028. Después se prepara el plan
-ejecutable, empezando por auditoría de código y corpus para fijar criterios de
-calidad y evaluación. Las decisiones funcionales ya están acordadas; no se
-reabren por defecto. No iniciar implementación o live antes de ese paso.
+Isaac revisa el plan maestro y el primer plan ejecutable de auditoría #1030.
+La spec v1 ya está aprobada: no volver a pedir su aprobación. Tras aprobar el plan,
+ejecutar solo la auditoría de código y corpus para fijar criterios de calidad y
+evaluación; los cortes de implementación se concretan con esa evidencia. Live
+continúa aplazado. La base de ejecución se fija según issue #1030, sin asumir
+que la documentación local esté ya integrada en nightly.
 
 ## Última actualización
 

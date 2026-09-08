@@ -1,8 +1,8 @@
 # Strategy: asistente y edición de telemetría registrada
 
 Fecha: 2026-09-08. Issue: #1028; continuación del expediente #694.
-Estado: decisiones funcionales acordadas con Isaac; especificación escrita v1
-pendiente de su revisión. No es autorización para implementar ni promover.
+Estado: especificación escrita v1 aprobada por Isaac el 2026-09-08, sobre el
+contenido del commit `a009231a`. No es autorización para implementar ni promover.
 Base inspeccionada: `origin/nightly@d6d0992f8dbc800ccb6d75f60fffdc7c3d561da2`.
 
 ## 1. Objetivo y alcance

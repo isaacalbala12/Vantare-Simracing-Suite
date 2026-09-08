@@ -36,6 +36,9 @@ Core se conserva hasta que realmente lo emita (#1072). La suite completa
 anterior acredita `d8efd680` más el texto de roadmap corregido; el ajuste final
 de normalización se verifica con las pruebas focales y CI de la PR.
 No hay merge, promoción ni release; el historial de abajo describe el estudio.
+PR draft [#1076](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1076)
+a nightly, código `de1239a5` subido. Ajuste final: 33 focales y typecheck PASS;
+CI de la PR pendiente. El historial de abajo no sustituye este estado actual.
 
 ## Alcance y estado
 

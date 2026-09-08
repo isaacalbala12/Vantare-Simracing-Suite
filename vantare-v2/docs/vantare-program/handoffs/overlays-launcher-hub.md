@@ -35,6 +35,13 @@ de sesión y documentación que distingue dorsal opcional del contrato frente
 a la carencia del productor Core actual. No se retira ese gap sin datos reales.
 La revisión no acredita Wails/LMU ni permite promoción/release.
 
+Entrega preparada en [PR #1076](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1076),
+**draft a nightly**, código `de1239a5` subido. Ajustes finales: 33 focales y
+typecheck PASS. CI remoto pendiente; no auto-merge, promoción ni release.
+Siguiente corte: cerrar recursos de distribución y #1072, después binario
+configurado y comprobación física del diseño; solicitar integración solo
+con los gates aplicables cerrados. No certificarlo usando el fixture HTML.
+
 ## ISA-1071 — reproducción HTML Redline en React (2026-09-08, aislado)
 
 - Rama `vantareapp/isa-1071-workshop-redline-lab`, base/HEAD sin commit

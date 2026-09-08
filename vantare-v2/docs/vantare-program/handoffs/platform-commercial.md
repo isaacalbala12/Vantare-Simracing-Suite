@@ -1,5 +1,15 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+## ISA-1057 - Calendario: validacion conjunta en curso
+
+Rama aislada sobre nightly d6d0992f. Reune los candidatos C2-C9, el nombre
+Calendario y el banco de medicion; no incluye aun #1020/#1024.
+142 pruebas focales PASS, 2 omitidas por artefacto externo. Build y checks
+completos pendientes; no hay resultado Wails ni ahorro medido.
+Manifest y resoluciones: docs/analysis/ISA-1057-calendar-joint-validation.md.
+Siguiente: checks y review del conjunto, C1/C10 en Wails, despues C11.
+No merge a nightly, release ni cambios de producto en HUD/OBS/Studio.
+
 ## ISA-1015 — rendimiento de la base, medición junto a LMU (2026-09-08)
 
 Estado vigente: Isaac añade rapidez de arranque, pantallas, interacción,

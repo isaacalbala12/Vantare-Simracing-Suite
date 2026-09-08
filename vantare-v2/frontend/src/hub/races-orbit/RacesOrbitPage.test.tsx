@@ -368,7 +368,7 @@ describe("RacesOrbitPage", () => {
   });
 
   it("distingue vigencia desconocida de un calendario vacío", () => {
-    setup();
+    setup({ calendar: { ...CALENDAR, schedule: undefined } });
     expect(screen.getByTestId("orbit-races-status").textContent).toContain("vigencia");
   });
 

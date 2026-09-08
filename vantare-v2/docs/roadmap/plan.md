@@ -254,6 +254,19 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 
 ## Hitos
 
+### Validacion y rendimiento de Calendario
+
+- id: calendar-validation-performance
+- tipo: plan
+- titulo.en: Calendar validation and performance
+- titulo.pt: Validacao e desempenho do Calendario
+- titulo.it: Validazione e prestazioni del Calendario
+- cuerpo: Validar conjuntamente las correcciones de Calendario en la app real y medir consumo y velocidad antes de aceptar optimizaciones.
+- cuerpo.en: Validate Calendar corrections together in the real app and measure resource use and speed before accepting optimizations.
+- cuerpo.pt: Validar as correcoes do Calendario na app real e medir consumo e velocidade antes de aceitar otimizacoes.
+- cuerpo.it: Validare le correzioni del Calendario nella app reale e misurare consumo e velocita prima di accettare ottimizzazioni.
+- etiqueta: ISA-1057
+
 ### Rendimiento de la base de la app
 
 - id: base-app-footprint

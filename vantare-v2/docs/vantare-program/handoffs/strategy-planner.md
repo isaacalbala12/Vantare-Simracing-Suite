@@ -1,5 +1,17 @@
 # Handoff vivo — Strategy Planner
 
+## Actualización ISA-1030: relojes del banco (2026-09-08)
+
+Corrección instrumental sobre `18f9dea4` en `vantareapp/isa-1030-clock-evidence`.
+El contraste real Imola/Algarve reproduce un desfase de 119,48 s en el spike y
+recupera el repostaje de Algarve. Producto conserva origen desconocido; no se
+cambia su contrato por una inferencia experimental. Ver
+`docs/strategy-planner/evidence/isa-1030/clock-correction.md`.
+Siguiente: propuesta navegable dentro de Strategy para revisión de Isaac;
+anotación/calibración y contrato productivo de relojes siguen pendientes.
+Sin promoción, release ni intervención en LMU.
+
+
 ## Resultado
 
 Un único producto que crea, compara, guarda, ejecuta y adapta planes para

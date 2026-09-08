@@ -559,7 +559,9 @@ def value_at(rows: list[dict[str, Any]], timestamp: float, frequency: int, colum
 def service_metrics(
     rows: list[dict[str, Any]], start_s: float, end_s: float, frequency: int, threshold: float
 ) -> dict[str, float | None]:
-    if not rows or frequency <= 0 or end_s <= start_s:
+    if (not rows or frequency <= 0 or end_s <= start_s
+            or start_s * frequency < rows[0]["index"]
+            or end_s * frequency > rows[-1]["index"]):
         return {"delta": None, "service_duration_s": None, "rate": None}
     start_index = int(max(0.0, start_s) * frequency)
     end_index = int(max(0.0, end_s) * frequency)
@@ -577,13 +579,16 @@ def service_metrics(
     return {"delta": delta, "service_duration_s": duration, "rate": delta / duration}
 
 
-def event_intervals(rows: list[dict[str, Any]]) -> list[tuple[float, float]]:
+def event_intervals(rows: list[dict[str, Any]], *, require_entry: bool = False) -> list[tuple[float, float]]:
     intervals: list[tuple[float, float]] = []
     opened: float | None = None
+    entry_observed = not require_entry
     for row in rows:
         value = row["values"][0] if row["values"] else None
         active = value is True or value == 1 or str(value).lower() in {"true", "1", "yes"}
-        if active and opened is None and row["ts"] is not None:
+        if not active:
+            entry_observed = True
+        if active and opened is None and row["ts"] is not None and entry_observed:
             opened = float(row["ts"])
         elif not active and opened is not None and row["ts"] is not None:
             intervals.append((opened, float(row["ts"])))
@@ -656,6 +661,42 @@ def regression(records: list[dict[str, float]]) -> dict[str, Any]:
     }
 
 
+def align_lap_clocks(resets: list[float], events: list[float], frequency: int) -> dict[str, Any]:
+    """Exploratory clock fit, not a declaration of source timestamp origin.
+
+    At most two unmatched crossings at each edge are considered. A unique fit
+    must explain every paired crossing within one Lap Dist sample. Missing,
+    drifting or periodic/ambiguous evidence never implies a zero offset.
+    """
+    result = {"method": "lap-crossings.v1", "status": "unaligned",
+              "estimated_event_to_continuous_offset_s": None}
+    if frequency <= 0 or min(len(resets), len(events)) < 3:
+        return result
+    for values in (resets, events):
+        if any(not math.isfinite(value) for value in values) or any(
+            right <= left for left, right in zip(values, values[1:])
+        ):
+            return result
+    candidates = []
+    for shift in range(-2, 3):
+        offsets = [events[index + shift] - crossing for index, crossing in enumerate(resets)
+                   if 0 <= index + shift < len(events)]
+        if len(offsets) < max(3, max(len(resets), len(events)) - 2):
+            continue
+        offset = statistics.median(offsets)
+        residual = max(abs(value - offset) for value in offsets)
+        if residual <= 1.0 / frequency + 1e-9:
+            candidates.append({"estimated_event_to_continuous_offset_s": offset,
+                               "ordinal_shift": shift, "matched_crossings": len(offsets),
+                               "max_residual_s": residual})
+    if len(candidates) == 1:
+        result.update(candidates[0])
+        result["status"] = "exploratory_crossing_fit"
+    elif candidates:
+        result["status"] = "ambiguous"
+    return result
+
+
 def analyze_session(candidate: Candidate, runtime: Path) -> dict[str, Any]:
     staged, digest = safe_stage(candidate)
     result: dict[str, Any] = {
@@ -702,23 +743,6 @@ def analyze_session(candidate: Candidate, runtime: Path) -> dict[str, Any]:
                     **stats,
                 }
 
-            # Alineación: fin continuo de 1 Hz contra último timestamp de Current LapTime.
-            continuous = [item for item in catalog.get("continuous", []) if int(item.get("frequency_hz", 0)) > 0]
-            if continuous and "Current LapTime" in channels:
-                anchor = min(continuous, key=lambda item: (int(item["frequency_hz"]), item["name"]))
-                anchor_count = find_row_count(helper, anchor["name"], hint=max(1, int(candidate.duration_s or 1)))
-                event_count = find_row_count(helper, "Current LapTime", hint=max(1, anchor_count))
-                last = helper.read_rows("Current LapTime", max(0, event_count - 1), 1)
-                last_ts = last["timestamps"][0] if last["row_count"] and last["timestamps"] else None
-                continuous_end = anchor_count / int(anchor["frequency_hz"])
-                result["alignment"] = {
-                    "continuous_anchor": anchor["name"],
-                    "continuous_end_s": continuous_end,
-                    "last_event_s": last_ts,
-                    "end_delta_s": continuous_end - last_ts if last_ts is not None else None,
-                    "estimated_event_to_continuous_offset_s": last_ts - continuous_end if last_ts is not None else None,
-                }
-
             # Carga completa de baja frecuencia para vueltas, stints y pits.
             for name in ("Fuel Level", "Virtual Energy", "Tyres Wear", "Lap Dist"):
                 if name not in channels:
@@ -729,6 +753,8 @@ def analyze_session(candidate: Candidate, runtime: Path) -> dict[str, Any]:
                 )
                 if count <= 500_000:
                     loaded[name] = read_all(helper, name, max_rows=count + 1)
+                else:
+                    loaded[name] = []  # Sampled pages cannot establish continuous coverage.
 
             laps = lap_time_rows(helper, channels)
             pit_rows = read_all(helper, "In Pits", max_rows=20_000) if "In Pits" in channels else []
@@ -741,21 +767,31 @@ def analyze_session(candidate: Candidate, runtime: Path) -> dict[str, Any]:
             fuel_hz = int(channels.get("Fuel Level", {}).get("frequency_hz", 0))
             wear_hz = int(channels.get("Tyres Wear", {}).get("frequency_hz", 0))
             ve_hz = int(channels.get("Virtual Energy", {}).get("frequency_hz", 0))
-            event_offset = float(result.get("alignment", {}).get("estimated_event_to_continuous_offset_s") or 0.0)
 
             lap_dist_rows = loaded.get("Lap Dist", [])
-            lap_resets = 0
+            reset_times: list[float] = []
+            lap_dist_hz = int(channels.get("Lap Dist", {}).get("frequency_hz", 0))
             for left, right in zip(lap_dist_rows, lap_dist_rows[1:]):
                 a = first_numeric(left)
                 b = first_numeric(right)
-                if a is not None and b is not None and a - b > 500.0:
-                    lap_resets += 1
+                if a is not None and b is not None and a - b > 500.0 and lap_dist_hz > 0:
+                    reset_times.append(right["index"] / lap_dist_hz)
             result["lap_segmentation"] = {
                 "lap_event_rows": len(candidate.lap_rows),
                 "lap_time_rows": len(laps),
-                "lap_dist_resets": lap_resets,
-                "difference_resets_vs_lap_times": lap_resets - len(laps),
+                "lap_dist_resets": len(reset_times),
+                "difference_resets_vs_lap_times": len(reset_times) - len(laps),
             }
+
+            counter_rows = read_all(helper, "Lap", max_rows=100_000) if "Lap" in channels else []
+            result["alignment"] = align_lap_clocks(
+                reset_times, [float(row["ts"]) for row in counter_rows[1:] if row["ts"] is not None],
+                lap_dist_hz,
+            )
+            event_offset = result["alignment"]["estimated_event_to_continuous_offset_s"]
+            if event_offset is None:
+                # Do not publish cross-clock fuel, wear, stints or service estimates.
+                return result
 
             lap_records: list[dict[str, Any]] = []
             stint = 0
@@ -812,7 +848,7 @@ def analyze_session(candidate: Candidate, runtime: Path) -> dict[str, Any]:
                 previous_wear = wear
             result["lap_records"] = lap_records
 
-            for start, end in pit_intervals:
+            for start, end in event_intervals(pit_rows, require_entry=True):
                 continuous_start = start - event_offset
                 continuous_end = end - event_offset
                 fuel_service = service_metrics(fuel_rows, continuous_start, continuous_end, fuel_hz, 0.01)

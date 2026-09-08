@@ -3,6 +3,12 @@
 Estado: banco y revisión estática completados; gate empírico F0 pendiente.
 Fecha: 2026-09-08. #1030 continúa abierta; no se implementó el editor.
 
+## Corrección posterior del banco
+
+Ver [clock-correction.md](clock-correction.md): el desfase del spike histórico
+no es evidencia válida de alineación. Reejecución Imola/Algarve y protección
+frente a relojes ambiguos, cobertura insuficiente y visitas parciales.
+
 ## Autoridad y entorno
 
 - Spec v1 y planes aprobados por Isaac en la conversación.

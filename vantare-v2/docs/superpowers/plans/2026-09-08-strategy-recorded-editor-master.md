@@ -29,7 +29,10 @@ Base histórica de inspección: `nightly@d6d0992f`.
 Sobre la corrección instrumental `609a4390`, se prepara la propuesta navegable
 `../../strategy-planner/prototypes/recorded-editor/index.html`: siete pasos y
 pantalla resumen/revisión. Es un artefacto documental independiente, sin solver
-ni persistencia; no inicia la sustitución productiva. Isaac aceptó esta dirección visual como inicio. C1a (#1066) prepara identidad y
+ni persistencia; no inicia la sustitución productiva. Isaac rechaza después la dirección visual por no respetar Vantare. El nuevo corte
+sobre `267fc38f` rehace la propuesta con los estilos, fuentes e iconos Orbit
+productivos y queda pendiente de revisión visual. No cambia el flujo aprobado.
+C1a (#1066) prepara identidad y
 corrección escalar antes de conectar la edición; el resto de F1–F5 sigue pendiente.
 
 ## 1. Cómo ejecutar este programa

@@ -1,5 +1,22 @@
 # Handoff vivo — Strategy Planner
 
+## Revisión visual ISA-1063 — Orbit (2026-09-08)
+
+Isaac rechaza la primera propuesta por no respetar Vantare. Esta decisión
+sustituye su aceptación visual inicial; el flujo funcional acordado se mantiene.
+Base `267fc38f`, rama `vantareapp/isa-1063-orbit-prototype`, worktree aislado
+`C:/tmp/vantare-isa1063-orbit`. Se rehacen HTML/CSS/JS del prototipo cargando
+los tokens, kit, shell, fuentes e iconos productivos de Orbit directamente.
+No cambia el frontend productivo ni el backend de correcciones #1066/#1067.
+
+Verificación personal: siete pasos, Manual/Automático, campos, rechazo de duración
+negativa, navegación por teclado, exclusión/deshacer, revisión de datos y tamaños
+1440/1024/768/320 sin desbordamiento horizontal del contenido. Sin errores de
+consola observados. Capturas y límites en el README del prototipo.
+Nueva propuesta pendiente de criterio visual de Isaac. Después continuar con
+snapshots/solapes y custodia reversible; no iniciar integración visual sin esa
+revisión. Sin push, PR, CI remota, promoción, release ni cambios en fuentes LMU.
+
 ## Actualización ISA-1067 — base autorizada (2026-09-08)
 
 Base `7f04dd93`, rama `vantareapp/isa-1067-correction-source`.

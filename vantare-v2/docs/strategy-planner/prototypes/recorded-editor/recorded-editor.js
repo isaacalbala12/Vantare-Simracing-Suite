@@ -9,8 +9,7 @@ const previewView = location.hash.slice(1);
 if (['summary', 'advanced', 'plan', 'stint', 'pit', 'calculation', 'revisions'].includes(previewView)) {
   state.step = 7; state.reached = 7; state.view = previewView; state.advanced = previewView === 'advanced';
 }
-if (/^step-[0-6]$/.test(previewView)) { state.step = Number(previewView.slice(-1)); state.reached = state.step; }
-const names = ['Modo de preparación', 'Simulador', 'Evento', 'Coche y circuito', 'Reglas de carrera', 'Pilotos', 'Telemetría'];
+if (/^step-[0-6]$/.test(previewView)) { state.step = [1, 2].includes(Number(previewView.slice(-1))) ? 3 : Number(previewView.slice(-1)); state.reached = state.step; }
 const esc = value => String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
 const icon = (name, size = 22) => `<svg aria-hidden="true" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><use href="../../../../frontend/src/assets/orbit-icons.svg#i-${name}"/></svg>`;
 const button = (label, action, primary = false, disabled = false) => `<button type="button" class="orbit-btn orbit-btn--${primary ? 'primary' : 'ghost'}" data-action="${action}" ${disabled ? 'disabled' : ''}>${label}</button>`;
@@ -69,12 +68,12 @@ document.addEventListener('click', event => {
     return;
   }
   switch (target.dataset.action) {
-    case 'next': if ([...document.querySelectorAll('main input')].every(input => input.reportValidity())) go(state.step + 1); break;
-    case 'prev': go(state.step - 1); break;
+    case 'next': if ([...document.querySelectorAll('main input')].every(input => input.reportValidity())) go(state.step === 0 ? 3 : state.step + 1); break;
+    case 'prev': go(state.step === 3 ? 0 : state.step - 1); break;
     case 'start': go(0); break;
     case 'change-circuit': document.querySelector('[name=combo]').focus(); break;
     case 'pilots': go(5); break;
-    case 'event': go(2); break;
+    case 'event': go(3); break;
     case 'rules': go(4); break;
     case 'sources': go(6); break;
     case 'collapse': { const shell = document.getElementById('shell'); shell.dataset.column = shell.dataset.column === 'closed' ? 'open' : 'closed'; break; }

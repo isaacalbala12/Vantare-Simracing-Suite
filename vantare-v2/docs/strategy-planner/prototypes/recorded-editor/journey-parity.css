@@ -531,3 +531,26 @@ hr { border: 0; border-top: 1px solid var(--orbit-line); margin: 20px 0; }
  .race-summary-grid .summary-source { min-height: 294px; display: flex; flex-direction: column; justify-content: space-between; }
  .summary-result { width: 100%; }
 }
+/* Decisión de producto: simulador, evento y combinación en una sola pantalla. */
+.combination-event { margin-bottom: 18px; }
+.event-options { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; }
+.event-option { display: flex; align-items: center; gap: 12px; padding: 13px; border: 1px solid var(--orbit-line-strong); border-radius: 9px; background: #111316; color: var(--orbit-ink); text-align: left; font: inherit; font-size: 13px; }
+.event-option[aria-pressed="true"] { border-color: var(--orbit-carmine); background: rgba(213,47,73,.08); }
+.event-option svg { flex-shrink: 0; width: 22px; height: 22px; }
+.event-option > svg:last-child { width: 14px; }
+.event-option small { display: block; margin-top: 5px; color: var(--orbit-ink-2); font-size: 11px; }
+.event-option:disabled { color: var(--orbit-ink-2); }
+.step-3 .journey-heading { margin-bottom: 20px; }
+.step-3 .circuit-card { padding-top: 16px; padding-bottom: 16px; }
+.step-3 .circuit-identity { margin-top: 10px; margin-bottom: 8px; }
+.step-3 .circuit-identity > svg { height: 58px; }
+.step-3 .change-circuit { bottom: 12px; }
+@media(max-width:600px) { .event-options { grid-template-columns: 1fr; } }
+.step-3 .combo-controls { width: 530px; max-width: 100%; gap: 8px; }
+.step-3 .combo-controls > label,.step-3 .combo-controls > label > div,.step-3 .combo-controls select { min-height: 50px; }
+.step-3 .circuit-card { width: 530px; max-width: 100%; margin-top: 18px; }
+.step-3 .circuit-meta { flex-direction: row; flex-wrap: wrap; gap: 18px; }
+.step-3 .circuit-meta span { font-size: 11px; }
+@media(min-width:1153px) { .step-3 .combo-controls > label > div { height: 50px; } .step-3 .circuit-card { margin-top: 14px; } }
+.step-3 .circuit-meta { display: flex; padding-right: 150px; gap: 12px; }
+@media(max-width:768px) { .step-3 .circuit-meta { padding-right: 0; } }

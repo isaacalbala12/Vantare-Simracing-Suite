@@ -1,5 +1,16 @@
 # ISA-1063 — propuesta registrada con Orbit
 
+## Combinación unificada — 2026-09-08
+
+Isaac elimina la repetición Simulador/Evento/Combinación. El asistente tiene cinco
+pasos: Inicio, Combinación, Reglas, Pilotos y Sesiones. Combinación reúne evento
+personalizado o calendario Vantare, simulador, categoría/coche y circuito.
+Calendario permanece sin conectar en la propuesta; no se inventan eventos.
+Los enlaces antiguos de Simulador/Evento redirigen a Combinación. La galería
+retira ambas pantallas y actualiza las capturas del asistente. Base 56ce59cd,
+misma rama/worktree ISA-1063. Sin cambios productivos ni promoción.
+
+
 ## Recorrido completo listo para revisión humana — 2026-09-08
 
 Isaac acepta el corte local 4c08b834 de stint y parada y pide extender el mismo

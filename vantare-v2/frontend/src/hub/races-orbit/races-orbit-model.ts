@@ -355,7 +355,20 @@ export function monthDays(
 /** Inicio del eje del timeline: la hora en punto actual (`13.3`). */
 export function timelineStart(now: Date): Date {
   // Subtract elapsed minutes; setMinutes would select the first repeated hour.
-  return new Date(now.getTime() - (now.getMinutes() * 60 + now.getSeconds()) * 1000 - now.getMilliseconds());
+  let start = now.getTime() - (now.getMinutes() * 60 + now.getSeconds()) * 1000 - now.getMilliseconds();
+  const offset = now.getTimezoneOffset();
+  if (new Date(start).getTimezoneOffset() !== offset) {
+    // A partial-hour transition can start a segment at :30. Locate that instant
+    // instead of selecting the preceding offset or inventing a nonexistent :00.
+    let end = now.getTime();
+    while (end - start > 1) {
+      const middle = Math.floor((start + end) / 2);
+      if (new Date(middle).getTimezoneOffset() === offset) end = middle;
+      else start = middle;
+    }
+    start = end;
+  }
+  return new Date(start);
 }
 
 export interface TimelineRow {

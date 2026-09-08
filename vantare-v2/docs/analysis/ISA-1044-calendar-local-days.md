@@ -21,7 +21,15 @@ Los tests de C3 ajustan dos entradas: una expiración UTC puede caer dentro de u
 día local (se conservan solo sus salidas anteriores), y el día parcial se ancla
 al inicio real de ese periodo, no al día UTC previo. No se relaja la vigencia.
 
-Suite completa, build/typecheck/lint, roadmap y review pendientes. No hay medición
+Review d583c39c detectó un P2 para el retroceso de 30 minutos de Lord Howe:
+regresión RED/GREEN añadida, 15 PASS en esa zona. La etiqueta usa la diferencia
+real de offset; cuando una hora parcial empieza en :30, se localiza su transición
+sin elegir la hora anterior ni inventar un :00. Focal final 126 PASS/1 omitido
+(el caso específico de Lord Howe se ejecuta en su matriz propia).
+
+Suite completa inicial: 3256 PASS / 2 FAIL, timeouts 20000 ms en Pedals y TrackMap
+Endurance, superficies ajenas. Build inicial PASS; build/lint final, roadmap y
+revisión del P2 pendientes. No hay medición
 CPU/GPU/RAM ni aceptación visual Wails. Los datos de prueba no certifican runtime.
 Archivos: races-orbit-model, next-starts, RacesOrbitPage (chip), pruebas de fechas y
 vigencia, informe/handoff/roadmap. Sin HUD/Studio, dependencia nueva, merge o release.

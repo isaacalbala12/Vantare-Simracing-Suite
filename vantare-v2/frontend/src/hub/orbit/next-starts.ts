@@ -104,7 +104,10 @@ export function formatStartTime(at: Date): string {
 /** Only ambiguous local hours need an offset to distinguish their instants. */
 export function repeatedHourOffset(at: Date): string {
   const repeated = [-1, 1].some((direction) => {
-    const other = new Date(at.getTime() + direction * 3_600_000);
+    const adjacent = new Date(at.getTime() + direction * 86_400_000);
+    const shift = adjacent.getTimezoneOffset() - at.getTimezoneOffset();
+    if (shift === 0) return false;
+    const other = new Date(at.getTime() + shift * 60_000);
     return other.getFullYear() === at.getFullYear() && other.getMonth() === at.getMonth()
       && other.getDate() === at.getDate() && other.getHours() === at.getHours()
       && other.getMinutes() === at.getMinutes() && other.getTimezoneOffset() !== at.getTimezoneOffset();

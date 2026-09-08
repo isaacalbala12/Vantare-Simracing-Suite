@@ -27,7 +27,7 @@ describe("días locales y cobertura de slots", () => {
     expect(weekRows(entries.slice(0, 1), day, day)[0].cells[0].total).toBe(12);
   });
 
-  it.each([new Date(2026, 2, 8), new Date(2026, 2, 29), new Date(2026, 9, 25), new Date(2026, 10, 1)])(
+  it.each([new Date(2026, 2, 8), new Date(2026, 2, 29), new Date(2026, 3, 5), new Date(2026, 9, 4), new Date(2026, 9, 25), new Date(2026, 10, 1)])(
     "Día respeta sus medianoches en %s", (day) => {
       const end = dayAnchor(day, 1);
       const starts = dayRows(interval, day, day).flatMap((hour) => hour.events);
@@ -36,6 +36,15 @@ describe("días locales y cobertura de slots", () => {
       expect(weekRows(interval, day, day)[0].cells[0].total).toBe(starts.length);
     },
   );
+
+  it.skipIf(Intl.DateTimeFormat().resolvedOptions().timeZone !== "Australia/Lord_Howe")("distingue el retroceso de media hora y el inicio real de su tramo", () => {
+    const a = new Date("2026-04-04T14:45:00Z");
+    const b = new Date("2026-04-04T15:15:00Z");
+    expect(formatStartTime(a)).not.toBe(formatStartTime(b));
+    expect(groupByHour([{ entry: interval[0], at: a }, { entry: interval[0], at: b }])).toHaveLength(2);
+    expect(timelineStart(b).toISOString()).toBe("2026-04-04T15:00:00.000Z");
+    expect(timelineStart(new Date("2026-10-03T15:45:00Z")).toISOString()).toBe("2026-10-03T15:30:00.000Z");
+  });
 
   it.each([new Date(2026, 2, 1), new Date(2026, 9, 1), new Date(2026, 10, 1), new Date(2028, 1, 1), new Date(2026, 11, 1)])(
     "Mes conserva 42 fechas únicas a medianoche en %s", (first) => {

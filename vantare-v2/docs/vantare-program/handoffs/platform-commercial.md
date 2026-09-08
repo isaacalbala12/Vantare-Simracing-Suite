@@ -27,11 +27,13 @@ presuponen integrados. Sin porcentaje de ahorro global ni validación de conducc
 Sin merge, promoción o release; el checkout principal y LMU/Edge se preservan.
 ## ISA-1039 — recordatorios de series (2026-09-08)
 
-C5 de #1027 conecta series seguidas con los eventos publicados y corrige
-truncamiento de minutos. RED reproducido; módulo Calendar GREEN. Sigue la
-identidad canónica del generador, sin generar más salidas ni tocar HUD/Studio.
-Rama vantareapp/isa-1039-calendar-series-reminders desde nightly d6d0992f.
-Build, Go completo, roadmap y review pendientes. Informe ISA-1039 en docs/analysis.
+C5 de #1027 expande solo la ventana de avisos de las series seguidas y corrige
+truncamiento de minutos. RED inicial y de review reproducidos; módulo Calendar GREEN.
+Poda dedupe de ocurrencias iniciadas, conserva seguimiento individual, sin tocar HUD/Studio.
+Rama vantareapp/isa-1039-calendar-series-reminders ahora sobre C2 e9321068,
+dependencia necesaria para vigencia. Rebase local sin integración de nightly;
+documentos de ambos cortes conservados y JSON regenerado. Build y roadmap PASS;
+Go completo inicial PASS, validación final/review pendientes. Informe ISA-1039 en docs/analysis.
 C2/C3/C4a/C4b son candidatos #1031/#1034/#1036/#1040, sin integrar. C6–C11,
 recorrido Wails y banco de rendimiento continúan pendientes. Sin merge ni release.
 

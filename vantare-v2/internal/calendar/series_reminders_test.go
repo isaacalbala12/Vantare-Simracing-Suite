@@ -70,6 +70,36 @@ func TestDueRemindersFollowedRealSeries(t *testing.T) {
 	}
 }
 
+func TestDueRemindersRealSeriesBeyondMaterializedWindow(t *testing.T) {
+	schedule, err := LoadWeeklySchedule()
+	if err != nil {
+		t.Fatal(err)
+	}
+	svc := newTempService(t, schedule.ValidFrom.Add(-24*time.Hour))
+	if err := svc.ApplyOfficialSchedule(schedule.ValidFrom.Add(-24 * time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	series := schedule.Series[0]
+	if _, err := svc.FollowSeries(series.ID); err != nil {
+		t.Fatal(err)
+	}
+	from := schedule.ValidUntil.Add(-12 * time.Hour)
+	events, err := ExpandSeries(series, schedule, from, from.Add(time.Hour))
+	if err != nil || len(events) == 0 {
+		t.Fatalf("seed expansion: %v / %d", err, len(events))
+	}
+	target := events[0]
+	for _, ev := range svc.Calendar().Events {
+		if ev.ID == target.ID {
+			t.Fatal("regression needs an occurrence beyond saved preview")
+		}
+	}
+	got := svc.DueReminders(target.StartTime.Add(-2 * time.Minute))
+	if len(got) != 1 || got[0].EventID != target.ID {
+		t.Fatalf("got %v, want missing-preview occurrence %s", got, target.ID)
+	}
+}
+
 func TestDueRemindersThresholdSeconds(t *testing.T) {
 	now := time.Date(2026, 7, 1, 12, 0, 0, 0, time.UTC)
 	for _, tc := range []struct {
@@ -92,29 +122,36 @@ func TestDueRemindersThresholdSeconds(t *testing.T) {
 }
 
 func TestDueRemindersSeriesIdentity(t *testing.T) {
-	now := time.Date(2026, 7, 1, 12, 0, 0, 0, time.UTC)
+	now := time.Date(2026, 7, 1, 11, 58, 0, 0, time.UTC)
 	series := validSchedule().Series[0]
 	for _, tc := range []struct {
 		name   string
 		mutate func(*RaceEvent)
-		want   int
 	}{
-		{"canonical", func(*RaceEvent) {}, 1},
-		{"same title different id", func(ev *RaceEvent) { ev.ID = "imported" }, 0},
-		{"same id different source", func(ev *RaceEvent) { ev.Source = "import" }, 0},
-		{"changed title keeps identity", func(ev *RaceEvent) { ev.Title = "changed"; ev.Series = "changed" }, 1},
+		{"canonical", func(*RaceEvent) {}},
+		{"same title different id", func(ev *RaceEvent) { ev.ID = "imported" }},
+		{"same id different source", func(ev *RaceEvent) { ev.Source = "import" }},
+		{"changed title keeps identity", func(ev *RaceEvent) { ev.Title = "changed"; ev.Series = "changed" }},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			ev := makeSeriesEvent(series, now.Add(2*time.Minute))
 			tc.mutate(&ev)
 			svc := newTempService(t, now)
 			svc.cal = NewDefaultCalendar()
+			svc.cal.Timezone = "UTC"
+			svc.cal.Schedule = &ScheduleMetadata{ValidFrom: validSchedule().ValidFrom, ValidUntil: validSchedule().ValidUntil}
 			svc.cal.ReminderMinutes = []int{2}
 			svc.cal.Events = []RaceEvent{ev}
 			svc.cal.Series = []RaceSeries{series}
 			svc.cal.FollowedSeriesIDs = []string{series.ID}
-			if got := svc.DueReminders(now); len(got) != tc.want {
-				t.Fatalf("count=%d, want %d", len(got), tc.want)
+			got := svc.DueReminders(now)
+			canonical := makeSeriesEvent(series, now.Add(2*time.Minute))
+			if len(got) != 1 || got[0].EventID != canonical.ID || got[0].Title != series.Name {
+				t.Fatalf("got %v, want one canonical series occurrence independent of saved event", got)
+			}
+			svc.cal.Schedule = nil
+			if got := svc.DueReminders(now); len(got) != 0 {
+				t.Fatal("unknown validity generated reminders")
 			}
 		})
 	}

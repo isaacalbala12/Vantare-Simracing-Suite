@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"sort"
@@ -609,26 +610,45 @@ func (s *Service) DueReminders(now time.Time) []Reminder {
 	for _, id := range s.cal.FollowedEventIDs {
 		followed[id] = struct{}{}
 	}
-	followedSeries := make(map[string]struct{}, len(s.cal.FollowedSeriesIDs))
-	for _, id := range s.cal.FollowedSeriesIDs {
-		if seriesExistsLocked(s.cal.Series, id) {
-			followedSeries[id] = struct{}{}
+	candidates := make(map[string]RaceEvent)
+	if len(followed) > 0 {
+		for _, ev := range s.cal.Events {
+			if _, ok := followed[ev.ID]; ok {
+				candidates[ev.ID] = ev
+			}
+		}
+	}
+	if meta := s.cal.Schedule; meta != nil && meta.ValidUntil.After(meta.ValidFrom) && len(s.cal.FollowedSeriesIDs) > 0 {
+		schedule := OfficialSchedule{Timezone: s.cal.Timezone, ValidFrom: meta.ValidFrom, ValidUntil: meta.ValidUntil}
+		for _, series := range s.cal.Series {
+			for _, id := range s.cal.FollowedSeriesIDs {
+				if series.ID == id {
+					schedule.Series = append(schedule.Series, series)
+					break
+				}
+			}
+		}
+		maxMinutes := 0
+		for _, minutes := range reminderMinutes {
+			maxMinutes = max(maxMinutes, minutes)
+		}
+		// Expand only the reminder window; include its exact upper threshold.
+		events, err := ExpandSchedule(schedule, now, now.Add(time.Duration(maxMinutes)*time.Minute+time.Nanosecond))
+		if err != nil {
+			log.Printf("calendar reminders: %v", err)
+		} else {
+			for _, ev := range events {
+				if _, exists := candidates[ev.ID]; !exists {
+					candidates[ev.ID] = ev
+				}
+			}
 		}
 	}
 
 	var out []Reminder
-	for _, ev := range s.cal.Events {
+	for _, ev := range candidates {
 		if !now.Before(ev.StartTime) {
 			continue
-		}
-		if _, ok := followed[ev.ID]; !ok {
-			if ev.Source != BundledSource || len(followedSeries) == 0 {
-				continue
-			}
-			seriesID, canonical := strings.CutSuffix(ev.ID, "-"+ev.StartTime.UTC().Format(seriesEventTimeLayout))
-			if _, ok := followedSeries[seriesID]; !canonical || !ok {
-				continue
-			}
 		}
 		until := ev.StartTime.Sub(now)
 		for _, t := range reminderMinutes {
@@ -647,6 +667,15 @@ func (s *Service) DueReminders(now time.Time) []Reminder {
 	if out == nil {
 		return []Reminder{}
 	}
+	sort.Slice(out, func(i, j int) bool {
+		if !out[i].StartTime.Equal(out[j].StartTime) {
+			return out[i].StartTime.Before(out[j].StartTime)
+		}
+		if out[i].EventID != out[j].EventID {
+			return out[i].EventID < out[j].EventID
+		}
+		return out[i].MinutesLeft > out[j].MinutesLeft
+	})
 	return out
 }
 

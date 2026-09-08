@@ -388,13 +388,11 @@ func ExpandSchedule(sched OfficialSchedule, from, to time.Time) ([]RaceEvent, er
 	return all, nil
 }
 
-const seriesEventTimeLayout = "20060102T150405Z"
-
 // makeSeriesEvent creates a single RaceEvent from a series at the given start
 // time. The event ID is deterministic: "{seriesID}-{startUTC}".
 // It populates RaceDurationMin, EventDurationMin and Sessions from the series.
 func makeSeriesEvent(s RaceSeries, start time.Time) RaceEvent {
-	id := fmt.Sprintf("%s-%s", s.ID, start.UTC().Format(seriesEventTimeLayout))
+	id := fmt.Sprintf("%s-%s", s.ID, start.UTC().Format("20060102T150405Z"))
 	raceDur := s.DurationMin
 	eventDur := raceDur + 11 // practice 3 + qualifying 8
 	sessions := []Session{

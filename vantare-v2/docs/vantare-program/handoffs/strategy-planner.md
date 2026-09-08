@@ -1,5 +1,21 @@
 # Handoff vivo — Strategy Planner
 
+## Custodia escalar C2 — ISA-1074 (2026-09-08)
+
+Sobre9b4df895, rama vantareapp/isa-1074-correction-custody, worktree C:/tmp/vantare-isa1074.
+JSON privado por base, lease nativo, historial encadenado, expectedRevision,
+commandId idempotente y restauración de snapshots sin reescribir revisiones.
+Backup validado/cuarentena; ausencia de ID exacto es error, nunca sustitución.
+Primer commit con confirmación perdida devuelve incertidumbre y admite reintento.
+Límites:256correcciones,256revisiones,8MiB; son presupuestos de recursos.
+
+Tests de custodia/Analysis y vet pasan; build frontend pasa; suite Go completa
+pasa sobre el último código; compilación de Analysis para Linux también pasa. La custodia exige autorización vigente del servicio Analysis futuro;
+los hashes no conceden permiso. No UI/bridge/vista efectiva conectados todavía.
+Siguiente C3: aplicar correcciones a páginas autorizadas sin cambiar originales.
+Sin nuevas dependencias, originales modificados, promoción ni publicación.
+
+
 ## Dirección visual aceptada e implementación — 2026-09-08
 
 Isaac acepta 769775bd y autoriza desarrollar el plan con esa visión visual.

@@ -203,3 +203,17 @@ analysis.sample-snapshot.v1 y JSON de Base+Corrections ordenadas; no es revisió
 persistida, comando ni autorización. Máximo256correcciones por snapshot, presupuesto
 de recursos independiente de umbrales físicos. No retiene colecciones de entrada.
 Las restantes operaciones y custodia siguen pendientes.
+
+## Custodia escalar C2 — #1074
+
+CorrectionStore persiste snapshots escalares bajo corrections/<baseDigest>.json,
+con lease nativo por base, cabeza e historial en un documento. Load por ID exacto
+no sustituye revisiones perdidas; ID vacío pide expresamente la cabeza actual.
+Save compara expectedRevision y registra commandId/payload; reintentos antiguos
+informan revisión original y cabeza actual. Restaurar un snapshot crea revisión
+nueva. Máximo256revisiones y8MiB/documento, sin truncado automático.
+La representación almacenada se revalida con hashes y estructura; esto no sustituye
+la autorización de fuente que debe comprobar el servicio antes de cada operación.
+Fallos ambiguos durante escritura devuelven ErrCorrectionCommitUncertain.
+No hay bridge ni aplicación a derivados todavía. Las operaciones no escalares
+siguen pendientes y no se aceptan en este formato de custodia v1.

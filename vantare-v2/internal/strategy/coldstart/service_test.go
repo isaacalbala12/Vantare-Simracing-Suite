@@ -87,7 +87,7 @@ func TestColdStartUnavailableStateCanBeRecheckedAfterRepair(t *testing.T) {
 
 func (stub *importerStub) Import(_ context.Context, candidate telemetryanalysis.Candidate) (telemetryanalysis.AuthorizedSessionModel, error) {
 	stub.calls++
-	return telemetryanalysis.AuthorizedSessionModel{Session: telemetryanalysis.HistoricalSession{ID: candidate.Locator}}, nil
+	return reconciliationModel(candidate.Locator), nil
 }
 
 type selectiveImporterStub struct {
@@ -109,7 +109,7 @@ func (stub *selectiveImporterStub) Import(_ context.Context, candidate telemetry
 	if importErr != nil {
 		return telemetryanalysis.AuthorizedSessionModel{}, importErr
 	}
-	return telemetryanalysis.AuthorizedSessionModel{Session: telemetryanalysis.HistoricalSession{ID: candidate.Locator}}, nil
+	return reconciliationModel(candidate.Locator), nil
 }
 
 func TestServiceImportConcurrencyDefaultsAndCaps(t *testing.T) {
@@ -148,7 +148,7 @@ func (importer stagingFixtureImporter) Import(ctx context.Context, candidate tel
 		return telemetryanalysis.AuthorizedSessionModel{}, err
 	}
 	defer staged.Cleanup()
-	return telemetryanalysis.AuthorizedSessionModel{Artifact: artifact, Session: telemetryanalysis.HistoricalSession{ID: candidate.Locator}}, nil
+	return telemetryanalysis.AuthorizedSessionModel{Artifact: artifact, Session: telemetryanalysis.HistoricalSession{ID: candidate.Locator, Provenance: telemetryanalysis.HistoricalProvenance{Source: artifact.Manifest().Source, Parser: artifact.Manifest().Parser}}}, nil
 }
 
 type sessionStoreStub struct {
@@ -195,7 +195,7 @@ func (stub *concurrentImporterStub) Import(ctx context.Context, candidate teleme
 		return telemetryanalysis.AuthorizedSessionModel{}, ctx.Err()
 	case <-stub.release:
 	}
-	return telemetryanalysis.AuthorizedSessionModel{Session: telemetryanalysis.HistoricalSession{ID: candidate.Locator}}, nil
+	return reconciliationModel(candidate.Locator), nil
 }
 
 func TestServiceImportsBoundedConcurrentBatchAndKeepsExactProgress(t *testing.T) {

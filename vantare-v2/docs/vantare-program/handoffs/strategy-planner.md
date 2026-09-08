@@ -17,6 +17,16 @@ son fases históricas.
 
 ## Estado
 
+Actualización ISA-819 (2026-09-08, reconciliación de generaciones):
+
+- Rama `vantareapp/isa-819-catalog-reconciliation`, base `bb266977`. Ejecución personal.
+- Catálogo autorizado como autoridad; pérdidas reintentables, sin duplicar
+  importaciones conservadas ni modificar consentimiento al consultar estado.
+- Totales coherentes entre tandas y sesiones fuera del discovery actual.
+- Evidencia: `docs/strategy-planner/evidence/isa-819-catalog-reconciliation.md`.
+- Wails sigue pendiente; próximos cortes #821/#445 y gate empírico #1030.
+- Sin cambios de originales, LMU o promoción.
+
 Actualización ISA-1043 (2026-09-08, calidad de vueltas con boxes):
 
 - Rama `vantareapp/isa-1043-pit-lap-overlap`, base `1ac45d69`. Ejecución personal.

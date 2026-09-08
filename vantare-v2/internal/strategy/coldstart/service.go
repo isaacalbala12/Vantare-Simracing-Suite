@@ -113,9 +113,13 @@ func (service *Service) Status(ctx context.Context) (status Status, err error) {
 	if service.options.CatalogUnavailable {
 		return Status{Decision: DecisionPending, Reason: "catalog_unavailable"}, nil
 	}
-	state, err := service.readState()
+	state, _, err := service.readReconciledState(ctx)
 	if err != nil {
-		return Status{Decision: DecisionPending, Reason: "state_unavailable"}, nil
+		reason := "state_unavailable"
+		if errors.Is(err, errCatalogReconciliation) {
+			reason = "catalog_unavailable"
+		}
+		return Status{Decision: DecisionPending, Reason: reason}, nil
 	}
 	if state.Decision == DecisionRejected {
 		return statusFromState(state, false, false), nil
@@ -135,7 +139,7 @@ func (service *Service) Status(ctx context.Context) (status Status, err error) {
 		}
 		return statusFromState(state, true, true), nil
 	}
-	state.Total = len(service.candidates)
+	state.Total, _ = importCompletion(state, service.candidates)
 	return statusFromState(state, len(service.candidates) > 0, false), nil
 }
 
@@ -145,7 +149,7 @@ func (service *Service) ImportNext(ctx context.Context) (Progress, error) {
 	if service.options.CatalogUnavailable || service.options.Store == nil || service.options.Importer == nil {
 		return Progress{}, fmt.Errorf("cold start import unavailable")
 	}
-	state, err := service.readState()
+	state, stored, err := service.readReconciledState(ctx)
 	if err != nil {
 		return Progress{}, err
 	}
@@ -177,6 +181,11 @@ func (service *Service) ImportNext(ctx context.Context) (Progress, error) {
 	pending := make([]telemetryanalysis.Candidate, 0, service.importConcurrency())
 	for _, candidate := range service.candidates {
 		if _, exists := imported[candidate.Locator]; exists {
+			continue
+		}
+		if _, exists := stored[candidate.Locator]; exists {
+			state.ImportedLocators = append(state.ImportedLocators, candidate.Locator)
+			imported[candidate.Locator] = struct{}{}
 			continue
 		}
 		if _, exists := failed[candidate.Locator]; exists {
@@ -218,9 +227,7 @@ func (service *Service) ImportNext(ctx context.Context) (Progress, error) {
 				state.ImportedLocators = append(state.ImportedLocators, candidate.Locator)
 			}
 		}
-		if len(state.ImportedLocators)+len(state.Failures) == len(service.candidates) {
-			state.Decision = DecisionAccepted
-		}
+		state.Total, state.Decision = importCompletion(state, service.candidates)
 		if err := ctx.Err(); err != nil {
 			return progressFromState(state), err
 		}
@@ -232,7 +239,7 @@ func (service *Service) ImportNext(ctx context.Context) (Progress, error) {
 	if err := ctx.Err(); err != nil {
 		return progressFromState(state), err
 	}
-	state.Decision = DecisionAccepted
+	state.Total, state.Decision = importCompletion(state, service.candidates)
 	if err := service.writeState(state); err != nil {
 		return Progress{}, err
 	}
@@ -242,7 +249,7 @@ func (service *Service) ImportNext(ctx context.Context) (Progress, error) {
 func (service *Service) RetryFailures(ctx context.Context) (Progress, error) {
 	service.mu.Lock()
 	defer service.mu.Unlock()
-	state, err := service.readState()
+	state, _, err := service.readReconciledState(ctx)
 	if err != nil {
 		return Progress{}, err
 	}

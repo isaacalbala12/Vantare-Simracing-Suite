@@ -91,6 +91,15 @@ test('el observador conserva una base quieta y se desmonta', async () => {
   assert.equal(validateBaseEvidence(result, 'home', true).valid, true);
 });
 
+for (const route of ['next', 'day', 'week', 'month', 'timeline']) {
+  test(`el banco identifica la vista ${route} sin confundirla con otra`, async () => {
+    const result = await withObserver(route, async () => {});
+    assert.equal(result.before.route, route);
+    assert.equal(result.after.route, route);
+    assert.equal(validateBaseEvidence(result, route, true).valid, true);
+  });
+}
+
 test('fuente cambiante o ausente invalida con juego aunque sourceHz siga positivo', async () => {
   const result = await withObserver('home', async (_window, emit) => {
     emit('ops:metrics', {source: {kind: 'lmu', state: 'stale', available: true}});

@@ -233,7 +233,7 @@ const output = argument("output");
 const screenshotDir = argument("screenshot-dir");
 const durationSeconds = Number(argument("duration", "10"));
 const expectedWidgets = Number(argument("expected-widgets", "0"));
-if (!cdp || !["inspect", "state", "overlay-start", "overlay-stop", "hub-minimise", "hub-restore", "hub-open", "performance", "license", "app-quit", "diagnostic-hide-paint", "base-prepare", "base-watch-start", "base-watch-stop"].includes(action) || !Number.isFinite(durationSeconds) || durationSeconds < 1 || durationSeconds > 120 || !Number.isInteger(expectedWidgets) || expectedWidgets < 0 || !["home", "month", "timeline"].includes(baseRoute)) {
+if (!cdp || !["inspect", "state", "overlay-start", "overlay-stop", "hub-minimise", "hub-restore", "hub-open", "performance", "license", "app-quit", "diagnostic-hide-paint", "base-prepare", "base-watch-start", "base-watch-stop"].includes(action) || !Number.isFinite(durationSeconds) || durationSeconds < 1 || durationSeconds > 120 || !Number.isInteger(expectedWidgets) || expectedWidgets < 0 || !["home", "next", "day", "week", "month", "timeline"].includes(baseRoute)) {
   throw new Error("usage: node huella-cdp.mjs --cdp http://127.0.0.1:9247 --action inspect|state|overlay-start|overlay-stop|hub-minimise|hub-restore|hub-open|performance|license|app-quit [--duration 10] [--expected-widgets 3] [--output result.json] [--screenshot-dir directory]");
 }
 
@@ -253,7 +253,7 @@ if (action.startsWith("base-")) {
     await hub.getByTestId(`orbit-rail-${baseRoute === 'home' ? 'inicio' : 'carreras'}`).click();
     if (baseRoute !== 'home') {
       await hub.getByRole('group', { name: 'Vista del calendario', exact: true })
-        .getByRole('button', { name: baseRoute === 'month' ? 'Mes' : 'Timeline', exact: true }).click();
+        .getByRole('button', { name: ({ next: 'Próximas', day: 'Día', week: 'Semana', month: 'Mes', timeline: 'Timeline' })[baseRoute], exact: true }).click();
     }
     await hub.getByTestId(baseRoute === 'home' ? 'orbit-home' : `orbit-races-${baseRoute}`).waitFor({ state: 'visible' });
     await writeResult({ schema: 'vantare.base.cdp.v1', action, route: baseRoute });

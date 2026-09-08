@@ -31,8 +31,8 @@ export function validateBaseEvidence(evidence, route, gamePresent = false) {
 export async function baseWatchInPage(action, eventBus) {
   const read = () => ({
     route: document.querySelector('[data-testid="orbit-home"]') ? 'home'
-      : document.querySelector('[data-testid="orbit-races-month"]') ? 'month'
-        : document.querySelector('[data-testid="orbit-races-timeline"]') ? 'timeline' : 'other',
+      : ['next', 'day', 'week', 'month', 'timeline'].find(route =>
+        document.querySelector(`[data-testid="orbit-races-${route}"]`)) ?? 'other',
     visibility: document.visibilityState,
     studio: Boolean(document.querySelector('.studio-route-views')),
     widgets: document.querySelectorAll('[data-testid="runtime-widget-frame"]').length,

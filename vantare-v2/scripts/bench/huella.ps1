@@ -12,7 +12,7 @@ param(
     [int]$Puerto = 9247,
     [string]$Juego = 'Le Mans Ultimate',
     [string]$Escena = '',
-    [ValidateSet('', 'home', 'month', 'timeline')]
+    [ValidateSet('', 'home', 'next', 'day', 'week', 'month', 'timeline')]
     [string]$BaseRoute = '',
     [string]$SesionLmu = '',
     [ValidateRange(0, 200)]

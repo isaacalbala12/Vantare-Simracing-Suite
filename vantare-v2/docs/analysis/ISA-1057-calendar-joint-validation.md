@@ -35,3 +35,12 @@ recorridos C1, referencia A/A C10 y comparacion de optimizaciones C11.
 No se afirma ahorro de CPU/GPU/RAM ni mejora medida de latencia.
 Se mantienen LMU y las otras aplicaciones; se atribuye consumo al proceso propio.
 No se han fusionado cambios a nightly ni publicado releases.
+
+## Checks del ensamblaje
+
+- Review independiente estatica ACCEPT en f8c36cc1; no P1/P2 detectados.
+- Build frontend (incluye tipos), lint y `go test ./...`: PASS.
+- Suite completa frontend: 3299 PASS, 2 omitidas, 2 timeout de 20s en PedalsRedline.layout.test.tsx:97 (fuera de alcance, expediente #1025). Suite no verde; no se cambian presupuestos ni exclusiones.
+- Roadmap: 44 tests PASS.
+- Banco extendido a Proximas/Dia/Semana, manteniendo Mes/Timeline/Inicio. Tres casos RED antes; 16 pruebas PASS despues. Solo tooling, sin cambio de producto.
+- Wails, referencia A/A y comparacion de optimizaciones siguen pendientes.

@@ -4,8 +4,7 @@
 
 Rama aislada sobre nightly d6d0992f. Reune los candidatos C2-C9, el nombre
 Calendario y el banco de medicion; no incluye aun #1020/#1024.
-142 pruebas focales PASS, 2 omitidas por artefacto externo. Build y checks
-completos pendientes; no hay resultado Wails ni ahorro medido.
+142 pruebas focales PASS, 2 omitidas por artefacto externo. Build, lint, Go completo y 44 pruebas roadmap PASS. Frontend completo: 3299 PASS, 2 omitidas y 2 timeout Pedals Redline (#1025); suite no verde. Review estatica ACCEPT f8c36cc1. Banco ampliado a las cinco vistas: 16 PASS. No hay resultado Wails ni ahorro medido.
 Manifest y resoluciones: docs/analysis/ISA-1057-calendar-joint-validation.md.
 Siguiente: checks y review del conjunto, C1/C10 en Wails, despues C11.
 No merge a nightly, release ni cambios de producto en HUD/OBS/Studio.

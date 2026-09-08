@@ -16,8 +16,8 @@ TempDir; publicación bundled real a fecha histórica; archivo anterior intacto,
 reintento exitoso y recarga desde disco. No son datos runtime ni prueba Wails.
 
 Archivos: calendar_service.go, follow_persistence_test.go, este informe, handoff,
-plan/roadmap generado. Sin UI/HUD/Studio ni dependencias. Build/full Go, roadmap
-checks y review pendientes. C6b confirmación UI/permisos, C9 y Wails/rendimiento
+plan/roadmap generado. Sin UI/HUD/Studio ni dependencias. Build frontend para embed, go test ./..., roadmap 23+21 y diff PASS.
+Review ACCEPT e9dc8ef9. No se repiten tests/lint de frontend: no hay cambios TS/CSS. C6b confirmación UI/permisos, C9 y Wails/rendimiento
 continúan pendientes. Verificación manual futura: simular error de guardado en
 perfil de prueba y reintentar seguir/dejar de seguir; reiniciar y comprobar estado.
 Sin merge, promoción o release.

@@ -80,7 +80,7 @@ export function StrategyColdStartBanner({ client, onImported, t }: { client: Str
         {status?.recovered ? <p>{t("strategy.coldStart.recovered")}</p> : null}
         {progress ? <span>{formatMessage(t("strategy.coldStart.progress"), { done: progress.imported + progress.skipped, imported: progress.imported, skipped: progress.skipped, total: progress.total })}</span> : null}
         {importFailed ? <span className="orbit-cold-start__error">{t("strategy.coldStart.error")}</span> : null}
-        {failures.length > 0 ? <div><b>{t("strategy.coldStart.failureReasons")}</b><ul>{failures.map((failure) => <li key={failure.locator}>{formatMessage(t("strategy.coldStart.failureReason"), { session: failure.locator, reason: failure.reason })}</li>)}</ul></div> : null}
+        {failures.length > 0 ? <div><b>{t("strategy.coldStart.failureReasons")}</b><ul>{failures.map((failure) => <li key={failure.locator}>{formatMessage(t("strategy.coldStart.failureReason"), { session: failure.locator, reason: failure.reason === "candidate_timeout" || failure.reason === "catalog_entry_missing" ? t(`strategy.coldStart.${failure.reason}`) : failure.reason })}</li>)}</ul></div> : null}
       </div>
       <div className="orbit-cold-start__actions">
         {!unavailable && !offerImport && status?.recovered ? <Button onClick={() => setStatus({ ...status, recovered: false })} variant="ghost">{t("strategy.coldStart.dismiss")}</Button> : null}

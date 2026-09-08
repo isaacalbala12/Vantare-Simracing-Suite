@@ -5,6 +5,7 @@ import type {
 } from "../../strategy/strategy-application-client";
 
 let coldStartSequence = 0;
+// Backend candidates have a 29-minute deadline; leave a minute for the response.
 export const COLD_START_IMPORT_TIMEOUT_MS = 30 * 60 * 1000;
 
 function commandId(operation: string): string {

@@ -22,6 +22,8 @@ type Decision string
 const (
 	defaultImportConcurrency = 4
 	maximumImportConcurrency = 4
+	// Keep the existing 30-minute client budget, allowing a minute for the response.
+	defaultCandidateTimeout = 29 * time.Minute
 )
 
 const (
@@ -74,6 +76,7 @@ type ServiceOptions struct {
 	Importer           SessionImporter
 	Store              SessionStore
 	ImportConcurrency  int
+	CandidateTimeout   time.Duration
 }
 
 type Service struct {
@@ -203,7 +206,9 @@ func (service *Service) ImportNext(ctx context.Context) (Progress, error) {
 		for index, candidate := range pending {
 			go func() {
 				defer wait.Done()
-				results[index].model, results[index].err = importCandidate(ctx, service.options.Importer, candidate)
+				candidateCtx, cancel := context.WithTimeout(ctx, service.candidateTimeout())
+				defer cancel()
+				results[index].model, results[index].err = importCandidate(candidateCtx, service.options.Importer, candidate)
 			}()
 		}
 		wait.Wait()
@@ -281,6 +286,14 @@ func (service *Service) importConcurrency() int {
 	return concurrency
 }
 
+func (service *Service) candidateTimeout() time.Duration {
+	timeout := service.options.CandidateTimeout
+	if timeout <= 0 || timeout > defaultCandidateTimeout {
+		return defaultCandidateTimeout
+	}
+	return timeout
+}
+
 type candidateImportResult struct {
 	model telemetryanalysis.AuthorizedSessionModel
 	err   error
@@ -291,7 +304,14 @@ func importCandidate(ctx context.Context, importer SessionImporter, candidate te
 		if recovered := recover(); recovered != nil {
 			err = fmt.Errorf("import session panic: %v", recovered)
 		}
+		if contextErr := ctx.Err(); contextErr != nil {
+			model = telemetryanalysis.AuthorizedSessionModel{}
+			err = contextErr
+		}
 	}()
+	if err := ctx.Err(); err != nil {
+		return model, err
+	}
 	return importer.Import(ctx, candidate)
 }
 
@@ -362,6 +382,9 @@ func sortCandidates(candidates []telemetryanalysis.Candidate) {
 }
 
 func failureReason(err error) string {
+	if errors.Is(err, context.DeadlineExceeded) {
+		return "candidate_timeout"
+	}
 	reason := strings.TrimSpace(err.Error())
 	const maxReasonBytes = 512
 	if len(reason) > maxReasonBytes {

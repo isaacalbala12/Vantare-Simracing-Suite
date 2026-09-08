@@ -561,6 +561,8 @@ export const strategyOrbitEn: Record<string, string> = {
   "strategy.coldStart.catalog_unavailable": "The catalog cannot be opened. Your telemetry files are unchanged. Check catalog recovery and restart Vantare.",
   "strategy.coldStart.state_unavailable": "Import state cannot be recovered. Restore a valid state backup and check again.",
   "strategy.coldStart.importer_unavailable": "The telemetry reader is unavailable. Repair or update Vantare and restart the application.",
+  "strategy.coldStart.candidate_timeout": "Reading this session exceeded the time limit. You can retry.",
+  "strategy.coldStart.catalog_entry_missing": "The session is missing from the recovered catalog. You can import it again.",
   "strategy.coldStart.title": "We found {{n}} LMU sessions on your computer — import them?",
   "strategy.coldStart.lead": "Nothing is read or imported until you agree.",
   "strategy.coldStart.progress": "Processed {{done}} of {{total}}: {{imported}} imported and {{skipped}} skipped",

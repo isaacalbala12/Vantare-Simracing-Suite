@@ -6,6 +6,17 @@ import { StrategyColdStartBanner } from "./StrategyColdStartBanner";
 afterEach(cleanup);
 
 describe("StrategyColdStartBanner", () => {
+  it.each(["candidate_timeout", "catalog_entry_missing"])("traduce el motivo estable %s", async (reason) => {
+    const client: StrategyApplicationClient<unknown> = {
+      async execute(command) { return {
+        protocolVersion: "strategy.application.v1", commandId: command.commandId, repositoryVersion: 0,
+        coldStartStatus: { shouldShow: true, checking: false, found: 1, imported: 0, skipped: 1, failures: [{ locator: "lmu://one", reason }], decision: "accepted" },
+        recoveredFromBackup: false, closed: false,
+      }; }, cancel: () => false, dispose: () => undefined,
+    };
+    render(<StrategyColdStartBanner client={client} onImported={vi.fn()} t={(key) => key === "strategy.coldStart.failureReason" ? "{{session}}: {{reason}}" : key} />);
+    expect(await screen.findByText(`lmu://one: strategy.coldStart.${reason}`)).toBeTruthy();
+  });
   it.each(["catalog_unavailable", "state_unavailable", "importer_unavailable"] as const)("muestra %s sin ofrecer importar sobre fuentes indisponibles", async (reason) => {
     const client: StrategyApplicationClient<unknown> = {
       async execute(command) { return {

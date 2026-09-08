@@ -562,6 +562,8 @@ export const strategyOrbitIt: Record<string, string> = {
   "strategy.coldStart.catalog_unavailable": "Impossibile aprire il catalogo. I file di telemetria sono intatti. Verifica il recupero del catalogo e riavvia Vantare.",
   "strategy.coldStart.state_unavailable": "Impossibile recuperare lo stato di importazione. Ripristina una copia valida dello stato e riprova.",
   "strategy.coldStart.importer_unavailable": "Il lettore di telemetria non è disponibile. Ripara o aggiorna Vantare e riavvia l’applicazione.",
+  "strategy.coldStart.candidate_timeout": "La lettura di questa sessione ha superato il limite di tempo. Puoi riprovare.",
+  "strategy.coldStart.catalog_entry_missing": "La sessione non è presente nel catalogo recuperato. Puoi importarla di nuovo.",
   "strategy.coldStart.title": "Abbiamo trovato {{n}} sessioni LMU sul tuo computer — importarle?",
   "strategy.coldStart.lead": "Nulla viene letto o importato finché non accetti.",
   "strategy.coldStart.progress": "Elaborate {{done}} di {{total}}: {{imported}} importate e {{skipped}} saltate",

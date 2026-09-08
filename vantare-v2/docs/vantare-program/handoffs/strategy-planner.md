@@ -17,6 +17,14 @@ son fases históricas.
 
 ## Estado
 
+Actualización ISA-821 (2026-09-08, deadline por candidato):
+
+- Rama `vantareapp/isa-821-candidate-deadline`, base `b85fa5f4`, ejecución personal.
+- Contexto padre y deadline de 29 minutos; cliente conserva 30. No guarda éxito
+  tardío y espera terminación antes del siguiente lote. Causas visibles ES/EN/PT/IT.
+- Evidencia y límites cooperativos: `docs/strategy-planner/evidence/isa-821-candidate-deadline.md`.
+- Continúan #445, validación Wails y calibración/holdout #1030. Sin promoción.
+
 Actualización ISA-819 (2026-09-08, reconciliación de generaciones):
 
 - Rama `vantareapp/isa-819-catalog-reconciliation`, base `bb266977`. Ejecución personal.

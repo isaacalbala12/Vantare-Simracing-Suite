@@ -453,11 +453,12 @@ export function pxPerHourOf(axisWidth: number, zoom: number): number {
   return Math.max(1, (axisWidth / 24) * clampZoom(zoom));
 }
 
-/** Etiquetas del eje: cada hora, media hora o cuarto según el zoom. */
+/** Reserva espacio para HH:mm, incluido el último rótulo alineado al borde. */
 export function tickEveryMinFor(pxPerHour: number): number {
   if (pxPerHour >= 220) return 15;
   if (pxPerHour >= 110) return 30;
-  return 60;
+  return [60, 120, 180, 240, 360, 720, 1440]
+    .find(minutes => (minutes / 60) * pxPerHour >= 50) ?? 1440;
 }
 
 export interface TimelinePrefs {

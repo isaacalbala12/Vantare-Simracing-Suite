@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-08T04:02:15Z",
+  "generatedAt": "2026-09-08T04:22:41Z",
   "digest": {
     "lastCommit": "d6d0992f8dbc800ccb6d75f60fffdc7c3d561da2"
   },
@@ -343,6 +343,28 @@
     }
   ],
   "milestones": [
+    {
+      "id": "calendar-timeline-labels",
+      "type": "fix",
+      "title": {
+        "es": "Horas legibles en Timeline",
+        "en": "Readable Timeline hours",
+        "pt": "Horas legiveis no Timeline",
+        "it": "Orari leggibili nella Timeline"
+      },
+      "body": {
+        "es": "Calendario separa las etiquetas horarias segun el ancho y el zoom para evitar que se superpongan.",
+        "en": "Calendar spaces time labels according to width and zoom to prevent overlap.",
+        "pt": "O Calendario espaca as etiquetas de horas segundo a largura e o zoom para evitar sobreposicao.",
+        "it": "Il Calendario distanzia le etichette orarie in base alla larghezza e allo zoom per evitare sovrapposizioni."
+      },
+      "label": {
+        "es": "ISA-1058",
+        "en": "ISA-1058",
+        "pt": "ISA-1058",
+        "it": "ISA-1058"
+      }
+    },
     {
       "id": "calendar-validation-performance",
       "type": "plan",

@@ -254,6 +254,19 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 
 ## Hitos
 
+### Horas legibles en Timeline
+
+- id: calendar-timeline-labels
+- tipo: fix
+- titulo.en: Readable Timeline hours
+- titulo.pt: Horas legiveis no Timeline
+- titulo.it: Orari leggibili nella Timeline
+- cuerpo: Calendario separa las etiquetas horarias segun el ancho y el zoom para evitar que se superpongan.
+- cuerpo.en: Calendar spaces time labels according to width and zoom to prevent overlap.
+- cuerpo.pt: O Calendario espaca as etiquetas de horas segundo a largura e o zoom para evitar sobreposicao.
+- cuerpo.it: Il Calendario distanzia le etichette orarie in base alla larghezza e allo zoom per evitare sovrapposizioni.
+- etiqueta: ISA-1058
+
 ### Validacion y rendimiento de Calendario
 
 - id: calendar-validation-performance

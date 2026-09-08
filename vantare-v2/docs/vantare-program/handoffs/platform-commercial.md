@@ -1,5 +1,12 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+## ISA-1058 - Eje horario de Calendario
+
+Candidato aislado sobre ISA-1057 dd5dc1d7. Solo el modelo de Calendario ajusta
+la densidad de etiquetas; test real de geometria RED/GREEN (12 combinaciones).
+152 focales PASS/2 externas omitidas. Build, suite completa, review y Wails pendientes.
+No integrado ni publicado. Evidencia: docs/analysis/ISA-1058-calendar-timeline-labels.md.
+
 ## ISA-1057 - Calendario: validacion conjunta en curso
 
 Rama aislada sobre nightly d6d0992f. Reune los candidatos C2-C9, el nombre

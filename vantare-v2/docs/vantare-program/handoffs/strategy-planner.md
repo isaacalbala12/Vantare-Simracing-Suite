@@ -1,13 +1,26 @@
 # Handoff vivo — Strategy Planner
 
+## Derivaciones escalares — ISA-1077 (2026-09-08)
+
+Sobre 1980c3d4, rama vantareapp/isa-1077-corrected-derivation, worktree C:/tmp/vantare-isa1077.
+DeriveCorrectedSession revalida base/parser/schema, aplica snapshot completo y
+reutiliza validez, consumo/ritmo, curvas y boxes. Resultado separado del catálogo
+observado, con Base/SnapshotID. No publica todavía una proyección corregida.
+Prueba sobre fixture registrada sanitizada: cambio controlado de Lap Time se
+refleja en la derivación; calidad invalidada sigue excluida aunque cambie el valor.
+No es calibración de precisión. Analysis, vet, build frontend y go test ./... pasan.
+Siguiente: referencia exacta de revisión en proyección/selección y servicio autorizado;
+operaciones de uso por familia/clasificación/límites y UI todavía pendientes.
+
+
 ## Vista efectiva escalar C3 — ISA-1075 (2026-09-08)
 
-Base0892b9a9, rama vantareapp/isa-1075-correction-view, worktree C:/tmp/vantare-isa1075.
+Base 0892b9a9, rama vantareapp/isa-1075-correction-view, worktree C:/tmp/vantare-isa1075.
 ApplySampleCorrectionSnapshot revalida el conjunto completo frente a canales y
 páginas de la misma base autorizada; rechaza cobertura insuficiente/ambigua,
 original cambiado e integridad de snapshot alterada. Copia páginas, valores y
 punteros de timestamp. Conserva calidad, tiempos y procedencia de la corrección.
-Tests Analysis/vet y build frontend pasan. Suite Go completa falla por la carrera conocida de Engineer/voiceinput #812; reproducida en200repeticiones y documentada sin tocar Engineer. No se declara gate global verde.
+Tests Analysis/vet y build frontend pasan. Suite Go completa falla por la carrera conocida de Engineer/voiceinput #812; reproducida en 200 repeticiones y documentada sin tocar Engineer. No se declara gate global verde.
 Todavía no conecta derivados, comandos o UI. Siguiente: revisión referenciada
 por los derivados y aplicación de operaciones de selección por familia.
 Sin dependencias, originales modificados, subagentes, promoción ni publicación.
@@ -15,12 +28,12 @@ Sin dependencias, originales modificados, subagentes, promoción ni publicación
 
 ## Custodia escalar C2 — ISA-1074 (2026-09-08)
 
-Sobre9b4df895, rama vantareapp/isa-1074-correction-custody, worktree C:/tmp/vantare-isa1074.
+Sobre 9b4df895, rama vantareapp/isa-1074-correction-custody, worktree C:/tmp/vantare-isa1074.
 JSON privado por base, lease nativo, historial encadenado, expectedRevision,
 commandId idempotente y restauración de snapshots sin reescribir revisiones.
 Backup validado/cuarentena; ausencia de ID exacto es error, nunca sustitución.
 Primer commit con confirmación perdida devuelve incertidumbre y admite reintento.
-Límites:256correcciones,256revisiones,8MiB; son presupuestos de recursos.
+Límites: 256 correcciones, 256 revisiones, 8 MiB; son presupuestos de recursos.
 
 Tests de custodia/Analysis y vet pasan; build frontend pasa; suite Go completa
 pasa sobre el último código; compilación de Analysis para Linux también pasa. La custodia exige autorización vigente del servicio Analysis futuro;

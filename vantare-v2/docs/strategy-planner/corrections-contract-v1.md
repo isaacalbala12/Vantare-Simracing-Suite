@@ -227,3 +227,12 @@ sin alias, Base, SnapshotID y correcciones validadas. Calidad y relojes original
 se conservan. No lee archivos, no concede autorización ni actualiza derivados.
 El lector llamante debe suministrar las páginas necesarias para el conjunto;
 los índices no se reinterpretan como posiciones de página.
+
+## Derivación escalar — #1077
+
+DeriveCorrectedSession aplica la vista efectiva y vuelve a ejecutar las funciones
+vigentes de validez, consumo/ritmo, curvas y boxes. Comprueba sesión/parser/schema
+respecto a la base. No introduce umbrales ni cambia el catálogo observado.
+CorrectedSessionDerivations conserva Base y SnapshotID; el adaptador futuro debe
+vincularlos a la revisión duradera antes de publicar/guardar un plan.
+No ofrece selección por familia ni otras operaciones del contrato todavía.

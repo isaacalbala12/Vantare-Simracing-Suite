@@ -93,7 +93,7 @@ function useClock(now: Date | undefined, everyMs: number): Date {
     const id = window.setInterval(() => setTick(Date.now()), everyMs);
     return () => window.clearInterval(id);
   }, [everyMs, now]);
-  return now ?? new Date(tick);
+  return useMemo(() => now ?? new Date(tick), [now, tick]);
 }
 
 function pad2(value: number): string {
@@ -285,12 +285,15 @@ export function RacesOrbitPage({ calendar, target, now, refreshState = "idle", c
     () => (view === "week" ? weekRows(visible, monday, clock) : []),
     [clock, monday, view, visible],
   );
-  const first = useMemo(() => monthAnchor(clock, offset), [clock, offset]);
+  const monthDayMs = dayAnchor(clock, 0).getTime();
+  const monthClock = useMemo(() => new Date(monthDayMs), [monthDayMs]);
+  const first = useMemo(() => monthAnchor(monthClock, offset), [monthClock, offset]);
   const month = useMemo(
-    () => (view === "month" ? monthDays(visible, first, clock, calendar?.events ?? [], calendar?.series) : []),
-    [calendar?.events, calendar?.series, clock, first, view, visible],
+    () => (view === "month" ? monthDays(visible, first, monthClock, calendar?.events ?? [], calendar?.series) : []),
+    [calendar?.events, calendar?.series, monthClock, first, view, visible],
   );
-  const tlStart = useMemo(() => timelineStart(clock), [clock]);
+  const tlStartMs = timelineStart(clock).getTime();
+  const tlStart = useMemo(() => new Date(tlStartMs), [tlStartMs]);
   const tlRows = useMemo(
     () => (view === "timeline" ? timelineRows(visible, tlStart) : []),
     [tlStart, view, visible],

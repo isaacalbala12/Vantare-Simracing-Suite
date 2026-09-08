@@ -1,5 +1,30 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+## ISA-1064 - Ultimo estado de medicion
+
+Horario8-15septiembre publicado con autorizacion explicita de Isaac; aviso retirado,
+11series/4592eventos,660bloquesTimeline. Dos capturas Mes180s con warmup30/60s
+rechazadas por Auto3->4->5; no referenciaA/A ni ahorroA/B aceptados. Foco background
+estable, oclusion desconocida. Diagnostico sin recolector bloqueado por revision
+automatica de permisos, sin causa detallada. Instancias propias cerradas, LMU intacto.
+Codigo de optimizacion sin cambios ni integracion nueva; fuente y logs en informe1064.
+
+## ISA-1064 - Retoma de optimizaciones temporales
+
+Isaac autoriza continuar #1015. Nightly integra #1062 en b6b5754e; ultimo ajuste
+visual de review sigue pendiente y no se presenta como verificado. Nueva issue1064
+adapta cortes1020/1024 al calendario vigente sin tocar HUD/Studio. Rama/worktree
+propios. Producto01b2b77f ACCEPT:112 focalesPASS/2omitidas, build/tipos/lint y44roadmapPASS.
+RED10Mes/10Timeline/29columna pasa a0 redundantes sin perder actualizaciones.
+Suite completa3311PASS/2omitidas/3timeouts (Timeline, TrackMap, Standings);
+Timeline aisladoPASS, no suite completa verde. Consumo/latencia Wails pendientes
+de horario vigente aplicado: preflight autorizado Wails confirma seed25agosto-1septiembre,
+0eventos/0bloquesTimeline tras refresh ok=true. CandidatoDiscord8-15septiembre pendiente
+de aceptar/publicar por usuario. Revision abierta en instancia aislada34392; LMU20348 intacto.
+Texto Owner ya legible y contenido (captura/medidas); checker fullWidth mezcla unidades, no PASS.
+Sin promocion ni release nuevos.
+Evidencia: docs/analysis/ISA-1064-calendar-performance.md.
+
 ## ISA-1061 - Candidato revisado; validacion visual final pendiente
 
 Isaac aprueba el recorrido completo. Rama aislada desde ISA-1058 591b48b7.

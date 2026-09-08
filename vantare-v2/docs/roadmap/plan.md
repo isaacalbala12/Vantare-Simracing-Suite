@@ -254,6 +254,33 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 
 ## Hitos
 
+### Calendario sin recálculos de tiempo redundantes
+
+- id: races-stable-clock
+- tipo: fix
+- titulo.en: Stable time calculations in Calendar
+- titulo.pt: Cálculos de tempo estáveis no Calendário
+- titulo.it: Calcoli temporali stabili nel Calendario
+- cuerpo: Calendario reutiliza las filas del Timeline mientras no cambian la hora de inicio, el calendario o el filtro, y conserva los cálculos de columna entre actualizaciones de 30 segundos. La cuenta atrás sigue avanzando cada segundo. No cambia la apariencia ni las capacidades y no se anuncia un porcentaje de ahorro global.
+- cuerpo.en: Calendar reuses Timeline rows while the start hour, calendar and filter remain unchanged, and retains column calculations between 30-second updates. The countdown still advances every second. Appearance and capabilities are preserved; no overall savings percentage is claimed.
+- cuerpo.pt: O Calendário reutiliza as linhas do Timeline enquanto a hora inicial, o calendário e o filtro não mudam, e conserva os cálculos da coluna entre atualizações de 30 segundos. A contagem decrescente continua a cada segundo. Aparência e capacidades preservadas, sem anunciar uma percentagem de redução global.
+- cuerpo.it: Il Calendario riutilizza le righe del Timeline finché ora iniziale, calendario e filtro non cambiano, e conserva i calcoli della colonna tra aggiornamenti di 30 secondi. Il conto alla rovescia avanza ogni secondo. Aspetto e capacità invariati, senza dichiarare una percentuale di risparmio complessivo.
+- etiqueta: ISA-1064
+
+### Cálculo mensual del calendario sin trabajo repetido
+
+- id: calendar-month-stable-day
+- tipo: fix
+- titulo.en: Calendar month without repeated calculations
+- titulo.pt: Mês do calendário sem cálculos repetidos
+- titulo.it: Mese del calendario senza calcoli ripetuti
+- cuerpo: La vista Mes conserva sus cálculos mientras no cambian el día local, el mes mostrado, los datos o el filtro. La cuenta atrás del detalle sigue avanzando cada segundo; las actualizaciones del calendario y el cambio de día se reflejan sin reducir información ni efectos. No se anuncia una cifra de ahorro global.
+- cuerpo.en: Month view retains its calculations while the local day, displayed month, data and filter remain unchanged. The detail countdown still advances every second; calendar updates and day changes remain reflected without reducing information or effects. No overall savings figure is claimed.
+- cuerpo.pt: A vista Mês conserva os cálculos enquanto o dia local, o mês apresentado, os dados e o filtro não mudam. A contagem decrescente do detalhe continua a cada segundo; atualizações do calendário e mudanças de dia mantêm-se sem reduzir informação ou efeitos. Não se anuncia uma redução global medida.
+- cuerpo.it: La vista Mese conserva i calcoli finché giorno locale, mese visualizzato, dati e filtro non cambiano. Il conto alla rovescia del dettaglio avanza ogni secondo; aggiornamenti del calendario e cambi di giorno restano visibili senza ridurre informazioni o effetti. Nessun risparmio complessivo misurato dichiarato.
+- etiqueta: ISA-1064
+
+
 ### Aviso de horario pendiente para Owner
 
 - id: calendar-owner-review-notice

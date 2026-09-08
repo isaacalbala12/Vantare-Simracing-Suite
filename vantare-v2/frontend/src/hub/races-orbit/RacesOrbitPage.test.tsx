@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "../../i18n/I18nProvider";
 import type { Calendar, RaceSeries } from "../../calendar/calendar-types";
 import { ToastProvider } from "../../ui/orbit/Toast";
+import * as racesModel from "./races-orbit-model";
 import {
   RacesOrbitPage,
   RACES_CONTEXT_SLOT_ID,
@@ -42,6 +43,8 @@ afterEach(() => {
   document.body.replaceChildren();
   mockEmit.mockReset();
   listeners.clear();
+  vi.restoreAllMocks();
+  vi.useRealTimers();
   plan = "paid";
 });
 
@@ -119,6 +122,94 @@ const VIEWS = [
 ] as const;
 
 describe("RacesOrbitPage", () => {
+  it("conserva Mes entre segundos y cambia de día y mes a medianoche local", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 11, 31, 23, 59, 48));
+    const monthDays = vi.spyOn(racesModel, "monthDays");
+    setup({ calendar: { ...CALENDAR, schedule: { ...CALENDAR.schedule!, validFrom: "2026-12-01T00:00:00Z", validUntil: "2027-02-01T00:00:00Z" } }, now: undefined });
+    fireEvent.click(screen.getByRole("button", { name: "Mes" }));
+    const grid = screen.getByTestId("orbit-races-month");
+    expect(within(grid).getAllByRole("gridcell")).toHaveLength(42);
+    const originalGrid = grid.textContent;
+    const originalCountdown = screen.getByTestId("orbit-races-detail-at").textContent;
+    monthDays.mockClear();
+    act(() => vi.advanceTimersByTime(1000));
+    expect(screen.getByTestId("orbit-races-detail-at").textContent).not.toBe(originalCountdown);
+    for (let second = 1; second < 10; second++) act(() => vi.advanceTimersByTime(1000));
+    expect(monthDays).not.toHaveBeenCalled();
+    expect(grid.textContent).toBe(originalGrid);
+    act(() => vi.advanceTimersByTime(2000));
+    expect(monthDays).toHaveBeenCalledTimes(1);
+    expect(monthDays.mock.calls[0][1].getFullYear()).toBe(2027);
+    expect(monthDays.mock.calls[0][1].getMonth()).toBe(0);
+    expect(grid.querySelector('[data-today="true"] button')?.textContent).toBe("1");
+    fireEvent.click(screen.getByTestId("orbit-races-filter-advanced"));
+    expect(monthDays).toHaveBeenCalledTimes(2);
+    expect(monthDays.mock.calls[1][0].map((entry) => entry.id)).toEqual(["gold-1"]);
+  });
+
+  it("actualiza Mes con eventos nuevos y al navegar sin esperar al siguiente día", () => {
+    const monthDays = vi.spyOn(racesModel, "monthDays");
+    mountSlots();
+    const page = (calendar: Calendar) => (
+      <I18nProvider><ToastProvider><RacesOrbitPage calendar={calendar} now={NOW} /></ToastProvider></I18nProvider>
+    );
+    const view = render(page(CALENDAR));
+    fireEvent.click(screen.getByRole("button", { name: "Mes" }));
+    monthDays.mockClear();
+    view.rerender(page({ ...CALENDAR, events: [{
+      id: "new-event", title: "Evento nuevo", startTime: NOW.toISOString(),
+      sim: "LMU", track: "Sebring", series: "LMGT3", sessionLabel: "Race",
+      durationMin: 20, registrationUrl: "", source: "test", notes: "",
+    }] }));
+    expect(monthDays).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId("orbit-races-month").textContent).toContain("Evento nuevo");
+    fireEvent.click(screen.getByTestId("orbit-races-next-page"));
+    expect(monthDays).toHaveBeenCalledTimes(2);
+    expect(screen.getByTestId("orbit-races-month").textContent).not.toContain("Evento nuevo");
+  });
+
+
+  it("conserva las salidas del Timeline entre segundos y las renueva al cambiar hora o filtro", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+    const rows = vi.spyOn(racesModel, "timelineRows");
+    setup({ now: undefined });
+    fireEvent.click(screen.getByRole("button", { name: "Timeline" }));
+    const blocks = screen.getAllByTestId("orbit-timeline-block").map((node) => node.getAttribute("data-tip"));
+    rows.mockClear();
+    for (let second = 0; second < 10; second++) act(() => vi.advanceTimersByTime(1000));
+    expect(rows).not.toHaveBeenCalled();
+    expect(screen.getAllByTestId("orbit-timeline-block").map((node) => node.getAttribute("data-tip"))).toEqual(blocks);
+    vi.setSystemTime(new Date(NOW.getTime() + 3_600_000));
+    act(() => vi.advanceTimersByTime(1000));
+    expect(rows).toHaveBeenCalledTimes(1);
+    expect(rows.mock.calls[0][1].getTime()).toBe(racesModel.timelineStart(new Date()).getTime());
+    fireEvent.click(screen.getByTestId("orbit-races-filter-advanced"));
+    expect(rows).toHaveBeenCalledTimes(2);
+    expect(screen.getAllByTestId("orbit-timeline-block").every((node) => node.getAttribute("data-tip")?.includes("Hypercar Open"))).toBe(true);
+  });
+
+  it("recalcula la columna a los 30 segundos, manteniendo activa la cuenta atrás", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+    const upcoming = vi.spyOn(racesModel, "upcomingRows");
+    const calendar = { ...CALENDAR, followedSeriesIds: ["bronze-1"] };
+    setup({ calendar, now: undefined });
+    fireEvent.click(screen.getByRole("button", { name: "Timeline" }));
+    const initialText = screen.getByTestId("orbit-races-detail").textContent;
+    upcoming.mockClear();
+    act(() => vi.advanceTimersByTime(1000));
+    expect(screen.getByTestId("orbit-races-detail").textContent).not.toBe(initialText);
+    for (let second = 1; second < 29; second++) act(() => vi.advanceTimersByTime(1000));
+    expect(upcoming).not.toHaveBeenCalled();
+    act(() => vi.advanceTimersByTime(1000));
+    expect(upcoming).toHaveBeenCalledTimes(1);
+    expect(upcoming.mock.calls[0][0].map((entry) => entry.id)).toEqual(["bronze-1"]);
+    expect(upcoming.mock.calls[0][1].getTime()).toBe(NOW.getTime() + 30_000);
+  });
+
+
   it("el filtro no arrastra una hora elegida de otra serie", () => {
     setup(); pickFirstDayStart();
     fireEvent.click(screen.getByTestId("orbit-races-filter-advanced"));

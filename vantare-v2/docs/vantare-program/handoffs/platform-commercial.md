@@ -14,7 +14,9 @@ GREEN: `go test ./internal/calendar/...` PASS. El documento guarda metadatos
 aditivos, conserva horario/seguimientos al fallar red o arrancar y restaura la
 memoria anterior si no puede persistir. Los eventos compartidos se conservan.
 Build frontend PASS para el embed; `go test ./...` PASS y roadmap 23+21 PASS.
-Revisión independiente en curso;
+Primera revisión independiente: dos P2 reproducidos y corregidos (orden de
+publicaciones de la misma semana mediante PublishedAt y protección de archivos
+legacy ante publicación futura). Módulo Calendar GREEN; revisión final en curso;
 ver #1029 para la evidencia de cierre, commit, PR y CI exactos.
 
 Pendiente: propagar vigencia por normalización/frontend (C3), errores/acuse (C4),

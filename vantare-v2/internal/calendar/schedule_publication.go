@@ -237,10 +237,12 @@ func (s *Service) RefreshPublishedSchedule(
 
 	chosen := PreferSchedule(bundled, current.Schedule)
 	source := ScheduleSourcePublished
+	publishedAt := current.PublishedAt
 	if current.Schedule.ValidFrom.Before(bundled.ValidFrom) {
 		source = ScheduleSourceBundled
+		publishedAt = time.Time{}
 	}
-	err = s.applySchedule(chosen, source, now)
+	err = s.applySchedule(chosen, source, publishedAt, now)
 	return s.scheduleSource(), err
 }
 

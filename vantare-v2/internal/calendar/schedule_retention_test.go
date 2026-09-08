@@ -149,3 +149,91 @@ func TestScheduleWriteFailurePreservesMemory(t *testing.T) {
 		t.Fatal("failed write changed the in-memory calendar")
 	}
 }
+
+func TestScheduleRefreshRejectsDelayedSameWeekPublication(t *testing.T) {
+	seed, err := LoadWeeklySchedule()
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := seed.ValidFrom.Add(time.Hour)
+	doc := PublishedSchedule{ID: "first", Schedule: seed, PublishedAt: now}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		if err := json.NewEncoder(w).Encode([]PublishedSchedule{doc}); err != nil {
+			t.Error(err)
+		}
+	}))
+	defer server.Close()
+	svc := newTempService(t, now)
+	if err := svc.Load(); err != nil {
+		t.Fatal(err)
+	}
+	pub := NewSchedulePublisher(server.URL, "test-key")
+	refresh := func() {
+		t.Helper()
+		if _, err := svc.RefreshPublishedSchedule(context.Background(), pub, "test-token", now); err != nil {
+			t.Fatal(err)
+		}
+	}
+	refresh()
+	first := doc
+	doc.ID = "correction"
+	doc.PublishedAt = now.Add(time.Minute)
+	doc.Schedule.Series = append([]RaceSeries(nil), seed.Series[:len(seed.Series)-1]...)
+	refresh()
+	corrected := svc.Calendar()
+	doc = first
+	refresh()
+	if !reflect.DeepEqual(svc.Calendar(), corrected) {
+		t.Fatal("delayed same-week publication replaced the correction")
+	}
+}
+
+func TestLegacySavedScheduleSurvivesFuturePublication(t *testing.T) {
+	seed, err := LoadWeeklySchedule()
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := seed.ValidFrom.Add(time.Hour)
+	svc := newTempService(t, now)
+	if err := svc.Load(); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.ApplyOfficialSchedule(now); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(svc.Path())
+	if err != nil {
+		t.Fatal(err)
+	}
+	var legacy map[string]json.RawMessage
+	if err := json.Unmarshal(data, &legacy); err != nil {
+		t.Fatal(err)
+	}
+	delete(legacy, "schedule")
+	data, err = json.Marshal(legacy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(svc.Path(), data, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.Load(); err != nil {
+		t.Fatal(err)
+	}
+	before := svc.Calendar()
+	future := seed
+	future.ValidFrom = seed.ValidUntil
+	future.ValidUntil = future.ValidFrom.AddDate(0, 0, 7)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		if err := json.NewEncoder(w).Encode([]PublishedSchedule{{ID: "future", Schedule: future}}); err != nil {
+			t.Error(err)
+		}
+	}))
+	defer server.Close()
+	if _, err := svc.RefreshPublishedSchedule(context.Background(), NewSchedulePublisher(server.URL, "test-key"), "test-token", now); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(svc.Calendar(), before) {
+		t.Fatal("future publication replaced a saved legacy schedule")
+	}
+}

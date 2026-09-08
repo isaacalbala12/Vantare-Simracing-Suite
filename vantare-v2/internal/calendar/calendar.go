@@ -70,10 +70,11 @@ type RaceSeriesPreview struct {
 
 // ScheduleMetadata preserves validity and provenance without duplicating series.
 type ScheduleMetadata struct {
-	ValidFrom  time.Time      `json:"validFrom"`
-	ValidUntil time.Time      `json:"validUntil"`
-	Updated    time.Time      `json:"updated"`
-	Source     ScheduleSource `json:"source"`
+	PublishedAt time.Time      `json:"publishedAt"`
+	ValidFrom   time.Time      `json:"validFrom"`
+	ValidUntil  time.Time      `json:"validUntil"`
+	Updated     time.Time      `json:"updated"`
+	Source      ScheduleSource `json:"source"`
 }
 
 // Calendar is the root document persisted to calendar-lmu.json.

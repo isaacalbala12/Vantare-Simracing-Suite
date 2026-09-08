@@ -26,6 +26,14 @@ tipos. Wails real, aviso Windows, rendimiento A/B y review independiente pendien
 al preparar este informe. El siguiente corte propaga vigencia al store y vistas;
 este commit no declara arreglados F1/F2/F4–F8 de la auditoría.
 
+## Revisión independiente
+
+La primera revisión de 90a48d76 pidió corregir dos P2: respuesta vieja de la misma
+semana y publicación futura sobre un archivo legacy sin metadatos. Ambos casos
+se reprodujeron RED y se corrigieron GREEN usando PublishedAt del servidor y
+conservando series legacy ante un candidato que todavía no comienza.
+El módulo Calendar completo vuelve a pasar. Revisión final del ajuste pendiente.
+
 ## Verificación y reversión
 
 Regresión ejecutable: `go test ./internal/calendar -run

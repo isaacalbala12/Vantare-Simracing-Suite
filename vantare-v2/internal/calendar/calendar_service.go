@@ -265,12 +265,12 @@ func (s *Service) ApplyOfficialSchedule(now time.Time) error {
 	if err != nil {
 		return fmt.Errorf("official schedule: %w", err)
 	}
-	return s.applySchedule(sched, ScheduleSourceBundled, now)
+	return s.applySchedule(sched, ScheduleSourceBundled, time.Time{}, now)
 }
 
 // applySchedule materialises a schedule into the calendar. The caller decides
 // where the schedule came from — the bundled seed or the published one.
-func (s *Service) applySchedule(sched OfficialSchedule, source ScheduleSource, now time.Time) error {
+func (s *Service) applySchedule(sched OfficialSchedule, source ScheduleSource, publishedAt, now time.Time) error {
 	// Published schedules are allowed to introduce an unknown venue or class,
 	// but they never get to provide their own telemetry join keys. Resolve only
 	// from the local, reviewed registry and leave unknown identities empty so
@@ -290,12 +290,16 @@ func (s *Service) applySchedule(sched OfficialSchedule, source ScheduleSource, n
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	if sched.ValidFrom.After(now) && len(s.cal.Series) > 0 &&
+		(s.cal.Schedule == nil || (!now.Before(s.cal.Schedule.ValidFrom) && now.Before(s.cal.Schedule.ValidUntil))) {
+		return nil
+	}
 	if saved := s.cal.Schedule; saved != nil {
-		// A delayed/older response cannot roll back a publication. A future
-		// schedule must not replace the one that is still active today.
+		// Document Updated is not a publication revision: imports of the same
+		// week share it. Use the server publication timestamp for corrections.
 		if sched.ValidFrom.Before(saved.ValidFrom) ||
-			(sched.ValidFrom.Equal(saved.ValidFrom) && sched.Updated.Before(saved.Updated)) ||
-			(sched.ValidFrom.After(now) && !now.Before(saved.ValidFrom) && now.Before(saved.ValidUntil)) {
+			(sched.ValidFrom.Equal(saved.ValidFrom) &&
+				(sched.Updated.Before(saved.Updated) || publishedAt.Before(saved.PublishedAt))) {
 			return nil
 		}
 	}
@@ -334,7 +338,7 @@ func (s *Service) applySchedule(sched OfficialSchedule, source ScheduleSource, n
 	merged := dedupe(kept, filtered)
 
 	// Apply schedule metadata.
-	s.cal.Schedule = &ScheduleMetadata{ValidFrom: sched.ValidFrom, ValidUntil: sched.ValidUntil, Updated: sched.Updated, Source: source}
+	s.cal.Schedule = &ScheduleMetadata{ValidFrom: sched.ValidFrom, ValidUntil: sched.ValidUntil, Updated: sched.Updated, Source: source, PublishedAt: publishedAt}
 	s.cal.Version = sched.Version
 	s.cal.Timezone = sched.Timezone
 	s.cal.Events = merged

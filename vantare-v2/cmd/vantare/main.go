@@ -2321,29 +2321,24 @@ func main() {
 		log.Printf("warning: could not load calendar: %v (using empty)", err)
 	}
 
-	// Apply bundled LMU seed (CALENDAR-04). Replaces old bundled events
-	// with the latest seed while preserving non-bundled events and followed
-	// IDs for events that still exist. A bad seed logs a warning and does
-	// not block startup.
+	// Initialize legacy data only when no official series have been saved.
+	// Both seed methods preserve an existing schedule while refresh is pending.
 	if seed, err := calendar.LoadBundledSeed(); err != nil {
 		log.Printf("warning: could not load bundled seed: %v (skipping)", err)
 	} else if err := calendarSvc.ApplyBundledSeed(seed); err != nil {
 		log.Printf("warning: could not apply bundled seed: %v (using existing calendar)", err)
 	}
 
-	// Apply official LMU weekly schedule (CALENDAR-05-C). Replaces old
-	// bundled events with a bounded window of generated events, stores
-	// official series definitions, generates UI-safe series previews, and
-	// prunes invalid followed series IDs. A bad schedule logs a warning
-	// and does not block startup.
+	// Initialize the official weekly schedule on first use. Never replace a saved
+	// publication just because this binary bundles an older schedule.
 	if err := calendarSvc.ApplyOfficialSchedule(time.Now()); err != nil {
 		log.Printf("warning: could not apply official schedule: %v (using existing calendar)", err)
 	}
 
 	// The owner publishes the weekly schedule centrally, so ask for it once at
 	// startup. It happens in the background: a slow or unreachable Supabase must
-	// not hold up the window, and the bundled schedule applied just above is
-	// already good enough to open with.
+	// not hold up the window. The saved document remains available, including
+	// its original validity; being offline does not make an expired schedule valid.
 	schedulePublisher := calendar.NewSchedulePublisher(supabaseURLResolved, supabaseAnonKeyResolved)
 	scheduleImportSvc := app.NewScheduleImportService(schedulePublisher, emitter)
 	calendarDiscordInbox, inboxErr := discordbot.NewInbox(filepath.Join(cfgDir, "calendar-discord-inbox.json"))
@@ -2353,7 +2348,7 @@ func main() {
 	refreshPublishedSchedule := func() {
 		session, err := authManager.Restore()
 		if err != nil {
-			// Signed out: the bundled schedule is the only one available.
+			// Signed out: retain the saved schedule (or first-use bundled seed).
 			return
 		}
 		source, err := calendarSvc.RefreshPublishedSchedule(

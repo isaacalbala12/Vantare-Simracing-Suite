@@ -30,20 +30,20 @@ const EventKeySeparator = "|"
 // RaceEvent models a single race (or race-adjacent) entry in the calendar.
 // Fields are validated by Validate.
 type RaceEvent struct {
-	ID              string    `json:"id"`
-	Title           string    `json:"title"`
-	Sim             string    `json:"sim,omitempty"`
-	Track           string    `json:"track,omitempty"`
-	Series          string    `json:"series,omitempty"`
-	SessionLabel    string    `json:"sessionLabel,omitempty"`
-	StartTime       time.Time `json:"startTime"`
-	DurationMin     int       `json:"durationMin,omitempty"`
-	RaceDurationMin int       `json:"raceDurationMin,omitempty"`
-	EventDurationMin int      `json:"eventDurationMin,omitempty"`
-	Sessions        []Session `json:"sessions,omitempty"`
-	RegistrationURL string    `json:"registrationUrl,omitempty"`
-	Source          string    `json:"source,omitempty"`
-	Notes           string    `json:"notes,omitempty"`
+	ID               string    `json:"id"`
+	Title            string    `json:"title"`
+	Sim              string    `json:"sim,omitempty"`
+	Track            string    `json:"track,omitempty"`
+	Series           string    `json:"series,omitempty"`
+	SessionLabel     string    `json:"sessionLabel,omitempty"`
+	StartTime        time.Time `json:"startTime"`
+	DurationMin      int       `json:"durationMin,omitempty"`
+	RaceDurationMin  int       `json:"raceDurationMin,omitempty"`
+	EventDurationMin int       `json:"eventDurationMin,omitempty"`
+	Sessions         []Session `json:"sessions,omitempty"`
+	RegistrationURL  string    `json:"registrationUrl,omitempty"`
+	Source           string    `json:"source,omitempty"`
+	Notes            string    `json:"notes,omitempty"`
 }
 
 // Reminder represents a single reminder that is due for a followed event at a
@@ -68,8 +68,17 @@ type RaceSeriesPreview struct {
 	NextStarts    []time.Time `json:"nextStarts"`
 }
 
+// ScheduleMetadata preserves validity and provenance without duplicating series.
+type ScheduleMetadata struct {
+	ValidFrom  time.Time      `json:"validFrom"`
+	ValidUntil time.Time      `json:"validUntil"`
+	Updated    time.Time      `json:"updated"`
+	Source     ScheduleSource `json:"source"`
+}
+
 // Calendar is the root document persisted to calendar-lmu.json.
 type Calendar struct {
+	Schedule          *ScheduleMetadata   `json:"schedule,omitempty"`
 	Version           int                 `json:"version"`
 	Timezone          string              `json:"timezone"`
 	ReminderMinutes   []int               `json:"reminderMinutes"`

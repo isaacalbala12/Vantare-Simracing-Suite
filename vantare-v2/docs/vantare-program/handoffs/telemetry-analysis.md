@@ -1,5 +1,15 @@
 # Handoff vivo — Telemetry Analysis
 
+## Preparación autorizada para correcciones — ISA-1080
+
+Sobre 40419038 en C:/tmp/vantare-isa1080. El servicio TA-03E ahora prepara la
+base estable de una sesión abierta/autorizada con licencia vigente. Retiene su
+artefacto y usa Analysis para lectura paginada acotada y validez original.
+No muta originales ni infiere relojes. Presupuestos y evidencia en el contrato
+de correcciones y handoff Strategy. Focales Analysis/app, vet, build y Go global
+pasan. Guardado, proyección autorizada y UI siguen pendientes.
+Sin fuentes reales leídas, LMU, promoción o release.
+
 ## Correcciones escalares para Strategy — 2026-09-08
 
 Isaac ha aceptado la visión visual completa y autorizado su implementación.

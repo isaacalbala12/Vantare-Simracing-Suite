@@ -1,5 +1,22 @@
 # Handoff vivo — Strategy Planner
 
+## Preparación autorizada — ISA-1080 (2026-09-08)
+
+Base 40419038; rama vantareapp/isa-1080-authorized-correction-input;
+worktree C:/tmp/vantare-isa1080. PrepareCorrections usa handle abierto, licencia
+y parser/artefacto conservados por el servicio TA-03E. Analysis lee canales
+requeridos con presupuestos explícitos y produce base/revisión vacía estable.
+No usa el handle temporal como identidad de revisión. Lectura serializada;
+sin truncado, nuevos criterios, inferencia de reloj ni caminos desde el cliente.
+Error de lector retira/limpia; limpieza fallida sigue registrada para reintento.
+
+RED/GREEN de Analysis y app; suites focales completas y vet pasan.
+Build y Go global pasan. Fixtures registradas sanitizadas para paginación
+y contratos controlados para permisos/lector; no banco DuckDB real ni Wails.
+Siguiente: guardar/cargar/proyectar con autorización en servicio, lectura de
+canales adicionales según objetivos, selección persistida y UI. No se declara
+editor completo. Sin push/PR/CI remota, promoción, release o LMU.
+
 ## Unión de revisión durable y cliente — ISA-1079 (2026-09-08)
 
 Base 4452fe4b; rama vantareapp/isa-1079-revision-binding;

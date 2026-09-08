@@ -266,3 +266,25 @@ El cliente TS ahora conserva y valida sourceRevisions: cobertura completa,
 digests minúsculos y pertenencia única. La ausencia legada se conserva; un array
 vacío o referencia inválida se rechaza. Aún faltan comandos de servicio,
 selección persistida de revisiones, operaciones restantes y UI productiva.
+
+## Preparación en el servicio autorizado — #1080
+
+TelemetryAnalysisService.PrepareCorrections recibe únicamente el ID opaco de
+una sesión abierta con consentimiento. Comprueba licencia y lifecycle, conserva
+el artefacto autorizado original y usa el parser existente para inspección y
+lectura paginada. Analysis produce SourceAnalysisRef desde la validez original;
+el servicio devuelve esa base y su revisión vacía estable, nunca páginas ni paths.
+
+ReadCorrectionInput tiene una frontera de parser independiente del formato.
+Lee la unión de canales requeridos por las familias; no inventa relojes ni
+canales ausentes. Rechaza páginas desordenadas y supera límites con error, sin
+devolver una derivación truncada. El backend serializa estas preparaciones y
+fija presupuestos de 1.000.000 muestras, 1.000.000 valores y 16 MiB de texto
+contabilizado (nombres de columnas y escalares). Son límites de recursos;
+no son umbrales físicos ni mediciones de consumo real de RAM.
+
+Un error de lector retira la sesión y conserva su limpieza pendiente si falla;
+la cuota o falta de datos de vuelta conserva el lector para inspección.
+Cancelación y revocación de licencia no entregan una preparación utilizable.
+Guardar/cargar/proyectar desde el servicio, ampliar canales por objetivos de
+corrección, selección de planes y UI siguen pendientes.

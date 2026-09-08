@@ -98,6 +98,7 @@ type telemetryAnalysisCandidateRecord struct {
 
 type telemetryAnalysisSession struct {
 	mu           sync.Mutex
+	artifact     telemetryanalysis.AuthorizedHistoricalArtifact
 	parser       *telemetryanalysis.LMUDuckDBParser
 	reader       telemetryAnalysisReader
 	staged       telemetryanalysis.StagedHistoricalArtifact
@@ -117,20 +118,21 @@ type TelemetryAnalysisService struct {
 	content    telemetryanalysis.ContentSource
 	now        func() time.Time
 
-	discoveryMu     sync.Mutex
-	closeMu         sync.Mutex
-	mu              sync.Mutex
-	candidates      map[string]*telemetryAnalysisCandidateRecord
-	sessions        map[string]*telemetryAnalysisSession
-	pendingCleanup  map[*telemetryAnalysisSession]struct{}
-	openingSessions int
-	runtimeReady    bool
-	readerFactory   telemetryAnalysisReaderFactory
-	cleanupStaged   func(*telemetryanalysis.StagedHistoricalArtifact) error
-	closed          bool
-	closeCtx        context.Context
-	cancelClose     context.CancelFunc
-	operations      sync.WaitGroup
+	discoveryMu      sync.Mutex
+	correctionReadMu sync.Mutex
+	closeMu          sync.Mutex
+	mu               sync.Mutex
+	candidates       map[string]*telemetryAnalysisCandidateRecord
+	sessions         map[string]*telemetryAnalysisSession
+	pendingCleanup   map[*telemetryAnalysisSession]struct{}
+	openingSessions  int
+	runtimeReady     bool
+	readerFactory    telemetryAnalysisReaderFactory
+	cleanupStaged    func(*telemetryanalysis.StagedHistoricalArtifact) error
+	closed           bool
+	closeCtx         context.Context
+	cancelClose      context.CancelFunc
+	operations       sync.WaitGroup
 }
 
 func NewTelemetryAnalysisService(cfg TelemetryAnalysisConfig, authorizer telemetryAnalysisAuthorizer) (*TelemetryAnalysisService, error) {
@@ -340,7 +342,7 @@ func (service *TelemetryAnalysisService) Open(ctx context.Context, request Telem
 	if stageErr != nil {
 		return TelemetryAnalysisOpenedSession{}, publicTelemetryAnalysisError(stageErr)
 	}
-	ownedSession := &telemetryAnalysisSession{staged: staged}
+	ownedSession := &telemetryAnalysisSession{staged: staged, artifact: artifact}
 	cleanupOwnedSession := true
 	defer func() {
 		if cleanupOwnedSession {

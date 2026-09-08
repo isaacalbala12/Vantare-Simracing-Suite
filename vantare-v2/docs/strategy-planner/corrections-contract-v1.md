@@ -184,3 +184,11 @@ El resultado es `PreparedSampleCorrection`, nunca una revisión guardada. Calida
 original preservada; la corrección no concede autorización ni elimina un fallo duro.
 Límites y vector canónico en `evidence/isa-1066/README.md`. El resto del contrato
 mantiene su alcance propuesto y requiere cortes separados antes de conectarse.
+
+## Productor de base C1b — #1067
+
+`CorrectionSourceFromModel` obtiene la referencia de un modelo autorizado y de
+`LapValidityAnalysis` marcado por su productor real con sesión/versión. La lectura
+de resultados antiguos no completa esa marca: se requiere reanálisis. El digest
+usa `TemporalSegmentsV1` validado y dominio `analysis.correction-segmentation.v1`.
+No implica almacenamiento de correcciones ni cambio de calidad/relojes.

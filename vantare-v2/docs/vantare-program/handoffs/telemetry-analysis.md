@@ -1,5 +1,15 @@
 # Handoff vivo — Telemetry Analysis
 
+## Actualización ISA-1067 — base autorizada (2026-09-08)
+
+Base `7f04dd93`, rama `vantareapp/isa-1067-correction-source`.
+Analysis marca sesión/versión al derivar y produce la base exacta de corrección.
+Los análisis legacy sin marca requieren reanálisis; no se versionan al leerlos.
+Sin cambios de criterios, fuentes o UI. Evidencia en
+`docs/strategy-planner/evidence/isa-1067/README.md`.
+Siguiente: snapshots/solapes y custodia reversible; después conexión a Strategy.
+
+
 ## Actualización ISA-1066 — C1a (2026-09-08)
 
 Isaac acepta #1063 como dirección visual inicial. Primer código de correcciones

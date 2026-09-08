@@ -94,9 +94,12 @@ type LapValidityDiagnostics struct {
 }
 
 type LapValidityAnalysis struct {
-	Temporal    strategyprojection.TemporalSegmentsV1 `json:"temporal"`
-	Laps        []AnalyzedLap                         `json:"laps"`
-	Diagnostics LapValidityDiagnostics                `json:"diagnostics"`
+	// Empty on legacy persisted results: never infer the current version on read.
+	SessionID          string                                `json:"sessionId,omitempty"`
+	ComputationVersion string                                `json:"computationVersion,omitempty"`
+	Temporal           strategyprojection.TemporalSegmentsV1 `json:"temporal"`
+	Laps               []AnalyzedLap                         `json:"laps"`
+	Diagnostics        LapValidityDiagnostics                `json:"diagnostics"`
 }
 
 type observedLapEvent struct {
@@ -146,6 +149,8 @@ func AnalyzeLapValidity(session HistoricalSession, pages []HistoricalPage) (LapV
 	}
 
 	result := LapValidityAnalysis{
+		SessionID:          session.ID,
+		ComputationVersion: lapValidityComputationVersion,
 		Temporal: strategyprojection.TemporalSegmentsV1{
 			ContractVersion: strategyprojection.ContractVersionTemporalSegmentsV1,
 			Segments:        []strategyprojection.ContinuousSegment{},

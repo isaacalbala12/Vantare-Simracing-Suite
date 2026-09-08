@@ -20,8 +20,13 @@ trazabilidad para distribución antes de declarar candidato publicable.
 Muse `ses_f7d72ab5cffeq7KpWw1XtUF8Z0` se abortó tras quedar sin avance,
 sin cambios; el orquestador completó el microcorte. No hay workers editando.
 Pruebas focales 32/32 y Chromium (280/340/482/650, gaps largos y señal atrasada)
-PASS. La suite completa se repite después de corregir el selector Workshop
-que ocultaba sus controles al elegir el nuevo diseño. Revisión pendiente.
+PASS. Código guardado en `d8efd680`. Typecheck, build productivo, lint y digest
+PASS. La última suite pasó 423 archivos/3332 tests y falló por el texto `95%`
+del roadmap, corregido sin alterar la prueba; focal posterior 27/27 PASS.
+Suite final en ejecución. Muse revisa el snapshot aislado
+`C:/tmp/vantare-isa1071-review` (sesión `ses_f7d5791bcffebtSNgcFt1CvUs8`),
+solo lectura. Su permiso para leer Ponytail ya está aprobado. La llamada
+inicial expiró, pero la sesión siguió activa; aún no hay veredicto.
 
 ## ISA-1071 — reproducción HTML Redline en React (2026-09-08, aislado)
 

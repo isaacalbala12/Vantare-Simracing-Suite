@@ -258,7 +258,7 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 
 - id: overlay-modular-contract
 - tipo: plan
-- cuerpo: Contrato Endurance por cortes: animaciones y diseños, estructura modular, personalización y reglas por sesión y foco. La torre Redline queda aceptada visualmente con cabecera actual, luz roja y fondo azul al 95%. El corte ISA-1071 incorpora Tower Preview opt-in, escala proporcional y datos V2 disponibles, sin migrar perfiles; pendiente de integración. Los 12 pilotos de comparación están identificados como ejemplo y excluidos de producción. Animaciones, columnas configurables, fabricante y dorsal canónicos (ISA-1072), recursos de distribución y validación en una build nightly siguen pendientes; no se declara terminado el contrato.
+- cuerpo: Contrato Endurance por cortes: animaciones y diseños, estructura modular, personalización y reglas por sesión y foco. La torre Redline queda aceptada visualmente con cabecera actual, luz roja y fondo azul con la opacidad aprobada. El corte ISA-1071 incorpora Tower Preview opt-in, escala proporcional y datos V2 disponibles, sin migrar perfiles; pendiente de integración. Los 12 pilotos de comparación están identificados como ejemplo y excluidos de producción. Animaciones, columnas configurables, fabricante y dorsal canónicos (ISA-1072), recursos de distribución y validación en una build nightly siguen pendientes; no se declara terminado el contrato.
 - etiqueta: Plan
 
 ### Aviso de horario pendiente para Owner

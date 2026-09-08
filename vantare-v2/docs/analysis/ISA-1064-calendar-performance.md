@@ -39,3 +39,13 @@ Instancia aislada34392, CDP10647, perfilWebView/configs propios. LMU20348 conser
 A/A y A/B NO iniciados: medir el Timeline vacio no valida la optimizacion del calendario activo. No se inventan eventos ni se publica contenido con autorizacion solo de medicion. Se deja la revision abierta para decision del usuario. No se han cerrado aplicaciones ajenas.
 
 La correccion visual Owner1061 se observa ahora en Wails: candidatos legibles, fuente readonly contenida, margenes izquierdo/derecho20.21875px iguales. Capturas owner-review-native.png y owner-source-native.png; preflight-runtime.json en results/isa1064. Script heredado de geometria retorna fullWidth=false por comparar DOMRect escalado con clientWidth, pese a anchura real788.796875 dentro829.234375 con padding simetrico. No se presenta ese script como PASS; no se cambia tooling en este corte.
+
+## Publicacion autorizada y referencia real 2026-09-08
+
+Isaac autoriza explicitamente Aceptar y publicar. Se pulsa una vez sobre candidato1545468817164214444,8-15septiembre,11series. UI confirma CALENDARIO PUBLICADO; aviso desaparece; Calendario confirma actualizado y660bloquesTimeline. Publicacion registrada2026-09-08T15:41:03.747495Z, fuente published. La baseline tambien carga11series/4592eventos. Evidencia publication-confirmed.json y calendar-current.png.
+
+Dos referencias de Mes en baseline equivalente a nightlyb6b5754e (exe60d007f1..., producto74400917 verificado sin diferencias frontend/cmd/internal/banco respecto a b6b5754e):180s cada una, calentamiento30s y60s. Ambas477filas/53timestamps,9filas GPU invalidas (no cero), foco background estable y oclusion desconocida, LMU20348 intacto. Ambas cambian Auto3->4->5 (40->30->20 de limite rAF), fuentes lmu/stale disponibles estables y sin cambios de ruta. Validador rechaza level-not-stable en ambas. Cierre limpio de las dos instancias, ninguna propia queda abierta.
+
+Raw CSV y estados completos conservados en worktreeISA1061/results/isa1064-aa/month-a1 y month-a2; resumen indices en results/isa1064/aa-rejected.json de este worktree. No A/A aceptado, ni3paresA/B; no ahorro CPU/GPU/RAM atribuible y no rapidez de pantalla certificada. No comparar cifras con niveles diferentes; no desactivar Auto ni controlar LMU.
+
+Se plantea diagnostico separado sin recolector de recursos para comprobar si el banco contribuye a la variacion. El arranque fue rechazado por revision automatica de permisos, sin motivo detallado; NO ejecutado ni reintentado por otra via. Sigue pendiente separar carga externa, comportamiento Auto y posible perturbacion del banco. No se afirma causa sin esa prueba. No nuevo cambio productivo ni merge/release en este paso; publicacion del horario si, autorizada y confirmada.

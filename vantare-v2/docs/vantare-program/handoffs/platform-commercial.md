@@ -1,5 +1,14 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+## ISA-1064 - Ultimo estado de medicion
+
+Horario8-15septiembre publicado con autorizacion explicita de Isaac; aviso retirado,
+11series/4592eventos,660bloquesTimeline. Dos capturas Mes180s con warmup30/60s
+rechazadas por Auto3->4->5; no referenciaA/A ni ahorroA/B aceptados. Foco background
+estable, oclusion desconocida. Diagnostico sin recolector bloqueado por revision
+automatica de permisos, sin causa detallada. Instancias propias cerradas, LMU intacto.
+Codigo de optimizacion sin cambios ni integracion nueva; fuente y logs en informe1064.
+
 ## ISA-1064 - Retoma de optimizaciones temporales
 
 Isaac autoriza continuar #1015. Nightly integra #1062 en b6b5754e; ultimo ajuste

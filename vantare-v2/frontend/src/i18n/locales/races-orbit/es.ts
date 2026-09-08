@@ -72,6 +72,9 @@ export const racesOrbitEs: Record<string, string> = {
   "races.tier.advanced": "Oro",
   "races.tier.weekly": "Semanal",
 
+  "races.detail.followPending": "Guardando…",
+  "races.toasts.followFailed": "No se pudo guardar el seguimiento",
+  "races.toasts.followFailedHint": "Tu preferencia no se ha confirmado. Vuelve a intentarlo.",
   "races.toasts.followed": "Serie seguida",
   "races.toasts.followedHint":
     "Recordatorios a {{minutes}} min de cada salida de {{name}}.",

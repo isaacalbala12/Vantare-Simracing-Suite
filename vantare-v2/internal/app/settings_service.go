@@ -39,7 +39,7 @@ type NotificationSettings struct {
 	UpdatesMuted bool `json:"updatesMuted,omitempty"`
 	// LauncherMuted hides the toast a launch chain shows when it finishes.
 	LauncherMuted bool `json:"launcherMuted,omitempty"`
-	// SystemEnabled raises a Windows toast when a launch finishes while the
+	// SystemEnabled raises Windows toasts for launch completion and calendar reminders while the
 	// window is minimised. Off by default: it needs the platform's permission,
 	// which only the user can grant.
 	SystemEnabled bool `json:"systemEnabled,omitempty"`

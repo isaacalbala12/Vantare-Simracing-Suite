@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Events } from "@wailsio/runtime";
 import { useI18n } from "../../i18n/I18nProvider";
 import { useFeatureGate } from "../feature-gate";
-import { requestCalendar } from "../../calendar/calendar-store";
+import { requestCalendar, subscribeToCalendarFollowResults } from "../../calendar/calendar-store";
 import type { Calendar } from "../../calendar/calendar-types";
 import {
   Button,
@@ -185,24 +185,49 @@ export function RacesOrbitPage({ calendar, target, now }: RacesOrbitPageProps) {
 
   const reminderMinutes = (calendar?.reminderMinutes ?? []).join(" · ");
 
-  const toggleFollow = useCallback(() => {
-    if (!selected || !reminders.allowed) return;
-    if (selected.followed) {
-      Events.Emit("calendar:series:unfollow", { seriesId: selected.id });
-      toast.show(
-        t("races.toasts.unfollowed"),
-        formatMessage(t("races.toasts.unfollowedHint"), { name: selected.name }),
-      );
+  const followRequest = useRef<{
+    requestId: string; seriesId: string; followed: boolean; name: string; minutes: string;
+  } | null>(null);
+  const [followPending, setFollowPending] = useState(false);
+
+  useEffect(() => () => { followRequest.current = null; }, []);
+  useEffect(() => subscribeToCalendarFollowResults((result) => {
+    const request = followRequest.current;
+    if (!request || result.requestId !== request.requestId || result.seriesId !== request.seriesId ||
+        result.followed !== request.followed) return;
+    followRequest.current = null;
+    setFollowPending(false);
+    if (!result.ok) {
+      toast.show(t("races.toasts.followFailed"), t("races.toasts.followFailedHint"));
       return;
     }
-    Events.Emit("calendar:series:follow", { seriesId: selected.id });
     toast.show(
-      t("races.toasts.followed"),
-      formatMessage(t("races.toasts.followedHint"), {
-        minutes: reminderMinutes,
-        name: selected.name,
+      t(result.followed ? "races.toasts.followed" : "races.toasts.unfollowed"),
+      formatMessage(t(result.followed ? "races.toasts.followedHint" : "races.toasts.unfollowedHint"), {
+        name: request.name, minutes: request.minutes,
       }),
     );
+  }), [t, toast]);
+
+  const toggleFollow = useCallback(() => {
+    if (!selected || !reminders.allowed || followRequest.current) return;
+    const request = {
+      requestId: crypto.randomUUID(), seriesId: selected.id, followed: !selected.followed,
+      name: selected.name, minutes: reminderMinutes,
+    };
+    followRequest.current = request;
+    setFollowPending(true);
+    const failed = () => {
+      if (followRequest.current?.requestId !== request.requestId) return;
+      followRequest.current = null;
+      setFollowPending(false);
+      toast.show(t("races.toasts.followFailed"), t("races.toasts.followFailedHint"));
+    };
+    try {
+      Promise.resolve(Events.Emit(request.followed ? "calendar:series:follow" : "calendar:series:unfollow", {
+        seriesId: request.seriesId, requestId: request.requestId,
+      })).catch(failed);
+    } catch { failed(); }
   }, [reminderMinutes, reminders.allowed, selected, t, toast]);
 
   const timeZone = useMemo(() => {
@@ -931,11 +956,12 @@ export function RacesOrbitPage({ calendar, target, now }: RacesOrbitPageProps) {
               <Button
                 aria-describedby={reminders.allowed ? undefined : "orbit-races-locked"}
                 data-testid="orbit-races-follow"
-                disabled={!reminders.allowed}
+                disabled={!reminders.allowed || followPending}
+                aria-busy={followPending}
                 onClick={toggleFollow}
                 variant={selected.followed ? "ghost" : "primary"}
               >
-                {selected.followed ? t("races.detail.following") : t("races.detail.follow")}
+                {followPending ? t("races.detail.followPending") : selected.followed ? t("races.detail.following") : t("races.detail.follow")}
               </Button>
 
               {reminders.allowed ? (

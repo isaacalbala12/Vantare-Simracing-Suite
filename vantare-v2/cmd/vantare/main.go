@@ -2321,29 +2321,24 @@ func main() {
 		log.Printf("warning: could not load calendar: %v (using empty)", err)
 	}
 
-	// Apply bundled LMU seed (CALENDAR-04). Replaces old bundled events
-	// with the latest seed while preserving non-bundled events and followed
-	// IDs for events that still exist. A bad seed logs a warning and does
-	// not block startup.
+	// Initialize legacy data only when no official series have been saved.
+	// Both seed methods preserve an existing schedule while refresh is pending.
 	if seed, err := calendar.LoadBundledSeed(); err != nil {
 		log.Printf("warning: could not load bundled seed: %v (skipping)", err)
 	} else if err := calendarSvc.ApplyBundledSeed(seed); err != nil {
 		log.Printf("warning: could not apply bundled seed: %v (using existing calendar)", err)
 	}
 
-	// Apply official LMU weekly schedule (CALENDAR-05-C). Replaces old
-	// bundled events with a bounded window of generated events, stores
-	// official series definitions, generates UI-safe series previews, and
-	// prunes invalid followed series IDs. A bad schedule logs a warning
-	// and does not block startup.
+	// Initialize the official weekly schedule on first use. Never replace a saved
+	// publication just because this binary bundles an older schedule.
 	if err := calendarSvc.ApplyOfficialSchedule(time.Now()); err != nil {
 		log.Printf("warning: could not apply official schedule: %v (using existing calendar)", err)
 	}
 
 	// The owner publishes the weekly schedule centrally, so ask for it once at
 	// startup. It happens in the background: a slow or unreachable Supabase must
-	// not hold up the window, and the bundled schedule applied just above is
-	// already good enough to open with.
+	// not hold up the window. The saved document remains available, including
+	// its original validity; being offline does not make an expired schedule valid.
 	schedulePublisher := calendar.NewSchedulePublisher(supabaseURLResolved, supabaseAnonKeyResolved)
 	scheduleImportSvc := app.NewScheduleImportService(schedulePublisher, emitter)
 	calendarDiscordInbox, inboxErr := discordbot.NewInbox(filepath.Join(cfgDir, "calendar-discord-inbox.json"))
@@ -2353,7 +2348,7 @@ func main() {
 	refreshPublishedSchedule := func() {
 		session, err := authManager.Restore()
 		if err != nil {
-			// Signed out: the bundled schedule is the only one available.
+			// Signed out: retain the saved schedule (or first-use bundled seed).
 			return
 		}
 		source, err := calendarSvc.RefreshPublishedSchedule(
@@ -2373,7 +2368,10 @@ func main() {
 	{
 		reminderTick := time.NewTicker(calendarReminderInterval)
 		defer reminderTick.Stop()
-		go calendar.StartReminderLoop(ctx, calendarSvc, reminderTick.C, time.Now, func(r calendar.Reminder) {
+		go calendar.StartReminderLoop(ctx, calendarSvc, reminderTick.C, time.Now, licenseSvc.AllowsCalendarReminders, func(r calendar.Reminder) {
+			if !licenseSvc.AllowsCalendarReminders() {
+				return
+			}
 			emitter.Emit("calendar:reminder", map[string]any{
 				"eventId":         r.EventID,
 				"title":           r.Title,
@@ -2382,6 +2380,11 @@ func main() {
 				"startTime":       r.StartTime,
 				"registrationUrl": r.RegistrationURL,
 			})
+			if sent, err := notifySvc.CalendarReminder(r.Title, r.Track, r.MinutesLeft); err != nil {
+				log.Printf("calendar:reminder native failed: %v", err)
+			} else if sent {
+				log.Printf("calendar:reminder native accepted event=%s minutes=%d", r.EventID, r.MinutesLeft)
+			}
 		})
 	}
 
@@ -3461,7 +3464,7 @@ func main() {
 				_ = json.Unmarshal(raw, &payload)
 			}
 		}
-		app.HandleCalendarFollow(payload.EventID, calendarSvc, calendarSvc, emitter, log.Printf)
+		app.HandleCalendarFollow(payload.EventID, calendarSvc, calendarSvc, emitter, log.Printf, licenseSvc.AllowsCalendarReminders())
 	})
 
 	wailsApp.Event.On("calendar:unfollow", func(event *application.CustomEvent) {
@@ -3479,26 +3482,28 @@ func main() {
 	// Calendar series follow/unfollow handlers (CALENDAR-05-E1).
 	wailsApp.Event.On("calendar:series:follow", func(event *application.CustomEvent) {
 		var payload struct {
-			SeriesID string `json:"seriesId"`
+			SeriesID  string `json:"seriesId"`
+			RequestID string `json:"requestId"`
 		}
 		if event.Data != nil {
 			if raw, err := json.Marshal(event.Data); err == nil {
 				_ = json.Unmarshal(raw, &payload)
 			}
 		}
-		app.HandleCalendarSeriesFollow(payload.SeriesID, calendarSvc, calendarSvc, emitter, log.Printf)
+		app.HandleCalendarSeriesFollow(payload.SeriesID, calendarSvc, calendarSvc, emitter, log.Printf, payload.RequestID, licenseSvc.AllowsCalendarReminders())
 	})
 
 	wailsApp.Event.On("calendar:series:unfollow", func(event *application.CustomEvent) {
 		var payload struct {
-			SeriesID string `json:"seriesId"`
+			SeriesID  string `json:"seriesId"`
+			RequestID string `json:"requestId"`
 		}
 		if event.Data != nil {
 			if raw, err := json.Marshal(event.Data); err == nil {
 				_ = json.Unmarshal(raw, &payload)
 			}
 		}
-		app.HandleCalendarSeriesUnfollow(payload.SeriesID, calendarSvc, calendarSvc, emitter, log.Printf)
+		app.HandleCalendarSeriesUnfollow(payload.SeriesID, calendarSvc, calendarSvc, emitter, log.Printf, payload.RequestID)
 	})
 
 	// Listen for layout:save events from frontend (Preview editor or edit mode drag-save)

@@ -217,3 +217,13 @@ la autorización de fuente que debe comprobar el servicio antes de cada operaci�
 Fallos ambiguos durante escritura devuelven ErrCorrectionCommitUncertain.
 No hay bridge ni aplicación a derivados todavía. Las operaciones no escalares
 siguen pendientes y no se aceptan en este formato de custodia v1.
+
+## Vista efectiva escalar C3 — #1075
+
+ApplySampleCorrectionSnapshot consume canales/páginas ya autorizados de una base
+exacta. Todas las correcciones deben encontrar un objetivo único con original
+coincidente; falta de cobertura no produce aplicación parcial. Devuelve páginas
+sin alias, Base, SnapshotID y correcciones validadas. Calidad y relojes originales
+se conservan. No lee archivos, no concede autorización ni actualiza derivados.
+El lector llamante debe suministrar las páginas necesarias para el conjunto;
+los índices no se reinterpretan como posiciones de página.

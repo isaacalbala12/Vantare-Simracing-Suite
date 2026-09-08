@@ -1,5 +1,18 @@
 # Handoff vivo — Strategy Planner
 
+## Vista efectiva escalar C3 — ISA-1075 (2026-09-08)
+
+Base0892b9a9, rama vantareapp/isa-1075-correction-view, worktree C:/tmp/vantare-isa1075.
+ApplySampleCorrectionSnapshot revalida el conjunto completo frente a canales y
+páginas de la misma base autorizada; rechaza cobertura insuficiente/ambigua,
+original cambiado e integridad de snapshot alterada. Copia páginas, valores y
+punteros de timestamp. Conserva calidad, tiempos y procedencia de la corrección.
+Tests Analysis/vet y build frontend pasan. Suite Go completa falla por la carrera conocida de Engineer/voiceinput #812; reproducida en200repeticiones y documentada sin tocar Engineer. No se declara gate global verde.
+Todavía no conecta derivados, comandos o UI. Siguiente: revisión referenciada
+por los derivados y aplicación de operaciones de selección por familia.
+Sin dependencias, originales modificados, subagentes, promoción ni publicación.
+
+
 ## Custodia escalar C2 — ISA-1074 (2026-09-08)
 
 Sobre9b4df895, rama vantareapp/isa-1074-correction-custody, worktree C:/tmp/vantare-isa1074.

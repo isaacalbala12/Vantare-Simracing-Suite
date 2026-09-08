@@ -58,6 +58,7 @@ function series(patch: Partial<RaceSeries> & { id: string; name: string }): Race
 }
 
 const CALENDAR: Calendar = {
+  schedule: { validFrom: "2026-07-01T00:00:00Z", validUntil: "2026-08-01T00:00:00Z", updated: "2026-07-01T00:00:00Z", source: "bundled" },
   version: 1,
   timezone: "UTC",
   reminderMinutes: [30, 15, 10, 5, 2],
@@ -106,6 +107,24 @@ const VIEWS = [
 ] as const;
 
 describe("RacesOrbitPage", () => {
+  it.each([
+    ["especial", false], ["+N", false], ["especial", true], ["+N", true],
+  ] as const)("Mes → Día conserva especiales al abrir %s (con series: %s)", (target, withSeries) => {
+    const events: Calendar["events"] = Array.from({ length: 4 }, (_, index) => ({
+      id: `imported-${index}`, title: `Especial importado ${index}`, sim: "LMU",
+      track: "Sebring", series: "", sessionLabel: "Race", startTime: NOW.toISOString(),
+      durationMin: 20, registrationUrl: "", source: "import", notes: "",
+    }));
+    setup({ calendar: { ...CALENDAR, series: withSeries ? CALENDAR.series : [], events } });
+    fireEvent.click(screen.getByRole("button", { name: "Mes" }));
+    fireEvent.click(target === "+N"
+      ? screen.getByTestId("orbit-races-month-more")
+      : screen.getByRole("button", { name: "Especial importado 0" }));
+    const day = within(screen.getByTestId("orbit-races-day"));
+    for (const event of events) expect(day.getByText(event.title)).toBeTruthy();
+    if (!withSeries) expect(day.queryAllByTestId("orbit-races-ev-chip")).toHaveLength(0);
+  });
+
   it("monta las cinco vistas sin ningún `title` nativo", () => {
     setup();
     for (const view of VIEWS) {

@@ -4,7 +4,7 @@
 
 ISA-1035 añade snapshot local del estado de refresh para el shell que se monta
 después del arranque. No repite red. Regresión RED/GREEN del puente PASS;
-revisión del añadido y Go completo pendientes. Continúa en el mismo corte C4a,
+revisión 749d7761 ACCEPT y Go completo PASS. Continúa en el mismo corte C4a,
 sin integración; C4b ISA-1037 consume calendar:refresh:status:get/status.
 
 ## ISA-1035 — resultado de actualización de Calendario (2026-09-08)

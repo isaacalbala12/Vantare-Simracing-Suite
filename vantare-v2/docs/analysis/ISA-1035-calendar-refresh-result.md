@@ -21,7 +21,8 @@ perdía el resultado. Regresión RED/GREEN añadida: el puente conserva solo su
 estado (idle/pending/success/error) y lo emite ante calendar:refresh:status:get.
 La consulta no repite red ni toca el documento. Snapshot y transiciones comparten
 mutex para no entregar un estado anterior después del nuevo. El mutex de refresh
-sigue serializando la operación completa. Review/checks del añadido pendientes.
+sigue serializando la operación completa. Go completo PASS y review independiente
+749d7761 ACCEPT. Sin nuevos cambios frontend; build previo sigue siendo el embed.
 
 Contrato aditivo: calendar:refresh:status lleva state; calendar:refresh:started lleva objeto vacío; calendar:refresh:result
 lleva únicamente ok:boolean. calendar:get/loaded conservan su significado. La UI

@@ -4,7 +4,7 @@
 
 Candidato aislado sobre ISA-1057 dd5dc1d7. Solo el modelo de Calendario ajusta
 la densidad de etiquetas; test real de geometria RED/GREEN (12 combinaciones).
-152 focales PASS/2 externas omitidas. Build, suite completa, review y Wails pendientes.
+152 focales PASS/2 externas omitidas. Build/lint PASS, fullfrontend 3302 PASS/2 omitidas. Review ACCEPT bfea3baa. Wails 1264x761: cero solapamientos en 6/12/24h. Sigue pendiente horario vigente para completar C1/C10/C11; no ahorro medido.
 No integrado ni publicado. Evidencia: docs/analysis/ISA-1058-calendar-timeline-labels.md.
 
 ## ISA-1057 - Calendario: validacion conjunta en curso

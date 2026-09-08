@@ -64,7 +64,8 @@ type ReminderEmitter func(Reminder)
 // reminders via emit. It blocks until ctx is cancelled. The tick channel
 // provides the pulse; in production use time.NewTicker(interval).C.
 // now is injectable for deterministic tests; if nil, time.Now is used.
-func StartReminderLoop(ctx context.Context, svc *Service, tick <-chan time.Time, now func() time.Time, emit ReminderEmitter) {
+// enabled is checked before calculating or consuming reminders; nil enables the loop.
+func StartReminderLoop(ctx context.Context, svc *Service, tick <-chan time.Time, now func() time.Time, enabled func() bool, emit ReminderEmitter) {
 	if now == nil {
 		now = time.Now
 	}
@@ -77,6 +78,9 @@ func StartReminderLoop(ctx context.Context, svc *Service, tick <-chan time.Time,
 		case <-tick:
 			at := now()
 			dedupe.Prune(at)
+			if enabled != nil && !enabled() {
+				continue
+			}
 			for _, r := range dedupe.Filter(svc.DueReminders(at)) {
 				emit(r)
 			}

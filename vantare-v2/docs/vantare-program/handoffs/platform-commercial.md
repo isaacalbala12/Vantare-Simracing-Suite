@@ -5,7 +5,9 @@
 C6c reutiliza notify.Service/SystemEnabled/autorización/minimizado y comprueba
 acceso nativo al seguir y emitir recordatorio. Roles separados de planes, estado
 active/grace; Free/bloqueado/desconocido no concede acceso. Payload compartido
-conservado para autorizados. Módulos license/notify/app PASS; checks finales y
+conservado para autorizados. Gate adelantado al cálculo/dedupe para no consumir
+avisos antes de validar cuenta; regresión por canales RED. Build y módulos
+license/notify/app PASS; módulo Calendar final, checks y
 review pendientes. Base C6b a9a17cf3, rama vantareapp/isa-1055-calendar-native-reminders.
 Informe ISA-1055 en docs/analysis; diferencia gate UI legado/nativo documentada.
 C9 candidato #1054 aceptado; falta validación conjunta Wails y A/A–A/B. Sin merge/release.

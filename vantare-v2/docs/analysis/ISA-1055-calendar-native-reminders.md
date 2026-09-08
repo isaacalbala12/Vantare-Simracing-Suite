@@ -26,7 +26,7 @@ RED contractual: faltaban métodos de permisos/aviso. GREEN: módulos license,
 notify y app completos, matriz de acceso, cierre de sesión, preferencias/permiso/
 ventana, errores/nil backend y rechazo previo a mutación. Un error de sintaxis
 transitorio en notify activó también el guard AST; corregido y módulos PASS.
-Build, full Go/frontend, checks textos/roadmap y review pendientes. No hay prueba
+Build PASS; full Go/frontend, checks textos/roadmap y review pendientes. No hay prueba
 de aviso Windows visible ni ahorro CPU/GPU/RAM. Son tests, no runtime real.
 
 Archivos: política/test nativo, notify/test, bridge/test/permisos, main,
@@ -35,3 +35,10 @@ Manual: cuenta permitida + serie seguida, SystemEnabled activo, ventana minimiza
 observar aviso y contrastar log accepted. Repetir desactivado/visible/Free/sin
 permiso; nada debe solicitar autorización por sí solo. Usar perfil de prueba.
 Sin dependencias, credenciales, merge, promoción o release.
+
+Caso adicional de arranque: comprobar permiso solo al emitir consumía antes la
+deduplicación. El bucle ahora comprueba enabled antes de calcular/marcar avisos,
+manteniendo prune y cancelación; nil conserva el contrato de tests anteriores.
+RED ausencia de comprobación, GREEN pendiente completo. Test por canales sin Sleep:
+permiso false → true en la misma ventana conserva un único recordatorio.
+Se incluyen reminder_loop.go y sus tests dentro del gate C6c; no nueva goroutine.

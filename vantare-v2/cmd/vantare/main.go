@@ -2368,7 +2368,7 @@ func main() {
 	{
 		reminderTick := time.NewTicker(calendarReminderInterval)
 		defer reminderTick.Stop()
-		go calendar.StartReminderLoop(ctx, calendarSvc, reminderTick.C, time.Now, func(r calendar.Reminder) {
+		go calendar.StartReminderLoop(ctx, calendarSvc, reminderTick.C, time.Now, licenseSvc.AllowsCalendarReminders, func(r calendar.Reminder) {
 			if !licenseSvc.AllowsCalendarReminders() {
 				return
 			}

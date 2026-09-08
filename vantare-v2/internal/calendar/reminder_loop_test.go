@@ -135,7 +135,7 @@ func TestStartReminderLoop_EmitsOnceThenDeduplicates(t *testing.T) {
 	tick := make(chan time.Time, 10)
 	emitted := make(chan Reminder, 10)
 
-	go StartReminderLoop(ctx, svc, tick, func() time.Time { return now }, func(r Reminder) {
+	go StartReminderLoop(ctx, svc, tick, func() time.Time { return now }, nil, func(r Reminder) {
 		emitted <- r
 	})
 
@@ -183,7 +183,7 @@ func TestStartReminderLoop_ContextCancelStopsLoop(t *testing.T) {
 
 	done := make(chan struct{})
 	go func() {
-		StartReminderLoop(ctx, svc, tick, func() time.Time { return now }, func(r Reminder) {})
+		StartReminderLoop(ctx, svc, tick, func() time.Time { return now }, nil, func(r Reminder) {})
 		close(done)
 	}()
 
@@ -223,7 +223,7 @@ func TestStartReminderLoop_DifferentThresholdsBothEmit(t *testing.T) {
 	clock := func() time.Time { return <-clockCh }
 	emitted := make(chan Reminder, 10)
 
-	go StartReminderLoop(ctx, svc, tick, clock, func(r Reminder) {
+	go StartReminderLoop(ctx, svc, tick, clock, nil, func(r Reminder) {
 		emitted <- r
 	})
 

@@ -119,7 +119,7 @@ export function ScheduleImportSection({candidateTarget}: {candidateTarget?: stri
           </Button>
         }
         aria-label={t("settings.schedule.inbox")}
-        fill
+        className="orbit-set-schedule__card"
         meta={t("settings.schedule.inboxMeta")}
         title={t("settings.schedule.inbox")}
       >
@@ -165,7 +165,7 @@ export function ScheduleImportSection({candidateTarget}: {candidateTarget?: stri
           </div>
         }
         aria-label={t("settings.schedule.source")}
-        fill
+        className="orbit-set-schedule__card"
         meta={t("settings.schedule.sourceMeta")}
         title={t("settings.schedule.source")}
       >
@@ -186,7 +186,7 @@ export function ScheduleImportSection({candidateTarget}: {candidateTarget?: stri
       {preview ? (
         <Surface
           aria-label={t("settings.schedule.preview")}
-          fill
+          className="orbit-set-schedule__card"
           meta={`${preview.validFrom} → ${preview.validUntil}`}
           title={t("settings.schedule.preview")}
         >

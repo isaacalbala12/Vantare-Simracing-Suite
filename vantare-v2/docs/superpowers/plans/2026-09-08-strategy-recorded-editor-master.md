@@ -31,7 +31,11 @@ Sobre la corrección instrumental `609a4390`, se prepara la propuesta navegable
 pantalla resumen/revisión. Es un artefacto documental independiente, sin solver
 ni persistencia; no inicia la sustitución productiva. Isaac rechaza después la dirección visual por no respetar Vantare. El nuevo corte
 sobre `267fc38f` rehace la propuesta con los estilos, fuentes e iconos Orbit
-productivos y queda pendiente de revisión visual. No cambia el flujo aprobado.
+productivos. Isaac aprueba después la dirección A4 y los conceptos de edición, cálculo,
+resultado, stint y parada, adaptados a esos colores. El corte sobre `799049e8`
+los convierte en navegación documental con sidebar comprimido. Se editan datos
+y reglas; los stints y paradas los construye el solver. La integración productiva
+sigue pendiente. No cambia el flujo aprobado.
 C1a (#1066) prepara identidad y
 corrección escalar antes de conectar la edición; el resto de F1–F5 sigue pendiente.
 

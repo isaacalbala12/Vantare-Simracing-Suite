@@ -1,21 +1,21 @@
 # Handoff vivo — Strategy Planner
 
-## Revisión visual ISA-1063 — Orbit (2026-09-08)
+## A4 aceptado y adaptado a Orbit — ISA-1063 (2026-09-08)
 
-Isaac rechaza la primera propuesta por no respetar Vantare. Esta decisión
-sustituye su aceptación visual inicial; el flujo funcional acordado se mantiene.
-Base `267fc38f`, rama `vantareapp/isa-1063-orbit-prototype`, worktree aislado
-`C:/tmp/vantare-isa1063-orbit`. Se rehacen HTML/CSS/JS del prototipo cargando
-los tokens, kit, shell, fuentes e iconos productivos de Orbit directamente.
-No cambia el frontend productivo ni el backend de correcciones #1066/#1067.
+Isaac acepta A4 y las pantallas de edición, cálculo, resultado, stint y parada;
+pide conservar el diseño con los colores actuales de Vantare y continuar.
+Este corte sobre `799049e8`, rama `vantareapp/isa-1063-orbit-prototype`, añade
+el garaje decorativo, la composición A4 y navegación documental Plan/Stint/Parada/
+Cálculo/Revisiones. Reutiliza tokens, fuentes, iconos y shell Orbit productivos.
+El editor comprime la columna contextual. Solo datos y reglas serán editables;
+los segmentos los construye el solver. Valores pendientes y cálculo deshabilitado.
 
-Verificación personal: siete pasos, Manual/Automático, campos, rechazo de duración
-negativa, navegación por teclado, exclusión/deshacer, revisión de datos y tamaños
-1440/1024/768/320 sin desbordamiento horizontal del contenido. Sin errores de
-consola observados. Capturas y límites en el README del prototipo.
-Nueva propuesta pendiente de criterio visual de Isaac. Después continuar con
-snapshots/solapes y custodia reversible; no iniciar integración visual sin esa
-revisión. Sin push, PR, CI remota, promoción, release ni cambios en fuentes LMU.
+La dirección visual está aceptada; la integración productiva sigue pendiente.
+No hay persistencia, ejecución del solver ni lectura nueva de DuckDB en este
+prototipo. Siguiente corte: snapshots/solapes y custodia reversible con su issue;
+después conectar el editor sin duplicar lectores ni motores.
+Verificación y capturas en el README del prototipo. Sin push, PR, CI remota,
+promoción, release ni modificaciones de fuentes LMU.
 
 ## Actualización ISA-1067 — base autorizada (2026-09-08)
 

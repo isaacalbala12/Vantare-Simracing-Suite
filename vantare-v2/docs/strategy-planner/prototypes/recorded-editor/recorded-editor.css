@@ -108,3 +108,40 @@ th { color: var(--orbit-ink-3); font-weight: 600; }
 
 .orbit-shell[data-column="closed"] .orbit-column { visibility: hidden; padding: 0; }
 @media (max-width: 1152px) { [data-action="collapse"] { display: none; } }
+/* A4: fotografía decorativa, interfaz nativa Orbit superpuesta. */
+.recorded-content { background-color: var(--orbit-canvas); background-image: linear-gradient(90deg,var(--orbit-canvas),transparent 80%),url('garage-a4.png'); background-position: top right; background-repeat: no-repeat; background-size: auto 760px; }
+.recorded-content[data-mode="wizard"] .wizard-body { max-width: 560px; min-height: 410px; }
+.recorded-content[data-mode="wizard"] .choice-grid { grid-template-columns: 1fr; gap: 12px; }
+.recorded-content[data-mode="wizard"] .choice { padding: 20px; border-radius: var(--orbit-radius); background: var(--orbit-panel-bg); }
+.recorded-content[data-mode="wizard"] .choice-top { margin-bottom: 12px; }
+.recorded-content[data-mode="wizard"] .choice strong { font-size: 22px; }
+.recorded-content[data-mode="wizard"] .choice-bottom { margin-top: 14px; padding-top: 12px; }
+.recorded-content[data-mode="wizard"] .explainer { display: none; }
+.recorded-content[data-mode="wizard"] .page-head p { max-width: 560px; }
+.recorded-content[data-mode="editor"] { background-size: auto 340px; }
+.recorded-content[data-mode="editor"] .page-head { min-height: 140px; align-items: center; }
+.panel { background: var(--orbit-surface-0); }
+.wizard-footer { background: var(--orbit-canvas); padding: 18px 0; }
+.detail-grid { display: grid; grid-template-columns: minmax(0,1.65fr) minmax(0,1fr); gap: var(--orbit-space); margin-top: 20px; }
+.plan-page > .panel { margin-top: 20px; }
+.plan-metrics { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 12px; }
+.plan-metrics .panel { padding: 18px; }
+.plan-metrics span { font-size: var(--orbit-fs-secondary); color: var(--orbit-ink-2); }
+.plan-metrics strong { display: block; font-size: var(--orbit-fs-kpi); margin-top: 12px; }
+.plan-timeline { display: flex; align-items: center; gap: 16px; margin-top: 20px; flex-wrap: wrap; font-size: var(--orbit-fs-secondary); }
+.plan-timeline button { flex: 1; min-width: 120px; }
+.connector { flex: .3; height: 1px; background: var(--orbit-line-strong); }
+.selected-segment { border-color: var(--orbit-carmine); color: var(--orbit-ink); background: var(--orbit-selection-bg); }
+.plot-empty { border: 1px dashed var(--orbit-line-strong); padding: 24px; text-align: center; font-size: var(--orbit-fs-secondary); color: var(--orbit-ink-3); line-height: 2; }
+.service-flow { display: flex; align-items: center; gap: 12px; font-size: var(--orbit-fs-secondary); }
+.service-flow span { flex: 1; border: 1px solid var(--orbit-line); padding: 14px; border-radius: var(--orbit-radius-chip); }
+.service-flow small { color: var(--orbit-ink-3); }
+.calculation-stages { margin: 0 0 24px; padding-left: 24px; }
+.calculation-stages li { padding: 16px 0; color: var(--orbit-ink-2); font-size: var(--orbit-fs-body); }
+@media (max-width: 900px) { .detail-grid { grid-template-columns: 1fr; } .plan-metrics { grid-template-columns: repeat(2,minmax(0,1fr)); } .recorded-content[data-mode="wizard"] { background-image: linear-gradient(90deg,var(--orbit-canvas),var(--orbit-panel-bg)),url('garage-a4.png'); } .service-flow { flex-wrap: wrap; } }
+.recorded-content[data-mode="wizard"] { background-size: 100% auto; background-position: right 90px; }
+.recorded-content[data-mode="wizard"] .wizard-body { max-width: min(560px,58%); }
+.recorded-content[data-mode="wizard"] .page-head p { max-width: 58%; }
+.recorded-content[data-mode="wizard"] .choice { background: var(--orbit-surface-1); }
+@media (max-width: 900px) { .recorded-content[data-mode="wizard"] .wizard-body,.recorded-content[data-mode="wizard"] .page-head p { max-width: 100%; } }
+@media (max-width: 550px) { .tabs { flex-wrap: wrap; gap: 12px; } .recorded-content[data-mode="editor"] { background-image: linear-gradient(90deg,var(--orbit-canvas),var(--orbit-panel-bg)),url("garage-a4.png"); } .service-flow { flex-direction: column; align-items: stretch; } }

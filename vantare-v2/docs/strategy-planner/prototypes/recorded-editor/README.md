@@ -1,11 +1,24 @@
 # ISA-1063 — propuesta registrada con Orbit
 
-La propuesta anterior fue rechazada por Isaac al ver la captura: no respetaba el
-diseño de Vantare. Esa decisión sustituye la aceptación inicial. Esta nueva
-propuesta rehace la presentación desde cero, sin sustituir la UI productiva.
+Isaac aprueba la dirección A4 y las pantallas de edición, cálculo, resultado,
+stint y parada. Este corte adapta esa composición a los colores actuales de
+Vantare mediante sus tokens Orbit reales. La propuesta inicial rechazada queda
+superada. Sigue siendo un prototipo documental, no la UI productiva.
 
-Base: `267fc38f`. Rama: `vantareapp/isa-1063-orbit-prototype`.
+Base de este corte: `799049e8`. Rama: `vantareapp/isa-1063-orbit-prototype`.
 Worktree: `C:/tmp/vantare-isa1063-orbit`.
+
+## Recorrido A4 aprobado
+
+- Asistente de siete pantallas con fondo de garaje generado y controles HTML.
+- Editor con sidebar comprimido y navegación Carrera, Datos, Plan y Revisiones.
+- Plan con acceso al detalle de stint y parada; cálculo como esquema explícito.
+- Stint: piloto, ritmo, recursos, evolución y restricciones.
+- Parada: servicios, simultaneidad, motivo y coste frente a seguir en pista.
+- Se editan datos y reglas; el motor construirá stints y paradas. No se ofrece
+  manipulación manual de segmentos ni se inventan resultados.
+- `garage-a4.png` es una imagen decorativa generada con ChatGPT Images. No es
+  captura de LMU ni evidencia de telemetría. `plan-preview.js` solo compone vistas.
 
 ## Diseño contrastado y reutilizado
 
@@ -74,7 +87,7 @@ Solo usa metadata del banco Imola/Algarve #1030; sin predicciones inventadas.
 Automático no escanea; calendario, relevos, corrección escalar, cálculo y guardado
 siguen sin conectar. La copia es una preferencia demostrativa, no copia archivos.
 Los originales siguen intactos. La recarga descarta todos los cambios locales.
-La aceptación del nuevo diseño está pendiente de Isaac.
+La dirección A4 está aceptada por Isaac; queda pendiente su integración productiva.
 
 No se ejecutaron suites Go/React, lint frontend ni build: ningún archivo
 productivo cambió; es HTML/CSS/JS documental que importa recursos existentes.
@@ -83,3 +96,16 @@ No se afirma validación Wails ni del modelo de carrera.
 Archivos: `index.html`, `recorded-editor.css`, `recorded-editor.js`, este README,
 handoff Strategy, plan maestro y roadmap/digest. Sin push, PR, CI remota, merge,
 release, promoción o intervención en LMU. Commit local de revisión únicamente.
+
+## Verificación del corte A4
+
+Sintaxis de ambos JS y `git diff --check`: PASS. Revisión personal del diff:
+se corrigió el foco de los accesos antiguos a las nuevas pestañas. Chrome:
+asistente completo, Plan, Stint, Parada, Cálculo y Revisiones recorridos.
+Parada sin desbordamiento del main a 320 px (252/252) y 768 px (677/677).
+Se corrigió el desbordamiento inicial de las pestañas y se restauró el viewport.
+No se ejecutan Go ni builds React: este corte solo modifica el prototipo documental.
+
+Capturas reales de Chrome del corte A4 (carpeta de visualizaciones de la sesión):
+`strategy-a4-wizard-browser.png`, `strategy-a4-stint-browser.png` y
+`strategy-a4-pit-browser.png`. Son distintas de los conceptos generados.

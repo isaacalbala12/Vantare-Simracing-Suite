@@ -3,7 +3,7 @@ const sources = {
   imola: { track: 'Imola', car: 'United Autosports #21:ELMS25', category: 'LMP2 ELMS', date: '6 junio 2026', laps: 38, record: 'Referencia inicial de carrera', pit: '54,12 s', fuel: '25,715 L', entry: '2874,12', exit: '2928,24', offset: '25,44 s', crossings: 38 },
   algarve: { track: 'Algarve', car: 'Oreca 07 ELMS Custom Team 2025 #397', category: 'LMP2 ELMS', date: '11 julio 2026', laps: 70, record: 'Grabación parcial · vueltas 101–171', pit: '75,00 s', fuel: '74,725 L', entry: '13513,52', exit: '13588,52', offset: '10104,62 s', crossings: 70 },
 };
-const state = { step: 0, reached: 0, mode: 'manual', sim: 'lmu', event: 'custom', combo: 'imola', duration: '', unit: 'minutos', driver: '', weather: 'Por confirmar', include: true, advanced: false, undo: null, copy: false };
+const state = { view: 'summary', step: 0, reached: 0, mode: 'manual', sim: 'lmu', event: 'custom', combo: 'imola', duration: '', unit: 'minutos', driver: '', weather: 'Por confirmar', include: true, advanced: false, undo: null, copy: false };
 const names = ['Modo de preparación', 'Simulador', 'Evento', 'Coche y circuito', 'Reglas de carrera', 'Pilotos', 'Telemetría'];
 const esc = value => String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
 const icon = (name, size = 22) => `<svg aria-hidden="true" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><use href="../../../../frontend/src/assets/orbit-icons.svg#i-${name}"/></svg>`;
@@ -59,19 +59,22 @@ function observationPanel(source) {
   return panel('Observaciones de la sesión', `<p class="muted">${source.record}. Los incidentes y las vueltas invalidadas aún no están adjudicados.</p><div class="table-scroll"><table><thead><tr><th>Observación</th><th>Valor</th><th>Procedencia</th></tr></thead><tbody><tr><td>Entrada a boxes</td><td>${source.entry} s</td><td>Evento observado</td></tr><tr><td>Salida de boxes</td><td>${source.exit} s</td><td>Evento observado</td></tr><tr><td>Fuel añadido</td><td>${source.fuel}</td><td>Visita completa</td></tr><tr><td>Incidentes</td><td>Sin adjudicar</td><td>Revisión pendiente</td></tr></tbody></table></div><details class="form-note"><summary>Procedencia y correspondencia temporal</summary><p>Banco de desarrollo #1030: ajuste de ${source.offset} por ${source.crossings} cruces de meta, con residuo máximo de 0,04 s. Es un contraste exploratorio; no certifica la precisión del modelo de carrera.</p></details>`);
 }
 function workspace() {
+  if (!['summary', 'advanced'].includes(state.view)) return planPreview(sources[state.combo], state.view);
   const source = sources[state.combo];
   const summary = panel('Tu carrera', row('Condiciones', esc(state.weather)) + row('Piloto principal', esc(state.driver || 'Por confirmar')) + row('Neumáticos, Fuel y energía virtual', 'Reglas pendientes'), button('Editar reglas', 'rules')) + panel('Datos para el cálculo', row('Ritmo representativo', 'Pendiente de validar') + row('Consumo y desgaste', 'Pendiente de validar') + row('Parada completa observada', `${source.pit} · ${source.fuel} añadidos`) + '<p class="form-note">Fuel: suma de incrementos positivos. Una parada observada no determina el coste de todas las estrategias.</p>', button('Revisar datos', 'advanced'));
   return `<div class="page"><div class="breadcrumb"><span>Nueva estrategia</span><span>/</span><b>Borrador</b></div><div class="page-head editor-head"><div><h2 tabindex="-1">${source.track}</h2><p>${esc(source.car)}</p><div class="chips"><span class="chip">LMU</span><span class="chip">${source.category}</span><span class="chip">${state.duration ? `${esc(state.duration)} ${esc(state.unit)}` : 'Duración por confirmar'}</span><span class="chip">Telemetría registrada</span></div></div>${button('Volver a preparación', 'sources')}</div>
-    <div class="tabs" role="group" aria-label="Vista del borrador"><button data-action="summary" aria-pressed="${!state.advanced}">Resumen</button><button data-action="advanced" aria-pressed="${state.advanced}">Revisión de datos</button></div>
+    ${planTabs(state.advanced ? 'advanced' : 'summary')}
     <div class="workspace"><div class="stack">${state.advanced ? observationPanel(source) : summary}${panel('Sesión seleccionada', `<div class="source-title"><span class="choice-icon">${icon('telemetria')}</span><div><h3>${source.track} · ${source.date}</h3><p>${state.include ? 'Incluida en este borrador' : 'Excluida de este borrador'} · ${source.laps} vueltas registradas</p></div></div><div class="source-actions">${button(state.include ? 'Excluir del plan' : 'Incluir en el plan', 'toggle-source')}${button('Deshacer', 'undo', false, state.undo === null)}</div><div id="announce" role="status" aria-live="polite" class="status-message"></div>`)}</div>
     <section class="panel result-panel"><div class="panel-head"><h3>Estrategia de carrera</h3></div><div class="result-empty"><div class="result-icon">${icon('estrategia', 36)}</div><h3>Aún sin calcular</h3><p>${state.include ? 'Completa las reglas y valida las observaciones para generar el plan de carrera.' : 'Incluye una fuente compatible para preparar la estrategia.'}</p></div><div class="result-footer">${button('Calcular estrategia', '', true, true)}<div class="source-actions">${button('Guardar revisión', '', false, true)}</div><p>El cálculo y el guardado no están conectados en esta propuesta.</p></div></section></div></div>`;
 }
 function render(focus = false) {
+  document.getElementById('shell').dataset.column = state.step === 7 ? 'closed' : 'open';
+  document.getElementById('content').dataset.mode = state.step === 7 ? 'editor' : 'wizard';
   document.getElementById('steps').innerHTML = names.map((name, i) => `<li class="${i < state.step ? 'complete' : ''}"><button data-step="${i}" ${i > state.reached ? 'disabled' : ''} ${i === state.step ? 'aria-current="step"' : ''}><span class="step-n">${i < state.step ? '✓' : i + 1}</span>${name}</button></li>`).join('');
   if (state.step === 7) document.getElementById('content').innerHTML = workspace();
   else {
     const page = stepContent();
-    document.getElementById('content').innerHTML = `<div class="page"><div class="breadcrumb"><span>Nueva estrategia</span><span>/</span><b>${names[state.step]}</b></div><div class="page-head"><div><h2 tabindex="-1">${page.title}</h2><p>${page.intro}</p></div></div>${page.body}<footer class="wizard-footer">${button('← Atrás', 'prev', false, state.step === 0)}<span class="footer-note">Paso ${state.step + 1} de 7 · Originales intactos</span>${button(state.step === 6 ? 'Abrir borrador →' : 'Continuar →', 'next', true)}</footer></div>`;
+    document.getElementById('content').innerHTML = `<div class="page"><div class="breadcrumb"><span>Nueva estrategia</span><span>/</span><b>${names[state.step]}</b></div><div class="page-head"><div><h2 tabindex="-1">${page.title}</h2><p>${page.intro}</p></div></div><div class="wizard-body">${page.body}</div><footer class="wizard-footer">${button('← Atrás', 'prev', false, state.step === 0)}<span class="footer-note">Paso ${state.step + 1} de 7 · Originales intactos</span>${button(state.step === 6 ? 'Abrir borrador →' : 'Continuar →', 'next', true)}</footer></div>`;
   }
   if (focus) { document.getElementById('content').scrollTop = 0; document.querySelector('h2').focus(); }
 }
@@ -83,6 +86,7 @@ document.addEventListener('input', event => {
 document.addEventListener('click', event => {
   const target = event.target.closest('button');
   if (!target || target.disabled) return;
+  if (target.dataset.view && ['summary','advanced','plan','stint','pit','calculation','revisions'].includes(target.dataset.view)) { state.view = target.dataset.view; state.advanced = state.view === 'advanced'; render(true); return; }
   if (target.dataset.step !== undefined) { go(Number(target.dataset.step)); return; }
   if (target.dataset.choice) {
     if (target.dataset.choice === 'combo' && state.combo !== target.dataset.value) { state.include = true; state.undo = null; }
@@ -98,8 +102,8 @@ document.addEventListener('click', event => {
     case 'rules': go(4); break;
     case 'sources': go(6); break;
     case 'collapse': { const shell = document.getElementById('shell'); shell.dataset.column = shell.dataset.column === 'closed' ? 'open' : 'closed'; break; }
-    case 'summary': state.advanced = false; render(); document.querySelector('[data-action="summary"]').focus(); break;
-    case 'advanced': state.advanced = true; render(); document.querySelector('[data-action="advanced"]').focus(); break;
+    case 'summary': state.view = 'summary'; state.advanced = false; render(); document.querySelector('[data-view="summary"]').focus(); break;
+    case 'advanced': state.view = 'advanced'; state.advanced = true; render(); document.querySelector('[data-view="advanced"]').focus(); break;
     case 'toggle-source': state.undo = state.include; state.include = !state.include; render(); document.querySelector('[data-action="toggle-source"]').focus(); document.getElementById('announce').textContent = 'Selección modificada en la propuesta. Archivo original intacto.'; break;
     case 'undo': if (state.undo !== null) { state.include = state.undo; state.undo = null; render(); document.querySelector('[data-action="toggle-source"]').focus(); document.getElementById('announce').textContent = 'Selección anterior restaurada.'; } break;
   }

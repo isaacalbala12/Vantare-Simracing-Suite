@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "../../i18n/I18nProvider";
 import type { Calendar, RaceSeries } from "../../calendar/calendar-types";
@@ -10,10 +10,18 @@ import {
 } from "./RacesOrbitPage";
 
 const mockEmit = vi.fn();
+const listeners = new Map<string, Set<(event: unknown) => void>>();
+function backend(name: string, data: unknown) {
+  act(() => { for (const listener of listeners.get(name) ?? []) listener({ data }); });
+}
 vi.mock("@wailsio/runtime", () => ({
   Events: {
     Emit: (...args: unknown[]) => mockEmit(...args),
-    On: () => () => undefined,
+    On: (name: string, listener: (event: unknown) => void) => {
+      const group = listeners.get(name) ?? new Set();
+      group.add(listener); listeners.set(name, group);
+      return () => { group.delete(listener); };
+    },
   },
 }));
 
@@ -33,6 +41,7 @@ afterEach(() => {
   cleanup();
   document.body.replaceChildren();
   mockEmit.mockReset();
+  listeners.clear();
   plan = "paid";
 });
 
@@ -151,13 +160,72 @@ describe("RacesOrbitPage", () => {
   it("seguir una serie despacha el evento real del calendario", () => {
     setup();
     fireEvent.click(screen.getByTestId("orbit-races-follow"));
-    expect(mockEmit).toHaveBeenCalledWith("calendar:series:follow", { seriesId: "bronze-1" });
+    expect(mockEmit).toHaveBeenCalledWith("calendar:series:follow", expect.objectContaining({ seriesId: "bronze-1", requestId: expect.any(String) }));
   });
 
   it("dejar de seguir despacha el evento contrario", () => {
     setup({ calendar: { ...CALENDAR, followedSeriesIds: ["bronze-1"] } });
     fireEvent.click(screen.getByTestId("orbit-races-follow"));
-    expect(mockEmit).toHaveBeenCalledWith("calendar:series:unfollow", { seriesId: "bronze-1" });
+    expect(mockEmit).toHaveBeenCalledWith("calendar:series:unfollow", expect.objectContaining({ seriesId: "bronze-1", requestId: expect.any(String) }));
+  });
+
+  it.each([false, true])("confirma el resultado guardado, no el clic (seguida: %s)", (following) => {
+    const { unmount } = setup({ calendar: { ...CALENDAR, followedSeriesIds: following ? ["bronze-1"] : [] } });
+    const button = screen.getByTestId("orbit-races-follow") as HTMLButtonElement;
+    fireEvent.click(button);
+    const success = following ? "Has dejado de seguir LMGT3 Fixed." : "Serie seguida";
+    expect(screen.queryByText(success)).toBeNull();
+    expect(button.disabled).toBe(true);
+    fireEvent.click(button);
+    expect(mockEmit).toHaveBeenCalledTimes(1);
+    const request = mockEmit.mock.calls[0][1];
+    backend("calendar:series:follow:result", { ...request, requestId: "another", followed: !following, ok: true });
+    expect(button.disabled).toBe(true);
+    backend("calendar:series:follow:result", { ...request, followed: !following, ok: true });
+    expect(screen.getByText(success)).toBeTruthy();
+    unmount();
+    expect(listeners.get("calendar:series:follow:result")?.size).toBe(0);
+  });
+
+  it("un fallo permite reintentar e ignora una respuesta tardía anterior", () => {
+    setup();
+    const button = screen.getByTestId("orbit-races-follow") as HTMLButtonElement;
+    fireEvent.click(button);
+    const first = mockEmit.mock.calls[0][1];
+    backend("calendar:series:follow:result", { ...first, followed: true, ok: false });
+    expect(screen.queryByText("Serie seguida")).toBeNull();
+    expect(screen.getByText("No se pudo guardar el seguimiento")).toBeTruthy();
+    expect(button.disabled).toBe(false);
+    fireEvent.click(button);
+    const second = mockEmit.mock.calls[1][1];
+    expect(second.requestId).not.toBe(first.requestId);
+    backend("calendar:series:follow:result", { ...first, followed: true, ok: true });
+    expect(button.disabled).toBe(true);
+    backend("calendar:series:follow:result", { ...second, followed: true, ok: true });
+    expect(screen.getByText("Serie seguida")).toBeTruthy();
+  });
+
+  it("un fallo del transporte libera el botón sin éxito", async () => {
+    mockEmit.mockRejectedValueOnce(new Error("transport unavailable"));
+    setup();
+    await act(async () => { fireEvent.click(screen.getByTestId("orbit-races-follow")); });
+    expect((screen.getByTestId("orbit-races-follow") as HTMLButtonElement).disabled).toBe(false);
+    expect(screen.queryByText("Serie seguida")).toBeNull();
+    expect(screen.getByText("No se pudo guardar el seguimiento")).toBeTruthy();
+  });
+
+  it("mantiene la correlación al elegir otra serie e ignora resultados inválidos", () => {
+    setup();
+    fireEvent.click(screen.getByTestId("orbit-races-follow"));
+    const request = mockEmit.mock.calls[0][1];
+    fireEvent.click(within(screen.getByTestId("orbit-races-next")).getAllByRole("option")
+      .find((row) => row.textContent?.includes("Hypercar Open"))!);
+    backend("calendar:series:follow:result", { ...request, followed: true, ok: "true" });
+    backend("calendar:series:follow:result", { ...request, seriesId: "gold-1", followed: true, ok: true });
+    expect((screen.getByTestId("orbit-races-follow") as HTMLButtonElement).disabled).toBe(true);
+    backend("calendar:series:follow:result", { ...request, followed: true, ok: true });
+    expect(screen.getByTestId("orbit-toasts").textContent).toContain("LMGT3 Fixed");
+    expect(screen.getByTestId("orbit-toasts").textContent).not.toContain("Hypercar Open");
   });
 
   it("en Free el botón de seguir queda bloqueado con motivo", () => {

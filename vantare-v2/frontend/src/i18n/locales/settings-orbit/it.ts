@@ -144,7 +144,7 @@ export const settingsOrbitIt: Record<string, string> = {
   "settings.app.notifyLauncher": "Avvisi del Launcher",
   "settings.app.notifyLauncherSub": "Toast quando finisce una catena di avvio.",
   "settings.app.notifySystem": "Notifiche di sistema",
-  "settings.app.notifySystemSub": "Windows le mostra con la finestra ridotta a icona.",
+  "settings.app.notifySystemSub": "Avvisi di avvio e promemoria del Calendario con la finestra ridotta a icona.",
   "settings.app.notifySystemUnsupported": "Questa piattaforma non supporta le notifiche desktop.",
   "settings.app.notifySystemTest": "Prova notifica",
   "settings.app.notifySystemTestSub": "Invia ora un avviso senza cambiare le preferenze.",

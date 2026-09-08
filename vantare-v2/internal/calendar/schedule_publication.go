@@ -198,6 +198,7 @@ type ScheduleSource string
 const (
 	ScheduleSourceBundled   ScheduleSource = "bundled"
 	ScheduleSourcePublished ScheduleSource = "published"
+	ScheduleSourceCached    ScheduleSource = "cached"
 )
 
 // RefreshPublishedSchedule fetches the published schedule and applies it when
@@ -207,7 +208,7 @@ const (
 //
 // A failure here is never fatal. If the network is down, the project has
 // nothing published, or what comes back does not validate, the calendar keeps
-// the bundled schedule and the caller is told which one is in play.
+// last known schedule. The bundled schedule only initializes an empty service.
 func (s *Service) RefreshPublishedSchedule(
 	ctx context.Context,
 	pub *SchedulePublisher,
@@ -219,26 +220,37 @@ func (s *Service) RefreshPublishedSchedule(
 		return "", fmt.Errorf("official schedule: %w", err)
 	}
 	if pub == nil {
-		return ScheduleSourceBundled, s.applySchedule(bundled, now)
+		err := s.ApplyOfficialSchedule(now)
+		return s.scheduleSource(), err
 	}
 
 	current, err := pub.Current(ctx, sessionToken)
 	if err != nil {
-		// Apply the bundled schedule anyway so the calendar is never empty just
-		// because the network was.
-		if applyErr := s.applySchedule(bundled, now); applyErr != nil {
+		if applyErr := s.ApplyOfficialSchedule(now); applyErr != nil {
 			return "", applyErr
 		}
 		if errors.Is(err, ErrNoPublishedSchedule) {
-			return ScheduleSourceBundled, nil
+			return s.scheduleSource(), nil
 		}
-		return ScheduleSourceBundled, err
+		return s.scheduleSource(), err
 	}
 
 	chosen := PreferSchedule(bundled, current.Schedule)
 	source := ScheduleSourcePublished
+	publishedAt := current.PublishedAt
 	if current.Schedule.ValidFrom.Before(bundled.ValidFrom) {
 		source = ScheduleSourceBundled
+		publishedAt = time.Time{}
 	}
-	return source, s.applySchedule(chosen, now)
+	err = s.applySchedule(chosen, source, publishedAt, now)
+	return s.scheduleSource(), err
+}
+
+func (s *Service) scheduleSource() ScheduleSource {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.cal.Schedule != nil {
+		return s.cal.Schedule.Source
+	}
+	return ScheduleSourceCached
 }

@@ -18,7 +18,7 @@ import {
   type TimelineBlock,
 } from "../../ui/orbit";
 import { formatMessage } from "../orbit/format-message";
-import { formatCountdown, formatStartTime, nextStarts } from "../orbit/next-starts";
+import { formatCountdown, formatStartTime, nextStarts, repeatedHourOffset } from "../orbit/next-starts";
 import { useOrbitSlot } from "../orbit/use-orbit-slot";
 import {
   buildSeriesEntries,
@@ -620,7 +620,7 @@ export function RacesOrbitPage({ calendar, target, now }: RacesOrbitPageProps) {
                         type="button"
                       >
                         <i aria-hidden="true" className="orbit-tier-dot" data-tier={event.entry.tier} />
-                        <b>:{pad2(event.at.getMinutes())}</b>
+                        <b>:{pad2(event.at.getMinutes())}{repeatedHourOffset(event.at)}</b>
                         {event.entry.name}
                       </button>
                     ))}

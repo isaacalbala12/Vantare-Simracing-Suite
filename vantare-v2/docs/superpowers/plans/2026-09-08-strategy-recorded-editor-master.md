@@ -55,12 +55,18 @@ reserva, coste, reloj, boxes y recuperación. También se trazó el fixture de
 referencia en la ruta normal y la cancelación solo local de UI.
 
 - [x] Entregar revisión por flujos con cobertura y límites explícitos (#1038).
-- [ ] #1041: evaluación del plan final, combustible/VE, reserva y costes.
-- [ ] #1042: duración, paradas y vueltas coherentes.
-- [ ] #819/#821: reconciliación, deadline y evidencia de interfaz aislada.
-- [ ] #1043: etiquetado de boxes; #1030 conserva calibración pendiente.
-- [ ] #445: referencias reales o vacío; fixtures fuera del cálculo normal.
-- [ ] Revisar personalmente fixes y revalidar antes de iniciar F1/F2/UI nuevas.
+- [x] #1041: evaluación del plan final, recursos/reserva/coste; no prueba óptimo global.
+- [x] #1042: reloj normal coherente; comparador Weather delimitado a distancia fija.
+- [x] #819/#821: reconciliación y deadline locales con regresiones.
+- [ ] #819/#821: evidencia de interfaz aislada Wails y reader físico.
+- [x] #1043: etiquetado de boxes; #1030 conserva calibración pendiente.
+- [x] #445: producción vacía sin confianza aprobada; fixtures fuera del cálculo normal.
+- [x] Revisar personalmente fixes y revalidar código hasta `5a5feb44`.
+- [ ] Completar F0 empírico y propuesta visual antes de filtros/editor productivos.
+
+Cierre local: `../../strategy-planner/evidence/isa-1038/closeout.md`.
+La revisión permite preparar #1033 documental; no declara aceptado el editor,
+no elimina gates empíricos/Wails ni autoriza integración o publicación.
 
 Se proponen microcortes, no un rewrite. Las nuevas revisiones deben fijar
 entradas, fuentes/correcciones y versión del motor; guardar el resultado solo

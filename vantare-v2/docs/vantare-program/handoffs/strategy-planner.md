@@ -17,6 +17,17 @@ son fases históricas.
 
 ## Estado
 
+Actualización ISA-1038 (2026-09-08, cierre local del saneamiento):
+
+- Código `5a5feb44`, cierre documental en `vantareapp/isa-1038-review-closeout`.
+- Revisión personal terminada; siete hallazgos conocidos tratados en cortes por
+  issue, con regresiones. Go completo/build/typecheck/lint PASS; frontend final
+  416 archivos / 3256 tests PASS. Sin subagentes.
+- Informe consolidado: `docs/strategy-planner/evidence/isa-1038/closeout.md`.
+- Preparar #1033 documental. Siguen anotación/calibración/holdout #1030, Wails,
+  prototipo revisado y fases F1–F5. El editor completo no está implementado.
+- Sin promoción, PR/CI remota, fuentes modificadas o intervención en LMU.
+
 Actualización ISA-1042 (2026-09-08, alcance del comparador avanzado):
 
 - Rama `vantareapp/isa-1042-weather-comparison-scope`, base `686b1c23`.

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-07T03:04:13Z",
+  "generatedAt": "2026-09-08T01:22:02Z",
   "digest": {
-    "lastCommit": "afc6509a8b7b336b17d94467a35e7b36c4e7c5c3"
+    "lastCommit": "d6d0992f8dbc800ccb6d75f60fffdc7c3d561da2"
   },
   "phases": [
     {
@@ -343,6 +343,28 @@
     }
   ],
   "milestones": [
+    {
+      "id": "calendar-schedule-validity",
+      "type": "fix",
+      "title": {
+        "es": "Vigencia de las salidas de Calendario",
+        "en": "Calendar departure validity",
+        "pt": "Validade das saídas do Calendário",
+        "it": "Validità delle partenze del Calendario"
+      },
+      "body": {
+        "es": "Inicio y el motor de las cinco vistas limitan las salidas al periodo publicado, incluido el detalle y los previews. Sin vigencia verificable no se generan nuevas salidas. Este corte depende de los metadatos del servicio ISA-1029; errores visibles, recordatorios y los demás ajustes de las vistas siguen en el plan ISA-1027.",
+        "en": "Home and the five-view engine limit departures to the published period, including details and previews. No new departures are generated without verifiable validity. This cut depends on ISA-1029 service metadata; visible errors, reminders and remaining view fixes continue in ISA-1027.",
+        "pt": "Início e o motor das cinco vistas limitam saídas ao período publicado, incluindo detalhe e previews. Sem validade verificável não são geradas novas saídas. Depende dos metadados ISA-1029; erros visíveis, lembretes e restantes correções continuam no plano ISA-1027.",
+        "it": "Home e il motore delle cinque viste limitano le partenze al periodo pubblicato, inclusi dettagli e anteprime. Senza validità verificabile non vengono generate nuove partenze. Dipende dai metadati ISA-1029; errori visibili, promemoria e altre correzioni proseguono nel piano ISA-1027."
+      },
+      "label": {
+        "es": "ISA-1032",
+        "en": "ISA-1032",
+        "pt": "ISA-1032",
+        "it": "ISA-1032"
+      }
+    },
     {
       "id": "telemetry-six-widget-cpu",
       "type": "fix",
@@ -961,6 +983,16 @@
     }
   ],
   "delivered": [
+    {
+      "date": "2026-09-07",
+      "entries": [
+        {
+          "kind": "fix",
+          "scope": "release",
+          "text": "Package hash-pinned approved telemetry runtime"
+        }
+      ]
+    },
     {
       "date": "2026-09-06",
       "entries": [
@@ -1608,26 +1640,6 @@
           "kind": "change",
           "scope": "",
           "text": "Producir StrategyLiveProjection v1 desde Telemetry Core"
-        }
-      ]
-    },
-    {
-      "date": "2026-08-12",
-      "entries": [
-        {
-          "kind": "docs",
-          "scope": "release",
-          "text": "Record nightly 7 publication"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "La celda de presion se va en vez de desaparecer"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "Catalogo de animaciones en el Workshop, y motor para relative, delta y pedals"
         }
       ]
     }

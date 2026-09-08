@@ -8,6 +8,8 @@
 export type SeriesTier = "beginner" | "intermediate" | "advanced" | "weekly";
 
 export interface Series {
+  validFrom?: number;
+  validUntil?: number;
   id: string;
   name: string;
   tier: SeriesTier;
@@ -29,6 +31,11 @@ export interface Series {
 export function nextStarts(series: Series, from: Date, count = 4): Date[] {
   const out: Date[] = [];
   if (count <= 0) return out;
+  if (series.validFrom !== undefined && from.getTime() < series.validFrom) {
+    from = new Date(series.validFrom);
+  }
+  const end = series.validUntil ?? Infinity;
+  if (from.getTime() >= end) return out;
 
   if (series.every && series.offset !== undefined) {
     const truncated = new Date(from);
@@ -40,7 +47,9 @@ export function nextStarts(series: Series, from: Date, count = 4): Date[] {
       candidate = new Date(candidate.getTime() + series.every * 60_000);
     }
     for (let i = 0; i < count; i += 1) {
-      out.push(new Date(candidate.getTime() + i * series.every * 60_000));
+      const at = candidate.getTime() + i * series.every * 60_000;
+      if (at >= end) break;
+      out.push(new Date(at));
     }
     return out;
   }
@@ -58,7 +67,7 @@ export function nextStarts(series: Series, from: Date, count = 4): Date[] {
       const [h, m] = hm.split(":").map(Number);
       const candidate = new Date(day);
       candidate.setUTCHours(h, m, 0, 0);
-      if (candidate >= from && out.length < count) out.push(candidate);
+      if (candidate >= from && candidate.getTime() < end && out.length < count) out.push(candidate);
     }
   }
   return out;

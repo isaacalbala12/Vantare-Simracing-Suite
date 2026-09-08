@@ -1,5 +1,19 @@
 # Handoff vivo — Strategy Planner
 
+## Recorrido completo listo para revisión humana — 2026-09-08
+
+Isaac acepta el corte local 4c08b834 de stint y parada y pide extender el mismo
+bucle a las doce pantallas restantes antes de implementar la integración productiva.
+Asistente Inicio/Simulador/Evento/Combinación/Reglas/Pilotos/Sesiones y editor
+Carrera/Datos/Plan/Cálculo/Revisiones. Se mantienen originales intactos, cálculo
+y guardado desconectados. El prototipo usa metadatos del banco existente.
+
+Cuatro revisiones independientes: mínimos 7,9 → 8,7 → 8,9 → 9,1/10.
+Las doce pantallas superan >9 individualmente; Plan y Revisiones llegan a 9,2.
+Stint/parada mantienen 9,2/9,1 sin regresiones materiales. Falta aceptación humana. La evidencia vive en `docs/strategy-planner/evidence/isa-1063-all-screens`.
+Rama `vantareapp/isa-1063-orbit-prototype`, worktree `C:/tmp/vantare-isa1063-orbit`,
+base 4c08b834. Sin merge, release ni conexión nueva de DuckDB.
+
 ## Bucle visual adversarial — ISA-1063 (2026-09-08)
 
 Isaac rechaza la semejanza de 42c9dec8 y autoriza excepcionalmente un subagente

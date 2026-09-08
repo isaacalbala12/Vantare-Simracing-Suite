@@ -1,0 +1,26 @@
+[
+  {
+    "width": 320,
+    "mainScroll": 252,
+    "mainWidth": 252,
+    "overflow": false
+  },
+  {
+    "width": 768,
+    "mainScroll": 677,
+    "mainWidth": 677,
+    "overflow": false
+  },
+  {
+    "width": 1024,
+    "mainScroll": 933,
+    "mainWidth": 933,
+    "overflow": false
+  },
+  {
+    "width": 1440,
+    "mainScroll": 1349,
+    "mainWidth": 1349,
+    "overflow": false
+  }
+]

@@ -3,10 +3,15 @@ export const racesOrbitPt: Record<string, string> = {
   "races.eyebrow": "Calendário LMU",
   "races.title": "Corridas",
   "races.lead":
-    "Partidas calculadas a partir da cadência publicada do fixture, no teu fuso horário.",
+    "Horários e próximas partidas, no teu fuso horário.",
+  "races.status.refreshing": "A atualizar…",
+  "races.status.error": "Não foi possível atualizar o calendário. Tenta novamente.",
+  "races.status.loading": "A carregar o calendário…",
+  "races.status.unknown": "A validade do horário é desconhecida. Atualiza-o.",
+  "races.status.future": "Este horário ainda não começou.",
+  "races.status.expired": "Horário expirado. Atualiza para consultar as próximas partidas.",
+  "races.status.updated": "Horário atualizado.",
   "races.refresh": "Atualizar horário",
-  "races.refreshed": "Horário pedido",
-  "races.refreshedHint": "Foi pedido ao backend o calendário publicado.",
 
   "races.views.label": "Vista do calendário",
   "races.views.next": "Próximas",

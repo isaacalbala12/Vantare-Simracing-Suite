@@ -103,6 +103,13 @@ export type RaceSeries = {
 };
 
 export type Calendar = {
+  schedule?: {
+    validFrom: string;
+    validUntil: string;
+    updated: string;
+    publishedAt?: string;
+    source: "bundled" | "published" | "cached";
+  };
   version: number;
   timezone: string;
   reminderMinutes: number[];

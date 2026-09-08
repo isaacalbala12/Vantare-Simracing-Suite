@@ -6,7 +6,7 @@ C6b: resultado correlacionado tras persistencia, UI pendiente/sin doble clic,
 éxito confirmado y error recuperable. Free bloqueado como antes. 94 focales
 frontend, módulo app completo, build/tipos/lint/roadmap PASS. Full frontend
 3240 PASS, un timeout TrackMap #1025. Review P2 de expectativas event-only
-reproducido (7 RED) y corregido; segunda review y full Go pendientes.
+reproducido (7 RED) y corregido; review ACCEPT 81ffddfa y full Go PASS.
 Base C6a e9dc8ef9; C6a aceptado y full Go PASS, candidato #1051. Rama
 vantareapp/isa-1050-calendar-follow-confirmation. Informe ISA-1050 en docs/analysis.
 Quedan C6c permisos/avisos nativos, C9, Wails y rendimiento. Sin merge/release.

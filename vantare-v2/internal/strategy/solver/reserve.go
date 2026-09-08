@@ -92,6 +92,48 @@ type decisionResourcePlan struct {
 	veUsed    int64
 }
 
+// DecisionResourceRequirements uses the same resource precision, weather,
+// driver and saving models as replay. It does not certify feasibility.
+type DecisionResourceRequirements struct {
+	Stints []StintResourceRequirement
+	Finish StintResourceRequirement
+}
+
+type StintResourceRequirement struct {
+	FuelLiters float64
+	VEPercent  float64
+}
+
+// ResourceRequirementsV2 lets an editor choose loads without duplicating
+// consumption or reserve calculations. Pit services are not part of demand.
+func ResourceRequirementsV2(input SolverInputV2, decision DecisionVector) (DecisionResourceRequirements, error) {
+	if err := input.Validate(); err != nil {
+		return DecisionResourceRequirements{}, err
+	}
+	if err := validateReplayShape(input, decision); err != nil {
+		return DecisionResourceRequirements{}, err
+	}
+	fuel, ve, err := input.serviceResources()
+	if err != nil {
+		return DecisionResourceRequirements{}, err
+	}
+	saving, err := input.savingCost()
+	if err != nil {
+		return DecisionResourceRequirements{}, err
+	}
+	drivers, err := newDriverDecisionModel(input, saving)
+	if err != nil {
+		return DecisionResourceRequirements{}, err
+	}
+	weather, err := newWeatherCostModel(input)
+	if err != nil {
+		return DecisionResourceRequirements{}, err
+	}
+	var requirements DecisionResourceRequirements
+	_, err = minimumResourcePlanForDecision(input, decision, fuel, ve, weather, drivers, saving, &requirements)
+	return requirements, err
+}
+
 type resourceBalance struct {
 	used         int64
 	serviced     int64
@@ -122,8 +164,13 @@ func minimumResourcePlanForDecision(
 	weather weatherCostModel,
 	drivers driverDecisionModel,
 	saving savingCost,
+	requested ...*DecisionResourceRequirements,
 ) (decisionResourcePlan, error) {
 	fuelBalance, veBalance := resourceBalance{}, resourceBalance{}
+	var requirements *DecisionResourceRequirements
+	if len(requested) > 0 {
+		requirements = requested[0]
+	}
 	lap := int64(0)
 	for index, stint := range decision.Stints {
 		driverID := stint.Driver
@@ -148,6 +195,9 @@ func minimumResourcePlanForDecision(
 		}
 		fuelBalance.consume(fuelUsed)
 		veBalance.consume(veUsed)
+		if requirements != nil {
+			requirements.Stints = append(requirements.Stints, StintResourceRequirement{FuelLiters: serviceValue(fuelUsed), VEPercent: serviceValue(veUsed)})
+		}
 		lap += stint.Laps
 		if index >= len(decision.PitStops) {
 			continue
@@ -201,6 +251,9 @@ func minimumResourcePlanForDecision(
 	}
 	fuelBalance.requireFinish(fuelReserve)
 	veBalance.requireFinish(veReserve)
+	if requirements != nil {
+		requirements.Finish = StintResourceRequirement{FuelLiters: serviceValue(fuelReserve), VEPercent: serviceValue(veReserve)}
+	}
 	if fuelBalance.minimumStart > fuel.capacity {
 		fuelBalance.minimumStart = fuel.capacity
 	}

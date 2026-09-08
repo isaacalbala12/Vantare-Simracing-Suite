@@ -75,6 +75,7 @@ function PlanStats({ label, plan, t, variant }: { label: string; plan?: Strategy
           value={plan ? plan.finishFuelLiters.toFixed(1) : "—"}
         />
       </StatRow>
+      {plan?.optimality === "not_proven" ? <p>{t("strategy.analysis.optimalityNotProven")}</p> : null}
       {tightFinish && plan ? (
         <Note title={t("strategy.analysis.reserveShortTitle")}>
           {formatMessage(t("strategy.analysis.reserveShortReason"), {

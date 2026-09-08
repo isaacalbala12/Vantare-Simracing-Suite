@@ -123,6 +123,7 @@ describe("createStrategyApplicationClient", () => {
       },
     });
     await expect(pending).resolves.toMatchObject({ orbitCalculation: { weather: { robust: { maxRegretSeconds: 3, weightedExpectedLossSeconds: 1.5 }, plans: [{ timeline: [{ bucket: "dry" }, { bucket: "wet" }] }] } } });
+    await expect(pending).resolves.toMatchObject({ orbitCalculation: { plans: { s1: { optimality: "not_proven" } } } });
   });
 
   it("parses the typed Orbit migration preview including quarantine and journal", async () => {

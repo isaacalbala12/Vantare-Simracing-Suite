@@ -40,6 +40,7 @@ export const strategyOrbitEs: Record<string, string> = {
   "strategy.analysis.savingPlan": "Plan con ahorro",
   "strategy.analysis.ecoIsRecommended": "El recomendado ya incluye ahorro",
   "strategy.analysis.engineDerived": "Derivado por el motor",
+  "strategy.analysis.optimalityNotProven": "La estrategia óptima aún no está demostrada para este plan.",
   "strategy.analysis.totalLaps": "Vueltas totales",
   "strategy.analysis.maxStint": "Máximo por stint",
   "strategy.analysis.stops": "Paradas",

@@ -400,6 +400,8 @@ export type StrategyOrbitCalculatedPlanV1 = {
   /** Margen exigido por producto y si el plan lo cumple (ISA-832). */
   readonly reserveRequiredLaps: number;
   readonly reserveSatisfied: boolean;
+	/** Fixed replay does not establish global optimality. Absent on older responses. */
+  readonly optimality?: "not_proven";
   readonly stopDetails: readonly {
     readonly index: number;
     readonly lap: number;
@@ -1639,6 +1641,7 @@ function parseStrategyOrbitCalculation(value: unknown): StrategyOrbitCalculation
       reserveLaps: plan.reserveLaps as number,
       reserveRequiredLaps: plan.reserveRequiredLaps as number,
       reserveSatisfied: plan.reserveSatisfied === true,
+      ...(plan.optimality === "not_proven" ? { optimality: "not_proven" as const } : {}),
       stopDetails,
       savingApplied: plan.savingApplied as boolean,
     };

@@ -33,6 +33,7 @@ function plan(overrides: Partial<StrategyOrbitCalculatedPlanV1> = {}): StrategyO
     finishFuelLiters: 0, reserveLaps: 0, reserveRequiredLaps: 0.8, reserveSatisfied: false,
     stopDetails: [{ index: 0, lap: 30, fuelInLiters: 0, fuelOutLiters: 84, pitLossSeconds: 64, pitTransitSeconds: 60, pitServiceSeconds: 6, pitOverlapSeconds: 2, pitBreakdownAvailable: true }],
     savingApplied,
+    optimality: "not_proven",
     ...overrides,
   };
 }
@@ -70,6 +71,10 @@ const missingPlanning = {
 } satisfies StrategyPlanningInputsV2;
 
 describe("StrategyAnalysisPanel", () => {
+  it("distingue la evaluación del plan de una prueba de optimalidad", () => {
+    renderPanel();
+    expect(screen.getByText("La estrategia óptima aún no está demostrada para este plan.")).toBeTruthy();
+  });
   it("compara el recomendado con D6 en las mismas columnas y superpone su reparto", () => {
     renderPanel({ ecoPlan: plan({ total: 6352, drivingSeconds: 6288, avgPace: 104.8, savingApplied: true }) });
     expect(screen.getAllByText("Plan recomendado").length).toBeGreaterThan(0);

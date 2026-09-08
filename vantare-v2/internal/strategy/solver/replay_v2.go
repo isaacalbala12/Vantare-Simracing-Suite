@@ -29,6 +29,17 @@ type ReplayStintV1 struct {
 // ReplayDecisionV2 evaluates a fixed plan without searching or changing its
 // pit laps, service quantities, compounds, drivers or saving levels.
 func ReplayDecisionV2(input SolverInputV2, decision DecisionVector) (ReplayResultV1, error) {
+	return replayDecisionV2(input, decision, nil)
+}
+
+// ReplayDecisionV2WithResources evaluates the exact initial load selected by
+// an editor. Unlike ReplayDecisionV2 it never raises that load to make a plan
+// feasible. Service quantities still mean amounts added, not target levels.
+func ReplayDecisionV2WithResources(input SolverInputV2, decision DecisionVector, fuelLiters, vePercent float64) (ReplayResultV1, error) {
+	return replayDecisionV2(input, decision, &[2]float64{fuelLiters, vePercent})
+}
+
+func replayDecisionV2(input SolverInputV2, decision DecisionVector, initial *[2]float64) (ReplayResultV1, error) {
 	if err := input.Validate(); err != nil {
 		return ReplayResultV1{}, solveError(ErrorInvalidInput, "input", err.Error())
 	}
@@ -75,6 +86,17 @@ func ReplayDecisionV2(input SolverInputV2, decision DecisionVector) (ReplayResul
 	resourcePlan, err := minimumResourcePlanForDecision(input, decision, fuel, ve, weather, drivers, saving)
 	if err != nil {
 		return ReplayResultV1{}, err
+	}
+
+	if initial != nil {
+		resourcePlan.fuelStart, err = replayServiceAmount("initialFuelLiters", initial[0], 0, fuel.capacity)
+		if err != nil {
+			return ReplayResultV1{}, solveError(ErrorInvalidInput, "initialFuelLiters", err.Error())
+		}
+		resourcePlan.veStart, err = replayServiceAmount("initialVEPercent", initial[1], 0, ve.capacity)
+		if err != nil {
+			return ReplayResultV1{}, solveError(ErrorInvalidInput, "initialVEPercent", err.Error())
+		}
 	}
 
 	initialTyre, ok := replayInitialTyre(tyreModel, decision.Stints[0])

@@ -343,7 +343,8 @@ func TestCalculateOrbitUsesGoEngineForGoldenPlan(t *testing.T) {
 			t.Fatalf("stint %d laps = %d, want %d", index, plan.Stints[index].Laps, want[index])
 		}
 	}
-	if plan.TotalSeconds != 139*104+4*64 {
+	// Legacy all-in service rates add sub-nanosecond costs in canonical replay.
+	if math.Abs(plan.TotalSeconds-(139*104+4*64)) > 1e-9 {
 		t.Fatalf("total seconds = %v", plan.TotalSeconds)
 	}
 	raw, err := os.ReadFile(filepath.Join("..", "..", "..", "frontend", "src", "hub", "strategy-orbit", "testdata", "orbit-go-golden.json"))

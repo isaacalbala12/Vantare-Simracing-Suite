@@ -418,6 +418,8 @@ type OrbitCalculationStop struct {
 }
 
 type OrbitCalculationPlan struct {
+	// A fixed replay proves constraints and cost, not global optimality.
+	Optimality              string                         `json:"optimality"`
 	Stints                  []OrbitCalculationStint        `json:"stints"`
 	TotalLaps               int64                          `json:"totalLaps"`
 	TotalSeconds            float64                        `json:"total"`

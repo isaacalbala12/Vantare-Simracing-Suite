@@ -17,6 +17,19 @@ son fases históricas.
 
 ## Estado
 
+Actualización ISA-1041 (2026-09-08, primer corte de saneamiento validado localmente):
+
+- Isaac autoriza continuar hasta terminar; ejecución personal sin subagentes.
+- Rama `vantareapp/isa-1041-orbit-final-evaluation` desde `286f99e8`, worktree
+  `C:/tmp/vantare-isa1041`. Microplan: `docs/superpowers/plans/2026-09-08-strategy-final-evaluation.md`.
+- El plan definitivo se valida con carga explícita, recursos/reserva del
+  solver y costes del replay. No se hereda optimalidad; aviso ES/EN/PT/IT.
+- Evidencia: `docs/strategy-planner/evidence/isa-1041-final-evaluation.md`.
+  Go completo/build/typecheck/lint PASS; frontend 415 archivos / 3241 tests PASS.
+- Continúan #1042, #1043, #819, #821 y #445 en cortes separados. #1030 mantiene
+  pendiente calibración/holdout. No se abre todavía el gate de nuevas secciones.
+- Sin promoción, release, cambios de LMU o fuentes originales.
+
 Actualización ISA-1038 (2026-09-08, revisión personal previa a nuevas secciones):
 
 - Isaac exige Ponytail + code review y ejecución sin subagentes. Revisión sobre

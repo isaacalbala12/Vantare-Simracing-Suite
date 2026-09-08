@@ -40,6 +40,7 @@ export const strategyOrbitEn: Record<string, string> = {
   "strategy.analysis.savingPlan": "Fuel-saving plan",
   "strategy.analysis.ecoIsRecommended": "The recommendation already saves fuel",
   "strategy.analysis.engineDerived": "Derived by the engine",
+  "strategy.analysis.optimalityNotProven": "This plan has not yet been proven optimal.",
   "strategy.analysis.totalLaps": "Total laps",
   "strategy.analysis.maxStint": "Maximum stint",
   "strategy.analysis.stops": "Stops",

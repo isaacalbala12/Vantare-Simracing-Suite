@@ -3,7 +3,61 @@ package solver
 import (
 	"math"
 	"testing"
+
+	sp "github.com/vantare/overlays/v2/internal/telemetryanalysis/strategyprojection"
 )
+
+func TestReplayExplicitInitialResourcesCannotBeRaised(t *testing.T) {
+	input := baseInputV2()
+	input.VECapacityPercent = NewFallbackScalar(2, "test:ve-capacity")
+	input.VEPerLapPercent = NewFallbackScalar(1, "test:ve-per-lap")
+	solved, err := SolveV2(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, loads := range [][2]float64{{0, input.VECapacityPercent.Value}, {input.FuelCapacityLiters.Value, 0}} {
+		if loads[1] == 0 && input.VECapacityPercent.Value == 0 {
+			continue
+		}
+		replayed, err := ReplayDecisionV2WithResources(input, solved.Best, loads[0], loads[1])
+		if err != nil {
+			t.Fatal(err)
+		}
+		if replayed.Feasible {
+			t.Fatalf("empty initial resource accepted: %v", loads)
+		}
+	}
+	if _, err := ReplayDecisionV2WithResources(input, solved.Best, math.NaN(), 0); !HasErrorCode(err, ErrorInvalidInput) {
+		t.Fatalf("invalid initial load: %v", err)
+	}
+}
+
+func TestReplayExplicitLoadChangesFuelWeightCost(t *testing.T) {
+	input := baseInputV2()
+	input.RaceLaps = 2
+	input.FuelCapacityLiters = NewFallbackScalar(10, "test:tank")
+	input.FuelWeight = &FuelWeightParameter{
+		Presence: sp.PresenceValid, SecondsPerLiter: 1,
+		Provenance: sp.Provenance{Kind: sp.ProvenanceManual, SourceID: "test:fuel-weight"},
+		Confidence: sp.Confidence{SampleSize: 1, ComputationVersion: "test.v1"},
+	}
+	decision := DecisionVector{Stints: []StintDecision{{Laps: 2}}}
+	light, err := ReplayDecisionV2WithResources(input, decision, 3, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	heavy, err := ReplayDecisionV2WithResources(input, decision, 5, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !light.Feasible || !heavy.Feasible {
+		t.Fatal("valid initial loads rejected")
+	}
+	// Two extra litres carried over both laps at one second per litre.
+	if math.Abs(heavy.Evaluation.TotalSeconds-light.Evaluation.TotalSeconds-4) > 1e-9 {
+		t.Fatalf("load delta ignored: light=%+v heavy=%+v", light.Evaluation, heavy.Evaluation)
+	}
+}
 
 func TestReplayDecisionV2MatchesSolvedRecommendation(t *testing.T) {
 	input := baseInputV2()

@@ -1,5 +1,31 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+## ISA-1027 / ISA-1029 — Calendario, plan aprobado y primer corte (2026-09-08)
+
+Isaac aprobó ejecutar el plan `docs/analysis/ISA-1027-calendar-plan.md`.
+El expediente #1027 recoge ocho hallazgos y sus reproducciones; no es una
+certificación visual Wails. HUD/OBS/Studio están excluidos de cambios.
+
+Primer corte #1029: `vantareapp/isa-1029-calendar-retention`, worktree
+`C:/tmp/vantare-isa1029-calendar-retention`, base nightly `d6d0992f`.
+Regresiones RED verificadas para fallo remoto, proyecto remoto vacío,
+publicación anterior/futura, reinicio, pérdida de vigencia y fallo de escritura.
+GREEN: `go test ./internal/calendar/...` PASS. El documento guarda metadatos
+aditivos, conserva horario/seguimientos al fallar red o arrancar y restaura la
+memoria anterior si no puede persistir. Los eventos compartidos se conservan.
+Build frontend PASS para el embed; `go test ./...` PASS y roadmap 23+21 PASS.
+Primera revisión independiente: dos P2 reproducidos y corregidos (orden de
+publicaciones de la misma semana mediante PublishedAt y protección de archivos
+legacy ante publicación futura). Módulo Calendar y `go test ./...` GREEN;
+revisión independiente final 01a6b613 ACCEPT para C2, sin P1/P2 nuevos;
+ver #1029 para la evidencia de cierre, commit, PR y CI exactos.
+
+Pendiente: propagar vigencia por normalización/frontend (C3), errores/acuse (C4),
+recordatorios (C5/C6), fechas/vistas/detalle (C7–C9), Wails representativo (C1) y
+banco A/A–A/B (C10/C11). #1020/#1022/#1024 son candidatos separados que no se
+presuponen integrados. Sin porcentaje de ahorro global ni validación de conducción.
+Sin merge, promoción o release; el checkout principal y LMU/Edge se preservan.
+
 ## ISA-1011 — runtime de release (2026-09-07)
 
 Nightly.15 no se publicó: el segundo intento 34062671599 pasó tests pero

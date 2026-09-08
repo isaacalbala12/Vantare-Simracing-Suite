@@ -103,6 +103,10 @@ func (s *Service) Calendar() Calendar {
 
 func (s *Service) cloneLocked() Calendar {
 	out := s.cal
+	if s.cal.Schedule != nil {
+		metadata := *s.cal.Schedule
+		out.Schedule = &metadata
+	}
 	out.Events = cloneSlice(s.cal.Events)
 	out.ReminderMinutes = cloneSlice(s.cal.ReminderMinutes)
 	out.FollowedEventIDs = cloneSlice(s.cal.FollowedEventIDs)
@@ -195,6 +199,10 @@ func (s *Service) ApplyBundledSeed(seed Calendar) error {
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	// The legacy seed must not overwrite an official schedule loaded from disk.
+	if len(s.cal.Series) > 0 {
+		return nil
+	}
 
 	// Filter out existing bundled events.
 	var kept []RaceEvent
@@ -242,22 +250,27 @@ func (s *Service) ApplyBundledSeed(seed Calendar) error {
 	return s.persistLocked()
 }
 
-// ApplyOfficialSchedule loads the embedded weekly schedule, replaces old
-// bundled events with a bounded window of generated events, stores the
-// official series definitions, generates UI-safe series previews, prunes
-// invalid followed series IDs, and persists atomically. Non-bundled events
-// are preserved. A bad schedule logs a warning and does not mutate state.
+// ApplyOfficialSchedule initializes the service from the embedded schedule only
+// when no saved series exist. A refresh may replace it with a newer publication.
+// Existing events outside the official schedule are preserved.
 func (s *Service) ApplyOfficialSchedule(now time.Time) error {
+	// A saved schedule remains authoritative while the remote refresh is pending.
+	s.mu.Lock()
+	hasSeries := len(s.cal.Series) > 0
+	s.mu.Unlock()
+	if hasSeries {
+		return nil
+	}
 	sched, err := LoadWeeklySchedule()
 	if err != nil {
 		return fmt.Errorf("official schedule: %w", err)
 	}
-	return s.applySchedule(sched, now)
+	return s.applySchedule(sched, ScheduleSourceBundled, time.Time{}, now)
 }
 
 // applySchedule materialises a schedule into the calendar. The caller decides
 // where the schedule came from — the bundled seed or the published one.
-func (s *Service) applySchedule(sched OfficialSchedule, now time.Time) error {
+func (s *Service) applySchedule(sched OfficialSchedule, source ScheduleSource, publishedAt, now time.Time) error {
 	// Published schedules are allowed to introduce an unknown venue or class,
 	// but they never get to provide their own telemetry join keys. Resolve only
 	// from the local, reviewed registry and leave unknown identities empty so
@@ -276,6 +289,21 @@ func (s *Service) applySchedule(sched OfficialSchedule, now time.Time) error {
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	if sched.ValidFrom.After(now) && len(s.cal.Series) > 0 &&
+		(s.cal.Schedule == nil || (!now.Before(s.cal.Schedule.ValidFrom) && now.Before(s.cal.Schedule.ValidUntil))) {
+		return nil
+	}
+	if saved := s.cal.Schedule; saved != nil {
+		// Document Updated is not a publication revision: imports of the same
+		// week share it. Use the server publication timestamp for corrections.
+		if sched.ValidFrom.Before(saved.ValidFrom) ||
+			(sched.ValidFrom.Equal(saved.ValidFrom) &&
+				(sched.Updated.Before(saved.Updated) || publishedAt.Before(saved.PublishedAt))) {
+			return nil
+		}
+	}
+	previous := s.cal
 
 	// Filter out existing bundled events.
 	var kept []RaceEvent
@@ -310,6 +338,7 @@ func (s *Service) applySchedule(sched OfficialSchedule, now time.Time) error {
 	merged := dedupe(kept, filtered)
 
 	// Apply schedule metadata.
+	s.cal.Schedule = &ScheduleMetadata{ValidFrom: sched.ValidFrom, ValidUntil: sched.ValidUntil, Updated: sched.Updated, Source: source, PublishedAt: publishedAt}
 	s.cal.Version = sched.Version
 	s.cal.Timezone = sched.Timezone
 	s.cal.Events = merged
@@ -320,7 +349,11 @@ func (s *Service) applySchedule(sched OfficialSchedule, now time.Time) error {
 	s.cal.FollowedSeriesIDs = pruneFollowedSeriesLocked(s.cal.FollowedSeriesIDs, sched.Series)
 	s.cal.Updated = s.now().UTC()
 
-	return s.persistLocked()
+	if err := s.persistLocked(); err != nil {
+		s.cal = previous
+		return err
+	}
+	return nil
 }
 
 // makeSeriesPreviews generates UI-safe previews for all series in the

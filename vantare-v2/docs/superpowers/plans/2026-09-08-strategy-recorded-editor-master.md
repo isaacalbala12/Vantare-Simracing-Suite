@@ -16,11 +16,11 @@ actuales del repositorio, sin nuevas dependencias.
 
 ---
 
-Fecha: 2026-09-08. Issue documental #1028; primera ejecución propuesta #1030.
+Fecha: 2026-09-08. Issue documental #1028; primera ejecución #1030.
 La spec `../specs/2026-09-08-strategy-recorded-editor-design.md`, contenido del
 commit `a009231a`, fue aprobada por Isaac en esta conversación. El cambio de su
 marca a aprobada es administrativo; no reabre sus decisiones.
-Este plan v1 está pendiente de aprobación. No hay autorización de implementación,
+Este plan v1 fue aprobado por Isaac. No hay autorización de implementación,
 merge o release. Base de inspección: `nightly@d6d0992f`.
 
 ## 1. Cómo ejecutar este programa
@@ -32,12 +32,18 @@ Cada fase posterior tendrá su microplan con contratos, código/tests previstos,
 comandos y archivos exactos, después de resolver sus prerrequisitos. No se usan
 estos nombres de entregas como issues implícitas ni como permiso para programar.
 
-- [ ] Revisar este plan y el plan acotado de #1030.
+- [x] Revisar este plan y el plan acotado de #1030.
 - [ ] Ejecutar #1030: `2026-09-08-strategy-recorded-editor-audit.md`.
 - [ ] Revisar evidencia y fijar umbrales con Isaac antes de modificar filtros.
 - [ ] Abrir issues pequeñas para carencias demostradas de la siguiente fase.
 - [ ] Ejecutar y revisar cada corte; actualizar el único handoff y su issue.
 - [ ] Promover solo con autorización de Isaac y gates del canal.
+
+Estado #1030: banco 367 fuentes y matriz completados; cuatro muestras observadas,
+reserva congelada pero insuficiente para evaluación de carreras completas.
+Anotación independiente y umbrales siguen pendientes. Fiabilidad puede avanzar
+en #819/#821/#803; contrato documental de correcciones propuesto en #1033.
+Ver `../../strategy-planner/evidence/isa-1030/README.md` y `next-slices.md`.
 
 ## 2. Mapa de reutilización inspeccionado
 

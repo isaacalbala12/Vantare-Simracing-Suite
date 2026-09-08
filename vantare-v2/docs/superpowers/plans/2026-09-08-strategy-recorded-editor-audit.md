@@ -14,9 +14,15 @@ Estas copias no activan la opción de biblioteca persistente del producto.
 
 ---
 
-Issue #1030. Depende de #1028: spec aprobada. Plan v1 pendiente de aprobación.
-No ejecutar bancos, UI o LMU al crear esta issue. No hay código productivo en F0.
+Issue #1030. Depende de #1028: spec y plan v1 aprobados por Isaac.
+Banco ejecutado con autorización expresa desde `b4de3035` en worktree aislado.
+No se arrancó/cerró LMU. No hay código productivo en F0.
 El maestro `2026-09-08-strategy-recorded-editor-master.md` define fases posteriores.
+
+Estado de ejecución al 2026-09-08: Tasks 1–3 completadas; Task 4 parcial (split y
+observaciones hechos, anotación causal y umbrales pendientes por evidencia
+insuficiente); Task 5 entrega informe y siguientes microplanes sin cerrar F0.
+Evidencia: `../../strategy-planner/evidence/isa-1030/README.md`.
 
 ## Task 1: Fijar base, permisos y custodia de la evidencia
 
@@ -24,7 +30,7 @@ Archivos a leer: `AGENTS.md`, handoff Strategy, spec aprobada, este plan,
 `internal/strategy/coldstart/lmu_importer.go`, README/script del spike ISA-694.
 Crear tras iniciar ejecución: `docs/strategy-planner/evidence/isa-1030/README.md`.
 
-- [ ] Verificar issue y base antes de abrir worktree. No asumir que el commit local
+- [x] Verificar issue y base antes de abrir worktree. No asumir que el commit local
   de #1028 ya está en nightly: integrar documentación solo con autorización, o
   acordar explícitamente su commit como base apilada de auditoría.
 
@@ -37,15 +43,15 @@ git worktree list
 gh issue view 1030 --json body,state,comments
 ```
 
-- [ ] Registrar SHA, rama, alcance y autorización existente de lectura del corpus
+- [x] Registrar SHA, rama, alcance y autorización existente de lectura del corpus
   LMU de Isaac. Verificar la raíz estándar declarada en `lmu_importer.go`; si no
   existe, buscar solo rutas ya conocidas del proyecto y pedir ubicación si hace
   falta. No inspeccionar todo el disco ni secretos.
-- [ ] Comprobar sesión de trabajo compartida antes de bancos y verificar que la
+- [x] Comprobar sesión de trabajo compartida antes de bancos y verificar que la
   biblioteca elegida no está recibiendo escrituras. No arrancar/cerrar LMU.
-- [ ] Definir salida local de evidencia fuera del historial antiguo. Solo agregar
+- [x] Definir salida local de evidencia fuera del historial antiguo. Solo agregar
   a Git informes sanitizados, nunca originales ni rutas/nombres personales.
-- [ ] Registrar contrato de cada artefacto: inventario usa identificador local,
+- [x] Registrar contrato de cada artefacto: inventario usa identificador local,
   identidad de contenido, combinación normalizada, clase de sesión, duración,
   cobertura de canales, integridad y razón de omisión. Mapa a rutas queda local.
 
@@ -58,7 +64,7 @@ Crear `docs/strategy-planner/evidence/isa-1030/code-matrix.md`.
 Leer `lapvalidity.go`, `consumptionpace.go`, `derivedcurves.go`,
 `required_channels.go`, `sessioncatalog.go` y sus tests.
 
-- [ ] Extraer reglas exactas con ubicación y unidad:
+- [x] Extraer reglas exactas con ubicación y unidad:
 
 ```powershell
 rg -n 'func labelIncidentLaps|func labelTrafficLaps|func labelPaceOutliers|func familyUseForLap|Minimum|Maximum|Tolerance' internal/telemetryanalysis/lapvalidity.go
@@ -67,13 +73,13 @@ rg -n 'func |separab|temperature|wear|compound' internal/telemetryanalysis/deriv
 rg -n 'func Test' internal/telemetryanalysis/lapvalidity_test.go internal/telemetryanalysis/consumptionpace_test.go internal/strategy/backtest/backtest_test.go
 ```
 
-- [ ] Para invalidación del simulador, pit, impacto, tráfico, ritmo atípico,
+- [x] Para invalidación del simulador, pit, impacto, tráfico, ritmo atípico,
   temperatura, desgaste, relojes y gaps, registrar señal origen, supuesto,
   decisión por familia, test protector y limitación. No convertir constantes
   históricas en umbrales aprobados del nuevo corte.
-- [ ] Verificar si se dispone de señal de invalidación/trompo y con qué semántica;
+- [x] Verificar si se dispone de señal de invalidación/trompo y con qué semántica;
   ausencia de etiqueta no demuestra ausencia de incidente.
-- [ ] Ejecutar checks focales existentes, sin editar tests ni código:
+- [x] Ejecutar checks focales existentes, sin editar tests ni código:
 
 ```powershell
 go test ./internal/telemetryanalysis -run 'TestAnalyzeLapValidity|TestLapValidityLabelsAndFamilyExclusions|TestDiscover' -count=1
@@ -89,14 +95,14 @@ Crear `docs/strategy-planner/evidence/isa-1030/corpus-summary.md` y conservar
 manifest detallado sanitizado. Reusar el spike solo como instrumento inventarial,
 no como autoridad de etiquetas nuevas. Auditar sus salidas antes de versionarlas.
 
-- [ ] Leer las opciones y custodia del script existente:
+- [x] Leer las opciones y custodia del script existente:
 
 ```powershell
 rg -n 'DEFAULT_SOURCE|DEFAULT_RUNTIME|OUTPUT_DIR|WORK_DIR|add_argument|dump_csv|dump_json' docs/strategy-planner/evidence/isa-694-spike/spike_f0_1.py
 Get-Content docs/strategy-planner/evidence/isa-694-spike/README.md
 ```
 
-- [ ] Copiar únicamente el script a una carpeta temporal nueva: sus resultados
+- [x] Copiar únicamente el script a una carpeta temporal nueva: sus resultados
   se escriben junto al script. Así no sobrescribe evidencia histórica. Ejecutar
   primero inventario acotado sin análisis de sesiones; no usar sus muestras
   analíticas antes de separar preparación/evaluación.
@@ -113,16 +119,16 @@ Los defaults solo se usan tras verificar que apuntan a la biblioteca y runtime
 autorizados. Si no coinciden, emplear `--source`/`--runtime` con rutas verificadas
 en la sesión; no inventarlas ni copiarlas al informe público.
 
-- [ ] Revisar exit code, omissions, contenido y custodia. Un archivo omitido por
+- [x] Revisar exit code, omissions, contenido y custodia. Un archivo omitido por
   WAL/inestabilidad no cuenta como sesión analizada ni como falta permanente.
-- [ ] Si el smoke demuestra lectura segura y recursos aceptables, inventariar el
+- [x] Si el smoke demuestra lectura segura y recursos aceptables, inventariar el
   conjunto estable sin activar sus análisis históricos:
 
 ```powershell
 python $strategyAuditScript --max-sessions 0 --analysis-sessions 0
 ```
 
-- [ ] Clasificar sesiones completas de carrera y condiciones disponibles usando
+- [x] Clasificar sesiones completas de carrera y condiciones disponibles usando
   metadata real. Dedupe por contenido; no usar solo el nombre del archivo. Registrar
   cobertura, carencias y fallos, preservando originales y logs sanitizados.
 
@@ -135,10 +141,10 @@ en esta issue antes de añadir código; nunca completar celdas como si se midier
 Crear `docs/strategy-planner/evidence/isa-1030/evaluation-protocol.md`.
 Leer `internal/strategy/backtest/holdout.go`, `types.go`, `identity.go` y tests.
 
-- [ ] A partir de metadata, separar por combinación y cronología preparación y
+- [x] A partir de metadata, separar por combinación y cronología preparación y
   carreras de evaluación; deduplicar antes del split y registrar su versión.
   No abrir resultados analíticos de evaluación para escoger filtros.
-- [ ] En preparación, revisar observaciones reales representativas con evidencia
+- [x] En preparación, revisar observaciones reales representativas con evidencia
   del canal: invalidada utilizable, incidente, vuelta lenta válida, out/in lap,
   stint degradado, temperatura/clima distinto y recursos. Si una clase no existe,
   registrar falta de cobertura en vez de fabricar un caso real.
@@ -162,13 +168,13 @@ Actualizar `README.md`, el handoff Strategy y #1030. El informe responde por cad
 requisito de la spec: existente, insuficiente, ausente o no verificable, con ruta,
 test/caso, severidad, responsable interno y dependencia. No afirma producto listo.
 
-- [ ] Revisar matriz, inventario y protocolo; conservar cifras con denominadores,
+- [x] Revisar matriz, inventario y protocolo; conservar cifras con denominadores,
   unidades, método y limitaciones. Separar tests, lectura real y Wails no ejecutado.
-- [ ] Abrir issues de F1/F2 solo para gaps demostrados, reutilizando #819/#821/#803
+- [x] Abrir issues de F1/F2 solo para gaps demostrados, reutilizando #819/#821/#803
   si siguen vigentes. No repetir #813/#824 por su estado antiguo en el tracker.
-- [ ] Escribir microplanes de los primeros cortes con máximo aproximado de cinco
+- [x] Escribir microplanes de los primeros cortes con máximo aproximado de cinco
   archivos de lógica/test por cambio y tests de comportamiento previos al fix.
-- [ ] Comprobar diff y revisar que no contiene telemetría cruda, rutas personales,
+- [x] Comprobar diff y revisar que no contiene telemetría cruda, rutas personales,
   secretos, fixtures históricos sobrescritos ni modificación de originales:
 
 ```powershell
@@ -177,7 +183,7 @@ git diff --stat
 git status --short
 ```
 
-- [ ] Commit solo de evidencia sanitizada/documentación seleccionada; actualizar
+- [x] Commit solo de evidencia sanitizada/documentación seleccionada; actualizar
   issue con SHA y checks reales. Si cambia alcance público, actualizar `plan.md`
   y generar su digest en el mismo PR. Sin merge, publicación ni live implícitos.
 

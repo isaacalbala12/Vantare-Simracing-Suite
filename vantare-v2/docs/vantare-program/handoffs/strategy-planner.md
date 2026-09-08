@@ -17,6 +17,25 @@ son fases históricas.
 
 ## Estado
 
+Actualización ISA-1030 (2026-09-08, banco terminado, F0 empírico pendiente):
+
+- Isaac aprobó plan maestro y auditoría v1; ejecución inline en worktree propio
+  desde `b4de3035`, sin autorización de implementación o integración.
+- Evidencia: `docs/strategy-planner/evidence/isa-1030/README.md` y `code-matrix.md`.
+  Tests focales de validez/discovery y backtest PASS; inventario 367/367 sin fallos.
+- Banco autorizado por Isaac; LMU abierto intacto, fuentes con WAL excluidas.
+  Helper aprobado ISA-1011 verificado por hashes; originales no modificados.
+- Cuatro muestras de preparación inspeccionadas y reidentificadas tras leer.
+  Reserva congelada: cuatro Race de 1–4 vueltas; las 19 Race de más de cuatro
+  vueltas ya se analizaron en el spike histórico. No hay holdout completo suficiente.
+- Faltan semántica/relojes, anotación independiente y calibración defendible.
+  No se aprobó umbral ni se declaró precisión, óptimo validado o F0 completo.
+- Siguiente acción: revisar `evaluation-protocol.md` y `next-slices.md` del
+  expediente. Reusar #819/#821/#803; #1033 propone contrato de correcciones.
+  Antes del óptimo, llevar reglas/inventario/perfiles al adapter del solver.
+- Trabajo local documental e instrumental; sin código productivo, push, PR,
+  CI remota, merge, release o promoción. #1030 sigue abierta.
+
 Actualización ISA-1028 (2026-09-08, diseño funcional acordado con Isaac):
 
 - Nueva prioridad: asistente Manual/Automático y pantalla editable sobre archivos
@@ -34,7 +53,7 @@ Actualización ISA-1028 (2026-09-08, diseño funcional acordado con Isaac):
   No se ha implementado esta nueva experiencia ni ejecutado el gate Wails/corpus.
 - Plan maestro: `docs/superpowers/plans/2026-09-08-strategy-recorded-editor-master.md`.
   Primer plan ejecutable: `docs/superpowers/plans/2026-09-08-strategy-recorded-editor-audit.md`,
-  issue #1030. Ambos v1 pendientes de aprobación; la auditoría no ha comenzado.
+  issue #1030. Ambos v1 aprobados; estado posterior de ejecución arriba.
 
 Actualización ISA-861 (2026-08-27, corte final candidato sobre
 `origin/nightly@b1d5b15b`):

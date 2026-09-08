@@ -17,6 +17,22 @@ son fases históricas.
 
 ## Estado
 
+Actualización ISA-1028 (2026-09-08, diseño funcional acordado con Isaac):
+
+- Nueva prioridad: asistente Manual/Automático y pantalla editable sobre archivos
+  registrados; LMU/DuckDB primero, formatos ampliables. Originales intactos,
+  correcciones reversibles, calidad por cálculo, Fuel/VE, resultados parciales y
+  revisiones reproducibles. Toda la experiencia se presenta desde Strategy,
+  conservando Analysis como autoridad interna de lectura y derivación.
+- Spec escrita v1 pendiente de revisión:
+  `docs/superpowers/specs/2026-09-08-strategy-recorded-editor-design.md`.
+- Este rumbo reemplaza la siguiente acción histórica de ISA-694. Live y la
+  investigación OSS/Monte Carlo se aplazan hasta completar y validar este corte.
+- Corrección de estado histórico: #867 sí se integró en `nightly@a02a1463`;
+  los párrafos anteriores a esta fecha que lo llaman candidato son históricos.
+- Issue #1028 solo entrega documentación sobre `origin/nightly@d6d0992f`.
+  No se ha implementado esta nueva experiencia ni ejecutado el gate Wails/corpus.
+
 Actualización ISA-861 (2026-08-27, corte final candidato sobre
 `origin/nightly@b1d5b15b`):
 
@@ -1019,13 +1035,12 @@ posterior). Strategy permanece bloqueado para `testers` hasta el gate F7a.
 
 ## Siguiente acción exacta
 
-Revisar la entrega aislada de ISA-831 con la combinación Spa/LMGT3 del corpus
-real: confirmar que Seco mantiene `3.54 L/v` derivado y Lluvia muestra `—` con
-causa cuando `byClimateBucket` solo contiene `dry`. Isaac integra por el canal
-normal; no abrir PR, integrar ni promover desde esta rama.
+Isaac revisa la especificación escrita v1 de ISA-1028. Después se prepara el plan
+ejecutable, empezando por auditoría de código y corpus para fijar criterios de
+calidad y evaluación. Las decisiones funcionales ya están acordadas; no se
+reabren por defecto. No iniciar implementación o live antes de ese paso.
 
 ## Última actualización
 
-2026-08-24, ISA-831: Fuel/VE transportados y consumidos por bucket climático,
-sin fallback cruzado. Pendiente comprobación en la app real por Isaac; sin PR,
-integración, promoción ni release.
+2026-09-08, ISA-1028: diseño del editor de telemetría registrada; entrega documental
+aislada. Sin implementación, promoción ni release del nuevo alcance.

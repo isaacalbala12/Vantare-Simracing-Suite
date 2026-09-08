@@ -581,6 +581,36 @@ se conservan aqui como hitos cumplidos; los demas siguen pendientes.
 - cuerpo.it: Il pianificatore usa un'unica autorità di calcolo e salvataggio sulle sessioni DuckDB reali di LMU. L'ingresso assistito parte dalle gare del calendario, collega sede e classe tramite identità canoniche dichiarate in Go e chiede il tracciato solo quando lo storico ne contiene più di uno; Orbit applica poi input e meteo, mostra backtest neutrali, offre riferimenti firmati e importa lo storico locale con avanzamento.
 - etiqueta: Feature
 
+### Asistente y edición de telemetría registrada
+
+- id: strategy-recorded-editor
+- tipo: plan
+- titulo.en: Recorded telemetry wizard and editor
+- titulo.pt: Assistente e edição de telemetria registada
+- titulo.it: Procedura guidata ed editor della telemetria registrata
+- cuerpo: Planeamos un asistente Manual/Automático y una pantalla editable dentro de Strategy, primero para LMU/DuckDB y preparada para otros formatos. Usará originales intactos, correcciones reversibles, selección de datos por calidad y reglas de Fuel/energía virtual; mostrará resultados parciales y revisiones reproducibles. La aceptación exige pruebas matemáticas y carreras reales reservadas para evaluar el modelo sin sesgo por incidentes.
+- cuerpo.en: We plan a Manual/Automatic wizard and an editable Strategy workspace, starting with LMU/DuckDB and allowing future formats. It will use unchanged source files, reversible corrections, quality-based data selection and Fuel/Virtual Energy rules, with partial results and reproducible revisions. Acceptance requires mathematical checks and held-out real races to evaluate incident bias.
+- cuerpo.pt: Planeamos um assistente Manual/Automático e uma área editável em Strategy, primeiro para LMU/DuckDB e preparada para outros formatos. Usará originais intactos, correções reversíveis, seleção por qualidade e regras de Fuel/energia virtual, com resultados parciais e revisões reproduzíveis. A aceitação exige provas matemáticas e corridas reais reservadas para avaliar o viés de incidentes.
+- cuerpo.it: Prevediamo una procedura Manuale/Automatica e un editor in Strategy, inizialmente per LMU/DuckDB e predisposto per altri formati. Userà originali intatti, correzioni reversibili, selezione per qualità e regole Fuel/energia virtuale, con risultati parziali e revisioni riproducibili. L'accettazione richiede verifiche matematiche e gare reali riservate per valutare gli effetti degli incidenti.
+- etiqueta: Plan
+- etiqueta.pt: Plano
+- etiqueta.it: Piano
+
+### Strategy live después del editor registrado
+
+- id: strategy-live-after-recorded
+- tipo: plan
+- titulo.en: Strategy live after the recorded telemetry editor
+- titulo.pt: Strategy live após o editor de telemetria registada
+- titulo.it: Strategy live dopo l'editor della telemetria registrata
+- cuerpo: El recálculo de estrategia durante la carrera queda aplazado hasta completar y validar el editor de telemetría registrada. Después estudiaremos proyectos OSS y métodos de incertidumbre, incluido Monte Carlo, antes de decidir la arquitectura live.
+- cuerpo.en: In-race strategy recalculation is deferred until the recorded telemetry editor is complete and validated. We will then study OSS projects and uncertainty methods, including Monte Carlo, before deciding the live architecture.
+- cuerpo.pt: O recálculo de estratégia durante a corrida fica adiado até concluir e validar o editor de telemetria registada. Depois estudaremos projetos OSS e métodos de incerteza, incluindo Monte Carlo, antes de decidir a arquitetura live.
+- cuerpo.it: Il ricalcolo della strategia in gara è rinviato fino al completamento e alla validazione dell'editor della telemetria registrata. Studieremo poi progetti OSS e metodi per l'incertezza, incluso Monte Carlo, prima di decidere l'architettura live.
+- etiqueta: Plan
+- etiqueta.pt: Plano
+- etiqueta.it: Piano
+
 ### Cálculo Orbit sobre el motor completo
 
 - id: strategy-orbit-solve-v2

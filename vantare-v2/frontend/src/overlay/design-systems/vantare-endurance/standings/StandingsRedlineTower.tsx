@@ -14,7 +14,7 @@ export function StandingsRedlineTower({ model, settings, showSessionHeader, root
 }) {
   const clipId = useId().replaceAll(":", "");
   const header = parseStandingsEnduranceSettings(settings).redlineHeader;
-  return <div ref={rootRef} className="ven-tower" data-session-mode={model.sessionLabel.toLowerCase()}>
+  return <div ref={rootRef} className="ven-tower" data-session-mode={model.sessionLabel.trim().toLowerCase()}>
     <svg width="0" height="0" aria-hidden="true" focusable="false" style={{ position: "absolute" }}><defs>
       <clipPath id={`${clipId}-brand`} clipPathUnits="objectBoundingBox"><path d="M0 0 H1 V.72 Q1 .79 .95 .84 L.84 .95 Q.79 1 .72 1 H0 Z" /></clipPath>
       <clipPath id={`${clipId}-header`} clipPathUnits="objectBoundingBox"><path d="M0 0 H1 V.72 Q1 .79 .99 .84 L.967 .95 Q.957 1 .942 1 H0 Z" /></clipPath>

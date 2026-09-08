@@ -24,9 +24,17 @@ La primera suite completa tuvo cuatro timeouts Chromium al ejecutarse junto
 al build y dos caracterizaciones que necesitaban reflejar el catálogo y los
 campos aditivos. La repetición limitada a dos workers pasó 422 archivos y
 3331 tests, con un fallo del selector Workshop corregido después (32 focales
-verdes). La siguiente ejecución certificará el conjunto final; no se ocultan
-aquellos fallos ni se cambian timeouts/aserciones de contención.
+verdes). La ejecución final con cuatro workers pasó **424 archivos, 3333
+tests y 2 omitidos**, exit 0. No se ocultan los fallos previos ni se cambian
+timeouts/aserciones de contención. Typecheck, build, lint y digest PASS.
+Dist no contiene las identidades del fixture ni su aviso de referencia.
 Recursos del HTML: trazabilidad/licencias para distribución pendientes.
+Revisión Muse Spark 1.3 Contributor xhigh, solo lectura sobre `d8efd680`:
+sin P1; apto para PR draft. Se atienden dos observaciones menores con `trim()`
+en `data-session-mode` y aclaración del dorsal opcional: el gap del productor
+Core se conserva hasta que realmente lo emita (#1072). La suite completa
+anterior acredita `d8efd680` más el texto de roadmap corregido; el ajuste final
+de normalización se verifica con las pruebas focales y CI de la PR.
 No hay merge, promoción ni release; el historial de abajo describe el estudio.
 
 ## Alcance y estado

@@ -23,10 +23,17 @@ Pruebas focales 32/32 y Chromium (280/340/482/650, gaps largos y señal atrasada
 PASS. Código guardado en `d8efd680`. Typecheck, build productivo, lint y digest
 PASS. La última suite pasó 423 archivos/3332 tests y falló por el texto `95%`
 del roadmap, corregido sin alterar la prueba; focal posterior 27/27 PASS.
-Suite final en ejecución. Muse revisa el snapshot aislado
+Suite final **424 archivos / 3333 tests PASS, 2 omitidos**, exit 0, cuatro
+workers; avisos heredados de teardown happy-dom sin fallos finales.
+Código `d8efd680` y documentación `84589e00` subidos a la rama de issue.
+Muse revisó el snapshot aislado
 `C:/tmp/vantare-isa1071-review` (sesión `ses_f7d5791bcffebtSNgcFt1CvUs8`),
 solo lectura. Su permiso para leer Ponytail ya está aprobado. La llamada
-inicial expiró, pero la sesión siguió activa; aún no hay veredicto.
+inicial expiró, pero la sesión siguió activa y entregó veredicto: apto para
+PR draft, sin P1. Dos observaciones menores atendidas: `trim()` en la etiqueta
+de sesión y documentación que distingue dorsal opcional del contrato frente
+a la carencia del productor Core actual. No se retira ese gap sin datos reales.
+La revisión no acredita Wails/LMU ni permite promoción/release.
 
 ## ISA-1071 — reproducción HTML Redline en React (2026-09-08, aislado)
 

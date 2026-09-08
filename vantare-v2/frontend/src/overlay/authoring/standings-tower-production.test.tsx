@@ -67,7 +67,9 @@ describe("Redline Tower productive selection", () => {
     expect(model.rows[0]?.driverNumber).toBe("007");
     expect(model.rows[0]?.classPosition).toBe(frame.standings[0]?.classPosition);
     expect(model.rows[1]?.driverNumber).toBe("");
+    model.sessionLabel = " PRACTICE ";
     const { container } = render(<StandingsEndurance model={model} settings={settings} layout={{ ...original().layout, w: 482, h: 1087 }} renderMode="desktop" />);
+    expect(container.querySelector(".ven-tower")?.getAttribute("data-session-mode")).toBe("practice");
     expect(container.querySelector(".ven-tower-gap")?.textContent).toBe("—");
     expect(container.querySelectorAll("[data-manufacturer]")).toHaveLength(0);
     expect(container.querySelector(".ven-tower-footer")?.textContent).toContain("MONZA");

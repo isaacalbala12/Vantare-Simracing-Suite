@@ -20,7 +20,10 @@ en todas sus salidas normales. Backend y frontend deben distribuirse juntos.
 
 RED: faltaba resultado backend y cinco pruebas UI fallaban. GREEN: bridge de
 series y 94 focales frontend (incluye i18n). Build PASS. Full frontend/Go,
-tipos/lint/roadmap y review pendientes. Sin prueba Wails o medición de ahorro.
+tipos/lint/roadmap 23+21 PASS. Full frontend: 3240 PASS, un timeout
+TrackMapEndurance.layout:89 (20 s), #1025. Review halló P2 en expectativas de
+tests event-only: siete fallos RED reproducidos, restauradas a una emisión;
+módulo app completo PASS. Segunda review y full Go pendientes. Sin prueba Wails o medición de ahorro.
 Archivos: bridge/test/result test, main payload, store, RacesOrbitPage/test,
 cuatro locales, informe/handoff y roadmap manual/generado. Sin CSS/HUD/Studio,
 permisos nativos, dependencias, merge ni release. C6c avisos/permisos nativos,

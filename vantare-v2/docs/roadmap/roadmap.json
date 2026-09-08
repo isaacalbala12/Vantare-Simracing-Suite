@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-08T04:22:41Z",
+  "generatedAt": "2026-09-08T14:19:49Z",
   "digest": {
     "lastCommit": "d6d0992f8dbc800ccb6d75f60fffdc7c3d561da2"
   },
@@ -343,6 +343,28 @@
     }
   ],
   "milestones": [
+    {
+      "id": "calendar-owner-review-notice",
+      "type": "feature",
+      "title": {
+        "es": "Aviso de horario pendiente para Owner",
+        "en": "Pending schedule notice for Owner",
+        "pt": "Aviso de horario pendente para Owner",
+        "it": "Avviso calendario in attesa per Owner"
+      },
+      "body": {
+        "es": "El Owner recibe un aviso persistente del nuevo horario de Discord, abre su revision y acepta su publicacion con confirmacion del resultado.",
+        "en": "Owners see a persistent notice for a new Discord schedule, open its review and accept publication with a confirmed result.",
+        "pt": "O Owner recebe um aviso persistente do novo horario do Discord, abre a revisao e aceita a publicacao com resultado confirmado.",
+        "it": "L'Owner riceve un avviso persistente del nuovo calendario Discord, apre la revisione e accetta la pubblicazione con esito confermato."
+      },
+      "label": {
+        "es": "ISA-1061",
+        "en": "ISA-1061",
+        "pt": "ISA-1061",
+        "it": "ISA-1061"
+      }
+    },
     {
       "id": "calendar-timeline-labels",
       "type": "fix",

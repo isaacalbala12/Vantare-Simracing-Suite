@@ -196,7 +196,7 @@ export function SettingsOrbitPage({ target }: SettingsOrbitPageProps) {
         {section === "hotkeys" ? <HotkeysSection /> : null}
         {section === "privacy" ? <CurationPrivacySection /> : null}
         {section === "diagnostics" ? <DiagnosticsSection /> : null}
-        {section === "schedule" ? <ScheduleImportSection /> : null}
+        {section === "schedule" ? <ScheduleImportSection candidateTarget={target?.startsWith("schedule:") ? target.slice(9) : undefined} /> : null}
       </div>
 
       {contextSlot

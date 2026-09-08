@@ -254,6 +254,19 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 
 ## Hitos
 
+### Aviso de horario pendiente para Owner
+
+- id: calendar-owner-review-notice
+- tipo: feature
+- titulo.en: Pending schedule notice for Owner
+- titulo.pt: Aviso de horario pendente para Owner
+- titulo.it: Avviso calendario in attesa per Owner
+- cuerpo: El Owner recibe un aviso persistente del nuevo horario de Discord, abre su revision y acepta su publicacion con confirmacion del resultado.
+- cuerpo.en: Owners see a persistent notice for a new Discord schedule, open its review and accept publication with a confirmed result.
+- cuerpo.pt: O Owner recebe um aviso persistente do novo horario do Discord, abre a revisao e aceita a publicacao com resultado confirmado.
+- cuerpo.it: L'Owner riceve un avviso persistente del nuovo calendario Discord, apre la revisione e accetta la pubblicazione con esito confermato.
+- etiqueta: ISA-1061
+
 ### Horas legibles en Timeline
 
 - id: calendar-timeline-labels

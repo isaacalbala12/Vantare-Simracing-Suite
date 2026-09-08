@@ -3389,23 +3389,25 @@ func main() {
 
 	wailsApp.Event.On("schedule:parse", func(event *application.CustomEvent) {
 		var payload struct {
-			Text string `json:"text"`
+			Text      string `json:"text"`
+			RequestID string `json:"requestId"`
 		}
 		decodeEventPayload(event, &payload)
-		scheduleImportSvc.Parse(payload.Text)
+		scheduleImportSvc.Parse(payload.Text, payload.RequestID)
 	})
 
 	wailsApp.Event.On("schedule:draft:save", func(event *application.CustomEvent) {
 		var payload struct {
-			Text string `json:"text"`
+			Text      string `json:"text"`
+			RequestID string `json:"requestId"`
 		}
 		decodeEventPayload(event, &payload)
 		session, err := authManager.Restore()
 		if err != nil {
-			emitter.Emit("schedule:error", map[string]any{"message": "Inicia sesión para importar el horario"})
+			emitter.Emit("schedule:error", map[string]any{"message": "Inicia sesión para importar el horario", "requestId": payload.RequestID})
 			return
 		}
-		go scheduleImportSvc.SaveDraft(context.Background(), session.AccessToken, payload.Text)
+		go scheduleImportSvc.SaveDraft(ctx, session.AccessToken, payload.Text, payload.RequestID)
 	})
 
 	wailsApp.Event.On("schedule:publish", func(event *application.CustomEvent) {
@@ -3415,11 +3417,11 @@ func main() {
 		decodeEventPayload(event, &payload)
 		session, err := authManager.Restore()
 		if err != nil {
-			emitter.Emit("schedule:error", map[string]any{"message": "Inicia sesión para publicar el horario"})
+			emitter.Emit("schedule:error", map[string]any{"message": "Inicia sesión para publicar el horario", "requestId": payload.DraftID})
 			return
 		}
 		go func() {
-			scheduleImportSvc.Publish(context.Background(), session.AccessToken, payload.DraftID)
+			scheduleImportSvc.Publish(ctx, session.AccessToken, payload.DraftID)
 			refreshPublishedSchedule()
 		}()
 	})

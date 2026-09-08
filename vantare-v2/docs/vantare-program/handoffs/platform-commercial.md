@@ -1,5 +1,15 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+## ISA-1061 - Aviso y revision Owner en curso
+
+Isaac aprueba el recorrido completo. Rama aislada desde ISA-1058 591b48b7.
+Automatizacion Windows existente (lector diario 03:00) ha recogido el horario
+8-15 septiembre con 11 series el dia5; no faltaban datos, faltaba avisar y
+la instancia anterior tenia otra bandeja. Se reutiliza el flujo existente.
+Aviso persistente Owner, enlace a candidato, aceptar/publicar con ACK correlacionado.
+7 UI y paquete app PASS; suites/review/Wails pendientes. Sin publicacion real,
+merge ni release. Documento: docs/analysis/ISA-1061-calendar-owner-review.md.
+
 ## ISA-1058 - Eje horario de Calendario
 
 Candidato aislado sobre ISA-1057 dd5dc1d7. Solo el modelo de Calendario ajusta

@@ -953,3 +953,6 @@ button.orbit-pill:hover { color: #fff; border-color: rgba(240, 71, 85, 0.25); }
 }
 
 /* Los toasts viven en el kit (`ui/orbit/Toast.tsx` + `orbit-kit.css`). */
+
+/* Owner action stays visible without adding a repeating toast or animation. */
+.orbit-calendar-review { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px; padding:10px 24px; border-bottom:1px solid var(--orbit-line); color:var(--orbit-ink); background:var(--orbit-surface-1); }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Events } from "@wailsio/runtime";
 import { useI18n } from "../../i18n/I18nProvider";
 import { useAccess } from "../../lib/access";
@@ -6,118 +6,108 @@ import { Button, Chip, ListRow, Note, SubtleStatus, Surface, Textarea } from "..
 import { formatMessage } from "../orbit/format-message";
 import { useCalendarStarts } from "../orbit/use-calendar-starts";
 import { scheduleDiff, type ScheduleCandidate, type SchedulePreview } from "./schedule-import-model";
+import { candidateKey, publishedCandidateKey, recordPublishedCandidate } from "./schedule-review-receipt";
 
 type ScheduleStatus = "idle" | "parsing" | "saving" | "publishing" | "ok" | "error";
-
+type Request = {kind: "parsing" | "saving" | "publishing"; id: string; candidate: ScheduleCandidate | null; accept?: boolean};
 type EventPayload = {
-  message?: string;
-  draftId?: string;
-  sourceText?: string;
-  preview?: SchedulePreview;
-  draft?: null | { id?: string; sourceText?: string; preview?: SchedulePreview };
-  candidates?: ScheduleCandidate[];
+  requestId?: string; message?: string; draftId?: string; sourceText?: string; preview?: SchedulePreview;
+  draft?: null | {id?: string; sourceText?: string; preview?: SchedulePreview}; candidates?: ScheduleCandidate[];
 };
-
 function payloadOf(event: unknown): EventPayload {
   if (!event || typeof event !== "object") return {};
-  const data = (event as { data?: unknown }).data;
-  return data && typeof data === "object" ? (data as EventPayload) : {};
+  const data = (event as {data?: unknown}).data;
+  return data && typeof data === "object" ? data as EventPayload : {};
 }
-
-export function ScheduleImportSection() {
-  const { t, locale } = useI18n();
+export function ScheduleImportSection({candidateTarget}: {candidateTarget?: string} = {}) {
+  const {t, locale} = useI18n();
   const access = useAccess();
-  const { calendar } = useCalendarStarts();
+  const {calendar} = useCalendarStarts();
   const [candidates, setCandidates] = useState<ScheduleCandidate[]>([]);
   const [selectedCandidate, setSelectedCandidate] = useState<ScheduleCandidate | null>(null);
   const [sourceText, setSourceText] = useState("");
   const [preview, setPreview] = useState<SchedulePreview | null>(null);
+  const [published, setPublished] = useState(false);
   const [draftId, setDraftId] = useState<string | null>(null);
   const [status, setStatus] = useState<ScheduleStatus>("idle");
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const isOwner = access.roles.includes("owner");
-
+  const pending = useRef<Request | null>(null);
+  const selected = useRef<ScheduleCandidate | null>(null);
+  const openedTarget = useRef<string | undefined>(undefined);
+  const isOwner = access.roles.includes("owner") && !access.isBlocked;
+  const busy = status === "parsing" || status === "saving" || status === "publishing";
+  const send = useCallback((name: string, payload: object, request: Request) => {
+    pending.current = request; setStatus(request.kind); setError(null); setMessage(null);
+    const fail = () => { if (pending.current !== request) return; pending.current = null;
+      setStatus("error"); setError(t("settings.schedule.errorFallback")); };
+    try { Promise.resolve(Events.Emit(name, payload)).catch(fail); } catch { fail(); }
+  }, [t]);
+  const selectCandidate = useCallback((candidate: ScheduleCandidate) => {
+    if (pending.current) return;
+    selected.current = candidate; setPublished(publishedCandidateKey() === candidateKey(candidate)); setSelectedCandidate(candidate); setSourceText(candidate.sourceText);
+    setPreview(null); setDraftId(null);
+    const id = crypto.randomUUID();
+    send("schedule:parse", {text: candidate.sourceText, requestId: id}, {kind:"parsing",id,candidate});
+  }, [send]);
   useEffect(() => {
-    if (!isOwner) return undefined;
+    if (!isOwner) return;
     const unsubscribers = [
       Events.On("schedule:preview", (event: unknown) => {
-        const data = payloadOf(event);
-        if (data && "series" in data) {
-          setPreview(data as SchedulePreview);
-          setStatus("ok");
-          setError(null);
-        }
+        const data = payloadOf(event); const request = pending.current;
+        if (request?.kind !== "parsing" || data.requestId !== request.id || !("series" in data)) return;
+        pending.current = null; setPreview(data as SchedulePreview); setStatus("ok"); setError(null);
       }),
       Events.On("schedule:error", (event: unknown) => {
         const data = payloadOf(event);
-        setStatus("error");
-        setError(data.message ?? t("settings.schedule.errorFallback"));
+        if (pending.current && data.requestId !== pending.current.id) return;
+        pending.current = null; setStatus("error"); setError(data.message ?? t("settings.schedule.errorFallback"));
       }),
       Events.On("schedule:draft-saved", (event: unknown) => {
-        const data = payloadOf(event);
-        setDraftId(data.draftId ?? null);
-        setStatus("ok");
-        setMessage(t("settings.schedule.saved"));
+        const data = payloadOf(event); const request = pending.current;
+        if (request?.kind !== "saving" || data.requestId !== request.id || !data.draftId) return;
+        pending.current = null; setDraftId(data.draftId);
+        if (request.accept) send("schedule:publish", {draftId: data.draftId}, {kind:"publishing",id:data.draftId,candidate:request.candidate});
+        else { setStatus("ok"); setMessage(t("settings.schedule.saved")); }
       }),
-      Events.On("schedule:published", () => {
-        setStatus("ok");
-        setMessage(t("settings.schedule.published"));
-        Events.Emit("calendar:schedule:refresh");
+      Events.On("schedule:published", (event: unknown) => {
+        const data = payloadOf(event); const request = pending.current;
+        if (request?.kind !== "publishing" || data.draftId !== request.id) return;
+        pending.current = null; setPublished(true); setStatus("ok"); setMessage(t("settings.schedule.published")); setDraftId(null);
+        if (request.candidate) recordPublishedCandidate(request.candidate);
+        // The native publication handler refreshes Calendar after the server ACK.
       }),
       Events.On("schedule:draft", (event: unknown) => {
-        const data = payloadOf(event);
-        const draft = data.draft;
-        if (!draft) return;
-        setDraftId(data.draftId ?? draft.id ?? null);
-        setSourceText(data.sourceText ?? draft.sourceText ?? "");
-        setPreview(data.preview ?? draft.preview ?? null);
+        if (pending.current || selected.current || candidateTarget) return;
+        const data = payloadOf(event); const draft = data.draft;
+        if (!draft && !data.draftId) return;
+        setDraftId(data.draftId ?? draft?.id ?? null); setSourceText(data.sourceText ?? draft?.sourceText ?? "");
+        setPreview(data.preview ?? draft?.preview ?? null);
       }),
       Events.On("schedule:discord:inbox", (event: unknown) => {
-        setCandidates(payloadOf(event).candidates ?? []);
+        const items = payloadOf(event).candidates ?? []; setCandidates(items);
+        if (candidateTarget && openedTarget.current !== candidateTarget && !pending.current) {
+          const match = items.find(c => candidateKey(c) === candidateTarget);
+          if (match) { openedTarget.current = candidateTarget; selectCandidate(match); }
+        }
       }),
     ];
-    Events.Emit("schedule:draft:get");
-    Events.Emit("schedule:discord:inbox:get");
-    return () => unsubscribers.forEach((unsubscribe) => unsubscribe?.());
-  }, [isOwner, t]);
-
+    Events.Emit("schedule:draft:get"); Events.Emit("schedule:discord:inbox:get");
+    return () => { unsubscribers.forEach(off => off()); pending.current = null; };
+  }, [candidateTarget, isOwner, selectCandidate, send, t]);
   const diff = useMemo(() => scheduleDiff(preview, calendar?.series), [calendar?.series, preview]);
-  const dateFormat = useMemo(
-    () => new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }),
-    [locale],
-  );
-  if (!isOwner) {
-    return <Note>{t("settings.schedule.ownerOnly")}</Note>;
-  }
-
-  const selectCandidate = (candidate: ScheduleCandidate) => {
-    setSelectedCandidate(candidate);
-    setSourceText(candidate.sourceText);
-    setPreview(null);
-    setDraftId(null);
-    setError(null);
-    setMessage(null);
-    setStatus("parsing");
-    Events.Emit("schedule:parse", { text: candidate.sourceText });
+  const dateFormat = useMemo(() => new Intl.DateTimeFormat(locale, {dateStyle:"medium", timeStyle:"short"}), [locale]);
+  if (!isOwner) return <Note>{t("settings.schedule.ownerOnly")}</Note>;
+  const saveDraft = (accept = false) => {
+    if (!preview || !sourceText.trim() || pending.current) return;
+    const id = crypto.randomUUID();
+    send("schedule:draft:save", {text:sourceText,requestId:id}, {kind:"saving",id,candidate:selected.current,accept});
   };
-
-  const saveDraft = () => {
-    if (!preview || !sourceText.trim()) return;
-    setError(null);
-    setMessage(null);
-    setStatus("saving");
-    Events.Emit("schedule:draft:save", { text: sourceText });
-  };
-
   const publish = () => {
-    if (!draftId) return;
-    setError(null);
-    setMessage(null);
-    setStatus("publishing");
-    Events.Emit("schedule:publish", { draftId });
+    if (!preview || pending.current || published) return;
+    if (!draftId) { saveDraft(true); return; }
+    send("schedule:publish", {draftId}, {kind:"publishing",id:draftId,candidate:selected.current});
   };
-
   return (
     <>
       <Surface
@@ -134,7 +124,7 @@ export function ScheduleImportSection() {
         {candidates.length === 0 ? (
           <Note>{t("settings.schedule.noCandidates")}</Note>
         ) : (
-          <div className="orbit-set-schedule__candidates" data-testid="orbit-settings-schedule-candidates">
+          <fieldset disabled={busy} style={{border: 0, padding: 0, margin: 0}} className="orbit-set-schedule__candidates" data-testid="orbit-settings-schedule-candidates">
             {candidates.map((candidate) => (
               <ListRow
                 key={`${candidate.messageId}:${candidate.sourceHash}`}
@@ -144,7 +134,7 @@ export function ScheduleImportSection() {
                 title={formatMessageId(candidate.messageId, t("settings.schedule.candidate"))}
               />
             ))}
-          </div>
+          </fieldset>
         )}
         <Note>{t("settings.schedule.inboxNote")}</Note>
       </Surface>
@@ -154,8 +144,8 @@ export function ScheduleImportSection() {
           <div className="orbit-set-schedule__actions">
             <Button
               data-testid="orbit-settings-schedule-save"
-              disabled={!preview || status === "saving" || status === "publishing"}
-              onClick={saveDraft}
+              disabled={!preview || busy || published}
+              onClick={() => saveDraft()}
               size="sm"
               variant="primary"
             >
@@ -163,7 +153,7 @@ export function ScheduleImportSection() {
             </Button>
             <Button
               data-testid="orbit-settings-schedule-publish"
-              disabled={!draftId || status === "publishing"}
+              disabled={!preview || busy || published}
               onClick={publish}
               size="sm"
               variant="danger"

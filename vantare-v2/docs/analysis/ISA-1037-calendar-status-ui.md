@@ -30,7 +30,8 @@ Review 618d5a51: dos P2 reproducidos RED y corregidos: operación y vigencia se
 muestran juntas, y el hook solicita el estado actual del backend tras suscribirse
 para recuperar resultados de arranque anteriores al montaje. Este último depende
 del añadido a C4a #1035, sin segunda consulta remota. Regresiones focales finales:
-70 PASS. Revisión final y build del añadido pendientes.
+70 PASS. Review 7a84c268 ACCEPT; build (incluye typecheck) y lint finales PASS.
+No se repiten las suites completas solo para intentar cambiar sus fallos ajenos.
 
 Archivos: calendar-store/types, use-calendar-starts, OrbitShell, RacesOrbitPage,
 sus pruebas y cuatro catálogos; informe, handoff y roadmap manual/generado.

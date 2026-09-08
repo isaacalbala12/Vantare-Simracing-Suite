@@ -1,5 +1,14 @@
 # Handoff vivo — Telemetry Analysis
 
+## Comandos de corrección autorizados — ISA-1081
+
+Sobre 89bdb65e en C:/tmp/vantare-isa1081. SaveCorrections/LoadCorrection y
+ProjectCorrection validan fuente/licencia antes de operar, también en replay.
+Custodia persistente nativa separada de staging. Clasificación de proyección
+basada en vueltas recalculadas; sin criterios nuevos. Focales, vet, build y
+Go global pasan. Detalle en handoff Strategy y contrato de correcciones.
+Cliente, selección persistida, otras operaciones y UI pendientes. Sin promoción.
+
 ## Preparación autorizada para correcciones — ISA-1080
 
 Sobre 40419038 en C:/tmp/vantare-isa1080. El servicio TA-03E ahora prepara la

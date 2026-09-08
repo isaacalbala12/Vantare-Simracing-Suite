@@ -53,6 +53,7 @@ type TelemetryAnalysisConfig struct {
 	LMURoots             []string
 	ApplicationDirectory string
 	StagingRoot          string
+	CorrectionRoot       string
 	StabilityWindow      time.Duration
 	MaxCandidates        int
 	MaxSourceBytes       int64
@@ -112,11 +113,12 @@ type telemetryAnalysisSession struct {
 // existing TA-02/TA-03C contracts. Paths stay inside candidate records and the
 // private staging artifact; consumers receive only opaque IDs.
 type TelemetryAnalysisService struct {
-	cfg        TelemetryAnalysisConfig
-	authorizer telemetryAnalysisAuthorizer
-	metadata   telemetryanalysis.MetadataSource
-	content    telemetryanalysis.ContentSource
-	now        func() time.Time
+	cfg         TelemetryAnalysisConfig
+	authorizer  telemetryAnalysisAuthorizer
+	corrections *telemetryanalysis.CorrectionStore
+	metadata    telemetryanalysis.MetadataSource
+	content     telemetryanalysis.ContentSource
+	now         func() time.Time
 
 	discoveryMu      sync.Mutex
 	correctionReadMu sync.Mutex
@@ -156,6 +158,9 @@ func NewTelemetryAnalysisService(cfg TelemetryAnalysisConfig, authorizer telemet
 		pendingCleanup: make(map[*telemetryAnalysisSession]struct{}), closeCtx: closeCtx, cancelClose: cancelClose,
 		cleanupStaged: func(staged *telemetryanalysis.StagedHistoricalArtifact) error { return staged.Cleanup() },
 	}
+	if cfg.CorrectionRoot != "" {
+		service.corrections = telemetryanalysis.NewCorrectionStore(cfg.CorrectionRoot)
+	}
 	runtimeFiles, runtimeErr := duckdbadapter.LoadRuntime(duckdbadapter.ProductionTrust(cfg.ApplicationDirectory))
 	if runtimeErr == nil {
 		service.runtimeReady = true
@@ -167,6 +172,9 @@ func NewTelemetryAnalysisService(cfg TelemetryAnalysisConfig, authorizer telemet
 }
 
 func validateTelemetryAnalysisConfig(cfg TelemetryAnalysisConfig, authorizer telemetryAnalysisAuthorizer) error {
+	if cfg.CorrectionRoot != "" && !cleanAbsolutePath(cfg.CorrectionRoot) {
+		return ErrTelemetryAnalysisInvalidRequest
+	}
 	if authorizer == nil || !cleanAbsolutePath(cfg.ApplicationDirectory) || !cleanAbsolutePath(cfg.StagingRoot) ||
 		cfg.StabilityWindow <= 0 || cfg.StabilityWindow > 10*time.Minute ||
 		cfg.MaxCandidates <= 0 || cfg.MaxCandidates > 256 ||

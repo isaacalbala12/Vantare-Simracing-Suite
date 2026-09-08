@@ -288,3 +288,25 @@ la cuota o falta de datos de vuelta conserva el lector para inspección.
 Cancelación y revocación de licencia no entregan una preparación utilizable.
 Guardar/cargar/proyectar desde el servicio, ampliar canales por objetivos de
 corrección, selección de planes y UI siguen pendientes.
+
+## Comandos autorizados — #1081
+
+SaveCorrections, LoadCorrection y ProjectCorrection reutilizan la preparación
+autorizada manteniendo lifecycle y bloqueo de sesión durante el comando.
+También los reintentos verifican licencia, lector y base antes de consultar
+idempotencia. El backend resuelve originales en las páginas requeridas por las
+familias; objetivos fuera de ese conjunto se rechazan, sin lecturas arbitrarias.
+
+La composición nativa configura una raíz persistente `data/telemetry-analysis`
+hermana de `data/strategy`; la custodia usa su subcarpeta `corrections` y nunca
+staging o el directorio LMU. Sin raíz válida no se guarda silenciosamente en otro
+lugar. Conflicto, cambio de base, revisión perdida, commit incierto y error de
+custodia tienen mensajes públicos sanitizados, sin paths internos.
+
+ProjectCorrection requiere ID explícito y produce una proyección de una sesión.
+La clasificación de elegibilidad se vuelve a obtener desde las vueltas completas
+recalculadas, no de los metadatos iniciales del catálogo. Perder tiempos utilizables
+no deja familias anunciadas como utilizables. Esto no introduce filtros físicos.
+LoadCorrection permite ID vacío solo para consultar la cabeza; esa consulta no
+convierte "última" en selección reproducible. UI, selección persistida de varias
+sesiones/revisiones y operaciones restantes siguen pendientes.

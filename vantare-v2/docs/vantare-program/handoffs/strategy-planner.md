@@ -1,5 +1,22 @@
 # Handoff vivo — Strategy Planner
 
+## Comandos escalares autorizados — ISA-1081 (2026-09-08)
+
+Base 89bdb65e; rama vantareapp/isa-1081-authorized-correction-commands;
+worktree C:/tmp/vantare-isa1081. Servicio TA-03E guarda, consulta y proyecta
+revisión exacta manteniendo autorización/lifecycle, incluso antes de replay.
+Raíz persistente Analysis configurada por main, separada de staging/originales.
+Targets resueltos contra páginas requeridas, errores de custodia sanitizados.
+
+Corregida con RED/GREEN una incoherencia de la conexión nueva: clasificación
+inicial no conocía vueltas derivadas; ahora toma las vueltas completas de la
+revisión recalculada y también retira elegibilidad cuando desaparecen.
+App/Analysis completos, vet, build y Go global pasan.
+No se publica UI ni se calcula una carrera real; fixtures controladas de contrato.
+Siguiente: cliente nativo de fuentes/correcciones, selección de revisiones en
+planes, operaciones restantes y UI productiva/paridad. Sin push/PR/CI remota,
+promoción, release, lectura DuckDB real o LMU.
+
 ## Preparación autorizada — ISA-1080 (2026-09-08)
 
 Base 40419038; rama vantareapp/isa-1080-authorized-correction-input;

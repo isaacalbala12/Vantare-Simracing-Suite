@@ -1838,6 +1838,9 @@ func main() {
 	if telemetryAnalysisCfgErr != nil {
 		log.Printf("warning: Telemetry Analysis backend configuration is unavailable")
 	} else {
+		if strategyRootErr == nil {
+			telemetryAnalysisCfg.CorrectionRoot = filepath.Join(filepath.Dir(strategyRoot), "telemetry-analysis")
+		}
 		analysisService, analysisServiceErr := app.NewTelemetryAnalysisService(telemetryAnalysisCfg, licenseSvc)
 		if analysisServiceErr != nil {
 			log.Printf("warning: Telemetry Analysis service is unavailable")

@@ -12,39 +12,37 @@ type TelemetryAnalysisCorrectionPreparation struct {
 	BaseRevisionID string                              `json:"baseRevisionId"`
 }
 
-// PrepareCorrections exposes only a stable base for an already authorized open
-// session. The opaque open handle is never used as the stored source identity.
-// Reading is serialized to bound aggregate working memory across open sessions.
-func (service *TelemetryAnalysisService) PrepareCorrections(ctx context.Context, sessionID string) (TelemetryAnalysisCorrectionPreparation, error) {
-	var empty TelemetryAnalysisCorrectionPreparation
+// withCorrectionInput keeps authorization, lifecycle and the open-session lock
+// across the complete command. Reads are serialized to bound working memory.
+func (service *TelemetryAnalysisService) withCorrectionInput(ctx context.Context, sessionID string, action func(context.Context, telemetryanalysis.CorrectionInput) error) error {
 	operationCtx, finish, err := service.begin(ctx)
 	if err != nil {
-		return empty, err
+		return err
 	}
 	defer finish()
 	if err := operationCtx.Err(); err != nil {
-		return empty, err
+		return err
 	}
 	if !service.authorizer.AllowsTelemetryAnalysis() {
-		return empty, ErrTelemetryAnalysisUnauthorized
+		return ErrTelemetryAnalysisUnauthorized
 	}
 	if sessionID == "" {
-		return empty, ErrTelemetryAnalysisInvalidRequest
+		return ErrTelemetryAnalysisInvalidRequest
 	}
 	service.mu.Lock()
 	ownedSession := service.sessions[sessionID]
 	service.mu.Unlock()
 	if ownedSession == nil {
-		return empty, ErrTelemetryAnalysisSessionUnknown
+		return ErrTelemetryAnalysisSessionUnknown
 	}
 	if !service.correctionReadMu.TryLock() {
-		return empty, ErrTelemetryAnalysisBusy
+		return ErrTelemetryAnalysisBusy
 	}
 	defer service.correctionReadMu.Unlock()
 	ownedSession.mu.Lock()
 	if ownedSession.retired || ownedSession.closed {
 		ownedSession.mu.Unlock()
-		return empty, ErrTelemetryAnalysisSessionUnknown
+		return ErrTelemetryAnalysisSessionUnknown
 	}
 	input, readErr := telemetryanalysis.ReadCorrectionInput(operationCtx, ownedSession.parser, ownedSession.artifact, telemetryanalysis.CorrectionReadLimits{
 		PageRows: service.cfg.MaxPageRows, MaxSamples: 1_000_000, MaxValues: 1_000_000, MaxTextBytes: 16 << 20,
@@ -54,28 +52,46 @@ func (service *TelemetryAnalysisService) PrepareCorrections(ctx context.Context,
 	if retire {
 		ownedSession.retired = true
 	}
-	ownedSession.mu.Unlock()
+	if readErr != nil {
+		ownedSession.mu.Unlock()
+	} else {
+		defer ownedSession.mu.Unlock()
+	}
 	if retire {
 		if cleanupErr := service.cleanupOwnedSession(ownedSession); cleanupErr != nil {
-			return empty, ErrTelemetryAnalysisCleanup
+			return ErrTelemetryAnalysisCleanup
 		}
 		service.removeSession(sessionID, ownedSession)
 	}
 	if errors.Is(readErr, telemetryanalysis.ErrCorrectionReadLimit) {
-		return empty, ErrTelemetryAnalysisTooLarge
+		return ErrTelemetryAnalysisTooLarge
 	}
 	if readErr != nil {
-		return empty, publicTelemetryAnalysisError(readErr)
+		return publicTelemetryAnalysisError(readErr)
 	}
 	if !service.authorizer.AllowsTelemetryAnalysis() {
-		return empty, ErrTelemetryAnalysisUnauthorized
+		return ErrTelemetryAnalysisUnauthorized
 	}
 	if err := operationCtx.Err(); err != nil {
-		return empty, err
+		return err
 	}
-	initial, err := telemetryanalysis.PrepareSampleCorrectionSnapshot(input.Base, nil)
+	return action(operationCtx, input)
+}
+
+// PrepareCorrections exposes a stable base, never the temporary open handle as
+// source identity. It does not save an edit or change the observed catalog.
+func (service *TelemetryAnalysisService) PrepareCorrections(ctx context.Context, sessionID string) (TelemetryAnalysisCorrectionPreparation, error) {
+	var result TelemetryAnalysisCorrectionPreparation
+	err := service.withCorrectionInput(ctx, sessionID, func(_ context.Context, input telemetryanalysis.CorrectionInput) error {
+		initial, err := telemetryanalysis.PrepareSampleCorrectionSnapshot(input.Base, nil)
+		if err != nil {
+			return publicTelemetryAnalysisError(err)
+		}
+		result = TelemetryAnalysisCorrectionPreparation{Base: input.Base, BaseRevisionID: initial.SnapshotID}
+		return nil
+	})
 	if err != nil {
-		return empty, publicTelemetryAnalysisError(err)
+		return TelemetryAnalysisCorrectionPreparation{}, err
 	}
-	return TelemetryAnalysisCorrectionPreparation{Base: input.Base, BaseRevisionID: initial.SnapshotID}, nil
+	return result, nil
 }

@@ -1,0 +1,186 @@
+package app
+
+import (
+	"context"
+	"errors"
+	"os"
+	"strings"
+	"testing"
+
+	"github.com/vantare/overlays/v2/internal/telemetryanalysis"
+)
+
+type correctionCommandReader struct{ *telemetryAnalysisReaderStub }
+
+func (r *correctionCommandReader) ReadRows(ctx context.Context, table string, start int64, limit int) ([]telemetryanalysis.LMUDuckDBRow, error) {
+	rows, err := r.telemetryAnalysisReaderStub.ReadRows(ctx, table, start, limit)
+	if err != nil {
+		return nil, err
+	}
+	if strings.Contains(table, "Lap Time") {
+		for i := range rows {
+			value := 0.0
+			if start+int64(i) > 0 {
+				value = 90
+			}
+			rows[i].Values = []telemetryanalysis.LMUDuckDBValue{{Kind: telemetryanalysis.ScalarNumber, Number: value}}
+		}
+	}
+	return rows, nil
+}
+
+func TestCorrectionCommandsReauthorizeReplayAndPinProjection(t *testing.T) {
+	svc, _, now := telemetryAnalysisTestService(t, true)
+	t.Cleanup(func() {
+		if err := svc.ServiceShutdown(); err != nil {
+			t.Error(err)
+		}
+	})
+	svc.corrections = telemetryanalysis.NewCorrectionStore(t.TempDir())
+	candidate := telemetryAnalysisReadyCandidate(t, svc, now)
+	var reader *telemetryAnalysisReaderStub
+	svc.runtimeReady = true
+	svc.readerFactory = func(artifact telemetryanalysis.AuthorizedHistoricalArtifact, _ telemetryanalysis.StagedHistoricalArtifact) (telemetryAnalysisReader, error) {
+		a, b := 10000.0, 10090.0
+		reader = &telemetryAnalysisReaderStub{evidence: artifact.Evidence(), catalog: telemetryanalysis.LMUDuckDBCatalog{Events: []telemetryanalysis.LMUDuckDBChannel{{Name: "Lap", Unit: "count", Columns: []telemetryanalysis.LMUDuckDBColumn{{Name: "ts", Type: "DOUBLE"}, {Name: "value", Type: "USMALLINT"}}}}}, rows: []telemetryanalysis.LMUDuckDBRow{{TimestampSeconds: &a, Values: []telemetryanalysis.LMUDuckDBValue{{Kind: telemetryanalysis.ScalarInteger, Integer: 1}}}, {TimestampSeconds: &b, Values: []telemetryanalysis.LMUDuckDBValue{{Kind: telemetryanalysis.ScalarInteger, Integer: 2}}}}}
+		for key, value := range map[string]string{"TrackName": "Imola", "TrackLayout": "Grand Prix", "CarName": "Test Car", "CarClass": "Hypercar", "SessionType": "Race", "WeatherConditions": "Clear"} {
+			reader.catalog.Metadata = append(reader.catalog.Metadata, telemetryanalysis.LMUDuckDBMetadata{Key: key, Value: value, Present: true, Quality: telemetryanalysis.QualityValid})
+		}
+		reader.catalog.Events = append(reader.catalog.Events, telemetryanalysis.LMUDuckDBChannel{Name: "Lap Time", Unit: "s", Columns: []telemetryanalysis.LMUDuckDBColumn{{Name: "ts", Type: "DOUBLE"}, {Name: "value", Type: "DOUBLE"}}})
+		return &correctionCommandReader{reader}, nil
+	}
+	ctx := context.Background()
+	opened, err := svc.Open(ctx, TelemetryAnalysisOpenRequest{CandidateID: candidate.ID, UserApproved: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	prepared, err := svc.PrepareCorrections(ctx, opened.SessionID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	channel := opened.Session.Channels[0]
+	page, err := svc.ReadPage(ctx, TelemetryAnalysisPageRequest{SessionID: opened.SessionID, ChannelID: channel.ID, Start: 1, Limit: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	value := page.Samples[0].Values[0]
+	replacement := value.Scalar
+	replacement.Integer = 3
+	request := TelemetryAnalysisCorrectionSaveRequest{SessionID: opened.SessionID, Base: prepared.Base, Command: telemetryanalysis.CorrectionSaveCommand{ExpectedRevision: prepared.BaseRevisionID, CommandID: "save-1", Reason: "test", LocalAuthorID: "local"}, Corrections: []telemetryanalysis.SampleValueCorrection{{Base: prepared.Base, Target: telemetryanalysis.SampleCorrectionTarget{ChannelID: channel.ID, Column: value.Column, SampleIndex: 1}, Unit: channel.Unit, Expected: value, Replacement: replacement, Reason: "test"}}}
+	saved, err := svc.SaveCorrections(ctx, request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	replay, err := svc.SaveCorrections(ctx, request)
+	if err != nil || replay.Revision.RevisionID != saved.Revision.RevisionID {
+		t.Fatal("non-idempotent replay", err)
+	}
+	lookup := TelemetryAnalysisCorrectionRevisionRequest{SessionID: opened.SessionID, Base: prepared.Base, RevisionID: saved.Revision.RevisionID}
+	loaded, err := svc.LoadCorrection(ctx, lookup)
+	if err != nil || loaded.Revision.RevisionID != saved.Revision.RevisionID {
+		t.Fatal(err)
+	}
+	projection, err := svc.ProjectCorrection(ctx, lookup)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(projection.SourceRevisions) != 1 || projection.SourceRevisions[0].RevisionID != saved.Revision.RevisionID {
+		t.Fatal("projection lost revision")
+	}
+	if !containsFamily(projection.SessionClassification.UsableForFamilies, string(telemetryanalysis.FamilyFuelConsumption)) {
+		t.Fatal("classification ignored derived complete lap")
+	}
+	var timeChannel telemetryanalysis.HistoricalChannel
+	for _, candidate := range opened.Session.Channels {
+		if candidate.SourceName == "Lap Time" {
+			timeChannel = candidate
+		}
+	}
+	timePage, err := svc.ReadPage(ctx, TelemetryAnalysisPageRequest{SessionID: opened.SessionID, ChannelID: timeChannel.ID, Start: 1, Limit: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	timeValue := timePage.Samples[0].Values[0]
+	zero := timeValue.Scalar
+	zero.Number = 0
+	removeTime := request
+	removeTime.Command = telemetryanalysis.CorrectionSaveCommand{ExpectedRevision: saved.HeadID, CommandID: "remove-time", Reason: "test", LocalAuthorID: "local"}
+	removeTime.Corrections = []telemetryanalysis.SampleValueCorrection{{Base: prepared.Base, Target: telemetryanalysis.SampleCorrectionTarget{ChannelID: timeChannel.ID, Column: timeValue.Column, SampleIndex: 1}, Unit: timeChannel.Unit, Expected: timeValue, Replacement: zero, Reason: "test"}}
+	withoutTime, err := svc.SaveCorrections(ctx, removeTime)
+	if err != nil {
+		t.Fatal(err)
+	}
+	withoutTimeLookup := lookup
+	withoutTimeLookup.RevisionID = withoutTime.Revision.RevisionID
+	withoutTimeProjection, err := svc.ProjectCorrection(ctx, withoutTimeLookup)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if containsFamily(withoutTimeProjection.SessionClassification.UsableForFamilies, string(telemetryanalysis.FamilyFuelConsumption)) {
+		t.Fatal("classification retained removed complete lap")
+	}
+	conflict := request
+	conflict.Command.CommandID = "save-2"
+	if _, err := svc.SaveCorrections(ctx, conflict); !errors.Is(err, ErrTelemetryAnalysisCorrectionConflict) {
+		t.Fatal("lost conflict", err)
+	}
+	changed := lookup
+	changed.Base.AnalysisVersion = "changed"
+	if _, err := svc.LoadCorrection(ctx, changed); !errors.Is(err, ErrTelemetryAnalysisCorrectionSourceChanged) {
+		t.Fatal("accepted changed base", err)
+	}
+	missing := lookup
+	missing.RevisionID = ""
+	if _, err := svc.ProjectCorrection(ctx, missing); !errors.Is(err, ErrTelemetryAnalysisCorrectionMissing) {
+		t.Fatal("accepted latest", err)
+	}
+	svc.authorizer = telemetryAnalysisAuthorizerStub{allowed: false}
+	if _, err := svc.SaveCorrections(ctx, request); !errors.Is(err, ErrTelemetryAnalysisUnauthorized) {
+		t.Fatal("replayed without authority", err)
+	}
+	svc.authorizer = telemetryAnalysisAuthorizerStub{allowed: true}
+	reader.readErr = telemetryanalysis.ErrHistoricalSource
+	if _, err := svc.SaveCorrections(ctx, request); !errors.Is(err, ErrTelemetryAnalysisIncompatible) {
+		t.Fatal("replayed unavailable source", err)
+	}
+}
+
+func containsFamily(families []string, target string) bool {
+	for _, family := range families {
+		if family == target {
+			return true
+		}
+	}
+	return false
+}
+
+func TestCorrectionStorageConfigurationAndPublicErrors(t *testing.T) {
+	base, _, _ := telemetryAnalysisTestService(t, false)
+	t.Cleanup(func() {
+		if err := base.ServiceShutdown(); err != nil {
+			t.Error(err)
+		}
+	})
+	cfg := base.cfg
+	cfg.CorrectionRoot = t.TempDir()
+	configured, err := NewTelemetryAnalysisService(cfg, telemetryAnalysisAuthorizerStub{allowed: false})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if configured.corrections == nil {
+		t.Fatal("native correction root ignored")
+	}
+	if err := configured.ServiceShutdown(); err != nil {
+		t.Fatal(err)
+	}
+	cfg.CorrectionRoot = "relative"
+	if _, err := NewTelemetryAnalysisService(cfg, telemetryAnalysisAuthorizerStub{allowed: false}); !errors.Is(err, ErrTelemetryAnalysisInvalidRequest) {
+		t.Fatal("accepted relative custody", err)
+	}
+	if got := publicCorrectionError(&os.PathError{Op: "write", Path: "private-storage-path", Err: os.ErrPermission}); !errors.Is(got, ErrTelemetryAnalysisCorrectionStorage) || strings.Contains(got.Error(), "private-storage-path") {
+		t.Fatal("private storage error exposed")
+	}
+	if got := publicCorrectionError(telemetryanalysis.ErrCorrectionCommitUncertain); !errors.Is(got, ErrTelemetryAnalysisCorrectionUncertain) {
+		t.Fatal("lost uncertain commit outcome")
+	}
+}

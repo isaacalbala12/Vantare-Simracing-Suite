@@ -6,7 +6,7 @@ Rama aislada sobre nightly d6d0992f. Reune los candidatos C2-C9, el nombre
 Calendario y el banco de medicion; no incluye aun #1020/#1024.
 142 pruebas focales PASS, 2 omitidas por artefacto externo. Build, lint, Go completo y 44 pruebas roadmap PASS. Frontend completo: 3299 PASS, 2 omitidas y 2 timeout Pedals Redline (#1025); suite no verde. Review estatica ACCEPT f8c36cc1. Banco ampliado a las cinco vistas: 16 PASS. Wails aislado autentica y actualiza estado correctamente; solo dispone de horario caducado (25 agosto-1 septiembre). Se corrige interferencia del banco con dispatch Wails; 17 pruebas PASS. Capturas anteriores contaminadas; no hay ahorro medido. Se solicita origen de horario vigente para avisos/proximas salidas.
 Manifest y resoluciones: docs/analysis/ISA-1057-calendar-joint-validation.md.
-Siguiente: checks y review del conjunto, C1/C10 en Wails, despues C11.
+Siguiente: review final del banco (19 PASS tras concurrencia RED), horario vigente para C1/C10 y despues C11. Las cinco vistas y seguimiento pasan en Wails con horario caducado; Timeline tiene eje superpuesto, registrado aparte en #1058.
 No merge a nightly, release ni cambios de producto en HUD/OBS/Studio.
 
 ## ISA-1015 — rendimiento de la base, medición junto a LMU (2026-09-08)

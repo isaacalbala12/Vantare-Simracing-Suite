@@ -63,3 +63,13 @@ Los bancos anteriores que usaron esa importacion necesitan repetirse; no son una
 
 No hay horario vigente disponible en esta instancia; se ha solicitado su origen
 al usuario para validar proximas salidas y avisos actuales sin inventar datos.
+
+## Flujos disponibles y review del banco
+
+Wails: las cinco vistas abren sin overflow global a 1264x761; seguir y dejar de
+seguir confirman resultado, seguimiento conservado al recargar UI (no prueba de reinicio nativo).
+Capturas limpias y real-flows.json en results/isa1057. Timeline tiene etiquetas
+superpuestas en 24h: issue #1058, correccion separada dentro del plan #1027.
+Review del banco detecto instalacion concurrente que duplicaba eventos: RED
+reproducido, promesa compartida y restauracion tras fallo; 19 pruebas PASS.
+La referencia con horario vigente y los avisos reales siguen pendientes del dato.

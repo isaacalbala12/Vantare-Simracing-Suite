@@ -24,6 +24,14 @@ Este plan v1 fue aprobado por Isaac. La ejecución posterior autorizada de #819
 entregó dos cortes locales hasta `4ce96ded`; no autoriza merge o release.
 Base histórica de inspección: `nightly@d6d0992f`.
 
+## Propuesta visual revisable — #1063
+
+Sobre la corrección instrumental `609a4390`, se prepara la propuesta navegable
+`../../strategy-planner/prototypes/recorded-editor/index.html`: siete pasos y
+pantalla resumen/revisión. Es un artefacto documental independiente, sin solver
+ni persistencia; no inicia la sustitución productiva. Pendiente criterio visual
+de Isaac antes de implementar la composición, como fija la spec aprobada.
+
 ## 1. Cómo ejecutar este programa
 
 El corte tiene dependencias empíricas: no es correcto escribir ahora algoritmos o

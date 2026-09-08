@@ -1,5 +1,15 @@
 # Handoff vivo — Strategy Planner
 
+## Actualización ISA-1063: propuesta visual lista (2026-09-08)
+
+Base `609a4390`, rama `vantareapp/isa-1063-strategy-prototype`.
+Propuesta navegable en `docs/strategy-planner/prototypes/recorded-editor/index.html`.
+Siete pasos y pantalla con resumen/revisión; prueba Chrome del recorrido y deshacer.
+No implementa el editor productivo. Isaac debe revisar la composición concreta,
+conforme al gate visual de #1028. El contrato #1033 sigue propuesto y la calidad
+empírica no se declara validada. Sin datos originales modificados ni promoción.
+
+
 ## Actualización ISA-1030: relojes del banco (2026-09-08)
 
 Corrección instrumental sobre `18f9dea4` en `vantareapp/isa-1030-clock-evidence`.

@@ -1,5 +1,16 @@
 # Handoff vivo — Telemetry Analysis
 
+## Propuesta de correcciones desde Strategy — 2026-09-08
+
+#1033 entrega solo ADR 0010, contrato y microplan sobre `8a2d8ff4`, rama
+`vantareapp/isa-1033-observation-corrections`. Analysis conserva custodia de las
+correcciones y derivación; Strategy es la superficie y fija revisiones para planes.
+Ver `docs/adr/0010-analysis-observation-corrections.md` y
+`docs/strategy-planner/corrections-contract-v1.md`. Estado propuesto, sin código,
+fuentes modificadas, nuevos umbrales ni nueva dependencia. Calibración #1030 y
+aceptación real siguen pendientes; no se activa implementación por este handoff.
+
+
 ## Resultado
 
 Herramienta post-sesión que responde «¿cómo puedo ser más rápido?» con

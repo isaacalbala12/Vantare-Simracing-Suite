@@ -65,8 +65,10 @@ referencia en la ruta normal y la cancelación solo local de UI.
 - [ ] Completar F0 empírico y propuesta visual antes de filtros/editor productivos.
 
 Cierre local: `../../strategy-planner/evidence/isa-1038/closeout.md`.
-La revisión permite preparar #1033 documental; no declara aceptado el editor,
-no elimina gates empíricos/Wails ni autoriza integración o publicación.
+La propuesta documental #1033 está preparada: ADR 0010, contrato de correcciones
+y microplan `2026-09-08-analysis-corrections-contract-implementation.md`.
+No hay implementación ni aceptación del editor. Esta propuesta no elimina gates
+empíricos/Wails ni autoriza integración o publicación.
 
 Se proponen microcortes, no un rewrite. Las nuevas revisiones deben fijar
 entradas, fuentes/correcciones y versión del motor; guardar el resultado solo

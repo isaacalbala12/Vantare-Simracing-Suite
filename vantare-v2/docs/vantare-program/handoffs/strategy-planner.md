@@ -17,6 +17,17 @@ son fases históricas.
 
 ## Estado
 
+Actualización ISA-1033 (2026-09-08, contrato propuesto de correcciones):
+
+- Base `8a2d8ff4`, rama `vantareapp/isa-1033-observation-corrections`, solo docs.
+- ADR 0010 y `docs/strategy-planner/corrections-contract-v1.md`: Analysis posee
+  correcciones sobre contenido+interpretación exactos; Strategy selecciona una
+  revisión. Snapshots reversibles, fuente intacta y conflictos explícitos.
+- Microplan posterior en `docs/superpowers/plans/2026-09-08-analysis-corrections-contract-implementation.md`.
+- Propuesta revisable, no persistencia/UI implementadas ni umbrales aprobados.
+- Bloqueos de aceptación: #1030 (anotación/calibración/holdout), Wails, prototipo
+  y F1–F5. Live sigue aplazado. No hubo promoción ni datos reales modificados.
+
 Actualización ISA-1038 (2026-09-08, cierre local del saneamiento):
 
 - Código `5a5feb44`, cierre documental en `vantareapp/isa-1038-review-closeout`.

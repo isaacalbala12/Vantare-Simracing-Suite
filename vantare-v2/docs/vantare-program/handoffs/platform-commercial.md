@@ -1,5 +1,64 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+## ISA-1050 — confirmación de seguimiento (2026-09-08)
+
+C6b: resultado correlacionado tras persistencia, UI pendiente/sin doble clic,
+éxito confirmado y error recuperable. Free bloqueado como antes. 94 focales
+frontend, módulo app completo, build/tipos/lint/roadmap PASS. Full frontend
+3240 PASS, un timeout TrackMap #1025. Review P2 de expectativas event-only
+reproducido (7 RED) y corregido; review ACCEPT 81ffddfa y full Go PASS.
+Base C6a e9dc8ef9; C6a aceptado y full Go PASS, candidato #1051. Rama
+vantareapp/isa-1050-calendar-follow-confirmation. Informe ISA-1050 en docs/analysis.
+Quedan C6c permisos/avisos nativos, C9, Wails y rendimiento. Sin merge/release.
+
+
+## ISA-1049 — seguimiento atómico ante error (2026-09-08)
+
+C6a de #1027: cuatro operaciones restauran memoria/Updated al fallar escritura;
+el reintento persiste realmente. Cuatro regresiones RED→GREEN, módulo PASS.
+Base C5 9f3c5447, rama vantareapp/isa-1049-calendar-follow-persistence.
+Build/full Go/roadmap/review pendientes. Informe ISA-1049 en docs/analysis.
+C8 aceptado en #1048; C7 #1047 CI verde. C5 #1045 CI roja por parser p99 #1019.
+Quedan C6b UI/permisos, C9, Wails y A/A–A/B. Sin merge o release.
+
+
+## ISA-1027 / ISA-1029 — Calendario, plan aprobado y primer corte (2026-09-08)
+
+Isaac aprobó ejecutar el plan `docs/analysis/ISA-1027-calendar-plan.md`.
+El expediente #1027 recoge ocho hallazgos y sus reproducciones; no es una
+certificación visual Wails. HUD/OBS/Studio están excluidos de cambios.
+
+Primer corte #1029: `vantareapp/isa-1029-calendar-retention`, worktree
+`C:/tmp/vantare-isa1029-calendar-retention`, base nightly `d6d0992f`.
+Regresiones RED verificadas para fallo remoto, proyecto remoto vacío,
+publicación anterior/futura, reinicio, pérdida de vigencia y fallo de escritura.
+GREEN: `go test ./internal/calendar/...` PASS. El documento guarda metadatos
+aditivos, conserva horario/seguimientos al fallar red o arrancar y restaura la
+memoria anterior si no puede persistir. Los eventos compartidos se conservan.
+Build frontend PASS para el embed; `go test ./...` PASS y roadmap 23+21 PASS.
+Primera revisión independiente: dos P2 reproducidos y corregidos (orden de
+publicaciones de la misma semana mediante PublishedAt y protección de archivos
+legacy ante publicación futura). Módulo Calendar y `go test ./...` GREEN;
+revisión independiente final 01a6b613 ACCEPT para C2, sin P1/P2 nuevos;
+ver #1029 para la evidencia de cierre, commit, PR y CI exactos.
+
+Pendiente: propagar vigencia por normalización/frontend (C3), errores/acuse (C4),
+recordatorios (C5/C6), fechas/vistas/detalle (C7–C9), Wails representativo (C1) y
+banco A/A–A/B (C10/C11). #1020/#1022/#1024 son candidatos separados que no se
+presuponen integrados. Sin porcentaje de ahorro global ni validación de conducción.
+Sin merge, promoción o release; el checkout principal y LMU/Edge se preservan.
+## ISA-1039 — recordatorios de series (2026-09-08)
+
+C5 de #1027 expande solo la ventana de avisos de las series seguidas y corrige
+truncamiento de minutos. RED inicial y de review reproducidos; módulo Calendar GREEN.
+Poda dedupe de ocurrencias iniciadas, conserva seguimiento individual, sin tocar HUD/Studio.
+Rama vantareapp/isa-1039-calendar-series-reminders ahora sobre C2 e9321068,
+dependencia necesaria para vigencia. Rebase local sin integración de nightly;
+documentos de ambos cortes conservados y JSON regenerado. Build y roadmap PASS;
+Go completo final PASS y review 6094c44e ACCEPT. Informe ISA-1039 en docs/analysis.
+C2/C3/C4a/C4b son candidatos #1031/#1034/#1036/#1040, sin integrar. C6–C11,
+recorrido Wails y banco de rendimiento continúan pendientes. Sin merge ni release.
+
 ## ISA-1011 — runtime de release (2026-09-07)
 
 Nightly.15 no se publicó: el segundo intento 34062671599 pasó tests pero

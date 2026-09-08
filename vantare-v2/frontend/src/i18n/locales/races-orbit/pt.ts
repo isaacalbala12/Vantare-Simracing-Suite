@@ -72,6 +72,9 @@ export const racesOrbitPt: Record<string, string> = {
   "races.tier.advanced": "Ouro",
   "races.tier.weekly": "Semanal",
 
+  "races.detail.followPending": "A guardar…",
+  "races.toasts.followFailed": "Não foi possível guardar o seguimento",
+  "races.toasts.followFailedHint": "A tua preferência não foi confirmada. Tenta novamente.",
   "races.toasts.followed": "Série seguida",
   "races.toasts.followedHint":
     "Lembretes a {{minutes}} min de cada partida de {{name}}.",

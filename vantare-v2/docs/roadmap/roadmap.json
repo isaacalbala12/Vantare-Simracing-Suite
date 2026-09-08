@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-07T03:04:13Z",
+  "generatedAt": "2026-09-08T03:17:02Z",
   "digest": {
-    "lastCommit": "afc6509a8b7b336b17d94467a35e7b36c4e7c5c3"
+    "lastCommit": "d6d0992f8dbc800ccb6d75f60fffdc7c3d561da2"
   },
   "phases": [
     {
@@ -343,6 +343,116 @@
     }
   ],
   "milestones": [
+    {
+      "id": "calendar-correction-optimization",
+      "type": "plan",
+      "title": {
+        "es": "Corrección y optimización integral de Calendario",
+        "en": "Calendar correctness and performance",
+        "pt": "Correção e otimização do Calendário",
+        "it": "Correzione e ottimizzazione del Calendario"
+      },
+      "body": {
+        "es": "Plan aprobado por cortes: pruebas de recorrido, vigencia del horario, recordatorios de series, coherencia de las cinco vistas y optimización medida de apertura, interacción y consumo. Conserva la apariencia y los contratos de HUD y Studio. La validación visual Wails y el ahorro global siguen pendientes.",
+        "en": "Approved incremental plan: end-to-end checks, schedule validity, series reminders, consistency across five views and measured improvements to opening, interaction and resource use. Appearance and HUD/Studio contracts are preserved. Wails visual validation and overall savings remain pending.",
+        "pt": "Plano aprovado por etapas: testes de percurso, validade do horário, lembretes de séries, consistência das cinco vistas e otimização medida de abertura, interação e consumo. Preserva a aparência e os contratos de HUD e Studio. A validação visual Wails e a poupança global continuam pendentes.",
+        "it": "Piano approvato per fasi: prove del percorso, validità degli orari, promemoria delle serie, coerenza delle cinque viste e ottimizzazione misurata di apertura, interazione e consumo. Preserva aspetto e contratti HUD/Studio. Validazione visiva Wails e risparmio complessivo ancora da verificare."
+      },
+      "label": {
+        "es": "ISA-1027",
+        "en": "ISA-1027",
+        "pt": "ISA-1027",
+        "it": "ISA-1027"
+      }
+    },
+    {
+      "id": "calendar-follow-confirmation",
+      "type": "fix",
+      "title": {
+        "es": "Seguimiento confirmado después de guardar",
+        "en": "Follow confirmation after saving",
+        "pt": "Confirmação de seguimento após guardar",
+        "it": "Conferma della preferenza dopo il salvataggio"
+      },
+      "body": {
+        "es": "Seguir o dejar de seguir una serie espera la confirmación del guardado antes de anunciar éxito, bloquea clics duplicados y permite reintentar si falla. Las respuestas ajenas o antiguas no confirman otra acción.",
+        "en": "Following or unfollowing a series waits for save confirmation before reporting success, blocks duplicate clicks and allows retrying on failure. Unrelated or old responses cannot confirm another action.",
+        "pt": "Seguir ou deixar de seguir uma série espera a confirmação da gravação, bloqueia cliques duplicados e permite tentar novamente se falhar. Respostas alheias ou antigas não confirmam outra ação.",
+        "it": "Seguire o smettere di seguire una serie attende la conferma del salvataggio, blocca clic duplicati e consente di riprovare in caso di errore. Risposte estranee o precedenti non confermano un'altra azione."
+      },
+      "label": {
+        "es": "ISA-1050",
+        "en": "ISA-1050",
+        "pt": "ISA-1050",
+        "it": "ISA-1050"
+      }
+    },
+    {
+      "id": "calendar-follow-persistence",
+      "type": "fix",
+      "title": {
+        "es": "Seguimiento conservado si falla el guardado",
+        "en": "Follow preferences preserved on save failure",
+        "pt": "Seguimento preservado se a gravação falhar",
+        "it": "Preferenze conservate se il salvataggio fallisce"
+      },
+      "body": {
+        "es": "Si guardar falla, seguir o dejar de seguir un evento o serie conserva la preferencia anterior y permite reintentar sin aparentar un éxito inexistente.",
+        "en": "If saving fails, following or unfollowing an event or series preserves the previous preference and allows retrying without reporting a false success.",
+        "pt": "Se a gravação falhar, seguir ou deixar de seguir um evento ou série mantém a preferência anterior e permite tentar novamente sem aparentar sucesso.",
+        "it": "Se il salvataggio fallisce, seguire o smettere di seguire un evento o una serie conserva la preferenza precedente e consente di riprovare senza un falso successo."
+      },
+      "label": {
+        "es": "ISA-1049",
+        "en": "ISA-1049",
+        "pt": "ISA-1049",
+        "it": "ISA-1049"
+      }
+    },
+    {
+      "id": "calendar-schedule-retention",
+      "type": "fix",
+      "title": {
+        "es": "Conservación del horario publicado",
+        "en": "Retain the published schedule",
+        "pt": "Preservar o horário publicado",
+        "it": "Conservare il calendario pubblicato"
+      },
+      "body": {
+        "es": "El servicio conserva el horario guardado al reiniciar o fallar la actualización, guarda su vigencia y procedencia y no sustituye un horario activo por una publicación futura. Un fallo al guardar el horario conserva también el estado anterior en memoria. La aplicación de vigencia en las vistas y los recordatorios continúa en los siguientes cortes.",
+        "en": "The service retains the saved schedule across restart or refresh failure, stores its validity and source, and does not replace an active schedule with a future publication. A schedule write failure also preserves the previous in-memory state. View validity and reminder fixes continue in subsequent cuts.",
+        "pt": "O serviço mantém o horário guardado ao reiniciar ou falhar a atualização, guarda validade e origem e não substitui um horário ativo por uma publicação futura. Uma falha de gravação também preserva o estado anterior em memória. Validade nas vistas e lembretes continuam nas próximas etapas.",
+        "it": "Il servizio conserva l'orario salvato al riavvio o in caso di aggiornamento fallito, ne registra validità e origine e non sostituisce un orario attivo con una pubblicazione futura. Un errore di salvataggio conserva anche lo stato precedente in memoria. Validità nelle viste e promemoria proseguono nei prossimi interventi."
+      },
+      "label": {
+        "es": "ISA-1029",
+        "en": "ISA-1029",
+        "pt": "ISA-1029",
+        "it": "ISA-1029"
+      }
+    },
+    {
+      "id": "calendar-series-reminders",
+      "type": "fix",
+      "title": {
+        "es": "Recordatorios de series seguidas",
+        "en": "Reminders for followed series",
+        "pt": "Lembretes de séries seguidas",
+        "it": "Promemoria delle serie seguite"
+      },
+      "body": {
+        "es": "Seguir una serie incluye sus salidas publicadas en los recordatorios. Los avisos respetan el umbral por segundos y no se duplican al seguir también el evento.",
+        "en": "Following a series includes its published starts in reminders. Notifications respect the threshold to the second and are not duplicated when also following the event.",
+        "pt": "Seguir uma série inclui as suas partidas publicadas nos lembretes. Os avisos respeitam o limite por segundos e não se duplicam ao seguir também o evento.",
+        "it": "Seguire una serie include le sue partenze pubblicate nei promemoria. Gli avvisi rispettano la soglia al secondo e non si duplicano seguendo anche l'evento."
+      },
+      "label": {
+        "es": "ISA-1039",
+        "en": "ISA-1039",
+        "pt": "ISA-1039",
+        "it": "ISA-1039"
+      }
+    },
     {
       "id": "telemetry-six-widget-cpu",
       "type": "fix",
@@ -962,12 +1072,32 @@
   ],
   "delivered": [
     {
+      "date": "2026-09-07",
+      "entries": [
+        {
+          "kind": "fix",
+          "scope": "release",
+          "text": "Package hash-pinned approved telemetry runtime"
+        }
+      ]
+    },
+    {
       "date": "2026-09-06",
       "entries": [
         {
+          "kind": "docs",
+          "scope": "release",
+          "text": "Prepare nightly.15 manifest"
+        },
+        {
+          "kind": "fix",
+          "scope": "release",
+          "text": "Install Chromium before visual frontend tests"
+        },
+        {
           "kind": "change",
           "scope": "",
-          "text": "ISA-1000 · Integrar V2 completo y feedback tester en nightly"
+          "text": "ISA-1004 · Corregir Dense a 560x100 y vueltas ilimitadas de Broadcast"
         },
         {
           "kind": "change",
@@ -977,17 +1107,7 @@
         {
           "kind": "change",
           "scope": "",
-          "text": "ISA-1004 · Corregir Dense a 560x100 y vueltas ilimitadas de Broadcast"
-        },
-        {
-          "kind": "fix",
-          "scope": "release",
-          "text": "Install Chromium before visual frontend tests"
-        },
-        {
-          "kind": "docs",
-          "scope": "release",
-          "text": "Prepare nightly.15 manifest"
+          "text": "ISA-1000 · Integrar V2 completo y feedback tester en nightly"
         }
       ]
     },
@@ -1017,22 +1137,12 @@
         {
           "kind": "change",
           "scope": "",
-          "text": "ISA-924 · Banco: atribución del renderer overlay, limpieza de sesiones ETW y frametime inválido marcado"
+          "text": "ISA-894 · F9 corte 1: V1 apagado por defecto con rollback, A/B y guardarraíles"
         },
         {
           "kind": "change",
           "scope": "",
-          "text": "ISA-893 · OverlayFrame V2 autoridad completa en Studio, Desktop y OBS (cutover)"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "ISA-943 · Perfil v4 + Ajustes › Rendimiento (C2)"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "ISA-943 · Pase visual de Ajustes › Rendimiento"
+          "text": "ISA-944 · Sensor de host y modo Automático (F3)"
         },
         {
           "kind": "change",
@@ -1042,12 +1152,22 @@
         {
           "kind": "change",
           "scope": "",
-          "text": "ISA-894 · F9 corte 1: V1 apagado por defecto con rollback, A/B y guardarraíles"
+          "text": "ISA-943 · Pase visual de Ajustes › Rendimiento"
         },
         {
           "kind": "change",
           "scope": "",
-          "text": "ISA-944 · Sensor de host y modo Automático (F3)"
+          "text": "ISA-943 · Perfil v4 + Ajustes › Rendimiento (C2)"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-893 · OverlayFrame V2 autoridad completa en Studio, Desktop y OBS (cutover)"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-924 · Banco: atribución del renderer overlay, limpieza de sesiones ETW y frametime inválido marcado"
         }
       ]
     },
@@ -1057,12 +1177,12 @@
         {
           "kind": "change",
           "scope": "",
-          "text": "ISA-926 · PerformancePolicy en Go: niveles 1–5, ajustes v4 y capabilities.performance"
+          "text": "ISA-924 · Baseline F0 de huella mínima (2026-08-29)"
         },
         {
           "kind": "change",
           "scope": "",
-          "text": "ISA-924 · Baseline F0 de huella mínima (2026-08-29)"
+          "text": "ISA-926 · PerformancePolicy en Go: niveles 1–5, ajustes v4 y capabilities.performance"
         }
       ]
     },
@@ -1608,26 +1728,6 @@
           "kind": "change",
           "scope": "",
           "text": "Producir StrategyLiveProjection v1 desde Telemetry Core"
-        }
-      ]
-    },
-    {
-      "date": "2026-08-12",
-      "entries": [
-        {
-          "kind": "docs",
-          "scope": "release",
-          "text": "Record nightly 7 publication"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "La celda de presion se va en vez de desaparecer"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "Catalogo de animaciones en el Workshop, y motor para relative, delta y pedals"
         }
       ]
     }

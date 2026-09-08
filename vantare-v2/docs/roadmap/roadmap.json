@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-08T02:33:20Z",
+  "generatedAt": "2026-09-08T02:47:02Z",
   "digest": {
     "lastCommit": "d6d0992f8dbc800ccb6d75f60fffdc7c3d561da2"
   },
@@ -343,6 +343,28 @@
     }
   ],
   "milestones": [
+    {
+      "id": "calendar-month-classification",
+      "type": "fix",
+      "title": {
+        "es": "Mes sin ocurrencias duplicadas como especiales",
+        "en": "Month without occurrences duplicated as specials",
+        "pt": "Mês sem ocorrências duplicadas como especiais",
+        "it": "Mese senza occorrenze duplicate come speciali"
+      },
+      "body": {
+        "es": "Mes distingue las ocurrencias generadas de las series y los eventos especiales mediante su procedencia e identidad. Los filtros no convierten series ocultas en especiales y se conserva el documento compartido.",
+        "en": "Month distinguishes generated series occurrences from special events by source and identity. Filters do not turn hidden series into specials and the shared document is preserved.",
+        "pt": "O mês distingue ocorrências geradas das séries e eventos especiais pela origem e identidade. Os filtros não convertem séries ocultas em especiais e o documento partilhado é preservado.",
+        "it": "Il mese distingue le occorrenze generate delle serie dagli eventi speciali tramite origine e identità. I filtri non trasformano serie nascoste in speciali e il documento condiviso resta intatto."
+      },
+      "label": {
+        "es": "ISA-1046",
+        "en": "ISA-1046",
+        "pt": "ISA-1046",
+        "it": "ISA-1046"
+      }
+    },
     {
       "id": "calendar-local-days-slots",
       "type": "fix",

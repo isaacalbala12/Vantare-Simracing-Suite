@@ -302,7 +302,7 @@ export interface MonthDay {
   daily: number;
   /** Series semanales que tienen slots ese día. */
   weekly: { id: string; name: string; slots: number }[];
-  /** Eventos con fecha del fixture (`calendar.events`). */
+  /** Explicit dated events, excluding generated series occurrences. */
   specials: { id: string; title: string }[];
 }
 
@@ -312,6 +312,7 @@ export function monthDays(
   first: Date,
   now: Date,
   events: Calendar["events"] = [],
+  publishedSeries: readonly { id: string }[] = entries,
 ): MonthDay[] {
   const today = dayAnchor(now, 0).getTime();
   const startDow = (first.getDay() + 6) % 7;
@@ -319,6 +320,15 @@ export function monthDays(
   gridStart.setDate(1 - startDow);
   const daily = entries.filter((entry) => entry.engine.every !== undefined);
   const weekly = entries.filter((entry) => entry.engine.every === undefined);
+  const seriesIds = new Set(publishedSeries.map((series) => series.id));
+  const specialEvents = events.filter((event) => {
+    if (event.source !== "vantare-bundled-lmu") return true;
+    const at = new Date(event.startTime);
+    if (Number.isNaN(at.getTime())) return false;
+    // Match the Go makeSeriesEvent identity, not a title or the active filter.
+    const suffix = `-${at.toISOString().slice(0, 19).replace(/[-:]/g, "")}Z`;
+    return !event.id.endsWith(suffix) || !seriesIds.has(event.id.slice(0, -suffix.length));
+  });
 
   return Array.from({ length: 42 }, (_, index) => {
     const day = dayAnchor(gridStart, index);
@@ -342,7 +352,7 @@ export function monthDays(
             })),
       specials: other
         ? []
-        : (events ?? [])
+        : specialEvents
             .filter((event) => {
               const at = new Date(event.startTime);
               return !Number.isNaN(at.getTime()) && at >= day && at < end;

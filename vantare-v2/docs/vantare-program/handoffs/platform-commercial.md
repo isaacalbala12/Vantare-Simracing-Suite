@@ -1,5 +1,16 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+## ISA-1046 — clasificación de Mes (2026-09-08)
+
+C8 de #1027 evita que las ocurrencias generadas aparezcan como especiales.
+Identidad/fuente exacta y todas las series publicadas, sin usar título/filtro activo.
+RED tres fallos; GREEN siete portables y contraste opt-in con 4596 eventos Go,
+ocho PASS. Sin mutar documento ni tocar HUD/Studio/CSS. Base C7 411b5538;
+C7 aceptado en review y candidato #1047, no integrado. Rama
+vantareapp/isa-1046-calendar-month-classification. Checks finales/review pendientes.
+Informe en docs/analysis/ISA-1046-calendar-month-classification.md.
+Continúan C6/C9, Wails y medición A/A–A/B; sin merge ni release.
+
 ## ISA-1044 — días locales y slots (2026-09-08)
 
 C7 de #1027: fechas civiles con setDate; cantidad por ventana real en vez de ocho;

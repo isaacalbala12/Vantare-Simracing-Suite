@@ -239,8 +239,8 @@ export function RacesOrbitPage({ calendar, target, now }: RacesOrbitPageProps) {
   );
   const first = useMemo(() => monthAnchor(clock, offset), [clock, offset]);
   const month = useMemo(
-    () => (view === "month" ? monthDays(visible, first, clock, calendar?.events ?? []) : []),
-    [calendar?.events, clock, first, view, visible],
+    () => (view === "month" ? monthDays(visible, first, clock, calendar?.events ?? [], calendar?.series) : []),
+    [calendar?.events, calendar?.series, clock, first, view, visible],
   );
   const tlStart = useMemo(() => timelineStart(clock), [clock]);
   const tlRows = useMemo(

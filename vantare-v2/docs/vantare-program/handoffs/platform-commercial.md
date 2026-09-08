@@ -9,7 +9,11 @@ propios. Producto01b2b77f ACCEPT:112 focalesPASS/2omitidas, build/tipos/lint y44
 RED10Mes/10Timeline/29columna pasa a0 redundantes sin perder actualizaciones.
 Suite completa3311PASS/2omitidas/3timeouts (Timeline, TrackMap, Standings);
 Timeline aisladoPASS, no suite completa verde. Consumo/latencia Wails pendientes
-de ventana coordinada; otra tarea continua activa. Sin promocion ni release nuevos.
+de horario vigente aplicado: preflight autorizado Wails confirma seed25agosto-1septiembre,
+0eventos/0bloquesTimeline tras refresh ok=true. CandidatoDiscord8-15septiembre pendiente
+de aceptar/publicar por usuario. Revision abierta en instancia aislada34392; LMU20348 intacto.
+Texto Owner ya legible y contenido (captura/medidas); checker fullWidth mezcla unidades, no PASS.
+Sin promocion ni release nuevos.
 Evidencia: docs/analysis/ISA-1064-calendar-performance.md.
 
 ## ISA-1061 - Candidato revisado; validacion visual final pendiente

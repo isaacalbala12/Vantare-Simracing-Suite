@@ -29,3 +29,13 @@ Sin reserva confirmada de ventana de medicion, no se lanza/controla Wails ni otr
 Verificacion manual posterior: comparar la misma publicacion vigente en baseb6b5754e y candidato, LMU en estado estable y mismas rutas/foco/Auto; confirmar cinco vistas, filtros, seguimiento, cuenta atras1s y fronteras hora/dia. Reutilizar banco integrado sin perfilador en aceptacion; >=3 pares comparables y A/A antes de anunciar ahorro. No cargar fixtures unitarios en la app ni publicar horarios para forzar datos.
 
 Rama vantareapp/isa-1064-calendar-performance desdeb6b5754e. Commit/push/PR/CI finales se registran en issue1064. No integracion, promocion, release ni cambios a aplicaciones ajenas. Candidato apto para revision de codigo; aceptacion de rendimiento real pendiente.
+
+## Preflight Wails autorizado 2026-09-08
+
+Isaac autoriza ejecutar la medicion con "hazlo". Build nativa desde19bcbf3b con FromEnvironment, SHA2562049f76c7528536f84de11f138f01e6455e5c8d98b2f7f9a23059639a0f20a4c. Monitor nativo construido. Baseline74400917 verificada sin diferencias de producto frenteb6b5754e. No builds/tests durante capturas (todavia no iniciadas).
+
+Instancia aislada34392, CDP10647, perfilWebView/configs propios. LMU20348 conservado. Licencia active/authenticated/deviceOK. Primer arranque mostro fallo refresh; peticion explicita posterior confirma calendar:refresh:result ok=true. Documento sigue bundled25agosto-1septiembre,11series/0eventos/0bloquesTimeline. No existe aun horario vigente aplicado a esta instancia; bandeja contiene candidato real1545468817164214444 del8-15septiembre sin aceptar/publicar.
+
+A/A y A/B NO iniciados: medir el Timeline vacio no valida la optimizacion del calendario activo. No se inventan eventos ni se publica contenido con autorizacion solo de medicion. Se deja la revision abierta para decision del usuario. No se han cerrado aplicaciones ajenas.
+
+La correccion visual Owner1061 se observa ahora en Wails: candidatos legibles, fuente readonly contenida, margenes izquierdo/derecho20.21875px iguales. Capturas owner-review-native.png y owner-source-native.png; preflight-runtime.json en results/isa1064. Script heredado de geometria retorna fullWidth=false por comparar DOMRect escalado con clientWidth, pese a anchura real788.796875 dentro829.234375 con padding simetrico. No se presenta ese script como PASS; no se cambia tooling en este corte.

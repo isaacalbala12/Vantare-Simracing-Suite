@@ -47,6 +47,14 @@ cabecera compacta, timeline, servicios y restricciones. Revisar el recorrido
 visual antes de enlazarlo; la conexión posterior respeta las dependencias de
 snapshots, correcciones y custodia. No se crean lectores ni solver de demostración.
 
+### Gate visual posterior a 42c9dec8
+
+Tras rechazar la semejanza, Isaac pide iteración y subagente adversarial visual
+hasta superar 9/10. Tres rondas conservan referencias y criterio; la tercera da
+9,1 a parada y 9,2 a stint (menor: 9,1). Evidencia de Chrome a 1672 × 941 en
+`../../strategy-planner/evidence/isa-1063-visual-loop/`. Esto habilita solicitar
+revisión humana de esos detalles; no representa aceptación ni conexión productiva.
+
 ## 1. Cómo ejecutar este programa
 
 El corte tiene dependencias empíricas: no es correcto escribir ahora algoritmos o

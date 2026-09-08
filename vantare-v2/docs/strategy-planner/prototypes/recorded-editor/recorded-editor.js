@@ -4,6 +4,11 @@ const sources = {
   algarve: { track: 'Algarve', car: 'Oreca 07 ELMS Custom Team 2025 #397', category: 'LMP2 ELMS', date: '11 julio 2026', laps: 70, record: 'Grabación parcial · vueltas 101–171', pit: '75,00 s', fuel: '74,725 L', entry: '13513,52', exit: '13588,52', offset: '10104,62 s', crossings: 70 },
 };
 const state = { view: 'summary', step: 0, reached: 0, mode: 'manual', sim: 'lmu', event: 'custom', combo: 'imola', duration: '', unit: 'minutos', driver: '', weather: 'Por confirmar', include: true, advanced: false, undo: null, copy: false };
+// Enlaces revisables del prototipo; la recarga sigue descartando el borrador.
+const previewView = location.hash.slice(1);
+if (['summary', 'advanced', 'plan', 'stint', 'pit', 'calculation', 'revisions'].includes(previewView)) {
+  state.step = 7; state.reached = 7; state.view = previewView; state.advanced = previewView === 'advanced';
+}
 const names = ['Modo de preparación', 'Simulador', 'Evento', 'Coche y circuito', 'Reglas de carrera', 'Pilotos', 'Telemetría'];
 const esc = value => String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
 const icon = (name, size = 22) => `<svg aria-hidden="true" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><use href="../../../../frontend/src/assets/orbit-icons.svg#i-${name}"/></svg>`;
@@ -68,7 +73,13 @@ function workspace() {
     <section class="panel result-panel"><div class="panel-head"><h3>Estrategia de carrera</h3></div><div class="result-empty"><div class="result-icon">${icon('estrategia', 36)}</div><h3>Aún sin calcular</h3><p>${state.include ? 'Completa las reglas y valida las observaciones para generar el plan de carrera.' : 'Incluye una fuente compatible para preparar la estrategia.'}</p></div><div class="result-footer">${button('Calcular estrategia', '', true, true)}<div class="source-actions">${button('Guardar revisión', '', false, true)}</div><p>El cálculo y el guardado no están conectados en esta propuesta.</p></div></section></div></div>`;
 }
 function render(focus = false) {
+  history.replaceState(null, '', state.step === 7 ? `#${state.view}` : location.pathname);
   document.getElementById('shell').dataset.column = state.step === 7 ? 'closed' : 'open';
+  document.getElementById('shell').dataset.view = state.step === 7 ? state.view : 'wizard';
+  document.querySelector('.orbit-topbar__tt').innerHTML = state.step === 7
+    ? `<h1>Estrategia</h1><span class="header-slash">/</span><strong>${sources[state.combo].track}</strong><span class="lmu-badge">LMU</span><span class="category-badge">${detailIcon('car')}${sources[state.combo].category}</span>`
+    : '<span class="orbit-topbar__eyebrow">Centro operativo</span><h1>Estrategia</h1>';
+
   document.getElementById('content').dataset.mode = state.step === 7 ? 'editor' : 'wizard';
   document.getElementById('steps').innerHTML = names.map((name, i) => `<li class="${i < state.step ? 'complete' : ''}"><button data-step="${i}" ${i > state.reached ? 'disabled' : ''} ${i === state.step ? 'aria-current="step"' : ''}><span class="step-n">${i < state.step ? '✓' : i + 1}</span>${name}</button></li>`).join('');
   if (state.step === 7) document.getElementById('content').innerHTML = workspace();
@@ -86,6 +97,12 @@ document.addEventListener('input', event => {
 document.addEventListener('click', event => {
   const target = event.target.closest('button');
   if (!target || target.disabled) return;
+  if (target.dataset.curve) {
+    document.querySelectorAll('[data-curve]').forEach(tab => tab.setAttribute('aria-pressed', String(tab === target)));
+    document.querySelector('.plot-empty span').textContent = `${target.dataset.curve}: curva disponible tras calcular.`;
+    return;
+  }
+
   if (target.dataset.view && ['summary','advanced','plan','stint','pit','calculation','revisions'].includes(target.dataset.view)) { state.view = target.dataset.view; state.advanced = state.view === 'advanced'; render(true); return; }
   if (target.dataset.step !== undefined) { go(Number(target.dataset.step)); return; }
   if (target.dataset.choice) {

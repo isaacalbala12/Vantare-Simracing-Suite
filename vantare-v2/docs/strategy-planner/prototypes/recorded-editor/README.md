@@ -1,5 +1,28 @@
 # ISA-1063 — propuesta registrada con Orbit
 
+## Estado vigente: bucle de semejanza sobre 42c9dec8
+
+Isaac rechazó esa iteración y pidió una revisión adversarial visual con nota >9.
+Tras tres pasadas, el revisor da **9,1/10 a parada y 9,2/10 a stint**. Se solicita
+revisión humana de las capturas reales; no se considera aceptado el acabado.
+[Informe y límites](../../evidence/isa-1063-visual-loop/review-03.md).
+
+Abrir directamente `index.html#pit` o `index.html#stint` mediante el servidor
+local indicado abajo. La URL conserva únicamente la vista. Recargar descarta el
+borrador; no persiste datos ni ejecuta el motor. Las pestañas de recursos cambian
+la selección y el aviso, sin inventar curvas. El Plan ofrece el acceso al esquema
+de cálculo. No hay cambios en la UI productiva.
+
+Archivos de esta iteración: `plan-preview.js`, `recorded-editor.js`, `index.html`,
+`detail-parity.css`, imágenes decorativas `garage-detail-v2.png`/`garage-detail-v3.png`,
+evidencia y documentación. `detail-parity.css` acota las proporciones de estos
+conceptos sobre la shell Orbit. Es un prototipo documental descartable.
+
+La revisión compara a 1672 × 941 y no acredita otras pantallas o precisión del
+solver. Persisten diferencias menores de fotografía e iconografía descritas en
+el informe. Sintaxis de los dos JS, diff y digest comprobados; no builds React/Go
+porque no cambia código productivo. El siguiente texto conserva la historia.
+
 Iteración vigente sobre `e53bb132`: punto medio solicitado por Isaac entre
 presentación plana y exceso de iluminación roja. Primero se termina y revisa la
 parte visual en código; después se enlazan datos y motor. La dirección A4 se

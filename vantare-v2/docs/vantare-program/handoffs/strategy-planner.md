@@ -1,5 +1,22 @@
 # Handoff vivo — Strategy Planner
 
+## Bucle visual adversarial — ISA-1063 (2026-09-08)
+
+Isaac rechaza la semejanza de 42c9dec8 y autoriza excepcionalmente un subagente
+solo para revisión visual adversarial. El bucle exige nota estrictamente >9/10
+antes de solicitar su revisión. Tres pasadas: parada/stint 8,0/8,4; 8,7/8,9;
+**9,1/9,2**. Gate final = menor nota = **9,1/10**. Isaac aún debe aceptar.
+
+Corte sobre 42c9dec8, misma rama/worktree. Cabecera, imagen decorativa, agrupaciones,
+jerarquía, recursos, servicios, iconos y footer reconstruidos contra referencias
+1672 × 941. Enlaces #pit/#stint para revisar las vistas; curvas sin valores y
+cálculo deshabilitado. Sin backend ni originales tocados. Evidencia y límites:
+`docs/strategy-planner/evidence/isa-1063-visual-loop/review-03.md`.
+
+El gate cubre solo stint y parada a ese tamaño, no todas las pantallas ni el
+producto conectado. El siguiente paso es revisión de Isaac de estas capturas y
+recorrido; después continuar visual/conexión según el plan aprobado.
+
 ## Visual en código antes de conexión — ISA-1063 (2026-09-08)
 
 Isaac considera plano el prototipo e53bb132 y excesivo el concepto rojo posterior.

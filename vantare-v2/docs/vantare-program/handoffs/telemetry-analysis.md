@@ -1,5 +1,16 @@
 # Handoff vivo — Telemetry Analysis
 
+## Actualización ISA-1066 — C1a (2026-09-08)
+
+Isaac acepta #1063 como dirección visual inicial. Primer código de correcciones
+sobre `b486050c`, rama `vantareapp/isa-1066-sample-corrections`: identidad de base
+y preparación de un escalar con precondición/original intacto. No persistencia,
+UI conectada, revisión guardada ni solver. Evidencia:
+`docs/strategy-planner/evidence/isa-1066/README.md`.
+Siguiente C1b/base autorizada y snapshots, después C2/custodia. Sin subagentes,
+fuentes modificadas, promoción o publicación.
+
+
 ## Actualización ISA-1030: relojes del banco (2026-09-08)
 
 Corrección instrumental sobre `18f9dea4` en `vantareapp/isa-1030-clock-evidence`.

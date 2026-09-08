@@ -29,8 +29,8 @@ Base histórica de inspección: `nightly@d6d0992f`.
 Sobre la corrección instrumental `609a4390`, se prepara la propuesta navegable
 `../../strategy-planner/prototypes/recorded-editor/index.html`: siete pasos y
 pantalla resumen/revisión. Es un artefacto documental independiente, sin solver
-ni persistencia; no inicia la sustitución productiva. Pendiente criterio visual
-de Isaac antes de implementar la composición, como fija la spec aprobada.
+ni persistencia; no inicia la sustitución productiva. Isaac aceptó esta dirección visual como inicio. C1a (#1066) prepara identidad y
+corrección escalar antes de conectar la edición; el resto de F1–F5 sigue pendiente.
 
 ## 1. Cómo ejecutar este programa
 

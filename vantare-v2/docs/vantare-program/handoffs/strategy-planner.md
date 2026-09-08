@@ -1,5 +1,16 @@
 # Handoff vivo — Strategy Planner
 
+## Actualización ISA-1066 — C1a (2026-09-08)
+
+Isaac acepta #1063 como dirección visual inicial. Primer código de correcciones
+sobre `b486050c`, rama `vantareapp/isa-1066-sample-corrections`: identidad de base
+y preparación de un escalar con precondición/original intacto. No persistencia,
+UI conectada, revisión guardada ni solver. Evidencia:
+`docs/strategy-planner/evidence/isa-1066/README.md`.
+Siguiente C1b/base autorizada y snapshots, después C2/custodia. Sin subagentes,
+fuentes modificadas, promoción o publicación.
+
+
 ## Actualización ISA-1063: propuesta visual lista (2026-09-08)
 
 Base `609a4390`, rama `vantareapp/isa-1063-strategy-prototype`.

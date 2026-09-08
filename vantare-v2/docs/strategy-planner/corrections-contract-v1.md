@@ -1,6 +1,6 @@
 # Contrato propuesto v1 — correcciones de observaciones
 
-Estado: propuesta de #1033, sin implementación. Base `8a2d8ff4`.
+Estado: contrato global propuesto en #1033. C1a implementa solo identidad y preparación escalar en #1066; custodia/revisiones/otras operaciones siguen pendientes. Base del contrato `8a2d8ff4`.
 Owner: Telemetry Analysis. Superficie de edición: Strategy.
 [Decisión de custodia](../adr/0010-analysis-observation-corrections.md).
 
@@ -176,3 +176,11 @@ selectores ambiguos, solapes, independencia Fuel/VE/ritmo, deshacer/rehacer,
 conflictos entre escritores, reintento idempotente, corrupción/backup, cancelación,
 originales intactos y revisión de plan inmutable. Corpus y filtros requieren su
 aceptación empírica independiente; tests contractuales no la sustituyen.
+
+## Corte C1a implementado — #1066
+
+Tipos/validación puros en `internal/telemetryanalysis/corrections.go` y tests vecinos.
+El resultado es `PreparedSampleCorrection`, nunca una revisión guardada. Calidad
+original preservada; la corrección no concede autorización ni elimina un fallo duro.
+Límites y vector canónico en `evidence/isa-1066/README.md`. El resto del contrato
+mantiene su alcance propuesto y requiere cortes separados antes de conectarse.

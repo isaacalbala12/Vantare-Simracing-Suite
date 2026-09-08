@@ -18,7 +18,7 @@ import {
   type TimelineBlock,
 } from "../../ui/orbit";
 import { formatMessage } from "../orbit/format-message";
-import { formatCountdown, formatStartTime, nextStarts } from "../orbit/next-starts";
+import { formatCountdown, formatStartTime, nextStarts, repeatedHourOffset } from "../orbit/next-starts";
 import { useOrbitSlot } from "../orbit/use-orbit-slot";
 import {
   buildSeriesEntries,
@@ -138,9 +138,14 @@ export function RacesOrbitPage({ calendar, target, now }: RacesOrbitPageProps) {
   const [view, setView] = useState<RacesView>("next");
   const [tier, setTier] = useState<TierFilter>("all");
   const [offset, setOffset] = useState(0);
-  const [picked, setPicked] = useState<string | null>(null);
-  /** Hora concreta elegida en Semana/Mes/Día/Timeline (manda en el detalle). */
-  const [pickedAt, setPickedAt] = useState<Date | null>(null);
+  const [selection, setSelection] = useState<{ id: string | null; at: Date | null; target?: string }>(() => ({ id: null, at: null, target }));
+  // A new navigation destination starts a fresh selection, including its filter.
+  // Adjust before painting so a hidden target cannot briefly show another series.
+  if (selection.target !== target) {
+    setSelection({ id: null, at: null, target });
+    setTier("all");
+  }
+  const picked = selection.target === target ? selection.id : null;
 
   // Rango y zoom persistidos: se leen una sola vez, al montar.
   const [range, setRange] = useState<TimelineRange>(() => readTimelinePrefs().range);
@@ -158,10 +163,17 @@ export function RacesOrbitPage({ calendar, target, now }: RacesOrbitPageProps) {
   const selected: RaceSeriesEntry | null =
     visible.find((entry) => entry.id === selectedId) ?? visible[0] ?? null;
 
+  // An explicit instant belongs to its selected series and navigation target.
+  // Revalidate against the current publication before displaying it.
+  const pickedAt = useMemo(() => {
+    if (!selected || selection.target !== target || selection.id !== selected.id || !selection.at) return null;
+    const at = selection.at;
+    return nextStarts(selected.engine, at, 1)[0]?.getTime() === at.getTime() ? at : null;
+  }, [selected, selection, target]);
+
   const select = useCallback((id: string, at?: Date) => {
-    setPicked(id);
-    setPickedAt(at ?? null);
-  }, []);
+    setSelection({ id, at: at ?? null, target });
+  }, [target]);
 
   const changeView = useCallback((next: RacesView) => {
     setView(next);
@@ -229,8 +241,8 @@ export function RacesOrbitPage({ calendar, target, now }: RacesOrbitPageProps) {
   );
   const dayBase = useMemo(() => dayAnchor(clock, offset), [clock, offset]);
   const hours = useMemo(
-    () => (view === "day" ? dayRows(visible, dayBase, clock) : []),
-    [clock, dayBase, view, visible],
+    () => (view === "day" ? dayRows(visible, dayBase, clock, calendar?.events ?? [], calendar?.series) : []),
+    [calendar?.events, calendar?.series, clock, dayBase, view, visible],
   );
   const monday = useMemo(() => weekAnchor(clock, offset), [clock, offset]);
   const week = useMemo(
@@ -239,8 +251,8 @@ export function RacesOrbitPage({ calendar, target, now }: RacesOrbitPageProps) {
   );
   const first = useMemo(() => monthAnchor(clock, offset), [clock, offset]);
   const month = useMemo(
-    () => (view === "month" ? monthDays(visible, first, clock, calendar?.events ?? []) : []),
-    [calendar?.events, clock, first, view, visible],
+    () => (view === "month" ? monthDays(visible, first, clock, calendar?.events ?? [], calendar?.series) : []),
+    [calendar?.events, calendar?.series, clock, first, view, visible],
   );
   const tlStart = useMemo(() => timelineStart(clock), [clock]);
   const tlRows = useMemo(
@@ -526,7 +538,9 @@ export function RacesOrbitPage({ calendar, target, now }: RacesOrbitPageProps) {
           }
           title={calendarTitle}
         >
-          {visible.length === 0 ? (
+          {visible.length === 0 &&
+          !(view === "month" && month.some((cell) => cell.specials.length > 0)) &&
+          !(view === "day" && hours.some((hour) => hour.specials.length > 0)) ? (
             <p className="orbit-races__empty">
               {entries.length === 0 ? t("races.empty") : t("races.emptyFiltered")}
             </p>
@@ -620,9 +634,20 @@ export function RacesOrbitPage({ calendar, target, now }: RacesOrbitPageProps) {
                         type="button"
                       >
                         <i aria-hidden="true" className="orbit-tier-dot" data-tier={event.entry.tier} />
-                        <b>:{pad2(event.at.getMinutes())}</b>
+                        <b>:{pad2(event.at.getMinutes())}{repeatedHourOffset(event.at)}</b>
                         {event.entry.name}
                       </button>
+                    ))}
+                    {hour.specials.map(({ event, at }) => (
+                      <span
+                        className="orbit-races__chip"
+                        data-past={at < clock ? "true" : undefined}
+                        data-testid="orbit-races-special-chip"
+                        key={event.id}
+                      >
+                        <b>:{pad2(at.getMinutes())}{repeatedHourOffset(at)}</b>
+                        {event.title}
+                      </span>
                     ))}
                   </span>
                 </div>
@@ -897,7 +922,7 @@ export function RacesOrbitPage({ calendar, target, now }: RacesOrbitPageProps) {
                 </div>
                 <div>
                   <dt>{t("races.detail.sessions")}</dt>
-                  <dd>{selected.sessions || "—"}</dd>
+                  <dd>{selected.sessions || "—"}{selected.sessionsEstimated ? ` · ${t("races.detail.estimated")}` : ""}</dd>
                 </div>
               </dl>
 

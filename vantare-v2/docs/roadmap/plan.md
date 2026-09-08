@@ -254,6 +254,58 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 
 ## Hitos
 
+### Detalle de Calendario coherente con la selección
+
+- id: calendar-detail-selection
+- tipo: fix
+- titulo.en: Calendar detail follows the selected race
+- titulo.pt: Detalhe do Calendário coerente com a seleção
+- titulo.it: Dettaglio del Calendario coerente con la selezione
+- cuerpo: El detalle marca las duraciones estimadas y valida la hora elegida para la serie y publicación actuales. Cambiar de filtro o navegar desde Inicio no arrastra una hora ajena; las horas históricas aún publicadas se conservan.
+- cuerpo.en: Details mark estimated durations and validate the selected time against the current series and publication. Changing filters or navigating from Home does not carry over another race time; valid historical times are preserved.
+- cuerpo.pt: O detalhe assinala durações estimadas e valida a hora escolhida para a série e publicação atuais. Mudar o filtro ou navegar desde Início não arrasta outra hora; horários históricos válidos são preservados.
+- cuerpo.it: Il dettaglio indica le durate stimate e verifica l'orario scelto per la serie e pubblicazione correnti. Cambiare filtro o navigare da Home non trascina un altro orario; gli orari storici validi vengono conservati.
+- etiqueta: ISA-1052
+
+### Mes sin ocurrencias duplicadas como especiales
+
+- id: calendar-month-classification
+- tipo: fix
+- titulo.en: Month without occurrences duplicated as specials
+- titulo.pt: Mês sem ocorrências duplicadas como especiais
+- titulo.it: Mese senza occorrenze duplicate come speciali
+- cuerpo: Mes distingue las ocurrencias generadas de las series y los eventos especiales mediante su procedencia e identidad. Los filtros no convierten series ocultas en especiales y se conserva el documento compartido. Al abrir un especial o +N, Día conserva los eventos anunciados por Mes, incluso sin series.
+- cuerpo.en: Month distinguishes generated series occurrences from special events by source and identity. Filters do not turn hidden series into specials and the shared document is preserved. Opening a special or +N keeps the events shown by Month in Day, even without series.
+- cuerpo.pt: O mês distingue ocorrências geradas das séries e eventos especiais pela origem e identidade. Os filtros não convertem séries ocultas em especiais e o documento partilhado é preservado. Ao abrir um especial ou +N, Dia mantém os eventos mostrados pelo Mês, mesmo sem séries.
+- cuerpo.it: Il mese distingue le occorrenze generate delle serie dagli eventi speciali tramite origine e identità. I filtri non trasformano serie nascoste in speciali e il documento condiviso resta intatto. Aprendo uno speciale o +N, Giorno conserva gli eventi mostrati da Mese, anche senza serie.
+- etiqueta: ISA-1046
+
+### Días locales y salidas completas en Calendario
+
+- id: calendar-local-days-slots
+- tipo: fix
+- titulo.en: Local days and complete calendar starts
+- titulo.pt: Dias locais e partidas completas no calendário
+- titulo.it: Giorni locali e partenze complete nel calendario
+- cuerpo: Las vistas respetan medianoches locales y cambios de hora, cuentan todas las salidas publicadas y distinguen los instantes de una hora repetida mediante su desplazamiento UTC.
+- cuerpo.en: Views respect local midnights and daylight saving changes, count every published start and distinguish repeated-hour instants using their UTC offset.
+- cuerpo.pt: As vistas respeitam as meias-noites locais e mudanças de hora, contam todas as partidas publicadas e distinguem instantes de uma hora repetida pelo desvio UTC.
+- cuerpo.it: Le viste rispettano le mezzanotti locali e i cambi d'ora, contano tutte le partenze pubblicate e distinguono gli istanti di un'ora ripetuta tramite lo scarto UTC.
+- etiqueta: ISA-1044
+
+### Vigencia de las salidas de Calendario
+
+- id: calendar-schedule-validity
+- tipo: fix
+- titulo.en: Calendar departure validity
+- titulo.pt: Validade das saídas do Calendário
+- titulo.it: Validità delle partenze del Calendario
+- cuerpo: Inicio y el motor de las cinco vistas limitan las salidas al periodo publicado, incluido el detalle y los previews. Sin vigencia verificable no se generan nuevas salidas. Este corte depende de los metadatos del servicio ISA-1029; errores visibles, recordatorios y los demás ajustes de las vistas siguen en el plan ISA-1027.
+- cuerpo.en: Home and the five-view engine limit departures to the published period, including details and previews. No new departures are generated without verifiable validity. This cut depends on ISA-1029 service metadata; visible errors, reminders and remaining view fixes continue in ISA-1027.
+- cuerpo.pt: Início e o motor das cinco vistas limitam saídas ao período publicado, incluindo detalhe e previews. Sem validade verificável não são geradas novas saídas. Depende dos metadados ISA-1029; erros visíveis, lembretes e restantes correções continuam no plano ISA-1027.
+- cuerpo.it: Home e il motore delle cinque viste limitano le partenze al periodo pubblicato, inclusi dettagli e anteprime. Senza validità verificabile non vengono generate nuove partenze. Dipende dai metadati ISA-1029; errori visibili, promemoria e altre correzioni proseguono nel piano ISA-1027.
+- etiqueta: ISA-1032
+
 ### CPU con seis widgets
 
 - id: telemetry-six-widget-cpu

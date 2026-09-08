@@ -76,6 +76,7 @@ function extractCalendar(input: unknown): Calendar {
 /** @internal exported for testing only */
 export function normaliseCalendar(cal: Calendar): Calendar {
   return {
+    ...(cal.schedule ? { schedule: { ...cal.schedule } } : {}),
     version: cal.version ?? 1,
     timezone: cal.timezone ?? EMPTY_CALENDAR.timezone,
     reminderMinutes: Array.isArray(cal.reminderMinutes)

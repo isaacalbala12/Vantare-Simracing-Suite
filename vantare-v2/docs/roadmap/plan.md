@@ -279,6 +279,18 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - cuerpo.pt: O serviço mantém o horário guardado ao reiniciar ou falhar a atualização, guarda validade e origem e não substitui um horário ativo por uma publicação futura. Uma falha de gravação também preserva o estado anterior em memória. Validade nas vistas e lembretes continuam nas próximas etapas.
 - cuerpo.it: Il servizio conserva l'orario salvato al riavvio o in caso di aggiornamento fallito, ne registra validità e origine e non sostituisce un orario attivo con una pubblicazione futura. Un errore di salvataggio conserva anche lo stato precedente in memoria. Validità nelle viste e promemoria proseguono nei prossimi interventi.
 - etiqueta: ISA-1029
+### Recordatorios de series seguidas
+
+- id: calendar-series-reminders
+- tipo: fix
+- titulo.en: Reminders for followed series
+- titulo.pt: Lembretes de séries seguidas
+- titulo.it: Promemoria delle serie seguite
+- cuerpo: Seguir una serie incluye sus salidas publicadas en los recordatorios. Los avisos respetan el umbral por segundos y no se duplican al seguir también el evento.
+- cuerpo.en: Following a series includes its published starts in reminders. Notifications respect the threshold to the second and are not duplicated when also following the event.
+- cuerpo.pt: Seguir uma série inclui as suas partidas publicadas nos lembretes. Os avisos respeitam o limite por segundos e não se duplicam ao seguir também o evento.
+- cuerpo.it: Seguire una serie include le sue partenze pubblicate nei promemoria. Gli avvisi rispettano la soglia al secondo e non si duplicano seguendo anche l'evento.
+- etiqueta: ISA-1039
 
 ### CPU con seis widgets
 

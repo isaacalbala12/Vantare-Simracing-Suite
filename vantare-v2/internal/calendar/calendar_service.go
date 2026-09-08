@@ -587,7 +587,7 @@ func (s *Service) Past(now time.Time) (RaceEvent, bool) {
 	return RaceEvent{}, false
 }
 
-// DueReminders returns reminders for followed events whose start time falls
+// DueReminders returns reminders for followed events or followed series occurrences whose start time falls
 // within each configured reminder threshold. A reminder at threshold T is due
 // when the event starts in (T-1, T] minutes. Past and active events are never
 // included. Deduplication is intentionally not performed here (handled by
@@ -601,7 +601,7 @@ func (s *Service) DueReminders(now time.Time) []Reminder {
 		reminderMinutes = DefaultReminderMinutes
 	}
 
-	if len(s.cal.FollowedEventIDs) == 0 {
+	if len(s.cal.FollowedEventIDs) == 0 && len(s.cal.FollowedSeriesIDs) == 0 {
 		return []Reminder{}
 	}
 
@@ -609,18 +609,30 @@ func (s *Service) DueReminders(now time.Time) []Reminder {
 	for _, id := range s.cal.FollowedEventIDs {
 		followed[id] = struct{}{}
 	}
+	followedSeries := make(map[string]struct{}, len(s.cal.FollowedSeriesIDs))
+	for _, id := range s.cal.FollowedSeriesIDs {
+		if seriesExistsLocked(s.cal.Series, id) {
+			followedSeries[id] = struct{}{}
+		}
+	}
 
 	var out []Reminder
 	for _, ev := range s.cal.Events {
-		if _, ok := followed[ev.ID]; !ok {
-			continue
-		}
 		if !now.Before(ev.StartTime) {
 			continue
 		}
-		minutesUntil := int(ev.StartTime.Sub(now).Minutes())
+		if _, ok := followed[ev.ID]; !ok {
+			if ev.Source != BundledSource || len(followedSeries) == 0 {
+				continue
+			}
+			seriesID, canonical := strings.CutSuffix(ev.ID, "-"+ev.StartTime.UTC().Format(seriesEventTimeLayout))
+			if _, ok := followedSeries[seriesID]; !canonical || !ok {
+				continue
+			}
+		}
+		until := ev.StartTime.Sub(now)
 		for _, t := range reminderMinutes {
-			if minutesUntil <= t && minutesUntil > t-1 {
+			if until <= time.Duration(t)*time.Minute && until > time.Duration(t-1)*time.Minute {
 				out = append(out, Reminder{
 					EventID:         ev.ID,
 					Title:           ev.Title,

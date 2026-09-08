@@ -25,6 +25,15 @@ recordatorios (C5/C6), fechas/vistas/detalle (C7–C9), Wails representativo (C1
 banco A/A–A/B (C10/C11). #1020/#1022/#1024 son candidatos separados que no se
 presuponen integrados. Sin porcentaje de ahorro global ni validación de conducción.
 Sin merge, promoción o release; el checkout principal y LMU/Edge se preservan.
+## ISA-1039 — recordatorios de series (2026-09-08)
+
+C5 de #1027 conecta series seguidas con los eventos publicados y corrige
+truncamiento de minutos. RED reproducido; módulo Calendar GREEN. Sigue la
+identidad canónica del generador, sin generar más salidas ni tocar HUD/Studio.
+Rama vantareapp/isa-1039-calendar-series-reminders desde nightly d6d0992f.
+Build, Go completo, roadmap y review pendientes. Informe ISA-1039 en docs/analysis.
+C2/C3/C4a/C4b son candidatos #1031/#1034/#1036/#1040, sin integrar. C6–C11,
+recorrido Wails y banco de rendimiento continúan pendientes. Sin merge ni release.
 
 ## ISA-1011 — runtime de release (2026-09-07)
 

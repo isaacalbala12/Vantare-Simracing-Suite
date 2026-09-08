@@ -254,6 +254,201 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 
 ## Hitos
 
+### Validacion y rendimiento de Calendario
+
+- id: calendar-validation-performance
+- tipo: plan
+- titulo.en: Calendar validation and performance
+- titulo.pt: Validacao e desempenho do Calendario
+- titulo.it: Validazione e prestazioni del Calendario
+- cuerpo: Validar conjuntamente las correcciones de Calendario en la app real y medir consumo y velocidad antes de aceptar optimizaciones.
+- cuerpo.en: Validate Calendar corrections together in the real app and measure resource use and speed before accepting optimizations.
+- cuerpo.pt: Validar as correcoes do Calendario na app real e medir consumo e velocidade antes de aceitar otimizacoes.
+- cuerpo.it: Validare le correzioni del Calendario nella app reale e misurare consumo e velocita prima di accettare ottimizzazioni.
+- etiqueta: ISA-1057
+
+### Rendimiento de la base de la app
+
+- id: base-app-footprint
+- tipo: plan
+- titulo.en: Base app performance
+- titulo.pt: Desempenho da base da aplicação
+- titulo.it: Prestazioni della base dell'app
+- cuerpo: Campaña aprobada para reducir CPU, GPU y memoria y acelerar arranque, apertura de pantallas, navegación y respuesta de la base de Vantare, conservando apariencia y capacidades. Incluye Hub, navegación y servicios comunes; HUD y Overlay Studio quedan excluidos. El escenario principal mantiene el simulador abierto y mide los procesos propios de Vantare. Primero se prepara el banco y una referencia reproducible, después se validan cambios pequeños. Todavía no se anuncia ahorro medido.
+- cuerpo.en: Approved campaign to reduce CPU, GPU and memory use and speed up startup, screen opening, navigation and interaction in the Vantare base app while preserving appearance and capabilities. Includes the Hub, navigation and shared services; HUD and Overlay Studio are excluded. The main scenario keeps the simulator open and measures Vantare-owned processes. First prepare the measurement tools and a reproducible baseline, then validate small changes. No measured savings are announced yet.
+- cuerpo.pt: Campanha aprovada para reduzir CPU, GPU e memória e acelerar o arranque, a abertura de ecrãs, a navegação e a resposta da base do Vantare, preservando aparência e capacidades. Inclui Hub, navegação e serviços comuns; HUD e Overlay Studio ficam excluídos. O cenário principal mantém o simulador aberto e mede os processos do Vantare. Primeiro preparar as ferramentas e uma referência reproduzível, depois validar pequenas alterações. Ainda não se anuncia uma redução medida.
+- cuerpo.it: Campagna approvata per ridurre CPU, GPU e memoria e accelerare avvio, apertura delle schermate, navigazione e risposta della base di Vantare, preservando aspetto e capacità. Include Hub, navigazione e servizi comuni; HUD e Overlay Studio sono esclusi. Lo scenario principale mantiene aperto il simulatore e misura i processi di Vantare. Prima preparare gli strumenti e una base riproducibile, poi verificare piccole modifiche. Nessun risparmio misurato viene ancora annunciato.
+- etiqueta: ISA-1015
+
+### Pestaña Calendario
+
+- id: calendar-tab-name
+- tipo: fix
+- titulo.en: Calendar tab
+- titulo.pt: Separador Calendário
+- titulo.it: Scheda Calendario
+- cuerpo: La pestaña antes llamada Carreras se llama Calendario. Los títulos y enlaces de Inicio y Strategy usan el mismo nombre; sus vistas, datos y funcionamiento se mantienen.
+- cuerpo.en: The tab previously called Races is now Calendar. Titles and links from Home and Strategy use the same name; views, data and behavior are unchanged.
+- cuerpo.pt: O separador antes chamado Corridas chama-se Calendário. Títulos e ligações de Início e Strategy usam o mesmo nome; vistas, dados e funcionamento mantêm-se.
+- cuerpo.it: La scheda prima chiamata Gare si chiama Calendario. Titoli e collegamenti da Home e Strategy usano lo stesso nome; viste, dati e funzionamento restano invariati.
+- etiqueta: ISA-1022
+
+### Corrección y optimización integral de Calendario
+
+- id: calendar-correction-optimization
+- tipo: plan
+- titulo.en: Calendar correctness and performance
+- titulo.pt: Correção e otimização do Calendário
+- titulo.it: Correzione e ottimizzazione del Calendario
+- cuerpo: Plan aprobado por cortes: pruebas de recorrido, vigencia del horario, recordatorios de series, coherencia de las cinco vistas y optimización medida de apertura, interacción y consumo. Conserva la apariencia y los contratos de HUD y Studio. La validación visual Wails y el ahorro global siguen pendientes.
+- cuerpo.en: Approved incremental plan: end-to-end checks, schedule validity, series reminders, consistency across five views and measured improvements to opening, interaction and resource use. Appearance and HUD/Studio contracts are preserved. Wails visual validation and overall savings remain pending.
+- cuerpo.pt: Plano aprovado por etapas: testes de percurso, validade do horário, lembretes de séries, consistência das cinco vistas e otimização medida de abertura, interação e consumo. Preserva a aparência e os contratos de HUD e Studio. A validação visual Wails e a poupança global continuam pendentes.
+- cuerpo.it: Piano approvato per fasi: prove del percorso, validità degli orari, promemoria delle serie, coerenza delle cinque viste e ottimizzazione misurata di apertura, interazione e consumo. Preserva aspetto e contratti HUD/Studio. Validazione visiva Wails e risparmio complessivo ancora da verificare.
+- etiqueta: ISA-1027
+
+### Recordatorios nativos con permisos y preferencias
+
+- id: calendar-native-reminders
+- tipo: fix
+- titulo.en: Native reminders respect permissions and preferences
+- titulo.pt: Lembretes nativos respeitam permissões e preferências
+- titulo.it: Promemoria nativi con permessi e preferenze
+- cuerpo: Los recordatorios de Calendario usan las notificaciones nativas existentes cuando la ventana está minimizada, el usuario las activa y la plataforma las permite. La autoridad nativa controla los seguimientos y avisos; aceptar un envío no confirma que Windows lo haya mostrado.
+- cuerpo.en: Calendar reminders use existing native notifications when the window is minimised, the user enables them and the platform allows them. Native authority controls follows and reminders; accepting a send does not prove Windows displayed it.
+- cuerpo.pt: Os lembretes do Calendário usam as notificações nativas existentes com a janela minimizada, se o utilizador as ativar e a plataforma permitir. A autoridade nativa controla seguimentos e avisos; aceitar um envio não prova que o Windows o mostrou.
+- cuerpo.it: I promemoria del Calendario usano le notifiche native esistenti con finestra ridotta a icona, se abilitate dall'utente e consentite dalla piattaforma. L'autorità nativa controlla preferenze e avvisi; accettare l'invio non prova che Windows lo abbia mostrato.
+- etiqueta: ISA-1055
+
+### Seguimiento confirmado después de guardar
+
+- id: calendar-follow-confirmation
+- tipo: fix
+- titulo.en: Follow confirmation after saving
+- titulo.pt: Confirmação de seguimento após guardar
+- titulo.it: Conferma della preferenza dopo il salvataggio
+- cuerpo: Seguir o dejar de seguir una serie espera la confirmación del guardado antes de anunciar éxito, bloquea clics duplicados y permite reintentar si falla. Las respuestas ajenas o antiguas no confirman otra acción.
+- cuerpo.en: Following or unfollowing a series waits for save confirmation before reporting success, blocks duplicate clicks and allows retrying on failure. Unrelated or old responses cannot confirm another action.
+- cuerpo.pt: Seguir ou deixar de seguir uma série espera a confirmação da gravação, bloqueia cliques duplicados e permite tentar novamente se falhar. Respostas alheias ou antigas não confirmam outra ação.
+- cuerpo.it: Seguire o smettere di seguire una serie attende la conferma del salvataggio, blocca clic duplicati e consente di riprovare in caso di errore. Risposte estranee o precedenti non confermano un'altra azione.
+- etiqueta: ISA-1050
+
+### Seguimiento conservado si falla el guardado
+
+- id: calendar-follow-persistence
+- tipo: fix
+- titulo.en: Follow preferences preserved on save failure
+- titulo.pt: Seguimento preservado se a gravação falhar
+- titulo.it: Preferenze conservate se il salvataggio fallisce
+- cuerpo: Si guardar falla, seguir o dejar de seguir un evento o serie conserva la preferencia anterior y permite reintentar sin aparentar un éxito inexistente.
+- cuerpo.en: If saving fails, following or unfollowing an event or series preserves the previous preference and allows retrying without reporting a false success.
+- cuerpo.pt: Se a gravação falhar, seguir ou deixar de seguir um evento ou série mantém a preferência anterior e permite tentar novamente sem aparentar sucesso.
+- cuerpo.it: Se il salvataggio fallisce, seguire o smettere di seguire un evento o una serie conserva la preferenza precedente e consente di riprovare senza un falso successo.
+- etiqueta: ISA-1049
+
+### Conservación del horario publicado
+
+- id: calendar-schedule-retention
+- tipo: fix
+- titulo.en: Retain the published schedule
+- titulo.pt: Preservar o horário publicado
+- titulo.it: Conservare il calendario pubblicato
+- cuerpo: El servicio conserva el horario guardado al reiniciar o fallar la actualización, guarda su vigencia y procedencia y no sustituye un horario activo por una publicación futura. Un fallo al guardar el horario conserva también el estado anterior en memoria. La aplicación de vigencia en las vistas y los recordatorios continúa en los siguientes cortes.
+- cuerpo.en: The service retains the saved schedule across restart or refresh failure, stores its validity and source, and does not replace an active schedule with a future publication. A schedule write failure also preserves the previous in-memory state. View validity and reminder fixes continue in subsequent cuts.
+- cuerpo.pt: O serviço mantém o horário guardado ao reiniciar ou falhar a atualização, guarda validade e origem e não substitui um horário ativo por uma publicação futura. Uma falha de gravação também preserva o estado anterior em memória. Validade nas vistas e lembretes continuam nas próximas etapas.
+- cuerpo.it: Il servizio conserva l'orario salvato al riavvio o in caso di aggiornamento fallito, ne registra validità e origine e non sostituisce un orario attivo con una pubblicazione futura. Un errore di salvataggio conserva anche lo stato precedente in memoria. Validità nelle viste e promemoria proseguono nei prossimi interventi.
+- etiqueta: ISA-1029
+
+### Recordatorios de series seguidas
+
+- id: calendar-series-reminders
+- tipo: fix
+- titulo.en: Reminders for followed series
+- titulo.pt: Lembretes de séries seguidas
+- titulo.it: Promemoria delle serie seguite
+- cuerpo: Seguir una serie incluye sus salidas publicadas en los recordatorios. Los avisos respetan el umbral por segundos y no se duplican al seguir también el evento.
+- cuerpo.en: Following a series includes its published starts in reminders. Notifications respect the threshold to the second and are not duplicated when also following the event.
+- cuerpo.pt: Seguir uma série inclui as suas partidas publicadas nos lembretes. Os avisos respeitam o limite por segundos e não se duplicam ao seguir também o evento.
+- cuerpo.it: Seguire una serie include le sue partenze pubblicate nei promemoria. Gli avvisi rispettano la soglia al secondo e non si duplicano seguendo anche l'evento.
+- etiqueta: ISA-1039
+
+### Detalle de Calendario coherente con la selección
+
+- id: calendar-detail-selection
+- tipo: fix
+- titulo.en: Calendar detail follows the selected race
+- titulo.pt: Detalhe do Calendário coerente com a seleção
+- titulo.it: Dettaglio del Calendario coerente con la selezione
+- cuerpo: El detalle marca las duraciones estimadas y valida la hora elegida para la serie y publicación actuales. Cambiar de filtro o navegar desde Inicio no arrastra una hora ajena; las horas históricas aún publicadas se conservan.
+- cuerpo.en: Details mark estimated durations and validate the selected time against the current series and publication. Changing filters or navigating from Home does not carry over another race time; valid historical times are preserved.
+- cuerpo.pt: O detalhe assinala durações estimadas e valida a hora escolhida para a série e publicação atuais. Mudar o filtro ou navegar desde Início não arrasta outra hora; horários históricos válidos são preservados.
+- cuerpo.it: Il dettaglio indica le durate stimate e verifica l'orario scelto per la serie e pubblicazione correnti. Cambiare filtro o navigare da Home non trascina un altro orario; gli orari storici validi vengono conservati.
+- etiqueta: ISA-1052
+
+### Mes sin ocurrencias duplicadas como especiales
+
+- id: calendar-month-classification
+- tipo: fix
+- titulo.en: Month without occurrences duplicated as specials
+- titulo.pt: Mês sem ocorrências duplicadas como especiais
+- titulo.it: Mese senza occorrenze duplicate come speciali
+- cuerpo: Mes distingue las ocurrencias generadas de las series y los eventos especiales mediante su procedencia e identidad. Los filtros no convierten series ocultas en especiales y se conserva el documento compartido. Al abrir un especial o +N, Día conserva los eventos anunciados por Mes, incluso sin series.
+- cuerpo.en: Month distinguishes generated series occurrences from special events by source and identity. Filters do not turn hidden series into specials and the shared document is preserved. Opening a special or +N keeps the events shown by Month in Day, even without series.
+- cuerpo.pt: O mês distingue ocorrências geradas das séries e eventos especiais pela origem e identidade. Os filtros não convertem séries ocultas em especiais e o documento partilhado é preservado. Ao abrir um especial ou +N, Dia mantém os eventos mostrados pelo Mês, mesmo sem séries.
+- cuerpo.it: Il mese distingue le occorrenze generate delle serie dagli eventi speciali tramite origine e identità. I filtri non trasformano serie nascoste in speciali e il documento condiviso resta intatto. Aprendo uno speciale o +N, Giorno conserva gli eventi mostrati da Mese, anche senza serie.
+- etiqueta: ISA-1046
+
+### Días locales y salidas completas en Calendario
+
+- id: calendar-local-days-slots
+- tipo: fix
+- titulo.en: Local days and complete calendar starts
+- titulo.pt: Dias locais e partidas completas no calendário
+- titulo.it: Giorni locali e partenze complete nel calendario
+- cuerpo: Las vistas respetan medianoches locales y cambios de hora, cuentan todas las salidas publicadas y distinguen los instantes de una hora repetida mediante su desplazamiento UTC.
+- cuerpo.en: Views respect local midnights and daylight saving changes, count every published start and distinguish repeated-hour instants using their UTC offset.
+- cuerpo.pt: As vistas respeitam as meias-noites locais e mudanças de hora, contam todas as partidas publicadas e distinguem instantes de uma hora repetida pelo desvio UTC.
+- cuerpo.it: Le viste rispettano le mezzanotti locali e i cambi d'ora, contano tutte le partenze pubblicate e distinguono gli istanti di un'ora ripetuta tramite lo scarto UTC.
+- etiqueta: ISA-1044
+
+### Vigencia de las salidas de Calendario
+
+- id: calendar-schedule-validity
+- tipo: fix
+- titulo.en: Calendar departure validity
+- titulo.pt: Validade das saídas do Calendário
+- titulo.it: Validità delle partenze del Calendario
+- cuerpo: Inicio y el motor de las cinco vistas limitan las salidas al periodo publicado, incluido el detalle y los previews. Sin vigencia verificable no se generan nuevas salidas. Este corte depende de los metadatos del servicio ISA-1029; errores visibles, recordatorios y los demás ajustes de las vistas siguen en el plan ISA-1027.
+- cuerpo.en: Home and the five-view engine limit departures to the published period, including details and previews. No new departures are generated without verifiable validity. This cut depends on ISA-1029 service metadata; visible errors, reminders and remaining view fixes continue in ISA-1027.
+- cuerpo.pt: Início e o motor das cinco vistas limitam saídas ao período publicado, incluindo detalhe e previews. Sem validade verificável não são geradas novas saídas. Depende dos metadados ISA-1029; erros visíveis, lembretes e restantes correções continuam no plano ISA-1027.
+- cuerpo.it: Home e il motore delle cinque viste limitano le partenze al periodo pubblicato, inclusi dettagli e anteprime. Senza validità verificabile non vengono generate nuove partenze. Dipende dai metadati ISA-1029; errori visibili, promemoria e altre correzioni proseguono nel piano ISA-1027.
+- etiqueta: ISA-1032
+
+### Resultado explícito al actualizar Calendario
+
+- id: calendar-refresh-result
+- tipo: fix
+- titulo.en: Explicit calendar refresh result
+- titulo.pt: Resultado explícito da atualização do Calendário
+- titulo.it: Risultato esplicito dell'aggiornamento del Calendario
+- cuerpo: El puente comunica inicio y resultado de la actualización, también cuando falla la sesión o la red. Publica el documento confirmado solo tras éxito y serializa las peticiones para evitar resultados entremezclados. La conservación del horario depende de ISA-1029 y la presentación de estados continúa en el siguiente corte del plan ISA-1027.
+- cuerpo.en: The bridge reports refresh start and result, including session or network failure. It publishes the confirmed document only on success and serializes requests to avoid interleaved results. Schedule retention depends on ISA-1029 and status presentation continues in the next ISA-1027 cut.
+- cuerpo.pt: O bridge comunica início e resultado da atualização, incluindo falha de sessão ou rede. Publica o documento confirmado apenas após sucesso e serializa pedidos para evitar resultados misturados. A conservação depende de ISA-1029 e a apresentação de estados continua no próximo corte ISA-1027.
+- cuerpo.it: Il bridge comunica inizio e risultato dell'aggiornamento, anche in caso di errore di sessione o rete. Pubblica il documento confermato solo dopo il successo e serializza le richieste. La conservazione dipende da ISA-1029; gli stati visibili proseguono nel prossimo intervento ISA-1027.
+- etiqueta: ISA-1035
+
+### Estado visible de actualización de Calendario
+
+- id: calendar-refresh-status-ui
+- tipo: fix
+- titulo.en: Visible calendar refresh status
+- titulo.pt: Estado visível da atualização do calendário
+- titulo.it: Stato visibile dell'aggiornamento del calendario
+- cuerpo: Calendario distingue carga, actualización, error y vigencia del horario; confirma el resultado recibido y conserva la vista mientras se actualiza.
+- cuerpo.en: Calendar distinguishes loading, refresh, errors and schedule validity; it confirms the received result and preserves the view during refresh.
+- cuerpo.pt: O calendário distingue carregamento, atualização, erro e validade do horário; confirma o resultado recebido e conserva a vista durante a atualização.
+- cuerpo.it: Il calendario distingue caricamento, aggiornamento, errore e validità dell'orario; conferma il risultato ricevuto e conserva la vista durante l'aggiornamento.
+- etiqueta: Fix
+
 ### CPU con seis widgets
 
 - id: telemetry-six-widget-cpu

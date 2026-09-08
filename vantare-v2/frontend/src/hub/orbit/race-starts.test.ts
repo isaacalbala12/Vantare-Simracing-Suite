@@ -21,7 +21,7 @@ function series(overrides: Partial<RaceSeries> & Pick<RaceSeries, "id" | "name">
 }
 
 function calendar(overrides: Partial<Calendar>): Calendar {
-  return { ...EMPTY_CALENDAR, ...overrides };
+  return { ...EMPTY_CALENDAR, schedule: { validFrom: "2026-07-01T00:00:00Z", validUntil: "2026-08-01T00:00:00Z", updated: "2026-07-01T00:00:00Z", source: "bundled" }, ...overrides };
 }
 
 const NOW = new Date("2026-07-07T18:07:30Z");

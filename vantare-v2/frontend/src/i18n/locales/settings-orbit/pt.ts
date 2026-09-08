@@ -144,7 +144,7 @@ export const settingsOrbitPt: Record<string, string> = {
   "settings.app.notifyLauncher": "Avisos do Launcher",
   "settings.app.notifyLauncherSub": "Toast quando termina uma cadeia de arranque.",
   "settings.app.notifySystem": "Notificações do sistema",
-  "settings.app.notifySystemSub": "O Windows mostra-as com a janela minimizada.",
+  "settings.app.notifySystemSub": "Avisos de início e lembretes do Calendário com a janela minimizada.",
   "settings.app.notifySystemUnsupported": "Esta plataforma não suporta notificações de ambiente de trabalho.",
   "settings.app.notifySystemTest": "Testar notificação",
   "settings.app.notifySystemTestSub": "Envia um aviso agora sem alterar as preferências.",

@@ -151,7 +151,7 @@ export const settingsOrbitEs: Record<string, string> = {
   "settings.app.notifyLauncher": "Avisos del Launcher",
   "settings.app.notifyLauncherSub": "Toast cuando termina una cadena de arranque.",
   "settings.app.notifySystem": "Notificaciones del sistema",
-  "settings.app.notifySystemSub": "Windows las muestra con la ventana minimizada.",
+  "settings.app.notifySystemSub": "Avisos de inicio y recordatorios de Calendario con la ventana minimizada.",
   "settings.app.notifySystemUnsupported": "Esta plataforma no admite notificaciones de escritorio.",
   "settings.app.notifySystemTest": "Probar notificación",
   "settings.app.notifySystemTestSub": "Envía un aviso ahora sin cambiar tus preferencias.",

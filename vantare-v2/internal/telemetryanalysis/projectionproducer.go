@@ -30,6 +30,9 @@ var ErrInvalidProjectionProductionInput = errors.New("invalid strategy input pro
 // A nil family is data, not an error: the producer publishes it as missing and
 // continues composing every other demonstrated family.
 type ProjectionSessionDerivations struct {
+	// Revision is supplied by Analysis after binding these derivations to its
+	// durable revision. The producer validates coverage, not source permission.
+	Revision    *strategyprojection.AnalysisRevisionRef
 	Classified  ClassifiedSession
 	Validity    *LapValidityAnalysis
 	Consumption *SessionConsumptionPace
@@ -58,6 +61,7 @@ func ProduceStrategyInputProjectionV2(
 		GeneratedAt:                       request.GeneratedAt,
 		ComputationVersion:                strategyInputProducerComputationVersion,
 		SourceSessions:                    projectionSourceSessions(request.Sessions),
+		SourceRevisions:                   projectionSourceRevisions(request.Sessions),
 		CombinationID:                     request.Combination.ID,
 		SessionClassification:             projectSessionClassification(request, sourceID),
 		LapValidity:                       missingLapValidityFamily(sourceID),
@@ -174,9 +178,25 @@ func validateProjectionRequest(request ProjectionProductionRequest) error {
 		if invalidIdentity {
 			return fmt.Errorf("%w: selected session", ErrInvalidProjectionProductionInput)
 		}
+		if session.Revision != nil && session.Revision.SessionID != classified.SessionID {
+			return fmt.Errorf("%w: revision session", ErrInvalidProjectionProductionInput)
+		}
 		seen[classified.SessionID] = true
 	}
+	if err := strategyprojection.ValidateSourceRevisions(projectionSourceSessions(request.Sessions), projectionSourceRevisions(request.Sessions)); err != nil {
+		return fmt.Errorf("%w: %w", ErrInvalidProjectionProductionInput, err)
+	}
 	return nil
+}
+
+func projectionSourceRevisions(sessions []ProjectionSessionDerivations) []strategyprojection.AnalysisRevisionRef {
+	var refs []strategyprojection.AnalysisRevisionRef
+	for _, session := range sessions {
+		if session.Revision != nil {
+			refs = append(refs, *session.Revision)
+		}
+	}
+	return refs
 }
 
 func projectionSourceSessions(sessions []ProjectionSessionDerivations) []string {

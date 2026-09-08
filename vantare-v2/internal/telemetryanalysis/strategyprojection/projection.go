@@ -15,11 +15,12 @@ import (
 //   - Clima por buckets de Path Wetness (D5): seco/humedo/mojado, booleanos no informativos descartados
 //   - Degradacion por eje/rueda (corner futuro condicionado a mapping versionado)
 type StrategyInputProjectionV2 struct {
-	ContractVersion    ContractVersion `json:"contractVersion"`
-	GeneratedAt        time.Time       `json:"generatedAt"`
-	ComputationVersion string          `json:"computationVersion"`
-	SourceSessions     []string        `json:"sourceSessions"`
-	CombinationID      string          `json:"combinationId"`
+	ContractVersion    ContractVersion       `json:"contractVersion"`
+	GeneratedAt        time.Time             `json:"generatedAt"`
+	ComputationVersion string                `json:"computationVersion"`
+	SourceSessions     []string              `json:"sourceSessions"`
+	SourceRevisions    []AnalysisRevisionRef `json:"sourceRevisions,omitempty"`
+	CombinationID      string                `json:"combinationId"`
 
 	// Familias. Cada una lleva sus tres ejes; una familia ausente queda con
 	// Presence=missing/unsupported y no bloquea las demas.
@@ -281,6 +282,9 @@ func (p StrategyInputProjectionV2) Validate() error {
 			"contractVersion",
 			"unsupported strategy input projection version",
 		)
+	}
+	if err := ValidateSourceRevisions(p.SourceSessions, p.SourceRevisions); err != nil {
+		return err
 	}
 	if err := validateTimestamp("generatedAt", p.GeneratedAt); err != nil {
 		return err

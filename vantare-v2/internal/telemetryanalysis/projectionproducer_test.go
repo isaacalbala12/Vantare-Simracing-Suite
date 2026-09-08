@@ -3,11 +3,43 @@ package telemetryanalysis
 import (
 	"encoding/json"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/vantare/overlays/v2/internal/telemetryanalysis/strategyprojection"
 )
+
+func TestProducerPreservesCompleteRevisionSelection(t *testing.T) {
+	request := projectionProducerFixture()
+	for i := range request.Sessions {
+		request.Sessions[i].Revision = &strategyprojection.AnalysisRevisionRef{SessionID: request.Sessions[i].Classified.SessionID, BaseDigest: strings.Repeat("a", 64), RevisionID: strings.Repeat("b", 64), SnapshotID: strings.Repeat("c", 64)}
+	}
+	got, err := ProduceStrategyInputProjectionV2(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.SourceRevisions) != len(request.Sessions) {
+		t.Fatal("lost revisions")
+	}
+	for i := range request.Sessions {
+		if got.SourceRevisions[i] != *request.Sessions[i].Revision {
+			t.Fatal("changed revision")
+		}
+	}
+	request.Sessions[0].Revision.RevisionID = strings.Repeat("d", 64)
+	if got.SourceRevisions[0].RevisionID != strings.Repeat("b", 64) {
+		t.Fatal("aliased input")
+	}
+	request.Sessions[0].Revision.SessionID = "foreign"
+	if _, err := ProduceStrategyInputProjectionV2(request); err == nil {
+		t.Fatal("accepted foreign revision")
+	}
+	request.Sessions[0].Revision = nil
+	if _, err := ProduceStrategyInputProjectionV2(request); err == nil {
+		t.Fatal("accepted partial revisions")
+	}
+}
 
 type projectionProducerExpected struct {
 	ContractVersion string                        `json:"contractVersion"`

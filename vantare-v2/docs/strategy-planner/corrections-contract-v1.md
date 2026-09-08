@@ -1,6 +1,6 @@
 # Contrato propuesto v1 — correcciones de observaciones
 
-Estado: contrato global propuesto en #1033. C1a implementa solo identidad y preparación escalar en #1066; custodia/revisiones/otras operaciones siguen pendientes. Base del contrato `8a2d8ff4`.
+Estado: contrato global propuesto en #1033, con ejecución posterior autorizada por Isaac. La mecánica escalar, custodia, vista efectiva y recálculo están implementados localmente; #1078 añade referencias estructuradas de proyección. Servicio autorizado, operaciones restantes, vinculación a planes y UI siguen pendientes. Las secciones finales detallan los cortes ejecutados sobre la base documental `8a2d8ff4`.
 Owner: Telemetry Analysis. Superficie de edición: Strategy.
 [Decisión de custodia](../adr/0010-analysis-observation-corrections.md).
 
@@ -21,8 +21,8 @@ Owner: Telemetry Analysis. Superficie de edición: Strategy.
 - `parserId`, `parserVersion`, `schemaFingerprint` del modelo normalizado;
 - `analysisVersion` y `segmentationDigest` de la interpretación base.
 
-Los dos últimos campos formalizan una revisión que el modelo actual aún no
-publica completa. El productor deberá emitirla: no se fabrican en React. El
+Los dos últimos campos formalizan la interpretación base. El productor de
+#1067 los deriva del modelo autorizado; no se fabrican en React. El
 locator opaco sirve para localizar la autorización, nunca como identidad de
 contenido ni como permiso. Otros formatos deberán emitir la misma información
 a través de sus adapters; v1 solo exige LMU/DuckDB.
@@ -236,3 +236,18 @@ respecto a la base. No introduce umbrales ni cambia el catálogo observado.
 CorrectedSessionDerivations conserva Base y SnapshotID; el adaptador futuro debe
 vincularlos a la revisión duradera antes de publicar/guardar un plan.
 No ofrece selección por familia ni otras operaciones del contrato todavía.
+
+## Referencias de proyección — #1078
+
+Extensión aditiva de StrategyInputProjectionV2: `sourceRevisions` contiene
+`sessionId`, `baseDigest`, `revisionId` y `snapshotId`. Los tres digests son
+SHA-256 hexadecimal minúsculo; la base incorpora contenido e interpretación.
+Ausencia mantiene el contrato legado. Si se suministran referencias, deben
+cubrir exactamente todas las sesiones, sin duplicados, IDs cruzados ni mezcla
+parcial. El productor conserva copias de los identificadores recibidos.
+
+Esta validación comprueba estructura y cobertura; no demuestra autorización ni
+correspondencia con los derivados. Analysis debe vincular la revisión duradera
+real antes de publicar; ese servicio y el consumidor TS siguen pendientes.
+El editor registrado deberá exigir referencias completas para guardar planes;
+no puede interpretar la ausencia legada como una revisión actual.

@@ -1,5 +1,21 @@
 # Handoff vivo — Strategy Planner
 
+## Referencias de revisión en proyecciones — ISA-1078 (2026-09-08)
+
+Base d458879f, rama vantareapp/isa-1078-projection-revisions,
+worktree C:/tmp/vantare-isa1078. Contrato V2 aditivo con sourceRevisions:
+sesión/base/revisión/snapshot. Validación de cobertura completa, digests y
+rechazo de IDs cruzados. Productor conserva referencias sin alias; no cambia
+familias ni payload legado sin referencias. Analysis, vet, build frontend y
+suite Go global pasan. RED anterior por API ausente documentado.
+
+Pendiente unir estos IDs a la revisión duradera y sus derivados en el servicio
+autorizado, validar el consumidor TS y exigirlos al guardar planes registrados.
+No es conexión del editor todavía. Continúan operaciones de uso por familia,
+clasificación/límites, UI productiva, calibración y validación real Wails.
+Sin nuevas dependencias, fuentes reales leídas, LMU, push/PR/CI remota,
+promoción o release.
+
 ## Derivaciones escalares — ISA-1077 (2026-09-08)
 
 Sobre 1980c3d4, rama vantareapp/isa-1077-corrected-derivation, worktree C:/tmp/vantare-isa1077.

@@ -14,7 +14,10 @@ otro motor, panel, dependencia o CSS; ni se amplían campos de equipo/energía.
 
 RED siete fallos iniciales y dos casos adicionales de navegación; GREEN 133
 focales (dos skips heredados de Lord Howe/artefacto Go, comprobados en sus cortes).
-Build PASS; tipos/lint, suite completa, roadmap y review pendientes. No cambios
+Build/tipos/lint/roadmap23+21 PASS; review ACCEPT3c85e2b8.
+Full frontend3276PASS/2skips/4FAIL por timeouts externos: Crystal tables:33
+(30s), PedalsRedline:47 missing, StandingsRedlineTemplate:246 missing y
+TrackMapEndurance:89 (20s), registrados en #1025. Sin ampliar límites. No cambios
 Go/contrato compartido: no se repite full Go. Wails/foco/geometría y medición real
 siguen pendientes, junto con C6c permisos/avisos. C6a/C6b aceptados #1051/#1053.
 

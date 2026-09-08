@@ -17,6 +17,16 @@ son fases históricas.
 
 ## Estado
 
+Actualización ISA-445 (2026-09-08, referencias y confianza):
+
+- Rama `vantareapp/isa-445-reference-boundary`, base `b1211c99`, ejecución personal.
+- Composición sin fixture o claves TEST; caché TEST rechazada. Catálogo vacío
+  hasta confianza/publicación aprobadas. Guarda referencias solo para combinación
+  canónica elegida y busca la variante dentro de esa combinación.
+- Evidencia: `docs/strategy-planner/evidence/isa-445-reference-boundary.md`.
+- Publicación sigue pendiente. No certifica reglas/condiciones ausentes del payload.
+- Próximo: cierre personal de revisión, contrato #1033; Wails/holdout pendientes.
+
 Actualización ISA-821 (2026-09-08, deadline por candidato):
 
 - Rama `vantareapp/isa-821-candidate-deadline`, base `b85fa5f4`, ejecución personal.

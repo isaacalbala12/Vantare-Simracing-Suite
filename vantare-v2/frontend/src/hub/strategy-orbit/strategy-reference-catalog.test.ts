@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { StrategyApplicationClient, StrategyApplicationCommandV1, StrategyApplicationResultV1, StrategyEventV2, StrategyReferenceCatalogResultV1 } from "../../strategy/strategy-application-client";
 import { applyReferenceProfile, applyReferenceStrategy } from "./strategy-reference-catalog";
 import { strategyEventV2FromRecord } from "./strategy-session-selection";
@@ -19,8 +19,29 @@ const catalog: StrategyReferenceCatalogResultV1 = {
 };
 
 describe("Strategy reference catalog", () => {
+  it.each([undefined, "different-combination"])("rejects a profile without a matching canonical combination: %s", async (combinationId) => {
+    const execute = vi.fn();
+    const client: StrategyApplicationClient<unknown> = { execute, cancel: () => false, dispose: () => undefined };
+    const existing = { ...strategyEventV2FromRecord(record), ...(combinationId ? { combination: { combinationId, sessions: [] } } : {}) };
+    await expect(applyReferenceProfile(client, 0, existing, record, catalog.catalog.combinations[0])).rejects.toThrow("Reference combination does not match");
+    expect(execute).not.toHaveBeenCalled();
+  });
+  it.each([undefined, "different-combination"])("rejects a strategy without a matching combination: %s", async (combinationId) => {
+    const execute = vi.fn();
+    const client: StrategyApplicationClient<unknown> = { execute, cancel: () => false, dispose: () => undefined };
+    const existing = { ...strategyEventV2FromRecord(record), ...(combinationId ? { combination: { combinationId, sessions: [] } } : {}) };
+    await expect(applyReferenceStrategy(client, 0, existing, record, catalog.catalog.combinations[0], "bbbbbbbbbbbbbbbb")).rejects.toThrow("Reference combination does not match");
+    expect(execute).not.toHaveBeenCalled();
+  });
+  it("rejects a strategy outside the matching catalog combination", async () => {
+    const execute = vi.fn();
+    const client: StrategyApplicationClient<unknown> = { execute, cancel: () => false, dispose: () => undefined };
+    const existing = { ...strategyEventV2FromRecord(record), combination: { combinationId: "spa-lmgt3", sessions: [] } };
+    await expect(applyReferenceStrategy(client, 0, existing, record, catalog.catalog.combinations[0], "foreign-digest")).rejects.toThrow("Reference strategy is unavailable");
+    expect(execute).not.toHaveBeenCalled();
+  });
   it("creates own canonical starting points with reference provenance", async () => {
-    let saved: StrategyEventV2 | undefined = strategyEventV2FromRecord(record);
+    let saved: StrategyEventV2 | undefined = { ...strategyEventV2FromRecord(record), combination: { combinationId: "spa-lmgt3", sessions: [] } };
     const client: StrategyApplicationClient<unknown> = {
       async execute(command: StrategyApplicationCommandV1<unknown>): Promise<StrategyApplicationResultV1<unknown>> {
         if (command.operation === "edit_event" || command.operation === "create_event") saved = command.event;
@@ -29,7 +50,7 @@ describe("Strategy reference catalog", () => {
     };
     saved = await applyReferenceProfile(client, 0, saved, record, catalog.catalog.combinations[0]);
     expect(saved.planningInputs?.overrides.fuel_per_lap_liters?.provenance.kind).toBe("reference");
-    saved = await applyReferenceStrategy(client, 1, saved, record, catalog.catalog.combinations[0].strategies[0]);
+    saved = await applyReferenceStrategy(client, 1, saved, record, catalog.catalog.combinations[0], catalog.catalog.combinations[0].strategies[0].clusterDigest);
     expect(saved.strategies.at(-1)?.name.evidence.provenance.kind).toBe("reference");
     expect(saved.strategies.at(-1)?.overrides).toMatchObject({ referenceCatalog: { pitLaps: [20] } });
   });

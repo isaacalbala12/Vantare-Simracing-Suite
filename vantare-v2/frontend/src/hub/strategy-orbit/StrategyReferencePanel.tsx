@@ -35,7 +35,7 @@ export function StrategyReferencePanel({ client, event, existing, repositoryVers
       setBusy(null);
     }
   };
-  const combinations = catalog?.catalog.combinations ?? [];
+  const combinations = (catalog?.catalog.combinations ?? []).filter((combination) => combination.combinationId === existing?.combination?.combinationId);
   return (
     <Surface className="orbit-reference" data-testid="orbit-reference" meta={t("strategy.reference.lead")} title={t("strategy.reference.title")}>
       {catalog?.warning ? <p className="orbit-reference__warning" role="alert">{t(`strategy.reference.warning.${catalog.warning}`)}</p> : null}
@@ -53,7 +53,7 @@ export function StrategyReferencePanel({ client, event, existing, repositoryVers
             const key = `strategy:${strategy.clusterDigest}`;
             return <div className="orbit-reference__item" key={strategy.clusterDigest}>
               <div><b>{t("strategy.reference.strategy")} #{strategy.rank} <Chip caseNormal>{t("strategy.reference.badge")}</Chip></b><span>k={strategy.sample.contributors} · {strategy.representative.stintCount} {t("strategy.reference.stints")}</span></div>
-              <Button disabled={busy !== null} onClick={() => void save(key, () => applyReferenceStrategy(client, repositoryVersion, existing, event, strategy))} size="sm" variant="ghost">{used === key ? t("strategy.reference.used") : t("strategy.reference.use")}</Button>
+              <Button disabled={busy !== null} onClick={() => void save(key, () => applyReferenceStrategy(client, repositoryVersion, existing, event, combination, strategy.clusterDigest))} size="sm" variant="ghost">{used === key ? t("strategy.reference.used") : t("strategy.reference.use")}</Button>
             </div>;
           })}
         </article>

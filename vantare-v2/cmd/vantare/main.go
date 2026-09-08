@@ -1555,11 +1555,7 @@ func main() {
 	} else if repo, openErr := strategyrepository.Open[json.RawMessage](strategyRoot, strategyrepository.Options{}); openErr != nil {
 		log.Printf("warning: Strategy repository could not be opened: %v", openErr)
 	} else {
-		referenceCatalog := strategycatalog.NewConsumer(strategycatalog.ConsumerOptions{
-			StatePath: filepath.Join(strategyRoot, "reference-catalog-state.json"),
-			URL:       strategyCatalogURL, Fixture: strategycatalog.FixtureSignedV1,
-			TrustedKeys: strategycatalog.FixtureTrustedKeys(), MinEpoch: "2026-08-a", MinVersion: 1,
-		})
+		referenceCatalog := strategycatalog.NewConsumer(strategyReferenceCatalogOptions(strategyRoot))
 		executable, executableErr := os.Executable()
 		executableDir := ""
 		if executableErr == nil {
@@ -4215,4 +4211,13 @@ func decodeEventPayload(event *application.CustomEvent, out any) {
 		return
 	}
 	_ = json.Unmarshal(raw, out)
+}
+
+func strategyReferenceCatalogOptions(root string) strategycatalog.ConsumerOptions {
+	return strategycatalog.ConsumerOptions{
+		StatePath: filepath.Join(root, "reference-catalog-state.json"),
+		URL:       strategyCatalogURL,
+		// Production trust is empty until an approved catalog/key is provisioned.
+		// TEST fixtures and their cached envelopes must never feed real plans.
+	}
 }

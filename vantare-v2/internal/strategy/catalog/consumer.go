@@ -22,8 +22,8 @@ const (
 	maxCatalogBytes  = 4 << 20
 )
 
-// FixtureSignedV1 is the reviewed, TEST-key-signed default while publication
-// remains behind Isaac's explicit gate. Normal builds perform no network I/O.
+// FixtureSignedV1 is TEST-key-signed data for explicit tests only.
+// Never use this fixture or FixtureTrustedKeys in production composition.
 //
 //go:embed testdata/catalog_fixture_signed.json
 var FixtureSignedV1 []byte

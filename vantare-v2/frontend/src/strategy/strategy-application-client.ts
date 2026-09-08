@@ -442,6 +442,8 @@ export type StrategyOrbitCalculationResultV1 = {
 export type StrategyOrbitWeatherStintV1 = { readonly index: number; readonly laps: number; readonly compound?: string };
 export type StrategyOrbitWeatherConditionV1 = { readonly lap: number; readonly rainChance: number; readonly bucket: "dry" | "humid" | "wet" };
 export type StrategyOrbitWeatherResultV1 = {
+ readonly comparisonBasis: "fixed_distance";
+ readonly comparisonLaps: number;
   readonly plans: readonly {
     readonly scenarioId: string;
     readonly weight: number;
@@ -1671,6 +1673,9 @@ function parseStrategyOrbitCalculation(value: unknown): StrategyOrbitCalculation
 
 function parseOrbitWeather(value: unknown): StrategyOrbitWeatherResultV1 {
   const weather = strategyRecord(value, "orbitCalculation.weather");
+ strategyEnum(weather.comparisonBasis, "orbitCalculation.weather.comparisonBasis", ["fixed_distance"]);
+ strategyInteger(weather.comparisonLaps, "orbitCalculation.weather.comparisonLaps");
+ if ((weather.comparisonLaps as number) <= 0) throw new Error("Invalid Strategy orbitCalculation.weather.comparisonLaps");
   if (!Array.isArray(weather.plans)) throw new Error("Invalid Strategy orbitCalculation.weather.plans");
   const parseStints = (candidate: unknown, field: string): readonly StrategyOrbitWeatherStintV1[] => {
     if (!Array.isArray(candidate)) throw new Error(`Invalid Strategy ${field}`);
@@ -1709,7 +1714,7 @@ function parseOrbitWeather(value: unknown): StrategyOrbitWeatherResultV1 {
   strategyEnum(robust.method, "orbitCalculation.weather.robust.method", ["minimax_regret"]);
   strategyNumber(robust.maxRegretSeconds, "orbitCalculation.weather.robust.maxRegretSeconds");
   strategyNumber(robust.weightedExpectedLossSeconds, "orbitCalculation.weather.robust.weightedExpectedLossSeconds");
-  return { plans, robust: { ...robust, stints: parseStints(robust.stints, "orbitCalculation.weather.robust.stints") } as StrategyOrbitWeatherResultV1["robust"] };
+  return { comparisonBasis: "fixed_distance", comparisonLaps: weather.comparisonLaps as number, plans, robust: { ...robust, stints: parseStints(robust.stints, "orbitCalculation.weather.robust.stints") } as StrategyOrbitWeatherResultV1["robust"] };
 }
 
 function parseStrategySourcedV2(value: unknown, field: string): unknown {

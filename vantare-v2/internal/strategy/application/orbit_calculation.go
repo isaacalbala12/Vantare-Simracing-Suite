@@ -107,7 +107,7 @@ func calculateOrbitContext(ctx context.Context, input OrbitCalculationInput) (Or
 		)
 	}
 	if len(input.WeatherScenarios) > 0 {
-		weatherResult, err := calculateOrbitWeather(ctx, input, drivers, variants[input.ActiveVariantID])
+		weatherResult, err := calculateOrbitWeather(ctx, input, drivers, variants[input.ActiveVariantID], active.TotalLaps)
 		if err != nil {
 			return OrbitCalculationResult{}, err
 		}
@@ -116,7 +116,7 @@ func calculateOrbitContext(ctx context.Context, input OrbitCalculationInput) (Or
 	return result, nil
 }
 
-func calculateOrbitWeather(ctx context.Context, input OrbitCalculationInput, drivers map[string]OrbitCalculationDriver, variant OrbitCalculationVariant) (OrbitWeatherResult, error) {
+func calculateOrbitWeather(ctx context.Context, input OrbitCalculationInput, drivers map[string]OrbitCalculationDriver, variant OrbitCalculationVariant, comparisonLaps int64) (OrbitWeatherResult, error) {
 	if len(variant.Order) == 0 {
 		return OrbitWeatherResult{}, calculationApplicationError(ErrorCalculationInvalid, "input.activeVariantId", ErrCalculationInvalid)
 	}
@@ -142,30 +142,6 @@ func calculateOrbitWeather(ctx context.Context, input OrbitCalculationInput, dri
 	effectivePace := effectivePlanningValue(input.PlanningInputs, strategydocument.PlanningInputPace, dryPace)
 	effectiveFuel := effectivePlanningValue(input.PlanningInputs, strategydocument.PlanningInputFuelPerLap, dryFuel)
 
-	tracing := manual.Evidence{
-		Provenance: contract.Provenance{Kind: contract.ProvenanceManual, SourceID: "strategy.orbit.weather"},
-		Confidence: contract.Confidence{Level: contract.ConfidenceHigh, Basis: "validated Orbit weather input"},
-	}
-	duration, err := contract.NewDurationSeconds(input.Event.DurationMinutes * 60)
-	if err != nil {
-		return OrbitWeatherResult{}, calculationApplicationError(ErrorCalculationInvalid, "input.event.durationMinutes", err)
-	}
-	averageLap, err := contract.NewDurationSeconds(effectivePace)
-	if err != nil {
-		return OrbitWeatherResult{}, calculationApplicationError(ErrorCalculationInvalid, "input.weatherScenarios", err)
-	}
-	zeroDuration, _ := contract.NewDurationSeconds(0)
-	zeroLaps, _ := contract.NewLapCount(0)
-	race, err := manual.CalculateRace(manual.RaceInput{
-		Kind: manual.RaceByTime, Duration: manual.Sourced[contract.DurationSeconds]{Value: duration, Evidence: tracing},
-		AverageLap:    manual.Sourced[contract.DurationSeconds]{Value: averageLap, Evidence: tracing},
-		FormationLaps: manual.Sourced[contract.LapCount]{Value: zeroLaps, Evidence: tracing},
-		PitLoss:       manual.Sourced[contract.DurationSeconds]{Value: zeroDuration, Evidence: tracing}, TimedFinish: manual.TimedFinishCurrentLap, Selection: tracing,
-	})
-	if err != nil {
-		return OrbitWeatherResult{}, mapOrbitCalculationError(err, "input.event")
-	}
-
 	parameters := []solver.WeatherBucketParameter{
 		orbitWeatherBucketParameter(strategyprojection.ClimateBucketHumid, 0, dryFuel, input.PlanningInputs),
 		orbitWeatherBucketParameter(strategyprojection.ClimateBucketWet, wetPace-dryPace, wetFuel, input.PlanningInputs),
@@ -176,13 +152,13 @@ func calculateOrbitWeather(ctx context.Context, input OrbitCalculationInput, dri
 	}
 	solved, err := solver.SolveWeatherScenariosContext(
 		ctx,
-		orbitSolverInput(race.CompetitiveLaps.Value(), input.Event, effectivePace, effectiveFuel, strategyprojection.ClimateBucketDry, input.PlanningInputs),
+		orbitSolverInput(comparisonLaps, input.Event, effectivePace, effectiveFuel, strategyprojection.ClimateBucketDry, input.PlanningInputs),
 		solver.WeatherScenarioSet{Scenarios: weighted, BucketParameters: parameters},
 	)
 	if err != nil {
 		return OrbitWeatherResult{}, mapOrbitCalculationError(err, "input.weatherScenarios")
 	}
-	result := OrbitWeatherResult{Plans: make([]OrbitWeatherScenarioPlan, 0, len(solved.Plans))}
+	result := OrbitWeatherResult{ComparisonBasis: "fixed_distance", ComparisonLaps: comparisonLaps, Plans: make([]OrbitWeatherScenarioPlan, 0, len(solved.Plans))}
 	for _, plan := range solved.Plans {
 		result.Plans = append(result.Plans, OrbitWeatherScenarioPlan{
 			ScenarioID: plan.ScenarioID, Weight: plan.Weight, TotalSeconds: plan.Result.Expected.TotalSeconds,

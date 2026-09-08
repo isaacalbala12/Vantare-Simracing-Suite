@@ -265,7 +265,7 @@ func TestCalculateOrbitWeatherChangesPlanAndPublishesRobustMetrics(t *testing.T)
 		}}
 	}
 	result, err := calculateOrbit(OrbitCalculationInput{
-		Event: OrbitCalculationEvent{DurationMinutes: 10, TankLiters: 6, PitLossSeconds: 10},
+		Event: OrbitCalculationEvent{DurationMinutes: 10, TankLiters: 6, PitLossSeconds: 90},
 		Drivers: []OrbitCalculationDriver{{
 			ID: "driver-1", Name: "Driver",
 			Dry: OrbitCalculationPace{PaceSeconds: 60, FuelLitersPerLap: 1},
@@ -283,6 +283,9 @@ func TestCalculateOrbitWeatherChangesPlanAndPublishesRobustMetrics(t *testing.T)
 	}
 	if result.Weather == nil || len(result.Weather.Plans) != 2 {
 		t.Fatalf("weather result = %+v", result.Weather)
+	}
+	if result.Weather.ComparisonBasis != "fixed_distance" || result.Weather.ComparisonLaps != result.Plans["s1"].TotalLaps {
+		t.Fatalf("comparison scope: %+v", result.Weather)
 	}
 	dry, rain := result.Weather.Plans[0], result.Weather.Plans[1]
 	if dry.TotalSeconds == rain.TotalSeconds && reflect.DeepEqual(dry.Stints, rain.Stints) {
@@ -302,6 +305,13 @@ func TestCalculateOrbitWeatherChangesPlanAndPublishesRobustMetrics(t *testing.T)
 		t.Fatalf("rain timeline did not publish an applied wet lap: %+v", rain.Timeline)
 	}
 	for _, plan := range result.Weather.Plans {
+		var laps int64
+		for _, stint := range plan.Stints {
+			laps += stint.Laps
+		}
+		if laps != result.Plans["s1"].TotalLaps {
+			t.Fatalf("weather compares %d laps, evaluated plan has %d", laps, result.Plans["s1"].TotalLaps)
+		}
 		if !plan.ReserveSatisfied || plan.ReserveRequiredLaps != orbitDefaultReserveLaps || math.Abs(plan.ReserveLaps-orbitDefaultReserveLaps) > 0.01 {
 			t.Fatalf("weather reserve = %+v", plan)
 		}

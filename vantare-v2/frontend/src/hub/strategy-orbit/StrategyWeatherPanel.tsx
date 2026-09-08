@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { Button, Input, Note, Select } from "../../ui/orbit";
+import { formatMessage } from "../orbit/format-message";
 import { useHubSuspendBlocker } from "../hub-suspend-guard";
 import type {
   StrategyOrbitWeatherResultV1,
@@ -90,6 +91,7 @@ export function StrategyWeatherPanel({ eventId, combinationId, scenarios, result
         <Button disabled size="sm" variant="ghost">{t("strategy.weather.capture")}</Button>
       </div>
       <small className="orbit-weather__capture-copy">{t("strategy.weather.captureUnavailable")}</small>
+      {result ? <Note title={t("strategy.weather.fixedDistanceTitle")}>{formatMessage(t("strategy.weather.fixedDistance"), { laps: result.comparisonLaps })}</Note> : null}
       {scenarios.length === 0 ? <Note title={t("strategy.weather.emptyTitle")}>{t("strategy.weather.empty")}</Note> : null}
       {scenarios.map((weighted, scenarioIndex) => {
         const plan = result?.plans.find((candidate) => candidate.scenarioId === weighted.scenario.scenarioId);

@@ -467,6 +467,8 @@ export const strategyOrbitIt: Record<string, string> = {
   "strategy.sessions.retry": "Riprova",
   "strategy.sessions.saveError": "Impossibile salvare la selezione canonica.",
   "strategy.weather.tab": "Meteo",
+  "strategy.weather.fixedDistanceTitle": "Confronto a distanza fissa",
+  "strategy.weather.fixedDistance": "Scenari su {{laps}} giri del piano base. La previsione del termine di una gara a tempo resta da implementare.",
   "strategy.weather.title": "Scenari meteo",
   "strategy.weather.manualLead": "Cinque nodi manuali: inizio, 25%, 50%, 75% e fine.",
   "strategy.weather.capture": "Cattura previsione",

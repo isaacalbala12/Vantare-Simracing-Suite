@@ -101,7 +101,7 @@ describe("createStrategyApplicationClient", () => {
     expect(transport.listeners.get("strategy:application:result")?.size ?? 0).toBe(0);
   });
 
-  it("valida WeatherScenario v1 y el resultado robusto de Orbit", async () => {
+  it.each([["fixed_distance", 10, true], ["timed", 10, false], [undefined, 10, false], ["fixed_distance", 0, false], ["fixed_distance", 10.5, false]] as const)("valida el alcance de WeatherScenario: %s / %s", async (comparisonBasis, comparisonLaps, valid) => {
     const client = createStrategyApplicationClient<Payload>(transport);
     const command: StrategyApplicationCommandV1<Payload> = {
       protocolVersion: "strategy.application.v1",
@@ -117,12 +117,14 @@ describe("createStrategyApplicationClient", () => {
       orbitCalculation: {
         ...orbitGolden,
         weather: {
+          comparisonBasis, comparisonLaps,
           plans: [{ scenarioId: "rain", weight: 1, totalSeconds: 650, stops: 1, stints: [{ index: 0, laps: 5 }, { index: 1, laps: 5 }], timeline: [{ lap: 1, rainChance: 0, bucket: "dry" }, { lap: 6, rainChance: 70, bucket: "wet" }] }],
           robust: { method: "minimax_regret", maxRegretSeconds: 3, weightedExpectedLossSeconds: 1.5, stints: [{ index: 0, laps: 5 }, { index: 1, laps: 5 }] },
         },
       },
     });
-    await expect(pending).resolves.toMatchObject({ orbitCalculation: { weather: { robust: { maxRegretSeconds: 3, weightedExpectedLossSeconds: 1.5 }, plans: [{ timeline: [{ bucket: "dry" }, { bucket: "wet" }] }] } } });
+    if (!valid) { await expect(pending).rejects.toThrow("Invalid Strategy orbitCalculation.weather.comparison"); return; }
+    await expect(pending).resolves.toMatchObject({ orbitCalculation: { weather: { comparisonBasis: "fixed_distance", comparisonLaps: 10, robust: { maxRegretSeconds: 3, weightedExpectedLossSeconds: 1.5 }, plans: [{ timeline: [{ bucket: "dry" }, { bucket: "wet" }] }] } } });
     await expect(pending).resolves.toMatchObject({ orbitCalculation: { plans: { s1: { optimality: "not_proven" } } } });
   });
 

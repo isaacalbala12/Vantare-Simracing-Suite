@@ -17,6 +17,15 @@ son fases históricas.
 
 ## Estado
 
+Actualización ISA-1042 (2026-09-08, alcance del comparador avanzado):
+
+- Rama `vantareapp/isa-1042-weather-comparison-scope`, base `686b1c23`.
+- Weather usa las vueltas evaluadas de la variante activa, sin cálculo duplicado
+  con boxes cero. Contrato y aviso explícitos de distancia fija ES/EN/PT/IT.
+- Evidencia: `docs/strategy-planner/evidence/isa-1042-weather-comparison-scope.md`.
+- La optimización temporal multiescenario sigue pendiente, visible como límite;
+  no afecta a la autoridad del plan principal ni inicia live.
+
 Actualización ISA-445 (2026-09-08, referencias y confianza):
 
 - Rama `vantareapp/isa-445-reference-boundary`, base `b1211c99`, ejecución personal.

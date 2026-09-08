@@ -145,3 +145,10 @@ describe("StrategyWeatherPanel suspend blocker", () => {
     disposeGuard();
   });
 });
+
+it("muestra el alcance de distancia fija antes de los resultados de clima", () => {
+ render(<StrategyWeatherPanel eventId="event-1" scenarios={[]} saving="idle" onSave={() => undefined}
+ result={{ comparisonBasis: "fixed_distance", comparisonLaps: 9, plans: [], robust: { method: "minimax_regret", maxRegretSeconds: 0, weightedExpectedLossSeconds: 0, stints: [{ index: 0, laps: 9 }] } }}
+ t={(key) => key === "strategy.weather.fixedDistance" ? "Comparación de {{laps}} vueltas; final temporal pendiente" : key} />);
+ expect(screen.getByText("Comparación de 9 vueltas; final temporal pendiente")).toBeTruthy();
+});

@@ -356,6 +356,7 @@ describe("StrategyOrbitPage · cableado auditado", () => {
             orbitCalculation: {
               ...(orbitGolden as StrategyOrbitCalculationResultV1),
               ...(hasWeather ? { weather: {
+                comparisonBasis: "fixed_distance", comparisonLaps: 43,
                 plans: [{ scenarioId: command.input.weatherScenarios![0].scenario.scenarioId, weight: 1, totalSeconds: 15000, stops: 4, stints: [{ index: 0, laps: 11 }, { index: 1, laps: 32 }], timeline: [{ lap: 1, rainChance: 0, bucket: "dry" }, { lap: 70, rainChance: 100, bucket: "wet" }] }],
                 robust: { method: "minimax_regret", maxRegretSeconds: 6, weightedExpectedLossSeconds: 2.5, stints: [{ index: 0, laps: 11 }, { index: 1, laps: 32 }] },
               } } : {}),

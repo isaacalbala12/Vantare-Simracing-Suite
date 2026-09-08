@@ -466,6 +466,8 @@ export const strategyOrbitEs: Record<string, string> = {
   "strategy.sessions.retry": "Reintentar",
   "strategy.sessions.saveError": "No se pudo guardar la selección canónica.",
   "strategy.weather.tab": "Clima",
+  "strategy.weather.fixedDistanceTitle": "Comparación a distancia fija",
+  "strategy.weather.fixedDistance": "Escenarios sobre {{laps}} vueltas del plan base. La predicción del final de carrera por tiempo sigue pendiente.",
   "strategy.weather.title": "Escenarios de clima",
   "strategy.weather.manualLead": "Cinco nodos manuales: inicio, 25 %, 50 %, 75 % y final.",
   "strategy.weather.capture": "Capturar forecast",

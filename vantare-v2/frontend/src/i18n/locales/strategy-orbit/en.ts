@@ -466,6 +466,8 @@ export const strategyOrbitEn: Record<string, string> = {
   "strategy.sessions.retry": "Retry",
   "strategy.sessions.saveError": "The canonical selection could not be saved.",
   "strategy.weather.tab": "Weather",
+  "strategy.weather.fixedDistanceTitle": "Fixed-distance comparison",
+  "strategy.weather.fixedDistance": "Scenarios over {{laps}} laps from the base plan. Predicting the finish of a timed race remains pending.",
   "strategy.weather.title": "Weather scenarios",
   "strategy.weather.manualLead": "Five manual nodes: start, 25%, 50%, 75% and finish.",
   "strategy.weather.capture": "Capture forecast",

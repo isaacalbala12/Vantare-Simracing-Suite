@@ -497,8 +497,10 @@ type OrbitWeatherRobustRecommendation struct {
 }
 
 type OrbitWeatherResult struct {
-	Plans  []OrbitWeatherScenarioPlan       `json:"plans"`
-	Robust OrbitWeatherRobustRecommendation `json:"robust"`
+	ComparisonBasis string                           `json:"comparisonBasis"`
+	ComparisonLaps  int64                            `json:"comparisonLaps"`
+	Plans           []OrbitWeatherScenarioPlan       `json:"plans"`
+	Robust          OrbitWeatherRobustRecommendation `json:"robust"`
 }
 
 type LegacyStorageSource struct {

@@ -254,6 +254,19 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 
 ## Hitos
 
+### Días locales y salidas completas en Calendario
+
+- id: calendar-local-days-slots
+- tipo: fix
+- titulo.en: Local days and complete calendar starts
+- titulo.pt: Dias locais e partidas completas no calendário
+- titulo.it: Giorni locali e partenze complete nel calendario
+- cuerpo: Las vistas respetan medianoches locales y cambios de hora, cuentan todas las salidas publicadas y distinguen los instantes de una hora repetida mediante su desplazamiento UTC.
+- cuerpo.en: Views respect local midnights and daylight saving changes, count every published start and distinguish repeated-hour instants using their UTC offset.
+- cuerpo.pt: As vistas respeitam as meias-noites locais e mudanças de hora, contam todas as partidas publicadas e distinguem instantes de uma hora repetida pelo desvio UTC.
+- cuerpo.it: Le viste rispettano le mezzanotti locali e i cambi d'ora, contano tutte le partenze pubblicate e distinguono gli istanti di un'ora ripetuta tramite lo scarto UTC.
+- etiqueta: ISA-1044
+
 ### Vigencia de las salidas de Calendario
 
 - id: calendar-schedule-validity

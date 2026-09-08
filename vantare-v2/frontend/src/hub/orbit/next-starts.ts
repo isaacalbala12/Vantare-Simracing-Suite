@@ -98,5 +98,18 @@ export function formatCountdown(msRemaining: number): string {
 
 /** Hora local HH:MM de una salida. */
 export function formatStartTime(at: Date): string {
-  return `${String(at.getHours()).padStart(2, "0")}:${String(at.getMinutes()).padStart(2, "0")}`;
+  return `${String(at.getHours()).padStart(2, "0")}:${String(at.getMinutes()).padStart(2, "0")}${repeatedHourOffset(at)}`;
+}
+
+/** Only ambiguous local hours need an offset to distinguish their instants. */
+export function repeatedHourOffset(at: Date): string {
+  const repeated = [-1, 1].some((direction) => {
+    const other = new Date(at.getTime() + direction * 3_600_000);
+    return other.getFullYear() === at.getFullYear() && other.getMonth() === at.getMonth()
+      && other.getDate() === at.getDate() && other.getHours() === at.getHours()
+      && other.getMinutes() === at.getMinutes() && other.getTimezoneOffset() !== at.getTimezoneOffset();
+  });
+  if (!repeated) return "";
+  const offset = -at.getTimezoneOffset();
+  return ` UTC${offset >= 0 ? "+" : "−"}${String(Math.floor(Math.abs(offset) / 60)).padStart(2, "0")}:${String(Math.abs(offset) % 60).padStart(2, "0")}`;
 }

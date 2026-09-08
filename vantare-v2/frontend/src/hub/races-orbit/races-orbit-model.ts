@@ -174,8 +174,7 @@ export interface StartGroup {
 export function groupByHour(rows: StartRow[]): StartGroup[] {
   const groups: StartGroup[] = [];
   for (const row of rows) {
-    const hour = new Date(row.at);
-    hour.setMinutes(0, 0, 0);
+    const hour = timelineStart(row.at);
     const last = groups[groups.length - 1];
     if (last && last.hour.getTime() === hour.getTime()) last.rows.push(row);
     else groups.push({ hour, rows: [row] });
@@ -183,9 +182,13 @@ export function groupByHour(rows: StartRow[]): StartGroup[] {
   return groups;
 }
 
-/** Cuántas salidas hay que pedirle al motor para cubrir un día entero. */
-function dayCount(engine: Series): number {
-  return engine.every ? Math.ceil(1440 / engine.every) + 1 : 8;
+/** Covers the actual window, including local days of 23 or 25 hours. */
+function startsInWindow(engine: Series, from: Date, to: Date): Date[] {
+  const minutes = (to.getTime() - from.getTime()) / 60_000;
+  const count = engine.every
+    ? Math.ceil(minutes / engine.every) + 1
+    : (engine.weeklyUTC?.length ?? 0) * (Math.ceil(minutes / 1440) + 1);
+  return nextStarts(engine, from, count).filter((at) => at < to);
 }
 
 /** Medianoche local del día `offset` días después de hoy. */
@@ -218,11 +221,10 @@ export interface DayHour {
 
 /** Vista 2 · Día: 24 filas horarias con las salidas locales de ese día. */
 export function dayRows(entries: RaceSeriesEntry[], base: Date, now: Date): DayHour[] {
-  const end = new Date(base.getTime() + 86_400_000);
+  const end = dayAnchor(base, 1);
   const isToday = dayAnchor(now, 0).getTime() === base.getTime();
   const events: StartRow[] = entries.flatMap((entry) =>
-    nextStarts(entry.engine, base, dayCount(entry.engine))
-      .filter((at) => at < end)
+    startsInWindow(entry.engine, base, end)
       .map((at) => ({ entry, at })),
   );
 
@@ -258,8 +260,7 @@ export interface WeekRow {
 
 /** Todas las salidas locales de una serie dentro de un día. */
 function daySlots(entry: RaceSeriesEntry, day: Date): Date[] {
-  const end = new Date(day.getTime() + 86_400_000);
-  return nextStarts(entry.engine, day, dayCount(entry.engine)).filter((at) => at < end);
+  return startsInWindow(entry.engine, day, dayAnchor(day, 1));
 }
 
 /**
@@ -274,7 +275,7 @@ export function weekRows(entries: RaceSeriesEntry[], monday: Date, now: Date): W
   return entries.map((entry) => ({
     entry,
     cells: Array.from({ length: 7 }, (_, index) => {
-      const day = new Date(monday.getTime() + index * 86_400_000);
+      const day = dayAnchor(monday, index);
       const isToday = day.getTime() === today;
       const all = daySlots(entry, day);
       const upcomingSlots = isToday ? all.filter((at) => at >= now) : all;
@@ -320,9 +321,9 @@ export function monthDays(
   const weekly = entries.filter((entry) => entry.engine.every === undefined);
 
   return Array.from({ length: 42 }, (_, index) => {
-    const day = new Date(gridStart.getTime() + index * 86_400_000);
+    const day = dayAnchor(gridStart, index);
     const other = day.getMonth() !== first.getMonth() || day.getFullYear() !== first.getFullYear();
-    const end = new Date(day.getTime() + 86_400_000);
+    const end = dayAnchor(day, 1);
     return {
       day,
       other,
@@ -337,9 +338,7 @@ export function monthDays(
               name: entry.name,
               // A local day can intersect multiple UTC dates. Count its actual
               // occurrences after the engine has applied publication validity.
-              slots: nextStarts(entry.engine, day,
-                (entry.engine.weeklyUTC?.length ?? 0) * (Math.ceil((end.getTime() - day.getTime()) / 86_400_000) + 1),
-              ).filter((at) => at < end).length,
+              slots: startsInWindow(entry.engine, day, end).length,
             })),
       specials: other
         ? []
@@ -355,9 +354,8 @@ export function monthDays(
 
 /** Inicio del eje del timeline: la hora en punto actual (`13.3`). */
 export function timelineStart(now: Date): Date {
-  const start = new Date(now);
-  start.setMinutes(0, 0, 0);
-  return start;
+  // Subtract elapsed minutes; setMinutes would select the first repeated hour.
+  return new Date(now.getTime() - (now.getMinutes() * 60 + now.getSeconds()) * 1000 - now.getMilliseconds());
 }
 
 export interface TimelineRow {
@@ -382,11 +380,7 @@ export function timelineRows(
     const raceMin = entry.raceMin > 0 ? entry.raceMin : (every ?? 60);
     return {
       entry,
-      starts: nextStarts(
-        entry.engine,
-        start,
-        every ? Math.ceil((spanH * 60) / every) + 1 : Math.max(10, spanH),
-      ).filter((at) => at < end),
+      starts: startsInWindow(entry.engine, start, end),
       blockMin: Math.max(1, Math.min(raceMin, (every ?? raceMin) - 3)),
     };
   });

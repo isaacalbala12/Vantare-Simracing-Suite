@@ -1,5 +1,15 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+## ISA-1044 — días locales y slots (2026-09-08)
+
+C7 de #1027: fechas civiles con setDate; cantidad por ventana real en vez de ocho;
+hora repetida conserva instante y se identifica con UTC. Base C3 317ff133,
+sin integración. Rama vantareapp/isa-1044-calendar-local-days. RED seis fallos,
+focal 124 PASS y matriz UTC/Madrid/Nueva York. Checks finales/review en curso.
+Informe docs/analysis/ISA-1044-calendar-local-days.md. Sin CSS, HUD o Studio.
+C2/C3/C4a/C4b/C5 candidatos #1031/#1034/#1036/#1040/#1045; quedan C6, C8/C9,
+Wails y rendimiento A/A–A/B. No merge ni release.
+
 ## ISA-1032 — vigencia en Inicio y Calendario (2026-09-08)
 
 Corte C3 del plan #1027 aprobado por Isaac, dependiente de #1029 / PR #1031.

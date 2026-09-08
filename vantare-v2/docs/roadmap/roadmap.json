@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-08T01:22:02Z",
+  "generatedAt": "2026-09-08T02:33:20Z",
   "digest": {
     "lastCommit": "d6d0992f8dbc800ccb6d75f60fffdc7c3d561da2"
   },
@@ -343,6 +343,28 @@
     }
   ],
   "milestones": [
+    {
+      "id": "calendar-local-days-slots",
+      "type": "fix",
+      "title": {
+        "es": "Días locales y salidas completas en Calendario",
+        "en": "Local days and complete calendar starts",
+        "pt": "Dias locais e partidas completas no calendário",
+        "it": "Giorni locali e partenze complete nel calendario"
+      },
+      "body": {
+        "es": "Las vistas respetan medianoches locales y cambios de hora, cuentan todas las salidas publicadas y distinguen los instantes de una hora repetida mediante su desplazamiento UTC.",
+        "en": "Views respect local midnights and daylight saving changes, count every published start and distinguish repeated-hour instants using their UTC offset.",
+        "pt": "As vistas respeitam as meias-noites locais e mudanças de hora, contam todas as partidas publicadas e distinguem instantes de uma hora repetida pelo desvio UTC.",
+        "it": "Le viste rispettano le mezzanotti locali e i cambi d'ora, contano tutte le partenze pubblicate e distinguono gli istanti di un'ora ripetuta tramite lo scarto UTC."
+      },
+      "label": {
+        "es": "ISA-1044",
+        "en": "ISA-1044",
+        "pt": "ISA-1044",
+        "it": "ISA-1044"
+      }
+    },
     {
       "id": "calendar-schedule-validity",
       "type": "fix",

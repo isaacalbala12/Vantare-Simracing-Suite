@@ -40,7 +40,9 @@ describe("vigencia del documento oficial en todos sus consumidores", () => {
   it("Día, Semana, Mes y Timeline no extienden las recurrencias", () => {
     const entries = buildSeriesEntries(document);
     expect(dayRows(entries, end, end).flatMap((hour) => hour.events)).toEqual([]);
-    expect(weekRows(entries, end, end).flatMap((row) => row.cells).every((cell) => cell.total === 0)).toBe(true);
+    // Expiry can be inside a local day; that day's earlier starts remain valid.
+    expect(weekRows(entries, dayAnchor(end, 0), end).flatMap((row) => row.cells.flatMap((cell) => cell.slots)).every((at) => at < end)).toBe(true);
+    expect(weekRows(entries, dayAnchor(end, 1), end).flatMap((row) => row.cells).every((cell) => cell.total === 0)).toBe(true);
     expect(timelineRows(entries, end).flatMap((row) => row.starts)).toEqual([]);
     const after = new Date(end.getFullYear(), end.getMonth() + 1, 1);
     expect(monthDays(entries, after, after).every((day) => day.daily === 0 && day.weekly.length === 0)).toBe(true);
@@ -73,7 +75,7 @@ describe("vigencia del documento oficial en todos sus consumidores", () => {
       schedule: { ...document.schedule, validFrom: new Date(start.getTime() + 6 * 3_600_000).toISOString(), validUntil: new Date(start.getTime() + 12 * 3_600_000).toISOString() } };
     const entries = buildSeriesEntries(partial);
     expect(entries.length).toBe(1);
-    const day = dayAnchor(start, 0);
+    const day = dayAnchor(new Date(partial.schedule.validFrom), 0);
     const dayCount = dayRows(entries, day, start).flatMap((hour) => hour.events).length;
     expect(dayCount).toBeGreaterThan(0);
     const month = monthDays(entries, new Date(day.getFullYear(), day.getMonth(), 1), start);

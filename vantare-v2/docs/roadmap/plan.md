@@ -254,6 +254,19 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 
 ## Hitos
 
+### Resultado explícito al actualizar Calendario
+
+- id: calendar-refresh-result
+- tipo: fix
+- titulo.en: Explicit calendar refresh result
+- titulo.pt: Resultado explícito da atualização do Calendário
+- titulo.it: Risultato esplicito dell'aggiornamento del Calendario
+- cuerpo: El puente comunica inicio y resultado de la actualización, también cuando falla la sesión o la red. Publica el documento confirmado solo tras éxito y serializa las peticiones para evitar resultados entremezclados. La conservación del horario depende de ISA-1029 y la presentación de estados continúa en el siguiente corte del plan ISA-1027.
+- cuerpo.en: The bridge reports refresh start and result, including session or network failure. It publishes the confirmed document only on success and serializes requests to avoid interleaved results. Schedule retention depends on ISA-1029 and status presentation continues in the next ISA-1027 cut.
+- cuerpo.pt: O bridge comunica início e resultado da atualização, incluindo falha de sessão ou rede. Publica o documento confirmado apenas após sucesso e serializa pedidos para evitar resultados misturados. A conservação depende de ISA-1029 e a apresentação de estados continua no próximo corte ISA-1027.
+- cuerpo.it: Il bridge comunica inizio e risultato dell'aggiornamento, anche in caso di errore di sessione o rete. Pubblica il documento confermato solo dopo il successo e serializza le richieste. La conservazione dipende da ISA-1029; gli stati visibili proseguono nel prossimo intervento ISA-1027.
+- etiqueta: ISA-1035
+
 ### CPU con seis widgets
 
 - id: telemetry-six-widget-cpu

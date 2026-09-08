@@ -45,6 +45,18 @@ func HandleCalendarGet(svc CalendarGetter, emitter EventEmitter) {
 	emitter.Emit("calendar:loaded", map[string]any{"calendar": cal})
 }
 
+// HandleCalendarRefresh reports lifecycle separately from calendar:get. Failed
+// refreshes keep the displayed document; private error details stay in the log.
+func HandleCalendarRefresh(svc CalendarGetter, refresh func() error, emitter EventEmitter) {
+	emitter.Emit("calendar:refresh:started", map[string]any{})
+	if err := refresh(); err != nil {
+		emitter.Emit("calendar:refresh:result", map[string]any{"ok": false})
+		return
+	}
+	HandleCalendarGet(svc, emitter)
+	emitter.Emit("calendar:refresh:result", map[string]any{"ok": true})
+}
+
 // HandleCalendarImport parses the pasted text, replaces the calendar, and
 // emits the updated document. On parse or replace failure it emits
 // calendar:error and does NOT modify the stored calendar.

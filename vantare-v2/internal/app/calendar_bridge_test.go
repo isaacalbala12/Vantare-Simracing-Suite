@@ -2,11 +2,73 @@ package app
 
 import (
 	"errors"
+	"reflect"
 	"testing"
 	"time"
 
 	"github.com/vantare/overlays/v2/internal/calendar"
 )
+
+func TestCalendarRefreshSnapshotRecoversResultBeforeSubscription(t *testing.T) {
+	for _, fail := range []bool{false, true} {
+		status := &CalendarRefreshStatus{}
+		snapshot := func(want string) {
+			t.Helper()
+			late := &spyCalendarEmitter{}
+			status.EmitCurrent(late)
+			if !reflect.DeepEqual(late.events, []string{"calendar:refresh:status"}) || !reflect.DeepEqual(late.data, []any{map[string]any{"state": want}}) {
+				t.Fatalf("snapshot = %v %v, want %s", late.events, late.data, want)
+			}
+		}
+		snapshot("idle")
+		calls := 0
+		HandleCalendarRefresh(&fakeCalendarService{cal: calendar.NewDefaultCalendar()}, func() error {
+			calls++
+			snapshot("pending")
+			if fail {
+				return errors.New("private")
+			}
+			return nil
+		}, &spyCalendarEmitter{}, status)
+		if fail {
+			snapshot("error")
+		} else {
+			snapshot("success")
+		}
+		if calls != 1 {
+			t.Fatalf("refresh calls = %d", calls)
+		}
+	}
+}
+
+func TestCalendarRefreshReportsStartAndConfirmedResult(t *testing.T) {
+	for _, fail := range []bool{false, true} {
+		t.Run(map[bool]string{false: "success", true: "failure"}[fail], func(t *testing.T) {
+			svc := &fakeCalendarService{cal: calendar.NewDefaultCalendar()}
+			emitter := &spyCalendarEmitter{}
+			HandleCalendarRefresh(svc, func() error {
+				if !reflect.DeepEqual(emitter.events, []string{"calendar:refresh:started"}) {
+					t.Error("UI was not told refresh started before the slow operation")
+				}
+				if fail {
+					return errors.New("private diagnostic detail")
+				}
+				return nil
+			}, emitter, &CalendarRefreshStatus{})
+			want := []string{"calendar:refresh:started", "calendar:loaded", "calendar:refresh:result"}
+			if fail {
+				want = []string{"calendar:refresh:started", "calendar:refresh:result"}
+			}
+			if !reflect.DeepEqual(emitter.events, want) {
+				t.Fatalf("events=%v, want %v", emitter.events, want)
+			}
+			result := emitter.data[len(emitter.data)-1].(map[string]any)
+			if !reflect.DeepEqual(result, map[string]any{"ok": !fail}) {
+				t.Fatalf("UI result must expose success without private error details: %v", result)
+			}
+		})
+	}
+}
 
 // fakeCalendarService implements CalendarGetter, CalendarReplacer, CalendarClearer
 // for testing the bridge handlers without touching disk.

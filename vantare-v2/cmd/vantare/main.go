@@ -2350,20 +2350,24 @@ func main() {
 	if inboxErr != nil {
 		log.Printf("warning: Discord calendar inbox unavailable: %v", inboxErr)
 	}
+	var calendarRefreshMu sync.Mutex
+	var calendarRefreshStatus app.CalendarRefreshStatus
 	refreshPublishedSchedule := func() {
-		session, err := authManager.Restore()
-		if err != nil {
-			// Signed out: the bundled schedule is the only one available.
-			return
-		}
-		source, err := calendarSvc.RefreshPublishedSchedule(
-			context.Background(), schedulePublisher, session.AccessToken, time.Now(),
-		)
-		if err != nil {
-			log.Printf("warning: could not refresh published schedule: %v (using %s)", err, source)
-			return
-		}
-		app.HandleCalendarGet(calendarSvc, emitter)
+		calendarRefreshMu.Lock()
+		defer calendarRefreshMu.Unlock()
+		app.HandleCalendarRefresh(calendarSvc, func() error {
+			session, err := authManager.Restore()
+			if err != nil {
+				return err
+			}
+			source, err := calendarSvc.RefreshPublishedSchedule(
+				ctx, schedulePublisher, session.AccessToken, time.Now(),
+			)
+			if err != nil {
+				log.Printf("warning: could not refresh published schedule: %v (using %s)", err, source)
+			}
+			return err
+		}, emitter, &calendarRefreshStatus)
 	}
 	go refreshPublishedSchedule()
 
@@ -3367,6 +3371,10 @@ func main() {
 
 	wailsApp.Event.On("calendar:get", func(event *application.CustomEvent) {
 		app.HandleCalendarGet(calendarSvc, emitter)
+	})
+
+	wailsApp.Event.On("calendar:refresh:status:get", func(event *application.CustomEvent) {
+		calendarRefreshStatus.EmitCurrent(emitter)
 	})
 
 	// Owner-only schedule publishing. The parse runs locally so the owner sees

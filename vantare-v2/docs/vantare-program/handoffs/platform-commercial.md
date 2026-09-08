@@ -1,5 +1,29 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+### Seguimiento de review C4b (2026-09-08)
+
+ISA-1035 añade snapshot local del estado de refresh para el shell que se monta
+después del arranque. No repite red. Regresión RED/GREEN del puente PASS;
+revisión 749d7761 ACCEPT y Go completo PASS. Continúa en el mismo corte C4a,
+sin integración; C4b ISA-1037 consume calendar:refresh:status:get/status.
+
+## ISA-1035 — resultado de actualización de Calendario (2026-09-08)
+
+C4a del plan #1027 aprobado. Rama `vantareapp/isa-1035-calendar-refresh-result`,
+worktree `C:/tmp/vantare-isa1035-calendar-refresh-result`, base nightly d6d0992f.
+El puente anuncia `calendar:refresh:started`, luego `calendar:loaded` si hay éxito
+y `calendar:refresh:result` con `{ok:true|false}`. No expone detalles privados del
+error. El arranque y la acción manual usan el mismo recorrido, serializado y con
+contexto de cierre para la consulta remota. Tests de éxito/fallo RED→GREEN.
+Bridge, build embed, Go completo y roadmap 23+21 PASS. Review independiente
+b15c7f76 ACCEPT para C4a sin P1/P2. Evidencia docs/analysis/ISA-1035-calendar-refresh-result.md.
+
+La conservación depende de C2 #1029/PR #1031; C3 #1032/PR #1034 limita vigencia.
+Ambos tienen review independiente ACCEPT y checks locales focales/build/Go PASS;
+#1031 CI falla en SQLite conocido #811 y la suite frontend de C3 tiene dos
+timeouts Pedals conocidos #1025. No afirmar conjunto verde. C4b añade la UI de
+estos estados; C1/C5–C11 pendientes. HUD/Studio, LMU y Edge intactos; sin merge/release.
+
 ## ISA-1011 — runtime de release (2026-09-07)
 
 Nightly.15 no se publicó: el segundo intento 34062671599 pasó tests pero

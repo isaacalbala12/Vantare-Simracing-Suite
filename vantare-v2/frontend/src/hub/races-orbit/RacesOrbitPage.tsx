@@ -138,9 +138,14 @@ export function RacesOrbitPage({ calendar, target, now }: RacesOrbitPageProps) {
   const [view, setView] = useState<RacesView>("next");
   const [tier, setTier] = useState<TierFilter>("all");
   const [offset, setOffset] = useState(0);
-  const [picked, setPicked] = useState<string | null>(null);
-  /** Hora concreta elegida en Semana/Mes/Día/Timeline (manda en el detalle). */
-  const [pickedAt, setPickedAt] = useState<Date | null>(null);
+  const [selection, setSelection] = useState<{ id: string | null; at: Date | null; target?: string }>(() => ({ id: null, at: null, target }));
+  // A new navigation destination starts a fresh selection, including its filter.
+  // Adjust before painting so a hidden target cannot briefly show another series.
+  if (selection.target !== target) {
+    setSelection({ id: null, at: null, target });
+    setTier("all");
+  }
+  const picked = selection.target === target ? selection.id : null;
 
   // Rango y zoom persistidos: se leen una sola vez, al montar.
   const [range, setRange] = useState<TimelineRange>(() => readTimelinePrefs().range);
@@ -158,10 +163,17 @@ export function RacesOrbitPage({ calendar, target, now }: RacesOrbitPageProps) {
   const selected: RaceSeriesEntry | null =
     visible.find((entry) => entry.id === selectedId) ?? visible[0] ?? null;
 
+  // An explicit instant belongs to its selected series and navigation target.
+  // Revalidate against the current publication before displaying it.
+  const pickedAt = useMemo(() => {
+    if (!selected || selection.target !== target || selection.id !== selected.id || !selection.at) return null;
+    const at = selection.at;
+    return nextStarts(selected.engine, at, 1)[0]?.getTime() === at.getTime() ? at : null;
+  }, [selected, selection, target]);
+
   const select = useCallback((id: string, at?: Date) => {
-    setPicked(id);
-    setPickedAt(at ?? null);
-  }, []);
+    setSelection({ id, at: at ?? null, target });
+  }, [target]);
 
   const changeView = useCallback((next: RacesView) => {
     setView(next);
@@ -910,7 +922,7 @@ export function RacesOrbitPage({ calendar, target, now }: RacesOrbitPageProps) {
                 </div>
                 <div>
                   <dt>{t("races.detail.sessions")}</dt>
-                  <dd>{selected.sessions || "—"}</dd>
+                  <dd>{selected.sessions || "—"}{selected.sessionsEstimated ? ` · ${t("races.detail.estimated")}` : ""}</dd>
                 </div>
               </dl>
 

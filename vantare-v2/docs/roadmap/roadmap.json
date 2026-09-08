@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-08T02:59:08Z",
+  "generatedAt": "2026-09-08T03:28:59Z",
   "digest": {
     "lastCommit": "d6d0992f8dbc800ccb6d75f60fffdc7c3d561da2"
   },
@@ -343,6 +343,28 @@
     }
   ],
   "milestones": [
+    {
+      "id": "calendar-detail-selection",
+      "type": "fix",
+      "title": {
+        "es": "Detalle de Calendario coherente con la selección",
+        "en": "Calendar detail follows the selected race",
+        "pt": "Detalhe do Calendário coerente com a seleção",
+        "it": "Dettaglio del Calendario coerente con la selezione"
+      },
+      "body": {
+        "es": "El detalle marca las duraciones estimadas y valida la hora elegida para la serie y publicación actuales. Cambiar de filtro o navegar desde Inicio no arrastra una hora ajena; las horas históricas aún publicadas se conservan.",
+        "en": "Details mark estimated durations and validate the selected time against the current series and publication. Changing filters or navigating from Home does not carry over another race time; valid historical times are preserved.",
+        "pt": "O detalhe assinala durações estimadas e valida a hora escolhida para a série e publicação atuais. Mudar o filtro ou navegar desde Início não arrasta outra hora; horários históricos válidos são preservados.",
+        "it": "Il dettaglio indica le durate stimate e verifica l'orario scelto per la serie e pubblicazione correnti. Cambiare filtro o navigare da Home non trascina un altro orario; gli orari storici validi vengono conservati."
+      },
+      "label": {
+        "es": "ISA-1052",
+        "en": "ISA-1052",
+        "pt": "ISA-1052",
+        "it": "ISA-1052"
+      }
+    },
     {
       "id": "calendar-month-classification",
       "type": "fix",

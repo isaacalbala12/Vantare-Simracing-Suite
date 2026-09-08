@@ -46,6 +46,7 @@ export const racesOrbitPt: Record<string, string> = {
   "races.detail.race": "Corrida",
   "races.detail.cadence": "Cadência",
   "races.detail.next": "Próxima partida",
+  "races.detail.estimated": "~ duração estimada",
   "races.detail.sessions": "Sessões",
   "races.detail.starts": "Partidas seguintes",
   "races.detail.picked": "Partida escolhida",

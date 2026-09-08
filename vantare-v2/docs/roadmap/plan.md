@@ -254,6 +254,19 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 
 ## Hitos
 
+### Detalle de Calendario coherente con la selección
+
+- id: calendar-detail-selection
+- tipo: fix
+- titulo.en: Calendar detail follows the selected race
+- titulo.pt: Detalhe do Calendário coerente com a seleção
+- titulo.it: Dettaglio del Calendario coerente con la selezione
+- cuerpo: El detalle marca las duraciones estimadas y valida la hora elegida para la serie y publicación actuales. Cambiar de filtro o navegar desde Inicio no arrastra una hora ajena; las horas históricas aún publicadas se conservan.
+- cuerpo.en: Details mark estimated durations and validate the selected time against the current series and publication. Changing filters or navigating from Home does not carry over another race time; valid historical times are preserved.
+- cuerpo.pt: O detalhe assinala durações estimadas e valida a hora escolhida para a série e publicação atuais. Mudar o filtro ou navegar desde Início não arrasta outra hora; horários históricos válidos são preservados.
+- cuerpo.it: Il dettaglio indica le durate stimate e verifica l'orario scelto per la serie e pubblicazione correnti. Cambiare filtro o navigare da Home non trascina un altro orario; gli orari storici validi vengono conservati.
+- etiqueta: ISA-1052
+
 ### Mes sin ocurrencias duplicadas como especiales
 
 - id: calendar-month-classification

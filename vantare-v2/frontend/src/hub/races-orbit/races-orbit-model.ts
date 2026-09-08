@@ -62,6 +62,7 @@ export interface RaceSeriesEntry {
   raceMin: number;
   /** Sesiones publicadas ("P 3 · Q 8 · R 20"), vacío si el fixture no las trae. */
   sessions: string;
+  sessionsEstimated: boolean;
   /** Motor `13.3` de esta serie. */
   engine: Series;
   followed: boolean;
@@ -82,7 +83,7 @@ function sessionsLabel(series: RaceSeries): string {
     .map((session) => {
       const key = session.name.trim().toLowerCase();
       const initial = SESSION_INITIAL[key] ?? session.name.slice(0, 1).toUpperCase();
-      return `${initial} ${session.durationMin}`;
+      return `${initial} ${session.estimated ? "~" : ""}${session.durationMin}`;
     })
     .join(" · ");
 }
@@ -113,6 +114,7 @@ export function buildSeriesEntries(calendar: Calendar | null): RaceSeriesEntry[]
       setup: engine.setup,
       raceMin: series.raceDurationMin ?? series.durationMin ?? 0,
       sessions: sessionsLabel(series),
+      sessionsEstimated: (series.sessions ?? []).some((session) => session.estimated),
       engine,
       followed: followed.has(series.id),
     });

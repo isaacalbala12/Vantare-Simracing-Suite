@@ -1,5 +1,16 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+## ISA-1052 — detalle y selección (2026-09-08)
+
+C9: sesiones estimadas marcadas con ~ y explicación; selección ligada a serie,
+instante y destino, validada con el motor/publicación actual. Nuevo target limpia
+filtro/selección; no pierde horas históricas válidas. RED 7+2, focal133PASS/2skips,
+build PASS; checks finales/review pendientes. Base C8 ec3a75f5, rama
+vantareapp/isa-1052-calendar-detail-selection. Informe ISA-1052 en docs/analysis.
+C6a/C6b aceptados, full Go PASS, candidatos #1051/#1053; C6c y Wails/rendimiento
+pendientes. No merge/release, HUD/Studio intactos.
+
+
 ## ISA-1046 — clasificación de Mes (2026-09-08)
 
 C8 de #1027 evita que las ocurrencias generadas aparezcan como especiales.

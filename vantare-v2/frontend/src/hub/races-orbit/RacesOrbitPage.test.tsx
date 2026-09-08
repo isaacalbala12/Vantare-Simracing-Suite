@@ -87,15 +87,18 @@ function mountSlots() {
   }
 }
 
+function page(props: Partial<Parameters<typeof RacesOrbitPage>[0]> = {}) {
+  return <I18nProvider><ToastProvider><RacesOrbitPage calendar={CALENDAR} now={NOW} {...props} /></ToastProvider></I18nProvider>;
+}
 function setup(props: Partial<Parameters<typeof RacesOrbitPage>[0]> = {}) {
   mountSlots();
-  return render(
-    <I18nProvider>
-      <ToastProvider>
-        <RacesOrbitPage calendar={CALENDAR} now={NOW} {...props} />
-      </ToastProvider>
-    </I18nProvider>,
-  );
+  const view = render(page(props));
+  return { ...view, rerenderPage: (next: Partial<Parameters<typeof RacesOrbitPage>[0]>) => view.rerender(page(next)) };
+}
+function pickFirstDayStart() {
+  fireEvent.click(screen.getByRole("button", { name: "Día" }));
+  fireEvent.click(screen.getAllByTestId("orbit-races-ev-chip").find((chip) => chip.textContent?.includes("LMGT3 Fixed"))!);
+  expect(within(screen.getByTestId("orbit-races-detail")).getByText("Salida elegida")).toBeTruthy();
 }
 
 const VIEWS = [
@@ -107,6 +110,55 @@ const VIEWS = [
 ] as const;
 
 describe("RacesOrbitPage", () => {
+  it("el filtro no arrastra una hora elegida de otra serie", () => {
+    setup(); pickFirstDayStart();
+    fireEvent.click(screen.getByTestId("orbit-races-filter-advanced"));
+    const detail = within(screen.getByTestId("orbit-races-detail"));
+    expect(detail.getByText("Hypercar Open")).toBeTruthy();
+    expect(detail.queryByText("Salida elegida")).toBeNull();
+    expect(detail.getByText("Próxima salida")).toBeTruthy();
+  });
+  it("un nuevo destino de Inicio sustituye la selección manual anterior", () => {
+    const view = setup({ target: "bronze-1" }); pickFirstDayStart();
+    view.rerenderPage({ target: "gold-1" });
+    const detail = within(screen.getByTestId("orbit-races-detail"));
+    expect(detail.getByText("Hypercar Open")).toBeTruthy();
+    expect(detail.queryByText("Salida elegida")).toBeNull();
+  });
+  it("un nuevo horario descarta una hora que ya no es una salida publicada", () => {
+    const view = setup(); pickFirstDayStart();
+    const calendar = { ...CALENDAR, series: CALENDAR.series.map((item) => ({ ...item, startOffsetMinute: 30, recurrence: { kind: "interval", intervalMinutes: 60 } })) };
+    view.rerenderPage({ calendar });
+    const detail = within(screen.getByTestId("orbit-races-detail"));
+    expect(detail.queryByText("Salida elegida")).toBeNull();
+    expect(detail.getByText("Próxima salida")).toBeTruthy();
+  });
+  it("el destino nuevo de Inicio prevalece sobre el filtro anterior", () => {
+    const view = setup();
+    fireEvent.click(screen.getByTestId("orbit-races-filter-advanced"));
+    view.rerenderPage({ target: "bronze-1" });
+    expect(within(screen.getByTestId("orbit-races-detail")).getByText("LMGT3 Fixed")).toBeTruthy();
+  });
+  it("volver a un destino anterior no recupera una selección manual retirada", () => {
+    const view = setup(); pickFirstDayStart();
+    view.rerenderPage({ target: "gold-1" });
+    view.rerenderPage({});
+    expect(within(screen.getByTestId("orbit-races-detail")).queryByText("Salida elegida")).toBeNull();
+  });
+  it("actualizar el seguimiento conserva una hora histórica todavía publicada", () => {
+    const view = setup(); pickFirstDayStart();
+    view.rerenderPage({ calendar: { ...CALENDAR, followedSeriesIds: ["bronze-1"] } });
+    expect(within(screen.getByTestId("orbit-races-detail")).getByText("Salida elegida")).toBeTruthy();
+  });
+  it.each([false, true])("señala las sesiones estimadas sin convertir las confirmadas (estimada: %s)", (estimated) => {
+    setup({ calendar: { ...CALENDAR, series: [series({ id: "s", name: "Sesiones", sessions: [
+      { name: "practice", durationMin: 3, estimated }, { name: "race", durationMin: 20, estimated: false },
+    ] })] } });
+    const detail = screen.getByTestId("orbit-races-detail");
+    expect(detail.textContent).toContain(estimated ? "P ~3 · R 20" : "P 3 · R 20");
+    expect(detail.textContent?.includes("~ duración estimada")).toBe(estimated);
+  });
+
   it.each([
     ["especial", false], ["+N", false], ["especial", true], ["+N", true],
   ] as const)("Mes → Día conserva especiales al abrir %s (con series: %s)", (target, withSeries) => {

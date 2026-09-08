@@ -1,5 +1,138 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+## ISA-1015 — rendimiento de la base, medición junto a LMU (2026-09-08)
+
+Estado vigente: Isaac añade rapidez de arranque, pantallas, interacción,
+desplazamiento y restauración al objetivo de consumo. Misma apariencia y datos;
+HUD/Studio excluidos. Protocolo ampliado en el informe y roadmap, todavía sin
+tiempos de navegación validados ni cortes de producto. Medir contenido utilizable,
+separar primera visita/revisita y latencia visible de señal DOM. Navegación con
+foco foreground; el reposo background no certifica rapidez percibida.
+
+Tres corridas completas con LMU, 60 s warmup +180 s configurados cada una,
+terminadas y cierre limpio: CPU 0,4907/0,6322/0,5718 %, memoria privada
+346,33/344,25/343,35 MiB. Media entre corridas 0,5649 % y 344,64 MiB;
+CV muestral CPU 12,57 %, RAM 0,44 %. No A/A formal ni ahorro. Motor 3D
+atribuido 0,06407/0,06046/0,06543 %, no porcentaje total de tarjeta.
+215 instantes propios, 213 GPU válidos; dos intervalos GPU excluidos.
+Home background estable, Auto3/full/raf40, lmu/stale/available/sourceHz0;
+no prueba conducción. LMU/Edge/Racelab conservados, consumo separado.
+Crudos y resumen en results/isa1015-base-live. Tooling a185b50f subido;
+60/60 tests PASS, revisión ACCEPT hasta 4000b023 y regresión decimal revisada
+por padre. Smoke3 positivo; validación negativa nativa pendiente.
+
+CI a185b50f: primer intento falla en PTT conocido #812; única repetición del
+run 34166748099 pasa Go y falla en presupuesto parse de OverlayFrame v2:
+1,532 ms frente a 1,5 ms, 3235 PASS/1 FAIL, hallazgo #1019 en Project Vantare.
+Roadmap ampliado y regenerado, 23+21 tests PASS. Fallo anterior separado en #1018;
+workflow inerte #728 persiste. Sin cambios en esas superficies ni merge/release.
+Siguiente acción: atribuir arranque/preparar navegación real antes de seleccionar
+una issue de corte. El historial siguiente conserva evidencia anterior y sus
+pendientes se sustituyen por este estado cuando corresponda.
+
+Decisión vigente: Isaac autoriza continuar con LMU y Edge abiertos; sustituye la
+pausa sin juego del 2026-09-07. BaseRoute/A0 mide solo procesos propios; el juego
+tiene CSV de contexto separado y debe conservar PID/vida durante el intervalo.
+No PresentMon/ETW adicional ni control del juego. Auto admite sourceHz variable,
+pero exige política estable; ops:metrics etiqueta fuente sin confundir live/stale
+con menú/carrera. GPU conserva instancias por adaptador/motor, sin convertir la
+suma histórica en porcentaje total. 60/60 tests del banco PASS. Dos regresiones
+iniciales y dos P2 de revisión reproducidos/corregidos (primera fuente tardía y
+gamePresent inicial contradictorio). Parser/diff-check PASS; cierre de revisión
+ACCEPT estático de 0974d1d6. Dos smokes cancelados antes de medir por Hub no
+foreground (Racelab conservaba foco), app propia cerrada y LMU/Edge intactos.
+Coexistencia ahora valida los hechos nativos existentes: visible/no minimizado y
+foco estable, etiquetando background/foreground y oclusión unknown. Conserva
+valid original del monitor (foreground), publica criterio propio en el intervalo
+y mantiene SinJuego estricto. Revisión de este criterio ACCEPT y smoke3 PASS.
+
+Isaac aprueba auditar y medir todo salvo HUD/OBS/widgets y Overlay Studio,
+preservando apariencia, capacidades y contratos compartidos. Base verificada
+`origin/nightly@d6d0992f8dbc800ccb6d75f60fffdc7c3d561da2`; rama
+`vantareapp/isa-1015-base-app-performance`, worktree `C:/tmp/vantare-isa1015-base-app`.
+Checkout principal y cambios previos preservados. Issue #1015, área plataforma,
+estado in-progress; sin versión comprometida ni autorización de integración.
+
+Inventarios estáticos UI/Core terminados en snapshots independientes limpios.
+Tres prioridades para atribuir: Ops sin consumidor, detección repetida de build
+con LMU ausente y recálculos de Carreras/calendario. No son ahorros medidos.
+Informe/protocolo: `docs/analysis/ISA-1015-base-app-performance.md`.
+
+Tooling local: build de diagnóstico desde entorno sin leer `.env`, preservación
+de configuración/generado previo; SinJuego ya no cambia PATH ni consulta/limpia
+ETW de PresentMon. Dos regresiones fallan contra la base; preparación inicial
+44/44 PASS y revisión estática ACCEPT. Extensión base posterior: 51/51 PASS,
+parser/diff-check PASS, `go test ./...` completo y build del monitor PASS.
+Roadmap previo 23+21 tests PASS. A0/SinJuego sigue no publicable y exploratorio;
+faltan validación Wails de la extensión, GPU por motor, control de mezcla y
+lifecycle minimizado para baseline aceptable. Sin corte productivo.
+
+Preflight real posterior: build frontend/typecheck y Go PASS, canal nightly
+explícito (el script antes conservaba master). BuildChannel normalizado a
+minúsculas, regresión de Nightly y flag Go; banco 44/44 PASS. Binario SHA-256
+`53136de43fde4117aa96fa12512b865291ce19b0fe5bbe7c33b6fd586ea26943`.
+Runtime aprobado 700201f9 verificado + handshake smoke PASS, junto al exe.
+Inicio real con Owner autenticado/deviceOK, sin HUD/Studio, Auto nivel 2 y
+effects full; cierre limpio. Evidencia local en `results/isa1015-preflight`.
+Configs/WebView propios; auth y cachés siguen rutas productivas compartidas,
+sin leer ni copiar credenciales. Escenario portable preparado, no instalación habitual.
+
+Preparación comprometida y subida en `2994de6e`; PR borrador #1017 hacia nightly.
+Contrato exacto de roadmap contra issue #1015 PASS. Preparación inicial e93c7845
+subida con CI remoto PASS (run 34161443366, gates de promoción/bloqueantes y
+GitGuardian). Código ampliado hasta 3abe2b16, seguido del cierre documental;
+consultar PR #1017 para SHA/CI de esa entrega posterior. No equivale a integración.
+Testing Center agent fix sigue fallando en pushes sin jobs/check-runs (run
+34164832100 sobre 29efba6c y anteriores): coincide con la issue abierta #728.
+Workflows sin cambios; no confundir PASS del gate de rama con todos los workflows
+verdes ni corregir #728 dentro de esta campaña.
+
+Primera ventana de medición: Isaac declaró PC disponible y cerró LMU/otra Vantare. La tarea de
+widgets terminó su turno documental. Isaac exige mantener los cinco Edge sin
+ventana: no cerrarlos. Registrar sus snapshots aparte y reutilizar el binario/WebView
+preparados para explorar Inicio (A0/SinJuego/Forzar, 60 s warmup + 180 s captura,
+hygieneForced=true, publishable=false). No descontar interferencia a partir de
+snapshots ni convertir esta exploración en aceptación. Revisión independiente de
+este primer paso conforme; CPU/RAM propias, GPU suma de motores solo diagnóstica.
+Primera captura completada: run1/a0-20260907-231514.csv bajo
+results/isa1015-base-home, 60 s warmup + 180 s configurados; 80 muestras,
+cadencia media 2,252 s. CPU propia 0,1907 %, memoria privada 342,69 MiB,
+working sets 533,13 MiB (suma con páginas compartidas), VRAM 74,23 MiB.
+GPU suma motores 0,0836 solo diagnóstica. Exe/dist estables y cierre limpio.
+Edge mismos cinco PID, 0,046875 s CPU en intervalo ampliado de 263,141 s;
+no se descuenta interferencia. No A/A, no aceptación ni ahorro.
+Perfil Go de 120 s inconcluso (GetMessage domina las muestras, sin delta CPU del
+mismo intervalo). Perfil JS optimizado ilegible descartado; se construyó copia
+ReadableFrontend separada, SHA 01f1157e, y se restauró el dist optimizado f1a69bb8.
+Perfiles legibles de 60 s: script Inicio 0,138 s, Mes 0,196 s, Timeline 0,314 s;
+cero tareas largas. Calendario backend real 11 series, Mes 42 celdas y Timeline
+660 salidas. RAf del propio diagnóstico no es coste productivo ni FPS presentado.
+No hay todavía evidencia suficiente para elegir un corte. Ver informe para hashes,
+crudos, límites y métricas; no comparar esta build con el CSV optimizado.
+
+Worker nativo: commit 116250cf revisado por el padre e incorporado como 7758085d;
+solo dos archivos del monitor. `--surface hub` observa PID+título Vantare Hub,
+visibilidad/foreground, minimizado y presencia; oclusión unknown, overlay intacto.
+El banco integra `-BaseRoute home|month|timeline` sobre A0/SinJuego, observador
+pasivo de ruta/viewport/Auto y metadatos base. Cambios intermedios o silencios
+de performance superiores a 3 s invalidan; Forzar/SinJuego sigue no publicable.
+La revisión encontró dos P2: ida/vuelta Mes-Timeline invisible al observar solo
+aria-current, y apertura/cierre de HUD entre extremos. Ambos reproducidos con el
+observador real en fixtures DOM/event-bus (RED), corregidos observando atributos
+de selección y overlay:status (GREEN); las interacciones invalidan sin guardar
+su contenido y se desmontan todos los listeners. Revisión independiente de cierre
+ACCEPT estático sobre 3abe2b16: ambos P2 cerrados, sin nuevos P1/P2 en el diff.
+
+Pausa runtime: LMU PID 29092 se reabrió a las 23:40:05 CEST, después de todas las
+capturas/perfiles y del cierre del diagnóstico (23:34:33). La tarea de widgets
+está activa. No cerrar LMU ni los cinco Edge. Se preguntó disponibilidad de nuevo;
+guard BaseRoute comprobado con LMU real: rechaza antes de lanzar Vantare.
+Esta pausa fue sustituida por la autorización anterior. Siguiente con LMU abierto: smoke Wails positivo y negativo del
+monitor/observador, una corrida completa, después A/A y control GPU/mezcla.
+El run1 no recibe garantías retroactivas. Los cinco experimentos sin mejora no
+han empezado ni se reinicia presupuesto. Los fallos CI históricos de la base
+siguen separados; SQLite pasó en esta suite local. Sin merge, promoción ni release.
+
 ## ISA-1022 — nombre Calendario (2026-09-08)
 
 Isaac solicita renombrar la pestaña Carreras a Calendario. Base nightly d6d0992f,

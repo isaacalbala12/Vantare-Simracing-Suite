@@ -12,6 +12,8 @@ param(
     [int]$Puerto = 9247,
     [string]$Juego = 'Le Mans Ultimate',
     [string]$Escena = '',
+    [ValidateSet('', 'home', 'month', 'timeline')]
+    [string]$BaseRoute = '',
     [string]$SesionLmu = '',
     [ValidateRange(0, 200)]
     [int]$Coches = 0,
@@ -31,6 +33,14 @@ if ($PSVersionTable.PSVersion.Major -lt 7) {
 if ($Puerto -in @(9222, 9231)) {
     throw "El puerto $Puerto está reservado por otros bancos; usa un puerto propio."
 }
+$BaseRoute = $BaseRoute.ToLowerInvariant()
+$isBase = $BaseRoute -ne ''
+$baseGame = if ($SinJuego) { 'absent' } else { 'present' }
+if ($isBase -and ($Condicion -ne 'A0' -or $OcultarPintura)) {
+    throw 'BaseRoute requiere A0, sin aislamiento de pintura.'
+}
+$usePresentMon = -not $SinJuego -and -not $isBase
+$measurementMode = if ($isBase) { if ($SinJuego) { 'base-no-game' } else { 'base-with-game' } } elseif ($OcultarPintura) { 'diagnostic-hidden-paint' } elseif ($SinJuego) { 'ram-only-no-game' } else { 'full' }
 
 $repoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..\..')).Path
 function Resolve-BenchPath([string]$Path, [switch]$MustExist) {
@@ -42,7 +52,7 @@ function Resolve-BenchPath([string]$Path, [switch]$MustExist) {
 $exePath = Resolve-BenchPath $Exe -MustExist
 $profilePath = Resolve-BenchPath $Perfil -MustExist
 $visibilityExe = Resolve-BenchPath 'bin/overlay-visibility-probe.exe'
-$requireVisibility = -not $SinJuego -and -not $OcultarPintura -and $Condicion -ne 'A0'
+$requireVisibility = $isBase -or (-not $SinJuego -and -not $OcultarPintura -and $Condicion -ne 'A0')
 if ($requireVisibility -and -not (Test-Path -LiteralPath $visibilityExe)) { throw 'Falta monitor nativo: go build -o bin/overlay-visibility-probe.exe ./tools/overlay-visibility-probe' }
 $visibilityProcess = $null
 $visibilityValid = $false
@@ -105,15 +115,16 @@ $plan = [ordered]@{
     cdpPort = $Puerto
     game = if ($SinJuego) { $null } else { $Juego }
     gamePresent = -not [bool]$SinJuego
-    measurementMode = if ($SinJuego) { 'ram-only-no-game' } else { 'full' }
+    measurementMode = $measurementMode
     scene = $Escena
+    baseRoute = $BaseRoute
     lmuSession = $SesionLmu
     cars = $Coches
     buildSha256 = $buildSha256
     distSha256 = $distSha256
     gitHead = $gitHead
     outputDirectory = $outputDir
-    presentMon = if ($SinJuego) { $null } else { $presentMonPath }
+    presentMon = if ($usePresentMon) { $presentMonPath } else { $null }
     presentMonUserPathPersisted = $presentMonDirectory -in $userPathParts
     expectedWidgets = $expectedWidgetCount
     forceHygiene = [bool]$Forzar
@@ -122,7 +133,7 @@ if ($DryRun) {
     $plan | ConvertTo-Json -Depth 4
     exit 0
 }
-if (Test-Path -LiteralPath $standalonePresentMon) {
+if ($usePresentMon -and (Test-Path -LiteralPath $standalonePresentMon)) {
     if ($presentMonDirectory -notin $userPathParts) {
         $updatedUserPath = (@($userPathParts) + $presentMonDirectory) -join ';'
         [Environment]::SetEnvironmentVariable('Path', $updatedUserPath, 'User')
@@ -131,11 +142,14 @@ if (Test-Path -LiteralPath $standalonePresentMon) {
         $env:Path = "$env:Path;$presentMonDirectory"
     }
 }
-if (-not $presentMonPath -and -not $SinJuego) {
+if (-not $presentMonPath -and $usePresentMon) {
     throw 'PresentMon 2.x no está en PATH ni en la ruta standalone documentada. Instala Intel.PresentMon antes de medir.'
 }
 if (Get-NetTCPConnection -LocalPort $Puerto -State Listen -ErrorAction SilentlyContinue) {
     throw "El puerto CDP $Puerto ya está escuchando."
+}
+if ($isBase -and $SinJuego -and (Get-Process -Name ([IO.Path]::GetFileNameWithoutExtension($Juego)) -ErrorAction SilentlyContinue)) {
+    throw 'BaseRoute sin juego requiere que LMU esté cerrado; no se detendrá ningún proceso.'
 }
 
 $hygieneCandidates = @(Get-CimInstance Win32_Process | Where-Object {
@@ -150,8 +164,7 @@ $systemWebView2Paths = @($systemWebView2.userDataDir | Where-Object { $_ } | Sor
 $systemWebView2PathsJson = if ($systemWebView2Paths.Count) { $systemWebView2Paths | ConvertTo-Json -Compress -AsArray } else { '[]' }
 $foreignProcessesJson = if ($foreignBrowsers.Count) { $foreignBrowsers | ConvertTo-Json -Compress -Depth 3 } else { '[]' }
 $hygieneForced = [bool]$Forzar
-$measurementMode = if ($OcultarPintura) { 'diagnostic-hidden-paint' } elseif ($SinJuego) { 'ram-only-no-game' } else { 'full' }
-$publishable = -not $hygieneForced -and -not [bool]$SinJuego -and -not [bool]$OcultarPintura
+$publishable = -not $hygieneForced -and -not [bool]$SinJuego -and -not [bool]$OcultarPintura -and -not $isBase
 Write-Host "WebView2 del sistema permitidos: $($systemWebView2.Count)"
 $systemWebView2Paths | ForEach-Object { Write-Host "  $_" }
 if ($foreignBrowsers.Count -gt 0) {
@@ -173,7 +186,10 @@ if ($SinJuego) {
 
 $gameProcessName = if ($SinJuego) { $null } else { [IO.Path]::GetFileNameWithoutExtension($Juego) }
 $gameProcess = if ($SinJuego) { $null } else { Get-Process -Name $gameProcessName -ErrorAction SilentlyContinue | Select-Object -First 1 }
-if (-not $SinJuego -and -not $gameProcess) { throw "No se encontró el juego '$Juego'; PresentMon necesita un proceso vivo." }
+if (-not $SinJuego -and -not $gameProcess) { throw "No se encontró el juego '$Juego'; el escenario con juego requiere un proceso vivo." }
+$gameStartedAt = if ($gameProcess) { $gameProcess.StartTime.ToUniversalTime() } else { $null }
+$gameStable = $true
+$gameRows = [Collections.Generic.List[object]]::new()
 
 New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
 $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
@@ -182,6 +198,8 @@ $rawCsv = Join-Path $outputDir "$stem.csv"
 $presentMonCsv = Join-Path $outputDir "$stem-presentmon.csv"
 $summaryMd = Join-Path $outputDir "$stem.md"
 $cdpJson = Join-Path $outputDir "$stem-cdp.json"
+$baseStartJson = Join-Path $outputDir "$stem-base-start.json"
+$baseEndJson = Join-Path $outputDir "$stem-base-end.json"
 $licenseJson = Join-Path $outputDir "$stem-license.json"
 $hubReopenJson = Join-Path $outputDir "$stem-hub-reopen.json"
 $stdoutLog = Join-Path $outputDir "$stem-stdout.log"
@@ -232,9 +250,14 @@ function Get-GpuTotals {
         foreach ($sample in $samples) {
             if ($sample.InstanceName -notmatch 'pid_(\d+)') { continue }
             $processId = [int]$Matches[1]
-            if (-not $totals.ContainsKey($processId)) { $totals[$processId] = @{ Engine = 0.0; Dedicated = 0.0 } }
-            if ($sample.Path -like '*Utilization Percentage') { $totals[$processId].Engine += [double]$sample.CookedValue }
-            elseif ($sample.Path -like '*Dedicated Usage') { $totals[$processId].Dedicated += [double]$sample.CookedValue }
+            if (-not $totals.ContainsKey($processId)) { $totals[$processId] = @{ Engine = 0.0; Dedicated = 0.0; Engines = [Collections.Generic.List[object]]::new(); Memory = [Collections.Generic.List[object]]::new() } }
+            if ($sample.Path -like '*Utilization Percentage') {
+                $totals[$processId].Engine += [double]$sample.CookedValue
+                $totals[$processId].Engines.Add([pscustomobject]@{ instance = $sample.InstanceName; percent = [double]$sample.CookedValue })
+            } elseif ($sample.Path -like '*Dedicated Usage') {
+                $totals[$processId].Dedicated += [double]$sample.CookedValue
+                $totals[$processId].Memory.Add([pscustomobject]@{ instance = $sample.InstanceName; dedicatedBytes = [double]$sample.CookedValue })
+            }
         }
         return [pscustomobject]@{ Valid = $true; Totals = $totals; Error = $null }
     } catch {
@@ -294,17 +317,19 @@ function Update-ProcessClassification {
 }
 
 try {
-    foreach ($etwSession in @(Get-VantareEtwSessions)) {
-        $owner = Get-Process -Id ([int]$etwSession.pid) -ErrorAction SilentlyContinue
-        if ($owner -and $owner.ProcessName -like 'vantare*') {
-            Write-Host "Sesión ETW activa conservada: $($etwSession.name) (Vantare PID $($etwSession.pid))."
-            continue
+    if ($usePresentMon) {
+        foreach ($etwSession in @(Get-VantareEtwSessions)) {
+            $owner = Get-Process -Id ([int]$etwSession.pid) -ErrorAction SilentlyContinue
+            if ($owner -and $owner.ProcessName -like 'vantare*') {
+                Write-Host "Sesión ETW activa conservada: $($etwSession.name) (Vantare PID $($etwSession.pid))."
+                continue
+            }
+            if (-not (Stop-HuellaEtwSession $etwSession.name)) {
+                throw "No se pudo detener la sesión ETW huérfana '$($etwSession.name)'."
+            }
+            $orphanEtwSessionsStopped += [string]$etwSession.name
+            Write-Warning "Sesión ETW huérfana detenida: $($etwSession.name)"
         }
-        if (-not (Stop-HuellaEtwSession $etwSession.name)) {
-            throw "No se pudo detener la sesión ETW huérfana '$($etwSession.name)'."
-        }
-        $orphanEtwSessionsStopped += [string]$etwSession.name
-        Write-Warning "Sesión ETW huérfana detenida: $($etwSession.name)"
     }
     $orphanEtwSessionsStoppedJson = ConvertTo-Json -InputObject @($orphanEtwSessionsStopped) -Compress
 
@@ -381,25 +406,35 @@ try {
         & node $cdpHelper --cdp "http://127.0.0.1:$Puerto" --action diagnostic-hide-paint --output (Join-Path $outputDir "$stem-paint-isolation.json") | Out-Host
         if ($LASTEXITCODE -ne 0) { throw 'No se pudo aislar la pintura; medida cancelada.' }
     }
+    if ($isBase) {
+        & node $cdpHelper --cdp "http://127.0.0.1:$Puerto" --action base-prepare --base-route $BaseRoute | Out-Host
+        if ($LASTEXITCODE -ne 0) { throw 'No se pudo preparar la ruta base.' }
+    }
     if ($Calentamiento -gt 0) { Start-Sleep -Seconds $Calentamiento }
     if ($requireVisibility) {
-        Write-Host 'VISIBILITY WAIT: LMU debe estar foreground con el HUD visible.'
+        $visibilityTarget = if ($isBase) { @('-host', $app.Id, '-surface', 'hub') } else { @('-host', $app.Id, '-game', $gameProcess.Id) }
+        Write-Host $(if ($isBase -and -not $SinJuego) { 'VISIBILITY WAIT: Hub visible; se registra su foco sin cambiar otras apps.' } elseif ($isBase) { 'VISIBILITY WAIT: mantener el Hub visible y foreground.' } else { 'VISIBILITY WAIT: LMU debe estar foreground con el HUD visible.' })
         $visibilityDeadline = (Get-Date).AddSeconds(60)
         do {
-            $visual = & $visibilityExe -host $app.Id -game $gameProcess.Id -once | ConvertFrom-Json
+            $visual = & $visibilityExe @visibilityTarget -once | ConvertFrom-Json
             if ($LASTEXITCODE -ne 0) { throw 'Falló el preflight de visibilidad nativa.' }
-            if (-not $visual.valid) { Start-Sleep -Seconds 1 }
-        } until ($visual.valid -or (Get-Date) -ge $visibilityDeadline)
-        if (-not $visual.valid) { throw 'HUD no visible o juego sin foco: medición cancelada.' }
+            $visualReady = if ($isBase -and -not $SinJuego) { $visual.hubPresent -eq $true -and $visual.hubVisible -eq $true -and $visual.hubMinimized -eq $false } else { $visual.valid }
+            if (-not $visualReady) { Start-Sleep -Seconds 1 }
+        } until ($visualReady -or (Get-Date) -ge $visibilityDeadline)
+        if (-not $visualReady) { throw 'La superficie no cumple el escenario nativo requerido: medición cancelada.' }
         $visibilityJson = Join-Path $outputDir "$stem-visibility.json"
         $visibilityStop = Join-Path $outputDir "$stem-visibility.stop"
-        $visibilityProcess = Start-Process -FilePath $visibilityExe -ArgumentList @('-host',$app.Id,'-game',$gameProcess.Id,'-stop',('"{0}"' -f $visibilityStop),'-output',('"{0}"' -f $visibilityJson)) -WindowStyle Hidden -PassThru
+        $visibilityProcess = Start-Process -FilePath $visibilityExe -ArgumentList ($visibilityTarget + @('-stop',('"{0}"' -f $visibilityStop),'-output',('"{0}"' -f $visibilityJson))) -WindowStyle Hidden -PassThru
         Start-Sleep -Milliseconds 300
         $visibilityStart = Get-Date
-        Write-Host 'VISIBILITY CAPTURE: mantener LMU foreground durante toda la captura.'
+        Write-Host $(if ($isBase -and -not $SinJuego) { 'VISIBILITY CAPTURE: Hub visible con foco estable (foreground o background).' } elseif ($isBase) { 'VISIBILITY CAPTURE: mantener Hub foreground durante toda la captura.' } else { 'VISIBILITY CAPTURE: mantener LMU foreground durante toda la captura.' })
     }
-    $sessionName = "VantareHuella-$($app.Id)-$stamp"
-    if (-not $SinJuego) {
+    if ($isBase) {
+        & node $cdpHelper --cdp "http://127.0.0.1:$Puerto" --action base-watch-start --base-route $BaseRoute --base-game $baseGame --output $baseStartJson | Out-Host
+        if ($LASTEXITCODE -ne 0) { throw 'No se pudo observar el estado base.' }
+    }
+    if ($usePresentMon) {
+        $sessionName = "VantareHuella-$($app.Id)-$stamp"
         $presentMonArgs = @('--process_name', ('"{0}"' -f $gameExeName), '--output_file', ('"{0}"' -f $presentMonCsv), '--v2_metrics', '--timed', [string]$Duracion, '--terminate_after_timed', '--session_name', $sessionName, '--no_console_stats')
         $presentMon = Start-Process -FilePath $presentMonPath -ArgumentList $presentMonArgs -RedirectStandardOutput $presentMonLog -RedirectStandardError $presentMonErrorLog -WindowStyle Hidden -PassThru
     }
@@ -429,12 +464,12 @@ try {
             $cpuPct = if ($previousCpu.ContainsKey($processId) -and $elapsed -gt 0) { (($cpuSeconds - $previousCpu[$processId]) / $elapsed / $logicalProcessors) * 100 } else { 0 }
             $previousCpu[$processId] = $cpuSeconds
             $previousCpuAt[$processId] = $cpuSampleAt
-            $gpuValues = if ($gpuSample.Valid -and $gpuSample.Totals.ContainsKey($processId)) { $gpuSample.Totals[$processId] } else { @{ Engine = 0.0; Dedicated = 0.0 } }
+            $gpuValues = if ($gpuSample.Valid -and $gpuSample.Totals.ContainsKey($processId)) { $gpuSample.Totals[$processId] } else { @{ Engine = 0.0; Dedicated = 0.0; Engines = @(); Memory = @() } }
             $rows.Add([pscustomobject][ordered]@{
                 timestamp = $now.ToString('o'); condition = $Condicion; pid = $processId; role = $roleByPid[$processId]
                 buildSha256 = $buildSha256; distSha256 = $distSha256; buildStable = $true; gitHead = $gitHead
                 licenseState = $licenseState; licenseAccount = $licenseAccount; licenseConfigured = $licenseConfigured
-                scene = $Escena; lmuSession = $SesionLmu; cars = $Coches
+                scene = $Escena; lmuSession = $SesionLmu; cars = $Coches; baseRoute = $BaseRoute; gamePresent = -not [bool]$SinJuego
                 hygieneForced = $hygieneForced; foreignProcesses = $foreignProcessesJson; publishable = $publishable; measurementMode = $measurementMode
                 systemWebView2Count = $systemWebView2.Count; systemWebView2Paths = $systemWebView2PathsJson
                 orphanEtwSessionsStopped = $orphanEtwSessionsStoppedJson; gameFrametimeValid = $false; frametimePublishable = $false
@@ -442,7 +477,21 @@ try {
                 cpuPct = Format-Invariant ([Math]::Max(0.0, $cpuPct)); gpuSampleValid = [bool]$gpuSample.Valid
                 gpuPct = if ($gpuSample.Valid) { Format-Invariant ([double]$gpuValues.Engine) } else { $null }
                 gpuDedicatedBytes = if ($gpuSample.Valid) { Format-Invariant ([double]$gpuValues.Dedicated) } else { $null }
+                gpuEngineSamples = if ($gpuSample.Valid) { ConvertTo-Json -InputObject @($gpuValues.Engines) -Compress } else { $null }
+                gpuMemorySamples = if ($gpuSample.Valid) { ConvertTo-Json -InputObject @($gpuValues.Memory) -Compress } else { $null }
                 frameTimeMs = $null; dropped = $null
+            })
+        }
+        if ($isBase -and -not $SinJuego) {
+            $currentGame = Get-Process -Id $gameProcess.Id -ErrorAction SilentlyContinue
+            $alive = $null -ne $currentGame -and $currentGame.StartTime.ToUniversalTime() -eq $gameStartedAt
+            $gameStable = $gameStable -and $alive
+            $gameRows.Add([pscustomobject]@{
+                timestamp = (Get-Date).ToString('o'); elapsedSeconds = Format-Invariant $cpuClock.Elapsed.TotalSeconds
+                pid = $gameProcess.Id; alive = $alive
+                cpuTotalSeconds = if ($alive) { Format-Invariant $currentGame.TotalProcessorTime.TotalSeconds } else { $null }
+                privateBytes = if ($alive) { $currentGame.PrivateMemorySize64 } else { $null }
+                workingSetBytes = if ($alive) { $currentGame.WorkingSet64 } else { $null }
             })
         }
         $sampleIndex += 1
@@ -457,13 +506,45 @@ try {
         $visibilityValid = $visibilityEvidence.valid -eq $true -and
             ([datetime]$visibilityEvidence.samples[0].at).ToUniversalTime() -le $visibilityStart.ToUniversalTime() -and
             ([datetime]$visibilityEvidence.samples[-1].at).ToUniversalTime() -ge $visibilityEnd.ToUniversalTime()
-        [pscustomobject]@{start=$visibilityStart.ToUniversalTime();end=$visibilityEnd.ToUniversalTime();valid=$visibilityValid} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $outputDir "$stem-visibility-interval.json")
+        $visibilityBasis = 'foreground-required'
+        $baseFocus = 'foreground'
+        if ($isBase -and -not $SinJuego) {
+            # The collector's valid means foreground; coexistence uses its raw facts instead.
+            $visibilityBasis = 'visible-stable-focus'
+            $focusStates = @($visibilityEvidence.samples.hubForeground | Sort-Object -Unique)
+            $baseFocus = if ($focusStates.Count -ne 1) { 'mixed' } elseif ($focusStates[0]) { 'foreground' } else { 'background' }
+            $visibilityValid = @($visibilityEvidence.samples | Where-Object { $_.hubPresent -ne $true -or $_.hubVisible -ne $true -or $_.hubMinimized -ne $false }).Count -eq 0 -and
+                $focusStates.Count -eq 1 -and
+                ([datetime]$visibilityEvidence.samples[0].at).ToUniversalTime() -le $visibilityStart.ToUniversalTime() -and
+                ([datetime]$visibilityEvidence.samples[-1].at).ToUniversalTime() -ge $visibilityEnd.ToUniversalTime()
+        }
+        [pscustomobject]@{start=$visibilityStart.ToUniversalTime();end=$visibilityEnd.ToUniversalTime();valid=$visibilityValid;basis=$visibilityBasis;focus=$baseFocus;occlusion='unknown'} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $outputDir "$stem-visibility-interval.json")
         $publishable = $publishable -and $visibilityValid
         foreach ($row in $rows) {
-            $row | Add-Member -NotePropertyName overlayNativeVisible -NotePropertyValue $visibilityValid
+            $visibilityField = if ($isBase) { 'baseNativeVisible' } else { 'overlayNativeVisible' }
+            $row | Add-Member -NotePropertyName $visibilityField -NotePropertyValue $visibilityValid
+            if ($isBase) { $row | Add-Member -NotePropertyName baseFocus -NotePropertyValue $baseFocus }
             if (-not $visibilityValid) { $row.publishable = $false }
         }
         Write-Host "VISIBILITY RESULT: $visibilityValid"
+    }
+    if ($isBase) {
+        & node $cdpHelper --cdp "http://127.0.0.1:$Puerto" --action base-watch-stop --base-route $BaseRoute --base-game $baseGame --output $baseEndJson | Out-Host
+        $baseStateValid = $false
+        $baseLevel = '[]'
+        if ($LASTEXITCODE -eq 0) {
+            $baseEnd = Get-Content -LiteralPath $baseEndJson -Raw | ConvertFrom-Json
+            $baseStateValid = $baseEnd.validity.valid -eq $true -and $visibilityValid -and $gameStable
+            $baseLevel = $baseEnd.evidence.levels | ConvertTo-Json -Depth 4 -Compress -AsArray
+        } else {
+            Write-Warning 'Sin evidencia final base: se conservan crudos como inválidos.'
+        }
+        foreach ($row in $rows) {
+            $row | Add-Member -NotePropertyName baseStateValid -NotePropertyValue $baseStateValid
+            $row | Add-Member -NotePropertyName baseLevels -NotePropertyValue $baseLevel
+            $row | Add-Member -NotePropertyName gameProcessStable -NotePropertyValue $gameStable
+        }
+        Write-Host "BASE STATE RESULT: $baseStateValid (higiene/publicabilidad conservadas)"
     }
     if ($Condicion -eq 'HubMin') {
         & node $cdpHelper --cdp "http://127.0.0.1:$Puerto" --action hub-open --duration 1 --output $hubReopenJson | Out-Host
@@ -534,13 +615,15 @@ try {
         $gameFrametimeValid = $validPresentMonFrames -gt 0
         $droppedPercent = if ($validPresentMonFrames) { 100 * $droppedFrames / $validPresentMonFrames } else { 0 }
         Write-Host ("Frames perdidos: {0}/{1} ({2:N3} %)" -f $droppedFrames, $validPresentMonFrames, $droppedPercent)
+    } elseif ($isBase) {
+        Write-Host 'PresentMon omitido: base por procesos, sin medir frametimes del simulador.'
     } elseif ($SinJuego) {
         Write-Host 'PresentMon omitido: corrida RAM-only sin juego.'
     } else {
         Write-Warning 'PresentMon no produjo CSV; el resumen conservará las métricas de Vantare y marcará frametime ausente.'
     }
 
-    if (-not $gameFrametimeValid) {
+    if ($usePresentMon -and -not $gameFrametimeValid) {
         Write-Warning 'FRAMETIME NO PUBLICABLE: PresentMon no produjo ningún frame válido; RAM/CPU/GPU de Vantare siguen siendo utilizables.'
     }
     $buildSha256End = (Get-FileHash -LiteralPath $exePath -Algorithm SHA256).Hash.ToLowerInvariant()
@@ -554,6 +637,7 @@ try {
     }
 
     $rows | Export-Csv -LiteralPath $rawCsv -NoTypeInformation -Encoding utf8
+    if ($gameRows.Count) { $gameRows | Export-Csv -LiteralPath (Join-Path $outputDir "$stem-game-context.csv") -NoTypeInformation -Encoding utf8 }
     & node $summaryHelper --run-summary --condition $Condicion --output $summaryMd $rawCsv | Out-Host
     if ($LASTEXITCODE -ne 0) { throw "El resumen falló con código $LASTEXITCODE." }
 } finally {

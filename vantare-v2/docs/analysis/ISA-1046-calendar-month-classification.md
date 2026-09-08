@@ -9,11 +9,11 @@ vez los especiales usando fuente e identidad exacta del generador: ID de serie
 publicada + timestamp UTC del propio evento. No usa títulos ni el filtro visible.
 La página pasa todas las series publicadas aunque el usuario filtre otra categoría.
 Un evento externo, un ID especial propio o una serie desconocida se conservan.
-No se muta Calendar.events, ni se cambia HUD/Studio, estructura o CSS.
+No se muta Calendar.events, ni se cambia HUD/Studio o CSS.
 
 RED tres regresiones; GREEN siete pruebas normales. Contraste local adicional
 con el JSON Go real de #1027: 4596 eventos, cero ocurrencias reclasificadas como
-especiales, con todos los filtros y solo avanzada; documento original intacto.
+especiales, sin filtro y con avanzada; documento original intacto.
 Ocho pruebas PASS con CALENDAR_REAL_AUDIT_PATH apuntando al backend-calendar.json
 de esa auditoría. Ese contraste es opt-in porque usa un artefacto externo; CI
 ejecuta los siete casos portables y no se atribuye esa prueba al runtime Wails.
@@ -28,3 +28,10 @@ informe/handoff y roadmap manual/generado. Checks finales y review pendientes.
 Verificación manual: Mes de una publicación vigente o histórica, filtro Todas y
 otra categoría, resúmenes compactos sin miles de especiales; evento externo visible.
 Sin dependencias nuevas, datos reales modificados, merge o release.
+
+Review inicial: P2 en Mes → Día. Cuatro regresiones reprodujeron pérdida de
+especiales al abrir un chip o +N, y la pantalla vacía sin series. Día comparte
+la clasificación y muestra hora/título en chips de lectura; Mes/Día no ocultan
+los especiales si no hay series. Sin recurrencias ni seguimiento inventados.
+113 focales PASS, dos skips (Lord Howe y artefacto Go opt-in, comprobados aparte).
+Build PASS. Suite completa final, lint, tipos y segunda review pendientes.

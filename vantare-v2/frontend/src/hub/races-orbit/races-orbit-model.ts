@@ -212,15 +212,34 @@ export function monthAnchor(now: Date, offset: number): Date {
   return new Date(now.getFullYear(), now.getMonth() + offset, 1);
 }
 
+function explicitCalendarEvents(
+  events: Calendar["events"], publishedSeries: readonly { id: string }[],
+): Calendar["events"] {
+  const seriesIds = new Set(publishedSeries.map((series) => series.id));
+  return events.filter((event) => {
+    if (event.source !== "vantare-bundled-lmu") return true;
+    const at = new Date(event.startTime);
+    if (Number.isNaN(at.getTime())) return false;
+    // Match the Go makeSeriesEvent identity, not a title or the active filter.
+    const suffix = `-${at.toISOString().slice(0, 19).replace(/[-:]/g, "")}Z`;
+    return !event.id.endsWith(suffix) || !seriesIds.has(event.id.slice(0, -suffix.length));
+  });
+}
+
 export interface DayHour {
   hour: number;
   /** Hora en curso: solo cuando se mira el día de hoy. */
   now: boolean;
   events: StartRow[];
+  specials: { event: Calendar["events"][number]; at: Date }[];
 }
 
 /** Vista 2 · Día: 24 filas horarias con las salidas locales de ese día. */
-export function dayRows(entries: RaceSeriesEntry[], base: Date, now: Date): DayHour[] {
+export function dayRows(
+  entries: RaceSeriesEntry[], base: Date, now: Date,
+  calendarEvents: Calendar["events"] = [],
+  publishedSeries: readonly { id: string }[] = entries,
+): DayHour[] {
   const end = dayAnchor(base, 1);
   const isToday = dayAnchor(now, 0).getTime() === base.getTime();
   const events: StartRow[] = entries.flatMap((entry) =>
@@ -228,9 +247,15 @@ export function dayRows(entries: RaceSeriesEntry[], base: Date, now: Date): DayH
       .map((at) => ({ entry, at })),
   );
 
+  const specials = explicitCalendarEvents(calendarEvents, publishedSeries)
+    .map((event) => ({ event, at: new Date(event.startTime) }))
+    .filter(({ at }) => at >= base && at < end)
+    .sort((a, b) => a.at.getTime() - b.at.getTime());
+
   return Array.from({ length: 24 }, (_, hour) => ({
     hour,
     now: isToday && now.getHours() === hour,
+    specials: specials.filter(({ at }) => at.getHours() === hour),
     events: events
       .filter((event) => event.at.getHours() === hour)
       .sort((a, b) => a.at.getTime() - b.at.getTime() || a.entry.name.localeCompare(b.entry.name)),
@@ -320,15 +345,7 @@ export function monthDays(
   gridStart.setDate(1 - startDow);
   const daily = entries.filter((entry) => entry.engine.every !== undefined);
   const weekly = entries.filter((entry) => entry.engine.every === undefined);
-  const seriesIds = new Set(publishedSeries.map((series) => series.id));
-  const specialEvents = events.filter((event) => {
-    if (event.source !== "vantare-bundled-lmu") return true;
-    const at = new Date(event.startTime);
-    if (Number.isNaN(at.getTime())) return false;
-    // Match the Go makeSeriesEvent identity, not a title or the active filter.
-    const suffix = `-${at.toISOString().slice(0, 19).replace(/[-:]/g, "")}Z`;
-    return !event.id.endsWith(suffix) || !seriesIds.has(event.id.slice(0, -suffix.length));
-  });
+  const specialEvents = explicitCalendarEvents(events, publishedSeries);
 
   return Array.from({ length: 42 }, (_, index) => {
     const day = dayAnchor(gridStart, index);

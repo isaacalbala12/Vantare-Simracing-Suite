@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { EMPTY_CALENDAR, type Calendar, type RaceEvent, type RaceSeries } from "../../calendar/calendar-types";
-import { buildSeriesEntries, filterByTier, monthDays } from "./races-orbit-model";
+import { buildSeriesEntries, dayAnchor, dayRows, filterByTier, monthDays } from "./races-orbit-model";
 
 const seed = JSON.parse(readFileSync("../internal/calendar/seed/lmu-weekly-schedule.json", "utf8")) as {
   validFrom: string; validUntil: string; updated: string; series: RaceSeries[];
@@ -19,6 +19,17 @@ const first = new Date(2026, 7, 1);
 const now = new Date("2026-08-25T00:00:00Z");
 
 describe("clasificación de eventos del mes", () => {
+  it("Día conserva solo especiales del día sin duplicar ocurrencias ocultas por el filtro", () => {
+    const special = { ...occurrence, id: "imported", source: "import" };
+    const events = [occurrence, special,
+      { ...special, id: "tomorrow", startTime: dayAnchor(now, 1).toISOString() },
+      { ...special, id: "invalid", startTime: "invalid" }];
+    const before = JSON.stringify(events);
+    const rows = dayRows(filterByTier(entries, "advanced"), dayAnchor(now, 0), now, events, seed.series);
+    expect(rows.flatMap((row) => row.specials.map(({ event }) => event))).toEqual([special]);
+    expect(JSON.stringify(events)).toBe(before);
+  });
+
   const auditPath = process.env.CALENDAR_REAL_AUDIT_PATH;
   it.runIf(auditPath)("contrasta las 4596 ocurrencias del Go audit real (opt-in)", () => {
     const calendar = JSON.parse(readFileSync(auditPath!, "utf8")) as Calendar;

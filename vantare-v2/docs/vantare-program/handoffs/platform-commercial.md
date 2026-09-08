@@ -7,7 +7,9 @@ Identidad/fuente exacta y todas las series publicadas, sin usar título/filtro a
 RED tres fallos; GREEN siete portables y contraste opt-in con 4596 eventos Go,
 ocho PASS. Sin mutar documento ni tocar HUD/Studio/CSS. Base C7 411b5538;
 C7 aceptado en review y candidato #1047, no integrado. Rama
-vantareapp/isa-1046-calendar-month-classification. Checks finales/review pendientes.
+vantareapp/isa-1046-calendar-month-classification. Review halló P2 Mes → Día:
+cuatro regresiones RED, corregidas; especiales presentes con/sin series y sin
+duplicar ocurrencias. 113 focales PASS, build PASS; checks finales/segunda review pendientes.
 Informe en docs/analysis/ISA-1046-calendar-month-classification.md.
 Continúan C6/C9, Wails y medición A/A–A/B; sin merge ni release.
 

@@ -28,8 +28,8 @@ sin elegir la hora anterior ni inventar un :00. Focal final 126 PASS/1 omitido
 (el caso específico de Lord Howe se ejecuta en su matriz propia).
 
 Suite completa inicial: 3256 PASS / 2 FAIL, timeouts 20000 ms en Pedals y TrackMap
-Endurance, superficies ajenas. Build inicial PASS; build/lint final, roadmap y
-revisión del P2 pendientes. No hay medición
+Endurance, superficies ajenas. Build/typecheck y lint finales, roadmap 23+21 PASS;
+review independiente 411b5538 ACCEPT. No hay medición
 CPU/GPU/RAM ni aceptación visual Wails. Los datos de prueba no certifican runtime.
 Archivos: races-orbit-model, next-starts, RacesOrbitPage (chip), pruebas de fechas y
 vigencia, informe/handoff/roadmap. Sin HUD/Studio, dependencia nueva, merge o release.

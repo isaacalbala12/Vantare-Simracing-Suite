@@ -5,7 +5,9 @@
 C7 de #1027: fechas civiles con setDate; cantidad por ventana real en vez de ocho;
 hora repetida conserva instante y se identifica con UTC. Base C3 317ff133,
 sin integración. Rama vantareapp/isa-1044-calendar-local-days. RED seis fallos,
-focal 124 PASS y matriz UTC/Madrid/Nueva York. Checks finales/review en curso.
+focal final 126 PASS/1 caso Lord Howe ejecutado aparte (15 PASS); matriz
+UTC/Madrid/Nueva York y Lord Howe. Build/typecheck/lint y roadmap PASS;
+review411b5538 ACCEPT. Suite completa3256PASS/2timeouts ajenos Pedals/TrackMap.
 Informe docs/analysis/ISA-1044-calendar-local-days.md. Sin CSS, HUD o Studio.
 C2/C3/C4a/C4b/C5 candidatos #1031/#1034/#1036/#1040/#1045; quedan C6, C8/C9,
 Wails y rendimiento A/A–A/B. No merge ni release.

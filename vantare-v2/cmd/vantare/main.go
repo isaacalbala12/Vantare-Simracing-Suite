@@ -2351,6 +2351,7 @@ func main() {
 		log.Printf("warning: Discord calendar inbox unavailable: %v", inboxErr)
 	}
 	var calendarRefreshMu sync.Mutex
+	var calendarRefreshStatus app.CalendarRefreshStatus
 	refreshPublishedSchedule := func() {
 		calendarRefreshMu.Lock()
 		defer calendarRefreshMu.Unlock()
@@ -2366,7 +2367,7 @@ func main() {
 				log.Printf("warning: could not refresh published schedule: %v (using %s)", err, source)
 			}
 			return err
-		}, emitter)
+		}, emitter, &calendarRefreshStatus)
 	}
 	go refreshPublishedSchedule()
 
@@ -3370,6 +3371,10 @@ func main() {
 
 	wailsApp.Event.On("calendar:get", func(event *application.CustomEvent) {
 		app.HandleCalendarGet(calendarSvc, emitter)
+	})
+
+	wailsApp.Event.On("calendar:refresh:status:get", func(event *application.CustomEvent) {
+		calendarRefreshStatus.EmitCurrent(emitter)
 	})
 
 	// Owner-only schedule publishing. The parse runs locally so the owner sees

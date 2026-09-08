@@ -16,7 +16,14 @@ roadmap 23+21 y diff check PASS. Review independiente b15c7f76 ACCEPT para C4a,
 sin P1/P2 nuevos. No cambios frontend; no se repite su suite/lint en este corte.
 Wails visual real y avisos visibles aún no ejecutados; no se declara ahorro.
 
-Contrato aditivo: calendar:refresh:started lleva objeto vacío; calendar:refresh:result
+La revisión de C4b detectó que un shell montado después del refresh de arranque
+perdía el resultado. Regresión RED/GREEN añadida: el puente conserva solo su
+estado (idle/pending/success/error) y lo emite ante calendar:refresh:status:get.
+La consulta no repite red ni toca el documento. Snapshot y transiciones comparten
+mutex para no entregar un estado anterior después del nuevo. El mutex de refresh
+sigue serializando la operación completa. Review/checks del añadido pendientes.
+
+Contrato aditivo: calendar:refresh:status lleva state; calendar:refresh:started lleva objeto vacío; calendar:refresh:result
 lleva únicamente ok:boolean. calendar:get/loaded conservan su significado. La UI
 no debe interpretar cualquier loaded como final de una actualización solicitada.
 

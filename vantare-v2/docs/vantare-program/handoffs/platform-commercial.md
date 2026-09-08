@@ -1,5 +1,12 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+### Seguimiento de review C4b (2026-09-08)
+
+ISA-1035 añade snapshot local del estado de refresh para el shell que se monta
+después del arranque. No repite red. Regresión RED/GREEN del puente PASS;
+revisión del añadido y Go completo pendientes. Continúa en el mismo corte C4a,
+sin integración; C4b ISA-1037 consume calendar:refresh:status:get/status.
+
 ## ISA-1035 — resultado de actualización de Calendario (2026-09-08)
 
 C4a del plan #1027 aprobado. Rama `vantareapp/isa-1035-calendar-refresh-result`,

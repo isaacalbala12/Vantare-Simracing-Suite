@@ -101,7 +101,9 @@ func HandleCalendarUnfollow(eventID string, svc CalendarUnfollower, getter Calen
 
 // HandleCalendarSeriesFollow marks a series as followed and emits the updated
 // calendar. Returns calendar:error if the seriesID does not exist.
-func HandleCalendarSeriesFollow(seriesID string, svc CalendarSeriesFollower, getter CalendarGetter, emitter EventEmitter, logf func(string, ...any)) {
+func HandleCalendarSeriesFollow(seriesID string, svc CalendarSeriesFollower, getter CalendarGetter, emitter EventEmitter, logf func(string, ...any), requestID string) {
+	result := map[string]any{"requestId": requestID, "seriesId": seriesID, "followed": true, "ok": false}
+	defer func() { emitter.Emit("calendar:series:follow:result", result) }()
 	if _, err := svc.FollowSeries(seriesID); err != nil {
 		logf("calendar:series:follow error: %v", err)
 		emitter.Emit("calendar:error", map[string]any{"message": err.Error()})
@@ -109,11 +111,14 @@ func HandleCalendarSeriesFollow(seriesID string, svc CalendarSeriesFollower, get
 	}
 	cal := getter.Calendar()
 	emitter.Emit("calendar:loaded", map[string]any{"calendar": cal})
+	result["ok"] = true
 }
 
 // HandleCalendarSeriesUnfollow removes a series from the followed list and emits
 // the updated calendar.
-func HandleCalendarSeriesUnfollow(seriesID string, svc CalendarSeriesUnfollower, getter CalendarGetter, emitter EventEmitter, logf func(string, ...any)) {
+func HandleCalendarSeriesUnfollow(seriesID string, svc CalendarSeriesUnfollower, getter CalendarGetter, emitter EventEmitter, logf func(string, ...any), requestID string) {
+	result := map[string]any{"requestId": requestID, "seriesId": seriesID, "followed": false, "ok": false}
+	defer func() { emitter.Emit("calendar:series:follow:result", result) }()
 	if _, err := svc.UnfollowSeries(seriesID); err != nil {
 		logf("calendar:series:unfollow error: %v", err)
 		emitter.Emit("calendar:error", map[string]any{"message": err.Error()})
@@ -121,4 +126,5 @@ func HandleCalendarSeriesUnfollow(seriesID string, svc CalendarSeriesUnfollower,
 	}
 	cal := getter.Calendar()
 	emitter.Emit("calendar:loaded", map[string]any{"calendar": cal})
+	result["ok"] = true
 }

@@ -14,6 +14,20 @@ import {
 export const CALENDAR_LOADED_EVENT = "calendar:loaded";
 export const CALENDAR_ERROR_EVENT = "calendar:error";
 
+export type CalendarFollowResult = {
+  requestId: string; seriesId: string; followed: boolean; ok: boolean;
+};
+
+export function subscribeToCalendarFollowResults(callback: (result: CalendarFollowResult) => void): () => void {
+  return Events.On("calendar:series:follow:result", (event: unknown) => {
+    const data = (event as { data?: Partial<CalendarFollowResult> })?.data;
+    if (data && typeof data.requestId === "string" && typeof data.seriesId === "string" &&
+        typeof data.followed === "boolean" && typeof data.ok === "boolean") {
+      callback(data as CalendarFollowResult);
+    }
+  });
+}
+
 // subscribeToCalendar wires a callback to be invoked whenever a new calendar
 // document is emitted by the backend. It returns the unsubscribe function.
 //

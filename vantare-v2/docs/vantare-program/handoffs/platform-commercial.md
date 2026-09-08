@@ -1,5 +1,15 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+## ISA-1050 — confirmación de seguimiento (2026-09-08)
+
+C6b: resultado correlacionado tras persistencia, UI pendiente/sin doble clic,
+éxito confirmado y error recuperable. Free bloqueado como antes. 94 focales
+frontend, bridge focal y build PASS. Full suites/checks/review pendientes.
+Base C6a e9dc8ef9; C6a aceptado y full Go PASS, candidato #1051. Rama
+vantareapp/isa-1050-calendar-follow-confirmation. Informe ISA-1050 en docs/analysis.
+Quedan C6c permisos/avisos nativos, C9, Wails y rendimiento. Sin merge/release.
+
+
 ## ISA-1049 — seguimiento atómico ante error (2026-09-08)
 
 C6a de #1027: cuatro operaciones restauran memoria/Updated al fallar escritura;

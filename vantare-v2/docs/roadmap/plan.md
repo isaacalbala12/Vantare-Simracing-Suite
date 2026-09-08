@@ -267,6 +267,19 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - cuerpo.it: Piano approvato per fasi: prove del percorso, validità degli orari, promemoria delle serie, coerenza delle cinque viste e ottimizzazione misurata di apertura, interazione e consumo. Preserva aspetto e contratti HUD/Studio. Validazione visiva Wails e risparmio complessivo ancora da verificare.
 - etiqueta: ISA-1027
 
+### Seguimiento confirmado después de guardar
+
+- id: calendar-follow-confirmation
+- tipo: fix
+- titulo.en: Follow confirmation after saving
+- titulo.pt: Confirmação de seguimento após guardar
+- titulo.it: Conferma della preferenza dopo il salvataggio
+- cuerpo: Seguir o dejar de seguir una serie espera la confirmación del guardado antes de anunciar éxito, bloquea clics duplicados y permite reintentar si falla. Las respuestas ajenas o antiguas no confirman otra acción.
+- cuerpo.en: Following or unfollowing a series waits for save confirmation before reporting success, blocks duplicate clicks and allows retrying on failure. Unrelated or old responses cannot confirm another action.
+- cuerpo.pt: Seguir ou deixar de seguir uma série espera a confirmação da gravação, bloqueia cliques duplicados e permite tentar novamente se falhar. Respostas alheias ou antigas não confirmam outra ação.
+- cuerpo.it: Seguire o smettere di seguire una serie attende la conferma del salvataggio, blocca clic duplicati e consente di riprovare in caso di errore. Risposte estranee o precedenti non confermano un'altra azione.
+- etiqueta: ISA-1050
+
 ### Seguimiento conservado si falla el guardado
 
 - id: calendar-follow-persistence

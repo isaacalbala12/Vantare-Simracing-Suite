@@ -72,6 +72,9 @@ export const racesOrbitIt: Record<string, string> = {
   "races.tier.advanced": "Oro",
   "races.tier.weekly": "Settimanale",
 
+  "races.detail.followPending": "Salvataggio…",
+  "races.toasts.followFailed": "Impossibile salvare la preferenza",
+  "races.toasts.followFailedHint": "La preferenza non è stata confermata. Riprova.",
   "races.toasts.followed": "Serie seguita",
   "races.toasts.followedHint":
     "Promemoria a {{minutes}} min da ogni partenza di {{name}}.",

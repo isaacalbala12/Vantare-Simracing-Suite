@@ -267,6 +267,19 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - cuerpo.it: Piano approvato per fasi: prove del percorso, validità degli orari, promemoria delle serie, coerenza delle cinque viste e ottimizzazione misurata di apertura, interazione e consumo. Preserva aspetto e contratti HUD/Studio. Validazione visiva Wails e risparmio complessivo ancora da verificare.
 - etiqueta: ISA-1027
 
+### Seguimiento conservado si falla el guardado
+
+- id: calendar-follow-persistence
+- tipo: fix
+- titulo.en: Follow preferences preserved on save failure
+- titulo.pt: Seguimento preservado se a gravação falhar
+- titulo.it: Preferenze conservate se il salvataggio fallisce
+- cuerpo: Si guardar falla, seguir o dejar de seguir un evento o serie conserva la preferencia anterior y permite reintentar sin aparentar un éxito inexistente.
+- cuerpo.en: If saving fails, following or unfollowing an event or series preserves the previous preference and allows retrying without reporting a false success.
+- cuerpo.pt: Se a gravação falhar, seguir ou deixar de seguir um evento ou série mantém a preferência anterior e permite tentar novamente sem aparentar sucesso.
+- cuerpo.it: Se il salvataggio fallisce, seguire o smettere di seguire un evento o una serie conserva la preferenza precedente e consente di riprovare senza un falso successo.
+- etiqueta: ISA-1049
+
 ### Conservación del horario publicado
 
 - id: calendar-schedule-retention

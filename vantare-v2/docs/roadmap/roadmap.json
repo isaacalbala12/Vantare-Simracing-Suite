@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-08T02:19:11Z",
+  "generatedAt": "2026-09-08T03:06:33Z",
   "digest": {
     "lastCommit": "d6d0992f8dbc800ccb6d75f60fffdc7c3d561da2"
   },
@@ -363,6 +363,28 @@
         "en": "ISA-1027",
         "pt": "ISA-1027",
         "it": "ISA-1027"
+      }
+    },
+    {
+      "id": "calendar-follow-persistence",
+      "type": "fix",
+      "title": {
+        "es": "Seguimiento conservado si falla el guardado",
+        "en": "Follow preferences preserved on save failure",
+        "pt": "Seguimento preservado se a gravação falhar",
+        "it": "Preferenze conservate se il salvataggio fallisce"
+      },
+      "body": {
+        "es": "Si guardar falla, seguir o dejar de seguir un evento o serie conserva la preferencia anterior y permite reintentar sin aparentar un éxito inexistente.",
+        "en": "If saving fails, following or unfollowing an event or series preserves the previous preference and allows retrying without reporting a false success.",
+        "pt": "Se a gravação falhar, seguir ou deixar de seguir um evento ou série mantém a preferência anterior e permite tentar novamente sem aparentar sucesso.",
+        "it": "Se il salvataggio fallisce, seguire o smettere di seguire un evento o una serie conserva la preferenza precedente e consente di riprovare senza un falso successo."
+      },
+      "label": {
+        "es": "ISA-1049",
+        "en": "ISA-1049",
+        "pt": "ISA-1049",
+        "it": "ISA-1049"
       }
     },
     {

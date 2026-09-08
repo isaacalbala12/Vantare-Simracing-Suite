@@ -1,5 +1,15 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+## ISA-1049 — seguimiento atómico ante error (2026-09-08)
+
+C6a de #1027: cuatro operaciones restauran memoria/Updated al fallar escritura;
+el reintento persiste realmente. Cuatro regresiones RED→GREEN, módulo PASS.
+Base C5 9f3c5447, rama vantareapp/isa-1049-calendar-follow-persistence.
+Build/full Go/roadmap/review pendientes. Informe ISA-1049 en docs/analysis.
+C8 aceptado en #1048; C7 #1047 CI verde. C5 #1045 CI roja por parser p99 #1019.
+Quedan C6b UI/permisos, C9, Wails y A/A–A/B. Sin merge o release.
+
+
 ## ISA-1027 / ISA-1029 — Calendario, plan aprobado y primer corte (2026-09-08)
 
 Isaac aprobó ejecutar el plan `docs/analysis/ISA-1027-calendar-plan.md`.

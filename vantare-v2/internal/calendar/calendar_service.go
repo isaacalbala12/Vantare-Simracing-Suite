@@ -449,9 +449,11 @@ func (s *Service) Follow(eventID string) (Calendar, error) {
 			return s.cloneLocked(), nil // already followed, no-op
 		}
 	}
+	previous := s.cal
 	s.cal.FollowedEventIDs = append(s.cal.FollowedEventIDs, eventID)
 	s.cal.Updated = s.now().UTC()
 	if err := s.persistLocked(); err != nil {
+		s.cal = previous
 		return Calendar{}, err
 	}
 	return s.cloneLocked(), nil
@@ -472,9 +474,11 @@ func (s *Service) Unfollow(eventID string) (Calendar, error) {
 	if len(filtered) == len(s.cal.FollowedEventIDs) {
 		return s.cloneLocked(), nil // not followed, no-op
 	}
+	previous := s.cal
 	s.cal.FollowedEventIDs = filtered
 	s.cal.Updated = s.now().UTC()
 	if err := s.persistLocked(); err != nil {
+		s.cal = previous
 		return Calendar{}, err
 	}
 	return s.cloneLocked(), nil
@@ -506,9 +510,11 @@ func (s *Service) FollowSeries(seriesID string) (Calendar, error) {
 			return s.cloneLocked(), nil // already followed, no-op
 		}
 	}
+	previous := s.cal
 	s.cal.FollowedSeriesIDs = append(s.cal.FollowedSeriesIDs, seriesID)
 	s.cal.Updated = s.now().UTC()
 	if err := s.persistLocked(); err != nil {
+		s.cal = previous
 		return Calendar{}, err
 	}
 	return s.cloneLocked(), nil
@@ -529,9 +535,11 @@ func (s *Service) UnfollowSeries(seriesID string) (Calendar, error) {
 	if len(filtered) == len(s.cal.FollowedSeriesIDs) {
 		return s.cloneLocked(), nil // not followed, no-op
 	}
+	previous := s.cal
 	s.cal.FollowedSeriesIDs = filtered
 	s.cal.Updated = s.now().UTC()
 	if err := s.persistLocked(); err != nil {
+		s.cal = previous
 		return Calendar{}, err
 	}
 	return s.cloneLocked(), nil

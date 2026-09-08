@@ -254,6 +254,19 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 
 ## Hitos
 
+### Pestaña Calendario
+
+- id: calendar-tab-name
+- tipo: fix
+- titulo.en: Calendar tab
+- titulo.pt: Separador Calendário
+- titulo.it: Scheda Calendario
+- cuerpo: La pestaña antes llamada Carreras se llama Calendario. Los títulos y enlaces de Inicio y Strategy usan el mismo nombre; sus vistas, datos y funcionamiento se mantienen.
+- cuerpo.en: The tab previously called Races is now Calendar. Titles and links from Home and Strategy use the same name; views, data and behavior are unchanged.
+- cuerpo.pt: O separador antes chamado Corridas chama-se Calendário. Títulos e ligações de Início e Strategy usam o mesmo nome; vistas, dados e funcionamento mantêm-se.
+- cuerpo.it: La scheda prima chiamata Gare si chiama Calendario. Titoli e collegamenti da Home e Strategy usano lo stesso nome; viste, dati e funzionamento restano invariati.
+- etiqueta: ISA-1022
+
 ### Corrección y optimización integral de Calendario
 
 - id: calendar-correction-optimization

@@ -1,7 +1,7 @@
 /** `races.*` catalogue for Command Orbit v0.3 (`docs/design/orbit-v03/14-i18n.md`). */
 export const racesOrbitEn: Record<string, string> = {
   "races.eyebrow": "LMU calendar",
-  "races.title": "Races",
+  "races.title": "Calendar",
   "races.lead":
     "Schedules and upcoming starts, in your time zone.",
   "races.status.refreshing": "Refreshing…",

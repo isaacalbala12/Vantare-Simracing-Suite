@@ -17,6 +17,19 @@ son fases históricas.
 
 ## Estado
 
+Actualización ISA-1042 (2026-09-08, reloj normal de Orbit):
+
+- Rama `vantareapp/isa-1042-timed-race-horizon`, base `b7991919`, ejecución
+  personal. El horizonte se resuelve junto con paradas/recursos; replay
+  comprueba inicio real de última vuelta y llegada. Ciclos no publican plan.
+- Golden de cuatro horas: 136 vueltas, cuatro paradas, llegada 4:00:00.
+- Evidencia: `docs/strategy-planner/evidence/isa-1042-timed-horizon.md`.
+  Go completo/build/typecheck/lint PASS; frontend 415 archivos / 3241 tests PASS.
+- El comparador avanzado Weather continúa a distancia fija; este corte no
+  lo certifica para tiempo. Sigue fuera del editor inicial de un solo óptimo.
+- Continúan #1043/#819/#821/#445, calibración/holdout #1030. Se solicitó a
+  Isaac una carpeta con carreras completas nuevas para la validación reservada.
+
 Actualización ISA-1041 (2026-09-08, primer corte de saneamiento validado localmente):
 
 - Isaac autoriza continuar hasta terminar; ejecución personal sin subagentes.

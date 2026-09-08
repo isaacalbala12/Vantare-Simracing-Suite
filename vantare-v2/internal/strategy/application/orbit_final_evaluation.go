@@ -93,6 +93,7 @@ func evaluateFinalOrbitPlan(plan *OrbitCalculationPlan, input solver.SolverInput
 		return fmt.Errorf("final plan: %v: %w", replayed.Reasons, ErrCalculationInfeasible)
 	}
 	plan.TotalSeconds = replayed.Evaluation.TotalSeconds
+	plan.FinalLapStartSeconds = replayed.FinalLapStartSeconds
 	plan.Optimality = "not_proven"
 	plan.PitSeconds = replayed.Evaluation.PitSeconds
 	plan.DrivingSeconds = plan.TotalSeconds - plan.PitSeconds

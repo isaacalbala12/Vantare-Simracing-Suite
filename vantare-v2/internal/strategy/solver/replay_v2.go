@@ -11,13 +11,15 @@ const ReplayContractVersionV1 = "strategy.solver.replay.v1"
 // constraint models used by SolveV2. An invalid document returns an error;
 // a well-formed plan that breaks race constraints returns Feasible=false.
 type ReplayResultV1 struct {
-	ContractVersion string             `json:"contractVersion"`
-	Decision        DecisionVector     `json:"decision"`
-	Evaluation      ScenarioEvaluation `json:"evaluation"`
-	Stints          []ReplayStintV1    `json:"stints"`
-	Reserve         ReserveStatus      `json:"reserve"`
-	Feasible        bool               `json:"feasible"`
-	Reasons         []SolverReason     `json:"reasons,omitempty"`
+	// Available only on a feasible replay, including formation and prior pits.
+	FinalLapStartSeconds float64            `json:"finalLapStartSeconds"`
+	ContractVersion      string             `json:"contractVersion"`
+	Decision             DecisionVector     `json:"decision"`
+	Evaluation           ScenarioEvaluation `json:"evaluation"`
+	Stints               []ReplayStintV1    `json:"stints"`
+	Reserve              ReserveStatus      `json:"reserve"`
+	Feasible             bool               `json:"feasible"`
+	Reasons              []SolverReason     `json:"reasons,omitempty"`
 }
 
 type ReplayStintV1 struct {
@@ -108,6 +110,7 @@ func replayDecisionV2(input SolverInputV2, decision DecisionVector, initial *[2]
 		decision: DecisionVector{PitStops: []PitStopDecision{}, Stints: []StintDecision{}},
 	}
 	replayedStints := make([]ReplayStintV1, 0, len(decision.Stints))
+	finalLapStart := 0.0
 
 	for index, requestedStint := range decision.Stints {
 		driverID := requestedStint.Driver
@@ -134,6 +137,16 @@ func replayDecisionV2(input SolverInputV2, decision DecisionVector, initial *[2]
 		}
 
 		before := node
+		if index == len(decision.Stints)-1 {
+			prefix := node
+			if requestedStint.Laps > 1 {
+				prefix, err = appendStint(node, requestedStint.Laps-1, input, costs, savingLevel, driver)
+				if err != nil {
+					return ReplayResultV1{}, err
+				}
+			}
+			finalLapStart = prefix.total(input.Formation.Seconds.Value)
+		}
 		node, err = appendStint(node, requestedStint.Laps, input, costs, savingLevel, driver)
 		if err != nil {
 			return ReplayResultV1{}, err
@@ -205,13 +218,14 @@ func replayDecisionV2(input SolverInputV2, decision DecisionVector, initial *[2]
 		return ReplayResultV1{}, err
 	}
 	return ReplayResultV1{
-		ContractVersion: ReplayContractVersionV1,
-		Decision:        cloneDecision(node.decision),
-		Evaluation:      evaluationForNode(node, input.Formation.Seconds.Value),
-		Stints:          replayedStints,
-		Reserve:         reserveStatus,
-		Feasible:        true,
-		Reasons:         []SolverReason{},
+		FinalLapStartSeconds: finalLapStart,
+		ContractVersion:      ReplayContractVersionV1,
+		Decision:             cloneDecision(node.decision),
+		Evaluation:           evaluationForNode(node, input.Formation.Seconds.Value),
+		Stints:               replayedStints,
+		Reserve:              reserveStatus,
+		Feasible:             true,
+		Reasons:              []SolverReason{},
 	}, nil
 }
 

@@ -329,22 +329,19 @@ func TestCalculateOrbitUsesGoEngineForGoldenPlan(t *testing.T) {
 		t.Fatal(err)
 	}
 	plan := result.OrbitCalculation.Plans["s1"]
-	if plan.TotalLaps != 139 || plan.Stops != 4 || len(plan.Stints) != 5 {
+	if plan.TotalLaps != 136 || plan.Stops != 4 || len(plan.Stints) != 5 {
 		t.Fatalf("plan = %#v", plan)
 	}
-	// SolveV2 minimiza cinco stints bajo el limite de 32 vueltas. El replay
-	// numerico de ambos repartos se fija debajo: aun sin peso Fuel, el stint
-	// final largo deja menos fuel sin usar y produce 13,75e-12 s de diferencia
-	// ideal, muy dentro de la tolerancia temporal; gana por la primera vuelta de
-	// parada canonica (11 antes que 28), no por ese ruido.
-	want := []int64{12, 32, 32, 32, 31}
+	// Four 64-second stops leave 14144 driving seconds: 136 laps at 104 s.
+	// The final lap starts at 14296 s, before the 14400-second finish.
+	want := []int64{9, 32, 32, 32, 31}
 	for index := range want {
 		if plan.Stints[index].Laps != want[index] {
 			t.Fatalf("stint %d laps = %d, want %d", index, plan.Stints[index].Laps, want[index])
 		}
 	}
 	// Legacy all-in service rates add sub-nanosecond costs in canonical replay.
-	if math.Abs(plan.TotalSeconds-(139*104+4*64)) > 1e-9 {
+	if math.Abs(plan.TotalSeconds-(136*104+4*64)) > 1e-9 {
 		t.Fatalf("total seconds = %v", plan.TotalSeconds)
 	}
 	raw, err := os.ReadFile(filepath.Join("..", "..", "..", "frontend", "src", "hub", "strategy-orbit", "testdata", "orbit-go-golden.json"))

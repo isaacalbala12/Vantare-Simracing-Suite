@@ -270,7 +270,7 @@ func calculateOrbitPlan(ctx context.Context, event OrbitCalculationEvent, driver
 	}
 	zeroDuration, _ := contract.NewDurationSeconds(0)
 	zeroLaps, _ := contract.NewLapCount(0)
-	race, err := manual.CalculateRace(manual.RaceInput{
+	raceInput := manual.RaceInput{
 		Kind:          manual.RaceByTime,
 		Duration:      manual.Sourced[contract.DurationSeconds]{Value: duration, Evidence: tracing},
 		AverageLap:    manual.Sourced[contract.DurationSeconds]{Value: averageLap, Evidence: tracing},
@@ -278,13 +278,20 @@ func calculateOrbitPlan(ctx context.Context, event OrbitCalculationEvent, driver
 		PitLoss:       manual.Sourced[contract.DurationSeconds]{Value: zeroDuration, Evidence: tracing},
 		TimedFinish:   manual.TimedFinishCurrentLap,
 		Selection:     tracing,
-	})
+	}
+	race, err := manual.CalculateRace(raceInput)
 	if err != nil {
 		return OrbitCalculationPlan{}, mapOrbitCalculationError(err, "input.event")
 	}
 
+	return resolveOrbitTimedHorizon(ctx, raceInput, race.CompetitiveLaps.Value(), variantIndex, func(laps int64) (OrbitCalculationPlan, error) {
+		return calculateOrbitLapPlan(ctx, event, drivers, variant, variantIndex, planning, laps, averagePace, averageFuel)
+	})
+}
+
+func calculateOrbitLapPlan(ctx context.Context, event OrbitCalculationEvent, drivers map[string]OrbitCalculationDriver, variant OrbitCalculationVariant, variantIndex int, planning *strategydocument.PlanningInputs, raceLaps int64, averagePace, averageFuel float64) (OrbitCalculationPlan, error) {
 	optimised, err := solver.SolveV2Context(ctx, orbitSolverInput(
-		race.CompetitiveLaps.Value(), event, averagePace, averageFuel, orbitClimateBucket(variant.Mode), planning,
+		raceLaps, event, averagePace, averageFuel, orbitClimateBucket(variant.Mode), planning,
 	))
 	if err != nil {
 		return OrbitCalculationPlan{}, mapOrbitCalculationError(err, fmt.Sprintf("input.variants.%d", variantIndex))
@@ -314,7 +321,7 @@ func calculateOrbitPlan(ctx context.Context, event OrbitCalculationEvent, driver
 			laps = append(laps, stint.Laps)
 		}
 	} else {
-		laps = distributeOrbitLaps(race.CompetitiveLaps.Value(), stintCount, variant.Overrides)
+		laps = distributeOrbitLaps(raceLaps, stintCount, variant.Overrides)
 	}
 	if len(laps) == 0 {
 		return OrbitCalculationPlan{}, calculationApplicationError(ErrorCalculationInvalid, fmt.Sprintf("input.variants.%d.overrides", variantIndex), ErrCalculationInvalid)
@@ -322,9 +329,9 @@ func calculateOrbitPlan(ctx context.Context, event OrbitCalculationEvent, driver
 
 	plan := OrbitCalculationPlan{
 		Stints:       make([]OrbitCalculationStint, 0, len(laps)),
-		TotalLaps:    race.CompetitiveLaps.Value(),
+		TotalLaps:    raceLaps,
 		Stops:        int64(len(laps) - 1),
-		MaxLaps:      orbitMaximumStintLaps(optimised, race.CompetitiveLaps.Value()),
+		MaxLaps:      orbitMaximumStintLaps(optimised, raceLaps),
 		AverageFuel:  optimised.ResolvedInputs.FuelPerLapLiters.Value,
 		AveragePace:  optimised.ResolvedInputs.BaseLapSeconds.Value,
 		Distribution: make([]OrbitCalculationDistribution, 0, len(drivers)),
@@ -383,7 +390,7 @@ func calculateOrbitPlan(ctx context.Context, event OrbitCalculationEvent, driver
 			delete(byDriver, driverID)
 		}
 	}
-	if err := evaluateFinalOrbitPlan(&plan, orbitSolverInput(race.CompetitiveLaps.Value(), event, averagePace, averageFuel, orbitClimateBucket(variant.Mode), planning), optimised, drivers, variant, planning); err != nil {
+	if err := evaluateFinalOrbitPlan(&plan, orbitSolverInput(raceLaps, event, averagePace, averageFuel, orbitClimateBucket(variant.Mode), planning), optimised, drivers, variant, planning); err != nil {
 		if errors.Is(err, ErrCalculationInfeasible) {
 			return OrbitCalculationPlan{}, calculationApplicationError(ErrorCalculationInfeasible, fmt.Sprintf("input.variants.%d", variantIndex), err)
 		}

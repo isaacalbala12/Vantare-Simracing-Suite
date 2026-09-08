@@ -2369,6 +2369,9 @@ func main() {
 		reminderTick := time.NewTicker(calendarReminderInterval)
 		defer reminderTick.Stop()
 		go calendar.StartReminderLoop(ctx, calendarSvc, reminderTick.C, time.Now, func(r calendar.Reminder) {
+			if !licenseSvc.AllowsCalendarReminders() {
+				return
+			}
 			emitter.Emit("calendar:reminder", map[string]any{
 				"eventId":         r.EventID,
 				"title":           r.Title,
@@ -2377,6 +2380,11 @@ func main() {
 				"startTime":       r.StartTime,
 				"registrationUrl": r.RegistrationURL,
 			})
+			if sent, err := notifySvc.CalendarReminder(r.Title, r.Track, r.MinutesLeft); err != nil {
+				log.Printf("calendar:reminder native failed: %v", err)
+			} else if sent {
+				log.Printf("calendar:reminder native accepted event=%s minutes=%d", r.EventID, r.MinutesLeft)
+			}
 		})
 	}
 
@@ -3456,7 +3464,7 @@ func main() {
 				_ = json.Unmarshal(raw, &payload)
 			}
 		}
-		app.HandleCalendarFollow(payload.EventID, calendarSvc, calendarSvc, emitter, log.Printf)
+		app.HandleCalendarFollow(payload.EventID, calendarSvc, calendarSvc, emitter, log.Printf, licenseSvc.AllowsCalendarReminders())
 	})
 
 	wailsApp.Event.On("calendar:unfollow", func(event *application.CustomEvent) {
@@ -3482,7 +3490,7 @@ func main() {
 				_ = json.Unmarshal(raw, &payload)
 			}
 		}
-		app.HandleCalendarSeriesFollow(payload.SeriesID, calendarSvc, calendarSvc, emitter, log.Printf, payload.RequestID)
+		app.HandleCalendarSeriesFollow(payload.SeriesID, calendarSvc, calendarSvc, emitter, log.Printf, payload.RequestID, licenseSvc.AllowsCalendarReminders())
 	})
 
 	wailsApp.Event.On("calendar:series:unfollow", func(event *application.CustomEvent) {

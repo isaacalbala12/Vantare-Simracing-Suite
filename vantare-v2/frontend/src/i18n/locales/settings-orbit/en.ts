@@ -144,7 +144,7 @@ export const settingsOrbitEn: Record<string, string> = {
   "settings.app.notifyLauncher": "Launcher alerts",
   "settings.app.notifyLauncherSub": "Toast when a launch chain finishes.",
   "settings.app.notifySystem": "System notifications",
-  "settings.app.notifySystemSub": "Windows shows them while the window is minimised.",
+  "settings.app.notifySystemSub": "Launch alerts and Calendar reminders while the window is minimised.",
   "settings.app.notifySystemUnsupported": "This platform does not support desktop notifications.",
   "settings.app.notifySystemTest": "Test notification",
   "settings.app.notifySystemTestSub": "Send an alert now without changing your preferences.",

@@ -267,6 +267,19 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - cuerpo.it: Piano approvato per fasi: prove del percorso, validità degli orari, promemoria delle serie, coerenza delle cinque viste e ottimizzazione misurata di apertura, interazione e consumo. Preserva aspetto e contratti HUD/Studio. Validazione visiva Wails e risparmio complessivo ancora da verificare.
 - etiqueta: ISA-1027
 
+### Recordatorios nativos con permisos y preferencias
+
+- id: calendar-native-reminders
+- tipo: fix
+- titulo.en: Native reminders respect permissions and preferences
+- titulo.pt: Lembretes nativos respeitam permissões e preferências
+- titulo.it: Promemoria nativi con permessi e preferenze
+- cuerpo: Los recordatorios de Calendario usan las notificaciones nativas existentes cuando la ventana está minimizada, el usuario las activa y la plataforma las permite. La autoridad nativa controla los seguimientos y avisos; aceptar un envío no confirma que Windows lo haya mostrado.
+- cuerpo.en: Calendar reminders use existing native notifications when the window is minimised, the user enables them and the platform allows them. Native authority controls follows and reminders; accepting a send does not prove Windows displayed it.
+- cuerpo.pt: Os lembretes do Calendário usam as notificações nativas existentes com a janela minimizada, se o utilizador as ativar e a plataforma permitir. A autoridade nativa controla seguimentos e avisos; aceitar um envio não prova que o Windows o mostrou.
+- cuerpo.it: I promemoria del Calendario usano le notifiche native esistenti con finestra ridotta a icona, se abilitate dall'utente e consentite dalla piattaforma. L'autorità nativa controlla preferenze e avvisi; accettare l'invio non prova che Windows lo abbia mostrato.
+- etiqueta: ISA-1055
+
 ### Seguimiento confirmado después de guardar
 
 - id: calendar-follow-confirmation

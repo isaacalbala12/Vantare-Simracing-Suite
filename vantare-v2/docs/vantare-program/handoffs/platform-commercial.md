@@ -1,5 +1,16 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+## ISA-1055 — avisos nativos y permisos (2026-09-08)
+
+C6c reutiliza notify.Service/SystemEnabled/autorización/minimizado y comprueba
+acceso nativo al seguir y emitir recordatorio. Roles separados de planes, estado
+active/grace; Free/bloqueado/desconocido no concede acceso. Payload compartido
+conservado para autorizados. Módulos license/notify/app PASS; checks finales y
+review pendientes. Base C6b a9a17cf3, rama vantareapp/isa-1055-calendar-native-reminders.
+Informe ISA-1055 en docs/analysis; diferencia gate UI legado/nativo documentada.
+C9 candidato #1054 aceptado; falta validación conjunta Wails y A/A–A/B. Sin merge/release.
+
+
 ## ISA-1050 — confirmación de seguimiento (2026-09-08)
 
 C6b: resultado correlacionado tras persistencia, UI pendiente/sin doble clic,

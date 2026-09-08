@@ -17,7 +17,7 @@ func TestCalendarSeriesFollowResultAfterPersistence(t *testing.T) {
 			}
 			emitter := &spyCalendarEmitter{}
 			if following {
-				HandleCalendarSeriesFollow("series", svc, svc, emitter, func(string, ...any) {}, "ui-request")
+				HandleCalendarSeriesFollow("series", svc, svc, emitter, func(string, ...any) {}, "ui-request", true)
 			} else {
 				HandleCalendarSeriesUnfollow("series", svc, svc, emitter, func(string, ...any) {}, "ui-request")
 			}

@@ -21,7 +21,7 @@ superficie excluida con antecedente #1025. No se modifican ni repiten esos tests
 la suite completa NO está verde. Go completo y roadmap 23+21 PASS.
 Review inicial: un P2, Mes contaba 12 slots en un día con solo 3 dentro de vigencia.
 Reproducido RED y corregido GREEN contando ocurrencias acotadas; revisión final
-del ajuste pendiente. No se han
+fc12ceee ACCEPT sin nuevos P1/P2 para C3. Build final PASS. No se han
 ejecutado pruebas Wails ni A/B. C4 debe hacer explícitos los estados de carga/error;
 F4/F5/F6 (DST, límite semanal y especiales) permanecen en sus cortes. No se afirma
 que todo Calendario esté corregido. HUD/Studio y datos del usuario intactos.

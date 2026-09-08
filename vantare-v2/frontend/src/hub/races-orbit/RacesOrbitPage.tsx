@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { Events } from "@wailsio/runtime";
 import { useI18n } from "../../i18n/I18nProvider";
 import { useFeatureGate } from "../feature-gate";
-import { requestCalendar } from "../../calendar/calendar-store";
+import type { CalendarRefreshState } from "../../calendar/calendar-store";
 import type { Calendar } from "../../calendar/calendar-types";
 import {
   Button,
@@ -106,6 +106,8 @@ function dayOffsetBetween(now: Date, day: Date): number {
 }
 
 export interface RacesOrbitPageProps {
+  refreshState?: CalendarRefreshState;
+  calendarError?: boolean;
   /** Calendario real del hub; `null` mientras no ha llegado. */
   calendar: Calendar | null;
   /** Serie preseleccionada por la navegación (`navigate("carreras", seriesId)`). */
@@ -125,7 +127,7 @@ export interface RacesOrbitPageProps {
  * Toda la altura la manda la Surface del calendario: la página no crece, el
  * desplazamiento vive dentro de cada vista y del detalle.
  */
-export function RacesOrbitPage({ calendar, target, now }: RacesOrbitPageProps) {
+export function RacesOrbitPage({ calendar, target, now, refreshState = "idle", calendarError = false }: RacesOrbitPageProps) {
   const { t, locale } = useI18n();
   const toast = useToast();
   const reminders = useFeatureGate("calendar.followReminders");
@@ -134,6 +136,17 @@ export function RacesOrbitPage({ calendar, target, now }: RacesOrbitPageProps) {
 
   const clock = useClock(now, TICK_MS);
   const columnClock = useClock(now, COLUMN_MS);
+  const validFrom = Date.parse(calendar?.schedule?.validFrom ?? "");
+  const validUntil = Date.parse(calendar?.schedule?.validUntil ?? "");
+  const statusKey = refreshState === "pending" ? "races.status.refreshing"
+    : calendarError || refreshState === "error" ? "races.status.error"
+    : !calendar ? "races.status.loading"
+    : !calendar.series?.length && !calendar.events.length ? "races.empty"
+    : !Number.isFinite(validFrom) || !Number.isFinite(validUntil) || validFrom >= validUntil ? "races.status.unknown"
+    : clock.getTime() < validFrom ? "races.status.future"
+    : clock.getTime() >= validUntil ? "races.status.expired"
+    : refreshState === "success" ? "races.status.updated"
+    : "races.lead";
 
   const [view, setView] = useState<RacesView>("next");
   const [tier, setTier] = useState<TierFilter>("all");
@@ -179,9 +192,7 @@ export function RacesOrbitPage({ calendar, target, now }: RacesOrbitPageProps) {
 
   const refresh = useCallback(() => {
     Events.Emit("calendar:schedule:refresh");
-    requestCalendar();
-    toast.show(t("races.refreshed"), t("races.refreshedHint"));
-  }, [t, toast]);
+  }, []);
 
   const reminderMinutes = (calendar?.reminderMinutes ?? []).join(" · ");
 
@@ -406,8 +417,8 @@ export function RacesOrbitPage({ calendar, target, now }: RacesOrbitPageProps) {
       {topbarSlot
         ? createPortal(
             <div className="orbit-races__topbar">
-              <Button data-testid="orbit-races-refresh" onClick={refresh}>
-                {t("races.refresh")}
+              <Button data-testid="orbit-races-refresh" onClick={refresh} disabled={refreshState === "pending"}>
+                {t(refreshState === "pending" ? "races.status.refreshing" : "races.refresh")}
               </Button>
             </div>,
             topbarSlot,
@@ -490,7 +501,7 @@ export function RacesOrbitPage({ calendar, target, now }: RacesOrbitPageProps) {
         <div className="orbit-races__head-copy">
           <span className="orbit-eyebrow">{t("races.eyebrow")}</span>
           <h2>{t("races.title")}</h2>
-          <p>{t("races.lead")}</p>
+          <p role="status" data-testid="orbit-races-status">{t(statusKey)}</p>
         </div>
         <Seg
           className="orbit-races__views"

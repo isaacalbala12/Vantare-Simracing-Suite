@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { requestCalendar, subscribeToCalendar } from "../../calendar/calendar-store";
+import { requestCalendar, subscribeToCalendar, subscribeToCalendarErrors, subscribeToCalendarRefresh, type CalendarRefreshState } from "../../calendar/calendar-store";
 import type { Calendar } from "../../calendar/calendar-types";
 import { buildRaceStarts, dialTarget, type RaceStart } from "./race-starts";
 
@@ -19,6 +19,8 @@ const PER_SERIES = 1;
 const REFRESH_MS = 15_000;
 
 export interface OrbitRacesState {
+  refreshState: CalendarRefreshState;
+  calendarError: boolean;
   /** `null` mientras el calendario no ha llegado; `Calendar` aunque venga vacío. */
   calendar: Calendar | null;
   /** Conjunto ordenado de próximas salidas (hasta `POOL`). */
@@ -35,14 +37,21 @@ export interface OrbitRacesState {
  */
 export function useCalendarStarts(): OrbitRacesState {
   const [calendar, setCalendar] = useState<Calendar | null>(null);
+  const [refreshState, setRefreshState] = useState<CalendarRefreshState>("idle");
+  const [calendarError, setCalendarError] = useState(false);
   const [tick, setTick] = useState(() => Date.now());
 
   useEffect(() => {
     const unsubscribe = subscribeToCalendar((state) => {
-      if (state.kind === "loaded") setCalendar(state.calendar);
+      if (state.kind === "loaded") {
+        setCalendar(state.calendar);
+        setCalendarError(false);
+      }
     });
+    const stopRefresh = subscribeToCalendarRefresh(setRefreshState);
+    const stopErrors = subscribeToCalendarErrors(() => setCalendarError(true));
     requestCalendar();
-    return unsubscribe;
+    return () => { unsubscribe(); stopRefresh(); stopErrors(); };
   }, []);
 
   useEffect(() => {
@@ -50,11 +59,12 @@ export function useCalendarStarts(): OrbitRacesState {
     return () => window.clearInterval(id);
   }, []);
 
-  return useMemo(() => {
+  const races = useMemo(() => {
     const starts = buildRaceStarts(calendar, new Date(tick), {
       limit: POOL,
       perSeries: PER_SERIES,
     });
     return { calendar, starts, target: dialTarget(starts) };
   }, [calendar, tick]);
+  return { ...races, refreshState, calendarError };
 }

@@ -602,7 +602,7 @@ function OrbitShellBody({
             ) : activeView === 'launcher' ? (
               <LauncherOrbitPage />
             ) : activeView === 'carreras' ? (
-              <RacesOrbitPage calendar={races.calendar} target={navTarget} />
+              <RacesOrbitPage calendar={races.calendar} target={navTarget} refreshState={races.refreshState} calendarError={races.calendarError} />
             ) : activeView === 'estrategia' ? (
               <StrategyOrbitPage />
             ) : activeView === 'ingeniero' ? (

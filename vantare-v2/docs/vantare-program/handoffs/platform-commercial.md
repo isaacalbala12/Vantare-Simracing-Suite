@@ -1,5 +1,17 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+## ISA-1037 — estados de Calendario (2026-09-08)
+
+C4b de #1027: estados independientes del documento, refresh de una petición,
+sin éxito anticipado y aviso de vigencia en la descripción existente. Cuatro
+idiomas, sin CSS. Depende de #1029/#1032/#1035, todos candidatos sin integrar.
+Rama vantareapp/isa-1037-calendar-status-ui desde nightly d6d0992f.
+RED siete fallos; GREEN 66 focales, typecheck y lint PASS; checks finales y review
+en curso. Evidencia y límites en docs/analysis/ISA-1037-calendar-status-ui.md.
+Pendientes del plan: recordatorios/confirmación de seguimiento, DST y slots,
+clasificación de Mes, detalle, Wails real y medición A/A antes de más optimización.
+No se toca HUD/Studio ni el checkout principal; no merge ni release.
+
 ## ISA-1011 — runtime de release (2026-09-07)
 
 Nightly.15 no se publicó: el segundo intento 34062671599 pasó tests pero

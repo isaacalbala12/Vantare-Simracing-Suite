@@ -254,6 +254,19 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 
 ## Hitos
 
+### Estado visible de actualización de Calendario
+
+- id: calendar-refresh-status-ui
+- tipo: fix
+- titulo.en: Visible calendar refresh status
+- titulo.pt: Estado visível da atualização do calendário
+- titulo.it: Stato visibile dell'aggiornamento del calendario
+- cuerpo: Calendario distingue carga, actualización, error y vigencia del horario; confirma el resultado recibido y conserva la vista mientras se actualiza.
+- cuerpo.en: Calendar distinguishes loading, refresh, errors and schedule validity; it confirms the received result and preserves the view during refresh.
+- cuerpo.pt: O calendário distingue carregamento, atualização, erro e validade do horário; confirma o resultado recebido e conserva a vista durante a atualização.
+- cuerpo.it: Il calendario distingue caricamento, aggiornamento, errore e validità dell'orario; conferma il risultato ricevuto e conserva la vista durante l'aggiornamento.
+- etiqueta: Fix
+
 ### CPU con seis widgets
 
 - id: telemetry-six-widget-cpu

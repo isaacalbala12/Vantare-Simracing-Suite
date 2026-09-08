@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-07T03:04:13Z",
+  "generatedAt": "2026-09-08T01:56:09Z",
   "digest": {
-    "lastCommit": "afc6509a8b7b336b17d94467a35e7b36c4e7c5c3"
+    "lastCommit": "d6d0992f8dbc800ccb6d75f60fffdc7c3d561da2"
   },
   "phases": [
     {
@@ -343,6 +343,28 @@
     }
   ],
   "milestones": [
+    {
+      "id": "calendar-refresh-status-ui",
+      "type": "fix",
+      "title": {
+        "es": "Estado visible de actualización de Calendario",
+        "en": "Visible calendar refresh status",
+        "pt": "Estado visível da atualização do calendário",
+        "it": "Stato visibile dell'aggiornamento del calendario"
+      },
+      "body": {
+        "es": "Calendario distingue carga, actualización, error y vigencia del horario; confirma el resultado recibido y conserva la vista mientras se actualiza.",
+        "en": "Calendar distinguishes loading, refresh, errors and schedule validity; it confirms the received result and preserves the view during refresh.",
+        "pt": "O calendário distingue carregamento, atualização, erro e validade do horário; confirma o resultado recebido e conserva a vista durante a atualização.",
+        "it": "Il calendario distingue caricamento, aggiornamento, errore e validità dell'orario; conferma il risultato ricevuto e conserva la vista durante l'aggiornamento."
+      },
+      "label": {
+        "es": "Fix",
+        "en": "Fix",
+        "pt": "Fix",
+        "it": "Fix"
+      }
+    },
     {
       "id": "telemetry-six-widget-cpu",
       "type": "fix",
@@ -961,6 +983,16 @@
     }
   ],
   "delivered": [
+    {
+      "date": "2026-09-07",
+      "entries": [
+        {
+          "kind": "fix",
+          "scope": "release",
+          "text": "Package hash-pinned approved telemetry runtime"
+        }
+      ]
+    },
     {
       "date": "2026-09-06",
       "entries": [
@@ -1608,26 +1640,6 @@
           "kind": "change",
           "scope": "",
           "text": "Producir StrategyLiveProjection v1 desde Telemetry Core"
-        }
-      ]
-    },
-    {
-      "date": "2026-08-12",
-      "entries": [
-        {
-          "kind": "docs",
-          "scope": "release",
-          "text": "Record nightly 7 publication"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "La celda de presion se va en vez de desaparecer"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "Catalogo de animaciones en el Workshop, y motor para relative, delta y pedals"
         }
       ]
     }

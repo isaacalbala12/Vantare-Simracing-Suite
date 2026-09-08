@@ -47,14 +47,12 @@ import (
 	"github.com/vantare/overlays/v2/internal/storage"
 	strategyapplication "github.com/vantare/overlays/v2/internal/strategy/application"
 	strategycatalog "github.com/vantare/overlays/v2/internal/strategy/catalog"
-	strategycoldstart "github.com/vantare/overlays/v2/internal/strategy/coldstart"
 	"github.com/vantare/overlays/v2/internal/strategy/curation"
 	strategymanual "github.com/vantare/overlays/v2/internal/strategy/manual"
 	strategyrepository "github.com/vantare/overlays/v2/internal/strategy/repository"
 	strategysolver "github.com/vantare/overlays/v2/internal/strategy/solver"
 	strategytyres "github.com/vantare/overlays/v2/internal/strategy/tyres"
 	"github.com/vantare/overlays/v2/internal/telemetry/driver"
-	"github.com/vantare/overlays/v2/internal/telemetryanalysis"
 	"github.com/vantare/overlays/v2/internal/testingcenter/reportdraft"
 	"github.com/vantare/overlays/v2/internal/tts"
 	"github.com/vantare/overlays/v2/internal/updater"
@@ -1562,36 +1560,13 @@ func main() {
 			URL:       strategyCatalogURL, Fixture: strategycatalog.FixtureSignedV1,
 			TrustedKeys: strategycatalog.FixtureTrustedKeys(), MinEpoch: "2026-08-a", MinVersion: 1,
 		})
-		var sessionCatalog *telemetryanalysis.SessionCatalog
-		var coldStart *strategycoldstart.Service
-		sessionStore, storeErr := telemetryanalysis.OpenAuthorizedSessionStore(filepath.Join(strategyRoot, "authorized-sessions.json"))
-		if storeErr != nil {
-			log.Printf("warning: authorized Strategy sessions are unavailable")
-			sessionCatalog = telemetryanalysis.NewSessionCatalog(nil)
-		} else {
-			sessionCatalog = telemetryanalysis.NewSessionCatalog(sessionStore)
-			if executable, executableErr := os.Executable(); executableErr == nil {
-				importer, importerErr := strategycoldstart.NewLMUImporter(filepath.Dir(executable), filepath.Join(strategyRoot, "telemetry-staging"))
-				if importerErr == nil {
-					coldStart = strategycoldstart.NewService(strategycoldstart.ServiceOptions{
-						StatePath: filepath.Join(strategyRoot, "cold-start.json"),
-						Discover: func(ctx context.Context) ([]telemetryanalysis.Candidate, error) {
-							return strategycoldstart.DiscoverStandardLMU(ctx, strategycoldstart.StandardLMUTelemetryRoot(), time.Second)
-						},
-						Importer: importer, Store: sessionStore,
-					})
-				} else {
-					log.Printf("warning: Strategy cold start importer is unavailable")
-				}
-			}
+		executable, executableErr := os.Executable()
+		executableDir := ""
+		if executableErr == nil {
+			executableDir = filepath.Dir(executable)
 		}
-		// Un *Service nulo dentro de la interfaz coldStartPort no es nil como
-		// interfaz: pasarlo tal cual hace que Status() entre con receptor nulo y
-		// rompa la app al arrancar. Solo se inyecta cuando existe de verdad.
-		strategyService := strategyapplication.NewServiceWithSources(repo, sessionCatalog, nil, referenceCatalog)
-		if coldStart != nil {
-			strategyService = strategyapplication.NewServiceWithSourcesAndColdStart(repo, sessionCatalog, nil, referenceCatalog, coldStart)
-		}
+		sessionCatalog, coldStart := strategyTelemetrySources(strategyRoot, executableDir)
+		strategyService := strategyapplication.NewServiceWithSourcesAndColdStart(repo, sessionCatalog, nil, referenceCatalog, coldStart)
 		strategyBridge = strategyapplication.NewJSONBridge(strategyService)
 	}
 	app.NewStrategyApplicationBridge(ctx, strategyBridge, emitter).RegisterHandlers(wailsApp)

@@ -17,6 +17,18 @@ son fases históricas.
 
 ## Estado
 
+Actualización ISA-819 (2026-09-08, segundo corte local):
+
+- Continuación autorizada desde `034cf537`, misma rama aislada de #819.
+- Recuperación de cold-start preservando decisión, backup validado y cuarentena;
+  causas explícitas desde composition root hasta cliente/banner ES/EN/PT/IT.
+- Evidencia: `docs/strategy-planner/evidence/isa-819-cold-start-status.md`.
+- Go completo, build, typecheck y lint PASS. Frontend completo: tres timeouts
+  iniciales fuera del corte; repetición con dos workers 3240/3240 PASS.
+- No cierra #819: falta reconciliar generaciones entre catálogo y progreso tras
+  recuperación, y validar el resultado en Wails con perfil de prueba separado.
+- Sin cambios de solver, datos reales, deadline #821 ni promoción.
+
 Actualización ISA-819 (2026-09-08, primer corte local de recuperación):
 
 - Isaac autorizó continuar los microplanes de #1030. Rama aislada

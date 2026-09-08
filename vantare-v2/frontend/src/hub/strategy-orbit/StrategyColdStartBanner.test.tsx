@@ -6,6 +6,35 @@ import { StrategyColdStartBanner } from "./StrategyColdStartBanner";
 afterEach(cleanup);
 
 describe("StrategyColdStartBanner", () => {
+  it.each(["catalog_unavailable", "state_unavailable", "importer_unavailable"] as const)("muestra %s sin ofrecer importar sobre fuentes indisponibles", async (reason) => {
+    const client: StrategyApplicationClient<unknown> = {
+      async execute(command) { return {
+        protocolVersion: "strategy.application.v1", commandId: command.commandId, repositoryVersion: 0,
+        coldStartStatus: { shouldShow: false, checking: false, found: 0, imported: 0, skipped: 0, failures: [], decision: "pending", reason },
+        recoveredFromBackup: false, closed: false,
+      }; }, cancel: () => false, dispose: () => undefined,
+    };
+    render(<StrategyColdStartBanner client={client} onImported={vi.fn()} t={(key) => key} />);
+    expect(await screen.findByText(`strategy.coldStart.${reason}`)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "strategy.coldStart.import" })).toBeNull();
+    expect(screen.queryByText("strategy.coldStart.title")).toBeNull();
+  });
+
+  it("advierte recuperación aunque ya se hubiera rechazado importar", async () => {
+    const client: StrategyApplicationClient<unknown> = {
+      async execute(command) { return {
+        protocolVersion: "strategy.application.v1", commandId: command.commandId, repositoryVersion: 0,
+        coldStartStatus: { shouldShow: false, checking: false, found: 0, imported: 0, skipped: 0, failures: [], decision: "rejected", recovered: true },
+        recoveredFromBackup: false, closed: false,
+      }; }, cancel: () => false, dispose: () => undefined,
+    };
+    render(<StrategyColdStartBanner client={client} onImported={vi.fn()} t={(key) => key} />);
+    expect(await screen.findByText("strategy.coldStart.recovered")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "strategy.coldStart.import" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "strategy.coldStart.dismiss" }));
+    await waitFor(() => expect(screen.queryByTestId("orbit-cold-start")).toBeNull());
+  });
+
   it("aparece una vez y conserva el rechazo", async () => {
     let rejected = false;
     const operations: string[] = [];

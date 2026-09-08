@@ -31,6 +31,8 @@ const (
 )
 
 type Status struct {
+	Reason     string    `json:"reason,omitempty"`
+	Recovered  bool      `json:"recovered,omitempty"`
 	ShouldShow bool      `json:"shouldShow"`
 	Checking   bool      `json:"checking"`
 	Found      int       `json:"found"`
@@ -65,14 +67,17 @@ type SessionStore interface {
 type DiscoverFunc func(context.Context) ([]telemetryanalysis.Candidate, error)
 
 type ServiceOptions struct {
-	StatePath         string
-	Discover          DiscoverFunc
-	Importer          SessionImporter
-	Store             SessionStore
-	ImportConcurrency int
+	CatalogUnavailable bool
+	CatalogRecovered   bool
+	StatePath          string
+	Discover           DiscoverFunc
+	Importer           SessionImporter
+	Store              SessionStore
+	ImportConcurrency  int
 }
 
 type Service struct {
+	recovered    bool
 	mu           sync.Mutex
 	options      ServiceOptions
 	candidates   []telemetryanalysis.Candidate
@@ -91,17 +96,26 @@ func NewService(options ServiceOptions) *Service {
 	return &Service{options: options}
 }
 
-func (service *Service) Status(ctx context.Context) (Status, error) {
+func (service *Service) Status(ctx context.Context) (status Status, err error) {
 	// Defensa ante un receptor nulo: si el arranque no pudo construir el
 	// servicio, el arranque en frío queda pendiente en vez de romper la app.
 	if service == nil {
-		return Status{Decision: DecisionPending}, nil
+		return Status{Decision: DecisionPending, Failures: []Failure{}}, nil
 	}
 	service.mu.Lock()
 	defer service.mu.Unlock()
+	defer func() {
+		if status.Failures == nil {
+			status.Failures = []Failure{}
+		}
+		status.Recovered = service.recovered || service.options.CatalogRecovered
+	}()
+	if service.options.CatalogUnavailable {
+		return Status{Decision: DecisionPending, Reason: "catalog_unavailable"}, nil
+	}
 	state, err := service.readState()
 	if err != nil {
-		return Status{}, err
+		return Status{Decision: DecisionPending, Reason: "state_unavailable"}, nil
 	}
 	if state.Decision == DecisionRejected {
 		return statusFromState(state, false, false), nil
@@ -110,7 +124,7 @@ func (service *Service) Status(ctx context.Context) (Status, error) {
 		return statusFromState(state, len(state.Failures) > 0, false), nil
 	}
 	if service.options.Discover == nil || service.options.Importer == nil || service.options.Store == nil {
-		return Status{Decision: DecisionPending}, nil
+		return Status{Decision: DecisionPending, Reason: "importer_unavailable"}, nil
 	}
 	if service.candidates == nil {
 		if service.discoveryErr != nil {
@@ -128,6 +142,9 @@ func (service *Service) Status(ctx context.Context) (Status, error) {
 func (service *Service) ImportNext(ctx context.Context) (Progress, error) {
 	service.mu.Lock()
 	defer service.mu.Unlock()
+	if service.options.CatalogUnavailable || service.options.Store == nil || service.options.Importer == nil {
+		return Progress{}, fmt.Errorf("cold start import unavailable")
+	}
 	state, err := service.readState()
 	if err != nil {
 		return Progress{}, err
@@ -346,22 +363,59 @@ func failureReason(err error) string {
 	return reason
 }
 
+var ErrInvalidColdStartState = errors.New("invalid cold start state")
+
 func (service *Service) readState() (persistedState, error) {
-	data, err := os.ReadFile(service.options.StatePath)
-	if errors.Is(err, os.ErrNotExist) {
-		return persistedState{Decision: DecisionPending, ImportedLocators: []string{}}, nil
+	path := service.options.StatePath
+	data, readErr := os.ReadFile(path)
+	if readErr != nil && !errors.Is(readErr, os.ErrNotExist) {
+		return persistedState{}, fmt.Errorf("read cold start state: %w", readErr)
 	}
+	if readErr == nil {
+		state, err := decodeColdStartState(data)
+		if err == nil {
+			return state, nil
+		}
+	}
+	backup, backupErr := os.ReadFile(path + ".bak")
+	if errors.Is(readErr, os.ErrNotExist) && errors.Is(backupErr, os.ErrNotExist) {
+		return persistedState{Decision: DecisionPending, ImportedLocators: []string{}, Failures: []Failure{}}, nil
+	}
+	if backupErr != nil {
+		return persistedState{}, fmt.Errorf("%w: backup: %w", ErrInvalidColdStartState, backupErr)
+	}
+	state, err := decodeColdStartState(backup)
 	if err != nil {
-		return persistedState{}, fmt.Errorf("read cold start state: %w", err)
+		return persistedState{}, err
 	}
+	if readErr == nil {
+		file, err := os.CreateTemp(filepath.Dir(path), filepath.Base(path)+".corrupt-*")
+		if err != nil {
+			return persistedState{}, fmt.Errorf("create cold start quarantine: %w", err)
+		}
+		_, writeErr := file.Write(data)
+		syncErr := file.Sync()
+		closeErr := file.Close()
+		if err := errors.Join(writeErr, syncErr, closeErr); err != nil {
+			return persistedState{}, fmt.Errorf("preserve cold start quarantine: %w", err)
+		}
+	}
+	if err := writeColdStartFile(path, backup); err != nil {
+		return persistedState{}, err
+	}
+	service.recovered = true
+	return state, nil
+}
+
+func decodeColdStartState(data []byte) (persistedState, error) {
 	decoder := json.NewDecoder(bytes.NewReader(data))
 	decoder.DisallowUnknownFields()
 	var state persistedState
 	if err := decoder.Decode(&state); err != nil || decoder.Decode(&struct{}{}) != io.EOF {
-		return persistedState{}, fmt.Errorf("decode cold start state")
+		return persistedState{}, ErrInvalidColdStartState
 	}
 	if state.Decision != DecisionPending && state.Decision != DecisionAccepted && state.Decision != DecisionRejected {
-		return persistedState{}, fmt.Errorf("invalid cold start decision")
+		return persistedState{}, ErrInvalidColdStartState
 	}
 	if state.ImportedLocators == nil {
 		state.ImportedLocators = []string{}
@@ -371,7 +425,7 @@ func (service *Service) readState() (persistedState, error) {
 	}
 	for _, failure := range state.Failures {
 		if failure.Locator == "" || failure.Reason == "" {
-			return persistedState{}, fmt.Errorf("invalid cold start failure")
+			return persistedState{}, ErrInvalidColdStartState
 		}
 	}
 	return state, nil
@@ -382,7 +436,22 @@ func (service *Service) writeState(state persistedState) error {
 	if err != nil {
 		return fmt.Errorf("encode cold start state: %w", err)
 	}
-	directory := filepath.Dir(service.options.StatePath)
+	previous, err := os.ReadFile(service.options.StatePath)
+	if errors.Is(err, os.ErrNotExist) {
+		previous = data
+	} else if err != nil {
+		return fmt.Errorf("read cold start backup source: %w", err)
+	} else if _, err := decodeColdStartState(previous); err != nil {
+		return err
+	}
+	if err := writeColdStartFile(service.options.StatePath+".bak", previous); err != nil {
+		return err
+	}
+	return writeColdStartFile(service.options.StatePath, data)
+}
+
+func writeColdStartFile(path string, data []byte) error {
+	directory := filepath.Dir(path)
 	if err := os.MkdirAll(directory, 0o700); err != nil {
 		return fmt.Errorf("create cold start state directory: %w", err)
 	}
@@ -407,7 +476,7 @@ func (service *Service) writeState(state persistedState) error {
 	if err := temporary.Close(); err != nil {
 		return err
 	}
-	if err := os.Rename(temporaryPath, service.options.StatePath); err != nil {
+	if err := os.Rename(temporaryPath, path); err != nil {
 		return fmt.Errorf("replace cold start state: %w", err)
 	}
 	return nil

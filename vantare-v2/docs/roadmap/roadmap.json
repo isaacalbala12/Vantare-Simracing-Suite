@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-08T01:29:21Z",
+  "generatedAt": "2026-09-08T01:43:06Z",
   "digest": {
     "lastCommit": "d6d0992f8dbc800ccb6d75f60fffdc7c3d561da2"
   },
@@ -837,10 +837,10 @@
         "it": "Recupero del catalogo di telemetria autorizzato"
       },
       "body": {
-        "es": "El catálogo autorizado conserva un backup validado y permite recuperar el archivo principal ausente o corrupto, guardando el dañado para revisión. Distingue recuperación, corrupción y escritura incierta. Quedan pendientes la recuperación del estado de importación y su diagnóstico visible en Strategy.",
-        "en": "The authorized catalog keeps a validated backup and can restore a missing or corrupt primary while preserving damaged data for review. It distinguishes recovery, corruption and uncertain writes. Import state recovery and visible diagnostics in Strategy remain pending.",
-        "pt": "O catálogo autorizado mantém um backup validado e recupera o ficheiro principal ausente ou corrompido, preservando os dados danificados. Distingue recuperação, corrupção e escrita incerta. Faltam a recuperação do estado de importação e o diagnóstico visível em Strategy.",
-        "it": "Il catalogo autorizzato conserva un backup validato e ripristina il file principale assente o corrotto, preservando i dati danneggiati. Distingue recupero, corruzione e scrittura incerta. Restano il recupero dello stato di importazione e la diagnostica visibile in Strategy."
+        "es": "El catálogo autorizado conserva un backup validado y permite recuperar el archivo principal ausente o corrupto, guardando el dañado para revisión. Distingue recuperación, corrupción y escritura incierta. El estado de importación también se recupera y Strategy muestra causas de indisponibilidad y avisos de recuperación. Quedan pendientes reconciliar las generaciones recuperadas entre ambos archivos y la validación visual en Wails.",
+        "en": "The authorized catalog keeps a validated backup and can restore a missing or corrupt primary while preserving damaged data for review. It distinguishes recovery, corruption and uncertain writes. Import state also recovers, and Strategy displays unavailability causes and recovery notices. Reconciliation between recovered file generations and visual Wails validation remain pending.",
+        "pt": "O catálogo autorizado mantém um backup validado e recupera o ficheiro principal ausente ou corrompido, preservando os dados danificados. Distingue recuperação, corrupção e escrita incerta. O estado de importação também é recuperado e Strategy apresenta causas de indisponibilidade e avisos de recuperação. Faltam a reconciliação das gerações recuperadas e a validação visual em Wails.",
+        "it": "Il catalogo autorizzato conserva un backup validato e ripristina il file principale assente o corrotto, preservando i dati danneggiati. Distingue recupero, corruzione e scrittura incerta. Anche lo stato di importazione viene recuperato e Strategy mostra cause di indisponibilità e avvisi di recupero. Restano la riconciliazione delle generazioni recuperate e la verifica visiva in Wails."
       },
       "label": {
         "es": "Fix",

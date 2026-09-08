@@ -14,7 +14,8 @@ function commandId(operation: string): string {
 
 export async function loadColdStartStatus(client: StrategyApplicationClient<unknown>): Promise<StrategyColdStartStatusV1> {
   const result = await client.execute({ protocolVersion: "strategy.application.v1", commandId: commandId("cold-status"), operation: "get_cold_start_status", expectedRepositoryVersion: 0 });
-  return result.coldStartStatus ?? { shouldShow: false, checking: false, found: 0, imported: 0, skipped: 0, failures: [], decision: "pending" };
+  if (!result.coldStartStatus) throw new Error("Cold start status unavailable");
+  return result.coldStartStatus;
 }
 
 export async function rejectColdStart(client: StrategyApplicationClient<unknown>): Promise<void> {

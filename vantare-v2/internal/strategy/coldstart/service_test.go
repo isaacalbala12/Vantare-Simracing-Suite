@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -15,6 +16,74 @@ import (
 )
 
 type importerStub struct{ calls int }
+
+func TestColdStartStateRecoversDecisionWithoutImporting(t *testing.T) {
+	for _, missing := range []bool{false, true} {
+		t.Run(fmt.Sprint(missing), func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "cold-start.json")
+			service := NewService(ServiceOptions{StatePath: path})
+			if err := service.Reject(context.Background()); err != nil {
+				t.Fatal(err)
+			}
+			if missing {
+				if err := os.Remove(path); err != nil {
+					t.Fatal(err)
+				}
+			} else {
+				if err := os.WriteFile(path, []byte("broken"), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			reopened := NewService(ServiceOptions{StatePath: path})
+			status, err := reopened.Status(context.Background())
+			if err != nil || status.Decision != DecisionRejected {
+				t.Fatalf("status=%+v err=%v", status, err)
+			}
+			if !status.Recovered {
+				t.Fatal("recovery not reported")
+			}
+			if !missing {
+				files, err := filepath.Glob(path + ".corrupt-*")
+				if err != nil || len(files) != 1 {
+					t.Fatalf("quarantine=%v err=%v", files, err)
+				}
+				data, err := os.ReadFile(files[0])
+				if err != nil || string(data) != "broken" {
+					t.Fatal("damaged evidence changed")
+				}
+			}
+		})
+	}
+}
+
+func TestColdStartUnavailableStateCanBeRecheckedAfterRepair(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "cold-start.json")
+	if err := os.WriteFile(path, []byte("broken"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path+".bak", []byte("also broken"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	service := NewService(ServiceOptions{StatePath: path})
+	status, err := service.Status(context.Background())
+	if err != nil || status.Reason != "state_unavailable" || status.Failures == nil {
+		t.Fatalf("status=%+v err=%v", status, err)
+	}
+	if err := service.Reject(context.Background()); !errors.Is(err, ErrInvalidColdStartState) {
+		t.Fatalf("unsafe mutation error=%v", err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil || string(data) != "broken" {
+		t.Fatal("damaged source changed")
+	}
+	if err := os.WriteFile(path, []byte(`{"decision":"rejected","importedLocators":[],"failures":[],"total":0}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	status, err = service.Status(context.Background())
+	if err != nil || status.Reason != "" || status.Decision != DecisionRejected {
+		t.Fatalf("repair remained stuck: %+v %v", status, err)
+	}
+}
 
 func (stub *importerStub) Import(_ context.Context, candidate telemetryanalysis.Candidate) (telemetryanalysis.AuthorizedSessionModel, error) {
 	stub.calls++

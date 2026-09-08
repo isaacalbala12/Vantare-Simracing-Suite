@@ -33,7 +33,7 @@ export function StrategyColdStartBanner({ client, onImported, t }: { client: Str
     return () => { current = false; };
   }, [client, queryRevision]);
 
-  if (status && !status.shouldShow && !queryFailed) return null;
+  if (status && !status.shouldShow && !status.reason && !status.recovered && !queryFailed) return null;
   const accept = async (retryFailures = false) => {
     setBusy(true);
     setImportFailed(false);
@@ -69,20 +69,24 @@ export function StrategyColdStartBanner({ client, onImported, t }: { client: Str
     setQueryRevision((value) => value + 1);
   };
   const checking = status?.checking ?? !queryFailed;
+  const unavailable = Boolean(status?.reason);
+  const offerImport = Boolean(status?.shouldShow) && !unavailable;
   const failures = progress?.failures ?? status?.failures ?? [];
   return (
     <section className="orbit-cold-start" data-testid="orbit-cold-start" role="status">
       <div>
-        {queryFailed ? <b>{t("strategy.coldStart.statusErrorTitle")}</b> : checking ? <b>{t("strategy.coldStart.checking")}</b> : <b>{formatMessage(t("strategy.coldStart.title"), { n: status?.found ?? 0 })}</b>}
-        {queryFailed ? <p className="orbit-cold-start__error">{t("strategy.coldStart.statusError")}</p> : checking ? <p>{t("strategy.coldStart.checkingLead")}</p> : <p>{t("strategy.coldStart.lead")}</p>}
+        {unavailable || (status?.recovered && !status.shouldShow) ? <b>{t("strategy.coldStart.sourceStatus")}</b> : queryFailed ? <b>{t("strategy.coldStart.statusErrorTitle")}</b> : checking ? <b>{t("strategy.coldStart.checking")}</b> : <b>{formatMessage(t("strategy.coldStart.title"), { n: status?.found ?? 0 })}</b>}
+        {unavailable ? <p className="orbit-cold-start__error">{t(`strategy.coldStart.${status?.reason}`)}</p> : !offerImport && status?.recovered ? null : queryFailed ? <p className="orbit-cold-start__error">{t("strategy.coldStart.statusError")}</p> : checking ? <p>{t("strategy.coldStart.checkingLead")}</p> : <p>{t("strategy.coldStart.lead")}</p>}
+        {status?.recovered ? <p>{t("strategy.coldStart.recovered")}</p> : null}
         {progress ? <span>{formatMessage(t("strategy.coldStart.progress"), { done: progress.imported + progress.skipped, imported: progress.imported, skipped: progress.skipped, total: progress.total })}</span> : null}
         {importFailed ? <span className="orbit-cold-start__error">{t("strategy.coldStart.error")}</span> : null}
         {failures.length > 0 ? <div><b>{t("strategy.coldStart.failureReasons")}</b><ul>{failures.map((failure) => <li key={failure.locator}>{formatMessage(t("strategy.coldStart.failureReason"), { session: failure.locator, reason: failure.reason })}</li>)}</ul></div> : null}
       </div>
       <div className="orbit-cold-start__actions">
-        {queryFailed ? <Button onClick={retryStatus} variant="primary">{t("strategy.coldStart.retryStatus")}</Button> : null}
-        {!queryFailed && !checking ? <Button disabled={busy} onClick={() => void reject()} variant="ghost">{status?.skipped ? t("strategy.coldStart.dismiss") : t("strategy.coldStart.reject")}</Button> : null}
-        {!queryFailed && !checking ? <Button disabled={busy} onClick={() => void accept((status?.skipped ?? 0) > 0)} variant="primary">{busy ? t("strategy.coldStart.importing") : status?.skipped ? t("strategy.coldStart.retrySkipped") : t("strategy.coldStart.import")}</Button> : null}
+        {!unavailable && !offerImport && status?.recovered ? <Button onClick={() => setStatus({ ...status, recovered: false })} variant="ghost">{t("strategy.coldStart.dismiss")}</Button> : null}
+        {queryFailed || status?.reason === "state_unavailable" ? <Button onClick={retryStatus} variant="primary">{t("strategy.coldStart.retryStatus")}</Button> : null}
+        {offerImport && !queryFailed && !checking ? <Button disabled={busy} onClick={() => void reject()} variant="ghost">{status?.skipped ? t("strategy.coldStart.dismiss") : t("strategy.coldStart.reject")}</Button> : null}
+        {offerImport && !queryFailed && !checking ? <Button disabled={busy} onClick={() => void accept((status?.skipped ?? 0) > 0)} variant="primary">{busy ? t("strategy.coldStart.importing") : status?.skipped ? t("strategy.coldStart.retrySkipped") : t("strategy.coldStart.import")}</Button> : null}
       </div>
     </section>
   );

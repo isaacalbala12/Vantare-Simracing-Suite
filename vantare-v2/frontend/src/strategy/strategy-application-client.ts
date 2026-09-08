@@ -753,6 +753,8 @@ export type StrategyReferenceCatalogResultV1 = {
 };
 
 export type StrategyColdStartStatusV1 = {
+  readonly reason?: "catalog_unavailable" | "state_unavailable" | "importer_unavailable";
+  readonly recovered?: boolean;
   readonly shouldShow: boolean;
   readonly checking: boolean;
   readonly found: number;
@@ -1440,6 +1442,8 @@ function parseSessionCatalogStatus(value: unknown): "available" | "no_authorized
 
 function parseColdStartStatus(value: unknown): StrategyColdStartStatusV1 {
   const status = strategyRecord(value, "coldStartStatus");
+  if (status.reason !== undefined) strategyEnum(status.reason, "coldStartStatus.reason", ["catalog_unavailable", "state_unavailable", "importer_unavailable"]);
+  if (status.recovered !== undefined && typeof status.recovered !== "boolean") throw new Error("Invalid Strategy coldStartStatus.recovered");
   if (typeof status.shouldShow !== "boolean") throw new Error("Invalid Strategy coldStartStatus.shouldShow");
   if (typeof status.checking !== "boolean") throw new Error("Invalid Strategy coldStartStatus.checking");
   strategyInteger(status.found, "coldStartStatus.found");

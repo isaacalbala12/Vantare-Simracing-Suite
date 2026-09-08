@@ -448,9 +448,13 @@ describe("cold start failures", () => {
         skipped: 0,
         failures: null,
         decision: "pending",
+        reason: "state_unavailable",
+        recovered: true,
       },
     });
     const result = await pending;
+    expect(result.coldStartStatus?.reason).toBe("state_unavailable");
+    expect(result.coldStartStatus?.recovered).toBe(true);
     expect(result.coldStartStatus?.found).toBe(337);
     expect(result.coldStartStatus?.failures).toEqual([]);
   });

@@ -7,8 +7,8 @@ acceso nativo al seguir y emitir recordatorio. Roles separados de planes, estado
 active/grace; Free/bloqueado/desconocido no concede acceso. Payload compartido
 conservado para autorizados. Gate adelantado al cálculo/dedupe para no consumir
 avisos antes de validar cuenta; regresión por canales RED. Build y módulos
-license/notify/app PASS; módulo Calendar final, checks y
-review pendientes. Base C6b a9a17cf3, rama vantareapp/isa-1055-calendar-native-reminders.
+Calendar/license/notify/app y full Go PASS; 35 focales UI/i18n, roadmap23+21
+y build PASS. Fullfrontend3240PASS/1timeoutPedals #1025; review ACCEPTa7454887. Base C6b a9a17cf3, rama vantareapp/isa-1055-calendar-native-reminders.
 Informe ISA-1055 en docs/analysis; diferencia gate UI legado/nativo documentada.
 C9 candidato #1054 aceptado; falta validación conjunta Wails y A/A–A/B. Sin merge/release.
 

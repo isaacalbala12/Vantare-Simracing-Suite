@@ -20,8 +20,9 @@ Fecha: 2026-09-08. Issue documental #1028; primera ejecución #1030.
 La spec `../specs/2026-09-08-strategy-recorded-editor-design.md`, contenido del
 commit `a009231a`, fue aprobada por Isaac en esta conversación. El cambio de su
 marca a aprobada es administrativo; no reabre sus decisiones.
-Este plan v1 fue aprobado por Isaac. No hay autorización de implementación,
-merge o release. Base de inspección: `nightly@d6d0992f`.
+Este plan v1 fue aprobado por Isaac. La ejecución posterior autorizada de #819
+entregó dos cortes locales hasta `4ce96ded`; no autoriza merge o release.
+Base histórica de inspección: `nightly@d6d0992f`.
 
 ## 1. Cómo ejecutar este programa
 
@@ -44,6 +45,26 @@ reserva congelada pero insuficiente para evaluación de carreras completas.
 Anotación independiente y umbrales siguen pendientes. Fiabilidad puede avanzar
 en #819/#821/#803; contrato documental de correcciones propuesto en #1033.
 Ver `../../strategy-planner/evidence/isa-1030/README.md` y `next-slices.md`.
+
+### Gate añadido por Isaac: revisión personal antes de nuevas secciones
+
+#1038 aplica Ponytail + code review sin subagentes sobre `4ce96ded`.
+Informe: `../../strategy-planner/evidence/isa-1038/README.md`.
+Veredicto **NO-GO**: seis reproducciones confirman fallos de factibilidad,
+reserva, coste, reloj, boxes y recuperación. También se trazó el fixture de
+referencia en la ruta normal y la cancelación solo local de UI.
+
+- [x] Entregar revisión por flujos con cobertura y límites explícitos (#1038).
+- [ ] #1041: evaluación del plan final, combustible/VE, reserva y costes.
+- [ ] #1042: duración, paradas y vueltas coherentes.
+- [ ] #819/#821: reconciliación, deadline y evidencia de interfaz aislada.
+- [ ] #1043: etiquetado de boxes; #1030 conserva calibración pendiente.
+- [ ] #445: referencias reales o vacío; fixtures fuera del cálculo normal.
+- [ ] Revisar personalmente fixes y revalidar antes de iniciar F1/F2/UI nuevas.
+
+Se proponen microcortes, no un rewrite. Las nuevas revisiones deben fijar
+entradas, fuentes/correcciones y versión del motor; guardar el resultado solo
+no permite recalcularlo. Live y OSS/Monte Carlo mantienen su aplazamiento.
 
 ## 2. Mapa de reutilización inspeccionado
 

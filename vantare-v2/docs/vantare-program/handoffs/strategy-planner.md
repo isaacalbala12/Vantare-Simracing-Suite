@@ -17,6 +17,21 @@ son fases históricas.
 
 ## Estado
 
+Actualización ISA-1038 (2026-09-08, revisión personal previa a nuevas secciones):
+
+- Isaac exige Ponytail + code review y ejecución sin subagentes. Revisión sobre
+  `4ce96ded` en `C:/tmp/vantare-isa1038`, sin fixes productivos.
+- Veredicto NO-GO para nuevas secciones. Informe, cobertura, límites y seis
+  reproducciones: `docs/strategy-planner/evidence/isa-1038/README.md`.
+- #1041: recursos/reserva/coste del plan final; #1042: reloj y paradas;
+  #1043: boxes dentro de vuelta. Reusar #819 para reconciliación, #821 para
+  deadline y #445 para referencias de prueba/compatibilidad.
+- 20 paquetes Go PASS; frontend Strategy 32 archivos / 273 tests PASS sobre
+  mismo HEAD. Los probes reproducen defectos; no validan precisión real.
+- Gate: corregir bloqueos en microcortes, revisar y revalidar antes de nuevas
+  secciones. #1030 mantiene anotación/calibración/holdout pendientes.
+- Sin Wails, datos originales, cambios de LMU, push, PR, CI remota ni promoción.
+
 Actualización ISA-819 (2026-09-08, segundo corte local):
 
 - Continuación autorizada desde `034cf537`, misma rama aislada de #819.

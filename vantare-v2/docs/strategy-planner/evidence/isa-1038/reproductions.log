@@ -1,0 +1,32 @@
+=== RUN   TestISA1038ReviewCost
+    isa1038_review_test.go:22: orbit_total=240.000 solver_total=252.000 solver_degradation=12.000 stints=1/1
+--- PASS: TestISA1038ReviewCost (0.01s)
+=== RUN   TestISA1038ReviewProbes
+=== RUN   TestISA1038ReviewProbes/underfuel
+    isa1038_review_test.go:48: laps=4 total=250.000 reserve=0.800 required=0.800 satisfied=true
+    isa1038_review_test.go:50: driver=a laps=1 fuel=0.100 start=0.000 end=60.000 overcapacity=false manual=true
+    isa1038_review_test.go:50: driver=a laps=3 fuel=3.800 start=70.000 end=250.000 overcapacity=false manual=false
+=== RUN   TestISA1038ReviewProbes/timed_finish
+    isa1038_review_test.go:48: laps=4 total=540.000 reserve=0.800 required=0.800 satisfied=true
+    isa1038_review_test.go:50: driver=a laps=1 fuel=1.000 start=0.000 end=60.000 overcapacity=false manual=false
+    isa1038_review_test.go:50: driver=a laps=3 fuel=3.800 start=360.000 end=540.000 overcapacity=false manual=false
+=== RUN   TestISA1038ReviewProbes/driver_reserve
+    isa1038_review_test.go:48: laps=4 total=250.000 reserve=0.533 required=0.800 satisfied=true
+    isa1038_review_test.go:50: driver=a laps=2 fuel=2.000 start=0.000 end=120.000 overcapacity=false manual=false
+    isa1038_review_test.go:50: driver=b laps=2 fuel=7.600 start=130.000 end=250.000 overcapacity=false manual=false
+--- PASS: TestISA1038ReviewProbes (0.00s)
+    --- PASS: TestISA1038ReviewProbes/underfuel (0.00s)
+    --- PASS: TestISA1038ReviewProbes/timed_finish (0.00s)
+    --- PASS: TestISA1038ReviewProbes/driver_reserve (0.00s)
+PASS
+ok  	github.com/vantare/overlays/v2/internal/strategy/application	0.053s
+=== RUN   TestISA1038ReviewRecoveredCatalogMismatch
+    isa1038_review_test.go:27: catalog=0 reported_imported=1 show_import=false recovered=true done=true importer_calls=0
+--- PASS: TestISA1038ReviewRecoveredCatalogMismatch (0.03s)
+PASS
+ok  	github.com/vantare/overlays/v2/internal/strategy/coldstart	0.072s
+=== RUN   TestISA1038ReviewPitBetweenBoundaries
+    isa1038_review_test.go:13: pit=[80,100] lap=[60,120] labels=[] pace_included=true
+--- PASS: TestISA1038ReviewPitBetweenBoundaries (0.00s)
+PASS
+ok  	github.com/vantare/overlays/v2/internal/telemetryanalysis	0.046s

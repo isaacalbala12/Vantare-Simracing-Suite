@@ -1,0 +1,31 @@
+package coldstart
+
+import (
+	"context"
+	"github.com/vantare/overlays/v2/internal/telemetryanalysis"
+	"path/filepath"
+	"testing"
+)
+
+func TestISA1038ReviewRecoveredCatalogMismatch(t *testing.T) {
+	store := &sessionStoreStub{}
+	importer := &importerStub{}
+	svc := NewService(ServiceOptions{StatePath: filepath.Join(t.TempDir(), "state.json"), CatalogRecovered: true, Store: store, Importer: importer, Discover: func(context.Context) ([]telemetryanalysis.Candidate, error) {
+		return []telemetryanalysis.Candidate{{Locator: "lmu://missing-after-recovery"}}, nil
+	}})
+	if err := svc.writeState(persistedState{Decision: DecisionAccepted, ImportedLocators: []string{"lmu://missing-after-recovery"}, Failures: []Failure{}, Total: 1}); err != nil {
+		t.Fatal(err)
+	}
+	status, err := svc.Status(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	progress, err := svc.ImportNext(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("catalog=%d reported_imported=%d show_import=%t recovered=%t done=%t importer_calls=%d", len(store.models), status.Imported, status.ShouldShow, status.Recovered, progress.Done, importer.calls)
+	if status.ShouldShow || !progress.Done || importer.calls != 0 || status.Imported != 1 {
+		t.Fatal("suspected mismatch absent")
+	}
+}

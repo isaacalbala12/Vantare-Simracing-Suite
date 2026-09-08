@@ -9,7 +9,9 @@ ocho PASS. Sin mutar documento ni tocar HUD/Studio/CSS. Base C7 411b5538;
 C7 aceptado en review y candidato #1047, no integrado. Rama
 vantareapp/isa-1046-calendar-month-classification. Review halló P2 Mes → Día:
 cuatro regresiones RED, corregidas; especiales presentes con/sin series y sin
-duplicar ocurrencias. 113 focales PASS, build PASS; checks finales/segunda review pendientes.
+duplicar ocurrencias. 113 focales PASS, build/tipos/lint/roadmap PASS; review ACCEPT 6a1daf60.
+Suite completa 3269 PASS, 2 skips, 3 FAIL fuera de Calendario: parser p99
+(#1019), Relative Crystal 30 s y Pedals Redline missing 20 s (#1025).
 Informe en docs/analysis/ISA-1046-calendar-month-classification.md.
 Continúan C6/C9, Wails y medición A/A–A/B; sin merge ni release.
 

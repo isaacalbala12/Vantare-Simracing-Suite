@@ -24,7 +24,7 @@ Se añade la vigencia del mismo seed al snapshot anterior a C2, sin inventar fec
 No hay medición de ahorro CPU/GPU/RAM en este corte. Wails real sigue pendiente.
 
 Archivos: races-orbit-model.ts, RacesOrbitPage.tsx, prueba de clasificación,
-informe/handoff y roadmap manual/generado. Checks finales y review pendientes.
+prueba de navegación, informe/handoff y roadmap manual/generado.
 Verificación manual: Mes de una publicación vigente o histórica, filtro Todas y
 otra categoría, resúmenes compactos sin miles de especiales; evento externo visible.
 Sin dependencias nuevas, datos reales modificados, merge o release.
@@ -34,4 +34,9 @@ especiales al abrir un chip o +N, y la pantalla vacía sin series. Día comparte
 la clasificación y muestra hora/título en chips de lectura; Mes/Día no ocultan
 los especiales si no hay series. Sin recurrencias ni seguimiento inventados.
 113 focales PASS, dos skips (Lord Howe y artefacto Go opt-in, comprobados aparte).
-Build PASS. Suite completa final, lint, tipos y segunda review pendientes.
+Build, typecheck, lint y roadmap (23 + 21) PASS. Review ACCEPT en 6a1daf60.
+Suite completa final: 3269 PASS, 2 skips, 3 FAIL: parser OverlayFrame p99
+(#1019), Relative Crystal tables.layout:66 (30 s) y PedalsRedline.layout:47
+estado missing (20 s), registrados en #1025. No se amplían presupuestos.
+Go no repetido: no hay cambios Go ni de contrato compartido en C8.
+Candidato aislado; push/PR y CI se verifican por separado.

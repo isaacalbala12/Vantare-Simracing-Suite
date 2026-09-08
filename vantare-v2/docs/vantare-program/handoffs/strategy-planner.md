@@ -1,5 +1,20 @@
 # Handoff vivo — Strategy Planner
 
+## Dirección visual aceptada e implementación — 2026-09-08
+
+Isaac acepta 769775bd y autoriza desarrollar el plan con esa visión visual.
+La aprobación cubre el asistente unificado de cinco pasos y el editor A4/Orbit.
+Live/Monte Carlo siguen aplazados. Se implementa personalmente, conservando
+el bucle adversarial visual al conectar pantallas; sin delegación de código.
+
+Primer corte #1073 sobre 769775bd: snapshots escalares puros, canónicos y
+atómicos en Analysis. Rama vantareapp/isa-1073-correction-snapshots; worktree
+C:/tmp/vantare-isa1073. Tests focales y paquete Analysis pasan; build frontend
+pasa; suite Go completa y vet de Analysis pasan. No existe aún custodia ni UI conectada.
+Siguiente: custodia/revisiones bajo lease, vista efectiva y proyección, comandos
+de Strategy, UI productiva, plan reproducible y validación con carreras reservadas.
+
+
 ## Combinación unificada — 2026-09-08
 
 Isaac elimina la repetición Simulador/Evento/Combinación. El asistente tiene cinco

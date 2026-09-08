@@ -192,3 +192,14 @@ mantiene su alcance propuesto y requiere cortes separados antes de conectarse.
 de resultados antiguos no completa esa marca: se requiere reanálisis. El digest
 usa `TemporalSegmentsV1` validado y dominio `analysis.correction-segmentation.v1`.
 No implica almacenamiento de correcciones ni cambio de calidad/relojes.
+
+## Snapshot escalar C1c — #1073
+
+PrepareSampleCorrectionSnapshot valida cada escalar con C1a contra una base
+común suministrada por Analysis. Rechaza duplicados de canal/columna/índice,
+no publica resultados parciales y ordena por canal, columna e índice numérico.
+El conjunto vacío es explícito y está ligado a la base. SnapshotID usa dominio
+analysis.sample-snapshot.v1 y JSON de Base+Corrections ordenadas; no es revisión
+persistida, comando ni autorización. Máximo256correcciones por snapshot, presupuesto
+de recursos independiente de umbrales físicos. No retiene colecciones de entrada.
+Las restantes operaciones y custodia siguen pendientes.

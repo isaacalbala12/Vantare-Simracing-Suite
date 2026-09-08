@@ -7,6 +7,7 @@ import {
   type StrategyApplicationEventTransport,
 } from "./strategy-application-client";
 import orbitGolden from "../hub/strategy-orbit/testdata/orbit-go-golden.json";
+import projectionGolden from "../../../internal/telemetryanalysis/strategyprojection/testdata/strategyinputprojection_v2_new.json";
 
 type Payload = { laps: number };
 
@@ -224,6 +225,27 @@ describe("createStrategyApplicationClient", () => {
       sessionCatalogStatus: "available",
       sessionCombinations: [{ combinationId: "lmu:imola:mustang-gt3", sessions: [{ sessionId: "race-1" }] }],
     });
+  });
+
+  it.each(["legacy", "complete", "partial", "duplicate", "foreign", "bad-digest", "empty", "null"])("validates projection revision references: %s", async (mode) => {
+    const client = createStrategyApplicationClient<Payload>(transport);
+    const refs = projectionGolden.sourceSessions.map((sessionId) => ({ sessionId, baseDigest: "a".repeat(64), revisionId: "b".repeat(64), snapshotId: "c".repeat(64) }));
+    let sourceRevisions: unknown = refs;
+    if (mode === "legacy") sourceRevisions = undefined;
+    if (mode === "partial") sourceRevisions = refs.slice(1);
+    if (mode === "duplicate") sourceRevisions = [refs[0], refs[0]];
+    if (mode === "foreign") refs[0].sessionId = "foreign";
+    if (mode === "bad-digest") refs[0].revisionId = "B".repeat(64);
+    if (mode === "empty") sourceRevisions = [];
+    if (mode === "null") sourceRevisions = null;
+    const command: StrategyApplicationCommandV1<Payload> = { protocolVersion: "strategy.application.v1", commandId: "revision-test", operation: "get_event_planning_inputs", expectedRepositoryVersion: 4, eventId: "event-1", generatedAt: "2026-09-08T12:00:00Z" };
+    const pending = client.execute(command);
+    emit(transport, "strategy:application:result", { protocolVersion: "strategy.application.v1", commandId: command.commandId, repositoryVersion: 4, recoveredFromBackup: false, closed: false, planningInputStatus: "available", planningInputs: { projection: { ...projectionGolden, sourceRevisions }, overrides: {} } });
+    if (mode === "legacy" || mode === "complete") {
+      await expect(pending).resolves.toMatchObject({ planningInputs: { projection: { sourceRevisions } } });
+    } else {
+      await expect(pending).rejects.toThrow("sourceRevisions");
+    }
   });
 
   it("parses derived planning inputs together with a non-destructive override", async () => {

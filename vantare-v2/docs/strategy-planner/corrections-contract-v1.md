@@ -251,3 +251,18 @@ correspondencia con los derivados. Analysis debe vincular la revisión duradera
 real antes de publicar; ese servicio y el consumidor TS siguen pendientes.
 El editor registrado deberá exigir referencias completas para guardar planes;
 no puede interpretar la ausencia legada como una revisión actual.
+
+## Unión con revisión guardada — #1079
+
+CorrectionStore.DeriveProjectionSession exige revisionId explícito, carga la
+revisión exacta y deriva directamente su snapshot. Devuelve las familias y
+AnalysisRevisionRef juntos; no permite atribuir una revisión a derivados
+recibidos por separado. La revisión base explícita también se admite.
+Ausencia o ID perdido devuelve error, aunque exista una cabeza más reciente.
+Comprueba cancelación antes y después del recálculo. No autoriza fuentes:
+el servicio llamante debe validar la fuente vigente y aportar páginas originales.
+
+El cliente TS ahora conserva y valida sourceRevisions: cobertura completa,
+digests minúsculos y pertenencia única. La ausencia legada se conserva; un array
+vacío o referencia inválida se rechaza. Aún faltan comandos de servicio,
+selección persistida de revisiones, operaciones restantes y UI productiva.

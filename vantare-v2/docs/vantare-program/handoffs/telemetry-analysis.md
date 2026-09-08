@@ -1,5 +1,21 @@
 # Handoff vivo — Telemetry Analysis
 
+## Correcciones escalares para Strategy — 2026-09-08
+
+Isaac ha aceptado la visión visual completa y autorizado su implementación.
+Cortes locales #1073–#1079: snapshots completos, custodia con revisiones y
+conflictos, vista efectiva sin alterar originales, recálculo de familias,
+referencias estructuradas de proyección y unión a una revisión guardada exacta.
+El cliente TS valida referencias completas. Detalle y evidencia vigentes:
+`strategy-planner.md` y `docs/strategy-planner/evidence/isa-1079/README.md`.
+
+No se ha conectado aún el servicio con autorización de fuentes a las correcciones,
+ni el editor productivo o selección persistida de planes. Siguen pendientes uso
+por familia/clasificación/límites, calibración #1030 y validación real Wails.
+El servicio TA-03E existente será la frontera para licencia, consentimiento,
+estabilidad y lectura. No se añade SQL a Strategy/React ni se activa live.
+Sin promoción, release o modificación de los originales.
+
 ## Actualización ISA-1067 — base autorizada (2026-09-08)
 
 Base `7f04dd93`, rama `vantareapp/isa-1067-correction-source`.

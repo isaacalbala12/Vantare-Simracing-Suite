@@ -1,5 +1,25 @@
 # Handoff vivo — Strategy Planner
 
+## Unión de revisión durable y cliente — ISA-1079 (2026-09-08)
+
+Base 4452fe4b; rama vantareapp/isa-1079-revision-binding;
+worktree C:/tmp/vantare-isa1079. CorrectionStore.DeriveProjectionSession exige
+ID exacto, carga esa revisión, recalcula su snapshot y emite referencia junto
+a las familias. No sustituye revisión ausente por la cabeza. Prueba registrada
+controlada: tras restaurar la base se puede recalcular la corrección anterior.
+Cliente TS tipa/valida cobertura y digests; casos focales pasan (27 tests).
+
+Build, Go global, vet, lint y typecheck pasan. Frontend inicial: 3261 pasan,
+3 fallan (dos timeouts Pedals Redline y presupuesto OverlayFrame CPU 1,562 ms
+frente a 1,5 ms), con Go/build concurrentes. Los 6 tests de esos dos archivos
+pasan aislados; repetición completa con dos workers: 416 archivos y 3264 tests
+pasan. No se cambian umbrales ni código Overlay. Happy-dom emite AbortError
+durante teardown, con resultado final y código 0. Evidencia en isa-1079.
+
+No conectado todavía a autorización vigente, comandos del editor ni planes.
+La llamada a custodia sigue exigiendo que el servicio autorice fuente y páginas.
+Sin dependencias, fuentes reales leídas, LMU, promoción ni release.
+
 ## Referencias de revisión en proyecciones — ISA-1078 (2026-09-08)
 
 Base d458879f, rama vantareapp/isa-1078-projection-revisions,

@@ -147,11 +147,19 @@ export type StrategyProjectionFamilyV2 = {
 
 export type StrategyClassPaceReasonV2 = "no_class_pace_source";
 
+export type StrategyAnalysisRevisionRef = {
+  readonly sessionId: string;
+  readonly baseDigest: string;
+  readonly revisionId: string;
+  readonly snapshotId: string;
+};
+
 export type StrategyInputProjectionV2 = {
   readonly contractVersion: "strategyinputprojection.v2";
   readonly generatedAt: string;
   readonly computationVersion: string;
   readonly sourceSessions: readonly string[];
+  readonly sourceRevisions?: readonly StrategyAnalysisRevisionRef[];
   readonly combinationId: string;
   readonly fuelConsumption: StrategyProjectionFamilyV2 & {
     readonly meanPerLap: number;
@@ -1328,11 +1336,29 @@ function parsePlanningInputs(value: unknown, field: string): StrategyPlanningInp
   return { ...(projection ? { projection } : {}), overrides: overrides as StrategyPlanningInputsV2["overrides"] };
 }
 
+function validateProjectionRevisions(sessions: readonly unknown[], value: unknown, field: string): void {
+  if (value === undefined) return;
+  if (!Array.isArray(value) || value.length === 0 || value.length !== sessions.length) throw new Error(`Invalid Strategy ${field}`);
+  const remaining = new Set<string>();
+  for (const id of sessions) {
+    if (typeof id !== "string" || id.trim() === "" || new TextEncoder().encode(id).length > 256 || remaining.has(id)) throw new Error(`Invalid Strategy ${field}`);
+    remaining.add(id);
+  }
+  for (const candidate of value) {
+    const ref = strategyRecord(candidate, field);
+    if (typeof ref.sessionId !== "string" || !remaining.delete(ref.sessionId)) throw new Error(`Invalid Strategy ${field}.sessionId`);
+    for (const key of ["baseDigest", "revisionId", "snapshotId"] as const) {
+      if (typeof ref[key] !== "string" || !/^[a-f0-9]{64}$/.test(ref[key])) throw new Error(`Invalid Strategy ${field}.${key}`);
+    }
+  }
+}
+
 function parseInputProjection(value: unknown, field: string): StrategyInputProjectionV2 {
   const projection = strategyRecord(value, field);
   strategyEnum(projection.contractVersion, `${field}.contractVersion`, ["strategyinputprojection.v2"]);
   for (const name of ["generatedAt", "computationVersion", "combinationId"] as const) strategyString(projection[name], `${field}.${name}`);
   if (!Array.isArray(projection.sourceSessions) || projection.sourceSessions.some((id) => typeof id !== "string" || id === "")) throw new Error(`Invalid Strategy ${field}.sourceSessions`);
+  validateProjectionRevisions(projection.sourceSessions, projection.sourceRevisions, `${field}.sourceRevisions`);
   for (const name of ["fuelConsumption", "virtualEnergyConsumption"] as const) {
     const family = parseProjectionFamily(projection[name], `${field}.${name}`);
     for (const numeric of ["meanPerLap", "rangeLower", "rangeUpper"] as const) strategyNumber(family[numeric], `${field}.${name}.${numeric}`);

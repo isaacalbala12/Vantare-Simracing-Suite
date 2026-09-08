@@ -32,7 +32,8 @@ La primera revisión de 90a48d76 pidió corregir dos P2: respuesta vieja de la m
 semana y publicación futura sobre un archivo legacy sin metadatos. Ambos casos
 se reprodujeron RED y se corrigieron GREEN usando PublishedAt del servidor y
 conservando series legacy ante un candidato que todavía no comienza.
-El módulo Calendar completo vuelve a pasar. Revisión final del ajuste pendiente.
+El módulo Calendar y `go test ./...` vuelven a pasar. Revisión independiente
+final de 01a6b613: ACCEPT acotado a C2, sin P1/P2 nuevos. No certifica Wails ni C3–C11.
 
 ## Verificación y reversión
 

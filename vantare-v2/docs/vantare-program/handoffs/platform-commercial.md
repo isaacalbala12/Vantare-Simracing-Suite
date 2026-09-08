@@ -16,7 +16,8 @@ memoria anterior si no puede persistir. Los eventos compartidos se conservan.
 Build frontend PASS para el embed; `go test ./...` PASS y roadmap 23+21 PASS.
 Primera revisión independiente: dos P2 reproducidos y corregidos (orden de
 publicaciones de la misma semana mediante PublishedAt y protección de archivos
-legacy ante publicación futura). Módulo Calendar GREEN; revisión final en curso;
+legacy ante publicación futura). Módulo Calendar y `go test ./...` GREEN;
+revisión independiente final 01a6b613 ACCEPT para C2, sin P1/P2 nuevos;
 ver #1029 para la evidencia de cierre, commit, PR y CI exactos.
 
 Pendiente: propagar vigencia por normalización/frontend (C3), errores/acuse (C4),

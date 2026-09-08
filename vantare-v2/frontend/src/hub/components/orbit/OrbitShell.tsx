@@ -13,6 +13,7 @@ import { formatMessage } from '../../orbit/format-message';
 import { ORBIT_KEYS, orbitStore } from '../../orbit/orbit-store';
 import { applyOrbitThemeWhileMounted } from '../../orbit/orbit-theme';
 import { useAccountIdentity } from '../../orbit/use-account-identity';
+import { ScheduleReviewNotice } from '../../settings-orbit/ScheduleReviewNotice';
 import { useCalendarStarts } from '../../orbit/use-calendar-starts';
 import { OrbitSimStatusContext } from '../../orbit/sim-status-context';
 import { useOverlayState } from '../../orbit/use-overlay-state';
@@ -584,6 +585,7 @@ function OrbitShellBody({
               <div className="orbit-topbar__slot" id={RACES_TOPBAR_SLOT_ID} />
             ) : null}
           </Topbar>
+          {activeView !== 'studio' ? <ScheduleReviewNotice owner={access.roles.includes('owner') && !access.isBlocked} onReview={(target) => navigate('ajustes', target)} /> : null}
           <div className="orbit-workspace">
             {activeView === 'inicio' ? (
               <HomeOrbitPage
@@ -602,7 +604,7 @@ function OrbitShellBody({
             ) : activeView === 'launcher' ? (
               <LauncherOrbitPage />
             ) : activeView === 'carreras' ? (
-              <RacesOrbitPage calendar={races.calendar} target={navTarget} />
+              <RacesOrbitPage calendar={races.calendar} target={navTarget} refreshState={races.refreshState} calendarError={races.calendarError} />
             ) : activeView === 'estrategia' ? (
               <StrategyOrbitPage />
             ) : activeView === 'ingeniero' ? (

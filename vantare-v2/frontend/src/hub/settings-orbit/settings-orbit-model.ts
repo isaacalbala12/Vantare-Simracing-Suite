@@ -21,6 +21,7 @@ export function resolveSettingsSection(
   requested?: string | null,
   stored: string | null = orbitStore.get(ORBIT_KEYS.settingsSection),
 ): SettingsSection {
+  if (requested?.startsWith("schedule:")) return "schedule";
   if (isSettingsSection(requested)) return requested;
   if (isSettingsSection(stored)) return stored;
   return DEFAULT_SETTINGS_SECTION;

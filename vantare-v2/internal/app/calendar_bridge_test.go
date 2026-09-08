@@ -2,11 +2,73 @@ package app
 
 import (
 	"errors"
+	"reflect"
 	"testing"
 	"time"
 
 	"github.com/vantare/overlays/v2/internal/calendar"
 )
+
+func TestCalendarRefreshSnapshotRecoversResultBeforeSubscription(t *testing.T) {
+	for _, fail := range []bool{false, true} {
+		status := &CalendarRefreshStatus{}
+		snapshot := func(want string) {
+			t.Helper()
+			late := &spyCalendarEmitter{}
+			status.EmitCurrent(late)
+			if !reflect.DeepEqual(late.events, []string{"calendar:refresh:status"}) || !reflect.DeepEqual(late.data, []any{map[string]any{"state": want}}) {
+				t.Fatalf("snapshot = %v %v, want %s", late.events, late.data, want)
+			}
+		}
+		snapshot("idle")
+		calls := 0
+		HandleCalendarRefresh(&fakeCalendarService{cal: calendar.NewDefaultCalendar()}, func() error {
+			calls++
+			snapshot("pending")
+			if fail {
+				return errors.New("private")
+			}
+			return nil
+		}, &spyCalendarEmitter{}, status)
+		if fail {
+			snapshot("error")
+		} else {
+			snapshot("success")
+		}
+		if calls != 1 {
+			t.Fatalf("refresh calls = %d", calls)
+		}
+	}
+}
+
+func TestCalendarRefreshReportsStartAndConfirmedResult(t *testing.T) {
+	for _, fail := range []bool{false, true} {
+		t.Run(map[bool]string{false: "success", true: "failure"}[fail], func(t *testing.T) {
+			svc := &fakeCalendarService{cal: calendar.NewDefaultCalendar()}
+			emitter := &spyCalendarEmitter{}
+			HandleCalendarRefresh(svc, func() error {
+				if !reflect.DeepEqual(emitter.events, []string{"calendar:refresh:started"}) {
+					t.Error("UI was not told refresh started before the slow operation")
+				}
+				if fail {
+					return errors.New("private diagnostic detail")
+				}
+				return nil
+			}, emitter, &CalendarRefreshStatus{})
+			want := []string{"calendar:refresh:started", "calendar:loaded", "calendar:refresh:result"}
+			if fail {
+				want = []string{"calendar:refresh:started", "calendar:refresh:result"}
+			}
+			if !reflect.DeepEqual(emitter.events, want) {
+				t.Fatalf("events=%v, want %v", emitter.events, want)
+			}
+			result := emitter.data[len(emitter.data)-1].(map[string]any)
+			if !reflect.DeepEqual(result, map[string]any{"ok": !fail}) {
+				t.Fatalf("UI result must expose success without private error details: %v", result)
+			}
+		})
+	}
+}
 
 // fakeCalendarService implements CalendarGetter, CalendarReplacer, CalendarClearer
 // for testing the bridge handlers without touching disk.
@@ -497,9 +559,9 @@ func TestHandleCalendarSeriesFollowEmitsLoaded(t *testing.T) {
 	svc := &fakeCalendarSeriesService{cal: calendar.NewDefaultCalendar()}
 	emitter := &spyCalendarEmitter{}
 
-	HandleCalendarSeriesFollow("beginner-lmgt3-fixed", svc, svc, emitter, func(string, ...any) {})
+	HandleCalendarSeriesFollow("beginner-lmgt3-fixed", svc, svc, emitter, func(string, ...any) {}, "ui-request", true)
 
-	if len(emitter.events) != 1 || emitter.events[0] != "calendar:loaded" {
+	if len(emitter.events) != 2 || emitter.events[0] != "calendar:loaded" {
 		t.Fatalf("events=%v, want [calendar:loaded]", emitter.events)
 	}
 	if svc.followCalls != 1 {
@@ -514,9 +576,9 @@ func TestHandleCalendarSeriesFollowErrorEmitsError(t *testing.T) {
 	}
 	emitter := &spyCalendarEmitter{}
 
-	HandleCalendarSeriesFollow("nonexistent", svc, svc, emitter, func(string, ...any) {})
+	HandleCalendarSeriesFollow("nonexistent", svc, svc, emitter, func(string, ...any) {}, "ui-request", true)
 
-	if len(emitter.events) != 1 || emitter.events[0] != "calendar:error" {
+	if len(emitter.events) != 2 || emitter.events[0] != "calendar:error" {
 		t.Fatalf("events=%v, want [calendar:error]", emitter.events)
 	}
 	if svc.followCalls != 1 {
@@ -528,9 +590,9 @@ func TestHandleCalendarSeriesUnfollowEmitsLoaded(t *testing.T) {
 	svc := &fakeCalendarSeriesService{cal: calendar.NewDefaultCalendar()}
 	emitter := &spyCalendarEmitter{}
 
-	HandleCalendarSeriesUnfollow("beginner-lmgt3-fixed", svc, svc, emitter, func(string, ...any) {})
+	HandleCalendarSeriesUnfollow("beginner-lmgt3-fixed", svc, svc, emitter, func(string, ...any) {}, "ui-request")
 
-	if len(emitter.events) != 1 || emitter.events[0] != "calendar:loaded" {
+	if len(emitter.events) != 2 || emitter.events[0] != "calendar:loaded" {
 		t.Fatalf("events=%v, want [calendar:loaded]", emitter.events)
 	}
 	if svc.unfollowCalls != 1 {
@@ -545,9 +607,9 @@ func TestHandleCalendarSeriesUnfollowErrorEmitsError(t *testing.T) {
 	}
 	emitter := &spyCalendarEmitter{}
 
-	HandleCalendarSeriesUnfollow("beginner-lmgt3-fixed", svc, svc, emitter, func(string, ...any) {})
+	HandleCalendarSeriesUnfollow("beginner-lmgt3-fixed", svc, svc, emitter, func(string, ...any) {}, "ui-request")
 
-	if len(emitter.events) != 1 || emitter.events[0] != "calendar:error" {
+	if len(emitter.events) != 2 || emitter.events[0] != "calendar:error" {
 		t.Fatalf("events=%v, want [calendar:error]", emitter.events)
 	}
 	if svc.unfollowCalls != 1 {
@@ -572,9 +634,9 @@ func TestHandleCalendarSeriesFollowWithRealService(t *testing.T) {
 	}
 
 	// Follow a series.
-	HandleCalendarSeriesFollow("beginner-lmgt3-fixed", svc, svc, emitter, func(string, ...any) {})
+	HandleCalendarSeriesFollow("beginner-lmgt3-fixed", svc, svc, emitter, func(string, ...any) {}, "ui-request", true)
 
-	if len(emitter.events) != 1 || emitter.events[0] != "calendar:loaded" {
+	if len(emitter.events) != 2 || emitter.events[0] != "calendar:loaded" {
 		t.Fatalf("follow events=%v, want [calendar:loaded]", emitter.events)
 	}
 	cal2 := svc.Calendar()
@@ -593,9 +655,9 @@ func TestHandleCalendarSeriesFollowInvalidWithRealService(t *testing.T) {
 	}
 	emitter := &spyCalendarEmitter{}
 
-	HandleCalendarSeriesFollow("nonexistent-series", svc, svc, emitter, func(string, ...any) {})
+	HandleCalendarSeriesFollow("nonexistent-series", svc, svc, emitter, func(string, ...any) {}, "ui-request", true)
 
-	if len(emitter.events) != 1 || emitter.events[0] != "calendar:error" {
+	if len(emitter.events) != 2 || emitter.events[0] != "calendar:error" {
 		t.Fatalf("events=%v, want [calendar:error]", emitter.events)
 	}
 	cal := svc.Calendar()
@@ -619,16 +681,16 @@ func TestHandleCalendarSeriesUnfollowWithRealService(t *testing.T) {
 		t.Fatalf("ApplyOfficialSchedule: %v", err)
 	}
 	emitter := &spyCalendarEmitter{}
-	HandleCalendarSeriesFollow("beginner-lmgt3-fixed", svc, svc, emitter, func(string, ...any) {})
+	HandleCalendarSeriesFollow("beginner-lmgt3-fixed", svc, svc, emitter, func(string, ...any) {}, "ui-request", true)
 	if len(svc.Calendar().FollowedSeriesIDs) != 1 {
 		t.Fatalf("expected 1 followed series after follow")
 	}
 
 	// Unfollow.
 	emitter2 := &spyCalendarEmitter{}
-	HandleCalendarSeriesUnfollow("beginner-lmgt3-fixed", svc, svc, emitter2, func(string, ...any) {})
+	HandleCalendarSeriesUnfollow("beginner-lmgt3-fixed", svc, svc, emitter2, func(string, ...any) {}, "ui-request")
 
-	if len(emitter2.events) != 1 || emitter2.events[0] != "calendar:loaded" {
+	if len(emitter2.events) != 2 || emitter2.events[0] != "calendar:loaded" {
 		t.Fatalf("unfollow events=%v, want [calendar:loaded]", emitter2.events)
 	}
 	cal2 := svc.Calendar()
@@ -654,7 +716,7 @@ func TestHandleCalendarSeriesFollowPersistsToDisk(t *testing.T) {
 
 	// Follow a series.
 	emitter := &spyCalendarEmitter{}
-	HandleCalendarSeriesFollow("beginner-lmgt3-fixed", svc, svc, emitter, func(string, ...any) {})
+	HandleCalendarSeriesFollow("beginner-lmgt3-fixed", svc, svc, emitter, func(string, ...any) {}, "ui-request", true)
 
 	// Reload from disk.
 	svc2 := calendar.NewService(dir, time.Now)
@@ -671,7 +733,7 @@ func TestHandleCalendarFollowEmitsLoaded(t *testing.T) {
 	svc := &fakeCalendarFollowService{cal: calendar.NewDefaultCalendar()}
 	emitter := &spyCalendarEmitter{}
 
-	HandleCalendarFollow("ev-1", svc, svc, emitter, func(string, ...any) {})
+	HandleCalendarFollow("ev-1", svc, svc, emitter, func(string, ...any) {}, true)
 
 	if len(emitter.events) != 1 || emitter.events[0] != "calendar:loaded" {
 		t.Fatalf("events=%v, want [calendar:loaded]", emitter.events)
@@ -688,7 +750,7 @@ func TestHandleCalendarFollowErrorEmitsError(t *testing.T) {
 	}
 	emitter := &spyCalendarEmitter{}
 
-	HandleCalendarFollow("nonexistent", svc, svc, emitter, func(string, ...any) {})
+	HandleCalendarFollow("nonexistent", svc, svc, emitter, func(string, ...any) {}, true)
 
 	if len(emitter.events) != 1 || emitter.events[0] != "calendar:error" {
 		t.Fatalf("events=%v, want [calendar:error]", emitter.events)
@@ -750,7 +812,7 @@ func TestHandleCalendarFollowWithRealService(t *testing.T) {
 
 	// Follow the event.
 	emitter2 := &spyCalendarEmitter{}
-	HandleCalendarFollow(eventID, svc, svc, emitter2, func(string, ...any) {})
+	HandleCalendarFollow(eventID, svc, svc, emitter2, func(string, ...any) {}, true)
 
 	if len(emitter2.events) != 1 || emitter2.events[0] != "calendar:loaded" {
 		t.Fatalf("follow events=%v, want [calendar:loaded]", emitter2.events)
@@ -771,7 +833,7 @@ func TestHandleCalendarFollowInvalidWithRealService(t *testing.T) {
 	}
 	emitter := &spyCalendarEmitter{}
 
-	HandleCalendarFollow("nonexistent", svc, svc, emitter, func(string, ...any) {})
+	HandleCalendarFollow("nonexistent", svc, svc, emitter, func(string, ...any) {}, true)
 
 	if len(emitter.events) != 1 || emitter.events[0] != "calendar:error" {
 		t.Fatalf("events=%v, want [calendar:error]", emitter.events)
@@ -797,7 +859,7 @@ func TestHandleCalendarUnfollowWithRealService(t *testing.T) {
 	HandleCalendarImport(text, "Europe/Madrid", "discord-lmu-week", svc, svc, emitter, func(string, ...any) {})
 	cal := svc.Calendar()
 	eventID := cal.Events[0].ID
-	HandleCalendarFollow(eventID, svc, svc, emitter, func(string, ...any) {})
+	HandleCalendarFollow(eventID, svc, svc, emitter, func(string, ...any) {}, true)
 	if len(svc.Calendar().FollowedEventIDs) != 1 {
 		t.Fatalf("expected 1 followed event after follow")
 	}

@@ -270,7 +270,7 @@ export const strategyOrbitPt: Record<string, string> = {
   "strategy.cards.activeTip": "Esta estratégia já é a ativa.",
 
   "strategy.empty.noneTitle": "Sem eventos seguidos",
-  "strategy.empty.none": "Segue uma série em Corridas e aparecerá aqui com as próximas partidas.",
+  "strategy.empty.none": "Segue uma série no Calendário e aparecerá aqui com as próximas partidas.",
 
   "strategy.context.events": "Eventos",
   "strategy.context.noEvents": "Ainda não tens nenhum evento de estratégia.",

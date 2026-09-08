@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Events } from "@wailsio/runtime";
 import { useI18n } from "../../i18n/I18nProvider";
 import { useFeatureGate } from "../feature-gate";
-import { requestCalendar } from "../../calendar/calendar-store";
+import { subscribeToCalendarFollowResults, type CalendarRefreshState } from "../../calendar/calendar-store";
 import type { Calendar } from "../../calendar/calendar-types";
 import {
   Button,
@@ -18,7 +18,7 @@ import {
   type TimelineBlock,
 } from "../../ui/orbit";
 import { formatMessage } from "../orbit/format-message";
-import { formatCountdown, formatStartTime, nextStarts } from "../orbit/next-starts";
+import { formatCountdown, formatStartTime, nextStarts, repeatedHourOffset } from "../orbit/next-starts";
 import { useOrbitSlot } from "../orbit/use-orbit-slot";
 import {
   buildSeriesEntries,
@@ -106,6 +106,8 @@ function dayOffsetBetween(now: Date, day: Date): number {
 }
 
 export interface RacesOrbitPageProps {
+  refreshState?: CalendarRefreshState;
+  calendarError?: boolean;
   /** Calendario real del hub; `null` mientras no ha llegado. */
   calendar: Calendar | null;
   /** Serie preseleccionada por la navegación (`navigate("carreras", seriesId)`). */
@@ -125,7 +127,7 @@ export interface RacesOrbitPageProps {
  * Toda la altura la manda la Surface del calendario: la página no crece, el
  * desplazamiento vive dentro de cada vista y del detalle.
  */
-export function RacesOrbitPage({ calendar, target, now }: RacesOrbitPageProps) {
+export function RacesOrbitPage({ calendar, target, now, refreshState = "idle", calendarError = false }: RacesOrbitPageProps) {
   const { t, locale } = useI18n();
   const toast = useToast();
   const reminders = useFeatureGate("calendar.followReminders");
@@ -134,13 +136,29 @@ export function RacesOrbitPage({ calendar, target, now }: RacesOrbitPageProps) {
 
   const clock = useClock(now, TICK_MS);
   const columnClock = useClock(now, COLUMN_MS);
+  const validFrom = Date.parse(calendar?.schedule?.validFrom ?? "");
+  const validUntil = Date.parse(calendar?.schedule?.validUntil ?? "");
+  const operationKey = refreshState === "pending" ? "races.status.refreshing"
+    : calendarError || refreshState === "error" ? "races.status.error"
+    : refreshState === "success" ? "races.status.updated" : null;
+  const validityKey = !calendar ? "races.status.loading"
+    : !calendar.series?.length && !calendar.events.length ? "races.empty"
+    : !Number.isFinite(validFrom) || !Number.isFinite(validUntil) || validFrom >= validUntil ? "races.status.unknown"
+    : clock.getTime() < validFrom ? "races.status.future"
+    : clock.getTime() >= validUntil ? "races.status.expired"
+    : null;
 
   const [view, setView] = useState<RacesView>("next");
   const [tier, setTier] = useState<TierFilter>("all");
   const [offset, setOffset] = useState(0);
-  const [picked, setPicked] = useState<string | null>(null);
-  /** Hora concreta elegida en Semana/Mes/Día/Timeline (manda en el detalle). */
-  const [pickedAt, setPickedAt] = useState<Date | null>(null);
+  const [selection, setSelection] = useState<{ id: string | null; at: Date | null; target?: string }>(() => ({ id: null, at: null, target }));
+  // A new navigation destination starts a fresh selection, including its filter.
+  // Adjust before painting so a hidden target cannot briefly show another series.
+  if (selection.target !== target) {
+    setSelection({ id: null, at: null, target });
+    setTier("all");
+  }
+  const picked = selection.target === target ? selection.id : null;
 
   // Rango y zoom persistidos: se leen una sola vez, al montar.
   const [range, setRange] = useState<TimelineRange>(() => readTimelinePrefs().range);
@@ -158,10 +176,17 @@ export function RacesOrbitPage({ calendar, target, now }: RacesOrbitPageProps) {
   const selected: RaceSeriesEntry | null =
     visible.find((entry) => entry.id === selectedId) ?? visible[0] ?? null;
 
+  // An explicit instant belongs to its selected series and navigation target.
+  // Revalidate against the current publication before displaying it.
+  const pickedAt = useMemo(() => {
+    if (!selected || selection.target !== target || selection.id !== selected.id || !selection.at) return null;
+    const at = selection.at;
+    return nextStarts(selected.engine, at, 1)[0]?.getTime() === at.getTime() ? at : null;
+  }, [selected, selection, target]);
+
   const select = useCallback((id: string, at?: Date) => {
-    setPicked(id);
-    setPickedAt(at ?? null);
-  }, []);
+    setSelection({ id, at: at ?? null, target });
+  }, [target]);
 
   const changeView = useCallback((next: RacesView) => {
     setView(next);
@@ -179,30 +204,53 @@ export function RacesOrbitPage({ calendar, target, now }: RacesOrbitPageProps) {
 
   const refresh = useCallback(() => {
     Events.Emit("calendar:schedule:refresh");
-    requestCalendar();
-    toast.show(t("races.refreshed"), t("races.refreshedHint"));
-  }, [t, toast]);
+  }, []);
 
   const reminderMinutes = (calendar?.reminderMinutes ?? []).join(" · ");
 
-  const toggleFollow = useCallback(() => {
-    if (!selected || !reminders.allowed) return;
-    if (selected.followed) {
-      Events.Emit("calendar:series:unfollow", { seriesId: selected.id });
-      toast.show(
-        t("races.toasts.unfollowed"),
-        formatMessage(t("races.toasts.unfollowedHint"), { name: selected.name }),
-      );
+  const followRequest = useRef<{
+    requestId: string; seriesId: string; followed: boolean; name: string; minutes: string;
+  } | null>(null);
+  const [followPending, setFollowPending] = useState(false);
+
+  useEffect(() => () => { followRequest.current = null; }, []);
+  useEffect(() => subscribeToCalendarFollowResults((result) => {
+    const request = followRequest.current;
+    if (!request || result.requestId !== request.requestId || result.seriesId !== request.seriesId ||
+        result.followed !== request.followed) return;
+    followRequest.current = null;
+    setFollowPending(false);
+    if (!result.ok) {
+      toast.show(t("races.toasts.followFailed"), t("races.toasts.followFailedHint"));
       return;
     }
-    Events.Emit("calendar:series:follow", { seriesId: selected.id });
     toast.show(
-      t("races.toasts.followed"),
-      formatMessage(t("races.toasts.followedHint"), {
-        minutes: reminderMinutes,
-        name: selected.name,
+      t(result.followed ? "races.toasts.followed" : "races.toasts.unfollowed"),
+      formatMessage(t(result.followed ? "races.toasts.followedHint" : "races.toasts.unfollowedHint"), {
+        name: request.name, minutes: request.minutes,
       }),
     );
+  }), [t, toast]);
+
+  const toggleFollow = useCallback(() => {
+    if (!selected || !reminders.allowed || followRequest.current) return;
+    const request = {
+      requestId: crypto.randomUUID(), seriesId: selected.id, followed: !selected.followed,
+      name: selected.name, minutes: reminderMinutes,
+    };
+    followRequest.current = request;
+    setFollowPending(true);
+    const failed = () => {
+      if (followRequest.current?.requestId !== request.requestId) return;
+      followRequest.current = null;
+      setFollowPending(false);
+      toast.show(t("races.toasts.followFailed"), t("races.toasts.followFailedHint"));
+    };
+    try {
+      Promise.resolve(Events.Emit(request.followed ? "calendar:series:follow" : "calendar:series:unfollow", {
+        seriesId: request.seriesId, requestId: request.requestId,
+      })).catch(failed);
+    } catch { failed(); }
   }, [reminderMinutes, reminders.allowed, selected, t, toast]);
 
   const timeZone = useMemo(() => {
@@ -229,8 +277,8 @@ export function RacesOrbitPage({ calendar, target, now }: RacesOrbitPageProps) {
   );
   const dayBase = useMemo(() => dayAnchor(clock, offset), [clock, offset]);
   const hours = useMemo(
-    () => (view === "day" ? dayRows(visible, dayBase, clock) : []),
-    [clock, dayBase, view, visible],
+    () => (view === "day" ? dayRows(visible, dayBase, clock, calendar?.events ?? [], calendar?.series) : []),
+    [calendar?.events, calendar?.series, clock, dayBase, view, visible],
   );
   const monday = useMemo(() => weekAnchor(clock, offset), [clock, offset]);
   const week = useMemo(
@@ -239,8 +287,8 @@ export function RacesOrbitPage({ calendar, target, now }: RacesOrbitPageProps) {
   );
   const first = useMemo(() => monthAnchor(clock, offset), [clock, offset]);
   const month = useMemo(
-    () => (view === "month" ? monthDays(visible, first, clock, calendar?.events ?? []) : []),
-    [calendar?.events, clock, first, view, visible],
+    () => (view === "month" ? monthDays(visible, first, clock, calendar?.events ?? [], calendar?.series) : []),
+    [calendar?.events, calendar?.series, clock, first, view, visible],
   );
   const tlStart = useMemo(() => timelineStart(clock), [clock]);
   const tlRows = useMemo(
@@ -406,8 +454,8 @@ export function RacesOrbitPage({ calendar, target, now }: RacesOrbitPageProps) {
       {topbarSlot
         ? createPortal(
             <div className="orbit-races__topbar">
-              <Button data-testid="orbit-races-refresh" onClick={refresh}>
-                {t("races.refresh")}
+              <Button data-testid="orbit-races-refresh" onClick={refresh} disabled={refreshState === "pending"}>
+                {t(refreshState === "pending" ? "races.status.refreshing" : "races.refresh")}
               </Button>
             </div>,
             topbarSlot,
@@ -490,7 +538,11 @@ export function RacesOrbitPage({ calendar, target, now }: RacesOrbitPageProps) {
         <div className="orbit-races__head-copy">
           <span className="orbit-eyebrow">{t("races.eyebrow")}</span>
           <h2>{t("races.title")}</h2>
-          <p>{t("races.lead")}</p>
+          <p role="status" data-testid="orbit-races-status">
+            {operationKey ? t(operationKey) : null}
+            {operationKey && validityKey ? " " : null}
+            {validityKey ? t(validityKey) : !operationKey ? t("races.lead") : null}
+          </p>
         </div>
         <Seg
           className="orbit-races__views"
@@ -526,7 +578,9 @@ export function RacesOrbitPage({ calendar, target, now }: RacesOrbitPageProps) {
           }
           title={calendarTitle}
         >
-          {visible.length === 0 ? (
+          {visible.length === 0 &&
+          !(view === "month" && month.some((cell) => cell.specials.length > 0)) &&
+          !(view === "day" && hours.some((hour) => hour.specials.length > 0)) ? (
             <p className="orbit-races__empty">
               {entries.length === 0 ? t("races.empty") : t("races.emptyFiltered")}
             </p>
@@ -620,9 +674,20 @@ export function RacesOrbitPage({ calendar, target, now }: RacesOrbitPageProps) {
                         type="button"
                       >
                         <i aria-hidden="true" className="orbit-tier-dot" data-tier={event.entry.tier} />
-                        <b>:{pad2(event.at.getMinutes())}</b>
+                        <b>:{pad2(event.at.getMinutes())}{repeatedHourOffset(event.at)}</b>
                         {event.entry.name}
                       </button>
+                    ))}
+                    {hour.specials.map(({ event, at }) => (
+                      <span
+                        className="orbit-races__chip"
+                        data-past={at < clock ? "true" : undefined}
+                        data-testid="orbit-races-special-chip"
+                        key={event.id}
+                      >
+                        <b>:{pad2(at.getMinutes())}{repeatedHourOffset(at)}</b>
+                        {event.title}
+                      </span>
                     ))}
                   </span>
                 </div>
@@ -897,7 +962,7 @@ export function RacesOrbitPage({ calendar, target, now }: RacesOrbitPageProps) {
                 </div>
                 <div>
                   <dt>{t("races.detail.sessions")}</dt>
-                  <dd>{selected.sessions || "—"}</dd>
+                  <dd>{selected.sessions || "—"}{selected.sessionsEstimated ? ` · ${t("races.detail.estimated")}` : ""}</dd>
                 </div>
               </dl>
 
@@ -931,11 +996,12 @@ export function RacesOrbitPage({ calendar, target, now }: RacesOrbitPageProps) {
               <Button
                 aria-describedby={reminders.allowed ? undefined : "orbit-races-locked"}
                 data-testid="orbit-races-follow"
-                disabled={!reminders.allowed}
+                disabled={!reminders.allowed || followPending}
+                aria-busy={followPending}
                 onClick={toggleFollow}
                 variant={selected.followed ? "ghost" : "primary"}
               >
-                {selected.followed ? t("races.detail.following") : t("races.detail.follow")}
+                {followPending ? t("races.detail.followPending") : selected.followed ? t("races.detail.following") : t("races.detail.follow")}
               </Button>
 
               {reminders.allowed ? (

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -17,6 +18,50 @@ import (
 )
 
 type telemetryAnalysisAuthorizerStub struct{ allowed bool }
+
+type discoveryLibraryMetadata struct{ count int }
+
+func (source discoveryLibraryMetadata) ReadDir(context.Context, string) ([]telemetryanalysis.MetadataEntry, error) {
+	entries := make([]telemetryanalysis.MetadataEntry, source.count)
+	for i := range entries {
+		entries[i] = telemetryanalysis.MetadataEntry{Name: fmt.Sprintf("race-%04d.duckdb", i), Size: 10, ModTime: time.Date(2026, 9, 9, 0, 0, 0, 0, time.UTC)}
+	}
+	return entries, nil
+}
+func (discoveryLibraryMetadata) Exists(context.Context, string) (bool, error) { return false, nil }
+
+func TestTelemetryAnalysisDiscoversBoundedLargeLibrary(t *testing.T) {
+	for _, count := range []int{400, 1024, 1025} {
+		t.Run(fmt.Sprint(count), func(t *testing.T) {
+			svc, _, _ := telemetryAnalysisTestService(t, true)
+			t.Cleanup(func() {
+				if err := svc.ServiceShutdown(); err != nil {
+					t.Error(err)
+				}
+			})
+			cfg := svc.cfg
+			cfg.MaxCandidates = 1024
+			if err := validateTelemetryAnalysisConfig(cfg, svc.authorizer); err != nil {
+				t.Fatalf("large bounded config refused: %v", err)
+			}
+			excessive := cfg
+			excessive.MaxCandidates = 1025
+			if err := validateTelemetryAnalysisConfig(excessive, svc.authorizer); err == nil {
+				t.Fatal("unbounded configuration accepted")
+			}
+			svc.cfg = cfg
+			svc.metadata = discoveryLibraryMetadata{count: count}
+			found, err := svc.Discover(context.Background())
+			if count <= 1024 {
+				if err != nil || len(found) != count {
+					t.Fatalf("discover count %d: %d, %v", count, len(found), err)
+				}
+			} else if err == nil || found != nil || !errors.Is(err, ErrTelemetryAnalysisCandidateLimit) {
+				t.Fatalf("excess should be a limit, not a format failure: %d, %v", len(found), err)
+			}
+		})
+	}
+}
 
 func (stub telemetryAnalysisAuthorizerStub) AllowsTelemetryAnalysis() bool { return stub.allowed }
 

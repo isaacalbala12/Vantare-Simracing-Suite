@@ -17,6 +17,10 @@ import (
 
 const maxTelemetryAnalysisOpenSessions = 4
 
+// MaxTelemetryAnalysisCandidates matches the bounded existing LMU importer.
+// Discovery reads metadata only; opening content retains its separate limits.
+const MaxTelemetryAnalysisCandidates = 1024
+
 var (
 	ErrTelemetryAnalysisUnauthorized       = errors.New("Telemetry Analysis requires an active eligible license")
 	ErrTelemetryAnalysisApprovalRequired   = errors.New("approve this discovered telemetry file before opening it")
@@ -27,6 +31,7 @@ var (
 	ErrTelemetryAnalysisTooLarge           = errors.New("the telemetry file exceeds the configured analysis limit")
 	ErrTelemetryAnalysisInvalidRequest     = errors.New("the Telemetry Analysis request is outside the configured limits")
 	ErrTelemetryAnalysisIncompatible       = errors.New("the telemetry file is not compatible with this Telemetry Analysis reader")
+	ErrTelemetryAnalysisCandidateLimit     = errors.New("the telemetry folders exceed the supported discovery file limit")
 	ErrTelemetryAnalysisBusy               = errors.New("close an open Telemetry Analysis session before opening another")
 	ErrTelemetryAnalysisClosed             = errors.New("Telemetry Analysis is shutting down")
 	ErrTelemetryAnalysisCleanup            = errors.New("Telemetry Analysis could not release all private resources")
@@ -177,7 +182,7 @@ func validateTelemetryAnalysisConfig(cfg TelemetryAnalysisConfig, authorizer tel
 	}
 	if authorizer == nil || !cleanAbsolutePath(cfg.ApplicationDirectory) || !cleanAbsolutePath(cfg.StagingRoot) ||
 		cfg.StabilityWindow <= 0 || cfg.StabilityWindow > 10*time.Minute ||
-		cfg.MaxCandidates <= 0 || cfg.MaxCandidates > 256 ||
+		cfg.MaxCandidates <= 0 || cfg.MaxCandidates > MaxTelemetryAnalysisCandidates ||
 		cfg.MaxSourceBytes <= 0 || cfg.MaxSourceBytes > 8<<30 ||
 		cfg.MaxPageRows <= 0 || cfg.MaxPageRows > telemetryanalysis.MaxLMUDuckDBPageRows {
 		return ErrTelemetryAnalysisInvalidRequest
@@ -630,6 +635,8 @@ func publicTelemetryAnalysisError(err error) error {
 		return err
 	case errors.Is(err, telemetryanalysis.ErrByteLimit):
 		return ErrTelemetryAnalysisTooLarge
+	case errors.Is(err, telemetryanalysis.ErrCandidateLimit):
+		return ErrTelemetryAnalysisCandidateLimit
 	case errors.Is(err, telemetryanalysis.ErrNotReady), errors.Is(err, telemetryanalysis.ErrSourceChanged),
 		errors.Is(err, telemetryanalysis.ErrStagingRejected):
 		return ErrTelemetryAnalysisNotReady

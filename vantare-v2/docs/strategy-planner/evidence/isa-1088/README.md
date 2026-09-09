@@ -68,3 +68,10 @@ guardada y error al cerrar fuente. Pendiente de corregir límite de descubrimien
 
 Sin push, PR, CI remota, merge, promoción o release. LMU intacto; solo se
 iniciaron/cerraron procesos de esta build aislada, coordinados con overlays.
+
+## Actualización tras ISA-1090
+
+El límite de discovery queda corregido en el worktree descendiente #1090.
+Wails descubre 416 archivos, abre/prepara Imola, aplica y persiste la revisión
+exacta y permite cerrar. Se conserva el timeout de cálculo de #1089. Ver
+../isa-1090/README.md para evidencia y límites; no cambia la aceptación visual.

@@ -1,5 +1,21 @@
 # Handoff vivo — Telemetry Analysis
 
+## Discovery del corpus real — ISA-1090 (2026-09-09)
+
+Base 7d504d780095b0d81044824d7d2182599e94ac89; rama
+vantareapp/isa-1090-analysis-discovery-limit, C:/tmp/vantare-isa1090.
+Reproducción Wails de #1088: límite de composición 128 impide descubrir carpeta
+con >400 archivos; ErrCandidateLimit se presentaba como formato incompatible.
+Servicio y composición admiten ahora 1024, mismo límite que importador existente;
+el exceso produce error específico, sin truncamiento ni lectura de contenido.
+Se mantienen cuatro sesiones abiertas y todos los presupuestos de lectura.
+Regresión 400/1024/1025 RED/GREEN; full Go/vet, frontend 420 archivos/3308 tests,
+build y lint PASS. Wails descubre 416 archivos; abre Imola, aplica referencia
+exacta y cierra sesión. Persistencia y SHA originales comprobados. Evidencia
+en docs/strategy-planner/evidence/isa-1090/README.md. Build diagnóstica, no
+aceptación visual A4 ni validación de producción/licencia.
+El timeout de cálculo real queda en #1089; no se cambia solver en este corte.
+
 ## UI y validación real — ISA-1088 (2026-09-09)
 
 Rama vantareapp/isa-1088-recorded-session-ui, C:/tmp/vantare-isa1088,

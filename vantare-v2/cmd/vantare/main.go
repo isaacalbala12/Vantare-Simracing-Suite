@@ -306,7 +306,7 @@ func resolveTelemetryAnalysisBackendConfig(
 		ApplicationDirectory: filepath.Dir(executablePath),
 		StagingRoot:          filepath.Join(cacheDirectory, "Vantare", "telemetry-analysis", "staging"),
 		StabilityWindow:      5 * time.Second,
-		MaxCandidates:        128,
+		MaxCandidates:        app.MaxTelemetryAnalysisCandidates,
 		MaxSourceBytes:       2 << 30,
 		MaxPageRows:          4096,
 	}, nil

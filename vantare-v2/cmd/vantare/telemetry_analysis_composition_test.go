@@ -45,6 +45,9 @@ func TestResolveTelemetryAnalysisBackendConfigOwnsRuntimeStagingAndLMURoots(t *t
 	if cfg.StabilityWindow <= 0 || cfg.MaxCandidates <= 0 || cfg.MaxSourceBytes <= 0 || cfg.MaxPageRows <= 0 {
 		t.Fatalf("limits were not configured: %#v", cfg)
 	}
+	if cfg.MaxCandidates != 1024 {
+		t.Fatalf("native discovery must support the bounded LMU corpus: %d", cfg.MaxCandidates)
+	}
 }
 
 func TestResolveTelemetryAnalysisBackendConfigRejectsConsumerLikeOrUntrustedPaths(t *testing.T) {

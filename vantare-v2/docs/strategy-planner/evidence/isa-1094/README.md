@@ -103,7 +103,9 @@ Prueba Go de repositorio real create → save_revision → reabrir → open PASS
 mantiene payload/campos ausentes, nueva revisión y ausencia de plan activo.
 Primer intento detectó que confidence unknown no admite basis; se retiró esa
 base de confianza impropia del adapter y el fixture. Cuatro tests TS focales,
-typecheck, lint global y build PASS. Suites generales frontend/Go y vet en curso.
+typecheck, lint global y build PASS. Suites generales: frontend 431 archivos /
+3381 tests PASS (325.96 s), Go `go test -p 1 ./...` PASS y vet de
+app/strategy/telemetryanalysis/cmd PASS. No medición de rendimiento estable.
 Logs C:/tmp/isa1094-t05g2-{tests,native,types,lint-all,build,all,go-all,vet}.log.
 Todavía no integración de ruta, paridad visual final ni aceptación Wails.
 
@@ -112,3 +114,12 @@ sesiones de su vista, reutilizando el componente actual. El cambio entre
 Sesiones y editor no puede desmontar el propietario y cerrar handles usados
 por la proyección fijada. T05h será esa extracción acotada con tests existentes
 y navegación; descubrimiento/bootstrap sin catálogo sigue en T08.
+
+## T05h — propietario de sesiones independiente de la vista
+
+Extraído useRecordedSessions, sin otro lector/store. La API anterior del panel
+se conserva y StrategyRecordedSessionsView permite cambiar su ubicación sin
+desmontar al propietario. 16 tests focales PASS: anteriores, apertura exacta,
+hook y desmontar/remontar la vista conservando handles; el cierre final los
+libera. Tipos/lint focal PASS. El propietario se monta por evento/combinación.
+Logs C:/tmp/isa1094-t05h-*.log. Suite general posterior pendiente.

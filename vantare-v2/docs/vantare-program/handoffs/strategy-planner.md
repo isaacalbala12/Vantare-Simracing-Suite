@@ -1,42 +1,34 @@
 # Handoff vivo — Strategy Planner
 
-## T05 asistente registrado — ISA-1094 (2026-09-09)
+## T05 asistente registrado — ISA-1094 (2026-09-10)
 
 Base e95d3bbb; C:/tmp/vantare-isa1094, rama vantareapp/isa-1094-recorded-wizard.
-T05a crea modelo de borrador sin recursos/ritmo inventados, navegación de cinco
-pasos, snapshot de calendario versionado, selección canónica y desvinculación
-de revisiones incompatibles. No modifica correcciones ni originales. Siete
-tests focales PASS, typecheck y lint focal PASS. Todavía sin conexión a la UI
-ni persistencia del nuevo borrador: no anunciarlo guardado. Próximo corte:
-componentes Inicio/Combinación A4; después Reglas/Pilotos/Sesiones e integración.
-La suite final de T04b/c terminó: 422 archivos/3323 tests, lint/build PASS.
-T05b añade Inicio A4 presentacional y traducciones: 8 tests focales, tipos y
-lint focal PASS. Sin integración aún. Sigue Combinación con calendario real.
-T05c Combinación presentacional terminada: 11 tests focales, tipos y lint focal
-PASS. Reúne coche/trazado/calendario y estados ausentes; no importa al seleccionar.
-Siguen componentes de Reglas/Pilotos y orquestación de los cinco pasos. Todavía
-no cambiar la ruta productiva hasta tener navegación y entrega del borrador.
-T05d añade Reglas básicas (incluye Fuel/VE y vacíos explícitos): 16 tests focales,
-tipos/lint global/build PASS; suite completa en curso. Los campos nuevos aún no
-viajan al solver. Reutilización de PlanDraft nativo para borrador incompleto en
-evaluación, sin almacén nuevo; Event actual sigue exigiendo configuración completa.
-Resultado final T05d: 426 archivos/3339 tests PASS (300.57 s). T05e Pilotos:
-3 focales/tipos/lint focal PASS, estimación explícita con referencia/delta y sin
-consumo/desgaste inventados. Sigue orquestación del asistente y persistencia nativa.
-T05f orquestador de cinco pasos + validación de valores presentes: 18 focales,
-tipos/lint focal PASS. Todavía no sustituye la ruta anterior. Siguiente corte:
-guardar/abrir borrador incompleto con PlanDraft nativo existente, payload versionado
-y tests de reapertura; luego integración y capturas sobre recorrido productivo.
-T05g1 contrato del payload y parser: 17 casos focales PASS; tipos/lint focal PASS
-antes del último caso. Sigue adapter nativo y test real de repositorio, sin otra
-persistencia ni defaults para completar Event. Base de ese corte fe730fdf.
-T05g2 adapter create/save_revision/open + reapertura Go PASS. Edit nativo **no
-persiste**; se corrigió esa interpretación antes de conectar la UI. Una revisión
-de configuración no se activa ni contiene plan calculado. TS4 focales, tipos,
-lint global/build PASS; suites frontend/Go/vet en curso. Próximo T05h: separar
-propietario de sesiones de vista para conservar handles al pasar al editor;
-después conectar recorrido. Bootstrap de catálogo/descubrimiento T08 pendiente.
-No paridad visual final, Wails, push/PR/CI remoto, merge ni promoción.
+Estado actual: componentes A4 Inicio/Combinación/Reglas/Pilotos y orquestador
+de cinco pasos implementados y probados, **todavía sin sustituir la ruta anterior**.
+Borrador sin cantidades inventadas; calendario versionado; selección canónica,
+referencias completas, validación de valores presentes y estimación de pilotos
+con referencia/delta. Reglas avanzadas y conexión de campos nuevos al solver
+siguen en T02/T06/T07. Detalle de cortes en evidencia/isa-1094/README.md.
+
+Persistencia e0993a00: PlanDraft nativo create/save_revision/open y payload
+strategy.recorded.draft.v1; no otro almacén. Edit nativo sólo valida en memoria,
+no persiste. Guardar configuración conserva revisión y campos ausentes sin
+activar un plan ni fabricar cálculo. Reapertura con repositorio Go real PASS.
+Gates T05g2: 431 archivos/3381 tests frontend, tipos/lint/build, Go global -p1
+y vet app/strategy/telemetryanalysis/cmd PASS. No benchmark físico ni Wails.
+
+T05h extrae useRecordedSessions y vista reutilizable conservando la API anterior.
+16 focales PASS, tipos/lint focal PASS; prueba de desmontar/remontar vista sin
+cerrar handles y cierre al salir del propietario. Gate general posterior pendiente.
+El propietario debe seguir montado y su padre estar identificado por evento/combinación.
+
+Siguiente: bootstrap/descubrimiento T08 y conexión del asistente al editor.
+El catálogo actual necesita sesiones ya autorizadas; descubrir archivos sólo
+devuelve candidatos sin identidad de coche/circuito. Abrir un archivo explícito
+debe permitir resolver esa identidad en Go antes de elegir combinación. Reusar
+Analysis/StrategyRevisionCatalog; no importar todos los archivos ni abrir reserva.
+También falta montar contexto/footer A4 y revisar visualmente la ruta completa.
+Sin paridad final, aceptación Wails, push/PR/CI remoto, merge ni promoción.
 
 ## T04 A4 productivo — ISA-1093 (2026-09-09)
 

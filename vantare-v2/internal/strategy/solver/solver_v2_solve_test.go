@@ -1182,3 +1182,30 @@ func TestV2DominancePreservesStopCountStateRequiredByEventRules(t *testing.T) {
 		t.Fatal("a cheaper tie path with more stops cannot erase the fewer-stop tie breaker")
 	}
 }
+
+func TestCachedPitCostMatchesUncachedService(t *testing.T) {
+	for _, mode := range []manual.PitServiceMode{manual.PitServiceParallel, manual.PitServiceSequential} {
+		input := baseInputV2()
+		input.PitCost.ServiceMode = mode
+		costs := make(map[[3]int64]cachedPitCost)
+		for repeat := 0; repeat < 2; repeat++ {
+			for _, amount := range [][2]int64{{0, 0}, {2 * serviceScale, 0}, {0, 3 * serviceScale}, {2 * serviceScale, 3 * serviceScale}} {
+				for _, change := range []bool{false, true} {
+					node := searchNode{lap: int64(repeat + 1), pit: float64(repeat)}
+					option := pitTyreChoice{change: change}
+					want, err := appendPit(node, amount[0], amount[1], option, input)
+					if err != nil {
+						t.Fatal(err)
+					}
+					got, err := appendPitCached(node, amount[0], amount[1], option, input, costs)
+					if err != nil {
+						t.Fatal(err)
+					}
+					if !reflect.DeepEqual(got, want) {
+						t.Fatalf("service differs: mode=%s amount=%v change=%v repeat=%d", mode, amount, change, repeat)
+					}
+				}
+			}
+		}
+	}
+}

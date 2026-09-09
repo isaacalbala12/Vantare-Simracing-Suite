@@ -201,6 +201,7 @@ func SolveV2Context(ctx context.Context, input SolverInputV2) (SolverResultV2, e
 		decision: DecisionVector{PitStops: []PitStopDecision{}, Stints: []StintDecision{}},
 	}
 	byLap := make([][]searchNode, input.RaceLaps+1)
+	pitCosts := make(map[[3]int64]cachedPitCost)
 	for _, choice := range initialChoices {
 		node := initial
 		node.tyre = choice
@@ -355,7 +356,7 @@ func SolveV2Context(ctx context.Context, input SolverInputV2) (SolverResultV2, e
 										budgetReason = "candidate_budget_exhausted"
 										break
 									}
-									next, err := appendPit(afterStint, fuelAmount, veAmount, tyreOption, input)
+									next, err := appendPitCached(afterStint, fuelAmount, veAmount, tyreOption, input, pitCosts)
 									if err != nil {
 										return SolverResultV2{}, err
 									}
@@ -809,16 +810,39 @@ func decisionDegradation(decision DecisionVector, paceCost stintPaceCost) float6
 	return total
 }
 
+type cachedPitCost struct {
+	input     manual.PitStopInput
+	breakdown manual.PitBreakdown
+}
+
 func appendPit(node searchNode, fuelAmount, veAmount int64, tyreOption pitTyreChoice, input SolverInputV2) (searchNode, error) {
+	return appendPitCached(node, fuelAmount, veAmount, tyreOption, input, nil)
+}
+
+// Costs depend only on amounts and tyre service within one immutable solve.
+// Bound retained costs; a full cache falls back to the same calculation.
+func appendPitCached(node searchNode, fuelAmount, veAmount int64, tyreOption pitTyreChoice, input SolverInputV2, costs map[[3]int64]cachedPitCost) (searchNode, error) {
+	key := [3]int64{fuelAmount, veAmount, 0}
+	if tyreOption.change {
+		key[2] = 1
+	}
+	cost, ok := costs[key]
+	if !ok {
+		pitInput, err := solverPitInputWithTyres(input, fuelAmount, veAmount, tyreOption.change)
+		if err != nil {
+			return searchNode{}, err
+		}
+		breakdown, err := manual.CalculatePitStop(pitInput)
+		if err != nil {
+			return searchNode{}, solveError(ErrorInvalidInput, "pitCost", err.Error())
+		}
+		cost = cachedPitCost{input: pitInput, breakdown: breakdown}
+		if costs != nil && len(costs) < 4096 {
+			costs[key] = cost
+		}
+	}
+	pitInput, breakdown := cost.input, cost.breakdown
 	next := cloneNode(node)
-	pitInput, err := solverPitInputWithTyres(input, fuelAmount, veAmount, tyreOption.change)
-	if err != nil {
-		return searchNode{}, err
-	}
-	breakdown, err := manual.CalculatePitStop(pitInput)
-	if err != nil {
-		return searchNode{}, solveError(ErrorInvalidInput, "pitCost", err.Error())
-	}
 	next.pit += breakdown.TotalSeconds.Value()
 	next.tyre = tyreOption.choice
 	if tyreOption.change {

@@ -1,5 +1,19 @@
 # Handoff vivo — Strategy Planner
 
+## Ejecución SDD reanudada — T00/T01, ISA-1089 (2026-09-09)
+
+Isaac autoriza iniciar todo el SDD v1.0. Se levanta la pausa documental anterior;
+continuidad entre tareas vigente, sin subagentes de código ni permiso por corte.
+Base43d415f4; rama vantareapp/isa-1089-recorded-solver-timeout,
+C:/tmp/vantare-isa1089. Timeout Imola reproducido con input Wails capturado,
+perfil señala coste repetido de paradas/allocaciones. Caché acotada por búsqueda
+reutiliza resultados de CalculatePitStop sin cambiar alternativas ni ecuaciones.
+RED 8.02 s; primer GREEN5.88 s. Suites solver/application secuenciales PASS;
+una ejecución concurrente volvió a agotar deadline: no se oculta contención.
+Gates globales, repeticiones comparables y Wails pendientes. No se declara T01
+cerrado ni óptimo físico. Después T02/T03 y porte A4 T04 según dependencias.
+
+
 ## SDD integral y pausa de implementación — ISA-1091 (2026-09-09)
 
 Isaac solicita consolidar chat, roadmap y contratos para continuar después sin

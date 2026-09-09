@@ -1,0 +1,1491 @@
+{
+  "event": {
+    "durationMinutes": 120,
+    "tankLiters": 90,
+    "pitLossSeconds": 60
+  },
+  "drivers": [
+    {
+      "id": "d1-umfm2",
+      "name": "Recorded driver",
+      "dry": {
+        "paceSeconds": 105,
+        "fuelLitersPerLap": 2.8
+      },
+      "wet": {
+        "paceSeconds": 113,
+        "fuelLitersPerLap": 2.45
+      },
+      "eco": {
+        "paceSeconds": 106.1,
+        "fuelLitersPerLap": 2.6
+      }
+    }
+  ],
+  "variants": [
+    {
+      "id": "s1",
+      "mode": "dry",
+      "order": [
+        "d1-umfm2"
+      ],
+      "overrides": {}
+    }
+  ],
+  "activeVariantId": "s1",
+  "planningInputs": {
+    "projection": {
+      "classPace": {
+        "byClassName": {},
+        "confidence": {
+          "computationVersion": "class-pace.contract.v1",
+          "sampleSize": 0
+        },
+        "presence": "missing",
+        "provenance": {
+          "kind": "reference",
+          "sourceId": "shared-class-pace"
+        },
+        "reason": "no_class_pace_source"
+      },
+      "climateBuckets": {
+        "buckets": [
+          {
+            "bucket": "dry",
+            "pathWetnessPercent": 0,
+            "sampleSize": 25
+          }
+        ],
+        "confidence": {
+          "computationVersion": "strategy-input-producer.v1",
+          "sampleSize": 25
+        },
+        "presence": "valid",
+        "provenance": {
+          "kind": "derived",
+          "sourceId": "aggregate:lmu:885fd7a75c8aee6e456d91df6b49102820d325c27d5432cbd1f097aac6559632"
+        }
+      },
+      "combinationId": "lmu:885fd7a75c8aee6e456d91df6b49102820d325c27d5432cbd1f097aac6559632",
+      "combinedStintPaceCurve": {
+        "confidence": {
+          "computationVersion": "strategy-input-producer.v1",
+          "sampleSize": 0
+        },
+        "identifiability": "combined_only",
+        "points": [],
+        "presence": "missing",
+        "provenance": {
+          "kind": "derived",
+          "sourceId": "aggregate:lmu:885fd7a75c8aee6e456d91df6b49102820d325c27d5432cbd1f097aac6559632"
+        },
+        "reason": "missing_combined_stint_pace_curve"
+      },
+      "computationVersion": "strategy-input-producer.v1",
+      "contractVersion": "strategyinputprojection.v2",
+      "fuelConsumption": {
+        "byClimateBucket": {
+          "dry": 2.5759267520904543
+        },
+        "confidence": {
+          "computationVersion": "consumption-pace.v2",
+          "rangeLower": 2.3621597290039062,
+          "rangeUpper": 3.7005386352539062,
+          "sampleSize": 25,
+          "variance": 0.05807799824812948
+        },
+        "meanPerLap": 2.5759267520904543,
+        "presence": "valid",
+        "provenance": {
+          "kind": "derived",
+          "sourceId": "aggregate:lmu:885fd7a75c8aee6e456d91df6b49102820d325c27d5432cbd1f097aac6559632"
+        },
+        "rangeLower": 2.3621597290039062,
+        "rangeUpper": 3.7005386352539062
+      },
+      "generatedAt": "2026-09-09T19:53:36.938Z",
+      "lapValidity": {
+        "confidence": {
+          "computationVersion": "strategy-input-producer.v1",
+          "sampleSize": 39
+        },
+        "laps": [
+          {
+            "included": false,
+            "lapNumber": 0,
+            "reason": "incomplete,out_lap,incident_offtrack",
+            "sessionId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607",
+            "tags": [
+              "out_lap",
+              "incident_offtrack",
+              "traffic",
+              "incomplete"
+            ]
+          },
+          {
+            "included": false,
+            "lapNumber": 1,
+            "reason": "pace_outlier",
+            "sessionId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607",
+            "tags": [
+              "traffic",
+              "pace_outlier"
+            ]
+          },
+          {
+            "included": false,
+            "lapNumber": 2,
+            "reason": "incomplete",
+            "sessionId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607",
+            "tags": [
+              "traffic",
+              "incomplete"
+            ]
+          },
+          {
+            "included": true,
+            "lapNumber": 3,
+            "reason": "",
+            "sessionId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607",
+            "tags": []
+          },
+          {
+            "included": true,
+            "lapNumber": 4,
+            "reason": "",
+            "sessionId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607",
+            "tags": []
+          },
+          {
+            "included": true,
+            "lapNumber": 5,
+            "reason": "",
+            "sessionId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607",
+            "tags": []
+          },
+          {
+            "included": false,
+            "lapNumber": 6,
+            "reason": "incomplete",
+            "sessionId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607",
+            "tags": [
+              "traffic",
+              "incomplete"
+            ]
+          },
+          {
+            "included": true,
+            "lapNumber": 7,
+            "reason": "",
+            "sessionId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607",
+            "tags": [
+              "traffic"
+            ]
+          },
+          {
+            "included": true,
+            "lapNumber": 8,
+            "reason": "",
+            "sessionId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607",
+            "tags": [
+              "traffic"
+            ]
+          },
+          {
+            "included": false,
+            "lapNumber": 9,
+            "reason": "incomplete",
+            "sessionId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607",
+            "tags": [
+              "traffic",
+              "incomplete"
+            ]
+          },
+          {
+            "included": false,
+            "lapNumber": 10,
+            "reason": "incident_offtrack",
+            "sessionId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607",
+            "tags": [
+              "incident_offtrack",
+              "traffic"
+            ]
+          },
+          {
+            "included": false,
+            "lapNumber": 11,
+            "reason": "incomplete",
+            "sessionId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607",
+            "tags": [
+              "incomplete"
+            ]
+          },
+          {
+            "included": true,
+            "lapNumber": 12,
+            "reason": "",
+            "sessionId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607",
+            "tags": []
+          },
+          {
+            "included": true,
+            "lapNumber": 13,
+            "reason": "",
+            "sessionId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607",
+            "tags": []
+          },
+          {
+            "included": true,
+            "lapNumber": 14,
+            "reason": "",
+            "sessionId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607",
+            "tags": []
+          },
+          {
+            "included": false,
+            "lapNumber": 15,
+            "reason": "incomplete",
+            "sessionId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607",
+            "tags": [
+              "incomplete"
+            ]
+          },
+          {
+            "included": true,
+            "lapNumber": 16,
+            "reason": "",
+            "sessionId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607",
+            "tags": []
+          },
+          {
+            "included": false,
+            "lapNumber": 17,
+            "reason": "incident_offtrack,pace_outlier",
+            "sessionId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607",
+            "tags": [
+              "incident_offtrack",
+              "pace_outlier"
+            ]
+          },
+          {
+            "included": false,
+            "lapNumber": 18,
+            "reason": "incomplete",
+            "sessionId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607",
+            "tags": [
+              "incomplete"
+            ]
+          },
+          {
+            "included": true,
+            "lapNumber": 19,
+            "reason": "",
+            "sessionId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607",
+            "tags": []
+          },
+          {
+            "included": true,
+            "lapNumber": 20,
+            "reason": "",
+            "sessionId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607",
+            "tags": []
+          },
+          {
+            "included": false,
+            "lapNumber": 21,
+            "reason": "incomplete",
+            "sessionId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607",
+            "tags": [
+              "incomplete"
+            ]
+          },
+          {
+            "included": true,
+            "lapNumber": 22,
+            "reason": "",
+            "sessionId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607",
+            "tags": []
+          },
+          {
+            "included": true,
+            "lapNumber": 23,
+            "reason": "",
+            "sessionId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607",
+            "tags": []
+          },
+          {
+            "included": true,
+            "lapNumber": 24,
+            "reason": "",
+            "sessionId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607",
+            "tags": []
+          },
+          {
+            "included": true,
+            "lapNumber": 25,
+            "reason": "",
+            "sessionId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607",
+            "tags": []
+          },
+          {
+            "included": false,
+            "lapNumber": 26,
+            "reason": "incident_offtrack",
+            "sessionId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607",
+            "tags": [
+              "incident_offtrack"
+            ]
+          },
+          {
+            "included": true,
+            "lapNumber": 27,
+            "reason": "",
+            "sessionId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607",
+            "tags": []
+          },
+          {
+            "included": true,
+            "lapNumber": 28,
+            "reason": "",
+            "sessionId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607",
+            "tags": []
+          },
+          {
+            "included": false,
+            "lapNumber": 29,
+            "reason": "in_lap,pit,pace_outlier",
+            "sessionId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607",
+            "tags": [
+              "pit",
+              "in_lap",
+              "traffic",
+              "pace_outlier"
+            ]
+          },
+          {
+            "included": false,
+            "lapNumber": 30,
+            "reason": "out_lap,pace_outlier",
+            "sessionId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607",
+            "tags": [
+              "out_lap",
+              "traffic",
+              "pace_outlier"
+            ]
+          },
+          {
+            "included": true,
+            "lapNumber": 31,
+            "reason": "",
+            "sessionId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607",
+            "tags": []
+          },
+          {
+            "included": false,
+            "lapNumber": 32,
+            "reason": "pace_outlier",
+            "sessionId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607",
+            "tags": [
+              "pace_outlier"
+            ]
+          },
+          {
+            "included": true,
+            "lapNumber": 33,
+            "reason": "",
+            "sessionId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607",
+            "tags": []
+          },
+          {
+            "included": true,
+            "lapNumber": 34,
+            "reason": "",
+            "sessionId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607",
+            "tags": []
+          },
+          {
+            "included": true,
+            "lapNumber": 35,
+            "reason": "",
+            "sessionId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607",
+            "tags": []
+          },
+          {
+            "included": true,
+            "lapNumber": 36,
+            "reason": "",
+            "sessionId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607",
+            "tags": []
+          },
+          {
+            "included": true,
+            "lapNumber": 37,
+            "reason": "",
+            "sessionId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607",
+            "tags": []
+          },
+          {
+            "included": true,
+            "lapNumber": 38,
+            "reason": "",
+            "sessionId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607",
+            "tags": []
+          }
+        ],
+        "presence": "valid",
+        "provenance": {
+          "kind": "derived",
+          "sourceId": "aggregate:lmu:885fd7a75c8aee6e456d91df6b49102820d325c27d5432cbd1f097aac6559632"
+        }
+      },
+      "pit": {
+        "confidence": {
+          "computationVersion": "pit-observation.v1",
+          "rangeLower": 54.120000000000346,
+          "rangeUpper": 54.120000000000346,
+          "sampleSize": 1,
+          "variance": 0
+        },
+        "fuelRate": {
+          "confidence": {
+            "computationVersion": "pit-observation.v1",
+            "sampleSize": 0
+          },
+          "mean": 0,
+          "presence": "missing",
+          "provenance": {
+            "kind": "derived",
+            "sourceId": "aggregate:lmu:885fd7a75c8aee6e456d91df6b49102820d325c27d5432cbd1f097aac6559632"
+          },
+          "reason": "missing_observed_rate"
+        },
+        "observedIntervals": [
+          {
+            "ambiguityReason": "resource_clock_unaligned",
+            "ambiguous": true,
+            "durationSeconds": 54.120000000000346,
+            "endTimestamp": "1970-01-01T00:48:48.24Z",
+            "hasFuelRise": false,
+            "hasVERise": false,
+            "pitNumber": 1,
+            "startTimestamp": "1970-01-01T00:47:54.12Z"
+          }
+        ],
+        "presence": "unknown",
+        "provenance": {
+          "kind": "derived",
+          "sourceId": "aggregate:lmu:885fd7a75c8aee6e456d91df6b49102820d325c27d5432cbd1f097aac6559632"
+        },
+        "ratesNote": "degraded: pit lane interval only; no transit/service breakdown",
+        "reason": "degraded_no_transit_service_breakdown",
+        "veRate": {
+          "confidence": {
+            "computationVersion": "pit-observation.v1",
+            "sampleSize": 0
+          },
+          "mean": 0,
+          "presence": "missing",
+          "provenance": {
+            "kind": "derived",
+            "sourceId": "aggregate:lmu:885fd7a75c8aee6e456d91df6b49102820d325c27d5432cbd1f097aac6559632"
+          },
+          "reason": "missing_observed_rate"
+        }
+      },
+      "representativePaceByClimateBucket": {
+        "dry": {
+          "confidence": {
+            "computationVersion": "consumption-pace.v2",
+            "rangeLower": 92.80636596679688,
+            "rangeUpper": 96.894287109375,
+            "sampleSize": 23,
+            "variance": 1.4341263733767415
+          },
+          "medianLapSeconds": 93.693115234375,
+          "presence": "valid",
+          "provenance": {
+            "kind": "derived",
+            "sourceId": "aggregate:lmu:885fd7a75c8aee6e456d91df6b49102820d325c27d5432cbd1f097aac6559632"
+          }
+        },
+        "humid": {
+          "confidence": {
+            "computationVersion": "strategy-input-producer.v1",
+            "sampleSize": 0
+          },
+          "medianLapSeconds": 0,
+          "presence": "missing",
+          "provenance": {
+            "kind": "derived",
+            "sourceId": "aggregate:lmu:885fd7a75c8aee6e456d91df6b49102820d325c27d5432cbd1f097aac6559632"
+          },
+          "reason": "no_classified_complete_laps_in_climate_bucket"
+        },
+        "wet": {
+          "confidence": {
+            "computationVersion": "strategy-input-producer.v1",
+            "sampleSize": 0
+          },
+          "medianLapSeconds": 0,
+          "presence": "missing",
+          "provenance": {
+            "kind": "derived",
+            "sourceId": "aggregate:lmu:885fd7a75c8aee6e456d91df6b49102820d325c27d5432cbd1f097aac6559632"
+          },
+          "reason": "no_classified_complete_laps_in_climate_bucket"
+        }
+      },
+      "savingCost": {
+        "confidence": {
+          "computationVersion": "derived-curves.v1",
+          "sampleSize": 0
+        },
+        "manualNote": "insufficient_ab_laps",
+        "presence": "missing",
+        "provenance": {
+          "kind": "derived",
+          "sourceId": "aggregate:lmu:885fd7a75c8aee6e456d91df6b49102820d325c27d5432cbd1f097aac6559632"
+        },
+        "reason": "insufficient_ab_laps"
+      },
+      "sessionClassification": {
+        "carClass": "LMP2_ELMS",
+        "carName": "United Autosports #21:ELMS25",
+        "confidence": {
+          "computationVersion": "strategy-input-producer.v1",
+          "sampleSize": 1
+        },
+        "presence": "valid",
+        "provenance": {
+          "kind": "derived",
+          "sourceId": "aggregate:lmu:885fd7a75c8aee6e456d91df6b49102820d325c27d5432cbd1f097aac6559632"
+        },
+        "sessionType": "race",
+        "trackLayout": "Autodromo Enzo e Dino Ferrari",
+        "trackName": "Autodromo Enzo e Dino Ferrari",
+        "usableForFamilies": [
+          "climate_buckets",
+          "combined_stint_pace_curve",
+          "fuel_consumption",
+          "lap_validity",
+          "observed_strategy",
+          "pit",
+          "saving_cost",
+          "session_classification",
+          "tyre_degradation",
+          "virtual_energy_consumption"
+        ],
+        "weatherConditions": "Partially Cloudy"
+      },
+      "sourceSessions": [
+        "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607"
+      ],
+      "temporal": {
+        "contractVersion": "temporalsegments.v1",
+        "gaps": [
+          {
+            "endTs": "1970-01-01T01:03:16.82Z",
+            "gapId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607:coverage-gap-1",
+            "presence": "missing",
+            "provenance": {
+              "kind": "derived",
+              "sourceId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607"
+            },
+            "reason": "no_coverage",
+            "startTs": "1970-01-01T01:02:52Z"
+          }
+        ],
+        "lapBoundaries": [
+          {
+            "confidence": {
+              "computationVersion": "lap-validity.v1",
+              "rangeLower": 0,
+              "rangeUpper": 0,
+              "sampleSize": 2
+            },
+            "lapNumber": 0,
+            "location": {
+              "normalizedDistance": 0,
+              "presence": "valid"
+            },
+            "provenance": {
+              "kind": "derived",
+              "sourceId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607"
+            },
+            "quality": "valid",
+            "source": "reconciled",
+            "timestamp": "1970-01-01T00:00:24.545Z"
+          },
+          {
+            "confidence": {
+              "computationVersion": "lap-validity.v1",
+              "rangeLower": 0,
+              "rangeUpper": 0,
+              "sampleSize": 2
+            },
+            "lapNumber": 1,
+            "location": {
+              "normalizedDistance": 0,
+              "presence": "valid"
+            },
+            "provenance": {
+              "kind": "derived",
+              "sourceId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607"
+            },
+            "quality": "valid",
+            "source": "reconciled",
+            "timestamp": "1970-01-01T00:03:48.72Z"
+          },
+          {
+            "confidence": {
+              "computationVersion": "lap-validity.v1",
+              "rangeLower": 0,
+              "rangeUpper": 0,
+              "sampleSize": 2
+            },
+            "lapNumber": 2,
+            "location": {
+              "normalizedDistance": 0,
+              "presence": "valid"
+            },
+            "provenance": {
+              "kind": "derived",
+              "sourceId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607"
+            },
+            "quality": "valid",
+            "source": "reconciled",
+            "timestamp": "1970-01-01T00:05:21.92Z"
+          },
+          {
+            "confidence": {
+              "computationVersion": "lap-validity.v1",
+              "rangeLower": 0,
+              "rangeUpper": 0,
+              "sampleSize": 2
+            },
+            "lapNumber": 3,
+            "location": {
+              "normalizedDistance": 0,
+              "presence": "valid"
+            },
+            "provenance": {
+              "kind": "derived",
+              "sourceId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607"
+            },
+            "quality": "valid",
+            "source": "reconciled",
+            "timestamp": "1970-01-01T00:06:54.78Z"
+          },
+          {
+            "confidence": {
+              "computationVersion": "lap-validity.v1",
+              "rangeLower": 0,
+              "rangeUpper": 0,
+              "sampleSize": 2
+            },
+            "lapNumber": 4,
+            "location": {
+              "normalizedDistance": 0,
+              "presence": "valid"
+            },
+            "provenance": {
+              "kind": "derived",
+              "sourceId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607"
+            },
+            "quality": "valid",
+            "source": "reconciled",
+            "timestamp": "1970-01-01T00:08:27.94Z"
+          },
+          {
+            "confidence": {
+              "computationVersion": "lap-validity.v1",
+              "rangeLower": 0,
+              "rangeUpper": 0,
+              "sampleSize": 2
+            },
+            "lapNumber": 5,
+            "location": {
+              "normalizedDistance": 0,
+              "presence": "valid"
+            },
+            "provenance": {
+              "kind": "derived",
+              "sourceId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607"
+            },
+            "quality": "valid",
+            "source": "reconciled",
+            "timestamp": "1970-01-01T00:10:00.76Z"
+          },
+          {
+            "confidence": {
+              "computationVersion": "lap-validity.v1",
+              "rangeLower": 0,
+              "rangeUpper": 0,
+              "sampleSize": 2
+            },
+            "lapNumber": 6,
+            "location": {
+              "normalizedDistance": 0,
+              "presence": "valid"
+            },
+            "provenance": {
+              "kind": "derived",
+              "sourceId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607"
+            },
+            "quality": "valid",
+            "source": "reconciled",
+            "timestamp": "1970-01-01T00:11:39.52Z"
+          },
+          {
+            "confidence": {
+              "computationVersion": "lap-validity.v1",
+              "rangeLower": 0,
+              "rangeUpper": 0,
+              "sampleSize": 2
+            },
+            "lapNumber": 7,
+            "location": {
+              "normalizedDistance": 0,
+              "presence": "valid"
+            },
+            "provenance": {
+              "kind": "derived",
+              "sourceId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607"
+            },
+            "quality": "valid",
+            "source": "reconciled",
+            "timestamp": "1970-01-01T00:13:13.14Z"
+          },
+          {
+            "confidence": {
+              "computationVersion": "lap-validity.v1",
+              "rangeLower": 0,
+              "rangeUpper": 0,
+              "sampleSize": 2
+            },
+            "lapNumber": 8,
+            "location": {
+              "normalizedDistance": 0,
+              "presence": "valid"
+            },
+            "provenance": {
+              "kind": "derived",
+              "sourceId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607"
+            },
+            "quality": "valid",
+            "source": "reconciled",
+            "timestamp": "1970-01-01T00:14:49.56Z"
+          },
+          {
+            "confidence": {
+              "computationVersion": "lap-validity.v1",
+              "rangeLower": 0,
+              "rangeUpper": 0,
+              "sampleSize": 2
+            },
+            "lapNumber": 9,
+            "location": {
+              "normalizedDistance": 0,
+              "presence": "valid"
+            },
+            "provenance": {
+              "kind": "derived",
+              "sourceId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607"
+            },
+            "quality": "valid",
+            "source": "reconciled",
+            "timestamp": "1970-01-01T00:16:25.36Z"
+          },
+          {
+            "confidence": {
+              "computationVersion": "lap-validity.v1",
+              "rangeLower": 0,
+              "rangeUpper": 0,
+              "sampleSize": 2
+            },
+            "lapNumber": 10,
+            "location": {
+              "normalizedDistance": 0,
+              "presence": "valid"
+            },
+            "provenance": {
+              "kind": "derived",
+              "sourceId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607"
+            },
+            "quality": "valid",
+            "source": "reconciled",
+            "timestamp": "1970-01-01T00:17:59.5Z"
+          },
+          {
+            "confidence": {
+              "computationVersion": "lap-validity.v1",
+              "rangeLower": 0,
+              "rangeUpper": 0,
+              "sampleSize": 2
+            },
+            "lapNumber": 11,
+            "location": {
+              "normalizedDistance": 0,
+              "presence": "valid"
+            },
+            "provenance": {
+              "kind": "derived",
+              "sourceId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607"
+            },
+            "quality": "valid",
+            "source": "reconciled",
+            "timestamp": "1970-01-01T00:19:33.56Z"
+          },
+          {
+            "confidence": {
+              "computationVersion": "lap-validity.v1",
+              "rangeLower": 0,
+              "rangeUpper": 0,
+              "sampleSize": 2
+            },
+            "lapNumber": 12,
+            "location": {
+              "normalizedDistance": 0,
+              "presence": "valid"
+            },
+            "provenance": {
+              "kind": "derived",
+              "sourceId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607"
+            },
+            "quality": "valid",
+            "source": "reconciled",
+            "timestamp": "1970-01-01T00:21:06.54Z"
+          },
+          {
+            "confidence": {
+              "computationVersion": "lap-validity.v1",
+              "rangeLower": 0,
+              "rangeUpper": 0,
+              "sampleSize": 2
+            },
+            "lapNumber": 13,
+            "location": {
+              "normalizedDistance": 0,
+              "presence": "valid"
+            },
+            "provenance": {
+              "kind": "derived",
+              "sourceId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607"
+            },
+            "quality": "valid",
+            "source": "reconciled",
+            "timestamp": "1970-01-01T00:22:40.18Z"
+          },
+          {
+            "confidence": {
+              "computationVersion": "lap-validity.v1",
+              "rangeLower": 0,
+              "rangeUpper": 0,
+              "sampleSize": 2
+            },
+            "lapNumber": 14,
+            "location": {
+              "normalizedDistance": 0,
+              "presence": "valid"
+            },
+            "provenance": {
+              "kind": "derived",
+              "sourceId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607"
+            },
+            "quality": "valid",
+            "source": "reconciled",
+            "timestamp": "1970-01-01T00:24:13.32Z"
+          },
+          {
+            "confidence": {
+              "computationVersion": "lap-validity.v1",
+              "rangeLower": 0,
+              "rangeUpper": 0,
+              "sampleSize": 2
+            },
+            "lapNumber": 15,
+            "location": {
+              "normalizedDistance": 0,
+              "presence": "valid"
+            },
+            "provenance": {
+              "kind": "derived",
+              "sourceId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607"
+            },
+            "quality": "valid",
+            "source": "reconciled",
+            "timestamp": "1970-01-01T00:25:46.16Z"
+          },
+          {
+            "confidence": {
+              "computationVersion": "lap-validity.v1",
+              "rangeLower": 0,
+              "rangeUpper": 0,
+              "sampleSize": 2
+            },
+            "lapNumber": 16,
+            "location": {
+              "normalizedDistance": 0,
+              "presence": "valid"
+            },
+            "provenance": {
+              "kind": "derived",
+              "sourceId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607"
+            },
+            "quality": "valid",
+            "source": "reconciled",
+            "timestamp": "1970-01-01T00:27:20.02Z"
+          },
+          {
+            "confidence": {
+              "computationVersion": "lap-validity.v1",
+              "rangeLower": 0,
+              "rangeUpper": 0,
+              "sampleSize": 2
+            },
+            "lapNumber": 17,
+            "location": {
+              "normalizedDistance": 0,
+              "presence": "valid"
+            },
+            "provenance": {
+              "kind": "derived",
+              "sourceId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607"
+            },
+            "quality": "valid",
+            "source": "reconciled",
+            "timestamp": "1970-01-01T00:29:04.5Z"
+          },
+          {
+            "confidence": {
+              "computationVersion": "lap-validity.v1",
+              "rangeLower": 0,
+              "rangeUpper": 0,
+              "sampleSize": 2
+            },
+            "lapNumber": 18,
+            "location": {
+              "normalizedDistance": 0,
+              "presence": "valid"
+            },
+            "provenance": {
+              "kind": "derived",
+              "sourceId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607"
+            },
+            "quality": "valid",
+            "source": "reconciled",
+            "timestamp": "1970-01-01T00:30:38.94Z"
+          },
+          {
+            "confidence": {
+              "computationVersion": "lap-validity.v1",
+              "rangeLower": 0,
+              "rangeUpper": 0,
+              "sampleSize": 2
+            },
+            "lapNumber": 19,
+            "location": {
+              "normalizedDistance": 0,
+              "presence": "valid"
+            },
+            "provenance": {
+              "kind": "derived",
+              "sourceId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607"
+            },
+            "quality": "valid",
+            "source": "reconciled",
+            "timestamp": "1970-01-01T00:32:13.5Z"
+          },
+          {
+            "confidence": {
+              "computationVersion": "lap-validity.v1",
+              "rangeLower": 0,
+              "rangeUpper": 0,
+              "sampleSize": 2
+            },
+            "lapNumber": 20,
+            "location": {
+              "normalizedDistance": 0,
+              "presence": "valid"
+            },
+            "provenance": {
+              "kind": "derived",
+              "sourceId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607"
+            },
+            "quality": "valid",
+            "source": "reconciled",
+            "timestamp": "1970-01-01T00:33:48.18Z"
+          },
+          {
+            "confidence": {
+              "computationVersion": "lap-validity.v1",
+              "rangeLower": 0,
+              "rangeUpper": 0,
+              "sampleSize": 2
+            },
+            "lapNumber": 21,
+            "location": {
+              "normalizedDistance": 0,
+              "presence": "valid"
+            },
+            "provenance": {
+              "kind": "derived",
+              "sourceId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607"
+            },
+            "quality": "valid",
+            "source": "reconciled",
+            "timestamp": "1970-01-01T00:35:21.48Z"
+          },
+          {
+            "confidence": {
+              "computationVersion": "lap-validity.v1",
+              "rangeLower": 0,
+              "rangeUpper": 0,
+              "sampleSize": 2
+            },
+            "lapNumber": 22,
+            "location": {
+              "normalizedDistance": 0,
+              "presence": "valid"
+            },
+            "provenance": {
+              "kind": "derived",
+              "sourceId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607"
+            },
+            "quality": "valid",
+            "source": "reconciled",
+            "timestamp": "1970-01-01T00:36:55.16Z"
+          },
+          {
+            "confidence": {
+              "computationVersion": "lap-validity.v1",
+              "rangeLower": 0,
+              "rangeUpper": 0,
+              "sampleSize": 2
+            },
+            "lapNumber": 23,
+            "location": {
+              "normalizedDistance": 0,
+              "presence": "valid"
+            },
+            "provenance": {
+              "kind": "derived",
+              "sourceId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607"
+            },
+            "quality": "valid",
+            "source": "reconciled",
+            "timestamp": "1970-01-01T00:38:28.4Z"
+          },
+          {
+            "confidence": {
+              "computationVersion": "lap-validity.v1",
+              "rangeLower": 0,
+              "rangeUpper": 0,
+              "sampleSize": 2
+            },
+            "lapNumber": 24,
+            "location": {
+              "normalizedDistance": 0,
+              "presence": "valid"
+            },
+            "provenance": {
+              "kind": "derived",
+              "sourceId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607"
+            },
+            "quality": "valid",
+            "source": "reconciled",
+            "timestamp": "1970-01-01T00:40:05.3Z"
+          },
+          {
+            "confidence": {
+              "computationVersion": "lap-validity.v1",
+              "rangeLower": 0,
+              "rangeUpper": 0,
+              "sampleSize": 2
+            },
+            "lapNumber": 25,
+            "location": {
+              "normalizedDistance": 0,
+              "presence": "valid"
+            },
+            "provenance": {
+              "kind": "derived",
+              "sourceId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607"
+            },
+            "quality": "valid",
+            "source": "reconciled",
+            "timestamp": "1970-01-01T00:41:38.54Z"
+          },
+          {
+            "confidence": {
+              "computationVersion": "lap-validity.v1",
+              "rangeLower": 0,
+              "rangeUpper": 0,
+              "sampleSize": 2
+            },
+            "lapNumber": 26,
+            "location": {
+              "normalizedDistance": 0,
+              "presence": "valid"
+            },
+            "provenance": {
+              "kind": "derived",
+              "sourceId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607"
+            },
+            "quality": "valid",
+            "source": "reconciled",
+            "timestamp": "1970-01-01T00:43:13.14Z"
+          },
+          {
+            "confidence": {
+              "computationVersion": "lap-validity.v1",
+              "rangeLower": 0,
+              "rangeUpper": 0,
+              "sampleSize": 2
+            },
+            "lapNumber": 27,
+            "location": {
+              "normalizedDistance": 0,
+              "presence": "valid"
+            },
+            "provenance": {
+              "kind": "derived",
+              "sourceId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607"
+            },
+            "quality": "valid",
+            "source": "reconciled",
+            "timestamp": "1970-01-01T00:44:46.36Z"
+          },
+          {
+            "confidence": {
+              "computationVersion": "lap-validity.v1",
+              "rangeLower": 0,
+              "rangeUpper": 0,
+              "sampleSize": 2
+            },
+            "lapNumber": 28,
+            "location": {
+              "normalizedDistance": 0,
+              "presence": "valid"
+            },
+            "provenance": {
+              "kind": "derived",
+              "sourceId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607"
+            },
+            "quality": "valid",
+            "source": "reconciled",
+            "timestamp": "1970-01-01T00:46:21.4Z"
+          },
+          {
+            "confidence": {
+              "computationVersion": "lap-validity.v1",
+              "rangeLower": 0,
+              "rangeUpper": 0,
+              "sampleSize": 2
+            },
+            "lapNumber": 29,
+            "location": {
+              "normalizedDistance": 0,
+              "presence": "valid"
+            },
+            "provenance": {
+              "kind": "derived",
+              "sourceId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607"
+            },
+            "quality": "valid",
+            "source": "reconciled",
+            "timestamp": "1970-01-01T00:48:13.76Z"
+          },
+          {
+            "confidence": {
+              "computationVersion": "lap-validity.v1",
+              "rangeLower": 0,
+              "rangeUpper": 0,
+              "sampleSize": 2
+            },
+            "lapNumber": 30,
+            "location": {
+              "normalizedDistance": 0,
+              "presence": "valid"
+            },
+            "provenance": {
+              "kind": "derived",
+              "sourceId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607"
+            },
+            "quality": "valid",
+            "source": "reconciled",
+            "timestamp": "1970-01-01T00:50:22.54Z"
+          },
+          {
+            "confidence": {
+              "computationVersion": "lap-validity.v1",
+              "rangeLower": 0,
+              "rangeUpper": 0,
+              "sampleSize": 2
+            },
+            "lapNumber": 31,
+            "location": {
+              "normalizedDistance": 0,
+              "presence": "valid"
+            },
+            "provenance": {
+              "kind": "derived",
+              "sourceId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607"
+            },
+            "quality": "valid",
+            "source": "reconciled",
+            "timestamp": "1970-01-01T00:51:56.14Z"
+          },
+          {
+            "confidence": {
+              "computationVersion": "lap-validity.v1",
+              "rangeLower": 0,
+              "rangeUpper": 0,
+              "sampleSize": 2
+            },
+            "lapNumber": 32,
+            "location": {
+              "normalizedDistance": 0,
+              "presence": "valid"
+            },
+            "provenance": {
+              "kind": "derived",
+              "sourceId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607"
+            },
+            "quality": "valid",
+            "source": "reconciled",
+            "timestamp": "1970-01-01T00:53:46.5Z"
+          },
+          {
+            "confidence": {
+              "computationVersion": "lap-validity.v1",
+              "rangeLower": 0,
+              "rangeUpper": 0,
+              "sampleSize": 2
+            },
+            "lapNumber": 33,
+            "location": {
+              "normalizedDistance": 0,
+              "presence": "valid"
+            },
+            "provenance": {
+              "kind": "derived",
+              "sourceId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607"
+            },
+            "quality": "valid",
+            "source": "reconciled",
+            "timestamp": "1970-01-01T00:55:20.44Z"
+          },
+          {
+            "confidence": {
+              "computationVersion": "lap-validity.v1",
+              "rangeLower": 0,
+              "rangeUpper": 0,
+              "sampleSize": 2
+            },
+            "lapNumber": 34,
+            "location": {
+              "normalizedDistance": 0,
+              "presence": "valid"
+            },
+            "provenance": {
+              "kind": "derived",
+              "sourceId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607"
+            },
+            "quality": "valid",
+            "source": "reconciled",
+            "timestamp": "1970-01-01T00:56:55.18Z"
+          },
+          {
+            "confidence": {
+              "computationVersion": "lap-validity.v1",
+              "rangeLower": 0,
+              "rangeUpper": 0,
+              "sampleSize": 2
+            },
+            "lapNumber": 35,
+            "location": {
+              "normalizedDistance": 0,
+              "presence": "valid"
+            },
+            "provenance": {
+              "kind": "derived",
+              "sourceId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607"
+            },
+            "quality": "valid",
+            "source": "reconciled",
+            "timestamp": "1970-01-01T00:58:30.62Z"
+          },
+          {
+            "confidence": {
+              "computationVersion": "lap-validity.v1",
+              "rangeLower": 0,
+              "rangeUpper": 0,
+              "sampleSize": 2
+            },
+            "lapNumber": 36,
+            "location": {
+              "normalizedDistance": 0,
+              "presence": "valid"
+            },
+            "provenance": {
+              "kind": "derived",
+              "sourceId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607"
+            },
+            "quality": "valid",
+            "source": "reconciled",
+            "timestamp": "1970-01-01T01:00:05.96Z"
+          },
+          {
+            "confidence": {
+              "computationVersion": "lap-validity.v1",
+              "rangeLower": 0,
+              "rangeUpper": 0,
+              "sampleSize": 2
+            },
+            "lapNumber": 37,
+            "location": {
+              "normalizedDistance": 0,
+              "presence": "valid"
+            },
+            "provenance": {
+              "kind": "derived",
+              "sourceId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607"
+            },
+            "quality": "valid",
+            "source": "reconciled",
+            "timestamp": "1970-01-01T01:01:42.04Z"
+          },
+          {
+            "confidence": {
+              "computationVersion": "lap-validity.v1",
+              "rangeLower": 0,
+              "rangeUpper": 0,
+              "sampleSize": 2
+            },
+            "lapNumber": 38,
+            "location": {
+              "normalizedDistance": 0,
+              "presence": "valid"
+            },
+            "provenance": {
+              "kind": "derived",
+              "sourceId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607"
+            },
+            "quality": "valid",
+            "source": "reconciled",
+            "timestamp": "1970-01-01T01:03:16.82Z"
+          }
+        ],
+        "segments": [
+          {
+            "confidence": {
+              "computationVersion": "lap-validity.v1",
+              "rangeLower": 3772,
+              "rangeUpper": 3772,
+              "sampleSize": 1
+            },
+            "presence": "valid",
+            "provenance": {
+              "kind": "observed",
+              "sourceId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607"
+            },
+            "reason": "local_driver_window",
+            "segmentId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607:continuous-1",
+            "sessionEndTs": "1970-01-01T01:02:52Z",
+            "sessionStartTs": "1970-01-01T00:00:00Z"
+          }
+        ],
+        "stintBoundaries": [
+          {
+            "cause": "pit",
+            "confidence": {
+              "computationVersion": "lap-validity.v1",
+              "sampleSize": 1
+            },
+            "presence": "valid",
+            "provenance": {
+              "kind": "derived",
+              "sourceId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607"
+            },
+            "stintNumber": 2,
+            "timestamp": "1970-01-01T00:48:13.76Z"
+          },
+          {
+            "cause": "fuel_jump",
+            "confidence": {
+              "computationVersion": "lap-validity.v1",
+              "rangeLower": 23.07332146167755,
+              "rangeUpper": 23.07332146167755,
+              "sampleSize": 2
+            },
+            "presence": "unknown",
+            "provenance": {
+              "kind": "derived",
+              "sourceId": "ac32a2eae049a7dc680d1cc558e8a9e235524d26206341f2b91f3f162f3ed607"
+            },
+            "stintNumber": 3,
+            "timestamp": "1970-01-01T00:50:22.54Z"
+          }
+        ]
+      },
+      "tyreDegradation": {
+        "byAxle": {
+          "front": 0.510265184485394,
+          "rear": 0.4603890128757643
+        },
+        "byWheel": {
+          "FL": 0.38615118938943616,
+          "FR": 0.6343791795813519,
+          "RL": 0.44453761888586957,
+          "RR": 0.476240406865659
+        },
+        "compoundMappingNote": "unsupported: TyresCompound codes 0-2 have no semantic mapping",
+        "compoundPresence": "unsupported",
+        "confidence": {
+          "computationVersion": "derived-curves.v1",
+          "rangeLower": 0.279571533203125,
+          "rangeUpper": 2.1609039306640625,
+          "sampleSize": 23,
+          "variance": 0.050569466126563406
+        },
+        "lifeLapsByWheel": {
+          "FL": 162.98126556442543,
+          "FR": 84.1554526036179,
+          "RL": 137.44822434871892,
+          "RR": 111.43686881878608
+        },
+        "lifeLapsEstimate": 84,
+        "lifeLapsRangeLower": 84.1554526036179,
+        "lifeLapsRangeUpper": 162.98126556442543,
+        "lifeThresholdPercent": 20,
+        "presence": "valid",
+        "provenance": {
+          "kind": "derived",
+          "sourceId": "aggregate:lmu:885fd7a75c8aee6e456d91df6b49102820d325c27d5432cbd1f097aac6559632"
+        }
+      },
+      "virtualEnergyConsumption": {
+        "byClimateBucket": {
+          "dry": 0
+        },
+        "confidence": {
+          "computationVersion": "consumption-pace.v2",
+          "rangeLower": 0,
+          "rangeUpper": 0,
+          "sampleSize": 25,
+          "variance": 0
+        },
+        "meanPerLap": 0,
+        "presence": "valid",
+        "provenance": {
+          "kind": "derived",
+          "sourceId": "aggregate:lmu:885fd7a75c8aee6e456d91df6b49102820d325c27d5432cbd1f097aac6559632"
+        },
+        "rangeLower": 0,
+        "rangeUpper": 0
+      }
+    },
+    "overrides": {}
+  }
+}

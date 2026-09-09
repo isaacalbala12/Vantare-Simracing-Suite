@@ -1,5 +1,16 @@
 # Handoff vivo — Strategy Planner
 
+## Continuación activa T08 — ISA-1095 (2026-09-10)
+
+Worktree C:/tmp/vantare-isa1095-library, rama vantareapp/isa-1095-recorded-library,
+base 56d2c23e858a2f8b6a141ea106fe2f2d98867db4. Ramas anteriores congeladas.
+T05l final: 438 archivos/3422 tests frontend, lint/build PASS; conserva warnings
+heredados de teardown/chunks. T08i: etiquetas locales saneadas, sin exportar
+rutas ni nombres en dominio/procedencia. Go focal/global -p1/vet y build PASS.
+Sigue contrato TS y biblioteca paginada/buscable; luego datos/correcciones.
+Ruta nueva montada, pero cálculo avanzado, paridad >9, Wails y precisión real
+continúan pendientes. Sin push, PR, CI remota, merge, promoción ni release.
+
 ## T05/T09 montaje y biblioteca — continuación ISA-1094 (2026-09-10)
 
 Worktree activo C:/tmp/vantare-isa1094-route, rama vantareapp/isa-1094-recorded-route,

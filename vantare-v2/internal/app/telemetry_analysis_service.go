@@ -71,11 +71,12 @@ type TelemetryAnalysisStatus struct {
 }
 
 type TelemetryAnalysisCandidate struct {
-	ID         string    `json:"id"`
-	State      string    `json:"state"`
-	Size       int64     `json:"size"`
-	ModifiedAt time.Time `json:"modifiedAt"`
-	WALPresent bool      `json:"walPresent"`
+	DisplayName string    `json:"displayName,omitempty"`
+	ID          string    `json:"id"`
+	State       string    `json:"state"`
+	Size        int64     `json:"size"`
+	ModifiedAt  time.Time `json:"modifiedAt"`
+	WALPresent  bool      `json:"walPresent"`
 }
 
 type TelemetryAnalysisOpenRequest struct {
@@ -293,7 +294,8 @@ func observationForCandidate(candidate telemetryanalysis.Candidate, observedAt t
 
 func publicTelemetryAnalysisCandidate(candidate telemetryanalysis.Candidate) TelemetryAnalysisCandidate {
 	return TelemetryAnalysisCandidate{
-		ID: candidate.Locator, State: string(candidate.State), Size: candidate.Size,
+		DisplayName: candidate.DisplayName,
+		ID:          candidate.Locator, State: string(candidate.State), Size: candidate.Size,
 		ModifiedAt: candidate.ModTime, WALPresent: candidate.WALPresent,
 	}
 }

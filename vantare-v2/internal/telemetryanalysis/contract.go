@@ -67,13 +67,15 @@ type Provenance struct {
 }
 
 type Candidate struct {
-	Kind       SourceKind `json:"kind"`
-	Format     string     `json:"format"`
-	Locator    string     `json:"locator"`
-	Size       int64      `json:"size"`
-	ModTime    time.Time  `json:"modified_at"`
-	WALPresent bool       `json:"wal_present"`
-	State      State      `json:"state"`
+	// Local discovery label only; never serialize it into provenance or manifests.
+	DisplayName string     `json:"-"`
+	Kind        SourceKind `json:"kind"`
+	Format      string     `json:"format"`
+	Locator     string     `json:"locator"`
+	Size        int64      `json:"size"`
+	ModTime     time.Time  `json:"modified_at"`
+	WALPresent  bool       `json:"wal_present"`
+	State       State      `json:"state"`
 
 	sourcePath    string
 	walPath       string

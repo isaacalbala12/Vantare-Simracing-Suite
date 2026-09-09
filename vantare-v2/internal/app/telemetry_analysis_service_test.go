@@ -65,6 +65,32 @@ func TestTelemetryAnalysisDiscoversBoundedLargeLibrary(t *testing.T) {
 
 func (stub telemetryAnalysisAuthorizerStub) AllowsTelemetryAnalysis() bool { return stub.allowed }
 
+func TestTelemetryAnalysisDiscoveryProvidesOnlyALocalFilenameLabel(t *testing.T) {
+	svc, privatePath, now := telemetryAnalysisTestService(t, true)
+	t.Cleanup(func() {
+		if err := svc.ServiceShutdown(); err != nil {
+			t.Error(err)
+		}
+	})
+	candidate := telemetryAnalysisReadyCandidate(t, svc, now)
+	encoded, err := json.Marshal(candidate)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var fields map[string]any
+	if err := json.Unmarshal(encoded, &fields); err != nil {
+		t.Fatal(err)
+	}
+	if fields["displayName"] != filepath.Base(privatePath) {
+		t.Fatalf("local filename label = %v, want basename", fields["displayName"])
+	}
+	for key, value := range fields {
+		if text, ok := value.(string); ok && key != "displayName" && (strings.Contains(text, filepath.Base(privatePath)) || strings.Contains(text, filepath.Dir(privatePath))) {
+			t.Fatalf("private name escaped its local label in %s", key)
+		}
+	}
+}
+
 type telemetryAnalysisReaderStub struct {
 	mu             sync.Mutex
 	evidence       telemetryanalysis.HistoricalArtifactEvidence
@@ -223,7 +249,12 @@ func TestTelemetryAnalysisInspectsAndPagesOnlyAnOpaqueDiscoveredCandidate(t *tes
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(string(encodedCandidate), privatePath) || strings.Contains(string(encodedCandidate), filepath.Base(privatePath)) {
+	// SDD 4.2 permits a local display label. The path and opaque locator remain private.
+	encodedPrivatePath, err := json.Marshal(privatePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(encodedCandidate), string(encodedPrivatePath)) || strings.Contains(candidate.ID, filepath.Base(privatePath)) || strings.ContainsAny(candidate.DisplayName, `/\`) {
 		t.Fatalf("candidate leaked the private path: %s", encodedCandidate)
 	}
 	opened, err := svc.Open(context.Background(), TelemetryAnalysisOpenRequest{CandidateID: candidate.ID, UserApproved: true})

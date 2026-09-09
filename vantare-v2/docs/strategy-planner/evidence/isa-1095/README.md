@@ -95,3 +95,15 @@ Seis focales y tipos/lint focal PASS (C:/tmp/isa1095-t08h-*.log). Suite frontend
 general, lint general y build en curso. Cinco paths de lógica/test/CSS, más copy.
 Sigue sustituir entrada antigua y completar reapertura/listado nativo; todavía
 sin nueva ruta activa, paridad visual o prueba Wails de este recorrido.
+
+## T08i — nombres locales saneados (2026-09-10)
+
+Discovery devuelve displayName opcional únicamente en el DTO local. El dominio
+no lo serializa; no altera locator, apertura ni procedencia. Se elimina texto
+control/bidi y se limita a 256 caracteres. No se infiere combinación del nombre.
+SDD 4.2 sustituye explícitamente la prohibición histórica del basename en este
+DTO local; rutas e identificadores continúan protegidos. RED del contrato local,
+GREEN focal Go, build frontend, go test -p 1 ./... y vet general PASS.
+Logs C:/tmp/isa1095-t08i-{red,green,build,all,vet}.log. Cinco paths Go revisados.
+Siguiente: contrato TS compatible y biblioteca con búsqueda/paginación, sin
+abrir candidatos ocultos. Sin banco real, Wails o aceptación visual nuevos.

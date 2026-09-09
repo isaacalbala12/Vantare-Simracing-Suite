@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"unicode"
 )
 
 type SourceRoot struct {
@@ -119,7 +120,8 @@ func Discover(ctx context.Context, source MetadataSource, root SourceRoot, maxCa
 			state = StateActive
 		}
 		candidates = append(candidates, Candidate{
-			Kind: root.Kind, Format: sourceFormat(root, entry.Name),
+			DisplayName: sanitizedCandidateName(entry.Name),
+			Kind:        root.Kind, Format: sourceFormat(root, entry.Name),
 			Locator: redactLocator(root.Kind, sourcePath), Size: entry.Size,
 			ModTime: entry.ModTime.UTC(), WALPresent: walPresent, State: state,
 			sourcePath: sourcePath,
@@ -148,6 +150,22 @@ func hasAllowedExtension(name string, extensions []string) bool {
 
 func validEntryName(name string) bool {
 	return name != "" && name != "." && name != ".." && !strings.ContainsAny(name, `/\`)
+}
+
+// A filename helps local selection, but does not identify a car, track or source.
+// Remove control/format characters that can reorder or conceal visible text.
+func sanitizedCandidateName(name string) string {
+	clean := strings.Map(func(r rune) rune {
+		if unicode.IsControl(r) || unicode.In(r, unicode.Cf) {
+			return -1
+		}
+		return r
+	}, strings.ToValidUTF8(name, ""))
+	runes := []rune(strings.TrimSpace(clean))
+	if len(runes) > 256 {
+		runes = append(runes[:255], '…')
+	}
+	return string(runes)
 }
 
 func sourceFormat(root SourceRoot, name string) string {

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/vantare/overlays/v2/internal/strategy/solver"
 	"github.com/vantare/overlays/v2/internal/strategy/weather"
 	sp "github.com/vantare/overlays/v2/internal/telemetryanalysis/strategyprojection"
 )
@@ -15,9 +16,10 @@ import (
 // migración traerá según matriz-migracion-orbit.csv, incluida la marca
 // legacy_synthetic_default. Compatibilidad: v1 = strategy.v1, v2 = strategy.v2.
 const (
-	ContractVersionV1 ContractVersion = "strategy.v1"
-	ContractVersionV2 ContractVersion = "strategy.v2"
-	SchemaVersionV2   string          = "2.0.0"
+	ContractVersionV1    ContractVersion = "strategy.v1"
+	ContractVersionV2    ContractVersion = "strategy.v2"
+	SchemaVersionV2      string          = "2.0.0"
+	SchemaVersionV2Rules string          = "2.1.0"
 )
 
 type ContractVersion string
@@ -386,6 +388,7 @@ type PlanningInputs struct {
 }
 
 type Event struct {
+	Rules            *Sourced[solver.EventRules]       `json:"rules,omitempty"`
 	ID               EventID                           `json:"id"`
 	Name             Sourced[string]                   `json:"name"`
 	Source           Sourced[EventSource]              `json:"source"`
@@ -477,7 +480,7 @@ func (d StrategyDocumentV2) Validate() error {
 	if d.ContractVersion != ContractVersionV2 {
 		return fmt.Errorf("unsupported contractVersion %q", d.ContractVersion)
 	}
-	if d.SchemaVersion != SchemaVersionV2 {
+	if d.SchemaVersion != SchemaVersionV2 && d.SchemaVersion != SchemaVersionV2Rules {
 		return fmt.Errorf("unsupported schemaVersion %q", d.SchemaVersion)
 	}
 	if d.GeneratedAt.IsZero() {
@@ -492,6 +495,17 @@ func (d StrategyDocumentV2) Validate() error {
 			return fmt.Errorf("duplicate event id %q", ev.ID)
 		}
 		seen[ev.ID] = struct{}{}
+		if ev.Rules != nil {
+			if d.SchemaVersion != SchemaVersionV2Rules {
+				return fmt.Errorf("event %q rules require schema %s", ev.ID, SchemaVersionV2Rules)
+			}
+			if err := ev.Rules.Evidence.Validate(); err != nil {
+				return fmt.Errorf("event %q rules evidence: %w", ev.ID, err)
+			}
+			if err := ev.Rules.Value.Validate(); err != nil {
+				return fmt.Errorf("event %q rules: %w", ev.ID, err)
+			}
+		}
 		if err := ev.Name.Evidence.Validate(); err != nil {
 			return fmt.Errorf("event %q name evidence: %w", ev.ID, err)
 		}
@@ -790,7 +804,7 @@ func (d StrategyDocumentV2) Validate() error {
 		}
 		archived := StrategyDocumentV2{
 			ContractVersion: ContractVersionV2,
-			SchemaVersion:   SchemaVersionV2,
+			SchemaVersion:   d.SchemaVersion,
 			GeneratedAt:     archive.GeneratedAt,
 			Events:          archive.Events,
 			ActiveEventID:   archive.ActiveEventID,

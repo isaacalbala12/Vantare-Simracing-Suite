@@ -47,3 +47,21 @@ Revisión: clave de reglas es por evento, no por fuente; referencias Analysis no
 se modifican. No se promete UI conectada por aceptar JSON. Rollback del campo
 es seguro para este corte sin persistencia nueva; persistencia posterior debe
 fijar compatibilidad/versionado antes de guardar reglas en documentos.
+
+## T02b — contrato persistente de reglas (2026-09-09)
+
+T02a commit ad8774a5: Go completo -p 1, vet y frontend build PASS.
+T02b añade reglas con evidencia al documento y versión 2.1.0. Los documentos
+2.0.0 sin reglas siguen siendo válidos; reglas en 2.0.0 se rechazan. El solver
+es dueño del validador estructural reutilizado por el documento; perfiles,
+modelos y horizonte concreto se validan al calcular. Archivos originales intactos.
+
+Pruebas de versión/serialización y evidencia, más 11 casos estructurales PASS.
+La comparación JSON se corrigió para representar los números como float64;
+la diferencia era del test y no pérdida del contenido. Go completo -p 1 PASS
+(C:/tmp/isa1092-t02b-all.log), vet PASS (isa1092-t02b-vet.log), diff check PASS.
+No cambia frontend: se conserva el build T02a. No prueba Wails nueva.
+
+Pendiente inmediato T02c: promoción de versión al guardar mediante aplicación,
+cliente TS y transporte desde evento. Este corte define el contrato; no declara
+la interfaz conectada. No push, PR, CI remoto, merge ni release.

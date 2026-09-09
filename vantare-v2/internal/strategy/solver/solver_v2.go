@@ -437,14 +437,8 @@ func (in SolverInputV2) Validate() error {
 	if in.TyreLifeLaps.Value > maxSupportedLaps || math.Trunc(in.TyreLifeLaps.Value) != in.TyreLifeLaps.Value {
 		return fmt.Errorf("tyreLifeLaps out of range")
 	}
-	if in.EventRules.MinPitStops != nil && *in.EventRules.MinPitStops < 0 {
-		return fmt.Errorf("eventRules.minPitStops invalid")
-	}
-	if in.EventRules.MaxPitStops != nil && *in.EventRules.MaxPitStops < 0 {
-		return fmt.Errorf("eventRules.maxPitStops invalid")
-	}
-	if in.EventRules.MinPitStops != nil && in.EventRules.MaxPitStops != nil && *in.EventRules.MinPitStops > *in.EventRules.MaxPitStops {
-		return fmt.Errorf("eventRules pit stop range invalid")
+	if err := in.EventRules.Validate(); err != nil {
+		return err
 	}
 	for field, value := range map[string]ScalarInput{
 		"fuelPerLapLiters":         in.FuelPerLapLiters,

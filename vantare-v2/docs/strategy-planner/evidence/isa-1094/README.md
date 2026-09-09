@@ -80,3 +80,12 @@ el borrador y debe confirmar persistencia; el componente no afirma guardado.
 18 tests focales, tipos y lint focal PASS (C:/tmp/isa1094-t05f-*.log).
 La ruta vieja sigue vigente hasta completar persistencia/entrega e integración.
 No hay nuevo renderer ni motor: componentes productivos reutilizan el marco A4.
+
+## T05g1 — contrato del borrador persistido
+
+Payload strategy.recorded.draft.v1 para PlanDraft existente, con validación de
+forma antes de mostrar datos reabiertos. Conserva vacíos, cero, deltas y referencias
+completas; rechaza tipos/versión incompatibles. Snapshot de calendario conserva
+campos publicados, clase canónica y versión, independiente del objeto de origen.
+17 tests focales PASS; tipos/lint focal PASS antes del último caso adicional.
+No persiste aún: siguiente corte adapter create/edit/open y prueba Go de reapertura.

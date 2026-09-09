@@ -27,6 +27,9 @@ T05f orquestador de cinco pasos + validación de valores presentes: 18 focales,
 tipos/lint focal PASS. Todavía no sustituye la ruta anterior. Siguiente corte:
 guardar/abrir borrador incompleto con PlanDraft nativo existente, payload versionado
 y tests de reapertura; luego integración y capturas sobre recorrido productivo.
+T05g1 contrato del payload y parser: 17 casos focales PASS; tipos/lint focal PASS
+antes del último caso. Sigue adapter nativo y test real de repositorio, sin otra
+persistencia ni defaults para completar Event. Base de ese corte fe730fdf.
 No paridad visual final, Wails, push/PR/CI remoto, merge ni promoción.
 
 ## T04 A4 productivo — ISA-1093 (2026-09-09)

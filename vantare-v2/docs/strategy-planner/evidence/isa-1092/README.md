@@ -73,3 +73,15 @@ sin reglas ni degradan versión al retirarlas. Dos casos RED antes del cambio,
 GREEN después, incluyendo reapertura del repositorio y comparación de evidencia.
 Go completo -p1 PASS (isa1092-t02c1-all.log), vet PASS
 (isa1092-t02c1-vet.log). El cliente TS se conecta en el siguiente corte.
+
+## T02c2 — cliente tipado
+
+Cliente admite schema2.0.0/2.1.0, exige versión nueva para reglas y valida su
+estructura y evidencia. El tipo de cálculo admite event.rules. 48 tests focales,
+420 archivos/3320 tests frontend PASS, typecheck PASS, lint PASS, build PASS.
+Logs C:/tmp/isa1092-t02c2-{focused,tests,types,lint,build}.log. La suite imprime
+AbortError de teardown happy-dom; termina exit0 sin tests fallidos. Aviso de
+chunks grandes heredado. No nueva prueba Wails ni paridad visual.
+
+Reglas de evento todavía no se envían desde la pantalla productiva; ese enlace
+es T02c4. T02c3 cubre antes compatibilidad de backup/preview/rollback antiguo.

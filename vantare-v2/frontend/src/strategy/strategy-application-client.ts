@@ -1,4 +1,5 @@
 import { Events } from "@wailsio/runtime";
+import { validateStrategyEventRules, type StrategyEventRules } from "./strategy-event-rules";
 
 import {
   decodePlanRevisionV1,
@@ -249,6 +250,7 @@ export type StrategySessionSelectionV2 = {
 };
 
 export type StrategyEventV2 = {
+  readonly rules?: StrategySourcedV2<StrategyEventRules>;
   readonly id: string;
   readonly name: StrategySourcedV2<string>;
   readonly source: StrategySourcedV2<"custom" | "series" | "roster">;
@@ -280,7 +282,7 @@ export type StrategyEventV2 = {
 
 export type StrategyDocumentV2 = {
   readonly contractVersion: "strategy.v2";
-  readonly schemaVersion: "2.0.0";
+  readonly schemaVersion: "2.0.0" | "2.1.0";
   readonly generatedAt: string;
   readonly events: readonly StrategyEventV2[];
   readonly activeEventId?: string;
@@ -347,6 +349,7 @@ export type StrategyVariantComparisonV2 = {
 
 export type StrategyOrbitCalculationInputV1 = {
   readonly event: {
+    readonly rules?: StrategyEventRules;
     readonly durationMinutes: number;
     readonly tankLiters: number;
     readonly pitLossSeconds: number;
@@ -1108,11 +1111,14 @@ function parseActivePlans(value: unknown): readonly ActivePlanV1[] {
 
 function parseStrategyDocumentV2(value: unknown): StrategyDocumentV2 {
   const document = strategyRecord(value, "document");
-  if (document.contractVersion !== "strategy.v2" || document.schemaVersion !== "2.0.0") {
+  if (document.contractVersion !== "strategy.v2" || !["2.0.0", "2.1.0"].includes(document.schemaVersion as string)) {
     throw new Error("Unsupported Strategy document version");
   }
   strategyString(document.generatedAt, "document.generatedAt");
   const events = parseStrategyEventsV2(document.events, "document.events");
+  if (document.schemaVersion === "2.0.0" && events.some(event => event.rules !== undefined)) {
+    throw new Error("Invalid Strategy document.rules version");
+  }
   if (document.activeEventId !== undefined) {
     strategyString(document.activeEventId, "document.activeEventId");
   }
@@ -1148,7 +1154,10 @@ function parseStrategyDocumentV2(value: unknown): StrategyDocumentV2 {
       strategyString(archive.journalId, `document.migrationArchives.${index}.journalId`);
       strategyString(archive.archivedAt, `document.migrationArchives.${index}.archivedAt`);
       strategyString(archive.generatedAt, `document.migrationArchives.${index}.generatedAt`);
-      parseStrategyEventsV2(archive.events, `document.migrationArchives.${index}.events`);
+      const archivedEvents = parseStrategyEventsV2(archive.events, `document.migrationArchives.${index}.events`);
+      if (document.schemaVersion === "2.0.0" && archivedEvents.some(event => event.rules !== undefined)) {
+        throw new Error("Invalid Strategy document.migrationArchives.rules version");
+      }
       if (archive.activeEventId !== undefined) strategyString(archive.activeEventId, `document.migrationArchives.${index}.activeEventId`);
     }
   }
@@ -1208,6 +1217,7 @@ function parseStrategyEventsV2(value: unknown, field: string): readonly Strategy
 
 function parseStrategyEventV2(value: unknown, field: string): StrategyEventV2 {
   const event = strategyRecord(value, field);
+  if (event.rules !== undefined) validateStrategyEventRules(parseStrategySourcedV2(event.rules, `${field}.rules`), `${field}.rules.value`);
   strategyString(event.id, `${field}.id`);
   strategyString(parseStrategySourcedV2(event.name, `${field}.name`), `${field}.name.value`);
   strategyEnum(parseStrategySourcedV2(event.source, `${field}.source`), `${field}.source.value`, ["custom", "series", "roster"]);

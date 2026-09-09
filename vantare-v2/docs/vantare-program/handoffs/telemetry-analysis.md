@@ -8,7 +8,7 @@ Primer corte backend: event.rules opcional reutiliza EventRules del solver,
 aplicado en búsqueda, comparación Weather y replay final mediante el adapter
 común. Tests RED/GREEN para min/max paradas, negativos, driverLimits sin perfil,
 ventana obligatoria y override que la viola. Documento/TS/UI aún no emiten reglas.
-T02a commit ad8774a5: Go global y vet PASS. T02b: contrato de reglas con evidencia y schema2.1.0 validado; Go global/vet PASS. T02c1: crear/editar promueve schema al añadir reglas; reapertura y Go global/vet PASS. Sigue T02c2: cliente TS. Evidencia detallada en isa-1092/README.md; UI aún pendiente.
+T02a commit ad8774a5: Go global y vet PASS. T02b: contrato de reglas con evidencia y schema2.1.0 validado; Go global/vet PASS. T02c1: crear/editar promueve schema al añadir reglas; reapertura y Go global/vet PASS. T02c2: cliente TS validado; 420 archivos/3320 tests, tipos, lint y build PASS. T02c3 compatibilidad legacy en curso; T02c4 enlaza pantalla. Evidencia detallada en isa-1092/README.md; UI aún pendiente.
 
 T01/ISA-1089: commit6d4aa514, build frontend, Go global -p1 y vet PASS.
 Intento Wails diagnóstico PID18668 terminó sin abrir CDP: puerto39261 ocupado,

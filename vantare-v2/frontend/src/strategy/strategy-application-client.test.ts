@@ -9,6 +9,43 @@ import {
 import orbitGolden from "../hub/strategy-orbit/testdata/orbit-go-golden.json";
 import projectionGolden from "../../../internal/telemetryanalysis/strategyprojection/testdata/strategyinputprojection_v2_new.json";
 
+describe("event rules document transport", () => {
+  it.each([
+    ["2.0.0", undefined, true],
+    ["2.1.0", { minPitStops: 2, requiredWindows: [{ fromLap: 10, toLap: 20 }] }, true],
+    ["2.0.0", { minPitStops: 2 }, false],
+    ["2.2.0", undefined, false],
+    ["2.1.0", null, false],
+    ["2.1.0", { minPitStops: -1 }, false],
+    ["2.1.0", { minPitStops: 3, maxPitStops: 1 }, false],
+    ["2.1.0", { requiredWindows: [{ fromLap: 0, toLap: 2 }] }, false],
+    ["2.1.0", { driverLimits: { d1: { maxTotalTimeSeconds: 100 } }, allowedCompoundsByClimate: { dry: ["soft"] } }, true],
+    ["2.1.0", { driverLimits: { d1: { maxLaps: 1.5 } } }, false],
+    ["2.1.0", { allowedCompoundsByClimate: { dry: [] } }, false],
+    ["2.1.0", { mandatoryCompounds: ["soft", "soft"] }, false],
+  ])("validates version %s and rules %j", async (schemaVersion, rules, valid) => {
+    const transport = createTransport();
+    const client = createStrategyApplicationClient<Payload>(transport);
+    const evidence = { provenance: { kind: "manual", sourceId: "test" }, confidence: { level: "high", basis: "test" } };
+    const sourced = (value: unknown) => ({ value, evidence });
+    const event = {
+      id: "event-1", name: sourced("Race"), source: sourced("custom"), track: sourced("Fuji"), cls: sourced("Hypercar"),
+      durationMin: sourced(60), startAt: sourced(null), tankLiters: sourced(100), pitLossSeconds: sourced(50),
+      fillMode: sourced("manual"), drivers: [], strategies: [], availability: {}, tyreInventory: { sets: [] },
+      ...(rules === undefined ? {} : { rules: sourced(rules) }),
+    };
+    const pending = client.execute({ protocolVersion: "strategy.application.v1", commandId: "rules", operation: "list_events", expectedRepositoryVersion: 1 });
+    emit(transport, "strategy:application:result", {
+      protocolVersion: "strategy.application.v1", commandId: "rules", repositoryVersion: 1, recoveredFromBackup: false, closed: false,
+      strategyDocument: { contractVersion: "strategy.v2", schemaVersion, generatedAt: "2026-09-09T12:00:00Z", events: [event] },
+    });
+    try {
+      if (valid) await expect(pending).resolves.toMatchObject({ strategyDocument: { schemaVersion, events: [event] } });
+      else await expect(pending).rejects.toThrow(/Strategy/);
+    } finally { client.dispose(); }
+  });
+});
+
 type Payload = { laps: number };
 
 type MockTransport = StrategyApplicationEventTransport & {

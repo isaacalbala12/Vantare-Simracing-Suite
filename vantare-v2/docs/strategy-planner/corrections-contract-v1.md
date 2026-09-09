@@ -397,3 +397,23 @@ parcial. Una respuesta posterior a cancelación también se rechaza. La consulta
 conserva ajustes y no escribe al repositorio. Documentos sin referencias siguen
 la vía anterior. Main conecta el adaptador después de construir Analysis y su
 frontera de licencia. No cambia autorización ni reapertura de archivos.
+
+## Sesiones registradas desde Orbit — #1088
+
+El panel productivo de Sesiones usa el cliente nativo para descubrimiento y
+apertura explícita, preparación y proyección de la revisión base. Si la fuente
+ya tiene referencia guardada, reabre esa revisión exacta, no la cabeza actual.
+La confirmación sustituye las sesiones incluidas y persiste las referencias;
+una respuesta de consulta nunca crea por sí sola una selección.
+
+El panel mantiene handles entre pestañas del editor. Salir de ese editor/evento
+libera las sesiones; volver a calcular después exige reapertura explícita.
+Cancelar Open conserva la respuesta para poder liberar el recurso adquirido;
+no se pierde el handle descartando simplemente una promesa tardía. No hay
+reintentos automáticos ni error de limpieza oculto. El máximo sigue siendo
+cuatro sesiones. Los ajustes manuales existentes se conservan.
+
+Este panel usa el kit productivo Orbit; no es todavía el porte completo de las
+pantallas A4 aprobadas. El banco opt-in usa DuckDB reales con lector nativo,
+licencia controlada de test y originales verificados por hash: no certifica
+login real Wails, exactitud física ni optimalidad de una carrera.

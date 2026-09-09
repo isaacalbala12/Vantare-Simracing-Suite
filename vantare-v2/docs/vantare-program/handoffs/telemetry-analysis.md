@@ -1,5 +1,16 @@
 # Handoff vivo — Telemetry Analysis
 
+## UI y validación real — ISA-1088 (2026-09-09)
+
+Rama vantareapp/isa-1088-recorded-session-ui, C:/tmp/vantare-isa1088,
+base 7b0afab9. Panel Sesiones conectado con apertura/preparación/revisión exacta.
+Banco real Imola/Monza y lectura de entradas por Strategy PASS; hashes intactos.
+Wails abre; evento nuevo de Imola reproduce timeout (#1089). Acceso a Sesiones
+ante fallo corregido con RED/GREEN. Búsqueda real bloqueada por límite 128,
+frente a carpeta >400: siguiente corrección aislada. No se certifica recorrido
+UI completo, A4 productivo completo ni precisión física. Detalle:
+docs/strategy-planner/evidence/isa-1088/README.md. Runtime liberado para #1072.
+
 ## Consumidor conectado — ISA-1087 (2026-09-09)
 
 Base 11676e9958d951fc1ed999055b4b38f0103590d0; rama

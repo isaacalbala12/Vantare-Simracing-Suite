@@ -62,3 +62,13 @@ La acción Usar conserva referencias completas y paso actual; abrir no acepta
 ni navega automáticamente. 13 tests focales, tipos y lint focal PASS
 (C:/tmp/isa1095-t08e-*.log). Cuatro paths de lógica/test. Sigue integrar el
 propietario estable con asistente, editor y persistencia nativa.
+
+## T08f — propietario del recorrido y guardado real
+
+useRecordedWorkflow conserva un owner por evento durante preparación/editor,
+incluida la resolución inicial de combinación. La aceptación usa la política
+T08e; abrir editor exige respuesta de create/save_revision nativo. Un fallo
+mantiene preparación/cambios sin guardar, y el guard impide doble escritura o
+ediciones durante ella. No dispone del cliente compartido ni activa planes.
+11 focales, tipos y lint focal PASS (C:/tmp/isa1095-t08f-*.log).
+Dos paths; todavía falta montar este owner en la ruta productiva.

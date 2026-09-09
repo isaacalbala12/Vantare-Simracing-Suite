@@ -25,6 +25,10 @@ T08e apertura del owner sin combinación y aceptación explícita de propuestas:
 13 focales/tipos/lint PASS; se rechazan identidades contradictorias, mezcla de
 fuentes y calendario incompatible. Abrir no acepta ni avanza. Siguiente:
 integración productiva conservando propietario de handles y guardado nativo.
+T08f owner del recorrido une aceptación y persistencia; conserva handles al
+pasar preparación/editor, sólo abre editor tras respuesta nativa y mantiene
+cambios ante conflicto. Doble escritura/edición durante escritura bloqueadas.
+11 focales/tipos/lint PASS. Sigue montaje visual/ruta, no aceptación Wails.
 
 ## T05 asistente registrado — ISA-1094 (2026-09-10)
 

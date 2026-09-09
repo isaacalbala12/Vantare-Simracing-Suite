@@ -72,3 +72,13 @@ mantiene preparación/cambios sin guardar, y el guard impide doble escritura o
 ediciones durante ella. No dispone del cliente compartido ni activa planes.
 11 focales, tipos y lint focal PASS (C:/tmp/isa1095-t08f-*.log).
 Dos paths; todavía falta montar este owner en la ruta productiva.
+
+## T08g — resumen productivo A4
+
+StrategyRecordedOverview y CSS siguen pass-07-summary.png: filas de evento,
+reglas y pilotos, fuentes y plan lateral sobre garaje. Usa sólo configuración
+y referencias del borrador. Cálculo deshabilitado, validación pendiente; no
+simula vueltas/calidad/resultado. Acciones delegadas al owner, guardado limpio
+deshabilitado y errores visibles. Copy es/en/it/pt. Tres tests focales, tipos y
+lint focal PASS (C:/tmp/isa1095-t08g-*.log). Sin captura de paridad aún: componente
+no montado en ruta. Sigue unir asistente/resumen/biblioteca con el owner T08f.

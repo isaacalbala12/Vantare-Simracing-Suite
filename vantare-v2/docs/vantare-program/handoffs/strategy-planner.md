@@ -29,6 +29,9 @@ T08f owner del recorrido une aceptación y persistencia; conserva handles al
 pasar preparación/editor, sólo abre editor tras respuesta nativa y mantiene
 cambios ante conflicto. Doble escritura/edición durante escritura bloqueadas.
 11 focales/tipos/lint PASS. Sigue montaje visual/ruta, no aceptación Wails.
+T08g resumen A4 TSX/CSS con valores reales del borrador, cálculo/validación
+pendientes y copy en cuatro idiomas: 3 focales/tipos/lint PASS. Aún sin montar;
+no certificado visual. Sigue composición asistente/resumen/biblioteca.
 
 ## T05 asistente registrado — ISA-1094 (2026-09-10)
 

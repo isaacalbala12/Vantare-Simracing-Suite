@@ -2,6 +2,19 @@
 
 ## T05i / T09 — continuación de montaje y biblioteca nativa
 
+T05j monta StrategyRecordedPage en OrbitShell: entrada de cinco pasos, resumen
+y biblioteca nativa. No monta el componente anterior ni sus suscripciones live;
+los tests conservados de ese componente son históricos, no aceptación de esta ruta.
+Contexto propio sin bloques de carreras/overlay/launcher. Navegación protege
+descarte y apertura pendiente. Cinco focales de página/workflow, tipos/lint PASS.
+Build inicial PASS; gate general posterior pendiente tras últimos ajustes de UI.
+Capture headless real del TSX en harness existente: sin pageerror ni overflow,
+grid72/256/1344 a1672x941. C:/tmp/isa1094-route-{start,combination}.png. El harness
+usa fixtures existentes: no prueba DuckDB/Wails. Pendiente alinear título,
+indicadores y footer con la referencia antes de review visual independiente.
+Roadmap actualizado en cuatro idiomas y digest regenerado; entrega parcial
+feature, cálculo/operaciones avanzadas/validación final siguen pendientes explícitos.
+
 Base d5fe69da211438b8f01c65fbb1af932b0195ab51 de #1095. Worktree activo
 C:/tmp/vantare-isa1094-route, rama vantareapp/isa-1094-recorded-route; la rama
 anterior queda como corte histórico, no hay edición paralela sobre esta issue.

@@ -730,4 +730,13 @@ export const strategyOrbitEs: Record<string, string> = {
 "strategy.workspace.leaveTitle": "Salir de la preparación",
 "strategy.workspace.leaveBody": "Los cambios sin guardar se perderán. Los archivos originales se conservarán.",
 "strategy.workspace.leave": "Salir sin guardar",
+"strategy.workspace.cleanupFailed": "No se pudo confirmar el cierre de una sesión. Revisa el estado de los archivos abiertos.",
+"strategy.workspace.libraryHint": "Abre un borrador guardado para revisar su configuración y sus referencias de telemetría.",
+"strategy.workspace.search": "Buscar estrategia",
+"strategy.workspace.refresh": "Actualizar",
+"strategy.workspace.loading": "Cargando estrategias…",
+"strategy.workspace.libraryError": "No se pudo consultar o abrir la estrategia. Actualiza la lista e inténtalo de nuevo.",
+"strategy.workspace.recovered": "El repositorio se ha recuperado desde una copia de seguridad.",
+"strategy.workspace.emptyLibrary": "No hay estrategias registradas que coincidan con la búsqueda.",
+"strategy.workspace.open": "Abrir borrador",
 };

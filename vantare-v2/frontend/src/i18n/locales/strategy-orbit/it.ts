@@ -731,4 +731,13 @@ export const strategyOrbitIt: Record<string, string> = {
 "strategy.workspace.leaveTitle": "Esci dalla preparazione",
 "strategy.workspace.leaveBody": "Le modifiche non salvate andranno perse. I file originali saranno conservati.",
 "strategy.workspace.leave": "Esci senza salvare",
+"strategy.workspace.cleanupFailed": "Impossibile confermare la chiusura di una sessione. Controlla i file aperti.",
+"strategy.workspace.libraryHint": "Apri una bozza salvata per rivedere la configurazione e i riferimenti di telemetria.",
+"strategy.workspace.search": "Cerca strategie",
+"strategy.workspace.refresh": "Aggiorna",
+"strategy.workspace.loading": "Caricamento strategie…",
+"strategy.workspace.libraryError": "Impossibile consultare o aprire la strategia. Aggiorna l’elenco e riprova.",
+"strategy.workspace.recovered": "Il repository è stato recuperato da una copia di sicurezza.",
+"strategy.workspace.emptyLibrary": "Nessuna strategia registrata corrisponde alla ricerca.",
+"strategy.workspace.open": "Apri bozza",
 };

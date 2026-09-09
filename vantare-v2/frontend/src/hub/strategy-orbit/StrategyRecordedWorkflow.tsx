@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import type { Calendar } from "../../calendar/calendar-types";
 import type { AnalysisClient } from "../../strategy/analysis-client";
 import type { StrategyApplicationClient } from "../../strategy/strategy-application-client";
@@ -6,18 +6,19 @@ import { ConfirmDialog, Drawer } from "../../ui/orbit";
 import { useHubSuspendBlocker } from "../hub-suspend-guard";
 import type { RecordedDraftPayload } from "./strategy-recorded-payload";
 import type { StoredRecordedDraft } from "./strategy-recorded-persistence";
-import type { RecordedCombination, RecordedWizardStep } from "./strategy-recorded-wizard";
+import type { RecordedCombination, RecordedWizardDraft, RecordedWizardStep } from "./strategy-recorded-wizard";
 import { useRecordedWorkflow } from "./use-recorded-workflow";
 import { StrategyRecordedWizard } from "./StrategyRecordedWizard";
 import { StrategyRecordedOverview } from "./StrategyRecordedOverview";
 import { StrategyRecordedSessionsView } from "./StrategyRecordedSessions";
 
 /** Mount once per event. Views never own or dispose the opened Analysis files. */
-export function StrategyRecordedWorkflow({ eventId, repositoryVersion, initial, catalog, catalogState, calendar, application, analysis, onExit, onCleanupError, t }: {
+export function StrategyRecordedWorkflow({ eventId, repositoryVersion, initial, catalog, catalogState, calendar, application, analysis, onExit, onCleanupError, navigation, t }: {
   readonly eventId: string; readonly repositoryVersion?: number; readonly initial?: StoredRecordedDraft;
   readonly catalog: readonly RecordedCombination[]; readonly catalogState: "loading" | "available" | "unavailable";
   readonly calendar: Calendar | null; readonly application: StrategyApplicationClient<RecordedDraftPayload>;
   readonly analysis?: AnalysisClient; readonly onExit: () => void; readonly onCleanupError: () => void; readonly t: (key: string) => string;
+  readonly navigation?: (state: { requestExit: () => void; draft: RecordedWizardDraft; view: "preparation" | "editor"; busy: boolean }) => ReactNode;
 }) {
   const flow = useRecordedWorkflow({ eventId, repositoryVersion, initial, catalog, application, analysis, onCleanupError });
   useHubSuspendBlocker(`strategy-recorded:${eventId}`, t("strategy.workspace.unsaved"), flow.dirty || flow.busy);
@@ -29,7 +30,8 @@ export function StrategyRecordedWorkflow({ eventId, repositoryVersion, initial, 
   const error = flow.error || flow.proposalError ? t("strategy.workspace.operationFailed") : undefined;
   const sourceView = <StrategyRecordedSessionsView controller={flow.sessions} t={t} />;
   return <div className="strategy-recorded-workflow" data-view={flow.view}>
-    {flow.view === "preparation" ? <StrategyRecordedWizard draft={flow.draft} onChange={flow.change} catalog={flow.choices} catalogState={catalogState} calendar={calendar}
+    {navigation?.({ requestExit: exit, draft: flow.draft, view: flow.view, busy: flow.busy })}
+    {flow.view === "preparation" ? <StrategyRecordedWizard draft={flow.draft} onChange={flow.change} catalog={flow.choices} catalogState={flow.choices.length > 0 ? "available" : catalogState} calendar={calendar}
       onDiscover={discover} sessions={sourceView} onOpenDraft={() => void flow.openEditor()} onExit={exit} busy={flow.saving} error={error} t={t} />
       : <StrategyRecordedOverview draft={flow.draft} dirty={flow.dirty} busy={flow.busy} error={error} onEdit={edit} onSources={() => setLibraryOpen(true)} onSave={() => void flow.save()} t={t} />}
     <Drawer open={libraryOpen} title={t("strategy.recorded.title")} closeLabel={t("strategy.recorded.close")} onClose={() => setLibraryOpen(false)}>{sourceView}</Drawer>

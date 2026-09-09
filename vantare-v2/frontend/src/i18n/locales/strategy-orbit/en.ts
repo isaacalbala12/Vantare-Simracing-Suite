@@ -730,4 +730,13 @@ export const strategyOrbitEn: Record<string, string> = {
 "strategy.workspace.leaveTitle": "Leave preparation",
 "strategy.workspace.leaveBody": "Unsaved changes will be lost. Original files will be preserved.",
 "strategy.workspace.leave": "Leave without saving",
+"strategy.workspace.cleanupFailed": "A session closure could not be confirmed. Review the open files.",
+"strategy.workspace.libraryHint": "Open a saved draft to review its configuration and telemetry references.",
+"strategy.workspace.search": "Search strategies",
+"strategy.workspace.refresh": "Refresh",
+"strategy.workspace.loading": "Loading strategies…",
+"strategy.workspace.libraryError": "The strategy could not be listed or opened. Refresh the list and try again.",
+"strategy.workspace.recovered": "The repository was recovered from a backup.",
+"strategy.workspace.emptyLibrary": "No recorded strategies match your search.",
+"strategy.workspace.open": "Open draft",
 };

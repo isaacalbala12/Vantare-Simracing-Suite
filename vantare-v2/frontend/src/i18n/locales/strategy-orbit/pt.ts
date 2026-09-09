@@ -730,4 +730,13 @@ export const strategyOrbitPt: Record<string, string> = {
 "strategy.workspace.leaveTitle": "Sair da preparação",
 "strategy.workspace.leaveBody": "As alterações não guardadas serão perdidas. Os ficheiros originais serão preservados.",
 "strategy.workspace.leave": "Sair sem guardar",
+"strategy.workspace.cleanupFailed": "Não foi possível confirmar o fecho de uma sessão. Revê os ficheiros abertos.",
+"strategy.workspace.libraryHint": "Abre um rascunho guardado para rever a configuração e as referências de telemetria.",
+"strategy.workspace.search": "Procurar estratégias",
+"strategy.workspace.refresh": "Atualizar",
+"strategy.workspace.loading": "A carregar estratégias…",
+"strategy.workspace.libraryError": "Não foi possível consultar ou abrir a estratégia. Atualiza a lista e tenta novamente.",
+"strategy.workspace.recovered": "O repositório foi recuperado a partir de uma cópia de segurança.",
+"strategy.workspace.emptyLibrary": "Nenhuma estratégia registada corresponde à pesquisa.",
+"strategy.workspace.open": "Abrir rascunho",
 };

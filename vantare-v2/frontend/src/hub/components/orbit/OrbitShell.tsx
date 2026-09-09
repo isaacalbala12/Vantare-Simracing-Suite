@@ -54,9 +54,9 @@ import {
   RACES_TOPBAR_SLOT_ID,
 } from '../../races-orbit/RacesOrbitPage';
 import {
-  StrategyOrbitPage,
+  StrategyRecordedPage,
   STRATEGY_CONTEXT_SLOT_ID,
-} from '../../strategy-orbit/StrategyOrbitPage';
+} from '../../strategy-orbit/StrategyRecordedPage';
 import { EngineerOrbitPage } from '../../engineer-orbit/EngineerOrbitPage';
 import {
   TelemetryOrbitPage,
@@ -335,7 +335,7 @@ function OrbitShellBody({
         id: 'races',
         // En el Studio la columna es solo la lista de widgets (briefing 04):
         // ni carreras ni launcher compiten por su altura.
-        hiddenFor: ['carreras', 'studio'],
+        hiddenFor: ['carreras', 'studio', 'estrategia'],
         content: (
           <SideRaces
             labels={{
@@ -352,7 +352,7 @@ function OrbitShellBody({
       },
       {
         id: 'profile',
-        hiddenFor: ['studio'],
+        hiddenFor: ['studio', 'estrategia'],
         content: (
           <SideProfile
             active={overlay.active}
@@ -375,7 +375,7 @@ function OrbitShellBody({
       },
       {
         id: 'launcher',
-        hiddenFor: ['launcher', 'studio'],
+        hiddenFor: ['launcher', 'studio', 'estrategia'],
         content: (
           <SideLauncher
             labels={{
@@ -604,7 +604,7 @@ function OrbitShellBody({
             ) : activeView === 'carreras' ? (
               <RacesOrbitPage calendar={races.calendar} target={navTarget} />
             ) : activeView === 'estrategia' ? (
-              <StrategyOrbitPage />
+              <StrategyRecordedPage />
             ) : activeView === 'ingeniero' ? (
               <EngineerOrbitPage />
             ) : activeView === 'telemetria' ? (

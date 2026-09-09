@@ -7,6 +7,12 @@ base d5fe69da211438b8f01c65fbb1af932b0195ab51 de #1095. Rama anterior #1094
 conservada como corte histórico. T05i lista resúmenes nativos y abre payload
 sólo por selección, con validación de identidad evento/plan/variante. 14 focales,
 tipos/lint PASS; sigue entrada productiva y contexto A4. Sin ruta nueva montada aún.
+T05j sustituye esa última anotación: OrbitShell monta StrategyRecordedPage,
+con asistente/resumen/listado nativo y sin suscripción live del editor anterior.
+Cinco focales, tipos/lint PASS; build inicial PASS, gate general posterior pendiente.
+Captura harness sin errores/overflow; no paridad final ni Wails. Siguiente ajustar
+título, selección y footer A4, después continuar datos/cálculo pendientes del SDD.
+Roadmap describe entrega parcial y límites, cuatro idiomas/digest actualizado.
 Gate #1095 T08h final: 436 archivos/3412 tests, lint/build PASS, con avisos
 heredados de teardown/chunks. No Wails/paridad/empírico nuevo ni promoción.
 

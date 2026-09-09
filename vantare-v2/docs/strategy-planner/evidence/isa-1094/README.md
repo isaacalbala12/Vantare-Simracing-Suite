@@ -2,6 +2,15 @@
 
 ## T05i / T09 — continuación de montaje y biblioteca nativa
 
+T05k: ajustes visuales y corrección del grid al comprimir contexto. Evidencia
+en [route-pass-01](route-pass-01/README.md). Gate general 438 archivos/3420 tests,
+lint y build final PASS. Capturas de cinco pasos/resumen y tamaños menores;
+todavía sin pestañas/operaciones avanzadas/cálculo ni review visual independiente.
+Pendiente gate visible de versión de repositorio: dos repeticiones del harness
+rechazaron guardar, la posterior pasó; causa no demostrada. El owner ya rechaza
+versión desconocida sin escribir. Se añadirá prueba de carga retrasada antes
+de continuar el resto de datos/plan.
+
 T05j monta StrategyRecordedPage en OrbitShell: entrada de cinco pasos, resumen
 y biblioteca nativa. No monta el componente anterior ni sus suscripciones live;
 los tests conservados de ese componente son históricos, no aceptación de esta ruta.

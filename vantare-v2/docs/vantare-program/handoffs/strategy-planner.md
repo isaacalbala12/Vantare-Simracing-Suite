@@ -13,6 +13,13 @@ Cinco focales, tipos/lint PASS; build inicial PASS, gate general posterior pendi
 Captura harness sin errores/overflow; no paridad final ni Wails. Siguiente ajustar
 título, selección y footer A4, después continuar datos/cálculo pendientes del SDD.
 Roadmap describe entrega parcial y límites, cuatro idiomas/digest actualizado.
+T05k: paridad parcial de título/check/footer/contexto/fondo. Corrige grid de
+ancho cero al comprimir sidebar (captura RED, banco de geometría GREEN).
+438 archivos/3420 tests, lint/build final PASS; evidencia isa-1094/route-pass-01.
+Faltan pestañas y operaciones avanzadas/cálculo; no review >9 ni Wails. Dos
+repeticiones visuales fallaron al guardar, otra pasó: causa aún no demostrada.
+Siguiente gate visible de repositorio cargado (owner ya rechaza desconocido),
+prueba retrasada; después datos/plan/revisiones y tareas nativas pendientes.
 Gate #1095 T08h final: 436 archivos/3412 tests, lint/build PASS, con avisos
 heredados de teardown/chunks. No Wails/paridad/empírico nuevo ni promoción.
 

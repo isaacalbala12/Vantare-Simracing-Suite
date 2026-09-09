@@ -22,9 +22,14 @@ function RecordedContext({ active, draft, onNew, onLibrary, disabled, t }: {
 }) {
   return <nav className="strategy-recorded-context" aria-label={t("strategy.tabs.label")}>
     <span className="strategy-recorded-context__label">{t("strategy.home.title")}</span>
-    <button type="button" disabled={disabled} aria-current={active ? "page" : undefined} onClick={onNew}><Icon name="i-estrategia" />{t("strategy.home.new")}</button>
-    <button type="button" disabled={disabled} aria-current={!active ? "page" : undefined} onClick={onLibrary}><Icon name="i-panel" />{t("strategy.home.saved")}</button>
-    {draft?.combination ? <div className="strategy-recorded-context__identity"><span>{draft.combination.simId.toUpperCase()}</span><strong>{draft.combination.trackName}</strong><small>{draft.combination.carName}</small><small>{draft.combination.carClass}</small></div> : null}
+    <button type="button" disabled={disabled} aria-current={active ? "page" : undefined} onClick={onNew}>{t("strategy.home.new")}</button>
+    <button type="button" disabled={disabled} aria-current={!active ? "page" : undefined} onClick={onLibrary}>{t("strategy.home.saved")}</button>
+    {draft ? <section className="strategy-recorded-context__identity" aria-label={t("strategy.workspace.yourRace")}>
+      <h3>{t("strategy.workspace.yourRace")}</h3>
+      <div><Icon name="i-launcher" size={24} /><p><small>{t("strategy.journey.simulator")}</small><strong>Le Mans Ultimate</strong></p></div>
+      <div><Icon name="i-estrategia" size={24} /><p><small>{t("strategy.journey.car")}</small><strong>{draft.combination?.carName ?? t("strategy.workspace.pending")}</strong></p></div>
+      <div><Icon name="i-carreras" size={24} /><p><small>{t("strategy.journey.track")}</small><strong>{draft.combination?.trackName ?? t("strategy.workspace.pending")}</strong></p></div>
+    </section> : null}
   </nav>;
 }
 

@@ -712,7 +712,7 @@ export const strategyOrbitEn: Record<string, string> = {
 "strategy.workspace.sources": "Data source",
 "strategy.workspace.noSources": "No sessions selected",
 "strategy.workspace.selectedSources": "{{count}} sessions selected",
-"strategy.workspace.sourceStatus": "References retained. Review coverage before calculating.",
+"strategy.workspace.sourceStatus": "Review session coverage before calculating.",
 "strategy.workspace.review": "Review",
 "strategy.workspace.observations": "Observations",
 "strategy.workspace.validationPending": "Validation pending",
@@ -739,4 +739,5 @@ export const strategyOrbitEn: Record<string, string> = {
 "strategy.workspace.recovered": "The repository was recovered from a backup.",
 "strategy.workspace.emptyLibrary": "No recorded strategies match your search.",
 "strategy.workspace.open": "Open draft",
+  "strategy.workspace.yourRace": "Your race",
 };

@@ -712,7 +712,7 @@ export const strategyOrbitPt: Record<string, string> = {
 "strategy.workspace.sources": "Fonte de dados",
 "strategy.workspace.noSources": "Sem sessões selecionadas",
 "strategy.workspace.selectedSources": "{{count}} sessões selecionadas",
-"strategy.workspace.sourceStatus": "Referências preservadas. Revê a cobertura antes de calcular.",
+"strategy.workspace.sourceStatus": "Revê a cobertura das sessões antes de calcular.",
 "strategy.workspace.review": "Rever",
 "strategy.workspace.observations": "Observações",
 "strategy.workspace.validationPending": "Validação pendente",
@@ -739,4 +739,5 @@ export const strategyOrbitPt: Record<string, string> = {
 "strategy.workspace.recovered": "O repositório foi recuperado a partir de uma cópia de segurança.",
 "strategy.workspace.emptyLibrary": "Nenhuma estratégia registada corresponde à pesquisa.",
 "strategy.workspace.open": "Abrir rascunho",
+  "strategy.workspace.yourRace": "A tua corrida",
 };

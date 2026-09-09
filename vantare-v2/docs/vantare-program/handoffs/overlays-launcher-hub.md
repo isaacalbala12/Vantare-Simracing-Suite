@@ -1,5 +1,31 @@
 # Handoff vivo — Overlay Studio, Launcher y Hub
 
+## ISA-1072 — build configurada y bloqueo de acceso (2026-09-09)
+
+Build local desde `e1220286`, codigo revisado `7f721def`, mediante
+`wails3 task -f build` con `VANTARE_BUILD_CHANNEL=nightly`. El entorno del
+orquestador hereda las tres variables publicas Supabase/licencia SET;
+el entorno de OpenCode no heredaba el registro. No se copiaron ni mostraron
+valores. Frontend y Go build PASS. EXE `bin/vantare.exe`, SHA256
+`0101ED981F800C6A71AD30F6E85652958E489AE586801A25518466A6A4DDEDA6`.
+
+Prueba nativa: ejecutable y PID verificados. Arrancar desde el directorio
+`bin` usa configuracion habitual, sin copiar credenciales; arrancar desde
+la raiz del worktree usaba configs de desarrollo y abria onboarding.
+Perfil habitual `Prueba Redline Tower ISA-1071` reconocido, canal NIGHTLY.
+Cuenta muestra FREE/Activo y Studio sin acceso. `Comprobar acceso` termina
+con `NO SE PUDO ACTUALIZAR EL ACCESO`. No hay PASS de dorsales fisicos ni
+licencia de pago. No se modifico cuenta, permisos ni LMU. Instancia de
+prueba cerrada y runtime liberado a Strategy. La primera apertura desde
+raiz genero datos locales y actualizo calendar-lmu.json: preservados,
+fuera del commit de evidencia.
+
+Fabricante: auditoria confirma que no existe fuente integrada explicita.
+Probe de solo lectura `/rest/multiplayer/teams` no produjo filas en esta
+sesion; no demuestra ausencia en todos los escenarios. Hace falta decidir
+fuente antes de implementar. Logo transparente pendiente; no aceptar el
+SVG redibujado ni la extraccion IA opaca. Sin push, merge o release.
+
 ## ISA-1072 — dorsal canónico en todos los standings (2026-09-09, en rama)
 
 Isaac autoriza implementar el 2026-09-09 y extiende el alcance a TODOS los

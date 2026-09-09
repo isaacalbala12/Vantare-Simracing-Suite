@@ -37,3 +37,15 @@ Revisión propia: marco presente, pero arte de fondo no es la revisión final,
 columna/rail más anchos y textos/pasos antiguos. No supera gate A4. Sigue T04c
 (arte final garage-journey-v2 y dimensiones acotadas) y T05 (recorrido real cinco
 pasos). No solicitar review humana todavía. Full suite posterior pendiente.
+
+## T04c — referencia final y dimensiones
+
+El prototipo tiene overrides posteriores: arte final garage-journey-v2.png,
+fondo a900px, rail72 y columna256. Se aplican sólo al asistente y se conserva
+columna plegable. frame-02.png usa animación/transiciones desactivadas para una
+captura estable: CSS grid72/256/1344, zoom1, documento1672x941 sin overflow,
+sin pageerror. No es paridad final: quedan cinco pasos, contenido, contexto y
+footer transversal. No se usa la imagen como prueba del motor.
+
+T04a full frontend421 archivos/3322 tests PASS; T04b prueba nueva RED/GREEN y
+typecheck/lint focal PASS. Suite completa posterior a b/c pendiente.

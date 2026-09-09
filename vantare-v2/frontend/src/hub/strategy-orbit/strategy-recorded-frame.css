@@ -1,4 +1,14 @@
 /* A4 approved composition; all content and state remain React-owned. */
+.orbit-shell:has(.orbit-strategy--recorded) {
+  --orbit-rail-w: 72px;
+  --orbit-column-w: 256px;
+  --orbit-shell-column: 256px;
+}
+.orbit-shell[data-column='closed']:has(.orbit-strategy--recorded) { --orbit-shell-column: 0px; }
+.orbit-shell:has(.orbit-strategy--recorded) .orbit-column__head { min-height: 60px; height: 60px; }
+.orbit-shell:has(.orbit-strategy--recorded) .orbit-column__title { font-size: 12px; }
+.orbit-shell:has(.orbit-strategy--recorded) .orbit-column__version { display: none; }
+
 .orbit-strategy.orbit-strategy--recorded {
   width: 100%;
   margin: 0;
@@ -12,16 +22,18 @@
   min-width: 0;
   min-height: 100%;
   color: var(--orbit-ink);
-  background: var(--orbit-canvas) url('../../assets/strategy-recorded-garage.png') right top / auto 941px no-repeat;
+  background: var(--orbit-canvas) url('../../assets/strategy-recorded-garage.png') right top / auto 900px no-repeat;
 }
 
 .orbit-main:has(.orbit-strategy--recorded) {
-  background: var(--orbit-canvas) url('../../assets/strategy-recorded-garage.png') right top / auto 941px no-repeat;
+  background: var(--orbit-canvas) url('../../assets/strategy-recorded-garage.png') right top / auto 900px no-repeat;
 }
 
 .orbit-main:has(.orbit-strategy--recorded) > .orbit-topbar {
   background: transparent;
   backdrop-filter: none;
+  min-height: 60px;
+  height: 60px;
 }
 
 .orbit-main .strategy-recorded-frame { background: transparent; }

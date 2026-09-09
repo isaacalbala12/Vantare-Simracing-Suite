@@ -12,6 +12,10 @@ componentes Inicio/Combinación A4; después Reglas/Pilotos/Sesiones e integraci
 La suite final de T04b/c terminó: 422 archivos/3323 tests, lint/build PASS.
 T05b añade Inicio A4 presentacional y traducciones: 8 tests focales, tipos y
 lint focal PASS. Sin integración aún. Sigue Combinación con calendario real.
+T05c Combinación presentacional terminada: 11 tests focales, tipos y lint focal
+PASS. Reúne coche/trazado/calendario y estados ausentes; no importa al seleccionar.
+Siguen componentes de Reglas/Pilotos y orquestación de los cinco pasos. Todavía
+no cambiar la ruta productiva hasta tener navegación y entrega del borrador.
 No paridad visual final, Wails, push/PR/CI remoto, merge ni promoción.
 
 ## T04 A4 productivo — ISA-1093 (2026-09-09)

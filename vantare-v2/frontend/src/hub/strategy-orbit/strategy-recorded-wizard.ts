@@ -55,7 +55,11 @@ export function recordedCalendarCombinations(snapshot: RecordedCalendarSnapshot,
   ));
 }
 
-export function selectRecordedCombination(draft: RecordedWizardDraft, id: string, catalog: readonly StrategySessionCombinationV1[]): RecordedWizardDraft {
+export function selectRecordedCombination(draft: RecordedWizardDraft, id: string | undefined, catalog: readonly StrategySessionCombinationV1[]): RecordedWizardDraft {
+  if (id === undefined) return {
+    ...draft, combination: undefined, step: "combination", sessions: [],
+    invalidatedSessionCount: draft.invalidatedSessionCount + draft.sessions.length,
+  };
   const available = draft.calendar ? recordedCalendarCombinations(draft.calendar, catalog) : catalog;
   const selected = available.find(item => item.combinationId === id);
   if (!selected) throw new Error("Recorded combination is not available");

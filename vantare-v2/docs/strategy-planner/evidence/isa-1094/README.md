@@ -31,3 +31,14 @@ avance, descubrimiento ni importación implícitos. Ocho tests focales (modelo
 e Inicio), typecheck y ESLint focal PASS. Logs C:/tmp/isa1094-t05b-*.log.
 La ruta anterior todavía no monta este componente; integración después de los
 cinco pasos. Suite general y captura de paridad se harán sobre esa integración.
+
+## T05c — Combinación unificada
+
+Componente presentacional con carrera personalizada/calendario, coche y trazado
+canónicos en una pantalla. Las opciones proceden de catálogo/proveedor recibidos;
+no inventa coches, eventos ni mapas de circuito. Calendario ausente no deshabilita
+el catálogo personalizado. Elegir coche limpia la combinación anterior antes de
+seleccionar trazado. Buscar sólo emite una acción explícita al padre.
+Once tests focales PASS, typecheck y ESLint focal PASS (isa1094-t05c-*.log).
+Falta conectar esta pantalla y el descubrimiento inicial sin catálogo; el modelo
+actual sólo admite identidades resueltas, no creación libre con IDs inventados.

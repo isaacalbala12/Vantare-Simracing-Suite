@@ -607,6 +607,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
   const eventPlanningInputs = eventRecord && catalogView
     ? catalogView.planningByEvent[eventRecord.id]
     : undefined;
+  const eventRules = catalogView?.events.find(event => event.id === eventRecord?.id)?.rules;
   const eventWeatherScenarios = eventRecord && catalogView
     ? selectedWeatherScenarios(catalogView, eventRecord.id)
     : EMPTY_WEATHER_SCENARIOS;
@@ -660,7 +661,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
   const calculationSequence = useRef(0);
   const [calculationRetry, setCalculationRetry] = useState(0);
   const calculationInput = strategyEvent && eventRecord && activeId
-    ? orbitCalculationInput(strategyEvent, eventRecord.drivers, Object.values(variants), activeId, eventPlanningInputs, eventWeatherScenarios)
+    ? orbitCalculationInput(strategyEvent, eventRecord.drivers, Object.values(variants), activeId, eventPlanningInputs, eventWeatherScenarios, eventRules?.value)
     : null;
   const calculationKey = calculationInput ? JSON.stringify(calculationInput) : "";
   const [calculation, setCalculation] = useState<
@@ -742,6 +743,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
         availability: eventRecord.availability ?? {},
         teamMode: eventRecord.teamMode ?? "team",
         fillMode: eventRecord.fillMode ?? "manual",
+        ...(eventRules === undefined ? {} : { rules: eventRules }),
       },
       variant: active,
       calculatedPlan: plan,

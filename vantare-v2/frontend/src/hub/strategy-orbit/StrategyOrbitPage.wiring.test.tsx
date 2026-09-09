@@ -170,6 +170,7 @@ describe("StrategyOrbitPage · cableado auditado", () => {
   it("vincula una combinación y persiste el toggle de sesión en el documento canónico", async () => {
     window.localStorage.clear();
     let saved: StrategyEventV2 | undefined;
+    const rules: NonNullable<StrategyEventV2["rules"]> = { value: { minPitStops: 2 }, evidence: { provenance: { kind: "manual", sourceId: "event-rules-test" }, confidence: { level: "high", basis: "configured event" } } };
     let version = 0;
     const calculatedInputs: unknown[] = [];
     const client: StrategyApplicationClient<unknown> = {
@@ -182,9 +183,9 @@ describe("StrategyOrbitPage · cableado auditado", () => {
         }] };
         if (command.operation === "list_events") return { ...base, events: saved ? [saved] : [] };
         if (command.operation === "create_event" || command.operation === "edit_event") {
-          saved = command.event;
+          saved = command.operation === "create_event" ? { ...command.event, rules } : command.event;
           version += 1;
-          return { ...base, repositoryVersion: version, strategyDocument: { contractVersion: "strategy.v2", schemaVersion: "2.0.0", generatedAt: command.updatedAt, events: [saved] } };
+          return { ...base, repositoryVersion: version, strategyDocument: { contractVersion: "strategy.v2", schemaVersion: "2.1.0", generatedAt: command.updatedAt, events: [saved] } };
         }
         if (command.operation === "get_event_planning_inputs") return {
           ...base,
@@ -235,6 +236,8 @@ describe("StrategyOrbitPage · cableado auditado", () => {
     expect(await within(overriddenFuel).findByRole("button", { name: "Volver al derivado" })).toBeTruthy();
     expect(saved?.planningInputs?.projection?.fuelConsumption.meanPerLap).toBe(3.538);
     expect(saved?.planningInputs?.overrides.fuel_per_lap_liters?.value).toBe(3.5);
+    expect(saved?.rules).toEqual(rules);
+    await waitFor(() => expect(calculatedInputs).toContainEqual(expect.objectContaining({ event: expect.objectContaining({ rules: rules.value }) })));
     expect(calculatedInputs.some((input) => JSON.stringify(input).includes('"fuel_per_lap_liters":{"value":3.5'))).toBe(true);
     fireEvent.click(within(overriddenFuel).getByRole("button", { name: "Volver al derivado" }));
     await waitFor(() => expect(saved?.planningInputs?.overrides.fuel_per_lap_liters).toBeUndefined());

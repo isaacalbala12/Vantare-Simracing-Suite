@@ -93,3 +93,16 @@ forzaba schema2.0.0. Backup/preview/commit/rollback ahora conservan2.1.0, tambi�
 los archivos de restauración. Prueba integral conserva reglas/evidencia en cada
 paso y archivo. No se ha ejecutado migración sobre datos reales. Go global -p1
 y vet PASS (isa1092-t02c3-all.log / isa1092-t02c3-vet.log).
+
+## T02c4 — enlace de pantalla a cálculo
+
+El modelo recibe reglas opcionales y la pantalla las toma del evento canónico
+(view.events), sin extender el store legacy. El input transporta su valor; el
+payload de revisión conserva también su evidencia. La edición de otro dato no
+las elimina. 14 tests focales PASS; lint y build con typecheck PASS. Suite global
+frontend en curso, log isa1092-t02c4-tests.log: este commit no cierra el gate.
+
+Pendiente #1092: edición visible de reglas (T06), perfiles antes de optimizar,
+disponibilidad temporal, recursos Fuel/VE y pit detallado. T03 debe evitar dar
+por completo un cálculo iniciado antes de cargar configuración/proyección.
+T04 #1093 puede avanzar independientemente, conforme al orden práctico del SDD.

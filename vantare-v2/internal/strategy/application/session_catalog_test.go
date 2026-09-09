@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -160,5 +161,95 @@ func TestPinnedSelectionCannotFallBackToUnversionedCatalog(t *testing.T) {
 	}
 	if doc.Events[0].Combination.Sessions[0].Revision != &ref {
 		t.Fatal("selection changed")
+	}
+}
+
+type revisionCatalogStub struct {
+	sessionCatalogStub
+	refs    *[]strategyprojection.AnalysisRevisionRef
+	failure error
+	cancel  context.CancelFunc
+}
+
+func (stub revisionCatalogStub) ProjectStrategyRevisionInputs(_ context.Context, _ string, refs []strategyprojection.AnalysisRevisionRef, _ time.Time) (strategyprojection.StrategyInputProjectionV2, error) {
+	if stub.cancel != nil {
+		stub.cancel()
+	}
+	*stub.refs = append([]strategyprojection.AnalysisRevisionRef(nil), refs...)
+	return stub.projection, stub.failure
+}
+func TestPlanningInputsUsesAndChecksPinnedRevisionProducer(t *testing.T) {
+	raw, err := os.ReadFile("../../telemetryanalysis/strategyprojection/testdata/strategyinputprojection_v2_new.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var golden strategyprojection.StrategyInputProjectionV2
+	if err := json.Unmarshal(raw, &golden); err != nil {
+		t.Fatal(err)
+	}
+	for _, mode := range []string{"valid", "revision", "combination", "missing", "failure", "partial", "cancelled"} {
+		t.Run(mode, func(t *testing.T) {
+			ref := strategyprojection.AnalysisRevisionRef{SessionID: "race-1", BaseDigest: strings.Repeat("a", 64), RevisionID: strings.Repeat("b", 64), SnapshotID: strings.Repeat("c", 64)}
+			projection := golden
+			projection.SourceSessions = []string{ref.SessionID}
+			projection.SourceRevisions = []strategyprojection.AnalysisRevisionRef{ref}
+			if mode == "revision" {
+				projection.SourceRevisions[0].RevisionID = strings.Repeat("d", 64)
+			}
+			if mode == "combination" {
+				projection.CombinationID = "foreign"
+			}
+			if mode == "missing" {
+				projection.SourceRevisions = nil
+			}
+			sessions := []strategydocument.SessionSelection{{SessionID: ref.SessionID, Included: true, Revision: &ref}, {SessionID: "excluded", Included: false}}
+			if mode == "partial" {
+				sessions[1].Included = true
+			}
+			override := strategydocument.NumericInputOverride{Value: 3.2, Presence: strategyprojection.PresenceValid, Provenance: strategyprojection.Provenance{Kind: strategyprojection.ProvenanceManual, SourceID: "test"}, Confidence: strategyprojection.Confidence{SampleSize: 1, ComputationVersion: "test"}}
+			doc := &strategydocument.StrategyDocumentV2{Events: []strategydocument.Event{{ID: "event", Combination: &strategydocument.CombinationReference{CombinationID: golden.CombinationID, Sessions: sessions}, PlanningInputs: &strategydocument.PlanningInputs{Overrides: map[strategydocument.PlanningInputField]strategydocument.NumericInputOverride{strategydocument.PlanningInputFuelPerLap: override}}}}}
+			repo := &sessionCatalogRepository[any]{snapshot: repository.Snapshot[any]{Version: 9, StrategyDocument: doc}}
+			var legacy []string
+			var gotRefs []strategyprojection.AnalysisRevisionRef
+			catalog := revisionCatalogStub{sessionCatalogStub: sessionCatalogStub{projection: projection, projected: &legacy}, refs: &gotRefs}
+			if mode == "failure" {
+				catalog.failure = context.DeadlineExceeded
+			}
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			if mode == "cancelled" {
+				catalog.cancel = cancel
+			}
+			service := NewServiceWithSessionCatalog[any](repo, catalog)
+			result, err := service.GetEventPlanningInputs(ctx, GetEventPlanningInputsCommand{CommandHeader: CommandHeader{ProtocolVersion: ProtocolVersionV1, CommandID: "exact", Operation: OperationGetEventPlanningInputs, ExpectedRepositoryVersion: 9}, EventID: "event", GeneratedAt: time.Date(2026, 9, 9, 12, 0, 0, 0, time.UTC)})
+			if mode == "valid" {
+				if err != nil {
+					t.Fatal(err)
+				}
+				if len(gotRefs) != 1 || gotRefs[0] != ref || result.PlanningInputStatus != PlanningInputAvailable || result.PlanningInputs.Projection.SourceRevisions[0] != ref {
+					t.Fatal("wrong producer or revision")
+				}
+				if result.PlanningInputs.Overrides[strategydocument.PlanningInputFuelPerLap] != override {
+					t.Fatal("override lost")
+				}
+			} else if err == nil || result.PlanningInputs != nil {
+				t.Fatalf("%s accepted or returned partial inputs", mode)
+			}
+			if mode == "cancelled" && !errors.Is(err, context.Canceled) {
+				t.Fatalf("cancellation lost: %v", err)
+			}
+			if mode == "failure" && !errors.Is(err, context.DeadlineExceeded) {
+				t.Fatalf("failure changed: %v", err)
+			}
+			if mode == "partial" && len(gotRefs) != 0 {
+				t.Fatal("partial selection dispatched")
+			}
+			if len(legacy) != 0 || repo.commitCalls != 0 {
+				t.Fatal("fallback or write")
+			}
+			if doc.Events[0].PlanningInputs.Projection != nil {
+				t.Fatal("query changed document")
+			}
+		})
 	}
 }

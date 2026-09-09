@@ -7,11 +7,16 @@ import (
 
 	strategydocument "github.com/vantare/overlays/v2/internal/strategy/document"
 	"github.com/vantare/overlays/v2/internal/telemetryanalysis"
+	"github.com/vantare/overlays/v2/internal/telemetryanalysis/strategyprojection"
 )
 
 // ErrPinnedAnalysisProjectionUnavailable prevents the legacy catalog from
 // silently replacing a plan's exact Analysis revision with unversioned input.
 var ErrPinnedAnalysisProjectionUnavailable = errors.New("exact Analysis revision projection is not connected")
+
+type revisionSessionCatalogPort interface {
+	ProjectStrategyRevisionInputs(context.Context, string, []strategyprojection.AnalysisRevisionRef, time.Time) (strategyprojection.StrategyInputProjectionV2, error)
+}
 
 // ListSessionCombinations adapts the Analysis-owned catalog for Orbit. It is
 // read-only and never opens DuckDB or reads Analysis storage from Strategy.
@@ -111,10 +116,11 @@ func (service *Service[T]) GetEventPlanningInputs(ctx context.Context, command G
 		return result, nil
 	}
 	included := make([]string, 0, len(event.Combination.Sessions))
+	var refs []strategyprojection.AnalysisRevisionRef
 	for _, session := range event.Combination.Sessions {
 		if session.Included {
 			if session.Revision != nil {
-				return Result[T]{}, applicationError(ErrorInvalidCommand, "combination.sessions.revision", ErrPinnedAnalysisProjectionUnavailable)
+				refs = append(refs, *session.Revision)
 			}
 			included = append(included, session.SessionID)
 		}
@@ -124,10 +130,43 @@ func (service *Service[T]) GetEventPlanningInputs(ctx context.Context, command G
 		result.PlanningInputStatus = PlanningInputNoIncludedSessions
 		return result, nil
 	}
-	if service.sessionCatalog == nil {
-		return result, nil
+	var projection strategyprojection.StrategyInputProjectionV2
+	if len(refs) > 0 {
+		if err := strategyprojection.ValidateSourceRevisions(included, refs); err != nil {
+			return Result[T]{}, applicationError(ErrorInvalidCommand, "combination.sessions.revision", err)
+		}
+		producer, ok := service.sessionCatalog.(revisionSessionCatalogPort)
+		if !ok {
+			return Result[T]{}, applicationError(ErrorInvalidCommand, "combination.sessions.revision", ErrPinnedAnalysisProjectionUnavailable)
+		}
+		projection, err = producer.ProjectStrategyRevisionInputs(ctx, event.Combination.CombinationID, refs, canonicalMillisecond(command.GeneratedAt))
+		if err != nil {
+			return Result[T]{}, err
+		}
+		if err := ctx.Err(); err != nil {
+			return Result[T]{}, err
+		}
+		if err := projection.Validate(); err != nil {
+			return Result[T]{}, applicationError(ErrorCalculationInvalid, "analysis.projection", err)
+		}
+		if projection.CombinationID != event.Combination.CombinationID || len(projection.SourceRevisions) != len(refs) {
+			return Result[T]{}, applicationError(ErrorCalculationInvalid, "analysis.revisions", ErrCalculationInvalid)
+		}
+		selected := make(map[string]strategyprojection.AnalysisRevisionRef, len(refs))
+		for _, ref := range refs {
+			selected[ref.SessionID] = ref
+		}
+		for _, ref := range projection.SourceRevisions {
+			if expected, ok := selected[ref.SessionID]; !ok || expected != ref {
+				return Result[T]{}, applicationError(ErrorCalculationInvalid, "analysis.revisions", ErrCalculationInvalid)
+			}
+		}
+	} else {
+		if service.sessionCatalog == nil {
+			return result, nil
+		}
+		projection, err = service.sessionCatalog.ProjectStrategyInputs(ctx, event.Combination.CombinationID, included, canonicalMillisecond(command.GeneratedAt))
 	}
-	projection, err := service.sessionCatalog.ProjectStrategyInputs(ctx, event.Combination.CombinationID, included, canonicalMillisecond(command.GeneratedAt))
 	if err != nil {
 		return Result[T]{}, err
 	}

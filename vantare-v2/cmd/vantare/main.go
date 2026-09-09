@@ -1548,24 +1548,7 @@ func main() {
 	if cfgDir == "" {
 		log.Printf("warning: configs directory not found — hub profile CRUD disabled")
 	}
-	var strategyBridge strategyCommandExecutor
 	strategyRoot, strategyRootErr := strategyRepositoryRoot(cfgDir)
-	if strategyRootErr != nil {
-		log.Printf("warning: Strategy repository is unavailable")
-	} else if repo, openErr := strategyrepository.Open[json.RawMessage](strategyRoot, strategyrepository.Options{}); openErr != nil {
-		log.Printf("warning: Strategy repository could not be opened: %v", openErr)
-	} else {
-		referenceCatalog := strategycatalog.NewConsumer(strategyReferenceCatalogOptions(strategyRoot))
-		executable, executableErr := os.Executable()
-		executableDir := ""
-		if executableErr == nil {
-			executableDir = filepath.Dir(executable)
-		}
-		sessionCatalog, coldStart := strategyTelemetrySources(strategyRoot, executableDir)
-		strategyService := strategyapplication.NewServiceWithSourcesAndColdStart(repo, sessionCatalog, nil, referenceCatalog, coldStart)
-		strategyBridge = strategyapplication.NewJSONBridge(strategyService)
-	}
-	app.NewStrategyApplicationBridge(ctx, strategyBridge, emitter).RegisterHandlers(wailsApp)
 	var curationUploadService *curation.UploadService
 	if strategyRootErr == nil {
 		curationTarget := fmt.Sprintf("Vantare/%s/CurationCredentialsV1", buildChannel)
@@ -1852,6 +1835,24 @@ func main() {
 			}
 		}
 	}
+	// Analysis and its license boundary must exist before Strategy consumes pinned revisions.
+	var strategyBridge strategyCommandExecutor
+	if strategyRootErr != nil {
+		log.Printf("warning: Strategy repository is unavailable")
+	} else if repo, openErr := strategyrepository.Open[json.RawMessage](strategyRoot, strategyrepository.Options{}); openErr != nil {
+		log.Printf("warning: Strategy repository could not be opened: %v", openErr)
+	} else {
+		referenceCatalog := strategycatalog.NewConsumer(strategyReferenceCatalogOptions(strategyRoot))
+		executable, executableErr := os.Executable()
+		executableDir := ""
+		if executableErr == nil {
+			executableDir = filepath.Dir(executable)
+		}
+		sessionCatalog, coldStart := strategyTelemetrySources(strategyRoot, executableDir)
+		strategyService := strategyapplication.NewServiceWithSourcesAndColdStart(repo, app.NewStrategyRevisionCatalog(sessionCatalog, telemetryAnalysisSvc), nil, referenceCatalog, coldStart)
+		strategyBridge = strategyapplication.NewJSONBridge(strategyService)
+	}
+	app.NewStrategyApplicationBridge(ctx, strategyBridge, emitter).RegisterHandlers(wailsApp)
 	authManager := authsession.NewManager(authsession.NewStore(authSessionTarget))
 
 	// Forward UI license validation requests to the Go service. The frontend

@@ -386,3 +386,14 @@ guardada y confirma que la referencia anterior continúa siendo la utilizada.
 
 Isaac vuelve a autorizar PC/build/app el 2026-09-09; se levanta la restricción
 anterior para las comprobaciones. LMU permanece intacto.
+
+## Consumo de referencias fijadas — #1087
+
+GetEventPlanningInputs usa el productor autorizado para selecciones con
+referencias completas. Comprueba el contrato de proyección, combinación y
+cada referencia exacta; no sustituye por cabeza actual ni catálogo observado.
+Ausencia del proveedor y errores de fuente/revisión se propagan sin resultado
+parcial. Una respuesta posterior a cancelación también se rechaza. La consulta
+conserva ajustes y no escribe al repositorio. Documentos sin referencias siguen
+la vía anterior. Main conecta el adaptador después de construir Analysis y su
+frontera de licencia. No cambia autorización ni reapertura de archivos.

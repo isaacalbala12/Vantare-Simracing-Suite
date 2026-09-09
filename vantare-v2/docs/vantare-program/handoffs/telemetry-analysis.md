@@ -1,5 +1,21 @@
 # Handoff vivo — Telemetry Analysis
 
+## Consumidor conectado — ISA-1087 (2026-09-09)
+
+Base 11676e9958d951fc1ed999055b4b38f0103590d0; rama
+vantareapp/isa-1087-connect-revision-inputs; C:/tmp/vantare-isa1087.
+GetEventPlanningInputs despacha referencias completas al productor autorizado;
+valida proyección, combinación y referencias exactas antes de entregarlas.
+Sin proveedor, fuente o revisión falla sin volver al catálogo observado.
+Selecciones antiguas sin referencias conservan su vía. Consulta sin escritura,
+ajustes conservados y respuesta tardía tras cancelación rechazada.
+Main construye Strategy después de Analysis/licencia usando el adaptador.
+
+Pruebas y límites: docs/strategy-planner/evidence/isa-1087/README.md.
+Siguiente: enlazar la preparación y selección de revisiones desde UI productiva,
+con reapertura explícita de fuentes. C7, operaciones restantes, calibración real
+y aceptación visual/Wails siguen pendientes. LMU intacto. Sin promoción/release.
+
 ## Proyección conjunta autorizada — ISA-1086 (2026-09-09)
 
 Base 40e95273; rama vantareapp/isa-1086-authorized-revision-producer;

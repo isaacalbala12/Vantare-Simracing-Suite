@@ -1542,3 +1542,7 @@ Ocho pruebas focales PASS; gates globales pendientes de completar la UI.
 Siguiente corte: textos en los cuatro catálogos strategy-orbit; después panel,
 su test y conexión en StrategyOrbitPage (máximo cinco paths por corte).
 No cambios de arquitectura/dependencias ni promoción. Banco real pendiente.
+
+ISA-1088 corte de textos: cuatro catálogos strategy-orbit incorporan estados,
+apertura explícita, confirmación de reemplazo y cierre en ES/EN/PT/IT.
+La conexión del panel y validación global siguen en curso.

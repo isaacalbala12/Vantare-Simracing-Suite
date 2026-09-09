@@ -4,7 +4,7 @@
 
 Base7446c0e6; worktree C:/tmp/vantare-isa1093, rama vantareapp/isa-1093-recorded-a4.
 Marco React integrado, todavía recorrido anterior (transición, no A4 completo).
-51 focales/lint/build PASS; full frontend en curso. Banco visual recuperado: Call explícitamente no disponible; frame-01.png sin errores. Arte/dimensiones y recorrido aún pendientes; sigue T04c/T05.
+T04a: 51 focales y 421 archivos/3322 tests PASS; lint/build PASS. T04b Call RED/GREEN y tipos/lint focal PASS. T04c arte final/dimensiones en e2359a4f; suite general posterior en curso. Banco visual recuperado: Call explícitamente no disponible; frame-01.png sin errores. Arte final/dimensiones ya aplicados; recorrido, contexto y footer aún pendientes. Continúa T05 #1094 desde este stack.
 Evidencia isa-1093/README.md. #1092 T02c4: 3321 tests frontend PASS.
 Continuar T04/T05 según SDD sin pedir permiso por corte; T02 entradas, T03 estados,
 Wails y calibración siguen pendientes. Sin cambio de autoridad ni promoción.

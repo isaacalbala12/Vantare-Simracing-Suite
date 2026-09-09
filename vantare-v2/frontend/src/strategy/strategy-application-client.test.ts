@@ -484,3 +484,34 @@ describe("cold start failures", () => {
     expect(result.coldStartStatus?.failures).toEqual([]);
   });
 });
+
+
+describe("event Analysis revision selection", () => {
+  it.each(["valid", "legacy", "excluded", "foreign", "partial", "digest", "null", "mismatch", "missing_projection_refs"])("validates %s selection before exposing the event", async (mode) => {
+    const transport = createTransport();
+    const client = createStrategyApplicationClient<Payload>(transport);
+    const evidence = { provenance: { kind: "manual", sourceId: "test" }, confidence: { level: "high", basis: "test" } };
+    const sourced = (value: unknown) => ({ value, evidence });
+    const ref = { sessionId: "race-1", baseDigest: "a".repeat(64), revisionId: "b".repeat(64), snapshotId: "c".repeat(64) };
+    const sessions: Array<Record<string, unknown>> = [{ sessionId: "race-1", included: true, revision: { ...ref } }];
+    if (mode === "legacy") delete sessions[0].revision;
+    if (mode === "excluded") sessions[0].included = false;
+    if (mode === "foreign") sessions[0].revision = { ...ref, sessionId: "other" };
+    if (mode === "partial") sessions.push({ sessionId: "other", included: true });
+    if (mode === "digest") sessions[0].revision = { ...ref, revisionId: "latest" };
+    if (mode === "null") sessions[0].revision = null;
+    const event = {
+      id: "event-1", name: sourced("Race"), source: sourced("custom"), track: sourced("Fuji"), cls: sourced("Hypercar"),
+      durationMin: sourced(60), startAt: sourced(null), tankLiters: sourced(100), pitLossSeconds: sourced(50),
+      fillMode: sourced("manual"), drivers: [], strategies: [], availability: {}, tyreInventory: { sets: [] },
+      combination: { combinationId: projectionGolden.combinationId, sessions },
+      ...(["valid", "mismatch", "missing_projection_refs"].includes(mode) ? { planningInputs: { overrides: {}, projection: { ...projectionGolden, sourceSessions: ["race-1"], sourceRevisions: mode === "missing_projection_refs" ? undefined : [{ ...ref, revisionId: mode === "mismatch" ? "d".repeat(64) : ref.revisionId }] } } } : {}),
+    };
+    const pending = client.execute({ protocolVersion: "strategy.application.v1", commandId: "selection", operation: "list_events", expectedRepositoryVersion: 1 });
+    emit(transport, "strategy:application:result", { protocolVersion: "strategy.application.v1", commandId: "selection", repositoryVersion: 1, recoveredFromBackup: false, closed: false, events: [event] });
+    try {
+      if (["valid", "legacy", "excluded"].includes(mode)) await expect(pending).resolves.toMatchObject({ events: [{ combination: event.combination }] });
+      else await expect(pending).rejects.toThrow(/revision/i);
+    } finally { client.dispose(); }
+  });
+});

@@ -242,6 +242,12 @@ export type StrategyWeatherScenarioV1 = {
 };
 export type StrategyWeightedWeatherScenarioV1 = { readonly scenario: StrategyWeatherScenarioV1; readonly weight: number };
 
+export type StrategySessionSelectionV2 = {
+  readonly sessionId: string;
+  readonly included: boolean;
+  readonly revision?: StrategyAnalysisRevisionRef;
+};
+
 export type StrategyEventV2 = {
   readonly id: string;
   readonly name: StrategySourcedV2<string>;
@@ -264,7 +270,7 @@ export type StrategyEventV2 = {
   readonly tyreInventory: StrategyTyreInventoryV2;
   readonly combination?: {
     readonly combinationId: string;
-    readonly sessions: readonly { readonly sessionId: string; readonly included: boolean }[];
+    readonly sessions: readonly StrategySessionSelectionV2[];
   };
   readonly planningInputs?: StrategyPlanningInputsV2;
   readonly weatherScenarios?: readonly StrategyWeightedWeatherScenarioV1[];
@@ -1232,17 +1238,41 @@ function parseStrategyEventV2(value: unknown, field: string): StrategyEventV2 {
   }
   if (event.activeStrategyId !== undefined) strategyString(event.activeStrategyId, `${field}.activeStrategyId`);
   if (event.rawLegacy !== undefined) strategyString(event.rawLegacy, `${field}.rawLegacy`);
+  const selectedRevisions = new Map<string, StrategyAnalysisRevisionRef>();
+  let combinationId: unknown;
   if (event.combination !== undefined) {
     const combination = strategyRecord(event.combination, `${field}.combination`);
     strategyString(combination.combinationId, `${field}.combination.combinationId`);
+    combinationId = combination.combinationId;
+    let includedCount = 0;
+    const sessionIds = new Set<string>();
     if (!Array.isArray(combination.sessions)) throw new Error(`Invalid Strategy ${field}.combination.sessions`);
     for (const [index, candidate] of combination.sessions.entries()) {
       const session = strategyRecord(candidate, `${field}.combination.sessions.${index}`);
       strategyString(session.sessionId, `${field}.combination.sessions.${index}.sessionId`);
       if (typeof session.included !== "boolean") throw new Error(`Invalid Strategy ${field}.combination.sessions.${index}.included`);
+      const sessionId = session.sessionId as string;
+      if (sessionIds.has(sessionId)) throw new Error(`Invalid Strategy ${field}.combination.sessions.duplicate`);
+      sessionIds.add(sessionId);
+      if (session.included) includedCount++;
+      if (session.revision !== undefined) {
+        validateProjectionRevisions([sessionId], [session.revision], `${field}.combination.sessions.${index}.revision`);
+        if (session.included) selectedRevisions.set(sessionId, session.revision as StrategyAnalysisRevisionRef);
+      }
+    }
+    if (selectedRevisions.size > 0 && selectedRevisions.size !== includedCount) throw new Error(`Invalid Strategy ${field}.combination.sessions.revisionCoverage`);
+  }
+  if (event.planningInputs !== undefined) {
+    const planning = parsePlanningInputs(event.planningInputs, `${field}.planningInputs`);
+    if (planning.projection && selectedRevisions.size > 0) {
+      const projection = planning.projection;
+      if (projection.combinationId !== combinationId || projection.sourceRevisions?.length !== selectedRevisions.size) throw new Error(`Invalid Strategy ${field}.planningInputs.projection.revisionSelection`);
+      for (const revision of projection.sourceRevisions) {
+        const selected = selectedRevisions.get(revision.sessionId);
+        if (!selected || selected.baseDigest !== revision.baseDigest || selected.revisionId !== revision.revisionId || selected.snapshotId !== revision.snapshotId) throw new Error(`Invalid Strategy ${field}.planningInputs.projection.revisionSelection`);
+      }
     }
   }
-  if (event.planningInputs !== undefined) parsePlanningInputs(event.planningInputs, `${field}.planningInputs`);
   if (event.weatherScenarios !== undefined) parseWeatherScenarios(event.weatherScenarios, `${field}.weatherScenarios`);
   parseStrategyTyreInventoryV2(event.tyreInventory, `${field}.tyreInventory`);
   return { ...event, drivers, strategies, availability } as StrategyEventV2;

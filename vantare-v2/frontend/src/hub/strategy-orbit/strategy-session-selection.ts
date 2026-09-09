@@ -1,6 +1,7 @@
 import type {
   StrategyApplicationClient,
   StrategyEventV2,
+  StrategySessionSelectionV2,
   StrategySessionCombinationV1,
   StrategyPlanningInputFieldV2,
   StrategyPlanningInputsV2,
@@ -131,12 +132,24 @@ export async function persistStrategySessionSelection(
   view: StrategySessionCatalogView,
   record: StrategyEventRecord,
   combination: StrategySessionCombinationV1,
-  sessions: readonly { readonly sessionId: string; readonly included: boolean }[],
+  sessions: readonly StrategySessionSelectionV2[],
 ): Promise<StrategySessionCatalogView> {
   const existing = view.events.find((event) => event.id === record.id);
+  const previous = existing?.combination;
+  const selectionChanged = previous?.combinationId !== combination.combinationId
+    || previous.sessions.length !== sessions.length
+    || sessions.some((session, index) => {
+      const before = previous.sessions[index];
+      return before.sessionId !== session.sessionId || before.included !== session.included
+        || before.revision?.sessionId !== session.revision?.sessionId
+        || before.revision?.baseDigest !== session.revision?.baseDigest
+        || before.revision?.revisionId !== session.revision?.revisionId
+        || before.revision?.snapshotId !== session.revision?.snapshotId;
+    });
   const event: StrategyEventV2 = {
     ...(existing ?? strategyEventV2FromRecord(record)),
     combination: { combinationId: combination.combinationId, sessions },
+    ...(selectionChanged && existing?.planningInputs ? { planningInputs: { overrides: existing.planningInputs.overrides } } : {}),
     ...(existing?.weatherScenarios ? {
       weatherScenarios: existing.weatherScenarios.map((weighted) => ({
         ...weighted,
@@ -153,7 +166,13 @@ export async function persistStrategySessionSelection(
     updatedAt: new Date().toISOString(),
   });
   const savedEvents = result.strategyDocument?.events ?? result.events ?? [];
-  return { ...view, repositoryVersion: result.repositoryVersion, events: savedEvents };
+  const planningByEvent = { ...view.planningByEvent };
+  const planningStatusByEvent = { ...view.planningStatusByEvent };
+  if (selectionChanged) {
+    delete planningByEvent[record.id];
+    delete planningStatusByEvent[record.id];
+  }
+  return { ...view, repositoryVersion: result.repositoryVersion, events: savedEvents, planningByEvent, planningStatusByEvent };
 }
 
 export function selectedCombination(
@@ -168,7 +187,7 @@ export function selectedSessions(
   view: StrategySessionCatalogView,
   eventId: string,
   combination: StrategySessionCombinationV1,
-): readonly { readonly sessionId: string; readonly included: boolean }[] {
+): readonly StrategySessionSelectionV2[] {
   const saved = view.events.find((event) => event.id === eventId)?.combination?.sessions;
   if (saved) return saved;
   return combination.sessions.map((session) => ({ sessionId: session.sessionId, included: session.defaultIncluded }));

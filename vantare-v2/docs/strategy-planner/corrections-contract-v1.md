@@ -349,3 +349,20 @@ su proveedor sea el catálogo sin revisiones: no ignora el pin ni publica datos
 originales como si fueran los corregidos. Conectar el productor autorizado,
 el contrato TS y la UI corresponde a cortes posteriores. No se declara C7
 completo ni recomputación operativa. Se conserva la restricción sin app/builds.
+
+## Selección en el cliente e invalidación — #1085
+
+El cliente de eventos conserva el mismo campo revision y valida identidad,
+cobertura incluida y concordancia de referencias/combinación con la proyección.
+Reutiliza el validador de referencias; no calcula hashes ni interpreta archivos.
+El helper existente de selección usa ese tipo sin descartar la referencia al
+consultar o persistir sesiones.
+
+Al cambiar combinación, inclusión o referencia, la edición del evento retira
+su proyección anterior y conserva overrides. Tras confirmar el guardado elimina
+las entradas derivadas y su estado en la caché de ese evento. Una selección
+idéntica mantiene sus derivados; un guardado fallido deja la vista anterior
+intacta. No elimina revisiones Analysis ni modifica planes aceptados.
+
+Este corte no conecta el productor de revisiones ni añade pantallas. El rechazo
+de recomputación fijada del corte #1084 permanece explícito. Sin app/builds.

@@ -1,5 +1,21 @@
 # Handoff vivo — Strategy Planner
 
+## Cliente de selección exacta — ISA-1085 (2026-09-09)
+
+Base ae6eb45f; rama vantareapp/isa-1085-selection-revision-client;
+worktree C:/tmp/vantare-isa1085. Cliente de eventos valida/conserva referencias
+exactas y concordancia con proyección. Helper existente mantiene referencias y,
+al cambiar selección, retira proyección del evento y caché derivada tras ack,
+conservando overrides. Misma selección mantiene datos; error conserva vista.
+Sin cambios visuales. Cuatro TS/test, sin nueva dependencia ni Go.
+
+RED de siete casos; GREEN focal 42 tests y typecheck PASS. Frontend global
+418 archivos / 3294 tests, lint y diff check PASS.
+Detalle: docs/strategy-planner/evidence/isa-1085/README.md. Sin app ni builds.
+Siguiente: conectar productor autorizado de revisiones; sigue el rechazo
+explícito de #1084. UI y operaciones restantes, calibración y Wails pendientes.
+Sin push/PR/CI remota, merge, promoción ni release.
+
 ## Selección de revisiones — ISA-1084 (2026-09-09)
 
 Base c1db89f9; rama vantareapp/isa-1084-plan-analysis-revision;

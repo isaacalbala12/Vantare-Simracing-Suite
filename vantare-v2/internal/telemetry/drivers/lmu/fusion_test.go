@@ -352,7 +352,7 @@ func TestFusionPreferredFallbackPartialRecoveryAndZero(t *testing.T) {
 	if batch.CompletedLaps.Freshness() != schema.FreshnessMissing {
 		t.Fatalf("REST created completed laps without SHM player identity: %v", batch.CompletedLaps.Freshness())
 	}
-	if batch.Source != SourceCanonical || len(batch.Decisions) != len(AuthorityMatrix()) || batch.REST != (RESTObservation{}) {
+	if batch.Source != SourceCanonical || len(batch.Decisions) != len(AuthorityMatrix()) || !reflect.DeepEqual(batch.REST, RESTObservation{}) {
 		t.Fatalf("canonical metadata = %#v", batch)
 	}
 

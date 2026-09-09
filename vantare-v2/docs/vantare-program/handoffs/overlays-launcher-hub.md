@@ -1,5 +1,62 @@
 # Handoff vivo — Overlay Studio, Launcher y Hub
 
+## ISA-1072 — dorsal canónico en todos los standings (2026-09-09, en rama)
+
+Isaac autoriza implementar el 2026-09-09 y extiende el alcance a TODOS los
+diseños de standings: corte compartido driver LMU -> Core -> Overlay V2 ->
+ViewModel, sin lectores por widget ni datos inventados. Base apilada ISA-1071
+`83eb38fc`, rama `vantareapp/isa-1072-standings-identities`, worktree
+`C:/tmp/vantare-isa1072`. Sin subdelegación; ningún otro worker edita el
+worktree.
+
+Causa raíz: el lector REST de LMU descartaba el `carNumber` real
+(`restStanding` solo conservaba player/position/laps/pitstops) y el builder
+dejaba el número vacío a propósito porque `VehicleState` no tenía la señal.
+
+Corte mínimo (solo dorsal; el fabricante queda detenido abajo):
+`schema/standings.CarNumber` (string: `007` nunca se convierte a entero) ->
+`rest.go` captura la rejilla por poll (slotID explícito `*int32` para no
+confundir ausente con slot 0 válido, número 1-4 dígitos, duplicados contados
+antes de validar) con el mismo presupuesto de polling (2 endpoints, 250 ms,
+TTL 2 s, sin lector nuevo) -> `fusion.go` la une a la rejilla SHM por slot
+más vehículo coincidente, solo con rejilla dentro de su TTL, sin identidad
+ausente, y con suelo de sesión desde las dos señales existentes (cambio
+fresco de firma pista/tipo y `ClockReset` del driver): una rejilla anterior
+al límite no publica aunque el slot y la etiqueta coincidan; el join es
+O(vehículos+rejilla) -> `batch_mapper.go` la traslada -> `core.VehicleState`
+-> `builder_standings.go` la proyecta verbatim solo si está fresca (el wire
+no lleva calidad para el dorsal). `frame.go` ya tenía `number` opcional y la
+VM compartida ya mapeaba `row.number`: todos los diseños se benefician sin
+cambios frontend. Sin offsets SHM inventados (el layout no tiene dorsal).
+Catálogo: señal `standings.car_number` añadida como ID 52 `appended` (el
+catálogo ya cubre señales REST); sin regla de matriz porque no hay escalar
+que arbitrar — la autoridad es el endpoint REST acotado por su TTL.
+Inventario `strategy_signal_audit` y golden `signal-catalog.md` actualizados
+por procedimiento.
+
+Fabricante DETENIDO (sin adivinar): ni el REST (`slotID, carId,
+vehicleFilename, vehicleName, carNumber` observados; pitmanager confirma la
+forma) ni la SHM (solo `VehicleLabel`/`VehicleClass`, etiquetas de muestra,
+no autoridad) exponen marca. Resolverla exige metadatos autorizados de
+vehículo (catálogo externo o lectura de `.veh`/equivalente) = dependencia
+externa + decisión de arquitectura. Propuesta precisa: issue nueva para
+`standings.manufacturer` como señal opcional con fuente declarada
+(REST extendido si LMU lo expone, o tabla vehículo->marca versionada y
+auditada), con sus tests de ausencia/correspondencia; hasta entonces la VM
+mantiene `manufacturer` ausente y ningún renderer la inventa.
+
+Tests (rojo antes, verde después): validación/`007`/stale en REST, join por
+slot+vehículo, mismatch, identidad ausente, duplicados x2/x3, slot ausente
+frente a slot 0, TTL, frontera de sesión por firma y por `ClockReset`,
+passthrough del mapper con turnover de sesión, proyección fresca/stale/
+invalid del builder y auditoría de superficies. Foco frontend 12/12 PASS
+(VM `007` y gaps sin cambios).
+
+Limitación residual honesta: un reinicio que conserve pista, tipo y reloj
+continuo no levanta frontera aquí; ese caso queda acotado solo por el TTL
+REST de 2 s. Sin merge, PR, promoción ni release. Sin probation física
+Wails/LMU (sin control del juego en este corte).
+
 ## ISA-1071 — aceptación visual y corte productivo (2026-09-08)
 
 Isaac acepta la torre y elige `redlineHeader=current`, luz roja y alpha .95.

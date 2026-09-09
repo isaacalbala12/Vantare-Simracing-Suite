@@ -92,6 +92,21 @@ type RESTObservation struct {
 	PlayerPosition TimedField[standings.Position]
 	CompletedLaps  TimedField[standings.CompletedLaps]
 	PitStopCount   TimedField[pit.StopCount]
+
+	// CarNumbers is the per-row identity grid from the same standings poll.
+	// The number stays a string so "007" survives; the grid shares the REST
+	// TTL and is dropped (never frozen) once stale.
+	CarNumbers            []restCarNumber
+	CarNumbersUpdatedUTC  time.Time
+	carNumbersUpdatedMono monotonicStamp
+}
+
+// restCarNumber is one validated standings identity: the LMU slot plus the
+// source-supplied number and the vehicle label used to detect a reused slot.
+type restCarNumber struct {
+	Slot    int32
+	Number  string
+	Vehicle string
 }
 
 type restDoer interface {
@@ -188,6 +203,9 @@ type restCache struct {
 	playerPosition TimedField[standings.Position]
 	completedLaps  TimedField[standings.CompletedLaps]
 	pitStopCount   TimedField[pit.StopCount]
+	carNumbers     []restCarNumber
+	carNumbersUTC  time.Time
+	carNumbersMono monotonicStamp
 }
 
 type restStanding struct {
@@ -195,6 +213,11 @@ type restStanding struct {
 	Position      int32 `json:"position"`
 	LapsCompleted int32 `json:"lapsCompleted"`
 	Pitstops      int32 `json:"pitstops"`
+	// SlotID is a pointer so an absent/null slot is never confused with the
+	// valid slot 0.
+	SlotID      *int32 `json:"slotID"`
+	CarNumber   string `json:"carNumber"`
+	VehicleName string `json:"vehicleName"`
 }
 
 type restSessionInfo struct {
@@ -413,6 +436,9 @@ func updateStandingsFields(cache *restCache, rows []restStanding, now time.Time,
 	cache.playerPosition = timedMissingAt[standings.Position](now, elapsed)
 	cache.completedLaps = timedMissingAt[standings.CompletedLaps](now, elapsed)
 	cache.pitStopCount = timedMissingAt[pit.StopCount](now, elapsed)
+	cache.carNumbers = updateCarNumberGrid(rows)
+	cache.carNumbersUTC = now
+	cache.carNumbersMono = elapsed
 	for _, row := range rows {
 		if !row.Player {
 			continue
@@ -425,11 +451,60 @@ func updateStandingsFields(cache *restCache, rows []restStanding, now time.Time,
 	}
 }
 
+// updateCarNumberGrid keeps one validated identity per slot from a single
+// poll. Rows without an explicit slot never contribute (slot 0 is valid, so
+// absence is not zero). Slots are counted before any number is validated: a
+// slot claimed twice in one poll is ambiguous even when only one of the rows
+// carries a usable number, so neither entry publishes.
+func updateCarNumberGrid(rows []restStanding) []restCarNumber {
+	if len(rows) == 0 {
+		return nil
+	}
+	counts := make(map[int32]int, len(rows))
+	for _, row := range rows {
+		if row.SlotID == nil || *row.SlotID < 0 {
+			continue
+		}
+		counts[*row.SlotID]++
+	}
+	var grid []restCarNumber
+	for _, row := range rows {
+		if row.SlotID == nil || *row.SlotID < 0 || counts[*row.SlotID] != 1 {
+			continue
+		}
+		number, ok := normalizeRESTCarNumber(row.CarNumber)
+		if !ok {
+			continue
+		}
+		grid = append(grid, restCarNumber{Slot: *row.SlotID, Number: number, Vehicle: strings.TrimSpace(row.VehicleName)})
+	}
+	return grid
+}
+
+// normalizeRESTCarNumber validates a source-supplied car number and returns it
+// verbatim. Short numeric strings keep their exact form ("007" stays "007");
+// anything else is rejected so the fusion never publishes a guessed identity.
+func normalizeRESTCarNumber(value string) (string, bool) {
+	trimmed := strings.TrimSpace(value)
+	if len(trimmed) == 0 || len(trimmed) > 4 {
+		return "", false
+	}
+	for index := 0; index < len(trimmed); index++ {
+		if trimmed[index] < '0' || trimmed[index] > '9' {
+			return "", false
+		}
+	}
+	return trimmed, true
+}
+
 func (cache *restCache) applyStandings(next restCache) {
 	cache.playerPresent = next.playerPresent
 	cache.playerPosition = next.playerPosition
 	cache.completedLaps = next.completedLaps
 	cache.pitStopCount = next.pitStopCount
+	cache.carNumbers = next.carNumbers
+	cache.carNumbersUTC = next.carNumbersUTC
+	cache.carNumbersMono = next.carNumbersMono
 }
 
 type sessionFields struct {
@@ -551,6 +626,11 @@ func markRESTStale(cache *restCache, elapsed time.Duration, ttl time.Duration) {
 	cache.playerPosition = staleTimedField(cache.playerPosition, elapsed, ttl)
 	cache.completedLaps = staleTimedField(cache.completedLaps, elapsed, ttl)
 	cache.pitStopCount = staleTimedField(cache.pitStopCount, elapsed, ttl)
+	// A stale identity grid is dropped, never frozen: a number that outlives
+	// its poll could belong to a reused slot.
+	if !cache.carNumbersMono.set || elapsed < cache.carNumbersMono.elapsed || elapsed-cache.carNumbersMono.elapsed > ttl {
+		cache.carNumbers = nil
+	}
 }
 
 func staleEndpoint(value RESTEndpointSnapshot, elapsed time.Duration, ttl time.Duration) RESTEndpointSnapshot {
@@ -581,6 +661,8 @@ func (cache restCache) snapshot() RESTObservation {
 		TrackName: cache.trackName, SourceTime: cache.sourceTime, SessionType: cache.sessionType, VehicleCount: cache.vehicleCount,
 		PlayerPresent: cache.playerPresent, PlayerPosition: cache.playerPosition,
 		CompletedLaps: cache.completedLaps, PitStopCount: cache.pitStopCount,
+		CarNumbers:           cache.carNumbers,
+		CarNumbersUpdatedUTC: cache.carNumbersUTC, carNumbersUpdatedMono: cache.carNumbersMono,
 	}
 }
 

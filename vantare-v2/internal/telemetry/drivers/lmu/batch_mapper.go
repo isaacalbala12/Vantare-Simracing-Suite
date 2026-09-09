@@ -357,6 +357,7 @@ func mapVehicle(source VehicleObservation, id identity.VehicleID, sessionID iden
 		DriverName:       source.DriverName,
 		Name:             source.VehicleName,
 		VehicleClass:     source.VehicleClass,
+		CarNumber:        source.CarNumber,
 		Player:           source.Player,
 		Sector:           source.Sector,
 		LapDistance:      source.LapDistance,

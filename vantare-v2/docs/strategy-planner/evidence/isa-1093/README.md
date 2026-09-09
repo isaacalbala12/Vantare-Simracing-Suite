@@ -48,4 +48,7 @@ sin pageerror. No es paridad final: quedan cinco pasos, contenido, contexto y
 footer transversal. No se usa la imagen como prueba del motor.
 
 T04a full frontend421 archivos/3322 tests PASS; T04b prueba nueva RED/GREEN y
-typecheck/lint focal PASS. Suite completa posterior a b/c pendiente.
+typecheck/lint focal PASS. Suite completa posterior a b/c: 422 archivos/3323
+tests PASS, lint y build con tipos PASS. Logs C:/tmp/isa1093-t04c-tests.log,
+C:/tmp/isa1093-t04c-lint.log y C:/tmp/isa1093-t04c-build.log. Esto no certifica
+paridad visual ni Wails: esos gates siguen pendientes.

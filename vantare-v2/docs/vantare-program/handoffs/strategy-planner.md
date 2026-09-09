@@ -1,5 +1,17 @@
 # Handoff vivo — Strategy Planner
 
+## T05 asistente registrado — ISA-1094 (2026-09-09)
+
+Base e95d3bbb; C:/tmp/vantare-isa1094, rama vantareapp/isa-1094-recorded-wizard.
+T05a crea modelo de borrador sin recursos/ritmo inventados, navegación de cinco
+pasos, snapshot de calendario versionado, selección canónica y desvinculación
+de revisiones incompatibles. No modifica correcciones ni originales. Siete
+tests focales PASS, typecheck y lint focal PASS. Todavía sin conexión a la UI
+ni persistencia del nuevo borrador: no anunciarlo guardado. Próximo corte:
+componentes Inicio/Combinación A4; después Reglas/Pilotos/Sesiones e integración.
+La suite final de T04b/c terminó: 422 archivos/3323 tests, lint/build PASS.
+No paridad visual final, Wails, push/PR/CI remoto, merge ni promoción.
+
 ## T04 A4 productivo — ISA-1093 (2026-09-09)
 
 Base7446c0e6; worktree C:/tmp/vantare-isa1093, rama vantareapp/isa-1093-recorded-a4.

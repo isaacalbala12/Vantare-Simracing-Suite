@@ -1,0 +1,96 @@
+import type { Calendar, RaceSeries } from "../../calendar/calendar-types";
+import type { StrategyAnalysisRevisionRef, StrategySessionCombinationV1 } from "../../strategy/strategy-application-client";
+import type { StrategyEventRules } from "../../strategy/strategy-event-rules";
+import { calendarSessionCombinations } from "./strategy-calendar-selection";
+
+export const RECORDED_WIZARD_STEPS = ["start", "combination", "rules", "drivers", "sessions"] as const;
+export type RecordedWizardStep = typeof RECORDED_WIZARD_STEPS[number];
+type Combination = Pick<StrategySessionCombinationV1, "combinationId" | "simId" | "trackName" | "trackLayout" | "carName" | "carClass">;
+
+export type RecordedCalendarSnapshot = {
+  readonly simulator: string;
+  readonly version: number;
+  readonly updated: string;
+  readonly capturedAt: string;
+  readonly startAt?: string;
+  readonly series: RaceSeries;
+};
+
+/** An unsaved working draft. Missing inputs are not observations or defaults. */
+export type RecordedWizardDraft = {
+  readonly step: RecordedWizardStep;
+  readonly mode: "manual" | "automatic";
+  readonly combination?: Combination;
+  readonly calendar?: RecordedCalendarSnapshot;
+  readonly name: string;
+  readonly race: { readonly format: "timed"; readonly durationMin?: number } | { readonly format: "laps"; readonly laps?: number };
+  readonly tankLiters?: number;
+  readonly initialFuelLiters?: number;
+  readonly fuelReserveLiters?: number;
+  readonly pitLossSeconds?: number;
+  readonly rules?: StrategyEventRules;
+  readonly drivers: readonly { readonly id: string; readonly name: string; readonly referenceDriverId?: string; readonly paceDeltaSeconds?: number }[];
+  readonly sessions: readonly StrategyAnalysisRevisionRef[];
+  readonly invalidatedSessionCount: number;
+};
+
+export function createRecordedWizardDraft(): RecordedWizardDraft {
+  return { step: "start", mode: "manual", name: "", race: { format: "timed" }, drivers: [], sessions: [], invalidatedSessionCount: 0 };
+}
+
+export function snapshotRecordedCalendar(
+  calendar: Calendar, seriesId: string, simulator: string, capturedAt: string, startAt?: string,
+): RecordedCalendarSnapshot {
+  const series = calendar.series?.find(item => item.id === seriesId);
+  if (!series || !simulator.trim() || !Number.isFinite(Date.parse(capturedAt)) || (startAt !== undefined && !Number.isFinite(Date.parse(startAt)))) {
+    throw new Error("Invalid recorded calendar selection");
+  }
+  return { simulator, version: calendar.version, updated: calendar.updated, capturedAt, startAt, series: structuredClone(series) };
+}
+
+export function recordedCalendarCombinations(snapshot: RecordedCalendarSnapshot, catalog: readonly StrategySessionCombinationV1[]): StrategySessionCombinationV1[] {
+  const eligible = catalog.filter(item => item.simId === snapshot.simulator);
+  return eligible.filter(item => (snapshot.series.classes ?? []).some(vehicleClass =>
+    calendarSessionCombinations(snapshot.series, vehicleClass, [item]).length > 0,
+  ));
+}
+
+export function selectRecordedCombination(draft: RecordedWizardDraft, id: string, catalog: readonly StrategySessionCombinationV1[]): RecordedWizardDraft {
+  const available = draft.calendar ? recordedCalendarCombinations(draft.calendar, catalog) : catalog;
+  const selected = available.find(item => item.combinationId === id);
+  if (!selected) throw new Error("Recorded combination is not available");
+  const { combinationId, simId, trackName, trackLayout, carName, carClass } = selected;
+  const changed = draft.combination?.combinationId !== combinationId;
+  return {
+    ...draft,
+    combination: { combinationId, simId, trackName, trackLayout, carName, carClass },
+    step: changed ? "combination" : draft.step,
+    sessions: changed ? [] : draft.sessions,
+    invalidatedSessionCount: changed ? draft.invalidatedSessionCount + draft.sessions.length : draft.invalidatedSessionCount,
+  };
+}
+
+/** Applying a calendar choice is explicit; later feed refreshes cannot mutate it. */
+export function selectRecordedCalendar(draft: RecordedWizardDraft, snapshot: RecordedCalendarSnapshot | undefined, catalog: readonly StrategySessionCombinationV1[]): RecordedWizardDraft {
+  const compatible = !snapshot || recordedCalendarCombinations(snapshot, catalog).some(item => item.combinationId === draft.combination?.combinationId);
+  return {
+    ...draft, calendar: snapshot ? structuredClone(snapshot) : undefined, step: "combination",
+    combination: compatible ? draft.combination : undefined,
+    sessions: compatible ? draft.sessions : [],
+    invalidatedSessionCount: draft.invalidatedSessionCount + (compatible ? 0 : draft.sessions.length),
+  };
+}
+
+/** Navigation only checks context. Calculation readiness belongs to the application. */
+export function moveRecordedWizard(draft: RecordedWizardDraft, step: RecordedWizardStep): RecordedWizardDraft {
+  const current = RECORDED_WIZARD_STEPS.indexOf(draft.step);
+  const target = RECORDED_WIZARD_STEPS.indexOf(step);
+  if (target > current + 1 || (target > 1 && !draft.combination)) return draft;
+  return { ...draft, step };
+}
+
+export function selectRecordedSessions(draft: RecordedWizardDraft, combinationId: string, sessions: readonly StrategyAnalysisRevisionRef[]): RecordedWizardDraft {
+  if (!draft.combination || draft.combination.combinationId !== combinationId) throw new Error("Recorded sessions belong to another combination");
+  if (new Set(sessions.map(item => item.sessionId)).size !== sessions.length) throw new Error("Duplicate recorded session selection");
+  return { ...draft, sessions: sessions.map(item => ({ ...item })) };
+}

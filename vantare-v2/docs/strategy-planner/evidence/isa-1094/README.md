@@ -89,3 +89,26 @@ completas; rechaza tipos/versión incompatibles. Snapshot de calendario conserva
 campos publicados, clase canónica y versión, independiente del objeto de origen.
 17 tests focales PASS; tipos/lint focal PASS antes del último caso adicional.
 No persiste aún: siguiente corte adapter create/edit/open y prueba Go de reapertura.
+
+## T05g2 — persistencia nativa comprobada
+
+createRecordedDraft usa create; openRecordedDraft valida el payload reabierto.
+saveRecordedDraft usa save_revision para historia de configuración duradera,
+sin activate ni resultado calculado. **Corrección de la evaluación anterior:**
+edit nativo sólo clona/valida en memoria, no escribe. No se conecta ese comando
+como guardado. La versión abierta se conserva para detectar conflictos, sin
+reintento que sobrescriba trabajo posterior. No almacenamiento adicional.
+
+Prueba Go de repositorio real create → save_revision → reabrir → open PASS:
+mantiene payload/campos ausentes, nueva revisión y ausencia de plan activo.
+Primer intento detectó que confidence unknown no admite basis; se retiró esa
+base de confianza impropia del adapter y el fixture. Cuatro tests TS focales,
+typecheck, lint global y build PASS. Suites generales frontend/Go y vet en curso.
+Logs C:/tmp/isa1094-t05g2-{tests,native,types,lint-all,build,all,go-all,vet}.log.
+Todavía no integración de ruta, paridad visual final ni aceptación Wails.
+
+Antes de montar el recorrido se debe separar estado/lifecycle del panel de
+sesiones de su vista, reutilizando el componente actual. El cambio entre
+Sesiones y editor no puede desmontar el propietario y cerrar handles usados
+por la proyección fijada. T05h será esa extracción acotada con tests existentes
+y navegación; descubrimiento/bootstrap sin catálogo sigue en T08.

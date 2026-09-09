@@ -30,6 +30,12 @@ y tests de reapertura; luego integración y capturas sobre recorrido productivo.
 T05g1 contrato del payload y parser: 17 casos focales PASS; tipos/lint focal PASS
 antes del último caso. Sigue adapter nativo y test real de repositorio, sin otra
 persistencia ni defaults para completar Event. Base de ese corte fe730fdf.
+T05g2 adapter create/save_revision/open + reapertura Go PASS. Edit nativo **no
+persiste**; se corrigió esa interpretación antes de conectar la UI. Una revisión
+de configuración no se activa ni contiene plan calculado. TS4 focales, tipos,
+lint global/build PASS; suites frontend/Go/vet en curso. Próximo T05h: separar
+propietario de sesiones de vista para conservar handles al pasar al editor;
+después conectar recorrido. Bootstrap de catálogo/descubrimiento T08 pendiente.
 No paridad visual final, Wails, push/PR/CI remoto, merge ni promoción.
 
 ## T04 A4 productivo — ISA-1093 (2026-09-09)

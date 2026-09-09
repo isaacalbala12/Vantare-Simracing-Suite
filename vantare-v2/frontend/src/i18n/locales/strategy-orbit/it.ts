@@ -599,6 +599,7 @@ export const strategyOrbitIt: Record<string, string> = {
   "strategy.reference.warning.expired": "Il catalogo è scaduto e non viene usato per le raccomandazioni.",
   "strategy.reference.warning.schema_incompatible": "Il formato del catalogo non è compatibile.",
   "strategy.reference.warning.unavailable": "Il catalogo non è disponibile; non vengono inventati riferimenti.",
+  "strategy.recorded.originals": "Originali intatti",
   "strategy.recorded.title": "Telemetria registrata",
   "strategy.recorded.discover": "Cerca sessioni",
   "strategy.recorded.open": "Apri e prepara",

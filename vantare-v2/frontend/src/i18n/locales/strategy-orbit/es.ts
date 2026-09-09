@@ -598,6 +598,7 @@ export const strategyOrbitEs: Record<string, string> = {
   "strategy.reference.warning.expired": "El catálogo ha vencido y no se usa para recomendaciones.",
   "strategy.reference.warning.schema_incompatible": "El formato del catálogo no es compatible.",
   "strategy.reference.warning.unavailable": "El catálogo no está disponible; no se inventan referencias.",
+  "strategy.recorded.originals": "Originales intactos",
   "strategy.recorded.title": "Telemetría registrada",
   "strategy.recorded.discover": "Buscar sesiones",
   "strategy.recorded.open": "Abrir y preparar",

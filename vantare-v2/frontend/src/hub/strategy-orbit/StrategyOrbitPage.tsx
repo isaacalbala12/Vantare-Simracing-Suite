@@ -6,6 +6,7 @@ import {
   useSyncExternalStore,
 } from "react";
 import { createPortal } from "react-dom";
+import { StrategyRecordedFrame } from "./StrategyRecordedFrame";
 import { useI18n } from "../../i18n/I18nProvider";
 import {
   AvailabilityBoard,
@@ -2106,32 +2107,35 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
   const stepIndex = wizard ? WIZARD_STEPS.indexOf(wizard.step) : 0;
 
   const wizardView = wizard ? (
-    <Surface
-      aria-label={t("strategy.wizard.title")}
-      data-testid="orbit-strategy-wizard"
-      fill
-      meta={formatMessage(t("strategy.wizard.stepMeta"), {
-        n: stepIndex + 1,
-        total: WIZARD_STEPS.length,
-      })}
+    <StrategyRecordedFrame
+      currentStep={wizard.step}
+      steps={WIZARD_STEPS.map((id, index) => ({ id, label: t(`strategy.wizard.steps.${id}`), available: index <= stepIndex }))}
+      onStep={(id) => {
+        const step = WIZARD_STEPS.find(candidate => candidate === id);
+        if (step) setWizard({ ...wizard, step, path: "none" });
+      }}
       title={t("strategy.wizard.title")}
+      description={t(`strategy.wizard.${wizard.step}.lead`)}
+      preservationLabel={t("strategy.recorded.originals")}
+      progressLabel={formatMessage(t("strategy.wizard.stepMeta"), { n: stepIndex + 1, total: WIZARD_STEPS.length })}
+      actions={<div className="orbit-strategy__wizard-acts">
+        <Button
+          data-testid="orbit-strategy-wizard-back"
+          onClick={() => {
+            if (stepIndex === 0) {
+              setWizard(null);
+              return;
+            }
+            setWizard({ ...wizard, step: WIZARD_STEPS[stepIndex - 1], path: "none" });
+          }}
+          variant="ghost"
+        >
+          {stepIndex === 0 ? t("strategy.wizard.cancel") : t("strategy.wizard.back")}
+        </Button>
+      </div>}
     >
-      <ol aria-label={t("strategy.wizard.stepsLabel")} className="orbit-strategy__steps">
-        {WIZARD_STEPS.map((id, index) => (
-          <li
-            data-state={index < stepIndex ? "done" : index === stepIndex ? "now" : "next"}
-            data-testid={`orbit-strategy-wizard-step-${id}`}
-            key={id}
-          >
-            <span className="orbit-strategy__step-n">{index + 1}</span>
-            <span>{t(`strategy.wizard.steps.${id}`)}</span>
-          </li>
-        ))}
-      </ol>
-
       {wizard.step === "fill" ? (
         <>
-          <p className="orbit-strategy__empty-lead">{t("strategy.wizard.fill.lead")}</p>
           <div className="orbit-strategy__paths" data-testid="orbit-strategy-wizard-fill">
             <Featured
               data-testid="orbit-strategy-wizard-manual"
@@ -2170,7 +2174,6 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
         </>
       ) : wizard.step === "team" ? (
         <>
-          <p className="orbit-strategy__empty-lead">{t("strategy.wizard.team.lead")}</p>
           <div className="orbit-strategy__paths" data-testid="orbit-strategy-wizard-team-step">
             <Featured
               data-testid="orbit-strategy-wizard-solo"
@@ -2192,7 +2195,6 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
         </>
       ) : (
         <>
-          <p className="orbit-strategy__empty-lead">{t("strategy.wizard.start.lead")}</p>
           <div className="orbit-strategy__paths" data-testid="orbit-strategy-paths">
             <Featured
               data-testid="orbit-strategy-path-own"
@@ -2215,22 +2217,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
         </>
       )}
 
-      <div className="orbit-strategy__wizard-acts">
-        <Button
-          data-testid="orbit-strategy-wizard-back"
-          onClick={() => {
-            if (stepIndex === 0) {
-              setWizard(null);
-              return;
-            }
-            setWizard({ ...wizard, step: WIZARD_STEPS[stepIndex - 1], path: "none" });
-          }}
-          variant="ghost"
-        >
-          {stepIndex === 0 ? t("strategy.wizard.cancel") : t("strategy.wizard.back")}
-        </Button>
-      </div>
-    </Surface>
+    </StrategyRecordedFrame>
   ) : null;
 
   const sessionPickerView = eventRecord ? (
@@ -2651,7 +2638,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
   // ── entrada: menú, asistente o formulario ───────────────────────────────
   if (!eventRecord || !strategyEvent || !storedActive) {
     return (
-      <div className="orbit-strategy orbit-strategy--empty" data-testid="orbit-strategy">
+      <div className={`orbit-strategy orbit-strategy--empty${wizard && !form ? " orbit-strategy--recorded" : ""}`} data-testid="orbit-strategy">
         {contextSlot ? createPortal(context, contextSlot) : null}
         <StrategyColdStartBanner client={applicationClient} onImported={() => setSessionCatalogRetry((value) => value + 1)} t={t} />
         {form ? eventForm : (wizardView ?? entryMenu)}

@@ -1,5 +1,15 @@
 # Handoff vivo — Strategy Planner
 
+## T04 A4 productivo — ISA-1093 (2026-09-09)
+
+Base7446c0e6; worktree C:/tmp/vantare-isa1093, rama vantareapp/isa-1093-recorded-a4.
+Marco React integrado, todavía recorrido anterior (transición, no A4 completo).
+51 focales/lint/build PASS; full frontend en curso. Banco visual bloqueado por
+export Call ausente en runtime mock; siguiente corte arregla soporte de pruebas.
+Evidencia isa-1093/README.md. #1092 T02c4: 3321 tests frontend PASS.
+Continuar T04/T05 según SDD sin pedir permiso por corte; T02 entradas, T03 estados,
+Wails y calibración siguen pendientes. Sin cambio de autoridad ni promoción.
+
 ## SDD T02a — reglas recibidas por Orbit, ISA-1092 (2026-09-09)
 
 Base6d4aa514; rama vantareapp/isa-1092-recorded-event-inputs,

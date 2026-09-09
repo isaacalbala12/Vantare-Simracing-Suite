@@ -598,6 +598,7 @@ export const strategyOrbitEn: Record<string, string> = {
   "strategy.reference.warning.expired": "The catalog has expired and is not used for recommendations.",
   "strategy.reference.warning.schema_incompatible": "The catalog format is incompatible.",
   "strategy.reference.warning.unavailable": "The catalog is unavailable; no references are invented.",
+  "strategy.recorded.originals": "Original files preserved",
   "strategy.recorded.title": "Recorded telemetry",
   "strategy.recorded.discover": "Find sessions",
   "strategy.recorded.open": "Open and prepare",

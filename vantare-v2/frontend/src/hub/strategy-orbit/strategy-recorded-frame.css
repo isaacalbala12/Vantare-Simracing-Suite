@@ -1,0 +1,90 @@
+/* A4 approved composition; all content and state remain React-owned. */
+.orbit-strategy.orbit-strategy--recorded {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.strategy-recorded-frame {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 100%;
+  color: var(--orbit-ink);
+  background: var(--orbit-canvas) url('../../assets/strategy-recorded-garage.png') right top / auto 941px no-repeat;
+}
+
+.orbit-main:has(.orbit-strategy--recorded) {
+  background: var(--orbit-canvas) url('../../assets/strategy-recorded-garage.png') right top / auto 941px no-repeat;
+}
+
+.orbit-main:has(.orbit-strategy--recorded) > .orbit-topbar {
+  background: transparent;
+  backdrop-filter: none;
+}
+
+.orbit-main .strategy-recorded-frame { background: transparent; }
+
+.strategy-recorded-frame__progress { padding: 20px 60px 10px 34px; min-height: 108px; }
+.strategy-recorded-frame__progress-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.strategy-recorded-frame__progress ol { display: flex; list-style: none; margin: 0; padding: 0; }
+.strategy-recorded-frame__progress li { flex: 1; position: relative; }
+.strategy-recorded-frame__progress li:last-child { flex: 0; }
+.strategy-recorded-frame__progress li:not(:last-child)::after {
+  content: ''; position: absolute; top: 17px; left: 36px; right: 4px; height: 1px; background: var(--orbit-line-strong);
+}
+.strategy-recorded-frame__progress [data-state='done']::after { background: var(--orbit-carmine); }
+.strategy-recorded-frame__progress button {
+  position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 12px;
+  width: 60px; margin-left: -12px; padding: 0; border: 0; color: var(--orbit-ink-2); background: none; cursor: pointer;
+}
+.strategy-recorded-frame__progress button:disabled { cursor: default; }
+.strategy-recorded-frame__progress button > span {
+  display: grid; place-items: center; width: 36px; height: 36px; border: 1px solid var(--orbit-line-strong);
+  border-radius: 50%; background: var(--orbit-rail-bg); font-size: 17px;
+}
+.strategy-recorded-frame__progress b { font-size: 13px; font-weight: 400; white-space: nowrap; }
+.strategy-recorded-frame__progress [aria-current='step'] > span { border-color: var(--orbit-red); color: var(--orbit-ink); }
+.strategy-recorded-frame__progress [aria-current='step'] b { padding-bottom: 6px; border-bottom: 1px solid var(--orbit-red); color: var(--orbit-ink); }
+.strategy-recorded-frame__progress [data-state='done'] button > span { background: var(--orbit-carmine); color: var(--orbit-ink); }
+.strategy-recorded-frame__progress button:focus-visible { outline: 2px solid var(--orbit-red); outline-offset: 6px; border-radius: 4px; }
+
+.strategy-recorded-frame__stage { flex: 1; padding: 24px 32px 32px; }
+.strategy-recorded-frame__stage > header { max-width: 570px; margin-bottom: 24px; }
+.strategy-recorded-frame__eyebrow { font-size: 11px; letter-spacing: .13em; text-transform: uppercase; color: var(--orbit-ink-2); }
+.strategy-recorded-frame__stage h2 { margin: 14px 0; font-size: 42px; line-height: 1.15; letter-spacing: -.035em; font-weight: 700; }
+.strategy-recorded-frame__stage header > p { max-width: 465px; margin: 16px 0 0; font-size: 16px; line-height: 1.5; color: var(--orbit-ink-2); }
+.strategy-recorded-frame__form { width: 530px; max-width: 100%; }
+.strategy-recorded-frame .orbit-strategy__paths { display: grid; grid-template-columns: 1fr; gap: 14px; }
+.strategy-recorded-frame .orbit-strategy__paths > * {
+  min-height: 144px; padding: 26px 22px; border: 1px solid var(--orbit-line-strong); border-radius: 10px;
+  background: color-mix(in srgb, var(--orbit-surface-0) 96%, transparent); box-shadow: none;
+}
+.strategy-recorded-frame .orbit-strategy__paths .orbit-path__k { font-size: 20px; font-weight: 600; }
+.strategy-recorded-frame .orbit-strategy__paths .orbit-path__d { font-size: 14px; line-height: 1.5; color: var(--orbit-ink-2); }
+.strategy-recorded-frame .orbit-strategy__paths > button:hover { border-color: var(--orbit-carmine); }
+.strategy-recorded-frame__footer {
+  display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;
+  min-height: 112px; padding: 20px 32px; border-top: 1px solid var(--orbit-line);
+  background: var(--orbit-canvas);
+}
+.strategy-recorded-frame__footer > span { display: flex; align-items: center; gap: 16px; color: var(--orbit-ink-2); font-size: 14px; }
+.strategy-recorded-frame__footer > span > span { display: grid; place-items: center; width: 22px; height: 22px; border: 1px solid currentColor; border-radius: 50%; }
+.strategy-recorded-frame__footer > div { display: flex; flex-wrap: wrap; gap: 18px; }
+.strategy-recorded-frame__footer .orbit-btn { min-height: 56px; min-width: 150px; justify-content: center; font-size: 16px; }
+.strategy-recorded-frame__footer .orbit-strategy__wizard-acts { margin: 0; }
+
+@media (max-width: 1024px) {
+  .strategy-recorded-frame__progress { padding-right: 36px; }
+  .strategy-recorded-frame__stage { padding-inline: 24px; }
+  .strategy-recorded-frame__stage h2 { font-size: 36px; }
+}
+@media (max-width: 600px) {
+  .strategy-recorded-frame__progress { overflow-x: auto; padding-inline: 28px; min-height: 96px; }
+  .strategy-recorded-frame__progress ol { min-width: 420px; }
+  .strategy-recorded-frame__stage { padding: 16px; }
+  .strategy-recorded-frame__stage h2 { font-size: 30px; }
+  .strategy-recorded-frame__footer { padding: 20px 16px; }
+  .strategy-recorded-frame__form { width: 100%; }
+}

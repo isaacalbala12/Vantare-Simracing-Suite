@@ -20,6 +20,11 @@ Faltan pestañas y operaciones avanzadas/cálculo; no review >9 ni Wails. Dos
 repeticiones visuales fallaron al guardar, otra pasó: causa aún no demostrada.
 Siguiente gate visible de repositorio cargado (owner ya rechaza desconocido),
 prueba retrasada; después datos/plan/revisiones y tareas nativas pendientes.
+T05l resuelve el gate de apertura con RED/GREEN de carga retrasada: botón y
+submit esperan versión conocida, preparación sigue editable, error con reintento.
+10 focales/tipos/lint PASS; 3 recorridos harness posteriores completos/geométricos
+sin pageerror. No atribuir causalidad a los fallos históricos sin evidencia.
+Siguiente operaciones de datos y revisión; global posterior pendiente.
 Gate #1095 T08h final: 436 archivos/3412 tests, lint/build PASS, con avisos
 heredados de teardown/chunks. No Wails/paridad/empírico nuevo ni promoción.
 

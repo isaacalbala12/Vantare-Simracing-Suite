@@ -740,4 +740,6 @@ export const strategyOrbitPt: Record<string, string> = {
 "strategy.workspace.emptyLibrary": "Nenhuma estratégia registada corresponde à pesquisa.",
 "strategy.workspace.open": "Abrir rascunho",
   "strategy.workspace.yourRace": "A tua corrida",
+  "strategy.workspace.repositoryLoading": "A verificar o repositório antes de guardar…",
+  "strategy.workspace.repositoryUnavailable": "O repositório não está disponível. Podes continuar a preparar a corrida e verificar novamente.",
 };

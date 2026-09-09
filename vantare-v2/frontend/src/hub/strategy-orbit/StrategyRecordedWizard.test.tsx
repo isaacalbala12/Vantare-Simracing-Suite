@@ -14,6 +14,18 @@ function Parent({ initial = createRecordedWizardDraft(), open = () => {}, discov
 }
 const next = () => fireEvent.click(screen.getByRole("button", { name: "strategy.journey.next →" }));
 
+it("does not submit while opening is unavailable and leaves an explicit retry action usable", () => {
+  const open = vi.fn(); const retry = vi.fn();
+  const draft = { ...createRecordedWizardDraft(), step: "sessions" as const, combination: car };
+  render(<StrategyRecordedWizard draft={draft} onChange={vi.fn()} catalog={[car]} catalogState="available" calendar={null} onDiscover={vi.fn()} sessions={null} onOpenDraft={open} onExit={vi.fn()} canOpenDraft={false} openDraftHint="Repository unavailable" onRetryOpenDraft={retry} t={t} />);
+  const save = screen.getByRole("button", { name: "strategy.journey.openDraft →" });
+  expect((save as HTMLButtonElement).disabled).toBe(true);
+  fireEvent.submit(save.closest("form")!);
+  expect(open).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: "strategy.workspace.refresh" }));
+  expect(retry).toHaveBeenCalledOnce();
+});
+
 it("walks exactly five steps, retains configuration and only submits the draft at the end", () => {
   const open = vi.fn();
   render(<Parent open={open} />);

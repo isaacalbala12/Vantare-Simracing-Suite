@@ -2,6 +2,14 @@
 
 ## T05i / T09 — continuación de montaje y biblioteca nativa
 
+T05l: RED de guardado ofrecido antes de list/version; GREEN bloquea sólo abrir
+borrador, conserva pasos independientes y muestra carga/error/reintento. También
+protege submit programático y espera operaciones de Analysis sin deshabilitar
+su cancelación. 10 focales/tipos/lint PASS (C:/tmp/isa1094-t05l-*).
+Tres recorridos posteriores del harness alcanzan resumen y pasan geometría,
+sin pageerror. Esto no demuestra retrospectivamente la causa de los dos rechazos
+de T05k. Sigue gate general posterior y operaciones Datos/Revisiones/Plan.
+
 T05k: ajustes visuales y corrección del grid al comprimir contexto. Evidencia
 en [route-pass-01](route-pass-01/README.md). Gate general 438 archivos/3420 tests,
 lint y build final PASS. Capturas de cinco pasos/resumen y tamaños menores;

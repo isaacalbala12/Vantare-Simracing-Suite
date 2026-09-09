@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { ToastProvider } from "../../ui/orbit";
 import type { StrategyApplicationClient, StrategyApplicationCommandV1, StrategyApplicationResultV1 } from "../../strategy/strategy-application-client";
@@ -12,11 +12,13 @@ vi.mock("./strategy-orbit-bridge", () => ({ createStrategyOrbitApplicationClient
 afterEach(() => { cleanup(); document.getElementById(STRATEGY_CONTEXT_SLOT_ID)?.remove(); });
 const combination = { combinationId: "lmu:imola", simId: "lmu", trackName: "Imola", trackLayout: "GP", carName: "Car", carClass: "LMP2", sessionCount: 1, raceCount: 1, lastActivity: "2026-09-10T00:00:00Z", climateBuckets: [], sessions: [] };
 const draft = { contractVersion: "strategy.v1" as const, draftId: "recorded-draft:existing", planId: "recorded-plan:existing", variantId: "recorded-main", name: "Saved Imola", mode: "manual" as const, updatedAt: "2026-09-10T00:00:00Z", capabilities: ["manual_inputs" as const], provenance: { kind: "manual" as const }, confidence: { level: "unknown" as const }, payload: { contractVersion: "strategy.recorded.draft.v1" as const, eventId: "existing", draft: { ...createRecordedWizardDraft(), combination, name: "Saved Imola" } } };
-function setup() {
+function setup(options?: { delayLibrary: boolean }) {
+  let releaseLibrary = () => {};
+  const libraryReady = options?.delayLibrary ? new Promise<void>(resolve => { releaseLibrary = resolve; }) : Promise.resolve();
   const execute = vi.fn(async (command: StrategyApplicationCommandV1<RecordedDraftPayload>): Promise<StrategyApplicationResultV1<RecordedDraftPayload>> => {
     const base = { protocolVersion: "strategy.application.v1" as const, commandId: command.commandId, repositoryVersion: 4, recoveredFromBackup: false, closed: false };
     switch (command.operation) {
-      case "list": return { ...base, plans: [{ planId: draft.planId, variantId: draft.variantId, draftId: draft.draftId, name: draft.name, mode: draft.mode, updatedAt: draft.updatedAt, hasDraft: true, revisionCount: 0 }] };
+      case "list": await libraryReady; return { ...base, plans: [{ planId: draft.planId, variantId: draft.variantId, draftId: draft.draftId, name: draft.name, mode: draft.mode, updatedAt: draft.updatedAt, hasDraft: true, revisionCount: 0 }] };
       case "list_session_combinations": return { ...base, sessionCatalogStatus: "available", sessionCombinations: [combination] };
       case "list_events": return { ...base, events: [] };
       case "open": return { ...base, draft };
@@ -26,7 +28,7 @@ function setup() {
   });
   const application: StrategyApplicationClient<RecordedDraftPayload> = { execute, cancel: vi.fn(), dispose: vi.fn() };
   const slot = document.createElement("div"); slot.id = STRATEGY_CONTEXT_SLOT_ID; document.body.append(slot);
-  return { ...render(<ToastProvider><StrategyRecordedPage applicationClient={application} /></ToastProvider>), execute, slot };
+  return { ...render(<ToastProvider><StrategyRecordedPage applicationClient={application} /></ToastProvider>), execute, slot, releaseLibrary };
 }
 it("mounts the recorded five-step route and saves a draft without invoking live or calculation commands", async () => {
   const { execute } = setup();
@@ -67,4 +69,22 @@ it("prevents a pending reopen from replacing a newly started preparation", async
   fireEvent.click(open);
   expect((within(slot).getByRole("button", { name: "strategy.home.new" }) as HTMLButtonElement).disabled).toBe(true);
   expect(screen.getByText("strategy.journey.opening")).toBeTruthy();
+});
+it("keeps preparation editable but waits for the native repository version before offering to save", async () => {
+  const { execute, releaseLibrary } = setup({ delayLibrary: true });
+  fireEvent.click(screen.getByRole("button", { name: /strategy.journey.next/ }));
+  const car = await screen.findByRole("combobox", { name: "strategy.journey.car" });
+  await waitFor(() => expect((car as HTMLSelectElement).disabled).toBe(false));
+  fireEvent.change(car, { target: { value: JSON.stringify([combination.carClass, combination.carName]) } });
+  fireEvent.change(screen.getByRole("combobox", { name: "strategy.journey.track" }), { target: { value: combination.combinationId } });
+  for (let index = 0; index < 3; index++) fireEvent.click(screen.getByRole("button", { name: /strategy.journey.next/ }));
+  const save = screen.getByRole("button", { name: /strategy.journey.openDraft/ });
+  expect((save as HTMLButtonElement).disabled).toBe(true);
+  expect(screen.getByText("strategy.workspace.repositoryLoading")).toBeTruthy();
+  fireEvent.submit(save.closest("form")!);
+  expect(execute.mock.calls.some(([command]) => command.operation === "create")).toBe(false);
+  await act(async () => { releaseLibrary(); });
+  await waitFor(() => expect((save as HTMLButtonElement).disabled).toBe(false));
+  fireEvent.click(save);
+  await screen.findByText("strategy.workspace.saved");
 });

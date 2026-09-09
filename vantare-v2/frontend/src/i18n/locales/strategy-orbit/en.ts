@@ -740,4 +740,6 @@ export const strategyOrbitEn: Record<string, string> = {
 "strategy.workspace.emptyLibrary": "No recorded strategies match your search.",
 "strategy.workspace.open": "Open draft",
   "strategy.workspace.yourRace": "Your race",
+  "strategy.workspace.repositoryLoading": "Checking the repository before saving…",
+  "strategy.workspace.repositoryUnavailable": "The repository is unavailable. You can keep preparing the race and check again.",
 };

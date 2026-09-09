@@ -740,4 +740,6 @@ export const strategyOrbitEs: Record<string, string> = {
 "strategy.workspace.emptyLibrary": "No hay estrategias registradas que coincidan con la búsqueda.",
 "strategy.workspace.open": "Abrir borrador",
   "strategy.workspace.yourRace": "Tu carrera",
+  "strategy.workspace.repositoryLoading": "Comprobando el repositorio antes de guardar…",
+  "strategy.workspace.repositoryUnavailable": "El repositorio no está disponible. Puedes seguir preparando la carrera y volver a comprobarlo.",
 };

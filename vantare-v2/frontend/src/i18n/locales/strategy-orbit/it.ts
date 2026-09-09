@@ -741,4 +741,6 @@ export const strategyOrbitIt: Record<string, string> = {
 "strategy.workspace.emptyLibrary": "Nessuna strategia registrata corrisponde alla ricerca.",
 "strategy.workspace.open": "Apri bozza",
   "strategy.workspace.yourRace": "La tua gara",
+  "strategy.workspace.repositoryLoading": "Verifica del repository prima del salvataggio…",
+  "strategy.workspace.repositoryUnavailable": "Il repository non è disponibile. Puoi continuare a preparare la gara e riprovare.",
 };

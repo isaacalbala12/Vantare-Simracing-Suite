@@ -13,8 +13,9 @@ import { StrategyRecordedOverview } from "./StrategyRecordedOverview";
 import { StrategyRecordedSessionsView } from "./StrategyRecordedSessions";
 
 /** Mount once per event. Views never own or dispose the opened Analysis files. */
-export function StrategyRecordedWorkflow({ eventId, repositoryVersion, initial, catalog, catalogState, calendar, application, analysis, onExit, onCleanupError, navigation, t }: {
+export function StrategyRecordedWorkflow({ eventId, repositoryVersion, repositoryLoading = false, onRetryRepository, initial, catalog, catalogState, calendar, application, analysis, onExit, onCleanupError, navigation, t }: {
   readonly eventId: string; readonly repositoryVersion?: number; readonly initial?: StoredRecordedDraft;
+  readonly repositoryLoading?: boolean; readonly onRetryRepository?: () => void;
   readonly catalog: readonly RecordedCombination[]; readonly catalogState: "loading" | "available" | "unavailable";
   readonly calendar: Calendar | null; readonly application: StrategyApplicationClient<RecordedDraftPayload>;
   readonly analysis?: AnalysisClient; readonly onExit: () => void; readonly onCleanupError: () => void; readonly t: (key: string) => string;
@@ -32,6 +33,9 @@ export function StrategyRecordedWorkflow({ eventId, repositoryVersion, initial, 
   return <div className="strategy-recorded-workflow" data-view={flow.view}>
     {navigation?.({ requestExit: exit, draft: flow.draft, view: flow.view, busy: flow.busy })}
     {flow.view === "preparation" ? <StrategyRecordedWizard draft={flow.draft} onChange={flow.change} catalog={flow.choices} catalogState={flow.choices.length > 0 ? "available" : catalogState} calendar={calendar}
+      canOpenDraft={!flow.busy && (flow.stored !== undefined || repositoryVersion !== undefined)}
+      openDraftHint={t(flow.sessions.busy ? "strategy.recorded.busy" : repositoryLoading ? "strategy.workspace.repositoryLoading" : "strategy.workspace.repositoryUnavailable")}
+      onRetryOpenDraft={!flow.busy && !repositoryLoading ? onRetryRepository : undefined}
       onDiscover={discover} sessions={sourceView} onOpenDraft={() => void flow.openEditor()} onExit={exit} busy={flow.saving} error={error} t={t} />
       : <StrategyRecordedOverview draft={flow.draft} dirty={flow.dirty} busy={flow.busy} error={error} onEdit={edit} onSources={() => setLibraryOpen(true)} onSave={() => void flow.save()} t={t} />}
     <Drawer open={libraryOpen} title={t("strategy.recorded.title")} closeLabel={t("strategy.recorded.close")} onClose={() => setLibraryOpen(false)}>{sourceView}</Drawer>

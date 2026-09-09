@@ -18,6 +18,15 @@ const otherCar = { ...car, combinationId: "lmu:other", carName: "Other car" };
 const ref = { sessionId: "session", baseDigest: "base", revisionId: "revision", snapshotId: "snapshot" };
 
 describe("recorded wizard working draft", () => {
+  it("selects a prepared native identity without requiring or fabricating session statistics", () => {
+    const identity = { combinationId: car.combinationId, simId: car.simId, trackName: car.trackName, trackLayout: car.trackLayout, carName: car.carName, carClass: car.carClass };
+    const snapshot = snapshotRecordedCalendar(calendar, series.id, "lmu", capturedAt);
+    expect(recordedCalendarCombinations(snapshot, [identity])).toEqual([identity]);
+    const selected = selectRecordedCombination(selectRecordedCalendar(createRecordedWizardDraft(), snapshot, [identity]), identity.combinationId, [identity]);
+    expect(selected.combination).toEqual(identity);
+    expect(selected.combination).not.toHaveProperty("sessionCount");
+    expect(selected.combination).not.toHaveProperty("climateBuckets");
+  });
   it("starts without fabricated resources, drivers, sessions or race duration", () => {
     const draft = createRecordedWizardDraft();
     expect(draft.race).toEqual({ format: "timed" });

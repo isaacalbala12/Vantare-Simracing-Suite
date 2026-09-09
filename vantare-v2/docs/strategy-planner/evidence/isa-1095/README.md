@@ -43,3 +43,12 @@ el comportamiento de revisiones exactas, base explícita y compensación de fall
 RED3/GREEN45 focales, tipos y lint focal PASS. Logs C:/tmp/isa1095-t08c-*.log.
 Todavía sin biblioteca integrada; siguiente separar opciones de identidad de
 recuentos del catálogo para ofrecer una fuente sin inventar estadísticas.
+
+## T08d — opciones de identidad sin estadísticas inventadas
+
+RecordedCombination es la identidad seleccionable; el asistente y filtro de
+calendario aceptan esa forma mínima además del catálogo completo existente.
+No se rellenan sessionCount, raceCount ni clima para una fuente preparada.
+18 tests focales, tipos y lint focal PASS (C:/tmp/isa1095-t08d-*.log).
+Cinco paths de lógica/test. Sigue aceptación explícita de la propuesta y owner
+capaz de descubrir/abrir antes de conocer la combinación.

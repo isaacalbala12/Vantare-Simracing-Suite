@@ -1,18 +1,17 @@
 import { useState, type ReactNode } from "react";
 import type { Calendar } from "../../calendar/calendar-types";
-import type { StrategySessionCombinationV1 } from "../../strategy/strategy-application-client";
 import { formatMessage } from "../orbit/format-message";
 import { StrategyRecordedFrame } from "./StrategyRecordedFrame";
 import { StrategyRecordedStart } from "./StrategyRecordedStart";
 import { StrategyRecordedCombination } from "./StrategyRecordedCombination";
 import { StrategyRecordedRules } from "./StrategyRecordedRules";
 import { StrategyRecordedDrivers } from "./StrategyRecordedDrivers";
-import { RECORDED_WIZARD_STEPS, moveRecordedWizard, selectRecordedCalendar, selectRecordedCombination, snapshotRecordedCalendar, type RecordedWizardDraft } from "./strategy-recorded-wizard";
+import { RECORDED_WIZARD_STEPS, moveRecordedWizard, selectRecordedCalendar, selectRecordedCombination, snapshotRecordedCalendar, type RecordedCombination, type RecordedWizardDraft } from "./strategy-recorded-wizard";
 import { recordedWizardErrors } from "./strategy-recorded-validation";
 
 export function StrategyRecordedWizard({ draft, onChange, catalog, catalogState, calendar, onDiscover, sessions, onOpenDraft, onExit, busy = false, error, t }: {
   readonly draft: RecordedWizardDraft; readonly onChange: (draft: RecordedWizardDraft) => void;
-  readonly catalog: readonly StrategySessionCombinationV1[]; readonly catalogState: "loading" | "available" | "unavailable";
+  readonly catalog: readonly RecordedCombination[]; readonly catalogState: "loading" | "available" | "unavailable";
   readonly calendar: Calendar | null; readonly onDiscover: () => void; readonly sessions: ReactNode;
   readonly onOpenDraft: () => void; readonly onExit: () => void; readonly busy?: boolean; readonly error?: string; readonly t: (key: string) => string;
 }) {

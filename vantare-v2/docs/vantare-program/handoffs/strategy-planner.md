@@ -19,6 +19,8 @@ T08a Go global -p1 y vet general PASS. T08c apertura sin combinación previa:
 RED3/GREEN45 focales, tipos/lint PASS; identidad nativa comprobada contra proyección,
 rechazo/cierre si falta o contradice selección. Siguiente: opciones de identidad
 independientes de estadísticas, propietario/bootstrap UI y recorrido integrado.
+T08d permite identidades mínimas en el asistente/calendario, sin recuentos
+inventados: 18 focales/tipos/lint PASS. Todavía no hay nueva ruta montada.
 
 ## T05 asistente registrado — ISA-1094 (2026-09-10)
 

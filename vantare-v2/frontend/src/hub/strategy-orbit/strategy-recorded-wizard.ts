@@ -5,7 +5,7 @@ import { calendarSessionCombinations } from "./strategy-calendar-selection";
 
 export const RECORDED_WIZARD_STEPS = ["start", "combination", "rules", "drivers", "sessions"] as const;
 export type RecordedWizardStep = typeof RECORDED_WIZARD_STEPS[number];
-type Combination = Pick<StrategySessionCombinationV1, "combinationId" | "simId" | "trackName" | "trackLayout" | "carName" | "carClass">;
+export type RecordedCombination = Pick<StrategySessionCombinationV1, "combinationId" | "simId" | "trackName" | "trackLayout" | "carName" | "carClass">;
 
 export type RecordedCalendarSnapshot = {
   readonly simulator: string;
@@ -20,7 +20,7 @@ export type RecordedCalendarSnapshot = {
 export type RecordedWizardDraft = {
   readonly step: RecordedWizardStep;
   readonly mode: "manual" | "automatic";
-  readonly combination?: Combination;
+  readonly combination?: RecordedCombination;
   readonly calendar?: RecordedCalendarSnapshot;
   readonly name: string;
   readonly race: { readonly format: "timed"; readonly durationMin?: number } | { readonly format: "laps"; readonly laps?: number };
@@ -54,14 +54,14 @@ export function snapshotRecordedCalendar(
   return { simulator, version: calendar.version, updated: calendar.updated, capturedAt, startAt, series: structuredClone(series) };
 }
 
-export function recordedCalendarCombinations(snapshot: RecordedCalendarSnapshot, catalog: readonly StrategySessionCombinationV1[]): StrategySessionCombinationV1[] {
+export function recordedCalendarCombinations<T extends RecordedCombination>(snapshot: RecordedCalendarSnapshot, catalog: readonly T[]): T[] {
   const eligible = catalog.filter(item => item.simId === snapshot.simulator);
   return eligible.filter(item => (snapshot.series.classes ?? []).some(vehicleClass =>
     calendarSessionCombinations(snapshot.series, vehicleClass, [item]).length > 0,
   ));
 }
 
-export function selectRecordedCombination(draft: RecordedWizardDraft, id: string | undefined, catalog: readonly StrategySessionCombinationV1[]): RecordedWizardDraft {
+export function selectRecordedCombination(draft: RecordedWizardDraft, id: string | undefined, catalog: readonly RecordedCombination[]): RecordedWizardDraft {
   if (id === undefined) return {
     ...draft, combination: undefined, step: "combination", sessions: [],
     invalidatedSessionCount: draft.invalidatedSessionCount + draft.sessions.length,
@@ -81,7 +81,7 @@ export function selectRecordedCombination(draft: RecordedWizardDraft, id: string
 }
 
 /** Applying a calendar choice is explicit; later feed refreshes cannot mutate it. */
-export function selectRecordedCalendar(draft: RecordedWizardDraft, snapshot: RecordedCalendarSnapshot | undefined, catalog: readonly StrategySessionCombinationV1[]): RecordedWizardDraft {
+export function selectRecordedCalendar(draft: RecordedWizardDraft, snapshot: RecordedCalendarSnapshot | undefined, catalog: readonly RecordedCombination[]): RecordedWizardDraft {
   const compatible = !snapshot || recordedCalendarCombinations(snapshot, catalog).some(item => item.combinationId === draft.combination?.combinationId);
   return {
     ...draft, calendar: snapshot ? structuredClone(snapshot) : undefined, step: "combination",

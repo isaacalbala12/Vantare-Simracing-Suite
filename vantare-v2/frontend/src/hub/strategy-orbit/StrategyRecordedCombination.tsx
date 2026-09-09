@@ -1,14 +1,13 @@
 import { useState } from "react";
 import type { Calendar } from "../../calendar/calendar-types";
-import type { StrategySessionCombinationV1 } from "../../strategy/strategy-application-client";
 import { Icon } from "../../ui/orbit";
-import type { RecordedWizardDraft } from "./strategy-recorded-wizard";
+import type { RecordedCombination, RecordedWizardDraft } from "./strategy-recorded-wizard";
 import { recordedCalendarCombinations } from "./strategy-recorded-wizard";
 import "./strategy-recorded-combination.css";
 
 type Props = {
   readonly draft: RecordedWizardDraft;
-  readonly catalog: readonly StrategySessionCombinationV1[];
+  readonly catalog: readonly RecordedCombination[];
   readonly catalogState: "loading" | "available" | "unavailable";
   readonly calendar: Calendar | null;
   readonly onCombination: (id: string | undefined) => void;
@@ -17,7 +16,7 @@ type Props = {
   readonly t: (key: string) => string;
 };
 
-const carKey = (car: Pick<StrategySessionCombinationV1, "carClass" | "carName">) => JSON.stringify([car.carClass, car.carName]);
+const carKey = (car: Pick<RecordedCombination, "carClass" | "carName">) => JSON.stringify([car.carClass, car.carName]);
 
 /** Canonical metadata only. File ownership, selection and persistence stay outside. */
 export function StrategyRecordedCombination({ draft, catalog, catalogState, calendar, onCombination, onCalendar, onDiscover, t }: Props) {

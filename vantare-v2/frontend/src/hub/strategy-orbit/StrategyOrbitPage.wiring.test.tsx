@@ -393,3 +393,24 @@ describe("StrategyOrbitPage · cableado auditado", () => {
     expect(calculatedInputs.some((input) => JSON.stringify(input).includes('"progress":"50","rainChance":100'))).toBe(true);
   });
 });
+
+it("permite preparar sesiones aunque el cálculo falle", async () => {
+  window.localStorage.clear();
+  let saved: StrategyEventV2 | undefined;
+  const client: StrategyApplicationClient<unknown> = {
+    async execute(command) {
+      const base = { protocolVersion: "strategy.application.v1" as const, commandId: command.commandId, repositoryVersion: 0, recoveredFromBackup: false, closed: false };
+      if (command.operation === "list_session_combinations") return { ...base, sessionCatalogStatus: "available", sessionCombinations: [{ combinationId: "lmu:imola", simId: "lmu", trackName: "Imola", trackLayout: "GP", carName: "Mustang", carClass: "LMGT3", sessionCount: 0, raceCount: 0, lastActivity: "2026-08-20T18:00:00Z", climateBuckets: [], sessions: [] }] };
+      if (command.operation === "list_events") return { ...base, events: saved ? [saved] : [] };
+      if (command.operation === "create_event" || command.operation === "edit_event") { saved = command.event; return { ...base, events: [saved] }; }
+      if (command.operation === "get_event_planning_inputs") return { ...base, planningInputStatus: "no_included_sessions", planningInputs: { overrides: {} } };
+      if (command.operation === "calculate_orbit") throw new Error("backend deadline");
+      if (command.operation === "list") return { ...base, plans: [] };
+      throw new Error(`unexpected ${command.operation}`);
+    }, cancel: () => false, dispose: () => undefined,
+  };
+  render(<I18nProvider><ToastProvider><StrategyOrbitPage applicationClient={client} roster={ROSTER} /></ToastProvider></I18nProvider>);
+  fireEvent.click(await screen.findByTestId("orbit-session-combination-lmu:imola"));
+  await screen.findByTestId("orbit-strategy-calculation-error");
+  expect(screen.getByRole("button", { name: "Buscar sesiones" })).toBeTruthy();
+});

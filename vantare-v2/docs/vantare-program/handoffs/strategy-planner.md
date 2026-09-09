@@ -1555,3 +1555,12 @@ Siguiente corte de banco: internal/app/strategy_recorded_real_integration_test.g
 activación explícita por variables ISA1088_REAL_SOURCE y ISA1088_RUNTIME_APP.
 Usa servicio nativo y helper confiado con originales hash antes/después; autoría
 licenciada controlada de test, no equivale a aceptación Wails/login real.
+
+ISA-1088 verificación Wails (2026-09-09): build diagnóstica real abrió Hub.
+El importador existente preparó solo Imola/Monza, sin abrir reserva de evaluación.
+Evento nuevo selecciona Imola; solver alcanza 8 s (issue #1089). RED/GREEN
+confirma que la pantalla de error ocultaba Sesiones; se mantiene el propietario
+al nivel raíz entre carga/error/éxito. 20 pruebas focales PASS. La búsqueda
+nativa encuentra además límite de composición 128 frente a carpeta >400;
+produce mensaje incompatible. Debe corregirse en issue separada antes de
+certificar recorrido UI completo. Runtime liberado para overlays #1072.

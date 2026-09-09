@@ -24,7 +24,7 @@ export function StrategyRecordedSessions({ combinationId, revisions, t, client: 
   const pending = useRef<AbortController | null>(null);
   const alive = useRef(true);
   const cleanupError = useRef(onCleanupError);
-  cleanupError.current = onCleanupError;
+  useEffect(() => { cleanupError.current = onCleanupError; }, [onCleanupError]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [applied, setApplied] = useState(false);

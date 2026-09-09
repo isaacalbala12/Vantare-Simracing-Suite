@@ -2621,6 +2621,31 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
     </div>
   );
 
+  const recordedSessionsPanel = eventRecord && eventCombination && catalogView ? <div key="recorded-sessions" hidden={calculationCurrent && calculation.status === "success" && panel !== "sessions"}>
+                <StrategyRecordedSessions
+                  key={`${eventRecord.id}:${eventCombination.combinationId}`}
+                  combinationId={eventCombination.combinationId}
+                  revisions={eventSessionDecisions.flatMap((session) => session.revision ? [session.revision] : [])}
+                  t={t}
+                  onCleanupError={() => toast.show(t("strategy.recorded.error"), "recorded_cleanup_failed")}
+                  onApply={async (sessions, signal) => {
+                    signal.throwIfAborted();
+                    const prepared = sessions.map((session) => ({ sessionId: session.revision.sessionId, included: true, revision: session.revision }));
+                    const excluded = eventCombination.sessions
+                      .filter((session) => !prepared.some((item) => item.sessionId === session.sessionId))
+                      .map((session) => ({ sessionId: session.sessionId, included: false }));
+                    const saved = await persistStrategySessionSelection(applicationClient, catalogView, eventRecord, eventCombination,
+                      [...excluded, ...prepared]);
+                    signal.throwIfAborted();
+                    // Keep the acknowledged version even if recomputation fails.
+                    setSessionCatalog({ status: "ready", view: saved });
+                    const view = await refreshStrategyPlanningInputs(applicationClient, saved, eventRecord.id);
+                    signal.throwIfAborted();
+                    setSessionCatalog({ status: "ready", view });
+                  }}
+                />
+              </div> : null;
+
   // ── entrada: menú, asistente o formulario ───────────────────────────────
   if (!eventRecord || !strategyEvent || !storedActive) {
     return (
@@ -2651,6 +2676,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
     return (
       <div className="orbit-strategy orbit-strategy--empty" data-testid="orbit-strategy">
         {contextSlot ? createPortal(context, contextSlot) : null}
+        {recordedSessionsPanel}
         <Surface data-testid="orbit-strategy-calculation-loading" title={t("strategy.calculation.loading")}>
           <p role="status">{t("strategy.calculation.loadingHint")}</p>
         </Surface>
@@ -2668,6 +2694,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
     return (
       <div className="orbit-strategy orbit-strategy--empty" data-testid="orbit-strategy">
         {contextSlot ? createPortal(context, contextSlot) : null}
+        {recordedSessionsPanel}
         <Surface data-testid="orbit-strategy-calculation-error" title={t("strategy.calculation.error")}>
           <p role="alert">{message}</p>
           {detail ? <p className="orbit-strategy__meta">{detail}</p> : null}
@@ -2900,6 +2927,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
 
   return (
     <div className="orbit-strategy" data-testid="orbit-strategy">
+      {recordedSessionsPanel}
       {contextSlot ? createPortal(context, contextSlot) : null}
       {migrationDialog}
 
@@ -3817,30 +3845,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
                   )}
                 </div>
               ) : panel === "sessions" ? sessionsPanel : weatherPanel}
-              {eventRecord && eventCombination && catalogView ? <div hidden={panel !== "sessions"}>
-                <StrategyRecordedSessions
-                  key={`${eventRecord.id}:${eventCombination.combinationId}`}
-                  combinationId={eventCombination.combinationId}
-                  revisions={eventSessionDecisions.flatMap((session) => session.revision ? [session.revision] : [])}
-                  t={t}
-                  onCleanupError={() => toast.show(t("strategy.recorded.error"), "recorded_cleanup_failed")}
-                  onApply={async (sessions, signal) => {
-                    signal.throwIfAborted();
-                    const prepared = sessions.map((session) => ({ sessionId: session.revision.sessionId, included: true, revision: session.revision }));
-                    const excluded = eventCombination.sessions
-                      .filter((session) => !prepared.some((item) => item.sessionId === session.sessionId))
-                      .map((session) => ({ sessionId: session.sessionId, included: false }));
-                    const saved = await persistStrategySessionSelection(applicationClient, catalogView, eventRecord, eventCombination,
-                      [...excluded, ...prepared]);
-                    signal.throwIfAborted();
-                    // Keep the acknowledged version even if recomputation fails.
-                    setSessionCatalog({ status: "ready", view: saved });
-                    const view = await refreshStrategyPlanningInputs(applicationClient, saved, eventRecord.id);
-                    signal.throwIfAborted();
-                    setSessionCatalog({ status: "ready", view });
-                  }}
-                />
-              </div> : null}
+
             </Surface>
           </div>
         </div>

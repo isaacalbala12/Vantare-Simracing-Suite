@@ -30,15 +30,17 @@ export async function openRecordedSession(
     if (expected && expected.sessionId !== prepared.base.sessionId) {
       throw new Error("recorded_source_mismatch");
     }
+    const revisionId = expected?.revisionId ?? prepared.baseRevisionId;
     const projection = await client.project({
       sessionId: opened.sessionId,
       base: prepared.base,
-      revisionId: expected?.revisionId ?? prepared.baseRevisionId,
+      revisionId,
     }, signal);
     signal?.throwIfAborted();
     const revision = projection.sourceRevisions?.[0];
     if (projection.combinationId !== combinationId || !revision || projection.sourceRevisions?.length !== 1
       || revision.sessionId !== prepared.base.sessionId
+      || revision.revisionId !== revisionId
       || (expected && (revision.baseDigest !== expected.baseDigest || revision.revisionId !== expected.revisionId || revision.snapshotId !== expected.snapshotId))) {
       throw new Error("recorded_revision_mismatch");
     }
@@ -47,7 +49,7 @@ export async function openRecordedSession(
     try {
       await client.close(opened.sessionId);
     } catch (cleanupError) {
-      throw new AggregateError([error, cleanupError], "recorded_cleanup_failed");
+      throw new AggregateError([error, cleanupError], "recorded_cleanup_failed", { cause: cleanupError });
     }
     throw error;
   }

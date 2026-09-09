@@ -24,9 +24,16 @@ describe("recorded session ownership", () => {
     expect(client.close).not.toHaveBeenCalled();
   });
   it("starts a new selection from the explicit base, never from current head", async () => {
-    const { client, api, base } = fixture();
+    const { client, api, base, revision } = fixture();
+    client.project.mockResolvedValue({ combinationId: "combo", sourceRevisions: [{ ...revision, revisionId: "f".repeat(64) }] });
     await openRecordedSession(api, "candidate", "combo");
     expect(client.project).toHaveBeenCalledWith({ sessionId: "handle", base, revisionId: "f".repeat(64) }, undefined);
+  });
+  it("matches a saved revision by stable identity after opening its candidate", async () => {
+    const { client, api, revision } = fixture();
+    const result = await openRecordedSession(api, "candidate", "combo", [{ ...revision, sessionId: "other" }, revision]);
+    expect(result.revision).toEqual(revision);
+    expect(client.project.mock.calls[0][0].revisionId).toBe(revision.revisionId);
   });
   it.each(["source", "combination", "snapshot", "read"])("rejects %s mismatch/failure and closes the acquired handle", async (mode) => {
     const { client, api, revision } = fixture();

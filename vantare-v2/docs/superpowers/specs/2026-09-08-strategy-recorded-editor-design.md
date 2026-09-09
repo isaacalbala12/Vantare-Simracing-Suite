@@ -1,5 +1,11 @@
 # Strategy: asistente y edición de telemetría registrada
 
+> **Continuidad vigente — ISA-1091, 2026-09-09:** el [SDD integral](../../strategy-planner/sdd/README.md)
+> consolida requisitos, secuencia pendiente y gates. Las autorizaciones ya dadas
+> en el chat no se repiten por microcorte; se preservan los contratos y las
+> autorizaciones reservadas. Este documento conserva contexto histórico.
+
+
 Fecha: 2026-09-08. Issue: #1028; continuación del expediente #694.
 Estado: especificación escrita v1 aprobada por Isaac el 2026-09-08, sobre el
 contenido del commit `a009231a`. No es autorización para implementar ni promover.

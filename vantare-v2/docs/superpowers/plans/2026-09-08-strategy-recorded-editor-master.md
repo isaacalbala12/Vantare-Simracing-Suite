@@ -1,5 +1,11 @@
 # Strategy recorded editor Implementation Plan
 
+> **Continuidad vigente — ISA-1091, 2026-09-09:** el [SDD integral](../../strategy-planner/sdd/README.md)
+> consolida requisitos, secuencia pendiente y gates. Las autorizaciones ya dadas
+> en el chat no se repiten por microcorte; se preservan los contratos y las
+> autorizaciones reservadas. Este documento conserva contexto histórico.
+
+
 > **For agentic workers:** Use `executing-plans` to execute the approved phase
 > task by task. Do not dispatch other agents unless execution authority permits
 > it. One issue and worktree per slice; no implementation from this master alone.

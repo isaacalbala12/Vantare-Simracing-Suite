@@ -42,6 +42,7 @@ No se usa la skill `vantare-core`: está desactualizada y no es fuente de verdad
 - `handoffs/telemetry-analysis.md`: análisis post-sesión.
 - `handoffs/engineer-spotter.md`: Engineer Beta, Spotter, voz y Pit Manager.
 - `handoffs/strategy-planner.md`: producto unificado, sin A/B/C.
+- `../strategy-planner/sdd/README.md`: SDD integral vigente del editor registrado, ejecución continua y aceptación; consolida los planes anteriores para este alcance.
 - `handoffs/overlays-launcher-hub.md`: Studio, widgets, Launcher y Hub.
 - `handoffs/platform-commercial.md`: cuenta, Billing, calendario, ajustes,
   releases, roadmap y migración.

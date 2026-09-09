@@ -1,5 +1,23 @@
 # Handoff vivo — Telemetry Analysis
 
+## SDD integral y pausa de implementación — ISA-1091 (2026-09-09)
+
+Isaac solicita consolidar chat, roadmap y contratos para continuar después sin
+pausas repetidas. [SDD v1.0](../../strategy-planner/sdd/README.md),
+[ejecución T00–T24](../../strategy-planner/sdd/execution.md) y
+[aceptación A01–A21](../../strategy-planner/sdd/acceptance.md) son la secuencia
+vigente de este alcance; las notas posteriores conservan historia, no una cola
+alternativa de pendientes. Base 0240bc7806570be17832aea6153300631f392170,
+rama vantareapp/isa-1091-strategy-sdd, C:/tmp/vantare-isa1091.
+
+Entrega sólo documental, implementación pausada por Isaac. Al reanudar: T00 y
+T01 (#1089); avanzar dependencias y cortes automáticamente, sin permiso por
+commit/test/issue. A4 sigue por portar; calibración empírica sigue sin cerrar.
+Una decisión de umbrales se prepara agrupada con evidencia y no bloquea UI o
+integridad independientes. Código sin subagentes; excepción visual ya autorizada.
+No app/build/LMU en esta entrega. Sin promoción ni release.
+
+
 ## Discovery del corpus real — ISA-1090 (2026-09-09)
 
 Base 7d504d780095b0d81044824d7d2182599e94ac89; rama

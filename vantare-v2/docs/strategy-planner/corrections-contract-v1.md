@@ -1,5 +1,11 @@
 # Contrato propuesto v1 — correcciones de observaciones
 
+> **Estado y secuencia actuales (ISA-1091):** consultar el [SDD integral](sdd/README.md).
+> La mecánica escalar y la conexión de revisiones ya tienen implementación local;
+> las marcas originales de propuesta y siguientes pasos se conservan como historia.
+> El SDD distingue las operaciones pendientes y evita reabrir aprobaciones satisfechas.
+
+
 Estado: contrato global propuesto en #1033, con ejecución posterior autorizada por Isaac. La mecánica escalar, custodia, vista efectiva y recálculo están implementados localmente; #1078 añade referencias estructuradas de proyección. El servicio autorizado y su cliente nativo están implementados localmente; operaciones restantes, vinculación a planes y UI siguen pendientes. Las secciones finales detallan los cortes ejecutados sobre la base documental `8a2d8ff4`.
 Owner: Telemetry Analysis. Superficie de edición: Strategy.
 [Decisión de custodia](../adr/0010-analysis-observation-corrections.md).

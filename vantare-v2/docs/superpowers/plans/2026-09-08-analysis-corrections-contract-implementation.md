@@ -1,5 +1,11 @@
 # ISA-1033 — microplan posterior del contrato de correcciones
 
+> **Estado y secuencia actuales (ISA-1091):** consultar el [SDD integral](../../strategy-planner/sdd/README.md).
+> La mecánica escalar y la conexión de revisiones ya tienen implementación local;
+> las marcas originales de propuesta y siguientes pasos se conservan como historia.
+> El SDD distingue las operaciones pendientes y evita reabrir aprobaciones satisfechas.
+
+
 Estado: propuesta, no autorización de implementación. Base documental `8a2d8ff4`;
 rama `vantareapp/isa-1033-observation-corrections`. Sin subagentes.
 [ADR](../../adr/0010-analysis-observation-corrections.md) y

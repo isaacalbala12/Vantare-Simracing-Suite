@@ -1,5 +1,11 @@
 # ADR 0010 — Correcciones reversibles de observaciones registradas
 
+> **Estado y secuencia actuales (ISA-1091):** consultar el [SDD integral](../strategy-planner/sdd/README.md).
+> La mecánica escalar y la conexión de revisiones ya tienen implementación local;
+> las marcas originales de propuesta y siguientes pasos se conservan como historia.
+> El SDD distingue las operaciones pendientes y evita reabrir aprobaciones satisfechas.
+
+
 **Estado:** Propuesto para revisión; no implementado.
 **Fecha:** 2026-09-08.
 **Autoridad:** #1033, diseño #1028 aprobado; base `8a2d8ff4`.

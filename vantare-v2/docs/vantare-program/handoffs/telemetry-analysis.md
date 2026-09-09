@@ -1,5 +1,21 @@
 # Handoff vivo — Telemetry Analysis
 
+## Cliente nativo de Analysis — ISA-1082 (2026-09-09)
+
+Base f68e2214; rama vantareapp/isa-1082-native-analysis-client;
+worktree C:/tmp/vantare-isa1082. Cliente TS de discovery, apertura explícita,
+páginas y preparar/guardar/cargar/proyectar correcciones. Reutiliza el parser
+de proyección existente. Métodos Wails cerrados, cancelación nativa y descarte
+tardío, sin reintentos automáticos. Conserva calidad/presencia y rechaza páginas
+o revisiones de otra petición. Los digests se validan estructuralmente.
+
+No se abre app ni se generan builds por instrucción actual de Isaac.
+Frontend 418 archivos / 3281 tests, tipos, lint y diff check PASS. Evidencia:
+docs/strategy-planner/evidence/isa-1082/README.md.
+Faltan selección persistida, agregación, operaciones restantes y UI productiva;
+la aceptación visual/Wails y precisión física siguen pendientes. Sin fuentes
+reales, LMU, push/PR/CI remota, merge, promoción o release.
+
 ## Comandos de corrección autorizados — ISA-1081
 
 Sobre 89bdb65e en C:/tmp/vantare-isa1081. SaveCorrections/LoadCorrection y

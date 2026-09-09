@@ -1,6 +1,6 @@
 # Contrato propuesto v1 — correcciones de observaciones
 
-Estado: contrato global propuesto en #1033, con ejecución posterior autorizada por Isaac. La mecánica escalar, custodia, vista efectiva y recálculo están implementados localmente; #1078 añade referencias estructuradas de proyección. Servicio autorizado, operaciones restantes, vinculación a planes y UI siguen pendientes. Las secciones finales detallan los cortes ejecutados sobre la base documental `8a2d8ff4`.
+Estado: contrato global propuesto en #1033, con ejecución posterior autorizada por Isaac. La mecánica escalar, custodia, vista efectiva y recálculo están implementados localmente; #1078 añade referencias estructuradas de proyección. El servicio autorizado y su cliente nativo están implementados localmente; operaciones restantes, vinculación a planes y UI siguen pendientes. Las secciones finales detallan los cortes ejecutados sobre la base documental `8a2d8ff4`.
 Owner: Telemetry Analysis. Superficie de edición: Strategy.
 [Decisión de custodia](../adr/0010-analysis-observation-corrections.md).
 
@@ -310,3 +310,23 @@ no deja familias anunciadas como utilizables. Esto no introduce filtros físicos
 LoadCorrection permite ID vacío solo para consultar la cabeza; esa consulta no
 convierte "última" en selección reproducible. UI, selección persistida de varias
 sesiones/revisiones y operaciones restantes siguen pendientes.
+
+## Cliente nativo — #1082
+
+El cliente TypeScript usa los nueve métodos públicos de TelemetryAnalysisService
+por su nombre Wails completo, contrastado con el registro Go y el runtime
+instalado. Valida las respuestas antes de entregarlas a consumidores: escalares,
+presencia/calidad, paginación, base, revisiones y referencias de proyección.
+El cero omitido por JSON Go conserva su significado según el tipo; ausencia
+sigue siendo ausencia. No se promociona calidad al corregir un valor.
+
+La apertura recibe consentimiento explícito. La cancelación se propaga al
+runtime y también descarta respuestas tardías. No hay reintento automático ni
+conversión de errores en listas vacías. Cancelar guardar no implica rollback:
+el consumidor debe conservar el commandId para recuperar un resultado incierto.
+Proyectar exige revisión exacta; cargar sin ID consulta explícitamente la cabeza.
+La validación de digests en TS es estructural, no sustituye la custodia Go.
+
+La UI productiva, selección persistida y agregación de varias sesiones siguen
+pendientes. Por instrucción de Isaac del 2026-09-09, no se abre la app ni se
+generan builds en este corte. La aceptación visual y Wails continúa pendiente.

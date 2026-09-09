@@ -1353,7 +1353,7 @@ function validateProjectionRevisions(sessions: readonly unknown[], value: unknow
   }
 }
 
-function parseInputProjection(value: unknown, field: string): StrategyInputProjectionV2 {
+export function parseInputProjection(value: unknown, field: string): StrategyInputProjectionV2 {
   const projection = strategyRecord(value, field);
   strategyEnum(projection.contractVersion, `${field}.contractVersion`, ["strategyinputprojection.v2"]);
   for (const name of ["generatedAt", "computationVersion", "combinationId"] as const) strategyString(projection[name], `${field}.${name}`);

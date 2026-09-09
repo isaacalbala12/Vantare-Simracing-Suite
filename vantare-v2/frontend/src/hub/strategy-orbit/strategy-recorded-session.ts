@@ -16,7 +16,7 @@ export async function openRecordedSession(
   client: AnalysisClient,
   candidateId: string,
   combinationId: string,
-  expected?: StrategyAnalysisRevisionRef,
+  expectedSelection?: StrategyAnalysisRevisionRef | readonly StrategyAnalysisRevisionRef[],
   signal?: AbortSignal,
 ): Promise<RecordedSession> {
   signal?.throwIfAborted();
@@ -24,6 +24,9 @@ export async function openRecordedSession(
   try {
     signal?.throwIfAborted();
     const prepared = await client.prepare(opened.sessionId, signal);
+    const expected = Array.isArray(expectedSelection)
+      ? expectedSelection.find((ref) => ref.sessionId === prepared.base.sessionId)
+      : expectedSelection as StrategyAnalysisRevisionRef | undefined;
     if (expected && expected.sessionId !== prepared.base.sessionId) {
       throw new Error("recorded_source_mismatch");
     }

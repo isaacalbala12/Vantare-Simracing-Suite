@@ -149,6 +149,7 @@ import { StrategyValidatedExamplesPanel, type ValidatedExamplesViewState } from 
 import { StrategyColdStartBanner } from "./StrategyColdStartBanner";
 import { StrategyReferencePanel } from "./StrategyReferencePanel";
 import { StrategyAnalysisPanel } from "./StrategyAnalysisPanel";
+import { StrategyRecordedSessions } from "./StrategyRecordedSessions";
 import { loadValidatedExamples } from "./strategy-validated-examples";
 import { EMPTY_WEATHER_SCENARIOS, persistStrategyWeatherScenarios, selectedWeatherScenarios } from "./strategy-weather-scenarios";
 import "../../styles/orbit-strategy.css";
@@ -3816,6 +3817,30 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
                   )}
                 </div>
               ) : panel === "sessions" ? sessionsPanel : weatherPanel}
+              {eventRecord && eventCombination && catalogView ? <div hidden={panel !== "sessions"}>
+                <StrategyRecordedSessions
+                  key={`${eventRecord.id}:${eventCombination.combinationId}`}
+                  combinationId={eventCombination.combinationId}
+                  revisions={eventSessionDecisions.flatMap((session) => session.revision ? [session.revision] : [])}
+                  t={t}
+                  onCleanupError={() => toast.show(t("strategy.recorded.error"), "recorded_cleanup_failed")}
+                  onApply={async (sessions, signal) => {
+                    signal.throwIfAborted();
+                    const prepared = sessions.map((session) => ({ sessionId: session.revision.sessionId, included: true, revision: session.revision }));
+                    const excluded = eventCombination.sessions
+                      .filter((session) => !prepared.some((item) => item.sessionId === session.sessionId))
+                      .map((session) => ({ sessionId: session.sessionId, included: false }));
+                    const saved = await persistStrategySessionSelection(applicationClient, catalogView, eventRecord, eventCombination,
+                      [...excluded, ...prepared]);
+                    signal.throwIfAborted();
+                    // Keep the acknowledged version even if recomputation fails.
+                    setSessionCatalog({ status: "ready", view: saved });
+                    const view = await refreshStrategyPlanningInputs(applicationClient, saved, eventRecord.id);
+                    signal.throwIfAborted();
+                    setSessionCatalog({ status: "ready", view });
+                  }}
+                />
+              </div> : null}
             </Surface>
           </div>
         </div>

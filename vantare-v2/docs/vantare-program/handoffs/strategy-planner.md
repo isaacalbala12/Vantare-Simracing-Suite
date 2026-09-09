@@ -1546,3 +1546,12 @@ No cambios de arquitectura/dependencias ni promoción. Banco real pendiente.
 ISA-1088 corte de textos: cuatro catálogos strategy-orbit incorporan estados,
 apertura explícita, confirmación de reemplazo y cierre en ES/EN/PT/IT.
 La conexión del panel y validación global siguen en curso.
+
+ISA-1088 panel conectado al área Sesiones; mantiene sesiones abiertas entre
+pestañas, prepara y aplica referencias exactas mediante comandos existentes.
+Reemplazo explícito, cierre y errores visibles. 18 pruebas focales PASS
+(coordinador/panel/wiring); typecheck previo PASS, build y gates pendientes.
+Siguiente corte de banco: internal/app/strategy_recorded_real_integration_test.go,
+activación explícita por variables ISA1088_REAL_SOURCE y ISA1088_RUNTIME_APP.
+Usa servicio nativo y helper confiado con originales hash antes/después; autoría
+licenciada controlada de test, no equivale a aceptación Wails/login real.

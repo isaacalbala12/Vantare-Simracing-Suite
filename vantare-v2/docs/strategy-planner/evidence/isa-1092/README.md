@@ -65,3 +65,11 @@ No cambia frontend: se conserva el build T02a. No prueba Wails nueva.
 Pendiente inmediato T02c: promoción de versión al guardar mediante aplicación,
 cliente TS y transporte desde evento. Este corte define el contrato; no declara
 la interfaz conectada. No push, PR, CI remoto, merge ni release.
+
+## T02c1 — comandos y reapertura
+
+CreateEvent y EditEvent ascienden de 2.0.0 a 2.1.0 al añadir reglas; no ascienden
+sin reglas ni degradan versión al retirarlas. Dos casos RED antes del cambio,
+GREEN después, incluyendo reapertura del repositorio y comparación de evidencia.
+Go completo -p1 PASS (isa1092-t02c1-all.log), vet PASS
+(isa1092-t02c1-vet.log). El cliente TS se conecta en el siguiente corte.

@@ -73,6 +73,16 @@ export type AnalysisStoreResult = Readonly<{
 export type AnalysisPreparation = Readonly<{
   base: AnalysisBase;
   baseRevisionId: string;
+  combination?: AnalysisCombination;
+  combinationUnavailableReason?: "metadata_unavailable";
+}>;
+export type AnalysisCombination = Readonly<{
+  id: string;
+  simId: string;
+  trackName: string;
+  trackLayout: string;
+  carName: string;
+  carClass: string;
 }>;
 export type AnalysisSampling = Readonly<{
   kind: "continuous_implicit_frequency" | "event_timestamped";
@@ -274,6 +284,14 @@ export function parseAnalysisPreparation(value: unknown): AnalysisPreparation {
   const r = record(value, "preparation");
   parseAnalysisBase(r.base);
   digest(r.baseRevisionId, "baseRevisionId");
+  if (r.combination !== undefined) {
+    const combination = record(r.combination, "preparation.combination");
+    for (const field of ["id", "simId", "trackName", "trackLayout", "carName", "carClass"]) text(combination[field], `preparation.combination.${field}`);
+    if (r.combinationUnavailableReason !== undefined) throw new AnalysisProtocolError("preparation.combinationUnavailableReason");
+  }
+  if (r.combinationUnavailableReason !== undefined && r.combinationUnavailableReason !== "metadata_unavailable") {
+    throw new AnalysisProtocolError("preparation.combinationUnavailableReason");
+  }
   return r as unknown as AnalysisPreparation;
 }
 function snapshot(value: unknown): AnalysisSnapshot {

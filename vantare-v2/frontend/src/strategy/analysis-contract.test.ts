@@ -2,6 +2,22 @@ import { describe, expect, it } from "vitest";
 import { analysisValue, parseAnalysisPreparation, parseCorrectionStoreResult, parseHistoricalValue } from "./analysis-contract";
 const base = { sessionId: "session", contentSha256: "a".repeat(64), sizeBytes: 10, parserId: "lmu-duckdb", parserVersion: "1", schemaFingerprint: "schema", analysisVersion: "lap-validity.v1", segmentationDigest: "b".repeat(64) };
 const snapshotId = "c".repeat(64);
+const combination = { id: `lmu:${"d".repeat(64)}`, simId: "lmu", trackName: "Imola", trackLayout: "Grand Prix", carName: "Car", carClass: "Hypercar" };
+describe("prepared combination identity", () => {
+  it("preserves the canonical identity without requiring a preexisting catalog", () => {
+    expect(parseAnalysisPreparation({ base, baseRevisionId: snapshotId, combination })).toMatchObject({ combination });
+    expect(parseAnalysisPreparation({ base, baseRevisionId: snapshotId })).not.toHaveProperty("combination");
+    expect(parseAnalysisPreparation({ base, baseRevisionId: snapshotId, combinationUnavailableReason: "metadata_unavailable" })).toMatchObject({ combinationUnavailableReason: "metadata_unavailable" });
+  });
+  it.each([
+    { combination: null }, { combination: {} }, { combination: { ...combination, simId: "" } },
+    { combination: { ...combination, trackName: 12 } }, { combination: { ...combination, carName: undefined } },
+    { combination, combinationUnavailableReason: "metadata_unavailable" },
+    { combinationUnavailableReason: "guessed" }, { combinationUnavailableReason: null },
+  ])("rejects malformed or contradictory metadata: %j", fields => {
+    expect(() => parseAnalysisPreparation({ base, baseRevisionId: snapshotId, ...fields })).toThrow();
+  });
+});
 const baseResult = () => ({ headId: snapshotId, revision: { revisionId: snapshotId, parentRevisionId: "", command: { expectedRevision: "", commandId: "", reason: "", localAuthorId: "" }, commandDigest: "", createdAt: "", snapshot: { contractVersion: "analysis.sample-snapshot.v1", base, snapshotId, corrections: [] } } });
 describe("Analysis correction wire contract", () => {
   it.each([

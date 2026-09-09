@@ -21,3 +21,13 @@ Sigue contrato TS y apertura explícita sin combinación preseleccionada.
 T05 #1094 tiene componentes/borrador/persistencia/owner, todavía sin reemplazar
 la ruta anterior. Bootstrap y navegación deben conectarse antes de afirmar A4
 productivo completo. Sin push/PR/merge/promoción ni intervención en LMU.
+
+## T08b — contrato TS de identidad preparada
+
+AnalysisPreparation admite combinación opcional o motivo metadata_unavailable,
+sin aceptar ambos. Valida todos los campos de identidad; versiones anteriores
+sin metadata siguen siendo compatibles. RED 8 casos malformados antes del
+parser; GREEN 35 focales incluyendo cliente y apertura anterior. Tipos y lint
+focal PASS. Logs C:/tmp/isa1095-t08b-*.log. Sigue abrir sin combinación previa.
+
+Gate heredado T05h confirmado: 432 archivos/3384 tests frontend, lint/build PASS.

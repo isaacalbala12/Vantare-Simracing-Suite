@@ -11,6 +11,10 @@ previos y vet focal PASS; build frontend PASS. Go global/vet en curso.
 Siguiente: contrato TS/apertura sin combinación previa, opciones de identidad
 sin recuentos inventados y selección explícita dentro del recorrido A4.
 Evidencia isa-1095/README.md. No banco real nuevo ni cambios de criterios físicos.
+T08b contrato TS: RED8 de forma inválida; 35 focales/tipos/lint focal PASS.
+Sigue apertura explícita que resuelva identidad cuando no hay selección previa.
+Gate final T05h: 432 archivos/3384 tests frontend, lint/build PASS; sustituye
+la anotación pendiente de la sección anterior. La ruta A4 completa sigue pendiente.
 
 ## T05 asistente registrado — ISA-1094 (2026-09-10)
 

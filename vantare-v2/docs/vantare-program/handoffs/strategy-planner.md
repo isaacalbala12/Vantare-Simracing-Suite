@@ -20,7 +20,11 @@ RED3/GREEN45 focales, tipos/lint PASS; identidad nativa comprobada contra proyec
 rechazo/cierre si falta o contradice selección. Siguiente: opciones de identidad
 independientes de estadísticas, propietario/bootstrap UI y recorrido integrado.
 T08d permite identidades mínimas en el asistente/calendario, sin recuentos
-inventados: 18 focales/tipos/lint PASS. Todavía no hay nueva ruta montada.
+inventados: 17 focales/tipos/lint PASS. Todavía no hay nueva ruta montada.
+T08e apertura del owner sin combinación y aceptación explícita de propuestas:
+13 focales/tipos/lint PASS; se rechazan identidades contradictorias, mezcla de
+fuentes y calendario incompatible. Abrir no acepta ni avanza. Siguiente:
+integración productiva conservando propietario de handles y guardado nativo.
 
 ## T05 asistente registrado — ISA-1094 (2026-09-10)
 

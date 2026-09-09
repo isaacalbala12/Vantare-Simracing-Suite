@@ -35,6 +35,19 @@ it("does not open a writing candidate even when called outside the visible butto
   expect(openRecordedSession).not.toHaveBeenCalled();
 });
 
+it("can discover and explicitly prepare a first source before selecting a combination", async () => {
+  const client = { discover: vi.fn().mockResolvedValue([candidate]), close: vi.fn().mockResolvedValue(undefined) } as unknown as AnalysisClient;
+  const onApply = vi.fn();
+  vi.mocked(openRecordedSession).mockResolvedValue(session);
+  const { result } = renderHook(() => useRecordedSessions({ revisions: [], client, onApply, onCleanupError: vi.fn() }));
+  await act(() => result.current.discover());
+  expect(openRecordedSession).not.toHaveBeenCalled();
+  await act(() => result.current.open(candidate));
+  expect(openRecordedSession).toHaveBeenCalledWith(client, candidate.id, undefined, [], expect.any(AbortSignal));
+  expect(result.current.sessions).toEqual([session]);
+  expect(onApply).not.toHaveBeenCalled();
+});
+
 it("can unmount and remount the sessions view without closing its underlying handles", async () => {
   const close = vi.fn().mockResolvedValue(undefined);
   const client = { discover: vi.fn().mockResolvedValue([candidate]), close } as unknown as AnalysisClient;

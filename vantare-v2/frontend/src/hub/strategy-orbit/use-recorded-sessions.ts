@@ -5,7 +5,7 @@ import type { StrategyAnalysisRevisionRef } from "../../strategy/strategy-applic
 import { openRecordedSession, type RecordedSession } from "./strategy-recorded-session";
 
 export type RecordedSessionsOptions = {
-  readonly combinationId: string;
+  readonly combinationId?: string;
   readonly revisions: readonly StrategyAnalysisRevisionRef[];
   readonly client?: AnalysisClient;
   readonly onApply: (sessions: readonly RecordedSession[], signal: AbortSignal) => Promise<void>;

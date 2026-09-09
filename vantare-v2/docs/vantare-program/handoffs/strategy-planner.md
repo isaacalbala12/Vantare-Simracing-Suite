@@ -1531,3 +1531,14 @@ que la documentación local esté ya integrada en nightly.
 
 2026-09-08, ISA-1028: diseño del editor de telemetría registrada; entrega documental
 aislada. Sin implementación, promoción ni release del nuevo alcance.
+
+## ISA-1088 — conexión UI en curso (2026-09-09)
+
+Base 7b0afab9, rama vantareapp/isa-1088-recorded-session-ui, worktree
+C:/tmp/vantare-isa1088. Primer corte de dos TS/test: coordinación de apertura
+explícita, preparación y proyección de revisión exacta. Retiene handle para
+cálculo; ante error/cancelación libera el recurso, informa fallo de limpieza.
+Ocho pruebas focales PASS; gates globales pendientes de completar la UI.
+Siguiente corte: textos en los cuatro catálogos strategy-orbit; después panel,
+su test y conexión en StrategyOrbitPage (máximo cinco paths por corte).
+No cambios de arquitectura/dependencias ni promoción. Banco real pendiente.

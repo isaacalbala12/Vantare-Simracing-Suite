@@ -23,6 +23,10 @@ evaluación, sin almacén nuevo; Event actual sigue exigiendo configuración com
 Resultado final T05d: 426 archivos/3339 tests PASS (300.57 s). T05e Pilotos:
 3 focales/tipos/lint focal PASS, estimación explícita con referencia/delta y sin
 consumo/desgaste inventados. Sigue orquestación del asistente y persistencia nativa.
+T05f orquestador de cinco pasos + validación de valores presentes: 18 focales,
+tipos/lint focal PASS. Todavía no sustituye la ruta anterior. Siguiente corte:
+guardar/abrir borrador incompleto con PlanDraft nativo existente, payload versionado
+y tests de reapertura; luego integración y capturas sobre recorrido productivo.
 No paridad visual final, Wails, push/PR/CI remoto, merge ni promoción.
 
 ## T04 A4 productivo — ISA-1093 (2026-09-09)

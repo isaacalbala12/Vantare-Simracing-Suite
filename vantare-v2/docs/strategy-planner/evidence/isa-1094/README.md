@@ -69,3 +69,14 @@ editable con signo; nunca genera combustible ni desgaste. Quitar la referencia
 retira las estimaciones dependientes. Tres tests focales, tipos y lint focal
 PASS. Disponibilidad/límites, persistencia y aplicación en optimización T07/T02
 siguen pendientes. Logs C:/tmp/isa1094-t05e-*.log.
+
+## T05f — orquestación y validación
+
+StrategyRecordedWizard monta Inicio/Combinación/Reglas/Pilotos y recibe Sesiones
+del propietario existente. Cinco pasos, foco/navegación, campos conservados,
+validación de valores presentes y entrega explícita al final. Automático pide
+descubrimiento al continuar; no importa por seleccionar el modo. El padre recibe
+el borrador y debe confirmar persistencia; el componente no afirma guardado.
+18 tests focales, tipos y lint focal PASS (C:/tmp/isa1094-t05f-*.log).
+La ruta vieja sigue vigente hasta completar persistencia/entrega e integración.
+No hay nuevo renderer ni motor: componentes productivos reutilizan el marco A4.

@@ -1216,6 +1216,14 @@ export const Browser = {
   },
 };
 
+// Keep native-only clients importable in the visual harness without claiming
+// a reader, a filesystem operation or telemetry that this harness cannot supply.
+export const Call = {
+  ByName(): never {
+    throw new Error("Native calls are unavailable in the visual harness");
+  },
+};
+
 /**
  * `?updater=pending` finge que hay versiones sin instalar.
  *

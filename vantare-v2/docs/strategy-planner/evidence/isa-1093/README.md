@@ -23,3 +23,17 @@ explícito de operaciones nativas no implementadas; no finge lectura DuckDB.
 Base #1092 T02c4: 420 archivos/3321 tests PASS, lint/build PASS. Issue1092 sigue
 abierta por recursos/pilotos/reglas visibles. T01 Wails y calibración pendientes.
 No app nativa/LMU abiertos, no push/PR/CI remoto/merge/release.
+
+## T04b — banco visual recuperado
+
+RED confirma Call ausente. El mock ahora exporta una llamada que rechaza toda
+operación nativa: no devuelve sesiones ni estado de un lector ficticio. GREEN
+por cliente Analysis real contra runtime de harness; ESLint focal PASS.
+Chromium monta el producto, permite entrar al asistente y captura frame-01.png:
+1672x941, sin pageerror y sin overflow de documento. Datos del harness son
+fixtures preexistentes, no prueba de telemetría/Wails. Sin procesos nativos.
+
+Revisión propia: marco presente, pero arte de fondo no es la revisión final,
+columna/rail más anchos y textos/pasos antiguos. No supera gate A4. Sigue T04c
+(arte final garage-journey-v2 y dimensiones acotadas) y T05 (recorrido real cinco
+pasos). No solicitar review humana todavía. Full suite posterior pendiente.

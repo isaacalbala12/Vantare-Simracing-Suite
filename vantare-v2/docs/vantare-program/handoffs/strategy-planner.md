@@ -1,5 +1,22 @@
 # Handoff vivo — Strategy Planner
 
+## SDD T02a — reglas recibidas por Orbit, ISA-1092 (2026-09-09)
+
+Base6d4aa514; rama vantareapp/isa-1092-recorded-event-inputs,
+C:/tmp/vantare-isa1092. Matriz de entradas en evidencia/isa-1092/README.md.
+Primer corte backend: event.rules opcional reutiliza EventRules del solver,
+aplicado en búsqueda, comparación Weather y replay final mediante el adapter
+común. Tests RED/GREEN para min/max paradas, negativos, driverLimits sin perfil,
+ventana obligatoria y override que la viola. Documento/TS/UI aún no emiten reglas.
+Gates globales de este corte en curso; sigue completar transporte/persistencia.
+
+T01/ISA-1089: commit6d4aa514, build frontend, Go global -p1 y vet PASS.
+Intento Wails diagnóstico PID18668 terminó sin abrir CDP: puerto39261 ocupado,
+hotkeys en uso y fallo de controlador WebView. PID26412 de1072 preservado;
+no se atribuye todo el fallo a una única causa no demostrada. No cerrar T01
+runtime ni declarar benchmark físico. No se tocó LMU. Avanzar tareas independientes.
+
+
 ## Ejecución SDD reanudada — T00/T01, ISA-1089 (2026-09-09)
 
 Isaac autoriza iniciar todo el SDD v1.0. Se levanta la pausa documental anterior;

@@ -413,6 +413,9 @@ func orbitSolverInput(
 		// y evita introducir precision que la pantalla no puede editar.
 		Discretization: solver.ServiceDiscretization{FuelLiters: orbitFuelServiceStep(averageFuel, planning), VEPercent: 1},
 	}
+	if event.Rules != nil {
+		input.EventRules = *event.Rules
+	}
 	return input
 }
 

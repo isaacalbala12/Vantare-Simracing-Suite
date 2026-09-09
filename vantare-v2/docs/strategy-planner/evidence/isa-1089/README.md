@@ -39,3 +39,14 @@ DuckDB ni modificación de LMU en esta reproducción Go.
 Rollback: revert del commit de este corte; no afecta documentos persistidos,
 fuentes, revisiones ni esquema. Revisión personal de clave/coste, lifetime,
 replay independiente, errores e identidad. Sin subagentes de código.
+
+## Gates posteriores registrados durante T02
+
+Go global `go test -p 1 ./...` PASS, sin FAIL en log; vet app/strategy/analysis/cmd
+PASS. Build frontend normal y diagnóstico PASS. No frontend tests/lint nuevos:
+no cambió TS/CSS; suites previas del SDD conservan su alcance histórico.
+Intento Wails PID18668 de este worktree termina sin CDP: listener39261 ocupado,
+hotkeys ocupadas, callback de controlador WebView fallido. Instancia1072 ajena
+PID26412 permanece intacta. La causa completa de WebView no está demostrada;
+esta ejecución no certifica el caso en UI ni hace necesario tocar ese otro código.
+Continuación T02 independiente; repetir runtime cuando las condiciones lo permitan.

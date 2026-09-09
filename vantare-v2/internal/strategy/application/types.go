@@ -10,6 +10,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/strategy/contract"
 	strategydocument "github.com/vantare/overlays/v2/internal/strategy/document"
 	"github.com/vantare/overlays/v2/internal/strategy/packaging"
+	"github.com/vantare/overlays/v2/internal/strategy/solver"
 )
 
 const ProtocolVersionV1 = "strategy.application.v1"
@@ -350,9 +351,10 @@ type OrbitCalculationInput struct {
 }
 
 type OrbitCalculationEvent struct {
-	DurationMinutes float64 `json:"durationMinutes"`
-	TankLiters      float64 `json:"tankLiters"`
-	PitLossSeconds  float64 `json:"pitLossSeconds"`
+	Rules           *solver.EventRules `json:"rules,omitempty"`
+	DurationMinutes float64            `json:"durationMinutes"`
+	TankLiters      float64            `json:"tankLiters"`
+	PitLossSeconds  float64            `json:"pitLossSeconds"`
 }
 
 type OrbitCalculationPace struct {

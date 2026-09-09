@@ -2,11 +2,16 @@ package application
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	strategydocument "github.com/vantare/overlays/v2/internal/strategy/document"
 	"github.com/vantare/overlays/v2/internal/telemetryanalysis"
 )
+
+// ErrPinnedAnalysisProjectionUnavailable prevents the legacy catalog from
+// silently replacing a plan's exact Analysis revision with unversioned input.
+var ErrPinnedAnalysisProjectionUnavailable = errors.New("exact Analysis revision projection is not connected")
 
 // ListSessionCombinations adapts the Analysis-owned catalog for Orbit. It is
 // read-only and never opens DuckDB or reads Analysis storage from Strategy.
@@ -108,6 +113,9 @@ func (service *Service[T]) GetEventPlanningInputs(ctx context.Context, command G
 	included := make([]string, 0, len(event.Combination.Sessions))
 	for _, session := range event.Combination.Sessions {
 		if session.Included {
+			if session.Revision != nil {
+				return Result[T]{}, applicationError(ErrorInvalidCommand, "combination.sessions.revision", ErrPinnedAnalysisProjectionUnavailable)
+			}
 			included = append(included, session.SessionID)
 		}
 	}

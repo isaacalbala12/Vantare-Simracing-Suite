@@ -3,6 +3,8 @@ package application
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -140,5 +142,23 @@ func TestJSONBridgeListsSessionCombinations(t *testing.T) {
 	var result Result[json.RawMessage]
 	if err := json.Unmarshal(raw, &result); err != nil || result.SessionCatalogStatus != SessionCatalogNoAuthorizedTelemetry {
 		t.Fatalf("result = %s, error = %v", raw, err)
+	}
+}
+
+func TestPinnedSelectionCannotFallBackToUnversionedCatalog(t *testing.T) {
+	ref := strategyprojection.AnalysisRevisionRef{SessionID: "race-1", BaseDigest: strings.Repeat("a", 64), RevisionID: strings.Repeat("b", 64), SnapshotID: strings.Repeat("c", 64)}
+	doc := &strategydocument.StrategyDocumentV2{Events: []strategydocument.Event{{ID: "event-1", Combination: &strategydocument.CombinationReference{CombinationID: "combo", Sessions: []strategydocument.SessionSelection{{SessionID: "race-1", Included: true, Revision: &ref}}}}}}
+	repo := &sessionCatalogRepository[any]{snapshot: repository.Snapshot[any]{Version: 9, StrategyDocument: doc}}
+	var projected []string
+	service := NewServiceWithSessionCatalog[any](repo, sessionCatalogStub{projected: &projected})
+	_, err := service.GetEventPlanningInputs(context.Background(), GetEventPlanningInputsCommand{CommandHeader: CommandHeader{ProtocolVersion: ProtocolVersionV1, CommandID: "pinned", Operation: OperationGetEventPlanningInputs, ExpectedRepositoryVersion: 9}, EventID: "event-1", GeneratedAt: time.Now().UTC()})
+	if !errors.Is(err, ErrPinnedAnalysisProjectionUnavailable) {
+		t.Fatalf("error=%v", err)
+	}
+	if len(projected) != 0 || repo.commitCalls != 0 {
+		t.Fatalf("fallback or write occurred: %v / %d", projected, repo.commitCalls)
+	}
+	if doc.Events[0].Combination.Sessions[0].Revision != &ref {
+		t.Fatal("selection changed")
 	}
 }

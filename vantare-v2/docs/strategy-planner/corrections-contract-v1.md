@@ -330,3 +330,22 @@ La validación de digests en TS es estructural, no sustituye la custodia Go.
 La UI productiva, selección persistida y agregación de varias sesiones siguen
 pendientes. Por instrucción de Isaac del 2026-09-09, no se abre la app ni se
 generan builds en este corte. La aceptación visual y Wails continúa pendiente.
+
+## Selección fijada en documento — #1084
+
+SessionSelection puede conservar una AnalysisRevisionRef completa (sesión,
+baseDigest, revisionId y snapshotId). Es identidad, no autorización. Documentos
+anteriores sin referencias mantienen su representación; si una sesión incluida
+fija revisión, todas las incluidas deben fijarla. Una sesión excluida puede
+conservar su revisión sin participar. Toda referencia presente se valida.
+
+Una proyección guardada en PlanningInputs debe coincidir exactamente con las
+referencias incluidas, además de la combinación y sesiones ya comprobadas.
+No se cambia la selección consultando la cabeza de Analysis. Serializar y
+restaurar el documento conserva las referencias.
+
+GetEventPlanningInputs rechaza explícitamente una selección fijada mientras
+su proveedor sea el catálogo sin revisiones: no ignora el pin ni publica datos
+originales como si fueran los corregidos. Conectar el productor autorizado,
+el contrato TS y la UI corresponde a cortes posteriores. No se declara C7
+completo ni recomputación operativa. Se conserva la restricción sin app/builds.

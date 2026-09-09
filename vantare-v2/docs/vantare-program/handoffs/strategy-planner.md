@@ -1,5 +1,24 @@
 # Handoff vivo — Strategy Planner
 
+## Selección de revisiones — ISA-1084 (2026-09-09)
+
+Base c1db89f9; rama vantareapp/isa-1084-plan-analysis-revision;
+worktree C:/tmp/vantare-isa1084. SessionSelection conserva AnalysisRevisionRef
+opcional, validada, incluida en la serialización. Selección fijada exige cobertura
+completa de incluidas y coincidencia exacta de la proyección guardada. Excluidas
+pueden conservar su referencia sin participar. Sin promoción de calidad ni I/O.
+
+GetEventPlanningInputs rechaza la selección fijada mientras no se conecte su
+productor autorizado: el catálogo antiguo no puede ignorar referencias. C7 no
+está completo. Siguiente: contrato TS, productor de revisiones y UI; luego
+operaciones restantes, calibración y aceptación real. Evidencia en
+docs/strategy-planner/evidence/isa-1084/README.md.
+
+Sin app/builds por instrucción de Isaac. Focales document/application PASS;
+Vet y diff check PASS. Go global FAIL: dos paquetes sin frontend/dist y
+flaky SQLite #708 (WAL deadline). Tres repeticiones aisladas PASS sin cambios.
+No se fabrican assets para ocultarlo. Sin push/PR/CI remota, merge o promoción.
+
 ## Cliente nativo de Analysis — ISA-1082 (2026-09-09)
 
 Base f68e2214; rama vantareapp/isa-1082-native-analysis-client;

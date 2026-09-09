@@ -324,6 +324,8 @@ type TyreSet struct {
 type SessionSelection struct {
 	SessionID string `json:"sessionId"`
 	Included  bool   `json:"included"`
+	// Revision identifies immutable Analysis input, never a source authorization.
+	Revision *sp.AnalysisRevisionRef `json:"revision,omitempty"`
 }
 
 // CombinationReference links an event to Analysis-owned historical sessions.
@@ -542,11 +544,13 @@ func (d StrategyDocumentV2) Validate() error {
 		if err := ev.PitLossSeconds.Evidence.Validate(); err != nil {
 			return fmt.Errorf("event %q pitLossSeconds evidence: %w", ev.ID, err)
 		}
+		selectedRevisions := make(map[string]sp.AnalysisRevisionRef)
 		if ev.Combination != nil {
 			if strings.TrimSpace(ev.Combination.CombinationID) == "" {
 				return fmt.Errorf("event %q combination id is required", ev.ID)
 			}
 			sessions := make(map[string]struct{}, len(ev.Combination.Sessions))
+			includedCount := 0
 			for _, session := range ev.Combination.Sessions {
 				if strings.TrimSpace(session.SessionID) == "" {
 					return fmt.Errorf("event %q combination session id is required", ev.ID)
@@ -555,6 +559,20 @@ func (d StrategyDocumentV2) Validate() error {
 					return fmt.Errorf("event %q duplicate combination session %q", ev.ID, session.SessionID)
 				}
 				sessions[session.SessionID] = struct{}{}
+				if session.Included {
+					includedCount++
+				}
+				if session.Revision != nil {
+					if err := sp.ValidateSourceRevisions([]string{session.SessionID}, []sp.AnalysisRevisionRef{*session.Revision}); err != nil {
+						return fmt.Errorf("event %q selected revision: %w", ev.ID, err)
+					}
+					if session.Included {
+						selectedRevisions[session.SessionID] = *session.Revision
+					}
+				}
+			}
+			if len(selectedRevisions) != 0 && len(selectedRevisions) != includedCount {
+				return fmt.Errorf("event %q requires exact revisions for all included sessions", ev.ID)
 			}
 		}
 		if len(ev.WeatherScenarios) > 16 {
@@ -592,6 +610,17 @@ func (d StrategyDocumentV2) Validate() error {
 				}
 				if len(included) != len(ev.PlanningInputs.Projection.SourceSessions) {
 					return fmt.Errorf("event %q planning projection selection mismatch", ev.ID)
+				}
+				if len(selectedRevisions) != 0 {
+					if len(ev.PlanningInputs.Projection.SourceRevisions) != len(selectedRevisions) {
+						return fmt.Errorf("event %q planning projection requires selected revisions", ev.ID)
+					}
+					for _, ref := range ev.PlanningInputs.Projection.SourceRevisions {
+						selected, ok := selectedRevisions[ref.SessionID]
+						if !ok || selected != ref {
+							return fmt.Errorf("event %q planning projection revision mismatch", ev.ID)
+						}
+					}
 				}
 				for _, sessionID := range ev.PlanningInputs.Projection.SourceSessions {
 					if _, ok := included[sessionID]; !ok {

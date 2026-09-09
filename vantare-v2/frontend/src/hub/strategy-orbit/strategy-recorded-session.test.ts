@@ -15,6 +15,29 @@ function fixture() {
 }
 
 describe("recorded session ownership", () => {
+  it("resolves a first source from its native identity without a preselected combination", async () => {
+    const { client, api, base, revision } = fixture();
+    const combination = { id: "combo", simId: "lmu", trackName: "Imola", trackLayout: "Grand Prix", carName: "Car", carClass: "LMP2" };
+    client.prepare.mockResolvedValue({ base, baseRevisionId: "f".repeat(64), combination });
+    client.project.mockResolvedValue({ combinationId: "combo", sourceRevisions: [{ ...revision, revisionId: "f".repeat(64) }] });
+    const result = await openRecordedSession(api, "candidate", undefined);
+    expect(result).toMatchObject({ combinationId: "combo", combination });
+    expect(client.open).toHaveBeenCalledExactlyOnceWith("candidate", true);
+    expect(client.close).not.toHaveBeenCalled();
+  });
+  it("closes an unidentified first source before projecting and reports the missing identity", async () => {
+    const { client, api } = fixture();
+    await expect(openRecordedSession(api, "candidate", undefined)).rejects.toThrow("recorded_combination_unavailable");
+    expect(client.project).not.toHaveBeenCalled();
+    expect(client.close).toHaveBeenCalledExactlyOnceWith("handle");
+  });
+  it("rejects preparation for a different selected combination before projecting", async () => {
+    const { client, api, base } = fixture();
+    client.prepare.mockResolvedValue({ base, baseRevisionId: "f".repeat(64), combination: { id: "other", simId: "lmu", trackName: "Monza", trackLayout: "GP", carName: "Car", carClass: "LMP2" } });
+    await expect(openRecordedSession(api, "candidate", "combo")).rejects.toThrow("recorded_combination_mismatch");
+    expect(client.project).not.toHaveBeenCalled();
+    expect(client.close).toHaveBeenCalledExactlyOnceWith("handle");
+  });
   it("reopens the selected exact revision and retains its handle for Strategy", async () => {
     const { client, api, base, revision } = fixture();
     const result = await openRecordedSession(api, "candidate", "combo", revision);

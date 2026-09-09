@@ -15,7 +15,7 @@ RED: respuesta sin identidad ni motivo. GREEN: identidad igual al clasificador
 canónico con metadata completa, ausencia explícita sin bloquear correcciones;
 también pasan pruebas previas de permisos y revisiones. Fixture de lector
 controlado, no banco DuckDB real. Logs C:/tmp/isa1095-t08a-{red,green}.log.
-Build frontend y vet focal PASS; Go global/vet general en curso. Dos paths Go.
+Build frontend, Go global -p1 y vet app/strategy/telemetryanalysis/cmd PASS. Dos paths Go.
 Sigue contrato TS y apertura explícita sin combinación preseleccionada.
 
 T05 #1094 tiene componentes/borrador/persistencia/owner, todavía sin reemplazar
@@ -31,3 +31,15 @@ parser; GREEN 35 focales incluyendo cliente y apertura anterior. Tipos y lint
 focal PASS. Logs C:/tmp/isa1095-t08b-*.log. Sigue abrir sin combinación previa.
 
 Gate heredado T05h confirmado: 432 archivos/3384 tests frontend, lint/build PASS.
+
+## T08c — apertura de primera fuente
+
+openRecordedSession permite no conocer la combinación antes de abrir. Exige
+identidad de PrepareCorrections, la compara con la proyección y devuelve esa
+metadata junto a referencia y handle. Si el usuario ya eligió combinación,
+una preparación de otra combinación se rechaza antes de proyectar. Sin identidad
+se cierra el handle y se informa recorded_combination_unavailable. Se mantiene
+el comportamiento de revisiones exactas, base explícita y compensación de fallos.
+RED3/GREEN45 focales, tipos y lint focal PASS. Logs C:/tmp/isa1095-t08c-*.log.
+Todavía sin biblioteca integrada; siguiente separar opciones de identidad de
+recuentos del catálogo para ofrecer una fuente sin inventar estadísticas.

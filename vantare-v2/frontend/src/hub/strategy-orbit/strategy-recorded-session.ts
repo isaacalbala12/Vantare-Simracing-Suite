@@ -1,5 +1,5 @@
 import type { AnalysisClient } from "../../strategy/analysis-client";
-import type { AnalysisBase, AnalysisOpenedSession } from "../../strategy/analysis-contract";
+import type { AnalysisBase, AnalysisCombination, AnalysisOpenedSession } from "../../strategy/analysis-contract";
 import type { StrategyAnalysisRevisionRef } from "../../strategy/strategy-application-client";
 
 export type RecordedSession = Readonly<{
@@ -8,6 +8,7 @@ export type RecordedSession = Readonly<{
   base: AnalysisBase;
   revision: StrategyAnalysisRevisionRef;
   combinationId: string;
+  combination?: AnalysisCombination;
 }>;
 
 // Open has a resource side effect. Keep its response even after cancellation
@@ -15,7 +16,7 @@ export type RecordedSession = Readonly<{
 export async function openRecordedSession(
   client: AnalysisClient,
   candidateId: string,
-  combinationId: string,
+  combinationId: string | undefined,
   expectedSelection?: StrategyAnalysisRevisionRef | readonly StrategyAnalysisRevisionRef[],
   signal?: AbortSignal,
 ): Promise<RecordedSession> {
@@ -24,6 +25,9 @@ export async function openRecordedSession(
   try {
     signal?.throwIfAborted();
     const prepared = await client.prepare(opened.sessionId, signal);
+    const resolvedCombinationId = combinationId ?? prepared.combination?.id;
+    if (!resolvedCombinationId) throw new Error("recorded_combination_unavailable");
+    if (prepared.combination && prepared.combination.id !== resolvedCombinationId) throw new Error("recorded_combination_mismatch");
     const expected = Array.isArray(expectedSelection)
       ? expectedSelection.find((ref) => ref.sessionId === prepared.base.sessionId)
       : expectedSelection as StrategyAnalysisRevisionRef | undefined;
@@ -38,13 +42,13 @@ export async function openRecordedSession(
     }, signal);
     signal?.throwIfAborted();
     const revision = projection.sourceRevisions?.[0];
-    if (projection.combinationId !== combinationId || !revision || projection.sourceRevisions?.length !== 1
+    if (projection.combinationId !== resolvedCombinationId || !revision || projection.sourceRevisions?.length !== 1
       || revision.sessionId !== prepared.base.sessionId
       || revision.revisionId !== revisionId
       || (expected && (revision.baseDigest !== expected.baseDigest || revision.revisionId !== expected.revisionId || revision.snapshotId !== expected.snapshotId))) {
       throw new Error("recorded_revision_mismatch");
     }
-    return { candidateId, opened, base: prepared.base, revision, combinationId };
+    return { candidateId, opened, base: prepared.base, revision, combinationId: resolvedCombinationId, ...(prepared.combination ? { combination: prepared.combination } : {}) };
   } catch (error) {
     try {
       await client.close(opened.sessionId);

@@ -15,6 +15,10 @@ T08b contrato TS: RED8 de forma inválida; 35 focales/tipos/lint focal PASS.
 Sigue apertura explícita que resuelva identidad cuando no hay selección previa.
 Gate final T05h: 432 archivos/3384 tests frontend, lint/build PASS; sustituye
 la anotación pendiente de la sección anterior. La ruta A4 completa sigue pendiente.
+T08a Go global -p1 y vet general PASS. T08c apertura sin combinación previa:
+RED3/GREEN45 focales, tipos/lint PASS; identidad nativa comprobada contra proyección,
+rechazo/cierre si falta o contradice selección. Siguiente: opciones de identidad
+independientes de estadísticas, propietario/bootstrap UI y recorrido integrado.
 
 ## T05 asistente registrado — ISA-1094 (2026-09-10)
 

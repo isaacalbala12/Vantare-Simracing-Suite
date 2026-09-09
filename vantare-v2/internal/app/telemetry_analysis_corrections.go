@@ -8,8 +8,10 @@ import (
 )
 
 type TelemetryAnalysisCorrectionPreparation struct {
-	Base           telemetryanalysis.SourceAnalysisRef `json:"base"`
-	BaseRevisionID string                              `json:"baseRevisionId"`
+	Base                         telemetryanalysis.SourceAnalysisRef    `json:"base"`
+	BaseRevisionID               string                                 `json:"baseRevisionId"`
+	Combination                  *telemetryanalysis.CombinationIdentity `json:"combination,omitempty"`
+	CombinationUnavailableReason string                                 `json:"combinationUnavailableReason,omitempty"`
 }
 
 // withCorrectionInput keeps authorization, lifecycle and the open-session lock
@@ -88,6 +90,14 @@ func (service *TelemetryAnalysisService) PrepareCorrections(ctx context.Context,
 			return publicTelemetryAnalysisError(err)
 		}
 		result = TelemetryAnalysisCorrectionPreparation{Base: input.Base, BaseRevisionID: initial.SnapshotID}
+		// Reuse the session already read under the Analysis authorization/lock.
+		// Missing identity does not prevent reviewing that source's observations.
+		classified, classificationErr := telemetryanalysis.ClassifyHistoricalSession(input.Session)
+		if classificationErr != nil {
+			result.CombinationUnavailableReason = "metadata_unavailable"
+		} else {
+			result.Combination = &classified.Combination
+		}
 		return nil
 	})
 	if err != nil {

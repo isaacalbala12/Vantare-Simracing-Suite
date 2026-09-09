@@ -1,5 +1,17 @@
 # Handoff vivo — Strategy Planner
 
+## T08 bootstrap de combinación — ISA-1095 (2026-09-10)
+
+Base f661d82638591bf547df835ab71458d3bbc76401; C:/tmp/vantare-isa1095,
+rama vantareapp/isa-1095-recorded-source-combination. Continúa dependencias de
+#1094/#1088 antes de conectar la ruta de cinco pasos. PrepareCorrections ahora
+expone identidad del clasificador Go sobre la sesión ya leída; metadata ausente
+no bloquea correcciones ni fabrica combinación. RED/GREEN, permisos/revisiones
+previos y vet focal PASS; build frontend PASS. Go global/vet en curso.
+Siguiente: contrato TS/apertura sin combinación previa, opciones de identidad
+sin recuentos inventados y selección explícita dentro del recorrido A4.
+Evidencia isa-1095/README.md. No banco real nuevo ni cambios de criterios físicos.
+
 ## T05 asistente registrado — ISA-1094 (2026-09-10)
 
 Base e95d3bbb; C:/tmp/vantare-isa1094, rama vantareapp/isa-1094-recorded-wizard.

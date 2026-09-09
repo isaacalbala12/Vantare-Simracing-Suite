@@ -1,5 +1,18 @@
 # Handoff vivo — Overlay Studio, Launcher y Hub
 
+## ISA-1072 — reconstruccion desde env.local original (2026-09-09)
+
+Por indicacion de Isaac, reconstruccion forzada con `wails3 task -f build`
+desde el `.env.local` original autorizado del checkout principal, cargando
+solo las tres entradas publicas en memoria, sin copiar ni mostrar valores.
+Canal explicito nightly. Frontend y Go build PASS. Comprobacion del EXE:
+las tres cadenas que genera el procedimiento canonico coinciden con las
+del archivo original (`EMBED_MATCH=True` para URL, anon key y registro
+publico de licencia). SHA256 actual:
+`F27704C64F073C1145C40C9E6D7EE1207C42EB5F9E4674B2DB6FDD681F0D1C84`.
+Sustituye el artefacto previo; no se ha abierto esta nueva build ni se
+extrapola a ella el resultado de acceso anterior. Sin promocion o release.
+
 ## ISA-1072 — build configurada y bloqueo de acceso (2026-09-09)
 
 Build local desde `e1220286`, codigo revisado `7f721def`, mediante

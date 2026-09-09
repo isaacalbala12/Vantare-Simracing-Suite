@@ -85,3 +85,11 @@ chunks grandes heredado. No nueva prueba Wails ni paridad visual.
 
 Reglas de evento todavía no se envían desde la pantalla productiva; ese enlace
 es T02c4. T02c3 cubre antes compatibilidad de backup/preview/rollback antiguo.
+
+## T02c3 — compatibilidad del journal existente
+
+RED: PreviewLegacyMigration rechazaba el evento con reglas porque el backup
+forzaba schema2.0.0. Backup/preview/commit/rollback ahora conservan2.1.0, también
+los archivos de restauración. Prueba integral conserva reglas/evidencia en cada
+paso y archivo. No se ha ejecutado migración sobre datos reales. Go global -p1
+y vet PASS (isa1092-t02c3-all.log / isa1092-t02c3-vet.log).

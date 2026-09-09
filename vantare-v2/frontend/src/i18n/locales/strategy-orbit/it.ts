@@ -727,4 +727,8 @@ export const strategyOrbitIt: Record<string, string> = {
 "strategy.workspace.saved": "Bozza salvata",
 "strategy.workspace.preparation": "Torna alla preparazione",
 "strategy.workspace.save": "Salva revisione",
+"strategy.workspace.operationFailed": "Impossibile salvare o accettare la configurazione. Controlla le fonti e lo stato del repository.",
+"strategy.workspace.leaveTitle": "Esci dalla preparazione",
+"strategy.workspace.leaveBody": "Le modifiche non salvate andranno perse. I file originali saranno conservati.",
+"strategy.workspace.leave": "Esci senza salvare",
 };

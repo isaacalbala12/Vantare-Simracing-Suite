@@ -10,7 +10,7 @@ vi.mock("./strategy-recorded-session", () => ({ openRecordedSession: vi.fn() }))
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
 const candidate = { id: "candidate", state: "ready", size: 1024, modifiedAt: "2026-09-09T12:00:00Z", walPresent: false };
 const session = { candidateId: "candidate", combinationId: "combo", combination: { id: "combo", simId: "lmu", trackName: "Imola", trackLayout: "GP", carName: "Car", carClass: "LMP2" }, opened: { sessionId: "handle" }, revision: { sessionId: "source", baseDigest: "a".repeat(64), revisionId: "b".repeat(64), snapshotId: "c".repeat(64) } } as RecordedSession;
-function setup() {
+function setup(options?: { repositoryVersion?: number }) {
   const execute = vi.fn(async (command: StrategyApplicationCommandV1<RecordedDraftPayload>): Promise<StrategyApplicationResultV1<RecordedDraftPayload>> => ({
     protocolVersion: "strategy.application.v1", commandId: command.commandId, repositoryVersion: 8, recoveredFromBackup: false, closed: false,
     ...("draft" in command ? { draft: structuredClone(command.draft) } : {}),
@@ -19,7 +19,7 @@ function setup() {
   const close = vi.fn().mockResolvedValue(undefined);
   const analysis = { close } as unknown as AnalysisClient;
   vi.mocked(openRecordedSession).mockResolvedValue(session);
-  const hook = renderHook(() => useRecordedWorkflow({ eventId: "event", repositoryVersion: 7, catalog: [], application, analysis, onCleanupError: vi.fn() }));
+  const hook = renderHook(() => useRecordedWorkflow({ eventId: "event", repositoryVersion: options ? options.repositoryVersion : 7, catalog: [], application, analysis, onCleanupError: vi.fn() }));
   return { ...hook, execute, close };
 }
 it("keeps the first handle through explicit acceptance, native save and preparation/editor navigation", async () => {
@@ -67,4 +67,13 @@ it("prevents double saves and edits while a native write is pending", async () =
   expect(result.current.saving).toBe(true);
   await act(async () => { reject(new Error("storage failed")); await pending; });
   expect(result.current.saving).toBe(false);
+});
+it("does not substitute version zero when the repository has not been loaded", async () => {
+  const { result, execute } = setup({});
+  await act(() => result.current.sessions.open(candidate));
+  await act(() => result.current.sessions.apply());
+  await act(() => result.current.openEditor());
+  expect(execute).not.toHaveBeenCalled();
+  expect(result.current.view).toBe("preparation");
+  expect(result.current.error).toBe("recorded_repository_unavailable");
 });

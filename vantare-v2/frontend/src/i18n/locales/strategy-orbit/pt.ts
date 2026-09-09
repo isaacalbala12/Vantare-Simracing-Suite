@@ -726,4 +726,8 @@ export const strategyOrbitPt: Record<string, string> = {
 "strategy.workspace.saved": "Rascunho guardado",
 "strategy.workspace.preparation": "Voltar à preparação",
 "strategy.workspace.save": "Guardar revisão",
+"strategy.workspace.operationFailed": "Não foi possível guardar ou aceitar a configuração. Revê as fontes e o estado do repositório.",
+"strategy.workspace.leaveTitle": "Sair da preparação",
+"strategy.workspace.leaveBody": "As alterações não guardadas serão perdidas. Os ficheiros originais serão preservados.",
+"strategy.workspace.leave": "Sair sem guardar",
 };

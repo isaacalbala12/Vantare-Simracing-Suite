@@ -726,4 +726,8 @@ export const strategyOrbitEs: Record<string, string> = {
 "strategy.workspace.saved": "Borrador guardado",
 "strategy.workspace.preparation": "Volver a preparación",
 "strategy.workspace.save": "Guardar revisión",
+"strategy.workspace.operationFailed": "No se pudo guardar o aceptar la configuración. Revisa las fuentes y el estado del repositorio.",
+"strategy.workspace.leaveTitle": "Salir de la preparación",
+"strategy.workspace.leaveBody": "Los cambios sin guardar se perderán. Los archivos originales se conservarán.",
+"strategy.workspace.leave": "Salir sin guardar",
 };

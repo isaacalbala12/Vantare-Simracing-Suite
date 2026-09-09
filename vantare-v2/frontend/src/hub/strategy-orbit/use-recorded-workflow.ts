@@ -10,7 +10,7 @@ import { useRecordedSessions } from "./use-recorded-sessions";
 /** One owner per event, retained while preparation and editor views change. */
 export function useRecordedWorkflow({ eventId, repositoryVersion, initial, catalog, application, analysis, onCleanupError }: {
   readonly eventId: string;
-  readonly repositoryVersion: number;
+  readonly repositoryVersion?: number;
   readonly initial?: StoredRecordedDraft;
   readonly catalog: readonly RecordedCombination[];
   readonly application: StrategyApplicationClient<RecordedDraftPayload>;
@@ -47,10 +47,12 @@ export function useRecordedWorkflow({ eventId, repositoryVersion, initial, catal
     setSaving(true);
     setError("");
     try {
+      if (proposalError) throw new Error(proposalError);
+      if (!stored && repositoryVersion === undefined) throw new Error("recorded_repository_unavailable");
       if (initial && initial.document.payload.eventId !== eventId) throw new Error("recorded_event_mismatch");
       const saved = stored
         ? await saveRecordedDraft(application, stored, draft)
-        : await createRecordedDraft(application, eventId, draft, repositoryVersion);
+        : await createRecordedDraft(application, eventId, draft, repositoryVersion as number);
       if (!alive.current) return;
       setStored(saved);
       setDirty(false);

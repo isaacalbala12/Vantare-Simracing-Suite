@@ -32,6 +32,11 @@ cambios ante conflicto. Doble escritura/edición durante escritura bloqueadas.
 T08g resumen A4 TSX/CSS con valores reales del borrador, cálculo/validación
 pendientes y copy en cuatro idiomas: 3 focales/tipos/lint PASS. Aún sin montar;
 no certificado visual. Sigue composición asistente/resumen/biblioteca.
+T08h compone recorrido con Drawer existente, confirmación de descarte y guard
+de suspensión; sin versión nativa conocida no crea. Seis focales/tipos/lint
+PASS; suite general/lint/build en curso en C:/tmp/isa1095-t08h-*.log. Siguiente
+montaje de entrada productiva y reapertura/listado. Componentes siguen sin
+sustituir entrada anterior; no Wails/paridad/cálculo completo certificados.
 
 ## T05 asistente registrado — ISA-1094 (2026-09-10)
 

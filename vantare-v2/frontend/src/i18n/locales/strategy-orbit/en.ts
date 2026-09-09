@@ -726,4 +726,8 @@ export const strategyOrbitEn: Record<string, string> = {
 "strategy.workspace.saved": "Draft saved",
 "strategy.workspace.preparation": "Back to preparation",
 "strategy.workspace.save": "Save revision",
+"strategy.workspace.operationFailed": "The configuration could not be saved or accepted. Review the sources and repository status.",
+"strategy.workspace.leaveTitle": "Leave preparation",
+"strategy.workspace.leaveBody": "Unsaved changes will be lost. Original files will be preserved.",
+"strategy.workspace.leave": "Leave without saving",
 };

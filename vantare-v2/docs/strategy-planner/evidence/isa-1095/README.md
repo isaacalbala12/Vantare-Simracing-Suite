@@ -82,3 +82,16 @@ simula vueltas/calidad/resultado. Acciones delegadas al owner, guardado limpio
 deshabilitado y errores visibles. Copy es/en/it/pt. Tres tests focales, tipos y
 lint focal PASS (C:/tmp/isa1095-t08g-*.log). Sin captura de paridad aún: componente
 no montado en ruta. Sigue unir asistente/resumen/biblioteca con el owner T08f.
+
+## T08h — composición del recorrido
+
+StrategyRecordedWorkflow une cinco pasos, resumen y Drawer Orbit de fuentes.
+Un solo owner retiene handles al navegar; salir con cambios pide confirmación
+de descarte dentro de la UI. Hub bloquea suspensión con cambios/escritura.
+Sin versión conocida del repositorio no sustituye por cero ni intenta crear.
+Prueba de interfaz: combinación vacía → descubrir → abrir → usar → cinco pasos
+→ create nativo → resumen → preparación, sin cerrar hasta desmontar owner.
+Seis focales y tipos/lint focal PASS (C:/tmp/isa1095-t08h-*.log). Suite frontend
+general, lint general y build en curso. Cinco paths de lógica/test/CSS, más copy.
+Sigue sustituir entrada antigua y completar reapertura/listado nativo; todavía
+sin nueva ruta activa, paridad visual o prueba Wails de este recorrido.

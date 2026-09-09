@@ -1,5 +1,15 @@
 # Handoff vivo — Strategy Planner
 
+## T05/T09 montaje y biblioteca — continuación ISA-1094 (2026-09-10)
+
+Worktree activo C:/tmp/vantare-isa1094-route, rama vantareapp/isa-1094-recorded-route,
+base d5fe69da211438b8f01c65fbb1af932b0195ab51 de #1095. Rama anterior #1094
+conservada como corte histórico. T05i lista resúmenes nativos y abre payload
+sólo por selección, con validación de identidad evento/plan/variante. 14 focales,
+tipos/lint PASS; sigue entrada productiva y contexto A4. Sin ruta nueva montada aún.
+Gate #1095 T08h final: 436 archivos/3412 tests, lint/build PASS, con avisos
+heredados de teardown/chunks. No Wails/paridad/empírico nuevo ni promoción.
+
 ## T08 bootstrap de combinación — ISA-1095 (2026-09-10)
 
 Base f661d82638591bf547df835ab71458d3bbc76401; C:/tmp/vantare-isa1095,

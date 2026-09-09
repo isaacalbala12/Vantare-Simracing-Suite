@@ -1,5 +1,21 @@
 # ISA-1094 — asistente registrado
 
+## T05i / T09 — continuación de montaje y biblioteca nativa
+
+Base d5fe69da211438b8f01c65fbb1af932b0195ab51 de #1095. Worktree activo
+C:/tmp/vantare-isa1094-route, rama vantareapp/isa-1094-recorded-route; la rama
+anterior queda como corte histórico, no hay edición paralela sobre esta issue.
+useRecordedLibrary reutiliza list/filter/sort y open existentes. Sólo lista
+resúmenes de borradores registrados, abre uno por selección y comprueba evento,
+plan y variante del payload. Fallo de refresh no expone versión vieja para crear.
+14 focales, tipos/lint focal PASS (C:/tmp/isa1094-t05i-*.log).
+La biblioteca todavía no está montada. Sigue entrada productiva A4.
+
+Gate heredado #1095 T08h confirmado: 436 archivos/3412 tests frontend PASS,
+lint general y build PASS (C:/tmp/isa1095-t08h-{all,lint-all,build}.log).
+AbortError de teardown happy-dom y aviso Vite de chunks heredados; no prueba
+Wails ni certificación visual/empírica. Sin push/PR/CI remoto/promoción.
+
 Base e95d3bbb72cfd95f06bda84fb6d6d549f5c892ab; rama
 vantareapp/isa-1094-recorded-wizard; SDD R03–R05, A03–A05, T05.
 

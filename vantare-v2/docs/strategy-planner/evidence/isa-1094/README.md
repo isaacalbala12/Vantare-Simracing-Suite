@@ -22,3 +22,12 @@ Sin cambios Go. Gates generales se ejecutan al integrar las pantallas.
 Pendiente: componentes A4 e integración, controles de evento y pilotos,
 descubrimiento automático real, persistencia nativa de configuración incompleta.
 No se presenta el borrador como guardado, calculable ni aceptado visualmente.
+
+## T05b — Inicio A4
+
+Componente StrategyRecordedStart, CSS acotado y test de selección explícita;
+textos en los cuatro idiomas. Presentacional: el padre recibe el modo, sin
+avance, descubrimiento ni importación implícitos. Ocho tests focales (modelo
+e Inicio), typecheck y ESLint focal PASS. Logs C:/tmp/isa1094-t05b-*.log.
+La ruta anterior todavía no monta este componente; integración después de los
+cinco pasos. Suite general y captura de paridad se harán sobre esa integración.

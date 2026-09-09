@@ -10,6 +10,8 @@ tests focales PASS, typecheck y lint focal PASS. Todavía sin conexión a la UI
 ni persistencia del nuevo borrador: no anunciarlo guardado. Próximo corte:
 componentes Inicio/Combinación A4; después Reglas/Pilotos/Sesiones e integración.
 La suite final de T04b/c terminó: 422 archivos/3323 tests, lint/build PASS.
+T05b añade Inicio A4 presentacional y traducciones: 8 tests focales, tipos y
+lint focal PASS. Sin integración aún. Sigue Combinación con calendario real.
 No paridad visual final, Wails, push/PR/CI remoto, merge ni promoción.
 
 ## T04 A4 productivo — ISA-1093 (2026-09-09)

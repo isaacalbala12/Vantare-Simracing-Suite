@@ -82,32 +82,11 @@ func (service *TelemetryAnalysisService) ProjectCorrection(ctx context.Context, 
 		if request.Base != input.Base {
 			return ErrTelemetryAnalysisCorrectionSourceChanged
 		}
-		if service.corrections == nil {
-			return ErrTelemetryAnalysisCorrectionStorage
-		}
-		classified, err := telemetryanalysis.ClassifyHistoricalSession(input.Session)
+		derived, err := service.deriveCorrectionSession(operationCtx, input, request.RevisionID)
 		if err != nil {
-			return ErrTelemetryAnalysisIncompatible
+			return err
 		}
-		derived, err := service.corrections.DeriveProjectionSession(operationCtx, input.Base, input.Session, input.Pages, classified, request.RevisionID)
-		if err != nil {
-			return publicCorrectionError(err)
-		}
-		// The parser's catalog has no derived laps. Adapt actual completed lap
-		// boundaries for the existing classifier after applying the revision.
-		classificationSession := input.Session
-		classificationSession.Laps = nil
-		for _, lap := range derived.Validity.Laps {
-			if lap.Complete {
-				end := float64(lap.End.UnixNano()) / float64(time.Second)
-				classificationSession.Laps = append(classificationSession.Laps, telemetryanalysis.HistoricalLap{Number: int64(lap.Number), EndSeconds: &end, Boundary: telemetryanalysis.QualityUnknown, Validity: telemetryanalysis.QualityUnknown})
-			}
-		}
-		derived.Classified, err = telemetryanalysis.ClassifyHistoricalSession(classificationSession)
-		if err != nil {
-			return ErrTelemetryAnalysisIncompatible
-		}
-		result, err = telemetryanalysis.ProduceStrategyInputProjectionV2(telemetryanalysis.ProjectionProductionRequest{GeneratedAt: service.now().UTC().Truncate(time.Millisecond), Combination: classified.Combination, Sessions: []telemetryanalysis.ProjectionSessionDerivations{derived}})
+		result, err = telemetryanalysis.ProduceStrategyInputProjectionV2(telemetryanalysis.ProjectionProductionRequest{GeneratedAt: service.now().UTC().Truncate(time.Millisecond), Combination: derived.Classified.Combination, Sessions: []telemetryanalysis.ProjectionSessionDerivations{derived}})
 		if err != nil {
 			return ErrTelemetryAnalysisIncompatible
 		}
@@ -117,6 +96,41 @@ func (service *TelemetryAnalysisService) ProjectCorrection(ctx context.Context, 
 		return strategyprojection.StrategyInputProjectionV2{}, err
 	}
 	return result, nil
+}
+
+// Caller keeps the authorized source lock across this derivation. Both single
+// and multi-session projections use the same classification and scalar path.
+func (service *TelemetryAnalysisService) deriveCorrectionSession(ctx context.Context, input telemetryanalysis.CorrectionInput, revisionID string) (telemetryanalysis.ProjectionSessionDerivations, error) {
+	var empty telemetryanalysis.ProjectionSessionDerivations
+	if service.corrections == nil {
+		return empty, ErrTelemetryAnalysisCorrectionStorage
+	}
+	classified, err := telemetryanalysis.ClassifyHistoricalSession(input.Session)
+	if err != nil {
+		return empty, ErrTelemetryAnalysisIncompatible
+	}
+	derived, err := service.corrections.DeriveProjectionSession(ctx, input.Base, input.Session, input.Pages, classified, revisionID)
+	if err != nil {
+		return empty, publicCorrectionError(err)
+	}
+	// The parser catalog has no derived laps. Classify actual completed boundaries
+	// after applying the revision, preserving their unknown quality.
+	classificationSession := input.Session
+	classificationSession.Laps = nil
+	for _, lap := range derived.Validity.Laps {
+		if lap.Complete {
+			end := float64(lap.End.UnixNano()) / float64(time.Second)
+			classificationSession.Laps = append(classificationSession.Laps, telemetryanalysis.HistoricalLap{Number: int64(lap.Number), EndSeconds: &end, Boundary: telemetryanalysis.QualityUnknown, Validity: telemetryanalysis.QualityUnknown})
+		}
+	}
+	derived.Classified, err = telemetryanalysis.ClassifyHistoricalSession(classificationSession)
+	if err != nil {
+		return empty, ErrTelemetryAnalysisIncompatible
+	}
+	if err := ctx.Err(); err != nil {
+		return empty, err
+	}
+	return derived, nil
 }
 
 // Resolve only requested targets while scanning the bounded original once.

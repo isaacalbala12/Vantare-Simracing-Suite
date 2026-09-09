@@ -366,3 +366,23 @@ intacta. No elimina revisiones Analysis ni modifica planes aceptados.
 
 Este corte no conecta el productor de revisiones ni añade pantallas. El rechazo
 de recomputación fijada del corte #1084 permanece explícito. Sin app/builds.
+
+## Proyección conjunta autorizada — #1086
+
+StrategyRevisionCatalog conserva el catálogo observado y ofrece proyección de
+referencias exactas desde sesiones abiertas de TelemetryAnalysisService. El
+adapter no es un servicio Wails ni una autorización de lectura. Resuelve handles
+propios por identidad inmutable del artefacto, rechaza fuentes duplicadas/ausentes
+y revalida base, revisión y snapshot mediante el mismo camino escalar autorizado.
+Combina derivaciones con ProduceStrategyInputProjectionV2, nunca estadísticas
+ya agregadas. Revalida cancelación/licencia antes de entregar y no devuelve
+resultados parciales ante errores.
+
+Rige el presupuesto existente de cuatro sesiones abiertas; no trunca una
+selección superior. Fuente cerrada requiere reapertura explícita. No se añade
+aún reapertura automática o persistencia de autorizaciones. La conexión al
+consumidor Strategy y main es el corte siguiente. La prueba cambia la cabeza
+guardada y confirma que la referencia anterior continúa siendo la utilizada.
+
+Isaac vuelve a autorizar PC/build/app el 2026-09-09; se levanta la restricción
+anterior para las comprobaciones. LMU permanece intacto.

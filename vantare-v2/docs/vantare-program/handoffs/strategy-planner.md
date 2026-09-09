@@ -1,5 +1,21 @@
 # Handoff vivo — Strategy Planner
 
+## Proyección conjunta autorizada — ISA-1086 (2026-09-09)
+
+Base 40e95273; rama vantareapp/isa-1086-authorized-revision-producer;
+worktree C:/tmp/vantare-isa1086. Adapter de catálogo reutiliza derivación escalar
+y productor Analysis para referencias exactas de sesiones abiertas autorizadas.
+Valida identidad/base/revisión/snapshot, combinación, cancelación y licencia;
+rechaza fuentes cerradas/ambiguas y conserva límite existente de cuatro abiertas.
+No devuelve parciales ni mezcla estadísticas agregadas. No es servicio Wails.
+
+Isaac autoriza de nuevo PC/build/app; LMU intacto. Build frontend PASS.
+App/Analysis completos, vet, Go global y diff check PASS. Detalle en
+docs/strategy-planner/evidence/isa-1086/README.md.
+Siguiente: conexión al consumidor Strategy y composición main; luego reapertura,
+UI productiva y operaciones/calibración pendientes. Sin push/PR/CI remota,
+merge, promoción o release. No se anuncia C7 completo ni precisión física.
+
 ## Cliente de selección exacta — ISA-1085 (2026-09-09)
 
 Base ae6eb45f; rama vantareapp/isa-1085-selection-revision-client;

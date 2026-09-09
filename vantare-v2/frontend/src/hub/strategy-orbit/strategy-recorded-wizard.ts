@@ -28,6 +28,12 @@ export type RecordedWizardDraft = {
   readonly initialFuelLiters?: number;
   readonly fuelReserveLiters?: number;
   readonly pitLossSeconds?: number;
+  readonly virtualEnergy?: {
+    readonly applicability: "unknown" | "applicable" | "not_applicable";
+    readonly capacityPercent?: number;
+    readonly initialPercent?: number;
+    readonly reservePercent?: number;
+  };
   readonly rules?: StrategyEventRules;
   readonly drivers: readonly { readonly id: string; readonly name: string; readonly referenceDriverId?: string; readonly paceDeltaSeconds?: number }[];
   readonly sessions: readonly StrategyAnalysisRevisionRef[];

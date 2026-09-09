@@ -16,6 +16,10 @@ T05c Combinación presentacional terminada: 11 tests focales, tipos y lint focal
 PASS. Reúne coche/trazado/calendario y estados ausentes; no importa al seleccionar.
 Siguen componentes de Reglas/Pilotos y orquestación de los cinco pasos. Todavía
 no cambiar la ruta productiva hasta tener navegación y entrega del borrador.
+T05d añade Reglas básicas (incluye Fuel/VE y vacíos explícitos): 16 tests focales,
+tipos/lint global/build PASS; suite completa en curso. Los campos nuevos aún no
+viajan al solver. Reutilización de PlanDraft nativo para borrador incompleto en
+evaluación, sin almacén nuevo; Event actual sigue exigiendo configuración completa.
 No paridad visual final, Wails, push/PR/CI remoto, merge ni promoción.
 
 ## T04 A4 productivo — ISA-1093 (2026-09-09)

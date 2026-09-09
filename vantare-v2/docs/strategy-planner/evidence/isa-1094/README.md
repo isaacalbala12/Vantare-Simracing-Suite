@@ -42,3 +42,19 @@ seleccionar trazado. Buscar sólo emite una acción explícita al padre.
 Once tests focales PASS, typecheck y ESLint focal PASS (isa1094-t05c-*.log).
 Falta conectar esta pantalla y el descubrimiento inicial sin catálogo; el modelo
 actual sólo admite identidades resueltas, no creación libre con IDs inventados.
+
+## T05d — Reglas básicas
+
+Pantalla de configuración: nombre, duración o vueltas (sin convertir una unidad
+en otra), propuesta explícita de duración del snapshot, capacidad/inicial/reserva
+de combustible, aplicabilidad y cantidades de energía virtual, pérdida total y
+límites de paradas. Los vacíos permanecen ausentes; cero explícito no se pierde.
+No afirma que estos campos adicionales ya lleguen al solver: T02/T06 pendientes.
+Los límites de recursos cruzados y la configuración avanzada faltan por conectar.
+16 tests focales, typecheck, lint global y build PASS. Suite general en curso
+(C:/tmp/isa1094-t05d-all.log); no Go cambiado. No aceptación visual ni Wails.
+
+Revisión de persistencia: PlanDraft nativo acepta payload versionado con campos
+ausentes y ya dispone de create/edit/open/list. Evaluar reutilizar ese borrador
+canónico antes de ampliar el Event estricto o crear otro almacén. El cálculo
+deberá seguir recibiendo datos validados y no un payload arbitrario de UI.

@@ -1,0 +1,15 @@
+.strategy-recorded-fields { display: grid; gap: 10px; }
+.strategy-recorded-fields__provenance { margin: 0 0 4px; color: var(--orbit-ink-2); font-size: 12px; line-height: 1.5; }
+.strategy-recorded-field { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); align-items: center; gap: 14px; font-size: 13px; color: var(--orbit-ink-2); }
+.strategy-recorded-field input, .strategy-recorded-field select {
+  min-width: 0; width: 100%; min-height: 42px; padding: 8px 12px; border: 1px solid var(--orbit-line-strong); border-radius: 7px;
+  background: var(--orbit-surface-0); color: var(--orbit-ink); font: inherit;
+}
+.strategy-recorded-field input:focus-visible, .strategy-recorded-field select:focus-visible { outline: 2px solid var(--orbit-red); outline-offset: 2px; }
+.strategy-recorded-field input::placeholder { color: var(--orbit-ink-3); }
+.strategy-recorded-fields__group { padding: 14px 18px; border: 1px solid var(--orbit-line-strong); border-radius: 9px; background: var(--orbit-surface-0); }
+.strategy-recorded-fields__group summary { padding: 4px 0; color: var(--orbit-ink); font-size: 14px; cursor: pointer; }
+.strategy-recorded-fields__group .strategy-recorded-field { margin-top: 12px; }
+.strategy-recorded-fields__proposal { padding: 12px 16px; border-left: 2px solid var(--orbit-carmine); background: var(--orbit-surface-0); }
+.strategy-recorded-fields__proposal p { margin: 0 0 10px; font-size: 13px; color: var(--orbit-ink-2); }
+@media (max-width: 600px) { .strategy-recorded-field { grid-template-columns: 1fr; gap: 6px; } }

@@ -74,6 +74,13 @@ frescura (pin con test), y el check de fusión usa `defaultRESTTTL` mientras
 `markRESTStale` aplica el `cfg.ttl` en cada poll. Sin merge, PR, promoción
 ni release.
 
+Cierre documental (2026-09-09): el reviewer acepta `7f721def` sin
+bloqueantes por inspección (cierre del in-flight y TTL conservador); no
+ejecutó tests. El orquestador verificó por su cuenta `go test ./...` con
+exit 0 y los focos lmu/overlayv2/catalog en PASS. Siguiente paso: build
+canónica y prueba física Wails/LMU pendientes. No se afirma integración en
+`nightly`, y marca/logo siguen sin resolver según la propuesta ISA-1072.
+
 ## ISA-1071 — aceptación visual y corte productivo (2026-09-08)
 
 Isaac acepta la torre y elige `redlineHeader=current`, luz roja y alpha .95.

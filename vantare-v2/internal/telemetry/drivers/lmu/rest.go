@@ -261,7 +261,7 @@ func pollREST(ctx context.Context, cfg *restConfig, cache *restCache) (Observati
 			cache.standings.Status = classifyDecodeError(err)
 		} else {
 			next := *cache
-			updateStandingsFields(&next, rows, standingsResponse.receivedUTC, standingsResponse.receivedMono)
+			updateStandingsFields(&next, rows, standingsResponse)
 			cache.applyStandings(next)
 			cache.standings.LastSuccessUTC = standingsResponse.receivedUTC
 			cache.standings.lastSuccessMono = standingsResponse.receivedMono
@@ -302,10 +302,14 @@ type restResponse struct {
 	attemptedUTC time.Time
 	receivedUTC  time.Time
 	receivedMono monotonicStamp
+	// startedMono stamps the request start. The car-number grid uses it (not
+	// the response end): a request sent before a session boundary must not
+	// pass the fusion floor just because its response arrived afterwards.
+	startedMono monotonicStamp
 }
 
 func fetchREST(parent context.Context, cfg *restConfig, path string) restResponse {
-	result := restResponse{attemptedUTC: restNow(cfg)}
+	result := restResponse{attemptedUTC: restNow(cfg), startedMono: monotonicStamp{elapsed: restElapsed(cfg), set: true}}
 	target, err := url.Parse(cfg.baseURL + path)
 	if err != nil || !isLoopbackHTTP(target) {
 		result.status = RESTEndpointMalformed
@@ -431,14 +435,15 @@ func classifyDecodeError(err error) RESTEndpointStatus {
 	return RESTEndpointMalformed
 }
 
-func updateStandingsFields(cache *restCache, rows []restStanding, now time.Time, elapsed monotonicStamp) {
+func updateStandingsFields(cache *restCache, rows []restStanding, response restResponse) {
+	now, elapsed := response.receivedUTC, response.receivedMono
 	cache.playerPresent = timedObservedAt(false, now, elapsed)
 	cache.playerPosition = timedMissingAt[standings.Position](now, elapsed)
 	cache.completedLaps = timedMissingAt[standings.CompletedLaps](now, elapsed)
 	cache.pitStopCount = timedMissingAt[pit.StopCount](now, elapsed)
 	cache.carNumbers = updateCarNumberGrid(rows)
-	cache.carNumbersUTC = now
-	cache.carNumbersMono = elapsed
+	cache.carNumbersUTC = response.attemptedUTC
+	cache.carNumbersMono = response.startedMono
 	for _, row := range rows {
 		if !row.Player {
 			continue

@@ -57,6 +57,23 @@ continuo no levanta frontera aquí; ese caso queda acotado solo por el TTL
 REST de 2 s. Sin merge, PR, promoción ni release. Sin probation física
 Wails/LMU (sin control del juego en este corte).
 
+## ISA-1072 follow-up — sello de rejilla al inicio de la petición (2026-09-09)
+
+Review de calidad bloqueante sobre `77d5c616`: la rejilla se sellaba al
+final de la respuesta REST, así que una petición enviada antes de la
+frontera de sesión y respondida después pasaba el suelo con filas viejas
+(repro: inicio 9.9 s, frontera 10 s, respuesta 10.1 s, mismo slot y
+etiqueta). Fix mínimo en el mismo corte: `fetchREST` guarda `startedMono`
+al iniciar y solo la rejilla lo usa (los escalares conservan el sello de
+respuesta); la fusión no cambia. Regresión con sellos reales de fetch
+(`TestRESTGridUsesRequestStartStamp`,
+`TestFusionSessionFloorRejectsGridStartedBeforeBoundary`): falla sin el fix
+con el `007` filtrado tal cual, pasa con él. Intenciones existentes fijadas
+sin cambiar comportamiento: el match de nombre SHM mira validez, no
+frescura (pin con test), y el check de fusión usa `defaultRESTTTL` mientras
+`markRESTStale` aplica el `cfg.ttl` en cada poll. Sin merge, PR, promoción
+ni release.
+
 ## ISA-1071 — aceptación visual y corte productivo (2026-09-08)
 
 Isaac acepta la torre y elige `redlineHeader=current`, luz roja y alpha .95.

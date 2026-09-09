@@ -397,6 +397,10 @@ func overlayCarNumbers(vehicles []VehicleObservation, rest RESTObservation, elap
 		elapsed-rest.carNumbersUpdatedMono.elapsed > defaultRESTTTL {
 		return
 	}
+	// Existing intent: the fusion-side check uses defaultRESTTTL, the value
+	// the poller normalizes to when unconfigured. A custom cfg.ttl still
+	// drops the grid at poll time via markRESTStale; this check only bounds
+	// the stored grid between polls.
 	if floor.set && rest.carNumbersUpdatedMono.elapsed < floor.elapsed {
 		return
 	}

@@ -510,7 +510,7 @@ func TestOverlapNormalizationsAreEquivalent(t *testing.T) {
 			if present {
 				rows = []restStanding{{Player: true, Position: 1}}
 			}
-			updateStandingsFields(&cache, rows, time.Time{}, monotonicStamp{elapsed: 0, set: true})
+			updateStandingsFields(&cache, rows, restResponse{receivedUTC: time.Time{}, receivedMono: monotonicStamp{elapsed: 0, set: true}})
 			restValue, _ := cache.playerPresent.Field.Value()
 			shmValue, _ := observed(present).Value()
 			if shmValue != restValue {

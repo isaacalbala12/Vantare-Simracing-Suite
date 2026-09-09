@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"testing"
 	"time"
+
+	"github.com/vantare/overlays/v2/internal/telemetry/schema"
 )
 
 // ISA-1072 RED: the LMU REST reader must stop discarding the real carNumber.
@@ -158,6 +160,41 @@ func TestRESTStandingsDuplicateSlotWithInvalidNumberStaysAmbiguous(t *testing.T)
 	if len(numbers) != 1 || numbers[0] != (restCarNumber{Slot: 6, Number: "91", Vehicle: "Team B"}) {
 		t.Fatalf("car numbers = %#v, want only slot 6 with 91", numbers)
 	}
+}
+
+// ISA-1072 follow-up: the grid carries the request-start stamp, not the
+// response end. A request sent at 9.9s and answered at 10.1s stamps 9.9s, so
+// a session boundary at 10s still rejects it. Scalar fields keep the
+// response-end stamp.
+func TestRESTGridUsesRequestStartStamp(t *testing.T) {
+	wall := time.Unix(930, 0).UTC()
+	clock := &lockedClock{now: wall}
+	clock.advance(9900 * time.Millisecond)
+	client := doerFunc(func(request *http.Request) (*http.Response, error) {
+		clock.advance(200 * time.Millisecond)
+		if request.URL.Path == standingsEndpoint {
+			return responseFor(request, http.StatusOK, `[{"slotID":5,"player":true,"position":1,"lapsCompleted":2,"pitstops":0,"carNumber":"007","vehicleName":"Team A"}]`), nil
+		}
+		return responseFor(request, http.StatusOK, `{"trackName":"Test Circuit","session":"RACE1","numberOfVehicles":4,"currentEventTime":10}`), nil
+	})
+	cfg := normalizeRESTConfig(&restConfig{
+		baseURL: "http://127.0.0.1:6397",
+		client:  client,
+		now:     clock.current,
+		elapsed: clock.currentElapsed,
+	}, clock.current, clock.currentElapsed)
+
+	observation, _ := pollREST(t.Context(), cfg, &restCache{})
+	if len(observation.REST.CarNumbers) != 1 {
+		t.Fatalf("car numbers = %#v, want one entry", observation.REST.CarNumbers)
+	}
+	if observation.REST.CarNumbersUpdatedUTC != wall.Add(9900*time.Millisecond) {
+		t.Fatalf("grid UTC = %v, want the request start", observation.REST.CarNumbersUpdatedUTC)
+	}
+	if mono := observation.REST.carNumbersUpdatedMono; !mono.set || mono.elapsed != 9900*time.Millisecond {
+		t.Fatalf("grid mono = %+v, want the 9.9s request start", mono)
+	}
+	assertTimedValue(t, observation.REST.PlayerPosition, 1, wall.Add(10100*time.Millisecond), schema.FreshnessFresh)
 }
 
 // ISA-1072 RED: numbers share the existing REST TTL. Once the grid is stale

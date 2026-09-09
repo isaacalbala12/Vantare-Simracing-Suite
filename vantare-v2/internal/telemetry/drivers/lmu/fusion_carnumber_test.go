@@ -1,9 +1,11 @@
 package lmu
 
 import (
+	"net/http"
 	"testing"
 	"time"
 
+	"github.com/vantare/overlays/v2/internal/telemetry/schema"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/standings"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/vehicle"
 )
@@ -183,6 +185,87 @@ func TestFusionClockResetDropsPreviousNumbers(t *testing.T) {
 	if _, present := gotB.Vehicles[0].CarNumber.Value(); present {
 		t.Fatalf("pre-reset number leaked across the clock reset: %#v", gotB.Vehicles[0].CarNumber)
 	}
+}
+
+// ISA-1072 follow-up regression: the floor sees the request start, using
+// real fetch stamps end to end. The standings request starts at 9.9s and is
+// answered at 10.1s; the SHM boundary lands at 10s with the same slot and
+// vehicle label. The old grid (start 9.9s) must not publish; a grid polled
+// fully after the boundary must.
+func TestFusionSessionFloorRejectsGridStartedBeforeBoundary(t *testing.T) {
+	wall := time.Unix(940, 0).UTC()
+	clock := &lockedClock{now: wall}
+	clock.advance(9900 * time.Millisecond)
+	client := doerFunc(func(request *http.Request) (*http.Response, error) {
+		clock.advance(200 * time.Millisecond)
+		if request.URL.Path == standingsEndpoint {
+			return responseFor(request, http.StatusOK, `[{"slotID":5,"player":true,"position":1,"lapsCompleted":2,"pitstops":0,"carNumber":"007","vehicleName":"Team A"}]`), nil
+		}
+		return responseFor(request, http.StatusOK, `{"trackName":"Test Circuit","session":"RACE1","numberOfVehicles":4,"currentEventTime":10}`), nil
+	})
+	newPollConfig := func() *restConfig {
+		return normalizeRESTConfig(&restConfig{
+			baseURL: "http://127.0.0.1:6397",
+			client:  client,
+			now:     clock.current,
+			elapsed: clock.currentElapsed,
+		}, clock.current, clock.currentElapsed)
+	}
+
+	var fusion Fusion
+	sharedA := sharedObservation(wall, "Track A")
+	sharedA.PlayerPresent = observed(true)
+	sharedA.Vehicles = []VehicleObservation{
+		{SourceID: 5, Player: observed(true), VehicleName: observed(vehicle.VehicleName("Team A"))},
+	}
+	fusion.Merge(wall, 9*time.Second, sharedA)
+
+	oldPoll, _ := pollREST(t.Context(), newPollConfig(), &restCache{})
+	if len(oldPoll.REST.CarNumbers) != 1 {
+		t.Fatalf("old poll grid = %#v, want one entry", oldPoll.REST.CarNumbers)
+	}
+	sharedB := sharedObservation(wall.Add(10*time.Second), "Track B")
+	sharedB.PlayerPresent = observed(true)
+	sharedB.Vehicles = []VehicleObservation{
+		{SourceID: 5, Player: observed(true), VehicleName: observed(vehicle.VehicleName("Team A"))},
+	}
+	// The boundary merge lands first (floor at exactly 10s); the pre-boundary
+	// poll merges afterwards at 10.2s — past its 10.1s answer, so only the
+	// floor, never the future-guard, can reject its 9.9s grid.
+	fusion.Merge(wall.Add(10*time.Second), 10*time.Second, sharedB)
+	boundary := fusion.Merge(wall.Add(10200*time.Millisecond), 10200*time.Millisecond, oldPoll)
+	if len(boundary.Vehicles) != 1 {
+		t.Fatalf("boundary grid = %#v", boundary.Vehicles)
+	}
+	if _, present := boundary.Vehicles[0].CarNumber.Value(); present {
+		t.Fatalf("grid requested before the boundary leaked across it: %#v", boundary.Vehicles[0].CarNumber)
+	}
+
+	clock.advance(800 * time.Millisecond)
+	freshPoll, _ := pollREST(t.Context(), newPollConfig(), &restCache{})
+	refreshed := fusion.Merge(clock.current(), clock.currentElapsed(), sharedB, freshPoll)
+	if len(refreshed.Vehicles) != 1 {
+		t.Fatalf("refreshed grid = %#v", refreshed.Vehicles)
+	}
+	assertFieldValue(t, refreshed.Vehicles[0].CarNumber, standings.CarNumber("007"))
+}
+
+// ISA-1072: existing intent pinned — the SHM name match guards validity, not
+// recency. A stale SHM row keeps its identity while the source is frozen, so
+// a fresh REST grid still joins it.
+func TestFusionStaleSHMNameStillJoinsFreshGrid(t *testing.T) {
+	wall := time.Unix(941, 0).UTC()
+	shared := sharedObservation(wall, "track")
+	shared.PlayerPresent = observed(true)
+	shared.Vehicles = []VehicleObservation{
+		{SourceID: 5, Player: observed(true), VehicleName: fieldWithFreshness(vehicle.VehicleName("Team A"), schema.FreshnessStale)},
+	}
+	rest := restObservation(wall, 0, "track")
+	rest.REST.CarNumbers = []restCarNumber{{Slot: 5, Number: "007", Vehicle: "Team A"}}
+	rest.REST.carNumbersUpdatedMono = monotonicStamp{elapsed: 0, set: true}
+
+	got := (&Fusion{}).Merge(wall, 0, shared, rest)
+	assertFieldValue(t, got.Vehicles[0].CarNumber, standings.CarNumber("007"))
 }
 
 // ISA-1072: without a REST grid every row keeps its number absent, and a

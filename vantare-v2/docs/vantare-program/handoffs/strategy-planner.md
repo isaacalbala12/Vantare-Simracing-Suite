@@ -20,6 +20,9 @@ T05d añade Reglas básicas (incluye Fuel/VE y vacíos explícitos): 16 tests fo
 tipos/lint global/build PASS; suite completa en curso. Los campos nuevos aún no
 viajan al solver. Reutilización de PlanDraft nativo para borrador incompleto en
 evaluación, sin almacén nuevo; Event actual sigue exigiendo configuración completa.
+Resultado final T05d: 426 archivos/3339 tests PASS (300.57 s). T05e Pilotos:
+3 focales/tipos/lint focal PASS, estimación explícita con referencia/delta y sin
+consumo/desgaste inventados. Sigue orquestación del asistente y persistencia nativa.
 No paridad visual final, Wails, push/PR/CI remoto, merge ni promoción.
 
 ## T04 A4 productivo — ISA-1093 (2026-09-09)

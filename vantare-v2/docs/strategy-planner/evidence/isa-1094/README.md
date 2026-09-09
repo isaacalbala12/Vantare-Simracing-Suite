@@ -51,10 +51,21 @@ de combustible, aplicabilidad y cantidades de energía virtual, pérdida total y
 límites de paradas. Los vacíos permanecen ausentes; cero explícito no se pierde.
 No afirma que estos campos adicionales ya lleguen al solver: T02/T06 pendientes.
 Los límites de recursos cruzados y la configuración avanzada faltan por conectar.
-16 tests focales, typecheck, lint global y build PASS. Suite general en curso
-(C:/tmp/isa1094-t05d-all.log); no Go cambiado. No aceptación visual ni Wails.
+16 tests focales, typecheck, lint global y build PASS. Suite general sobre T05d:
+426 archivos/3339 tests PASS, 300.57 s (C:/tmp/isa1094-t05d-all.log); no Go
+cambiado. No aceptación visual ni Wails. Stderr heredado de teardown happy-dom
+AbortError, sin casos fallidos; no se presenta como consola de runtime limpia.
 
 Revisión de persistencia: PlanDraft nativo acepta payload versionado con campos
 ausentes y ya dispone de create/edit/open/list. Evaluar reutilizar ese borrador
 canónico antes de ampliar el Event estricto o crear otro almacén. El cálculo
 deberá seguir recibiendo datos validados y no un payload arbitrario de UI.
+
+## T05e — Pilotos
+
+Pantalla sin pilotos fabricados, edición de nombres y estimación explícita de
+relevo respecto al principal. Seleccionar esa referencia propone delta cero,
+editable con signo; nunca genera combustible ni desgaste. Quitar la referencia
+retira las estimaciones dependientes. Tres tests focales, tipos y lint focal
+PASS. Disponibilidad/límites, persistencia y aplicación en optimización T07/T02
+siguen pendientes. Logs C:/tmp/isa1094-t05e-*.log.

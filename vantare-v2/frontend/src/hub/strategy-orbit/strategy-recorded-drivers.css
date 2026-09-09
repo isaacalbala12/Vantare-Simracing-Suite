@@ -1,0 +1,13 @@
+@import './strategy-recorded-fields.css';
+
+.strategy-recorded-drivers { display: grid; gap: 14px; }
+.strategy-recorded-drivers__card { padding: 20px 22px; border: 1px solid var(--orbit-line-strong); border-radius: 10px; background: var(--orbit-surface-0); }
+.strategy-recorded-drivers__card header { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; }
+.strategy-recorded-drivers__card h3 { margin: 0 0 16px; font-size: 16px; }
+.strategy-recorded-drivers__card p { color: var(--orbit-ink-2); font-size: 13px; line-height: 1.5; }
+.strategy-recorded-drivers__card .strategy-recorded-field + .strategy-recorded-field { margin-top: 12px; }
+.strategy-recorded-drivers__estimate { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--orbit-line); }
+.strategy-recorded-drivers__estimate strong { display: inline-block; padding: 4px 8px; border: 1px solid var(--orbit-line-strong); border-radius: 5px; color: var(--orbit-ink-2); font-size: 11px; font-weight: 400; }
+.strategy-recorded-drivers__add { justify-content: center; min-height: 48px; }
+.strategy-recorded-drivers button:focus-visible { outline: 2px solid var(--orbit-red); outline-offset: 3px; }
+@media (max-width: 600px) { .strategy-recorded-drivers__card { padding: 16px; } }

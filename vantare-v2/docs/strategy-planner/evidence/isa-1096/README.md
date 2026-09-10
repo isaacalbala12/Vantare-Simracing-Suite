@@ -104,3 +104,12 @@ Review propia: autorización y lectura siguen en withCorrectionInput; la lista
 no sustituye la validación de cada guardado. Siguiente transportar capacidad
 a RecordedSession y bloquear edición sin permiso explícito, luego historial.
 Sin Wails, banco DuckDB, nota visual, push/PR/CI remota o promoción nuevos.
+
+## T10i — capacidad conservada por el propietario
+
+RecordedSession conserva una copia de editableChannelIds. Respuestas antiguas
+producen conjunto vacío; recordedSampleCorrection rechaza señales sin capacidad
+explícita antes de construir el comando. RED/GREEN, 30 focales/tipos/lint PASS.
+Cinco paths declarados. Siguiente T10j: aplicar el mismo límite en Datos y su
+fixture UI; después historial. Build/global se agrupan tras ese montaje sin
+atribuir aún aceptación general a este corte. No cambios nativos ni promoción.

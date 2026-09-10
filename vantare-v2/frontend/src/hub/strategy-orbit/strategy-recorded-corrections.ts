@@ -13,6 +13,7 @@ export async function loadRecordedCorrection(client: AnalysisClient, session: Re
 
 /** The caller selects an actual page/sample; indices are never inferred from rows. */
 export function recordedSampleCorrection(session: RecordedSession, page: AnalysisPage, sampleIndex: number, column: string, replacement: AnalysisScalar, reason: string): AnalysisCorrection {
+  if (!session.editableChannelIds?.includes(page.channel_id)) throw new Error("recorded_channel_read_only");
   const channel = session.opened.session.channels.find(item => item.id === page.channel_id);
   const original = page.samples.find(sample => sample.index === sampleIndex)?.values.find(value => value.column === column);
   if (!channel || !channel.columns.some(item => item.name === column && item.type === original?.scalar.kind) || !original) throw new Error("recorded_target_unavailable");

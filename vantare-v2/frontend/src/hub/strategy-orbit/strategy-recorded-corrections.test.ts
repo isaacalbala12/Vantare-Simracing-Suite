@@ -8,7 +8,7 @@ const base: AnalysisBase = { sessionId: "source", contentSha256: "a".repeat(64),
 const initial = "c".repeat(64), next = "d".repeat(64), digest = "e".repeat(64);
 function fixture(kind: AnalysisScalar["kind"] = "number") {
   const channel = { id: "fuel", source_name: "Fuel", unit: { symbol: "L", quality: "valid" as const }, sampling: { kind: "event_timestamped" as const, origin: "source_timestamp" as const }, columns: [{ name: "value", type: kind }] };
-  const session: RecordedSession = { candidateId: "opaque", opened: { sessionId: "handle", session: { schema_version: 1, id: "source", channels: [channel], metadata: [] } }, base, combinationId: "combo", revision: { sessionId: "source", baseDigest: digest, revisionId: initial, snapshotId: initial } };
+  const session: RecordedSession = { editableChannelIds: ["fuel"], candidateId: "opaque", opened: { sessionId: "handle", session: { schema_version: 1, id: "source", channels: [channel], metadata: [] } }, base, combinationId: "combo", revision: { sessionId: "source", baseDigest: digest, revisionId: initial, snapshotId: initial } };
   const page: AnalysisPage = { channel_id: "fuel", start: 100, sampling: channel.sampling, samples: [{ index: 107, values: [{ column: "value", present: true, quality: "unknown", scalar: { kind, ...(kind === "number" ? { number: 12 } : {}) } }] }] };
   const loaded: AnalysisStoreResult = { headId: initial, revision: { revisionId: initial, parentRevisionId: "", command: { expectedRevision: "", commandId: "", reason: "", localAuthorId: "" }, commandDigest: "", createdAt: "", snapshot: { contractVersion: "analysis.sample-snapshot.v1", base, snapshotId: initial, corrections: [] } } };
   const correction = () => recordedSampleCorrection(session, page, 107, "value", { kind, ...(kind === "number" ? { number: 0 } : {}) }, "Reviewed observation");
@@ -16,6 +16,12 @@ function fixture(kind: AnalysisScalar["kind"] = "number") {
 }
 
 describe("recorded scalar correction commands", () => {
+  it("rejects readable channels without explicit native edit capability", () => {
+    const { session, page } = fixture();
+    for (const editableChannelIds of [undefined, [], ["other"]]) {
+      expect(() => recordedSampleCorrection({ ...session, editableChannelIds }, page, 107, "value", { kind: "number", number: 0 }, "Reviewed")).toThrow("recorded_channel_read_only");
+    }
+  });
   it.each(["number", "boolean"] as const)("preserves explicit zero/false and original quality for %s", kind => {
     const { correction, page } = fixture(kind);
     const value = correction();

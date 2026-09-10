@@ -9,6 +9,7 @@ export type RecordedSession = Readonly<{
   revision: StrategyAnalysisRevisionRef;
   combinationId: string;
   combination?: AnalysisCombination;
+  editableChannelIds?: readonly string[];
 }>;
 
 // Open has a resource side effect. Keep its response even after cancellation
@@ -48,7 +49,7 @@ export async function openRecordedSession(
       || (expected && (revision.baseDigest !== expected.baseDigest || revision.revisionId !== expected.revisionId || revision.snapshotId !== expected.snapshotId))) {
       throw new Error("recorded_revision_mismatch");
     }
-    return { candidateId, opened, base: prepared.base, revision, combinationId: resolvedCombinationId, ...(prepared.combination ? { combination: prepared.combination } : {}) };
+    return { candidateId, opened, base: prepared.base, revision, combinationId: resolvedCombinationId, editableChannelIds: [...(prepared.editableChannelIds ?? [])], ...(prepared.combination ? { combination: prepared.combination } : {}) };
   } catch (error) {
     try {
       await client.close(opened.sessionId);

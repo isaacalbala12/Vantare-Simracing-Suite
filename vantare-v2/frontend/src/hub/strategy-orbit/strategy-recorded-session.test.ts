@@ -15,6 +15,15 @@ function fixture() {
 }
 
 describe("recorded session ownership", () => {
+  it("retains explicit native edit capability without inferring it for older responses", async () => {
+    const { client, api, base, revision } = fixture();
+    expect((await openRecordedSession(api, "candidate", "combo", revision)).editableChannelIds).toEqual([]);
+    const editableChannelIds = ["fuel"];
+    client.prepare.mockResolvedValue({ base, baseRevisionId: "f".repeat(64), editableChannelIds });
+    const opened = await openRecordedSession(api, "candidate", "combo", revision);
+    editableChannelIds.length = 0;
+    expect(opened.editableChannelIds).toEqual(["fuel"]);
+  });
   it("resolves a first source from its native identity without a preselected combination", async () => {
     const { client, api, base, revision } = fixture();
     const combination = { id: "combo", simId: "lmu", trackName: "Imola", trackLayout: "Grand Prix", carName: "Car", carClass: "LMP2" };

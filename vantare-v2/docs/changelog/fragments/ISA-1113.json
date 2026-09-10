@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-1113",
+  "type": "change",
+  "summary": "Arranque y reposo más ligeros del Hub: la cuenta atrás de próximas carreras solo despierta cada segundo cuando falta menos de una hora, y la fuente monoespaciada se sirve comprimida.",
+  "technicalNotes": [
+    "La columna de próximas carreras reevalúa su reloj en cada tic: 1 s dentro de la última hora (cuenta atrás en mm:ss) y 30 s cuando la salida está lejos (solo muestra Nh Mm).",
+    "Cascadia Code pasa de TTF a woff2 (388 kB → ~120 kB en el bundle) conservando el peso variable 200-700; el runtime WebView2 lo soporta siempre.",
+    "Los assets del laboratorio Workshop (/workshop, ~2 MB) siguen fuera del build productivo y ahora una guardia lo impide; los recursos del diseño Endurance Redline Tower son productivos desde ISA-1101 y se conservan."
+  ],
+  "testing": [
+    "Abrir el Hub con la columna visible y comprobar que la cuenta atrás de la próxima carrera sigue bajando en segundos dentro de la última hora.",
+    "Verificar que los textos monoespaciados del Hub (Cascadia Code) se ven igual que antes.",
+    "El diseño Endurance Redline Tower Preview debe seguir mostrando emblemas de fabricante y su tipografía en Studio y en el overlay."
+  ],
+  "knownLimitations": [
+    "No se anuncia ahorro medido de CPU o RAM: la validación con el simulador abierto sigue pendiente en el banco Windows.",
+    "La división de CSS por superficie y el lazy por página son issues propias fuera de este corte."
+  ]
+}

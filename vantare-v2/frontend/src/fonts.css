@@ -23,7 +23,8 @@
   font-style: normal;
   font-weight: 200 700;
   font-display: block;
-  src: url('./assets/fonts/orbit/CascadiaCode.ttf') format('truetype');
+  /* Solo woff2: el runtime es WebView2/Chromium, que lo soporta siempre. */
+  src: url('./assets/fonts/orbit/CascadiaCode.woff2') format('woff2');
 }
 
 @font-face {

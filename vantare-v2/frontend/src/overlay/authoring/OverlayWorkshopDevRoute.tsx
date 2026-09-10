@@ -156,6 +156,7 @@ function WorkshopSurface({ prepared, profileId, surface, query, comparison = fal
 function OverlayWorkshopPage({ initialQuery, profileId }: { initialQuery: OverlayWorkshopQuery; profileId: string }): React.ReactElement {
   const [parsed, setQuery] = useState<OverlayWorkshopQuery>(initialQuery);
   const [studyModules, setStudyModules] = useState<string[]>(["gap", "bestLap"]);
+  const [studyAppearance, setStudyAppearance] = useState<Record<string, unknown>>({});
   const isFunctionalStudy = parsed.system === "vantare-functional" && parsed.variant === "standings-functional-study";
   const [prepared, setPrepared] = useState<PreparedFixture | null>(null);
   const [dimensionDraft, setDimensionDraft] = useState({
@@ -348,7 +349,7 @@ function OverlayWorkshopPage({ initialQuery, profileId }: { initialQuery: Overla
   const sourcePrepared = preparedForRender ?? prepared;
   const displayPrepared = isFunctionalStudy && sourcePrepared ? {
     ...sourcePrepared,
-    widget: { ...sourcePrepared.widget, content: {
+    widget: { ...sourcePrepared.widget, visual: { ...sourcePrepared.widget.visual, appearanceOverrides: { ...sourcePrepared.widget.visual.appearanceOverrides, ...studyAppearance } }, content: {
       ...sourcePrepared.widget.content,
       columns: ((sourcePrepared.widget.content as { columns: WidgetColumnV3[] }).columns).map((column) => ({ ...column, widthPreset: "auto" as const, enabled: column.metricId === "position" || column.metricId === "driverName" || studyModules.includes(column.metricId) })),
       rowCount: 10,
@@ -359,7 +360,7 @@ function OverlayWorkshopPage({ initialQuery, profileId }: { initialQuery: Overla
 
   return (
     <main className={`overlay-workshop${isFunctionalStudy ? " functional-study" : ""}`} data-overlay-workshop-page>
-      {isFunctionalStudy && <FunctionalStudyControls query={parsed} update={update} modules={studyModules} onModules={setStudyModules} />}
+      {isFunctionalStudy && <FunctionalStudyControls query={parsed} update={update} modules={studyModules} onModules={setStudyModules} appearance={studyAppearance} onAppearance={setStudyAppearance} />}
       <aside className="overlay-workshop-sidebar" aria-label="Laboratorio visual">
       <header className="overlay-workshop-header">
         <div className="overlay-workshop-header__title">

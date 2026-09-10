@@ -132,8 +132,8 @@ describe("RuntimeOverlaySurface", () => {
     const frame = view.getByTestId("runtime-widget-frame");
     const viewport = view.getByTestId("runtime-widget-viewport-functional");
     expect(Number.parseFloat(frame.style.width)).toBeGreaterThan(340);
-    expect(frame.style.height).toBe("670px");
-    expect(frame.style.top).toBe("410px");
+    expect(frame.style.height).toBe("692px");
+    expect(frame.style.top).toBe("388px");
     expect(viewport.style.transform).toBe("scale(1)");
     expect(view.container.querySelectorAll('[data-widget-system="vantare-functional"] [data-standings-row]')).toHaveLength(20);
     expect(widget.layout.w).toBe(340);

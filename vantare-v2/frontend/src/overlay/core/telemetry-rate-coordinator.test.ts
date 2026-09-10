@@ -239,6 +239,21 @@ describe("createTelemetryRateCoordinator", () => {
     coordinator.dispose();
   });
 
+  it.each(["session", "weather", "fuel", "units"] as const)("updates Standings when %s changes without a position change", (section) => {
+    const harness = controllableScheduler();
+    let time = 0;
+    const coordinator = createTelemetryRateCoordinator({ createScheduler: harness.create, now: () => time });
+    const frame = performanceFrame(1, 40, { standings: "dirty" }, [{ id: "car-1" }]);
+    coordinator.setOverlayFrame(frame);
+    const listener = vi.fn();
+    coordinator.subscribe("standings", listener);
+    coordinator.setOverlayFrame({ ...frame, sequence: 2, [section]: section === "session" ? { ...frame.session, flag: { q: "fresh", v: "yellow" } } : section === "fuel" ? { sessionLaps: { q: "fresh", v: 18 } } : section === "units" ? { temperature: "fahrenheit" } : { trackC: { q: "fresh", v: 35 } } });
+    time = 50;
+    harness.tick();
+    expect(listener).toHaveBeenCalledTimes(1);
+    coordinator.dispose();
+  });
+
   it("repaints once per frame however many snapshots arrived", () => {
     const harness = controllableScheduler();
     const coordinator = createTelemetryRateCoordinator({ createScheduler: harness.create });

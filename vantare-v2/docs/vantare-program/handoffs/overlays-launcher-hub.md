@@ -1,5 +1,47 @@
 # Handoff vivo — Overlay Studio, Launcher y Hub
 
+## ISA-1103 — Información de sesión en Efficiency (2026-09-10)
+
+Petición adicional de Isaac: diagonales según bandera, sin transición; dos datos
+configurables en cabecera y pie opcional fino. Implementación aislada sobre
+`87cef39a`, rama `vantareapp/isa-1103-efficiency-session-info`, worktree
+`C:/tmp/vantare-isa1103`. Signature mantiene 50 px de cabecera y Broadcast 46;
+el pie añade 22 px al marco compartido. Inspector y Workshop usan el manifest.
+El refresco de Standings reconoce también cambios de información sin posiciones.
+
+Límite confirmado: BuildSession/BuildWeather todavía publican flags/temperaturas
+como missing. No se crea otra fuente de LMU. Bandera desconocida/antigua neutra;
+datos ausentes «—». Vueltas estimadas desde `fuel.sessionLaps` canónico, nunca
+autonomía ni un cálculo nuevo en React. El escenario de diseño invalida la
+estimación del golden al sobrescribir su tiempo para no mostrar datos incoherentes.
+
+51 tests focales y 120 regresiones de host/marco/Studio pasan. Primera suite
+completa detectó 9 fallos explicados por la nueva altura, fixture sin weather y
+snapshot previo al nuevo VM; los 120 tests incluyen sus correcciones y la
+repetición completa posterior es verde (3377 PASS). Revisión independiente Muse
+1.3 Contributor aprobada sin bloqueantes; P2 238/258 cerrado. Detalle en
+[microplan ISA-1103](../../analysis/ISA-1103-efficiency-session-info.md).
+
+P2 cerrado: Signature estrecha (Posición+Piloto, 238 px) ocultaba los datos de
+cabecera. `resolveFunctionalHeaderInfoPlacement` (`inline`/`split`/`band`/`none`)
+desvía la información a una franja de 22 px reservada en el marco cuando no cabe
+en la zona libre; Signature conserva 50 px y Broadcast 46 px en ancho habitual,
+y slots `none` o cabecera oculta no añaden franja. Evidencia: focales 9/180
+PASS, suite 425 archivos con 3377 PASS y 2 omitidos (exit 0), typecheck/build/
+lint PASS con exit 0; logs en `C:/tmp/vantare-isa1103-*.log`. Navegador del
+orquestador sobre harness (no físico): Signature Pos+Nombre 238x394 con banda
+22 px (Sebring/20:03 sin solape), Broadcast Pos+Nombre 258x414 con banda, y sin
+banda (0 nodos, 392 px) con ambos datos en Ninguno. Sin cambios Go.
+No es aceptación física de Isaac. Pendientes prueba física conjunta e
+integración a Nightly.
+
+ISA-1097 continúa en su propio worktree: Delta premium y eliminación tras
+downgrade corregidos con 4 RED → 23 PASS. Política nativa/marca aún pendiente;
+la revisión identifica transporte sin PII para OBS y conservación de vencimientos
+verificados para expirar derechos en vivo. No se incluye ese código aquí.
+ISA-1083 tiene CI PASS en `87cef39a`, run 34431634439. Isaac ha pospuesto la
+comprobación física e integración hasta comprobar el conjunto. Sin merge/release.
+
 ## ISA-1101 — integración inicial autorizada a nightly (2026-09-10)
 
 Isaac solicita «antes de continuar mergea tu trabajo a nightly». Este corte

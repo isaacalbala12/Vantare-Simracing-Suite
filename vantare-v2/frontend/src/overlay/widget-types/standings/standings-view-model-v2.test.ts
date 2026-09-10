@@ -25,6 +25,56 @@ function frameForPhase(phase: "practice" | "qualifying" | "race"): OverlayFrameV
 }
 
 describe("buildStandingsViewModelV2 session columns", () => {
+  it("projects session information without confusing fuel range with race laps", () => {
+    const frame = frameForPhase("race");
+    const model = buildStandingsViewModelV2({ ...frame,
+      session: { ...frame.session, flag: { q: "fresh", v: "yellow" }, maxLaps: { q: "fresh", v: 42 } },
+      weather: { ...frame.weather, trackC: { q: "fresh", v: 32.4 }, ambientC: { q: "fresh", v: 21 } },
+      fuel: { ...frame.fuel, estimatedLaps: { q: "fresh", v: 5 }, sessionLaps: { q: "fresh", v: 18 } },
+    }, { state: "live" }, content);
+    expect(model.flag).toBe("yellow");
+    expect(model.sessionInfo).toMatchObject({
+      trackTemperature: { text: "32.4°C" }, airTemperature: { text: "21°C" },
+      totalLaps: { text: "42" }, estimatedLaps: { text: "≈18" },
+    });
+  });
+
+  it.each(["missing", "invalid", "stale"] as const)("does not present a %s flag as current", (q) => {
+    const frame = frameForPhase("race");
+    expect(buildStandingsViewModelV2({ ...frame, session: { ...frame.session, flag: { q, v: "green" } } }, { state: "live" }, content).flag).toBe("unknown");
+  });
+
+  it("neutralizes a retained flag when the entire source is stale", () => {
+    const frame = frameForPhase("race");
+    expect(buildStandingsViewModelV2({ ...frame, session: { ...frame.session, flag: { q: "fresh", v: "red" } } }, { state: "stale" }, content).flag).toBe("unknown");
+  });
+
+  it("preserves unknown data, rejects lap sentinels and identifies stale values", () => {
+    const frame = frameForPhase("race");
+    const model = buildStandingsViewModelV2({ ...frame,
+      session: { ...frame.session, flag: { q: "fresh", v: "not-a-flag" }, maxLaps: { q: "fresh", v: 2147483647 } },
+      weather: { ...frame.weather, trackC: { q: "missing", v: 99 }, ambientC: { q: "stale", v: 0 } },
+      fuel: { ...frame.fuel, estimatedLaps: { q: "fresh", v: 5 }, sessionLaps: { q: "missing" } },
+    }, { state: "live" }, content);
+    expect(model.flag).toBe("unknown");
+    expect(model.sessionInfo).toMatchObject({
+      trackTemperature: { text: "—" }, airTemperature: { text: "0°C", stale: true },
+      totalLaps: { text: "—" }, estimatedLaps: { text: "—" },
+    });
+  });
+
+  it("does not invent a race estimate during practice", () => {
+    const frame = frameForPhase("practice");
+    const model = buildStandingsViewModelV2({ ...frame, fuel: { ...frame.fuel, sessionLaps: { q: "fresh", v: 18 } } }, { state: "live" }, content);
+    expect(model.sessionInfo?.estimatedLaps.text).toBe("—");
+  });
+
+  it("formats canonical Celsius values in the preferred temperature unit", () => {
+    const frame = frameForPhase("race");
+    const model = buildStandingsViewModelV2({ ...frame, units: { ...frame.units, temperature: "fahrenheit" }, weather: { ...frame.weather, trackC: { q: "fresh", v: 20 } } }, { state: "live" }, content);
+    expect(model.sessionInfo?.trackTemperature.text).toBe("68°F");
+  });
+
   it.each([
     { phase: "practice" as const, gap: "+2.000s" },
     { phase: "qualifying" as const, gap: "+2.000s" },

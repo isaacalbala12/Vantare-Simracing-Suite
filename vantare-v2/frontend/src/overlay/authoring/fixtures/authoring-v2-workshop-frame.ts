@@ -430,6 +430,9 @@ export function buildWorkshopFrameV2(scenario: WorkshopV2Scenario): WidgetRuntim
         pit: index === 5 ? "pit" : "track",
       }));
       frame = { ...frame, standings: rows, player: { ...frame.player, id: rows[6]!.id },
+        // The study overrides remaining time; the golden's session estimate
+        // no longer describes this frame. Only Go supplies that estimate.
+        fuel: { ...frame.fuel, sessionLaps: { q: "missing" } },
         session: { ...frame.session, remaining: qualityValue(20 * 60 + 3, quality) } };
       break;
     }

@@ -115,7 +115,14 @@ export function createTelemetryRateCoordinator(
       case "input-telemetry": return overlayFrame.controls;
       case "delta": case "delta-advanced": case "delta-trace": return overlayFrame.delta;
       case "relative": case "multiclass-relative": case "head-to-head": return overlayFrame.relative;
-      case "standings": case "broadcast-tower": case "track-map": return overlayFrame.standings;
+      case "standings": return {
+        rows: overlayFrame.standings,
+        session: overlayFrame.session,
+        weather: overlayFrame.weather,
+        sessionLaps: overlayFrame.fuel?.sessionLaps,
+        units: overlayFrame.units,
+      };
+      case "broadcast-tower": case "track-map": return overlayFrame.standings;
       case "fuel-strategy": return overlayFrame.fuel;
       case "car-damage-numbers": case "car-damage-visual": return overlayFrame.damage;
       case "track-weather": return overlayFrame.weather;

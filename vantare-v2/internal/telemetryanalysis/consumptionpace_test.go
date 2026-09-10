@@ -159,13 +159,15 @@ func TestRepairLegacyRepresentativePaceUsesSharedFamilyDecisionForTrafficLaps(t 
 	}
 	for index, lapTime := range times {
 		number := []int{2, 4, 6, 7}[index]
+		// Controlled distinct intervals are required evidence for this repair.
+		start, end := fixtureTime(float64(index*200)), fixtureTime(float64(index*200)+lapTime)
 		validity.Laps[index] = AnalyzedLap{
-			Number: number, Complete: true, LapTimeSeconds: &lapTime, Labels: []LapLabel{LapLabelTraffic},
+			Number: number, Start: &start, End: end, Complete: true, LapTimeSeconds: &lapTime, Labels: []LapLabel{LapLabelTraffic},
 			FamilyUse: []LapFamilyUse{{Family: FamilyCombinedStintPaceCurve, Included: true}},
 		}
 		fuel := newDerivedMetric(consumption.SessionID, 3.5, strategyprojection.PresenceValid)
 		consumption.Laps[index] = LapConsumptionPace{
-			Number: number, Labels: []LapLabel{LapLabelTraffic}, ClimateBucket: &dry, FuelConsumption: &fuel,
+			Number: number, Start: start, End: end, Labels: []LapLabel{LapLabelTraffic}, ClimateBucket: &dry, FuelConsumption: &fuel,
 		}
 	}
 
@@ -462,6 +464,49 @@ func TestSavingObservationsUseIndependentFamilyAndHardEvidence(t *testing.T) {
 				if lap.SavingFuel != nil {
 					t.Fatal("missing fuel invented")
 				}
+			}
+		})
+	}
+}
+
+func TestLegacyPaceRepairRequiresExactUniqueLapIdentity(t *testing.T) {
+	for _, mode := range []string{"repeated number", "missing interval", "duplicate validity", "duplicate consumption", "changed interval"} {
+		t.Run(mode, func(t *testing.T) {
+			dry := strategyprojection.ClimateBucketDry
+			validity := LapValidityAnalysis{}
+			consumption := SessionConsumptionPace{SessionID: "controlled", CombinationID: "combination", ByClimateBucket: map[strategyprojection.ClimateBucket]ClimateBucketConsumptionPace{dry: {}}}
+			for i, seconds := range []float64{90, 100} {
+				start, end := fixtureTime(float64(i*100)), fixtureTime(float64(i*100)+seconds)
+				validity.Laps = append(validity.Laps, AnalyzedLap{Number: 1, Start: &start, End: end, Complete: true, LapTimeSeconds: &seconds, FamilyUse: []LapFamilyUse{{Family: FamilyCombinedStintPaceCurve, Included: true}}})
+				fuel := newDerivedMetric(consumption.SessionID, 3, strategyprojection.PresenceValid)
+				consumption.Laps = append(consumption.Laps, LapConsumptionPace{Number: 1, Start: start, End: end, ClimateBucket: &dry, FuelConsumption: &fuel})
+			}
+			switch mode {
+			case "missing interval":
+				consumption.Laps[0].Start = time.Time{}
+			case "duplicate validity":
+				validity.Laps = append(validity.Laps, validity.Laps[0])
+			case "duplicate consumption":
+				consumption.Laps = append(consumption.Laps, consumption.Laps[0])
+			case "changed interval":
+				consumption.Laps[0].End = consumption.Laps[0].End.Add(time.Second)
+			}
+			got := repairLegacyRepresentativePace(&validity, consumption)
+			if got.Laps[1].RepresentativePace == nil || got.Laps[1].RepresentativePace.Value != 100 {
+				t.Fatal("lost unambiguous lap")
+			}
+			if mode == "repeated number" {
+				if got.Laps[0].RepresentativePace == nil || got.Laps[0].RepresentativePace.Value != 90 {
+					t.Fatal("joined another lap by number")
+				}
+			} else if got.Laps[0].RepresentativePace != nil {
+				t.Fatal("repaired unresolved or ambiguous lap")
+			}
+			if mode == "duplicate consumption" && got.Laps[2].RepresentativePace != nil {
+				t.Fatal("duplicate observation repaired")
+			}
+			if consumption.Laps[1].RepresentativePace != nil {
+				t.Fatal("persisted original mutated")
 			}
 		})
 	}

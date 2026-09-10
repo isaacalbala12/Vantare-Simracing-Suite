@@ -1,5 +1,16 @@
 # Handoff vivo — Strategy Planner
 
+## T11e2b — compatibilidad sin unión por número
+
+La reparación de ritmo legado exige la misma identidad temporal y unicidad de
+ambas colecciones que las curvas. No reconstruye límites ausentes; conserva
+esos datos como no disponibles y no modifica el modelo persistido. RED/GREEN:
+número repetido, intervalos ausentes/cambiados y duplicados de validez/consumo.
+Se conserva el caso válido con intervalos de fixture explícitos. Tres paths;
+helper común de identidad, sin otro criterio ni dependencia. Analysis completo,
+global Go -p1 y vet de alcance PASS. Continúa T11f1 comandos nativos mixtos.
+Sin frontend, Wails, precisión, visual >9, push/PR/CI remota/merge/promoción.
+
 ## T11e3b — independencia de ahorro y filtros blandos
 
 Consumo produce observaciones de combustible/tiempo propias de SavingCost tras

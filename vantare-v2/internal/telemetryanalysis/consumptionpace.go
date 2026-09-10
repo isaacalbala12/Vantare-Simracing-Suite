@@ -255,7 +255,8 @@ func DeriveSessionConsumptionPace(
 // persisted before consumption-pace.v2. It never writes the authorized store
 // and only restores a pace when the store already contains every required
 // fact: climate bucket, reliable lap time, shared family inclusion and a
-// same-lap derived presence from Fuel or VE.
+// same-lap derived presence from Fuel or VE. Missing/ambiguous temporal identity
+// remains unavailable; a lap number alone cannot prove that these facts agree.
 func repairLegacyRepresentativePace(
 	validity *LapValidityAnalysis,
 	consumption SessionConsumptionPace,
@@ -263,9 +264,22 @@ func repairLegacyRepresentativePace(
 	if validity == nil || len(consumption.Laps) == 0 {
 		return consumption
 	}
-	byNumber := make(map[int]AnalyzedLap, len(validity.Laps))
+	byTarget := make(map[LapCorrectionTarget]AnalyzedLap, len(validity.Laps))
+	validityCounts := make(map[LapCorrectionTarget]int, len(validity.Laps))
+	consumptionCounts := make(map[LapCorrectionTarget]int, len(consumption.Laps))
 	for _, lap := range validity.Laps {
-		byNumber[lap.Number] = lap
+		if lap.Start == nil {
+			continue
+		}
+		if target, ok := derivedLapTarget(lap.Number, *lap.Start, lap.End); ok {
+			byTarget[target] = lap
+			validityCounts[target]++
+		}
+	}
+	for _, lap := range consumption.Laps {
+		if target, ok := derivedLapTarget(lap.Number, lap.Start, lap.End); ok {
+			consumptionCounts[target]++
+		}
 	}
 	result := consumption
 	result.Laps = append([]LapConsumptionPace(nil), consumption.Laps...)
@@ -275,8 +289,9 @@ func repairLegacyRepresentativePace(
 		if derivedLap.RepresentativePace != nil || derivedLap.ClimateBucket == nil {
 			continue
 		}
-		lap, ok := byNumber[derivedLap.Number]
-		if !ok || !lap.Complete || lap.LapTimeSeconds == nil || *lap.LapTimeSeconds <= 0 ||
+		target, resolved := derivedLapTarget(derivedLap.Number, derivedLap.Start, derivedLap.End)
+		lap, ok := byTarget[target]
+		if !resolved || validityCounts[target] != 1 || consumptionCounts[target] != 1 || !ok || !lap.Complete || lap.LapTimeSeconds == nil || *lap.LapTimeSeconds <= 0 ||
 			!familyIncluded(lap, FamilyCombinedStintPaceCurve) {
 			continue
 		}

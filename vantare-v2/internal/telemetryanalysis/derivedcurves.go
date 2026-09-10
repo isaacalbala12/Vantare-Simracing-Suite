@@ -176,7 +176,7 @@ func collectFamilyCurveLapSamples(validity LapValidityAnalysis, pace SessionCons
 		if lap.Start == nil {
 			continue
 		}
-		key, ok := curveLapTarget(lap.Number, *lap.Start, lap.End)
+		key, ok := derivedLapTarget(lap.Number, *lap.Start, lap.End)
 		if !ok {
 			continue
 		}
@@ -184,13 +184,13 @@ func collectFamilyCurveLapSamples(validity LapValidityAnalysis, pace SessionCons
 		validityCounts[key]++
 	}
 	for _, lap := range pace.Laps {
-		if key, ok := curveLapTarget(lap.Number, lap.Start, lap.End); ok {
+		if key, ok := derivedLapTarget(lap.Number, lap.Start, lap.End); ok {
 			paceCounts[key]++
 		}
 	}
 	var result []curveLapSample
 	for _, derivedLap := range pace.Laps {
-		key, resolved := curveLapTarget(derivedLap.Number, derivedLap.Start, derivedLap.End)
+		key, resolved := derivedLapTarget(derivedLap.Number, derivedLap.Start, derivedLap.End)
 		lap, ok := validityByTarget[key]
 		paceMetric, fuelMetric := derivedLap.RepresentativePace, derivedLap.FuelConsumption
 		if family == FamilySavingCost {
@@ -246,7 +246,7 @@ func curveFamilyIncluded(lap AnalyzedLap, family DerivationFamily) bool {
 }
 
 // Use canonical instants rather than time.Time location/monotonic identity.
-func curveLapTarget(number int, start, end time.Time) (LapCorrectionTarget, bool) {
+func derivedLapTarget(number int, start, end time.Time) (LapCorrectionTarget, bool) {
 	if number < 0 || start.IsZero() || end.IsZero() || !start.Before(end) {
 		return LapCorrectionTarget{}, false
 	}
@@ -264,7 +264,7 @@ func stintLapIndices(validity LapValidityAnalysis) (map[LapCorrectionTarget]int,
 	seen := make(map[LapCorrectionTarget]bool, len(laps))
 	for _, lap := range laps {
 		if lap.Start != nil {
-			if key, ok := curveLapTarget(lap.Number, *lap.Start, lap.End); ok {
+			if key, ok := derivedLapTarget(lap.Number, *lap.Start, lap.End); ok {
 				if seen[key] {
 					continue
 				}
@@ -286,7 +286,7 @@ func stintLapIndices(validity LapValidityAnalysis) (map[LapCorrectionTarget]int,
 		}
 		counts[stint]++
 		if lap.Start != nil {
-			if key, ok := curveLapTarget(lap.Number, *lap.Start, lap.End); ok {
+			if key, ok := derivedLapTarget(lap.Number, *lap.Start, lap.End); ok {
 				stints[key], indices[key] = stint, counts[stint]
 			}
 		}

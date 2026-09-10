@@ -116,3 +116,14 @@ Analysis completo, global Go -p1 y vet de alcance PASS; cuatro paths lógica/tes
 Sin frontend modificado ni Wails/precisión/visual >9/push/PR/CI remota/promoción.
 Sigue T11e2b: la compatibilidad de ritmo legado también exige identidad exacta;
 luego T11f API/inspección y contrato TS. No habilitar UI familiar antes.
+
+## T11e2b — compatibilidad sin unión por número
+
+La reparación de ritmo legado exige la misma identidad temporal y unicidad de
+ambas colecciones que las curvas. No reconstruye límites ausentes; conserva
+esos datos como no disponibles y no modifica el modelo persistido. RED/GREEN:
+número repetido, intervalos ausentes/cambiados y duplicados de validez/consumo.
+Se conserva el caso válido con intervalos de fixture explícitos. Tres paths;
+helper común de identidad, sin otro criterio ni dependencia. Analysis completo,
+global Go -p1 y vet de alcance PASS. Continúa T11f1 comandos nativos mixtos.
+Sin frontend, Wails, precisión, visual >9, push/PR/CI remota/merge/promoción.

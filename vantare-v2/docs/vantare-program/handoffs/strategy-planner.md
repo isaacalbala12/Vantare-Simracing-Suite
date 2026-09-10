@@ -1,6 +1,6 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — T12d2 aceptado, siguiente T12d1
+## Estado vigente — T12d1 aceptado, siguiente T12e
 
 Isaac confirma que planes y documentación siguen a cargo del orquestador.
 R19/A17/execution actualizados: Muse Spark 1.3 Contributor vía OpenCode, xhigh,
@@ -8,16 +8,17 @@ ejecuta sólo código/tests asignados, sin subdelegación ni cambios de planes,
 docs o issue. Un ejecutor por worktree; revisión personal antes de aceptar.
 Rama `vantareapp/isa-1104-recorded-classification`, base exacta
 `7f757135445439851180fc503da45f7eb9e557e7`; último código revisado
-`5591602f8dae1648ae4a719db2683dfa0ae13057`, limpio al revisar. A/B1/B2/C1/C2/D2
+`19f2c886e9242d6bd5dc86657122eb52a23c7b61`, limpio al revisar. A/B1/B2/C1/C2/D1/D2
 aceptados localmente tras lectura de diff y evidencia (B1/B2: 126 paquetes Go
 PASS cada uno, vet exit 0; rutas en entradas siguientes). T12 sigue abierto.
 
-Siguiente D1: `internal/app/telemetry_analysis_correction_commands.go` y
-`telemetry_analysis_correction_commands_test.go`. Conectar los tres grupos en
-Save/Resolve bajo la misma autorización y conservar clasificación efectiva en
-proyección nativa. Clasificaciones no nil requieren FamilyUses explícito; no
-normalizar grupos desconocidos a vacíos. Errores de clasificación no son fallos
-de custodia. D2 ya permite inspeccionar snapshots v3 sin nueva API.
+Siguiente E: `frontend/src/strategy/analysis-contract.ts` y su test (2 paths).
+Tipos/validación v3 de los tres grupos, cuota conjunta, precondición exacta,
+comparación semántica para el cliente y normalización Unicode igual a Go.
+El microplan concreta versiones, límites y gates completos frontend; no añade
+contrato wire, calidad viva ni hashes calculados en React. D1 ya conecta
+Save/Resolve bajo la misma autorización y conserva clasificación efectiva
+en la proyección nativa; D2 permite inspeccionar v3 sin nueva API.
 El plan registra
 el impedimento de apertura de sesiones sin proyección para resolverlo antes de
 montar la UI; no se crean valores faltantes. Coche/circuito siguen pendientes
@@ -26,6 +27,32 @@ Sin push, PR, CI remota, integración ni promoción. No se reabre app/LMU; gate
 Wails sigue pendiente por ERROR_INVALID_STATE de causa no demostrada.
 
 Las entradas siguientes son evidencia histórica; el estado vigente es éste.
+
+## T12d1 — comandos y proyección nativa de clasificación
+
+Commit `19f2c886`, dos paths `telemetry_analysis_correction_commands.go/test`,
++465/-18. Save/Resolve aceptan el conjunto completo; clasificaciones no nil
+requieren familias explícitas, omitir no retira decisiones desconocidas. La
+proyección nativa conserva la clasificación efectiva de Analysis y elimina la
+reconstrucción de HistoricalLap. Mantiene las puertas de autorización y el
+bloqueo por metadatos globalmente incompletos; un campo válido puede guardarse
+aunque otro falte. Clima sólo cambia etiqueta, no métricas físicas.
+
+RED productivo `TestProjectCorrectionUsesEffectiveClassification`: devolvía
+race tras guardar qualify. GREEN tras corregir el consumo. Revisión personal
+del diff completo reforzó reapertura de custodia tras avanzar cabeza y
+proyección de ID antiguo con referencias exactas, guard T11 contra cabeza de
+sólo clasificación, Save/Resolve repetidos después del avance, ausencia/error
+explícitos en Resolve, rechazo atómico y autorización revocada. Agregación de
+dos sesiones conserva tipo/clima y revisiones exactas. Ajustar la expectativa
+de unknown_replacement en Resolve fue corregir un test, no otro bug de producto.
+
+Gates: focal app PASS 4.202s; global `go test -p 1 ./...` exit 0, 126 paquetes
+ok/cero FAIL; vet de alcance exit 0 (log vacío), gofmt/diff limpios. Logs leídos:
+`C:/tmp/isa1104-t12d1-red.log` (exit 1), `C:/tmp/isa1104-t12d1-focal.log`,
+`C:/tmp/isa1104-t12d1-global.log`, `C:/tmp/isa1104-t12d1-vet.log`.
+Fixtures contractuales, sin frontend/banco real/Wails en D1. Commit del
+orquestador tras worker idle; sin push, PR, CI remota, integración ni promoción.
 
 ## T12d2 — inspección de vueltas compatible con revisión mixta
 

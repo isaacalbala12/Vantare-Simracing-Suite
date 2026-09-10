@@ -6,7 +6,7 @@ SDD R08/R07, aceptación A08/A09. Continúa ADR 0010 y
 [corrections-contract-v1](../corrections-contract-v1.md) operación 2
 `set_classification` (implementación parcial descrita aquí); no crea otra custodia,
 lector, formato, motor ni dependencia. Este documento fija el contrato
-implementable y los microcortes. T12a, T12b1, T12b2, T12c1, T12c2 y T12d2 están implementados y
+implementable y los microcortes. T12a, T12b1, T12b2, T12c1, T12c2, T12d1 y T12d2 están implementados y
 revisados localmente; no cierran T12 ni los gates visual/nativo/empírico.
 
 ## 1. Conjunto cerrado de campos y tipos
@@ -239,13 +239,14 @@ disponibilidad de señal.
   contrato. Clasificación inválida se presenta como petición inválida, simulador
   no compatible como incompatible; nunca como fallo de custodia ni con detalle
   privado. La proyección nativa debe conservar la
-  clasificación efectiva de C2: hoy `deriveCorrectionSession` reclasifica con
-  metadatos originales y sobrescribe `derived.Classified`; corregir ese consumo,
-  con prueba de cambio de tipo/clima y revisión histórica exacta.
+  clasificación efectiva de Analysis: `deriveCorrectionSession` ya no la
+  sobrescribe con metadatos originales. Regresión reproducida y corregida,
+  con pruebas de tipo/clima, agregación de sesiones, revisión antigua tras
+  avanzar cabeza y reabrir custodia, replay, guard legacy/T11 y autorización.
 - **T12d2 — compatibilidad de inspección mixta (2 paths; ejecutar antes de D1).**
   `internal/telemetryanalysis/corrections_inspection.go` + su test. Reusar
   `ApplyMixedCorrectionSnapshot` en `InspectCorrectionLaps`: el consumidor
-  actual llama ApplyObservation y rechaza v3. Regresión RED antes del cambio,
+  anterior llamaba ApplyObservation y rechazaba v3. Regresión RED antes del cambio,
   luego class-only y tres grupos, snapshot exacto, páginas/targets/capacidades
   intactos, rechazo atómico ante adulteración y metadato corregido inválido.
   Otro metadato requerido ausente no impide inspeccionar un campo válido;
@@ -255,11 +256,36 @@ disponibilidad de señal.
   Gates D1/D2: focales + global Go `-p 1` + vet de alcance.
 - **T12e — contrato TS (2 paths).**
   `frontend/src/strategy/analysis-contract.ts` + `analysis-contract.test.ts`
-  (tipos `set_classification`, validación de campo/precondición/motivo,
-  preserva ausencia/unknown). El helper existente
+  extienden la representación existente con petición/preparación tipadas de
+  `SessionType` y `WeatherConditions`, versión `analysis.mixed-snapshot.v3`
+  y grupo opcional de clasificaciones. No inventar una operación wire distinta
+  a los structs de Go. v3 exige clasificaciones activas; v1 no lleva grupos
+  no escalares y v2 exige familias activas sin clasificaciones. Cuota total 256
+  de los tres grupos antes de recorrer elementos; la revisión inicial vacía
+  no puede contener clasificaciones. Conservar v1/v2 y ausencias sin reescribir.
+
+  Validar forma de IDs, base exacta, campos cerrados, procedencia manual,
+  duplicados por campo, original esperado idéntico y valor corregido acorde
+  con Go. El cliente valida el contrato; no computa hashes ni certifica
+  autorización/calidad viva que no viene en el snapshot. Mantener el original
+  y la petición byte a byte. Original/esperado no adquieren un límite nuevo
+  ausente en Go. Motivo y reemplazo bruto: UTF-8 válido, máx. 1024 bytes;
+  motivo no vacío según espacios de Go; clima normalizado no vacío, máx. 64
+  puntos Unicode y sin controles restantes. Rechazar sustitutos Unicode
+  aislados; no sustituirlos silenciosamente al codificar. Normalización sólo
+  para clasificación: Go TrimSpace (incluye U+0085, conserva U+FEFF) y enum
+  cerrado con minúscula simple de Go (caso U+0130); no refactorizar todos los
+  parsers. Tests de bordes Unicode, original exacto, preparación adulterada,
+  base ajena, versiones, cuota 256/257 e inmutabilidad con fixtures frescos.
+  Añadir comparación semántica de conjuntos para F: orden independiente,
+  todos los campos de petición incluidos, sin ordenar/mutar la entrada.
+
+  El helper existente
   `frontend/src/hub/strategy-orbit/strategy-recorded-corrections.ts` NO es el
   contrato TS: sigue siendo helper y no se cuenta como path de contrato.
-  Gates: focales + typecheck + lint.
+  Gates: focales + typecheck real + lint, revisión personal; después suite
+  frontend completa y build antes de aceptar E. Registrar logs, exit codes y
+  deuda heredada separadamente; sin abrir app ni añadir dependencias.
 - **T12f — cliente TS (2 paths).**
   `frontend/src/strategy/analysis-client.ts` + `analysis-client.test.ts`
   (llamadas tipadas, cancelación nativa, conserva calidad/presencia, rechaza
@@ -297,5 +323,5 @@ disponibilidad de señal.
 Cada corte declara sus paths y evidencia antes de editar. El orquestador es
 dueño de este plan, del handoff y de la issue; Muse implementa únicamente
 código/tests asignados y devuelve evidencia para revisión antes de gates/commit.
-No cerrar T12 por validación pura ni fixtures: faltan derivación, montaje, banco real
+No cerrar T12 por validación pura ni fixtures: faltan montaje, banco real
 y recorrido. Sin nuevos umbrales, dependencias ni arquitectura.

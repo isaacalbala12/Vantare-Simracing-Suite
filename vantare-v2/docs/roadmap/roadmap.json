@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-10T16:45:51Z",
+  "generatedAt": "2026-09-10T20:29:38Z",
   "digest": {
-    "lastCommit": "a9b8dd3695c66856e931d73650d54c4f6cb9e828"
+    "lastCommit": "a2958ea1c26e4e74dbaad3827382c36cb8d7de37"
   },
   "phases": [
     {
@@ -353,10 +353,10 @@
         "it": "Controlli di manutenzione senza falsi errori"
       },
       "body": {
-        "es": "Un candidato aislado corrige el error de configuración que marcaba cada cambio como fallido antes de ejecutar las comprobaciones del Testing Center. Conserva la prueba manual y mantiene desactivadas las correcciones automáticas. Integración y publicación pendientes.",
-        "en": "An isolated candidate fixes the configuration error that marked each change as failed before Testing Center checks could run. It preserves the manual test and keeps automatic fixes disabled. Integration and publication remain pending.",
-        "pt": "Um candidato isolado corrige o erro de configuração que marcava cada alteração como falha antes de executar as verificações do Testing Center. Preserva o teste manual e mantém as correções automáticas desativadas. Integração e publicação pendentes.",
-        "it": "Un candidato isolato corregge l'errore di configurazione che segnava ogni modifica come fallita prima dei controlli del Testing Center. Conserva il test manuale e mantiene disattivate le correzioni automatiche. Integrazione e pubblicazione in attesa."
+        "es": "La corrección integrada en Nightly elimina el error de configuración que marcaba cada cambio como fallido antes de ejecutar las comprobaciones del Testing Center. Conserva la prueba manual y mantiene desactivadas las correcciones automáticas; la publicación sigue pendiente.",
+        "en": "The fix integrated into Nightly removes the configuration error that marked each change as failed before Testing Center checks could run. It preserves the manual test and keeps automatic fixes disabled; publication remains pending.",
+        "pt": "A correção integrada no Nightly elimina o erro de configuração que marcava cada alteração como falha antes de executar as verificações do Testing Center. Preserva o teste manual e mantém as correções automáticas desativadas; a publicação continua pendente.",
+        "it": "La correzione integrata in Nightly elimina l'errore di configurazione che segnava ogni modifica come fallita prima dei controlli del Testing Center. Conserva il test manuale e mantiene disattivate le correzioni automatiche; la pubblicazione resta in attesa."
       },
       "label": {
         "es": "ISA-728",
@@ -1386,6 +1386,11 @@
           "kind": "change",
           "scope": "",
           "text": "ISA-1101 · Integrar Redline Tower y dorsales canónicos"
+        },
+        {
+          "kind": "fix",
+          "scope": "ci",
+          "text": "Corregir validación del workflow inerte"
         }
       ]
     },

@@ -1,6 +1,6 @@
 # Handoff vivo — Testing Center
 
-Última actualización: 2026-09-10, ISA-728, Codex con verificación de Muse Spark 1.3 Contributor.
+Última actualización: 2026-09-10, ISA-728 integrada en Nightly, Codex con verificación de Muse Spark 1.3 Contributor.
 
 ## Autoridad y alcance
 
@@ -16,11 +16,14 @@ y [#611](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/611).
 - Rama: `vantareapp/isa-728-inert-workflow-validation`.
 - Código corregido: `5798d5eb4d7752d79c1708480266b6689b415ff2`.
 - Worktree: `C:/tmp/vantare-isa728`; Muse usa otro worktree para verificar.
-- Estado local: corrección, regresión y revisión independiente aprobadas.
-  SHA publicado, PR y resultados remotos se registran en
+- Estado: integrada en `nightly` mediante la PR [#1108](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1108).
+  Merge commit: `a2958ea1c26e4e74dbaad3827382c36cb8d7de37`; la punta remota de
+  `nightly` coincide con ese SHA.
+- Corrección, regresión y revisión independiente aprobadas. SHA publicado,
+  PR y resultados remotos se registran en
   [#728](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/728).
-- Sin promoción a Nightly, Testers o Master ni release. Este corte es
-  independiente del candidato de widgets #1098 / PR #1107.
+- Sin promoción a Testers o Master ni release. Este corte es independiente del
+  candidato de widgets #1098 / PR #1107.
 
 GitHub rechazaba el workflow antes de crear trabajos. La [anotación del run](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/34500227769)
 identifica `runner.temp` en las líneas 156 y 219: ese contexto no está
@@ -52,8 +55,9 @@ Se conservan los dos disparadores, la fixture manual `small-frontend-bug`,
 permisos de lectura, acciones fijadas por SHA y todos los trabajos productivos
 desactivados. No se configura ningún proveedor, secreto, ruleset ni auto-merge.
 
-La aceptación requiere comprobar el push del SHA candidato, la fixture
-manual segura y los gates de la PR en GitHub; #728 conserva esos resultados.
-La siguiente promoción a Nightly requiere la aprobación reservada a Isaac.
+La aceptación de Nightly quedó comprobada con el merge de la PR #1108, la
+punta `a2958ea1` y los gates postmerge de GitHub Actions. La siguiente
+promoción a Testers requiere feedback Pro Plus y la aprobación reservada a
+Isaac.
 No reenviar eventos
 `repository_dispatch` ni activar correcciones automáticas.

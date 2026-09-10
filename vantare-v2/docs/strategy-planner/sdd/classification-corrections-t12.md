@@ -454,6 +454,24 @@ disponibilidad de señal.
   utilizada por la carrera. Causa legible, sin IDs internos ni instrucciones
   de implementación. No anunciar resultado calculado ni lectura física validada.
 
+  Copia española fijada por el orquestador (equivalentes en los otros idiomas):
+  - strategy.recorded.inspect: Inspeccionar.
+  - strategy.recorded.inspectionOnly: Solo inspección.
+  - strategy.recorded.metadataUnavailable: Hay datos de identificación o
+    clasificación que no se pueden verificar. Puedes revisar la sesión y
+    guardar correcciones; aún no puede utilizarse para calcular la carrera.
+  - strategy.recorded.notSelected: Esta sesión no se utiliza en la carrera.
+    Puedes revisar sus datos y guardar correcciones.
+  - strategy.recorded.backToWizard: Volver al asistente.
+  Actualizar textos existentes open/prepared/busy/hint/revision para decir
+  Abrir sesión/Sesiones abiertas/Buscando o abriendo la sesión…/Revisión abierta,
+  sin prometer que todo lo abierto está preparado o fijado en la carrera.
+  data.title/source y history.chooseSourceHint deben admitir inspección previa
+  a la configuración de carrera. Conservar claves y otros textos ajenos.
+  Auditoría i18n, typecheck y lint; si las cinco claves aún no consumidas
+  producen huérfanas en este corte intermedio, registrar exactamente ese
+  resultado y cerrarlo con E/F, sin falsos usos ni silenciar el auditor.
+
 - **T12g3e — estado real de selección en Datos/Revisiones (4 paths).**
   `frontend/src/hub/strategy-orbit/StrategyRecordedData.tsx` y test,
   `StrategyRecordedRevisions.tsx` y test. Recibir referencias realmente
@@ -464,6 +482,18 @@ disponibilidad de señal.
   requiere selección y proyección válidas. Revisar el pin carga la referencia
   del plan, no una cabeza o referencia de inspección. Mostrar causa de bloqueo,
   conservar edición/restauración local donde el campo sea válido.
+
+  Resolver selectedRef por sesión y baseDigest del editor; pinned requiere
+  también revisionId y snapshotId de current.revision. ReviewPinned desactivado
+  sin referencia; si existe carga una copia de editor.session con revision igual
+  a selectedRef, sin modificar el objeto ni suplantar la selección por head.
+  No seleccionada: notSelected; no proyectable: metadataUnavailable, incluso
+  con ID adherido. Las dos causas pueden coexistir. Los botones de carrera
+  requieren fuente seleccionada y proyectable; guardar/restaurar local no.
+  Tests de coincidencia exacta y diferencias de fuente/base/revisión/snapshot,
+  referencia del borrador distinta de la inspeccionada y ausencia de selección.
+  Los fixtures de carrera existentes reciben sus referencias explícitas;
+  los nuevos de inspección reciben []. No ampliar CSS/lectores/motor.
 
 - **T12g3f — conexión del recorrido único (4 paths).**
   `frontend/src/hub/strategy-orbit/StrategyRecordedWorkflow.tsx` y test,
@@ -479,6 +509,17 @@ disponibilidad de señal.
   parcial -> Datos -> corrección válida -> guardado local -> causa de cálculo
   bloqueado -> historial -> volver al asistente; sin SaveDraft/Apply/Calculate
   implícitos. Bloqueos de formularios y comando incierto protegen la navegación.
+
+  onInspect es callback opcional de SessionsView, separado del controlador
+  legacy. El montaje comprueba formPending y sólo si flow.inspect acepta cierra
+  biblioteca y abre Datos. Un Load fallido mantiene el error visible sin datos
+  de la fuente anterior. La vuelta al asistente comprueba tanto en botón como
+  en callback busy/formPending/unresolved; llama prepare sin recrear el draft.
+  Mantener pestañas montadas conserva formularios; bloquear salidas que cambien
+  fuente o desmonten el editor cuando estén pendientes. La biblioteca explica
+  la causa y desactiva Use si alguna fuente no es proyectable; el dueño revalida.
+  Nombres de fuentes parciales desde candidato o unnamed, sin combinación
+  inventada; errores del acceso nuevo se traducen, sin mostrar códigos internos.
 
   G3: focales/typecheck/lint por corte; global Go/vet para A. Suite frontend
   completa y build después de F antes de aceptar el montaje. G3A aislado

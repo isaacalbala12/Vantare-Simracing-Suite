@@ -1,6 +1,6 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — T12g3b aceptado localmente, siguiente T12g3c
+## Estado vigente — T12g3c aceptado localmente, siguiente T12g3d
 
 Isaac confirma que planes y documentación siguen a cargo del orquestador.
 R19/A17/execution actualizados: Muse Spark 1.3 Contributor vía OpenCode, xhigh,
@@ -8,7 +8,7 @@ ejecuta sólo código/tests asignados, sin subdelegación ni cambios de planes,
 docs o issue. Un ejecutor por worktree; revisión personal antes de aceptar.
 Rama `vantareapp/isa-1104-recorded-classification`, base exacta
 `7f757135445439851180fc503da45f7eb9e557e7`; último código revisado
-`b6107f9a9d2623321c87a1885a121c17e16fc084`, limpio al revisar. A/B1/B2/C1/C2/D1/D2/E/F/G1/G2/G3a/G3b
+`75de40863989f46022608a9895cd828862191c27`, limpio al revisar. A/B1/B2/C1/C2/D1/D2/E/F/G1/G2/G3a/G3b/G3c
 aceptados localmente tras lectura de diff y evidencia (B1/B2: 126 paquetes Go
 PASS cada uno, vet exit 0; rutas en entradas siguientes). T12 sigue abierto.
 
@@ -18,9 +18,10 @@ completa/build aceptados; aún falta montaje UI de clasificación.
 G3a expone baseDigest nativo para inspección exacta sin combinación; tests
 nativos/TS y global Go aceptados. G3b carga base y revisión exactas sin Project
 sólo ante la causa explícita metadata_unavailable; no adopta una selección y
-rechaza fuentes no proyectables para la carrera. Siguiente G3c: dueño de
-sesiones y workflow, cada uno con su test (4 paths). Inspección explícita sin
-guardar carrera, con exclusión mutua desde el mismo ciclo y sin datos obsoletos.
+rechaza fuentes no proyectables para la carrera. G3c conecta dueño de sesiones
+y workflow: inspección explícita sin guardar carrera, con exclusión mutua desde
+el mismo ciclo y sin datos obsoletos. Siguiente G3d: cuatro locales para los
+estados de inspección/selección; después G3e/G3f estado real y montaje visual.
 Microplan G3a–f escrito por el orquestador: apertura, dueño, textos, estado
 real de selección en Datos/Revisiones y entrada desde biblioteca al mismo A4.
 Una sesión abierta para revisar no pasa a estar usada por la carrera; sin
@@ -37,6 +38,33 @@ Sin push, PR, CI remota, integración ni promoción. No se reabre app/LMU; gate
 Wails sigue pendiente por ERROR_INVALID_STATE de causa no demostrada.
 
 Las entradas siguientes son evidencia histórica; el estado vigente es éste.
+
+## T12g3c — dueño de sesiones y acceso al editor
+
+Commit `75de4086`, cuatro paths hooks/tests, +275/-0 (27 líneas productivas).
+inspect resuelve el handle poseído y acepta la acción sólo si no hay operación,
+ediciones/comando pendientes ni fallo de clear. Inicia el mismo Load después
+de vaciar el editor; su error no deja datos de otra fuente. La exclusión usa
+refs sincrónicas, no el busy del render anterior. Workflow abre el mismo editor
+sin SaveDraft/Apply/Calculate y admite ausencia de combinación/repositorio.
+Apply y adopción rechazan fuentes no proyectables, incluyendo fuente poseída
+marcada ante una copia que pretenda habilitarla. Contrato de vista legacy intacto.
+
+Revisión personal exigió pruebas que distinguieran cada bloqueo: dos fuentes
+proyectables para comprobar Apply durante Load; una fuente ya poseída antes
+de otra apertura; escritura real pendiente tras configurar borrador válido;
+todo en el mismo act. Fixtures completos validados por parsers, proyección
+con contrato válido y copia de revisión alterada que carga la poseída original.
+Focal R2 23 PASS/1.89s, typecheck de producto y lint exit 0, diff limpio.
+Primer focal 20/22, 1.98s, exit 1: expectativas nuevas erróneas (AbortSignal
+esperado como undefined y escritura que no llegó a execute por borrador inválido).
+Fallos preservados, no RED productivo; no hubo RED pre-cambio de esta API nueva.
+Logs C:/tmp/isa1104-t12g3c-{focal,focal-r2,typecheck,lint}.log leídos personalmente.
+
+Worker idle antes del commit. Sin global frontend/build hasta G3f según plan,
+Go nuevo, banco real, Wails/app/LMU, push, PR, CI remota, promoción o release.
+El orquestador fija textos y precisa G3e/G3f antes de asignar el montaje.
+No se cierra T12 ni se afirma validación visual/nativa por estos tests.
 
 ## T12g3b — apertura exacta para inspección
 

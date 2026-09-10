@@ -40,6 +40,19 @@ describe("typography contract", () => {
     expect(fontsCss).toContain("url('/fonts/");
   });
 
+  // ISA-1113: Cascadia se convirtió a woff2 (388 kB TTF → ~120 kB). El runtime
+  // es WebView2/Chromium, que soporta woff2 siempre: no hay fallback TTF.
+  it("serves Cascadia Code as bundled woff2 only", () => {
+    const face =
+      fontsCss.match(/font-family: 'Cascadia Code';[\s\S]*?\}/)?.[0] ?? "";
+    expect(face).toContain("url('./assets/fonts/orbit/CascadiaCode.woff2')");
+    expect(face).toContain("format('woff2')");
+    expect(fontsCss).not.toContain("CascadiaCode.ttf");
+    expect(() =>
+      read("src", "assets", "fonts", "orbit", "CascadiaCode.woff2"),
+    ).not.toThrow();
+  });
+
   // This is the defect the vendoring fixed: WebView2 never fetched the
   // stylesheet, so the whole interface fell back to the monospace default --
   // and so did anyone offline. Nothing about drawing our own text may depend

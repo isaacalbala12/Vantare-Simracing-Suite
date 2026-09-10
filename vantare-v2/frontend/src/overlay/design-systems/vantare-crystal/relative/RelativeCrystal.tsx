@@ -37,6 +37,8 @@ function renderCell(
 
 export function RelativeCrystal({ model, settings }: WidgetRendererProps<RelativeViewModel>) {
   const showHeader = settings.showHeader !== false;
+  // Decisión pura de presentación (ISA-1105), igual que en StandingsCrystal.
+  const brandVisible = settings.brandVisible ?? showHeader;
   const canonicalColumns = model.columns;
   const gridTemplateColumns = canonicalColumns.map(column => {
     const fallback = RELATIVE_COLUMN_TEMPLATES.find(t => t.metricId === column.metricId)?.defaultWidth ?? 60;
@@ -58,9 +60,13 @@ export function RelativeCrystal({ model, settings }: WidgetRendererProps<Relativ
       <div className="vc-relative-frame">
         {showHeader ? (
           <header className="vc-relative-header">
-            <CrystalBrand>VANTARE</CrystalBrand>
+            {brandVisible ? <CrystalBrand>VANTARE</CrystalBrand> : null}
             <CrystalPill><span aria-hidden="true">●</span> RELATIVE</CrystalPill>
           </header>
+        ) : brandVisible ? (
+          <div className="vc-brand-band">
+            <CrystalBrand>VANTARE</CrystalBrand>
+          </div>
         ) : null}
         {model.statusMessage ? (
           <p className="vc-relative-status-message" role="status">

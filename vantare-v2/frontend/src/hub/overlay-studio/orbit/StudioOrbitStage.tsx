@@ -46,7 +46,7 @@ export function StudioOrbitStage(props: StudioOrbitStageProps): React.ReactEleme
   const { diagnostics, onPointer } = props;
   const { t } = useI18n();
   const {
-    access,
+    widgetPolicy,
     document,
     activeLayout,
     activeSession,
@@ -109,8 +109,8 @@ export function StudioOrbitStage(props: StudioOrbitStageProps): React.ReactEleme
   );
 
   const canMutateLayout = useCallback(
-    (widget: WidgetInstanceV3) => canMutateWidget(access, widget),
-    [access],
+    (widget: WidgetInstanceV3) => canMutateWidget(widgetPolicy, widget),
+    [widgetPolicy],
   );
   const onLayoutBlocked = useCallback(() => {
     notifyAccessDenied(t(STUDIO_WIDGET_ACCESS_MESSAGE_KEY));
@@ -127,6 +127,7 @@ export function StudioOrbitStage(props: StudioOrbitStageProps): React.ReactEleme
     selectWidget,
     canMutateLayout,
     onLayoutBlocked,
+    widgetPolicy,
   });
   const interacting = interaction.interaction.kind !== 'idle';
 
@@ -305,6 +306,7 @@ export function StudioOrbitStage(props: StudioOrbitStageProps): React.ReactEleme
                   previewActive={interaction.isWidgetPreviewActive(widget.id)}
                   selected={selectedWidgetId === widget.id}
                   widget={widget}
+                  widgetPolicy={widgetPolicy}
                   fitSelectionToContent
                 />
               ))

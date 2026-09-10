@@ -1,4 +1,4 @@
-import type { AccessContext } from "../../../lib/access-policy";
+import type { StudioPolicy } from "../access/studio-access";
 import { useI18n } from "../../../i18n/I18nProvider";
 import type { WidgetType } from "../../../overlay/core/profile-document";
 import {
@@ -10,15 +10,15 @@ import {
 
 export type AddWidgetDialogProps = {
   open: boolean;
-  access: AccessContext;
+  policy: StudioPolicy;
   catalog?: readonly StudioCatalogEntry[];
   unavailableTypes?: readonly WidgetType[];
   onClose(): void;
   onAdd(type: WidgetType): void;
 };
 
-function lockMessage(entry: StudioCatalogEntry, access: AccessContext, t: (key: string) => string): string {
-  const gate = getCatalogAddGate(access, entry);
+function lockMessage(entry: StudioCatalogEntry, policy: StudioPolicy, t: (key: string) => string): string {
+  const gate = getCatalogAddGate(policy, entry);
   if (gate.reason === "blocked-license") {
     return t("studio.v3.catalog.lock.blockedLicense");
   }
@@ -29,7 +29,7 @@ function lockMessage(entry: StudioCatalogEntry, access: AccessContext, t: (key: 
 }
 
 export function AddWidgetDialog(props: AddWidgetDialogProps): React.ReactElement | null {
-  const { open, access, catalog = deriveStudioCatalog(), unavailableTypes = [], onClose, onAdd } = props;
+  const { open, policy, catalog = deriveStudioCatalog(), unavailableTypes = [], onClose, onAdd } = props;
   const { t } = useI18n();
   if (!open) {
     return null;
@@ -52,7 +52,7 @@ export function AddWidgetDialog(props: AddWidgetDialogProps): React.ReactElement
         </p>
         <div className="osv3-catalog-dialog__list">
           {catalog.map((entry) => {
-            const canAdd = canAddCatalogEntry(access, entry);
+            const canAdd = canAddCatalogEntry(policy, entry);
             const unavailable = unavailableTypes.includes(entry.type);
             return (
               <div
@@ -89,7 +89,7 @@ export function AddWidgetDialog(props: AddWidgetDialogProps): React.ReactElement
                 ) : (
                   <div className="osv3-catalog-dialog__locked" data-testid={`studio-catalog-lock-${entry.type}`}>
                     <span className="osv3-catalog-dialog__lock-label">{t("studio.v3.catalog.locked")}</span>
-                    <span className="osv3-catalog-dialog__lock-hint">{lockMessage(entry, access, t)}</span>
+                    <span className="osv3-catalog-dialog__lock-hint">{lockMessage(entry, policy, t)}</span>
                   </div>
                 )}
               </div>

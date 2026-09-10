@@ -83,7 +83,7 @@ function sortWidgets(widgets: readonly WidgetInstanceV3[]): WidgetInstanceV3[] {
  * navegable con teclado (`08-accesibilidad.md`).
  */
 export function StudioWidgetList(): React.ReactElement {
-  const { access, document, activeLayout, activeSession, selectedWidgetId, dispatch, selectWidget } =
+  const { widgetPolicy, document, activeLayout, activeSession, selectedWidgetId, dispatch, selectWidget } =
     useStudioDocument();
   const { t } = useI18n();
   const [query, setQuery] = useState("");
@@ -197,7 +197,7 @@ export function StudioWidgetList(): React.ReactElement {
       </div>
 
       <AddWidgetDialog
-        access={access}
+        policy={widgetPolicy}
         onAdd={handleAddWidget}
         onClose={() => setAddDialogOpen(false)}
         open={addDialogOpen}

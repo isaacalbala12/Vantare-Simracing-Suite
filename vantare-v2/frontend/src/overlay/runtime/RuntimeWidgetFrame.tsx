@@ -13,6 +13,8 @@ export type RuntimeWidgetFrameProps = {
   profileId: string;
   telemetry: TelemetryRateCoordinator;
   renderMode: "desktop" | "obs";
+  /** Decisión pura de marca (política + preferencia), resuelta en la superficie. */
+  brandVisible?: boolean;
   layoutOrigin?: { x: number; y: number };
   onDiagnostic?: (diagnostic: WidgetDiagnostic) => void;
   diagnostics?: WidgetDiagnosticCollector;
@@ -22,7 +24,7 @@ export type RuntimeWidgetFrameProps = {
 };
 
 function RuntimeWidgetFrameComponent(props: RuntimeWidgetFrameProps): React.ReactElement {
-  const { widget, profileId, telemetry, renderMode, layoutOrigin, onDiagnostic, diagnostics, engineerPresentation, engineerSubtitlesEnabled, raceSchedule } = props;
+  const { widget, profileId, telemetry, renderMode, brandVisible, layoutOrigin, onDiagnostic, diagnostics, engineerPresentation, engineerSubtitlesEnabled, raceSchedule } = props;
   const runtimeTelemetry = useRateLimitedWidgetTelemetry(
     telemetry,
     widget.type,
@@ -51,6 +53,7 @@ function RuntimeWidgetFrameComponent(props: RuntimeWidgetFrameProps): React.Reac
         <WidgetVisualHost
           widget={widget}
           renderMode={renderMode}
+          brandVisible={brandVisible}
           onDiagnostic={onDiagnostic}
           diagnostics={diagnostics}
           runtime={{
@@ -96,6 +99,7 @@ export const RuntimeWidgetFrame = memo(RuntimeWidgetFrameComponent, (left, right
   left.profileId === right.profileId &&
   left.telemetry === right.telemetry &&
   left.renderMode === right.renderMode &&
+  left.brandVisible === right.brandVisible &&
   sameOrigin(left.layoutOrigin, right.layoutOrigin) &&
   left.onDiagnostic === right.onDiagnostic &&
   left.diagnostics === right.diagnostics &&

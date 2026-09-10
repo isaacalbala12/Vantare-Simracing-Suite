@@ -1,5 +1,41 @@
 # Handoff vivo — Overlay Studio, Launcher y Hub
 
+## ISA-1105 — Acceso y marca por widget en React (cierre frontend 2026-09-10)
+
+Hijo de #1097 aprobado por Isaac. Rama
+`vantareapp/isa-1105-widget-access-branding-ui`, worktree
+`C:/tmp/vantare-isa1105/vantare-v2`, base `6ae58f6e` (#1103 sobre
+#1083@87cef39a); nativa #1097 en commit `3b490906`. Roles vigentes: Codex
+implementa, Muse mecánica/revisión acotada. Inicio dirty intencionado del
+primer corte #1097 (Delta advanced, borrar/mover/conservar bloqueados)
+preservado y completado.
+
+Consumo frontend de la política nativa `WidgetPolicyWire` (sin PII) con una
+sola autoridad: sin snapshot vigente rige Free básica, sin fallback legacy.
+Wails `widget-policy:get` → `widget-policy:snapshot` + `widget-policy:changed`
+(suscribir antes de pedir); OBS SSE `/api/widget-policy/stream` con snapshot
+autoritativo y `changed` solo mayor. Revisión menor solo tras reconexión
+reconocida; caducidad con temporizador acotado por tramos (2^31-1) que
+notifica, pide snapshot fresco y nunca prolonga premium. Studio filtra en
+catálogo/inspector/dispatch/guardado; Desktop/OBS filtran antes de crear
+`RuntimeWidgetFrame`/suscribir telemetría. Marca integrada Crystal/Efficiency
+obligatoria en Free (banda propia con cabecera oculta, dentro del marco
+calculado y sin recortes; Pedals lleva micro-chip discreto sin intersección
+con canales), oculta por defecto en pago con opt-in `showBrand`. Original sin
+cambios. Guardado nativo denegado (`code: widget-access-denied`) se mapea al
+aviso traducido existente, también en InPlace.
+
+Evidencia: 326 tests del bloque de lógica PASS (focales + consumo Desktop/OBS
+con downgrade vivo); P1 candado de marca y P2 aviso InPlace cerrados con
+33/33 focales (Appearance 8/8, InPlace 11/11, profile-client 14/14);
+typecheck PASS; geometría Chromium real Signature/Broadcast/Crystal con
+cabecera/pie ocultos y doctype fiel; 4 capturas auténticas en
+`C:/tmp/vantare-isa1105-captures/` (las 4 primeras descartadas por fixture en
+quirks; visual 9/10 en SSR/harness, prueba física pendiente); hito roadmap en
+`feature` con `roadmap.json` regenerado. Full, build y lint, una sola vez
+sobre el candidato conjunto #1098. Sin push/PR/merge, sin testers/master/
+release, sin LMU físico ni licencia real afirmados.
+
 ## ISA-1103 — Información de sesión en Efficiency (2026-09-10)
 
 Petición adicional de Isaac: diagonales según bandera, sin transición; dos datos

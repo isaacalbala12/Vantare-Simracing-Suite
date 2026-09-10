@@ -19,6 +19,13 @@ export type WidgetVisualHostProps = {
   onDiagnostic?: (diagnostic: WidgetDiagnostic) => void;
   diagnostics?: WidgetDiagnosticCollector;
   runtime?: WidgetRuntimeInput;
+  /**
+   * Decisión pura de presentación de la marca integrada (ISA-1105). La
+   * calcula el llamador desde la política nativa y la preferencia del
+   * documento; el host nunca ve licencias, permisos, transporte ni posición.
+   * Sin definir se conserva el comportamiento previo de cada renderer.
+   */
+  brandVisible?: boolean;
 };
 
 function reportDiagnostic(
@@ -136,6 +143,11 @@ export function WidgetVisualHost(props: WidgetVisualHostProps): ReactNode {
   const relativeRedline = widget.type === "relative" &&
     registration.systemId === "vantare-endurance" &&
     isRelativeRedlineTemplateId(settings.templateId);
+  // La decisión de marca viaja dentro de los settings puros que ya recibe el
+  // renderer; ningún renderer ve la política ni la licencia.
+  const presentationSettings = props.brandVisible === undefined
+    ? settings
+    : { ...settings, brandVisible: props.brandVisible };
   const Renderer = registration.Renderer;
   if (v2Entry && frame && source && relativeRedline) {
     return (
@@ -150,7 +162,7 @@ export function WidgetVisualHost(props: WidgetVisualHostProps): ReactNode {
             systemId={widget.visual.systemId}
             onError={(error) => reportDiagnostic(props, "renderer-exception", error.message)}
           >
-            <Renderer model={model} settings={settings} renderMode={renderMode} layout={widget.layout} />
+            <Renderer model={model} settings={presentationSettings} renderMode={renderMode} layout={widget.layout} />
           </WidgetRenderBoundary>
         )}
       />
@@ -197,7 +209,7 @@ export function WidgetVisualHost(props: WidgetVisualHostProps): ReactNode {
         systemId={widget.visual.systemId}
         onError={(error) => reportDiagnostic(props, "renderer-exception", error.message)}
       >
-        <Renderer model={model} settings={settings} renderMode={renderMode} layout={widget.layout} />
+        <Renderer model={model} settings={presentationSettings} renderMode={renderMode} layout={widget.layout} />
       </WidgetRenderBoundary>
     </>
   );

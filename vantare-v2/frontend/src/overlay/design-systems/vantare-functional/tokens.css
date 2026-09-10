@@ -49,6 +49,12 @@
 .vf-standings .vf-table th.vf-info-head { height: 26px; border-bottom: 0; padding-top: 3px; }
 .vf-standings .vf-table .vf-metric-row th { height: 24px; }
 .vf-standings .vf-info-band, .vf-standings .vf-table th.vf-info-band { height: 22px; padding: 0 10px; border-bottom: 1px solid var(--vf-line); background: rgb(0 0 0 / 10%); }
+/* Franja de marca obligatoria con cabecera oculta (ISA-1105): mismo alto y
+   fondo que la banda de información, sin efectos ni animación nuevos. */
+.vf-standings .vf-brand-band { display: flex; align-items: center; height: 22px; padding: 0 10px; border-bottom: 1px solid var(--vf-line); background: rgb(0 0 0 / 10%); }
+/* El logo de cabecera mide 24px y desbordaría la banda de 22px: en banda se
+   pinta contenido para encajar sin recortes. */
+.vf-standings .vf-brand-band .vf-brand img { width: 18px; height: 18px; }
 .vf-info-band > .vf-header-info { height: 100%; justify-content: space-between; }
 .vf-standings .vf-metric-row .vf-column-label { padding-bottom: 4px; transform: none; }
 .vf-session-footer { display: flex; align-items: center; justify-content: space-between; gap: 16px; height: 22px; padding: 0 10px; border-top: 1px solid var(--vf-line); background: rgb(0 0 0 / 15%); }

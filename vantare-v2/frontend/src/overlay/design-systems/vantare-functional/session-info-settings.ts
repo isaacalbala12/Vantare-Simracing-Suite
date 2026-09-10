@@ -11,6 +11,7 @@ export const FUNCTIONAL_DEFAULT_SETTINGS = {
   showSessionFooter: true,
   footerFirst: "track",
   footerSecond: "estimatedLaps",
+  showBrand: false,
 } as const;
 
 function infoChoice(value: unknown, fallback: FunctionalInfoChoice): FunctionalInfoChoice {
@@ -27,5 +28,8 @@ export function parseFunctionalSettings(input: unknown) {
     showSessionFooter: value.showSessionFooter !== false,
     footerFirst: infoChoice(value.footerFirst, FUNCTIONAL_DEFAULT_SETTINGS.footerFirst),
     footerSecond: infoChoice(value.footerSecond, FUNCTIONAL_DEFAULT_SETTINGS.footerSecond),
+    // Preferencia explícita de marca integrada (ISA-1105): solo preferencia,
+    // nunca autoridad. El renderer la combina con la decisión de marca.
+    showBrand: value.showBrand === true,
   };
 }

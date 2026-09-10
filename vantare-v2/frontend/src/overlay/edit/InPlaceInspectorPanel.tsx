@@ -2,7 +2,7 @@ import { memo } from "react";
 import type { SessionLayoutType, WidgetInstanceV3 } from "../core/profile-document";
 import type { TelemetryRateCoordinator } from "../core/telemetry-rate-coordinator";
 import { useOverlayRuntimeContext } from "../runtime/use-rate-limited-telemetry";
-import type { AccessContext } from "../../lib/access-policy";
+import type { StudioPolicy } from "../../hub/overlay-studio/access/studio-access";
 import { WidgetPropertyInspectorView, type WidgetPropertySectionId } from "../../hub/overlay-studio/inspector/WidgetPropertyInspectorView";
 import { useStudioDocument } from "../../hub/overlay-studio/state/studio-store";
 import { useI18n } from "../../i18n/I18nProvider";
@@ -14,13 +14,13 @@ export type InPlaceInspectorPanelProps = {
   widget: WidgetInstanceV3 | null;
   session: SessionLayoutType;
   telemetry: TelemetryRateCoordinator;
-  access?: AccessContext;
+  policy: StudioPolicy;
   licenseLoading?: boolean;
   autosave: ReturnType<typeof useInplaceAutosave>;
 };
 
 export function InPlaceInspectorPanel(props: InPlaceInspectorPanelProps): React.ReactElement {
-  const { widget, session, telemetry, access, licenseLoading = false, autosave } = props;
+  const { widget, session, telemetry, policy, licenseLoading = false, autosave } = props;
   const { t } = useI18n();
   const { canUndo, canRedo, dirty, saveState } = useStudioDocument();
   const runtimeContext = useOverlayRuntimeContext(telemetry);
@@ -83,7 +83,7 @@ export function InPlaceInspectorPanel(props: InPlaceInspectorPanelProps): React.
               widget={widget}
               session={session}
               runtimeContext={runtimeContext}
-              access={access ?? DEFAULT_ACCESS}
+              policy={policy}
               disabled={disabled}
               dispatch={autosave.dispatch}
             />
@@ -94,18 +94,10 @@ export function InPlaceInspectorPanel(props: InPlaceInspectorPanelProps): React.
   );
 }
 
-const DEFAULT_ACCESS: AccessContext = {
-  planLabel: "free",
-  planStatus: "active",
-  roles: [],
-  isBlocked: false,
-  isUnconfigured: false,
-};
-
 export const MemoInPlaceInspectorPanel = memo(InPlaceInspectorPanel, (prev, next) => (
   prev.widget === next.widget
   && prev.session === next.session
   && prev.telemetry === next.telemetry
-  && prev.access === next.access
+  && prev.policy === next.policy
   && prev.licenseLoading === next.licenseLoading
 ));

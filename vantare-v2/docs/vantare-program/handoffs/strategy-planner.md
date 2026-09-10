@@ -1,6 +1,6 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — T12hc revisado, siguiente T12hc2
+## Estado vigente — T12hc2 revisado, siguiente T12hd
 
 Isaac confirma que planes y documentación siguen a cargo del orquestador.
 Muse Spark 1.3 Contributor vía OpenCode, xhigh, ejecuta sólo código/tests
@@ -8,8 +8,8 @@ asignados, sin subdelegación ni cambios de planes, docs o issue. Un ejecutor
 por worktree; revisión personal de diff y evidencia antes de aceptar.
 Rama `vantareapp/isa-1104-recorded-classification`, base exacta
 `7f757135445439851180fc503da45f7eb9e557e7`; último código revisado
-`55d79e81b520e1df746e6d1bb12068791a1e4d7a`, limpio tras el commit.
-A–G3 y Ha/Hb/Hc aceptados localmente; T12 permanece abierto.
+`24e647505f892e92da379fcf9842f57140f6adba`, limpio tras el commit.
+A–G3 y Ha/Hb/Hc/Hc2 aceptados localmente; T12 permanece abierto.
 
 G3 ya conecta la biblioteca con el mismo editor Datos/Revisiones, también
 sin combinación ni repositorio: apertura autorizada y referencia exacta,
@@ -23,11 +23,11 @@ pestañas conservan formularios. Auditor i18n Hc: EXIT1 intermedio, sólo
 Estos resultados son contractuales locales, no prueba de DuckDB real/Wails.
 
 Ha ya consulta el original y comparte normalización; Hb aporta los doce textos
-en cuatro idiomas; Hc conecta clasificación en Datos. Siguiente Hc2,
-continuidad de la vista ante el remount por revisión, precisado por root en
+en cuatro idiomas; Hc conecta clasificación en Datos y Hc2 conserva la vista
+al avanzar revisión. Siguiente Hd, historial, con plan precisado por root en
 `docs/strategy-planner/sdd/classification-corrections-t12.md`: Ha consulta del
 original/normalización reutilizadas, Hb textos y Hc Datos A4 (aceptados);
-Hc2 continuidad; Hd historial. Cada corte declara 2–4 paths. No generar correcciones
+Hc2 continuidad aceptada; Hd historial. Cada corte declara 2–4 paths. No generar correcciones
 ficticias para comprobar disponibilidad ni duplicar validación en React.
 Luego I banco real opt-in. Coche/circuito/clase siguen pendientes de cerrar
 resolución canónica en §5 antes de código; no aceptar un hash de texto del
@@ -40,6 +40,33 @@ app/LMU; gate Wails sigue pendiente por ERROR_INVALID_STATE de causa no
 demostrada. Contraste real y paridad visual >9/10 siguen aparte.
 
 Las entradas siguientes son evidencia histórica; el estado vigente es éste.
+
+## T12hc2 — vista de Datos conservada al guardar
+
+Commit `24e647505f892e92da379fcf9842f57140f6adba`, cuatro paths
+Workflow/Data y tests, +90/-32. Sólo la vista elegida vive en Workflow y
+pasa como props obligatorias; Data conserva sus formularios y revisionKey
+mantiene su reinicio. Sin persistencia, estado duplicado ni inferencia del
+snapshot. Host de tests mínimo con props tipadas y reenviadas completas.
+
+Regresión previa real: 1 fallo/7 PASS, 4.76s EXIT1; después de Save confirmado
+faltaba la fila de clasificación porque Data volvía a vueltas. Focal primero
+57 PASS/5.99s; tras simplificar el host por revisión personal, focal-r2
+57 PASS/5.73s EXIT0. Typecheck producto/lint y lint-r2 EXIT0; auditor --list
+EXIT1 sólo manual pendiente de Hd, paridad OK/ausentes 0. Diff limpio.
+Root leyó diffs/logs; ninguna aserción previa de Data cambió. El test nuevo
+recorre entrada/inspección/edición/Save con DTOs válidos, valor confirmado y
+sin Project/ejecución de comandos Strategy. No es prueba nativa.
+Logs `frontend/.tmp/isa1104-t12hc2-{red,focal,focal-r2,typecheck,lint,lint-r2,audit-list}.log`
+dentro de esta app. Worker idle antes de commit.
+
+Siguiente Hd en dos paths, con guarda de privacidad por helper Ha y valores
+del snapshot consultado, motivo/manual/clima. Después de revisión personal,
+auditor sin huérfanas y suite/build completos. I ya precisado por root en
+dos paths de test app, encadenamiento seguro de handles con banco familiar
+y comparación física completa sobre Imola/Monza. §5 canónico aún pendiente.
+No Go/banco/global frontend/build nuevos aquí; últimos G3a/G3f conservados.
+Sin app/LMU, Wails ni entrega remota.
 
 ## T12hc — clasificación en Datos A4 y revisión personal
 

@@ -666,19 +666,62 @@ disponibilidad de señal.
   original, valor efectivo confirmado, motivo y procedencia manual. Para
   etiqueta climática conservar la distinción de señales físicas. No mostrar
   propuestas locales como guardadas ni cabeza como pin; v1/v2 sin cambios.
+  El helper Ha se reutiliza como guarda de disponibilidad/privacidad del
+  campo contra la fuente abierta y base actual. Si lo rechaza, mostrar sólo
+  campo y causa; no original/corregido/motivo guardados. El otro campo válido
+  sigue visible. El helper no sustituye valores del snapshot histórico ni
+  autentica criptográficamente un historial local completamente falsificado.
   Restore sigue enviando tres grupos por el controlador ya probado.
   Tests de snapshot sólo clasificación, mezcla de tres grupos, revisión
-  histórica exacta y ausencia v1/v2. Tras revisión personal: focales,
+  histórica exacta, privacidad con otro campo disponible y ausencia v1/v2.
+  Tras revisión personal: focales,
   typecheck/lint, auditor i18n sin huérfanas/ausentes, suite frontend completa
   y build. Este gate es funcional local; paridad visual >9 y Wails aparte.
 - **T12i — banco real opt-in y contraste (evidencia, sin paths nuevos en Analysis).**
-  Reutiliza el banco nativo real existente en `internal/app`
-  (patrones de `strategy_recorded_real_family_test.go` y
-  `strategy_recorded_real_integration_test.go`: Imola/Monza autorizados,
-  corrección, replay, restauración, hashes originales intactos); NO se crea un
-  lector paralelo ni un `classification_bank_test.go` nuevo en Analysis.
-  Evidencia en `evidence/isa-1104/README.md` si se crea. Contraste Wails
-  pendiente del runtime (T11i sin resolver); documentar límites sin simular.
+  Dos paths de test: `internal/app/strategy_recorded_real_integration_test.go`
+  y nuevo `internal/app/strategy_recorded_real_classification_test.go`.
+  Reutiliza servicio/parser/trust/custodia/authorizer controlado/hash original
+  del banco existente, con t.TempDir y opt-in Imola/Monza ya autorizados.
+  Ningún nuevo lector o archivo de banco dentro de Analysis.
+
+  Insertar helper antes del banco familiar, que cierra/reabre su handle.
+  Recibir opened real/base/cabeza/candidato y devolver handle realmente
+  reabierto + cabeza restaurada para que el banco familiar use ambos valores
+  nuevos. No cambiar el helper familiar ni reutilizar un handle ya cerrado.
+  Consultar los originales reales; no fabricar vueltas/señales/clasificación.
+
+  Proyección base → decisión manual de etiqueta climática de validación →
+  Save v3/Resolve/replay exacto → segunda revisión que conserva clima y
+  cambia a otro tipo de sesión cerrado → retirada explícita de clasificaciones
+  y familias como nueva revisión. Comprobar tipo/etiqueta y elegibilidad
+  preliminar observed_strategy, no una derivación física nueva. Reemplazos
+  del test son decisiones de validación, no diagnósticos reales de carrera.
+
+  Comparar todas las familias físicas: validez, fuel/VE, ritmo por bucket,
+  ClassPace, curvas combinada/separables, neumáticos, pit, SavingCost, clima
+  y segmentos temporales. Puede compararse copia completa de la proyección
+  omitiendo únicamente GeneratedAt/SourceRevisions y los campos de
+  clasificación intencionalmente cambiados, verificados por separado:
+  etiqueta climática y, al cambiar tipo, SessionType/UsableForFamilies.
+  No omitir toda SessionClassification ni excluir familias
+  para obtener PASS ni simular el reloj. Ausencia conservada no prueba
+  utilidad de señal.
+
+  Tras avanzar cabeza, Resolve/replay inicial devuelven revisión inicial
+  del comando y cabeza avanzada. Cerrar/reabrir: Load/Project históricos
+  exactos, cabeza restaurada y metadatos originales intactos. Hash de bytes
+  fuente idéntico mediante el control del banco ya existente. Si faltan
+  condiciones del archivo, exponer el límite; no fabricar datos ni cambiar
+  de fuente silenciosamente.
+
+  Gates: gofmt/focal app, global Go -p 1 ./... y vet de alcance, con build
+  frontend Hd disponible para embed. Banco por fuente nombrada con
+  ISA1088_REAL_SOURCE/ISA1088_RUNTIME_APP existentes;
+  ISA1088_EXPORT_CATALOG vacío. Sin abrir reserva/held-out, exportar catálogo,
+  app/LMU ni Wails. Logs `frontend/.tmp/isa1104-t12i-*.log` con EXIT real y
+  reintentos conservados. Evidencia por root en `evidence/isa-1104/README.md`
+  si se crea. Contraste Wails pendiente del runtime (T11i sin resolver);
+  no atribuir precisión estadística ni aceptación nativa a este banco.
 
 Cada corte declara sus paths y evidencia antes de editar. El orquestador es
 dueño de este plan, del handoff y de la issue; Muse implementa únicamente

@@ -43,3 +43,12 @@ Pruebas: comando antiguo con cabeza posterior, ausencia, payload alterado,
 writer activo, cancelación, permisos/base/handle y backup con confirmación
 perdida. Go focal final, build, Go global -p1 y vet general PASS.
 Cuatro paths Go. Cliente/resolución visible aún pendientes.
+
+## T10d — contrato y cliente de resolución
+
+El cliente usa ResolveCorrectionCommand con la solicitud completa validada,
+sin ejecutar SaveCorrections. found=false no admite revisión; found=true exige
+revisión duradera con comando, base y campos del comando coincidentes. Conserva
+cancelación y no reintenta automáticamente. 43 focales, tipos/lint PASS.
+Cuatro paths. Sigue conectarlo al controlador y la UI. No es recuperación del
+borrador pendiente tras reiniciar: ese vínculo persistente sigue en T14.

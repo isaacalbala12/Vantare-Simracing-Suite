@@ -70,6 +70,7 @@ export type AnalysisStoreResult = Readonly<{
   headId: string;
   revision: AnalysisRevision;
 }>;
+export type AnalysisCommandResolution = Readonly<{ found: false; headId: string }> | Readonly<{ found: true; headId: string; revision: AnalysisRevision }>;
 export type AnalysisPreparation = Readonly<{
   base: AnalysisBase;
   baseRevisionId: string;
@@ -369,6 +370,17 @@ export function parseCorrectionStoreResult(value: unknown): AnalysisStoreResult 
     }
   }
   return r as unknown as AnalysisStoreResult;
+}
+export function parseAnalysisCommandResolution(value: unknown): AnalysisCommandResolution {
+  const r = record(value, "commandResolution");
+  flag(r.found, "commandResolution.found");
+  digest(r.headId, "commandResolution.headId");
+  if (r.found) {
+    const result = parseCorrectionStoreResult(r);
+    if (!result.revision.command.commandId) throw new AnalysisProtocolError("commandResolution.baseHasNoCommand");
+  }
+  else if (r.revision !== undefined) throw new AnalysisProtocolError("commandResolution.absentRevision");
+  return r as unknown as AnalysisCommandResolution;
 }
 function sampling(value: unknown): void {
   const r = record(value, "sampling");

@@ -1,7 +1,7 @@
 import { Call } from "@wailsio/runtime";
 import { parseInputProjection } from "./strategy-application-client";
-import { AnalysisProtocolError, parseAnalysisBase, parseAnalysisCandidates, parseAnalysisCorrection, parseAnalysisOpenedSession, parseAnalysisPage, parseAnalysisPreparation, parseAnalysisSaveCommand, parseAnalysisStatus, parseCorrectionStoreResult, sameAnalysisBase, type AnalysisBase, type AnalysisCorrection, type AnalysisSaveCommand } from "./analysis-contract";
-const methods = ["Status", "Discover", "Open", "ReadPage", "PrepareCorrections", "SaveCorrections", "LoadCorrection", "ProjectCorrection", "CloseSession"] as const;
+import { AnalysisProtocolError, parseAnalysisBase, parseAnalysisCandidates, parseAnalysisCommandResolution, parseAnalysisCorrection, parseAnalysisOpenedSession, parseAnalysisPage, parseAnalysisPreparation, parseAnalysisSaveCommand, parseAnalysisStatus, parseCorrectionStoreResult, sameAnalysisBase, type AnalysisBase, type AnalysisCorrection, type AnalysisSaveCommand } from "./analysis-contract";
+const methods = ["Status", "Discover", "Open", "ReadPage", "PrepareCorrections", "SaveCorrections", "ResolveCorrectionCommand", "LoadCorrection", "ProjectCorrection", "CloseSession"] as const;
 type AnalysisMethod = typeof methods[number];
 export type AnalysisTransport = {
   call(method: AnalysisMethod, args: readonly unknown[], signal?: AbortSignal): Promise<unknown>;
@@ -45,6 +45,16 @@ function revisionRequest(request: AnalysisRevisionRequest): void {
     throw new AnalysisProtocolError("request.revisionId");
   }
 }
+function validateSaveRequest(request: AnalysisSaveRequest): void {
+  identifier(request.sessionId);
+  parseAnalysisBase(request.base);
+  parseAnalysisSaveCommand(request.command);
+  if (!Array.isArray(request.corrections) || request.corrections.length > 256) throw new AnalysisProtocolError("request.corrections");
+  for (const correction of request.corrections) {
+    parseAnalysisCorrection(correction);
+    if (!sameAnalysisBase(correction.base, request.base)) throw new AnalysisProtocolError("request.correctionBase");
+  }
+}
 // Stateless transport: no retries or invented empty data. Cancelling a save
 // does not imply rollback; consumers must retain its command ID for recovery.
 export function createAnalysisClient(transport: AnalysisTransport = createNativeAnalysisTransport()) {
@@ -85,22 +95,21 @@ export function createAnalysisClient(transport: AnalysisTransport = createNative
       return parseAnalysisPreparation(await invoke("PrepareCorrections", [sessionId], signal));
     },
     async save(request: AnalysisSaveRequest, signal?: AbortSignal) {
-      identifier(request.sessionId);
-      parseAnalysisBase(request.base);
-      parseAnalysisSaveCommand(request.command);
-      if (!Array.isArray(request.corrections) || request.corrections.length > 256) {
-        throw new AnalysisProtocolError("request.corrections");
-      }
-      for (const correction of request.corrections) {
-        parseAnalysisCorrection(correction);
-        if (!sameAnalysisBase(correction.base, request.base)) {
-          throw new AnalysisProtocolError("request.correctionBase");
-        }
-      }
+      validateSaveRequest(request);
       const result = parseCorrectionStoreResult(await invoke("SaveCorrections", [request], signal));
       if (!sameAnalysisBase(result.revision.snapshot.base, request.base) || result.revision.command.commandId !== request.command.commandId) {
         throw new AnalysisProtocolError("save.requestMismatch");
       }
+      return result;
+    },
+    async resolve(request: AnalysisSaveRequest, signal?: AbortSignal) {
+      validateSaveRequest(request);
+      const result = parseAnalysisCommandResolution(await invoke("ResolveCorrectionCommand", [request], signal));
+      if (result.found && (!sameAnalysisBase(result.revision.snapshot.base, request.base) ||
+        result.revision.command.commandId !== request.command.commandId ||
+        result.revision.command.expectedRevision !== request.command.expectedRevision ||
+        result.revision.command.reason !== request.command.reason ||
+        result.revision.command.localAuthorId !== request.command.localAuthorId)) throw new AnalysisProtocolError("resolve.requestMismatch");
       return result;
     },
     async load(request: AnalysisRevisionRequest, signal?: AbortSignal) {

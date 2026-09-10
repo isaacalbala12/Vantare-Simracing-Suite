@@ -3,6 +3,24 @@ import { Call } from "@wailsio/runtime";
 import { createAnalysisClient, createNativeAnalysisTransport } from "./analysis-client";
 vi.mock("@wailsio/runtime", () => ({ Call: { ByName: vi.fn() } }));
 describe("native Analysis client", () => {
+  it("resolves an exact command without replay and rejects another command or source", async () => {
+    const a = "a".repeat(64), b = "b".repeat(64);
+    const base = { sessionId: "source", contentSha256: a, sizeBytes: 10, parserId: "lmu-duckdb", parserVersion: "1", schemaFingerprint: "schema", analysisVersion: "lap-validity.v1", segmentationDigest: b };
+    const command = { expectedRevision: a, commandId: "stable-command", reason: "Checked", localAuthorId: "local-user" };
+    const request = { sessionId: "handle", base, corrections: [], command };
+    const revision = { revisionId: b, parentRevisionId: a, command, commandDigest: b, createdAt: "2026-09-10T00:00:00Z", snapshot: { contractVersion: "analysis.sample-snapshot.v1", base, snapshotId: b, corrections: [] } };
+    const call = vi.fn().mockResolvedValue({ found: false, headId: a });
+    const client = createAnalysisClient({ call });
+    await expect(client.resolve(request)).resolves.toEqual({ found: false, headId: a });
+    expect(call).toHaveBeenCalledExactlyOnceWith("ResolveCorrectionCommand", [request], undefined);
+    call.mockResolvedValue({ found: true, headId: b, revision });
+    await expect(client.resolve(request)).resolves.toMatchObject({ found: true, revision });
+    await expect(client.resolve({ ...request, command: { ...command, commandId: "other" } })).rejects.toThrow("resolve.requestMismatch");
+    await expect(client.resolve({ ...request, base: { ...base, sessionId: "foreign" } })).rejects.toThrow("resolve.requestMismatch");
+    call.mockClear();
+    await expect(client.resolve({ ...request, command: { ...command, reason: "" } })).rejects.toThrow();
+    expect(call).not.toHaveBeenCalled();
+  });
   it("uses the closed native method and cancellation boundary", async () => {
     const cancelOn = vi.fn().mockResolvedValue({ available: true, code: "ready" });
     vi.mocked(Call.ByName).mockReturnValue({ cancelOn } as unknown as ReturnType<typeof Call.ByName>);

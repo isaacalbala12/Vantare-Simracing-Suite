@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { analysisValue, parseAnalysisCandidates, parseAnalysisPreparation, parseCorrectionStoreResult, parseHistoricalValue } from "./analysis-contract";
+import { analysisValue, parseAnalysisCandidates, parseAnalysisCommandResolution, parseAnalysisPreparation, parseCorrectionStoreResult, parseHistoricalValue } from "./analysis-contract";
 describe("local discovery labels", () => {
   const candidate = { id: "opaque", state: "ready", size: 10, modifiedAt: "2026-09-10T00:00:00Z", walPresent: false };
   it("accepts optional sanitized names without deriving identity", () => {
@@ -29,6 +29,20 @@ describe("prepared combination identity", () => {
   });
 });
 const baseResult = () => ({ headId: snapshotId, revision: { revisionId: snapshotId, parentRevisionId: "", command: { expectedRevision: "", commandId: "", reason: "", localAuthorId: "" }, commandDigest: "", createdAt: "", snapshot: { contractVersion: "analysis.sample-snapshot.v1", base, snapshotId, corrections: [] } } });
+describe("uncertain command resolution", () => {
+  it("distinguishes confirmed absence from an actual revision", () => {
+    expect(parseAnalysisCommandResolution({ found: false, headId: snapshotId })).toEqual({ found: false, headId: snapshotId });
+    const saved = baseResult();
+    saved.revision.parentRevisionId = "d".repeat(64);
+    saved.revision.command = { expectedRevision: saved.revision.parentRevisionId, commandId: "saved", reason: "Reviewed", localAuthorId: "local" };
+    saved.revision.createdAt = "2026-09-10T00:00:00Z";
+    saved.revision.commandDigest = "e".repeat(64);
+    expect(parseAnalysisCommandResolution({ found: true, ...saved }).found).toBe(true);
+  });
+  it.each([null, { found: false }, { found: "false", headId: snapshotId }, { found: false, ...baseResult() }, { found: true, headId: snapshotId }, { found: true, ...baseResult() }])("rejects ambiguous resolution %j", value => {
+    expect(() => parseAnalysisCommandResolution(value)).toThrow();
+  });
+});
 describe("Analysis correction wire contract", () => {
   it.each([
     [{ column: "v", present: true, quality: "unknown", scalar: { kind: "number" } }, 0],

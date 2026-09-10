@@ -8,10 +8,13 @@ roadmap `milestones:telemetry-live`. El lector REST existente amplía
 `sessionInfo` (`ambientTemp`/`trackTemp` + `yellowFlagState`/`sectorFlag`/
 `gamePhase` aceptados) y lleva temperaturas (Celsius, missing/stale/invalid
 por campo) por fusión REST-joined (precedente carNumber, matriz v6/38
-intacta) hasta `BuildWeather.AmbientC/TrackC`. Corrección de revisión B1–B4:
-campo ignorado en cualquier forma jamás bloquea la sesión; la bandera NO
-afirma ningún valor (sin vocabulario amarillo demostrado: siempre missing,
-fail-closed, seguimiento pendiente con captura en sesión activa); cada señal
+intacta) hasta `BuildWeather.AmbientC/TrackC`, y la bandera por el mismo
+plumbing hasta `BuildSession.Flag` como mapeo candidato documentado: solo
+los enteros 2, 3, 4, 5 del enum SDK oficial distribuido con LMU afirman
+amarillo (1 y 6 neutros, resto missing); la equivalencia REST sigue pendiente
+de verificación y el criterio físico de la issue sigue pendiente (issue
+abierta, sin merge). Corrección de revisión B1–B4:
+campo ignorado en cualquier forma jamás bloquea la sesión; cada señal
 lleva el `sessionFloor` (la sesión anterior pasa a missing sin alargar TTL);
 `SectionWeather` se invalida por valor/calidad dentro de la política vigente.
 Sin lluvia/viento/presión, animaciones, deps nuevas ni refactor. LMU local

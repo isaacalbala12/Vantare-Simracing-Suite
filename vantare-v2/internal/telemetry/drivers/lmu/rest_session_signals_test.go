@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/session"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/weather"
 )
 
@@ -24,7 +25,7 @@ func TestRESTSessionSignalsCarryTempsAndFlag(t *testing.T) {
 		case standingsEndpoint:
 			_, _ = w.Write([]byte(`[{"player":true,"position":3,"lapsCompleted":8,"pitstops":1}]`))
 		case sessionInfoEndpoint:
-			_, _ = w.Write([]byte(`{"trackName":"Test Circuit","session":"RACE1","numberOfVehicles":21,"currentEventTime":42,"ambientTemp":22.5,"trackTemp":31.0,"yellowFlagState":1,"sectorFlag":0,"gamePhase":"GPHASE_GREEN"}`))
+			_, _ = w.Write([]byte(`{"trackName":"Test Circuit","session":"RACE1","numberOfVehicles":21,"currentEventTime":42,"ambientTemp":22.5,"trackTemp":31.0,"yellowFlagState":3,"sectorFlag":0,"gamePhase":"GPHASE_GREEN"}`))
 		default:
 			http.NotFound(w, request)
 		}
@@ -39,11 +40,8 @@ func TestRESTSessionSignalsCarryTempsAndFlag(t *testing.T) {
 	}
 	assertTimedValue(t, observation.REST.AmbientTemp, 22.5, now, schema.FreshnessFresh)
 	assertTimedValue(t, observation.REST.TrackTemp, 31.0, now, schema.FreshnessFresh)
-	// B2: even positive yellowFlagState stays missing without demonstrated
-	// vocabulary; the plumbing is exercised by fixtures elsewhere.
-	if got := observation.REST.SessionFlag.Field.Freshness(); got != schema.FreshnessMissing {
-		t.Fatalf("flag freshness = %v, want missing", got)
-	}
+	// B2 candidate mapping: the documented full-course integer 3 asserts.
+	assertTimedValue(t, observation.REST.SessionFlag, session.FlagYellow, now, schema.FreshnessFresh)
 }
 
 func TestRESTSessionSignalsStayMissingWhenAbsent(t *testing.T) {
@@ -155,9 +153,7 @@ func TestRESTSessionSignalsGoStaleAndRecover(t *testing.T) {
 	first, _ := pollREST(t.Context(), cfg, cache)
 	assertTimedValue(t, first.REST.AmbientTemp, 20.0, firstTime, schema.FreshnessFresh)
 	assertTimedValue(t, first.REST.TrackTemp, 30.0, firstTime, schema.FreshnessFresh)
-	if got := first.REST.SessionFlag.Field.Freshness(); got != schema.FreshnessMissing {
-		t.Fatalf("flag freshness = %v, want missing (B2: no demonstrated vocabulary)", got)
-	}
+	assertTimedValue(t, first.REST.SessionFlag, session.FlagYellow, firstTime, schema.FreshnessFresh)
 
 	failing.Store(true)
 	staleTime := firstTime.Add(cfg.ttl + time.Nanosecond)
@@ -169,9 +165,7 @@ func TestRESTSessionSignalsGoStaleAndRecover(t *testing.T) {
 	}
 	assertTimedValue(t, second.REST.AmbientTemp, 20.0, firstTime, schema.FreshnessStale)
 	assertTimedValue(t, second.REST.TrackTemp, 30.0, firstTime, schema.FreshnessStale)
-	if got := second.REST.SessionFlag.Field.Freshness(); got != schema.FreshnessMissing {
-		t.Fatalf("flag freshness = %v, want missing", got)
-	}
+	assertTimedValue(t, second.REST.SessionFlag, session.FlagYellow, firstTime, schema.FreshnessStale)
 
 	failing.Store(false)
 	recoveredTime := staleTime.Add(time.Second)
@@ -285,36 +279,54 @@ func TestRESTSessionSignalsIgnoreGamePhaseShapes(t *testing.T) {
 	}
 }
 
-// B2: no yellow vocabulary is demonstrated for the REST session flag (the
-// primary sources only attest the field names; SHM shows 0 while green and
-// the yellow/FCY values are explicitly pending capture). Fail closed: every
-// shape stays missing, never yellow.
-func TestRESTSessionFlagRejectsUndemonstratedVocabulary(t *testing.T) {
-	for _, shape := range []string{`-1`, `99`, `0.5`, `"1"`, `"yellow"`, `true`, `"yes"`, `0`, `null`} {
+// B2: the session flag follows the documented candidate allowlist only.
+// The value vocabulary is adopted provisionally from the official
+// LMU-distributed SDK header (full-course yellow states) and the REST
+// equivalence is still pending verification, so: integers 2, 3, 4, 5 assert
+// FlagYellow; 1 (Pending) and 6 (Resume) stay neutral as ambiguous; every
+// other shape (-1, 0, 7, other integers, fractions, strings, bool, arrays,
+// objects, null) stays missing. No != 0 shortcut, no coercions or aliases,
+// no default green.
+func TestRESTSessionFlagCandidateAllowlist(t *testing.T) {
+	positives := []string{`2`, `3`, `4`, `5`, `3.0`}
+	for _, shape := range positives {
 		t.Run("yellowFlagState="+shape, func(t *testing.T) {
-			server := newRESTServer(t, func(w http.ResponseWriter, request *http.Request) {
-				switch request.URL.Path {
-				case standingsEndpoint:
-					_, _ = w.Write([]byte(`[{"player":true,"position":3,"lapsCompleted":8,"pitstops":1}]`))
-				case sessionInfoEndpoint:
-					_, _ = w.Write([]byte(`{"trackName":"T","session":"RACE1","numberOfVehicles":4,"currentEventTime":7,"ambientTemp":20.0,"trackTemp":30.0,"yellowFlagState":` + shape + `}`))
-				default:
-					http.NotFound(w, request)
-				}
-			})
-			defer server.Close()
-
-			now := time.Unix(100, 0).UTC()
-			observation, complete := pollREST(t.Context(), testRESTConfig(server, now), &restCache{})
-			if !complete {
-				t.Fatalf("yellowFlagState %s blocked the session poll: %#v", shape, observation.REST)
-			}
-			if got := observation.REST.SessionFlag.Field.Freshness(); got != schema.FreshnessMissing {
-				t.Fatalf("yellowFlagState %s asserted flag %v, want missing without demonstrated vocabulary", shape, observation.REST.SessionFlag)
-			}
-			assertTimedValue(t, observation.REST.AmbientTemp, 20.0, now, schema.FreshnessFresh)
+			observation := pollSessionFlag(t, shape)
+			assertTimedValue(t, observation.REST.SessionFlag, session.FlagYellow, time.Unix(100, 0).UTC(), schema.FreshnessFresh)
 		})
 	}
+	negatives := []string{`-1`, `0`, `1`, `6`, `7`, `99`, `0.5`, `"1"`, `"yellow"`, `true`, `null`, `[]`, `{"state":2}`}
+	for _, shape := range negatives {
+		t.Run("yellowFlagState="+shape, func(t *testing.T) {
+			observation := pollSessionFlag(t, shape)
+			if got := observation.REST.SessionFlag.Field.Freshness(); got != schema.FreshnessMissing {
+				t.Fatalf("yellowFlagState %s asserted flag %v, want missing", shape, observation.REST.SessionFlag)
+			}
+		})
+	}
+}
+
+func pollSessionFlag(t *testing.T, shape string) Observation {
+	t.Helper()
+	server := newRESTServer(t, func(w http.ResponseWriter, request *http.Request) {
+		switch request.URL.Path {
+		case standingsEndpoint:
+			_, _ = w.Write([]byte(`[{"player":true,"position":3,"lapsCompleted":8,"pitstops":1}]`))
+		case sessionInfoEndpoint:
+			_, _ = w.Write([]byte(`{"trackName":"T","session":"RACE1","numberOfVehicles":4,"currentEventTime":7,"ambientTemp":20.0,"trackTemp":30.0,"yellowFlagState":` + shape + `}`))
+		default:
+			http.NotFound(w, request)
+		}
+	})
+	defer server.Close()
+
+	now := time.Unix(100, 0).UTC()
+	observation, complete := pollREST(t.Context(), testRESTConfig(server, now), &restCache{})
+	if !complete {
+		t.Fatalf("yellowFlagState %s blocked the session poll: %#v", shape, observation.REST)
+	}
+	assertTimedValue(t, observation.REST.AmbientTemp, 20.0, now, schema.FreshnessFresh)
+	return observation
 }
 
 // B3: a session boundary (fresh SHM signature change) must scope the
@@ -355,11 +367,10 @@ func TestBatchMapperCarriesSessionSignals(t *testing.T) {
 	observation := trackObservation(7)
 	observation.AmbientTemp = observed(weather.Temperature(21.5))
 	observation.TrackTemp = observed(weather.Temperature(32.5))
+	observation.SessionFlag = observed(session.FlagYellow)
 	writeMapped(t, mapper, observation, sink)
 	batch := sink.last(t)
 	assertFieldValue(t, batch.State.AmbientTemp, weather.Temperature(21.5))
 	assertFieldValue(t, batch.State.TrackTemp, weather.Temperature(32.5))
-	if got := batch.State.SessionFlag.Freshness(); got != schema.FreshnessMissing {
-		t.Fatalf("flag freshness = %v, want missing", got)
-	}
+	assertFieldValue(t, batch.State.SessionFlag, session.FlagYellow)
 }

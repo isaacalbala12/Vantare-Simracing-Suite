@@ -629,20 +629,41 @@ func parseRESTTemperature(raw json.RawMessage, minimum, maximum float64, now tim
 	return timedObservedAt(weather.Temperature(value), now, elapsed)
 }
 
-// parseRESTSessionFlag accepts the raw yellowFlagState shape without ever
-// asserting a session flag (ISA-1106 correction B2). The primary sources
-// attest the field names (S2 live capture table) but no yellow value is
-// demonstrated anywhere: SHM shows mYellowFlagState 0 while green, the
-// sector-flag enum is open, and the yellow/FCY string values are explicitly
-// pending capture. Fail closed: every shape stays missing, never yellow and
-// never green by absence. Admitting a yellow assertion requires an
-// active-session capture of a nonzero yellowFlagState (or a documented enum)
-// and stays tracked as follow-up work; temperatures are unaffected.
-// SectorFlag and GamePhase are deliberately not consulted here: sector scope
-// must not promote to global.
+// parseRESTSessionFlag maps the raw yellowFlagState shape to the documented
+// candidate assertion (ISA-1106 B2). The value vocabulary is adopted from the
+// official LMU-distributed SDK header (Support/SharedMemoryInterface/
+// InternalsPlugin.hpp: "Yellow flag states (applies to full-course only)":
+// -1 Invalid, 0 None, 1 Pending, 2 Pits closed, 3 Pit lead lap, 4 Pits open,
+// 5 Last lap, 6 Resume, 7 Race halt (not currently used)), corroborated by
+// the original isiMotor header and an independent consumer mapping. The
+// orchestrator admits only the unambiguous full-course integers 2, 3, 4, 5
+// as FlagYellow; 1 (Pending) and 6 (Resume) stay neutral as ambiguous until
+// an active-session capture confirms them. Whether the REST field carries
+// the same codes as the SHM field is still pending verification (naming
+// parity only), so this is a candidate contract proven by fixtures — never a
+// certified REST source. Everything else (other integers, fractions,
+// strings, bool, arrays, objects, null, absent) stays missing: no != 0
+// shortcut, no coercions or aliases, no default green. SectorFlag and
+// GamePhase are deliberately not consulted: sector scope must not promote to
+// global.
 func parseRESTSessionFlag(raw json.RawMessage, now time.Time, elapsed monotonicStamp) TimedField[session.Flag] {
-	_ = raw
-	return timedMissingAt[session.Flag](now, elapsed)
+	trimmed := bytes.TrimSpace(raw)
+	if len(trimmed) == 0 || string(trimmed) == "null" {
+		return timedMissingAt[session.Flag](now, elapsed)
+	}
+	var number float64
+	if err := json.Unmarshal(trimmed, &number); err != nil {
+		return timedMissingAt[session.Flag](now, elapsed)
+	}
+	if !finite(number) || number != math.Trunc(number) {
+		return timedMissingAt[session.Flag](now, elapsed)
+	}
+	switch int(number) {
+	case 2, 3, 4, 5:
+		return timedObservedAt(session.FlagYellow, now, elapsed)
+	default:
+		return timedMissingAt[session.Flag](now, elapsed)
+	}
 }
 
 func (cache *restCache) acceptSession(info restSessionInfo, receivedUTC time.Time, receivedMono monotonicStamp) error {

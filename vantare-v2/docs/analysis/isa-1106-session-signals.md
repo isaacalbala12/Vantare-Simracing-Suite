@@ -24,19 +24,22 @@ intacta; el frontend ya trata `missing` con `—` y diagonales neutras).
   `trackName`/`session`/`numberOfVehicles`/`currentEventTime`. Un campo
   ignorado (`gamePhase` en cualquier forma, `sectorFlag`) jamás bloquea la
   sesión (corrección B1).
-- Bandera de sesión (corrección B2, límite honesto): el driver NO afirma
-  ningún valor. Las fuentes primarias solo respaldan los nombres
-  (`sessionInfo` enumera `yellowFlagState`/`sectorFlag` en la tabla de
-  captura S2; el swagger del juego no define campos de respuesta): SHM muestra
-  `mYellowFlagState = 0` en verde, el enum de `mSectorFlag` (1, 11
-  observados) está abierto y los valores amarillos/FCY están explícitamente
-  pendientes de captura. Fail-closed: toda forma queda `missing` — nunca
-  verde por ausencia, nunca amarillo por conjetura numérica. Admitir una
-  afirmación amarilla exige una captura en sesión activa con
-  `yellowFlagState` distinto de cero (o un enum documentado) y queda como
-  trabajo de seguimiento; las temperaturas no dependen de ello. El
-  plumbing (`SessionFlag` → `Flag` con calidad preservada) queda demostrado
-  por fixtures y listo para el primer valor atestado.
+- Bandera de sesión (mapeo candidato documentado B2, NO fuente certificada):
+  el vocabulario de valores se adopta provisionalmente del header oficial
+  distribuido con LMU (`Support/SharedMemoryInterface/InternalsPlugin.hpp`:
+  "Yellow flag states (applies to full-course only)": -1 Invalid, 0 None,
+  1 Pending, 2 Pits closed, 3 Pit lead lap, 4 Pits open, 5 Last lap,
+  6 Resume, 7 Race halt (not currently used)), corroborado por el header
+  original isiMotor y un consumidor independiente con el mismo mapa. Solo los
+  enteros JSON inequívocos 2, 3, 4, 5 afirman `FlagYellow`; 1 (Pending) y 6
+  (Resume) quedan neutros como ambiguos; -1, 0, 7, otros enteros,
+  fracciones, strings, bool, arrays, objetos, null y ausente quedan missing.
+  Sin atajos `!= 0`, sin coerciones ni alias, sin verde predeterminado, sin
+  otros colores. La equivalencia REST == códigos SHM sigue pendiente de
+  verificación (solo paridad de nombres): confianza alta en el SDK, media-
+  baja en el puente REST. El criterio de aceptación física de la issue sigue
+  pendiente: una captura en sesión activa con el `yellowFlagState` visible
+  cierra la equivalencia. Las temperaturas no dependen de ello.
 - Frescura/caducidad: TTL REST de 2 s ya existente; los campos se vuelven
   `stale` sin congelar marca temporal y se recuperan a `fresh` al reconectar.
   Una respuesta de sesión inválida (`currentEventTime` negativo, etc.) no
@@ -80,10 +83,11 @@ navegar/conducir, sin datos de usuario/pilotos):
   Esa evidencia externa sostiene los nombres de `sessionInfo` (la tabla S2
   los enumera junto a `maxTime`, `maximumLaps`, `raceCompletion`,
   `timeRemainingInGamePhase`, `raining`, `windSpeed`) y las unidades Celsius
-  de SHM (`mAmbientTemp`/`mTrackTemp`); ningún valor amarillo de sesión está
-  demostrado en ninguna fuente, de ahí el fail-closed B2. La confirmación de
-  enums en sesión activa de este equipo queda pendiente y NO se presenta
-  como hecha. El usuario aún no respondió la petición de sesión activa.
+  de SHM (`mAmbientTemp`/`mTrackTemp`); el vocabulario de valores amarillos
+  se adopta del SDK oficial distribuido con LMU (ver sección Bandera) con la
+  equivalencia REST pendiente de captura en sesión activa de este equipo, que
+  NO se presenta como hecha. El usuario aún no respondió la petición de
+  sesión activa.
 
 Fixtures y tests (`rest_session_signals_test.go`,
 `builder_session_signals_test.go`, auditoría de superficies exactas

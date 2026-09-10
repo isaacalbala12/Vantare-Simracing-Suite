@@ -8,7 +8,8 @@ SDD R08/R07, aceptación A08/A09. Continúa ADR 0010 y
 lector, formato, motor ni dependencia. Este documento fija el contrato
 implementable y los microcortes. A–G3 y Ha/Hb/Hc/Hc2/Hd/I/J1/J2/J3 están implementados
 y revisados localmente; I pasó Imola/Monza, J1/J2/J3 pasaron global/vet.
-J3 guardado en 4d5c3178; J4 continúa aplicación/proyección v4, sin montaje nativo.
+J3 guardado en 4d5c3178; J4 en d9dc43c8 aplica/proyecta v4 con global/vet
+PASS. J5 continúa resolución en catálogo, todavía sin montaje nativo.
 Estos cortes no cierran T12 ni los gates visual/nativo/empírico.
 
 ## 1. Conjunto cerrado de campos y tipos
@@ -1001,3 +1002,35 @@ Se ejecuta tras aceptar y guardar J3. No amplía el alcance público de T12.
   de alcance. Logs nuevos isa1104-t12j4-* con salida literal y EXIT, nunca
   sobrescribir. Fixtures de contrato no prueban banco real, Wails ni Adopt.
   Root mantiene plan/aceptación; ejecutor implementa, prueba y revisa.
+
+## Continuación cerrada por root — J5
+
+Después de J4 aceptado, resolución real en el catálogo Analysis existente.
+Dos paths: internal/telemetryanalysis/sessioncatalog.go y nuevo
+internal/telemetryanalysis/sessioncatalog_identity_test.go. Sin servicio,
+montaje, frontend, nuevos lectores ni otra caché/owner.
+
+Añadir SessionCatalog.ResolveCanonicalCombination(ctx, id)
+(CombinationIdentity, error), compatible con el callback J3. Validar
+cancelación antes de I/O y después de ListSessionCombinations, aunque el
+source ignore cancelación. Una consulta al listado existente, reutilizando
+su autorización/clasificación/exclusiones; ningún hash calculado desde
+texto del cliente acredita pertenencia. Comparación exacta de ID, sin
+normalizar ni aceptar casefold/espacios. Devolver tuple por valor.
+Catálogo nil/source nil: error sentinel ErrCanonicalCombinationUnavailable;
+listado disponible sin coincidencia: ErrCanonicalCombinationUnknown.
+Errores de lectura propagados con contexto/%w; prioridad cancelación
+comprobada. No cambiar el estado vacío honesto de ListSessionCombinations
+ni sus exclusiones. No depender de que haya vueltas completadas: pertenencia
+canónica y disponibilidad para estrategia son decisiones distintas.
+
+Tests: resolución exacta conocida, tuple/caso preservados y separado del
+resultado; lista disponible vacía/desconocida, hash coherente de combinación
+no presente, ID alterado, source nil/catalog nil, error I/O con errors.Is,
+cancelación antes y durante listado, una llamada con mismo contexto,
+modelo sin autorización/provenance discordante/metadata no clasificable
+excluido. Reutilizar catalogModel y el catálogo real; sin DuckDB nuevo.
+No test que falle sólo por no existir el método se presenta como RED.
+Gofmt/focal catálogo y clasificación, revisión Devin, globalGo/vet.
+Logs nuevos isa1104-t12j5-* sin sobrescribir, informe final completo local.
+Montaje del callback y errores públicos serán un corte posterior.

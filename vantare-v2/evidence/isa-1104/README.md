@@ -187,3 +187,23 @@ Prueba t.TempDir de custodia y contrato; no prueba autorización física,
 banco DuckDB, Wails, precisión ni paridad visual. Callback no montado aún.
 Sin push/PR/CI remota/merge/promoción/release. J4 definido por root antes
 de asignación; el relevo a Devin no modifica el alcance de producto.
+
+## T12j4 — vista y proyección canónica aceptadas
+
+Código d9dc43c8; cuatro paths +689/-11. Devin SWE-2 Max implementa y
+revisa; root dirige y comprueba diff productivo y evidencia. Cambio sólo
+en corrections_view.go: conjunto J1/combiner J2 con target persistido,
+integridad completa y copia de metadata. Derivadores existentes intactos.
+
+RED literal isa1104-t12j4-red.log: rechazo de v4 válido antes del cambio,
+FAIL3.524s EXIT1, sin error de compilación; tests J3 pasan. Nuevos tests:
+vista6PASS0.026s, derivación3PASS0.025s, proyección2PASS0.054s, todos EXIT0.
+Global126ok/0FAIL EXIT0 contado por root; vet y gofmt sin salida EXIT0.
+Logs locales frontend/.tmp/isa1104-t12j4-*; informe completo
+isa1104-t12j4-devin-report.md. Ningún log sobrescrito.
+
+Tuple e ID efectivos, magnitudes físicas comparadas con decisiones
+equivalentes, originales intactos, revisión exacta tras restauración y
+reapertura, rechazos sin resultado parcial. Fixtures de contrato y store
+t.TempDir; no prueba DuckDB real, Wails, precisión ni Adopt. Sin cambios
+frontend, app/LMU, push/PR/CI remota/merge/promoción/release. J5 definido.

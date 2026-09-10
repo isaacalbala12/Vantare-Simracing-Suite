@@ -1,6 +1,6 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — T12j3 aceptado; J4 cerrado y siguiente
+## Estado vigente — T12j4 aceptado; J5 siguiente por Devin
 
 Isaac confirma que planes y documentación siguen a cargo del orquestador.
 Por instrucción posterior de Isaac, Devin MCP con SWE-2 Max sustituye a
@@ -11,7 +11,7 @@ en evidencia. Un ejecutor por worktree, sin subdelegación ni cambios de
 alcance por su cuenta. No se asigna más trabajo a OpenCode.
 Rama `vantareapp/isa-1104-recorded-classification`, base exacta
 `7f757135445439851180fc503da45f7eb9e557e7`; último código revisado
-`4d5c3178`. A–G3 y Ha/Hb/Hc/Hc2/Hd/I/J1/J2/J3
+`d9dc43c8`. A–G3 y Ha/Hb/Hc/Hc2/Hd/I/J1/J2/J3/J4
 aceptados localmente tras revisión personal y gates. J2 ocupa cuatro paths,
 +1149/-29, dentro de los cinco declarados (classification_identity.go no
 necesitó cambios). Snapshot/decoder v4 con seis vectores v3 previos intactos.
@@ -23,6 +23,12 @@ EXIT0. Devin acepta sin cambios; informe local en
 frontend/.tmp/isa1104-t12j3-devin-review.md. Código guardado en 4d5c3178,
 dos paths +700/-4. Root cierra J4 de cuatro paths en el microplan y la issue:
 vista efectiva y tests de derivación/proyección; sin catálogo/montaje/UI.
+J4 terminado por orchid-volleyball con SWE-2 Max: RED conductual previo,
+11 tests nuevos PASS; global126ok/0FAIL y vet EXIT0. Root comprobó diff
+productivo y logs; Devin implementó y revisó. Código d9dc43c8, cuatro paths
++689/-11. Informe local frontend/.tmp/isa1104-t12j4-devin-report.md.
+J5 de dos paths (resolución en catálogo existente) cerrado por root en
+microplan e issue, siguiente asignación. Sin montaje/app todavía.
 
 G3 ya conecta la biblioteca con el mismo editor Datos/Revisiones, también
 sin combinación ni repositorio: apertura autorizada y referencia exacta,
@@ -33,7 +39,7 @@ pestañas conservan formularios. Auditor i18n Hd: EXIT0, paridad OK,
 ausentes 0 y huérfanas 0; queda cerrado el estado intermedio de Hc.
 Última suite global Hd: 444 archivos/3680 PASS, 224.02s EXIT0;
 build 1086 módulos/1.56s EXIT0, typecheck/lint/auditor EXIT0.
-Último Go global J3: 126 paquetes ok/cero FAIL EXIT0 y vet de alcance EXIT0.
+Último Go global J4: 126 paquetes ok/cero FAIL EXIT0 y vet de alcance EXIT0.
 I banco nativo real: Imola14.03s y Monza19.73s PASS/EXIT0, originales intactos.
 Authorizer controlado; no prueba Wails/login, paridad visual ni precisión.
 

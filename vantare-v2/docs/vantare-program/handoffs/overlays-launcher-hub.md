@@ -1,5 +1,56 @@
 # Handoff vivo — Overlay Studio, Launcher y Hub
 
+## ISA-1098 — candidato local con #1083 + #1103 + #1097 (2026-09-10, sin integrar)
+
+Rama `vantareapp/isa-1098-efficiency-integration`, worktree `C:/tmp/vantare-isa1098`,
+base `a9b8dd36` (= `origin/nightly` verificado antes de usar `--ref`). Solo se
+reúnen commits aprobados, conservando historia con merges locales; **no hay
+merge a Nightly, ni push, PR, release ni app/LMU**. #1105 queda fuera hasta
+recibir su SHA aprobado.
+
+Merges locales: `205fa091` <- `87cef39a` (#1083 Signature/Broadcast),
+`ec9d6d19` <- `6ae58f6e` (#1103 banderas y slots de sesión),
+`85f739ba` <- `3b490906` (#1097 política nativa, guards y transportes).
+Policy, guards y cableado Wails/SSE de #1097 intactos; sus 7 archivos frontend
+iniciales incluidos. Los 4 tests de fixture premium que #1105 migrará
+(AccessContext->WidgetPolicy) no se tocan aquí.
+
+Cruces resueltos semánticamente, sin copiar versiones enteras: Redline Tower y
+dorsales canónicos de PR #1102 preservados (cero ficheros borrados); ambos
+estilos Efficiency y pie/cabecera nuevos conservados; `WidgetVisualHost`
+sigue frontera única con ViewModels puros; canvas conserva preview DOM
+imperativa; IDs estables `vantare-functional`,
+`standings-functional-compact`, `standings-functional-broadcast`. Detalle:
+Workshop une overrides Redline + columna funcional y controles de estudio con
+aside de laboratorio; viewport une geometría Tower (482) con fluidez
+Redline/Functional; caracterización pasa a 67 diseños (Tower + 2 Functional);
+ViewModel une `trackName`/`totalRows` con `flag`/`sessionInfo`; golden une
+metadato Tower e información de sesión.
+
+Adaptación test-only detectada por focales: #1083 retiró
+`resolveStandingsRedlineFrameLayout/MoveLayout` y el test Tower de #1102 lo
+importaba (4 fallos). El test usa ahora el patrón vigente
+`resolveMinimumWidthFrameLayout(layout, resolveStandingsRedlineMinimumWidth(widget))`,
+misma aserción y mismos valores; sin cambios de producto ni tolerancias.
+
+Roadmap: `plan.md` solo añade los dos hitos exactos de #1098
+(`milestones:functional-widget-design` como feature,
+`milestones:widget-access-branding` como plan con nativa terminada y frontend
+en #1105); ningún otro hito de la base cambia. `roadmap.json` regenerado con
+`.github/scripts/roadmap_digest.py --repo . --ref origin/nightly`, nunca a mano.
+
+Límite #1106 confirmado por revisión: BuildSession (bandera) y BuildWeather
+(temperaturas) publican missing porque no hay fuente canónica admitida;
+Efficiency muestra neutro/`—`; circuito/remaining/fuel.sessionLaps sí reales.
+No se arregla con otro lector ni se inventan datos. Sin animación.
+
+Evidencia de este corte (logs en `vantare-v2/.task/isa-1098-evidence/`,
+carpeta ignorada): typecheck PASS (x2), focales 8 archivos / 67 tests PASS
+(Tower/dorsales + Efficiency/Workshop/viewport), `go vet` en
+`internal/license` y `internal/app` PASS. Full frontend+Go/build/lint, revisión
+independiente, PR draft, comprobación física conjunta y promoción quedan para
+el candidato completo con #1105. Sin probar Wails/LMU aquí.
+
 ## ISA-1103 — Información de sesión en Efficiency (2026-09-10)
 
 Petición adicional de Isaac: diagonales según bandera, sin transición; dos datos

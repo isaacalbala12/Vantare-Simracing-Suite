@@ -1,0 +1,110 @@
+import { act, cleanup, renderHook } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import type { AnalysisClient, AnalysisSaveRequest } from "../../strategy/analysis-client";
+import type { AnalysisPage, AnalysisStoreResult } from "../../strategy/analysis-contract";
+import type { RecordedSession } from "./strategy-recorded-session";
+import { useRecordedCorrections } from "./use-recorded-corrections";
+afterEach(cleanup);
+const a = "a".repeat(64), b = "b".repeat(64), c = "c".repeat(64);
+function fixture() {
+  const base = { sessionId: "source", contentSha256: a, sizeBytes: 10, parserId: "lmu-duckdb", parserVersion: "1", schemaFingerprint: "schema", analysisVersion: "lap-validity.v1", segmentationDigest: b };
+  const channel = { id: "fuel", source_name: "Fuel", unit: { symbol: "L", quality: "valid" as const }, sampling: { kind: "event_timestamped" as const, origin: "source_timestamp" as const }, columns: [{ name: "value", type: "number" as const }] };
+  const session: RecordedSession = { candidateId: "candidate", opened: { sessionId: "handle", session: { schema_version: 1, id: "source", channels: [channel], metadata: [] } }, base, combinationId: "combo", revision: { sessionId: "source", baseDigest: c, revisionId: a, snapshotId: a } };
+  const current: AnalysisStoreResult = { headId: a, revision: { revisionId: a, parentRevisionId: "", command: { expectedRevision: "", commandId: "", reason: "", localAuthorId: "" }, commandDigest: "", createdAt: "", snapshot: { contractVersion: "analysis.sample-snapshot.v1", base, snapshotId: a, corrections: [] } } };
+  const page: AnalysisPage = { channel_id: "fuel", start: 0, sampling: channel.sampling, samples: [{ index: 4, values: [{ column: "value", present: true, quality: "unknown", scalar: { kind: "number", number: 12 } }] }] };
+  const saved = (request: AnalysisSaveRequest): AnalysisStoreResult => ({ headId: b, revision: { revisionId: b, parentRevisionId: a, command: request.command, commandDigest: c, createdAt: "2026-09-10T00:00:00Z", snapshot: { ...current.revision.snapshot, snapshotId: b, corrections: request.corrections.map(item => ({ baseId: c, correctionId: b, request: item, original: item.expected, corrected: { ...item.expected, scalar: item.replacement } })) } } });
+  const client = { load: vi.fn().mockResolvedValue(current), page: vi.fn().mockResolvedValue(page), save: vi.fn().mockImplementation(async (request: AnalysisSaveRequest) => saved(request)), project: vi.fn().mockResolvedValue({ combinationId: "combo", sourceRevisions: [{ ...session.revision, revisionId: b, snapshotId: b }] }), close: vi.fn() };
+  const onAdopt = vi.fn().mockResolvedValue(undefined);
+  const hook = renderHook(() => useRecordedCorrections(client as unknown as AnalysisClient, onAdopt));
+  async function edit() {
+    await act(() => hook.result.current.load(session));
+    await act(() => hook.result.current.page("fuel", 0));
+    act(() => hook.result.current.edit(4, "value", { kind: "number", number: 0 }, "Checked sample"));
+  }
+  return { ...hook, client, onAdopt, session, current, saved, edit };
+}
+describe("recorded corrections owner", () => {
+  it("keeps original reads and pending edits separate, then saves/projects before explicit adoption", async () => {
+    const f = fixture();
+    expect(f.client.load).not.toHaveBeenCalled();
+    await f.edit();
+    expect(f.result.current.editor?.page?.samples[0].values[0].scalar.number).toBe(12);
+    expect(f.result.current.editor?.corrections[0].replacement.number).toBe(0);
+    expect(f.result.current.unresolved).toBe(true);
+    await act(() => f.result.current.save("Reviewed fuel sample"));
+    expect(f.result.current.error).toBe("");
+    expect(f.result.current.editor?.saved?.revision.revisionId).toBe(b);
+    expect(f.onAdopt).not.toHaveBeenCalled();
+    await act(() => f.result.current.adopt());
+    expect(f.onAdopt).toHaveBeenCalledWith(expect.objectContaining({ revision: expect.objectContaining({ revisionId: b }) }));
+    expect(f.result.current.unresolved).toBe(false);
+    expect(f.client.close).not.toHaveBeenCalled();
+  });
+  it("retries the identical command after uncertain save and freezes its payload", async () => {
+    const f = fixture();
+    f.client.save.mockRejectedValueOnce(new Error("confirmation lost"));
+    await f.edit();
+    await act(() => f.result.current.save("Checked"));
+    const request = f.result.current.editor?.request;
+    expect(request).toBeTruthy();
+    act(() => f.result.current.edit(4, "value", { kind: "number", number: 99 }, "Changed"));
+    act(() => f.result.current.discard());
+    await act(() => f.result.current.load(f.session));
+    expect(f.result.current.editor?.request).toBe(request);
+    expect(f.result.current.editor?.corrections[0].replacement.number).toBe(0);
+    await act(() => f.result.current.retrySave());
+    expect(f.client.save.mock.calls[0][0]).toBe(f.client.save.mock.calls[1][0]);
+    expect(f.result.current.editor?.request).toBeUndefined();
+  });
+  it("retains a durable revision after projection failure and only retries projection", async () => {
+    const f = fixture();
+    f.client.project.mockRejectedValueOnce(new Error("projection unavailable"));
+    await f.edit();
+    await act(() => f.result.current.save("Checked"));
+    expect(f.result.current.editor?.saved?.revision.revisionId).toBe(b);
+    expect(f.result.current.editor?.request).toBeUndefined();
+    expect(f.result.current.editor?.projected).toBeUndefined();
+    await act(() => f.result.current.project());
+    expect(f.client.save).toHaveBeenCalledTimes(1);
+    expect(f.client.project).toHaveBeenCalledTimes(2);
+    expect(f.result.current.editor?.projected?.revision.revisionId).toBe(b);
+  });
+  it("requires explicit head review before editing a historical revision and restores as a new command", async () => {
+    const f = fixture();
+    f.client.load.mockResolvedValue({ ...f.current, headId: b });
+    await f.edit();
+    await act(() => f.result.current.save("Checked"));
+    expect(f.client.save).not.toHaveBeenCalled();
+    expect(f.result.current.error).toBe("recorded_revision_conflict");
+    act(() => f.result.current.discard());
+    f.client.load.mockResolvedValue({ ...f.current, headId: b, revision: { ...f.current.revision, revisionId: b } });
+    await act(() => f.result.current.restore("Restore original values"));
+    expect(f.client.save).toHaveBeenCalledWith(expect.objectContaining({ corrections: [], command: expect.objectContaining({ expectedRevision: b, reason: "Restore original values" }) }), expect.any(AbortSignal));
+  });
+  it("does not publish a late load after cancellation or close handles on unmount", async () => {
+    const f = fixture();
+    let finish!: (value: AnalysisStoreResult) => void;
+    f.client.load.mockImplementation(() => new Promise(resolve => { finish = resolve; }));
+    let pending!: Promise<void>;
+    act(() => { pending = f.result.current.load(f.session); });
+    act(() => f.result.current.cancel());
+    await act(async () => { finish(f.current); await pending; });
+    expect(f.result.current.editor).toBeNull();
+    f.unmount();
+    expect(f.client.close).not.toHaveBeenCalled();
+  });
+  it("preserves the command when a save is cancelled after dispatch", async () => {
+    const f = fixture();
+    await f.edit();
+    let finish!: (value: AnalysisStoreResult) => void;
+    f.client.save.mockImplementation(() => new Promise(resolve => { finish = resolve; }));
+    let pending!: Promise<void>;
+    act(() => { pending = f.result.current.save("Checked"); });
+    const request = f.result.current.editor!.request!;
+    act(() => f.result.current.cancel());
+    await act(async () => { finish(f.saved(request)); await pending; });
+    expect(f.result.current.editor?.request).toBe(request);
+    expect(f.result.current.editor?.saved).toBeUndefined();
+    expect(f.client.project).not.toHaveBeenCalled();
+  });
+});

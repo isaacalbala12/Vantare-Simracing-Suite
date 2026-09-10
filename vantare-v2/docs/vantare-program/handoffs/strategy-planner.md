@@ -5,7 +5,7 @@
 Worktree C:/tmp/vantare-isa1096, rama vantareapp/isa-1096-recorded-corrections,
 base bd9ed2c2ffa148ce4398265e2f83af80303739af. T08j final: 438 archivos/3433
 tests, lint/build PASS. T10a helpers de revisión exacta/snapshot/comando estable:
-7 focales, tipos y lint final PASS. Sigue controlador de edición/recuperación e
+T10a 7 focales y T10b 13 focales (helpers+hook), tipos/lint PASS. Controlador conserva guardado duradero y comando incierto. Sigue consulta de resolución autorizada e
 integración Datos/Revisiones. No nuevo Wails, precisión ni paridad certificada.
 
 ## Continuación activa T08 — ISA-1095 (2026-09-10)

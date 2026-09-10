@@ -19,3 +19,15 @@ No nueva UI montada aún. Sigue controlador y vistas Datos/Revisiones.
 Gate heredado #1095 T08j: 438 archivos/3433 tests, lint/build PASS.
 Avisos heredados happy-dom teardown y chunks Vite. Sin Wails, banco real nuevo,
 review visual >9, push, PR, CI remota, promoción o release.
+
+## T10b — controlador de edición y guardado
+
+useRecordedCorrections mantiene la vista entre pestañas, páginas de 50 muestras,
+originales separados de propuesta, revisión exacta e historial por padres bajo
+petición. Guardar congela comando/payload; cancelar no promete rollback. Un fallo
+de proyección conserva la revisión duradera y reintenta sólo la proyección.
+Adopción explícita, restauración con cabeza verificada, ninguna propiedad de
+handles. 13 focales (helpers+hook), tipos/lint PASS. Todavía no montado.
+Sigue resolver explícitamente comandos inciertos/conflictos: el reintento estable
+ya existe, pero no basta cuando la cabeza avanzó sin guardar ese comando. Añadir
+consulta autorizada por commandId/payload sobre el mismo store; después UI.

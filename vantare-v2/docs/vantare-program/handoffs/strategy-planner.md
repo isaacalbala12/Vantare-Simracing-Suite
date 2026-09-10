@@ -1,5 +1,31 @@
 # Handoff vivo — Strategy Planner
 
+## T12a v2 — preparación canónica corregida (ISA-1104, revisión intermedia)
+
+Sesión `ses_f767b9355ffe8jiV60PxmdbsUv`, mismo modelo/variante, ejecutor único
+sin subagentes. La revisión intermedia NO dio por válido T12a v1
+(`ValidateClassificationCorrection` solo con `SessionID`): reescrito en los
+mismos 2 paths como `PrepareClassificationCorrection[Set]` con base exacta
+`SourceAnalysisRef` (digests, petición contra vigente, sesión contra base por
+ID/parser/schema/fuente; `SourceChanged`/`InterpretationChanged`/`Precondition`/
+`Value`/`Invalid`/`Target`/`OverlappingCorrections` reutilizados, sin familia
+paralela), motivo con `correctionText(...,1024)`, clima en caracteres con
+rechazo de controles y UTF-8, precondición exacta sin recortes, y salida
+preparada reutilizable (`BaseID`/`CorrectionID`/petición/original/corregido).
+Fixtures auténticas (fuente LMU, parser/schema/base válidos; parcial solo sin
+Weather con su causa aplicable); calidades stale/missing/invalid/unknown,
+Present/Sensitive/Redacted, duplicados, inmutabilidad y atomicidad cubiertos.
+Segunda lectura del orquestador: original preservado byte a byte (esperado
+idéntico acepta, recortado rechaza; solo el corregido se normaliza), conjunto
+valida base/sesión/cuota antes de preparar, reemplazo en bruto acotado y
+UTF-8 inválido rechazado donde se almacena.
+Microplan: T12a preciso y T12b dividido en B1 (representación+preparación) y
+B2 (decoder+store+digests, el decoder requiere edición). B aún no autorizado
+ni implementado. Focales PASS (10 tests); vet de alcance PASS; global Go `-p 1`:
+125 paquetes ok, 1 FAIL solo por contención (`TestRecordedImolaCalculationCompletes`,
+deadline conocido de ISA-1089; PASS aislado en 4.77s); ningún Go existente
+modificado. Commit local separado sin push/PR/merge/promoción. `plan.md` intacto.
+
 ## T12 revisión del microplan (ISA-1104, corte A solo docs)
 
 Sesión `ses_f767b9355ffe8jiV60PxmdbsUv`, modelo

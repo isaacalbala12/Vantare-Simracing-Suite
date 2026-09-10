@@ -32,7 +32,11 @@ sin duplicados (las mismas puertas de `classificationMetadata`, aplicadas a esa
 clave). No se exige que los otros cinco metadatos ni `ClassifyHistoricalSession`
 completo sean válidos para corregir un campo existente válido mientras otro
 falta: lo no corregido conserva su ausencia y la derivación que lo necesite
-continúa bloqueada con causa. Validar un campo no declara el éxito de una
+continúa bloqueada con causa. La base exacta es `SourceAnalysisRef`: se
+verifican ambos digests, la base de la petición contra la vigente (mismo
+SessionID con otro hash/tamaño → fuente cambiada; otro parser/schema/
+análisis/segmentación → interpretación cambiada) y la sesión contra la base
+(ID, versión de schema, parser, huella de schema y fuente LMU). Validar un campo no declara el éxito de una
 clasificación global parcial. El valor esperado debe coincidir con ese
 original; si difiere → `original_mismatch`, sin escritura parcial.
 
@@ -143,29 +147,41 @@ disponibilidad de señal.
 
 ## 8. Microcortes de ejecución (máx. 5 paths lógica/tests cada uno)
 
-- **T12a — validación pura + tests (2 paths).** `internal/telemetryanalysis/classification_corrections.go`:
-  tipo `ClassificationCorrection` (campo cerrado solo `SessionType` +
-  `WeatherConditions`, base original exacta, precondición por campo, reemplazo,
-  motivo obligatorio, procedencia manual), reusa validadores/errores/identidad
-  existentes (`parseSessionType`, `ErrInvalidSessionClassification`),
-  sin store/wire/UI/v3 ni catálogo/manager; errores tipados
-  (`unknown_session_type`, `unusable <Campo>`, `original_mismatch`,
-  `overlapping_corrections`); `classification_corrections_test.go`:
-  salidas/inmutabilidad, motivo ausente, metadato duplicado, valor original
-  diferente, base ajena, campo prohibido (incluidos los de combinación, fuera
-  de T12a), calidad ausente y corrección válida con otro metadato ausente
-  (sin afirmar éxito de clasificación global parcial). Gates: `go test -p 1`
-  focal + global Go + vet de alcance. Sin custodia ni wire. Los errores e
-  IDs de combinación (`unknown_combination`, ID inventado) quedan para el
-  corte que cierre el contrato de resolución (§5).
-- **T12b — snapshot v3 y custodia mixta (4 paths).**
-  `correction_snapshot.go` + `correction_snapshot_test.go` (v3, digest
-  conjunto, orden canónico, roundtrip v1→v2→v3, guard legacy extendido, cuota
-  conjunta); `corrections_store.go` + `corrections_store_test.go` (persistencia
-  v3, revalidación, 8 MiB, restauración). Incluye revisar sin nuevos paths el
-  decoder (`corrections_document.go:84` `decodeCorrectionDocument`), los
-  digests y el store existentes antes de extenderlos. Gates: focales + global
-  Go `-p 1` + vet de alcance.
+- **T12a — preparación pura + tests (2 paths).** `internal/telemetryanalysis/classification_corrections.go`:
+  tipos `ClassificationCorrection` (base `SourceAnalysisRef` exacta, campo
+  cerrado solo `SessionType` + `WeatherConditions`, original esperado,
+  reemplazo, motivo, procedencia manual) y `PreparedClassificationCorrection`
+  (`BaseID`/`CorrectionID`/petición/original/corregido, patrón
+  `PreparedSampleCorrection`);   `PrepareClassificationCorrection[Set]`
+  verifican ambos digests, base de la petición contra la vigente y sesión
+  contra la base (ID, parser, schema, fuente LMU), precondición exacta por
+  campo byte a byte sin recortes (el original se preserva; el esperado
+  recortado no cuela), enum cerrado y etiqueta de 64 caracteres Unicode sin
+  controles; el reemplazo en bruto se acota (1024) antes de normalizar y el
+  UTF-8 inválido se rechaza en original/esperado/motivo/reemplazo; el conjunto
+  valida base, sesión y cuota antes de preparar nada;
+  reusa errores existentes (`SourceChanged`, `InterpretationChanged`,
+  `Precondition`, `Value`, `Invalid`, `Target`, `OverlappingCorrections`,
+  puertas de `classificationMetadata`, `parseSessionType`), sin familia
+  paralela; sin store/wire/UI/v3 ni catálogo/manager.
+  `classification_corrections_test.go`: base exacta (hash/tamaño/parser/
+  schema/análisis/segmentación/sesión), gates de petición y metadato,
+  límites unicode de clima, atomicidad del conjunto, inmutabilidad y campo
+  válido con otro metadato ausente (sin afirmar éxito global parcial).
+  Gates: focal + global Go `-p 1` + vet de alcance. Los errores e IDs de
+  combinación (`unknown_combination`, ID inventado) quedan para el corte que
+  cierre el contrato de resolución (§5).
+- **T12b1 — representación snapshot v3 + preparación almacenada + tests (2 paths).**
+  `correction_snapshot.go` + `correction_snapshot_test.go` (v3: escalares +
+  familias + decisiones de clasificación ordenadas con la preparación de
+  T12a, digest conjunto, orden canónico, roundtrip v1→v2→v3, guard legacy
+  extendido, cuota conjunta). Gates: focales + global Go `-p 1` + vet.
+- **T12b2 — decoder, store y digests + tests (4 paths).**
+  `corrections_document.go` + `corrections_document_test.go` (nuevo;
+  decode/encode v3 y validación) + `corrections_store.go` +
+  `corrections_store_test.go` (persistencia v3, revalidación de digests,
+  8 MiB, restauración). El decoder REQUIERE edición para v3: revisarlo sin
+  tocarlo no basta. Gates: focales + global Go `-p 1` + vet de alcance.
 - **T12c — vista, derivación y obsolescencia (4 paths).**
   `corrections_view.go` + `corrections_view_test.go` (aplicación sobre vista
   separada, sin mutar originales, precondición reclasificada);

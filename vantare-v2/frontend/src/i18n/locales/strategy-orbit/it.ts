@@ -818,4 +818,5 @@ export const strategyOrbitIt: Record<string, string> = {
   "strategy.workspace.yourRace": "La tua gara",
   "strategy.workspace.repositoryLoading": "Verifica del repository prima del salvataggio…",
   "strategy.workspace.repositoryUnavailable": "Il repository non è disponibile. Puoi continuare a preparare la gara e riprovare.",
+  "strategy.data.readOnlyChannel": "Questo segnale è consultabile, ma non supporta ancora correzioni verificate.",
 };

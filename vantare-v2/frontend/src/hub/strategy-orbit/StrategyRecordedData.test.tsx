@@ -16,7 +16,7 @@ function fixture() {
   const a = "a".repeat(64), b = "b".repeat(64);
   const base = { sessionId: "source", contentSha256: a, sizeBytes: 10, parserId: "lmu-duckdb", parserVersion: "1", schemaFingerprint: "schema", analysisVersion: "analysis", segmentationDigest: b };
   const channel = { id: "fuel", source_name: "Fuel level", unit: { symbol: "L", quality: "valid" as const }, sampling: { kind: "event_timestamped" as const, origin: "source_timestamp" as const }, columns: [{ name: "value", type: "number" as const }] };
-  const session: RecordedSession = { candidateId: "candidate", base, combinationId: "combo", combination: { id: "combo", simId: "lmu", trackName: "Imola", trackLayout: "GP", carName: "Car", carClass: "LMP2" }, opened: { sessionId: "handle", session: { schema_version: 1, id: "source", channels: [channel], metadata: [] } }, revision: { sessionId: "source", baseDigest: b, revisionId: a, snapshotId: a } };
+  const session: RecordedSession = { editableChannelIds: ["fuel"], candidateId: "candidate", base, combinationId: "combo", combination: { id: "combo", simId: "lmu", trackName: "Imola", trackLayout: "GP", carName: "Car", carClass: "LMP2" }, opened: { sessionId: "handle", session: { schema_version: 1, id: "source", channels: [channel], metadata: [] } }, revision: { sessionId: "source", baseDigest: b, revisionId: a, snapshotId: a } };
   const current = { headId: a, revision: { revisionId: a, snapshot: { base, snapshotId: a, corrections: [] } } };
   const page = { channel_id: "fuel", start: 0, sampling: channel.sampling, samples: [{ index: 4, values: [{ column: "value", present: true, quality: "unknown" as const, scalar: { kind: "number" as const, number: 12 } }] }] };
   const methods = { load: vi.fn(), page: vi.fn(), edit: vi.fn().mockReturnValue(true), save: vi.fn(), discard: vi.fn(), project: vi.fn(), adopt: vi.fn(), head: vi.fn(), resolveSave: vi.fn(), retrySave: vi.fn(), cancel: vi.fn() };
@@ -24,6 +24,15 @@ function fixture() {
   return { session, current, page, methods, controller };
 }
 describe("recorded data screen", () => {
+  it("keeps readable samples visible but blocks editing without native capability", () => {
+    const f = fixture();
+    const controller = { ...f.controller, editor: { ...f.controller.editor!, session: { ...f.session, editableChannelIds: [] } } };
+    render(<StrategyRecordedData controller={controller} sessions={[controller.editor.session]} busy={false} onSources={vi.fn()} onPendingChange={vi.fn()} t={t} />);
+    expect((screen.getByRole("button", { name: "strategy.data.sample 4" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByText("12")).toBeTruthy();
+    expect(screen.getByText("strategy.data.readOnlyChannel")).toBeTruthy();
+    expect(screen.queryByLabelText("strategy.data.correctedValue")).toBeNull();
+  });
   it("requires a reason, preserves the original and submits an explicit zero", () => {
     const f = fixture(), onPendingChange = vi.fn();
     render(<StrategyRecordedData controller={f.controller} sessions={[f.session]} busy={false} onSources={vi.fn()} onPendingChange={onPendingChange} t={t} />);

@@ -21,6 +21,7 @@ export function StrategyRecordedData({ controller, sessions, sessionLabels = {},
   const channel = editor?.session.opened.session.channels.find(item => item.id === page?.channel_id);
   const currentColumn = channel?.columns.find(item => item.name === column)?.name ?? channel?.columns[0]?.name ?? "";
   const locked = busy || controller.busy;
+  const editable = Boolean(channel && editor?.session.editableChannelIds?.includes(channel.id));
   const display = (value: AnalysisValue) => { const scalar = analysisValue(value); return scalar === null ? t("strategy.data.absent") : typeof scalar === "boolean" ? t(scalar ? "strategy.data.true" : "strategy.data.false") : String(scalar); };
   function clearForm() { setForm(null); setFormDirty(false); setFormError(false); onPendingChange(false); }
   function field(key: "value" | "reason", value: string) {
@@ -49,11 +50,12 @@ export function StrategyRecordedData({ controller, sessions, sessionLabels = {},
         {!editor ? <div className="strategy-recorded-data__empty"><Icon name="i-telemetria" size={44} /><strong>{t("strategy.data.chooseSource")}</strong><p>{t("strategy.data.chooseSourceHint")}</p></div> : <>
           <div className="strategy-recorded-data__channels"><label>{t("strategy.data.channel")}<select value={page?.channel_id ?? ""} disabled={locked || formDirty} onChange={event => { clearForm(); setColumn(""); void controller.page(event.target.value, 0); }}><option value="" disabled>{t("strategy.journey.choose")}</option>{editor.session.opened.session.channels.map(item => <option key={item.id} value={item.id}>{item.source_name}{item.unit.symbol ? ` · ${item.unit.symbol}` : ""}</option>)}</select></label>
             {channel ? <label>{t("strategy.data.column")}<select value={currentColumn} disabled={locked || formDirty} onChange={event => { clearForm(); setColumn(event.target.value); }}>{channel.columns.map(item => <option key={item.name} value={item.name}>{item.name}</option>)}</select></label> : null}</div>
+          {channel && !editable ? <p role="status" className="strategy-recorded-data__muted">{t("strategy.data.readOnlyChannel")}</p> : null}
           {page ? <><div className="strategy-recorded-data__table"><table><thead><tr><th>{t("strategy.data.sample")}</th><th>{t("strategy.data.original")}</th><th>{t("strategy.data.correction")}</th><th>{t("strategy.data.quality")}</th></tr></thead><tbody>{page.samples.map(sample => {
             const value = sample.values.find(item => item.column === currentColumn);
             const correction = editor.corrections.find(item => item.target.channelId === page.channel_id && item.target.column === currentColumn && item.target.sampleIndex === sample.index);
             return <tr key={sample.index} aria-selected={form?.sampleIndex === sample.index && form.column === currentColumn}>
-              <td><button type="button" disabled={locked || formDirty || Boolean(editor.request) || !value?.present || value.scalar.kind === "unknown" || channel?.unit.quality !== "valid"} onClick={() => { if (value) { setForm({ sampleIndex: sample.index, column: currentColumn, original: value, value: String(analysisValue(correction ? { ...value, scalar: correction.replacement } : value) ?? ""), reason: correction?.reason ?? "" }); setFormError(false); } }}>{t("strategy.data.sample")} {sample.index}</button></td>
+              <td><button type="button" disabled={locked || formDirty || !editable || Boolean(editor.request) || !value?.present || value.scalar.kind === "unknown" || channel?.unit.quality !== "valid"} onClick={() => { if (value) { setForm({ sampleIndex: sample.index, column: currentColumn, original: value, value: String(analysisValue(correction ? { ...value, scalar: correction.replacement } : value) ?? ""), reason: correction?.reason ?? "" }); setFormError(false); } }}>{t("strategy.data.sample")} {sample.index}</button></td>
               <td>{value ? display(value) : t("strategy.data.absent")}</td><td>{correction && value ? display({ ...value, scalar: correction.replacement }) : t("strategy.data.unchanged")}</td><td>{t(`strategy.data.quality.${value?.quality ?? "missing"}`)}</td>
             </tr>;
           })}</tbody></table></div>{page.samples.length === 0 ? <p role="status">{t("strategy.data.noSamples")}</p> : null}

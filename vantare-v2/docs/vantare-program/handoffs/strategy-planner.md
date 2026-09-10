@@ -1787,3 +1787,12 @@ explícita antes de construir el comando. RED/GREEN, 30 focales/tipos/lint PASS.
 Cinco paths declarados. Siguiente T10j: aplicar el mismo límite en Datos y su
 fixture UI; después historial. Build/global se agrupan tras ese montaje sin
 atribuir aún aceptación general a este corte. No cambios nativos ni promoción.
+
+## T10j — solo lectura visible
+
+Datos conserva señales consultables sin capacidad de corrección y explica el
+límite, con botón de muestra deshabilitado. RED/GREEN UI; se actualiza la fixture
+del flujo para declarar capacidad explícita, conservando todos sus guards.
+24 focales, tipos, lint/build PASS. Global frontend agrupado tras T10k.
+Tres paths lógica/test más cuatro idiomas. Sigue historial visible declarado.
+No cambios al original, Wails, precisión, nota visual ni promoción nuevos.

@@ -26,7 +26,7 @@ it("retains pending source edits and adopts only the selected revision without s
   const f = setup();
   const base = { sessionId: "source", contentSha256: "a".repeat(64), sizeBytes: 1, parserId: "lmu-duckdb", parserVersion: "1", schemaFingerprint: "schema", analysisVersion: "analysis", segmentationDigest: "b".repeat(64) };
   const channel = { id: "fuel", source_name: "Fuel", unit: { symbol: "L", quality: "valid" as const }, sampling: { kind: "event_timestamped" as const, origin: "source_timestamp" as const }, columns: [{ name: "value", type: "number" as const }] };
-  const complete = { ...session, base, opened: { sessionId: "handle", session: { schema_version: 1 as const, id: "source", metadata: [], channels: [channel] } } };
+  const complete = { ...session, base, editableChannelIds: ["fuel"], opened: { sessionId: "handle", session: { schema_version: 1 as const, id: "source", metadata: [], channels: [channel] } } };
   vi.mocked(openRecordedSession).mockResolvedValue(complete);
   const loaded = { headId: complete.revision.revisionId, revision: { revisionId: complete.revision.revisionId, snapshot: { base, snapshotId: complete.revision.snapshotId, corrections: [] } } };
   const page = { channel_id: "fuel", start: 0, sampling: channel.sampling, samples: [{ index: 4, values: [{ column: "value", present: true, quality: "unknown", scalar: { kind: "number", number: 12 } }] }] };

@@ -817,4 +817,5 @@ export const strategyOrbitPt: Record<string, string> = {
   "strategy.workspace.yourRace": "A tua corrida",
   "strategy.workspace.repositoryLoading": "A verificar o repositório antes de guardar…",
   "strategy.workspace.repositoryUnavailable": "O repositório não está disponível. Podes continuar a preparar a corrida e verificar novamente.",
+  "strategy.data.readOnlyChannel": "Este sinal pode ser consultado, mas ainda não permite correções verificadas.",
 };

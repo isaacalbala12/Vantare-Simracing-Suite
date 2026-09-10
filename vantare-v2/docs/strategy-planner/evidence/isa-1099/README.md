@@ -263,3 +263,19 @@ Go global -p1 y vet de alcance PASS; frontend conjunto T11g4 443/3515 PASS.
 Continúa contraste Wails diagnóstico aislado del recorrido actual, aprovechando
 configuración heredada ya presente (sólo comprobada presencia, no leída/imprimida).
 No .env, credenciales copiadas, LMU, otras instancias ni promoción/publicación.
+
+## T11i — contraste nativo bloqueado (ventana oculta impide controlador WebView2)
+
+Dos lanzamientos aislados de la build diagnóstica (PID13816 orquestador,
+PID30236 ejecutor con -profile absoluto, -http 127.0.0.1:39262, CDP 9491,
+-live=false, perfil/datos propios) mueren en el mismo punto: backend OK (hub,
+HTTP 39262), WebView2 Environment creado, pero CreateCoreWebView2Controller
+falla con 8007139F ERROR_INVALID_STATE y el proceso termina sin escuchar CDP.
+Primer lanzamiento además en conflicto 39261 con instancia ajena #1072
+(preservada, PID26412); aislado en el segundo. Sin zombies propios. Causa
+probable: ventana oculta (-WindowStyle Hidden vigente); runtime WebView2
+152.0.4191.66 verificado funcional en la instancia ajena visible. Cero cambios
+de código. Imola autorizado intacto (97513472 bytes, SHA256 ...38c1eb0).
+Pendiente autorización de un lanzamiento visible para recorrido + capturas.
+Logs: bin/data/logs/vantare.log, C:/tmp/isa1099-t11i-std*.log. Sin
+push/PR/CI/promoción; LMU intacto.

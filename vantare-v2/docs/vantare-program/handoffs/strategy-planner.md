@@ -2077,3 +2077,42 @@ Go global -p1 y vet de alcance PASS; frontend conjunto T11g4 443/3515 PASS.
 Continúa contraste Wails diagnóstico aislado del recorrido actual, aprovechando
 configuración heredada ya presente (sólo comprobada presencia, no leída/imprimida).
 No .env, credenciales copiadas, LMU, otras instancias ni promoción/publicación.
+
+## T11i — contraste nativo bloqueado: WebView2 no crea controlador en ventana oculta
+
+Cambio de ejecutor registrado: el usuario ordenó que el orquestador coordine y
+Muse Spark 1.3 contributor ejecute vía MCP/opencode en xhigh; esta autorización
+sustituye la prohibición anterior de delegación de código sólo para esta
+relación. Sin subagentes ni cambio de modelo.
+
+Build diagnóstica bin/vantare.exe de este worktree (sin tags production,
+frontend con VITE_* heredadas en build, runtime duckdb-v1 confiado, datos
+propios). Dos lanzamientos aislados muertos en el mismo punto: PID13816
+(orquestador) y PID30236 (ejecutor, con -profile absoluto a
+configs/example-racing.json, -http 127.0.0.1:39262 libre, CDP 9491 libre,
+-live=false, LOCALAPPDATA y user-data-folder propios en bin/).
+
+El backend arranca (hub, HTTP 39262 listening, telemetría detenida por
+-live=false; 4 hotkeys en conflicto no fatal con la instancia ajena PID26412 de
+#1072, preservada). WebView2 Environment se crea, pero
+CreateCoreWebView2Controller falla con 8007139F ERROR_INVALID_STATE ("error
+creating controller", stderr en C:/tmp/isa1099-t11i-std*.log) y el proceso
+termina; CDP 9491 nunca escucha. Sin zombies msedgewebview2 propios; el primer
+lanzamiento además chocó en 39261 contra la instancia ajena, ya aislado en el
+segundo. Log completo en bin/data/logs/vantare.log (saneado: sin secretos).
+
+Causa probable: la ventana principal oculta (-WindowStyle Hidden, restricción
+vigente) impide crear el controlador WebView2; ambas muertes comparten esa
+condición y el runtime WebView2 152.0.4191.66 funciona en la instancia ajena
+visible. No es fallo de código de producto: cero paths de lógica/tests en este
+corte. El relanzamiento del ejecutor corrió sin VANTARE_* en su sesión
+(offline-grace mode en log); no es la causa (el fallo es anterior, en creación
+de ventana), pero el recorrido con login/entitlement queda fuera de alcance.
+
+Pendiente de autorización del orquestador: UN lanzamiento visible (o lanzado por
+él con CDP aislado) para el recorrido Imola + capturas y revisión personal
+contra pass-03-advanced.png; sin certificar >9 independiente. Imola autorizado
+verificado intacto antes del recorrido (97513472 bytes, SHA256
+35438326ecddd6ab660ed3aad70b076a73e3290236c0292f30657594c38c1eb0). Sin
+push/PR/CI remota/merge/promoción/release; LMU intacto; sin roadmap alterado
+(no hay entrega que reflejar).

@@ -1,6 +1,6 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — T12g3c aceptado localmente, siguiente T12g3d
+## Estado vigente — T12g3d revisado, siguiente T12g3e; auditoría i18n intermedia pendiente
 
 Isaac confirma que planes y documentación siguen a cargo del orquestador.
 R19/A17/execution actualizados: Muse Spark 1.3 Contributor vía OpenCode, xhigh,
@@ -8,7 +8,7 @@ ejecuta sólo código/tests asignados, sin subdelegación ni cambios de planes,
 docs o issue. Un ejecutor por worktree; revisión personal antes de aceptar.
 Rama `vantareapp/isa-1104-recorded-classification`, base exacta
 `7f757135445439851180fc503da45f7eb9e557e7`; último código revisado
-`75de40863989f46022608a9895cd828862191c27`, limpio al revisar. A/B1/B2/C1/C2/D1/D2/E/F/G1/G2/G3a/G3b/G3c
+`2ccc2973c6c4fcb55703cf3a418319ebe6b03b95`, limpio al revisar. A/B1/B2/C1/C2/D1/D2/E/F/G1/G2/G3a/G3b/G3c
 aceptados localmente tras lectura de diff y evidencia (B1/B2: 126 paquetes Go
 PASS cada uno, vet exit 0; rutas en entradas siguientes). T12 sigue abierto.
 
@@ -20,8 +20,9 @@ nativos/TS y global Go aceptados. G3b carga base y revisión exactas sin Project
 sólo ante la causa explícita metadata_unavailable; no adopta una selección y
 rechaza fuentes no proyectables para la carrera. G3c conecta dueño de sesiones
 y workflow: inspección explícita sin guardar carrera, con exclusión mutua desde
-el mismo ciclo y sin datos obsoletos. Siguiente G3d: cuatro locales para los
-estados de inspección/selección; después G3e/G3f estado real y montaje visual.
+el mismo ciclo y sin datos obsoletos. G3d ya actualiza cuatro locales para los
+estados de inspección/selección; auditor i18n aún exit 1 por cinco claves nuevas
+sin consumidores. Siguiente G3e/G3f: selección real y montaje visual que las usan.
 Microplan G3a–f escrito por el orquestador: apertura, dueño, textos, estado
 real de selección en Datos/Revisiones y entrada desde biblioteca al mismo A4.
 Una sesión abierta para revisar no pasa a estar usada por la carrera; sin
@@ -38,6 +39,27 @@ Sin push, PR, CI remota, integración ni promoción. No se reabre app/LMU; gate
 Wails sigue pendiente por ERROR_INVALID_STATE de causa no demostrada.
 
 Las entradas siguientes son evidencia histórica; el estado vigente es éste.
+
+## T12g3d — textos de inspección y selección
+
+Commit `2ccc2973`, cuatro locales es/en/it/pt, +52/-32: cinco claves nuevas
+y ocho textos actualizados por idioma, sin otro cambio. Copia española del
+orquestador y traducciones revisadas personalmente: abrir/revisar no implica
+sesión preparada o fijada para la carrera; causa de datos no verificables,
+fuente no seleccionada y retorno al asistente.
+
+Typecheck de producto y lint exit 0; diff limpio. Auditor i18n exit 1,
+paridad OK y usadas ausentes 0, exclusivamente cinco huérfanas esperadas:
+strategy.recorded.inspect, inspectionOnly, metadataUnavailable, notSelected,
+backToWizard. El orquestador repitió con --list para verificar cada nombre.
+Logs C:/tmp/isa1104-t12g3d-{audit,audit-list,typecheck,lint}.log leídos.
+No es gate verde: pendiente consumirlas en G3e/G3f y cerrar auditor/global
+frontend/build allí. No se introducen usos falsos, whitelist ni cambio del auditor.
+
+Worker idle antes del commit. Nueva sesión Muse para E/F evita arrastrar el
+contexto de los cortes previos; mismo modelo/proveedor/xhigh y un solo ejecutor.
+Planes/documentación/issues/revisión/commits siguen en el orquestador. Sin
+tests nuevos por copia, app/LMU, banco, Go, push, PR, CI remota o promoción.
 
 ## T12g3c — dueño de sesiones y acceso al editor
 

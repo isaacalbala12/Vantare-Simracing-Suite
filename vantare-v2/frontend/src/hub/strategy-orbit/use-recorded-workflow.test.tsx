@@ -1,6 +1,7 @@
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import type { AnalysisClient } from "../../strategy/analysis-client";
+import { parseAnalysisOpenedSession, parseCorrectionStoreResult } from "../../strategy/analysis-contract";
 import type { StrategyApplicationClient, StrategyApplicationCommandV1, StrategyApplicationResultV1 } from "../../strategy/strategy-application-client";
 import type { RecordedDraftPayload } from "./strategy-recorded-payload";
 import { openRecordedSession, type RecordedSession } from "./strategy-recorded-session";
@@ -111,4 +112,72 @@ it("does not substitute version zero when the repository has not been loaded", a
   expect(execute).not.toHaveBeenCalled();
   expect(result.current.view).toBe("preparation");
   expect(result.current.error).toBe("recorded_repository_unavailable");
+});
+// Contract fixtures below are hand-built shapes, not real recorded data.
+function recordedInspectionWorld(options: { candidateId: string; handle: string; source: string }) {
+  const base = { sessionId: options.source, contentSha256: "a".repeat(64), sizeBytes: 1, parserId: "lmu-duckdb", parserVersion: "1", schemaFingerprint: "schema", analysisVersion: "analysis", segmentationDigest: "b".repeat(64) };
+  const initial = "f".repeat(64);
+  const channel = { id: "fuel", source_name: "Fuel", unit: { symbol: "L", quality: "valid" }, sampling: { kind: "event_timestamped", origin: "source_timestamp" }, columns: [{ name: "value", type: "number" }] };
+  const opened = parseAnalysisOpenedSession({ sessionId: options.handle, session: { schema_version: 1, id: options.source, metadata: [{ key: "TrackName", sensitive: false, present: true, quality: "valid", value: "Imola" }], channels: [channel] } });
+  const stored = parseCorrectionStoreResult({ headId: initial, revision: { revisionId: initial, parentRevisionId: "", command: { expectedRevision: "", commandId: "", reason: "", localAuthorId: "" }, commandDigest: "", createdAt: "", snapshot: { contractVersion: "analysis.sample-snapshot.v1", base, snapshotId: initial, corrections: [] } } });
+  const session: RecordedSession = { candidateId: options.candidateId, opened, base, revision: { sessionId: options.source, baseDigest: "e".repeat(64), revisionId: initial, snapshotId: initial }, projectionUnavailableReason: "metadata_unavailable" };
+  const candidate = { id: options.candidateId, state: "ready", size: 1024, modifiedAt: "2026-09-09T12:00:00Z", walPresent: false };
+  return { base, opened, stored, session, candidate };
+}
+const inspectionWorld = recordedInspectionWorld({ candidateId: "inspected", handle: "inspection-handle", source: "inspection-source" });
+const inspection = inspectionWorld.session;
+const inspectedCandidate = inspectionWorld.candidate;
+const inspectionStored = inspectionWorld.stored;
+it("inspects an owned source without drafting, saving or calculating", async () => {
+  const f = setup({});
+  vi.mocked(openRecordedSession).mockResolvedValue(inspection);
+  f.analysis.load.mockResolvedValue(inspectionStored);
+  await act(() => f.result.current.sessions.open(inspectedCandidate));
+  let accepted!: boolean;
+  act(() => { accepted = f.result.current.inspect(inspection); });
+  expect(accepted).toBe(true);
+  expect(f.result.current.view).toBe("editor");
+  expect(f.execute).not.toHaveBeenCalled();
+  expect(f.result.current.draft.sessions).toEqual([]);
+  await act(async () => {});
+  expect(f.result.current.sessions.corrections.editor?.session).toBe(inspection);
+});
+it("does not inspect during a pending race write", async () => {
+  const f = setup();
+  vi.mocked(openRecordedSession).mockImplementation(async (_client, id) => (id === inspectedCandidate.id ? inspection : session));
+  await act(() => f.result.current.sessions.open(candidate));
+  await act(() => f.result.current.sessions.apply());
+  await act(() => f.result.current.sessions.open(inspectedCandidate));
+  let reject!: (error: Error) => void;
+  f.execute.mockImplementationOnce(() => new Promise((_, fail) => { reject = fail; }));
+  let pending!: Promise<void>;
+  let accepted!: boolean;
+  act(() => {
+    pending = f.result.current.openEditor();
+    accepted = f.result.current.inspect(inspection);
+  });
+  expect(accepted).toBe(false);
+  expect(f.execute).toHaveBeenCalledOnce();
+  expect(f.result.current.view).toBe("preparation");
+  expect(f.analysis.load).not.toHaveBeenCalled();
+  await act(async () => { reject(new Error("storage failed")); await pending; });
+});
+it("rejects inspection of a foreign source without leaving preparation", async () => {
+  const f = setup();
+  vi.mocked(openRecordedSession).mockResolvedValue(inspection);
+  await act(() => f.result.current.sessions.open(inspectedCandidate));
+  let accepted!: boolean;
+  act(() => { accepted = f.result.current.inspect({ ...inspection, opened: { ...inspection.opened, sessionId: "foreign-handle" } }); });
+  expect(accepted).toBe(false);
+  expect(f.result.current.view).toBe("preparation");
+  expect(f.analysis.load).not.toHaveBeenCalled();
+});
+it("never adopts a non-projectable selection", async () => {
+  const f = setup();
+  vi.mocked(openRecordedSession).mockResolvedValue(inspection);
+  await act(() => f.result.current.sessions.open(inspectedCandidate));
+  await act(() => f.result.current.sessions.apply());
+  expect(f.result.current.draft.sessions).toEqual([]);
+  expect(f.result.current.sessions.error).toBe("recorded_combination_unavailable");
+  expect(f.execute).not.toHaveBeenCalled();
 });

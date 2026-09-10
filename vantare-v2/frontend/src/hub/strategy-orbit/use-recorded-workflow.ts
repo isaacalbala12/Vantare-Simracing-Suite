@@ -6,6 +6,7 @@ import { createRecordedDraft, saveRecordedDraft, type StoredRecordedDraft } from
 import { applyRecordedSourceSelection, recordedCombinationOptions } from "./strategy-recorded-proposals";
 import { createRecordedWizardDraft, type RecordedCombination, type RecordedWizardDraft } from "./strategy-recorded-wizard";
 import { useRecordedSessions } from "./use-recorded-sessions";
+import type { RecordedSession } from "./strategy-recorded-session";
 
 /** One owner per event, retained while preparation and editor views change. */
 export function useRecordedWorkflow({ eventId, repositoryVersion, initial, catalog, application, analysis, onCleanupError }: {
@@ -31,6 +32,7 @@ export function useRecordedWorkflow({ eventId, repositoryVersion, initial, catal
     onRevision: async (session, signal) => {
       signal.throwIfAborted();
       if (pending.current) throw new Error("recorded_save_in_progress");
+      if (!session.combinationId || session.projectionUnavailableReason) throw new Error("recorded_combination_unavailable");
       const previous = draft.sessions.find(ref => ref.sessionId === session.revision.sessionId);
       if (!previous || previous.baseDigest !== session.revision.baseDigest || draft.combination?.combinationId !== session.combinationId) throw new Error("recorded_source_not_selected");
       setDraft({ ...draft, sessions: draft.sessions.map(ref => ref === previous ? session.revision : ref) });
@@ -80,6 +82,14 @@ export function useRecordedWorkflow({ eventId, repositoryVersion, initial, catal
       setDraft(next); setDirty(true); setError("");
     },
     prepare: () => { if (!pending.current && !sessions.busy && !sessions.corrections.unresolved) setView("preparation"); },
+    // Inspection opens the same editor without drafting, saving or calculating.
+    // View changes only on acceptance; a pending race write blocks the action.
+    inspect: (session: RecordedSession) => {
+      if (pending.current) return false;
+      if (!sessions.inspect(session)) return false;
+      setView("editor");
+      return true;
+    },
     save: () => save(false),
     openEditor: () => save(true),
   };

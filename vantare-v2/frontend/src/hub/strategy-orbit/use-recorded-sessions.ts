@@ -31,6 +31,8 @@ export function useRecordedSessions({ combinationId, revisions, client: supplied
     signal.throwIfAborted();
     const previous = owned.current.find(item => item.opened.sessionId === next.opened.sessionId);
     if (pending.current || !previous || previous.revision.sessionId !== next.revision.sessionId || previous.revision.baseDigest !== next.revision.baseDigest) throw new Error("recorded_source_unavailable");
+    if (!next.combinationId || next.projectionUnavailableReason) throw new Error("recorded_combination_unavailable");
+    if (!previous.combinationId || previous.projectionUnavailableReason) throw new Error("recorded_combination_unavailable");
     await onRevision?.(next, signal);
     signal.throwIfAborted();
     if (alive.current) update(owned.current.map(item => item === previous ? next : item));
@@ -90,7 +92,22 @@ export function useRecordedSessions({ combinationId, revisions, client: supplied
       await client.close(session.opened.sessionId);
       if (alive.current) { corrections.clear(session.opened.sessionId); update(owned.current.filter(item => item !== session)); }
     }),
+    // Acceptance of the inspect action, not success of the read. Resolves the
+    // owned source by handle and wipes editor state before loading, so a
+    // failed load never shows another source's data.
+    inspect: (session: RecordedSession) => {
+      const ownedSession = owned.current.find(item => item.opened.sessionId === session.opened.sessionId);
+      if (!ownedSession) return false;
+      if (pending.current || corrections.isBusy()) return false;
+      if (corrections.unresolved) return false;
+      if (!corrections.clear()) return false;
+      void corrections.load(ownedSession);
+      return true;
+    },
     apply: () => run(async signal => {
+      for (const session of owned.current) {
+        if (!session.combinationId || session.projectionUnavailableReason) throw new Error("recorded_combination_unavailable");
+      }
       await onApply(owned.current, signal);
       signal.throwIfAborted();
       if (alive.current) setApplied(true);

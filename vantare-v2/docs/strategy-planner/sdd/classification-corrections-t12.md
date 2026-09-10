@@ -175,7 +175,9 @@ disponibilidad de señal.
   `correction_snapshot.go` + `correction_snapshot_test.go` (v3: escalares +
   familias + decisiones de clasificación ordenadas con la preparación de
   T12a, digest conjunto, orden canónico, roundtrip v1→v2→v3, guard legacy
-  extendido, cuota conjunta). Gates: focales + global Go `-p 1` + vet.
+  extendido, cuota conjunta). Vacío canónico en v3: grupos ausentes son nil
+  (misma digest viva/almacenada y JSON roundtrip directo sin reparación;
+  v1/v2 intactos). Gates: focales + global Go `-p 1` + vet.
 - **T12b2 — decoder, store y digests + tests (4 paths).**
   `corrections_document.go` + `corrections_document_test.go` (nuevo;
   decode/encode v3 y validación) + `corrections_store.go` +

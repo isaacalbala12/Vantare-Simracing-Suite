@@ -20,14 +20,17 @@ type SampleCorrectionInput struct {
 }
 
 // PreparedSampleCorrectionSnapshot retains its historical type name for callers.
-// The tagged representation is scalar v1 or mixed v2. Its digest identifies the
-// full active set, not a durable revision, command, author, or authorization.
+// The tagged representation is scalar v1, mixed v2 or classification v3. Its
+// digest identifies the full active set, not a durable revision, command,
+// author, or authorization. Without active classifications the v1 and v2
+// representations keep their exact bytes and digests.
 type PreparedSampleCorrectionSnapshot struct {
-	ContractVersion string                           `json:"contractVersion"`
-	Base            SourceAnalysisRef                `json:"base"`
-	SnapshotID      string                           `json:"snapshotId"`
-	Corrections     []PreparedSampleCorrection       `json:"corrections"`
-	FamilyUses      []PreparedLapFamilyUseCorrection `json:"familyUses,omitempty"`
+	ContractVersion string                             `json:"contractVersion"`
+	Base            SourceAnalysisRef                  `json:"base"`
+	SnapshotID      string                             `json:"snapshotId"`
+	Corrections     []PreparedSampleCorrection         `json:"corrections"`
+	FamilyUses      []PreparedLapFamilyUseCorrection   `json:"familyUses,omitempty"`
+	Classifications []PreparedClassificationCorrection `json:"classifications,omitempty"`
 }
 
 // PrepareObservationCorrectionSnapshot extends the same source snapshot with
@@ -45,6 +48,108 @@ func PrepareObservationCorrectionSnapshot(base SourceAnalysisRef, inputs []Sampl
 		return PreparedSampleCorrectionSnapshot{}, err
 	}
 	return combineObservationSnapshot(scalar, families)
+}
+
+// PrepareMixedCorrectionSnapshot extends the same source snapshot with typed
+// classification decisions for SessionType and WeatherConditions. Every group
+// is prepared live against the same verified base: scalars against their
+// channel/sample, families against the validity model, classifications
+// against the original session via T12a. Without classification requests the
+// result is byte-identical to PrepareObservationCorrectionSnapshot (v1/v2).
+// The shared 256-operation quota counts all three groups before any work;
+// rejection is atomic and returns no partials.
+func PrepareMixedCorrectionSnapshot(base SourceAnalysisRef, inputs []SampleCorrectionInput, original LapValidityAnalysis, familyRequests []LapFamilyUseCorrection, session HistoricalSession, classRequests []ClassificationCorrection) (PreparedSampleCorrectionSnapshot, error) {
+	var empty PreparedSampleCorrectionSnapshot
+	if len(classRequests) == 0 {
+		return PrepareObservationCorrectionSnapshot(base, inputs, original, familyRequests)
+	}
+	if len(inputs)+len(familyRequests)+len(classRequests) > MaxSampleCorrections {
+		return empty, fmt.Errorf("%w: at most %d mixed corrections", ErrInvalidCorrection, MaxSampleCorrections)
+	}
+	scalar, err := PrepareSampleCorrectionSnapshot(base, inputs)
+	if err != nil {
+		return empty, err
+	}
+	var families []PreparedLapFamilyUseCorrection
+	if len(familyRequests) > 0 {
+		families, err = PrepareLapFamilyCorrections(base, original, familyRequests)
+		if err != nil {
+			return empty, err
+		}
+	}
+	classes, err := PrepareClassificationCorrectionSet(base, session, classRequests)
+	if err != nil {
+		return empty, err
+	}
+	return combineMixedSnapshot(scalar, families, classes)
+}
+
+// combineMixedSnapshot joins the three prepared groups in deterministic order.
+// The v3 digest covers the base and every group, including each precondition,
+// replacement, reason and provenance carried by the prepared requests. v3 is
+// only produced with active classifications; otherwise the v1/v2 path applies.
+func combineMixedSnapshot(scalar PreparedSampleCorrectionSnapshot, families []PreparedLapFamilyUseCorrection, classes []PreparedClassificationCorrection) (PreparedSampleCorrectionSnapshot, error) {
+	var empty PreparedSampleCorrectionSnapshot
+	if len(scalar.Corrections)+len(families)+len(classes) > MaxSampleCorrections {
+		return empty, ErrInvalidCorrection
+	}
+	if len(classes) == 0 {
+		return combineObservationSnapshot(scalar, families)
+	}
+	snapshot := scalar
+	snapshot.ContractVersion = "analysis.mixed-snapshot.v3"
+	if len(families) == 0 {
+		families = nil
+	}
+	snapshot.FamilyUses = families
+	snapshot.Classifications = classes
+	payload := struct {
+		Base            SourceAnalysisRef                  `json:"base"`
+		Corrections     []PreparedSampleCorrection         `json:"corrections"`
+		FamilyUses      []PreparedLapFamilyUseCorrection   `json:"familyUses"`
+		Classifications []PreparedClassificationCorrection `json:"classifications"`
+	}{snapshot.Base, snapshot.Corrections, snapshot.FamilyUses, snapshot.Classifications}
+	id, err := correctionDigest(snapshot.ContractVersion, payload)
+	if err != nil {
+		return empty, err
+	}
+	snapshot.SnapshotID = id
+	return snapshot, nil
+}
+
+// prepareStoredClassificationCorrections revalidates stored classification
+// requests for internal consistency only. It proves neither source authority
+// nor metadata quality; replay must call the live preparation functions. The
+// minimal session view is rebuilt from the stored originals plus the base
+// identity, never from a live source, and never becomes source evidence.
+func prepareStoredClassificationCorrections(base SourceAnalysisRef, requests []ClassificationCorrection) ([]PreparedClassificationCorrection, error) {
+	if _, err := base.Digest(); err != nil {
+		return nil, err
+	}
+	if len(requests) > MaxSampleCorrections {
+		return nil, fmt.Errorf("%w: at most %d stored classification corrections", ErrInvalidCorrection, MaxSampleCorrections)
+	}
+	session := HistoricalSession{
+		SchemaVersion: HistoricalSchemaVersion,
+		ID:            base.SessionID,
+		Provenance: HistoricalProvenance{
+			Source:            ManifestSource{Kind: SourceLMU},
+			Parser:            ParserRef{ID: base.ParserID, Version: base.ParserVersion},
+			SchemaFingerprint: base.SchemaFingerprint,
+		},
+	}
+	seen := make(map[ClassificationField]bool, len(requests))
+	for _, request := range requests {
+		if request.Base != base {
+			return nil, ErrCorrectionInterpretationChanged
+		}
+		if seen[request.Field] {
+			return nil, ErrOverlappingCorrections
+		}
+		seen[request.Field] = true
+		session.Metadata = append(session.Metadata, HistoricalMetadata{Key: string(request.Field), Present: true, Value: request.ExpectedOriginal, Quality: QualityValid})
+	}
+	return PrepareClassificationCorrectionSet(base, session, requests)
 }
 
 // Both callers supply independently validated/canonical scalar and family sets.

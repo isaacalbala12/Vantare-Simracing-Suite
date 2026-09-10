@@ -239,3 +239,287 @@ func TestSampleSnapshotGoldenIdentity(t *testing.T) {
 		t.Fatalf("canonical identity: %s", snapshot.SnapshotID)
 	}
 }
+
+func mixedSnapshotSession(base SourceAnalysisRef) HistoricalSession {
+	meta := func(key, value string) HistoricalMetadata {
+		return HistoricalMetadata{Key: key, Present: true, Value: value, Quality: QualityValid}
+	}
+	return HistoricalSession{
+		SchemaVersion: HistoricalSchemaVersion,
+		ID:            base.SessionID,
+		Provenance: HistoricalProvenance{
+			Source:            ManifestSource{Kind: SourceLMU, Format: base.ParserID},
+			Parser:            ParserRef{ID: base.ParserID, Version: base.ParserVersion},
+			SchemaFingerprint: base.SchemaFingerprint,
+		},
+		Metadata: []HistoricalMetadata{
+			meta("TrackName", "Imola"), meta("TrackLayout", "GP"), meta("CarName", "Oreca 07"), meta("CarClass", "LMP2"),
+			meta("SessionType", "race"), meta("WeatherConditions", "Dry"),
+		},
+	}
+}
+
+func mixedSnapshotClassRequests(base SourceAnalysisRef) []ClassificationCorrection {
+	request := func(field ClassificationField, expected, replacement string) ClassificationCorrection {
+		return ClassificationCorrection{Base: base, Field: field, ExpectedOriginal: expected, Replacement: replacement, Reason: "Reviewed classification", Provenance: ClassificationProvenanceManual}
+	}
+	return []ClassificationCorrection{
+		request(ClassificationFieldSessionType, "race", "qualify"),
+		request(ClassificationFieldWeatherConditions, "Dry", "Wet"),
+	}
+}
+
+func mixedSnapshotScalar(t *testing.T, base SourceAnalysisRef) []SampleCorrectionInput {
+	t.Helper()
+	_, channel, sample, scalar := correctionExample()
+	scalar.Base = base
+	return []SampleCorrectionInput{{Channel: channel, Sample: sample, Request: scalar}}
+}
+
+func TestMixedSnapshotWithoutClassificationKeepsV1V2Exact(t *testing.T) {
+	base, original, family := lapFamilyCorrectionExample(t)
+	inputs := mixedSnapshotScalar(t, base)
+	session := mixedSnapshotSession(base)
+	scalarLegacy, err := PrepareObservationCorrectionSnapshot(base, inputs, original, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	scalarMixed, err := PrepareMixedCorrectionSnapshot(base, inputs, original, nil, session, nil)
+	if err != nil || !reflect.DeepEqual(scalarLegacy, scalarMixed) {
+		t.Fatal("scalar-only snapshot changed", err)
+	}
+	wire, err := json.Marshal(scalarMixed)
+	if err != nil || bytes.Contains(wire, []byte("classifications")) || bytes.Contains(wire, []byte("familyUses")) {
+		t.Fatal("changed v1 wire representation", err)
+	}
+	familyLegacy, err := PrepareObservationCorrectionSnapshot(base, inputs, original, []LapFamilyUseCorrection{family})
+	if err != nil {
+		t.Fatal(err)
+	}
+	familyMixed, err := PrepareMixedCorrectionSnapshot(base, inputs, original, []LapFamilyUseCorrection{family}, session, nil)
+	if err != nil || !reflect.DeepEqual(familyLegacy, familyMixed) {
+		t.Fatal("family-only snapshot changed", err)
+	}
+	wire, err = json.Marshal(familyMixed)
+	if err != nil || bytes.Contains(wire, []byte("classifications")) || !bytes.Contains(wire, []byte("familyUses")) {
+		t.Fatal("changed v2 wire representation", err)
+	}
+}
+
+func TestMixedSnapshotV2GoldenIdentity(t *testing.T) {
+	base, original, family := lapFamilyCorrectionExample(t)
+	inputs := mixedSnapshotScalar(t, base)
+	session := mixedSnapshotSession(base)
+	snapshot, err := PrepareMixedCorrectionSnapshot(base, inputs, original, []LapFamilyUseCorrection{family}, session, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if snapshot.ContractVersion != "analysis.observation-snapshot.v2" {
+		t.Fatalf("expected v2, got %s", snapshot.ContractVersion)
+	}
+	const expected = "55938408263d47fe0df6280e515a858107dee33078f74af755e01a18a647e632"
+	if snapshot.SnapshotID != expected {
+		t.Fatalf("canonical identity: %s", snapshot.SnapshotID)
+	}
+}
+
+func TestMixedSnapshotV3ClassificationAlone(t *testing.T) {
+	base, _, _, _ := correctionExample()
+	session := mixedSnapshotSession(base)
+	requests := mixedSnapshotClassRequests(base)
+	snapshot, err := PrepareMixedCorrectionSnapshot(base, nil, LapValidityAnalysis{}, nil, session, requests)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if snapshot.ContractVersion != "analysis.mixed-snapshot.v3" || len(snapshot.Corrections) != 0 || len(snapshot.FamilyUses) != 0 || len(snapshot.Classifications) != 2 {
+		t.Fatalf("wrong v3 shape: %+v", snapshot)
+	}
+	wire, err := json.Marshal(snapshot)
+	if err != nil || !bytes.Contains(wire, []byte("classifications")) || bytes.Contains(wire, []byte("familyUses")) {
+		t.Fatal("wrong v3 wire representation", err)
+	}
+	changed := mixedSnapshotClassRequests(base)
+	changed[0].Reason = "Another reviewed decision"
+	renamed, err := PrepareMixedCorrectionSnapshot(base, nil, LapValidityAnalysis{}, nil, session, changed)
+	if err != nil || renamed.SnapshotID == snapshot.SnapshotID {
+		t.Fatal("classification reason missing from identity", err)
+	}
+	changed[0] = mixedSnapshotClassRequests(base)[0]
+	changed[0].Replacement = "practice"
+	replaced, err := PrepareMixedCorrectionSnapshot(base, nil, LapValidityAnalysis{}, nil, session, changed)
+	if err != nil || replaced.SnapshotID == snapshot.SnapshotID {
+		t.Fatal("classification replacement missing from identity", err)
+	}
+	tampered := mixedSnapshotClassRequests(base)
+	tampered[0].ExpectedOriginal = "practice"
+	failed, err := PrepareMixedCorrectionSnapshot(base, nil, LapValidityAnalysis{}, nil, session, tampered)
+	if !errors.Is(err, ErrCorrectionPrecondition) || !reflect.DeepEqual(failed, PreparedSampleCorrectionSnapshot{}) {
+		t.Fatal("tampered classification escaped", err)
+	}
+	foreign := mixedSnapshotClassRequests(base)
+	foreign[0].Base.SessionID = "other"
+	escaped, err := PrepareMixedCorrectionSnapshot(base, nil, LapValidityAnalysis{}, nil, session, foreign)
+	if !errors.Is(err, ErrCorrectionSourceChanged) || !reflect.DeepEqual(escaped, PreparedSampleCorrectionSnapshot{}) {
+		t.Fatal("foreign base escaped", err)
+	}
+}
+
+func TestMixedSnapshotV3MixedAllGroupsAndDetached(t *testing.T) {
+	base, original, family := lapFamilyCorrectionExample(t)
+	inputs := mixedSnapshotScalar(t, base)
+	session := mixedSnapshotSession(base)
+	requests := mixedSnapshotClassRequests(base)
+	snapshot, err := PrepareMixedCorrectionSnapshot(base, inputs, original, []LapFamilyUseCorrection{family}, session, requests)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if snapshot.ContractVersion != "analysis.mixed-snapshot.v3" || len(snapshot.Corrections) != 1 || len(snapshot.FamilyUses) != 1 || len(snapshot.Classifications) != 2 {
+		t.Fatalf("wrong mixed v3 shape: %+v", snapshot)
+	}
+	reversed := []ClassificationCorrection{requests[1], requests[0]}
+	resorted, err := PrepareMixedCorrectionSnapshot(base, inputs, original, []LapFamilyUseCorrection{family}, session, reversed)
+	if err != nil || !reflect.DeepEqual(snapshot, resorted) {
+		t.Fatal("request order changed snapshot", err)
+	}
+	requests[0].Reason = "mutated caller"
+	inputs[0].Request.Reason = "mutated caller"
+	session.Metadata[4].Value = "mutated caller"
+	if snapshot.Classifications[0].Request.Reason == "mutated caller" || snapshot.Corrections[0].Request.Reason == "mutated caller" {
+		t.Fatal("snapshot aliases caller")
+	}
+}
+
+func mixedSnapshotScalarRange(t *testing.T, base SourceAnalysisRef, channel HistoricalChannel, count int) []SampleCorrectionInput {
+	t.Helper()
+	inputs := make([]SampleCorrectionInput, 0, count)
+	for i := 0; i < count; i++ {
+		value := HistoricalValue{Column: "value", Present: true, Quality: QualityUnknown, Scalar: HistoricalScalar{Kind: ScalarNumber, Number: float64(i)}}
+		sample := HistoricalSample{Index: int64(i), Values: []HistoricalValue{value}}
+		request := SampleValueCorrection{
+			Base: base, Target: SampleCorrectionTarget{ChannelID: channel.ID, Column: "value", SampleIndex: int64(i)},
+			Unit: channel.Unit, Expected: value,
+			Replacement: HistoricalScalar{Kind: ScalarNumber, Number: float64(i) + 1000},
+			Reason:      "Reviewed source measurement",
+		}
+		inputs = append(inputs, SampleCorrectionInput{Channel: channel, Sample: sample, Request: request})
+	}
+	return inputs
+}
+
+func TestMixedSnapshotQuotaCountsAllGroups(t *testing.T) {
+	base, original, family := lapFamilyCorrectionExample(t)
+	_, channel, _, _ := correctionExample()
+	session := mixedSnapshotSession(base)
+	classes := mixedSnapshotClassRequests(base)
+	inputs := mixedSnapshotScalarRange(t, base, channel, MaxSampleCorrections-3)
+	full, err := PrepareMixedCorrectionSnapshot(base, inputs, original, []LapFamilyUseCorrection{family}, session, classes)
+	if err != nil {
+		t.Fatal("valid 256-operation set rejected", err)
+	}
+	if full.ContractVersion != "analysis.mixed-snapshot.v3" || len(full.Corrections) != MaxSampleCorrections-3 || len(full.FamilyUses) != 1 || len(full.Classifications) != 2 {
+		t.Fatalf("wrong full v3 shape: %d/%d/%d", len(full.Corrections), len(full.FamilyUses), len(full.Classifications))
+	}
+	inputs = mixedSnapshotScalarRange(t, base, channel, MaxSampleCorrections-2)
+	over, err := PrepareMixedCorrectionSnapshot(base, inputs, original, []LapFamilyUseCorrection{family}, session, classes)
+	if !errors.Is(err, ErrInvalidCorrection) || !reflect.DeepEqual(over, PreparedSampleCorrectionSnapshot{}) {
+		t.Fatalf("257-operation set escaped quota: %v", err)
+	}
+}
+
+func TestMixedSnapshotNoGlobalSuccessClaim(t *testing.T) {
+	base, original, family := lapFamilyCorrectionExample(t)
+	inputs := mixedSnapshotScalar(t, base)
+	session := mixedSnapshotSession(base)
+	kept := session.Metadata[:0]
+	for _, entry := range session.Metadata {
+		if entry.Key != "WeatherConditions" {
+			kept = append(kept, entry)
+		}
+	}
+	session.Metadata = kept
+	requests := mixedSnapshotClassRequests(base)[:1]
+	snapshot, err := PrepareMixedCorrectionSnapshot(base, inputs, original, []LapFamilyUseCorrection{family}, session, requests)
+	if err != nil || len(snapshot.Classifications) != 1 {
+		t.Fatal("valid field with missing weather rejected", err)
+	}
+	if _, err := ClassifyHistoricalSession(session); !errors.Is(err, ErrInvalidSessionClassification) {
+		t.Fatalf("partial global classification succeeded: %v", err)
+	}
+}
+
+func TestPrepareStoredClassificationRepresentation(t *testing.T) {
+	base, _, _, _ := correctionExample()
+	session := mixedSnapshotSession(base)
+	requests := mixedSnapshotClassRequests(base)
+	live, err := PrepareClassificationCorrectionSet(base, session, requests)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stored, err := prepareStoredClassificationCorrections(base, requests)
+	if err != nil || !reflect.DeepEqual(live, stored) {
+		t.Fatal("stored representation differs from live preparation", err)
+	}
+	tampered := mixedSnapshotClassRequests(base)
+	tampered[0].Base.ParserVersion = "other"
+	if _, err := prepareStoredClassificationCorrections(base, tampered); !errors.Is(err, ErrCorrectionInterpretationChanged) {
+		t.Fatalf("foreign base escaped stored validation: %v", err)
+	}
+	duplicated := append(mixedSnapshotClassRequests(base), mixedSnapshotClassRequests(base)[0])
+	if got, err := prepareStoredClassificationCorrections(base, duplicated); !errors.Is(err, ErrOverlappingCorrections) || got != nil {
+		t.Fatalf("duplicated field escaped stored validation: %v", err)
+	}
+	forbidden := mixedSnapshotClassRequests(base)
+	forbidden[0].Field = "TrackName"
+	if _, err := prepareStoredClassificationCorrections(base, forbidden); !errors.Is(err, ErrCorrectionTarget) {
+		t.Fatalf("forbidden field escaped stored validation: %v", err)
+	}
+	empty, err := prepareStoredClassificationCorrections(base, nil)
+	if err != nil || len(empty) != 0 {
+		t.Fatalf("empty stored set must be valid and empty: %v", err)
+	}
+	bad := base
+	bad.SizeBytes = 0
+	if _, err := prepareStoredClassificationCorrections(bad, nil); err == nil {
+		t.Fatal("empty stored set with invalid base accepted")
+	}
+}
+
+func TestMixedSnapshotV3EmptyGroupsLiveMatchesStored(t *testing.T) {
+	base, _, _, _ := correctionExample()
+	session := mixedSnapshotSession(base)
+	requests := mixedSnapshotClassRequests(base)
+	live, err := PrepareMixedCorrectionSnapshot(base, nil, LapValidityAnalysis{}, nil, session, requests)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if live.FamilyUses != nil || len(live.Corrections) != 0 || len(live.Classifications) != 2 {
+		t.Fatalf("v3 empty groups not canonical: %+v", live)
+	}
+	scalar, err := PrepareSampleCorrectionSnapshot(base, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	families, err := prepareStoredLapFamilyCorrections(base, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	classes, err := prepareStoredClassificationCorrections(base, requests)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rebuilt, err := combineMixedSnapshot(scalar, families, classes)
+	if err != nil || !reflect.DeepEqual(live, rebuilt) {
+		t.Fatal("stored reconstruction differs from live v3", err)
+	}
+	wire, err := json.Marshal(live)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var read PreparedSampleCorrectionSnapshot
+	if err := json.Unmarshal(wire, &read); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(live, read) {
+		t.Fatal("JSON roundtrip differs from live v3")
+	}
+}

@@ -1,5 +1,34 @@
 # Handoff vivo — Strategy Planner
 
+## T12b1 representación v3 (ISA-1104, 2 paths, pendiente revisión previa a B2)
+
+Rama `vantareapp/isa-1104-recorded-classification`, base `7f75713`. Mismo
+`PreparedSampleCorrectionSnapshot` extendido con clasificación completa
+`omitempty`; v3 `analysis.mixed-snapshot.v3` solo con clasificaciones
+activas; sin clasificación, v1/v2 byte-idénticos (golden v1 existente + golden
+v2 nuevo `55938408…e632`). Preparación viva de los tres grupos contra
+sesión/base con T12a; helper almacenado separado de autorización/source/
+quality (nunca eleva reconstrucción a evidencia). Vacío canónico en v3:
+grupos ausentes nil (digest viva/almacenada idéntica, JSON roundtrip directo;
+v1/v2 intactos; sin normalización especial en lectores futuros). Cuota total
+256 conjunta y atómica: conjunto válido real 253 escalares únicos+1 familia+2
+clasificaciones prepara completo; 257º válido individual rechazado por cuota.
+Sin decoder/store/vista/servicio/TS en este corte (B2). Corrección de
+lenguaje: el rechazo de T12a v1 fue hallazgo de revisión, no RED; RED
+ejecutado real solo la sonda del golden v2 (luego verde). Sin cerrar T12 ni
+gates nativos/empíricos.
+Gates: focales PASS (v3 sola/mezclada/orden/digest/cuota/vacío/no-alias,
+v1/v2/documento preexistentes intactos); `gofmt` limpio;
+`go vet` alcance exit 0 (`C:/tmp/isa1104-t12b1-vet.log`); global
+`go test -p 1 ./...` exit 0, 126 ok, cero FAIL
+(`C:/tmp/isa1104-t12b1-global.log`, GOCACHE `C:/tmp/isa1084-go-cache`).
+Evidencia T12a previa verificable: R1
+`C:\Users\isaac\AppData\Local\Temp\opencode\isa1104-go-global.log` (exit 1,
+125 ok, FAIL `TestRecordedImolaCalculationCompletes` 8.03s/64.959s) y R2
+`C:\Users\isaac\AppData\Local\Temp\opencode\isa1104-go-global-r2.log`
+(exit 0, 126 ok). `plan.md` intacto (sin cambio público). Siguiente B2 solo
+tras revisión del orquestador.
+
 ## T12a v2 — preparación canónica corregida (ISA-1104, revisión intermedia)
 
 Sesión `ses_f767b9355ffe8jiV60PxmdbsUv`, mismo modelo/variante, ejecutor único

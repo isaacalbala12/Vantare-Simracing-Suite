@@ -72,6 +72,12 @@ física nueva, retirada V1, merge o release en este corte documental.
 ## Estado
 
 - **ISA-1083 — Functional Compact (2026-09-09):**
+  **Entrega 2026-09-10:** implementación `d5255acd`, push verificado y PR draft
+  [#1100](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1100)
+  hacia Nightly. CI remota pendiente al abrir; issue en `state:in-review`.
+  Worktree propio limpio. No hay merge ni release; #1098 registra la integración
+  y #1097 la política comercial posterior. Las notas de iteraciones inferiores
+  conservan su estado histórico y no sustituyen este corte.
   **Ejecución aprobada 2026-09-10:** cerrar el widget y su integración a Nightly
   por partes, luego unificar acceso y marca en ISA-1097. Plan vigente:
   `docs/analysis/ISA-1083-delivery-plan.md`. Primero contrato Go de guardado y

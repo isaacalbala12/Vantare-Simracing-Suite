@@ -22,7 +22,8 @@ Archivos: `DesignSection.tsx` y test; `standings-frame-layout.ts` reutiliza la n
 - [x] Consolidar Broadcast desde el acabado aceptado, sin marcas rojas de fila; conservar Signature.
 - [x] Tests frontend y Go, build/typecheck, lint, revisión independiente del diff. Guard visual con tres detecciones heredadas, reproducidas en la base; sin fallos nuevos.
 - [ ] Studio real: aplicar, guardar y reabrir; Desktop/OBS: geometría y estados. Distinguir harness de Wails/LMU.
-- [ ] Documentación/roadmap, commit, PR y CI; corregir los fallos propios.
+- [x] Documentación/roadmap, commit `d5255acd` y PR draft #1100 hacia Nightly.
+- [ ] CI de la PR sobre su head vigente; corregir los fallos propios.
 - [ ] Integración a Nightly bajo la autorización de Isaac, trazada en #1098; registrar SHA remoto. Sin testers/master ni release.
 
 No migrar los perfiles existentes al nuevo diseño ni introducir marcas comerciales obligatorias antes de la parte 2. Revertir esta entrega conserva los diseños previos; los perfiles que elijan Functional requieren la versión que lo admite.

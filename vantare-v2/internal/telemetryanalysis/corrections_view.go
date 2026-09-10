@@ -154,12 +154,16 @@ func ApplyObservationCorrectionSnapshot(base SourceAnalysisRef, channels []Histo
 
 // ApplyMixedCorrectionSnapshot validates all three operation sets against the
 // original authorized input: scalars against pages, families against the
-// validity model, classifications against the original session via T12a. The
-// session is the single authority for channels and metadata. It retains the
-// v3 identity and exposes the effective metadata on a detached copy plus the
-// prepared classification decisions, without duplicating the whole session.
-// Without classifications the v1/v2 semantics and APIs apply unchanged. It is
-// pure and does not authorize I/O or refresh derivatives.
+// validity model, classifications against the original session via T12a/J1.
+// The session is the single authority for channels and metadata. A v4 snapshot
+// is rebuilt through the canonical J1 set with its persisted target and the
+// J2 combiner, validating complete equality before applying; an inert target
+// is rejected. It retains the snapshot identity and exposes the effective
+// metadata on a detached copy plus the prepared classification decisions,
+// without duplicating the whole session and without carrying the resolved
+// target into the view. Without classifications the v1/v2 semantics and APIs
+// apply unchanged. It is pure and does not authorize I/O or refresh
+// derivatives.
 func ApplyMixedCorrectionSnapshot(base SourceAnalysisRef, pages []HistoricalPage, original LapValidityAnalysis, session HistoricalSession, snapshot PreparedSampleCorrectionSnapshot) (EffectiveCorrectionView, error) {
 	if len(snapshot.Classifications) == 0 {
 		return ApplyObservationCorrectionSnapshot(base, session.Channels, pages, original, snapshot)
@@ -184,11 +188,11 @@ func ApplyMixedCorrectionSnapshot(base SourceAnalysisRef, pages []HistoricalPage
 	for i, classification := range snapshot.Classifications {
 		classRequests[i] = classification.Request
 	}
-	classes, err := PrepareClassificationCorrectionSet(base, session, classRequests)
+	classes, err := PrepareCanonicalClassificationCorrectionSet(base, session, classRequests, snapshot.CanonicalCombination)
 	if err != nil {
 		return empty, err
 	}
-	checked, err := combineMixedSnapshot(scalar, view.FamilyUses, classes)
+	checked, err := combineCanonicalMixedSnapshot(scalar, view.FamilyUses, classes, snapshot.CanonicalCombination)
 	if err != nil {
 		return empty, err
 	}
@@ -197,9 +201,19 @@ func ApplyMixedCorrectionSnapshot(base SourceAnalysisRef, pages []HistoricalPage
 	}
 	metadata := append([]HistoricalMetadata(nil), session.Metadata...)
 	for _, classification := range classes {
-		key, _, err := classificationCorrectionKey(classification.Request.Field)
-		if err != nil {
-			return empty, err
+		var key string
+		if isIdentityClassificationField(classification.Request.Field) {
+			k, _, _, err := identityTargetField(snapshot.CanonicalCombination, classification.Request.Field)
+			if err != nil {
+				return empty, err
+			}
+			key = k
+		} else {
+			k, _, err := classificationCorrectionKey(classification.Request.Field)
+			if err != nil {
+				return empty, err
+			}
+			key = k
 		}
 		applied := false
 		for i := range metadata {

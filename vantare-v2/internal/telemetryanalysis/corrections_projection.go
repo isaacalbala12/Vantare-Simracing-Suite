@@ -35,6 +35,6 @@ func (s *CorrectionStore) DeriveProjectionSession(ctx context.Context, base Sour
 	}
 	return ProjectionSessionDerivations{
 		Revision:   &strategyprojection.AnalysisRevisionRef{SessionID: base.SessionID, BaseDigest: digest, RevisionID: stored.Revision.RevisionID, SnapshotID: derived.SnapshotID},
-		Classified: classified, Validity: &derived.Validity, Consumption: &derived.Consumption, Curves: &derived.Curves, Pit: &derived.Pit,
+		Classified: derived.Classified, Validity: &derived.Validity, Consumption: &derived.Consumption, Curves: &derived.Curves, Pit: &derived.Pit,
 	}, nil
 }

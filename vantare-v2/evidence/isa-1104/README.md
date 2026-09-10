@@ -168,3 +168,22 @@ alterar datos pasa. Esto no autentica una falsificación local coherente.
 
 Worker idle antes de commit. Sin banco/GUI/Wails, push/PR/CI remota, merge,
 promoción o release. J3 cerrado por root; todavía pendiente de implementación.
+
+## T12j3 — custodia canónica aceptada localmente
+
+Código 4d5c3178, dos paths +700/-4: corrections_store.go y nuevo
+corrections_store_identity_test.go. Resolver una vez bajo lease tras replay,
+cabeza y cuota; historial/Resolve/replay independientes del catálogo actual.
+Root revisó el diff antes del relevo; Devin MCP SWE-2 Max cerró revisión
+técnica sin cambios. Informe literal local:
+frontend/.tmp/isa1104-t12j3-devin-review.md. Los dos paths productivos/test
+se mantuvieron; root añadió documentación mientras Devin leía.
+
+Logs isa1104-t12j3-*: IdentityStore12/12 PASS3.640s; store-r2 4.029s,
+document-r2 0.123s, canonical-r2 0.067s, todos EXIT0. Global126 paquetes
+ok/0FAIL EXIT0 contado por root y Devin; vet EXIT0. No repetidos por Devin
+al no encontrar cambios ni fallos. Conservados logs previos y originales.
+Prueba t.TempDir de custodia y contrato; no prueba autorización física,
+banco DuckDB, Wails, precisión ni paridad visual. Callback no montado aún.
+Sin push/PR/CI remota/merge/promoción/release. J4 definido por root antes
+de asignación; el relevo a Devin no modifica el alcance de producto.

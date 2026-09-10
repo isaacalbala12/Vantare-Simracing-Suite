@@ -6,9 +6,9 @@ SDD R08/R07, aceptación A08/A09. Continúa ADR 0010 y
 [corrections-contract-v1](../corrections-contract-v1.md) operación 2
 `set_classification` (implementación parcial descrita aquí); no crea otra custodia,
 lector, formato, motor ni dependencia. Este documento fija el contrato
-implementable y los microcortes. A–G3 y Ha/Hb/Hc/Hc2/Hd/I/J1/J2 están implementados
-y revisados localmente; I pasó Imola/Monza, J1/J2 pasaron global/vet y §5/J3
-definen la continuación de custodia v4, todavía sin montaje nativo.
+implementable y los microcortes. A–G3 y Ha/Hb/Hc/Hc2/Hd/I/J1/J2/J3 están implementados
+y revisados localmente; I pasó Imola/Monza, J1/J2/J3 pasaron global/vet.
+J3 guardado en 4d5c3178; J4 continúa aplicación/proyección v4, sin montaje nativo.
 Estos cortes no cierran T12 ni los gates visual/nativo/empírico.
 
 ## 1. Conjunto cerrado de campos y tipos
@@ -952,7 +952,52 @@ disponibilidad de señal.
   No banco/frontend/UI/Wails ni callback conectado a la app todavía.
 
 Cada corte declara sus paths y evidencia antes de editar. El orquestador es
-dueño de este plan, del handoff y de la issue; Muse implementa únicamente
-código/tests asignados y devuelve evidencia para revisión antes de gates/commit.
+dueño de este plan, del handoff y de la issue. Desde el relevo autorizado por
+Isaac el 2026-09-11, Devin MCP SWE-2 Max implementa, prueba y revisa los
+cortes asignados. Root conserva dirección y aceptación basada en evidencia;
+las menciones anteriores a Muse/revisión personal describen los cortes previos.
 No cerrar T12 por validación pura ni fixtures: faltan montaje, banco real
 y recorrido. Sin nuevos umbrales, dependencias ni arquitectura.
+
+## Continuación cerrada por root — J4
+
+Se ejecuta tras aceptar y guardar J3. No amplía el alcance público de T12.
+
+- **T12j4 — vista efectiva y proyección de identidad (4 paths).**
+  Producción: internal/telemetryanalysis/corrections_view.go.
+  Nuevos tests: corrections_identity_view_test.go,
+  corrections_identity_derivation_test.go y corrections_identity_projection_test.go
+  en internal/telemetryanalysis. No catálogo, montaje nativo ni UI.
+
+  ApplyMixedCorrectionSnapshot reconstruye el conjunto canónico J1 con el
+  target persistido y el snapshot J2; valida igualdad completa antes de
+  aplicar. Reutiliza identityTargetField para las cuatro identidades y
+  classificationCorrectionKey para los campos anteriores. Copia metadata
+  y cambia sólo campos explícitos: no añade ausencias ni muta fuentes,
+  requests, páginas o target. Mantiene integridad v1/v2/v3 y rechaza target
+  inerte. No añade target al EffectiveView ni otro pipeline.
+  La derivación existente ya reclasifica metadata efectiva; no se prevén
+  cambios productivos fuera de la vista. Si hacen falta, traer reproducción
+  a root antes de ampliar paths.
+
+  Primero RED conductual: snapshot v4 válido construido con J2 debe aplicar
+  identidad en ApplyMixedCorrectionSnapshot; conservar rechazo actual y
+  test antes del cambio. Nada de error de compilación como RED.
+  Cubrir identidad sola/cuatro campos/tres grupos, original intacto,
+  calidad/privacidad/duplicados, target/ref/prepared/snapshotID manipulados
+  sin aplicación parcial. Otra metadata ausente conserva vista parcial,
+  pero clasificación/derivación global bloqueadas. Compatibilidad anterior.
+  Derivación verifica tuple e ID efectivos, original intacto e IDs de
+  consumo/curvas/parada; compara magnitudes físicas manteniendo idénticas
+  decisiones escalares/familias/tipo/clima y variando sólo identidad.
+  Normalizar únicamente IDs comprobados, no retirar familias enteras.
+  Custodia t.TempDir J3: guardar v4, avanzar/restaurar cabeza, reabrir y
+  derivar revisión antigua exacta; comparar SessionID/BaseDigest/RevisionID/
+  SnapshotID y combinación. Restauración usa original; mutar resultado no
+  altera lectura posterior. No cambiar el rechazo vigente a originales
+  no clasificables ni fabricar ClassifiedSession parcial.
+
+  Gates: gofmt, focales, revisión técnica Devin, global Go -p1 ./... y vet
+  de alcance. Logs nuevos isa1104-t12j4-* con salida literal y EXIT, nunca
+  sobrescribir. Fixtures de contrato no prueban banco real, Wails ni Adopt.
+  Root mantiene plan/aceptación; ejecutor implementa, prueba y revisa.

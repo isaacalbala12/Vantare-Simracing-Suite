@@ -1,19 +1,28 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — T12j2 aceptado; J3 cerrado por root
+## Estado vigente — T12j3 aceptado; J4 cerrado y siguiente
 
 Isaac confirma que planes y documentación siguen a cargo del orquestador.
-Muse Spark 1.3 Contributor vía OpenCode, xhigh, ejecuta sólo código/tests
-asignados, sin subdelegación ni cambios de planes, docs o issue. Un ejecutor
-por worktree; revisión personal de diff y evidencia antes de aceptar.
+Por instrucción posterior de Isaac, Devin MCP con SWE-2 Max sustituye a
+OpenCode. Modelo confirmado por el conector como swe-2-max; sesión local
+orchid-volleyball. Devin ejecuta código, tests y revisión técnica; el
+orquestador mantiene dirección, planes, documentación y aceptación basada
+en evidencia. Un ejecutor por worktree, sin subdelegación ni cambios de
+alcance por su cuenta. No se asigna más trabajo a OpenCode.
 Rama `vantareapp/isa-1104-recorded-classification`, base exacta
 `7f757135445439851180fc503da45f7eb9e557e7`; último código revisado
-`0a4f079fe3b9e02784670cb0a657699e3a2e27bf`. A–G3 y Ha/Hb/Hc/Hc2/Hd/I/J1/J2
+`4d5c3178`. A–G3 y Ha/Hb/Hc/Hc2/Hd/I/J1/J2/J3
 aceptados localmente tras revisión personal y gates. J2 ocupa cuatro paths,
 +1149/-29, dentro de los cinco declarados (classification_identity.go no
 necesitó cambios). Snapshot/decoder v4 con seis vectores v3 previos intactos.
 Root cierra J3 de dos paths en el microplan: store y test de identidad,
 callback nativo diferido bajo lease. No está conectado al catálogo/app aún.
+J3 está implementado en sus dos paths y revisado personalmente; focales
+reforzados pasan. Global:126 paquetes ok/cero FAIL EXIT0; vet de alcance
+EXIT0. Devin acepta sin cambios; informe local en
+frontend/.tmp/isa1104-t12j3-devin-review.md. Código guardado en 4d5c3178,
+dos paths +700/-4. Root cierra J4 de cuatro paths en el microplan y la issue:
+vista efectiva y tests de derivación/proyección; sin catálogo/montaje/UI.
 
 G3 ya conecta la biblioteca con el mismo editor Datos/Revisiones, también
 sin combinación ni repositorio: apertura autorizada y referencia exacta,
@@ -24,7 +33,7 @@ pestañas conservan formularios. Auditor i18n Hd: EXIT0, paridad OK,
 ausentes 0 y huérfanas 0; queda cerrado el estado intermedio de Hc.
 Última suite global Hd: 444 archivos/3680 PASS, 224.02s EXIT0;
 build 1086 módulos/1.56s EXIT0, typecheck/lint/auditor EXIT0.
-Último Go global J2: 126 paquetes ok/cero FAIL EXIT0 y vet de alcance EXIT0.
+Último Go global J3: 126 paquetes ok/cero FAIL EXIT0 y vet de alcance EXIT0.
 I banco nativo real: Imola14.03s y Monza19.73s PASS/EXIT0, originales intactos.
 Authorizer controlado; no prueba Wails/login, paridad visual ni precisión.
 
@@ -47,6 +56,27 @@ app/LMU; gate Wails sigue pendiente por ERROR_INVALID_STATE de causa no
 demostrada. Contraste real y paridad visual >9/10 siguen aparte.
 
 Las entradas siguientes son evidencia histórica; el estado vigente es éste.
+
+## T12j3 — custodia revisada antes del global
+
+Dos paths: corrections_store.go (+52/-4) y nuevo test de identidad.
+Callback nativo opcional, una resolución bajo lease después de replay,
+cabeza, grupos y cuota. Digest canónico compartido por Save/Resolve,
+cancelación y causas preservadas; sin consulta para operaciones históricas.
+Root leyó producción y test completos. Exigió comparar Revision completa,
+contar writes también en replay/reapertura/guardas/cuota, comprobar contexto
+exacto y lease, retirada v4→v3→v2→v1 y ausencia original conservada.
+Corregido sólo en el test nuevo; ningún test anterior modificado.
+
+Focal inicial store3.935s/document0.106s/canonical0.053s EXIT0; final
+IdentityStore12/12 PASS3.640s, store R2 4.029s, document R2 0.123s y
+canonical R2 0.067s EXIT0. Gofmt R2/diff limpios. Logs crudos nuevos
+frontend/.tmp/isa1104-t12j3-*.log, leídos por root, sin sobrescribir.
+No RED previo para esta capacidad nueva. La cadena256 usa Saves válidos;
+pruebas sobre t.TempDir, no banco real ni autorización de catálogo/fuente.
+Worker idle al actualizar. Se asigna únicamente global Go/vet, sin más
+cambios; J4 de aplicación/proyección será cerrado por root antes de delegar.
+Sin banco/frontend/app/LMU/Wails, commit o entrega de J3 todavía.
 
 ## T12j2 — revisión personal y global aceptados
 

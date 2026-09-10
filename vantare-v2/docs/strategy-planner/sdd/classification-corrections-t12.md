@@ -1,6 +1,7 @@
 # T12 — microplan de evolución: correcciones tipadas de clasificación
 
-ISA-1104, hija de #1091 y #1033; continúa #1099 (T11 cerrado).
+ISA-1104, hija de #1091 y #1033; continúa #1099 (capacidad y banco T11 PASS;
+T11i visual/nativo pendiente, sin certificar recorrido/capturas).
 SDD R08/R07, aceptación A08/A09. Continúa ADR 0010 y
 [corrections-contract-v1](../corrections-contract-v1.md) operación 2
 `set_classification` (propuesta, sin implementar); no crea otra custodia,
@@ -15,7 +16,7 @@ Solo estos campos de la clasificación nativa admiten corrección:
 |---|---|---|
 | `SessionType` | enum | `practice`, `qualify`, `race` (cerrado; otro valor se rechaza) |
 | `WeatherConditions` | etiqueta opaca | texto recortado no vacío, máx. 64 caracteres; sin lista canónica (LMU varía); NO es señal física |
-| `TrackName`, `TrackLayout`, `CarName`, `CarClass` | texto + identidad canónica | no vacíos; el cambio exige ID canónico explícito del catálogo nativo (§5) |
+| `TrackName`, `TrackLayout`, `CarName`, `CarClass` | texto + referencia canónica resuelta por el servidor (§5) | no vacíos; corte posterior tras cerrar el contrato de resolución, fuera de T12a |
 
 No admiten corrección: `SessionID`, `Status`/`Families` (derivados),
 `SimID` (fijo `lmu`), hashes, parser, reloj, unidades ni canales. La
@@ -24,12 +25,16 @@ clasificación no declara una medición física verificada ni concede autorizaci
 
 ## 2. Precondición original, presencia, calidad y ausencia
 
-La precondición es el original clasificado por `ClassifyHistoricalSession`
-sobre la base exacta: cada campo corregido debe existir en
-`HistoricalMetadata` con `Present=true`, `Sensitive=false`,
-`Redacted=false`, `Quality==QualityValid` y valor no vacío, sin duplicados
-(mismas puertas que `classificationMetadata`). El valor esperado debe coincidir
-con ese original; si difiere → `original_mismatch`, sin escritura parcial.
+La precondición se verifica por campo y operación, no global: solo el campo
+corregido debe existir en `HistoricalMetadata` con `Present=true`,
+`Sensitive=false`, `Redacted=false`, `Quality==QualityValid` y valor no vacío,
+sin duplicados (las mismas puertas de `classificationMetadata`, aplicadas a esa
+clave). No se exige que los otros cinco metadatos ni `ClassifyHistoricalSession`
+completo sean válidos para corregir un campo existente válido mientras otro
+falta: lo no corregido conserva su ausencia y la derivación que lo necesite
+continúa bloqueada con causa. Validar un campo no declara el éxito de una
+clasificación global parcial. El valor esperado debe coincidir con ese
+original; si difiere → `original_mismatch`, sin escritura parcial.
 
 Tipos desconocidos o calidad ausente: la operación correspondiente se bloquea
 con causa precisa (`unknown_session_type`, `unusable <Campo>`); no hay
@@ -67,30 +72,52 @@ parciales, `revision_conflict` con cabeza actual, restauración como revisión
 nueva. Las decisiones de clasificación no pueden desaparecer del payload usado
 para resolver un guardado incierto.
 
-## 5. Canonicalización y cambio de combinación
+## 5. Referencia canónica y cambio de combinación (diseño pendiente de cerrar; fuera de T12a)
 
-El cliente nunca envía IDs: envía valores de campo y, para coche/circuito, la
-selección debe corresponder a una entrada del catálogo nativo
-(`SessionCatalog.ListSessionCombinations`, expuesta en preparación vía
-`PrepareCorrections.Combination`, bajo autorización y bloqueo de Analysis). El
-servidor recalcula `combinationID` (dominio `lmu:sha256` con clave de
-longitudes, solo en Go) y lo compara con el catálogo; un ID inventado o una
-combinación inexistente se rechaza como `unknown_combination`. No se acepta
-texto arbitrario del cliente como identidad canónica ni se crea un catálogo
-paralelo.
+Flujos reales existentes, sin lookup inventado:
+
+- Preparación clasifica ESA fuente abierta:
+  `internal/app/telemetry_analysis_corrections.go:108-115` llama a
+  `ClassifyHistoricalSession(input.Session)` bajo autorización y bloqueo de
+  Analysis. Lo prueba
+  `internal/app/telemetry_analysis_preparation_identity_test.go:11-72`
+  (`TestPreparationOffersCanonicalCombinationWithoutPriorStrategyCatalog`):
+  la identidad canónica existe sin ningún catálogo previo de Strategy, y el
+  metadato ausente queda explícito (`metadata_unavailable`) sin bloquear la
+  preparación. Esto NO equivale a consultar el catálogo de sesiones.
+- Catálogo nativo separado: `internal/telemetryanalysis/sessioncatalog.go:76-84`
+  `ListSessionCombinations` sobre `ListAuthorizedSessions`, y `:158-183`
+  `ListAuthorizedSessionCombinations`, que solo agrupa modelos con token de
+  autorización no falsificable. Analysis hoy NO puentea preparación↔catálogo
+  para correcciones.
+
+Diseño a cerrar: el cambio de coche/circuito propone valores legibles y el
+cliente sí puede adjuntar la referencia/ID canónico explícito
+(`combinationID` `lmu:sha256…` con clave de longitudes, solo en Go); el
+servidor resuelve y valida esa referencia contra la fuente autorizada
+existente (los modelos autorizados de esa base vía
+`ListAuthorizedSessionCombinations`). Un ID inventado, una combinación
+inexistente o un hash calculado sobre texto del cliente que no resuelva a
+una entrada autorizada se rechaza como `unknown_combination`. Nunca se
+acepta texto arbitrario del cliente como identidad canónica, nunca se
+hashea texto del cliente llamándolo canónico y no se crea un catálogo
+paralelo. Hasta cerrar ese contrato no se implementan los campos de
+combinación (fuera de T12a).
 
 Un cambio efectivo de coche/circuito deja obsoleta la selección de combinación
 del plan afectado: el plan conserva su revisión anterior (R16), no rebasea, no
 adopta cabeza y no recalcula silenciosamente; la UI exige re-adopción explícita
 del usuario. Cambiar solo `SessionType` o `WeatherConditions` no invalida la
-combinación pero sí recalcula las familias afectadas sobre vista separada.
+combinación; las familias afectadas se recalculan sobre vista separada.
 
 ## 6. Consumo, derivación y permisos
 
 Analysis aplica las decisiones sobre una vista separada de páginas/segmentación
 base; catálogo observado y archivos intactos. Se recalculan únicamente familias
-afectadas y dependientes (p. ej. `observed_strategy` al pasar a `race`,
-`climate_buckets` ante nueva etiqueta); la clave de cada derivado incluye
+afectadas y dependientes mediante las funciones existentes (p. ej.
+`observed_strategy` al pasar a `race`); la etiqueta climática corregida solo
+alimenta la proyección de clasificación (§7) y no promete ningún recálculo
+físico de `climate_buckets`. La clave de cada derivado incluye
 fuente, parser/análisis, revisión y versión de criterio. `set_classification`
 no cambia hash, autorización, origen temporal, parser, reloj ni unidades; la
 base se revalida igual que en T11 y cada operación reatraviesa
@@ -98,9 +125,18 @@ base se revalida igual que en T11 y cada operación reatraviesa
 
 ## 7. Clima separado de señales físicas y de #1030
 
-`WeatherConditions` corregida es una etiqueta de clasificación para
-`climate_buckets`; no sustituye ni crea señales físicas de temperatura/humedad
-de los canales, no fija umbrales y no toca los criterios empíricos de #1030.
+`WeatherConditions` corregida es una etiqueta opaca de clasificación: vive en
+`internal/telemetryanalysis/classification.go:80,125` (campo `ClassifiedSession`
+desde el metadato `weatherconditions`) y solo alimenta la proyección
+clasificatoria en `internal/telemetryanalysis/projectionproducer.go:219,238`
+(`SessionClassificationFamily.WeatherConditions` vía `singleWeatherCondition`).
+Los buckets físicos por vuelta NO cuelgan de esa etiqueta: se cuentan desde las
+señales de consumo en `internal/telemetryanalysis/sessioncatalog.go:228-236`
+(`climateBucketCounts` lee `consumption.Laps[].ClimateBucket`). Por eso no se
+promete recomputar buckets físicos ante una nueva etiqueta: no hay consumidor
+demostrado que derive métricas físicas de la etiqueta, y los criterios
+empíricos de #1030 quedan intactos. La corrección no sustituye ni crea señales
+físicas de temperatura/humedad de los canales, no fija umbrales y no toca #1030.
 Si una familia necesita canales/relojes/unidades ausentes, permanece no
 calculable con causa. La inspección distingue etiqueta climática de
 disponibilidad de señal.
@@ -108,39 +144,74 @@ disponibilidad de señal.
 ## 8. Microcortes de ejecución (máx. 5 paths lógica/tests cada uno)
 
 - **T12a — validación pura + tests (2 paths).** `internal/telemetryanalysis/classification_corrections.go`:
-  tipo `ClassificationCorrection` (campo cerrado, original esperado, reemplazo,
-  motivo), validación de conjunto/tipos/precondición/canonicalización de sesión
-  y clima, errores tipados (`unknown_session_type`, `unknown_combination`,
-  `original_mismatch`, `overlapping`); `classification_corrections_test.go`:
-  table-driven por campo, duplicados, ausencias, calidad no válida, motivo
-  vacío, ID inventado. Gates: `go test -p 1` focal + vet de alcance. Sin
-  custodia ni wire.
+  tipo `ClassificationCorrection` (campo cerrado solo `SessionType` +
+  `WeatherConditions`, base original exacta, precondición por campo, reemplazo,
+  motivo obligatorio, procedencia manual), reusa validadores/errores/identidad
+  existentes (`parseSessionType`, `ErrInvalidSessionClassification`),
+  sin store/wire/UI/v3 ni catálogo/manager; errores tipados
+  (`unknown_session_type`, `unusable <Campo>`, `original_mismatch`,
+  `overlapping_corrections`); `classification_corrections_test.go`:
+  salidas/inmutabilidad, motivo ausente, metadato duplicado, valor original
+  diferente, base ajena, campo prohibido (incluidos los de combinación, fuera
+  de T12a), calidad ausente y corrección válida con otro metadato ausente
+  (sin afirmar éxito de clasificación global parcial). Gates: `go test -p 1`
+  focal + global Go + vet de alcance. Sin custodia ni wire. Los errores e
+  IDs de combinación (`unknown_combination`, ID inventado) quedan para el
+  corte que cierre el contrato de resolución (§5).
 - **T12b — snapshot v3 y custodia mixta (4 paths).**
   `correction_snapshot.go` + `correction_snapshot_test.go` (v3, digest
   conjunto, orden canónico, roundtrip v1→v2→v3, guard legacy extendido, cuota
   conjunta); `corrections_store.go` + `corrections_store_test.go` (persistencia
-  v3, revalidación, 8 MiB, restauración). Gates: focales + global Go `-p 1` +
-  vet de alcance.
+  v3, revalidación, 8 MiB, restauración). Incluye revisar sin nuevos paths el
+  decoder (`corrections_document.go:84` `decodeCorrectionDocument`), los
+  digests y el store existentes antes de extenderlos. Gates: focales + global
+  Go `-p 1` + vet de alcance.
 - **T12c — vista, derivación y obsolescencia (4 paths).**
   `corrections_view.go` + `corrections_view_test.go` (aplicación sobre vista
   separada, sin mutar originales, precondición reclasificada);
   `corrections_derivation.go` + `corrections_derivation_test.go` (recompute de
-  familias afectadas, señal de combinación obsoleta, reloj/parser intactos).
+  familias afectadas con funciones existentes, señal de combinación obsoleta,
+  reloj/parser intactos; sin recompute físico de clima, §7).
   Gates: focales + global Go + vet.
-- **T12d — inspección y contrato TS (5 paths).**
-  `corrections_inspection.go` + `corrections_inspection_test.go` (consulta de
-  decisiones de clasificación por revisión exacta, paginación existente);
-  `frontend/src/hub/strategy-orbit/strategy-recorded-corrections.ts` +
-  `.test.ts` + `use-recorded-corrections.ts` (cliente tipado, preserva
-  ausencia/unknown). Gates: focales + typecheck + lint + build. UI Datos y
-  Revisiones en microcorte aparte si supera 5 paths
-  (`StrategyRecordedData.tsx`, `StrategyRecordedRevisions.tsx` + tests).
-- **T12e — banco real opt-in y contraste (2 paths + evidencia).**
-  Nuevo `internal/telemetryanalysis/classification_bank_test.go` (opt-in:
-  Imola/Monza autorizados, corrección de `SessionType`/clima, replay,
-  restauración, hashes originales intactos); evidencia en
-  `evidence/isa-1104/README.md` si se crea. Contraste Wails pendiente del
-  runtime (T11i sin resolver); documentar límites sin simular.
+- **T12d — comandos nativos e inspección (4 paths).**
+  `internal/app/telemetry_analysis_correction_commands.go` +
+  `telemetry_analysis_correction_commands_test.go` (Save/Resolve aceptan
+  decisiones de clasificación, reusan `withCorrectionInput`: autorización +
+  bloqueo + reintento idempotente);
+  `internal/telemetryanalysis/corrections_inspection.go` +
+  `corrections_inspection_test.go` (consulta de decisiones de clasificación
+  por revisión exacta, paginación existente). Gates: focales + global Go +
+  vet de alcance.
+- **T12e — contrato TS (2 paths).**
+  `frontend/src/strategy/analysis-contract.ts` + `analysis-contract.test.ts`
+  (tipos `set_classification`, validación de campo/precondición/motivo,
+  preserva ausencia/unknown). El helper existente
+  `frontend/src/hub/strategy-orbit/strategy-recorded-corrections.ts` NO es el
+  contrato TS: sigue siendo helper y no se cuenta como path de contrato.
+  Gates: focales + typecheck + lint.
+- **T12f — cliente TS (2 paths).**
+  `frontend/src/strategy/analysis-client.ts` + `analysis-client.test.ts`
+  (llamadas tipadas, cancelación nativa, conserva calidad/presencia, rechaza
+  revisiones ajenas). Gates: focales + typecheck + lint.
+- **T12g — hook (2 paths).**
+  `frontend/src/hub/strategy-orbit/use-recorded-corrections.ts` +
+  `use-recorded-corrections.test.tsx` (controlador: staging de decisiones de
+  clasificación, guardado duradero, comando incierto, sin adopción automática
+  de cabeza). Gates: focales + typecheck + lint.
+- **T12h — UI Datos y Revisiones (4 paths).**
+  `frontend/src/hub/strategy-orbit/StrategyRecordedData.tsx` +
+  `StrategyRecordedData.test.tsx` (edición de SessionType/clima con causa);
+  `frontend/src/hub/strategy-orbit/StrategyRecordedRevisions.tsx` +
+  `StrategyRecordedRevisions.test.tsx` (historial de decisiones de
+  clasificación). Gates: focales + typecheck + lint + build.
+- **T12i — banco real opt-in y contraste (evidencia, sin paths nuevos en Analysis).**
+  Reutiliza el banco nativo real existente en `internal/app`
+  (patrones de `strategy_recorded_real_family_test.go` y
+  `strategy_recorded_real_integration_test.go`: Imola/Monza autorizados,
+  corrección, replay, restauración, hashes originales intactos); NO se crea un
+  lector paralelo ni un `classification_bank_test.go` nuevo en Analysis.
+  Evidencia en `evidence/isa-1104/README.md` si se crea. Contraste Wails
+  pendiente del runtime (T11i sin resolver); documentar límites sin simular.
 
 Cada corte declara sus paths y evidencia antes de editar. No cerrar T12 por
 validación pura ni fixtures: faltan custodia, derivación, montaje, banco real

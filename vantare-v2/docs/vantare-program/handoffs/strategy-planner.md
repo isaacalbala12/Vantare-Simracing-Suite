@@ -1,5 +1,30 @@
 # Handoff vivo — Strategy Planner
 
+## T12 revisión del microplan (ISA-1104, corte A solo docs)
+
+Sesión `ses_f767b9355ffe8jiV60PxmdbsUv`, modelo
+`opencode-go/muse-spark-1.3-contributor` variante `xhigh`, ejecutor único;
+orquestador externo revisa. Rama `vantareapp/isa-1104-recorded-classification`,
+base `7f75713`. T11 NO cerrado: lógica/banco PASS, T11i visual/nativo pendiente
+(WebView2 `ERROR_INVALID_STATE`, causa indeterminada incluso visible; sin más
+UI ni LMU en este encargo). Microplan `classification-corrections-t12.md`
+corregido según revisión: §5 distingue clasificar ESA fuente en preparación
+(`telemetry_analysis_corrections.go:108-115`, test `:11-72`) del catálogo
+nativo (`sessioncatalog.go:76-84,158-183`); el cliente puede adjuntar
+referencia/ID canónico explícito y el servidor resuelve/valida contra la
+fuente autorizada, nunca hashea texto arbitrario llamándolo canónico;
+coche/circuito fuera de T12a. Precondiciones por campo (§2): corregir un campo
+válido no exige los otros cinco ni éxito global parcial. Clima (§6/§7):
+etiqueta opaca en `classification.go:80,125` + `projectionproducer.go:219,238`;
+buckets físicos por vuelta vienen de consumo (`sessioncatalog.go:228-236`), sin
+recompute prometido ni toque a #1030. Microcortes T12a–T12i de máx. 5 paths:
+comandos Go, contrato/cliente/hook/UI TS por separado; el helper
+`strategy-recorded-corrections.ts` no es contrato; banco real reusa
+`internal/app`, sin lector paralelo en Analysis. Un path docs; sin código,
+push, PR, merge ni promoción. Sigue T12a puro (2 paths Go declarados en #1104
+antes de editar). `plan.md` intacto: token `milestones:strategy-recorded-editor`
+declarado en la issue, cambio público ninguno en este corte.
+
 ## T11f4 — consulta tipada de vueltas en frontend
 
 Cliente añade únicamente InspectCorrectionLaps al conjunto cerrado. Valida

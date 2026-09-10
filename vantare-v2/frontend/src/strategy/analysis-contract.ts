@@ -572,3 +572,70 @@ export function sameAnalysisFamilyCorrections(a: readonly AnalysisFamilyCorrecti
   const right = new Map(b.map(item => [key(item), item]));
   return a.length === b.length && a.every(item => { const other = right.get(key(item)); return Boolean(other && sameAnalysisBase(item.base, other.base) && item.reason === other.reason && item.included === other.included && sameAnalysisFamilyUse(item.expected, other.expected)); });
 }
+
+export type AnalysisLap = Readonly<{ number: number; start?: string; end: string; lapTimeSeconds?: number; complete: boolean; labels: readonly string[] | null; familyUse: readonly AnalysisFamilyUse[] | null }>;
+export type AnalysisStintBoundary = Readonly<{
+  stintNumber: number; timestamp: string; cause: "pit" | "fuel_jump" | "tyre_change" | "driver_change" | "unknown";
+  presence: AnalysisQuality | "unsupported";
+  confidence: Readonly<{ sampleSize: number; computationVersion: string; rangeLower?: number; rangeUpper?: number; variance?: number }>;
+  provenance: Readonly<{ kind: string; sourceId?: string; observedAt?: string }>;
+}>;
+export type AnalysisLapCapability = Readonly<{ family: AnalysisCorrectableFamily; automaticIncluded: boolean; effectiveIncluded?: boolean; canInclude: boolean; canExclude: boolean; reason?: "target_unresolved" | "inclusion_requires_complete_coverage" }>;
+export type AnalysisLapInspection = Readonly<{ original: AnalysisLap; effective?: AnalysisLap; target?: AnalysisLapTarget; stintBoundary?: AnalysisStintBoundary; capabilities: readonly AnalysisLapCapability[] }>;
+export type AnalysisLapPage = Readonly<{ revisionId: string; headId: string; page: Readonly<{ base: AnalysisBase; snapshotId: string; start: number; total: number; laps: readonly AnalysisLapInspection[] }> }>;
+
+function parseInspectedLap(value: unknown, original: boolean): AnalysisLap {
+  const r = record(value, "lap"); integer(r.number, "lap.number"); flag(r.complete, "lap.complete");
+  text(r.end, "lap.end", 64); analysisLapInstant(r.end);
+  if (r.start !== undefined) { text(r.start, "lap.start", 64); analysisLapInstant(r.start); }
+  if (r.lapTimeSeconds !== undefined) number(r.lapTimeSeconds, "lap.lapTimeSeconds");
+  const labels = r.labels === null ? [] : list(r.labels, "lap.labels");
+  if (labels.length > 7) throw new AnalysisProtocolError("lap.labels");
+  for (const label of labels) oneOf(label, ["incomplete", "out_lap", "in_lap", "pit", "incident_offtrack", "traffic", "pace_outlier"], "lap.label");
+  const uses = r.familyUse === null ? [] : list(r.familyUse, "lap.familyUse");
+  if (uses.length > 10) throw new AnalysisProtocolError("lap.familyUse");
+  for (const use of uses) { const parsed = parseAnalysisFamilyUse(use); if (original && parsed.correctionId) throw new AnalysisProtocolError("lap.originalCorrection"); }
+  return r as unknown as AnalysisLap;
+}
+function parseInspectedStint(value: unknown): AnalysisStintBoundary {
+  const r = record(value, "stintBoundary"); integer(r.stintNumber, "stintBoundary.number", 1);
+  text(r.timestamp, "stintBoundary.timestamp", 64); analysisLapInstant(r.timestamp);
+  oneOf(r.cause, ["pit", "fuel_jump", "tyre_change", "driver_change", "unknown"], "stintBoundary.cause");
+  oneOf(r.presence, [...qualities, "unsupported"], "stintBoundary.presence");
+  const confidence = record(r.confidence, "stintBoundary.confidence"); integer(confidence.sampleSize, "stintBoundary.sampleSize");
+  if (typeof confidence.computationVersion !== "string" || confidence.computationVersion.length > 256) throw new AnalysisProtocolError("stintBoundary.computationVersion");
+  for (const field of ["rangeLower", "rangeUpper", "variance"]) if (confidence[field] !== undefined) number(confidence[field], `stintBoundary.${field}`);
+  const provenance = record(r.provenance, "stintBoundary.provenance");
+  oneOf(provenance.kind, ["unknown", "observed", "corrected", "manual", "derived", "estimated", "range", "reference"], "stintBoundary.provenance.kind");
+  if (provenance.sourceId !== undefined) text(provenance.sourceId, "stintBoundary.sourceId");
+  if (provenance.observedAt !== undefined) { text(provenance.observedAt, "stintBoundary.observedAt", 64); analysisLapInstant(provenance.observedAt); }
+  return r as unknown as AnalysisStintBoundary;
+}
+export function parseAnalysisLapPage(value: unknown): AnalysisLapPage {
+  const r = record(value, "lapPage"); digest(r.revisionId, "lapPage.revisionId"); digest(r.headId, "lapPage.headId");
+  const page = record(r.page, "lapPage.page"); parseAnalysisBase(page.base); digest(page.snapshotId, "lapPage.snapshotId");
+  integer(page.start, "lapPage.start"); integer(page.total, "lapPage.total");
+  const rows = list(page.laps, "lapPage.laps");
+  if (rows.length > 50 || rows.length > Math.max(0, (page.total as number) - (page.start as number))) throw new AnalysisProtocolError("lapPage.bounds");
+  for (const value of rows) {
+    const row = record(value, "lapPage.row"); const original = parseInspectedLap(row.original, true);
+    const effective = row.effective === undefined ? undefined : parseInspectedLap(row.effective, false);
+    const target = row.target === undefined ? undefined : parseAnalysisLapTarget(row.target);
+    const matches = (lap: AnalysisLap) => target && lap.start !== undefined && target.number === lap.number && analysisLapInstant(target.start) === analysisLapInstant(lap.start) && analysisLapInstant(target.end) === analysisLapInstant(lap.end);
+    if ((target && !matches(original)) || (effective && !matches(effective))) throw new AnalysisProtocolError("lapPage.targetMismatch");
+    if (row.stintBoundary !== undefined) { const boundary = parseInspectedStint(row.stintBoundary); if (original.start === undefined || analysisLapInstant(boundary.timestamp) > analysisLapInstant(original.start)) throw new AnalysisProtocolError("lapPage.stintBoundary"); }
+    const capabilities = list(row.capabilities, "lapPage.capabilities"), seen = new Set<string>();
+    if (capabilities.length !== analysisCorrectableFamilies.length) throw new AnalysisProtocolError("lapPage.capabilities");
+    for (const value of capabilities) {
+      const capability = record(value, "lapPage.capability"); oneOf(capability.family, analysisCorrectableFamilies, "lapPage.family");
+      const family = capability.family as string; if (seen.has(family)) throw new AnalysisProtocolError("lapPage.duplicateFamily"); seen.add(family);
+      for (const field of ["automaticIncluded", "canInclude", "canExclude"]) flag(capability[field], `lapPage.${field}`);
+      if (effective) flag(capability.effectiveIncluded, "lapPage.effectiveIncluded");
+      else if (capability.effectiveIncluded !== undefined) throw new AnalysisProtocolError("lapPage.unresolvedRule");
+      if (capability.reason !== undefined) oneOf(capability.reason, ["target_unresolved", "inclusion_requires_complete_coverage"], "lapPage.reason");
+      if ((capability.canInclude && !capability.canExclude) || ((capability.canInclude || capability.canExclude) && (!target || !effective)) || (!capability.canInclude && capability.reason === undefined)) throw new AnalysisProtocolError("lapPage.capabilityContradiction");
+      if ((capability.automaticIncluded && original.familyUse?.some(use => use.family === family && !use.included)) || (capability.effectiveIncluded && effective?.familyUse?.some(use => use.family === family && !use.included))) throw new AnalysisProtocolError("lapPage.ruleContradiction");
+    }
+  }
+  return r as unknown as AnalysisLapPage;
+}

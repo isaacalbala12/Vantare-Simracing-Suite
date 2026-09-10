@@ -114,3 +114,25 @@ describe("complete family command transport", () => {
     expect(call).not.toHaveBeenCalled();
   });
 });
+
+describe("native lap inspection transport", () => {
+  it("queries only an exact authorized revision and validates pagination", async () => {
+    const a = "a".repeat(64), b = "b".repeat(64);
+    const base = { sessionId: "source", contentSha256: a, sizeBytes: 10, parserId: "lmu-duckdb", parserVersion: "1", schemaFingerprint: "schema", analysisVersion: "lap-validity.v1", segmentationDigest: b };
+    const request = { sessionId: "handle", base, revisionId: a, start: 0, limit: 50 };
+    const response = { revisionId: a, headId: b, page: { base, snapshotId: a, start: 0, total: 0, laps: [] } };
+    const call = vi.fn().mockResolvedValue(response), client = createAnalysisClient({ call });
+    await expect(client.laps(request)).resolves.toBe(response);
+    expect(call).toHaveBeenCalledExactlyOnceWith("InspectCorrectionLaps", [request], undefined);
+    call.mockResolvedValue({ ...response, revisionId: b });
+    await expect(client.laps(request)).rejects.toThrow("laps.requestMismatch");
+    call.mockResolvedValue({ ...response, page: { ...response.page, start: 1 } });
+    await expect(client.laps(request)).rejects.toThrow("laps.requestMismatch");
+    call.mockClear();
+    await expect(client.laps({ ...request, revisionId: "" })).rejects.toThrow();
+    await expect(client.laps({ ...request, limit: 51 })).rejects.toThrow();
+    const abort = new AbortController(); abort.abort();
+    await expect(client.laps(request, abort.signal)).rejects.toThrow();
+    expect(call).not.toHaveBeenCalled();
+  });
+});

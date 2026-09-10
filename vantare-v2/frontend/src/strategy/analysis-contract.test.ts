@@ -1,4 +1,4 @@
-import { analysisLapInstant, parseAnalysisFamilyCorrections, parseAnalysisLapTarget, sameAnalysisFamilyCorrections } from "./analysis-contract";
+import { parseAnalysisLapPage, analysisCorrectableFamilies, analysisLapInstant, parseAnalysisFamilyCorrections, parseAnalysisLapTarget, sameAnalysisFamilyCorrections } from "./analysis-contract";
 import { describe, expect, it } from "vitest";
 import { analysisValue, parseAnalysisCandidates, parseAnalysisCommandResolution, parseAnalysisPreparation, parseCorrectionStoreResult, parseHistoricalValue } from "./analysis-contract";
 describe("local discovery labels", () => {
@@ -128,5 +128,39 @@ describe("mixed family correction contract", () => {
     expect(() => parseAnalysisLapTarget({ ...first.target, end: first.target.start })).toThrow();
     expect(() => analysisLapInstant("2026-02-30T00:00:00Z")).toThrow();
     expect(() => analysisLapInstant("2026-09-10T12:00:00.1234567891Z")).toThrow();
+  });
+});
+
+function inspectedLapResult() {
+  const original = { number: 2, start: "2026-09-10T12:00:00Z", end: "2026-09-10T12:01:30Z", complete: true, labels: [], familyUse: analysisCorrectableFamilies.map(family => ({ family, included: true, exclusionReasons: null })) };
+  return { revisionId: "d".repeat(64), headId: "e".repeat(64), page: { base, snapshotId, start: 0, total: 1, laps: [{ original, effective: structuredClone(original), target: { number: original.number, start: original.start, end: original.end }, capabilities: analysisCorrectableFamilies.map(family => ({ family, automaticIncluded: true, effectiveIncluded: true, canInclude: true, canExclude: true })) }] } };
+}
+describe("recorded lap inspection contract", () => {
+  it("preserves explicit false, zero and unknown recorded boundary quality", () => {
+    const value = inspectedLapResult(), row = value.page.laps[0];
+    row.effective.familyUse[0].included = false; row.capabilities[0].effectiveIncluded = false;
+    Object.assign(row.effective, { lapTimeSeconds: 0 });
+    Object.assign(row, { stintBoundary: { stintNumber: 2, timestamp: row.original.start, cause: "unknown", presence: "unknown", confidence: { sampleSize: 0, computationVersion: "" }, provenance: { kind: "unknown" } } });
+    expect(parseAnalysisLapPage(value)).toBe(value);
+    expect(parseAnalysisLapPage(value).page.laps[0].capabilities[0].effectiveIncluded).toBe(false);
+  });
+  it("keeps unresolved observations inspectable without inventing effective use", () => {
+    const value = inspectedLapResult(), row = value.page.laps[0];
+    Object.assign(row, { target: undefined, effective: undefined }); Object.assign(row.original, { start: undefined, complete: false });
+    for (const capability of row.capabilities) Object.assign(capability, { canInclude: false, canExclude: false, effectiveIncluded: undefined, reason: "target_unresolved" });
+    expect(parseAnalysisLapPage(value).page.laps[0].effective).toBeUndefined();
+  });
+  it.each(["other interval", "missing target", "duplicate family", "missing rule", "contradictory rule", "missing reason", "excess rows", "unknown revision", "future boundary"])("rejects %s", mode => {
+    const value = inspectedLapResult(), row = value.page.laps[0];
+    if (mode === "other interval") row.effective.end = "2026-09-10T12:01:31Z";
+    if (mode === "missing target") Object.assign(row, { target: undefined });
+    if (mode === "duplicate family") row.capabilities[1].family = row.capabilities[0].family;
+    if (mode === "missing rule") Object.assign(row.capabilities[0], { effectiveIncluded: undefined });
+    if (mode === "contradictory rule") row.effective.familyUse[0].included = false;
+    if (mode === "missing reason") row.capabilities[0].canInclude = false;
+    if (mode === "excess rows") value.page.total = 0;
+    if (mode === "unknown revision") value.revisionId = "";
+    if (mode === "future boundary") Object.assign(row, { stintBoundary: { stintNumber: 2, timestamp: row.original.end, cause: "pit", presence: "valid", confidence: { sampleSize: 1, computationVersion: "fixture" }, provenance: { kind: "derived" } } });
+    expect(() => parseAnalysisLapPage(value)).toThrow();
   });
 });

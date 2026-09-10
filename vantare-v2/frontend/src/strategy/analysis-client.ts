@@ -1,7 +1,7 @@
 import { Call } from "@wailsio/runtime";
 import { parseInputProjection } from "./strategy-application-client";
-import { AnalysisProtocolError, parseAnalysisFamilyCorrections, sameAnalysisFamilyCorrections, type AnalysisFamilyCorrection, parseAnalysisBase, parseAnalysisCandidates, parseAnalysisCommandResolution, parseAnalysisCorrection, parseAnalysisOpenedSession, parseAnalysisPage, parseAnalysisPreparation, parseAnalysisSaveCommand, parseAnalysisStatus, parseCorrectionStoreResult, sameAnalysisBase, type AnalysisBase, type AnalysisCorrection, type AnalysisSaveCommand } from "./analysis-contract";
-const methods = ["Status", "Discover", "Open", "ReadPage", "PrepareCorrections", "SaveCorrections", "ResolveCorrectionCommand", "LoadCorrection", "ProjectCorrection", "CloseSession"] as const;
+import { AnalysisProtocolError, parseAnalysisLapPage, parseAnalysisFamilyCorrections, sameAnalysisFamilyCorrections, type AnalysisFamilyCorrection, parseAnalysisBase, parseAnalysisCandidates, parseAnalysisCommandResolution, parseAnalysisCorrection, parseAnalysisOpenedSession, parseAnalysisPage, parseAnalysisPreparation, parseAnalysisSaveCommand, parseAnalysisStatus, parseCorrectionStoreResult, sameAnalysisBase, type AnalysisBase, type AnalysisCorrection, type AnalysisSaveCommand } from "./analysis-contract";
+const methods = ["Status", "Discover", "Open", "ReadPage", "PrepareCorrections", "InspectCorrectionLaps", "SaveCorrections", "ResolveCorrectionCommand", "LoadCorrection", "ProjectCorrection", "CloseSession"] as const;
 type AnalysisMethod = typeof methods[number];
 export type AnalysisTransport = {
   call(method: AnalysisMethod, args: readonly unknown[], signal?: AbortSignal): Promise<unknown>;
@@ -18,6 +18,7 @@ export type AnalysisSaveRequest = Readonly<{
   familyUses?: readonly AnalysisFamilyCorrection[];
   command: AnalysisSaveCommand;
 }>;
+export type AnalysisLapRequest = AnalysisRevisionRequest & Readonly<{ start: number; limit: number }>;
 export type AnalysisPageRequest = Readonly<{
   sessionId: string;
   channelId: string;
@@ -96,6 +97,13 @@ export function createAnalysisClient(transport: AnalysisTransport = createNative
     async prepare(sessionId: string, signal?: AbortSignal) {
       identifier(sessionId);
       return parseAnalysisPreparation(await invoke("PrepareCorrections", [sessionId], signal));
+    },
+    async laps(request: AnalysisLapRequest, signal?: AbortSignal) {
+      revisionRequest(request);
+      if (!request.revisionId || !Number.isSafeInteger(request.start) || request.start < 0 || !Number.isSafeInteger(request.limit) || request.limit < 1 || request.limit > 50) throw new AnalysisProtocolError("request.laps");
+      const result = parseAnalysisLapPage(await invoke("InspectCorrectionLaps", [request], signal));
+      if (!sameAnalysisBase(result.page.base, request.base) || result.revisionId !== request.revisionId || result.page.start !== request.start || result.page.laps.length > request.limit) throw new AnalysisProtocolError("laps.requestMismatch");
+      return result;
     },
     async save(request: AnalysisSaveRequest, signal?: AbortSignal) {
       validateSaveRequest(request);

@@ -186,3 +186,16 @@ Pruebas focales, global Go -p1 y vet de alcance PASS. Dos paths Go independiente
 del gate frontend. T11f3 quedó en 928e40b7 con global 3489 PASS; T11f4 consulta TS
 está en trabajo (73 focales y tipos PASS, lint/build pendientes al registrar esto).
 Sin Wails/precisión/visual >9/push/PR/CI remota/merge/promoción.
+
+## T11f4 — consulta tipada de vueltas en frontend
+
+Cliente añade únicamente InspectCorrectionLaps al conjunto cerrado. Valida
+paginación (máximo 50), base/revisión exactas, identidades original/efectiva,
+capacidades y reglas, y metadatos del límite registrado. Ausencia efectiva no se
+convierte en false; preserva cero y calidad unknown. Sin adopción automática de
+cabeza ni redondeo de identidad temporal. 73 focales, tipos/lint/build PASS.
+Global frontend más reciente: T11f3, 442/3489 PASS; este corte aditivo se verifica
+con sus focales y tipos de todo el frontend, sin anunciar otro global. Cuatro
+paths; UI/controlador familiar todavía pendientes. Continúa T11g1 helpers de
+conjunto completo y T11g2 controlador, luego montaje. Sin Wails/precisión/visual
+>9/push/PR/CI remota/merge/promoción.

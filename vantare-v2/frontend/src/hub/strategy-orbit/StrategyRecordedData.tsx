@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { analysisValue, type AnalysisCorrectableFamily, type AnalysisScalar, type AnalysisValue } from "../../strategy/analysis-contract";
+import type { StrategyAnalysisRevisionRef } from "../../strategy/strategy-application-client";
 import { Button, Icon } from "../../ui/orbit";
 import type { RecordedSession } from "./strategy-recorded-session";
 import type { RecordedCorrectionsController } from "./use-recorded-corrections";
@@ -7,9 +8,10 @@ import { RecordedLapDetail, RecordedLapList, type RecordedFamilyForm } from "./S
 import "./strategy-recorded-data.css";
 
 type Form = { sampleIndex: number; column: string; original: AnalysisValue; value: string; reason: string };
-export function StrategyRecordedData({ controller, sessions, sessionLabels = {}, busy, onSources, onPendingChange, t }: {
+export function StrategyRecordedData({ controller, sessions, sessionLabels = {}, selectedRevisions = [], busy, onSources, onPendingChange, t }: {
   readonly controller: RecordedCorrectionsController; readonly sessions: readonly RecordedSession[]; readonly busy: boolean;
   readonly sessionLabels?: Readonly<Record<string, string>>;
+  readonly selectedRevisions?: readonly StrategyAnalysisRevisionRef[];
   readonly onSources: () => void; readonly onPendingChange: (pending: boolean) => void; readonly t: (key: string) => string;
 }) {
   const [view, setView] = useState<"laps" | "samples">("laps");
@@ -21,6 +23,14 @@ export function StrategyRecordedData({ controller, sessions, sessionLabels = {},
   const [formError, setFormError] = useState(false);
   const [saveReason, setSaveReason] = useState("");
   const { editor } = controller;
+  // An open session is not race-selected by itself. The race selection arrives
+  // as explicit revision refs; locate it by source identity (session + base).
+  const selectedRef = editor ? selectedRevisions.find(ref => ref.sessionId === editor.session.revision.sessionId && ref.baseDigest === editor.session.revision.baseDigest) : undefined;
+  const sameSelection = (revision: StrategyAnalysisRevisionRef) => selectedRef !== undefined && revision.sessionId === selectedRef.sessionId && revision.baseDigest === selectedRef.baseDigest && revision.revisionId === selectedRef.revisionId && revision.snapshotId === selectedRef.snapshotId;
+  // Preparing or adopting for the race needs a selected, projectable source.
+  // A marked source stays blocked even when it carries a combination id.
+  const projectable = Boolean(editor && selectedRef && editor.session.combinationId && !editor.session.projectionUnavailableReason);
+  const adoptionMatchesSelection = Boolean(editor?.projected && selectedRef && sameSelection(editor.projected.revision));
   const page = editor?.page;
   const channel = editor?.session.opened.session.channels.find(item => item.id === page?.channel_id);
   const currentColumn = channel?.columns.find(item => item.name === column)?.name ?? channel?.columns[0]?.name ?? "";
@@ -90,7 +100,9 @@ export function StrategyRecordedData({ controller, sessions, sessionLabels = {},
           {editor.dirty && !editor.request ? <><label>{t("strategy.data.revisionReason")}<input value={saveReason} disabled={locked || formDirty} onChange={event => setSaveReason(event.target.value)} /></label><div className="strategy-recorded-data__actions"><Button variant="ghost" disabled={locked || formDirty} onClick={() => controller.discard()}>{t("strategy.data.discard")}</Button><Button disabled={locked || formDirty || !saveReason.trim()} onClick={() => void controller.save(saveReason)}>{t("strategy.data.save")}</Button></div></> : null}
           {editor.request ? <><p role="status">{t("strategy.data.uncertain")}</p><div className="strategy-recorded-data__actions"><Button disabled={locked} onClick={() => void controller.resolveSave()}>{t("strategy.data.resolve")}</Button><Button variant="ghost" disabled={locked} onClick={() => void controller.retrySave()}>{t("strategy.data.retry")}</Button></div></> : null}
           {editor.saved ? <p>{t("strategy.data.savedSeparately")}</p> : null}
-          {!editor.dirty && !editor.request ? <Button disabled={locked || formDirty || editor.projected?.revision.revisionId === editor.session.revision.revisionId} onClick={() => void (editor.projected ? controller.adopt() : controller.project())}>{t(editor.projected ? "strategy.data.adopt" : "strategy.data.prepare")}</Button> : null}
+          {editor && !selectedRef ? <p role="status">{t("strategy.recorded.notSelected")}</p> : null}
+          {editor && (editor.session.projectionUnavailableReason || !editor.session.combinationId) ? <p role="status">{t("strategy.recorded.metadataUnavailable")}</p> : null}
+          {!editor.dirty && !editor.request ? <Button disabled={locked || formDirty || !projectable || adoptionMatchesSelection} onClick={() => void (editor.projected ? controller.adopt() : controller.project())}>{t(editor.projected ? "strategy.data.adopt" : "strategy.data.prepare")}</Button> : null}
           {editor.current.headId !== editor.current.revision.revisionId ? <><p>{t("strategy.data.newerHead")}</p><Button variant="ghost" disabled={locked || formDirty || controller.unresolved} onClick={() => { clearForm(); void controller.head(); }}>{t("strategy.data.reviewHead")}</Button></> : null}
         </div> : null}
       </aside>

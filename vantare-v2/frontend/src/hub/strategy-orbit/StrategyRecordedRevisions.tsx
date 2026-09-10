@@ -1,14 +1,16 @@
 import { useEffect, useState } from "react";
 import { analysisValue, type AnalysisValue } from "../../strategy/analysis-contract";
+import type { StrategyAnalysisRevisionRef } from "../../strategy/strategy-application-client";
 import { Button, Icon } from "../../ui/orbit";
 import type { RecordedSession } from "./strategy-recorded-session";
 import type { RecordedCorrectionsController } from "./use-recorded-corrections";
 import "./strategy-recorded-revisions.css";
 
 /** Source revision inspection never adopts a different revision into the race. */
-export function StrategyRecordedRevisions({ controller, sessions, sessionLabels, busy, configurationSaved, configurationDirty, onSources, onPendingChange, t }: {
+export function StrategyRecordedRevisions({ controller, sessions, sessionLabels, selectedRevisions = [], busy, configurationSaved, configurationDirty, onSources, onPendingChange, t }: {
   readonly controller: RecordedCorrectionsController; readonly sessions: readonly RecordedSession[];
   readonly sessionLabels: Readonly<Record<string, string>>; readonly busy: boolean;
+  readonly selectedRevisions?: readonly StrategyAnalysisRevisionRef[];
   readonly configurationSaved: boolean; readonly configurationDirty: boolean;
   readonly onSources: () => void; readonly onPendingChange: (pending: boolean) => void; readonly t: (key: string) => string;
 }) {
@@ -19,7 +21,11 @@ export function StrategyRecordedRevisions({ controller, sessions, sessionLabels,
   const correctionCount = (revision?.snapshot.corrections.length ?? 0) + familyUses.length;
   const locked = busy || controller.busy;
   const navigatingBlocked = locked || controller.unresolved || reason !== "";
-  const pinned = revision?.revisionId === editor?.session.revision.revisionId;
+  // The open session alone is never the race selection. Locate the race ref by
+  // source identity; only a full revision/snapshot match counts as pinned.
+  const selectedRef = editor ? selectedRevisions.find(ref => ref.sessionId === editor.session.revision.sessionId && ref.baseDigest === editor.session.revision.baseDigest) : undefined;
+  const pinned = Boolean(selectedRef && revision && selectedRef.revisionId === revision.revisionId && selectedRef.snapshotId === revision.snapshot.snapshotId);
+  const projectable = Boolean(editor && selectedRef && editor.session.combinationId && !editor.session.projectionUnavailableReason);
   const latest = revision?.revisionId === editor?.current.headId;
   useEffect(() => {
     // Once dispatched, the controller owns the reason inside its stable command.
@@ -45,7 +51,7 @@ export function StrategyRecordedRevisions({ controller, sessions, sessionLabels,
           <div className="strategy-recorded-revisions__navigation">
             <Button disabled={navigatingBlocked || !revision.parentRevisionId} onClick={() => void controller.parent()}>{t("strategy.history.parent")}</Button>
             <Button disabled={navigatingBlocked || latest} onClick={() => void controller.head()}>{t("strategy.data.reviewHead")}</Button>
-            <Button disabled={navigatingBlocked || pinned} onClick={() => void controller.load(editor.session)}>{t("strategy.history.reviewPinned")}</Button>
+            <Button disabled={navigatingBlocked || pinned || !selectedRef} onClick={() => { if (editor && selectedRef) void controller.load({ ...editor.session, revision: selectedRef }); }}>{t("strategy.history.reviewPinned")}</Button>
           </div>
           <article className="strategy-recorded-revisions__card">
             <Icon name="i-roadmap" size={26} /><div><div className="strategy-recorded-revisions__badges">{pinned ? <span>{t("strategy.history.pinned")}</span> : null}{latest ? <span>{t("strategy.history.latest")}</span> : null}</div>
@@ -77,6 +83,8 @@ export function StrategyRecordedRevisions({ controller, sessions, sessionLabels,
         <div className="strategy-recorded-revisions__info"><Icon name="i-estrategia" size={32} /><div><strong>{t("strategy.workspace.notCalculated")}</strong><p>{t("strategy.history.planHint")}</p></div></div>
         {editor && revision ? <div className="strategy-recorded-data__revision">
           <h4>{t("strategy.history.restoreTitle")}</h4><p>{t("strategy.history.restoreHint")}</p>
+          {editor && !selectedRef ? <p role="status">{t("strategy.recorded.notSelected")}</p> : null}
+          {editor && (editor.session.projectionUnavailableReason || !editor.session.combinationId) ? <p role="status">{t("strategy.recorded.metadataUnavailable")}</p> : null}
           {!latest && !controller.unresolved ? <form onSubmit={event => { event.preventDefault(); if (!locked && reason.trim()) void controller.restore(reason); }}>
             <label>{t("strategy.history.restoreReason")}<textarea value={reason} maxLength={1024} disabled={locked} onChange={event => changeReason(event.target.value)} /></label>
             <div className="strategy-recorded-data__actions"><Button disabled={locked || !reason} onClick={() => changeReason("")}>{t("strategy.recorded.cancel")}</Button><Button type="submit" variant="primary" disabled={locked || !reason.trim()}>{t("strategy.history.restore")}</Button></div>
@@ -84,7 +92,7 @@ export function StrategyRecordedRevisions({ controller, sessions, sessionLabels,
           {controller.unresolved && !editor.request ? <p role="status">{t("strategy.history.finishData")}</p> : null}
           {editor.request ? <><p role="status">{t("strategy.data.uncertain")}</p><div className="strategy-recorded-data__actions"><Button disabled={locked} onClick={() => void controller.resolveSave()}>{t("strategy.data.resolve")}</Button><Button disabled={locked} onClick={() => void controller.retrySave()}>{t("strategy.data.retry")}</Button></div></> : null}
           {editor.saved ? <p>{t("strategy.data.savedSeparately")}</p> : null}
-          {!controller.unresolved ? <Button disabled={locked || reason !== "" || pinned} onClick={() => void (editor.projected ? controller.adopt() : controller.project())}>{t(editor.projected ? "strategy.data.adopt" : "strategy.data.prepare")}</Button> : null}
+          {!controller.unresolved ? <Button disabled={locked || reason !== "" || pinned || !projectable} onClick={() => void (editor.projected ? controller.adopt() : controller.project())}>{t(editor.projected ? "strategy.data.adopt" : "strategy.data.prepare")}</Button> : null}
         </div> : null}
       </aside>
     </div>

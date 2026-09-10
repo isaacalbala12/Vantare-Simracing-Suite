@@ -16,7 +16,7 @@ function fixture() {
   const current: AnalysisStoreResult = { headId: c, revision: { revisionId: b, parentRevisionId: a, command: { expectedRevision: a, commandId: "command", reason: "Checked fuel observation", localAuthorId: "local" }, commandDigest: c, createdAt: "2026-09-10T00:00:00Z", snapshot: { contractVersion: "analysis.sample-snapshot.v1", base, snapshotId: b, corrections: [{ baseId: a, correctionId: c, original, corrected, request: { base, target: { channelId: "fuel", column: "value", sampleIndex: 4 }, unit: channel.unit, expected: original, replacement: corrected.scalar, reason: "Confirmed zero" } }] } } };
   const methods = { load: vi.fn(), parent: vi.fn(), head: vi.fn(), restore: vi.fn(), project: vi.fn(), adopt: vi.fn(), resolveSave: vi.fn(), retrySave: vi.fn(), cancel: vi.fn() };
   const controller = { ...methods, editor: { session, current, corrections: [], dirty: false }, busy: false, error: "", unresolved: false } as unknown as RecordedCorrectionsController;
-  const props = { controller, sessions: [session], sessionLabels: { candidate: "Imola.duckdb" }, busy: false, configurationSaved: true, configurationDirty: false, onSources: vi.fn(), onPendingChange: vi.fn(), t };
+  const props = { controller, sessions: [session], sessionLabels: { candidate: "Imola.duckdb" }, selectedRevisions: [session.revision], busy: false, configurationSaved: true, configurationDirty: false, onSources: vi.fn(), onPendingChange: vi.fn(), t };
   return { session, current, methods, controller, props };
 }
 describe("source revision history", () => {
@@ -100,5 +100,74 @@ describe("mixed source history", () => {
     expect(document.querySelector(`time[datetime="${target.start}"]`)).toBeTruthy();
     expect(document.querySelector(`time[datetime="${target.end}"]`)).toBeTruthy();
     expect(f.methods.adopt).not.toHaveBeenCalled();
+  });
+});
+describe("recorded race selection in history (T12g3e)", () => {
+  it("disables the pinned review and the race actions without a selection", () => {
+    const f = fixture();
+    render(<StrategyRecordedRevisions {...f.props} selectedRevisions={[]} />);
+    expect(screen.getByText("strategy.recorded.notSelected")).toBeTruthy();
+    expect((screen.getByRole("button", { name: "strategy.history.reviewPinned" }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "strategy.data.prepare" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "strategy.history.reviewPinned" }));
+    fireEvent.click(screen.getByRole("button", { name: "strategy.data.prepare" }));
+    expect(f.methods.load).not.toHaveBeenCalled();
+    expect(f.methods.project).not.toHaveBeenCalled();
+  });
+  it("reviews the exact draft ref, distinct from the inspected one, without mutating it", () => {
+    const f = fixture();
+    const draft = { sessionId: "source", baseDigest: "b".repeat(64), revisionId: "e".repeat(64), snapshotId: "e".repeat(64) };
+    const before = { ...f.session.revision };
+    render(<StrategyRecordedRevisions {...f.props} selectedRevisions={[draft]} />);
+    expect(screen.queryByText("strategy.history.pinned")).toBeNull();
+    const review = screen.getByRole("button", { name: "strategy.history.reviewPinned" }) as HTMLButtonElement;
+    expect(review.disabled).toBe(false);
+    fireEvent.click(review);
+    expect(f.methods.load).toHaveBeenCalledExactlyOnceWith({ ...f.session, revision: draft });
+    expect(f.session.revision).toEqual(before);
+    expect(f.methods.adopt).not.toHaveBeenCalled();
+  });
+  it("marks the viewed revision as pinned only on a full revision and snapshot match", () => {
+    const f = fixture();
+    const pinned = { sessionId: "source", baseDigest: "b".repeat(64), revisionId: f.current.revision.revisionId, snapshotId: f.current.revision.snapshot.snapshotId };
+    const view = render(<StrategyRecordedRevisions {...f.props} selectedRevisions={[pinned]} />);
+    expect(screen.getByText("strategy.history.pinned")).toBeTruthy();
+    expect((screen.getByRole("button", { name: "strategy.history.reviewPinned" }) as HTMLButtonElement).disabled).toBe(true);
+    view.rerender(<StrategyRecordedRevisions {...f.props} selectedRevisions={[{ ...pinned, snapshotId: "e".repeat(64) }]} />);
+    expect(screen.queryByText("strategy.history.pinned")).toBeNull();
+    expect((screen.getByRole("button", { name: "strategy.history.reviewPinned" }) as HTMLButtonElement).disabled).toBe(false);
+  });
+  it.each([
+    ["session", { sessionId: "other", baseDigest: "b".repeat(64), revisionId: "b".repeat(64), snapshotId: "b".repeat(64) }],
+    ["base", { sessionId: "source", baseDigest: "c".repeat(64), revisionId: "b".repeat(64), snapshotId: "b".repeat(64) }],
+  ])("treats a %s mismatch as no race selection", (_case, foreign) => {
+    const f = fixture();
+    render(<StrategyRecordedRevisions {...f.props} selectedRevisions={[foreign]} />);
+    expect(screen.getByText("strategy.recorded.notSelected")).toBeTruthy();
+    expect((screen.getByRole("button", { name: "strategy.history.reviewPinned" }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "strategy.data.prepare" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "strategy.data.prepare" }));
+    expect(f.methods.project).not.toHaveBeenCalled();
+  });
+  it("blocks a marked source even when it still carries a combination id", () => {
+    const f = fixture();
+    const session: RecordedSession = { ...f.session, projectionUnavailableReason: "metadata_unavailable" };
+    const controller = { ...f.controller, editor: { ...f.controller.editor!, session } };
+    render(<StrategyRecordedRevisions {...f.props} controller={controller} sessions={[session]} />);
+    expect(screen.getByText("strategy.recorded.metadataUnavailable")).toBeTruthy();
+    expect(screen.queryByText("strategy.recorded.notSelected")).toBeNull();
+    expect((screen.getByRole("button", { name: "strategy.data.prepare" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "strategy.data.prepare" }));
+    expect(f.methods.project).not.toHaveBeenCalled();
+    expect(f.methods.adopt).not.toHaveBeenCalled();
+  });
+  it("explains an inspection source without combination as unavailable for the race", () => {
+    const f = fixture();
+    const session: RecordedSession = { ...f.session, combinationId: undefined, combination: undefined, projectionUnavailableReason: "metadata_unavailable" };
+    const controller = { ...f.controller, editor: { ...f.controller.editor!, session } };
+    render(<StrategyRecordedRevisions {...f.props} controller={controller} sessions={[session]} selectedRevisions={[]} />);
+    expect(screen.getByText("strategy.recorded.metadataUnavailable")).toBeTruthy();
+    expect(screen.getByText("strategy.recorded.notSelected")).toBeTruthy();
+    expect((screen.getByRole("button", { name: "strategy.data.prepare" }) as HTMLButtonElement).disabled).toBe(true);
   });
 });

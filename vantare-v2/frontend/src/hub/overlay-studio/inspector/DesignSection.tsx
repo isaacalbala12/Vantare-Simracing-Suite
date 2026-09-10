@@ -39,6 +39,7 @@ const VISUAL_SYSTEM_LABELS: Partial<Record<DesignSystemId, string>> = {
   'vantare-original': 'studio.v3.design.system.original',
   'vantare-crystal': 'studio.v3.design.system.crystal',
   'vantare-endurance': 'studio.v3.design.system.endurance',
+  'vantare-functional': 'studio.v3.design.system.efficiency',
 };
 
 export function DesignSection(props: DesignSectionProps): React.ReactElement {

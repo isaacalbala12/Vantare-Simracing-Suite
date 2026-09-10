@@ -8,8 +8,8 @@ export function FunctionalStudyControls({ query, update, modules, onModules }: {
   onModules: (modules: string[]) => void;
 }) {
   return <aside className="functional-study-controls" aria-label="Diseño del standings">
-    <div className="functional-study-title"><span>VANTARE / WORKSHOP</span><h1>Standings.</h1><p>Una fila. Solo lo que necesitas.</p></div>
-    <fieldset><legend>Diseño</legend><div className="functional-study-segments">{([['standings-functional-compact', 'Principal · 3'], ['standings-functional-broadcast', 'Broadcast · 2']] as const).map(([id, label]) => <button type="button" key={id} aria-pressed={(query.designId ?? 'standings-functional-compact') === id} onClick={() => update({ ...query, designId: id })}>{label}</button>)}</div></fieldset>
+    <div className="functional-study-title"><span>VANTARE / WORKSHOP</span><h1>Eficiencia.</h1><p>Standings · Sistema Efficiency</p></div>
+    <fieldset><legend>Estilo</legend><div className="functional-study-segments">{([['standings-functional-compact', 'Signature'], ['standings-functional-broadcast', 'Broadcast']] as const).map(([id, label]) => <button type="button" key={id} aria-pressed={(query.designId ?? 'standings-functional-compact') === id} onClick={() => update({ ...query, designId: id })}>{label}</button>)}</div></fieldset>
     <fieldset><legend>Módulos</legend><p className="functional-study-note">Posición y piloto siempre visibles.</p>
       {FUNCTIONAL_STUDY_MODULES.map((item) => <label key={item.id} className="functional-study-toggle"><span>{item.label}</span><input type="checkbox" checked={modules.includes(item.id)} onChange={() => onModules(modules.includes(item.id) ? modules.filter((id) => id !== item.id) : [...modules, item.id])} /></label>)}
     </fieldset>

@@ -71,7 +71,24 @@ física nueva, retirada V1, merge o release en este corte documental.
 
 ## Estado
 
-- **ISA-1083 — Functional Compact (2026-09-09):**
+- **ISA-1083 — Efficiency / Eficiencia (2026-09-10):**
+  **Decisiones actuales:** Efficiency es un sistema con estilos Signature y
+  Broadcast. Studio lo traduce como Eficiencia (ES), Efficiency (EN), Eficiência
+  (PT) y Efficienza (IT). IDs persistidos conservados por compatibilidad.
+  Delta es de pago, confirmado por Isaac; su aplicación pertenece a ISA-1097.
+  CI del head `dd6a2c36` falló exclusivamente en el presupuesto temporal de
+  OverlayFrameV2: 1,5 ms frente a límite estricto <1,5 ms, test no modificado.
+  No se cambia el umbral; los checks del siguiente head siguen siendo necesarios.
+  **Revisión de nomenclatura:** P2 detectado y cerrado con regresión RED/GREEN:
+  los perfiles previos mostraban `Functional Signature/Broadcast · Preview` en
+  Orbit. La presentación ahora resuelve el catálogo oficial compatible; conserva
+  nombres de usuario, IDs y documentos. 31 tests focales PASS. Revisor independiente
+  sin bloqueantes. Suite final: 424 archivos, 3356 PASS y 2 omitidos, exit 0;
+  lint y build canónico Windows (incluye frontend/tipos) PASS. Binario local
+  sin configuración de servicios añadida; no certifica licencia real.
+  Workshop verificado en navegador con ambos estilos. Las herramientas de esta
+  sesión no controlan ventanas nativas; no confundir esta evidencia con la prueba
+  física pendiente de Studio/Desktop.
   **Entrega 2026-09-10:** implementación `d5255acd`, push verificado y PR draft
   [#1100](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1100)
   hacia Nightly. CI remota pendiente al abrir; issue en `state:in-review`.
@@ -93,9 +110,9 @@ física nueva, retirada V1, merge o release en este corte documental.
   el marco de perfiles de 340 px mediante geometría compartida, conservando el
   preview DOM imperativo. 145 tests focales de geometría PASS; Go completo,
   frontend previo a geometría (3330 PASS / 2 omitidos), build/tipos y lint PASS.
-  La app y LMU ya estaban abiertos; consulta de disponibilidad pendiente y no
-  se utilizan sin resolverla. La segunda parte está trazada en #1097. Delta:
-  consulta comercial enviada por discrepancia contrato/código; no cambiar aún.
+  Isaac confirma disponibilidad sin pruebas concurrentes. La app abierta
+  procede de ISA-1072, no de esta entrega: no atribuirle la nueva implementación.
+  La segunda parte está trazada en #1097 con Delta de pago ya decidido.
   **Ajuste posterior:** Isaac rechaza las marcas rojas junto a los pilotos de
   Broadcast y valora positivamente el resto. Se elimina ese adorno CSS;
   las dimensiones, textos, cápsulas, cabecera y Principal se conservan.

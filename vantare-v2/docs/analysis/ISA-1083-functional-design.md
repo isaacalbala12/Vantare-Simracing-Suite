@@ -295,6 +295,23 @@ persistencia, columnas disponibles ni otros renderizadores.
 
 Entrega opt-in en rama de issue, autorizada para Nightly al completar los
 controles; todavía sin integración ni publicación acreditadas. Se preservan
-el checkout principal y las aplicaciones abiertas. Pendiente de disponibilidad
-para la prueba física Wails/LMU. La revisión independiente está cerrada. Los resultados de
+el checkout principal y las aplicaciones abiertas. Disponibilidad confirmada;
+la prueba física Wails/LMU sigue pendiente porque esta sesión solo controla UI
+de navegador, no ventanas nativas. La revisión independiente está cerrada. Los resultados de
 navegador/fixtures no acreditan rendimiento ni paridad entre sistemas operativos.
+
+## Nombre del sistema aprobado — 2026-09-10
+
+Efficiency es el sistema de diseño; Eficiencia en español, Eficiência en
+portugués y Efficienza en italiano. Signature y Broadcast son sus estilos.
+Se conservan los identificadores históricos `vantare-functional` y
+`standings-functional-*` para guardar/reabrir perfiles, memorias y enlaces.
+Studio resuelve los nombres oficiales vigentes sin reescribir documentos ni
+renombrar estilos de usuario. Los controles del Workshop ya muestran esta jerarquía.
+
+El ajuste afecta al manifiesto/catalogo, controles Workshop, selector y modelo
+de presentación Orbit, sus tests, ocho diccionarios de Studio, plan, roadmap y
+handoff. No cambia la estética aprobada, columnas, geometría o autoridad Go.
+Delta de pago queda confirmado como decisión para ISA-1097; no se anuncia como
+derecho ya implementado. Revisión y evidencias del corte en
+`design-evidence/functional/integration-review.md`.

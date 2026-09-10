@@ -169,6 +169,7 @@ export const studioOrbitPt: Record<string, string> = {
   "studio.system.vantare-original": "Vantare Original",
   "studio.system.vantare-crystal": "Vantare Crystal",
   "studio.system.vantare-endurance": "Vantare Endurance",
+  "studio.system.vantare-functional": "Eficiência",
 
   "studio.topbar.profile": "Perfil ativo",
   "studio.topbar.autoSaving": "A guardar…",

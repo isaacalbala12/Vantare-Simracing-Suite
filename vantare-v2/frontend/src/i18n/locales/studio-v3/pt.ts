@@ -124,6 +124,7 @@ export const studioV3Pt: Record<string, string> = {
   "studio.v3.design.system.original": "Vantare Original",
   "studio.v3.design.system.crystal": "Vantare Crystal",
   "studio.v3.design.system.endurance": "Vantare Endurance",
+  "studio.v3.design.system.efficiency": "Eficiência",
   "studio.v3.design.lock.generic": "Não tens acesso para aplicar este design.",
   "studio.v3.design.loadFailed": "Não foi possível carregar os designs guardados.",
   "studio.v3.design.applyAll.confirm":

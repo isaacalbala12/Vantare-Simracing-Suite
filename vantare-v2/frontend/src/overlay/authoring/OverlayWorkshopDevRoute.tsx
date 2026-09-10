@@ -355,7 +355,7 @@ function OverlayWorkshopPage({ initialQuery, profileId }: { initialQuery: Overla
             {ALL_WIDGET_TYPES.map((widgetType) => <option key={widgetType} value={widgetType}>{widgetType}</option>)}
           </SelectField>
           <SelectField label="Sistema" value={parsed.system} onChange={chooseSystem}>
-            {compatibleSystems(parsed.widget).map((system) => <option key={system} value={system}>{system}</option>)}
+            {compatibleSystems(parsed.widget).map((system) => <option key={system} value={system}>{system === "vantare-functional" ? "Eficiencia" : system}</option>)}
           </SelectField>
           <SelectField label="Diseño" value={parsed.designId ?? ""} onChange={chooseDesign}>
             <option value="">Ajustes por defecto del renderer</option>

@@ -36,11 +36,14 @@ describe("official-designs", () => {
     });
   });
 
-  it("keeps Signature as the Functional default and Broadcast as a content-preserving alternative", () => {
+  it("keeps Signature and Broadcast as styles of Efficiency with compatible saved IDs", () => {
+    expect(designSystemRegistry.get("vantare-functional", 1).label).toBe("Efficiency");
     expect(getOfficialDesign("standings-functional-compact")).toMatchObject({
+      name: "Signature", systemId: "vantare-functional",
       isDefault: true, includesContent: false, visual: { templateId: "signature" },
     });
     expect(getOfficialDesign("standings-functional-broadcast")).toMatchObject({
+      name: "Broadcast", systemId: "vantare-functional",
       isDefault: false, includesContent: false, visual: { templateId: "broadcast" },
     });
   });

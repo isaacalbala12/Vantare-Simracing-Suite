@@ -9,7 +9,7 @@ import type { WidgetDesignClient } from "../designs/widget-design-client";
 import { applyStudioCommand } from "../state/studio-command";
 import { DesignSection } from "./DesignSection";
 
-afterEach(cleanup);
+afterEach(() => { cleanup(); localStorage.removeItem("vantare.locale"); });
 
 const client: WidgetDesignClient = {
   list: vi.fn(async () => []),
@@ -36,17 +36,19 @@ function renderDesignSection(initial: WidgetInstanceV3) {
   return () => latest.layouts.general.widgets[0];
 }
 
-describe("Studio Functional selection", () => {
-  it("selects Functional and Broadcast without replacing the configured standings content", async () => {
+describe("Studio Efficiency selection", () => {
+  it.each([["es", "Eficiencia"], ["en", "Efficiency"], ["pt", "Eficiência"], ["it", "Efficienza"]])("selects localized %s system and its styles without replacing content", async (locale, label) => {
+    localStorage.setItem("vantare.locale", locale);
     const widget = standingsDefinition.createDefault("standings-main");
     widget.content = { ...widget.content, rowCount: 10 };
     const getWidget = renderDesignSection(widget);
     await waitFor(() => expect(screen.queryByTestId("studio-design-user-loading")).toBeNull());
     fireEvent.click(document.getElementById("orbit-design-system")!);
-    fireEvent.click(screen.getByRole("option", { name: /Vantare Functional/ }));
+    fireEvent.click(screen.getByRole("option", { name: label }));
     expect(getWidget().visual.systemId).toBe("vantare-functional");
     fireEvent.click(document.getElementById("orbit-design-variant")!);
-    fireEvent.click(screen.getByRole("option", { name: /Functional Broadcast/ }));
+    expect(screen.getByRole("option", { name: /Signature/ })).toBeTruthy();
+    fireEvent.click(screen.getByRole("option", { name: /Broadcast/ }));
     expect(getWidget().visual.baseSettings.templateId).toBe("broadcast");
     expect(getWidget().content).toEqual(widget.content);
     expect(getWidget().visual.provenance?.designId).toBe("standings-functional-broadcast");
@@ -56,6 +58,6 @@ describe("Studio Functional selection", () => {
     renderDesignSection(pedalsDefinition.createDefault("pedals-main"));
     await waitFor(() => expect(screen.queryByTestId("studio-design-user-loading")).toBeNull());
     fireEvent.click(document.getElementById("orbit-design-system")!);
-    expect(screen.queryByRole("option", { name: /Vantare Functional/ })).toBeNull();
+    expect(screen.queryByRole("option", { name: /Efficiency|Eficiencia|Eficiência|Efficienza/ })).toBeNull();
   });
 });

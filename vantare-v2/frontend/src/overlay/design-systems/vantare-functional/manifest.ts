@@ -5,7 +5,7 @@ import { StandingsFunctional } from "./StandingsFunctional";
 export const vantareFunctionalManifest: DesignSystemDefinition = {
   id: "vantare-functional",
   version: 1,
-  label: "Vantare Functional · Preview",
+  label: "Efficiency",
   systemMigrations: { 0: (_widgetType, settings) => ({ ...settings }) },
   widgets: [{
     widgetType: "standings",

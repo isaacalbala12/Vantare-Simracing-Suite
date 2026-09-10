@@ -9,7 +9,7 @@ export const OFFICIAL_DESIGNS_SECTION_LABEL = "Diseños de Vantare";
 const OFFICIAL_DESIGN_DEFINITIONS: WidgetDesignV1[] = [
   {
     id: "standings-functional-compact",
-    name: "Functional Signature · Preview",
+    name: "Signature",
     widgetType: "standings",
     systemId: "vantare-functional",
     systemVersion: 1,
@@ -21,7 +21,7 @@ const OFFICIAL_DESIGN_DEFINITIONS: WidgetDesignV1[] = [
   },
   {
     id: "standings-functional-broadcast",
-    name: "Functional Broadcast · Preview",
+    name: "Broadcast",
     widgetType: "standings",
     systemId: "vantare-functional",
     systemVersion: 1,

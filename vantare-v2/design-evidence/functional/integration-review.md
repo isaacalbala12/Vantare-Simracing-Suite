@@ -36,3 +36,39 @@ persistencia, registro, catálogo o frontera compartida de renderizado.
 Revisión estática y navegador con fixtures: no certifica Wails/LMU físico,
 rendimiento, CI remoto ni integración a Nightly. Esos estados se registran
 en las issues #1083 y #1098.
+
+## Nomenclatura Efficiency — 2026-09-10
+
+Decisión de Isaac: un sistema Efficiency, Eficiencia en español, con estilos
+Signature y Broadcast. IDs y URLs conservados; no se migran documentos.
+
+Revisión independiente incremental en el mismo snapshot aislado:
+- P2 reproducido: Orbit mostraba los nombres históricos al reabrir perfiles.
+- Corregido: nombre actual del catálogo solo para procedencia oficial compatible
+  en tipo, sistema y versiones. Los nombres de usuario y selecciones desconocidas
+  se conservan. Resúmenes y cabecera del inspector comparten esta resolución pura.
+- Cierre del reviewer: sin hallazgos bloqueantes. No editó la implementación.
+
+Regresiones: cuatro etiquetas localizadas fallaron antes de la corrección; dos
+casos de procedencia histórica fallaron antes del resolver. El conjunto focal
+posterior pasó 31 tests, incluidos los nombres de usuario y sistemas incompatibles.
+Logs locales: `C:/tmp/vantare-isa1083-naming-red.log`,
+`C:/tmp/vantare-isa1083-naming-provenance-red.log` y
+`C:/tmp/vantare-isa1083-naming-provenance-green.log`.
+
+Suite completa final: **424 archivos, 3356 PASS, 2 omitidos**, exit 0
+(`C:/tmp/vantare-isa1083-efficiency-final-tests.log`). Lint final PASS
+(`C:/tmp/vantare-isa1083-efficiency-final-lint.log`). El aviso AbortError de
+teardown de happy-dom permanece visible en el log, sin fallos de suite.
+
+Workshop verificado en Chromium: Eficiencia, Estilo, Signature y Broadcast;
+alternancia funcional conservando URL/IDs y regreso a Signature.
+
+Build canónico `wails3 task build`: PASS, incluye frontend/typecheck y binario
+Windows. Artefacto local: `C:/tmp/vantare-isa1083/vantare-v2/bin/vantare.exe`,
+SHA256 `F1240EFDD4B3AE4D57D3E9A4B0404A044451FF71FAA5272D01780E4438EE3653`.
+Sin configuración de servicios añadida, sin lanzamiento de la app ni release;
+no certifica autenticación, licencia real ni la prueba física de Studio/Desktop.
+Se conserva el warning de chunks grandes y el aviso del generador de bindings
+sin paquetes Go en la raíz. El cambio incidental de clasificación en go.mod
+producido por tidy se descartó: ninguna dependencia cambió.

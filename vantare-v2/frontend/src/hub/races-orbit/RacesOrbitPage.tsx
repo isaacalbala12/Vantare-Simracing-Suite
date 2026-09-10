@@ -48,11 +48,15 @@ import {
   type TierFilter,
   type TimelineRange,
 } from "./races-orbit-model";
+import {
+  RACES_CONTEXT_SLOT_ID,
+  RACES_TOPBAR_SLOT_ID,
+} from "../components/orbit/orbit-slot-ids";
 import "../../styles/orbit-races.css";
 
-/** Huecos que la shell reserva para Carreras (briefing 06). */
-export const RACES_CONTEXT_SLOT_ID = "orbit-races-context-slot";
-export const RACES_TOPBAR_SLOT_ID = "orbit-races-topbar-slot";
+/** Huecos que la shell reserva para Carreras (briefing 06). Los ids viven en
+    `orbit-slot-ids` para que la shell no importe la página entera. */
+export { RACES_CONTEXT_SLOT_ID, RACES_TOPBAR_SLOT_ID };
 
 export type RacesView = "next" | "day" | "week" | "month" | "timeline";
 

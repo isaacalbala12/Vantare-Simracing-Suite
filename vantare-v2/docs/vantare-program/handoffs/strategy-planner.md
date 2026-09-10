@@ -1,6 +1,6 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — T12hc2 revisado, siguiente T12hd
+## Estado vigente — T12hd aceptado localmente, siguiente T12i
 
 Isaac confirma que planes y documentación siguen a cargo del orquestador.
 Muse Spark 1.3 Contributor vía OpenCode, xhigh, ejecuta sólo código/tests
@@ -8,26 +8,28 @@ asignados, sin subdelegación ni cambios de planes, docs o issue. Un ejecutor
 por worktree; revisión personal de diff y evidencia antes de aceptar.
 Rama `vantareapp/isa-1104-recorded-classification`, base exacta
 `7f757135445439851180fc503da45f7eb9e557e7`; último código revisado
-`24e647505f892e92da379fcf9842f57140f6adba`, limpio tras el commit.
-A–G3 y Ha/Hb/Hc/Hc2 aceptados localmente; T12 permanece abierto.
+`e583fe30925d7e8bd162fcc7a7f324509289e204`. Hd ocupa sólo los dos
+paths declarados. A–G3 y Ha/Hb/Hc/Hc2/Hd aceptados localmente tras
+revisión personal y gates. T12 abierto; sigue banco I, luego identidad §5.
 
 G3 ya conecta la biblioteca con el mismo editor Datos/Revisiones, también
 sin combinación ni repositorio: apertura autorizada y referencia exacta,
 inspección separada de selección, correcciones locales sin Project espurio,
 pin del borrador por referencia completa y vuelta al asistente sin recrearlo.
 Los formularios y comandos inciertos bloquean cambios de fuente/salida; las
-pestañas conservan formularios. Auditor i18n Hc: EXIT1 intermedio, sólo
-`strategy.classification.manual` pendiente de Hd; paridad OK/ausentes 0.
-Última suite global G3f: 443 archivos/3644 PASS, build/typecheck/lint exit 0.
+pestañas conservan formularios. Auditor i18n Hd: EXIT0, paridad OK,
+ausentes 0 y huérfanas 0; queda cerrado el estado intermedio de Hc.
+Última suite global Hd: 444 archivos/3680 PASS, 224.02s EXIT0;
+build 1086 módulos/1.56s EXIT0, typecheck/lint/auditor EXIT0.
 Último Go global fue G3a: 126 paquetes PASS; no Go modificado desde entonces.
 Estos resultados son contractuales locales, no prueba de DuckDB real/Wails.
 
 Ha ya consulta el original y comparte normalización; Hb aporta los doce textos
 en cuatro idiomas; Hc conecta clasificación en Datos y Hc2 conserva la vista
-al avanzar revisión. Siguiente Hd, historial, con plan precisado por root en
+al avanzar revisión. Hd ya muestra historial, con plan precisado por root en
 `docs/strategy-planner/sdd/classification-corrections-t12.md`: Ha consulta del
 original/normalización reutilizadas, Hb textos y Hc Datos A4 (aceptados);
-Hc2 continuidad aceptada; Hd historial. Cada corte declara 2–4 paths. No generar correcciones
+Hc2 continuidad e historial Hd aceptados. Cada corte declara 2–4 paths. No generar correcciones
 ficticias para comprobar disponibilidad ni duplicar validación en React.
 Luego I banco real opt-in. Coche/circuito/clase siguen pendientes de cerrar
 resolución canónica en §5 antes de código; no aceptar un hash de texto del
@@ -40,6 +42,32 @@ app/LMU; gate Wails sigue pendiente por ERROR_INVALID_STATE de causa no
 demostrada. Contraste real y paridad visual >9/10 siguen aparte.
 
 Las entradas siguientes son evidencia histórica; el estado vigente es éste.
+
+## T12hd — historial revisado y gate completo
+
+Commit `e583fe30925d7e8bd162fcc7a7f324509289e204`, dos paths
+Revisions/tests, +146/-4. Original, confirmado y motivo
+proceden únicamente del snapshot consultado; Ha sólo decide disponibilidad
+y privacidad. Cuenta tres grupos, muestra procedencia manual y conserva
+la distinción de etiqueta climática frente a señales físicas.
+
+Root leyó el diff completo y exigió un v2 real además de v1, IDs únicos
+de fixture y tres casos de privacidad con valores/motivo guardados presentes.
+El ejecutor los corrigió sin más cambios productivos. Focal inicial
+62 PASS/5.69s EXIT0; focal-r2 64 PASS/5.96s EXIT0. Typecheck/lint EXIT0,
+lint-r2 del test EXIT0 y auditor --list-r2 EXIT0, paridad/ausentes/huérfanas
+correctos. Typecheck excluye tests y no se repitió tras cambios sólo de test.
+Sin RED de producto para esta nueva presentación. Logs bajo
+`frontend/.tmp/isa1104-t12hd-*.log`, leídos personalmente; diff limpio.
+
+Tras esa revisión root asignó sólo gates: suite completa 444 archivos/
+3680 PASS, 224.02s EXIT0; build 1086 módulos/1.56s EXIT0. Logs
+frontend-all/build leídos personalmente. Permanecen avisos ya registrados
+de AbortError al cerrar happy-dom y chunks mayores de 500 kB; no se ocultan
+ni se atribuyen a una corrección nueva. Worker idle antes del commit.
+No Go nuevo ni banco, app/LMU, Wails o nota visual. Siguiente I, sólo los
+dos paths de test declarados; primero diff/focal, luego global/vet y
+bancos nombrados tras revisión personal. No abrir reserva ni exportar.
 
 ## T12hc2 — vista de Datos conservada al guardar
 

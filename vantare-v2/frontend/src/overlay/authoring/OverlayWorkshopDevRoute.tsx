@@ -25,8 +25,6 @@ import {
 } from "./overlay-workshop-query";
 import "./overlay-workshop.css";
 import { FunctionalStudyControls } from "./FunctionalStudyControls";
-import { FunctionalStudyRenderer } from "./FunctionalStudyRenderers";
-import { FUNCTIONAL_STUDY_RENDERER_STYLES } from "./functional-study-options";
 import { resolveStandingsMinimumSize } from "../widget-types/standings/standings-frame-layout";
 import type { WidgetColumnV3 } from "../widget-types/shared/widget-column";
 
@@ -127,15 +125,12 @@ function WorkshopSurface({ prepared, profileId, surface, query, comparison = fal
     ...prepared.runtime,
     relativeViewModelInstanceKey: `${profileId}:${prepared.widget.id}`,
   };
-  const studyRenderer = query.studyStyle && FUNCTIONAL_STUDY_RENDERER_STYLES.has(query.studyStyle) ? query.studyStyle : undefined;
   return <div className="overlay-workshop-surface" data-overlay-workshop-surface={surface} data-overlay-workshop-comparison={comparison || undefined}>
     {surface !== "obs" && <span className="overlay-workshop-surface-label">{surface}</span>}
     <div className="overlay-workshop-widget-root" data-overlay-workshop-widget-root style={{ width, height, transform: `scale(${query.scale})`, transformOrigin: "center" }}>
       <WidgetVisualViewport widgetType={prepared.widget.type} visual={prepared.widget.visual} layout={{ ...prepared.widget.layout, w: width, h: height }} testId="overlay-workshop-viewport">
-        {studyRenderer
-          ? <FunctionalStudyRenderer widget={prepared.widget} runtime={runtime} style={studyRenderer} />
-          : <WidgetVisualHost widget={{ ...prepared.widget, layout: { ...prepared.widget.layout, w: width, h: height } }} renderMode={surface}
-            runtime={prepared.widget.type === "engineer-radio" ? { ...runtime, engineerPresentation: query.state === "ready" ? buildEngineerPresentationFixture() : null } : runtime} />}
+        <WidgetVisualHost widget={{ ...prepared.widget, layout: { ...prepared.widget.layout, w: width, h: height } }} renderMode={surface}
+          runtime={prepared.widget.type === "engineer-radio" ? { ...runtime, engineerPresentation: query.state === "ready" ? buildEngineerPresentationFixture() : null } : runtime} />
       </WidgetVisualViewport>
     </div>
   </div>;

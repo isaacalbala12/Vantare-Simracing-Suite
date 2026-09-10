@@ -303,43 +303,13 @@
 .functional-study > .overlay-workshop-stage--transparent { background: linear-gradient(140deg, #c9c8c4, #a5a4a1); }
 .functional-study .overlay-workshop-surface-label { display: none; }
 
-/* ── Direcciones v2 (ISA-1120) ──────────────────────────────────────────────
-   Pieles de estudio: solo viven en esta página, sobre el renderer productivo.
-   `data-study-style` lo pone el <main> del Workshop desde el param `study`. */
-
-/* v2-tower · Torre: torre de tiempos compacta — más filas por píxel, posición
-   con peso, top 3 marcado con el borde rojo de la casa y ornamento reducido. */
-.functional-study[data-study-style="v2-tower"] .vf-standings::before { display: none; }
-.functional-study[data-study-style="v2-tower"] .vf-session { height: 38px; gap: 8px; }
-.functional-study[data-study-style="v2-tower"] .vf-brand { font-size: 10px; gap: 5px; }
-.functional-study[data-study-style="v2-tower"] .vf-brand img { width: 18px; height: 18px; }
-.functional-study[data-study-style="v2-tower"] .vf-session-context { gap: 3px; padding-left: 8px; }
-.functional-study[data-study-style="v2-tower"] .vf-session-type { font-size: 6px; }
-.functional-study[data-study-style="v2-tower"] .vf-clock { font-size: 12px; }
-.functional-study[data-study-style="v2-tower"] .vf-class { font-size: 8px; padding: 4px 5px; }
-.functional-study[data-study-style="v2-tower"] .vf-table thead th { height: 28px; font-size: 7px; letter-spacing: .12em; }
-.functional-study[data-study-style="v2-tower"] .vf-table .vf-column-label { padding-bottom: 0; transform: none; }
-.functional-study[data-study-style="v2-tower"] .vf-table .vf-column-label::after { display: none; }
-.functional-study[data-study-style="v2-tower"] .vf-table td { height: 26px; font-size: 13px; }
-.functional-study[data-study-style="v2-tower"] .vf-table td[data-metric="position"] { font-size: 13px; font-weight: 800; color: #f5f5f5; background: rgb(255 255 255 / 3%); }
-.functional-study[data-study-style="v2-tower"] .vf-table tbody tr:nth-child(-n+3) td[data-metric="position"] { box-shadow: inset 2px 0 #c1121f, inset 0 -1px var(--vf-line); }
-.functional-study[data-study-style="v2-tower"] .vf-table td[data-metric="driverName"] .vf-driver-name { font-size: 13px; letter-spacing: -.02em; }
-.functional-study[data-study-style="v2-tower"] .vf-table td:is([data-metric="lastLap"], [data-metric="bestLap"])::before { background: rgb(245 245 245 / 14%); }
-.functional-study[data-study-style="v2-tower"] .vf-table td[data-metric="gap"] { font-weight: 700; }
-
-/* v2-podium · Podio: estructura Broadcast con jerarquía de carrera — cabecera
-   de banda, top 3 elevados con numeral mayor y cápsulas conservadas. */
-.functional-study[data-study-style="v2-podium"] .vf-session { height: 52px; border-bottom: 2px solid rgb(245 245 245 / 16%); }
-.functional-study[data-study-style="v2-podium"] .vf-class { font-size: 10px; padding: 6px 8px; }
-.functional-study[data-study-style="v2-podium"] .vf-table thead th { height: 22px; background: rgb(0 0 0 / 26%); font-size: 7px; }
-.functional-study[data-study-style="v2-podium"] .vf-table tbody tr:nth-child(-n+3) td { background: rgb(255 255 255 / 5%); }
-.functional-study[data-study-style="v2-podium"] .vf-table tbody tr:nth-child(-n+3) td[data-metric="position"] { font-size: 15px; font-weight: 800; color: #ffffff; }
-.functional-study[data-study-style="v2-podium"] .vf-table tbody tr:nth-child(3) td { box-shadow: inset 0 -1px rgb(245 245 245 / 22%); }
-.functional-study[data-study-style="v2-podium"] .vf-table td[data-metric="gap"] { padding: 0 6px; font-weight: 700; }
-.functional-study[data-study-style="v2-podium"] .vf-table tr[data-player="true"] td { background: rgb(191 194 202 / 24%); }
+/* ── Dirección v2 elegida (ISA-1120) ────────────────────────────────────────
+   Foco: piel de estudio que solo vive en esta página, sobre el renderer
+   productivo. `data-study-style` lo pone el <main> del Workshop desde `study`. */
 
 /* v2-focus · Foco: mínimo ornamento — sin diagonal ni separadores, etiquetas
-   atenuadas, chip de clase al contorno y el tick rojo como único acento. */
+   de columna con más presencia, chip de clase al contorno y la banda neutra
+   como único marcador del jugador. */
 .functional-study[data-study-style="v2-focus"] .vf-standings::before { display: none; }
 .functional-study[data-study-style="v2-focus"] .vf-standings::after { border-color: rgb(255 255 255 / 8%); border-top-color: rgb(255 255 255 / 14%); }
 .functional-study[data-study-style="v2-focus"] .vf-standings { box-shadow: 0 10px 22px -14px rgb(0 0 0 / 42%); }
@@ -347,89 +317,12 @@
 .functional-study[data-study-style="v2-focus"] .vf-session-context { border-left-color: rgb(245 245 245 / 10%); }
 .functional-study[data-study-style="v2-focus"] .vf-clock { font-size: 13px; }
 .functional-study[data-study-style="v2-focus"] .vf-class { background: transparent; color: #d6d6da; border: 1px solid rgb(245 245 245 / 22%); border-radius: 3px; font-weight: 600; }
-.functional-study[data-study-style="v2-focus"] .vf-table thead th { font-size: 7px; color: #8a8a90; letter-spacing: .16em; }
+.functional-study[data-study-style="v2-focus"] .vf-table thead th { font-size: 10px; color: #9a9aa0; letter-spacing: .1em; }
 .functional-study[data-study-style="v2-focus"] .vf-table .vf-column-label::after { display: none; }
 .functional-study[data-study-style="v2-focus"] .vf-table td { height: 28px; font-weight: 500; }
 .functional-study[data-study-style="v2-focus"] .vf-table td:is([data-metric="lastLap"], [data-metric="bestLap"])::before { display: none; }
 .functional-study[data-study-style="v2-focus"] .vf-table td[data-metric="gap"] { font-weight: 650; color: #ffffff; }
-.functional-study[data-study-style="v2-focus"] .vf-table tr[data-player="true"] td { background-color: rgb(191 194 202 / 10%); background-image: none; }
-
-/* v2-paper · Papel: hoja de tiempos impresa — misma estructura Signature con
-   atmósfera clara, tinta oscura y reglas tipográficas en vez de cristal. */
-.functional-study[data-study-style="v2-paper"] .vf-standings {
-  --vf-ink: #191a1c;
-  --vf-muted: #6b675e;
-  --vf-line: rgb(25 26 28 / 13%);
-  --vf-player: rgb(25 26 28 / 7%);
-  background: #ece7de;
-  backdrop-filter: none;
-  box-shadow: 0 12px 26px -16px rgb(0 0 0 / 45%);
-}
-.functional-study[data-study-style="v2-paper"] .vf-standings::before { background: linear-gradient(131deg, transparent 0 37%, rgb(193 18 31 / 16%) 37% 54%, transparent 54% 62%, rgb(193 18 31 / 9%) 62% 79%, transparent 79%); }
-.functional-study[data-study-style="v2-paper"] .vf-standings::after { border-color: rgb(25 26 28 / 20%); border-top-color: rgb(25 26 28 / 32%); }
-.functional-study[data-study-style="v2-paper"] .vf-table thead th { color: #6b675e; background: linear-gradient(180deg, rgb(25 26 28 / 4%), transparent); }
-.functional-study[data-study-style="v2-paper"] .vf-table .vf-column-label::after { background: rgb(25 26 28 / 32%); }
-.functional-study[data-study-style="v2-paper"] .vf-brand { color: #191a1c; }
-.functional-study[data-study-style="v2-paper"] .vf-session-context { border-left-color: rgb(25 26 28 / 26%); }
-.functional-study[data-study-style="v2-paper"] .vf-session-type { color: #6b675e; }
-.functional-study[data-study-style="v2-paper"] .vf-table td[data-metric="position"] { color: #75716a; }
-.functional-study[data-study-style="v2-paper"] .vf-table td:is([data-metric="lastLap"], [data-metric="bestLap"]) { color: #4c4a45; }
-.functional-study[data-study-style="v2-paper"] .vf-table td:is([data-metric="lastLap"], [data-metric="bestLap"])::before { background: rgb(25 26 28 / 18%); }
-.functional-study[data-study-style="v2-paper"] .vf-table td[data-metric="driverNumber"] { color: #75716a; }
-.functional-study[data-study-style="v2-paper"] .vf-driver small,
-.functional-study[data-study-style="v2-paper"] .vf-time-unit { color: #6b675e; }
-.functional-study[data-study-style="v2-paper"] .vf-table tr[data-player="true"] td { background-color: var(--vf-player); background-image: none; box-shadow: inset 0 1px rgb(25 26 28 / 18%), inset 0 -1px rgb(25 26 28 / 12%); }
-.functional-study[data-study-style="v2-paper"] .vf-table tr[data-player="true"] td:first-child { color: #191a1c; }
-.functional-study[data-study-style="v2-paper"] .vf-standings[data-status="stale"] .vf-clock,
-.functional-study[data-study-style="v2-paper"] .vf-standings[data-status="stale"] .vf-table td { color: #6b675e; }
-
-/* Renderers de estudio (ISA-1120): vistas sobre el mismo StandingsViewModel;
-   solo existen dentro del Workshop. */
-.vsf-study { width: 100%; font-family: Inter, Arial, sans-serif; font-variant-numeric: tabular-nums; color: #f5f5f5; }
-.vsf-study * { box-sizing: border-box; }
-.vsf-study--empty { padding: 18px; font-size: 12px; color: #b9b9bd; }
-
-.functional-study-segments--stack { margin-top: 4px; }
-
-/* Muro: monitor de muro — chip de posición con color de equipo (demo),
-   nombre compacto, diferencia grande y vueltas en cluster. */
-.vsf-pitwall { background: #0e0f11; border: 1px solid rgb(255 255 255 / 10%); border-radius: 5px; overflow: hidden; }
-.vsf-pw-head { display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 10px; border-bottom: 1px solid rgb(255 255 255 / 12%); background: #141518; }
-.vsf-pw-brand { display: flex; align-items: center; gap: 6px; font: 700 10px/1 Inter, sans-serif; letter-spacing: .08em; color: #f5f5f5; }
-.vsf-pw-brand img { width: 16px; height: 16px; object-fit: contain; }
-.vsf-pw-session { padding-left: 10px; border-left: 1px solid rgb(255 255 255 / 14%); font: 700 8px/1 "JetBrains Mono", monospace; letter-spacing: .18em; color: #9a9aa0; }
-.vsf-pw-clock { font: 650 13px/1 Inter, sans-serif; letter-spacing: -.02em; }
-.vsf-pw-class { margin-left: auto; padding: 5px 7px; border-radius: 3px; background: #c1121f; color: #ffffff; font: 800 9px/1 Inter, sans-serif; letter-spacing: .02em; }
-.vsf-pw-row { display: flex; align-items: center; gap: 10px; height: 27px; padding: 0 10px 0 0; box-shadow: inset 0 -1px rgb(255 255 255 / 7%); }
-.vsf-pw-row:last-child { box-shadow: none; }
-.vsf-pw-pos { flex: none; width: 32px; align-self: stretch; display: grid; place-items: center; font: 800 12px/1 Inter, sans-serif; }
-.vsf-pw-name { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 700 12px/1 Inter, sans-serif; letter-spacing: .01em; text-transform: uppercase; }
-.vsf-pw-name em { margin-left: 7px; font: 700 8px/1 "JetBrains Mono", monospace; font-style: normal; color: #9a9aa0; }
-.vsf-pw-gap { flex: none; font: 750 13px/1 Inter, sans-serif; letter-spacing: -.02em; }
-.vsf-pw-laps { display: flex; align-items: baseline; gap: 10px; font: 500 7px/1 "JetBrains Mono", monospace; letter-spacing: .1em; color: #8e8e95; text-transform: uppercase; }
-.vsf-pw-laps b { margin-left: 4px; font: 650 10px/1 Inter, sans-serif; letter-spacing: 0; color: #d8d8dc; }
-.vsf-pw-pit { flex: none; padding: 4px 5px; border-radius: 2px; background: #d9b955; color: #151612; font: 800 8px/1 "JetBrains Mono", monospace; letter-spacing: .015em; }
-.vsf-pw-row[data-player="true"] { background: rgb(255 255 255 / 7%); }
-.vsf-pw-row[data-player="true"] .vsf-pw-pos { outline: 1px solid rgb(255 255 255 / 60%); outline-offset: -1px; }
-
-/* Escalera: visualización de la diferencia — barra proporcional al gap con el
-   líder por fila; la extensión del pelotón se lee de un vistazo. */
-.vsf-ladder { background: rgb(14 15 17 / 72%); border: 1px solid rgb(255 255 255 / 9%); border-radius: 5px; padding: 10px 12px 12px; }
-.vsf-ld-head { display: flex; align-items: center; gap: 7px; margin-bottom: 10px; font: 700 8px/1 "JetBrains Mono", monospace; letter-spacing: .16em; color: #9a9aa0; text-transform: uppercase; }
-.vsf-ld-head img { width: 15px; height: 15px; object-fit: contain; }
-.vsf-ld-row { display: grid; grid-template-columns: 24px minmax(0, 132px) 1fr auto; align-items: center; gap: 9px; height: 26px; }
-.vsf-ld-pos { font: 700 11px/1 "JetBrains Mono", monospace; color: #8e8e95; }
-.vsf-ld-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 650 11px/1 Inter, sans-serif; letter-spacing: .01em; text-transform: uppercase; color: #dedee2; }
-.vsf-ld-name em { margin-left: 6px; font: 700 7px/1 "JetBrains Mono", monospace; font-style: normal; color: #9a9aa0; }
-.vsf-ld-track { position: relative; display: flex; align-items: center; height: 100%; }
-.vsf-ld-track::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: rgb(255 255 255 / 8%); }
-.vsf-ld-bar { position: absolute; left: 0; top: 50%; transform: translateY(-50%); height: 5px; border-radius: 3px; background: linear-gradient(90deg, rgb(255 255 255 / 40%), rgb(255 255 255 / 78%)); }
-.vsf-ld-bar[data-lapped] { background: repeating-linear-gradient(45deg, rgb(255 255 255 / 22%) 0 4px, transparent 4px 8px); }
-.vsf-ld-mark { position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 3px; height: 14px; border-radius: 2px; background: #c1121f; }
-.vsf-ld-gap { min-width: 62px; text-align: right; font: 650 10px/1 "JetBrains Mono", monospace; color: #c6c6cb; }
-.vsf-ld-row[data-player="true"] .vsf-ld-bar { background: linear-gradient(90deg, #8e0d16, #ed2431); }
-.vsf-ld-row[data-player="true"] .vsf-ld-pos { color: #f5f5f5; }
-.vsf-ld-row[data-player="true"] .vsf-ld-name { color: #ffffff; }
+.functional-study[data-study-style="v2-focus"] .vf-table tr[data-player="true"] td { background-color: var(--vf-player); background-image: none; }
 
 @media (max-width: 800px) {
   /* height:auto aquí recortaba el contenido: #root tiene overflow hidden y

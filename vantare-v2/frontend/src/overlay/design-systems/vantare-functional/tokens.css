@@ -3,7 +3,7 @@
   --vf-ink: #f5f5f5;
   --vf-muted: #b9b9bd;
   --vf-accent: #c1121f;
-  --vf-player: rgb(191 194 202 / 17%);
+  --vf-player: rgb(191 194 202 / 23%);
   position: relative;
   isolation: isolate;
   width: 100%;
@@ -51,11 +51,9 @@
 .vf-standings .vf-table td[data-metric="driverName"] { padding-left: 10px; padding-right: 10px; }
 .vf-driver { display: flex; align-items: baseline; min-width: 0; gap: 7px; }
 .vf-driver-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; font-weight: 700; letter-spacing: -.025em; text-transform: uppercase; }
-.vf-driver small { margin-left: auto; flex-shrink: 0; color: #c6c6cb; font-size: 8px; letter-spacing: .06em; font-weight: 600; }
 .vf-standings .vf-table tr[data-player="true"] td { background-color: var(--vf-player); background-image: linear-gradient(180deg, rgb(255 255 255 / 4%), transparent 60%); box-shadow: inset 0 1px rgb(255 255 255 / 13%), inset 0 -1px rgb(255 255 255 / 8%); }
 .vf-standings[data-template="signature"] .vf-table tr[data-player="true"] td::before { display: none; }
 .vf-standings .vf-table tr[data-player="true"] td:first-child { position: relative; color: #ffffff; }
-.vf-standings[data-template="signature"] .vf-table tr[data-player="true"] td:first-child::before { display: block; content: ""; position: absolute; left: 3px; top: 50%; bottom: auto; transform: translateY(-50%); width: 2px; height: 20px; background: #ed2431; }
 .vf-standings .vf-table tr:last-child td { box-shadow: none; }
 .vf-standings .vf-table td[data-metric="pit"] { text-align: center !important; padding: 0 5px; }
 .vf-pit { display: inline-block; padding: 3px 4px; border-radius: 2px; background: #d9b955; color: #151612; font-size: 9px; line-height: 1; font-weight: 800; letter-spacing: .015em; }

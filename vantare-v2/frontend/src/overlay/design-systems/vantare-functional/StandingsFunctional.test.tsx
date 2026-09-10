@@ -22,12 +22,12 @@ const model: StandingsViewModel = {
 };
 
 describe("Functional Standings", () => {
-  it("keeps pit, gap and last lap in separate configured cells and identifies the player with text", () => {
+  it("keeps pit, gap and last lap in separate configured cells and marks the player only by its row", () => {
     const { container } = render(<StandingsFunctional model={model} settings={{}} renderMode="harness" />);
     expect(container.querySelector('td[data-metric="lastLap"]')?.textContent).toBe("1:42.318");
     expect(container.querySelector('td[data-metric="gap"]')?.textContent).toBe("+2.106s");
     expect(container.querySelector('td[data-metric="pit"]')?.textContent).toBe("PIT");
-    expect(container.querySelector('.vf-driver small')?.textContent).toBeTruthy();
+    expect(container.querySelector('.vf-driver small')).toBeNull();
     expect(container.querySelector('tr[data-player="true"]')).not.toBeNull();
   });
 

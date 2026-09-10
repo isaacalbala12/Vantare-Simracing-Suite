@@ -1,3 +1,4 @@
+import { analysisLapInstant, parseAnalysisFamilyCorrections, parseAnalysisLapTarget, sameAnalysisFamilyCorrections } from "./analysis-contract";
 import { describe, expect, it } from "vitest";
 import { analysisValue, parseAnalysisCandidates, parseAnalysisCommandResolution, parseAnalysisPreparation, parseCorrectionStoreResult, parseHistoricalValue } from "./analysis-contract";
 describe("local discovery labels", () => {
@@ -87,5 +88,45 @@ describe("Analysis correction wire contract", () => {
     correction.corrected.quality = "unknown";
     correction.request.base = { ...base, sessionId: "foreign" };
     expect(() => parseCorrectionStoreResult(result)).toThrow();
+  });
+});
+
+function mixedFamilyResult() {
+  const request = { base, target: { number: 2, start: "2026-09-10T12:00:00Z", end: "2026-09-10T12:01:30Z" }, family: "combined_stint_pace_curve" as const, expected: { family: "combined_stint_pace_curve", included: true, exclusionReasons: null }, included: false, reason: "Reviewed pace only" };
+  const prepared = { baseId: "b".repeat(64), correctionId: "c".repeat(64), request, original: request.expected, corrected: { family: request.family, included: false, exclusionReasons: ["manual_exclusion"] } };
+  const parent = "d".repeat(64);
+  return { headId: snapshotId, revision: { revisionId: snapshotId, parentRevisionId: parent, command: { expectedRevision: parent, commandId: "mixed", reason: "Reviewed", localAuthorId: "local" }, commandDigest: "e".repeat(64), createdAt: "2026-09-10T00:00:00Z", snapshot: { contractVersion: "analysis.observation-snapshot.v2", base, snapshotId, corrections: [], familyUses: [prepared] } } };
+}
+describe("mixed family correction contract", () => {
+  it("retains complete mixed snapshots and scalar legacy", () => {
+    const result = mixedFamilyResult();
+    expect(parseCorrectionStoreResult(result)).toBe(result);
+    expect(parseCorrectionStoreResult(baseResult()).revision.snapshot.familyUses).toBeUndefined();
+  });
+  it.each(["wrong version", "missing families", "changed original", "changed corrected", "overlap", "wrong base", "pretended original correction", "mixed base revision"])("rejects %s", mode => {
+    const value = mixedFamilyResult();
+    const snapshot = value.revision.snapshot;
+    if (mode === "wrong version") snapshot.contractVersion = "analysis.sample-snapshot.v1";
+    if (mode === "missing families") snapshot.familyUses = [];
+    if (mode === "changed original") snapshot.familyUses[0].original = { ...snapshot.familyUses[0].original, included: false };
+    if (mode === "changed corrected") snapshot.familyUses[0].corrected.included = true;
+    if (mode === "overlap") snapshot.familyUses.push(structuredClone(snapshot.familyUses[0]));
+    if (mode === "wrong base") snapshot.familyUses[0].request.base = { ...base, sessionId: "other" };
+    if (mode === "pretended original correction") Object.assign(snapshot.familyUses[0].request.expected, { correctionId: "f".repeat(64) });
+    if (mode === "mixed base revision") { value.revision.createdAt = ""; value.revision.parentRevisionId = ""; value.revision.commandDigest = ""; value.revision.command = { expectedRevision: "", commandId: "", reason: "", localAuthorId: "" }; }
+    expect(() => parseCorrectionStoreResult(value)).toThrow();
+  });
+  it("preserves nanosecond ordering and canonical instant identity", () => {
+    const item = mixedFamilyResult().revision.snapshot.familyUses[0].request;
+    const first = { ...item, target: { number: 2, start: "2026-09-10T12:00:00.000000001Z", end: "2026-09-10T12:00:00.000000002Z" } };
+    const adjacent = { ...item, target: { number: 3, start: first.target.end, end: "2026-09-10T12:00:00.000000003Z" } };
+    expect(parseAnalysisFamilyCorrections([first, adjacent], base)).toEqual([first, adjacent]);
+    expect(analysisLapInstant(adjacent.target.end) - analysisLapInstant(first.target.start)).toBe(2n);
+    const local = { ...first, target: { ...first.target, start: "2026-09-10T14:00:00.000000001+02:00", end: "2026-09-10T14:00:00.000000002+02:00" } };
+    expect(sameAnalysisFamilyCorrections([first], [local])).toBe(true);
+    expect(() => parseAnalysisFamilyCorrections([first, local], base)).toThrow("overlap");
+    expect(() => parseAnalysisLapTarget({ ...first.target, end: first.target.start })).toThrow();
+    expect(() => analysisLapInstant("2026-02-30T00:00:00Z")).toThrow();
+    expect(() => analysisLapInstant("2026-09-10T12:00:00.1234567891Z")).toThrow();
   });
 });

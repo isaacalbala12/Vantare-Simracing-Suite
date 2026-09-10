@@ -162,3 +162,16 @@ visible. Se conserva la aserción y se espera con waitFor, sin aumentar timeout 
 cambiar producto. Focal conjunto 63/63 PASS. Global se repetirá; el run anterior
 permanece fallido. Contrato mixto TS todavía sin commit/cierre; tipos/lint/build
 PASS. Sin Wails ni publicación. Un único path test en este commit separado.
+
+## T11f3 — contrato mixto de interfaz
+
+Snapshot v2 conserva familias completas; v1 escalar sigue válido. Validación de
+precondiciones, resultado, presupuesto conjunto, solapes e identidad temporal con
+nanosegundos (sin Date truncada). Save/Resolve mantienen [] explícito y rechazan
+respuestas con otra selección o motivo familiar. Focales 61, tipos/lint/build PASS.
+Primer global falló por sincronización del test de guardado: corrección separada
+5db52e32. Repetición final 442 archivos/3489 tests PASS (511.30s), warnings heredados
+de teardown happy-dom; no se oculta el primer run. Cuatro paths TS; controlador
+familiar/UI pendientes. En paralelo sólo dos paths Go de inspección, T11f2b,
+añaden elegibilidad automática/efectiva: focal/vet PASS, global Go en curso.
+Sin Wails/precisión/visual >9/push/PR/CI remota/merge/promoción. Continúa T11f4.

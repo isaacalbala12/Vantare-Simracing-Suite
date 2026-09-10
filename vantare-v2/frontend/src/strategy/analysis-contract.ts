@@ -46,11 +46,18 @@ export type AnalysisPreparedCorrection = Readonly<{
   original: AnalysisValue;
   corrected: AnalysisValue;
 }>;
+export const analysisCorrectableFamilies = ["fuel_consumption", "virtual_energy_consumption", "combined_stint_pace_curve", "tyre_degradation", "saving_cost"] as const;
+export type AnalysisCorrectableFamily = typeof analysisCorrectableFamilies[number];
+export type AnalysisFamilyUse = Readonly<{ family: string; included: boolean; exclusionReasons: readonly string[] | null; correctionId?: string }>;
+export type AnalysisLapTarget = Readonly<{ number: number; start: string; end: string }>;
+export type AnalysisFamilyCorrection = Readonly<{ base: AnalysisBase; target: AnalysisLapTarget; family: AnalysisCorrectableFamily; expected: AnalysisFamilyUse; included: boolean; reason: string }>;
+export type AnalysisPreparedFamilyCorrection = Readonly<{ baseId: string; correctionId: string; request: AnalysisFamilyCorrection; original: AnalysisFamilyUse; corrected: AnalysisFamilyUse }>;
 export type AnalysisSnapshot = Readonly<{
-  contractVersion: "analysis.sample-snapshot.v1";
+  contractVersion: "analysis.sample-snapshot.v1" | "analysis.observation-snapshot.v2";
   base: AnalysisBase;
   snapshotId: string;
   corrections: readonly AnalysisPreparedCorrection[];
+  familyUses?: readonly AnalysisPreparedFamilyCorrection[];
 }>;
 export type AnalysisSaveCommand = Readonly<{
   expectedRevision: string;
@@ -308,7 +315,7 @@ export function parseAnalysisPreparation(value: unknown): AnalysisPreparation {
 }
 function snapshot(value: unknown): AnalysisSnapshot {
   const r = record(value, "snapshot");
-  if (r.contractVersion !== "analysis.sample-snapshot.v1") {
+  if (r.contractVersion !== "analysis.sample-snapshot.v1" && r.contractVersion !== "analysis.observation-snapshot.v2") {
     throw new AnalysisProtocolError("snapshot.contractVersion");
   }
   const base = parseAnalysisBase(r.base);
@@ -344,6 +351,20 @@ function snapshot(value: unknown): AnalysisSnapshot {
       throw new AnalysisProtocolError("correction.original");
     }
   }
+  const families = r.familyUses === undefined ? [] : list(r.familyUses, "snapshot.familyUses");
+  if (corrections.length + families.length > 256 || (r.contractVersion === "analysis.observation-snapshot.v2") !== (families.length > 0)) throw new AnalysisProtocolError("snapshot.familyUses");
+  const familyRequests: AnalysisFamilyCorrection[] = [];
+  for (const item of families) {
+    const prepared = record(item, "preparedFamilyCorrection");
+    digest(prepared.baseId, "family.baseId"); digest(prepared.correctionId, "family.correctionId");
+    const request = parseAnalysisFamilyCorrection(prepared.request);
+    const original = parseAnalysisFamilyUse(prepared.original), corrected = parseAnalysisFamilyUse(prepared.corrected);
+    const reasons = request.included ? [] : [...(original.exclusionReasons ?? [])];
+    if (!request.included && !reasons.includes("manual_exclusion")) reasons.push("manual_exclusion");
+    if (!sameAnalysisFamilyUse(original, request.expected) || corrected.correctionId || corrected.family !== request.family || corrected.included !== request.included || JSON.stringify(corrected.exclusionReasons ?? []) !== JSON.stringify(reasons)) throw new AnalysisProtocolError("family.original");
+    familyRequests.push(request);
+  }
+  parseAnalysisFamilyCorrections(familyRequests, base);
   return r as unknown as AnalysisSnapshot;
 }
 export function parseAnalysisSaveCommand(value: unknown): AnalysisSaveCommand {
@@ -366,6 +387,7 @@ export function parseCorrectionStoreResult(value: unknown): AnalysisStoreResult 
       || rev.parentRevisionId !== ""
       || rev.commandDigest !== ""
       || s.corrections.length !== 0
+      || (s.familyUses?.length ?? 0) !== 0
       || ["expectedRevision", "commandId", "reason", "localAuthorId"].some((key) => command[key] !== "")) {
       throw new AnalysisProtocolError("revision.base");
     }
@@ -497,4 +519,56 @@ export function parseAnalysisStatus(value: unknown): Readonly<{
     available: boolean;
     code: string;
   };
+}
+
+// Native RFC3339 instants can carry nanoseconds. Date is for display only;
+// interval identity/order must not collapse distinct sub-millisecond boundaries.
+export function analysisLapInstant(value: string): bigint {
+  text(value, "lap.instant", 64);
+  const match = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(\d{1,9}))?(Z|[+-]\d{2}:\d{2})$/.exec(value);
+  if (!match) throw new AnalysisProtocolError("lap.instant");
+  const local = Date.parse(`${match[1]}Z`), zoned = Date.parse(`${match[1]}${match[3]}`);
+  if (!Number.isFinite(local) || !Number.isFinite(zoned) || new Date(local).toISOString().slice(0, 19) !== match[1]) throw new AnalysisProtocolError("lap.instant");
+  return BigInt(zoned) * 1000000n + BigInt((match[2] ?? "").padEnd(9, "0"));
+}
+export function parseAnalysisLapTarget(value: unknown): AnalysisLapTarget {
+  const r = record(value, "lap.target"); integer(r.number, "lap.number");
+  text(r.start, "lap.start", 64); text(r.end, "lap.end", 64);
+  const start = analysisLapInstant(r.start), end = analysisLapInstant(r.end);
+  if (start === -62135596800000000000n || end === -62135596800000000000n || start >= end) throw new AnalysisProtocolError("lap.interval");
+  return r as unknown as AnalysisLapTarget;
+}
+export function parseAnalysisFamilyUse(value: unknown): AnalysisFamilyUse {
+  const r = record(value, "familyUse");
+  oneOf(r.family, [...analysisCorrectableFamilies, "session_classification", "lap_validity", "pit", "climate_buckets", "observed_strategy"], "familyUse.family");
+  flag(r.included, "familyUse.included");
+  const reasons = r.exclusionReasons === null ? [] : list(r.exclusionReasons, "familyUse.exclusionReasons");
+  if (reasons.length > 7 || new Set(reasons).size !== reasons.length) throw new AnalysisProtocolError("familyUse.exclusionReasons");
+  for (const reason of reasons) oneOf(reason, ["incomplete", "out_lap", "in_lap", "pit", "incident_offtrack", "pace_outlier", "manual_exclusion"], "familyUse.reason");
+  if (r.correctionId !== undefined && r.correctionId !== "") digest(r.correctionId, "familyUse.correctionId");
+  return r as unknown as AnalysisFamilyUse;
+}
+function sameAnalysisFamilyUse(a: AnalysisFamilyUse, b: AnalysisFamilyUse): boolean {
+  return a.family === b.family && a.included === b.included && (a.correctionId ?? "") === (b.correctionId ?? "") && JSON.stringify(a.exclusionReasons ?? []) === JSON.stringify(b.exclusionReasons ?? []);
+}
+export function parseAnalysisFamilyCorrection(value: unknown): AnalysisFamilyCorrection {
+  const r = record(value, "familyCorrection"); parseAnalysisBase(r.base); parseAnalysisLapTarget(r.target);
+  oneOf(r.family, analysisCorrectableFamilies, "familyCorrection.family"); flag(r.included, "familyCorrection.included"); text(r.reason, "familyCorrection.reason", 1024);
+  const expected = parseAnalysisFamilyUse(r.expected);
+  if (expected.family !== r.family || expected.correctionId || (r.included && expected.exclusionReasons?.includes("incomplete"))) throw new AnalysisProtocolError("familyCorrection.expected");
+  return r as unknown as AnalysisFamilyCorrection;
+}
+export function parseAnalysisFamilyCorrections(value: unknown, base: AnalysisBase): readonly AnalysisFamilyCorrection[] {
+  const items = list(value, "familyCorrections"); if (items.length > 256) throw new AnalysisProtocolError("familyCorrections.limit");
+  const parsed = items.map(parseAnalysisFamilyCorrection);
+  for (const item of parsed) if (!sameAnalysisBase(item.base, base)) throw new AnalysisProtocolError("familyCorrections.base");
+  const intervals = parsed.map(item => ({ family: item.family, start: analysisLapInstant(item.target.start), end: analysisLapInstant(item.target.end) }));
+  intervals.sort((a, b) => a.family.localeCompare(b.family) || (a.start < b.start ? -1 : a.start > b.start ? 1 : 0));
+  for (let i = 1; i < intervals.length; i++) if (intervals[i].family === intervals[i - 1].family && intervals[i].start < intervals[i - 1].end) throw new AnalysisProtocolError("familyCorrections.overlap");
+  return parsed;
+}
+export function sameAnalysisFamilyCorrections(a: readonly AnalysisFamilyCorrection[], b: readonly AnalysisFamilyCorrection[]): boolean {
+  const key = (item: AnalysisFamilyCorrection) => JSON.stringify([item.family, item.target.number, String(analysisLapInstant(item.target.start)), String(analysisLapInstant(item.target.end))]);
+  const right = new Map(b.map(item => [key(item), item]));
+  return a.length === b.length && a.every(item => { const other = right.get(key(item)); return Boolean(other && sameAnalysisBase(item.base, other.base) && item.reason === other.reason && item.included === other.included && sameAnalysisFamilyUse(item.expected, other.expected)); });
 }

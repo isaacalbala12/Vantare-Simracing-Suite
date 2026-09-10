@@ -88,3 +88,29 @@ describe("native Analysis client", () => {
     await expect(client.load({ sessionId: "handle", base: { ...base, sessionId: "other" }, revisionId })).rejects.toThrow("requestMismatch");
   });
 });
+
+describe("complete family command transport", () => {
+  it("keeps explicit empty families and rejects altered resolution payloads", async () => {
+    const a = "a".repeat(64), b = "b".repeat(64);
+    const base = { sessionId: "source", contentSha256: a, sizeBytes: 10, parserId: "lmu-duckdb", parserVersion: "1", schemaFingerprint: "schema", analysisVersion: "lap-validity.v1", segmentationDigest: b };
+    const family = { base, target: { number: 2, start: "2026-09-10T12:00:00Z", end: "2026-09-10T12:01:30Z" }, family: "combined_stint_pace_curve" as const, expected: { family: "combined_stint_pace_curve", included: true, exclusionReasons: null }, included: false, reason: "Reviewed" };
+    const command = { expectedRevision: a, commandId: "mixed", reason: "Review", localAuthorId: "local" };
+    const request = { sessionId: "handle", base, corrections: [], familyUses: [family], command };
+    const revision = { revisionId: b, parentRevisionId: a, command, commandDigest: b, createdAt: "2026-09-10T00:00:00Z", snapshot: { contractVersion: "analysis.observation-snapshot.v2", base, snapshotId: b, corrections: [], familyUses: [{ baseId: a, correctionId: b, request: family, original: family.expected, corrected: { family: family.family, included: false, exclusionReasons: ["manual_exclusion"] } }] } };
+    const call = vi.fn().mockResolvedValue({ found: true, headId: b, revision });
+    const client = createAnalysisClient({ call });
+    await expect(client.resolve(request)).resolves.toMatchObject({ found: true });
+    expect(call.mock.calls[0][1][0]).toBe(request);
+    await expect(client.resolve({ ...request, familyUses: [] })).rejects.toThrow("resolve.requestMismatch");
+    await expect(client.resolve({ ...request, familyUses: [{ ...family, reason: "other" }] })).rejects.toThrow("resolve.requestMismatch");
+    call.mockResolvedValue({ headId: b, revision });
+    await expect(client.save({ ...request, familyUses: [] })).rejects.toThrow("save.requestMismatch");
+    call.mockResolvedValue({ headId: b, revision: { ...revision, snapshot: { ...revision.snapshot, contractVersion: "analysis.sample-snapshot.v1", familyUses: undefined } } });
+    const restore = { ...request, familyUses: [] };
+    await expect(client.save(restore)).resolves.toMatchObject({ headId: b });
+    expect(call.mock.calls.at(-1)?.[1][0]).toBe(restore);
+    call.mockClear();
+    await expect(client.save({ ...request, familyUses: [family, family] })).rejects.toThrow("overlap");
+    expect(call).not.toHaveBeenCalled();
+  });
+});

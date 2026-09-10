@@ -1,6 +1,6 @@
 import { Call } from "@wailsio/runtime";
 import { parseInputProjection } from "./strategy-application-client";
-import { AnalysisProtocolError, parseAnalysisBase, parseAnalysisCandidates, parseAnalysisCommandResolution, parseAnalysisCorrection, parseAnalysisOpenedSession, parseAnalysisPage, parseAnalysisPreparation, parseAnalysisSaveCommand, parseAnalysisStatus, parseCorrectionStoreResult, sameAnalysisBase, type AnalysisBase, type AnalysisCorrection, type AnalysisSaveCommand } from "./analysis-contract";
+import { AnalysisProtocolError, parseAnalysisFamilyCorrections, sameAnalysisFamilyCorrections, type AnalysisFamilyCorrection, parseAnalysisBase, parseAnalysisCandidates, parseAnalysisCommandResolution, parseAnalysisCorrection, parseAnalysisOpenedSession, parseAnalysisPage, parseAnalysisPreparation, parseAnalysisSaveCommand, parseAnalysisStatus, parseCorrectionStoreResult, sameAnalysisBase, type AnalysisBase, type AnalysisCorrection, type AnalysisSaveCommand } from "./analysis-contract";
 const methods = ["Status", "Discover", "Open", "ReadPage", "PrepareCorrections", "SaveCorrections", "ResolveCorrectionCommand", "LoadCorrection", "ProjectCorrection", "CloseSession"] as const;
 type AnalysisMethod = typeof methods[number];
 export type AnalysisTransport = {
@@ -15,6 +15,7 @@ export type AnalysisSaveRequest = Readonly<{
   sessionId: string;
   base: AnalysisBase;
   corrections: readonly AnalysisCorrection[];
+  familyUses?: readonly AnalysisFamilyCorrection[];
   command: AnalysisSaveCommand;
 }>;
 export type AnalysisPageRequest = Readonly<{
@@ -50,6 +51,8 @@ function validateSaveRequest(request: AnalysisSaveRequest): void {
   parseAnalysisBase(request.base);
   parseAnalysisSaveCommand(request.command);
   if (!Array.isArray(request.corrections) || request.corrections.length > 256) throw new AnalysisProtocolError("request.corrections");
+  const families = parseAnalysisFamilyCorrections(request.familyUses ?? [], request.base);
+  if (request.familyUses === null || request.corrections.length + families.length > 256) throw new AnalysisProtocolError("request.familyUses");
   for (const correction of request.corrections) {
     parseAnalysisCorrection(correction);
     if (!sameAnalysisBase(correction.base, request.base)) throw new AnalysisProtocolError("request.correctionBase");
@@ -97,7 +100,7 @@ export function createAnalysisClient(transport: AnalysisTransport = createNative
     async save(request: AnalysisSaveRequest, signal?: AbortSignal) {
       validateSaveRequest(request);
       const result = parseCorrectionStoreResult(await invoke("SaveCorrections", [request], signal));
-      if (!sameAnalysisBase(result.revision.snapshot.base, request.base) || result.revision.command.commandId !== request.command.commandId) {
+      if (!sameAnalysisBase(result.revision.snapshot.base, request.base) || result.revision.command.commandId !== request.command.commandId || !sameAnalysisFamilyCorrections(request.familyUses ?? [], result.revision.snapshot.familyUses?.map(item => item.request) ?? [])) {
         throw new AnalysisProtocolError("save.requestMismatch");
       }
       return result;
@@ -109,7 +112,7 @@ export function createAnalysisClient(transport: AnalysisTransport = createNative
         result.revision.command.commandId !== request.command.commandId ||
         result.revision.command.expectedRevision !== request.command.expectedRevision ||
         result.revision.command.reason !== request.command.reason ||
-        result.revision.command.localAuthorId !== request.command.localAuthorId)) throw new AnalysisProtocolError("resolve.requestMismatch");
+        result.revision.command.localAuthorId !== request.command.localAuthorId || !sameAnalysisFamilyCorrections(request.familyUses ?? [], result.revision.snapshot.familyUses?.map(item => item.request) ?? []))) throw new AnalysisProtocolError("resolve.requestMismatch");
       return result;
     },
     async load(request: AnalysisRevisionRequest, signal?: AbortSignal) {

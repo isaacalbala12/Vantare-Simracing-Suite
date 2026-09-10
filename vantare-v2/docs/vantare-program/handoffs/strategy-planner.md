@@ -2118,3 +2118,40 @@ intacto antes del recorrido (97513472 bytes, SHA256
 35438326ecddd6ab660ed3aad70b076a73e3290236c0292f30657594c38c1eb0). Sin
 push/PR/CI remota/merge/promoción/release; LMU intacto; sin roadmap alterado
 (no hay entrega que reflejar). Sigue T12 independiente del SDD.
+
+## T12 — microplan de correcciones tipadas de clasificación (ISA-1104, solo docs)
+
+Sesión ejecutora OpenCode ses_f76922768ffe0hHIty8SaEG2IE, provider
+opencode-go, modelo muse-spark-1.3-contributor, variante xhigh. Autorización
+reciente del usuario (orquestador coordina, Muse Spark ejecuta vía MCP/opencode;
+sustituye la prohibición anterior de delegación solo para esta relación);
+orquestador revisor. Estado de coordinación para continuidad, no configuración
+global. Sin subdelegación.
+
+Issue #1104 (hija de #1091 y #1033, continúa #1099; labels area:estrategia,
+roadmap:required, state:in-progress; Project Vantare; token
+milestones:strategy-recorded-editor). Rama
+vantareapp/isa-1104-recorded-classification, raíz Git C:/tmp/vantare-isa1104,
+módulo C:/tmp/vantare-isa1104/vantare-v2, base exacta
+7f757135445439851180fc503da45f7eb9e557e7 (el primer checkout usó por error la
+ruta .../vantare-v2 como raíz y ubicó el microplan en docs/ de raíz; corregido
+con git worktree move a C:/tmp/vantare-isa1104 y reubicación del documento al
+docs/ del módulo, sin sobrescribir nada). #1099 y checkout principal intactos.
+
+Microplan en vantare-v2/docs/strategy-planner/sdd/classification-corrections-t12.md:
+conjunto cerrado (SessionType enum, WeatherConditions etiqueta opaca, 4 campos
+de CombinationIdentity con ID canónico lmu:sha256 del catálogo nativo vía
+PrepareCorrections/SessionCatalog, nunca texto del cliente); precondición
+original con puertas de HistoricalMetadata y bloqueo con causa, sin fallbacks;
+motivo manual sin promocionar mediciones; cuota conjunta 256; snapshot v3 con
+compatibilidad v1/v2 y guard legacy extendido; Save/Resolve idempotentes con
+expectedRevision/commandId; cambio de combinación que deja obsoleto el plan sin
+rebasear, adoptar ni recalcular silenciosamente; consumo en vista separada con
+reloj/parser/permisos intactos; clima separado de señales físicas de
+temperatura/humedad y de umbrales #1030. Microcortes T12a–T12e de máx. 5 paths
+con paths concretos (rg --files), tests observables y gates. plan.md intacto
+(sin cambio de rumbo/alcance; la entrega futura lo actualizará y regenerará el
+JSON en su PR). Primer corte propuesto: T12a validación pura en
+internal/telemetryanalysis/classification_corrections.go +
+classification_corrections_test.go (2 paths). Sin implementación, dependencias,
+push/PR/merge/promoción en este encargo.

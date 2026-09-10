@@ -122,3 +122,21 @@ del flujo para declarar capacidad explícita, conservando todos sus guards.
 24 focales, tipos, lint/build PASS. Global frontend agrupado tras T10k.
 Tres paths lógica/test más cuatro idiomas. Sigue historial visible declarado.
 No cambios al original, Wails, precisión, nota visual ni promoción nuevos.
+
+## T10k — historial visible de fuentes
+
+Revisiones monta consulta exacta, navegación por padres/cabeza anunciada y retorno
+a la referencia de carrera, snapshot con original/corregido/motivo, restauración
+como nueva revisión y proyección/adopción explícitas. Configuración guardada se
+distingue de resultado calculado; historial completo del plan sigue T14.
+Formularios persisten entre pestañas. Cambiar fuente/revisión reinicia formularios
+intactos; entradas pendientes bloquean esa navegación. Una razón ya entregada al
+controlador no deja Datos bloqueado tras resolución ausente/conflicto.
+Cinco paths lógica/test/CSS declarados, cuatro idiomas, roadmap/digest y capturas.
+10 focales, tipos, lint/build y global 442 archivos/3478 tests PASS (394.60s).
+Logs C:/tmp/isa1096-t10k-*. Capturas revisions-pass-01: navegador/fixture vacío,
+no Wails ni telemetría real ni nota >9. Review propia: sin nuevo lector/store,
+mutación del original o adopción silenciosa. Se mantiene recuperación entre
+reinicios pendiente de T14. Subtítulo/todos los estados cargados van al gate T18.
+Siguiente #1099 T11 usos por familia; issue creada y añadida a Project Vantare.
+No push/PR/CI remota, merge, promoción o release.

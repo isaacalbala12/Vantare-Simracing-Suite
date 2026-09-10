@@ -17,7 +17,7 @@ function fixture() {
   const base = { sessionId: "source", contentSha256: a, sizeBytes: 10, parserId: "lmu-duckdb", parserVersion: "1", schemaFingerprint: "schema", analysisVersion: "analysis", segmentationDigest: b };
   const channel = { id: "fuel", source_name: "Fuel level", unit: { symbol: "L", quality: "valid" as const }, sampling: { kind: "event_timestamped" as const, origin: "source_timestamp" as const }, columns: [{ name: "value", type: "number" as const }] };
   const session: RecordedSession = { editableChannelIds: ["fuel"], candidateId: "candidate", base, combinationId: "combo", combination: { id: "combo", simId: "lmu", trackName: "Imola", trackLayout: "GP", carName: "Car", carClass: "LMP2" }, opened: { sessionId: "handle", session: { schema_version: 1, id: "source", channels: [channel], metadata: [] } }, revision: { sessionId: "source", baseDigest: b, revisionId: a, snapshotId: a } };
-  const current = { headId: a, revision: { revisionId: a, snapshot: { base, snapshotId: a, corrections: [] } } };
+  const current = { headId: a, revision: { revisionId: a, parentRevisionId: "", command: { reason: "" }, createdAt: "", snapshot: { base, snapshotId: a, corrections: [] } } };
   const page = { channel_id: "fuel", start: 0, sampling: channel.sampling, samples: [{ index: 4, values: [{ column: "value", present: true, quality: "unknown" as const, scalar: { kind: "number" as const, number: 12 } }] }] };
   const methods = { load: vi.fn(), page: vi.fn(), edit: vi.fn().mockReturnValue(true), save: vi.fn(), discard: vi.fn(), project: vi.fn(), adopt: vi.fn(), head: vi.fn(), resolveSave: vi.fn(), retrySave: vi.fn(), cancel: vi.fn() };
   const controller = { ...methods, editor: { session, current, page, corrections: [], dirty: false }, busy: false, error: "", unresolved: false } as unknown as RecordedCorrectionsController;
@@ -92,6 +92,8 @@ describe("recorded data screen", () => {
     fireEvent.change(await screen.findByLabelText("strategy.data.channel"), { target: { value: "fuel" } });
     fireEvent.click(await screen.findByRole("button", { name: "strategy.data.sample 4" }));
     fireEvent.change(screen.getByLabelText("strategy.data.correctedValue"), { target: { value: "0" } });
+    fireEvent.click(screen.getByRole("tab", { name: "strategy.data.tab.revisions" }));
+    expect((screen.getByLabelText("strategy.history.source") as HTMLSelectElement).disabled).toBe(true);
     fireEvent.click(screen.getByRole("tab", { name: "strategy.data.tab.race" }));
     fireEvent.click(screen.getByRole("tab", { name: "strategy.data.tab.data" }));
     expect((screen.getByLabelText("strategy.data.correctedValue") as HTMLInputElement).value).toBe("0");

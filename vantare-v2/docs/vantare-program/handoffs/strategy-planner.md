@@ -5,7 +5,7 @@
 Worktree C:/tmp/vantare-isa1096, rama vantareapp/isa-1096-recorded-corrections,
 base bd9ed2c2ffa148ce4398265e2f83af80303739af. T08j final: 438 archivos/3433
 tests, lint/build PASS. T10a helpers de revisión exacta/snapshot/comando estable:
-T10a 7 focales y T10b 13 focales (helpers+hook), tipos/lint PASS. Controlador conserva guardado duradero y comando incierto. T10c resolución autorizada con lease/digest: focal Go, build, global Go -p1/vet PASS. T10d cliente de resolución: 43 focales/tipos/lint PASS. T10e controlador resuelve confirmación/ausencia sin perder propuesta: 16 focales/tipos/lint PASS. T10f owner compartido/guards/adopción por fuente: 27 focales/tipos/lint PASS. T10g Datos/pestañas montados: 16 focales, tipos/lint/build y global 441 archivos/3463 tests PASS. Review detecta canales consultables que Analysis no prepara para corregir: siguiente capacidades nativas por canal, después historial visible. No nuevo Wails, precisión ni paridad certificada.
+T10a 7 focales y T10b 13 focales (helpers+hook), tipos/lint PASS. Controlador conserva guardado duradero y comando incierto. T10c resolución autorizada con lease/digest: focal Go, build, global Go -p1/vet PASS. T10d cliente de resolución: 43 focales/tipos/lint PASS. T10e controlador resuelve confirmación/ausencia sin perder propuesta: 16 focales/tipos/lint PASS. T10f owner compartido/guards/adopción por fuente: 27 focales/tipos/lint PASS. T10g Datos/pestañas montados: 16 focales, tipos/lint/build y global 441 archivos/3463 tests PASS. T10h–j capacidades nativas y solo lectura: Go global/vet del alcance y frontend focal/tipos/lint/build PASS. T10k historial visible: global frontend 442 archivos/3478 tests, lint/build PASS. Continúa T11 en #1099. No nuevo Wails, precisión ni paridad certificada.
 
 ## Continuación activa T08 — ISA-1095 (2026-09-10)
 
@@ -1796,3 +1796,21 @@ del flujo para declarar capacidad explícita, conservando todos sus guards.
 24 focales, tipos, lint/build PASS. Global frontend agrupado tras T10k.
 Tres paths lógica/test más cuatro idiomas. Sigue historial visible declarado.
 No cambios al original, Wails, precisión, nota visual ni promoción nuevos.
+
+## T10k — historial visible de fuentes
+
+Revisiones monta consulta exacta, navegación por padres/cabeza anunciada y retorno
+a la referencia de carrera, snapshot con original/corregido/motivo, restauración
+como nueva revisión y proyección/adopción explícitas. Configuración guardada se
+distingue de resultado calculado; historial completo del plan sigue T14.
+Formularios persisten entre pestañas. Cambiar fuente/revisión reinicia formularios
+intactos; entradas pendientes bloquean esa navegación. Una razón ya entregada al
+controlador no deja Datos bloqueado tras resolución ausente/conflicto.
+Cinco paths lógica/test/CSS declarados, cuatro idiomas, roadmap/digest y capturas.
+10 focales, tipos, lint/build y global 442 archivos/3478 tests PASS (394.60s).
+Logs C:/tmp/isa1096-t10k-*. Capturas revisions-pass-01: navegador/fixture vacío,
+no Wails ni telemetría real ni nota >9. Review propia: sin nuevo lector/store,
+mutación del original o adopción silenciosa. Se mantiene recuperación entre
+reinicios pendiente de T14. Subtítulo/todos los estados cargados van al gate T18.
+Siguiente #1099 T11 usos por familia; issue creada y añadida a Project Vantare.
+No push/PR/CI remota, merge, promoción o release.

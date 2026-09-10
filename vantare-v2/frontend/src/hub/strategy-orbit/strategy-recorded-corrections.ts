@@ -1,5 +1,5 @@
 import type { AnalysisClient, AnalysisSaveRequest } from "../../strategy/analysis-client";
-import { analysisClassificationFieldForMetadataKey, analysisLapInstant, parseAnalysisClassificationCorrection, parseAnalysisClassificationCorrections, parseAnalysisFamilyCorrection, parseAnalysisFamilyCorrections, parseAnalysisLapTarget, type AnalysisClassificationCorrection, type AnalysisClassificationField, type AnalysisCorrectableFamily, type AnalysisFamilyCorrection, type AnalysisLapPage, type AnalysisLapTarget, parseAnalysisCorrection, parseAnalysisSaveCommand, sameAnalysisBase, type AnalysisCorrection, type AnalysisPage, type AnalysisScalar, type AnalysisStoreResult } from "../../strategy/analysis-contract";
+import { analysisClassificationFieldForMetadataKey, analysisLapInstant, parseAnalysisClassificationCorrection, parseAnalysisClassificationCorrections, parseAnalysisClassificationOriginal, parseAnalysisFamilyCorrection, parseAnalysisFamilyCorrections, parseAnalysisLapTarget, type AnalysisClassificationCorrection, type AnalysisClassificationField, type AnalysisCorrectableFamily, type AnalysisFamilyCorrection, type AnalysisLapPage, type AnalysisLapTarget, parseAnalysisCorrection, parseAnalysisSaveCommand, sameAnalysisBase, type AnalysisCorrection, type AnalysisPage, type AnalysisScalar, type AnalysisStoreResult } from "../../strategy/analysis-contract";
 import type { RecordedSession } from "./strategy-recorded-session";
 
 /** Explicit revision only. Reading a historical parent never changes the plan. */
@@ -59,11 +59,11 @@ export function recordedCorrectionSave(session: RecordedSession, current: Analys
   return structuredClone({ sessionId: session.opened.sessionId, base: session.base, corrections, familyUses, classifications, command });
 }
 
-/** Build one classification decision from the OPEN session's original metadata,
- * never from a revision's effective value; another missing metadata entry does
- * not block this field. The local gate is advisory: native Save revalidates
- * and authorizes the whole proposal before writing. */
-export function recordedClassificationCorrection(session: RecordedSession, current: AnalysisStoreResult, field: AnalysisClassificationField, replacement: string, reason: string): AnalysisClassificationCorrection {
+/** Read the correctable original for one field from the OPEN session, never
+ * from a revision's effective value; another missing metadata entry does not
+ * block this field. Throws the same gates the builder enforces, without
+ * fabricating a correction or a reason to probe availability. */
+export function recordedClassificationOriginal(session: RecordedSession, current: AnalysisStoreResult, field: AnalysisClassificationField): string {
   if (field !== "SessionType" && field !== "WeatherConditions") throw new Error("recorded_classification_invalid");
   if (!sameAnalysisBase(current.revision.snapshot.base, session.base)) throw new Error("recorded_correction_base_mismatch");
   const matches = session.opened.session.metadata.filter(item => analysisClassificationFieldForMetadataKey(item.key) === field);
@@ -71,7 +71,16 @@ export function recordedClassificationCorrection(session: RecordedSession, curre
   if (matches.length > 1) throw new Error("recorded_classification_ambiguous");
   const original = matches[0];
   if (original.present !== true || original.quality !== "valid" || original.sensitive !== false || original.redacted === true || typeof original.value !== "string") throw new Error("recorded_classification_read_only");
-  return structuredClone(parseAnalysisClassificationCorrection({ base: session.base, field, expectedOriginal: original.value, replacement, reason, provenance: "manual" }));
+  return parseAnalysisClassificationOriginal(field, original.value);
+}
+
+/** Build one classification decision from the OPEN session's original metadata,
+ * never from a revision's effective value; another missing metadata entry does
+ * not block this field. The local gate is advisory: native Save revalidates
+ * and authorizes the whole proposal before writing. */
+export function recordedClassificationCorrection(session: RecordedSession, current: AnalysisStoreResult, field: AnalysisClassificationField, replacement: string, reason: string): AnalysisClassificationCorrection {
+  const expectedOriginal = recordedClassificationOriginal(session, current, field);
+  return structuredClone(parseAnalysisClassificationCorrection({ base: session.base, field, expectedOriginal, replacement, reason, provenance: "manual" }));
 }
 
 /** Replacing one classification preserves every other active decision. The whole

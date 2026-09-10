@@ -599,6 +599,7 @@ export type AnalysisClassificationField = typeof analysisClassificationFields[nu
 export type AnalysisClassificationCorrection = Readonly<{ base: AnalysisBase; field: AnalysisClassificationField; expectedOriginal: string; replacement: string; reason: string; provenance: "manual" }>;
 export type AnalysisPreparedClassificationCorrection = Readonly<{ baseId: string; correctionId: string; request: AnalysisClassificationCorrection; original: string; corrected: string }>;
 const sessionTypes = ["practice", "qualify", "race"] as const;
+export const analysisSessionTypes = sessionTypes;
 // Go strings.TrimSpace trims Unicode White_Space: NEL yes, FEFF no.
 // JS trim differs on both, so classification canonicalization uses this exact set.
 const goWhiteSpace = "\\t\\n\\v\\f\\r \\u0085\\u00A0\\u1680\\u2000-\\u200A\\u2028\\u2029\\u202F\\u205F\\u3000";
@@ -638,6 +639,7 @@ function canonicalSessionType(value: string): string {
   }
   return lowered;
 }
+export const analysisCanonicalSessionType = canonicalSessionType;
 function canonicalWeatherReplacement(value: string): string {
   const trimmed = goTrim(value);
   if (trimmed === "" || [...trimmed].length > 64 || /[\p{Cc}]/u.test(trimmed)) {
@@ -657,6 +659,25 @@ function classificationText(value: unknown, field: string, maxBytes: number, all
     throw new AnalysisProtocolError(field);
   }
 }
+// The original is validated but returned RAW: Go applies no length limit to
+// originals and no trimming to the precondition; the exact comparison decides.
+// A SessionType original must already name the closed enum.
+export function parseAnalysisClassificationOriginal(field: AnalysisClassificationField, value: unknown): string {
+  if (field !== "SessionType" && field !== "WeatherConditions") {
+    throw new AnalysisProtocolError("classification.field");
+  }
+  if (typeof value !== "string") {
+    throw new AnalysisProtocolError("classification.expectedOriginal");
+  }
+  unicodeValid(value, "classification.expectedOriginal");
+  if (goTrim(value) === "") {
+    throw new AnalysisProtocolError("classification.expectedOriginal");
+  }
+  if (field === "SessionType") {
+    canonicalSessionType(value);
+  }
+  return value;
+}
 export function parseAnalysisClassificationCorrection(value: unknown): AnalysisClassificationCorrection {
   const r = record(value, "classificationCorrection");
   parseAnalysisBase(r.base);
@@ -666,17 +687,7 @@ export function parseAnalysisClassificationCorrection(value: unknown): AnalysisC
   // No length limit on originals in Go and no trimming of the precondition:
   // the exact comparison decides. The original itself must be Go-nonempty,
   // and a SessionType original must already name the closed enum.
-  const expectedOriginal = r.expectedOriginal;
-  if (typeof expectedOriginal !== "string") {
-    throw new AnalysisProtocolError("classification.expectedOriginal");
-  }
-  unicodeValid(expectedOriginal, "classification.expectedOriginal");
-  if (goTrim(expectedOriginal) === "") {
-    throw new AnalysisProtocolError("classification.expectedOriginal");
-  }
-  if (r.field === "SessionType") {
-    canonicalSessionType(expectedOriginal);
-  }
+  parseAnalysisClassificationOriginal(r.field, r.expectedOriginal);
   // The replacement is validated normalized but kept raw in the request;
   // the prepared form derives the canonical corrected value from it.
   classificationText(r.replacement, "classification.replacement", 1024, true);

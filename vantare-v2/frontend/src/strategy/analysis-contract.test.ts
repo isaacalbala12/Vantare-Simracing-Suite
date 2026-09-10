@@ -1,8 +1,8 @@
 import { parseAnalysisLapPage, analysisCorrectableFamilies, analysisLapInstant, parseAnalysisFamilyCorrections, parseAnalysisLapTarget, sameAnalysisFamilyCorrections } from "./analysis-contract";
 import { describe, expect, it } from "vitest";
 import { analysisValue, parseAnalysisCandidates, parseAnalysisCommandResolution, parseAnalysisPreparation, parseCorrectionStoreResult, parseHistoricalValue } from "./analysis-contract";
-import { analysisClassificationFieldForMetadataKey, parseAnalysisClassificationCorrection, parseAnalysisClassificationCorrections, parseAnalysisPreparedClassification, sameAnalysisClassificationCorrections } from "./analysis-contract";
-import type { AnalysisClassificationCorrection } from "./analysis-contract";
+import { analysisCanonicalSessionType, analysisClassificationFieldForMetadataKey, analysisSessionTypes, parseAnalysisClassificationCorrection, parseAnalysisClassificationCorrections, parseAnalysisClassificationOriginal, parseAnalysisPreparedClassification, sameAnalysisClassificationCorrections } from "./analysis-contract";
+import type { AnalysisClassificationCorrection, AnalysisClassificationField } from "./analysis-contract";
 describe("local discovery labels", () => {
   const candidate = { id: "opaque", state: "ready", size: 10, modifiedAt: "2026-09-10T00:00:00Z", walPresent: false };
   it("accepts optional sanitized names without deriving identity", () => {
@@ -360,5 +360,38 @@ describe("classification correction contract", () => {
     expect(() => parseAnalysisPreparedClassification(weatherPrepared("Dry", "😀".repeat(65), "😀".repeat(65)))).toThrow("classification.weather");
     expect(new TextEncoder().encode(parseAnalysisClassificationCorrection(classRequest({ reason: "é".repeat(512) })).reason).length).toBe(1024);
     expect(() => parseAnalysisClassificationCorrection(classRequest({ reason: "é".repeat(513) }))).toThrow("classification.reason");
+  });
+});
+
+describe("classification original query", () => {
+  it("returns the raw original without trimming or a new limit", () => {
+    expect(parseAnalysisClassificationOriginal("SessionType", "race ")).toBe("race ");
+    expect(parseAnalysisClassificationOriginal("SessionType", "  Race  ")).toBe("  Race  ");
+    const long = "w".repeat(5000);
+    expect(parseAnalysisClassificationOriginal("WeatherConditions", long)).toBe(long);
+  });
+  it("requires the closed field, a valid Unicode string and a known enum", () => {
+    expect(() => parseAnalysisClassificationOriginal("TrackName" as unknown as AnalysisClassificationField, "race")).toThrow("classification.field");
+    for (const value of [undefined, 12, "", "  ", "ra" + String.fromCharCode(0xD800) + "ce"]) {
+      expect(() => parseAnalysisClassificationOriginal("WeatherConditions", value)).toThrow();
+    }
+    expect(() => parseAnalysisClassificationOriginal("SessionType", "banana")).toThrow("classification.sessionType");
+    expect(parseAnalysisClassificationOriginal("SessionType", "PRACTİCE")).toBe("PRACTİCE");
+    expect(parseAnalysisClassificationOriginal("WeatherConditions", "banana")).toBe("banana");
+  });
+  it("matches the builder precondition exactly", () => {
+    const spaced = classRequest({ expectedOriginal: "  Race  " });
+    expect(parseAnalysisClassificationCorrection(spaced)).toBe(spaced);
+    expect(() => parseAnalysisClassificationCorrection(classRequest({ expectedOriginal: "banana" }))).toThrow("classification.sessionType");
+    const prepared = preparedClass({ expectedOriginal: "  Race  " }, { original: "  Race  ", corrected: "qualify" });
+    expect(parseAnalysisPreparedClassification(prepared)).toBe(prepared);
+  });
+  it("shares the closed enum and Go canonicalization without a new normalizer", () => {
+    expect(analysisSessionTypes).toEqual(["practice", "qualify", "race"]);
+    expect(analysisCanonicalSessionType("  RACE ")).toBe("race");
+    expect(analysisCanonicalSessionType("PRACTİCE")).toBe("practice");
+    expect(analysisCanonicalSessionType("race")).toBe("race");
+    expect(() => analysisCanonicalSessionType("sprint")).toThrow("classification.sessionType");
+    expect(() => analysisCanonicalSessionType("﻿race")).toThrow("classification.sessionType");
   });
 });

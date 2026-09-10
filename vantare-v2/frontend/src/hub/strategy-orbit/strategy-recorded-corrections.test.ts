@@ -3,7 +3,7 @@ import type { AnalysisClient } from "../../strategy/analysis-client";
 import { parseCorrectionStoreResult } from "../../strategy/analysis-contract";
 import type { AnalysisClassificationCorrection, AnalysisFamilyCorrection, AnalysisLapPage, AnalysisBase, AnalysisMetadata, AnalysisPage, AnalysisScalar, AnalysisStoreResult } from "../../strategy/analysis-contract";
 import type { RecordedSession } from "./strategy-recorded-session";
-import { loadRecordedLapPage, recordedClassificationCorrection, recordedFamilyCorrection, removeRecordedClassificationCorrection, replaceRecordedClassificationCorrection, replaceRecordedFamilyCorrection, removeRecordedFamilyCorrection, loadRecordedCorrection, projectRecordedCorrection, recordedCorrectionSave, recordedSampleCorrection, replaceRecordedCorrection } from "./strategy-recorded-corrections";
+import { loadRecordedLapPage, recordedClassificationCorrection, recordedClassificationOriginal, recordedFamilyCorrection, removeRecordedClassificationCorrection, replaceRecordedClassificationCorrection, replaceRecordedFamilyCorrection, removeRecordedFamilyCorrection, loadRecordedCorrection, projectRecordedCorrection, recordedCorrectionSave, recordedSampleCorrection, replaceRecordedCorrection } from "./strategy-recorded-corrections";
 
 const base: AnalysisBase = { sessionId: "source", contentSha256: "a".repeat(64), sizeBytes: 10, parserId: "lmu-duckdb", parserVersion: "1", schemaFingerprint: "schema", analysisVersion: "lap-validity.v1", segmentationDigest: "b".repeat(64) };
 const initial = "c".repeat(64), next = "d".repeat(64), digest = "e".repeat(64);
@@ -275,5 +275,68 @@ describe("recorded family correction helpers", () => {
     expect(restore.familyUses).toEqual([]);
     const full = Array.from({ length: 256 }, (_, sampleIndex) => ({ ...f.correction(), target: { ...f.correction().target, sampleIndex } }));
     expect(() => recordedCorrectionSave(f.session, current, full, "Over budget", "over")).toThrow("recorded_correction_limit");
+  });
+});
+
+describe("recorded classification original query", () => {
+  it("returns the opened original and matches the builder expectedOriginal", () => {
+    const f = classificationFixture();
+    expect(recordedClassificationOriginal(f.session, f.loaded, "SessionType")).toBe("practice");
+    expect(recordedClassificationOriginal(f.session, f.loaded, "WeatherConditions")).toBe("Dry");
+    const built = recordedClassificationCorrection(f.session, f.loaded, "SessionType", "race", "Stewards bulletin");
+    expect(built.expectedOriginal).toBe(recordedClassificationOriginal(f.session, f.loaded, "SessionType"));
+  });
+  it("reads the opened original even when the saved effective value differs", () => {
+    const f = classificationFixture();
+    const decision: AnalysisClassificationCorrection = { base, field: "SessionType", expectedOriginal: "practice", replacement: "race", reason: "Stewards bulletin", provenance: "manual" };
+    const command = { expectedRevision: initial, commandId: "classify", reason: "Reviewed", localAuthorId: "local" };
+    const current: AnalysisStoreResult = { headId: next, revision: { revisionId: next, parentRevisionId: initial, command, commandDigest: digest, createdAt: "2026-09-10T00:00:00Z", snapshot: { contractVersion: "analysis.mixed-snapshot.v3", base, snapshotId: next, corrections: [], familyUses: [], classifications: [{ baseId: initial, correctionId: digest, request: decision, original: "practice", corrected: "race" }] } } };
+    expect(parseCorrectionStoreResult(current)).toBe(current);
+    expect(recordedClassificationOriginal(f.session, current, "SessionType")).toBe("practice");
+  });
+  it("returns raw originals and resolves Unicode keys like the builder", () => {
+    const f = classificationFixture();
+    const spaced = { ...f.session, opened: { ...f.session.opened, session: { ...f.session.opened.session, metadata: [{ key: "SessionType", present: true, quality: "valid" as const, sensitive: false, value: "race " }] } } };
+    expect(recordedClassificationOriginal(spaced, f.loaded, "SessionType")).toBe("race ");
+    expect(recordedClassificationCorrection(spaced, f.loaded, "SessionType", " qualify ", "Stewards bulletin").expectedOriginal).toBe("race ");
+    const turkish = { ...f.session, opened: { ...f.session.opened, session: { ...f.session.opened.session, metadata: [{ key: " SESS" + String.fromCharCode(0x130) + "ONTYPE ", present: true, quality: "valid" as const, sensitive: false, value: "practice" }] } } };
+    expect(recordedClassificationOriginal(turkish, f.loaded, "SessionType")).toBe("practice");
+    const nel = { ...f.session, opened: { ...f.session.opened, session: { ...f.session.opened.session, metadata: [{ key: String.fromCharCode(0x85) + "sessiontype" + String.fromCharCode(0x85), present: true, quality: "valid" as const, sensitive: false, value: "practice" }] } } };
+    expect(recordedClassificationOriginal(nel, f.loaded, "SessionType")).toBe("practice");
+    const feff = { ...f.session, opened: { ...f.session.opened, session: { ...f.session.opened.session, metadata: [{ key: String.fromCharCode(0xFEFF) + "SessionType", present: true, quality: "valid" as const, sensitive: false, value: "practice" }] } } };
+    expect(() => recordedClassificationOriginal(feff, f.loaded, "SessionType")).toThrow("recorded_target_unavailable");
+  });
+  it("rejects unknown, absent, duplicated, sensitive, redacted and stale originals", () => {
+    const f = classificationFixture();
+    const patch = (entry: AnalysisMetadata) => ({ ...f.session, opened: { ...f.session.opened, session: { ...f.session.opened.session, metadata: [entry] } } });
+    expect(() => recordedClassificationOriginal(patch({ key: "TrackName", present: true, quality: "valid", sensitive: false, value: "Imola" }), f.loaded, "SessionType")).toThrow("recorded_target_unavailable");
+    expect(() => recordedClassificationOriginal(patch({ key: "SessionType", present: true, quality: "stale", sensitive: false, value: "practice" }), f.loaded, "SessionType")).toThrow("recorded_classification_read_only");
+    expect(() => recordedClassificationOriginal(patch({ key: "SessionType", present: true, quality: "valid", sensitive: true, value: "practice" }), f.loaded, "SessionType")).toThrow("recorded_classification_read_only");
+    expect(() => recordedClassificationOriginal(patch({ key: "SessionType", present: true, quality: "valid", sensitive: false, redacted: true, value: "practice" }), f.loaded, "SessionType")).toThrow("recorded_classification_read_only");
+    expect(() => recordedClassificationOriginal(patch({ key: "SessionType", present: true, quality: "valid", sensitive: false }), f.loaded, "SessionType")).toThrow("recorded_classification_read_only");
+    expect(() => recordedClassificationOriginal({ ...f.session, opened: { ...f.session.opened, session: { ...f.session.opened.session, metadata: [{ key: "sessiontype", present: true, quality: "valid" as const, sensitive: false, value: "practice" }, { key: "SessionType", present: true, quality: "valid" as const, sensitive: false, value: "practice" }] } } }, f.loaded, "SessionType")).toThrow("recorded_classification_ambiguous");
+    expect(() => recordedClassificationCorrection(patch({ key: "SessionType", present: true, quality: "stale", sensitive: false, value: "practice" }), f.loaded, "SessionType", "race", "ok")).toThrow("recorded_classification_read_only");
+    const foreign = { ...f.loaded, revision: { ...f.loaded.revision, snapshot: { ...f.loaded.revision.snapshot, base: { ...base, sessionId: "foreign" } } } };
+    expect(() => recordedClassificationOriginal(f.session, foreign, "SessionType")).toThrow("recorded_correction_base_mismatch");
+    expect(() => recordedClassificationOriginal(f.session, f.loaded, "CarName" as unknown as "SessionType")).toThrow("recorded_classification_invalid");
+  });
+  it("accepts long originals without a new cap, rejects unknown enums and never mutates inputs", () => {
+    const f = classificationFixture();
+    const long = "w".repeat(5000);
+    const weathered = { ...f.session, opened: { ...f.session.opened, session: { ...f.session.opened.session, metadata: [{ key: "WeatherConditions", present: true, quality: "valid" as const, sensitive: false, value: long }] } } };
+    expect(recordedClassificationOriginal(weathered, f.loaded, "WeatherConditions")).toBe(long);
+    expect(recordedClassificationCorrection(weathered, f.loaded, "WeatherConditions", "Dry", "Metar check").expectedOriginal).toBe(long);
+    const unknownEnum = { ...f.session, opened: { ...f.session.opened, session: { ...f.session.opened.session, metadata: [{ key: "SessionType", present: true, quality: "valid" as const, sensitive: false, value: "banana" }] } } };
+    expect(() => recordedClassificationOriginal(unknownEnum, f.loaded, "SessionType")).toThrow("classification.sessionType");
+    expect(() => recordedClassificationCorrection(unknownEnum, f.loaded, "SessionType", "race", "ok")).toThrow("classification.sessionType");
+    const before = structuredClone([f.session, f.loaded]);
+    recordedClassificationOriginal(f.session, f.loaded, "SessionType");
+    expect([f.session, f.loaded]).toEqual(before);
+  });
+  it("leaves other missing metadata blocking nothing", () => {
+    const f = classificationFixture();
+    const lone = { ...f.session, opened: { ...f.session.opened, session: { ...f.session.opened.session, metadata: [{ key: "SessionType", present: true, quality: "valid" as const, sensitive: false, value: "practice" }] } } };
+    expect(recordedClassificationOriginal(lone, f.loaded, "SessionType")).toBe("practice");
+    expect(() => recordedClassificationOriginal(lone, f.loaded, "WeatherConditions")).toThrow("recorded_target_unavailable");
   });
 });

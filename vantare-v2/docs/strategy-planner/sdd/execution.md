@@ -31,7 +31,8 @@ de alcance se propone con evidencia antes de ejecutar la parte nueva.
    del contrato antes/durante implementación. Ejecutar gates pertinentes.
 5. Review personal de diff, errores, permisos, original intacto, coste y tests.
    Aplicar Ponytail/revisión de código al alcance de cada bloque; #1038 ya hizo
-   la auditoría inicial, no repetirla como una fase vacía. No code subagents.
+   la auditoría inicial, no repetirla como una fase vacía. El orquestador revisa
+   personalmente el diff completo y la evidencia; el informe del ejecutor no basta.
 6. Actualizar handoff único, evidencia, issue y roadmap cuando cambie estado
    público/alcance; regenerar JSON. Commit pequeño con staging explícito.
 7. Si pasa: siguiente tarea. Si falla: diagnosticar/corregir dentro de alcance.
@@ -47,10 +48,14 @@ de alcance se propone con evidencia antes de ejecutar la parte nueva.
 - PC/build/app/banco autorizados por Isaac, coordinando exclusividad vigente.
   Usar build/configuración canónicos; no leer/copiar .env ni secretos.
 - LMU permanece intacto. Cerrar sólo instancias propias identificadas.
-- Trabajar directamente, sin delegación de código. La excepción visual pedida
-  por Isaac permite un reviewer únicamente visual, sin editar y sin delegar.
-  No usar esa excepción para revisión técnica. Si no está disponible, hacer
-  revisión propia y dejar el gate independiente pendiente, sin fingir nota.
+- La instrucción posterior de Isaac autoriza delegar código y pruebas en
+  `opencode-go/muse-spark-1.3-contributor`, variante `xhigh`, mediante OpenCode.
+  El orquestador conserva planes, decisiones de producto/arquitectura,
+  documentación, issues, reparto de cortes y revisión personal. El ejecutor
+  sólo edita los paths de código/tests asignados; no cambia planes ni delega.
+  Un único ejecutor por worktree, sin ediciones concurrentes del orquestador.
+  La revisión adversarial exclusivamente visual sigue siendo un gate distinto:
+  si no está disponible, dejarlo pendiente, sin fingir nota.
 
 ### Detener sólo lo afectado
 
@@ -85,7 +90,7 @@ T02/T03/T11/T12/T13/T15/T16/T17 -> T21
 T18/T21/T22 -> T23 -> T24 investigación live (sin implementarla)
 ```
 
-Ejecución secuencial por la instrucción sin subagentes de código. T19 puede
+Ejecución secuencial por worktree, con el reparto de responsabilidades anterior. T19 puede
 adelantarse entre cortes si necesita preparar datos o una decisión con antelación;
 no abrir la reserva antes de T20. Si T01 necesita una decisión de presupuesto,
 continuar T04–T14 con estados de cálculo honestos; no inventar resultados para UI.

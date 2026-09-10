@@ -65,7 +65,7 @@ spec aprobada #1028 para recuperar su significado.
 | R16 | Plan aceptado fija fuentes, correcciones, selección, reglas y versión del cálculo. Cambiar la cabeza de una sesión no lo altera. | A15 |
 | R17 | No se exige migrar estrategias antiguas no usadas; no autoriza borrar originales ni datos reales. | A16 |
 | R18 | Auditoría Ponytail + revisión de código antes de nuevos bloques; tests, evidencia real y revisión visual iterativa. | A17 |
-| R19 | Desarrollo directo sin subagentes de código. Excepción previa: revisión adversarial exclusivamente visual, >9/10 por pantalla antes de pedir revisión humana. | A06, A17 |
+| R19 | El orquestador mantiene planes, producto/arquitectura, documentación y revisión personal. Isaac autoriza código/tests en Muse Spark 1.3 Contributor vía OpenCode, xhigh, un ejecutor por worktree y sin subdelegación. Revisión adversarial exclusivamente visual separada, >9/10 por pantalla antes de pedir revisión humana. | A06, A17 |
 | R20 | PC autorizado para bancos/builds/app cuando esté libre; coordinar otras mediciones. LMU no se inicia ni se cierra. | A18 |
 | R21 | Seguridad sobre el cálculo sin incidentes: demostrar modelo y medir error empírico; no prometer infalibilidad ni contrafactuales observados. | A19 |
 | R22 | Live, investigación OSS extensa y posible Monte Carlo después del editor registrado validado. Monte Carlo es hipótesis, no arquitectura aprobada. | A20 |

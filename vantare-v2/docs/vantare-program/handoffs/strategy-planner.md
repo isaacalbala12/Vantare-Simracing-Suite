@@ -1,6 +1,29 @@
 # Handoff vivo — Strategy Planner
 
-## T12b2 custodia v3 cerrada (ISA-1104, 4 paths, corte finalizado pendiente revisión final)
+## Estado vigente — T12c1 preparado por el orquestador
+
+Isaac confirma que planes y documentación siguen a cargo del orquestador.
+R19/A17/execution actualizados: Muse Spark 1.3 Contributor vía OpenCode, xhigh,
+ejecuta sólo código/tests asignados, sin subdelegación ni cambios de planes,
+docs o issue. Un ejecutor por worktree; revisión personal antes de aceptar.
+Rama `vantareapp/isa-1104-recorded-classification`, base exacta
+`7f757135445439851180fc503da45f7eb9e557e7`; último código revisado
+`a0f8f968f1b6eee66556643c7de2a0e9ade9897b`, limpio al revisar. A/B1/B2
+aceptados localmente tras lectura de diff y evidencia (B1/B2: 126 paquetes Go
+PASS cada uno, vet exit 0; rutas en entradas siguientes). T12 sigue abierto.
+
+Siguiente C1: `internal/telemetryanalysis/corrections_view.go` y su test,
+vista efectiva mixta pura. C2 separado añade derivación + proyección (4 paths),
+D1 conserva esa clasificación al proyectar desde el servicio. El plan registra
+el impedimento de apertura de sesiones sin proyección para resolverlo antes de
+montar la UI; no se crean valores faltantes. Coche/circuito siguen pendientes
+del contrato canónico §5. Sin nuevo alcance público: `plan.md` intacto.
+Sin push, PR, CI remota, integración ni promoción. No se reabre app/LMU; gate
+Wails sigue pendiente por ERROR_INVALID_STATE de causa no demostrada.
+
+Las entradas siguientes son evidencia histórica; el estado vigente es éste.
+
+## T12b2 custodia v3 cerrada (ISA-1104, 4 paths, revisión final aceptada)
 
 Rama `vantareapp/isa-1104-recorded-classification`, base `7f75713`. Mismo
 decoder/store/lease/backup/Save/Resolve; sin store ni formato paralelo.
@@ -22,7 +45,7 @@ exit 0 (`C:/tmp/isa1104-t12b2-vet.log`); global `go test -p 1 ./...` exit 0,
 `C:/tmp/isa1104-t12b2-focal.log`; GOCACHE `C:/tmp/isa1084-go-cache`; sin
 suite frontend). `plan.md` intacto. Siguiente C se asignará aparte.
 
-## T12b1 representación v3 (ISA-1104, 2 paths, pendiente revisión previa a B2)
+## T12b1 representación v3 (ISA-1104, 2 paths, revisión aceptada; B2 completado)
 
 Rama `vantareapp/isa-1104-recorded-classification`, base `7f75713`. Mismo
 `PreparedSampleCorrectionSnapshot` extendido con clasificación completa

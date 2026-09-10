@@ -6,7 +6,8 @@ SDD R08/R07, aceptación A08/A09. Continúa ADR 0010 y
 [corrections-contract-v1](../corrections-contract-v1.md) operación 2
 `set_classification` (propuesta, sin implementar); no crea otra custodia,
 lector, formato, motor ni dependencia. Este documento fija el contrato
-implementable y los microcortes; la ejecución empieza en T12a.
+implementable y los microcortes. T12a, T12b1 y T12b2 están implementados y
+revisados localmente; no cierran T12 ni los gates visual/nativo/empírico.
 
 ## 1. Conjunto cerrado de campos y tipos
 
@@ -174,8 +175,8 @@ disponibilidad de señal.
 - **T12b1 — representación snapshot v3 + preparación almacenada + tests (2 paths).**
   `correction_snapshot.go` + `correction_snapshot_test.go` (v3: escalares +
   familias + decisiones de clasificación ordenadas con la preparación de
-  T12a, digest conjunto, orden canónico, roundtrip v1→v2→v3, guard legacy
-  extendido, cuota conjunta). Vacío canónico en v3: grupos ausentes son nil
+  T12a, digest conjunto, orden canónico, golden v1/v2 y representación v3,
+  cuota conjunta; decoder/guard legacy pertenecen a B2). Vacío canónico en v3: grupos ausentes son nil
   (misma digest viva/almacenada y JSON roundtrip directo sin reparación;
   v1/v2 intactos). Gates: focales + global Go `-p 1` + vet.
 - **T12b2 — decoder, store y digests + tests (4 paths).**
@@ -184,22 +185,43 @@ disponibilidad de señal.
   `corrections_store_test.go` (persistencia v3, revalidación de digests,
   8 MiB, restauración). El decoder REQUIERE edición para v3: revisarlo sin
   tocarlo no basta. Gates: focales + global Go `-p 1` + vet de alcance.
-- **T12c — vista, derivación y obsolescencia (4 paths).**
-  `corrections_view.go` + `corrections_view_test.go` (aplicación sobre vista
-  separada, sin mutar originales, precondición reclasificada);
-  `corrections_derivation.go` + `corrections_derivation_test.go` (recompute de
-  familias afectadas con funciones existentes, señal de combinación obsoleta,
-  reloj/parser intactos; sin recompute físico de clima, §7).
-  Gates: focales + global Go + vet.
-- **T12d — comandos nativos e inspección (4 paths).**
+- **T12c1 — vista mixta pura (2 paths).**
+  `internal/telemetryanalysis/corrections_view.go` + `corrections_view_test.go`.
+  Aplicar los tres grupos de una revisión exacta sobre páginas y metadatos
+  separados; exponer metadatos efectivos y decisiones preparadas en la vista
+  existente, sin duplicar todo `HistoricalSession`. Reusar aplicación escalar/
+  familiar y T12a contra la sesión ORIGINAL, verificar cuota y snapshot v3
+  completo antes de devolver resultado. Cambiar sólo `Value` del campo válido;
+  calidad, presencia, base, parser, reloj, unidades y fuente permanecen intactos.
+  Preservar APIs y comportamiento v1/v2. Tests: mezcla y sólo clasificación,
+  inmutabilidad incluyendo escritura posterior sobre la vista, campo válido con
+  otro ausente, rechazo atómico por base/precondición/calidad/duplicados/cuota/
+  preparación o digest adulterados. Sin store, derivación, servicios ni TS.
+- **T12c2 — derivación y proyección (4 paths).**
+  `internal/telemetryanalysis/corrections_derivation.go` + su test y
+  `corrections_projection.go` + su test. Pasar la clasificación efectiva a los
+  consumidores existentes y a la salida, conservando revisión exacta. Analysis
+  conserva la autoridad del gate de vueltas completas/familias; no duplicar el
+  clasificador ni crear vueltas sintéticas para cambiar ese gate. Etiqueta
+  climática separada de buckets físicos (§7). Sin clasificación activa,
+  preservar el contrato existente y sus fixtures; ausencia requerida sigue
+  bloqueando la derivación. Cambio de combinación NO pertenece a C1/C2:
+  estos campos no están implementados y su contrato se cierra en §5 antes de
+  asignar el corte correspondiente. Gates C1/C2: focales, review personal,
+  global Go `-p 1` y vet de alcance antes de aceptar cada corte.
+- **T12d1 — comandos nativos (2 paths).**
   `internal/app/telemetry_analysis_correction_commands.go` +
   `telemetry_analysis_correction_commands_test.go` (Save/Resolve aceptan
   decisiones de clasificación, reusan `withCorrectionInput`: autorización +
-  bloqueo + reintento idempotente);
-  `internal/telemetryanalysis/corrections_inspection.go` +
-  `corrections_inspection_test.go` (consulta de decisiones de clasificación
-  por revisión exacta, paginación existente). Gates: focales + global Go +
-  vet de alcance.
+  bloqueo + reintento idempotente). La proyección nativa debe conservar la
+  clasificación efectiva de C2: hoy `deriveCorrectionSession` reclasifica con
+  metadatos originales y sobrescribe `derived.Classified`; corregir ese consumo,
+  con prueba de cambio de tipo/clima y revisión histórica exacta.
+- **T12d2 — inspección, sólo si falta información existente (máx. 2 paths).**
+  `internal/telemetryanalysis/corrections_inspection.go` + su test. Reusar
+  metadatos de la sesión abierta y revisión cargada antes de añadir consulta;
+  no crear otro lector/custodia ni duplicar metadatos por conveniencia de UI.
+  Gates D1/D2: focales + global Go `-p 1` + vet de alcance.
 - **T12e — contrato TS (2 paths).**
   `frontend/src/strategy/analysis-contract.ts` + `analysis-contract.test.ts`
   (tipos `set_classification`, validación de campo/precondición/motivo,
@@ -211,11 +233,21 @@ disponibilidad de señal.
   `frontend/src/strategy/analysis-client.ts` + `analysis-client.test.ts`
   (llamadas tipadas, cancelación nativa, conserva calidad/presencia, rechaza
   revisiones ajenas). Gates: focales + typecheck + lint.
-- **T12g — hook (2 paths).**
+- **T12g1 — helpers de conjunto completo (2 paths).**
+  `frontend/src/hub/strategy-orbit/strategy-recorded-corrections.ts` + su test:
+  guardar, resolver y restaurar los tres grupos sin perder decisiones.
+- **T12g2 — hook (2 paths).**
   `frontend/src/hub/strategy-orbit/use-recorded-corrections.ts` +
   `use-recorded-corrections.test.tsx` (controlador: staging de decisiones de
   clasificación, guardado duradero, comando incierto, sin adopción automática
   de cabeza). Gates: focales + typecheck + lint.
+- **T12g3 — apertura para inspección sin proyección (corte por concretar, máx. 5 paths).**
+  El flujo actual de `strategy-recorded-session.ts` exige combinación y
+  proyección antes de conservar el handle. Eso impide corregir un metadato
+  válido si otro requerido falta. Reusar el dueño de sesiones/handles para
+  permitir inspección explícita con la causa de derivación bloqueada, sin
+  inventar combinación/proyección ni duplicar estado. Declarar paths y contrato
+  exactos antes de editar; preservar adopción explícita de revisión del plan.
 - **T12h — UI Datos y Revisiones (4 paths).**
   `frontend/src/hub/strategy-orbit/StrategyRecordedData.tsx` +
   `StrategyRecordedData.test.tsx` (edición de SessionType/clima con causa);
@@ -231,6 +263,8 @@ disponibilidad de señal.
   Evidencia en `evidence/isa-1104/README.md` si se crea. Contraste Wails
   pendiente del runtime (T11i sin resolver); documentar límites sin simular.
 
-Cada corte declara sus paths y evidencia antes de editar. No cerrar T12 por
-validación pura ni fixtures: faltan custodia, derivación, montaje, banco real
+Cada corte declara sus paths y evidencia antes de editar. El orquestador es
+dueño de este plan, del handoff y de la issue; Muse implementa únicamente
+código/tests asignados y devuelve evidencia para revisión antes de gates/commit.
+No cerrar T12 por validación pura ni fixtures: faltan derivación, montaje, banco real
 y recorrido. Sin nuevos umbrales, dependencias ni arquitectura.

@@ -1,6 +1,6 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — T12i revisado, pendientes global y banco real
+## Estado vigente — T12i aceptado con banco real, siguiente J1
 
 Isaac confirma que planes y documentación siguen a cargo del orquestador.
 Muse Spark 1.3 Contributor vía OpenCode, xhigh, ejecuta sólo código/tests
@@ -8,10 +8,9 @@ asignados, sin subdelegación ni cambios de planes, docs o issue. Un ejecutor
 por worktree; revisión personal de diff y evidencia antes de aceptar.
 Rama `vantareapp/isa-1104-recorded-classification`, base exacta
 `7f757135445439851180fc503da45f7eb9e557e7`; último código revisado
-`e583fe30925d7e8bd162fcc7a7f324509289e204`. Hd ocupa sólo los dos
-paths declarados. A–G3 y Ha/Hb/Hc/Hc2/Hd aceptados localmente tras
-revisión personal y gates. I añade los dos paths de test declarados, aún
-sin commit; diff revisado, pendiente Go global/vet/banco. T12 abierto.
+`6c568769cb966e7230b1771fd64457a6118838c1`. A–G3 y Ha/Hb/Hc/Hc2/Hd/I
+aceptados localmente tras revisión personal y gates. I son sólo los dos
+paths de test declarados, +346/-1. T12 abierto; siguiente J1 puro.
 
 G3 ya conecta la biblioteca con el mismo editor Datos/Revisiones, también
 sin combinación ni repositorio: apertura autorizada y referencia exacta,
@@ -22,8 +21,9 @@ pestañas conservan formularios. Auditor i18n Hd: EXIT0, paridad OK,
 ausentes 0 y huérfanas 0; queda cerrado el estado intermedio de Hc.
 Última suite global Hd: 444 archivos/3680 PASS, 224.02s EXIT0;
 build 1086 módulos/1.56s EXIT0, typecheck/lint/auditor EXIT0.
-Último Go global fue G3a: 126 paquetes PASS; no Go modificado desde entonces.
-Estos resultados son contractuales locales, no prueba de DuckDB real/Wails.
+Último Go global I: 126 paquetes ok/cero FAIL EXIT0 y vet de alcance EXIT0.
+I banco nativo real: Imola14.03s y Monza19.73s PASS/EXIT0, originales intactos.
+Authorizer controlado; no prueba Wails/login, paridad visual ni precisión.
 
 Ha ya consulta el original y comparte normalización; Hb aporta los doce textos
 en cuatro idiomas; Hc conecta clasificación en Datos y Hc2 conserva la vista
@@ -32,10 +32,10 @@ al avanzar revisión. Hd ya muestra historial, con plan precisado por root en
 original/normalización reutilizadas, Hb textos y Hc Datos A4 (aceptados);
 Hc2 continuidad e historial Hd aceptados. Cada corte declara 2–4 paths. No generar correcciones
 ficticias para comprobar disponibilidad ni duplicar validación en React.
-I banco real opt-in sigue a la revisión. Root cierra resolución canónica
+I banco real opt-in aceptado. Root cerró resolución canónica
 en §5/ADR0011 antes de su código, y declara J1 de cuatro paths. No aceptar
 un hash de texto del cliente como catálogo autorizado. T13–T24 siguen en
-la secuencia SDD; J1 aún no asignado al ejecutor.
+la secuencia SDD; J1 se asigna después de este registro.
 
 Sin cambio de alcance público ni entrega completa: `plan.md` intacto en
 estos cortes internos; se actualizará con la entrega en el mismo PR.
@@ -45,9 +45,10 @@ demostrada. Contraste real y paridad visual >9/10 siguen aparte.
 
 Las entradas siguientes son evidencia histórica; el estado vigente es éste.
 
-## T12i — banco revisado antes de leer las fuentes
+## T12i — banco revisado y contrastado con dos fuentes reales
 
-Sólo integration_test.go (+2/-1) y nuevo classification_test.go (344 líneas),
+Commit `6c568769cb966e7230b1771fd64457a6118838c1`: sólo
+integration_test.go (+2/-1) y nuevo classification_test.go (344 líneas),
 bajo internal/app/strategy_recorded_real_*. Helper antes del familiar,
 retorna handle reabierto y cabeza restaurada, sin nuevo reader/dato/fixture.
 Root revisó todo el código y devolvió: restore debía ser v1; elegibilidad
@@ -71,10 +72,15 @@ El error queda en la salida de herramienta del orquestador, NO conservado
 en ese archivo como afirmó el ejecutor. No se reconstruye como log crudo.
 R3 es la verificación válida del código actual. No RED de producto.
 
-Worker idle antes de actualizar este handoff. Siguiente: Go global/vet,
-después bancos Imola/Monza nombrados y opt-in; salidas literales, EXIT Go
-inmediato y no sobrescribir ningún log. Originalhash/ausencia de señal y
-Wails se mantienen como afirmaciones distintas. Sin app/LMU, reserva o export.
+Tras review root asignó gates sin más cambios: global Go126 paquetes
+ok/cero FAIL EXIT0, vet de alcance EXIT0. Imola PASS14.03s y Monza
+PASS19.73s/EXIT0. Ambos abren98canales, prueban tres revisiones de
+clasificación/historial exacto y después el helper familiar existente
+(vueltas3 y63), y cierran con hash original idéntico. Logs global/vet/
+imola/monza leídos íntegros o contados por root; detalle en
+`evidence/isa-1104/README.md`. Worker idle antes de commit.
+Originalhash/ausencia de señal y Wails son afirmaciones distintas.
+Sin app/LMU, reserva, export, push/PR/CI remota o promoción. Siguiente J1.
 
 ## T12hd — historial revisado y gate completo
 

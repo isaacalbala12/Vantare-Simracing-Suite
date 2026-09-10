@@ -6,8 +6,8 @@ SDD R08/R07, aceptación A08/A09. Continúa ADR 0010 y
 [corrections-contract-v1](../corrections-contract-v1.md) operación 2
 `set_classification` (implementación parcial descrita aquí); no crea otra custodia,
 lector, formato, motor ni dependencia. Este documento fija el contrato
-implementable y los microcortes. A–G3 y Ha/Hb/Hc/Hc2/Hd están implementados
-y revisados localmente; I está en validación y §5/J1 definen la continuación.
+implementable y los microcortes. A–G3 y Ha/Hb/Hc/Hc2/Hd/I están implementados
+y revisados localmente; I pasó Imola/Monza y §5/J1 definen la continuación.
 Estos cortes no cierran T12 ni los gates visual/nativo/empírico.
 
 ## 1. Conjunto cerrado de campos y tipos

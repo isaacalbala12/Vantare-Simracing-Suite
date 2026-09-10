@@ -1,0 +1,94 @@
+# ISA-1104 — clasificación registrada: evidencia de Hd e I
+
+Fecha: 2026-09-10. Rama `vantareapp/isa-1104-recorded-classification`,
+base `7f757135445439851180fc503da45f7eb9e557e7`.
+Código Hd `e583fe30925d7e8bd162fcc7a7f324509289e204`;
+código I `6c568769cb966e7230b1771fd64457a6118838c1`.
+Worktree `C:/tmp/vantare-isa1104/vantare-v2`. Orquestador: planes y revisión
+personal. Ejecutor: Muse Spark1.3 Contributor, OpenCode, xhigh, sin subdelegación.
+
+## Alcance comprobado
+
+Hd presenta las decisiones del snapshot consultado en Revisiones, cuenta los
+tres grupos y conserva los valores/motivo/manual de esa revisión. El helper
+de disponibilidad evita mostrar valores guardados de campos no verificables;
+no usa cabeza ni propuestas como historial. Compatibilidad v1/v2 comprobada.
+
+I extiende el banco existente, sólo con dos paths de test. Secuencia real:
+original → WeatherConditions manual opaca → tipo de sesión distinto,
+conservando clima → retirada explícita como revisión v1 → replay/Resolve
+del primer comando con cabeza avanzada → cerrar/reabrir y comparar
+Load/Project históricos completos. El helper devuelve handle y cabeza nuevos
+para continuar el banco familiar existente. No modifica código productivo.
+
+Se comparan íntegramente las proyecciones y trece grupos físicos: validez,
+Fuel, VE, ritmo por clima, ClassPace, curva de stint combinada, curvas
+separadas de fuel/neumáticos, degradación, pit, SavingCost, clima y tiempo.
+Sólo se normalizan GeneratedAt y referencias comprobadas por separado;
+los cambios intencionales de tipo/clima/elegibilidad se comprueban antes.
+No se elimina una familia para obtener PASS. Igualdad de ausencia significa
+preservación de ausencia, no que exista una señal útil.
+
+## Gates
+
+| Gate | Resultado literal | Log bajo frontend/.tmp/ |
+|---|---|---|
+| Hd focal final | 64 PASS, 5.96s, EXIT0 | isa1104-t12hd-focal-r2.log |
+| Hd frontend completo | 444 archivos,3680 PASS,224.02s,EXIT0 | isa1104-t12hd-frontend-all.log |
+| Hd build | 1086 módulos,1.56s,EXIT0 | isa1104-t12hd-build.log |
+| Hd tipos/lint/i18n | EXIT0; paridadOK,ausentes0,huérfanas0 | isa1104-t12hd-{typecheck,lint,lint-r2,audit-list-r2}.log |
+| I focal app | 0.178s,EXIT0 | isa1104-t12i-focal-app-r3.log |
+| I focal Analysis | 0.184s,EXIT0 | isa1104-t12i-focal-analysis-r3.log |
+| I banco sin opt-in | SKIP,0.045s,EXIT0; no PASS real | isa1104-t12i-focal-bank-r3.log |
+| I global Go | 126 paquetes ok,cero FAIL,EXIT0 | isa1104-t12i-global.log |
+| I vet de alcance | sin salida,EXIT0 | isa1104-t12i-vet.log |
+| I Imola real | PASS14.03s,paquete14.083s,EXIT0 | isa1104-t12i-imola.log |
+| I Monza real | PASS19.73s,paquete19.778s,EXIT0 | isa1104-t12i-monza.log |
+
+Gofmt/diff limpios. Avisos anteriores de AbortError en teardown happy-dom y
+chunks mayores de500kB permanecen en sus logs; no se han ocultado.
+
+## Fuentes y revisiones
+
+Fuentes nombradas bajo `C:/Program Files (x86)/Steam/steamapps/common/Le Mans Ultimate/UserData/Telemetry`:
+
+- Imola: `Autodromo Enzo e Dino Ferrari_R_2026-06-06T19_28_21Z.duckdb`.
+  SHA256 antes/después: `35438326ecddd6ab660ed3aad70b076a73e3290236c0292f30657594c38c1eb0`.
+- Monza: `Autodromo Nazionale Monza_R_2026-05-02T18_05_21Z.duckdb`.
+  SHA256 antes/después: `08a1e626d7154becd493aa84addbf146cc7f0f229c8a7aa39664766813495538`.
+
+Ambas abren98canales. El banco familiar conserva independencia y restauración
+sobre la vuelta3 de Imola y63 de Monza; no se reinterpretan como incidentes.
+
+| Etapa | Imola | Monza |
+|---|---|---|
+| Referencia previa retenida | aa52f44e5cb620c800b6190ff8609a37d2e61db5fd7d5b69e2f58c6d5236e0f8 | eb7acee8cf8fcf03c3be7ac256f2a62c593a48836e4366a6bb8e12d2610cd3e3 |
+| Corrección de etiqueta | 477190ec9e3a5ec6f298d7bad531d1645388535fadf03776abf138eb86ddf2c8 | c23b72ba60492bb79e42bd40917279fed5974ffeb9dcc0ca7359c48c93cdacf8 |
+| Tipo de sesión | 178fdf08598a350c3ddbb2bd4644586c23fbe27dbc52078d787b59dfd72871f2 | c6b830dcdf228464e8a78ebc195ec7091abef7c516076cf51237aa7d91aa5472 |
+| Restauración | a8c71a375c7f5b2c37af9f4de7978fbf1c1532b271754bd8b25a7444cecc00d3 | 18c048ebf1bc099c6abd8628b41ade1d1f6a8e42461aa3beaa5cf5d4d40ff053 |
+
+## Reproducción y límites
+
+El banco requiere ISA1088_REAL_SOURCE con UNA de esas rutas nombradas y
+ISA1088_RUNTIME_APP=`C:/tmp/isa1088-runtime-app`; ISA1088_EXPORT_CATALOG
+debe quedar vacío. Ejecutar `go test ./internal/app -run '^TestRecordedStrategyRealDuckDB$' -count=1 -v`.
+Usa el parser/trust/custodia existentes, discovery restringido, espera real
+de estabilidad y carpetas temporales de test. Originales sólo leídos.
+
+El authorizer de licencia es controlado. Es un contraste nativo sobre datos
+reales de desarrollo, no login/Wails, paridad visual, validación de incidentes
+ni precisión estadística. No se abrió la reserva ni se exportó catálogo.
+SessionType y clima son decisiones reversibles de validación, no verdad
+física anotada. T12 continúa con identidad canónica, y los gates visuales/
+nativos/empíricos siguen pendientes.
+
+Root rechazó debilidades del primer test (restore v3, Included como vuelta
+completa, normalización que ocultaba cambios e historial sólo por IDs) y
+verificó sus correcciones. El primer focal.log es un resumen reconstruido;
+las ejecuciones efectivas originales se verificaron en OpenCode. R2 tuvo
+un error de invocación con EXIT0 inválido y su archivo fue sobrescrito;
+el fallo queda en la salida de herramienta root, no en un log conservado.
+R3 contiene la evidencia cruda válida del código final; no se atribuye RED
+de producto a errores de construcción de este banco.
+
+Sin app/LMU, push, PR, CI remota, merge, promoción o release en estos cortes.

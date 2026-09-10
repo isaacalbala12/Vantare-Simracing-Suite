@@ -219,3 +219,21 @@ revisión consultada y se invalidan al guardar. Cabeza nueva no se adopta.
 24 focales, typecheck, lint y build PASS. Sin nuevo global (último T11f3 3489).
 Continúa T11g3 montaje de vueltas y familias en Datos, muestras como vista avanzada.
 Sin Wails/precisión/visual independiente/push/PR/CI remota/merge/promoción.
+
+## T11g3 — Datos por vueltas y familia
+
+Montaje productivo: fuente/revisión exacta, límites de stint observados (sin
+inventar inicio), páginas de 25 vueltas y cinco familias. Distingue regla automática,
+revisión guardada y propuesta; motivo obligatorio, cobertura dura no anulable,
+formulario pendiente bloquea cambio de fuente/vista. Muestras en vista avanzada.
+Mantiene A4/Orbit y tokens actuales; cotejada referencia pass-03-advanced, todavía
+sin certificar paridad mediante captura poblada ni revisión independiente.
+23 focales finales, tipos/build y lint finales PASS. Primer focal falló al clicar
+vista avanzada durante carga; test ahora espera la fuente lista. Lint detectó nombre
+useLabel interpretado como hook y export utilitario incompatible con HMR; ambos
+corregidos sin excepciones. Global conjunto pendiente tras integrar Revisiones.
+Roadmap actualizado en cuatro idiomas y JSON regenerado con origin/nightly vigente
+(a9b8dd36 por integración ajena Redline); su ventana de entregas se desplaza como
+salida del generador. No rebase ni integración de nuestro stack.
+Cinco paths de lógica/test/CSS; traducciones y docs. Sin Wails/precisión/visual>9,
+push/PR/CI remota/merge/promoción. Continúa T11g4 historial familiar.

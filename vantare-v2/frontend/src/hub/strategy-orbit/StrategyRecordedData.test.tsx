@@ -19,7 +19,7 @@ function fixture() {
   const session: RecordedSession = { editableChannelIds: ["fuel"], candidateId: "candidate", base, combinationId: "combo", combination: { id: "combo", simId: "lmu", trackName: "Imola", trackLayout: "GP", carName: "Car", carClass: "LMP2" }, opened: { sessionId: "handle", session: { schema_version: 1, id: "source", channels: [channel], metadata: [] } }, revision: { sessionId: "source", baseDigest: b, revisionId: a, snapshotId: a } };
   const current = { headId: a, revision: { revisionId: a, parentRevisionId: "", command: { reason: "" }, createdAt: "", snapshot: { base, snapshotId: a, corrections: [] } } };
   const page = { channel_id: "fuel", start: 0, sampling: channel.sampling, samples: [{ index: 4, values: [{ column: "value", present: true, quality: "unknown" as const, scalar: { kind: "number" as const, number: 12 } }] }] };
-  const methods = { load: vi.fn(), page: vi.fn(), edit: vi.fn().mockReturnValue(true), save: vi.fn(), discard: vi.fn(), project: vi.fn(), adopt: vi.fn(), head: vi.fn(), resolveSave: vi.fn(), retrySave: vi.fn(), cancel: vi.fn() };
+  const methods = { laps: vi.fn(), editFamily: vi.fn().mockReturnValue(true), removeFamily: vi.fn().mockReturnValue(true), load: vi.fn(), page: vi.fn(), edit: vi.fn().mockReturnValue(true), save: vi.fn(), discard: vi.fn(), project: vi.fn(), adopt: vi.fn(), head: vi.fn(), resolveSave: vi.fn(), retrySave: vi.fn(), cancel: vi.fn() };
   const controller = { ...methods, editor: { session, current, page, corrections: [], dirty: false }, busy: false, error: "", unresolved: false } as unknown as RecordedCorrectionsController;
   return { session, current, page, methods, controller };
 }
@@ -28,6 +28,7 @@ describe("recorded data screen", () => {
     const f = fixture();
     const controller = { ...f.controller, editor: { ...f.controller.editor!, session: { ...f.session, editableChannelIds: [] } } };
     render(<StrategyRecordedData controller={controller} sessions={[controller.editor.session]} busy={false} onSources={vi.fn()} onPendingChange={vi.fn()} t={t} />);
+    fireEvent.click(screen.getByRole("button", { name: "strategy.laps.advanced" }));
     expect((screen.getByRole("button", { name: "strategy.data.sample 4" }) as HTMLButtonElement).disabled).toBe(true);
     expect(screen.getByText("12")).toBeTruthy();
     expect(screen.getByText("strategy.data.readOnlyChannel")).toBeTruthy();
@@ -36,6 +37,7 @@ describe("recorded data screen", () => {
   it("requires a reason, preserves the original and submits an explicit zero", () => {
     const f = fixture(), onPendingChange = vi.fn();
     render(<StrategyRecordedData controller={f.controller} sessions={[f.session]} busy={false} onSources={vi.fn()} onPendingChange={onPendingChange} t={t} />);
+    fireEvent.click(screen.getByRole("button", { name: "strategy.laps.advanced" }));
     expect(f.methods.page).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "strategy.data.sample 4" }));
     fireEvent.change(screen.getByLabelText("strategy.data.correctedValue"), { target: { value: "0" } });
@@ -52,6 +54,7 @@ describe("recorded data screen", () => {
     const f = fixture();
     f.methods.edit.mockReturnValue(false);
     render(<StrategyRecordedData controller={f.controller} sessions={[f.session]} busy={false} onSources={vi.fn()} onPendingChange={vi.fn()} t={t} />);
+    fireEvent.click(screen.getByRole("button", { name: "strategy.laps.advanced" }));
     fireEvent.click(screen.getByRole("button", { name: "strategy.data.sample 4" }));
     fireEvent.change(screen.getByLabelText("strategy.data.correctedValue"), { target: { value: "" } });
     fireEvent.change(screen.getByLabelText("strategy.data.reason"), { target: { value: "Checked" } });
@@ -89,6 +92,8 @@ describe("recorded data screen", () => {
     await within(drawer).findByRole("button", { name: "strategy.recorded.apply" });
     fireEvent.click(within(drawer).getAllByRole("button", { name: "strategy.recorded.close" })[0]);
     fireEvent.change(screen.getByLabelText("strategy.data.source"), { target: { value: "handle" } });
+    await screen.findByRole("button", { name: "strategy.laps.load" });
+    fireEvent.click(screen.getByRole("button", { name: "strategy.laps.advanced" }));
     fireEvent.change(await screen.findByLabelText("strategy.data.channel"), { target: { value: "fuel" } });
     fireEvent.click(await screen.findByRole("button", { name: "strategy.data.sample 4" }));
     fireEvent.change(screen.getByLabelText("strategy.data.correctedValue"), { target: { value: "0" } });
@@ -100,5 +105,52 @@ describe("recorded data screen", () => {
     fireEvent.click(screen.getByRole("button", { name: "Leave" }));
     expect(screen.getByRole("alertdialog")).toBeTruthy();
     expect(onExit).not.toHaveBeenCalled();
+  });
+});
+
+function familyScreenFixture() {
+  const f = fixture(), family = "combined_stint_pace_curve" as const;
+  const target = { number: 3, start: "2026-09-10T12:00:00Z", end: "2026-09-10T12:01:30Z" };
+  const use = { family, included: true, exclusionReasons: [] };
+  const original = { ...target, complete: true, labels: [], familyUse: [use] };
+  const lapPage = { revisionId: f.current.revision.revisionId, headId: f.current.headId, page: { base: f.session.base, snapshotId: f.current.revision.snapshot.snapshotId, start: 0, total: 1, laps: [{ original, effective: original, target, capabilities: [{ family, automaticIncluded: true, effectiveIncluded: true, canInclude: true, canExclude: true }] }] } };
+  return { ...f, family, target, controller: { ...f.controller, editor: { ...f.controller.editor!, lapPage, familyUses: [] } } };
+}
+describe("recorded family screen", () => {
+  it("opens on laps and keeps advanced samples behind an explicit action", () => {
+    const f = fixture();
+    render(<StrategyRecordedData controller={f.controller} sessions={[f.session]} busy={false} onSources={vi.fn()} onPendingChange={vi.fn()} t={t} />);
+    expect(screen.queryByLabelText("strategy.data.channel")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "strategy.laps.load" }));
+    expect(f.methods.laps).toHaveBeenCalledExactlyOnceWith(0);
+    expect(f.methods.page).not.toHaveBeenCalled();
+  });
+  it("stages a family exclusion with a reason and protects the unfinished form", () => {
+    const f = familyScreenFixture(), pending = vi.fn();
+    render(<StrategyRecordedData controller={f.controller} sessions={[f.session]} busy={false} onSources={vi.fn()} onPendingChange={pending} t={t} />);
+    fireEvent.click(screen.getByRole("button", { name: "strategy.laps.lap 3" }));
+    fireEvent.change(screen.getByLabelText("strategy.laps.proposal"), { target: { value: "exclude" } });
+    expect((screen.getByRole("button", { name: "strategy.data.apply" }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByLabelText("strategy.data.source") as HTMLSelectElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "strategy.laps.advanced" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(pending).toHaveBeenLastCalledWith(true);
+    fireEvent.change(screen.getByLabelText("strategy.data.reason"), { target: { value: "Spin affected pace" } });
+    fireEvent.click(screen.getByRole("button", { name: "strategy.data.apply" }));
+    expect(f.methods.editFamily).toHaveBeenCalledExactlyOnceWith(f.target, f.family, false, "Spin affected pace");
+    expect(f.methods.save).not.toHaveBeenCalled();
+    expect(pending).toHaveBeenLastCalledWith(false);
+  });
+  it("retains a rejected family proposal and removes only the selected decision on automatic", () => {
+    const f = familyScreenFixture();
+    f.methods.editFamily.mockReturnValue(false);
+    render(<StrategyRecordedData controller={f.controller} sessions={[f.session]} busy={false} onSources={vi.fn()} onPendingChange={vi.fn()} t={t} />);
+    fireEvent.click(screen.getByRole("button", { name: "strategy.laps.lap 3" }));
+    fireEvent.change(screen.getByLabelText("strategy.laps.proposal"), { target: { value: "exclude" } });
+    fireEvent.change(screen.getByLabelText("strategy.data.reason"), { target: { value: "Review" } });
+    fireEvent.click(screen.getByRole("button", { name: "strategy.data.apply" }));
+    expect((screen.getByLabelText("strategy.data.reason") as HTMLTextAreaElement).value).toBe("Review");
+    fireEvent.change(screen.getByLabelText("strategy.laps.proposal"), { target: { value: "automatic" } });
+    fireEvent.click(screen.getByRole("button", { name: "strategy.data.apply" }));
+    expect(f.methods.removeFamily).toHaveBeenCalledExactlyOnceWith(f.target, f.family);
   });
 });

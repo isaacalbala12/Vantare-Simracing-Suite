@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { AnalysisClient } from "../../strategy/analysis-client";
+import { parseAnalysisBase, parseAnalysisCandidates, parseAnalysisOpenedSession } from "../../strategy/analysis-contract";
 import { StrategyRecordedSessions, StrategyRecordedSessionsView } from "./StrategyRecordedSessions";
 import type { RecordedSessionsController } from "./use-recorded-sessions";
 import { openRecordedSession, type RecordedSession } from "./strategy-recorded-session";
@@ -95,5 +96,69 @@ describe("recorded sessions panel", () => {
     client.close.mockRejectedValue(new Error("close failed"));
     view.unmount();
     await waitFor(() => expect(onCleanupError).toHaveBeenCalledOnce());
+  });
+});
+describe("recorded session inspection entries", () => {
+  const ia = "a".repeat(64), ib = "b".repeat(64), ic = "c".repeat(64);
+  const ibase = parseAnalysisBase({ sessionId: "source", contentSha256: ia, sizeBytes: 10, parserId: "lmu-duckdb", parserVersion: "1", schemaFingerprint: "schema", analysisVersion: "analysis", segmentationDigest: ib });
+  const iopened = (sessionId: string, metadata: { key: string; present: boolean; quality: "valid"; sensitive: false; value: string }[] = []) =>
+    parseAnalysisOpenedSession({ sessionId, session: { schema_version: 1, id: "source", channels: [], metadata } });
+  const icandidates = parseAnalysisCandidates([{ id: "partial", displayName: "Imola_partial.duckdb", state: "ready", size: 1024, modifiedAt: "2026-09-10T00:00:00Z", walPresent: false }]);
+  function inspectionController() {
+    const partial: RecordedSession = { candidateId: "partial", base: ibase, opened: iopened("handle"), revision: { sessionId: "source", revisionId: ia, baseDigest: ib, snapshotId: ic }, projectionUnavailableReason: "metadata_unavailable" };
+    const controller: RecordedSessionsController = { candidates: icandidates, sessions: [partial], busy: false, error: "", applied: false, discover: vi.fn(), open: vi.fn(), close: vi.fn(), apply: vi.fn(), cancel: vi.fn() };
+    return { partial, controller };
+  }
+  it("offers inspection only when the parent provides a callback", () => {
+    const { controller, partial } = inspectionController();
+    const onInspect = vi.fn();
+    const view = render(<StrategyRecordedSessionsView controller={controller} onInspect={onInspect} t={key => key} />);
+    fireEvent.click(screen.getByRole("button", { name: "strategy.recorded.inspect" }));
+    expect(onInspect).toHaveBeenCalledExactlyOnceWith(partial);
+    view.unmount();
+    cleanup();
+    render(<StrategyRecordedSessionsView controller={controller} t={key => key} />);
+    expect(screen.queryByRole("button", { name: "strategy.recorded.inspect" })).toBeNull();
+  });
+  it("names a partial source from its candidate and blocks race use", () => {
+    const { controller } = inspectionController();
+    render(<StrategyRecordedSessionsView controller={controller} onInspect={vi.fn()} t={key => key} />);
+    expect(screen.getAllByText("Imola_partial.duckdb")).toHaveLength(2);
+    expect(screen.getByText("strategy.recorded.inspectionOnly")).toBeTruthy();
+    expect(screen.getByText("strategy.recorded.metadataUnavailable")).toBeTruthy();
+    expect((screen.getByRole("button", { name: "strategy.recorded.apply" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+  it("falls back to unnamed without a candidate and keeps projectable sources usable", () => {
+    const { controller, partial } = inspectionController();
+    const marked: RecordedSession = { ...partial, candidateId: "missing", combinationId: "combo" };
+    const ready: RecordedSession = { candidateId: "ready", combinationId: "combo", base: ibase, opened: iopened("other-handle"), revision: { sessionId: "source", revisionId: "d".repeat(64), baseDigest: ib, snapshotId: ic } };
+    const view = render(<StrategyRecordedSessionsView controller={{ ...controller, sessions: [marked, ready] }} onInspect={vi.fn()} t={key => key} />);
+    expect(screen.getByText("strategy.recorded.unnamed")).toBeTruthy();
+    expect(screen.getAllByText("strategy.recorded.inspectionOnly")).toHaveLength(1);
+    expect((screen.getByRole("button", { name: "strategy.recorded.apply" }) as HTMLButtonElement).disabled).toBe(true);
+    view.unmount();
+    cleanup();
+    render(<StrategyRecordedSessionsView controller={{ ...controller, sessions: [ready] }} onInspect={vi.fn()} t={key => key} />);
+    expect(screen.queryByText("strategy.recorded.inspectionOnly")).toBeNull();
+    expect(screen.queryByText("strategy.recorded.metadataUnavailable")).toBeNull();
+    expect((screen.getByRole("button", { name: "strategy.recorded.apply" }) as HTMLButtonElement).disabled).toBe(false);
+  });
+  it("disables inspection while locked and translates inspection errors", () => {
+    const { controller } = inspectionController();
+    const onInspect = vi.fn();
+    const view = render(<StrategyRecordedSessionsView controller={{ ...controller, locked: true }} onInspect={onInspect} t={key => key} />);
+    expect((screen.getByRole("button", { name: "strategy.recorded.inspect" }) as HTMLButtonElement).disabled).toBe(true);
+    view.unmount();
+    cleanup();
+    render(<StrategyRecordedSessionsView controller={{ ...controller, error: "recorded_combination_unavailable" }} t={key => key} />);
+    expect(screen.getByRole("alert").textContent).toBe("strategy.recorded.metadataUnavailable");
+    expect(screen.queryByText("recorded_combination_unavailable")).toBeNull();
+    cleanup();
+    render(<StrategyRecordedSessionsView controller={{ ...controller, error: "recorded_pending_corrections" }} t={key => key} />);
+    expect(screen.getByText("strategy.data.finishPending")).toBeTruthy();
+    cleanup();
+    render(<StrategyRecordedSessionsView controller={{ ...controller, error: "recorded_stale_revision" }} t={key => key} />);
+    expect(screen.getByRole("alert").textContent).toBe("strategy.recorded.error");
+    expect(screen.queryByText("recorded_stale_revision")).toBeNull();
   });
 });

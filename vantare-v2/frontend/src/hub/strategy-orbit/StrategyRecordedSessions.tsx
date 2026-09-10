@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Button, Chip, Note } from "../../ui/orbit";
+import type { RecordedSession } from "./strategy-recorded-session";
 import { useRecordedSessions, type RecordedSessionsController, type RecordedSessionsOptions } from "./use-recorded-sessions";
 import "./strategy-recorded-library.css";
 
@@ -12,9 +13,23 @@ export function StrategyRecordedSessions(props: Props) {
   return <StrategyRecordedSessionsView controller={controller} t={props.t} />;
 }
 
-export function StrategyRecordedSessionsView({ controller, t }: { readonly controller: RecordedSessionsController; readonly t: (key: string) => string }) {
+export function StrategyRecordedSessionsView({ controller, onInspect, t }: { readonly controller: RecordedSessionsController; readonly onInspect?: (session: RecordedSession) => void; readonly t: (key: string) => string }) {
   const { candidates, sessions, busy, error, applied } = controller;
   const locked = busy || controller.locked;
+  const projectable = (session: RecordedSession) => Boolean(session.combinationId && !session.projectionUnavailableReason);
+  const nameFor = (session: RecordedSession) => {
+    // A partial source has no verified combination: name it from the candidate
+    // first, never from metadata that cannot be verified nor from a base id.
+    if (!projectable(session)) return candidates?.find(item => item.id === session.candidateId)?.displayName || t("strategy.recorded.unnamed");
+    return session.opened.session.metadata.filter(item => ["TrackName", "CarName"].includes(item.key) && item.present && item.quality === "valid" && item.sensitive === false && !item.redacted).map(item => item.value).join(" · ") || session.base.sessionId.slice(0, 12);
+  };
+  // New inspection errors speak human language with existing keys. Native
+  // messages keep their text so their callers stay recognizable.
+  const errorMessage = !error ? null
+    : error === "recorded_combination_unavailable" ? t("strategy.recorded.metadataUnavailable")
+    : error === "recorded_pending_corrections" ? t("strategy.data.finishPending")
+    : error.startsWith("recorded_") ? t("strategy.recorded.error")
+    : error;
   const [query, setQuery] = useState("");
   const [availability, setAvailability] = useState("all");
   const [order, setOrder] = useState("recent");
@@ -35,7 +50,7 @@ export function StrategyRecordedSessionsView({ controller, t }: { readonly contr
     <Button disabled={locked} onClick={() => void controller.discover()} variant="ghost">{t("strategy.recorded.discover")}</Button>
     {controller.locked ? <p role="status">{t("strategy.data.finishPending")}</p> : null}
     {busy ? <p role="status">{t("strategy.recorded.busy")} <Button variant="ghost" onClick={controller.cancel}>{t("strategy.recorded.cancel")}</Button></p> : null}
-    {error ? <Note title={t("strategy.recorded.error")}><span role="alert">{error}</span></Note> : null}
+    {errorMessage ? <Note title={t("strategy.recorded.error")}><span role="alert">{errorMessage}</span></Note> : null}
     {candidates?.length === 0 ? <p role="status">{t("strategy.recorded.empty")}</p> : null}
     {candidates && candidates.length > 0 ? <div className="strategy-recorded-library">
       <div className="strategy-recorded-library__filters">
@@ -64,12 +79,16 @@ export function StrategyRecordedSessionsView({ controller, t }: { readonly contr
     </div> : null}
     {sessions.length ? <>
       <h3>{t("strategy.recorded.prepared")}</h3>
-      {sessions.map(session => <div className="orbit-strategy__session-row" key={session.opened.sessionId}>
-        <span><b>{session.opened.session.metadata.filter(item => ["TrackName", "CarName"].includes(item.key) && item.present && !item.redacted).map(item => item.value).join(" · ") || session.base.sessionId.slice(0, 12)}</b><small>{t("strategy.recorded.revision")} {session.revision.revisionId.slice(0, 12)}</small></span>
-        <Button size="sm" variant="ghost" disabled={locked} onClick={() => void controller.close(session)}>{t("strategy.recorded.close")}</Button>
-      </div>)}
+      {sessions.map(session => {
+        const partial = !projectable(session);
+        return <div className="orbit-strategy__session-row" key={session.opened.sessionId}>
+          <span><b>{nameFor(session)}</b><small>{t("strategy.recorded.revision")} {session.revision.revisionId.slice(0, 12)}</small>{partial ? <small>{t("strategy.recorded.inspectionOnly")}</small> : null}{partial ? <small>{t("strategy.recorded.metadataUnavailable")}</small> : null}</span>
+          {onInspect ? <Button size="sm" variant="ghost" disabled={locked} onClick={() => onInspect(session)}>{t("strategy.recorded.inspect")}</Button> : null}
+          <Button size="sm" variant="ghost" disabled={locked} onClick={() => void controller.close(session)}>{t("strategy.recorded.close")}</Button>
+        </div>;
+      })}
       <p>{t("strategy.recorded.replace")}</p>
-      <Button disabled={locked} onClick={() => void controller.apply()}>{t("strategy.recorded.apply")}</Button>
+      <Button disabled={locked || sessions.some(session => !projectable(session))} onClick={() => void controller.apply()}>{t("strategy.recorded.apply")}</Button>
     </> : null}
     {applied ? <p role="status">{t("strategy.recorded.applied")}</p> : null}
   </section>;

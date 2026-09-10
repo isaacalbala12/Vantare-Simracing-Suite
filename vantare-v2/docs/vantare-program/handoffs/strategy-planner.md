@@ -12,7 +12,8 @@ ID/parser/schema/fuente; `SourceChanged`/`InterpretationChanged`/`Precondition`/
 paralela), motivo con `correctionText(...,1024)`, clima en caracteres con
 rechazo de controles y UTF-8, precondición exacta sin recortes, y salida
 preparada reutilizable (`BaseID`/`CorrectionID`/petición/original/corregido).
-Fixtures auténticas (fuente LMU, parser/schema/base válidos; parcial solo sin
+Fixtures contractuales coherentes con tipos reales (fuente LMU, parser/schema/
+base válidos como valores de contrato, no DuckDB físico; parcial solo sin
 Weather con su causa aplicable); calidades stale/missing/invalid/unknown,
 Present/Sensitive/Redacted, duplicados, inmutabilidad y atomicidad cubiertos.
 Segunda lectura del orquestador: original preservado byte a byte (esperado
@@ -21,10 +22,27 @@ valida base/sesión/cuota antes de preparar, reemplazo en bruto acotado y
 UTF-8 inválido rechazado donde se almacena.
 Microplan: T12a preciso y T12b dividido en B1 (representación+preparación) y
 B2 (decoder+store+digests, el decoder requiere edición). B aún no autorizado
-ni implementado. Focales PASS (10 tests); vet de alcance PASS; global Go `-p 1`:
-125 paquetes ok, 1 FAIL solo por contención (`TestRecordedImolaCalculationCompletes`,
-deadline conocido de ISA-1089; PASS aislado en 4.77s); ningún Go existente
-modificado. Commit local separado sin push/PR/merge/promoción. `plan.md` intacto.
+ni implementado. Focales PASS (10 tests); vet de alcance PASS; global Go `-p 1`
+R1: 125 paquetes ok, 1 FAIL `TestRecordedImolaCalculationCompletes`
+(deadline conocido de ISA-1089; PASS aislado en 4.77s; raíz no demostrada);
+ningún Go existente modificado. Commit local separado sin push/PR/merge/
+promoción. `plan.md` intacto.
+
+## T12a gates segundo global (ISA-1104, corrección de conclusión)
+
+Corrección aceptada: el PASS aislado solo mostraba intermitencia, no probaba
+contención como causa. Evidencia registrada sin afirmación causal: global R1
+(exit 1; 125 ok; FAIL `TestRecordedImolaCalculationCompletes` en
+`internal/strategy/application`, 64.959s, `calculation_timeout`/deadline;
+log `isa1104-go-global.log` temporal, no versionado) + aislado PASS por
+separado (4.77s, `-count=1`). Verificado por diff que los 2 paths nuevos no
+tienen consumidores productivos (solo se referencian entre sí) y ningún Go
+existente fue modificado: el corte no toca solver, timeouts ni ese test.
+Segundo global único R2 (GOCACHE `C:/tmp/isa1084-go-cache`, sin builds propios
+concurrentes): exit 0, 126 paquetes ok, cero FAIL
+(`isa1104-go-global-r2.log`). Se documentan ambas corridas; la raíz de la
+intermitencia R1 sigue no demostrada. B pendiente de revisión del orquestador,
+dentro del alcance ya autorizado por Isaac.
 
 ## T12 revisión del microplan (ISA-1104, corte A solo docs)
 

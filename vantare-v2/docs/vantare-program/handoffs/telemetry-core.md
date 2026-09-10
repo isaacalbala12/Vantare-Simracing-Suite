@@ -22,7 +22,12 @@ sigue en menú (`sessionInfo` vacío, weather solo forecast `WNV_*`): fixtures
 no presentadas como prueba física. Detalle en
 `docs/analysis/isa-1106-session-signals.md`. Dependencia externa solo-lectura:
 Efficiency visual #1103/PR1107, comprobación combinada posterior en worktree
-separado. Sin merge/release; revisión independiente pendiente del SHA final.
+separado. Revalidación independiente acotada del SHA `3f21d062`: APROBADO
+sin defectos reales (B1–B4 cerrados contra sus repros; checks focales Go,
+gofmt y diffcheck del revisor en verde) y combinación Efficiency compatible
+(32 tests PASS de consumidores frontend de bandera/temps). La equivalencia
+REST == códigos SDK sigue pendiente de captura física: promoción a Nightly
+NO autorizada. Sin merge; revisión independiente pendiente del SHA final.
 
 ## Integración autorizada ISA-1002 — 2026-09-06
 

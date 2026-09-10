@@ -10,11 +10,14 @@ import (
 // only the canonical state: nothing here is inferred from a simulator concept.
 //
 // Flag reads the canonical SessionFlag admitted from the LMU REST sessionInfo
-// signal (ISA-1106, correction B2). The driver asserts no value yet — no
-// flag vocabulary is demonstrated — so live frames stay missing here: never
-// green by absence, never yellow by guess, and a sector-scoped flag never
-// promotes to this global signal. The plumbing preserves quality for the
-// first attested value (proven by fixture).
+// signal (ISA-1106 B2, candidate mapping). The driver asserts FlagYellow only
+// for the documented candidate integers 2, 3, 4, 5 of the official
+// LMU-distributed SDK enum ("Yellow flag states (applies to full-course
+// only)"); 1 and 6 stay neutral and every other shape stays missing, so
+// absence never reads as green and a sector-scoped flag never promotes to
+// this global signal. The REST == SDK code equivalence is still pending
+// active-session verification: candidate contract proven by fixtures, not a
+// certified source.
 func BuildSession(final derive.FinalState) SessionV2 {
 	return SessionV2{
 		Track:            qualityValue(final.Observed.TrackName, func(value string) string { return value }),

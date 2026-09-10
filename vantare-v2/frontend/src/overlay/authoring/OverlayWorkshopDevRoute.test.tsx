@@ -93,6 +93,18 @@ describe("OverlayWorkshopDevRoute", () => {
     expect(document.querySelector("[data-overlay-workshop-page]")?.getAttribute("data-study-style")).toBeNull();
   });
 
+  it("swaps the productive host for a study view on renderer styles over the same model", async () => {
+    render(<OverlayWorkshopDevRoute search="?widget=standings&system=vantare-functional&variant=standings-functional-study&design=standings-functional-compact&study=v2-pitwall&state=ready&surface=obs" />);
+
+    await waitFor(() => expect(document.querySelector(".vsf-pitwall [data-standings-row]")).toBeTruthy());
+    expect(document.querySelector(".vf-standings")).toBeNull();
+    expect(document.querySelectorAll(".vsf-pitwall [data-standings-row]")).toHaveLength(10);
+
+    fireEvent.click(screen.getByRole("button", { name: "Escalera" }));
+    await waitFor(() => expect(document.querySelector(".vsf-ladder [data-standings-row]")).toBeTruthy());
+    expect(window.location.search).toContain("study=v2-ladder");
+  });
+
   it("renders Input history from the canonical V2 frame without seeding", async () => {
     render(
       <StrictMode>

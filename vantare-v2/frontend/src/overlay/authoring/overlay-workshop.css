@@ -271,7 +271,7 @@
 .overlay-workshop-scenes__gaps code { font-family: "JetBrains Mono", monospace; color: #ffd9a3; }
 
 /* Focused design view, within the existing Workshop and shared renderer. */
-.functional-study { --study-border: #333336; display: grid; grid-template-columns: 248px minmax(0, 1fr); min-height: 100vh; padding: 0; background: #151516; }
+.functional-study { --study-border: #333336; display: grid; grid-template-columns: 248px minmax(0, 1fr); min-height: 100vh; padding: 0; background: #151516; overflow: auto; }
 .functional-study > .overlay-workshop-header, .functional-study > .overlay-workshop-controls, .functional-study > .overlay-workshop-scenes { display: none; }
 .functional-study-controls { padding: 30px 22px; border-right: 1px solid var(--study-border); background: #19191b; color: #f5f5f5; font-family: Inter, sans-serif; }
 .functional-study-title > span { color: #aaaab0; font-size: 8px; font-weight: 600; letter-spacing: .2em; }
@@ -294,7 +294,9 @@
 .functional-study-provenance { color: #c4c4c8; margin-top: 30px; font-size: 10px; font-weight: 500; }
 .functional-study-dot { display: inline-block; width: 5px; height: 5px; margin-right: 7px; border-radius: 50%; background: #c1121f; }
 .functional-study-provenance p { color: #95959c; font-size: 10px; line-height: 1.7; font-weight: 400; }
-.functional-study > .overlay-workshop-stage { min-height: 100vh; border: 0; border-radius: 0; padding: 64px 40px; align-items: center; position: relative; }
+/* En el estudio el scroll vive en la página, no dentro del stage: el stage
+   crece con el widget en vez de recortarlo en un scroll anidado. */
+.functional-study > .overlay-workshop-stage { min-height: 100vh; border: 0; border-radius: 0; padding: 64px 40px; align-items: center; position: relative; overflow: visible; }
 .functional-study > .overlay-workshop-stage::before { content: 'STANDINGS / ESTUDIO 01'; position: absolute; top: 26px; left: 32px; font: 500 9px Inter, sans-serif; letter-spacing: .14em; color: rgb(234 239 237 / 68%); }
 .functional-study > .overlay-workshop-stage--context { background: radial-gradient(ellipse at 15% 5%, rgb(161 160 154 / 80%), transparent 60%), linear-gradient(145deg, #777670 0%, #97958e 32%, #505051 32.3%, #2c2c2e 63%, #797975 63.3%, #c4c2b9 100%); }
 .functional-study > .overlay-workshop-stage--solid { background: #252527; }
@@ -352,8 +354,87 @@
 .functional-study[data-study-style="v2-focus"] .vf-table td[data-metric="gap"] { font-weight: 650; color: #ffffff; }
 .functional-study[data-study-style="v2-focus"] .vf-table tr[data-player="true"] td { background-color: rgb(191 194 202 / 10%); background-image: none; }
 
+/* v2-paper · Papel: hoja de tiempos impresa — misma estructura Signature con
+   atmósfera clara, tinta oscura y reglas tipográficas en vez de cristal. */
+.functional-study[data-study-style="v2-paper"] .vf-standings {
+  --vf-ink: #191a1c;
+  --vf-muted: #6b675e;
+  --vf-line: rgb(25 26 28 / 13%);
+  --vf-player: rgb(25 26 28 / 7%);
+  background: #ece7de;
+  backdrop-filter: none;
+  box-shadow: 0 12px 26px -16px rgb(0 0 0 / 45%);
+}
+.functional-study[data-study-style="v2-paper"] .vf-standings::before { background: linear-gradient(131deg, transparent 0 37%, rgb(193 18 31 / 16%) 37% 54%, transparent 54% 62%, rgb(193 18 31 / 9%) 62% 79%, transparent 79%); }
+.functional-study[data-study-style="v2-paper"] .vf-standings::after { border-color: rgb(25 26 28 / 20%); border-top-color: rgb(25 26 28 / 32%); }
+.functional-study[data-study-style="v2-paper"] .vf-table thead th { color: #6b675e; background: linear-gradient(180deg, rgb(25 26 28 / 4%), transparent); }
+.functional-study[data-study-style="v2-paper"] .vf-table .vf-column-label::after { background: rgb(25 26 28 / 32%); }
+.functional-study[data-study-style="v2-paper"] .vf-brand { color: #191a1c; }
+.functional-study[data-study-style="v2-paper"] .vf-session-context { border-left-color: rgb(25 26 28 / 26%); }
+.functional-study[data-study-style="v2-paper"] .vf-session-type { color: #6b675e; }
+.functional-study[data-study-style="v2-paper"] .vf-table td[data-metric="position"] { color: #75716a; }
+.functional-study[data-study-style="v2-paper"] .vf-table td:is([data-metric="lastLap"], [data-metric="bestLap"]) { color: #4c4a45; }
+.functional-study[data-study-style="v2-paper"] .vf-table td:is([data-metric="lastLap"], [data-metric="bestLap"])::before { background: rgb(25 26 28 / 18%); }
+.functional-study[data-study-style="v2-paper"] .vf-table td[data-metric="driverNumber"] { color: #75716a; }
+.functional-study[data-study-style="v2-paper"] .vf-driver small,
+.functional-study[data-study-style="v2-paper"] .vf-time-unit { color: #6b675e; }
+.functional-study[data-study-style="v2-paper"] .vf-table tr[data-player="true"] td { background-color: var(--vf-player); background-image: none; box-shadow: inset 0 1px rgb(25 26 28 / 18%), inset 0 -1px rgb(25 26 28 / 12%); }
+.functional-study[data-study-style="v2-paper"] .vf-table tr[data-player="true"] td:first-child { color: #191a1c; }
+.functional-study[data-study-style="v2-paper"] .vf-standings[data-status="stale"] .vf-clock,
+.functional-study[data-study-style="v2-paper"] .vf-standings[data-status="stale"] .vf-table td { color: #6b675e; }
+
+/* Renderers de estudio (ISA-1120): vistas sobre el mismo StandingsViewModel;
+   solo existen dentro del Workshop. */
+.vsf-study { width: 100%; font-family: Inter, Arial, sans-serif; font-variant-numeric: tabular-nums; color: #f5f5f5; }
+.vsf-study * { box-sizing: border-box; }
+.vsf-study--empty { padding: 18px; font-size: 12px; color: #b9b9bd; }
+
+.functional-study-segments--stack { margin-top: 4px; }
+
+/* Muro: monitor de muro — chip de posición con color de equipo (demo),
+   nombre compacto, diferencia grande y vueltas en cluster. */
+.vsf-pitwall { background: #0e0f11; border: 1px solid rgb(255 255 255 / 10%); border-radius: 5px; overflow: hidden; }
+.vsf-pw-head { display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 10px; border-bottom: 1px solid rgb(255 255 255 / 12%); background: #141518; }
+.vsf-pw-brand { display: flex; align-items: center; gap: 6px; font: 700 10px/1 Inter, sans-serif; letter-spacing: .08em; color: #f5f5f5; }
+.vsf-pw-brand img { width: 16px; height: 16px; object-fit: contain; }
+.vsf-pw-session { padding-left: 10px; border-left: 1px solid rgb(255 255 255 / 14%); font: 700 8px/1 "JetBrains Mono", monospace; letter-spacing: .18em; color: #9a9aa0; }
+.vsf-pw-clock { font: 650 13px/1 Inter, sans-serif; letter-spacing: -.02em; }
+.vsf-pw-class { margin-left: auto; padding: 5px 7px; border-radius: 3px; background: #c1121f; color: #ffffff; font: 800 9px/1 Inter, sans-serif; letter-spacing: .02em; }
+.vsf-pw-row { display: flex; align-items: center; gap: 10px; height: 27px; padding: 0 10px 0 0; box-shadow: inset 0 -1px rgb(255 255 255 / 7%); }
+.vsf-pw-row:last-child { box-shadow: none; }
+.vsf-pw-pos { flex: none; width: 32px; align-self: stretch; display: grid; place-items: center; font: 800 12px/1 Inter, sans-serif; }
+.vsf-pw-name { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 700 12px/1 Inter, sans-serif; letter-spacing: .01em; text-transform: uppercase; }
+.vsf-pw-name em { margin-left: 7px; font: 700 8px/1 "JetBrains Mono", monospace; font-style: normal; color: #9a9aa0; }
+.vsf-pw-gap { flex: none; font: 750 13px/1 Inter, sans-serif; letter-spacing: -.02em; }
+.vsf-pw-laps { display: flex; align-items: baseline; gap: 10px; font: 500 7px/1 "JetBrains Mono", monospace; letter-spacing: .1em; color: #8e8e95; text-transform: uppercase; }
+.vsf-pw-laps b { margin-left: 4px; font: 650 10px/1 Inter, sans-serif; letter-spacing: 0; color: #d8d8dc; }
+.vsf-pw-pit { flex: none; padding: 4px 5px; border-radius: 2px; background: #d9b955; color: #151612; font: 800 8px/1 "JetBrains Mono", monospace; letter-spacing: .015em; }
+.vsf-pw-row[data-player="true"] { background: rgb(255 255 255 / 7%); }
+.vsf-pw-row[data-player="true"] .vsf-pw-pos { outline: 1px solid rgb(255 255 255 / 60%); outline-offset: -1px; }
+
+/* Escalera: visualización de la diferencia — barra proporcional al gap con el
+   líder por fila; la extensión del pelotón se lee de un vistazo. */
+.vsf-ladder { background: rgb(14 15 17 / 72%); border: 1px solid rgb(255 255 255 / 9%); border-radius: 5px; padding: 10px 12px 12px; }
+.vsf-ld-head { display: flex; align-items: center; gap: 7px; margin-bottom: 10px; font: 700 8px/1 "JetBrains Mono", monospace; letter-spacing: .16em; color: #9a9aa0; text-transform: uppercase; }
+.vsf-ld-head img { width: 15px; height: 15px; object-fit: contain; }
+.vsf-ld-row { display: grid; grid-template-columns: 24px minmax(0, 132px) 1fr auto; align-items: center; gap: 9px; height: 26px; }
+.vsf-ld-pos { font: 700 11px/1 "JetBrains Mono", monospace; color: #8e8e95; }
+.vsf-ld-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 650 11px/1 Inter, sans-serif; letter-spacing: .01em; text-transform: uppercase; color: #dedee2; }
+.vsf-ld-name em { margin-left: 6px; font: 700 7px/1 "JetBrains Mono", monospace; font-style: normal; color: #9a9aa0; }
+.vsf-ld-track { position: relative; display: flex; align-items: center; height: 100%; }
+.vsf-ld-track::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: rgb(255 255 255 / 8%); }
+.vsf-ld-bar { position: absolute; left: 0; top: 50%; transform: translateY(-50%); height: 5px; border-radius: 3px; background: linear-gradient(90deg, rgb(255 255 255 / 40%), rgb(255 255 255 / 78%)); }
+.vsf-ld-bar[data-lapped] { background: repeating-linear-gradient(45deg, rgb(255 255 255 / 22%) 0 4px, transparent 4px 8px); }
+.vsf-ld-mark { position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 3px; height: 14px; border-radius: 2px; background: #c1121f; }
+.vsf-ld-gap { min-width: 62px; text-align: right; font: 650 10px/1 "JetBrains Mono", monospace; color: #c6c6cb; }
+.vsf-ld-row[data-player="true"] .vsf-ld-bar { background: linear-gradient(90deg, #8e0d16, #ed2431); }
+.vsf-ld-row[data-player="true"] .vsf-ld-pos { color: #f5f5f5; }
+.vsf-ld-row[data-player="true"] .vsf-ld-name { color: #ffffff; }
+
 @media (max-width: 800px) {
-  .functional-study { grid-template-columns: 1fr; height: auto; }
+  /* height:auto aquí recortaba el contenido: #root tiene overflow hidden y
+     nada podía desplazar. El main sigue siendo el scroll container. */
+  .functional-study { grid-template-columns: 1fr; height: 100%; }
   .functional-study-controls { border-right: 0; padding: 20px; }
   .functional-study-title h1 { font-size: 24px; }
   .functional-study-controls fieldset { display: inline-block; vertical-align: top; margin: 18px 16px 0 0; width: 180px; }

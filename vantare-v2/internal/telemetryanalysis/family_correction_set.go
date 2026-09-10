@@ -128,6 +128,7 @@ func ApplyLapFamilyCorrections(base SourceAnalysisRef, original, effective LapVa
 		p := positions[i]
 		use := &result[p.lap].FamilyUse[p.family]
 		use.Included = correction.Request.Included
+		use.CorrectionID = correction.CorrectionID
 		if use.Included {
 			use.ExclusionReasons = nil
 		} else if !slices.Contains(use.ExclusionReasons, LapExclusionManual) {

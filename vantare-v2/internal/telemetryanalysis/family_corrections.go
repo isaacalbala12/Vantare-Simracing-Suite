@@ -107,7 +107,7 @@ func prepareLapFamilyUseCorrection(baseID string, base SourceAnalysisRef, validi
 	if matches != 1 || uses != 1 {
 		return empty, ErrCorrectionTarget
 	}
-	if original.Family != request.Expected.Family || original.Included != request.Expected.Included || !slices.Equal(original.ExclusionReasons, request.Expected.ExclusionReasons) {
+	if original.CorrectionID != "" || original.Family != request.Expected.Family || original.Included != request.Expected.Included || !slices.Equal(original.ExclusionReasons, request.Expected.ExclusionReasons) {
 		return empty, ErrCorrectionPrecondition
 	}
 	if request.Included {
@@ -130,7 +130,7 @@ func prepareStoredLapFamilyCorrection(request LapFamilyUseCorrection) (PreparedL
 
 func canonicalLapFamilyCorrection(baseID string, request LapFamilyUseCorrection) (PreparedLapFamilyUseCorrection, error) {
 	var empty PreparedLapFamilyUseCorrection
-	if !correctionText(request.Reason, 1024) || !slices.Contains(CorrectableLapFamilies(), request.Family) || request.Expected.Family != request.Family {
+	if request.Expected.CorrectionID != "" || !correctionText(request.Reason, 1024) || !slices.Contains(CorrectableLapFamilies(), request.Family) || request.Expected.Family != request.Family {
 		return empty, fmt.Errorf("%w: family or reason", ErrInvalidCorrection)
 	}
 	target := request.Target

@@ -123,3 +123,20 @@ func TestLapFamilyCorrectionRetainsReviewedExclusionWithoutAliasing(t *testing.T
 		t.Fatal("retained mutable caller collection")
 	}
 }
+
+func TestFamilyCorrectionRequiresUncorrectedPrecondition(t *testing.T) {
+	base, original, request := lapFamilyCorrectionExample(t)
+	request.Expected.CorrectionID = "pretended prior correction"
+	if _, err := PrepareLapFamilyUseCorrection(base, original, request); !errors.Is(err, ErrInvalidCorrection) {
+		t.Fatal("accepted corrected precondition", err)
+	}
+	request.Expected.CorrectionID = ""
+	for i := range original.Laps[0].FamilyUse {
+		if original.Laps[0].FamilyUse[i].Family == request.Family {
+			original.Laps[0].FamilyUse[i].CorrectionID = "already corrected"
+		}
+	}
+	if _, err := PrepareLapFamilyUseCorrection(base, original, request); !errors.Is(err, ErrCorrectionPrecondition) {
+		t.Fatal("accepted effective model as original", err)
+	}
+}

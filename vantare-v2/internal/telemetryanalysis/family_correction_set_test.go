@@ -112,3 +112,40 @@ func TestLapFamilySetDoesNotConfuseRepeatedLapNumbers(t *testing.T) {
 		t.Fatal("number alone selected a different lap", err)
 	}
 }
+
+func TestFamilyEffectiveUseCarriesOnlyItsValidatedCorrection(t *testing.T) {
+	base, original, request := lapFamilyCorrectionExample(t)
+	request.Included = true
+	prepared, err := PrepareLapFamilyCorrections(base, original, []LapFamilyUseCorrection{request})
+	if err != nil {
+		t.Fatal(err)
+	}
+	laps, err := ApplyLapFamilyCorrections(base, original, original, prepared)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, use := range laps[0].FamilyUse {
+		if use.Family == request.Family {
+			if use.CorrectionID != prepared[0].CorrectionID || !use.Included {
+				t.Fatal("lost validated provenance")
+			}
+		} else if use.CorrectionID != "" {
+			t.Fatal("provenance leaked to another family")
+		}
+	}
+	for _, use := range original.Laps[0].FamilyUse {
+		if use.CorrectionID != "" {
+			t.Fatal("original became corrected")
+		}
+	}
+	if prepared[0].Original.CorrectionID != "" || prepared[0].Corrected.CorrectionID != "" {
+		t.Fatal("stored representation changed")
+	}
+	restored, err := ApplyLapFamilyCorrections(base, original, original, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(restored, original.Laps) {
+		t.Fatal("empty complete set kept a manual decision")
+	}
+}

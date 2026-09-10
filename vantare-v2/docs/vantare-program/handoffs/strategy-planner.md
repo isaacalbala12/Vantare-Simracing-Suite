@@ -1,5 +1,14 @@
 # Handoff vivo — Strategy Planner
 
+## T11e3a — procedencia de decisiones efectivas
+
+LapFamilyUse efectivo recibe el ID de su corrección validada. Originales y
+precondiciones no llevan esa marca; se rechaza usar una vista ya corregida como
+original. Campo omitido en wire histórico y snapshots preparados: golden v1 y
+custodia mixta conservan sus IDs. Pruebas de procedencia por familia, restauración
+vacía y precondición corregida PASS. Cinco paths; frontend intacto.
+Global Go -p1 y vet app/Analysis/Strategy/cmd PASS. Sigue T11e3b consumo/ritmo para ahorro independientes y filtros blandos; después T11e2b compatibilidad de ritmo antiguo también con identidad exacta. Sin API/UI familiar, Wails, precisión, nota visual ni push/PR/CI remota/merge/promoción.
+
 ## T11e2 — identidad temporal en consumo y curvas
 
 El resultado por vuelta transporta inicio/fin por valor. Curvas e índices de

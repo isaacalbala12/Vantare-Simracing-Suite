@@ -62,6 +62,9 @@ const (
 )
 
 type LapFamilyUse struct {
+	// Only the effective view sets this after validating a complete correction set.
+	// Original observations and stored correction preconditions leave it empty.
+	CorrectionID     string               `json:"correctionId,omitempty"`
 	Family           DerivationFamily     `json:"family"`
 	Included         bool                 `json:"included"`
 	ExclusionReasons []LapExclusionReason `json:"exclusionReasons"`

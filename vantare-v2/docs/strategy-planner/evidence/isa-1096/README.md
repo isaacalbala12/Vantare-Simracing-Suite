@@ -71,3 +71,21 @@ el mismo ciclo. Cambios pendientes bloquean cierre/cambio de fuente y guardado
 configuración; el guard de salida ve esos cambios. Adopción modifica sólo una
 fuente ya incluida con la misma base/combinación; marca borrador sin guardarlo.
 27 focales, tipos/lint PASS. Cinco paths. Sigue montaje de Datos y pestañas A4.
+
+## T10g — vista Datos y pestañas productivas
+
+Datos monta el controlador, con lectura explícita de fuente/canal y 50 muestras
+por página, original/corrección/calidad, motivo y guardado/adopción separados.
+Formulario sin aplicar persiste entre pestañas y participa en el guard de salida.
+Biblioteca deshabilita cambios de fuentes mientras hay correcciones pendientes.
+16 focales, tipos/lint focal y lint/build general PASS. Global frontend: 441 archivos/3463 tests PASS (322.01s).
+Capturas data-pass-01 documentan fixture vacío y límites, no Wails/nota >9.
+Roadmap cuatro idiomas/digest actualizado. Cinco paths lógica/test/CSS, más
+copy, asset aprobado y documentación. Plan/Revisiones todavía sin operaciones
+completas. Guardado incierto tras reinicio sigue pendiente de custodia en T14.
+
+Review encontró un hueco antes del siguiente montaje: Inspect ofrece canales
+que ReadCorrectionInput no prepara. No ampliar lecturas ni mantener lista de
+nombres en React: siguiente corte expondrá capacidades de edición desde las
+páginas realmente preparadas por Analysis. Hasta entonces no certificar todas
+las señales como editables. Después continúa historial visible y familias.

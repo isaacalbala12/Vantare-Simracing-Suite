@@ -5,8 +5,7 @@
 Worktree C:/tmp/vantare-isa1096, rama vantareapp/isa-1096-recorded-corrections,
 base bd9ed2c2ffa148ce4398265e2f83af80303739af. T08j final: 438 archivos/3433
 tests, lint/build PASS. T10a helpers de revisión exacta/snapshot/comando estable:
-T10a 7 focales y T10b 13 focales (helpers+hook), tipos/lint PASS. Controlador conserva guardado duradero y comando incierto. T10c resolución autorizada con lease/digest: focal Go, build, global Go -p1/vet PASS. T10d cliente de resolución: 43 focales/tipos/lint PASS. T10e controlador resuelve confirmación/ausencia sin perder propuesta: 16 focales/tipos/lint PASS. T10f owner compartido/guards/adopción por fuente: 27 focales/tipos/lint PASS. Sigue montaje de
-integración Datos/Revisiones. No nuevo Wails, precisión ni paridad certificada.
+T10a 7 focales y T10b 13 focales (helpers+hook), tipos/lint PASS. Controlador conserva guardado duradero y comando incierto. T10c resolución autorizada con lease/digest: focal Go, build, global Go -p1/vet PASS. T10d cliente de resolución: 43 focales/tipos/lint PASS. T10e controlador resuelve confirmación/ausencia sin perder propuesta: 16 focales/tipos/lint PASS. T10f owner compartido/guards/adopción por fuente: 27 focales/tipos/lint PASS. T10g Datos/pestañas montados: 16 focales, tipos/lint/build y global 441 archivos/3463 tests PASS. Review detecta canales consultables que Analysis no prepara para corregir: siguiente capacidades nativas por canal, después historial visible. No nuevo Wails, precisión ni paridad certificada.
 
 ## Continuación activa T08 — ISA-1095 (2026-09-10)
 

@@ -1,7 +1,9 @@
 # ADR 0011 — referencias canónicas en correcciones de identidad
 
 Estado: decisión del orquestador dentro del SDD autorizado y de ISA-1104;
-implementación pendiente. Fecha: 2026-09-10. ISA-1104.
+implementación en curso. Decisión: 2026-09-10. Actualización: 2026-09-11.
+J1 (preparación pura) y J2 (snapshot/decoder v4) revisados con global/vet;
+custodia, resolución de catálogo y montaje nativo/UI siguen pendientes.
 Complementa [ADR 0010](0010-analysis-observation-corrections.md) y
 [T12 §5](../strategy-planner/sdd/classification-corrections-t12.md).
 

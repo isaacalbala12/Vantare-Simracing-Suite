@@ -1,6 +1,6 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — T12j1 aceptado; J2 cerrado por root
+## Estado vigente — T12j2 aceptado; J3 cerrado por root
 
 Isaac confirma que planes y documentación siguen a cargo del orquestador.
 Muse Spark 1.3 Contributor vía OpenCode, xhigh, ejecuta sólo código/tests
@@ -8,11 +8,12 @@ asignados, sin subdelegación ni cambios de planes, docs o issue. Un ejecutor
 por worktree; revisión personal de diff y evidencia antes de aceptar.
 Rama `vantareapp/isa-1104-recorded-classification`, base exacta
 `7f757135445439851180fc503da45f7eb9e557e7`; último código revisado
-`f6fcc09dadec655d2bde0d87993e4c8d3ba5bc25`. A–G3 y Ha/Hb/Hc/Hc2/Hd/I/J1
-aceptados localmente tras revisión personal y gates. J1 puro ocupa sus
-cuatro paths declarados, +744/-16; revisión, focales, global/vet completos.
-Root cierra J2 en el microplan: cinco paths de snapshot/decoder/identidad
-y tests; primero vectores v3 previos al cambio. Sin store ni montaje nativo.
+`0a4f079fe3b9e02784670cb0a657699e3a2e27bf`. A–G3 y Ha/Hb/Hc/Hc2/Hd/I/J1/J2
+aceptados localmente tras revisión personal y gates. J2 ocupa cuatro paths,
++1149/-29, dentro de los cinco declarados (classification_identity.go no
+necesitó cambios). Snapshot/decoder v4 con seis vectores v3 previos intactos.
+Root cierra J3 de dos paths en el microplan: store y test de identidad,
+callback nativo diferido bajo lease. No está conectado al catálogo/app aún.
 
 G3 ya conecta la biblioteca con el mismo editor Datos/Revisiones, también
 sin combinación ni repositorio: apertura autorizada y referencia exacta,
@@ -23,7 +24,7 @@ pestañas conservan formularios. Auditor i18n Hd: EXIT0, paridad OK,
 ausentes 0 y huérfanas 0; queda cerrado el estado intermedio de Hc.
 Última suite global Hd: 444 archivos/3680 PASS, 224.02s EXIT0;
 build 1086 módulos/1.56s EXIT0, typecheck/lint/auditor EXIT0.
-Último Go global J1: 126 paquetes ok/cero FAIL EXIT0 y vet de alcance EXIT0.
+Último Go global J2: 126 paquetes ok/cero FAIL EXIT0 y vet de alcance EXIT0.
 I banco nativo real: Imola14.03s y Monza19.73s PASS/EXIT0, originales intactos.
 Authorizer controlado; no prueba Wails/login, paridad visual ni precisión.
 
@@ -35,9 +36,9 @@ original/normalización reutilizadas, Hb textos y Hc Datos A4 (aceptados);
 Hc2 continuidad e historial Hd aceptados. Cada corte declara 2–4 paths. No generar correcciones
 ficticias para comprobar disponibilidad ni duplicar validación en React.
 I banco real opt-in aceptado. Root cerró resolución canónica
-en §5/ADR0011 antes de su código, y declara J1 de cuatro paths. No aceptar
+en §5/ADR0011 antes de su código; J1/J2 aceptados y J3 de dos paths definido. No aceptar
 un hash de texto del cliente como catálogo autorizado. T13–T24 siguen en
-la secuencia SDD; J2 ya está cerrado por root antes de asignarlo al ejecutor.
+la secuencia SDD; J3 ya está cerrado por root antes de asignarlo al ejecutor.
 
 Sin cambio de alcance público ni entrega completa: `plan.md` intacto en
 estos cortes internos; se actualizará con la entrega en el mismo PR.
@@ -46,6 +47,44 @@ app/LMU; gate Wails sigue pendiente por ERROR_INVALID_STATE de causa no
 demostrada. Contraste real y paridad visual >9/10 siguen aparte.
 
 Las entradas siguientes son evidencia histórica; el estado vigente es éste.
+
+## T12j2 — revisión personal y global aceptados
+
+Baseline literal previo 0.022s EXIT0; seis vectores v3 fijos conservados.
+Root revisó ambos archivos productivos y ambos tests. Exigió compartir
+constructor, rechazar target inerte también al combinar y detectar null
+con capitalización alternativa. Al compartir preparación se perdió la
+delegación sin clasificaciones: R2 snapshot/document FALLARON por Session
+cero en un cliente escalar. Restituida la ruta v1/v2, tests anteriores intactos.
+R1 document falló por un digest de fixture incompleto según el diagnóstico
+del ejecutor; el fixture final incluye su escalar. Canonical R1 falló por
+un caso de referencia divergente que era también duplicado; corregido.
+
+Focales leídos por root: snapshot R3 0.068s, document R4 0.150s,
+classification R1 0.144s y canonical R2 0.047s, todos EXIT0; gofmt R4 EXIT0.
+Logs nuevos frontend/.tmp/isa1104-t12j2-*.log, intentos conservados.
+Worker idle antes de esta actualización; no global/vet ni commit todavía.
+
+Root rechazó después la cuota con escalares vacíos/duplicados y los tests
+de manipulación que dejaban SnapshotID obsoleto. Corregidos en los dos
+tests nuevos, sin otro cambio productivo: 254 entradas válidas/distintas
+más familia e identidad pasan256; añadir otra entrada rechaza257 con
+snapshot vacío. El digest usa esas mismas peticiones. Reseal RAW conserva
+inconsistencias y recalcula snapshot/comando/cadena: control intacto PASS,
+target discordante y campos prepared alterados rechazados. Helper reutiliza
+el patrón anterior, sin reconstruir canales/muestras ni reparar el contenido.
+
+Focal final snapshot R4 0.069s, document R5 0.109s, canonical R3 0.052s
+y baseline R2 0.023s EXIT0; classification R1 0.144s sigue vigente.
+Gofmt R5 EXIT0. Baseline R2 ejecutó realmente Fixed (el filtro anterior
+Snapshot no lo incluía) y confirmó los seis valores previos sin regenerarlos.
+Root leyó código y logs. Se corrigió el último comentario: el digest de
+comando no consulta target. Global Go126 paquetes ok/cero FAIL/EXIT0 y
+vet de alcance sin salida/EXIT0, leídos y contados por root. Worker idle
+antes del commit0a4f079fe3b9e02784670cb0a657699e3a2e27bf.
+El catálogo valida pertenencia del destino de nuevas escrituras; nunca
+autentica una historia local falsificada de forma coherente. J3 cerrado
+por root antes de asignarlo. No banco/frontend/Wails nuevos; no publicación.
 
 ## T12j1 — preparación pura revisada y aceptada
 

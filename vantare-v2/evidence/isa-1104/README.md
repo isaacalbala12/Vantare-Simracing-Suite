@@ -1,10 +1,12 @@
-# ISA-1104 — clasificación registrada: evidencia de Hd, I y J1
+# ISA-1104 — clasificación registrada: evidencia de Hd, I, J1 y J2
 
-Fecha: 2026-09-10. Rama `vantareapp/isa-1104-recorded-classification`,
+Inicio: 2026-09-10; actualización J2: 2026-09-11.
+Rama `vantareapp/isa-1104-recorded-classification`,
 base `7f757135445439851180fc503da45f7eb9e557e7`.
 Código Hd `e583fe30925d7e8bd162fcc7a7f324509289e204`;
 código I `6c568769cb966e7230b1771fd64457a6118838c1`;
-código J1 `f6fcc09dadec655d2bde0d87993e4c8d3ba5bc25`.
+código J1 `f6fcc09dadec655d2bde0d87993e4c8d3ba5bc25`;
+código J2 `0a4f079fe3b9e02784670cb0a657699e3a2e27bf`.
 Worktree `C:/tmp/vantare-isa1104/vantare-v2`. Orquestador: planes y revisión
 personal. Ejecutor: Muse Spark1.3 Contributor, OpenCode, xhigh, sin subdelegación.
 
@@ -117,4 +119,52 @@ ninguna aserción anterior. Al cerrar review sólo cambiaron dos comentarios.
 Gofmt/diff limpios, logs crudos conservados y leídos por root. No RED previo
 de producto en esta API nueva. No banco/frontend/Wails repetidos: los últimos
 gates de esos ámbitos siguen siendo I/Hd y el bloqueo nativo documentado.
-Worker idle antes del commit. J2 está planificado por root; no implementado.
+Worker idle antes del commit. Al cerrar J1, J2 sólo estaba planificado;
+su implementación y evidencia posterior constan en la siguiente sección.
+
+## J2 — snapshot y documento v4, 2026-09-11
+
+Cuatro paths, +1149/-29: correction_snapshot.go, corrections_document.go
+y dos tests nuevos de identidad. Target persistido separado, snapshot/comando
+v4, lectura de cadena y restauración a formatos anteriores. Sin target activo
+conserva v1/v2/v3. Decoder rechaza presencia null de target en formatos
+anteriores, también con otra capitalización aceptada por encoding/json.
+No hay consulta de catálogo ni escritura nativa v4 conectada en esta capa.
+
+Root revisó todos los paths y exigió: una sola preparación compartida,
+guardas de target inerte, compatibilidad sin Session para clientes escalares,
+tests de manipulación independientes, cuota256 con operaciones completas y
+distintas, reseal RAW de snapshot/comando/cadena con control válido previo
+y casos discordantes. No se borraron ni cambiaron aserciones anteriores.
+
+| Gate | Resultado | Log bajo frontend/.tmp/ |
+|---|---|---|
+| Baseline antes de producción | 0.022s, EXIT0 | isa1104-t12j2-baseline-r1.log |
+| Seis vectores fijos tras producción | 0.023s, EXIT0 | isa1104-t12j2-focal-baseline-r2.log |
+| Snapshot final | 0.069s, EXIT0 | isa1104-t12j2-focal-snapshot-r4.log |
+| Documento final | 0.109s, EXIT0 | isa1104-t12j2-focal-document-r5.log |
+| Canonical final | 0.052s, EXIT0 | isa1104-t12j2-focal-canonical-r3.log |
+| Clasificación | 0.144s, EXIT0 | isa1104-t12j2-focal-classification-r1.log |
+| Global Go | 126 paquetes ok, cero FAIL, EXIT0 | isa1104-t12j2-global.log |
+| Vet de alcance | sin salida, EXIT0 | isa1104-t12j2-vet.log |
+
+Gofmt R5/diff limpios. Root leyó logs, contó global y verificó los seis
+vectores contra la captura inicial, sin regenerarlos. El filtro Snapshot
+no ejecutaba Fixed; baseline R2 cerró ese hueco antes del gate global.
+Son vectores puros de hash: baseline-parent no se presenta como comando Save
+válido. Vectores inmutables en correction_snapshot_identity_test.go.
+
+R1 document falló por digest de fixture sin su escalar, según diagnóstico
+del ejecutor. R2 snapshot/document sí detectaron una regresión introducida
+al compartir preparación (Session cero con clasificaciones vacías); se
+restituyó la ruta antigua. Canonical R1 tenía un duplicado en vez de dos
+referencias discordantes; corregido. Los logs de fallos permanecen.
+No se interpreta esta secuencia como RED previo de un bug ya existente.
+
+El conjunto válido256 (254 escalares, familia e identidad) pasa en snapshot
+y digest;257 se rechaza con snapshot vacío. Target y prepared inconsistentes
+se rechazan incluso con hashes externos recalculados; el mismo reseal sin
+alterar datos pasa. Esto no autentica una falsificación local coherente.
+
+Worker idle antes de commit. Sin banco/GUI/Wails, push/PR/CI remota, merge,
+promoción o release. J3 cerrado por root; todavía pendiente de implementación.

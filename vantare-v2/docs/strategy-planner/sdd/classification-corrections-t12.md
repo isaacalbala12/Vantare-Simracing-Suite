@@ -6,8 +6,8 @@ SDD R08/R07, aceptación A08/A09. Continúa ADR 0010 y
 [corrections-contract-v1](../corrections-contract-v1.md) operación 2
 `set_classification` (implementación parcial descrita aquí); no crea otra custodia,
 lector, formato, motor ni dependencia. Este documento fija el contrato
-implementable y los microcortes. A–G3 y Ha/Hb/Hc/Hc2/Hd/I/J1 están implementados
-y revisados localmente; I pasó Imola/Monza, J1 pasó global/vet y §5/J2
+implementable y los microcortes. A–G3 y Ha/Hb/Hc/Hc2/Hd/I/J1/J2 están implementados
+y revisados localmente; I pasó Imola/Monza, J1/J2 pasaron global/vet y §5/J3
 definen la continuación de custodia v4, todavía sin montaje nativo.
 Estos cortes no cierran T12 ni los gates visual/nativo/empírico.
 
@@ -902,6 +902,54 @@ disponibilidad de señal.
   y ningún archivo sobrescrito. No banco/GUI/LMU ni escritura de v4 mediante
   la app aún. Siguiente J3 de custodia/callback y luego vista/proyección,
   catálogo/montaje nativo y cliente/UI, con paths cerrados antes de asignar.
+
+- **T12j3 — custodia de identidad y resolución diferida (2 paths).**
+  `internal/telemetryanalysis/corrections_store.go` y nuevo
+  `internal/telemetryanalysis/corrections_store_identity_test.go`.
+  No catálogo, servicio, montaje nativo, proyección, cliente o UI.
+
+  ObservationCorrectionInput añade sólo callback nativo opcional
+  ResolveCanonicalCombination func(context.Context, string) (CombinationIdentity, error).
+  No es DTO ni parte de digests. CorrectionStore no almacena catálogo.
+  validatedMixedCommandDigest usa correctionCommandDigestCanonicalMixed de J2
+  tanto para Save como Resolve; sin identidad mantiene la ruta anterior exacta.
+  Reutilizar la referencia común ya validada por ese digest; no derivar
+  un tuple desde texto del cliente. Para escritura nueva con identidad,
+  resolver exactamente una vez con contexto e ID, dentro del lease y
+  después de replay, cabeza, guardas de grupos desconocidos y cuota de
+  revisiones. Sin identidad no invocar callback, aunque exista.
+  Si falta callback con identidad, ErrCorrectionTarget sin escribir.
+  Propagar error del callback con contexto/%w; comprobar ctx.Err después
+  de resolver, incluso si el callback ignoró cancelación. El constructor
+  canónico J2 valida referencia/tuple y originales; sin identidad conserva
+  v1/v2/v3 exactos. No relajar ApplyLapFamilyCorrections ni validación
+  de base, límites, comando y documento actuales.
+
+  Replay idéntico y ResolveMixedCommand devuelven revisión inicial y
+  cabeza actual sin resolver catálogo, incluso callback ausente/que fallaría.
+  Mismo CommandID con payload distinto falla por conflicto antes de resolver.
+  Reabrir/Load usa el target histórico persistido. Restaurar con grupos
+  explícitos crea v1/v2/v3 según las decisiones restantes y conserva v4.
+  Ni el test del callback ni la custodia prueban autorización física:
+  cada operación nativa seguirá verificando fuente abierta/base en su capa.
+
+  Tests contra t.TempDir y custodia real: sólo identidad y tres grupos,
+  reabrir/Load completo; callback una vez y lease retenido; no resolver
+  ante replay/Resolve/conflicto/cuota/cancelación/grupos omitidos ni
+  escrituras sin identidad; rechazo de nil/error/target incorrecto,
+  precondición discordante/campo corregido no verificable y cancelación
+  durante callback sin writes; otra identidad ausente sigue permitiendo
+  guardar el campo válido según J1, sin rellenar la ausencia;
+  restauración e historial exacto; commit incierto en backup/primario y
+  recuperación/replay sin catálogo. Contar writes y comprobar cabeza
+  íntegra tras rechazos. Una cuota de256revisiones se prepara como
+  documento/chain válidos, no insertando un estado corrupto que falle
+  por otra razón. Mantener todos los tests anteriores.
+
+  Gates gofmt/focales store/document/identidad; root revisa diff/logs antes
+  de global Go -p1 ./... y vet de alcance. Logs nuevos literales
+  frontend/.tmp/isa1104-t12j3-*.log con EXIT inmediato, sin sobrescribir.
+  No banco/frontend/UI/Wails ni callback conectado a la app todavía.
 
 Cada corte declara sus paths y evidencia antes de editar. El orquestador es
 dueño de este plan, del handoff y de la issue; Muse implementa únicamente

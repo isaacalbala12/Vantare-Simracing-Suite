@@ -67,7 +67,12 @@ export function useRecordedCorrections(client: AnalysisClient, onAdopt: (session
       corrections: saved.revision.snapshot.corrections.map(item => item.request),
       familyUses: saved.revision.snapshot.familyUses?.map(item => item.request) ?? [],
       classifications: saved.revision.snapshot.classifications?.map(item => item.request) ?? [], lapPage: undefined, projected: undefined });
-    await project(current.session, saved, signal);
+    // An inspection source is explicitly not projectable: keep the confirmed
+    // save without attempting an automatic projection. Explicit project/adopt
+    // and their guards are unchanged.
+    if (current.session.combinationId && !current.session.projectionUnavailableReason) {
+      await project(current.session, saved, signal);
+    }
   }
   function load(session: RecordedSession, revisionId = session.revision.revisionId) {
     return run(async signal => {

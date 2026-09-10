@@ -512,3 +512,67 @@ describe("recorded mixed editor", () => {
     expect(f.result.current.editor?.lapPage?.revisionId).toBe(a);
   });
 });
+
+function inspectionOnlySession(session: ReturnType<typeof fixture>["session"]) {
+  return { ...sessionWithMetadata(session, openMetadata()), combinationId: undefined, combination: undefined, projectionUnavailableReason: "metadata_unavailable" as const };
+}
+describe("recorded inspection save without auto projection (T12g3e2)", () => {
+  it("saves a valid classification on a partial source without projecting or raising an error", async () => {
+    const f = fixture();
+    const session = inspectionOnlySession(f.session);
+    f.client.project.mockRejectedValueOnce(new Error("recorded_combination_unavailable"));
+    f.client.save.mockImplementation(async (request: AnalysisSaveRequest) => {
+      const response = f.saved(request);
+      expect(parseCorrectionStoreResult(response)).toBe(response);
+      return response;
+    });
+    await act(() => f.result.current.load(session));
+    act(() => expect(f.result.current.editClassification("SessionType", "race", "Stewards bulletin")).toBe(true));
+    await act(() => f.result.current.save("Checked inspection"));
+    expect(f.result.current.editor?.saved?.revision.revisionId).toBe(b);
+    expect(f.result.current.editor?.current.revision.revisionId).toBe(b);
+    expect(f.result.current.editor?.saved?.revision.snapshot.classifications).toHaveLength(1);
+    expect(f.result.current.editor?.request).toBeUndefined();
+    expect(f.result.current.editor?.dirty).toBe(false);
+    expect(f.result.current.editor?.projected).toBeUndefined();
+    expect(f.client.project).not.toHaveBeenCalled();
+    expect(f.result.current.error).toBe("");
+    expect(f.onAdopt).not.toHaveBeenCalled();
+  });
+  it("resolves an uncertain inspection save without projecting or adopting", async () => {
+    const f = fixture();
+    const session = inspectionOnlySession(f.session);
+    f.client.save.mockRejectedValueOnce(new Error("confirmation lost"));
+    await act(() => f.result.current.load(session));
+    act(() => expect(f.result.current.editClassification("WeatherConditions", "Overcast", "Metar")).toBe(true));
+    await act(() => f.result.current.save("Checked inspection"));
+    const request = f.result.current.editor!.request!;
+    const response = f.saved(request);
+    expect(parseCorrectionStoreResult(response)).toBe(response);
+    f.client.resolve.mockResolvedValue({ found: true, headId: b, revision: response.revision });
+    await act(() => f.result.current.resolveSave());
+    expect(f.client.save).toHaveBeenCalledTimes(1);
+    expect(f.result.current.editor?.request).toBeUndefined();
+    expect(f.result.current.editor?.current.revision.revisionId).toBe(b);
+    expect(f.result.current.editor?.projected).toBeUndefined();
+    expect(f.client.project).not.toHaveBeenCalled();
+    expect(f.result.current.error).toBe("");
+    expect(f.onAdopt).not.toHaveBeenCalled();
+  });
+  it("skips auto projection for a marked source that still carries a combination id", async () => {
+    const f = fixture();
+    const session: RecordedSession = { ...sessionWithMetadata(f.session, openMetadata()), projectionUnavailableReason: "metadata_unavailable" as const };
+    f.client.save.mockImplementation(async (request: AnalysisSaveRequest) => {
+      const response = f.saved(request);
+      expect(parseCorrectionStoreResult(response)).toBe(response);
+      return response;
+    });
+    await act(() => f.result.current.load(session));
+    act(() => expect(f.result.current.editClassification("SessionType", "race", "Stewards bulletin")).toBe(true));
+    await act(() => f.result.current.save("Checked inspection"));
+    expect(f.result.current.editor?.saved?.revision.revisionId).toBe(b);
+    expect(f.client.project).not.toHaveBeenCalled();
+    expect(f.result.current.error).toBe("");
+    expect(f.onAdopt).not.toHaveBeenCalled();
+  });
+});

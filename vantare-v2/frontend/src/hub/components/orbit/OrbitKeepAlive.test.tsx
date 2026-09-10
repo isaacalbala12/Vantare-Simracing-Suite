@@ -1,5 +1,5 @@
-import { cleanup, render, screen } from '@testing-library/react';
-import { useEffect } from 'react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { lazy, Suspense, useEffect, type ComponentType } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { OrbitKeepAlive } from './OrbitKeepAlive';
 import { useOrbitKeepAliveActivity } from './orbit-keep-alive-activity';
@@ -76,5 +76,58 @@ describe('OrbitKeepAlive', () => {
     );
 
     expect(onActivityChange).toHaveBeenLastCalledWith(true);
+  });
+
+  it('resuelve el hijo lazy al activarse y lo conserva montado al ocultarse', async () => {
+    // La shell monta las páginas con React.lazy dentro del keep-alive: el
+    // import() no debe dispararse antes de la primera visita, la primera
+    // activación suspende en el fallback y, una vez resuelto, la vista queda
+    // montada (inert) aunque el usuario navegue a otra pestaña.
+    let resolveModule: ((mod: { default: ComponentType }) => void) | undefined;
+    let requested = false;
+    const LazyView = lazy(
+      () =>
+        new Promise<{ default: ComponentType }>((resolve) => {
+          requested = true;
+          resolveModule = resolve;
+        }),
+    );
+
+    const view = render(
+      <OrbitKeepAlive active={false}>
+        <Suspense fallback={<div data-testid="page-fallback" />}>
+          <LazyView />
+        </Suspense>
+      </OrbitKeepAlive>,
+    );
+
+    expect(requested).toBe(false);
+
+    view.rerender(
+      <OrbitKeepAlive active>
+        <Suspense fallback={<div data-testid="page-fallback" />}>
+          <LazyView />
+        </Suspense>
+      </OrbitKeepAlive>,
+    );
+
+    await waitFor(() => expect(requested).toBe(true));
+    expect(screen.getByTestId('page-fallback')).toBeTruthy();
+
+    resolveModule?.({
+      default: () => <div data-testid="lazy-view">lista</div>,
+    });
+    const lazyView = await screen.findByTestId('lazy-view');
+
+    view.rerender(
+      <OrbitKeepAlive active={false}>
+        <Suspense fallback={<div data-testid="page-fallback" />}>
+          <LazyView />
+        </Suspense>
+      </OrbitKeepAlive>,
+    );
+
+    expect(screen.getByTestId('lazy-view')).toBe(lazyView);
+    expect(lazyView.closest('[data-orbit-keep-alive]')?.hasAttribute('inert')).toBe(true);
   });
 });

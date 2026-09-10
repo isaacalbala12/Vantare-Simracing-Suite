@@ -31,9 +31,12 @@ import {
   type TelemetryReference,
 } from "./telemetry-orbit-model";
 import { isTelemetryDemoEnabled, resolveTelemetrySessions } from "./telemetry-orbit-source";
+import { TELEMETRY_CONTEXT_SLOT_ID } from "../components/orbit/orbit-slot-ids";
 import "../../styles/orbit-telemetry.css";
 
-export const TELEMETRY_CONTEXT_SLOT_ID = "orbit-telemetry-context-slot";
+/** Hueco que la shell reserva para Telemetría. El id vive en `orbit-slot-ids`
+    para que la shell no importe la página entera. */
+export { TELEMETRY_CONTEXT_SLOT_ID };
 
 /** Alturas fijas de las cuatro trazas (`06 § Telemetría`). */
 const TRACE_HEIGHT = { speed: 150, pedals: 100, steer: 80, delta: 110 } as const;

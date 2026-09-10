@@ -1,6 +1,6 @@
 import { Call } from "@wailsio/runtime";
 import { parseInputProjection } from "./strategy-application-client";
-import { AnalysisProtocolError, parseAnalysisLapPage, parseAnalysisFamilyCorrections, sameAnalysisFamilyCorrections, type AnalysisFamilyCorrection, parseAnalysisBase, parseAnalysisCandidates, parseAnalysisCommandResolution, parseAnalysisCorrection, parseAnalysisOpenedSession, parseAnalysisPage, parseAnalysisPreparation, parseAnalysisSaveCommand, parseAnalysisStatus, parseCorrectionStoreResult, sameAnalysisBase, type AnalysisBase, type AnalysisCorrection, type AnalysisSaveCommand } from "./analysis-contract";
+import { AnalysisProtocolError, parseAnalysisClassificationCorrections, parseAnalysisLapPage, parseAnalysisFamilyCorrections, sameAnalysisClassificationCorrections, sameAnalysisFamilyCorrections, type AnalysisClassificationCorrection, type AnalysisFamilyCorrection, parseAnalysisBase, parseAnalysisCandidates, parseAnalysisCommandResolution, parseAnalysisCorrection, parseAnalysisOpenedSession, parseAnalysisPage, parseAnalysisPreparation, parseAnalysisSaveCommand, parseAnalysisStatus, parseCorrectionStoreResult, sameAnalysisBase, type AnalysisBase, type AnalysisCorrection, type AnalysisRevision, type AnalysisSaveCommand } from "./analysis-contract";
 const methods = ["Status", "Discover", "Open", "ReadPage", "PrepareCorrections", "InspectCorrectionLaps", "SaveCorrections", "ResolveCorrectionCommand", "LoadCorrection", "ProjectCorrection", "CloseSession"] as const;
 type AnalysisMethod = typeof methods[number];
 export type AnalysisTransport = {
@@ -16,6 +16,7 @@ export type AnalysisSaveRequest = Readonly<{
   base: AnalysisBase;
   corrections: readonly AnalysisCorrection[];
   familyUses?: readonly AnalysisFamilyCorrection[];
+  classifications?: readonly AnalysisClassificationCorrection[];
   command: AnalysisSaveCommand;
 }>;
 export type AnalysisLapRequest = AnalysisRevisionRequest & Readonly<{ start: number; limit: number }>;
@@ -51,13 +52,32 @@ function validateSaveRequest(request: AnalysisSaveRequest): void {
   identifier(request.sessionId);
   parseAnalysisBase(request.base);
   parseAnalysisSaveCommand(request.command);
-  if (!Array.isArray(request.corrections) || request.corrections.length > 256) throw new AnalysisProtocolError("request.corrections");
-  const families = parseAnalysisFamilyCorrections(request.familyUses ?? [], request.base);
-  if (request.familyUses === null || request.corrections.length + families.length > 256) throw new AnalysisProtocolError("request.familyUses");
+  if (!Array.isArray(request.corrections)) throw new AnalysisProtocolError("request.corrections");
+  if (request.familyUses === null) throw new AnalysisProtocolError("request.familyUses");
+  if (request.classifications === null) throw new AnalysisProtocolError("request.classifications");
+  // An explicit classification set requires an explicit family set: omitting
+  // families means the caller is unaware of that group and must not drop it.
+  if (request.classifications !== undefined && request.familyUses === undefined) throw new AnalysisProtocolError("request.familyUses");
+  if (request.familyUses !== undefined && !Array.isArray(request.familyUses)) throw new AnalysisProtocolError("request.familyUses");
+  if (request.classifications !== undefined && !Array.isArray(request.classifications)) throw new AnalysisProtocolError("request.classifications");
+  // Combined quota of the three groups before traversing any request element.
+  if (request.corrections.length + (request.familyUses?.length ?? 0) + (request.classifications?.length ?? 0) > 256) throw new AnalysisProtocolError("request.quota");
+  parseAnalysisFamilyCorrections(request.familyUses ?? [], request.base);
+  parseAnalysisClassificationCorrections(request.classifications ?? [], request.base);
   for (const correction of request.corrections) {
     parseAnalysisCorrection(correction);
     if (!sameAnalysisBase(correction.base, request.base)) throw new AnalysisProtocolError("request.correctionBase");
   }
+}
+function matchesSaveRevision(request: AnalysisSaveRequest, revision: AnalysisRevision): boolean {
+  if (!sameAnalysisBase(revision.snapshot.base, request.base)) return false;
+  if (revision.command.commandId !== request.command.commandId ||
+    revision.command.expectedRevision !== request.command.expectedRevision ||
+    revision.command.reason !== request.command.reason ||
+    revision.command.localAuthorId !== request.command.localAuthorId) return false;
+  if (!sameAnalysisFamilyCorrections(request.familyUses ?? [], revision.snapshot.familyUses?.map(item => item.request) ?? [])) return false;
+  if (!sameAnalysisClassificationCorrections(request.classifications ?? [], revision.snapshot.classifications?.map(item => item.request) ?? [])) return false;
+  return true;
 }
 // Stateless transport: no retries or invented empty data. Cancelling a save
 // does not imply rollback; consumers must retain its command ID for recovery.
@@ -108,7 +128,7 @@ export function createAnalysisClient(transport: AnalysisTransport = createNative
     async save(request: AnalysisSaveRequest, signal?: AbortSignal) {
       validateSaveRequest(request);
       const result = parseCorrectionStoreResult(await invoke("SaveCorrections", [request], signal));
-      if (!sameAnalysisBase(result.revision.snapshot.base, request.base) || result.revision.command.commandId !== request.command.commandId || !sameAnalysisFamilyCorrections(request.familyUses ?? [], result.revision.snapshot.familyUses?.map(item => item.request) ?? [])) {
+      if (!matchesSaveRevision(request, result.revision)) {
         throw new AnalysisProtocolError("save.requestMismatch");
       }
       return result;
@@ -116,11 +136,7 @@ export function createAnalysisClient(transport: AnalysisTransport = createNative
     async resolve(request: AnalysisSaveRequest, signal?: AbortSignal) {
       validateSaveRequest(request);
       const result = parseAnalysisCommandResolution(await invoke("ResolveCorrectionCommand", [request], signal));
-      if (result.found && (!sameAnalysisBase(result.revision.snapshot.base, request.base) ||
-        result.revision.command.commandId !== request.command.commandId ||
-        result.revision.command.expectedRevision !== request.command.expectedRevision ||
-        result.revision.command.reason !== request.command.reason ||
-        result.revision.command.localAuthorId !== request.command.localAuthorId || !sameAnalysisFamilyCorrections(request.familyUses ?? [], result.revision.snapshot.familyUses?.map(item => item.request) ?? []))) throw new AnalysisProtocolError("resolve.requestMismatch");
+      if (result.found && !matchesSaveRevision(request, result.revision)) throw new AnalysisProtocolError("resolve.requestMismatch");
       return result;
     },
     async load(request: AnalysisRevisionRequest, signal?: AbortSignal) {

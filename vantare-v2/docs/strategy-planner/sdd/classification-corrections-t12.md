@@ -553,12 +553,95 @@ disponibilidad de señal.
   no cierra acceso al editor. Revisión visual A4 y Wails se registran aparte.
   No nuevos lectores, custodias, autorizaciones sintéticas, dependencias,
   señales físicas ni campos de coche/circuito.
-- **T12h — UI Datos y Revisiones (4 paths).**
-  `frontend/src/hub/strategy-orbit/StrategyRecordedData.tsx` +
-  `StrategyRecordedData.test.tsx` (edición de SessionType/clima con causa);
-  `frontend/src/hub/strategy-orbit/StrategyRecordedRevisions.tsx` +
-  `StrategyRecordedRevisions.test.tsx` (historial de decisiones de
-  clasificación). Gates: focales + typecheck + lint + build.
+- **T12ha — consulta del original y normalización compartidas (4 paths).**
+  `frontend/src/strategy/analysis-contract.ts` y su test;
+  `frontend/src/hub/strategy-orbit/strategy-recorded-corrections.ts` y su test.
+  La UI necesita conocer si cada campo es editable antes de proponer una
+  corrección. Extraer de la validación existente
+  `parseAnalysisClassificationOriginal(field, value)`: valida campo cerrado,
+  string Unicode válido y Go-nonempty; SessionType debe pertenecer al enum.
+  Devuelve el original RAW, sin recortarlo ni imponer un límite nuevo. El
+  parser de peticiones lo reutiliza sin cambiar wire, errores o semántica.
+  Exportar el enum existente como `analysisSessionTypes` y su normalización
+  como `analysisCanonicalSessionType`; no duplicar Go TrimSpace/ToLower en UI.
+
+  Extraer `recordedClassificationOriginal(session, current, field)` de las
+  comprobaciones existentes de base, clave única, presencia, calidad y
+  privacidad. Usar la validación anterior y reutilizarlo en el constructor
+  `recordedClassificationCorrection`. No crear una corrección ni un motivo
+  ficticios para comprobar disponibilidad; no API/capacidad nativa nueva.
+  Native Save sigue siendo la autoridad. Identificar y ejecutar tests
+  existentes antes del refactor; añadir paridad original/builder, original
+  distinto del efectivo guardado, metadata parcial, duplicados, privacidad,
+  Unicode NEL/FEFF/U+0130, enum desconocido y ausencia de mutación.
+  Gates: focales de ambos módulos, typecheck producto y lint.
+
+- **T12hb — textos de clasificación en cuatro idiomas (4 paths).**
+  `frontend/src/i18n/locales/strategy-orbit/{es,en,it,pt}.ts`.
+  El orquestador fija las doce claves/copias españolas siguientes, y el
+  ejecutor traduce manteniendo el significado. Bajo `strategy.classification`:
+  `tab` Clasificación; `field.SessionType` Tipo de sesión;
+  `field.WeatherConditions` Etiqueta climática;
+  `type.practice` Práctica; `type.qualify` Clasificación;
+  `type.race` Carrera; `chooseField` Elige un dato para revisarlo.;
+  `unavailable` No se puede corregir este dato porque su valor original no
+  está disponible o no se puede verificar.;
+  `restoreOriginal` Usar el valor original;
+  `correctValue` Corregir este dato;
+  `weatherHint` Cambiar esta etiqueta no modifica las temperaturas, la lluvia
+  ni otras señales registradas.; `manual` Decisión manual.
+  Reutilizar textos existentes de original, revisión guardada, propuesta,
+  motivo y acciones. Auditor i18n con --list, typecheck y lint: las doce claves
+  pueden ser huérfanas sólo durante este corte dependiente; conservar EXIT1
+  como estado intermedio y consumirlas en Hc/Hd, sin whitelist ni falsos usos.
+
+- **T12hc — clasificación en el mismo panel A4 Datos (4 paths).**
+  `frontend/src/hub/strategy-orbit/StrategyRecordedClassification.tsx` y test
+  nuevos, más `StrategyRecordedData.tsx` y su test. Dos vistas pequeñas de
+  lista/detalle, como RecordedLaps, con los estilos existentes; no editor,
+  controlador ni persistencia alternativos. La sección de clasificación se
+  abre junto a vueltas y muestras avanzadas. Dos filas del conjunto cerrado.
+  El helper Ha decide disponibilidad; fila no editable con causa, sin mostrar
+  valores sensibles/redactados, y otro campo válido continúa editable.
+
+  Mostrar original exacto de la sesión abierta, guardado confirmado desde
+  current.snapshot y propuesta pendiente desde editor.classifications. Sólo
+  presentar propuesta si difiere semánticamente de la petición guardada:
+  usar sameAnalysisClassificationCorrections. La retirada de una corrección
+  guardada muestra el original propuesto; no confundirla con confirmación.
+  El selector SessionType usa el enum/localización y normalización compartidos;
+  el valor original sigue raw. WeatherConditions es texto opaco con aviso.
+
+  Data mantiene un solo formulario activo (escalar, familia o clasificación)
+  y limpia los tres con clearForm. El formulario de clasificación ofrece
+  corregir o usar el original, valor y motivo obligatorio. Aplicar llama
+  editClassification/removeClassification, conserva motivo para la revisión
+  y sólo limpia si el controlador acepta. Restaurar el original se prepara
+  como retirada, no Save automático. Discard/Save/Resolve/Restore siguen en
+  el controlador existente con tres grupos. El contador incluye los tres.
+  Busy, formulario pendiente y comando incierto bloquean cambio de campo,
+  vista o fuente; cambiar pestaña externa conserva el formulario montado.
+  Nunca generar valor normalizado efectivo ni certeza física en React.
+
+  Tests de los componentes y montaje con controlador real y respuestas
+  contractuales válidas: ambos campos, motivo, retirada pendiente frente a
+  guardada, original intacto, campo no disponible mientras otro sí, privacidad,
+  tres grupos al guardar, rechazo sin perder formulario y comando incierto.
+  Mantener el recorrido de muestras/vueltas y selección real de G3. Gates:
+  focales clasificación/Datos/Revisiones/Workflow, typecheck y lint; auditor
+  de claves para identificar exactamente lo pendiente de Hd.
+
+- **T12hd — decisiones de clasificación en Revisiones (2 paths).**
+  `frontend/src/hub/strategy-orbit/StrategyRecordedRevisions.tsx` y su test.
+  Contar/renderizar classifications del snapshot consultado, con campo,
+  original, valor efectivo confirmado, motivo y procedencia manual. Para
+  etiqueta climática conservar la distinción de señales físicas. No mostrar
+  propuestas locales como guardadas ni cabeza como pin; v1/v2 sin cambios.
+  Restore sigue enviando tres grupos por el controlador ya probado.
+  Tests de snapshot sólo clasificación, mezcla de tres grupos, revisión
+  histórica exacta y ausencia v1/v2. Tras revisión personal: focales,
+  typecheck/lint, auditor i18n sin huérfanas/ausentes, suite frontend completa
+  y build. Este gate es funcional local; paridad visual >9 y Wails aparte.
 - **T12i — banco real opt-in y contraste (evidencia, sin paths nuevos en Analysis).**
   Reutiliza el banco nativo real existente en `internal/app`
   (patrones de `strategy_recorded_real_family_test.go` y

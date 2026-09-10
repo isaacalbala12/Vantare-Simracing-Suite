@@ -1,48 +1,79 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — T12g3e2 revisado, siguiente montaje T12g3f
+## Estado vigente — T12g3f revisado, siguiente T12ha
 
 Isaac confirma que planes y documentación siguen a cargo del orquestador.
-R19/A17/execution actualizados: Muse Spark 1.3 Contributor vía OpenCode, xhigh,
-ejecuta sólo código/tests asignados, sin subdelegación ni cambios de planes,
-docs o issue. Un ejecutor por worktree; revisión personal antes de aceptar.
+Muse Spark 1.3 Contributor vía OpenCode, xhigh, ejecuta sólo código/tests
+asignados, sin subdelegación ni cambios de planes, docs o issue. Un ejecutor
+por worktree; revisión personal de diff y evidencia antes de aceptar.
 Rama `vantareapp/isa-1104-recorded-classification`, base exacta
 `7f757135445439851180fc503da45f7eb9e557e7`; último código revisado
-`ce26fa8f25954d065c2ab644b71fb0ddb4a38d26`, limpio al revisar. A/B1/B2/C1/C2/D1/D2/E/F/G1/G2/G3a/G3b/G3c/G3e/G3e2
-aceptados localmente tras lectura de diff y evidencia (B1/B2: 126 paquetes Go
-PASS cada uno, vet exit 0; rutas en entradas siguientes). T12 sigue abierto.
+`20b2aad079bf4bd74396219d4e0a3fe3c20f3c48`, limpio tras el commit.
+A–G3 aceptados localmente; T12 permanece abierto.
 
-G1/G2 conectan helpers y controlador de los tres grupos: original intacto,
-restauración explícita completa y comando incierto sin pérdida. Suite frontend
-completa/build aceptados; aún falta montaje UI de clasificación.
-G3a expone baseDigest nativo para inspección exacta sin combinación; tests
-nativos/TS y global Go aceptados. G3b carga base y revisión exactas sin Project
-sólo ante la causa explícita metadata_unavailable; no adopta una selección y
-rechaza fuentes no proyectables para la carrera. G3c conecta dueño de sesiones
-y workflow: inspección explícita sin guardar carrera, con exclusión mutua desde
-el mismo ciclo y sin datos obsoletos. G3d ya actualiza cuatro locales para los
-estados de inspección/selección; G3e usa referencias reales para Datos/Revisiones.
-Auditor i18n aún exit 1 por tres claves nuevas sin consumidores. La prop nueva
-todavía no se conecta desde Workflow: hasta G3f las acciones de carrera quedan
-bloqueadas por defecto. G3e2 ya omite el intento automático de proyección tras
-guardar una fuente conocida no proyectable (hallazgo root). Siguiente G3f:
-conexión completa biblioteca/editor/asistente y gates conjuntos.
-Microplan G3a–f escrito por el orquestador: apertura, dueño, textos, estado
-real de selección en Datos/Revisiones y entrada desde biblioteca al mismo A4.
-Una sesión abierta para revisar no pasa a estar usada por la carrera; sin
-datos suficientes no se finge combinación ni proyección. G3a solo no cierra
-el acceso al editor; G3b tampoco monta todavía la entrada visual. F ya conserva el payload y
-comprueba respuestas Save/Resolve; E valida v3 y versiones anteriores. D1 conecta
-Save/Resolve bajo la misma autorización y conserva clasificación efectiva
-en la proyección nativa; D2 permite inspeccionar v3 sin nueva API.
-El plan registra
-el impedimento de apertura de sesiones sin proyección para resolverlo antes de
-montar la UI; no se crean valores faltantes. Coche/circuito siguen pendientes
-del contrato canónico §5. Sin nuevo alcance público: `plan.md` intacto.
-Sin push, PR, CI remota, integración ni promoción. No se reabre app/LMU; gate
-Wails sigue pendiente por ERROR_INVALID_STATE de causa no demostrada.
+G3 ya conecta la biblioteca con el mismo editor Datos/Revisiones, también
+sin combinación ni repositorio: apertura autorizada y referencia exacta,
+inspección separada de selección, correcciones locales sin Project espurio,
+pin del borrador por referencia completa y vuelta al asistente sin recrearlo.
+Los formularios y comandos inciertos bloquean cambios de fuente/salida; las
+pestañas conservan formularios. Auditor i18n vuelve a exit 0, sin huérfanas
+ni ausentes. Suite frontend 443 archivos/3644 PASS, build/typecheck/lint exit 0.
+Último Go global fue G3a: 126 paquetes PASS; no Go modificado desde entonces.
+Estos resultados son contractuales locales, no prueba de DuckDB real/Wails.
+
+Siguiente H, precisado por el orquestador en
+`docs/strategy-planner/sdd/classification-corrections-t12.md`: Ha consulta del
+original/normalización reutilizadas; Hb textos; Hc clasificación dentro de
+Datos A4; Hd historial. Cada corte declara 2–4 paths. No generar correcciones
+ficticias para comprobar disponibilidad ni duplicar validación en React.
+Luego I banco real opt-in. Coche/circuito/clase siguen pendientes de cerrar
+resolución canónica en §5 antes de código; no aceptar un hash de texto del
+cliente como catálogo autorizado. T13–T24 siguen en la secuencia SDD.
+
+Sin cambio de alcance público ni entrega completa: `plan.md` intacto en
+estos cortes internos; se actualizará con la entrega en el mismo PR.
+Sin push, PR, CI remota, integración, promoción o release. No se reabre
+app/LMU; gate Wails sigue pendiente por ERROR_INVALID_STATE de causa no
+demostrada. Contraste real y paridad visual >9/10 siguen aparte.
 
 Las entradas siguientes son evidencia histórica; el estado vigente es éste.
+
+## T12g3f — biblioteca, inspección y vuelta al asistente conectadas
+
+Commit `20b2aad0`, cuatro paths Workflow/Sessions y tests, +281/-14.
+Inspeccionar sólo aparece con callback; el montaje navega únicamente si el
+dueño acepta. Data/Revisions reciben todas las fuentes poseídas y referencias
+reales del borrador. Volver está fuera de tablist y preserva teclado/foco,
+borrador y handles; no dispara SaveDraft/Apply/Calculate. La biblioteca
+bloquea Use si cualquier fuente es no proyectable y traduce errores nuevos.
+Nombres parciales por candidato/unnamed; originales sensibles no se usan
+para identificación. Causa dentro de la celda descriptiva conserva el grid.
+
+Revisión personal corrigió: prueba que fabricaba initial/repository para
+saltar la entrada real; DTOs incompletos y página distinta de la solicitada;
+interacción bajo modal abierto; ausencia de comando realmente incierto;
+nombres parciales antes de validar metadata; error técnico nuevo visible;
+cuarto hijo en grid de tres columnas. Quedan cubiertos Inicio→Combinación→
+Descubrir→inspeccionar sin combinación/repositorio, Save con Project 0,
+historial exacto, borrador conservado, formulario crudo/dirty/uncertain,
+Resolve sin segundo Save, Arrow/Home/End y error Load visible. La limpieza de
+datos anteriores al fallar Load la prueba además el dueño G3c; no se atribuye
+esa demostración a un test que empieza vacío.
+
+Focal R1: 2 fallos/44 PASS, 5.70s; R2: 46 PASS, 5.17s; R3: 1 fallo/47 PASS,
+5.44s; R4: 1 fallo/47 PASS, 5.57s; R5: 48 PASS, 5.46s; R6 final: 48 PASS,
+5.45s. Fallos por consultas ambiguas de texto en tests, conservados; no son
+RED de producto. Typecheck producto/lint/auditor --list exit 0 (paridad OK,
+ausentes 0, huérfanas 0). Suite completa: 443 archivos/3644 PASS, 221.25s,
+exit 0. Build: 1085 módulos/1.90s, exit 0. Diff limpio.
+Logs `C:/tmp/isa1104-t12g3f-{focal,focal-r2,focal-r3,focal-r4,focal-r5,focal-r6,typecheck,lint,audit-list,frontend-all,build}.log`
+leídos personalmente. Avisos AbortError de teardown y chunks>500 kB
+conservados, ya registrados en cortes anteriores. Typecheck excluye tests;
+casts de fixtures anteriores señalados por LSP no se modifican ni se presentan
+como comprobados por ese gate. Los nuevos DTOs usados se validan por parsers.
+
+Worker idle antes de commit; documentación/issue y siguiente plan por root.
+Sin Go nuevo, banco real, Wails/app/LMU ni acciones externas de entrega.
 
 ## T12g3e2 — guardado de inspección sin error de preparación evitable
 

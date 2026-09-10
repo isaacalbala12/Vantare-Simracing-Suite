@@ -72,3 +72,16 @@ no certifica autenticación, licencia real ni la prueba física de Studio/Deskto
 Se conserva el warning de chunks grandes y el aviso del generador de bindings
 sin paquetes Go en la raíz. El cambio incidental de clasificación en go.mod
 producido por tidy se descartó: ninguna dependencia cambió.
+
+Código y push: `5db70a0880d8d41dba754c2f4c66cb8bff59259e`, PR #1100 a
+Nightly. CI remota `34430760576` SUCCESS: promoción, Go, contrato TypeScript,
+frontend, build y Windows/Wails. El paso advisory del contrato roadmap reportó
+la ficha incompleta; se completaron sus secciones en las issues #1083/#1097.
+El validador canónico, ejecutado localmente sobre el mismo HEAD y la issue viva,
+confirma exactamente `milestones:functional-widget-design` y
+`milestones:widget-access-branding`. No se rebajó ningún gate.
+
+Comprobación posterior en el inspector real del harness Orbit (fixtures):
+desde Original, elegir Eficiencia, confirmar Signature por defecto y aplicar
+Broadcast. Lista, selector y cabecera del inspector muestran nombres coherentes.
+Se restauró el viewport de prueba. Sigue sin sustituir la validación nativa.

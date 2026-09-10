@@ -86,12 +86,19 @@ física nueva, retirada V1, merge o release en este corte documental.
   sin bloqueantes. Suite final: 424 archivos, 3356 PASS y 2 omitidos, exit 0;
   lint y build canónico Windows (incluye frontend/tipos) PASS. Binario local
   sin configuración de servicios añadida; no certifica licencia real.
+  **Entrega del ajuste:** código en `5db70a08`, push verificado en PR #1100.
+  CI remota `34430760576` SUCCESS sobre ese código: Go, frontend, tipos y
+  Windows/Wails incluidos. El paso advisory de contrato roadmap señaló campos
+  ausentes en la ficha; #1083 y #1097 ya usan las secciones canónicas, y el
+  validador local contra el mismo HEAD y la issue viva pasa los dos IDs exactos.
+  Falta la prueba física antes de integrar; Nightly sigue en `b6b5754e`.
   Workshop verificado en navegador con ambos estilos. Las herramientas de esta
   sesión no controlan ventanas nativas; no confundir esta evidencia con la prueba
   física pendiente de Studio/Desktop.
   **Entrega 2026-09-10:** implementación `d5255acd`, push verificado y PR draft
   [#1100](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1100)
-  hacia Nightly. CI remota pendiente al abrir; issue en `state:in-review`.
+  hacia Nightly. CI remota inicialmente pendiente al abrir; el resultado
+  actualizado está indicado arriba. Issue en `state:in-review`.
   Worktree propio limpio. No hay merge ni release; #1098 registra la integración
   y #1097 la política comercial posterior. Las notas de iteraciones inferiores
   conservan su estado histórico y no sustituyen este corte.

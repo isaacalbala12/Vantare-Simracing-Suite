@@ -10,13 +10,14 @@ import { RecordedLapDetail, RecordedLapList, type RecordedFamilyForm } from "./S
 import "./strategy-recorded-data.css";
 
 type Form = { sampleIndex: number; column: string; original: AnalysisValue; value: string; reason: string };
-export function StrategyRecordedData({ controller, sessions, sessionLabels = {}, selectedRevisions = [], busy, onSources, onPendingChange, t }: {
+export type RecordedDataView = "laps" | "samples" | "classification";
+export function StrategyRecordedData({ controller, sessions, sessionLabels = {}, selectedRevisions = [], busy, onSources, onPendingChange, view, onViewChange, t }: {
   readonly controller: RecordedCorrectionsController; readonly sessions: readonly RecordedSession[]; readonly busy: boolean;
   readonly sessionLabels?: Readonly<Record<string, string>>;
   readonly selectedRevisions?: readonly StrategyAnalysisRevisionRef[];
-  readonly onSources: () => void; readonly onPendingChange: (pending: boolean) => void; readonly t: (key: string) => string;
+  readonly onSources: () => void; readonly onPendingChange: (pending: boolean) => void;
+  readonly view: RecordedDataView; readonly onViewChange: (view: RecordedDataView) => void; readonly t: (key: string) => string;
 }) {
-  const [view, setView] = useState<"laps" | "samples" | "classification">("laps");
   const [family, setFamily] = useState<AnalysisCorrectableFamily>("combined_stint_pace_curve");
   const [familyForm, setFamilyForm] = useState<RecordedFamilyForm | null>(null);
   const [classForm, setClassForm] = useState<RecordedClassificationForm | null>(null);
@@ -103,7 +104,7 @@ export function StrategyRecordedData({ controller, sessions, sessionLabels = {},
         <div className="strategy-recorded-data__source"><label>{t("strategy.data.source")}<select value={editor?.session.opened.sessionId ?? ""} disabled={locked || formDirty || controller.unresolved} onChange={event => { const session = sessions.find(item => item.opened.sessionId === event.target.value); if (session) { clearForm(); setColumn(""); void controller.load(session); } }}>
           <option value="">{t("strategy.journey.choose")}</option>{sessions.map(session => <option key={session.opened.sessionId} value={session.opened.sessionId}>{sessionLabels[session.candidateId] || [session.combination?.trackName, session.combination?.carName].filter(Boolean).join(" · ") || t("strategy.recorded.unnamed")}</option>)}
         </select></label><Button variant="ghost" disabled={locked || formDirty || controller.unresolved} onClick={onSources}>{t("strategy.data.sources")}</Button></div>
-        <div className="strategy-recorded-laps__views"><h3>{t("strategy.data.observations")}</h3><span>{view !== "classification" ? <Button size="sm" variant="ghost" disabled={locked || formDirty || Boolean(editor?.request)} onClick={() => { clearForm(); setView("classification"); }}>{t("strategy.classification.tab")}</Button> : null}{view === "laps" ? <Button size="sm" variant="ghost" disabled={locked || formDirty || Boolean(editor?.request)} onClick={() => { clearForm(); setView("samples"); }}>{t("strategy.laps.advanced")}</Button> : <Button size="sm" variant="ghost" disabled={locked || formDirty || Boolean(editor?.request)} onClick={() => { clearForm(); setView("laps"); }}>{t("strategy.laps.back")}</Button>}{view === "classification" ? <Button size="sm" variant="ghost" disabled={locked || formDirty || Boolean(editor?.request)} onClick={() => { clearForm(); setView("samples"); }}>{t("strategy.laps.advanced")}</Button> : null}</span></div>
+        <div className="strategy-recorded-laps__views"><h3>{t("strategy.data.observations")}</h3><span>{view !== "classification" ? <Button size="sm" variant="ghost" disabled={locked || formDirty || Boolean(editor?.request)} onClick={() => { clearForm(); onViewChange("classification"); }}>{t("strategy.classification.tab")}</Button> : null}{view === "laps" ? <Button size="sm" variant="ghost" disabled={locked || formDirty || Boolean(editor?.request)} onClick={() => { clearForm(); onViewChange("samples"); }}>{t("strategy.laps.advanced")}</Button> : <Button size="sm" variant="ghost" disabled={locked || formDirty || Boolean(editor?.request)} onClick={() => { clearForm(); onViewChange("laps"); }}>{t("strategy.laps.back")}</Button>}{view === "classification" ? <Button size="sm" variant="ghost" disabled={locked || formDirty || Boolean(editor?.request)} onClick={() => { clearForm(); onViewChange("samples"); }}>{t("strategy.laps.advanced")}</Button> : null}</span></div>
         {view === "samples" ? <p className="strategy-recorded-data__muted">{t("strategy.data.advancedHint")}</p> : null}
         {!editor ? <div className="strategy-recorded-data__empty"><Icon name="i-telemetria" size={44} /><strong>{t("strategy.data.chooseSource")}</strong><p>{t("strategy.data.chooseSourceHint")}</p></div> : view === "laps" ? <RecordedLapList page={editor.lapPage} family={family} proposals={editor.familyUses ?? []} selected={familyForm?.row} locked={locked || formDirty || Boolean(editor.request)} t={t}
           onFamily={next => { clearForm(); setFamily(next); }} onPage={start => { clearForm(); void controller.laps(start); }}

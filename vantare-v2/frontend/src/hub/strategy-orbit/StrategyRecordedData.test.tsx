@@ -1,8 +1,9 @@
+import { useState, type ComponentProps } from "react";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { RecordedCorrectionsController } from "./use-recorded-corrections";
 import { useRecordedCorrections } from "./use-recorded-corrections";
-import { StrategyRecordedData } from "./StrategyRecordedData";
+import { StrategyRecordedData, type RecordedDataView } from "./StrategyRecordedData";
 import { StrategyRecordedWorkflow } from "./StrategyRecordedWorkflow";
 import { openRecordedSession, type RecordedSession } from "./strategy-recorded-session";
 import { createRecordedWizardDraft } from "./strategy-recorded-wizard";
@@ -14,6 +15,10 @@ import type { RecordedDraftPayload } from "./strategy-recorded-payload";
 vi.mock("./strategy-recorded-session", () => ({ openRecordedSession: vi.fn() }));
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
 const t = (key: string) => key;
+function HostedData(props: Omit<ComponentProps<typeof StrategyRecordedData>, "view" | "onViewChange">) {
+  const [view, setView] = useState<RecordedDataView>("laps");
+  return <StrategyRecordedData {...props} view={view} onViewChange={setView} />;
+}
 function fixture() {
   const a = "a".repeat(64), b = "b".repeat(64);
   const base = { sessionId: "source", contentSha256: a, sizeBytes: 10, parserId: "lmu-duckdb", parserVersion: "1", schemaFingerprint: "schema", analysisVersion: "analysis", segmentationDigest: b };
@@ -29,7 +34,7 @@ describe("recorded data screen", () => {
   it("keeps readable samples visible but blocks editing without native capability", () => {
     const f = fixture();
     const controller = { ...f.controller, editor: { ...f.controller.editor!, session: { ...f.session, editableChannelIds: [] } } };
-    render(<StrategyRecordedData controller={controller} sessions={[controller.editor.session]} busy={false} onSources={vi.fn()} onPendingChange={vi.fn()} t={t} />);
+    render(<HostedData controller={controller} sessions={[controller.editor.session]} busy={false} onSources={vi.fn()} onPendingChange={vi.fn()} t={t} />);
     fireEvent.click(screen.getByRole("button", { name: "strategy.laps.advanced" }));
     expect((screen.getByRole("button", { name: "strategy.data.sample 4" }) as HTMLButtonElement).disabled).toBe(true);
     expect(screen.getByText("12")).toBeTruthy();
@@ -38,7 +43,7 @@ describe("recorded data screen", () => {
   });
   it("requires a reason, preserves the original and submits an explicit zero", () => {
     const f = fixture(), onPendingChange = vi.fn();
-    render(<StrategyRecordedData controller={f.controller} sessions={[f.session]} busy={false} onSources={vi.fn()} onPendingChange={onPendingChange} t={t} />);
+    render(<HostedData controller={f.controller} sessions={[f.session]} busy={false} onSources={vi.fn()} onPendingChange={onPendingChange} t={t} />);
     fireEvent.click(screen.getByRole("button", { name: "strategy.laps.advanced" }));
     expect(f.methods.page).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "strategy.data.sample 4" }));
@@ -55,7 +60,7 @@ describe("recorded data screen", () => {
   it("does not turn a blank numeric field into zero or discard a rejected edit", () => {
     const f = fixture();
     f.methods.edit.mockReturnValue(false);
-    render(<StrategyRecordedData controller={f.controller} sessions={[f.session]} busy={false} onSources={vi.fn()} onPendingChange={vi.fn()} t={t} />);
+    render(<HostedData controller={f.controller} sessions={[f.session]} busy={false} onSources={vi.fn()} onPendingChange={vi.fn()} t={t} />);
     fireEvent.click(screen.getByRole("button", { name: "strategy.laps.advanced" }));
     fireEvent.click(screen.getByRole("button", { name: "strategy.data.sample 4" }));
     fireEvent.change(screen.getByLabelText("strategy.data.correctedValue"), { target: { value: "" } });
@@ -69,7 +74,7 @@ describe("recorded data screen", () => {
   });
   it("does not read until a selected source is chosen and keeps missing data distinct", () => {
     const f = fixture();
-    render(<StrategyRecordedData controller={{ ...f.controller, editor: null }} sessions={[f.session]} sessionLabels={{ candidate: "Imola_R.duckdb" }} busy={false} onSources={vi.fn()} onPendingChange={vi.fn()} t={t} />);
+    render(<HostedData controller={{ ...f.controller, editor: null }} sessions={[f.session]} sessionLabels={{ candidate: "Imola_R.duckdb" }} busy={false} onSources={vi.fn()} onPendingChange={vi.fn()} t={t} />);
     expect(f.methods.load).not.toHaveBeenCalled();
     expect(screen.getByRole("option", { name: "Imola_R.duckdb" })).toBeTruthy();
     fireEvent.change(screen.getByLabelText("strategy.data.source"), { target: { value: "handle" } });
@@ -121,7 +126,7 @@ function familyScreenFixture() {
 describe("recorded family screen", () => {
   it("opens on laps and keeps advanced samples behind an explicit action", () => {
     const f = fixture();
-    render(<StrategyRecordedData controller={f.controller} sessions={[f.session]} busy={false} onSources={vi.fn()} onPendingChange={vi.fn()} t={t} />);
+    render(<HostedData controller={f.controller} sessions={[f.session]} busy={false} onSources={vi.fn()} onPendingChange={vi.fn()} t={t} />);
     expect(screen.queryByLabelText("strategy.data.channel")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "strategy.laps.load" }));
     expect(f.methods.laps).toHaveBeenCalledExactlyOnceWith(0);
@@ -129,7 +134,7 @@ describe("recorded family screen", () => {
   });
   it("stages a family exclusion with a reason and protects the unfinished form", () => {
     const f = familyScreenFixture(), pending = vi.fn();
-    render(<StrategyRecordedData controller={f.controller} sessions={[f.session]} busy={false} onSources={vi.fn()} onPendingChange={pending} t={t} />);
+    render(<HostedData controller={f.controller} sessions={[f.session]} busy={false} onSources={vi.fn()} onPendingChange={pending} t={t} />);
     fireEvent.click(screen.getByRole("button", { name: "strategy.laps.lap 3" }));
     fireEvent.change(screen.getByLabelText("strategy.laps.proposal"), { target: { value: "exclude" } });
     expect((screen.getByRole("button", { name: "strategy.data.apply" }) as HTMLButtonElement).disabled).toBe(true);
@@ -145,7 +150,7 @@ describe("recorded family screen", () => {
   it("retains a rejected family proposal and removes only the selected decision on automatic", () => {
     const f = familyScreenFixture();
     f.methods.editFamily.mockReturnValue(false);
-    render(<StrategyRecordedData controller={f.controller} sessions={[f.session]} busy={false} onSources={vi.fn()} onPendingChange={vi.fn()} t={t} />);
+    render(<HostedData controller={f.controller} sessions={[f.session]} busy={false} onSources={vi.fn()} onPendingChange={vi.fn()} t={t} />);
     fireEvent.click(screen.getByRole("button", { name: "strategy.laps.lap 3" }));
     fireEvent.change(screen.getByLabelText("strategy.laps.proposal"), { target: { value: "exclude" } });
     fireEvent.change(screen.getByLabelText("strategy.data.reason"), { target: { value: "Review" } });
@@ -166,7 +171,7 @@ function inspectionFixture() {
 describe("recorded inspection selection (T12g3e regression)", () => {
   it("does not project an inspection-only source into the race and explains why", () => {
     const f = inspectionFixture();
-    render(<StrategyRecordedData controller={f.controller} sessions={[f.session]} busy={false} onSources={vi.fn()} onPendingChange={vi.fn()} t={t} />);
+    render(<HostedData controller={f.controller} sessions={[f.session]} busy={false} onSources={vi.fn()} onPendingChange={vi.fn()} t={t} />);
     expect(screen.getByText("strategy.recorded.metadataUnavailable")).toBeTruthy();
     expect(screen.getByText("strategy.recorded.notSelected")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "strategy.data.prepare" }));
@@ -177,7 +182,7 @@ describe("recorded inspection selection (T12g3e regression)", () => {
 describe("recorded race selection in data (T12g3e)", () => {
   it("prepares only the explicitly selected source and hides the race causes", () => {
     const f = fixture();
-    render(<StrategyRecordedData controller={f.controller} sessions={[f.session]} selectedRevisions={[f.session.revision]} busy={false} onSources={vi.fn()} onPendingChange={vi.fn()} t={t} />);
+    render(<HostedData controller={f.controller} sessions={[f.session]} selectedRevisions={[f.session.revision]} busy={false} onSources={vi.fn()} onPendingChange={vi.fn()} t={t} />);
     expect(screen.queryByText("strategy.recorded.notSelected")).toBeNull();
     expect(screen.queryByText("strategy.recorded.metadataUnavailable")).toBeNull();
     const prepare = screen.getByRole("button", { name: "strategy.data.prepare" }) as HTMLButtonElement;
@@ -188,7 +193,7 @@ describe("recorded race selection in data (T12g3e)", () => {
   });
   it("keeps a projectable source out of the race without an explicit selection", () => {
     const f = fixture();
-    render(<StrategyRecordedData controller={f.controller} sessions={[f.session]} selectedRevisions={[]} busy={false} onSources={vi.fn()} onPendingChange={vi.fn()} t={t} />);
+    render(<HostedData controller={f.controller} sessions={[f.session]} selectedRevisions={[]} busy={false} onSources={vi.fn()} onPendingChange={vi.fn()} t={t} />);
     expect(screen.getByText("strategy.recorded.notSelected")).toBeTruthy();
     expect(screen.queryByText("strategy.recorded.metadataUnavailable")).toBeNull();
     expect((screen.getByRole("button", { name: "strategy.data.prepare" }) as HTMLButtonElement).disabled).toBe(true);
@@ -201,7 +206,7 @@ describe("recorded race selection in data (T12g3e)", () => {
   ])("treats a %s mismatch as no race selection", (_case, identity) => {
     const f = fixture();
     const foreign = { ...f.session.revision, ...identity };
-    render(<StrategyRecordedData controller={f.controller} sessions={[f.session]} selectedRevisions={[foreign]} busy={false} onSources={vi.fn()} onPendingChange={vi.fn()} t={t} />);
+    render(<HostedData controller={f.controller} sessions={[f.session]} selectedRevisions={[foreign]} busy={false} onSources={vi.fn()} onPendingChange={vi.fn()} t={t} />);
     expect(screen.getByText("strategy.recorded.notSelected")).toBeTruthy();
     expect((screen.getByRole("button", { name: "strategy.data.prepare" }) as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(screen.getByRole("button", { name: "strategy.data.prepare" }));
@@ -211,7 +216,7 @@ describe("recorded race selection in data (T12g3e)", () => {
     const f = fixture();
     const session: RecordedSession = { ...f.session, projectionUnavailableReason: "metadata_unavailable" };
     const controller = { ...f.controller, editor: { ...f.controller.editor!, session } };
-    render(<StrategyRecordedData controller={controller} sessions={[session]} selectedRevisions={[f.session.revision]} busy={false} onSources={vi.fn()} onPendingChange={vi.fn()} t={t} />);
+    render(<HostedData controller={controller} sessions={[session]} selectedRevisions={[f.session.revision]} busy={false} onSources={vi.fn()} onPendingChange={vi.fn()} t={t} />);
     expect(screen.getByText("strategy.recorded.metadataUnavailable")).toBeTruthy();
     expect(screen.queryByText("strategy.recorded.notSelected")).toBeNull();
     expect((screen.getByRole("button", { name: "strategy.data.prepare" }) as HTMLButtonElement).disabled).toBe(true);
@@ -224,7 +229,7 @@ describe("recorded race selection in data (T12g3e)", () => {
     const selected = { ...f.session.revision, revisionId: "c".repeat(64), snapshotId: "c".repeat(64) };
     const projected: RecordedSession = { ...f.session, revision: selected };
     const controller = { ...f.controller, editor: { ...f.controller.editor!, projected } };
-    render(<StrategyRecordedData controller={controller} sessions={[f.session]} selectedRevisions={[selected]} busy={false} onSources={vi.fn()} onPendingChange={vi.fn()} t={t} />);
+    render(<HostedData controller={controller} sessions={[f.session]} selectedRevisions={[selected]} busy={false} onSources={vi.fn()} onPendingChange={vi.fn()} t={t} />);
     expect(screen.queryByText("strategy.recorded.notSelected")).toBeNull();
     expect((screen.getByRole("button", { name: "strategy.data.adopt" }) as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(screen.getByRole("button", { name: "strategy.data.adopt" }));
@@ -235,7 +240,7 @@ describe("recorded race selection in data (T12g3e)", () => {
     const selected = { ...f.session.revision, revisionId: "c".repeat(64), snapshotId: "c".repeat(64) };
     const projected: RecordedSession = { ...f.session, revision: { ...selected, snapshotId: "b".repeat(64) } };
     const controller = { ...f.controller, editor: { ...f.controller.editor!, projected } };
-    render(<StrategyRecordedData controller={controller} sessions={[f.session]} selectedRevisions={[selected]} busy={false} onSources={vi.fn()} onPendingChange={vi.fn()} t={t} />);
+    render(<HostedData controller={controller} sessions={[f.session]} selectedRevisions={[selected]} busy={false} onSources={vi.fn()} onPendingChange={vi.fn()} t={t} />);
     const adopt = screen.getByRole("button", { name: "strategy.data.adopt" }) as HTMLButtonElement;
     expect(adopt.disabled).toBe(false);
     fireEvent.click(adopt);
@@ -246,7 +251,7 @@ describe("recorded race selection in data (T12g3e)", () => {
     const selected = { ...f.session.revision, revisionId: "c".repeat(64), snapshotId: "c".repeat(64) };
     const projected: RecordedSession = { ...f.session, revision: { ...f.session.revision } };
     const controller = { ...f.controller, editor: { ...f.controller.editor!, projected } };
-    render(<StrategyRecordedData controller={controller} sessions={[f.session]} selectedRevisions={[selected]} busy={false} onSources={vi.fn()} onPendingChange={vi.fn()} t={t} />);
+    render(<HostedData controller={controller} sessions={[f.session]} selectedRevisions={[selected]} busy={false} onSources={vi.fn()} onPendingChange={vi.fn()} t={t} />);
     const adopt = screen.getByRole("button", { name: "strategy.data.adopt" }) as HTMLButtonElement;
     expect(adopt.disabled).toBe(false);
     fireEvent.click(adopt);
@@ -255,7 +260,7 @@ describe("recorded race selection in data (T12g3e)", () => {
   it("preserves the local save on a marked inspection source", () => {
     const f = inspectionFixture();
     const controller = { ...f.controller, editor: { ...f.controller.editor!, dirty: true } };
-    render(<StrategyRecordedData controller={controller} sessions={[f.session]} selectedRevisions={[]} busy={false} onSources={vi.fn()} onPendingChange={vi.fn()} t={t} />);
+    render(<HostedData controller={controller} sessions={[f.session]} selectedRevisions={[]} busy={false} onSources={vi.fn()} onPendingChange={vi.fn()} t={t} />);
     fireEvent.change(screen.getByLabelText("strategy.data.revisionReason"), { target: { value: "Checked inspection values" } });
     fireEvent.click(screen.getByRole("button", { name: "strategy.data.save" }));
     expect(f.methods.save).toHaveBeenCalledExactlyOnceWith("Checked inspection values");
@@ -289,7 +294,7 @@ function bodyCells() {
 describe("recorded classification screen", () => {
   it("opens as a third view and stages a correction with an explicit reason", () => {
     const f = classificationScreenFixture(), pending = vi.fn();
-    render(<StrategyRecordedData controller={f.controller} sessions={[f.session]} busy={false} onSources={vi.fn()} onPendingChange={pending} t={t} />);
+    render(<HostedData controller={f.controller} sessions={[f.session]} busy={false} onSources={vi.fn()} onPendingChange={pending} t={t} />);
     expect(screen.queryByRole("button", { name: "strategy.classification.field.SessionType" })).toBeNull();
     openClassification();
     fireEvent.click(screen.getByRole("button", { name: "strategy.classification.field.SessionType" }));
@@ -306,7 +311,7 @@ describe("recorded classification screen", () => {
   });
   it("prepares a withdrawal with its reason and clears the form on acceptance", () => {
     const f = classificationScreenFixture();
-    render(<StrategyRecordedData controller={f.controller} sessions={[f.session]} busy={false} onSources={vi.fn()} onPendingChange={vi.fn()} t={t} />);
+    render(<HostedData controller={f.controller} sessions={[f.session]} busy={false} onSources={vi.fn()} onPendingChange={vi.fn()} t={t} />);
     openClassification();
     fireEvent.click(screen.getByRole("button", { name: "strategy.classification.field.WeatherConditions" }));
     fireEvent.change(screen.getByLabelText("strategy.laps.proposal"), { target: { value: "original" } });
@@ -318,7 +323,7 @@ describe("recorded classification screen", () => {
   it("retains a rejected classification form with its reason", () => {
     const f = classificationScreenFixture();
     f.methods.editClassification.mockReturnValue(false);
-    render(<StrategyRecordedData controller={f.controller} sessions={[f.session]} busy={false} onSources={vi.fn()} onPendingChange={vi.fn()} t={t} />);
+    render(<HostedData controller={f.controller} sessions={[f.session]} busy={false} onSources={vi.fn()} onPendingChange={vi.fn()} t={t} />);
     openClassification();
     fireEvent.click(screen.getByRole("button", { name: "strategy.classification.field.SessionType" }));
     fireEvent.change(screen.getByLabelText("strategy.data.reason"), { target: { value: "Stewards bulletin" } });
@@ -329,7 +334,7 @@ describe("recorded classification screen", () => {
   it("shows a pending withdrawal distinctly from a confirmed decision", () => {
     const f = classificationSavedFixture();
     const withdrawn = { ...f.controller, editor: { ...f.controller.editor!, current: f.current, classifications: [] } };
-    const { unmount } = render(<StrategyRecordedData controller={withdrawn} sessions={[f.session]} busy={false} onSources={vi.fn()} onPendingChange={vi.fn()} t={t} />);
+    const { unmount } = render(<HostedData controller={withdrawn} sessions={[f.session]} busy={false} onSources={vi.fn()} onPendingChange={vi.fn()} t={t} />);
     openClassification();
     expect(bodyCells()).toEqual([
       ["strategy.classification.field.SessionType", "practice", "race", "practice"],
@@ -337,7 +342,7 @@ describe("recorded classification screen", () => {
     ]);
     unmount();
     const confirmed = { ...f.controller, editor: { ...f.controller.editor!, current: f.current, classifications: [f.request] } };
-    render(<StrategyRecordedData controller={confirmed} sessions={[f.session]} busy={false} onSources={vi.fn()} onPendingChange={vi.fn()} t={t} />);
+    render(<HostedData controller={confirmed} sessions={[f.session]} busy={false} onSources={vi.fn()} onPendingChange={vi.fn()} t={t} />);
     openClassification();
     expect(bodyCells()).toEqual([
       ["strategy.classification.field.SessionType", "practice", "race", "strategy.data.unchanged"],
@@ -348,7 +353,7 @@ describe("recorded classification screen", () => {
     const f = classificationScreenFixture();
     const session: RecordedSession = { ...f.session, opened: { ...f.session.opened, session: { ...f.session.opened.session, metadata: [{ key: "SessionType", present: true, quality: "valid" as const, sensitive: true }, { key: "WeatherConditions", present: true, quality: "valid" as const, sensitive: false, value: "Dry" }] } } };
     const controller = { ...f.controller, editor: { ...f.controller.editor!, session } };
-    render(<StrategyRecordedData controller={controller} sessions={[session]} busy={false} onSources={vi.fn()} onPendingChange={vi.fn()} t={t} />);
+    render(<HostedData controller={controller} sessions={[session]} busy={false} onSources={vi.fn()} onPendingChange={vi.fn()} t={t} />);
     openClassification();
     expect(screen.getByText("strategy.classification.unavailable")).toBeTruthy();
     expect(screen.queryByText("practice")).toBeNull();
@@ -358,12 +363,12 @@ describe("recorded classification screen", () => {
   });
   it("disables staging on an uncertain command without losing the open form", () => {
     const f = classificationScreenFixture();
-    const { rerender } = render(<StrategyRecordedData controller={f.controller} sessions={[f.session]} busy={false} onSources={vi.fn()} onPendingChange={vi.fn()} t={t} />);
+    const { rerender } = render(<HostedData controller={f.controller} sessions={[f.session]} busy={false} onSources={vi.fn()} onPendingChange={vi.fn()} t={t} />);
     openClassification();
     fireEvent.click(screen.getByRole("button", { name: "strategy.classification.field.SessionType" }));
     fireEvent.change(screen.getByLabelText("strategy.data.reason"), { target: { value: "Stewards bulletin" } });
     const request = { sessionId: "handle", base: f.session.base, corrections: [], command: { expectedRevision: "a".repeat(64), commandId: "uncertain", reason: "Review", localAuthorId: "local" } };
-    rerender(<StrategyRecordedData controller={{ ...f.controller, editor: { ...f.controller.editor!, request } }} sessions={[f.session]} busy={false} onSources={vi.fn()} onPendingChange={vi.fn()} t={t} />);
+    rerender(<HostedData controller={{ ...f.controller, editor: { ...f.controller.editor!, request } }} sessions={[f.session]} busy={false} onSources={vi.fn()} onPendingChange={vi.fn()} t={t} />);
     expect((screen.getByLabelText("strategy.data.correctedValue") as HTMLSelectElement).disabled).toBe(true);
     expect((screen.getByRole("button", { name: "strategy.data.apply" }) as HTMLButtonElement).disabled).toBe(true);
     expect((screen.getByLabelText("strategy.data.reason") as HTMLTextAreaElement).value).toBe("Stewards bulletin");
@@ -373,7 +378,7 @@ describe("recorded classification screen", () => {
 
 function HookedClassificationData({ client, session, onAdopt }: { client: AnalysisClient; session: RecordedSession; onAdopt?: (session: RecordedSession, signal: AbortSignal) => Promise<void> }) {
   const controller = useRecordedCorrections(client, onAdopt ?? (async () => {}));
-  return <StrategyRecordedData controller={controller} sessions={[session]} busy={false} onSources={vi.fn()} onPendingChange={vi.fn()} t={t} />;
+  return <HostedData controller={controller} sessions={[session]} busy={false} onSources={vi.fn()} onPendingChange={vi.fn()} t={t} />;
 }
 describe("recorded classification through a real controller", () => {
   it("withdraws a loaded classification only on explicit save and restores the revision", async () => {

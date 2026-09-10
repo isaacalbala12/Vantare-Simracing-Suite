@@ -220,3 +220,52 @@ describe("recorded inspection journey", () => {
     expect(f.project).not.toHaveBeenCalled();
   });
 });
+
+function classificationJourney() {
+  const base = parseAnalysisBase({ sessionId: "source", contentSha256: pa, sizeBytes: 10, parserId: "lmu-duckdb", parserVersion: "1", schemaFingerprint: "schema", analysisVersion: "analysis", segmentationDigest: pb });
+  const channel = { id: "fuel", source_name: "Fuel level", unit: { symbol: "L", quality: "valid" as const }, sampling: { kind: "event_timestamped" as const, origin: "source_timestamp" as const }, columns: [{ name: "value", type: "number" as const }] };
+  const opened = parseAnalysisOpenedSession({ sessionId: "handle", session: { schema_version: 1, id: "source", channels: [channel], metadata: [{ key: "SessionType", present: true, quality: "valid" as const, sensitive: false, value: "practice" }, { key: "WeatherConditions", present: true, quality: "valid" as const, sensitive: false, value: "Dry" }] } });
+  const partial: RecordedSession = { editableChannelIds: ["fuel"], candidateId: "partial", opened, base, revision: { sessionId: "source", baseDigest: pc, revisionId: pa, snapshotId: pa }, projectionUnavailableReason: "metadata_unavailable" };
+  const current = parseCorrectionStoreResult({ headId: pa, revision: { revisionId: pa, parentRevisionId: "", command: { expectedRevision: "", commandId: "", reason: "", localAuthorId: "" }, commandDigest: "", createdAt: "", snapshot: { contractVersion: "analysis.sample-snapshot.v1", base, snapshotId: pa, corrections: [] } } });
+  const execute = vi.fn(async (command: StrategyApplicationCommandV1<RecordedDraftPayload>) => ({ protocolVersion: "strategy.application.v1" as const, commandId: command.commandId, repositoryVersion: 8, recoveredFromBackup: false, closed: false, ...("draft" in command ? { draft: structuredClone(command.draft) } : {}) }));
+  const application: StrategyApplicationClient<RecordedDraftPayload> = { execute, cancel: vi.fn(), dispose: vi.fn() };
+  const close = vi.fn().mockResolvedValue(undefined);
+  const candidates = parseAnalysisCandidates([{ id: "partial", displayName: "Imola_partial.duckdb", state: "ready", size: 1024, modifiedAt: "2026-09-09T12:00:00Z", walPresent: false }]);
+  const project = vi.fn();
+  const save = vi.fn(async (request: AnalysisSaveRequest) => {
+    const response = { headId: pb, revision: { revisionId: pb, parentRevisionId: pa, command: request.command, commandDigest: pc, createdAt: "2026-09-10T00:00:00Z", snapshot: { contractVersion: "analysis.mixed-snapshot.v3", base, snapshotId: pb, corrections: [], familyUses: [], classifications: (request.classifications ?? []).map(item => ({ baseId: pa, correctionId: pc, request: item, original: item.expectedOriginal, corrected: item.replacement })) } } };
+    expect(parseCorrectionStoreResult(response)).toBe(response);
+    return response;
+  });
+  const load = vi.fn(async () => current);
+  const analysis = { discover: vi.fn().mockResolvedValue(candidates), load, save, resolve: vi.fn(), project, close } as unknown as AnalysisClient;
+  vi.mocked(openRecordedSession).mockResolvedValue(partial);
+  const onExit = vi.fn();
+  const view = render(<StrategyRecordedWorkflow eventId="event" catalog={[]} catalogState="available" calendar={null} application={application} analysis={analysis} onExit={onExit} onCleanupError={vi.fn()} t={key => key} />);
+  return { ...view, execute, close, load, save, project, partial, current };
+}
+describe("recorded classification view continuity (T12hc2)", () => {
+  it("keeps the selected classification view with its confirmed value after a confirmed save", async () => {
+    const f = classificationJourney();
+    await advanceToCombination();
+    const drawer = await discoverAndOpen();
+    fireEvent.click(within(drawer).getByRole("button", { name: "strategy.recorded.inspect" }));
+    await screen.findByRole("button", { name: "strategy.laps.advanced" });
+    fireEvent.click(screen.getByRole("button", { name: "strategy.classification.tab" }));
+    fireEvent.click(await screen.findByRole("button", { name: "strategy.classification.field.SessionType" }));
+    fireEvent.change(screen.getByLabelText("strategy.data.correctedValue"), { target: { value: "race" } });
+    fireEvent.change(screen.getByLabelText("strategy.data.reason"), { target: { value: "Stewards bulletin" } });
+    fireEvent.click(screen.getByRole("button", { name: "strategy.data.apply" }));
+    fireEvent.change(screen.getByLabelText("strategy.data.revisionReason"), { target: { value: "Stewards bulletin" } });
+    fireEvent.click(screen.getByRole("button", { name: "strategy.data.save" }));
+    await screen.findByText("strategy.data.savedSeparately");
+    expect(f.save).toHaveBeenCalledOnce();
+    expect(f.save.mock.calls[0][0].command.expectedRevision).toBe(pa);
+    expect(f.save.mock.calls[0][0].classifications).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "strategy.classification.field.SessionType" })).toBeTruthy();
+    const rows = screen.getAllByRole("row").map(row => within(row).queryAllByRole("cell").map(item => item.textContent)).filter(cells => cells.length > 0);
+    expect(rows).toContainEqual(["strategy.classification.field.SessionType", "practice", "race", "strategy.data.unchanged"]);
+    expect(f.project).not.toHaveBeenCalled();
+    expect(f.execute).not.toHaveBeenCalled();
+  });
+});

@@ -12,7 +12,7 @@ import type { RecordedSession } from "./strategy-recorded-session";
 import { StrategyRecordedWizard } from "./StrategyRecordedWizard";
 import { StrategyRecordedOverview } from "./StrategyRecordedOverview";
 import { StrategyRecordedSessionsView } from "./StrategyRecordedSessions";
-import { StrategyRecordedData } from "./StrategyRecordedData";
+import { StrategyRecordedData, type RecordedDataView } from "./StrategyRecordedData";
 import { StrategyRecordedRevisions } from "./StrategyRecordedRevisions";
 
 /** Mount once per event. Views never own or dispose the opened Analysis files. */
@@ -29,6 +29,9 @@ export function StrategyRecordedWorkflow({ eventId, repositoryVersion, repositor
   const [historyPending, setHistoryPending] = useState(false);
   const formPending = dataPending || historyPending;
   const [tab, setTab] = useState<"race" | "data" | "plan" | "revisions">("race");
+  // The selected Data subview survives Data remounts on revision changes;
+  // forms stay local to Data and still reset with its revision key.
+  const [dataView, setDataView] = useState<RecordedDataView>("laps");
   const [dataVisited, setDataVisited] = useState(false);
   const [historyVisited, setHistoryVisited] = useState(false);
   useHubSuspendBlocker(`strategy-recorded:${eventId}`, t("strategy.workspace.unsaved"), flow.dirty || flow.busy || formPending);
@@ -70,7 +73,7 @@ export function StrategyRecordedWorkflow({ eventId, repositoryVersion, repositor
           event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>("button")[next]?.focus();
         }}>{t(`strategy.data.tab.${item}`)}</button>)}</nav>
         <div className="strategy-recorded-editor-panel" id="recorded-panel-race" role="tabpanel" aria-labelledby="recorded-tab-race" hidden={tab !== "race"}><StrategyRecordedOverview draft={flow.draft} dirty={flow.dirty} busy={flow.busy || formPending} error={error} onEdit={edit} onSources={() => setLibraryOpen(true)} onSave={() => void flow.save()} t={t} /></div>
-        {dataVisited ? <div className="strategy-recorded-editor-panel" id="recorded-panel-data" role="tabpanel" aria-labelledby="recorded-tab-data" hidden={tab !== "data"}><StrategyRecordedData key={revisionKey} controller={flow.sessions.corrections} sessionLabels={sessionLabels} sessions={flow.sessions.sessions} selectedRevisions={flow.draft.sessions} busy={flow.busy || historyPending} onSources={() => setLibraryOpen(true)} onPendingChange={setDataPending} t={t} /></div> : null}
+        {dataVisited ? <div className="strategy-recorded-editor-panel" id="recorded-panel-data" role="tabpanel" aria-labelledby="recorded-tab-data" hidden={tab !== "data"}><StrategyRecordedData key={revisionKey} controller={flow.sessions.corrections} sessionLabels={sessionLabels} sessions={flow.sessions.sessions} selectedRevisions={flow.draft.sessions} busy={flow.busy || historyPending} onSources={() => setLibraryOpen(true)} onPendingChange={setDataPending} view={dataView} onViewChange={setDataView} t={t} /></div> : null}
         <div className="strategy-recorded-editor-panel" id="recorded-panel-plan" role="tabpanel" aria-labelledby="recorded-tab-plan" hidden={tab !== "plan"}><section className="strategy-recorded-data"><header className="strategy-recorded-data__heading"><h2>{t("strategy.data.tab.plan")}</h2></header><div className="strategy-recorded-data__observations"><h3>{t("strategy.workspace.notCalculated")}</h3><p>{t("strategy.workspace.calculateHint")}</p></div></section></div>
         {historyVisited ? <div className="strategy-recorded-editor-panel" id="recorded-panel-revisions" role="tabpanel" aria-labelledby="recorded-tab-revisions" hidden={tab !== "revisions"}><StrategyRecordedRevisions key={revisionKey} controller={flow.sessions.corrections} sessions={flow.sessions.sessions} selectedRevisions={flow.draft.sessions} sessionLabels={sessionLabels} busy={flow.busy || dataPending} configurationSaved={Boolean(flow.stored)} configurationDirty={flow.dirty} onSources={() => setLibraryOpen(true)} onPendingChange={setHistoryPending} t={t} /></div> : null}
       </>}

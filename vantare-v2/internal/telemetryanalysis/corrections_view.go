@@ -3,17 +3,23 @@ package telemetryanalysis
 import (
 	"fmt"
 	"reflect"
+	"strings"
 )
 
 // EffectiveCorrectionView is detached from the authorized input and carries its
 // correction provenance. Original quality and all time/segment metadata remain
 // unchanged; callers must not present corrected scalars as observed measurements.
+// Metadata holds the effective classification values on a detached copy: only
+// the Value of a validly corrected field changes, never quality, presence,
+// clock, units or source.
 type EffectiveCorrectionView struct {
-	Base        SourceAnalysisRef
-	SnapshotID  string
-	Pages       []HistoricalPage
-	Corrections []PreparedSampleCorrection
-	FamilyUses  []PreparedLapFamilyUseCorrection
+	Base            SourceAnalysisRef
+	SnapshotID      string
+	Pages           []HistoricalPage
+	Corrections     []PreparedSampleCorrection
+	FamilyUses      []PreparedLapFamilyUseCorrection
+	Metadata        []HistoricalMetadata
+	Classifications []PreparedClassificationCorrection
 }
 
 // ApplySampleCorrectionSnapshot requires complete coverage of the snapshot's
@@ -143,5 +149,72 @@ func ApplyObservationCorrectionSnapshot(base SourceAnalysisRef, channels []Histo
 	}
 	view.SnapshotID = checked.SnapshotID
 	view.FamilyUses = families
+	return view, nil
+}
+
+// ApplyMixedCorrectionSnapshot validates all three operation sets against the
+// original authorized input: scalars against pages, families against the
+// validity model, classifications against the original session via T12a. The
+// session is the single authority for channels and metadata. It retains the
+// v3 identity and exposes the effective metadata on a detached copy plus the
+// prepared classification decisions, without duplicating the whole session.
+// Without classifications the v1/v2 semantics and APIs apply unchanged. It is
+// pure and does not authorize I/O or refresh derivatives.
+func ApplyMixedCorrectionSnapshot(base SourceAnalysisRef, pages []HistoricalPage, original LapValidityAnalysis, session HistoricalSession, snapshot PreparedSampleCorrectionSnapshot) (EffectiveCorrectionView, error) {
+	if len(snapshot.Classifications) == 0 {
+		return ApplyObservationCorrectionSnapshot(base, session.Channels, pages, original, snapshot)
+	}
+	var empty EffectiveCorrectionView
+	if len(snapshot.Corrections)+len(snapshot.FamilyUses)+len(snapshot.Classifications) > MaxSampleCorrections {
+		return empty, ErrInvalidCorrection
+	}
+	scalar, err := canonicalSampleCorrectionSnapshot(snapshot.Base, snapshot.Corrections)
+	if err != nil {
+		return empty, err
+	}
+	combined, err := combineObservationSnapshot(scalar, snapshot.FamilyUses)
+	if err != nil {
+		return empty, err
+	}
+	view, err := ApplyObservationCorrectionSnapshot(base, session.Channels, pages, original, combined)
+	if err != nil {
+		return empty, err
+	}
+	classRequests := make([]ClassificationCorrection, len(snapshot.Classifications))
+	for i, classification := range snapshot.Classifications {
+		classRequests[i] = classification.Request
+	}
+	classes, err := PrepareClassificationCorrectionSet(base, session, classRequests)
+	if err != nil {
+		return empty, err
+	}
+	checked, err := combineMixedSnapshot(scalar, view.FamilyUses, classes)
+	if err != nil {
+		return empty, err
+	}
+	if !reflect.DeepEqual(checked, snapshot) {
+		return empty, fmt.Errorf("%w: mixed snapshot integrity", ErrInvalidCorrection)
+	}
+	metadata := append([]HistoricalMetadata(nil), session.Metadata...)
+	for _, classification := range classes {
+		key, _, err := classificationCorrectionKey(classification.Request.Field)
+		if err != nil {
+			return empty, err
+		}
+		applied := false
+		for i := range metadata {
+			if strings.ToLower(strings.TrimSpace(metadata[i].Key)) == key {
+				metadata[i].Value = classification.Corrected
+				applied = true
+				break
+			}
+		}
+		if !applied {
+			return empty, fmt.Errorf("%w: classification target", ErrCorrectionTarget)
+		}
+	}
+	view.SnapshotID = checked.SnapshotID
+	view.Metadata = metadata
+	view.Classifications = classes
 	return view, nil
 }

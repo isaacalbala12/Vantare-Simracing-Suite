@@ -24,6 +24,22 @@ export function resolveFunctionalIdentitySpan(columns: readonly WidgetColumnV3[]
   return prefix.some((column) => column.metricId === "driverName") && width >= 238 ? span : 0;
 }
 
+export function resolveFunctionalHeaderInfoPlacement(
+  columns: readonly WidgetColumnV3[], settings: Readonly<Record<string, unknown>>,
+): "none" | "inline" | "split" | "band" {
+  const count = [settings.headerFirst, settings.headerSecond].filter(metric => metric !== "none").length;
+  if (settings.showSessionHeader === false || count === 0) return "none";
+  const enabled = columns.filter(column => column.enabled);
+  const broadcast = settings.templateId === "broadcast";
+  const identitySpan = resolveFunctionalIdentitySpan(enabled);
+  const inline = broadcast || identitySpan === 0;
+  const width = enabled.reduce((sum, column) => sum + resolveFunctionalColumnWidth(column, broadcast), 0);
+  const available = inline ? width - 238 : enabled.slice(identitySpan).reduce((sum, column) => sum + resolveFunctionalColumnWidth(column), 0) - 20;
+  // Keep each selected value readable; compact tables get a shared information
+  // band instead of squeezing the fields into the brand/session area.
+  return available >= count * 72 + (count - 1) * 14 ? (inline ? "inline" : "split") : "band";
+}
+
 export function resolveFunctionalStandingsSize(
   columns: readonly WidgetColumnV3[], rowCount: number, settings: Readonly<Record<string, unknown>>,
 ): { width: number; height: number } {
@@ -35,5 +51,7 @@ export function resolveFunctionalStandingsSize(
     && resolveFunctionalIdentitySpan(enabled) === 0;
   const header = broadcast ? 24 + (settings.showSessionHeader === false ? 0 : 46)
     : 50 + (separateSignatureHeader ? 49 : 0);
-  return { width: Math.max(broadcast ? 258 : 238, width), height: header + rowCount * 30 };
+  const footer = settings.showSessionFooter === false ? 0 : 22;
+  const infoBand = resolveFunctionalHeaderInfoPlacement(enabled, settings) === "band" ? 22 : 0;
+  return { width: Math.max(broadcast ? 258 : 238, width), height: header + infoBand + rowCount * 30 + footer };
 }

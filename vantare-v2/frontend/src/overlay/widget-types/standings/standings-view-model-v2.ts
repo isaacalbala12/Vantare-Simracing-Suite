@@ -9,6 +9,8 @@ import { getEnabledStandingsColumns } from "./standings-content";
 import { formatRemainingTime } from "./standings-formatting";
 import {
   withStandingsMotionIdentity,
+  type StandingsFlag,
+  type StandingsInfoValue,
   type StandingsRowViewModel,
   type StandingsViewModel,
 } from "./standings-view-model";
@@ -69,9 +71,42 @@ export function buildStandingsViewModelV2(
     activeClass,
     sessionLabel: displayedText(frame.session.phase)?.toUpperCase() ?? PLACEHOLDER,
     remainingText: formatRemainingTime(displayedNumber(frame.session.remaining)),
+    flag: source.state === "live" ? currentFlag(frame.session.flag) : "unknown",
+    sessionInfo: sessionInformation(frame, phase === "race"),
     columns,
     rows: limited.map((row, index) => buildRow(row, index, playerId, paceSession, sessionBestLap)),
   }, `${frame.sessionId}:${frame.epoch}`, frame.sequence);
+}
+
+function currentFlag(value: OverlayQValue<string>): StandingsFlag {
+  if (value.q !== "fresh") return "unknown";
+  switch (value.v?.toLowerCase()) {
+    case "green": case "yellow": case "blue": case "red": case "white": case "black": return value.v.toLowerCase() as StandingsFlag;
+    case "checkered": case "chequered": return "checkered";
+    default: return "unknown";
+  }
+}
+
+function sessionInformation(frame: OverlayFrameV2, race: boolean): NonNullable<StandingsViewModel["sessionInfo"]> {
+  const numberInfo = (value: OverlayQValue<number>, format: (n: number) => string): StandingsInfoValue => {
+    const number = displayedNumber(value);
+    return { text: number !== undefined && Number.isFinite(number) ? format(number) : PLACEHOLDER, stale: value.q === "stale" };
+  };
+  const temperature = (celsius: number) => {
+    const fahrenheit = frame.units.temperature === "fahrenheit";
+    return `${Number((fahrenheit ? celsius * 9 / 5 + 32 : celsius).toFixed(1))}°${fahrenheit ? "F" : "C"}`;
+  };
+  const percent = (n: number) => n >= 0 && n <= 100 ? `${Math.round(n)}%` : PLACEHOLDER;
+  return {
+    trackTemperature: numberInfo(frame.weather.trackC, temperature),
+    airTemperature: numberInfo(frame.weather.ambientC, temperature),
+    estimatedLaps: numberInfo(frame.fuel.sessionLaps, n => race && Number.isInteger(n) && n >= 0 && n < 2147483647 ? `≈${n}` : PLACEHOLDER),
+    totalLaps: numberInfo(frame.session.maxLaps, n => Number.isInteger(n) && n > 0 && n < 2147483647 ? String(n) : PLACEHOLDER),
+    track: { text: displayedText(frame.session.track) || PLACEHOLDER, stale: frame.session.track.q === "stale" },
+    remaining: numberInfo(frame.session.remaining, formatRemainingTime),
+    rain: numberInfo(frame.weather.rainPercent, percent),
+    wetness: numberInfo(frame.weather.wetnessPct, percent),
+  };
 }
 
 export function standingsDisplayedValues(

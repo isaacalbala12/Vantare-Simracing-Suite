@@ -25,12 +25,18 @@ export type StandingsRowViewModel = {
   isLeader: boolean;
 };
 
+export type StandingsFlag = "unknown" | "green" | "yellow" | "blue" | "red" | "white" | "black" | "checkered";
+export type StandingsInfoMetric = "trackTemperature" | "airTemperature" | "estimatedLaps" | "totalLaps" | "track" | "remaining" | "rain" | "wetness";
+export type StandingsInfoValue = { text: string; stale?: boolean };
+
 export type StandingsViewModel = WidgetViewModelBase & {
   type: "standings";
   activeClass: string;
   sessionLabel: string;
   remainingText: string;
   lapText?: string;
+  flag?: StandingsFlag;
+  sessionInfo?: Readonly<Record<StandingsInfoMetric, StandingsInfoValue>>;
   columns: readonly WidgetColumnV3[];
   rows: readonly StandingsRowViewModel[];
   /** Productive stream identity used only to discard ephemeral motion state. */

@@ -10,7 +10,7 @@ describe("Functional frame geometry", () => {
     widget.content = { ...widget.content, rowCount: 20 };
     const frame = resolveStandingsFrameLayout(widget, widget.layout, 1920, 1080);
     expect(frame.w).toBeGreaterThanOrEqual(464);
-    expect(frame.h).toBe(templateId === "broadcast" ? 670 : 650);
+    expect(frame.h).toBe(templateId === "broadcast" ? 692 : 672);
     expect(frame.x + frame.w).toBeLessThanOrEqual(1920);
     expect(frame.y + frame.h).toBeLessThanOrEqual(1080);
     const moved = resolveStandingsMoveLayout(widget, widget.layout, { ...widget.layout, x: widget.layout.x - 100, y: widget.layout.y - 100 }, 1920, 1080);
@@ -44,6 +44,6 @@ describe("Functional frame geometry", () => {
     const content = standingsDefinition.parseContent(undefined);
     widget.content = { ...content, columns: [...content.columns].sort((a, b) => Number(b.metricId === "gap") - Number(a.metricId === "gap")) };
     widget.visual = { ...widget.visual, systemId: "vantare-functional", baseSettings: { templateId: "signature" } };
-    expect(resolveStandingsFrameLayout(widget, widget.layout).h).toBe(699);
+    expect(resolveStandingsFrameLayout(widget, widget.layout).h).toBe(721);
   });
 });

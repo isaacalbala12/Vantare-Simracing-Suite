@@ -5,6 +5,7 @@ import { buildWorkshopFrameV2, createScenarioWidget } from "../../authoring/fixt
 import { parseOverlayWorkshopQuery } from "../../authoring/overlay-workshop-query";
 import { type StandingsViewModel } from "../../widget-types/standings/standings-view-model";
 import { StandingsFunctional } from "./StandingsFunctional";
+import { vantareFunctionalManifest } from "./manifest";
 
 afterEach(cleanup);
 
@@ -22,6 +23,35 @@ const model: StandingsViewModel = {
 };
 
 describe("Functional Standings", () => {
+  it.each(["signature", "broadcast"])("changes the flag and selected session data in %s without changing the table", (templateId) => {
+    const settings = { templateId, headerFirst: "trackTemperature", headerSecond: "none", footerFirst: "totalLaps", footerSecond: "none" };
+    const data = { ...model, flag: "yellow" as const, sessionInfo: {
+      trackTemperature: { text: "32°C" }, airTemperature: { text: "21°C" }, totalLaps: { text: "42" },
+      estimatedLaps: { text: "≈18" }, remaining: { text: "18:42" }, track: { text: "Spa" }, rain: { text: "0%" }, wetness: { text: "0%" },
+    } };
+    const { container, rerender } = render(<StandingsFunctional model={data} settings={settings} renderMode="harness" />);
+    expect(container.querySelector('.vf-standings')?.getAttribute('data-flag')).toBe('yellow');
+    expect(container.querySelector('.vf-header-info')?.textContent).toContain('32°C');
+    expect(container.querySelector('.vf-session-footer')?.textContent).toContain('42');
+    expect(container.querySelector('.vf-session-footer')?.textContent).not.toContain('≈18');
+    rerender(<StandingsFunctional model={{ ...data, flag: "green" }} settings={{ ...settings, showSessionFooter: false }} renderMode="harness" />);
+    expect(container.querySelector('.vf-standings')?.getAttribute('data-flag')).toBe('green');
+    expect(container.querySelector('.vf-session-footer')).toBeNull();
+    expect(container.querySelectorAll('tbody td')).toHaveLength(model.columns.length);
+  });
+
+  it("does not expose retained header/footer data or a retained flag when disconnected", () => {
+    const { container } = render(<StandingsFunctional model={{ ...model, status: "disconnected", flag: "green" }} settings={{}} renderMode="harness" />);
+    expect(container.querySelector('.vf-standings')?.getAttribute('data-flag')).toBe('unknown');
+    expect(container.querySelector('.vf-session-footer')?.textContent).toContain('—');
+  });
+
+  it("preserves recognized saved information choices and safely defaults unknown ones", () => {
+    const parse = vantareFunctionalManifest.widgets[0]!.parseSettings;
+    expect(parse({ templateId: "broadcast", showSessionFooter: false, headerFirst: "totalLaps", headerSecond: "none", footerFirst: "rain", footerSecond: "wetness" })).toMatchObject({ templateId: "broadcast", showSessionFooter: false, headerFirst: "totalLaps", headerSecond: "none", footerFirst: "rain", footerSecond: "wetness" });
+    expect(parse({ headerFirst: "arbitraryTelemetryPath" })).toHaveProperty("headerFirst", "trackTemperature");
+  });
+
   it("keeps pit, gap and last lap in separate configured cells and identifies the player with text", () => {
     const { container } = render(<StandingsFunctional model={model} settings={{}} renderMode="harness" />);
     expect(container.querySelector('td[data-metric="lastLap"]')?.textContent).toBe("1:42.318");

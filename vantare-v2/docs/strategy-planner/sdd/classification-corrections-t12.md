@@ -495,6 +495,26 @@ disponibilidad de señal.
   Los fixtures de carrera existentes reciben sus referencias explícitas;
   los nuevos de inspección reciben []. No ampliar CSS/lectores/motor.
 
+- **T12g3e2 — guardado de inspección sin preparación automática (2 paths).**
+  Hallazgo del orquestador al revisar el recorrido: retainSaved conserva el
+  guardado pero llama siempre a Project; una fuente explícitamente no
+  proyectable termina con error de preparación después de guardar correctamente.
+  `frontend/src/hub/strategy-orbit/use-recorded-corrections.ts` y su test.
+  Mantener la publicación de saved/current/tres grupos y resolución del comando;
+  sólo ejecutar la proyección automática posterior si la sesión tiene
+  combinationId y carece de projectionUnavailableReason. No ocultar errores
+  inesperados de fuentes proyectables, errores de Save ni cancelación incierta.
+  No cambiar Project explícito, Adopt, dueño o UI: G3e ya bloquea sus botones y
+  las guardas existentes siguen revalidando. El cambio no crea otra ruta Save.
+
+  RED antes de código: fuente parcial con SessionType/Weather válidos, corrección
+  de campo existente y respuesta v3 completa validada; guardar conserva revisión
+  exacta sin llamar a Project ni mostrar error espurio. Cubrir también el camino
+  de Resolve o Restore que reutiliza retainSaved y ausencia de adopción implícita.
+  Reusar savedAfter/sessionWithMetadata/openMetadata del test, no snapshots con
+  padres incoherentes ni señales inventadas. Focal hook y dueño G3c, typecheck,
+  lint; global frontend/build/auditor completo se mantienen en G3f.
+
 - **T12g3f — conexión del recorrido único (4 paths).**
   `frontend/src/hub/strategy-orbit/StrategyRecordedWorkflow.tsx` y test,
   `StrategyRecordedSessions.tsx` y test. La biblioteca existente ofrece
@@ -520,6 +540,8 @@ disponibilidad de señal.
   la causa y desactiva Use si alguna fuente no es proyectable; el dueño revalida.
   Nombres de fuentes parciales desde candidato o unnamed, sin combinación
   inventada; errores del acceso nuevo se traducen, sin mostrar códigos internos.
+  Tras G3e2, el guardado local de una fuente de inspección no llama a Project;
+  la prueba de recorrido verifica esa ausencia y el guardado confirmado.
 
   G3: focales/typecheck/lint por corte; global Go/vet para A. Suite frontend
   completa y build después de F antes de aceptar el montaje. G3A aislado

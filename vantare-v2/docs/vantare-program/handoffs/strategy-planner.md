@@ -1,6 +1,6 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — T12g3d revisado, siguiente T12g3e; auditoría i18n intermedia pendiente
+## Estado vigente — T12g3e revisado, siguiente T12g3e2; montaje G3f pendiente
 
 Isaac confirma que planes y documentación siguen a cargo del orquestador.
 R19/A17/execution actualizados: Muse Spark 1.3 Contributor vía OpenCode, xhigh,
@@ -8,7 +8,7 @@ ejecuta sólo código/tests asignados, sin subdelegación ni cambios de planes,
 docs o issue. Un ejecutor por worktree; revisión personal antes de aceptar.
 Rama `vantareapp/isa-1104-recorded-classification`, base exacta
 `7f757135445439851180fc503da45f7eb9e557e7`; último código revisado
-`2ccc2973c6c4fcb55703cf3a418319ebe6b03b95`, limpio al revisar. A/B1/B2/C1/C2/D1/D2/E/F/G1/G2/G3a/G3b/G3c
+`7528f1b8ee179b4d31b142708fb4a141c5be8bee`, limpio al revisar. A/B1/B2/C1/C2/D1/D2/E/F/G1/G2/G3a/G3b/G3c/G3e
 aceptados localmente tras lectura de diff y evidencia (B1/B2: 126 paquetes Go
 PASS cada uno, vet exit 0; rutas en entradas siguientes). T12 sigue abierto.
 
@@ -21,8 +21,11 @@ sólo ante la causa explícita metadata_unavailable; no adopta una selección y
 rechaza fuentes no proyectables para la carrera. G3c conecta dueño de sesiones
 y workflow: inspección explícita sin guardar carrera, con exclusión mutua desde
 el mismo ciclo y sin datos obsoletos. G3d ya actualiza cuatro locales para los
-estados de inspección/selección; auditor i18n aún exit 1 por cinco claves nuevas
-sin consumidores. Siguiente G3e/G3f: selección real y montaje visual que las usan.
+estados de inspección/selección; G3e usa referencias reales para Datos/Revisiones.
+Auditor i18n aún exit 1 por tres claves nuevas sin consumidores. La prop nueva
+todavía no se conecta desde Workflow: hasta G3f las acciones de carrera quedan
+bloqueadas por defecto. Antes de ese montaje, G3e2 omite el intento automático
+de proyección tras guardar una fuente conocida no proyectable (hallazgo root).
 Microplan G3a–f escrito por el orquestador: apertura, dueño, textos, estado
 real de selección en Datos/Revisiones y entrada desde biblioteca al mismo A4.
 Una sesión abierta para revisar no pasa a estar usada por la carrera; sin
@@ -39,6 +42,33 @@ Sin push, PR, CI remota, integración ni promoción. No se reabre app/LMU; gate
 Wails sigue pendiente por ERROR_INVALID_STATE de causa no demostrada.
 
 Las entradas siguientes son evidencia histórica; el estado vigente es éste.
+
+## T12g3e — selección real en Datos y Revisiones
+
+Commit `7528f1b8`, cuatro paths UI/tests, +204/-9. selectedRevisions explícitas
+por fuente/base; pin además por revisión/snapshot exactos. La revisión abierta
+no marca uso en carrera; ReviewPinned carga una copia con la referencia del
+borrador. Guardar/restaurar local permanece separado de preparar/adoptar, que
+requiere fuente seleccionada y proyectable. Causas de ausencia de selección y
+de metadata no utilizable visibles, también si la fuente marcada lleva ID.
+
+Revisión personal retiró el OR antiguo que aún bloqueaba por revisión del handle
+y exigió comprobar la referencia completa del plan. Fixture inicial Data
+completado/validado sin cambiar IDs/valores; tests de referencias distintas,
+fuente/base/snapshot, bloqueo con marca, selección explícita y guardado local.
+RED R2 tras completar fixture: 1 fallo/8 PASS, 7.83s, causa ausente; R1 3.26s
+con fixture UI previo preservado. Focal final 31 PASS/3.24s, typecheck producto
+y lint exit 0; diff limpio. Logs C:/tmp/isa1104-t12g3e-{red,red-r2,focal,typecheck,lint,audit-list}.log
+leídos personalmente. Lecturas iniciales del log fallaron por escapes de
+comillas ajenos a PowerShell; no eran fallos de Strategy. RED guarda sufijo
+literal con barras, además de la salida de test/ELIFECYCLE de exit 1.
+
+Auditor exit 1, paridad OK/ausentes 0: sólo inspect, inspectionOnly y
+backToWizard sin consumidores; se cierra en G3f, junto con suite completa/build.
+No afirmar montaje funcional: Workflow aún no suministra selectedRevisions.
+Worker idle antes del commit; sin banco real, Go nuevo, Wails/app/LMU, push,
+PR, CI remota, integración, promoción o release. El orquestador añade G3e2 al
+microplan para evitar un error de preparación después de un Save local válido.
 
 ## T12g3d — textos de inspección y selección
 

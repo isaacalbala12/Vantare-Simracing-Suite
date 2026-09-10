@@ -1,6 +1,6 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — T12hb revisado, siguiente T12hc
+## Estado vigente — T12hc revisado, siguiente T12hc2
 
 Isaac confirma que planes y documentación siguen a cargo del orquestador.
 Muse Spark 1.3 Contributor vía OpenCode, xhigh, ejecuta sólo código/tests
@@ -8,24 +8,26 @@ asignados, sin subdelegación ni cambios de planes, docs o issue. Un ejecutor
 por worktree; revisión personal de diff y evidencia antes de aceptar.
 Rama `vantareapp/isa-1104-recorded-classification`, base exacta
 `7f757135445439851180fc503da45f7eb9e557e7`; último código revisado
-`cda6e0040f35f6178dab0b53de7043cf22b5014c`, limpio tras el commit.
-A–G3 y Ha/Hb aceptados localmente; T12 permanece abierto.
+`55d79e81b520e1df746e6d1bb12068791a1e4d7a`, limpio tras el commit.
+A–G3 y Ha/Hb/Hc aceptados localmente; T12 permanece abierto.
 
 G3 ya conecta la biblioteca con el mismo editor Datos/Revisiones, también
 sin combinación ni repositorio: apertura autorizada y referencia exacta,
 inspección separada de selección, correcciones locales sin Project espurio,
 pin del borrador por referencia completa y vuelta al asistente sin recrearlo.
 Los formularios y comandos inciertos bloquean cambios de fuente/salida; las
-pestañas conservan formularios. Auditor i18n Hb: EXIT1 intermedio, doce claves
-nuevas sin consumidor, paridad OK/ausentes 0. Última suite global G3f: 443 archivos/3644 PASS, build/typecheck/lint exit 0.
+pestañas conservan formularios. Auditor i18n Hc: EXIT1 intermedio, sólo
+`strategy.classification.manual` pendiente de Hd; paridad OK/ausentes 0.
+Última suite global G3f: 443 archivos/3644 PASS, build/typecheck/lint exit 0.
 Último Go global fue G3a: 126 paquetes PASS; no Go modificado desde entonces.
 Estos resultados son contractuales locales, no prueba de DuckDB real/Wails.
 
 Ha ya consulta el original y comparte normalización; Hb aporta los doce textos
-en cuatro idiomas. Siguiente Hc, dentro de H precisado en
+en cuatro idiomas; Hc conecta clasificación en Datos. Siguiente Hc2,
+continuidad de la vista ante el remount por revisión, precisado por root en
 `docs/strategy-planner/sdd/classification-corrections-t12.md`: Ha consulta del
-original/normalización reutilizadas y Hb textos (aceptados); Hc clasificación dentro de
-Datos A4; Hd historial. Cada corte declara 2–4 paths. No generar correcciones
+original/normalización reutilizadas, Hb textos y Hc Datos A4 (aceptados);
+Hc2 continuidad; Hd historial. Cada corte declara 2–4 paths. No generar correcciones
 ficticias para comprobar disponibilidad ni duplicar validación en React.
 Luego I banco real opt-in. Coche/circuito/clase siguen pendientes de cerrar
 resolución canónica en §5 antes de código; no aceptar un hash de texto del
@@ -38,6 +40,39 @@ app/LMU; gate Wails sigue pendiente por ERROR_INVALID_STATE de causa no
 demostrada. Contraste real y paridad visual >9/10 siguen aparte.
 
 Las entradas siguientes son evidencia histórica; el estado vigente es éste.
+
+## T12hc — clasificación en Datos A4 y revisión personal
+
+Commit `55d79e81b520e1df746e6d1bb12068791a1e4d7a`, cuatro paths
+(Classification y test nuevos, Data y test), +481/-11. Tercera vista junto
+a vueltas/muestras, original RAW/confirmado/propuesta separados, permiso
+por campo con causa, formulario único, motivo/retirada explícitos y contador
+de tres grupos; usa helpers y controlador existentes, sin CSS ni otro lector.
+
+Root revisó los cuatro diffs y corrigió: lista inicialmente añadida debajo
+de otras vistas; pruebas de retirada sin decisión guardada y contador sin
+tres grupos; fixtures v3 vacíos/páginas discordantes; selectores de tests;
+clima sin valor inicial; radios y outputs de tabla afectados por CSS de input.
+Resultado: elección con select existente, celdas de texto, clima prellenado
+y pruebas reales del hook para Save mixto y retirada confirmada. Parsers
+validan las respuestas usadas; metadata original intacta, Project/Adopt 0.
+La advertencia inicial de root sobre AnalysisSession compacto era demasiado
+amplia: ese DTO sí es válido; no se añadieron campos nativos ajenos.
+
+Baseline 38 PASS/4.50s EXIT0. Focal final R9: 56 PASS/5.58s EXIT0;
+typecheck-r2/lint-r2 EXIT0. Auditor --list-r2 EXIT1: paridad OK, ausentes 0
+y sólo `strategy.classification.manual` huérfana hasta Hd. Diff limpio.
+R1 8 fallos/48 PASS, R2 3/54, R3 2/54, R4 1/55; R5 y R6 56 PASS;
+R7 3/53, R8 1/55. Fallos de nuevos tests/fixtures y adaptación de controles
+conservados, no RED previo de producto. Logs leídos en
+`C:/tmp/vantare-isa1104/vantare-v2/frontend/.tmp/isa1104-t12hc-*.log`
+(ubicación real, bajo frontend; sustituye la ubicación anunciada en Hb
+sólo para estos logs). Regla *.log existente, sin cambios de configuración.
+
+Worker idle antes de commit. No suite/build global nuevos: último G3f.
+No Go/banco/Wails/app/LMU, sin certificación visual >9. Hc aislado no prueba
+que la vista sobreviva a Save en Workflow: root detectó revisionKey,
+declaró Hc2 de cuatro paths y exige regresión antes del cambio. Después Hd/I.
 
 ## T12hb — textos de clasificación antes de conectar consumidores
 

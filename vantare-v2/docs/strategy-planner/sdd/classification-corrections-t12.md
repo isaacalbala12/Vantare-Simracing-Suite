@@ -617,7 +617,11 @@ disponibilidad de señal.
   corregir o usar el original, valor y motivo obligatorio. Aplicar llama
   editClassification/removeClassification, conserva motivo para la revisión
   y sólo limpia si el controlador acepta. Restaurar el original se prepara
-  como retirada, no Save automático. Discard/Save/Resolve/Restore siguen en
+  como retirada, no Save automático. La elección usa el select existente del
+  formulario familiar, no radios afectados por los estilos globales de input;
+  las celdas son texto y el detalle conserva output para el original.
+  WeatherConditions se abre con el valor activo/guardado/original ya visible.
+  Discard/Save/Resolve/Restore siguen en
   el controlador existente con tres grupos. El contador incluye los tres.
   Busy, formulario pendiente y comando incierto bloquean cambio de campo,
   vista o fuente; cambiar pestaña externa conserva el formulario montado.
@@ -630,6 +634,31 @@ disponibilidad de señal.
   Mantener el recorrido de muestras/vueltas y selección real de G3. Gates:
   focales clasificación/Datos/Revisiones/Workflow, typecheck y lint; auditor
   de claves para identificar exactamente lo pendiente de Hd.
+
+- **T12hc2 — conservar la vista elegida al avanzar revisión (4 paths).**
+  Hallazgo del orquestador al revisar el montaje Hc: Workflow remonta Data
+  con `handle:revision`; el estado local vuelve a vueltas tras Save. Un test
+  de Data aislado no demuestra la continuidad del recorrido productivo.
+  Paths: `StrategyRecordedWorkflow.tsx`, `StrategyRecordedWorkflow.test.tsx`,
+  `StrategyRecordedData.tsx` y `StrategyRecordedData.test.tsx`, todos bajo
+  `frontend/src/hub/strategy-orbit`. Reproducir primero el salto en Workflow
+  con respuestas válidas y luego corregirlo; no atribuir RED a Hc anterior.
+
+  Elevar únicamente la vista seleccionada a Workflow, con tipo
+  `RecordedDataView` y props obligatorias `view`/`onViewChange` en Data.
+  Una sola fuente de estado: inicio en vueltas y conservación de la elección
+  del usuario al guardar/cambiar revisión o fuente. Mantener revisionKey y
+  el reinicio de formularios, sin persistencia nueva, estado duplicado ni
+  inferencia de la vista a partir de clasificaciones en el snapshot.
+
+  Prueba real de montaje: inspección → clasificación → editar con motivo →
+  aplicar → Save explícito → revisión confirmada distinta, misma vista y
+  clasificación confirmada visible. Sin adoptar/recalcular ni recrear draft.
+  Adaptar los tests Data con un host mínimo de estado para las props
+  controladas y conservar aserciones previas. Gates: focales
+  Workflow/Data/Classification/Revisions, typecheck y lint; auditor puede
+  conservar sólo `strategy.classification.manual` hasta Hd. Sin nuevo CSS,
+  lector, Go o gate global; suite/build siguen después de Hd.
 
 - **T12hd — decisiones de clasificación en Revisiones (2 paths).**
   `frontend/src/hub/strategy-orbit/StrategyRecordedRevisions.tsx` y su test.

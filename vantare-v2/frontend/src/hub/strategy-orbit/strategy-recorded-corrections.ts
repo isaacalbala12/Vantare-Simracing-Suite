@@ -1,5 +1,5 @@
 import type { AnalysisClient, AnalysisSaveRequest } from "../../strategy/analysis-client";
-import { analysisLapInstant, parseAnalysisFamilyCorrection, parseAnalysisFamilyCorrections, parseAnalysisLapTarget, type AnalysisCorrectableFamily, type AnalysisFamilyCorrection, type AnalysisLapPage, type AnalysisLapTarget, parseAnalysisCorrection, parseAnalysisSaveCommand, sameAnalysisBase, type AnalysisCorrection, type AnalysisPage, type AnalysisScalar, type AnalysisStoreResult } from "../../strategy/analysis-contract";
+import { analysisClassificationFieldForMetadataKey, analysisLapInstant, parseAnalysisClassificationCorrection, parseAnalysisClassificationCorrections, parseAnalysisFamilyCorrection, parseAnalysisFamilyCorrections, parseAnalysisLapTarget, type AnalysisClassificationCorrection, type AnalysisClassificationField, type AnalysisCorrectableFamily, type AnalysisFamilyCorrection, type AnalysisLapPage, type AnalysisLapTarget, parseAnalysisCorrection, parseAnalysisSaveCommand, sameAnalysisBase, type AnalysisCorrection, type AnalysisPage, type AnalysisScalar, type AnalysisStoreResult } from "../../strategy/analysis-contract";
 import type { RecordedSession } from "./strategy-recorded-session";
 
 /** Explicit revision only. Reading a historical parent never changes the plan. */
@@ -37,12 +37,16 @@ export function replaceRecordedCorrection(active: readonly AnalysisCorrection[],
 }
 
 /** Keep this exact request across uncertain saves. Restoring supplies an earlier
- * snapshot's requests but still requires an explicitly loaded current head. */
-export function recordedCorrectionSave(session: RecordedSession, current: AnalysisStoreResult, corrections: readonly AnalysisCorrection[], reason: string, commandId = `recorded-correction:${globalThis.crypto.randomUUID()}`, familyUses: readonly AnalysisFamilyCorrection[] = current.revision.snapshot.familyUses?.map(item => item.request) ?? []): AnalysisSaveRequest {
+ * snapshot's requests but still requires an explicitly loaded current head.
+ * Classifications default to the loaded snapshot's requests so older callers
+ * keep decisions; withdrawing or restoring passes the desired set explicitly
+ * (including []). Output is fully cloned: later input edits cannot modify it. */
+export function recordedCorrectionSave(session: RecordedSession, current: AnalysisStoreResult, corrections: readonly AnalysisCorrection[], reason: string, commandId = `recorded-correction:${globalThis.crypto.randomUUID()}`, familyUses: readonly AnalysisFamilyCorrection[] = current.revision.snapshot.familyUses?.map(item => item.request) ?? [], classifications: readonly AnalysisClassificationCorrection[] = current.revision.snapshot.classifications?.map(item => item.request) ?? []): AnalysisSaveRequest {
   if (!sameAnalysisBase(current.revision.snapshot.base, session.base)) throw new Error("recorded_correction_base_mismatch");
   if (current.revision.revisionId !== current.headId) throw new Error("recorded_revision_conflict");
+  if (corrections.length + familyUses.length + classifications.length > 256) throw new Error("recorded_correction_limit");
   parseAnalysisFamilyCorrections(familyUses, session.base);
-  if (corrections.length + familyUses.length > 256) throw new Error("recorded_correction_limit");
+  parseAnalysisClassificationCorrections(classifications, session.base);
   const targets = new Set<string>();
   for (const correction of corrections) {
     parseAnalysisCorrection(correction);
@@ -52,7 +56,41 @@ export function recordedCorrectionSave(session: RecordedSession, current: Analys
     targets.add(key);
   }
   const command = parseAnalysisSaveCommand({ expectedRevision: current.headId, commandId, reason, localAuthorId: "local-user" });
-  return structuredClone({ sessionId: session.opened.sessionId, base: session.base, corrections, familyUses, command });
+  return structuredClone({ sessionId: session.opened.sessionId, base: session.base, corrections, familyUses, classifications, command });
+}
+
+/** Build one classification decision from the OPEN session's original metadata,
+ * never from a revision's effective value; another missing metadata entry does
+ * not block this field. The local gate is advisory: native Save revalidates
+ * and authorizes the whole proposal before writing. */
+export function recordedClassificationCorrection(session: RecordedSession, current: AnalysisStoreResult, field: AnalysisClassificationField, replacement: string, reason: string): AnalysisClassificationCorrection {
+  if (field !== "SessionType" && field !== "WeatherConditions") throw new Error("recorded_classification_invalid");
+  if (!sameAnalysisBase(current.revision.snapshot.base, session.base)) throw new Error("recorded_correction_base_mismatch");
+  const matches = session.opened.session.metadata.filter(item => analysisClassificationFieldForMetadataKey(item.key) === field);
+  if (matches.length === 0) throw new Error("recorded_target_unavailable");
+  if (matches.length > 1) throw new Error("recorded_classification_ambiguous");
+  const original = matches[0];
+  if (original.present !== true || original.quality !== "valid" || original.sensitive !== false || original.redacted === true || typeof original.value !== "string") throw new Error("recorded_classification_read_only");
+  return structuredClone(parseAnalysisClassificationCorrection({ base: session.base, field, expectedOriginal: original.value, replacement, reason, provenance: "manual" }));
+}
+
+/** Replacing one classification preserves every other active decision. The whole
+ * active set validates against the new base before filtering, so a foreign
+ * base or duplicates hiding in the replaced field cannot slip through. */
+export function replaceRecordedClassificationCorrection(active: readonly AnalysisClassificationCorrection[], correction: AnalysisClassificationCorrection): readonly AnalysisClassificationCorrection[] {
+  const parsed = parseAnalysisClassificationCorrection(correction);
+  parseAnalysisClassificationCorrections(active, parsed.base);
+  const next = [...active.filter(item => item.field !== parsed.field), parsed];
+  if (next.length > 256) throw new Error("recorded_correction_limit");
+  return structuredClone(parseAnalysisClassificationCorrections(next, parsed.base));
+}
+
+export function removeRecordedClassificationCorrection(active: readonly AnalysisClassificationCorrection[], field: AnalysisClassificationField): readonly AnalysisClassificationCorrection[] {
+  if (field !== "SessionType" && field !== "WeatherConditions") throw new Error("recorded_classification_invalid");
+  const items = active.map(item => parseAnalysisClassificationCorrection(item));
+  if (items.length === 0) return [];
+  const validated = parseAnalysisClassificationCorrections(items, items[0].base);
+  return structuredClone(validated.filter(item => item.field !== field));
 }
 
 /** Saving and projection are separate: failure here must retain the durable

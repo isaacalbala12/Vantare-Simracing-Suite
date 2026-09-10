@@ -1,7 +1,7 @@
 import { parseAnalysisLapPage, analysisCorrectableFamilies, analysisLapInstant, parseAnalysisFamilyCorrections, parseAnalysisLapTarget, sameAnalysisFamilyCorrections } from "./analysis-contract";
 import { describe, expect, it } from "vitest";
 import { analysisValue, parseAnalysisCandidates, parseAnalysisCommandResolution, parseAnalysisPreparation, parseCorrectionStoreResult, parseHistoricalValue } from "./analysis-contract";
-import { parseAnalysisClassificationCorrection, parseAnalysisClassificationCorrections, parseAnalysisPreparedClassification, sameAnalysisClassificationCorrections } from "./analysis-contract";
+import { analysisClassificationFieldForMetadataKey, parseAnalysisClassificationCorrection, parseAnalysisClassificationCorrections, parseAnalysisPreparedClassification, sameAnalysisClassificationCorrections } from "./analysis-contract";
 import type { AnalysisClassificationCorrection } from "./analysis-contract";
 describe("local discovery labels", () => {
   const candidate = { id: "opaque", state: "ready", size: 10, modifiedAt: "2026-09-10T00:00:00Z", walPresent: false };
@@ -309,6 +309,17 @@ describe("classification correction contract", () => {
     const frozen = structuredClone(snap);
     expect(parseCorrectionStoreResult(snap)).toBe(snap);
     expect(snap).toEqual(frozen);
+  });
+  it("resolves metadata keys to the closed fields without a general normalizer", () => {
+    expect(analysisClassificationFieldForMetadataKey("SessionType")).toBe("SessionType");
+    expect(analysisClassificationFieldForMetadataKey("  SESSIONTYPE  ")).toBe("SessionType");
+    expect(analysisClassificationFieldForMetadataKey("SESS\u0130ONTYPE")).toBe("SessionType");
+    expect(analysisClassificationFieldForMetadataKey("weatherconditions")).toBe("WeatherConditions");
+    expect(analysisClassificationFieldForMetadataKey("WeatherConditions\u00A0")).toBe("WeatherConditions");
+    expect(analysisClassificationFieldForMetadataKey("\u0085WeatherConditions\u0085")).toBe("WeatherConditions");
+    for (const key of ["\uFEFFSessionType", "TrackName", "session_type", "sessiontypex", ""]) {
+      expect(analysisClassificationFieldForMetadataKey(key)).toBeUndefined();
+    }
   });
   it("matches Go whitespace and case edges exactly", () => {
     expect(parseAnalysisPreparedClassification(weatherPrepared("Dry", "D\u00A0ry", "D\u00A0ry")).corrected).toBe("D\u00A0ry");

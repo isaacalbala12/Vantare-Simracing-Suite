@@ -607,6 +607,21 @@ function goTrim(value: string): string {
 function goLowerSimple(value: string): string {
   return value.replace(/[A-Z\u0130]/g, (ch) => (ch === "İ" ? "i" : ch.toLowerCase()));
 }
+// Open sessions carry many metadata keys in mixed case. This maps the two
+// correctable ones to their closed field the way native builds its lookup
+// with strings.ToLower(strings.TrimSpace(entry.Key)); any other key yields
+// undefined and stays uncorrectable. It is not a request parser: the closed
+// wire field itself keeps its exact spelling.
+export function analysisClassificationFieldForMetadataKey(value: string): AnalysisClassificationField | undefined {
+  const key = goLowerSimple(goTrim(value));
+  if (key === "sessiontype") {
+    return "SessionType";
+  }
+  if (key === "weatherconditions") {
+    return "WeatherConditions";
+  }
+  return undefined;
+}
 function unicodeValid(value: string, field: string): void {
   if (/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/.test(value)) {
     throw new AnalysisProtocolError(field);

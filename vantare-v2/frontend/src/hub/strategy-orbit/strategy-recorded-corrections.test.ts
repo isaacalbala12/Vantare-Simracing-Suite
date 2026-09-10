@@ -1,8 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import type { AnalysisClient } from "../../strategy/analysis-client";
-import type { AnalysisFamilyCorrection, AnalysisLapPage, AnalysisBase, AnalysisPage, AnalysisScalar, AnalysisStoreResult } from "../../strategy/analysis-contract";
+import { parseCorrectionStoreResult } from "../../strategy/analysis-contract";
+import type { AnalysisClassificationCorrection, AnalysisFamilyCorrection, AnalysisLapPage, AnalysisBase, AnalysisMetadata, AnalysisPage, AnalysisScalar, AnalysisStoreResult } from "../../strategy/analysis-contract";
 import type { RecordedSession } from "./strategy-recorded-session";
-import { loadRecordedLapPage, recordedFamilyCorrection, replaceRecordedFamilyCorrection, removeRecordedFamilyCorrection, loadRecordedCorrection, projectRecordedCorrection, recordedCorrectionSave, recordedSampleCorrection, replaceRecordedCorrection } from "./strategy-recorded-corrections";
+import { loadRecordedLapPage, recordedClassificationCorrection, recordedFamilyCorrection, removeRecordedClassificationCorrection, replaceRecordedClassificationCorrection, replaceRecordedFamilyCorrection, removeRecordedFamilyCorrection, loadRecordedCorrection, projectRecordedCorrection, recordedCorrectionSave, recordedSampleCorrection, replaceRecordedCorrection } from "./strategy-recorded-corrections";
 
 const base: AnalysisBase = { sessionId: "source", contentSha256: "a".repeat(64), sizeBytes: 10, parserId: "lmu-duckdb", parserVersion: "1", schemaFingerprint: "schema", analysisVersion: "lap-validity.v1", segmentationDigest: "b".repeat(64) };
 const initial = "c".repeat(64), next = "d".repeat(64), digest = "e".repeat(64);
@@ -66,6 +67,134 @@ describe("recorded scalar correction commands", () => {
     const restore = recordedCorrectionSave(session, current, [], "Restore original values", "restore");
     expect(restore.corrections).toEqual([]);
     expect(restore.command.expectedRevision).toBe(next);
+  });
+});
+
+describe("recorded classification preservation", () => {
+  it("keeps the loaded classification set when saving with the previous signature", () => {
+    const { session: plain } = fixture();
+    const session = { ...plain, opened: { ...plain.opened, session: { ...plain.opened.session, metadata: [{ key: "SessionType", present: true, quality: "valid" as const, sensitive: false, value: "practice" }] } } };
+    const decision: AnalysisClassificationCorrection = { base, field: "SessionType", expectedOriginal: "practice", replacement: "race", reason: "Stewards bulletin", provenance: "manual" };
+    const command = { expectedRevision: initial, commandId: "classify", reason: "Reviewed", localAuthorId: "local" };
+    const current: AnalysisStoreResult = { headId: next, revision: { revisionId: next, parentRevisionId: initial, command, commandDigest: digest, createdAt: "2026-09-10T00:00:00Z", snapshot: { contractVersion: "analysis.mixed-snapshot.v3", base, snapshotId: next, corrections: [], familyUses: [], classifications: [{ baseId: initial, correctionId: digest, request: decision, original: "practice", corrected: "race" }] } } };
+    expect(parseCorrectionStoreResult(current)).toBe(current);
+    const saved = recordedCorrectionSave(session, current, [], "Review", "stable");
+    expect(saved.classifications).toEqual([decision]);
+    expect(saved.classifications?.[0]).not.toBe(decision);
+  });
+});
+
+function classificationFixture() {
+  const f = fixture();
+  const metadata = [
+    { key: "SessionType", present: true, quality: "valid" as const, sensitive: false, value: "practice" },
+    { key: "WeatherConditions", present: true, quality: "valid" as const, sensitive: false, value: "Dry" },
+  ];
+  const session: RecordedSession = { ...f.session, opened: { ...f.session.opened, session: { ...f.session.opened.session, metadata } } };
+  return { ...f, session };
+}
+
+describe("recorded classification decisions", () => {
+  it("builds each field from the open original while other metadata stays absent", () => {
+    const f = classificationFixture();
+    expect(recordedClassificationCorrection(f.session, f.loaded, "SessionType", "race", "Stewards bulletin")).toEqual({ base, field: "SessionType", expectedOriginal: "practice", replacement: "race", reason: "Stewards bulletin", provenance: "manual" });
+    expect(recordedClassificationCorrection(f.session, f.loaded, "WeatherConditions", "Overcast", "Metar check")).toMatchObject({ field: "WeatherConditions", expectedOriginal: "Dry", replacement: "Overcast" });
+    const lone = { ...f.session, opened: { ...f.session.opened, session: { ...f.session.opened.session, metadata: [{ key: "SessionType", present: true, quality: "valid" as const, sensitive: false, value: "practice" }] } } };
+    expect(recordedClassificationCorrection(lone, f.loaded, "SessionType", "race", "Stewards bulletin").expectedOriginal).toBe("practice");
+  });
+  it("rejects missing, unusable or ambiguous originals without blocking valid fields", () => {
+    const f = classificationFixture();
+    expect(() => recordedClassificationCorrection(f.session, f.loaded, "SessionType", "race", "ok")).not.toThrow();
+    const patch = (entry: AnalysisMetadata) => ({ ...f.session, opened: { ...f.session.opened, session: { ...f.session.opened.session, metadata: [entry] } } });
+    expect(() => recordedClassificationCorrection(patch({ key: "TrackName", present: true, quality: "valid", sensitive: false, value: "Imola" }), f.loaded, "SessionType", "race", "ok")).toThrow("recorded_target_unavailable");
+    expect(() => recordedClassificationCorrection(patch({ key: "SessionType", present: true, quality: "stale", sensitive: false, value: "practice" }), f.loaded, "SessionType", "race", "ok")).toThrow("recorded_classification_read_only");
+    expect(() => recordedClassificationCorrection(patch({ key: "SessionType", present: true, quality: "valid", sensitive: true, value: "practice" }), f.loaded, "SessionType", "race", "ok")).toThrow("recorded_classification_read_only");
+    expect(() => recordedClassificationCorrection(patch({ key: "SessionType", present: true, quality: "valid", sensitive: false, redacted: true, value: "practice" }), f.loaded, "SessionType", "race", "ok")).toThrow("recorded_classification_read_only");
+    expect(() => recordedClassificationCorrection(patch({ key: "SessionType", present: true, quality: "valid", sensitive: false }), f.loaded, "SessionType", "race", "ok")).toThrow("recorded_classification_read_only");
+    expect(() => recordedClassificationCorrection({ ...f.session, opened: { ...f.session.opened, session: { ...f.session.opened.session, metadata: [{ key: "sessiontype", present: true, quality: "valid" as const, sensitive: false, value: "practice" }, { key: "SessionType", present: true, quality: "valid" as const, sensitive: false, value: "practice" }] } } }, f.loaded, "SessionType", "race", "ok")).toThrow("recorded_classification_ambiguous");
+    const foreign = { ...f.loaded, revision: { ...f.loaded.revision, snapshot: { ...f.loaded.revision.snapshot, base: { ...base, sessionId: "foreign" } } } };
+    expect(() => recordedClassificationCorrection(f.session, foreign, "SessionType", "race", "ok")).toThrow("recorded_correction_base_mismatch");
+    expect(() => recordedClassificationCorrection(f.session, f.loaded, "CarName" as unknown as "SessionType", "race", "ok")).toThrow("recorded_classification_invalid");
+    expect(() => recordedClassificationCorrection(f.session, f.loaded, "SessionType", "sprint", "ok")).toThrow();
+    expect(() => recordedClassificationCorrection(f.session, f.loaded, "SessionType", "race", "  ")).toThrow();
+  });
+  it("keeps raw originals and resolves Unicode metadata keys", () => {
+    const f = classificationFixture();
+    const spaced = { ...f.session, opened: { ...f.session.opened, session: { ...f.session.opened.session, metadata: [{ key: "SessionType", present: true, quality: "valid" as const, sensitive: false, value: "race " }] } } };
+    const raw = recordedClassificationCorrection(spaced, f.loaded, "SessionType", " qualify ", "Stewards bulletin");
+    expect(raw.expectedOriginal).toBe("race ");
+    expect(raw.replacement).toBe(" qualify ");
+    const turkish = { ...f.session, opened: { ...f.session.opened, session: { ...f.session.opened.session, metadata: [{ key: " SESSİONTYPE ", present: true, quality: "valid" as const, sensitive: false, value: "practice" }] } } };
+    expect(recordedClassificationCorrection(turkish, f.loaded, "SessionType", "race", "ok").expectedOriginal).toBe("practice");
+    const nel = { ...f.session, opened: { ...f.session.opened, session: { ...f.session.opened.session, metadata: [{ key: "sessiontype", present: true, quality: "valid" as const, sensitive: false, value: "practice" }] } } };
+    expect(recordedClassificationCorrection(nel, f.loaded, "SessionType", "race", "ok").expectedOriginal).toBe("practice");
+    const feff = { ...f.session, opened: { ...f.session.opened, session: { ...f.session.opened.session, metadata: [{ key: "﻿SessionType", present: true, quality: "valid" as const, sensitive: false, value: "practice" }] } } };
+    expect(() => recordedClassificationCorrection(feff, f.loaded, "SessionType", "race", "ok")).toThrow("recorded_target_unavailable");
+  });
+  it("replaces and removes one field while preserving the rest", () => {
+    const f = classificationFixture();
+    const first = recordedClassificationCorrection(f.session, f.loaded, "SessionType", "race", "Stewards bulletin");
+    const second = recordedClassificationCorrection(f.session, f.loaded, "WeatherConditions", "Overcast", "Metar check");
+    const active = [first, second];
+    const changed: AnalysisClassificationCorrection = { ...first, replacement: "qualify", reason: "Amended" };
+    const replaced = replaceRecordedClassificationCorrection(active, changed);
+    expect(replaced).toEqual([second, changed]);
+    expect(replaced[1]).not.toBe(changed);
+    expect(active).toEqual([first, second]);
+    expect(replaceRecordedClassificationCorrection([], changed)).toEqual([changed]);
+    expect(removeRecordedClassificationCorrection(active, "SessionType")).toEqual([second]);
+    const kept = removeRecordedClassificationCorrection(active, "WeatherConditions");
+    expect(kept).toEqual([first]);
+    expect(kept).not.toBe(active);
+    expect(removeRecordedClassificationCorrection([], "SessionType")).toEqual([]);
+    expect(() => removeRecordedClassificationCorrection(active, "CarName" as unknown as "SessionType")).toThrow("recorded_classification_invalid");
+    expect(() => replaceRecordedClassificationCorrection(active, { ...changed, base: { ...base, sessionId: "foreign" } })).toThrow();
+    const foreignActive: AnalysisClassificationCorrection = { ...first, base: { ...base, sessionId: "foreign" } };
+    expect(() => replaceRecordedClassificationCorrection([foreignActive, second], first)).toThrow();
+    expect(() => replaceRecordedClassificationCorrection([first, first], changed)).toThrow();
+    expect(() => removeRecordedClassificationCorrection([foreignActive, second], "WeatherConditions")).toThrow();
+    const oversized = Array.from({ length: 257 }, () => structuredClone(first));
+    expect(() => replaceRecordedClassificationCorrection(oversized, changed)).toThrow("limit");
+  });
+  it("saves explicit classification sets and withdraws them explicitly", () => {
+    const f = classificationFixture();
+    const decision = recordedClassificationCorrection(f.session, f.loaded, "SessionType", "race", "Stewards bulletin");
+    const saved = recordedCorrectionSave(f.session, f.loaded, [], "Review", "explicit", [], [decision]);
+    expect(saved.classifications).toEqual([decision]);
+    expect(saved.classifications?.[0]).not.toBe(decision);
+    const retired = recordedCorrectionSave(f.session, f.loaded, [], "Withdraw", "withdraw", [], []);
+    expect(retired.classifications).toEqual([]);
+    expect("classifications" in retired).toBe(true);
+  });
+  it("holds 256 decisions across the three groups and rejects 257 before traversing", () => {
+    const f = classificationFixture();
+    const family = familyFixture().familyCorrection;
+    const decision = recordedClassificationCorrection(f.session, f.loaded, "SessionType", "race", "Stewards bulletin");
+    const full = Array.from({ length: 254 }, (_, sampleIndex) => ({ ...f.correction(), target: { ...f.correction().target, sampleIndex } }));
+    const atLimit = recordedCorrectionSave(f.session, f.loaded, full, "Review", "full", [family], [decision]);
+    expect(atLimit.corrections).toHaveLength(254);
+    expect(atLimit.familyUses).toHaveLength(1);
+    expect(atLimit.classifications).toHaveLength(1);
+    expect(atLimit.classifications?.[0]).not.toBe(decision);
+    const over = Array.from({ length: 256 }, (_, sampleIndex) => ({ ...f.correction(), target: { ...f.correction().target, sampleIndex } }));
+    expect(() => recordedCorrectionSave(f.session, f.loaded, over, "Over", "over", [], [decision])).toThrow("recorded_correction_limit");
+    let touched = false;
+    const poisoned: unknown[] = [decision];
+    Object.defineProperty(poisoned, "0", { get() { touched = true; throw new Error("getter.accessed"); }, enumerable: true, configurable: true });
+    expect(() => recordedCorrectionSave(f.session, f.loaded, over, "Over", "over", [], poisoned as unknown as AnalysisClassificationCorrection[])).toThrow("recorded_correction_limit");
+    expect(touched).toBe(false);
+  });
+  it("never aliases inputs and rejects mixed classification bases", () => {
+    const f = classificationFixture();
+    const decision = recordedClassificationCorrection(f.session, f.loaded, "SessionType", "race", "Stewards bulletin");
+    const families = [familyFixture().familyCorrection];
+    const saved = recordedCorrectionSave(f.session, f.loaded, [], "Review", "stable", families, [decision]);
+    (decision as unknown as { reason: string }).reason = "mutated after save";
+    (families[0] as unknown as { reason: string }).reason = "mutated after save";
+    expect(saved.classifications?.[0]?.reason).toBe("Stewards bulletin");
+    expect(saved.familyUses?.[0]?.reason).toBe("Reviewed pace only");
+    expect(saved.classifications?.[0]).not.toBe(decision);
+    expect(() => recordedCorrectionSave(f.session, f.loaded, [], "Review", "stable", [], [{ ...decision, base: { ...base, sessionId: "foreign" } }])).toThrow();
   });
 });
 

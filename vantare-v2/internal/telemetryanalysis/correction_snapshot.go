@@ -20,10 +20,11 @@ type SampleCorrectionInput struct {
 }
 
 // PreparedSampleCorrectionSnapshot retains its historical type name for callers.
-// The tagged representation is scalar v1, mixed v2 or classification v3. Its
-// digest identifies the full active set, not a durable revision, command,
-// author, or authorization. Without active classifications the v1 and v2
-// representations keep their exact bytes and digests.
+// The tagged representation is scalar v1, mixed v2, classification v3 or
+// canonical identity v4. Its digest identifies the full active set, not a
+// durable revision, command, author, or authorization. Without active
+// classifications the v1 and v2 representations keep their exact bytes and
+// digests; without active identity the v3 representation does too.
 type PreparedSampleCorrectionSnapshot struct {
 	ContractVersion string                             `json:"contractVersion"`
 	Base            SourceAnalysisRef                  `json:"base"`
@@ -31,6 +32,10 @@ type PreparedSampleCorrectionSnapshot struct {
 	Corrections     []PreparedSampleCorrection         `json:"corrections"`
 	FamilyUses      []PreparedLapFamilyUseCorrection   `json:"familyUses,omitempty"`
 	Classifications []PreparedClassificationCorrection `json:"classifications,omitempty"`
+	// CanonicalCombination carries the resolved canonical target of an
+	// identity revision. Absent (omitted) without active identity, keeping
+	// v1/v2/v3 bytes and digests exact.
+	CanonicalCombination *CombinationIdentity `json:"canonicalCombination,omitempty"`
 }
 
 // PrepareObservationCorrectionSnapshot extends the same source snapshot with
@@ -59,12 +64,38 @@ func PrepareObservationCorrectionSnapshot(base SourceAnalysisRef, inputs []Sampl
 // The shared 256-operation quota counts all three groups before any work;
 // rejection is atomic and returns no partials.
 func PrepareMixedCorrectionSnapshot(base SourceAnalysisRef, inputs []SampleCorrectionInput, original LapValidityAnalysis, familyRequests []LapFamilyUseCorrection, session HistoricalSession, classRequests []ClassificationCorrection) (PreparedSampleCorrectionSnapshot, error) {
+	// El constructor anterior conserva firma y delega sin target al
+	// canónico, compartiendo la preparación en vez de duplicarla.
+	return PrepareCanonicalMixedCorrectionSnapshot(base, inputs, original, familyRequests, session, classRequests, nil)
+}
+
+// PrepareCanonicalMixedCorrectionSnapshot extends the mixed snapshot with a
+// resolved canonical combination identity under tag v4. Without identity
+// activity it delegates with byte-exact v1/v2/v3 results; an inert target is
+// rejected. Combining with identity requires the target and a separate copy
+// of its tuple; the v4 digest covers base, every group and target.
+func PrepareCanonicalMixedCorrectionSnapshot(base SourceAnalysisRef, inputs []SampleCorrectionInput, original LapValidityAnalysis, familyRequests []LapFamilyUseCorrection, session HistoricalSession, classRequests []ClassificationCorrection, target *CombinationIdentity) (PreparedSampleCorrectionSnapshot, error) {
 	var empty PreparedSampleCorrectionSnapshot
-	if len(classRequests) == 0 {
-		return PrepareObservationCorrectionSnapshot(base, inputs, original, familyRequests)
-	}
 	if len(inputs)+len(familyRequests)+len(classRequests) > MaxSampleCorrections {
 		return empty, fmt.Errorf("%w: at most %d mixed corrections", ErrInvalidCorrection, MaxSampleCorrections)
+	}
+	// Sin clasificaciones la sesión no se valida, como el camino anterior:
+	// el store guarda escalares con sesión cero.
+	if len(classRequests) == 0 {
+		if target != nil {
+			return empty, fmt.Errorf("%w: inert canonical combination target", ErrInvalidCorrection)
+		}
+		return PrepareObservationCorrectionSnapshot(base, inputs, original, familyRequests)
+	}
+	identity := false
+	for _, request := range classRequests {
+		if isIdentityClassificationField(request.Field) || request.CanonicalCombinationID != "" {
+			identity = true
+			break
+		}
+	}
+	if !identity && target != nil {
+		return empty, fmt.Errorf("%w: inert canonical combination target", ErrInvalidCorrection)
 	}
 	scalar, err := PrepareSampleCorrectionSnapshot(base, inputs)
 	if err != nil {
@@ -77,11 +108,18 @@ func PrepareMixedCorrectionSnapshot(base SourceAnalysisRef, inputs []SampleCorre
 			return empty, err
 		}
 	}
-	classes, err := PrepareClassificationCorrectionSet(base, session, classRequests)
+	if !identity {
+		classes, err := PrepareClassificationCorrectionSet(base, session, classRequests)
+		if err != nil {
+			return empty, err
+		}
+		return combineMixedSnapshot(scalar, families, classes)
+	}
+	classes, err := PrepareCanonicalClassificationCorrectionSet(base, session, classRequests, target)
 	if err != nil {
 		return empty, err
 	}
-	return combineMixedSnapshot(scalar, families, classes)
+	return combineCanonicalMixedSnapshot(scalar, families, classes, target)
 }
 
 // combineMixedSnapshot joins the three prepared groups in deterministic order.
@@ -117,6 +155,72 @@ func combineMixedSnapshot(scalar PreparedSampleCorrectionSnapshot, families []Pr
 	return snapshot, nil
 }
 
+// combineCanonicalMixedSnapshot joins the three prepared groups with a
+// resolved canonical target under tag analysis.mixed-snapshot.v4. The target
+// tuple is copied apart so later caller mutations cannot alias the stored
+// snapshot. The v4 digest covers base, every group and target. Without
+// identity decisions it returns the exact v1/v2/v3 representation.
+func combineCanonicalMixedSnapshot(scalar PreparedSampleCorrectionSnapshot, families []PreparedLapFamilyUseCorrection, classes []PreparedClassificationCorrection, target *CombinationIdentity) (PreparedSampleCorrectionSnapshot, error) {
+	identity := false
+	for _, class := range classes {
+		if isIdentityClassificationField(class.Request.Field) || class.Request.CanonicalCombinationID != "" {
+			identity = true
+			break
+		}
+	}
+	var empty PreparedSampleCorrectionSnapshot
+	if !identity {
+		// Un target inerte se rechaza aunque no haya identidad que combinar.
+		if target != nil {
+			return empty, fmt.Errorf("%w: inert canonical combination target", ErrInvalidCorrection)
+		}
+		return combineMixedSnapshot(scalar, families, classes)
+	}
+	if target == nil {
+		return empty, fmt.Errorf("%w: missing canonical combination target", ErrCorrectionTarget)
+	}
+	if len(scalar.Corrections)+len(families)+len(classes) > MaxSampleCorrections {
+		return empty, ErrInvalidCorrection
+	}
+	resolved := *target
+	snapshot := scalar
+	snapshot.ContractVersion = "analysis.mixed-snapshot.v4"
+	if len(families) == 0 {
+		families = nil
+	}
+	snapshot.FamilyUses = families
+	snapshot.Classifications = classes
+	snapshot.CanonicalCombination = &resolved
+	payload := struct {
+		Base                 SourceAnalysisRef                  `json:"base"`
+		Corrections          []PreparedSampleCorrection         `json:"corrections"`
+		FamilyUses           []PreparedLapFamilyUseCorrection   `json:"familyUses"`
+		Classifications      []PreparedClassificationCorrection `json:"classifications"`
+		CanonicalCombination *CombinationIdentity               `json:"canonicalCombination"`
+	}{snapshot.Base, snapshot.Corrections, snapshot.FamilyUses, snapshot.Classifications, snapshot.CanonicalCombination}
+	id, err := correctionDigest(snapshot.ContractVersion, payload)
+	if err != nil {
+		return empty, err
+	}
+	snapshot.SnapshotID = id
+	return snapshot, nil
+}
+
+// storedClassificationSession rebuilds the minimal session view from the
+// stored expected originals plus the base identity, never from a live
+// source, and never as source evidence.
+func storedClassificationSession(base SourceAnalysisRef) HistoricalSession {
+	return HistoricalSession{
+		SchemaVersion: HistoricalSchemaVersion,
+		ID:            base.SessionID,
+		Provenance: HistoricalProvenance{
+			Source:            ManifestSource{Kind: SourceLMU},
+			Parser:            ParserRef{ID: base.ParserID, Version: base.ParserVersion},
+			SchemaFingerprint: base.SchemaFingerprint,
+		},
+	}
+}
+
 // prepareStoredClassificationCorrections revalidates stored classification
 // requests for internal consistency only. It proves neither source authority
 // nor metadata quality; replay must call the live preparation functions. The
@@ -129,15 +233,7 @@ func prepareStoredClassificationCorrections(base SourceAnalysisRef, requests []C
 	if len(requests) > MaxSampleCorrections {
 		return nil, fmt.Errorf("%w: at most %d stored classification corrections", ErrInvalidCorrection, MaxSampleCorrections)
 	}
-	session := HistoricalSession{
-		SchemaVersion: HistoricalSchemaVersion,
-		ID:            base.SessionID,
-		Provenance: HistoricalProvenance{
-			Source:            ManifestSource{Kind: SourceLMU},
-			Parser:            ParserRef{ID: base.ParserID, Version: base.ParserVersion},
-			SchemaFingerprint: base.SchemaFingerprint,
-		},
-	}
+	session := storedClassificationSession(base)
 	seen := make(map[ClassificationField]bool, len(requests))
 	for _, request := range requests {
 		if request.Base != base {
@@ -150,6 +246,35 @@ func prepareStoredClassificationCorrections(base SourceAnalysisRef, requests []C
 		session.Metadata = append(session.Metadata, HistoricalMetadata{Key: string(request.Field), Present: true, Value: request.ExpectedOriginal, Quality: QualityValid})
 	}
 	return PrepareClassificationCorrectionSet(base, session, requests)
+}
+
+// prepareStoredCanonicalClassificationCorrections revalidates stored identity
+// requests against the persisted target for internal consistency only. It
+// proves neither source authority, catalog membership nor live quality; the
+// catalog resolves the target when preparing a new write under lease.
+func prepareStoredCanonicalClassificationCorrections(base SourceAnalysisRef, requests []ClassificationCorrection, target *CombinationIdentity) ([]PreparedClassificationCorrection, error) {
+	if _, err := base.Digest(); err != nil {
+		return nil, err
+	}
+	if target == nil {
+		return nil, fmt.Errorf("%w: missing canonical combination target", ErrCorrectionTarget)
+	}
+	if len(requests) > MaxSampleCorrections {
+		return nil, fmt.Errorf("%w: at most %d stored classification corrections", ErrInvalidCorrection, MaxSampleCorrections)
+	}
+	session := storedClassificationSession(base)
+	seen := make(map[ClassificationField]bool, len(requests))
+	for _, request := range requests {
+		if request.Base != base {
+			return nil, ErrCorrectionInterpretationChanged
+		}
+		if seen[request.Field] {
+			return nil, ErrOverlappingCorrections
+		}
+		seen[request.Field] = true
+		session.Metadata = append(session.Metadata, HistoricalMetadata{Key: string(request.Field), Present: true, Value: request.ExpectedOriginal, Quality: QualityValid})
+	}
+	return PrepareCanonicalClassificationCorrectionSet(base, session, requests, target)
 }
 
 // Both callers supply independently validated/canonical scalar and family sets.

@@ -160,9 +160,11 @@ Evidencia guards: 25/25 PASS (detalle abajo) + wiring 3/3 PASS.
   3360 PASS + 2 omitidos, exit 0
   (`frontend/design-evidence/isa1097/frontend-full.log`, ignorado por git).
   El log contiene además `DOMException [AbortError]` de happy-dom al abortar
-  fetch en teardown: ruido en stderr con los tests en verde, registrado tal
-  cual sin declararlo limpio ni heredado (no reproducido en base) y sin
-  arreglar happy-dom en este alcance.
+  fetch en teardown. Procedencia heredada verificada por el orquestador en
+  `C:/tmp/vantare-isa1083-efficiency-final-tests.log:8` (424 archivos,
+  3356 PASS, 2 omitidos) y `vantare-isa1083-delivery-frontend.log:8`
+  (423 archivos, 3330 PASS, 2 omitidos); el log actual lo emite en teardown
+  con los tests en verde. Sin arreglar happy-dom en este alcance.
   Los 6 fallos iniciales del full eran aserciones codificando Delta-como-Free
   (matriz anterior), no heredados: se ajustaron fixtures en
   `studio-catalog.test.ts`, `AddWidgetDialog.test.tsx`,

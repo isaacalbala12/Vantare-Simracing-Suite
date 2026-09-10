@@ -49,6 +49,7 @@ func TestPreparationOffersCanonicalCombinationWithoutPriorStrategyCatalog(t *tes
 			var response struct {
 				Combination *telemetryanalysis.CombinationIdentity `json:"combination"`
 				Reason      string                                 `json:"combinationUnavailableReason"`
+				BaseDigest  string                                 `json:"baseDigest"`
 			}
 			if err := json.Unmarshal(encoded, &response); err != nil {
 				t.Fatal(err)
@@ -66,6 +67,37 @@ func TestPreparationOffersCanonicalCombinationWithoutPriorStrategyCatalog(t *tes
 			}
 			if prepared.Base.SessionID != opened.Session.ID || len(prepared.BaseRevisionID) != 64 {
 				t.Fatal("preparation lost its exact correction identity")
+			}
+			expectedDigest, err := prepared.Base.Digest()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if response.BaseDigest != expectedDigest {
+				t.Fatalf("preparation wire lost exact base digest: got %q want %q", response.BaseDigest, expectedDigest)
+			}
+			if response.BaseDigest == prepared.BaseRevisionID {
+				t.Fatal("base digest must differ from the initial revision")
+			}
+			repeated, err := svc.PrepareCorrections(ctx, opened.SessionID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			repeatedEncoded, err := json.Marshal(repeated)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var repeatedResponse struct {
+				BaseDigest string `json:"baseDigest"`
+			}
+			if err := json.Unmarshal(repeatedEncoded, &repeatedResponse); err != nil {
+				t.Fatal(err)
+			}
+			repeatedDigest, err := repeated.Base.Digest()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if repeatedDigest != expectedDigest || repeatedResponse.BaseDigest != expectedDigest {
+				t.Fatal("repeated preparation must keep the exact base digest")
 			}
 		})
 	}

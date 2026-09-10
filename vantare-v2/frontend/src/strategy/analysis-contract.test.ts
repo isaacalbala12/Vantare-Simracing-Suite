@@ -42,6 +42,31 @@ describe("prepared combination identity", () => {
     expect(() => parseAnalysisPreparation({ base, baseRevisionId: snapshotId, ...fields })).toThrow();
   });
 });
+describe("prepared base digest", () => {
+  const digest = "e".repeat(64);
+  it("accepts a valid digest and preserves legacy responses without it", () => {
+    const prepared = { base, baseRevisionId: snapshotId, baseDigest: digest };
+    expect(parseAnalysisPreparation(prepared)).toBe(prepared);
+    const legacy = { base, baseRevisionId: snapshotId };
+    expect(parseAnalysisPreparation(legacy)).toBe(legacy);
+    expect(parseAnalysisPreparation(legacy)).not.toHaveProperty("baseDigest");
+  });
+  it("accepts a digest alongside metadata_unavailable", () => {
+    const prepared = { base, baseRevisionId: snapshotId, baseDigest: digest, combinationUnavailableReason: "metadata_unavailable" };
+    expect(parseAnalysisPreparation(prepared)).toBe(prepared);
+  });
+  it.each([
+    { baseDigest: null },
+    { baseDigest: "" },
+    { baseDigest: "  " },
+    { baseDigest: "xyz" },
+    { baseDigest: "E".repeat(64) },
+    { baseDigest: "e".repeat(63) },
+    { baseDigest: 12 },
+  ])("rejects malformed digest %j", (fields) => {
+    expect(() => parseAnalysisPreparation({ base, baseRevisionId: snapshotId, ...fields })).toThrow("preparation.baseDigest");
+  });
+});
 const baseResult = () => ({ headId: snapshotId, revision: { revisionId: snapshotId, parentRevisionId: "", command: { expectedRevision: "", commandId: "", reason: "", localAuthorId: "" }, commandDigest: "", createdAt: "", snapshot: { contractVersion: "analysis.sample-snapshot.v1", base, snapshotId, corrections: [] } } });
 describe("uncertain command resolution", () => {
   it("distinguishes confirmed absence from an actual revision", () => {

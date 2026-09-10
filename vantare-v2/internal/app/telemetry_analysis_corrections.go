@@ -9,6 +9,7 @@ import (
 
 type TelemetryAnalysisCorrectionPreparation struct {
 	Base                         telemetryanalysis.SourceAnalysisRef    `json:"base"`
+	BaseDigest                   string                                 `json:"baseDigest"`
 	BaseRevisionID               string                                 `json:"baseRevisionId"`
 	EditableChannelIDs           []string                               `json:"editableChannelIds"`
 	Combination                  *telemetryanalysis.CombinationIdentity `json:"combination,omitempty"`
@@ -86,11 +87,15 @@ func (service *TelemetryAnalysisService) withCorrectionInput(ctx context.Context
 func (service *TelemetryAnalysisService) PrepareCorrections(ctx context.Context, sessionID string) (TelemetryAnalysisCorrectionPreparation, error) {
 	var result TelemetryAnalysisCorrectionPreparation
 	err := service.withCorrectionInput(ctx, sessionID, func(_ context.Context, input telemetryanalysis.CorrectionInput) error {
+		baseDigest, err := input.Base.Digest()
+		if err != nil {
+			return publicTelemetryAnalysisError(err)
+		}
 		initial, err := telemetryanalysis.PrepareSampleCorrectionSnapshot(input.Base, nil)
 		if err != nil {
 			return publicTelemetryAnalysisError(err)
 		}
-		result = TelemetryAnalysisCorrectionPreparation{Base: input.Base, BaseRevisionID: initial.SnapshotID, EditableChannelIDs: []string{}}
+		result = TelemetryAnalysisCorrectionPreparation{Base: input.Base, BaseDigest: baseDigest, BaseRevisionID: initial.SnapshotID, EditableChannelIDs: []string{}}
 		// Inspection can expose channels outside the bounded correction read.
 		// Advertise only channels backed by prepared samples and known units.
 		preparedChannels := make(map[string]bool)

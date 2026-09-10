@@ -82,6 +82,7 @@ export type AnalysisCommandResolution = Readonly<{ found: false; headId: string 
 export type AnalysisPreparation = Readonly<{
   base: AnalysisBase;
   baseRevisionId: string;
+  baseDigest?: string;
   editableChannelIds?: readonly string[];
   combination?: AnalysisCombination;
   combinationUnavailableReason?: "metadata_unavailable";
@@ -295,6 +296,9 @@ export function parseAnalysisPreparation(value: unknown): AnalysisPreparation {
   const r = record(value, "preparation");
   parseAnalysisBase(r.base);
   digest(r.baseRevisionId, "baseRevisionId");
+  if (r.baseDigest !== undefined) {
+    digest(r.baseDigest, "preparation.baseDigest");
+  }
   if (r.editableChannelIds !== undefined) {
     const channels = list(r.editableChannelIds, "preparation.editableChannelIds");
     const seen = new Set<string>();

@@ -21,7 +21,9 @@ type TelemetryAnalysisCorrectionSaveRequest struct {
 	SessionID   string                                    `json:"sessionId"`
 	Base        telemetryanalysis.SourceAnalysisRef       `json:"base"`
 	Corrections []telemetryanalysis.SampleValueCorrection `json:"corrections"`
-	Command     telemetryanalysis.CorrectionSaveCommand   `json:"command"`
+	// Omitted/null is legacy; a non-nil empty set explicitly removes family uses.
+	FamilyUses []telemetryanalysis.LapFamilyUseCorrection `json:"familyUses"`
+	Command    telemetryanalysis.CorrectionSaveCommand    `json:"command"`
 }
 type TelemetryAnalysisCorrectionRevisionRequest struct {
 	SessionID  string                              `json:"sessionId"`
@@ -31,7 +33,7 @@ type TelemetryAnalysisCorrectionRevisionRequest struct {
 
 func (service *TelemetryAnalysisService) SaveCorrections(ctx context.Context, request TelemetryAnalysisCorrectionSaveRequest) (telemetryanalysis.CorrectionStoreResult, error) {
 	var result telemetryanalysis.CorrectionStoreResult
-	if len(request.Corrections) > telemetryanalysis.MaxSampleCorrections {
+	if len(request.Corrections)+len(request.FamilyUses) > telemetryanalysis.MaxSampleCorrections {
 		return result, ErrTelemetryAnalysisInvalidRequest
 	}
 	err := service.withCorrectionInput(ctx, request.SessionID, func(operationCtx context.Context, input telemetryanalysis.CorrectionInput) error {
@@ -45,7 +47,15 @@ func (service *TelemetryAnalysisService) SaveCorrections(ctx context.Context, re
 		if err != nil {
 			return publicCorrectionError(err)
 		}
-		result, err = service.corrections.Save(operationCtx, input.Base, inputs, request.Command)
+		if request.FamilyUses == nil {
+			result, err = service.corrections.Save(operationCtx, input.Base, inputs, request.Command)
+		} else {
+			observations, prepareErr := observationInputForRequests(input, inputs, request.FamilyUses)
+			if prepareErr != nil {
+				return publicCorrectionError(prepareErr)
+			}
+			result, err = service.corrections.SaveObservations(operationCtx, input.Base, observations, request.Command)
+		}
 		return publicCorrectionError(err)
 	})
 	if err != nil {
@@ -77,7 +87,7 @@ func (service *TelemetryAnalysisService) LoadCorrection(ctx context.Context, req
 // creates a revision or adopts the current head for a Strategy plan.
 func (service *TelemetryAnalysisService) ResolveCorrectionCommand(ctx context.Context, request TelemetryAnalysisCorrectionSaveRequest) (telemetryanalysis.CorrectionCommandResolution, error) {
 	var result telemetryanalysis.CorrectionCommandResolution
-	if len(request.Corrections) > telemetryanalysis.MaxSampleCorrections {
+	if len(request.Corrections)+len(request.FamilyUses) > telemetryanalysis.MaxSampleCorrections {
 		return result, ErrTelemetryAnalysisInvalidRequest
 	}
 	err := service.withCorrectionInput(ctx, request.SessionID, func(operationCtx context.Context, input telemetryanalysis.CorrectionInput) error {
@@ -88,7 +98,11 @@ func (service *TelemetryAnalysisService) ResolveCorrectionCommand(ctx context.Co
 			return ErrTelemetryAnalysisCorrectionStorage
 		}
 		var err error
-		result, err = service.corrections.ResolveCommand(operationCtx, input.Base, request.Corrections, request.Command)
+		if request.FamilyUses == nil {
+			result, err = service.corrections.ResolveCommand(operationCtx, input.Base, request.Corrections, request.Command)
+		} else {
+			result, err = service.corrections.ResolveObservationsCommand(operationCtx, input.Base, request.Corrections, request.FamilyUses, request.Command)
+		}
 		return publicCorrectionError(err)
 	})
 	if err != nil {
@@ -220,4 +234,26 @@ func publicCorrectionError(err error) error {
 	default:
 		return ErrTelemetryAnalysisCorrectionStorage
 	}
+}
+
+// Keep the source model and reanalyzed scalar view inside the authorized command.
+// Store validation resolves the entire family set against both before writing.
+func observationInputForRequests(input telemetryanalysis.CorrectionInput, samples []telemetryanalysis.SampleCorrectionInput, families []telemetryanalysis.LapFamilyUseCorrection) (telemetryanalysis.ObservationCorrectionInput, error) {
+	result := telemetryanalysis.ObservationCorrectionInput{Samples: samples, Original: input.Validity, Effective: input.Validity, FamilyUses: families}
+	if len(samples) == 0 || len(families) == 0 {
+		return result, nil
+	}
+	snapshot, err := telemetryanalysis.PrepareSampleCorrectionSnapshot(input.Base, samples)
+	if err != nil {
+		return telemetryanalysis.ObservationCorrectionInput{}, err
+	}
+	view, err := telemetryanalysis.ApplySampleCorrectionSnapshot(input.Base, input.Session.Channels, input.Pages, snapshot)
+	if err != nil {
+		return telemetryanalysis.ObservationCorrectionInput{}, err
+	}
+	result.Effective, err = telemetryanalysis.AnalyzeLapValidity(input.Session, view.Pages)
+	if err != nil {
+		return telemetryanalysis.ObservationCorrectionInput{}, telemetryanalysis.ErrCorrectionValue
+	}
+	return result, nil
 }

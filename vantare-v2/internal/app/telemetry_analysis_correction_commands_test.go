@@ -205,3 +205,118 @@ func TestCorrectionStorageConfigurationAndPublicErrors(t *testing.T) {
 		t.Fatal("lost uncertain commit outcome")
 	}
 }
+
+func TestFamilyCorrectionCommandsSaveResolveRestoreAndProjectExactRevision(t *testing.T) {
+	svc, opened, _, _ := revisionCatalogFixture(t)
+	ctx := context.Background()
+	handle := opened[0].SessionID
+	var input telemetryanalysis.CorrectionInput
+	if err := svc.withCorrectionInput(ctx, handle, func(_ context.Context, value telemetryanalysis.CorrectionInput) error { input = value; return nil }); err != nil {
+		t.Fatal(err)
+	}
+	prepared, err := svc.PrepareCorrections(ctx, handle)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var family telemetryanalysis.LapFamilyUseCorrection
+	for _, lap := range input.Validity.Laps {
+		if lap.Start == nil || !lap.Complete {
+			continue
+		}
+		for _, use := range lap.FamilyUse {
+			if use.Family == telemetryanalysis.FamilyCombinedStintPaceCurve {
+				family = telemetryanalysis.LapFamilyUseCorrection{Base: input.Base, Target: telemetryanalysis.LapCorrectionTarget{Number: lap.Number, Start: *lap.Start, End: lap.End}, Family: use.Family, Expected: use, Included: false, Reason: "controlled family review"}
+				break
+			}
+		}
+		if family.Family != "" {
+			break
+		}
+	}
+	if family.Family == "" {
+		t.Fatal("fixture lacks lap target")
+	}
+	request := TelemetryAnalysisCorrectionSaveRequest{SessionID: handle, Base: input.Base, FamilyUses: []telemetryanalysis.LapFamilyUseCorrection{family}, Command: telemetryanalysis.CorrectionSaveCommand{ExpectedRevision: prepared.BaseRevisionID, CommandID: "family-save", Reason: "family review", LocalAuthorID: "local-test"}}
+	saved, err := svc.SaveCorrections(ctx, request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(saved.Revision.Snapshot.FamilyUses) != 1 || saved.Revision.Snapshot.ContractVersion != "analysis.observation-snapshot.v2" {
+		t.Fatal("family command reduced to scalar snapshot")
+	}
+	replay, err := svc.SaveCorrections(ctx, request)
+	if err != nil || replay.Revision.RevisionID != saved.Revision.RevisionID {
+		t.Fatal("mixed replay duplicated", err)
+	}
+	resolution, err := svc.ResolveCorrectionCommand(ctx, request)
+	if err != nil || !resolution.Found || resolution.Revision.RevisionID != saved.Revision.RevisionID {
+		t.Fatal("mixed resolve lost command", err)
+	}
+	changed := request
+	changed.FamilyUses = append([]telemetryanalysis.LapFamilyUseCorrection(nil), request.FamilyUses...)
+	changed.FamilyUses[0].Reason = "changed reason"
+	if _, err := svc.ResolveCorrectionCommand(ctx, changed); !errors.Is(err, ErrTelemetryAnalysisCorrectionConflict) {
+		t.Fatal("resolve ignored family payload", err)
+	}
+	legacy := request
+	legacy.FamilyUses = nil
+	legacy.Command.ExpectedRevision = saved.HeadID
+	legacy.Command.CommandID = "legacy-overwrite"
+	if _, err := svc.SaveCorrections(ctx, legacy); !errors.Is(err, ErrTelemetryAnalysisInvalidRequest) {
+		t.Fatal("legacy silently removed family", err)
+	}
+	restore := legacy
+	restore.FamilyUses = []telemetryanalysis.LapFamilyUseCorrection{}
+	restore.Command.CommandID = "explicit-restore"
+	restored, err := svc.SaveCorrections(ctx, restore)
+	if err != nil || len(restored.Revision.Snapshot.FamilyUses) != 0 {
+		t.Fatal("explicit restore failed", err)
+	}
+	projection, err := svc.ProjectCorrection(ctx, TelemetryAnalysisCorrectionRevisionRequest{SessionID: handle, Base: input.Base, RevisionID: saved.Revision.RevisionID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(projection.SourceRevisions) != 1 || projection.SourceRevisions[0].RevisionID != saved.Revision.RevisionID || projection.SourceRevisions[0].SnapshotID != saved.Revision.Snapshot.SnapshotID {
+		t.Fatal("projection adopted newer head or scalar identity")
+	}
+	// A scalar lap-number correction cannot relocate a family decision.
+	moved := request
+	moved.Command.ExpectedRevision = restored.HeadID
+	moved.Command.CommandID = "moved-target"
+	for _, channel := range input.Session.Channels {
+		if channel.SourceName != "Lap" {
+			continue
+		}
+		for _, page := range input.Pages {
+			if page.ChannelID != channel.ID {
+				continue
+			}
+			for _, sample := range page.Samples {
+				for _, value := range sample.Values {
+					if value.Scalar.Kind == telemetryanalysis.ScalarInteger && value.Scalar.Integer == int64(family.Target.Number) {
+						replacement := value.Scalar
+						replacement.Integer += 10
+						moved.Corrections = []telemetryanalysis.SampleValueCorrection{{Base: input.Base, Target: telemetryanalysis.SampleCorrectionTarget{ChannelID: channel.ID, SampleIndex: sample.Index, Column: value.Column}, Unit: channel.Unit, Expected: value, Replacement: replacement, Reason: "controlled changed target"}}
+					}
+				}
+			}
+		}
+	}
+	if len(moved.Corrections) != 1 {
+		t.Fatal("fixture lacks boundary correction")
+	}
+	if _, err := svc.SaveCorrections(ctx, moved); !errors.Is(err, ErrTelemetryAnalysisInvalidRequest) {
+		t.Fatal("mixed scalar silently moved family target", err)
+	}
+	head, err := svc.LoadCorrection(ctx, TelemetryAnalysisCorrectionRevisionRequest{SessionID: handle, Base: input.Base})
+	if err != nil || head.HeadID != restored.HeadID {
+		t.Fatal("rejected target changed durable head", err)
+	}
+	svc.authorizer = &telemetryAnalysisAuthorizerStub{allowed: false}
+	if _, err := svc.SaveCorrections(ctx, request); !errors.Is(err, ErrTelemetryAnalysisUnauthorized) {
+		t.Fatal("mixed save bypassed auth", err)
+	}
+	if _, err := svc.ResolveCorrectionCommand(ctx, request); !errors.Is(err, ErrTelemetryAnalysisUnauthorized) {
+		t.Fatal("mixed resolve bypassed auth", err)
+	}
+}

@@ -127,3 +127,15 @@ Se conserva el caso válido con intervalos de fixture explícitos. Tres paths;
 helper común de identidad, sin otro criterio ni dependencia. Analysis completo,
 global Go -p1 y vet de alcance PASS. Continúa T11f1 comandos nativos mixtos.
 Sin frontend, Wails, precisión, visual >9, push/PR/CI remota/merge/promoción.
+
+## T11f1 — comandos nativos mixtos
+
+SaveCorrections/ResolveCorrectionCommand aceptan familyUses completo: nil legacy,
+[] retirada explícita. Con escalares+familias se reanaliza la vista bajo la misma
+autorización y bloqueo; el store verifica objetivos antes de escribir. Reusa
+withCorrectionInput y la custodia existente. Pruebas nativas de save/replay/resolve,
+payload alterado, guard legacy, restauración, proyección de revisión anterior,
+target movido por escalar y revocación de permiso PASS. Global Go -p1 y vet de
+alcance PASS; dos paths. Son pruebas con lector controlado, no DuckDB físico.
+Sigue T11f2 inspección paginada original/efectivo/capacidades para Datos; después
+contrato TS/controlador/UI. Sin Wails/precisión/visual >9/push/PR/CI/promoción.

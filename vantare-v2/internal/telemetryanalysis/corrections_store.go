@@ -38,6 +38,12 @@ type CorrectionStoreResult struct {
 	Revision CorrectionRevision `json:"revision"`
 	HeadID   string             `json:"headId"`
 }
+
+type CorrectionCommandResolution struct {
+	Found    bool                `json:"found"`
+	HeadID   string              `json:"headId"`
+	Revision *CorrectionRevision `json:"revision,omitempty"`
+}
 type correctionDocument struct {
 	Version   int                  `json:"version"`
 	Base      SourceAnalysisRef    `json:"base"`
@@ -102,35 +108,77 @@ func (s *CorrectionStore) Load(ctx context.Context, base SourceAnalysisRef, revi
 	return result, ErrCorrectionRevisionMissing
 }
 func (s *CorrectionStore) Save(ctx context.Context, base SourceAnalysisRef, inputs []SampleCorrectionInput, command CorrectionSaveCommand) (result CorrectionStoreResult, err error) {
-	if !correctionText(command.CommandID, 256) || !correctionText(command.LocalAuthorID, 256) || !correctionText(command.Reason, 1024) || !correctionSHA256(command.ExpectedRevision) || len(inputs) > MaxSampleCorrections {
+	if len(inputs) > MaxSampleCorrections {
 		return result, ErrInvalidCorrection
-	}
-	if _, err := base.Digest(); err != nil {
-		return result, err
 	}
 	requests := make([]SampleValueCorrection, len(inputs))
 	for i := range inputs {
-		request := inputs[i].Request
+		requests[i] = inputs[i].Request
+	}
+	commandDigest, err := validatedCorrectionCommandDigest(base, command, requests)
+	if err != nil {
+		return result, err
+	}
+	return s.saveValidated(ctx, base, inputs, command, commandDigest)
+}
+
+// ResolveCommand checks the exact command without another write. The same lease
+// as Save prevents reporting absence while that writer still owns the document.
+func (s *CorrectionStore) ResolveCommand(ctx context.Context, base SourceAnalysisRef, requests []SampleValueCorrection, command CorrectionSaveCommand) (result CorrectionCommandResolution, err error) {
+	digest, err := validatedCorrectionCommandDigest(base, command, requests)
+	if err != nil {
+		return result, err
+	}
+	path, lease, err := s.lock(ctx, base)
+	if err != nil {
+		return result, err
+	}
+	defer func() { err = errors.Join(err, lease.Close()) }()
+	doc, _, err := s.read(path, base)
+	if err != nil {
+		return result, err
+	}
+	if err := ctx.Err(); err != nil {
+		return result, err
+	}
+	for _, revision := range doc.Revisions {
+		if revision.Command.CommandID == command.CommandID {
+			if revision.CommandDigest != digest {
+				return result, ErrCorrectionConflict
+			}
+			return CorrectionCommandResolution{Found: true, HeadID: doc.HeadID, Revision: &revision}, nil
+		}
+	}
+	return CorrectionCommandResolution{HeadID: doc.HeadID}, nil
+}
+
+func validatedCorrectionCommandDigest(base SourceAnalysisRef, command CorrectionSaveCommand, requests []SampleValueCorrection) (string, error) {
+	if !correctionText(command.CommandID, 256) || !correctionText(command.LocalAuthorID, 256) || !correctionText(command.Reason, 1024) || !correctionSHA256(command.ExpectedRevision) || len(requests) > MaxSampleCorrections {
+		return "", ErrInvalidCorrection
+	}
+	if _, err := base.Digest(); err != nil {
+		return "", err
+	}
+	for _, request := range requests {
 		if _, err := request.Base.Digest(); err != nil {
-			return result, err
+			return "", err
 		}
 		if !correctionText(request.Reason, 1024) || !correctionText(request.Target.ChannelID, 256) || !correctionText(request.Target.Column, 256) || len(request.Unit.Symbol) > 256 || len(request.Expected.Column) > 256 || len(request.Expected.Scalar.Text) > 4096 || len(request.Replacement.Text) > 4096 {
-			return result, ErrInvalidCorrection
+			return "", ErrInvalidCorrection
 		}
 		if !correctionScalar(request.Expected.Scalar, request.Expected.Scalar.Kind) || !correctionScalar(request.Replacement, request.Expected.Scalar.Kind) || request.Unit.Quality != QualityValid {
-			return result, ErrCorrectionValue
+			return "", ErrCorrectionValue
 		}
 		switch request.Expected.Quality {
 		case QualityValid, QualityStale, QualityMissing, QualityInvalid, QualityUnknown:
 		default:
-			return result, ErrCorrectionValue
+			return "", ErrCorrectionValue
 		}
-		requests[i] = request
 	}
-	commandDigest, err := correctionCommandDigest(base, command, requests)
-	if err != nil {
-		return result, err
-	}
+	return correctionCommandDigest(base, command, requests)
+}
+
+func (s *CorrectionStore) saveValidated(ctx context.Context, base SourceAnalysisRef, inputs []SampleCorrectionInput, command CorrectionSaveCommand, commandDigest string) (result CorrectionStoreResult, err error) {
 	path, lease, err := s.lock(ctx, base)
 	if err != nil {
 		return result, err

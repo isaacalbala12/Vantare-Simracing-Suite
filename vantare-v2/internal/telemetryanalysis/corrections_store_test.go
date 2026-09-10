@@ -54,6 +54,63 @@ func TestCorrectionStoreRevisionConflictReplayAndRestore(t *testing.T) {
 	}
 }
 
+func TestCorrectionStoreResolvesExactCommandWithoutWriting(t *testing.T) {
+	ctx := context.Background()
+	base, channel, sample, request := correctionExample()
+	store := NewCorrectionStore(t.TempDir())
+	initial, err := PrepareSampleCorrectionSnapshot(base, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	command := CorrectionSaveCommand{ExpectedRevision: initial.SnapshotID, CommandID: "uncertain", Reason: "review", LocalAuthorID: "local"}
+	missing, err := store.ResolveCommand(ctx, base, []SampleValueCorrection{request}, command)
+	if err != nil || missing.Found || missing.Revision != nil || missing.HeadID != initial.SnapshotID {
+		t.Fatal("missing command", missing, err)
+	}
+	first, err := store.Save(ctx, base, []SampleCorrectionInput{{Channel: channel, Sample: sample, Request: request}}, command)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := store.Save(ctx, base, nil, CorrectionSaveCommand{ExpectedRevision: first.HeadID, CommandID: "later", Reason: "restore", LocalAuthorID: "local"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	store.writeFile = func(string, []byte) error {
+		t.Error("resolution attempted a write")
+		return errors.New("unexpected write")
+	}
+	found, err := store.ResolveCommand(ctx, base, []SampleValueCorrection{request}, command)
+	if err != nil || !found.Found || found.Revision == nil || found.Revision.RevisionID != first.HeadID || found.HeadID != second.HeadID {
+		t.Fatal("lost historical command/current head", found, err)
+	}
+	changed := command
+	changed.Reason = "different payload"
+	if _, err := store.ResolveCommand(ctx, base, []SampleValueCorrection{request}, changed); !errors.Is(err, ErrCorrectionConflict) {
+		t.Fatal("accepted changed command", err)
+	}
+	changed.CommandID = "never-written"
+	missing, err = store.ResolveCommand(ctx, base, nil, changed)
+	if err != nil || missing.Found || missing.HeadID != second.HeadID {
+		t.Fatal("missing after another writer", missing, err)
+	}
+	_, lease, err := store.lock(ctx, base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, resolutionErr := store.ResolveCommand(ctx, base, nil, changed)
+	if err := lease.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if !errors.Is(resolutionErr, ErrCorrectionWriteInProgress) {
+		t.Fatal("reported absence while writer held lease", resolutionErr)
+	}
+	cancelled, cancel := context.WithCancel(ctx)
+	cancel()
+	if _, err := store.ResolveCommand(cancelled, base, nil, changed); !errors.Is(err, context.Canceled) {
+		t.Fatal("ignored cancellation", err)
+	}
+}
+
 func TestCorrectionStoreRecoveryAndMissingRevision(t *testing.T) {
 	ctx := context.Background()
 	base, ch, sample, request := correctionExample()
@@ -151,6 +208,10 @@ func TestCorrectionStoreUncertainFirstCommitReplay(t *testing.T) {
 				t.Fatal("false durable acknowledgement", err)
 			}
 			store.writeFile = writeAuthorizedSessionFile
+			resolved, err := store.ResolveCommand(context.Background(), base, []SampleValueCorrection{request}, cmd)
+			if err != nil || !resolved.Found || resolved.Revision == nil {
+				t.Fatal("cannot resolve uncertain durable candidate", err)
+			}
 			result, err := store.Save(context.Background(), base, inputs, cmd)
 			if err != nil || result.HeadID == "" {
 				t.Fatal("cannot replay durable candidate", err)

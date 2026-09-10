@@ -73,6 +73,30 @@ func (service *TelemetryAnalysisService) LoadCorrection(ctx context.Context, req
 	return result, nil
 }
 
+// Resolve an uncertain command under current source authorization. It never
+// creates a revision or adopts the current head for a Strategy plan.
+func (service *TelemetryAnalysisService) ResolveCorrectionCommand(ctx context.Context, request TelemetryAnalysisCorrectionSaveRequest) (telemetryanalysis.CorrectionCommandResolution, error) {
+	var result telemetryanalysis.CorrectionCommandResolution
+	if len(request.Corrections) > telemetryanalysis.MaxSampleCorrections {
+		return result, ErrTelemetryAnalysisInvalidRequest
+	}
+	err := service.withCorrectionInput(ctx, request.SessionID, func(operationCtx context.Context, input telemetryanalysis.CorrectionInput) error {
+		if request.Base != input.Base {
+			return ErrTelemetryAnalysisCorrectionSourceChanged
+		}
+		if service.corrections == nil {
+			return ErrTelemetryAnalysisCorrectionStorage
+		}
+		var err error
+		result, err = service.corrections.ResolveCommand(operationCtx, input.Base, request.Corrections, request.Command)
+		return publicCorrectionError(err)
+	})
+	if err != nil {
+		return telemetryanalysis.CorrectionCommandResolution{}, err
+	}
+	return result, nil
+}
+
 func (service *TelemetryAnalysisService) ProjectCorrection(ctx context.Context, request TelemetryAnalysisCorrectionRevisionRequest) (strategyprojection.StrategyInputProjectionV2, error) {
 	var result strategyprojection.StrategyInputProjectionV2
 	if request.RevisionID == "" {

@@ -75,6 +75,21 @@ func TestCorrectionCommandsReauthorizeReplayAndPinProjection(t *testing.T) {
 	if err != nil || replay.Revision.RevisionID != saved.Revision.RevisionID {
 		t.Fatal("non-idempotent replay", err)
 	}
+	resolved, err := svc.ResolveCorrectionCommand(ctx, request)
+	if err != nil || !resolved.Found || resolved.Revision == nil || resolved.Revision.RevisionID != saved.Revision.RevisionID {
+		t.Fatal("could not resolve saved command", err)
+	}
+	unknownCommand := request
+	unknownCommand.Command.CommandID = "not-saved"
+	resolved, err = svc.ResolveCorrectionCommand(ctx, unknownCommand)
+	if err != nil || resolved.Found || resolved.HeadID != saved.HeadID {
+		t.Fatal("command absence lost current head", err)
+	}
+	foreignCommand := request
+	foreignCommand.Base.AnalysisVersion = "different"
+	if _, err := svc.ResolveCorrectionCommand(ctx, foreignCommand); !errors.Is(err, ErrTelemetryAnalysisCorrectionSourceChanged) {
+		t.Fatal("resolved foreign source", err)
+	}
 	lookup := TelemetryAnalysisCorrectionRevisionRequest{SessionID: opened.SessionID, Base: prepared.Base, RevisionID: saved.Revision.RevisionID}
 	loaded, err := svc.LoadCorrection(ctx, lookup)
 	if err != nil || loaded.Revision.RevisionID != saved.Revision.RevisionID {
@@ -135,6 +150,9 @@ func TestCorrectionCommandsReauthorizeReplayAndPinProjection(t *testing.T) {
 		t.Fatal("accepted latest", err)
 	}
 	svc.authorizer = telemetryAnalysisAuthorizerStub{allowed: false}
+	if _, err := svc.ResolveCorrectionCommand(ctx, request); !errors.Is(err, ErrTelemetryAnalysisUnauthorized) {
+		t.Fatal("resolved without authority", err)
+	}
 	if _, err := svc.SaveCorrections(ctx, request); !errors.Is(err, ErrTelemetryAnalysisUnauthorized) {
 		t.Fatal("replayed without authority", err)
 	}
@@ -142,6 +160,9 @@ func TestCorrectionCommandsReauthorizeReplayAndPinProjection(t *testing.T) {
 	reader.readErr = telemetryanalysis.ErrHistoricalSource
 	if _, err := svc.SaveCorrections(ctx, request); !errors.Is(err, ErrTelemetryAnalysisIncompatible) {
 		t.Fatal("replayed unavailable source", err)
+	}
+	if _, err := svc.ResolveCorrectionCommand(ctx, request); !errors.Is(err, ErrTelemetryAnalysisSessionUnknown) {
+		t.Fatal("resolved retired source", err)
 	}
 }
 

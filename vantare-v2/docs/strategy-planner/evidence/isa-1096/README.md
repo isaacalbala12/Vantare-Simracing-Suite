@@ -31,3 +31,15 @@ handles. 13 focales (helpers+hook), tipos/lint PASS. Todavía no montado.
 Sigue resolver explícitamente comandos inciertos/conflictos: el reintento estable
 ya existe, pero no basta cuando la cabeza avanzó sin guardar ese comando. Añadir
 consulta autorizada por commandId/payload sobre el mismo store; después UI.
+
+## T10c — resolver confirmaciones inciertas en Analysis
+
+ResolveCorrectionCommand revalida sesión/base y consulta el mismo store con
+commandId y digest del payload completo. Devuelve revisión encontrada y cabeza
+actual, o ausencia explícita; nunca guarda una corrección. Comparte lease con
+Save y rechaza una respuesta de ausencia mientras el escritor retiene el lease.
+Reutiliza validación acotada de comandos; no cambia hashes, cuotas o reglas.
+Pruebas: comando antiguo con cabeza posterior, ausencia, payload alterado,
+writer activo, cancelación, permisos/base/handle y backup con confirmación
+perdida. Go focal final, build, Go global -p1 y vet general PASS.
+Cuatro paths Go. Cliente/resolución visible aún pendientes.

@@ -28,19 +28,61 @@ export function InPlaceInspectorPanel(props: InPlaceInspectorPanelProps): React.
 
   if (!widget) {
     return (
-      <div data-testid="inplace-inspector-panel" data-testid-empty="true" className="inplace-inspector-panel">
+      <div
+        data-testid="inplace-inspector-panel"
+        data-testid-empty="true"
+        className="inplace-inspector-panel"
+        onPointerDown={(event) => event.stopPropagation()}
+      >
         <div data-testid="inplace-inspector-empty">{t("overlay.editMode.panel.empty")}</div>
       </div>
     );
   }
 
   return (
-    <div data-testid="inplace-inspector-panel" className="inplace-inspector-panel" data-widget-id={widget.id}>
+    <div
+      data-testid="inplace-inspector-panel"
+      className="inplace-inspector-panel"
+      data-widget-id={widget.id}
+      onPointerDown={(event) => event.stopPropagation()}
+    >
       <div className="inplace-inspector-panel__header">
         <span className="inplace-inspector-panel__title">
           {widget.name?.trim() || widget.type}
         </span>
         <span className="inplace-inspector-panel__session">{t(`studio.v3.session.${session}`)}</span>
+        <button
+          type="button"
+          data-testid="inplace-widget-visibility"
+          className="inplace-inspector-panel__eye"
+          title={widget.behavior.enabled ? t("studio.inspector.hide") : t("studio.inspector.show")}
+          aria-pressed={!widget.behavior.enabled}
+          onClick={() =>
+            autosave.dispatch({
+              type: "widget/behavior",
+              session,
+              widgetIds: [widget.id],
+              patch: { enabled: !widget.behavior.enabled },
+            })
+          }
+        >
+          <svg
+            aria-hidden="true"
+            fill="none"
+            focusable="false"
+            height={14}
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={1.4}
+            viewBox="0 0 16 16"
+            width={14}
+          >
+            <path d="M1.8 8s2.2-4 6.2-4 6.2 4 6.2 4-2.2 4-6.2 4-6.2-4-6.2-4Z" />
+            <circle cx="8" cy="8" r="1.8" />
+            {widget.behavior.enabled ? null : <path d="M3 13 13 3" />}
+          </svg>
+        </button>
       </div>
       <div className="inplace-inspector-panel__history">
         <button

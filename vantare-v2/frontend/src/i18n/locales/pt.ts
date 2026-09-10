@@ -88,7 +88,8 @@ export const pt: Record<string, string> = {
   // Widget Studio - New keys (P1 review fixes)
 
   "overlay.editMode.chip": "EDIT MODE",
-  "overlay.editMode.hint": "Ctrl+Shift+E para sair - arrasta para mover, Alt desativa o snap",
+  "overlay.editMode.done": "CONCLUIR",
+  "overlay.editMode.hint": "Botão direito: ações - setas movem - Alt desativa o snap - Ctrl+Shift+E ou Concluir para sair",
   "overlay.editMode.saveError": "Falha ao salvar - conflito com o editor do Hub. Reabra o perfil para continuar.",
   "overlay.editMode.panel.empty": "Selecione um widget para editar suas propriedades.",
   "overlay.editMode.panel.undo": "Desfazer",

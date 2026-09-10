@@ -1,5 +1,32 @@
 # Handoff vivo — Overlay Studio, Launcher y Hub
 
+## ISA-1123 — editor in-place C1: teclado, acciones y salida (2026-09-11)
+
+Isaac pidió iterar el editor in-place del overlay desktop (`Ctrl+Shift+E`)
+hacia paridad comprimida con Overlay Studio; se aprobó el Corte 1 de cuatro
+(teclado + acciones de widget + salida visible). Issue
+[#1123](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1123),
+rama `vantareapp/isa-1123-inplace-editor-c1`, worktree propio
+`vantare-isa1123`, base `origin/nightly@131471ff`.
+
+Implementado reutilizando el modelo de comandos del Studio sin capas nuevas:
+`getStudioHotkey` cableado en la rama de edición (undo/redo, `Ctrl+D`,
+`Delete` con `StudioConfirmProvider`, flechas 1/8 px, `Esc` deselecciona en
+idle, `Tab` cicla, `Ctrl+S` guarda), menú contextual `WidgetContextMenu` por
+click derecho, toggle de visibilidad en la cabecera del inspector
+(`widget/behavior`/`enabled`), botón Done que emite `overlay:toggle-edit-mode`,
+deselect al pulsar el fondo y `interactionActive` real en el autosave. Fix
+incluido: `useInplaceAutosave` ahora vacía `coalesced` al terminar el gesto —
+sin ese flush, un save diferido por gesto activo nunca llegaba. También se
+cargan `orbit-kit.css`/`orbit-studio.css` en la ventana overlay: el panel
+in-place existía desde F2 pero sin el CSS del inspector compartido.
+
+Verificación: 3343 tests frontend PASS (424 archivos), typecheck, build y
+lint focal PASS, `git diff --check` limpio. Pendiente de PR draft a nightly;
+sin prueba física LMU en este corte. Cortes siguientes no entregados: panel
+colapsable/reubicable y layout numérico (C2), añadir widget y selector de
+sesión (C3), diseños y acciones de restauración (C4).
+
 ## ISA-1101 — integración inicial autorizada a nightly (2026-09-10)
 
 Isaac solicita «antes de continuar mergea tu trabajo a nightly». Este corte

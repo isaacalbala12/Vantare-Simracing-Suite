@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ProfileDocumentV3 } from "../core/profile-document";
 import { createTestTelemetryCoordinator } from "../../hub/overlay-studio/test-helpers";
 import { deltaDefinition } from "../widget-types/delta/delta-definition";
+import { pedalsDefinition } from "../widget-types/pedals/pedals-definition";
 import { InPlaceEditOverlay } from "./InPlaceEditOverlay";
 import goldenV2Raw from "../../../../internal/telemetry/projection/overlayv2/testdata/overlay_v2_1.golden.json?raw";
 import type { OverlayUpdateV2 } from "../../generated/telemetry";
@@ -82,6 +83,21 @@ function buildDocument(): ProfileDocumentV3 {
   };
 }
 
+function buildTwoWidgetDocument(): ProfileDocumentV3 {
+  const base = buildDocument();
+  const second = pedalsDefinition.createDefault("pedals-second");
+  second.layout = { x: 600, y: 600, w: 280, h: 96, zIndex: 1, aspectLocked: true };
+  return {
+    ...base,
+    layouts: {
+      general: {
+        type: "general",
+        widgets: [...base.layouts.general.widgets, second],
+      },
+    },
+  };
+}
+
 function buildRaceDocument(): ProfileDocumentV3 {
   const base = buildDocument();
   return {
@@ -135,6 +151,15 @@ async function mockSceneAndWaitForFrame(frameTestId: string) {
 
 function saveCalls() {
   return runtimeMock.emit.mock.calls.filter(([name]) => name === "overlay:edit-layout:save");
+}
+
+/**
+ * El drenaje de saves comparte una sola peticion en vuelo: el siguiente emit
+ * solo ocurre cuando el anterior resuelve con studio:profile:saved.
+ */
+function resolveSave(index: number, revision: string, document: ProfileDocumentV3) {
+  const payload = saveCalls()[index][1] as { requestId: string };
+  dispatch("studio:profile:saved", { requestId: payload.requestId, revision, document });
 }
 
 beforeEach(() => {
@@ -300,6 +325,179 @@ describe("InPlaceEditOverlay", () => {
     await waitFor(() => expect(saveCalls()).toHaveLength(1));
     const payload = saveCalls()[0][1] as { expectedRevision: string };
     expect(payload.expectedRevision).toBe("rev-1");
+  });
+
+  it("emits overlay:toggle-edit-mode when the Done button is clicked", async () => {
+    renderOverlay(buildDocument());
+    await mockSceneAndWaitForFrame("inplace-edit-frame-delta-main");
+
+    fireEvent.click(screen.getByTestId("edit-mode-done"));
+
+    expect(runtimeMock.emit).toHaveBeenCalledWith("overlay:toggle-edit-mode");
+  });
+
+  it("moves the selected widget with arrow keys (1px, Shift 8px)", async () => {
+    renderOverlay(buildDocument());
+    await mockSceneAndWaitForFrame("inplace-edit-frame-delta-main");
+
+    const frame = screen.getByTestId("inplace-edit-frame-delta-main") as HTMLElement;
+    fireEvent.pointerDown(frame, { pointerId: 1, button: 0, clientX: 100, clientY: 100, bubbles: true });
+    fireEvent.pointerUp(window, { pointerId: 1, bubbles: true });
+    await waitFor(() => expect(screen.getByTestId("inplace-inspector-panel")).toBeTruthy());
+    expect(screen.queryByTestId("inplace-inspector-empty")).toBeNull();
+
+    fireEvent.keyDown(window, { key: "ArrowRight" });
+    fireEvent.keyDown(window, { key: "ArrowDown", shiftKey: true });
+
+    await waitFor(() => expect(saveCalls()).toHaveLength(1));
+    resolveSave(0, "rev-2", buildDocument());
+    await waitFor(() => expect(saveCalls().length).toBeGreaterThanOrEqual(2));
+    const payload = saveCalls()[1][1] as { document: ProfileDocumentV3 };
+    expect(payload.document.layouts.general.widgets[0].layout.x).toBe(101);
+    expect(payload.document.layouts.general.widgets[0].layout.y).toBe(108);
+  });
+
+  it("undoes and redoes with Ctrl+Z / Ctrl+Y", async () => {
+    renderOverlay(buildDocument());
+    await mockSceneAndWaitForFrame("inplace-edit-frame-delta-main");
+
+    const frame = screen.getByTestId("inplace-edit-frame-delta-main") as HTMLElement;
+    fireEvent.pointerDown(frame, { pointerId: 1, button: 0, clientX: 100, clientY: 100, bubbles: true });
+    fireEvent.pointerMove(window, { pointerId: 1, clientX: 148, clientY: 148, bubbles: true });
+    fireEvent.pointerUp(window, { pointerId: 1, bubbles: true });
+    await waitFor(() => expect(saveCalls()).toHaveLength(1));
+    resolveSave(0, "rev-2", buildDocument());
+
+    fireEvent.keyDown(window, { key: "z", ctrlKey: true });
+    await waitFor(() => expect(saveCalls().length).toBeGreaterThanOrEqual(2));
+    const undoPayload = saveCalls()[1][1] as { document: ProfileDocumentV3 };
+    expect(undoPayload.document.layouts.general.widgets[0].layout.x).toBe(100);
+    resolveSave(1, "rev-3", buildDocument());
+
+    fireEvent.keyDown(window, { key: "y", ctrlKey: true });
+    await waitFor(() => expect(saveCalls().length).toBeGreaterThanOrEqual(3));
+    const redoPayload = saveCalls()[2][1] as { document: ProfileDocumentV3 };
+    expect(redoPayload.document.layouts.general.widgets[0].layout.x).toBe(152);
+  });
+
+  it("duplicates the selected widget with Ctrl+D", async () => {
+    renderOverlay(buildTwoWidgetDocument());
+    await mockSceneAndWaitForFrame("inplace-edit-frame-delta-main");
+    await waitFor(() => expect(screen.getByTestId("inplace-edit-frame-pedals-second")).toBeTruthy());
+
+    const frame = screen.getByTestId("inplace-edit-frame-pedals-second") as HTMLElement;
+    fireEvent.pointerDown(frame, { pointerId: 1, button: 0, clientX: 600, clientY: 600, bubbles: true });
+    fireEvent.pointerUp(window, { pointerId: 1, bubbles: true });
+
+    fireEvent.keyDown(window, { key: "d", ctrlKey: true });
+
+    await waitFor(() =>
+      expect(screen.getByTestId("inplace-edit-frame-pedals-second-copy")).toBeTruthy(),
+    );
+  });
+
+  it("deselects with Escape and does not interrupt an active drag", async () => {
+    renderOverlay(buildDocument());
+    await mockSceneAndWaitForFrame("inplace-edit-frame-delta-main");
+
+    const frame = screen.getByTestId("inplace-edit-frame-delta-main") as HTMLElement;
+    fireEvent.pointerDown(frame, { pointerId: 1, button: 0, clientX: 100, clientY: 100, bubbles: true });
+    fireEvent.pointerMove(window, { pointerId: 1, clientX: 148, clientY: 148, bubbles: true });
+
+    // Durante el gesto, un hotkey no deselecciona ni deshace: el Esc lo
+    // consume el gesto como cancelacion.
+    fireEvent.keyDown(window, { key: "z", ctrlKey: true });
+    fireEvent.pointerUp(window, { pointerId: 1, bubbles: true });
+    await waitFor(() => expect(saveCalls()).toHaveLength(1));
+
+    fireEvent.keyDown(window, { key: "Escape" });
+    await waitFor(() => expect(screen.getByTestId("inplace-inspector-empty")).toBeTruthy());
+  });
+
+  it("cycles widget selection with Tab", async () => {
+    renderOverlay(buildTwoWidgetDocument());
+    await mockSceneAndWaitForFrame("inplace-edit-frame-delta-main");
+    await waitFor(() => expect(screen.getByTestId("inplace-edit-frame-pedals-second")).toBeTruthy());
+
+    fireEvent.keyDown(window, { key: "Tab" });
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("inplace-inspector-panel").getAttribute("data-widget-id"),
+      ).toBe("delta-main"),
+    );
+
+    fireEvent.keyDown(window, { key: "Tab" });
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("inplace-inspector-panel").getAttribute("data-widget-id"),
+      ).toBe("pedals-second"),
+    );
+  });
+
+  it("opens the context menu on right-click and duplicates from it", async () => {
+    renderOverlay(buildTwoWidgetDocument());
+    await mockSceneAndWaitForFrame("inplace-edit-frame-delta-main");
+    await waitFor(() => expect(screen.getByTestId("inplace-edit-frame-pedals-second")).toBeTruthy());
+
+    const scene = screen.getByTestId("inplace-edit-scene") as HTMLElement;
+    fireEvent.contextMenu(scene, { clientX: 650, clientY: 650, bubbles: true });
+
+    await waitFor(() => expect(screen.getByTestId("studio-widget-context-menu")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("studio-context-action-duplicate"));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("inplace-edit-frame-pedals-second-copy")).toBeTruthy(),
+    );
+  });
+
+  it("deletes the selected widget through the context menu with confirmation", async () => {
+    renderOverlay(buildDocument());
+    await mockSceneAndWaitForFrame("inplace-edit-frame-delta-main");
+
+    const scene = screen.getByTestId("inplace-edit-scene") as HTMLElement;
+    fireEvent.contextMenu(scene, { clientX: 150, clientY: 150, bubbles: true });
+    await waitFor(() => expect(screen.getByTestId("studio-widget-context-menu")).toBeTruthy());
+
+    fireEvent.click(screen.getByTestId("studio-context-action-delete"));
+    await waitFor(() => expect(screen.getByTestId("studio-delete-widget-confirm")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("studio-delete-widget-confirm"));
+
+    await waitFor(() => expect(screen.queryByTestId("inplace-edit-frame-delta-main")).toBeNull());
+  });
+
+  it("keeps keyboard shortcuts inert while typing in an inspector field", async () => {
+    renderOverlay(buildTwoWidgetDocument());
+    await mockSceneAndWaitForFrame("inplace-edit-frame-delta-main");
+    await waitFor(() => expect(screen.getByTestId("inplace-edit-frame-pedals-second")).toBeTruthy());
+
+    const frame = screen.getByTestId("inplace-edit-frame-pedals-second") as HTMLElement;
+    fireEvent.pointerDown(frame, { pointerId: 1, button: 0, clientX: 600, clientY: 600, bubbles: true });
+    fireEvent.pointerUp(window, { pointerId: 1, bubbles: true });
+    await waitFor(() => expect(screen.getByTestId("inplace-inspector-panel")).toBeTruthy());
+
+    const input = document.createElement("input");
+    screen.getByTestId("inplace-inspector-panel").appendChild(input);
+    fireEvent.keyDown(input, { key: "d", ctrlKey: true, bubbles: true });
+    fireEvent.keyDown(input, { key: "Delete", bubbles: true });
+    input.remove();
+
+    expect(screen.queryByTestId("inplace-edit-frame-pedals-second-copy")).toBeNull();
+    expect(screen.queryByTestId("studio-delete-widget-dialog")).toBeNull();
+  });
+
+  it("toggles widget visibility from the inspector header", async () => {
+    renderOverlay(buildDocument());
+    await mockSceneAndWaitForFrame("inplace-edit-frame-delta-main");
+
+    const frame = screen.getByTestId("inplace-edit-frame-delta-main") as HTMLElement;
+    fireEvent.pointerDown(frame, { pointerId: 1, button: 0, clientX: 100, clientY: 100, bubbles: true });
+    fireEvent.pointerUp(window, { pointerId: 1, bubbles: true });
+    await waitFor(() => expect(screen.getByTestId("inplace-widget-visibility")).toBeTruthy());
+
+    fireEvent.click(screen.getByTestId("inplace-widget-visibility"));
+    await waitFor(() =>
+      expect(screen.getByTestId("inplace-edit-hidden-badge-delta-main")).toBeTruthy(),
+    );
   });
 
   it("keeps imperative preview and frozen telemetry across StudioProvider rerenders during drag", async () => {

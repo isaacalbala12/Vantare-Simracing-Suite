@@ -1,6 +1,7 @@
-﻿import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+﻿import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import type { ProfileDocumentV3, SessionLayoutType, WidgetLayoutV3 } from "../core/profile-document";
 import { useSyncExternalStore } from "react";
+import { Events } from "@wailsio/runtime";
 import {
   MAX_LAYOUT_VIEWPORT_DIMENSION,
   resolveLayoutViewport,
@@ -20,6 +21,22 @@ import { createInPlaceProfileClient } from "./inplace-profile-client";
 import { createWailsStudioEventTransport } from "../../hub/overlay-studio/state/studio-profile-client";
 import { useI18n } from "../../i18n/I18nProvider";
 import { EMPTY_RACE_SCHEDULE_SNAPSHOT, type RaceScheduleStore } from "../core/race-schedule-store";
+import { getStudioHotkey, isEditableTarget } from "../../hub/overlay-studio/state/studio-hotkeys";
+import {
+  buildWidgetMoveCommand,
+  executeWidgetAction,
+  findWidgetsAtPoint,
+  mapHotkeyToWidgetAction,
+} from "../../hub/overlay-studio/canvas/widget-actions";
+import { clientToLogical } from "../../hub/overlay-studio/canvas/canvas-geometry";
+import {
+  WidgetContextMenu,
+  type WidgetContextMenuState,
+} from "../../hub/overlay-studio/canvas/WidgetContextMenu";
+import { StudioConfirmProvider } from "../../hub/overlay-studio/components/StudioConfirmProvider";
+import { useDeleteWidgetConfirm } from "../../hub/overlay-studio/components/studio-confirm";
+import "../../styles/orbit-kit.css";
+import "../../styles/orbit-studio.css";
 import "./inplace-edit.css";
 
 export type InPlaceEditOverlayProps = {
@@ -47,14 +64,16 @@ export function InPlaceEditOverlay(props: InPlaceEditOverlayProps): React.ReactE
       recoveryStorage={null}
       access={access}
     >
-      <InPlaceEditOverlayContent
-        document={document}
-        layoutOrigin={layoutOrigin}
-        telemetry={telemetry}
-        access={access}
-        licenseLoading={licenseLoading ?? false}
-        raceSchedule={raceSchedule}
-      />
+      <StudioConfirmProvider>
+        <InPlaceEditOverlayContent
+          document={document}
+          layoutOrigin={layoutOrigin}
+          telemetry={telemetry}
+          access={access}
+          licenseLoading={licenseLoading ?? false}
+          raceSchedule={raceSchedule}
+        />
+      </StudioConfirmProvider>
     </StudioProvider>
   );
 }
@@ -64,6 +83,7 @@ function InPlaceEditOverlayContent(props: Omit<InPlaceEditOverlayProps, "revisio
   const { t } = useI18n();
   const {
     document: storeDocument,
+    savedDocument,
     dispatch,
     selectWidget,
     save,
@@ -72,7 +92,9 @@ function InPlaceEditOverlayContent(props: Omit<InPlaceEditOverlayProps, "revisio
     saveState,
   } = useStudioDocument();
   const [selectedWidgetIdLocal, setSelectedWidgetIdLocal] = useState<string | null>(null);
+  const [contextMenu, setContextMenu] = useState<WidgetContextMenuState | null>(null);
   const surfaceRef = useRef<HTMLDivElement>(null);
+  const sceneRef = useRef<HTMLDivElement>(null);
   const [outputViewport, setOutputViewport] = useState<ViewportSize | null>(null);
   const runtimeContext = useOverlayRuntimeContext(telemetry);
   const raceScheduleSnapshot = useSyncExternalStore(
@@ -89,13 +111,13 @@ function InPlaceEditOverlayContent(props: Omit<InPlaceEditOverlayProps, "revisio
 
   const editingSession = layout.type as SessionLayoutType;
 
-  const autosave = useInplaceAutosave({
-    dispatch,
-    undo,
-    redo,
-    save,
-    interactionActive: false,
-  });
+  const handleSelect = useCallback(
+    (widgetId: string | null) => {
+      setSelectedWidgetIdLocal(widgetId);
+      selectWidget(widgetId);
+    },
+    [selectWidget],
+  );
 
   const interaction = useInplaceInteraction({
     widgets,
@@ -115,10 +137,15 @@ function InPlaceEditOverlayContent(props: Omit<InPlaceEditOverlayProps, "revisio
         ),
       });
     },
-    onSelect: (widgetId) => {
-      setSelectedWidgetIdLocal(widgetId);
-      selectWidget(widgetId);
-    },
+    onSelect: handleSelect,
+  });
+
+  const autosave = useInplaceAutosave({
+    dispatch,
+    undo,
+    redo,
+    save,
+    interactionActive: interaction.isInteractionActive,
   });
 
   useLayoutEffect(() => {
@@ -186,15 +213,178 @@ function InPlaceEditOverlayContent(props: Omit<InPlaceEditOverlayProps, "revisio
     ? widgets.find((widget) => widget.id === selectedWidgetIdLocal) ?? null
     : null;
 
+  const deleteConfirm = useDeleteWidgetConfirm();
+  const confirmDelete = useCallback((message: string) => window.confirm(message), []);
+  const closeContextMenu = useCallback(() => setContextMenu(null), []);
+  const autosaveDispatch = autosave.dispatch;
+  const autosaveUndo = autosave.undo;
+  const autosaveRedo = autosave.redo;
+
+  const handleSceneContextMenu = useCallback(
+    (event: React.MouseEvent<HTMLDivElement>) => {
+      if (!savedDocument || !transform) {
+        return;
+      }
+      const rect = sceneRef.current?.getBoundingClientRect();
+      if (!rect) {
+        return;
+      }
+      event.preventDefault();
+      const logical = clientToLogical(
+        { x: event.clientX, y: event.clientY },
+        rect,
+        transform.scale,
+      );
+      const hits = findWidgetsAtPoint(widgets, logical);
+      if (hits.length === 0) {
+        setContextMenu(null);
+        return;
+      }
+      const target = hits[0];
+      handleSelect(target.id);
+      setContextMenu({
+        x: event.clientX,
+        y: event.clientY,
+        widgetId: target.id,
+        layerWidgetIds: hits.map((widget) => widget.id),
+      });
+    },
+    [handleSelect, savedDocument, transform, widgets],
+  );
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (interaction.isInteractionActive || contextMenu) {
+        return;
+      }
+      if (isEditableTarget(event.target)) {
+        return;
+      }
+
+      if (event.key === "Tab" && !event.ctrlKey && !event.metaKey && !event.altKey) {
+        if (widgets.length === 0) {
+          return;
+        }
+        event.preventDefault();
+        const currentIndex = widgets.findIndex((widget) => widget.id === selectedWidgetIdLocal);
+        const step = event.shiftKey ? -1 : 1;
+        const nextIndex =
+          currentIndex < 0 ? 0 : (currentIndex + step + widgets.length) % widgets.length;
+        handleSelect(widgets[nextIndex].id);
+        return;
+      }
+
+      const hotkey = getStudioHotkey(event);
+      if (!hotkey) {
+        return;
+      }
+      if (hotkey === "save") {
+        event.preventDefault();
+        void save();
+        return;
+      }
+      if (hotkey === "undo") {
+        event.preventDefault();
+        autosaveUndo();
+        return;
+      }
+      if (hotkey === "redo") {
+        event.preventDefault();
+        autosaveRedo();
+        return;
+      }
+      if (hotkey === "escape") {
+        handleSelect(null);
+        return;
+      }
+      if (!selectedWidgetIdLocal || !savedDocument) {
+        return;
+      }
+
+      const mapped = mapHotkeyToWidgetAction(hotkey);
+      if (mapped === "keyboard-move") {
+        if (
+          hotkey !== "move-up" &&
+          hotkey !== "move-down" &&
+          hotkey !== "move-left" &&
+          hotkey !== "move-right"
+        ) {
+          return;
+        }
+        const command = buildWidgetMoveCommand({
+          session: editingSession,
+          widgetIds: [selectedWidgetIdLocal],
+          hotkey,
+          shiftKey: event.shiftKey,
+          widgets,
+        });
+        if (command) {
+          event.preventDefault();
+          autosaveDispatch(command);
+        }
+        return;
+      }
+      if (!mapped) {
+        return;
+      }
+
+      event.preventDefault();
+      executeWidgetAction({
+        actionId: mapped,
+        session: editingSession,
+        widgetIds: [selectedWidgetIdLocal],
+        widgets,
+        savedDocument,
+        layoutViewport,
+        dispatch: autosaveDispatch,
+        selectWidget: handleSelect,
+        confirmDelete,
+        requestDeleteConfirm: deleteConfirm?.request,
+        deleteMessage: t("studio.v3.widgetActions.deleteConfirm"),
+      });
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [
+    autosaveDispatch,
+    autosaveRedo,
+    autosaveUndo,
+    confirmDelete,
+    contextMenu,
+    deleteConfirm?.request,
+    editingSession,
+    handleSelect,
+    interaction.isInteractionActive,
+    layoutViewport,
+    save,
+    savedDocument,
+    selectedWidgetIdLocal,
+    t,
+    widgets,
+  ]);
+
   return (
-    <div ref={surfaceRef} data-testid="inplace-edit-overlay" style={{ position: "relative", width: "100%", height: "100%", overflow: "hidden", background: "transparent" }}>
+    <div
+      ref={surfaceRef}
+      data-testid="inplace-edit-overlay"
+      style={{ position: "relative", width: "100%", height: "100%", overflow: "hidden", background: "transparent" }}
+      onPointerDown={() => {
+        if (!interaction.isInteractionActive) {
+          handleSelect(null);
+          setContextMenu(null);
+        }
+      }}
+    >
       {transform && sceneStyle ? (
         <div
+          ref={sceneRef}
           data-testid="inplace-edit-scene"
           data-layout-width={layoutViewport.width}
           data-layout-height={layoutViewport.height}
           data-scale={transform.scale}
           style={sceneStyle}
+          onContextMenu={handleSceneContextMenu}
         >
           {widgets.map((widget) => (
             <InPlaceWidgetEditFrame
@@ -207,7 +397,7 @@ function InPlaceEditOverlayContent(props: Omit<InPlaceEditOverlayProps, "revisio
               layoutOrigin={layoutOrigin}
               telemetry={telemetry}
               raceSchedule={raceScheduleSnapshot}
-              onSelect={setSelectedWidgetIdLocal}
+              onSelect={handleSelect}
               onFramePointerDown={interaction.onFramePointerDown}
               onResizePointerDown={interaction.onResizePointerDown}
               onLostPointerCapture={interaction.onLostPointerCapture}
@@ -232,25 +422,52 @@ function InPlaceEditOverlayContent(props: Omit<InPlaceEditOverlayProps, "revisio
         </div>
       ) : null}
       <div
-        data-testid="edit-mode-chip"
         style={{
           position: "fixed",
           top: 12,
           left: 12,
           zIndex: 5000,
-          padding: "4px 10px",
-          borderRadius: 4,
-          background: "rgba(0, 0, 0, 0.6)",
-          border: "1px solid rgba(255, 255, 255, 0.12)",
-          color: "#e63946",
-          fontFamily: "ui-monospace, monospace",
-          fontSize: 10,
-          letterSpacing: "0.08em",
+          display: "flex",
+          gap: 8,
+          alignItems: "center",
           userSelect: "none",
-          pointerEvents: "none",
         }}
+        onPointerDown={(event) => event.stopPropagation()}
       >
-        {t("overlay.editMode.chip")}
+        <span
+          data-testid="edit-mode-chip"
+          style={{
+            padding: "4px 10px",
+            borderRadius: 4,
+            background: "rgba(0, 0, 0, 0.6)",
+            border: "1px solid rgba(255, 255, 255, 0.12)",
+            color: "#e63946",
+            fontFamily: "ui-monospace, monospace",
+            fontSize: 10,
+            letterSpacing: "0.08em",
+            pointerEvents: "none",
+          }}
+        >
+          {t("overlay.editMode.chip")}
+        </span>
+        <button
+          type="button"
+          data-testid="edit-mode-done"
+          onClick={() => Events.Emit("overlay:toggle-edit-mode")}
+          style={{
+            padding: "4px 10px",
+            borderRadius: 4,
+            background: "rgba(230, 57, 70, 0.85)",
+            border: "1px solid rgba(255, 255, 255, 0.18)",
+            color: "#fff",
+            fontFamily: "ui-monospace, monospace",
+            fontSize: 10,
+            letterSpacing: "0.08em",
+            cursor: "pointer",
+          }}
+        >
+          {t("overlay.editMode.done")}
+        </button>
       </div>
       <div
         data-testid="edit-mode-hint"
@@ -297,6 +514,19 @@ function InPlaceEditOverlayContent(props: Omit<InPlaceEditOverlayProps, "revisio
         licenseLoading={licenseLoading}
         autosave={autosave}
       />
+      {savedDocument ? (
+        <WidgetContextMenu
+          menu={contextMenu}
+          session={editingSession}
+          widgets={widgets}
+          savedDocument={savedDocument}
+          layoutViewport={layoutViewport}
+          dispatch={autosave.dispatch}
+          selectWidget={handleSelect}
+          confirmDelete={confirmDelete}
+          onClose={closeContextMenu}
+        />
+      ) : null}
     </div>
   );
 }

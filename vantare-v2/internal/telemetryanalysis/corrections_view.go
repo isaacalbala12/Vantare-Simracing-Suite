@@ -13,6 +13,7 @@ type EffectiveCorrectionView struct {
 	SnapshotID  string
 	Pages       []HistoricalPage
 	Corrections []PreparedSampleCorrection
+	FamilyUses  []PreparedLapFamilyUseCorrection
 }
 
 // ApplySampleCorrectionSnapshot requires complete coverage of the snapshot's
@@ -104,4 +105,43 @@ func ApplySampleCorrectionSnapshot(base SourceAnalysisRef, channels []Historical
 		}
 	}
 	return EffectiveCorrectionView{Base: base, SnapshotID: checked.SnapshotID, Pages: resultPages, Corrections: checked.Corrections}, nil
+}
+
+// ApplyObservationCorrectionSnapshot validates both operation sets against the
+// original authorized input. It retains the mixed identity; family decisions are
+// applied to reanalyzed laps by the derivation pipeline, never to raw pages.
+func ApplyObservationCorrectionSnapshot(base SourceAnalysisRef, channels []HistoricalChannel, pages []HistoricalPage, original LapValidityAnalysis, snapshot PreparedSampleCorrectionSnapshot) (EffectiveCorrectionView, error) {
+	if len(snapshot.FamilyUses) == 0 {
+		return ApplySampleCorrectionSnapshot(base, channels, pages, snapshot)
+	}
+	var empty EffectiveCorrectionView
+	if len(snapshot.Corrections)+len(snapshot.FamilyUses) > MaxSampleCorrections {
+		return empty, ErrInvalidCorrection
+	}
+	scalar, err := canonicalSampleCorrectionSnapshot(snapshot.Base, snapshot.Corrections)
+	if err != nil {
+		return empty, err
+	}
+	view, err := ApplySampleCorrectionSnapshot(base, channels, pages, scalar)
+	if err != nil {
+		return empty, err
+	}
+	requests := make([]LapFamilyUseCorrection, len(snapshot.FamilyUses))
+	for i, family := range snapshot.FamilyUses {
+		requests[i] = family.Request
+	}
+	families, err := PrepareLapFamilyCorrections(base, original, requests)
+	if err != nil {
+		return empty, err
+	}
+	checked, err := combineObservationSnapshot(scalar, families)
+	if err != nil {
+		return empty, err
+	}
+	if !reflect.DeepEqual(checked, snapshot) {
+		return empty, fmt.Errorf("%w: observation snapshot integrity", ErrInvalidCorrection)
+	}
+	view.SnapshotID = checked.SnapshotID
+	view.FamilyUses = families
+	return view, nil
 }

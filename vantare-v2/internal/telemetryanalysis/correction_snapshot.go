@@ -105,6 +105,13 @@ func PrepareSampleCorrectionSnapshot(base SourceAnalysisRef, inputs []SampleCorr
 		}
 		return a.SampleIndex < b.SampleIndex
 	})
+	return canonicalSampleCorrectionSnapshot(base, corrections)
+}
+
+// Representation only: callers must validate the prepared scalars against their
+// authorized source before applying this projection of a mixed snapshot.
+func canonicalSampleCorrectionSnapshot(base SourceAnalysisRef, corrections []PreparedSampleCorrection) (PreparedSampleCorrectionSnapshot, error) {
+	var empty PreparedSampleCorrectionSnapshot
 	snapshot := PreparedSampleCorrectionSnapshot{ContractVersion: "analysis.sample-snapshot.v1", Base: base, Corrections: corrections}
 	// Exclude the self-referential ID from the canonical payload.
 	payload := struct {

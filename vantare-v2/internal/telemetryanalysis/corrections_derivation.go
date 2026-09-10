@@ -15,7 +15,7 @@ type CorrectedSessionDerivations struct {
 }
 
 // DeriveCorrectedSession reuses the current derivation pipeline after validating
-// and applying all scalar corrections. It introduces no quality thresholds and
+// and applying scalar and family corrections. It introduces no quality thresholds and
 // does not publish, persist, authorize sources or calculate a race strategy.
 func DeriveCorrectedSession(base SourceAnalysisRef, session HistoricalSession, pages []HistoricalPage, classified ClassifiedSession, snapshot PreparedSampleCorrectionSnapshot) (CorrectedSessionDerivations, error) {
 	var empty CorrectedSessionDerivations
@@ -25,13 +25,27 @@ func DeriveCorrectedSession(base SourceAnalysisRef, session HistoricalSession, p
 	if session.SchemaVersion != HistoricalSchemaVersion || session.Provenance.Parser.ID != base.ParserID || session.Provenance.Parser.Version != base.ParserVersion || session.Provenance.SchemaFingerprint != base.SchemaFingerprint {
 		return empty, ErrCorrectionInterpretationChanged
 	}
-	view, err := ApplySampleCorrectionSnapshot(base, session.Channels, pages, snapshot)
+	var original LapValidityAnalysis
+	if len(snapshot.FamilyUses) > 0 {
+		var err error
+		original, err = AnalyzeLapValidity(session, pages)
+		if err != nil {
+			return empty, fmt.Errorf("original validity: %w", err)
+		}
+	}
+	view, err := ApplyObservationCorrectionSnapshot(base, session.Channels, pages, original, snapshot)
 	if err != nil {
 		return empty, err
 	}
 	validity, err := AnalyzeLapValidity(session, view.Pages)
 	if err != nil {
 		return empty, fmt.Errorf("corrected validity: %w", err)
+	}
+	if len(view.FamilyUses) > 0 {
+		validity.Laps, err = ApplyLapFamilyCorrections(base, original, validity, view.FamilyUses)
+		if err != nil {
+			return empty, fmt.Errorf("corrected family use: %w", err)
+		}
 	}
 	consumption, err := DeriveSessionConsumptionPace(session, view.Pages, classified, validity)
 	if err != nil {

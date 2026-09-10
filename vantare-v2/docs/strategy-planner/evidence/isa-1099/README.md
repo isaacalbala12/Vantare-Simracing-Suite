@@ -64,3 +64,17 @@ Todavía no API/UI familiar ni derivación mixta pública. Siguiente T11e1 vista
 derivación de snapshot mixto, T11e2 identidad temporal en consumidores y T11e3
 inclusión explícita frente a exclusiones blandas. Sin cambiar umbrales físicos.
 Sin Wails/precision/visual >9/push/PR/CI remota/merge/promoción.
+
+## T11e1 — derivación de conjunto mixto
+
+Vista valida escalares contra páginas originales y familias contra la validez
+original; conserva el digest mixto completo. Derivación reanaliza las páginas
+corregidas y aplica después las decisiones familiares con objetivos exactos y
+puertas duras. No modifica originales ni acepta aplicación parcial. Compatibilidad
+escalar v1 intacta. Pruebas de manipulación, cobertura ausente, copia separada,
+versión desconocida y exclusión de ritmo sin cambiar otras familias PASS.
+Global Go -p1 y vet app/Analysis/Strategy/cmd PASS; cinco paths lógica/test.
+Sigue T11e2: identidad temporal completa en el consumidor de curvas, después
+T11e3 inclusión explícita frente a tráfico. API/UI mixta aún no habilitadas.
+Sin frontend modificado, Wails, banco real, precisión, nota visual, push/PR/CI
+remota, merge o promoción. Logs locales isa1099-t11e1-go-all.log y -vet.log.

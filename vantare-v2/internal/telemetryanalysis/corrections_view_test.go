@@ -122,3 +122,44 @@ func TestCorrectionViewAppliesEveryColumnWithoutChangingTime(t *testing.T) {
 		t.Fatal("stale analysis", err)
 	}
 }
+
+func TestObservationViewValidatesWholeSnapshot(t *testing.T) {
+	base, validity, family := lapFamilyCorrectionExample(t)
+	_, ch, sample, request := correctionExample()
+	request.Base = base
+	pages := []HistoricalPage{{ChannelID: ch.ID, Samples: []HistoricalSample{sample}}}
+	snapshot, err := PrepareObservationCorrectionSnapshot(base, []SampleCorrectionInput{{Channel: ch, Sample: sample, Request: request}}, validity, []LapFamilyUseCorrection{family})
+	if err != nil {
+		t.Fatal(err)
+	}
+	view, err := ApplyObservationCorrectionSnapshot(base, []HistoricalChannel{ch}, pages, validity, snapshot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if view.SnapshotID != snapshot.SnapshotID || len(view.FamilyUses) != 1 || view.Pages[0].Samples[0].Values[0] != snapshot.Corrections[0].Corrected {
+		t.Fatal("lost mixed content or identity")
+	}
+	view.FamilyUses[0].Corrected.ExclusionReasons[0] = "caller mutation"
+	if snapshot.FamilyUses[0].Corrected.ExclusionReasons[0] != LapExclusionManual {
+		t.Fatal("family view aliases snapshot")
+	}
+	for _, mutate := range []func(*PreparedSampleCorrectionSnapshot){
+		func(s *PreparedSampleCorrectionSnapshot) { s.SnapshotID = "wrong" },
+		func(s *PreparedSampleCorrectionSnapshot) { s.ContractVersion = "analysis.sample-snapshot.v1" },
+		func(s *PreparedSampleCorrectionSnapshot) { s.FamilyUses = nil },
+		func(s *PreparedSampleCorrectionSnapshot) { s.Corrections = nil },
+	} {
+		altered := snapshot
+		mutate(&altered)
+		got, err := ApplyObservationCorrectionSnapshot(base, []HistoricalChannel{ch}, pages, validity, altered)
+		if err == nil || !reflect.DeepEqual(got, EffectiveCorrectionView{}) {
+			t.Fatal("partial/tampered accepted", err)
+		}
+	}
+	if _, err := ApplyObservationCorrectionSnapshot(base, []HistoricalChannel{ch}, nil, validity, snapshot); !errors.Is(err, ErrCorrectionTarget) {
+		t.Fatal("missing scalar coverage", err)
+	}
+	if _, err := ApplyObservationCorrectionSnapshot(base, []HistoricalChannel{ch}, pages, LapValidityAnalysis{}, snapshot); err == nil {
+		t.Fatal("missing original model accepted")
+	}
+}

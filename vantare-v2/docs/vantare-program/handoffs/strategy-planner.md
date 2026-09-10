@@ -1,6 +1,6 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — T12g3e revisado, siguiente T12g3e2; montaje G3f pendiente
+## Estado vigente — T12g3e2 revisado, siguiente montaje T12g3f
 
 Isaac confirma que planes y documentación siguen a cargo del orquestador.
 R19/A17/execution actualizados: Muse Spark 1.3 Contributor vía OpenCode, xhigh,
@@ -8,7 +8,7 @@ ejecuta sólo código/tests asignados, sin subdelegación ni cambios de planes,
 docs o issue. Un ejecutor por worktree; revisión personal antes de aceptar.
 Rama `vantareapp/isa-1104-recorded-classification`, base exacta
 `7f757135445439851180fc503da45f7eb9e557e7`; último código revisado
-`7528f1b8ee179b4d31b142708fb4a141c5be8bee`, limpio al revisar. A/B1/B2/C1/C2/D1/D2/E/F/G1/G2/G3a/G3b/G3c/G3e
+`ce26fa8f25954d065c2ab644b71fb0ddb4a38d26`, limpio al revisar. A/B1/B2/C1/C2/D1/D2/E/F/G1/G2/G3a/G3b/G3c/G3e/G3e2
 aceptados localmente tras lectura de diff y evidencia (B1/B2: 126 paquetes Go
 PASS cada uno, vet exit 0; rutas en entradas siguientes). T12 sigue abierto.
 
@@ -24,8 +24,9 @@ el mismo ciclo y sin datos obsoletos. G3d ya actualiza cuatro locales para los
 estados de inspección/selección; G3e usa referencias reales para Datos/Revisiones.
 Auditor i18n aún exit 1 por tres claves nuevas sin consumidores. La prop nueva
 todavía no se conecta desde Workflow: hasta G3f las acciones de carrera quedan
-bloqueadas por defecto. Antes de ese montaje, G3e2 omite el intento automático
-de proyección tras guardar una fuente conocida no proyectable (hallazgo root).
+bloqueadas por defecto. G3e2 ya omite el intento automático de proyección tras
+guardar una fuente conocida no proyectable (hallazgo root). Siguiente G3f:
+conexión completa biblioteca/editor/asistente y gates conjuntos.
 Microplan G3a–f escrito por el orquestador: apertura, dueño, textos, estado
 real de selección en Datos/Revisiones y entrada desde biblioteca al mismo A4.
 Una sesión abierta para revisar no pasa a estar usada por la carrera; sin
@@ -42,6 +43,27 @@ Sin push, PR, CI remota, integración ni promoción. No se reabre app/LMU; gate
 Wails sigue pendiente por ERROR_INVALID_STATE de causa no demostrada.
 
 Las entradas siguientes son evidencia histórica; el estado vigente es éste.
+
+## T12g3e2 — guardado de inspección sin error de preparación evitable
+
+Commit `ce26fa8f`, dos paths hook/test, +70/-1. Cambio productivo limitado a
+condicionar la proyección automática posterior a retainSaved: requiere ID de
+combinación y ausencia de causa de no proyección. La publicación del guardado,
+tres grupos, comando confirmado, Project explícito, Adopt y dueño no cambian.
+Las fuentes proyectables conservan errores inesperados y revisión duradera.
+
+RED previo real 3 fallos/25 PASS, 1.11s, exit 1: se llamaba a Project tras
+guardar/confirmar una fuente no proyectable. Tests nuevos de Save v3 confirmado,
+Resolve found tras respuesta perdida y marca con ID; contratos completos
+validados, fuente original y adopción intactas. Focal hook + dueño G3c:
+42 PASS/2.06s, typecheck producto/lint exit 0; diff limpio. Logs
+C:/tmp/isa1104-t12g3e2-{red,focal,typecheck,lint}.log leídos personalmente.
+No tests anteriores modificados ni fallos legítimos ocultos.
+
+Worker idle antes del commit. Orquestador precisa G3f (botón fuera de tablist,
+busy completo en biblioteca, formularios conservados entre tabs). Suite completa,
+build y auditor i18n se cierran en G3f; tres claves aún pendientes de consumo.
+Sin Go, banco real, Wails/app/LMU, push, PR, CI remota o promoción/release.
 
 ## T12g3e — selección real en Datos y Revisiones
 

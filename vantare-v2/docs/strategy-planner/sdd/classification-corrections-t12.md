@@ -542,6 +542,11 @@ disponibilidad de señal.
   inventada; errores del acceso nuevo se traducen, sin mostrar códigos internos.
   Tras G3e2, el guardado local de una fuente de inspección no llama a Project;
   la prueba de recorrido verifica esa ausencia y el guardado confirmado.
+  El botón de vuelta queda fuera de role=tablist, conservando Arrow/Home/End
+  y foco de las pestañas. La biblioteca recibe busy de flow completo (incluye
+  escritura de carrera), además del bloqueo de formularios. Reutilizar Button
+  y estilos existentes; no bloquear todas las pestañas ni desmontar formularios
+  al navegar entre ellas, porque ese comportamiento ya conserva lo pendiente.
 
   G3: focales/typecheck/lint por corte; global Go/vet para A. Suite frontend
   completa y build después de F antes de aceptar el montaje. G3A aislado

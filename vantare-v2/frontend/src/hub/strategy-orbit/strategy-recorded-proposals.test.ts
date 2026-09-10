@@ -35,3 +35,27 @@ it("does not bypass the selected calendar's canonical requirements", () => {
   const draft = { ...createRecordedWizardDraft(), calendar: { simulator: "lmu", version: 1, updated: "", capturedAt: "2026-09-10T00:00:00Z", series: { id: "race", name: "Race", tier: "advanced", licenseLabel: "Gold", track: "Monza", telemetryTrackName: "Monza", vehicleClass: "LMP2", classes: [{ name: "LMP2", telemetryClassName: "LMP2" }], setup: "fixed", durationMin: 120, splits: 1, assists: "", tyreWarmers: true, tyres: 12, recurrence: { kind: "weekly" } } } };
   expect(() => applyRecordedSourceSelection(draft, [session], [])).toThrow("not available");
 });
+const inspection = { candidateId: "candidate", opened: { sessionId: "handle" }, base: { sessionId: "source" }, revision: { sessionId: "source", baseDigest: "a".repeat(64), revisionId: "b".repeat(64), snapshotId: "c".repeat(64) }, projectionUnavailableReason: "metadata_unavailable" } as RecordedSession;
+it("resolves a projected session without a combination object against the catalog", () => {
+  const draft = { ...createRecordedWizardDraft(), step: "combination" as const };
+  const catalog = [{ combinationId: "combo", simId: "lmu", trackName: "Imola", trackLayout: "GP", carClass: "LMP2", carName: "Car" }];
+  const unresolved: RecordedSession = { ...session, combination: undefined };
+  const selected = applyRecordedSourceSelection(draft, [unresolved], catalog);
+  expect(selected.combination?.combinationId).toBe("combo");
+  expect(selected.sessions).toEqual([session.revision]);
+  expect(draft.sessions).toEqual([]);
+});
+it("offers no identity from a non-projectable source", () => {
+  expect(recordedCombinationOptions([], [inspection])).toEqual([]);
+  expect(recordedCombinationOptions([], [{ ...inspection, combinationId: "combo", combination: session.combination }])).toEqual([]);
+});
+it("rejects inspection sessions for race selection even with an identity attached", () => {
+  const draft = createRecordedWizardDraft();
+  const markedId = { ...inspection, combinationId: "combo" };
+  const markedFull = { ...inspection, combinationId: "combo", combination: session.combination };
+  for (const candidate of [inspection, markedId, markedFull, { ...session, combinationId: "" }]) {
+    expect(() => applyRecordedSourceSelection(draft, [candidate], [])).toThrow("recorded_combination_unavailable");
+  }
+  expect(() => applyRecordedSourceSelection(draft, [session, markedId], [])).toThrow("recorded_combination_unavailable");
+  expect(draft.sessions).toEqual([]);
+});

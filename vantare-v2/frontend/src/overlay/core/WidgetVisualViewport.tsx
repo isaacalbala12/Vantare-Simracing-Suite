@@ -27,7 +27,8 @@ export function WidgetVisualViewport(props: {
   testId: string;
   children: ReactNode;
 }): React.ReactElement {
-  const fluidWidth = isFluidRedlineStandings(props.widgetType, props.visual);
+  const fluidWidth = isFluidRedlineStandings(props.widgetType, props.visual)
+    || (props.widgetType === "standings" && props.visual?.systemId === "vantare-functional");
   const geometry = fluidWidth
     ? resolveWidgetVisualGeometry(props.layout, props.visualBaseWidth ?? props.layout.w)
     : resolveWidgetVisualGeometryForType(props.layout, props.widgetType);

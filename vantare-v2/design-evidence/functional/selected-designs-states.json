@@ -1,0 +1,36 @@
+[
+  {
+    "template": "signature",
+    "weights": {
+      "gap": "500",
+      "best": "650"
+    },
+    "stale": {
+      "state": "stale",
+      "rows": 10,
+      "notice": "DATOS ANTIGUOS"
+    },
+    "disconnected": {
+      "state": "disconnected",
+      "rows": 0,
+      "notice": "DESCONECTADO"
+    }
+  },
+  {
+    "template": "broadcast",
+    "weights": {
+      "gap": "500",
+      "best": "650"
+    },
+    "stale": {
+      "state": "stale",
+      "rows": 10,
+      "notice": "DATOS ANTIGUOS"
+    },
+    "disconnected": {
+      "state": "disconnected",
+      "rows": 0,
+      "notice": "DESCONECTADO"
+    }
+  }
+]

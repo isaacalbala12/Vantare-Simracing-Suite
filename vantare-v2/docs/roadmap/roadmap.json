@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-08T14:19:49Z",
+  "generatedAt": "2026-09-10T02:34:46Z",
   "digest": {
-    "lastCommit": "d6d0992f8dbc800ccb6d75f60fffdc7c3d561da2"
+    "lastCommit": "b6b5754eee059bc239fce18c08b39adae8c553fa"
   },
   "phases": [
     {
@@ -1312,6 +1312,50 @@
       }
     },
     {
+      "id": "functional-widget-design",
+      "type": "feature",
+      "title": {
+        "es": "Sistema de diseño Eficiencia",
+        "en": "Efficiency widget design system",
+        "pt": "Sistema de design Eficiência",
+        "it": "Sistema di design Efficienza"
+      },
+      "body": {
+        "es": "Eficiencia ofrece los estilos Signature y Broadcast para Standings desde Studio, con transparencia suave, identidad Vantare, tipografía unificada y selección neutra. Los perfiles y diseños guardan esta selección; el marco adapta columnas y filas en Studio, Desktop y OBS. Entrega opt-in en rama de issue, pendiente de validación física e integración a Nightly. La política de marca según licencia se desarrolla por separado.",
+        "en": "Efficiency offers Signature and Broadcast styles for Standings in Studio, with subtle transparency, Vantare identity, unified typography and neutral selection. Profiles and designs preserve this choice; the frame fits columns and rows across Studio, Desktop and OBS. Opt-in delivery on an issue branch, pending physical validation and Nightly integration. License-based branding is a separate delivery.",
+        "pt": "Eficiência oferece os estilos Signature e Broadcast para Standings no Studio, com transparência suave, identidade Vantare, tipografia unificada e seleção neutra. Perfis e desenhos preservam a escolha; o quadro adapta colunas e filas no Studio, Desktop e OBS. Entrega opcional numa branch de issue, pendente de validação física e integração em Nightly. A marca por licença será entregue separadamente.",
+        "it": "Efficienza offre gli stili Signature e Broadcast per Standings in Studio, con trasparenza lieve, identità Vantare, tipografia unificata e selezione neutra. Profili e design conservano la scelta; il riquadro adatta colonne e righe in Studio, Desktop e OBS. Consegna opzionale su branch di issue, in attesa di validazione fisica e integrazione Nightly. Il marchio per licenza sarà consegnato separatamente."
+      },
+      "label": {
+        "es": "ISA-1083",
+        "en": "ISA-1083",
+        "pt": "ISA-1083",
+        "it": "ISA-1083"
+      }
+    },
+    {
+      "id": "widget-access-branding",
+      "type": "plan",
+      "title": {
+        "es": "Acceso y marca por widget",
+        "en": "Widget access and branding",
+        "pt": "Acesso e marca por widget",
+        "it": "Accesso e marchio per widget"
+      },
+      "body": {
+        "es": "Tras completar Standings Eficiencia, unificar los widgets disponibles y la marca integrada según licencia en Studio, Desktop y OBS. Los perfiles se conservarán al cambiar de plan; la marca será obligatoria en los diseños gratuitos que corresponda y opcional en pago. Delta será de pago. Desarrollo separado en ISA-1097.",
+        "en": "After completing Efficiency Standings, unify widget availability and integrated branding by license across Studio, Desktop and OBS. Profiles will survive plan changes; branding will be required on applicable free designs and optional with paid access. Delta will require paid access. Separate delivery in ISA-1097.",
+        "pt": "Após concluir Standings Eficiência, unificar os widgets disponíveis e a marca integrada por licença no Studio, Desktop e OBS. Os perfis serão preservados ao mudar de plano; a marca será obrigatória nos desenhos gratuitos aplicáveis e opcional nos pagos. Delta exigirá acesso pago. Entrega separada em ISA-1097.",
+        "it": "Dopo Standings Efficienza, unificare disponibilità dei widget e marchio integrato per licenza in Studio, Desktop e OBS. I profili saranno conservati al cambio di piano; marchio obbligatorio nei design gratuiti previsti e facoltativo a pagamento. Delta richiederà accesso a pagamento. Consegna separata in ISA-1097."
+      },
+      "label": {
+        "es": "Plan",
+        "en": "Plan",
+        "pt": "Plano",
+        "it": "Piano"
+      }
+    },
+    {
       "id": "telemetry-timeline-export",
       "type": "plan",
       "title": {
@@ -1335,6 +1379,16 @@
     }
   ],
   "delivered": [
+    {
+      "date": "2026-09-08",
+      "entries": [
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Calendario: aviso Owner y revision del horario de Discord"
+        }
+      ]
+    },
     {
       "date": "2026-09-07",
       "entries": [
@@ -1982,16 +2036,6 @@
           "kind": "change",
           "scope": "",
           "text": "Delta real, único y con hotkey global"
-        }
-      ]
-    },
-    {
-      "date": "2026-08-13",
-      "entries": [
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "Producir StrategyLiveProjection v1 desde Telemetry Core"
         }
       ]
     }

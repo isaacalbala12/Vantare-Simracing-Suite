@@ -24,6 +24,9 @@ import {
   type OverlayWorkshopQuery,
 } from "./overlay-workshop-query";
 import "./overlay-workshop.css";
+import { FunctionalStudyControls } from "./FunctionalStudyControls";
+import { resolveStandingsMinimumSize } from "../widget-types/standings/standings-frame-layout";
+import type { WidgetColumnV3 } from "../widget-types/shared/widget-column";
 
 const SYSTEMS: readonly DesignSystemId[] = ["vantare-original", "vantare-crystal", "vantare-endurance"];
 const STATES = ["ready", "stale", "disconnected", "error"] as const;
@@ -32,13 +35,21 @@ export const OVERLAY_WORKSHOP_PROFILE_ID = "workshop-fixture";
 const VARIANTS: readonly WorkshopV2Variant[] = WORKSHOP_V2_VARIANTS;
 
 function createRouteScenarioWidget(query: OverlayWorkshopQuery): WidgetInstanceV3 {
-  return createScenarioWidget({
+  const widget = createScenarioWidget({
     widget: query.widget,
     system: query.system,
     variant: query.variant,
     ...(query.designId ? { designId: query.designId } : {}),
     ...(query.sceneId ? { sceneId: query.sceneId } : {}),
   });
+  // The preview switches its lap column explicitly; saved profile content is
+  // never changed by the renderer when the live session changes.
+  if (query.system === "vantare-functional" && query.variant === "default" && query.session !== "race") {
+    const content = widget.content as Record<string, unknown>;
+    const columns = (content.columns as Record<string, unknown>[]).map((column) => column.metricId === "lastLap" ? { ...column, enabled: false } : column.metricId === "bestLap" ? { ...column, enabled: true } : column);
+    widget.content = { ...content, columns };
+  }
+  return widget;
 }
 
 type PreparedFixture = {
@@ -99,6 +110,7 @@ function DimensionField(props: { label: string; value: string; onChange(value: s
 }
 
 function compatibleSystems(widget: WidgetType): readonly DesignSystemId[] {
+  if (widget === "standings") return [...SYSTEMS, "vantare-functional"];
   return widget === "engineer-radio" ? ["vantare-crystal"] : SYSTEMS;
 }
 
@@ -126,6 +138,8 @@ function WorkshopSurface({ prepared, profileId, surface, query, comparison = fal
 
 function OverlayWorkshopPage({ initialQuery, profileId }: { initialQuery: OverlayWorkshopQuery; profileId: string }): React.ReactElement {
   const [parsed, setQuery] = useState<OverlayWorkshopQuery>(initialQuery);
+  const [studyModules, setStudyModules] = useState<string[]>(["gap", "bestLap"]);
+  const isFunctionalStudy = parsed.system === "vantare-functional" && parsed.variant === "standings-functional-study";
   const [prepared, setPrepared] = useState<PreparedFixture | null>(null);
   const [dimensionDraft, setDimensionDraft] = useState({
     width: initialQuery.width?.toString() ?? "",
@@ -310,8 +324,21 @@ function OverlayWorkshopPage({ initialQuery, profileId }: { initialQuery: Overla
     if (widthValid && heightValid) update({ ...parsed, width, height });
   };
 
+  const sourcePrepared = preparedForRender ?? prepared;
+  const displayPrepared = isFunctionalStudy && sourcePrepared ? {
+    ...sourcePrepared,
+    widget: { ...sourcePrepared.widget, content: {
+      ...sourcePrepared.widget.content,
+      columns: ((sourcePrepared.widget.content as { columns: WidgetColumnV3[] }).columns).map((column) => ({ ...column, widthPreset: "auto" as const, enabled: column.metricId === "position" || column.metricId === "driverName" || studyModules.includes(column.metricId) })),
+      rowCount: 10,
+    } },
+  } : sourcePrepared;
+  const studySize = isFunctionalStudy && displayPrepared ? resolveStandingsMinimumSize(displayPrepared.widget) : undefined;
+  const displayQuery = studySize ? { ...parsed, width: studySize.width, height: studySize.height, scale: 1 } : parsed;
+
   return (
-    <main className="overlay-workshop" data-overlay-workshop-page>
+    <main className={`overlay-workshop${isFunctionalStudy ? " functional-study" : ""}`} data-overlay-workshop-page>
+      {isFunctionalStudy && <FunctionalStudyControls query={parsed} update={update} modules={studyModules} onModules={setStudyModules} />}
       <header className="overlay-workshop-header">
         <div className="overlay-workshop-header__title">
           <span className="overlay-workshop-badge">solo desarrollo</span>
@@ -328,7 +355,7 @@ function OverlayWorkshopPage({ initialQuery, profileId }: { initialQuery: Overla
             {ALL_WIDGET_TYPES.map((widgetType) => <option key={widgetType} value={widgetType}>{widgetType}</option>)}
           </SelectField>
           <SelectField label="Sistema" value={parsed.system} onChange={chooseSystem}>
-            {compatibleSystems(parsed.widget).map((system) => <option key={system} value={system}>{system}</option>)}
+            {compatibleSystems(parsed.widget).map((system) => <option key={system} value={system}>{system === "vantare-functional" ? "Eficiencia" : system}</option>)}
           </SelectField>
           <SelectField label="Diseño" value={parsed.designId ?? ""} onChange={chooseDesign}>
             <option value="">Ajustes por defecto del renderer</option>
@@ -476,8 +503,8 @@ function OverlayWorkshopPage({ initialQuery, profileId }: { initialQuery: Overla
       </section>
       <section className={`overlay-workshop-stage overlay-workshop-stage--${parsed.background}`} data-overlay-workshop-stage>
         {prepared?.key === fixtureKey && (
-          <><WorkshopSurface prepared={preparedForRender ?? prepared} profileId={profileId} surface={parsed.surface} query={parsed} />
-          {parsed.compare && <WorkshopSurface prepared={preparedForRender ?? prepared} profileId={profileId} surface={parsed.compare} query={parsed} comparison />}</>
+          <><WorkshopSurface prepared={displayPrepared ?? prepared} profileId={profileId} surface={parsed.surface} query={displayQuery} />
+          {parsed.compare && <WorkshopSurface prepared={displayPrepared ?? prepared} profileId={profileId} surface={parsed.compare} query={displayQuery} comparison />}</>
         )}
       </section>
     </main>

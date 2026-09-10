@@ -38,7 +38,7 @@ export const DEFAULT_OVERLAY_WORKSHOP_QUERY: OverlayWorkshopQuery = {
   preset: "1080p",
 };
 
-const DESIGN_SYSTEMS = new Set<DesignSystemId>(["vantare-original", "vantare-crystal", "vantare-endurance"]);
+const DESIGN_SYSTEMS = new Set<DesignSystemId>(["vantare-original", "vantare-crystal", "vantare-endurance", "vantare-functional"]);
 const STATES = new Set<AuthoringV2Scenario["state"]>(["ready", "stale", "disconnected", "error"]);
 const SURFACES = new Set<OverlayWorkshopQuery["surface"]>(["studio", "desktop", "obs", "harness"]);
 const SESSIONS = new Set<AuthoringV2Scenario["session"]>(["practice", "qualifying", "race"]);
@@ -66,9 +66,11 @@ export function parseOverlayWorkshopQuery(search: string): OverlayWorkshopQuery 
 
   if (!WIDGET_TYPES.has(widget)) return { error: `invalid widget parameter: ${widget}` };
   if (!DESIGN_SYSTEMS.has(system)) return { error: `invalid system parameter: ${system}` };
+  if (system === "vantare-functional" && widget !== "standings") return { error: "vantare-functional requires widget=standings" };
   if (!STATES.has(state)) return { error: `invalid state parameter: ${state}` };
   if (!SURFACES.has(surface)) return { error: `invalid surface parameter: ${surface}` };
   if (!isWorkshopV2Variant(variant)) return { error: `invalid variant parameter: ${variant}` };
+  if (variant === "standings-functional-study" && (widget !== "standings" || system !== "vantare-functional")) return { error: "standings-functional-study requires Functional Standings" };
   if (!SESSIONS.has(session)) return { error: `invalid session parameter: ${session}` };
   if (!LOCATIONS.has(location)) return { error: `invalid location parameter: ${location}` };
   if (!BACKGROUNDS.has(background)) return { error: `invalid background parameter: ${background}` };

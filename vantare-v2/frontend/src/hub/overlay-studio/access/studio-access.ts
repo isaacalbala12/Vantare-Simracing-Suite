@@ -91,7 +91,7 @@ export function getStudioMutationGate(input: {
   widget?: WidgetInstanceV3;
   design?: WidgetDesignV1;
 }): FeatureGate {
-  if (input.mutation === 'save' || input.mutation === 'layout') {
+  if (input.mutation === 'save' || input.mutation === 'layout' || input.mutation === 'delete') {
     return { allowed: true };
   }
 
@@ -144,15 +144,6 @@ export function validateDraftAccess(
       blockedIds.add(widget.id);
     }
 
-    for (const widget of savedLayout.widgets) {
-      const draftWidget = draftLayout.widgets.find((entry) => entry.id === widget.id);
-      if (draftWidget) {
-        continue;
-      }
-      if (!hasFullWidgetAccess(access, widget)) {
-        blockedIds.add(widget.id);
-      }
-    }
   }
 
   if (blockedIds.size === 0) {

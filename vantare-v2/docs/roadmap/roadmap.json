@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-10T02:34:46Z",
+  "generatedAt": "2026-09-10T14:42:08Z",
   "digest": {
-    "lastCommit": "b6b5754eee059bc239fce18c08b39adae8c553fa"
+    "lastCommit": "a9b8dd3695c66856e931d73650d54c4f6cb9e828"
   },
   "phases": [
     {
@@ -1343,10 +1343,10 @@
         "it": "Accesso e marchio per widget"
       },
       "body": {
-        "es": "Tras completar Standings Eficiencia, unificar los widgets disponibles y la marca integrada según licencia en Studio, Desktop y OBS. Los perfiles se conservarán al cambiar de plan; la marca será obligatoria en los diseños gratuitos que corresponda y opcional en pago. Delta será de pago. Desarrollo separado en ISA-1097.",
-        "en": "After completing Efficiency Standings, unify widget availability and integrated branding by license across Studio, Desktop and OBS. Profiles will survive plan changes; branding will be required on applicable free designs and optional with paid access. Delta will require paid access. Separate delivery in ISA-1097.",
-        "pt": "Após concluir Standings Eficiência, unificar os widgets disponíveis e a marca integrada por licença no Studio, Desktop e OBS. Os perfis serão preservados ao mudar de plano; a marca será obrigatória nos desenhos gratuitos aplicáveis e opcional nos pagos. Delta exigirá acesso pago. Entrega separada em ISA-1097.",
-        "it": "Dopo Standings Efficienza, unificare disponibilità dei widget e marchio integrato per licenza in Studio, Desktop e OBS. I profili saranno conservati al cambio di piano; marchio obbligatorio nei design gratuiti previsti e facoltativo a pagamento. Delta richiederà accesso a pagamento. Consegna separata in ISA-1097."
+        "es": "Tras completar Standings Eficiencia, unificar los widgets disponibles y la marca integrada según licencia en Studio, Desktop y OBS. Los perfiles se conservarán al cambiar de plan; la marca será obligatoria en los diseños gratuitos que corresponda y opcional en pago. Delta será de pago. La autoridad nativa de política, transportes y guards de guardado están terminados y revisados en ISA-1097; la marca integrada del frontend sigue en #1105. Sin integración todavía; comprobación conjunta al terminar.",
+        "en": "After completing Efficiency Standings, unify widget availability and integrated branding by license across Studio, Desktop and OBS. Profiles will survive plan changes; branding will be required on applicable free designs and optional with paid access. Delta will require paid access. The native policy authority, transports and save guards are finished and reviewed in ISA-1097; the frontend integrated branding continues in #1105. No integration yet; joint validation at the end.",
+        "pt": "Após concluir Standings Eficiência, unificar os widgets disponíveis e a marca integrada por licença no Studio, Desktop e OBS. Os perfis serão preservados ao mudar de plano; a marca será obrigatória nos desenhos gratuitos aplicáveis e opcional nos pagos. Delta exigirá acesso pago. A autoridade nativa de política, transportes e guards de guardado estão terminados e revistos em ISA-1097; a marca integrada do frontend continua em #1105. Sem integração ainda; validação conjunta no fim.",
+        "it": "Dopo Standings Efficienza, unificare disponibilità dei widget e marchio integrato per licenza in Studio, Desktop e OBS. I profili saranno conservati al cambio di piano; marchio obbligatorio nei design gratuiti previsti e facoltativo a pagamento. Delta richiederà accesso a pagamento. L'autorità nativa di policy, i trasporti e i guard di salvataggio sono finiti e revisionati in ISA-1097; il marchio integrato del frontend continua in #1105. Nessuna integrazione ancora; validazione congiunta alla fine."
       },
       "label": {
         "es": "Plan",
@@ -1379,6 +1379,16 @@
     }
   ],
   "delivered": [
+    {
+      "date": "2026-09-10",
+      "entries": [
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-1101 · Integrar Redline Tower y dorsales canónicos"
+        }
+      ]
+    },
     {
       "date": "2026-09-08",
       "entries": [
@@ -1971,71 +1981,6 @@
           "kind": "fix",
           "scope": "overlays",
           "text": "List pure V3 profiles"
-        }
-      ]
-    },
-    {
-      "date": "2026-08-14",
-      "entries": [
-        {
-          "kind": "perf",
-          "scope": "hub",
-          "text": "Launcher - cache persistente de iconos e indice de shortcuts en disco, iconos en paralelo"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "TM-01 mapa de circuito con silueta en vantare-endurance"
-        },
-        {
-          "kind": "perf",
-          "scope": "hub",
-          "text": "Launcher - primer escaneo 28% mas rapido, iconos cacheados, TTL de rescan y debounce de args"
-        },
-        {
-          "kind": "fix",
-          "scope": "updater",
-          "text": "Excluir linea de producto legacy de la lista de actualizaciones"
-        },
-        {
-          "kind": "docs",
-          "scope": "overlays",
-          "text": "Close ISA-357 Nightly promotion"
-        },
-        {
-          "kind": "docs",
-          "scope": "hub",
-          "text": "Record ISA-358 nightly promotion"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "Limitar la batalla de Standings a carrera y una pareja"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "ISA-358 · Conectar el HUD principal con datos canónicos"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "Contrato puro v1 para capturas"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "Arquitectura de capturas en incidencias"
-        },
-        {
-          "kind": "docs",
-          "scope": "",
-          "text": "Record ISA-347 nightly promotion"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "Delta real, único y con hotkey global"
         }
       ]
     }

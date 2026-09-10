@@ -12,19 +12,36 @@ const freeAccess: AccessContext = {
   isUnconfigured: false,
 };
 
+// Delta is a paid widget (ISA-1097): dispatching its add needs paid access.
+const paidAccess: AccessContext = {
+  planLabel: "paid_overlays",
+  planStatus: "active",
+  roles: [],
+  isBlocked: false,
+  isUnconfigured: false,
+};
+
 describe("AddWidgetDialog", () => {
   afterEach(() => cleanup());
 
   it("lists catalog entries and dispatches add only for unlocked widgets", () => {
-    const onAdd = vi.fn();
-    const onClose = vi.fn();
     const catalog = deriveStudioCatalog();
 
     render(
-      <AddWidgetDialog open access={freeAccess} catalog={catalog} onAdd={onAdd} onClose={onClose} />,
+      <AddWidgetDialog open access={freeAccess} catalog={catalog} onAdd={vi.fn()} onClose={vi.fn()} />,
     );
 
     expect(screen.getByTestId("studio-catalog-entry-delta")).toBeTruthy();
+    expect(screen.queryByTestId("studio-catalog-add-delta")).toBeNull();
+    expect(screen.getByTestId("studio-catalog-lock-delta")).toBeTruthy();
+    cleanup();
+
+    const onAdd = vi.fn();
+    const onClose = vi.fn();
+    render(
+      <AddWidgetDialog open access={paidAccess} catalog={catalog} onAdd={onAdd} onClose={onClose} />,
+    );
+
     expect(screen.getByTestId("studio-catalog-add-delta")).toBeTruthy();
     expect(screen.queryByTestId("studio-catalog-lock-delta")).toBeNull();
 

@@ -103,6 +103,10 @@ describe("getStudioMutationGate", () => {
     allowed: boolean;
     design?: WidgetDesignV1;
   }> = [
+    { name: "free cannot add delta", access: freeAccess, widget: delta, mutation: "add", allowed: false },
+    { name: "free cannot change delta content", access: freeAccess, widget: delta, mutation: "content", allowed: false },
+    { name: "paid can add delta", access: paidAccess, widget: delta, mutation: "add", allowed: true },
+    { name: "free can delete a blocked widget", access: freeAccess, widget: relative, mutation: "delete", allowed: true },
     { name: "free mutates delta layout", access: freeAccess, widget: delta, mutation: "layout", allowed: true },
     {
       name: "free can mutate relative layout",
@@ -195,16 +199,13 @@ describe("validateDraftAccess", () => {
     }
   });
 
-  it("blocks free users from deleting premium widgets", () => {
+  it("allows free users to delete premium widgets while preserving the remaining profile", () => {
     const saved = buildDocument([deltaDefinition.createDefault("delta-main"), buildRelativeWidget()]);
     const draft = structuredClone(saved);
     draft.layouts.general.widgets = [draft.layouts.general.widgets[0]!];
 
-    const result = validateDraftAccess(freeAccess, saved, draft);
-    expect(result.allowed).toBe(false);
-    if (!result.allowed) {
-      expect(result.widgetIds).toEqual(["relative-main"]);
-    }
+    expect(validateDraftAccess(freeAccess, saved, draft)).toEqual({ allowed: true });
+    expect(draft.layouts.general.widgets[0]).toEqual(saved.layouts.general.widgets[0]);
   });
 });
 

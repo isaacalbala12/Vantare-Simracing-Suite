@@ -9,7 +9,7 @@ import type { RelativeViewModelState } from "../widget-types/relative/relative-v
 // intentionally broader while the remaining widget definitions land in later
 // microplans, so keep this map partial instead of inventing placeholder gates.
 export const WIDGET_REQUIRED_FEATURE_BY_TYPE: Partial<Record<WidgetType, FeatureId>> = {
-  delta: "overlays.basic",
+  delta: "overlays.advanced",
   standings: "overlays.basic",
   pedals: "overlays.basic",
   relative: "overlays.advanced",

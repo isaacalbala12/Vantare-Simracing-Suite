@@ -114,7 +114,7 @@ describe("deriveStudioCatalog", () => {
     expect(catalog[0]).toMatchObject({
       labelKey: "overlay.widgets.delta",
       defaultSize: { width: 280, height: 96 },
-      requiredFeature: "overlays.basic",
+      requiredFeature: "overlays.advanced",
     });
     expect(catalog[0]?.compatibleSystems).toEqual([
       { systemId: "vantare-crystal", systemVersion: 1, label: "Vantare Crystal" },
@@ -142,9 +142,16 @@ describe("deriveStudioCatalog", () => {
 
 describe("catalog access", () => {
   it("allows free users to add basic widgets and blocks advanced widgets", () => {
-    const delta = deriveStudioCatalog().find((entry) => entry.type === "delta");
+    const catalog = deriveStudioCatalog();
+    const standings = catalog.find((entry) => entry.type === "standings");
+    expect(standings).toBeDefined();
+    expect(canAddCatalogEntry(freeAccess, standings!)).toBe(true);
+
+    // Delta is a paid widget (ISA-1097): free users see it locked.
+    const delta = catalog.find((entry) => entry.type === "delta");
     expect(delta).toBeDefined();
-    expect(canAddCatalogEntry(freeAccess, delta!)).toBe(true);
+    expect(canAddCatalogEntry(freeAccess, delta!)).toBe(false);
+    expect(canAddCatalogEntry(paidAccess, delta!)).toBe(true);
 
     const widgetRegistry = new WidgetTypeRegistry();
     widgetRegistry.register(createStubDefinition("relative"));

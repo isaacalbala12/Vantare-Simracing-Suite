@@ -71,6 +71,96 @@ física nueva, retirada V1, merge o release en este corte documental.
 
 ## Estado
 
+- **ISA-1083 — Functional Compact (2026-09-09):**
+  **Ejecución aprobada 2026-09-10:** cerrar el widget y su integración a Nightly
+  por partes, luego unificar acceso y marca en ISA-1097. Plan vigente:
+  `docs/analysis/ISA-1083-delivery-plan.md`. Primero contrato Go de guardado y
+  selector normal de Studio; Workshop por sí solo no certifica estos recorridos.
+  La autorización sustituye las notas históricas sin merge autorizado; siguen
+  pendientes validación física y evidencia de integración (#1098). Revisión
+  independiente terminada sin bloqueantes tras corregir tres P2: cabecera tras
+  reordenación, anchos S/M/L y expansión junto al borde inferior. Expediente:
+  `design-evidence/functional/integration-review.md`. Suite completa posterior:
+  3345 PASS / 2 omitidos, exit 0; 22 focales tras el último ajuste de cabecera.
+  Persistencia
+  Go y selector normal de Studio terminados con regresiones RED/GREEN. Se corrige
+  el marco de perfiles de 340 px mediante geometría compartida, conservando el
+  preview DOM imperativo. 145 tests focales de geometría PASS; Go completo,
+  frontend previo a geometría (3330 PASS / 2 omitidos), build/tipos y lint PASS.
+  La app y LMU ya estaban abiertos; consulta de disponibilidad pendiente y no
+  se utilizan sin resolverla. La segunda parte está trazada en #1097. Delta:
+  consulta comercial enviada por discrepancia contrato/código; no cambiar aún.
+  **Ajuste posterior:** Isaac rechaza las marcas rojas junto a los pilotos de
+  Broadcast y valora positivamente el resto. Se elimina ese adorno CSS;
+  las dimensiones, textos, cápsulas, cabecera y Principal se conservan.
+  Ajuste verificado: 13 tests focales y build/typecheck PASS; navegador confirma
+  10 filas sin marcas, con los cuatro módulos a 594 × 370 px. Evidencia nueva:
+  `design-evidence/functional/standings-broadcast-clean.png`. Sin commit ni PR.
+  **Última decisión:** Isaac elige la opción Images 3 como principal y la 2 como
+  secundaria, ambas derivadas de la captura real de Joined01. Se trasladan al
+  renderer compartido como Signature y Broadcast. Signature conserva el ID
+  `standings-functional-compact`; Broadcast añade `standings-functional-broadcast`
+  al catálogo. Selector en Workshop, módulos conservados y mismo ViewModel.
+  Inter, filas de 30 px y selección neutra. Aceptación del React pendiente.
+  Principal 238–574 px / 350 px alto; Broadcast 258–594 px / 370 px alto.
+  Las 32 combinaciones y los estados de fuente pasan en navegador integrado.
+  Revisión final: 9,0/10 en ambas; se refinan motivo compacto y cápsulas de
+  Broadcast. Suite completa 3328 PASS / 2 omitidos, 51 focales posteriores,
+  build/typecheck y lint PASS. Guard de sistemas: tres fallos Endurance
+  heredados, sin ocultar. Sin Wails/LMU, commit, push, PR, CI remota o promoción.
+  Detalles, referencias elegidas y evidencia en el informe ISA-1083.
+  **Decisión previa:** Isaac prefiere el widget unido y rechaza la fila roja de
+  Fodor y la placa del 7. Joined01 reúne las columnas sin hueco ni rebaje de
+  cabecera; selección gris neutra continua y marca roja fina en el borde.
+  El 7 queda sin placa. Se conserva Inter y cristal suave; no cambian datos,
+  módulos ni otros renderizadores. Aceptación visual pendiente.
+  Revisor Joined01: **9,0/10**, las tres correcciones resueltas en React.
+  Navegador: 16 combinaciones y estados PASS, sin errores JS; Inter confirmado.
+  Suite completa: 3325 PASS, 2 fallos de espera y 2 omitidos; repetición de
+  ambos tests junto al estudio: 41 PASS. Se conservan ambos resultados en
+  el informe; la repetición focal no equivale a una suite completa verde.
+  Build/typecheck, lint y diff check PASS. Rama/base/HEAD sin cambios;
+  entrega local sin commit, push, PR, CI remota ni promoción.
+  **Corte anterior:** Isaac rechaza cifras desconectadas y aspecto plano.
+  Depth03 unifica todo en Inter y compone núcleo y extensión con una separación
+  de4px y cabecera secundaria rebajada7px; el jugador une ambas como una fila
+  vino continua. Mantiene carbón/blanco/rojo y glass suave. Revisor **9,0/10**;
+  aceptación de Isaac pendiente. Suite3327 PASS/2 omitidos,36 focales posteriores,
+  build/typecheck/lint PASS y16 combinaciones en navegador sin errores. Altura344px,
+  anchuras238–574px y nombres completos14px. Capturas finales e informe en
+  `docs/analysis/ISA-1083-functional-design.md`. Sin commit, push, PR o promoción.
+  Las notas y la incidencia CPU siguientes pertenecen al historial anterior.
+  **Última corrección:** Isaac considera React07 un avance, pero sus colores y
+  lenguaje no representan Vantare. Vantare01 sustituye azul/gris por carbón
+  neutro, blanco y rojo `#C1121F`; firma compacta de marca, posición del jugador
+  oblicua roja, lavado vino y nombres uppercase. Conserva cristal suave y módulos.
+  Vantare02 añade el isotipo real existente a la cabecera. Revisor: 8,825 global,
+  9 en identidad de marca; identificación resuelta y aceptación de Isaac pendiente.
+  Navegador16 combinaciones PASS, 238–574px, altura342px y nombres completos14px.
+  Build/lint PASS. Suite completa3326 PASS/2 omitidos/1 fallo de presupuesto CPU
+  del decoder V2 (1,562 frente a1,5ms), sin cambios en dicho decoder/test.
+  Repetición aislada del decoder junto al widget:14 PASS; no se declara suite
+  completa verde ni mejora de rendimiento. Typecheck final comprobado aparte.
+  **Decisión vigente:** Isaac rechaza las bases Images y pide diseñar directamente
+  en React desde la referencia de cristal suave; Images queda para detalles
+  posteriores. Se prioriza taste, funcionalidad y modularidad visual.
+  Rama `vantareapp/isa-1083-functional-standings`, base `b6b5754e`, worktree
+  `C:/tmp/vantare-isa1083`. Sistema opt-in registrado con un solo Standings sobre
+  WidgetVisualHost. Vista de estudio dentro de Workshop, cuatro módulos reales,
+  carrera/práctica, tres fondos y estados de fuente. Variante dev explícita con
+  datos de demostración; no altera golden ni perfiles. Anchura fluida sin escalar
+  texto: las 16 combinaciones conservan nombres íntegros y filas a tamaño nativo.
+  Tarea de revisión `01a08756-30ab-7682-af63-1df81364debe`: React01 7,4; React02
+  8,0; React03 8,275; React04 8,3; React05 8,6; React06/07 **8,675**. Historial
+  anterior a la corrección de marca: núcleo posición/piloto/GAP en carrera, vueltas/PIT como
+  extensión, tipografía híbrida y mejor vuelta protagonista en práctica.
+  No alcanza 9 y queda pendiente de aceptación visual de Isaac.
+  Suite frontend 3322 PASS/2 omitidos, build y lint PASS; 36 focales posteriores
+  y navegador sin errores. Guard de sistemas sigue señalando tres referencias
+  heredadas en tests Endurance; no se ocultan. Sin commit, push, PR, promoción,
+  merge o release ni evidencia física Wails/LMU. Detalles y límites en
+  `docs/analysis/ISA-1083-functional-design.md`.
+
 - **S3 cerrado, 2026-09-03:** el mismo EXE R-FIX4 desde
   `4864b5c6`, SHA `cb69a4d5…878faba`, muestra Pedals sobre LMU con freno real
   al 100%, contenido y sin halo/recorte. Captura aislada posterior al 46% y

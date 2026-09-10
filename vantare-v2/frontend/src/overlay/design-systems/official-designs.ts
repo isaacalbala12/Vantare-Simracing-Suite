@@ -8,6 +8,30 @@ export const OFFICIAL_DESIGNS_SECTION_LABEL = "Diseños de Vantare";
 
 const OFFICIAL_DESIGN_DEFINITIONS: WidgetDesignV1[] = [
   {
+    id: "standings-functional-compact",
+    name: "Functional Signature · Preview",
+    widgetType: "standings",
+    systemId: "vantare-functional",
+    systemVersion: 1,
+    configVersion: 1,
+    visual: { showSessionHeader: true, templateId: "signature" },
+    includesContent: false,
+    origin: "vantare",
+    isDefault: true,
+  },
+  {
+    id: "standings-functional-broadcast",
+    name: "Functional Broadcast · Preview",
+    widgetType: "standings",
+    systemId: "vantare-functional",
+    systemVersion: 1,
+    configVersion: 1,
+    visual: { showSessionHeader: true, templateId: "broadcast" },
+    includesContent: false,
+    origin: "vantare",
+    isDefault: false,
+  },
+  {
     id: "delta-original-base",
     name: "Original Base",
     widgetType: "delta",

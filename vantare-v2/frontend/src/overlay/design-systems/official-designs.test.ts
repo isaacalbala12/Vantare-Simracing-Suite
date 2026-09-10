@@ -36,6 +36,15 @@ describe("official-designs", () => {
     });
   });
 
+  it("keeps Signature as the Functional default and Broadcast as a content-preserving alternative", () => {
+    expect(getOfficialDesign("standings-functional-compact")).toMatchObject({
+      isDefault: true, includesContent: false, visual: { templateId: "signature" },
+    });
+    expect(getOfficialDesign("standings-functional-broadcast")).toMatchObject({
+      isDefault: false, includesContent: false, visual: { templateId: "broadcast" },
+    });
+  });
+
   it("registers both canonical Delta Crystal compositions", () => {
     expect(getOfficialDesign("delta-crystal-bar")).toMatchObject({
       widgetType: "delta",
@@ -103,6 +112,7 @@ describe("official-designs", () => {
         return [`${definition.type}:vantare-endurance`];
       }
       const pairs = [`${definition.type}:vantare-crystal`, `${definition.type}:vantare-original`];
+      if (definition.type === "standings") pairs.push("standings:vantare-functional");
       if (enduranceTypes.has(definition.type)) {
         pairs.push(`${definition.type}:vantare-endurance`);
       }

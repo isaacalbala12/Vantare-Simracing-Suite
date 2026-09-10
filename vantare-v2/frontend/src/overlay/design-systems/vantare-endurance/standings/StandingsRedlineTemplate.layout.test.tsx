@@ -12,7 +12,7 @@ import type { WidgetInstanceV3 } from "../../../core/profile-document";
 import { RuntimeWidgetFrame } from "../../../runtime/RuntimeWidgetFrame";
 import { standingsDefinition } from "../../../widget-types/standings/standings-definition";
 import type { StandingsContent } from "../../../widget-types/standings/standings-content";
-import { resolveStandingsRedlineFrameLayout } from "../../../widget-types/standings/standings-redline-layout";
+import { resolveStandingsFrameLayout } from "../../../widget-types/standings/standings-frame-layout";
 import { StudioTelemetryContext } from "../../../../hub/overlay-studio/canvas/studio-telemetry";
 import { StudioWidgetFrame } from "../../../../hub/overlay-studio/canvas/StudioWidgetFrame";
 import goldenV2Raw from "../../../../../../internal/telemetry/projection/overlayv2/testdata/overlay_v2_20.golden.json?raw";
@@ -123,7 +123,7 @@ function renderSurface(surface: Surface, state: State, width: number): string {
     ...widget,
     // RuntimeOverlaySurface owns the effective Redline geometry before it
     // delegates the final frame to RuntimeWidgetFrame.
-    layout: resolveStandingsRedlineFrameLayout(widget, widget.layout, 1920),
+    layout: resolveStandingsFrameLayout(widget, widget.layout, 1920),
   };
 
   const markup = surface === "studio"

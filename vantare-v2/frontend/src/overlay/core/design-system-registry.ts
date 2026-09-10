@@ -8,6 +8,7 @@ import {
 import { vantareCrystalManifest } from "../design-systems/vantare-crystal/manifest";
 import { vantareEnduranceManifest } from "../design-systems/vantare-endurance/manifest";
 import { vantareOriginalManifest } from "../design-systems/vantare-original/manifest";
+import { vantareFunctionalManifest } from "../design-systems/vantare-functional/manifest";
 
 type MigrationStep = (settings: Record<string, unknown>) => Record<string, unknown>;
 
@@ -134,3 +135,4 @@ export const designSystemRegistry = new DesignSystemRegistry();
 designSystemRegistry.register(vantareOriginalManifest);
 designSystemRegistry.register(vantareCrystalManifest);
 designSystemRegistry.register(vantareEnduranceManifest);
+designSystemRegistry.register(vantareFunctionalManifest);

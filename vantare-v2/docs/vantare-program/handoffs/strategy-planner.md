@@ -1,5 +1,18 @@
 # Handoff vivo — Strategy Planner
 
+## T11f2 — inspección de vueltas por revisión exacta
+
+Consulta nativa autorizada, máximo 50 filas, base/snapshot/revisión exactos y
+cabeza actual separada. Devuelve original, efectivo, objetivo temporal y capacidad
+por familia. Inclusión exige integridad original y efectiva; ambigüedad y límites
+cambiados no ofrecen edición. Límite de stint sólo si registrado, con causa y
+calidad conservadas; no inventa inicio y rechaza empate ambiguo. Copias separadas,
+incluida confianza del límite. Reanálisis sólo con escalares, sin calcular curvas
+para inspeccionar. Pruebas de paginación, integridad, originales, revisión previa,
+metadatos, permisos y objetivos ambiguos PASS. Global Go -p1 y vet de alcance PASS.
+Cuatro nuevos paths. Frontend aún no consume la consulta; siguiente T11f3 contrato
+mixto TS y T11f4 consulta TS. Sin Wails/precisión/visual >9/push/PR/CI/promoción.
+
 ## T11f1 — comandos nativos mixtos
 
 SaveCorrections/ResolveCorrectionCommand aceptan familyUses completo: nil legacy,

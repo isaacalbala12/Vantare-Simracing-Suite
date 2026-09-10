@@ -298,13 +298,13 @@ func TestStrategySignalAuditV1HasExactReviewedProductionSurfaces(t *testing.T) {
 		fields []string
 	}{
 		{name: "lmu.Observation", typeOf: reflect.TypeOf(Observation{}), fields: []string{
-			"Source", "ReceivedUTC", "Compatibility", "Fingerprint", "ClockChange", "SourceTime", "EndTime", "MaximumLaps", "TrackName", "SessionType", "VehicleCount", "PlayerPresent", "VehicleName", "LapNumber", "Gear", "EngineRPM", "SpeedMPS", "Throttle", "Brake", "Clutch", "PlayerPosition", "CompletedLaps", "PitStopCount", "InPit", "Fuel", "Damage", "Vehicles", "REST", "MatrixVersion", "Decisions", "Conflicts",
+			"Source", "ReceivedUTC", "Compatibility", "Fingerprint", "ClockChange", "SourceTime", "EndTime", "MaximumLaps", "TrackName", "SessionType", "VehicleCount", "PlayerPresent", "VehicleName", "LapNumber", "Gear", "EngineRPM", "SpeedMPS", "Throttle", "Brake", "Clutch", "PlayerPosition", "CompletedLaps", "PitStopCount", "InPit", "Fuel", "Damage", "AmbientTemp", "TrackTemp", "SessionFlag", "Vehicles", "REST", "MatrixVersion", "Decisions", "Conflicts",
 		}},
 		{name: "core.VehicleState", typeOf: reflect.TypeOf(telemetrycore.VehicleState{}), fields: []string{
 			"Identity", "DriverName", "Name", "VehicleClass", "CarNumber", "Player", "Sector", "LapDistance", "LapProgressTime", "BestLapTime", "LastLapTime", "EstimatedLapTime", "LapNumber", "Gear", "EngineRPM", "SpeedMPS", "Throttle", "Brake", "Clutch", "Position", "CompletedLaps", "InPit", "PitStopCount", "PenaltyCount", "TimeBehindLeader", "LapsBehindLeader", "TimeBehindNext", "LapsBehindNext", "Fuel", "DeltaBest", "WorldPosition", "LocalVelocity", "Orientation", "Damage",
 		}},
 		{name: "core.ObservedState", typeOf: reflect.TypeOf(telemetrycore.ObservedState{}), fields: []string{
-			"SourceTime", "EndTime", "MaximumLaps", "TrackName", "SessionType", "VehicleCount", "PlayerPresent", "Vehicles",
+			"SourceTime", "EndTime", "MaximumLaps", "TrackName", "SessionType", "VehicleCount", "PlayerPresent", "AmbientTemp", "TrackTemp", "SessionFlag", "Vehicles",
 		}},
 		{name: "strategy.SnapshotV1", typeOf: reflect.TypeOf(strategyprojection.SnapshotV1{}), fields: []string{"Metadata", "PayloadV1"}},
 		{name: "strategy.PayloadV1", typeOf: reflect.TypeOf(strategyprojection.PayloadV1{}), fields: []string{"Capabilities", "TrackName", "SessionType", "SourceTime", "EndTime", "Remaining", "MaximumLaps", "Player"}},

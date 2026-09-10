@@ -1,5 +1,23 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1106 — señales de sesión REST LMU hasta Overlay V2 — en rama
+
+Rama `vantareapp/isa-1106-lmu-rest-session-signals`, base
+`origin/nightly@131471ff`, destino `nightly`, issue #1106 `state:in-progress`,
+roadmap `milestones:telemetry-live`. El lector REST existente amplía
+`sessionInfo` (`ambientTemp`, `trackTemp`, `yellowFlagState` + `sectorFlag` /
+`gamePhase` aceptados sin promover) y lleva bandera (solo amarillo con
+evidencia positiva, nunca verde por ausencia) y temperaturas (Celsius,
+missing/stale/invalid por campo) por fusión REST-joined (precedente
+carNumber, matriz v6/38 intacta) hasta `BuildSession.Flag` y
+`BuildWeather.AmbientC/TrackC`, sin lluvia/viento/presión, animaciones, deps
+nuevas ni refactor. LMU local sigue en menú (`sessionInfo` vacío, weather
+solo forecast `WNV_*`): enums/unidades en sesión activa pendientes, fixtures
+no presentadas como prueba física. Detalle y verificación manual en
+`docs/analysis/isa-1106-session-signals.md`. Dependencia externa solo-lectura:
+Efficiency visual #1103/PR1107, comprobación combinada posterior en worktree
+separado. Sin merge/release; revisión independiente pendiente del SHA final.
+
 ## Integración autorizada ISA-1002 — 2026-09-06
 
 Preparación sobre nightly `c18f2e6e` (#1001 ya integrado), fuente ISA-996

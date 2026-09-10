@@ -225,6 +225,12 @@ func (state *Fusion) Merge(receivedUTC time.Time, elapsed time.Duration, inputs 
 	result.TrackName = chooseField(elapsed, ruleFor(catalog.SignalSessionTrackName), shm.TrackName, shmStamp, rest.TrackName.Field, timedStamp(rest.TrackName, restStamp), &result)
 	result.SessionType = chooseField(elapsed, ruleFor(catalog.SignalSessionType), shm.SessionType, shmStamp, rest.SessionType.Field, timedStamp(rest.SessionType, restStamp), &result)
 	result.VehicleCount = chooseField(elapsed, ruleFor(catalog.SignalSessionVehicleCount), shm.VehicleCount, shmStamp, rest.VehicleCount.Field, timedStamp(rest.VehicleCount, restStamp), &result)
+	// Session signals admitted by ISA-1106 are REST-joined like the car-number
+	// grid: shared memory exposes no admitted source, so the REST field flows
+	// with its own TTL and per-field quality, without a matrix rule.
+	result.AmbientTemp = fieldAt(elapsed, timedStamp(rest.AmbientTemp, restStamp), defaultRESTTTL, rest.AmbientTemp.Field)
+	result.TrackTemp = fieldAt(elapsed, timedStamp(rest.TrackTemp, restStamp), defaultRESTTTL, rest.TrackTemp.Field)
+	result.SessionFlag = fieldAt(elapsed, timedStamp(rest.SessionFlag, restStamp), defaultRESTTTL, rest.SessionFlag.Field)
 	result.Vehicles = ageVehicleGrid(elapsed, shmStamp, shm.SourceTime, shm.Vehicles)
 	overlayCarNumbers(result.Vehicles, rest, elapsed, state.sessionFloor)
 	playerIndex := playerVehicleIndex(result.Vehicles)

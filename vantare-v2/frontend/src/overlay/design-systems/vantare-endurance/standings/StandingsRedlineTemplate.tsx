@@ -11,7 +11,9 @@ import {
   groupRowsByClass,
   lapTextToSeconds,
 } from "./standings-endurance-shared";
+import { parseStandingsEnduranceSettings } from "./standings-endurance-settings";
 import { useStandingsMotion, type BattleState, type TireReveal } from "./useStandingsMotion";
+import { StandingsRedlineTower } from "./StandingsRedlineTower";
 
 /** "HH:MM:SS" / "MM:SS" → seconds, or null when the text is not a countdown. */
 function remainingSecondsFromText(remainingText: string): number | null {
@@ -106,7 +108,12 @@ function RedlineRow({
       data-class-leader={isLead ? "true" : undefined}
       data-pit={row.pitText ? "true" : undefined}
       className={`ven-red-row${ghost ? " ven-red-ghost" : ""}`}
-      style={{ gridTemplateColumns: redlineGridTemplateColumns(columns) }}
+      style={{
+        gridTemplateColumns: redlineGridTemplateColumns(columns),
+        // Real team identity only; empty means no wash. No manufacturer
+        // authority exists in the ViewModel, so no logo parity is claimed.
+        ...(row.teamBrandColor ? { "--ven-team-color": row.teamBrandColor } : {}),
+      } as CSSProperties}
     >
       <span className="ven-red-pos" data-metric="position">{ghost ? "—" : classPosition}</span>
       <span
@@ -173,6 +180,7 @@ function RedlineRow({
  */
 export function StandingsRedlineTemplate({
   model,
+  settings,
   showSessionHeader,
 }: {
   model: StandingsViewModel;
@@ -180,7 +188,10 @@ export function StandingsRedlineTemplate({
   showSessionHeader: boolean;
 }) {
   const rootRef = useRef<HTMLDivElement | null>(null);
-  const motion = useStandingsMotion(model, model.status === "ready", rootRef);
+  const parsed = parseStandingsEnduranceSettings(settings);
+  // Literal static HTML study: do not apply the compact table's 30px motion
+  // geometry to 73px tower rows. Historic profiles retain their motion engine.
+  const motion = useStandingsMotion(model, model.status === "ready" && parsed.redlineTheme !== "tower", rootRef);
   const sessionBest = findSessionBestLapSeconds(model.rows);
   const groups = groupRowsByClass(model.rows);
   const battleByAhead = new Map(motion.battles.map((battle) => [battle.aheadId, battle]));
@@ -194,6 +205,13 @@ export function StandingsRedlineTemplate({
     ghostsByClass.set(ghost.vehicleClass, bucket);
   }
   const ghostClass = groups.find((group) => ghostsByClass.has(group.vehicleClass))?.vehicleClass;
+  // Exploratory header variants (ISA-1071). The classic table retains its
+  // text headers; the tower below reproduces the separate approved HTML.
+  const redlineHeader = parsed.redlineHeader;
+
+  if (parsed.redlineTheme === "tower") {
+    return <StandingsRedlineTower model={model} settings={settings} showSessionHeader={showSessionHeader} rootRef={rootRef} />;
+  }
 
   return (
     <div
@@ -272,6 +290,18 @@ export function StandingsRedlineTemplate({
           >
             {showSessionHeader && groupIndex === 0 ? (
               <div className="ven-red-slots">
+                {redlineHeader === "signature" ? (
+                  <span className="ven-red-wordmark" data-wordmark="signature">
+                    <small>VANTARE</small>
+                    <strong>REDLINE</strong>
+                  </span>
+                ) : null}
+                {redlineHeader === "compact" ? (
+                  <span className="ven-red-wordmark" data-wordmark="compact">
+                    <strong>VANTARE</strong>
+                    <small>ENDURANCE / REDLINE</small>
+                  </span>
+                ) : null}
                 <span className="ven-red-slot" data-accent="true" data-final={isFinalMinutes ? "true" : undefined}>
                   <small>{model.sessionLabel}</small>
                   <b>{model.remainingText}</b>

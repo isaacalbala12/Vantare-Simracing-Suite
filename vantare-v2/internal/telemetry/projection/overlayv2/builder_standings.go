@@ -29,8 +29,11 @@ const (
 // without one keep their observed order after them. ClassPosition is derived
 // from that final order within each ClassID.
 //
-// CarNumber stays empty: the canonical VehicleState has no car-number signal,
-// and the builder does not invent one from the driver or vehicle name.
+// CarNumber is the REST-sourced identity projected verbatim: the canonical
+// VehicleState carries it as a string so "007" survives, and the builder never
+// derives one from the driver or vehicle name. Only a fresh producer value
+// reaches the wire — stale or invalid never publishes as a bare string with
+// no quality attached, and absent stays absent.
 func BuildStandings(final derive.FinalState) []StandingRowV2 {
 	ordered := orderedVehicles(final.Observed.Vehicles)
 	rows := make([]StandingRowV2, 0, len(ordered))
@@ -44,6 +47,7 @@ func BuildStandings(final derive.FinalState) []StandingRowV2 {
 			ClassPosition:  classPositions[classID],
 			ClassID:        classID,
 			DriverName:     observedString(current.DriverName),
+			CarNumber:      observedCarNumber(current.CarNumber),
 			GapSeconds:     qualityValue(current.TimeBehindLeader, func(value standings.TimeGap) float64 { return float64(value) }),
 			GapLaps:        observedInt32(current.LapsBehindLeader),
 			PitState:       pitState(current.InPit),
@@ -111,6 +115,14 @@ func pitState(field schema.Field[pit.InPit]) string {
 		return PitStatePit
 	}
 	return PitStateTrack
+}
+
+func observedCarNumber(field schema.Field[standings.CarNumber]) string {
+	value, present := field.Value()
+	if !present || qualityFromFreshness(field.Freshness()) != QualityFresh {
+		return ""
+	}
+	return string(value)
 }
 
 func observedString[T ~string](field schema.Field[T]) string {

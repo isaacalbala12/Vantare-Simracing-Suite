@@ -301,7 +301,7 @@ func TestStrategySignalAuditV1HasExactReviewedProductionSurfaces(t *testing.T) {
 			"Source", "ReceivedUTC", "Compatibility", "Fingerprint", "ClockChange", "SourceTime", "EndTime", "MaximumLaps", "TrackName", "SessionType", "VehicleCount", "PlayerPresent", "VehicleName", "LapNumber", "Gear", "EngineRPM", "SpeedMPS", "Throttle", "Brake", "Clutch", "PlayerPosition", "CompletedLaps", "PitStopCount", "InPit", "Fuel", "Damage", "Vehicles", "REST", "MatrixVersion", "Decisions", "Conflicts",
 		}},
 		{name: "core.VehicleState", typeOf: reflect.TypeOf(telemetrycore.VehicleState{}), fields: []string{
-			"Identity", "DriverName", "Name", "VehicleClass", "Player", "Sector", "LapDistance", "LapProgressTime", "BestLapTime", "LastLapTime", "EstimatedLapTime", "LapNumber", "Gear", "EngineRPM", "SpeedMPS", "Throttle", "Brake", "Clutch", "Position", "CompletedLaps", "InPit", "PitStopCount", "PenaltyCount", "TimeBehindLeader", "LapsBehindLeader", "TimeBehindNext", "LapsBehindNext", "Fuel", "DeltaBest", "WorldPosition", "LocalVelocity", "Orientation", "Damage",
+			"Identity", "DriverName", "Name", "VehicleClass", "CarNumber", "Player", "Sector", "LapDistance", "LapProgressTime", "BestLapTime", "LastLapTime", "EstimatedLapTime", "LapNumber", "Gear", "EngineRPM", "SpeedMPS", "Throttle", "Brake", "Clutch", "Position", "CompletedLaps", "InPit", "PitStopCount", "PenaltyCount", "TimeBehindLeader", "LapsBehindLeader", "TimeBehindNext", "LapsBehindNext", "Fuel", "DeltaBest", "WorldPosition", "LocalVelocity", "Orientation", "Damage",
 		}},
 		{name: "core.ObservedState", typeOf: reflect.TypeOf(telemetrycore.ObservedState{}), fields: []string{
 			"SourceTime", "EndTime", "MaximumLaps", "TrackName", "SessionType", "VehicleCount", "PlayerPresent", "Vehicles",

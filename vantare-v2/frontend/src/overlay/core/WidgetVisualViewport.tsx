@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { isStandingsRedlineTowerVisual, REDLINE_TOWER_BASE_WIDTH } from "../widget-types/standings/standings-redline-layout";
 import type { WidgetLayoutV3, WidgetType, WidgetVisualV3 } from "./profile-document";
 import {
   resolveWidgetVisualGeometry,
@@ -27,8 +28,11 @@ export function WidgetVisualViewport(props: {
   testId: string;
   children: ReactNode;
 }): React.ReactElement {
-  const fluidWidth = isFluidRedlineStandings(props.widgetType, props.visual);
-  const geometry = fluidWidth
+  const tower = isStandingsRedlineTowerVisual(props.widgetType, props.visual);
+  const fluidWidth = !tower && isFluidRedlineStandings(props.widgetType, props.visual);
+  const geometry = tower
+    ? resolveWidgetVisualGeometry(props.layout, REDLINE_TOWER_BASE_WIDTH)
+    : fluidWidth
     ? resolveWidgetVisualGeometry(props.layout, props.visualBaseWidth ?? props.layout.w)
     : resolveWidgetVisualGeometryForType(props.layout, props.widgetType);
   return (

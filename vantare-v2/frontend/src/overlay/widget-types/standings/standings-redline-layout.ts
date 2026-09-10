@@ -1,4 +1,4 @@
-import type { WidgetInstanceV3, WidgetLayoutV3 } from "../../core/profile-document";
+import type { WidgetInstanceV3, WidgetLayoutV3, WidgetType, WidgetVisualV3 } from "../../core/profile-document";
 import { resolveColumnWidthPixels, type WidgetColumnV3 } from "../shared/widget-column";
 import {
   nearestWidthPreset,
@@ -12,6 +12,15 @@ const REDLINE_BASE_MIN_WIDTH_PX = 420;
 const REDLINE_DELTA_TRACK_PX = 44;
 const REDLINE_ROW_GAP_PX = 8;
 const REDLINE_CHROME_PX = 16 + 18;
+
+export const REDLINE_TOWER_BASE_WIDTH = 482;
+
+export function isStandingsRedlineTowerVisual(type: WidgetType, visual?: Pick<WidgetVisualV3, "systemId" | "baseSettings" | "appearanceOverrides">): boolean {
+  if (type !== "standings" || visual?.systemId !== "vantare-endurance") return false;
+  const template = visual.appearanceOverrides.templateId ?? visual.baseSettings.templateId;
+  return (template === undefined || template === "standings-redline") &&
+    (visual.appearanceOverrides.redlineTheme ?? visual.baseSettings.redlineTheme) === "tower";
+}
 
 function fallbackWidth(metricId: string): number {
   return STANDINGS_COLUMN_TEMPLATES.find((template) => template.metricId === metricId)?.defaultWidth ?? 60;
@@ -73,6 +82,7 @@ export function resolveStandingsRedlineGridTemplate(columns: readonly WidgetColu
 }
 
 export function resolveStandingsRedlineMinimumWidth(widget: WidgetInstanceV3): number | undefined {
+  if (isStandingsRedlineTowerVisual(widget.type, widget.visual)) return undefined;
   if (!isStandingsRedlineWidget(widget)) return undefined;
   try {
     return resolveStandingsRedlineRequiredWidth(parseStandingsContent(widget.content));

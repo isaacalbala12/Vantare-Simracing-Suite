@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-08T14:19:49Z",
+  "generatedAt": "2026-09-10T03:15:39Z",
   "digest": {
-    "lastCommit": "d6d0992f8dbc800ccb6d75f60fffdc7c3d561da2"
+    "lastCommit": "b6b5754eee059bc239fce18c08b39adae8c553fa"
   },
   "phases": [
     {
@@ -343,6 +343,28 @@
     }
   ],
   "milestones": [
+    {
+      "id": "overlay-modular-contract",
+      "type": "feature",
+      "title": {
+        "es": "Contrato modular de overlays y laboratorio Redline",
+        "en": "Contrato modular de overlays y laboratorio Redline",
+        "pt": "Contrato modular de overlays y laboratorio Redline",
+        "it": "Contrato modular de overlays y laboratorio Redline"
+      },
+      "body": {
+        "es": "Primer corte del contrato Endurance: Tower Preview seleccionable con cabecera actual, luz roja, fondo azul con la opacidad aprobada y escala proporcional, sin migrar perfiles ni cambiar el diseño predeterminado. El dorsal real de LMU recorre REST, Core, V2 y el ViewModel compartido de todos los standings, conserva ceros iniciales como 007 y queda ausente si la identidad no es fiable o está caducada. Los pilotos de comparación están identificados como ejemplo y excluidos de producción. Esta entrega inicial no cierra el contrato modular: fabricante con fuente autorizada, logo transparente fiel, animaciones, columnas configurables, reglas por sesión y foco, recursos de distribución y comprobación física en Wails/LMU siguen pendientes. No se afirma una validación en juego ni una release publicada.",
+        "en": "Primer corte del contrato Endurance: Tower Preview seleccionable con cabecera actual, luz roja, fondo azul con la opacidad aprobada y escala proporcional, sin migrar perfiles ni cambiar el diseño predeterminado. El dorsal real de LMU recorre REST, Core, V2 y el ViewModel compartido de todos los standings, conserva ceros iniciales como 007 y queda ausente si la identidad no es fiable o está caducada. Los pilotos de comparación están identificados como ejemplo y excluidos de producción. Esta entrega inicial no cierra el contrato modular: fabricante con fuente autorizada, logo transparente fiel, animaciones, columnas configurables, reglas por sesión y foco, recursos de distribución y comprobación física en Wails/LMU siguen pendientes. No se afirma una validación en juego ni una release publicada.",
+        "pt": "Primer corte del contrato Endurance: Tower Preview seleccionable con cabecera actual, luz roja, fondo azul con la opacidad aprobada y escala proporcional, sin migrar perfiles ni cambiar el diseño predeterminado. El dorsal real de LMU recorre REST, Core, V2 y el ViewModel compartido de todos los standings, conserva ceros iniciales como 007 y queda ausente si la identidad no es fiable o está caducada. Los pilotos de comparación están identificados como ejemplo y excluidos de producción. Esta entrega inicial no cierra el contrato modular: fabricante con fuente autorizada, logo transparente fiel, animaciones, columnas configurables, reglas por sesión y foco, recursos de distribución y comprobación física en Wails/LMU siguen pendientes. No se afirma una validación en juego ni una release publicada.",
+        "it": "Primer corte del contrato Endurance: Tower Preview seleccionable con cabecera actual, luz roja, fondo azul con la opacidad aprobada y escala proporcional, sin migrar perfiles ni cambiar el diseño predeterminado. El dorsal real de LMU recorre REST, Core, V2 y el ViewModel compartido de todos los standings, conserva ceros iniciales como 007 y queda ausente si la identidad no es fiable o está caducada. Los pilotos de comparación están identificados como ejemplo y excluidos de producción. Esta entrega inicial no cierra el contrato modular: fabricante con fuente autorizada, logo transparente fiel, animaciones, columnas configurables, reglas por sesión y foco, recursos de distribución y comprobación física en Wails/LMU siguen pendientes. No se afirma una validación en juego ni una release publicada."
+      },
+      "label": {
+        "es": "ISA-1101",
+        "en": "ISA-1101",
+        "pt": "ISA-1101",
+        "it": "ISA-1101"
+      }
+    },
     {
       "id": "calendar-owner-review-notice",
       "type": "feature",
@@ -1336,6 +1358,16 @@
   ],
   "delivered": [
     {
+      "date": "2026-09-08",
+      "entries": [
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Calendario: aviso Owner y revision del horario de Discord"
+        }
+      ]
+    },
+    {
       "date": "2026-09-07",
       "entries": [
         {
@@ -1982,16 +2014,6 @@
           "kind": "change",
           "scope": "",
           "text": "Delta real, único y con hotkey global"
-        }
-      ]
-    },
-    {
-      "date": "2026-08-13",
-      "entries": [
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "Producir StrategyLiveProjection v1 desde Telemetry Core"
         }
       ]
     }

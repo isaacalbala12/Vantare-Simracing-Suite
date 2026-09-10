@@ -1,5 +1,6 @@
 /** `studio.*` catalogue for Command Orbit v0.3 (`docs/design/orbit-v03/14-i18n.md`). */
 export const studioOrbitEn: Record<string, string> = {
+  "studio.inspector.content.towerPreview": "Tower Preview: fixed composition, without animations or column editing yet. Your columns are preserved for other designs. Brand and car number only appear when provided by the source. Adjust size on the canvas and row count here.",
   "studio.column.eyebrow": "Widgets",
   "studio.column.search": "Search widget…",
   "studio.column.searchAria": "Search widgets in the profile",

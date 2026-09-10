@@ -1,5 +1,233 @@
 # Handoff vivo — Overlay Studio, Launcher y Hub
 
+## ISA-1101 — integración inicial autorizada a nightly (2026-09-10)
+
+Isaac solicita «antes de continuar mergea tu trabajo a nightly». Este corte
+reúne exclusivamente ISA-1071 hasta `83eb38fc` (PR #1076) e ISA-1072 hasta
+`7129f2a2` (código revisado `7f721def`), sobre nightly `b6b5754e`.
+Rama `vantareapp/isa-1101-redline-nightly`, worktree limpio propio
+`C:/tmp/vantare-isa1101`. El contenido productivo es idéntico al revisado:
+solo se actualizan aquí roadmap, digest, changelog y continuidad.
+La issue [#1101](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1101)
+registra la PR de integración, los controles sobre su SHA y el resultado
+remoto del merge. #1076 será sustituida por esa PR, sin duplicar su entrega.
+
+Entregable inicial: Tower Preview opt-in y dorsal canónico compartido para
+todos los standings. No cambia defaults ni migra perfiles. Evidencia previa:
+CI de #1076 verde, revisión independiente de ambos cortes, suite frontend
+424 archivos / 3333 tests y `go test ./...` PASS; la integración exige sus
+propios gates antes del merge. No se deduce aceptación física de estos tests.
+
+Excluidos y preservados: SVG experimental y extracción IA rechazada del
+logo, fabricante sin fuente, configuración y datos locales de la apertura
+en ISA-1072, cambios de otros agentes y archivos de entorno. El último EXE
+configurado se abrió desde `bin`, pero la sesión fue interrumpida después
+de mostrar «Cargando perfiles»; no se certificaron dorsales en juego ni se
+confirmó el cierre de aquel proceso. No se relanza la app durante el merge.
+
+Siguiente paso tras verificar el merge: retomar la prueba de la build
+canónica con configuración autorizada; confirmar dorsales en LMU sin
+inventar marcas. Logo, fabricante, animaciones y personalización modular
+siguen abiertos. Integrar código en nightly no autoriza publicar recursos,
+release ni promocionar a testers/master. Rollback: PR que revierta esta
+integración en nightly, sin reescribir el canal.
+
+## ISA-1072 — reconstruccion desde env.local original (2026-09-09)
+
+Por indicacion de Isaac, reconstruccion forzada con `wails3 task -f build`
+desde el `.env.local` original autorizado del checkout principal, cargando
+solo las tres entradas publicas en memoria, sin copiar ni mostrar valores.
+Canal explicito nightly. Frontend y Go build PASS. Comprobacion del EXE:
+las tres cadenas que genera el procedimiento canonico coinciden con las
+del archivo original (`EMBED_MATCH=True` para URL, anon key y registro
+publico de licencia). SHA256 actual:
+`F27704C64F073C1145C40C9E6D7EE1207C42EB5F9E4674B2DB6FDD681F0D1C84`.
+Sustituye el artefacto previo; no se ha abierto esta nueva build ni se
+extrapola a ella el resultado de acceso anterior. Sin promocion o release.
+
+## ISA-1072 — build configurada y bloqueo de acceso (2026-09-09)
+
+Build local desde `e1220286`, codigo revisado `7f721def`, mediante
+`wails3 task -f build` con `VANTARE_BUILD_CHANNEL=nightly`. El entorno del
+orquestador hereda las tres variables publicas Supabase/licencia SET;
+el entorno de OpenCode no heredaba el registro. No se copiaron ni mostraron
+valores. Frontend y Go build PASS. EXE `bin/vantare.exe`, SHA256
+`0101ED981F800C6A71AD30F6E85652958E489AE586801A25518466A6A4DDEDA6`.
+
+Prueba nativa: ejecutable y PID verificados. Arrancar desde el directorio
+`bin` usa configuracion habitual, sin copiar credenciales; arrancar desde
+la raiz del worktree usaba configs de desarrollo y abria onboarding.
+Perfil habitual `Prueba Redline Tower ISA-1071` reconocido, canal NIGHTLY.
+Cuenta muestra FREE/Activo y Studio sin acceso. `Comprobar acceso` termina
+con `NO SE PUDO ACTUALIZAR EL ACCESO`. No hay PASS de dorsales fisicos ni
+licencia de pago. No se modifico cuenta, permisos ni LMU. Instancia de
+prueba cerrada y runtime liberado a Strategy. La primera apertura desde
+raiz genero datos locales y actualizo calendar-lmu.json: preservados,
+fuera del commit de evidencia.
+
+Fabricante: auditoria confirma que no existe fuente integrada explicita.
+Probe de solo lectura `/rest/multiplayer/teams` no produjo filas en esta
+sesion; no demuestra ausencia en todos los escenarios. Hace falta decidir
+fuente antes de implementar. Logo transparente pendiente; no aceptar el
+SVG redibujado ni la extraccion IA opaca. Sin push, merge o release.
+
+## ISA-1072 — dorsal canónico en todos los standings (2026-09-09, en rama)
+
+Isaac autoriza implementar el 2026-09-09 y extiende el alcance a TODOS los
+diseños de standings: corte compartido driver LMU -> Core -> Overlay V2 ->
+ViewModel, sin lectores por widget ni datos inventados. Base apilada ISA-1071
+`83eb38fc`, rama `vantareapp/isa-1072-standings-identities`, worktree
+`C:/tmp/vantare-isa1072`. Sin subdelegación; ningún otro worker edita el
+worktree.
+
+Causa raíz: el lector REST de LMU descartaba el `carNumber` real
+(`restStanding` solo conservaba player/position/laps/pitstops) y el builder
+dejaba el número vacío a propósito porque `VehicleState` no tenía la señal.
+
+Corte mínimo (solo dorsal; el fabricante queda detenido abajo):
+`schema/standings.CarNumber` (string: `007` nunca se convierte a entero) ->
+`rest.go` captura la rejilla por poll (slotID explícito `*int32` para no
+confundir ausente con slot 0 válido, número 1-4 dígitos, duplicados contados
+antes de validar) con el mismo presupuesto de polling (2 endpoints, 250 ms,
+TTL 2 s, sin lector nuevo) -> `fusion.go` la une a la rejilla SHM por slot
+más vehículo coincidente, solo con rejilla dentro de su TTL, sin identidad
+ausente, y con suelo de sesión desde las dos señales existentes (cambio
+fresco de firma pista/tipo y `ClockReset` del driver): una rejilla anterior
+al límite no publica aunque el slot y la etiqueta coincidan; el join es
+O(vehículos+rejilla) -> `batch_mapper.go` la traslada -> `core.VehicleState`
+-> `builder_standings.go` la proyecta verbatim solo si está fresca (el wire
+no lleva calidad para el dorsal). `frame.go` ya tenía `number` opcional y la
+VM compartida ya mapeaba `row.number`: todos los diseños se benefician sin
+cambios frontend. Sin offsets SHM inventados (el layout no tiene dorsal).
+Catálogo: señal `standings.car_number` añadida como ID 52 `appended` (el
+catálogo ya cubre señales REST); sin regla de matriz porque no hay escalar
+que arbitrar — la autoridad es el endpoint REST acotado por su TTL.
+Inventario `strategy_signal_audit` y golden `signal-catalog.md` actualizados
+por procedimiento.
+
+Fabricante DETENIDO (sin adivinar): ni el REST (`slotID, carId,
+vehicleFilename, vehicleName, carNumber` observados; pitmanager confirma la
+forma) ni la SHM (solo `VehicleLabel`/`VehicleClass`, etiquetas de muestra,
+no autoridad) exponen marca. Resolverla exige metadatos autorizados de
+vehículo (catálogo externo o lectura de `.veh`/equivalente) = dependencia
+externa + decisión de arquitectura. Propuesta precisa: issue nueva para
+`standings.manufacturer` como señal opcional con fuente declarada
+(REST extendido si LMU lo expone, o tabla vehículo->marca versionada y
+auditada), con sus tests de ausencia/correspondencia; hasta entonces la VM
+mantiene `manufacturer` ausente y ningún renderer la inventa.
+
+Tests (rojo antes, verde después): validación/`007`/stale en REST, join por
+slot+vehículo, mismatch, identidad ausente, duplicados x2/x3, slot ausente
+frente a slot 0, TTL, frontera de sesión por firma y por `ClockReset`,
+passthrough del mapper con turnover de sesión, proyección fresca/stale/
+invalid del builder y auditoría de superficies. Foco frontend 12/12 PASS
+(VM `007` y gaps sin cambios).
+
+Limitación residual honesta: un reinicio que conserve pista, tipo y reloj
+continuo no levanta frontera aquí; ese caso queda acotado solo por el TTL
+REST de 2 s. Sin merge, PR, promoción ni release. Sin probation física
+Wails/LMU (sin control del juego en este corte).
+
+## ISA-1072 follow-up — sello de rejilla al inicio de la petición (2026-09-09)
+
+Review de calidad bloqueante sobre `77d5c616`: la rejilla se sellaba al
+final de la respuesta REST, así que una petición enviada antes de la
+frontera de sesión y respondida después pasaba el suelo con filas viejas
+(repro: inicio 9.9 s, frontera 10 s, respuesta 10.1 s, mismo slot y
+etiqueta). Fix mínimo en el mismo corte: `fetchREST` guarda `startedMono`
+al iniciar y solo la rejilla lo usa (los escalares conservan el sello de
+respuesta); la fusión no cambia. Regresión con sellos reales de fetch
+(`TestRESTGridUsesRequestStartStamp`,
+`TestFusionSessionFloorRejectsGridStartedBeforeBoundary`): falla sin el fix
+con el `007` filtrado tal cual, pasa con él. Intenciones existentes fijadas
+sin cambiar comportamiento: el match de nombre SHM mira validez, no
+frescura (pin con test), y el check de fusión usa `defaultRESTTTL` mientras
+`markRESTStale` aplica el `cfg.ttl` en cada poll. Sin merge, PR, promoción
+ni release.
+
+Cierre documental (2026-09-09): el reviewer acepta `7f721def` sin
+bloqueantes por inspección (cierre del in-flight y TTL conservador); no
+ejecutó tests. El orquestador verificó por su cuenta `go test ./...` con
+exit 0 y los focos lmu/overlayv2/catalog en PASS. Siguiente paso: build
+canónica y prueba física Wails/LMU pendientes. No se afirma integración en
+`nightly`, y marca/logo siguen sin resolver según la propuesta ISA-1072.
+
+## ISA-1071 — aceptación visual y corte productivo (2026-09-08)
+
+Isaac acepta la torre y elige `redlineHeader=current`, luz roja y alpha .95.
+Autoriza continuar para probarla en nightly. El siguiente corte registra un
+diseño opt-in (sin migraciones), adapta su escala al marco persistido y conecta
+los campos V2 disponibles. Marca y dorsal no emitidos por Core no se inventan.
+No cambia la arquitectura ni absorbe #1068/#1069/#1070. Verificar tamaños,
+filas completas, nombres largos, datos ausentes y sesiones; después suite,
+build y revisión independiente. No hay todavía integración ni build nightly.
+
+Implementado localmente: diseño `standings-endurance-redline-tower` (Preview),
+sin cambiar el default; viewport de base 482 escalado al tamaño persistido,
+filas completas y campos V2 de pista, total, posición de clase y dorsal si
+existe. Inspector conserva filas y explica columnas fijas sin borrar ajustes.
+La procedencia de fabricante/dorsal no emitidos vive en #1072; no tocar Core
+desde #1071. Los recursos raster/fuentes del prototipo requieren cerrar su
+trazabilidad para distribución antes de declarar candidato publicable.
+Muse `ses_f7d72ab5cffeq7KpWw1XtUF8Z0` se abortó tras quedar sin avance,
+sin cambios; el orquestador completó el microcorte. No hay workers editando.
+Pruebas focales 32/32 y Chromium (280/340/482/650, gaps largos y señal atrasada)
+PASS. Código guardado en `d8efd680`. Typecheck, build productivo, lint y digest
+PASS. La última suite pasó 423 archivos/3332 tests y falló por el texto `95%`
+del roadmap, corregido sin alterar la prueba; focal posterior 27/27 PASS.
+Suite final **424 archivos / 3333 tests PASS, 2 omitidos**, exit 0, cuatro
+workers; avisos heredados de teardown happy-dom sin fallos finales.
+Código `d8efd680` y documentación `84589e00` subidos a la rama de issue.
+Muse revisó el snapshot aislado
+`C:/tmp/vantare-isa1071-review` (sesión `ses_f7d5791bcffebtSNgcFt1CvUs8`),
+solo lectura. Su permiso para leer Ponytail ya está aprobado. La llamada
+inicial expiró, pero la sesión siguió activa y entregó veredicto: apto para
+PR draft, sin P1. Dos observaciones menores atendidas: `trim()` en la etiqueta
+de sesión y documentación que distingue dorsal opcional del contrato frente
+a la carencia del productor Core actual. No se retira ese gap sin datos reales.
+La revisión no acredita Wails/LMU ni permite promoción/release.
+
+Entrega preparada en [PR #1076](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1076),
+**draft a nightly**, código `de1239a5` subido. Ajustes finales: 33 focales y
+typecheck PASS. CI remoto pendiente; no auto-merge, promoción ni release.
+Siguiente corte: cerrar recursos de distribución y #1072, después binario
+configurado y comprobación física del diseño; solicitar integración solo
+con los gates aplicables cerrados. No certificarlo usando el fixture HTML.
+
+## ISA-1071 — reproducción HTML Redline en React (2026-09-08, aislado)
+
+- Rama `vantareapp/isa-1071-workshop-redline-lab`, base/HEAD sin commit
+  `b6b5754eee059bc239fce18c08b39adae8c553fa`, worktree `C:/tmp/vantare-isa1071`.
+- Worker Muse inició settings/CSS; quedó sin avance y se detuvo antes de que
+  el orquestador completara controles, URL, sidebar y comprobaciones.
+- Isaac rechazó la primera aproximación: restilizaba la tabla compacta y no
+  reproducía el HTML. Esa entrega queda sustituida por la composición Tower
+  productiva de 482 × 1087: cabecera 99, categoría 38, doce filas con su ritmo
+  exacto y pie 67. Perfiles anteriores mantienen `classic` por defecto.
+- `WidgetVisualHost` sigue siendo la frontera única. Workshop puede entregarle
+  una ViewModel de referencia explícita, solo aceptada en desarrollo; los
+  escenarios V2 mantienen su autoridad y no reciben marcas/dorsales inventados.
+- Fuentes y sprites son los mismos archivos del HTML aprobado. Las marcas
+  solo aparecen con identidad explícita en la ViewModel; no se infieren de
+  nombres. El fixture de 12 pilotos no forma parte del bundle productivo.
+- Escenario `context` reutiliza la imagen del estudio, solo en la ruta de
+  desarrollo. No se incorpora al widget ni a sus capturas de paridad.
+- Browser: 16 combinaciones de cuatro cabeceras y cuatro selecciones, 74 nodos
+  por combinación con geometría, textos y estilos medidos iguales al HTML.
+  Dos instancias Desktop/OBS: 12 filas, 482 × 1087, clips independientes,
+  fondo rgba(16,23,27,.95), pseudo-línea del jugador ausente.
+- El estudio Tower reproduce el HTML estático: no reutiliza las animaciones
+  de tabla basadas en 30px. Su adaptación modular/dinámica sigue pendiente,
+  y la validación Wails/LMU. La aceptación visual posterior consta arriba. #1069 conserva
+  el hallazgo de columnas de la tabla clásica; no se mezcla aquí.
+- Evidencia detallada, archivos y checks: [ISA-1071](../../analysis/ISA-1071-redline-html-parity.md).
+- Cierre: 422 archivos / 3324 tests PASS, 2 omitidos; typecheck, build, lint
+  y diff check PASS. Fixture/escenario ausentes de dist. Avisos heredados de
+  chunks grandes y teardown happy-dom registrados. Vista final abierta con
+  firma, luz roja, 95%, referencia de 12 pilotos, 482 × 1087 y escala 0.65.
+- Estado histórico anterior a la aceptación: valoración visual con Isaac. No commit,
+  push, PR, CI remoto, merge, promoción ni release para este corte.
+
 ## ISA-1004 — Dense y Broadcast tras validación Windows (2026-09-06)
 
 Isaac autoriza corregir ambos hallazgos y mergear a nightly. Base c18f2e6e;

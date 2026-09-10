@@ -1,5 +1,6 @@
 /** Catálogo `studio.*` do Command Orbit v0.3 (`docs/design/orbit-v03/14-i18n.md`). */
 export const studioOrbitPt: Record<string, string> = {
+  "studio.inspector.content.towerPreview": "Tower Preview: composição fixa, ainda sem animações nem edição de colunas. As suas colunas são preservadas para outros designs. Marca e número só aparecem quando fornecidos pela fonte. Ajuste o tamanho na tela e o número de linhas aqui.",
   "studio.column.eyebrow": "Widgets",
   "studio.column.search": "Procurar widget…",
   "studio.column.searchAria": "Procurar widgets do perfil",

@@ -254,6 +254,13 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 
 ## Hitos
 
+### Contrato modular de overlays y laboratorio Redline
+
+- id: overlay-modular-contract
+- tipo: feature
+- cuerpo: Primer corte del contrato Endurance: Tower Preview seleccionable con cabecera actual, luz roja, fondo azul con la opacidad aprobada y escala proporcional, sin migrar perfiles ni cambiar el diseño predeterminado. El dorsal real de LMU recorre REST, Core, V2 y el ViewModel compartido de todos los standings, conserva ceros iniciales como 007 y queda ausente si la identidad no es fiable o está caducada. Los pilotos de comparación están identificados como ejemplo y excluidos de producción. Esta entrega inicial no cierra el contrato modular: fabricante con fuente autorizada, logo transparente fiel, animaciones, columnas configurables, reglas por sesión y foco, recursos de distribución y comprobación física en Wails/LMU siguen pendientes. No se afirma una validación en juego ni una release publicada.
+- etiqueta: ISA-1101
+
 ### Aviso de horario pendiente para Owner
 
 - id: calendar-owner-review-notice

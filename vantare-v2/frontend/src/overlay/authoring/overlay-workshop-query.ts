@@ -4,11 +4,15 @@ import { isWorkshopV2Variant, type WorkshopV2Variant } from "./fixtures/authorin
 import { getAnimationScene } from "./fixtures/animation-scenes";
 import { getOfficialDesign } from "../design-systems/official-designs";
 import { WIDGET_TYPES } from "../core/profile-document";
+import { FUNCTIONAL_STUDY_STYLE_IDS, type FunctionalStudyStyleId } from "./functional-study-options";
 
 export type OverlayWorkshopQuery = {
   widget: WidgetType;
   system: DesignSystemId;
   designId?: string;
+  /** Piel de estudio Eficiencia v2 (ISA-1120); solo aplica en la variante
+   * `standings-functional-study` y nunca se persiste en perfiles. */
+  studyStyle?: FunctionalStudyStyleId;
   state: AuthoringV2Scenario["state"];
   surface: "studio" | "desktop" | "obs" | "harness";
   variant: WorkshopV2Variant;
@@ -132,8 +136,19 @@ export function parseOverlayWorkshopQuery(search: string): OverlayWorkshopQuery 
     return { error: `invalid frame parameter: ${sceneFrameRaw}` };
   }
 
+  // La piel de estudio solo tiene sentido dentro del estudio Eficiencia: un
+  // valor desconocido es un error honesto, pero uno válido que sobrevive un
+  // cambio de variante se descarta en silencio en vez de romper la página.
+  const studyStyleRaw = params.get("study");
+  if (studyStyleRaw !== null && !FUNCTIONAL_STUDY_STYLE_IDS.has(studyStyleRaw)) {
+    return { error: `invalid study parameter: ${studyStyleRaw}` };
+  }
+  const studyStyle = studyStyleRaw !== null && variant === "standings-functional-study" && system === "vantare-functional"
+    ? studyStyleRaw as FunctionalStudyStyleId
+    : undefined;
+
   return { widget, system, state, surface, variant, session, location, background, scale, preset,
-    ...(designId ? { designId } : {}), ...(parsedWidth ? { width: parsedWidth } : {}), ...(parsedHeight ? { height: parsedHeight } : {}), ...(compare ? { compare } : {}),
+    ...(designId ? { designId } : {}), ...(studyStyle ? { studyStyle } : {}), ...(parsedWidth ? { width: parsedWidth } : {}), ...(parsedHeight ? { height: parsedHeight } : {}), ...(compare ? { compare } : {}),
     ...(sceneId ? { sceneId } : {}), ...(sceneFrame !== undefined ? { sceneFrame } : {}) };
 }
 
@@ -155,6 +170,7 @@ export function serializeOverlayWorkshopQuery(query: OverlayWorkshopQuery): stri
     preset: query.preset,
   });
   if (query.designId) params.set("design", query.designId);
+  if (query.studyStyle) params.set("study", query.studyStyle);
   if (query.width) params.set("width", String(query.width));
   if (query.height) params.set("height", String(query.height));
   if (query.compare) params.set("compare", query.compare);

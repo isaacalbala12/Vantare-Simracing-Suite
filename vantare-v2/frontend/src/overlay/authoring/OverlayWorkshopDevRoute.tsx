@@ -157,7 +157,9 @@ function OverlayWorkshopPage({ initialQuery, profileId }: { initialQuery: Overla
   // the previous ViewModel the motion engines diff against — so discrete
   // animations (overtake flash, crown flight, relative crossing) could never
   // fire in the Workshop, which is the one place they need to be visible.
-  const fixtureKey = serializeOverlayWorkshopQuery({ ...parsed, sceneFrame: undefined });
+  // studyStyle también queda fuera: es una piel CSS del estudio, no cambia la
+  // fixture.
+  const fixtureKey = serializeOverlayWorkshopQuery({ ...parsed, sceneFrame: undefined, studyStyle: undefined });
 
   const [replayFrame, setReplayFrame] = useState(0);
   useEffect(() => {
@@ -337,7 +339,7 @@ function OverlayWorkshopPage({ initialQuery, profileId }: { initialQuery: Overla
   const displayQuery = studySize ? { ...parsed, width: studySize.width, height: studySize.height, scale: 1 } : parsed;
 
   return (
-    <main className={`overlay-workshop${isFunctionalStudy ? " functional-study" : ""}`} data-overlay-workshop-page>
+    <main className={`overlay-workshop${isFunctionalStudy ? " functional-study" : ""}`} data-overlay-workshop-page data-study-style={parsed.studyStyle}>
       {isFunctionalStudy && <FunctionalStudyControls query={parsed} update={update} modules={studyModules} onModules={setStudyModules} />}
       <header className="overlay-workshop-header">
         <div className="overlay-workshop-header__title">

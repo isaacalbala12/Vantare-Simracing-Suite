@@ -57,6 +57,23 @@ describe("Overlay Workshop query", () => {
     }
   });
 
+  it("keeps the Efficiency study skin only inside the functional study variant", () => {
+    const parsed = parseOverlayWorkshopQuery(
+      "?widget=standings&system=vantare-functional&variant=standings-functional-study&design=standings-functional-compact&study=v2-focus",
+    );
+    if ("error" in parsed) throw new Error(parsed.error);
+    expect(parsed.studyStyle).toBe("v2-focus");
+    expect(serializeOverlayWorkshopQuery(parsed)).toContain("study=v2-focus");
+
+    expect(parseOverlayWorkshopQuery("?study=inventada")).toEqual({ error: "invalid study parameter: inventada" });
+
+    // Un valor válido fuera del estudio se descarta sin romper la página.
+    const outside = parseOverlayWorkshopQuery("?widget=standings&system=vantare-functional&variant=default&study=v2-focus");
+    if ("error" in outside) throw new Error(outside.error);
+    expect(outside.studyStyle).toBeUndefined();
+    expect(serializeOverlayWorkshopQuery(outside)).not.toContain("study=");
+  });
+
   it("keeps the development route inaccessible outside development and serializes the full selection", () => {
     expect(isOverlayWorkshopPath("/workshop", false)).toBe(false);
     expect(isOverlayWorkshopPath("/hub", true)).toBe(false);

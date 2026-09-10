@@ -79,6 +79,20 @@ describe("OverlayWorkshopDevRoute", () => {
     expect(document.querySelector("[data-overlay-workshop-query]")?.textContent).toContain("scale=0.3");
   });
 
+  it("applies the Efficiency v2 study skin from the URL and switches it from the controls", async () => {
+    render(<OverlayWorkshopDevRoute search="?widget=standings&system=vantare-functional&variant=standings-functional-study&design=standings-functional-compact&study=v2-tower&state=ready&surface=obs" />);
+
+    await waitFor(() => expect(document.querySelector("[data-standings-row]")).toBeTruthy());
+    expect(document.querySelector("[data-overlay-workshop-page]")?.getAttribute("data-study-style")).toBe("v2-tower");
+    expect(document.querySelector("[data-widget-system=vantare-functional]")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Foco" }));
+    expect(document.querySelector("[data-overlay-workshop-page]")?.getAttribute("data-study-style")).toBe("v2-focus");
+
+    fireEvent.click(screen.getByRole("button", { name: "V1" }));
+    expect(document.querySelector("[data-overlay-workshop-page]")?.getAttribute("data-study-style")).toBeNull();
+  });
+
   it("renders Input history from the canonical V2 frame without seeding", async () => {
     render(
       <StrictMode>

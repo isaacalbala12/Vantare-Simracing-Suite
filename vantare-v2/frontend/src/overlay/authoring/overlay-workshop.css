@@ -300,6 +300,58 @@
 .functional-study > .overlay-workshop-stage--solid { background: #252527; }
 .functional-study > .overlay-workshop-stage--transparent { background: linear-gradient(140deg, #c9c8c4, #a5a4a1); }
 .functional-study .overlay-workshop-surface-label { display: none; }
+
+/* ── Direcciones v2 (ISA-1120) ──────────────────────────────────────────────
+   Pieles de estudio: solo viven en esta página, sobre el renderer productivo.
+   `data-study-style` lo pone el <main> del Workshop desde el param `study`. */
+
+/* v2-tower · Torre: torre de tiempos compacta — más filas por píxel, posición
+   con peso, top 3 marcado con el borde rojo de la casa y ornamento reducido. */
+.functional-study[data-study-style="v2-tower"] .vf-standings::before { display: none; }
+.functional-study[data-study-style="v2-tower"] .vf-session { height: 38px; gap: 8px; }
+.functional-study[data-study-style="v2-tower"] .vf-brand { font-size: 10px; gap: 5px; }
+.functional-study[data-study-style="v2-tower"] .vf-brand img { width: 18px; height: 18px; }
+.functional-study[data-study-style="v2-tower"] .vf-session-context { gap: 3px; padding-left: 8px; }
+.functional-study[data-study-style="v2-tower"] .vf-session-type { font-size: 6px; }
+.functional-study[data-study-style="v2-tower"] .vf-clock { font-size: 12px; }
+.functional-study[data-study-style="v2-tower"] .vf-class { font-size: 8px; padding: 4px 5px; }
+.functional-study[data-study-style="v2-tower"] .vf-table thead th { height: 28px; font-size: 7px; letter-spacing: .12em; }
+.functional-study[data-study-style="v2-tower"] .vf-table .vf-column-label { padding-bottom: 0; transform: none; }
+.functional-study[data-study-style="v2-tower"] .vf-table .vf-column-label::after { display: none; }
+.functional-study[data-study-style="v2-tower"] .vf-table td { height: 26px; font-size: 13px; }
+.functional-study[data-study-style="v2-tower"] .vf-table td[data-metric="position"] { font-size: 13px; font-weight: 800; color: #f5f5f5; background: rgb(255 255 255 / 3%); }
+.functional-study[data-study-style="v2-tower"] .vf-table tbody tr:nth-child(-n+3) td[data-metric="position"] { box-shadow: inset 2px 0 #c1121f, inset 0 -1px var(--vf-line); }
+.functional-study[data-study-style="v2-tower"] .vf-table td[data-metric="driverName"] .vf-driver-name { font-size: 13px; letter-spacing: -.02em; }
+.functional-study[data-study-style="v2-tower"] .vf-table td:is([data-metric="lastLap"], [data-metric="bestLap"])::before { background: rgb(245 245 245 / 14%); }
+.functional-study[data-study-style="v2-tower"] .vf-table td[data-metric="gap"] { font-weight: 700; }
+
+/* v2-podium · Podio: estructura Broadcast con jerarquía de carrera — cabecera
+   de banda, top 3 elevados con numeral mayor y cápsulas conservadas. */
+.functional-study[data-study-style="v2-podium"] .vf-session { height: 52px; border-bottom: 2px solid rgb(245 245 245 / 16%); }
+.functional-study[data-study-style="v2-podium"] .vf-class { font-size: 10px; padding: 6px 8px; }
+.functional-study[data-study-style="v2-podium"] .vf-table thead th { height: 22px; background: rgb(0 0 0 / 26%); font-size: 7px; }
+.functional-study[data-study-style="v2-podium"] .vf-table tbody tr:nth-child(-n+3) td { background: rgb(255 255 255 / 5%); }
+.functional-study[data-study-style="v2-podium"] .vf-table tbody tr:nth-child(-n+3) td[data-metric="position"] { font-size: 15px; font-weight: 800; color: #ffffff; }
+.functional-study[data-study-style="v2-podium"] .vf-table tbody tr:nth-child(3) td { box-shadow: inset 0 -1px rgb(245 245 245 / 22%); }
+.functional-study[data-study-style="v2-podium"] .vf-table td[data-metric="gap"] { padding: 0 6px; font-weight: 700; }
+.functional-study[data-study-style="v2-podium"] .vf-table tr[data-player="true"] td { background: rgb(191 194 202 / 24%); }
+
+/* v2-focus · Foco: mínimo ornamento — sin diagonal ni separadores, etiquetas
+   atenuadas, chip de clase al contorno y el tick rojo como único acento. */
+.functional-study[data-study-style="v2-focus"] .vf-standings::before { display: none; }
+.functional-study[data-study-style="v2-focus"] .vf-standings::after { border-color: rgb(255 255 255 / 8%); border-top-color: rgb(255 255 255 / 14%); }
+.functional-study[data-study-style="v2-focus"] .vf-standings { box-shadow: 0 10px 22px -14px rgb(0 0 0 / 42%); }
+.functional-study[data-study-style="v2-focus"] .vf-brand { font-size: 9px; color: #b9b9bd; }
+.functional-study[data-study-style="v2-focus"] .vf-session-context { border-left-color: rgb(245 245 245 / 10%); }
+.functional-study[data-study-style="v2-focus"] .vf-clock { font-size: 13px; }
+.functional-study[data-study-style="v2-focus"] .vf-class { background: transparent; color: #d6d6da; border: 1px solid rgb(245 245 245 / 22%); border-radius: 3px; font-weight: 600; }
+.functional-study[data-study-style="v2-focus"] .vf-table thead th { font-size: 7px; color: #8a8a90; letter-spacing: .16em; }
+.functional-study[data-study-style="v2-focus"] .vf-table .vf-column-label::after { display: none; }
+.functional-study[data-study-style="v2-focus"] .vf-table td { height: 28px; font-weight: 500; }
+.functional-study[data-study-style="v2-focus"] .vf-table td:is([data-metric="lastLap"], [data-metric="bestLap"])::before { display: none; }
+.functional-study[data-study-style="v2-focus"] .vf-table td[data-metric="gap"] { font-weight: 650; color: #ffffff; }
+.functional-study[data-study-style="v2-focus"] .vf-table tr[data-player="true"] td { background-color: rgb(191 194 202 / 10%); background-image: none; }
+
 @media (max-width: 800px) {
   .functional-study { grid-template-columns: 1fr; height: auto; }
   .functional-study-controls { border-right: 0; padding: 20px; }

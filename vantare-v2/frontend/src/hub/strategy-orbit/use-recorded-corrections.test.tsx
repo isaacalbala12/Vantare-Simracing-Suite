@@ -13,7 +13,7 @@ function fixture() {
   const current: AnalysisStoreResult = { headId: a, revision: { revisionId: a, parentRevisionId: "", command: { expectedRevision: "", commandId: "", reason: "", localAuthorId: "" }, commandDigest: "", createdAt: "", snapshot: { contractVersion: "analysis.sample-snapshot.v1", base, snapshotId: a, corrections: [] } } };
   const page: AnalysisPage = { channel_id: "fuel", start: 0, sampling: channel.sampling, samples: [{ index: 4, values: [{ column: "value", present: true, quality: "unknown", scalar: { kind: "number", number: 12 } }] }] };
   const saved = (request: AnalysisSaveRequest): AnalysisStoreResult => ({ headId: b, revision: { revisionId: b, parentRevisionId: a, command: request.command, commandDigest: c, createdAt: "2026-09-10T00:00:00Z", snapshot: { ...current.revision.snapshot, snapshotId: b, corrections: request.corrections.map(item => ({ baseId: c, correctionId: b, request: item, original: item.expected, corrected: { ...item.expected, scalar: item.replacement } })) } } });
-  const client = { load: vi.fn().mockResolvedValue(current), page: vi.fn().mockResolvedValue(page), save: vi.fn().mockImplementation(async (request: AnalysisSaveRequest) => saved(request)), project: vi.fn().mockResolvedValue({ combinationId: "combo", sourceRevisions: [{ ...session.revision, revisionId: b, snapshotId: b }] }), close: vi.fn() };
+  const client = { resolve: vi.fn(), load: vi.fn().mockResolvedValue(current), page: vi.fn().mockResolvedValue(page), save: vi.fn().mockImplementation(async (request: AnalysisSaveRequest) => saved(request)), project: vi.fn().mockResolvedValue({ combinationId: "combo", sourceRevisions: [{ ...session.revision, revisionId: b, snapshotId: b }] }), close: vi.fn() };
   const onAdopt = vi.fn().mockResolvedValue(undefined);
   const hook = renderHook(() => useRecordedCorrections(client as unknown as AnalysisClient, onAdopt));
   async function edit() {
@@ -24,6 +24,53 @@ function fixture() {
   return { ...hook, client, onAdopt, session, current, saved, edit };
 }
 describe("recorded corrections owner", () => {
+  it("resolves a durable command without replaying it or adopting the current head", async () => {
+    const f = fixture();
+    f.client.save.mockRejectedValueOnce(new Error("confirmation lost"));
+    await f.edit();
+    await act(() => f.result.current.save("Checked"));
+    const request = f.result.current.editor!.request!;
+    f.client.resolve.mockResolvedValue({ found: true, headId: c, revision: f.saved(request).revision });
+    await act(() => f.result.current.resolveSave());
+    expect(f.client.save).toHaveBeenCalledTimes(1);
+    expect(f.client.resolve).toHaveBeenCalledWith(request, expect.any(AbortSignal));
+    expect(f.result.current.editor?.current.headId).toBe(c);
+    expect(f.result.current.editor?.projected?.revision.revisionId).toBe(b);
+    expect(f.result.current.editor?.request).toBeUndefined();
+    expect(f.onAdopt).not.toHaveBeenCalled();
+  });
+  it("unfreezes confirmed absence, retaining edits and exposing a conflict without rebasing", async () => {
+    const f = fixture();
+    f.client.save.mockRejectedValueOnce(new Error("conflict"));
+    await f.edit();
+    await act(() => f.result.current.save("Checked"));
+    f.client.resolve.mockResolvedValue({ found: false, headId: b });
+    await act(() => f.result.current.resolveSave());
+    expect(f.result.current.editor?.request).toBeUndefined();
+    expect(f.result.current.editor?.dirty).toBe(true);
+    expect(f.result.current.editor?.corrections[0].replacement.number).toBe(0);
+    expect(f.result.current.editor?.current.revision.revisionId).toBe(a);
+    expect(f.result.current.error).toBe("recorded_revision_conflict");
+    await act(() => f.result.current.save("Again"));
+    expect(f.client.save).toHaveBeenCalledTimes(1);
+    act(() => f.result.current.discard());
+    f.client.load.mockResolvedValue({ ...f.current, headId: b, revision: { ...f.current.revision, revisionId: b } });
+    await act(() => f.result.current.head());
+    expect(f.result.current.editor?.current.revision.revisionId).toBe(b);
+    expect(f.onAdopt).not.toHaveBeenCalled();
+  });
+  it("clears only settled state and leaves handle ownership outside this hook", async () => {
+    const f = fixture();
+    await f.edit();
+    act(() => expect(f.result.current.clear()).toBe(false));
+    expect(f.result.current.editor).not.toBeNull();
+    act(() => f.result.current.discard());
+    act(() => expect(f.result.current.clear("another-handle")).toBe(true));
+    expect(f.result.current.editor).not.toBeNull();
+    act(() => expect(f.result.current.clear("handle")).toBe(true));
+    expect(f.result.current.editor).toBeNull();
+    expect(f.client.close).not.toHaveBeenCalled();
+  });
   it("keeps original reads and pending edits separate, then saves/projects before explicit adoption", async () => {
     const f = fixture();
     expect(f.client.load).not.toHaveBeenCalled();
@@ -36,7 +83,7 @@ describe("recorded corrections owner", () => {
     expect(f.result.current.editor?.saved?.revision.revisionId).toBe(b);
     expect(f.onAdopt).not.toHaveBeenCalled();
     await act(() => f.result.current.adopt());
-    expect(f.onAdopt).toHaveBeenCalledWith(expect.objectContaining({ revision: expect.objectContaining({ revisionId: b }) }));
+    expect(f.onAdopt).toHaveBeenCalledWith(expect.objectContaining({ revision: expect.objectContaining({ revisionId: b }) }), expect.any(AbortSignal));
     expect(f.result.current.unresolved).toBe(false);
     expect(f.client.close).not.toHaveBeenCalled();
   });

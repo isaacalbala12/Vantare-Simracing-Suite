@@ -17,7 +17,7 @@ type Editor = Readonly<{
 
 /** View state only. The enclosing recorded-session owner retains file handles.
  * Keep mounted across tabs so pending edits and uncertain commands survive. */
-export function useRecordedCorrections(client: AnalysisClient, onAdopt: (session: RecordedSession) => Promise<void>, blocked = false) {
+export function useRecordedCorrections(client: AnalysisClient, onAdopt: (session: RecordedSession, signal: AbortSignal) => Promise<void>, blocked = false) {
   const [editor, setEditor] = useState<Editor | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -51,6 +51,9 @@ export function useRecordedCorrections(client: AnalysisClient, onAdopt: (session
     // Freeze edits before dispatch. Failure/cancellation retains this exact command.
     setEditor({ ...current, request, projected: undefined });
     const saved = await client.save(request, signal);
+    await retainSaved(current, saved, signal);
+  }
+  async function retainSaved(current: Editor, saved: AnalysisStoreResult, signal: AbortSignal) {
     signal.throwIfAborted();
     if (!alive.current) return;
     setEditor({ ...current, current: saved, saved, request: undefined, dirty: false,
@@ -91,6 +94,21 @@ export function useRecordedCorrections(client: AnalysisClient, onAdopt: (session
     retrySave: () => run(async signal => {
       if (editor?.request) await persist(editor, editor.request, signal);
     }),
+    resolveSave: () => run(async signal => {
+      if (!editor?.request) return;
+      const resolved = await client.resolve(editor.request, signal);
+      signal.throwIfAborted();
+      if (!alive.current) return;
+      if (resolved.found) {
+        await retainSaved(editor, { headId: resolved.headId, revision: resolved.revision }, signal);
+      } else {
+        // Confirmed absence unfreezes the proposal; a changed head still blocks
+        // saving until the user explicitly reviews/discards the old proposal.
+        setEditor({ ...editor, request: undefined, dirty: true, corrections: editor.request.corrections,
+          current: { ...editor.current, headId: resolved.headId } });
+        setError(resolved.headId === editor.current.revision.revisionId ? "recorded_save_not_committed" : "recorded_revision_conflict");
+      }
+    }),
     project: () => run(async signal => {
       if (editor && !editor.dirty && !editor.request) await project(editor.session, editor.current, signal);
     }),
@@ -106,10 +124,15 @@ export function useRecordedCorrections(client: AnalysisClient, onAdopt: (session
     }),
     adopt: () => run(async signal => {
       if (!editor?.projected || editor.dirty || editor.request) return;
-      await onAdopt(editor.projected);
+      await onAdopt(editor.projected, signal);
       signal.throwIfAborted();
       if (alive.current) setEditor(current => current ? { ...current, session: editor.projected!, projected: undefined } : current);
     }),
+    clear: (sessionId?: string) => {
+      if (pending.current || editor?.dirty || editor?.request) return false;
+      if (!sessionId || editor?.session.opened.sessionId === sessionId) { setEditor(null); setError(""); }
+      return true;
+    },
   };
 }
 export type RecordedCorrectionsController = ReturnType<typeof useRecordedCorrections>;

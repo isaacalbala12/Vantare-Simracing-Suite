@@ -52,3 +52,13 @@ revisión duradera con comando, base y campos del comando coincidentes. Conserva
 cancelación y no reintenta automáticamente. 43 focales, tipos/lint PASS.
 Cuatro paths. Sigue conectarlo al controlador y la UI. No es recuperación del
 borrador pendiente tras reiniciar: ese vínculo persistente sigue en T14.
+
+## T10e — resolución en el controlador
+
+Resolver confirma revisión existente y proyecta sin replay, o confirma ausencia
+conservando propuesta/cabeza actual y conflicto explícito. Nunca adopta cabeza
+implícitamente. Cierre del estado de edición rechaza cambios/comandos pendientes;
+handles siguen perteneciendo al owner. 16 focales, tipos/lint PASS. Adopción
+propaga señal para que el owner compruebe cancelación antes de cambiar el plan.
+Sigue integración de propietario y vistas; estado incierto entre reinicios aún
+pendiente de persistir en documento Strategy existente (T14).

@@ -1,6 +1,6 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — T12g3a aceptado localmente, siguiente T12g3b
+## Estado vigente — T12g3b aceptado localmente, siguiente T12g3c
 
 Isaac confirma que planes y documentación siguen a cargo del orquestador.
 R19/A17/execution actualizados: Muse Spark 1.3 Contributor vía OpenCode, xhigh,
@@ -8,7 +8,7 @@ ejecuta sólo código/tests asignados, sin subdelegación ni cambios de planes,
 docs o issue. Un ejecutor por worktree; revisión personal antes de aceptar.
 Rama `vantareapp/isa-1104-recorded-classification`, base exacta
 `7f757135445439851180fc503da45f7eb9e557e7`; último código revisado
-`cd2ab65b38d8ab045af210a9cfdae9617c1b772f`, limpio al revisar. A/B1/B2/C1/C2/D1/D2/E/F/G1/G2/G3a
+`b6107f9a9d2623321c87a1885a121c17e16fc084`, limpio al revisar. A/B1/B2/C1/C2/D1/D2/E/F/G1/G2/G3a/G3b
 aceptados localmente tras lectura de diff y evidencia (B1/B2: 126 paquetes Go
 PASS cada uno, vet exit 0; rutas en entradas siguientes). T12 sigue abierto.
 
@@ -16,14 +16,16 @@ G1/G2 conectan helpers y controlador de los tres grupos: original intacto,
 restauración explícita completa y comando incierto sin pérdida. Suite frontend
 completa/build aceptados; aún falta montaje UI de clasificación.
 G3a expone baseDigest nativo para inspección exacta sin combinación; tests
-nativos/TS y global Go aceptados. Siguiente G3b: apertura de sesión y propuestas,
-cada uno con su test (4 paths). Base y revisión exactas se cargan sin Project
-sólo ante la causa explícita metadata_unavailable; no se adopta una selección.
+nativos/TS y global Go aceptados. G3b carga base y revisión exactas sin Project
+sólo ante la causa explícita metadata_unavailable; no adopta una selección y
+rechaza fuentes no proyectables para la carrera. Siguiente G3c: dueño de
+sesiones y workflow, cada uno con su test (4 paths). Inspección explícita sin
+guardar carrera, con exclusión mutua desde el mismo ciclo y sin datos obsoletos.
 Microplan G3a–f escrito por el orquestador: apertura, dueño, textos, estado
 real de selección en Datos/Revisiones y entrada desde biblioteca al mismo A4.
 Una sesión abierta para revisar no pasa a estar usada por la carrera; sin
 datos suficientes no se finge combinación ni proyección. G3a solo no cierra
-el acceso al editor. F ya conserva el payload y
+el acceso al editor; G3b tampoco monta todavía la entrada visual. F ya conserva el payload y
 comprueba respuestas Save/Resolve; E valida v3 y versiones anteriores. D1 conecta
 Save/Resolve bajo la misma autorización y conserva clasificación efectiva
 en la proyección nativa; D2 permite inspeccionar v3 sin nueva API.
@@ -35,6 +37,31 @@ Sin push, PR, CI remota, integración ni promoción. No se reabre app/LMU; gate
 Wails sigue pendiente por ERROR_INVALID_STATE de causa no demostrada.
 
 Las entradas siguientes son evidencia histórica; el estado vigente es éste.
+
+## T12g3b — apertura exacta para inspección
+
+Commit `b6107f9a`, cuatro paths apertura/propuestas y tests, +200/-4.
+La causa explícita metadata_unavailable y baseDigest nativo válido permiten
+Load de revisión inicial o esperada exacta, sin Project ni combinación del
+borrador. Comprueba fuente/base/revisión/snapshot/digest; conserva un handle
+poseído con causa de bloqueo. Errores/cancelación siguen cerrando el recurso.
+Propuestas rechazan toda selección que contenga una fuente no proyectable.
+
+Revisión personal corrigió un requisito innecesario de objeto combination:
+la ruta legacy proyectada puede resolver su ID contra el catálogo. También
+exigió cancelar después de Prepare antes de otra lectura. Regresiones de ambos
+casos, referencia histórica con cabeza posterior, fuentes ajenas, contratos
+inválidos, fallo de Load y cancelación tardía. RED 1 fallo/18 PASS, 874ms,
+exit 1 por recorded_combination_unavailable. Focal final R2 36 PASS/721ms,
+typecheck y lint exit 0; diff limpio. El primer focal (35/36) falló por una
+expectativa errónea del nuevo test de digest; se conserva su log y no cuenta
+como fallo de producto. Logs C:/tmp/isa1104-t12g3b-{red,focal,focal-r2,typecheck,lint}.log
+leídos personalmente. Fixtures de contrato, sin datos reales.
+
+Worker idle antes del commit. Global frontend/build tras G3f según plan;
+sin Go nuevo, banco, Wails/app/LMU, push, PR, CI remota ni promoción/release.
+El orquestador precisa ahora inspect del dueño y sus bloqueos en G3c; planes,
+handoff e issue siguen bajo su responsabilidad. T12 permanece abierto.
 
 ## T12g3a — identidad nativa de inspección
 

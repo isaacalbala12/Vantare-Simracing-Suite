@@ -433,6 +433,21 @@ disponibilidad de señal.
   ni repositorio de carreras todavía disponible. Mantener los bloqueos actuales;
   nunca abrir un segundo handle ni duplicar controlador.
 
+  El dueño expone inspect(session): boolean como aceptación de la acción, no
+  como éxito de Load. Resuelve la fuente poseída por handle; rechaza fuente
+  ajena, operación de sesiones pendiente, corrections.isBusy() o cambios/
+  comando sin resolver antes de actuar. clear() debe aceptar antes de iniciar
+  el mismo corrections.load: una lectura fallida no muestra datos anteriores.
+  Load captura sus errores y establece su exclusión mutua sincrónicamente;
+  no basta consultar el busy de React del render anterior. Workflow cambia a
+  editor sólo si inspect fue aceptado y no hay escritura de carrera pendiente.
+  Los formularios sin aplicar los protege el montaje Workflow en G3f.
+  Tests en el mismo ciclo: operación de fuente pendiente impide inspección;
+  inspección pendiente impide Close/Apply/cambiar de fuente; fallo conserva
+  causa y deja el editor sin datos de la fuente anterior. Apply y onRevision
+  rechazan fuentes no proyectables, aunque traigan un ID; ningún acceso al
+  inspector adopta una revisión del plan. Focales, typecheck y lint por corte.
+
 - **T12g3d — textos del acceso y selección (4 paths).**
   `frontend/src/i18n/locales/strategy-orbit/es.ts`, `en.ts`, `it.ts`, `pt.ts`.
   Etiquetas de inspeccionar, volver al asistente, datos insuficientes para calcular y fuente no

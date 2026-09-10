@@ -2013,3 +2013,14 @@ Todavía no API/UI familiar ni derivación mixta pública. Siguiente T11e1 vista
 derivación de snapshot mixto, T11e2 identidad temporal en consumidores y T11e3
 inclusión explícita frente a exclusiones blandas. Sin cambiar umbrales físicos.
 Sin Wails/precision/visual >9/push/PR/CI remota/merge/promoción.
+
+## T11g1 — propuestas completas y selección exacta
+
+Helpers conservan decisiones familiares al editar escalares, permiten reemplazar
+una familia o volver a automático y consultan vueltas de la revisión fijada.
+Identidad temporal exacta, capacidades nativas y cuota conjunta 256 verificadas.
+21 tests focales, typecheck, lint y build PASS (warning heredado de chunks).
+Último global frontend: T11f3 442/3489 PASS; no repetido en este corte.
+Continúa T11g2: estado mixto del controlador y restauración explícita de familias
+históricas (incluido []), antes de habilitar edición familiar visible.
+Sin Wails, precisión, revisión visual independiente, push, PR ni promoción.

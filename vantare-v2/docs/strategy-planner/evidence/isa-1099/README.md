@@ -199,3 +199,14 @@ con sus focales y tipos de todo el frontend, sin anunciar otro global. Cuatro
 paths; UI/controlador familiar todavía pendientes. Continúa T11g1 helpers de
 conjunto completo y T11g2 controlador, luego montaje. Sin Wails/precisión/visual
 >9/push/PR/CI remota/merge/promoción.
+
+## T11g1 — propuestas completas y selección exacta
+
+Helpers conservan decisiones familiares al editar escalares, permiten reemplazar
+una familia o volver a automático y consultan vueltas de la revisión fijada.
+Identidad temporal exacta, capacidades nativas y cuota conjunta 256 verificadas.
+21 tests focales, typecheck, lint y build PASS (warning heredado de chunks).
+Último global frontend: T11f3 442/3489 PASS; no repetido en este corte.
+Continúa T11g2: estado mixto del controlador y restauración explícita de familias
+históricas (incluido []), antes de habilitar edición familiar visible.
+Sin Wails, precisión, revisión visual independiente, push, PR ni promoción.

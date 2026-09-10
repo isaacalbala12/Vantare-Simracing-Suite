@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import type { AnalysisClient } from "../../strategy/analysis-client";
-import type { AnalysisBase, AnalysisPage, AnalysisScalar, AnalysisStoreResult } from "../../strategy/analysis-contract";
+import type { AnalysisFamilyCorrection, AnalysisLapPage, AnalysisBase, AnalysisPage, AnalysisScalar, AnalysisStoreResult } from "../../strategy/analysis-contract";
 import type { RecordedSession } from "./strategy-recorded-session";
-import { loadRecordedCorrection, projectRecordedCorrection, recordedCorrectionSave, recordedSampleCorrection, replaceRecordedCorrection } from "./strategy-recorded-corrections";
+import { loadRecordedLapPage, recordedFamilyCorrection, replaceRecordedFamilyCorrection, removeRecordedFamilyCorrection, loadRecordedCorrection, projectRecordedCorrection, recordedCorrectionSave, recordedSampleCorrection, replaceRecordedCorrection } from "./strategy-recorded-corrections";
 
 const base: AnalysisBase = { sessionId: "source", contentSha256: "a".repeat(64), sizeBytes: 10, parserId: "lmu-duckdb", parserVersion: "1", schemaFingerprint: "schema", analysisVersion: "lap-validity.v1", segmentationDigest: "b".repeat(64) };
 const initial = "c".repeat(64), next = "d".repeat(64), digest = "e".repeat(64);
@@ -95,5 +95,56 @@ describe("exact recorded revisions", () => {
     expect(session.revision.revisionId).toBe(initial);
     project.mockResolvedValue({ combinationId: "combo", sourceRevisions: [{ ...ref, baseDigest: "f".repeat(64) }] });
     await expect(projectRecordedCorrection(client, session, saved)).rejects.toThrow("recorded_revision_mismatch");
+  });
+});
+
+function familyFixture() {
+  const f = fixture();
+  const target = { number: 2, start: "2026-09-10T12:00:00Z", end: "2026-09-10T12:01:30Z" };
+  const family = "combined_stint_pace_curve" as const;
+  const use = { family, included: true, exclusionReasons: null };
+  const original = { ...target, complete: true, labels: [], familyUse: [use] };
+  const page: AnalysisLapPage = { revisionId: initial, headId: next, page: { base, snapshotId: initial, start: 0, total: 1, laps: [{ original, effective: structuredClone(original), target, capabilities: [{ family, automaticIncluded: true, effectiveIncluded: true, canInclude: true, canExclude: true }] }] } };
+  const correction: AnalysisFamilyCorrection = { base, target, family, expected: use, included: false, reason: "Reviewed pace only" };
+  return { ...f, target, family, lapPage: page, familyCorrection: correction };
+}
+describe("recorded family correction helpers", () => {
+  it("reads a fixed page without adopting its head and rejects another snapshot", async () => {
+    const f = familyFixture(), laps = vi.fn().mockResolvedValue(f.lapPage), client = { laps } as unknown as AnalysisClient;
+    expect(await loadRecordedLapPage(client, f.session, f.loaded)).toBe(f.lapPage);
+    expect(laps).toHaveBeenCalledExactlyOnceWith({ sessionId: "handle", base, revisionId: initial, start: 0, limit: 25 }, undefined);
+    expect(f.session.revision.revisionId).toBe(initial);
+    laps.mockResolvedValue({ ...f.lapPage, page: { ...f.lapPage.page, snapshotId: next } });
+    await expect(loadRecordedLapPage(client, f.session, f.loaded)).rejects.toThrow("recorded_revision_mismatch");
+  });
+  it("uses only a unique original target and its native capability", () => {
+    const f = familyFixture();
+    const result = recordedFamilyCorrection(f.session, f.loaded, f.lapPage, f.target, f.family, false, "Reviewed");
+    expect(result.expected).toEqual(f.familyCorrection.expected);
+    expect(result.expected).not.toBe(f.familyCorrection.expected);
+    expect(() => recordedFamilyCorrection(f.session, f.loaded, f.lapPage, { ...f.target, end: "2026-09-10T12:01:31Z" }, f.family, false, "Reviewed")).toThrow("recorded_target_unavailable");
+    const blocked = { ...f.lapPage, page: { ...f.lapPage.page, laps: [{ ...f.lapPage.page.laps[0], capabilities: [{ ...f.lapPage.page.laps[0].capabilities[0], canInclude: false }] }] } };
+    expect(() => recordedFamilyCorrection(f.session, f.loaded, blocked, f.target, f.family, true, "Reviewed")).toThrow("recorded_family_read_only");
+    expect(() => recordedFamilyCorrection(f.session, f.loaded, { ...f.lapPage, revisionId: next }, f.target, f.family, false, "Reviewed")).toThrow("recorded_revision_mismatch");
+    expect(() => recordedFamilyCorrection(f.session, f.loaded, f.lapPage, f.target, f.family, false, "")).toThrow();
+  });
+  it("replaces/removes one family and preserves independent choices", () => {
+    const { familyCorrection: first } = familyFixture();
+    const fuel: AnalysisFamilyCorrection = { ...first, family: "fuel_consumption", expected: { ...first.expected, family: "fuel_consumption" } };
+    const changed = { ...first, included: true, reason: "Explicit inclusion" };
+    expect(replaceRecordedFamilyCorrection([first, fuel], changed)).toEqual([fuel, changed]);
+    const sameInstant = { ...first.target, start: "2026-09-10T14:00:00+02:00", end: "2026-09-10T14:01:30+02:00" };
+    expect(removeRecordedFamilyCorrection([first, fuel], sameInstant, first.family)).toEqual([fuel]);
+  });
+  it("saves a whole mixed set, preserves families on scalar edit and restores explicitly", () => {
+    const f = familyFixture();
+    const current: AnalysisStoreResult = { ...f.loaded, revision: { ...f.loaded.revision, snapshot: { ...f.loaded.revision.snapshot, contractVersion: "analysis.observation-snapshot.v2", familyUses: [{ baseId: digest, correctionId: next, request: f.familyCorrection, original: f.familyCorrection.expected, corrected: { ...f.familyCorrection.expected, included: false, exclusionReasons: ["manual_exclusion"] } }] } } };
+    const saved = recordedCorrectionSave(f.session, current, [f.correction()], "Review", "stable");
+    expect(saved.familyUses).toEqual([f.familyCorrection]);
+    expect(saved.familyUses?.[0]).not.toBe(f.familyCorrection);
+    const restore = recordedCorrectionSave(f.session, current, [], "Restore all", "restore", []);
+    expect(restore.familyUses).toEqual([]);
+    const full = Array.from({ length: 256 }, (_, sampleIndex) => ({ ...f.correction(), target: { ...f.correction().target, sampleIndex } }));
+    expect(() => recordedCorrectionSave(f.session, current, full, "Over budget", "over")).toThrow("recorded_correction_limit");
   });
 });

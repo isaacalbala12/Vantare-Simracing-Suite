@@ -1,6 +1,6 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — T12hd aceptado localmente, siguiente T12i
+## Estado vigente — T12i revisado, pendientes global y banco real
 
 Isaac confirma que planes y documentación siguen a cargo del orquestador.
 Muse Spark 1.3 Contributor vía OpenCode, xhigh, ejecuta sólo código/tests
@@ -10,7 +10,8 @@ Rama `vantareapp/isa-1104-recorded-classification`, base exacta
 `7f757135445439851180fc503da45f7eb9e557e7`; último código revisado
 `e583fe30925d7e8bd162fcc7a7f324509289e204`. Hd ocupa sólo los dos
 paths declarados. A–G3 y Ha/Hb/Hc/Hc2/Hd aceptados localmente tras
-revisión personal y gates. T12 abierto; sigue banco I, luego identidad §5.
+revisión personal y gates. I añade los dos paths de test declarados, aún
+sin commit; diff revisado, pendiente Go global/vet/banco. T12 abierto.
 
 G3 ya conecta la biblioteca con el mismo editor Datos/Revisiones, también
 sin combinación ni repositorio: apertura autorizada y referencia exacta,
@@ -31,9 +32,10 @@ al avanzar revisión. Hd ya muestra historial, con plan precisado por root en
 original/normalización reutilizadas, Hb textos y Hc Datos A4 (aceptados);
 Hc2 continuidad e historial Hd aceptados. Cada corte declara 2–4 paths. No generar correcciones
 ficticias para comprobar disponibilidad ni duplicar validación en React.
-Luego I banco real opt-in. Coche/circuito/clase siguen pendientes de cerrar
-resolución canónica en §5 antes de código; no aceptar un hash de texto del
-cliente como catálogo autorizado. T13–T24 siguen en la secuencia SDD.
+I banco real opt-in sigue a la revisión. Root cierra resolución canónica
+en §5/ADR0011 antes de su código, y declara J1 de cuatro paths. No aceptar
+un hash de texto del cliente como catálogo autorizado. T13–T24 siguen en
+la secuencia SDD; J1 aún no asignado al ejecutor.
 
 Sin cambio de alcance público ni entrega completa: `plan.md` intacto en
 estos cortes internos; se actualizará con la entrega en el mismo PR.
@@ -42,6 +44,37 @@ app/LMU; gate Wails sigue pendiente por ERROR_INVALID_STATE de causa no
 demostrada. Contraste real y paridad visual >9/10 siguen aparte.
 
 Las entradas siguientes son evidencia histórica; el estado vigente es éste.
+
+## T12i — banco revisado antes de leer las fuentes
+
+Sólo integration_test.go (+2/-1) y nuevo classification_test.go (344 líneas),
+bajo internal/app/strategy_recorded_real_*. Helper antes del familiar,
+retorna handle reabierto y cabeza restaurada, sin nuevo reader/dato/fixture.
+Root revisó todo el código y devolvió: restore debía ser v1; elegibilidad
+de observed_strategy necesitaba el gate preliminar de vuelta completa,
+no Included; lista íntegra de familias; clima proyectado recortado frente
+a precondición RAW; referencia completa antes de omitir auditoría;
+Load/Project históricos completos después de reabrir. Corregido.
+
+Focal R3 real: app 0.178s EXIT0, Analysis 0.184s EXIT0; banco sin opt-in
+SKIP explícito/0.045s EXIT0, que NO prueba el banco. gofmt/diff limpios.
+Logs crudos frontend/.tmp/isa1104-t12i-{focal-app-r3,focal-analysis-r3,
+focal-bank-r3,gofmt-r3}.log leídos por root.
+
+El primer focal.log es resumen reconstruido, no log primario. Root comprobó
+las ejecuciones originales en mensajes OpenCode msg_08d1f808c001H4FQ8uFVl5PEM2
+y msg_08d1fcf9400150MYeDp9YucBir: app0.191s/Analysis0.172s EXIT0, banco SKIP.
+R2 tuvo un fallo de invocación (TestClassification no reconocido) con EXIT0
+inválido. Root leyó ese contenido inicial de 114 bytes; después el mismo
+focal-app-r2.log fue sobrescrito con ejecuciones reales SKIP/app0.175s.
+El error queda en la salida de herramienta del orquestador, NO conservado
+en ese archivo como afirmó el ejecutor. No se reconstruye como log crudo.
+R3 es la verificación válida del código actual. No RED de producto.
+
+Worker idle antes de actualizar este handoff. Siguiente: Go global/vet,
+después bancos Imola/Monza nombrados y opt-in; salidas literales, EXIT Go
+inmediato y no sobrescribir ningún log. Originalhash/ausencia de señal y
+Wails se mantienen como afirmaciones distintas. Sin app/LMU, reserva o export.
 
 ## T12hd — historial revisado y gate completo
 

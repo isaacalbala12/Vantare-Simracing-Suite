@@ -6,8 +6,9 @@ SDD R08/R07, aceptación A08/A09. Continúa ADR 0010 y
 [corrections-contract-v1](../corrections-contract-v1.md) operación 2
 `set_classification` (implementación parcial descrita aquí); no crea otra custodia,
 lector, formato, motor ni dependencia. Este documento fija el contrato
-implementable y los microcortes. T12a, T12b1, T12b2, T12c1, T12c2, T12d1, T12d2 y T12e están implementados y
-revisados localmente; no cierran T12 ni los gates visual/nativo/empírico.
+implementable y los microcortes. A–G3 y Ha/Hb/Hc/Hc2/Hd están implementados
+y revisados localmente; I está en validación y §5/J1 definen la continuación.
+Estos cortes no cierran T12 ni los gates visual/nativo/empírico.
 
 ## 1. Conjunto cerrado de campos y tipos
 
@@ -17,7 +18,7 @@ Solo estos campos de la clasificación nativa admiten corrección:
 |---|---|---|
 | `SessionType` | enum | `practice`, `qualify`, `race` (cerrado; otro valor se rechaza) |
 | `WeatherConditions` | etiqueta opaca | texto recortado no vacío, máx. 64 caracteres; sin lista canónica (LMU varía); NO es señal física |
-| `TrackName`, `TrackLayout`, `CarName`, `CarClass` | texto + referencia canónica resuelta por el servidor (§5) | no vacíos; corte posterior tras cerrar el contrato de resolución, fuera de T12a |
+| `TrackName`, `TrackLayout`, `CarName`, `CarClass` | texto + referencia canónica resuelta por el servidor (§5) | no vacíos; contrato cerrado por root, implementación posterior a I |
 
 No admiten corrección: `SessionID`, `Status`/`Families` (derivados),
 `SimID` (fijo `lmu`), hashes, parser, reloj, unidades ni canales. La
@@ -89,43 +90,117 @@ el historial para simular compatibilidad. Al recuperar la versión actual se
 reabre la custodia preservada. Antes de cualquier rollback real, verificar rutas,
 configuración y cierre de instancias propias; aquí no se mueve ni copia dato alguno.
 
-## 5. Referencia canónica y cambio de combinación (diseño pendiente de cerrar; fuera de T12a)
+## 5. Referencia canónica y cambio de combinación
 
-Flujos reales existentes, sin lookup inventado:
+Contrato cerrado por el orquestador para la continuación de T12; pendiente de
+implementación. Complementa ADR 0010 mediante ADR 0011. Conserva owners,
+lector, catálogo, custodia y tres grupos existentes. No amplía el simulador.
 
-- Preparación clasifica ESA fuente abierta:
-  `internal/app/telemetry_analysis_corrections.go:108-115` llama a
-  `ClassifyHistoricalSession(input.Session)` bajo autorización y bloqueo de
-  Analysis. Lo prueba
-  `internal/app/telemetry_analysis_preparation_identity_test.go:11-72`
-  (`TestPreparationOffersCanonicalCombinationWithoutPriorStrategyCatalog`):
-  la identidad canónica existe sin ningún catálogo previo de Strategy, y el
-  metadato ausente queda explícito (`metadata_unavailable`) sin bloquear la
-  preparación. Esto NO equivale a consultar el catálogo de sesiones.
-- Catálogo nativo separado: `internal/telemetryanalysis/sessioncatalog.go:76-84`
-  `ListSessionCombinations` sobre `ListAuthorizedSessions`, y `:158-183`
-  `ListAuthorizedSessionCombinations`, que solo agrupa modelos con token de
-  autorización no falsificable. Analysis hoy NO puentea preparación↔catálogo
-  para correcciones.
+La identidad de combinación procede del catálogo de sesiones autorizado
+existente de Analysis: SessionCatalog.ListSessionCombinations, sobre
+ListAuthorizedSessions/ListAuthorizedSessionCombinations. Preparar la fuente
+abierta con ClassifyHistoricalSession produce SU identidad; no es una consulta
+al catálogo ni prueba de que una identidad propuesta esté autorizada.
 
-Diseño a cerrar: el cambio de coche/circuito propone valores legibles y el
-cliente sí puede adjuntar la referencia/ID canónico explícito
-(`combinationID` `lmu:sha256…` con clave de longitudes, solo en Go); el
-servidor resuelve y valida esa referencia contra la fuente autorizada
-existente (los modelos autorizados de esa base vía
-`ListAuthorizedSessionCombinations`). Un ID inventado, una combinación
-inexistente o un hash calculado sobre texto del cliente que no resuelva a
-una entrada autorizada se rechaza como `unknown_combination`. Nunca se
-acepta texto arbitrario del cliente como identidad canónica, nunca se
-hashea texto del cliente llamándolo canónico y no se crea un catálogo
-paralelo. Hasta cerrar ese contrato no se implementan los campos de
-combinación (fuera de T12a).
+### Referencia resuelta por Analysis
 
-Un cambio efectivo de coche/circuito deja obsoleta la selección de combinación
-del plan afectado: el plan conserva su revisión anterior (R16), no rebasea, no
-adopta cabeza y no recalcula silenciosamente; la UI exige re-adopción explícita
-del usuario. Cambiar solo `SessionType` o `WeatherConditions` no invalida la
-combinación; las familias afectadas se recalculan sobre vista separada.
+Cada petición TrackName/TrackLayout/CarName/CarClass incorpora
+`canonicalCombinationId`, obligatorio, de formato lmu:sha256 y presente en
+el catálogo existente. Todas las decisiones de identidad activas comparten
+el mismo ID. SessionType y WeatherConditions lo prohíben; clientes anteriores
+lo omiten. El cliente no envía un tuple canónico alternativo ni calcula hashes.
+Analysis resuelve el ID a una CombinationIdentity del catálogo autorizado.
+
+Se añade una consulta específica en el mismo SessionCatalog. Catálogo/source
+nulo produce causa tipada de indisponibilidad; catálogo disponible sin ese
+ID produce unknown_combination; errores de lectura y cancelación se propagan.
+No se crea catálogo vacío de respaldo para autorizar un ID inventado.
+El catálogo conserva su modelo autorizado ya cargado: esta consulta no
+demuestra una nueva lectura física de cada DuckDB del catálogo.
+
+El composition root inicializa strategyTelemetrySources una sola vez y
+comparte el mismo SessionCatalog entre Analysis y Strategy. Analysis y su
+frontera de licencia siguen creados antes de que Strategy consuma revisiones.
+La consulta del target se realiza exclusivamente para una escritura nueva,
+dentro del lease existente y DESPUÉS del replay, conflicto de cabeza y cuota.
+ObservationCorrectionInput acepta un callback nativo acotado con contexto;
+CorrectionStore no posee catálogo ni nueva fuente. Replay/Resolve no consultan
+el catálogo: devolver el comando ya guardado conserva prioridad aunque la
+entrada de destino haya desaparecido. La autorización de la fuente abierta
+y su base exacta siguen siendo obligatorias en toda operación.
+
+### Coherencia sin fabricar metadatos
+
+El campo corregido debe superar todas las puertas por campo de §2;
+ExpectedOriginal es RAW byte a byte. Replacement conserva el límite bruto
+existente de 1024 bytes UTF-8 y, tras strings.TrimSpace, debe ser exactamente
+el valor de ese campo en el target resuelto. No se aceptan nombres libres.
+Las identidades existentes usan longitudes en bytes + texto recortado exacto:
+NO se pasan a minúsculas ni se equiparan mayúsculas. El ID lo calcula sólo Go.
+
+Cada campo de identidad no corregido que sea utilizable debe coincidir con
+el target después del mismo recorte, o el conjunto propuesto es incoherente
+y se rechaza atómicamente. Un campo no corregido ausente, inválido, duplicado
+o privado permanece tal cual; no se completa desde el target y no bloquea
+corregir otro campo válido. Sí mantiene bloqueada cualquier proyección que
+requiera clasificar la combinación completa. Cuando los cuatro son utilizables,
+la identidad efectiva completa debe producir exactamente el ID resuelto.
+Las operaciones sólo cambian los campos explícitos sobre una copia separada.
+
+El catálogo puede reflejar nombres de equipo/livery grabados como CarName.
+Resolver una combinación no crea un modelo físico de coche ni deduce
+equivalencias entre equipos. No renombrar ni agrupar esas identidades por
+intuición o por compartir categoría.
+
+### Snapshot v4 y compatibilidad
+
+PreparedSampleCorrectionSnapshot añade canonicalCombination opcional con
+la CombinationIdentity resuelta, omitida si no hay decisiones de identidad.
+Una revisión con identidad activa emite analysis.mixed-snapshot.v4; continúa
+conteniendo exactamente los tres grupos existentes, con la misma cuota.
+El digest v4 cubre target, base, decisiones, precondiciones, motivo y origen.
+El comando de identidad usa dominio v4 con la referencia explícita.
+Sin identidad activa se conservan EXACTAMENTE bytes y digests v1/v2/v3.
+
+El decoder rechaza target en formatos viejos, v4 sin identidad/target,
+IDs divergentes, campo/valor que no pertenece al target y cambios de digest.
+La validación guardada demuestra consistencia, no autenticación contra una
+falsificación local totalmente coherente. Load/historial conservan el target
+guardado; aplicar y proyectar revalidan contra la fuente actual autorizada,
+sin consultar el catálogo actual para reinterpretar una decisión histórica.
+Retirar identidad vuelve a v1/v2/v3 según los grupos activos, conservando
+la cadena v4. Los binarios sin v4 requieren CorrectionRoot aislado al volver
+atrás: no abrir esa misma custodia ni reconstruir artificialmente su historia.
+
+### UI y revisión del plan
+
+La inspección debe permitir abrir una fuente de combinación distinta sin
+seleccionarla ni adoptarla. Datos conserva A4 y ofrece el catálogo ya disponible
+para elegir destino; si falta catálogo, mantiene correcciones no identitarias
+y muestra la causa. No añade un lector, catálogo frontend o valor canónico libre.
+La selección prepara de forma atómica los campos de identidad utilizables que
+difieren del target, con referencia y motivo comunes; los no disponibles
+siguen visibles con causa. Conserva los grupos escalares/familiares y las
+otras clasificaciones, y permite retirar la identidad como conjunto coherente.
+
+La identidad efectiva proyectada no reemplaza la metadata/base original del
+handle. Una revisión de otra combinación no cambia ni recalcula el plan.
+El plan conserva su referencia anterior exacta (R16). El usuario debe escoger
+expresamente la nueva combinación y volver a seleccionar/adoptar esa revisión
+en un borrador compatible. Head nueva, Save y Project no equivalen a adopción.
+SessionType/WeatherConditions conservan la combinación.
+
+### Secuencia de ejecución
+
+Primero banco I de los dos campos entregados. Luego preparación pura de
+identidad, snapshot/decoder v4, custodia/replay, vista/proyección, consulta de
+catálogo y montaje nativo, contratos/cliente, controlador y UI. Cada microcorte
+declara como máximo cinco paths antes de editar y se revisa personalmente;
+ningún ejecutor decide este contrato ni amplía el siguiente corte por su cuenta.
+Los tests deben probar: origen exacto, target desconocido/no disponible, set
+incoherente y parcial, igualdad de bytes v1/v2/v3, replay con target retirado,
+cuota/guard de clientes antiguos, reapertura, privacidad y no adopción implícita.
+Paridad visual, Wails y precisión empírica mantienen sus gates separados.
 
 ## 6. Consumo, derivación y permisos
 
@@ -722,6 +797,48 @@ disponibilidad de señal.
   reintentos conservados. Evidencia por root en `evidence/isa-1104/README.md`
   si se crea. Contraste Wails pendiente del runtime (T11i sin resolver);
   no atribuir precisión estadística ni aceptación nativa a este banco.
+
+- **T12j1 — preparación pura de identidad canónica (4 paths).**
+  `internal/telemetryanalysis/classification_corrections.go`, su test actual,
+  nuevo `classification_identity.go` y `classification_identity_test.go`
+  en el mismo paquete. Sólo tipos/preparación: sin wire nativo, snapshot,
+  custodia, catálogo, UI, lector, nuevas dependencias ni delegación.
+
+  Añadir los cuatro campos de identidad y canonicalCombinationId opcional
+  en ClassificationCorrection (omitempty, preservando JSON/digests antiguos).
+  Nueva PrepareCanonicalClassificationCorrectionSet(base, session, requests,
+  target *CombinationIdentity): preparación pura, atómica, mismo orden/cuota.
+  Los constructores anteriores conservan firmas y delegan sin target; siguen
+  rechazando los nuevos campos hasta que su llamador nativo se conecte en
+  los cortes posteriores. No aceptar strings canónicos sólo por su formato.
+
+  Reutilizar el validador por campo/original/base/reason/provenance y extraer
+  únicamente lo necesario para no duplicar el camino actual. Los dos campos
+  antiguos prohíben referencia de combinación. Con identidad activa exigir
+  un target completo LMU, consistente con el algoritmo Go existente, y una
+  referencia común en todos los cambios. El target puro no prueba autorización:
+  la obtendrá el Save nativo del catálogo en otro corte. Sin identidad activa
+  no permitir target inerte y conservar resultados anteriores exactos.
+
+  Aplicar reglas §5 sin convertir identidad a minúsculas ni rellenar
+  metadatos. Precondición RAW exacta, replacement UTF8 de hasta1024 bytes
+  brutos, recortado igual al valor target. Campos no corregidos utilizables
+  deben concordar; no utilizables quedan intactos y bloquean clasificación
+  global, no la preparación de otro campo válido. Atómico ante target/ID
+  incorrecto, divergente, campo duplicado, expected distinto y cuota.
+
+  Tests significativos: cuatro campos y combinación coherente, nombres
+  con mayúsculas/Unicode/espacios según algoritmo actual, ID forjado o de
+  otro tuple, falta de target y referencia en campo antiguo, conflicto de
+  campo no corregido utilizable, otro campo ausente/privado/duplicado, no
+  mutación y JSON/resultados anteriores conservados. No llamar a un fixture
+  autorización real ni al fallo de compilación RED de producto.
+
+  Gates: gofmt, focal de clasificación/identidad, global Go -p1 ./... y
+  vet de alcance. Root revisa el diff antes del gate global; logs nuevos
+  frontend/.tmp/isa1104-t12j1-*.log con EXIT y fallos conservados. Sin banco,
+  app/LMU ni Wails. Próximo corte snapshot/decoder v4 aún no se delega;
+  root declarará sus paths al aceptar éste.
 
 Cada corte declara sus paths y evidencia antes de editar. El orquestador es
 dueño de este plan, del handoff y de la issue; Muse implementa únicamente

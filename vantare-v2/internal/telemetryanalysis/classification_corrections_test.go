@@ -1,6 +1,7 @@
 package telemetryanalysis
 
 import (
+	"encoding/json"
 	"errors"
 	"reflect"
 	"strings"
@@ -338,5 +339,55 @@ func TestPrepareClassificationCorrection_ValidFieldWithWeatherMissing(t *testing
 	// parcial: la causa aplicable es la ausencia de WeatherConditions.
 	if _, err := ClassifyHistoricalSession(session); !errors.Is(err, ErrInvalidSessionClassification) {
 		t.Fatalf("la causa aplicable dejó de ser clasificación inválida: %v", err)
+	}
+}
+
+func TestPrepareClassificationCorrection_RejectsCanonicalReference(t *testing.T) {
+	base := classificationCorrectionBase()
+	session := classificationCorrectionSession()
+	identity := classificationCorrectionRequest(base, ClassificationFieldTrackName, "Imola", "Monza")
+	withRef := classificationCorrectionRequest(base, ClassificationFieldSessionType, "race", "qualify")
+	withRef.CanonicalCombinationID = "lmu:referencia"
+	weatherRef := classificationCorrectionRequest(base, ClassificationFieldWeatherConditions, "Dry", "Wet")
+	weatherRef.CanonicalCombinationID = "lmu:referencia"
+	for name, request := range map[string]ClassificationCorrection{
+		"campo de identidad": identity, "referencia en tipo": withRef, "referencia en clima": weatherRef,
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := PrepareClassificationCorrection(base, session, request); !errors.Is(err, ErrCorrectionTarget) {
+				t.Fatalf("se esperaba ErrCorrectionTarget, llegó %v", err)
+			}
+			if _, err := PrepareClassificationCorrectionSet(base, session, []ClassificationCorrection{request}); !errors.Is(err, ErrCorrectionTarget) {
+				t.Fatalf("el conjunto aceptó referencia canónica, llegó %v", err)
+			}
+		})
+	}
+}
+
+func TestPrepareClassificationCorrection_IdentityGateKeepsBasePrecedence(t *testing.T) {
+	base := classificationCorrectionBase()
+	session := classificationCorrectionSession()
+	changed := base
+	changed.ContentSHA256 = strings.Repeat("ef", 32)
+	identity := classificationCorrectionRequest(base, ClassificationFieldCarName, "Oreca 07", "Ferrari 499P")
+	if _, err := PrepareClassificationCorrection(changed, session, identity); !errors.Is(err, ErrCorrectionSourceChanged) {
+		t.Fatalf("la base fuente cambiada dejó de tener precedencia, llegó %v", err)
+	}
+	withRef := classificationCorrectionRequest(base, ClassificationFieldSessionType, "race", "qualify")
+	withRef.CanonicalCombinationID = "lmu:referencia"
+	if _, err := PrepareClassificationCorrection(changed, session, withRef); !errors.Is(err, ErrCorrectionSourceChanged) {
+		t.Fatalf("la base fuente cambiada dejó de tener precedencia, llegó %v", err)
+	}
+}
+
+func TestPrepareClassificationCorrection_PreservesLegacyJSON(t *testing.T) {
+	base := classificationCorrectionBase()
+	request := classificationCorrectionRequest(base, ClassificationFieldSessionType, "race", "qualify")
+	data, err := json.Marshal(request)
+	if err != nil {
+		t.Fatalf("petición anterior no serializa: %v", err)
+	}
+	if strings.Contains(string(data), "canonicalCombinationId") {
+		t.Fatalf("la referencia vacía alteró el JSON anterior: %s", data)
 	}
 }

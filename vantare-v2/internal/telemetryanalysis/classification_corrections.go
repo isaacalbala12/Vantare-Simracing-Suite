@@ -14,14 +14,21 @@ import (
 // parcial: los demás metadatos conservan su ausencia y la derivación que los
 // necesite sigue bloqueada con causa.
 
-// ClassificationField es el conjunto cerrado de campos corregibles en T12a.
-// Los campos de combinación (TrackName, TrackLayout, CarName, CarClass)
-// quedan fuera hasta cerrar el contrato de resolución (§5 del microplan T12).
+// ClassificationField es el conjunto cerrado de campos corregibles en T12a,
+// ampliado en T12j1 con identidad canónica (§5 del microplan T12, contrato
+// cerrado). Este constructor y su key conservan sólo los 2 campos iniciales;
+// los de identidad usan PrepareCanonicalClassificationCorrectionSet.
 type ClassificationField string
 
 const (
 	ClassificationFieldSessionType       ClassificationField = "SessionType"
 	ClassificationFieldWeatherConditions ClassificationField = "WeatherConditions"
+	// T12j1 — conjunto cerrado de identidad canónica. Solo preparable con
+	// referencia resuelta mediante PrepareCanonicalClassificationCorrectionSet.
+	ClassificationFieldTrackName   ClassificationField = "TrackName"
+	ClassificationFieldTrackLayout ClassificationField = "TrackLayout"
+	ClassificationFieldCarName     ClassificationField = "CarName"
+	ClassificationFieldCarClass    ClassificationField = "CarClass"
 )
 
 // ClassificationProvenance limita la procedencia admitida. Solo manual:
@@ -47,6 +54,11 @@ type ClassificationCorrection struct {
 	Replacement      string                   `json:"replacement"`
 	Reason           string                   `json:"reason"`
 	Provenance       ClassificationProvenance `json:"provenance"`
+	// CanonicalCombinationID referencia la combinación destino resuelta por
+	// el catálogo nativo. Solo en campos de identidad mediante el conjunto
+	// canónico; prohibida en SessionType/WeatherConditions y en el camino
+	// anterior. Vacía se omite para preservar JSON y digests antiguos.
+	CanonicalCombinationID string `json:"canonicalCombinationId,omitempty"`
 }
 
 // PreparedClassificationCorrection es una vista validada en memoria, no una
@@ -68,24 +80,20 @@ type PreparedClassificationCorrection struct {
 // petición se mutan.
 func PrepareClassificationCorrection(current SourceAnalysisRef, session HistoricalSession, request ClassificationCorrection) (PreparedClassificationCorrection, error) {
 	var empty PreparedClassificationCorrection
-	baseID, err := validateClassificationBase(current, session)
+	baseID, err := checkClassificationRequestBase(current, session, request)
 	if err != nil {
 		return empty, err
-	}
-	if _, err := request.Base.Digest(); err != nil {
-		return empty, err
-	}
-	if current.SessionID != request.Base.SessionID || current.ContentSHA256 != request.Base.ContentSHA256 || current.SizeBytes != request.Base.SizeBytes {
-		return empty, ErrCorrectionSourceChanged
-	}
-	if current != request.Base {
-		return empty, ErrCorrectionInterpretationChanged
 	}
 	if request.Provenance != ClassificationProvenanceManual {
 		return empty, fmt.Errorf("%w: provenance", ErrInvalidCorrection)
 	}
 	if !correctionText(request.Reason, 1024) {
 		return empty, fmt.Errorf("%w: reason", ErrInvalidCorrection)
+	}
+	// El camino anterior no prepara identidad ni acepta referencias: esos
+	// campos se conectan en cortes posteriores vía el conjunto canónico.
+	if isIdentityClassificationField(request.Field) || request.CanonicalCombinationID != "" {
+		return empty, fmt.Errorf("%w: canonical combination reference", ErrCorrectionTarget)
 	}
 	key, display, err := classificationCorrectionKey(request.Field)
 	if err != nil {
@@ -163,9 +171,10 @@ func validateClassificationBase(base SourceAnalysisRef, session HistoricalSessio
 	return baseID, nil
 }
 
-// classificationCorrectionKey resuelve la clave de metadato de un campo.
-// Todo campo fuera del conjunto cerrado es un objetivo sin resolver,
-// incluidos los de combinación pendientes del contrato de resolución.
+// classificationCorrectionKey resuelve la clave de metadato de un campo del
+// camino anterior (solo los 2 iniciales). Todo campo fuera de ese conjunto es
+// un objetivo sin resolver aquí, incluidos los de identidad, que usan
+// identityTargetField en el conjunto canónico.
 func classificationCorrectionKey(field ClassificationField) (key, display string, err error) {
 	switch field {
 	case ClassificationFieldSessionType:

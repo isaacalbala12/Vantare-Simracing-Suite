@@ -11,6 +11,32 @@ afterEach(() => { cleanup(); vi.clearAllMocks(); });
 const candidate = { id: "candidate", state: "ready", size: 1024, modifiedAt: "2026-09-09T12:00:00Z", walPresent: false };
 const session = { candidateId: "candidate", combinationId: "combo", base: { sessionId: "source" }, opened: { sessionId: "handle", session: { metadata: [] } }, revision: { sessionId: "source", revisionId: "a".repeat(64), baseDigest: "b".repeat(64), snapshotId: "c".repeat(64) } } as RecordedSession;
 
+it("serializes correction reads against close in the same cycle and releases settled editor state", async () => {
+  let finish!: (value: unknown) => void;
+  const load = vi.fn(() => new Promise(resolve => { finish = resolve; }));
+  const close = vi.fn().mockResolvedValue(undefined);
+  const client = { load, close } as unknown as AnalysisClient;
+  const complete = { ...session, base: { sessionId: "source", contentSha256: "a".repeat(64), sizeBytes: 1, parserId: "lmu-duckdb", parserVersion: "1", schemaFingerprint: "schema", analysisVersion: "analysis", segmentationDigest: "b".repeat(64) } };
+  vi.mocked(openRecordedSession).mockResolvedValue(complete);
+  const { result } = renderHook(() => useRecordedSessions({ revisions: [], client, onApply: vi.fn(), onCleanupError: vi.fn() }));
+  await act(() => result.current.open(candidate));
+  let reading!: Promise<void>;
+  await act(async () => {
+    reading = result.current.corrections.load(complete);
+    await result.current.close(complete);
+  });
+  expect(close).not.toHaveBeenCalled();
+  await act(async () => {
+    finish({ headId: complete.revision.revisionId, revision: { revisionId: complete.revision.revisionId, snapshot: { base: complete.base, snapshotId: complete.revision.snapshotId, corrections: [] } } });
+    await reading;
+  });
+  expect(result.current.corrections.editor).not.toBeNull();
+  await act(() => result.current.close(complete));
+  expect(close).toHaveBeenCalledExactlyOnceWith("handle");
+  expect(result.current.corrections.editor).toBeNull();
+  expect(result.current.sessions).toEqual([]);
+});
+
 it("keeps ownership through view rerenders and closes only when its owner leaves", async () => {
   const close = vi.fn().mockResolvedValue(undefined);
   const client = { discover: vi.fn().mockResolvedValue([candidate]), close } as unknown as AnalysisClient;

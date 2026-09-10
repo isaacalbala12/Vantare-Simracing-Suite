@@ -3,17 +3,19 @@ import { createAnalysisClient, type AnalysisClient } from "../../strategy/analys
 import type { AnalysisCandidate } from "../../strategy/analysis-contract";
 import type { StrategyAnalysisRevisionRef } from "../../strategy/strategy-application-client";
 import { openRecordedSession, type RecordedSession } from "./strategy-recorded-session";
+import { useRecordedCorrections } from "./use-recorded-corrections";
 
 export type RecordedSessionsOptions = {
   readonly combinationId?: string;
   readonly revisions: readonly StrategyAnalysisRevisionRef[];
   readonly client?: AnalysisClient;
   readonly onApply: (sessions: readonly RecordedSession[], signal: AbortSignal) => Promise<void>;
+  readonly onRevision?: (session: RecordedSession, signal: AbortSignal) => Promise<void>;
   readonly onCleanupError: () => void;
 };
 
-/** Keep this owner mounted across views; key its parent by event/combination. */
-export function useRecordedSessions({ combinationId, revisions, client: supplied, onApply, onCleanupError }: RecordedSessionsOptions) {
+/** Keep this owner mounted across views and the initial combination proposal. */
+export function useRecordedSessions({ combinationId, revisions, client: supplied, onApply, onRevision, onCleanupError }: RecordedSessionsOptions) {
   const [client] = useState(() => supplied ?? createAnalysisClient());
   const [candidates, setCandidates] = useState<readonly AnalysisCandidate[] | null>(null);
   const [sessions, setSessions] = useState<readonly RecordedSession[]>([]);
@@ -25,6 +27,14 @@ export function useRecordedSessions({ combinationId, revisions, client: supplied
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [applied, setApplied] = useState(false);
+  const corrections = useRecordedCorrections(client, async (next, signal) => {
+    signal.throwIfAborted();
+    const previous = owned.current.find(item => item.opened.sessionId === next.opened.sessionId);
+    if (pending.current || !previous || previous.revision.sessionId !== next.revision.sessionId || previous.revision.baseDigest !== next.revision.baseDigest) throw new Error("recorded_source_unavailable");
+    await onRevision?.(next, signal);
+    signal.throwIfAborted();
+    if (alive.current) update(owned.current.map(item => item === previous ? next : item));
+  }, () => pending.current !== null);
   useEffect(() => {
     alive.current = true;
     return () => {
@@ -43,7 +53,8 @@ export function useRecordedSessions({ combinationId, revisions, client: supplied
     setApplied(false);
   }
   async function run(operation: (signal: AbortSignal) => Promise<void>) {
-    if (pending.current) return;
+    if (pending.current || corrections.isBusy()) return;
+    if (corrections.unresolved) { setError("recorded_pending_corrections"); return; }
     const controller = new AbortController();
     pending.current = controller;
     setBusy(true);
@@ -58,8 +69,9 @@ export function useRecordedSessions({ combinationId, revisions, client: supplied
     }
   }
   return {
-    candidates, sessions, busy, error, applied,
-    cancel: () => pending.current?.abort(),
+    candidates, sessions, busy: busy || corrections.busy, error, applied, corrections,
+    locked: corrections.unresolved,
+    cancel: () => { pending.current?.abort(); corrections.cancel(); },
     discover: () => run(async signal => {
       const found = await client.discover(signal);
       signal.throwIfAborted();
@@ -76,7 +88,7 @@ export function useRecordedSessions({ combinationId, revisions, client: supplied
     }),
     close: (session: RecordedSession) => run(async () => {
       await client.close(session.opened.sessionId);
-      if (alive.current) update(owned.current.filter(item => item !== session));
+      if (alive.current) { corrections.clear(session.opened.sessionId); update(owned.current.filter(item => item !== session)); }
     }),
     apply: () => run(async signal => {
       await onApply(owned.current, signal);
@@ -86,4 +98,4 @@ export function useRecordedSessions({ combinationId, revisions, client: supplied
   };
 }
 
-export type RecordedSessionsController = ReturnType<typeof useRecordedSessions>;
+export type RecordedSessionsController = Pick<ReturnType<typeof useRecordedSessions>, "candidates" | "sessions" | "busy" | "error" | "applied" | "cancel" | "discover" | "open" | "close" | "apply"> & { readonly locked?: boolean };

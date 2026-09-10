@@ -17,7 +17,7 @@ type Editor = Readonly<{
 
 /** View state only. The enclosing recorded-session owner retains file handles.
  * Keep mounted across tabs so pending edits and uncertain commands survive. */
-export function useRecordedCorrections(client: AnalysisClient, onAdopt: (session: RecordedSession, signal: AbortSignal) => Promise<void>, blocked = false) {
+export function useRecordedCorrections(client: AnalysisClient, onAdopt: (session: RecordedSession, signal: AbortSignal) => Promise<void>, isBlocked: () => boolean = () => false) {
   const [editor, setEditor] = useState<Editor | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -29,7 +29,7 @@ export function useRecordedCorrections(client: AnalysisClient, onAdopt: (session
   }, []);
 
   async function run(operation: (signal: AbortSignal) => Promise<void>) {
-    if (pending.current || blocked) return;
+    if (pending.current || isBlocked()) return;
     const controller = new AbortController();
     pending.current = controller;
     setBusy(true); setError("");
@@ -38,9 +38,9 @@ export function useRecordedCorrections(client: AnalysisClient, onAdopt: (session
     finally { pending.current = null; if (alive.current) setBusy(false); }
   }
   function change(operation: (current: Editor) => Editor) {
-    if (!editor || pending.current || blocked || editor.request) return;
-    try { setEditor(operation(editor)); setError(""); }
-    catch (failure) { setError(failure instanceof Error ? failure.message : "recorded_operation_failed"); }
+    if (!editor || pending.current || isBlocked() || editor.request) return false;
+    try { setEditor(operation(editor)); setError(""); return true; }
+    catch (failure) { setError(failure instanceof Error ? failure.message : "recorded_operation_failed"); return false; }
   }
   async function project(session: RecordedSession, saved: AnalysisStoreResult, signal: AbortSignal) {
     const projected = await projectRecordedCorrection(client, session, saved, signal);
@@ -70,6 +70,7 @@ export function useRecordedCorrections(client: AnalysisClient, onAdopt: (session
   }
   return {
     editor, busy, error,
+    isBusy: () => pending.current !== null,
     unresolved: Boolean(editor?.dirty || editor?.request),
     load,
     cancel: () => pending.current?.abort(),

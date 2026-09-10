@@ -28,6 +28,14 @@ export function useRecordedWorkflow({ eventId, repositoryVersion, initial, catal
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
   const sessions = useRecordedSessions({
     combinationId: draft.combination?.combinationId, revisions: draft.sessions, client: analysis, onCleanupError,
+    onRevision: async (session, signal) => {
+      signal.throwIfAborted();
+      if (pending.current) throw new Error("recorded_save_in_progress");
+      const previous = draft.sessions.find(ref => ref.sessionId === session.revision.sessionId);
+      if (!previous || previous.baseDigest !== session.revision.baseDigest || draft.combination?.combinationId !== session.combinationId) throw new Error("recorded_source_not_selected");
+      setDraft({ ...draft, sessions: draft.sessions.map(ref => ref === previous ? session.revision : ref) });
+      setDirty(true);
+    },
     onApply: async (selected, signal) => {
       signal.throwIfAborted();
       if (pending.current) throw new Error("recorded_save_in_progress");
@@ -42,7 +50,7 @@ export function useRecordedWorkflow({ eventId, repositoryVersion, initial, catal
   catch (failure) { proposalError = failure instanceof Error ? failure.message : "recorded_combination_conflict"; }
 
   async function save(openEditor: boolean) {
-    if (pending.current || sessions.busy) return;
+    if (pending.current || sessions.busy || sessions.corrections.unresolved) return;
     pending.current = true;
     setSaving(true);
     setError("");
@@ -65,13 +73,13 @@ export function useRecordedWorkflow({ eventId, repositoryVersion, initial, catal
     }
   }
   return {
-    draft, stored, view, dirty, sessions, choices, proposalError, error, saving,
+    draft, stored, view, dirty: dirty || sessions.corrections.unresolved, sessions, choices, proposalError, error, saving,
     busy: saving || sessions.busy,
     change: (next: RecordedWizardDraft) => {
-      if (pending.current || sessions.busy) return;
+      if (pending.current || sessions.busy || sessions.corrections.unresolved) return;
       setDraft(next); setDirty(true); setError("");
     },
-    prepare: () => { if (!pending.current && !sessions.busy) setView("preparation"); },
+    prepare: () => { if (!pending.current && !sessions.busy && !sessions.corrections.unresolved) setView("preparation"); },
     save: () => save(false),
     openEditor: () => save(true),
   };

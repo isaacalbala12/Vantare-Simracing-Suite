@@ -62,3 +62,12 @@ handles siguen perteneciendo al owner. 16 focales, tipos/lint PASS. Adopción
 propaga señal para que el owner compruebe cancelación antes de cambiar el plan.
 Sigue integración de propietario y vistas; estado incierto entre reinicios aún
 pendiente de persistir en documento Strategy existente (T14).
+
+## T10f — owner de sesiones y revisión del evento
+
+Un solo AnalysisClient conecta propietario de handles y controlador persistente
+de correcciones. Locks comprobados al actuar evitan cerrar durante lectura en
+el mismo ciclo. Cambios pendientes bloquean cierre/cambio de fuente y guardado
+configuración; el guard de salida ve esos cambios. Adopción modifica sólo una
+fuente ya incluida con la misma base/combinación; marca borrador sin guardarlo.
+27 focales, tipos/lint PASS. Cinco paths. Sigue montaje de Datos y pestañas A4.

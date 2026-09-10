@@ -53,5 +53,8 @@ export function resolveFunctionalStandingsSize(
     : 50 + (separateSignatureHeader ? 49 : 0);
   const footer = settings.showSessionFooter === false ? 0 : 22;
   const infoBand = resolveFunctionalHeaderInfoPlacement(enabled, settings) === "band" ? 22 : 0;
-  return { width: Math.max(broadcast ? 258 : 238, width), height: header + infoBand + rowCount * 30 + footer };
+  // Mandatory brand with a hidden header paints its own 22px band (ISA-1105):
+  // the minimum frame must contain it, otherwise rows or the footer clip.
+  const brandBand = settings.brandVisible === true && settings.showSessionHeader === false ? 22 : 0;
+  return { width: Math.max(broadcast ? 258 : 238, width), height: header + infoBand + brandBand + rowCount * 30 + footer };
 }

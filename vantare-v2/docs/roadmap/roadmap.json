@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-10T15:16:24Z",
+  "generatedAt": "2026-09-10T15:49:44Z",
   "digest": {
     "lastCommit": "a9b8dd3695c66856e931d73650d54c4f6cb9e828"
   },
@@ -1357,7 +1357,7 @@
     },
     {
       "id": "widget-access-branding",
-      "type": "plan",
+      "type": "feature",
       "title": {
         "es": "Acceso y marca por widget",
         "en": "Widget access and branding",
@@ -1365,16 +1365,16 @@
         "it": "Accesso e marchio per widget"
       },
       "body": {
-        "es": "Tras completar Standings Eficiencia, unificar los widgets disponibles y la marca integrada según licencia en Studio, Desktop y OBS. Los perfiles se conservarán al cambiar de plan; la marca será obligatoria en los diseños gratuitos que corresponda y opcional en pago. Delta será de pago. La autoridad nativa de política, transportes y guards de guardado están terminados y revisados en ISA-1097; la marca integrada del frontend sigue en #1105. Sin integración todavía; comprobación conjunta al terminar.",
-        "en": "After completing Efficiency Standings, unify widget availability and integrated branding by license across Studio, Desktop and OBS. Profiles will survive plan changes; branding will be required on applicable free designs and optional with paid access. Delta will require paid access. The native policy authority, transports and save guards are finished and reviewed in ISA-1097; the frontend integrated branding continues in #1105. No integration yet; joint validation at the end.",
-        "pt": "Após concluir Standings Eficiência, unificar os widgets disponíveis e a marca integrada por licença no Studio, Desktop e OBS. Os perfis serão preservados ao mudar de plano; a marca será obrigatória nos desenhos gratuitos aplicáveis e opcional nos pagos. Delta exigirá acesso pago. A autoridade nativa de política, transportes e guards de guardado estão terminados e revistos em ISA-1097; a marca integrada do frontend continua em #1105. Sem integração ainda; validação conjunta no fim.",
-        "it": "Dopo Standings Efficienza, unificare disponibilità dei widget e marchio integrato per licenza in Studio, Desktop e OBS. I profili saranno conservati al cambio di piano; marchio obbligatorio nei design gratuiti previsti e facoltativo a pagamento. Delta richiederà accesso a pagamento. L'autorità nativa di policy, i trasporti e i guard di salvataggio sono finiti e revisionati in ISA-1097; il marchio integrato del frontend continua in #1105. Nessuna integrazione ancora; validazione congiunta alla fine."
+        "es": "Studio, Desktop y OBS aplican la misma política nativa por widget desde la licencia verificada, sin autoridad de licencia en renderizadores. Standings y Pedals siguen disponibles en Free y con cualquier pago; Delta y los demás premium exigen Overlays; engineer-radio exige Engineer y Overlays no lo concede. Los perfiles conservan los widgets bloqueados al importar, mover o eliminar y recuperan sus ajustes al volver los derechos. Crystal y Efficiency muestran la marca Vantare obligatoria en Free, también con cabecera o pie ocultos o ajustes importados, y la ocultan por defecto con pago con preferencia explícita para activarla. Entrega frontend en rama de issue; quedan pendientes la comprobación física conjunta pedida por Isaac y la integración a Nightly. Sin testers/master ni release.",
+        "en": "Studio, Desktop and OBS enforce the same native per-widget policy from the verified license, with no licensing authority inside renderers. Standings and Pedals stay available on Free and any paid plan; Delta and other premium widgets require Overlays; engineer-radio requires Engineer and Overlays never grants it. Profiles keep blocked widgets across import, move or delete and restore their settings when rights return. Crystal and Efficiency show the mandatory Vantare brand on Free, even with hidden header or footer or imported settings, and hide it by default on paid plans with an explicit opt-in. Frontend delivery on an issue branch; Isaac's joint physical validation and Nightly integration remain pending. No testers/master or release.",
+        "pt": "Studio, Desktop e OBS aplicam a mesma política nativa por widget a partir da licença verificada, sem autoridade de licença nos renderers. Standings e Pedals continuam disponíveis no Free e em qualquer plano pago; Delta e os restantes premium exigem Overlays; engineer-radio exige Engineer e Overlays nunca o concede. Os perfis conservam os widgets bloqueados ao importar, mover ou eliminar e recuperam os ajustes quando os direitos voltam. Crystal e Efficiency mostram a marca Vantare obrigatória no Free, mesmo com cabeçalho ou rodapé ocultos ou ajustes importados, e ocultam-na por defeito nos pagos com ativação explícita. Entrega frontend em branch de issue; validação física conjunta e integração Nightly pendentes. Sem testers/master nem release.",
+        "it": "Studio, Desktop e OBS applicano la stessa policy nativa per widget dalla licenza verificata, senza autorità di licenza nei renderer. Standings e Pedals restano disponibili su Free e qualsiasi piano a pagamento; Delta e gli altri premium richiedono Overlays; engineer-radio richiede Engineer e Overlays non lo concede mai. I profili conservano i widget bloccati tra importazione, spostamento o eliminazione e ne ripristinano le impostazioni al ritorno dei diritti. Crystal ed Efficiency mostrano il marchio Vantare obbligatorio su Free, anche con intestazione o piè nascosti o impostazioni importate, e lo nascondono di default sui piani a pagamento con attivazione esplicita. Consegna frontend su branch di issue; restano la verifica fisica congiunta e l'integrazione Nightly. Nessun testers/master né release."
       },
       "label": {
-        "es": "Plan",
-        "en": "Plan",
-        "pt": "Plano",
-        "it": "Piano"
+        "es": "ISA-1105",
+        "en": "ISA-1105",
+        "pt": "ISA-1105",
+        "it": "ISA-1105"
       }
     },
     {

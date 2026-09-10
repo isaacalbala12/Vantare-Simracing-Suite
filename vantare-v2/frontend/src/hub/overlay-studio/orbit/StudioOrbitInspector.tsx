@@ -98,7 +98,7 @@ function HeaderAction(props: {
  */
 export function StudioOrbitInspector(): React.ReactElement {
   const {
-    access,
+    widgetPolicy,
     activeLayout,
     activeSession,
     selectedWidgetId,
@@ -164,7 +164,7 @@ export function StudioOrbitInspector(): React.ReactElement {
     if (id === 'design') {
       return (
         <DesignSection
-          access={access}
+          policy={widgetPolicy}
           designClient={designClient}
           dispatch={dispatch}
           session={activeSession}
@@ -176,7 +176,7 @@ export function StudioOrbitInspector(): React.ReactElement {
     if (id === 'appearance') {
       return (
         <WidgetPropertyInspectorView
-          access={access}
+          policy={widgetPolicy}
           dispatch={dispatch}
           sectionId="appearance"
           session={activeSession}
@@ -190,7 +190,7 @@ export function StudioOrbitInspector(): React.ReactElement {
         <>
           {has('behavior') ? (
             <WidgetPropertyInspectorView
-              access={access}
+              policy={widgetPolicy}
               dispatch={dispatch}
               sectionId="behavior"
               session={activeSession}
@@ -200,7 +200,7 @@ export function StudioOrbitInspector(): React.ReactElement {
           ) : null}
           {has('content') ? (
             <WidgetPropertyInspectorView
-              access={access}
+              policy={widgetPolicy}
               dispatch={dispatch}
               sectionId="content"
               session={activeSession}

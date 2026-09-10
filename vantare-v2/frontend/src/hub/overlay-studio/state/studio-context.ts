@@ -1,5 +1,5 @@
 import { createContext, useContext } from "react";
-import type { AccessContext } from "../../../lib/access-policy";
+import type { WidgetPolicyWire } from "../../../overlay/core/widget-policy";
 import type {
   ProfileDocumentV3,
   SessionLayoutType,
@@ -21,7 +21,8 @@ export type StudioPreviewState = {
 };
 
 export type StudioDocumentContextValue = {
-  access: AccessContext;
+  /** Live native snapshot, or null before the first one: basic Free applies. */
+  widgetPolicy: WidgetPolicyWire | null;
   document: ProfileDocumentV3 | null;
   savedDocument: ProfileDocumentV3 | null;
   revision: string;

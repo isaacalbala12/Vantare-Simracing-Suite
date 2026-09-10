@@ -28,7 +28,7 @@ vi.mock("@wailsio/runtime", () => ({
 }));
 
 import type { ProfileDocumentV3, WidgetInstanceV3 } from "../../../overlay/core/profile-document";
-import type { AccessContext } from "../../../lib/access-policy";
+import type { StudioPolicy } from "../access/studio-access";
 import { deltaDefinition } from "../../../overlay/widget-types/delta/delta-definition";
 import { standingsDefinition } from "../../../overlay/widget-types/standings/standings-definition";
 import { I18nProvider } from "../../../i18n/I18nProvider";
@@ -75,10 +75,6 @@ function createClient(document: ProfileDocumentV3): StudioProfileClient {
 function renderStudio(
   document = buildDocument([widget("delta-main"), widget("standings-main")]),
   simStatus: SimStatus | null = null,
-  // Behavior edits on the premium delta fixture need paid access (ISA-1097);
-  // Free->block coverage lives in studio-access.test.ts. Tests that only
-  // select or move widgets keep the free default.
-  access?: AccessContext,
 ) {
   const context = window.document.createElement("div");
   context.id = STUDIO_CONTEXT_SLOT_ID;
@@ -86,9 +82,21 @@ function renderStudio(
   topbar.id = STUDIO_TOPBAR_SLOT_ID;
   window.document.body.append(context, topbar);
 
+  // Studio mechanics tests run with overlays rights; denial itself is
+  // covered by the dedicated policy suites.
+  const paidPolicy: StudioPolicy = {
+    revision: 2,
+    overlaysBasic: true,
+    overlaysAdvanced: true,
+    engineerAI: false,
+    brandCrystal: "optional",
+    brandEfficiency: "optional",
+    brandOriginal: "none",
+  };
+
   const tree = (
     <I18nProvider>
-      <StudioProvider client={createClient(document)} initialFile="profile.json" access={access}>
+      <StudioProvider client={createClient(document)} initialFile="profile.json" widgetPolicy={paidPolicy}>
         <StudioTelemetryProvider coordinator={createTestTelemetryCoordinator()} liveAvailable={false}>
           <StudioConfirmProvider>
             <StudioOrbitLayout
@@ -110,15 +118,6 @@ function renderStudio(
     ),
   );
 }
-
-// Paid access for fixtures that edit the premium delta widget (ISA-1097).
-const paidAccess: AccessContext = {
-  planLabel: "paid_overlays",
-  planStatus: "active",
-  roles: [],
-  isBlocked: false,
-  isUnconfigured: false,
-};
 
 /** Boton `Live` del selector de fuente de la toolbar. */
 function liveOption(): HTMLButtonElement {
@@ -174,7 +173,7 @@ describe("StudioOrbitLayout", () => {
   });
 
   it("el ojo de la lista oculta el widget y tacha su nombre", async () => {
-    renderStudio(undefined, null, paidAccess);
+    renderStudio();
     const eye = await screen.findByTestId("orbit-studio-widget-eye-delta-main");
     fireEvent.click(eye);
 
@@ -237,7 +236,7 @@ describe("StudioOrbitLayout", () => {
   });
 
   it("las sesiones visibles se marcan y desmarcan desde el Seg", async () => {
-    renderStudio(undefined, null, paidAccess);
+    renderStudio();
     fireEvent.click(
       within(await screen.findByTestId("orbit-studio-widget-item-delta-main")).getByRole("option"),
     );

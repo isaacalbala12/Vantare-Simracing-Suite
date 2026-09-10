@@ -1,19 +1,26 @@
 # Handoff vivo — Overlay Studio, Launcher y Hub
 
-## ISA-1098 — candidato local con #1083 + #1103 + #1097 (2026-09-10, sin integrar)
+## ISA-1098 — candidato local con #1083 + #1103 + #1097 + #1105 (2026-09-10, sin integrar)
 
 Rama `vantareapp/isa-1098-efficiency-integration`, worktree `C:/tmp/vantare-isa1098`,
 base `a9b8dd36` (= `origin/nightly` verificado antes de usar `--ref`). Solo se
 reúnen commits aprobados, conservando historia con merges locales; **no hay
-merge a Nightly, ni push, PR, release ni app/LMU**. #1105 queda fuera hasta
-recibir su SHA aprobado.
+merge a Nightly, ni push, PR, release ni app/LMU**. Reparto vigente: Codex
+implementa, Muse acciones mecánicas.
 
 Merges locales: `205fa091` <- `87cef39a` (#1083 Signature/Broadcast),
 `ec9d6d19` <- `6ae58f6e` (#1103 banderas y slots de sesión),
-`85f739ba` <- `3b490906` (#1097 política nativa, guards y transportes).
-Policy, guards y cableado Wails/SSE de #1097 intactos; sus 7 archivos frontend
-iniciales incluidos. Los 4 tests de fixture premium que #1105 migrará
-(AccessContext->WidgetPolicy) no se tocan aquí.
+`85f739ba` <- `3b490906` (#1097 política nativa, guards y transportes) y el
+merge de `cd334d14` (#1105 acceso y marca en React: nativa `3b490906`,
+frontend `cd334d14`). Policy, guards y cableado Wails/SSE de #1097 intactos;
+#1105 migra por completo a WidgetPolicy los 6 archivos access/catalog/orbit/store
+(sus versiones, sin declaraciones legacy huérfanas; denegaciones Free,
+delta/premium y delete/move preservadas). `WidgetVisualHost` une AMBAS props
+`authoringModel` (solo dev) y `brandVisible`; el renderer usa `visualModel` +
+`presentationSettings`, preservando Tower de autoría y marca. Plan elige solo
+el hunk actualizado de #1105, resto de Nightly intacto; handoff conserva AMBAS
+secciones. Los conflictos de este último merge los resolvió el padre; Muse no
+rediseñó ni arregló producto.
 
 Cruces resueltos semánticamente, sin copiar versiones enteras: Redline Tower y
 dorsales canónicos de PR #1102 preservados (cero ficheros borrados); ambos
@@ -35,8 +42,10 @@ misma aserción y mismos valores; sin cambios de producto ni tolerancias.
 
 Roadmap: `plan.md` solo añade los dos hitos exactos de #1098
 (`milestones:functional-widget-design` como feature,
-`milestones:widget-access-branding` como plan con nativa terminada y frontend
-en #1105); ningún otro hito de la base cambia. `roadmap.json` regenerado con
+`milestones:widget-access-branding` como feature con el hunk actualizado de
+#1105: política nativa por widget, marca Free obligatoria y comprobación
+física/integración pendientes); ningún otro hito de la base cambia.
+`roadmap.json` regenerado con
 `.github/scripts/roadmap_digest.py --repo . --ref origin/nightly`, nunca a mano.
 
 Límite #1106 confirmado por revisión: BuildSession (bandera) y BuildWeather
@@ -47,9 +56,45 @@ No se arregla con otro lector ni se inventan datos. Sin animación.
 Evidencia de este corte (logs en `vantare-v2/.task/isa-1098-evidence/`,
 carpeta ignorada): typecheck PASS (x2), focales 8 archivos / 67 tests PASS
 (Tower/dorsales + Efficiency/Workshop/viewport), `go vet` en
-`internal/license` y `internal/app` PASS. Full frontend+Go/build/lint, revisión
-independiente, PR draft, comprobación física conjunta y promoción quedan para
-el candidato completo con #1105. Sin probar Wails/LMU aquí.
+`internal/license` y `internal/app` PASS. La batería completa (frontend test,
+typecheck, build, lint; Go test/build; gates de roadmap/contrato) se ejecuta
+una sola vez sobre este candidato final con #1105. Sin probar Wails/LMU aquí.
+
+## ISA-1105 — Acceso y marca por widget en React (cierre frontend 2026-09-10)
+
+Hijo de #1097 aprobado por Isaac. Rama
+`vantareapp/isa-1105-widget-access-branding-ui`, worktree
+`C:/tmp/vantare-isa1105/vantare-v2`, base `6ae58f6e` (#1103 sobre
+#1083@87cef39a); nativa #1097 en commit `3b490906`. Roles vigentes: Codex
+implementa, Muse mecánica/revisión acotada. Inicio dirty intencionado del
+primer corte #1097 (Delta advanced, borrar/mover/conservar bloqueados)
+preservado y completado.
+
+Consumo frontend de la política nativa `WidgetPolicyWire` (sin PII) con una
+sola autoridad: sin snapshot vigente rige Free básica, sin fallback legacy.
+Wails `widget-policy:get` → `widget-policy:snapshot` + `widget-policy:changed`
+(suscribir antes de pedir); OBS SSE `/api/widget-policy/stream` con snapshot
+autoritativo y `changed` solo mayor. Revisión menor solo tras reconexión
+reconocida; caducidad con temporizador acotado por tramos (2^31-1) que
+notifica, pide snapshot fresco y nunca prolonga premium. Studio filtra en
+catálogo/inspector/dispatch/guardado; Desktop/OBS filtran antes de crear
+`RuntimeWidgetFrame`/suscribir telemetría. Marca integrada Crystal/Efficiency
+obligatoria en Free (banda propia con cabecera oculta, dentro del marco
+calculado y sin recortes; Pedals lleva micro-chip discreto sin intersección
+con canales), oculta por defecto en pago con opt-in `showBrand`. Original sin
+cambios. Guardado nativo denegado (`code: widget-access-denied`) se mapea al
+aviso traducido existente, también en InPlace.
+
+Evidencia: 326 tests del bloque de lógica PASS (focales + consumo Desktop/OBS
+con downgrade vivo); P1 candado de marca y P2 aviso InPlace cerrados con
+33/33 focales (Appearance 8/8, InPlace 11/11, profile-client 14/14);
+typecheck PASS; geometría Chromium real Signature/Broadcast/Crystal con
+cabecera/pie ocultos y doctype fiel; 4 capturas auténticas en
+`C:/tmp/vantare-isa1105-captures/` (las 4 primeras descartadas por fixture en
+quirks; visual 9/10 en SSR/harness, prueba física pendiente); hito roadmap en
+`feature` con `roadmap.json` regenerado. Full, build y lint, una sola vez
+sobre el candidato conjunto #1098. Sin push/PR/merge, sin testers/master/
+release, sin LMU físico ni licencia real afirmados.
 
 ## ISA-1103 — Información de sesión en Efficiency (2026-09-10)
 

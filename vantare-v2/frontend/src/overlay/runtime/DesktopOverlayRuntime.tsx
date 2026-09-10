@@ -1,5 +1,6 @@
 import type { ProfileDocumentV3 } from "../core/profile-document";
 import type { TelemetryRateCoordinator } from "../core/telemetry-rate-coordinator";
+import type { WidgetPolicyWire } from "../core/widget-policy";
 import { RuntimeOverlaySurface } from "./RuntimeOverlaySurface";
 import type { EngineerPresentationStore } from "../../engineer/engineer-presentation-store";
 import type { RaceScheduleStore } from "../core/race-schedule-store";
@@ -11,10 +12,11 @@ export type DesktopOverlayRuntimeProps = {
   telemetry: TelemetryRateCoordinator;
   engineerPresentations?: EngineerPresentationStore;
   raceSchedule?: RaceScheduleStore;
+  widgetPolicy?: WidgetPolicyWire | null;
 };
 
 export function DesktopOverlayRuntime(props: DesktopOverlayRuntimeProps): React.ReactElement {
-  const { document, layoutOrigin, telemetry, engineerPresentations, raceSchedule } = props;
+  const { document, layoutOrigin, telemetry, engineerPresentations, raceSchedule, widgetPolicy } = props;
   return (
     <RuntimeOverlaySurface
       document={document}
@@ -23,6 +25,7 @@ export function DesktopOverlayRuntime(props: DesktopOverlayRuntimeProps): React.
       layoutOrigin={layoutOrigin}
       engineerPresentations={engineerPresentations}
       raceSchedule={raceSchedule}
+      widgetPolicy={widgetPolicy}
     />
   );
 }

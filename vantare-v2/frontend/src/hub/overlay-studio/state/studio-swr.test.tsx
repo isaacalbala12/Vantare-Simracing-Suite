@@ -1,6 +1,5 @@
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { AccessContext } from "../../../lib/access-policy";
 import { deltaDefinition } from "../../../overlay/widget-types/delta/delta-definition";
 import type { ProfileDocumentV3 } from "../../../overlay/core/profile-document";
 import type { StudioProfileClient } from "./studio-profile-client";
@@ -9,14 +8,6 @@ import {
   writeCachedStudioDocument,
 } from "./studio-doc-cache";
 import { StudioProvider, useStudioDocument } from "./studio-store";
-
-const freeAccess: AccessContext = {
-  planLabel: "free",
-  planStatus: "active",
-  roles: [],
-  isBlocked: false,
-  isUnconfigured: false,
-};
 
 function buildDocument(name: string): ProfileDocumentV3 {
   const widget = deltaDefinition.createDefault("delta-main");
@@ -90,7 +81,6 @@ describe("StudioProvider stale-while-revalidate", () => {
 
     render(
       <StudioProvider
-        access={freeAccess}
         client={client}
         initialFile={FILE}
         recoveryStorage={null}
@@ -148,7 +138,6 @@ describe("StudioProvider stale-while-revalidate", () => {
 
     render(
       <StudioProvider
-        access={freeAccess}
         client={client}
         initialFile={FILE}
         recoveryStorage={null}

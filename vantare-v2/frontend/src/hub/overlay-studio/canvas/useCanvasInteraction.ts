@@ -10,6 +10,10 @@ import {
 } from '../../../overlay/core/layout-viewport';
 import { widgetTypeRegistry } from '../../../overlay/core/widget-registry';
 import {
+  resolveWidgetBrandVisible,
+  type WidgetPolicyWire,
+} from '../../../overlay/core/widget-policy';
+import {
   resolveStandingsFrameLayout,
   resolveStandingsMinimumSize,
   resolveStandingsMoveLayout,
@@ -71,6 +75,7 @@ export type UseCanvasInteractionInput = {
   selectWidget(widgetId: string | null): void;
   canMutateLayout?(widget: WidgetInstanceV3): boolean;
   onLayoutBlocked?(): void;
+  widgetPolicy?: WidgetPolicyWire | null;
 };
 
 export type UseCanvasInteractionResult = {
@@ -205,13 +210,15 @@ export function applyResizePreview(input: {
   siblings: readonly WidgetLayoutV3[];
   disableSnap: boolean;
   layoutViewport: LayoutViewport;
+  brandVisible?: boolean;
 }): { layout: WidgetLayoutV3; guides: SnapGuide[] } {
   const definition = widgetTypeRegistry.get(input.widget.type);
+  const brandVisible = input.brandVisible ?? false;
   const functionalMinimum = input.widget.visual.systemId === 'vantare-functional'
-    ? resolveStandingsMinimumSize(input.widget)
+    ? resolveStandingsMinimumSize(input.widget, brandVisible)
     : undefined;
   const start = functionalMinimum
-    ? resolveStandingsFrameLayout(input.widget, input.start, input.layoutViewport.width, input.layoutViewport.height)
+    ? resolveStandingsFrameLayout(input.widget, input.start, input.layoutViewport.width, input.layoutViewport.height, brandVisible)
     : input.start;
   const minSize = {
     width: Math.max(definition.capabilities.minimumSize.width, functionalMinimum?.width ?? 0),
@@ -448,6 +455,7 @@ export function useCanvasInteraction(input: UseCanvasInteractionInput): UseCanva
         siblings,
         disableSnap,
         layoutViewport: inputRef.current.layoutViewport,
+        brandVisible: resolveWidgetBrandVisible(inputRef.current.widgetPolicy ?? null, widget),
       });
       interactionRef.current = {
         ...current,

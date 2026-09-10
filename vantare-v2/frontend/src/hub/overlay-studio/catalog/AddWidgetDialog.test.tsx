@@ -1,47 +1,51 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { AccessContext } from "../../../lib/access-policy";
+import type { StudioPolicy } from "../access/studio-access";
 import { deriveStudioCatalog } from "./studio-catalog";
 import { AddWidgetDialog } from "./AddWidgetDialog";
 
-const freeAccess: AccessContext = {
-  planLabel: "free",
-  planStatus: "active",
-  roles: [],
-  isBlocked: false,
-  isUnconfigured: false,
+const freePolicy: StudioPolicy = {
+  revision: 1,
+  overlaysBasic: true,
+  overlaysAdvanced: false,
+  engineerAI: false,
+  brandCrystal: "required",
+  brandEfficiency: "required",
+  brandOriginal: "none",
 };
 
-// Delta is a paid widget (ISA-1097): dispatching its add needs paid access.
-const paidAccess: AccessContext = {
-  planLabel: "paid_overlays",
-  planStatus: "active",
-  roles: [],
-  isBlocked: false,
-  isUnconfigured: false,
+const paidPolicy: StudioPolicy = {
+  revision: 2,
+  overlaysBasic: true,
+  overlaysAdvanced: true,
+  engineerAI: false,
+  brandCrystal: "optional",
+  brandEfficiency: "optional",
+  brandOriginal: "none",
 };
 
 describe("AddWidgetDialog", () => {
   afterEach(() => cleanup());
 
-  it("lists catalog entries and dispatches add only for unlocked widgets", () => {
-    const catalog = deriveStudioCatalog();
-
-    render(
-      <AddWidgetDialog open access={freeAccess} catalog={catalog} onAdd={vi.fn()} onClose={vi.fn()} />,
-    );
-
-    expect(screen.getByTestId("studio-catalog-entry-delta")).toBeTruthy();
-    expect(screen.queryByTestId("studio-catalog-add-delta")).toBeNull();
-    expect(screen.getByTestId("studio-catalog-lock-delta")).toBeTruthy();
-    cleanup();
-
+  it("locks delta for free and dispatches add once paid", () => {
     const onAdd = vi.fn();
     const onClose = vi.fn();
-    render(
-      <AddWidgetDialog open access={paidAccess} catalog={catalog} onAdd={onAdd} onClose={onClose} />,
+    const catalog = deriveStudioCatalog();
+
+    const free = render(
+      <AddWidgetDialog open policy={freePolicy} catalog={catalog} onAdd={onAdd} onClose={onClose} />,
     );
 
+    // Delta is premium: visible with its lock, never a bare hidden button.
+    expect(screen.getByTestId("studio-catalog-entry-delta")).toBeTruthy();
+    expect(screen.getByTestId("studio-catalog-lock-delta")).toBeTruthy();
+    expect(screen.queryByTestId("studio-catalog-add-delta")).toBeNull();
+    free.unmount();
+
+    render(
+      <AddWidgetDialog open policy={paidPolicy} catalog={catalog} onAdd={onAdd} onClose={onClose} />,
+    );
+    expect(screen.getByTestId("studio-catalog-entry-delta")).toBeTruthy();
     expect(screen.getByTestId("studio-catalog-add-delta")).toBeTruthy();
     expect(screen.queryByTestId("studio-catalog-lock-delta")).toBeNull();
 
@@ -55,7 +59,7 @@ describe("AddWidgetDialog", () => {
     render(
       <AddWidgetDialog
         open
-        access={freeAccess}
+        policy={freePolicy}
         catalog={catalog}
         onAdd={vi.fn()}
         onClose={vi.fn()}
@@ -72,7 +76,7 @@ describe("AddWidgetDialog", () => {
     render(
       <AddWidgetDialog
         open
-        access={freeAccess}
+        policy={freePolicy}
         unavailableTypes={["delta"]}
         onAdd={vi.fn()}
         onClose={vi.fn()}
@@ -85,7 +89,7 @@ describe("AddWidgetDialog", () => {
 
   it("returns null when closed", () => {
     const { container } = render(
-      <AddWidgetDialog open={false} access={freeAccess} onAdd={vi.fn()} onClose={vi.fn()} />,
+      <AddWidgetDialog open={false} policy={freePolicy} onAdd={vi.fn()} onClose={vi.fn()} />,
     );
     expect(container.firstChild).toBeNull();
   });

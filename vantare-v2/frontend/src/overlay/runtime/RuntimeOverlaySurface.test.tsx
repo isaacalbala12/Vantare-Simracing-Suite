@@ -17,10 +17,33 @@ import { raceScheduleDefinition } from "../widget-types/race-schedule/race-sched
 import { createRaceScheduleStore } from "../core/race-schedule-store";
 import type { Calendar } from "../../calendar/calendar-types";
 import { engineerRadioDefinition } from "../widget-types/engineer-radio/engineer-radio-definition";
+import type { WidgetPolicyWire } from "../core/widget-policy";
 import type { StandingsContent } from "../widget-types/standings/standings-content";
 import goldenV2TwentyRaw from "../../../../internal/telemetry/projection/overlayv2/testdata/overlay_v2_20.golden.json?raw";
 
 const originalResizeObserver = globalThis.ResizeObserver;
+
+// Delta/engineer widgets under test execute with overlays rights.
+const paidPolicy: WidgetPolicyWire = {
+  revision: 2,
+  overlaysBasic: true,
+  overlaysAdvanced: true,
+  engineerAI: false,
+  brandCrystal: "optional",
+  brandEfficiency: "optional",
+  brandOriginal: "none",
+};
+
+// Engineer radio executes with engineer rights (overlays never grants it).
+const engineerPolicy: WidgetPolicyWire = {
+  revision: 3,
+  overlaysBasic: true,
+  overlaysAdvanced: false,
+  engineerAI: true,
+  brandCrystal: "optional",
+  brandEfficiency: "optional",
+  brandOriginal: "none",
+};
 
 type ResizeObserverHarness = {
   trigger(width: number, height: number): void;
@@ -161,6 +184,7 @@ describe("RuntimeOverlaySurface", () => {
           document={document}
           telemetry={coordinator}
           renderMode={renderMode}
+          widgetPolicy={paidPolicy}
         />,
       );
 
@@ -186,6 +210,7 @@ describe("RuntimeOverlaySurface", () => {
           telemetry={coordinator}
           renderMode={renderMode}
           engineerPresentations={presentations}
+          widgetPolicy={engineerPolicy}
         />,
       );
 
@@ -479,6 +504,7 @@ describe("RuntimeOverlaySurface", () => {
           telemetry={coordinator}
           renderMode={renderMode}
           raceSchedule={raceSchedule}
+          widgetPolicy={paidPolicy}
         />,
       );
 
@@ -502,7 +528,12 @@ describe("RuntimeOverlaySurface", () => {
       document.layouts.race = { type: "race", widgets: [visibleOnlyInRace] };
 
       const view = render(
-        <RuntimeOverlaySurface document={document} telemetry={coordinator} renderMode={renderMode} />,
+        <RuntimeOverlaySurface
+          document={document}
+          telemetry={coordinator}
+          renderMode={renderMode}
+          widgetPolicy={paidPolicy}
+        />,
       );
       expect(view.getByTestId("runtime-widget-frame").getAttribute("data-widget-id")).toBe("race-diagnostic");
 
@@ -765,7 +796,12 @@ describe("RuntimeOverlaySurface", () => {
     const coordinator = createTelemetryRateCoordinator();
 
     const view = render(
-      <RuntimeOverlaySurface document={buildDocument()} telemetry={coordinator} renderMode="desktop" />,
+      <RuntimeOverlaySurface
+        document={buildDocument()}
+        telemetry={coordinator}
+        renderMode="desktop"
+        widgetPolicy={paidPolicy}
+      />,
     );
 
     const frames = view.getAllByTestId("runtime-widget-frame");
@@ -784,13 +820,23 @@ describe("RuntimeOverlaySurface", () => {
     const document = buildDocument();
 
     const desktop = render(
-      <RuntimeOverlaySurface document={document} telemetry={coordinator} renderMode="desktop" />,
+      <RuntimeOverlaySurface
+        document={document}
+        telemetry={coordinator}
+        renderMode="desktop"
+        widgetPolicy={paidPolicy}
+      />,
     );
     const desktopRenderer = desktop.container.querySelector('[data-widget-renderer="delta"]');
     cleanup();
 
     const obs = render(
-      <RuntimeOverlaySurface document={document} telemetry={coordinator} renderMode="obs" />,
+      <RuntimeOverlaySurface
+        document={document}
+        telemetry={coordinator}
+        renderMode="obs"
+        widgetPolicy={paidPolicy}
+      />,
     );
     const obsRenderer = obs.container.querySelector('[data-widget-renderer="delta"]');
     expect(desktopRenderer).toBeTruthy();
@@ -811,6 +857,7 @@ describe("RuntimeOverlaySurface", () => {
         telemetry={coordinator}
         renderMode="obs"
         onDiagnostic={onDiagnostic}
+        widgetPolicy={paidPolicy}
       />,
     );
 

@@ -41,7 +41,7 @@ export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement 
   const { onOpenBrowserView, diagnostics, listMonitors = listStudioMonitors } = props;
   const { t } = useI18n();
   const {
-    access,
+    widgetPolicy,
     document,
     activeLayout,
     activeSession,
@@ -152,8 +152,8 @@ export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement 
   const safeInsets = safeAreaInsets(layoutViewport.width, layoutViewport.height);
 
   const canMutateLayout = useCallback(
-    (widget: WidgetInstanceV3) => canMutateWidget(access, widget),
-    [access],
+    (widget: WidgetInstanceV3) => canMutateWidget(widgetPolicy, widget),
+    [widgetPolicy],
   );
   const onLayoutBlocked = useCallback(() => {
     notifyAccessDenied(t(STUDIO_WIDGET_ACCESS_MESSAGE_KEY));
@@ -170,6 +170,7 @@ export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement 
     selectWidget,
     canMutateLayout,
     onLayoutBlocked,
+    widgetPolicy,
   });
 
   const deleteConfirm = useDeleteWidgetConfirm();
@@ -419,6 +420,7 @@ export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement 
                 onResizePointerDown={interaction.onResizePointerDown}
                 onLostPointerCapture={interaction.onLostPointerCapture}
                 diagnostics={diagnostics}
+                widgetPolicy={widgetPolicy}
               />
             ))}
           </div>

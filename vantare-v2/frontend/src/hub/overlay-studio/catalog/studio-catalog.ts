@@ -1,4 +1,4 @@
-import type { AccessContext, FeatureGate, FeatureId } from "../../../lib/access-policy";
+import type { FeatureGate, FeatureId } from "../../../lib/access-policy";
 import { DesignSystemRegistry, designSystemRegistry } from "../../../overlay/core/design-system-registry";
 import { ALL_WIDGET_TYPES, type DesignSystemId } from "../../../overlay/core/profile-document";
 import type { WidgetType, SessionLayoutType, WidgetInstanceV3 } from "../../../overlay/core/profile-document";
@@ -6,7 +6,7 @@ import type { InspectorSectionId } from "../../../overlay/core/widget-definition
 import type { WidgetTypeDefinition } from "../../../overlay/core/widget-definition";
 import type { LayoutViewport } from "../../../overlay/core/layout-viewport";
 import { WidgetTypeRegistry, widgetTypeRegistry } from "../../../overlay/core/widget-registry";
-import { getStudioMutationGate } from "../access/studio-access";
+import { getStudioMutationGate, type StudioPolicy } from "../access/studio-access";
 import type { StudioCommand } from "../state/studio-command";
 
 export type CompatibleSystemRef = {
@@ -73,16 +73,16 @@ export function deriveStudioCatalog(deps: StudioCatalogDeps = defaultDeps()): St
     .sort((left, right) => ALL_WIDGET_TYPES.indexOf(left.type) - ALL_WIDGET_TYPES.indexOf(right.type));
 }
 
-export function getCatalogAddGate(access: AccessContext, entry: StudioCatalogEntry): FeatureGate {
+export function getCatalogAddGate(policy: StudioPolicy, entry: StudioCatalogEntry): FeatureGate {
   return getStudioMutationGate({
-    access,
+    policy,
     mutation: "add",
     widget: { type: entry.type } as WidgetInstanceV3,
   });
 }
 
-export function canAddCatalogEntry(access: AccessContext, entry: StudioCatalogEntry): boolean {
-  return getCatalogAddGate(access, entry).allowed;
+export function canAddCatalogEntry(policy: StudioPolicy, entry: StudioCatalogEntry): boolean {
+  return getCatalogAddGate(policy, entry).allowed;
 }
 
 export function createNextWidgetId(type: WidgetType, existingIds: ReadonlySet<string>): string {

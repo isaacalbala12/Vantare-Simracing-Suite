@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { AccessContext } from "../../../lib/access-policy";
+import type { StudioPolicy } from "../access/studio-access";
 import { DesignSystemRegistry } from "../../../overlay/core/design-system-registry";
 import type { DesignSystemDefinition } from "../../../overlay/core/design-system-definition";
 import { deltaDefinition } from "../../../overlay/widget-types/delta/delta-definition";
@@ -18,20 +18,34 @@ import {
 } from "./studio-catalog";
 import { FINAL_WIDGET_CATALOG_CARDINALITY } from "./studio-catalog-cardinality-fixture";
 
-const freeAccess: AccessContext = {
-  planLabel: "free",
-  planStatus: "active",
-  roles: [],
-  isBlocked: false,
-  isUnconfigured: false,
+const freePolicy: StudioPolicy = {
+  revision: 1,
+  overlaysBasic: true,
+  overlaysAdvanced: false,
+  engineerAI: false,
+  brandCrystal: "required",
+  brandEfficiency: "required",
+  brandOriginal: "none",
 };
 
-const paidAccess: AccessContext = {
-  planLabel: "paid_overlays",
-  planStatus: "active",
-  roles: [],
-  isBlocked: false,
-  isUnconfigured: false,
+const paidPolicy: StudioPolicy = {
+  revision: 2,
+  overlaysBasic: true,
+  overlaysAdvanced: true,
+  engineerAI: false,
+  brandCrystal: "optional",
+  brandEfficiency: "optional",
+  brandOriginal: "none",
+};
+
+const engineerPolicy: StudioPolicy = {
+  revision: 3,
+  overlaysBasic: true,
+  overlaysAdvanced: false,
+  engineerAI: true,
+  brandCrystal: "optional",
+  brandEfficiency: "optional",
+  brandOriginal: "none",
 };
 
 function stubRenderer(): React.ReactElement {
@@ -141,25 +155,31 @@ describe("deriveStudioCatalog", () => {
 });
 
 describe("catalog access", () => {
-  it("allows free users to add basic widgets and blocks advanced widgets", () => {
-    const catalog = deriveStudioCatalog();
-    const standings = catalog.find((entry) => entry.type === "standings");
-    expect(standings).toBeDefined();
-    expect(canAddCatalogEntry(freeAccess, standings!)).toBe(true);
-
-    // Delta is a paid widget (ISA-1097): free users see it locked.
-    const delta = catalog.find((entry) => entry.type === "delta");
+  it("blocks delta for free, opens it with overlays rights, keeps engineer radio on engineer rights", () => {
+    const delta = deriveStudioCatalog().find((entry) => entry.type === "delta");
     expect(delta).toBeDefined();
-    expect(canAddCatalogEntry(freeAccess, delta!)).toBe(false);
-    expect(canAddCatalogEntry(paidAccess, delta!)).toBe(true);
+    // Delta is premium (ISA-1097): Free sees the lock, paid adds it.
+    expect(canAddCatalogEntry(freePolicy, delta!)).toBe(false);
+    expect(canAddCatalogEntry(paidPolicy, delta!)).toBe(true);
+    expect(canAddCatalogEntry(engineerPolicy, delta!)).toBe(false);
+
+    const standings = deriveStudioCatalog().find((entry) => entry.type === "standings");
+    expect(canAddCatalogEntry(null, standings!)).toBe(true);
 
     const widgetRegistry = new WidgetTypeRegistry();
     widgetRegistry.register(createStubDefinition("relative"));
+    widgetRegistry.register(createStubDefinition("engineer-radio"));
     const designRegistry = new DesignSystemRegistry();
-    designRegistry.register(createTestDesignSystem(["relative"]));
-    const relative = deriveStudioCatalog(createIsolatedCatalogDeps(widgetRegistry, designRegistry))[0]!;
-    expect(canAddCatalogEntry(freeAccess, relative)).toBe(false);
-    expect(canAddCatalogEntry(paidAccess, relative)).toBe(true);
+    designRegistry.register(createTestDesignSystem(["relative", "engineer-radio"]));
+    const isolated = deriveStudioCatalog(createIsolatedCatalogDeps(widgetRegistry, designRegistry));
+    const relative = isolated.find((entry) => entry.type === "relative")!;
+    const radio = isolated.find((entry) => entry.type === "engineer-radio")!;
+    expect(canAddCatalogEntry(freePolicy, relative)).toBe(false);
+    expect(canAddCatalogEntry(paidPolicy, relative)).toBe(true);
+    // Overlays rights never grant Engineer; engineer-only keeps basic work going.
+    expect(canAddCatalogEntry(paidPolicy, radio)).toBe(false);
+    expect(canAddCatalogEntry(engineerPolicy, radio)).toBe(true);
+    expect(canAddCatalogEntry(engineerPolicy, relative)).toBe(false);
   });
 });
 

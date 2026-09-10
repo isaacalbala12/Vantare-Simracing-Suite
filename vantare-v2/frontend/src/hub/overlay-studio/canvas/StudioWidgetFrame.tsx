@@ -10,6 +10,7 @@ import type { WidgetDiagnosticCollector } from '../../../overlay/core/widget-dia
 import { WidgetVisualHost } from '../../../overlay/core/WidgetVisualHost';
 import { WidgetVisualViewport } from '../../../overlay/core/WidgetVisualViewport';
 import { widgetTypeRegistry } from '../../../overlay/core/widget-registry';
+import { resolveWidgetBrandVisible, type WidgetPolicyWire } from '../../../overlay/core/widget-policy';
 import { useI18n } from '../../../i18n/I18nProvider';
 import type { ResizeHandle } from './canvas-resize';
 import { useSelectionFit } from './useSelectionFit';
@@ -51,6 +52,12 @@ export type StudioWidgetFrameProps = {
   onLostPointerCapture?(event: PointerEvent): void;
   diagnostics?: WidgetDiagnosticCollector;
   /**
+   * Live native policy or null (fail-safe Free). Passed by StudioCanvas and
+   * StudioOrbitStage from context; the frame stays pure and mountable
+   * without a provider in geometry tests.
+   */
+  widgetPolicy?: WidgetPolicyWire | null;
+  /**
    * Cine el marco de seleccion y los tiradores a la caja realmente pintada por
    * el widget en vez de a la del documento (`briefing 04 · A1`). Lo activa la
    * piel Orbit; el lienzo V3 clasico lo deja apagado y no cambia.
@@ -72,11 +79,13 @@ function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactE
     onResizePointerDown,
     onLostPointerCapture,
     diagnostics,
+    widgetPolicy = null,
     fitSelectionToContent = false,
     layoutViewportWidth = DEFAULT_LAYOUT_VIEWPORT.width,
     layoutViewportHeight = DEFAULT_LAYOUT_VIEWPORT.height,
   } = props;
   const { t } = useI18n();
+  const brandVisible = resolveWidgetBrandVisible(widgetPolicy, widget);
   const runtime = useStudioTelemetryRuntime(widget.type);
   const widgetRuntime = useMemo(() => ({
     ...runtime,
@@ -89,8 +98,9 @@ function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactE
     resolveStudioFrameGeometry(widget.id, layout, previewActive),
     layoutViewportWidth,
     layoutViewportHeight,
+    brandVisible,
   );
-  const effectiveMinimum = resolveStandingsMinimumSize(widget);
+  const effectiveMinimum = resolveStandingsMinimumSize(widget, brandVisible);
   const effectiveMinimumWidth = effectiveMinimum?.width;
   const effectiveMinimumHeight = effectiveMinimum?.height;
   const layoutWasNormalized =
@@ -227,6 +237,7 @@ function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactE
           <MemoWidgetVisualHost
             widget={widget}
             renderMode="studio"
+            brandVisible={brandVisible}
             diagnostics={diagnostics}
             runtime={widgetRuntime}
           />
@@ -249,6 +260,7 @@ export const StudioWidgetFrame = memo(
     previous.onResizePointerDown === next.onResizePointerDown &&
     previous.onLostPointerCapture === next.onLostPointerCapture &&
     previous.diagnostics === next.diagnostics &&
+    previous.widgetPolicy === next.widgetPolicy &&
     previous.fitSelectionToContent === next.fitSelectionToContent &&
     previous.layoutViewportWidth === next.layoutViewportWidth &&
     previous.layoutViewportHeight === next.layoutViewportHeight,

@@ -6,6 +6,17 @@ import { deltaDefinition } from "../widget-types/delta/delta-definition";
 import { InPlaceEditOverlay } from "./InPlaceEditOverlay";
 import goldenV2Raw from "../../../../internal/telemetry/projection/overlayv2/testdata/overlay_v2_1.golden.json?raw";
 import type { OverlayUpdateV2 } from "../../generated/telemetry";
+import type { StudioPolicy } from "../../hub/overlay-studio/access/studio-access";
+
+const paidPolicy: StudioPolicy = {
+  revision: 1,
+  overlaysBasic: true,
+  overlaysAdvanced: true,
+  engineerAI: false,
+  brandCrystal: "optional",
+  brandEfficiency: "optional",
+  brandOriginal: "none",
+};
 
 type Handler = (event: { data: unknown }) => void;
 
@@ -112,6 +123,7 @@ function renderOverlay(document: ProfileDocumentV3, revision = "rev-1") {
       revision={revision}
       layoutOrigin={{ x: 0, y: 0 }}
       telemetry={coordinator}
+      policy={paidPolicy}
     />,
   );
   return coordinator;
@@ -237,6 +249,46 @@ describe("InPlaceEditOverlay", () => {
     dispatch("studio:profile:conflict", { requestId: payload.requestId });
 
     await waitFor(() => expect(screen.getByTestId("edit-mode-save-error")).toBeTruthy());
+  });
+
+  it("shows one translated native access denial and preserves the draft for retry", async () => {
+    const document = buildDocument();
+    renderOverlay(document);
+    await mockSceneAndWaitForFrame("inplace-edit-frame-delta-main");
+
+    const frame = screen.getByTestId("inplace-edit-frame-delta-main") as HTMLElement;
+    fireEvent.pointerDown(frame, { pointerId: 1, button: 0, clientX: 100, clientY: 100, bubbles: true });
+    fireEvent.pointerMove(window, { pointerId: 1, clientX: 148, clientY: 148, bubbles: true });
+    fireEvent.pointerUp(window, { pointerId: 1, bubbles: true });
+
+    await waitFor(() => expect(saveCalls()).toHaveLength(1));
+    const first = saveCalls()[0][1] as { requestId: string; document: ProfileDocumentV3 };
+    // Native authority may reject a request after the client has sent it.
+    dispatch("studio:profile:error", {
+      requestId: first.requestId,
+      code: "widget-access-denied",
+      widgetIds: ["delta-main"],
+      message: "Native detail must not replace the localized access notice",
+    });
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toBe("No puedes guardar cambios en widgets premium sin la licencia adecuada.");
+    expect(screen.getAllByRole("alert")).toHaveLength(1);
+    expect(readFrameVisualLeft(frame)).toBe(152);
+    expect(document.layouts.general.widgets[0].layout.x).toBe(100);
+
+    fireEvent.pointerDown(frame, { pointerId: 2, button: 0, clientX: 152, clientY: 152, bubbles: true });
+    fireEvent.pointerMove(window, { pointerId: 2, clientX: 200, clientY: 200, bubbles: true });
+    fireEvent.pointerUp(window, { pointerId: 2, bubbles: true });
+    // A denial pauses autosave until the user explicitly retries.
+    expect(saveCalls()).toHaveLength(1);
+    fireEvent.click(await screen.findByTestId("inplace-retry"));
+    await waitFor(() => expect(saveCalls()).toHaveLength(2));
+    const second = saveCalls()[1][1] as { document: ProfileDocumentV3; expectedRevision: string };
+    expect(second.expectedRevision).toBe("rev-1");
+    expect(second.document.layouts.general.widgets).toHaveLength(1);
+    expect(second.document.layouts.general.widgets[0].layout.x).toBe(200);
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 
   it("shows a center guide while dragging near the viewport center", async () => {

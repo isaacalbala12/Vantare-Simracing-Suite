@@ -6,9 +6,8 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { useAccess } from "../../../lib/access";
-import type { AccessContext } from "../../../lib/access-policy";
-import { DEFAULT_STUDIO_ACCESS } from "../access/studio-access";
+import type { WidgetPolicyWire } from "../../../overlay/core/widget-policy";
+import { useWailsWidgetPolicy } from "../../../overlay/core/use-widget-policy";
 import type {
   ProfileDocumentV3,
   SessionLayoutType,
@@ -79,7 +78,7 @@ export function StudioProvider(props: {
   children: ReactNode;
   recoveryStorage?: Storage | null;
   recoveryWriteDelayMs?: number;
-  access?: AccessContext;
+  widgetPolicy?: WidgetPolicyWire | null;
 }): React.ReactElement {
   const {
     client,
@@ -87,9 +86,9 @@ export function StudioProvider(props: {
     children,
     recoveryStorage = null,
     recoveryWriteDelayMs = 300,
-    access: accessOverride,
+    widgetPolicy = null,
   } = props;
-  const access = accessOverride ?? DEFAULT_STUDIO_ACCESS;
+  const policy = widgetPolicy;
   // Stale-while-revalidate: the local cache of the last known document seeds
   // history in the state initializer (once per mount) so widgets paint
   // instantly while the fresh load travels over IPC.
@@ -219,7 +218,7 @@ export function StudioProvider(props: {
       }
       try {
         assertCommandAccess(
-          access,
+          policy,
           command,
           history.present,
           command.type === "widget/apply-design" ? command.design : undefined,
@@ -249,7 +248,7 @@ export function StudioProvider(props: {
         throw error;
       }
     },
-    [access, history],
+    [policy, history],
   );
 
   const undo = useCallback((): boolean => {
@@ -343,7 +342,7 @@ export function StudioProvider(props: {
         }
 
         const draftValidation = validateDraftAccess(
-          access,
+          policy,
           currentHistory.saved,
           currentDocument,
         );
@@ -420,7 +419,7 @@ export function StudioProvider(props: {
       }
     });
     return savePromise;
-  }, [access, client, initialFile, recoveryStore]);
+  }, [policy, client, initialFile, recoveryStore]);
 
   const setPreview = useCallback((patch: Partial<StudioPreviewState>) => {
     setPreviewState((current) => ({ ...current, ...patch }));
@@ -428,7 +427,7 @@ export function StudioProvider(props: {
 
   const documentValue = useMemo<StudioDocumentContextValue>(
     () => ({
-      access,
+      widgetPolicy: policy,
       document,
       savedDocument: history?.saved ?? null,
       revision,
@@ -454,7 +453,7 @@ export function StudioProvider(props: {
       notifyAccessDenied,
     }),
     [
-      access,
+      policy,
       document,
       history,
       revision,
@@ -500,7 +499,9 @@ export function ConnectedStudioProvider(props: {
   children: ReactNode;
   recoveryStorage?: Storage | null;
   recoveryWriteDelayMs?: number;
+  widgetPolicy?: WidgetPolicyWire | null;
 }): React.ReactElement {
-  const access = useAccess();
-  return <StudioProvider {...props} access={access} />;
+  const { widgetPolicy: policyOverride, ...rest } = props;
+  const { policy: livePolicy } = useWailsWidgetPolicy();
+  return <StudioProvider {...rest} widgetPolicy={policyOverride ?? livePolicy} />;
 }

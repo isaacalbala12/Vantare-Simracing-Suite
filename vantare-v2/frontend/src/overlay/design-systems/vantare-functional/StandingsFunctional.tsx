@@ -18,6 +18,10 @@ export function StandingsFunctional({ model, settings }: WidgetRendererProps<Sta
   const columns = model.columns;
   const identitySpan = resolveFunctionalIdentitySpan(columns);
   const hasHeader = config.showSessionHeader;
+  // Decisión pura de presentación (ISA-1105): la inyecta WidgetVisualHost
+  // desde la política nativa y la preferencia del documento. Sin ella se
+  // conserva el comportamiento previo (marca con cabecera).
+  const brandVisible = settings.brandVisible ?? hasHeader;
   const infoPlacement = resolveFunctionalHeaderInfoPlacement(columns, config);
   const splitHeader = infoPlacement === "split";
   const unavailable = model.status === "disconnected" || model.status === "missing" || model.status === "error";
@@ -27,7 +31,7 @@ export function StandingsFunctional({ model, settings }: WidgetRendererProps<Sta
   const headerInfo = <SessionInfo className="vf-header-info" choices={[config.headerFirst, config.headerSecond]} model={model} labels={labels} />;
 
   const sessionHeader = <div className="vf-session" title={`${sessionLabel} · ${labels.remaining}`}>
-    <span className="vf-brand" aria-label="Vantare"><img src={vantareMark} alt="" />VANTARE</span>
+    {brandVisible ? <span className="vf-brand" aria-label="Vantare"><img src={vantareMark} alt="" />VANTARE</span> : null}
     <span className="vf-session-context"><span className="vf-session-type" role={model.status === "stale" ? "status" : undefined}>{model.status === "stale" ? labels.stale : sessionLabel}</span><span className="vf-clock">{model.remainingText}</span></span>
     <span className="vf-class" title={model.activeClass}>{model.activeClass}</span>
     {infoPlacement === "inline" && headerInfo}
@@ -35,6 +39,7 @@ export function StandingsFunctional({ model, settings }: WidgetRendererProps<Sta
 
   return (
     <section className="vf-standings" data-widget-system="vantare-functional" data-widget-renderer="standings" data-template={broadcast ? "broadcast" : "signature"} data-session-header={hasHeader} data-status={model.status} data-session={session} data-flag={model.status === "ready" ? model.flag ?? "unknown" : "unknown"}>
+      {!hasHeader && brandVisible && <div className="vf-brand-band"><span className="vf-brand" aria-label="Vantare"><img src={vantareMark} alt="" />VANTARE</span></div>}
       {externalHeader && hasHeader && sessionHeader}
       {externalHeader && infoPlacement === "band" && <div className="vf-info-band">{headerInfo}</div>}
       {statusText && model.status !== "stale" && <p className="vf-status" role="status">{statusText}</p>}

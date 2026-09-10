@@ -9,6 +9,7 @@ import type {
   StudioSaveResult,
 } from '../../hub/overlay-studio/state/studio-profile-client';
 import { InPlaceInspectorPanel } from './InPlaceInspectorPanel';
+import type { StudioPolicy } from '../../hub/overlay-studio/access/studio-access';
 import { useInplaceAutosave } from './use-inplace-autosave';
 
 type Handler = (event: { data: unknown }) => void;
@@ -32,12 +33,14 @@ vi.mock('@wailsio/runtime', () => ({
   },
 }));
 
-const suiteAccess = {
-  planLabel: 'suite' as const,
-  planStatus: 'active' as const,
-  roles: [],
-  isBlocked: false,
-  isUnconfigured: false,
+const paidPolicy: StudioPolicy = {
+  revision: 2,
+  overlaysBasic: true,
+  overlaysAdvanced: true,
+  engineerAI: false,
+  brandCrystal: 'optional',
+  brandEfficiency: 'optional',
+  brandOriginal: 'none',
 };
 
 function buildDeltaWidget(): WidgetInstanceV3 {
@@ -79,7 +82,7 @@ function Harness({ widget }: { widget: WidgetInstanceV3 | null }): React.ReactEl
       client={createMemoryClient()}
       initialFile="test.json"
       recoveryStorage={null}
-      access={suiteAccess}
+      widgetPolicy={paidPolicy}
     >
       <Inner widget={widget} telemetry={coordinator} />
     </StudioProvider>
@@ -100,7 +103,7 @@ function Inner({
       widget={widget}
       session="race"
       telemetry={telemetry}
-      access={suiteAccess}
+      policy={paidPolicy}
       licenseLoading={false}
       autosave={autosave}
       selectedWidgetId={widget?.id ?? null}

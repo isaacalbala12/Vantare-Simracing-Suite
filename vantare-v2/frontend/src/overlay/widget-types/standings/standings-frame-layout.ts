@@ -3,12 +3,15 @@ import { parseStandingsContent } from "./standings-content";
 import { resolveFunctionalStandingsSize } from "./functional-standings-layout";
 import { resolveMinimumWidthFrameLayout, resolveStandingsRedlineMinimumWidth } from "./standings-redline-layout";
 
-export function resolveStandingsMinimumSize(widget: WidgetInstanceV3): { width: number; height?: number } | undefined {
+export function resolveStandingsMinimumSize(
+  widget: WidgetInstanceV3,
+  brandVisible = false,
+): { width: number; height?: number } | undefined {
   if (widget.type === "standings" && widget.visual.systemId === "vantare-functional") {
     try {
       const content = parseStandingsContent(widget.content);
       return resolveFunctionalStandingsSize(content.columns, content.rowCount ?? 20, {
-        ...widget.visual.baseSettings, ...widget.visual.appearanceOverrides,
+        ...widget.visual.baseSettings, ...widget.visual.appearanceOverrides, brandVisible,
       });
     } catch {
       // Invalid content is reported by WidgetVisualHost, without hiding its diagnostic.
@@ -31,8 +34,9 @@ export function resolveMinimumHeightFrameLayout(
 
 export function resolveStandingsFrameLayout(
   widget: WidgetInstanceV3, layout: WidgetLayoutV3, viewportWidth?: number, viewportHeight?: number,
+  brandVisible = false,
 ): WidgetLayoutV3 {
-  const minimum = resolveStandingsMinimumSize(widget);
+  const minimum = resolveStandingsMinimumSize(widget, brandVisible);
   const sized = resolveMinimumWidthFrameLayout(layout, minimum?.width, viewportWidth);
   return resolveMinimumHeightFrameLayout(sized, minimum?.height, viewportHeight);
 }

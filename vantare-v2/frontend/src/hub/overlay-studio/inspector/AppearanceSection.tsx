@@ -12,7 +12,7 @@ import {
   mergeVisualSettings,
   migrateWidgetBaseSettings,
 } from '../../../overlay/core/widget-visual-settings';
-import { Button } from '../../../ui/orbit';
+import { Button, Field, Toggle } from '../../../ui/orbit';
 import type { StudioCommand } from '../state/studio-command';
 import { InspectorControlField } from './inspector-control-field';
 
@@ -20,6 +20,11 @@ export type AppearanceSectionProps = {
   widget: WidgetInstanceV3;
   session: SessionLayoutType;
   dispatch(command: StudioCommand): void;
+  /**
+   * Marca efectiva obligatoria (ISA-1105): el toggle se representa ON y
+   * deshabilitado con nota, sin escribir la preferencia del documento.
+   */
+  brandLocked?: boolean;
 };
 
 function Chevron() {
@@ -43,7 +48,7 @@ function Chevron() {
 }
 
 export function AppearanceSection(props: AppearanceSectionProps): React.ReactElement {
-  const { widget, session, dispatch } = props;
+  const { widget, session, dispatch, brandLocked = false } = props;
   const { t } = useI18n();
   const [colorsOpen, setColorsOpen] = useState(true);
 
@@ -73,24 +78,49 @@ export function AppearanceSection(props: AppearanceSectionProps): React.ReactEle
     });
   };
 
-  const renderControl = (control: InspectorControl) => (
-    <InspectorControlField
-      control={control}
-      key={control.id}
-      modified={hasControlValue(overrides, control.path)}
-      onChange={(value) =>
-        writeOverrides(
-          writeControlValue(structuredClone(overrides), control.path, value),
-        )
-      }
-      onReset={() =>
-        writeOverrides(
-          clearControlValue(structuredClone(overrides), control.path),
-        )
-      }
-      values={mergedSettings}
-    />
-  );
+  const renderControl = (control: InspectorControl) => {
+    if (brandLocked && control.kind === 'toggle' && control.path === 'showBrand') {
+      // Marca efectiva obligatoria: se representa ON y deshabilitada con
+      // nota, sin escribir la preferencia guardada del documento.
+      const title = t(control.labelKey) === control.labelKey
+        ? control.id.replace(/[-_]+/g, ' ').replace(/^\w/, (letter) => letter.toUpperCase())
+        : t(control.labelKey);
+      return (
+        <div key={control.id}>
+          <Field className="orbit-studio-ins__field" label={title} row>
+            <Toggle
+              label={title}
+              title={t('overlay.inspector.brand.required')}
+              onChange={() => undefined}
+              pressed
+              disabled
+            />
+          </Field>
+          <p className="orbit-studio-ins__hint" data-testid="studio-inspector-brand-required-hint">
+            {t('overlay.inspector.brand.required')}
+          </p>
+        </div>
+      );
+    }
+    return (
+      <InspectorControlField
+        control={control}
+        key={control.id}
+        modified={hasControlValue(overrides, control.path)}
+        onChange={(value) =>
+          writeOverrides(
+            writeControlValue(structuredClone(overrides), control.path, value),
+          )
+        }
+        onReset={() =>
+          writeOverrides(
+            clearControlValue(structuredClone(overrides), control.path),
+          )
+        }
+        values={mergedSettings}
+      />
+    );
+  };
 
   const changedCount = controls.filter((control) =>
     hasControlValue(overrides, control.path),

@@ -8,6 +8,7 @@ vi.mock("@wailsio/runtime", () => ({
 }));
 import { deltaDefinition } from "../../../overlay/widget-types/delta/delta-definition";
 import type { ProfileDocumentV3 } from "../../../overlay/core/profile-document";
+import { STUDIO_PREMIUM_SAVE_DENIED_KEY } from "../studio-v3-i18n";
 import {
   createStudioProfileClient,
   type StudioEventTransport,
@@ -170,6 +171,40 @@ describe("createStudioProfileClient", () => {
     await expect(errorPromise).resolves.toEqual({
       status: "error",
       message: "disk full",
+    });
+  });
+
+  it("maps the native downgrade denial code to the translated notice without leaking internals", async () => {
+    const errorPromise = client.save({ document: buildDocument(), expectedRevision: "rev-2" });
+    const errorRequestId = (transport.emitted[0].payload as { requestId: string }).requestId;
+    transport.emit("studio:profile:error", {
+      requestId: errorRequestId,
+      operation: "save",
+      code: "widget-access-denied",
+      widgetIds: ["delta-main"],
+      message: "technical english with ids delta-main",
+    });
+    await expect(errorPromise).resolves.toEqual({
+      status: "error",
+      message: STUDIO_PREMIUM_SAVE_DENIED_KEY,
+      widgetIds: ["delta-main"],
+    });
+  });
+
+  it("maps the downgrade denial on the InPlace save event too", async () => {
+    const inPlaceClient = createStudioProfileClient(transport, { saveRequestEvent: "overlay:edit-layout:save" });
+    const savePromise = inPlaceClient.save({ document: buildDocument(), expectedRevision: "rev-1" });
+    const requestId = (transport.emitted[0].payload as { requestId: string }).requestId;
+    transport.emit("studio:profile:error", {
+      requestId,
+      operation: "save",
+      code: "widget-access-denied",
+      widgetIds: ["relative-main"],
+      message: "technical english with ids relative-main",
+    });
+    await expect(savePromise).resolves.toMatchObject({
+      status: "error",
+      message: STUDIO_PREMIUM_SAVE_DENIED_KEY,
     });
   });
 

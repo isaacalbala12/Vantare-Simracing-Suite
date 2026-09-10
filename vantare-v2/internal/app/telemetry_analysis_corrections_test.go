@@ -2,12 +2,57 @@ package app
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
+	"slices"
 	"testing"
 
 	"github.com/vantare/overlays/v2/internal/telemetryanalysis"
 )
+
+func TestTelemetryAnalysisEditableChannelsRequirePreparedSamples(t *testing.T) {
+	svc, _, now := telemetryAnalysisTestService(t, true)
+	t.Cleanup(func() {
+		if err := svc.ServiceShutdown(); err != nil {
+			t.Error(err)
+		}
+	})
+	candidate := telemetryAnalysisReadyCandidate(t, svc, now)
+	svc.runtimeReady = true
+	svc.readerFactory = func(artifact telemetryanalysis.AuthorizedHistoricalArtifact, _ telemetryanalysis.StagedHistoricalArtifact) (telemetryAnalysisReader, error) {
+		a, b := 10000.0, 10090.0
+		columns := []telemetryanalysis.LMUDuckDBColumn{{Name: "ts", Type: "DOUBLE"}, {Name: "value", Type: "USMALLINT"}}
+		return &telemetryAnalysisReaderStub{
+			evidence: artifact.Evidence(),
+			catalog: telemetryanalysis.LMUDuckDBCatalog{Events: []telemetryanalysis.LMUDuckDBChannel{
+				{Name: "Lap", Unit: "count", Columns: columns},
+				{Name: "Unrelated Signal", Unit: "count", Columns: columns},
+			}},
+			rows: []telemetryanalysis.LMUDuckDBRow{
+				{TimestampSeconds: &a, Values: []telemetryanalysis.LMUDuckDBValue{{Kind: telemetryanalysis.ScalarInteger, Integer: 1}}},
+				{TimestampSeconds: &b, Values: []telemetryanalysis.LMUDuckDBValue{{Kind: telemetryanalysis.ScalarInteger, Integer: 2}}},
+			},
+		}, nil
+	}
+	opened, err := svc.Open(context.Background(), TelemetryAnalysisOpenRequest{CandidateID: candidate.ID, UserApproved: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	prepared, err := svc.PrepareCorrections(context.Background(), opened.SessionID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var lapID string
+	for _, channel := range opened.Session.Channels {
+		if channel.SourceName == "Lap" {
+			lapID = channel.ID
+		}
+	}
+	if lapID == "" || !slices.Equal(prepared.EditableChannelIDs, []string{lapID}) {
+		t.Fatalf("capability must include only prepared Lap samples: %v", prepared.EditableChannelIDs)
+	}
+}
 
 func TestTelemetryAnalysisPreparesOnlyAuthorizedOpenCorrectionSource(t *testing.T) {
 	svc, path, now := telemetryAnalysisTestService(t, true)
@@ -39,6 +84,19 @@ func TestTelemetryAnalysisPreparesOnlyAuthorizedOpenCorrectionSource(t *testing.
 	}
 	if prepared.Base.SessionID != opened.Session.ID || prepared.Base.SessionID == opened.SessionID || len(prepared.BaseRevisionID) != 64 {
 		t.Fatal("handle used as content identity")
+	}
+	wire, err := json.Marshal(prepared)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var capability struct {
+		EditableChannelIDs []string `json:"editableChannelIds"`
+	}
+	if err := json.Unmarshal(wire, &capability); err != nil {
+		t.Fatal(err)
+	}
+	if capability.EditableChannelIDs == nil || len(capability.EditableChannelIDs) != 0 {
+		t.Fatal("unknown units must expose an explicit empty editable set", string(wire))
 	}
 	after, err := os.ReadFile(path)
 	if err != nil {

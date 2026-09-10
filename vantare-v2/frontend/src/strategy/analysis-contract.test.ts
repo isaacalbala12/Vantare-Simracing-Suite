@@ -12,6 +12,17 @@ describe("local discovery labels", () => {
 });
 const base = { sessionId: "session", contentSha256: "a".repeat(64), sizeBytes: 10, parserId: "lmu-duckdb", parserVersion: "1", schemaFingerprint: "schema", analysisVersion: "lap-validity.v1", segmentationDigest: "b".repeat(64) };
 const snapshotId = "c".repeat(64);
+describe("prepared editable channels", () => {
+  it("requires explicit capability and preserves an empty supported set", () => {
+    expect(parseAnalysisPreparation({ base, baseRevisionId: snapshotId })).not.toHaveProperty("editableChannelIds");
+    for (const editableChannelIds of [[], ["lap", "fuel"]]) {
+      expect(parseAnalysisPreparation({ base, baseRevisionId: snapshotId, editableChannelIds })).toMatchObject({ editableChannelIds });
+    }
+  });
+  it.each([null, "lap", [""], [1], ["lap", "lap"], ["界".repeat(100)]].map(editableChannelIds => ({ editableChannelIds })))("rejects malformed capability $editableChannelIds", ({ editableChannelIds }) => {
+    expect(() => parseAnalysisPreparation({ base, baseRevisionId: snapshotId, editableChannelIds })).toThrow();
+  });
+});
 const combination = { id: `lmu:${"d".repeat(64)}`, simId: "lmu", trackName: "Imola", trackLayout: "Grand Prix", carName: "Car", carClass: "Hypercar" };
 describe("prepared combination identity", () => {
   it("preserves the canonical identity without requiring a preexisting catalog", () => {

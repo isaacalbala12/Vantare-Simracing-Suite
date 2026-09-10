@@ -10,6 +10,7 @@ import (
 type TelemetryAnalysisCorrectionPreparation struct {
 	Base                         telemetryanalysis.SourceAnalysisRef    `json:"base"`
 	BaseRevisionID               string                                 `json:"baseRevisionId"`
+	EditableChannelIDs           []string                               `json:"editableChannelIds"`
 	Combination                  *telemetryanalysis.CombinationIdentity `json:"combination,omitempty"`
 	CombinationUnavailableReason string                                 `json:"combinationUnavailableReason,omitempty"`
 }
@@ -89,7 +90,21 @@ func (service *TelemetryAnalysisService) PrepareCorrections(ctx context.Context,
 		if err != nil {
 			return publicTelemetryAnalysisError(err)
 		}
-		result = TelemetryAnalysisCorrectionPreparation{Base: input.Base, BaseRevisionID: initial.SnapshotID}
+		result = TelemetryAnalysisCorrectionPreparation{Base: input.Base, BaseRevisionID: initial.SnapshotID, EditableChannelIDs: []string{}}
+		// Inspection can expose channels outside the bounded correction read.
+		// Advertise only channels backed by prepared samples and known units.
+		preparedChannels := make(map[string]bool)
+		for _, page := range input.Pages {
+			if len(page.Samples) > 0 {
+				preparedChannels[page.ChannelID] = true
+			}
+		}
+		for _, channel := range input.Session.Channels {
+			if preparedChannels[channel.ID] && channel.Unit.Quality == telemetryanalysis.QualityValid {
+				result.EditableChannelIDs = append(result.EditableChannelIDs, channel.ID)
+				delete(preparedChannels, channel.ID)
+			}
+		}
 		// Reuse the session already read under the Analysis authorization/lock.
 		// Missing identity does not prevent reviewing that source's observations.
 		classified, classificationErr := telemetryanalysis.ClassifyHistoricalSession(input.Session)

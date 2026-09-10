@@ -1763,3 +1763,18 @@ al nivel raíz entre carga/error/éxito. 20 pruebas focales PASS. La búsqueda
 nativa encuentra además límite de composición 128 frente a carpeta >400;
 produce mensaje incompatible. Debe corregirse en issue separada antes de
 certificar recorrido UI completo. Runtime liberado para overlays #1072.
+
+## T10h — capacidad de edición nativa
+
+PrepareCorrections publica editableChannelIds, explícitamente vacío si no hay
+señales preparadas con unidad válida. Se obtiene de páginas ya leídas, conserva
+orden nativo y elimina duplicados; no amplía I/O ni infiere capacidad en React.
+Contrato TS opcional por compatibilidad: ausencia no concede edición.
+RED wire Go y validación TS reproducidos; GREEN 2 focales Go, 42 TS, tipos,
+lint focal/build, global Go -p1 y vet del alcance PASS. Vet ampliado a todos
+los subpaquetes de app falla en launcher/icon_windows.go:553 (unsafe.Pointer),
+deuda heredada ya seguida en #950; archivo intacto. Logs C:/tmp/isa1096-t10h-*.
+Review propia: autorización y lectura siguen en withCorrectionInput; la lista
+no sustituye la validación de cada guardado. Siguiente transportar capacidad
+a RecordedSession y bloquear edición sin permiso explícito, luego historial.
+Sin Wails, banco DuckDB, nota visual, push/PR/CI remota o promoción nuevos.

@@ -74,6 +74,7 @@ export type AnalysisCommandResolution = Readonly<{ found: false; headId: string 
 export type AnalysisPreparation = Readonly<{
   base: AnalysisBase;
   baseRevisionId: string;
+  editableChannelIds?: readonly string[];
   combination?: AnalysisCombination;
   combinationUnavailableReason?: "metadata_unavailable";
 }>;
@@ -286,6 +287,15 @@ export function parseAnalysisPreparation(value: unknown): AnalysisPreparation {
   const r = record(value, "preparation");
   parseAnalysisBase(r.base);
   digest(r.baseRevisionId, "baseRevisionId");
+  if (r.editableChannelIds !== undefined) {
+    const channels = list(r.editableChannelIds, "preparation.editableChannelIds");
+    const seen = new Set<string>();
+    for (const channel of channels) {
+      text(channel, "preparation.editableChannelIds", 256);
+      if (seen.has(channel)) throw new AnalysisProtocolError("preparation.editableChannelIds");
+      seen.add(channel);
+    }
+  }
   if (r.combination !== undefined) {
     const combination = record(r.combination, "preparation.combination");
     for (const field of ["id", "simId", "trackName", "trackLayout", "carName", "carClass"]) text(combination[field], `preparation.combination.${field}`);

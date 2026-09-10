@@ -48,11 +48,16 @@ type CorrectionCommandResolution struct {
 // ObservationCorrectionInput is assembled by Analysis from authorized original
 // data and scalar reanalysis. It is not a client DTO. Non-nil FamilyUses denotes
 // an explicit complete set, including explicit removal of all family decisions.
+// The same holds for Classifications: nil means the caller is unaware of the
+// group and must never silently drop it, while an explicit (possibly empty)
+// set replaces it. Session carries the original session for classification.
 type ObservationCorrectionInput struct {
-	Samples    []SampleCorrectionInput
-	Original   LapValidityAnalysis
-	Effective  LapValidityAnalysis
-	FamilyUses []LapFamilyUseCorrection
+	Samples         []SampleCorrectionInput
+	Original        LapValidityAnalysis
+	Effective       LapValidityAnalysis
+	FamilyUses      []LapFamilyUseCorrection
+	Session         HistoricalSession
+	Classifications []ClassificationCorrection
 }
 type correctionDocument struct {
 	Version   int                  `json:"version"`
@@ -133,14 +138,14 @@ func (s *CorrectionStore) Save(ctx context.Context, base SourceAnalysisRef, inpu
 }
 
 func (s *CorrectionStore) SaveObservations(ctx context.Context, base SourceAnalysisRef, input ObservationCorrectionInput, command CorrectionSaveCommand) (CorrectionStoreResult, error) {
-	if input.FamilyUses == nil || len(input.Samples)+len(input.FamilyUses) > MaxSampleCorrections {
+	if input.FamilyUses == nil || len(input.Samples)+len(input.FamilyUses)+len(input.Classifications) > MaxSampleCorrections {
 		return CorrectionStoreResult{}, ErrInvalidCorrection
 	}
 	requests := make([]SampleValueCorrection, len(input.Samples))
 	for i, sample := range input.Samples {
 		requests[i] = sample.Request
 	}
-	digest, err := validatedObservationCommandDigest(base, command, requests, input.FamilyUses)
+	digest, err := validatedMixedCommandDigest(base, command, requests, input.FamilyUses, input.Classifications)
 	if err != nil {
 		return CorrectionStoreResult{}, err
 	}
@@ -162,6 +167,21 @@ func (s *CorrectionStore) ResolveObservationsCommand(ctx context.Context, base S
 		return CorrectionCommandResolution{}, ErrInvalidCorrection
 	}
 	digest, err := validatedObservationCommandDigest(base, command, requests, families)
+	if err != nil {
+		return CorrectionCommandResolution{}, err
+	}
+	return s.resolveValidatedCommand(ctx, base, command, digest)
+}
+
+// ResolveMixedCommand resolves a command carrying classification decisions
+// with exactly the same digest function as SaveObservations. Omitting the
+// classification payload never matches a revision that stores it: the digest
+// differs and the resolution reports a conflict, never a silent match.
+func (s *CorrectionStore) ResolveMixedCommand(ctx context.Context, base SourceAnalysisRef, requests []SampleValueCorrection, families []LapFamilyUseCorrection, classes []ClassificationCorrection, command CorrectionSaveCommand) (CorrectionCommandResolution, error) {
+	if families == nil {
+		return CorrectionCommandResolution{}, ErrInvalidCorrection
+	}
+	digest, err := validatedMixedCommandDigest(base, command, requests, families, classes)
 	if err != nil {
 		return CorrectionCommandResolution{}, err
 	}
@@ -200,6 +220,19 @@ func validatedObservationCommandDigest(base SourceAnalysisRef, command Correctio
 		return "", err
 	}
 	return correctionCommandDigestWithFamilies(base, command, requests, families)
+}
+
+// validatedMixedCommandDigest is the single digest function shared by Save
+// and Resolve for the mixed set. Without classifications it returns the
+// v1/v2 digest unchanged, preserving historical hashes.
+func validatedMixedCommandDigest(base SourceAnalysisRef, command CorrectionSaveCommand, requests []SampleValueCorrection, families []LapFamilyUseCorrection, classes []ClassificationCorrection) (string, error) {
+	if len(requests)+len(families)+len(classes) > MaxSampleCorrections {
+		return "", ErrInvalidCorrection
+	}
+	if _, err := validatedCorrectionCommandDigest(base, command, requests); err != nil {
+		return "", err
+	}
+	return correctionCommandDigestMixed(base, command, requests, families, classes)
 }
 
 func validatedCorrectionCommandDigest(base SourceAnalysisRef, command CorrectionSaveCommand, requests []SampleValueCorrection) (string, error) {
@@ -255,10 +288,13 @@ func (s *CorrectionStore) saveValidated(ctx context.Context, base SourceAnalysis
 	if input.FamilyUses == nil && len(doc.Revisions) > 0 && len(doc.Revisions[len(doc.Revisions)-1].Snapshot.FamilyUses) > 0 {
 		return result, fmt.Errorf("%w: complete family correction set required", ErrInvalidCorrection)
 	}
+	if input.Classifications == nil && len(doc.Revisions) > 0 && len(doc.Revisions[len(doc.Revisions)-1].Snapshot.Classifications) > 0 {
+		return result, fmt.Errorf("%w: complete classification correction set required", ErrInvalidCorrection)
+	}
 	if len(doc.Revisions) >= maxCorrectionRevisions {
 		return result, fmt.Errorf("%w: revision quota", ErrInvalidCorrection)
 	}
-	snapshot, err := PrepareObservationCorrectionSnapshot(base, input.Samples, input.Original, input.FamilyUses)
+	snapshot, err := PrepareMixedCorrectionSnapshot(base, input.Samples, input.Original, input.FamilyUses, input.Session, input.Classifications)
 	if err != nil {
 		return result, err
 	}

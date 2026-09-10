@@ -52,6 +52,29 @@ func correctionCommandDigestWithFamilies(base SourceAnalysisRef, command Correct
 		FamilyUses          []LapFamilyUseCorrection `json:"familyUses"`
 	}{scalarDigest, ordered})
 }
+
+// correctionCommandDigestMixed extends the same command identity with the
+// classification set. Without classifications it returns the v1/v2 digest
+// unchanged, preserving historical hashes. The stored helper only checks
+// representation integrity, never source authority or live quality.
+func correctionCommandDigestMixed(base SourceAnalysisRef, command CorrectionSaveCommand, requests []SampleValueCorrection, families []LapFamilyUseCorrection, classes []ClassificationCorrection) (string, error) {
+	previous, err := correctionCommandDigestWithFamilies(base, command, requests, families)
+	if err != nil || len(classes) == 0 {
+		return previous, err
+	}
+	prepared, err := prepareStoredClassificationCorrections(base, classes)
+	if err != nil {
+		return "", err
+	}
+	ordered := make([]ClassificationCorrection, len(prepared))
+	for i, correction := range prepared {
+		ordered[i] = correction.Request
+	}
+	return correctionDigest("analysis.mixed-command.v3", struct {
+		PreviousCommandDigest string                     `json:"previousCommandDigest"`
+		Classifications       []ClassificationCorrection `json:"classifications"`
+	}{previous, ordered})
+}
 func encodeCorrectionDocument(doc correctionDocument) ([]byte, error) {
 	data, err := json.Marshal(doc)
 	if err != nil {
@@ -110,7 +133,7 @@ func decodeCorrectionDocument(data []byte, base SourceAnalysisRef) (correctionDo
 		if err != nil || created.UTC().Format(time.RFC3339Nano) != revision.CreatedAt {
 			return invalid()
 		}
-		if len(revision.Snapshot.Corrections)+len(revision.Snapshot.FamilyUses) > MaxSampleCorrections {
+		if len(revision.Snapshot.Corrections)+len(revision.Snapshot.FamilyUses)+len(revision.Snapshot.Classifications) > MaxSampleCorrections {
 			return invalid()
 		}
 		inputs := make([]SampleCorrectionInput, len(revision.Snapshot.Corrections))
@@ -134,11 +157,19 @@ func decodeCorrectionDocument(data []byte, base SourceAnalysisRef) (correctionDo
 		if err != nil {
 			return invalid()
 		}
-		snapshot, err = combineObservationSnapshot(snapshot, families)
+		classRequests := make([]ClassificationCorrection, len(revision.Snapshot.Classifications))
+		for i, correction := range revision.Snapshot.Classifications {
+			classRequests[i] = correction.Request
+		}
+		classes, err := prepareStoredClassificationCorrections(base, classRequests)
+		if err != nil {
+			return invalid()
+		}
+		snapshot, err = combineMixedSnapshot(snapshot, families, classes)
 		if err != nil || !reflect.DeepEqual(snapshot, revision.Snapshot) {
 			return invalid()
 		}
-		digest, err := correctionCommandDigestWithFamilies(base, cmd, requests, familyRequests)
+		digest, err := correctionCommandDigestMixed(base, cmd, requests, familyRequests, classRequests)
 		if err != nil || digest != revision.CommandDigest {
 			return invalid()
 		}

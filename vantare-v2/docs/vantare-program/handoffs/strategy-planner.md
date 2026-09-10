@@ -1,5 +1,27 @@
 # Handoff vivo — Strategy Planner
 
+## T12b2 custodia v3 cerrada (ISA-1104, 4 paths, corte finalizado pendiente revisión final)
+
+Rama `vantareapp/isa-1104-recorded-classification`, base `7f75713`. Mismo
+decoder/store/lease/backup/Save/Resolve; sin store ni formato paralelo.
+`ObservationCorrectionInput` suma sesión original + decisiones (nil = grupo
+desconocido que nunca se borra en silencio; `[]` = retirada explícita).
+Digest mixto v3 anidado sobre v2 con las tres decisiones completas; Save y
+Resolve usan exactamente la misma función; v1/v2 (comando/revisión) exactos.
+Guards independientes legacy/T11; replay exacto devuelve revisión antigua +
+cabeza actual. Decoder cuenta 3 cuotas y recomputa preparación+snapshot+
+digests; rechaza tamper incluso resealed (los digests son consistencia, no
+autenticidad: una falsificación válida consistente no se promete detectar).
+Cuota 256/256rev/8MiB; restore v3→v2→v1 conserva historia. Revisión intermedia
+aplicada: reseal semántico real, retirada solo-clasificación a v2 exacto con
+replay/Resolve post-avance, rechazo table-driven (original/quality/parser) y
+legacy escalar contra head solo-clasificación.
+Gates: focales PASS; `gofmt` + `git diff --check` limpios; `go vet` alcance
+exit 0 (`C:/tmp/isa1104-t12b2-vet.log`); global `go test -p 1 ./...` exit 0,
+126 ok, cero FAIL (`C:/tmp/isa1104-t12b2-global.log`; focal
+`C:/tmp/isa1104-t12b2-focal.log`; GOCACHE `C:/tmp/isa1084-go-cache`; sin
+suite frontend). `plan.md` intacto. Siguiente C se asignará aparte.
+
 ## T12b1 representación v3 (ISA-1104, 2 paths, pendiente revisión previa a B2)
 
 Rama `vantareapp/isa-1104-recorded-classification`, base `7f75713`. Mismo

@@ -468,6 +468,13 @@ button {
   cursor: pointer;
 }
 
+/* En v1.2 los links pueden llevar chevron inline. */
+.orbit-shell--v12 .orbit-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .orbit-link:hover {
   color: var(--orbit-ink);
 }
@@ -615,6 +622,25 @@ button {
 }
 
 .orbit-pill__dot--ok { color: var(--orbit-green); }
+
+/* El punto "conectado" respira en verde (semántico ok, no urgencia). */
+@keyframes orbitPulseOk {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(120, 214, 139, .45); }
+  55% { box-shadow: 0 0 0 5px rgba(120, 214, 139, 0); }
+}
+
+.orbit-shell--v12 .orbit-pill__dot--ok {
+  animation: orbitPulseOk 2.4s var(--orbit-ease) infinite;
+}
+
+/* Reloj local en la topbar: lectura mono tabular, de sala de control. */
+.orbit-pill--clock {
+  color: var(--orbit-ink-3);
+  font-family: var(--orbit-font-mono);
+  font-size: var(--orbit-fs-secondary);
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
 .orbit-pill__dot--ring-gold {
   background: transparent;
   border: 1.5px solid currentColor;
@@ -1475,4 +1501,474 @@ button {
    queda en puro trazo, como una miniatura técnica. */
 .orbit-profile--compact .orbit-mini-stage__widget {
   font-size: 0;
+}
+
+/* ============================================================== INICIO v1.2
+   "Cabina de ingeniero": misma retícula y tokens; el drama se concentra en
+   el héroe (cuenta atrás dominante, trazado protagonista, luces de salida,
+   kerbs) y el strip. Todo bajo modificadores `--v12` / clases nuevas. */
+
+@keyframes orbitPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(240, 71, 85, .5); }
+  55% { box-shadow: 0 0 0 6px rgba(240, 71, 85, 0); }
+}
+
+/* ---- héroe: más alto, con atmósfera (glow coral detrás del trazado,
+   speed-lines en diagonal y kerb stripes en la esquina superior derecha) */
+.orbit-hero--v12 {
+  min-height: 310px;
+  padding: 28px 34px;
+}
+
+.orbit-hero--v12::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(46% 78% at 76% 44%, rgba(213, 47, 73, .13), transparent 72%),
+    linear-gradient(105deg, transparent 55%, rgba(240, 71, 85, .045) 100%);
+  pointer-events: none;
+}
+
+/* Piano de kerb: franjas diagonales rojo/blanco muy atenuadas, mordiendo
+   solo la esquina — guiño de circuito, no decoración SaaS. */
+.orbit-hero--v12::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 210px;
+  height: 120px;
+  background: repeating-linear-gradient(-52deg,
+    rgba(240, 71, 85, .2) 0 8px,
+    rgba(255, 255, 255, .07) 8px 16px,
+    transparent 16px 30px);
+  -webkit-mask-image: linear-gradient(228deg, #000 0%, transparent 66%);
+  mask-image: linear-gradient(228deg, #000 0%, transparent 66%);
+  pointer-events: none;
+}
+
+/* El trazado sube de presencia: más grande y línea más clara vía `color`
+   del host (los selectores no atraviesan el shadow tree de <use>). La marca
+   de salida/meta se superpone como `<line class="tk-sfhot">` en coords del
+   símbolo (el svg lleva `viewBox="0 0 200 120"`), más un punto "en parrilla". */
+.orbit-hero--v12 .orbit-hero__art {
+  right: -70px;
+  width: 620px;
+  height: 380px;
+  color: #e2dfe0;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 30%);
+  mask-image: linear-gradient(90deg, transparent 0%, #000 30%);
+}
+
+.tk-sfhot {
+  fill: none;
+  stroke: var(--orbit-coral);
+  stroke-width: 2.8;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 6px rgba(255, 106, 95, .85));
+}
+
+.tk-dot {
+  fill: var(--orbit-coral);
+  filter: drop-shadow(0 0 5px rgba(255, 106, 95, .9));
+}
+
+.tk-dot-ring {
+  fill: none;
+  stroke: var(--orbit-coral);
+  stroke-width: 1.4;
+  opacity: .55;
+  animation: tkPing 1.7s var(--orbit-ease) infinite;
+  transform-origin: center;
+  transform-box: fill-box;
+}
+
+@keyframes tkPing {
+  0% { transform: scale(.55); opacity: .8; }
+  100% { transform: scale(2.6); opacity: 0; }
+}
+
+/* En las minis el S/F es un tick coral fino, sin dot. */
+.orbit-race-card__map .tk-sfhot { stroke-width: 5.5; }
+
+/* Ficha telemétrica del circuito, bajo el trazado, a ras del borde. */
+.orbit-hero__tk-tag {
+  position: absolute;
+  right: 36px;
+  bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--orbit-ink-3);
+  font-family: var(--orbit-font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+/* Mini bandera a cuadros delante de la ficha telemétrica del circuito. */
+.orbit-hero__tk-tag::before {
+  content: "";
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 1.5px;
+  background: conic-gradient(rgba(255, 255, 255, .5) 25%, transparent 0 50%,
+    rgba(255, 255, 255, .5) 0 75%, transparent 0);
+  background-size: 100% 100%;
+  opacity: .65;
+}
+
+.orbit-hero__tk-tag b {
+  color: var(--orbit-ink-2);
+  font-weight: 700;
+}
+
+/* Eyebrow con tick en rombo — más arisco que el punto redondo. */
+.orbit-eyebrow--hot {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--orbit-ink) !important;
+}
+
+.orbit-eyebrow--hot i {
+  width: 7px;
+  height: 7px;
+  border-radius: 1.5px;
+  background: var(--orbit-coral);
+  box-shadow: 0 0 11px rgba(255, 106, 95, .65);
+  transform: rotate(45deg);
+}
+
+/* El chip "inminente" late: es el dato urgente de la página. */
+.orbit-chip--pulse {
+  background: rgba(213, 47, 73, .2);
+  color: #ff8f87;
+  font-weight: 800;
+  animation: orbitPulse 1.7s var(--orbit-ease) infinite;
+}
+
+.orbit-chip--pulse i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 8px currentColor;
+}
+
+/* Título con músculo: uppercase, más grande, tracking apretado. */
+.orbit-hero--v12 .orbit-hero__title {
+  font-size: 38px;
+  font-weight: 790;
+  letter-spacing: -.035em;
+  text-transform: uppercase;
+}
+
+.orbit-hero--v12 .orbit-hero__title small {
+  font-size: 15px;
+  font-weight: 550;
+  letter-spacing: -.01em;
+  text-transform: none;
+}
+
+/* Meta como bloque de timing tower: etiqueta micro + valor mono rotundo,
+   separado por hairlines verticales. */
+.orbit-hero--v12 .orbit-hero__meta {
+  gap: 0;
+}
+
+.orbit-hero--v12 .orbit-hero__meta > span {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-right: 20px;
+  margin-right: 20px;
+  border-right: 1px solid var(--orbit-line);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.orbit-hero--v12 .orbit-hero__meta > span:last-child {
+  padding-right: 0;
+  margin-right: 0;
+  border-right: 0;
+}
+
+.orbit-hero--v12 .orbit-hero__meta b {
+  color: var(--orbit-ink);
+  font-size: 15.5px;
+  font-weight: 650;
+  letter-spacing: -.01em;
+}
+
+/* Valor semántico "ok": registro abierto en verde. */
+.orbit-hero--v12 .orbit-hero__meta b.ok {
+  color: var(--orbit-green);
+}
+
+/* Cuenta atrás: EL número de la página. Horas atenuadas para que manden
+   minutos y segundos; glow coral muy focalizado, nunca rojo plano. */
+.orbit-hero--v12 .orbit-hero__count {
+  align-items: center;
+  gap: 24px;
+  margin-top: 4px;
+}
+
+.orbit-hero--v12 .orbit-hero__count > b {
+  position: relative;
+  padding: 18px 22px 8px 16px;
+  border: 1px solid rgba(255, 255, 255, .055);
+  border-left: 0;
+  border-radius: 0 18px 18px 0;
+  background: linear-gradient(rgba(5, 5, 7, .5), rgba(12, 10, 13, .34));
+  box-shadow:
+    inset 4px 0 0 rgba(240, 71, 85, .8),
+    inset 0 1px 0 rgba(255, 255, 255, .06),
+    0 26px 54px rgba(0, 0, 0, .42);
+  font-size: 112px;
+  font-weight: 730;
+  letter-spacing: -.045em;
+  text-shadow: 0 0 42px rgba(240, 71, 85, .22), 0 3px 26px rgba(0, 0, 0, .55);
+  transform: skewX(-3deg);
+  transform-origin: left bottom;
+}
+
+/* Etiqueta de celda estilo broadcast: "T-MINUS" en la esquina del módulo,
+   des-inclinada para seguir recta dentro del paralelogramo. */
+.orbit-hero--v12 .orbit-hero__count > b::before {
+  content: "T-minus";
+  position: absolute;
+  top: 9px;
+  left: 16px;
+  color: var(--orbit-ink-4);
+  font-family: var(--orbit-font-sans);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  text-shadow: none;
+  transform: skewX(3deg);
+}
+
+.orbit-hero--v12 .orbit-hero__count > b i {
+  color: var(--orbit-ink-muted);
+  font-size: .58em;
+  font-style: normal;
+  letter-spacing: -.02em;
+}
+
+/* Columna junto a la cuenta: semáforo de salida + hora programada,
+   separada de los dígitos por una hairline como un canal de timing. */
+.orbit-hero__out {
+  position: relative;
+  display: flex;
+  align-self: flex-end;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 22px;
+  padding-left: 22px;
+}
+
+.orbit-hero__out::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 2px;
+  bottom: 2px;
+  width: 1px;
+  background: linear-gradient(transparent, rgba(255, 255, 255, .22), transparent);
+}
+
+.orbit-hero__lights {
+  display: flex;
+  gap: 7px;
+}
+
+.orbit-hero__lights i {
+  width: 10px;
+  height: 10px;
+  border: 1px solid rgba(255, 255, 255, .24);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .06);
+}
+
+.orbit-hero__lights i.on {
+  border-color: var(--orbit-coral);
+  background: var(--orbit-red);
+  animation: orbitPulse 1.7s var(--orbit-ease) infinite;
+}
+
+.orbit-hero__out-t {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  color: var(--orbit-ink-3);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .11em;
+  text-transform: uppercase;
+}
+
+.orbit-hero__out-t b {
+  color: var(--orbit-ink);
+  font-family: var(--orbit-font-mono);
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: -.01em;
+}
+
+.orbit-hero__out-t small {
+  color: var(--orbit-ink-4);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: .03em;
+  text-transform: none;
+}
+
+.orbit-hero--v12 .orbit-hero__actions {
+  margin-top: 8px;
+}
+
+/* El CTA del héroe va en uppercase con chevron — más seco, más racing. */
+.orbit-hero--v12 .orbit-btn--primary {
+  font-size: 12px;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+
+.orbit-btn__arr {
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ---- strip: horas mono más grandes, mapas con más línea, seleccionada
+   con baño carmín y barra más gruesa */
+.orbit-strip--v12 .orbit-race-card {
+  gap: 10px;
+  padding: 15px 16px 13px;
+}
+
+.orbit-strip--v12 .orbit-race-card__time {
+  font-size: 19px;
+  font-weight: 700;
+}
+
+.orbit-strip--v12 .orbit-race-card__in {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+.orbit-strip--v12 .orbit-race-card__name {
+  color: var(--orbit-ink);
+  font-size: 13.5px;
+}
+
+.orbit-strip--v12 .orbit-race-card__map {
+  width: 66px;
+  height: 46px;
+  color: #a29ba2;
+}
+
+/* El mapa de la seleccionada se tiñe de carmín: es la carrera que importa. */
+.orbit-strip--v12 .orbit-race-card[aria-pressed="true"] .orbit-race-card__map {
+  color: rgba(255, 122, 112, .62);
+}
+
+/* Y hereda el motivo kerb del héroe, en miniatura, en su esquina. */
+.orbit-strip--v12 .orbit-race-card[aria-pressed="true"]::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 66px;
+  height: 42px;
+  border-radius: 0 var(--orbit-radius) 0 0;
+  background: repeating-linear-gradient(-52deg,
+    rgba(240, 71, 85, .22) 0 5px,
+    rgba(255, 255, 255, .07) 5px 10px,
+    transparent 10px 18px);
+  -webkit-mask-image: linear-gradient(228deg, #000 0%, transparent 68%);
+  mask-image: linear-gradient(228deg, #000 0%, transparent 68%);
+  pointer-events: none;
+}
+
+.orbit-strip--v12 .orbit-race-card[aria-pressed="true"] {
+  border-color: rgba(240, 71, 85, .5);
+  background:
+    linear-gradient(155deg, rgba(213, 47, 73, .16), rgba(18, 17, 21, .94) 58%) padding-box;
+  box-shadow: 0 14px 38px rgba(0, 0, 0, .4), 0 0 26px rgba(213, 47, 73, .09);
+}
+
+.orbit-strip--v12 .orbit-race-card[aria-pressed="true"]::before {
+  width: 4px;
+}
+
+.orbit-strip--v12 .orbit-race-card[aria-pressed="true"] .orbit-race-card__time {
+  color: var(--orbit-coral);
+  text-shadow: 0 0 16px rgba(255, 106, 95, .35);
+}
+
+/* ---- columna: mapa mayor con S/F encendido y "salida" en número rotundo */
+.orbit-detail--v12 .orbit-detail__map {
+  height: 148px;
+  color: var(--orbit-ink-2);
+}
+
+.orbit-detail--v12 .orbit-detail__map .tk-sfhot { stroke-width: 3.4; }
+.orbit-detail--v12 .orbit-detail__map .tk-dot { r: 3.2; }
+.orbit-detail--v12 .orbit-detail__map .tk-dot-ring { r: 3.2; }
+
+.orbit-detail--v12 .orbit-detail__title {
+  font-size: 16.5px;
+  font-weight: 740;
+}
+
+.orbit-shell--v12 .orbit-detail__hero-tag i {
+  animation: orbitPulse 1.7s var(--orbit-ease) infinite;
+}
+
+/* La fila de salida se sale de la tabla: número grande con el "en X" debajo. */
+.orbit-detail__row--big dd {
+  color: var(--orbit-ink) !important;
+  font-size: 17px !important;
+  font-weight: 700 !important;
+}
+
+.orbit-detail__row--big dd small {
+  color: var(--orbit-coral) !important;
+  font-weight: 700 !important;
+}
+
+/* El widget acentuado del mini-stage gana un glow muy suave. */
+.orbit-shell--v12 .orbit-mini-stage__widget--accent {
+  box-shadow: 0 0 18px rgba(240, 71, 85, .14), inset 0 0 12px rgba(240, 71, 85, .05);
+}
+
+/* La card de perfil hereda el kerb en esquina, aún más tenue: es secundaria. */
+.orbit-profile--v12::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 150px;
+  height: 90px;
+  background: repeating-linear-gradient(-52deg,
+    rgba(240, 71, 85, .12) 0 8px,
+    rgba(255, 255, 255, .04) 8px 16px,
+    transparent 16px 30px);
+  -webkit-mask-image: linear-gradient(228deg, #000 0%, transparent 66%);
+  mask-image: linear-gradient(228deg, #000 0%, transparent 66%);
+  pointer-events: none;
 }

@@ -17,6 +17,8 @@ Portimao, etc.
 | `hub-orbit-home-v1.html` | Distribución aprobada: héroe = próxima carrera, strip de próximas, perfil activo y **columna contextual a la derecha** en su estado por defecto (perfiles + próximas). |
 | `hub-orbit-home-v1-contextual.html` | Misma página con una carrera del strip **seleccionada** (ELMS Super 60 · Spa): la columna derecha cambia a detalle — mapa lineal, tabla de la sesión, salidas del día, condiciones y acciones. |
 | `hub-orbit-home-v2.html` | Variante alternativa: **sin columna lateral**; el contexto es un panel integrado en la rejilla del workspace. |
+| `hub-orbit-home-v1.1.html` / `-contextual` | v1 afinada: misma distribución aprobada, mayor fidelidad a tokens y detalle de carrera por defecto en la columna. |
+| `hub-orbit-home-v1.2.html` / `-contextual` | v1.1 con energía de "cabina de ingeniero": countdown en celda T-MINUS inclinada (112 px, horas atenuadas), trazado protagonista con marca S/F carmín + punto de parrilla, kerbs diagonales, semáforo de salida, meta tipo timing tower y reloj local en topbar. Todo encapsulado bajo `orbit-shell--v12` / `--v12`, sin tocar v1/v1.1/v2. |
 | `hub-orbit-home.css` | Hoja compartida: tokens `orbit.tokens.css` + piezas de `orbit-shell/kit/home` + arte lineal de trazados. |
 
 ## Qué cambia entre variantes
@@ -56,3 +58,15 @@ la izquierda) y pasarla a la derecha conserva ese contrato sin romper nada; el
 héroe grande justifica el Inicio como "centro operativo". De v2 rescataría la
 lista densa como alternativa al strip si el número de series crece — se puede
 evaluar en la misma distribución v1.
+
+## Dirección aprobada — v1.12 ("Linear × racing")
+
+Aprobada por Isaac. Lenguaje: superficies de vidrio fino (hairline + luz superior + sombras largas),
+tipografía única (Inter; cifras tabulares; Cascadia solo para contenido genuinamente técnico),
+rojo racing profundo (#e8452f/#d23228) reservado a estados inminentes/selección/S-F.
+Detalles: saludo personal sobre el héroe, cuenta atrás compacta (≈46px), módulo "SALIDA · hora",
+selector de simulador con tile de logo, chip de canal+build, strip seleccionable que alimenta
+la columna contextual, mini-mapas de trazado reales con marca S/F.
+
+Referencia de piel para implementación: `hub-orbit-home-v1.12.html` + `…-contextual.html`
+(los cambios de estilo finales están en el `<style>` inline de cada archivo, secciones v1.8–v1.12).

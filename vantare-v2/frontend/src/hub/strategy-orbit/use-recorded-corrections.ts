@@ -1,14 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import type { AnalysisClient, AnalysisSaveRequest } from "../../strategy/analysis-client";
-import type { AnalysisCorrectableFamily, AnalysisCorrection, AnalysisFamilyCorrection, AnalysisLapPage, AnalysisLapTarget, AnalysisPage, AnalysisScalar, AnalysisStoreResult, AnalysisTarget } from "../../strategy/analysis-contract";
+import type { AnalysisClassificationCorrection, AnalysisClassificationField, AnalysisCorrectableFamily, AnalysisCorrection, AnalysisFamilyCorrection, AnalysisLapPage, AnalysisLapTarget, AnalysisPage, AnalysisScalar, AnalysisStoreResult, AnalysisTarget } from "../../strategy/analysis-contract";
 import type { RecordedSession } from "./strategy-recorded-session";
-import { loadRecordedCorrection, loadRecordedLapPage, projectRecordedCorrection, recordedFamilyCorrection, removeRecordedFamilyCorrection, replaceRecordedFamilyCorrection, recordedCorrectionSave, recordedSampleCorrection, replaceRecordedCorrection } from "./strategy-recorded-corrections";
+import { loadRecordedCorrection, loadRecordedLapPage, projectRecordedCorrection, recordedClassificationCorrection, recordedFamilyCorrection, removeRecordedClassificationCorrection, removeRecordedFamilyCorrection, replaceRecordedClassificationCorrection, replaceRecordedFamilyCorrection, recordedCorrectionSave, recordedSampleCorrection, replaceRecordedCorrection } from "./strategy-recorded-corrections";
 
 type Editor = Readonly<{
   session: RecordedSession;
   current: AnalysisStoreResult;
   corrections: readonly AnalysisCorrection[];
   familyUses: readonly AnalysisFamilyCorrection[];
+  classifications: readonly AnalysisClassificationCorrection[];
   page?: AnalysisPage;
   lapPage?: AnalysisLapPage;
   dirty: boolean;
@@ -43,7 +44,7 @@ export function useRecordedCorrections(client: AnalysisClient, onAdopt: (session
     if (!editor || pending.current || isBlocked() || editor.request) return false;
     try {
       const next = operation(editor);
-      if (next.corrections.length + next.familyUses.length > 256) throw new Error("recorded_correction_limit");
+      if (next.corrections.length + next.familyUses.length + next.classifications.length > 256) throw new Error("recorded_correction_limit");
       setEditor(next); setError(""); return true;
     }
     catch (failure) { setError(failure instanceof Error ? failure.message : "recorded_operation_failed"); return false; }
@@ -64,7 +65,8 @@ export function useRecordedCorrections(client: AnalysisClient, onAdopt: (session
     if (!alive.current) return;
     setEditor({ ...current, current: saved, saved, request: undefined, dirty: false,
       corrections: saved.revision.snapshot.corrections.map(item => item.request),
-      familyUses: saved.revision.snapshot.familyUses?.map(item => item.request) ?? [], lapPage: undefined, projected: undefined });
+      familyUses: saved.revision.snapshot.familyUses?.map(item => item.request) ?? [],
+      classifications: saved.revision.snapshot.classifications?.map(item => item.request) ?? [], lapPage: undefined, projected: undefined });
     await project(current.session, saved, signal);
   }
   function load(session: RecordedSession, revisionId = session.revision.revisionId) {
@@ -72,7 +74,7 @@ export function useRecordedCorrections(client: AnalysisClient, onAdopt: (session
       if (editor?.dirty || editor?.request) throw new Error("recorded_pending_corrections");
       const current = await loadRecordedCorrection(client, session, revisionId, signal);
       signal.throwIfAborted();
-      if (alive.current) setEditor({ session, current, corrections: current.revision.snapshot.corrections.map(item => item.request), familyUses: current.revision.snapshot.familyUses?.map(item => item.request) ?? [], dirty: false });
+      if (alive.current) setEditor({ session, current, corrections: current.revision.snapshot.corrections.map(item => item.request), familyUses: current.revision.snapshot.familyUses?.map(item => item.request) ?? [], classifications: current.revision.snapshot.classifications?.map(item => item.request) ?? [], dirty: false });
     });
   }
   return {
@@ -94,6 +96,12 @@ export function useRecordedCorrections(client: AnalysisClient, onAdopt: (session
       if (alive.current) setEditor(current => current ? { ...current, lapPage,
         current: { ...current.current, headId: lapPage.headId } } : current);
     }),
+    editClassification: (field: AnalysisClassificationField, replacement: string, reason: string) => change(current => {
+      const correction = recordedClassificationCorrection(current.session, current.current, field, replacement, reason);
+      return { ...current, classifications: replaceRecordedClassificationCorrection(current.classifications, correction), dirty: true, projected: undefined };
+    }),
+    removeClassification: (field: AnalysisClassificationField) => change(current => ({ ...current,
+      classifications: removeRecordedClassificationCorrection(current.classifications, field), dirty: true, projected: undefined })),
     editFamily: (target: AnalysisLapTarget, family: AnalysisCorrectableFamily, included: boolean, reason: string) => change(current => {
       if (!current.lapPage) throw new Error("recorded_target_unavailable");
       const correction = recordedFamilyCorrection(current.session, current.current, current.lapPage, target, family, included, reason);
@@ -108,10 +116,10 @@ export function useRecordedCorrections(client: AnalysisClient, onAdopt: (session
     }),
     remove: (target: AnalysisTarget) => change(current => ({ ...current, dirty: true, projected: undefined,
       corrections: current.corrections.filter(item => item.target.channelId !== target.channelId || item.target.column !== target.column || item.target.sampleIndex !== target.sampleIndex) })),
-    discard: () => change(current => ({ ...current, corrections: current.current.revision.snapshot.corrections.map(item => item.request), familyUses: current.current.revision.snapshot.familyUses?.map(item => item.request) ?? [], dirty: false, projected: undefined })),
+    discard: () => change(current => ({ ...current, corrections: current.current.revision.snapshot.corrections.map(item => item.request), familyUses: current.current.revision.snapshot.familyUses?.map(item => item.request) ?? [], classifications: current.current.revision.snapshot.classifications?.map(item => item.request) ?? [], dirty: false, projected: undefined })),
     save: (reason: string) => run(async signal => {
       if (!editor?.dirty || editor.request) return;
-      await persist(editor, recordedCorrectionSave(editor.session, editor.current, editor.corrections, reason, undefined, editor.familyUses), signal);
+      await persist(editor, recordedCorrectionSave(editor.session, editor.current, editor.corrections, reason, undefined, editor.familyUses, editor.classifications), signal);
     }),
     retrySave: () => run(async signal => {
       if (editor?.request) await persist(editor, editor.request, signal);
@@ -126,7 +134,7 @@ export function useRecordedCorrections(client: AnalysisClient, onAdopt: (session
       } else {
         // Confirmed absence unfreezes the proposal; a changed head still blocks
         // saving until the user explicitly reviews/discards the old proposal.
-        setEditor({ ...editor, request: undefined, dirty: true, corrections: editor.request.corrections, familyUses: editor.request.familyUses ?? [],
+        setEditor({ ...editor, request: undefined, dirty: true, corrections: editor.request.corrections, familyUses: editor.request.familyUses ?? [], classifications: editor.request.classifications ?? [],
           current: { ...editor.current, headId: resolved.headId } });
         setError(resolved.headId === editor.current.revision.revisionId ? "recorded_save_not_committed" : "recorded_revision_conflict");
       }
@@ -139,9 +147,12 @@ export function useRecordedCorrections(client: AnalysisClient, onAdopt: (session
     restore: (reason: string) => run(async signal => {
       if (!editor || editor.dirty || editor.request) return;
       // Explicit restoration loads the advertised head, never silently rebases edits.
+      // The three sets always come from the chosen ancestor, even empty ones:
+      // a v1/v2 ancestor restores no classifications against a v3 head.
       const head = await loadRecordedCorrection(client, editor.session, editor.current.headId, signal);
       signal.throwIfAborted();
-      const request = recordedCorrectionSave(editor.session, head, editor.current.revision.snapshot.corrections.map(item => item.request), reason, undefined, editor.current.revision.snapshot.familyUses?.map(item => item.request) ?? []);
+      const ancestor = editor.current.revision.snapshot;
+      const request = recordedCorrectionSave(editor.session, head, ancestor.corrections.map(item => item.request), reason, undefined, ancestor.familyUses?.map(item => item.request) ?? [], ancestor.classifications?.map(item => item.request) ?? []);
       await persist(editor, request, signal);
     }),
     adopt: () => run(async signal => {

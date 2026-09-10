@@ -264,18 +264,17 @@ Continúa contraste Wails diagnóstico aislado del recorrido actual, aprovechand
 configuración heredada ya presente (sólo comprobada presencia, no leída/imprimida).
 No .env, credenciales copiadas, LMU, otras instancias ni promoción/publicación.
 
-## T11i — contraste nativo bloqueado (ventana oculta impide controlador WebView2)
+## T11i — contraste nativo no disponible (ERROR_INVALID_STATE sin causa determinada)
 
-Dos lanzamientos aislados de la build diagnóstica (PID13816 orquestador,
-PID30236 ejecutor con -profile absoluto, -http 127.0.0.1:39262, CDP 9491,
--live=false, perfil/datos propios) mueren en el mismo punto: backend OK (hub,
-HTTP 39262), WebView2 Environment creado, pero CreateCoreWebView2Controller
-falla con 8007139F ERROR_INVALID_STATE y el proceso termina sin escuchar CDP.
-Primer lanzamiento además en conflicto 39261 con instancia ajena #1072
-(preservada, PID26412); aislado en el segundo. Sin zombies propios. Causa
-probable: ventana oculta (-WindowStyle Hidden vigente); runtime WebView2
-152.0.4191.66 verificado funcional en la instancia ajena visible. Cero cambios
-de código. Imola autorizado intacto (97513472 bytes, SHA256 ...38c1eb0).
-Pendiente autorización de un lanzamiento visible para recorrido + capturas.
-Logs: bin/data/logs/vantare.log, C:/tmp/isa1099-t11i-std*.log. Sin
-push/PR/CI/promoción; LMU intacto.
+Tres lanzamientos de la build diagnóstica (PID13816 oculto, PID30236 oculto con
+-profile absoluto, -http 127.0.0.1:39262, CDP 9491, -live=false, perfil/datos
+propios; PID31800 visible del orquestador con mismos puertos/flags/directorios
+y entorno con VANTARE_*) mueren en el mismo punto: backend OK (hub, HTTP
+39262), WebView2 Environment creado, pero CreateCoreWebView2Controller falla
+con 8007139F ERROR_INVALID_STATE y el proceso termina sin escuchar CDP. La
+hipótesis de la ventana oculta NO quedó corroborada (el visible falló igual);
+la instancia ajena #1072 no es control equivalente. Causa sin determinar, sin
+atribuir a código de producto: cero cambios de código. Recorrido Imola +
+capturas no ejecutados. Imola autorizado intacto (97513472 bytes, SHA256
+...38c1eb0). Logs: bin/data/logs/vantare.log, C:/tmp/isa1099-t11i-std*.log,
+C:/tmp/isa1099-t11i-visible-stderr.log. Sin push/PR/CI/promoción; LMU intacto.

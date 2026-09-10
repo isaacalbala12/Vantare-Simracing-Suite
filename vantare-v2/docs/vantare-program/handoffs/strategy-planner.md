@@ -2078,7 +2078,7 @@ Continúa contraste Wails diagnóstico aislado del recorrido actual, aprovechand
 configuración heredada ya presente (sólo comprobada presencia, no leída/imprimida).
 No .env, credenciales copiadas, LMU, otras instancias ni promoción/publicación.
 
-## T11i — contraste nativo bloqueado: WebView2 no crea controlador en ventana oculta
+## T11i — contraste nativo no disponible: ERROR_INVALID_STATE del controlador WebView2 en tres lanzamientos (causa sin determinar)
 
 Cambio de ejecutor registrado: el usuario ordenó que el orquestador coordine y
 Muse Spark 1.3 contributor ejecute vía MCP/opencode en xhigh; esta autorización
@@ -2101,18 +2101,20 @@ termina; CDP 9491 nunca escucha. Sin zombies msedgewebview2 propios; el primer
 lanzamiento además chocó en 39261 contra la instancia ajena, ya aislado en el
 segundo. Log completo en bin/data/logs/vantare.log (saneado: sin secretos).
 
-Causa probable: la ventana principal oculta (-WindowStyle Hidden, restricción
-vigente) impide crear el controlador WebView2; ambas muertes comparten esa
-condición y el runtime WebView2 152.0.4191.66 funciona en la instancia ajena
-visible. No es fallo de código de producto: cero paths de lógica/tests en este
-corte. El relanzamiento del ejecutor corrió sin VANTARE_* en su sesión
-(offline-grace mode en log); no es la causa (el fallo es anterior, en creación
-de ventana), pero el recorrido con login/entitlement queda fuera de alcance.
+Corrección de revisión: la hipótesis de la ventana oculta NO quedó corroborada.
+El orquestador lanzó PID31800 visible, con mismos puertos/flags/directorios
+aislados y entorno con VANTARE_*: falló en el mismo punto con idéntico 8007139F
+(log C:/tmp/isa1099-t11i-visible-stderr.log). Demostrado: tres lanzamientos (dos
+ocultos, uno visible) mueren en CreateCoreWebView2Controller con
+ERROR_INVALID_STATE; backend (hub, HTTP) y Environment WebView2 correctos; CDP
+nunca escucha. No demostrado: la causa. La instancia ajena visible no es control
+equivalente (otro binario, perfil y configuración). Sin atribuir fallo al código
+de producto ni a otra causa: cero paths de lógica/tests en este corte.
+El recorrido con login/entitlement queda fuera de alcance.
 
-Pendiente de autorización del orquestador: UN lanzamiento visible (o lanzado por
-él con CDP aislado) para el recorrido Imola + capturas y revisión personal
-contra pass-03-advanced.png; sin certificar >9 independiente. Imola autorizado
-verificado intacto antes del recorrido (97513472 bytes, SHA256
+Estado final T11i: recorrido Imola + capturas no ejecutados; el runtime
+diagnóstico no abre ventana en este worktree hoy. Imola autorizado verificado
+intacto antes del recorrido (97513472 bytes, SHA256
 35438326ecddd6ab660ed3aad70b076a73e3290236c0292f30657594c38c1eb0). Sin
 push/PR/CI remota/merge/promoción/release; LMU intacto; sin roadmap alterado
-(no hay entrega que reflejar).
+(no hay entrega que reflejar). Sigue T12 independiente del SDD.

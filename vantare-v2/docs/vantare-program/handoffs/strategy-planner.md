@@ -1,5 +1,20 @@
 # Handoff vivo — Strategy Planner
 
+## T11e3b — independencia de ahorro y filtros blandos
+
+Consumo produce observaciones de combustible/tiempo propias de SavingCost tras
+los mismos gates físicos; excluir Fuel o ritmo de sus agregados no las elimina.
+El colector compartido selecciona la familia, sin otro lector ni resegmentación.
+Curvas/ahorro conservan exclusión automática de tráfico salvo inclusión explícita
+validada de esa familia. No se alteran umbrales del protocolo A/B. Versiones de
+cómputo consumption-pace.v4 y derived-curves.v3; histórico no reescrito.
+RED/GREEN de exclusión de ritmo/combustible que anulaba ahorro; controles por
+familia, tráfico automático/ritmo/ahorro/ambos, cobertura inválida y señal ausente.
+Analysis completo, global Go -p1 y vet de alcance PASS; cuatro paths lógica/test.
+Sin frontend modificado ni Wails/precisión/visual >9/push/PR/CI remota/promoción.
+Sigue T11e2b: la compatibilidad de ritmo legado también exige identidad exacta;
+luego T11f API/inspección y contrato TS. No habilitar UI familiar antes.
+
 ## T11e3a — procedencia de decisiones efectivas
 
 LapFamilyUse efectivo recibe el ID de su corrección validada. Originales y

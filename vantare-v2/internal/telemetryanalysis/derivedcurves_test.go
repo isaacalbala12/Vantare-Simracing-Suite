@@ -317,6 +317,8 @@ func derivedCurvesFixtureInput(fixture derivedCurvesFixture) (HistoricalSession,
 				Number: lapNumber, Start: startTime, End: endTime, Labels: []LapLabel{}, ClimateBucket: &bucket,
 				FuelConsumption:    &DerivedMetric{Presence: strategyprojection.PresenceValid, Value: fuelPerLap},
 				RepresentativePace: &DerivedMetric{Presence: strategyprojection.PresenceValid, Value: lapTime},
+				SavingPace:         &DerivedMetric{Presence: strategyprojection.PresenceValid, Value: lapTime},
+				SavingFuel:         &DerivedMetric{Presence: strategyprojection.PresenceValid, Value: fuelPerLap},
 			})
 			lapNumber++
 		}
@@ -417,6 +419,90 @@ func TestCurveSamplesRequireUnambiguousCompleteIdentity(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, want[1:]) {
 				t.Fatal("ambiguous target contributed or changed other lap ages")
+			}
+		})
+	}
+}
+
+func TestSavingDoesNotDependOnPaceOrFuelFamilyUse(t *testing.T) {
+	fixture := loadDerivedCurvesFixture(t, "derived-curves-ab-v1.json")
+	session, pages, classified, validity, pace := derivedCurvesFixtureInput(fixture)
+	before, err := DeriveSessionCurves(session, pages, classified, validity, pace)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if before.SavingCost.Presence != strategyprojection.PresenceValid {
+		t.Fatal("fixture lacks valid saving protocol")
+	}
+	for i := range validity.Laps {
+		for j := range validity.Laps[i].FamilyUse {
+			if validity.Laps[i].FamilyUse[j].Family == FamilyCombinedStintPaceCurve {
+				validity.Laps[i].FamilyUse[j].Included = false
+			}
+		}
+		pace.Laps[i].RepresentativePace = nil
+		pace.Laps[i].FuelConsumption = nil
+	}
+	got, err := DeriveSessionCurves(session, pages, classified, validity, pace)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(got.SavingCost, before.SavingCost) {
+		t.Fatal("pace/fuel exclusions leaked into saving")
+	}
+	if len(got.Stints) != 0 {
+		t.Fatal("saving observations leaked into pace curves")
+	}
+}
+
+func TestTrafficInclusionIsExplicitAndScopedToFamily(t *testing.T) {
+	for _, mode := range []string{"automatic", "pace", "saving", "both", "invalid metrics"} {
+		t.Run(mode, func(t *testing.T) {
+			fixture := loadDerivedCurvesFixture(t, "derived-curves-ab-v1.json")
+			session, pages, classified, validity, pace := derivedCurvesFixtureInput(fixture)
+			base, _, _, _ := correctionExample()
+			base.SessionID = session.ID
+			validity.SessionID = session.ID
+			validity.ComputationVersion = base.AnalysisVersion
+			var err error
+			base.SegmentationDigest, err = correctionDigest("analysis.correction-segmentation.v1", validity.Temporal)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for i := range validity.Laps {
+				validity.Laps[i].Labels = append(validity.Laps[i].Labels, LapLabelTraffic)
+			}
+			var requests []LapFamilyUseCorrection
+			for _, lap := range validity.Laps {
+				for _, use := range lap.FamilyUse {
+					wanted := (use.Family == FamilyCombinedStintPaceCurve && mode == "pace") || (use.Family == FamilySavingCost && mode == "saving") || ((mode == "both" || mode == "invalid metrics") && (use.Family == FamilySavingCost || use.Family == FamilyCombinedStintPaceCurve))
+					if wanted {
+						requests = append(requests, LapFamilyUseCorrection{Base: base, Target: LapCorrectionTarget{Number: lap.Number, Start: *lap.Start, End: lap.End}, Family: use.Family, Expected: use, Included: true, Reason: "controlled traffic review"})
+					}
+				}
+			}
+			prepared, err := PrepareLapFamilyCorrections(base, validity, requests)
+			if err != nil {
+				t.Fatal(err)
+			}
+			validity.Laps, err = ApplyLapFamilyCorrections(base, validity, validity, prepared)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if mode == "invalid metrics" {
+				for i := range pace.Laps {
+					pace.Laps[i].RepresentativePace.Presence = strategyprojection.PresenceInvalid
+					pace.Laps[i].SavingPace.Presence = strategyprojection.PresenceInvalid
+				}
+			}
+			got, err := DeriveSessionCurves(session, pages, classified, validity, pace)
+			if err != nil {
+				t.Fatal(err)
+			}
+			wantPace := mode == "pace" || mode == "both"
+			wantSaving := mode == "saving" || mode == "both"
+			if (len(got.Stints) > 0) != wantPace || (got.SavingCost.Presence == strategyprojection.PresenceValid) != wantSaving {
+				t.Fatal("traffic decision leaked or ignored", mode, len(got.Stints), got.SavingCost.Presence)
 			}
 		})
 	}

@@ -5,6 +5,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 	"time"
 
@@ -395,5 +396,73 @@ func TestConsumptionPacePreservesTemporalIdentity(t *testing.T) {
 	}
 	if !legacy.Start.IsZero() || !legacy.End.IsZero() {
 		t.Fatal("legacy identity invented")
+	}
+}
+
+func TestSavingObservationsUseIndependentFamilyAndHardEvidence(t *testing.T) {
+	for _, mode := range []string{"exclude fuel and pace", "exclude saving", "invalid coverage", "missing fuel"} {
+		t.Run(mode, func(t *testing.T) {
+			fixture := loadConsumptionPaceFixture(t, "consumption-pace-dry-v1.json")
+			session, pages, classified, validity := consumptionPaceFixtureInput(fixture)
+			for i := range validity.Laps {
+				validity.Laps[i].FamilyUse = familyUseForLap(validity.Laps[i])
+			}
+			original, err := DeriveSessionConsumptionPace(session, pages, classified, validity)
+			if err != nil {
+				t.Fatal(err)
+			}
+			target := -1
+			for i, lap := range original.Laps {
+				if lap.SavingFuel != nil && lap.SavingPace != nil {
+					target = i
+					break
+				}
+			}
+			if target < 0 {
+				t.Fatal("fixture lacks saving observations")
+			}
+			switch mode {
+			case "exclude fuel and pace":
+				for j := range validity.Laps[target].FamilyUse {
+					use := &validity.Laps[target].FamilyUse[j]
+					if use.Family == FamilyFuelConsumption || use.Family == FamilyCombinedStintPaceCurve {
+						use.Included = false
+					}
+				}
+			case "exclude saving":
+				for j := range validity.Laps[target].FamilyUse {
+					if validity.Laps[target].FamilyUse[j].Family == FamilySavingCost {
+						validity.Laps[target].FamilyUse[j].Included = false
+					}
+				}
+			case "invalid coverage":
+				validity.Temporal.Segments[0].Presence = strategyprojection.PresenceInvalid
+			case "missing fuel":
+				pages[0].Samples = nil
+			}
+			got, err := DeriveSessionConsumptionPace(session, pages, classified, validity)
+			if err != nil {
+				t.Fatal(err)
+			}
+			lap := got.Laps[target]
+			switch mode {
+			case "exclude fuel and pace":
+				if lap.FuelConsumption != nil || lap.RepresentativePace != nil || !reflect.DeepEqual(lap.SavingFuel, original.Laps[target].SavingFuel) || !reflect.DeepEqual(lap.SavingPace, original.Laps[target].SavingPace) {
+					t.Fatal("family decisions coupled")
+				}
+			case "exclude saving":
+				if lap.SavingFuel != nil || lap.SavingPace != nil || !reflect.DeepEqual(lap.FuelConsumption, original.Laps[target].FuelConsumption) || !reflect.DeepEqual(lap.RepresentativePace, original.Laps[target].RepresentativePace) {
+					t.Fatal("saving exclusion leaked")
+				}
+			case "invalid coverage":
+				if lap.SavingFuel != nil || lap.SavingPace != nil {
+					t.Fatal("invalid coverage promoted")
+				}
+			case "missing fuel":
+				if lap.SavingFuel != nil {
+					t.Fatal("missing fuel invented")
+				}
+			}
+		})
 	}
 }

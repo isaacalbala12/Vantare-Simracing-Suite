@@ -11,7 +11,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetryanalysis/strategyprojection"
 )
 
-const consumptionPaceComputationVersion = "consumption-pace.v3"
+const consumptionPaceComputationVersion = "consumption-pace.v4"
 
 const reasonNoCleanCompleteLapsForRepresentativePace = "no_clean_complete_laps_for_representative_pace"
 
@@ -59,6 +59,9 @@ type LapConsumptionPace struct {
 	FuelConsumption          *DerivedMetric                    `json:"fuelConsumption,omitempty"`
 	VirtualEnergyConsumption *DerivedMetric                    `json:"virtualEnergyConsumption,omitempty"`
 	RepresentativePace       *DerivedMetric                    `json:"representativePace,omitempty"`
+	// Saving uses its own family decision, not eligibility for aggregate fuel/pace.
+	SavingFuel *DerivedMetric `json:"savingFuel,omitempty"`
+	SavingPace *DerivedMetric `json:"savingPace,omitempty"`
 }
 
 func (l LapConsumptionPace) HasLabel(wanted LapLabel) bool {
@@ -188,10 +191,17 @@ func DeriveSessionConsumptionPace(
 			result.Laps = append(result.Laps, derivedLap)
 			continue
 		}
-		if familyIncluded(lap, FamilyFuelConsumption) {
+		savingIncluded := familyIncluded(lap, FamilySavingCost)
+		if familyIncluded(lap, FamilyFuelConsumption) || savingIncluded {
 			if metric, ok := resourceDeltaMetric(session.ID, fuel, *lap.Start, lap.End, lapPresence); ok {
-				derivedLap.FuelConsumption = &metric
-				bucketValues.fuel = append(bucketValues.fuel, metricSample{value: metric.Value, presence: metric.Presence})
+				if familyIncluded(lap, FamilyFuelConsumption) {
+					derivedLap.FuelConsumption = &metric
+					bucketValues.fuel = append(bucketValues.fuel, metricSample{value: metric.Value, presence: metric.Presence})
+				}
+				if savingIncluded {
+					savingMetric := metric
+					derivedLap.SavingFuel = &savingMetric
+				}
 			}
 		}
 		if familyIncluded(lap, FamilyVirtualEnergyConsumption) {
@@ -204,11 +214,17 @@ func DeriveSessionConsumptionPace(
 		// deliberately keeps traffic laps usable for every family; applying a
 		// second private gate here made fuel valid while dropping pace from the
 		// exact same complete laps.
-		if familyIncluded(lap, FamilyCombinedStintPaceCurve) {
+		if familyIncluded(lap, FamilyCombinedStintPaceCurve) || savingIncluded {
 			metric := newDerivedMetric(session.ID, *lap.LapTimeSeconds, lapPresence)
-			derivedLap.RepresentativePace = &metric
-			bucketValues.pace = append(bucketValues.pace, metricSample{value: metric.Value, presence: metric.Presence})
-			representativePaceLaps++
+			if familyIncluded(lap, FamilyCombinedStintPaceCurve) {
+				derivedLap.RepresentativePace = &metric
+				bucketValues.pace = append(bucketValues.pace, metricSample{value: metric.Value, presence: metric.Presence})
+				representativePaceLaps++
+			}
+			if savingIncluded {
+				savingMetric := metric
+				derivedLap.SavingPace = &savingMetric
+			}
 		}
 		result.Laps = append(result.Laps, derivedLap)
 	}

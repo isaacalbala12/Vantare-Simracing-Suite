@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	derivedCurvesComputationVersion = "derived-curves.v2"
+	derivedCurvesComputationVersion = "derived-curves.v3"
 	wearLifeThresholdPercent        = 20.0
 	identifiabilityMinimumStints    = 3
 	identifiabilityMinimumSamples   = 15
@@ -150,7 +150,7 @@ func DeriveSessionCurves(
 	result.Stints, result.normalized = buildStintCurves(session.ID, result.samples)
 	result.ByClimateBucket = summarizeDerivedBuckets("session:"+session.ID, result.samples, result.normalized)
 	result.TyreDegradation = deriveTyreDegradation(session.ID, validity, grouped["tyres wear"])
-	result.SavingCost = deriveSavingCost(session.ID, result.samples)
+	result.SavingCost = deriveSavingCost(session.ID, collectFamilyCurveLapSamples(validity, pace, grouped, FamilySavingCost))
 	return result, nil
 }
 
@@ -159,6 +159,12 @@ func collectCurveLapSamples(
 	pace SessionConsumptionPace,
 	grouped map[string][]HistoricalPage,
 ) []curveLapSample {
+	return collectFamilyCurveLapSamples(validity, pace, grouped, FamilyCombinedStintPaceCurve)
+}
+
+// Shares observation enrichment, while keeping each family's eligibility and
+// metrics separate. No new segmentation, reader or statistical policy.
+func collectFamilyCurveLapSamples(validity LapValidityAnalysis, pace SessionConsumptionPace, grouped map[string][]HistoricalPage, family DerivationFamily) []curveLapSample {
 	fuel := continuousSeries(grouped["fuel level"])
 	mixture := timestampedSeries(grouped["fuelmixturemap"])
 	compounds := timestampedVectorSeries(grouped["tyrescompound"])
@@ -186,24 +192,27 @@ func collectCurveLapSamples(
 	for _, derivedLap := range pace.Laps {
 		key, resolved := curveLapTarget(derivedLap.Number, derivedLap.Start, derivedLap.End)
 		lap, ok := validityByTarget[key]
-		if !resolved || validityCounts[key] != 1 || paceCounts[key] != 1 || !ok || lap.Start == nil || derivedLap.ClimateBucket == nil || derivedLap.RepresentativePace == nil ||
-			!familyIncluded(lap, FamilyCombinedStintPaceCurve) || lap.HasLabel(LapLabelTraffic) ||
-			presenceWeight(derivedLap.RepresentativePace.Presence) == 0 {
+		paceMetric, fuelMetric := derivedLap.RepresentativePace, derivedLap.FuelConsumption
+		if family == FamilySavingCost {
+			paceMetric, fuelMetric = derivedLap.SavingPace, derivedLap.SavingFuel
+		}
+		if !resolved || validityCounts[key] != 1 || paceCounts[key] != 1 || !ok || lap.Start == nil || derivedLap.ClimateBucket == nil || paceMetric == nil ||
+			!curveFamilyIncluded(lap, family) || presenceWeight(paceMetric.Presence) == 0 {
 			continue
 		}
 		seconds := timestampSeconds(*lap.Start)
 		sample := curveLapSample{
 			stint: stintByTarget[key], lapInStint: lapInStintByTarget[key], bucket: *derivedLap.ClimateBucket,
-			lapSeconds: derivedLap.RepresentativePace.Value, presence: derivedLap.RepresentativePace.Presence,
-			savingEligible: familyIncluded(lap, FamilySavingCost) && !lap.HasLabel(LapLabelTraffic),
+			lapSeconds: paceMetric.Value, presence: paceMetric.Presence,
+			savingEligible: family == FamilySavingCost,
 		}
 		if value, presence, found := continuousNearestValueAt(fuel, seconds+0.001, vectorBoundaryToleranceSeconds); found {
 			sample.fuelLitres, sample.fuelKnown = value, true
 			sample.presence = weakestPresence(sample.presence, presence)
 		}
-		if derivedLap.FuelConsumption != nil && presenceWeight(derivedLap.FuelConsumption.Presence) > 0 {
-			sample.fuelPerLap, sample.fuelPerLapKnown = derivedLap.FuelConsumption.Value, true
-			sample.presence = weakestPresence(sample.presence, derivedLap.FuelConsumption.Presence)
+		if fuelMetric != nil && presenceWeight(fuelMetric.Presence) > 0 {
+			sample.fuelPerLap, sample.fuelPerLapKnown = fuelMetric.Value, true
+			sample.presence = weakestPresence(sample.presence, fuelMetric.Presence)
 		}
 		stateSeconds := seconds + vectorBoundaryToleranceSeconds
 		if value, presence, found := valueAt(mixture, stateSeconds); found {
@@ -217,6 +226,23 @@ func collectCurveLapSamples(
 		result = append(result, sample)
 	}
 	return result
+}
+
+// Retain the automatic traffic policy unless this family's validated decision
+// explicitly includes it. A decision for another family grants nothing here.
+func curveFamilyIncluded(lap AnalyzedLap, family DerivationFamily) bool {
+	if !familyIncluded(lap, family) {
+		return false
+	}
+	if !lap.HasLabel(LapLabelTraffic) {
+		return true
+	}
+	for _, use := range lap.FamilyUse {
+		if use.Family == family {
+			return use.Included && use.CorrectionID != ""
+		}
+	}
+	return false
 }
 
 // Use canonical instants rather than time.Time location/monotonic identity.

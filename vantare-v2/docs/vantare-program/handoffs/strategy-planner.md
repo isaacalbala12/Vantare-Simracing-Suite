@@ -1,6 +1,6 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — T12c1 aceptado, siguiente T12c2
+## Estado vigente — T12c2 aceptado, siguiente T12d2 antes de D1
 
 Isaac confirma que planes y documentación siguen a cargo del orquestador.
 R19/A17/execution actualizados: Muse Spark 1.3 Contributor vía OpenCode, xhigh,
@@ -8,15 +8,16 @@ ejecuta sólo código/tests asignados, sin subdelegación ni cambios de planes,
 docs o issue. Un ejecutor por worktree; revisión personal antes de aceptar.
 Rama `vantareapp/isa-1104-recorded-classification`, base exacta
 `7f757135445439851180fc503da45f7eb9e557e7`; último código revisado
-`1c70fb7c74065cd566a4ba93c34472d28d7962eb`, limpio al revisar. A/B1/B2/C1
+`e8abf272ca8fc750502de69780fb66b7c0fac250`, limpio al revisar. A/B1/B2/C1/C2
 aceptados localmente tras lectura de diff y evidencia (B1/B2: 126 paquetes Go
 PASS cada uno, vet exit 0; rutas en entradas siguientes). T12 sigue abierto.
 
-Siguiente C2: `internal/telemetryanalysis/corrections_derivation.go`,
-`corrections_derivation_test.go`, `corrections_projection.go` y
-`corrections_projection_test.go` (4 paths). Añade clasificación efectiva a
-derivación/proyección y conserva el gate de vueltas completas en Analysis.
-D1 conserva esa clasificación al proyectar desde el servicio. El plan registra
+Siguiente D2, antes de D1: `internal/telemetryanalysis/corrections_inspection.go`
+y `corrections_inspection_test.go`. Hallazgo del orquestador: la consulta de
+vueltas aún usa ApplyObservation y rechaza v3. Reusar ApplyMixed, sin nueva API;
+mantener targets/paginación/capacidades y snapshot exacto. Después D1 conecta
+Save/Resolve y conserva la clasificación efectiva al proyectar desde el servicio.
+El plan registra
 el impedimento de apertura de sesiones sin proyección para resolverlo antes de
 montar la UI; no se crean valores faltantes. Coche/circuito siguen pendientes
 del contrato canónico §5. Sin nuevo alcance público: `plan.md` intacto.
@@ -24,6 +25,29 @@ Sin push, PR, CI remota, integración ni promoción. No se reabre app/LMU; gate
 Wails sigue pendiente por ERROR_INVALID_STATE de causa no demostrada.
 
 Las entradas siguientes son evidencia histórica; el estado vigente es éste.
+
+## T12c2 — clasificación efectiva en derivación y proyección
+
+Commit `e8abf272`, cuatro paths `corrections_derivation.go/test` y
+`corrections_projection.go/test`, +543/-6. `Classified` viaja junto a los
+derivados de la revisión exacta. Metadatos activos se reclasifican en Analysis;
+v1/v2 conservan identidad/tipo/clima del caller y todos refrescan disponibilidad
+desde vueltas completas del análisis, sin reconstruir HistoricalLap. La etiqueta
+climática no altera consumo, curvas ni paradas. No se añade DeriveObservedStrategy.
+
+Revisión personal corrigió refresh ausente en legacy y reforzó pruebas: caller
+canónico, combinación invariante, separación de rechazo en preparación/derivación,
+proyección pública completa, reopen e historial antiguo con head avanzado, retiro,
+comparaciones de inmutabilidad por JSON y efecto escalar +1s independiente del
+efecto familiar. Gates: focales `telemetryanalysis/...` exit 0; global Go
+`-p 1 ./...` exit 0, 126 paquetes ok/cero FAIL; vet de alcance exit 0, gofmt y
+diff limpios. Logs `C:/tmp/isa1104-t12c2-focal.log`,
+`C:/tmp/isa1104-t12c2-global.log`, `C:/tmp/isa1104-t12c2-vet.log` leídos por
+el orquestador. Muse reportó tres fallos durante construcción de fixtures
+(Combination, snapshot sin Base, GeneratedAt sin milisegundos); sólo quedaron
+en salida de herramienta, sin log separado. No son reproducción de bug de producto.
+Sin frontend/banco real/Wails; sin push/PR/CI remota/promoción. C2 no certifica
+el recorrido nativo: D1 aún sobrescribe metadatos corregidos y D2 rechaza v3.
 
 ## T12c1 — vista efectiva mixta revisada y comprobada
 

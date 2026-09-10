@@ -6,7 +6,7 @@ SDD R08/R07, aceptación A08/A09. Continúa ADR 0010 y
 [corrections-contract-v1](../corrections-contract-v1.md) operación 2
 `set_classification` (implementación parcial descrita aquí); no crea otra custodia,
 lector, formato, motor ni dependencia. Este documento fija el contrato
-implementable y los microcortes. T12a, T12b1, T12b2 y T12c1 están implementados y
+implementable y los microcortes. T12a, T12b1, T12b2, T12c1 y T12c2 están implementados y
 revisados localmente; no cierran T12 ni los gates visual/nativo/empírico.
 
 ## 1. Conjunto cerrado de campos y tipos
@@ -221,14 +221,25 @@ disponibilidad de señal.
   `internal/app/telemetry_analysis_correction_commands.go` +
   `telemetry_analysis_correction_commands_test.go` (Save/Resolve aceptan
   decisiones de clasificación, reusan `withCorrectionInput`: autorización +
-  bloqueo + reintento idempotente). La proyección nativa debe conservar la
+  bloqueo + reintento idempotente). Cuota conjunta de tres grupos; clasificación
+  no nil exige FamilyUses explícito (vacío cuando no haya decisiones), sin
+  convertir un grupo desconocido en vacío. Clientes anteriores conservan su
+  contrato. Clasificación inválida se presenta como petición inválida, simulador
+  no compatible como incompatible; nunca como fallo de custodia ni con detalle
+  privado. La proyección nativa debe conservar la
   clasificación efectiva de C2: hoy `deriveCorrectionSession` reclasifica con
   metadatos originales y sobrescribe `derived.Classified`; corregir ese consumo,
   con prueba de cambio de tipo/clima y revisión histórica exacta.
-- **T12d2 — inspección, sólo si falta información existente (máx. 2 paths).**
+- **T12d2 — compatibilidad de inspección mixta (2 paths; ejecutar antes de D1).**
   `internal/telemetryanalysis/corrections_inspection.go` + su test. Reusar
-  metadatos de la sesión abierta y revisión cargada antes de añadir consulta;
-  no crear otro lector/custodia ni duplicar metadatos por conveniencia de UI.
+  `ApplyMixedCorrectionSnapshot` en `InspectCorrectionLaps`: el consumidor
+  actual llama ApplyObservation y rechaza v3. Regresión RED antes del cambio,
+  luego class-only y tres grupos, snapshot exacto, páginas/targets/capacidades
+  intactos, rechazo atómico ante adulteración y metadato corregido inválido.
+  Otro metadato requerido ausente no impide inspeccionar un campo válido;
+  no exigir clasificación global ni recalcular señales por una etiqueta.
+  No hace falta nueva consulta: reusar metadatos de la sesión abierta y revisión
+  cargada, sin otro lector/custodia ni duplicación para UI.
   Gates D1/D2: focales + global Go `-p 1` + vet de alcance.
 - **T12e — contrato TS (2 paths).**
   `frontend/src/strategy/analysis-contract.ts` + `analysis-contract.test.ts`

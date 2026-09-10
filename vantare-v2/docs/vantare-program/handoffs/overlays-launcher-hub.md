@@ -4,8 +4,10 @@
 
 Rama `vantareapp/isa-1098-efficiency-integration`, worktree `C:/tmp/vantare-isa1098`,
 base `a9b8dd36` (= `origin/nightly` verificado antes de usar `--ref`). Solo se
-reúnen commits aprobados, conservando historia con merges locales; **no hay
-merge a Nightly, ni push, PR, release ni app/LMU**. Reparto vigente: Codex
+reúnen commits aprobados, conservando historia con merges locales. Candidato
+preparado en rama de issue; el estado de publicación, PR y CI del SHA actual
+se consulta en la issue #1098. Sin merge a Nightly, testers/master ni release;
+comprobación física pendiente. Reparto vigente: Codex
 implementa, Muse acciones mecánicas.
 
 Merges locales: `205fa091` <- `87cef39a` (#1083 Signature/Broadcast),

@@ -248,3 +248,18 @@ Regresión RED documentada; 29 focales GREEN. Global 443 archivos/3515 tests PAS
 Dos paths UI/test más traducciones. T11h prepara únicamente dos paths de test Go
 para ampliar el banco real opt-in, pendiente compilar/ejecutar y con staging separado.
 Sin push/PR/CI remota/merge/promoción; base local no cambia por integración ajena.
+
+## T11h — persistencia familiar sobre carreras reales
+
+Banco opt-in ampliado en dos paths de test. Imola PASS 13.19s: vuelta 3;
+Monza PASS 15.42s: vuelta 63. Selección desde inspector nativo, guardado familiar,
+Resolve/replay exactos, proyección fijada, guard legacy, restauración [] y reapertura
+de la revisión mixta anterior verificados. Otras familias permanecen iguales.
+SHA256 originales antes/después: Imola 35438326ecddd6ab660ed3aad70b076a73e3290236c0292f30657594c38c1eb0;
+Monza 08a1e626d7154becd493aa84addbf146cc7f0f229c8a7aa39664766813495538.
+Reader/runtime y archivos reales; authorizer de licencia controlado explícito.
+No son pruebas de precisión física ni Wails/login. Sin archivos reservados.
+Go global -p1 y vet de alcance PASS; frontend conjunto T11g4 443/3515 PASS.
+Continúa contraste Wails diagnóstico aislado del recorrido actual, aprovechando
+configuración heredada ya presente (sólo comprobada presencia, no leída/imprimida).
+No .env, credenciales copiadas, LMU, otras instancias ni promoción/publicación.

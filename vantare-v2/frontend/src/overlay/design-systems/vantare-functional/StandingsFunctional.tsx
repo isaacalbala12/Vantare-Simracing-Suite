@@ -15,6 +15,7 @@ export function StandingsFunctional({ model, settings }: WidgetRendererProps<Sta
   const columns = model.columns;
   const identitySpan = resolveFunctionalIdentitySpan(columns);
   const hasHeader = settings.showSessionHeader !== false;
+  const hasFooter = Boolean(model.trackTempText || model.ambientTempText || model.windText);
   const unavailable = model.status === "disconnected" || model.status === "missing" || model.status === "error";
   const statusText = model.status !== "ready" ? labels[model.status] : model.rows.length === 0 ? labels.missing : undefined;
   const labelFor = (metric: string) => metric === "gap" && paceSession ? labels.paceGap : labels[metric as keyof typeof labels] ?? metric;
@@ -52,6 +53,13 @@ export function StandingsFunctional({ model, settings }: WidgetRendererProps<Sta
             </tr>
           ))}</tbody>
         </table>
+      )}
+      {hasFooter && !unavailable && (
+        <div className="vf-footer" data-session-footer>
+          {model.trackTempText ? <span className="vf-footer-item">{labels.trackTemp} <b>{model.trackTempText}</b></span> : null}
+          {model.ambientTempText ? <span className="vf-footer-item">{labels.ambientTemp} <b>{model.ambientTempText}</b></span> : null}
+          {model.windText ? <span className="vf-footer-item vf-footer-item--end">{labels.wind} <b>{model.windText}</b></span> : null}
+        </div>
       )}
     </section>
   );

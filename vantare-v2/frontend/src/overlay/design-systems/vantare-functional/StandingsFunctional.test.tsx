@@ -31,6 +31,17 @@ describe("Functional Standings", () => {
     expect(container.querySelector('tr[data-player="true"]')).not.toBeNull();
   });
 
+  it("renders the ambient footer band only when the model carries those fields", () => {
+    const bare = render(<StandingsFunctional model={model} settings={{}} renderMode="harness" />);
+    expect(bare.container.querySelector(".vf-footer")).toBeNull();
+    bare.unmount();
+    const withWeather = { ...model, trackTempText: "28°", ambientTempText: "21°", windText: "18 km/h" };
+    const { container } = render(<StandingsFunctional model={withWeather} settings={{}} renderMode="harness" />);
+    const footer = container.querySelector(".vf-footer");
+    expect(footer?.textContent).toContain("28°");
+    expect(footer?.textContent).toContain("18 km/h");
+  });
+
   it("preserves disabled columns, custom order and configured name without inventing identifiers", () => {
     const custom = { ...model, columns: [model.columns[3]!, model.columns[1]!], rows: [{ ...model.rows[0]!, configuredDriverName: "M. Costa" }] };
     const { container } = render(<StandingsFunctional model={custom} settings={{}} renderMode="harness" />);

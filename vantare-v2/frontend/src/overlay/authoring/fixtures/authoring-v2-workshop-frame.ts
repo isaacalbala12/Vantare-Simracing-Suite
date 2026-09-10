@@ -430,7 +430,11 @@ export function buildWorkshopFrameV2(scenario: WorkshopV2Scenario): WidgetRuntim
         pit: index === 5 ? "pit" : "track",
       }));
       frame = { ...frame, standings: rows, player: { ...frame.player, id: rows[6]!.id },
-        session: { ...frame.session, remaining: qualityValue(20 * 60 + 3, quality) } };
+        session: { ...frame.session, remaining: qualityValue(20 * 60 + 3, quality) },
+        weather: { ...frame.weather,
+          ambientC: qualityValue(21, quality), trackC: qualityValue(28, quality),
+          windKph: qualityValue(18, quality), windDir: qualityValue("NW", quality),
+          rainPercent: qualityValue(0, quality), wetnessPct: qualityValue(0, quality) } };
       break;
     }
     case "standings-stress60":

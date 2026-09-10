@@ -59,6 +59,13 @@
 .vf-pit { display: inline-block; padding: 3px 4px; border-radius: 2px; background: #d9b955; color: #151612; font-size: 9px; line-height: 1; font-weight: 800; letter-spacing: .015em; }
 .vf-status, .vf-detail { margin: 0; padding: 10px 12px; white-space: normal; overflow-wrap: anywhere; font-size: 12px; }
 .vf-status { color: #e2c568; font-weight: 700; }
+
+/* Banda inferior opcional (datos ambientales): espejo de la cabecera de
+   sesión. Solo se renderiza cuando la fuente entrega esos campos. */
+.vf-footer { position: relative; z-index: 1; display: flex; align-items: center; gap: 16px; height: 30px; padding: 0 12px; border-top: 1px solid var(--vf-line); }
+.vf-footer-item { display: flex; align-items: baseline; gap: 6px; font: 600 6px/1 "JetBrains Mono", ui-monospace, monospace; letter-spacing: .16em; text-transform: uppercase; color: var(--vf-muted); }
+.vf-footer-item b { font: 650 11px/1 Inter, Arial, sans-serif; letter-spacing: 0; text-transform: none; color: var(--vf-ink); }
+.vf-footer-item--end { margin-left: auto; }
 .vf-detail { color: var(--vf-muted); }
 .vf-session-type[role="status"] { color: #e2c568; letter-spacing: 0; }
 .vf-standings[data-status="stale"] .vf-clock { color: var(--vf-muted); }

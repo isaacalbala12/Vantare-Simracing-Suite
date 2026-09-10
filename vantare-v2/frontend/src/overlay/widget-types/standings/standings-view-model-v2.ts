@@ -61,6 +61,7 @@ export function buildStandingsViewModelV2(
   const paceSession = phase === "practice" || phase === "qualifying";
   const sessionBestLap = paceSession ? fastestLap(scoped) : undefined;
   const limited = scoped.slice(0, content.rowCount ?? 20);
+  const weather = frame.weather;
 
   return withStandingsMotionIdentity({
     type: "standings",
@@ -69,6 +70,9 @@ export function buildStandingsViewModelV2(
     activeClass,
     sessionLabel: displayedText(frame.session.phase)?.toUpperCase() ?? PLACEHOLDER,
     remainingText: formatRemainingTime(displayedNumber(frame.session.remaining)),
+    ambientTempText: formatTemp(displayedNumber(weather.ambientC)),
+    trackTempText: formatTemp(displayedNumber(weather.trackC)),
+    windText: formatWind(displayedNumber(weather.windKph)),
     columns,
     rows: limited.map((row, index) => buildRow(row, index, playerId, paceSession, sessionBestLap)),
   }, `${frame.sessionId}:${frame.epoch}`, frame.sequence);
@@ -82,6 +86,9 @@ export function standingsDisplayedValues(
     sessionLabel: model.sessionLabel,
     activeClass: model.activeClass,
     remainingText: model.remainingText,
+    ambientTemp: model.ambientTempText ?? PLACEHOLDER,
+    trackTemp: model.trackTempText ?? PLACEHOLDER,
+    wind: model.windText ?? PLACEHOLDER,
     rowCount: String(model.rows.length),
     rows: model.rows
       .map((row) => [
@@ -165,6 +172,14 @@ function formatGap(row: OverlayStandingRowV2, index: number): string {
 function formatLapTime(seconds: number | undefined): string {
   if (seconds === undefined || seconds <= 0 || !Number.isFinite(seconds)) return PLACEHOLDER;
   return `${Math.floor(seconds / 60)}:${(seconds % 60).toFixed(3).padStart(6, "0")}`;
+}
+
+function formatTemp(value: number | undefined): string | undefined {
+  return value === undefined ? undefined : `${Math.round(value)}°`;
+}
+
+function formatWind(value: number | undefined): string | undefined {
+  return value === undefined ? undefined : `${Math.round(value)} km/h`;
 }
 
 function resolveActiveClass(

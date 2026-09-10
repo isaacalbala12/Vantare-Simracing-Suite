@@ -6,7 +6,7 @@ SDD R08/R07, aceptación A08/A09. Continúa ADR 0010 y
 [corrections-contract-v1](../corrections-contract-v1.md) operación 2
 `set_classification` (implementación parcial descrita aquí); no crea otra custodia,
 lector, formato, motor ni dependencia. Este documento fija el contrato
-implementable y los microcortes. T12a, T12b1, T12b2, T12c1, T12c2, T12d1 y T12d2 están implementados y
+implementable y los microcortes. T12a, T12b1, T12b2, T12c1, T12c2, T12d1, T12d2 y T12e están implementados y
 revisados localmente; no cierran T12 ni los gates visual/nativo/empírico.
 
 ## 1. Conjunto cerrado de campos y tipos
@@ -288,8 +288,31 @@ disponibilidad de señal.
   deuda heredada separadamente; sin abrir app ni añadir dependencias.
 - **T12f — cliente TS (2 paths).**
   `frontend/src/strategy/analysis-client.ts` + `analysis-client.test.ts`
-  (llamadas tipadas, cancelación nativa, conserva calidad/presencia, rechaza
-  revisiones ajenas). Gates: focales + typecheck + lint.
+  incorporan `classifications?: readonly AnalysisClassificationCorrection[]`
+  al mismo `AnalysisSaveRequest`. Omisión = cliente desconocedor; `[]` = retiro
+  explícito. `null` se rechaza en TS como ya sucede con familias; clasificación
+  explícita exige familias explícitas. Validar forma y cuota total de los tres
+  arrays antes de recorrer peticiones; reusar parsers de E con la base exacta.
+  No normalizar el payload enviado ni convertir grupos omitidos en vacíos.
+
+  Save y Resolve conservan íntegros petición, comando, señal y cancelación
+  existentes. Ante revisión encontrada, comparar todos los campos de comando
+  y las decisiones de clasificación mediante el comparador semántico de E:
+  orden equivalente aceptado, ausencia/extra/cambio de campo, base, original,
+  reemplazo, motivo o procedencia rechazados. Mantener guards familiares,
+  revisionId y base existentes. Replay de comando antiguo puede devolver
+  revisión antigua + cabeza actual; no exigir igualdad entre ambas ni adoptar
+  cabeza. Resolver ausencia no guarda ni reintenta. El cliente sigue sin estado;
+  la conservación del comando incierto en el editor corresponde a G1/G2.
+
+  Tests de transporte: class-only/tres grupos, retiro a v1/v2, legacy intacto,
+  ningún dispatch para petición inválida/cuota/grupo incoherente, rechazo de
+  respuesta discrepante y conservación de payload ante cancelación/error sin
+  retry automático. Usar fixtures frescos y positivos antes de adulteraciones;
+  no confundir falta de contexto en el fixture con un bug de producto.
+  Focales con `pnpm --dir frontend run test --maxWorkers=2
+  src/strategy/analysis-client.test.ts`, typecheck real y lint; revisión personal
+  antes de suite frontend completa/build y commit. Sin Go nuevo ni abrir app.
 - **T12g1 — helpers de conjunto completo (2 paths).**
   `frontend/src/hub/strategy-orbit/strategy-recorded-corrections.ts` + su test:
   guardar, resolver y restaurar los tres grupos sin perder decisiones.

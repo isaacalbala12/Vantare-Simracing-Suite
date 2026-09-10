@@ -1,6 +1,6 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — T12d1 aceptado, siguiente T12e
+## Estado vigente — T12e aceptado, siguiente T12f
 
 Isaac confirma que planes y documentación siguen a cargo del orquestador.
 R19/A17/execution actualizados: Muse Spark 1.3 Contributor vía OpenCode, xhigh,
@@ -8,15 +8,15 @@ ejecuta sólo código/tests asignados, sin subdelegación ni cambios de planes,
 docs o issue. Un ejecutor por worktree; revisión personal antes de aceptar.
 Rama `vantareapp/isa-1104-recorded-classification`, base exacta
 `7f757135445439851180fc503da45f7eb9e557e7`; último código revisado
-`19f2c886e9242d6bd5dc86657122eb52a23c7b61`, limpio al revisar. A/B1/B2/C1/C2/D1/D2
+`2cf7ab0eba15dd98b5c3d6eecf98df9b93fb7b1d`, limpio al revisar. A/B1/B2/C1/C2/D1/D2/E
 aceptados localmente tras lectura de diff y evidencia (B1/B2: 126 paquetes Go
 PASS cada uno, vet exit 0; rutas en entradas siguientes). T12 sigue abierto.
 
-Siguiente E: `frontend/src/strategy/analysis-contract.ts` y su test (2 paths).
-Tipos/validación v3 de los tres grupos, cuota conjunta, precondición exacta,
-comparación semántica para el cliente y normalización Unicode igual a Go.
-El microplan concreta versiones, límites y gates completos frontend; no añade
-contrato wire, calidad viva ni hashes calculados en React. D1 ya conecta
+Siguiente F: `frontend/src/strategy/analysis-client.ts` y su test (2 paths).
+Petición completa con los tres grupos, omisión/retiro explícito, cuota previa,
+comparación de respuestas y cancelación sin reintento automático. E ya valida
+v3, versiones anteriores y normalización igual a Go; microplan concreta el
+cliente y gates completos frontend. D1 conecta
 Save/Resolve bajo la misma autorización y conserva clasificación efectiva
 en la proyección nativa; D2 permite inspeccionar v3 sin nueva API.
 El plan registra
@@ -27,6 +27,38 @@ Sin push, PR, CI remota, integración ni promoción. No se reabre app/LMU; gate
 Wails sigue pendiente por ERROR_INVALID_STATE de causa no demostrada.
 
 Las entradas siguientes son evidencia histórica; el estado vigente es éste.
+
+## T12e — contrato de clasificación en TypeScript
+
+Commit `2cf7ab0e`, dos paths `analysis-contract.ts/test`, +325/-6. Tipos y
+parsers de petición/preparación, snapshot v3, cuota total antes de recorrer,
+revisión inicial sin decisiones, compatibilidad v1/v2 y comparación semántica
+sin mutar entradas. Preserva originales y peticiones exactas; mismo espacio,
+minúscula simple del enum, UTF-8, límite bruto de 1024 bytes y clima de 64
+puntos Unicode que Go. El cliente valida forma/consistencia, no hashes ni
+calidad viva/autorización que no figuran en el wire.
+
+Revisión personal detectó validación semántica ausente en el parser de petición
+y comparación que aceptaba duplicados; corregidas antes de aceptar. También
+se corrigieron fixtures de precondición que cambiaban a la vez esperado y
+original, base ajena sin autoridad externa, escapes Unicode mal representados,
+bytes confundidos con longitud JS y target duplicado en el caso de cuota 257.
+Casos directos del parser y positivos 256/1024 protegen los límites reales.
+No hubo RED pre-cambio; es extensión del contrato con revisión intermedia.
+
+Gates revisados: focal R4 93 PASS (833ms); suite frontend completa exit 0,
+443 archivos/3545 tests PASS (250.75s); typecheck `tsc -b --noEmit`, lint
+frontend completo y build `tsc -b && vite build` exit 0. Build: 1085 módulos,
+1.59s, advertencia de chunks >500 kB conservada. Suite: aviso AbortError en
+teardown presente también en el log T11g4 anterior; sin atribuir causa nueva.
+Logs `C:/tmp/isa1104-t12e-focal-r4.log`, `isa1104-t12e-frontend-all.log`,
+`isa1104-t12e-typecheck.log`, `isa1104-t12e-lint.log`, `isa1104-t12e-build.log`
+(todos en C:/tmp). Intentos focal/R2 no arrancaron tests (invocación); R3
+90 PASS antes de los casos finales. Se usa `pnpm --dir frontend run test`,
+con `run` explícito para pasar opciones a Vitest. No Go repetido (sin Go
+modificado), banco real ni Wails. Sin push/PR/CI remota/integración/promoción.
+El orquestador mantiene los planes y la revisión; F usará sesión Muse limpia
+para reducir contexto, con la sesión anterior detenida y un solo ejecutor.
 
 ## T12d1 — comandos y proyección nativa de clasificación
 

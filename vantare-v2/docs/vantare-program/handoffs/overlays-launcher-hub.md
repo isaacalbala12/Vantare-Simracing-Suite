@@ -53,12 +53,16 @@ Límite #1106 confirmado por revisión: BuildSession (bandera) y BuildWeather
 Efficiency muestra neutro/`—`; circuito/remaining/fuel.sessionLaps sí reales.
 No se arregla con otro lector ni se inventan datos. Sin animación.
 
-Evidencia de este corte (logs en `vantare-v2/.task/isa-1098-evidence/`,
-carpeta ignorada): typecheck PASS (x2), focales 8 archivos / 67 tests PASS
-(Tower/dorsales + Efficiency/Workshop/viewport), `go vet` en
-`internal/license` y `internal/app` PASS. La batería completa (frontend test,
-typecheck, build, lint; Go test/build; gates de roadmap/contrato) se ejecuta
-una sola vez sobre este candidato final con #1105. Sin probar Wails/LMU aquí.
+Evidencia del candidato final (logs en `vantare-v2/.task/isa-1098-evidence/`,
+carpeta ignorada; base `a9b8dd36`, código revisado `426f75b4`): React 439
+archivos / 3483 PASS / 2 omitidos (exit 0; ruido happy-dom heredado en
+stderr); tipos, build (aviso heredado de chunks >500 kB), lint, Go completo
+(cero FAIL) y build nativo PASS — 6 exit 0 confirmados por el padre. Gate de
+coherencia roadmap PASS, digest idempotente y gate de contrato de PR PASS
+(exactamente los dos IDs declarados). Revisión final aprobada sin hallazgos.
+Señal #1106 (bandera/temperaturas missing) y comprobación física conjunta
+Studio/guardado/Desktop/OBS pendientes; el harness no acredita Wails/LMU ni
+licencia real. Sin probar Wails/LMU aquí.
 
 ## ISA-1105 — Acceso y marca por widget en React (cierre frontend 2026-09-10)
 

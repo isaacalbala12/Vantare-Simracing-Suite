@@ -105,6 +105,10 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - item.en: Reproducible hardware footprint bench for Vantare and the overlay
 - item.pt: Banco reproduzível de impacto por hardware para Vantare e o overlay
 - item.it: Banco riproducibile dell'impronta hardware per Vantare e l'overlay
+- item: Exploración de distribución del Hub en mockups estáticos (dirección visual pendiente de decisión)
+- item.en: Hub layout exploration in static mockups (visual direction pending decision)
+- item.pt: Exploração de distribuição do Hub em mockups estáticos (direção visual pendente de decisão)
+- item.it: Esplorazione del layout dell'Hub in mockup statici (direzione visiva in attesa di decisione)
 
 ### Ingeniero y estrategia
 

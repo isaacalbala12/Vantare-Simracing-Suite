@@ -1,0 +1,1974 @@
+/* ==========================================================================
+   Vantare · Mockups de distribución del Hub (ISA-1115)
+   Hoja compartida de `hub-orbit-home-v*.html`.
+
+   Los tokens están copiados literalmente de
+   `vantare-v2/frontend/src/styles/orbit.tokens.css` y las piezas replican el
+   lenguaje de `orbit-shell.css`, `orbit-kit.css` y `orbit-home.css`. Es una
+   hoja de exploración: solo contiene lo que los mockups pintan.
+   ========================================================================== */
+
+/* Fuentes reales del producto (ruta relativa al repo; fallback system-ui). */
+@font-face {
+  font-family: "Inter";
+  src: url("../vantare-v2/frontend/src/assets/fonts/orbit/Inter-Variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Cascadia Code";
+  src: url("../vantare-v2/frontend/src/assets/fonts/orbit/CascadiaCode.ttf") format("truetype");
+  font-display: swap;
+}
+
+/* -------------------------------------------------- tokens (orbit.tokens.css) */
+:root {
+  color-scheme: dark;
+
+  --orbit-canvas: #08090b;
+  --orbit-surface-0: #0d0e11;
+  --orbit-surface-1: #121316;
+  --orbit-surface-2: #18191e;
+  --orbit-surface-3: #202127;
+  --orbit-rail-bg: #0b0c0e;
+  --orbit-column-bg: #0f1013;
+  --orbit-panel-bg: rgba(16, 17, 20, .79);
+  --orbit-panel-blur: 16px;
+  --orbit-topbar-bg: rgba(8, 9, 11, .82);
+  --orbit-featured-bg: linear-gradient(rgba(25, 25, 30, .98), rgba(19, 19, 23, .99));
+  --orbit-featured-border: linear-gradient(115deg, rgba(240, 71, 85, .62), rgba(255, 106, 95, .2), rgba(255, 255, 255, .06));
+
+  --orbit-ink: #f5f3f2;
+  --orbit-ink-2: #b7b2b2;
+  --orbit-ink-3: #8a858b;
+  --orbit-ink-4: #787379;
+  --orbit-ink-muted: #57545a;
+
+  --orbit-line: rgba(255, 255, 255, .075);
+  --orbit-line-strong: rgba(255, 255, 255, .13);
+  --orbit-line-row: rgba(255, 255, 255, .045);
+
+  --orbit-carmine: #d52f49;
+  --orbit-red: #f04755;
+  --orbit-coral: #ff6a5f;
+  --orbit-ember: #ff9b57;
+  --orbit-wine: #641526;
+  --orbit-green: #78d68b;
+  --orbit-cyan: #5ccbd5;
+  --orbit-cyan-soft: #8fd6dd;
+  --orbit-tier-bronze: #d29a6c;
+  --orbit-tier-silver: #c9c9cf;
+  --orbit-tier-gold: #ff9b57;
+  --orbit-brand-gradient: linear-gradient(145deg, var(--orbit-coral), var(--orbit-carmine) 62%, var(--orbit-wine));
+  --orbit-selection-bg: linear-gradient(90deg, rgba(213, 47, 73, .11), rgba(213, 47, 73, .02));
+  --orbit-primary-bg: #f3eeee;
+  --orbit-primary-ink: #1c1719;
+
+  --orbit-font-sans: Inter, "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+  --orbit-font-mono: "Cascadia Code", "SFMono-Regular", ui-monospace, monospace;
+  --orbit-fs-greet: 39px;
+  --orbit-fs-page: 34px;
+  --orbit-fs-focal: 28px;
+  --orbit-fs-kpi: 22px;
+  --orbit-fs-panel: 15px;
+  --orbit-fs-body: 13.5px;
+  --orbit-fs-secondary: 12px;
+  --orbit-fs-micro: 10.5px;
+
+  --orbit-space: 21px;
+  --orbit-radius: 18px;
+  --orbit-radius-featured: 25px;
+  --orbit-radius-control: 12px;
+  --orbit-radius-chip: 8px;
+  --orbit-rail-w: 81px;
+  --orbit-column-w: 296px;
+  --orbit-topbar-h: 70px;
+  --orbit-control-h: 39px;
+  --orbit-control-h-sm: 34px;
+  --orbit-chip-h: 26px;
+
+  --orbit-shadow-featured: 0 32px 91px rgba(0, 0, 0, .42), 0 0 42px rgba(213, 47, 73, .04);
+  --orbit-shadow-primary: 0 13px 34px rgba(0, 0, 0, .35);
+  --orbit-shadow-menu: 0 24px 70px rgba(0, 0, 0, .6);
+  --orbit-glow-active: 0 0 13px rgba(240, 71, 85, .6);
+  --orbit-inset-glass: inset 0 1px 0 rgba(255, 255, 255, .08);
+
+  --orbit-ease: cubic-bezier(.2, .8, .2, 1);
+  --orbit-fast: .13s;
+}
+
+/* ------------------------------------------------------------- base */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  background: var(--orbit-canvas);
+  color: var(--orbit-ink);
+  font-family: var(--orbit-font-sans);
+  font-size: 15px;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+button {
+  font-family: inherit;
+}
+
+/* ============================================================== SHELL
+   Réplica de `orbit-shell.css`: rail de iconos + workspace. La columna
+   contextual se mueve a la derecha (exploración de esta issue). */
+.orbit-shell {
+  display: grid;
+  grid-template-columns: var(--orbit-rail-w) minmax(0, 1fr) var(--orbit-column-w);
+  height: 100vh;
+  min-width: 1180px;
+  min-height: 790px;
+  background: var(--orbit-canvas);
+}
+
+/* ------------------------------------------------------------- rail */
+.orbit-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px 16px;
+  border-right: 1px solid var(--orbit-line);
+  background: var(--orbit-rail-bg);
+  position: relative;
+  z-index: 20;
+}
+
+.orbit-rail__button {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: var(--orbit-ink-4);
+  cursor: pointer;
+  transition: color 80ms var(--orbit-ease), box-shadow 80ms var(--orbit-ease), transform 60ms var(--orbit-ease);
+}
+
+.orbit-rail__button:hover {
+  color: var(--orbit-ink);
+  background: var(--orbit-line-row);
+}
+
+.orbit-rail__button:active:not([disabled]) {
+  background: rgba(213, 47, 73, .16);
+  color: #fff;
+  box-shadow: inset 0 0 0 1px rgba(240, 71, 85, .28);
+  transform: scale(.94);
+  transition-duration: 0s;
+}
+
+.orbit-rail__button[aria-current="page"] {
+  color: #fff;
+  background: linear-gradient(135deg, rgba(213, 47, 73, .24), rgba(255, 106, 95, .07));
+  box-shadow: inset 0 0 0 1px rgba(240, 71, 85, .22);
+}
+
+.orbit-rail__button[aria-current="page"]::before {
+  content: "";
+  position: absolute;
+  left: -10px;
+  width: 3px;
+  height: 19px;
+  border-radius: 0 5px 5px 0;
+  background: var(--orbit-red);
+  box-shadow: var(--orbit-glow-active);
+}
+
+.orbit-rail__soon {
+  position: absolute;
+  right: 9px;
+  top: 9px;
+  width: 6.5px;
+  height: 6.5px;
+  border: 1.5px solid var(--orbit-ember);
+  border-radius: 50%;
+  opacity: .75;
+}
+
+.orbit-rail__bottom {
+  display: grid;
+  gap: 9px;
+  place-items: center;
+  margin-top: auto;
+}
+
+.orbit-rail__avatar {
+  display: grid;
+  place-items: center;
+  width: 39px;
+  height: 39px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--orbit-surface-3);
+  box-shadow: 0 9px 23px rgba(0, 0, 0, .35), var(--orbit-inset-glass);
+  color: #fff;
+  font-size: var(--orbit-fs-secondary);
+  font-weight: 850;
+  cursor: pointer;
+}
+
+/* tooltip propio (nunca `title`), igual que en la shell real */
+[data-tip]::after {
+  content: attr(data-tip);
+  position: absolute;
+  left: calc(100% + 22px);
+  top: 50%;
+  z-index: 40;
+  transform: translate(-6px, -50%);
+  padding: 7px 11px;
+  border: 1px solid var(--orbit-line-strong);
+  border-radius: 10px;
+  background: var(--orbit-surface-3);
+  color: var(--orbit-ink);
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  box-shadow: var(--orbit-shadow-menu);
+  transition: opacity var(--orbit-fast) var(--orbit-ease), transform var(--orbit-fast) var(--orbit-ease);
+}
+
+[data-tip]:hover::after {
+  opacity: 1;
+  transform: translate(0, -50%);
+}
+
+/* En la columna derecha el tooltip sale hacia la izquierda. */
+.orbit-column [data-tip]::after {
+  left: auto;
+  right: calc(100% + 12px);
+}
+
+/* ------------------------------------------------------------- topbar */
+.orbit-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.orbit-topbar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 14px;
+  height: var(--orbit-topbar-h);
+  padding: 0 26px;
+  border-bottom: 1px solid var(--orbit-line);
+  background: var(--orbit-topbar-bg);
+  backdrop-filter: blur(23px);
+}
+
+.orbit-topbar__tt {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+
+.orbit-topbar__eyebrow {
+  color: var(--orbit-ink-4);
+  font-size: var(--orbit-fs-micro);
+  font-weight: 800;
+  letter-spacing: .11em;
+  text-transform: uppercase;
+}
+
+.orbit-topbar__eyebrow::after {
+  content: "/";
+  margin-left: 10px;
+  color: var(--orbit-ink-muted);
+}
+
+.orbit-topbar__tt h1 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: -.01em;
+  white-space: nowrap;
+}
+
+.orbit-topbar__right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+/* Disparador de la paleta en la topbar (Ctrl K). */
+.orbit-topbar__search {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  height: 38px;
+  min-width: 280px;
+  padding: 0 8px 0 13px;
+  border: 1px solid var(--orbit-line);
+  border-radius: var(--orbit-radius-control);
+  background: rgba(255, 255, 255, .022);
+  color: var(--orbit-ink-4);
+  font-size: var(--orbit-fs-secondary);
+  cursor: pointer;
+  transition: var(--orbit-fast) var(--orbit-ease);
+}
+
+.orbit-topbar__search:hover {
+  border-color: var(--orbit-line-strong);
+  color: var(--orbit-ink-2);
+}
+
+.orbit-topbar__search > svg {
+  flex: none;
+}
+
+.orbit-topbar__search > span {
+  flex: 1;
+  text-align: left;
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------------------- workspace */
+.orbit-workspace {
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+/* ============================================================== COLUMNA
+   Misma pieza que `orbit-column` de la shell real, fijada a la derecha. */
+.orbit-column {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 18px 14px 16px;
+  overflow: hidden;
+  border-left: 1px solid var(--orbit-line);
+  background: var(--orbit-column-bg);
+}
+
+.orbit-column__head {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 12px;
+  height: 49px;
+  padding: 0 9px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, .055);
+}
+
+.orbit-column__title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -.01em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.orbit-column__version {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--orbit-ink-4);
+  font: 11px var(--orbit-font-mono);
+}
+
+.orbit-column__version i {
+  width: 6.5px;
+  height: 6.5px;
+  border-radius: 50%;
+  background: var(--orbit-green);
+  box-shadow: 0 0 10px currentColor;
+  color: var(--orbit-green);
+}
+
+.orbit-column__collapse {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: var(--orbit-radius-chip);
+  background: transparent;
+  color: var(--orbit-ink-3);
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.orbit-column__collapse:hover {
+  color: var(--orbit-ink);
+  background: rgba(255, 255, 255, .04);
+}
+
+.orbit-column__blocks {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+  padding-top: 6px;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.orbit-block {
+  padding: 10px 0 4px;
+  border-top: 1px solid rgba(255, 255, 255, .055);
+}
+
+.orbit-block:first-child {
+  border-top: 0;
+}
+
+.orbit-block__head {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 2.5px 9px 11px;
+}
+
+.orbit-eyebrow {
+  color: var(--orbit-ink-3);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+
+.orbit-link {
+  border: 0;
+  background: none;
+  color: var(--orbit-ink-3);
+  font-size: 11.5px;
+  cursor: pointer;
+}
+
+/* En v1.2 los links pueden llevar chevron inline. */
+.orbit-shell--v12 .orbit-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.orbit-link:hover {
+  color: var(--orbit-ink);
+}
+
+.orbit-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 2px;
+}
+
+/* ------------------------------------------------------------- filas */
+.orbit-row {
+  position: relative;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  min-height: 46px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 11px;
+  background: none;
+  color: inherit;
+  font-family: var(--orbit-font-sans);
+  text-align: left;
+  cursor: pointer;
+  transition: var(--orbit-fast) var(--orbit-ease);
+}
+
+.orbit-row:hover {
+  background: rgba(255, 255, 255, .03);
+}
+
+.orbit-row.orbit-row--sel {
+  background: var(--orbit-selection-bg);
+}
+
+.orbit-row.orbit-row--sel::before {
+  content: "";
+  position: absolute;
+  left: -13px;
+  width: 3px;
+  height: 18px;
+  border-radius: 0 4px 4px 0;
+  background: var(--orbit-red);
+  box-shadow: var(--orbit-glow-active);
+}
+
+.orbit-row__copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.orbit-row__copy b {
+  display: block;
+  overflow: hidden;
+  color: var(--orbit-ink-2);
+  font-size: 13px;
+  font-weight: 650;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.orbit-row__copy span {
+  display: block;
+  overflow: hidden;
+  margin-top: 2px;
+  color: var(--orbit-ink-3);
+  font-size: 11px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.orbit-row:hover .orbit-row__copy b,
+.orbit-row--sel .orbit-row__copy b {
+  color: var(--orbit-ink);
+}
+
+.orbit-when {
+  flex: none;
+  text-align: right;
+}
+
+.orbit-when b {
+  display: block;
+  color: var(--orbit-ink-2);
+  font: 650 13px var(--orbit-font-mono);
+}
+
+.orbit-when span {
+  display: block;
+  margin-top: 2px;
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-micro);
+}
+
+.orbit-row--next .orbit-when b {
+  color: var(--orbit-coral);
+  text-shadow: 0 0 14px rgba(255, 106, 95, .35);
+}
+
+.orbit-tier-dot {
+  display: inline-block;
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--orbit-ink-4);
+}
+
+.orbit-tier-dot[data-tier="beginner"] { background: var(--orbit-tier-bronze); }
+.orbit-tier-dot[data-tier="intermediate"] { background: var(--orbit-tier-silver); }
+.orbit-tier-dot[data-tier="advanced"],
+.orbit-tier-dot[data-tier="weekly"] { background: var(--orbit-tier-gold); }
+
+/* ------------------------------------------------------------- pill / botones */
+.orbit-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  height: 36px;
+  padding: 0 13px;
+  border: 1px solid var(--orbit-line);
+  border-radius: var(--orbit-radius-control);
+  background: rgba(255, 255, 255, .022);
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-secondary);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: var(--orbit-fast) var(--orbit-ease);
+}
+
+.orbit-pill:hover {
+  color: var(--orbit-ink-2);
+  border-color: var(--orbit-line-strong);
+}
+
+.orbit-pill__dot {
+  width: 6.5px;
+  height: 6.5px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 10px currentColor;
+}
+
+.orbit-pill__dot--ok { color: var(--orbit-green); }
+
+/* El punto "conectado" respira en verde (semántico ok, no urgencia). */
+@keyframes orbitPulseOk {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(120, 214, 139, .45); }
+  55% { box-shadow: 0 0 0 5px rgba(120, 214, 139, 0); }
+}
+
+.orbit-shell--v12 .orbit-pill__dot--ok {
+  animation: orbitPulseOk 2.4s var(--orbit-ease) infinite;
+}
+
+/* Reloj local en la topbar: lectura mono tabular, de sala de control. */
+.orbit-pill--clock {
+  color: var(--orbit-ink-3);
+  font-family: var(--orbit-font-mono);
+  font-size: var(--orbit-fs-secondary);
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+.orbit-pill__dot--ring-gold {
+  background: transparent;
+  border: 1.5px solid currentColor;
+  box-shadow: none;
+  color: var(--orbit-ember);
+}
+
+.orbit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: var(--orbit-control-h);
+  padding: 0 16px;
+  border: 0;
+  border-radius: var(--orbit-radius-control);
+  background: none;
+  color: inherit;
+  font-size: 13px;
+  font-weight: 750;
+  letter-spacing: .01em;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: var(--orbit-fast) var(--orbit-ease);
+}
+
+.orbit-btn--sm {
+  height: var(--orbit-control-h-sm);
+  padding: 0 12px;
+  font-size: var(--orbit-fs-secondary);
+}
+
+.orbit-btn--primary {
+  background: var(--orbit-primary-bg);
+  color: var(--orbit-primary-ink);
+  font-weight: 850;
+  box-shadow: var(--orbit-shadow-primary);
+}
+
+.orbit-btn--primary:hover {
+  background: var(--orbit-ink);
+  transform: translateY(-1px);
+}
+
+.orbit-btn--ghost {
+  border: 1px solid rgba(255, 255, 255, .07);
+  background: rgba(255, 255, 255, .025);
+  color: var(--orbit-ink-3);
+}
+
+.orbit-btn--ghost:hover {
+  border-color: rgba(240, 71, 85, .17);
+  background: rgba(213, 47, 73, .055);
+  color: var(--orbit-ink-2);
+}
+
+/* ------------------------------------------------------------- chips */
+.orbit-chip {
+  display: inline-flex;
+  flex: none;
+  gap: 6px;
+  align-items: center;
+  height: var(--orbit-chip-h);
+  padding: 0 9px;
+  border-radius: var(--orbit-radius-chip);
+  background: rgba(255, 255, 255, .035);
+  color: var(--orbit-ink-4);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.orbit-chip--bronze { background: rgba(210, 154, 108, .1); color: var(--orbit-tier-bronze); }
+.orbit-chip--silver { background: rgba(201, 201, 207, .09); color: var(--orbit-tier-silver); }
+.orbit-chip--gold { background: rgba(255, 155, 87, .1); color: var(--orbit-tier-gold); }
+.orbit-chip--accent { color: var(--orbit-coral); }
+.orbit-chip--ok { color: var(--orbit-green); }
+
+.orbit-state-chip {
+  display: inline-flex;
+  flex: none;
+  gap: 6.5px;
+  align-items: center;
+  height: 29px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .045);
+  color: var(--orbit-ink-3);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.orbit-state-chip__dot {
+  width: 6.5px;
+  height: 6.5px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.orbit-state-chip--live {
+  background: rgba(120, 214, 139, .08);
+  color: var(--orbit-green);
+}
+
+.orbit-state-chip--live .orbit-state-chip__dot {
+  box-shadow: 0 0 10px currentColor;
+}
+
+/* ------------------------------------------------------------- kbd */
+.orbit-kbd {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.orbit-kbd kbd {
+  display: inline-grid;
+  place-items: center;
+  min-width: 27px;
+  height: 26px;
+  padding: 0 6.5px;
+  border: 1px solid var(--orbit-line-strong);
+  border-bottom-color: rgba(255, 255, 255, .22);
+  border-radius: 6.5px;
+  background: rgba(255, 255, 255, .025);
+  color: var(--orbit-ink-3);
+  font-family: var(--orbit-font-mono);
+  font-size: var(--orbit-fs-secondary);
+}
+
+/* ------------------------------------------------------------- superficies */
+.orbit-surface {
+  overflow: hidden;
+  min-width: 0;
+  border: 1px solid var(--orbit-line);
+  border-radius: var(--orbit-radius);
+  background: var(--orbit-panel-bg);
+  backdrop-filter: blur(var(--orbit-panel-blur));
+}
+
+.orbit-surface__head {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  min-height: 56px;
+  padding: 12px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, .05);
+}
+
+.orbit-surface__head h3 {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--orbit-ink);
+  font-size: var(--orbit-fs-panel);
+  font-weight: 700;
+  letter-spacing: -.01em;
+}
+
+.orbit-surface__meta {
+  flex: none;
+  color: var(--orbit-ink-3);
+  font-family: var(--orbit-font-mono);
+  font-size: var(--orbit-fs-secondary);
+}
+
+.orbit-surface__body {
+  padding: var(--orbit-space);
+}
+
+.orbit-featured {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid transparent;
+  border-radius: var(--orbit-radius-featured);
+  background:
+    var(--orbit-featured-bg) padding-box,
+    var(--orbit-featured-border) border-box;
+  box-shadow: var(--orbit-shadow-featured);
+}
+
+/* ============================================================== INICIO v1
+   Distribución aprobada: héroe = próxima carrera, strip de próximas,
+   perfil activo y columna contextual a la derecha. */
+.orbit-home {
+  display: flex;
+  flex-direction: column;
+  gap: var(--orbit-space);
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 26px 30px 30px;
+}
+
+/* ---- héroe: featured + arte lineal del trazado, sin fotos */
+.orbit-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  min-height: 238px;
+  padding: 26px 30px;
+}
+
+/* El arte del circuito vive detrás, a la derecha, muy tenue: es decoración,
+   no información, y nunca compite con la cuenta atrás. */
+.orbit-hero__art {
+  position: absolute;
+  top: 50%;
+  right: -18px;
+  width: 540px;
+  height: 350px;
+  transform: translateY(-50%);
+  color: var(--orbit-ink);
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 38%);
+  mask-image: linear-gradient(90deg, transparent 0%, #000 38%);
+}
+
+.orbit-hero__art .tk-line {
+  opacity: .3;
+}
+
+.orbit-hero__art svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* Trazo de los mapas lineales: base ancha muy tenue + línea + marca de
+   salida/meta. El color lo fija el contenedor (`currentColor`). */
+.tk-base {
+  fill: none;
+  stroke: currentColor;
+  opacity: .1;
+  stroke-width: 9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.tk-line {
+  fill: none;
+  stroke: currentColor;
+  opacity: .4;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.tk-sf {
+  fill: none;
+  stroke: currentColor;
+  opacity: .75;
+  stroke-width: 2.8;
+  stroke-linecap: round;
+}
+
+/* En las cards pequeñas el mapa solo informa, así que sube un punto la línea
+   y se retira la base para no ensuciar el trazo a 58 px. */
+.orbit-race-card__map .tk-base,
+.orbit-row__map .tk-base {
+  opacity: 0;
+}
+
+.orbit-race-card__map .tk-line,
+.orbit-row__map .tk-line {
+  opacity: .85;
+  stroke-width: 3.4;
+}
+
+.orbit-race-card__map .tk-sf,
+.orbit-row__map .tk-sf {
+  opacity: .95;
+  stroke-width: 4;
+}
+
+.orbit-hero__copy {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+  min-width: 0;
+}
+
+.orbit-hero__eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.orbit-hero__eyebrow .orbit-eyebrow {
+  color: var(--orbit-ink-2);
+}
+
+.orbit-hero__title {
+  margin: 0;
+  color: var(--orbit-ink);
+  font-size: var(--orbit-fs-focal);
+  font-weight: 690;
+  letter-spacing: -.03em;
+  line-height: 1.12;
+}
+
+.orbit-hero__title small {
+  display: block;
+  margin-top: 4px;
+  color: var(--orbit-ink-3);
+  font-size: 15px;
+  font-weight: 550;
+  letter-spacing: -.01em;
+}
+
+.orbit-hero__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  align-items: center;
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-secondary);
+}
+
+.orbit-hero__meta b {
+  color: var(--orbit-ink-2);
+  font-family: var(--orbit-font-mono);
+  font-weight: 600;
+}
+
+.orbit-hero__count {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  margin-top: 2px;
+}
+
+/* La cuenta atrás va en tinta, grande y tabular: el rojo queda reservado a lo
+   semántico (inminente, en vivo, alerta), nunca a la escala del número. */
+.orbit-hero__count b {
+  color: var(--orbit-ink);
+  font-family: var(--orbit-font-mono);
+  font-size: 46px;
+  font-weight: 680;
+  letter-spacing: -.035em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.orbit-hero__count > span {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-secondary);
+}
+
+.orbit-hero__count > span b {
+  color: var(--orbit-ink-2);
+  font-family: var(--orbit-font-mono);
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.orbit-hero__actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+/* Chip "inminente": la única nota carmín del héroe (< 15 min a la salida). */
+.orbit-chip--soon {
+  background: rgba(213, 47, 73, .12);
+  color: var(--orbit-coral);
+}
+
+/* ---- strip de próximas carreras */
+.orbit-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.orbit-strip__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 0 4px;
+}
+
+.orbit-strip__head h2 {
+  margin: 0;
+  color: var(--orbit-ink);
+  font-size: var(--orbit-fs-panel);
+  font-weight: 700;
+  letter-spacing: -.01em;
+}
+
+.orbit-strip__row {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.orbit-race-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  min-width: 0;
+  padding: 13px 15px 12px;
+  border: 1px solid var(--orbit-line);
+  border-radius: var(--orbit-radius);
+  background: var(--orbit-panel-bg);
+  backdrop-filter: blur(var(--orbit-panel-blur));
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: var(--orbit-fast) var(--orbit-ease);
+}
+
+.orbit-race-card:hover {
+  border-color: var(--orbit-line-strong);
+  transform: translateY(-1px);
+}
+
+.orbit-race-card[aria-pressed="true"] {
+  border-color: rgba(240, 71, 85, .38);
+  background:
+    linear-gradient(rgba(24, 19, 22, .9), rgba(18, 17, 21, .92)) padding-box;
+}
+
+.orbit-race-card[aria-pressed="true"]::before {
+  content: "";
+  position: absolute;
+  top: 14px;
+  bottom: 14px;
+  left: 0;
+  width: 3px;
+  border-radius: 0 4px 4px 0;
+  background: var(--orbit-red);
+  box-shadow: var(--orbit-glow-active);
+}
+
+.orbit-race-card__top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.orbit-race-card__time {
+  color: var(--orbit-ink);
+  font-family: var(--orbit-font-mono);
+  font-size: 15px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.orbit-race-card__in {
+  color: var(--orbit-ink-3);
+  font-family: var(--orbit-font-mono);
+  font-size: var(--orbit-fs-micro);
+  font-weight: 600;
+}
+
+.orbit-race-card--soon .orbit-race-card__in {
+  color: var(--orbit-coral);
+}
+
+.orbit-race-card__name {
+  display: block;
+  overflow: hidden;
+  color: var(--orbit-ink-2);
+  font-size: 13px;
+  font-weight: 650;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.orbit-race-card__track {
+  display: block;
+  overflow: hidden;
+  margin-top: 2px;
+  color: var(--orbit-ink-3);
+  font-size: 11px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.orbit-race-card__foot {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.orbit-race-card__map {
+  flex: none;
+  width: 58px;
+  height: 40px;
+  color: var(--orbit-ink-muted);
+}
+
+.orbit-race-card__map svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* ---- perfil activo: misma superficie que el focal de Inicio real */
+.orbit-profile {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 460px;
+  gap: 28px;
+  align-items: center;
+  padding: 20px 22px 20px 26px;
+}
+
+.orbit-profile__copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+
+.orbit-profile__copy h3 {
+  margin: 0;
+  color: var(--orbit-ink);
+  font-size: 20px;
+  font-weight: 690;
+  letter-spacing: -.025em;
+}
+
+.orbit-profile__copy p {
+  margin: 0;
+  max-width: 46ch;
+  color: #9a9598;
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.orbit-profile__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  align-items: center;
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-secondary);
+}
+
+.orbit-profile__meta b {
+  color: var(--orbit-ink-2);
+  font-family: var(--orbit-font-mono);
+  font-weight: 600;
+}
+
+.orbit-profile__actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+/* Mini-preview del perfil: esquema lineal del lienzo, nunca captura del
+   juego (no existe como recurso). Rejilla + cajas de widget en línea fina. */
+.orbit-mini-stage {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 1px solid var(--orbit-line);
+  border-radius: 14px;
+  background-color: var(--orbit-surface-0);
+  background-image:
+    linear-gradient(rgba(255, 255, 255, .022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, .022) 1px, transparent 1px);
+  background-size: 6.25% 11.11%;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, .45);
+}
+
+.orbit-mini-stage__widget {
+  position: absolute;
+  border: 1px solid rgba(255, 255, 255, .16);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, .028);
+  color: var(--orbit-ink-4);
+  font-family: var(--orbit-font-mono);
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: flex-start;
+  padding: 5px 7px;
+}
+
+.orbit-mini-stage__widget--accent {
+  border-color: rgba(240, 71, 85, .4);
+  color: var(--orbit-coral);
+}
+
+/* ---- columna contextual: detalle de la carrera seleccionada */
+.orbit-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 9px 0;
+}
+
+.orbit-detail__map {
+  display: block;
+  height: 118px;
+  margin: 2px 0;
+  color: var(--orbit-ink-3);
+}
+
+.orbit-detail__map svg {
+  width: 100%;
+  height: 100%;
+}
+
+.orbit-detail__map .tk-line {
+  opacity: .8;
+  stroke-width: 3;
+}
+
+.orbit-detail__map .tk-sf {
+  opacity: 1;
+  stroke-width: 3.6;
+}
+
+.orbit-detail__title {
+  margin: 0;
+  color: var(--orbit-ink);
+  font-size: 15.5px;
+  font-weight: 700;
+  letter-spacing: -.015em;
+  line-height: 1.3;
+}
+
+.orbit-detail__sub {
+  margin: -8px 0 0;
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-secondary);
+}
+
+.orbit-detail__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* Tabla de salidas: definición en dos columnas, números en mono. */
+.orbit-detail__table {
+  margin: 0;
+  border-top: 1px solid var(--orbit-line-row);
+}
+
+.orbit-detail__table > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8.5px 2px;
+  border-bottom: 1px solid var(--orbit-line-row);
+}
+
+.orbit-detail__table dt {
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-secondary);
+}
+
+.orbit-detail__table dd {
+  margin: 0;
+  color: var(--orbit-ink-2);
+  font-family: var(--orbit-font-mono);
+  font-size: var(--orbit-fs-secondary);
+  font-weight: 600;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.orbit-detail__table dd small {
+  display: block;
+  color: var(--orbit-ink-4);
+  font-family: var(--orbit-font-sans);
+  font-size: var(--orbit-fs-micro);
+  font-weight: 500;
+}
+
+.orbit-detail__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.orbit-detail__actions .orbit-btn {
+  flex: 1;
+}
+
+/* ============================================================== INICIO v2
+   Variante alternativa: sin columna lateral; el contexto es un panel
+   integrado en el workspace. Solo lo que difiere de v1. */
+.orbit-shell--v2 {
+  grid-template-columns: var(--orbit-rail-w) minmax(0, 1fr);
+}
+
+.orbit-home--v2 {
+  max-width: 1508px;
+  gap: 18px;
+}
+
+/* Héroe en banda: más bajo, countdown a la derecha, deja respirar la lista. */
+.orbit-hero--band {
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 24px;
+  min-height: 0;
+  padding: 20px 26px;
+}
+
+.orbit-hero--band .orbit-hero__copy {
+  gap: 9px;
+}
+
+.orbit-hero--band .orbit-hero__title {
+  font-size: var(--orbit-fs-kpi);
+}
+
+.orbit-hero--band .orbit-hero__count {
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  margin: 0;
+}
+
+.orbit-hero--band .orbit-hero__count > b {
+  font-size: 38px;
+}
+
+.orbit-hero--band .orbit-hero__count > span {
+  flex-direction: row;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.orbit-hero--band .orbit-hero__actions {
+  margin: 0;
+}
+
+.orbit-hero--band .orbit-hero__art {
+  width: 400px;
+  height: 230px;
+  right: 250px;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 30%, #000 68%, transparent 96%);
+  mask-image: linear-gradient(90deg, transparent 0%, #000 30%, #000 68%, transparent 96%);
+}
+
+.orbit-hero--band .orbit-hero__art .tk-line {
+  opacity: .22;
+}
+
+/* Cuerpo en 12 columnas: lista de carreras (7) + apilado contextual (5). */
+.orbit-home--v2 .orbit-home__grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 18px;
+  align-items: start;
+}
+
+.orbit-home--v2 .orbit-races-panel {
+  grid-column: span 7;
+}
+
+.orbit-home--v2 .orbit-side-stack {
+  grid-column: span 5;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+}
+
+/* Lista densa de carreras: filas con mapa a la derecha. */
+.orbit-races-panel .orbit-list {
+  padding: 4px 8px 10px;
+}
+
+.orbit-races-panel .orbit-row {
+  gap: 12px;
+  padding: 7px 10px;
+}
+
+.orbit-races-panel .orbit-row__map {
+  flex: none;
+  width: 54px;
+  height: 38px;
+  color: var(--orbit-ink-muted);
+}
+
+.orbit-races-panel .orbit-row__map svg {
+  width: 100%;
+  height: 100%;
+}
+
+.orbit-races-panel .orbit-home__time {
+  flex: none;
+  width: 46px;
+  color: var(--orbit-ink-2);
+  font-family: var(--orbit-font-mono);
+  font-size: 13.5px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Panel contextual integrado: mismo lenguaje que el detalle de la columna. */
+.orbit-detail-panel .orbit-surface__body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 20px 16px;
+}
+
+.orbit-detail-panel .orbit-detail__map {
+  height: 96px;
+  margin: 0;
+}
+
+/* Perfil activo compacto (v2 apila el contexto arriba y el perfil abajo):
+   copia a la izquierda y esquema del lienzo a la derecha, en fila. */
+.orbit-profile--compact {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 218px;
+  gap: 8px 18px;
+  align-items: center;
+  padding: 16px 20px;
+}
+
+.orbit-profile--compact .orbit-hero__eyebrow {
+  grid-column: 1 / -1;
+}
+
+.orbit-profile--compact .orbit-profile__copy h3 {
+  font-size: 16.5px;
+}
+
+.orbit-profile--compact .orbit-profile__actions {
+  margin: 0;
+}
+
+.orbit-profile--compact .orbit-mini-stage {
+  grid-row: 2 / 4;
+  grid-column: 2;
+}
+
+/* A 218 px las etiquetas de los widgets se solaparían: el esquema compacto
+   queda en puro trazo, como una miniatura técnica. */
+.orbit-profile--compact .orbit-mini-stage__widget {
+  font-size: 0;
+}
+
+/* ============================================================== INICIO v1.2
+   "Cabina de ingeniero": misma retícula y tokens; el drama se concentra en
+   el héroe (cuenta atrás dominante, trazado protagonista, luces de salida,
+   kerbs) y el strip. Todo bajo modificadores `--v12` / clases nuevas. */
+
+@keyframes orbitPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(240, 71, 85, .5); }
+  55% { box-shadow: 0 0 0 6px rgba(240, 71, 85, 0); }
+}
+
+/* ---- héroe: más alto, con atmósfera (glow coral detrás del trazado,
+   speed-lines en diagonal y kerb stripes en la esquina superior derecha) */
+.orbit-hero--v12 {
+  min-height: 310px;
+  padding: 28px 34px;
+}
+
+.orbit-hero--v12::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(46% 78% at 76% 44%, rgba(213, 47, 73, .13), transparent 72%),
+    linear-gradient(105deg, transparent 55%, rgba(240, 71, 85, .045) 100%);
+  pointer-events: none;
+}
+
+/* Piano de kerb: franjas diagonales rojo/blanco muy atenuadas, mordiendo
+   solo la esquina — guiño de circuito, no decoración SaaS. */
+.orbit-hero--v12::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 210px;
+  height: 120px;
+  background: repeating-linear-gradient(-52deg,
+    rgba(240, 71, 85, .2) 0 8px,
+    rgba(255, 255, 255, .07) 8px 16px,
+    transparent 16px 30px);
+  -webkit-mask-image: linear-gradient(228deg, #000 0%, transparent 66%);
+  mask-image: linear-gradient(228deg, #000 0%, transparent 66%);
+  pointer-events: none;
+}
+
+/* El trazado sube de presencia: más grande y línea más clara vía `color`
+   del host (los selectores no atraviesan el shadow tree de <use>). La marca
+   de salida/meta se superpone como `<line class="tk-sfhot">` en coords del
+   símbolo (el svg lleva `viewBox="0 0 200 120"`), más un punto "en parrilla". */
+.orbit-hero--v12 .orbit-hero__art {
+  right: -70px;
+  width: 620px;
+  height: 380px;
+  color: #e2dfe0;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 30%);
+  mask-image: linear-gradient(90deg, transparent 0%, #000 30%);
+}
+
+.tk-sfhot {
+  fill: none;
+  stroke: var(--orbit-coral);
+  stroke-width: 2.8;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 6px rgba(255, 106, 95, .85));
+}
+
+.tk-dot {
+  fill: var(--orbit-coral);
+  filter: drop-shadow(0 0 5px rgba(255, 106, 95, .9));
+}
+
+.tk-dot-ring {
+  fill: none;
+  stroke: var(--orbit-coral);
+  stroke-width: 1.4;
+  opacity: .55;
+  animation: tkPing 1.7s var(--orbit-ease) infinite;
+  transform-origin: center;
+  transform-box: fill-box;
+}
+
+@keyframes tkPing {
+  0% { transform: scale(.55); opacity: .8; }
+  100% { transform: scale(2.6); opacity: 0; }
+}
+
+/* En las minis el S/F es un tick coral fino, sin dot. */
+.orbit-race-card__map .tk-sfhot { stroke-width: 5.5; }
+
+/* Ficha telemétrica del circuito, bajo el trazado, a ras del borde. */
+.orbit-hero__tk-tag {
+  position: absolute;
+  right: 36px;
+  bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--orbit-ink-3);
+  font-family: var(--orbit-font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+/* Mini bandera a cuadros delante de la ficha telemétrica del circuito. */
+.orbit-hero__tk-tag::before {
+  content: "";
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 1.5px;
+  background: conic-gradient(rgba(255, 255, 255, .5) 25%, transparent 0 50%,
+    rgba(255, 255, 255, .5) 0 75%, transparent 0);
+  background-size: 100% 100%;
+  opacity: .65;
+}
+
+.orbit-hero__tk-tag b {
+  color: var(--orbit-ink-2);
+  font-weight: 700;
+}
+
+/* Eyebrow con tick en rombo — más arisco que el punto redondo. */
+.orbit-eyebrow--hot {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--orbit-ink) !important;
+}
+
+.orbit-eyebrow--hot i {
+  width: 7px;
+  height: 7px;
+  border-radius: 1.5px;
+  background: var(--orbit-coral);
+  box-shadow: 0 0 11px rgba(255, 106, 95, .65);
+  transform: rotate(45deg);
+}
+
+/* El chip "inminente" late: es el dato urgente de la página. */
+.orbit-chip--pulse {
+  background: rgba(213, 47, 73, .2);
+  color: #ff8f87;
+  font-weight: 800;
+  animation: orbitPulse 1.7s var(--orbit-ease) infinite;
+}
+
+.orbit-chip--pulse i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 8px currentColor;
+}
+
+/* Título con músculo: uppercase, más grande, tracking apretado. */
+.orbit-hero--v12 .orbit-hero__title {
+  font-size: 38px;
+  font-weight: 790;
+  letter-spacing: -.035em;
+  text-transform: uppercase;
+}
+
+.orbit-hero--v12 .orbit-hero__title small {
+  font-size: 15px;
+  font-weight: 550;
+  letter-spacing: -.01em;
+  text-transform: none;
+}
+
+/* Meta como bloque de timing tower: etiqueta micro + valor mono rotundo,
+   separado por hairlines verticales. */
+.orbit-hero--v12 .orbit-hero__meta {
+  gap: 0;
+}
+
+.orbit-hero--v12 .orbit-hero__meta > span {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-right: 20px;
+  margin-right: 20px;
+  border-right: 1px solid var(--orbit-line);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.orbit-hero--v12 .orbit-hero__meta > span:last-child {
+  padding-right: 0;
+  margin-right: 0;
+  border-right: 0;
+}
+
+.orbit-hero--v12 .orbit-hero__meta b {
+  color: var(--orbit-ink);
+  font-size: 15.5px;
+  font-weight: 650;
+  letter-spacing: -.01em;
+}
+
+/* Valor semántico "ok": registro abierto en verde. */
+.orbit-hero--v12 .orbit-hero__meta b.ok {
+  color: var(--orbit-green);
+}
+
+/* Cuenta atrás: EL número de la página. Horas atenuadas para que manden
+   minutos y segundos; glow coral muy focalizado, nunca rojo plano. */
+.orbit-hero--v12 .orbit-hero__count {
+  align-items: center;
+  gap: 24px;
+  margin-top: 4px;
+}
+
+.orbit-hero--v12 .orbit-hero__count > b {
+  position: relative;
+  padding: 18px 22px 8px 16px;
+  border: 1px solid rgba(255, 255, 255, .055);
+  border-left: 0;
+  border-radius: 0 18px 18px 0;
+  background: linear-gradient(rgba(5, 5, 7, .5), rgba(12, 10, 13, .34));
+  box-shadow:
+    inset 4px 0 0 rgba(240, 71, 85, .8),
+    inset 0 1px 0 rgba(255, 255, 255, .06),
+    0 26px 54px rgba(0, 0, 0, .42);
+  font-size: 112px;
+  font-weight: 730;
+  letter-spacing: -.045em;
+  text-shadow: 0 0 42px rgba(240, 71, 85, .22), 0 3px 26px rgba(0, 0, 0, .55);
+  transform: skewX(-3deg);
+  transform-origin: left bottom;
+}
+
+/* Etiqueta de celda estilo broadcast: "T-MINUS" en la esquina del módulo,
+   des-inclinada para seguir recta dentro del paralelogramo. */
+.orbit-hero--v12 .orbit-hero__count > b::before {
+  content: "T-minus";
+  position: absolute;
+  top: 9px;
+  left: 16px;
+  color: var(--orbit-ink-4);
+  font-family: var(--orbit-font-sans);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  text-shadow: none;
+  transform: skewX(3deg);
+}
+
+.orbit-hero--v12 .orbit-hero__count > b i {
+  color: var(--orbit-ink-muted);
+  font-size: .58em;
+  font-style: normal;
+  letter-spacing: -.02em;
+}
+
+/* Columna junto a la cuenta: semáforo de salida + hora programada,
+   separada de los dígitos por una hairline como un canal de timing. */
+.orbit-hero__out {
+  position: relative;
+  display: flex;
+  align-self: flex-end;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 22px;
+  padding-left: 22px;
+}
+
+.orbit-hero__out::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 2px;
+  bottom: 2px;
+  width: 1px;
+  background: linear-gradient(transparent, rgba(255, 255, 255, .22), transparent);
+}
+
+.orbit-hero__lights {
+  display: flex;
+  gap: 7px;
+}
+
+.orbit-hero__lights i {
+  width: 10px;
+  height: 10px;
+  border: 1px solid rgba(255, 255, 255, .24);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .06);
+}
+
+.orbit-hero__lights i.on {
+  border-color: var(--orbit-coral);
+  background: var(--orbit-red);
+  animation: orbitPulse 1.7s var(--orbit-ease) infinite;
+}
+
+.orbit-hero__out-t {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  color: var(--orbit-ink-3);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .11em;
+  text-transform: uppercase;
+}
+
+.orbit-hero__out-t b {
+  color: var(--orbit-ink);
+  font-family: var(--orbit-font-mono);
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: -.01em;
+}
+
+.orbit-hero__out-t small {
+  color: var(--orbit-ink-4);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: .03em;
+  text-transform: none;
+}
+
+.orbit-hero--v12 .orbit-hero__actions {
+  margin-top: 8px;
+}
+
+/* El CTA del héroe va en uppercase con chevron — más seco, más racing. */
+.orbit-hero--v12 .orbit-btn--primary {
+  font-size: 12px;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+
+.orbit-btn__arr {
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ---- strip: horas mono más grandes, mapas con más línea, seleccionada
+   con baño carmín y barra más gruesa */
+.orbit-strip--v12 .orbit-race-card {
+  gap: 10px;
+  padding: 15px 16px 13px;
+}
+
+.orbit-strip--v12 .orbit-race-card__time {
+  font-size: 19px;
+  font-weight: 700;
+}
+
+.orbit-strip--v12 .orbit-race-card__in {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+.orbit-strip--v12 .orbit-race-card__name {
+  color: var(--orbit-ink);
+  font-size: 13.5px;
+}
+
+.orbit-strip--v12 .orbit-race-card__map {
+  width: 66px;
+  height: 46px;
+  color: #a29ba2;
+}
+
+/* El mapa de la seleccionada se tiñe de carmín: es la carrera que importa. */
+.orbit-strip--v12 .orbit-race-card[aria-pressed="true"] .orbit-race-card__map {
+  color: rgba(255, 122, 112, .62);
+}
+
+/* Y hereda el motivo kerb del héroe, en miniatura, en su esquina. */
+.orbit-strip--v12 .orbit-race-card[aria-pressed="true"]::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 66px;
+  height: 42px;
+  border-radius: 0 var(--orbit-radius) 0 0;
+  background: repeating-linear-gradient(-52deg,
+    rgba(240, 71, 85, .22) 0 5px,
+    rgba(255, 255, 255, .07) 5px 10px,
+    transparent 10px 18px);
+  -webkit-mask-image: linear-gradient(228deg, #000 0%, transparent 68%);
+  mask-image: linear-gradient(228deg, #000 0%, transparent 68%);
+  pointer-events: none;
+}
+
+.orbit-strip--v12 .orbit-race-card[aria-pressed="true"] {
+  border-color: rgba(240, 71, 85, .5);
+  background:
+    linear-gradient(155deg, rgba(213, 47, 73, .16), rgba(18, 17, 21, .94) 58%) padding-box;
+  box-shadow: 0 14px 38px rgba(0, 0, 0, .4), 0 0 26px rgba(213, 47, 73, .09);
+}
+
+.orbit-strip--v12 .orbit-race-card[aria-pressed="true"]::before {
+  width: 4px;
+}
+
+.orbit-strip--v12 .orbit-race-card[aria-pressed="true"] .orbit-race-card__time {
+  color: var(--orbit-coral);
+  text-shadow: 0 0 16px rgba(255, 106, 95, .35);
+}
+
+/* ---- columna: mapa mayor con S/F encendido y "salida" en número rotundo */
+.orbit-detail--v12 .orbit-detail__map {
+  height: 148px;
+  color: var(--orbit-ink-2);
+}
+
+.orbit-detail--v12 .orbit-detail__map .tk-sfhot { stroke-width: 3.4; }
+.orbit-detail--v12 .orbit-detail__map .tk-dot { r: 3.2; }
+.orbit-detail--v12 .orbit-detail__map .tk-dot-ring { r: 3.2; }
+
+.orbit-detail--v12 .orbit-detail__title {
+  font-size: 16.5px;
+  font-weight: 740;
+}
+
+.orbit-shell--v12 .orbit-detail__hero-tag i {
+  animation: orbitPulse 1.7s var(--orbit-ease) infinite;
+}
+
+/* La fila de salida se sale de la tabla: número grande con el "en X" debajo. */
+.orbit-detail__row--big dd {
+  color: var(--orbit-ink) !important;
+  font-size: 17px !important;
+  font-weight: 700 !important;
+}
+
+.orbit-detail__row--big dd small {
+  color: var(--orbit-coral) !important;
+  font-weight: 700 !important;
+}
+
+/* El widget acentuado del mini-stage gana un glow muy suave. */
+.orbit-shell--v12 .orbit-mini-stage__widget--accent {
+  box-shadow: 0 0 18px rgba(240, 71, 85, .14), inset 0 0 12px rgba(240, 71, 85, .05);
+}
+
+/* La card de perfil hereda el kerb en esquina, aún más tenue: es secundaria. */
+.orbit-profile--v12::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 150px;
+  height: 90px;
+  background: repeating-linear-gradient(-52deg,
+    rgba(240, 71, 85, .12) 0 8px,
+    rgba(255, 255, 255, .04) 8px 16px,
+    transparent 16px 30px);
+  -webkit-mask-image: linear-gradient(228deg, #000 0%, transparent 66%);
+  mask-image: linear-gradient(228deg, #000 0%, transparent 66%);
+  pointer-events: none;
+}

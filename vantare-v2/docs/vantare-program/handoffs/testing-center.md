@@ -17,8 +17,7 @@ y [#611](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/611).
 - Código corregido: `5798d5eb4d7752d79c1708480266b6689b415ff2`.
 - Worktree: `C:/tmp/vantare-isa728`; Muse usa otro worktree para verificar.
 - Estado: integrada en `nightly` mediante la PR [#1108](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1108).
-  Merge commit: `a2958ea1c26e4e74dbaad3827382c36cb8d7de37`; la punta remota de
-  `nightly` coincide con ese SHA.
+  SHA de integración de código: `a2958ea1c26e4e74dbaad3827382c36cb8d7de37`.
 - Corrección, regresión y revisión independiente aprobadas. SHA publicado,
   PR y resultados remotos se registran en
   [#728](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/728).
@@ -55,9 +54,10 @@ Se conservan los dos disparadores, la fixture manual `small-frontend-bug`,
 permisos de lectura, acciones fijadas por SHA y todos los trabajos productivos
 desactivados. No se configura ningún proveedor, secreto, ruleset ni auto-merge.
 
-La aceptación de Nightly quedó comprobada con el merge de la PR #1108, la
-punta `a2958ea1` y los gates postmerge de GitHub Actions. La siguiente
-promoción a Testers requiere feedback Pro Plus y la aprobación reservada a
-Isaac.
+La integración de Nightly quedó registrada con el merge de la PR #1108 y el
+SHA `a2958ea1`. El resultado del CI postmerge y la punta vigente se cierran en
+la issue de integración [#1109](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1109).
+La siguiente promoción a Testers requiere feedback Pro Plus y la aprobación
+reservada a Isaac.
 No reenviar eventos
 `repository_dispatch` ni activar correcciones automáticas.

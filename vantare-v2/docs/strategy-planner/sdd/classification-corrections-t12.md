@@ -313,14 +313,78 @@ disponibilidad de señal.
   Focales con `pnpm --dir frontend run test --maxWorkers=2
   src/strategy/analysis-client.test.ts`, typecheck real y lint; revisión personal
   antes de suite frontend completa/build y commit. Sin Go nuevo ni abrir app.
-- **T12g1 — helpers de conjunto completo (2 paths).**
-  `frontend/src/hub/strategy-orbit/strategy-recorded-corrections.ts` + su test:
-  guardar, resolver y restaurar los tres grupos sin perder decisiones.
-- **T12g2 — hook (2 paths).**
+- **T12g1 — helpers de conjunto completo (4 paths).**
+  `frontend/src/hub/strategy-orbit/strategy-recorded-corrections.ts` +
+  `strategy-recorded-corrections.test.ts`, y
+  `frontend/src/strategy/analysis-contract.ts` + `analysis-contract.test.ts`.
+  El contrato exporta un resolvedor pequeño de clave de metadato al campo
+  cerrado SessionType/WeatherConditions, reutilizando TrimSpace y minúscula
+  simple existentes. No duplicar normalización Unicode en el helper ni
+  introducir un normalizador general; otra clave no se vuelve corregible.
+  Cubrir mayúsculas, espacios NEL/NBSP, U+0130 y rechazo de FEFF prefijo.
+
+  `recordedCorrectionSave` añade como último argumento el conjunto de
+  clasificaciones, por defecto las peticiones del snapshot cargado. Todos
+  los llamadores antiguos conservan decisiones; retirada/restauración aporta
+  explícitamente el conjunto deseado (incluido []). Cuota conjunta de los
+  tres grupos antes de parsear elementos, base exacta y revisión vigente
+  requeridas para guardar; mantener detección de solapes escalares/familiares.
+  Salida separada por clonación completa, apta para conservar un comando
+  incierto sin que cambios posteriores de inputs lo modifiquen.
+
+  `recordedClassificationCorrection` recibe sesión abierta, revisión cargada,
+  campo, reemplazo y motivo. La precondición sale del metadato ORIGINAL de
+  esa sesión, nunca del valor efectivo de una revisión. Exigir base exacta,
+  una sola clave equivalente, presencia, calidad válida, no sensible ni
+  redactado y valor string. Reusar parser de E para validez semántica/UTF-8
+  y procedencia manual; no recortar original, motivo ni reemplazo enviados.
+  Otro metadato ausente no bloquea este campo. La puerta local es orientativa:
+  Save nativo mantiene toda la revalidación y autorización.
+
+  Helpers de sustituir/retirar decisión por campo conservan el resto,
+  rechazan campos/sets inválidos y bases mezcladas, sin mutar ni compartir
+  entradas. Sin proyectar, adoptar, guardar o leer por su cuenta; sin hashes,
+  nuevo lector, reglas físicas, UI ni cambios del contrato de coche/circuito.
+  RED previo con el helper existente: guardar una revisión que contiene
+  clasificación debe conservar ese grupo. Después cubrir tres grupos,
+  sustitución individual, retiro/restauración explícitos, cuota 256/257
+  antes de recorrer, original exacto/duplicados/calidad/base y no-alias.
+
+  Gates: focales de los dos módulos + typecheck real + lint; revisión
+  personal antes de commit local. La suite frontend completa y build se
+  ejecutan después de G2, que conecta estos helpers al controlador, antes
+  de considerar integrado el comportamiento del editor. Ningún gate de
+  fixtures representa banco DuckDB real ni Wails.
+- **T12g2 — controlador del editor (2 paths).**
   `frontend/src/hub/strategy-orbit/use-recorded-corrections.ts` +
-  `use-recorded-corrections.test.tsx` (controlador: staging de decisiones de
-  clasificación, guardado duradero, comando incierto, sin adopción automática
-  de cabeza). Gates: focales + typecheck + lint.
+  `use-recorded-corrections.test.tsx`. Añadir clasificaciones al estado Editor
+  y a cada transición: carga de revisión exacta, edición/sustitución/retirada
+  por campo mediante G1, descarte, guardado duradero, resolución encontrada
+  o ausente, reintento explícito y restauración de un antepasado.
+  `change` cuenta los tres grupos en la misma cuota 256 antes de publicar
+  estado; rechazo conserva la propuesta previa completa.
+
+  Guardar siempre aporta explícitamente los tres conjuntos del editor.
+  Restaurar carga la cabeza anunciada, pero manda los tres conjuntos de la
+  revisión que el usuario ha elegido restaurar, incluidos grupos vacíos:
+  nunca heredar clasificaciones de la cabeza por el valor por defecto de G1.
+  El comando incierto conserva exactamente base, tres grupos e identidad;
+  bloquea toda edición, descarte y navegación que ya bloqueaban las familias.
+  Resolve ausente conserva propuesta y causa de conflicto; no rebasa ni
+  adopta cabeza. Resolve encontrado puede recuperar revisión antigua con
+  cabeza avanzada. Guardado duradero se conserva aunque falle la proyección;
+  repetir proyección no repite Save, y la adopción sigue siendo explícita.
+
+  RED previo con API existente: restaurar un antepasado v1 ante una cabeza
+  con clasificación debe enviar clasificaciones vacías. Cubrir además
+  clasificación como único cambio pendiente, tres grupos, vuelta al guardado
+  por descarte, sustitución frente al original intacto, guardado incierto con
+  bloqueo y cancelación tardía, Resolve found/absent, restauración v3/v2/v1,
+  cuota 256/257 y proyección fallida. Fixtures completos y frescos; las
+  respuestas guardadas contienen los tres grupos solicitados y sus versiones
+  coherentes. No alterar estado del dueño de handles ni UI/plan/catálogo.
+  Focales + typecheck real + lint; revisión personal, después suite frontend
+  completa y build para aceptar G1/G2 conectados. Sin Go nuevo, app ni LMU.
 - **T12g3 — apertura para inspección sin proyección (corte por concretar, máx. 5 paths).**
   El flujo actual de `strategy-recorded-session.ts` exige combinación y
   proyección antes de conservar el handle. Eso impide corregir un metadato

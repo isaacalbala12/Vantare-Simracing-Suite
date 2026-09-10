@@ -1,6 +1,6 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — T12e aceptado, siguiente T12f
+## Estado vigente — T12f aceptado, siguiente T12g1
 
 Isaac confirma que planes y documentación siguen a cargo del orquestador.
 R19/A17/execution actualizados: Muse Spark 1.3 Contributor vía OpenCode, xhigh,
@@ -8,15 +8,18 @@ ejecuta sólo código/tests asignados, sin subdelegación ni cambios de planes,
 docs o issue. Un ejecutor por worktree; revisión personal antes de aceptar.
 Rama `vantareapp/isa-1104-recorded-classification`, base exacta
 `7f757135445439851180fc503da45f7eb9e557e7`; último código revisado
-`2cf7ab0eba15dd98b5c3d6eecf98df9b93fb7b1d`, limpio al revisar. A/B1/B2/C1/C2/D1/D2/E
+`38eb9949f83e6037ef04f922c9e32cef359f4664`, limpio al revisar. A/B1/B2/C1/C2/D1/D2/E/F
 aceptados localmente tras lectura de diff y evidencia (B1/B2: 126 paquetes Go
 PASS cada uno, vet exit 0; rutas en entradas siguientes). T12 sigue abierto.
 
-Siguiente F: `frontend/src/strategy/analysis-client.ts` y su test (2 paths).
-Petición completa con los tres grupos, omisión/retiro explícito, cuota previa,
-comparación de respuestas y cancelación sin reintento automático. E ya valida
-v3, versiones anteriores y normalización igual a Go; microplan concreta el
-cliente y gates completos frontend. D1 conecta
+Siguiente G1: helpers de corrección y test, contrato TS y test (4 paths).
+Resolvedor cerrado de clave de metadata reutiliza la normalización existente;
+los helpers preparan decisiones frente al original y conservan los tres grupos.
+G2 conectará las transiciones del editor y la restauración explícita completa.
+Microplan fija RED, paths y gates de ambos: focales/typecheck/lint por corte y
+suite frontend completa/build tras conectar G2, antes de aceptar el conjunto.
+G1 no constituye por sí solo entrega del editor. F ya conserva el payload y
+comprueba respuestas Save/Resolve; E valida v3 y versiones anteriores. D1 conecta
 Save/Resolve bajo la misma autorización y conserva clasificación efectiva
 en la proyección nativa; D2 permite inspeccionar v3 sin nueva API.
 El plan registra
@@ -27,6 +30,33 @@ Sin push, PR, CI remota, integración ni promoción. No se reabre app/LMU; gate
 Wails sigue pendiente por ERROR_INVALID_STATE de causa no demostrada.
 
 Las entradas siguientes son evidencia histórica; el estado vigente es éste.
+
+## T12f — cliente de comandos de clasificación
+
+Commit `38eb9949`, dos paths `analysis-client.ts/test`, +278/-11.
+Petición con clasificaciones opcionales; omisión y retirada [] distintas,
+familias explícitas requeridas al enviar clasificaciones, cuota conjunta antes
+de recorrer elementos. Payload intacto y comparación de comando completo,
+familias y clasificaciones en Save/Resolve. Replay con revisión anterior y
+cabeza avanzada aceptado; sin adopción ni reintentos automáticos.
+
+RED real conservado en `C:/tmp/isa1104-t12f-red.log`: 4 fallos/13 PASS,
+exit 1; el cliente aceptaba motivo de clasificación discrepante y enviaba
+peticiones inválidas. Un intento previo falló en transformación por sintaxis
+del test y no cuenta como RED productivo. Revisión personal corrigió fixtures
+de revisión/comando, contexto de base y cuota: el positivo 256 devuelve los
+254 preparados escalares + familia + clasificación. Casos finales de replay,
+cancelación tardía, conservación íntegra y tipos estrictos, sin casts en
+fixtures válidos. No se amplió el cliente a comparar escalares en la respuesta.
+
+Gates leídos: focal 18 PASS/828ms; suite frontend exit 0, 443 archivos/3553
+PASS, 196.60s; typecheck real, lint frontend y build exit 0. Build 1085 módulos,
+1.01s, aviso chunks >500 kB. Aviso AbortError de teardown conservado, presente
+también en T11g4/T12e; no se atribuye causa nueva. Logs C:/tmp con prefijo
+`isa1104-t12f-`: `focal.log`, `frontend-all.log`, `typecheck.log`, `lint.log`,
+`build.log`. Diff limpio, worker idle antes del commit del orquestador.
+No Go repetido (sólo consumidor TS), banco real, Wails ni app/LMU. Sin push,
+PR, CI remota, integración, promoción ni release. T12 permanece abierto.
 
 ## T12e — contrato de clasificación en TypeScript
 

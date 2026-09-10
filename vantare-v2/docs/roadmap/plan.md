@@ -257,9 +257,9 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 ### Contrato modular de overlays y laboratorio Redline
 
 - id: overlay-modular-contract
-- tipo: plan
-- cuerpo: Contrato Endurance por cortes: animaciones y diseños, estructura modular, personalización y reglas por sesión y foco. La torre Redline queda aceptada visualmente con cabecera actual, luz roja y fondo azul con la opacidad aprobada. El corte ISA-1071 incorpora Tower Preview opt-in, escala proporcional y datos V2 disponibles, sin migrar perfiles; pendiente de integración. Los 12 pilotos de comparación están identificados como ejemplo y excluidos de producción. El dorsal ya viaja en todos los diseños en rama (ISA-1072 implementado en rama con flujo compartido REST, Core, V2 y ViewModel y el texto 007 preservado; pendiente de integración y prueba física, no es prueba en app real); el fabricante sigue pendiente de metadatos autorizados de vehículo y nunca se infiere de nombres. Animaciones, columnas configurables, recursos de distribución y validación en una build nightly siguen pendientes; no se declara terminado el contrato.
-- etiqueta: Plan
+- tipo: feature
+- cuerpo: Primer corte del contrato Endurance: Tower Preview seleccionable con cabecera actual, luz roja, fondo azul con la opacidad aprobada y escala proporcional, sin migrar perfiles ni cambiar el diseño predeterminado. El dorsal real de LMU recorre REST, Core, V2 y el ViewModel compartido de todos los standings, conserva ceros iniciales como 007 y queda ausente si la identidad no es fiable o está caducada. Los pilotos de comparación están identificados como ejemplo y excluidos de producción. Esta entrega inicial no cierra el contrato modular: fabricante con fuente autorizada, logo transparente fiel, animaciones, columnas configurables, reglas por sesión y foco, recursos de distribución y comprobación física en Wails/LMU siguen pendientes. No se afirma una validación en juego ni una release publicada.
+- etiqueta: ISA-1101
 
 ### Aviso de horario pendiente para Owner
 

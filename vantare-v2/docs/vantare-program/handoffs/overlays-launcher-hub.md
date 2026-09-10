@@ -1,5 +1,37 @@
 # Handoff vivo — Overlay Studio, Launcher y Hub
 
+## ISA-1101 — integración inicial autorizada a nightly (2026-09-10)
+
+Isaac solicita «antes de continuar mergea tu trabajo a nightly». Este corte
+reúne exclusivamente ISA-1071 hasta `83eb38fc` (PR #1076) e ISA-1072 hasta
+`7129f2a2` (código revisado `7f721def`), sobre nightly `b6b5754e`.
+Rama `vantareapp/isa-1101-redline-nightly`, worktree limpio propio
+`C:/tmp/vantare-isa1101`. El contenido productivo es idéntico al revisado:
+solo se actualizan aquí roadmap, digest, changelog y continuidad.
+La issue [#1101](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1101)
+registra la PR de integración, los controles sobre su SHA y el resultado
+remoto del merge. #1076 será sustituida por esa PR, sin duplicar su entrega.
+
+Entregable inicial: Tower Preview opt-in y dorsal canónico compartido para
+todos los standings. No cambia defaults ni migra perfiles. Evidencia previa:
+CI de #1076 verde, revisión independiente de ambos cortes, suite frontend
+424 archivos / 3333 tests y `go test ./...` PASS; la integración exige sus
+propios gates antes del merge. No se deduce aceptación física de estos tests.
+
+Excluidos y preservados: SVG experimental y extracción IA rechazada del
+logo, fabricante sin fuente, configuración y datos locales de la apertura
+en ISA-1072, cambios de otros agentes y archivos de entorno. El último EXE
+configurado se abrió desde `bin`, pero la sesión fue interrumpida después
+de mostrar «Cargando perfiles»; no se certificaron dorsales en juego ni se
+confirmó el cierre de aquel proceso. No se relanza la app durante el merge.
+
+Siguiente paso tras verificar el merge: retomar la prueba de la build
+canónica con configuración autorizada; confirmar dorsales en LMU sin
+inventar marcas. Logo, fabricante, animaciones y personalización modular
+siguen abiertos. Integrar código en nightly no autoriza publicar recursos,
+release ni promocionar a testers/master. Rollback: PR que revierta esta
+integración en nightly, sin reescribir el canal.
+
 ## ISA-1072 — reconstruccion desde env.local original (2026-09-09)
 
 Por indicacion de Isaac, reconstruccion forzada con `wails3 task -f build`

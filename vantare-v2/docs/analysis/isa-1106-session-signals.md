@@ -6,9 +6,9 @@ sobre el SHA final (no simulada aquí).
 
 ## Qué cambia
 
-El lector REST LMU existente amplía `/rest/watch/sessionInfo` con tres señales
-de sesión y las transporta por el recorrido canónico hasta el contrato
-ViewModel compartido:
+El lector REST LMU existente amplía `/rest/watch/sessionInfo` con las señales
+de sesión disponibles y las transporta por el recorrido canónico hasta el
+contrato ViewModel compartido:
 
 `sessionInfo` → `RESTObservation` → fusión (REST-joined, precedente carNumber:
 sin fuente SHM admitida, sin regla de matriz nueva) → `Observation` →
@@ -21,18 +21,34 @@ intacta; el frontend ya trata `missing` con `—` y diagonales neutras).
   (−30…60 aire, −20…80 pista) = observado; ausente/null = missing; presente
   no numérico, no finito o fuera de rango = invalid. Cada campo es
   independiente: un campo malo nunca contamina a sus hermanos ni a
-  `trackName`/`session`/`numberOfVehicles`/`currentEventTime`.
-- Bandera de sesión (`yellowFlagState`): `FlagYellow` solo con evidencia
-  positiva (distinto de cero numérico, cadena numérica distinta de cero o
-  `true`). Ausente, null, cero, `false` o vocabulario no reconocido = missing:
-  la ausencia jamás se lee como verde. `sectorFlag` se acepta y se ignora a
-  propósito para la afirmación global: lo sectorial nunca promueve a global.
-  `gamePhase` se acepta para futuro trabajo de vocabulario; lo desconocido
-  queda missing sin fallar la sesión.
+  `trackName`/`session`/`numberOfVehicles`/`currentEventTime`. Un campo
+  ignorado (`gamePhase` en cualquier forma, `sectorFlag`) jamás bloquea la
+  sesión (corrección B1).
+- Bandera de sesión (corrección B2, límite honesto): el driver NO afirma
+  ningún valor. Las fuentes primarias solo respaldan los nombres
+  (`sessionInfo` enumera `yellowFlagState`/`sectorFlag` en la tabla de
+  captura S2; el swagger del juego no define campos de respuesta): SHM muestra
+  `mYellowFlagState = 0` en verde, el enum de `mSectorFlag` (1, 11
+  observados) está abierto y los valores amarillos/FCY están explícitamente
+  pendientes de captura. Fail-closed: toda forma queda `missing` — nunca
+  verde por ausencia, nunca amarillo por conjetura numérica. Admitir una
+  afirmación amarilla exige una captura en sesión activa con
+  `yellowFlagState` distinto de cero (o un enum documentado) y queda como
+  trabajo de seguimiento; las temperaturas no dependen de ello. El
+  plumbing (`SessionFlag` → `Flag` con calidad preservada) queda demostrado
+  por fixtures y listo para el primer valor atestado.
 - Frescura/caducidad: TTL REST de 2 s ya existente; los campos se vuelven
   `stale` sin congelar marca temporal y se recuperan a `fresh` al reconectar.
   Una respuesta de sesión inválida (`currentEventTime` negativo, etc.) no
   registra éxito ni contamina valores previos (transaccional, como antes).
+- Alcance de sesión (corrección B3): cada señal lleva el `sessionFloor` de
+  fusión como el grid carNumber —valores de la sesión anterior pasan a
+  `missing` aunque el TTL siga vigente, sin tocar marcas ni alargar TTL— y
+  solo un REST nuevo las recupera.
+- Proyección regulada (corrección B4): `ambientTemp`/`trackTemp` (valor y
+  calidad) invalidan `SectionWeather` con el patrón de señales finas
+  existente; el scheduler la reconstruye dentro de la política vigente
+  (intervalo slow, techo 1 s) sin cambiar tasas. Sin optimización ni refactor.
 - Fuera de alcance explícito: lluvia/viento/presión (siguen `missing`),
   `flag`/`underYellow` por coche, vocabulario completo de banderas
   (verde/rojo/FCY) y el endpoint de previsión `/rest/sessions/weather`
@@ -61,9 +77,13 @@ navegar/conducir, sin datos de usuario/pilotos):
   `03-LMU-INTEGRATION.md`, spikes S1/S2 en vivo 2026-06-14/16: `mGamePhase =
   5` en verde, `mYellowFlagState = 0` en verde, `mSectorFlag` con valores 1 y
   11 de enum pendiente, `GetGameState` con cadenas como `GPHASE_GREEN`).
-  Esa evidencia externa sostiene los nombres; la confirmación de
-  enums/unidades en sesión activa de este equipo queda pendiente y NO se
-  presenta como hecha.
+  Esa evidencia externa sostiene los nombres de `sessionInfo` (la tabla S2
+  los enumera junto a `maxTime`, `maximumLaps`, `raceCompletion`,
+  `timeRemainingInGamePhase`, `raining`, `windSpeed`) y las unidades Celsius
+  de SHM (`mAmbientTemp`/`mTrackTemp`); ningún valor amarillo de sesión está
+  demostrado en ninguna fuente, de ahí el fail-closed B2. La confirmación de
+  enums en sesión activa de este equipo queda pendiente y NO se presenta
+  como hecha. El usuario aún no respondió la petición de sesión activa.
 
 Fixtures y tests (`rest_session_signals_test.go`,
 `builder_session_signals_test.go`, auditoría de superficies exactas

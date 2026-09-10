@@ -10,7 +10,6 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 	"time"
 
@@ -250,10 +249,11 @@ type restSessionInfo struct {
 	YellowFlagState json.RawMessage `json:"yellowFlagState"`
 	// SectorFlag is accepted and ignored for the global flag assertion: a
 	// sector-scoped flag must never promote to the session-global signal.
-	// GamePhase is accepted for future vocabulary work; unrecognized values
-	// stay missing rather than failing the session.
+	// GamePhase is accepted in any shape and ignored: it is not consulted
+	// for any canonical assertion, so an unknown shape must never block the
+	// session fields from the same poll.
 	SectorFlag json.RawMessage `json:"sectorFlag"`
-	GamePhase  *string         `json:"gamePhase"`
+	GamePhase  json.RawMessage `json:"gamePhase"`
 }
 
 func runREST(ctx context.Context, cfg *restConfig, output chan<- Observation) error {
@@ -629,53 +629,20 @@ func parseRESTTemperature(raw json.RawMessage, minimum, maximum float64, now tim
 	return timedObservedAt(weather.Temperature(value), now, elapsed)
 }
 
-// parseRESTSessionFlag asserts FlagYellow only on positive yellowFlagState
-// evidence. The state is numeric on the observed vocabulary (0 while green);
-// a nonzero number, numeric string or true means yellow. Absent, null, zero,
-// false or an unrecognized shape stays missing: absence is never green, and
-// unknown vocabulary never invents a flag. SectorFlag and GamePhase are
-// deliberately not consulted here: sector scope must not promote to global.
+// parseRESTSessionFlag accepts the raw yellowFlagState shape without ever
+// asserting a session flag (ISA-1106 correction B2). The primary sources
+// attest the field names (S2 live capture table) but no yellow value is
+// demonstrated anywhere: SHM shows mYellowFlagState 0 while green, the
+// sector-flag enum is open, and the yellow/FCY string values are explicitly
+// pending capture. Fail closed: every shape stays missing, never yellow and
+// never green by absence. Admitting a yellow assertion requires an
+// active-session capture of a nonzero yellowFlagState (or a documented enum)
+// and stays tracked as follow-up work; temperatures are unaffected.
+// SectorFlag and GamePhase are deliberately not consulted here: sector scope
+// must not promote to global.
 func parseRESTSessionFlag(raw json.RawMessage, now time.Time, elapsed monotonicStamp) TimedField[session.Flag] {
-	trimmed := bytes.TrimSpace(raw)
-	if len(trimmed) == 0 || string(trimmed) == "null" {
-		return timedMissingAt[session.Flag](now, elapsed)
-	}
-	var number float64
-	if err := json.Unmarshal(trimmed, &number); err == nil {
-		if !finite(number) {
-			return TimedField[session.Flag]{Field: invalid[session.Flag](), UpdatedUTC: now, updatedMono: elapsed}
-		}
-		if number != 0 {
-			return timedObservedAt(session.FlagYellow, now, elapsed)
-		}
-		return timedMissingAt[session.Flag](now, elapsed)
-	}
-	var text string
-	if err := json.Unmarshal(trimmed, &text); err == nil {
-		lowered := strings.ToLower(strings.TrimSpace(text))
-		switch lowered {
-		case "", "0", "none", "green", "false", "no":
-			return timedMissingAt[session.Flag](now, elapsed)
-		case "yellow", "1", "true", "yes":
-			return timedObservedAt(session.FlagYellow, now, elapsed)
-		default:
-			if parsed, err := strconv.ParseFloat(lowered, 64); err == nil && finite(parsed) {
-				if parsed != 0 {
-					return timedObservedAt(session.FlagYellow, now, elapsed)
-				}
-				return timedMissingAt[session.Flag](now, elapsed)
-			}
-			return timedMissingAt[session.Flag](now, elapsed)
-		}
-	}
-	var flag bool
-	if err := json.Unmarshal(trimmed, &flag); err == nil {
-		if flag {
-			return timedObservedAt(session.FlagYellow, now, elapsed)
-		}
-		return timedMissingAt[session.Flag](now, elapsed)
-	}
-	return TimedField[session.Flag]{Field: invalid[session.Flag](), UpdatedUTC: now, updatedMono: elapsed}
+	_ = raw
+	return timedMissingAt[session.Flag](now, elapsed)
 }
 
 func (cache *restCache) acceptSession(info restSessionInfo, receivedUTC time.Time, receivedMono monotonicStamp) error {

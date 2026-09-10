@@ -10,10 +10,11 @@ import (
 // only the canonical state: nothing here is inferred from a simulator concept.
 //
 // Flag reads the canonical SessionFlag admitted from the LMU REST sessionInfo
-// signal (ISA-1106). The assertion stays conservative: yellow only on positive
-// evidence, missing otherwise. Absence never reads as green, and a
-// sector-scoped flag never promotes to this global signal, which keeps the
-// racing-flags widget at parity across both contracts.
+// signal (ISA-1106, correction B2). The driver asserts no value yet — no
+// flag vocabulary is demonstrated — so live frames stay missing here: never
+// green by absence, never yellow by guess, and a sector-scoped flag never
+// promotes to this global signal. The plumbing preserves quality for the
+// first attested value (proven by fixture).
 func BuildSession(final derive.FinalState) SessionV2 {
 	return SessionV2{
 		Track:            qualityValue(final.Observed.TrackName, func(value string) string { return value }),

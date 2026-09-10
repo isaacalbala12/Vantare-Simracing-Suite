@@ -7,17 +7,17 @@ import (
 	"time"
 
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
-	"github.com/vantare/overlays/v2/internal/telemetry/schema/session"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/weather"
 )
 
 // Characterization for ISA-1106: the REST sessionInfo endpoint already carries
 // the session signals the Efficiency widget needs, but the driver decodes only
 // trackName/session/numberOfVehicles/currentEventTime, so ambient/track
-// temperatures and the session flag never reach the canonical state and both
-// Overlay v2 builders stay missing. These tests lock the target contract:
-// normal, absent, null/malformed, stale, reconnect/reset, no contamination
-// between sessions and per-field invalidation independence.
+// temperatures never reach the canonical state and the weather builder stays
+// missing. Correction B2: the session flag stays missing for every shape —
+// no yellow vocabulary is demonstrated — so these tests lock temperatures as
+// fresh plus flag missing, with absence/null/malformed/stale/reconnect,
+// no-contamination and per-field independence.
 func TestRESTSessionSignalsCarryTempsAndFlag(t *testing.T) {
 	server := newRESTServer(t, func(w http.ResponseWriter, request *http.Request) {
 		switch request.URL.Path {
@@ -39,7 +39,11 @@ func TestRESTSessionSignalsCarryTempsAndFlag(t *testing.T) {
 	}
 	assertTimedValue(t, observation.REST.AmbientTemp, 22.5, now, schema.FreshnessFresh)
 	assertTimedValue(t, observation.REST.TrackTemp, 31.0, now, schema.FreshnessFresh)
-	assertTimedValue(t, observation.REST.SessionFlag, session.FlagYellow, now, schema.FreshnessFresh)
+	// B2: even positive yellowFlagState stays missing without demonstrated
+	// vocabulary; the plumbing is exercised by fixtures elsewhere.
+	if got := observation.REST.SessionFlag.Field.Freshness(); got != schema.FreshnessMissing {
+		t.Fatalf("flag freshness = %v, want missing", got)
+	}
 }
 
 func TestRESTSessionSignalsStayMissingWhenAbsent(t *testing.T) {
@@ -151,7 +155,9 @@ func TestRESTSessionSignalsGoStaleAndRecover(t *testing.T) {
 	first, _ := pollREST(t.Context(), cfg, cache)
 	assertTimedValue(t, first.REST.AmbientTemp, 20.0, firstTime, schema.FreshnessFresh)
 	assertTimedValue(t, first.REST.TrackTemp, 30.0, firstTime, schema.FreshnessFresh)
-	assertTimedValue(t, first.REST.SessionFlag, session.FlagYellow, firstTime, schema.FreshnessFresh)
+	if got := first.REST.SessionFlag.Field.Freshness(); got != schema.FreshnessMissing {
+		t.Fatalf("flag freshness = %v, want missing (B2: no demonstrated vocabulary)", got)
+	}
 
 	failing.Store(true)
 	staleTime := firstTime.Add(cfg.ttl + time.Nanosecond)
@@ -163,7 +169,9 @@ func TestRESTSessionSignalsGoStaleAndRecover(t *testing.T) {
 	}
 	assertTimedValue(t, second.REST.AmbientTemp, 20.0, firstTime, schema.FreshnessStale)
 	assertTimedValue(t, second.REST.TrackTemp, 30.0, firstTime, schema.FreshnessStale)
-	assertTimedValue(t, second.REST.SessionFlag, session.FlagYellow, firstTime, schema.FreshnessStale)
+	if got := second.REST.SessionFlag.Field.Freshness(); got != schema.FreshnessMissing {
+		t.Fatalf("flag freshness = %v, want missing", got)
+	}
 
 	failing.Store(false)
 	recoveredTime := staleTime.Add(time.Second)
@@ -221,11 +229,12 @@ func TestFusionCarriesRESTSessionSignalsToCanonical(t *testing.T) {
 	rest := restObservation(wall, 0, "Test Circuit")
 	rest.REST.AmbientTemp = timedObservedAt(weather.Temperature(22.5), wall, stamp)
 	rest.REST.TrackTemp = timedObservedAt(weather.Temperature(31.0), wall, stamp)
-	rest.REST.SessionFlag = timedObservedAt(session.FlagYellow, wall, stamp)
 	merged := new(Fusion).Merge(wall, 0, shared, rest)
 	assertFieldValue(t, merged.AmbientTemp, 22.5)
 	assertFieldValue(t, merged.TrackTemp, 31.0)
-	assertFieldValue(t, merged.SessionFlag, session.FlagYellow)
+	if got := merged.SessionFlag.Freshness(); got != schema.FreshnessMissing {
+		t.Fatalf("flag freshness = %v, want missing (B2)", got)
+	}
 	if merged.AmbientTemp.Freshness() != schema.FreshnessFresh {
 		t.Fatalf("ambient freshness = %v, want fresh", merged.AmbientTemp.Freshness())
 	}
@@ -242,5 +251,115 @@ func TestFusionSessionSignalsStayIndependentFromGrid(t *testing.T) {
 	// Track and flag keep their own values when ambient is absent.
 	if _, present := merged.TrackTemp.Value(); present {
 		t.Fatalf("track should stay absent when never observed: %#v", merged.TrackTemp)
+	}
+}
+
+// B1: gamePhase is an ignored field: whatever shape it arrives in (number,
+// string, null, object) it must never block track/count/temps from the same
+// poll.
+func TestRESTSessionSignalsIgnoreGamePhaseShapes(t *testing.T) {
+	for _, shape := range []string{`5`, `"GPHASE_GREEN"`, `null`, `{"phase":5}`} {
+		t.Run(shape, func(t *testing.T) {
+			server := newRESTServer(t, func(w http.ResponseWriter, request *http.Request) {
+				switch request.URL.Path {
+				case standingsEndpoint:
+					_, _ = w.Write([]byte(`[{"player":true,"position":3,"lapsCompleted":8,"pitstops":1}]`))
+				case sessionInfoEndpoint:
+					_, _ = w.Write([]byte(`{"trackName":"T","session":"RACE1","numberOfVehicles":4,"currentEventTime":7,"ambientTemp":20.0,"trackTemp":30.0,"gamePhase":` + shape + `}`))
+				default:
+					http.NotFound(w, request)
+				}
+			})
+			defer server.Close()
+
+			now := time.Unix(100, 0).UTC()
+			observation, complete := pollREST(t.Context(), testRESTConfig(server, now), &restCache{})
+			if !complete || observation.REST.Status != RESTStatusLive {
+				t.Fatalf("gamePhase %s blocked the session poll: %#v complete=%v", shape, observation.REST, complete)
+			}
+			assertTimedValue(t, observation.REST.TrackName, "T", now, schema.FreshnessFresh)
+			assertTimedValue(t, observation.REST.VehicleCount, 4, now, schema.FreshnessFresh)
+			assertTimedValue(t, observation.REST.AmbientTemp, 20.0, now, schema.FreshnessFresh)
+			assertTimedValue(t, observation.REST.TrackTemp, 30.0, now, schema.FreshnessFresh)
+		})
+	}
+}
+
+// B2: no yellow vocabulary is demonstrated for the REST session flag (the
+// primary sources only attest the field names; SHM shows 0 while green and
+// the yellow/FCY values are explicitly pending capture). Fail closed: every
+// shape stays missing, never yellow.
+func TestRESTSessionFlagRejectsUndemonstratedVocabulary(t *testing.T) {
+	for _, shape := range []string{`-1`, `99`, `0.5`, `"1"`, `"yellow"`, `true`, `"yes"`, `0`, `null`} {
+		t.Run("yellowFlagState="+shape, func(t *testing.T) {
+			server := newRESTServer(t, func(w http.ResponseWriter, request *http.Request) {
+				switch request.URL.Path {
+				case standingsEndpoint:
+					_, _ = w.Write([]byte(`[{"player":true,"position":3,"lapsCompleted":8,"pitstops":1}]`))
+				case sessionInfoEndpoint:
+					_, _ = w.Write([]byte(`{"trackName":"T","session":"RACE1","numberOfVehicles":4,"currentEventTime":7,"ambientTemp":20.0,"trackTemp":30.0,"yellowFlagState":` + shape + `}`))
+				default:
+					http.NotFound(w, request)
+				}
+			})
+			defer server.Close()
+
+			now := time.Unix(100, 0).UTC()
+			observation, complete := pollREST(t.Context(), testRESTConfig(server, now), &restCache{})
+			if !complete {
+				t.Fatalf("yellowFlagState %s blocked the session poll: %#v", shape, observation.REST)
+			}
+			if got := observation.REST.SessionFlag.Field.Freshness(); got != schema.FreshnessMissing {
+				t.Fatalf("yellowFlagState %s asserted flag %v, want missing without demonstrated vocabulary", shape, observation.REST.SessionFlag)
+			}
+			assertTimedValue(t, observation.REST.AmbientTemp, 20.0, now, schema.FreshnessFresh)
+		})
+	}
+}
+
+// B3: a session boundary (fresh SHM signature change) must scope the
+// REST-joined session signals like the car-number grid: values polled before
+// the boundary go missing even within the REST TTL, and only a new REST poll
+// recovers them.
+func TestFusionSessionSignalsRespectSessionBoundary(t *testing.T) {
+	fusion := new(Fusion)
+	wall := time.Unix(900, 0).UTC()
+	rest := restObservation(wall, 0, "Track-A")
+	rest.REST.AmbientTemp = timedObservedAt(weather.Temperature(22.5), wall, monotonicStamp{elapsed: 0, set: true})
+	rest.REST.TrackTemp = timedObservedAt(weather.Temperature(31.0), wall, monotonicStamp{elapsed: 0, set: true})
+	first := fusion.Merge(wall, 0, sharedObservation(wall, "Track-A"), rest)
+	assertFieldValue(t, first.AmbientTemp, weather.Temperature(22.5))
+	assertFieldValue(t, first.TrackTemp, weather.Temperature(31.0))
+
+	second := fusion.Merge(wall, time.Second, sharedObservation(wall, "Track-B"))
+	if got := second.AmbientTemp.Freshness(); got != schema.FreshnessMissing {
+		t.Fatalf("ambient after session boundary = %v, want missing (previous-session value)", second.AmbientTemp.Freshness())
+	}
+	if got := second.TrackTemp.Freshness(); got != schema.FreshnessMissing {
+		t.Fatalf("track after session boundary = %v, want missing (previous-session value)", second.TrackTemp.Freshness())
+	}
+	if got := second.SessionFlag.Freshness(); got != schema.FreshnessMissing {
+		t.Fatalf("flag after session boundary = %v, want missing", second.SessionFlag.Freshness())
+	}
+
+	recovered := restObservation(wall, 2*time.Second, "Track-B")
+	recovered.REST.AmbientTemp = timedObservedAt(weather.Temperature(23.0), wall, monotonicStamp{elapsed: 2 * time.Second, set: true})
+	recovered.REST.TrackTemp = timedObservedAt(weather.Temperature(32.0), wall, monotonicStamp{elapsed: 2 * time.Second, set: true})
+	third := fusion.Merge(wall, 2*time.Second, sharedObservation(wall, "Track-B"), recovered)
+	assertFieldValue(t, third.AmbientTemp, weather.Temperature(23.0))
+	assertFieldValue(t, third.TrackTemp, weather.Temperature(32.0))
+}
+
+func TestBatchMapperCarriesSessionSignals(t *testing.T) {
+	mapper, sink := NewBatchMapper(), new(batchCollector)
+	observation := trackObservation(7)
+	observation.AmbientTemp = observed(weather.Temperature(21.5))
+	observation.TrackTemp = observed(weather.Temperature(32.5))
+	writeMapped(t, mapper, observation, sink)
+	batch := sink.last(t)
+	assertFieldValue(t, batch.State.AmbientTemp, weather.Temperature(21.5))
+	assertFieldValue(t, batch.State.TrackTemp, weather.Temperature(32.5))
+	if got := batch.State.SessionFlag.Freshness(); got != schema.FreshnessMissing {
+		t.Fatalf("flag freshness = %v, want missing", got)
 	}
 }

@@ -25,20 +25,13 @@ type MaximumLaps int32
 type DeltaSeconds float64
 
 // Flag is the canonical session flag carried from the LMU REST sessionInfo
-// signal. ISA-1106 admits only the yellow assertion in this cut: the driver
-// publishes FlagYellow exclusively on positive yellow evidence
-// (nonzero yellowFlagState) and leaves every other state missing, so absence
-// never reads as green and a sector-only flag never promotes to global.
-// Green and the remaining vocabulary stay missing until an active-session
-// capture demonstrates their enums.
+// signal. ISA-1106 correction B2: no yellow vocabulary is demonstrated for
+// the REST state (field names attested, values pending active-session
+// capture), so the driver asserts nothing and the flag stays missing — never
+// green by absence, never yellow by guess. The plumbing
+// (RESTObservation → fusion → ObservedState → BuildSession) is demonstrated
+// by fixtures and ready for the first attested value, tracked as follow-up.
 type Flag string
-
-const (
-	// FlagYellow is the only assertion admitted in this cut (ISA-1106).
-	FlagYellow Flag = "yellow"
-)
-
-func (value Flag) Known() bool { return value == FlagYellow }
 
 type DeltaReference uint8
 

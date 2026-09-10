@@ -8,9 +8,13 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/weather"
 )
 
-// ISA-1106: the session flag and the sessionInfo temperatures travel the
-// canonical path into the shared ViewModel. Absence stays missing (never a
-// green default), and each field keeps its own quality.
+// ISA-1106: the sessionInfo temperatures and the session-flag plumbing travel
+// the canonical path into the shared ViewModel, each field keeping its own
+// quality. Correction B2: no flag value is asserted by the driver (no
+// demonstrated vocabulary), so the live flag stays missing; the projection
+// tests below use an explicit canonical fixture to prove the plumbing
+// preserves quality for the first attested value. Fixtures prove the
+// contract, never a track capture.
 func TestBuildSessionProjectsTheCanonicalFlag(t *testing.T) {
 	t.Parallel()
 
@@ -18,7 +22,7 @@ func TestBuildSessionProjectsTheCanonicalFlag(t *testing.T) {
 	if !ok {
 		t.Fatal("missing final state")
 	}
-	final.Observed.SessionFlag = builderField(t, session.FlagYellow, schema.FreshnessFresh)
+	final.Observed.SessionFlag = builderField(t, session.Flag("yellow"), schema.FreshnessFresh)
 	view := BuildSession(final)
 	if view.Flag.Q != QualityFresh || view.Flag.V != "yellow" {
 		t.Fatalf("flag = %#v, want fresh yellow", view.Flag)
@@ -36,7 +40,7 @@ func TestBuildSessionNeverDefaultsTheFlagToGreen(t *testing.T) {
 	if view.Flag.Q != QualityMissing || view.Flag.V != "" {
 		t.Fatalf("flag must stay missing without positive evidence: %#v", view.Flag)
 	}
-	final.Observed.SessionFlag = builderField(t, session.FlagYellow, schema.FreshnessStale)
+	final.Observed.SessionFlag = builderField(t, session.Flag("yellow"), schema.FreshnessStale)
 	view = BuildSession(final)
 	if view.Flag.Q != QualityStale || view.Flag.V != "yellow" {
 		t.Fatalf("stale flag not preserved: %#v", view.Flag)

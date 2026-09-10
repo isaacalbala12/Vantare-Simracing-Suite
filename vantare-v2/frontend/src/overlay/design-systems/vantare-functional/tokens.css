@@ -25,11 +25,13 @@
 .vf-standings .vf-table { width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 0; margin: 0; }
 .vf-standings .vf-table :is(th, td) { position: relative; border: 0; padding: 0 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .vf-standings .vf-table thead th { height: 50px; color: #bdbfc4; font-size: 8px; font-weight: 600; letter-spacing: .14em; text-align: right; vertical-align: middle; border-bottom: 1px solid var(--vf-line); background: linear-gradient(180deg, rgb(255 255 255 / 2%), transparent); }
+.vf-standings .vf-table th[data-metric="gap"] { text-align: center; }
 .vf-standings .vf-table th.vf-identity-head { padding: 0; }
 .vf-standings .vf-table th.vf-source-notice { color: #e2c568; text-align: left; letter-spacing: 0; }
 .vf-column-label { display: inline-block; position: relative; }
 .vf-standings[data-template="signature"] .vf-column-label { padding-bottom: 7px; transform: translateY(4px); }
 .vf-standings[data-template="signature"] .vf-column-label::after { content: ""; position: absolute; left: 0; bottom: 0; width: 17px; height: 1px; background: rgb(245 245 245 / 35%); }
+.vf-standings[data-template="signature"] .vf-table th[data-metric="gap"] .vf-column-label::after { left: 50%; transform: translateX(-50%); }
 .vf-session { display: flex; align-items: center; gap: 10px; height: 49px; padding: 0 10px; min-width: 0; }
 .vf-brand { display: flex; align-items: center; gap: 6px; flex-shrink: 0; color: #f5f5f5; font-size: 12px; font-weight: 700; letter-spacing: .075em; line-height: 1; }
 .vf-brand img { width: 24px; height: 24px; object-fit: contain; }

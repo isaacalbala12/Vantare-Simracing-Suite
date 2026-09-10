@@ -47,7 +47,7 @@ func InspectCorrectionLaps(input CorrectionInput, snapshot PreparedSampleCorrect
 	if err != nil {
 		return empty, err
 	}
-	view, err := ApplyObservationCorrectionSnapshot(input.Base, input.Session.Channels, input.Pages, input.Validity, snapshot)
+	view, err := ApplyMixedCorrectionSnapshot(input.Base, input.Pages, input.Validity, input.Session, snapshot)
 	if err != nil {
 		return empty, err
 	}

@@ -1,6 +1,8 @@
 import { parseAnalysisLapPage, analysisCorrectableFamilies, analysisLapInstant, parseAnalysisFamilyCorrections, parseAnalysisLapTarget, sameAnalysisFamilyCorrections } from "./analysis-contract";
 import { describe, expect, it } from "vitest";
 import { analysisValue, parseAnalysisCandidates, parseAnalysisCommandResolution, parseAnalysisPreparation, parseCorrectionStoreResult, parseHistoricalValue } from "./analysis-contract";
+import { parseAnalysisClassificationCorrection, parseAnalysisClassificationCorrections, parseAnalysisPreparedClassification, sameAnalysisClassificationCorrections } from "./analysis-contract";
+import type { AnalysisClassificationCorrection } from "./analysis-contract";
 describe("local discovery labels", () => {
   const candidate = { id: "opaque", state: "ready", size: 10, modifiedAt: "2026-09-10T00:00:00Z", walPresent: false };
   it("accepts optional sanitized names without deriving identity", () => {
@@ -162,5 +164,165 @@ describe("recorded lap inspection contract", () => {
     if (mode === "unknown revision") value.revisionId = "";
     if (mode === "future boundary") Object.assign(row, { stintBoundary: { stintNumber: 2, timestamp: row.original.end, cause: "pit", presence: "valid", confidence: { sampleSize: 1, computationVersion: "fixture" }, provenance: { kind: "derived" } } });
     expect(() => parseAnalysisLapPage(value)).toThrow();
+  });
+});
+
+// Contract fixtures below are hand-built shapes, not real recorded data.
+function classRequest(overrides: Record<string, unknown> = {}) {
+  return { base, field: "SessionType", expectedOriginal: "race", replacement: "qualify", reason: "Reviewed", provenance: "manual", ...overrides };
+}
+function preparedClass(requestOverrides: Record<string, unknown> = {}, overrides: Record<string, unknown> = {}) {
+  const request = classRequest(requestOverrides);
+  const corrected = request.field === "SessionType" ? "qualify" : "Wet";
+  return { baseId: "b".repeat(64), correctionId: "c".repeat(64), request, original: request.expectedOriginal, corrected, ...overrides };
+}
+function weatherPrepared(expectedOriginal: string, replacement: string, corrected: string) {
+  return preparedClass({ field: "WeatherConditions", expectedOriginal, replacement }, { corrected });
+}
+function classSnapshot(contractVersion: string, corrections: unknown[], families: unknown[], classes: unknown[]) {
+  return { contractVersion, base, snapshotId, corrections, familyUses: families.length > 0 || contractVersion !== "analysis.sample-snapshot.v1" ? families : undefined, classifications: classes.length > 0 ? classes : undefined };
+}
+function classRevision(snapshot: Record<string, unknown>) {
+  return { headId: "f".repeat(64), revision: { revisionId: "f".repeat(64), parentRevisionId: snapshotId, command: { expectedRevision: snapshotId, commandId: "classify", reason: "Reviewed", localAuthorId: "local" }, commandDigest: "d".repeat(64), createdAt: "2026-09-10T00:00:00Z", snapshot } };
+}
+describe("classification correction contract", () => {
+  it("parses v3 class-only and three-group snapshots by identity", () => {
+    const solo = classRevision(classSnapshot("analysis.mixed-snapshot.v3", [], [], [preparedClass()]));
+    expect(parseCorrectionStoreResult(solo)).toBe(solo);
+    const family = mixedFamilyResult().revision.snapshot.familyUses[0];
+    const scalar = { baseId: "b".repeat(64), correctionId: "c".repeat(64), request: { base, target: { channelId: "fuel", column: "v", sampleIndex: 4 }, unit: { symbol: "L", quality: "valid" }, expected: { column: "v", present: true, quality: "unknown", scalar: { kind: "number", number: 10 } }, replacement: { kind: "number", number: 0 }, reason: "test" }, original: { column: "v", present: true, quality: "unknown", scalar: { kind: "number", number: 10 } }, corrected: { column: "v", present: true, quality: "unknown", scalar: { kind: "number", number: 0 } } };
+    const mixed = classRevision(classSnapshot("analysis.mixed-snapshot.v3", [scalar], [family], [preparedClass(), weatherPrepared("Dry", "Wet", "Wet")]));
+    expect(parseCorrectionStoreResult(mixed)).toBe(mixed);
+    expect(parseCorrectionStoreResult(baseResult()).revision.snapshot.classifications).toBeUndefined();
+  });
+  it.each([
+    ["v3 without classes", "analysis.mixed-snapshot.v3", [], [], []],
+    ["v2 with classes", "analysis.observation-snapshot.v2", [], [], [preparedClass()]],
+    ["v1 with classes", "analysis.sample-snapshot.v1", [], [], [preparedClass()]],
+    ["unknown version", "analysis.mixed-snapshot.v9", [], [], [preparedClass()]],
+  ])("rejects %s", (_label, contractVersion, corrections, families, classes) => {
+    expect(() => parseCorrectionStoreResult(classRevision(classSnapshot(contractVersion as string, corrections as unknown[], families as unknown[], classes as unknown[])))).toThrow();
+  });
+  it("rejects empty base revision carrying classifications", () => {
+    const empty = baseResult();
+    Object.assign(empty.revision.snapshot, { contractVersion: "analysis.mixed-snapshot.v3", classifications: [preparedClass()] });
+    expect(() => parseCorrectionStoreResult(empty)).toThrow();
+  });
+  it("rejects foreign base against the snapshot base", () => {
+    const other = { ...base, sessionId: "other" };
+    expect(() => parseAnalysisClassificationCorrections([classRequest()], other)).toThrow("classificationCorrections.base");
+    expect(parseAnalysisClassificationCorrections([classRequest()], base)).toHaveLength(1);
+  });
+  it("validates request semantics directly", () => {
+    expect(parseAnalysisClassificationCorrection(classRequest())).toBeDefined();
+    const bad = [
+      { expectedOriginal: "banana" },
+      { expectedOriginal: "  " },
+      { expectedOriginal: "ra\uD800ce" },
+      { replacement: "sprint" },
+      { replacement: "quali\uD800fy" },
+      { field: "WeatherConditions", expectedOriginal: "Dry", replacement: "w".repeat(65) },
+      { field: "WeatherConditions", expectedOriginal: "Dry", replacement: "Dry\nWet" },
+      { reason: "  " },
+    ];
+    for (const overrides of bad) {
+      expect(() => parseAnalysisClassificationCorrection(classRequest(overrides))).toThrow();
+    }
+  });
+  it("compares every request field and both-side duplicates", () => {
+    const first = parseAnalysisClassificationCorrection(classRequest());
+    const second = parseAnalysisClassificationCorrection(classRequest({ field: "WeatherConditions", expectedOriginal: "Dry", replacement: "Wet" }));
+    expect(sameAnalysisClassificationCorrections([first, second], [second, first])).toBe(true);
+    const Alter = (patch: Record<string, unknown>) => ({ ...first, ...patch }) as AnalysisClassificationCorrection;
+    const variants = [
+      Alter({ base: { ...base, sessionId: "other" } }),
+      Alter({ field: "WeatherConditions" }),
+      Alter({ expectedOriginal: "practice" }),
+      Alter({ replacement: "race" }),
+      Alter({ reason: "other" }),
+      Alter({ provenance: "auto" }),
+    ];
+    for (const variant of variants) {
+      expect(sameAnalysisClassificationCorrections([first, second], [second, variant])).toBe(false);
+    }
+    expect(sameAnalysisClassificationCorrections([first, first], [first, second])).toBe(false);
+    expect(sameAnalysisClassificationCorrections([first, second], [second, second])).toBe(false);
+  });
+  it("rejects duplicate fields in snapshot and set", () => {
+    const dup = [preparedClass(), preparedClass()];
+    expect(() => parseCorrectionStoreResult(classRevision(classSnapshot("analysis.mixed-snapshot.v3", [], [], dup)))).toThrow();
+    expect(() => parseAnalysisClassificationCorrections(dup.map((item) => item.request), base)).toThrow();
+    expect(parseAnalysisClassificationCorrections([preparedClass().request], base)).toHaveLength(1);
+  });
+  it.each([
+    ["unknown field", { field: "TrackName" }, "classification.field"],
+    ["unknown original enum", { expectedOriginal: "banana" }, "classification.sessionType"],
+    ["empty original", { expectedOriginal: "  " }, "classification.expectedOriginal"],
+    ["unknown replacement enum", { replacement: "sprint" }, "classification.sessionType"],
+    ["expected trimmed mismatch", { expectedOriginal: "race " }, "classification.original", { original: "race" }],
+    ["corrected mismatch", {}, "classification.corrected", { corrected: "race" }],
+    ["weather too long", { field: "WeatherConditions", expectedOriginal: "Dry", replacement: "w".repeat(65) }, "classification.weather"],
+    ["weather interior control", { field: "WeatherConditions", expectedOriginal: "Dry", replacement: "Dry\nWet" }, "classification.weather"],
+    ["empty reason", { reason: "  " }, "classification.reason"],
+    ["oversized reason", { reason: "m".repeat(1025) }, "classification.reason"],
+    ["oversized raw replacement", { field: "WeatherConditions", expectedOriginal: "Dry", replacement: `${" ".repeat(2000)}Dry` }, "classification.replacement"],
+    ["non-manual provenance", { provenance: "auto" }, "classification.provenance"],
+    ["malformed baseId", {}, "classification.baseId", { baseId: "x" }],
+    ["malformed correctionId", {}, "classification.correctionId", { correctionId: "y" }],
+    ["lone surrogate reason", { reason: "ok\uD800" }, "classification.reason"],
+  ])("rejects %s", (_label, requestOverrides, message, preparedOverrides = {}) => {
+    const prepared = preparedClass(requestOverrides as Record<string, unknown>, preparedOverrides as Record<string, unknown>);
+    expect(() => parseAnalysisPreparedClassification(prepared)).toThrow(message as string);
+  });
+  it("accepts long originals without trimming or 4096 cap", () => {
+    const original = "w".repeat(5000);
+    const prepared = weatherPrepared(original, "Dry", "Dry");
+    expect(parseAnalysisPreparedClassification(prepared)).toBe(prepared);
+    const spaced = preparedClass({ expectedOriginal: "  Race  " }, { original: "  Race  ", corrected: "qualify" });
+    expect(parseAnalysisPreparedClassification(spaced)).toBe(spaced);
+  });
+  it("enforces raw replacement byte bounds", () => {
+    expect(parseAnalysisPreparedClassification(weatherPrepared("Dry", `${" ".repeat(1021)}Dry`, "Dry"))).toBeDefined();
+    expect(() => parseAnalysisPreparedClassification(weatherPrepared("Dry", `${" ".repeat(1022)}Dry`, "Dry"))).toThrow("classification.replacement");
+  });
+  it("parses 256 valid mixed targets and rejects 257", () => {
+    const scalar = { baseId: "b".repeat(64), correctionId: "c".repeat(64), request: { base, target: { channelId: "fuel", column: "v", sampleIndex: 4 }, unit: { symbol: "L", quality: "valid" }, expected: { column: "v", present: true, quality: "unknown", scalar: { kind: "number", number: 10 } }, replacement: { kind: "number", number: 0 }, reason: "test" }, original: { column: "v", present: true, quality: "unknown", scalar: { kind: "number", number: 10 } }, corrected: { column: "v", present: true, quality: "unknown", scalar: { kind: "number", number: 0 } } };
+    const scalars = Array.from({ length: 253 }, (_, i) => ({ ...structuredClone(scalar), request: { ...scalar.request, target: { ...scalar.request.target, sampleIndex: i } } }));
+    const family = mixedFamilyResult().revision.snapshot.familyUses;
+    const classes = [preparedClass(), weatherPrepared("Dry", "Wet", "Wet")];
+    const ok = classRevision(classSnapshot("analysis.mixed-snapshot.v3", scalars, family, classes));
+    expect(parseCorrectionStoreResult(ok)).toBe(ok);
+    const last = { ...structuredClone(scalar), request: { ...scalar.request, target: { ...scalar.request.target, sampleIndex: 253 } } };
+    const over = classRevision(classSnapshot("analysis.mixed-snapshot.v3", [...scalars, last], family, classes));
+    expect(() => parseCorrectionStoreResult(over)).toThrow("snapshot.quota");
+  });
+  it("compares classification sets order-independently without mutating", () => {
+    const first = parseAnalysisClassificationCorrection(classRequest());
+    const second = parseAnalysisClassificationCorrection(classRequest({ field: "WeatherConditions", expectedOriginal: "Dry", replacement: "Wet" }));
+    const before = structuredClone([first, second]);
+    expect(sameAnalysisClassificationCorrections([first, second], [second, first])).toBe(true);
+    expect(sameAnalysisClassificationCorrections([first], [first, second])).toBe(false);
+    expect(sameAnalysisClassificationCorrections([first, second], [second, { ...first, reason: "other" }])).toBe(false);
+    expect(sameAnalysisClassificationCorrections([first, first], [first, second])).toBe(false);
+    expect([first, second]).toEqual(before);
+    const snap = classRevision(classSnapshot("analysis.mixed-snapshot.v3", [], [], [preparedClass(), weatherPrepared("Dry", "Wet", "Wet")]));
+    const frozen = structuredClone(snap);
+    expect(parseCorrectionStoreResult(snap)).toBe(snap);
+    expect(snap).toEqual(frozen);
+  });
+  it("matches Go whitespace and case edges exactly", () => {
+    expect(parseAnalysisPreparedClassification(weatherPrepared("Dry", "D\u00A0ry", "D\u00A0ry")).corrected).toBe("D\u00A0ry");
+    expect(() => parseAnalysisPreparedClassification(weatherPrepared("Dry", "D\u0085ry", "D\u0085ry"))).toThrow("classification.weather");
+    expect(parseAnalysisPreparedClassification(weatherPrepared("Dry", "Dry\u0085", "Dry"))).toBeDefined();
+    expect(parseAnalysisPreparedClassification(weatherPrepared("Dry", "D\u202Fry", "D\u202Fry")).corrected).toBe("D\u202Fry");
+    const feff = weatherPrepared("Dry", "Dry\uFEFF", "Dry\uFEFF");
+    expect(parseAnalysisPreparedClassification(feff).corrected).toBe("Dry\uFEFF");
+    const turkish = preparedClass({ expectedOriginal: "PRACT\u0130CE", replacement: "PRACT\u0130CE" }, { original: "PRACT\u0130CE", corrected: "practice" });
+    expect("PRACT\u0130CE".toLowerCase()).not.toBe("practice");
+    expect(parseAnalysisPreparedClassification(turkish).corrected).toBe("practice");
+    expect(parseAnalysisPreparedClassification(weatherPrepared("Dry", "😀".repeat(64), "😀".repeat(64)))).toBeDefined();
+    expect(() => parseAnalysisPreparedClassification(weatherPrepared("Dry", "😀".repeat(65), "😀".repeat(65)))).toThrow("classification.weather");
+    expect(new TextEncoder().encode(parseAnalysisClassificationCorrection(classRequest({ reason: "é".repeat(512) })).reason).length).toBe(1024);
+    expect(() => parseAnalysisClassificationCorrection(classRequest({ reason: "é".repeat(513) }))).toThrow("classification.reason");
   });
 });

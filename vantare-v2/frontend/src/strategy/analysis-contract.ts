@@ -53,11 +53,12 @@ export type AnalysisLapTarget = Readonly<{ number: number; start: string; end: s
 export type AnalysisFamilyCorrection = Readonly<{ base: AnalysisBase; target: AnalysisLapTarget; family: AnalysisCorrectableFamily; expected: AnalysisFamilyUse; included: boolean; reason: string }>;
 export type AnalysisPreparedFamilyCorrection = Readonly<{ baseId: string; correctionId: string; request: AnalysisFamilyCorrection; original: AnalysisFamilyUse; corrected: AnalysisFamilyUse }>;
 export type AnalysisSnapshot = Readonly<{
-  contractVersion: "analysis.sample-snapshot.v1" | "analysis.observation-snapshot.v2";
+  contractVersion: "analysis.sample-snapshot.v1" | "analysis.observation-snapshot.v2" | "analysis.mixed-snapshot.v3";
   base: AnalysisBase;
   snapshotId: string;
   corrections: readonly AnalysisPreparedCorrection[];
   familyUses?: readonly AnalysisPreparedFamilyCorrection[];
+  classifications?: readonly AnalysisPreparedClassificationCorrection[];
 }>;
 export type AnalysisSaveCommand = Readonly<{
   expectedRevision: string;
@@ -315,14 +316,25 @@ export function parseAnalysisPreparation(value: unknown): AnalysisPreparation {
 }
 function snapshot(value: unknown): AnalysisSnapshot {
   const r = record(value, "snapshot");
-  if (r.contractVersion !== "analysis.sample-snapshot.v1" && r.contractVersion !== "analysis.observation-snapshot.v2") {
+  if (r.contractVersion !== "analysis.sample-snapshot.v1" && r.contractVersion !== "analysis.observation-snapshot.v2" && r.contractVersion !== "analysis.mixed-snapshot.v3") {
     throw new AnalysisProtocolError("snapshot.contractVersion");
   }
   const base = parseAnalysisBase(r.base);
   digest(r.snapshotId, "snapshot.snapshotId");
   const corrections = list(r.corrections, "snapshot.corrections");
-  if (corrections.length > 256) {
-    throw new AnalysisProtocolError("snapshot.corrections");
+  const families = r.familyUses === undefined ? [] : list(r.familyUses, "snapshot.familyUses");
+  const classes = r.classifications === undefined ? [] : list(r.classifications, "snapshot.classifications");
+  if (corrections.length + families.length + classes.length > 256) {
+    throw new AnalysisProtocolError("snapshot.quota");
+  }
+  if (r.contractVersion === "analysis.sample-snapshot.v1" && (families.length > 0 || classes.length > 0)) {
+    throw new AnalysisProtocolError("snapshot.contractVersion");
+  }
+  if (r.contractVersion === "analysis.observation-snapshot.v2" && (families.length === 0 || classes.length > 0)) {
+    throw new AnalysisProtocolError("snapshot.contractVersion");
+  }
+  if (r.contractVersion === "analysis.mixed-snapshot.v3" && classes.length === 0) {
+    throw new AnalysisProtocolError("snapshot.contractVersion");
   }
   const targets = new Set<string>();
   for (const item of corrections) {
@@ -351,8 +363,6 @@ function snapshot(value: unknown): AnalysisSnapshot {
       throw new AnalysisProtocolError("correction.original");
     }
   }
-  const families = r.familyUses === undefined ? [] : list(r.familyUses, "snapshot.familyUses");
-  if (corrections.length + families.length > 256 || (r.contractVersion === "analysis.observation-snapshot.v2") !== (families.length > 0)) throw new AnalysisProtocolError("snapshot.familyUses");
   const familyRequests: AnalysisFamilyCorrection[] = [];
   for (const item of families) {
     const prepared = record(item, "preparedFamilyCorrection");
@@ -365,6 +375,12 @@ function snapshot(value: unknown): AnalysisSnapshot {
     familyRequests.push(request);
   }
   parseAnalysisFamilyCorrections(familyRequests, base);
+  const classRequests: AnalysisClassificationCorrection[] = [];
+  for (const item of classes) {
+    const parsed = parseAnalysisPreparedClassification(item);
+    classRequests.push(parsed.request);
+  }
+  checkClassificationSet(classRequests, base, "snapshot.classifications");
   return r as unknown as AnalysisSnapshot;
 }
 export function parseAnalysisSaveCommand(value: unknown): AnalysisSaveCommand {
@@ -388,6 +404,7 @@ export function parseCorrectionStoreResult(value: unknown): AnalysisStoreResult 
       || rev.commandDigest !== ""
       || s.corrections.length !== 0
       || (s.familyUses?.length ?? 0) !== 0
+      || (s.classifications?.length ?? 0) !== 0
       || ["expectedRevision", "commandId", "reason", "localAuthorId"].some((key) => command[key] !== "")) {
       throw new AnalysisProtocolError("revision.base");
     }
@@ -571,6 +588,146 @@ export function sameAnalysisFamilyCorrections(a: readonly AnalysisFamilyCorrecti
   const key = (item: AnalysisFamilyCorrection) => JSON.stringify([item.family, item.target.number, String(analysisLapInstant(item.target.start)), String(analysisLapInstant(item.target.end))]);
   const right = new Map(b.map(item => [key(item), item]));
   return a.length === b.length && a.every(item => { const other = right.get(key(item)); return Boolean(other && sameAnalysisBase(item.base, other.base) && item.reason === other.reason && item.included === other.included && sameAnalysisFamilyUse(item.expected, other.expected)); });
+}
+
+export const analysisClassificationFields = ["SessionType", "WeatherConditions"] as const;
+export type AnalysisClassificationField = typeof analysisClassificationFields[number];
+export type AnalysisClassificationCorrection = Readonly<{ base: AnalysisBase; field: AnalysisClassificationField; expectedOriginal: string; replacement: string; reason: string; provenance: "manual" }>;
+export type AnalysisPreparedClassificationCorrection = Readonly<{ baseId: string; correctionId: string; request: AnalysisClassificationCorrection; original: string; corrected: string }>;
+const sessionTypes = ["practice", "qualify", "race"] as const;
+// Go strings.TrimSpace trims Unicode White_Space: NEL yes, FEFF no.
+// JS trim differs on both, so classification canonicalization uses this exact set.
+const goWhiteSpace = "\\t\\n\\v\\f\\r \\u0085\\u00A0\\u1680\\u2000-\\u200A\\u2028\\u2029\\u202F\\u205F\\u3000";
+function goTrim(value: string): string {
+  return value.replace(new RegExp(`^[${goWhiteSpace}]+|[${goWhiteSpace}]+$`, "g"), "");
+}
+// Go strings.ToLower is a simple mapping. For the three closed session-type
+// tokens only ASCII case plus U+0130 to i can matter; JS toLowerCase would
+// turn PRACTİCE into pract+i+dot and wrongly reject what Go accepts.
+function goLowerSimple(value: string): string {
+  return value.replace(/[A-Z\u0130]/g, (ch) => (ch === "İ" ? "i" : ch.toLowerCase()));
+}
+function unicodeValid(value: string, field: string): void {
+  if (/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/.test(value)) {
+    throw new AnalysisProtocolError(field);
+  }
+}
+function canonicalSessionType(value: string): string {
+  const lowered = goLowerSimple(goTrim(value));
+  if (!(sessionTypes as readonly string[]).includes(lowered)) {
+    throw new AnalysisProtocolError("classification.sessionType");
+  }
+  return lowered;
+}
+function canonicalWeatherReplacement(value: string): string {
+  const trimmed = goTrim(value);
+  if (trimmed === "" || [...trimmed].length > 64 || /[\p{Cc}]/u.test(trimmed)) {
+    throw new AnalysisProtocolError("classification.weather");
+  }
+  return trimmed;
+}
+function classificationText(value: unknown, field: string, maxBytes: number, allowBlank: boolean): asserts value is string {
+  if (typeof value !== "string") {
+    throw new AnalysisProtocolError(field);
+  }
+  unicodeValid(value, field);
+  if (new TextEncoder().encode(value).length > maxBytes) {
+    throw new AnalysisProtocolError(field);
+  }
+  if (!allowBlank && goTrim(value) === "") {
+    throw new AnalysisProtocolError(field);
+  }
+}
+export function parseAnalysisClassificationCorrection(value: unknown): AnalysisClassificationCorrection {
+  const r = record(value, "classificationCorrection");
+  parseAnalysisBase(r.base);
+  if (r.field !== "SessionType" && r.field !== "WeatherConditions") {
+    throw new AnalysisProtocolError("classification.field");
+  }
+  // No length limit on originals in Go and no trimming of the precondition:
+  // the exact comparison decides. The original itself must be Go-nonempty,
+  // and a SessionType original must already name the closed enum.
+  const expectedOriginal = r.expectedOriginal;
+  if (typeof expectedOriginal !== "string") {
+    throw new AnalysisProtocolError("classification.expectedOriginal");
+  }
+  unicodeValid(expectedOriginal, "classification.expectedOriginal");
+  if (goTrim(expectedOriginal) === "") {
+    throw new AnalysisProtocolError("classification.expectedOriginal");
+  }
+  if (r.field === "SessionType") {
+    canonicalSessionType(expectedOriginal);
+  }
+  // The replacement is validated normalized but kept raw in the request;
+  // the prepared form derives the canonical corrected value from it.
+  classificationText(r.replacement, "classification.replacement", 1024, true);
+  if (r.field === "SessionType") {
+    canonicalSessionType(r.replacement);
+  } else {
+    canonicalWeatherReplacement(r.replacement);
+  }
+  classificationText(r.reason, "classification.reason", 1024, false);
+  if (r.provenance !== "manual") {
+    throw new AnalysisProtocolError("classification.provenance");
+  }
+  return r as unknown as AnalysisClassificationCorrection;
+}
+export function parseAnalysisPreparedClassification(value: unknown): AnalysisPreparedClassificationCorrection {
+  const r = record(value, "preparedClassificationCorrection");
+  digest(r.baseId, "classification.baseId");
+  digest(r.correctionId, "classification.correctionId");
+  const request = parseAnalysisClassificationCorrection(r.request);
+  if (typeof r.original !== "string") {
+    throw new AnalysisProtocolError("classification.original");
+  }
+  unicodeValid(r.original, "classification.original");
+  if (goTrim(r.original) === "") {
+    throw new AnalysisProtocolError("classification.original");
+  }
+  if (request.expectedOriginal !== r.original) {
+    throw new AnalysisProtocolError("classification.original");
+  }
+  const corrected = request.field === "SessionType" ? canonicalSessionType(request.replacement) : canonicalWeatherReplacement(request.replacement);
+  if (r.corrected !== corrected) {
+    throw new AnalysisProtocolError("classification.corrected");
+  }
+  return r as unknown as AnalysisPreparedClassificationCorrection;
+}
+function checkClassificationSet(requests: AnalysisClassificationCorrection[], base: AnalysisBase, field: string): void {
+  const seen = new Set<string>();
+  for (const request of requests) {
+    if (!sameAnalysisBase(request.base, base)) {
+      throw new AnalysisProtocolError(`${field}.base`);
+    }
+    if (seen.has(request.field)) {
+      throw new AnalysisProtocolError(`${field}.duplicate`);
+    }
+    seen.add(request.field);
+  }
+}
+export function parseAnalysisClassificationCorrections(value: unknown, base: AnalysisBase): readonly AnalysisClassificationCorrection[] {
+  const items = list(value, "classificationCorrections");
+  if (items.length > 256) {
+    throw new AnalysisProtocolError("classificationCorrections.limit");
+  }
+  const parsed = items.map(parseAnalysisClassificationCorrection);
+  checkClassificationSet(parsed, base, "classificationCorrections");
+  return parsed;
+}
+export function sameAnalysisClassificationCorrections(a: readonly AnalysisClassificationCorrection[], b: readonly AnalysisClassificationCorrection[]): boolean {
+  if (a.length !== b.length) {
+    return false;
+  }
+  const fields = (items: readonly AnalysisClassificationCorrection[]) => items.map((item) => item.field);
+  const unique = (items: readonly AnalysisClassificationCorrection[]) => new Set(fields(items)).size === items.length;
+  if (!unique(a) || !unique(b)) {
+    return false;
+  }
+  const right = new Map(b.map(item => [item.field, item]));
+  return a.every(item => {
+    const other = right.get(item.field);
+    return Boolean(other && sameAnalysisBase(item.base, other.base) && item.expectedOriginal === other.expectedOriginal && item.replacement === other.replacement && item.reason === other.reason && item.provenance === other.provenance);
+  });
 }
 
 export type AnalysisLap = Readonly<{ number: number; start?: string; end: string; lapTimeSeconds?: number; complete: boolean; labels: readonly string[] | null; familyUse: readonly AnalysisFamilyUse[] | null }>;

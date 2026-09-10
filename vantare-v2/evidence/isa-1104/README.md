@@ -207,3 +207,17 @@ equivalentes, originales intactos, revisión exacta tras restauración y
 reapertura, rechazos sin resultado parcial. Fixtures de contrato y store
 t.TempDir; no prueba DuckDB real, Wails, precisión ni Adopt. Sin cambios
 frontend, app/LMU, push/PR/CI remota/merge/promoción/release. J5 definido.
+
+## T12j5 — resolución del catálogo aceptada
+
+c9f85a9f, dos paths +267/-1. Devin SWE-2 Max implementa/revisa;
+root comprueba diff y evidencia. ResolveCanonicalCombination consulta el
+listado autorizado una vez, ID exacto, ctx antes/después, tuple por valor;
+errores no disponible/desconocida separados. Listado y exclusiones intactos.
+Siete tests nuevos PASS contados en log (informe titula seis por error).
+Focal catálogo R2 0.048s y clasificación4.598s EXIT0; global126ok/0FAIL,
+vet/gofmt EXIT0. Primer focal falló por variable de test sin usar; corregido
+comprobando ID, log conservado, no es RED de producto. Logs locales
+frontend/.tmp/isa1104-t12j5-* e informe isa1104-t12j5-devin-report.md.
+Sin banco real/GUI/Wails/frontend ni push/PR/CI remota/merge/promoción/release.
+J6 cerrado por root para conectar comandos, sin composición Wails todavía.

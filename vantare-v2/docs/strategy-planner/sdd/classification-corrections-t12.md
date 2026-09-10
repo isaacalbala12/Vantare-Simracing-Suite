@@ -9,7 +9,8 @@ lector, formato, motor ni dependencia. Este documento fija el contrato
 implementable y los microcortes. A–G3 y Ha/Hb/Hc/Hc2/Hd/I/J1/J2/J3 están implementados
 y revisados localmente; I pasó Imola/Monza, J1/J2/J3 pasaron global/vet.
 J3 guardado en 4d5c3178; J4 en d9dc43c8 aplica/proyecta v4 con global/vet
-PASS. J5 continúa resolución en catálogo, todavía sin montaje nativo.
+PASS. J5 resuelve catálogo en c9f85a9f, global/vet PASS; J6 conecta comandos
+nativos, todavía sin montaje de la instancia en Wails.
 Estos cortes no cierran T12 ni los gates visual/nativo/empírico.
 
 ## 1. Conjunto cerrado de campos y tipos
@@ -1034,3 +1035,49 @@ No test que falle sólo por no existir el método se presenta como RED.
 Gofmt/focal catálogo y clasificación, revisión Devin, globalGo/vet.
 Logs nuevos isa1104-t12j5-* sin sobrescribir, informe final completo local.
 Montaje del callback y errores públicos serán un corte posterior.
+
+## Continuación cerrada por root — J6
+
+Tras J5 aceptado, conectar el catálogo a comandos nativos sin montaje Wails.
+Tres paths: internal/app/telemetry_analysis_service.go,
+internal/app/telemetry_analysis_correction_commands.go y nuevo
+internal/app/telemetry_analysis_correction_identity_test.go.
+
+TelemetryAnalysisConfig añade SessionCatalog *telemetryanalysis.SessionCatalog,
+opcional, suministrado sólo por composición nativa. No nueva dependencia de
+disponibilidad para iniciar Analysis, campo duplicado en service, DTO público
+de configuración ni otro catálogo. SaveCorrections pasa el método
+ResolveCanonicalCombination de esa instancia en ObservationCorrectionInput.
+J5 admite receiver nil y lo traduce a no disponible si realmente se invoca.
+No consulta previa: J3 decide bajo lease después de replay/cabeza/cuota.
+Sin identidad las operaciones actuales siguen funcionando sin catálogo.
+
+Load/Resolve/Project conservan historial sin catálogo; withCorrectionInput
+sigue reautorizando fuente/base en TODAS las operaciones, incluido replay.
+No adoptar plan ni sustituir referencia exacta con cabeza. Errores públicos:
+ErrCanonicalCombinationUnknown -> ErrTelemetryAnalysisInvalidRequest;
+ErrCanonicalCombinationUnavailable -> nuevo sentinel público
+ErrTelemetryAnalysisCanonicalCombinationUnavailable con texto fijo
+'the canonical combination catalog is unavailable'. Cancelación conserva
+su error; I/O arbitrario se sanitiza mediante el mapping existente.
+No filtrar rutas, IDs privados ni mensajes internos a frontend.
+
+Tests de flujo nativo con reader controlado y catálogo existente con modelos
+obtenidos por autorización de fixtures (no hash/tuple marcado confiable a
+mano): save v4 positivo y Project con combinación exacta; fuente original
+intacta; nil catálogo/desconocida/IO sanitizado; fallo de autorización/base
+antes de consultar catálogo y sin revisión nueva; replay/Resolve/Load/Project
+después de retirar destino del source siguen leyendo revisión persistida
+si la fuente continúa autorizada. Revocar autorización de fuente bloquea
+también esas operaciones históricas. Restauración conserva revisión v4 y
+proyección antigua; no adopta nada en Strategy. Usar helpers nativos existentes
+y un helper de fixture local al test nuevo; no cambiar tests antiguos.
+Capturar RED conductual previo del guardado de identidad con configuración
+de catálogo conectable cuando sea posible; no contar fallo de compilación
+por el campo nuevo como RED. Un único nuevo test file debe bastar.
+
+Gofmt, focales comandos/identidad/error público, revisión Devin, global Go
+-p1 ./... y vet de alcance. Logs nuevos isa1104-t12j6-*, nunca sobrescribir.
+Fixtures no prueban lectura DuckDB física, login, Wails ni adopción. No montar
+la instancia en cmd/vantare en este corte; J7 posterior comparte la misma
+instancia con Strategy. No ejecutar J6 antes de aceptar J5.

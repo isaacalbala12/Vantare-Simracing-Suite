@@ -1,6 +1,6 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — T12j4 aceptado; J5 siguiente por Devin
+## Estado vigente — T12j5 aceptado; J6 siguiente por Devin
 
 Isaac confirma que planes y documentación siguen a cargo del orquestador.
 Por instrucción posterior de Isaac, Devin MCP con SWE-2 Max sustituye a
@@ -11,7 +11,7 @@ en evidencia. Un ejecutor por worktree, sin subdelegación ni cambios de
 alcance por su cuenta. No se asigna más trabajo a OpenCode.
 Rama `vantareapp/isa-1104-recorded-classification`, base exacta
 `7f757135445439851180fc503da45f7eb9e557e7`; último código revisado
-`d9dc43c8`. A–G3 y Ha/Hb/Hc/Hc2/Hd/I/J1/J2/J3/J4
+`c9f85a9f`. A–G3 y Ha/Hb/Hc/Hc2/Hd/I/J1/J2/J3/J4/J5
 aceptados localmente tras revisión personal y gates. J2 ocupa cuatro paths,
 +1149/-29, dentro de los cinco declarados (classification_identity.go no
 necesitó cambios). Snapshot/decoder v4 con seis vectores v3 previos intactos.
@@ -27,8 +27,12 @@ J4 terminado por orchid-volleyball con SWE-2 Max: RED conductual previo,
 11 tests nuevos PASS; global126ok/0FAIL y vet EXIT0. Root comprobó diff
 productivo y logs; Devin implementó y revisó. Código d9dc43c8, cuatro paths
 +689/-11. Informe local frontend/.tmp/isa1104-t12j4-devin-report.md.
-J5 de dos paths (resolución en catálogo existente) cerrado por root en
-microplan e issue, siguiente asignación. Sin montaje/app todavía.
+J5 terminado y guardado en c9f85a9f, dos paths +267/-1. Siete tests nuevos
+PASS (el encabezado del informe dice seis por error de conteo; root contó
+siete en log), catálogo0.048s y clasificación4.598s EXIT0. Global126ok/0FAIL,
+vet/gofmt EXIT0. Primer focal falló por variable sin usar en test; conservado,
+corregido sin cambiar contrato. Root cerró J6 de tres paths para comandos
+nativos y errores públicos; siguiente asignación. Sin montaje Wails aún.
 
 G3 ya conecta la biblioteca con el mismo editor Datos/Revisiones, también
 sin combinación ni repositorio: apertura autorizada y referencia exacta,
@@ -39,7 +43,7 @@ pestañas conservan formularios. Auditor i18n Hd: EXIT0, paridad OK,
 ausentes 0 y huérfanas 0; queda cerrado el estado intermedio de Hc.
 Última suite global Hd: 444 archivos/3680 PASS, 224.02s EXIT0;
 build 1086 módulos/1.56s EXIT0, typecheck/lint/auditor EXIT0.
-Último Go global J4: 126 paquetes ok/cero FAIL EXIT0 y vet de alcance EXIT0.
+Último Go global J5: 126 paquetes ok/cero FAIL EXIT0 y vet de alcance EXIT0.
 I banco nativo real: Imola14.03s y Monza19.73s PASS/EXIT0, originales intactos.
 Authorizer controlado; no prueba Wails/login, paridad visual ni precisión.
 

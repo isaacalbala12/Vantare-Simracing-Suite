@@ -1,6 +1,6 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — T12ha revisado, siguiente T12hb
+## Estado vigente — T12hb revisado, siguiente T12hc
 
 Isaac confirma que planes y documentación siguen a cargo del orquestador.
 Muse Spark 1.3 Contributor vía OpenCode, xhigh, ejecuta sólo código/tests
@@ -8,22 +8,23 @@ asignados, sin subdelegación ni cambios de planes, docs o issue. Un ejecutor
 por worktree; revisión personal de diff y evidencia antes de aceptar.
 Rama `vantareapp/isa-1104-recorded-classification`, base exacta
 `7f757135445439851180fc503da45f7eb9e557e7`; último código revisado
-`e2d610cb10e73f4aa8d985fa80c4ecb362ead053`, limpio tras el commit.
-A–G3 y Ha aceptados localmente; T12 permanece abierto.
+`cda6e0040f35f6178dab0b53de7043cf22b5014c`, limpio tras el commit.
+A–G3 y Ha/Hb aceptados localmente; T12 permanece abierto.
 
 G3 ya conecta la biblioteca con el mismo editor Datos/Revisiones, también
 sin combinación ni repositorio: apertura autorizada y referencia exacta,
 inspección separada de selección, correcciones locales sin Project espurio,
 pin del borrador por referencia completa y vuelta al asistente sin recrearlo.
 Los formularios y comandos inciertos bloquean cambios de fuente/salida; las
-pestañas conservan formularios. Auditor i18n vuelve a exit 0, sin huérfanas
-ni ausentes. Última suite global G3f: 443 archivos/3644 PASS, build/typecheck/lint exit 0.
+pestañas conservan formularios. Auditor i18n Hb: EXIT1 intermedio, doce claves
+nuevas sin consumidor, paridad OK/ausentes 0. Última suite global G3f: 443 archivos/3644 PASS, build/typecheck/lint exit 0.
 Último Go global fue G3a: 126 paquetes PASS; no Go modificado desde entonces.
 Estos resultados son contractuales locales, no prueba de DuckDB real/Wails.
 
-Ha ya consulta el original y comparte normalización; siguiente Hb, dentro de H precisado en
+Ha ya consulta el original y comparte normalización; Hb aporta los doce textos
+en cuatro idiomas. Siguiente Hc, dentro de H precisado en
 `docs/strategy-planner/sdd/classification-corrections-t12.md`: Ha consulta del
-original/normalización reutilizadas (aceptado); Hb textos; Hc clasificación dentro de
+original/normalización reutilizadas y Hb textos (aceptados); Hc clasificación dentro de
 Datos A4; Hd historial. Cada corte declara 2–4 paths. No generar correcciones
 ficticias para comprobar disponibilidad ni duplicar validación en React.
 Luego I banco real opt-in. Coche/circuito/clase siguen pendientes de cerrar
@@ -37,6 +38,26 @@ app/LMU; gate Wails sigue pendiente por ERROR_INVALID_STATE de causa no
 demostrada. Contraste real y paridad visual >9/10 siguen aparte.
 
 Las entradas siguientes son evidencia histórica; el estado vigente es éste.
+
+## T12hb — textos de clasificación antes de conectar consumidores
+
+Commit `cda6e0040f35f6178dab0b53de7043cf22b5014c`, cuatro locales
+ES/EN/IT/PT, +48/-0: doce claves nuevas por idioma, copia española decidida
+por root y traducciones revisadas personalmente. No claves anteriores
+modificadas ni cambios de comportamiento; no tests de espejo de texto.
+
+Baseline auditor EXIT0/paridad OK/ausentes 0/huérfanas 0. Después del cambio,
+auditor --list EXIT1 conocido: exactamente las doce claves nuevas aún sin
+consumir. No se presenta como verde; Hc/Hd deben cerrarlo sin whitelist/usos
+falsos. Typecheck y lint EXIT0, diff limpio. Root leyó diff completo y logs
+`C:/tmp/isa1104-t12hb-{baseline,audit-list,typecheck,lint}.log`. Worker idle
+antes de commit. Último global/build sigue siendo G3f; sin Go nuevo.
+
+Siguiente Hc, cuatro paths de lista/detalle y Data con sus tests, conforme al
+microplan. Logs nuevos en `.tmp/isa1104-t12hc-*.log` dentro de esta app; la
+regla existente `*.log` ya los ignora. Se conserva toda evidencia anterior
+en C:/tmp. No cambio de configuración/ignores. Hd cerrará historial y
+gates completos. Sin app/LMU, banco, Wails ni acciones de entrega remota.
 
 ## T12ha — consulta del original reutilizada antes del montaje
 

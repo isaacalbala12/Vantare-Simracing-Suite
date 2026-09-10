@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { analysisValue, parseAnalysisPreparation, parseCorrectionStoreResult, parseHistoricalValue } from "./analysis-contract";
+import { analysisValue, parseAnalysisCandidates, parseAnalysisPreparation, parseCorrectionStoreResult, parseHistoricalValue } from "./analysis-contract";
+describe("local discovery labels", () => {
+  const candidate = { id: "opaque", state: "ready", size: 10, modifiedAt: "2026-09-10T00:00:00Z", walPresent: false };
+  it("accepts optional sanitized names without deriving identity", () => {
+    expect(parseAnalysisCandidates([candidate])).toEqual([candidate]);
+    expect(parseAnalysisCandidates([{ ...candidate, displayName: "São_Paulo.duckdb" }])[0]).toMatchObject({ id: "opaque", displayName: "São_Paulo.duckdb" });
+  });
+  it.each([null, 1, "", "a/b.duckdb", "C:\\a.duckdb", "a\nb", "a\u202eb", "界".repeat(400)])("rejects unsafe local label %j", displayName => {
+    expect(() => parseAnalysisCandidates([{ ...candidate, displayName }])).toThrow();
+  });
+});
 const base = { sessionId: "session", contentSha256: "a".repeat(64), sizeBytes: 10, parserId: "lmu-duckdb", parserVersion: "1", schemaFingerprint: "schema", analysisVersion: "lap-validity.v1", segmentationDigest: "b".repeat(64) };
 const snapshotId = "c".repeat(64);
 const combination = { id: `lmu:${"d".repeat(64)}`, simId: "lmu", trackName: "Imola", trackLayout: "Grand Prix", carName: "Car", carClass: "Hypercar" };

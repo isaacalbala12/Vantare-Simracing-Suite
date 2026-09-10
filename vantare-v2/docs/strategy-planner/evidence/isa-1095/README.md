@@ -107,3 +107,17 @@ GREEN focal Go, build frontend, go test -p 1 ./... y vet general PASS.
 Logs C:/tmp/isa1095-t08i-{red,green,build,all,vet}.log. Cinco paths Go revisados.
 Siguiente: contrato TS compatible y biblioteca con búsqueda/paginación, sin
 abrir candidatos ocultos. Sin banco real, Wails o aceptación visual nuevos.
+
+## T08j — búsqueda, filtros y paginación
+
+La biblioteca muestra 25 candidatos por página, con nombre local provisional,
+fecha, tamaño y disponibilidad. Búsqueda sin distinguir acentos, filtro de
+apertura disponible y orden temporal. Filtrar/paginar no abre/cierra fuentes ni
+modifica la selección preparada. El cliente acepta displayName opcional y
+rechaza rutas/control/bidi/tamaño excesivo. Nombres antiguos ausentes conservan
+la apertura explícita. No se copia la etiqueta al borrador o a referencias.
+RED8 de entradas no saneadas; GREEN43 focales, tipos, lint/build PASS. Casos de
+416 candidatos, búsqueda sin resultados y reducción de páginas. Suite global
+en C:/tmp/isa1095-t08j-all.log en curso al escribir esta nota. Sin nuevo banco
+real ni paridad visual certificada. Roadmap cuatro idiomas/digest actualizado.
+Siguiente: #1096 T10 edición escalar y revisiones usando servicios existentes.

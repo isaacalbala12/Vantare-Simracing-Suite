@@ -7,7 +7,7 @@ base 56d2c23e858a2f8b6a141ea106fe2f2d98867db4. Ramas anteriores congeladas.
 T05l final: 438 archivos/3422 tests frontend, lint/build PASS; conserva warnings
 heredados de teardown/chunks. T08i: etiquetas locales saneadas, sin exportar
 rutas ni nombres en dominio/procedencia. Go focal/global -p1/vet y build PASS.
-Sigue contrato TS y biblioteca paginada/buscable; luego datos/correcciones.
+T08j contrato TS y biblioteca de 25 filas/búsqueda/filtros: 43 focales, tipos/lint/build PASS; global en curso. Siguiente #1096 T10 datos/correcciones con servicios existentes.
 Ruta nueva montada, pero cálculo avanzado, paridad >9, Wails y precisión real
 continúan pendientes. Sin push, PR, CI remota, merge, promoción ni release.
 

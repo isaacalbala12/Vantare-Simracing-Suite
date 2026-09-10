@@ -1,7 +1,8 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { AnalysisClient } from "../../strategy/analysis-client";
-import { StrategyRecordedSessions } from "./StrategyRecordedSessions";
+import { StrategyRecordedSessions, StrategyRecordedSessionsView } from "./StrategyRecordedSessions";
+import type { RecordedSessionsController } from "./use-recorded-sessions";
 import { openRecordedSession, type RecordedSession } from "./strategy-recorded-session";
 vi.mock("./strategy-recorded-session", () => ({ openRecordedSession: vi.fn() }));
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
@@ -21,6 +22,43 @@ async function prepare() {
   await screen.findByRole("button", { name: "strategy.recorded.apply" });
 }
 describe("recorded sessions panel", () => {
+  it("pages and searches hundreds of files without opening or losing prepared sessions", () => {
+    const candidates = Array.from({ length: 416 }, (_, index) => ({ id: `candidate-${index}`, displayName: index === 415 ? "São_Paulo.duckdb" : `Imola_${index}.duckdb`, state: index === 0 ? "active" : "ready", size: 1024, modifiedAt: new Date(Date.UTC(2026, 0, 1, 0, index)).toISOString(), walPresent: index === 0 }));
+    const session = { candidateId: "already-open", opened: { sessionId: "handle", session: { metadata: [] } }, base: { sessionId: "source" }, revision: { revisionId: "revision" } } as unknown as RecordedSession;
+    const controller: RecordedSessionsController = { candidates, sessions: [session], busy: false, error: "", applied: false, discover: vi.fn(), open: vi.fn(), close: vi.fn(), apply: vi.fn(), cancel: vi.fn() };
+    const view = render(<StrategyRecordedSessionsView controller={controller} t={key => key} />);
+    const list = () => screen.getByRole("list", { name: "strategy.recorded.files" });
+    expect(within(list()).getAllByRole("listitem")).toHaveLength(25);
+    expect(within(list()).getAllByRole("listitem")[0].textContent).toContain("São_Paulo");
+    fireEvent.click(screen.getByRole("button", { name: "strategy.recorded.next" }));
+    expect(within(list()).getAllByRole("listitem")[0].textContent).toContain("Imola_390.duckdb");
+    fireEvent.change(screen.getByRole("searchbox"), { target: { value: "sao" } });
+    expect(within(list()).getAllByRole("listitem")).toHaveLength(1);
+    expect(screen.queryByRole("button", { name: "strategy.recorded.next" })).toBeNull();
+    expect(controller.open).not.toHaveBeenCalled();
+    expect(controller.close).not.toHaveBeenCalled();
+    expect(controller.apply).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "strategy.recorded.close" })).toBeTruthy();
+    fireEvent.click(within(list()).getByRole("button"));
+    expect(controller.open).toHaveBeenCalledWith(candidates[415]);
+    fireEvent.change(screen.getByRole("searchbox"), { target: { value: "" } });
+    fireEvent.change(screen.getByLabelText("strategy.recorded.order"), { target: { value: "oldest" } });
+    expect(within(list()).getAllByRole("listitem")[0].textContent).toContain("Imola_0.duckdb");
+    expect((within(within(list()).getAllByRole("listitem")[0]).getByRole("button") as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.change(screen.getByLabelText("strategy.recorded.availability"), { target: { value: "ready" } });
+    expect(within(list()).getAllByRole("listitem")[0].textContent).toContain("Imola_1.duckdb");
+    fireEvent.click(screen.getByRole("button", { name: "strategy.recorded.next" }));
+    view.rerender(<StrategyRecordedSessionsView controller={{ ...controller, candidates: [candidates[415]] }} t={key => key} />);
+    expect(within(list()).getAllByRole("listitem")).toHaveLength(1);
+  });
+  it("keeps unnamed legacy candidates and reports no search matches without claiming no files", () => {
+    const controller: RecordedSessionsController = { candidates: [{ id: "legacy", state: "ready", size: 0, modifiedAt: "2026-09-10T00:00:00Z", walPresent: false }], sessions: [], busy: false, error: "", applied: false, discover: vi.fn(), open: vi.fn(), close: vi.fn(), apply: vi.fn(), cancel: vi.fn() };
+    render(<StrategyRecordedSessionsView controller={controller} t={key => key} />);
+    expect(screen.getByText("strategy.recorded.unnamed")).toBeTruthy();
+    fireEvent.change(screen.getByRole("searchbox"), { target: { value: "Imola" } });
+    expect(screen.getByText("strategy.recorded.noMatches")).toBeTruthy();
+    expect(screen.queryByText("strategy.recorded.empty")).toBeNull();
+  });
   it("does not open without action and applies only the prepared references", async () => {
     const { client, session, onApply, view } = fixture();
     expect(client.discover).not.toHaveBeenCalled();

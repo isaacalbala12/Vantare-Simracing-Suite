@@ -130,6 +130,7 @@ export type AnalysisPage = Readonly<{
   samples: readonly AnalysisSample[];
 }>;
 export type AnalysisCandidate = Readonly<{
+  displayName?: string;
   id: string;
   state: string;
   size: number;
@@ -447,6 +448,10 @@ export function parseAnalysisCandidates(value: unknown): readonly AnalysisCandid
   const ids = new Set<string>();
   for (const item of candidates) {
     const r = record(item, "candidate");
+    if (r.displayName !== undefined) {
+      text(r.displayName, "candidate.displayName", 1024);
+      if (/[\p{Cc}\p{Cf}/\\]/u.test(r.displayName)) throw new AnalysisProtocolError("candidate.displayName");
+    }
     text(r.id, "candidate.id", 256);
     if (ids.has(r.id)) {
       throw new AnalysisProtocolError("candidate.duplicate");

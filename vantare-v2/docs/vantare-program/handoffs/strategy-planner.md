@@ -1,6 +1,6 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — T12c2 aceptado, siguiente T12d2 antes de D1
+## Estado vigente — T12d2 aceptado, siguiente T12d1
 
 Isaac confirma que planes y documentación siguen a cargo del orquestador.
 R19/A17/execution actualizados: Muse Spark 1.3 Contributor vía OpenCode, xhigh,
@@ -8,15 +8,16 @@ ejecuta sólo código/tests asignados, sin subdelegación ni cambios de planes,
 docs o issue. Un ejecutor por worktree; revisión personal antes de aceptar.
 Rama `vantareapp/isa-1104-recorded-classification`, base exacta
 `7f757135445439851180fc503da45f7eb9e557e7`; último código revisado
-`e8abf272ca8fc750502de69780fb66b7c0fac250`, limpio al revisar. A/B1/B2/C1/C2
+`5591602f8dae1648ae4a719db2683dfa0ae13057`, limpio al revisar. A/B1/B2/C1/C2/D2
 aceptados localmente tras lectura de diff y evidencia (B1/B2: 126 paquetes Go
 PASS cada uno, vet exit 0; rutas en entradas siguientes). T12 sigue abierto.
 
-Siguiente D2, antes de D1: `internal/telemetryanalysis/corrections_inspection.go`
-y `corrections_inspection_test.go`. Hallazgo del orquestador: la consulta de
-vueltas aún usa ApplyObservation y rechaza v3. Reusar ApplyMixed, sin nueva API;
-mantener targets/paginación/capacidades y snapshot exacto. Después D1 conecta
-Save/Resolve y conserva la clasificación efectiva al proyectar desde el servicio.
+Siguiente D1: `internal/app/telemetry_analysis_correction_commands.go` y
+`telemetry_analysis_correction_commands_test.go`. Conectar los tres grupos en
+Save/Resolve bajo la misma autorización y conservar clasificación efectiva en
+proyección nativa. Clasificaciones no nil requieren FamilyUses explícito; no
+normalizar grupos desconocidos a vacíos. Errores de clasificación no son fallos
+de custodia. D2 ya permite inspeccionar snapshots v3 sin nueva API.
 El plan registra
 el impedimento de apertura de sesiones sin proyección para resolverlo antes de
 montar la UI; no se crean valores faltantes. Coche/circuito siguen pendientes
@@ -25,6 +26,29 @@ Sin push, PR, CI remota, integración ni promoción. No se reabre app/LMU; gate
 Wails sigue pendiente por ERROR_INVALID_STATE de causa no demostrada.
 
 Las entradas siguientes son evidencia histórica; el estado vigente es éste.
+
+## T12d2 — inspección de vueltas compatible con revisión mixta
+
+Commit `5591602f`, dos paths (`corrections_inspection.go` y test), +275/-2.
+Una línea productiva pasa de ApplyObservation a ApplyMixed; mantiene la misma
+consulta, paginación, identidad temporal, original/efectivo, límites y cinco
+capacidades físicas. RED real: `TestCorrectionLapInspectionAcceptsMixedClassification`
+rechaza v3 por `observation snapshot integrity`; mismo caso GREEN tras el cambio.
+Tests cubren sólo clasificación, tres grupos con efecto escalar +1s y exclusión
+familiar, equivalencia con v2 salvo snapshotID, otro metadato ausente, cuota y
+rechazos atómicos. Revisión personal corrigió capturas superficiales de input,
+contaminación entre casos y una clonación del puntero de salida que invalidaba
+la prueba de no-alias; se escribe directamente sobre el resultado antes de
+comparar el input y snapshot serializados.
+
+Gates: focales `telemetryanalysis/...` exit 0; global `go test -p 1 ./...` exit 0,
+126 paquetes ok/cero FAIL; vet de alcance exit 0 (log vacío), gofmt/diff limpios.
+Logs leídos: `C:/tmp/isa1104-t12d2-red.log` (exit 1),
+`C:/tmp/isa1104-t12d2-focal.log`, `C:/tmp/isa1104-t12d2-global.log`,
+`C:/tmp/isa1104-t12d2-vet.log`. Sin frontend, banco real ni Wails en este corte.
+Sin push/PR/CI remota/integración/promoción. Se documenta en §4 del microplan
+la limitación de rollback: un binario antiguo no debe abrir custodia con v3;
+conservarla y usar perfil/CorrectionRoot aislado si se vuelve al binario anterior.
 
 ## T12c2 — clasificación efectiva en derivación y proyección
 

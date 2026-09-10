@@ -6,7 +6,7 @@ SDD R08/R07, aceptación A08/A09. Continúa ADR 0010 y
 [corrections-contract-v1](../corrections-contract-v1.md) operación 2
 `set_classification` (implementación parcial descrita aquí); no crea otra custodia,
 lector, formato, motor ni dependencia. Este documento fija el contrato
-implementable y los microcortes. T12a, T12b1, T12b2, T12c1 y T12c2 están implementados y
+implementable y los microcortes. T12a, T12b1, T12b2, T12c1, T12c2 y T12d2 están implementados y
 revisados localmente; no cierran T12 ni los gates visual/nativo/empírico.
 
 ## 1. Conjunto cerrado de campos y tipos
@@ -76,6 +76,18 @@ conflicto), validación completa del snapshot antes de persistir, atomicidad sin
 parciales, `revision_conflict` con cabeza actual, restauración como revisión
 nueva. Las decisiones de clasificación no pueden desaparecer del payload usado
 para resolver un guardado incierto.
+
+Compatibilidad y rollback: el lector actual abre v1/v2/v3; un binario anterior
+sin v3 NO puede abrir con seguridad esa misma custodia. El mecanismo antiguo de
+recuperación podría considerar desconocido el snapshot, poner el primario en
+cuarentena y recuperar un backup v1/v2. Retirar decisiones y crear una cabeza
+v1/v2 no elimina las revisiones v3 del historial ni lo hace compatible hacia atrás.
+Para volver a un binario anterior, conservar íntegra y sin escrituras la custodia
+actual (primario, backup y cuarentenas), y ejecutar el binario antiguo con un
+perfil/`CorrectionRoot` aislado que no contenga v3. No convertir ni sobrescribir
+el historial para simular compatibilidad. Al recuperar la versión actual se
+reabre la custodia preservada. Antes de cualquier rollback real, verificar rutas,
+configuración y cierre de instancias propias; aquí no se mueve ni copia dato alguno.
 
 ## 5. Referencia canónica y cambio de combinación (diseño pendiente de cerrar; fuera de T12a)
 

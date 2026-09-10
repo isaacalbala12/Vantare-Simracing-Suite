@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vantare · Inicio — mockup v2 (contexto integrado, sin columna)</title>
+<!-- ISA-1115 · Variante alternativa: la shell queda en dos zonas (rail +
+     workspace) y el detalle contextual es un panel integrado en la rejilla,
+     junto a la lista que lo origina. Sin JS ni recursos de red. -->
+<link rel="stylesheet" href="hub-orbit-home.css">
+</head>
+<body>
+
+<!-- Sprite: iconos de `frontend/src/assets/orbit-icons.svg` + trazados
+     lineales de circuito propios del mockup. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-vantare" viewBox="0 0 18 18"><path d="M3 15 9 3l6 12"/><path d="M6.5 15 9 10l2.5 5"/></symbol>
+    <symbol id="i-studio" viewBox="0 0 18 18"><rect x="2.2" y="3.4" width="13.6" height="9.4" rx="1.2"/><rect x="4.6" y="5.6" width="4.6" height="2.6" rx=".6" fill="currentColor" stroke="none" opacity=".85"/><path d="M6.5 15.4h5"/></symbol>
+    <symbol id="i-launcher" viewBox="0 0 18 18"><path d="M9.8 2.5 4.6 10.2h3.3L8.2 15.5l5.2-7.7h-3.3z"/></symbol>
+    <symbol id="i-carreras" viewBox="0 0 18 18"><rect x="2.8" y="4" width="12.4" height="11" rx="1.2"/><path d="M2.8 7.6h12.4M6.2 2.4v3.2M11.8 2.4v3.2"/></symbol>
+    <symbol id="i-estrategia" viewBox="0 0 18 18"><path d="M3.5 14.5c0-4 3-4.5 5.5-5.5s5.5-1.5 5.5-5.5"/><circle cx="3.5" cy="14.5" r="1.6"/><circle cx="14.5" cy="3.5" r="1.6"/></symbol>
+    <symbol id="i-ingeniero" viewBox="0 0 18 18"><path d="M3.6 10.2a5.4 5.4 0 0 1 10.8 0"/><rect x="2.6" y="9.6" width="2.8" height="4.2" rx="1.1"/><rect x="12.6" y="9.6" width="2.8" height="4.2" rx="1.1"/><path d="M14 13.8c0 1.4-1.6 1.9-3.2 1.9"/></symbol>
+    <symbol id="i-telemetria" viewBox="0 0 18 18"><path d="M2 9h3l2-4.5L11 13l2-4h3"/></symbol>
+    <symbol id="i-roadmap" viewBox="0 0 18 18"><path d="M9 15.5V9.8M9 2.5v1.6"/><path d="M4.2 4.1h8.2l2 2.85-2 2.85H4.2z"/></symbol>
+    <symbol id="i-ajustes" viewBox="0 0 18 18"><path d="M2.5 5.5h8M13.5 5.5h2M2.5 12.5h2M7.5 12.5h8"/><circle cx="12" cy="5.5" r="1.7"/><circle cx="6" cy="12.5" r="1.7"/></symbol>
+    <symbol id="i-comando" viewBox="0 0 24 24"><path d="m12 3 1.7 5.3L19 10l-5.3 1.7L12 17l-1.7-5.3L5 10l5.3-1.7z"/><path d="m19 15 .8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></symbol>
+    <symbol id="i-panel" viewBox="0 0 16 16"><rect x="2" y="2.5" width="12" height="11" rx="1.5"/><path d="M6 2.5v11"/></symbol>
+    <symbol id="i-flask" viewBox="0 0 18 18"><path d="M6 2.5h6M7 2.5v4l-3.5 6a2 2 0 0 0 1.7 3h7.6a2 2 0 0 0 1.7-3L11 6.5v-4"/><path d="M5.2 11h7.6"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 16 16"><path d="M6 4l4 4-4 4"/></symbol>
+
+    <!-- Mismos trazados que en v1. -->
+    <symbol id="trk-sebring" viewBox="0 0 160 110">
+      <path class="tk-base" d="M36 84 L86 85 C98 86 106 79 107 67 L109 47 C110 40 105 36 97 35 L120 27 C127 25 131 33 125 38 L97 47 C91 49 86 47 82 43 L61 40 C53 39 47 43 44 50 L37 62 C33 70 34 79 40 83 L36 84 Z"/>
+      <path class="tk-line" d="M36 84 L86 85 C98 86 106 79 107 67 L109 47 C110 40 105 36 97 35 L120 27 C127 25 131 33 125 38 L97 47 C91 49 86 47 82 43 L61 40 C53 39 47 43 44 50 L37 62 C33 70 34 79 40 83 L36 84 Z"/>
+      <path class="tk-sf" d="M60 78 L60 91"/>
+    </symbol>
+    <symbol id="trk-fuji" viewBox="0 0 160 110">
+      <path class="tk-base" d="M22 84 L112 84 C121 84 127 78 126 69 L123 50 C122 43 116 39 109 41 L99 44 C92 46 88 39 93 34 L104 23 C109 17 104 10 96 12 L60 18 C52 20 45 16 45 9 C45 4 38 2 33 7 L21 24 C16 31 19 40 27 42 L38 45 C45 47 46 54 40 58 L27 68 C20 73 19 80 22 84 Z"/>
+      <path class="tk-line" d="M22 84 L112 84 C121 84 127 78 126 69 L123 50 C122 43 116 39 109 41 L99 44 C92 46 88 39 93 34 L104 23 C109 17 104 10 96 12 L60 18 C52 20 45 16 45 9 C45 4 38 2 33 7 L21 24 C16 31 19 40 27 42 L38 45 C45 47 46 54 40 58 L27 68 C20 73 19 80 22 84 Z"/>
+      <path class="tk-sf" d="M72 78 L72 90"/>
+    </symbol>
+    <symbol id="trk-monza" viewBox="0 0 160 110">
+      <path class="tk-base" d="M30 40 C30 28 42 20 55 23 L110 36 C124 39 132 50 127 62 L118 80 C113 90 101 93 92 88 L44 62 C34 56 28 48 30 40 Z"/>
+      <path class="tk-line" d="M30 40 C30 28 42 20 55 23 L110 36 C124 39 132 50 127 62 L118 80 C113 90 101 93 92 88 L44 62 C34 56 28 48 30 40 Z"/>
+      <path class="tk-sf" d="M96 82 L96 93"/>
+    </symbol>
+    <symbol id="trk-cota" viewBox="0 0 160 110">
+      <path class="tk-base" d="M44 20 C50 13 60 15 64 23 L74 40 C77 46 84 49 91 46 L120 33 C128 30 135 37 132 45 L125 74 C123 84 113 89 104 85 L48 60 C39 56 35 46 39 37 L40 32 C41 27 41 24 44 20 Z"/>
+      <path class="tk-line" d="M44 20 C50 13 60 15 64 23 L74 40 C77 46 84 49 91 46 L120 33 C128 30 135 37 132 45 L125 74 C123 84 113 89 104 85 L48 60 C39 56 35 46 39 37 L40 32 C41 27 41 24 44 20 Z"/>
+      <path class="tk-sf" d="M84 67 L84 78"/>
+    </symbol>
+    <symbol id="trk-spa" viewBox="0 0 160 110">
+      <path class="tk-base" d="M28 90 C20 87 18 78 24 71 L46 47 C51 41 54 33 53 25 L54 15 C54 9 61 6 67 8 L112 20 C119 23 122 31 117 38 L104 55 C100 61 102 68 109 70 L132 78 C139 81 137 90 130 91 L104 92 C98 92 95 86 100 82 L104 77 L42 93 C36 94 31 93 28 90 Z"/>
+      <path class="tk-line" d="M28 90 C20 87 18 78 24 71 L46 47 C51 41 54 33 53 25 L54 15 C54 9 61 6 67 8 L112 20 C119 23 122 31 117 38 L104 55 C100 61 102 68 109 70 L132 78 C139 81 137 90 130 91 L104 92 C98 92 95 86 100 82 L104 77 L42 93 C36 94 31 93 28 90 Z"/>
+      <path class="tk-sf" d="M62 85 L62 96"/>
+    </symbol>
+    <symbol id="trk-portimao" viewBox="0 0 160 110">
+      <path class="tk-base" d="M28 58 C22 47 29 34 42 32 L66 27 C74 25 81 30 83 37 L87 49 C89 56 96 59 102 56 L118 49 C126 46 134 52 135 60 L137 75 C138 85 129 92 119 90 L48 78 C37 76 30 68 28 58 Z"/>
+      <path class="tk-line" d="M28 58 C22 47 29 34 42 32 L66 27 C74 25 81 30 83 37 L87 49 C89 56 96 59 102 56 L118 49 C126 46 134 52 135 60 L137 75 C138 85 129 92 119 90 L48 78 C37 76 30 68 28 58 Z"/>
+      <path class="tk-sf" d="M64 72 L64 84"/>
+    </symbol>
+    <symbol id="trk-barcelona" viewBox="0 0 160 110">
+      <path class="tk-base" d="M34 30 C40 19 54 15 66 19 L114 35 C124 39 128 50 124 60 L116 79 C112 88 101 92 92 88 L40 67 C30 63 26 51 34 42 Z"/>
+      <path class="tk-line" d="M34 30 C40 19 54 15 66 19 L114 35 C124 39 128 50 124 60 L116 79 C112 88 101 92 92 88 L40 67 C30 63 26 51 34 42 Z"/>
+      <path class="tk-sf" d="M70 78 L70 89"/>
+    </symbol>
+  </defs>
+</svg>
+
+<div class="orbit-shell orbit-shell--v2">
+
+  <!-- ======================= rail ======================= -->
+  <aside class="orbit-rail" aria-label="Secciones de Vantare">
+    <button class="orbit-rail__button" aria-current="page" aria-label="Inicio" data-tip="Inicio">
+      <svg width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><use href="#i-vantare"/></svg>
+    </button>
+    <button class="orbit-rail__button" aria-label="Overlays Studio" data-tip="Overlays Studio">
+      <svg width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><use href="#i-studio"/></svg>
+    </button>
+    <button class="orbit-rail__button" aria-label="Launcher" data-tip="Launcher">
+      <svg width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><use href="#i-launcher"/></svg>
+    </button>
+    <button class="orbit-rail__button" aria-label="Calendario" data-tip="Calendario">
+      <svg width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><use href="#i-carreras"/></svg>
+    </button>
+    <button class="orbit-rail__button" aria-label="Estrategia" data-tip="Estrategia">
+      <svg width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><use href="#i-estrategia"/></svg>
+    </button>
+    <button class="orbit-rail__button" aria-label="Ingeniero" data-tip="Ingeniero">
+      <svg width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><use href="#i-ingeniero"/></svg>
+    </button>
+    <button class="orbit-rail__button" aria-label="Telemetría" data-tip="Telemetría · Próximamente">
+      <svg width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><use href="#i-telemetria"/></svg>
+      <i class="orbit-rail__soon" aria-hidden="true"></i>
+    </button>
+    <button class="orbit-rail__button" aria-label="Roadmap" data-tip="Roadmap">
+      <svg width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><use href="#i-roadmap"/></svg>
+    </button>
+    <button class="orbit-rail__button" aria-label="Testing Center" data-tip="Testing Center">
+      <svg width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><use href="#i-flask"/></svg>
+    </button>
+
+    <div class="orbit-rail__bottom">
+      <button class="orbit-rail__button" aria-label="Comando de Vantare" data-tip="Comando de Vantare · Ctrl K">
+        <svg width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><use href="#i-comando"/></svg>
+      </button>
+      <button class="orbit-rail__button" aria-label="Ajustes" data-tip="Ajustes">
+        <svg width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><use href="#i-ajustes"/></svg>
+      </button>
+      <button class="orbit-rail__avatar" aria-label="Cuenta · plan Pro Plus" data-tip="Cuenta · plan Pro Plus">I</button>
+    </div>
+  </aside>
+
+  <!-- ======================= main ======================= -->
+  <div class="orbit-main">
+    <header class="orbit-topbar">
+      <div class="orbit-topbar__tt">
+        <span class="orbit-topbar__eyebrow">Centro operativo</span>
+        <h1>Inicio</h1>
+      </div>
+      <div class="orbit-topbar__right">
+        <button class="orbit-topbar__search" aria-label="Comando de Vantare">
+          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><use href="#i-comando"/></svg>
+          <span>Busca, abre o lanza algo en Vantare…</span>
+          <span class="orbit-kbd"><kbd>Ctrl</kbd><kbd>K</kbd></span>
+        </button>
+        <button class="orbit-pill"><i class="orbit-pill__dot orbit-pill__dot--ok"></i>LMU conectado</button>
+        <button class="orbit-pill"><i class="orbit-pill__dot orbit-pill__dot--ring-gold"></i>v0.1.1</button>
+      </div>
+    </header>
+
+    <div class="orbit-workspace">
+      <div class="orbit-home orbit-home--v2">
+
+        <!-- ============ héroe en banda: próxima carrera ============ -->
+        <section class="orbit-featured orbit-hero orbit-hero--band" aria-label="Próxima carrera">
+          <div class="orbit-hero__art" aria-hidden="true">
+            <svg viewBox="0 0 160 110" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><use href="#trk-sebring"/></svg>
+          </div>
+          <div class="orbit-hero__copy">
+            <div class="orbit-hero__eyebrow">
+              <span class="orbit-eyebrow">Próxima carrera</span>
+              <span class="orbit-chip">LMGT3</span>
+              <span class="orbit-chip orbit-chip--bronze">Bronze SR</span>
+              <span class="orbit-chip orbit-chip--soon">En 14 min</span>
+            </div>
+            <h2 class="orbit-hero__title">
+              LMGT3 Fixed
+              <small>Sebring (School) · Le Mans Ultimate</small>
+            </h2>
+            <div class="orbit-hero__meta">
+              <span>Cadencia <b>Cada 15 min</b></span>
+              <span>Carrera <b>20 min</b></span>
+              <span>Clase <b>LMGT3</b></span>
+              <span>Setup <b>Fijo</b></span>
+            </div>
+          </div>
+          <div class="orbit-hero__count">
+            <b>00:14:12</b>
+            <span>empieza en ·<b>Salida 20:30 · hoy</b></span>
+            <div class="orbit-hero__actions">
+              <button class="orbit-btn orbit-btn--primary">Ir al servidor</button>
+              <button class="orbit-btn orbit-btn--ghost">Ver en Calendario</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ rejilla: carreras + apilado contextual ============ -->
+        <div class="orbit-home__grid">
+
+          <section class="orbit-surface orbit-races-panel" aria-label="Próximas carreras">
+            <div class="orbit-surface__head">
+              <h3>Próximas carreras</h3>
+              <span class="orbit-surface__meta">Cadencia publicada</span>
+              <button class="orbit-link">Ver todas</button>
+            </div>
+            <div class="orbit-list">
+              <button class="orbit-row orbit-row--next">
+                <span class="orbit-home__time">20:30</span>
+                <i class="orbit-tier-dot" data-tier="beginner"></i>
+                <span class="orbit-row__copy">
+                  <b>LMGT3 Fixed</b>
+                  <span>Sebring (School) · 20 min · fijo</span>
+                </span>
+                <span class="orbit-when"><b>en 14 min</b><span>Bronze SR</span></span>
+                <span class="orbit-row__map"><svg viewBox="0 0 160 110" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><use href="#trk-sebring"/></svg></span>
+              </button>
+              <button class="orbit-row">
+                <span class="orbit-home__time">20:30</span>
+                <i class="orbit-tier-dot" data-tier="beginner"></i>
+                <span class="orbit-row__copy">
+                  <b>LMP3 Fixed</b>
+                  <span>Fuji (Classic) · 20 min · fijo</span>
+                </span>
+                <span class="orbit-when"><b>en 14 min</b><span>Bronze SR</span></span>
+                <span class="orbit-row__map"><svg viewBox="0 0 160 110" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><use href="#trk-fuji"/></svg></span>
+              </button>
+              <button class="orbit-row">
+                <span class="orbit-home__time">20:45</span>
+                <i class="orbit-tier-dot" data-tier="beginner"></i>
+                <span class="orbit-row__copy">
+                  <b>Logitech McLaren G Challenge</b>
+                  <span>Monza (WEC) · 20 min · fijo</span>
+                </span>
+                <span class="orbit-when"><b>en 29 min</b><span>Bronze SR</span></span>
+                <span class="orbit-row__map"><svg viewBox="0 0 160 110" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><use href="#trk-monza"/></svg></span>
+              </button>
+              <button class="orbit-row">
+                <span class="orbit-home__time">21:00</span>
+                <i class="orbit-tier-dot" data-tier="intermediate"></i>
+                <span class="orbit-row__copy">
+                  <b>LMGT3 Sprint Cup</b>
+                  <span>COTA (National) · 30 min · abierto</span>
+                </span>
+                <span class="orbit-when"><b>en 44 min</b><span>Silver SR</span></span>
+                <span class="orbit-row__map"><svg viewBox="0 0 160 110" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><use href="#trk-cota"/></svg></span>
+              </button>
+              <button class="orbit-row">
+                <span class="orbit-home__time">21:20</span>
+                <i class="orbit-tier-dot" data-tier="intermediate"></i>
+                <span class="orbit-row__copy">
+                  <b>Prototype Fixed</b>
+                  <span>Barcelona (ELMS) · 30 min · fijo</span>
+                </span>
+                <span class="orbit-when"><b>en 1 h 4</b><span>Silver SR</span></span>
+                <span class="orbit-row__map"><svg viewBox="0 0 160 110" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><use href="#trk-barcelona"/></svg></span>
+              </button>
+              <button class="orbit-row">
+                <span class="orbit-home__time">21:30</span>
+                <i class="orbit-tier-dot" data-tier="advanced"></i>
+                <span class="orbit-row__copy">
+                  <b>ELMS Super 60</b>
+                  <span>Spa (ELMS) · 60 min · multiclase</span>
+                </span>
+                <span class="orbit-when"><b>en 1 h 14</b><span>Gold SR</span></span>
+                <span class="orbit-row__map"><svg viewBox="0 0 160 110" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><use href="#trk-spa"/></svg></span>
+              </button>
+              <button class="orbit-row">
+                <span class="orbit-home__time">22:00</span>
+                <i class="orbit-tier-dot" data-tier="weekly"></i>
+                <span class="orbit-row__copy">
+                  <b>WEC Weekly</b>
+                  <span>Portimao (ELMS) · 100 min · Hypercar + GT3</span>
+                </span>
+                <span class="orbit-when"><b>en 1 h 44</b><span>SR S2</span></span>
+                <span class="orbit-row__map"><svg viewBox="0 0 160 110" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><use href="#trk-portimao"/></svg></span>
+              </button>
+            </div>
+          </section>
+
+          <div class="orbit-side-stack">
+
+            <!-- Detalle integrado: por defecto resume la próxima salida; al
+                 seleccionar una fila muestra esa carrera. -->
+            <section class="orbit-surface orbit-detail-panel" aria-label="Detalle de la próxima salida">
+              <div class="orbit-surface__head">
+                <h3>Detalle · LMGT3 Fixed</h3>
+                <span class="orbit-surface__meta">selección</span>
+              </div>
+              <div class="orbit-surface__body">
+                <div class="orbit-detail__map" aria-hidden="true">
+                  <svg viewBox="0 0 160 110" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><use href="#trk-sebring"/></svg>
+                </div>
+                <div class="orbit-detail__chips">
+                  <span class="orbit-chip orbit-chip--bronze">Bronze SR</span>
+                  <span class="orbit-chip">LMGT3</span>
+                  <span class="orbit-chip">Setup fijo</span>
+                </div>
+                <dl class="orbit-detail__table">
+                  <div><dt>Salida</dt><dd>20:30<small>en 14 min</small></dd></div>
+                  <div><dt>Cadencia</dt><dd>Cada 15 min</dd></div>
+                  <div><dt>Carrera</dt><dd>20 min</dd></div>
+                  <div><dt>Siguientes</dt><dd>20:45 · 21:00 · 21:15</dd></div>
+                </dl>
+                <div class="orbit-detail__actions">
+                  <button class="orbit-btn orbit-btn--ghost orbit-btn--sm">Ver serie</button>
+                  <button class="orbit-btn orbit-btn--ghost orbit-btn--sm">Seguir</button>
+                </div>
+              </div>
+            </section>
+
+            <!-- Perfil activo compacto -->
+            <section class="orbit-surface orbit-profile--compact" aria-label="Perfil activo">
+              <div class="orbit-hero__eyebrow">
+                <span class="orbit-eyebrow">Perfil activo</span>
+                <span class="orbit-state-chip"><i class="orbit-state-chip__dot"></i>Detenido</span>
+              </div>
+              <div class="orbit-profile__copy">
+                <h3>GT3 · Carrera completa</h3>
+                <div class="orbit-profile__meta">
+                  <span><b>12</b> widgets visibles</span>
+                  <span>Lienzo <b>1920 × 1080</b></span>
+                </div>
+              </div>
+              <div class="orbit-mini-stage" aria-hidden="true">
+                <span class="orbit-mini-stage__widget orbit-mini-stage__widget--accent" style="left:4%;top:8%;width:13%;height:64%">Standings</span>
+                <span class="orbit-mini-stage__widget" style="left:19%;top:8%;width:10%;height:42%">Relative</span>
+                <span class="orbit-mini-stage__widget" style="left:38%;top:6%;width:24%;height:12%">Delta</span>
+                <span class="orbit-mini-stage__widget" style="left:70%;top:8%;width:14%;height:30%">Track map</span>
+                <span class="orbit-mini-stage__widget" style="left:70%;top:44%;width:14%;height:16%">Tyres</span>
+                <span class="orbit-mini-stage__widget" style="left:38%;top:78%;width:18%;height:14%">Fuel</span>
+                <span class="orbit-mini-stage__widget" style="left:58%;top:78%;width:26%;height:14%">Pedals</span>
+              </div>
+              <div class="orbit-profile__actions">
+                <button class="orbit-btn orbit-btn--primary orbit-btn--sm">Abrir overlay</button>
+                <button class="orbit-btn orbit-btn--ghost orbit-btn--sm">Abrir Studio</button>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

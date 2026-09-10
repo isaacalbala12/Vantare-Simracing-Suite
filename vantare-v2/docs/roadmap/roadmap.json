@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-10T20:29:38Z",
+  "generatedAt": "2026-09-10T22:42:26Z",
   "digest": {
-    "lastCommit": "a2958ea1c26e4e74dbaad3827382c36cb8d7de37"
+    "lastCommit": "131471ff2be88384cfd4a988acc9c4fc9575e619"
   },
   "phases": [
     {
@@ -118,6 +118,12 @@
           "en": "Reproducible hardware footprint bench for Vantare and the overlay",
           "pt": "Banco reproduzível de impacto por hardware para Vantare e o overlay",
           "it": "Banco riproducibile dell'impronta hardware per Vantare e l'overlay"
+        },
+        {
+          "es": "Exploración de distribución del Hub en mockups estáticos (dirección visual pendiente de decisión)",
+          "en": "Hub layout exploration in static mockups (visual direction pending decision)",
+          "pt": "Exploração de distribuição do Hub em mockups estáticos (direção visual pendente de decisão)",
+          "it": "Esplorazione del layout dell'Hub in mockup statici (direzione visiva in attesa di decisione)"
         }
       ]
     },
@@ -1391,6 +1397,11 @@
           "kind": "fix",
           "scope": "ci",
           "text": "Corregir validación del workflow inerte"
+        },
+        {
+          "kind": "docs",
+          "scope": "ci",
+          "text": "Registrar integración Nightly de ISA-728"
         }
       ]
     },

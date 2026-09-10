@@ -1,5 +1,19 @@
 # Handoff vivo — Strategy Planner
 
+## T11e2 — identidad temporal en consumo y curvas
+
+El resultado por vuelta transporta inicio/fin por valor. Curvas e índices de
+stint usan número+instantes UTC; identidades ausentes, cambiadas o ambiguas no
+contribuyen. Un duplicado tampoco aumenta la edad de las vueltas posteriores.
+RED/GREEN de número repetido y duplicado que desplazaba edades; pruebas de
+intervalo cambiado, legado sin tiempos y equivalencia de zona horaria. Versiones
+de cómputo consumption-pace.v3 y derived-curves.v2; no reescritura del histórico.
+Cuatro paths lógica/test, sin umbrales nuevos ni frontend modificado.
+Global Go -p1 y vet de alcance finales PASS (logs isa1099-t11e2-final-*).
+Siguiente T11e3a procedencia de decisión efectiva; luego filtros blandos y
+separación de SavingCost, aún dependiente de ritmo/consumo. Sin API/UI familiar,
+Wails, precisión, revisión visual, push/PR/CI remota, merge o promoción.
+
 ## T11e1 — derivación de conjunto mixto
 
 Vista valida escalares contra páginas originales y familias contra la validez

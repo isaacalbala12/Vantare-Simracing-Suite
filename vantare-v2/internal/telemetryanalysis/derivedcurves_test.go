@@ -6,7 +6,9 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
+	"time"
 
 	"github.com/vantare/overlays/v2/internal/telemetryanalysis/strategyprojection"
 )
@@ -312,7 +314,7 @@ func derivedCurvesFixtureInput(fixture derivedCurvesFixture) (HistoricalSession,
 			})
 			bucket := fixture.Bucket
 			pace.Laps = append(pace.Laps, LapConsumptionPace{
-				Number: lapNumber, Labels: []LapLabel{}, ClimateBucket: &bucket,
+				Number: lapNumber, Start: startTime, End: endTime, Labels: []LapLabel{}, ClimateBucket: &bucket,
 				FuelConsumption:    &DerivedMetric{Presence: strategyprojection.PresenceValid, Value: fuelPerLap},
 				RepresentativePace: &DerivedMetric{Presence: strategyprojection.PresenceValid, Value: lapTime},
 			})
@@ -358,4 +360,64 @@ func savingLevel(t *testing.T, levels []strategyprojection.SavingLevel, code int
 	}
 	t.Fatalf("mixture code %d not found in %+v", code, levels)
 	return strategyprojection.SavingLevel{}
+}
+
+func TestCurveSamplesDoNotJoinRepeatedLapNumbers(t *testing.T) {
+	fixture := loadDerivedCurvesFixture(t, "derived-curves-crossed-v1.json")
+	session, pages, _, validity, pace := derivedCurvesFixtureInput(fixture)
+	grouped, err := groupPagesBySource(session, pages)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := collectCurveLapSamples(validity, pace, grouped)
+	if len(want) < 2 {
+		t.Fatal("fixture lacks distinct observations")
+	}
+	for i := range validity.Laps {
+		validity.Laps[i].Number = 1
+		pace.Laps[i].Number = 1
+	}
+	got := collectCurveLapSamples(validity, pace, grouped)
+	if !reflect.DeepEqual(got, want) {
+		t.Fatal("repeated lap numbers changed curve observations or stint ages")
+	}
+}
+
+func TestCurveSamplesRequireUnambiguousCompleteIdentity(t *testing.T) {
+	for _, name := range []string{"missing start", "missing end", "changed interval", "duplicate validity", "duplicate pace", "equivalent timezone"} {
+		t.Run(name, func(t *testing.T) {
+			fixture := loadDerivedCurvesFixture(t, "derived-curves-crossed-v1.json")
+			session, pages, _, validity, pace := derivedCurvesFixtureInput(fixture)
+			grouped, err := groupPagesBySource(session, pages)
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := collectCurveLapSamples(validity, pace, grouped)
+			switch name {
+			case "missing start":
+				pace.Laps[0].Start = time.Time{}
+			case "missing end":
+				pace.Laps[0].End = time.Time{}
+			case "changed interval":
+				pace.Laps[0].End = pace.Laps[0].End.Add(time.Second)
+			case "duplicate validity":
+				validity.Laps = append(validity.Laps, validity.Laps[0])
+			case "duplicate pace":
+				pace.Laps = append(pace.Laps, pace.Laps[0])
+			case "equivalent timezone":
+				pace.Laps[0].Start = pace.Laps[0].Start.In(time.FixedZone("local", 3600))
+				pace.Laps[0].End = pace.Laps[0].End.In(time.FixedZone("local", 3600))
+			}
+			got := collectCurveLapSamples(validity, pace, grouped)
+			if name == "equivalent timezone" {
+				if !reflect.DeepEqual(got, want) {
+					t.Fatal("equivalent instant lost")
+				}
+				return
+			}
+			if !reflect.DeepEqual(got, want[1:]) {
+				t.Fatal("ambiguous target contributed or changed other lap ages")
+			}
+		})
+	}
 }

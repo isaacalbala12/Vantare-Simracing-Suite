@@ -365,3 +365,35 @@ func aggregateFixtureSession(id, combination string, presence strategyprojection
 		},
 	}
 }
+
+func TestConsumptionPacePreservesTemporalIdentity(t *testing.T) {
+	fixture := loadConsumptionPaceFixture(t, "consumption-pace-dry-v1.json")
+	session, pages, classified, validity := consumptionPaceFixtureInput(fixture)
+	for i := range validity.Laps {
+		validity.Laps[i].Number = 1
+	}
+	got, err := DeriveSessionConsumptionPace(session, pages, classified, validity)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Laps) != len(validity.Laps) {
+		t.Fatal("lost observations")
+	}
+	for i, lap := range validity.Laps {
+		if lap.Start == nil || !got.Laps[i].Start.Equal(*lap.Start) || !got.Laps[i].End.Equal(lap.End) {
+			t.Fatal("lost interval", i)
+		}
+	}
+	first := *validity.Laps[0].Start
+	got.Laps[0].Start = got.Laps[0].Start.Add(time.Second)
+	if !validity.Laps[0].Start.Equal(first) {
+		t.Fatal("identity aliases original")
+	}
+	var legacy LapConsumptionPace
+	if err := json.Unmarshal([]byte(`{"number":1,"labels":[]}`), &legacy); err != nil {
+		t.Fatal(err)
+	}
+	if !legacy.Start.IsZero() || !legacy.End.IsZero() {
+		t.Fatal("legacy identity invented")
+	}
+}

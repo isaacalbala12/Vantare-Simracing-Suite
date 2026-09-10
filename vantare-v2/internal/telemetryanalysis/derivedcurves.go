@@ -7,12 +7,13 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/vantare/overlays/v2/internal/telemetryanalysis/strategyprojection"
 )
 
 const (
-	derivedCurvesComputationVersion = "derived-curves.v1"
+	derivedCurvesComputationVersion = "derived-curves.v2"
 	wearLifeThresholdPercent        = 20.0
 	identifiabilityMinimumStints    = 3
 	identifiabilityMinimumSamples   = 15
@@ -161,22 +162,38 @@ func collectCurveLapSamples(
 	fuel := continuousSeries(grouped["fuel level"])
 	mixture := timestampedSeries(grouped["fuelmixturemap"])
 	compounds := timestampedVectorSeries(grouped["tyrescompound"])
-	validityByNumber := make(map[int]AnalyzedLap, len(validity.Laps))
-	stintByNumber, lapInStintByNumber := stintLapIndices(validity)
+	validityByTarget := make(map[LapCorrectionTarget]AnalyzedLap, len(validity.Laps))
+	validityCounts := make(map[LapCorrectionTarget]int, len(validity.Laps))
+	paceCounts := make(map[LapCorrectionTarget]int, len(pace.Laps))
+	stintByTarget, lapInStintByTarget := stintLapIndices(validity)
 	for _, lap := range validity.Laps {
-		validityByNumber[lap.Number] = lap
+		if lap.Start == nil {
+			continue
+		}
+		key, ok := curveLapTarget(lap.Number, *lap.Start, lap.End)
+		if !ok {
+			continue
+		}
+		validityByTarget[key] = lap
+		validityCounts[key]++
+	}
+	for _, lap := range pace.Laps {
+		if key, ok := curveLapTarget(lap.Number, lap.Start, lap.End); ok {
+			paceCounts[key]++
+		}
 	}
 	var result []curveLapSample
 	for _, derivedLap := range pace.Laps {
-		lap, ok := validityByNumber[derivedLap.Number]
-		if !ok || lap.Start == nil || derivedLap.ClimateBucket == nil || derivedLap.RepresentativePace == nil ||
+		key, resolved := curveLapTarget(derivedLap.Number, derivedLap.Start, derivedLap.End)
+		lap, ok := validityByTarget[key]
+		if !resolved || validityCounts[key] != 1 || paceCounts[key] != 1 || !ok || lap.Start == nil || derivedLap.ClimateBucket == nil || derivedLap.RepresentativePace == nil ||
 			!familyIncluded(lap, FamilyCombinedStintPaceCurve) || lap.HasLabel(LapLabelTraffic) ||
 			presenceWeight(derivedLap.RepresentativePace.Presence) == 0 {
 			continue
 		}
 		seconds := timestampSeconds(*lap.Start)
 		sample := curveLapSample{
-			stint: stintByNumber[lap.Number], lapInStint: lapInStintByNumber[lap.Number], bucket: *derivedLap.ClimateBucket,
+			stint: stintByTarget[key], lapInStint: lapInStintByTarget[key], bucket: *derivedLap.ClimateBucket,
 			lapSeconds: derivedLap.RepresentativePace.Value, presence: derivedLap.RepresentativePace.Presence,
 			savingEligible: familyIncluded(lap, FamilySavingCost) && !lap.HasLabel(LapLabelTraffic),
 		}
@@ -202,15 +219,32 @@ func collectCurveLapSamples(
 	return result
 }
 
-func stintLapIndices(validity LapValidityAnalysis) (map[int]int, map[int]int) {
+// Use canonical instants rather than time.Time location/monotonic identity.
+func curveLapTarget(number int, start, end time.Time) (LapCorrectionTarget, bool) {
+	if number < 0 || start.IsZero() || end.IsZero() || !start.Before(end) {
+		return LapCorrectionTarget{}, false
+	}
+	return LapCorrectionTarget{Number: number, Start: start.Round(0).UTC(), End: end.Round(0).UTC()}, true
+}
+
+func stintLapIndices(validity LapValidityAnalysis) (map[LapCorrectionTarget]int, map[LapCorrectionTarget]int) {
 	boundaries := append([]strategyprojection.StintBoundary(nil), validity.Temporal.StintBoundaries...)
 	sort.SliceStable(boundaries, func(i, j int) bool { return boundaries[i].Timestamp.Before(boundaries[j].Timestamp) })
 	laps := append([]AnalyzedLap(nil), validity.Laps...)
 	sort.SliceStable(laps, func(i, j int) bool { return laps[i].End.Before(laps[j].End) })
-	stints := make(map[int]int, len(laps))
-	indices := make(map[int]int, len(laps))
+	stints := make(map[LapCorrectionTarget]int, len(laps))
+	indices := make(map[LapCorrectionTarget]int, len(laps))
 	counts := make(map[int]int)
+	seen := make(map[LapCorrectionTarget]bool, len(laps))
 	for _, lap := range laps {
+		if lap.Start != nil {
+			if key, ok := curveLapTarget(lap.Number, *lap.Start, lap.End); ok {
+				if seen[key] {
+					continue
+				}
+				seen[key] = true
+			}
+		}
 		stint := 1
 		if lap.Start != nil {
 			for _, boundary := range boundaries {
@@ -225,7 +259,11 @@ func stintLapIndices(validity LapValidityAnalysis) (map[int]int, map[int]int) {
 			}
 		}
 		counts[stint]++
-		stints[lap.Number], indices[lap.Number] = stint, counts[stint]
+		if lap.Start != nil {
+			if key, ok := curveLapTarget(lap.Number, *lap.Start, lap.End); ok {
+				stints[key], indices[key] = stint, counts[stint]
+			}
+		}
 	}
 	return stints, indices
 }

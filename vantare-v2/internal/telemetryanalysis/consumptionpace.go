@@ -11,7 +11,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetryanalysis/strategyprojection"
 )
 
-const consumptionPaceComputationVersion = "consumption-pace.v2"
+const consumptionPaceComputationVersion = "consumption-pace.v3"
 
 const reasonNoCleanCompleteLapsForRepresentativePace = "no_clean_complete_laps_for_representative_pace"
 
@@ -49,6 +49,10 @@ type RepresentativePaceFamily struct {
 
 // LapConsumptionPace preserves F3-a2 labels even when a family excludes the lap.
 type LapConsumptionPace struct {
+	// Zero instants mean unavailable identity in older persisted observations.
+	// Consumers must not recover it by matching the lap number alone.
+	Start                    time.Time                         `json:"start,omitzero"`
+	End                      time.Time                         `json:"end,omitzero"`
 	Number                   int                               `json:"number"`
 	Labels                   []LapLabel                        `json:"labels"`
 	ClimateBucket            *strategyprojection.ClimateBucket `json:"climateBucket,omitempty"`
@@ -136,7 +140,10 @@ func DeriveSessionConsumptionPace(
 	samplesByBucket := make(map[strategyprojection.ClimateBucket]*bucketSamples)
 	completeLaps, reliableLapTimes, stableClimateLaps, representativePaceLaps := 0, 0, 0, 0
 	for _, lap := range validity.Laps {
-		derivedLap := LapConsumptionPace{Number: lap.Number, Labels: append([]LapLabel(nil), lap.Labels...)}
+		derivedLap := LapConsumptionPace{Number: lap.Number, End: lap.End, Labels: append([]LapLabel(nil), lap.Labels...)}
+		if lap.Start != nil {
+			derivedLap.Start = *lap.Start
+		}
 		if lap.Complete {
 			completeLaps++
 		}

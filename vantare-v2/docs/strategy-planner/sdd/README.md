@@ -10,12 +10,11 @@ acordado con Isaac en la conversación del editor registrado. Sustituye la
 este alcance; conserva los contratos técnicos enlazados. No redefine otros
 proyectos ni concede permiso para promover o publicar.
 
-La petición actual autoriza consolidar este SDD. Las decisiones de producto y
-la ejecución ya autorizadas en el chat se conservan: no se exige volver a
-aprobarlas al terminar cada corte. Esta entrega es documental; la pausa de
-implementación solicitada por Isaac no se interpreta como levantada por escribir
-el SDD. Al reanudar, seguir [execution.md](execution.md) de principio a fin sin
-preguntar «¿continúo?» entre tareas.
+Este SDD se consolidó durante la pausa de implementación. Isaac autorizó
+después iniciar todo su alcance y continuar sin aprobaciones entre cortes.
+Las decisiones de producto y ejecución del chat se conservan; seguir
+[execution.md](execution.md) de principio a fin sin preguntar «¿continúo?»
+entre tareas. El reparto vigente entre orquestador y ejecutor está en R19.
 
 Base comprobada: `0240bc7806570be17832aea6153300631f392170`, stack local hasta
 ISA-1090. Rama documental `vantareapp/isa-1091-strategy-sdd`; worktree aislado

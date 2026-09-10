@@ -1,6 +1,6 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — T12c1 preparado por el orquestador
+## Estado vigente — T12c1 aceptado, siguiente T12c2
 
 Isaac confirma que planes y documentación siguen a cargo del orquestador.
 R19/A17/execution actualizados: Muse Spark 1.3 Contributor vía OpenCode, xhigh,
@@ -8,12 +8,14 @@ ejecuta sólo código/tests asignados, sin subdelegación ni cambios de planes,
 docs o issue. Un ejecutor por worktree; revisión personal antes de aceptar.
 Rama `vantareapp/isa-1104-recorded-classification`, base exacta
 `7f757135445439851180fc503da45f7eb9e557e7`; último código revisado
-`a0f8f968f1b6eee66556643c7de2a0e9ade9897b`, limpio al revisar. A/B1/B2
+`1c70fb7c74065cd566a4ba93c34472d28d7962eb`, limpio al revisar. A/B1/B2/C1
 aceptados localmente tras lectura de diff y evidencia (B1/B2: 126 paquetes Go
 PASS cada uno, vet exit 0; rutas en entradas siguientes). T12 sigue abierto.
 
-Siguiente C1: `internal/telemetryanalysis/corrections_view.go` y su test,
-vista efectiva mixta pura. C2 separado añade derivación + proyección (4 paths),
+Siguiente C2: `internal/telemetryanalysis/corrections_derivation.go`,
+`corrections_derivation_test.go`, `corrections_projection.go` y
+`corrections_projection_test.go` (4 paths). Añade clasificación efectiva a
+derivación/proyección y conserva el gate de vueltas completas en Analysis.
 D1 conserva esa clasificación al proyectar desde el servicio. El plan registra
 el impedimento de apertura de sesiones sin proyección para resolverlo antes de
 montar la UI; no se crean valores faltantes. Coche/circuito siguen pendientes
@@ -22,6 +24,25 @@ Sin push, PR, CI remota, integración ni promoción. No se reabre app/LMU; gate
 Wails sigue pendiente por ERROR_INVALID_STATE de causa no demostrada.
 
 Las entradas siguientes son evidencia histórica; el estado vigente es éste.
+
+## T12c1 — vista efectiva mixta revisada y comprobada
+
+Commit `1c70fb7c`, dos paths (`corrections_view.go` y test), +300/-5.
+`ApplyMixedCorrectionSnapshot` reusa la aplicación escalar/familiar y T12a
+contra originales, comprueba los tres grupos y devuelve metadatos separados
+con procedencia. `session.Channels` es la única autoridad de canales. v1/v2
+conservan comportamiento; sin clasificación activa no se añade Metadata a la
+vista antigua. Sólo cambia Value; fuente/calidad/presencia/reloj intactos.
+Revisión personal: eliminada duplicación familiar y separados los fixtures de
+casos adversariales que inicialmente compartían slices. Campo parcial conserva
+el metadato ausente incluso en la vista efectiva. Sin consumidores nuevos aún.
+
+Gates: focal `telemetryanalysis/...` exit 0 (0.831/0.094/0.037s), global Go
+`-p 1 ./...` exit 0, 126 paquetes ok/cero FAIL, vet de alcance exit 0;
+gofmt y diff limpios. Logs `C:/tmp/isa1104-t12c1-focal.log`,
+`C:/tmp/isa1104-t12c1-global.log`, `C:/tmp/isa1104-t12c1-vet.log`.
+El orquestador leyó diff completo y logs antes de aceptar. Sin suite frontend
+(sin TS), banco real ni Wails en C1. Sin push/PR/CI remota/promoción.
 
 ## T12b2 custodia v3 cerrada (ISA-1104, 4 paths, revisión final aceptada)
 

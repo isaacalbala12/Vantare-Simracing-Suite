@@ -4,9 +4,9 @@ ISA-1104, hija de #1091 y #1033; continúa #1099 (capacidad y banco T11 PASS;
 T11i visual/nativo pendiente, sin certificar recorrido/capturas).
 SDD R08/R07, aceptación A08/A09. Continúa ADR 0010 y
 [corrections-contract-v1](../corrections-contract-v1.md) operación 2
-`set_classification` (propuesta, sin implementar); no crea otra custodia,
+`set_classification` (implementación parcial descrita aquí); no crea otra custodia,
 lector, formato, motor ni dependencia. Este documento fija el contrato
-implementable y los microcortes. T12a, T12b1 y T12b2 están implementados y
+implementable y los microcortes. T12a, T12b1, T12b2 y T12c1 están implementados y
 revisados localmente; no cierran T12 ni los gates visual/nativo/empírico.
 
 ## 1. Conjunto cerrado de campos y tipos
@@ -200,12 +200,20 @@ disponibilidad de señal.
 - **T12c2 — derivación y proyección (4 paths).**
   `internal/telemetryanalysis/corrections_derivation.go` + su test y
   `corrections_projection.go` + su test. Pasar la clasificación efectiva a los
-  consumidores existentes y a la salida, conservando revisión exacta. Analysis
+  consumidores existentes y a `CorrectedSessionDerivations.Classified`, que
+  `DeriveProjectionSession` devuelve conservando revisión exacta. Analysis
   conserva la autoridad del gate de vueltas completas/familias; no duplicar el
-  clasificador ni crear vueltas sintéticas para cambiar ese gate. Etiqueta
+  clasificador ni reconstruir `HistoricalLap` para cambiar ese gate: reusar
+  `familyUsability` con el booleano de vuelta completa de `validity.Laps`.
+  El cambio a carrera modifica la elegibilidad preliminar de
+  `observed_strategy`; este recorrido no llama a `DeriveObservedStrategy` ni
+  añade esa familia física a la proyección y no se anuncia que lo haga. Etiqueta
   climática separada de buckets físicos (§7). Sin clasificación activa,
   preservar el contrato existente y sus fixtures; ausencia requerida sigue
-  bloqueando la derivación. Cambio de combinación NO pertenece a C1/C2:
+  bloqueando la derivación. Tests de clasificación efectiva en proyección
+  pública, sin alteración de buckets/consumo/curvas/paradas por una etiqueta,
+  historial exacto tras avanzar cabeza/reabrir, tres grupos juntos y gate de
+  vuelta completa sin promover señales ausentes. Cambio de combinación NO pertenece a C1/C2:
   estos campos no están implementados y su contrato se cierra en §5 antes de
   asignar el corte correspondiente. Gates C1/C2: focales, review personal,
   global Go `-p 1` y vet de alcance antes de aceptar cada corte.

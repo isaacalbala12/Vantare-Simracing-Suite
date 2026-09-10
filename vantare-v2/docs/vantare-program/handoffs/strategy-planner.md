@@ -1,6 +1,6 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — T12g1 revisado localmente, siguiente T12g2
+## Estado vigente — T12g1/G2 aceptados localmente, siguiente T12g3a
 
 Isaac confirma que planes y documentación siguen a cargo del orquestador.
 R19/A17/execution actualizados: Muse Spark 1.3 Contributor vía OpenCode, xhigh,
@@ -8,17 +8,20 @@ ejecuta sólo código/tests asignados, sin subdelegación ni cambios de planes,
 docs o issue. Un ejecutor por worktree; revisión personal antes de aceptar.
 Rama `vantareapp/isa-1104-recorded-classification`, base exacta
 `7f757135445439851180fc503da45f7eb9e557e7`; último código revisado
-`f5c01dda542d1a35ca2efac365f57136a585a59d`, limpio al revisar. A/B1/B2/C1/C2/D1/D2/E/F
+`0873be527a294f4a95ee5a3f6862bd90e1381073`, limpio al revisar. A/B1/B2/C1/C2/D1/D2/E/F/G1/G2
 aceptados localmente tras lectura de diff y evidencia (B1/B2: 126 paquetes Go
 PASS cada uno, vet exit 0; rutas en entradas siguientes). T12 sigue abierto.
 
-G1 revisado localmente: resolvedor cerrado de clave de metadata reutiliza la
-normalización existente; helpers frente al original conservan los tres grupos.
-Siguiente G2: `use-recorded-corrections.ts` y test (2 paths). Conecta las
-transiciones del editor, guardado incierto y restauración explícita completa.
-Microplan fija RED, paths y gates de ambos: focales/typecheck/lint por corte y
-suite frontend completa/build tras conectar G2, antes de aceptar el conjunto.
-G1 no constituye por sí solo entrega del editor. F ya conserva el payload y
+G1/G2 conectan helpers y controlador de los tres grupos: original intacto,
+restauración explícita completa y comando incierto sin pérdida. Suite frontend
+completa/build aceptados; aún falta montaje UI de clasificación.
+Siguiente G3a: preparación nativa y test de identidad, contrato TS y test
+(4 paths). Expone baseDigest nativo para inspección exacta sin combinación.
+Microplan G3a–f escrito por el orquestador: apertura, dueño, textos, estado
+real de selección en Datos/Revisiones y entrada desde biblioteca al mismo A4.
+Una sesión abierta para revisar no pasa a estar usada por la carrera; sin
+datos suficientes no se finge combinación ni proyección. G3a solo no cierra
+el acceso al editor. F ya conserva el payload y
 comprueba respuestas Save/Resolve; E valida v3 y versiones anteriores. D1 conecta
 Save/Resolve bajo la misma autorización y conserva clasificación efectiva
 en la proyección nativa; D2 permite inspeccionar v3 sin nueva API.
@@ -30,6 +33,38 @@ Sin push, PR, CI remota, integración ni promoción. No se reabre app/LMU; gate
 Wails sigue pendiente por ERROR_INVALID_STATE de causa no demostrada.
 
 Las entradas siguientes son evidencia histórica; el estado vigente es éste.
+
+## T12g2 — controlador de correcciones y restauración
+
+Commit `0873be52`, dos paths `use-recorded-corrections.ts/test`, +319/-12.
+Clasificaciones en todas las transiciones de Editor; Save explícito con los
+tres grupos. Restore toma todos los conjuntos del antepasado elegido y usa
+la cabeza anunciada sólo como precondición: no hereda clasificaciones nuevas.
+Cuota total antes de publicar estado, origen original, guardado incierto
+congelado, Resolve/retry explícitos y revisión duradera aunque falle Project.
+
+RED real 1 fallo/12 PASS (882ms): restaurar v1 ante cabeza v3 enviaba una
+clasificación posterior. Entradas validadas por el parser. Revisión personal
+exigió también respuestas guardadas coherentes (nueva revisión d con padre b),
+cuota con los tres grupos y retry completo tras intentos bloqueados de edición,
+retirada, descarte y carga. Pruebas de v1/v2/v3, original frente a valor efectivo,
+Resolve found con cabeza avanzada, ausencia/conflicto y cancelación tardía.
+
+Focal final R3 25 PASS/937ms, exit 0; typecheck producto y lint R2 exit 0.
+Suite completa exit 0: 443 archivos/3575 PASS, 195.71s; build exit 0, 1085
+módulos, 1.05s. Avisos AbortError de teardown y chunks >500 kB conservados,
+también presentes en comprobaciones anteriores; sin atribuir causa nueva.
+Logs C:/tmp/isa1104-t12g2-{red,focal,focal-r3,typecheck,lint-r2,frontend-all,build}.log.
+Un intento focal R2 falló por un cierre sobrante en test:254, cero tests
+ejecutados (19:42:14); el worker sobrescribió ese archivo al reintentar antes
+de recibir la instrucción de conservarlo. El fallo se leyó en la salida de
+herramienta, no queda un log separado: R2 actual es 25 PASS/1.16s. No cuenta
+como RED productivo ni se oculta; R3 es la verificación final nueva.
+
+No Go repetido, banco real ni Wails. Sin app/LMU, push, PR, CI remota,
+integración, promoción o release. Commit del orquestador con worker idle;
+sesión Muse anterior detenida, la siguiente usa contexto nuevo para G3.
+T12 sigue abierto; G3 y montaje/banco no se sustituyen por estos fixtures.
 
 ## T12g1 — helpers de corrección completos
 

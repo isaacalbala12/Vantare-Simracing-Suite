@@ -385,13 +385,88 @@ disponibilidad de señal.
   coherentes. No alterar estado del dueño de handles ni UI/plan/catálogo.
   Focales + typecheck real + lint; revisión personal, después suite frontend
   completa y build para aceptar G1/G2 conectados. Sin Go nuevo, app ni LMU.
-- **T12g3 — apertura para inspección sin proyección (corte por concretar, máx. 5 paths).**
-  El flujo actual de `strategy-recorded-session.ts` exige combinación y
-  proyección antes de conservar el handle. Eso impide corregir un metadato
-  válido si otro requerido falta. Reusar el dueño de sesiones/handles para
-  permitir inspección explícita con la causa de derivación bloqueada, sin
-  inventar combinación/proyección ni duplicar estado. Declarar paths y contrato
-  exactos antes de editar; preservar adopción explícita de revisión del plan.
+- **T12g3a — identidad de inspección en preparación (4 paths).**
+  `internal/app/telemetry_analysis_corrections.go` +
+  `telemetry_analysis_preparation_identity_test.go`, y
+  `frontend/src/strategy/analysis-contract.ts` + `analysis-contract.test.ts`.
+  PrepareCorrections expone además baseDigest calculado por SourceAnalysisRef.Digest
+  dentro de la autorización/bloqueo existentes, incluso si falta metadata.
+  No abre un lector extra ni consulta un catálogo. Error de digest se propaga
+  por el mapeo público; conserva revisión inicial y combinación/causa.
+  TS acepta baseDigest opcional para la compatibilidad de la ruta proyectada
+  existente, pero valida formato digest si está presente (null/blank no válidos).
+  La futura apertura sólo para inspección lo exigirá: no computar hashes en
+  frontend ni fabricar una StrategyAnalysisRevisionRef a partir de IDs ajenos.
+  Tests native completo/parcial verifican digest exacto y wire, repetición
+  estable/identidad de fuente; TS legado/intacto y nuevo válido/inválido.
+  Gates focales, global Go -p 1, vet de alcance, focal TS/typecheck/lint.
+  Es requisito de G3b, no cierra por sí solo el acceso a Datos/Revisiones.
+
+- **T12g3b — apertura exacta para inspección (4 paths).**
+  `frontend/src/hub/strategy-orbit/strategy-recorded-session.ts` y test,
+  `strategy-recorded-proposals.ts` y test. RecordedSession admite falta de
+  combinationId y causa explícita projectionUnavailableReason=metadata_unavailable.
+  Sólo la respuesta explícita de Prepare activa esta ruta, con baseDigest
+  nativo obligatorio. Cargar revisión inicial o referencia esperada exacta,
+  comprobar base/revisión/snapshot y digest esperado antes de conservar handle.
+  No usar la combinación seleccionada del borrador como identidad de la fuente,
+  no llamar a Project ni derivar/hashar valores en frontend en esta ruta.
+  Fallos de autorización, fuente, cancelación, contrato o cleanup conservan
+  su tratamiento, sin catch general que los convierta en inspección válida.
+  La ruta proyectada previa conserva compatibilidad si Prepare antiguo no
+  aporta baseDigest/causa. La propuesta rechaza cualquier sesión sin proyección/
+  combinación; no filtra silenciosamente una parte de la selección abierta.
+  Fixtures de contrato exacto, referencia histórica/head nueva, fuente ajena,
+  causa ausente, digest ausente/inválido, errores tardíos y cierre de handles.
+
+- **T12g3c — dueño de sesiones y entrada al editor (4 paths).**
+  `frontend/src/hub/strategy-orbit/use-recorded-sessions.ts` y test,
+  `use-recorded-workflow.ts` y test. El dueño rechaza Apply/Adopt de una sesión
+  no proyectable y conserva max4, duplicados, cancelación, exclusión mutua,
+  bloqueo por ediciones/comando incierto y cierre de handles.
+  Workflow expone acción explícita de inspección sobre una sesión ya poseída;
+  reutiliza corrections.load y abre la vista editor sin crear/guardar un
+  borrador, seleccionar revisiones ni calcular. Permite acceso sin combinación
+  ni repositorio de carreras todavía disponible. Mantener los bloqueos actuales;
+  nunca abrir un segundo handle ni duplicar controlador.
+
+- **T12g3d — textos del acceso y selección (4 paths).**
+  `frontend/src/i18n/locales/strategy-orbit/es.ts`, `en.ts`, `it.ts`, `pt.ts`.
+  Etiquetas de inspeccionar, volver al asistente, datos insuficientes para calcular y fuente no
+  utilizada por la carrera. Causa legible, sin IDs internos ni instrucciones
+  de implementación. No anunciar resultado calculado ni lectura física validada.
+
+- **T12g3e — estado real de selección en Datos/Revisiones (4 paths).**
+  `frontend/src/hub/strategy-orbit/StrategyRecordedData.tsx` y test,
+  `StrategyRecordedRevisions.tsx` y test. Recibir referencias realmente
+  seleccionadas por la carrera (ausencia equivale a [] durante compatibilidad
+  de montaje). Pin requiere baseDigest/revisionId/snapshotId y sesión exactos;
+  la revisión abierta no implica "Usada por esta carrera". Datos y Revisiones
+  pueden inspeccionar fuentes no seleccionadas; preparar/adoptar para carrera
+  requiere selección y proyección válidas. Revisar el pin carga la referencia
+  del plan, no una cabeza o referencia de inspección. Mostrar causa de bloqueo,
+  conservar edición/restauración local donde el campo sea válido.
+
+- **T12g3f — conexión del recorrido único (4 paths).**
+  `frontend/src/hub/strategy-orbit/StrategyRecordedWorkflow.tsx` y test,
+  `StrategyRecordedSessions.tsx` y test. La biblioteca existente ofrece
+  Inspeccionar en sesiones abiertas. Workflow cierra el drawer, llama inspect
+  y muestra el mismo panel A4 Datos; pasa todas las sesiones abiertas y las
+  referencias reales del borrador a Datos/Revisiones. No duplica pantalla ni
+  añade una tercera ruta de persistencia. Usar selección rechaza fuentes
+  no proyectables, sin aceptar un subconjunto oculto. Volver al asistente
+  reutiliza flow.prepare, ofrece acción visible desde inspección y conserva
+  lo pendiente; los formularios/comandos inciertos bloquean también esa salida.
+  Prueba de recorrido: sin combinación ni carrera guardada, abrir fuente
+  parcial -> Datos -> corrección válida -> guardado local -> causa de cálculo
+  bloqueado -> historial -> volver al asistente; sin SaveDraft/Apply/Calculate
+  implícitos. Bloqueos de formularios y comando incierto protegen la navegación.
+
+  G3: focales/typecheck/lint por corte; global Go/vet para A. Suite frontend
+  completa y build después de F antes de aceptar el montaje. G3A aislado
+  no cierra acceso al editor. Revisión visual A4 y Wails se registran aparte.
+  No nuevos lectores, custodias, autorizaciones sintéticas, dependencias,
+  señales físicas ni campos de coche/circuito.
 - **T12h — UI Datos y Revisiones (4 paths).**
   `frontend/src/hub/strategy-orbit/StrategyRecordedData.tsx` +
   `StrategyRecordedData.test.tsx` (edición de SessionType/clima con causa);

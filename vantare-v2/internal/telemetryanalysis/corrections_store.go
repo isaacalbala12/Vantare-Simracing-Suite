@@ -44,6 +44,16 @@ type CorrectionCommandResolution struct {
 	HeadID   string              `json:"headId"`
 	Revision *CorrectionRevision `json:"revision,omitempty"`
 }
+
+// ObservationCorrectionInput is assembled by Analysis from authorized original
+// data and scalar reanalysis. It is not a client DTO. Non-nil FamilyUses denotes
+// an explicit complete set, including explicit removal of all family decisions.
+type ObservationCorrectionInput struct {
+	Samples    []SampleCorrectionInput
+	Original   LapValidityAnalysis
+	Effective  LapValidityAnalysis
+	FamilyUses []LapFamilyUseCorrection
+}
 type correctionDocument struct {
 	Version   int                  `json:"version"`
 	Base      SourceAnalysisRef    `json:"base"`
@@ -119,7 +129,22 @@ func (s *CorrectionStore) Save(ctx context.Context, base SourceAnalysisRef, inpu
 	if err != nil {
 		return result, err
 	}
-	return s.saveValidated(ctx, base, inputs, command, commandDigest)
+	return s.saveValidated(ctx, base, ObservationCorrectionInput{Samples: inputs}, command, commandDigest)
+}
+
+func (s *CorrectionStore) SaveObservations(ctx context.Context, base SourceAnalysisRef, input ObservationCorrectionInput, command CorrectionSaveCommand) (CorrectionStoreResult, error) {
+	if input.FamilyUses == nil || len(input.Samples)+len(input.FamilyUses) > MaxSampleCorrections {
+		return CorrectionStoreResult{}, ErrInvalidCorrection
+	}
+	requests := make([]SampleValueCorrection, len(input.Samples))
+	for i, sample := range input.Samples {
+		requests[i] = sample.Request
+	}
+	digest, err := validatedObservationCommandDigest(base, command, requests, input.FamilyUses)
+	if err != nil {
+		return CorrectionStoreResult{}, err
+	}
+	return s.saveValidated(ctx, base, input, command, digest)
 }
 
 // ResolveCommand checks the exact command without another write. The same lease
@@ -129,6 +154,21 @@ func (s *CorrectionStore) ResolveCommand(ctx context.Context, base SourceAnalysi
 	if err != nil {
 		return result, err
 	}
+	return s.resolveValidatedCommand(ctx, base, command, digest)
+}
+
+func (s *CorrectionStore) ResolveObservationsCommand(ctx context.Context, base SourceAnalysisRef, requests []SampleValueCorrection, families []LapFamilyUseCorrection, command CorrectionSaveCommand) (CorrectionCommandResolution, error) {
+	if families == nil {
+		return CorrectionCommandResolution{}, ErrInvalidCorrection
+	}
+	digest, err := validatedObservationCommandDigest(base, command, requests, families)
+	if err != nil {
+		return CorrectionCommandResolution{}, err
+	}
+	return s.resolveValidatedCommand(ctx, base, command, digest)
+}
+
+func (s *CorrectionStore) resolveValidatedCommand(ctx context.Context, base SourceAnalysisRef, command CorrectionSaveCommand, digest string) (result CorrectionCommandResolution, err error) {
 	path, lease, err := s.lock(ctx, base)
 	if err != nil {
 		return result, err
@@ -150,6 +190,16 @@ func (s *CorrectionStore) ResolveCommand(ctx context.Context, base SourceAnalysi
 		}
 	}
 	return CorrectionCommandResolution{HeadID: doc.HeadID}, nil
+}
+
+func validatedObservationCommandDigest(base SourceAnalysisRef, command CorrectionSaveCommand, requests []SampleValueCorrection, families []LapFamilyUseCorrection) (string, error) {
+	if len(requests)+len(families) > MaxSampleCorrections {
+		return "", ErrInvalidCorrection
+	}
+	if _, err := validatedCorrectionCommandDigest(base, command, requests); err != nil {
+		return "", err
+	}
+	return correctionCommandDigestWithFamilies(base, command, requests, families)
 }
 
 func validatedCorrectionCommandDigest(base SourceAnalysisRef, command CorrectionSaveCommand, requests []SampleValueCorrection) (string, error) {
@@ -178,7 +228,7 @@ func validatedCorrectionCommandDigest(base SourceAnalysisRef, command Correction
 	return correctionCommandDigest(base, command, requests)
 }
 
-func (s *CorrectionStore) saveValidated(ctx context.Context, base SourceAnalysisRef, inputs []SampleCorrectionInput, command CorrectionSaveCommand, commandDigest string) (result CorrectionStoreResult, err error) {
+func (s *CorrectionStore) saveValidated(ctx context.Context, base SourceAnalysisRef, input ObservationCorrectionInput, command CorrectionSaveCommand, commandDigest string) (result CorrectionStoreResult, err error) {
 	path, lease, err := s.lock(ctx, base)
 	if err != nil {
 		return result, err
@@ -202,12 +252,20 @@ func (s *CorrectionStore) saveValidated(ctx context.Context, base SourceAnalysis
 	if doc.HeadID != command.ExpectedRevision {
 		return result, ErrCorrectionConflict
 	}
+	if input.FamilyUses == nil && len(doc.Revisions) > 0 && len(doc.Revisions[len(doc.Revisions)-1].Snapshot.FamilyUses) > 0 {
+		return result, fmt.Errorf("%w: complete family correction set required", ErrInvalidCorrection)
+	}
 	if len(doc.Revisions) >= maxCorrectionRevisions {
 		return result, fmt.Errorf("%w: revision quota", ErrInvalidCorrection)
 	}
-	snapshot, err := PrepareSampleCorrectionSnapshot(base, inputs)
+	snapshot, err := PrepareObservationCorrectionSnapshot(base, input.Samples, input.Original, input.FamilyUses)
 	if err != nil {
 		return result, err
+	}
+	if len(snapshot.FamilyUses) > 0 {
+		if _, err := ApplyLapFamilyCorrections(base, input.Original, input.Effective, snapshot.FamilyUses); err != nil {
+			return result, err
+		}
 	}
 	revision := CorrectionRevision{ParentRevisionID: doc.HeadID, Command: command, CommandDigest: commandDigest, CreatedAt: time.Now().UTC().Format(time.RFC3339Nano), Snapshot: snapshot}
 	revision.RevisionID, err = correctionRevisionDigest(revision)

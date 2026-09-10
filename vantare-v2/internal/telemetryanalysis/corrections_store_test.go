@@ -8,7 +8,158 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
+
+func observationStoreExample(t *testing.T) (SourceAnalysisRef, ObservationCorrectionInput, CorrectionSaveCommand) {
+	t.Helper()
+	base, original, family := lapFamilyCorrectionExample(t)
+	_, channel, sample, request := correctionExample()
+	request.Base = base
+	initial, err := PrepareSampleCorrectionSnapshot(base, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	input := ObservationCorrectionInput{Samples: []SampleCorrectionInput{{Channel: channel, Sample: sample, Request: request}}, Original: original, Effective: original, FamilyUses: []LapFamilyUseCorrection{family}}
+	command := CorrectionSaveCommand{ExpectedRevision: initial.SnapshotID, CommandID: "mixed", Reason: "Review fuel and pace", LocalAuthorID: "local"}
+	return base, input, command
+}
+
+func TestObservationStoreRestartRestoreAndLegacyProtection(t *testing.T) {
+	ctx := context.Background()
+	base, input, command := observationStoreExample(t)
+	root := t.TempDir()
+	store := NewCorrectionStore(root)
+	legacy := command
+	legacy.CommandID = "legacy"
+	first, err := store.Save(ctx, base, input.Samples, legacy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	command.ExpectedRevision = first.HeadID
+	mixed, err := store.SaveObservations(ctx, base, input, command)
+	if err != nil || len(mixed.Revision.Snapshot.FamilyUses) != 1 || len(mixed.Revision.Snapshot.Corrections) != 1 {
+		t.Fatal("mixed revision not saved", err)
+	}
+	store = NewCorrectionStore(root)
+	loaded, err := store.Load(ctx, base, mixed.HeadID)
+	if err != nil || loaded.Revision.Snapshot.SnapshotID != mixed.Revision.Snapshot.SnapshotID {
+		t.Fatal("restart lost mixed revision", err)
+	}
+	clear := CorrectionSaveCommand{ExpectedRevision: mixed.HeadID, CommandID: "clear", Reason: "Restore original family selection", LocalAuthorID: "local"}
+	if _, err := store.Save(ctx, base, input.Samples, clear); !errors.Is(err, ErrInvalidCorrection) {
+		t.Fatal("legacy caller erased unknown family decisions", err)
+	}
+	replay, err := store.Save(ctx, base, input.Samples, legacy)
+	if err != nil || replay.Revision.RevisionID != first.HeadID || replay.HeadID != mixed.HeadID {
+		t.Fatal("legacy guard blocked historical exact replay", err)
+	}
+	empty := input
+	empty.FamilyUses = []LapFamilyUseCorrection{}
+	restored, err := store.SaveObservations(ctx, base, empty, clear)
+	if err != nil || len(restored.Revision.Snapshot.FamilyUses) != 0 || restored.Revision.Snapshot.SnapshotID != first.Revision.Snapshot.SnapshotID || restored.HeadID == first.HeadID {
+		t.Fatal("explicit restoration changed history", err)
+	}
+	old, err := store.Load(ctx, base, mixed.HeadID)
+	if err != nil || len(old.Revision.Snapshot.FamilyUses) != 1 || old.HeadID != restored.HeadID {
+		t.Fatal("restoration deleted historical family revision", err)
+	}
+}
+
+func TestObservationStoreResolvesFullPayloadWithoutAnotherWrite(t *testing.T) {
+	ctx := context.Background()
+	base, input, command := observationStoreExample(t)
+	store := NewCorrectionStore(t.TempDir())
+	requests := []SampleValueCorrection{input.Samples[0].Request}
+	missing, err := store.ResolveObservationsCommand(ctx, base, requests, input.FamilyUses, command)
+	if err != nil || missing.Found || missing.HeadID != command.ExpectedRevision {
+		t.Fatal("cannot confirm absence", err)
+	}
+	saved, err := store.SaveObservations(ctx, base, input, command)
+	if err != nil {
+		t.Fatal(err)
+	}
+	store.writeFile = func(string, []byte) error { t.Error("resolution wrote history"); return errors.New("unexpected write") }
+	found, err := store.ResolveObservationsCommand(ctx, base, requests, input.FamilyUses, command)
+	if err != nil || !found.Found || found.Revision == nil || found.Revision.RevisionID != saved.HeadID {
+		t.Fatal("cannot resolve exact mixed command", err)
+	}
+	changed := append([]LapFamilyUseCorrection(nil), input.FamilyUses...)
+	changed[0].Reason = "Changed payload"
+	if _, err := store.ResolveObservationsCommand(ctx, base, requests, changed, command); !errors.Is(err, ErrCorrectionConflict) {
+		t.Fatal("ignored family payload change", err)
+	}
+	if _, err := store.ResolveObservationsCommand(ctx, base, requests, []LapFamilyUseCorrection{}, command); !errors.Is(err, ErrCorrectionConflict) {
+		t.Fatal("ignored removed family payload", err)
+	}
+	_, lease, err := store.lock(ctx, base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, resolveErr := store.ResolveObservationsCommand(ctx, base, requests, input.FamilyUses, command)
+	if err := lease.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if !errors.Is(resolveErr, ErrCorrectionWriteInProgress) {
+		t.Fatal("resolution bypassed writer lease", resolveErr)
+	}
+}
+
+func TestObservationStoreRejectsEffectiveTargetChangesBeforeWriting(t *testing.T) {
+	ctx := context.Background()
+	base, input, command := observationStoreExample(t)
+	store := NewCorrectionStore(t.TempDir())
+	input.Effective.Laps = cloneFamilyCorrectionLaps(input.Original.Laps)
+	input.Effective.Laps[0].End = input.Effective.Laps[0].End.Add(time.Second)
+	if result, err := store.SaveObservations(ctx, base, input, command); !errors.Is(err, ErrCorrectionTarget) || result.HeadID != "" {
+		t.Fatal("persisted family decision after target changed", err)
+	}
+	loaded, err := store.Load(ctx, base, command.ExpectedRevision)
+	if err != nil || loaded.HeadID != command.ExpectedRevision {
+		t.Fatal("rejected snapshot changed head", err)
+	}
+	input.FamilyUses = nil
+	if _, err := store.SaveObservations(ctx, base, input, command); !errors.Is(err, ErrInvalidCorrection) {
+		t.Fatal("accepted implicit missing family set", err)
+	}
+	cancelled, cancel := context.WithCancel(ctx)
+	cancel()
+	input.FamilyUses = []LapFamilyUseCorrection{}
+	if _, err := store.SaveObservations(cancelled, base, input, command); !errors.Is(err, context.Canceled) {
+		t.Fatal("ignored cancellation", err)
+	}
+}
+
+func TestObservationStoreRecoversUncertainMixedCommit(t *testing.T) {
+	for _, failBackup := range []bool{true, false} {
+		t.Run(fmt.Sprint(failBackup), func(t *testing.T) {
+			ctx := context.Background()
+			base, input, command := observationStoreExample(t)
+			store := NewCorrectionStore(t.TempDir())
+			store.writeFile = func(path string, data []byte) error {
+				if err := writeAuthorizedSessionFile(path, data); err != nil {
+					return err
+				}
+				if strings.HasSuffix(path, ".bak") == failBackup {
+					return errors.New("lost acknowledgement")
+				}
+				return nil
+			}
+			if result, err := store.SaveObservations(ctx, base, input, command); !errors.Is(err, ErrCorrectionCommitUncertain) || result.HeadID != "" {
+				t.Fatal("false durable mixed acknowledgement", err)
+			}
+			store.writeFile = writeAuthorizedSessionFile
+			found, err := store.ResolveObservationsCommand(ctx, base, []SampleValueCorrection{input.Samples[0].Request}, input.FamilyUses, command)
+			if err != nil || !found.Found || found.Revision == nil || len(found.Revision.Snapshot.FamilyUses) != 1 {
+				t.Fatal("lost uncertain family command", err)
+			}
+			replay, err := store.SaveObservations(ctx, base, input, command)
+			if err != nil || replay.HeadID != found.Revision.RevisionID || replay.Revision.ParentRevisionID != command.ExpectedRevision {
+				t.Fatal("replay created another revision", err)
+			}
+		})
+	}
+}
 
 func TestCorrectionStoreRevisionConflictReplayAndRestore(t *testing.T) {
 	ctx := context.Background()

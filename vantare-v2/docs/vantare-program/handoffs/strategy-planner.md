@@ -1862,3 +1862,19 @@ Siguiente T11d: guardar/resolver mixtos bajo el lease existente, guard legacy
 contra borrado de familias y revalidación de objetivos tras escalares antes de
 persistir. Hasta ese corte no hay guardado mixto ni API/UI familiar habilitados.
 Sin push/PR/CI remota, Wails, precisión, nota visual, merge o promoción.
+
+## T11d — guardado y resolución mixtos
+
+SaveObservations usa el mismo saveValidated/lease/backup. Paquete interno de
+Analysis incluye muestras y validez original/efectiva; se comprueba la aplicación
+completa a los objetivos efectivos antes de persistir. Una petición legacy que
+omite familias no puede borrarlas; replay histórico exacto conserva prioridad.
+ResolveObservationsCommand identifica todo el payload y comparte lease sin
+escritura nueva (salvo recuperación existente). Conjunto explícitamente vacío
+restaura sin borrar revisiones previas. Pruebas incluyen reinicio, motivo cambiado,
+conjunto omitido, target cambiado, cancelación, lease y confirmación perdida en
+backup/primary. Focales, global Go -p1 y vet de alcance PASS; dos paths lógica/test.
+Todavía no API/UI familiar ni derivación mixta pública. Siguiente T11e1 vista y
+derivación de snapshot mixto, T11e2 identidad temporal en consumidores y T11e3
+inclusión explícita frente a exclusiones blandas. Sin cambiar umbrales físicos.
+Sin Wails/precision/visual >9/push/PR/CI remota/merge/promoción.

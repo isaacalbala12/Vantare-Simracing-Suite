@@ -58,6 +58,13 @@ type ObservationCorrectionInput struct {
 	FamilyUses      []LapFamilyUseCorrection
 	Session         HistoricalSession
 	Classifications []ClassificationCorrection
+	// ResolveCanonicalCombination resuelve una referencia canónica contra
+	// el catálogo autorizado para una escritura nueva de identidad. Es un
+	// callback nativo opcional, nunca un DTO ni parte de digests. El store
+	// no posee catálogo: se invoca una sola vez, bajo lease y sólo después
+	// de replay, conflicto de cabeza, guardas de grupos desconocidos y
+	// cuota. Replay, Resolve, Load y reapertura nunca lo consultan.
+	ResolveCanonicalCombination func(context.Context, string) (CombinationIdentity, error)
 }
 type correctionDocument struct {
 	Version   int                  `json:"version"`
@@ -223,8 +230,10 @@ func validatedObservationCommandDigest(base SourceAnalysisRef, command Correctio
 }
 
 // validatedMixedCommandDigest is the single digest function shared by Save
-// and Resolve for the mixed set. Without classifications it returns the
-// v1/v2 digest unchanged, preserving historical hashes.
+// and Resolve for the mixed set. It delegates to the canonical v4 digest:
+// without identity it returns the v1/v2/v3 digest unchanged, preserving
+// historical hashes. It only validates request representation, never
+// consults a catalog nor fabricates a canonical tuple from client text.
 func validatedMixedCommandDigest(base SourceAnalysisRef, command CorrectionSaveCommand, requests []SampleValueCorrection, families []LapFamilyUseCorrection, classes []ClassificationCorrection) (string, error) {
 	if len(requests)+len(families)+len(classes) > MaxSampleCorrections {
 		return "", ErrInvalidCorrection
@@ -232,7 +241,7 @@ func validatedMixedCommandDigest(base SourceAnalysisRef, command CorrectionSaveC
 	if _, err := validatedCorrectionCommandDigest(base, command, requests); err != nil {
 		return "", err
 	}
-	return correctionCommandDigestMixed(base, command, requests, families, classes)
+	return correctionCommandDigestCanonicalMixed(base, command, requests, families, classes)
 }
 
 func validatedCorrectionCommandDigest(base SourceAnalysisRef, command CorrectionSaveCommand, requests []SampleValueCorrection) (string, error) {
@@ -259,6 +268,42 @@ func validatedCorrectionCommandDigest(base SourceAnalysisRef, command Correction
 		}
 	}
 	return correctionCommandDigest(base, command, requests)
+}
+
+// prepareMixedSnapshotForWrite prepares a new write under the retained lease.
+// Without identity it keeps the exact v1/v2/v3 representation and never
+// invokes the resolver. With identity it reuses the common reference already
+// validated by the command digest (never deriving a tuple from client text),
+// resolves it once through the native callback and prepares the snapshot
+// with the canonical J2 constructor and a separate target. A missing
+// resolver reports ErrCorrectionTarget; a resolver error propagates wrapped;
+// ctx.Err is checked after resolving even when the callback ignored
+// cancellation. Family validation and every previous guard stay intact.
+func prepareMixedSnapshotForWrite(ctx context.Context, base SourceAnalysisRef, input ObservationCorrectionInput) (PreparedSampleCorrectionSnapshot, error) {
+	if !hasStoredIdentityActivity(input.Classifications) {
+		return PrepareMixedCorrectionSnapshot(base, input.Samples, input.Original, input.FamilyUses, input.Session, input.Classifications)
+	}
+	reference := ""
+	for _, request := range input.Classifications {
+		if request.CanonicalCombinationID != "" {
+			reference = request.CanonicalCombinationID
+			break
+		}
+	}
+	if reference == "" {
+		return PreparedSampleCorrectionSnapshot{}, fmt.Errorf("%w: missing canonical combination reference", ErrCorrectionTarget)
+	}
+	if input.ResolveCanonicalCombination == nil {
+		return PreparedSampleCorrectionSnapshot{}, fmt.Errorf("%w: missing canonical combination resolver", ErrCorrectionTarget)
+	}
+	target, resolveErr := input.ResolveCanonicalCombination(ctx, reference)
+	if cerr := ctx.Err(); cerr != nil {
+		return PreparedSampleCorrectionSnapshot{}, cerr
+	}
+	if resolveErr != nil {
+		return PreparedSampleCorrectionSnapshot{}, fmt.Errorf("resolve canonical combination: %w", resolveErr)
+	}
+	return PrepareCanonicalMixedCorrectionSnapshot(base, input.Samples, input.Original, input.FamilyUses, input.Session, input.Classifications, &target)
 }
 
 func (s *CorrectionStore) saveValidated(ctx context.Context, base SourceAnalysisRef, input ObservationCorrectionInput, command CorrectionSaveCommand, commandDigest string) (result CorrectionStoreResult, err error) {
@@ -294,7 +339,10 @@ func (s *CorrectionStore) saveValidated(ctx context.Context, base SourceAnalysis
 	if len(doc.Revisions) >= maxCorrectionRevisions {
 		return result, fmt.Errorf("%w: revision quota", ErrInvalidCorrection)
 	}
-	snapshot, err := PrepareMixedCorrectionSnapshot(base, input.Samples, input.Original, input.FamilyUses, input.Session, input.Classifications)
+	// La identidad nueva se resuelve exactamente una vez, bajo el lease ya
+	// retenido y sólo después de replay, cabeza, guardas de grupos
+	// desconocidos y cuota. Sin identidad el callback nunca se invoca.
+	snapshot, err := prepareMixedSnapshotForWrite(ctx, base, input)
 	if err != nil {
 		return result, err
 	}

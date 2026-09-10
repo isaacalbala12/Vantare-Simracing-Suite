@@ -1,6 +1,6 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — T12f aceptado, siguiente T12g1
+## Estado vigente — T12g1 revisado localmente, siguiente T12g2
 
 Isaac confirma que planes y documentación siguen a cargo del orquestador.
 R19/A17/execution actualizados: Muse Spark 1.3 Contributor vía OpenCode, xhigh,
@@ -8,14 +8,14 @@ ejecuta sólo código/tests asignados, sin subdelegación ni cambios de planes,
 docs o issue. Un ejecutor por worktree; revisión personal antes de aceptar.
 Rama `vantareapp/isa-1104-recorded-classification`, base exacta
 `7f757135445439851180fc503da45f7eb9e557e7`; último código revisado
-`38eb9949f83e6037ef04f922c9e32cef359f4664`, limpio al revisar. A/B1/B2/C1/C2/D1/D2/E/F
+`f5c01dda542d1a35ca2efac365f57136a585a59d`, limpio al revisar. A/B1/B2/C1/C2/D1/D2/E/F
 aceptados localmente tras lectura de diff y evidencia (B1/B2: 126 paquetes Go
 PASS cada uno, vet exit 0; rutas en entradas siguientes). T12 sigue abierto.
 
-Siguiente G1: helpers de corrección y test, contrato TS y test (4 paths).
-Resolvedor cerrado de clave de metadata reutiliza la normalización existente;
-los helpers preparan decisiones frente al original y conservan los tres grupos.
-G2 conectará las transiciones del editor y la restauración explícita completa.
+G1 revisado localmente: resolvedor cerrado de clave de metadata reutiliza la
+normalización existente; helpers frente al original conservan los tres grupos.
+Siguiente G2: `use-recorded-corrections.ts` y test (2 paths). Conecta las
+transiciones del editor, guardado incierto y restauración explícita completa.
 Microplan fija RED, paths y gates de ambos: focales/typecheck/lint por corte y
 suite frontend completa/build tras conectar G2, antes de aceptar el conjunto.
 G1 no constituye por sí solo entrega del editor. F ya conserva el payload y
@@ -30,6 +30,31 @@ Sin push, PR, CI remota, integración ni promoción. No se reabre app/LMU; gate
 Wails sigue pendiente por ERROR_INVALID_STATE de causa no demostrada.
 
 Las entradas siguientes son evidencia histórica; el estado vigente es éste.
+
+## T12g1 — helpers de corrección completos
+
+Commit `f5c01dda`, cuatro paths de contrato TS/helpers y sus tests, +201/-8.
+Resolvedor de claves a SessionType/WeatherConditions con normalización nativa
+existente, devuelve undefined para otra metadata sin ampliar el campo wire.
+Corrección desde original exacto y válido de la sesión abierta; otra ausencia
+no bloquea este campo. Sustituir/retirar valida conjuntos y bases; guardado
+conserva por defecto clasificaciones del snapshot y permite retirar con [].
+Cuota TOTAL 256 entre los tres grupos, no 256 por grupo; payload clonado.
+
+Revisión personal corrigió el primer fixture RED (v3 con comando inicial vacío)
+antes de aceptar evidencia: RED R2 usa revisión guardada validada por el parser,
+1 fallo/12 PASS, 710ms, salida classifications undefined. El resolvedor ya se
+había añadido sin uso, pero recordedCorrectionSave aún no se había cambiado;
+no se revirtió producto para producir el RED. También se corrigió validar base
+y duplicados sólo después de filtrar el campo sustituido; regresiones cubren
+ahora esas entradas inválidas. Comentario nativo corregido de EqualFold a
+ToLower(TrimSpace); ningún normalizador general ni hash en frontend.
+
+Focal final: 2 módulos/114 PASS, 810ms, exit 0; typecheck real y lint frontend
+exit 0. Logs leídos C:/tmp/isa1104-t12g1-{red,red-r2,focal,typecheck,lint}.log.
+Diff limpio, worker idle antes de commit. Suite frontend completa/build se
+reservan al cierre de G2 según el microplan: G1 aislado no entrega el editor.
+Sin Go, banco real, app/LMU ni Wails. Sin push/PR/CI remota/integración/promoción.
 
 ## T12f — cliente de comandos de clasificación
 

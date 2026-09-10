@@ -203,8 +203,13 @@ física nueva, retirada V1, merge o release en este corte documental.
   productivos ni cambios de #1097/#1098/#1103. Typecheck, 18/18 tests focales
   del parser/ruta, lint y diff-check PASS. Capturas y detalle en
   `design-evidence/functional/v2-directions.md` (`efficiency-v2-*.png`).
-  Pendiente: elección de dirección por Isaac; traducir la ganadora a diseño
-  oficial es otra entrega. Sin merge, promoción ni release.
+  Se añadieron tres direcciones más diferenciadas: Papel (piel CSS de
+  atmósfera clara), Muro y Escalera (renderers de estudio propios sobre el
+  mismo ViewModel; los colores de equipo son de demostración porque
+  `teamBrandColor` es un declared gap de V2). **Decisión de Isaac
+  2026-09-11: V1 y Foco son las direcciones a seguir;** Torre, Podio, Papel,
+  Muro y Escalera quedan descartadas como referencia conmutable. Traducir
+  Foco a diseño oficial es otra entrega. Sin merge, promoción ni release.
 
 - **S3 cerrado, 2026-09-03:** el mismo EXE R-FIX4 desde
   `4864b5c6`, SHA `cb69a4d5…878faba`, muestra Pedals sobre LMU con freno real

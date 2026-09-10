@@ -38,23 +38,48 @@ Mínimo ornamento: sin diagonal ni separadores verticales, etiquetas atenuadas,
 chip de clase al contorno en vez de relleno rojo, marca en gris y sombra más
 suave. El único acento rojo es el tick de la fila del jugador.
 
+### Papel (`v2-paper`, estructura Signature)
+
+Giro de atmósfera en CSS: hoja de tiempos impresa en marfil, tinta oscura,
+reglas finas y chip de clase rojo conservado.
+
+### Muro (`v2-pitwall`, renderer de estudio)
+
+Monitor de muro tipo control de carrera: chip de posición con el color de
+equipo, nombre compacto, diferencia grande y vueltas en cluster. El color de
+equipo es de demostración — `teamBrandColor` es un declared gap de la
+telemetría V2, así que el estudio asigna una paleta por posición.
+
+### Escalera (`v2-ladder`, renderer de estudio)
+
+Visualización de la diferencia: cada fila dibuja una barra proporcional al
+gap con el líder; el pelotón deja de ser una tabla. El líder lleva una marca
+roja fija y la fila del jugador dibuja su barra en rojo.
+
+## Decisión (2026-09-11)
+
+Isaac eligió **V1 (Signature/Broadcast vigente) y Foco** como las dos
+direcciones a seguir. Torre, Podio, Papel, Muro y Escalera quedan descartadas;
+siguen conmutables en el Workshop como referencia, sin más iteración.
+
 ## Capturas
 
 `efficiency-v1-signature.png`, `efficiency-v1-broadcast.png`,
-`efficiency-v2-tower.png`, `efficiency-v2-podium.png`, `efficiency-v2-focus.png`
+`efficiency-v2-tower.png`, `efficiency-v2-podium.png`, `efficiency-v2-focus.png`,
+`efficiency-v2-paper.png`, `efficiency-v2-pitwall.png`, `efficiency-v2-ladder.png`
 (mismo fixture de estudio: 10 filas, Carrera, fondo Mixto, Recibiendo).
 
 ## Checks
 
 - `pnpm --dir frontend typecheck` → PASS
-- `pnpm --dir frontend test -- overlay-workshop-query OverlayWorkshopDevRoute` → 18/18 PASS
+- `pnpm --dir frontend test -- overlay-workshop-query OverlayWorkshopDevRoute` → 19/19 PASS
 - `eslint` sobre los archivos tocados → PASS
 - `git diff --check` → PASS
 
 ## Pendiente
 
-- Elección de dirección por Isaac; la ganadora se traduce a diseño oficial en
-  otra entrega (esta rama no toca el catálogo ni `tokens.css`).
+- Traducir Foco a diseño oficial es otra entrega (esta rama no toca el
+  catálogo ni `tokens.css`).
 - Las pieles conviven con cualquier estructura base vía Estilo; las
   combinaciones no canónicas (p. ej. Foco sobre Broadcast) quedan para juicio,
   no como producto.

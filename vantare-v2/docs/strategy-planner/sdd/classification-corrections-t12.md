@@ -6,8 +6,9 @@ SDD R08/R07, aceptación A08/A09. Continúa ADR 0010 y
 [corrections-contract-v1](../corrections-contract-v1.md) operación 2
 `set_classification` (implementación parcial descrita aquí); no crea otra custodia,
 lector, formato, motor ni dependencia. Este documento fija el contrato
-implementable y los microcortes. A–G3 y Ha/Hb/Hc/Hc2/Hd/I están implementados
-y revisados localmente; I pasó Imola/Monza y §5/J1 definen la continuación.
+implementable y los microcortes. A–G3 y Ha/Hb/Hc/Hc2/Hd/I/J1 están implementados
+y revisados localmente; I pasó Imola/Monza, J1 pasó global/vet y §5/J2
+definen la continuación de custodia v4, todavía sin montaje nativo.
 Estos cortes no cierran T12 ni los gates visual/nativo/empírico.
 
 ## 1. Conjunto cerrado de campos y tipos
@@ -839,6 +840,68 @@ disponibilidad de señal.
   frontend/.tmp/isa1104-t12j1-*.log con EXIT y fallos conservados. Sin banco,
   app/LMU ni Wails. Próximo corte snapshot/decoder v4 aún no se delega;
   root declarará sus paths al aceptar éste.
+
+- **T12j2 — snapshot y lectura de identidad v4 (5 paths).**
+  `internal/telemetryanalysis/correction_snapshot.go`,
+  `internal/telemetryanalysis/corrections_document.go`,
+  `internal/telemetryanalysis/classification_identity.go`, nuevos
+  `internal/telemetryanalysis/correction_snapshot_identity_test.go` y
+  `internal/telemetryanalysis/corrections_document_identity_test.go`.
+  Sin store/servicio/catálogo/UI/reader ni activación de escritura nativa.
+
+  Antes de cambiar producción, capturar en el nuevo test los valores
+  deterministas de v3 usando los constructores/fixtures actuales (sólo
+  clasificaciones y mezcla de tres grupos). Registrar SnapshotID, digest
+  de comando y SHA256 de JSON en un log baseline literal y fijarlos como
+  vectores esperados. No regenerarlos después del cambio. Mantener goldens
+  v1/v2 existentes y comprobar los mismos resultados serializados sin target.
+
+  PreparedSampleCorrectionSnapshot añade canonicalCombination opcional
+  como *CombinationIdentity, omitempty. Constructor canónico nuevo recibe
+  los inputs actuales más target resuelto; el anterior conserva firma
+  y delega sin target. Preparación via J1 contra originales actuales,
+  misma cuota de tres grupos. Combinar con identidad requiere target,
+  copia separada del tuple y tag analysis.mixed-snapshot.v4; el digest
+  v4 cubre base, todos los grupos y target. Sin identidad, target debe
+  faltar y se conserva exactamente la representación/digest v1/v2/v3.
+  Los constructores antiguos no emiten identidad v3 por accidente.
+
+  Lectura de documento recalcula snapshot/command/revision/chain mediante
+  los validadores actuales y el target persistido. La preparación de
+  representación guardada puede reconstruir el mínimo de originales
+  esperados como hace hoy; no es autorización ni observación nueva.
+  Validar target/IDs/campos/original/corregido; rechazar target ausente/
+  divergente, identidad inerte, tag falso, cuota y conjunto incoherente.
+  v4 requiere target no nulo. En v1/v2/v3 se rechaza la presencia del campo
+  canonicalCombination, incluso null; omisión es la representación antigua.
+  Puede hacerse una comprobación acotada de presencia con RawMessage en
+  el decoder existente, conservando DisallowUnknownFields y el límite8MiB;
+  no crear otro parser/pipeline genérico ni cambiar el formato documental1.
+
+  El digest de comando con identidad no consulta catálogo ni requiere
+  target resuelto: valida representación de peticiones (base exacta, campo
+  cerrado, referencia común lmu:64hex, esperado RAW UTF8/no vacío,
+  reemplazo bruto1024bytesUTF8/no vacío, motivo/manual, duplicados/cuota),
+  ordena una copia y usa dominio analysis.mixed-command.v4. Reutilizar
+  la validación común J1 cuando resulte claro. Los dos campos antiguos
+  sin referencia conservan la ruta/domain v3 y sus bytes. No fabricar
+  un tuple desde texto del cliente y llamarlo canónico. La validación
+  contra target de catálogo ocurre al preparar una escritura nueva
+  bajo lease en J3, después del replay. Resolve no dependerá del catálogo.
+
+  Tests de v4 sólo identidad y mixto, orden estable, no mutación del target,
+  cuota conjunta con cada grupo, referencias/targets divergentes, v4 inerte,
+  formatos anteriores con target incluso null, manipulación de campos/
+  digests y chain v1/v2/v3/v4→restauración legacy. Integridad local no es
+  autenticación de una falsificación completamente coherente: no prometer
+  que los hashes detectan esa situación. Conservar pruebas existentes.
+
+  Gates: baseline previo, gofmt/focal snapshot/document/clasificación;
+  root revisa diffs/logs antes de global Go -p1 ./... y vet de alcance.
+  Logs nuevos frontend/.tmp/isa1104-t12j2-*.log, salida literal/EXIT inmediato
+  y ningún archivo sobrescrito. No banco/GUI/LMU ni escritura de v4 mediante
+  la app aún. Siguiente J3 de custodia/callback y luego vista/proyección,
+  catálogo/montaje nativo y cliente/UI, con paths cerrados antes de asignar.
 
 Cada corte declara sus paths y evidencia antes de editar. El orquestador es
 dueño de este plan, del handoff y de la issue; Muse implementa únicamente

@@ -1,9 +1,10 @@
-# ISA-1104 — clasificación registrada: evidencia de Hd e I
+# ISA-1104 — clasificación registrada: evidencia de Hd, I y J1
 
 Fecha: 2026-09-10. Rama `vantareapp/isa-1104-recorded-classification`,
 base `7f757135445439851180fc503da45f7eb9e557e7`.
 Código Hd `e583fe30925d7e8bd162fcc7a7f324509289e204`;
-código I `6c568769cb966e7230b1771fd64457a6118838c1`.
+código I `6c568769cb966e7230b1771fd64457a6118838c1`;
+código J1 `f6fcc09dadec655d2bde0d87993e4c8d3ba5bc25`.
 Worktree `C:/tmp/vantare-isa1104/vantare-v2`. Orquestador: planes y revisión
 personal. Ejecutor: Muse Spark1.3 Contributor, OpenCode, xhigh, sin subdelegación.
 
@@ -92,3 +93,28 @@ R3 contiene la evidencia cruda válida del código final; no se atribuye RED
 de producto a errores de construcción de este banco.
 
 Sin app/LMU, push, PR, CI remota, merge, promoción o release en estos cortes.
+
+## J1 — identidad canónica, preparación pura
+
+Cuatro paths Analysis, +744/-16, revisados personalmente. Target recibido
+como dato nativo, referencias y tuple coherentes, precondiciones RAW y
+disponibilidad/privacidad del original. No consulta de catálogo ni autorización
+probada por el fixture. Constructores antiguos, JSON sin referencia y
+precedencia de error de base conservados. No snapshot/store/UI en este corte.
+
+Root exigió target ya recortado ante metadata parcial, reutilizar el helper
+original, conservar precedencia y añadir casos del campo corregido privado/
+ausente/duplicado, Unicode y frontera de1024bytes. Corregido; no se eliminó
+ninguna aserción anterior. Al cerrar review sólo cambiaron dos comentarios.
+
+| Gate | Resultado | Log bajo frontend/.tmp/ |
+|---|---|---|
+| Canónico R1/R2 | 0.029s/0.068s, EXIT0 | isa1104-t12j1-focal-canonical-r{1,2}.log |
+| Clasificación R1 | 0.159s, EXIT0 | isa1104-t12j1-focal-classification-r1.log |
+| Global Go | 126 paquetes ok, cero FAIL, EXIT0 | isa1104-t12j1-global.log |
+| Vet de alcance | sin salida, EXIT0 | isa1104-t12j1-vet.log |
+
+Gofmt/diff limpios, logs crudos conservados y leídos por root. No RED previo
+de producto en esta API nueva. No banco/frontend/Wails repetidos: los últimos
+gates de esos ámbitos siguen siendo I/Hd y el bloqueo nativo documentado.
+Worker idle antes del commit. J2 está planificado por root; no implementado.

@@ -1,6 +1,6 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — T12i aceptado con banco real, siguiente J1
+## Estado vigente — T12j1 aceptado; J2 cerrado por root
 
 Isaac confirma que planes y documentación siguen a cargo del orquestador.
 Muse Spark 1.3 Contributor vía OpenCode, xhigh, ejecuta sólo código/tests
@@ -8,9 +8,11 @@ asignados, sin subdelegación ni cambios de planes, docs o issue. Un ejecutor
 por worktree; revisión personal de diff y evidencia antes de aceptar.
 Rama `vantareapp/isa-1104-recorded-classification`, base exacta
 `7f757135445439851180fc503da45f7eb9e557e7`; último código revisado
-`6c568769cb966e7230b1771fd64457a6118838c1`. A–G3 y Ha/Hb/Hc/Hc2/Hd/I
-aceptados localmente tras revisión personal y gates. I son sólo los dos
-paths de test declarados, +346/-1. T12 abierto; siguiente J1 puro.
+`f6fcc09dadec655d2bde0d87993e4c8d3ba5bc25`. A–G3 y Ha/Hb/Hc/Hc2/Hd/I/J1
+aceptados localmente tras revisión personal y gates. J1 puro ocupa sus
+cuatro paths declarados, +744/-16; revisión, focales, global/vet completos.
+Root cierra J2 en el microplan: cinco paths de snapshot/decoder/identidad
+y tests; primero vectores v3 previos al cambio. Sin store ni montaje nativo.
 
 G3 ya conecta la biblioteca con el mismo editor Datos/Revisiones, también
 sin combinación ni repositorio: apertura autorizada y referencia exacta,
@@ -21,7 +23,7 @@ pestañas conservan formularios. Auditor i18n Hd: EXIT0, paridad OK,
 ausentes 0 y huérfanas 0; queda cerrado el estado intermedio de Hc.
 Última suite global Hd: 444 archivos/3680 PASS, 224.02s EXIT0;
 build 1086 módulos/1.56s EXIT0, typecheck/lint/auditor EXIT0.
-Último Go global I: 126 paquetes ok/cero FAIL EXIT0 y vet de alcance EXIT0.
+Último Go global J1: 126 paquetes ok/cero FAIL EXIT0 y vet de alcance EXIT0.
 I banco nativo real: Imola14.03s y Monza19.73s PASS/EXIT0, originales intactos.
 Authorizer controlado; no prueba Wails/login, paridad visual ni precisión.
 
@@ -35,7 +37,7 @@ ficticias para comprobar disponibilidad ni duplicar validación en React.
 I banco real opt-in aceptado. Root cerró resolución canónica
 en §5/ADR0011 antes de su código, y declara J1 de cuatro paths. No aceptar
 un hash de texto del cliente como catálogo autorizado. T13–T24 siguen en
-la secuencia SDD; J1 se asigna después de este registro.
+la secuencia SDD; J2 ya está cerrado por root antes de asignarlo al ejecutor.
 
 Sin cambio de alcance público ni entrega completa: `plan.md` intacto en
 estos cortes internos; se actualizará con la entrega en el mismo PR.
@@ -44,6 +46,34 @@ app/LMU; gate Wails sigue pendiente por ERROR_INVALID_STATE de causa no
 demostrada. Contraste real y paridad visual >9/10 siguen aparte.
 
 Las entradas siguientes son evidencia histórica; el estado vigente es éste.
+
+## T12j1 — preparación pura revisada y aceptada
+
+Cuatro paths classification_corrections/identity y sus tests, sin tocar
+snapshot/store/catalog/service/UI. Cuatro campos y referencia opcional
+omitida para clientes anteriores; target nativo recibido, no autorización.
+Root leyó todos los diffs y añadió exigencias: target ya recortado incluso
+con campo original ausente, reutilizar el helper de disponibilidad,
+preservar precedencia de base en constructor anterior, campo corregido
+no verificable y límites de1024bytes multibyte/precondición RAW.
+Corregidos; ninguna aserción anterior eliminada.
+
+Focal canonical R1 0.029s y R2 0.068s EXIT0; clasificación R1 0.159s EXIT0.
+R2 incorpora coberturas adicionales de test, sin nuevo cambio productivo;
+gofmt/diff limpios. Logs frontend/.tmp/isa1104-t12j1-*.log leídos por root.
+Son fixtures unitarios, no contraste autorizado contra catálogo ni UI.
+Tras review sólo se corrigieron dos comentarios obsoletos. Global Go:
+126 paquetes ok/cero FAIL/EXIT0; vet app, telemetryanalysis/..., strategy/...
+y cmd/vantare: sin salida/EXIT0. Root contó el log global y leyó vet;
+ningún log sobrescrito. Commit f6fcc09dadec655d2bde0d87993e4c8d3ba5bc25,
+worker idle antes del commit. Sin banco, frontend, app/LMU o Wails repetidos.
+Son reglas puras; aún no se consulta un catálogo ni se guarda identidad v4.
+
+J2 queda definido por root en el microplan antes de asignación: snapshot v4
+con target separado, compatibilidad byte a byte v1/v2/v3 y digest de comando
+sin consulta de catálogo. La lectura usa el target persistido, no autoriza
+fuentes. Primero fijar vectores v3 con producción J1 intacta. Cinco paths;
+el store/callback y montaje se declaran en cortes posteriores.
 
 ## T12i — banco revisado y contrastado con dos fuentes reales
 

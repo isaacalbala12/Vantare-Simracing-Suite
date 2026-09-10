@@ -45,25 +45,42 @@ func CorrectableLapFamilies() []DerivationFamily {
 // validity model; a manual inclusion never creates coverage or missing signals.
 // Application and persistence remain separate, Analysis-owned operations.
 func PrepareLapFamilyUseCorrection(base SourceAnalysisRef, validity LapValidityAnalysis, request LapFamilyUseCorrection) (PreparedLapFamilyUseCorrection, error) {
-	var empty PreparedLapFamilyUseCorrection
+	baseID, err := validateLapFamilyBase(base, validity)
+	if err != nil {
+		return PreparedLapFamilyUseCorrection{}, err
+	}
+	return prepareLapFamilyUseCorrection(baseID, base, validity, request)
+}
+
+func validateLapFamilyBase(base SourceAnalysisRef, validity LapValidityAnalysis) (string, error) {
 	baseID, err := base.Digest()
 	if err != nil {
-		return empty, err
+		return "", err
 	}
+	if validity.SessionID != base.SessionID || validity.ComputationVersion != base.AnalysisVersion {
+		return "", ErrCorrectionInterpretationChanged
+	}
+	if err := validity.Temporal.ContractVersion.ValidateTemporal(); err != nil {
+		return "", ErrCorrectionInterpretationChanged
+	}
+	segmentation, err := correctionDigest("analysis.correction-segmentation.v1", validity.Temporal)
+	if err != nil || segmentation != base.SegmentationDigest {
+		return "", ErrCorrectionInterpretationChanged
+	}
+	return baseID, nil
+}
+
+// The single-item and set entrypoints validate this shared base before calling.
+// A set hashes its temporal model once, not once per requested lap/family.
+func prepareLapFamilyUseCorrection(baseID string, base SourceAnalysisRef, validity LapValidityAnalysis, request LapFamilyUseCorrection) (PreparedLapFamilyUseCorrection, error) {
+	var empty PreparedLapFamilyUseCorrection
 	if _, err := request.Base.Digest(); err != nil {
 		return empty, err
 	}
 	if base.SessionID != request.Base.SessionID || base.ContentSHA256 != request.Base.ContentSHA256 || base.SizeBytes != request.Base.SizeBytes {
 		return empty, ErrCorrectionSourceChanged
 	}
-	if base != request.Base || validity.SessionID != base.SessionID || validity.ComputationVersion != base.AnalysisVersion {
-		return empty, ErrCorrectionInterpretationChanged
-	}
-	if err := validity.Temporal.ContractVersion.ValidateTemporal(); err != nil {
-		return empty, ErrCorrectionInterpretationChanged
-	}
-	segmentation, err := correctionDigest("analysis.correction-segmentation.v1", validity.Temporal)
-	if err != nil || segmentation != base.SegmentationDigest {
+	if base != request.Base {
 		return empty, ErrCorrectionInterpretationChanged
 	}
 	if !correctionText(request.Reason, 1024) || !slices.Contains(CorrectableLapFamilies(), request.Family) || request.Expected.Family != request.Family {
@@ -74,14 +91,14 @@ func PrepareLapFamilyUseCorrection(base SourceAnalysisRef, validity LapValidityA
 		return empty, ErrCorrectionTarget
 	}
 	var original LapFamilyUse
-	var complete bool
+	var matched AnalyzedLap
 	matches, uses := 0, 0
 	for _, lap := range validity.Laps {
 		if lap.Number != target.Number || lap.Start == nil || !lap.Start.Equal(target.Start) || !lap.End.Equal(target.End) {
 			continue
 		}
 		matches++
-		complete = lap.Complete
+		matched = lap
 		for _, use := range lap.FamilyUse {
 			if use.Family == request.Family {
 				original = use
@@ -95,13 +112,9 @@ func PrepareLapFamilyUseCorrection(base SourceAnalysisRef, validity LapValidityA
 	if original.Family != request.Expected.Family || original.Included != request.Expected.Included || !slices.Equal(original.ExclusionReasons, request.Expected.ExclusionReasons) {
 		return empty, ErrCorrectionPrecondition
 	}
-	if request.Included && (!complete || slices.Contains(original.ExclusionReasons, LapExclusionIncomplete)) {
-		return empty, fmt.Errorf("%w: incomplete lap", ErrCorrectionValue)
-	}
 	if request.Included {
-		presence, covered := lapSegmentPresence(target.Start, target.End, validity.Temporal.Segments, validity.Temporal.Gaps)
-		if !covered || (presence != strategyprojection.PresenceValid && presence != strategyprojection.PresenceStale) {
-			return empty, fmt.Errorf("%w: missing lap coverage", ErrCorrectionValue)
+		if err := validateLapFamilyInclusion(validity, matched, original); err != nil {
+			return empty, err
 		}
 	}
 	// Normalize equivalent instants before hashing, and detach every collection.
@@ -120,4 +133,15 @@ func PrepareLapFamilyUseCorrection(base SourceAnalysisRef, validity LapValidityA
 		return empty, err
 	}
 	return PreparedLapFamilyUseCorrection{BaseID: baseID, CorrectionID: id, Request: request, Original: original, Corrected: corrected}, nil
+}
+
+func validateLapFamilyInclusion(validity LapValidityAnalysis, lap AnalyzedLap, use LapFamilyUse) error {
+	if !lap.Complete || lap.Start == nil || !lap.Start.Before(lap.End) || slices.Contains(use.ExclusionReasons, LapExclusionIncomplete) {
+		return fmt.Errorf("%w: incomplete lap", ErrCorrectionValue)
+	}
+	presence, covered := lapSegmentPresence(*lap.Start, lap.End, validity.Temporal.Segments, validity.Temporal.Gaps)
+	if !covered || (presence != strategyprojection.PresenceValid && presence != strategyprojection.PresenceStale) {
+		return fmt.Errorf("%w: missing lap coverage", ErrCorrectionValue)
+	}
+	return nil
 }

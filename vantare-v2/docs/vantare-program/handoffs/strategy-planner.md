@@ -1834,3 +1834,16 @@ mutación del original o adopción silenciosa. Se mantiene recuperación entre
 reinicios pendiente de T14. Subtítulo/todos los estados cargados van al gate T18.
 Siguiente #1099 T11 usos por familia; issue creada y añadida a Project Vantare.
 No push/PR/CI remota, merge, promoción o release.
+## T11b — conjunto y vista efectiva
+
+Conjunto canónico de hasta 256 decisiones, sin duplicados/solapes en una familia;
+permite decisiones independientes de familias sobre una vuelta. La vista efectiva
+vuelve a resolver número/inicio/fin tras reanálisis escalar y revalida integridad
+antes de devolver el conjunto completo; no publica una parte ni reancla objetivos.
+Copias separadas de vueltas, tiempos, etiquetas y usos. Repetir número de vuelta
+no confunde el selector de esta operación. El digest temporal se valida una vez
+por conjunto; no se rehace por cada solicitud. Incluso vacío exige base válida.
+Focales (incluyendo RED/GREEN del conjunto vacío), vet Analysis y global Go -p1
+PASS; frontend intacto, build base heredado de T11a. Tres paths lógica/test.
+Siguiente T11c representación mixta/custodia compatible. Sin UI/derivados/custodia
+familiar productivos aún. Sin Wails, precisión, push/PR/CI remota o promoción.

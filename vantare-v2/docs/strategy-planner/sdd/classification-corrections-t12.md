@@ -409,6 +409,9 @@ disponibilidad de señal.
   Sólo la respuesta explícita de Prepare activa esta ruta, con baseDigest
   nativo obligatorio. Cargar revisión inicial o referencia esperada exacta,
   comprobar base/revisión/snapshot y digest esperado antes de conservar handle.
+  En esta ruta, Session.ID abierto debe coincidir con Base.SessionID preparado;
+  reusar el parser de preparación para validar formato, sin otro validador de
+  digest. Revisión y snapshot salen del Load real, no del head ni de suposiciones.
   No usar la combinación seleccionada del borrador como identidad de la fuente,
   no llamar a Project ni derivar/hashar valores en frontend en esta ruta.
   Fallos de autorización, fuente, cancelación, contrato o cleanup conservan

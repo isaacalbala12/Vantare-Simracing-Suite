@@ -1,6 +1,6 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — T12g1/G2 aceptados localmente, siguiente T12g3a
+## Estado vigente — T12g3a aceptado localmente, siguiente T12g3b
 
 Isaac confirma que planes y documentación siguen a cargo del orquestador.
 R19/A17/execution actualizados: Muse Spark 1.3 Contributor vía OpenCode, xhigh,
@@ -8,15 +8,17 @@ ejecuta sólo código/tests asignados, sin subdelegación ni cambios de planes,
 docs o issue. Un ejecutor por worktree; revisión personal antes de aceptar.
 Rama `vantareapp/isa-1104-recorded-classification`, base exacta
 `7f757135445439851180fc503da45f7eb9e557e7`; último código revisado
-`0873be527a294f4a95ee5a3f6862bd90e1381073`, limpio al revisar. A/B1/B2/C1/C2/D1/D2/E/F/G1/G2
+`cd2ab65b38d8ab045af210a9cfdae9617c1b772f`, limpio al revisar. A/B1/B2/C1/C2/D1/D2/E/F/G1/G2/G3a
 aceptados localmente tras lectura de diff y evidencia (B1/B2: 126 paquetes Go
 PASS cada uno, vet exit 0; rutas en entradas siguientes). T12 sigue abierto.
 
 G1/G2 conectan helpers y controlador de los tres grupos: original intacto,
 restauración explícita completa y comando incierto sin pérdida. Suite frontend
 completa/build aceptados; aún falta montaje UI de clasificación.
-Siguiente G3a: preparación nativa y test de identidad, contrato TS y test
-(4 paths). Expone baseDigest nativo para inspección exacta sin combinación.
+G3a expone baseDigest nativo para inspección exacta sin combinación; tests
+nativos/TS y global Go aceptados. Siguiente G3b: apertura de sesión y propuestas,
+cada uno con su test (4 paths). Base y revisión exactas se cargan sin Project
+sólo ante la causa explícita metadata_unavailable; no se adopta una selección.
 Microplan G3a–f escrito por el orquestador: apertura, dueño, textos, estado
 real de selección en Datos/Revisiones y entrada desde biblioteca al mismo A4.
 Una sesión abierta para revisar no pasa a estar usada por la carrera; sin
@@ -33,6 +35,28 @@ Sin push, PR, CI remota, integración ni promoción. No se reabre app/LMU; gate
 Wails sigue pendiente por ERROR_INVALID_STATE de causa no demostrada.
 
 Las entradas siguientes son evidencia histórica; el estado vigente es éste.
+
+## T12g3a — identidad nativa de inspección
+
+Commit `cd2ab65b`, cuatro paths preparación Go/contrato TS y tests, +67/-1.
+PrepareCorrections entrega SourceAnalysisRef.Digest como baseDigest dentro
+de la autorización/lifecycle/bloqueo existentes, también con metadata parcial.
+Mantiene revisión inicial, capacidades y combinación/causa. TS valida digest
+si está presente y admite su ausencia en respuestas antiguas de la ruta
+proyectada. Sin hash en frontend ni nuevo lector/catálogo/custodia.
+
+RED wire real en variantes completa y parcial (exit 1, paquete 0.058s): valor
+vacío frente al digest esperado. Tests verifican identidad exacta, diferencia
+con revisión inicial y estabilidad de Prepare repetido. Go focal 0.052s,
+TS focal 103 PASS/760ms, typecheck, lint y vet de alcance exit 0. Global
+`go test -p 1 ./...` exit 0: 126 paquetes ok/cero FAIL. gofmt/diff limpios.
+Logs C:/tmp/isa1104-t12g3a-{red,go-focal,ts-focal,typecheck,lint,vet,global}.log
+leídos personalmente. Mapeo público de errores existente conservado.
+
+Suite frontend completa/build se reservan a G3f según el microplan; último
+conjunto completo es G2 (3575 PASS/build). Sin banco real ni Wails/app/LMU.
+No push/PR/CI remota/integración/promoción/release. Worker idle antes del commit;
+el orquestador mantiene planes, handoff e issue. G3a no cierra acceso al editor.
 
 ## T12g2 — controlador de correcciones y restauración
 

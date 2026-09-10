@@ -1,5 +1,34 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1106 — señales de sesión REST LMU hasta Overlay V2 — en rama
+
+Rama `vantareapp/isa-1106-lmu-rest-session-signals`, base
+`origin/nightly@131471ff`, destino `nightly`, issue #1106 `state:in-progress`,
+roadmap `milestones:telemetry-live`. El lector REST existente amplía
+`sessionInfo` (`ambientTemp`/`trackTemp` + `yellowFlagState`/`sectorFlag`/
+`gamePhase` aceptados) y lleva temperaturas (Celsius, missing/stale/invalid
+por campo) por fusión REST-joined (precedente carNumber, matriz v6/38
+intacta) hasta `BuildWeather.AmbientC/TrackC`, y la bandera por el mismo
+plumbing hasta `BuildSession.Flag` como mapeo candidato documentado: solo
+los enteros 2, 3, 4, 5 del enum SDK oficial distribuido con LMU afirman
+amarillo (1 y 6 neutros, resto missing); la equivalencia REST sigue pendiente
+de verificación y el criterio físico de la issue sigue pendiente (issue
+abierta, sin merge). Corrección de revisión B1–B4:
+campo ignorado en cualquier forma jamás bloquea la sesión; cada señal
+lleva el `sessionFloor` (la sesión anterior pasa a missing sin alargar TTL);
+`SectionWeather` se invalida por valor/calidad dentro de la política vigente.
+Sin lluvia/viento/presión, animaciones, deps nuevas ni refactor. LMU local
+sigue en menú (`sessionInfo` vacío, weather solo forecast `WNV_*`): fixtures
+no presentadas como prueba física. Detalle en
+`docs/analysis/isa-1106-session-signals.md`. Dependencia externa solo-lectura:
+Efficiency visual #1103/PR1107, comprobación combinada posterior en worktree
+separado. Revalidación independiente acotada del SHA `3f21d062`: APROBADO
+sin defectos reales (B1–B4 cerrados contra sus repros; checks focales Go,
+gofmt y diffcheck del revisor en verde) y combinación Efficiency compatible
+(32 tests PASS de consumidores frontend de bandera/temps). La equivalencia
+REST == códigos SDK sigue pendiente de captura física: promoción a Nightly
+NO autorizada. Sin merge; revisión independiente pendiente del SHA final.
+
 ## Integración autorizada ISA-1002 — 2026-09-06
 
 Preparación sobre nightly `c18f2e6e` (#1001 ya integrado), fuente ISA-996

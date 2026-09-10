@@ -23,7 +23,10 @@ type TelemetryAnalysisCorrectionSaveRequest struct {
 	Corrections []telemetryanalysis.SampleValueCorrection `json:"corrections"`
 	// Omitted/null is legacy; a non-nil empty set explicitly removes family uses.
 	FamilyUses []telemetryanalysis.LapFamilyUseCorrection `json:"familyUses"`
-	Command    telemetryanalysis.CorrectionSaveCommand    `json:"command"`
+	// Same nil contract for classification decisions: omitted/null means the
+	// caller is unaware of the group and must never silently drop it.
+	Classifications []telemetryanalysis.ClassificationCorrection `json:"classifications"`
+	Command         telemetryanalysis.CorrectionSaveCommand      `json:"command"`
 }
 type TelemetryAnalysisCorrectionRevisionRequest struct {
 	SessionID  string                              `json:"sessionId"`
@@ -33,7 +36,10 @@ type TelemetryAnalysisCorrectionRevisionRequest struct {
 
 func (service *TelemetryAnalysisService) SaveCorrections(ctx context.Context, request TelemetryAnalysisCorrectionSaveRequest) (telemetryanalysis.CorrectionStoreResult, error) {
 	var result telemetryanalysis.CorrectionStoreResult
-	if len(request.Corrections)+len(request.FamilyUses) > telemetryanalysis.MaxSampleCorrections {
+	if len(request.Corrections)+len(request.FamilyUses)+len(request.Classifications) > telemetryanalysis.MaxSampleCorrections {
+		return result, ErrTelemetryAnalysisInvalidRequest
+	}
+	if request.Classifications != nil && request.FamilyUses == nil {
 		return result, ErrTelemetryAnalysisInvalidRequest
 	}
 	err := service.withCorrectionInput(ctx, request.SessionID, func(operationCtx context.Context, input telemetryanalysis.CorrectionInput) error {
@@ -54,6 +60,8 @@ func (service *TelemetryAnalysisService) SaveCorrections(ctx context.Context, re
 			if prepareErr != nil {
 				return publicCorrectionError(prepareErr)
 			}
+			observations.Session = input.Session
+			observations.Classifications = request.Classifications
 			result, err = service.corrections.SaveObservations(operationCtx, input.Base, observations, request.Command)
 		}
 		return publicCorrectionError(err)
@@ -87,7 +95,10 @@ func (service *TelemetryAnalysisService) LoadCorrection(ctx context.Context, req
 // creates a revision or adopts the current head for a Strategy plan.
 func (service *TelemetryAnalysisService) ResolveCorrectionCommand(ctx context.Context, request TelemetryAnalysisCorrectionSaveRequest) (telemetryanalysis.CorrectionCommandResolution, error) {
 	var result telemetryanalysis.CorrectionCommandResolution
-	if len(request.Corrections)+len(request.FamilyUses) > telemetryanalysis.MaxSampleCorrections {
+	if len(request.Corrections)+len(request.FamilyUses)+len(request.Classifications) > telemetryanalysis.MaxSampleCorrections {
+		return result, ErrTelemetryAnalysisInvalidRequest
+	}
+	if request.Classifications != nil && request.FamilyUses == nil {
 		return result, ErrTelemetryAnalysisInvalidRequest
 	}
 	err := service.withCorrectionInput(ctx, request.SessionID, func(operationCtx context.Context, input telemetryanalysis.CorrectionInput) error {
@@ -101,7 +112,7 @@ func (service *TelemetryAnalysisService) ResolveCorrectionCommand(ctx context.Co
 		if request.FamilyUses == nil {
 			result, err = service.corrections.ResolveCommand(operationCtx, input.Base, request.Corrections, request.Command)
 		} else {
-			result, err = service.corrections.ResolveObservationsCommand(operationCtx, input.Base, request.Corrections, request.FamilyUses, request.Command)
+			result, err = service.corrections.ResolveMixedCommand(operationCtx, input.Base, request.Corrections, request.FamilyUses, request.Classifications, request.Command)
 		}
 		return publicCorrectionError(err)
 	})
@@ -138,6 +149,9 @@ func (service *TelemetryAnalysisService) ProjectCorrection(ctx context.Context, 
 
 // Caller keeps the authorized source lock across this derivation. Both single
 // and multi-session projections use the same classification and scalar path.
+// The initial classification gates unknown simulators and incomplete metadata;
+// the effective classification of the derived revision comes from Analysis and is
+// never reconstructed here.
 func (service *TelemetryAnalysisService) deriveCorrectionSession(ctx context.Context, input telemetryanalysis.CorrectionInput, revisionID string) (telemetryanalysis.ProjectionSessionDerivations, error) {
 	var empty telemetryanalysis.ProjectionSessionDerivations
 	if service.corrections == nil {
@@ -150,20 +164,6 @@ func (service *TelemetryAnalysisService) deriveCorrectionSession(ctx context.Con
 	derived, err := service.corrections.DeriveProjectionSession(ctx, input.Base, input.Session, input.Pages, classified, revisionID)
 	if err != nil {
 		return empty, publicCorrectionError(err)
-	}
-	// The parser catalog has no derived laps. Classify actual completed boundaries
-	// after applying the revision, preserving their unknown quality.
-	classificationSession := input.Session
-	classificationSession.Laps = nil
-	for _, lap := range derived.Validity.Laps {
-		if lap.Complete {
-			end := float64(lap.End.UnixNano()) / float64(time.Second)
-			classificationSession.Laps = append(classificationSession.Laps, telemetryanalysis.HistoricalLap{Number: int64(lap.Number), EndSeconds: &end, Boundary: telemetryanalysis.QualityUnknown, Validity: telemetryanalysis.QualityUnknown})
-		}
-	}
-	derived.Classified, err = telemetryanalysis.ClassifyHistoricalSession(classificationSession)
-	if err != nil {
-		return empty, ErrTelemetryAnalysisIncompatible
 	}
 	if err := ctx.Err(); err != nil {
 		return empty, err
@@ -223,6 +223,10 @@ func publicCorrectionError(err error) error {
 		return ErrTelemetryAnalysisCorrectionConflict
 	case errors.Is(err, telemetryanalysis.ErrCorrectionSourceChanged), errors.Is(err, telemetryanalysis.ErrCorrectionInterpretationChanged):
 		return ErrTelemetryAnalysisCorrectionSourceChanged
+	case errors.Is(err, telemetryanalysis.ErrUnsupportedSessionSimulator):
+		return ErrTelemetryAnalysisIncompatible
+	case errors.Is(err, telemetryanalysis.ErrInvalidSessionClassification):
+		return ErrTelemetryAnalysisInvalidRequest
 	case errors.Is(err, telemetryanalysis.ErrCorrectionRevisionMissing):
 		return ErrTelemetryAnalysisCorrectionMissing
 	case errors.Is(err, telemetryanalysis.ErrCorrectionCommitUncertain):

@@ -37,6 +37,22 @@ func (s *StudioProfileService) SetPerformanceSaveCoordinator(coordinator *Perfor
 	s.performanceSaves = coordinator
 }
 
+// SetWidgetPolicySource wires the native authority snapshot used by the save
+// guard (ISA-1097). Saves compare the incoming document against the native
+// baseline at path/revision and deny privilege-escalating edits on blocked
+// premium widgets; layout moves and deletions stay allowed.
+func (s *StudioProfileService) SetWidgetPolicySource(src WidgetPolicySource) {
+	s.stateMu.Lock()
+	defer s.stateMu.Unlock()
+	s.policySource = src
+}
+
+func (s *StudioProfileService) widgetPolicySource() WidgetPolicySource {
+	s.stateMu.RLock()
+	defer s.stateMu.RUnlock()
+	return s.policySource
+}
+
 // Path returns the active profile file path.
 func (s *StudioProfileService) Path() string {
 	s.stateMu.RLock()

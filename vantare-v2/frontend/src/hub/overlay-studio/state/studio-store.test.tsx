@@ -14,6 +14,16 @@ const freeAccess: AccessContext = {
   isUnconfigured: false,
 };
 
+// The save-flow fixture edits the premium delta widget, so it needs paid
+// access (ISA-1097). Free->block coverage lives in studio-access.test.ts.
+const paidAccess: AccessContext = {
+  planLabel: "paid_overlays",
+  planStatus: "active",
+  roles: [],
+  isBlocked: false,
+  isUnconfigured: false,
+};
+
 function buildRelativeWidget(id = "relative-main"): WidgetInstanceV3 {
   return {
     ...deltaDefinition.createDefault(id),
@@ -301,7 +311,9 @@ describe("StudioProvider", () => {
     const client = createMockClient(
       buildDocument({ systemVersion: 0, configVersion: 0, baseSettings: { legacy: true } }),
     );
-    const { result } = renderHook(() => useStudioDocument(), { wrapper: wrapper(client) });
+    const { result } = renderHook(() => useStudioDocument(), {
+      wrapper: wrapper(client, { access: paidAccess }),
+    });
     await waitFor(() => expect(result.current.dirty).toBe(true));
 
     await act(async () => {

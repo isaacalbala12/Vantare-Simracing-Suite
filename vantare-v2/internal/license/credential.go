@@ -45,6 +45,16 @@ type OfflineCapability struct {
 	ScopeVersion string     `json:"scope_version,omitempty"`
 }
 
+// VerifiedGrant is one signed capability deadline the verifier already
+// checked. ExpiresAt is zero for perpetual grants and for online capabilities
+// merged without a known deadline; only a non-zero, non-perpetual deadline in
+// the past drops the capability natively.
+type VerifiedGrant struct {
+	Key       Capability
+	ExpiresAt time.Time
+	Perpetual bool
+}
+
 type CredentialClaims struct {
 	Issuer            string              `json:"issuer"`
 	Subject           string              `json:"subject"`
@@ -153,6 +163,7 @@ func (v *CredentialVerifier) verify(c *OfflineCredential, expectedSubject, expec
 		now = issuedAt
 	}
 	active := make([]Capability, 0, len(c.Claims.Capabilities))
+	grants := make([]VerifiedGrant, 0, len(c.Claims.Capabilities))
 	lastKey := Capability("")
 	operationalRoleCount := 0
 	for _, grant := range c.Claims.Capabilities {
@@ -183,6 +194,7 @@ func (v *CredentialVerifier) verify(c *OfflineCredential, expectedSubject, expec
 				return nil, ErrInvalidCredential
 			}
 			active = append(active, grant.Key)
+			grants = append(grants, VerifiedGrant{Key: grant.Key, Perpetual: true})
 			continue
 		}
 		if grant.Key == CapabilityLaunchV1 || grant.ScopeVersion != "" || grant.PaidThrough == "" {
@@ -192,6 +204,10 @@ func (v *CredentialVerifier) verify(c *OfflineCredential, expectedSubject, expec
 		if parseErr != nil {
 			return nil, ErrInvalidCredential
 		}
+		// The deadline is recorded even when already past: it is a verified fact
+		// the native policy needs for its next transition, and recording it does
+		// not change which capabilities count as active here.
+		grants = append(grants, VerifiedGrant{Key: grant.Key, ExpiresAt: paidThrough})
 		if paidThrough.After(now) {
 			active = append(active, grant.Key)
 		}
@@ -202,7 +218,7 @@ func (v *CredentialVerifier) verify(c *OfflineCredential, expectedSubject, expec
 
 	res := &Result{
 		State: StateExpired, UserID: c.Claims.Subject, DeviceOK: true,
-		Capabilities: active, LastValidated: now,
+		Capabilities: active, VerifiedGrants: grants, LastValidated: now,
 	}
 	if len(c.Claims.Capabilities) == 0 {
 		res.State = StateAuthenticatedNoEntitlement

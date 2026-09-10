@@ -341,6 +341,21 @@ física nueva, retirada V1, merge o release en este corte documental.
 
 ## Estado
 
+- **ISA-1097 — Acceso y marca por widget (2026-09-10):**
+  Isaac pide continuar y comprobar ambas partes juntas al terminar. Rama propia
+  `vantareapp/isa-1097-widget-access-branding`, worktree `C:/tmp/vantare-isa1097`,
+  base apilada ISA-1083 `87cef39a`. No hay integración ni cambios en la rama visual.
+  Plan `docs/analysis/ISA-1097-widget-access-branding.md`: Delta premium,
+  eliminación sin pérdida tras downgrade, política común verificada y marca
+  Free/pago en Studio/Desktop/OBS. Prueba física diferida por decisión de Isaac.
+  Análisis independiente de autoridad/transportes en snapshot separado;
+  implementación comienza por las regresiones de acceso y eliminación.
+  Parte nativa Go completa en el worktree (sin commit): autoridad de política
+  con secuencia/expiración nativa, eventos y snapshot Wails, SSE OBS con
+  snapshot/reconexión, guards de guardado V3+legacy cableados a la autoridad
+  en composición, contrato exacto para el frontend (#1105, otro worktree).
+  `go test ./...` exit 0, `go build ./cmd/vantare` exit 0, typecheck exit 0.
+  Frontend y marca los ejecuta #1105; Efficiency/renderer CSS intactos (#1103).
 - **ISA-1083 — Efficiency / Eficiencia (2026-09-10):**
   **Decisiones actuales:** Efficiency es un sistema con estilos Signature y
   Broadcast. Studio lo traduce como Eficiencia (ES), Efficiency (EN), Eficiência

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-10T03:15:39Z",
+  "generatedAt": "2026-09-10T16:45:51Z",
   "digest": {
-    "lastCommit": "b6b5754eee059bc239fce18c08b39adae8c553fa"
+    "lastCommit": "a9b8dd3695c66856e931d73650d54c4f6cb9e828"
   },
   "phases": [
     {
@@ -343,6 +343,28 @@
     }
   ],
   "milestones": [
+    {
+      "id": "testing-center-workflow-validation",
+      "type": "fix",
+      "title": {
+        "es": "Comprobaciones de mantenimiento sin falsos fallos",
+        "en": "Maintenance checks without false failures",
+        "pt": "Verificações de manutenção sem falsas falhas",
+        "it": "Controlli di manutenzione senza falsi errori"
+      },
+      "body": {
+        "es": "Un candidato aislado corrige el error de configuración que marcaba cada cambio como fallido antes de ejecutar las comprobaciones del Testing Center. Conserva la prueba manual y mantiene desactivadas las correcciones automáticas. Integración y publicación pendientes.",
+        "en": "An isolated candidate fixes the configuration error that marked each change as failed before Testing Center checks could run. It preserves the manual test and keeps automatic fixes disabled. Integration and publication remain pending.",
+        "pt": "Um candidato isolado corrige o erro de configuração que marcava cada alteração como falha antes de executar as verificações do Testing Center. Preserva o teste manual e mantém as correções automáticas desativadas. Integração e publicação pendentes.",
+        "it": "Un candidato isolato corregge l'errore di configurazione che segnava ogni modifica come fallita prima dei controlli del Testing Center. Conserva il test manuale e mantiene disattivate le correzioni automatiche. Integrazione e pubblicazione in attesa."
+      },
+      "label": {
+        "es": "ISA-728",
+        "en": "ISA-728",
+        "pt": "ISA-728",
+        "it": "ISA-728"
+      }
+    },
     {
       "id": "overlay-modular-contract",
       "type": "feature",
@@ -1358,6 +1380,16 @@
   ],
   "delivered": [
     {
+      "date": "2026-09-10",
+      "entries": [
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-1101 · Integrar Redline Tower y dorsales canónicos"
+        }
+      ]
+    },
+    {
       "date": "2026-09-08",
       "entries": [
         {
@@ -1949,71 +1981,6 @@
           "kind": "fix",
           "scope": "overlays",
           "text": "List pure V3 profiles"
-        }
-      ]
-    },
-    {
-      "date": "2026-08-14",
-      "entries": [
-        {
-          "kind": "perf",
-          "scope": "hub",
-          "text": "Launcher - cache persistente de iconos e indice de shortcuts en disco, iconos en paralelo"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "TM-01 mapa de circuito con silueta en vantare-endurance"
-        },
-        {
-          "kind": "perf",
-          "scope": "hub",
-          "text": "Launcher - primer escaneo 28% mas rapido, iconos cacheados, TTL de rescan y debounce de args"
-        },
-        {
-          "kind": "fix",
-          "scope": "updater",
-          "text": "Excluir linea de producto legacy de la lista de actualizaciones"
-        },
-        {
-          "kind": "docs",
-          "scope": "overlays",
-          "text": "Close ISA-357 Nightly promotion"
-        },
-        {
-          "kind": "docs",
-          "scope": "hub",
-          "text": "Record ISA-358 nightly promotion"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "Limitar la batalla de Standings a carrera y una pareja"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "ISA-358 · Conectar el HUD principal con datos canónicos"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "Contrato puro v1 para capturas"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "Arquitectura de capturas en incidencias"
-        },
-        {
-          "kind": "docs",
-          "scope": "",
-          "text": "Record ISA-347 nightly promotion"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "Delta real, único y con hotkey global"
         }
       ]
     }

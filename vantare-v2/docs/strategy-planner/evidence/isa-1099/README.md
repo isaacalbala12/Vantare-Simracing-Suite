@@ -210,3 +210,12 @@ Identidad temporal exacta, capacidades nativas y cuota conjunta 256 verificadas.
 Continúa T11g2: estado mixto del controlador y restauración explícita de familias
 históricas (incluido []), antes de habilitar edición familiar visible.
 Sin Wails, precisión, revisión visual independiente, push, PR ni promoción.
+
+## T11g2 — controlador de revisiones mixtas
+
+Conserva familias y escalares al cargar, guardar, descartar, resolver o restaurar.
+Restaurar un ancestro escalar envía [] explícito; las páginas quedan fijadas a la
+revisión consultada y se invalidan al guardar. Cabeza nueva no se adopta.
+24 focales, typecheck, lint y build PASS. Sin nuevo global (último T11f3 3489).
+Continúa T11g3 montaje de vueltas y familias en Datos, muestras como vista avanzada.
+Sin Wails/precisión/visual independiente/push/PR/CI remota/merge/promoción.

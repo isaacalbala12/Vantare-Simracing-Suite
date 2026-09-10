@@ -1,7 +1,7 @@
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { AnalysisClient, AnalysisSaveRequest } from "../../strategy/analysis-client";
-import type { AnalysisPage, AnalysisStoreResult } from "../../strategy/analysis-contract";
+import type { AnalysisFamilyCorrection, AnalysisLapPage, AnalysisPage, AnalysisStoreResult } from "../../strategy/analysis-contract";
 import type { RecordedSession } from "./strategy-recorded-session";
 import { useRecordedCorrections } from "./use-recorded-corrections";
 afterEach(cleanup);
@@ -12,8 +12,8 @@ function fixture() {
   const session: RecordedSession = { editableChannelIds: ["fuel"], candidateId: "candidate", opened: { sessionId: "handle", session: { schema_version: 1, id: "source", channels: [channel], metadata: [] } }, base, combinationId: "combo", revision: { sessionId: "source", baseDigest: c, revisionId: a, snapshotId: a } };
   const current: AnalysisStoreResult = { headId: a, revision: { revisionId: a, parentRevisionId: "", command: { expectedRevision: "", commandId: "", reason: "", localAuthorId: "" }, commandDigest: "", createdAt: "", snapshot: { contractVersion: "analysis.sample-snapshot.v1", base, snapshotId: a, corrections: [] } } };
   const page: AnalysisPage = { channel_id: "fuel", start: 0, sampling: channel.sampling, samples: [{ index: 4, values: [{ column: "value", present: true, quality: "unknown", scalar: { kind: "number", number: 12 } }] }] };
-  const saved = (request: AnalysisSaveRequest): AnalysisStoreResult => ({ headId: b, revision: { revisionId: b, parentRevisionId: a, command: request.command, commandDigest: c, createdAt: "2026-09-10T00:00:00Z", snapshot: { ...current.revision.snapshot, snapshotId: b, corrections: request.corrections.map(item => ({ baseId: c, correctionId: b, request: item, original: item.expected, corrected: { ...item.expected, scalar: item.replacement } })) } } });
-  const client = { resolve: vi.fn(), load: vi.fn().mockResolvedValue(current), page: vi.fn().mockResolvedValue(page), save: vi.fn().mockImplementation(async (request: AnalysisSaveRequest) => saved(request)), project: vi.fn().mockResolvedValue({ combinationId: "combo", sourceRevisions: [{ ...session.revision, revisionId: b, snapshotId: b }] }), close: vi.fn() };
+  const saved = (request: AnalysisSaveRequest): AnalysisStoreResult => ({ headId: b, revision: { revisionId: b, parentRevisionId: a, command: request.command, commandDigest: c, createdAt: "2026-09-10T00:00:00Z", snapshot: { ...current.revision.snapshot, snapshotId: b, contractVersion: request.familyUses?.length ? "analysis.observation-snapshot.v2" : "analysis.sample-snapshot.v1", familyUses: request.familyUses?.map(item => ({ baseId: c, correctionId: b, request: item, original: item.expected, corrected: { ...item.expected, included: item.included, exclusionReasons: item.included ? [] : [...(item.expected.exclusionReasons ?? []), "manual_exclusion"] } })), corrections: request.corrections.map(item => ({ baseId: c, correctionId: b, request: item, original: item.expected, corrected: { ...item.expected, scalar: item.replacement } })) } } });
+  const client = { laps: vi.fn(), resolve: vi.fn(), load: vi.fn().mockResolvedValue(current), page: vi.fn().mockResolvedValue(page), save: vi.fn().mockImplementation(async (request: AnalysisSaveRequest) => saved(request)), project: vi.fn().mockResolvedValue({ combinationId: "combo", sourceRevisions: [{ ...session.revision, revisionId: b, snapshotId: b }] }), close: vi.fn() };
   const onAdopt = vi.fn().mockResolvedValue(undefined);
   const hook = renderHook(() => useRecordedCorrections(client as unknown as AnalysisClient, onAdopt));
   async function edit() {
@@ -153,5 +153,66 @@ describe("recorded corrections owner", () => {
     expect(f.result.current.editor?.request).toBe(request);
     expect(f.result.current.editor?.saved).toBeUndefined();
     expect(f.client.project).not.toHaveBeenCalled();
+  });
+});
+
+function lapFixture(f: ReturnType<typeof fixture>) {
+  const target = { number: 2, start: "2026-09-10T12:00:00Z", end: "2026-09-10T12:01:30Z" };
+  const family = "combined_stint_pace_curve" as const;
+  const use = { family, included: true, exclusionReasons: null };
+  const original = { ...target, complete: true, labels: [], familyUse: [use] };
+  const lapPage: AnalysisLapPage = { revisionId: a, headId: a, page: { base: f.session.base, snapshotId: a, start: 0, total: 1, laps: [{ original, effective: structuredClone(original), target, capabilities: [{ family, automaticIncluded: true, effectiveIncluded: true, canInclude: true, canExclude: true }] }] } };
+  const correction: AnalysisFamilyCorrection = { base: f.session.base, target, family, expected: use, included: false, reason: "Reviewed pace" };
+  f.client.laps.mockResolvedValue(lapPage);
+  return { target, family, lapPage, correction };
+}
+
+describe("recorded mixed editor", () => {
+  it("retains mixed edits across lost acknowledgement, resolves absence and retries the complete set", async () => {
+    const f = fixture(), lap = lapFixture(f);
+    await f.edit();
+    await act(() => f.result.current.laps());
+    act(() => expect(f.result.current.editFamily(lap.target, lap.family, false, "Reviewed pace")).toBe(true));
+    f.client.save.mockRejectedValueOnce(new Error("confirmation lost"));
+    await act(() => f.result.current.save("Both reviewed"));
+    const request = f.result.current.editor!.request!;
+    expect(request.familyUses).toEqual([lap.correction]);
+    expect(request.corrections).toHaveLength(1);
+    act(() => expect(f.result.current.removeFamily(lap.target, lap.family)).toBe(false));
+    f.client.resolve.mockResolvedValue({ found: false, headId: a });
+    await act(() => f.result.current.resolveSave());
+    expect(f.result.current.editor?.familyUses).toEqual([lap.correction]);
+    await act(() => f.result.current.save("Both reviewed"));
+    expect(f.client.save.mock.calls[1][0].familyUses).toEqual(request.familyUses);
+    expect(f.result.current.editor?.lapPage).toBeUndefined();
+    expect(f.result.current.editor?.familyUses).toEqual([lap.correction]);
+    expect(f.result.current.unresolved).toBe(false);
+  });
+  it("returns one family to automatic, discards back to its saved value, and restores a scalar-only ancestor", async () => {
+    const f = fixture(), lap = lapFixture(f);
+    const mixed = f.saved({ sessionId: "handle", base: f.session.base, corrections: [], familyUses: [lap.correction], command: { expectedRevision: a, commandId: "mixed", reason: "Checked", localAuthorId: "local-user" } });
+    f.client.load.mockResolvedValue(mixed);
+    await act(() => f.result.current.load(f.session, b));
+    act(() => f.result.current.removeFamily(lap.target, lap.family));
+    expect(f.result.current.editor?.familyUses).toEqual([]);
+    act(() => f.result.current.discard());
+    expect(f.result.current.editor?.familyUses).toEqual([lap.correction]);
+    f.client.load.mockResolvedValueOnce({ ...f.current, headId: b }).mockResolvedValueOnce(mixed);
+    await act(() => f.result.current.load(f.session, a));
+    await act(() => f.result.current.restore("Restore ancestor"));
+    expect(f.client.save).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ familyUses: [], corrections: [], command: expect.objectContaining({ expectedRevision: b }) }), expect.any(AbortSignal));
+  });
+  it("reports a newer head from inspection without moving the selected revision or accepting a stale page", async () => {
+    const f = fixture(), lap = lapFixture(f);
+    await act(() => f.result.current.load(f.session));
+    f.client.laps.mockResolvedValueOnce({ ...lap.lapPage, headId: b });
+    await act(() => f.result.current.laps());
+    expect(f.result.current.editor?.current.revision.revisionId).toBe(a);
+    expect(f.result.current.editor?.current.headId).toBe(b);
+    expect(f.onAdopt).not.toHaveBeenCalled();
+    f.client.laps.mockResolvedValueOnce({ ...lap.lapPage, revisionId: b });
+    await act(() => f.result.current.laps());
+    expect(f.result.current.error).toBe("recorded_revision_mismatch");
+    expect(f.result.current.editor?.lapPage?.revisionId).toBe(a);
   });
 });

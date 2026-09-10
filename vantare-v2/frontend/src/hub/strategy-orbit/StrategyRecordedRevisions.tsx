@@ -15,6 +15,8 @@ export function StrategyRecordedRevisions({ controller, sessions, sessionLabels,
   const [reason, setReason] = useState("");
   const { editor } = controller;
   const revision = editor?.current.revision;
+  const familyUses = revision?.snapshot.familyUses ?? [];
+  const correctionCount = (revision?.snapshot.corrections.length ?? 0) + familyUses.length;
   const locked = busy || controller.busy;
   const navigatingBlocked = locked || controller.unresolved || reason !== "";
   const pinned = revision?.revisionId === editor?.session.revision.revisionId;
@@ -49,7 +51,7 @@ export function StrategyRecordedRevisions({ controller, sessions, sessionLabels,
             <Icon name="i-roadmap" size={26} /><div><div className="strategy-recorded-revisions__badges">{pinned ? <span>{t("strategy.history.pinned")}</span> : null}{latest ? <span>{t("strategy.history.latest")}</span> : null}</div>
               <h4>{revision.command.reason || t("strategy.history.original")}</h4>
               {revision.createdAt ? <time dateTime={revision.createdAt}>{new Date(revision.createdAt).toLocaleString()}</time> : <p>{t("strategy.history.originalHint")}</p>}
-              <p>{t("strategy.history.activeCorrections")} {revision.snapshot.corrections.length}</p>
+              <p>{t("strategy.history.activeCorrections")} {correctionCount}</p>
             </div>
           </article>
           <p className="strategy-recorded-data__muted">{t("strategy.history.snapshotHint")}</p>
@@ -60,8 +62,13 @@ export function StrategyRecordedRevisions({ controller, sessions, sessionLabels,
               <dl><div><dt>{t("strategy.data.original")}</dt><dd>{display(correction.original)} {correction.request.unit.symbol}</dd></div><div><dt>{t("strategy.data.correction")}</dt><dd>{display(correction.corrected)} {correction.request.unit.symbol}</dd></div></dl>
               <p>{correction.request.reason}</p>
             </article>;
-          })}</div>
-          {revision.snapshot.corrections.length === 0 ? <p className="strategy-recorded-data__muted">{t("strategy.history.noCorrections")}</p> : null}
+          })}{familyUses.map(correction => <article key={correction.correctionId} className="strategy-recorded-revisions__change">
+            <strong>{t(`strategy.laps.family.${correction.request.family}`)} · {t("strategy.laps.lap")} {correction.request.target.number}</strong>
+            <p><time dateTime={correction.request.target.start}>{new Date(correction.request.target.start).toLocaleString()}</time> → <time dateTime={correction.request.target.end}>{new Date(correction.request.target.end).toLocaleString()}</time></p>
+            <dl><div><dt>{t("strategy.history.familyOriginal")}</dt><dd>{t(correction.original.included ? "strategy.laps.included" : "strategy.laps.excluded")}</dd></div><div><dt>{t("strategy.data.correction")}</dt><dd>{t(correction.corrected.included ? "strategy.laps.included" : "strategy.laps.excluded")}</dd></div></dl>
+            <p>{correction.request.reason}</p><p>{t("strategy.history.familyHint")}</p>
+          </article>)}</div>
+          {correctionCount === 0 ? <p className="strategy-recorded-data__muted">{t("strategy.history.noCorrections")}</p> : null}
         </>}
       </section>
       <aside className="strategy-recorded-data__detail">

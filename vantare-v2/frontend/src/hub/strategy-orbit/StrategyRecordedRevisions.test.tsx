@@ -84,3 +84,21 @@ describe("source revision history", () => {
     expect(screen.getByText("strategy.workspace.notCalculated")).toBeTruthy();
   });
 });
+
+describe("mixed source history", () => {
+  it("shows a family-only revision as a correction with exact lap interval and reason", () => {
+    const f = fixture(), family = "combined_stint_pace_curve" as const;
+    const original = { family, included: true, exclusionReasons: [] };
+    const target = { number: 4, start: "2026-09-10T12:00:00Z", end: "2026-09-10T12:01:30Z" };
+    const current: AnalysisStoreResult = { ...f.current, revision: { ...f.current.revision, snapshot: { ...f.current.revision.snapshot, contractVersion: "analysis.observation-snapshot.v2", corrections: [], familyUses: [{ baseId: "a".repeat(64), correctionId: "e".repeat(64), original, corrected: { ...original, included: false, exclusionReasons: ["manual_exclusion"] }, request: { base: f.session.base, target, family, expected: original, included: false, reason: "Pace affected; fuel remains usable" } }] } } };
+    render(<StrategyRecordedRevisions {...f.props} controller={{ ...f.controller, editor: { ...f.controller.editor!, current } }} />);
+    expect(screen.getByText("strategy.history.activeCorrections 1")).toBeTruthy();
+    expect(screen.queryByText("strategy.history.noCorrections")).toBeNull();
+    expect(screen.getByText("Pace affected; fuel remains usable")).toBeTruthy();
+    expect(screen.getByText("strategy.laps.included")).toBeTruthy();
+    expect(screen.getByText("strategy.laps.excluded")).toBeTruthy();
+    expect(document.querySelector(`time[datetime="${target.start}"]`)).toBeTruthy();
+    expect(document.querySelector(`time[datetime="${target.end}"]`)).toBeTruthy();
+    expect(f.methods.adopt).not.toHaveBeenCalled();
+  });
+});

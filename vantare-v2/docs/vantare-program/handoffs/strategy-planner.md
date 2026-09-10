@@ -2051,3 +2051,14 @@ Roadmap actualizado en cuatro idiomas y JSON regenerado con origin/nightly vigen
 salida del generador. No rebase ni integración de nuestro stack.
 Cinco paths de lógica/test/CSS; traducciones y docs. Sin Wails/precisión/visual>9,
 push/PR/CI remota/merge/promoción. Continúa T11g4 historial familiar.
+
+## T11g4 — historial familiar y gate frontend conjunto
+
+Revisiones muestra también familias, intervalo de vuelta, valores declarados y
+motivo. Una revisión sólo familiar deja de aparecer como original sin correcciones.
+Aclara que el uso declarado no sustituye reglas ni disponibilidad de señales.
+Regresión RED documentada; 29 focales GREEN. Global 443 archivos/3515 tests PASS
+(222.73s), lint/build PASS; warnings heredados happy-dom y chunks. Sin Wails todavía.
+Dos paths UI/test más traducciones. T11h prepara únicamente dos paths de test Go
+para ampliar el banco real opt-in, pendiente compilar/ejecutar y con staging separado.
+Sin push/PR/CI remota/merge/promoción; base local no cambia por integración ajena.

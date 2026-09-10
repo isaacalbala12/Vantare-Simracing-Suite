@@ -890,4 +890,6 @@ export const strategyOrbitIt: Record<string, string> = {
   "strategy.laps.boundary.unknown": "Qualità del limite sconosciuta",
   "strategy.laps.boundary.unsupported": "Limite non supportato",
   "strategy.laps.reason.traffic": "Traffico rilevato",
+  "strategy.history.familyOriginal": "Utilizzo dichiarato in origine",
+  "strategy.history.familyHint": "L’idoneità finale dipende anche dalle regole della famiglia e dai segnali disponibili. Puoi consultarla in Dati.",
 };

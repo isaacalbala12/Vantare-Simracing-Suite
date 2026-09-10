@@ -889,4 +889,6 @@ export const strategyOrbitPt: Record<string, string> = {
   "strategy.laps.boundary.unknown": "Qualidade do limite desconhecida",
   "strategy.laps.boundary.unsupported": "Limite não suportado",
   "strategy.laps.reason.traffic": "Tráfego detetado",
+  "strategy.history.familyOriginal": "Utilização declarada na origem",
+  "strategy.history.familyHint": "A elegibilidade final também depende das regras da família e dos sinais disponíveis. Consulta-a em Dados.",
 };

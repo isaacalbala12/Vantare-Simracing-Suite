@@ -889,4 +889,6 @@ export const strategyOrbitEn: Record<string, string> = {
   "strategy.laps.boundary.unknown": "Unknown boundary quality",
   "strategy.laps.boundary.unsupported": "Unsupported boundary",
   "strategy.laps.reason.traffic": "Detected traffic",
+  "strategy.history.familyOriginal": "Originally declared use",
+  "strategy.history.familyHint": "Final eligibility also depends on each family’s rules and available signals. Inspect it in Data.",
 };

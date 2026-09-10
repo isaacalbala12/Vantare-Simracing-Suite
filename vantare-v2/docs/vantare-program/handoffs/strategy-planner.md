@@ -1,6 +1,6 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — T12g3f revisado, siguiente T12ha
+## Estado vigente — T12ha revisado, siguiente T12hb
 
 Isaac confirma que planes y documentación siguen a cargo del orquestador.
 Muse Spark 1.3 Contributor vía OpenCode, xhigh, ejecuta sólo código/tests
@@ -8,8 +8,8 @@ asignados, sin subdelegación ni cambios de planes, docs o issue. Un ejecutor
 por worktree; revisión personal de diff y evidencia antes de aceptar.
 Rama `vantareapp/isa-1104-recorded-classification`, base exacta
 `7f757135445439851180fc503da45f7eb9e557e7`; último código revisado
-`20b2aad079bf4bd74396219d4e0a3fe3c20f3c48`, limpio tras el commit.
-A–G3 aceptados localmente; T12 permanece abierto.
+`e2d610cb10e73f4aa8d985fa80c4ecb362ead053`, limpio tras el commit.
+A–G3 y Ha aceptados localmente; T12 permanece abierto.
 
 G3 ya conecta la biblioteca con el mismo editor Datos/Revisiones, también
 sin combinación ni repositorio: apertura autorizada y referencia exacta,
@@ -17,13 +17,13 @@ inspección separada de selección, correcciones locales sin Project espurio,
 pin del borrador por referencia completa y vuelta al asistente sin recrearlo.
 Los formularios y comandos inciertos bloquean cambios de fuente/salida; las
 pestañas conservan formularios. Auditor i18n vuelve a exit 0, sin huérfanas
-ni ausentes. Suite frontend 443 archivos/3644 PASS, build/typecheck/lint exit 0.
+ni ausentes. Última suite global G3f: 443 archivos/3644 PASS, build/typecheck/lint exit 0.
 Último Go global fue G3a: 126 paquetes PASS; no Go modificado desde entonces.
 Estos resultados son contractuales locales, no prueba de DuckDB real/Wails.
 
-Siguiente H, precisado por el orquestador en
+Ha ya consulta el original y comparte normalización; siguiente Hb, dentro de H precisado en
 `docs/strategy-planner/sdd/classification-corrections-t12.md`: Ha consulta del
-original/normalización reutilizadas; Hb textos; Hc clasificación dentro de
+original/normalización reutilizadas (aceptado); Hb textos; Hc clasificación dentro de
 Datos A4; Hd historial. Cada corte declara 2–4 paths. No generar correcciones
 ficticias para comprobar disponibilidad ni duplicar validación en React.
 Luego I banco real opt-in. Coche/circuito/clase siguen pendientes de cerrar
@@ -37,6 +37,29 @@ app/LMU; gate Wails sigue pendiente por ERROR_INVALID_STATE de causa no
 demostrada. Contraste real y paridad visual >9/10 siguen aparte.
 
 Las entradas siguientes son evidencia histórica; el estado vigente es éste.
+
+## T12ha — consulta del original reutilizada antes del montaje
+
+Commit `e2d610cb10e73f4aa8d985fa80c4ecb362ead053`, cuatro paths de
+contrato/helpers TS y tests, +137/-21. Extraídos el validador público del
+original RAW y la consulta desde opened con las mismas guardas; parser y
+constructor los reutilizan. Enum y normalización SessionType existentes
+exportados como alias. Sin cambio de wire, versiones, Go, owner ni señales.
+
+Revisión personal de los cuatro diffs sin hallazgos. Diez casos nuevos
+cubren original/efectivo distintos, precondición raw, Unicode, campos parciales,
+privacidad, duplicados, enum y ausencia de un nuevo límite/mutación. No se
+modifican aserciones anteriores. Baseline previo: 123 PASS/881ms; el archivo
+no registró EXIT y se conserva así. El worker declara exit 0 de la llamada
+original; root no lo presenta como un EXIT leído del archivo.
+Focal final: 133 PASS/944ms, EXIT0; typecheck producto/lint EXIT0 y diff limpio.
+Logs `C:/tmp/isa1104-t12ha-{baseline,focal,typecheck,lint}.log` leídos por root.
+Diagnóstico LSP preexistente de tuplas del test parametrizado fuera del diff;
+typecheck producto no verifica esos tests. No ocultar esa diferencia.
+
+Worker idle antes de commit. Siguiente Hb, doce claves en cuatro locales;
+después Hc/Hd consumidores. Global frontend/build después de Hd; última
+suite completa sigue siendo G3f. Sin banco/Wails/app/LMU ni entrega remota.
 
 ## T12g3f — biblioteca, inspección y vuelta al asistente conectadas
 

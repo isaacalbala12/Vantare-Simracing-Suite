@@ -175,7 +175,8 @@ func TestRecordedStrategyRealDuckDB(t *testing.T) {
 		t.Fatalf("exact revision after reopen: %v", err)
 	}
 	t.Log("prepare, projection, saved head, exact prior revision, Strategy inputs, closed-source rejection and explicit reopen verified")
-	verifyRecordedRealFamilyRevision(t, ctx, svc, reopened.SessionID, candidates[0].ID, prepared.Base, saved.HeadID)
+	classifiedSessionID, classifiedHead := verifyRecordedRealClassificationRevision(t, ctx, svc, reopened, prepared.Base, saved.HeadID, candidates[0].ID)
+	verifyRecordedRealFamilyRevision(t, ctx, svc, classifiedSessionID, candidates[0].ID, prepared.Base, classifiedHead)
 	// Optional explicit export to an isolated diagnostic application's catalog.
 	// This uses the existing importer, not handcrafted observed data.
 	if exportPath := os.Getenv("ISA1088_EXPORT_CATALOG"); exportPath != "" {

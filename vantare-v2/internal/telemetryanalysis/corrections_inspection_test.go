@@ -109,3 +109,50 @@ func TestInspectionStintBoundaryIsRecordedDetachedAndUnambiguous(t *testing.T) {
 		t.Fatal("ambiguous boundary selected")
 	}
 }
+
+func TestInspectionReportsConsumerRuleRatherThanOnlyRawUseFlag(t *testing.T) {
+	base, original, request := lapFamilyCorrectionExample(t)
+	original.Laps[0].Labels = append(original.Laps[0].Labels, LapLabelTraffic)
+	request.Included = true
+	snapshot, err := PrepareObservationCorrectionSnapshot(base, nil, original, []LapFamilyUseCorrection{request})
+	if err != nil {
+		t.Fatal(err)
+	}
+	page, err := InspectCorrectionLaps(CorrectionInput{Base: base, Session: HistoricalSession{ID: base.SessionID}, Validity: original}, snapshot, 0, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, capability := range page.Laps[0].Capabilities {
+		if capability.EffectiveIncluded == nil {
+			t.Fatal("resolved effective rule missing")
+		}
+		switch capability.Family {
+		case FamilyCombinedStintPaceCurve:
+			if capability.AutomaticIncluded || !*capability.EffectiveIncluded {
+				t.Fatal("explicit traffic inclusion ignored")
+			}
+		case FamilySavingCost:
+			if capability.AutomaticIncluded || *capability.EffectiveIncluded {
+				t.Fatal("pace decision leaked to saving")
+			}
+		default:
+			if !capability.AutomaticIncluded || !*capability.EffectiveIncluded {
+				t.Fatal("traffic changed unrelated rule")
+			}
+		}
+	}
+	original.Laps = append(original.Laps, original.Laps[0])
+	empty, err := PrepareSampleCorrectionSnapshot(base, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	unresolved, err := InspectCorrectionLaps(CorrectionInput{Base: base, Session: HistoricalSession{ID: base.SessionID}, Validity: original}, empty, 0, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, capability := range unresolved.Laps[0].Capabilities {
+		if capability.EffectiveIncluded != nil {
+			t.Fatal("unresolved rule presented as known")
+		}
+	}
+}

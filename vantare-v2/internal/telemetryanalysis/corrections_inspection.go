@@ -10,10 +10,13 @@ import (
 const MaxCorrectionLapPage = 50
 
 type LapFamilyCapability struct {
-	Family     DerivationFamily `json:"family"`
-	CanInclude bool             `json:"canInclude"`
-	CanExclude bool             `json:"canExclude"`
-	Reason     string           `json:"reason,omitempty"`
+	// Rule eligibility is separate from signal availability and metric presence.
+	AutomaticIncluded bool             `json:"automaticIncluded"`
+	EffectiveIncluded *bool            `json:"effectiveIncluded,omitempty"`
+	Family            DerivationFamily `json:"family"`
+	CanInclude        bool             `json:"canInclude"`
+	CanExclude        bool             `json:"canExclude"`
+	Reason            string           `json:"reason,omitempty"`
 }
 type CorrectionLapInspection struct {
 	Original      AnalyzedLap                       `json:"original"`
@@ -68,6 +71,14 @@ func InspectCorrectionLaps(input CorrectionInput, snapshot PreparedSampleCorrect
 	// One index for effective targets, and only page-sized detached public rows.
 	byTarget := make(map[LapCorrectionTarget]int, len(effective.Laps))
 	counts := make(map[LapCorrectionTarget]int, len(effective.Laps))
+	originalCounts := make(map[LapCorrectionTarget]int, len(input.Validity.Laps))
+	for _, lap := range input.Validity.Laps {
+		if lap.Start != nil {
+			if key, ok := derivedLapTarget(lap.Number, *lap.Start, lap.End); ok {
+				originalCounts[key]++
+			}
+		}
+	}
 	for i, lap := range effective.Laps {
 		if lap.Start == nil {
 			continue
@@ -83,7 +94,7 @@ func InspectCorrectionLaps(input CorrectionInput, snapshot PreparedSampleCorrect
 		if original.Start != nil {
 			if key, ok := derivedLapTarget(original.Number, *original.Start, original.End); ok {
 				row.Target = &key
-				if counts[key] == 1 {
+				if counts[key] == 1 && originalCounts[key] == 1 {
 					copy := cloneFamilyCorrectionLaps(effective.Laps[byTarget[key] : byTarget[key]+1])
 					row.Effective = &copy[0]
 				}
@@ -91,7 +102,11 @@ func InspectCorrectionLaps(input CorrectionInput, snapshot PreparedSampleCorrect
 			row.StintBoundary = precedingRecordedStintBoundary(*original.Start, input.Validity.Temporal.StintBoundaries)
 		}
 		for _, family := range CorrectableLapFamilies() {
-			capability := LapFamilyCapability{Family: family, Reason: "target_unresolved"}
+			capability := LapFamilyCapability{Family: family, Reason: "target_unresolved", AutomaticIncluded: inspectionFamilyRuleIncluded(original, family)}
+			if row.Effective != nil {
+				included := inspectionFamilyRuleIncluded(*row.Effective, family)
+				capability.EffectiveIncluded = &included
+			}
 			if row.Target != nil && row.Effective != nil {
 				var expected LapFamilyUse
 				for _, use := range original.FamilyUse {
@@ -165,4 +180,11 @@ func precedingRecordedStintBoundary(at time.Time, boundaries []strategyprojectio
 		}
 	}
 	return selected
+}
+
+func inspectionFamilyRuleIncluded(lap AnalyzedLap, family DerivationFamily) bool {
+	if family == FamilyCombinedStintPaceCurve || family == FamilySavingCost {
+		return curveFamilyIncluded(lap, family)
+	}
+	return familyIncluded(lap, family)
 }

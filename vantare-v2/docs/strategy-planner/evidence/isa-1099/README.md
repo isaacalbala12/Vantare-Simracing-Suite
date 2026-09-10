@@ -175,3 +175,14 @@ de teardown happy-dom; no se oculta el primer run. Cuatro paths TS; controlador
 familiar/UI pendientes. En paralelo sólo dos paths Go de inspección, T11f2b,
 añaden elegibilidad automática/efectiva: focal/vet PASS, global Go en curso.
 Sin Wails/precisión/visual >9/push/PR/CI remota/merge/promoción. Continúa T11f4.
+
+## T11f2b — elegibilidad visible según el consumidor
+
+La inspección separa automaticIncluded/effectiveIncluded de la mera bandera
+LapFamilyUse. Reusa reglas de curvas/ahorro para reflejar tráfico y la inclusión
+explícita por familia. Son reglas de uso, no presencia de señales ni garantía de
+métrica calculable. Efectivo ausente si la identidad no es única en ambos modelos.
+Pruebas focales, global Go -p1 y vet de alcance PASS. Dos paths Go independientes
+del gate frontend. T11f3 quedó en 928e40b7 con global 3489 PASS; T11f4 consulta TS
+está en trabajo (73 focales y tipos PASS, lint/build pendientes al registrar esto).
+Sin Wails/precisión/visual >9/push/PR/CI remota/merge/promoción.

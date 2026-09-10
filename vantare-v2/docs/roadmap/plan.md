@@ -261,10 +261,10 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - titulo.en: Maintenance checks without false failures
 - titulo.pt: Verificações de manutenção sem falsas falhas
 - titulo.it: Controlli di manutenzione senza falsi errori
-- cuerpo: Un candidato aislado corrige el error de configuración que marcaba cada cambio como fallido antes de ejecutar las comprobaciones del Testing Center. Conserva la prueba manual y mantiene desactivadas las correcciones automáticas. Integración y publicación pendientes.
-- cuerpo.en: An isolated candidate fixes the configuration error that marked each change as failed before Testing Center checks could run. It preserves the manual test and keeps automatic fixes disabled. Integration and publication remain pending.
-- cuerpo.pt: Um candidato isolado corrige o erro de configuração que marcava cada alteração como falha antes de executar as verificações do Testing Center. Preserva o teste manual e mantém as correções automáticas desativadas. Integração e publicação pendentes.
-- cuerpo.it: Un candidato isolato corregge l'errore di configurazione che segnava ogni modifica come fallita prima dei controlli del Testing Center. Conserva il test manuale e mantiene disattivate le correzioni automatiche. Integrazione e pubblicazione in attesa.
+- cuerpo: La corrección integrada en Nightly elimina el error de configuración que marcaba cada cambio como fallido antes de ejecutar las comprobaciones del Testing Center. Conserva la prueba manual y mantiene desactivadas las correcciones automáticas; la publicación sigue pendiente.
+- cuerpo.en: The fix integrated into Nightly removes the configuration error that marked each change as failed before Testing Center checks could run. It preserves the manual test and keeps automatic fixes disabled; publication remains pending.
+- cuerpo.pt: A correção integrada no Nightly elimina o erro de configuração que marcava cada alteração como falha antes de executar as verificações do Testing Center. Preserva o teste manual e mantém as correções automáticas desativadas; a publicação continua pendente.
+- cuerpo.it: La correzione integrata in Nightly elimina l'errore di configurazione che segnava ogni modifica come fallita prima dei controlli del Testing Center. Conserva il test manuale e mantiene disattivate le correzioni automatiche; la pubblicazione resta in attesa.
 - etiqueta: ISA-728
 
 ### Contrato modular de overlays y laboratorio Redline

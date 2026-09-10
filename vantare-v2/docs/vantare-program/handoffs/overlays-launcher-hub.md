@@ -191,6 +191,21 @@ física nueva, retirada V1, merge o release en este corte documental.
   merge o release ni evidencia física Wails/LMU. Detalles y límites en
   `docs/analysis/ISA-1083-functional-design.md`.
 
+- **ISA-1120 — Eficiencia v2, direcciones en el Workshop (2026-09-11):**
+  Isaac pide iterar el diseño Eficiencia hacia una v2 a través del harness.
+  Rama `vantareapp/isa-1120-efficiency-v2` sobre
+  `origin/vantareapp/isa-1083-functional-standings` (Eficiencia aún no está en
+  Nightly), worktree `~/Desktop/vantare-isa1120` (macOS). Tres direcciones de
+  estudio conmutables en el Workshop —Torre, Podio y Foco— como piel
+  `data-study-style` enlazable por `study=` en la query; viven solo en
+  `overlay-workshop.css` y los controles del estudio, sobre el renderer
+  productivo compartido. Sin diseños oficiales, persistencia, tokens
+  productivos ni cambios de #1097/#1098/#1103. Typecheck, 18/18 tests focales
+  del parser/ruta, lint y diff-check PASS. Capturas y detalle en
+  `design-evidence/functional/v2-directions.md` (`efficiency-v2-*.png`).
+  Pendiente: elección de dirección por Isaac; traducir la ganadora a diseño
+  oficial es otra entrega. Sin merge, promoción ni release.
+
 - **S3 cerrado, 2026-09-03:** el mismo EXE R-FIX4 desde
   `4864b5c6`, SHA `cb69a4d5…878faba`, muestra Pedals sobre LMU con freno real
   al 100%, contenido y sin halo/recorte. Captura aislada posterior al 46% y

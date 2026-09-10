@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-10T02:34:46Z",
+  "generatedAt": "2026-09-10T23:02:07Z",
   "digest": {
-    "lastCommit": "b6b5754eee059bc239fce18c08b39adae8c553fa"
+    "lastCommit": "131471ff2be88384cfd4a988acc9c4fc9575e619"
   },
   "phases": [
     {
@@ -1321,10 +1321,10 @@
         "it": "Sistema di design Efficienza"
       },
       "body": {
-        "es": "Eficiencia ofrece los estilos Signature y Broadcast para Standings desde Studio, con transparencia suave, identidad Vantare, tipografía unificada y selección neutra. Los perfiles y diseños guardan esta selección; el marco adapta columnas y filas en Studio, Desktop y OBS. Entrega opt-in en rama de issue, pendiente de validación física e integración a Nightly. La política de marca según licencia se desarrolla por separado.",
-        "en": "Efficiency offers Signature and Broadcast styles for Standings in Studio, with subtle transparency, Vantare identity, unified typography and neutral selection. Profiles and designs preserve this choice; the frame fits columns and rows across Studio, Desktop and OBS. Opt-in delivery on an issue branch, pending physical validation and Nightly integration. License-based branding is a separate delivery.",
-        "pt": "Eficiência oferece os estilos Signature e Broadcast para Standings no Studio, com transparência suave, identidade Vantare, tipografia unificada e seleção neutra. Perfis e desenhos preservam a escolha; o quadro adapta colunas e filas no Studio, Desktop e OBS. Entrega opcional numa branch de issue, pendente de validação física e integração em Nightly. A marca por licença será entregue separadamente.",
-        "it": "Efficienza offre gli stili Signature e Broadcast per Standings in Studio, con trasparenza lieve, identità Vantare, tipografia unificata e selezione neutra. Profili e design conservano la scelta; il riquadro adatta colonne e righe in Studio, Desktop e OBS. Consegna opzionale su branch di issue, in attesa di validazione fisica e integrazione Nightly. Il marchio per licenza sarà consegnato separatamente."
+        "es": "Eficiencia ofrece los estilos Signature y Broadcast para Standings desde Studio, con transparencia suave, identidad Vantare, tipografía unificada y selección neutra. Los perfiles y diseños guardan esta selección; el marco adapta columnas y filas en Studio, Desktop y OBS. Entrega opt-in en rama de issue, pendiente de validación física e integración a Nightly. La política de marca según licencia se desarrolla por separado. En ISA-1120 se comparan tres direcciones v2 (Torre, Podio y Foco) dentro del Workshop antes de decidir si alguna pasa al catálogo.",
+        "en": "Efficiency offers Signature and Broadcast styles for Standings in Studio, with subtle transparency, Vantare identity, unified typography and neutral selection. Profiles and designs preserve this choice; the frame fits columns and rows across Studio, Desktop and OBS. Opt-in delivery on an issue branch, pending physical validation and Nightly integration. License-based branding is a separate delivery. ISA-1120 compares three v2 directions (Torre, Podio, Foco) inside the Workshop before deciding whether any joins the catalogue.",
+        "pt": "Eficiência oferece os estilos Signature e Broadcast para Standings no Studio, com transparência suave, identidade Vantare, tipografia unificada e seleção neutra. Perfis e desenhos preservam a escolha; o quadro adapta colunas e filas no Studio, Desktop e OBS. Entrega opcional numa branch de issue, pendente de validação física e integração em Nightly. A marca por licença será entregue separadamente. A ISA-1120 compara três direções v2 (Torre, Podio, Foco) dentro do Workshop antes de decidir se alguma entra no catálogo.",
+        "it": "Efficienza offre gli stili Signature e Broadcast per Standings in Studio, con trasparenza lieve, identità Vantare, tipografia unificata e selezione neutra. Profili e design conservano la scelta; il riquadro adatta colonne e righe in Studio, Desktop e OBS. Consegna opzionale su branch di issue, in attesa di validazione fisica e integrazione Nightly. Il marchio per licenza sarà consegnato separatamente. ISA-1120 confronta tre direzioni v2 (Torre, Podio, Foco) dentro il Workshop prima di decidere se qualcuna entra nel catalogo."
       },
       "label": {
         "es": "ISA-1083",
@@ -1379,6 +1379,46 @@
     }
   ],
   "delivered": [
+    {
+      "date": "2026-09-10",
+      "entries": [
+        {
+          "kind": "docs",
+          "scope": "overlays",
+          "text": "Record Efficiency verification and native gate"
+        },
+        {
+          "kind": "feat",
+          "scope": "overlays",
+          "text": "Name Efficiency system and preserve saved style labels"
+        },
+        {
+          "kind": "docs",
+          "scope": "overlays",
+          "text": "Record Functional delivery PR and pending validation"
+        },
+        {
+          "kind": "feat",
+          "scope": "overlays",
+          "text": "Deliver Functional Standings in Studio"
+        },
+        {
+          "kind": "docs",
+          "scope": "ci",
+          "text": "Registrar integración Nightly de ISA-728"
+        },
+        {
+          "kind": "fix",
+          "scope": "ci",
+          "text": "Corregir validación del workflow inerte"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-1101 · Integrar Redline Tower y dorsales canónicos"
+        }
+      ]
+    },
     {
       "date": "2026-09-08",
       "entries": [
@@ -1971,71 +2011,6 @@
           "kind": "fix",
           "scope": "overlays",
           "text": "List pure V3 profiles"
-        }
-      ]
-    },
-    {
-      "date": "2026-08-14",
-      "entries": [
-        {
-          "kind": "perf",
-          "scope": "hub",
-          "text": "Launcher - cache persistente de iconos e indice de shortcuts en disco, iconos en paralelo"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "TM-01 mapa de circuito con silueta en vantare-endurance"
-        },
-        {
-          "kind": "perf",
-          "scope": "hub",
-          "text": "Launcher - primer escaneo 28% mas rapido, iconos cacheados, TTL de rescan y debounce de args"
-        },
-        {
-          "kind": "fix",
-          "scope": "updater",
-          "text": "Excluir linea de producto legacy de la lista de actualizaciones"
-        },
-        {
-          "kind": "docs",
-          "scope": "overlays",
-          "text": "Close ISA-357 Nightly promotion"
-        },
-        {
-          "kind": "docs",
-          "scope": "hub",
-          "text": "Record ISA-358 nightly promotion"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "Limitar la batalla de Standings a carrera y una pareja"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "ISA-358 · Conectar el HUD principal con datos canónicos"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "Contrato puro v1 para capturas"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "Arquitectura de capturas en incidencias"
-        },
-        {
-          "kind": "docs",
-          "scope": "",
-          "text": "Record ISA-347 nightly promotion"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "Delta real, único y con hotkey global"
         }
       ]
     }

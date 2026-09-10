@@ -34,7 +34,8 @@ it("completes the five-step bootstrap using only an explicitly opened and accept
   for (let step = 0; step < 3; step++) fireEvent.click(screen.getByRole("button", { name: /strategy.journey.next/ }));
   fireEvent.click(screen.getByRole("button", { name: /strategy.journey.openDraft/ }));
   await screen.findByText("strategy.workspace.saved");
-  expect(getHubSuspendBlockerReasons()).not.toContain("strategy.workspace.unsaved");
+  // The guard is released by an effect after the saved view commits.
+  await waitFor(() => expect(getHubSuspendBlockerReasons()).not.toContain("strategy.workspace.unsaved"));
   expect(execute.mock.calls[0][0]).toMatchObject({ operation: "create", draft: { payload: { draft: { combination: { combinationId: "combo" }, sessions: [session.revision] } } } });
   fireEvent.click(screen.getByRole("button", { name: "strategy.workspace.preparation" }));
   expect(getHubSuspendBlockerReasons()).toContain("strategy.workspace.unsaved");

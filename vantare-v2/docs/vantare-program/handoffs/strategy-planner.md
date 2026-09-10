@@ -1,5 +1,15 @@
 # Handoff vivo — Strategy Planner
 
+## Gate frontend T11f3 — sincronización del test de guardado
+
+Primer global: 441/442 archivos, 3488/3489 tests. Falló la aserción inmediata de
+liberación del suspend guard después de aparecer guardado (Workflow.test.tsx:37).
+Focal aislado pasó 2/2. La guarda se libera con useEffect, separado del commit
+visible. Se conserva la aserción y se espera con waitFor, sin aumentar timeout ni
+cambiar producto. Focal conjunto 63/63 PASS. Global se repetirá; el run anterior
+permanece fallido. Contrato mixto TS todavía sin commit/cierre; tipos/lint/build
+PASS. Sin Wails ni publicación. Un único path test en este commit separado.
+
 ## T11f2 — inspección de vueltas por revisión exacta
 
 Consulta nativa autorizada, máximo 50 filas, base/snapshot/revisión exactos y

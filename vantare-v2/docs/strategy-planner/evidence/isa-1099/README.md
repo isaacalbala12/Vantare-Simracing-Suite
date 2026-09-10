@@ -152,3 +152,13 @@ para inspeccionar. Pruebas de paginación, integridad, originales, revisión pre
 metadatos, permisos y objetivos ambiguos PASS. Global Go -p1 y vet de alcance PASS.
 Cuatro nuevos paths. Frontend aún no consume la consulta; siguiente T11f3 contrato
 mixto TS y T11f4 consulta TS. Sin Wails/precisión/visual >9/push/PR/CI/promoción.
+
+## Gate frontend T11f3 — sincronización del test de guardado
+
+Primer global: 441/442 archivos, 3488/3489 tests. Falló la aserción inmediata de
+liberación del suspend guard después de aparecer guardado (Workflow.test.tsx:37).
+Focal aislado pasó 2/2. La guarda se libera con useEffect, separado del commit
+visible. Se conserva la aserción y se espera con waitFor, sin aumentar timeout ni
+cambiar producto. Focal conjunto 63/63 PASS. Global se repetirá; el run anterior
+permanece fallido. Contrato mixto TS todavía sin commit/cierre; tipos/lint/build
+PASS. Sin Wails ni publicación. Un único path test en este commit separado.

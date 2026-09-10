@@ -155,7 +155,7 @@ Evidencia guards: 25/25 PASS (detalle abajo) + wiring 3/3 PASS.
   (`widget-definition.ts`, `studio-access.ts/test`) + ajustes SOLO de
   fixtures/aserciones en 4 archivos de test (acceso de pago explícito donde
   el propósito es edición/guardado premium; las regresiones Free→bloqueo/
-  mover/borrar se conservan). Cero frontend productivo (lo ejecuta #1105).
+  mover/borrar se conservan). Cero frontend productivo adicional (lo ejecuta #1105).
 - Suite frontend completa sobre este árbol: 424/424 archivos,
   3360 PASS + 2 omitidos, exit 0
   (`frontend/design-evidence/isa1097/frontend-full.log`, ignorado por git).

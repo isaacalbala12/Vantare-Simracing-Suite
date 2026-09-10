@@ -320,7 +320,7 @@
 .functional-study[data-study-style="v2-focus"] .vf-table thead th { font-size: 10px; color: #9a9aa0; letter-spacing: .1em; }
 .functional-study[data-study-style="v2-focus"] .vf-table .vf-column-label::after { display: none; }
 .functional-study[data-study-style="v2-focus"] .vf-table td { height: 28px; font-weight: 500; }
-.functional-study[data-study-style="v2-focus"] .vf-table td:is([data-metric="lastLap"], [data-metric="bestLap"])::before { display: none; }
+.functional-study[data-study-style="v2-focus"] .vf-table td:is([data-metric="lastLap"], [data-metric="bestLap"]) .vf-cell-value::before { display: none; }
 .functional-study[data-study-style="v2-focus"] .vf-table td[data-metric="gap"] { font-weight: 650; color: #ffffff; }
 .functional-study[data-study-style="v2-focus"] .vf-table tr[data-player="true"] td { background-color: var(--vf-player); background-image: none; }
 

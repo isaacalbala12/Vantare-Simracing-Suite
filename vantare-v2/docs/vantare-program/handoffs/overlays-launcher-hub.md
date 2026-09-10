@@ -211,8 +211,12 @@ física nueva, retirada V1, merge o release en este corte documental.
   `design-evidence/functional/`). Además, a petición de Isaac, la v1
   productiva dejó de marcar al jugador con el tick rojo y el texto «TÚ» — la
   banda neutra (algo más marcada) es el único marcador — y Foco agranda las
-  etiquetas de columna. Traducir Foco a diseño oficial es otra entrega. Sin
-  merge, promoción ni release.
+  etiquetas de columna. También: sombra del panel suavizada, separadores de
+  vuelta reanclados al número, y nueva banda inferior `.vf-footer` (pista/
+  aire/viento) que solo aparece cuando el frame V2 entrega esos campos — hoy
+  LMU no los soporta, así que la producción queda igual hasta que exista la
+  fuente. Traducir Foco a diseño oficial es otra entrega. Sin merge,
+  promoción ni release.
 
 - **S3 cerrado, 2026-09-03:** el mismo EXE R-FIX4 desde
   `4864b5c6`, SHA `cb69a4d5…878faba`, muestra Pedals sobre LMU con freno real

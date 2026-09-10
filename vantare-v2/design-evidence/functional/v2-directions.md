@@ -68,6 +68,14 @@ Ajustes aplicados tras la elección:
 - **V1 (productivo)**: el jugador ya no lleva el tick rojo izquierdo ni el
   texto «TÚ» — se recalca solo con la banda neutra, algo más marcada
   (`--vf-player` 17 % → 23 %). Aplica a Signature y Broadcast.
+- **V1**: sombra del panel suavizada (`0 8px 18px -12px / 36%`) y
+  separadores verticales de vuelta reanclados al número (`-10 px` del valor
+  de vuelta) en vez del borde de celda, que quedaba pegado al gap.
+- **Pie ambiental**: nueva banda `.vf-footer` espejo de la cabecera con
+  temperatura de pista, aire y viento — solo se renderiza cuando el frame V2
+  entrega esos campos (hoy LMU no los soporta; la fixture del estudio lleva
+  valores demo). El ViewModel gana `trackTempText`/`ambientTempText`/`windText`
+  opcionales.
 - **Foco**: hereda el nuevo marcador de jugador y agranda las etiquetas de
   columna («AL LÍDER», «MEJOR V.») de 7 px a 10 px.
 

@@ -3,6 +3,7 @@ import { analysisValue, type AnalysisValue } from "../../strategy/analysis-contr
 import type { StrategyAnalysisRevisionRef } from "../../strategy/strategy-application-client";
 import { Button, Icon } from "../../ui/orbit";
 import type { RecordedSession } from "./strategy-recorded-session";
+import { recordedClassificationOriginal } from "./strategy-recorded-corrections";
 import type { RecordedCorrectionsController } from "./use-recorded-corrections";
 import "./strategy-recorded-revisions.css";
 
@@ -18,7 +19,8 @@ export function StrategyRecordedRevisions({ controller, sessions, sessionLabels,
   const { editor } = controller;
   const revision = editor?.current.revision;
   const familyUses = revision?.snapshot.familyUses ?? [];
-  const correctionCount = (revision?.snapshot.corrections.length ?? 0) + familyUses.length;
+  const classUses = revision?.snapshot.classifications ?? [];
+  const correctionCount = (revision?.snapshot.corrections.length ?? 0) + familyUses.length + classUses.length;
   const locked = busy || controller.busy;
   const navigatingBlocked = locked || controller.unresolved || reason !== "";
   // The open session alone is never the race selection. Locate the race ref by
@@ -73,7 +75,27 @@ export function StrategyRecordedRevisions({ controller, sessions, sessionLabels,
             <p><time dateTime={correction.request.target.start}>{new Date(correction.request.target.start).toLocaleString()}</time> → <time dateTime={correction.request.target.end}>{new Date(correction.request.target.end).toLocaleString()}</time></p>
             <dl><div><dt>{t("strategy.history.familyOriginal")}</dt><dd>{t(correction.original.included ? "strategy.laps.included" : "strategy.laps.excluded")}</dd></div><div><dt>{t("strategy.data.correction")}</dt><dd>{t(correction.corrected.included ? "strategy.laps.included" : "strategy.laps.excluded")}</dd></div></dl>
             <p>{correction.request.reason}</p><p>{t("strategy.history.familyHint")}</p>
-          </article>)}</div>
+          </article>)}{classUses.map(prepared => {
+            // The guard only decides availability against the open source and
+            // current base; values below always come from the consulted
+            // snapshot and never replace its history. Local proposals and the
+            // newer head are never consulted here.
+            let available = true;
+            try {
+              recordedClassificationOriginal(editor.session, editor.current, prepared.request.field);
+            }
+            catch {
+              available = false;
+            }
+            return <article key={prepared.correctionId} className="strategy-recorded-revisions__change">
+              <strong>{t(`strategy.classification.field.${prepared.request.field}`)}</strong>
+              {available ? <>
+                <dl><div><dt>{t("strategy.data.original")}</dt><dd>{prepared.original}</dd></div><div><dt>{t("strategy.data.correction")}</dt><dd>{prepared.corrected}</dd></div></dl>
+                <p>{prepared.request.reason}</p><p>{t("strategy.classification.manual")}</p>
+                {prepared.request.field === "WeatherConditions" ? <p>{t("strategy.classification.weatherHint")}</p> : null}
+              </> : <p>{t("strategy.classification.unavailable")}</p>}
+            </article>;
+          })}</div>
           {correctionCount === 0 ? <p className="strategy-recorded-data__muted">{t("strategy.history.noCorrections")}</p> : null}
         </>}
       </section>

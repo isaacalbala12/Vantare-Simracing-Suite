@@ -83,13 +83,11 @@ func prepareLapFamilyUseCorrection(baseID string, base SourceAnalysisRef, validi
 	if base != request.Base {
 		return empty, ErrCorrectionInterpretationChanged
 	}
-	if !correctionText(request.Reason, 1024) || !slices.Contains(CorrectableLapFamilies(), request.Family) || request.Expected.Family != request.Family {
-		return empty, fmt.Errorf("%w: family or reason", ErrInvalidCorrection)
+	prepared, err := canonicalLapFamilyCorrection(baseID, request)
+	if err != nil {
+		return empty, err
 	}
-	target := request.Target
-	if target.Number < 0 || target.Start.IsZero() || target.End.IsZero() || !target.Start.Before(target.End) {
-		return empty, ErrCorrectionTarget
-	}
+	target := prepared.Request.Target
 	var original LapFamilyUse
 	var matched AnalyzedLap
 	matches, uses := 0, 0
@@ -117,9 +115,35 @@ func prepareLapFamilyUseCorrection(baseID string, base SourceAnalysisRef, validi
 			return empty, err
 		}
 	}
+	return prepared, nil
+}
+
+// Representation validation only. It proves neither source authority nor lap
+// coverage; replay must call the live-model preparation/application functions.
+func prepareStoredLapFamilyCorrection(request LapFamilyUseCorrection) (PreparedLapFamilyUseCorrection, error) {
+	baseID, err := request.Base.Digest()
+	if err != nil {
+		return PreparedLapFamilyUseCorrection{}, err
+	}
+	return canonicalLapFamilyCorrection(baseID, request)
+}
+
+func canonicalLapFamilyCorrection(baseID string, request LapFamilyUseCorrection) (PreparedLapFamilyUseCorrection, error) {
+	var empty PreparedLapFamilyUseCorrection
+	if !correctionText(request.Reason, 1024) || !slices.Contains(CorrectableLapFamilies(), request.Family) || request.Expected.Family != request.Family {
+		return empty, fmt.Errorf("%w: family or reason", ErrInvalidCorrection)
+	}
+	target := request.Target
+	if target.Number < 0 || target.Start.IsZero() || target.End.IsZero() || !target.Start.Before(target.End) {
+		return empty, ErrCorrectionTarget
+	}
+	if request.Included && slices.Contains(request.Expected.ExclusionReasons, LapExclusionIncomplete) {
+		return empty, ErrCorrectionValue
+	}
 	// Normalize equivalent instants before hashing, and detach every collection.
 	request.Target.Start, request.Target.End = target.Start.UTC(), target.End.UTC()
-	request.Expected.ExclusionReasons = slices.Clone(original.ExclusionReasons)
+	request.Expected.ExclusionReasons = append([]LapExclusionReason(nil), request.Expected.ExclusionReasons...)
+	original := request.Expected
 	original.ExclusionReasons = slices.Clone(original.ExclusionReasons)
 	corrected := LapFamilyUse{Family: request.Family, Included: request.Included}
 	if !request.Included {

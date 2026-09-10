@@ -33,6 +33,25 @@ func correctionRevisionDigest(revision CorrectionRevision) (string, error) {
 	revision.RevisionID = ""
 	return correctionDigest("analysis.correction-revision.v1", revision)
 }
+
+func correctionCommandDigestWithFamilies(base SourceAnalysisRef, command CorrectionSaveCommand, requests []SampleValueCorrection, families []LapFamilyUseCorrection) (string, error) {
+	scalarDigest, err := correctionCommandDigest(base, command, requests)
+	if err != nil || len(families) == 0 {
+		return scalarDigest, err
+	}
+	prepared, err := prepareStoredLapFamilyCorrections(base, families)
+	if err != nil {
+		return "", err
+	}
+	ordered := make([]LapFamilyUseCorrection, len(prepared))
+	for i, correction := range prepared {
+		ordered[i] = correction.Request
+	}
+	return correctionDigest("analysis.observation-command.v2", struct {
+		ScalarCommandDigest string                   `json:"scalarCommandDigest"`
+		FamilyUses          []LapFamilyUseCorrection `json:"familyUses"`
+	}{scalarDigest, ordered})
+}
 func encodeCorrectionDocument(doc correctionDocument) ([]byte, error) {
 	data, err := json.Marshal(doc)
 	if err != nil {
@@ -91,7 +110,7 @@ func decodeCorrectionDocument(data []byte, base SourceAnalysisRef) (correctionDo
 		if err != nil || created.UTC().Format(time.RFC3339Nano) != revision.CreatedAt {
 			return invalid()
 		}
-		if len(revision.Snapshot.Corrections) > MaxSampleCorrections {
+		if len(revision.Snapshot.Corrections)+len(revision.Snapshot.FamilyUses) > MaxSampleCorrections {
 			return invalid()
 		}
 		inputs := make([]SampleCorrectionInput, len(revision.Snapshot.Corrections))
@@ -104,10 +123,22 @@ func decodeCorrectionDocument(data []byte, base SourceAnalysisRef) (correctionDo
 			inputs[i] = SampleCorrectionInput{Request: r, Channel: HistoricalChannel{ID: r.Target.ChannelID, Unit: r.Unit, Columns: []HistoricalColumn{{Name: r.Target.Column, Type: r.Expected.Scalar.Kind}}}, Sample: HistoricalSample{Index: r.Target.SampleIndex, Values: []HistoricalValue{r.Expected}}}
 		}
 		snapshot, err := PrepareSampleCorrectionSnapshot(base, inputs)
+		if err != nil {
+			return invalid()
+		}
+		familyRequests := make([]LapFamilyUseCorrection, len(revision.Snapshot.FamilyUses))
+		for i, correction := range revision.Snapshot.FamilyUses {
+			familyRequests[i] = correction.Request
+		}
+		families, err := prepareStoredLapFamilyCorrections(base, familyRequests)
+		if err != nil {
+			return invalid()
+		}
+		snapshot, err = combineObservationSnapshot(snapshot, families)
 		if err != nil || !reflect.DeepEqual(snapshot, revision.Snapshot) {
 			return invalid()
 		}
-		digest, err := correctionCommandDigest(base, cmd, requests)
+		digest, err := correctionCommandDigestWithFamilies(base, cmd, requests, familyRequests)
 		if err != nil || digest != revision.CommandDigest {
 			return invalid()
 		}

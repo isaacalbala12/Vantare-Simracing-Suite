@@ -33,3 +33,18 @@ Focales (incluyendo RED/GREEN del conjunto vacío), vet Analysis y global Go -p1
 PASS; frontend intacto, build base heredado de T11a. Tres paths lógica/test.
 Siguiente T11c representación mixta/custodia compatible. Sin UI/derivados/custodia
 familiar productivos aún. Sin Wails, precisión, push/PR/CI remota o promoción.
+
+## T11c — representación mixta compatible
+
+Snapshot con familias usa analysis.observation-snapshot.v2; scalar-only mantiene
+wire/digest v1 (golden previo intacto). Se validan razón/base/target/preparado,
+solapes y presupuesto conjunto. Decoder del mismo documento de custodia verifica
+v1→v2→v1 sin reescribir IDs; command digest v2 incluye decisiones familiares.
+Validación de representación almacenada no concede autoridad ni demuestra
+cobertura: la aplicación vuelve a validar contra el modelo autorizado original.
+Focales, global Go -p1 y vet app/Analysis/Strategy/cmd del alcance PASS.
+Cinco paths declarados. Frontend intacto, sin build adicional ni banco físico.
+Siguiente T11d: guardar/resolver mixtos bajo el lease existente, guard legacy
+contra borrado de familias y revalidación de objetivos tras escalares antes de
+persistir. Hasta ese corte no hay guardado mixto ni API/UI familiar habilitados.
+Sin push/PR/CI remota, Wails, precisión, nota visual, merge o promoción.

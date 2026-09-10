@@ -25,6 +25,31 @@ func PrepareLapFamilyCorrections(base SourceAnalysisRef, original LapValidityAna
 		}
 		result = append(result, prepared)
 	}
+	return canonicalLapFamilySet(result)
+}
+
+func prepareStoredLapFamilyCorrections(base SourceAnalysisRef, requests []LapFamilyUseCorrection) ([]PreparedLapFamilyUseCorrection, error) {
+	if _, err := base.Digest(); err != nil {
+		return nil, err
+	}
+	if len(requests) > MaxSampleCorrections {
+		return nil, ErrInvalidCorrection
+	}
+	result := make([]PreparedLapFamilyUseCorrection, 0, len(requests))
+	for _, request := range requests {
+		if request.Base != base {
+			return nil, ErrCorrectionInterpretationChanged
+		}
+		prepared, err := prepareStoredLapFamilyCorrection(request)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, prepared)
+	}
+	return canonicalLapFamilySet(result)
+}
+
+func canonicalLapFamilySet(result []PreparedLapFamilyUseCorrection) ([]PreparedLapFamilyUseCorrection, error) {
 	sort.Slice(result, func(i, j int) bool {
 		a, b := result[i].Request, result[j].Request
 		if a.Family != b.Family {

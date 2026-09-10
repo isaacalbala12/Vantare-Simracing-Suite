@@ -6,7 +6,7 @@ import (
 	"sort"
 )
 
-// MaxSampleCorrections bounds a single scalar snapshot, independently of source size.
+// MaxSampleCorrections is the existing shared operation budget for one snapshot.
 const MaxSampleCorrections = 256
 
 var ErrOverlappingCorrections = errors.New("overlapping observation corrections")
@@ -19,14 +19,56 @@ type SampleCorrectionInput struct {
 	Request SampleValueCorrection
 }
 
-// PreparedSampleCorrectionSnapshot is an immutable-by-ownership value for future
-// custody. Its digest identifies the full active set, not a durable revision,
-// command, author, or authorization. No input collections are retained.
+// PreparedSampleCorrectionSnapshot retains its historical type name for callers.
+// The tagged representation is scalar v1 or mixed v2. Its digest identifies the
+// full active set, not a durable revision, command, author, or authorization.
 type PreparedSampleCorrectionSnapshot struct {
-	ContractVersion string                     `json:"contractVersion"`
-	Base            SourceAnalysisRef          `json:"base"`
-	SnapshotID      string                     `json:"snapshotId"`
-	Corrections     []PreparedSampleCorrection `json:"corrections"`
+	ContractVersion string                           `json:"contractVersion"`
+	Base            SourceAnalysisRef                `json:"base"`
+	SnapshotID      string                           `json:"snapshotId"`
+	Corrections     []PreparedSampleCorrection       `json:"corrections"`
+	FamilyUses      []PreparedLapFamilyUseCorrection `json:"familyUses,omitempty"`
+}
+
+// PrepareObservationCorrectionSnapshot extends the same source snapshot with
+// typed family decisions. Scalar-only snapshots retain their v1 representation.
+func PrepareObservationCorrectionSnapshot(base SourceAnalysisRef, inputs []SampleCorrectionInput, original LapValidityAnalysis, familyRequests []LapFamilyUseCorrection) (PreparedSampleCorrectionSnapshot, error) {
+	if len(inputs)+len(familyRequests) > MaxSampleCorrections {
+		return PreparedSampleCorrectionSnapshot{}, ErrInvalidCorrection
+	}
+	scalar, err := PrepareSampleCorrectionSnapshot(base, inputs)
+	if err != nil || len(familyRequests) == 0 {
+		return scalar, err
+	}
+	families, err := PrepareLapFamilyCorrections(base, original, familyRequests)
+	if err != nil {
+		return PreparedSampleCorrectionSnapshot{}, err
+	}
+	return combineObservationSnapshot(scalar, families)
+}
+
+// Both callers supply independently validated/canonical scalar and family sets.
+func combineObservationSnapshot(scalar PreparedSampleCorrectionSnapshot, families []PreparedLapFamilyUseCorrection) (PreparedSampleCorrectionSnapshot, error) {
+	if len(scalar.Corrections)+len(families) > MaxSampleCorrections {
+		return PreparedSampleCorrectionSnapshot{}, ErrInvalidCorrection
+	}
+	if len(families) == 0 {
+		return scalar, nil
+	}
+	snapshot := scalar
+	snapshot.ContractVersion = "analysis.observation-snapshot.v2"
+	snapshot.FamilyUses = families
+	payload := struct {
+		Base        SourceAnalysisRef                `json:"base"`
+		Corrections []PreparedSampleCorrection       `json:"corrections"`
+		FamilyUses  []PreparedLapFamilyUseCorrection `json:"familyUses"`
+	}{snapshot.Base, snapshot.Corrections, snapshot.FamilyUses}
+	id, err := correctionDigest(snapshot.ContractVersion, payload)
+	if err != nil {
+		return PreparedSampleCorrectionSnapshot{}, err
+	}
+	snapshot.SnapshotID = id
+	return snapshot, nil
 }
 
 // PrepareSampleCorrectionSnapshot validates the entire set before publishing a

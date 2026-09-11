@@ -16,6 +16,13 @@ reemplazo atómico de las cuatro identidades desde metadata OPEN y
 `session.combination`, más correlación Save/Resolve v4. Sin React ni selección
 de catálogo; el selector visual/controlador será J8c.
 
+Ejecución J8b pendiente por infraestructura: `fierce-light` devolvió dos veces
+`resource_exhausted` antes de actuar y una sesión nueva, `sprinkle-blue`,
+confirmada como SWE-2 Max, devolvió el mismo error antes de leer o editar.
+Tres intentos, cero paths J8b tocados. No es un fallo del código ni requiere
+decisión de producto; reanudar el mismo microplan cuando Devin recupere
+capacidad. J6/J7/J8a y sus commits permanecen intactos.
+
 ## Historial — J7 aceptado y preparación de J8a
 
 J7 aceptado localmente y guardado en `e315c9f8`: un path,

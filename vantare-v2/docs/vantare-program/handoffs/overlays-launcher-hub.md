@@ -278,7 +278,13 @@ física nueva, retirada V1, merge o release en este corte documental.
   etiquetas, sin decoración de esquina; `showHeader` deja de existir en
   relative (delta/pedals lo conservan) y la variante dev
   `relative-multiclass` recorta columnas a posición/clase/nombre/gap para no
-  pintar huecos declarados. Evidencia `relative-rows-only.png`.
+  pintar huecos declarados. **Barras de info (siguiente decisión de
+  Isaac):** el VM de relative publica campos meta opcionales — sessionLabel,
+  remainingText, trackText, playerBadgeText (P·clase) y clima — solo cuando
+  el frame V2 los entrega; el renderer pinta barra superior (pista · badge
+  del jugador) e inferior (sesión+reloj · ambiente) reutilizando el lenguaje
+  del footer de Standings. Evidencia `relative-rows-only.png` y
+  `relative-bars.png`.
   Sin merge, push, PR, promoción ni release.
 
 - **S3 cerrado, 2026-09-03:** el mismo EXE R-FIX4 desde

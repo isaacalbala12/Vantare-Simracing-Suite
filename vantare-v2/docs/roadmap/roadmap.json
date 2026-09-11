@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-11T03:48:54Z",
+  "generatedAt": "2026-09-11T16:33:42Z",
   "digest": {
-    "lastCommit": "1487ec2ecf39f2fd80649d7f6ce95644e10da237"
+    "lastCommit": "dc5e7ae118b98e1143010a894672cda8e83a3766"
   },
   "phases": [
     {
@@ -14,10 +14,10 @@
         "it": "Fase 1"
       },
       "title": {
-        "es": "Beta pública",
-        "en": "Public beta",
-        "pt": "Beta pública",
-        "it": "Beta pubblica"
+        "es": "Beta inicial",
+        "en": "Initial beta",
+        "pt": "Beta inicial",
+        "it": "Beta iniziale"
       },
       "status": "done",
       "target": {
@@ -122,12 +122,122 @@
       ]
     },
     {
-      "id": "engineer",
+      "id": "insiders-program",
       "phaseLabel": {
         "es": "Fase 3",
         "en": "Phase 3",
         "pt": "Fase 3",
         "it": "Fase 3"
+      },
+      "title": {
+        "es": "Programa de insiders",
+        "en": "Insiders programme",
+        "pt": "Programa de insiders",
+        "it": "Programma insiders"
+      },
+      "status": "planned",
+      "target": {
+        "es": "v0.2.x - v0.5.x",
+        "en": "v0.2.x - v0.5.x",
+        "pt": "v0.2.x - v0.5.x",
+        "it": "v0.2.x - v0.5.x"
+      },
+      "progress": 15,
+      "summary": {
+        "es": "Pruebas cerradas en los canales Nightly y Testers: producto usable de extremo a extremo, widgets core completos y builds compartibles con feedback real.",
+        "en": "Closed testing on the Nightly and Testers channels: an end-to-end usable product, complete core widgets and shareable builds with real feedback.",
+        "pt": "Testes fechados nos canais Nightly e Testers: produto utilizável de ponta a ponta, widgets principais completos e builds partilháveis com feedback real.",
+        "it": "Test chiusi sui canali Nightly e Testers: prodotto utilizzabile end-to-end, widget principali completi e build condivisibili con feedback reale."
+      },
+      "highlights": [
+        {
+          "es": "Producto usable de extremo a extremo en LMU",
+          "en": "End-to-end usable product in LMU",
+          "pt": "Produto utilizável de ponta a ponta no LMU",
+          "it": "Prodotto utilizzabile end-to-end in LMU"
+        },
+        {
+          "es": "Relative, Standings, Pedals y Delta estables",
+          "en": "Stable Relative, Standings, Pedals and Delta",
+          "pt": "Relative, Standings, Pedals e Delta estáveis",
+          "it": "Relative, Standings, Pedals e Delta stabili"
+        },
+        {
+          "es": "Builds compartibles con instrucciones y canal de feedback",
+          "en": "Shareable builds with instructions and a feedback channel",
+          "pt": "Builds partilháveis com instruções e canal de feedback",
+          "it": "Build condivisibili con istruzioni e canale di feedback"
+        },
+        {
+          "es": "Overlay Studio V3 y editor in-place cerrados",
+          "en": "Overlay Studio V3 and the in-place editor closed",
+          "pt": "Overlay Studio V3 e editor in-place fechados",
+          "it": "Overlay Studio V3 ed editor in-place chiusi"
+        }
+      ]
+    },
+    {
+      "id": "public-beta",
+      "phaseLabel": {
+        "es": "Fase 4",
+        "en": "Phase 4",
+        "pt": "Fase 4",
+        "it": "Fase 4"
+      },
+      "title": {
+        "es": "Beta pública",
+        "en": "Public beta",
+        "pt": "Beta pública",
+        "it": "Beta pubblica"
+      },
+      "status": "planned",
+      "target": {
+        "es": "v0.6.x - v0.8.x",
+        "en": "v0.6.x - v0.8.x",
+        "pt": "v0.6.x - v0.8.x",
+        "it": "v0.6.x - v0.8.x"
+      },
+      "progress": 5,
+      "summary": {
+        "es": "Relanzamiento abierto de la beta: documentación reiniciada, pagos con Polar, onboarding guiado y versiones iterativas.",
+        "en": "Open relaunch of the beta: restarted documentation, Polar payments, guided onboarding and iterative versions.",
+        "pt": "Relançamento aberto da beta: documentação reiniciada, pagamentos com Polar, onboarding guiado e versões iterativas.",
+        "it": "Rilancio aperto della beta: documentazione riavviata, pagamenti con Polar, onboarding guidato e versioni iterative."
+      },
+      "highlights": [
+        {
+          "es": "Documentación pública reiniciada",
+          "en": "Restarted public documentation",
+          "pt": "Documentação pública reiniciada",
+          "it": "Documentazione pubblica riavviata"
+        },
+        {
+          "es": "Pagos y licencias con Polar operativos",
+          "en": "Working Polar payments and licensing",
+          "pt": "Pagamentos e licenças com Polar operacionais",
+          "it": "Pagamenti e licenze con Polar operativi"
+        },
+        {
+          "es": "Onboarding guiado y canal estable abierto a todos",
+          "en": "Guided onboarding and the stable channel open to everyone",
+          "pt": "Onboarding guiado e canal estável aberto a todos",
+          "it": "Onboarding guidato e canale stabile aperto a tutti"
+        },
+        {
+          "es": "Versiones iterativas: layouts por sesión, data blocks y OBS avanzado",
+          "en": "Iterative versions: per-session layouts, data blocks and advanced OBS",
+          "pt": "Versões iterativas: layouts por sessão, data blocks e OBS avançado",
+          "it": "Versioni iterative: layout per sessione, data block e OBS avanzato"
+        }
+      ]
+    },
+    {
+      "id": "engineer",
+      "phaseLabel": {
+        "es": "Fase 5",
+        "en": "Phase 5",
+        "pt": "Fase 5",
+        "it": "Fase 5"
       },
       "title": {
         "es": "Ingeniero y estrategia",
@@ -177,12 +287,110 @@
       ]
     },
     {
+      "id": "release-candidate",
+      "phaseLabel": {
+        "es": "Fase 6",
+        "en": "Phase 6",
+        "pt": "Fase 6",
+        "it": "Fase 6"
+      },
+      "title": {
+        "es": "Candidata de lanzamiento",
+        "en": "Release candidate",
+        "pt": "Candidata a lançamento",
+        "it": "Candidata al lancio"
+      },
+      "status": "future",
+      "target": {
+        "es": "v0.9.x",
+        "en": "v0.9.x",
+        "pt": "v0.9.x",
+        "it": "v0.9.x"
+      },
+      "progress": 0,
+      "summary": {
+        "es": "Hardening final: rendimiento validado junto al simulador, regresión mínima cubierta y sin errores críticos abiertos.",
+        "en": "Final hardening: performance validated next to the simulator, minimum regression coverage and no open critical errors.",
+        "pt": "Hardening final: desempenho validado junto ao simulador, cobertura mínima de regressão e sem erros críticos abertos.",
+        "it": "Hardening finale: prestazioni validate accanto al simulatore, copertura minima di regressione e nessun errore critico aperto."
+      },
+      "highlights": [
+        {
+          "es": "Rendimiento validado junto al simulador",
+          "en": "Performance validated next to the simulator",
+          "pt": "Desempenho validado junto ao simulador",
+          "it": "Prestazioni validate accanto al simulatore"
+        },
+        {
+          "es": "Suite de regresión visual y funcional mínima",
+          "en": "Minimum visual and functional regression suite",
+          "pt": "Suite mínima de regressão visual e funcional",
+          "it": "Suite minima di regressione visiva e funzionale"
+        },
+        {
+          "es": "Documentación de usuario completa",
+          "en": "Complete user documentation",
+          "pt": "Documentação de utilizador completa",
+          "it": "Documentazione utente completa"
+        }
+      ]
+    },
+    {
+      "id": "launch",
+      "phaseLabel": {
+        "es": "Fase 7",
+        "en": "Phase 7",
+        "pt": "Fase 7",
+        "it": "Fase 7"
+      },
+      "title": {
+        "es": "Lanzamiento 1.0",
+        "en": "1.0 launch",
+        "pt": "Lançamento 1.0",
+        "it": "Lancio 1.0"
+      },
+      "status": "future",
+      "target": {
+        "es": "v1.0.0.0",
+        "en": "v1.0.0.0",
+        "pt": "v1.0.0.0",
+        "it": "v1.0.0.0"
+      },
+      "progress": 0,
+      "summary": {
+        "es": "Versión estable LMU-first con pago y acceso fiables, soporte organizado y calidad para sostener la reputación pública.",
+        "en": "Stable LMU-first release with reliable payment and access, organized support and the quality to hold a public reputation.",
+        "pt": "Versão estável LMU-first com pagamento e acesso fiáveis, suporte organizado e qualidade para sustentar a reputação pública.",
+        "it": "Versione stabile LMU-first con pagamento e accesso affidabili, supporto organizzato e qualità per sostenere la reputazione pubblica."
+      },
+      "highlights": [
+        {
+          "es": "Suite completa estable para Le Mans Ultimate",
+          "en": "Complete stable suite for Le Mans Ultimate",
+          "pt": "Suite completa estável para Le Mans Ultimate",
+          "it": "Suite completa stabile per Le Mans Ultimate"
+        },
+        {
+          "es": "Pago, licencia y actualizador fiables",
+          "en": "Reliable payment, licensing and updater",
+          "pt": "Pagamento, licença e atualizador fiáveis",
+          "it": "Pagamento, licenza e updater affidabili"
+        },
+        {
+          "es": "Soporte y documentación de usuario listos",
+          "en": "Support and user documentation ready",
+          "pt": "Suporte e documentação de utilizador prontos",
+          "it": "Supporto e documentazione utente pronti"
+        }
+      ]
+    },
+    {
       "id": "ecosystem",
       "phaseLabel": {
-        "es": "Fase 4",
-        "en": "Phase 4",
-        "pt": "Fase 4",
-        "it": "Fase 4"
+        "es": "Fase 8",
+        "en": "Phase 8",
+        "pt": "Fase 8",
+        "it": "Fase 8"
       },
       "title": {
         "es": "Ecosistema",
@@ -343,6 +551,204 @@
     }
   ],
   "milestones": [
+    {
+      "id": "insiders-usable-product",
+      "type": "plan",
+      "title": {
+        "es": "Producto usable de extremo a extremo en LMU",
+        "en": "End-to-end usable product in LMU",
+        "pt": "Produto utilizável de ponta a ponta no LMU",
+        "it": "Prodotto utilizzabile end-to-end in LMU"
+      },
+      "body": {
+        "es": "El programa de insiders cierra esta puerta cuando una persona de prueba abre Vantare, mueve y redimensiona widgets, guarda su perfil, reabre la app y usa el overlay de escritorio sin ayuda técnica. Incluye el editor in-place, perfiles robustos y recomendados editables.",
+        "en": "The insiders programme clears this gate when a tester opens Vantare, moves and resizes widgets, saves their profile, reopens the app and uses the desktop overlay without technical help. It includes the in-place editor, robust profiles and editable recommended profiles.",
+        "pt": "O programa de insiders fecha esta porta quando uma pessoa de teste abre o Vantare, move e redimensiona widgets, grava o seu perfil, reabre a app e usa o overlay de desktop sem ajuda técnica. Inclui o editor in-place, perfis robustos e recomendados editáveis.",
+        "it": "Il programma insiders supera questa porta quando un tester apre Vantare, sposta e ridimensiona i widget, salva il profilo, riapre l'app e usa l'overlay desktop senza aiuto tecnico. Include l'editor in-place, profili robusti e profili consigliati modificabili."
+      },
+      "label": {
+        "es": "Plan",
+        "en": "Plan",
+        "pt": "Plano",
+        "it": "Piano"
+      }
+    },
+    {
+      "id": "insiders-shared-builds",
+      "type": "plan",
+      "title": {
+        "es": "Builds compartibles del canal Testers",
+        "en": "Shareable Testers channel builds",
+        "pt": "Builds partilháveis do canal Testers",
+        "it": "Build condivisibili del canale Testers"
+      },
+      "body": {
+        "es": "El canal Testers distribuye builds verificadas con instrucciones de instalación, lista de problemas conocidos y un canal de feedback definido. OBS local funciona con URL copiable e instrucciones compactas.",
+        "en": "The Testers channel ships verified builds with installation instructions, a known-issues list and a defined feedback channel. Local OBS works with a copyable URL and compact instructions.",
+        "pt": "O canal Testers distribui builds verificadas com instruções de instalação, lista de problemas conhecidos e um canal de feedback definido. O OBS local funciona com URL copiável e instruções compactas.",
+        "it": "Il canale Testers distribuisce build verificate con istruzioni di installazione, elenco dei problemi noti e un canale di feedback definito. OBS locale funziona con URL copiabile e istruzioni compatte."
+      },
+      "label": {
+        "es": "Plan",
+        "en": "Plan",
+        "pt": "Plano",
+        "it": "Piano"
+      }
+    },
+    {
+      "id": "core-widgets-beta",
+      "type": "plan",
+      "title": {
+        "es": "Widgets core completos para LMU",
+        "en": "Complete core widgets for LMU",
+        "pt": "Widgets principais completos para LMU",
+        "it": "Widget principali completi per LMU"
+      },
+      "body": {
+        "es": "Relative, Standings, Pedals y Delta quedan estables para perfiles reales de Le Mans Ultimate: Pedals beta v1, delta de mejor vuelta en vivo fiable y hotkeys básicas o pospuestas de forma explícita.",
+        "en": "Relative, Standings, Pedals and Delta become stable for real Le Mans Ultimate profiles: Pedals beta v1, reliable live best-lap delta and basic hotkeys or explicitly deferred ones.",
+        "pt": "Relative, Standings, Pedals e Delta ficam estáveis para perfis reais de Le Mans Ultimate: Pedals beta v1, delta de melhor volta ao vivo fiável e hotkeys básicas ou explicitamente adiadas.",
+        "it": "Relative, Standings, Pedals e Delta diventano stabili per i profili reali di Le Mans Ultimate: Pedals beta v1, delta sul miglior giro live affidabile e hotkey di base o esplicitamente rimandate."
+      },
+      "label": {
+        "es": "Plan",
+        "en": "Plan",
+        "pt": "Plano",
+        "it": "Piano"
+      }
+    },
+    {
+      "id": "docs-public-reboot",
+      "type": "plan",
+      "title": {
+        "es": "Documentación pública reiniciada",
+        "en": "Restarted public documentation",
+        "pt": "Documentação pública reiniciada",
+        "it": "Documentazione pubblica riavviata"
+      },
+      "body": {
+        "es": "La documentación de usuario se reorganiza y reescribe para la apertura: guía de instalación, primeros pasos, problemas conocidos y soporte. Las guías internas dejan de ser requisito para usar el producto.",
+        "en": "User documentation is reorganised and rewritten for the opening: installation guide, first steps, known issues and support. Internal guides stop being a requirement to use the product.",
+        "pt": "A documentação de utilizador é reorganizada e reescrita para a abertura: guia de instalação, primeiros passos, problemas conhecidos e suporte. As guias internas deixam de ser requisito para usar o produto.",
+        "it": "La documentazione utente viene riorganizzata e riscritta per l'apertura: guida all'installazione, primi passi, problemi noti e supporto. Le guide interne smettono di essere un requisito per usare il prodotto."
+      },
+      "label": {
+        "es": "Plan",
+        "en": "Plan",
+        "pt": "Plano",
+        "it": "Piano"
+      }
+    },
+    {
+      "id": "billing-polar-live",
+      "type": "plan",
+      "title": {
+        "es": "Pagos y licencias con Polar operativos",
+        "en": "Working Polar payments and licensing",
+        "pt": "Pagamentos e licenças com Polar operacionais",
+        "it": "Pagamenti e licenze con Polar operativi"
+      },
+      "body": {
+        "es": "Polar queda operativo como autoridad comercial: matriz monetaria cerrada, reconciliación, trial con recordatorio, un dispositivo activo reemplazable y credencial offline firmada. Ninguna venta pública antes de cerrar la matriz.",
+        "en": "Polar becomes operational as the commercial authority: closed monetary matrix, reconciliation, trial with reminder, one replaceable active device and a signed offline credential. No public sale before the matrix is closed.",
+        "pt": "O Polar fica operacional como autoridade comercial: matriz monetária fechada, reconciliação, trial com lembrete, um dispositivo ativo substituível e credencial offline assinada. Nenhuma venda pública antes de fechar a matriz.",
+        "it": "Polar diventa operativo come autorità commerciale: matrice monetaria chiusa, riconciliazione, trial con promemoria, un dispositivo attivo sostituibile e credenziale offline firmata. Nessuna vendita pubblica prima della chiusura della matrice."
+      },
+      "label": {
+        "es": "Plan",
+        "en": "Plan",
+        "pt": "Plano",
+        "it": "Piano"
+      }
+    },
+    {
+      "id": "public-beta-relaunch",
+      "type": "plan",
+      "title": {
+        "es": "Apertura de la beta pública",
+        "en": "Public beta opening",
+        "pt": "Abertura da beta pública",
+        "it": "Apertura della beta pubblica"
+      },
+      "body": {
+        "es": "El canal estable se abre a todos con el plan Free y la compra disponible: onboarding guiado con idioma, cuenta, simulador y perfil recomendado, descarga clara y soporte en Discord.",
+        "en": "The stable channel opens to everyone with the Free plan and purchase available: guided onboarding with language, account, simulator and recommended profile, a clear download and Discord support.",
+        "pt": "O canal estável abre-se a todos com o plano Free e a compra disponível: onboarding guiado com idioma, conta, simulador e perfil recomendado, download claro e suporte no Discord.",
+        "it": "Il canale stabile si apre a tutti con il piano Free e l'acquisto disponibile: onboarding guidato con lingua, account, simulatore e profilo consigliato, download chiaro e supporto su Discord."
+      },
+      "label": {
+        "es": "Plan",
+        "en": "Plan",
+        "pt": "Plano",
+        "it": "Piano"
+      }
+    },
+    {
+      "id": "beta-version-iterations",
+      "type": "plan",
+      "title": {
+        "es": "Iteraciones de la beta pública",
+        "en": "Public beta iterations",
+        "pt": "Iterações da beta pública",
+        "it": "Iterazioni della beta pubblica"
+      },
+      "body": {
+        "es": "La beta pública avanza por versiones sucesivas: layouts por sesión con alternativa general, temas y densidad maduros, data blocks con datos fiables y OBS avanzado opcional sin romper el OBS local.",
+        "en": "The public beta moves forward in successive versions: per-session layouts with a general fallback, mature themes and density, data blocks with reliable data and optional advanced OBS that does not break local OBS.",
+        "pt": "A beta pública avança por versões sucessivas: layouts por sessão com alternativa geral, temas e densidade maduros, data blocks com dados fiáveis e OBS avançado opcional sem quebrar o OBS local.",
+        "it": "La beta pubblica avanza con versioni successive: layout per sessione con alternativa generale, temi e densità maturi, data block con dati affidabili e OBS avanzato opzionale senza rompere l'OBS locale."
+      },
+      "label": {
+        "es": "Plan",
+        "en": "Plan",
+        "pt": "Plano",
+        "it": "Piano"
+      }
+    },
+    {
+      "id": "rc-hardening",
+      "type": "plan",
+      "title": {
+        "es": "Hardening de la candidata de lanzamiento",
+        "en": "Release candidate hardening",
+        "pt": "Hardening da candidata a lançamento",
+        "it": "Hardening della candidata al lancio"
+      },
+      "body": {
+        "es": "La línea 0.9.x endurece el producto: rendimiento validado junto al simulador con el banco de huella, suite de regresión mínima, instalación y actualización claras, sin P0/P1 abiertos y P2 con decisión escrita.",
+        "en": "The 0.9.x line hardens the product: performance validated next to the simulator with the footprint bench, a minimum regression suite, clear install and update, no open P0/P1 and P2s with a written decision.",
+        "pt": "A linha 0.9.x endurece o produto: desempenho validado junto ao simulador com o banco de impacto, suite mínima de regressão, instalação e atualização claras, sem P0/P1 abertos e P2 com decisão escrita.",
+        "it": "La linea 0.9.x rafforza il prodotto: prestazioni validate accanto al simulatore con il banco d'impronta, suite di regressione minima, installazione e aggiornamento chiari, nessun P0/P1 aperto e P2 con decisione scritta."
+      },
+      "label": {
+        "es": "Plan",
+        "en": "Plan",
+        "pt": "Plano",
+        "it": "Piano"
+      }
+    },
+    {
+      "id": "launch-1-0",
+      "type": "plan",
+      "title": {
+        "es": "Lanzamiento v1.0.0.0",
+        "en": "v1.0.0.0 launch",
+        "pt": "Lançamento v1.0.0.0",
+        "it": "Lancio v1.0.0.0"
+      },
+      "body": {
+        "es": "Vantare sale como versión estable LMU-first: suite completa con pago y acceso estables, documentación de usuario, soporte organizado y calidad suficiente para sostener la reputación pública.",
+        "en": "Vantare ships as a stable LMU-first release: a complete suite with stable payment and access, user documentation, organized support and enough quality to hold a public reputation.",
+        "pt": "O Vantare sai como versão estável LMU-first: suite completa com pagamento e acesso estáveis, documentação de utilizador, suporte organizado e qualidade suficiente para sustentar a reputação pública.",
+        "it": "Vantare esce come versione stabile LMU-first: suite completa con pagamento e accesso stabili, documentazione utente, supporto organizzato e qualità sufficiente a sostenere la reputazione pubblica."
+      },
+      "label": {
+        "es": "Plan",
+        "en": "Plan",
+        "pt": "Plano",
+        "it": "Piano"
+      }
+    },
     {
       "id": "obs-browser-source-link",
       "type": "fix",
@@ -1413,6 +1819,11 @@
           "kind": "feat",
           "scope": "overlay",
           "text": "Editor in-place — teclado, acciones de widget y salida visible"
+        },
+        {
+          "kind": "fix",
+          "scope": "studio",
+          "text": "Restaurar enlace OBS al pie del dock de ajustes"
         }
       ]
     },

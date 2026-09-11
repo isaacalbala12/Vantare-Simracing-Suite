@@ -38,7 +38,7 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 
 ## Fases
 
-### Beta pública
+### Beta inicial
 
 - id: beta-foundation
 - estado: done
@@ -46,9 +46,9 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - etiqueta: Fase 1
 - etiqueta.en: Phase 1
 - objetivo: v0.1.0
-- titulo.en: Public beta
-- titulo.pt: Beta pública
-- titulo.it: Beta pubblica
+- titulo.en: Initial beta
+- titulo.pt: Beta inicial
+- titulo.it: Beta iniziale
 - resumen: Login Google, plan Free, overlays recomendados, launcher LMU y Hub v5.2.
 - resumen.en: Google login, Free plan, recommended overlays, LMU launcher and Hub v5.2.
 - resumen.pt: Login Google, plano Free, overlays recomendados, launcher LMU e Hub v5.2.
@@ -106,13 +106,77 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - item.pt: Banco reproduzível de impacto por hardware para Vantare e o overlay
 - item.it: Banco riproducibile dell'impronta hardware per Vantare e l'overlay
 
+### Programa de insiders
+
+- id: insiders-program
+- estado: planned
+- progreso: 15
+- etiqueta: Fase 3
+- etiqueta.en: Phase 3
+- objetivo: v0.2.x - v0.5.x
+- titulo.en: Insiders programme
+- titulo.pt: Programa de insiders
+- titulo.it: Programma insiders
+- resumen: Pruebas cerradas en los canales Nightly y Testers: producto usable de extremo a extremo, widgets core completos y builds compartibles con feedback real.
+- resumen.en: Closed testing on the Nightly and Testers channels: an end-to-end usable product, complete core widgets and shareable builds with real feedback.
+- resumen.pt: Testes fechados nos canais Nightly e Testers: produto utilizável de ponta a ponta, widgets principais completos e builds partilháveis com feedback real.
+- resumen.it: Test chiusi sui canali Nightly e Testers: prodotto utilizzabile end-to-end, widget principali completi e build condivisibili con feedback reale.
+- item: Producto usable de extremo a extremo en LMU
+- item.en: End-to-end usable product in LMU
+- item.pt: Produto utilizável de ponta a ponta no LMU
+- item.it: Prodotto utilizzabile end-to-end in LMU
+- item: Relative, Standings, Pedals y Delta estables
+- item.en: Stable Relative, Standings, Pedals and Delta
+- item.pt: Relative, Standings, Pedals e Delta estáveis
+- item.it: Relative, Standings, Pedals e Delta stabili
+- item: Builds compartibles con instrucciones y canal de feedback
+- item.en: Shareable builds with instructions and a feedback channel
+- item.pt: Builds partilháveis com instruções e canal de feedback
+- item.it: Build condivisibili con istruzioni e canale di feedback
+- item: Overlay Studio V3 y editor in-place cerrados
+- item.en: Overlay Studio V3 and the in-place editor closed
+- item.pt: Overlay Studio V3 e editor in-place fechados
+- item.it: Overlay Studio V3 ed editor in-place chiusi
+
+### Beta pública
+
+- id: public-beta
+- estado: planned
+- progreso: 5
+- etiqueta: Fase 4
+- etiqueta.en: Phase 4
+- objetivo: v0.6.x - v0.8.x
+- titulo.en: Public beta
+- titulo.pt: Beta pública
+- titulo.it: Beta pubblica
+- resumen: Relanzamiento abierto de la beta: documentación reiniciada, pagos con Polar, onboarding guiado y versiones iterativas.
+- resumen.en: Open relaunch of the beta: restarted documentation, Polar payments, guided onboarding and iterative versions.
+- resumen.pt: Relançamento aberto da beta: documentação reiniciada, pagamentos com Polar, onboarding guiado e versões iterativas.
+- resumen.it: Rilancio aperto della beta: documentazione riavviata, pagamenti con Polar, onboarding guidato e versioni iterative.
+- item: Documentación pública reiniciada
+- item.en: Restarted public documentation
+- item.pt: Documentação pública reiniciada
+- item.it: Documentazione pubblica riavviata
+- item: Pagos y licencias con Polar operativos
+- item.en: Working Polar payments and licensing
+- item.pt: Pagamentos e licenças com Polar operacionais
+- item.it: Pagamenti e licenze con Polar operativi
+- item: Onboarding guiado y canal estable abierto a todos
+- item.en: Guided onboarding and the stable channel open to everyone
+- item.pt: Onboarding guiado e canal estável aberto a todos
+- item.it: Onboarding guidato e canale stabile aperto a tutti
+- item: Versiones iterativas: layouts por sesión, data blocks y OBS avanzado
+- item.en: Iterative versions: per-session layouts, data blocks and advanced OBS
+- item.pt: Versões iterativas: layouts por sessão, data blocks e OBS avançado
+- item.it: Versioni iterative: layout per sessione, data block e OBS avanzato
+
 ### Ingeniero y estrategia
 
 - id: engineer
 - estado: planned
 - progreso: 25
-- etiqueta: Fase 3
-- etiqueta.en: Phase 3
+- etiqueta: Fase 5
+- etiqueta.en: Phase 5
 - objetivo: Por planear
 - objetivo.en: To plan
 - objetivo.pt: Por planear
@@ -141,13 +205,69 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - item.pt: Voz e perfis avançados depois
 - item.it: Voce e profili avanzati dopo
 
+### Candidata de lanzamiento
+
+- id: release-candidate
+- estado: future
+- progreso: 0
+- etiqueta: Fase 6
+- etiqueta.en: Phase 6
+- objetivo: v0.9.x
+- titulo.en: Release candidate
+- titulo.pt: Candidata a lançamento
+- titulo.it: Candidata al lancio
+- resumen: Hardening final: rendimiento validado junto al simulador, regresión mínima cubierta y sin errores críticos abiertos.
+- resumen.en: Final hardening: performance validated next to the simulator, minimum regression coverage and no open critical errors.
+- resumen.pt: Hardening final: desempenho validado junto ao simulador, cobertura mínima de regressão e sem erros críticos abertos.
+- resumen.it: Hardening finale: prestazioni validate accanto al simulatore, copertura minima di regressione e nessun errore critico aperto.
+- item: Rendimiento validado junto al simulador
+- item.en: Performance validated next to the simulator
+- item.pt: Desempenho validado junto ao simulador
+- item.it: Prestazioni validate accanto al simulatore
+- item: Suite de regresión visual y funcional mínima
+- item.en: Minimum visual and functional regression suite
+- item.pt: Suite mínima de regressão visual e funcional
+- item.it: Suite minima di regressione visiva e funzionale
+- item: Documentación de usuario completa
+- item.en: Complete user documentation
+- item.pt: Documentação de utilizador completa
+- item.it: Documentazione utente completa
+
+### Lanzamiento 1.0
+
+- id: launch
+- estado: future
+- progreso: 0
+- etiqueta: Fase 7
+- etiqueta.en: Phase 7
+- objetivo: v1.0.0.0
+- titulo.en: 1.0 launch
+- titulo.pt: Lançamento 1.0
+- titulo.it: Lancio 1.0
+- resumen: Versión estable LMU-first con pago y acceso fiables, soporte organizado y calidad para sostener la reputación pública.
+- resumen.en: Stable LMU-first release with reliable payment and access, organized support and the quality to hold a public reputation.
+- resumen.pt: Versão estável LMU-first com pagamento e acesso fiáveis, suporte organizado e qualidade para sustentar a reputação pública.
+- resumen.it: Versione stabile LMU-first con pagamento e accesso affidabili, supporto organizzato e qualità per sostenere la reputazione pubblica.
+- item: Suite completa estable para Le Mans Ultimate
+- item.en: Complete stable suite for Le Mans Ultimate
+- item.pt: Suite completa estável para Le Mans Ultimate
+- item.it: Suite completa stabile per Le Mans Ultimate
+- item: Pago, licencia y actualizador fiables
+- item.en: Reliable payment, licensing and updater
+- item.pt: Pagamento, licença e atualizador fiáveis
+- item.it: Pagamento, licenza e updater affidabili
+- item: Soporte y documentación de usuario listos
+- item.en: Support and user documentation ready
+- item.pt: Suporte e documentação de utilizador prontos
+- item.it: Supporto e documentazione utente pronti
+
 ### Ecosistema
 
 - id: ecosystem
 - estado: future
 - progreso: 10
-- etiqueta: Fase 4
-- etiqueta.en: Phase 4
+- etiqueta: Fase 8
+- etiqueta.en: Phase 8
 - objetivo: Futuro
 - objetivo.en: Future
 - objetivo.pt: Futuro
@@ -256,6 +376,141 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 ---
 
 ## Hitos
+
+### Producto usable de extremo a extremo en LMU
+
+- id: insiders-usable-product
+- tipo: plan
+- titulo.en: End-to-end usable product in LMU
+- titulo.pt: Produto utilizável de ponta a ponta no LMU
+- titulo.it: Prodotto utilizzabile end-to-end in LMU
+- cuerpo: El programa de insiders cierra esta puerta cuando una persona de prueba abre Vantare, mueve y redimensiona widgets, guarda su perfil, reabre la app y usa el overlay de escritorio sin ayuda técnica. Incluye el editor in-place, perfiles robustos y recomendados editables.
+- cuerpo.en: The insiders programme clears this gate when a tester opens Vantare, moves and resizes widgets, saves their profile, reopens the app and uses the desktop overlay without technical help. It includes the in-place editor, robust profiles and editable recommended profiles.
+- cuerpo.pt: O programa de insiders fecha esta porta quando uma pessoa de teste abre o Vantare, move e redimensiona widgets, grava o seu perfil, reabre a app e usa o overlay de desktop sem ajuda técnica. Inclui o editor in-place, perfis robustos e recomendados editáveis.
+- cuerpo.it: Il programma insiders supera questa porta quando un tester apre Vantare, sposta e ridimensiona i widget, salva il profilo, riapre l'app e usa l'overlay desktop senza aiuto tecnico. Include l'editor in-place, profili robusti e profili consigliati modificabili.
+- etiqueta: Plan
+- etiqueta.pt: Plano
+- etiqueta.it: Piano
+
+### Builds compartibles del canal Testers
+
+- id: insiders-shared-builds
+- tipo: plan
+- titulo.en: Shareable Testers channel builds
+- titulo.pt: Builds partilháveis do canal Testers
+- titulo.it: Build condivisibili del canale Testers
+- cuerpo: El canal Testers distribuye builds verificadas con instrucciones de instalación, lista de problemas conocidos y un canal de feedback definido. OBS local funciona con URL copiable e instrucciones compactas.
+- cuerpo.en: The Testers channel ships verified builds with installation instructions, a known-issues list and a defined feedback channel. Local OBS works with a copyable URL and compact instructions.
+- cuerpo.pt: O canal Testers distribui builds verificadas com instruções de instalação, lista de problemas conhecidos e um canal de feedback definido. O OBS local funciona com URL copiável e instruções compactas.
+- cuerpo.it: Il canale Testers distribuisce build verificate con istruzioni di installazione, elenco dei problemi noti e un canale di feedback definito. OBS locale funziona con URL copiabile e istruzioni compatte.
+- etiqueta: Plan
+- etiqueta.pt: Plano
+- etiqueta.it: Piano
+
+### Widgets core completos para LMU
+
+- id: core-widgets-beta
+- tipo: plan
+- titulo.en: Complete core widgets for LMU
+- titulo.pt: Widgets principais completos para LMU
+- titulo.it: Widget principali completi per LMU
+- cuerpo: Relative, Standings, Pedals y Delta quedan estables para perfiles reales de Le Mans Ultimate: Pedals beta v1, delta de mejor vuelta en vivo fiable y hotkeys básicas o pospuestas de forma explícita.
+- cuerpo.en: Relative, Standings, Pedals and Delta become stable for real Le Mans Ultimate profiles: Pedals beta v1, reliable live best-lap delta and basic hotkeys or explicitly deferred ones.
+- cuerpo.pt: Relative, Standings, Pedals e Delta ficam estáveis para perfis reais de Le Mans Ultimate: Pedals beta v1, delta de melhor volta ao vivo fiável e hotkeys básicas ou explicitamente adiadas.
+- cuerpo.it: Relative, Standings, Pedals e Delta diventano stabili per i profili reali di Le Mans Ultimate: Pedals beta v1, delta sul miglior giro live affidabile e hotkey di base o esplicitamente rimandate.
+- etiqueta: Plan
+- etiqueta.pt: Plano
+- etiqueta.it: Piano
+
+### Documentación pública reiniciada
+
+- id: docs-public-reboot
+- tipo: plan
+- titulo.en: Restarted public documentation
+- titulo.pt: Documentação pública reiniciada
+- titulo.it: Documentazione pubblica riavviata
+- cuerpo: La documentación de usuario se reorganiza y reescribe para la apertura: guía de instalación, primeros pasos, problemas conocidos y soporte. Las guías internas dejan de ser requisito para usar el producto.
+- cuerpo.en: User documentation is reorganised and rewritten for the opening: installation guide, first steps, known issues and support. Internal guides stop being a requirement to use the product.
+- cuerpo.pt: A documentação de utilizador é reorganizada e reescrita para a abertura: guia de instalação, primeiros passos, problemas conhecidos e suporte. As guias internas deixam de ser requisito para usar o produto.
+- cuerpo.it: La documentazione utente viene riorganizzata e riscritta per l'apertura: guida all'installazione, primi passi, problemi noti e supporto. Le guide interne smettono di essere un requisito per usare il prodotto.
+- etiqueta: Plan
+- etiqueta.pt: Plano
+- etiqueta.it: Piano
+
+### Pagos y licencias con Polar operativos
+
+- id: billing-polar-live
+- tipo: plan
+- titulo.en: Working Polar payments and licensing
+- titulo.pt: Pagamentos e licenças com Polar operacionais
+- titulo.it: Pagamenti e licenze con Polar operativi
+- cuerpo: Polar queda operativo como autoridad comercial: matriz monetaria cerrada, reconciliación, trial con recordatorio, un dispositivo activo reemplazable y credencial offline firmada. Ninguna venta pública antes de cerrar la matriz.
+- cuerpo.en: Polar becomes operational as the commercial authority: closed monetary matrix, reconciliation, trial with reminder, one replaceable active device and a signed offline credential. No public sale before the matrix is closed.
+- cuerpo.pt: O Polar fica operacional como autoridade comercial: matriz monetária fechada, reconciliação, trial com lembrete, um dispositivo ativo substituível e credencial offline assinada. Nenhuma venda pública antes de fechar a matriz.
+- cuerpo.it: Polar diventa operativo come autorità commerciale: matrice monetaria chiusa, riconciliazione, trial con promemoria, un dispositivo attivo sostituibile e credenziale offline firmata. Nessuna vendita pubblica prima della chiusura della matrice.
+- etiqueta: Plan
+- etiqueta.pt: Plano
+- etiqueta.it: Piano
+
+### Apertura de la beta pública
+
+- id: public-beta-relaunch
+- tipo: plan
+- titulo.en: Public beta opening
+- titulo.pt: Abertura da beta pública
+- titulo.it: Apertura della beta pubblica
+- cuerpo: El canal estable se abre a todos con el plan Free y la compra disponible: onboarding guiado con idioma, cuenta, simulador y perfil recomendado, descarga clara y soporte en Discord.
+- cuerpo.en: The stable channel opens to everyone with the Free plan and purchase available: guided onboarding with language, account, simulator and recommended profile, a clear download and Discord support.
+- cuerpo.pt: O canal estável abre-se a todos com o plano Free e a compra disponível: onboarding guiado com idioma, conta, simulador e perfil recomendado, download claro e suporte no Discord.
+- cuerpo.it: Il canale stabile si apre a tutti con il piano Free e l'acquisto disponibile: onboarding guidato con lingua, account, simulatore e profilo consigliato, download chiaro e supporto su Discord.
+- etiqueta: Plan
+- etiqueta.pt: Plano
+- etiqueta.it: Piano
+
+### Iteraciones de la beta pública
+
+- id: beta-version-iterations
+- tipo: plan
+- titulo.en: Public beta iterations
+- titulo.pt: Iterações da beta pública
+- titulo.it: Iterazioni della beta pubblica
+- cuerpo: La beta pública avanza por versiones sucesivas: layouts por sesión con alternativa general, temas y densidad maduros, data blocks con datos fiables y OBS avanzado opcional sin romper el OBS local.
+- cuerpo.en: The public beta moves forward in successive versions: per-session layouts with a general fallback, mature themes and density, data blocks with reliable data and optional advanced OBS that does not break local OBS.
+- cuerpo.pt: A beta pública avança por versões sucessivas: layouts por sessão com alternativa geral, temas e densidade maduros, data blocks com dados fiáveis e OBS avançado opcional sem quebrar o OBS local.
+- cuerpo.it: La beta pubblica avanza con versioni successive: layout per sessione con alternativa generale, temi e densità maturi, data block con dati affidabili e OBS avanzato opzionale senza rompere l'OBS locale.
+- etiqueta: Plan
+- etiqueta.pt: Plano
+- etiqueta.it: Piano
+
+### Hardening de la candidata de lanzamiento
+
+- id: rc-hardening
+- tipo: plan
+- titulo.en: Release candidate hardening
+- titulo.pt: Hardening da candidata a lançamento
+- titulo.it: Hardening della candidata al lancio
+- cuerpo: La línea 0.9.x endurece el producto: rendimiento validado junto al simulador con el banco de huella, suite de regresión mínima, instalación y actualización claras, sin P0/P1 abiertos y P2 con decisión escrita.
+- cuerpo.en: The 0.9.x line hardens the product: performance validated next to the simulator with the footprint bench, a minimum regression suite, clear install and update, no open P0/P1 and P2s with a written decision.
+- cuerpo.pt: A linha 0.9.x endurece o produto: desempenho validado junto ao simulador com o banco de impacto, suite mínima de regressão, instalação e atualização claras, sem P0/P1 abertos e P2 com decisão escrita.
+- cuerpo.it: La linea 0.9.x rafforza il prodotto: prestazioni validate accanto al simulatore con il banco d'impronta, suite di regressione minima, installazione e aggiornamento chiari, nessun P0/P1 aperto e P2 con decisione scritta.
+- etiqueta: Plan
+- etiqueta.pt: Plano
+- etiqueta.it: Piano
+
+### Lanzamiento v1.0.0.0
+
+- id: launch-1-0
+- tipo: plan
+- titulo.en: v1.0.0.0 launch
+- titulo.pt: Lançamento v1.0.0.0
+- titulo.it: Lancio v1.0.0.0
+- cuerpo: Vantare sale como versión estable LMU-first: suite completa con pago y acceso estables, documentación de usuario, soporte organizado y calidad suficiente para sostener la reputación pública.
+- cuerpo.en: Vantare ships as a stable LMU-first release: a complete suite with stable payment and access, user documentation, organized support and enough quality to hold a public reputation.
+- cuerpo.pt: O Vantare sai como versão estável LMU-first: suite completa com pagamento e acesso estáveis, documentação de utilizador, suporte organizado e qualidade suficiente para sustentar a reputação pública.
+- cuerpo.it: Vantare esce come versione stabile LMU-first: suite completa con pagamento e accesso stabili, documentazione utente, supporto organizzato e qualità sufficiente a sostenere la reputazione pubblica.
+- etiqueta: Plan
+- etiqueta.pt: Plano
+- etiqueta.it: Piano
 
 ### Enlace OBS restaurado en Overlays Studio
 

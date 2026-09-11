@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ListRow } from "../../../ui/orbit/ListRow";
 import { formatMessage } from "../../orbit/format-message";
 import { formatCountdown, formatStartTime } from "../../orbit/next-starts";
@@ -35,8 +35,11 @@ export function SideRaces({
     return () => window.clearInterval(id);
   }, [now]);
 
-  const reference = new Date(now ? now.getTime() : tick);
-  const rows = starts.filter((start) => start.at.getTime() >= reference.getTime()).slice(0, ROWS);
+  const reference = useMemo(() => new Date(now ? now.getTime() : tick), [now, tick]);
+  const rows = useMemo(
+    () => starts.filter((start) => start.at.getTime() >= reference.getTime()).slice(0, ROWS),
+    [starts, reference],
+  );
 
   return (
     <section aria-label={labels.title} className={["orbit-block", className].filter(Boolean).join(" ")}>

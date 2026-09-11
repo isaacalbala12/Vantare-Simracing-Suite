@@ -244,6 +244,18 @@ física nueva, retirada V1, merge o release en este corte documental.
   PASS, suite 427 ficheros / 3389 tests PASS (incluye los 4 tests de
   caracterización de catálogo actualizados), `git diff --check` limpio.
   Evidencia en `design-evidence/functional/efficiency-{relative,delta,pedals}.png`.
+  Además, el Workshop dejó de ser frágil: una URL rechazada ya no deja una
+  página muerta (abre el estado por defecto con el motivo visible), cambiar
+  de widget limpia escena/diseño/piel heredados y el selector de variantes
+  solo ofrece las del widget activo. La vista de estudio se generalizó:
+  cualquier selección `system=vantare-functional` abre el panel enfocado
+  (widget conmutable entre Standings/Relative/Delta/Pedals con aterrizaje en
+  la fixture más expresiva de cada uno, selector de sistema para salir de
+  Eficiencia, rótulo del escenario derivado del widget); Estilo, Dirección
+  v2 y Módulos siguen siendo solo de Standings. El playhead de escena se
+  reancla al cambiar de escena (ajuste en render, no efecto) para que el
+  `frame=` de la URL sea honesto. Capturas del estudio en
+  `design-evidence/functional/study-{standings,relative,delta,pedals}.png`.
   Sin merge, push, PR, promoción ni release.
 
 - **S3 cerrado, 2026-09-03:** el mismo EXE R-FIX4 desde

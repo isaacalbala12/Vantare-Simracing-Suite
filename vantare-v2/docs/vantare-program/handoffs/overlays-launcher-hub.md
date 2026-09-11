@@ -288,7 +288,10 @@ física nueva, retirada V1, merge o release en este corte documental.
   decisión inyectable del contrato ISA-1105 — y el Workshop expone
   `brand=off` con el segmento "Marca" en el panel (autoridad local mientras
   la política nativa con licencia llega por ISA-1098/1105, aún sin mergear
-  en nightly). Evidencia `relative-rows-only.png`, `relative-bars.png` y
+  en nightly). **bestLap en la demo:** el golden lo trae `missing` en todas
+  las filas y la columna "Mejor vuelta" pintaba solo `—`; como no es un
+  hueco declarado, la capa demo lo deriva de lastLap con mejora determinista.
+  Evidencia `relative-rows-only.png`, `relative-bars.png` y
   `standings-no-brand.png`.
   Sin merge, push, PR, promoción ni release.
 

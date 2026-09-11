@@ -74,6 +74,18 @@ describe("Overlay Workshop query", () => {
     expect(serializeOverlayWorkshopQuery(outside)).not.toContain("study=");
   });
 
+  it("round-trips the brand selector and rejects unknown values", () => {
+    const parsed = parseOverlayWorkshopQuery("?widget=standings&system=vantare-functional&variant=standings-multiclass&brand=off");
+    if ("error" in parsed) throw new Error(parsed.error);
+    expect(parsed.brand).toBe("off");
+    expect(serializeOverlayWorkshopQuery(parsed)).toContain("brand=off");
+    expect(parseOverlayWorkshopQuery("?brand=quizas")).toEqual({ error: "invalid brand parameter: quizas" });
+    const unset = parseOverlayWorkshopQuery("?widget=standings&system=vantare-functional&variant=standings-multiclass");
+    if ("error" in unset) throw new Error(unset.error);
+    expect(unset.brand).toBeUndefined();
+    expect(serializeOverlayWorkshopQuery(unset)).not.toContain("brand=");
+  });
+
   it("keeps the development route inaccessible outside development and serializes the full selection", () => {
     expect(isOverlayWorkshopPath("/workshop", false)).toBe(false);
     expect(isOverlayWorkshopPath("/hub", true)).toBe(false);

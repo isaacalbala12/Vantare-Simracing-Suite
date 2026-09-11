@@ -7,7 +7,13 @@ import { StandingsFunctional } from "./StandingsFunctional";
 
 function parseShowHeader(input: unknown): Record<string, unknown> {
   const value = input && typeof input === "object" && !Array.isArray(input) ? input as Record<string, unknown> : {};
-  return { showHeader: value.showHeader !== false };
+  return {
+    showHeader: value.showHeader !== false,
+    // brandVisible es la decisión inyectada por la política nativa
+    // (ISA-1105) — o por el selector de marca del Workshop, que hace de
+    // autoridad local. Los demás campos se ignoran aquí.
+    ...(typeof value.brandVisible === "boolean" ? { brandVisible: value.brandVisible } : {}),
+  };
 }
 
 function headerInspector(labelKey: string) {
@@ -27,7 +33,15 @@ export const vantareFunctionalManifest: DesignSystemDefinition = {
       configMigrations: { 0: (settings) => ({ ...settings }) },
       parseSettings(input: unknown): Record<string, unknown> {
         const value = input && typeof input === "object" && !Array.isArray(input) ? input as Record<string, unknown> : {};
-        return { showSessionHeader: value.showSessionHeader !== false, templateId: value.templateId === "broadcast" ? "broadcast" : "signature" };
+        return {
+          showSessionHeader: value.showSessionHeader !== false,
+          templateId: value.templateId === "broadcast" ? "broadcast" : "signature",
+          // Preferencia de marca integrada (ISA-1105): nunca autoridad — la
+          // decisión final llega como brandVisible desde la política nativa;
+          // en el Workshop la escribe el selector de marca.
+          showBrand: value.showBrand === true,
+          ...(typeof value.brandVisible === "boolean" ? { brandVisible: value.brandVisible } : {}),
+        };
       },
       inspector: { appearance: [{ kind: "toggle", id: "show-session-header", labelKey: "overlay.inspector.standings.showSessionHeader", path: "showSessionHeader", defaultValue: true }] },
       Renderer: StandingsFunctional as ComponentType<WidgetRendererProps>,

@@ -31,6 +31,19 @@ describe("Functional Standings", () => {
     expect(container.querySelector('tr[data-player="true"]')).not.toBeNull();
   });
 
+  it("drops the integrated brand when the injected decision hides it (ISA-1105)", () => {
+    const { container } = render(<StandingsFunctional model={model} settings={{ brandVisible: false }} renderMode="harness" />);
+    expect(container.querySelector(".vf-brand")).toBeNull();
+    expect(container.querySelector(".vf-brand-band")).toBeNull();
+    expect(container.querySelector(".vf-session")).not.toBeNull();
+  });
+
+  it("keeps the brand as a standalone band when the header is off but the decision keeps it", () => {
+    const { container } = render(<StandingsFunctional model={model} settings={{ showSessionHeader: false, brandVisible: true }} renderMode="harness" />);
+    expect(container.querySelector(".vf-brand-band .vf-brand")).not.toBeNull();
+    expect(container.querySelector(".vf-session .vf-brand")).toBeNull();
+  });
+
   it("renders the ambient footer band only when the model carries those fields", () => {
     const bare = render(<StandingsFunctional model={model} settings={{}} renderMode="harness" />);
     expect(bare.container.querySelector(".vf-footer")).toBeNull();

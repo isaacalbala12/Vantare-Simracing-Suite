@@ -15,19 +15,24 @@ export function StandingsFunctional({ model, settings }: WidgetRendererProps<Sta
   const columns = model.columns;
   const identitySpan = resolveFunctionalIdentitySpan(columns);
   const hasHeader = settings.showSessionHeader !== false;
+  // Decisión pura de presentación (ISA-1105): la inyecta el host desde la
+  // política nativa y la preferencia del documento. Sin ella se conserva el
+  // comportamiento previo (marca con cabecera).
+  const brandVisible = (settings.brandVisible as boolean | undefined) ?? hasHeader;
   const hasFooter = Boolean(model.trackTempText || model.ambientTempText || model.windText);
   const unavailable = model.status === "disconnected" || model.status === "missing" || model.status === "error";
   const statusText = model.status !== "ready" ? labels[model.status] : model.rows.length === 0 ? labels.missing : undefined;
   const labelFor = (metric: string) => metric === "gap" && paceSession ? labels.paceGap : labels[metric as keyof typeof labels] ?? metric;
 
   const sessionHeader = <div className="vf-session" title={`${sessionLabel} · ${labels.remaining}`}>
-    <span className="vf-brand" aria-label="Vantare"><img src={vantareMark} alt="" />VANTARE</span>
+    {brandVisible ? <span className="vf-brand" aria-label="Vantare"><img src={vantareMark} alt="" />VANTARE</span> : null}
     <span className="vf-session-context"><span className="vf-session-type" role={model.status === "stale" ? "status" : undefined}>{model.status === "stale" ? labels.stale : sessionLabel}</span><span className="vf-clock">{model.remainingText}</span></span>
     <span className="vf-class" title={model.activeClass}>{model.activeClass}</span>
   </div>;
 
   return (
     <section className="vf-standings" data-widget-system="vantare-functional" data-widget-renderer="standings" data-template={broadcast ? "broadcast" : "signature"} data-session-header={hasHeader} data-status={model.status} data-session={session}>
+      {!hasHeader && brandVisible && <div className="vf-brand-band"><span className="vf-brand" aria-label="Vantare"><img src={vantareMark} alt="" />VANTARE</span></div>}
       {(!identitySpan || unavailable || broadcast) && hasHeader && sessionHeader}
       {statusText && model.status !== "stale" && <p className="vf-status" role="status">{statusText}</p>}
       {model.statusMessage && model.status !== "stale" && <p className="vf-detail">{model.statusMessage}</p>}

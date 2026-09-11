@@ -34,6 +34,14 @@ function createRouteScenarioWidget(query: OverlayWorkshopQuery): WidgetInstanceV
     ...(query.designId ? { designId: query.designId } : {}),
     ...(query.sceneId ? { sceneId: query.sceneId } : {}),
   });
+  // El selector de marca del panel hace de autoridad local (en producción la
+  // decisión la inyecta la política nativa de ISA-1105 como brandVisible).
+  if (query.brand === "off") {
+    widget.visual = {
+      ...widget.visual,
+      appearanceOverrides: { ...(widget.visual.appearanceOverrides ?? {}), brandVisible: false },
+    };
+  }
   // The preview switches its lap column explicitly; saved profile content is
   // never changed by the renderer when the live session changes.
   if (query.system === "vantare-functional" && query.variant === "default" && query.session !== "race") {

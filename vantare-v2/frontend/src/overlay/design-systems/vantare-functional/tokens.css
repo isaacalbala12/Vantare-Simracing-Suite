@@ -89,6 +89,13 @@
 .vf-standings[data-template="broadcast"] .vf-table tr[data-player="true"] td:first-child { border-radius: 6px 0 0 6px; }
 .vf-standings[data-template="broadcast"] .vf-table tr[data-player="true"] td:last-child { border-radius: 0 6px 6px 0; }
 
+/* Franja de marca obligatoria con cabecera oculta (ISA-1105): mismo alto y
+   fondo que una banda de información, sin efectos ni animación nuevos. */
+.vf-standings .vf-brand-band { display: flex; align-items: center; height: 22px; padding: 0 10px; border-bottom: 1px solid var(--vf-line); background: rgb(0 0 0 / 10%); }
+/* El logo de cabecera mide 24px y desbordaría la banda de 22px: en banda se
+   pinta contenido para encajar sin recortes. */
+.vf-standings .vf-brand-band .vf-brand img { width: 18px; height: 18px; }
+
 /* ── Eficiencia en el resto del sistema: Relative, Delta y Pedals ──
    Mismo cristal, misma cabecera, misma tipografía; solo cambia el cuerpo. */
 

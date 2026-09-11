@@ -8,6 +8,10 @@ export function PedalsFunctional({ model, settings }: WidgetRendererProps<Pedals
   const { locale } = useI18n();
   const labels = functionalLabels[locale];
   const hasHeader = settings.showHeader !== false;
+  // Marca integrada (ISA-1105): la decisión llega como brandVisible desde la
+  // política nativa — o del selector de marca del Workshop, que hace de
+  // autoridad local. Sin ella se conserva el comportamiento previo.
+  const brandVisible = (settings.brandVisible as boolean | undefined) ?? hasHeader;
   const statusText = model.status !== "ready" ? labels[model.status] : undefined;
   const pedals = [
     { id: "clutch", value: model.clutch, text: model.clutchText, label: "C", name: labels.clutch },
@@ -18,7 +22,7 @@ export function PedalsFunctional({ model, settings }: WidgetRendererProps<Pedals
   return (
     <section className="vf-pedals" data-widget-system="vantare-functional" data-widget-renderer="pedals" data-status={model.status} data-session-header={hasHeader}>
       {hasHeader && <div className="vf-session" title={labels.pedals}>
-        <span className="vf-brand" aria-label="Vantare"><img src={vantareMark} alt="" /></span>
+        {brandVisible ? <span className="vf-brand" aria-label="Vantare"><img src={vantareMark} alt="" /></span> : null}
         <span className="vf-session-context"><span className="vf-session-type" role={model.status === "stale" ? "status" : undefined}>{model.status === "stale" ? labels.stale : labels.pedals}</span></span>
       </div>}
       {statusText && model.status !== "stale" && <p className="vf-status" role="status">{statusText}</p>}

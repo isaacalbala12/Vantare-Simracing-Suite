@@ -28,6 +28,9 @@ export type OverlayWorkshopQuery = {
   /** Named animation scene being previewed, and where its transport is parked. */
   sceneId?: string;
   sceneFrame?: number;
+  /** Marca integrada: el selector del Workshop hace de autoridad local
+   *  (ISA-1105: en producción la decisión la inyecta la política nativa). */
+  brand?: "off";
 };
 
 export const DEFAULT_OVERLAY_WORKSHOP_QUERY: OverlayWorkshopQuery = {
@@ -152,9 +155,12 @@ export function parseOverlayWorkshopQuery(search: string): OverlayWorkshopQuery 
     ? studyStyleRaw as FunctionalStudyStyleId
     : undefined;
 
+  const brand = params.get("brand");
+  if (brand !== null && brand !== "off") return { error: `invalid brand parameter: ${brand}` };
+
   return { widget, system, state, surface, variant, session, location, background, scale, preset,
     ...(designId ? { designId } : {}), ...(studyStyle ? { studyStyle } : {}), ...(parsedWidth ? { width: parsedWidth } : {}), ...(parsedHeight ? { height: parsedHeight } : {}), ...(compare ? { compare } : {}),
-    ...(sceneId ? { sceneId } : {}), ...(sceneFrame !== undefined ? { sceneFrame } : {}) };
+    ...(sceneId ? { sceneId } : {}), ...(sceneFrame !== undefined ? { sceneFrame } : {}), ...(brand === "off" ? { brand } : {}) };
 }
 
 export function isOverlayWorkshopPath(pathname: string, isDevelopment = import.meta.env.DEV): boolean {
@@ -181,5 +187,6 @@ export function serializeOverlayWorkshopQuery(query: OverlayWorkshopQuery): stri
   if (query.compare) params.set("compare", query.compare);
   if (query.sceneId) params.set("scene", query.sceneId);
   if (query.sceneFrame !== undefined) params.set("frame", String(query.sceneFrame));
+  if (query.brand) params.set("brand", query.brand);
   return params.toString();
 }

@@ -1,4 +1,4 @@
-export type StudioRouteMode = "editor" | "ownProfiles" | "recommended" | "community" | "obs";
+export type StudioRouteMode = "editor" | "ownProfiles" | "recommended" | "community";
 
 /**
  * Traduce el destino de `navigate("studio", target)` al modo de la ruta.

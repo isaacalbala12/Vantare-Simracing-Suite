@@ -270,6 +270,18 @@ describe("StudioOrbitLayout", () => {
     expect(orbitStore.get(ORBIT_KEYS.rightDock)).toBe("open");
   });
 
+  it("muestra el enlace OBS al pie del dock con la URL del perfil abierto", async () => {
+    renderStudio();
+    const dock = await screen.findByTestId("orbit-studio-dock");
+    const obs = await within(dock).findByTestId("orbit-studio-obs");
+
+    // Último bloque del dock: el enlace vive debajo del inspector.
+    expect(dock.lastElementChild).toBe(obs);
+
+    const input = within(obs).getByTestId("orbit-studio-obs-url") as HTMLInputElement;
+    expect(input.value).toBe("http://127.0.0.1:39261/overlay?profile=profile.json");
+  });
+
   it("pliega el inspector solo cuando la ventana es estrecha y lo avisa", async () => {
     Object.defineProperty(window, "innerWidth", { configurable: true, value: 1280 });
     renderStudio();

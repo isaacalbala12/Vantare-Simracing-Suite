@@ -243,7 +243,209 @@ Del contrato de producto; ninguno puede faltar en `1.0.0.0`:
 | Ajustes | Consolidando | 1 |
 | Instalador + Updater | Pipeline con 6 artefactos existe | 2.0 |
 
-## Decisiones pendientes de Isaac
+## Criterios exactos de subida de versión
+
+Esta sección responde "¿cómo valoramos que ya podemos subir?" con un
+procedimiento ejecutable. Las condiciones de contenido vienen de
+`versioning-and-release-gates.md`; lo que aquí se añade es la medición, la
+evidencia exigible y el acto concreto de subida.
+
+### Tipos de bump
+
+| Bump | Segmento | Cuándo | Ejemplo |
+|---|---|---|---|
+| Patch | 4.º | Hotfix sin cambio de alcance | `0.6.1.0` → `0.6.1.1` |
+| Corte de feature | 3.º | Milestone de GitHub cerrado al 100 % dentro de la fase | `0.6.1.0` → `0.6.2.0` |
+| Transición de fase | 2.º | La fase anterior superó su gate review | `0.5.x` → `0.6.0.0` |
+| Release | 1.º | La candidata superó el gate 1.0 | `0.9.x` → `1.0.0.0` |
+
+Reglas:
+
+- Los números no se reutilizan ni retroceden. Un tag publicado es inmutable.
+- Un bump de fase no es una fecha ni una cuenta de features: es la
+  certificación de un gate. Si el gate no pasa, la versión no sube.
+- La decisión la toma Isaac con evidencia. Nunca es automática ni la dispara
+  el cierre de un milestone por sí solo (regla ya vigente en `AGENTS.md`).
+- Las builds de canal (`vX.Y.Z-nightly.N`, `vX.Y.Z-testers.N`) son
+  prereleases continuas e independientes: subir de fase solo cambia la versión
+  base de la que cuelgan.
+
+### Instrumento: la Gate Review
+
+Cada transición de fase se evalúa con una issue de GitHub
+`roadmap:required` titulada `Gate review vX.Y.0.0`, cuyo cuerpo es la
+checklist de la fase con la evidencia enlazada punto a punto. Se cierra solo
+cuando:
+
+1. cada punto del gate tiene evidencia enlazada (PR, run de CI, medición del
+   banco o verificación manual firmada);
+2. `nightly` acumula un periodo sin regresión P0/P1 nueva — propuesta: **7
+   días** en insiders, **14 días** en beta pública, **21 días** en candidata;
+3. el smoke manual del canal correspondiente pasa en un entorno limpio (no la
+   máquina de desarrollo);
+4. la checklist operativa de `release-checklists.md` de esa etapa está al
+   100 % o con excepciones escritas y aceptadas por Isaac.
+
+Soporte de tracking: cada versión de fase tiene su **milestone de GitHub**
+(`v0.2.0.0`, `v0.3.0.0`, …, `v1.0.0.0`). Las issues se asignan al milestone
+cuando se comprometen para ese corte; el milestone cerrado al 100 % marca el
+corte como candidato a promoción, y la gate review decide.
+
+### Transiciones y criterios medibles
+
+#### `0.1.x` → `0.2.0.0` — entrar en insiders (producto usable)
+
+Contenido (gate 0.2): app arranca, overlay desktop funciona, perfiles
+guardan y cargan, mover/redimensionar funciona, recomendado → copia editable,
+mock/live/demo no confunde, separación WidgetStudio/LayoutStudio.
+
+Evidencia medible exigida:
+
+- Checklist alpha de `release-checklists.md` al 100 % con evidencia enlazada.
+- Telemetría V2 como única cadena productiva o retirada V1 cerrada con
+  rollback por build anterior demostrado (programa R0–R5).
+- CI de `nightly` verde y 7 días sin P0/P1 nuevo.
+- Smoke manual en entorno limpio: instalar → login → abrir overlay → cerrar.
+
+#### `0.2.x` → `0.3.0.0` — widgets core
+
+Contenido (gate 0.3): `Relative` configurable cerrado; `Standings`
+configurable cerrado excepto multiclase; rework UI acotado aplicado; sin
+regresiones críticas de preview; un tester cercano completa un flujo real sin
+asistencia.
+
+Evidencia medible exigida:
+
+- Todas las opciones aprobadas de `Relative`/`Standings` marcadas `stable` o
+  `tester` (nada experimental sin etiquetar).
+- Suite visual de previews sin regresión nueva respecto a la base.
+- Un tester cercano ejecuta el guion completo (abrir → editar → guardar →
+  reabrir → overlay) sin ayuda, con el resultado grabado en la issue.
+
+#### `0.3.x` → `0.4.0.0` — distribución a testers
+
+Contenido (gate 0.4): build compartible, instrucciones, OBS local claro,
+hotkeys básicas o pospuestas explícitamente, `deltaBest` live o decisión
+documentada, canal de feedback/bugs definido.
+
+Evidencia medible exigida:
+
+- Los seis artefactos de release se generan y verifican en CI sin intervención
+  manual.
+- Las instrucciones de instalación las ejecuta alguien que no desarrolló el
+  producto, en entorno limpio.
+- OBS Browser Source validado físicamente (no solo HTTP/SSE).
+- Canal de feedback activo y known issues publicados.
+
+#### `0.4.x` → `0.5.0.0` — cierre del core LMU
+
+Contenido (gate 0.5): `Pedals` beta v1 cerrado, recomendados pulidos, smoke
+test completo, sin P0/P1 abiertos, P2 documentados y aceptados.
+
+Evidencia medible exigida:
+
+- Checklist beta testers al 100 %.
+- Smoke de los seis artefactos en Windows limpio.
+- 0 issues P0/P1 abiertas; registro de P2 aceptados firmado por Isaac.
+
+#### `0.5.x` → `0.6.0.0` — abrir la beta pública (el reinicio)
+
+Contenido (gate 0.6 + decisión de reinicio): Polar/checkout integrado de
+forma suficiente, licencia beta decidida, soporte/refund/feedback con
+proceso, versión y changelog visibles, el producto no depende de asistencia
+manual para arrancar.
+
+Evidencia medible exigida:
+
+- Matriz monetaria cerrada y reconciliación probada en sandbox; transacción
+  de prueba de extremo a extremo (pago → entitlement → app).
+- Credencial offline verificada por rol (14 días tester, 72 h nightly,
+  30 días owner).
+- Los siete documentos públicos de §"Reinicio de documentación" escritos.
+- Instalación/update probada en entorno limpio por tercero.
+- Canal estable habilitado para el rol Gratuito.
+- 14 días de `testers` sin P0/P1 nuevo.
+
+#### `0.6.x` → `0.7.0.0` — polish y layouts
+
+Contenido (gate 0.7): layouts por sesión manuales estables o pospuestos
+explícitamente; temas/densidad/opacidad no rompen overlays; recomendados
+funcionan con cambios de layout.
+
+Evidencia medible exigida:
+
+- Cambio de layout por sesión persiste tras reinicio en prueba física.
+- Suite visual sin regresión en los catálogos activos.
+
+#### `0.7.x` → `0.8.0.0` — data blocks y OBS avanzado
+
+Contenido (gate 0.8): data blocks incluidos usan datos fiables; métricas
+experimentales no aparecen como stable; OBS avanzado/LAN no rompe OBS local.
+
+Evidencia medible exigida:
+
+- Cada data block lleva etiqueta `stable`/`tester`/`experimental` verificada
+  contra la matriz de datos.
+- OBS local y LAN conviven en la misma prueba sin regresión.
+
+#### `0.8.x` → `0.9.0.0` — release candidate
+
+Contenido (gate 0.9): performance validada, instalación/update clara,
+regresiones visuales principales cubiertas, docs de usuario listas, sin
+P0/P1, P2 conocidos con decisión.
+
+Evidencia medible exigida:
+
+- Banco de huella con cifras repetidas (mínimo 3 corridas) publicadas en el
+  handoff: CPU, RAM y GPU por proceso junto al simulador.
+- Suite de regresión visual mínima verde en CI.
+- Documentación de usuario completa.
+- 0 P0/P1 abiertas; P2 con decisión escrita.
+
+#### `0.9.x` → `1.0.0.0` — lanzamiento estable
+
+Contenido (gate 1.0): promesa LMU-first cumplida, pago/acceso funciona,
+soporte básico preparado, el usuario no necesita leer documentación técnica,
+la app puede sostener reputación pública.
+
+Evidencia medible exigida:
+
+- Los trece módulos del contrato (tabla anterior) presentes y estables.
+- Compra real de extremo a extremo verificada en producción.
+- Reinstalación limpia y actualización entre versiones probadas.
+- La candidata acumula 21 días sin P0/P1 nuevo.
+- Checklist de release de `release-checklists.md` al 100 %.
+
+### Qué nunca justifica una subida
+
+- Tiempo transcurrido desde la última versión.
+- Cantidad de features mergeadas sin gate superado.
+- Presión de calendario, marketing o comparación con competidores.
+- "Casi pasa" el gate: o pasa con evidencia o no se sube.
+
+### Mecánica operativa del bump
+
+1. Gate review PASS → Isaac autoriza la promoción del corte
+   (`nightly → testers` o `testers → master` según la etapa).
+2. `VERSION` se actualiza y `task version:sync` propaga a
+   `cmd/vantare/main.go`, `build/config.yml`, `build/windows/info.json` y
+   `build/windows/nsis/project.nsi`; el commit de versión viaja en el PR de
+   promoción final.
+3. Solo tras integrar en `master`: tag anotado `vX.Y.Z.0` sobre ese commit →
+   `release.yml` genera los seis artefactos y publica en Discord.
+4. Entrada en `docs/changelog.md` y el hito del roadmap correspondiente pasa
+   de `plan` a `release` en el mismo PR de cierre.
+5. Si aparece un fallo crítico post-tag: nunca reutilizar el tag; rama
+   `vantareapp/hotfix-isa-N-*` desde `master`, bump del 4.º segmento.
+
+### Señales que bloquean cualquier subida
+
+- Cualquier P0/P1 abierta sin asignar.
+- CI roja en el canal origen.
+- El banco de huella fuera de presupuesto respecto a la versión anterior.
+- Documentación pública desactualizada respecto a lo que la build hace.
+
+
 
 1. **Versión de apertura de la beta pública**: este plan propone `0.6.0.0`
    (consistente con los gates ya escritos). Alternativa: renumerar el rango.

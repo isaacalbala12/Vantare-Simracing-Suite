@@ -13,9 +13,14 @@ gates por etapa, matriz de módulos de lanzamiento y decisiones pendientes;
 `release-candidate` y `launch`, retitula `beta-foundation` a Beta inicial y
 renumera etiquetas de `engineer`/`ecosystem`; nueve hitos `plan` nuevos.
 Diff semántico verificado = los 16 IDs declarados. Digest regenerado desde
-`origin/nightly`; 23 tests del parser PASS y `--check` sin cambios. Pendiente:
-review de Isaac y decisiones abiertas listadas en el documento (versión de
-apertura, pago día 1, precios vigentes, firma, multisim, Linux, voz).
+`origin/nightly`; 23 tests del parser PASS y `--check` sin cambios. Segundo
+corte: sección "Criterios exactos de subida de versión" — tipos de bump,
+instrumento Gate Review (issue por transición, periodos sin regresión 7/14/21
+días, milestones de GitHub por versión), criterios medibles por transición
+0.1→0.2 … 0.9→1.0 y mecánica operativa del bump (version:sync, tag en master,
+hotfix por 4.º segmento). Pendiente: review de Isaac y decisiones abiertas
+listadas en el documento (versión de apertura, pago día 1, precios vigentes,
+firma, multisim, Linux, voz).
 
 ## ISA-1061 - Candidato revisado; validacion visual final pendiente
 

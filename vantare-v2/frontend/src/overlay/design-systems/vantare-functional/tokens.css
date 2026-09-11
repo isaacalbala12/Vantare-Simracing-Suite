@@ -74,7 +74,8 @@
    divisores entre celdas. Cada par comparte la tipografía de
    .vf-footer-item (etiqueta uppercase pequeña + valor en negrita en la
    misma línea); solo queda la línea superior sobre toda la fila. */
-.vf-slots { position: relative; z-index: 1; display: flex; flex-wrap: wrap; align-items: baseline; gap: 7px 16px; padding: 8px 12px; border-top: 1px solid var(--vf-line); }
+.vf-slots { position: relative; z-index: 1; display: flex; align-items: baseline; gap: 7px 16px; padding: 8px 12px; border-top: 1px solid var(--vf-line); overflow: hidden; white-space: nowrap; }
+.vf-slots .vf-slot { flex-shrink: 0; }
 .vf-slot, .vf-footer-item { display: flex; align-items: baseline; gap: 6px; font: 600 9px/1 Inter, Arial, sans-serif; letter-spacing: .1em; text-transform: uppercase; color: var(--vf-muted); }
 .vf-slot-label { white-space: nowrap; }
 .vf-slot-value, .vf-footer-item b { font: 650 11px/1 Inter, Arial, sans-serif; letter-spacing: -.01em; text-transform: none; font-variant-numeric: tabular-nums; color: var(--vf-ink); }

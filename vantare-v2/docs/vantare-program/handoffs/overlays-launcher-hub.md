@@ -1,5 +1,25 @@
 # Handoff vivo — Overlay Studio, Launcher y Hub
 
+## ISA-1143 — editor in-place C4: secciones de diseño y acciones (2026-09-11)
+
+Cuarto corte, apilado sobre la rama de ISA-1141 (`dfa24d18`). Issue
+[#1143](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1143),
+rama `vantareapp/isa-1143-inplace-editor-c4`, worktree `vantare-isa1143`.
+
+El panel in-place deja de hardcodear secciones: ahora las resuelve con
+`resolveInspectorSections` (mismo orden y gating por widget que el Studio)
+y renderiza `DesignSection` (sistema/variante, aplicar a todos con
+confirmación Studio, guardar como diseño, gates de licencia) y
+`ActionsSection` (restaurar valores —conserva layout— y descartar todo,
+vía `discardAll` del store). Nueva clave `studio.inspector.section.actions`
+en los 4 locales.
+
+Verificación: tests focales 34 PASS (3 nuevos: secciones diseño+acciones
+con títulos traducidos, restaurar defaults conservando layout, descartar
+todo vuelve al documento guardado), lint, typecheck y `diff --check`
+limpios. Capturas `/tmp/vantare-shots/c4-*.png`. Pendiente: commit, push
+y PR draft; sin prueba física LMU.
+
 ## ISA-1141 — editor in-place C3: catálogo de widgets y selector de sesión (2026-09-11)
 
 Tercer corte, apilado sobre la rama de ISA-1129 (`6bb5e9a0`). Issue

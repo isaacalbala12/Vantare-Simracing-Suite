@@ -638,6 +638,73 @@ describe("InPlaceEditOverlay", () => {
     expect(screen.getAllByTestId(/^inplace-edit-frame-/).length).toBe(1);
   });
 
+  it("renders design and actions sections with translated titles", async () => {
+    renderOverlay(buildDocument());
+    await mockSceneAndWaitForFrame("inplace-edit-frame-delta-main");
+
+    const frame = screen.getByTestId("inplace-edit-frame-delta-main") as HTMLElement;
+    fireEvent.pointerDown(frame, { pointerId: 1, button: 0, clientX: 100, clientY: 100, bubbles: true });
+    fireEvent.pointerUp(window, { pointerId: 1, bubbles: true });
+
+    await waitFor(() => expect(screen.getByTestId("inplace-inspector-section-design")).toBeTruthy());
+    expect(screen.getByTestId("inplace-inspector-section-actions")).toBeTruthy();
+    expect(screen.getByTestId("studio-inspector-section-design")).toBeTruthy();
+
+    // Ninguna cabecera debe mostrar una clave i18n cruda.
+    const titles = screen
+      .getByTestId("inplace-inspector-panel")
+      .querySelectorAll(".inplace-inspector-panel__section-title");
+    for (const title of titles) {
+      expect(title.textContent).not.toContain("INSPECTOR.SECTIONS");
+      expect(title.textContent).not.toContain("OVERLAY.STUDIO");
+    }
+  });
+
+  it("restores widget defaults while keeping its layout", async () => {
+    renderOverlay(buildDocument());
+    await mockSceneAndWaitForFrame("inplace-edit-frame-delta-main");
+
+    const frame = screen.getByTestId("inplace-edit-frame-delta-main") as HTMLElement;
+    fireEvent.pointerDown(frame, { pointerId: 1, button: 0, clientX: 100, clientY: 100, bubbles: true });
+    fireEvent.pointerUp(window, { pointerId: 1, bubbles: true });
+
+    // Cambia una propiedad visual primero: sin cambio no hay nada que restaurar.
+    const headerToggle = await screen.findByRole("button", { name: "Mostrar cabecera" });
+    fireEvent.click(headerToggle);
+    await waitFor(() => expect(saveCalls()).toHaveLength(1));
+    resolveSave(0, "rev-2", (saveCalls()[0][1] as { document: ProfileDocumentV3 }).document);
+
+    fireEvent.click(screen.getByTestId("studio-action-restore-defaults"));
+    await waitFor(() => expect(saveCalls()).toHaveLength(2));
+
+    const payload = saveCalls()[1][1] as { document: ProfileDocumentV3 };
+    const restored = payload.document.layouts.general.widgets[0];
+    const defaults = deltaDefinition.createDefault("delta-main");
+    expect(restored.layout.x).toBe(100);
+    expect(restored.layout.w).toBe(280);
+    expect(restored.visual.systemId).toBe(defaults.visual.systemId);
+    expect(restored.visual.appearanceOverrides ?? {}).toEqual(
+      defaults.visual.appearanceOverrides ?? {},
+    );
+  });
+
+  it("discards all pending changes back to the saved document", async () => {
+    renderOverlay(buildDocument());
+    await mockSceneAndWaitForFrame("inplace-edit-frame-delta-main");
+
+    const frame = screen.getByTestId("inplace-edit-frame-delta-main") as HTMLElement;
+    fireEvent.pointerDown(frame, { pointerId: 1, button: 0, clientX: 100, clientY: 100, bubbles: true });
+    fireEvent.pointerMove(window, { pointerId: 1, clientX: 160, clientY: 160, bubbles: true });
+    fireEvent.pointerUp(window, { pointerId: 1, bubbles: true });
+    await waitFor(() => expect(saveCalls()).toHaveLength(1));
+
+    await waitFor(() => expect(screen.getByTestId("studio-action-discard-all")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("studio-action-discard-all"));
+
+    // El documento vuelve al guardado: el frame recupera la posicion original.
+    await waitFor(() => expect(readFrameVisualLeft(frame)).toBe(100));
+  });
+
   it("keeps imperative preview and frozen telemetry across StudioProvider rerenders during drag", async () => {
     renderOverlay(buildDocument());
     await mockSceneAndWaitForFrame("inplace-edit-frame-delta-main");

@@ -1,5 +1,198 @@
 # Handoff vivo — Overlay Studio, Launcher y Hub
 
+## ISA-1162 — enlace OBS restaurado al pie del dock del Studio (2026-09-11)
+
+Issue [#1162](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1162),
+rama `vantareapp/isa-1162-obs-studio-link`, worktree `vantare-isa1162`,
+PR draft [#1166](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1166)
+hacia `nightly` (base `origin/nightly` 1487ec2e).
+
+- El backend publica su dirección bound: `obs:url:get` → `obs:url` con
+  `{baseUrl: "http://<addr>"}` desde `server.Addr()` (`cmd/vantare/obs_url.go`),
+  registrado en `main.go` tras `httpSrv.Start()`.
+- `useObsBaseUrl()` (`overlay-studio/orbit/obs-url.ts`) hace la petición y
+  cae a `http://127.0.0.1:39261` hasta que responde; `buildObsOverlayUrl`
+  arma `/overlay?profile=<fichero>` (fallback `example-streaming.json`).
+- `StudioObsLink` vive como pie fijo del dock derecho del Studio (bajo el
+  inspector, siempre visible con el dock abierto), con copiar URL e
+  instrucciones. Una sola suscripción por árbol: la base se resuelve en
+  `OverlayStudioV3` y baja por props (el test de StrictMode exige un
+  listener por evento).
+- Browser View ya no usa `window.location.origin` (wails:// en prod):
+  abre contra el mismo origen real.
+- Retirado el modo `obs` huérfano: `ObsOverlaySetupView`, `ObsSetup` y el
+  target de la unión `studio-route-target`.
+- i18n `studio.obs.*` en es/en/pt/it. Ojo: el boundary test de
+  `overlay-studio` prohíbe tildes/ñ entre comillas o backticks en fuentes
+  productivas — los docstrings van sin caracteres de cita.
+- Docs: `obs-local-setup.md` apunta al nuevo punto (la sección Ajustes que
+  anunciaba ya no existe); `engineer-obs-setup.md` corrige el puerto
+  34115 → 39261. Hito `obs-browser-source-link` en `plan.md` +
+  `roadmap.json` regenerado + fragmento `ISA-1162.json`.
+
+Verificación: tests focales 54 PASS, `pnpm test` 3360 PASS, lint,
+typecheck y build limpios; `GOOS=windows go build`/`vet` de
+`cmd/vantare` limpios. Runtime real comprobado en este equipo con el
+servidor levantado a mano: `/health` 200, `/overlay?profile=` 200 HTML,
+`/api/profile-v3` 200 por filename/stem/id documental. Sin prueba en OBS
+real (requiere la app Wails completa). Hallazgo aparte: el paquete
+launcher no compila en darwin — issue #1167.
+
+## ISA-1140 — Cascadia Code a subset WOFF2 latino (2026-09-11)
+
+Issue
+[#1140](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1140),
+rama `vantareapp/isa-1140-fuente-subset`, worktree
+`/Users/isaacalbala/Desktop/vantare-isa1140`. Cierra la limitación que dejó
+ISA-940: aquella máquina no tenía `pyftsubset` y la fuente siguió como TTF.
+
+- `pyftsubset` (fontTools 4.65 + brotli en venv `/tmp`, sin dependencias del
+  proyecto) genera `CascadiaCode-subset.woff2` de 74 KB: Latin, Latin-1,
+  Extended-A/B, puntuación general, flechas, operadores matemáticos,
+  misceláneos técnicos, box-drawing/geométricos y Dingbats. Conserva el eje
+  variable `wght` 200–700 y las ligaduras `calt` (`=>`, `->`, `<=`, `!=`).
+- `fonts.css` apunta el `@font-face` al woff2. `CascadiaCode.ttf` queda en
+  el repo como fuente de regeneración, sin entrar al bundle: Vite solo emite
+  `dist/assets/CascadiaCode-subset-*.woff2` (74,17 kB).
+- Verificación: cmap cubre U+00C0–U+017F completo; todo carácter no-ASCII
+  usado en `src` que exista en la TTF sigue cubierto (los que no existían —
+  emoji, ⚙, ⚠, ↵ — caen al fallback como antes); 267 glifos de ligadura
+  conservados. Typecheck, lint, 3355 tests y build PASS.
+- Nota de contrato: la issue declara `roadmap:not-required` pero el diff es
+  código productivo; el validador en modo `audit` lo marcará sin bloquear.
+- Sin merge ni promoción; PR draft a `nightly`.
+
+## ISA-1152 — editor in-place C5: rediseño toolbar/frames, pestañas y panel ocultable (2026-09-11)
+
+Quinto corte, apilado sobre la rama de ISA-1143 (`a8d8db1a`). Issue
+[#1152](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1152),
+rama `vantareapp/isa-1152-inplace-editor-c5`, worktree `vantare-isa1152`.
+Feedback visual de Isaac sobre las capturas de C2–C4.
+
+- **Frames**: outline no seleccionado pasa de rojo suave a gris fino; el
+  seleccionado conserva el acento con glow exterior y los handles de resize
+  son circulares.
+- **Toolbar**: chip + sesión + "+ Widget" + Hecho dentro de una pill con
+  blur (`inplace-toolbar*`), sin estilos inline dispersos.
+- **Panel con pestañas**: una pestaña por sección resuelta
+  (`resolveInspectorSections`), solo un cuerpo visible; pestaña por
+  defecto = layout, la elección muere con el widget.
+- **No tapa widgets**: botón de ocultar deja una pestaña de borde
+  (reabre al click o al hover) y el panel se vuelve fantasma
+  (`--ghost`, `pointer-events: none`) mientras `interaction.isInteractionActive`.
+- **Modo flotante**: toggle en la cabecera; el panel se arrastra por su
+  header y persiste `{mode, x, y}` en `localStorage` (`vantare.inplace.panel.v1`).
+
+Verificación: tests focales 36 PASS (nuevos: ocultar→pestaña, ghost en
+drag, flotante + drag de header, pestañas cambian sección), lint,
+typecheck y `diff --check` limpios. Capturas `/tmp/vantare-shots/c5-*.png`.
+Pendiente: commit, push y PR draft; sin prueba física LMU.
+
+## ISA-1143 — editor in-place C4: secciones de diseño y acciones (2026-09-11)
+
+Cuarto corte, apilado sobre la rama de ISA-1141 (`dfa24d18`). Issue
+[#1143](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1143),
+rama `vantareapp/isa-1143-inplace-editor-c4`, worktree `vantare-isa1143`.
+
+El panel in-place deja de hardcodear secciones: ahora las resuelve con
+`resolveInspectorSections` (mismo orden y gating por widget que el Studio)
+y renderiza `DesignSection` (sistema/variante, aplicar a todos con
+confirmación Studio, guardar como diseño, gates de licencia) y
+`ActionsSection` (restaurar valores —conserva layout— y descartar todo,
+vía `discardAll` del store). Nueva clave `studio.inspector.section.actions`
+en los 4 locales.
+
+Verificación: tests focales 34 PASS (3 nuevos: secciones diseño+acciones
+con títulos traducidos, restaurar defaults conservando layout, descartar
+todo vuelve al documento guardado), lint, typecheck y `diff --check`
+limpios. Capturas `/tmp/vantare-shots/c4-*.png`. Pendiente: commit, push
+y PR draft; sin prueba física LMU.
+
+## ISA-1141 — editor in-place C3: catálogo de widgets y selector de sesión (2026-09-11)
+
+Tercer corte, apilado sobre la rama de ISA-1129 (`6bb5e9a0`). Issue
+[#1141](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1141),
+rama `vantareapp/isa-1141-inplace-editor-c3`, worktree `vantare-isa1141`.
+
+La barra del editor in-place gana dos piezas del Studio sin capas nuevas:
+el diálogo `AddWidgetDialog` (botón `+ Widget`) reutilizado tal cual —gates
+de licencia, delta único por layout y `buildAddWidgetCommand` con su
+posicionamiento por defecto— y un selector de sesión
+(general/práctica/clasificación/carrera/resistencia). Sin override se edita
+la sesión que el runtime muestra; con override se previsualiza
+`resolveSessionLayout` (clon de general si la sesión no existe aún) y el
+primer comando la materializa vía `withSessionLayout`, idéntico a Studio.
+Cambiar de sesión deselecciona y cierra el menú contextual.
+
+Cambio transversal: `DEFAULT_ACCESS` del panel pasa a `FREE_ACCESS` en
+`lib/access-policy.ts` — el `export` de constante en un archivo de
+componente rompía la regla `react-refresh/only-export-components` y el
+fallback de acceso queda en el hogar natural del tipo.
+
+Verificación: tests focales 31 PASS (3 nuevos: materialización de sesión al
+primer edit, añadir desde catálogo, cancelar el diálogo), lint, typecheck y
+`diff --check` limpios. Capturas locales `/tmp/vantare-shots/c3-*.png`.
+Pendiente: commit, push y PR draft; sin prueba física LMU. Siguiente: C4
+(diseños + acciones de restauración).
+
+## ISA-1129 — editor in-place C2: panel colapsable, layout numérico y fixes (2026-09-11)
+
+Segundo corte de la paridad comprimida, apilado sobre la rama de ISA-1123
+(`02f266d8`). Issue
+[#1129](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1129),
+rama `vantareapp/isa-1129-inplace-editor-c2`, worktree `vantare-isa1129`.
+
+El panel in-place ahora reutiliza `LayoutSection` del Studio (X/Y/W/H
+numérico, bloqueo de proporción, orden z, centrar y restablecer — todas las
+acciones pasan por `StudioCommand`/`executeWidgetAction` existentes), se
+pliega a su cabecera con un chevron, y salta a la izquierda cuando el widget
+seleccionado ocupa la mitad derecha del overlay, de modo que nunca tapa lo
+que se edita.
+
+Fixes incluidos que ya eran defectos antes de este corte: los títulos de
+sección del panel usaban claves i18n inexistentes
+(`overlay.studio.inspector.sections.*`) — corregido a
+`studio.inspector.section.*` con nueva clave `content` en los cuatro locales;
+`WidgetContextMenu` no clampeaba su posición al viewport (desbordaba en
+clicks cerca del borde, también en Studio — ahora mide y recoloca en
+`useLayoutEffect`); el comparador de `memo` del panel ignoraba
+`autosave.paused` y congelaba los chips de conflicto/reintento.
+
+Verificación: suite frontend completa PASS (3346 tests tras el fix de
+`progreso: 78` → escala válida en `plan.md`, corregido también en la rama de
+C1 como `02f266d8`), typecheck, build, lint y `git diff --check` limpios.
+Capturas locales en `/tmp/vantare-shots/c2-*.png` sobre harness
+`inplace-edit-harness.html` (localhost:5200). Pendiente: commit, push y PR
+draft; sin prueba física LMU. Cortes siguientes: añadir widget y selector de
+sesión (C3), diseños y restauración (C4).
+
+## ISA-1123 — editor in-place C1: teclado, acciones y salida (2026-09-11)
+
+Isaac pidió iterar el editor in-place del overlay desktop (`Ctrl+Shift+E`)
+hacia paridad comprimida con Overlay Studio; se aprobó el Corte 1 de cuatro
+(teclado + acciones de widget + salida visible). Issue
+[#1123](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1123),
+rama `vantareapp/isa-1123-inplace-editor-c1`, worktree propio
+`vantare-isa1123`, base `origin/nightly@131471ff`.
+
+Implementado reutilizando el modelo de comandos del Studio sin capas nuevas:
+`getStudioHotkey` cableado en la rama de edición (undo/redo, `Ctrl+D`,
+`Delete` con `StudioConfirmProvider`, flechas 1/8 px, `Esc` deselecciona en
+idle, `Tab` cicla, `Ctrl+S` guarda), menú contextual `WidgetContextMenu` por
+click derecho, toggle de visibilidad en la cabecera del inspector
+(`widget/behavior`/`enabled`), botón Done que emite `overlay:toggle-edit-mode`,
+deselect al pulsar el fondo y `interactionActive` real en el autosave. Fix
+incluido: `useInplaceAutosave` ahora vacía `coalesced` al terminar el gesto —
+sin ese flush, un save diferido por gesto activo nunca llegaba. También se
+cargan `orbit-kit.css`/`orbit-studio.css` en la ventana overlay: el panel
+in-place existía desde F2 pero sin el CSS del inspector compartido.
+
+Verificación: 3343 tests frontend PASS (424 archivos), typecheck, build y
+lint focal PASS, `git diff --check` limpio. Pendiente de PR draft a nightly;
+sin prueba física LMU en este corte. Cortes siguientes no entregados: panel
+colapsable/reubicable y layout numérico (C2), añadir widget y selector de
+sesión (C3), diseños y acciones de restauración (C4).
+
 ## ISA-1098 — candidato local con #1083 + #1103 + #1097 + #1105 (2026-09-10, sin integrar)
 
 Rama `vantareapp/isa-1098-efficiency-integration`, worktree `C:/tmp/vantare-isa1098`,
@@ -442,141 +635,6 @@ física nueva, retirada V1, merge o release en este corte documental.
 - Hub: código actual y characterization; los roadmaps históricos no son spec.
 
 ## Estado
-
-- **ISA-1097 — Acceso y marca por widget (2026-09-10):**
-  Isaac pide continuar y comprobar ambas partes juntas al terminar. Rama propia
-  `vantareapp/isa-1097-widget-access-branding`, worktree `C:/tmp/vantare-isa1097`,
-  base apilada ISA-1083 `87cef39a`. No hay integración ni cambios en la rama visual.
-  Plan `docs/analysis/ISA-1097-widget-access-branding.md`: Delta premium,
-  eliminación sin pérdida tras downgrade, política común verificada y marca
-  Free/pago en Studio/Desktop/OBS. Prueba física diferida por decisión de Isaac.
-  Análisis independiente de autoridad/transportes en snapshot separado;
-  implementación comienza por las regresiones de acceso y eliminación.
-  Parte nativa Go completa en el worktree (sin commit): autoridad de política
-  con secuencia/expiración nativa, eventos y snapshot Wails, SSE OBS con
-  snapshot/reconexión, guards de guardado V3+legacy cableados a la autoridad
-  en composición, contrato exacto para el frontend (#1105, otro worktree).
-  `go test ./...` exit 0, `go build ./cmd/vantare` exit 0, typecheck exit 0.
-  Frontend y marca los ejecuta #1105; Efficiency/renderer CSS intactos (#1103).
-- **ISA-1083 — Efficiency / Eficiencia (2026-09-10):**
-  **Decisiones actuales:** Efficiency es un sistema con estilos Signature y
-  Broadcast. Studio lo traduce como Eficiencia (ES), Efficiency (EN), Eficiência
-  (PT) y Efficienza (IT). IDs persistidos conservados por compatibilidad.
-  Delta es de pago, confirmado por Isaac; su aplicación pertenece a ISA-1097.
-  CI del head `dd6a2c36` falló exclusivamente en el presupuesto temporal de
-  OverlayFrameV2: 1,5 ms frente a límite estricto <1,5 ms, test no modificado.
-  No se cambia el umbral; los checks del siguiente head siguen siendo necesarios.
-  **Revisión de nomenclatura:** P2 detectado y cerrado con regresión RED/GREEN:
-  los perfiles previos mostraban `Functional Signature/Broadcast · Preview` en
-  Orbit. La presentación ahora resuelve el catálogo oficial compatible; conserva
-  nombres de usuario, IDs y documentos. 31 tests focales PASS. Revisor independiente
-  sin bloqueantes. Suite final: 424 archivos, 3356 PASS y 2 omitidos, exit 0;
-  lint y build canónico Windows (incluye frontend/tipos) PASS. Binario local
-  sin configuración de servicios añadida; no certifica licencia real.
-  **Entrega del ajuste:** código en `5db70a08`, push verificado en PR #1100.
-  CI remota `34430760576` SUCCESS sobre ese código: Go, frontend, tipos y
-  Windows/Wails incluidos. El paso advisory de contrato roadmap señaló campos
-  ausentes en la ficha; #1083 y #1097 ya usan las secciones canónicas, y el
-  validador local contra el mismo HEAD y la issue viva pasa los dos IDs exactos.
-  Falta la prueba física antes de integrar; Nightly sigue en `b6b5754e`.
-  Workshop verificado en navegador con ambos estilos. Las herramientas de esta
-  sesión no controlan ventanas nativas; no confundir esta evidencia con la prueba
-  física pendiente de Studio/Desktop.
-  **Entrega 2026-09-10:** implementación `d5255acd`, push verificado y PR draft
-  [#1100](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1100)
-  hacia Nightly. CI remota inicialmente pendiente al abrir; el resultado
-  actualizado está indicado arriba. Issue en `state:in-review`.
-  Worktree propio limpio. No hay merge ni release; #1098 registra la integración
-  y #1097 la política comercial posterior. Las notas de iteraciones inferiores
-  conservan su estado histórico y no sustituyen este corte.
-  **Ejecución aprobada 2026-09-10:** cerrar el widget y su integración a Nightly
-  por partes, luego unificar acceso y marca en ISA-1097. Plan vigente:
-  `docs/analysis/ISA-1083-delivery-plan.md`. Primero contrato Go de guardado y
-  selector normal de Studio; Workshop por sí solo no certifica estos recorridos.
-  La autorización sustituye las notas históricas sin merge autorizado; siguen
-  pendientes validación física y evidencia de integración (#1098). Revisión
-  independiente terminada sin bloqueantes tras corregir tres P2: cabecera tras
-  reordenación, anchos S/M/L y expansión junto al borde inferior. Expediente:
-  `design-evidence/functional/integration-review.md`. Suite completa posterior:
-  3345 PASS / 2 omitidos, exit 0; 22 focales tras el último ajuste de cabecera.
-  Persistencia
-  Go y selector normal de Studio terminados con regresiones RED/GREEN. Se corrige
-  el marco de perfiles de 340 px mediante geometría compartida, conservando el
-  preview DOM imperativo. 145 tests focales de geometría PASS; Go completo,
-  frontend previo a geometría (3330 PASS / 2 omitidos), build/tipos y lint PASS.
-  Isaac confirma disponibilidad sin pruebas concurrentes. La app abierta
-  procede de ISA-1072, no de esta entrega: no atribuirle la nueva implementación.
-  La segunda parte está trazada en #1097 con Delta de pago ya decidido.
-  **Ajuste posterior:** Isaac rechaza las marcas rojas junto a los pilotos de
-  Broadcast y valora positivamente el resto. Se elimina ese adorno CSS;
-  las dimensiones, textos, cápsulas, cabecera y Principal se conservan.
-  Ajuste verificado: 13 tests focales y build/typecheck PASS; navegador confirma
-  10 filas sin marcas, con los cuatro módulos a 594 × 370 px. Evidencia nueva:
-  `design-evidence/functional/standings-broadcast-clean.png`. Sin commit ni PR.
-  **Última decisión:** Isaac elige la opción Images 3 como principal y la 2 como
-  secundaria, ambas derivadas de la captura real de Joined01. Se trasladan al
-  renderer compartido como Signature y Broadcast. Signature conserva el ID
-  `standings-functional-compact`; Broadcast añade `standings-functional-broadcast`
-  al catálogo. Selector en Workshop, módulos conservados y mismo ViewModel.
-  Inter, filas de 30 px y selección neutra. Aceptación del React pendiente.
-  Principal 238–574 px / 350 px alto; Broadcast 258–594 px / 370 px alto.
-  Las 32 combinaciones y los estados de fuente pasan en navegador integrado.
-  Revisión final: 9,0/10 en ambas; se refinan motivo compacto y cápsulas de
-  Broadcast. Suite completa 3328 PASS / 2 omitidos, 51 focales posteriores,
-  build/typecheck y lint PASS. Guard de sistemas: tres fallos Endurance
-  heredados, sin ocultar. Sin Wails/LMU, commit, push, PR, CI remota o promoción.
-  Detalles, referencias elegidas y evidencia en el informe ISA-1083.
-  **Decisión previa:** Isaac prefiere el widget unido y rechaza la fila roja de
-  Fodor y la placa del 7. Joined01 reúne las columnas sin hueco ni rebaje de
-  cabecera; selección gris neutra continua y marca roja fina en el borde.
-  El 7 queda sin placa. Se conserva Inter y cristal suave; no cambian datos,
-  módulos ni otros renderizadores. Aceptación visual pendiente.
-  Revisor Joined01: **9,0/10**, las tres correcciones resueltas en React.
-  Navegador: 16 combinaciones y estados PASS, sin errores JS; Inter confirmado.
-  Suite completa: 3325 PASS, 2 fallos de espera y 2 omitidos; repetición de
-  ambos tests junto al estudio: 41 PASS. Se conservan ambos resultados en
-  el informe; la repetición focal no equivale a una suite completa verde.
-  Build/typecheck, lint y diff check PASS. Rama/base/HEAD sin cambios;
-  entrega local sin commit, push, PR, CI remota ni promoción.
-  **Corte anterior:** Isaac rechaza cifras desconectadas y aspecto plano.
-  Depth03 unifica todo en Inter y compone núcleo y extensión con una separación
-  de4px y cabecera secundaria rebajada7px; el jugador une ambas como una fila
-  vino continua. Mantiene carbón/blanco/rojo y glass suave. Revisor **9,0/10**;
-  aceptación de Isaac pendiente. Suite3327 PASS/2 omitidos,36 focales posteriores,
-  build/typecheck/lint PASS y16 combinaciones en navegador sin errores. Altura344px,
-  anchuras238–574px y nombres completos14px. Capturas finales e informe en
-  `docs/analysis/ISA-1083-functional-design.md`. Sin commit, push, PR o promoción.
-  Las notas y la incidencia CPU siguientes pertenecen al historial anterior.
-  **Última corrección:** Isaac considera React07 un avance, pero sus colores y
-  lenguaje no representan Vantare. Vantare01 sustituye azul/gris por carbón
-  neutro, blanco y rojo `#C1121F`; firma compacta de marca, posición del jugador
-  oblicua roja, lavado vino y nombres uppercase. Conserva cristal suave y módulos.
-  Vantare02 añade el isotipo real existente a la cabecera. Revisor: 8,825 global,
-  9 en identidad de marca; identificación resuelta y aceptación de Isaac pendiente.
-  Navegador16 combinaciones PASS, 238–574px, altura342px y nombres completos14px.
-  Build/lint PASS. Suite completa3326 PASS/2 omitidos/1 fallo de presupuesto CPU
-  del decoder V2 (1,562 frente a1,5ms), sin cambios en dicho decoder/test.
-  Repetición aislada del decoder junto al widget:14 PASS; no se declara suite
-  completa verde ni mejora de rendimiento. Typecheck final comprobado aparte.
-  **Decisión vigente:** Isaac rechaza las bases Images y pide diseñar directamente
-  en React desde la referencia de cristal suave; Images queda para detalles
-  posteriores. Se prioriza taste, funcionalidad y modularidad visual.
-  Rama `vantareapp/isa-1083-functional-standings`, base `b6b5754e`, worktree
-  `C:/tmp/vantare-isa1083`. Sistema opt-in registrado con un solo Standings sobre
-  WidgetVisualHost. Vista de estudio dentro de Workshop, cuatro módulos reales,
-  carrera/práctica, tres fondos y estados de fuente. Variante dev explícita con
-  datos de demostración; no altera golden ni perfiles. Anchura fluida sin escalar
-  texto: las 16 combinaciones conservan nombres íntegros y filas a tamaño nativo.
-  Tarea de revisión `01a08756-30ab-7682-af63-1df81364debe`: React01 7,4; React02
-  8,0; React03 8,275; React04 8,3; React05 8,6; React06/07 **8,675**. Historial
-  anterior a la corrección de marca: núcleo posición/piloto/GAP en carrera, vueltas/PIT como
-  extensión, tipografía híbrida y mejor vuelta protagonista en práctica.
-  No alcanza 9 y queda pendiente de aceptación visual de Isaac.
-  Suite frontend 3322 PASS/2 omitidos, build y lint PASS; 36 focales posteriores
-  y navegador sin errores. Guard de sistemas sigue señalando tres referencias
-  heredadas en tests Endurance; no se ocultan. Sin commit, push, PR, promoción,
-  merge o release ni evidencia física Wails/LMU. Detalles y límites en
-  `docs/analysis/ISA-1083-functional-design.md`.
 
 - **S3 cerrado, 2026-09-03:** el mismo EXE R-FIX4 desde
   `4864b5c6`, SHA `cb69a4d5…878faba`, muestra Pedals sobre LMU con freno real

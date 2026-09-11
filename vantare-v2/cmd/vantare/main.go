@@ -2300,6 +2300,9 @@ func main() {
 		WidgetPolicy: licenseSvc,
 	})
 	httpSrv.Start()
+	wailsApp.Event.On("obs:url:get", func(*application.CustomEvent) {
+		emitObsURL(emitter, httpSrv)
+	})
 	wailsApp.Event.On("auth:attempt:create", func(event *application.CustomEvent) {
 		var payload struct {
 			RequestID string `json:"requestId"`

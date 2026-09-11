@@ -64,7 +64,9 @@ export const studioOrbitEn: Record<string, string> = {
   "studio.inspector.section.design": "Design",
   "studio.inspector.section.appearance": "Appearance",
   "studio.inspector.section.behavior": "Behavior",
+  "studio.inspector.section.content": "Content",
   "studio.inspector.section.layout": "Layout",
+  "studio.inspector.section.actions": "Actions",
   "studio.inspector.section.design.help":
     "Pick the visual system and the design this widget is painted with.",
   "studio.inspector.section.appearance.help":

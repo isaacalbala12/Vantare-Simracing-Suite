@@ -92,11 +92,19 @@ export const es: Record<string, string> = {
   "overlay.editMode.hint": "Click derecho: acciones - flechas mueven - Alt desactiva el snap - Ctrl+Shift+E o Hecho para salir",
   "overlay.editMode.saveError": "Guardado fallido - conflicto con el editor del Hub. Reabre el perfil para continuar.",
   "overlay.editMode.panel.empty": "Selecciona un widget para editar sus propiedades.",
+  "overlay.editMode.panel.title": "Panel",
+  "overlay.editMode.panel.hide": "Ocultar panel",
+  "overlay.editMode.panel.show": "Mostrar panel",
+  "overlay.editMode.panel.float": "Panel flotante",
+  "overlay.editMode.panel.dock": "Anclar panel al lateral",
+  "overlay.editMode.panel.tabsAria": "Secciones del inspector",
   "overlay.editMode.panel.undo": "Deshacer",
   "overlay.editMode.panel.redo": "Rehacer",
   "overlay.editMode.panel.retry": "Reintentar",
   "overlay.editMode.panel.conflict": "Conflicto - recarga para continuar",
   "overlay.editMode.panel.saving": "Guardando...",
+  "overlay.editMode.sessionAria": "Sesión que se edita",
+  "overlay.editMode.add": "+ Widget",
 
   // Widget Config Sections
 

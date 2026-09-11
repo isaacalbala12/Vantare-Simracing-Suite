@@ -1,5 +1,109 @@
 # Handoff vivo — Overlay Studio, Launcher y Hub
 
+## ISA-1152 — editor in-place C5: rediseño toolbar/frames, pestañas y panel ocultable (2026-09-11)
+
+Quinto corte, apilado sobre la rama de ISA-1143 (`a8d8db1a`). Issue
+[#1152](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1152),
+rama `vantareapp/isa-1152-inplace-editor-c5`, worktree `vantare-isa1152`.
+Feedback visual de Isaac sobre las capturas de C2–C4.
+
+- **Frames**: outline no seleccionado pasa de rojo suave a gris fino; el
+  seleccionado conserva el acento con glow exterior y los handles de resize
+  son circulares.
+- **Toolbar**: chip + sesión + "+ Widget" + Hecho dentro de una pill con
+  blur (`inplace-toolbar*`), sin estilos inline dispersos.
+- **Panel con pestañas**: una pestaña por sección resuelta
+  (`resolveInspectorSections`), solo un cuerpo visible; pestaña por
+  defecto = layout, la elección muere con el widget.
+- **No tapa widgets**: botón de ocultar deja una pestaña de borde
+  (reabre al click o al hover) y el panel se vuelve fantasma
+  (`--ghost`, `pointer-events: none`) mientras `interaction.isInteractionActive`.
+- **Modo flotante**: toggle en la cabecera; el panel se arrastra por su
+  header y persiste `{mode, x, y}` en `localStorage` (`vantare.inplace.panel.v1`).
+
+Verificación: tests focales 36 PASS (nuevos: ocultar→pestaña, ghost en
+drag, flotante + drag de header, pestañas cambian sección), lint,
+typecheck y `diff --check` limpios. Capturas `/tmp/vantare-shots/c5-*.png`.
+Pendiente: commit, push y PR draft; sin prueba física LMU.
+
+## ISA-1143 — editor in-place C4: secciones de diseño y acciones (2026-09-11)
+
+Cuarto corte, apilado sobre la rama de ISA-1141 (`dfa24d18`). Issue
+[#1143](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1143),
+rama `vantareapp/isa-1143-inplace-editor-c4`, worktree `vantare-isa1143`.
+
+El panel in-place deja de hardcodear secciones: ahora las resuelve con
+`resolveInspectorSections` (mismo orden y gating por widget que el Studio)
+y renderiza `DesignSection` (sistema/variante, aplicar a todos con
+confirmación Studio, guardar como diseño, gates de licencia) y
+`ActionsSection` (restaurar valores —conserva layout— y descartar todo,
+vía `discardAll` del store). Nueva clave `studio.inspector.section.actions`
+en los 4 locales.
+
+Verificación: tests focales 34 PASS (3 nuevos: secciones diseño+acciones
+con títulos traducidos, restaurar defaults conservando layout, descartar
+todo vuelve al documento guardado), lint, typecheck y `diff --check`
+limpios. Capturas `/tmp/vantare-shots/c4-*.png`. Pendiente: commit, push
+y PR draft; sin prueba física LMU.
+
+## ISA-1141 — editor in-place C3: catálogo de widgets y selector de sesión (2026-09-11)
+
+Tercer corte, apilado sobre la rama de ISA-1129 (`6bb5e9a0`). Issue
+[#1141](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1141),
+rama `vantareapp/isa-1141-inplace-editor-c3`, worktree `vantare-isa1141`.
+
+La barra del editor in-place gana dos piezas del Studio sin capas nuevas:
+el diálogo `AddWidgetDialog` (botón `+ Widget`) reutilizado tal cual —gates
+de licencia, delta único por layout y `buildAddWidgetCommand` con su
+posicionamiento por defecto— y un selector de sesión
+(general/práctica/clasificación/carrera/resistencia). Sin override se edita
+la sesión que el runtime muestra; con override se previsualiza
+`resolveSessionLayout` (clon de general si la sesión no existe aún) y el
+primer comando la materializa vía `withSessionLayout`, idéntico a Studio.
+Cambiar de sesión deselecciona y cierra el menú contextual.
+
+Cambio transversal: `DEFAULT_ACCESS` del panel pasa a `FREE_ACCESS` en
+`lib/access-policy.ts` — el `export` de constante en un archivo de
+componente rompía la regla `react-refresh/only-export-components` y el
+fallback de acceso queda en el hogar natural del tipo.
+
+Verificación: tests focales 31 PASS (3 nuevos: materialización de sesión al
+primer edit, añadir desde catálogo, cancelar el diálogo), lint, typecheck y
+`diff --check` limpios. Capturas locales `/tmp/vantare-shots/c3-*.png`.
+Pendiente: commit, push y PR draft; sin prueba física LMU. Siguiente: C4
+(diseños + acciones de restauración).
+
+## ISA-1129 — editor in-place C2: panel colapsable, layout numérico y fixes (2026-09-11)
+
+Segundo corte de la paridad comprimida, apilado sobre la rama de ISA-1123
+(`02f266d8`). Issue
+[#1129](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1129),
+rama `vantareapp/isa-1129-inplace-editor-c2`, worktree `vantare-isa1129`.
+
+El panel in-place ahora reutiliza `LayoutSection` del Studio (X/Y/W/H
+numérico, bloqueo de proporción, orden z, centrar y restablecer — todas las
+acciones pasan por `StudioCommand`/`executeWidgetAction` existentes), se
+pliega a su cabecera con un chevron, y salta a la izquierda cuando el widget
+seleccionado ocupa la mitad derecha del overlay, de modo que nunca tapa lo
+que se edita.
+
+Fixes incluidos que ya eran defectos antes de este corte: los títulos de
+sección del panel usaban claves i18n inexistentes
+(`overlay.studio.inspector.sections.*`) — corregido a
+`studio.inspector.section.*` con nueva clave `content` en los cuatro locales;
+`WidgetContextMenu` no clampeaba su posición al viewport (desbordaba en
+clicks cerca del borde, también en Studio — ahora mide y recoloca en
+`useLayoutEffect`); el comparador de `memo` del panel ignoraba
+`autosave.paused` y congelaba los chips de conflicto/reintento.
+
+Verificación: suite frontend completa PASS (3346 tests tras el fix de
+`progreso: 78` → escala válida en `plan.md`, corregido también en la rama de
+C1 como `02f266d8`), typecheck, build, lint y `git diff --check` limpios.
+Capturas locales en `/tmp/vantare-shots/c2-*.png` sobre harness
+`inplace-edit-harness.html` (localhost:5200). Pendiente: commit, push y PR
+draft; sin prueba física LMU. Cortes siguientes: añadir widget y selector de
+sesión (C3), diseños y restauración (C4).
+
 ## ISA-1123 — editor in-place C1: teclado, acciones y salida (2026-09-11)
 
 Isaac pidió iterar el editor in-place del overlay desktop (`Ctrl+Shift+E`)

@@ -65,7 +65,9 @@ export const studioOrbitIt: Record<string, string> = {
   "studio.inspector.section.design": "Design",
   "studio.inspector.section.appearance": "Aspetto",
   "studio.inspector.section.behavior": "Comportamento",
+  "studio.inspector.section.content": "Contenuto",
   "studio.inspector.section.layout": "Layout",
+  "studio.inspector.section.actions": "Azioni",
   "studio.inspector.section.design.help":
     "Scegli il sistema visivo e il design con cui viene disegnato questo widget.",
   "studio.inspector.section.appearance.help":

@@ -500,6 +500,266 @@ describe("InPlaceEditOverlay", () => {
     );
   });
 
+  it("commits numeric X/Y/W/H edits from the layout section", async () => {
+    renderOverlay(buildDocument());
+    await mockSceneAndWaitForFrame("inplace-edit-frame-delta-main");
+
+    const frame = screen.getByTestId("inplace-edit-frame-delta-main") as HTMLElement;
+    fireEvent.pointerDown(frame, { pointerId: 1, button: 0, clientX: 100, clientY: 100, bubbles: true });
+    fireEvent.pointerUp(window, { pointerId: 1, bubbles: true });
+
+    const input = await screen.findByTestId("studio-layout-x") as HTMLInputElement;
+    fireEvent.input(input, { target: { value: "250" } });
+    fireEvent.blur(input);
+
+    await waitFor(() => expect(saveCalls()).toHaveLength(1));
+    const payload = saveCalls()[0][1] as { document: ProfileDocumentV3 };
+    expect(payload.document.layouts.general.widgets[0].layout.x).toBe(250);
+  });
+
+  it("hides the panel to an edge tab and reopens it", async () => {
+    renderOverlay(buildDocument());
+    await mockSceneAndWaitForFrame("inplace-edit-frame-delta-main");
+
+    const frame = screen.getByTestId("inplace-edit-frame-delta-main") as HTMLElement;
+    fireEvent.pointerDown(frame, { pointerId: 1, button: 0, clientX: 100, clientY: 100, bubbles: true });
+    fireEvent.pointerUp(window, { pointerId: 1, bubbles: true });
+    await waitFor(() => expect(screen.getByTestId("inplace-inspector-panel")).toBeTruthy());
+
+    fireEvent.click(screen.getByTestId("inplace-panel-hide"));
+    expect(screen.queryByTestId("inplace-inspector-panel")).toBeNull();
+    expect(screen.getByTestId("inplace-panel-edge-tab")).toBeTruthy();
+
+    fireEvent.click(screen.getByTestId("inplace-panel-edge-tab"));
+    await waitFor(() => expect(screen.getByTestId("inplace-inspector-panel")).toBeTruthy());
+  });
+
+  it("ghosts the panel while dragging a widget", async () => {
+    renderOverlay(buildDocument());
+    await mockSceneAndWaitForFrame("inplace-edit-frame-delta-main");
+
+    const frame = screen.getByTestId("inplace-edit-frame-delta-main") as HTMLElement;
+    fireEvent.pointerDown(frame, { pointerId: 1, button: 0, clientX: 100, clientY: 100, bubbles: true });
+    fireEvent.pointerMove(window, { pointerId: 1, clientX: 140, clientY: 140, bubbles: true });
+
+    const panel = screen.getByTestId("inplace-inspector-panel") as HTMLElement;
+    await waitFor(() =>
+      expect(panel.className).toContain("inplace-inspector-panel--ghost"),
+    );
+
+    fireEvent.pointerUp(window, { pointerId: 1, bubbles: true });
+    await waitFor(() =>
+      expect(panel.className).not.toContain("inplace-inspector-panel--ghost"),
+    );
+  });
+
+  it("switches the panel to floating mode and drags it by the header", async () => {
+    renderOverlay(buildDocument());
+    await mockSceneAndWaitForFrame("inplace-edit-frame-delta-main");
+
+    const frame = screen.getByTestId("inplace-edit-frame-delta-main") as HTMLElement;
+    fireEvent.pointerDown(frame, { pointerId: 1, button: 0, clientX: 100, clientY: 100, bubbles: true });
+    fireEvent.pointerUp(window, { pointerId: 1, bubbles: true });
+    await waitFor(() => expect(screen.getByTestId("inplace-inspector-panel")).toBeTruthy());
+
+    fireEvent.click(screen.getByTestId("inplace-panel-mode"));
+    const panel = screen.getByTestId("inplace-inspector-panel") as HTMLElement;
+    expect(panel.dataset.mode).toBe("floating");
+    expect(panel.className).toContain("inplace-inspector-panel--floating");
+    expect(panel.style.left).toBeTruthy();
+
+    const header = panel.querySelector(".inplace-inspector-panel__header") as HTMLElement;
+    const startLeft = Number.parseFloat(panel.style.left);
+    fireEvent.pointerDown(header, { pointerId: 9, button: 0, clientX: 200, clientY: 100, bubbles: true });
+    fireEvent.pointerMove(header, { pointerId: 9, clientX: 300, clientY: 160, bubbles: true });
+    fireEvent.pointerUp(header, { pointerId: 9, bubbles: true });
+    await waitFor(() =>
+      expect(Number.parseFloat(panel.style.left)).toBe(startLeft + 100),
+    );
+
+    // Vuelve a anclado.
+    fireEvent.click(screen.getByTestId("inplace-panel-mode"));
+    expect(panel.dataset.mode).toBe("docked");
+  });
+
+  it("moves the panel to the left when the selected widget sits on the right half", async () => {
+    const base = buildDocument();
+    const right = pedalsDefinition.createDefault("pedals-right");
+    right.layout = { x: 1500, y: 600, w: 280, h: 96, zIndex: 1, aspectLocked: true };
+    const doc: ProfileDocumentV3 = {
+      ...base,
+      layouts: {
+        general: { type: "general", widgets: [...base.layouts.general.widgets, right] },
+      },
+    };
+    renderOverlay(doc);
+    await mockSceneAndWaitForFrame("inplace-edit-frame-pedals-right");
+
+    const frame = screen.getByTestId("inplace-edit-frame-pedals-right") as HTMLElement;
+    fireEvent.pointerDown(frame, { pointerId: 1, button: 0, clientX: 1550, clientY: 650, bubbles: true });
+    fireEvent.pointerUp(window, { pointerId: 1, bubbles: true });
+
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("inplace-inspector-panel").className,
+      ).toContain("inplace-inspector-panel--left"),
+    );
+  });
+
+  it("clamps the context menu inside the viewport when opened near the edge", async () => {
+    const base = buildDocument();
+    const right = pedalsDefinition.createDefault("pedals-right");
+    right.layout = { x: 1500, y: 600, w: 280, h: 96, zIndex: 1, aspectLocked: true };
+    const doc: ProfileDocumentV3 = {
+      ...base,
+      layouts: {
+        general: { type: "general", widgets: [...base.layouts.general.widgets, right] },
+      },
+    };
+    renderOverlay(doc);
+    await mockSceneAndWaitForFrame("inplace-edit-frame-pedals-right");
+
+    const scene = screen.getByTestId("inplace-edit-scene") as HTMLElement;
+    fireEvent.contextMenu(scene, { clientX: 1550, clientY: 650, bubbles: true });
+
+    const menu = await screen.findByTestId("studio-widget-context-menu");
+    const left = Number.parseFloat(menu.style.left);
+    expect(left).toBeLessThanOrEqual(window.innerWidth - 8);
+    expect(Number.parseFloat(menu.style.top)).toBeGreaterThanOrEqual(8);
+  });
+
+  it("switches the editing session and materializes it on the first edit", async () => {
+    renderOverlay(buildDocument());
+    await mockSceneAndWaitForFrame("inplace-edit-frame-delta-main");
+
+    const sessionSelect = screen.getByTestId("edit-mode-session") as HTMLSelectElement;
+    expect(sessionSelect.value).toBe("general");
+
+    fireEvent.change(sessionSelect, { target: { value: "race" } });
+    await waitFor(() => expect(sessionSelect.value).toBe("race"));
+
+    // La sesion ausente se previsualiza clonando general: el frame sigue ahi.
+    const frame = screen.getByTestId("inplace-edit-frame-delta-main") as HTMLElement;
+    fireEvent.pointerDown(frame, { pointerId: 1, button: 0, clientX: 100, clientY: 100, bubbles: true });
+    fireEvent.pointerMove(window, { pointerId: 1, clientX: 150, clientY: 150, bubbles: true });
+    fireEvent.pointerUp(window, { pointerId: 1, bubbles: true });
+
+    await waitFor(() => expect(saveCalls()).toHaveLength(1));
+    const payload = saveCalls()[0][1] as { document: ProfileDocumentV3 };
+    // El primer edit sobre la sesion elegida la materializa en el documento.
+    expect(payload.document.layouts.race?.widgets[0]?.layout.x).toBe(152);
+    expect(payload.document.layouts.general.widgets[0].layout.x).toBe(100);
+  });
+
+  it("opens the catalog and adds a widget in place", async () => {
+    renderOverlay(buildDocument());
+    await mockSceneAndWaitForFrame("inplace-edit-frame-delta-main");
+
+    fireEvent.click(screen.getByTestId("edit-mode-add"));
+    await waitFor(() => expect(screen.getByTestId("studio-add-widget-dialog")).toBeTruthy());
+
+    // Delta ya existe en el layout: aparece como no disponible.
+    expect(screen.getByTestId("studio-catalog-unavailable-delta")).toBeTruthy();
+
+    fireEvent.click(screen.getByTestId("studio-catalog-add-pedals"));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("inplace-edit-frame-pedals-main")).toBeTruthy(),
+    );
+    await waitFor(() => expect(saveCalls()).toHaveLength(1));
+    const payload = saveCalls()[0][1] as { document: ProfileDocumentV3 };
+    expect(
+      payload.document.layouts.general.widgets.some((widget) => widget.type === "pedals"),
+    ).toBe(true);
+  });
+
+  it("closes the add dialog without adding when cancelled", async () => {
+    renderOverlay(buildDocument());
+    await mockSceneAndWaitForFrame("inplace-edit-frame-delta-main");
+
+    fireEvent.click(screen.getByTestId("edit-mode-add"));
+    await waitFor(() => expect(screen.getByTestId("studio-add-widget-dialog")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("studio-add-widget-cancel"));
+
+    await waitFor(() => expect(screen.queryByTestId("studio-add-widget-dialog")).toBeNull());
+    expect(screen.getAllByTestId(/^inplace-edit-frame-/).length).toBe(1);
+  });
+
+  it("renders design and actions sections with translated titles", async () => {
+    renderOverlay(buildDocument());
+    await mockSceneAndWaitForFrame("inplace-edit-frame-delta-main");
+
+    const frame = screen.getByTestId("inplace-edit-frame-delta-main") as HTMLElement;
+    fireEvent.pointerDown(frame, { pointerId: 1, button: 0, clientX: 100, clientY: 100, bubbles: true });
+    fireEvent.pointerUp(window, { pointerId: 1, bubbles: true });
+
+    // Las secciones viven en pestañas: diseño y acciones existen como tabs.
+    await waitFor(() => expect(screen.getByTestId("inplace-tab-design")).toBeTruthy());
+    expect(screen.getByTestId("inplace-tab-actions")).toBeTruthy();
+
+    fireEvent.click(screen.getByTestId("inplace-tab-design"));
+    await waitFor(() => expect(screen.getByTestId("studio-inspector-section-design")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("inplace-tab-actions"));
+    await waitFor(() => expect(screen.getByTestId("studio-inspector-section-actions")).toBeTruthy());
+
+    // Ninguna pestaña debe mostrar una clave i18n cruda.
+    const tabs = screen
+      .getByTestId("inplace-inspector-panel")
+      .querySelectorAll(".inplace-inspector-panel__tab");
+    for (const tab of tabs) {
+      expect(tab.textContent).not.toContain("INSPECTOR.SECTION");
+      expect(tab.textContent).not.toContain("OVERLAY.STUDIO");
+    }
+  });
+
+  it("restores widget defaults while keeping its layout", async () => {
+    renderOverlay(buildDocument());
+    await mockSceneAndWaitForFrame("inplace-edit-frame-delta-main");
+
+    const frame = screen.getByTestId("inplace-edit-frame-delta-main") as HTMLElement;
+    fireEvent.pointerDown(frame, { pointerId: 1, button: 0, clientX: 100, clientY: 100, bubbles: true });
+    fireEvent.pointerUp(window, { pointerId: 1, bubbles: true });
+
+    // Cambia una propiedad visual primero: sin cambio no hay nada que restaurar.
+    fireEvent.click(screen.getByTestId("inplace-tab-appearance"));
+    const headerToggle = await screen.findByRole("button", { name: "Mostrar cabecera" });
+    fireEvent.click(headerToggle);
+    await waitFor(() => expect(saveCalls()).toHaveLength(1));
+    resolveSave(0, "rev-2", (saveCalls()[0][1] as { document: ProfileDocumentV3 }).document);
+
+    fireEvent.click(screen.getByTestId("inplace-tab-actions"));
+    fireEvent.click(screen.getByTestId("studio-action-restore-defaults"));
+    await waitFor(() => expect(saveCalls()).toHaveLength(2));
+
+    const payload = saveCalls()[1][1] as { document: ProfileDocumentV3 };
+    const restored = payload.document.layouts.general.widgets[0];
+    const defaults = deltaDefinition.createDefault("delta-main");
+    expect(restored.layout.x).toBe(100);
+    expect(restored.layout.w).toBe(280);
+    expect(restored.visual.systemId).toBe(defaults.visual.systemId);
+    expect(restored.visual.appearanceOverrides ?? {}).toEqual(
+      defaults.visual.appearanceOverrides ?? {},
+    );
+  });
+
+  it("discards all pending changes back to the saved document", async () => {
+    renderOverlay(buildDocument());
+    await mockSceneAndWaitForFrame("inplace-edit-frame-delta-main");
+
+    const frame = screen.getByTestId("inplace-edit-frame-delta-main") as HTMLElement;
+    fireEvent.pointerDown(frame, { pointerId: 1, button: 0, clientX: 100, clientY: 100, bubbles: true });
+    fireEvent.pointerMove(window, { pointerId: 1, clientX: 160, clientY: 160, bubbles: true });
+    fireEvent.pointerUp(window, { pointerId: 1, bubbles: true });
+    await waitFor(() => expect(saveCalls()).toHaveLength(1));
+
+    fireEvent.click(screen.getByTestId("inplace-tab-actions"));
+    await waitFor(() => expect(screen.getByTestId("studio-action-discard-all")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("studio-action-discard-all"));
+
+    // El documento vuelve al guardado: el frame recupera la posicion original.
+    await waitFor(() => expect(readFrameVisualLeft(frame)).toBe(100));
+  });
+
   it("keeps imperative preview and frozen telemetry across StudioProvider rerenders during drag", async () => {
     renderOverlay(buildDocument());
     await mockSceneAndWaitForFrame("inplace-edit-frame-delta-main");

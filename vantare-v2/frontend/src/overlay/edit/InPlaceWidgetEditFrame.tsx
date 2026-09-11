@@ -107,8 +107,11 @@ function InPlaceWidgetEditFrameComponent(props: InPlaceWidgetEditFrameProps): Re
   const chromeStyle: CSSProperties = {
     position: "absolute",
     inset: 0,
-    border: selected ? "1.5px solid #e63946" : "1px solid rgba(230, 57, 70, 0.35)",
-    borderRadius: 4,
+    border: selected
+      ? "1.5px solid #e63946"
+      : "1px solid rgba(255, 255, 255, 0.16)",
+    borderRadius: 6,
+    boxShadow: selected ? "0 0 0 3px rgba(230, 57, 70, 0.16)" : "none",
     pointerEvents: "none",
     zIndex: 2,
   };
@@ -162,12 +165,13 @@ function InPlaceWidgetEditFrameComponent(props: InPlaceWidgetEditFrameProps): Re
               style={{
                 position: "absolute",
                 zIndex: 4,
-                width: 10,
-                height: 10,
+                width: 9,
+                height: 9,
                 padding: 0,
-                border: "1px solid #e63946",
-                borderRadius: 2,
-                background: "rgba(8, 8, 10, 0.94)",
+                border: "1.5px solid #e63946",
+                borderRadius: 999,
+                background: "#0b0b0e",
+                boxShadow: "0 0 0 1.5px rgba(0, 0, 0, 0.5)",
                 ...HANDLE_STYLE[handle],
               }}
               onPointerDown={(event) => onResizePointerDown(widget.id, handle, event)}

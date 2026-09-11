@@ -92,11 +92,19 @@ export const en: Record<string, string> = {
   "overlay.editMode.hint": "Right-click: actions - arrows nudge - Alt disables snap - Ctrl+Shift+E or Done to exit",
   "overlay.editMode.saveError": "Save failed - conflict with the Hub editor. Reopen the profile to continue.",
   "overlay.editMode.panel.empty": "Select a widget to edit its properties.",
+  "overlay.editMode.panel.title": "Panel",
+  "overlay.editMode.panel.hide": "Hide panel",
+  "overlay.editMode.panel.show": "Show panel",
+  "overlay.editMode.panel.float": "Floating panel",
+  "overlay.editMode.panel.dock": "Dock panel to the side",
+  "overlay.editMode.panel.tabsAria": "Inspector sections",
   "overlay.editMode.panel.undo": "Undo",
   "overlay.editMode.panel.redo": "Redo",
   "overlay.editMode.panel.retry": "Retry",
   "overlay.editMode.panel.conflict": "Conflict - reload to continue",
   "overlay.editMode.panel.saving": "Saving...",
+  "overlay.editMode.sessionAria": "Session being edited",
+  "overlay.editMode.add": "+ Widget",
 
   // Widget Config Sections
 

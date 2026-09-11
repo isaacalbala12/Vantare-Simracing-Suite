@@ -1,5 +1,22 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+## ISA-1171 - Roadmap de etapas hacia beta pública y lanzamiento
+
+Decisión de Isaac 2026-09-11: la beta pública es un reinicio de la línea
+v0.1.0.0; la línea v0.1.x actual es formato de desarrollo y la documentación
+pública se reinicia antes de la apertura. Entregado en la rama
+`vantareapp/isa-1171-roadmap-beta-publica-lanzamiento` (PR #1172 draft a
+nightly, sin promoción): documento interno
+`docs/plan-beta-publica-y-lanzamiento.md` con etapas 0–5, rangos de versión,
+gates por etapa, matriz de módulos de lanzamiento y decisiones pendientes;
+`plan.md` añade las fases `insiders-program`, `public-beta`,
+`release-candidate` y `launch`, retitula `beta-foundation` a Beta inicial y
+renumera etiquetas de `engineer`/`ecosystem`; nueve hitos `plan` nuevos.
+Diff semántico verificado = los 16 IDs declarados. Digest regenerado desde
+`origin/nightly`; 23 tests del parser PASS y `--check` sin cambios. Pendiente:
+review de Isaac y decisiones abiertas listadas en el documento (versión de
+apertura, pago día 1, precios vigentes, firma, multisim, Linux, voz).
+
 ## ISA-1061 - Candidato revisado; validacion visual final pendiente
 
 Isaac aprueba el recorrido completo. Rama aislada desde ISA-1058 591b48b7.

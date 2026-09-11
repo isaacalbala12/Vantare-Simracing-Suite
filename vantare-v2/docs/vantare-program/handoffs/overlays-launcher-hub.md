@@ -319,7 +319,12 @@ física nueva, retirada V1, merge o release en este corte documental.
   `templateId: "capsule"` (tipo Crystal — fila en píldora, pista gruesa,
   píldora de valor) junto a `instrument` por defecto; diseño oficial
   `delta-functional-capsule`, elegible en Estilo. Evidencia
-  `delta-capsule.png`.
+  `delta-capsule.png`. **Sistema "iRacing"** (`vantare-iracing`, dev):
+  referencia clásica de sim racing. Primer widget:
+  `pedals-telemetry-compact` renombrado "Pedales avanzados" (4 locales) —
+  marcha ámbar, km/h + rpm, 3 barras verticales y volante que gira con
+  `player.steering` (recién mapeado al VM compacto). Diseño
+  `pedals-advanced-iracing`; evidencia `iracing-pedals-adv.png`.
   Sin merge, push, PR, promoción ni release.
 
 - **S3 cerrado, 2026-09-03:** el mismo EXE R-FIX4 desde

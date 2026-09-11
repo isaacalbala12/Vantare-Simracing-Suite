@@ -193,7 +193,31 @@ sin prueba física LMU en este corte. Cortes siguientes no entregados: panel
 colapsable/reubicable y layout numérico (C2), añadir widget y selector de
 sesión (C3), diseños y acciones de restauración (C4).
 
-## ISA-1098 — candidato local con #1083 + #1103 + #1097 + #1105 (2026-09-10, sin integrar)
+## ISA-1098 — candidato conjunto Efficiency (2026-09-11, sin integrar)
+
+Actualización vigente: la rama se reconcilió con `origin/nightly@e13756ef`
+en `a8eedecf`, conservando el editor in-place actual y adaptando su inspector,
+catálogo y guardado a `WidgetPolicy`. Después incorporó la rama completa y
+validada de #1127 en `d9a2c56d` y las señales REST LMU revisadas de #1106 en
+`0168a2a9`. El candidato reúne por tanto #1083, #1103, #1097, #1105, #1106 y
+#1127; no crea otro renderer, autoridad de licencia ni lector LMU.
+
+La resolución productiva del editor in-place pasó typecheck y 46 pruebas
+focales. El conjunto reconciliado pasa 104 pruebas focales de Efficiency,
+marca, política, transporte y edición; 3515 pruebas frontend (440 archivos,
+2 omitidas), `go test ./...`, typecheck, lint y build web. El ruido
+`AbortError` de happy-dom conserva exit 0 y la build mantiene el aviso ya
+inventariado de chunks mayores de 500 kB. `plan.md` declara los cuatro hitos
+afectados (`functional-widget-design`, `widget-access-branding`,
+`telemetry-live`, `overlay-tester-feedback`) y `roadmap.json` se regenera
+desde la base Nightly confiable.
+
+Siguiente gate: build Wails configurada y comprobación física Free de
+Efficiency, marca obligatoria, edición, guardados, detener y reabrir. La
+equivalencia de códigos de bandera REST sigue pendiente de una sesión LMU
+activa; ausencia, invalidez o caducidad permanecen neutras. La validación
+aislada de #1127 no sustituye esta comprobación conjunta. PR #1107 continúa
+en draft; sin merge a Nightly, testers/master ni release.
 
 Rama `vantareapp/isa-1098-efficiency-integration`, worktree `C:/tmp/vantare-isa1098`,
 base `a9b8dd36` (= `origin/nightly` verificado antes de usar `--ref`). Solo se

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-10T20:29:38Z",
+  "generatedAt": "2026-09-11T11:10:35Z",
   "digest": {
-    "lastCommit": "a2958ea1c26e4e74dbaad3827382c36cb8d7de37"
+    "lastCommit": "dc5e7ae118b98e1143010a894672cda8e83a3766"
   },
   "phases": [
     {
@@ -1013,10 +1013,10 @@
         "it": "Correzioni del feedback degli overlay"
       },
       "body": {
-        "es": "Studio reconoce documentos guardados equivalentes; las tablas Crystal respetan sus columnas y ajustan altura al cambiar filas. Pedales conservan el historial y muestran R/N, colores configurados y escala RPM sin simular el corte del coche. Track Map tiene fondo transparente y leyenda de clases. Las comparaciones explican referencias y datos ausentes; Head-to-Head protege su geometría. Dense contiene los tres pedales y el historial a 560×100; Broadcast omite límites de vueltas inválidos o ilimitados. Validación física restante pendiente.",
-        "en": "Studio recognizes equivalent saved documents; Crystal tables honor columns and adjust height when row count changes. Pedals preserve history and show R/N, configured colors and an RPM scale without simulating the car redline. Track Map has a transparent background and class legend. Comparisons explain references and missing data; Head-to-Head protects its geometry. Dense contains all three pedals and history at 560×100; Broadcast omits invalid or unlimited lap limits. Remaining physical validation is pending.",
-        "pt": "Studio reconhece documentos guardados equivalentes; tabelas Crystal respeitam colunas e ajustam a altura ao mudar as linhas. Pedais preservam o histórico e mostram R/N, cores configuradas e escala RPM sem simular o limite do carro. Track Map tem fundo transparente e legenda de classes. Comparações explicam referências e dados ausentes; Head-to-Head protege a geometria. Dense contém os três pedais e o histórico a 560×100; Broadcast omite limites de voltas inválidos ou ilimitados. A validação física restante continua pendente.",
-        "it": "Studio riconosce documenti salvati equivalenti; le tabelle Crystal rispettano le colonne e adattano l'altezza al numero di righe. I pedali conservano la cronologia e mostrano R/N, colori configurati e una scala RPM senza simulare il limitatore dell'auto. Track Map ha sfondo trasparente e legenda delle classi. I confronti spiegano riferimenti e dati assenti; Head-to-Head protegge la geometria. Dense contiene i tre pedali e la cronologia a 560×100; Broadcast omette limiti di giri non validi o illimitati. La restante verifica fisica è in attesa."
+        "es": "Studio reconoce documentos guardados equivalentes; las tablas Crystal respetan sus columnas y ajustan altura al cambiar filas. Pedales conservan el historial y muestran R/N, colores configurados y escala RPM sin simular el corte del coche. Track Map tiene fondo transparente y leyenda de clases. Las comparaciones explican referencias y datos ausentes; Head-to-Head protege su geometría. Dense contiene los tres pedales y el historial a 560×100; Broadcast omite límites de vueltas inválidos o ilimitados. El ciclo de vida de la ventana overlay de escritorio serializa abrir y detener: un arranque concurrente no deja ventanas huérfanas y detener durante la creación no deja reaparecer el overlay. Validación física restante pendiente.",
+        "en": "Studio recognizes equivalent saved documents; Crystal tables honor columns and adjust height when row count changes. Pedals preserve history and show R/N, configured colors and an RPM scale without simulating the car redline. Track Map has a transparent background and class legend. Comparisons explain references and missing data; Head-to-Head protects its geometry. Dense contains all three pedals and history at 560×100; Broadcast omits invalid or unlimited lap limits. The desktop overlay window lifecycle serializes open and stop: a concurrent start no longer leaves orphaned windows and stopping during creation does not let the overlay resurrect. Remaining physical validation is pending.",
+        "pt": "Studio reconhece documentos guardados equivalentes; tabelas Crystal respeitam colunas e ajustam a altura ao mudar as linhas. Pedais preservam o histórico e mostram R/N, cores configuradas e escala RPM sem simular o limite do carro. Track Map tem fundo transparente e legenda de classes. Comparações explicam referências e dados ausentes; Head-to-Head protege a geometria. Dense contém os três pedais e o histórico a 560×100; Broadcast omite limites de voltas inválidos ou ilimitados. O ciclo de vida da janela overlay de ambiente de trabalho serializa abrir e parar: um arranque concorrente não deixa janelas órfãs e parar durante a criação não deixa o overlay reaparecer. A validação física restante continua pendente.",
+        "it": "Studio riconosce documenti salvati equivalenti; le tabelle Crystal rispettano le colonne e adattano l'altezza al numero di righe. I pedali conservano la cronologia e mostrano R/N, colori configurati e una scala RPM senza simulare il limitatore dell'auto. Track Map ha sfondo trasparente e legenda delle classi. I confronti spiegano riferimenti e dati assenti; Head-to-Head protegge la geometria. Dense contiene i tre pedali e la cronologia a 560×100; Broadcast omette limiti di giri non validi o illimitati. Il ciclo di vita della finestra overlay desktop serializza apertura e arresto: un avvio concorrente non lascia finestre orfane e arrestare durante la creazione non fa riapparire l'overlay. La restante verifica fisica è in attesa."
       },
       "label": {
         "es": "En validación",
@@ -1380,6 +1380,26 @@
   ],
   "delivered": [
     {
+      "date": "2026-09-11",
+      "entries": [
+        {
+          "kind": "fix",
+          "scope": "studio",
+          "text": "Restaurar enlace OBS al pie del dock de ajustes"
+        },
+        {
+          "kind": "feat",
+          "scope": "overlay",
+          "text": "Editor in-place C5 — toolbar pill, pestañas y panel ocultable"
+        },
+        {
+          "kind": "feat",
+          "scope": "overlay",
+          "text": "Editor in-place — teclado, acciones de widget y salida visible"
+        }
+      ]
+    },
+    {
       "date": "2026-09-10",
       "entries": [
         {
@@ -1391,6 +1411,11 @@
           "kind": "fix",
           "scope": "ci",
           "text": "Corregir validación del workflow inerte"
+        },
+        {
+          "kind": "docs",
+          "scope": "ci",
+          "text": "Registrar integración Nightly de ISA-728"
         }
       ]
     },
@@ -1961,31 +1986,6 @@
           "kind": "docs",
           "scope": "release",
           "text": "Add Nightly 9 canonical manifest"
-        }
-      ]
-    },
-    {
-      "date": "2026-08-15",
-      "entries": [
-        {
-          "kind": "docs",
-          "scope": "overlay",
-          "text": "Record ISA-363 nightly promotion"
-        },
-        {
-          "kind": "fix",
-          "scope": "overlay",
-          "text": "Preserve stale frame during telemetry recovery"
-        },
-        {
-          "kind": "docs",
-          "scope": "overlays",
-          "text": "Record ISA-364 nightly promotion"
-        },
-        {
-          "kind": "fix",
-          "scope": "overlays",
-          "text": "List pure V3 profiles"
         }
       ]
     }

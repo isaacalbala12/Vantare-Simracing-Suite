@@ -1,5 +1,44 @@
 # Handoff vivo — Overlay Studio, Launcher y Hub
 
+## ISA-1127 — ciclo de vida de la ventana overlay de escritorio (2026-09-11, en rama)
+
+Issue [#1127](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1127)
+(`area:overlays-runtime`, `roadmap:required` → `milestones:overlay-tester-feedback`),
+rama `vantareapp/isa-1127-overlay-lifecycle`, base `131471ff`, worktree
+`C:/tmp/vantare-isa1127-overlay-lifecycle`. Origen: en la comprobación física de
+ISA-1098 (Efficiency PR1107 + REST 1106) la app se cerró al abrir overlay +
+edición y los overlays no reaparecieron; la reproducción física no se consiguió
+y este corte **no afirma** cerrar ese crash. Lo que sí demuestran los tests con
+fakes son tres defectos reales del controlador, presentes también en Nightly:
+
+- Dos `Start` concurrentes crean dos ventanas nativas y la perdedora queda
+  huérfana (siempre encima, inalcanzable por `Stop`). En producción ya hay
+  Starts concurrentes: `refreshActiveOverlayAfterSave` recrea la ventana en
+  cada guardado de Studio mientras el usuario puede pulsar abrir.
+- `Stop` durante la creación en vuelo devuelve `running=false`, pero la
+  ventana creada se instala después y reaparece como fantasma.
+- `Close()` se invocaba bajo `c.mu`: un runtime nativo que despache el evento
+  de cierre en la pila del caller bloquearía `HandleWindowClosed` en deadlock
+  (el callback real de Wails en `main.go` ya lanza goroutine, así que el test
+  síncrono prueba robustez del contrato, no el crash físico).
+
+Corte mínimo: `internal/app/overlay_controller.go` añade `startMu` que
+serializa `Start`/`Stop` y cierra la ventana anterior fuera de `c.mu` en todos
+los caminos. `HandleWindowClosed` no cambia. Sin dependencias ni arquitectura
+nueva.
+
+Evidencia: 3 regresiones nuevas (`overlay_controller_lifecycle_test.go`)
+**rojas en base** `131471ff` (worktree temporal detached, 3/3 corridas: huérfana
+`closed=0`, fantasma `Running:true`, deadlock 2 s) y **verdes con el fix** bajo
+`-race`; los 8 tests existentes del controlador pasan. `go test ./...` completo
+exit 0 (requirió `pnpm install --frozen-lockfile` + `pnpm build` para el embed
+de `frontend/dist`). `plan.md` actualizado (`overlay-tester-feedback`) y
+`roadmap.json` regenerado con `roadmap_digest.py --ref origin/nightly`
+(`dc5e7ae1`). Fragmento de changelog `ISA-1127.json`.
+
+Siguiente: build Windows separada para que Isaac pruebe físicamente abrir +
+editar + guardar; sin promoción a nightly, testers, master ni release.
+
 ## ISA-1101 — integración inicial autorizada a nightly (2026-09-10)
 
 Isaac solicita «antes de continuar mergea tu trabajo a nightly». Este corte

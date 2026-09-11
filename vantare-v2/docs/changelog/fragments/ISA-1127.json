@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-1127",
+  "type": "fix",
+  "summary": "El ciclo de vida de la ventana overlay de escritorio serializa abrir y detener: un arranque concurrente ya no deja ventanas nativas huérfanas siempre encima y detener durante la creación no deja reaparecer el overlay.",
+  "technicalNotes": [
+    "OverlayController serializa Start y Stop con un mutex dedicado: la creación nativa lenta ya no puede entrelazar dos aperturas ni dejar que una ventana creada se instale después de un Stop.",
+    "El cierre de la ventana anterior ocurre fuera del mutex de estado, así un evento de cierre despachado en la pila del caller no bloquea el controlador.",
+    "Sin cambios de arquitectura, dependencias ni política de widgets; el contrato de HandleWindowClosed se conserva."
+  ],
+  "testing": [
+    "Tres regresiones nuevas en internal/app con fakes: doble Start concurrente, Stop durante creación en vuelo y callback de cierre síncrono; rojas en la base y verdes con el fix bajo -race.",
+    "go test ./... completo pasa. Validación física Wails/LMU pendiente en la build diagnóstica."
+  ],
+  "knownLimitations": [
+    "Los tests usan ventanas simuladas; no demuestran por sí solos el cierre del crash físico reportado al abrir overlay y edición.",
+    "Pendiente comprobación física: abrir overlay, abrir edición y guardar en Studio sin cierre ni overlays ausentes en el siguiente arranque."
+  ]
+}

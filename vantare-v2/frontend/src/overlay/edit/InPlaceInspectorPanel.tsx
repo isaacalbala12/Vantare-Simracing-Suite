@@ -3,7 +3,7 @@ import type { SessionLayoutType, WidgetInstanceV3 } from "../core/profile-docume
 import type { LayoutViewport } from "../core/layout-viewport";
 import type { TelemetryRateCoordinator } from "../core/telemetry-rate-coordinator";
 import { useOverlayRuntimeContext } from "../runtime/use-rate-limited-telemetry";
-import type { AccessContext } from "../../lib/access-policy";
+import { FREE_ACCESS, type AccessContext } from "../../lib/access-policy";
 import { WidgetPropertyInspectorView, type WidgetPropertySectionId } from "../../hub/overlay-studio/inspector/WidgetPropertyInspectorView";
 import { LayoutSection } from "../../hub/overlay-studio/inspector/LayoutSection";
 import { useStudioDocument } from "../../hub/overlay-studio/state/studio-store";
@@ -186,7 +186,7 @@ export function InPlaceInspectorPanel(props: InPlaceInspectorPanelProps): React.
                   widget={widget}
                   session={session}
                   runtimeContext={runtimeContext}
-                  access={access ?? DEFAULT_ACCESS}
+                  access={access ?? FREE_ACCESS}
                   disabled={disabled}
                   dispatch={autosave.dispatch}
                 />
@@ -198,14 +198,6 @@ export function InPlaceInspectorPanel(props: InPlaceInspectorPanelProps): React.
     </div>
   );
 }
-
-const DEFAULT_ACCESS: AccessContext = {
-  planLabel: "free",
-  planStatus: "active",
-  roles: [],
-  isBlocked: false,
-  isUnconfigured: false,
-};
 
 export const MemoInPlaceInspectorPanel = memo(InPlaceInspectorPanel, (prev, next) => (
   prev.widget === next.widget

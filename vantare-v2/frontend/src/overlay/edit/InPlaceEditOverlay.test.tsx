@@ -581,6 +581,63 @@ describe("InPlaceEditOverlay", () => {
     expect(Number.parseFloat(menu.style.top)).toBeGreaterThanOrEqual(8);
   });
 
+  it("switches the editing session and materializes it on the first edit", async () => {
+    renderOverlay(buildDocument());
+    await mockSceneAndWaitForFrame("inplace-edit-frame-delta-main");
+
+    const sessionSelect = screen.getByTestId("edit-mode-session") as HTMLSelectElement;
+    expect(sessionSelect.value).toBe("general");
+
+    fireEvent.change(sessionSelect, { target: { value: "race" } });
+    await waitFor(() => expect(sessionSelect.value).toBe("race"));
+
+    // La sesion ausente se previsualiza clonando general: el frame sigue ahi.
+    const frame = screen.getByTestId("inplace-edit-frame-delta-main") as HTMLElement;
+    fireEvent.pointerDown(frame, { pointerId: 1, button: 0, clientX: 100, clientY: 100, bubbles: true });
+    fireEvent.pointerMove(window, { pointerId: 1, clientX: 150, clientY: 150, bubbles: true });
+    fireEvent.pointerUp(window, { pointerId: 1, bubbles: true });
+
+    await waitFor(() => expect(saveCalls()).toHaveLength(1));
+    const payload = saveCalls()[0][1] as { document: ProfileDocumentV3 };
+    // El primer edit sobre la sesion elegida la materializa en el documento.
+    expect(payload.document.layouts.race?.widgets[0]?.layout.x).toBe(152);
+    expect(payload.document.layouts.general.widgets[0].layout.x).toBe(100);
+  });
+
+  it("opens the catalog and adds a widget in place", async () => {
+    renderOverlay(buildDocument());
+    await mockSceneAndWaitForFrame("inplace-edit-frame-delta-main");
+
+    fireEvent.click(screen.getByTestId("edit-mode-add"));
+    await waitFor(() => expect(screen.getByTestId("studio-add-widget-dialog")).toBeTruthy());
+
+    // Delta ya existe en el layout: aparece como no disponible.
+    expect(screen.getByTestId("studio-catalog-unavailable-delta")).toBeTruthy();
+
+    fireEvent.click(screen.getByTestId("studio-catalog-add-pedals"));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("inplace-edit-frame-pedals-main")).toBeTruthy(),
+    );
+    await waitFor(() => expect(saveCalls()).toHaveLength(1));
+    const payload = saveCalls()[0][1] as { document: ProfileDocumentV3 };
+    expect(
+      payload.document.layouts.general.widgets.some((widget) => widget.type === "pedals"),
+    ).toBe(true);
+  });
+
+  it("closes the add dialog without adding when cancelled", async () => {
+    renderOverlay(buildDocument());
+    await mockSceneAndWaitForFrame("inplace-edit-frame-delta-main");
+
+    fireEvent.click(screen.getByTestId("edit-mode-add"));
+    await waitFor(() => expect(screen.getByTestId("studio-add-widget-dialog")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("studio-add-widget-cancel"));
+
+    await waitFor(() => expect(screen.queryByTestId("studio-add-widget-dialog")).toBeNull());
+    expect(screen.getAllByTestId(/^inplace-edit-frame-/).length).toBe(1);
+  });
+
   it("keeps imperative preview and frozen telemetry across StudioProvider rerenders during drag", async () => {
     renderOverlay(buildDocument());
     await mockSceneAndWaitForFrame("inplace-edit-frame-delta-main");

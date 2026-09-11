@@ -1,5 +1,5 @@
 ﻿import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import type { ProfileDocumentV3, SessionLayoutType, WidgetLayoutV3 } from "../core/profile-document";
+import type { ProfileDocumentV3, SessionLayoutType, WidgetLayoutV3, WidgetType } from "../core/profile-document";
 import { useSyncExternalStore } from "react";
 import { Events } from "@wailsio/runtime";
 import {
@@ -12,7 +12,7 @@ import type { TelemetryRateCoordinator } from "../core/telemetry-rate-coordinato
 import { useOverlayRuntimeContext } from "../runtime/use-rate-limited-telemetry";
 import { resolveRuntimeLayout } from "../runtime/resolve-runtime-layout";
 import { StudioProvider, useStudioDocument } from "../../hub/overlay-studio/state/studio-store";
-import type { AccessContext } from "../../lib/access-policy";
+import { FREE_ACCESS, type AccessContext } from "../../lib/access-policy";
 import { InPlaceWidgetEditFrame } from "./InPlaceWidgetEditFrame";
 import { MemoInPlaceInspectorPanel } from "./InPlaceInspectorPanel";
 import { useInplaceInteraction } from "./use-inplace-interaction";
@@ -35,9 +35,21 @@ import {
 } from "../../hub/overlay-studio/canvas/WidgetContextMenu";
 import { StudioConfirmProvider } from "../../hub/overlay-studio/components/StudioConfirmProvider";
 import { useDeleteWidgetConfirm } from "../../hub/overlay-studio/components/studio-confirm";
+import { AddWidgetDialog } from "../../hub/overlay-studio/catalog/AddWidgetDialog";
+import { buildAddWidgetCommand } from "../../hub/overlay-studio/catalog/studio-catalog";
+import { resolveSessionLayout } from "../../hub/overlay-studio/state/session-layouts";
+import { widgetTypeRegistry } from "../core/widget-registry";
 import "../../styles/orbit-kit.css";
 import "../../styles/orbit-studio.css";
 import "./inplace-edit.css";
+
+const SESSION_LAYOUT_OPTIONS: readonly SessionLayoutType[] = [
+  "general",
+  "practice",
+  "qualifying",
+  "race",
+  "endurance",
+];
 
 export type InPlaceEditOverlayProps = {
   document: ProfileDocumentV3;
@@ -104,12 +116,22 @@ function InPlaceEditOverlayContent(props: Omit<InPlaceEditOverlayProps, "revisio
   );
   const layout = resolveRuntimeLayout(storeDocument ?? document, runtimeContext);
   const layoutViewport = resolveLayoutViewport(storeDocument ?? document);
+  const [sessionOverride, setSessionOverride] = useState<SessionLayoutType | null>(null);
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+
+  // Sin override se edita la sesion que el runtime muestra ahora mismo; con
+  // override se previsualiza `resolveSessionLayout` (clon de general cuando la
+  // sesion aun no existe) y el primer comando la materializa, igual que Studio.
+  const editingLayout = useMemo(
+    () => (sessionOverride ? resolveSessionLayout(storeDocument ?? document, sessionOverride) : layout),
+    [sessionOverride, storeDocument, document, layout],
+  );
   const widgets = useMemo(
-    () => [...layout.widgets].sort((left, right) => left.layout.zIndex - right.layout.zIndex),
-    [layout.widgets],
+    () => [...editingLayout.widgets].sort((left, right) => left.layout.zIndex - right.layout.zIndex),
+    [editingLayout.widgets],
   );
 
-  const editingSession = layout.type as SessionLayoutType;
+  const editingSession = sessionOverride ?? (layout.type as SessionLayoutType);
 
   const handleSelect = useCallback(
     (widgetId: string | null) => {
@@ -117,6 +139,16 @@ function InPlaceEditOverlayContent(props: Omit<InPlaceEditOverlayProps, "revisio
       selectWidget(widgetId);
     },
     [selectWidget],
+  );
+
+  const handleSessionChange = useCallback(
+    (event: React.ChangeEvent<HTMLSelectElement>) => {
+      const next = event.target.value as SessionLayoutType;
+      setSessionOverride(next === layout.type ? null : next);
+      setContextMenu(null);
+      handleSelect(null);
+    },
+    [layout.type, handleSelect],
   );
 
   const interaction = useInplaceInteraction({
@@ -147,6 +179,26 @@ function InPlaceEditOverlayContent(props: Omit<InPlaceEditOverlayProps, "revisio
     save,
     interactionActive: interaction.isInteractionActive,
   });
+
+  const autosaveDispatch = autosave.dispatch;
+
+  const handleAddWidget = useCallback(
+    (type: WidgetType) => {
+      const command = buildAddWidgetCommand({
+        session: editingSession,
+        type,
+        widgets,
+        definition: widgetTypeRegistry.get(type),
+        layoutViewport,
+      });
+      autosaveDispatch(command);
+      if (command.type === "widget/add") {
+        handleSelect(command.widget.id);
+      }
+      setAddDialogOpen(false);
+    },
+    [editingSession, widgets, layoutViewport, autosaveDispatch, handleSelect],
+  );
 
   useLayoutEffect(() => {
     const surface = surfaceRef.current;
@@ -226,7 +278,6 @@ function InPlaceEditOverlayContent(props: Omit<InPlaceEditOverlayProps, "revisio
   const deleteConfirm = useDeleteWidgetConfirm();
   const confirmDelete = useCallback((message: string) => window.confirm(message), []);
   const closeContextMenu = useCallback(() => setContextMenu(null), []);
-  const autosaveDispatch = autosave.dispatch;
   const autosaveUndo = autosave.undo;
   const autosaveRedo = autosave.redo;
 
@@ -460,6 +511,38 @@ function InPlaceEditOverlayContent(props: Omit<InPlaceEditOverlayProps, "revisio
         >
           {t("overlay.editMode.chip")}
         </span>
+        <select
+          aria-label={t("overlay.editMode.sessionAria")}
+          data-testid="edit-mode-session"
+          className="inplace-session-select"
+          value={editingSession}
+          onChange={handleSessionChange}
+        >
+          {SESSION_LAYOUT_OPTIONS.map((session) => (
+            <option key={session} value={session}>
+              {t(`studio.v3.session.${session}`)}
+            </option>
+          ))}
+        </select>
+        <button
+          type="button"
+          data-testid="edit-mode-add"
+          title={t("overlay.editMode.add")}
+          onClick={() => setAddDialogOpen(true)}
+          style={{
+            padding: "4px 10px",
+            borderRadius: 4,
+            background: "rgba(0, 0, 0, 0.6)",
+            border: "1px solid rgba(255, 255, 255, 0.12)",
+            color: "#e5e7eb",
+            fontFamily: "ui-monospace, monospace",
+            fontSize: 10,
+            letterSpacing: "0.08em",
+            cursor: "pointer",
+          }}
+        >
+          {t("overlay.editMode.add")}
+        </button>
         <button
           type="button"
           data-testid="edit-mode-done"
@@ -541,6 +624,13 @@ function InPlaceEditOverlayContent(props: Omit<InPlaceEditOverlayProps, "revisio
           onClose={closeContextMenu}
         />
       ) : null}
+      <AddWidgetDialog
+        access={access ?? FREE_ACCESS}
+        onAdd={handleAddWidget}
+        onClose={() => setAddDialogOpen(false)}
+        open={addDialogOpen}
+        unavailableTypes={widgets.some((widget) => widget.type === "delta") ? ["delta"] : []}
+      />
     </div>
   );
 }

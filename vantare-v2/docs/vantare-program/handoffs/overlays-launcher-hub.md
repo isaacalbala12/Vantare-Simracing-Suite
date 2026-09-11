@@ -212,9 +212,26 @@ La rama quedó reconciliada con `origin/nightly` `dc5e7ae1` mediante merge en
 la propia rama de issue (el PR nació CONFLICTING porque nightly había sumado
 ISA-1162/1152/1123; ninguno toca `overlay_controller.go`). Conflictos solo en
 docs derivados: handoff (orden de entradas) y `roadmap.json` (regenerado).
-Build local separada `bin/vantare-isa1127.exe` (SHA256 `B81EB808…22B06F5`,
-desde el merge `5485aac4`; sin lanzar) para que Isaac pruebe físicamente
-abrir + editar + guardar. Sin promoción a nightly, testers, master ni
+Validación física local completada con `bin/vantare.exe`, reconstruido por el
+procedimiento documentado (`wails3 task -f build`, canal `nightly`) desde el
+`.env.local` original autorizado: URL Supabase, anon key y registro público de
+licencia se cargaron solo en memoria y las tres coincidencias embebidas dieron
+`EMBED_MATCH=True`, sin imprimir valores. SHA256
+`FA10F5326052B115AF767B7AAB3A3E5090789F64855012D70C3821A3EFA55B8F`.
+
+En un arranque limpio, con una sola instancia y el servidor OBS escuchando en
+`127.0.0.1:39261`, se activó `Clean Overlay` y se reprodujo abrir overlay desde
+Hub → abrir Studio: Hub siguió respondiendo y Studio abrió en 189 ms, sin cierre
+de la app. Al entrar en Studio el overlay pasó a detenido, comportamiento
+observable que no equivale a una ventana huérfana. Desde Studio se abrió de
+nuevo el overlay y se realizaron dos guardados reales moviendo el widget
+`delta` y devolviéndolo: ambos alcanzaron `Guardado automáticamente`, cada uno
+creó un nuevo entorno WebView2 y el proceso siguió respondiendo. `Detener
+overlay` volvió a `Abrir overlay`; no hubo `panic`, `fatal` ni fallo de escucha
+en el log limpio. Los perfiles y el calendario tocados durante el smoke se
+restauraron después y el árbol tracked quedó limpio. Esta evidencia valida el
+flujo probado con `Clean Overlay`; no demuestra aún paridad de Efficiency+REST,
+Pro/Owner ni todos los perfiles. Sin promoción a nightly, testers, master ni
 release.
 
 ## ISA-1101 — integración inicial autorizada a nightly (2026-09-10)

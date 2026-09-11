@@ -10,10 +10,10 @@
   ],
   "testing": [
     "Tres regresiones nuevas en internal/app con fakes: doble Start concurrente, Stop durante creación en vuelo y callback de cierre síncrono; rojas en la base y verdes con el fix bajo -race.",
-    "go test ./... completo pasa. Validación física Wails/LMU pendiente en la build diagnóstica."
+    "go test ./... completo pasa. Smoke físico Wails con build configurada: Clean Overlay abre desde Hub, Studio abre sin cerrar la app, dos guardados recrean WebView2 y Stop devuelve el control a Abrir overlay."
   ],
   "knownLimitations": [
-    "Los tests usan ventanas simuladas; no demuestran por sí solos el cierre del crash físico reportado al abrir overlay y edición.",
-    "Pendiente comprobación física: abrir overlay, abrir edición y guardar en Studio sin cierre ni overlays ausentes en el siguiente arranque."
+    "El smoke físico cubre Clean Overlay en plan Free; no demuestra paridad de Efficiency+REST, Pro/Owner ni todos los perfiles.",
+    "Al abrir Studio desde el Hub el overlay activo pasa a detenido; es el comportamiento observado y queda fuera de la afirmación sobre ventanas huérfanas."
   ]
 }

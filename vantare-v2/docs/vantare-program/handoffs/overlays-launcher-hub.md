@@ -254,9 +254,18 @@ física nueva, retirada V1, merge o release en este corte documental.
   Eficiencia, rótulo del escenario derivado del widget); Estilo, Dirección
   v2 y Módulos siguen siendo solo de Standings. El playhead de escena se
   reancla al cambiar de escena (ajuste en render, no efecto) para que el
-  `frame=` de la URL sea honesto. Capturas del estudio en
-  `design-evidence/functional/study-{standings,relative,delta,pedals}.png`.
-  Sin merge, push, PR, promoción ni release.
+  `frame=` de la URL sea honesto. **Decisión de Isaac 2026-09-11: la vista de
+  estudio pasa a ser el único harness del Workshop.** El panel genérico
+  (header + fieldsets + sección de escenas) desaparece: el lateral cubre
+  widget, sistema, diseño, variante por widget, escena, estado, sesión,
+  ubicación, fondo, superficie, comparación y escala para cualquier sistema;
+  los bloques de Eficiencia (Estilo, Dirección v2, Módulos) solo aparecen en
+  Standings. El transporte de escena vive superpuesto abajo-izquierda del
+  escenario. Se corrigió el desbordamiento del select de escena (fieldset
+  min-content) y el aterrizaje `standings-functional-study` solo aplica con
+  Eficiencia (con otro sistema cae a `standings-multiclass`). Capturas del
+  estudio en `design-evidence/functional/study-{standings,relative,delta,pedals}.png`
+  y `harness-*.png`. Sin merge, push, PR, promoción ni release.
 
 - **S3 cerrado, 2026-09-03:** el mismo EXE R-FIX4 desde
   `4864b5c6`, SHA `cb69a4d5…878faba`, muestra Pedals sobre LMU con freno real

@@ -315,7 +315,11 @@ física nueva, retirada V1, merge o release en este corte documental.
   `delta-instrument.png` / `delta-instrument-nobrand.png`. Tras verlo,
   Isaac pidió fuera la cabecera entera: el delta es instrumento puro
   (valor + escala + pie ÚLT. VUELTA), `showHeader` retirado del
-  manifiesto; evidencia `delta-noheader.png`.
+  manifiesto; evidencia `delta-noheader.png`. **Segunda dirección Delta:**
+  `templateId: "capsule"` (tipo Crystal — fila en píldora, pista gruesa,
+  píldora de valor) junto a `instrument` por defecto; diseño oficial
+  `delta-functional-capsule`, elegible en Estilo. Evidencia
+  `delta-capsule.png`.
   Sin merge, push, PR, promoción ni release.
 
 - **S3 cerrado, 2026-09-03:** el mismo EXE R-FIX4 desde

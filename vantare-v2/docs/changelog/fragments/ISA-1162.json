@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-1162",
+  "type": "fix",
+  "summary": "Overlays Studio vuelve a mostrar el enlace de OBS: al final del panel de ajustes aparece la URL local del Browser Source del perfil abierto, lista para copiar junto con las instrucciones.",
+  "technicalNotes": [
+    "El Hub pedía la URL con window.location.origin, que dentro del WebView de Wails no es el servidor de overlays; el backend ahora publica su dirección real por el evento obs:url.",
+    "La vista de navegador del Studio abría una URL con el mismo origen roto; ahora usa la misma dirección real.",
+    "La sección OBS quedó inalcanzable al retirarse la shell V52; el bloque vive ahora al pie del dock del inspector."
+  ],
+  "testing": [
+    "Abrir Overlays Studio, desplegar el panel derecho y copiar la URL OBS al final: debe empezar por http://127.0.0.1:39261/overlay?profile=<perfil>.",
+    "Pegarla en una fuente de navegador de OBS en el mismo equipo: el overlay carga y recibe datos en vivo mientras Vantare esté abierto.",
+    "Browser View del Studio abre ahora una URL http://127.0.0.1:39261/... navegable en el navegador del sistema."
+  ],
+  "knownLimitations": [
+    "OBS debe ejecutarse en el mismo PC que Vantare (servidor solo en loopback); la configuración doble PC por LAN sigue como diseño pendiente.",
+    "El banner de recordatorio de calendario dentro del overlay no llega a OBS (evento interno de Wails); el resto de widgets sí se actualizan por SSE."
+  ]
+}

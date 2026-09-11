@@ -257,6 +257,19 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 
 ## Hitos
 
+### Enlace OBS restaurado en Overlays Studio
+
+- id: obs-browser-source-link
+- tipo: fix
+- titulo.en: OBS link restored in Overlays Studio
+- titulo.pt: Ligação OBS restaurada no Overlays Studio
+- titulo.it: Link OBS ripristinato in Overlays Studio
+- cuerpo: El panel de ajustes del Studio muestra al final la URL local del Browser Source para el perfil abierto, con botones para copiar la URL y las instrucciones. La dirección es la real del servidor interno, no el origen del WebView, y la vista de navegador del Studio abre contra ese mismo origen.
+- cuerpo.en: The Studio settings panel shows the local Browser Source URL for the open profile at the bottom, with buttons to copy the URL and the instructions. The address is the real internal server one, not the WebView origin, and the Studio browser view opens against the same origin.
+- cuerpo.pt: O painel de ajustes do Studio mostra no final o URL local do Browser Source para o perfil aberto, com botões para copiar o URL e as instruções. A direção é a real do servidor interno, não a origem do WebView, e a vista de navegador do Studio abre contra a mesma origem.
+- cuerpo.it: Il pannello delle impostazioni dello Studio mostra in fondo l'URL locale del Browser Source per il profilo aperto, con pulsanti per copiare l'URL e le istruzioni. L'indirizzo è quello reale del server interno, non l'origine della WebView, e la vista browser dello Studio si apre sulla stessa origine.
+- etiqueta: ISA-1162
+
 ### Comprobaciones de mantenimiento sin falsos fallos
 
 - id: testing-center-workflow-validation

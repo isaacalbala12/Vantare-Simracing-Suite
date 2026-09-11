@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-11T02:35:58Z",
+  "generatedAt": "2026-09-11T03:48:54Z",
   "digest": {
-    "lastCommit": "131471ff2be88384cfd4a988acc9c4fc9575e619"
+    "lastCommit": "1487ec2ecf39f2fd80649d7f6ce95644e10da237"
   },
   "phases": [
     {
@@ -343,6 +343,28 @@
     }
   ],
   "milestones": [
+    {
+      "id": "obs-browser-source-link",
+      "type": "fix",
+      "title": {
+        "es": "Enlace OBS restaurado en Overlays Studio",
+        "en": "OBS link restored in Overlays Studio",
+        "pt": "Ligação OBS restaurada no Overlays Studio",
+        "it": "Link OBS ripristinato in Overlays Studio"
+      },
+      "body": {
+        "es": "El panel de ajustes del Studio muestra al final la URL local del Browser Source para el perfil abierto, con botones para copiar la URL y las instrucciones. La dirección es la real del servidor interno, no el origen del WebView, y la vista de navegador del Studio abre contra ese mismo origen.",
+        "en": "The Studio settings panel shows the local Browser Source URL for the open profile at the bottom, with buttons to copy the URL and the instructions. The address is the real internal server one, not the WebView origin, and the Studio browser view opens against the same origin.",
+        "pt": "O painel de ajustes do Studio mostra no final o URL local do Browser Source para o perfil aberto, com botões para copiar o URL e as instruções. A direção é a real do servidor interno, não a origem do WebView, e a vista de navegador do Studio abre contra a mesma origem.",
+        "it": "Il pannello delle impostazioni dello Studio mostra in fondo l'URL locale del Browser Source per il profilo aperto, con pulsanti per copiare l'URL e le istruzioni. L'indirizzo è quello reale del server interno, non l'origine della WebView, e la vista browser dello Studio si apre sulla stessa origine."
+      },
+      "label": {
+        "es": "ISA-1162",
+        "en": "ISA-1162",
+        "pt": "ISA-1162",
+        "it": "ISA-1162"
+      }
+    },
     {
       "id": "testing-center-workflow-validation",
       "type": "fix",
@@ -1380,6 +1402,21 @@
   ],
   "delivered": [
     {
+      "date": "2026-09-11",
+      "entries": [
+        {
+          "kind": "feat",
+          "scope": "overlay",
+          "text": "Editor in-place C5 — toolbar pill, pestañas y panel ocultable"
+        },
+        {
+          "kind": "feat",
+          "scope": "overlay",
+          "text": "Editor in-place — teclado, acciones de widget y salida visible"
+        }
+      ]
+    },
+    {
       "date": "2026-09-10",
       "entries": [
         {
@@ -1966,31 +2003,6 @@
           "kind": "docs",
           "scope": "release",
           "text": "Add Nightly 9 canonical manifest"
-        }
-      ]
-    },
-    {
-      "date": "2026-08-15",
-      "entries": [
-        {
-          "kind": "docs",
-          "scope": "overlay",
-          "text": "Record ISA-363 nightly promotion"
-        },
-        {
-          "kind": "fix",
-          "scope": "overlay",
-          "text": "Preserve stale frame during telemetry recovery"
-        },
-        {
-          "kind": "docs",
-          "scope": "overlays",
-          "text": "Record ISA-364 nightly promotion"
-        },
-        {
-          "kind": "fix",
-          "scope": "overlays",
-          "text": "List pure V3 profiles"
         }
       ]
     }

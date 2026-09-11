@@ -194,19 +194,9 @@ function StudioRouteEditor(props: StudioRouteEditorProps): React.ReactElement {
   const document = useStudioSelector((s) => s.history?.present ?? null);
   const lastError = useStudioSelector((s) => s.loadError);
 
-  if (!document) {
-    return (
-      <div
-        data-testid="studio-route-loading"
-        className="mx-auto flex min-h-[calc(100vh-3.5rem)] max-w-[1200px] flex-col px-6 py-8"
-      >
-        <div className="glass-panel rounded-xl p-8 text-sm text-vantare-textMuted">
-          {t('studio.v3.route.loadingProfile')}
-        </div>
-      </div>
-    );
-  }
-
+  // El error va primero: cuando la carga falla history queda a null y
+  // `document` nunca llega — con el orden inverso la UI de error era
+  // inalcanzable y el usuario veia un spinner eterno.
   if (lastError) {
     return (
       <div
@@ -215,6 +205,19 @@ function StudioRouteEditor(props: StudioRouteEditorProps): React.ReactElement {
       >
         <div className="rounded-xl border border-vantare-red-500/30 bg-vantare-red-950/20 p-6 text-sm text-vantare-red-300">
           {lastError}
+        </div>
+      </div>
+    );
+  }
+
+  if (!document) {
+    return (
+      <div
+        data-testid="studio-route-loading"
+        className="mx-auto flex min-h-[calc(100vh-3.5rem)] max-w-[1200px] flex-col px-6 py-8"
+      >
+        <div className="glass-panel rounded-xl p-8 text-sm text-vantare-textMuted">
+          {t('studio.v3.route.loadingProfile')}
         </div>
       </div>
     );

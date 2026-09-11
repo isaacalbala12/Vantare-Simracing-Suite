@@ -138,7 +138,7 @@ function WorkshopSurface({ prepared, profileId, surface, query, comparison = fal
   </div>;
 }
 
-function OverlayWorkshopPage({ initialQuery, profileId }: { initialQuery: OverlayWorkshopQuery; profileId: string }): React.ReactElement {
+function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initialQuery: OverlayWorkshopQuery; initialError?: string; profileId: string }): React.ReactElement {
   const [parsed, setQuery] = useState<OverlayWorkshopQuery>(initialQuery);
   const [studyModules, setStudyModules] = useState<string[]>(["gap", "bestLap"]);
   const isFunctionalStudy = parsed.system === "vantare-functional" && parsed.variant === "standings-functional-study";
@@ -255,15 +255,26 @@ function OverlayWorkshopPage({ initialQuery, profileId }: { initialQuery: Overla
     setPlaying(true);
   };
 
+  // Una selección inválida nunca tira la página: el error vive en el escenario
+  // y los controles siguen operativos para corregirla.
+  const [fixtureError, setFixtureError] = useState<string | null>(null);
   useLayoutEffect(() => {
     const fixtureQuery = parseOverlayWorkshopQuery(fixtureKey);
+    let active = true;
     if ("error" in fixtureQuery) {
-      throw new Error(`invalid serialized fixture query: ${fixtureQuery.error}`);
+      queueMicrotask(() => {
+        if (active) setFixtureError(fixtureQuery.error);
+      });
+      return () => {
+        active = false;
+      };
     }
     const next = prepareFixture(fixtureQuery);
-    let active = true;
     queueMicrotask(() => {
-      if (active) setPrepared(next);
+      if (active) {
+        setFixtureError(null);
+        setPrepared(next);
+      }
     });
     return () => {
       active = false;
@@ -291,13 +302,18 @@ function OverlayWorkshopPage({ initialQuery, profileId }: { initialQuery: Overla
   const chooseWidget = (value: string) => {
     const widgetType = value as WidgetType;
     const system = compatibleSystems(widgetType).includes(parsed.system) ? parsed.system : defaultSystem(widgetType);
-    update({ ...parsed, widget: widgetType, system, designId: undefined, variant: "default" });
+    // Escena, piel de estudio y diseño pertenecen al widget anterior: quedarse
+    // con ellos convertiría la siguiente query en inválida.
+    update({ ...parsed, widget: widgetType, system, designId: undefined, studyStyle: undefined, sceneId: undefined, sceneFrame: undefined, variant: "default" });
   };
   const chooseSystem = (value: string) => update({ ...parsed, system: value as DesignSystemId, designId: undefined });
   const chooseDesign = (value: string) => update({ ...parsed, ...(value ? { designId: value } : { designId: undefined }) });
   const chooseState = (value: string) => update({ ...parsed, state: value as OverlayWorkshopQuery["state"] });
   const chooseSurface = (value: string) => update({ ...parsed, surface: value as OverlayWorkshopQuery["surface"] });
-  const chooseVariant = (value: string) => update({ ...parsed, variant: value as WorkshopV2Variant });
+  const chooseVariant = (value: string) => {
+    const variant = value as WorkshopV2Variant;
+    update({ ...parsed, variant, studyStyle: variant === "standings-functional-study" ? parsed.studyStyle : undefined });
+  };
   const chooseSession = (value: string) => update({ ...parsed, session: value as OverlayWorkshopQuery["session"] });
   const chooseLocation = (value: string) => update({ ...parsed, location: value as OverlayWorkshopQuery["location"] });
   const chooseBackground = (value: string) => update({ ...parsed, background: value as OverlayWorkshopQuery["background"] });
@@ -352,6 +368,7 @@ function OverlayWorkshopPage({ initialQuery, profileId }: { initialQuery: Overla
         </div>
         <span data-overlay-workshop-query>{serializeOverlayWorkshopQuery(parsed)}</span>
       </header>
+      {initialError && <p className="overlay-workshop-alert" role="alert" data-overlay-workshop-rejected>URL rechazada ({initialError}) — se cargaron los valores por defecto.</p>}
       {/* Three groups, in the order the questions actually get asked: what am I
           looking at, what is it being fed, and how is it being presented. */}
       <section className="overlay-workshop-controls" aria-label="Selección del Workshop">
@@ -381,7 +398,9 @@ function OverlayWorkshopPage({ initialQuery, profileId }: { initialQuery: Overla
             {(["track", "pits"] as const).map((location) => <option key={location} value={location}>{location}</option>)}
           </SelectField>
           <SelectField label="Variante" value={parsed.variant} onChange={chooseVariant}>
-            {VARIANTS.map((variant) => <option key={variant} value={variant}>{variant}</option>)}
+            {/* Cada variante declarada pertenece a un widget por su prefijo;
+                el resto produciría una query inválida. */}
+            {VARIANTS.filter((variant) => variant === "default" || variant.startsWith(`${parsed.widget}-`)).map((variant) => <option key={variant} value={variant}>{variant}</option>)}
           </SelectField>
         </fieldset>
 
@@ -508,7 +527,8 @@ function OverlayWorkshopPage({ initialQuery, profileId }: { initialQuery: Overla
         ) : null}
       </section>
       <section className={`overlay-workshop-stage overlay-workshop-stage--${parsed.background}`} data-overlay-workshop-stage>
-        {prepared?.key === fixtureKey && (
+        {fixtureError && <p className="overlay-workshop-alert" role="alert" data-overlay-workshop-fixture-error>Selección inválida: {fixtureError}</p>}
+        {!fixtureError && prepared?.key === fixtureKey && (
           <><WorkshopSurface prepared={displayPrepared ?? prepared} profileId={profileId} surface={parsed.surface} query={displayQuery} />
           {parsed.compare && <WorkshopSurface prepared={displayPrepared ?? prepared} profileId={profileId} surface={parsed.compare} query={displayQuery} comparison />}</>
         )}
@@ -520,11 +540,9 @@ function OverlayWorkshopPage({ initialQuery, profileId }: { initialQuery: Overla
 export function OverlayWorkshopDevRoute({ search = window.location.search, profileId = OVERLAY_WORKSHOP_PROFILE_ID }: { search?: string; profileId?: string }): React.ReactElement {
   const parsed = parseOverlayWorkshopQuery(search);
   if ("error" in parsed) {
-    return (
-      <main className="overlay-workshop-error" data-overlay-workshop-error role="alert">
-        Workshop selection rejected: {parsed.error}
-      </main>
-    );
+    // Una URL vieja o mal editada ya no deja la página muerta: se abre el
+    // estado por defecto con el motivo visible y todos los controles vivos.
+    return <OverlayWorkshopPage initialQuery={DEFAULT_OVERLAY_WORKSHOP_QUERY} initialError={parsed.error} profileId={profileId} />;
   }
   return <OverlayWorkshopPage initialQuery={parsed} profileId={profileId} />;
 }

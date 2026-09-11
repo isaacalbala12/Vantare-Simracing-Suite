@@ -20,11 +20,14 @@ describe("OverlayWorkshopDevRoute", () => {
     expect(document.querySelector("[data-widget-host-diagnostic]")).toBeNull();
   });
 
-  it("renders a visible error rather than mounting another design when selection is invalid", () => {
+  it("flags the rejected part and keeps every control alive when the URL selection is invalid", async () => {
     render(<OverlayWorkshopDevRoute search="?widget=pedals&system=vantare-crystal&design=delta-crystal-simple" />);
 
     expect(screen.getByRole("alert").textContent).toContain("requires widget=delta");
-    expect(document.querySelector("[data-overlay-workshop-widget-root]")).toBeNull();
+    await waitFor(() => expect(document.querySelector("[data-overlay-workshop-widget-root]")).toBeTruthy());
+    expect(screen.getByLabelText("Widget")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Widget"), { target: { value: "pedals" } });
+    await waitFor(() => expect(document.querySelector("[data-widget-renderer=pedals]")).toBeTruthy());
   });
 
   it("keeps stage controls accessible and renders the comparison through the same host", async () => {

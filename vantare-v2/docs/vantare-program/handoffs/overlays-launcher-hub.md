@@ -1,5 +1,43 @@
 # Handoff vivo — Overlay Studio, Launcher y Hub
 
+## ISA-1162 — enlace OBS restaurado al pie del dock del Studio (2026-09-11)
+
+Issue [#1162](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1162),
+rama `vantareapp/isa-1162-obs-studio-link`, worktree `vantare-isa1162`,
+PR draft [#1166](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1166)
+hacia `nightly` (base `origin/nightly` 1487ec2e).
+
+- El backend publica su dirección bound: `obs:url:get` → `obs:url` con
+  `{baseUrl: "http://<addr>"}` desde `server.Addr()` (`cmd/vantare/obs_url.go`),
+  registrado en `main.go` tras `httpSrv.Start()`.
+- `useObsBaseUrl()` (`overlay-studio/orbit/obs-url.ts`) hace la petición y
+  cae a `http://127.0.0.1:39261` hasta que responde; `buildObsOverlayUrl`
+  arma `/overlay?profile=<fichero>` (fallback `example-streaming.json`).
+- `StudioObsLink` vive como pie fijo del dock derecho del Studio (bajo el
+  inspector, siempre visible con el dock abierto), con copiar URL e
+  instrucciones. Una sola suscripción por árbol: la base se resuelve en
+  `OverlayStudioV3` y baja por props (el test de StrictMode exige un
+  listener por evento).
+- Browser View ya no usa `window.location.origin` (wails:// en prod):
+  abre contra el mismo origen real.
+- Retirado el modo `obs` huérfano: `ObsOverlaySetupView`, `ObsSetup` y el
+  target de la unión `studio-route-target`.
+- i18n `studio.obs.*` en es/en/pt/it. Ojo: el boundary test de
+  `overlay-studio` prohíbe tildes/ñ entre comillas o backticks en fuentes
+  productivas — los docstrings van sin caracteres de cita.
+- Docs: `obs-local-setup.md` apunta al nuevo punto (la sección Ajustes que
+  anunciaba ya no existe); `engineer-obs-setup.md` corrige el puerto
+  34115 → 39261. Hito `obs-browser-source-link` en `plan.md` +
+  `roadmap.json` regenerado + fragmento `ISA-1162.json`.
+
+Verificación: tests focales 54 PASS, `pnpm test` 3360 PASS, lint,
+typecheck y build limpios; `GOOS=windows go build`/`vet` de
+`cmd/vantare` limpios. Runtime real comprobado en este equipo con el
+servidor levantado a mano: `/health` 200, `/overlay?profile=` 200 HTML,
+`/api/profile-v3` 200 por filename/stem/id documental. Sin prueba en OBS
+real (requiere la app Wails completa). Hallazgo aparte: el paquete
+launcher no compila en darwin — issue #1167.
+
 ## ISA-1152 — editor in-place C5: rediseño toolbar/frames, pestañas y panel ocultable (2026-09-11)
 
 Quinto corte, apilado sobre la rama de ISA-1143 (`a8d8db1a`). Issue

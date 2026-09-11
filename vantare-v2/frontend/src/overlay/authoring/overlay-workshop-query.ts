@@ -5,7 +5,7 @@ import { getAnimationScene } from "./fixtures/animation-scenes";
 import { getOfficialDesign } from "../design-systems/official-designs";
 import { designSystemRegistry } from "../core/design-system-registry";
 import { WIDGET_TYPES } from "../core/profile-document";
-import { FUNCTIONAL_STUDY_STYLE_IDS, type FunctionalStudyStyleId } from "./functional-study-options";
+import { FUNCTIONAL_STUDY_MODULE_IDS, FUNCTIONAL_STUDY_STYLE_IDS, type FunctionalStudyStyleId } from "./functional-study-options";
 
 export type OverlayWorkshopQuery = {
   widget: WidgetType;
@@ -14,6 +14,9 @@ export type OverlayWorkshopQuery = {
   /** Piel de estudio Eficiencia v2 (ISA-1120); solo aplica en la variante
    * `standings-functional-study` y nunca se persiste en perfiles. */
   studyStyle?: FunctionalStudyStyleId;
+  /** Columnas opcionales del estudio (gap/bestLap/lastLap/pit). Misma regla:
+   *  solo dentro de `standings-functional-study`. */
+  modules?: readonly string[];
   state: AuthoringV2Scenario["state"];
   surface: "studio" | "desktop" | "obs" | "harness";
   variant: WorkshopV2Variant;
@@ -158,9 +161,22 @@ export function parseOverlayWorkshopQuery(search: string): OverlayWorkshopQuery 
   const brand = params.get("brand");
   if (brand !== null && brand !== "off") return { error: `invalid brand parameter: ${brand}` };
 
+  // Módulos del estudio: misma regla que studyStyle — valor desconocido es
+  // error honesto, uno válido fuera del estudio se descarta en silencio.
+  const modulesRaw = params.get("modules");
+  let modules: readonly string[] | undefined;
+  if (modulesRaw !== null) {
+    const list = modulesRaw.split(",").filter(Boolean);
+    const unknown = list.find((id) => !FUNCTIONAL_STUDY_MODULE_IDS.has(id));
+    if (unknown) return { error: `invalid modules parameter: ${modulesRaw}` };
+    if (variant === "standings-functional-study" && system === "vantare-functional") {
+      modules = list;
+    }
+  }
+
   return { widget, system, state, surface, variant, session, location, background, scale, preset,
     ...(designId ? { designId } : {}), ...(studyStyle ? { studyStyle } : {}), ...(parsedWidth ? { width: parsedWidth } : {}), ...(parsedHeight ? { height: parsedHeight } : {}), ...(compare ? { compare } : {}),
-    ...(sceneId ? { sceneId } : {}), ...(sceneFrame !== undefined ? { sceneFrame } : {}), ...(brand === "off" ? { brand } : {}) };
+    ...(sceneId ? { sceneId } : {}), ...(sceneFrame !== undefined ? { sceneFrame } : {}), ...(brand === "off" ? { brand } : {}), ...(modules ? { modules } : {}) };
 }
 
 export function isOverlayWorkshopPath(pathname: string, isDevelopment = import.meta.env.DEV): boolean {
@@ -188,5 +204,6 @@ export function serializeOverlayWorkshopQuery(query: OverlayWorkshopQuery): stri
   if (query.sceneId) params.set("scene", query.sceneId);
   if (query.sceneFrame !== undefined) params.set("frame", String(query.sceneFrame));
   if (query.brand) params.set("brand", query.brand);
+  if (query.modules) params.set("modules", query.modules.join(","));
   return params.toString();
 }

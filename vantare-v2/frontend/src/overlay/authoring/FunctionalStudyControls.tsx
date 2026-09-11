@@ -5,7 +5,7 @@ import { listAnimationScenes } from "./fixtures/animation-scenes";
 import { projectionGapsFor } from "./fixtures/projection-gaps";
 import { WORKSHOP_V2_VARIANTS } from "./fixtures/authoring-v2-workshop-frame";
 import { serializeOverlayWorkshopQuery, type OverlayWorkshopQuery } from "./overlay-workshop-query";
-import { FUNCTIONAL_STUDY_MODULES, FUNCTIONAL_STUDY_STYLES } from "./functional-study-options";
+import { FUNCTIONAL_STUDY_DEFAULT_MODULES, FUNCTIONAL_STUDY_MODULES, FUNCTIONAL_STUDY_STYLES } from "./functional-study-options";
 
 const SYSTEM_LABELS: Record<string, string> = {
   "vantare-functional": "Eficiencia",
@@ -48,11 +48,9 @@ function Segments(props: { options: readonly (readonly [string, string])[]; valu
   return <div className="functional-study-segments">{props.options.map(([id, label]) => <button type="button" key={id} aria-pressed={props.value === id} onClick={() => props.onChange(id)}>{label}</button>)}</div>;
 }
 
-export function FunctionalStudyControls({ query, update, modules, onModules, onRunScene, onReset }: {
+export function FunctionalStudyControls({ query, update, onRunScene, onReset }: {
   query: OverlayWorkshopQuery;
   update: (query: OverlayWorkshopQuery) => void;
-  modules: readonly string[];
-  onModules: (modules: string[]) => void;
   onRunScene: (sceneId: string) => void;
   onReset: () => void;
 }) {
@@ -135,7 +133,10 @@ export function FunctionalStudyControls({ query, update, modules, onModules, onR
       {FUNCTIONAL_STUDY_STYLES.map((style) => <button type="button" key={style.id} aria-pressed={query.studyStyle === style.id} onClick={() => update({ ...query, designId: style.designId, studyStyle: style.id })}>{style.label}</button>)}
     </div></fieldset>}
     {isFunctional && isStandings && <fieldset><legend>Módulos</legend><p className="functional-study-note">Posición y piloto siempre visibles.</p>
-      {FUNCTIONAL_STUDY_MODULES.map((item) => <label key={item.id} className="functional-study-toggle"><span>{item.label}</span><input type="checkbox" checked={modules.includes(item.id)} onChange={() => onModules(modules.includes(item.id) ? modules.filter((id) => id !== item.id) : [...modules, item.id])} /></label>)}
+      {FUNCTIONAL_STUDY_MODULES.map((item) => {
+        const modules = query.modules ?? FUNCTIONAL_STUDY_DEFAULT_MODULES;
+        return <label key={item.id} className="functional-study-toggle"><span>{item.label}</span><input type="checkbox" checked={modules.includes(item.id)} onChange={() => update({ ...query, modules: modules.includes(item.id) ? modules.filter((id) => id !== item.id) : [...modules, item.id] })} /></label>;
+      })}
     </fieldset>}
 
     <fieldset><legend>Animación</legend>

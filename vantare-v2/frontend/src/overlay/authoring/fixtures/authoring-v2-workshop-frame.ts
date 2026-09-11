@@ -15,6 +15,7 @@ import {
   type AuthoringV2Variant,
 } from "./authoring-v2-scenario-fixture";
 import { buildAuthoringV2ScenarioWidget } from "./authoring-v2-scenario-widget";
+import { FUNCTIONAL_STUDY_DEFAULT_MODULES } from "../functional-study-options";
 import { applyWidgetDesign } from "../../core/widget-design";
 import { getOfficialDesign } from "../../design-systems/official-designs";
 import { getAnimationScene, sceneFrameAt } from "./animation-scenes";
@@ -112,6 +113,67 @@ export function createScenarioWidget(input: {
   widget = applyWidgetDesign(widget, official, "1970-01-01T00:00:00.000Z");
   const manifest = workshopDesignMeta(input.designId);
   if (manifest) widget.layout = { ...widget.layout, w: manifest.width, h: manifest.height };
+  return widget;
+}
+
+/**
+ * ÚNICO punto donde se decide la forma del widget del Workshop (ISA-1128):
+ * función pura de la selección completa — variante de forma, diseño oficial,
+ * retoques dev, sesión, marca y módulos del estudio — en este orden fijo.
+ * Nada más toca widget.content ni widget.visual en el harness.
+ */
+export function buildWorkshopWidget(input: {
+  widget: WidgetType;
+  system: DesignSystemId;
+  variant: WorkshopV2Variant;
+  session: WorkshopV2Scenario["session"];
+  designId?: string;
+  sceneId?: string;
+  brand?: "off";
+  modules?: readonly string[];
+}): WidgetInstanceV3 {
+  let widget = createScenarioWidget({
+    widget: input.widget,
+    system: input.system,
+    variant: input.variant,
+    ...(input.designId ? { designId: input.designId } : {}),
+    ...(input.sceneId ? { sceneId: input.sceneId } : {}),
+  });
+
+  // El estudio cambia explícitamente la columna de vuelta fuera de carrera;
+  // los perfiles guardados no los toca nunca el renderer al cambiar la sesión.
+  if (input.system === "vantare-functional" && input.variant === "default" && input.session !== "race") {
+    const content = widget.content as Record<string, unknown>;
+    const columns = (content.columns as Record<string, unknown>[]).map((column) => column.metricId === "lastLap" ? { ...column, enabled: false } : column.metricId === "bestLap" ? { ...column, enabled: true } : column);
+    widget = { ...widget, content: { ...content, columns } };
+  }
+
+  // El selector de marca del panel hace de autoridad local (en producción la
+  // decisión la inyecta la política nativa de ISA-1105 como brandVisible).
+  if (input.brand === "off") {
+    widget = {
+      ...widget,
+      visual: {
+        ...widget.visual,
+        appearanceOverrides: { ...(widget.visual.appearanceOverrides ?? {}), brandVisible: false },
+      },
+    };
+  }
+
+  // Módulos del estudio Standings: posición y piloto siempre visibles; el
+  // resto lo encienden los módulos elegidos. En el estudio cada columna toma
+  // ancho automático — el reparto lo decide el layout, no presets guardados.
+  if (input.system === "vantare-functional" && input.widget === "standings" && input.variant === "standings-functional-study") {
+    const modules = input.modules ?? FUNCTIONAL_STUDY_DEFAULT_MODULES;
+    const content = widget.content as Record<string, unknown>;
+    const columns = (content.columns as Record<string, unknown>[]).map((column) => ({
+      ...column,
+      widthPreset: "auto" as const,
+      enabled: column.metricId === "position" || column.metricId === "driverName" || modules.includes(String(column.metricId)),
+    }));
+    widget = { ...widget, content: { ...content, columns, rowCount: 10 } };
+  }
+
   return widget;
 }
 

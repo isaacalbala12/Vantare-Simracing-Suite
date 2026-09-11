@@ -1,14 +1,12 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { WidgetVisualHost } from "../core/WidgetVisualHost";
 import { WidgetVisualViewport } from "../core/WidgetVisualViewport";
-import type { DesignSystemId, WidgetInstanceV3, WidgetType } from "../core/profile-document";
+import type { WidgetInstanceV3 } from "../core/profile-document";
 import { buildEngineerPresentationFixture } from "../../engineer/engineer-presentation-fixtures";
 import {
   buildWorkshopFrameV2,
-  createScenarioWidget,
+  buildWorkshopWidget,
   STANDINGS_REPLAY_FRAME_COUNT,
-  type WorkshopV2Scenario,
-  type WorkshopV2Variant,
 } from "./fixtures/authoring-v2-workshop-frame";
 import type { WidgetRuntimeInput } from "../core/widget-definition";
 import { getAnimationScene } from "./fixtures/animation-scenes";
@@ -22,83 +20,26 @@ import {
 import "./overlay-workshop.css";
 import { FunctionalStudyControls } from "./FunctionalStudyControls";
 import { resolveStandingsMinimumSize } from "../widget-types/standings/standings-frame-layout";
-import type { WidgetColumnV3 } from "../widget-types/shared/widget-column";
 
 export const OVERLAY_WORKSHOP_PROFILE_ID = "workshop-fixture";
-
-function createRouteScenarioWidget(query: OverlayWorkshopQuery): WidgetInstanceV3 {
-  const widget = createScenarioWidget({
-    widget: query.widget,
-    system: query.system,
-    variant: query.variant,
-    ...(query.designId ? { designId: query.designId } : {}),
-    ...(query.sceneId ? { sceneId: query.sceneId } : {}),
-  });
-  // El selector de marca del panel hace de autoridad local (en producción la
-  // decisión la inyecta la política nativa de ISA-1105 como brandVisible).
-  if (query.brand === "off") {
-    widget.visual = {
-      ...widget.visual,
-      appearanceOverrides: { ...(widget.visual.appearanceOverrides ?? {}), brandVisible: false },
-    };
-  }
-  // The preview switches its lap column explicitly; saved profile content is
-  // never changed by the renderer when the live session changes.
-  if (query.system === "vantare-functional" && query.variant === "default" && query.session !== "race") {
-    const content = widget.content as Record<string, unknown>;
-    const columns = (content.columns as Record<string, unknown>[]).map((column) => column.metricId === "lastLap" ? { ...column, enabled: false } : column.metricId === "bestLap" ? { ...column, enabled: true } : column);
-    widget.content = { ...content, columns };
-  }
-  return widget;
-}
-
-type PreparedFixture = {
-  key: string;
-  widget: WidgetInstanceV3;
-  base: {
-    session: WorkshopV2Scenario["session"];
-    location: WorkshopV2Scenario["location"];
-    state: WorkshopV2Scenario["state"];
-    widget: WidgetType;
-    system: DesignSystemId;
-    variant: WorkshopV2Variant;
-  };
-  runtime: WidgetRuntimeInput;
-};
-
-function prepareFixture(query: OverlayWorkshopQuery): PreparedFixture {
-  const widget = createRouteScenarioWidget(query);
-  const base = {
-    session: query.session,
-    location: query.location,
-    state: query.state,
-    widget: query.widget,
-    system: query.system,
-    variant: query.variant,
-  };
-  const runtime = buildWorkshopFrameV2(base);
-  // Keyed without the frame, matching fixtureKey: stepping a scene must not
-  // count as a different fixture.
-  return { key: serializeOverlayWorkshopQuery({ ...query, sceneFrame: undefined }), widget, base, runtime };
-}
 
 function setSearch(query: OverlayWorkshopQuery): void {
   window.history.replaceState(null, "", `/workshop?${serializeOverlayWorkshopQuery(query)}`);
 }
 
-function WorkshopSurface({ prepared, profileId, surface, query, comparison = false }: { prepared: PreparedFixture; profileId: string; surface: OverlayWorkshopQuery["surface"]; query: OverlayWorkshopQuery; comparison?: boolean }): React.ReactElement {
-  const width = query.width ?? prepared.widget.layout.w;
-  const height = query.height ?? prepared.widget.layout.h;
-  const runtime = {
-    ...prepared.runtime,
-    relativeViewModelInstanceKey: `${profileId}:${prepared.widget.id}`,
+function WorkshopSurface({ widget, runtime, profileId, surface, query, comparison = false }: { widget: WidgetInstanceV3; runtime: WidgetRuntimeInput; profileId: string; surface: OverlayWorkshopQuery["surface"]; query: OverlayWorkshopQuery; comparison?: boolean }): React.ReactElement {
+  const width = query.width ?? widget.layout.w;
+  const height = query.height ?? widget.layout.h;
+  const runtimeInput = {
+    ...runtime,
+    relativeViewModelInstanceKey: `${profileId}:${widget.id}`,
   };
   return <div className="overlay-workshop-surface" data-overlay-workshop-surface={surface} data-overlay-workshop-comparison={comparison || undefined}>
     {surface !== "obs" && <span className="overlay-workshop-surface-label">{surface}</span>}
     <div className="overlay-workshop-widget-root" data-overlay-workshop-widget-root style={{ width, height, transform: `scale(${query.scale})`, transformOrigin: "center" }}>
-      <WidgetVisualViewport widgetType={prepared.widget.type} visual={prepared.widget.visual} layout={{ ...prepared.widget.layout, w: width, h: height }} testId="overlay-workshop-viewport">
-        <WidgetVisualHost widget={{ ...prepared.widget, layout: { ...prepared.widget.layout, w: width, h: height } }} renderMode={surface}
-          runtime={prepared.widget.type === "engineer-radio" ? { ...runtime, engineerPresentation: query.state === "ready" ? buildEngineerPresentationFixture() : null } : runtime} />
+      <WidgetVisualViewport widgetType={widget.type} visual={widget.visual} layout={{ ...widget.layout, w: width, h: height }} testId="overlay-workshop-viewport">
+        <WidgetVisualHost widget={{ ...widget, layout: { ...widget.layout, w: width, h: height } }} renderMode={surface}
+          runtime={widget.type === "engineer-radio" ? { ...runtimeInput, engineerPresentation: query.state === "ready" ? buildEngineerPresentationFixture() : null } : runtimeInput} />
       </WidgetVisualViewport>
     </div>
   </div>;
@@ -106,23 +47,27 @@ function WorkshopSurface({ prepared, profileId, surface, query, comparison = fal
 
 function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initialQuery: OverlayWorkshopQuery; initialError?: string; profileId: string }): React.ReactElement {
   const [parsed, setQuery] = useState<OverlayWorkshopQuery>(initialQuery);
-  const [studyModules, setStudyModules] = useState<string[]>(["gap", "bestLap"]);
-  // La mesa de módulos/tamaño del estudio es solo de Standings.
-  const isStudyTable = parsed.system === "vantare-functional" && parsed.widget === "standings" && parsed.variant === "standings-functional-study";
-  const [prepared, setPrepared] = useState<PreparedFixture | null>(null);
   const update = (next: OverlayWorkshopQuery) => {
     setSearch(next);
     setQuery(next);
   };
 
-  // The frame is deliberately excluded: it changes the snapshot, not the
-  // fixture. Including it remounted the widget on every step, which threw away
-  // the previous ViewModel the motion engines diff against — so discrete
-  // animations (overtake flash, crown flight, relative crossing) could never
-  // fire in the Workshop, which is the one place they need to be visible.
-  // studyStyle también queda fuera: es una piel CSS del estudio, no cambia la
-  // fixture.
-  const fixtureKey = serializeOverlayWorkshopQuery({ ...parsed, sceneFrame: undefined, studyStyle: undefined });
+  // El widget es una función pura de la selección completa: buildWorkshopWidget
+  // es el ÚNICO lugar que decide su forma (variante → diseño → sesión → marca
+  // → módulos). Sin preparación diferida — lo que la URL dice es lo que se
+  // renderiza, y una combinación inválida cae al error visible con los
+  // controles vivos.
+  const built = useMemo(() => {
+    try {
+      return { widget: buildWorkshopWidget(parsed), error: null as string | null };
+    } catch (error) {
+      return { widget: null, error: error instanceof Error ? error.message : "invalid workshop widget" };
+    }
+  }, [parsed]);
+  const widget = built.widget;
+  const fixtureError = built.error;
+  // La mesa de módulos/tamaño del estudio es solo de Standings.
+  const isStudyTable = parsed.system === "vantare-functional" && parsed.widget === "standings" && parsed.variant === "standings-functional-study";
 
   const [replayFrame, setReplayFrame] = useState(0);
   useEffect(() => {
@@ -134,7 +79,7 @@ function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initia
       1400,
     );
     return () => clearInterval(timer);
-  }, [parsed.variant, fixtureKey]);
+  }, [parsed.variant]);
 
   // Scene transport. The frame lives in local state while playing so the URL is
   // not rewritten sixty times a minute; pausing or stepping parks it in the
@@ -198,9 +143,33 @@ function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initia
   // the interpolation straight at 60fps made the Workshop four times smoother
   // than the product, which is the wrong thing to judge a design against.
   // The clock advances at frame rate; the data is quantised to the widget's rate.
-  const updateHz = prepared?.widget.behavior.updateHz ?? 30;
-  const playhead = scene ? interpolateSceneAt(scene, sampleAtRate(elapsedMs, updateHz), loop) : null;
+  const updateHz = widget?.behavior.updateHz ?? 30;
+  const sampledMs = scene ? sampleAtRate(elapsedMs, updateHz) : 0;
+  const playhead = scene ? interpolateSceneAt(scene, sampledMs, loop) : null;
   const currentKeyframe = playhead?.keyframe ?? 0;
+
+  // El runtime también es una función pura: selección + posición del playhead.
+  // Estable mientras está aparcado (mismo objeto, mismo frame); se recalcula
+  // por muestra cuantizada durante la reproducción, igual que antes — el host
+  // nunca remonta por ello porque el widget memoizado no cambia.
+  const runtime = useMemo<WidgetRuntimeInput | null>(() => {
+    if (!widget) return null;
+    try {
+      const head = scene ? interpolateSceneAt(scene, sampledMs, loop) : null;
+      return buildWorkshopFrameV2({
+        session: parsed.session,
+        location: parsed.location,
+        state: parsed.state,
+        widget: parsed.widget,
+        system: parsed.system,
+        variant: parsed.variant,
+        ...(head && scene ? { sceneId: scene.id, sceneState: head.frame } : {}),
+        ...(parsed.variant === "standings-replay" ? { replayFrame } : {}),
+      });
+    } catch {
+      return null;
+    }
+  }, [parsed, widget, sampledMs, replayFrame, scene, loop]);
 
   const parkFrame = (frame: number) => {
     setPlaying(false);
@@ -219,67 +188,12 @@ function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initia
     setPlaying(true);
   };
 
-  // Una selección inválida nunca tira la página: el error vive en el escenario
-  // y los controles siguen operativos para corregirla.
-  const [fixtureError, setFixtureError] = useState<string | null>(null);
-  useLayoutEffect(() => {
-    const fixtureQuery = parseOverlayWorkshopQuery(fixtureKey);
-    let active = true;
-    if ("error" in fixtureQuery) {
-      queueMicrotask(() => {
-        if (active) setFixtureError(fixtureQuery.error);
-      });
-      return () => {
-        active = false;
-      };
-    }
-    const next = prepareFixture(fixtureQuery);
-    queueMicrotask(() => {
-      if (active) {
-        setFixtureError(null);
-        setPrepared(next);
-      }
-    });
-    return () => {
-      active = false;
-    };
-  }, [fixtureKey]);
-
-  const preparedForRender = !prepared
-    ? prepared
-    : scene && playhead
-      ? {
-          ...prepared,
-          runtime: buildWorkshopFrameV2({
-            ...prepared.base,
-            sceneId: scene.id,
-            sceneState: playhead.frame,
-          }),
-        }
-      : parsed.variant === "standings-replay"
-        ? {
-            ...prepared,
-            runtime: buildWorkshopFrameV2({ ...prepared.base, replayFrame }),
-          }
-        : prepared;
-
   const reset = () => {
     setPlaying(false);
     update({ ...DEFAULT_OVERLAY_WORKSHOP_QUERY });
   };
 
-  const sourcePrepared = preparedForRender ?? prepared;
-  // Mientras la nueva fixture se prepara `prepared` aún trae el widget
-  // anterior: el parche de columnas solo es válido si ya es un Standings.
-  const displayPrepared = isStudyTable && sourcePrepared?.widget.type === "standings" ? {
-    ...sourcePrepared,
-    widget: { ...sourcePrepared.widget, content: {
-      ...sourcePrepared.widget.content,
-      columns: ((sourcePrepared.widget.content as { columns: WidgetColumnV3[] }).columns).map((column) => ({ ...column, widthPreset: "auto" as const, enabled: column.metricId === "position" || column.metricId === "driverName" || studyModules.includes(column.metricId) })),
-      rowCount: 10,
-    } },
-  } : sourcePrepared;
-  const studySize = isStudyTable && displayPrepared?.widget.type === "standings" ? resolveStandingsMinimumSize(displayPrepared.widget) : undefined;
+  const studySize = isStudyTable && widget?.type === "standings" ? resolveStandingsMinimumSize(widget) : undefined;
   // La banda ambiental opcional (~30 px) no entra en el mínimo del contenido:
   // el estudio la añade a la altura para que no recorte la última fila.
   const displayQuery = studySize ? { ...parsed, width: studySize.width, height: studySize.height === undefined ? undefined : studySize.height + 34, scale: 1 } : parsed;
@@ -288,13 +202,13 @@ function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initia
     // La vista de estudio es el único harness: no hay chrome genérico que se
     // pueda mezclar; todas las selecciones viven en el panel lateral.
     <main className="overlay-workshop functional-study" data-overlay-workshop-page data-study-style={parsed.studyStyle}>
-      <FunctionalStudyControls query={parsed} update={update} modules={studyModules} onModules={setStudyModules} onRunScene={runScene} onReset={reset} />
+      <FunctionalStudyControls query={parsed} update={update} onRunScene={runScene} onReset={reset} />
       <section className={`overlay-workshop-stage overlay-workshop-stage--${parsed.background}`} data-overlay-workshop-stage data-stage-label={`${parsed.widget.toUpperCase().replace(/-/g, " ")} / ESTUDIO 01`}>
         {initialError && <p className="overlay-workshop-alert" role="alert" data-overlay-workshop-rejected>URL rechazada ({initialError}) — se cargaron los valores por defecto.</p>}
         {fixtureError && <p className="overlay-workshop-alert" role="alert" data-overlay-workshop-fixture-error>Selección inválida: {fixtureError}</p>}
-        {!fixtureError && prepared?.key === fixtureKey && (
-          <><WorkshopSurface prepared={displayPrepared ?? prepared} profileId={profileId} surface={parsed.surface} query={displayQuery} />
-          {parsed.compare && <WorkshopSurface prepared={displayPrepared ?? prepared} profileId={profileId} surface={parsed.compare} query={displayQuery} comparison />}</>
+        {!fixtureError && widget && runtime && (
+          <><WorkshopSurface widget={widget} runtime={runtime} profileId={profileId} surface={parsed.surface} query={displayQuery} />
+          {parsed.compare && <WorkshopSurface widget={widget} runtime={runtime} profileId={profileId} surface={parsed.compare} query={displayQuery} comparison />}</>
         )}
         {scene ? (
           <div className="overlay-workshop-transport" data-overlay-workshop-transport>

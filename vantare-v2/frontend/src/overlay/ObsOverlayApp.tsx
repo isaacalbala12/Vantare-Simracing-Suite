@@ -99,8 +99,11 @@ export function ObsOverlayApp() {
   useEffect(() => {
     const { profileName } = readOverlayRouteParams(window.location.search);
     let disposed = false;
+    const controller = new AbortController();
 
-    fetch(`/api/profile-v3?profile=${encodeURIComponent(profileName)}`)
+    fetch(`/api/profile-v3?profile=${encodeURIComponent(profileName)}`, {
+      signal: controller.signal,
+    })
       .then((res) => {
         if (!res.ok) {
           throw new Error(`HTTP ${res.status}`);
@@ -124,6 +127,7 @@ export function ObsOverlayApp() {
 
     return () => {
       disposed = true;
+      controller.abort();
     };
   }, []);
 

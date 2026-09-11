@@ -27,6 +27,7 @@ export function useAppSettings() {
   const [capturingKey, setCapturingKey] = useState<string | null>(null);
   const requestSequence = useRef(0);
   const pendingRequest = useRef<string | null>(null);
+  const statusTimer = useRef<number | null>(null);
 
   useEffect(() => {
     const handlers: (() => void)[] = [];
@@ -62,7 +63,8 @@ export function useAppSettings() {
           });
         }
         setSettingsStatus("saved");
-        setTimeout(() => setSettingsStatus(null), 3000);
+        if (statusTimer.current !== null) window.clearTimeout(statusTimer.current);
+        statusTimer.current = window.setTimeout(() => setSettingsStatus(null), 3000);
       }),
     );
 
@@ -70,6 +72,10 @@ export function useAppSettings() {
 
     return () => {
       handlers.forEach((h) => h?.());
+      if (statusTimer.current !== null) {
+        window.clearTimeout(statusTimer.current);
+        statusTimer.current = null;
+      }
     };
   }, []);
 

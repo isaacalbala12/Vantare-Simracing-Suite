@@ -1282,6 +1282,10 @@ function EventLogSurface() {
   const [copied, setCopied] = useState(false);
   const visible = useVisibleLogEntries(log.entries, filter);
   const counts = useMemo(() => countByLevel(log.entries), [log.entries]);
+  const mounted = useRef(true);
+  useEffect(() => () => {
+    mounted.current = false;
+  }, []);
 
   // El aviso de copiado se retira solo; sin esto quedaría fijo para siempre.
   useEffect(() => {
@@ -1293,8 +1297,12 @@ function EventLogSurface() {
   const copy = useCallback(() => {
     void navigator.clipboard
       ?.writeText(formatLogForClipboard(visible))
-      .then(() => setCopied(true))
-      .catch(() => setCopied(false));
+      .then(() => {
+        if (mounted.current) setCopied(true);
+      })
+      .catch(() => {
+        if (mounted.current) setCopied(false);
+      });
   }, [visible]);
 
   const timeFormat = useMemo(

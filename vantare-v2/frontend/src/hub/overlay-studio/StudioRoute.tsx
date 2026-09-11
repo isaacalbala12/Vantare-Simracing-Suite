@@ -33,7 +33,7 @@ import {
   type OverlayStatus,
   type ProfileEntry,
 } from '../state/overlay-workbench';
-import type { AppSettings } from '../settings/settings-contract';
+import { getSettingsStore } from '../settings/settings-store';
 import { DirtyChangesDialog } from './components/DirtyChangesDialog';
 import { ProfileNameDialog } from './components/ProfileNameDialog';
 import { NoActiveProfileState } from './NoActiveProfileState';
@@ -420,7 +420,9 @@ function StudioRouteGeneration(props: StudioRouteGenerationProps): React.ReactEl
 
   const [profiles, setProfiles] = useState<ProfileEntry[]>([]);
   const [profilesLoaded, setProfilesLoaded] = useState(false);
-  const [activeProfileId, setActiveProfileId] = useState<string | null>(null);
+  const [activeProfileId, setActiveProfileId] = useState<string | null>(
+    () => getSettingsStore().getActiveOverlayProfileId(),
+  );
   const [editorFile, setEditorFile] = useState<string | null>(null);
   const [mode, setMode] = useState<StudioRouteMode>(() => modeFromTarget(target) ?? 'editor');
   // La shell puede pedir Mis perfiles sin desmontar la ruta: navigate a studio
@@ -487,10 +489,11 @@ function StudioRouteGeneration(props: StudioRouteGenerationProps): React.ReactEl
     const unsubOverlayStatus = Events.On('overlay:status', (event: { data: unknown }) => {
       setOverlayStatus(event.data as OverlayStatus);
     });
-    const unsubSettings = Events.On('settings', (event: { data: AppSettings }) => {
-      if (event.data?.activeOverlayProfileId) {
-        setActiveProfileId(event.data.activeOverlayProfileId);
-      }
+    const settingsStore = getSettingsStore();
+    // Igual que antes: solo un id valido reemplaza; null/empty no borra.
+    const unsubSettings = settingsStore.subscribeActiveOverlayProfileId(() => {
+      const next = settingsStore.getActiveOverlayProfileId();
+      if (next) setActiveProfileId(next);
     });
     const unsubActivated = Events.On('hub:profile-activated', (event: { data: unknown }) => {
       const payload = getPayload<{ activeProfileId?: string }>(event);

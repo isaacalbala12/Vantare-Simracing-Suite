@@ -142,9 +142,13 @@ export function buildWorkshopWidget(input: {
 
   // El estudio cambia explícitamente la columna de vuelta fuera de carrera;
   // los perfiles guardados no los toca nunca el renderer al cambiar la sesión.
-  if (input.system === "vantare-functional" && input.variant === "default" && input.session !== "race") {
+  // Solo Standings tiene columnas de vuelta — Delta/Pedals no llevan
+  // content.columns (antes este bloque explotaba sobre ellos).
+  if (input.system === "vantare-functional" && input.widget === "standings" && input.variant === "default" && input.session !== "race") {
     const content = widget.content as Record<string, unknown>;
-    const columns = (content.columns as Record<string, unknown>[]).map((column) => column.metricId === "lastLap" ? { ...column, enabled: false } : column.metricId === "bestLap" ? { ...column, enabled: true } : column);
+    const columns = Array.isArray(content.columns)
+      ? (content.columns as Record<string, unknown>[]).map((column) => column.metricId === "lastLap" ? { ...column, enabled: false } : column.metricId === "bestLap" ? { ...column, enabled: true } : column)
+      : content.columns;
     widget = { ...widget, content: { ...content, columns } };
   }
 
@@ -166,11 +170,13 @@ export function buildWorkshopWidget(input: {
   if (input.system === "vantare-functional" && input.widget === "standings" && input.variant === "standings-functional-study") {
     const modules = input.modules ?? FUNCTIONAL_STUDY_DEFAULT_MODULES;
     const content = widget.content as Record<string, unknown>;
-    const columns = (content.columns as Record<string, unknown>[]).map((column) => ({
-      ...column,
-      widthPreset: "auto" as const,
-      enabled: column.metricId === "position" || column.metricId === "driverName" || modules.includes(String(column.metricId)),
-    }));
+    const columns = Array.isArray(content.columns)
+      ? (content.columns as Record<string, unknown>[]).map((column) => ({
+          ...column,
+          widthPreset: "auto" as const,
+          enabled: column.metricId === "position" || column.metricId === "driverName" || modules.includes(String(column.metricId)),
+        }))
+      : content.columns;
     widget = { ...widget, content: { ...content, columns, rowCount: 10 } };
   }
 

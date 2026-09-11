@@ -4,7 +4,7 @@ import type { StudioPolicy } from "../access/studio-access";
 import { deltaDefinition } from "../../../overlay/widget-types/delta/delta-definition";
 import type { ProfileDocumentV3, WidgetInstanceV3 } from "../../../overlay/core/profile-document";
 import type { StudioProfileClient, StudioSaveResult } from "./studio-profile-client";
-import { StudioProvider, useStudioDocument, useStudioPreview } from "./studio-store";
+import { StudioProvider, useStudioDocument, useStudioPreview, useStudioDirty, useStudioActions } from "./studio-store";
 
 const paidPolicy: StudioPolicy = {
   revision: 7,
@@ -725,5 +725,38 @@ describe("StudioProvider", () => {
       changed = result.current.redo();
     });
     expect(changed).toBe(false);
+  });
+
+  it("un suscriptor granular no repinta cuando cambia un slice ajeno", async () => {
+    const client = createMockClient(buildDocument());
+    const renders = vi.fn();
+    const { result } = renderHook(
+      () => {
+        renders();
+        return { dirty: useStudioDirty(), actions: useStudioActions() };
+      },
+      { wrapper: wrapper(client) },
+    );
+    await waitFor(() => expect(result.current.dirty).toBe(false));
+
+    const rendersBeforeSelect = renders.mock.calls.length;
+    // selectedWidgetId cambia, pero dirty no: el suscriptor granular no debe
+    // volver a renderizar (con el shim useStudioDocument si lo haria).
+    act(() => {
+      result.current.actions.selectWidget("delta-main");
+    });
+    expect(renders.mock.calls.length).toBe(rendersBeforeSelect);
+
+    // Un dispatch que ensucia el documento si lo despierta.
+    act(() => {
+      result.current.actions.dispatch({
+        type: "widget/layout",
+        session: "general",
+        widgetIds: ["delta-main"],
+        patch: { x: 999 },
+      });
+    });
+    expect(result.current.dirty).toBe(true);
+    expect(renders.mock.calls.length).toBeGreaterThan(rendersBeforeSelect);
   });
 });

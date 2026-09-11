@@ -447,6 +447,12 @@ function StudioRouteGeneration(props: StudioRouteGenerationProps): React.ReactEl
   const [recommendedCopyTarget, setRecommendedCopyTarget] = useState<RecommendedProfile | null>(
     null,
   );
+  // Los callbacks de runRecommendedFirstUse resuelven tras awaits: si la ruta
+  // se desmonta mientras tanto, no deben escribir estado.
+  const mounted = useRef(true);
+  useEffect(() => () => {
+    mounted.current = false;
+  }, []);
 
   const dirtyRef = useRef(false);
   const pendingCreateNameRef = useRef<string | null>(null);
@@ -680,11 +686,12 @@ function StudioRouteGeneration(props: StudioRouteGenerationProps): React.ReactEl
         emit: (eventName, data) => Events.Emit(eventName, data),
         resolveFile: resolveFileById,
         onSuccess: (id) => {
+          if (!mounted.current) return;
           setLastSuccessId(id);
           setNotice(null);
         },
         onError: (messageKey) => {
-          setNotice(t(messageKey));
+          if (mounted.current) setNotice(t(messageKey));
         },
       });
       return;

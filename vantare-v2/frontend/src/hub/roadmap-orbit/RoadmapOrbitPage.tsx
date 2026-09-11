@@ -74,14 +74,21 @@ export function RoadmapOrbitPage({
 
   useEffect(() => {
     if (seeded) return;
+    let active = true;
     const controller = new AbortController();
     loadRoadmapSource(controller.signal)
       .then((result) => {
+        if (!active) return;
         setLoaded(result.dataset);
         setState(result.state);
       })
-      .catch(() => setState("fallback"));
-    return () => controller.abort();
+      .catch(() => {
+        if (active) setState("fallback");
+      });
+    return () => {
+      active = false;
+      controller.abort();
+    };
   }, [seeded]);
 
   useEffect(

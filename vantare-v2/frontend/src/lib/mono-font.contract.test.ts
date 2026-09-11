@@ -30,9 +30,20 @@ describe("typography contract", () => {
   });
 
   it("declares every family the tokens name", () => {
-    for (const family of ["Inter", "Rajdhani", "Space Mono"]) {
+    for (const family of ["Inter", "Rajdhani", "Space Mono", "Cascadia Code"]) {
       expect(fontsCss).toContain(`font-family: '${family}';`);
     }
+  });
+
+  // ISA-1140: Cascadia se sirve como subset woff2 (~74KB). El TTF completo
+  // queda en el repo solo como fuente de regeneracion — si el src volviera
+  // a apuntar a el, el bundle volveria a cargar 380KB.
+  it("serves Cascadia Code from the woff2 subset, never the full ttf", () => {
+    const cascadia = fontsCss.match(
+      /font-family: 'Cascadia Code';[\s\S]*?}/,
+    );
+    expect(cascadia?.[0]).toContain("CascadiaCode-subset.woff2");
+    expect(cascadia?.[0]).not.toContain("CascadiaCode.ttf");
   });
 
   it("serves the faces from the bundle", () => {

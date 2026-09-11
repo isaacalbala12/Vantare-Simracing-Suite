@@ -3,7 +3,6 @@ import {
   useEffect,
   useRef,
   useState,
-  useSyncExternalStore,
 } from "react";
 import { createPortal } from "react-dom";
 import { useI18n } from "../../i18n/I18nProvider";
@@ -471,11 +470,9 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
       });
     };
   }, [runtime]);
-  const snapshot = useSyncExternalStore(runtime.store.subscribe, runtime.store.getSnapshot);
   // F2-f: inventario global sintético (Spa) retirado de rutas productivas.
   // El inventario pertenece al documento v2 por evento (StrategyDocumentV2.TyreInventory,
   // cliente API ya disponible). Mientras el evento no tenga inventario, vacío honesto.
-  void snapshot;
   const inventory: StrategyTyre[] = [];
 
   // ── eventos locales ─────────────────────────────────────────────────────

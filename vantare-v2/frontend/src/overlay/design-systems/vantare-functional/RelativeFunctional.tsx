@@ -40,6 +40,7 @@ export function RelativeFunctional({ model, settings }: WidgetRendererProps<Rela
       {statusText && <p className="vf-status" role="status">{statusText}</p>}
       {model.statusMessage && <p className="vf-detail">{model.statusMessage}</p>}
       {!unavailable && model.rows.length > 0 && (
+        <div className="vf-table-wrap">
         <table className="vf-table" aria-label={labels.relative}>
           <colgroup>{columns.map((column) => <col key={column.id} style={{ width: resolveColumnWidthPixels(column, RELATIVE_COLUMN_TEMPLATES.find((template) => template.metricId === column.metricId)?.defaultWidth ?? 60) }} />)}</colgroup>
           <tbody>{model.rows.map((row) => (
@@ -56,6 +57,7 @@ export function RelativeFunctional({ model, settings }: WidgetRendererProps<Rela
             </tr>
           ))}</tbody>
         </table>
+        </div>
       )}
       {slots.length > 0 && !unavailable && (
         <div className="vf-slots" data-footer-slots>

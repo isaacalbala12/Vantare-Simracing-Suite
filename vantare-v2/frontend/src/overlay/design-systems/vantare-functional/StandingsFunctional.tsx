@@ -40,6 +40,7 @@ export function StandingsFunctional({ model, settings }: WidgetRendererProps<Sta
       {statusText && model.status !== "stale" && <p className="vf-status" role="status">{statusText}</p>}
       {model.statusMessage && model.status !== "stale" && <p className="vf-detail">{model.statusMessage}</p>}
       {!unavailable && model.rows.length > 0 && (
+        <div className="vf-table-wrap">
         <table className="vf-table" aria-label={`${sessionLabel} · ${model.activeClass}`}>
           <colgroup>{columns.map((column) => <col key={column.id} style={{ width: resolveFunctionalColumnWidth(column, broadcast) }} />)}</colgroup>
           <thead><tr>
@@ -61,6 +62,7 @@ export function StandingsFunctional({ model, settings }: WidgetRendererProps<Sta
             </tr>
           ))}</tbody>
         </table>
+        </div>
       )}
       {slots.length > 0 && !unavailable && (
         <div className="vf-slots" data-footer-slots>

@@ -78,7 +78,9 @@
    escala con el ancho del widget (container query) para que quepan más. */
 .vf-standings, .vf-relative { container-type: inline-size; }
 .vf-standings, .vf-relative { display: flex; flex-direction: column; height: 100%; }
-.vf-standings .vf-table, .vf-relative .vf-table { flex: 1 1 auto; min-height: 0; overflow: hidden; }
+/* El wrap de la tabla es el elemento flexible: la tabla nunca se encoge
+   bajo su contenido, así que el div la recorta cediendo espacio al pie. */
+.vf-table-wrap { flex: 1 1 auto; min-height: 0; overflow: hidden; }
 .vf-slots { position: relative; z-index: 1; flex: 0 0 auto; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; padding: 7px 12px 8px; border-top: 1px solid var(--vf-line); }
 .vf-slots .vf-slot { flex: 0 1 auto; min-width: 0; }
 .vf-slots .vf-slot .vf-slot-label { font-size: clamp(7px, 2cqi, 9px); }

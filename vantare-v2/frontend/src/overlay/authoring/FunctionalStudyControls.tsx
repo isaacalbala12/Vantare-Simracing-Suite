@@ -11,6 +11,7 @@ const SYSTEM_LABELS: Record<string, string> = {
   "vantare-functional": "Eficiencia",
   "vantare-crystal": "Crystal",
   "vantare-endurance": "Endurance",
+  "vantare-iracing": "iRacing",
   "vantare-original": "Original",
 };
 const systemLabel = (id: string) => SYSTEM_LABELS[id] ?? id;
@@ -20,6 +21,7 @@ const WIDGET_LABELS: Partial<Record<WidgetType, string>> = {
   relative: "Relative",
   delta: "Delta",
   pedals: "Pedals",
+  "pedals-telemetry-compact": "Pedales avanzados",
 };
 const widgetLabel = (widget: WidgetType) => WIDGET_LABELS[widget] ?? widget;
 

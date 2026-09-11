@@ -9,6 +9,7 @@ import { vantareCrystalManifest } from "../design-systems/vantare-crystal/manife
 import { vantareEnduranceManifest } from "../design-systems/vantare-endurance/manifest";
 import { vantareOriginalManifest } from "../design-systems/vantare-original/manifest";
 import { vantareFunctionalManifest } from "../design-systems/vantare-functional/manifest";
+import { vantareIracingManifest } from "../design-systems/vantare-iracing/manifest";
 
 type MigrationStep = (settings: Record<string, unknown>) => Record<string, unknown>;
 
@@ -136,3 +137,4 @@ designSystemRegistry.register(vantareOriginalManifest);
 designSystemRegistry.register(vantareCrystalManifest);
 designSystemRegistry.register(vantareEnduranceManifest);
 designSystemRegistry.register(vantareFunctionalManifest);
+designSystemRegistry.register(vantareIracingManifest);

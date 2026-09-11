@@ -255,6 +255,18 @@ const OFFICIAL_DESIGN_DEFINITIONS: WidgetDesignV1[] = [
     isDefault: true,
   },
   {
+    id: "pedals-advanced-iracing",
+    name: "iRacing Avanzados",
+    widgetType: "pedals-telemetry-compact",
+    systemId: "vantare-iracing",
+    systemVersion: 1,
+    configVersion: 1,
+    visual: {},
+    includesContent: false,
+    origin: "vantare",
+    isDefault: true,
+  },
+  {
     id: "racing-flags-original",
     name: "Original Racing Flags",
     widgetType: "racing-flags",

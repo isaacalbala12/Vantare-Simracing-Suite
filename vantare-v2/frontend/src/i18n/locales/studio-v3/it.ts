@@ -41,7 +41,7 @@ export const studioV3It: Record<string, string> = {
   "studio.v3.widgetTypes.pedalsTelemetry": "Pedali + telemetria",
   "studio.v3.inspector.pedalsTelemetry.showPosition": "Mostra posizione",
   "studio.v3.inspector.pedalsTelemetry.showClutch": "Mostra frizione",
-  "studio.v3.widgetTypes.pedalsTelemetryCompact": "Pedali compatti + telemetria",
+  "studio.v3.widgetTypes.pedalsTelemetryCompact": "Pedali avanzati",
   "studio.v3.inspector.pedalsTelemetryCompact.showSpeed": "Mostra velocità",
   "studio.v3.inspector.pedalsTelemetryCompact.showRpm": "Mostra RPM",
   "studio.v3.inspector.pedalsTelemetryCompact.showClutch": "Mostra frizione",

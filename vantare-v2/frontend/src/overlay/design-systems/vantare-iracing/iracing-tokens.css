@@ -42,4 +42,5 @@
 .vi-bar[data-pedal="throttle"] i { background: var(--vi-throttle); }
 
 .vi-wheel { flex-shrink: 0; width: 52px; height: 52px; color: #e8e8ea; }
+.vi-wheel-rotor { transition: transform 90ms linear; }
 .vi-wheel-marker { fill: #e32530; }

@@ -32,7 +32,7 @@ export function PedalsAdvancedIracing({ model }: WidgetRendererProps<PedalsTelem
         })}
       </div>
       <svg className="vi-wheel" viewBox="0 0 64 64" aria-hidden="true">
-        <g transform={`rotate(${steeringDeg} 32 32)`}>
+        <g className="vi-wheel-rotor" style={{ transform: `rotate(${steeringDeg}deg)`, transformOrigin: "32px 32px" }}>
           <circle cx="32" cy="32" r="25" fill="none" stroke="currentColor" strokeWidth="7" />
           <path d="M32 32 L32 9 M32 32 L12.5 46 M32 32 L51.5 46" fill="none" stroke="currentColor" strokeWidth="6" strokeLinecap="round" />
           <rect x="29" y="4" width="6" height="9" rx="2" className="vi-wheel-marker" />

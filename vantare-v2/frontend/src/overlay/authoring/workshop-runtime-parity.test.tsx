@@ -108,12 +108,16 @@ describe("buildWorkshopFrameV2", () => {
     );
   });
 
-  it("keeps the default frame identical to the canonical golden", () => {
+  it("keeps the default frame deterministic on the golden shape plus the demo grid", () => {
     const first = JSON.stringify(buildWorkshopFrameV2(scenario()));
     const second = JSON.stringify(buildWorkshopFrameV2(scenario()));
     expect(first).toBe(second);
     const frame = buildWorkshopFrameV2(scenario()).overlayV2Frame!;
     expect(frame.standings).toHaveLength(20);
+    // La capa demo del Workshop sustituye los "Driver 0NN" vacíos del golden
+    // por identidades de muestra sin tocar la semilla canónica.
+    expect(frame.standings.every((row) => !/^Driver 0\d\d$/.test(row.driver ?? ""))).toBe(true);
+    expect(frame.relative.every((row) => !/^Driver 0\d\d$/.test(row.name ?? ""))).toBe(true);
   });
 
   it("derives 60 stable rows for standings-stress60", () => {

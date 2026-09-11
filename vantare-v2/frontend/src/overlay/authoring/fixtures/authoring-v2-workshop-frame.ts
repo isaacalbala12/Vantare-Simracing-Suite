@@ -1,5 +1,6 @@
 import crystalReferenceManifest from "../../../../testdata/crystal-reference/manifest.json";
 import type {
+  OverlayControlsHistoryV2,
   OverlayFrameV2,
   OverlayQualityV2,
   OverlayQValue,
@@ -124,6 +125,93 @@ const WORKSHOP_V2_SCHEDULE_EVENTS = [
   { id: "cota", title: "One Stint Sprint", track: "Circuit of the Americas", startAt: "2026-07-16T20:00:00.000Z", durationMinutes: 40, classes: ["HYPERCAR", "LMGT3"], status: "open", license: "GOLD SR" },
   { id: "lemans", title: "6 Hours of Le Mans", track: "Circuit de la Sarthe", startAt: "2026-07-17T17:00:00.000Z", durationMinutes: 360, classes: ["HYPERCAR", "LMP2", "LMGT3"], status: "team registration", license: "SPECIAL EVENT" },
 ] as const;
+
+// Parrilla de demostración del Workshop: nombres de pilotos de resistencia
+// sobre las posiciones del golden canónico (hypercar/lmp2/gte alternados,
+// jugador en P1). Los ocho asientos con nombre que usan las escenas conservan
+// sus posiciones declaradas en STANDINGS_DEV_SEAT_BY_DRIVER, así los parches
+// por nombre siguen resolviendo las mismas filas.
+const WORKSHOP_DEMO_GRID: readonly string[] = [
+  "André Lotterer",       // 1 hypercar — jugador
+  "Ben Hanley",           // 2 lmp2
+  "Kévin Estre",          // 3 gte
+  "Antonio Giovinazzi",   // 4 hypercar
+  "Filipe Albuquerque",   // 5 lmp2
+  "Alessandro Pier Guidi",// 6 gte
+  "Sarah Bovy",           // 7 hypercar
+  "Martin Berry",         // 8 lmp2
+  "Michael Birch",        // 9 gte
+  "Gianmaria Bruni",      // 10 hypercar
+  "Phil Hanson",          // 11 lmp2
+  "Matt Campbell",        // 12 gte
+  "Duncan Cameron",       // 13 hypercar
+  "Job van Uitert",       // 14 lmp2
+  "Daniel Juncadella",    // 15 gte
+  "Conrad Laursen",       // 16 hypercar
+  "Oliver Jarvis",        // 17 lmp2
+  "Maro Engel",           // 18 gte
+  "Mikkel Jensen",        // 19 hypercar
+  "Nico Pino",            // 20 lmp2
+];
+
+// Trazas deterministas de un sector para input-telemetry: recta, frenada
+// fuerte y tracción. El history V2 usa per-mille 0..1000 en pedales y
+// OverlayQValue en instrumentos.
+const DEMO_HISTORY_POINTS = 40;
+function demoControlsHistory(quality: OverlayQualityV2): OverlayControlsHistoryV2 {
+  const throttle: number[] = [];
+  const brake: number[] = [];
+  const clutch: number[] = [];
+  const speed: OverlayQValue<number>[] = [];
+  const rpm: OverlayQValue<number>[] = [];
+  const gear: OverlayQValue<number>[] = [];
+  const capturedAtMS: number[] = [];
+  for (let i = 0; i < DEMO_HISTORY_POINTS; i += 1) {
+    const phase = i / (DEMO_HISTORY_POINTS - 1);
+    const braking = phase > 0.55 && phase < 0.78;
+    const brakeForce = braking ? Math.min(1, (phase - 0.55) * 9) : 0;
+    const throttleForce = braking ? 0 : Math.min(1, 0.55 + phase * 0.6);
+    throttle.push(Math.round(throttleForce * 1000));
+    brake.push(Math.round(brakeForce * 1000));
+    clutch.push(0);
+    capturedAtMS.push(i * 20);
+    speed.push(qualityValue(62 - brakeForce * 24, quality));
+    rpm.push(qualityValue(8600 - brakeForce * 3100, quality));
+    gear.push(qualityValue(brakeForce > 0.6 ? 3 : 5, quality));
+  }
+  return { q: quality, capturedAtMS, throttle, brake, clutch, speedMPS: speed, rpm, gear };
+}
+
+// Capa de demostración del Workshop: el golden canónico trae shape y cantidad
+// pero nombres vacíos ("Driver 0NN") y varios canales sin valor, que no sirven
+// para juzgar el diseño. Aquí se rellenan identidades y canales de muestra —
+// solo en este builder, nunca en el golden ni en producción. Las variantes y
+// escenas siguen sobreescribiendo lo suyo después.
+function withWorkshopDemo(frame: OverlayFrameV2, quality: OverlayQualityV2): OverlayFrameV2 {
+  const nameAt = (position: number) => WORKSHOP_DEMO_GRID[position - 1];
+  return {
+    ...frame,
+    standings: frame.standings.map((row) => ({ ...row, driver: nameAt(row.position) ?? row.driver })),
+    relative: frame.relative.map((row) => ({ ...row, name: nameAt(row.position) ?? row.name })),
+    relativeSettled: frame.relativeSettled.map((row) => ({ ...row, name: nameAt(row.position) ?? row.name })),
+    player: {
+      ...frame.player,
+      clutch: qualityValue(0.06, quality),
+      steering: qualityValue(0.08, quality),
+    },
+    delta: { ...frame.delta, seconds: qualityValue(0.214, quality) },
+    controls: { history: demoControlsHistory(quality) },
+    weather: {
+      ...frame.weather,
+      ambientC: qualityValue(21, quality),
+      trackC: qualityValue(28, quality),
+      windKph: qualityValue(14, quality),
+      windDir: qualityValue("NW", quality),
+      rainPercent: qualityValue(0, quality),
+      wetnessPct: qualityValue(0, quality),
+    },
+  };
+}
 
 // Asiento posicional de cada piloto dev en la parrilla legacy: las tablas dev
 // clavean por nombre sintético, el golden conserva sus identidades, así que
@@ -415,7 +503,7 @@ export function buildWorkshopFrameV2(scenario: WorkshopV2Scenario): WidgetRuntim
     return runtime;
   }
   const quality: OverlayQualityV2 = source.state === "live" ? "fresh" : "stale";
-  let frame = base.overlayV2Frame!;
+  let frame = withWorkshopDemo(base.overlayV2Frame!, quality);
   switch (scenario.variant) {
     case "standings-functional-study": {
       // Explicit visual-study data, never live telemetry. The original V2

@@ -312,7 +312,10 @@ física nueva, retirada V1, merge o release en este corte documental.
   top-3 + jugador. **Delta rehecho** (Isaac: "el diseño es malo"): valor
   con glifo de dirección ▲/▼, escala de instrumento ±2 s con marcas y
   etiquetas, relleno degradado con brillo por tono. Evidencia
-  `delta-instrument.png` / `delta-instrument-nobrand.png`.
+  `delta-instrument.png` / `delta-instrument-nobrand.png`. Tras verlo,
+  Isaac pidió fuera la cabecera entera: el delta es instrumento puro
+  (valor + escala + pie ÚLT. VUELTA), `showHeader` retirado del
+  manifiesto; evidencia `delta-noheader.png`.
   Sin merge, push, PR, promoción ni release.
 
 - **S3 cerrado, 2026-09-03:** el mismo EXE R-FIX4 desde

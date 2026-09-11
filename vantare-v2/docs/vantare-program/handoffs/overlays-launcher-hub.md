@@ -325,6 +325,12 @@ física nueva, retirada V1, merge o release en este corte documental.
   marcha ámbar, km/h + rpm, 3 barras verticales y volante que gira con
   `player.steering` (recién mapeado al VM compacto). Diseño
   `pedals-advanced-iracing`; evidencia `iracing-pedals-adv.png`.
+  **Slots de pie** (hasta 5) en standings/relative de Eficiencia vía
+  `footerSlots` + `slots=` en la URL — vocabulario compartido, resuelto
+  desde el VM (jugador + sesión + ambiente); reemplazan el pie ambiental.
+  **Auditoría del motor de animaciones**: `docs/analysis/ISA-1128-motion-engine-audit.md`
+  — la política de rendimiento Go llega al scheduler pero no a los
+  renderers; propuesta de MotionLevel + effects en el host.
   Sin merge, push, PR, promoción ni release.
 
 - **S3 cerrado, 2026-09-03:** el mismo EXE R-FIX4 desde

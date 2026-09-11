@@ -946,6 +946,48 @@ button.orbit-pill:hover { color: #fff; border-color: rgba(240, 71, 85, 0.25); }
   backdrop-filter: none;
 }
 
+/* Presupuesto de efectos publicado por Go (ISA-1150). `useOrbitPerfEffects`
+   refleja `performance:level` en `:root[data-orbit-perf-effects]` con
+   "full" | "noBlur" | "flat". Sin atributo o con "full" nada cambia. Con
+   "noBlur" y "flat" la shell apaga el frosting: el `backdrop-filter` obliga a
+   repintar la banda desenfocada entera —el de la topbar a cada frame y el de
+   las cabeceras pegadas de Carreras a cada paso del scroll—. Los fondos
+   translúcidos se quedan como están: el blur es frosting, no opacidad.
+   `.orbit-surface` es el panel grande del kit: pierde el difuminado pero
+   conserva `--orbit-panel-bg` al 79 %.
+   Fuera quedan los velos de paleta, cajón y confirmación: son efímeros y su
+   blur se repinta una sola vez al abrirse, no con scroll ni contenido. */
+:root[data-orbit-perf-effects="noBlur"] .orbit-topbar,
+:root[data-orbit-perf-effects="flat"] .orbit-topbar,
+:root[data-orbit-perf-effects="noBlur"] .orbit-studio-toolbar,
+:root[data-orbit-perf-effects="flat"] .orbit-studio-toolbar,
+:root[data-orbit-perf-effects="noBlur"] .orbit-races__group-head,
+:root[data-orbit-perf-effects="flat"] .orbit-races__group-head,
+:root[data-orbit-perf-effects="noBlur"] .orbit-surface,
+:root[data-orbit-perf-effects="flat"] .orbit-surface {
+  backdrop-filter: none;
+}
+
+/* "flat" es además el presupuesto mínimo: corta las animaciones infinitas
+   (el shimmer de los skeletons repinta `background-position` por frame; los
+   pulsos de los dots ahorran compositor) y las sombras grandes del kit. Las
+   sombras que marcan estado —el anillo `aria-pressed` de `.orbit-tl__block`—
+   se conservan: son affordance, no decoración. */
+:root[data-orbit-perf-effects="flat"] .orbit-launcher__skeleton-ico,
+:root[data-orbit-perf-effects="flat"] .orbit-launcher__skeleton-line,
+:root[data-orbit-perf-effects="flat"] .orbit-pill--pulse .orbit-pill__dot,
+:root[data-orbit-perf-effects="flat"] .orbit-pill[data-s="searching"] .orbit-pill__dot,
+:root[data-orbit-perf-effects="flat"] .orbit-pill[data-s="downloading"] .orbit-pill__dot,
+:root[data-orbit-perf-effects="flat"] .orbit-btn__loading,
+:root[data-orbit-perf-effects="flat"] .orbit-btn--run[data-s="running"] .orbit-btn__run-dot {
+  animation: none;
+}
+
+:root[data-orbit-perf-effects="flat"] .orbit-featured,
+:root[data-orbit-perf-effects="flat"] .orbit-featured--interactive:hover {
+  box-shadow: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .orbit-shell,
   .orbit-rail__button,

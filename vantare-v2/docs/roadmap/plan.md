@@ -422,6 +422,21 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - etiqueta.pt: Plano
 - etiqueta.it: Piano
 
+### Telemetría Core V2 estable
+
+- id: telemetry-core-stable
+- tipo: plan
+- titulo.en: Telemetry Core V2 stable
+- titulo.pt: Telemetry Core V2 estável
+- titulo.it: Telemetry Core V2 stabile
+- cuerpo: Telemetry V2 es la única cadena productiva: retirada completa de V1 (fases R0–R5), datos fiables para todos los widgets y módulos, y política de rendimiento estable para Le Mans Ultimate.
+- cuerpo.en: Telemetry V2 is the only production chain: complete removal of V1 (phases R0–R5), reliable data for all widgets and modules, and a stable performance policy for Le Mans Ultimate.
+- cuerpo.pt: O Telemetry V2 é a única cadeia produtiva: retirada completa do V1 (fases R0–R5), dados fiáveis para todos os widgets e módulos e política de desempenho estável para o Le Mans Ultimate.
+- cuerpo.it: Il Telemetry V2 è l'unica catena di produzione: rimozione completa del V1 (fasi R0–R5), dati affidabili per tutti i widget e moduli e una politica di prestazioni stabile per Le Mans Ultimate.
+- etiqueta: Plan
+- etiqueta.pt: Plano
+- etiqueta.it: Piano
+
 ### Widgets core completos para LMU
 
 - id: core-widgets-beta
@@ -433,6 +448,21 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - cuerpo.en: Relative, Standings, Pedals and Delta become stable for real Le Mans Ultimate profiles: Pedals beta v1, reliable live best-lap delta and basic hotkeys or explicitly deferred ones.
 - cuerpo.pt: Relative, Standings, Pedals e Delta ficam estáveis para perfis reais de Le Mans Ultimate: Pedals beta v1, delta de melhor volta ao vivo fiável e hotkeys básicas ou explicitamente adiadas.
 - cuerpo.it: Relative, Standings, Pedals e Delta diventano stabili per i profili reali di Le Mans Ultimate: Pedals beta v1, delta sul miglior giro live affidabile e hotkey di base o esplicitamente rimandate.
+- etiqueta: Plan
+- etiqueta.pt: Plano
+- etiqueta.it: Piano
+
+### Calendario completo
+
+- id: calendar-complete
+- tipo: plan
+- titulo.en: Complete calendar
+- titulo.pt: Calendário completo
+- titulo.it: Calendario completo
+- cuerpo: Calendario completo para la 1.0: publicación Owner, recordatorios, widget en el Hub, validación de horarios y seguimiento de series sin pérdida de datos.
+- cuerpo.en: Complete calendar for 1.0: Owner publishing, reminders, Hub widget, schedule validation and series tracking without data loss.
+- cuerpo.pt: Calendário completo para a 1.0: publicação Owner, lembretes, widget no Hub, validação de horários e seguimento de séries sem perda de dados.
+- cuerpo.it: Calendario completo per la 1.0: pubblicazione Owner, promemoria, widget dell'Hub, validazione orari e tracciamento serie senza perdita dati.
 - etiqueta: Plan
 - etiqueta.pt: Plano
 - etiqueta.it: Piano
@@ -467,6 +497,21 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - etiqueta.pt: Plano
 - etiqueta.it: Piano
 
+### Instalador y actualizador
+
+- id: installer-updater
+- tipo: plan
+- titulo.en: Installer and updater
+- titulo.pt: Instalador e atualizador
+- titulo.it: Installer e updater
+- cuerpo: Instalador y actualizador fiables: descarga clara, instalación en entorno limpio, actualización por canales que valida el entitlement antes de mostrar cada build, y desinstalación limpia.
+- cuerpo.en: Reliable installer and updater: clear download, clean install, per-channel updates that validate entitlement before showing any build, and clean uninstall.
+- cuerpo.pt: Instalador e atualizador fiáveis: download claro, instalação limpa, atualização por canais que valida o entitlement antes de mostrar cada build e desinstalação limpa.
+- cuerpo.it: Installer e updater affidabili: download chiaro, installazione pulita, aggiornamenti per canale che validano l'entitlement prima di mostrare ogni build e disinstallazione pulita.
+- etiqueta: Plan
+- etiqueta.pt: Plano
+- etiqueta.it: Piano
+
 ### Pagos y licencias con Polar operativos
 
 - id: billing-polar-live
@@ -478,6 +523,21 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - cuerpo.en: Polar becomes operational as the commercial authority: closed monetary matrix, reconciliation, trial with reminder, one replaceable active device and a signed offline credential. No public sale before the matrix is closed.
 - cuerpo.pt: O Polar fica operacional como autoridade comercial: matriz monetária fechada, reconciliação, trial com lembrete, um dispositivo ativo substituível e credencial offline assinada. Nenhuma venda pública antes de fechar a matriz.
 - cuerpo.it: Polar diventa operativo come autorità commerciale: matrice monetaria chiusa, riconciliazione, trial con promemoria, un dispositivo attivo sostituibile e credenziale offline firmata. Nessuna vendita pubblica prima della chiusura della matrice.
+- etiqueta: Plan
+- etiqueta.pt: Plano
+- etiqueta.it: Piano
+
+### Presencia pública
+
+- id: public-presence
+- tipo: plan
+- titulo.en: Public presence
+- titulo.pt: Presença pública
+- titulo.it: Presenza pubblica
+- cuerpo: Presencia pública de la beta: landing de descarga, problemas conocidos, canal de Discord público y primer contacto con el soporte listos para abrir a todos.
+- cuerpo.en: Public beta presence: download landing page, known issues, public Discord channel and first contact support ready to open to everyone.
+- cuerpo.pt: Presença pública da beta: landing de download, problemas conhecidos, canal de Discord público e primeiro contacto de suporte prontos para abrir a todos.
+- cuerpo.it: Presenza pubblica della beta: landing di download, problemi noti, canale Discord pubblico e primo contatto di supporto pronti per aprire a tutti.
 - etiqueta: Plan
 - etiqueta.pt: Plano
 - etiqueta.it: Piano

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-11T17:01:29Z",
+  "generatedAt": "2026-09-11T23:40:09Z",
   "digest": {
-    "lastCommit": "dc5d2622b26fbb3324b62f6224be5dc37f071d93"
+    "lastCommit": "e13756ef4505e4012f3012c5ac0773040257d1e3"
   },
   "phases": [
     {
@@ -618,6 +618,28 @@
       }
     },
     {
+      "id": "telemetry-core-stable",
+      "type": "plan",
+      "title": {
+        "es": "Telemetría Core V2 estable",
+        "en": "Telemetry Core V2 stable",
+        "pt": "Telemetry Core V2 estável",
+        "it": "Telemetry Core V2 stabile"
+      },
+      "body": {
+        "es": "Telemetry V2 es la única cadena productiva: retirada completa de V1 (fases R0–R5), datos fiables para todos los widgets y módulos, y política de rendimiento estable para Le Mans Ultimate.",
+        "en": "Telemetry V2 is the only production chain: complete removal of V1 (phases R0–R5), reliable data for all widgets and modules, and a stable performance policy for Le Mans Ultimate.",
+        "pt": "O Telemetry V2 é a única cadeia produtiva: retirada completa do V1 (fases R0–R5), dados fiáveis para todos os widgets e módulos e política de desempenho estável para o Le Mans Ultimate.",
+        "it": "Il Telemetry V2 è l'unica catena di produzione: rimozione completa del V1 (fasi R0–R5), dati affidabili per tutti i widget e moduli e una politica di prestazioni stabile per Le Mans Ultimate."
+      },
+      "label": {
+        "es": "Plan",
+        "en": "Plan",
+        "pt": "Plano",
+        "it": "Piano"
+      }
+    },
+    {
       "id": "core-widgets-beta",
       "type": "plan",
       "title": {
@@ -631,6 +653,28 @@
         "en": "Relative, Standings, Pedals and Delta become stable for real Le Mans Ultimate profiles: Pedals beta v1, reliable live best-lap delta and basic hotkeys or explicitly deferred ones.",
         "pt": "Relative, Standings, Pedals e Delta ficam estáveis para perfis reais de Le Mans Ultimate: Pedals beta v1, delta de melhor volta ao vivo fiável e hotkeys básicas ou explicitamente adiadas.",
         "it": "Relative, Standings, Pedals e Delta diventano stabili per i profili reali di Le Mans Ultimate: Pedals beta v1, delta sul miglior giro live affidabile e hotkey di base o esplicitamente rimandate."
+      },
+      "label": {
+        "es": "Plan",
+        "en": "Plan",
+        "pt": "Plano",
+        "it": "Piano"
+      }
+    },
+    {
+      "id": "calendar-complete",
+      "type": "plan",
+      "title": {
+        "es": "Calendario completo",
+        "en": "Complete calendar",
+        "pt": "Calendário completo",
+        "it": "Calendario completo"
+      },
+      "body": {
+        "es": "Calendario completo para la 1.0: publicación Owner, recordatorios, widget en el Hub, validación de horarios y seguimiento de series sin pérdida de datos.",
+        "en": "Complete calendar for 1.0: Owner publishing, reminders, Hub widget, schedule validation and series tracking without data loss.",
+        "pt": "Calendário completo para a 1.0: publicação Owner, lembretes, widget no Hub, validação de horários e seguimento de séries sem perda de dados.",
+        "it": "Calendario completo per la 1.0: pubblicazione Owner, promemoria, widget dell'Hub, validazione orari e tracciamento serie senza perdita dati."
       },
       "label": {
         "es": "Plan",
@@ -684,6 +728,28 @@
       }
     },
     {
+      "id": "installer-updater",
+      "type": "plan",
+      "title": {
+        "es": "Instalador y actualizador",
+        "en": "Installer and updater",
+        "pt": "Instalador e atualizador",
+        "it": "Installer e updater"
+      },
+      "body": {
+        "es": "Instalador y actualizador fiables: descarga clara, instalación en entorno limpio, actualización por canales que valida el entitlement antes de mostrar cada build, y desinstalación limpia.",
+        "en": "Reliable installer and updater: clear download, clean install, per-channel updates that validate entitlement before showing any build, and clean uninstall.",
+        "pt": "Instalador e atualizador fiáveis: download claro, instalação limpa, atualização por canais que valida o entitlement antes de mostrar cada build e desinstalação limpa.",
+        "it": "Installer e updater affidabili: download chiaro, installazione pulita, aggiornamenti per canale che validano l'entitlement prima di mostrare ogni build e disinstallazione pulita."
+      },
+      "label": {
+        "es": "Plan",
+        "en": "Plan",
+        "pt": "Plano",
+        "it": "Piano"
+      }
+    },
+    {
       "id": "billing-polar-live",
       "type": "plan",
       "title": {
@@ -697,6 +763,28 @@
         "en": "Polar becomes operational as the commercial authority: closed monetary matrix, reconciliation, trial with reminder, one replaceable active device and a signed offline credential. No public sale before the matrix is closed.",
         "pt": "O Polar fica operacional como autoridade comercial: matriz monetária fechada, reconciliação, trial com lembrete, um dispositivo ativo substituível e credencial offline assinada. Nenhuma venda pública antes de fechar a matriz.",
         "it": "Polar diventa operativo come autorità commerciale: matrice monetaria chiusa, riconciliazione, trial con promemoria, un dispositivo attivo sostituibile e credenziale offline firmata. Nessuna vendita pubblica prima della chiusura della matrice."
+      },
+      "label": {
+        "es": "Plan",
+        "en": "Plan",
+        "pt": "Plano",
+        "it": "Piano"
+      }
+    },
+    {
+      "id": "public-presence",
+      "type": "plan",
+      "title": {
+        "es": "Presencia pública",
+        "en": "Public presence",
+        "pt": "Presença pública",
+        "it": "Presenza pubblica"
+      },
+      "body": {
+        "es": "Presencia pública de la beta: landing de descarga, problemas conocidos, canal de Discord público y primer contacto con el soporte listos para abrir a todos.",
+        "en": "Public beta presence: download landing page, known issues, public Discord channel and first contact support ready to open to everyone.",
+        "pt": "Presença pública da beta: landing de download, problemas conhecidos, canal de Discord público e primeiro contacto de suporte prontos para abrir a todos.",
+        "it": "Presenza pubblica della beta: landing di download, problemi noti, canale Discord pubblico e primo contatto di supporto pronti per aprire a tutti."
       },
       "label": {
         "es": "Plan",
@@ -1961,6 +2049,21 @@
           "kind": "perf",
           "scope": "fonts",
           "text": "Subset WOFF2 de Cascadia Code"
+        },
+        {
+          "kind": "perf",
+          "scope": "hub",
+          "text": "Canal granular de perfiles en launcher-store"
+        },
+        {
+          "kind": "perf",
+          "scope": "hub",
+          "text": "Elimina suscripción muerta al strategy-store"
+        },
+        {
+          "kind": "perf",
+          "scope": "hub",
+          "text": "Reloj compartido useNow para cuentas atrás de 1 s"
         }
       ]
     },

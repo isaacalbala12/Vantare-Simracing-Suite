@@ -1,16 +1,19 @@
-import { memo, useState } from "react";
+import { memo, useMemo, useState } from "react";
 import type { SessionLayoutType, WidgetInstanceV3 } from "../core/profile-document";
+import type { InspectorSectionId } from "../core/widget-definition";
 import type { LayoutViewport } from "../core/layout-viewport";
 import type { TelemetryRateCoordinator } from "../core/telemetry-rate-coordinator";
 import { useOverlayRuntimeContext } from "../runtime/use-rate-limited-telemetry";
 import { FREE_ACCESS, type AccessContext } from "../../lib/access-policy";
 import { WidgetPropertyInspectorView, type WidgetPropertySectionId } from "../../hub/overlay-studio/inspector/WidgetPropertyInspectorView";
 import { LayoutSection } from "../../hub/overlay-studio/inspector/LayoutSection";
+import { DesignSection } from "../../hub/overlay-studio/inspector/DesignSection";
+import { ActionsSection } from "../../hub/overlay-studio/inspector/ActionsSection";
+import { resolveInspectorSections } from "../../hub/overlay-studio/inspector/inspector-sections";
+import { createWailsWidgetDesignClient } from "../../hub/overlay-studio/designs/widget-design-client";
 import { useStudioDocument } from "../../hub/overlay-studio/state/studio-store";
 import { useI18n } from "../../i18n/I18nProvider";
 import { useInplaceAutosave } from "./use-inplace-autosave";
-
-const PANEL_SECTIONS: readonly WidgetPropertySectionId[] = ["appearance", "content", "behavior"];
 
 export type InPlaceInspectorPanelProps = {
   widget: WidgetInstanceV3 | null;
@@ -39,10 +42,68 @@ export function InPlaceInspectorPanel(props: InPlaceInspectorPanelProps): React.
     autosave,
   } = props;
   const { t } = useI18n();
-  const { canUndo, canRedo, dirty, saveState, savedDocument } = useStudioDocument();
+  const { canUndo, canRedo, dirty, saveState, savedDocument, discardAll } = useStudioDocument();
   const runtimeContext = useOverlayRuntimeContext(telemetry);
   const disabled = licenseLoading || autosave.paused !== null;
   const [collapsed, setCollapsed] = useState(false);
+  const designClient = useMemo(() => createWailsWidgetDesignClient(), []);
+  const sections = useMemo(
+    () => (widget ? resolveInspectorSections(widget) : []),
+    [widget],
+  );
+
+  const renderSectionBody = (sectionId: InspectorSectionId): React.ReactElement | null => {
+    if (!widget) return null;
+    if (sectionId === "design") {
+      return (
+        <DesignSection
+          widget={widget}
+          session={session}
+          widgets={widgets}
+          access={access ?? FREE_ACCESS}
+          dispatch={autosave.dispatch}
+          designClient={designClient}
+        />
+      );
+    }
+    if (sectionId === "layout") {
+      return savedDocument ? (
+        <LayoutSection
+          widget={widget}
+          session={session}
+          widgets={widgets}
+          savedDocument={savedDocument}
+          layoutViewport={layoutViewport}
+          dispatch={autosave.dispatch}
+          selectWidget={selectWidget}
+        />
+      ) : null;
+    }
+    if (sectionId === "actions") {
+      return savedDocument ? (
+        <ActionsSection
+          widget={widget}
+          session={session}
+          widgets={widgets}
+          savedDocument={savedDocument}
+          dispatch={autosave.dispatch}
+          selectWidget={selectWidget}
+          discardAll={discardAll}
+        />
+      ) : null;
+    }
+    return (
+      <WidgetPropertyInspectorView
+        sectionId={sectionId as WidgetPropertySectionId}
+        widget={widget}
+        session={session}
+        runtimeContext={runtimeContext}
+        access={access ?? FREE_ACCESS}
+        disabled={disabled}
+        dispatch={autosave.dispatch}
+      />
+    );
+  };
 
   if (!widget) {
     return (
@@ -158,38 +219,18 @@ export function InPlaceInspectorPanel(props: InPlaceInspectorPanelProps): React.
             {saveState === "saving" ? <span data-testid="inplace-saving">{t("overlay.editMode.panel.saving")}</span> : null}
           </div>
           <div className="inplace-inspector-panel__sections">
-            {savedDocument ? (
-              <section data-testid="inplace-inspector-section-layout">
+            {sections.map((section) => (
+              <section key={section.id} data-testid={`inplace-inspector-section-${section.id}`}>
                 <h3 className="inplace-inspector-panel__section-title">
-                  {t("studio.inspector.section.layout")}
+                  {t(`studio.inspector.section.${section.id}`)}
                 </h3>
-                <fieldset disabled={disabled ? true : undefined}>
-                  <LayoutSection
-                    widget={widget}
-                    session={session}
-                    widgets={widgets}
-                    savedDocument={savedDocument}
-                    layoutViewport={layoutViewport}
-                    dispatch={autosave.dispatch}
-                    selectWidget={selectWidget}
-                  />
-                </fieldset>
-              </section>
-            ) : null}
-            {PANEL_SECTIONS.map((sectionId) => (
-              <section key={sectionId} data-testid={`inplace-inspector-section-${sectionId}`}>
-                <h3 className="inplace-inspector-panel__section-title">
-                  {t(`studio.inspector.section.${sectionId}`)}
-                </h3>
-                <WidgetPropertyInspectorView
-                  sectionId={sectionId}
-                  widget={widget}
-                  session={session}
-                  runtimeContext={runtimeContext}
-                  access={access ?? FREE_ACCESS}
-                  disabled={disabled}
-                  dispatch={autosave.dispatch}
-                />
+                {section.labelKey === "overlay.studio.inspector.sections.unsupported" ? (
+                  <p className="orbit-studio-ins__hint">{t("studio.inspector.unsupported")}</p>
+                ) : (
+                  <fieldset disabled={disabled ? true : undefined}>
+                    {renderSectionBody(section.id)}
+                  </fieldset>
+                )}
               </section>
             ))}
           </div>

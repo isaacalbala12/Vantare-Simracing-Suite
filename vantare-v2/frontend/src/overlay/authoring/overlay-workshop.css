@@ -299,7 +299,7 @@
 /* En el estudio el scroll vive en la página, no dentro del stage: el stage
    crece con el widget en vez de recortarlo en un scroll anidado. */
 .functional-study > .overlay-workshop-stage { min-height: 100vh; border: 0; border-radius: 0; padding: 64px 40px; align-items: center; position: relative; overflow: visible; }
-.functional-study > .overlay-workshop-stage::before { content: 'STANDINGS / ESTUDIO 01'; position: absolute; top: 26px; left: 32px; font: 500 9px Inter, sans-serif; letter-spacing: .14em; color: rgb(234 239 237 / 68%); }
+.functional-study > .overlay-workshop-stage::before { content: attr(data-stage-label); position: absolute; top: 26px; left: 32px; font: 500 9px Inter, sans-serif; letter-spacing: .14em; color: rgb(234 239 237 / 68%); }
 .functional-study > .overlay-workshop-stage--context { background: radial-gradient(ellipse at 15% 5%, rgb(161 160 154 / 80%), transparent 60%), linear-gradient(145deg, #777670 0%, #97958e 32%, #505051 32.3%, #2c2c2e 63%, #797975 63.3%, #c4c2b9 100%); }
 .functional-study > .overlay-workshop-stage--solid { background: #252527; }
 .functional-study > .overlay-workshop-stage--transparent { background: linear-gradient(140deg, #c9c8c4, #a5a4a1); }

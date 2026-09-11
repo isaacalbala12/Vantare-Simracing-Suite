@@ -141,7 +141,10 @@ function WorkshopSurface({ prepared, profileId, surface, query, comparison = fal
 function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initialQuery: OverlayWorkshopQuery; initialError?: string; profileId: string }): React.ReactElement {
   const [parsed, setQuery] = useState<OverlayWorkshopQuery>(initialQuery);
   const [studyModules, setStudyModules] = useState<string[]>(["gap", "bestLap"]);
-  const isFunctionalStudy = parsed.system === "vantare-functional" && parsed.variant === "standings-functional-study";
+  // La vista de estudio acompaña a cualquier widget renderizado con Eficiencia;
+  // la mesa de módulos/tamaño del estudio sigue siendo solo de Standings.
+  const isFunctionalStudy = parsed.system === "vantare-functional";
+  const isStudyTable = isFunctionalStudy && parsed.widget === "standings" && parsed.variant === "standings-functional-study";
   const [prepared, setPrepared] = useState<PreparedFixture | null>(null);
   const [dimensionDraft, setDimensionDraft] = useState({
     width: initialQuery.width?.toString() ?? "",
@@ -194,6 +197,16 @@ function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initia
   useEffect(() => {
     elapsedRef.current = elapsedMs;
   }, [elapsedMs]);
+
+  // Una escena que llega desde la URL o desde un aterrizaje de estudio aparca
+  // el playhead en su fotograma declarado. Se ajusta durante el render (no en
+  // un efecto) y solo cuando cambia la escena: el transporte interno ya
+  // mantiene elapsedMs al moverse entre fotogramas de la misma animación.
+  const [elapsedScene, setElapsedScene] = useState(initialQuery.sceneId);
+  if (elapsedScene !== parsed.sceneId) {
+    setElapsedScene(parsed.sceneId);
+    setElapsedMs(scene ? (parsed.sceneFrame ?? 0) * scene.frameMs : 0);
+  }
 
   // Playhead in milliseconds, advanced on every animation frame. The scene's
   // frames are keyframes; what plays between them is interpolated, so a gap
@@ -345,7 +358,9 @@ function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initia
   };
 
   const sourcePrepared = preparedForRender ?? prepared;
-  const displayPrepared = isFunctionalStudy && sourcePrepared ? {
+  // Mientras la nueva fixture se prepara `prepared` aún trae el widget
+  // anterior: el parche de columnas solo es válido si ya es un Standings.
+  const displayPrepared = isStudyTable && sourcePrepared?.widget.type === "standings" ? {
     ...sourcePrepared,
     widget: { ...sourcePrepared.widget, content: {
       ...sourcePrepared.widget.content,
@@ -353,7 +368,7 @@ function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initia
       rowCount: 10,
     } },
   } : sourcePrepared;
-  const studySize = isFunctionalStudy && displayPrepared ? resolveStandingsMinimumSize(displayPrepared.widget) : undefined;
+  const studySize = isStudyTable && displayPrepared?.widget.type === "standings" ? resolveStandingsMinimumSize(displayPrepared.widget) : undefined;
   // La banda ambiental opcional (~30 px) no entra en el mínimo del contenido:
   // el estudio la añade a la altura para que no recorte la última fila.
   const displayQuery = studySize ? { ...parsed, width: studySize.width, height: studySize.height === undefined ? undefined : studySize.height + 34, scale: 1 } : parsed;
@@ -526,7 +541,7 @@ function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initia
           </div>
         ) : null}
       </section>
-      <section className={`overlay-workshop-stage overlay-workshop-stage--${parsed.background}`} data-overlay-workshop-stage>
+      <section className={`overlay-workshop-stage overlay-workshop-stage--${parsed.background}`} data-overlay-workshop-stage data-stage-label={`${parsed.widget.toUpperCase().replace(/-/g, " ")} / ESTUDIO 01`}>
         {fixtureError && <p className="overlay-workshop-alert" role="alert" data-overlay-workshop-fixture-error>Selección inválida: {fixtureError}</p>}
         {!fixtureError && prepared?.key === fixtureKey && (
           <><WorkshopSurface prepared={displayPrepared ?? prepared} profileId={profileId} surface={parsed.surface} query={displayQuery} />

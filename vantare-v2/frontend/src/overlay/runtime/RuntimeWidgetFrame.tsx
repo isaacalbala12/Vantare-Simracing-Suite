@@ -1,4 +1,4 @@
-import { memo, type CSSProperties } from "react";
+import { memo, useMemo, type CSSProperties } from "react";
 import type { WidgetInstanceV3 } from "../core/profile-document";
 import type { TelemetryRateCoordinator } from "../core/telemetry-rate-coordinator";
 import type { WidgetDiagnostic, WidgetDiagnosticCollector } from "../core/widget-diagnostics";
@@ -29,6 +29,25 @@ function RuntimeWidgetFrameComponent(props: RuntimeWidgetFrameProps): React.Reac
     telemetry,
     widget.type,
   );
+  const runtime = useMemo(
+    () => ({
+      engineerPresentation,
+      engineerSubtitlesEnabled,
+      raceScheduleEvents: raceSchedule?.events,
+      raceScheduleStatus: raceSchedule?.status,
+      ...runtimeTelemetry,
+      relativeViewModelInstanceKey: `${profileId}:${widget.id}`,
+    }),
+    [
+      engineerPresentation,
+      engineerSubtitlesEnabled,
+      raceSchedule?.events,
+      raceSchedule?.status,
+      runtimeTelemetry,
+      profileId,
+      widget.id,
+    ],
+  );
   const origin = layoutOrigin ?? { x: 0, y: 0 };
   const { x, y, w, h, zIndex } = widget.layout;
   const frameStyle: CSSProperties = {
@@ -56,14 +75,7 @@ function RuntimeWidgetFrameComponent(props: RuntimeWidgetFrameProps): React.Reac
           brandVisible={brandVisible}
           onDiagnostic={onDiagnostic}
           diagnostics={diagnostics}
-          runtime={{
-            engineerPresentation,
-            engineerSubtitlesEnabled,
-            raceScheduleEvents: raceSchedule?.events,
-            raceScheduleStatus: raceSchedule?.status,
-            ...runtimeTelemetry,
-            relativeViewModelInstanceKey: `${profileId}:${widget.id}`,
-          }}
+          runtime={runtime}
         />
       </WidgetVisualViewport>
     </div>

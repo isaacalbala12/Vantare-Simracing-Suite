@@ -202,7 +202,16 @@ function withWorkshopDemo(frame: OverlayFrameV2, quality: OverlayQualityV2): Ove
   const nameAt = (position: number) => WORKSHOP_DEMO_GRID[position - 1];
   return {
     ...frame,
-    standings: frame.standings.map((row) => ({ ...row, driver: nameAt(row.position) ?? row.driver })),
+    standings: frame.standings.map((row) => {
+      // bestLap no es un hueco declarado de standings: la proyección puede
+      // entregarlo y el golden simplemente no lo lleva — el demo lo deriva
+      // del lastLap con una mejora determinista para que la columna juzgue.
+      const lastLap = typeof row.lastLap?.v === "number" ? row.lastLap.v : undefined;
+      const bestLap = row.bestLap.q === "missing" && lastLap !== undefined
+        ? qualityValue(lastLap - (0.2 + (row.position % 7) * 0.07), quality)
+        : row.bestLap;
+      return { ...row, driver: nameAt(row.position) ?? row.driver, bestLap };
+    }),
     relative: frame.relative.map((row) => ({ ...row, name: nameAt(row.position) ?? row.name })),
     relativeSettled: frame.relativeSettled.map((row) => ({ ...row, name: nameAt(row.position) ?? row.name })),
     player: {

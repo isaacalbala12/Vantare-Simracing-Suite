@@ -4,7 +4,7 @@ import type { WidgetRendererProps } from "../../core/design-system-definition";
 import type { DeltaViewModel } from "../../widget-types/delta/delta-view-model";
 import { functionalLabels } from "./labels";
 
-export function DeltaFunctional({ model }: WidgetRendererProps<DeltaViewModel>) {
+export function DeltaFunctional({ model, settings }: WidgetRendererProps<DeltaViewModel>) {
   const { locale } = useI18n();
   const labels = functionalLabels[locale];
   const statusText = model.status !== "ready" ? labels[model.status] : undefined;
@@ -13,23 +13,48 @@ export function DeltaFunctional({ model }: WidgetRendererProps<DeltaViewModel>) 
     : model.progress < 0
       ? { right: "50%", width: `${Math.abs(model.progress) * 50}%` }
       : { left: "50%", width: `${model.progress * 50}%` };
+  const arrow = model.tone === "gaining" ? "▲" : model.tone === "losing" ? "▼" : "";
+  // "capsule" es la dirección tipo Crystal (ISA-1128): cápsulas sobre pista
+  // gruesa. "instrument" es la dirección por defecto.
+  const capsule = settings.templateId === "capsule";
 
   // Sin cabecera de sesión: el delta es un instrumento — valor, escala y la
   // última vuelta como pie. La marca no vive aquí (decisión de Isaac).
   return (
-    <section className="vf-delta" data-widget-system="vantare-functional" data-widget-renderer="delta" data-status={model.status} data-tone={model.tone} data-session-header="false">
+    <section className="vf-delta" data-widget-system="vantare-functional" data-widget-renderer="delta" data-status={model.status} data-tone={model.tone} data-session-header="false" data-template={capsule ? "capsule" : "instrument"}>
       {statusText && <p className="vf-status" role="status">{statusText}</p>}
       {model.statusMessage && model.status !== "stale" && <p className="vf-detail">{model.statusMessage}</p>}
-      <strong className="vf-delta-value">
-        <span className="vf-delta-arrow" aria-hidden="true">{model.tone === "gaining" ? "▲" : model.tone === "losing" ? "▼" : ""}</span>
-        {model.deltaText}
-      </strong>
-      <div className="vf-delta-track" aria-hidden="true">
-        <span className="vf-delta-center" />
-        <span className="vf-delta-fill" style={fill} />
-      </div>
-      <div className="vf-delta-scale" aria-hidden="true"><span>-2</span><span>0</span><span>+2</span></div>
-      <div className="vf-delta-foot"><span className="vf-session-type">{labels.lastLap}</span><span className="vf-clock">{model.lastLapText}</span></div>
+      {capsule ? (
+        <div className="vf-delta-capsule">
+          <div className="vf-delta-capsule-top">
+            <span className="vf-delta-capsule-label">{labels.lastLap}</span>
+            <span className="vf-delta-capsule-sep" aria-hidden="true">|</span>
+            <span className="vf-delta-capsule-lap">{model.lastLapText}</span>
+            <span className="vf-delta-capsule-delta" data-tone={model.tone}>{model.deltaText}</span>
+          </div>
+          <div className="vf-delta-capsule-track" data-tone={model.tone} aria-hidden="true">
+            <span className="vf-delta-capsule-center" />
+            <span className="vf-delta-capsule-fill" style={fill} />
+          </div>
+          <span className="vf-delta-capsule-value" data-tone={model.tone}>
+            <span className="vf-delta-arrow" aria-hidden="true">{arrow}</span>
+            {model.deltaText}
+          </span>
+        </div>
+      ) : (
+        <>
+          <strong className="vf-delta-value">
+            <span className="vf-delta-arrow" aria-hidden="true">{arrow}</span>
+            {model.deltaText}
+          </strong>
+          <div className="vf-delta-track" aria-hidden="true">
+            <span className="vf-delta-center" />
+            <span className="vf-delta-fill" style={fill} />
+          </div>
+          <div className="vf-delta-scale" aria-hidden="true"><span>-2</span><span>0</span><span>+2</span></div>
+          <div className="vf-delta-foot"><span className="vf-session-type">{labels.lastLap}</span><span className="vf-clock">{model.lastLapText}</span></div>
+        </>
+      )}
     </section>
   );
 }

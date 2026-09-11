@@ -157,6 +157,26 @@
 .vf-delta-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px; padding: 5px 16px 7px; border-top: 1px solid rgb(245 245 245 / 10%); }
 .vf-delta-foot .vf-clock { font-size: 12px; }
 
+/* Dirección "capsule" (tipo Crystal): fila de datos en píldora, pista
+   gruesa con relleno desde el centro y píldora de valor superpuesta. */
+.vf-delta-capsule { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px 10px; }
+.vf-delta-capsule-top { display: flex; align-items: center; gap: 10px; padding: 4px 14px; border-radius: 16px; background: rgb(18 18 22 / 85%); border: 1px solid rgb(255 255 255 / 11%); }
+.vf-delta-capsule-label { color: var(--vf-accent); font-size: 9px; font-weight: 700; letter-spacing: .08em; white-space: nowrap; }
+.vf-delta-capsule-sep { color: rgb(255 255 255 / 18%); }
+.vf-delta-capsule-lap { font-size: 11px; font-weight: 650; color: var(--vf-ink); font-variant-numeric: tabular-nums; }
+.vf-delta-capsule-delta { margin-left: auto; font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--vf-ink); }
+.vf-delta-capsule-delta[data-tone="gaining"] { color: var(--vf-gain); }
+.vf-delta-capsule-delta[data-tone="losing"] { color: var(--vf-loss); }
+.vf-delta-capsule-track { position: relative; height: 17px; border-radius: 9px; overflow: hidden; background: rgb(10 10 14 / 88%); box-shadow: inset 0 2px 6px rgb(0 0 0 / 70%); }
+.vf-delta-capsule-center { position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: rgb(245 245 245 / 55%); }
+.vf-delta-capsule-fill { position: absolute; top: 3px; bottom: 3px; background: var(--vf-muted); }
+.vf-delta-capsule-track[data-tone="gaining"] .vf-delta-capsule-fill { background: linear-gradient(90deg, rgb(127 182 134 / 35%), var(--vf-gain)); border-radius: 5px 0 0 5px; box-shadow: 0 0 10px rgb(127 182 134 / 45%); }
+.vf-delta-capsule-track[data-tone="losing"] .vf-delta-capsule-fill { background: linear-gradient(90deg, var(--vf-loss), rgb(217 83 96 / 35%)); border-radius: 0 5px 5px 0; box-shadow: 0 0 10px rgb(217 83 96 / 45%); }
+.vf-delta-capsule-value { align-self: center; display: inline-flex; align-items: baseline; gap: 6px; padding: 2px 16px; border-radius: 13px; background: rgb(18 18 22 / 92%); border: 1px solid rgb(255 255 255 / 11%); font-size: 14px; font-weight: 750; letter-spacing: -.01em; font-variant-numeric: tabular-nums; color: var(--vf-ink); }
+.vf-delta-capsule-value .vf-delta-arrow { width: auto; font-size: 10px; }
+.vf-delta-capsule-value[data-tone="gaining"] { color: var(--vf-gain); border-color: rgb(127 182 134 / 40%); }
+.vf-delta-capsule-value[data-tone="losing"] { color: var(--vf-loss); border-color: rgb(217 83 96 / 40%); }
+
 /* Pedals: tres canales finos, colores semánticos apagados. */
 .vf-pedals { --vf-throttle: #6fae7d; --vf-brake: #d95360; --vf-clutch: #c9a15c; display: flex; flex-direction: column; }
 .vf-pedals::before { width: 90px; height: 34px; }

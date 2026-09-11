@@ -62,12 +62,13 @@ export const vantareFunctionalManifest: DesignSystemDefinition = {
     {
       widgetType: "delta",
       configVersion: 1,
-      // El delta de Eficiencia es un instrumento sin cabecera: no hay nada
-      // que conmutar, así que no ofrece ajustes de apariencia.
-      defaultSettings: {},
+      // El delta de Eficiencia no tiene cabecera: "instrument" (por defecto)
+      // o "capsule" (dirección tipo Crystal) se eligen por diseño.
+      defaultSettings: { templateId: "instrument" },
       configMigrations: { 0: (settings) => ({ ...settings }) },
       parseSettings(input: unknown) {
-        return input && typeof input === "object" && !Array.isArray(input) ? { ...(input as Record<string, unknown>) } : {};
+        const value = input && typeof input === "object" && !Array.isArray(input) ? input as Record<string, unknown> : {};
+        return { ...value, templateId: value.templateId === "capsule" ? "capsule" : "instrument" };
       },
       inspector: { appearance: [] },
       Renderer: DeltaFunctional as ComponentType<WidgetRendererProps>,

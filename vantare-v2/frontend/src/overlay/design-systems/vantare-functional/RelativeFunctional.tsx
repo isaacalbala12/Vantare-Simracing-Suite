@@ -16,15 +16,24 @@ export function RelativeFunctional({ model, settings }: WidgetRendererProps<Rela
   const columns = model.columns;
   const unavailable = model.status === "disconnected" || model.status === "missing" || model.status === "error";
   const statusText = model.status !== "ready" ? labels[model.status] : model.rows.length === 0 ? labels.missing : undefined;
+  const hasMeta = Boolean(model.trackText || model.playerBadgeText);
+  const hasFooter = Boolean(model.sessionLabel || model.remainingText || model.ambientTempText || model.trackTempText || model.windText);
   const labelFor = (metricId: string) =>
     metricId === "gap" ? labels.playerGap
       : metricId === "carNumber" ? labels.driverNumber
         : labels[metricId as keyof typeof labels] ?? metricId;
 
   return (
-    // Estructura de la referencia: solo la lista de filas — sin cabecera de
-    // marca ni fila de etiquetas de columna.
+    // Estructura de la referencia: barra de meta arriba (pista + posición del
+    // jugador), lista de filas, barra inferior (sesión/reloj + ambiente). Cada
+    // hueco solo se pinta cuando la fuente entrega el dato.
     <section className="vf-relative" data-widget-system="vantare-functional" data-widget-renderer="relative" data-status={model.status}>
+      {hasMeta && (
+        <div className="vf-meta">
+          {model.trackText ? <span className="vf-footer-item">{labels.track} <b>{model.trackText}</b></span> : null}
+          {model.playerBadgeText ? <span className="vf-footer-item vf-footer-item--end"><b>{model.playerBadgeText}</b></span> : null}
+        </div>
+      )}
       {statusText && <p className="vf-status" role="status">{statusText}</p>}
       {model.statusMessage && <p className="vf-detail">{model.statusMessage}</p>}
       {!unavailable && model.rows.length > 0 && (
@@ -44,6 +53,14 @@ export function RelativeFunctional({ model, settings }: WidgetRendererProps<Rela
             </tr>
           ))}</tbody>
         </table>
+      )}
+      {hasFooter && (
+        <div className="vf-footer" data-session-footer>
+          {model.sessionLabel ? <span className="vf-footer-item"><b>{model.sessionLabel}</b>{model.remainingText ? ` ${model.remainingText}` : ""}</span> : model.remainingText ? <span className="vf-footer-item"><b>{model.remainingText}</b></span> : null}
+          {model.ambientTempText ? <span className="vf-footer-item vf-footer-item--end">{labels.ambientTemp} <b>{model.ambientTempText}</b></span> : null}
+          {model.trackTempText ? <span className="vf-footer-item">{labels.trackTemp} <b>{model.trackTempText}</b></span> : null}
+          {model.windText ? <span className="vf-footer-item">{labels.wind} <b>{model.windText}</b></span> : null}
+        </div>
       )}
     </section>
   );

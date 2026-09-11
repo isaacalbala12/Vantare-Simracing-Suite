@@ -63,6 +63,12 @@ type TelemetryAnalysisConfig struct {
 	MaxCandidates        int
 	MaxSourceBytes       int64
 	MaxPageRows          int
+	// SessionCatalog is the optional native catalog instance supplied by the
+	// composition root. SaveCorrections passes its ResolveCanonicalCombination
+	// method as the J3 resolver callback; the J5 method treats a nil receiver
+	// as ErrCanonicalCombinationUnavailable. Analysis never requires it to
+	// start and no other field or service may duplicate it.
+	SessionCatalog *telemetryanalysis.SessionCatalog
 }
 
 type TelemetryAnalysisStatus struct {

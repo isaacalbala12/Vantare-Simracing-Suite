@@ -10,11 +10,12 @@ import (
 )
 
 var (
-	ErrTelemetryAnalysisCorrectionConflict      = errors.New("the correction revision changed; reload before saving")
-	ErrTelemetryAnalysisCorrectionSourceChanged = errors.New("the correction source or analysis changed; prepare it again")
-	ErrTelemetryAnalysisCorrectionMissing       = errors.New("the requested correction revision is unavailable")
-	ErrTelemetryAnalysisCorrectionUncertain     = errors.New("correction save confirmation was lost; retry the same command")
-	ErrTelemetryAnalysisCorrectionStorage       = errors.New("the correction history is unavailable")
+	ErrTelemetryAnalysisCorrectionConflict              = errors.New("the correction revision changed; reload before saving")
+	ErrTelemetryAnalysisCorrectionSourceChanged         = errors.New("the correction source or analysis changed; prepare it again")
+	ErrTelemetryAnalysisCorrectionMissing               = errors.New("the requested correction revision is unavailable")
+	ErrTelemetryAnalysisCorrectionUncertain             = errors.New("correction save confirmation was lost; retry the same command")
+	ErrTelemetryAnalysisCorrectionStorage               = errors.New("the correction history is unavailable")
+	ErrTelemetryAnalysisCanonicalCombinationUnavailable = errors.New("the canonical combination catalog is unavailable")
 )
 
 type TelemetryAnalysisCorrectionSaveRequest struct {
@@ -62,6 +63,7 @@ func (service *TelemetryAnalysisService) SaveCorrections(ctx context.Context, re
 			}
 			observations.Session = input.Session
 			observations.Classifications = request.Classifications
+			observations.ResolveCanonicalCombination = service.cfg.SessionCatalog.ResolveCanonicalCombination
 			result, err = service.corrections.SaveObservations(operationCtx, input.Base, observations, request.Command)
 		}
 		return publicCorrectionError(err)
@@ -226,6 +228,10 @@ func publicCorrectionError(err error) error {
 	case errors.Is(err, telemetryanalysis.ErrUnsupportedSessionSimulator):
 		return ErrTelemetryAnalysisIncompatible
 	case errors.Is(err, telemetryanalysis.ErrInvalidSessionClassification):
+		return ErrTelemetryAnalysisInvalidRequest
+	case errors.Is(err, telemetryanalysis.ErrCanonicalCombinationUnavailable):
+		return ErrTelemetryAnalysisCanonicalCombinationUnavailable
+	case errors.Is(err, telemetryanalysis.ErrCanonicalCombinationUnknown):
 		return ErrTelemetryAnalysisInvalidRequest
 	case errors.Is(err, telemetryanalysis.ErrCorrectionRevisionMissing):
 		return ErrTelemetryAnalysisCorrectionMissing

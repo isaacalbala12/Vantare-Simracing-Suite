@@ -17,7 +17,7 @@ import {
 import { buildAuthoringV2ScenarioWidget } from "./authoring-v2-scenario-widget";
 import { FUNCTIONAL_STUDY_DEFAULT_MODULES } from "../functional-study-options";
 import { applyWidgetDesign } from "../../core/widget-design";
-import { getOfficialDesign } from "../../design-systems/official-designs";
+import { getOfficialDesign, listOfficialDesigns } from "../../design-systems/official-designs";
 import { getAnimationScene, sceneFrameAt } from "./animation-scenes";
 import type { SceneFrame } from "./animation-scenes";
 
@@ -100,18 +100,24 @@ export function createScenarioWidget(input: {
       : content.columns;
     widget = { ...widget, content: { ...content, columns } };
   }
-  if (!input.designId) return widget;
-  const official = getOfficialDesign(input.designId);
+  // Siempre hay un diseño concreto: sin `designId` en la URL se aplica el
+  // oficial por defecto del sistema — el Workshop no conoce el estado
+  // "renderer sin diseño" porque en el producto tampoco existe.
+  const designId = input.designId
+    ?? listOfficialDesigns(input.widget).find((d) => d.systemId === input.system && d.isDefault)?.id
+    ?? listOfficialDesigns(input.widget).find((d) => d.systemId === input.system)?.id;
+  if (!designId) return widget;
+  const official = getOfficialDesign(designId);
   if (!official) {
-    throw new Error(`authoring-v2-workshop-frame: diseño desconocido ${JSON.stringify(input.designId)}`);
+    throw new Error(`authoring-v2-workshop-frame: diseño desconocido ${JSON.stringify(designId)}`);
   }
   if (official.widgetType !== input.widget || official.systemId !== input.system) {
     throw new Error(
-      `authoring-v2-workshop-frame: diseño ${input.designId} incompatible con ${input.widget}/${input.system}`,
+      `authoring-v2-workshop-frame: diseño ${designId} incompatible con ${input.widget}/${input.system}`,
     );
   }
   widget = applyWidgetDesign(widget, official, "1970-01-01T00:00:00.000Z");
-  const manifest = workshopDesignMeta(input.designId);
+  const manifest = workshopDesignMeta(designId);
   if (manifest) widget.layout = { ...widget.layout, w: manifest.width, h: manifest.height };
   return widget;
 }
@@ -177,7 +183,8 @@ export function buildWorkshopWidget(input: {
           enabled: column.metricId === "position" || column.metricId === "driverName" || modules.includes(String(column.metricId)),
         }))
       : content.columns;
-    widget = { ...widget, content: { ...content, columns, rowCount: 10 } };
+    // El estudio enseña siempre al menos 15 pilotos (decisión de Isaac).
+    widget = { ...widget, content: { ...content, columns, rowCount: 15 } };
   }
 
   return widget;
@@ -596,9 +603,9 @@ export function buildWorkshopFrameV2(scenario: WorkshopV2Scenario): WidgetRuntim
     case "standings-functional-study": {
       // Explicit visual-study data, never live telemetry. The original V2
       // golden remains untouched; only this named development variant uses it.
-      const names = ["Renan Azeredo", "Marco Acunto", "Fabian Seischegg", "Adaildo Vieira", "Neil Cooper", "Rick Zwieten", "Istvan Fodor", "Alexandr Fescov", "Marius Rick", "Preston Perlmutter"];
-      const gaps = [0, .8, 11.3, 32.1, 35.2, 44.5, 47.3, 52.2, 53.6, 59.4];
-      const laps = [102.198, 102.089, 103.702, 102.278, 104.002, 104.059, 105.035, 104.822, 104.754, 103.111];
+      const names = ["Renan Azeredo", "Marco Acunto", "Fabian Seischegg", "Adaildo Vieira", "Neil Cooper", "Rick Zwieten", "Istvan Fodor", "Alexandr Fescov", "Marius Rick", "Preston Perlmutter", "Tommaso Mosca", "Luca Ghiotto", "Dennis Marschall", "Frederik Schandorff", "Ulysse De Pauw"];
+      const gaps = [0, .8, 11.3, 32.1, 35.2, 44.5, 47.3, 52.2, 53.6, 59.4, 62.8, 68.1, 74.6, 81.2, 88.7];
+      const laps = [102.198, 102.089, 103.702, 102.278, 104.002, 104.059, 105.035, 104.822, 104.754, 103.111, 103.942, 104.316, 103.687, 104.501, 105.229];
       const rows = frame.standings.slice(0, names.length).map((row, index) => ({
         ...row, driver: names[index]!, position: index + 1, classPosition: index + 1,
         classId: "GT3", gap: qualityValue(gaps[index]!, quality),

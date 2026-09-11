@@ -62,11 +62,17 @@ export function FunctionalStudyControls({ query, update, onRunScene, onReset }: 
   const defaultDesign = designs.find((design) => design.isDefault) ?? designs[0];
   // Cada variante declarada pertenece a un widget por su prefijo; el resto
   // produciría una query inválida.
-  const variants = WORKSHOP_V2_VARIANTS.filter((variant) => variant === "default" || variant.startsWith(`${query.widget}-`));
   const scenes = listAnimationScenes(query.widget);
   const gaps = projectionGapsFor(query.widget);
   const isFunctional = query.system === "vantare-functional";
   const isStandings = query.widget === "standings";
+  const allVariants = WORKSHOP_V2_VARIANTS.filter((variant) => variant === "default" || variant.startsWith(`${query.widget}-`));
+  // Standings en Eficiencia tiene un único fixture de estudio: ofrecer las
+  // variantes de depuración junto a los módulos hacía que los toggles no
+  // aplicaran fuera del estudio. Si la URL trae otra variante válida se
+  // muestra igualmente para no mentir sobre la selección actual.
+  const offeredVariants = isFunctional && isStandings ? ["standings-functional-study"] : allVariants;
+  const variants = offeredVariants.includes(query.variant) ? offeredVariants : [query.variant, ...offeredVariants];
 
   const chooseWidget = (widget: WidgetType) => {
     const nextSystems = designSystemRegistry.list().filter((system) => system.widgets.some((entry) => entry.widgetType === widget)).map((system) => system.id);
@@ -96,7 +102,7 @@ export function FunctionalStudyControls({ query, update, onRunScene, onReset }: 
     // La variante de estudio de Standings solo existe dentro de Eficiencia.
     ...(system === "vantare-functional" || query.variant !== "standings-functional-study" ? {} : { variant: "default" as const }),
   });
-  const chooseDesign = (value: string) => update({ ...query, ...(value ? { designId: value } : { designId: undefined }) });
+  const chooseDesign = (value: string) => update({ ...query, designId: value || undefined });
   const chooseVariant = (value: string) => {
     const variant = value as OverlayWorkshopQuery["variant"];
     update({ ...query, variant, studyStyle: variant === "standings-functional-study" ? query.studyStyle : undefined });
@@ -114,13 +120,17 @@ export function FunctionalStudyControls({ query, update, onRunScene, onReset }: 
       <Select label="Sistema de diseño" value={query.system} onChange={chooseSystem}>
         {systems.map((system) => <option key={system} value={system}>{systemLabel(system)}</option>)}
       </Select>
-      <Select label="Diseño" value={query.designId ?? ""} onChange={chooseDesign}>
-        <option value="">Ajustes por defecto del renderer</option>
+      {/* En Eficiencia el diseño se elige en "Estilo" (segmentos); el select
+          solo aparece para los sistemas con catálogo largo. Siempre hay un
+          diseño concreto — no existe el "renderer sin diseño". */}
+      {!isFunctional && designs.length > 0 && <Select label="Diseño" value={query.designId ?? defaultDesign?.id ?? ""} onChange={chooseDesign}>
         {designs.map((design) => <option key={design.id} value={design.id}>{design.name}</option>)}
-      </Select>
-      <Select label="Variante" value={query.variant} onChange={chooseVariant}>
-        {variants.map((variant) => <option key={variant} value={variant}>{variant}</option>)}
-      </Select>
+      </Select>}
+      {variants.length > 1 ? (
+        <Select label="Variante" value={query.variant} onChange={chooseVariant}>
+          {variants.map((variant) => <option key={variant} value={variant}>{variant}</option>)}
+        </Select>
+      ) : <p className="functional-study-note">Fixture: {query.variant}</p>}
     </fieldset>
 
     {isFunctional && designs.length > 1 && <fieldset><legend>Estilo</legend><div className="functional-study-segments">{designs.map((design) => <button type="button" key={design.id} aria-pressed={(query.designId ?? defaultDesign?.id) === design.id} onClick={() => update({ ...query, designId: design.id })}>{design.name}</button>)}</div></fieldset>}

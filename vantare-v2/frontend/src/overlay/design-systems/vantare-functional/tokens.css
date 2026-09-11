@@ -74,6 +74,15 @@
 .vf-footer-item--end { margin-left: auto; }
 .vf-detail { color: var(--vf-muted); }
 .vf-session-type[role="status"] { color: #e2c568; letter-spacing: 0; }
+/* Cabecera sin marca: el hueco del logo se reparte — el bloque de sesión
+   pierde el separador y gana presencia, el contexto ocupa la izquierda y la
+   clase queda anclada a la derecha antes de las etiquetas de columna. */
+.vf-session--bare { gap: 12px; }
+.vf-session--bare .vf-session-context { padding-left: 0; border-left: 0; flex-direction: row; align-items: baseline; gap: 9px; flex: 1; }
+.vf-session--bare .vf-session-type { font-size: 10px; letter-spacing: .09em; max-width: none; flex-shrink: 0; }
+.vf-session--bare .vf-clock { font-size: 17px; font-weight: 700; }
+.vf-session--bare .vf-class { margin-left: auto; }
+
 .vf-standings[data-status="stale"] .vf-clock { color: var(--vf-muted); }
 .vf-standings[data-status="stale"] .vf-table td { color: var(--vf-muted); }
 

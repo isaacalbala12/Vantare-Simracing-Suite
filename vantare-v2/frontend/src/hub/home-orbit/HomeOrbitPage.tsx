@@ -99,9 +99,13 @@ export function HomeOrbitPage({
     name: userName?.trim() || t("home.greeting.fallbackName"),
   });
 
-  const widgetNames = active?.previewDocument?.layouts.general?.widgets
-    ?.map((widget) => widget.name ?? widget.type)
-    .join(", ");
+  const widgetNames = useMemo(
+    () =>
+      active?.previewDocument?.layouts.general?.widgets
+        ?.map((widget) => widget.name ?? widget.type)
+        .join(", "),
+    [active],
+  );
 
   return (
     <div className="orbit-home" data-compact={compact ? "true" : undefined} data-testid="orbit-home">

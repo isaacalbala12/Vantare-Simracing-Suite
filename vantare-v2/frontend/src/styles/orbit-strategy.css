@@ -93,11 +93,6 @@
   min-height: 0;
 }
 
-.orbit-strategy__pending {
-  flex: none;
-  margin-top: 16px;
-}
-
 .orbit-strategy__kpis {
   flex: none;
   margin-top: 14px;

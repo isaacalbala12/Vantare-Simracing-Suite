@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export type ObsSetupProps = {
   url: string;
@@ -7,6 +7,15 @@ export type ObsSetupProps = {
 export function ObsSetup({ url }: ObsSetupProps) {
   const [copiedUrl, setCopiedUrl] = useState(false);
   const [copiedInstructions, setCopiedInstructions] = useState(false);
+  const copyUrlTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const copyInstructionsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (copyUrlTimer.current) clearTimeout(copyUrlTimer.current);
+      if (copyInstructionsTimer.current) clearTimeout(copyInstructionsTimer.current);
+    };
+  }, []);
 
   const instructions = `1. Abre OBS Studio.
 2. Ve a Fuentes → + → Navegador.
@@ -17,13 +26,15 @@ export function ObsSetup({ url }: ObsSetupProps) {
   const handleCopyUrl = () => {
     navigator.clipboard.writeText(url);
     setCopiedUrl(true);
-    setTimeout(() => setCopiedUrl(false), 2000);
+    if (copyUrlTimer.current) clearTimeout(copyUrlTimer.current);
+    copyUrlTimer.current = setTimeout(() => setCopiedUrl(false), 2000);
   };
 
   const handleCopyInstructions = () => {
     navigator.clipboard.writeText(instructions);
     setCopiedInstructions(true);
-    setTimeout(() => setCopiedInstructions(false), 2000);
+    if (copyInstructionsTimer.current) clearTimeout(copyInstructionsTimer.current);
+    copyInstructionsTimer.current = setTimeout(() => setCopiedInstructions(false), 2000);
   };
 
   return (

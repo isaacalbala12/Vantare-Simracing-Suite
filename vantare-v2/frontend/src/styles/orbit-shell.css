@@ -363,11 +363,6 @@
    `background: transparent` que, al cargarse la shell despues del kit,
    empataba en especificidad con `.orbit-row--sel` y borraba la seleccion. */
 
-.orbit-row:hover .orbit-row__copy b,
-.orbit-row--sel .orbit-row__copy b {
-  color: #fff;
-}
-
 .orbit-when {
   flex: none;
   text-align: right;
@@ -484,13 +479,11 @@ button.orbit-pill:hover { color: #fff; border-color: rgba(240, 71, 85, 0.25); }
 }
 
 .orbit-pill__dot--ok { color: var(--orbit-green); }
-.orbit-pill__dot--ring,
-.orbit-pill__dot--ring-gold {
+.orbit-pill__dot--ring {
   background: transparent;
   border: 1.5px solid currentColor;
   box-shadow: none;
 }
-.orbit-pill__dot--ring-gold { color: var(--orbit-ember); }
 
 @keyframes orbit-pill-pulse { 50% { opacity: 0.35; } }
 .orbit-pill--pulse .orbit-pill__dot {
@@ -885,10 +878,6 @@ button.orbit-pill:hover { color: #fff; border-color: rgba(240, 71, 85, 0.25); }
 }
 
 /* ============================================================ RESPONSIVE */
-
-@media (max-width: 1500px) {
-  .orbit-topbar__right .orbit-hide-1500 { display: none; }
-}
 
 /* Ultrapanorámicas (21:9 y 32:9). El contenido de las vistas ya iba topado y
    centrado a `--orbit-content-max` (1508 px, doc 03 § 3.5): a 3440 o 5120 px no

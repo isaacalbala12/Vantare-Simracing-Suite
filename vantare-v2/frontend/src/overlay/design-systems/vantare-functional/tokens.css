@@ -158,7 +158,10 @@
 .vf-delta-foot .vf-clock { font-size: 12px; }
 
 /* Dirección "capsule" (tipo Crystal): fila de datos en píldora, pista
-   gruesa con relleno desde el centro y píldora de valor superpuesta. */
+   gruesa con relleno desde el centro y píldora de valor superpuesta.
+   Las cápsulas llevan su propia superficie — el panel de fondo sobra. */
+.vf-delta[data-template="capsule"] { background: none; box-shadow: none; backdrop-filter: none; border-radius: 0; }
+.vf-delta[data-template="capsule"]::after { display: none; }
 .vf-delta-capsule { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px 10px; }
 .vf-delta-capsule-top { display: flex; align-items: center; gap: 10px; padding: 4px 14px; border-radius: 16px; background: rgb(18 18 22 / 85%); border: 1px solid rgb(255 255 255 / 11%); }
 .vf-delta-capsule-label { color: var(--vf-accent); font-size: 9px; font-weight: 700; letter-spacing: .08em; white-space: nowrap; }

@@ -299,7 +299,10 @@ física nueva, retirada V1, merge o release en este corte documental.
   orden fijo) y corre síncrono en el render; el runtime es otra función
   pura de la selección + playhead cuantizado. Los módulos del estudio
   viven en la URL (`modules=…`) y todo estado es compartible. Fixture
-  inválido → error visible con controles vivos.
+  inválido → error visible con controles vivos. Bug arrastrado resuelto: el
+  swap de columnas por sesión corría sobre cualquier widget funcional y
+  explotaba en Delta/Pedals (sin `content.columns`); ahora es solo de
+  Standings y hay regresión cubriendo los 12 combos widget×sesión.
   Sin merge, push, PR, promoción ni release.
 
 - **S3 cerrado, 2026-09-03:** el mismo EXE R-FIX4 desde

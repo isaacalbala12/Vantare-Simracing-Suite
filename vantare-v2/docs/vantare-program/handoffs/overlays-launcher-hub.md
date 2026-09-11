@@ -1,5 +1,32 @@
 # Handoff vivo — Overlay Studio, Launcher y Hub
 
+## ISA-1141 — editor in-place C3: catálogo de widgets y selector de sesión (2026-09-11)
+
+Tercer corte, apilado sobre la rama de ISA-1129 (`6bb5e9a0`). Issue
+[#1141](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1141),
+rama `vantareapp/isa-1141-inplace-editor-c3`, worktree `vantare-isa1141`.
+
+La barra del editor in-place gana dos piezas del Studio sin capas nuevas:
+el diálogo `AddWidgetDialog` (botón `+ Widget`) reutilizado tal cual —gates
+de licencia, delta único por layout y `buildAddWidgetCommand` con su
+posicionamiento por defecto— y un selector de sesión
+(general/práctica/clasificación/carrera/resistencia). Sin override se edita
+la sesión que el runtime muestra; con override se previsualiza
+`resolveSessionLayout` (clon de general si la sesión no existe aún) y el
+primer comando la materializa vía `withSessionLayout`, idéntico a Studio.
+Cambiar de sesión deselecciona y cierra el menú contextual.
+
+Cambio transversal: `DEFAULT_ACCESS` del panel pasa a `FREE_ACCESS` en
+`lib/access-policy.ts` — el `export` de constante en un archivo de
+componente rompía la regla `react-refresh/only-export-components` y el
+fallback de acceso queda en el hogar natural del tipo.
+
+Verificación: tests focales 31 PASS (3 nuevos: materialización de sesión al
+primer edit, añadir desde catálogo, cancelar el diálogo), lint, typecheck y
+`diff --check` limpios. Capturas locales `/tmp/vantare-shots/c3-*.png`.
+Pendiente: commit, push y PR draft; sin prueba física LMU. Siguiente: C4
+(diseños + acciones de restauración).
+
 ## ISA-1129 — editor in-place C2: panel colapsable, layout numérico y fixes (2026-09-11)
 
 Segundo corte de la paridad comprimida, apilado sobre la rama de ISA-1123

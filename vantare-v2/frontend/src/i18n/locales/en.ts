@@ -99,6 +99,8 @@ export const en: Record<string, string> = {
   "overlay.editMode.panel.saving": "Saving...",
   "overlay.editMode.panel.collapse": "Collapse panel",
   "overlay.editMode.panel.expand": "Expand panel",
+  "overlay.editMode.sessionAria": "Session being edited",
+  "overlay.editMode.add": "+ Widget",
 
   // Widget Config Sections
 

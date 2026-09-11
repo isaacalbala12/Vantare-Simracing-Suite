@@ -1,15 +1,186 @@
 # Handoff vivo — Overlay Studio, Launcher y Hub
 
+## ISA-1162 — enlace OBS restaurado al pie del dock del Studio (2026-09-11)
+
+Issue [#1162](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1162),
+rama `vantareapp/isa-1162-obs-studio-link`, worktree `vantare-isa1162`,
+PR draft [#1166](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1166)
+hacia `nightly` (base `origin/nightly` 1487ec2e).
+
+- El backend publica su dirección bound: `obs:url:get` → `obs:url` con
+  `{baseUrl: "http://<addr>"}` desde `server.Addr()` (`cmd/vantare/obs_url.go`),
+  registrado en `main.go` tras `httpSrv.Start()`.
+- `useObsBaseUrl()` (`overlay-studio/orbit/obs-url.ts`) hace la petición y
+  cae a `http://127.0.0.1:39261` hasta que responde; `buildObsOverlayUrl`
+  arma `/overlay?profile=<fichero>` (fallback `example-streaming.json`).
+- `StudioObsLink` vive como pie fijo del dock derecho del Studio (bajo el
+  inspector, siempre visible con el dock abierto), con copiar URL e
+  instrucciones. Una sola suscripción por árbol: la base se resuelve en
+  `OverlayStudioV3` y baja por props (el test de StrictMode exige un
+  listener por evento).
+- Browser View ya no usa `window.location.origin` (wails:// en prod):
+  abre contra el mismo origen real.
+- Retirado el modo `obs` huérfano: `ObsOverlaySetupView`, `ObsSetup` y el
+  target de la unión `studio-route-target`.
+- i18n `studio.obs.*` en es/en/pt/it. Ojo: el boundary test de
+  `overlay-studio` prohíbe tildes/ñ entre comillas o backticks en fuentes
+  productivas — los docstrings van sin caracteres de cita.
+- Docs: `obs-local-setup.md` apunta al nuevo punto (la sección Ajustes que
+  anunciaba ya no existe); `engineer-obs-setup.md` corrige el puerto
+  34115 → 39261. Hito `obs-browser-source-link` en `plan.md` +
+  `roadmap.json` regenerado + fragmento `ISA-1162.json`.
+
+Verificación: tests focales 54 PASS, `pnpm test` 3360 PASS, lint,
+typecheck y build limpios; `GOOS=windows go build`/`vet` de
+`cmd/vantare` limpios. Runtime real comprobado en este equipo con el
+servidor levantado a mano: `/health` 200, `/overlay?profile=` 200 HTML,
+`/api/profile-v3` 200 por filename/stem/id documental. Sin prueba en OBS
+real (requiere la app Wails completa). Hallazgo aparte: el paquete
+launcher no compila en darwin — issue #1167.
+
+## ISA-1152 — editor in-place C5: rediseño toolbar/frames, pestañas y panel ocultable (2026-09-11)
+
+Quinto corte, apilado sobre la rama de ISA-1143 (`a8d8db1a`). Issue
+[#1152](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1152),
+rama `vantareapp/isa-1152-inplace-editor-c5`, worktree `vantare-isa1152`.
+Feedback visual de Isaac sobre las capturas de C2–C4.
+
+- **Frames**: outline no seleccionado pasa de rojo suave a gris fino; el
+  seleccionado conserva el acento con glow exterior y los handles de resize
+  son circulares.
+- **Toolbar**: chip + sesión + "+ Widget" + Hecho dentro de una pill con
+  blur (`inplace-toolbar*`), sin estilos inline dispersos.
+- **Panel con pestañas**: una pestaña por sección resuelta
+  (`resolveInspectorSections`), solo un cuerpo visible; pestaña por
+  defecto = layout, la elección muere con el widget.
+- **No tapa widgets**: botón de ocultar deja una pestaña de borde
+  (reabre al click o al hover) y el panel se vuelve fantasma
+  (`--ghost`, `pointer-events: none`) mientras `interaction.isInteractionActive`.
+- **Modo flotante**: toggle en la cabecera; el panel se arrastra por su
+  header y persiste `{mode, x, y}` en `localStorage` (`vantare.inplace.panel.v1`).
+
+Verificación: tests focales 36 PASS (nuevos: ocultar→pestaña, ghost en
+drag, flotante + drag de header, pestañas cambian sección), lint,
+typecheck y `diff --check` limpios. Capturas `/tmp/vantare-shots/c5-*.png`.
+Pendiente: commit, push y PR draft; sin prueba física LMU.
+
+## ISA-1143 — editor in-place C4: secciones de diseño y acciones (2026-09-11)
+
+Cuarto corte, apilado sobre la rama de ISA-1141 (`dfa24d18`). Issue
+[#1143](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1143),
+rama `vantareapp/isa-1143-inplace-editor-c4`, worktree `vantare-isa1143`.
+
+El panel in-place deja de hardcodear secciones: ahora las resuelve con
+`resolveInspectorSections` (mismo orden y gating por widget que el Studio)
+y renderiza `DesignSection` (sistema/variante, aplicar a todos con
+confirmación Studio, guardar como diseño, gates de licencia) y
+`ActionsSection` (restaurar valores —conserva layout— y descartar todo,
+vía `discardAll` del store). Nueva clave `studio.inspector.section.actions`
+en los 4 locales.
+
+Verificación: tests focales 34 PASS (3 nuevos: secciones diseño+acciones
+con títulos traducidos, restaurar defaults conservando layout, descartar
+todo vuelve al documento guardado), lint, typecheck y `diff --check`
+limpios. Capturas `/tmp/vantare-shots/c4-*.png`. Pendiente: commit, push
+y PR draft; sin prueba física LMU.
+
+## ISA-1141 — editor in-place C3: catálogo de widgets y selector de sesión (2026-09-11)
+
+Tercer corte, apilado sobre la rama de ISA-1129 (`6bb5e9a0`). Issue
+[#1141](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1141),
+rama `vantareapp/isa-1141-inplace-editor-c3`, worktree `vantare-isa1141`.
+
+La barra del editor in-place gana dos piezas del Studio sin capas nuevas:
+el diálogo `AddWidgetDialog` (botón `+ Widget`) reutilizado tal cual —gates
+de licencia, delta único por layout y `buildAddWidgetCommand` con su
+posicionamiento por defecto— y un selector de sesión
+(general/práctica/clasificación/carrera/resistencia). Sin override se edita
+la sesión que el runtime muestra; con override se previsualiza
+`resolveSessionLayout` (clon de general si la sesión no existe aún) y el
+primer comando la materializa vía `withSessionLayout`, idéntico a Studio.
+Cambiar de sesión deselecciona y cierra el menú contextual.
+
+Cambio transversal: `DEFAULT_ACCESS` del panel pasa a `FREE_ACCESS` en
+`lib/access-policy.ts` — el `export` de constante en un archivo de
+componente rompía la regla `react-refresh/only-export-components` y el
+fallback de acceso queda en el hogar natural del tipo.
+
+Verificación: tests focales 31 PASS (3 nuevos: materialización de sesión al
+primer edit, añadir desde catálogo, cancelar el diálogo), lint, typecheck y
+`diff --check` limpios. Capturas locales `/tmp/vantare-shots/c3-*.png`.
+Pendiente: commit, push y PR draft; sin prueba física LMU. Siguiente: C4
+(diseños + acciones de restauración).
+
+## ISA-1129 — editor in-place C2: panel colapsable, layout numérico y fixes (2026-09-11)
+
+Segundo corte de la paridad comprimida, apilado sobre la rama de ISA-1123
+(`02f266d8`). Issue
+[#1129](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1129),
+rama `vantareapp/isa-1129-inplace-editor-c2`, worktree `vantare-isa1129`.
+
+El panel in-place ahora reutiliza `LayoutSection` del Studio (X/Y/W/H
+numérico, bloqueo de proporción, orden z, centrar y restablecer — todas las
+acciones pasan por `StudioCommand`/`executeWidgetAction` existentes), se
+pliega a su cabecera con un chevron, y salta a la izquierda cuando el widget
+seleccionado ocupa la mitad derecha del overlay, de modo que nunca tapa lo
+que se edita.
+
+Fixes incluidos que ya eran defectos antes de este corte: los títulos de
+sección del panel usaban claves i18n inexistentes
+(`overlay.studio.inspector.sections.*`) — corregido a
+`studio.inspector.section.*` con nueva clave `content` en los cuatro locales;
+`WidgetContextMenu` no clampeaba su posición al viewport (desbordaba en
+clicks cerca del borde, también en Studio — ahora mide y recoloca en
+`useLayoutEffect`); el comparador de `memo` del panel ignoraba
+`autosave.paused` y congelaba los chips de conflicto/reintento.
+
+Verificación: suite frontend completa PASS (3346 tests tras el fix de
+`progreso: 78` → escala válida en `plan.md`, corregido también en la rama de
+C1 como `02f266d8`), typecheck, build, lint y `git diff --check` limpios.
+Capturas locales en `/tmp/vantare-shots/c2-*.png` sobre harness
+`inplace-edit-harness.html` (localhost:5200). Pendiente: commit, push y PR
+draft; sin prueba física LMU. Cortes siguientes: añadir widget y selector de
+sesión (C3), diseños y restauración (C4).
+
+## ISA-1123 — editor in-place C1: teclado, acciones y salida (2026-09-11)
+
+Isaac pidió iterar el editor in-place del overlay desktop (`Ctrl+Shift+E`)
+hacia paridad comprimida con Overlay Studio; se aprobó el Corte 1 de cuatro
+(teclado + acciones de widget + salida visible). Issue
+[#1123](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1123),
+rama `vantareapp/isa-1123-inplace-editor-c1`, worktree propio
+`vantare-isa1123`, base `origin/nightly@131471ff`.
+
+Implementado reutilizando el modelo de comandos del Studio sin capas nuevas:
+`getStudioHotkey` cableado en la rama de edición (undo/redo, `Ctrl+D`,
+`Delete` con `StudioConfirmProvider`, flechas 1/8 px, `Esc` deselecciona en
+idle, `Tab` cicla, `Ctrl+S` guarda), menú contextual `WidgetContextMenu` por
+click derecho, toggle de visibilidad en la cabecera del inspector
+(`widget/behavior`/`enabled`), botón Done que emite `overlay:toggle-edit-mode`,
+deselect al pulsar el fondo y `interactionActive` real en el autosave. Fix
+incluido: `useInplaceAutosave` ahora vacía `coalesced` al terminar el gesto —
+sin ese flush, un save diferido por gesto activo nunca llegaba. También se
+cargan `orbit-kit.css`/`orbit-studio.css` en la ventana overlay: el panel
+in-place existía desde F2 pero sin el CSS del inspector compartido.
+
+Verificación: 3343 tests frontend PASS (424 archivos), typecheck, build y
+lint focal PASS, `git diff --check` limpio. Pendiente de PR draft a nightly;
+sin prueba física LMU en este corte. Cortes siguientes no entregados: panel
+colapsable/reubicable y layout numérico (C2), añadir widget y selector de
+sesión (C3), diseños y acciones de restauración (C4).
+
 ## ISA-1127 — ciclo de vida de la ventana overlay de escritorio (2026-09-11, en rama)
 
 Issue [#1127](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1127)
 (`area:overlays-runtime`, `roadmap:required` → `milestones:overlay-tester-feedback`),
-rama `vantareapp/isa-1127-overlay-lifecycle`, base `131471ff`, worktree
-`C:/tmp/vantare-isa1127-overlay-lifecycle`. Origen: en la comprobación física de
-ISA-1098 (Efficiency PR1107 + REST 1106) la app se cerró al abrir overlay +
-edición y los overlays no reaparecieron; la reproducción física no se consiguió
-y este corte **no afirma** cerrar ese crash. Lo que sí demuestran los tests con
-fakes son tres defectos reales del controlador, presentes también en Nightly:
+rama `vantareapp/isa-1127-overlay-lifecycle`, worktree
+`C:/tmp/vantare-isa1127-overlay-lifecycle`, PR draft
+[#1169](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1169) a
+`nightly`. Origen: en la comprobación física de ISA-1098 (Efficiency PR1107 +
+REST 1106) la app se cerró al abrir overlay + edición y los overlays no
+reaparecieron; la reproducción física no se consiguió y este corte **no
+afirma** cerrar ese crash. Lo que sí demuestran los tests con fakes son tres
+defectos reales del controlador, presentes también en Nightly:
 
 - Dos `Start` concurrentes crean dos ventanas nativas y la perdedora queda
   huérfana (siempre encima, inalcanzable por `Stop`). En producción ya hay
@@ -28,16 +199,22 @@ los caminos. `HandleWindowClosed` no cambia. Sin dependencias ni arquitectura
 nueva.
 
 Evidencia: 3 regresiones nuevas (`overlay_controller_lifecycle_test.go`)
-**rojas en base** `131471ff` (worktree temporal detached, 3/3 corridas: huérfana
-`closed=0`, fantasma `Running:true`, deadlock 2 s) y **verdes con el fix** bajo
-`-race`; los 8 tests existentes del controlador pasan. `go test ./...` completo
-exit 0 (requirió `pnpm install --frozen-lockfile` + `pnpm build` para el embed
-de `frontend/dist`). `plan.md` actualizado (`overlay-tester-feedback`) y
-`roadmap.json` regenerado con `roadmap_digest.py --ref origin/nightly`
-(`dc5e7ae1`). Fragmento de changelog `ISA-1127.json`.
+**rojas en base** `131471ff` (worktree temporal detached, 3/3 corridas:
+huérfana `closed=0`, fantasma `Running:true`, deadlock 2 s) y **verdes con el
+fix** bajo `-race`; los 8 tests existentes del controlador pasan. `go test
+./...` completo exit 0 (requirió `pnpm install --frozen-lockfile` + `pnpm
+build` para el embed de `frontend/dist`). `plan.md` actualizado
+(`overlay-tester-feedback`) y `roadmap.json` regenerado con
+`roadmap_digest.py --ref origin/nightly`. Fragmento de changelog
+`ISA-1127.json`.
 
-Siguiente: build Windows separada para que Isaac pruebe físicamente abrir +
-editar + guardar; sin promoción a nightly, testers, master ni release.
+La rama quedó reconciliada con `origin/nightly` `dc5e7ae1` mediante merge en
+la propia rama de issue (el PR nació CONFLICTING porque nightly había sumado
+ISA-1162/1152/1123; ninguno toca `overlay_controller.go`). Conflictos solo en
+docs derivados: handoff (orden de entradas) y `roadmap.json` (regenerado).
+Build local separada `bin/vantare-isa1127.exe` para que Isaac pruebe
+físicamente abrir + editar + guardar. Sin promoción a nightly, testers,
+master ni release.
 
 ## ISA-1101 — integración inicial autorizada a nightly (2026-09-10)
 

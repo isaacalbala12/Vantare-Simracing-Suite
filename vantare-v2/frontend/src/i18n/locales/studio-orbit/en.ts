@@ -64,7 +64,9 @@ export const studioOrbitEn: Record<string, string> = {
   "studio.inspector.section.design": "Design",
   "studio.inspector.section.appearance": "Appearance",
   "studio.inspector.section.behavior": "Behavior",
+  "studio.inspector.section.content": "Content",
   "studio.inspector.section.layout": "Layout",
+  "studio.inspector.section.actions": "Actions",
   "studio.inspector.section.design.help":
     "Pick the visual system and the design this widget is painted with.",
   "studio.inspector.section.appearance.help":
@@ -181,4 +183,13 @@ export const studioOrbitEn: Record<string, string> = {
   "studio.topbar.performanceInherit": "Inherit from app",
   "studio.topbar.performanceLevel": "Profile level",
   "studio.topbar.performanceEffective": "Effective level",
+  "studio.obs.eyebrow": "OBS",
+  "studio.obs.title": "OBS Browser Source",
+  "studio.obs.hint": "Paste this URL into a “Browser” source in OBS Studio to stream the overlay you are editing.",
+  "studio.obs.url": "Overlay URL for OBS",
+  "studio.obs.copy": "Copy URL",
+  "studio.obs.copied": "Copied",
+  "studio.obs.copyInstructions": "Copy instructions",
+  "studio.obs.copiedInstructions": "Instructions copied",
+  "studio.obs.instructions": "1. Open OBS Studio and add a “Browser” source.\n2. Paste this URL: {{url}}\n3. Width 1920, Height 1080 (or your canvas resolution).\n4. Keep Vantare running so the overlay receives live data.",
 };

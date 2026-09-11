@@ -88,6 +88,20 @@ export function useInplaceAutosave(input: UseInplaceAutosaveInput): InPlaceAutos
     }
   }, [updatePaused]);
 
+  // Un save diferido por un gesto activo se vacia al terminar el gesto: sin
+  // este flush, `coalesced` quedaria marcado sin ningun save en vuelo que lo
+  // releve.
+  useEffect(() => {
+    if (input.interactionActive || !coalescedRef.current || pausedRef.current !== null) {
+      return;
+    }
+    coalescedRef.current = false;
+    timerRef.current = window.setTimeout(() => {
+      timerRef.current = null;
+      void runSave();
+    }, 0);
+  }, [input.interactionActive, runSave]);
+
   const scheduleSave = useCallback(
     (immediate: boolean) => {
       if (pausedRef.current !== null) {

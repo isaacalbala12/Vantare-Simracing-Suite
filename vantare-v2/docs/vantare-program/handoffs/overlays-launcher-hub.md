@@ -303,6 +303,13 @@ física nueva, retirada V1, merge o release en este corte documental.
   swap de columnas por sesión corría sobre cualquier widget funcional y
   explotaba en Delta/Pedals (sin `content.columns`); ahora es solo de
   Standings y hay regresión cubriendo los 12 combos widget×sesión.
+  **Panel simplificado:** una sola variante de standings funcional
+  (`standings-functional-study` — los módulos siempre aplican), fuera la
+  pseudo-opción "Ajustes por defecto del renderer" (sin designId se aplica
+  el diseño oficial por defecto, como en producto), cabecera sin marca
+  rediseñada como banda de información, y 15 pilotos mínimo en el estudio.
+  Pendiente: opción de Studio para máximo de pilotos con ventana
+  top-3 + jugador.
   Sin merge, push, PR, promoción ni release.
 
 - **S3 cerrado, 2026-09-03:** el mismo EXE R-FIX4 desde

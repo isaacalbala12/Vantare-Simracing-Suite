@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { Events } from '@wailsio/runtime';
 import { OrbitShell } from './components/orbit/OrbitShell';
 import { ORBIT_KEYS, orbitStore } from './orbit/orbit-store';
+import { getSettingsStore } from './settings/settings-store';
 import { initialSection } from './orbit/initial-view';
 import { viewToSection } from './orbit/views';
 import { resolveTestingCenterChannel } from './testing-center/channel-access';
@@ -151,9 +152,10 @@ function HubShell() {
         setSourceStatus(event.data);
       },
     );
-    const unsubSettings = Events.On('settings', (event: { data: Record<string, unknown> }) => {
-      settingsRef.current = event.data ?? null;
-      const completed = event.data?.betaWelcomeCompleted === true;
+    const settingsStore = getSettingsStore();
+    const applySettings = (data: Record<string, unknown> | null) => {
+      settingsRef.current = data ?? null;
+      const completed = data?.betaWelcomeCompleted === true;
       setShowBetaWelcome(!completed);
       setSettingsLoaded(true);
       // Primer arranque: la bienvenida se monta sobre Inicio, nunca sobre otra
@@ -162,6 +164,11 @@ function HubShell() {
         orbitStore.set(ORBIT_KEYS.view, 'inicio');
         setSection(viewToSection('inicio'));
       }
+    };
+    // settings:get (emitido mas abajo en este mismo efecto) garantiza que el
+    // store publica el primer snapshot; el callback solo reacciona a eventos.
+    const unsubSettings = settingsStore.subscribe(() => {
+      applySettings(settingsStore.getSnapshot());
     });
     // Ajustes emite este evento al confirmar el canal (y al releerlo del
     // backend): la shell se entera sin recargar.

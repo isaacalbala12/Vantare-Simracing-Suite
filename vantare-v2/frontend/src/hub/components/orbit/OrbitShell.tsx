@@ -17,6 +17,7 @@ import { ScheduleReviewNotice } from '../../settings-orbit/ScheduleReviewNotice'
 import { useCalendarStarts } from '../../orbit/use-calendar-starts';
 import { OrbitSimStatusContext } from '../../orbit/sim-status-context';
 import { useOverlayState } from '../../orbit/use-overlay-state';
+import { useOrbitPerfEffects } from '../../orbit/use-orbit-perf-effects';
 import { useOrbitResponsiveZoom } from '../../orbit/use-orbit-responsive-zoom';
 import {
   canSeeView,
@@ -158,6 +159,11 @@ function OrbitShellBody({
   // (D-R4-3): primero pliegan las media queries, y solo lo que aún no cabe se
   // escala. Como el tema, vive y muere con la shell.
   useOrbitResponsiveZoom();
+
+  // El presupuesto de efectos que publica Go (`performance:level`) llega a la
+  // CSS como `:root[data-orbit-perf-effects]`: con "noBlur"/"flat" la shell
+  // deja de difuminar fondos (ISA-1150). Imperativo, sin re-render.
+  useOrbitPerfEffects();
 
   // El tema Orbit solo se aplica mientras la shell está montada y **no** se
   // guarda como preferencia: al apagar el flag vuelve el tema del usuario.

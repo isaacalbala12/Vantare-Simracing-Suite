@@ -1,5 +1,29 @@
 # Handoff vivo — Overlay Studio, Launcher y Hub
 
+## ISA-1140 — Cascadia Code a subset WOFF2 latino (2026-09-11)
+
+Issue
+[#1140](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1140),
+rama `vantareapp/isa-1140-fuente-subset`, worktree
+`/Users/isaacalbala/Desktop/vantare-isa1140`. Cierra la limitación que dejó
+ISA-940: aquella máquina no tenía `pyftsubset` y la fuente siguió como TTF.
+
+- `pyftsubset` (fontTools 4.65 + brotli en venv `/tmp`, sin dependencias del
+  proyecto) genera `CascadiaCode-subset.woff2` de 74 KB: Latin, Latin-1,
+  Extended-A/B, puntuación general, flechas, operadores matemáticos,
+  misceláneos técnicos, box-drawing/geométricos y Dingbats. Conserva el eje
+  variable `wght` 200–700 y las ligaduras `calt` (`=>`, `->`, `<=`, `!=`).
+- `fonts.css` apunta el `@font-face` al woff2. `CascadiaCode.ttf` queda en
+  el repo como fuente de regeneración, sin entrar al bundle: Vite solo emite
+  `dist/assets/CascadiaCode-subset-*.woff2` (74,17 kB).
+- Verificación: cmap cubre U+00C0–U+017F completo; todo carácter no-ASCII
+  usado en `src` que exista en la TTF sigue cubierto (los que no existían —
+  emoji, ⚙, ⚠, ↵ — caen al fallback como antes); 267 glifos de ligadura
+  conservados. Typecheck, lint, 3355 tests y build PASS.
+- Nota de contrato: la issue declara `roadmap:not-required` pero el diff es
+  código productivo; el validador en modo `audit` lo marcará sin bloquear.
+- Sin merge ni promoción; PR draft a `nightly`.
+
 ## ISA-1152 — editor in-place C5: rediseño toolbar/frames, pestañas y panel ocultable (2026-09-11)
 
 Quinto corte, apilado sobre la rama de ISA-1143 (`a8d8db1a`). Issue

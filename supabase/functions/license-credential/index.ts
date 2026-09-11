@@ -1,5 +1,4 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { type AuthResult, requireUserAuth } from "../_shared/auth.ts";
 import { handleCorsPreflight } from "../_shared/cors.ts";
 import { isUuid, readJsonObject } from "../_shared/request.ts";
 import { errorResponse, jsonResponse } from "../_shared/responses.ts";
@@ -10,6 +9,13 @@ import { requirePolarEnvironment } from "../_shared/polar.ts";
 export const CREDENTIAL_VERSION = 1;
 export const CREDENTIAL_ALGORITHM = "Ed25519";
 export const CREDENTIAL_ISSUER = "vantare-license";
+
+export class CredentialAuthError extends Error {
+  constructor() {
+    super("Credential authentication rejected");
+    this.name = "CredentialAuthError";
+  }
+}
 
 const KNOWN_CAPABILITIES = new Set([
   "vantare.channel.nightly",
@@ -71,12 +77,12 @@ export type StoredOperationalAssignment = {
 
 export type CredentialStore = {
   load(
-    userId: string,
     token: string,
     fingerprint: string,
     environment: BillingEnvironment,
   ): Promise<
     {
+      accountId: string;
       deviceMatches: boolean;
       grants: StoredGrant[];
       operationalAssignments?: StoredOperationalAssignment[];
@@ -85,7 +91,6 @@ export type CredentialStore = {
 };
 
 export type CredentialDeps = {
-  requireAuth?: (request: Request) => Promise<AuthResult>;
   store?: CredentialStore;
   now?: () => Date;
   environment?: BillingEnvironment;
@@ -101,12 +106,11 @@ export async function handleLicenseCredentialRequest(
   if (request.method !== "POST") {
     return errorResponse("method_not_allowed", "Only POST is supported", 405);
   }
-  const auth = await (deps.requireAuth ?? requireUserAuth)(request);
-  if (!auth.ok) return auth.response;
-  if (!isUuid(auth.userId)) {
+  const token = extractBearerToken(request);
+  if (!token) {
     return errorResponse(
-      "invalid_account",
-      "Authenticated account is invalid",
+      "unauthorized",
+      "Authorization Bearer token required",
       401,
     );
   }
@@ -134,11 +138,17 @@ export async function handleLicenseCredentialRequest(
   try {
     const environment = deps.environment ?? requirePolarEnvironment();
     loaded = await (deps.store ?? createCredentialStore()).load(
-      auth.userId,
-      auth.token,
+      token,
       fingerprint,
       environment,
     );
+    if (!isUuid(loaded.accountId)) {
+      return errorResponse(
+        "invalid_account",
+        "Authenticated account is invalid",
+        401,
+      );
+    }
     const now = (deps.now ?? (() => new Date()))();
     const normalized = normalizeGrants(loaded.grants, now, environment);
     if (!normalized.ok) {
@@ -168,7 +178,7 @@ export async function handleLicenseCredentialRequest(
     }
     const claims: LicenseClaims = {
       issuer: CREDENTIAL_ISSUER,
-      subject: auth.userId,
+      subject: loaded.accountId,
       device_fingerprint: fingerprint,
       issued_at: now.toISOString(),
       capabilities: [...normalized.grants, ...operational.grants].sort((a, b) =>
@@ -190,13 +200,23 @@ export async function handleLicenseCredentialRequest(
         503,
       );
     }
-  } catch {
+  } catch (error) {
+    if (error instanceof CredentialAuthError) {
+      return errorResponse("unauthorized", "Invalid or expired token", 401);
+    }
     return errorResponse(
       "credential_state_unavailable",
       "License state is temporarily unavailable",
       503,
     );
   }
+}
+
+function extractBearerToken(request: Request): string | null {
+  const header = request.headers.get("Authorization");
+  if (!header?.startsWith("Bearer ")) return null;
+  const token = header.slice("Bearer ".length).trim();
+  return token || null;
 }
 
 export function normalizeOperationalAssignments(
@@ -361,7 +381,7 @@ async function signWithEnvironmentKey(
 
 function createCredentialStore(): CredentialStore {
   return {
-    async load(userId, token, fingerprint, environment) {
+    async load(token, fingerprint, environment) {
       const url = Deno.env.get("SUPABASE_URL") ?? "";
       const anon = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
       if (!url || !anon) throw new Error("Supabase client is not configured");
@@ -369,30 +389,39 @@ function createCredentialStore(): CredentialStore {
         auth: { autoRefreshToken: false, persistSession: false },
         global: { headers: { Authorization: `Bearer ${token}` } },
       });
-      const { error: claimError } = await userClient.rpc(
+      const { data: accountId, error: claimError, status: claimStatus } = await userClient.rpc(
         "claim_active_device",
         {
           device_fingerprint: fingerprint,
         },
       );
-      if (claimError) throw claimError;
+      if (claimError) {
+        if (isCredentialAuthFailure(claimStatus, claimError)) {
+          throw new CredentialAuthError();
+        }
+        throw claimError;
+      }
+      if (typeof accountId !== "string") {
+        throw new Error("Account resolution returned no identifier");
+      }
       const admin = getSupabaseAdmin();
       const { data: device, error: deviceError } = await admin
-        .from("devices").select("fingerprint_hash").eq("user_id", userId)
+        .from("devices").select("fingerprint_hash").eq("user_id", accountId)
         .maybeSingle();
       if (deviceError) throw deviceError;
       const { data: grants, error: grantsError } = await admin
         .from("billing_access_grants").select(
           "capability,valid_until,provider,environment,source_type",
         )
-        .eq("user_id", userId).eq("status", "active");
+        .eq("user_id", accountId).eq("status", "active");
       if (grantsError) throw grantsError;
       const { data: operationalAssignments, error: operationalError } =
         await admin.from("operational_access_assignments").select(
           "role,expires_at,policy_version",
-        ).eq("user_id", userId).eq("status", "active");
+        ).eq("user_id", accountId).eq("status", "active");
       if (operationalError) throw operationalError;
       return {
+        accountId,
         deviceMatches: device?.fingerprint_hash === fingerprint,
         grants: (grants ?? []) as StoredGrant[],
         operationalAssignments:
@@ -400,6 +429,16 @@ function createCredentialStore(): CredentialStore {
       };
     },
   };
+}
+
+export function isCredentialAuthFailure(status: number, error: {
+  code?: string;
+  message?: string;
+}): boolean {
+  return status === 401 || status === 403 ||
+    error.code === "PGRST301" || error.code === "PGRST302" ||
+    error.message === "not_authenticated" ||
+    error.message === "invalid_identity";
 }
 
 function fromBase64URL(value: string): ArrayBuffer {

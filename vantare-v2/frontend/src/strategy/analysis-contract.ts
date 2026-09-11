@@ -53,12 +53,13 @@ export type AnalysisLapTarget = Readonly<{ number: number; start: string; end: s
 export type AnalysisFamilyCorrection = Readonly<{ base: AnalysisBase; target: AnalysisLapTarget; family: AnalysisCorrectableFamily; expected: AnalysisFamilyUse; included: boolean; reason: string }>;
 export type AnalysisPreparedFamilyCorrection = Readonly<{ baseId: string; correctionId: string; request: AnalysisFamilyCorrection; original: AnalysisFamilyUse; corrected: AnalysisFamilyUse }>;
 export type AnalysisSnapshot = Readonly<{
-  contractVersion: "analysis.sample-snapshot.v1" | "analysis.observation-snapshot.v2" | "analysis.mixed-snapshot.v3";
+  contractVersion: "analysis.sample-snapshot.v1" | "analysis.observation-snapshot.v2" | "analysis.mixed-snapshot.v3" | "analysis.mixed-snapshot.v4";
   base: AnalysisBase;
   snapshotId: string;
   corrections: readonly AnalysisPreparedCorrection[];
   familyUses?: readonly AnalysisPreparedFamilyCorrection[];
   classifications?: readonly AnalysisPreparedClassificationCorrection[];
+  canonicalCombination?: AnalysisCombination;
 }>;
 export type AnalysisSaveCommand = Readonly<{
   expectedRevision: string;
@@ -318,11 +319,46 @@ export function parseAnalysisPreparation(value: unknown): AnalysisPreparation {
   }
   return r as unknown as AnalysisPreparation;
 }
+const canonicalCombinationKeys = ["id", "simId", "trackName", "trackLayout", "carName", "carClass"] as const;
+const identityTargetField: Record<AnalysisIdentityClassificationField, keyof AnalysisCombination> = {
+  TrackName: "trackName",
+  TrackLayout: "trackLayout",
+  CarName: "carName",
+  CarClass: "carClass",
+};
+// The stored canonical target is complete and already canonical: exact field
+// set, lmu sim, reference-shaped id and Unicode-valid trimmed non-empty tuple
+// fields. Membership and digest authority stay on the Go side; this is shape
+// validation only, so non-corrected fields carry no invented limits.
+function canonicalCombinationTarget(value: unknown): AnalysisCombination {
+  const r = record(value, "snapshot.canonicalCombination");
+  for (const key of Object.keys(r)) {
+    if (!(canonicalCombinationKeys as readonly string[]).includes(key)) {
+      throw new AnalysisProtocolError("snapshot.canonicalCombination");
+    }
+  }
+  if (r.simId !== "lmu" || typeof r.id !== "string" || !canonicalCombinationIdPattern.test(r.id)) {
+    throw new AnalysisProtocolError("snapshot.canonicalCombination");
+  }
+  for (const key of ["trackName", "trackLayout", "carName", "carClass"]) {
+    const field = r[key];
+    if (typeof field !== "string" || field === "" || goTrim(field) !== field) {
+      throw new AnalysisProtocolError("snapshot.canonicalCombination");
+    }
+    unicodeValid(field, "snapshot.canonicalCombination");
+  }
+  return r as unknown as AnalysisCombination;
+}
 function snapshot(value: unknown): AnalysisSnapshot {
   const r = record(value, "snapshot");
-  if (r.contractVersion !== "analysis.sample-snapshot.v1" && r.contractVersion !== "analysis.observation-snapshot.v2" && r.contractVersion !== "analysis.mixed-snapshot.v3") {
+  if (r.contractVersion !== "analysis.sample-snapshot.v1" && r.contractVersion !== "analysis.observation-snapshot.v2" && r.contractVersion !== "analysis.mixed-snapshot.v3" && r.contractVersion !== "analysis.mixed-snapshot.v4") {
     throw new AnalysisProtocolError("snapshot.contractVersion");
   }
+  const isV4 = r.contractVersion === "analysis.mixed-snapshot.v4";
+  if (!isV4 && r.canonicalCombination !== undefined) {
+    throw new AnalysisProtocolError("snapshot.canonicalCombination");
+  }
+  const target = isV4 ? canonicalCombinationTarget(r.canonicalCombination) : undefined;
   const base = parseAnalysisBase(r.base);
   digest(r.snapshotId, "snapshot.snapshotId");
   const corrections = list(r.corrections, "snapshot.corrections");
@@ -380,11 +416,24 @@ function snapshot(value: unknown): AnalysisSnapshot {
   }
   parseAnalysisFamilyCorrections(familyRequests, base);
   const classRequests: AnalysisClassificationCorrection[] = [];
+  let identityActive = false;
   for (const item of classes) {
     const parsed = parseAnalysisPreparedClassification(item);
     classRequests.push(parsed.request);
+    if (parsed.request.canonicalCombinationId !== undefined) {
+      if (!isV4 || target === undefined || parsed.request.canonicalCombinationId !== target.id) {
+        throw new AnalysisProtocolError("classification.reference");
+      }
+      identityActive = true;
+    }
+    if (isIdentityClassificationField(parsed.request.field) && (target === undefined || parsed.corrected !== target[identityTargetField[parsed.request.field]])) {
+      throw new AnalysisProtocolError("classification.corrected");
+    }
   }
   checkClassificationSet(classRequests, base, "snapshot.classifications");
+  if (isV4 && !identityActive) {
+    throw new AnalysisProtocolError("snapshot.classifications");
+  }
   return r as unknown as AnalysisSnapshot;
 }
 export function parseAnalysisSaveCommand(value: unknown): AnalysisSaveCommand {
@@ -594,9 +643,13 @@ export function sameAnalysisFamilyCorrections(a: readonly AnalysisFamilyCorrecti
   return a.length === b.length && a.every(item => { const other = right.get(key(item)); return Boolean(other && sameAnalysisBase(item.base, other.base) && item.reason === other.reason && item.included === other.included && sameAnalysisFamilyUse(item.expected, other.expected)); });
 }
 
-export const analysisClassificationFields = ["SessionType", "WeatherConditions"] as const;
+export const analysisLegacyClassificationFields = ["SessionType", "WeatherConditions"] as const;
+export const analysisIdentityClassificationFields = ["TrackName", "TrackLayout", "CarName", "CarClass"] as const;
+export const analysisClassificationFields = [...analysisLegacyClassificationFields, ...analysisIdentityClassificationFields] as const;
+export type AnalysisLegacyClassificationField = typeof analysisLegacyClassificationFields[number];
+export type AnalysisIdentityClassificationField = typeof analysisIdentityClassificationFields[number];
 export type AnalysisClassificationField = typeof analysisClassificationFields[number];
-export type AnalysisClassificationCorrection = Readonly<{ base: AnalysisBase; field: AnalysisClassificationField; expectedOriginal: string; replacement: string; reason: string; provenance: "manual" }>;
+export type AnalysisClassificationCorrection = Readonly<{ base: AnalysisBase; field: AnalysisClassificationField; expectedOriginal: string; replacement: string; reason: string; provenance: "manual"; canonicalCombinationId?: string }>;
 export type AnalysisPreparedClassificationCorrection = Readonly<{ baseId: string; correctionId: string; request: AnalysisClassificationCorrection; original: string; corrected: string }>;
 const sessionTypes = ["practice", "qualify", "race"] as const;
 export const analysisSessionTypes = sessionTypes;
@@ -661,11 +714,7 @@ function classificationText(value: unknown, field: string, maxBytes: number, all
 }
 // The original is validated but returned RAW: Go applies no length limit to
 // originals and no trimming to the precondition; the exact comparison decides.
-// A SessionType original must already name the closed enum.
-export function parseAnalysisClassificationOriginal(field: AnalysisClassificationField, value: unknown): string {
-  if (field !== "SessionType" && field !== "WeatherConditions") {
-    throw new AnalysisProtocolError("classification.field");
-  }
+function classificationRawOriginal(value: unknown): string {
   if (typeof value !== "string") {
     throw new AnalysisProtocolError("classification.expectedOriginal");
   }
@@ -673,28 +722,60 @@ export function parseAnalysisClassificationOriginal(field: AnalysisClassificatio
   if (goTrim(value) === "") {
     throw new AnalysisProtocolError("classification.expectedOriginal");
   }
-  if (field === "SessionType") {
-    canonicalSessionType(value);
-  }
   return value;
+}
+// Legacy editor original query: only the two UI-correctable fields; a
+// SessionType original must already name the closed enum. Identity fields are
+// validated by the wire request parser, which shares the RAW original checks.
+export function parseAnalysisClassificationOriginal(field: AnalysisClassificationField, value: unknown): string {
+  if (field !== "SessionType" && field !== "WeatherConditions") {
+    throw new AnalysisProtocolError("classification.field");
+  }
+  const original = classificationRawOriginal(value);
+  if (field === "SessionType") {
+    canonicalSessionType(original);
+  }
+  return original;
+}
+const canonicalCombinationIdPattern = /^lmu:[a-f0-9]{64}$/;
+function isIdentityClassificationField(field: string): field is AnalysisIdentityClassificationField {
+  return (analysisIdentityClassificationFields as readonly string[]).includes(field);
 }
 export function parseAnalysisClassificationCorrection(value: unknown): AnalysisClassificationCorrection {
   const r = record(value, "classificationCorrection");
   parseAnalysisBase(r.base);
-  if (r.field !== "SessionType" && r.field !== "WeatherConditions") {
+  if (typeof r.field !== "string" || !(analysisClassificationFields as readonly string[]).includes(r.field)) {
     throw new AnalysisProtocolError("classification.field");
   }
-  // No length limit on originals in Go and no trimming of the precondition:
-  // the exact comparison decides. The original itself must be Go-nonempty,
-  // and a SessionType original must already name the closed enum.
-  parseAnalysisClassificationOriginal(r.field, r.expectedOriginal);
-  // The replacement is validated normalized but kept raw in the request;
-  // the prepared form derives the canonical corrected value from it.
-  classificationText(r.replacement, "classification.replacement", 1024, true);
-  if (r.field === "SessionType") {
-    canonicalSessionType(r.replacement);
+  const field = r.field as AnalysisClassificationField;
+  if (isIdentityClassificationField(field)) {
+    // Identity requests must name their resolved canonical target; legacy
+    // fields must not present the reference at all, even as null or blank.
+    // Without the key the field is not a valid request field at all.
+    if (r.canonicalCombinationId === undefined) {
+      throw new AnalysisProtocolError("classification.field");
+    }
+    if (typeof r.canonicalCombinationId !== "string" || !canonicalCombinationIdPattern.test(r.canonicalCombinationId)) {
+      throw new AnalysisProtocolError("classification.canonicalCombinationId");
+    }
+    classificationRawOriginal(r.expectedOriginal);
+    classificationText(r.replacement, "classification.replacement", 1024, false);
   } else {
-    canonicalWeatherReplacement(r.replacement);
+    if (r.canonicalCombinationId !== undefined) {
+      throw new AnalysisProtocolError("classification.canonicalCombinationId");
+    }
+    // No length limit on originals in Go and no trimming of the precondition:
+    // the exact comparison decides. The original itself must be Go-nonempty,
+    // and a SessionType original must already name the closed enum.
+    parseAnalysisClassificationOriginal(field, r.expectedOriginal);
+    // The replacement is validated normalized but kept raw in the request;
+    // the prepared form derives the canonical corrected value from it.
+    classificationText(r.replacement, "classification.replacement", 1024, true);
+    if (field === "SessionType") {
+      canonicalSessionType(r.replacement);
+    } else {
+      canonicalWeatherReplacement(r.replacement);
+    }
   }
   classificationText(r.reason, "classification.reason", 1024, false);
   if (r.provenance !== "manual") {
@@ -717,7 +798,9 @@ export function parseAnalysisPreparedClassification(value: unknown): AnalysisPre
   if (request.expectedOriginal !== r.original) {
     throw new AnalysisProtocolError("classification.original");
   }
-  const corrected = request.field === "SessionType" ? canonicalSessionType(request.replacement) : canonicalWeatherReplacement(request.replacement);
+  const corrected = isIdentityClassificationField(request.field)
+    ? goTrim(request.replacement)
+    : request.field === "SessionType" ? canonicalSessionType(request.replacement) : canonicalWeatherReplacement(request.replacement);
   if (r.corrected !== corrected) {
     throw new AnalysisProtocolError("classification.corrected");
   }
@@ -725,6 +808,7 @@ export function parseAnalysisPreparedClassification(value: unknown): AnalysisPre
 }
 function checkClassificationSet(requests: AnalysisClassificationCorrection[], base: AnalysisBase, field: string): void {
   const seen = new Set<string>();
+  let reference: string | undefined;
   for (const request of requests) {
     if (!sameAnalysisBase(request.base, base)) {
       throw new AnalysisProtocolError(`${field}.base`);
@@ -733,6 +817,12 @@ function checkClassificationSet(requests: AnalysisClassificationCorrection[], ba
       throw new AnalysisProtocolError(`${field}.duplicate`);
     }
     seen.add(request.field);
+    if (request.canonicalCombinationId !== undefined) {
+      if (reference !== undefined && request.canonicalCombinationId !== reference) {
+        throw new AnalysisProtocolError(`${field}.reference`);
+      }
+      reference = request.canonicalCombinationId;
+    }
   }
 }
 export function parseAnalysisClassificationCorrections(value: unknown, base: AnalysisBase): readonly AnalysisClassificationCorrection[] {
@@ -756,7 +846,7 @@ export function sameAnalysisClassificationCorrections(a: readonly AnalysisClassi
   const right = new Map(b.map(item => [item.field, item]));
   return a.every(item => {
     const other = right.get(item.field);
-    return Boolean(other && sameAnalysisBase(item.base, other.base) && item.expectedOriginal === other.expectedOriginal && item.replacement === other.replacement && item.reason === other.reason && item.provenance === other.provenance);
+    return Boolean(other && sameAnalysisBase(item.base, other.base) && item.expectedOriginal === other.expectedOriginal && item.replacement === other.replacement && item.reason === other.reason && item.provenance === other.provenance && item.canonicalCombinationId === other.canonicalCombinationId);
   });
 }
 

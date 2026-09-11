@@ -1,4 +1,4 @@
-import { analysisCanonicalSessionType, analysisClassificationFields, analysisSessionTypes, sameAnalysisClassificationCorrections, type AnalysisClassificationCorrection, type AnalysisClassificationField, type AnalysisStoreResult } from "../../strategy/analysis-contract";
+import { analysisCanonicalSessionType, analysisLegacyClassificationFields, analysisSessionTypes, sameAnalysisClassificationCorrections, type AnalysisClassificationCorrection, type AnalysisClassificationField, type AnalysisStoreResult } from "../../strategy/analysis-contract";
 import { Button } from "../../ui/orbit";
 import type { RecordedSession } from "./strategy-recorded-session";
 import { recordedClassificationOriginal } from "./strategy-recorded-corrections";
@@ -28,7 +28,7 @@ export function RecordedClassificationList({ session, current, proposals, select
 }) {
   return <>
     <p className="strategy-recorded-data__muted">{t("strategy.classification.chooseField")}</p>
-    <div className="strategy-recorded-data__table"><table><thead><tr><th>{t("strategy.classification.tab")}</th><th>{t("strategy.data.original")}</th><th>{t("strategy.laps.saved")}</th><th>{t("strategy.laps.proposal")}</th></tr></thead><tbody>{analysisClassificationFields.map(field => {
+    <div className="strategy-recorded-data__table"><table><thead><tr><th>{t("strategy.classification.tab")}</th><th>{t("strategy.data.original")}</th><th>{t("strategy.laps.saved")}</th><th>{t("strategy.laps.proposal")}</th></tr></thead><tbody>{analysisLegacyClassificationFields.map(field => {
       let original: string | undefined;
       try {
         original = recordedClassificationOriginal(session, current, field);

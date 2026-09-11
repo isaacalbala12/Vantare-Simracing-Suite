@@ -1081,3 +1081,87 @@ Gofmt, focales comandos/identidad/error público, revisión Devin, global Go
 Fixtures no prueban lectura DuckDB física, login, Wails ni adopción. No montar
 la instancia en cmd/vantare en este corte; J7 posterior comparte la misma
 instancia con Strategy. No ejecutar J6 antes de aceptar J5.
+
+## Continuación cerrada por root — J7
+
+Después de J6, composición de una única instancia nativa compartida.
+Un path: cmd/vantare/main.go. Sin helpers/factories nuevos ni cambios a
+strategyTelemetrySources, catálogo, servicio, reglas de licencia o frontend.
+
+Mover únicamente la apertura del repositorio Strategy y la llamada existente
+a strategyTelemetrySources a antes de construir TelemetryAnalysisService,
+después de que licenseSvc esté disponible. Conservar las mismas guardas:
+si strategyRootErr o Open del repositorio falla, no abrir fuentes y mantener
+bridge indisponible; no introducir lectura de authorized-sessions.json
+en esa ruta de error. Conservar logs y semántica cold-start existentes.
+Variables locales con tipos existentes Repository[json.RawMessage],
+*SessionCatalog y *coldstart.Service bastan; imports internos necesarios
+no son dependencia externa nueva. No nuevos singletons.
+
+Pasar el mismo puntero SessionCatalog a TelemetryAnalysisConfig.SessionCatalog
+y app.NewStrategyRevisionCatalog. Construir Analysis y su frontera de licencia
+antes del servicio Strategy que consume revisiones. Instancia creada una sola
+vez; sin catálogo nativo si no pudo abrirse repo, J6 sigue disponible para
+operaciones que no requieren resolver identidad. No reconstruir fuentes
+para cada comando ni recuperar un catálogo desde UI.
+
+Verificar por diff el puntero compartido, orden y rutas de error. No crear
+tests que sólo busquen texto en main ni extraer una fábrica para poder probar
+un cableado de una línea: se ejercitan tests existentes de configuración y
+cold-start (TestResolveTelemetryAnalysisBackendConfig* y
+TestStrategyTelemetryStartup*), junto a J6 para comportamiento del servicio.
+Esta comprobación de composición/compilación NO certifica arranque Wails.
+Gofmt, focales de cmd/vantare, revisión Devin, global Go y vet de alcance.
+Logs nuevos isa1104-t12j7-* e informe local completo, sin sobrescribir.
+No ejecutar la aplicación, LMU o build de escritorio; nada de fuentes
+reales/secretos/perfiles ni promoción. Frontend v4 sigue siendo corte posterior.
+
+## Continuación cerrada por root — J8a
+
+Tras J7, contrato TypeScript v4 con fixture contrastada contra Go.
+Cinco paths máximos declarados:
+- frontend/src/strategy/analysis-contract.ts
+- frontend/src/strategy/analysis-contract-identity.test.ts (nuevo)
+- frontend/src/strategy/testdata/analysis-identity-snapshot-v4.json (nuevo)
+- internal/telemetryanalysis/correction_identity_wire_test.go (nuevo)
+- frontend/src/hub/strategy-orbit/StrategyRecordedClassification.tsx
+
+Separar listas legacy (SessionType/WeatherConditions) e identidad (cuatro
+campos); unión completa de campos wire. El listado de edición actual usa
+explícitamente la lista legacy hasta que llegue su selector de catálogo,
+para no exponer por accidente cuatro inputs de texto sin referencia.
+No rediseño visual en este corte.
+
+Clasificación: canonicalCombinationId requerido para identidad, prohibido
+para legacy (incluido null/cadena vacía si está presente), referencia lmu:64hex
+y común al conjunto. Reutilizar validación Unicode y goTrim existentes:
+original RAW no vacío y sin límite de longitud inventado; reemplazo de
+identidad máximo1024bytesUTF8 bruto, goTrim no vacío, sin casefold ni límites
+del Weather. Prepared.original == RAW esperado y corrected == goTrim del
+reemplazo. sameAnalysisClassificationCorrections compara también referencia.
+Sin duplicados ni cambio a cuota conjunta256/grupos omitidos vs explícitos.
+
+Snapshot v4 requiere actividad de identidad y canonicalCombination completo
+{id,simId,trackName,trackLayout,carName,carClass}, simLMU, IDcanónico con forma
+correcta y campos Unicode válidos, ya recortados/no vacíos. No límites
+arbitrarios a campos no corregidos. Cada referencia coincide con target.id
+y cada identidad corregida coincide con su campo del target. Legacy v1-v3
+rechaza presencia de target incluso null; v4 sin identidad/target se rechaza.
+No calcular hashes canónicos en JS ni llamar autorización a validación de
+forma: pertenencia/digests completos/fuente continúan siendo autoridad Go.
+
+Fixture JSON de snapshot v4 construida mediante J2 y comprobada en Go con
+los helpers de contrato existentes. El test Go compara la fixture comprometida
+con la salida real del constructor; no inventar IDs ni llamarla banco real.
+Sin generador/pipeline productivo, SQL/lector en React, nuevas dependencias o
+ediciones en otros tests. Puede mostrar JSON esperado al generar la fixture;
+un fallo por archivo inicialmente ausente no es RED de producto.
+Test TS positivo con esa fixture antes del cambio (rechazo v4 actual) como
+RED conductual; después cubrir forma/target/ref/base/prepared/cuota/Unicode
+y compatibilidad legacy. Si se usa wrapper de revision de prueba, distinguir
+snapshot contrastado de wrapper, que no prueba autoridad ni custodia nativa.
+
+Gates: fixture Go, focales de contrato y UI legacy, typecheck/lint/i18n,
+suite frontend y build, global Go/vet por test Go añadido. Mantener logs
+literales nuevos isa1104-t12j8a-*, nunca sobrescribir. No GUI/app/LMU.
+Cliente/correlación v4 J8b y selector atómico de identidad serán posteriores.

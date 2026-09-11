@@ -1,11 +1,38 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — T12j5 aceptado; J6 siguiente por Devin
+## Estado vigente — T12j6 aceptado; J7 preparado
+
+J6 aceptado localmente y guardado en `5608902d`: tres paths, 352
+inserciones/5 borrados. `SaveCorrections` entrega el method value del catálogo
+al store J3, sin resolver antes del lease; configuración nativa opcional y
+errores públicos sanitizados. Tres tests nuevos cubren Save/Project v4,
+historial y replay sin catálogo actual, reautorización de fuente, restore,
+catálogo nil/desconocido/I/O, guardas sin escrituras y grupos sin identidad.
+RED conductual válido previo: un test FAIL 0.051s/EXIT1 por resolvedor ausente;
+después focal identidad 3/3 PASS, focal comandos 15 PASS, global 126 paquetes
+ok/cero FAIL/EXIT0, vet y gofmt EXIT0. El antiguo probe incoherente se conserva
+como evidencia rechazada, nunca como RED. Informe:
+`frontend/.tmp/isa1104-t12j6-devin-report.md`.
+
+Siguiente corte ejecutable: J7, un único path `cmd/vantare/main.go`, para
+compartir exactamente la misma instancia de SessionCatalog entre Analysis y
+Strategy conservando las guardas de apertura y cold-start. J8a permanece
+cerrado en plan y no debe empezar antes de aceptar J7.
+
+## Historial de coordinación — transición a Devin
 
 Isaac confirma que planes y documentación siguen a cargo del orquestador.
 Por instrucción posterior de Isaac, Devin MCP con SWE-2 Max sustituye a
 OpenCode. Modelo confirmado por el conector como swe-2-max; sesión local
-orchid-volleyball. Devin ejecuta código, tests y revisión técnica; el
+fierce-light (SWE-2 Max confirmado). Al retomar, sapphire-hippodraco ya no
+era reconocida y el inventario del conector estaba vacío. Se conserva su
+test nuevo de identidad (tres tests principales), aún sin gates registrados;
+fierce-light recibe continuación focal, sin reiniciar el diseño.
+La sesión anterior orchid-volleyball se interrumpió
+con resource_exhausted (también al reintentar); tras reinicio del conector
+ya no figuraba en su inventario. Nueva sesión SWE-2 Max confirmada, J6
+reasignado con sus cambios conservados y evidencia rechazada explícita.
+Devin ejecuta código, tests y revisión técnica; el
 orquestador mantiene dirección, planes, documentación y aceptación basada
 en evidencia. Un ejecutor por worktree, sin subdelegación ni cambios de
 alcance por su cuenta. No se asigna más trabajo a OpenCode.
@@ -31,8 +58,20 @@ J5 terminado y guardado en c9f85a9f, dos paths +267/-1. Siete tests nuevos
 PASS (el encabezado del informe dice seis por error de conteo; root contó
 siete en log), catálogo0.048s y clasificación4.598s EXIT0. Global126ok/0FAIL,
 vet/gofmt EXIT0. Primer focal falló por variable sin usar en test; conservado,
-corregido sin cambiar contrato. Root cerró J6 de tres paths para comandos
-nativos y errores públicos; siguiente asignación. Sin montaje Wails aún.
+corregido sin cambiar contrato. J6 de tres paths para comandos nativos y
+errores públicos está asignado a Devin desde HEAD060c53e8; gates pendientes.
+Root cerró J7 de un path para compartir la instancia en composición nativa,
+sin nuevas fábricas y conservando guardas de apertura. Sin montar aún.
+Root cerró también J8a (cinco paths) para contrato TypeScript v4 y fixture
+contrastada con el constructor Go, manteniendo explícitamente el editor
+legacy hasta disponer del selector de catálogo. Plan reflejado en #1104;
+todavía sin asignar. Cliente y selector atómico quedan después.
+En J6 root intervino dos veces: probe creado fuera del path declarado
+(movido al test autorizado antes de ejecutarlo) y probe incoherente
+(ID de Imola con Replacement Monza, sin catálogo configurado). Su log
+isa1104-t12j6-red.log FAIL0.060s EXIT1 NO es RED válido ni defecto previo.
+Se conserva; Devin debe construir caso coherente o documentar capacidad
+nueva sin RED. Implementación J6 y gates siguen pendientes.
 
 G3 ya conecta la biblioteca con el mismo editor Datos/Revisiones, también
 sin combinación ni repositorio: apertura autorizada y referencia exacta,

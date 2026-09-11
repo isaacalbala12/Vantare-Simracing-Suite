@@ -286,10 +286,12 @@ cuando:
 4. la checklist operativa de `release-checklists.md` de esa etapa está al
    100 % o con excepciones escritas y aceptadas por Isaac.
 
-Soporte de tracking: cada versión de fase tiene su **milestone de GitHub**
-(`v0.2.0.0`, `v0.3.0.0`, …, `v1.0.0.0`). Las issues se asignan al milestone
-cuando se comprometen para ese corte; el milestone cerrado al 100 % marca el
-corte como candidato a promoción, y la gate review decide.
+Soporte de tracking: el repo ya usa **milestones de GitHub por área**
+(`Telemetria Core · testers`, `Overlays Studio · master`, …). Las issues se
+asignan al milestone de canal de su área; un milestone cerrado al 100 % marca
+esa área como candidata a promoción de canal. La gate review de una transición
+evalúa el conjunto: qué milestones de área deben estar cerrados para esa
+versión más los gates transversales (identidad, billing, docs, rendimiento).
 
 ### Transiciones y criterios medibles
 

@@ -377,6 +377,21 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 
 ## Hitos
 
+### Cuenta e inicio de sesión renovados
+
+- id: account-identity
+- tipo: plan
+- titulo.en: Renewed account and sign-in
+- titulo.pt: Conta e início de sessão renovados
+- titulo.it: Account e accesso rinnovati
+- cuerpo: La cuenta pasa a una identidad nueva: inicio de sesión renovado, las sesiones anteriores conviven durante la transición y el sistema anterior se retira al final. Es prerequisito de la beta pública.
+- cuerpo.en: The account moves to a new identity: a renewed sign-in, previous sessions coexisting during the transition and retirement of the old system at the end. It is a prerequisite for the public beta.
+- cuerpo.pt: A conta passa para uma nova identidade: início de sessão renovado, as sessões anteriores coexistem durante a transição e o sistema anterior é retirado no final. É pré-requisito da beta pública.
+- cuerpo.it: L'account passa a una nuova identità: accesso rinnovato, le sessioni precedenti coesistono durante la transizione e il vecchio sistema viene ritirato alla fine. È prerequisito della beta pubblica.
+- etiqueta: Plan
+- etiqueta.pt: Plano
+- etiqueta.it: Piano
+
 ### Producto usable de extremo a extremo en LMU
 
 - id: insiders-usable-product
@@ -392,17 +407,17 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - etiqueta.pt: Plano
 - etiqueta.it: Piano
 
-### Builds compartibles del canal Testers
+### Overlay Studio V3 cerrado
 
-- id: insiders-shared-builds
+- id: overlay-studio-v3-complete
 - tipo: plan
-- titulo.en: Shareable Testers channel builds
-- titulo.pt: Builds partilháveis do canal Testers
-- titulo.it: Build condivisibili del canale Testers
-- cuerpo: El canal Testers distribuye builds verificadas con instrucciones de instalación, lista de problemas conocidos y un canal de feedback definido. OBS local funciona con URL copiable e instrucciones compactas.
-- cuerpo.en: The Testers channel ships verified builds with installation instructions, a known-issues list and a defined feedback channel. Local OBS works with a copyable URL and compact instructions.
-- cuerpo.pt: O canal Testers distribui builds verificadas com instruções de instalação, lista de problemas conhecidos e um canal de feedback definido. O OBS local funciona com URL copiável e instruções compactas.
-- cuerpo.it: Il canale Testers distribuisce build verificate con istruzioni di installazione, elenco dei problemi noti e un canale di feedback definito. OBS locale funziona con URL copiabile e istruzioni compatte.
+- titulo.en: Overlay Studio V3 closed
+- titulo.pt: Overlay Studio V3 fechado
+- titulo.it: Overlay Studio V3 chiuso
+- cuerpo: El editor de overlays queda completo para la 1.0: layout, contenido, comportamiento y apariencia en un solo lugar, más el editor in-place sobre el overlay de escritorio.
+- cuerpo.en: The overlay editor is complete for 1.0: layout, content, behaviour and appearance in one place, plus the in-place editor on the desktop overlay.
+- cuerpo.pt: O editor de overlays fica completo para a 1.0: layout, conteúdo, comportamento e aparência num só lugar, mais o editor in-place sobre o overlay de desktop.
+- cuerpo.it: L'editor degli overlay è completo per la 1.0: layout, contenuto, comportamento e aspetto in un unico posto, più l'editor in-place sull'overlay desktop.
 - etiqueta: Plan
 - etiqueta.pt: Plano
 - etiqueta.it: Piano
@@ -418,6 +433,21 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - cuerpo.en: Relative, Standings, Pedals and Delta become stable for real Le Mans Ultimate profiles: Pedals beta v1, reliable live best-lap delta and basic hotkeys or explicitly deferred ones.
 - cuerpo.pt: Relative, Standings, Pedals e Delta ficam estáveis para perfis reais de Le Mans Ultimate: Pedals beta v1, delta de melhor volta ao vivo fiável e hotkeys básicas ou explicitamente adiadas.
 - cuerpo.it: Relative, Standings, Pedals e Delta diventano stabili per i profili reali di Le Mans Ultimate: Pedals beta v1, delta sul miglior giro live affidabile e hotkey di base o esplicitamente rimandate.
+- etiqueta: Plan
+- etiqueta.pt: Plano
+- etiqueta.it: Piano
+
+### Builds compartibles del canal Testers
+
+- id: insiders-shared-builds
+- tipo: plan
+- titulo.en: Shareable Testers channel builds
+- titulo.pt: Builds partilháveis do canal Testers
+- titulo.it: Build condivisibili del canale Testers
+- cuerpo: El canal Testers distribuye builds verificadas con instrucciones de instalación, lista de problemas conocidos y un canal de feedback definido. OBS local funciona con URL copiable e instrucciones compactas.
+- cuerpo.en: The Testers channel ships verified builds with installation instructions, a known-issues list and a defined feedback channel. Local OBS works with a copyable URL and compact instructions.
+- cuerpo.pt: O canal Testers distribui builds verificadas com instruções de instalação, lista de problemas conhecidos e um canal de feedback definido. O OBS local funciona com URL copiável e instruções compactas.
+- cuerpo.it: Il canale Testers distribuisce build verificate con istruzioni di installazione, elenco dei problemi noti e un canale di feedback definito. OBS locale funziona con URL copiabile e istruzioni compatte.
 - etiqueta: Plan
 - etiqueta.pt: Plano
 - etiqueta.it: Piano
@@ -467,6 +497,51 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - etiqueta.pt: Plano
 - etiqueta.it: Piano
 
+### Análisis de telemetría completo
+
+- id: telemetry-analysis-complete
+- tipo: plan
+- titulo.en: Complete telemetry analysis
+- titulo.pt: Análise de telemetria completa
+- titulo.it: Analisi di telemetria completa
+- cuerpo: La herramienta post-sesión responde «¿cómo puedo ser más rápido?» con comparaciones sincronizadas, métricas y recomendaciones explicables, leyendo las sesiones grabadas en local.
+- cuerpo.en: The post-session tool answers "how can I be faster?" with synchronized comparisons, metrics and explainable recommendations, reading locally recorded sessions.
+- cuerpo.pt: A ferramenta pós-sessão responde «como posso ser mais rápido?» com comparações sincronizadas, métricas e recomendações explicáveis, lendo as sessões gravadas localmente.
+- cuerpo.it: Lo strumento post-sessione risponde «come posso essere più veloce?» con confronti sincronizzati, metriche e raccomandazioni spiegabili, leggendo le sessioni registrate in locale.
+- etiqueta: Plan
+- etiqueta.pt: Plano
+- etiqueta.it: Piano
+
+### Strategy Planner completo
+
+- id: strategy-planner-v1
+- tipo: plan
+- titulo.en: Complete Strategy Planner
+- titulo.pt: Strategy Planner completo
+- titulo.it: Strategy Planner completo
+- cuerpo: El planificador crea, compara, guarda, ejecuta y adapta estrategias para minimizar el tiempo total esperado y mostrar riesgos y alternativas, alimentado por datos reales de sesión.
+- cuerpo.en: The planner creates, compares, saves, executes and adapts strategies to minimise expected total time and show risks and alternatives, fed by real session data.
+- cuerpo.pt: O planeador cria, compara, grava, executa e adapta estratégias para minimizar o tempo total esperado e mostrar riscos e alternativas, alimentado por dados reais de sessão.
+- cuerpo.it: Il pianificatore crea, confronta, salva, esegue e adatta le strategie per minimizzare il tempo totale atteso e mostrare rischi e alternative, alimentato da dati di sessione reali.
+- etiqueta: Plan
+- etiqueta.pt: Plano
+- etiqueta.it: Piano
+
+### Engineer Beta completo
+
+- id: engineer-beta
+- tipo: plan
+- titulo.en: Complete Engineer Beta
+- titulo.pt: Engineer Beta completo
+- titulo.it: Engineer Beta completo
+- cuerpo: Ingeniero y Spotter listos para la 1.0: seguridad y tráfico en directo, monitores de carrera, audio offline, wake word, voz integrada y prueba de resistencia real en Le Mans Ultimate.
+- cuerpo.en: Engineer and Spotter ready for 1.0: live safety and traffic, race monitors, offline audio, wake word, integrated voice and a real endurance test in Le Mans Ultimate.
+- cuerpo.pt: Engineer e Spotter prontos para a 1.0: segurança e tráfego em direto, monitores de corrida, áudio offline, wake word, voz integrada e prova de resistência real no Le Mans Ultimate.
+- cuerpo.it: Engineer e Spotter pronti per la 1.0: sicurezza e traffico in diretta, monitor di gara, audio offline, wake word, voce integrata e prova di resistenza reale su Le Mans Ultimate.
+- etiqueta: Plan
+- etiqueta.pt: Plano
+- etiqueta.it: Piano
+
 ### Iteraciones de la beta pública
 
 - id: beta-version-iterations
@@ -508,6 +583,21 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - cuerpo.en: Vantare ships as a stable LMU-first release: a complete suite with stable payment and access, user documentation, organized support and enough quality to hold a public reputation.
 - cuerpo.pt: O Vantare sai como versão estável LMU-first: suite completa com pagamento e acesso estáveis, documentação de utilizador, suporte organizado e qualidade suficiente para sustentar a reputação pública.
 - cuerpo.it: Vantare esce come versione stabile LMU-first: suite completa con pagamento e accesso stabili, documentazione utente, supporto organizzato e qualità sufficiente a sostenere la reputazione pubblica.
+- etiqueta: Plan
+- etiqueta.pt: Plano
+- etiqueta.it: Piano
+
+### Multisimulador
+
+- id: multisim-support
+- tipo: plan
+- titulo.en: Multi-simulator
+- titulo.pt: Multisimulador
+- titulo.it: Multisimulatore
+- cuerpo: Después de la 1.0, Vantare se abre a más simuladores en el orden decidido: iRacing, Assetto Corsa 2014, Assetto Corsa EVO, Assetto Corsa Competizione y Automobilista 2.
+- cuerpo.en: After 1.0, Vantare opens to more simulators in the chosen order: iRacing, Assetto Corsa 2014, Assetto Corsa EVO, Assetto Corsa Competizione and Automobilista 2.
+- cuerpo.pt: Depois da 1.0, o Vantare abre-se a mais simuladores na ordem decidida: iRacing, Assetto Corsa 2014, Assetto Corsa EVO, Assetto Corsa Competizione e Automobilista 2.
+- cuerpo.it: Dopo la 1.0, Vantare si apre ad altri simulatori nell'ordine deciso: iRacing, Assetto Corsa 2014, Assetto Corsa EVO, Assetto Corsa Competizione e Automobilista 2.
 - etiqueta: Plan
 - etiqueta.pt: Plano
 - etiqueta.it: Piano

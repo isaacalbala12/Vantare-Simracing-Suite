@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-11T16:33:42Z",
+  "generatedAt": "2026-09-11T17:01:29Z",
   "digest": {
-    "lastCommit": "dc5e7ae118b98e1143010a894672cda8e83a3766"
+    "lastCommit": "dc5d2622b26fbb3324b62f6224be5dc37f071d93"
   },
   "phases": [
     {
@@ -552,6 +552,28 @@
   ],
   "milestones": [
     {
+      "id": "account-identity",
+      "type": "plan",
+      "title": {
+        "es": "Cuenta e inicio de sesión renovados",
+        "en": "Renewed account and sign-in",
+        "pt": "Conta e início de sessão renovados",
+        "it": "Account e accesso rinnovati"
+      },
+      "body": {
+        "es": "La cuenta pasa a una identidad nueva: inicio de sesión renovado, las sesiones anteriores conviven durante la transición y el sistema anterior se retira al final. Es prerequisito de la beta pública.",
+        "en": "The account moves to a new identity: a renewed sign-in, previous sessions coexisting during the transition and retirement of the old system at the end. It is a prerequisite for the public beta.",
+        "pt": "A conta passa para uma nova identidade: início de sessão renovado, as sessões anteriores coexistem durante a transição e o sistema anterior é retirado no final. É pré-requisito da beta pública.",
+        "it": "L'account passa a una nuova identità: accesso rinnovato, le sessioni precedenti coesistono durante la transizione e il vecchio sistema viene ritirato alla fine. È prerequisito della beta pubblica."
+      },
+      "label": {
+        "es": "Plan",
+        "en": "Plan",
+        "pt": "Plano",
+        "it": "Piano"
+      }
+    },
+    {
       "id": "insiders-usable-product",
       "type": "plan",
       "title": {
@@ -574,19 +596,19 @@
       }
     },
     {
-      "id": "insiders-shared-builds",
+      "id": "overlay-studio-v3-complete",
       "type": "plan",
       "title": {
-        "es": "Builds compartibles del canal Testers",
-        "en": "Shareable Testers channel builds",
-        "pt": "Builds partilháveis do canal Testers",
-        "it": "Build condivisibili del canale Testers"
+        "es": "Overlay Studio V3 cerrado",
+        "en": "Overlay Studio V3 closed",
+        "pt": "Overlay Studio V3 fechado",
+        "it": "Overlay Studio V3 chiuso"
       },
       "body": {
-        "es": "El canal Testers distribuye builds verificadas con instrucciones de instalación, lista de problemas conocidos y un canal de feedback definido. OBS local funciona con URL copiable e instrucciones compactas.",
-        "en": "The Testers channel ships verified builds with installation instructions, a known-issues list and a defined feedback channel. Local OBS works with a copyable URL and compact instructions.",
-        "pt": "O canal Testers distribui builds verificadas com instruções de instalação, lista de problemas conhecidos e um canal de feedback definido. O OBS local funciona com URL copiável e instruções compactas.",
-        "it": "Il canale Testers distribuisce build verificate con istruzioni di installazione, elenco dei problemi noti e un canale di feedback definito. OBS locale funziona con URL copiabile e istruzioni compatte."
+        "es": "El editor de overlays queda completo para la 1.0: layout, contenido, comportamiento y apariencia en un solo lugar, más el editor in-place sobre el overlay de escritorio.",
+        "en": "The overlay editor is complete for 1.0: layout, content, behaviour and appearance in one place, plus the in-place editor on the desktop overlay.",
+        "pt": "O editor de overlays fica completo para a 1.0: layout, conteúdo, comportamento e aparência num só lugar, mais o editor in-place sobre o overlay de desktop.",
+        "it": "L'editor degli overlay è completo per la 1.0: layout, contenuto, comportamento e aspetto in un unico posto, più l'editor in-place sull'overlay desktop."
       },
       "label": {
         "es": "Plan",
@@ -609,6 +631,28 @@
         "en": "Relative, Standings, Pedals and Delta become stable for real Le Mans Ultimate profiles: Pedals beta v1, reliable live best-lap delta and basic hotkeys or explicitly deferred ones.",
         "pt": "Relative, Standings, Pedals e Delta ficam estáveis para perfis reais de Le Mans Ultimate: Pedals beta v1, delta de melhor volta ao vivo fiável e hotkeys básicas ou explicitamente adiadas.",
         "it": "Relative, Standings, Pedals e Delta diventano stabili per i profili reali di Le Mans Ultimate: Pedals beta v1, delta sul miglior giro live affidabile e hotkey di base o esplicitamente rimandate."
+      },
+      "label": {
+        "es": "Plan",
+        "en": "Plan",
+        "pt": "Plano",
+        "it": "Piano"
+      }
+    },
+    {
+      "id": "insiders-shared-builds",
+      "type": "plan",
+      "title": {
+        "es": "Builds compartibles del canal Testers",
+        "en": "Shareable Testers channel builds",
+        "pt": "Builds partilháveis do canal Testers",
+        "it": "Build condivisibili del canale Testers"
+      },
+      "body": {
+        "es": "El canal Testers distribuye builds verificadas con instrucciones de instalación, lista de problemas conocidos y un canal de feedback definido. OBS local funciona con URL copiable e instrucciones compactas.",
+        "en": "The Testers channel ships verified builds with installation instructions, a known-issues list and a defined feedback channel. Local OBS works with a copyable URL and compact instructions.",
+        "pt": "O canal Testers distribui builds verificadas com instruções de instalação, lista de problemas conhecidos e um canal de feedback definido. O OBS local funciona com URL copiável e instruções compactas.",
+        "it": "Il canale Testers distribuisce build verificate con istruzioni di installazione, elenco dei problemi noti e un canale di feedback definito. OBS locale funziona con URL copiabile e istruzioni compatte."
       },
       "label": {
         "es": "Plan",
@@ -684,6 +728,72 @@
       }
     },
     {
+      "id": "telemetry-analysis-complete",
+      "type": "plan",
+      "title": {
+        "es": "Análisis de telemetría completo",
+        "en": "Complete telemetry analysis",
+        "pt": "Análise de telemetria completa",
+        "it": "Analisi di telemetria completa"
+      },
+      "body": {
+        "es": "La herramienta post-sesión responde «¿cómo puedo ser más rápido?» con comparaciones sincronizadas, métricas y recomendaciones explicables, leyendo las sesiones grabadas en local.",
+        "en": "The post-session tool answers \"how can I be faster?\" with synchronized comparisons, metrics and explainable recommendations, reading locally recorded sessions.",
+        "pt": "A ferramenta pós-sessão responde «como posso ser mais rápido?» com comparações sincronizadas, métricas e recomendações explicáveis, lendo as sessões gravadas localmente.",
+        "it": "Lo strumento post-sessione risponde «come posso essere più veloce?» con confronti sincronizzati, metriche e raccomandazioni spiegabili, leggendo le sessioni registrate in locale."
+      },
+      "label": {
+        "es": "Plan",
+        "en": "Plan",
+        "pt": "Plano",
+        "it": "Piano"
+      }
+    },
+    {
+      "id": "strategy-planner-v1",
+      "type": "plan",
+      "title": {
+        "es": "Strategy Planner completo",
+        "en": "Complete Strategy Planner",
+        "pt": "Strategy Planner completo",
+        "it": "Strategy Planner completo"
+      },
+      "body": {
+        "es": "El planificador crea, compara, guarda, ejecuta y adapta estrategias para minimizar el tiempo total esperado y mostrar riesgos y alternativas, alimentado por datos reales de sesión.",
+        "en": "The planner creates, compares, saves, executes and adapts strategies to minimise expected total time and show risks and alternatives, fed by real session data.",
+        "pt": "O planeador cria, compara, grava, executa e adapta estratégias para minimizar o tempo total esperado e mostrar riscos e alternativas, alimentado por dados reais de sessão.",
+        "it": "Il pianificatore crea, confronta, salva, esegue e adatta le strategie per minimizzare il tempo totale atteso e mostrare rischi e alternative, alimentato da dati di sessione reali."
+      },
+      "label": {
+        "es": "Plan",
+        "en": "Plan",
+        "pt": "Plano",
+        "it": "Piano"
+      }
+    },
+    {
+      "id": "engineer-beta",
+      "type": "plan",
+      "title": {
+        "es": "Engineer Beta completo",
+        "en": "Complete Engineer Beta",
+        "pt": "Engineer Beta completo",
+        "it": "Engineer Beta completo"
+      },
+      "body": {
+        "es": "Ingeniero y Spotter listos para la 1.0: seguridad y tráfico en directo, monitores de carrera, audio offline, wake word, voz integrada y prueba de resistencia real en Le Mans Ultimate.",
+        "en": "Engineer and Spotter ready for 1.0: live safety and traffic, race monitors, offline audio, wake word, integrated voice and a real endurance test in Le Mans Ultimate.",
+        "pt": "Engineer e Spotter prontos para a 1.0: segurança e tráfego em direto, monitores de corrida, áudio offline, wake word, voz integrada e prova de resistência real no Le Mans Ultimate.",
+        "it": "Engineer e Spotter pronti per la 1.0: sicurezza e traffico in diretta, monitor di gara, audio offline, wake word, voce integrata e prova di resistenza reale su Le Mans Ultimate."
+      },
+      "label": {
+        "es": "Plan",
+        "en": "Plan",
+        "pt": "Plano",
+        "it": "Piano"
+      }
+    },
+    {
       "id": "beta-version-iterations",
       "type": "plan",
       "title": {
@@ -741,6 +851,28 @@
         "en": "Vantare ships as a stable LMU-first release: a complete suite with stable payment and access, user documentation, organized support and enough quality to hold a public reputation.",
         "pt": "O Vantare sai como versão estável LMU-first: suite completa com pagamento e acesso estáveis, documentação de utilizador, suporte organizado e qualidade suficiente para sustentar a reputação pública.",
         "it": "Vantare esce come versione stabile LMU-first: suite completa con pagamento e accesso stabili, documentazione utente, supporto organizzato e qualità sufficiente a sostenere la reputazione pubblica."
+      },
+      "label": {
+        "es": "Plan",
+        "en": "Plan",
+        "pt": "Plano",
+        "it": "Piano"
+      }
+    },
+    {
+      "id": "multisim-support",
+      "type": "plan",
+      "title": {
+        "es": "Multisimulador",
+        "en": "Multi-simulator",
+        "pt": "Multisimulador",
+        "it": "Multisimulatore"
+      },
+      "body": {
+        "es": "Después de la 1.0, Vantare se abre a más simuladores en el orden decidido: iRacing, Assetto Corsa 2014, Assetto Corsa EVO, Assetto Corsa Competizione y Automobilista 2.",
+        "en": "After 1.0, Vantare opens to more simulators in the chosen order: iRacing, Assetto Corsa 2014, Assetto Corsa EVO, Assetto Corsa Competizione and Automobilista 2.",
+        "pt": "Depois da 1.0, o Vantare abre-se a mais simuladores na ordem decidida: iRacing, Assetto Corsa 2014, Assetto Corsa EVO, Assetto Corsa Competizione e Automobilista 2.",
+        "it": "Dopo la 1.0, Vantare si apre ad altri simulatori nell'ordine deciso: iRacing, Assetto Corsa 2014, Assetto Corsa EVO, Assetto Corsa Competizione e Automobilista 2."
       },
       "label": {
         "es": "Plan",
@@ -1824,6 +1956,11 @@
           "kind": "fix",
           "scope": "studio",
           "text": "Restaurar enlace OBS al pie del dock de ajustes"
+        },
+        {
+          "kind": "perf",
+          "scope": "fonts",
+          "text": "Subset WOFF2 de Cascadia Code"
         }
       ]
     },

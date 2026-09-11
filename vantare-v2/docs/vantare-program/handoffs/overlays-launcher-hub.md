@@ -212,9 +212,10 @@ La rama quedó reconciliada con `origin/nightly` `dc5e7ae1` mediante merge en
 la propia rama de issue (el PR nació CONFLICTING porque nightly había sumado
 ISA-1162/1152/1123; ninguno toca `overlay_controller.go`). Conflictos solo en
 docs derivados: handoff (orden de entradas) y `roadmap.json` (regenerado).
-Build local separada `bin/vantare-isa1127.exe` para que Isaac pruebe
-físicamente abrir + editar + guardar. Sin promoción a nightly, testers,
-master ni release.
+Build local separada `bin/vantare-isa1127.exe` (SHA256 `B81EB808…22B06F5`,
+desde el merge `5485aac4`; sin lanzar) para que Isaac pruebe físicamente
+abrir + editar + guardar. Sin promoción a nightly, testers, master ni
+release.
 
 ## ISA-1101 — integración inicial autorizada a nightly (2026-09-10)
 

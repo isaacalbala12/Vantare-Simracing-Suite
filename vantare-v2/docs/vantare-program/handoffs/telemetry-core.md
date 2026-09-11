@@ -29,6 +29,13 @@ gofmt y diffcheck del revisor en verde) y combinación Efficiency compatible
 REST == códigos SDK sigue pendiente de captura física: promoción a Nightly
 NO autorizada. Sin merge; revisión independiente pendiente del SHA final.
 
+Comprobación conjunta ISA-1098 del 2026-09-11: la build Wails oficial mostró
+los dos estilos Efficiency, cabecera/pie y guardados con recreación WebView2
+sin bloquearse. LMU estaba abierto pero fuera de sesión (`detecting` ->
+`stale`), por lo que no hubo valores REST activos que pudieran demostrar la
+equivalencia de bandera ni temperaturas de sesión. El gate físico anterior
+sigue abierto y no se sustituye con Mock, fixtures ni datos de forecast.
+
 ## Integración autorizada ISA-1002 — 2026-09-06
 
 Preparación sobre nightly `c18f2e6e` (#1001 ya integrado), fuente ISA-996

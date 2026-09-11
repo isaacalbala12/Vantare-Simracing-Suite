@@ -212,20 +212,39 @@ afectados (`functional-widget-design`, `widget-access-branding`,
 `telemetry-live`, `overlay-tester-feedback`) y `roadmap.json` se regenera
 desde la base Nightly confiable.
 
-Siguiente gate: build Wails configurada y comprobación física Free de
-Efficiency, marca obligatoria, edición, guardados, detener y reabrir. La
-equivalencia de códigos de bandera REST sigue pendiente de una sesión LMU
-activa; ausencia, invalidez o caducidad permanecen neutras. La validación
-aislada de #1127 no sustituye esta comprobación conjunta. PR #1107 continúa
-en draft; sin merge a Nightly, testers/master ni release.
+La build Wails configurada pasó con el procedimiento oficial y las tres
+variables públicas de `.env.local` quedaron embebidas (comparación booleana,
+sin imprimir valores). El ejecutable resultante mide 29.903.360 bytes y tiene
+SHA-256 `1854A0EA2FC723B8F16BADDFEDF5DF7B359F8DCA84800F2E06BF5BF53B55C3C4`.
+Sobre esa unidad se comprobó físicamente Efficiency Signature y Broadcast en
+Studio con la política paga vigente: marca apagada por defecto, cabecera y pie
+configurables y persistencia de Broadcast. Con el overlay abierto se hicieron
+dos guardados reales Signature -> Broadcast; ambos registraron
+`studio profile saved`, recrearon WebView2 y la app siguió respondiendo. El
+ciclo detener -> abrir -> detener acabó en `Abrir overlay`, también estable.
+El recorrido exacto Home `Abrir overlay` -> `Abrir Studio` detuvo el overlay y
+abrió el editor sin cierre ni bloqueo. Los perfiles y calendario tocados por
+el smoke se restauraron y el árbol tracked quedó limpio.
+
+La política Free permanece cubierta por regresiones automatizadas, pero no se
+presenta como prueba física: dos intentos portables sin `license-cache.json`
+continuaron viendo la sesión paga del perfil WebView2 compartido de producción.
+Aislarla exigiría cerrar sesión o mover datos reales del usuario, acciones que
+se descartaron. Durante el smoke se descubrió además un fallo separado: si el
+Hub está descargado, detener el último overlay cierra Vantare tras agotar dos
+segundos al apagar HTTP; queda aislado en #1178 y no se mezcla en #1098.
+
+Siguiente gate: una sesión LMU activa debe confirmar temperaturas y
+equivalencia de bandera REST. Ausencia, invalidez o caducidad permanecen
+neutras. PR #1107 continúa en draft; sin merge a Nightly, testers/master ni
+release.
 
 Rama `vantareapp/isa-1098-efficiency-integration`, worktree `C:/tmp/vantare-isa1098`,
-base `a9b8dd36` (= `origin/nightly` verificado antes de usar `--ref`). Solo se
+base reconciliada `e13756ef` (= `origin/nightly` verificado). Solo se
 reúnen commits aprobados, conservando historia con merges locales. Candidato
 preparado en rama de issue; el estado de publicación, PR y CI del SHA actual
 se consulta en la issue #1098. Sin merge a Nightly, testers/master ni release;
-comprobación física pendiente. Reparto vigente: Codex
-implementa, Muse acciones mecánicas.
+comprobación física LMU activa pendiente.
 
 Merges locales: `205fa091` <- `87cef39a` (#1083 Signature/Broadcast),
 `ec9d6d19` <- `6ae58f6e` (#1103 banderas y slots de sesión),
